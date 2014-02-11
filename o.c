@@ -74,7 +74,60 @@ oa2ul(char *str, char **endptr, int base)
 }
 
 void
-Outliers(int nBitsPerDigit, int nDigitsLeft, Word_t wKeysPerX, Word_t wKeyStep)
+Outliers(int nBitsPerDigit, int nDigitsAtBitmap,
+    Word_t wKeysPerX, Word_t wKeyStep, Word_t wKey, int nDigitsLeft)
+{
+    Word_t w;
+
+#if 0
+    printf("Outliers: KeysPerX %d KeyStep %x Key %llx nDigitsLeft %d\n",
+        (int)wKeysPerX, (int)wKeyStep, (long long)wKey, nDigitsLeft);
+#endif
+
+    wKey <<= nBitsPerDigit;
+
+    if (nDigitsLeft-- <= nDigitsAtBitmap)
+    {
+        wKey <<= (nDigitsAtBitmap - 1) * nBitsPerDigit;
+
+        if (wKey % EXP((nDigitsAtBitmap + 1) * nBitsPerDigit))
+        {
+            wKeysPerX = 1;
+        }
+
+        for (w = 0; w < wKeysPerX * wKeyStep; w += wKeyStep)
+        {
+#if defined(__LP64__) || defined(_WIN64)
+            printf("0x%016llx\n", (long long)wKey + w);
+#else // defined(__LP64__) || defined(_WIN64)
+            printf("0x%08x\n", wKey + w);
+#endif // defined(__LP64__) || defined(_WIN64)
+        }
+
+#if 0
+#if defined(__LP64__) || defined(_WIN64)
+        printf("0x%016llx\n", (long long)(wKey + EXP(nBitsPerDigit));
+#else // defined(__LP64__) || defined(_WIN64)
+        printf("0x%08x\n", wKey + EXP(nBitsPerDigit));
+#endif // defined(__LP64__) || defined(_WIN64)
+#endif
+
+        return;
+    }
+
+    for (w = 0;
+         w < ((nDigitsLeft > nDigitsAtBitmap + 1) ? EXP(nBitsPerDigit) : 2);
+         w++)
+    {
+        Outliers(nBitsPerDigit, nDigitsAtBitmap, wKeysPerX, wKeyStep,
+            wKey + w, nDigitsLeft);
+    }
+}
+
+#if 0
+Word_t
+NextOutlier(Word_t key,
+    int nBitsPerDigit, int nDigitsLeft, Word_t wKeysPerX, Word_t wKeyStep)
 {
     Word_t wKey;
     Word_t w;
@@ -97,6 +150,8 @@ Outliers(int nBitsPerDigit, int nDigitsLeft, Word_t wKeysPerX, Word_t wKeyStep)
     }
     while (++nDigitsLeft < (BITSPW + nBitsPerDigit - 1) / nBitsPerDigit);
 }
+#endif
+
 
 //
 // nBitsPerDigit is minimum bits decoded by each branch/node.
@@ -108,7 +163,7 @@ int
 main(int argc, char *argv[])
 {
     long nBitsPerDigit = BITSPW / 2;
-    long nDigitsLeft = 1;
+    long nDigitsAtBottom = 1;
     Word_t wKeysPerX = 1;
     Word_t wKeyStep = 0;
 
@@ -117,18 +172,18 @@ main(int argc, char *argv[])
     default: usage(); // usage exits
     case 5: wKeyStep = oa2ul(argv[4], 0, 0);
     case 4: wKeysPerX = oa2ul(argv[3], 0, 0);
-    case 3: nDigitsLeft = oa2ul(argv[2], 0, 0);
+    case 3: nDigitsAtBottom = oa2ul(argv[2], 0, 0);
     case 2: nBitsPerDigit = oa2ul(argv[1], 0, 0);
     case 1: ;
     }
 
-    if ((wKeyStep == 0) && (wKeysPerX > 1))
+    if (wKeyStep == 0)
     {
-        wKeyStep = EXP(nBitsPerDigit * nDigitsLeft) / wKeysPerX;
+        wKeyStep = EXP(nBitsPerDigit * nDigitsAtBottom) / wKeysPerX;
     }
 
     fprintf(stderr, "BitsPerDigit %ld\n", nBitsPerDigit);
-    fprintf(stderr, "DigitsLeft %ld\n", nDigitsLeft);
+    fprintf(stderr, "DigitsAtBottom %ld\n", nDigitsAtBottom);
 
 #if defined(__LP64__) || defined(_WIN64)
     fprintf(stderr, "KeysPerX %lld\n", (long long)wKeysPerX);
@@ -138,7 +193,8 @@ main(int argc, char *argv[])
     fprintf(stderr, "KeyStep 0x%x\n", wKeyStep);
 #endif // defined(__LP64__) || defined(_WIN64)
 
-    Outliers(nBitsPerDigit, nDigitsLeft, wKeysPerX, wKeyStep);
+    Outliers(nBitsPerDigit, nDigitsAtBottom, wKeysPerX, wKeyStep, 0,
+        /* DIGITSPW */ (BITSPW + nBitsPerDigit - 1) / nBitsPerDigit);
 
     return 0;
 }
