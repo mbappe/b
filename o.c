@@ -27,30 +27,24 @@ Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerX)
     int nBitsAtBitmap = nDigitsAtBitmap * nBitsPerDigit;
     int wKeyNow = wKeyNext;
 
-    Word_t wKeysPerNow;
-
-    wKeysPerNow
+    Word_t wKeysPerNow
         = ((wKeyNext % EXP(nBitsAtBitmap + 1)) == EXP(nBitsAtBitmap))
             ? 1 : wKeysPerX;
 
-    // printf("wKeyNext %x wKeysPerNow %d\n", wKeyNext, wKeysPerNow);
-
-    ++wKeyNext;
-
-    if (((wKeyNext & MASK(EXP(nBitsAtBitmap))) % wKeysPerNow) == 0)
+    if (((++wKeyNext & MASK(EXP(nBitsAtBitmap))) % wKeysPerNow) == 0)
     {
         // printf("a\n");
 
         wKeyNext &= ~MASK(EXP(nBitsAtBitmap));
         wKeyNext += EXP(nBitsAtBitmap);
 
-        if ((wKeyNext % EXP(nBitsAtBitmap + 3)) == EXP(nBitsAtBitmap + 1))
+        if ((wKeyNext % EXP(nBitsAtBitmap + 2)) == EXP(nBitsAtBitmap + 1))
         {
             // printf("b\n");
 
             if (nExp == nBitsAtBitmap + nBitsPerDigit)
             {
-                exit(1);
+                wKeyNext = 0;
             }
             else
             {
@@ -58,6 +52,8 @@ Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerX)
             }
         }
     }
+
+    printf("wKeyNext %x wKeysPerNow %d\n", wKeyNext, wKeysPerNow);
 
     return wKeyNow;
 }
@@ -130,7 +126,7 @@ main(int argc, char *argv[])
 {
     long nBitsPerDigit = 4;
     long nDigitsAtBottom = 3;
-    Word_t wKeysPerX = 257;
+    Word_t wKeysPerX = 200;
 
     switch (argc)
     {
