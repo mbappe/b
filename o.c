@@ -1,10 +1,5 @@
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h> // for gcc/linux
-#include <string.h>
-#include <errno.h>
-#include <assert.h>
 
 #if defined(__LP64__) || defined(_WIN64)
 typedef uint64_t Word_t;
@@ -21,7 +16,7 @@ typedef uint32_t Word_t;
 #define MASK(x)  ((x) - 1)
 
 Word_t
-Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerX)
+Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerBitmap)
 {
     static Word_t wPrefix = 1;
     static Word_t wKeyNext = 0;
@@ -32,19 +27,15 @@ Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerX)
 
     Word_t wKeysPerNow
         = ((wKeyNext % EXP(nBitsAtBitmap + 1)) == EXP(nBitsAtBitmap))
-            ? 1 : wKeysPerX;
+            ? 1 : wKeysPerBitmap;
 
     if (((++wKeyNext & MASK(EXP(nBitsAtBitmap))) % wKeysPerNow) == 0)
     {
-        // printf("a\n");
-
         wKeyNext &= ~MASK(EXP(nBitsAtBitmap));
         wKeyNext += EXP(nBitsAtBitmap);
 
         if ((wKeyNext % EXP(nBitsAtBitmap + 2)) == EXP(nBitsAtBitmap + 1))
         {
-            // printf("b\n");
-
             if (nExp == nBitsAtBitmap + nBitsPerDigit)
             {
                 wPrefix += 2;
@@ -53,9 +44,12 @@ Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerX)
 
                 if (nExp < nBitsAtBitmap + nBitsPerDigit)
                 {
-                    printf("wPrefix %x nExp %d\n", wPrefix, nExp);
+                    //printf("wPrefix %x nExp %d\n", wPrefix, nExp);
 
-                    exit(1);
+                    // repeat
+                    wKeyNext = 0;
+                    wPrefix = 1;
+                    nExp = BITSPW;
                 }
 
                 wKeyNext = wPrefix << nExp;
@@ -63,15 +57,20 @@ Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerX)
             else
             {
                 wKeyNext = wPrefix << --nExp;
-                //wKeyNext = EXP(--nExp);
             }
         }
     }
 
-    // printf("wKeyNext %x wKeysPerNow %d\n", wKeyNext, wKeysPerNow);
-
     return wKeyNow;
 }
+
+#if 0
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <assert.h>
 
 void
 usage(void)
@@ -173,4 +172,6 @@ main(int argc, char *argv[])
 
     return 0;
 }
+
+#endif
 
