@@ -27,15 +27,35 @@ Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerX)
     int nBitsAtBitmap = nDigitsAtBitmap * nBitsPerDigit;
     int wKeyNow = wKeyNext;
 
-    if (((++wKeyNext & MASK(EXP(nBitsAtBitmap))) % wKeysPerX) == 0)
+    Word_t wKeysPerNow;
+
+    wKeysPerNow
+        = ((wKeyNext % EXP(nBitsAtBitmap + 1)) == EXP(nBitsAtBitmap))
+            ? 1 : wKeysPerX;
+
+    // printf("wKeyNext %x wKeysPerNow %d\n", wKeyNext, wKeysPerNow);
+
+    ++wKeyNext;
+
+    if (((wKeyNext & MASK(EXP(nBitsAtBitmap))) % wKeysPerNow) == 0)
     {
-        if (nExp == nBitsAtBitmap + nBitsPerDigit)
+        // printf("a\n");
+
+        wKeyNext &= ~MASK(EXP(nBitsAtBitmap));
+        wKeyNext += EXP(nBitsAtBitmap);
+
+        if ((wKeyNext % EXP(nBitsAtBitmap + 3)) == EXP(nBitsAtBitmap + 1))
         {
-            exit(1);
-        }
-        else
-        {
-            wKeyNext = EXP(--nExp);
+            // printf("b\n");
+
+            if (nExp == nBitsAtBitmap + nBitsPerDigit)
+            {
+                exit(1);
+            }
+            else
+            {
+                wKeyNext = EXP(--nExp);
+            }
         }
     }
 
