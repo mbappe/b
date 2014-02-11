@@ -16,11 +16,14 @@ typedef uint32_t Word_t;
 
 #define EXP(x)  ((Word_t)1 << (x))
 
+#define LOG(x)  ((Word_t)64 - 1 - __builtin_clzll(x))
+
 #define MASK(x)  ((x) - 1)
 
 Word_t
 Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerX)
 {
+    static Word_t wPrefix = 1;
     static Word_t wKeyNext = 0;
     static int nExp = BITSPW;
 
@@ -44,16 +47,28 @@ Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerX)
 
             if (nExp == nBitsAtBitmap + nBitsPerDigit)
             {
-                wKeyNext = 0;
+                wPrefix += 2;
+
+                nExp = BITSPW - LOG(wPrefix) - 1;
+
+                if (nExp < nBitsAtBitmap + nBitsPerDigit)
+                {
+                    printf("wPrefix %x nExp %d\n", wPrefix, nExp);
+
+                    exit(1);
+                }
+
+                wKeyNext = wPrefix << nExp;
             }
             else
             {
-                wKeyNext = EXP(--nExp);
+                wKeyNext = wPrefix << --nExp;
+                //wKeyNext = EXP(--nExp);
             }
         }
     }
 
-    printf("wKeyNext %x wKeysPerNow %d\n", wKeyNext, wKeysPerNow);
+    // printf("wKeyNext %x wKeysPerNow %d\n", wKeyNext, wKeysPerNow);
 
     return wKeyNow;
 }
