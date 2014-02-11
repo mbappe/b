@@ -73,6 +73,8 @@ oa2ul(char *str, char **endptr, int base)
     return ul;
 }
 
+#if 0
+
 void
 Outliers(int nBitsPerDigit, int nDigitsAtBitmap,
     Word_t wKeysPerX, Word_t wKeyStep, Word_t wKey, int nDigitsLeft)
@@ -104,14 +106,6 @@ Outliers(int nBitsPerDigit, int nDigitsAtBitmap,
 #endif // defined(__LP64__) || defined(_WIN64)
         }
 
-#if 0
-#if defined(__LP64__) || defined(_WIN64)
-        printf("0x%016llx\n", (long long)(wKey + EXP(nBitsPerDigit));
-#else // defined(__LP64__) || defined(_WIN64)
-        printf("0x%08x\n", wKey + EXP(nBitsPerDigit));
-#endif // defined(__LP64__) || defined(_WIN64)
-#endif
-
         return;
     }
 
@@ -124,34 +118,39 @@ Outliers(int nBitsPerDigit, int nDigitsAtBitmap,
     }
 }
 
-#if 0
-Word_t
-NextOutlier(Word_t key,
-    int nBitsPerDigit, int nDigitsLeft, Word_t wKeysPerX, Word_t wKeyStep)
+#else 
+
+void
+Outliers(int nBitsPerDigit, int nDigitsAtBitmap,
+    Word_t wKeysPerX, Word_t wKeyStep, Word_t wKey, int nDigitsLeft)
 {
-    Word_t wKey;
-    Word_t w;
+    static Word_t awDigits[BITSPW];
+    int i;
 
-    do
+again:
+
+    for (i = 0; i < (BITSPW + nBitsPerDigit - 1) / nBitsPerDigit; i++)
     {
-        wKey = EXP(nDigitsLeft * nBitsPerDigit);
+        printf("%x", awDigits[i]);
+    }
+    printf("\n");
 
-        for (w = 0; w < wKeysPerX; w++)
+    for (nDigitsLeft
+             = (BITSPW + nBitsPerDigit - 1) / nBitsPerDigit
+                 - nDigitsAtBitmap - 1;
+         nDigitsLeft >= 0;
+         nDigitsLeft--)
+    {
+        if (++awDigits[nDigitsLeft] < EXP(nBitsPerDigit))
         {
-#if defined(__LP64__) || defined(_WIN64)
-            printf("0x%016llx\n", (long long)wKey);
-#else // defined(__LP64__) || defined(_WIN64)
-            printf("0x%08x\n", wKey);
-#endif // defined(__LP64__) || defined(_WIN64)
-
-            wKey += wKeyStep;
+            goto again;
         }
 
+        awDigits[nDigitsLeft] = 0;
     }
-    while (++nDigitsLeft < (BITSPW + nBitsPerDigit - 1) / nBitsPerDigit);
 }
-#endif
 
+#endif
 
 //
 // nBitsPerDigit is minimum bits decoded by each branch/node.
