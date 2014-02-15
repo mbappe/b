@@ -64,7 +64,7 @@ Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerBitmap)
     return wKeyNow;
 }
 
-#if 0
+#if 1
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -76,8 +76,7 @@ void
 usage(void)
 {
     fprintf(stderr,
-      "usage: a.out [[[[<BitsPerDigit>"
-      " [[[<DigitsLeft> [[<KeysPerX> [<KeyStep>]]]]\n");
+      "usage: a.out [ <BitsPerDigit> [ <DigitsLeft> [ <KeysPerX>]]]\n");
 
     exit(1);
 }
