@@ -23,7 +23,7 @@ Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerBitmap)
     static int nExp = BITSPW;
 
     int nBitsAtBitmap = nDigitsAtBitmap * nBitsPerDigit;
-    int wKeyNow = wKeyNext;
+    Word_t wKeyNow = wKeyNext;
 
     //
     // Use wKeysPerBitmap for the digit 0 in the node/branch above the bitmap
