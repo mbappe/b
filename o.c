@@ -25,17 +25,26 @@ Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerBitmap)
     int nBitsAtBitmap = nDigitsAtBitmap * nBitsPerDigit;
     int wKeyNow = wKeyNext;
 
+    //
+    // Use wKeysPerBitmap for the digit 0 in the node/branch above the bitmap
+    // leaves.
+    // Use 1 for the digit 1 in the node/branch.
+    //
     Word_t wKeysPerNow
         = ((wKeyNext % EXP(nBitsAtBitmap + 1)) == EXP(nBitsAtBitmap))
             ? 1 : wKeysPerBitmap;
 
     if (((++wKeyNext & MASK(EXP(nBitsAtBitmap))) % wKeysPerNow) == 0)
     {
+        // We've filled the link/jp.  Next link/jp.
+
         wKeyNext &= ~MASK(EXP(nBitsAtBitmap));
         wKeyNext += EXP(nBitsAtBitmap);
 
         if ((wKeyNext % EXP(nBitsAtBitmap + 2)) == EXP(nBitsAtBitmap + 1))
         {
+            // We've filled two of the links/jps.
+
             if (nExp == nBitsAtBitmap + nBitsPerDigit)
             {
                 wPrefix += 2;
@@ -44,12 +53,13 @@ Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerBitmap)
 
                 if (nExp < nBitsAtBitmap + nBitsPerDigit)
                 {
-                    // printf("wPrefix %llx nExp %d\n", wPrefix, nExp);
+                    // Out of ideas -- repeat.
 
-                    // repeat
                     wKeyNext = 0;
                     wPrefix = 1;
                     nExp = BITSPW;
+
+                    return wKeyNow;
                 }
 
                 wKeyNext = wPrefix << nExp;
@@ -164,6 +174,7 @@ main(int argc, char *argv[])
 
     for (;;)
     {
+#define PRINT
 #if defined(PRINT)
 #if defined(__LP64__) || defined(_WIN64)
         printf("0x%016llx\n", wKey);
@@ -176,7 +187,7 @@ main(int argc, char *argv[])
 
         if (wKey == 0)
         {
-            exit(0);
+            exit(1);
         }
     }
 
