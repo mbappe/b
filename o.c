@@ -1,10 +1,17 @@
 
-#include <stdint.h> // uint64_t for gcc/linux
+
+#if defined(_WIN64)
+typedef unsigned long long Word_t;
+#define W  "ll"
+#else // defined(_WIN64)
+typedef unsigned long Word_t;
+#define W  "l"
+#endif // defined(_WIN64)
 
 #if defined(__LP64__) || defined(_WIN64)
-typedef uint64_t Word_t;
+#define ZX  "016"
 #else // defined(__LP64__) || defined(_WIN64)
-typedef uint32_t Word_t;
+#define ZX  "08"
 #endif // defined(__LP64__) || defined(_WIN64)
 
 #define BITSPW (sizeof(Word_t) * 8)
@@ -147,8 +154,8 @@ oa2ul(char *str, char **endptr, int base)
 int
 main(int argc, char *argv[])
 {
-    long nBitsPerDigit = 4;
-    long nDigitsAtBottom = 3;
+    int nBitsPerDigit = 4;
+    int nDigitsAtBottom = 3;
     Word_t wKeysPerX = 200;
     Word_t wKey;
 
@@ -161,14 +168,10 @@ main(int argc, char *argv[])
     case 1: ;
     }
 
-    fprintf(stderr, "BitsPerDigit %ld\n", nBitsPerDigit);
-    fprintf(stderr, "DigitsAtBottom %ld\n", nDigitsAtBottom);
+    fprintf(stderr, "BitsPerDigit %d\n", nBitsPerDigit);
+    fprintf(stderr, "DigitsAtBottom %d\n", nDigitsAtBottom);
 
-#if defined(__LP64__) || defined(_WIN64)
-    fprintf(stderr, "KeysPerX %lld\n", (long long)wKeysPerX);
-#else // defined(__LP64__) || defined(_WIN64)
-    fprintf(stderr, "KeysPerX %d\n", wKeysPerX);
-#endif // defined(__LP64__) || defined(_WIN64)
+    fprintf(stderr, "KeysPerX %"W"d\n", wKeysPerX);
 
     wKey = Next(nBitsPerDigit, nDigitsAtBottom, wKeysPerX);
 
@@ -176,11 +179,7 @@ main(int argc, char *argv[])
     {
 #define PRINT
 #if defined(PRINT)
-#if defined(__LP64__) || defined(_WIN64)
-        printf("0x%016llx\n", wKey);
-#else // defined(__LP64__) || defined(_WIN64)
-        printf("0x%08x\n", wKey);
-#endif // defined(__LP64__) || defined(_WIN64)
+        printf("0x%"ZX W"x\n", wKey);
 #endif // defined(PRINT)
 
         wKey = Next(nBitsPerDigit, nDigitsAtBottom, wKeysPerX);
