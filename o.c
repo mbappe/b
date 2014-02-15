@@ -9,9 +9,9 @@ typedef unsigned long Word_t;
 #endif // defined(_WIN64)
 
 #if defined(__LP64__) || defined(_WIN64)
-#define ZX  "016"
+#define ZWX  "016"
 #else // defined(__LP64__) || defined(_WIN64)
-#define ZX  "08"
+#define ZWX  "08"
 #endif // defined(__LP64__) || defined(_WIN64)
 
 #define BITSPW (sizeof(Word_t) * 8)
@@ -179,7 +179,7 @@ main(int argc, char *argv[])
     {
 #define PRINT
 #if defined(PRINT)
-        printf("0x%"ZX W"x\n", wKey);
+        printf("0x%"ZWX W"x\n", wKey);
 #endif // defined(PRINT)
 
         wKey = Next(nBitsPerDigit, nDigitsAtBottom, wKeysPerX);
