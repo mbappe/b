@@ -1,5 +1,5 @@
 
-#include <stdint.h> // for gcc/linux
+#include <stdint.h> // uint64_t for gcc/linux
 
 #if defined(__LP64__) || defined(_WIN64)
 typedef uint64_t Word_t;
@@ -44,7 +44,7 @@ Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerBitmap)
 
                 if (nExp < nBitsAtBitmap + nBitsPerDigit)
                 {
-                    //printf("wPrefix %x nExp %d\n", wPrefix, nExp);
+                    // printf("wPrefix %llx nExp %d\n", wPrefix, nExp);
 
                     // repeat
                     wKeyNext = 0;
@@ -140,6 +140,7 @@ main(int argc, char *argv[])
     long nBitsPerDigit = 4;
     long nDigitsAtBottom = 3;
     Word_t wKeysPerX = 200;
+    Word_t wKey;
 
     switch (argc)
     {
@@ -159,14 +160,24 @@ main(int argc, char *argv[])
     fprintf(stderr, "KeysPerX %d\n", wKeysPerX);
 #endif // defined(__LP64__) || defined(_WIN64)
 
+    wKey = Next(nBitsPerDigit, nDigitsAtBottom, wKeysPerX);
+
     for (;;)
     {
+#if defined(PRINT)
 #if defined(__LP64__) || defined(_WIN64)
-        printf("0x%016llx\n",
-            (long long)Next(nBitsPerDigit, nDigitsAtBottom, wKeysPerX));
+        printf("0x%016llx\n", wKey);
 #else // defined(__LP64__) || defined(_WIN64)
-        printf("0x%08x\n", Next(nBitsPerDigit, nDigitsAtBottom, wKeysPerX));
+        printf("0x%08x\n", wKey);
 #endif // defined(__LP64__) || defined(_WIN64)
+#endif // defined(PRINT)
+
+        wKey = Next(nBitsPerDigit, nDigitsAtBottom, wKeysPerX);
+
+        if (wKey == 0)
+        {
+            exit(0);
+        }
     }
 
     return 0;
