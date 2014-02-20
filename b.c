@@ -79,9 +79,10 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 
 // Data structure constants and macros.
 
-const int cnTypeByteOff         = 2; // node type goes here
-const int cnBitsPrefixSzByteOff = 1; // prefix size goes here
-const int cnBitsIndexSzByteOff  = 0; // index size goes here
+const int cnTypeByteOff         = 0; // node type goes here
+const int cnBitsLeftByteOff     = 1; // nBitsLeft goes here
+const int cnBitsIndexSzByteOff  = 2; // index size goes here
+const int cnBitsPrefixSzByteOff = 3; // prefix size goes here
 
 const int cnPrefixOff           = 1; // prefix goes here
 const int cnKeyOff              = 1; // key goes here
@@ -89,10 +90,12 @@ const int cnPtrsOff             = 2; // array of pointers begins here
 
 #define     wr_nType(_wr)              (((char *)(_wr))[cnTypeByteOff])
 #define set_wr_nType(_wr, _t)           (wr_nType(_wr) = (_t))
-#define     wr_nBitsPrefixSz(_wr)      (((char *)(_wr))[cnBitsPrefixSzByteOff])
-#define set_wr_nBitsPrefixSz(_wr, _sz)  (wr_nBitsPrefixSz(_wr) = (_sz))
+#define     wr_nBitsLeft(_wr)          (((char *)(_wr))[cnBitsLeftByteOff])
+#define set_wr_nBitsLeft(_wr, _sz)      (wr_nBitsLeft(_wr) = (_sz))
 #define     wr_nBitsIndexSz(_wr)       (((char *)(_wr))[cnBitsIndexSzByteOff])
 #define set_wr_nBitsIndexSz(_wr, _sz)   (wr_nBitsIndexSz(_wr) = (_sz))
+#define     wr_nBitsPrefixSz(_wr)      (((char *)(_wr))[cnBitsPrefixSzByteOff])
+#define set_wr_nBitsPrefixSz(_wr, _sz)  (wr_nBitsPrefixSz(_wr) = (_sz))
 
 #define     wr_wPrefix(_wr)            ( ((Word_t *)(_wr))[cnPrefixOff])
 #define set_wr_wPrefix(_wr, _prefix)    (wr_wPrefix(_wr) = (_prefix))
@@ -148,14 +151,16 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
         pwPtrs = wr_pwPtrs(wRoot);
     }
 
+    nBitsLeft = wr_nBitsLeft(wRoot);
+
     printf(" ");
     if (nType == Switch)
     {
-        for (i = 0; i < nBitsPrefixSz; i++)
+        for (i = 0; i < cnBitsPerWord - nBitsLeft; i++)
         {
             printf(wx, (wPrefix << i) >> (cnBitsPerWord - 1));
         }
-        for (i = 0; i < cnBitsPerWord - nBitsPrefixSz; i++)
+        for (i = 0; i < cnBitsPerWord - nBitsLeft; i++)
         {
             printf(".");
         }
