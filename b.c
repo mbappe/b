@@ -196,30 +196,39 @@ InsertAt(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
     if (wRoot != 0)
     {
         int nBitsPrefixSz;
-        Word_t wNodePrefix = wr_wPrefix(wRoot);
         int nBitsIndexSz;
         Word_t *pwPtrs;
         int nIndex;
 
+        pw = (Word_t *)JudyMalloc(cnPtrsOff + 2);
+        DBGI(printf("new switch node pw %p\n", pw));
+        set_wr_nType(pw, Switch);
+        nBitsIndexSz = 1;
+        set_wr_nBitsIndexSz(pw, nBitsIndexSz); // Use zero for immediate?
+
         // prefix (or key) mismatch
         // insert a node at bit where prefix doesn't match
-        nBitsLeft = LOG(wKey ^ wNodePrefix) + 1; // below branch
-        nBitsPrefixSz = cnBitsPerWord - nBitsLeft;
-
-        pw = (Word_t *)JudyMalloc(cnPtrsOff + 2);
-        pwPtrs = wr_pwPtrs(pw);
-        DBGI(printf("new switch node pw %p\n", pw));
-        DBGI(printf("nBitsPrefixSz %d\n", nBitsPrefixSz));
+        if (wr_nType(wRoot) == Leaf)
+        {
+            nBitsLeft = LOG(wKey ^ wr_wKey(wRoot)) + 1; // below branch
+        }
+        else
+        {
+            nBitsLeft = LOG(wKey ^ wr_wPrefix(wRoot)) + 1; // below branch
+        }
         DBGI(printf("nBitsLeft %d\n", nBitsLeft));
-        set_wr_nType(pw, Switch);
+
+        nBitsPrefixSz = cnBitsPerWord - nBitsLeft;
         set_wr_nBitsPrefixSz(pw, nBitsPrefixSz);
+        DBGI(printf("wr_nBitsPrefixSz %d\n", wr_nBitsPrefixSz(pw)));
+
         set_wr_wPrefix(pw,
             (nBitsLeft == cnBitsPerWord)
                 ? 0 : (wKey >> nBitsLeft) << nBitsLeft);
         DBGI(printf("wPrefix "Owx"\n", wr_wPrefix(pw)));
-        nBitsIndexSz = 1;
-        set_wr_nBitsIndexSz(pw, nBitsIndexSz); // Use zero for immediate?
-        nIndex = (wNodePrefix << nBitsPrefixSz)
+
+        pwPtrs = wr_pwPtrs(pw);
+        nIndex = (wr_wPrefix(wRoot) << nBitsPrefixSz)
                     >> (cnBitsPerWord - nBitsIndexSz);
         DBGI(printf("old node nIndex %d\n", nIndex));
         pwPtrs[nIndex] = wRoot;
@@ -228,7 +237,6 @@ InsertAt(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
         DBGI(printf("new key nIndex %d\n", nIndex));
         pwPtrs[nIndex] = 0;
 
-        DBGI(printf("pw %p &pw %p\n", pw, &pw));
         Insert((Word_t *)&pw, wKey, nBitsLeft);
     }
     else
