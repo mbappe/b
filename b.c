@@ -186,6 +186,70 @@ Dump(Word_t wRoot, int nBitsLeft)
     }
 }
 
+static Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBitsLeft);
+
+static Status_t
+InsertAt(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
+{
+    Word_t *pw;
+
+    if (wRoot != 0)
+    {
+        int nBitsPrefixSz;
+        Word_t wNodePrefix = wr_wPrefix(wRoot);
+        int nBitsIndexSz;
+        Word_t *pwPtrs;
+        int nIndex;
+
+        // prefix (or key) mismatch
+        // insert a node at bit where prefix doesn't match
+        nBitsLeft = LOG(wKey ^ wNodePrefix) + 1; // below branch
+        nBitsPrefixSz = cnBitsPerWord - nBitsLeft;
+
+        pw = (Word_t *)JudyMalloc(cnPtrsOff + 2);
+        pwPtrs = wr_pwPtrs(pw);
+        DBGI(printf("new switch node pw %p\n", pw));
+        DBGI(printf("nBitsPrefixSz %d\n", nBitsPrefixSz));
+        DBGI(printf("nBitsLeft %d\n", nBitsLeft));
+        set_wr_nType(pw, Switch);
+        set_wr_nBitsPrefixSz(pw, nBitsPrefixSz);
+        set_wr_wPrefix(pw,
+            (nBitsLeft == cnBitsPerWord)
+                ? 0 : (wKey >> nBitsLeft) << nBitsLeft);
+        DBGI(printf("wPrefix "Owx"\n", wr_wPrefix(pw)));
+        nBitsIndexSz = 1;
+        set_wr_nBitsIndexSz(pw, nBitsIndexSz); // Use zero for immediate?
+        nIndex = (wNodePrefix << nBitsPrefixSz)
+                    >> (cnBitsPerWord - nBitsIndexSz);
+        DBGI(printf("old node nIndex %d\n", nIndex));
+        pwPtrs[nIndex] = wRoot;
+        DBGI(printf("install old node at "Owx"\n", (Word_t)&pwPtrs[nIndex]));
+        nIndex = (wKey << nBitsPrefixSz) >> (cnBitsPerWord - nBitsIndexSz);
+        DBGI(printf("new key nIndex %d\n", nIndex));
+        pwPtrs[nIndex] = 0;
+
+        DBGI(printf("pw %p &pw %p\n", pw, &pw));
+        Insert((Word_t *)&pw, wKey, nBitsLeft);
+    }
+    else
+    {
+        DBGI(printf("null\n"));
+
+        // wRoot == 0 insert
+        pw = (Word_t *)JudyMalloc(2);
+        DBGI(printf("new leaf node pw %p\n", pw));
+        set_wr_nType(pw, Leaf);
+        set_wr_nBitsPrefixSz(pw, 0);
+        set_wr_nBitsIndexSz(pw, 0);
+        set_wr_wKey(pw, wKey);
+    }
+
+    DBGI(printf("installing pw %p pwRoot %p\n", pw, pwRoot));
+    *pwRoot = (Word_t)pw; // install
+
+    return Success;
+}
+
 #define INSERT
 #include "bli.c"
 #undef INSERT
