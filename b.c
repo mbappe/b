@@ -42,6 +42,7 @@ const int cnLogBitsPerByte = 3;
 #define EXP(_x)  (1LL << (_x))
 #define Owx   "%016llx"
 #define OWx "0x%016llx"
+#define wx "%llx"
 #else // defined(_WIN64)
 //typedef unsigned long Word_t;
 #define EXP(_x)  (1L << (_x))
@@ -52,6 +53,7 @@ const int cnLogBitsPerByte = 3;
 #define Owx   "%08lx"
 #define OWx "0x%08lx"
 #endif // defined(__LP64__)
+#define wx "%lx"
 #endif // defined(_WIN64)
 
 #define LOG(x)  ((Word_t)64 - 1 - __builtin_clzll(x))
@@ -123,7 +125,7 @@ Dump(Word_t wRoot, int nBitsLeft)
     Word_t wKey;
     Word_t wPrefix;
     Word_t *pwPtrs;
-    int i, j;
+    int i;
 
     if (wRoot == 0)
     {
@@ -136,29 +138,43 @@ Dump(Word_t wRoot, int nBitsLeft)
     printf(" nBitsPrefixSz %2d", nBitsPrefixSz);
     printf(" nBitsIndexSz %2d", nBitsIndexSz);
 
-    printf(" ");
-    for (j = 0; j < nBitsPrefixSz; j++)
+    if (nType == Leaf)
     {
-        printf(".");
+        wKey = wr_wKey(wRoot);
     }
-    printf("X");
-    for (j = 0; j < cnBitsPerWord - nBitsPrefixSz - nBitsIndexSz; j++)
+    else
     {
-        printf(".");
+        wPrefix = wr_wPrefix(wRoot);
+        pwPtrs = wr_pwPtrs(wRoot);
+    }
+
+    printf(" ");
+    if (nType == Switch)
+    {
+        for (i = 0; i < nBitsPrefixSz; i++)
+        {
+            printf(wx, (wPrefix << i) >> (cnBitsPerWord - 1 - i));
+        }
+        for (i = 0; i < cnBitsPerWord - nBitsPrefixSz; i++)
+        {
+            printf(".");
+        }
+    }
+    else
+    {
+        for (i = 0; i < cnBitsPerWord; i++)
+        {
+            printf(wx, (wKey << i) >> (cnBitsPerWord - 1));
+        }
     }
 
     if (nType == Leaf)
     {
-        wKey = wr_wKey(wRoot);
-
         printf(" wKey "OWx"", wKey);
         printf("\n");
 
         return;
     }
-
-    wPrefix = wr_wPrefix(wRoot);
-    pwPtrs = wr_pwPtrs(wRoot);
 
     printf(" wPrefix "OWx, wPrefix);
     printf(" pwPtrs "OWx, (Word_t)pwPtrs);
@@ -194,7 +210,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     status = Insert((Word_t *)ppvRoot, wKey, cnBitsPerWord);
 
 #if defined(DEBUG_INSERT)
-    printf("\n# After Insert\n");
+    printf("\n# After Insert(wKey "Owx")\n", wKey);
     Dump((Word_t)*ppvRoot, cnBitsPerWord);
     printf("\n");
 #endif // defined(DEBUG_INSERT)
