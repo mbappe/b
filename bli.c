@@ -22,9 +22,9 @@ Lookup(Word_t wRoot, Word_t wKey, int nBitsLeft)
 #endif // defined(INSERT)
 
 #if defined(INSERT)
-    DBGI(printf("\n# Insert(pwRoot %p) ", pwRoot));
+    DBGI(printf("\n# Insert "));
 #else // defined(INSERT)
-    DBGL(printf("\n# Lookup \n"));
+    DBGL(printf("\n# Lookup "));
 #endif // defined(INSERT)
 
 again:
@@ -32,7 +32,7 @@ again:
 #if defined(INSERT)
     DBGI(printf( "# pwRoot %p ", pwRoot));
 #endif // defined(INSERT)
-    DBG(printf("# wRoot "OWx" wKey "OWx" nBitsLeft %d\n",
+    DBGI(printf("# wRoot "OWx" wKey "OWx" nBitsLeft %d\n",
             wRoot, wKey, nBitsLeft));
 
     if (wRoot != 0)
@@ -44,63 +44,75 @@ again:
         Word_t wKeyPrefix;
         int nIndex;
 
-        if (nBitsPrefixSz != 0) // shift by cnBitsPerWord doesn't work
+        if (wr_nType(wRoot) == Switch)
         {
-            nBitsLeft = cnBitsPerWord - nBitsPrefixSz;
-DBG(printf("nBitsLeft %d\n", nBitsLeft));
-        }
-DBG(printf("nBitsPrefixSz %d\n", nBitsPrefixSz));
-DBG(printf("nBitsIndexSz %d\n", nBitsIndexSz));
+DBGI(printf("switch\n"));
+DBGI(printf("nBitsPrefixSz %d\n", nBitsPrefixSz));
 
-        nIndex = (wKey << nBitsPrefixSz) >> (cnBitsPerWord - nBitsIndexSz);
-
-        wKeyPrefix = (nBitsLeft == cnBitsPerWord)
-                        ? 0 : (wKey >> nBitsLeft) << nBitsLeft;
-DBG(printf("wKeyPrefix "OWx"\n", wKeyPrefix));
-
-        if (wKeyPrefix == wNodePrefix)
-        {
-DBG(printf("prefix match\n"));
-            if (wr_nType(wRoot) == Switch)
+            if (nBitsPrefixSz != 0) // shift by cnBitsPerWord doesn't work
             {
-DBG(printf("switch pwPtrs %p nIndex %d & %p\n",
-    pwPtrs, nIndex, &pwPtrs[nIndex]));
+                nBitsLeft = cnBitsPerWord - nBitsPrefixSz;
+DBGI(printf("nBitsLeft %d\n", nBitsLeft));
+            }
+DBGI(printf("nBitsIndexSz %d\n", nBitsIndexSz));
+
+            wKeyPrefix = (nBitsLeft == cnBitsPerWord)
+                        ? 0 : (wKey >> nBitsLeft) << nBitsLeft;
+DBGI(printf("wKeyPrefix "OWx"\n", wKeyPrefix));
+
+            nIndex = (wKey << nBitsPrefixSz) >> (cnBitsPerWord - nBitsIndexSz);
+DBGI(printf(" nIndex %d &pwPtrs[nIndex] %p\n", nIndex, &pwPtrs[nIndex]));
+            
+            if (wKeyPrefix == wNodePrefix)
+            {
+DBGI(printf("prefix match\n"));
                 pwRoot = &pwPtrs[nIndex];
                 wRoot = *pwRoot;
                 nBitsLeft -= nBitsIndexSz;
 
                 goto again;
             }
-DBG(printf("leaf\n"));
 
             assert(wr_nType(wRoot) == Leaf);
-
-            if (wr_wKey(wRoot) == wKey) return KeyExisted;
-        }
-DBG(printf("prefix mismatch wNodePrefix "Owx" wKeyPrefix "Owx"\n",
+DBGI(printf("prefix mismatch wNodePrefix "Owx" wKeyPrefix "Owx"\n",
     wNodePrefix, wKeyPrefix));
+        }
+        else
+        {
+DBGI(printf("leaf\n"));
+            if (wr_wKey(wRoot) == wKey) return KeyExisted;
+DBGI(printf("leaf mismatch wr_wKey "Owx" wKey "Owx"\n", wr_wKey(wRoot), wKey));
+        }
 
 #if defined(INSERT)
 
-        // prefix mismatch
+        // prefix (or key) mismatch
         // insert a node at bit where prefix doesn't match
-        nBitsLeft = LOG(wKeyPrefix ^ wNodePrefix) + 1; // below branch
+        nBitsLeft = LOG(wKey ^ wNodePrefix) + 1; // below branch
         nBitsPrefixSz = cnBitsPerWord - nBitsLeft;
 
         pw = (Word_t *)JudyMalloc(cnPtrsOff + 2);
-DBG(printf("new switch node pw %p\n", pw));
-DBG(printf("nBitsPrefixSz %d\n", nBitsPrefixSz));
+DBGI(printf("new switch node pw %p\n", pw));
+DBGI(printf("nBitsPrefixSz %d\n", nBitsPrefixSz));
+DBGI(printf("nBitsLeft %d\n", nBitsLeft));
         set_wr_nType(pw, Switch);
         set_wr_nBitsPrefixSz(pw, nBitsPrefixSz);
-        set_wr_wPrefix(pw, (wKey >> nBitsLeft) << nBitsLeft);
+        set_wr_wPrefix(pw,
+            (nBitsLeft == cnBitsPerWord)
+                ? 0 : (wKey >> nBitsLeft) << nBitsLeft);
+DBGI(printf("wPrefix "Owx"\n", wr_wPrefix(pw)));
         nBitsIndexSz = 1;
         set_wr_nBitsIndexSz(pw, nBitsIndexSz); // Use zero for immediate?
-        nIndex = wNodePrefix >> (nBitsLeft - nBitsIndexSz);
+        nIndex = (wNodePrefix << nBitsPrefixSz)
+                    >> (cnBitsPerWord - nBitsIndexSz);
+DBGI(printf("old node nIndex %d\n", nIndex));
         wr_pwPtrs(pw)[nIndex] = wRoot;
-        nIndex = wKey >> (nBitsLeft - nBitsIndexSz);
+DBGI(printf("install old node at "Owx"\n", (Word_t)&wr_pwPtrs(pw)[nIndex]));
+        nIndex = (wKey << nBitsPrefixSz) >> (cnBitsPerWord - nBitsIndexSz);
+DBGI(printf("new key nIndex %d\n", nIndex));
         wr_pwPtrs(pw)[nIndex] = 0;
 
-DBG(printf("pw %p &pw %p\n", pw, &pw));
+DBGI(printf("pw %p &pw %p\n", pw, &pw));
         Insert((Word_t *)&pw, wKey, nBitsLeft);
 
 #endif // defined(INSERT)
@@ -109,18 +121,18 @@ DBG(printf("pw %p &pw %p\n", pw, &pw));
 #if defined(INSERT)
     else
     {
-DBG(printf("null\n"));
+DBGI(printf("null\n"));
 
         // wRoot == 0 insert
         pw = (Word_t *)JudyMalloc(2);
-DBG(printf("new leaf node pw %p\n", pw));
+DBGI(printf("new leaf node pw %p\n", pw));
         set_wr_nType(pw, Leaf);
-        set_wr_nBitsPrefixSz(pw, 32);
+        set_wr_nBitsPrefixSz(pw, 0);
         set_wr_nBitsIndexSz(pw, 0);
         set_wr_wKey(pw, wKey);
     }
 
-DBG(printf("installing pw %p pwRoot %p\n", pw, pwRoot));
+DBGI(printf("installing pw %p pwRoot %p\n", pw, pwRoot));
     *pwRoot = (Word_t)pw; // install
 
 #endif // defined(INSERT)
