@@ -19,12 +19,6 @@ Lookup(Word_t wRoot, Word_t wKey, int nBitsLeft)
 #else // defined(INSERT)
     Word_t *pwRoot;
 #endif // defined(INSERT)
-    int nBitsPrefixSz;
-    Word_t wNodePrefix;
-    int nBitsIndexSz;
-    Word_t *pwPtrs;
-    Word_t wKeyPrefix;
-    int nIndex;
 
 #if defined(INSERT)
     DBGI(printf("\n# Insert "));
@@ -42,45 +36,48 @@ again:
 
     if (wRoot != 0)
     {
-        nBitsPrefixSz = wr_nBitsPrefixSz(wRoot); // size of prefix
-        wNodePrefix = wr_wPrefix(wRoot); // prefix of switch
-        nBitsIndexSz = wr_nBitsIndexSz(wRoot); // size of array index
-        pwPtrs = wr_pwPtrs(wRoot);
-
         if (wr_nType(wRoot) == Switch)
         {
+            int nBitsPrefixSz = wr_nBitsPrefixSz(wRoot); // size of prefix
+
             DBGI(printf("switch\n"));
             DBGI(printf("nBitsPrefixSz %d\n", nBitsPrefixSz));
 
-            if (nBitsPrefixSz != 0) // shift by cnBitsPerWord doesn't work
             {
-                nBitsLeft = cnBitsPerWord - nBitsPrefixSz;
-                DBGI(printf("nBitsLeft %d\n", nBitsLeft));
+#if defined(INSERT)
+                Word_t wKeyPrefix;
+
+                // shifting by word size is a problem
+                wKeyPrefix = (wKey >> 1);
+                wKeyPrefix >>= (cnBitsPerWord - nBitsPrefixSz - 1);
+                wKeyPrefix <<= 1;
+                wKeyPrefix <<= (cnBitsPerWord - nBitsPrefixSz - 1);
+                DBGI(printf("wKeyPrefix "OWx"\n", wKeyPrefix));
+
+                if (wKeyPrefix != wr_wPrefix(wRoot))
+                {
+                    DBGI(printf(
+                        "prefix mismatch wr_wPrefix "Owx" wKeyPrefix "Owx"\n",
+                            wr_wPrefix(wRoot), wKeyPrefix));
+                }
+                else
+#endif // defined(INSERT)
+                {
+                    // size of array index
+                    int nBitsIndexSz = wr_nBitsIndexSz(wRoot);
+                    int nIndex = (wKey << nBitsPrefixSz)
+                                            >> (cnBitsPerWord - nBitsIndexSz);
+                    DBGI(printf("prefix match\n"));
+                    DBGI(printf("nBitsIndexSz %d\n", nBitsIndexSz));
+                    DBGI(printf("nIndex %d\n", nIndex));
+                    pwRoot = &wr_pwPtrs(wRoot)[nIndex];
+                    wRoot = *pwRoot;
+                    nBitsLeft -= (nBitsPrefixSz + nBitsIndexSz);
+                    DBGI(printf("nBitsLeft %d\n", nBitsLeft));
+
+                    goto again;
+                }
             }
-            DBGI(printf("nBitsIndexSz %d\n", nBitsIndexSz));
-
-            wKeyPrefix = (nBitsLeft == cnBitsPerWord)
-                        ? 0 : (wKey >> nBitsLeft) << nBitsLeft;
-            DBGI(printf("wKeyPrefix "OWx"\n", wKeyPrefix));
-
-            nIndex = (wKey << nBitsPrefixSz) >> (cnBitsPerWord - nBitsIndexSz);
-            DBGI(printf(" nIndex %d &pwPtrs[nIndex] %p\n",
-                nIndex, &pwPtrs[nIndex]));
-            
-            if (wKeyPrefix == wNodePrefix)
-            {
-                DBGI(printf("prefix match\n"));
-                pwRoot = &pwPtrs[nIndex];
-                wRoot = *pwRoot;
-                nBitsLeft -= nBitsIndexSz;
-
-                goto again;
-            }
-
-            assert(wr_nType(wRoot) == Leaf);
-            DBGI(printf(
-                "prefix mismatch wNodePrefix "Owx" wKeyPrefix "Owx"\n",
-                    wNodePrefix, wKeyPrefix));
         }
         else
         {
@@ -89,7 +86,6 @@ again:
             DBGI(printf("leaf mismatch wr_wKey "Owx" wKey "Owx"\n",
                 wr_wKey(wRoot), wKey));
         }
-
     }
 
 #if defined(INSERT)
