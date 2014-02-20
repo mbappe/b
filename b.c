@@ -102,6 +102,8 @@ const int cnPtrsOff             = 2; // array of pointers begins here
 
 #define     wr_pwPtrs(_wr)             (&((Word_t *)(_wr))[cnPtrsOff])
 
+const int cnBitsPerDigit = 2;
+
 typedef enum { Switch, Leaf } Type_t;
 
 static Word_t *pwRootLast;
@@ -153,7 +155,7 @@ Dump(Word_t wRoot, int nBitsLeft)
     {
         for (i = 0; i < nBitsPrefixSz; i++)
         {
-            printf(wx, (wPrefix << i) >> (cnBitsPerWord - 1 - i));
+            printf(wx, (wPrefix << i) >> (cnBitsPerWord - 1));
         }
         for (i = 0; i < cnBitsPerWord - nBitsPrefixSz; i++)
         {
@@ -180,7 +182,7 @@ Dump(Word_t wRoot, int nBitsLeft)
     printf(" pwPtrs "OWx, (Word_t)pwPtrs);
     printf("\n");
 
-    for (i = 0; i < 2; i++)
+    for (i = 0; i < EXP(nBitsIndexSz); i++)
     {
         Dump(wr_pwPtrs(wRoot)[i], nBitsLeft - nBitsIndexSz);
     }
@@ -196,14 +198,14 @@ InsertAt(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
     if (wRoot != 0)
     {
         int nBitsPrefixSz;
-        int nBitsIndexSz;
+        int nBitsIndexSz = cnBitsPerDigit;
+        Word_t wPrefix;
         Word_t *pwPtrs;
         int nIndex;
 
-        pw = (Word_t *)JudyMalloc(cnPtrsOff + 2);
+        pw = (Word_t *)JudyMalloc(cnPtrsOff + EXP(nBitsIndexSz));
         DBGI(printf("new switch node pw %p\n", pw));
         set_wr_nType(pw, Switch);
-        nBitsIndexSz = 1;
         set_wr_nBitsIndexSz(pw, nBitsIndexSz); // Use zero for immediate?
 
         // prefix (or key) mismatch
@@ -217,25 +219,30 @@ InsertAt(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
             nBitsLeft = LOG(wKey ^ wr_wPrefix(wRoot)) + 1; // below branch
         }
         DBGI(printf("nBitsLeft %d\n", nBitsLeft));
+        // align -- for now
+        nBitsLeft = ((nBitsLeft + nBitsIndexSz - 1) / nBitsIndexSz)
+                        * nBitsIndexSz;
 
         nBitsPrefixSz = cnBitsPerWord - nBitsLeft;
         set_wr_nBitsPrefixSz(pw, nBitsPrefixSz);
         DBGI(printf("wr_nBitsPrefixSz %d\n", wr_nBitsPrefixSz(pw)));
 
-        set_wr_wPrefix(pw,
-            (nBitsLeft == cnBitsPerWord)
-                ? 0 : (wKey >> nBitsLeft) << nBitsLeft);
+        // there must be a better way to handle nBitsLeft == cnBitsPerWord
+        wPrefix = wKey >> 1;
+        wPrefix >>= nBitsLeft - 1;
+        wPrefix <<= nBitsLeft - 1;
+        wPrefix <<= 1;
+
+        set_wr_wPrefix(pw, wPrefix);
         DBGI(printf("wPrefix "Owx"\n", wr_wPrefix(pw)));
 
         pwPtrs = wr_pwPtrs(pw);
+        memset(pwPtrs, 0, EXP(nBitsIndexSz) * sizeof(*pwPtrs));
         nIndex = (wr_wPrefix(wRoot) << nBitsPrefixSz)
                     >> (cnBitsPerWord - nBitsIndexSz);
         DBGI(printf("old node nIndex %d\n", nIndex));
         pwPtrs[nIndex] = wRoot;
         DBGI(printf("install old node at "Owx"\n", (Word_t)&pwPtrs[nIndex]));
-        nIndex = (wKey << nBitsPrefixSz) >> (cnBitsPerWord - nBitsIndexSz);
-        DBGI(printf("new key nIndex %d\n", nIndex));
-        pwPtrs[nIndex] = 0;
 
         Insert((Word_t *)&pw, wKey, nBitsLeft);
     }
