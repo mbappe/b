@@ -2,7 +2,6 @@
 #include <stdio.h>  // printf
 #include <string.h> // memcpy
 #include <assert.h> // NDEBUG must be defined before including assert.h.
-#define __STDC_FORMAT_MACROS
 #include "Judy.h"   // Word_t, JudyMalloc, ...
 
 #if defined(DEBUG_INSERT)
@@ -119,13 +118,12 @@ dump(Word_t *pw, int nWords)
 }
 
 void
-Dump(Word_t wRoot, int nBitsLeft)
+Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
 {
     int nType = wr_nType(wRoot);
     int nBitsPrefixSz = wr_nBitsPrefixSz(wRoot);
     int nBitsIndexSz = wr_nBitsIndexSz(wRoot);
     Word_t wKey;
-    Word_t wPrefix;
     Word_t *pwPtrs;
     int i;
 
@@ -172,7 +170,7 @@ Dump(Word_t wRoot, int nBitsLeft)
 
     if (nType == Leaf)
     {
-        printf(" wKey "OWx"", wKey);
+        printf(" wKey "OWx, wKey);
         printf("\n");
 
         return;
@@ -184,7 +182,9 @@ Dump(Word_t wRoot, int nBitsLeft)
 
     for (i = 0; i < EXP(nBitsIndexSz); i++)
     {
-        Dump(wr_pwPtrs(wRoot)[i], nBitsLeft - nBitsIndexSz);
+        Dump(wr_pwPtrs(wRoot)[i],
+            wPrefix | (i << (nBitsLeft - nBitsIndexSz)),
+            nBitsLeft - nBitsIndexSz);
     }
 }
 
@@ -252,10 +252,9 @@ InsertAt(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
 
         // wRoot == 0 insert
         pw = (Word_t *)JudyMalloc(2);
+        memset(pw, 0, 2 * sizeof(*pw));
         DBGI(printf("new leaf node pw %p\n", pw));
         set_wr_nType(pw, Leaf);
-        set_wr_nBitsPrefixSz(pw, 0);
-        set_wr_nBitsIndexSz(pw, 0);
         set_wr_wKey(pw, wKey);
     }
 
@@ -290,7 +289,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
 #if defined(DEBUG_INSERT)
     printf("\n# After Insert(wKey "Owx")\n", wKey);
-    Dump((Word_t)*ppvRoot, cnBitsPerWord);
+    Dump((Word_t)*ppvRoot, 0, cnBitsPerWord);
     printf("\n");
 #endif // defined(DEBUG_INSERT)
 
