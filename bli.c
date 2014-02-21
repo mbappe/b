@@ -38,20 +38,18 @@ again:
     {
         if (wr_nType(wRoot) == Switch)
         {
-            int nBitsPrefixSz = wr_nBitsPrefixSz(wRoot); // size of prefix
-
             DBGI(printf("switch\n"));
-            DBGI(printf("nBitsPrefixSz %d\n", nBitsPrefixSz));
+
+            nBitsLeft = wr_nBitsLeft(wRoot); // size of prefix
+            DBGI(printf("nBitsLeft %d\n", nBitsLeft));
 
             {
 #if defined(INSERT)
                 Word_t wKeyPrefix;
 
                 // shifting by word size is a problem
-                wKeyPrefix = (wKey >> 1);
-                wKeyPrefix >>= (cnBitsPerWord - nBitsPrefixSz - 1);
-                wKeyPrefix <<= 1;
-                wKeyPrefix <<= (cnBitsPerWord - nBitsPrefixSz - 1);
+                wKeyPrefix = ((wKey >> 1) >> (nBitsLeft - 1));
+                wKeyPrefix = ((wKeyPrefix << (nBitsLeft - 1)) << 1);
                 DBGI(printf("wKeyPrefix "OWx"\n", wKeyPrefix));
 
                 if (wKeyPrefix != wr_wPrefix(wRoot))
@@ -65,15 +63,13 @@ again:
                 {
                     // size of array index
                     int nBitsIndexSz = wr_nBitsIndexSz(wRoot);
-                    int nIndex = (wKey << nBitsPrefixSz)
-                                            >> (cnBitsPerWord - nBitsIndexSz);
+                    int nIndex = (wKey >> (nBitsLeft - nBitsIndexSz))
+                                                & (EXP(nBitsIndexSz) - 1);
                     DBGI(printf("prefix match\n"));
                     DBGI(printf("nBitsIndexSz %d\n", nBitsIndexSz));
                     DBGI(printf("nIndex %d\n", nIndex));
                     pwRoot = &wr_pwPtrs(wRoot)[nIndex];
                     wRoot = *pwRoot;
-                    nBitsLeft -= (nBitsPrefixSz + nBitsIndexSz);
-                    DBGI(printf("nBitsLeft %d\n", nBitsLeft));
 
                     goto again;
                 }

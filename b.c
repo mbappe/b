@@ -82,7 +82,6 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 const int cnTypeByteOff         = 0; // node type goes here
 const int cnBitsLeftByteOff     = 1; // nBitsLeft goes here
 const int cnBitsIndexSzByteOff  = 2; // index size goes here
-const int cnBitsPrefixSzByteOff = 3; // prefix size goes here
 
 const int cnPrefixOff           = 1; // prefix goes here
 const int cnKeyOff              = 1; // key goes here
@@ -94,8 +93,6 @@ const int cnPtrsOff             = 2; // array of pointers begins here
 #define set_wr_nBitsLeft(_wr, _sz)      (wr_nBitsLeft(_wr) = (_sz))
 #define     wr_nBitsIndexSz(_wr)       (((char *)(_wr))[cnBitsIndexSzByteOff])
 #define set_wr_nBitsIndexSz(_wr, _sz)   (wr_nBitsIndexSz(_wr) = (_sz))
-#define     wr_nBitsPrefixSz(_wr)      (((char *)(_wr))[cnBitsPrefixSzByteOff])
-#define set_wr_nBitsPrefixSz(_wr, _sz)  (wr_nBitsPrefixSz(_wr) = (_sz))
 
 #define     wr_wPrefix(_wr)            ( ((Word_t *)(_wr))[cnPrefixOff])
 #define set_wr_wPrefix(_wr, _prefix)    (wr_wPrefix(_wr) = (_prefix))
@@ -124,7 +121,6 @@ void
 Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
 {
     int nType = wr_nType(wRoot);
-    int nBitsPrefixSz = wr_nBitsPrefixSz(wRoot);
     int nBitsIndexSz = wr_nBitsIndexSz(wRoot);
     Word_t wKey;
     Word_t *pwPtrs;
@@ -138,7 +134,6 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
     printf(" wr "OWx, wRoot);
     printf(" nBitsLeft %2d", nBitsLeft);
     printf(" nType %d", nType);
-    printf(" nBitsPrefixSz %2d", nBitsPrefixSz);
     printf(" nBitsIndexSz %2d", nBitsIndexSz);
 
     if (nType == Leaf)
@@ -202,7 +197,6 @@ InsertAt(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
 
     if (wRoot != 0)
     {
-        int nBitsPrefixSz;
         int nBitsIndexSz = cnBitsPerDigit;
         Word_t wPrefix;
         Word_t *pwPtrs;
@@ -228,9 +222,6 @@ InsertAt(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
         nBitsLeft = ((nBitsLeft + nBitsIndexSz - 1) / nBitsIndexSz)
                         * nBitsIndexSz;
 
-        nBitsPrefixSz = cnBitsPerWord - nBitsLeft;
-        set_wr_nBitsPrefixSz(pw, nBitsPrefixSz);
-        DBGI(printf("wr_nBitsPrefixSz %d\n", wr_nBitsPrefixSz(pw)));
         set_wr_nBitsLeft(pw, nBitsLeft);
 
         // there must be a better way to handle nBitsLeft == cnBitsPerWord
