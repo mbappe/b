@@ -188,17 +188,16 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
     }
 }
 
-static Status_t Insert(Word_t *pwRoot, Word_t wKey);
+static Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBitsLeft);
 
 static Status_t
-InsertAt(Word_t *pwRoot, Word_t wKey, Word_t wRoot)
+InsertAt(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
 {
     Word_t *pw;
 
     if (wRoot != 0)
     {
         int nBitsIndexSz = cnBitsPerDigit;
-        int nBitsLeft;
         Word_t wPrefix;
         Word_t *pwPtrs;
         int nIndex;
@@ -242,7 +241,7 @@ InsertAt(Word_t *pwRoot, Word_t wKey, Word_t wRoot)
         pwPtrs[nIndex] = wRoot;
         DBGI(printf("install old node at "Owx"\n", (Word_t)&pwPtrs[nIndex]));
 
-        Insert((Word_t *)&pw, wKey);
+        Insert((Word_t *)&pw, wKey, nBitsLeft);
     }
     else
     {
@@ -273,7 +272,7 @@ InsertAt(Word_t *pwRoot, Word_t wKey, Word_t wRoot)
 int // Status_t
 Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, P_JE)
 {
-    return Lookup((Word_t)pcvRoot, wKey);
+    return Lookup((Word_t)pcvRoot, wKey, cnBitsPerWord);
 }
 
 int // Status_t
@@ -283,7 +282,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     pwRootLast = (Word_t *)ppvRoot;
 
-    status = Insert((Word_t *)ppvRoot, wKey);
+    status = Insert((Word_t *)ppvRoot, wKey, cnBitsPerWord);
 
 #if defined(DEBUG_INSERT)
     printf("\n# After Insert(wKey "Owx")\n", wKey);
