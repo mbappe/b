@@ -231,6 +231,7 @@ InsertAt(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
         nBitsPrefixSz = cnBitsPerWord - nBitsLeft;
         set_wr_nBitsPrefixSz(pw, nBitsPrefixSz);
         DBGI(printf("wr_nBitsPrefixSz %d\n", wr_nBitsPrefixSz(pw)));
+        set_wr_nBitsLeft(pw, nBitsLeft);
 
         // there must be a better way to handle nBitsLeft == cnBitsPerWord
         wPrefix = wKey >> 1;
@@ -243,8 +244,8 @@ InsertAt(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
 
         pwPtrs = wr_pwPtrs(pw);
         memset(pwPtrs, 0, EXP(nBitsIndexSz) * sizeof(*pwPtrs));
-        nIndex = (wr_wPrefix(wRoot) << nBitsPrefixSz)
-                    >> (cnBitsPerWord - nBitsIndexSz);
+        nIndex = (wr_wPrefix(wRoot) >> (nBitsLeft - nBitsIndexSz))
+                    & (EXP(nBitsIndexSz) - 1);
         DBGI(printf("old node nIndex %d\n", nIndex));
         pwPtrs[nIndex] = wRoot;
         DBGI(printf("install old node at "Owx"\n", (Word_t)&pwPtrs[nIndex]));
