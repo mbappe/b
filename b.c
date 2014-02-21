@@ -301,7 +301,7 @@ int Judy1Unset( PPvoid_t PPArray, Word_t Index, P_JE)
 { printf("n/a\n"); exit(2); }
 
 Word_t Judy1Count(Pcvoid_t PArray, Word_t Index1, Word_t Index2, P_JE)
-{ printf("\nJudy1Count\n\n"); exit(1); }
+{ printf("\nJudy1Count\n\n"); exit(0); }
 
 int Judy1ByCount(Pcvoid_t PArray, Word_t Count, Word_t * PIndex, P_JE)
 { printf("n/a\n"); exit(1); }
