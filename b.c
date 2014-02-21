@@ -191,13 +191,14 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
 static Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBitsLeft);
 
 static Status_t
-InsertAt(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
+InsertAt(Word_t *pwRoot, Word_t wKey, Word_t wRoot)
 {
     Word_t *pw;
 
     if (wRoot != 0)
     {
         int nBitsIndexSz = cnBitsPerDigit;
+        int nBitsLeft;
         Word_t wPrefix;
         Word_t *pwPtrs;
         int nIndex;

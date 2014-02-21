@@ -85,7 +85,7 @@ again:
     }
 
 #if defined(INSERT)
-    return InsertAt(pwRoot, wKey, nBitsLeft, wRoot);
+    return InsertAt(pwRoot, wKey, wRoot);
 #else // defined(INSERT)
     return ! KeyFound;
 #endif // defined(INSERT)
