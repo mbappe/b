@@ -9,9 +9,9 @@
 
 INLINE Status_t
 #if        defined(INSERT)
-Insert(Word_t *pwRoot, Word_t wKey, int nBitsLeft)
+Insert(Word_t *pwRoot, Word_t wKey)
 #else   // defined(INSERT)
-Lookup(Word_t wRoot, Word_t wKey, int nBitsLeft)
+Lookup(Word_t wRoot, Word_t wKey)
 #endif  // defined(INSERT)
 {
 #if defined(INSERT)
@@ -31,17 +31,15 @@ again:
 #if defined(INSERT)
     DBGI(printf( "# pwRoot %p ", pwRoot));
 #endif // defined(INSERT)
-    DBGI(printf("# wRoot "OWx" wKey "OWx" nBitsLeft %d\n",
-            wRoot, wKey, nBitsLeft));
+    DBGI(printf("# wRoot "OWx" wKey "OWx"\n", wRoot, wKey));
 
     if (wRoot != 0)
     {
         if (wr_nType(wRoot) == Switch)
         {
-            DBGI(printf("switch\n"));
+            int nBitsLeft = wr_nBitsLeft(wRoot); // size of prefix
 
-            nBitsLeft = wr_nBitsLeft(wRoot); // size of prefix
-            DBGI(printf("nBitsLeft %d\n", nBitsLeft));
+            DBGI(printf("switch nBitsLeft %d\n", nBitsLeft));
 
             {
 #if defined(INSERT)
