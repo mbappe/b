@@ -34,18 +34,19 @@ Insert(Word_t *pwRoot, Word_t wKey, Word_t wState)
     Word_t wRoot = *pwRoot;
 #endif // defined(LOOKUP)
     int nBitsLeftState = ws_nBitsLeft(wState);
+    int nBitsLeftRoot;
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
 again:
 
-#if defined(INSERT) || defined(REMOVE)
+#if ( ! defined(LOOKUP) )
     DBGX(printf("# pwRoot %p ", pwRoot));
-#endif // defined(INSERT) || defined(REMOVE)
+#endif // ( ! defined(LOOKUP) )
     DBGX(printf("# wRoot "OWx" wKey "OWx" wState "OWx"\n",
             wRoot, wKey, wState));
 
-    assert(ws_nBitsLeft(wState) <= cnBitsPerWord);
+    assert(nBitsLeftState <= cnBitsPerWord);
 
     if (nBitsLeftState <= cnBitsAtBottom)
     {
@@ -56,14 +57,12 @@ again:
             return KeyFound;
         }
     }
-    else if (wr_bIsSwitch(wRoot))
+    else if (wr_bIsSwitchBL(wRoot, nBitsLeftRoot))
     {
         Word_t *pwr = wr_pwr(wRoot); // pointer extracted from wRoot
 
         assert(pwr != 0);
         assert(wRoot != 0);
-
-        int nBitsLeftRoot = wr_nBitsLeft(wRoot);
 
         DBGX(printf("Switch"));
         DBGX(printf(" nBitsLeftState %d", nBitsLeftState));
@@ -77,15 +76,14 @@ again:
         if (nBitsLeftRoot != nBitsLeftState)
         {
             // Record that there were prefix bits that were not checked.
-            set_ws_bNeedPrefixCheck(wState, /* bNeedPrefixCheck */ 1);
+            set_ws_bNeedPrefixCheck(wState, 1);
         }
         // !! there is no "else" here in the LOOKUP case !!
 #else // defined(LOOKUP)
         if ((nBitsLeftRoot != nBitsLeftState)
             && (pwr_wPrefix(pwr) != (wKey & ~(EXP(nBitsLeftRoot) - 1))))
         {
-            DBGX(printf("prefix mismatch wPrefix "Owx"\n",
-                pwr_wPrefix(pwr)));
+            DBGX(printf("Prefix mismatch wPrefix "Owx"\n", pwr_wPrefix(pwr)));
         }
         else // !! the "else" here is only for the INSERT/REMOVE case !!
 #endif // defined(LOOKUP)
@@ -97,15 +95,13 @@ again:
             nBitsLeftState = nBitsLeftRoot - nBitsIndexSz;
 
             // In case nBitsLeftState is not an integral number of
-            // digits.
-            nBitsLeftState
-                = (nBitsLeftState + nBitsIndexSz - 1)
+            // digits.  Round it.
+            nBitsLeftState = (nBitsLeftState + nBitsIndexSz - 1)
                     / nBitsIndexSz * nBitsIndexSz;
 
             set_ws_nBitsLeft(wState, nBitsLeftState);
 
-            nIndex = (wKey >> (nBitsLeftState))
-                & (EXP(nBitsIndexSz) - 1);
+            nIndex = ((wKey >> nBitsLeftState) & (EXP(nBitsIndexSz) - 1));
 
             DBGX(printf("Next"));
             //DBGX(printf(" nBitsIndexSz %d", nBitsIndexSz));
@@ -122,11 +118,9 @@ again:
             // Not a key.
             if ((nBitsLeftState > cnBitsAtBottom)
                 || ( ! ws_bNeedPrefixCheck(wState) )
-                || (pwr_wPrefix(pwr)
-                        == (wKey & ~(EXP(nBitsLeftRoot) - 1))))
+                || (set_ws_bNeedPrefixCheck(wState, 0),
+                    (pwr_wPrefix(pwr) == (wKey & ~(EXP(nBitsLeftRoot) - 1)))))
             {
-                set_ws_bNeedPrefixCheck(wState, /* bNeedPrefixCheck */ 0);
-
                 goto again;
             }
         }
@@ -136,9 +130,7 @@ again:
         Word_t *pwr = wr_pwr(wRoot); // pointer extracted from wRoot
         int i;
 
-#if defined(INSERT)
         DBGX(printf("List\n"));
-#endif // defined(INSERT)
 
         for (i = 0; i < pwr_wPopCnt(pwr); i++)
         {
