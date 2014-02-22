@@ -110,7 +110,8 @@ const int cnBitsPerDigit = 5;
 const int cnBitsAtBottom = 5;
 
 //const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
-const Word_t cwListPopCntMax = 1024;
+//const Word_t cwListPopCntMax = 1024; // bug at pop near 1M
+const Word_t cwListPopCntMax = 0;
 
 typedef struct {
     Word_t sw_awRoots[EXP(cnBitsPerDigit)];
@@ -211,7 +212,8 @@ Dump(Word_t wRoot, Word_t wPrefix, Word_t wState)
     Word_t *pwRoots;
     int i;
 
-    // bitmaps shouldn't be zero -- not that it matters
+    // bitmaps shouldn't be zero
+    // but it should be fine to print nothing if they are
     if (wRoot == 0)
     {
         return;
@@ -361,36 +363,45 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, Word_t wState, Word_t wRoot)
         return Success;
     }
 
-    if (wRoot == 0)
+    if (cwListPopCntMax != 0)
     {
-        // allocate new list List and init pop count in the first word
-        pwList = NewList(/* nKeys */ 1);
-        pwKeys = ls_pwKeys(pwList); // get a pointer to the keys
-        pwKeys[0] = wKey;
-        set_wr(*pwRoot, /* pwr */ pwList, /* nType */ List); // install new list
+        if (wRoot == 0)
+        {
+            // allocate new list List and init pop count in the first word
+            pwList = NewList(/* nKeys */ 1);
+            pwKeys = ls_pwKeys(pwList); // get a pointer to the keys
+            pwKeys[0] = wKey;
+            set_wr(*pwRoot, pwList, List); // install new list
 
-        return Success;
+            return Success;
+        }
+
+        pwList = wr_pwr(wRoot); // pointer to old List
+        wPopCnt = ls_wPopCnt(pwList); // population count of old List
+        pwKeys = ls_pwKeys(pwList); // list of keys in old List
+
+        DBGI(printf("pwList %p wPopCnt "OWx" pwKeys %p\n",
+            pwList, wPopCnt, pwKeys));
+
+        if ((wPopCnt < cwListPopCntMax) || (nBitsLeft == cnBitsAtBottom))
+        {
+            // allocate space for bigger list and init pop count
+            Word_t *pwListNew = NewList( /* nKeys */ wPopCnt + 1);
+            Word_t *pwKeysNew = ls_pwKeys(pwListNew);
+            pwKeys = ls_pwKeys(pwList); // keys in old list
+            COPY(pwKeysNew, pwKeys, wPopCnt); // copy keys
+            pwKeysNew[wPopCnt] = wKey; // add new key to end
+            set_wr(*pwRoot, pwListNew, List); // install list
+            OldList(pwList); // free old list
+
+            return Success;
+        }
     }
-
-    pwList = wr_pwr(wRoot); // pointer to old List
-    wPopCnt = ls_wPopCnt(pwList); // population count of old List
-    pwKeys = ls_pwKeys(pwList); // list of keys in old List
-
-    DBGI(printf("pwList %p wPopCnt "OWx" pwKeys %p\n",
-        pwList, wPopCnt, pwKeys));
-
-    if ((wPopCnt < cwListPopCntMax) || (nBitsLeft == cnBitsAtBottom))
+    else
     {
-        // allocate space for bigger list and init pop count
-        Word_t *pwListNew = NewList( /* nKeys */ wPopCnt + 1);
-        Word_t *pwKeysNew = ls_pwKeys(pwListNew);
-        pwKeys = ls_pwKeys(pwList); // keys in old list
-        COPY(pwKeysNew, pwKeys, wPopCnt); // copy keys
-        pwKeysNew[wPopCnt] = wKey; // add new key to end
-        set_wr(*pwRoot, /* pwr */ pwListNew, /* type */ List); // install list
-        OldList(pwList); // free old list
-
-        return Success;
+        wPopCnt = 0;
+        pwList = NULL; // make compiler happy about uninitialized variable
+        pwKeys = NULL; // make compiler happy about uninitialized variable
     }
 
     // List is full; insert a switch
@@ -410,7 +421,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, Word_t wState, Word_t wRoot)
     Insert(&wRoot, wKey, wState);
 
     *pwRoot = wRoot; // install new
-    OldList(pwList); // free old
+
+    if (wPopCnt != 0)
+    {
+        OldList(pwList); // free old
+    }
 
     return Success;
 }
