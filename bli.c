@@ -78,17 +78,16 @@ again:
                 // Record that there were prefix bits that were not checked.
                 set_ws_bNeedPrefixCheck(wState, /* bNeedPrefixCheck */ 1);
             }
-#endif // defined(LOOKUP)
-
-#if defined(INSERT) || defined(REMOVE)
+            // !! there is no "else" here in the LOOKUP case !!
+#else // defined(LOOKUP)
             if ((nBitsLeftRoot != nBitsLeftState)
                 && (pwr_wPrefix(pwr) != (wKey & ~(EXP(nBitsLeftRoot) - 1))))
             {
                 DBG(printf("prefix mismatch wPrefix "Owx"\n",
                     pwr_wPrefix(pwr)));
             }
-            else
-#endif // defined(INSERT) || defined(REMOVE)
+            else // !! the "else" here is only for the INSERT/REMOVE case !!
+#endif // defined(LOOKUP)
             {
                 // size of array index
                 int nBitsIndexSz = pwr_nBitsIndexSz(pwr);
