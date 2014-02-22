@@ -56,94 +56,95 @@ again:
             return KeyFound;
         }
     }
-    else if (wRoot != 0)
+    else if (wr_bIsSwitch(wRoot))
     {
         Word_t *pwr = wr_pwr(wRoot); // pointer extracted from wRoot
 
-        if (wr_bIsSwitch(wRoot))
-        {
-            int nBitsLeftRoot = wr_nBitsLeft(wRoot);
+        assert(pwr != 0);
+        assert(wRoot != 0);
 
-            DBG(printf("Switch"));
-            DBG(printf(" nBitsLeftState %d", nBitsLeftState));
-            DBG(printf(" nBitsLeftRoot %d", nBitsLeftRoot));
-            DBG(printf(" pwr %p", pwr));
-            DBG(printf("\n"));
+        int nBitsLeftRoot = wr_nBitsLeft(wRoot);
 
-            assert(nBitsLeftRoot <= nBitsLeftState); // reserved for later
+        DBG(printf("Switch"));
+        DBG(printf(" nBitsLeftState %d", nBitsLeftState));
+        DBG(printf(" nBitsLeftRoot %d", nBitsLeftRoot));
+        DBG(printf(" pwr %p", pwr));
+        DBG(printf("\n"));
+
+        assert(nBitsLeftRoot <= nBitsLeftState); // reserved for later
 
 #if defined(LOOKUP)
-            if (nBitsLeftRoot != nBitsLeftState)
-            {
-                // Record that there were prefix bits that were not checked.
-                set_ws_bNeedPrefixCheck(wState, /* bNeedPrefixCheck */ 1);
-            }
-            // !! there is no "else" here in the LOOKUP case !!
+        if (nBitsLeftRoot != nBitsLeftState)
+        {
+            // Record that there were prefix bits that were not checked.
+            set_ws_bNeedPrefixCheck(wState, /* bNeedPrefixCheck */ 1);
+        }
+        // !! there is no "else" here in the LOOKUP case !!
 #else // defined(LOOKUP)
-            if ((nBitsLeftRoot != nBitsLeftState)
-                && (pwr_wPrefix(pwr) != (wKey & ~(EXP(nBitsLeftRoot) - 1))))
-            {
-                DBG(printf("prefix mismatch wPrefix "Owx"\n",
-                    pwr_wPrefix(pwr)));
-            }
-            else // !! the "else" here is only for the INSERT/REMOVE case !!
+        if ((nBitsLeftRoot != nBitsLeftState)
+            && (pwr_wPrefix(pwr) != (wKey & ~(EXP(nBitsLeftRoot) - 1))))
+        {
+            DBG(printf("prefix mismatch wPrefix "Owx"\n",
+                pwr_wPrefix(pwr)));
+        }
+        else // !! the "else" here is only for the INSERT/REMOVE case !!
 #endif // defined(LOOKUP)
+        {
+            // size of array index
+            int nBitsIndexSz = pwr_nBitsIndexSz(pwr);
+            int nIndex;
+
+            nBitsLeftState = nBitsLeftRoot - nBitsIndexSz;
+
+            // In case nBitsLeftState is not an integral number of
+            // digits.
+            nBitsLeftState
+                = (nBitsLeftState + nBitsIndexSz - 1)
+                    / nBitsIndexSz * nBitsIndexSz;
+
+            set_ws_nBitsLeft(wState, nBitsLeftState);
+
+            nIndex = (wKey >> (nBitsLeftState))
+                & (EXP(nBitsIndexSz) - 1);
+
+            DBG(printf("Next"));
+            //DBG(printf(" nBitsIndexSz %d", nBitsIndexSz));
+            DBG(printf(" nBitsLeftState %d", nBitsLeftState));
+            DBG(printf(" nIndex %d", nIndex));
+            DBG(printf(" pwr %p pwRoots %p", pwr, pwr_pwRoots(pwr)));
+            DBG(printf("\n"));
+
+            pwRoot = &pwr_pwRoots(pwr)[nIndex];
+            wRoot = *pwRoot;
+
+            // We have to do the prefix check here if we're at the
+            // bottom because wRoot contains a bitmap.  Not a pointer.
+            // Not a key.
+            if ((nBitsLeftState > cnBitsAtBottom)
+                || ( ! ws_bNeedPrefixCheck(wState) )
+                || (pwr_wPrefix(pwr)
+                        == (wKey & ~(EXP(nBitsLeftRoot) - 1))))
             {
-                // size of array index
-                int nBitsIndexSz = pwr_nBitsIndexSz(pwr);
-                int nIndex;
+                set_ws_bNeedPrefixCheck(wState, /* bNeedPrefixCheck */ 0);
 
-                nBitsLeftState = nBitsLeftRoot - nBitsIndexSz;
-
-                // In case nBitsLeftState is not an integral number of
-                // digits.
-                nBitsLeftState
-                    = (nBitsLeftState + nBitsIndexSz - 1)
-                        / nBitsIndexSz * nBitsIndexSz;
-
-                set_ws_nBitsLeft(wState, nBitsLeftState);
-
-                nIndex = (wKey >> (nBitsLeftState))
-                    & (EXP(nBitsIndexSz) - 1);
-
-                DBG(printf("Next"));
-                //DBG(printf(" nBitsIndexSz %d", nBitsIndexSz));
-                DBG(printf(" nBitsLeftState %d", nBitsLeftState));
-                DBG(printf(" nIndex %d", nIndex));
-                DBG(printf(" pwr %p pwRoots %p", pwr, pwr_pwRoots(pwr)));
-                DBG(printf("\n"));
-
-                pwRoot = &pwr_pwRoots(pwr)[nIndex];
-                wRoot = *pwRoot;
-
-                // We have to do the prefix check here if we're at the
-                // bottom because wRoot contains a bitmap.  Not a pointer.
-                // Not a key.
-                if ((nBitsLeftState > cnBitsAtBottom)
-                    || ( ! ws_bNeedPrefixCheck(wState) )
-                    || (pwr_wPrefix(pwr)
-                            == (wKey & ~(EXP(nBitsLeftRoot) - 1))))
-                {
-                    set_ws_bNeedPrefixCheck(wState, /* bNeedPrefixCheck */ 0);
-
-                    goto again;
-                }
+                goto again;
             }
         }
-        else
-        {
-            int i;
+    }
+    else if (wRoot != 0)
+    {
+        Word_t *pwr = wr_pwr(wRoot); // pointer extracted from wRoot
+        int i;
 
 #if defined(INSERT)
-            DBG(printf("List\n"));
+        DBG(printf("List\n"));
 #endif // defined(INSERT)
 
-            for (i = 0; i < pwr_wPopCnt(pwr); i++)
+        for (i = 0; i < pwr_wPopCnt(pwr); i++)
+        {
+            if (pwr_pwKeys(pwr)[i] == wKey)
             {
-                if (pwr_pwKeys(pwr)[i] == wKey)
-                {
-                    return KeyFound;
-                }
+                return KeyFound;
             }
         }
     }
