@@ -110,7 +110,7 @@ const int cnBitsPerDigit = 5;
 const int cnBitsAtBottom = 5;
 
 //const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
-const Word_t cwListPopCntMax = 3;
+const Word_t cwListPopCntMax = 1024;
 
 typedef struct {
     Word_t sw_awRoots[EXP(cnBitsPerDigit)];
@@ -151,10 +151,12 @@ typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
 
 #define     pwr_pwRoots(_pwr)  (((Switch_t *)(_pwr))->sw_awRoots)
 
-#define     ls_wPopCnt(_ls)          ((_ls)[0] & 0xff)
-#define set_ls_wPopCnt(_ls, _cnt)    ((_ls)[0] = ((_ls)[0] & ~0xff) | (_cnt))
-#define     pwr_wPopCnt(_pwr)        (ls_wPopCnt(_pwr))
-#define set_pwr_wPopCnt(_pwr, _cnt)  (set_ls_wPopCnt((_pwr), (_cnt))
+#define     ls_wPopCnt(_ls)          ((_ls)[0] & (Word_t)-1)
+#define set_ls_wPopCnt(_ls, _cnt) \
+    ((_ls)[0] = ((_ls)[0] & ~(Word_t)-1) | (_cnt))
+
+#define     pwr_wPopCnt      ls_wPopCnt
+#define set_pwr_wPopCnt  set_ls_wPopCnt
 
 #define     ls_pwKeys(_ls)    (&(_ls)[1])
 #define     pwr_pwKeys(_pwr)  (ls_pwKeys(_pwr))
@@ -166,6 +168,7 @@ typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
 #define set_ws_bNeedPrefixCheck(_ws, _b)  ((_ws) = ((_ws) & ~0x80) | (_b))
 
 #define     wr_bIsSwitch(_wr)          (wr_nType(_wr) != List)
+#define     wr_bIsSwitchBL(_wr, _nBL)  ((_nBL) = wr_nBitsLeft(_wr))
 
 static Word_t *pwRootLast;
 
