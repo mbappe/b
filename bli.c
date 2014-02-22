@@ -7,17 +7,17 @@
 #if defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (Success)
 #if defined(LOOKUP)
-#define LookupOrInsertOrRemove  "Lookup"
+#define strLookupOrInsertOrRemove  "Lookup"
 #define DBGX  DBGL
 #else // defined(REMOVE)
-#define LookupOrInsertOrRemove  "Remove"
+#define strLookupOrInsertOrRemove  "Remove"
 #define DBGX  DBGR
 #define Insert      Remove
 #define InsertGuts  RemoveGuts
 #endif // defined(REMOVE)
 #else // defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (Failure)
-#define LookupOrInsertOrRemove  "Insert"
+#define strLookupOrInsertOrRemove  "Insert"
 #define DBGX  DBGI
 #endif // defined(LOOKUP) || defined(REMOVE)
 
@@ -160,6 +160,6 @@ again:
 #undef InsertGuts
 #undef Insert
 #undef DBGX
-#undef LookupOrInsertOrRemove
+#undef strLookupOrInsertOrRemove
 #undef KeyFound
 
