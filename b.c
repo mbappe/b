@@ -184,7 +184,7 @@ static Word_t *pwRootLast;
     (((_bSet) = BitTest((_pBitMap), (_key))), \
         BitSet((_pBitMap), (_key)), (_bSet))
 
-#if defined(DBG)
+#if defined(DEBUG)
 void
 Dump(Word_t wRoot, Word_t wPrefix, Word_t wState)
 {
@@ -253,7 +253,7 @@ Dump(Word_t wRoot, Word_t wPrefix, Word_t wState)
         Dump(pwRoots[i], wPrefix | (i << nBitsLeft), nBitsLeft);
     }
 }
-#endif // defined(DBG)
+#endif // defined(DEBUG)
 
 static Status_t Insert(Word_t *pwRoot, Word_t wKey, Word_t wStatus);
 
@@ -310,9 +310,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, Word_t wState, Word_t wRoot)
     Switch_t *pSw;
     int w;
 
-    DBGI(printf("\n# InsertGuts "));
-    DBGI(printf("# pwRoot %p ", pwRoot));
-    DBGI(printf("# wRoot "OWx" wKey "OWx" wState "OWx"\n",
+    DBGI(printf("InsertGuts pwRoot %p ", pwRoot));
+    DBGI(printf(" wRoot "OWx" wKey "OWx" wState "OWx"\n",
             wRoot, wKey, wState));
 
     if (nBitsLeft <= cnBitsAtBottom)
@@ -320,77 +319,52 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, Word_t wState, Word_t wRoot)
         assert( ! ws_bNeedPrefixCheck(wState) );
         assert( ! BitIsSet(pwRoot, wKey & (EXP(nBitsLeft) - 1)) );
 
-        DBGI(printf("SetBit pwRoot %p "OWx"\n",
-            pwRoot, wKey & (EXP(nBitsLeft) - 1)));
-
         SetBit(pwRoot, wKey & (EXP(nBitsLeft) - 1));
 
         return Success;
     }
 
-    if (cwListPopCntMax != 0)
+    if ((pwList = wr_pwr(wRoot)) != NULL) // pointer to old List
     {
-        if (wRoot == 0)
-        {
-            // allocate new list List and init pop count in the first word
-            pwList = NewList(/* nKeys */ 1);
-            pwKeys = ls_pwKeys(pwList); // get a pointer to the keys
-            pwKeys[0] = wKey;
-            set_wr(*pwRoot, pwList, List); // install new list
-
-            return Success;
-        }
-
-        pwList = wr_pwr(wRoot); // pointer to old List
-        wPopCnt = ls_wPopCnt(pwList); // population count of old List
+        wPopCnt = ls_wPopCnt(pwList);
         pwKeys = ls_pwKeys(pwList); // list of keys in old List
-
-        DBGI(printf("pwList %p wPopCnt "OWx" pwKeys %p\n",
-            pwList, wPopCnt, pwKeys));
-
-        if ((wPopCnt < cwListPopCntMax) || (nBitsLeft == cnBitsAtBottom))
-        {
-            // allocate space for bigger list and init pop count
-            Word_t *pwListNew = NewList( /* nKeys */ wPopCnt + 1);
-            Word_t *pwKeysNew = ls_pwKeys(pwListNew);
-            pwKeys = ls_pwKeys(pwList); // keys in old list
-            COPY(pwKeysNew, pwKeys, wPopCnt); // copy keys
-            pwKeysNew[wPopCnt] = wKey; // add new key to end
-            set_wr(*pwRoot, pwListNew, List); // install list
-            OldList(pwList); // free old list
-
-            return Success;
-        }
     }
     else
     {
-        wPopCnt = 0;
-        pwList = NULL; // make compiler happy about uninitialized variable
-        pwKeys = NULL; // make compiler happy about uninitialized variable
+         wPopCnt = 0; // make compiler happy about uninitialized variable
+         pwKeys = NULL; // make compiler happy about uninitialized variable
     }
 
-    // List is full; insert a switch
-
-    pSw = NewSwitch(wKey, nBitsLeft);
-    set_wr_pwr(wRoot, (Word_t *)pSw);
-    set_wr_nBitsLeft(wRoot, nBitsLeft);
-    assert(wr_bIsSwitch(wRoot));
-    set_sw_wPrefix(pSw, wKey & ~((EXP(nBitsLeft - 1) << 1) - 1));
-    DBGI(printf("wPrefix "OWx"\n", sw_wPrefix(pSw)));
-
-    for (w = 0; w < wPopCnt; w++)
+    if (wPopCnt <= cwListPopCntMax)
     {
-        Insert(&wRoot, pwKeys[w], wState);
+        // allocate a new list and init pop count in the first word
+        Word_t *pwListNew = NewList(wPopCnt + 1);
+        Word_t *pwKeysNew = ls_pwKeys(pwListNew); // pointer to the keys
+
+        if (wPopCnt != 0) COPY(pwKeysNew, pwKeys, wPopCnt); // copy keys
+        pwKeysNew[wPopCnt] = wKey; // append the key
+        set_wr(*pwRoot, pwListNew, List); // install new list
     }
-
-    Insert(&wRoot, wKey, wState);
-
-    *pwRoot = wRoot; // install new
-
-    if (wPopCnt != 0)
+    else
     {
-        OldList(pwList); // free old
+        // List is full; insert a switch
+
+        pSw = NewSwitch(wKey, nBitsLeft);
+        set_wr_pwr(wRoot, (Word_t *)pSw);
+        set_wr_nBitsLeft(wRoot, nBitsLeft);
+        set_sw_wPrefix(pSw, wKey & ~((EXP(nBitsLeft - 1) << 1) - 1));
+
+        for (w = 0; w < wPopCnt; w++)
+        {
+            Insert(&wRoot, pwKeys[w], wState);
+        }
+
+        Insert(&wRoot, wKey, wState);
+
+        *pwRoot = wRoot; // install new
     }
+
+    if (wPopCnt != 0) OldList(pwList); // free old
 
     return Success;
 }
