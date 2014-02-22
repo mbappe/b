@@ -72,69 +72,59 @@ again:
 
             assert(nBitsLeftRoot <= nBitsLeftState); // reserved for later
 
+#if defined(LOOKUP)
             if (nBitsLeftRoot != nBitsLeftState)
             {
-                // Skipped intermediate key check.
-                // Could/should we combine this with upd_ws_nBitsLeft?
+                // Record that there were prefix bits that were not checked.
                 set_ws_bNeedPrefixCheck(wState, /* bNeedPrefixCheck */ 1);
             }
-
-            {
+#endif // defined(LOOKUP)
 #if defined(INSERT) || defined(REMOVE)
-                Word_t wKeyPrefix;
-
-                // shifting by cnBitsPerWord is a problem
-                wKeyPrefix = ((wKey >> 1) >> (nBitsLeftRoot - 1));
-                wKeyPrefix = ((wKeyPrefix << (nBitsLeftRoot - 1)) << 1);
-
-                DBG(printf("wKeyPrefix "OWx"\n", wKeyPrefix));
-
-                if (wKeyPrefix != pwr_wPrefix(pwr))
-                {
-                    DBG(printf(
-                        "prefix mismatch pwr_wPrefix "Owx" wKeyPrefix "Owx"\n",
-                            pwr_wPrefix(pwr), wKeyPrefix));
-                }
-                else
+            if ((nBitsLeftRoot != nBitsLeftState)
+                && (pwr_wPrefix(pwr) != (wKey & (EXP(nBitsLeftRoot) - 1))))
+            {
+                DBG(printf("prefix mismatch wPrefix "Owx"\n",
+                    pwr_wPrefix(pwr)));
+            }
+            else
 #endif // defined(INSERT) || defined(REMOVE)
+            {
+                // size of array index
+                int nBitsIndexSz = pwr_nBitsIndexSz(pwr);
+                int nIndex;
+
+                nBitsLeftState = nBitsLeftRoot - nBitsIndexSz;
+
+                // In case nBitsLeftState is not an integral number of
+                // digits.
+                nBitsLeftState
+                    = (nBitsLeftState + nBitsIndexSz - 1)
+                        / nBitsIndexSz * nBitsIndexSz;
+
+                set_ws_nBitsLeft(wState, nBitsLeftState);
+
+                nIndex = (wKey >> (nBitsLeftState))
+                    & (EXP(nBitsIndexSz) - 1);
+
+                DBG(printf("Next"));
+                //DBG(printf(" nBitsIndexSz %d", nBitsIndexSz));
+                DBG(printf(" nBitsLeftState %d", nBitsLeftState));
+                DBG(printf(" nIndex %d", nIndex));
+                DBG(printf(" pwr %p pwRoots %p", pwr, pwr_pwRoots(pwr)));
+                DBG(printf("\n"));
+
+                pwRoot = &pwr_pwRoots(pwr)[nIndex];
+                wRoot = *pwRoot;
+
+                // We have to do the prefix check here if we're at the
+                // bottom because wRoot contains a bitmap.  Not a pointer.
+                // Not a key.
+                if ((nBitsLeftState > cnBitsAtBottom)
+                    || ( ! ws_bNeedPrefixCheck(wState) )
+                    || (pwr_wPrefix(pwr)
+                            == (wKey & ~(EXP(nBitsLeftRoot) - 1))))
                 {
-                    // size of array index
-                    int nBitsIndexSz = pwr_nBitsIndexSz(pwr);
-                    int nIndex;
-
-                    nBitsLeftState = nBitsLeftRoot - nBitsIndexSz;
-
-                    // In case nBitsLeftState is not an integral number of
-                    // digits.
-                    nBitsLeftState
-                        = (nBitsLeftState + nBitsIndexSz - 1)
-                            / nBitsIndexSz * nBitsIndexSz;
-
-                    set_ws_nBitsLeft(wState, nBitsLeftState);
-
-                    nIndex = (wKey >> (nBitsLeftState))
-                        & (EXP(nBitsIndexSz) - 1);
-
-                    DBG(printf("Next"));
-                    //DBG(printf(" nBitsIndexSz %d", nBitsIndexSz));
-                    DBG(printf(" nBitsLeftState %d", nBitsLeftState));
-                    DBG(printf(" nIndex %d", nIndex));
-                    DBG(printf(" pwr %p pwRoots %p", pwr, pwr_pwRoots(pwr)));
-                    DBG(printf("\n"));
-
-                    pwRoot = &pwr_pwRoots(pwr)[nIndex];
-                    wRoot = *pwRoot;
-
-                    // We have to do the prefix check here if we're at the
-                    // bottom because wRoot contains a bitmap.  Not a pointer.
-                    // Not a key.
-                    if ((nBitsLeftState > cnBitsAtBottom)
-                        || ( ! ws_bNeedPrefixCheck(wState) )
-                        || (pwr_wPrefix(pwr)
-                                == (wKey & ~(EXP(nBitsLeftRoot) - 1))))
-                    {
-                        goto again;
-                    }
+                    goto again;
                 }
             }
         }
