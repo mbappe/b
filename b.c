@@ -32,23 +32,17 @@
 #define DBGR(x)
 #endif // defined(DEBUG_REMOVE)
 
-#if defined(DEBUG_DUMP)
-#define DBGD(x)  (x)
-#else // defined(DEBUG_DUMP)
-#define DBGD(x)
-#endif // defined(DEBUG_DUMP)
-
 #if defined(DEBUG_MALLOC)
 #define DBGM(x)  (x)
 #else // defined(DEBUG_MALLOC)
 #define DBGM(x)
 #endif // defined(DEBUG_MALLOC)
 
-#if defined(DEBUG)
+#if defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || defined(DEBUG_MALLOC)
 #define DBG(x)  (x)
-#else // defined(DEBUG)
+#else // defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || ...
 #define DBG(x)
-#endif // defined(DEBUG)
+#endif // defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || ...
 
 #if defined(DEBUG)
 #define INLINE static
@@ -111,7 +105,7 @@ const int cnBitsAtBottom = 5;
 
 //const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
 //const Word_t cwListPopCntMax = 1024; // bug at pop near 1M
-const Word_t cwListPopCntMax = 0;
+const Word_t cwListPopCntMax = 1;
 
 typedef struct {
     Word_t sw_awRoots[EXP(cnBitsPerDigit)];
@@ -190,25 +184,14 @@ static Word_t *pwRootLast;
     (((_bSet) = BitTest((_pBitMap), (_key))), \
         BitSet((_pBitMap), (_key)), (_bSet))
 
-void
-dump(Word_t *pw, int nWords)
-{
-    int i;
-
-    printf("pw "OWx, (Word_t)pw);
-    for (i = 0; i < nWords; i++)
-        printf(" "Owx, pw[i]);
-}
-
+#if defined(DBG)
 void
 Dump(Word_t wRoot, Word_t wPrefix, Word_t wState)
 {
     int nBitsLeftState = ws_nBitsLeft(wState);
-    int nType;
+    int nBitsLeft;
     Word_t *pwr;
     int nBitsIndexSz;
-    int bIsSwitch;
-    int nBitsLeft;
     Word_t *pwRoots;
     int i;
 
@@ -219,65 +202,46 @@ Dump(Word_t wRoot, Word_t wPrefix, Word_t wState)
         return;
     }
 
-    printf(" wr "OWx, wRoot);
+    printf(" nBitsLeft %2d", nBitsLeftState);
+    // should enhance this to check for zeros in suffix and to print
+    // dots for suffix.
     printf(" wPrefix "OWx, wPrefix);
-    printf(" nBitsLeftState %2d", nBitsLeftState);
+    printf(" wr "OWx, wRoot);
 
-    if (nBitsLeftState < cnBitsAtBottom)
+    if (nBitsLeftState <= cnBitsAtBottom)
     {
-        return;
-    }
-
-    nType = wr_nType(wRoot);
-    bIsSwitch = wr_bIsSwitch(wRoot);
-    pwr = wr_pwr(wRoot);
-    nBitsIndexSz = pwr_nBitsIndexSz(pwr);
-
-    printf(" nType %d", nType);
-    //printf(" nBitsIndexSz %2d", nBitsIndexSz);
-
-    if ( ! bIsSwitch )
-    {
-        assert(nType == List);
-    }
-    else
-    {
-        wPrefix = pwr_wPrefix(pwr);
-        pwRoots = pwr_pwRoots(pwr);
-    }
-
-    nBitsLeft = wr_nBitsLeft(wRoot);
-
-    printf(" ");
-    if (bIsSwitch)
-    {
-        for (i = 0; i < cnBitsPerWord - nBitsLeft; i++)
-        {
-            printf(wx, (wPrefix << i) >> (cnBitsPerWord - 1));
-        }
-        for (i = 0; i < nBitsLeft; i++)
-        {
-            printf(".");
-        }
-    }
-    else
-    {
-        for (i = 0; i < cnBitsPerWord; i++)
-        {
-            printf(".");
-        }
-    }
-
-    if ( ! bIsSwitch )
-    {
-        printf(" ");
-        dump(pwr, pwr_wPopCnt(pwr) + 1);
         printf("\n");
 
         return;
     }
 
-    printf(" pwRoots "OWx, (Word_t)pwRoots);
+    pwr = wr_pwr(wRoot);
+
+    if ( ! wr_bIsSwitchBL(wRoot, nBitsLeft) )
+    {
+        int nPopCnt = (int)pwr_wPopCnt(pwr);
+        Word_t *pwKeys = pwr_pwKeys(pwr);
+
+        assert(wr_nType(wRoot) == List);
+
+        printf(" wPopCnt %3d", nPopCnt);
+        for (i = 0; i < (nPopCnt &= 7); i++) printf(" "Owx, pwKeys[i]);
+        printf("\n");
+
+        return;
+    }
+
+    // Switch
+
+    wPrefix = pwr_wPrefix(pwr);
+    nBitsIndexSz = pwr_nBitsIndexSz(pwr);
+    pwRoots = pwr_pwRoots(pwr);
+
+    printf(" wr_nBitsLeft %2d", nBitsLeft);
+    // should enhance this to check for zeros in suffix and to print
+    // dots for suffix.
+    printf(" wr_wPrefix "OWx, wPrefix);
+    //printf(" pwRoots "OWx, (Word_t)pwRoots);
     printf("\n");
 
     nBitsLeft -= nBitsIndexSz;
@@ -286,9 +250,10 @@ Dump(Word_t wRoot, Word_t wPrefix, Word_t wState)
 
     for (i = 0; i < EXP(nBitsIndexSz); i++)
     {
-        Dump(pwr_pwRoots(pwr)[i], wPrefix | (i << nBitsLeft), nBitsLeft);
+        Dump(pwRoots[i], wPrefix | (i << nBitsLeft), nBitsLeft);
     }
 }
+#endif // defined(DBG)
 
 static Status_t Insert(Word_t *pwRoot, Word_t wKey, Word_t wStatus);
 
