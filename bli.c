@@ -1,95 +1,177 @@
 
+#if defined(LOOKUP) || defined(REMOVE)
+#undef KeyFound
+#define KeyFound  (Success)
+#endif // defined(LOOKUP) || defined(REMOVE)
+
 #if defined(INSERT)
 #undef KeyFound
 #define KeyFound  (Failure)
-#else // defined(INSERT)
-#undef KeyFound
-#define KeyFound  (Success)
 #endif // defined(INSERT)
 
 INLINE Status_t
-#if        defined(INSERT)
-Insert(Word_t *pwRoot, Word_t wKey, int nBitsLeft)
-#else   // defined(INSERT)
-Lookup(Word_t wRoot, Word_t wKey, int nBitsLeft)
-#endif  // defined(INSERT)
-{
+#if defined(LOOKUP)
+Lookup(Word_t wRoot, Word_t wKey, Word_t wState)
+#endif // defined(LOOKUP)
 #if defined(INSERT)
-    Word_t wRoot = *pwRoot;
-#else // defined(INSERT)
-    Word_t *pwRoot;
+Insert(Word_t *pwRoot, Word_t wKey, Word_t wState)
 #endif // defined(INSERT)
+#if defined(REMOVE)
+Remove(Word_t *pwRoot, Word_t wKey, Word_t wState)
+#endif // defined(REMOVE)
+{
+#if defined(LOOKUP)
+    Word_t *pwRoot;
+#else // defined(LOOKUP)
+    Word_t wRoot = *pwRoot;
+#endif // defined(LOOKUP)
+    int nBitsLeftState = ws_nBitsLeft(wState);
 
+#if defined(LOOKUP)
+    DBGL(printf("\n# Lookup "));
+#endif // defined(LOOKUP)
 #if defined(INSERT)
     DBGI(printf("\n# Insert "));
-#else // defined(INSERT)
-    DBGL(printf("\n# Lookup "));
 #endif // defined(INSERT)
+#if defined(REMOVE)
+    DBGR(printf("\n# Remove "));
+#endif // defined(REMOVE)
 
 again:
 
-#if defined(INSERT)
-    DBGI(printf( "# pwRoot %p ", pwRoot));
-#endif // defined(INSERT)
-    DBGI(printf("# wRoot "OWx" wKey "OWx" nBitsLeft %d\n",
-            wRoot, wKey, nBitsLeft));
+#if defined(INSERT) || defined(REMOVE)
+    DBG(printf("# pwRoot %p ", pwRoot));
+#endif // defined(INSERT) || defined(REMOVE)
+    DBG(printf("# wRoot "OWx" wKey "OWx" wState "OWx"\n",
+            wRoot, wKey, wState));
 
-    if (wRoot != 0)
+    assert(ws_nBitsLeft(wState) <= cnBitsPerWord);
+
+    if (nBitsLeftState <= cnBitsAtBottom)
     {
-        if (wr_nType(wRoot) == Switch)
-        {
-            DBGI(printf("switch\n"));
+        assert( ! ws_bNeedPrefixCheck(wState) );
 
-            nBitsLeft = wr_nBitsLeft(wRoot);
-            DBGI(printf("nBitsLeft %d\n", nBitsLeft));
+        if (BitIsSet(pwRoot, wKey & (EXP(nBitsLeftState) - 1)))
+        {
+            return KeyFound;
+        }
+    }
+    else if (wRoot != 0)
+    {
+        Word_t *pwr = wr_pwr(wRoot); // pointer extracted from wRoot
+
+        if (wr_bIsSwitch(wRoot))
+        {
+            int nBitsLeftRoot = wr_nBitsLeft(wRoot);
+
+            DBG(printf("Switch"));
+            DBG(printf(" nBitsLeftState %d", nBitsLeftState));
+            DBG(printf(" nBitsLeftRoot %d", nBitsLeftRoot));
+            DBG(printf(" pwr %p", pwr));
+            DBG(printf("\n"));
+
+            assert(nBitsLeftRoot <= nBitsLeftState); // reserved for later
+
+            if (nBitsLeftRoot != nBitsLeftState)
+            {
+                // Skipped intermediate key check.
+                // Could/should we combine this with upd_ws_nBitsLeft?
+                set_ws_bNeedPrefixCheck(wState, /* bNeedPrefixCheck */ 1);
+            }
 
             {
-#if defined(INSERT)
+#if defined(INSERT) || defined(REMOVE)
                 Word_t wKeyPrefix;
 
-                // shifting by word size is a problem
-                wKeyPrefix = ((wKey >> 1) >> (nBitsLeft - 1));
-                wKeyPrefix = ((wKeyPrefix << (nBitsLeft - 1)) << 1);
-                DBGI(printf("wKeyPrefix "OWx"\n", wKeyPrefix));
+                // shifting by cnBitsPerWord is a problem
+                wKeyPrefix = ((wKey >> 1) >> (nBitsLeftRoot - 1));
+                wKeyPrefix = ((wKeyPrefix << (nBitsLeftRoot - 1)) << 1);
 
-                if (wKeyPrefix != wr_wPrefix(wRoot))
+                DBG(printf("wKeyPrefix "OWx"\n", wKeyPrefix));
+
+                if (wKeyPrefix != pwr_wPrefix(pwr))
                 {
-                    DBGI(printf(
-                        "prefix mismatch wr_wPrefix "Owx" wKeyPrefix "Owx"\n",
-                            wr_wPrefix(wRoot), wKeyPrefix));
+                    DBG(printf(
+                        "prefix mismatch pwr_wPrefix "Owx" wKeyPrefix "Owx"\n",
+                            pwr_wPrefix(pwr), wKeyPrefix));
                 }
                 else
-#endif // defined(INSERT)
+#endif // defined(INSERT) || defined(REMOVE)
                 {
                     // size of array index
-                    int nBitsIndexSz = wr_nBitsIndexSz(wRoot);
-                    int nIndex = (wKey >> (nBitsLeft - nBitsIndexSz))
-                                                & (EXP(nBitsIndexSz) - 1);
-                    DBGI(printf("prefix match\n"));
-                    DBGI(printf("nBitsIndexSz %d\n", nBitsIndexSz));
-                    DBGI(printf("nIndex %d\n", nIndex));
-                    pwRoot = &wr_pwPtrs(wRoot)[nIndex];
+                    int nBitsIndexSz = pwr_nBitsIndexSz(pwr);
+                    int nIndex;
+
+                    nBitsLeftState = nBitsLeftRoot - nBitsIndexSz;
+
+                    // In case nBitsLeftState is not an integral number of
+                    // digits.
+                    nBitsLeftState
+                        = (nBitsLeftState + nBitsIndexSz - 1)
+                            / nBitsIndexSz * nBitsIndexSz;
+
+                    set_ws_nBitsLeft(wState, nBitsLeftState);
+
+                    nIndex = (wKey >> (nBitsLeftState))
+                        & (EXP(nBitsIndexSz) - 1);
+
+                    DBG(printf("Next"));
+                    //DBG(printf(" nBitsIndexSz %d", nBitsIndexSz));
+                    DBG(printf(" nBitsLeftState %d", nBitsLeftState));
+                    DBG(printf(" nIndex %d", nIndex));
+                    DBG(printf(" pwr %p pwRoots %p", pwr, pwr_pwRoots(pwr)));
+                    DBG(printf("\n"));
+
+                    pwRoot = &pwr_pwRoots(pwr)[nIndex];
                     wRoot = *pwRoot;
 
-                    goto again;
+                    // We have to do the prefix check here if we're at the
+                    // bottom because wRoot contains a bitmap.  Not a pointer.
+                    // Not a key.
+                    if ((nBitsLeftState > cnBitsAtBottom)
+                        || ( ! ws_bNeedPrefixCheck(wState) )
+                        || (pwr_wPrefix(pwr)
+                                == (wKey & ~(EXP(nBitsLeftRoot) - 1))))
+                    {
+                        goto again;
+                    }
                 }
             }
         }
         else
         {
-            DBGI(printf("leaf\n"));
-            if (wr_wKey(wRoot) == wKey) return KeyFound;
-            DBGI(printf("leaf mismatch wr_wKey "Owx" wKey "Owx"\n",
-                wr_wKey(wRoot), wKey));
+            int i;
+
+#if defined(INSERT)
+            DBG(printf("List\n"));
+#endif // defined(INSERT)
+
+            for (i = 0; i < pwr_wPopCnt(pwr); i++)
+            {
+                if (pwr_pwKeys(pwr)[i] == wKey)
+                {
+                    return KeyFound;
+                }
+            }
         }
     }
 
-#if defined(INSERT)
-    return InsertAt(pwRoot, wKey, nBitsLeft, wRoot);
-#else // defined(INSERT)
+#if defined(LOOKUP)
     return ! KeyFound;
+#endif // defined(LOOKUP)
+
+#if defined(INSERT)
+    return InsertGuts(pwRoot, wKey, wState, wRoot);
 #endif // defined(INSERT)
+
+#if defined(REMOVE)
+    // Will have to use a state bit to tell remove that we only want
+    // to undo the pop count increments done by a failed insert and
+    // we don't actually want to remove the key.
+    return RemoveGuts(pwRoot, wKey, wState, wRoot);
+#endif // defined(REMOVE)
+
 }
 
-#undef KeyExisted
+#undef KeyFound
 

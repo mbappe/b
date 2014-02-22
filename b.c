@@ -1,4 +1,14 @@
 
+// Todo:
+//
+// "pwr" is a confusing name.  We use it for pointer extracted from wRoot.
+// But it can be confused with pwRoot which is a pointer to a wRoot.
+// Especially since we use psw for pointer to Switch.
+// I think "wrp" might be better.  What do we use for other things extracted
+// from wRoot?  wr_nBitsLeft we use nBitsLeft.
+// How do we get "pwr"?  With wr_pwr.  Maybe wr_pw and pw would be better?
+// Or wr_pwNext and pwNext?
+
 #include <stdio.h>  // printf
 #include <string.h> // memcpy
 #include <assert.h> // NDEBUG must be defined before including assert.h.
@@ -16,11 +26,23 @@
 #define DBGL(x)
 #endif // defined(DEBUG_LOOKUP)
 
+#if defined(DEBUG_REMOVE)
+#define DBGR(x)  (x)
+#else // defined(DEBUG_REMOVE)
+#define DBGR(x)
+#endif // defined(DEBUG_REMOVE)
+
 #if defined(DEBUG_DUMP)
 #define DBGD(x)  (x)
 #else // defined(DEBUG_DUMP)
 #define DBGD(x)
 #endif // defined(DEBUG_DUMP)
+
+#if defined(DEBUG_MALLOC)
+#define DBGM(x)  (x)
+#else // defined(DEBUG_MALLOC)
+#define DBGM(x)
+#endif // defined(DEBUG_MALLOC)
 
 #if defined(DEBUG)
 #define DBG(x)  (x)
@@ -33,8 +55,6 @@
 #else // defined(DEBUG)
 #define INLINE static inline
 #endif // defined(DEBUG)
-
-const int cnLogBitsPerByte = 3;
 
 #if defined(_WIN64)
 //typedef unsigned long long Word_t;
@@ -57,55 +77,114 @@ const int cnLogBitsPerByte = 3;
 
 #define LOG(x)  ((Word_t)64 - 1 - __builtin_clzll(x))
 
+const int cnLogBitsPerByte = 3;
+const int cnBitsPerByte = EXP(cnLogBitsPerByte);
+
 #if defined(__LP64__) || defined(_WIN64)
 const int cnLogBytesPerWord = 3;
 #else // defined(__LP64__) || defined(_WIN64)
 const int cnLogBytesPerWord = 2;
 #endif // defined(__LP64__) || defined(_WIN64)
 
-#define mask(_x)  ((_x) - 1)
+#define MASK(_x)  ((_x) - 1)
 
-const int cMallocMask = (EXP(cnLogBytesPerWord + 1) - 1);
-
+const int cnBytesPerWord = EXP(cnLogBytesPerWord);
 const int cnBitsPerWord = EXP(cnLogBytesPerWord + cnLogBitsPerByte);
+const int cnMallocMask = ((cnBytesPerWord * 2) - 1);
 
 typedef enum { Failure = 0, Success = 1 } Status_t;
 
-#define copy(_tgt, _src, _cnt) \
+#define COPY(_tgt, _src, _cnt) \
     memcpy((_tgt), (_src), sizeof(*(_src)) * (_cnt))
 
-#define move(_tgt, _src, _cnt) \
+#define MOVE(_tgt, _src, _cnt) \
     memmove((_tgt), (_src), sizeof(*(_src)) * (_cnt))
+
+#define SET(_p, _v, _cnt) \
+    memset((_p), (_v), sizeof(*(_p)) * (_cnt))
 
 // Data structure constants and macros.
 
-const int cnTypeByteOff         = 0; // node type goes here
-const int cnBitsLeftByteOff     = 1; // nBitsLeft goes here
-const int cnBitsIndexSzByteOff  = 2; // index size goes here
+const int cnDigitsAtBottom = 2;
+const int cnBitsPerDigit = 5;
+const int cnBitsAtBottom = 5;
 
-const int cnPrefixOff           = 1; // prefix goes here
-const int cnKeyOff              = 1; // key goes here
-const int cnPtrsOff             = 2; // array of pointers begins here
+//const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
+const Word_t cwListPopCntMax = 3;
 
-#define     wr_nType(_wr)              (((char *)(_wr))[cnTypeByteOff])
-#define set_wr_nType(_wr, _t)           (wr_nType(_wr) = (_t))
-#define     wr_nBitsLeft(_wr)          (((char *)(_wr))[cnBitsLeftByteOff])
-#define set_wr_nBitsLeft(_wr, _sz)      (wr_nBitsLeft(_wr) = (_sz))
-#define     wr_nBitsIndexSz(_wr)       (((char *)(_wr))[cnBitsIndexSzByteOff])
-#define set_wr_nBitsIndexSz(_wr, _sz)   (wr_nBitsIndexSz(_wr) = (_sz))
+typedef struct {
+    Word_t sw_awRoots[EXP(cnBitsPerDigit)];
+    Word_t sw_wKey;
+} Switch_t;
 
-#define     wr_wPrefix(_wr)            ( ((Word_t *)(_wr))[cnPrefixOff])
-#define set_wr_wPrefix(_wr, _prefix)    (wr_wPrefix(_wr) = (_prefix))
-#define     wr_wKey(_wr)               ( ((Word_t *)(_wr))[cnKeyOff])
-#define set_wr_wKey(_wr, _key)          (wr_wKey(_wr) = (_key))
+typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
 
-#define     wr_pwPtrs(_wr)             (&((Word_t *)(_wr))[cnPtrsOff])
+#define     wr_nType(_wr)         ((_wr) & cnMallocMask)
+#define set_wr_nType(_ws, _type)  ((_wr) = ((_wr) & ~cnMallocMask) | (_type))
 
-const int cnBitsPerDigit = 2;
+#define     wr_pwr(_wr)          ((Word_t *)((_wr) & ~cnMallocMask))
+#define set_wr_pwr(_wr, _pwr) \
+    ((_wr) = ((_wr) & cnMallocMask) | (Word_t)(_pwr))
 
-typedef enum { Switch, Leaf } Type_t;
+#define set_wr(_wr, _pwr, _type)  ((_wr) = (Word_t)(_pwr) | (_type))
+
+#define     wr_nBitsLeft(_wr) \
+    (((wr_nType(_wr) * cnBitsPerDigit) > cnBitsPerWord) \
+        ? cnBitsPerWord : (wr_nType(_wr) * cnBitsPerDigit))
+
+#define set_wr_nBitsLeft(_wr, _nBL) \
+    ((_wr) = ((_wr) & ~cnMallocMask) \
+                | (((_nBL) + cnBitsPerDigit - 1) / cnBitsPerDigit))
+
+#define     pwr_nBitsIndexSz(_pwr)       (cnBitsPerDigit)
+#define set_pwr_nBitsIndexSz(_pwr, _sz)  (assert((_sz) == cnBitsPerDigit))
+
+// methods for Switch (and aliases)
+#define     sw_wKey(_psw)        (((Switch_t *)(_psw))->sw_wKey)
+#define set_sw_wKey(_psw, _key)  (sw_wKey(_psw) = (_key))
+#define     sw_wPrefix                sw_wKey
+#define set_sw_wPrefix            set_sw_wKey
+#define     pwr_wKey                  sw_wKey
+#define set_pwr_wKey              set_sw_wKey
+#define     pwr_wPrefix               sw_wKey
+#define set_pwr_wPrefix           set_sw_wKey
+
+#define     pwr_pwRoots(_pwr)  (((Switch_t *)(_pwr))->sw_awRoots)
+
+#define     ls_wPopCnt(_ls)          ((_ls)[0] & 0xff)
+#define set_ls_wPopCnt(_ls, _cnt)    ((_ls)[0] = ((_ls)[0] & ~0xff) | (_cnt))
+#define     pwr_wPopCnt(_pwr)        (ls_wPopCnt(_pwr))
+#define set_pwr_wPopCnt(_pwr, _cnt)  (set_ls_wPopCnt((_pwr), (_cnt))
+
+#define     ls_pwKeys(_ls)    (&(_ls)[1])
+#define     pwr_pwKeys(_pwr)  (ls_pwKeys(_pwr))
+
+#define     ws_nBitsLeft(_ws)          ((_ws) & 0x7f)
+#define set_ws_nBitsLeft(_ws, _nBL)    ((_ws) = ((_ws) & ~0x7f) | (_nBL))
+
+#define     ws_bNeedPrefixCheck(_ws)      ((_ws) & 0x80)
+#define set_ws_bNeedPrefixCheck(_ws, _b)  ((_ws) = ((_ws) & ~0x80) | (_b))
+
+#define     wr_bIsSwitch(_wr)          (wr_nType(_wr) != List)
 
 static Word_t *pwRootLast;
+
+#define BitMapByteNum(_key)  ((_key) >> cnLogBitsPerByte)
+
+#define BitMapByteMask(_key)  (1 << ((_key) % cnBitsPerByte))
+
+#define BitTest(_pBitMap, _key) \
+    ((((char *)(_pBitMap))[BitMapByteNum(_key)] & BitMapByteMask(_key)) \
+        != 0)
+
+#define BitIsSet(_pBitMap, _key)  BitTest((_pBitMap), (_key))
+
+#define SetBit(_pBitMap, _key) \
+    (((char *)(_pBitMap))[BitMapByteNum(_key)] |= BitMapByteMask(_key))
+
+#define BitTestAndSet(_pBitMap, _key, _bSet) \
+    (((_bSet) = BitTest((_pBitMap), (_key))), \
+        BitSet((_pBitMap), (_key)), (_bSet))
 
 void
 dump(Word_t *pw, int nWords)
@@ -118,44 +197,60 @@ dump(Word_t *pw, int nWords)
 }
 
 void
-Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
+Dump(Word_t wRoot, Word_t wPrefix, Word_t wState)
 {
-    int nType = wr_nType(wRoot);
-    int nBitsIndexSz = wr_nBitsIndexSz(wRoot);
-    Word_t wKey;
-    Word_t *pwPtrs;
+    int nBitsLeftState = ws_nBitsLeft(wState);
+    int nType;
+    Word_t *pwr;
+    int nBitsIndexSz;
+    int bIsSwitch;
+    int nBitsLeft;
+    Word_t *pwRoots;
     int i;
 
+    // bitmaps shouldn't be zero -- not that it matters
     if (wRoot == 0)
     {
         return;
     }
 
     printf(" wr "OWx, wRoot);
-    printf(" nBitsLeft %2d", nBitsLeft);
-    printf(" nType %d", nType);
-    printf(" nBitsIndexSz %2d", nBitsIndexSz);
+    printf(" wPrefix "OWx, wPrefix);
+    printf(" nBitsLeftState %2d", nBitsLeftState);
 
-    if (nType == Leaf)
+    if (nBitsLeftState < cnBitsAtBottom)
     {
-        wKey = wr_wKey(wRoot);
+        return;
+    }
+
+    nType = wr_nType(wRoot);
+    bIsSwitch = wr_bIsSwitch(wRoot);
+    pwr = wr_pwr(wRoot);
+    nBitsIndexSz = pwr_nBitsIndexSz(pwr);
+
+    printf(" nType %d", nType);
+    //printf(" nBitsIndexSz %2d", nBitsIndexSz);
+
+    if ( ! bIsSwitch )
+    {
+        assert(nType == List);
     }
     else
     {
-        wPrefix = wr_wPrefix(wRoot);
-        pwPtrs = wr_pwPtrs(wRoot);
+        wPrefix = pwr_wPrefix(pwr);
+        pwRoots = pwr_pwRoots(pwr);
     }
 
     nBitsLeft = wr_nBitsLeft(wRoot);
 
     printf(" ");
-    if (nType == Switch)
+    if (bIsSwitch)
     {
         for (i = 0; i < cnBitsPerWord - nBitsLeft; i++)
         {
             printf(wx, (wPrefix << i) >> (cnBitsPerWord - 1));
         }
-        for (i = 0; i < cnBitsPerWord - nBitsLeft; i++)
+        for (i = 0; i < nBitsLeft; i++)
         {
             printf(".");
         }
@@ -164,107 +259,178 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
     {
         for (i = 0; i < cnBitsPerWord; i++)
         {
-            printf(wx, (wKey << i) >> (cnBitsPerWord - 1));
+            printf(".");
         }
     }
 
-    if (nType == Leaf)
+    if ( ! bIsSwitch )
     {
-        printf(" wKey "OWx, wKey);
+        printf(" ");
+        dump(pwr, pwr_wPopCnt(pwr) + 1);
         printf("\n");
 
         return;
     }
 
-    printf(" wPrefix "OWx, wPrefix);
-    printf(" pwPtrs "OWx, (Word_t)pwPtrs);
+    printf(" pwRoots "OWx, (Word_t)pwRoots);
     printf("\n");
+
+    nBitsLeft -= nBitsIndexSz;
+    // In case nBitsLeftState is not an integral number of digits.
+    nBitsLeft = (nBitsLeft + nBitsIndexSz - 1) / nBitsIndexSz * nBitsIndexSz;
 
     for (i = 0; i < EXP(nBitsIndexSz); i++)
     {
-        Dump(wr_pwPtrs(wRoot)[i],
-            wPrefix | (i << (nBitsLeft - nBitsIndexSz)),
-            nBitsLeft - nBitsIndexSz);
+        Dump(pwr_pwRoots(pwr)[i], wPrefix | (i << nBitsLeft), nBitsLeft);
     }
 }
 
-static Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBitsLeft);
+static Status_t Insert(Word_t *pwRoot, Word_t wKey, Word_t wStatus);
+
+INLINE Word_t *
+NewList(Word_t wPopCnt)
+{
+    Word_t *pwList = (Word_t *)JudyMalloc(wPopCnt + 1);
+
+    set_ls_wPopCnt(pwList, wPopCnt);
+
+    DBGM(printf("New pwList %p wPopCnt "OWx"\n", pwList, wPopCnt));
+
+    return pwList;
+}
+
+INLINE void
+OldList(Word_t *pwList)
+{
+    DBGM(printf("Old pwList %p\n", pwList));
+
+    JudyFree(pwList, ls_wPopCnt(pwList) + 1);
+}
+
+INLINE Switch_t *
+NewSwitch(Word_t wKey, int nBitsLeft)
+{
+    Switch_t *pSw = (Switch_t *)JudyMalloc(sizeof(Switch_t) / sizeof(Word_t));
+
+    DBGM(printf("NewSwitch pSw %p\n", pSw));
+
+    set_sw_wKey(pSw, wKey);
+
+    SET(pSw, /* val */ 0, /* cnt */ 1);
+    memset(pSw, /* val */ 0, /* cnt */ sizeof(*pSw));
+
+    return pSw;
+}
+
+#if 0
+INLINE void
+OldSwitch(Switch_t *pSw)
+{
+    JudyFree((Word_t *)pSw, sizeof(*pSw) / sizeof(Word_t));
+}
+#endif
 
 static Status_t
-InsertAt(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
+InsertGuts(Word_t *pwRoot, Word_t wKey, Word_t wState, Word_t wRoot)
 {
-    Word_t *pw;
+    int nBitsLeft = ws_nBitsLeft(wState);
+    Word_t *pwList;
+    Word_t wPopCnt;
+    Word_t *pwKeys;
+    Switch_t *pSw;
+    int w;
 
-    if (wRoot != 0)
+    DBGI(printf("\n# InsertGuts "));
+    DBGI(printf("# pwRoot %p ", pwRoot));
+    DBGI(printf("# wRoot "OWx" wKey "OWx" wState "OWx"\n",
+            wRoot, wKey, wState));
+
+    if (nBitsLeft <= cnBitsAtBottom)
     {
-        int nBitsIndexSz = cnBitsPerDigit;
-        Word_t wPrefix;
-        Word_t *pwPtrs;
-        int nIndex;
+        assert( ! ws_bNeedPrefixCheck(wState) );
+        assert( ! BitIsSet(pwRoot, wKey & (EXP(nBitsLeft) - 1)) );
 
-        pw = (Word_t *)JudyMalloc(cnPtrsOff + EXP(nBitsIndexSz));
-        DBGI(printf("new switch node pw %p\n", pw));
-        set_wr_nType(pw, Switch);
-        set_wr_nBitsIndexSz(pw, nBitsIndexSz); // Use zero for immediate?
+        DBGI(printf("SetBit pwRoot %p "OWx"\n",
+            pwRoot, wKey & (EXP(nBitsLeft) - 1)));
 
-        // prefix (or key) mismatch
-        // insert a node at bit where prefix doesn't match
-        if (wr_nType(wRoot) == Leaf)
-        {
-            nBitsLeft = LOG(wKey ^ wr_wKey(wRoot)) + 1; // below branch
-        }
-        else
-        {
-            nBitsLeft = LOG(wKey ^ wr_wPrefix(wRoot)) + 1; // below branch
-        }
-        DBGI(printf("nBitsLeft %d\n", nBitsLeft));
-        // align -- for now
-        nBitsLeft = ((nBitsLeft + nBitsIndexSz - 1) / nBitsIndexSz)
-                        * nBitsIndexSz;
+        SetBit(pwRoot, wKey & (EXP(nBitsLeft) - 1));
 
-        set_wr_nBitsLeft(pw, nBitsLeft);
-
-        // there must be a better way to handle nBitsLeft == cnBitsPerWord
-        wPrefix = wKey >> 1;
-        wPrefix >>= nBitsLeft - 1;
-        wPrefix <<= nBitsLeft - 1;
-        wPrefix <<= 1;
-
-        set_wr_wPrefix(pw, wPrefix);
-        DBGI(printf("wPrefix "Owx"\n", wr_wPrefix(pw)));
-
-        pwPtrs = wr_pwPtrs(pw);
-        memset(pwPtrs, 0, EXP(nBitsIndexSz) * sizeof(*pwPtrs));
-        nIndex = (wr_wPrefix(wRoot) >> (nBitsLeft - nBitsIndexSz))
-                    & (EXP(nBitsIndexSz) - 1);
-        DBGI(printf("old node nIndex %d\n", nIndex));
-        pwPtrs[nIndex] = wRoot;
-        DBGI(printf("install old node at "Owx"\n", (Word_t)&pwPtrs[nIndex]));
-
-        Insert((Word_t *)&pw, wKey, nBitsLeft);
-    }
-    else
-    {
-        DBGI(printf("null\n"));
-
-        // wRoot == 0 insert
-        pw = (Word_t *)JudyMalloc(2);
-        memset(pw, 0, 2 * sizeof(*pw));
-        DBGI(printf("new leaf node pw %p\n", pw));
-        set_wr_nType(pw, Leaf);
-        set_wr_wKey(pw, wKey);
+        return Success;
     }
 
-    DBGI(printf("installing pw %p pwRoot %p\n", pw, pwRoot));
-    *pwRoot = (Word_t)pw; // install
+    if (wRoot == 0)
+    {
+        // allocate new list List and init pop count in the first word
+        pwList = NewList(/* nKeys */ 1);
+        pwKeys = ls_pwKeys(pwList); // get a pointer to the keys
+        pwKeys[0] = wKey;
+        set_wr(*pwRoot, /* pwr */ pwList, /* nType */ List); // install new list
+
+        return Success;
+    }
+
+    pwList = wr_pwr(wRoot); // pointer to old List
+    wPopCnt = ls_wPopCnt(pwList); // population count of old List
+    pwKeys = ls_pwKeys(pwList); // list of keys in old List
+
+    DBGI(printf("pwList %p wPopCnt "OWx" pwKeys %p\n",
+        pwList, wPopCnt, pwKeys));
+
+    if ((wPopCnt < cwListPopCntMax) || (nBitsLeft == cnBitsAtBottom))
+    {
+        // allocate space for bigger list and init pop count
+        Word_t *pwListNew = NewList( /* nKeys */ wPopCnt + 1);
+        Word_t *pwKeysNew = ls_pwKeys(pwListNew);
+        pwKeys = ls_pwKeys(pwList); // keys in old list
+        COPY(pwKeysNew, pwKeys, wPopCnt); // copy keys
+        pwKeysNew[wPopCnt] = wKey; // add new key to end
+        set_wr(*pwRoot, /* pwr */ pwListNew, /* type */ List); // install list
+        OldList(pwList); // free old list
+
+        return Success;
+    }
+
+    // List is full; insert a switch
+
+    pSw = NewSwitch(wKey, nBitsLeft);
+    set_wr_pwr(wRoot, (Word_t *)pSw);
+    set_wr_nBitsLeft(wRoot, nBitsLeft);
+    assert(wr_bIsSwitch(wRoot));
+    set_sw_wPrefix(pSw, wKey & ~((EXP(nBitsLeft - 1) << 1) - 1));
+    DBGI(printf("wPrefix "OWx"\n", sw_wPrefix(pSw)));
+
+    for (w = 0; w < wPopCnt; w++)
+    {
+        Insert(&wRoot, pwKeys[w], wState);
+    }
+
+    Insert(&wRoot, wKey, wState);
+
+    *pwRoot = wRoot; // install new
+    OldList(pwList); // free old
 
     return Success;
 }
 
+static Status_t Remove(Word_t *pwRoot, Word_t wKey, Word_t wStatus);
+
+static Status_t
+RemoveGuts(Word_t *pwRoot, Word_t wKey, Word_t wState, Word_t wRoot)
+{
+    assert(0);
+
+    return Failure;
+}
+
+#define LOOKUP
+#include "bli.c"
+#undef LOOKUP
 #define INSERT
 #include "bli.c"
 #undef INSERT
+#define REMOVE
 #include "bli.c"
+#undef REMOVE
 
 // ****************************************************************************
 // JUDY1 FUNCTIONS:
@@ -272,7 +438,7 @@ InsertAt(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
 int // Status_t
 Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, P_JE)
 {
-    return Lookup((Word_t)pcvRoot, wKey, cnBitsPerWord);
+    return Lookup((Word_t)pcvRoot, wKey, /* wState */ cnBitsPerWord);
 }
 
 int // Status_t
@@ -282,10 +448,10 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     pwRootLast = (Word_t *)ppvRoot;
 
-    status = Insert((Word_t *)ppvRoot, wKey, cnBitsPerWord);
+    status = Insert((Word_t *)ppvRoot, wKey, /* wState */ cnBitsPerWord);
 
 #if defined(DEBUG_INSERT)
-    printf("\n# After Insert(wKey "Owx")\n", wKey);
+    printf("\n# After Insert(wKey "OWx")\n", wKey);
     Dump((Word_t)*ppvRoot, 0, cnBitsPerWord);
     printf("\n");
 #endif // defined(DEBUG_INSERT)
@@ -293,12 +459,17 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     return status;
 }
 
+int
+Judy1Unset( PPvoid_t ppvRoot, Word_t wKey, P_JE)
+{
+    printf("Judy1Unset\n");
+
+    return Remove((Word_t *)ppvRoot, wKey, /* wState */ cnBitsPerWord);
+}
+
 int Judy1SetArray(PPvoid_t PPArray,
     Word_t Count, const Word_t * const PIndex, P_JE)
 { printf("n/a\n"); exit(1); }
-
-int Judy1Unset( PPvoid_t PPArray, Word_t Index, P_JE)
-{ printf("n/a\n"); exit(2); }
 
 Word_t Judy1Count(Pcvoid_t PArray, Word_t Index1, Word_t Index2, P_JE)
 { printf("\nJudy1Count\n\n"); exit(0); }
