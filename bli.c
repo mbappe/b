@@ -79,9 +79,10 @@ again:
                 set_ws_bNeedPrefixCheck(wState, /* bNeedPrefixCheck */ 1);
             }
 #endif // defined(LOOKUP)
+
 #if defined(INSERT) || defined(REMOVE)
             if ((nBitsLeftRoot != nBitsLeftState)
-                && (pwr_wPrefix(pwr) != (wKey & (EXP(nBitsLeftRoot) - 1))))
+                && (pwr_wPrefix(pwr) != (wKey & ~(EXP(nBitsLeftRoot) - 1))))
             {
                 DBG(printf("prefix mismatch wPrefix "Owx"\n",
                     pwr_wPrefix(pwr)));
@@ -124,6 +125,8 @@ again:
                     || (pwr_wPrefix(pwr)
                             == (wKey & ~(EXP(nBitsLeftRoot) - 1))))
                 {
+                    set_ws_bNeedPrefixCheck(wState, /* bNeedPrefixCheck */ 0);
+
                     goto again;
                 }
             }
