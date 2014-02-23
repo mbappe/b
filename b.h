@@ -66,6 +66,7 @@
 #define Owx   "%016llx"
 #define OWx "0x%016llx"
 #define wx "%llx"
+#define wd "%lld"
 #else // defined(_WIN64)
 //typedef unsigned long Word_t;
 #define EXP(_x)  (1L << (_x))
@@ -77,6 +78,7 @@
 #define OWx "0x%08lx"
 #endif // defined(__LP64__)
 #define wx "%lx"
+#define wd "%ld"
 #endif // defined(_WIN64)
 
 #define LOG(x)  ((Word_t)64 - 1 - __builtin_clzll(x))
