@@ -93,7 +93,8 @@ const int cnLogBytesPerWord = 2;
 #define MASK(_x)  ((_x) - 1)
 
 const int cnBytesPerWord = EXP(cnLogBytesPerWord);
-const int cnBitsPerWord = EXP(cnLogBytesPerWord + cnLogBitsPerByte);
+const int cnLogBitsPerWord = cnLogBytesPerWord + cnLogBitsPerByte;
+const int cnBitsPerWord = EXP(cnLogBitsPerWord);
 const int cnMallocMask = ((cnBytesPerWord * 2) - 1);
 
 typedef enum { Failure = 0, Success = 1 } Status_t;
