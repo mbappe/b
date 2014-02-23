@@ -68,8 +68,8 @@ again:
         // !! there is no "else" here in the LOOKUP case !!
 #else // defined(LOOKUP)
         if ((nDigitsLeftRoot < nDigitsLeft)
-            && (pwr_wPrefix(pwr)
-                != (wKey & ~(EXP(nDigitsLeftRoot * cnBitsPerDigit) - 1))))
+            && (LOG(pwr_wPrefix(pwr) ^ wKey)
+                < (nDigitsLeftRoot * cnBitsPerDigit)))
         {
             DBGX(printf("Prefix mismatch wPrefix "Owx"\n", pwr_wPrefix(pwr)));
         }
