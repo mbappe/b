@@ -168,10 +168,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 {
     int nDigitsLeftRoot;
     Word_t *pwr;
-    Word_t wPopCnt;
-    Word_t *pwKeys;
     Switch_t *pSw;
-    int w;
 
     DBGI(printf("InsertGuts pwRoot %p ", pwRoot));
     DBGI(printf(" wRoot "OWx" wKey "OWx" nDigitsLeft %d\n",
@@ -191,6 +188,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 
     if ( ! wr_bIsSwitchDL(wRoot, nDigitsLeftRoot))
     {
+        Word_t wPopCnt;
+        Word_t *pwKeys;
+
         if (pwr != NULL) // pointer to old List
         {
             wPopCnt = ls_wPopCnt(pwr);
@@ -198,7 +198,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
         }
         else
         {
-            wPopCnt = 0; // make compiler happy about uninitialized variable
+            wPopCnt = 0;
             pwKeys = NULL; // make compiler happy about uninitialized variable
         }
 
@@ -208,23 +208,19 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
             Word_t *pwList = NewList(wPopCnt + 1);
 
             if (wPopCnt != 0)
-            {
 #if defined(SORT_LISTS)
-                CopyWithInsert(ls_pwKeys(pwList),
-                    ls_pwKeys(pwr), wPopCnt, wKey);
-            }
-            else
-            {
+            { CopyWithInsert(ls_pwKeys(pwList), pwKeys, wPopCnt, wKey); } else
 #else // defined(SORT_LISTS)
-                COPY(ls_pwKeys(pwList), ls_pwKeys(pwr), wPopCnt);
+            { COPY(ls_pwKeys(pwList), pwKeys, wPopCnt); }
 #endif // defined(SORT_LISTS)
-                ls_pwKeys(pwList)[wPopCnt] = wKey;
-            }
+            { ls_pwKeys(pwList)[wPopCnt] = wKey; }
 
             set_wr(wRoot, pwList, List);
         }
         else
         {
+            int w;
+
             // List is full; insert a switch
 
 #if defined(SKIP_LINKS)
