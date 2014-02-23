@@ -102,7 +102,7 @@ again:
 #if defined(LOOKUP)
             if (( ! bNeedPrefixCheck )
                 || (LOG(pwr_wPrefix(pwr) ^ wKey)
-                    < cnBitsAtBottom + nBitsIndexSz))
+                    < (cnBitsAtBottom + nBitsIndexSz)))
 #endif // defined(LOOKUP)
             {
                 assert(cnBitsAtBottom <= cnLogBitsPerWord);
