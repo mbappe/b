@@ -40,6 +40,7 @@
 
 #if defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || defined(DEBUG_MALLOC)
 #define DBG(x)  (x)
+#define DEBUG
 #else // defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || ...
 #define DBG(x)
 #endif // defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || ...
@@ -103,9 +104,10 @@ const int cnDigitsAtBottom = 2;
 const int cnBitsPerDigit = 5;
 const int cnBitsAtBottom = 5;
 
+// Bus error at 912010843 with 255, 256 or 1024.
+// None with 128, 192.
 //const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
-//const Word_t cwListPopCntMax = 1024; // bug at pop near 1M
-const Word_t cwListPopCntMax = 1;
+const Word_t cwListPopCntMax = 192;
 
 typedef struct {
     Word_t sw_awRoots[EXP(cnBitsPerDigit)];
@@ -156,40 +158,30 @@ typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
 #define     ls_pwKeys(_ls)    (&(_ls)[1])
 #define     pwr_pwKeys(_pwr)  (ls_pwKeys(_pwr))
 
-#define     ws_nBitsLeft(_ws)          ((_ws) & 0x7f)
-#define set_ws_nBitsLeft(_ws, _nBL)    ((_ws) = ((_ws) & ~0x7f) | (_nBL))
-
-#define     ws_bNeedPrefixCheck(_ws)      ((_ws) & 0x80)
-#define set_ws_bNeedPrefixCheck(_ws, _b)  ((_ws) = ((_ws) & ~0x80) | (_b))
-
 #define     wr_bIsSwitch(_wr)          (wr_nType(_wr) != List)
 #define     wr_bIsSwitchBL(_wr, _nBL)  ((_nBL) = wr_nBitsLeft(_wr))
-
-static Word_t *pwRootLast;
 
 #define BitMapByteNum(_key)  ((_key) >> cnLogBitsPerByte)
 
 #define BitMapByteMask(_key)  (1 << ((_key) % cnBitsPerByte))
 
-#define BitTest(_pBitMap, _key) \
+#define TestBit(_pBitMap, _key) \
     ((((char *)(_pBitMap))[BitMapByteNum(_key)] & BitMapByteMask(_key)) \
         != 0)
 
-#define BitIsSet(_pBitMap, _key)  BitTest((_pBitMap), (_key))
+#define BitIsSet  TestBit
 
 #define SetBit(_pBitMap, _key) \
     (((char *)(_pBitMap))[BitMapByteNum(_key)] |= BitMapByteMask(_key))
 
 #define BitTestAndSet(_pBitMap, _key, _bSet) \
-    (((_bSet) = BitTest((_pBitMap), (_key))), \
+    (((_bSet) = TestBit((_pBitMap), (_key))), \
         BitSet((_pBitMap), (_key)), (_bSet))
 
 #if defined(DEBUG)
 void
-Dump(Word_t wRoot, Word_t wPrefix, Word_t wState)
+Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
 {
-    int nBitsLeftState = ws_nBitsLeft(wState);
-    int nBitsLeft;
     Word_t *pwr;
     int nBitsIndexSz;
     Word_t *pwRoots;
@@ -202,13 +194,13 @@ Dump(Word_t wRoot, Word_t wPrefix, Word_t wState)
         return;
     }
 
-    printf(" nBitsLeft %2d", nBitsLeftState);
+    printf(" nBitsLeft %2d", nBitsLeft);
     // should enhance this to check for zeros in suffix and to print
     // dots for suffix.
     printf(" wPrefix "OWx, wPrefix);
     printf(" wr "OWx, wRoot);
 
-    if (nBitsLeftState <= cnBitsAtBottom)
+    if (nBitsLeft <= cnBitsAtBottom)
     {
         printf("\n");
 
@@ -246,7 +238,11 @@ Dump(Word_t wRoot, Word_t wPrefix, Word_t wState)
 
     nBitsLeft -= nBitsIndexSz;
     // In case nBitsLeftState is not an integral number of digits.
-    nBitsLeft = (nBitsLeft + nBitsIndexSz - 1) / nBitsIndexSz * nBitsIndexSz;
+    if (cnBitsPerWord % cnBitsPerDigit != 0)
+    {
+        nBitsLeft = (nBitsLeft + nBitsIndexSz - 1)
+            / nBitsIndexSz * nBitsIndexSz;
+    }
 
     for (i = 0; i < EXP(nBitsIndexSz); i++)
     {
@@ -255,7 +251,8 @@ Dump(Word_t wRoot, Word_t wPrefix, Word_t wState)
 }
 #endif // defined(DEBUG)
 
-static Status_t Insert(Word_t *pwRoot, Word_t wKey, Word_t wStatus);
+static Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBitsLeft);
+static Status_t Remove(Word_t *pwRoot, Word_t wKey, int nBitsLeft);
 
 INLINE Word_t *
 NewList(Word_t wPopCnt)
@@ -301,9 +298,8 @@ OldSwitch(Switch_t *pSw)
 #endif
 
 static Status_t
-InsertGuts(Word_t *pwRoot, Word_t wKey, Word_t wState, Word_t wRoot)
+InsertGuts(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
 {
-    int nBitsLeft = ws_nBitsLeft(wState);
     Word_t *pwList;
     Word_t wPopCnt;
     Word_t *pwKeys;
@@ -311,12 +307,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, Word_t wState, Word_t wRoot)
     int w;
 
     DBGI(printf("InsertGuts pwRoot %p ", pwRoot));
-    DBGI(printf(" wRoot "OWx" wKey "OWx" wState "OWx"\n",
-            wRoot, wKey, wState));
+    DBGI(printf(" wRoot "OWx" wKey "OWx" nBitsLeft %d\n",
+            wRoot, wKey, nBitsLeft));
 
     if (nBitsLeft <= cnBitsAtBottom)
     {
-        assert( ! ws_bNeedPrefixCheck(wState) );
         assert( ! BitIsSet(pwRoot, wKey & (EXP(nBitsLeft) - 1)) );
 
         SetBit(pwRoot, wKey & (EXP(nBitsLeft) - 1));
@@ -356,10 +351,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, Word_t wState, Word_t wRoot)
 
         for (w = 0; w < wPopCnt; w++)
         {
-            Insert(&wRoot, pwKeys[w], wState);
+            Insert(&wRoot, pwKeys[w], nBitsLeft);
         }
 
-        Insert(&wRoot, wKey, wState);
+        Insert(&wRoot, wKey, nBitsLeft);
 
         *pwRoot = wRoot; // install new
     }
@@ -369,10 +364,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, Word_t wState, Word_t wRoot)
     return Success;
 }
 
-static Status_t Remove(Word_t *pwRoot, Word_t wKey, Word_t wStatus);
-
 static Status_t
-RemoveGuts(Word_t *pwRoot, Word_t wKey, Word_t wState, Word_t wRoot)
+RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
 {
     assert(0);
 
@@ -395,21 +388,17 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, Word_t wState, Word_t wRoot)
 int // Status_t
 Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, P_JE)
 {
-    return Lookup((Word_t)pcvRoot, wKey, /* wState */ cnBitsPerWord);
+    return Lookup((Word_t)pcvRoot, wKey);
 }
 
 int // Status_t
 Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 {
-    int status;
-
-    pwRootLast = (Word_t *)ppvRoot;
-
-    status = Insert((Word_t *)ppvRoot, wKey, /* wState */ cnBitsPerWord);
+    int status = Insert((Word_t *)ppvRoot, wKey, cnBitsPerWord);
 
 #if defined(DEBUG_INSERT)
-    printf("\n# After Insert(wKey "OWx")\n", wKey);
-    Dump((Word_t)*ppvRoot, 0, cnBitsPerWord);
+    printf("\n# After Insert(wKey "OWx") Dump\n", wKey);
+    Dump((Word_t)*ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord);
     printf("\n");
 #endif // defined(DEBUG_INSERT)
 
@@ -419,9 +408,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 int
 Judy1Unset( PPvoid_t ppvRoot, Word_t wKey, P_JE)
 {
-    printf("Judy1Unset\n");
-
-    return Remove((Word_t *)ppvRoot, wKey, /* wState */ cnBitsPerWord);
+    return Remove((Word_t *)ppvRoot, wKey, cnBitsPerWord);
 }
 
 int Judy1SetArray(PPvoid_t PPArray,
