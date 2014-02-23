@@ -206,15 +206,20 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
         {
             // allocate a new list and init pop count in the first word
             Word_t *pwList = NewList(wPopCnt + 1);
-            Word_t *pwKeysNew = ls_pwKeys(pwList); // pointer to the keys
 
+            if (wPopCnt != 0)
+            {
 #if defined(SORT_LISTS)
-            if (wPopCnt != 0) CopyWithInsert(pwKeysNew, pwKeys, wPopCnt, wKey);
-            else pwKeysNew[0] = wKey;
+                CopyWithInsert(ls_pwKeys(pwList),
+                    ls_pwKeys(pwr), wPopCnt, wKey);
+            }
+            else
+            {
 #else // defined(SORT_LISTS)
-            if (wPopCnt != 0) COPY(pwKeysNew, pwKeys, wPopCnt); // copy keys
-            pwKeysNew[wPopCnt] = wKey; // append the key
+                COPY(ls_pwKeys(pwList), ls_pwKeys(pwr), wPopCnt);
 #endif // defined(SORT_LISTS)
+                ls_pwKeys(pwList)[wPopCnt] = wKey;
+            }
 
             set_wr(wRoot, pwList, List);
         }
