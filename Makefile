@@ -1,12 +1,14 @@
 
 CC = cc
 
+#M = -m64
 M = -m32
-//M = -m64
-CFLAGS = $(M) -g -O2 -Wall -Werror
 
-DEFINES += -DJUDYB -DNDEBUG
-#DEFINES += -DJUDYB -DGUARDBAND
+CFLAGS = $(M) -g -O2 -Wall -Werror
+#CFLAGS = $(M) -O2 -Wall -Werror
+
+#DEFINES += -DJUDYB -DNDEBUG
+DEFINES += -DJUDYB -DGUARDBAND
 
 DLMALLOC = dlmalloc.o
 
