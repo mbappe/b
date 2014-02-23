@@ -168,7 +168,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 {
     int nDigitsLeftRoot;
     Word_t *pwr;
-    Word_t *pwList;
     Word_t wPopCnt;
     Word_t *pwKeys;
     Switch_t *pSw;
@@ -192,22 +191,22 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 
     if ( ! wr_bIsSwitchDL(wRoot, nDigitsLeftRoot))
     {
-        if ((pwList = pwr) != NULL) // pointer to old List
+        if (pwr != NULL) // pointer to old List
         {
-            wPopCnt = ls_wPopCnt(pwList);
-            pwKeys = ls_pwKeys(pwList); // list of keys in old List
+            wPopCnt = ls_wPopCnt(pwr);
+            pwKeys = ls_pwKeys(pwr); // list of keys in old List
         }
         else
         {
-             wPopCnt = 0; // make compiler happy about uninitialized variable
-             pwKeys = NULL; // make compiler happy about uninitialized variable
+            wPopCnt = 0; // make compiler happy about uninitialized variable
+            pwKeys = NULL; // make compiler happy about uninitialized variable
         }
 
         if (wPopCnt < cwListPopCntMax)
         {
             // allocate a new list and init pop count in the first word
-            Word_t *pwListNew = NewList(wPopCnt + 1);
-            Word_t *pwKeysNew = ls_pwKeys(pwListNew); // pointer to the keys
+            Word_t *pwList = NewList(wPopCnt + 1);
+            Word_t *pwKeysNew = ls_pwKeys(pwList); // pointer to the keys
 
 #if defined(SORT_LISTS)
             if (wPopCnt != 0) CopyWithInsert(pwKeysNew, pwKeys, wPopCnt, wKey);
@@ -217,7 +216,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
             pwKeysNew[wPopCnt] = wKey; // append the key
 #endif // defined(SORT_LISTS)
 
-            set_wr(wRoot, pwListNew, List);
+            set_wr(wRoot, pwList, List);
         }
         else
         {
@@ -246,7 +245,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
             Insert(&wRoot, wKey, nDigitsLeft);
         }
 
-        if (wPopCnt != 0) OldList(pwList); // free old
+        if (wPopCnt != 0) OldList(pwr); // free old
     }
     else
     {
