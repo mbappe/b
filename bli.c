@@ -69,7 +69,7 @@ again:
 #else // defined(LOOKUP)
         if ((nDigitsLeftRoot < nDigitsLeft)
             && (LOG(pwr_wPrefix(pwr) ^ wKey)
-                < (nDigitsLeftRoot * cnBitsPerDigit)))
+                >= (nDigitsLeftRoot * cnBitsPerDigit)))
         {
             DBGX(printf("Prefix mismatch wPrefix "Owx"\n", pwr_wPrefix(pwr)));
         }
@@ -99,7 +99,7 @@ again:
 
 #if defined(LOOKUP)
             if (( ! bNeedPrefixCheck )
-                || (pwr_wPrefix(pwr) == (wKey & ~(EXP(cnBitsAtBottom) - 1))))
+                || (LOG(pwr_wPrefix(pwr) ^ wKey) < cnBitsAtBottom))
 #endif // defined(LOOKUP)
             {
                 assert(cnBitsAtBottom <= cnBitsPerWord);
