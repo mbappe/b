@@ -167,6 +167,7 @@ static Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 {
     int nDigitsLeftRoot;
+    Word_t *pwr;
     Word_t *pwList;
     Word_t wPopCnt;
     Word_t *pwKeys;
@@ -187,9 +188,68 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
         return Success;
     }
 
-    if (wr_bIsSwitchDL(wRoot, nDigitsLeftRoot))
+    pwr = wr_pwr(wRoot);
+
+    if ( ! wr_bIsSwitchDL(wRoot, nDigitsLeftRoot))
     {
-        Word_t *pwr = wr_pwr(wRoot);
+        if ((pwList = pwr) != NULL) // pointer to old List
+        {
+            wPopCnt = ls_wPopCnt(pwList);
+            pwKeys = ls_pwKeys(pwList); // list of keys in old List
+        }
+        else
+        {
+             wPopCnt = 0; // make compiler happy about uninitialized variable
+             pwKeys = NULL; // make compiler happy about uninitialized variable
+        }
+
+        if (wPopCnt < cwListPopCntMax)
+        {
+            // allocate a new list and init pop count in the first word
+            Word_t *pwListNew = NewList(wPopCnt + 1);
+            Word_t *pwKeysNew = ls_pwKeys(pwListNew); // pointer to the keys
+
+#if defined(SORT_LISTS)
+            if (wPopCnt != 0) CopyWithInsert(pwKeysNew, pwKeys, wPopCnt, wKey);
+            else pwKeysNew[0] = wKey;
+#else // defined(SORT_LISTS)
+            if (wPopCnt != 0) COPY(pwKeysNew, pwKeys, wPopCnt); // copy keys
+            pwKeysNew[wPopCnt] = wKey; // append the key
+#endif // defined(SORT_LISTS)
+
+            set_wr(wRoot, pwListNew, List);
+        }
+        else
+        {
+            // List is full; insert a switch
+
+#if defined(SKIP_LINKS)
+#if defined(SORT_LISTS)
+            nDigitsLeft
+                = LOG((wKey ^ pwKeys[0]) | (wKey ^ pwKeys[wPopCnt - 1]))
+                    / cnBitsPerDigit + 1;
+#else // defined(SORT_LISTS)
+            assert(0); // later
+#endif // defined(SORT_LISTS)
+#endif // defined(SKIP_LINKS)
+
+            pSw = NewSwitch(wKey);
+            set_wr_pwr(wRoot, (Word_t *)pSw);
+            set_wr_nDigitsLeft(wRoot, nDigitsLeft);
+            set_sw_wPrefix(pSw, wKey);
+
+            for (w = 0; w < wPopCnt; w++)
+            {
+                Insert(&wRoot, pwKeys[w], nDigitsLeft);
+            }
+
+            Insert(&wRoot, wKey, nDigitsLeft);
+        }
+
+        if (wPopCnt != 0) OldList(pwList); // free old
+    }
+    else
+    {
         int nBitsLeft;
 
         assert(nDigitsLeftRoot < nDigitsLeft);
@@ -208,68 +268,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
         set_wr_nDigitsLeft(wRoot, nDigitsLeft);
         set_sw_wPrefix(pSw, wKey);
         Insert(&wRoot, wKey, nDigitsLeft);
-        *pwRoot = wRoot; // install new
-    }
-    else
-    {
-    if ((pwList = wr_pwr(wRoot)) != NULL) // pointer to old List
-    {
-        wPopCnt = ls_wPopCnt(pwList);
-        pwKeys = ls_pwKeys(pwList); // list of keys in old List
-    }
-    else
-    {
-         wPopCnt = 0; // make compiler happy about uninitialized variable
-         pwKeys = NULL; // make compiler happy about uninitialized variable
     }
 
-    if (wPopCnt < cwListPopCntMax)
-    {
-        // allocate a new list and init pop count in the first word
-        Word_t *pwListNew = NewList(wPopCnt + 1);
-        Word_t *pwKeysNew = ls_pwKeys(pwListNew); // pointer to the keys
-
-#if defined(SORT_LISTS)
-        if (wPopCnt != 0) CopyWithInsert(pwKeysNew, pwKeys, wPopCnt, wKey);
-        else pwKeysNew[0] = wKey;
-#else // defined(SORT_LISTS)
-        if (wPopCnt != 0) COPY(pwKeysNew, pwKeys, wPopCnt); // copy keys
-        pwKeysNew[wPopCnt] = wKey; // append the key
-#endif // defined(SORT_LISTS)
-
-        set_wr(*pwRoot, pwListNew, List); // install new list
-    }
-    else
-    {
-        // List is full; insert a switch
-
-#if defined(SKIP_LINKS)
-#if defined(SORT_LISTS)
-        nDigitsLeft
-            = LOG((wKey ^ pwKeys[0]) | (wKey ^ pwKeys[wPopCnt - 1]))
-                / cnBitsPerDigit + 1;
-#else // defined(SORT_LISTS)
-        assert(0); // later
-#endif // defined(SORT_LISTS)
-#endif // defined(SKIP_LINKS)
-
-        pSw = NewSwitch(wKey);
-        set_wr_pwr(wRoot, (Word_t *)pSw);
-        set_wr_nDigitsLeft(wRoot, nDigitsLeft);
-        set_sw_wPrefix(pSw, wKey);
-
-        for (w = 0; w < wPopCnt; w++)
-        {
-            Insert(&wRoot, pwKeys[w], nDigitsLeft);
-        }
-
-        Insert(&wRoot, wKey, nDigitsLeft);
-
-        *pwRoot = wRoot; // install new
-    }
-
-    if (wPopCnt != 0) OldList(pwList); // free old
-    }
+    *pwRoot = wRoot; // install new
 
     return Success;
 }
