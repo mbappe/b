@@ -233,8 +233,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 #endif // defined(SKIP_LINKS)
 
             pSw = NewSwitch(wKey);
-            set_wr_pwr(wRoot, (Word_t *)pSw);
-            set_wr_nDigitsLeft(wRoot, nDigitsLeft);
+
+            set_wr(wRoot, (Word_t *)pSw, nDigitsLeft);
 
             for (w = 0; w < wPopCnt; w++)
             {
@@ -255,14 +255,15 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
         nDigitsLeft = LOG(pwr_wKey(pwr) ^ wKey) / cnBitsPerDigit + 1;
 
         pSw = NewSwitch(wKey);
+
         // copy old link to new switch
         // todo nBitsIndexSz; wide switch
         assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
         pSw->sw_awRoots
             [(pwr_wKey(pwr) >> ((nDigitsLeft - 1) * cnBitsPerDigit))
                 & (EXP(cnBitsPerDigit) - 1)] = wRoot;
-        set_wr_pwr(wRoot, (Word_t *)pSw);
-        set_wr_nDigitsLeft(wRoot, nDigitsLeft);
+
+        set_wr(wRoot, (Word_t *)pSw, nDigitsLeft);
 
         Insert(&wRoot, wKey, nDigitsLeft);
     }
