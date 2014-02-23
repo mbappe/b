@@ -102,7 +102,8 @@ again:
                 || (pwr_wPrefix(pwr) == (wKey & ~(EXP(cnBitsAtBottom) - 1))))
 #endif // defined(LOOKUP)
             {
-                if (BitIsSet(pwRoot, wKey & (EXP(cnBitsAtBottom) - 1)))
+                assert(cnBitsAtBottom <= cnBitsPerWord);
+                if (BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)))
                 {
                     return KeyFound;
                 }
