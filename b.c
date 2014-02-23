@@ -127,10 +127,46 @@ OldSwitch(Switch_t *pSw)
 }
 #endif
 
+#if defined(SORT_LISTS)
+// CopyWithInsert can handle pTgt == pSrc, but cannot handle any other
+// overlapping buffer scenarios.
+INLINE void
+CopyWithInsert(Word_t *pTgt, Word_t *pSrc, int nWords, Word_t wKey)
+{
+    Word_t aw[cwListPopCntMax]; // buffer for move if pSrc == pTgt
+    int i;
+
+    // find the insertion point
+    for (i = 0; i < nWords; i++)
+    {
+        if (pSrc[i] >= wKey)
+        {
+            assert(pSrc[i] != wKey);
+            break;
+        }
+    }
+
+    if (pTgt != pSrc)
+    {
+        COPY(pTgt, pSrc, i); // copy the head
+    }
+    else
+    {
+        COPY(&aw[i], &pSrc[i], nWords - i); // save the tail
+        pSrc = aw;
+    }
+
+    pTgt[i] = wKey; // insert the key
+
+    COPY(&pTgt[i+1], &pSrc[i], nWords - i); // copy the tail
+}
+#endif // defined(SORT_LISTS)
+
 static Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 {
     int nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+    int nDigitsLeftRoot;
     Word_t *pwList;
     Word_t wPopCnt;
     Word_t *pwKeys;
@@ -143,7 +179,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 
     if (nDigitsLeft <= cnDigitsAtBottom)
     {
-        assert(cnBitsAtBottom <= cnBitsPerWord);
+        assert(cnBitsAtBottom <= cnLogBitsPerWord);
         assert( ! BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)) );
 
         SetBitInWord(*pwRoot, wKey & (EXP(cnBitsAtBottom) - 1));
@@ -151,6 +187,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
         return Success;
     }
 
+    if (wr_bIsSwitchDL(wRoot, nDigitsLeftRoot))
+    {
+        assert(nDigitsLeftRoot < nDigitsLeft);
+        assert(0); // later
+        // prefix mismatch
+    }
+    else
+    {
     if ((pwList = wr_pwr(wRoot)) != NULL) // pointer to old List
     {
         wPopCnt = ls_wPopCnt(pwList);
@@ -168,8 +212,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
         Word_t *pwListNew = NewList(wPopCnt + 1);
         Word_t *pwKeysNew = ls_pwKeys(pwListNew); // pointer to the keys
 
+#if defined(SORT_LISTS)
+        if (wPopCnt != 0) CopyWithInsert(pwKeysNew, pwKeys, wPopCnt, wKey);
+        else pwKeysNew[0] = wKey;
+#else // defined(SORT_LISTS)
         if (wPopCnt != 0) COPY(pwKeysNew, pwKeys, wPopCnt); // copy keys
         pwKeysNew[wPopCnt] = wKey; // append the key
+#endif // defined(SORT_LISTS)
+
         set_wr(*pwRoot, pwListNew, List); // install new list
     }
     else
@@ -193,6 +243,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
     }
 
     if (wPopCnt != 0) OldList(pwList); // free old
+    }
 
     return Success;
 }
