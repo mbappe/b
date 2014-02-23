@@ -116,9 +116,6 @@ again:
 
             DBGX(printf("Prefix mismatch at bitmap wPrefix "OWx"\n",
               pwr_wPrefix(pwr) & ~(EXP(cnBitsAtBottom + nBitsIndexSz) - 1)));
-            DBGX(printf("xor "OWx"\n", pwr_wPrefix(pwr) ^ wKey));
-            DBGX(printf("log "wd"\n", LOG(pwr_wPrefix(pwr) ^ wKey)));
-            DBGX(printf("&pwr_wPrefix %p\n", &pwr_wPrefix(pwr)));
         }
     }
     else if (wRoot != 0)
