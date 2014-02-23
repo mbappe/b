@@ -59,6 +59,7 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
     // Switch
 
     wPrefix = pwr_wPrefix(pwr);
+    wPrefix &= ~(EXP(nBitsLeft) - 1);
     nBitsIndexSz = pwr_nBitsIndexSz(pwr);
     pwRoots = pwr_pwRoots(pwr);
 
@@ -165,7 +166,7 @@ CopyWithInsert(Word_t *pTgt, Word_t *pSrc, int nWords, Word_t wKey)
 static Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 {
-    int nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+    //int nBitsLeft = nDigitsLeft * cnBitsPerDigit;
     int nDigitsLeftRoot;
     Word_t *pwList;
     Word_t wPopCnt;
@@ -192,6 +193,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
         assert(nDigitsLeftRoot < nDigitsLeft);
         assert(0); // later
         // prefix mismatch
+#if 0
+        // figure new nDigitsLeft for old link
+        nDigitsLeftNew
+                    = LOG(LN_KEY(pLn) ^ (key & KEY_MASK(nBitsLeft))) / BITSPD
+                        + 1;
+#endif
     }
     else
     {
@@ -226,11 +233,20 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
     {
         // List is full; insert a switch
 
+#if defined(SKIP_LINKS)
+#if defined(SORT_LISTS)
+        int nDigitsLeft
+            = LOG((wKey ^ pwKeys[0]) | (wKey ^ pwKeys[wPopCnt - 1]))
+                / cnBitsPerDigit + 1;
+#else // defined(SORT_LISTS)
+        assert(0); // later
+#endif // defined(SORT_LISTS)
+#endif // defined(SKIP_LINKS)
+
         pSw = NewSwitch(wKey);
         set_wr_pwr(wRoot, (Word_t *)pSw);
         set_wr_nDigitsLeft(wRoot, nDigitsLeft);
-        set_sw_wPrefix(pSw,
-           wKey & ~(((nBitsLeft >= cnBitsPerWord) ? 0 : EXP(nBitsLeft)) - 1));
+        set_sw_wPrefix(pSw, wKey);
 
         for (w = 0; w < wPopCnt; w++)
         {
