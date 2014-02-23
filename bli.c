@@ -16,7 +16,7 @@
 #define InsertGuts  RemoveGuts
 #endif // defined(REMOVE)
 #else // defined(LOOKUP) || defined(REMOVE)
-#define KeyFound  (Failure)
+#define KeyFound  (assert(0), Failure)
 #define strLookupOrInsertOrRemove  "Insert"
 #define DBGX  DBGI
 #endif // defined(LOOKUP) || defined(REMOVE)
