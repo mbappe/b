@@ -148,9 +148,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 
     if (nDigitsLeft <= cnDigitsAtBottom)
     {
-        assert( ! BitIsSet(pwRoot, wKey & (EXP(nBitsLeft) - 1)) );
+        assert(cnBitsAtBottom <= cnBitsPerWord);
+        assert( ! BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)) );
 
-        SetBit(pwRoot, wKey & (EXP(nBitsLeft) - 1));
+        SetBitInWord(*pwRoot, wKey & (EXP(cnBitsAtBottom) - 1));
 
         return Success;
     }
