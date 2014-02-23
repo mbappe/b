@@ -91,6 +91,8 @@ again:
             pwRoot = &pwr_pwRoots(pwr)[nIndex];
             wRoot = *pwRoot;
 
+            DBGX(printf("pwRoot %p wRoot "OWx"\n", pwRoot wRoot));
+
             if (nDigitsLeft > cnDigitsAtBottom) goto again;
 
             // We have to do the prefix check here if we're at the
@@ -99,7 +101,8 @@ again:
 
 #if defined(LOOKUP)
             if (( ! bNeedPrefixCheck )
-                || (LOG(pwr_wPrefix(pwr) ^ wKey) < cnBitsAtBottom))
+                || (LOG(pwr_wPrefix(pwr) ^ wKey)
+                    < cnBitsAtBottom + nBitsIndexSz))
 #endif // defined(LOOKUP)
             {
                 assert(cnBitsAtBottom <= cnLogBitsPerWord);
@@ -107,7 +110,15 @@ again:
                 {
                     return KeyFound;
                 }
+
+                DBGX(printf("Bit is not set.\n"));
             }
+
+            DBGX(printf("Prefix mismatch at bitmap wPrefix "OWx"\n",
+              pwr_wPrefix(pwr) & ~(EXP(cnBitsAtBottom + nBitsIndexSz) - 1)));
+            DBGX(printf("xor "OWx"\n", pwr_wPrefix(pwr) ^ wKey));
+            DBGX(printf("log "wd"\n", LOG(pwr_wPrefix(pwr) ^ wKey)));
+            DBGX(printf("&pwr_wPrefix %p\n", &pwr_wPrefix(pwr)));
         }
     }
     else if (wRoot != 0)
