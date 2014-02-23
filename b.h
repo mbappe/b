@@ -141,9 +141,12 @@ typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
 
 #define     pwr_pwRoots(_pwr)  (((Switch_t *)(_pwr))->sw_awRoots)
 
-#define     ls_wPopCnt(_ls)          ((_ls)[0] & (Word_t)-1)
-#define set_ls_wPopCnt(_ls, _cnt) \
-    ((_ls)[0] = ((_ls)[0] & ~(Word_t)-1) | (_cnt))
+// These assume List == 0.
+#define     wr_wPopCnt(_wr)   (((Word_t *)(_wr))[0])
+#define     wr_pwKeys(_wr)   (&((Word_t *)(_wr))[1])
+
+#define     ls_wPopCnt(_ls)        ((_ls)[0])
+#define set_ls_wPopCnt(_ls, _cnt)  ((_ls)[0] = (_cnt))
 
 #define     pwr_wPopCnt      ls_wPopCnt
 #define set_pwr_wPopCnt  set_ls_wPopCnt

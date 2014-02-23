@@ -132,14 +132,13 @@ again:
     }
     else if (wRoot != 0)
     {
-        Word_t *pwr = wr_pwr(wRoot); // pointer extracted from wRoot
         int i;
 
         DBGX(printf("List\n"));
 
-        for (i = 0; i < pwr_wPopCnt(pwr); i++)
+        for (i = 0; i < wr_wPopCnt(wRoot); i++)
         {
-            if (pwr_pwKeys(pwr)[i] == wKey)
+            if (wr_pwKeys(wRoot)[i] == wKey)
             {
                 return KeyFound;
             }
