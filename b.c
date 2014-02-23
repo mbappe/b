@@ -181,10 +181,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
 
         for (w = 0; w < wPopCnt; w++)
         {
-            Insert(&wRoot, pwKeys[w], nBitsLeft);
+            Insert(&wRoot, pwKeys[w],
+                (nBitsLeft + cnBitsPerDigit - 1) / cnBitsPerDigit);
         }
 
-        Insert(&wRoot, wKey, nBitsLeft);
+        Insert(&wRoot, wKey,
+            (nBitsLeft + cnBitsPerDigit - 1) / cnBitsPerDigit);
 
         *pwRoot = wRoot; // install new
     }
@@ -224,7 +226,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, P_JE)
 int // Status_t
 Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 {
-    int status = Insert((Word_t *)ppvRoot, wKey, cnBitsPerWord);
+    int status = Insert((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
 
 #if defined(DEBUG_INSERT)
     printf("\n# After Insert(wKey "OWx") Dump\n", wKey);

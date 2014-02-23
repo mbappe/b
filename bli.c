@@ -25,59 +25,51 @@ INLINE Status_t
 #if defined(LOOKUP)
 Lookup(Word_t wRoot, Word_t wKey)
 #else // defined(LOOKUP)
-Insert(Word_t *pwRoot, Word_t wKey, int nBitsLeft)
+Insert(Word_t *pwRoot, Word_t wKey, int nDigitsLeft)
 #endif // defined(LOOKUP)
 {
 #if defined(LOOKUP)
-    int nBitsLeft = cnBitsPerWord;
+    int nDigitsLeft = cnDigitsPerWord;
     int bNeedPrefixCheck = 0;
     Word_t *pwRoot;
 #else // defined(LOOKUP)
     Word_t wRoot = *pwRoot;
 #endif // defined(LOOKUP)
-    int nBitsLeftRoot;
+    int nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+    int nDigitsLeftRoot;
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
-    assert(nBitsLeft > cnBitsAtBottom);
+    assert(nDigitsLeft > cnDigitsAtBottom);
 
 again:
 
 #if ( ! defined(LOOKUP) )
     DBGX(printf("# pwRoot %p", pwRoot));
 #endif // ( ! defined(LOOKUP) )
-    DBGX(printf("# wRoot "OWx" wKey "OWx" nBitsLeft %d\n",
-            wRoot, wKey, nBitsLeft));
+    DBGX(printf("# wRoot "OWx" wKey "OWx" nDigitsLeft %d\n",
+            wRoot, wKey, nDigitsLeft));
 
-    // Strange behavior can creep in if/when
-    // cnBitsPerDigit is not a factor of cnBitsPerWord.
-    assert(nBitsLeft <= cnBitsPerWord);
-
-    if (wr_bIsSwitchBL(wRoot, nBitsLeftRoot))
+    if (wr_bIsSwitchDL(wRoot, nDigitsLeftRoot))
     {
         Word_t *pwr = wr_pwr(wRoot); // pointer extracted from wRoot
 
-        assert(pwr != 0);
-        assert(wRoot != 0);
+        DBGX(printf("Switch nDigitsLeft %d nDigitsLeftRoot %d pwr %p\n",
+            nDigitsLeft, nDigitsLeftRoot, pwr));
 
-        DBGX(printf("Switch"));
-        DBGX(printf(" nBitsLeft%d", nBitsLeft));
-        DBGX(printf(" nBitsLeftRoot %d", nBitsLeftRoot));
-        DBGX(printf(" pwr %p", pwr));
-        DBGX(printf("\n"));
-
-        assert(nBitsLeftRoot <= nBitsLeft); // reserved for later
+        assert(nDigitsLeftRoot <= nDigitsLeft); // reserved
 
 #if defined(LOOKUP)
-        if (nBitsLeftRoot != nBitsLeft)
+        if (nDigitsLeftRoot < nDigitsLeft)
         {
             // Record that there were prefix bits that were not checked.
             bNeedPrefixCheck = 1;
         }
         // !! there is no "else" here in the LOOKUP case !!
 #else // defined(LOOKUP)
-        if ((nBitsLeftRoot != nBitsLeft)
-            && (pwr_wPrefix(pwr) != (wKey & ~(EXP(nBitsLeftRoot) - 1))))
+        if ((nDigitsLeftRoot < nDigitsLeft)
+            && (pwr_wPrefix(pwr)
+                != (wKey & ~(EXP(nDigitsLeftRoot * cnBitsPerDigit) - 1))))
         {
             DBGX(printf("Prefix mismatch wPrefix "Owx"\n", pwr_wPrefix(pwr)));
         }
@@ -88,31 +80,18 @@ again:
             int nBitsIndexSz = pwr_nBitsIndexSz(pwr);
             int nIndex;
 
-            nBitsLeft = nBitsLeftRoot - nBitsIndexSz;
-
-            // In case nBitsLeft is not an integral number of digits.
-            // Round it.
-            // I'd like to get rid of this.
-            // The first test should go away at compile time.
-            if (cnBitsPerWord % cnBitsPerDigit != 0)
-            {
-                nBitsLeft = (nBitsLeft + nBitsIndexSz - 1)
-                        / nBitsIndexSz * nBitsIndexSz;
-            }
+            nDigitsLeft = nDigitsLeftRoot - (nBitsIndexSz / cnBitsPerDigit);
+            nBitsLeft = nDigitsLeft * cnBitsPerDigit;
 
             nIndex = ((wKey >> nBitsLeft) & (EXP(nBitsIndexSz) - 1));
 
-            DBGX(printf("Next"));
-            //DBGX(printf(" nBitsIndexSz %d", nBitsIndexSz));
-            DBGX(printf(" nBitsLeft%d", nBitsLeft));
-            DBGX(printf(" nIndex %d", nIndex));
-            DBGX(printf(" pwr %p pwRoots %p", pwr, pwr_pwRoots(pwr)));
-            DBGX(printf("\n"));
+            DBGX(printf("Next nDigitsLeft %d nIndex %d pwr %p pwRoots %p\n",
+                nDigitsLeft, nIndex, pwr, pwr_pwRoots(pwr)));
 
             pwRoot = &pwr_pwRoots(pwr)[nIndex];
             wRoot = *pwRoot;
 
-            if (nBitsLeft > cnBitsAtBottom) goto again;
+            if (nDigitsLeft > cnDigitsAtBottom) goto again;
 
             // We have to do the prefix check here if we're at the
             // bottom because wRoot contains a bitmap.  Not a pointer.

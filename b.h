@@ -93,9 +93,11 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 
 // Data structure constants and macros.
 
-const int cnDigitsAtBottom = 2;
 const int cnBitsPerDigit = 5;
-const int cnBitsAtBottom = 5;
+const int cnDigitsAtBottom = 1;
+const int cnBitsAtBottom = cnDigitsAtBottom * cnBitsPerDigit;
+const int cnDigitsPerWord
+    = (cnBitsPerWord + cnBitsPerDigit - 1) / cnBitsPerDigit;
 
 // Bus error at 912010843 with 255, 256 or 1024.
 // None with 128, 192.
@@ -117,6 +119,11 @@ typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
     ((_wr) = ((_wr) & cnMallocMask) | (Word_t)(_pwr))
 
 #define set_wr(_wr, _pwr, _type)  ((_wr) = (Word_t)(_pwr) | (_type))
+
+// wr_nDigitsLeft is more efficient because we don't have to worry
+// about cnBitsPerWord % cnBitsPerDigit == 0
+#define     wr_nDigitsLeft(_wr)  (wr_nType(_wr))
+#define set_wr_nDigitsLeft(_wr)  (wr_nType(_wr))
 
 #define     wr_nBitsLeft(_wr) \
     (((wr_nType(_wr) * cnBitsPerDigit) > cnBitsPerWord) \
@@ -156,6 +163,7 @@ typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
 
 #define     wr_bIsSwitch(_wr)          (wr_nType(_wr) != List)
 #define     wr_bIsSwitchBL(_wr, _nBL)  ((_nBL) = wr_nBitsLeft(_wr))
+#define     wr_bIsSwitchDL(_wr, _nDL)  ((_nDL) = wr_nDigitsLeft(_wr))
 
 #define BitMapByteNum(_key)  ((_key) >> cnLogBitsPerByte)
 
