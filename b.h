@@ -169,6 +169,8 @@ typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
 
 #define BitMapByteMask(_key)  (1 << ((_key) % cnBitsPerByte))
 
+#define BitIsSetInWord(_w, _b)  (((_w) & (1 << (_b))) != 0)
+
 #define TestBit(_pBitMap, _key) \
     ((((char *)(_pBitMap))[BitMapByteNum(_key)] & BitMapByteMask(_key)) \
         != 0)
