@@ -1,4 +1,20 @@
 
+// To do:
+//
+// - log(xor) for prefix check
+// - nDigitsLeftRoot - nDigitsLeft == -1 means double the size
+//   of the index for the next switch
+// - nDigitsLeftRoot - nDigitsLeft == -2 means quadruple the
+//   size of the index for the next switch
+// - nDigitsLeftRoot - nDigitsLeft == -3 means times eight the
+//   size of the index for the next switch
+// - 1-byte, 2-byte, 4-byte lists
+// - pop count
+// - special variant of Lookup for undoing pop count increment
+//   of failed insert (or decrement of failed remove)
+// - list switches?  for wide switches?
+// - bitmap switches?  for wide switches?
+
 #include <stdio.h>  // printf
 #include <string.h> // memcpy
 #include <assert.h> // NDEBUG must be defined before including assert.h.
@@ -99,10 +115,9 @@ const int cnBitsAtBottom = cnDigitsAtBottom * cnBitsPerDigit;
 const int cnDigitsPerWord
     = (cnBitsPerWord + cnBitsPerDigit - 1) / cnBitsPerDigit;
 
-// Bus error at 912010843 with 255, 256 or 1024.
-// None with 128, 192.
-//const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
-const Word_t cwListPopCntMax = 224;
+// Bus error at 912,010,843 with 255, 256 or 1024.
+// None with 128, 192, 224.
+const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
 
 typedef struct {
     Word_t sw_awRoots[EXP(cnBitsPerDigit)];
