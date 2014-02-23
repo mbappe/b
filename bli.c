@@ -102,7 +102,7 @@ again:
                 || (LOG(pwr_wPrefix(pwr) ^ wKey) < cnBitsAtBottom))
 #endif // defined(LOOKUP)
             {
-                assert(cnBitsAtBottom <= cnBitsPerWord);
+                assert(cnBitsAtBottom <= cnLogBitsPerWord);
                 if (BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)))
                 {
                     return KeyFound;
@@ -116,6 +116,8 @@ again:
 
         DBGX(printf("List\n"));
 
+        // todo: save insertion point in sorted list and pass it to InsertGuts
+        // todo: possibly do insertion right here if list isn't full
         for (i = 0; i < wr_wPopCnt(wRoot); i++)
         {
             if (wr_pwKeys(wRoot)[i] == wKey)
