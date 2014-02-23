@@ -112,10 +112,9 @@ NewSwitch(Word_t wKey)
 
     DBGM(printf("NewSwitch pSw %p\n", pSw));
 
-    set_sw_wKey(pSw, wKey);
+    SET(pSw->sw_awRoots, /* val */ 0, /* cnt */ EXP(cnBitsPerDigit));
 
-    SET(pSw, /* val */ 0, /* cnt */ 1);
-    memset(pSw, /* val */ 0, /* cnt */ sizeof(*pSw));
+    set_sw_wKey(pSw, wKey);
 
     return pSw;
 }
@@ -236,7 +235,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
             pSw = NewSwitch(wKey);
             set_wr_pwr(wRoot, (Word_t *)pSw);
             set_wr_nDigitsLeft(wRoot, nDigitsLeft);
-            set_sw_wPrefix(pSw, wKey);
 
             for (w = 0; w < wPopCnt; w++)
             {
@@ -250,23 +248,22 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
     }
     else
     {
-        int nBitsLeft;
-
         assert(nDigitsLeftRoot < nDigitsLeft);
         // prefix mismatch; insert a switch so we can add just one key
         // seems like a waste
         // figure new nDigitsLeft for old link
         nDigitsLeft = LOG(pwr_wKey(pwr) ^ wKey) / cnBitsPerDigit + 1;
-        nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+
         pSw = NewSwitch(wKey);
         // copy old link to new switch
         // todo nBitsIndexSz; wide switch
+        assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
         pSw->sw_awRoots
             [(pwr_wKey(pwr) >> ((nDigitsLeft - 1) * cnBitsPerDigit))
                 & (EXP(cnBitsPerDigit) - 1)] = wRoot;
         set_wr_pwr(wRoot, (Word_t *)pSw);
         set_wr_nDigitsLeft(wRoot, nDigitsLeft);
-        set_sw_wPrefix(pSw, wKey);
+
         Insert(&wRoot, wKey, nDigitsLeft);
     }
 
