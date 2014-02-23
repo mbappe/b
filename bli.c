@@ -38,6 +38,8 @@ Insert(Word_t *pwRoot, Word_t wKey, Word_t wState)
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
+    assert(nBitsLeftState > cnBitsAtBottom);
+
 again:
 
 #if ( ! defined(LOOKUP) )
@@ -46,18 +48,11 @@ again:
     DBGX(printf("# wRoot "OWx" wKey "OWx" wState "OWx"\n",
             wRoot, wKey, wState));
 
+    // Strange behavior can creep in if/when
+    // cnBitsPerDigit is not a factor of cnBitsPerWord.
     assert(nBitsLeftState <= cnBitsPerWord);
 
-    if (nBitsLeftState <= cnBitsAtBottom)
-    {
-        assert( ! ws_bNeedPrefixCheck(wState) );
-
-        if (BitIsSet(pwRoot, wKey & (EXP(nBitsLeftState) - 1)))
-        {
-            return KeyFound;
-        }
-    }
-    else if (wr_bIsSwitchBL(wRoot, nBitsLeftRoot))
+    if (wr_bIsSwitchBL(wRoot, nBitsLeftRoot))
     {
         Word_t *pwr = wr_pwr(wRoot); // pointer extracted from wRoot
 
@@ -121,7 +116,12 @@ again:
                 || (set_ws_bNeedPrefixCheck(wState, 0),
                     (pwr_wPrefix(pwr) == (wKey & ~(EXP(nBitsLeftRoot) - 1)))))
             {
-                goto again;
+                if (nBitsLeftState > cnBitsAtBottom) goto again;
+
+                if (BitIsSet(pwRoot, wKey & (EXP(nBitsLeftState) - 1)))
+                {
+                    return KeyFound;
+                }
             }
         }
     }
