@@ -187,12 +187,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 
         for (w = 0; w < wPopCnt; w++)
         {
-            Insert(&wRoot, pwKeys[w],
-                (nBitsLeft + cnBitsPerDigit - 1) / cnBitsPerDigit);
+            Insert(&wRoot, pwKeys[w], nDigitsLeft);
         }
 
-        Insert(&wRoot, wKey,
-            (nBitsLeft + cnBitsPerDigit - 1) / cnBitsPerDigit);
+        Insert(&wRoot, wKey, nDigitsLeft);
 
         *pwRoot = wRoot; // install new
     }
