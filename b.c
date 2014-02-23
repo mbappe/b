@@ -166,7 +166,6 @@ CopyWithInsert(Word_t *pTgt, Word_t *pSrc, int nWords, Word_t wKey)
 static Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 {
-    //int nBitsLeft = nDigitsLeft * cnBitsPerDigit;
     int nDigitsLeftRoot;
     Word_t *pwList;
     Word_t wPopCnt;
@@ -190,15 +189,26 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 
     if (wr_bIsSwitchDL(wRoot, nDigitsLeftRoot))
     {
+        Word_t *pwr = wr_pwr(wRoot);
+        int nBitsLeft;
+
         assert(nDigitsLeftRoot < nDigitsLeft);
-        assert(0); // later
-        // prefix mismatch
-#if 0
+        // prefix mismatch; insert a switch so we can add just one key
+        // seems like a waste
         // figure new nDigitsLeft for old link
-        nDigitsLeftNew
-                    = LOG(LN_KEY(pLn) ^ (key & KEY_MASK(nBitsLeft))) / BITSPD
-                        + 1;
-#endif
+        nDigitsLeft = LOG(pwr_wKey(pwr) ^ wKey) / cnBitsPerDigit + 1;
+        nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+        pSw = NewSwitch(wKey);
+        // copy old link to new switch
+        // todo nBitsIndexSz; wide switch
+        pSw->sw_awRoots
+            [(pwr_wKey(pwr) >> ((nDigitsLeft - 1) * cnBitsPerDigit))
+                & (EXP(cnBitsPerDigit) - 1)] = wRoot;
+        set_wr_pwr(wRoot, (Word_t *)pSw);
+        set_wr_nDigitsLeft(wRoot, nDigitsLeft);
+        set_sw_wPrefix(pSw, wKey);
+        Insert(&wRoot, wKey, nDigitsLeft);
+        *pwRoot = wRoot; // install new
     }
     else
     {
@@ -235,7 +245,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 
 #if defined(SKIP_LINKS)
 #if defined(SORT_LISTS)
-        int nDigitsLeft
+        nDigitsLeft
             = LOG((wKey ^ pwKeys[0]) | (wKey ^ pwKeys[wPopCnt - 1]))
                 / cnBitsPerDigit + 1;
 #else // defined(SORT_LISTS)
