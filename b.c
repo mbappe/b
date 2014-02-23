@@ -50,7 +50,7 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
         assert(wr_nType(wRoot) == List);
 
         printf(" wPopCnt %3d", nPopCnt);
-        for (i = 0; i < (nPopCnt &= 7); i++) printf(" "Owx, pwKeys[i]);
+        for (i = 0; (i < nPopCnt) && (i < 8); i++) printf(" "Owx, pwKeys[i]);
         printf("\n");
 
         return;
@@ -162,7 +162,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
          pwKeys = NULL; // make compiler happy about uninitialized variable
     }
 
-    if (wPopCnt <= cwListPopCntMax)
+    if (wPopCnt < cwListPopCntMax)
     {
         // allocate a new list and init pop count in the first word
         Word_t *pwListNew = NewList(wPopCnt + 1);
