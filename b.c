@@ -141,11 +141,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
     DBGI(printf(" wRoot "OWx" wKey "OWx" nDigitsLeft %d\n",
             wRoot, wKey, nDigitsLeft));
 
-    if (nBitsLeft > cnBitsPerWord)
-    {
-        nBitsLeft = cnBitsPerWord;
-    }
-
     if (nDigitsLeft <= cnDigitsAtBottom)
     {
         assert(cnBitsAtBottom <= cnBitsPerWord);
@@ -184,7 +179,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
         pSw = NewSwitch(wKey);
         set_wr_pwr(wRoot, (Word_t *)pSw);
         set_wr_nDigitsLeft(wRoot, nDigitsLeft);
-        set_sw_wPrefix(pSw, wKey & ~((EXP(nBitsLeft - 1) << 1) - 1));
+        set_sw_wPrefix(pSw,
+           wKey & ~(((nBitsLeft >= cnBitsPerWord) ? 0 : EXP(nBitsLeft)) - 1));
 
         for (w = 0; w < wPopCnt; w++)
         {
