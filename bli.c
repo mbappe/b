@@ -128,7 +128,7 @@ again:
 #if defined(LOOKUP)
     return ! KeyFound;
 #else // defined(LOOKUP)
-    return InsertGuts(pwRoot, wKey, nBitsLeft, wRoot);
+    return InsertGuts(pwRoot, wKey, nDigitsLeft, wRoot);
 #endif // defined(LOOKUP)
 
 }

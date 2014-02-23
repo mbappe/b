@@ -102,7 +102,7 @@ const int cnDigitsPerWord
 // Bus error at 912010843 with 255, 256 or 1024.
 // None with 128, 192.
 //const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
-const Word_t cwListPopCntMax = 255;
+const Word_t cwListPopCntMax = 224;
 
 typedef struct {
     Word_t sw_awRoots[EXP(cnBitsPerDigit)];
@@ -112,7 +112,7 @@ typedef struct {
 typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
 
 #define     wr_nType(_wr)         ((_wr) & cnMallocMask)
-#define set_wr_nType(_ws, _type)  ((_wr) = ((_wr) & ~cnMallocMask) | (_type))
+#define set_wr_nType(_wr, _type)  ((_wr) = ((_wr) & ~cnMallocMask) | (_type))
 
 #define     wr_pwr(_wr)          ((Word_t *)((_wr) & ~cnMallocMask))
 #define set_wr_pwr(_wr, _pwr) \
@@ -122,8 +122,8 @@ typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
 
 // wr_nDigitsLeft is more efficient because we don't have to worry
 // about cnBitsPerWord % cnBitsPerDigit == 0
-#define     wr_nDigitsLeft(_wr)  (wr_nType(_wr))
-#define set_wr_nDigitsLeft(_wr)  (wr_nType(_wr))
+#define     wr_nDigitsLeft      wr_nType
+#define set_wr_nDigitsLeft  set_wr_nType
 
 #define     wr_nBitsLeft(_wr) \
     (((wr_nType(_wr) * cnBitsPerDigit) > cnBitsPerWord) \
@@ -170,6 +170,8 @@ typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
 #define BitMapByteMask(_key)  (1 << ((_key) % cnBitsPerByte))
 
 #define BitIsSetInWord(_w, _b)  (((_w) & (1 << (_b))) != 0)
+
+#define SetBitInWord(_w, _b)  ((_w) |= (1 << (_b)))
 
 #define TestBit(_pBitMap, _key) \
     ((((char *)(_pBitMap))[BitMapByteNum(_key)] & BitMapByteMask(_key)) \

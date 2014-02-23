@@ -105,7 +105,7 @@ OldList(Word_t *pwList)
 }
 
 INLINE Switch_t *
-NewSwitch(Word_t wKey, int nBitsLeft)
+NewSwitch(Word_t wKey)
 {
     Switch_t *pSw = (Switch_t *)JudyMalloc(sizeof(Switch_t) / sizeof(Word_t));
 
@@ -128,8 +128,9 @@ OldSwitch(Switch_t *pSw)
 #endif
 
 static Status_t
-InsertGuts(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
+InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 {
+    int nBitsLeft = nDigitsLeft * cnBitsPerDigit;
     Word_t *pwList;
     Word_t wPopCnt;
     Word_t *pwKeys;
@@ -139,6 +140,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
     DBGI(printf("InsertGuts pwRoot %p ", pwRoot));
     DBGI(printf(" wRoot "OWx" wKey "OWx" nBitsLeft %d\n",
             wRoot, wKey, nBitsLeft));
+
+    if (nBitsLeft > cnBitsPerWord)
+    {
+        nBitsLeft = cnBitsPerWord;
+    }
 
     if (nBitsLeft <= cnBitsAtBottom)
     {
@@ -174,7 +180,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBitsLeft, Word_t wRoot)
     {
         // List is full; insert a switch
 
-        pSw = NewSwitch(wKey, nBitsLeft);
+        pSw = NewSwitch(wKey);
         set_wr_pwr(wRoot, (Word_t *)pSw);
         set_wr_nBitsLeft(wRoot, nBitsLeft);
         set_sw_wPrefix(pSw, wKey & ~((EXP(nBitsLeft - 1) << 1) - 1));
