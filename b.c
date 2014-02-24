@@ -70,7 +70,7 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
     printf(" wr_nDigitsLeft %2d", nDigitsLeft);
     // should enhance this to check for zeros in suffix and to print
     // dots for suffix.
-    printf(" wKeyPop "OWx, pwr_wKeyPop(pwr));
+    printf(" wPrefixPop "OWx, pwr_wPrefixPop(pwr));
     printf(" wKeyPopMask "OWx, wKeyPopMask(nDigitsLeft));
     printf(" wr_wPrefix "OWx, wPrefix);
     //printf(" pwRoots "OWx, (Word_t)pwRoots);
@@ -111,6 +111,18 @@ OldList(Word_t *pwList)
     JudyFree(pwList, ls_wPopCnt(pwList) + 1);
 }
 
+INLINE Word_t
+NewBitMap(void)
+{
+    Word_t w = JudyMalloc(EXP(cnBitsAtBottom) / cnBitsPerWord);
+
+    DBGM(printf("NewBitMap w %p\n", w));
+
+    memset((void *)w, 0, EXP(cnBitsAtBottom) / cnBitsPerByte);
+
+    return w;
+}
+
 INLINE Switch_t *
 NewSwitch(Word_t wKey, int nDigitsLeft)
 {
@@ -121,8 +133,6 @@ NewSwitch(Word_t wKey, int nDigitsLeft)
     DBGM(printf("NewSwitch(wKey "OWx" nDigitsLeft %d) pSw %p\n",
         wKey, nDigitsLeft, pSw));
 
-    //SET(pSw->sw_awRoots, /* val */ 0, /* cnt */ EXP(cnBitsPerDigit));
-    //SET(pSw, /* val */ 0, /* cnt */ 1);
     memset(pSw, 0, sizeof(*pSw));
 
     set_sw_wKey(pSw, nDigitsLeft, wKey);
@@ -188,10 +198,21 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 
     if (nDigitsLeft <= cnDigitsAtBottom)
     {
-        assert(cnBitsAtBottom <= cnLogBitsPerWord);
-        assert( ! BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)) );
+        if (cnBitsAtBottom <= cnBitsPerWord) // compile time
+        {
+            assert(!BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+            SetBitInWord(*pwRoot, wKey & (EXP(cnBitsAtBottom) - 1));
+        }
+        else
+        {
+            if (wRoot == 0)
+            {
+                wRoot = NewBitMap();
+            }
 
-        SetBitInWord(*pwRoot, wKey & (EXP(cnBitsAtBottom) - 1));
+            assert(!BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+            SetBit(wRoot, wKey & (EXP(cnBitsAtBottom) - 1));
+        }
 
         return Success;
     }
@@ -247,7 +268,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
             else
             {
                 // can't dereference list if there isn't one
-                nDigitsLeft = 2; // go directly to bitmap
+                nDigitsLeft = cnDigitsAtBottom + 1; // go directly to bitmap
             }
 #else // defined(SORT_LISTS)
             assert(0); // later

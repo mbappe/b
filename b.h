@@ -89,7 +89,8 @@
 #define wd "%ld"
 #endif // defined(_WIN64)
 
-#define LOG(x)  ((Word_t)64 - 1 - __builtin_clzll(x))
+// 64 - 1 - leading zeros
+#define LOG(x)  ((Word_t)63 - __builtin_clzll(x))
 
 const int cnLogBitsPerByte = 3;
 const int cnBitsPerByte = EXP(cnLogBitsPerByte);
@@ -127,14 +128,14 @@ const int cnDigitsPerWord
     = (cnBitsPerWord + cnBitsPerDigit - 1) / cnBitsPerDigit;
 
 // Bus error at 912,010,843 with 255, 256 or 1024.
-// None with 128, 192, 224.
-const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
-//const Word_t cwListPopCntMax = 240;
-//const Word_t cwListPopCntMax = 1;
+// None with 128, 192, 224, 240.
+//const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
+//const Word_t cwListPopCntMax = 255;
+const Word_t cwListPopCntMax = 0;
 
 typedef struct {
     Word_t sw_awRoots[EXP(cnBitsPerDigit)];
-    Word_t sw_wKeyPop;
+    Word_t sw_wPrefixPop;
 } Switch_t;
 
 typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
@@ -166,28 +167,46 @@ typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
 
 // methods for Switch (and aliases)
 
-#define wKeyPopMask(_nDL) \
-    (assert((_nDL) <= cnMallocMask), assert((_nDL) > 0), \
-      ((((_nDL) == cnDigitsPerWord) ? 0 : EXP((_nDL) * cnBitsPerDigit)) - 1))
+#define wPrefixPopMask(_nDL) \
+    ((((_nDL) == cnDigitsPerWord) ? 0 : EXP((_nDL) * cnBitsPerDigit)) - 1)
 
-#define     sw_wKeyPop(_psw)        (((Switch_t *)(_psw))->sw_wKeyPop)
-#define     sw_wKey(_psw, _nDL)     (sw_wKeyPop(_psw) & ~wKeyPopMask(_nDL))
-#define     sw_wPopCnt(_psw, _nDL)  (sw_wKeyPop(_psw) &  wKeyPopMask(_nDL))
+#define wPrefixPopMaskNotAtTop(_nDL) \
+    ((EXP((_nDL) * cnBitsPerDigit)) - 1)
 
-#define set_sw_wKey(_psw, _nDL, _key) \
-    (((Switch_t *)(_psw))->sw_wKeyPop \
-        = ((sw_wKeyPop(_psw) & wKeyPopMask(_nDL)) \
-            | ((_key) & ~wKeyPopMask(_nDL))))
+#define sw_wPrefixPop(_psw)  (((Switch_t *)(_psw))->sw_wPrefixPop)
+#define sw_wPrefix(_psw, _nDL)  (sw_wPrefixPop(_psw) & ~wPrefixPopMask(_nDL))
+#define sw_wPopCnt(_psw, _nDL)  (sw_wPrefixPop(_psw) &  wPrefixPopMask(_nDL))
+
+#define sw_wPrefixNotAtTop(_psw, _nDL) \
+    (sw_wPrefixPop(_psw) & ~wPrefixPopMaskNotAtTop(_nDL))
+
+#define sw_wPopCntNotAtTop(_psw, _nDL) \
+    (sw_wPrefixPop(_psw) &  wPrefixPopMaskNotAtTop(_nDL))
+
+#define set_sw_wPrefix(_psw, _nDL, _key) \
+    (((Switch_t *)(_psw))->sw_wPrefixPop \
+        = ((sw_wPrefixPop(_psw) & wPrefixPopMask(_nDL)) \
+            | ((_key) & ~wPrefixPopMask(_nDL))))
 
 #define set_sw_wPopCnt(_psw, _nDL, _cnt) \
-    (((Switch_t *)(_psw))->sw_wKeyPop \
-        = ((sw_wKeyPop(_psw) & ~wKeyPopMask(_nDL)) \
-            | ((_cnt) & wKeyPopMask(_nDL))))
+    (((Switch_t *)(_psw))->sw_wPrefixPop \
+        = ((sw_wPrefixPop(_psw) & ~wPrefixPopMask(_nDL)) \
+            | ((_cnt) & wPrefixPopMask(_nDL))))
 
-#define     sw_wPrefix                sw_wKey
-#define set_sw_wPrefix            set_sw_wKey
+#define set_sw_wPrefixNotAtTop(_psw, _nDL, _key) \
+    (((Switch_t *)(_psw))->sw_wPrefixPop \
+        = ((sw_wPrefixPop(_psw) & wPrefixPopMaskNotAtTop(_nDL)) \
+            | ((_key) & ~wPrefixPopMaskNotAtTop(_nDL))))
 
-#define     pwr_wKeyPop               sw_wKeyPop
+#define set_sw_wPopCntNotAtTop(_psw, _nDL, _cnt) \
+    (((Switch_t *)(_psw))->sw_wPrefixPop \
+        = ((sw_wPrefixPop(_psw) & ~wPrefixPopMaskNotAtTop(_nDL)) \
+            | ((_cnt) & wPrefixPopMaskNotAtTop(_nDL))))
+
+#define     sw_wKey                   sw_wPrefix
+#define set_sw_wKey               set_sw_wPrefix
+
+#define     pwr_wPrefixPop               sw_wPrefixPop
 #define     pwr_wKey                  sw_wKey
 #define set_pwr_wKey              set_sw_wKey
 #define     pwr_wPrefix               sw_wKey

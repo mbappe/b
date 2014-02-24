@@ -30,7 +30,9 @@ Insert(Word_t *pwRoot, Word_t wKey, int nDigitsLeft)
 {
 #if defined(LOOKUP)
     int nDigitsLeft = cnDigitsPerWord;
+#if defined(SKIP_PREFIX_CHECK)
     int bNeedPrefixCheck = 0;
+#endif // defined(SKIP_PREFIX_CHECK)
     Word_t *pwRoot;
 #else // defined(LOOKUP)
     Word_t wRoot = *pwRoot;
@@ -59,14 +61,14 @@ again:
 
         assert(nDigitsLeftRoot <= nDigitsLeft); // reserved
 
-#if defined(LOOKUP)
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         if (nDigitsLeftRoot < nDigitsLeft)
         {
             // Record that there were prefix bits that were not checked.
             bNeedPrefixCheck = 1;
         }
         // !! there is no "else" here in the LOOKUP case !!
-#else // defined(LOOKUP)
+#else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         if ((nDigitsLeftRoot < nDigitsLeft)
             && (LOG(1 | (sw_wPrefix(pwr, nDigitsLeftRoot) ^ wKey))
                 >= (nDigitsLeftRoot * cnBitsPerDigit)))
@@ -75,7 +77,7 @@ again:
                 sw_wPrefix(pwr, nDigitsLeftRoot)));
         }
         else // !! the "else" here is only for the INSERT/REMOVE case !!
-#endif // defined(LOOKUP)
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         {
             // size of array index
             int nBitsIndexSz = pwr_nBitsIndexSz(pwr);
@@ -117,16 +119,26 @@ again:
             // bottom because wRoot contains a bitmap.  Not a pointer.
             // Not a key.
 
-#if defined(LOOKUP)
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
             if (( ! bNeedPrefixCheck )
-                || (LOG(1 | (sw_wPrefix(pwr, nDigitsLeftRoot) ^ wKey))
+                || (LOG(1 | (sw_wPrefixNotAtTop(pwr, nDigitsLeftRoot) ^ wKey))
                     < (cnBitsAtBottom + nBitsIndexSz)))
-#endif // defined(LOOKUP)
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
             {
-                assert(cnBitsAtBottom <= cnLogBitsPerWord);
-                if (BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)))
+                if (cnBitsAtBottom <= cnLogBitsPerWord) // compile time
                 {
-                    return KeyFound;
+                    if (BitIsSetInWord(wRoot,
+                        wKey & (EXP(cnBitsAtBottom) - 1)))
+                    {
+                        return KeyFound;
+                    }
+                }
+                else if (wRoot != 0)
+                {
+                    if (BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)))
+                    {
+                        return KeyFound;
+                    }
                 }
 
                 DBGX(printf("Bit is not set.\n"));
