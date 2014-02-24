@@ -15,6 +15,7 @@
 void
 Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
 {
+    int nDigitsLeft;
     Word_t *pwr;
     int nBitsIndexSz;
     Word_t *pwRoots;
@@ -44,7 +45,7 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
 
     if ( ! wr_bIsSwitchBL(wRoot, nBitsLeft) )
     {
-        int nPopCnt = (int)pwr_wPopCnt(pwr);
+        int nPopCnt = (int)ls_wPopCnt(pwr);
         Word_t *pwKeys = pwr_pwKeys(pwr);
 
         assert(wr_nType(wRoot) == List);
@@ -58,8 +59,8 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
 
     // Switch
 
-    wPrefix = pwr_wPrefix(pwr);
-    wPrefix &= ~(EXP(nBitsLeft) - 1);
+    nDigitsLeft = wr_nDigitsLeft(wRoot);
+    wPrefix = pwr_wPrefix(pwr, nDigitsLeft);
     nBitsIndexSz = pwr_nBitsIndexSz(pwr);
     pwRoots = pwr_pwRoots(pwr);
 
@@ -106,15 +107,18 @@ OldList(Word_t *pwList)
 }
 
 INLINE Switch_t *
-NewSwitch(Word_t wKey)
+NewSwitch(Word_t wKey, int nDigitsLeft)
 {
-    Switch_t *pSw = (Switch_t *)JudyMalloc(sizeof(Switch_t) / sizeof(Word_t));
+    Switch_t *pSw = (Switch_t *)JudyMalloc(sizeof(*pSw) / sizeof(Word_t));
 
-    DBGM(printf("NewSwitch pSw %p\n", pSw));
+    assert(sizeof(*pSw) / sizeof(Word_t) * sizeof(Word_t) == sizeof(*pSw));
 
-    SET(pSw->sw_awRoots, /* val */ 0, /* cnt */ EXP(cnBitsPerDigit));
+    DBGM(printf("NewSwitch(wKey "OWx" nDigitsLeft %d pSw %p\n",
+        wKey, nDigitsLeft, pSw));
 
-    set_sw_wKey(pSw, wKey);
+    memset(pSw, 0, sizeof(*pSw));
+
+    set_sw_wKey(pSw, nDigitsLeft, wKey);
 
     return pSw;
 }
@@ -224,15 +228,29 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 
 #if defined(SKIP_LINKS)
 #if defined(SORT_LISTS)
-            nDigitsLeft
-                = LOG((wKey ^ pwKeys[0]) | (wKey ^ pwKeys[wPopCnt - 1]))
-                    / cnBitsPerDigit + 1;
+            if (cwListPopCntMax != 0)
+            {
+                nDigitsLeft
+                = LOG(1 | ((wKey ^ pwKeys[0]) | (wKey ^ pwKeys[wPopCnt - 1])))
+                        / cnBitsPerDigit + 1;
+            }
+            else
+            {
+                nDigitsLeft = 2; // go directly to bitmap
+            }
 #else // defined(SORT_LISTS)
             assert(0); // later
 #endif // defined(SORT_LISTS)
 #endif // defined(SKIP_LINKS)
 
-            pSw = NewSwitch(wKey);
+            if (nDigitsLeft <= cnDigitsAtBottom)
+            {
+                DBGI(printf("InsertGuts nDigitsLeft <= cnDigitsAtBottom\n"));
+
+                nDigitsLeft = cnDigitsAtBottom + 1;
+            }
+
+            pSw = NewSwitch(wKey, nDigitsLeft);
 
             set_wr(wRoot, (Word_t *)pSw, nDigitsLeft);
 
@@ -252,15 +270,17 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
         // prefix mismatch; insert a switch so we can add just one key
         // seems like a waste
         // figure new nDigitsLeft for old link
-        nDigitsLeft = LOG(pwr_wKey(pwr) ^ wKey) / cnBitsPerDigit + 1;
+        nDigitsLeft = LOG(1 | (pwr_wKey(pwr, nDigitsLeftRoot) ^ wKey))
+            / cnBitsPerDigit + 1;
 
-        pSw = NewSwitch(wKey);
+        pSw = NewSwitch(wKey, nDigitsLeft);
 
         // copy old link to new switch
         // todo nBitsIndexSz; wide switch
         assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
         pSw->sw_awRoots
-            [(pwr_wKey(pwr) >> ((nDigitsLeft - 1) * cnBitsPerDigit))
+            [(pwr_wKey(pwr, nDigitsLeftRoot)
+                    >> ((nDigitsLeft - 1) * cnBitsPerDigit))
                 & (EXP(cnBitsPerDigit) - 1)] = wRoot;
 
         set_wr(wRoot, (Word_t *)pSw, nDigitsLeft);

@@ -6,6 +6,8 @@
 //   memory usage must be no more than two words per key;
 //   if list leaf must be larger than cache line size, then might as
 //   well add a branch
+// - 3MB/4B/link ~ 750,000 links at full pop ~ 375,000 bitmaps ~ 18-19 bits
+//   decoded by switches; 13-14 bits per bitmap. 
 // - What about tlb entries?
 // - log(xor) for prefix check
 // - nDigitsLeftRoot - nDigitsLeft == -1 means double the size
@@ -126,11 +128,13 @@ const int cnDigitsPerWord
 
 // Bus error at 912,010,843 with 255, 256 or 1024.
 // None with 128, 192, 224.
-const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
+//const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
+//const Word_t cwListPopCntMax = 240;
+const Word_t cwListPopCntMax = 0;
 
 typedef struct {
     Word_t sw_awRoots[EXP(cnBitsPerDigit)];
-    Word_t sw_wKey;
+    Word_t sw_wKeyPop;
 } Switch_t;
 
 typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
@@ -161,10 +165,29 @@ typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
 #define set_pwr_nBitsIndexSz(_pwr, _sz)  (assert((_sz) == cnBitsPerDigit))
 
 // methods for Switch (and aliases)
-#define     sw_wKey(_psw)        (((Switch_t *)(_psw))->sw_wKey)
-#define set_sw_wKey(_psw, _key)  (sw_wKey(_psw) = (_key))
+
+#define wKeyPopMask(_nDL) \
+    (assert((_nDL) <= cnMallocMask), assert((_nDL) > 0), \
+      ((((_nDL) == cnDigitsPerWord) ? 0 : EXP((_nDL) * cnBitsPerDigit)) - 1))
+
+#define     sw_wKeyPop(_psw)        (((Switch_t *)(_psw))->sw_wKeyPop)
+#define     sw_wKey(_psw, _nDL)     (sw_wKeyPop(_psw) & ~wKeyPopMask(_nDL))
+#define     sw_wPopCnt(_psw, _nDL)  (sw_wKeyPop(_psw) &  wKeyPopMask(_nDL))
+
+#define set_sw_wKey(_psw, _nDL, _key) \
+    (((Switch_t *)(_psw))->sw_wKeyPop \
+        = ((sw_wKeyPop(_psw) & wKeyPopMask(_nDL)) \
+            | ((_key) & ~wKeyPopMask(_nDL))))
+
+#define set_sw_wPopCnt(_psw, _nDL, _cnt) \
+    (((Switch_t *)(_psw))->sw_wKeyPop \
+        = ((sw_wKeyPop(_psw) & ~wKeyPopMask(_nDL)) \
+            | ((_cnt) & wKeyPopMask(_nDL))))
+
 #define     sw_wPrefix                sw_wKey
 #define set_sw_wPrefix            set_sw_wKey
+
+#define     pwr_wKeyPop               sw_wKeyPop
 #define     pwr_wKey                  sw_wKey
 #define set_pwr_wKey              set_sw_wKey
 #define     pwr_wPrefix               sw_wKey
@@ -173,14 +196,10 @@ typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
 #define     pwr_pwRoots(_pwr)  (((Switch_t *)(_pwr))->sw_awRoots)
 
 // These assume List == 0.
-#define     wr_wPopCnt(_wr)   (((Word_t *)(_wr))[0])
 #define     wr_pwKeys(_wr)   (&((Word_t *)(_wr))[1])
 
 #define     ls_wPopCnt(_ls)        ((_ls)[0])
 #define set_ls_wPopCnt(_ls, _cnt)  ((_ls)[0] = (_cnt))
-
-#define     pwr_wPopCnt      ls_wPopCnt
-#define set_pwr_wPopCnt  set_ls_wPopCnt
 
 #define     ls_pwKeys(_ls)    (&(_ls)[1])
 #define     pwr_pwKeys(_pwr)  (ls_pwKeys(_pwr))

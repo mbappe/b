@@ -68,10 +68,11 @@ again:
         // !! there is no "else" here in the LOOKUP case !!
 #else // defined(LOOKUP)
         if ((nDigitsLeftRoot < nDigitsLeft)
-            && (LOG(pwr_wPrefix(pwr) ^ wKey)
+            && (LOG(1 | (sw_wPrefix(pwr, nDigitsLeftRoot) ^ wKey))
                 >= (nDigitsLeftRoot * cnBitsPerDigit)))
         {
-            DBGX(printf("Prefix mismatch wPrefix "Owx"\n", pwr_wPrefix(pwr)));
+            DBGX(printf("Prefix mismatch wPrefix "Owx"\n",
+                sw_wPrefix(pwr, nDigitsLeftRoot)));
         }
         else // !! the "else" here is only for the INSERT/REMOVE case !!
 #endif // defined(LOOKUP)
@@ -79,6 +80,23 @@ again:
             // size of array index
             int nBitsIndexSz = pwr_nBitsIndexSz(pwr);
             int nIndex;
+
+#if defined(INSERT)
+            {
+                Word_t wPopCnt = sw_wPopCnt(pwr, nDigitsLeftRoot);
+
+#if 0
+                // increment population count on the way in
+                if (wPopCnt == EXP(nDigitsLeftRoot * cnBitsPerDigit))
+                {
+                    // subtree is at full population
+                    return KeyFound;
+                }
+#endif
+
+                set_sw_wPopCnt(pwr, nDigitsLeftRoot, wPopCnt + 1);
+            }
+#endif // defined(INSERT)
 
             nDigitsLeft = nDigitsLeftRoot - (nBitsIndexSz / cnBitsPerDigit);
             nBitsLeft = nDigitsLeft * cnBitsPerDigit;
@@ -91,7 +109,7 @@ again:
             pwRoot = &pwr_pwRoots(pwr)[nIndex];
             wRoot = *pwRoot;
 
-            DBGX(printf("pwRoot %p wRoot "OWx"\n", pwRoot wRoot));
+            DBGX(printf("pwRoot %p wRoot "OWx"\n", pwRoot, wRoot));
 
             if (nDigitsLeft > cnDigitsAtBottom) goto again;
 
@@ -101,7 +119,7 @@ again:
 
 #if defined(LOOKUP)
             if (( ! bNeedPrefixCheck )
-                || (LOG(pwr_wPrefix(pwr) ^ wKey)
+                || (LOG(1 | (sw_wPrefix(pwr, nDigitsLeftRoot) ^ wKey))
                     < (cnBitsAtBottom + nBitsIndexSz)))
 #endif // defined(LOOKUP)
             {
@@ -115,18 +133,29 @@ again:
             }
 
             DBGX(printf("Prefix mismatch at bitmap wPrefix "OWx"\n",
-              pwr_wPrefix(pwr) & ~(EXP(cnBitsAtBottom + nBitsIndexSz) - 1)));
+                sw_wPrefix(pwr, nDigitsLeftRoot)));
         }
     }
     else if (wRoot != 0)
     {
+#if 0
+#if defined(LOOKUP)
+#if 0
+        Word_t *pwKeys = wr_pwKeys(wRoot);
+        if (pwKeys[0] != 0) return KeyFound;
+#else
+        return KeyFound;
+#endif
+#else // defined(LOOKUP)
+#endif // defined(LOOKUP)
+#endif
         int i;
 
         DBGX(printf("List\n"));
 
         // todo: save insertion point in sorted list and pass it to InsertGuts
         // todo: possibly do insertion right here if list isn't full
-        for (i = 0; i < wr_wPopCnt(wRoot); i++)
+        for (i = 0; i < ls_wPopCnt(wr_pwr(wRoot)); i++)
         {
             if (wr_pwKeys(wRoot)[i] == wKey)
             {
