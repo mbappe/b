@@ -128,9 +128,9 @@ const int cnDigitsPerWord
 
 // Bus error at 912,010,843 with 255, 256 or 1024.
 // None with 128, 192, 224.
-//const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
+const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
 //const Word_t cwListPopCntMax = 240;
-const Word_t cwListPopCntMax = 0;
+//const Word_t cwListPopCntMax = 1;
 
 typedef struct {
     Word_t sw_awRoots[EXP(cnBitsPerDigit)];

@@ -45,13 +45,13 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
 
     if ( ! wr_bIsSwitchBL(wRoot, nBitsLeft) )
     {
-        int nPopCnt = (int)ls_wPopCnt(pwr);
+        Word_t wPopCnt = ls_wPopCnt(pwr);
         Word_t *pwKeys = pwr_pwKeys(pwr);
 
         assert(wr_nType(wRoot) == List);
 
-        printf(" wPopCnt %3d", nPopCnt);
-        for (i = 0; (i < nPopCnt) && (i < 8); i++) printf(" "Owx, pwKeys[i]);
+        printf(" wPopCnt %3llu", (unsigned long long)wPopCnt);
+        for (i = 0; (i < wPopCnt) && (i < 8); i++) printf(" "Owx, pwKeys[i]);
         printf("\n");
 
         return;
@@ -60,13 +60,18 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
     // Switch
 
     nDigitsLeft = wr_nDigitsLeft(wRoot);
-    wPrefix = pwr_wPrefix(pwr, nDigitsLeft);
+    wPrefix = sw_wPrefix(pwr, nDigitsLeft);
     nBitsIndexSz = pwr_nBitsIndexSz(pwr);
     pwRoots = pwr_pwRoots(pwr);
 
+    printf(" wPopCnt %3llu",
+        (unsigned long long)sw_wPopCnt(pwr, nDigitsLeft));
     printf(" wr_nBitsLeft %2d", nBitsLeft);
+    printf(" wr_nDigitsLeft %2d", nDigitsLeft);
     // should enhance this to check for zeros in suffix and to print
     // dots for suffix.
+    printf(" wKeyPop "OWx, pwr_wKeyPop(pwr));
+    printf(" wKeyPopMask "OWx, wKeyPopMask(nDigitsLeft));
     printf(" wr_wPrefix "OWx, wPrefix);
     //printf(" pwRoots "OWx, (Word_t)pwRoots);
     printf("\n");
@@ -111,14 +116,18 @@ NewSwitch(Word_t wKey, int nDigitsLeft)
 {
     Switch_t *pSw = (Switch_t *)JudyMalloc(sizeof(*pSw) / sizeof(Word_t));
 
-    assert(sizeof(*pSw) / sizeof(Word_t) * sizeof(Word_t) == sizeof(*pSw));
+    assert((sizeof(*pSw) % sizeof(Word_t)) == 0);
 
-    DBGM(printf("NewSwitch(wKey "OWx" nDigitsLeft %d pSw %p\n",
+    DBGM(printf("NewSwitch(wKey "OWx" nDigitsLeft %d) pSw %p\n",
         wKey, nDigitsLeft, pSw));
 
+    //SET(pSw->sw_awRoots, /* val */ 0, /* cnt */ EXP(cnBitsPerDigit));
+    //SET(pSw, /* val */ 0, /* cnt */ 1);
     memset(pSw, 0, sizeof(*pSw));
 
     set_sw_wKey(pSw, nDigitsLeft, wKey);
+
+    DBGM(printf("NewSwitch pSw->sw_wKeyPop "OWx"\n", pSw->sw_wKeyPop));
 
     return pSw;
 }
@@ -228,14 +237,16 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 
 #if defined(SKIP_LINKS)
 #if defined(SORT_LISTS)
-            if (cwListPopCntMax != 0)
+            if (cwListPopCntMax != 0) // use const to get compile time check
             {
                 nDigitsLeft
-                = LOG(1 | ((wKey ^ pwKeys[0]) | (wKey ^ pwKeys[wPopCnt - 1])))
+                    = LOG(1 | ((wKey ^ pwKeys[0])
+                            | (wKey ^ pwKeys[wPopCnt - 1])))
                         / cnBitsPerDigit + 1;
             }
             else
             {
+                // can't dereference list if there isn't one
                 nDigitsLeft = 2; // go directly to bitmap
             }
 #else // defined(SORT_LISTS)
@@ -271,9 +282,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
         // seems like a waste
         // figure new nDigitsLeft for old link
         nDigitsLeft = LOG(1 | (pwr_wKey(pwr, nDigitsLeftRoot) ^ wKey))
-            / cnBitsPerDigit + 1;
+                / cnBitsPerDigit + 1;
 
         pSw = NewSwitch(wKey, nDigitsLeft);
+
+        set_sw_wPopCnt(pSw, nDigitsLeft, sw_wPopCnt(pwr, nDigitsLeftRoot));
 
         // copy old link to new switch
         // todo nBitsIndexSz; wide switch
