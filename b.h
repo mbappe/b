@@ -1,6 +1,12 @@
 
 // To do:
 //
+// - Constraints: cache size; goal is only one cache miss per get;
+//   only bottom level can be out of cache; 
+//   memory usage must be no more than two words per key;
+//   if list leaf must be larger than cache line size, then might as
+//   well add a branch
+// - What about tlb entries?
 // - log(xor) for prefix check
 // - nDigitsLeftRoot - nDigitsLeft == -1 means double the size
 //   of the index for the next switch
