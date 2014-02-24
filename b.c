@@ -71,7 +71,7 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
     // should enhance this to check for zeros in suffix and to print
     // dots for suffix.
     printf(" wPrefixPop "OWx, pwr_wPrefixPop(pwr));
-    printf(" wKeyPopMask "OWx, wKeyPopMask(nDigitsLeft));
+    printf(" wKeyPopMask "OWx, wPrefixPopMask(nDigitsLeft));
     printf(" wr_wPrefix "OWx, wPrefix);
     //printf(" pwRoots "OWx, (Word_t)pwRoots);
     printf("\n");
@@ -116,7 +116,7 @@ NewBitMap(void)
 {
     Word_t w = JudyMalloc(EXP(cnBitsAtBottom) / cnBitsPerWord);
 
-    DBGM(printf("NewBitMap w %p\n", w));
+    DBGM(printf("NewBitMap w "OWx"\n", w));
 
     memset((void *)w, 0, EXP(cnBitsAtBottom) / cnBitsPerByte);
 
@@ -137,7 +137,7 @@ NewSwitch(Word_t wKey, int nDigitsLeft)
 
     set_sw_wKey(pSw, nDigitsLeft, wKey);
 
-    DBGM(printf("NewSwitch pSw->sw_wKeyPop "OWx"\n", pSw->sw_wKeyPop));
+    DBGM(printf("NewSwitch pSw->sw_wPrefixPop "OWx"\n", pSw->sw_wPrefixPop));
 
     return pSw;
 }
