@@ -383,10 +383,10 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, P_JE)
 int // Status_t
 Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 {
+    int status = Insert((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
+
     // suppress "unused" compiler warnings
     (void)PJError;
-
-    int status = Insert((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
 
 #if defined(DEBUG_INSERT)
     printf("\n# After Insert(wKey "OWx") Dump\n", wKey);
