@@ -222,13 +222,13 @@
 #define cnMallocMask  ((cnBytesPerWord * 2) - 1)
 
 // Choose bits per digit.
-#define cnBitsPerDigit  (4U)
+#define cnBitsPerDigit  (16U)
 
 // Choose bottom.
 // Bottom is where bitmap is created.
 // Can we support bits at bottom instead of digits at bottom?
 // Minimum digits at bottom:  (cnDigitsPerWord - cnMallocMask + 1)
-#define cnDigitsAtBottom  (3U)
+#define cnDigitsAtBottom  (1U)
 #define cnBitsAtBottom  (cnDigitsAtBottom * cnBitsPerDigit)
 
 #define cnDigitsPerWord  (((cnBitsPerWord - 1) / cnBitsPerDigit) + 1)
@@ -237,7 +237,7 @@
 // None with 128, 192, 224, 240.
 //const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
 //const Word_t cwListPopCntMax = 255;
-#define cwListPopCntMax  (0LL)
+#define cwListPopCntMax  (0L)
 
 typedef enum { Failure = 0, Success = 1 } Status_t;
 
