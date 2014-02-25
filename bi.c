@@ -4,7 +4,7 @@
 // only Insert.
 // Unfortunately, the compiler complains that Insert isn't used and doesn't
 // generate any code.  Why?  
-// So we have __p to work around it.
+// So we have __pInsert to work around it.
 
 #include "b.h"
 

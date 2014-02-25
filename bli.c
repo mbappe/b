@@ -21,7 +21,7 @@
 #define DBGX  DBGI
 #endif // defined(LOOKUP) || defined(REMOVE)
 
-INLINE Status_t
+Status_t
 #if defined(LOOKUP)
 Lookup(Word_t wRoot, Word_t wKey)
 #else // defined(LOOKUP)

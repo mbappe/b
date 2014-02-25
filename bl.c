@@ -4,12 +4,12 @@
 // only Lookup.
 // Unfortunately, the compiler complains that Lookup isn't used and doesn't
 // generate any code.  Why?  
-// So we have __p to work around it.
+// So we have __pLookup to work around it.
 
 #include "b.h"
 
 #define LOOKUP
 #include "bli.c"
 
-void *__p = Lookup;
+void *__pLookup = (void *)Lookup;
 

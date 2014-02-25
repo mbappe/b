@@ -1,4 +1,6 @@
 
+#define BITS_PER_DIGIT  2
+
 // To do:
 //
 // - Constraints: cache size; goal is only one cache miss per get;
@@ -91,24 +93,7 @@
 
 // 64 - 1 - leading zeros
 #define LOG(x)  ((Word_t)63 - __builtin_clzll(x))
-
-const unsigned cnLogBitsPerByte = 3;
-const unsigned cnBitsPerByte = EXP(cnLogBitsPerByte);
-
-#if defined(__LP64__) || defined(_WIN64)
-const unsigned cnLogBytesPerWord = 3;
-#else // defined(__LP64__) || defined(_WIN64)
-const unsigned cnLogBytesPerWord = 2;
-#endif // defined(__LP64__) || defined(_WIN64)
-
 #define MASK(_x)  ((_x) - 1)
-
-const unsigned cnBytesPerWord = EXP(cnLogBytesPerWord);
-const unsigned cnLogBitsPerWord = cnLogBytesPerWord + cnLogBitsPerByte;
-const unsigned cnBitsPerWord = EXP(cnLogBitsPerWord);
-const unsigned cnMallocMask = ((cnBytesPerWord * 2) - 1);
-
-typedef enum { Failure = 0, Success = 1 } Status_t;
 
 #define COPY(_tgt, _src, _cnt) \
     memcpy((_tgt), (_src), sizeof(*(_src)) * (_cnt))
@@ -120,28 +105,6 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
     memset((_p), (_v), sizeof(*(_p)) * (_cnt))
 
 // Data structure constants and macros.
-
-#define BITS_PER_DIGIT  2
-const unsigned cnBitsPerDigit = BITS_PER_DIGIT;
-const unsigned cnDigitsPerWord
-    = (cnBitsPerWord + cnBitsPerDigit - 1) / cnBitsPerDigit;
-
-// Bottom is where bitmap is created.
-const unsigned cnDigitsAtBottom = cnDigitsPerWord - cnMallocMask + 1;
-const unsigned cnBitsAtBottom = cnDigitsAtBottom * cnBitsPerDigit;
-
-// Bus error at 912,010,843 with 255, 256 or 1024.
-// None with 128, 192, 224, 240.
-//const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
-//const Word_t cwListPopCntMax = 255;
-const Word_t cwListPopCntMax = 0;
-
-typedef struct {
-    Word_t sw_awRoots[EXP(BITS_PER_DIGIT)];
-    Word_t sw_wPrefixPop;
-} Switch_t;
-
-typedef enum { List = 0 } Type_t;
 
 #define     wr_nType(_wr)         ((_wr) & cnMallocMask)
 #define set_wr_nType(_wr, _type)  ((_wr) = ((_wr) & ~cnMallocMask) | (_type))
@@ -246,11 +209,41 @@ typedef enum { List = 0 } Type_t;
     (((_bSet) = TestBit((_pBitMap), (_key))), \
         BitSet((_pBitMap), (_key)), (_bSet))
 
-INLINE Status_t Lookup(Word_t wRoot, Word_t wKey);
-INLINE Status_t Insert(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft);
-INLINE Status_t Remove(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft);
+typedef enum { Failure = 0, Success = 1 } Status_t;
+
+typedef enum { List = 0 } Type_t;
+
+typedef struct {
+    Word_t sw_awRoots[EXP(BITS_PER_DIGIT)];
+    Word_t sw_wPrefixPop;
+} Switch_t;
+
+extern const unsigned cnLogBitsPerByte;
+extern const unsigned cnBitsPerByte;
+
+extern const unsigned cnLogBytesPerWord;
+
+extern const unsigned cnBytesPerWord;
+extern const unsigned cnLogBitsPerWord;
+extern const unsigned cnBitsPerWord;
+extern const unsigned cnMallocMask;
+
+extern const unsigned cnBitsPerDigit;
+extern const unsigned cnDigitsPerWord;
+
+extern const unsigned cnDigitsAtBottom;
+extern const unsigned cnBitsAtBottom;
+
+extern const Word_t cwListPopCntMax;
+
+Status_t Lookup(Word_t wRoot, Word_t wKey);
+Status_t Insert(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft);
+Status_t Remove(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft);
 
 Status_t InsertGuts(Word_t *pwRoot,
+    Word_t wKey, unsigned nDigitsLeft, Word_t wRoot);
+
+Status_t RemoveGuts(Word_t *pwRoot,
     Word_t wKey, unsigned nDigitsLeft, Word_t wRoot);
 
 #endif // ( ! defined(_B_H_INCLUDED) )
