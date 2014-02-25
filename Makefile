@@ -1,7 +1,10 @@
 
 CC = cc
+#CC = icc
+#CC = clang
+#CC = gcc
 
-STDFLAG = -std=c99
+#STDFLAG = -std=c99
 #STDFLAG = -std=c90
 #STDFLAG = -std=c89
 #STDFLAG =
@@ -9,7 +12,8 @@ STDFLAG = -std=c99
 #MFLAG = -m64
 MFLAG = -m32
 
-WFLAGS = -Wall -pedantic -Wstrict-prototypes -Wmissing-prototypes -W -Werror
+#WFLAGS = -Wall -pedantic -Wstrict-prototypes -Wmissing-prototypes -W -Werror
+WFLAGS = -Wall -Werror
 
 OFLAGS = -g -O2
 
@@ -22,7 +26,7 @@ DEFINES += $(JUDY_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 
 LIBS = -lm
 
-FILES_FROM_ME = b.h b.c bli.c bl.c stubs.c Makefile
+FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c stubs.c Makefile
 FILES_FROM_DOUG_OR_DOUG = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_OR_DOUG)
 
