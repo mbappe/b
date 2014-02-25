@@ -5,7 +5,7 @@
 // But it can be confused with pwRoot which is a pointer to a wRoot.
 // Especially since we use psw for pointer to Switch.
 // I think "wrp" might be better.  What do we use for other things extracted
-// from wRoot?  wr_nBitsLeft we use nBitsLeft.
+// from wRoot?  wr_nDigitsLeft we use nDigitsLeft.
 // How do we get "pwr"?  With wr_pwr.  Maybe wr_pw and pw would be better?
 // Or wr_pwNext and pwNext?
 
@@ -48,7 +48,7 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
 
     pwr = wr_pwr(wRoot);
 
-    if ( ! wr_bIsSwitchBL(wRoot, nBitsLeft) )
+    if ( ! wr_bIsSwitchDL(wRoot, nDigitsLeft) )
     {
         Word_t wPopCnt = ls_wPopCnt(pwr);
         Word_t *pwKeys = pwr_pwKeys(pwr);
@@ -64,14 +64,17 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
 
     // Switch
 
-    nDigitsLeft = wr_nDigitsLeft(wRoot);
+    if ((nBitsLeft = nDigitsLeft * cnBitsPerDigit) > cnBitsPerWord)
+    {
+        nBitsLeft = cnBitsPerWord;
+    }
+
     wPrefix = sw_wPrefix(pwr, nDigitsLeft);
     nBitsIndexSz = pwr_nBitsIndexSz(pwr);
     pwRoots = pwr_pwRoots(pwr);
 
     printf(" wPopCnt %3llu",
         (unsigned long long)sw_wPopCnt(pwr, nDigitsLeft));
-    printf(" wr_nBitsLeft %2d", nBitsLeft);
     printf(" wr_nDigitsLeft %2d", nDigitsLeft);
     // should enhance this to check for zeros in suffix and to print
     // dots for suffix.
