@@ -21,8 +21,6 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
     Word_t *pwRoots;
     int i;
 
-    // bitmaps shouldn't be zero
-    // but it should be fine to print nothing if they are
     if (wRoot == 0)
     {
         return;
@@ -36,6 +34,13 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
 
     if (nBitsLeft <= cnBitsAtBottom)
     {
+        if (cnBitsAtBottom > cnLogBitsPerWord)
+        {
+            for (i = 0; i < EXP(cnBitsAtBottom) / cnBitsPerWord; i++)
+            {
+                printf(" "Owx, ((Word_t *)wRoot)[i]);
+            }
+        }
         printf("\n");
 
         return;
@@ -198,20 +203,34 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 
     if (nDigitsLeft <= cnDigitsAtBottom)
     {
-        if (cnBitsAtBottom <= cnBitsPerWord) // compile time
+        if (cnBitsAtBottom <= cnLogBitsPerWord) // compile time
         {
             assert(!BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+            assert(!BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+
+            DBGI(printf("SetBitInWord(*pwRoot "OWx" wKey "OWx")\n",
+                *pwRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+
             SetBitInWord(*pwRoot, wKey & (EXP(cnBitsAtBottom) - 1));
+
+            assert(BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+            assert(BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
         }
         else
         {
             if (wRoot == 0)
             {
-                wRoot = NewBitMap();
+                *pwRoot = wRoot = NewBitMap();
             }
 
             assert(!BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+
+            DBGI(printf("SetBit(wRoot "OWx" wKey "OWx") pwRoot %p\n",
+                wRoot, wKey & (EXP(cnBitsAtBottom) - 1), pwRoot));
+
             SetBit(wRoot, wKey & (EXP(cnBitsAtBottom) - 1));
+
+            assert(BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
         }
 
         return Success;
