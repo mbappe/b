@@ -150,9 +150,9 @@ typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
 
 #define set_wr(_wr, _pwr, _type)  ((_wr) = (Word_t)(_pwr) | (_type))
 
-#define     wr_nDigitsLeft(_wr)     (wr_nType(_wr) + cnDigitsAtBottom - 1)
+#define     wr_nDigitsLeft(_wr)     (wr_nType(_wr))
 #define set_wr_nDigitsLeft(_wr, _nDL) \
-    set_wr_nType((_wr), (_nDL) + 1 - cnDigitsAtBottom)
+    set_wr_nType((_wr), (_nDL))
 
 #define     pwr_nBitsIndexSz(_pwr)       (cnBitsPerDigit)
 #define set_pwr_nBitsIndexSz(_pwr, _sz)  (assert((_sz) == cnBitsPerDigit))
