@@ -39,6 +39,7 @@ Insert(Word_t *pwRoot, Word_t wKey, int nDigitsLeft)
 #endif // defined(LOOKUP)
     int nBitsLeft = nDigitsLeft * cnBitsPerDigit;
     int nDigitsLeftRoot;
+    int nType;
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
@@ -52,9 +53,11 @@ again:
     DBGX(printf("# wRoot "OWx" wKey "OWx" nDigitsLeft %d\n",
             wRoot, wKey, nDigitsLeft));
 
-    if (wr_bIsSwitchDL(wRoot, nDigitsLeftRoot))
+    if ((nType = wr_nType(wRoot)) != List)
     {
         Word_t *pwr = wr_pwr(wRoot); // pointer extracted from wRoot
+
+        nDigitsLeftRoot = tp_to_nDigitsLeft(nType);
 
         DBGX(printf("Switch nDigitsLeft %d nDigitsLeftRoot %d pwr %p\n",
             nDigitsLeft, nDigitsLeftRoot, pwr));

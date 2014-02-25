@@ -19,6 +19,7 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
     Word_t *pwr;
     int nBitsIndexSz;
     Word_t *pwRoots;
+    int nType;
     int i;
 
     if (wRoot == 0)
@@ -48,7 +49,7 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
 
     pwr = wr_pwr(wRoot);
 
-    if ( ! wr_bIsSwitchDL(wRoot, nDigitsLeft) )
+    if ((nType = wr_nType(wRoot)) == List)
     {
         Word_t wPopCnt = ls_wPopCnt(pwr);
         Word_t *pwKeys = pwr_pwKeys(pwr);
@@ -63,6 +64,8 @@ Dump(Word_t wRoot, Word_t wPrefix, int nBitsLeft)
     }
 
     // Switch
+
+    nDigitsLeft = tp_to_nDigitsLeft(nType);
 
     if ((nBitsLeft = nDigitsLeft * cnBitsPerDigit) > cnBitsPerWord)
     {
@@ -199,6 +202,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
     int nDigitsLeftRoot;
     Word_t *pwr;
     Switch_t *pSw;
+    int nType;
 
     DBGI(printf("InsertGuts pwRoot %p ", pwRoot));
     DBGI(printf(" wRoot "OWx" wKey "OWx" nDigitsLeft %d\n",
@@ -241,7 +245,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 
     pwr = wr_pwr(wRoot);
 
-    if ( ! wr_bIsSwitchDL(wRoot, nDigitsLeftRoot))
+    if ((nType = wr_nType(wRoot)) == List)
     {
         Word_t wPopCnt;
         Word_t *pwKeys;
@@ -306,7 +310,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
 
             pSw = NewSwitch(wKey, nDigitsLeft);
 
-            set_wr(wRoot, (Word_t *)pSw, nDigitsLeft);
+            set_wr(wRoot, (Word_t *)pSw, nDigitsLeft_to_tp(nDigitsLeft));
 
             for (w = 0; w < wPopCnt; w++)
             {
@@ -320,9 +324,13 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nDigitsLeft, Word_t wRoot)
     }
     else
     {
+        // prefix mismatch
+        // insert a switch so we can add just one key; seems like a waste
+
+        nDigitsLeftRoot = tp_to_nDigitsLeft(nType);
+
         assert(nDigitsLeftRoot < nDigitsLeft);
-        // prefix mismatch; insert a switch so we can add just one key
-        // seems like a waste
+
         // figure new nDigitsLeft for old link
         nDigitsLeft = LOG(1 | (pwr_wKey(pwr, nDigitsLeftRoot) ^ wKey))
                 / cnBitsPerDigit + 1;

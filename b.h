@@ -121,12 +121,14 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 
 // Data structure constants and macros.
 
-#define BITS_PER_DIGIT  5
+#define BITS_PER_DIGIT  2
 const int cnBitsPerDigit = BITS_PER_DIGIT;
-const int cnDigitsAtBottom = 3;
-const int cnBitsAtBottom = cnDigitsAtBottom * cnBitsPerDigit;
 const int cnDigitsPerWord
     = (cnBitsPerWord + cnBitsPerDigit - 1) / cnBitsPerDigit;
+
+// Bottom is where bitmap is created.
+const int cnDigitsAtBottom = cnDigitsPerWord - cnMallocMask + 1;
+const int cnBitsAtBottom = cnDigitsAtBottom * cnBitsPerDigit;
 
 // Bus error at 912,010,843 with 255, 256 or 1024.
 // None with 128, 192, 224, 240.
@@ -139,7 +141,7 @@ typedef struct {
     Word_t sw_wPrefixPop;
 } Switch_t;
 
-typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
+typedef enum { List = 0 } Type_t;
 
 #define     wr_nType(_wr)         ((_wr) & cnMallocMask)
 #define set_wr_nType(_wr, _type)  ((_wr) = ((_wr) & ~cnMallocMask) | (_type))
@@ -150,9 +152,17 @@ typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
 
 #define set_wr(_wr, _pwr, _type)  ((_wr) = (Word_t)(_pwr) | (_type))
 
-#define     wr_nDigitsLeft(_wr)     (wr_nType(_wr))
+#define  tp_to_nDigitsLeft(_tp)   ((_tp) + cnDigitsAtBottom - 1)
+#define  nDigitsLeft_to_tp(_nDL)  ((_nDL) + 1 - cnDigitsAtBottom)
+
+#define     wr_nDigitsLeft(_wr)     (tp_to_nDigitsLeft(wr_nType(_wr)))
 #define set_wr_nDigitsLeft(_wr, _nDL) \
-    set_wr_nType((_wr), (_nDL))
+    (set_wr_nType((_wr), nDigitsLeft_to_tp((_nDL) + 1 - cnDigitsAtBottom)))
+
+#define     wr_bIsSwitch(_wr)          (wr_nType(_wr) != List)
+
+#define     wr_bIsSwitchDL(_wr, _tp, _nDL) \
+    ((_tp) = wr_nType(_wr), (_nDL) = tp_to_nDigitsLeft(_tp), (_tp))
 
 #define     pwr_nBitsIndexSz(_pwr)       (cnBitsPerDigit)
 #define set_pwr_nBitsIndexSz(_pwr, _sz)  (assert((_sz) == cnBitsPerDigit))
@@ -214,9 +224,6 @@ typedef enum { List, Sw1, Sw2, Sw3, Sw4, Sw5, Sw6, Sw7, } Type_t;
 
 #define     ls_pwKeys(_ls)    (&(_ls)[1])
 #define     pwr_pwKeys(_pwr)  (ls_pwKeys(_pwr))
-
-#define     wr_bIsSwitch(_wr)          (wr_nType(_wr) != List)
-#define     wr_bIsSwitchDL(_wr, _nDL)  ((_nDL) = wr_nDigitsLeft(_wr))
 
 #define BitMapByteNum(_key)  ((_key) >> cnLogBitsPerByte)
 
