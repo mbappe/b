@@ -92,21 +92,21 @@
 // 64 - 1 - leading zeros
 #define LOG(x)  ((Word_t)63 - __builtin_clzll(x))
 
-const int cnLogBitsPerByte = 3;
-const int cnBitsPerByte = EXP(cnLogBitsPerByte);
+const unsigned cnLogBitsPerByte = 3;
+const unsigned cnBitsPerByte = EXP(cnLogBitsPerByte);
 
 #if defined(__LP64__) || defined(_WIN64)
-const int cnLogBytesPerWord = 3;
+const unsigned cnLogBytesPerWord = 3;
 #else // defined(__LP64__) || defined(_WIN64)
-const int cnLogBytesPerWord = 2;
+const unsigned cnLogBytesPerWord = 2;
 #endif // defined(__LP64__) || defined(_WIN64)
 
 #define MASK(_x)  ((_x) - 1)
 
-const int cnBytesPerWord = EXP(cnLogBytesPerWord);
-const int cnLogBitsPerWord = cnLogBytesPerWord + cnLogBitsPerByte;
-const int cnBitsPerWord = EXP(cnLogBitsPerWord);
-const int cnMallocMask = ((cnBytesPerWord * 2) - 1);
+const unsigned cnBytesPerWord = EXP(cnLogBytesPerWord);
+const unsigned cnLogBitsPerWord = cnLogBytesPerWord + cnLogBitsPerByte;
+const unsigned cnBitsPerWord = EXP(cnLogBitsPerWord);
+const unsigned cnMallocMask = ((cnBytesPerWord * 2) - 1);
 
 typedef enum { Failure = 0, Success = 1 } Status_t;
 
@@ -122,13 +122,13 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 // Data structure constants and macros.
 
 #define BITS_PER_DIGIT  2
-const int cnBitsPerDigit = BITS_PER_DIGIT;
-const int cnDigitsPerWord
+const unsigned cnBitsPerDigit = BITS_PER_DIGIT;
+const unsigned cnDigitsPerWord
     = (cnBitsPerWord + cnBitsPerDigit - 1) / cnBitsPerDigit;
 
 // Bottom is where bitmap is created.
-const int cnDigitsAtBottom = cnDigitsPerWord - cnMallocMask + 1;
-const int cnBitsAtBottom = cnDigitsAtBottom * cnBitsPerDigit;
+const unsigned cnDigitsAtBottom = cnDigitsPerWord - cnMallocMask + 1;
+const unsigned cnBitsAtBottom = cnDigitsAtBottom * cnBitsPerDigit;
 
 // Bus error at 912,010,843 with 255, 256 or 1024.
 // None with 128, 192, 224, 240.
@@ -247,8 +247,10 @@ typedef enum { List = 0 } Type_t;
         BitSet((_pBitMap), (_key)), (_bSet))
 
 INLINE Status_t Lookup(Word_t wRoot, Word_t wKey);
+INLINE Status_t Insert(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft);
+INLINE Status_t Remove(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft);
 
-INLINE Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBitsLeft);
-INLINE Status_t Remove(Word_t *pwRoot, Word_t wKey, int nBitsLeft);
+Status_t InsertGuts(Word_t *pwRoot,
+    Word_t wKey, unsigned nDigitsLeft, Word_t wRoot);
 
 #endif // ( ! defined(_B_H_INCLUDED) )

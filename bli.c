@@ -25,21 +25,21 @@ INLINE Status_t
 #if defined(LOOKUP)
 Lookup(Word_t wRoot, Word_t wKey)
 #else // defined(LOOKUP)
-Insert(Word_t *pwRoot, Word_t wKey, int nDigitsLeft)
+Insert(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #endif // defined(LOOKUP)
 {
 #if defined(LOOKUP)
-    int nDigitsLeft = cnDigitsPerWord;
+    unsigned nDigitsLeft = cnDigitsPerWord;
 #if defined(SKIP_PREFIX_CHECK)
-    int bNeedPrefixCheck = 0;
+    unsigned bNeedPrefixCheck = 0;
 #endif // defined(SKIP_PREFIX_CHECK)
     Word_t *pwRoot;
 #else // defined(LOOKUP)
     Word_t wRoot = *pwRoot;
 #endif // defined(LOOKUP)
-    int nBitsLeft = nDigitsLeft * cnBitsPerDigit;
-    int nDigitsLeftRoot;
-    int nType;
+    unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+    unsigned nDigitsLeftRoot;
+    unsigned nType;
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
@@ -83,8 +83,8 @@ again:
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         {
             // size of array index
-            int nBitsIndexSz = pwr_nBitsIndexSz(pwr);
-            int nIndex;
+            unsigned nBitsIndexSz = pwr_nBitsIndexSz(pwr);
+            unsigned nIndex;
 
 #if defined(INSERT)
             {
@@ -176,7 +176,7 @@ again:
 #else // defined(LOOKUP)
 #endif // defined(LOOKUP)
 #endif
-        int i;
+        unsigned i;
 
         DBGX(printf("List\n"));
 
