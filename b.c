@@ -11,34 +11,6 @@
 
 #include "b.h"
 
-const unsigned cnLogBitsPerByte = 3;
-const unsigned cnBitsPerByte = EXP(cnLogBitsPerByte);
-
-#if defined(__LP64__) || defined(_WIN64)
-const unsigned cnLogBytesPerWord = 3;
-#else // defined(__LP64__) || defined(_WIN64)
-const unsigned cnLogBytesPerWord = 2;
-#endif // defined(__LP64__) || defined(_WIN64)
-
-const unsigned cnBytesPerWord = EXP(cnLogBytesPerWord);
-const unsigned cnLogBitsPerWord = cnLogBytesPerWord + cnLogBitsPerByte;
-const unsigned cnBitsPerWord = EXP(cnLogBitsPerWord);
-const unsigned cnMallocMask = ((cnBytesPerWord * 2) - 1);
-const unsigned cnBitsPerDigit = BITS_PER_DIGIT;
-const unsigned cnDigitsPerWord
-    = (cnBitsPerWord + cnBitsPerDigit - 1) / cnBitsPerDigit;
-
-// Bottom is where bitmap is created.
-const unsigned cnDigitsAtBottom = cnDigitsPerWord - cnMallocMask + 1;
-const unsigned cnBitsAtBottom = cnDigitsAtBottom * cnBitsPerDigit;
-
-// Bus error at 912,010,843 with 255, 256 or 1024.
-// None with 128, 192, 224, 240.
-//const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
-//const Word_t cwListPopCntMax = 255;
-const Word_t cwListPopCntMax = 0;
-
-
 #if defined(DEBUG)
 void
 Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft)
