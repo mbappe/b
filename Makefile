@@ -31,7 +31,7 @@ all:	clean b b.tar bl.i bl.s bl.o bi.i bi.s bi.o b.i b.s b.o
 clean:
 	rm -rf b *.tar *.o *.s *.i *.dSYM
 
-b:	Judy1LHTime.o b.o stubs.o dlmalloc.o
+b:	Judy1LHTime.o b.o bl.o bi.o br.o stubs.o dlmalloc.o
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
 
 b.tar:	$(FILES)
