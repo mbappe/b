@@ -30,7 +30,7 @@ FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c stubs.c Makefile
 FILES_FROM_DOUG_OR_DOUG = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_OR_DOUG)
 
-all:	clean b b.tar bl.i bl.s bl.o bi.i bi.s bi.o b.i b.s b.o
+all:	b b.tar bl.i bl.s bl.o bi.i bi.s bi.o b.i b.s b.o
 
 clean:
 	rm -rf b *.tar *.o *.s *.i *.dSYM
