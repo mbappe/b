@@ -121,8 +121,9 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 
 // Data structure constants and macros.
 
-const int cnBitsPerDigit = 5;
-const int cnDigitsAtBottom = 1;
+#define BITS_PER_DIGIT  5
+const int cnBitsPerDigit = BITS_PER_DIGIT;
+const int cnDigitsAtBottom = 2;
 const int cnBitsAtBottom = cnDigitsAtBottom * cnBitsPerDigit;
 const int cnDigitsPerWord
     = (cnBitsPerWord + cnBitsPerDigit - 1) / cnBitsPerDigit;
@@ -134,7 +135,7 @@ const int cnDigitsPerWord
 const Word_t cwListPopCntMax = 0;
 
 typedef struct {
-    Word_t sw_awRoots[EXP(cnBitsPerDigit)];
+    Word_t sw_awRoots[EXP(BITS_PER_DIGIT)];
     Word_t sw_wPrefixPop;
 } Switch_t;
 

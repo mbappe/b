@@ -86,7 +86,6 @@ again:
 #if defined(INSERT)
             {
                 Word_t wPopCnt = sw_wPopCnt(pwr, nDigitsLeftRoot);
-
 #if 0
                 // increment population count on the way in
                 if (wPopCnt == EXP(nDigitsLeftRoot * cnBitsPerDigit))
@@ -95,7 +94,6 @@ again:
                     return KeyFound;
                 }
 #endif
-
                 set_sw_wPopCnt(pwr, nDigitsLeftRoot, wPopCnt + 1);
             }
 #endif // defined(INSERT)
@@ -127,25 +125,39 @@ again:
             {
                 if (cnBitsAtBottom <= cnLogBitsPerWord) // compile time
                 {
+                    DBGX(printf(
+                        "BitIsSetInWord(wRoot "OWx" wKey "OWx")\n",
+                            wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+
                     if (BitIsSetInWord(wRoot,
                         wKey & (EXP(cnBitsAtBottom) - 1)))
                     {
                         return KeyFound;
                     }
+
+                    DBGX(printf("! BitIsSetInWord\n"));
                 }
                 else if (wRoot != 0)
                 {
+                    DBGX(printf(
+                        "BitIsSet(wRoot "OWx" wKey "OWx")\n",
+                            wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+
                     if (BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)))
                     {
                         return KeyFound;
                     }
+
+                    DBGX(printf("! BitIsSet\n"));
                 }
-
-                DBGX(printf("Bit is not set.\n"));
             }
-
-            DBGX(printf("Prefix mismatch at bitmap wPrefix "OWx"\n",
-                sw_wPrefix(pwr, nDigitsLeftRoot)));
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+            else
+            {
+                DBGX(printf("Prefix mismatch at bitmap wPrefix "OWx"\n",
+                    sw_wPrefix(pwr, nDigitsLeftRoot)));
+            }
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         }
     }
     else if (wRoot != 0)
