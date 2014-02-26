@@ -1,4 +1,25 @@
 
+//
+// (cnBitsPerDigit, cnDigitsAtBottom)
+//
+// ( 1, 31) all the way, -s0 -S1 all the way
+// ( 1, 30) all the way, -s0 -S1 all the way
+// ( 2, 15) all the way, -s0 -S1 all the way
+// (16,  1) all the way, -s0 -S1 all the way
+// (16,  0) Bus error    15853, -s0 -S1 Bus error 912010843
+// ( 8,  0) Bus error  3981080, -s0 -S1 Bus error 912010843
+// ( 6,  0) Bus error 14454402, -s0 -S1 Bus error 912010843
+//
+
+// Choose bits per digit.
+#define cnBitsPerDigit  (1U)
+
+// Choose bottom.
+// Bottom is where bitmap is created.
+// Can we support bits at bottom instead of digits at bottom?
+// Minimum digits at bottom:  (cnDigitsPerWord - cnMallocMask + 1)
+#define cnDigitsAtBottom  (31U)
+
 // To do:
 //
 // - Constraints: cache size; goal is only one cache miss per get;
@@ -70,14 +91,14 @@
 
 #if defined(_WIN64)
 //typedef unsigned long long Word_t;
-#define EXP(_x)  (1LL << (_x))
+#define EXP(_x)  (1ULL << (_x))
 #define Owx   "%016llx"
 #define OWx "0x%016llx"
 #define wx "%llx"
 #define wd "%lld"
 #else // defined(_WIN64)
 //typedef unsigned long Word_t;
-#define EXP(_x)  (1L << (_x))
+#define EXP(_x)  (1UL << (_x))
 #if defined(__LP64__)
 #define Owx   "%016lx"
 #define OWx "0x%016lx"
@@ -221,14 +242,6 @@
 #define cnBitsPerWord  (EXP(cnLogBitsPerWord))
 #define cnMallocMask  ((cnBytesPerWord * 2) - 1)
 
-// Choose bits per digit.
-#define cnBitsPerDigit  (16U)
-
-// Choose bottom.
-// Bottom is where bitmap is created.
-// Can we support bits at bottom instead of digits at bottom?
-// Minimum digits at bottom:  (cnDigitsPerWord - cnMallocMask + 1)
-#define cnDigitsAtBottom  (1U)
 #define cnBitsAtBottom  (cnDigitsAtBottom * cnBitsPerDigit)
 
 #define cnDigitsPerWord  (((cnBitsPerWord - 1) / cnBitsPerDigit) + 1)

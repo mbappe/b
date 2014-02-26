@@ -130,10 +130,10 @@ again:
                 {
                     DBGX(printf(
                         "BitIsSetInWord(wRoot "OWx" wKey "OWx")\n",
-                            wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+                            wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)));
 
                     if (BitIsSetInWord(wRoot,
-                        wKey & (EXP(cnBitsAtBottom) - 1)))
+                        wKey & (EXP(cnBitsAtBottom) - 1UL)))
                     {
                         return KeyFound;
                     }
@@ -144,9 +144,9 @@ again:
                 {
                     DBGX(printf(
                         "BitIsSet(wRoot "OWx" wKey "OWx")\n",
-                            wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+                            wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)));
 
-                    if (BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)))
+                    if (BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)))
                     {
                         return KeyFound;
                     }
