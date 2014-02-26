@@ -12,6 +12,7 @@
 
 #define LOOKUP
 #include "bli.c"
+#undef LOOKUP
 
 void *__pLookup = (void *)Lookup;
 

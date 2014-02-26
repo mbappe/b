@@ -12,6 +12,7 @@
 
 #define INSERT
 #include "bli.c"
+#undef INSERT
 
 void *__pInsert = (void *)Insert;
 

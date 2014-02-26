@@ -12,6 +12,7 @@
 
 #define REMOVE
 #include "bli.c"
+#undef REMOVE
 
 void *__pRemove = (void *)Remove;
 
