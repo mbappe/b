@@ -37,7 +37,9 @@ Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft)
     {
         if (cnBitsAtBottom > cnLogBitsPerWord)
         {
-            for (i = 0; i < EXP(cnBitsAtBottom) / cnBitsPerWord; i++)
+            for (i = 0;
+                (i < EXP(cnBitsAtBottom) / cnBitsPerWord) && (i < 8);
+                 i++)
             {
                 printf(" "Owx, ((Word_t *)wRoot)[i]);
             }
@@ -127,7 +129,13 @@ NewBitMap(void)
 {
     Word_t w = JudyMalloc(EXP(cnBitsAtBottom) / cnBitsPerWord);
 
-    DBGM(printf("NewBitMap w "OWx"\n", w));
+    DBGM(printf("NewBitMap nBitsAtBottom %u nBits "OWx
+      " nBytes "OWx" nWords "OWx" w "OWx"\n",
+        cnBitsAtBottom, EXP(cnBitsAtBottom),
+        EXP(cnBitsAtBottom) / cnBitsPerByte,
+        EXP(cnBitsAtBottom) / cnBitsPerWord, w));
+
+    if (w == 0) { fprintf(stderr, "NewBitMap malloc.\n"); exit(1); }
 
     memset((void *)w, 0, EXP(cnBitsAtBottom) / cnBitsPerByte);
 
@@ -139,10 +147,13 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
 {
     Switch_t *pSw = (Switch_t *)JudyMalloc(sizeof(*pSw) / sizeof(Word_t));
 
+
     assert((sizeof(*pSw) % sizeof(Word_t)) == 0);
 
     DBGM(printf("NewSwitch(wKey "OWx" nDigitsLeft %d) pSw %p\n",
         wKey, nDigitsLeft, pSw));
+
+    if (pSw == NULL) { fprintf(stderr, "NewSwitch malloc.\n"); exit(1); }
 
     memset(pSw, 0, sizeof(*pSw));
 
