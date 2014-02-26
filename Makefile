@@ -65,6 +65,18 @@ bi.i: bi.c
 b.i: b.c
 	$(CC) $(CFLAGS) ${DEFINES} -E $^ | indent -i4 | expand > $@
 
+# The .c.i rule doesn't work for some reason.  Later.
+br.i: br.c
+	$(CC) $(CFLAGS) ${DEFINES} -E $^ | indent -i4 | expand > $@
+
+b.o:	b.h
+
+bl.o:	b.h
+
+bi.o:	b.h
+
+br.o:	b.h
+
 .c.o:
 	$(CC) $(CFLAGS) ${DEFINES} -c $^
 
@@ -73,5 +85,4 @@ b.i: b.c
 
 .c.i:
 	$(CC) $(CFLAGS) ${DEFINES} -E $^ | indent -i4 | expand > $^
-
 
