@@ -11,6 +11,8 @@
 
 #include "b.h"
 
+#if cnBitsPerDigit != 0
+
 #if defined(DEBUG)
 void
 Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft)
@@ -145,8 +147,13 @@ NewBitMap(void)
 INLINE Switch_t *
 NewSwitch(Word_t wKey, unsigned nDigitsLeft)
 {
-    Switch_t *pSw = (Switch_t *)JudyMalloc(sizeof(*pSw) / sizeof(Word_t));
+    Switch_t *pSw;
 
+#if cnDigitsAtBottom < (cnDigitsPerWord - 1)
+    pSw = (Switch_t *)JudyMalloc(sizeof(*pSw) / sizeof(Word_t));
+#else // cnDigitsAtBottom < (cnDigitsPerWord - 1)
+    posix_memalign((void **)&pSw, 128, sizeof(*pSw)); // double cache line
+#endif // cnDigitsAtBottom < (cnDigitsPerWord - 1)
 
     assert((sizeof(*pSw) % sizeof(Word_t)) == 0);
 
@@ -379,41 +386,130 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft, Word_t wRoot)
     return Failure;
 }
 
+#endif // cnBitsPerDigit != 0
+
 // ****************************************************************************
 // JUDY1 FUNCTIONS:
 
 int // Status_t
 Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, P_JE)
 {
-    // suppress "unused" compiler warnings
-    (void)PJError;
+    (void)PJError; // suppress "unused parameter" compiler warning
+
+#if cnBitsPerDigit != 0
 
     return Lookup((Word_t)pcvRoot, wKey);
+
+#else // cnBitsPerDigit != 0
+
+    // one big bitmap
+    {
+        Word_t wByteNum, wByteMask;
+
+        if (pcvRoot == NULL)
+        {
+            return Failure;
+        }
+
+        wByteNum = BitMapByteNum(wKey);
+        wByteMask = BitMapByteMask(wKey);     
+
+        return (((char *)pcvRoot)[wByteNum] & wByteMask) ? Success : Failure;
+    }
+
+#endif // cnBitsPerDigit != 0
+
 }
 
 int // Status_t
 Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 {
-    int status = Insert((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
+    (void)PJError; // suppress "unused parameter" compiler warning
 
-    // suppress "unused" compiler warnings
-    (void)PJError;
+#if cnBitsPerDigit != 0
+
+    {
+        int status = Insert((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
 
 #if defined(DEBUG_INSERT)
-    printf("\n# After Insert(wKey "OWx") Dump\n", wKey);
-    Dump((Word_t)*ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord);
-    printf("\n");
+        printf("\n# After Insert(wKey "OWx") Dump\n", wKey);
+        Dump((Word_t)*ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord);
+        printf("\n");
 #endif // defined(DEBUG_INSERT)
 
-    return status;
+        return status;
+    }
+
+#else // cnBitsPerDigit != 0
+
+    // one big bitmap
+    {
+        Word_t wRoot;
+        Word_t wByteNum, wByteMask;
+        char c;
+
+        if ((wRoot = (Word_t)*ppvRoot) == 0)
+        {
+            wRoot = JudyMalloc(EXP
+                (cnBitsPerWord - cnLogBitsPerByte - cnLogBytesPerWord));
+
+            *ppvRoot = (PPvoid_t)wRoot;
+        }
+
+        wByteNum = BitMapByteNum(wKey);
+        wByteMask = BitMapByteMask(wKey);     
+
+        if ((c = ((char *)wRoot)[wByteNum]) & wByteMask)
+        {
+            return Failure; // dup
+        }
+
+        ((char *)wRoot)[wByteNum] = c | wByteMask;
+
+        return Success;
+    }
+
+#endif // cnBitsPerDigit != 0
+
 }
 
 int
 Judy1Unset( PPvoid_t ppvRoot, Word_t wKey, P_JE)
 {
-    // suppress "unused" compiler warnings
-    (void)PJError;
+    (void)PJError; // suppress "unused" compiler warnings
+
+#if cnBitsPerDigit != 0
 
     return Remove((Word_t *)ppvRoot, wKey, cnBitsPerWord);
+
+#else // cnBitsPerDigit != 0
+
+    // one big bitmap
+    {
+
+        Word_t wRoot;
+        Word_t wByteNum, wByteMask;
+        char c;
+
+        if ((wRoot = (Word_t)*ppvRoot) == 0)
+        {
+            return Failure; // not present
+        }
+
+        wByteNum = BitMapByteNum(wKey);
+        wByteMask = BitMapByteMask(wKey);     
+
+        if ( ! ((c = ((char *)wRoot)[wByteNum]) & wByteMask) )
+        {
+            return Failure; // not present
+        }
+
+        ((char *)wRoot)[wByteNum] = c & ~wByteMask;
+
+        return Success;
+    }
+
+#endif // cnBitsPerDigit != 0
+
 }
 

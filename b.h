@@ -12,13 +12,14 @@
 //
 
 // Choose bits per digit.
-#define cnBitsPerDigit  (1U)
+#define cnBitsPerDigit  (5U)
 
 // Choose bottom.
 // Bottom is where bitmap is created.
 // Can we support bits at bottom instead of digits at bottom?
 // Minimum digits at bottom:  (cnDigitsPerWord - cnMallocMask + 1)
-#define cnDigitsAtBottom  (31U)
+// Maximum digits at bottom:  (cnDigitsPerWord - 1)
+#define cnDigitsAtBottom  (6U)
 
 // To do:
 //
@@ -254,6 +255,8 @@
 
 typedef enum { Failure = 0, Success = 1 } Status_t;
 
+#if cnBitsPerDigit != 0
+
 typedef enum { List = 0 } Type_t;
 
 typedef struct {
@@ -270,6 +273,8 @@ Status_t InsertGuts(Word_t *pwRoot,
 
 Status_t RemoveGuts(Word_t *pwRoot,
     Word_t wKey, unsigned nDigitsLeft, Word_t wRoot);
+
+#endif // cnBitsPerDigit != 0
 
 #endif // ( ! defined(_B_H_INCLUDED) )
 

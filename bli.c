@@ -1,5 +1,5 @@
 
-// This file is #included into the main .c file three times.
+// This file is #included in other .c files three times.
 // Once with #define LOOKUP, #undef INSERT and #undef REMOVE.
 // Once with #undef LOOKUP, #define INSERT and #undef REMOVE.
 // Once with #undef LOOKUP, #undef INSERT and #define REMOVE.
