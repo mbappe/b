@@ -299,7 +299,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         else
         {
 #if defined(SKIP_LINKS)
-            unsigned nDigitsLeftOld = nDigitsLeft;
+            //unsigned nDigitsLeftOld = nDigitsLeft;
 #endif // defined(SKIP_LINKS)
             Word_t w;
 
@@ -346,7 +346,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             pSw = NewSwitch(wKey, nDigitsLeft);
 
 #if defined(SKIP_LINKS)
-            if (nDigitsLeft != nDigitsLeftOld)
+            //if (nDigitsLeft != nDigitsLeftOld)
             {
                 set_sw_wKey(pSw, nDigitsLeft, wKey);
             }
