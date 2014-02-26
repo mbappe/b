@@ -164,10 +164,6 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
 
     memset(pSw, 0, sizeof(*pSw));
 
-    set_sw_wKey(pSw, nDigitsLeft, wKey);
-
-    DBGM(printf("NewSwitch pSw->sw_wPrefixPop "OWx"\n", pSw->sw_wPrefixPop));
-
     return pSw;
 }
 
@@ -263,7 +259,13 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
     pwr = wr_pwr(wRoot);
 
-    if ((nType = wr_nType(wRoot)) == List)
+    nType = wr_nType(wRoot);
+
+#if defined(SKIP_LINKS)
+    if (nType == List)
+#else // defined(SKIP_LINKS)
+    assert(nType == List);
+#endif // defined(SKIP_LINKS)
     {
         Word_t wPopCnt;
         Word_t *pwKeys;
@@ -296,17 +298,33 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         }
         else
         {
+#if defined(SKIP_LINKS)
+            unsigned nDigitsLeftOld = nDigitsLeft;
+#endif // defined(SKIP_LINKS)
             Word_t w;
 
             // List is full; insert a switch
 
+            if (cwListPopCntMax != 0) // use const for compile time check
+            {
+                Word_t wMax, wMin;
 #if defined(SKIP_LINKS)
 #if defined(SORT_LISTS)
-            if (cwListPopCntMax != 0) // use const to get compile time check
-            {
+                wMin = pwKeys[0];
+                wMax = pwKeys[wPopCnt - 1];
+#else // defined(SORT_LISTS)
+                // walk the list to find max and min
+                wMin = (Word_t)-1;
+                wMax = 0;
+
+                for (w = 0; w < wPopCnt; w++)
+                {
+                    if (wKey < wMin) wMin = wKey;
+                    if (wKey > wMax) wMax = wKey;
+                }
+#endif // defined(SORT_LISTS)
                 nDigitsLeft
-                    = LOG(1 | ((wKey ^ pwKeys[0])
-                            | (wKey ^ pwKeys[wPopCnt - 1])))
+                    = LOG(1 | ((wKey ^ wMin) | (wKey ^ wMax)))
                         / cnBitsPerDigit + 1;
             }
             else
@@ -314,10 +332,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 // can't dereference list if there isn't one
                 nDigitsLeft = cnDigitsAtBottom + 1; // go directly to bitmap
             }
-#else // defined(SORT_LISTS)
-            assert(0); // later
-#endif // defined(SORT_LISTS)
-#endif // defined(SKIP_LINKS)
 
             if (nDigitsLeft <= cnDigitsAtBottom)
             {
@@ -325,8 +339,21 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
                 nDigitsLeft = cnDigitsAtBottom + 1;
             }
+#else // defined(SKIP_LINKS)
+            assert(nDigitsLeft > cnDigitsAtBottom);
+#endif // defined(SKIP_LINKS)
 
             pSw = NewSwitch(wKey, nDigitsLeft);
+
+#if defined(SKIP_LINKS)
+            if (nDigitsLeft != nDigitsLeftOld)
+            {
+                set_sw_wKey(pSw, nDigitsLeft, wKey);
+            }
+#endif // defined(SKIP_LINKS)
+
+            DBGM(printf("NewSwitch pSw->sw_wPrefixPop "OWx"\n",
+                pSw->sw_wPrefixPop));
 
             set_wr(wRoot, (Word_t *)pSw, nDigitsLeft_to_tp(nDigitsLeft));
 
@@ -340,6 +367,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         if (wPopCnt != 0) OldList(pwr); // free old
     }
+#if defined(SKIP_LINKS)
     else
     {
         // prefix mismatch
@@ -355,6 +383,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         pSw = NewSwitch(wKey, nDigitsLeft);
 
+        set_sw_wKey(pSw, nDigitsLeft, wKey);
+
         set_sw_wPopCnt(pSw, nDigitsLeft, sw_wPopCnt(pwr, nDigitsLeftRoot));
 
         // copy old link to new switch
@@ -369,6 +399,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         Insert(&wRoot, wKey, nDigitsLeft);
     }
+#endif // defined(SKIP_LINKS)
 
     *pwRoot = wRoot; // install new
 
