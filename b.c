@@ -382,9 +382,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         else
         {
 #if defined(SKIP_LINKS)
-#if !defined(NDEBUG)
+#if defined(NO_UNNECESSARY_PREFIX) || !defined(NDEBUG)
             unsigned nDigitsLeftOld = nDigitsLeft;
-#endif // !defined(NDEBUG)
+#endif // defined(NO_UNNECESSARY_PREFIX) || !defined(NDEBUG)
 #endif // defined(SKIP_LINKS)
             Word_t w;
 
@@ -436,12 +436,19 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
 #if defined(SKIP_LINKS)
             assert(nDigitsLeft <= nDigitsLeftOld);
-// Would like to get rid of this install of the prefix when it is not
-// necessary.  It should not be necessary.
-            //if (nDigitsLeft == nDigitsLeftOld)
+#if defined(NO_UNNECESSARY_PREFIX)
+            // We could get rid of the bottom check if we enhance INSERT
+            // to keep track of any prefix checks done along the way and
+            // pass that info to InsertGuts.
+            if ((nDigitsLeft == nDigitsLeftOld)
+                && (nDigitsLeft > cnDigitsAtBottom + 1))
             {
-//printf("\n\nNot installing prefix left %d old %d\n",
-//    nDigitsLeft, nDigitsLeftOld);
+                printf("Not installing prefix left %d old %d wKey "OWx"\n",
+                    nDigitsLeft, nDigitsLeftOld, wKey);
+            }
+            else
+#endif // defined(NO_UNNECESSARY_PREFIX)
+            {
                 set_sw_wKey(pSw, nDigitsLeft, wKey);
             }
 #endif // defined(SKIP_LINKS)
