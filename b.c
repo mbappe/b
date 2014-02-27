@@ -379,10 +379,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
                 for (w = 0; w < wPopCnt; w++)
                 {
-                    if (wKey < wMin) wMin = wKey;
-                    if (wKey > wMax) wMax = wKey;
+                    if (pwKeys[w] < wMin) wMin = pwKeys[w];
+                    if (pwKeys[w] > wMax) wMax = pwKeys[w];
                 }
 #endif // defined(SORT_LISTS)
+                DBGI(printf("wMin "OWx" wMax "OWx"\n", wMin, wMax));
 
                 nDigitsLeft
                     = LOG(1 | ((wKey ^ wMin) | (wKey ^ wMax)))
