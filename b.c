@@ -349,7 +349,30 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             if (wPopCnt != 0)
 #if defined(SORT_LISTS)
             { CopyWithInsert(ls_pwKeys(pwList), pwKeys, wPopCnt, wKey); } else
-#else // defined(SORT_LISTS)
+#elif defined(MIN_MAX_LISTS)
+            {
+                COPY(ls_pwKeys(pwList), pwKeys, wPopCnt);
+
+                if (wKey < pwKeys[wPopCnt - 1])
+                {
+                    ls_pwKeys(pwList)[wPopCnt] = pwKeys[wPopCnt - 1];
+
+                    if (wKey < pwKeys[0])
+                    {
+                        ls_pwKeys(pwList)[wPopCnt - 1] = pwKeys[0];
+                        ls_pwKeys(pwList)[0] = wKey;
+                    }
+                    else
+                    {
+                        ls_pwKeys(pwList)[wPopCnt - 1] = wKey;
+                    }
+                }
+                else
+                {
+                    ls_pwKeys(pwList)[wPopCnt] = wKey;
+                }
+            } else
+#else // defined(MIN_MAX_LISTS)
             { COPY(ls_pwKeys(pwList), pwKeys, wPopCnt); }
 #endif // defined(SORT_LISTS)
             { ls_pwKeys(pwList)[wPopCnt] = wKey; }
@@ -369,10 +392,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             if (cwListPopCntMax != 0) // use const for compile time check
             {
                 Word_t wMax, wMin;
-#if defined(SORT_LISTS)
+#if defined(SORT_LISTS) || defined(MIN_MAX_LISTS)
                 wMin = pwKeys[0];
                 wMax = pwKeys[wPopCnt - 1];
-#else // defined(SORT_LISTS)
+#else // defined(SORT_LISTS) || defined(MIN_MAX_LISTS)
                 // walk the list to find max and min
                 wMin = (Word_t)-1;
                 wMax = 0;
@@ -382,7 +405,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                     if (pwKeys[w] < wMin) wMin = pwKeys[w];
                     if (pwKeys[w] > wMax) wMax = pwKeys[w];
                 }
-#endif // defined(SORT_LISTS)
+#endif // defined(SORT_LISTS) || defined(MIN_MAX_LISTS)
                 DBGI(printf("wMin "OWx" wMax "OWx"\n", wMin, wMax));
 
                 nDigitsLeft
