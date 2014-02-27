@@ -440,9 +440,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         assert(nDigitsLeftRoot < nDigitsLeft);
 
-        // figure new nDigitsLeft for old link
+        // figure new nDigitsLeft for old parent link
         nDigitsLeft = LOG(1 | (pwr_wKey(pwr, nDigitsLeftRoot) ^ wKey))
                 / cnBitsPerDigit + 1;
+
+        assert(nDigitsLeft > nDigitsLeftRoot);
 
         pSw = NewSwitch(wKey, nDigitsLeft);
 
@@ -458,7 +460,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                     >> ((nDigitsLeft - 1) * cnBitsPerDigit))
                 & (EXP(cnBitsPerDigit) - 1)] = wRoot;
 
-        set_wr(wRoot, (Word_t *)pSw, nDigitsLeft);
+        set_wr(wRoot, (Word_t *)pSw, nDigitsLeft_to_tp(nDigitsLeft));
 
         Insert(&wRoot, wKey, nDigitsLeft);
     }
