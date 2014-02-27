@@ -9,6 +9,11 @@
 #if defined(LOOKUP)
 #define strLookupOrInsertOrRemove  "Lookup"
 #define DBGX  DBGL
+#if defined(RAMMETRICS)
+Word_t j__SearchCompares;
+Word_t j__SearchPopulation;
+Word_t j__TreeDepth;
+#endif // defined(RAMMETRICS)
 #else // defined(REMOVE)
 #define strLookupOrInsertOrRemove  "Remove"
 #define DBGX  DBGR
