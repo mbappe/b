@@ -281,15 +281,17 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         if (cnBitsAtBottom <= cnLogBitsPerWord) // compile time
         {
             assert(!BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
-            assert(!BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+            assert(!BitIsSetInWord(*pwRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+            assert(!BitIsSet(&wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+            assert(!BitIsSet(pwRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
 
             DBGI(printf("SetBitInWord(*pwRoot "OWx" wKey "OWx")\n",
                 *pwRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
 
             SetBitInWord(*pwRoot, wKey & (EXP(cnBitsAtBottom) - 1));
 
-            assert(BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
-            assert(BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+            assert(BitIsSet(pwRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+            assert(BitIsSetInWord(*pwRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
         }
         else
         {
