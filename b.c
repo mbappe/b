@@ -443,8 +443,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             if ((nDigitsLeft == nDigitsLeftOld)
                 && (nDigitsLeft > cnDigitsAtBottom + 1))
             {
-                printf("Not installing prefix left %d old %d wKey "OWx"\n",
-                    nDigitsLeft, nDigitsLeftOld, wKey);
+                DBGI(printf(
+                  "Not installing prefix left %d old %d wKey "OWx"\n",
+                    nDigitsLeft, nDigitsLeftOld, wKey));
             }
             else
 #endif // defined(NO_UNNECESSARY_PREFIX)
