@@ -382,7 +382,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         else
         {
 #if defined(SKIP_LINKS)
+#if !defined(NDEBUG)
             unsigned nDigitsLeftOld = nDigitsLeft;
+#endif // !defined(NDEBUG)
 #endif // defined(SKIP_LINKS)
             Word_t w;
 
