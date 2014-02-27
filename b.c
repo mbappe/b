@@ -207,6 +207,7 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
 #else // cnDigitsAtBottom < (cnDigitsPerWord - 1)
     posix_memalign((void **)&pSw, 128, sizeof(*pSw)); // double cache line
 #endif // cnDigitsAtBottom < (cnDigitsPerWord - 1)
+    assert(pSw != NULL);
 
     METRICS(j__AllocWordsJBU += sizeof(*pSw) / sizeof(Word_t));
 
@@ -214,8 +215,6 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
 
     DBGM(printf("NewSwitch(wKey "OWx" nDigitsLeft %d) pSw %p\n",
         wKey, nDigitsLeft, pSw));
-
-    if (pSw == NULL) { fprintf(stderr, "NewSwitch malloc.\n"); exit(1); }
 
     memset(pSw, 0, sizeof(*pSw));
 
@@ -271,6 +270,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     Word_t *pwr;
     Switch_t *pSw;
     unsigned nType;
+
+    // Validate global constant parameters set up in the header file.
+    assert(cnDigitsAtBottom > 0); // can't get to full pop
+    assert(cnDigitsAtBottom + 1 <= cnDigitsPerWord);
+    assert(cnDigitsAtBottom + cnMallocMask >= cnDigitsPerWord + 1);
 
     DBGI(printf("InsertGuts pwRoot %p ", pwRoot));
     DBGI(printf(" wRoot "OWx" wKey "OWx" nDigitsLeft %d\n",
@@ -402,6 +406,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
             pSw = NewSwitch(wKey, nDigitsLeft);
 
+            set_sw_wPopCnt(pSw, nDigitsLeft, 0);
+
 #if defined(SKIP_LINKS)
             assert(nDigitsLeft <= nDigitsLeftOld);
 // Would like to get rid of this install of the prefix when it is not
@@ -435,6 +441,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         // prefix mismatch
         // insert a switch so we can add just one key; seems like a waste
         unsigned nDigitsLeftRoot;
+        Word_t wPopCnt;
 
         nDigitsLeftRoot = tp_to_nDigitsLeft(nType);
 
@@ -448,9 +455,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         pSw = NewSwitch(wKey, nDigitsLeft);
 
-        set_sw_wKey(pSw, nDigitsLeft, wKey);
+        if ((wPopCnt = sw_wPopCnt(pwr, nDigitsLeftRoot)) == 0)
+        {
+            wPopCnt = wPrefixPopMask(nDigitsLeftRoot) + 1;
+        }
 
-        set_sw_wPopCnt(pSw, nDigitsLeft, sw_wPopCnt(pwr, nDigitsLeftRoot));
+        set_sw_wPopCnt(pSw, nDigitsLeft, wPopCnt);
+
+        set_sw_wKey(pSw, nDigitsLeft, wKey);
 
         // copy old link to new switch
         // todo nBitsIndexSz; wide switch
@@ -527,11 +539,35 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     {
         int status = Insert((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
 
+#if defined(DEBUG)
+        if (status == Success) wInserts++; // count successful inserts
+#endif // defined(DEBUG)
+
 #if defined(DEBUG_INSERT)
-        printf("\n# After Insert(wKey "OWx") Dump\n", wKey);
-        Dump((Word_t)*ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord);
-        printf("\n");
+        if (wInserts >= cwDebugThreshold)
+        {
+            printf("\n# After Insert(wKey "OWx") Dump\n", wKey);
+            Dump((Word_t)*ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord);
+            printf("\n");
+        }
 #endif // defined(DEBUG_INSERT)
+
+#if defined(DEBUG)
+        {
+            Word_t wRoot = *(Word_t *)ppvRoot;
+            unsigned nType = wr_nType(wRoot);
+
+            if (nType != List)
+            {
+                assert(sw_wPopCnt(wr_pwr(wRoot), tp_to_nDigitsLeft(nType))
+                    == (wInserts & wPrefixPopMask(tp_to_nDigitsLeft(nType))));
+            }
+            else
+            {
+                assert(wr_ls_wPopCnt(wRoot) == wInserts);
+            }
+        }
+#endif // defined(DEBUG)
 
         return status;
     }

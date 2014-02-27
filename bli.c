@@ -56,7 +56,7 @@ again:
 
 #if ( ! defined(LOOKUP) )
     assert(nDigitsLeft > cnDigitsAtBottom); // keep LOOKUP lean
-    DBGX(printf("# pwRoot %p", pwRoot));
+    DBGX(printf("# pwRoot %p ", pwRoot));
 #else // ( ! defined(LOOKUP) )
     METRICS(j__TreeDepth++);
 #endif // ( ! defined(LOOKUP) )
@@ -104,23 +104,31 @@ again:
             nDigitsLeft = nDigitsLeftRoot;
 #endif // defined(SKIP_LINKS)
 
-            nDigitsLeft -= (nBitsIndexSz / cnBitsPerDigit);
-            nBitsLeft = nDigitsLeft * cnBitsPerDigit;
-
 #if defined(INSERT)
+            // increment population count on the way in
             {
                 Word_t wPopCnt = sw_wPopCnt(pwr, nDigitsLeft);
 #if 0
-                // increment population count on the way in
-                if (wPopCnt == EXP(nDigitsLeftRoot * cnBitsPerDigit))
+                // BUG: What if attempting to insert a dup and
+                // we're already at max pop?
+                if (wPopCnt == 0) && at least one pwRoots is not 0
                 {
                     // subtree is at full population
                     return KeyFound;
                 }
 #endif
                 set_sw_wPopCnt(pwr, nDigitsLeft, wPopCnt + 1);
+
+                DBGI(printf("sw_wPopCnt "wd"\n",
+                    sw_wPopCnt(pwr, nDigitsLeft)));
+
+                assert(sw_wPopCnt(pwr, nDigitsLeft)
+                    == ((wPopCnt + 1) & wPrefixPopMask(nDigitsLeft)));
             }
 #endif // defined(INSERT)
+
+            nDigitsLeft -= (nBitsIndexSz / cnBitsPerDigit);
+            nBitsLeft = nDigitsLeft * cnBitsPerDigit;
 
             nIndex = ((wKey >> nBitsLeft) & (EXP(nBitsIndexSz) - 1));
 

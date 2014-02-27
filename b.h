@@ -11,15 +11,46 @@
 // ( 6,  0) Bus error 14454402, -s0 -S1 Bus error 912010843
 //
 
+// Quick tested:
+// -m32 -O2 -g -Wall -Werror
+// JUDY_DEFINES += -DRAMMETRICS -DJUDYB -UGUARDBAND -UNDEBUG -DEBUG
+// B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -DSORT_LISTS
+// (cnBitsPerDigit, cnDigitsAtBottom, cwListPopCntMax)
+// (0,  X, 1), (1, 26, 1), (2, 10, 1), (3,  5, 1), (4,  2, 1)
+// (5,  1, 1), (6,  0, 1), (8,  0, 1),
+// (16,  0, 1) gives malloc error; can't get to full pop with
+// cnDigitsAtBottom = 0.
+// (11,  0, 1) gives malloc error; can't get to full pop
+// testing (16,  1, 1) ...
+
 // Choose bits per digit.
+// 0, smaller, equal and larger than cnLogBitsPerWord are all good
+// numbers to test.
 #define cnBitsPerDigit  (5U)
 
 // Choose bottom.
-// Bottom is where bitmap is created.
-// Can we support bits at bottom instead of digits at bottom?
+// Bottom is where bitmap is created.  Maybe we should change the meaning.
+// Can we support bits at bottom instead of digits at bottom and count digits
+// up (and maybe down) from there?
 // Minimum digits at bottom:  (cnDigitsPerWord - cnMallocMask + 1)
 // Maximum digits at bottom:  (cnDigitsPerWord - 1)
-#define cnDigitsAtBottom  (2U)
+// Zero works (as long as it is not smaller than the minimum).
+// It does not depend on max list length since we currently
+// define bottom as where we create a bitmap.
+// Is it possible to get to max pop with cnDigitsAtBottom = 0?  No.
+#define cnDigitsAtBottom  (1U)
+
+// Choose max list length.
+// 0, 1, 2, 3, greater than 255 are all good values to test.
+// Bus error at 912,010,843 with 255, 256 or 1024.
+// None with 128, 192, 224, 240.
+//const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
+//const Word_t cwListPopCntMax = 255;
+#define cwListPopCntMax  (1L)
+
+// Choose features.
+// SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
+// -UNDEBUG, RAMMETRICS, GUARDBAND
 
 // To do:
 //
@@ -60,7 +91,7 @@
 #endif // defined RAMMETRICS
 
 #if defined(DEBUG_INSERT)
-#define DBGI(x)  (x)
+#define DBGI(x)  if (wInserts >= cwDebugThreshold) (x)
 #else // defined(DEBUG_INSERT)
 #define DBGI(x)
 #endif // defined(DEBUG_INSERT)
@@ -78,22 +109,23 @@
 #endif // defined(DEBUG_REMOVE)
 
 #if defined(DEBUG_MALLOC)
-#define DBGM(x)  (x)
+#define DBGM(x)  if (wInserts >= cwDebugThreshold) (x)
 #else // defined(DEBUG_MALLOC)
 #define DBGM(x)
 #endif // defined(DEBUG_MALLOC)
 
 #if defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || defined(DEBUG_MALLOC)
-#define DBG(x)  (x)
 #define DEBUG
-#else // defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || ...
-#define DBG(x)
 #endif // defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || ...
 
 #if defined(DEBUG)
 #define INLINE
+#define DBG(x)  (x)
+#define cwDebugThreshold  0ULL
+Word_t wInserts;
 #else // defined(DEBUG)
 #define INLINE static inline
+#define DBG(x)
 #endif // defined(DEBUG)
 
 #if defined(_WIN64)
@@ -159,7 +191,8 @@
 // methods for Switch (and aliases)
 
 #define wPrefixPopMask(_nDL) \
-    ((((_nDL) == cnDigitsPerWord) ? 0 : EXP((_nDL) * cnBitsPerDigit)) - 1)
+    ((((_nDL) == cnDigitsPerWord) \
+        ? (Word_t)-1 : (EXP((_nDL) * cnBitsPerDigit)) - (Word_t)1))
 
 #define wPrefixPopMaskNotAtTop(_nDL) \
     ((EXP((_nDL) * cnBitsPerDigit)) - 1)
@@ -211,6 +244,9 @@
 #define     ls_wPopCnt(_ls)        ((_ls)[0])
 #define set_ls_wPopCnt(_ls, _cnt)  ((_ls)[0] = (_cnt))
 
+// Assume List == 0, i.e. wRoot is a valid pointer with no mask.
+#define     wr_ls_wPopCnt(_wr)        (((Word_t *)(_wr))[0])
+
 #define     ls_pwKeys(_ls)    (&(_ls)[1])
 #define     pwr_pwKeys(_pwr)  (ls_pwKeys(_pwr))
 
@@ -252,12 +288,6 @@
 #define cnBitsAtBottom  (cnDigitsAtBottom * cnBitsPerDigit)
 
 #define cnDigitsPerWord  (((cnBitsPerWord - 1) / cnBitsPerDigit) + 1)
-
-// Bus error at 912,010,843 with 255, 256 or 1024.
-// None with 128, 192, 224, 240.
-//const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
-//const Word_t cwListPopCntMax = 255;
-#define cwListPopCntMax  (240L)
 
 typedef enum { Failure = 0, Success = 1 } Status_t;
 
