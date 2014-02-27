@@ -213,7 +213,6 @@ CopyWithInsert(Word_t *pTgt, Word_t *pSrc, unsigned nWords, Word_t wKey)
 Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 {
-    unsigned nDigitsLeftRoot;
     Word_t *pwr;
     Switch_t *pSw;
     unsigned nType;
@@ -299,16 +298,16 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         else
         {
 #if defined(SKIP_LINKS)
-            //unsigned nDigitsLeftOld = nDigitsLeft;
+            unsigned nDigitsLeftOld = nDigitsLeft;
 #endif // defined(SKIP_LINKS)
             Word_t w;
 
             // List is full; insert a switch
 
+#if defined(SKIP_LINKS)
             if (cwListPopCntMax != 0) // use const for compile time check
             {
                 Word_t wMax, wMin;
-#if defined(SKIP_LINKS)
 #if defined(SORT_LISTS)
                 wMin = pwKeys[0];
                 wMax = pwKeys[wPopCnt - 1];
@@ -323,6 +322,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                     if (wKey > wMax) wMax = wKey;
                 }
 #endif // defined(SORT_LISTS)
+
                 nDigitsLeft
                     = LOG(1 | ((wKey ^ wMin) | (wKey ^ wMax)))
                         / cnBitsPerDigit + 1;
@@ -346,8 +346,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             pSw = NewSwitch(wKey, nDigitsLeft);
 
 #if defined(SKIP_LINKS)
-            //if (nDigitsLeft != nDigitsLeftOld)
+            assert(nDigitsLeft <= nDigitsLeftOld);
+            if (nDigitsLeft < nDigitsLeftOld - 1)
             {
+printf("\n\nNot installing prefix!\n");
                 set_sw_wKey(pSw, nDigitsLeft, wKey);
             }
 #endif // defined(SKIP_LINKS)
@@ -372,6 +374,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     {
         // prefix mismatch
         // insert a switch so we can add just one key; seems like a waste
+        unsigned nDigitsLeftRoot;
 
         nDigitsLeftRoot = tp_to_nDigitsLeft(nType);
 
