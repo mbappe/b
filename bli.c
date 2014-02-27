@@ -30,25 +30,30 @@ Insert(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 {
 #if defined(LOOKUP)
     unsigned nDigitsLeft = cnDigitsPerWord;
+#if defined(SKIP_LINKS)
 #if defined(SKIP_PREFIX_CHECK)
     unsigned bNeedPrefixCheck = 0;
 #endif // defined(SKIP_PREFIX_CHECK)
+#endif // defined(SKIP_LINKS)
     Word_t *pwRoot;
 #else // defined(LOOKUP)
     Word_t wRoot = *pwRoot;
 #endif // defined(LOOKUP)
     unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+#if defined(SKIP_LINKS)
     unsigned nDigitsLeftRoot;
+#endif // defined(SKIP_LINKS)
     unsigned nType;
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
-    assert(nDigitsLeft > cnDigitsAtBottom);
-
 again:
 
 #if ( ! defined(LOOKUP) )
+    assert(nDigitsLeft > cnDigitsAtBottom); // keep LOOKUP lean
     DBGX(printf("# pwRoot %p", pwRoot));
+#else // ( ! defined(LOOKUP) )
+    METRICS(j__TreeDepth++);
 #endif // ( ! defined(LOOKUP) )
     DBGX(printf("# wRoot "OWx" wKey "OWx" nDigitsLeft %d\n",
             wRoot, wKey, nDigitsLeft));
@@ -57,12 +62,15 @@ again:
     {
         Word_t *pwr = wr_pwr(wRoot); // pointer extracted from wRoot
 
+#if defined(SKIP_LINKS)
         nDigitsLeftRoot = tp_to_nDigitsLeft(nType);
 
         DBGX(printf("Switch nDigitsLeft %d nDigitsLeftRoot %d pwr %p\n",
             nDigitsLeft, nDigitsLeftRoot, pwr));
 
-        assert(nDigitsLeftRoot <= nDigitsLeft); // reserved
+#if ( ! defined(LOOKUP) )
+        assert(nDigitsLeftRoot <= nDigitsLeft); // reserved; keep lookup lean
+#endif // ( ! defined(LOOKUP) )
 
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         if (nDigitsLeftRoot < nDigitsLeft)
@@ -81,14 +89,22 @@ again:
         }
         else // !! the "else" here is only for the INSERT/REMOVE case !!
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#endif // defined(SKIP_LINKS)
         {
             // size of array index
             unsigned nBitsIndexSz = pwr_nBitsIndexSz(pwr);
             unsigned nIndex;
 
+#if defined(SKIP_LINKS)
+            nDigitsLeft = nDigitsLeftRoot;
+#endif // defined(SKIP_LINKS)
+
+            nDigitsLeft -= (nBitsIndexSz / cnBitsPerDigit);
+            nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+
 #if defined(INSERT)
             {
-                Word_t wPopCnt = sw_wPopCnt(pwr, nDigitsLeftRoot);
+                Word_t wPopCnt = sw_wPopCnt(pwr, nDigitsLeft);
 #if 0
                 // increment population count on the way in
                 if (wPopCnt == EXP(nDigitsLeftRoot * cnBitsPerDigit))
@@ -97,12 +113,9 @@ again:
                     return KeyFound;
                 }
 #endif
-                set_sw_wPopCnt(pwr, nDigitsLeftRoot, wPopCnt + 1);
+                set_sw_wPopCnt(pwr, nDigitsLeft, wPopCnt + 1);
             }
 #endif // defined(INSERT)
-
-            nDigitsLeft = nDigitsLeftRoot - (nBitsIndexSz / cnBitsPerDigit);
-            nBitsLeft = nDigitsLeft * cnBitsPerDigit;
 
             nIndex = ((wKey >> nBitsLeft) & (EXP(nBitsIndexSz) - 1));
 
@@ -120,11 +133,13 @@ again:
             // bottom because wRoot contains a bitmap.  Not a pointer.
             // Not a key.
 
+#if defined(SKIP_LINKS)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
             if (( ! bNeedPrefixCheck )
                 || (LOG(1 | (sw_wPrefixNotAtTop(pwr, nDigitsLeftRoot) ^ wKey))
                     < (cnBitsAtBottom + nBitsIndexSz)))
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#endif // defined(SKIP_LINKS)
             {
                 if (cnBitsAtBottom <= cnLogBitsPerWord) // compile time
                 {
@@ -154,6 +169,7 @@ again:
                     DBGX(printf("! BitIsSet\n"));
                 }
             }
+#if defined(SKIP_LINKS)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
             else
             {
@@ -161,6 +177,7 @@ again:
                     sw_wPrefix(pwr, nDigitsLeftRoot)));
             }
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#endif // defined(SKIP_LINKS)
         }
     }
     else if (wRoot != 0)
@@ -180,10 +197,18 @@ again:
 
         DBGX(printf("List\n"));
 
+#if defined(LOOKUP)
+        METRICS(j__SearchPopulation += ls_wPopCnt(wr_pwr(wRoot)));
+#endif // defined(LOOKUP)
+
         // todo: save insertion point in sorted list and pass it to InsertGuts
         // todo: possibly do insertion right here if list isn't full
         for (i = 0; i < ls_wPopCnt(wr_pwr(wRoot)); i++)
         {
+#if defined(LOOKUP)
+            METRICS(j__SearchCompares++);
+#endif // defined(LOOKUP)
+
             if (wr_pwKeys(wRoot)[i] == wKey)
             {
                 return KeyFound;

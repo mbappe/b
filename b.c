@@ -106,10 +106,53 @@ Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft)
 }
 #endif // defined(DEBUG)
 
+// From Judy1LHTime.c for convenience.
+
+#if 0
+
+Word_t    j__SearchCompares;            // number times LGet/1Test called
+Word_t    j__SearchPopulation;          // Population of Searched object
+Word_t    j__TreeDepth;                 // number time Branch_U called
+
+#ifdef  JUDYA
+Word_t    j__AllocWordsJBB;
+Word_t    j__AllocWordsJBU;
+Word_t    j__AllocWordsJBL;
+Word_t    j__AllocWordsJLB1;
+Word_t    j__AllocWordsJLL1;
+Word_t    j__AllocWordsJLL2;
+Word_t    j__AllocWordsJLL3;
+
+Word_t    j__AllocWordsJLL4;
+Word_t    j__AllocWordsJLL5;
+Word_t    j__AllocWordsJLL6;
+Word_t    j__AllocWordsJLL7;
+#endif  // JUDYA  
+
+#ifdef  JUDYB
+Word_t    j__AllocWordsJBU4;
+Word_t    j__AllocWordsJBU8;
+Word_t    j__AllocWordsJBU16;
+Word_t    j__AllocWordsJV12;
+Word_t    j__AllocWordsJL12;
+Word_t    j__AllocWordsJL16;
+Word_t    j__AllocWordsJL32;
+#endif  // JUDYB   
+
+Word_t    j__AllocWordsJLLW;
+
+#ifdef  JUDYA
+Word_t    j__AllocWordsJV;
+#endif  // JUDYA 
+
+#endif // 0
+
 INLINE Word_t *
 NewList(Word_t wPopCnt)
 {
     Word_t *pwList = (Word_t *)JudyMalloc(wPopCnt + 1);
+
+    METRICS(j__AllocWordsJLLW += (ls_wPopCnt(pwList) + 1));
 
     set_ls_wPopCnt(pwList, wPopCnt);
 
@@ -123,6 +166,8 @@ OldList(Word_t *pwList)
 {
     DBGM(printf("Old pwList %p\n", pwList));
 
+    METRICS(j__AllocWordsJLLW -= (ls_wPopCnt(pwList) + 1));
+
     JudyFree(pwList, ls_wPopCnt(pwList) + 1);
 }
 
@@ -130,6 +175,8 @@ INLINE Word_t
 NewBitMap(void)
 {
     Word_t w = JudyMalloc(EXP(cnBitsAtBottom) / cnBitsPerWord);
+
+    METRICS(j__AllocWordsJLB1 += (EXP(cnBitsAtBottom) / cnBitsPerWord));
 
     DBGM(printf("NewBitMap nBitsAtBottom %u nBits "OWx
       " nBytes "OWx" nWords "OWx" w "OWx"\n",
@@ -154,6 +201,8 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
 #else // cnDigitsAtBottom < (cnDigitsPerWord - 1)
     posix_memalign((void **)&pSw, 128, sizeof(*pSw)); // double cache line
 #endif // cnDigitsAtBottom < (cnDigitsPerWord - 1)
+
+    METRICS(j__AllocWordsJBU += sizeof(*pSw) / sizeof(Word_t));
 
     assert((sizeof(*pSw) % sizeof(Word_t)) == 0);
 

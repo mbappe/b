@@ -53,6 +53,60 @@
 #if ( ! defined(_B_H_INCLUDED) )
 #define _B_H_INCLUDED
 
+#if defined RAMMETRICS
+#define METRICS(x)  (x)
+#else // defined RAMMETRICS
+#define METRICS(x)
+#endif // defined RAMMETRICS
+
+extern Word_t    j__SearchCompares;
+extern Word_t    j__SearchPopulation;
+extern Word_t    j__TreeDepth;
+extern Word_t    j__AllocWordsJLLW;
+extern Word_t    j__AllocWordsJBU;
+extern Word_t    j__AllocWordsJLB1;
+
+// From Judy1LHTime.c for convenience.
+
+#if 0
+
+Word_t    j__SearchCompares;            // number times LGet/1Test called
+Word_t    j__SearchPopulation;          // Population of Searched object
+Word_t    j__TreeDepth;                 // number time Branch_U called
+
+#ifdef  JUDYA
+Word_t    j__AllocWordsJBB;
+Word_t    j__AllocWordsJBU;
+Word_t    j__AllocWordsJBL;
+Word_t    j__AllocWordsJLB1;
+Word_t    j__AllocWordsJLL1;
+Word_t    j__AllocWordsJLL2;
+Word_t    j__AllocWordsJLL3;
+
+Word_t    j__AllocWordsJLL4;
+Word_t    j__AllocWordsJLL5;
+Word_t    j__AllocWordsJLL6;
+Word_t    j__AllocWordsJLL7;
+#endif  // JUDYA  
+
+#ifdef  JUDYB
+Word_t    j__AllocWordsJBU4;
+Word_t    j__AllocWordsJBU8;
+Word_t    j__AllocWordsJBU16;
+Word_t    j__AllocWordsJV12;
+Word_t    j__AllocWordsJL12;
+Word_t    j__AllocWordsJL16;
+Word_t    j__AllocWordsJL32;
+#endif  // JUDYB   
+
+Word_t    j__AllocWordsJLLW;
+
+#ifdef  JUDYA
+Word_t    j__AllocWordsJV;
+#endif  // JUDYA 
+
+#endif // 0
+
 #if defined(DEBUG_INSERT)
 #define DBGI(x)  (x)
 #else // defined(DEBUG_INSERT)
@@ -251,7 +305,7 @@
 // None with 128, 192, 224, 240.
 //const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
 //const Word_t cwListPopCntMax = 255;
-#define cwListPopCntMax  (0L)
+#define cwListPopCntMax  (240L)
 
 typedef enum { Failure = 0, Success = 1 } Status_t;
 

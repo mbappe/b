@@ -19,7 +19,7 @@ OFLAGS = -g -O2
 
 CFLAGS = $(STDFLAG) $(MFLAG) $(WFLAGS) $(OFLAGS) -I.
 
-JUDY_DEFINES += -DJUDYA -UGUARDBAND -UNDEBUG
+JUDY_DEFINES += -DRAMMETRICS -DJUDYA -UGUARDBAND -UNDEBUG
 B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -USORT_LISTS
 #B_DEBUG_DEFINES += -UDEBUG_INSERT -UDEBUG_LOOKUP -UDEBUG_MALLOC -UDEBUG_REMOVE
 DEFINES += $(JUDY_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
@@ -30,7 +30,7 @@ FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c stubs.c Makefile
 FILES_FROM_DOUG_OR_DOUG = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_OR_DOUG)
 
-all:	b b.tar bl.i bl.s bl.o bi.i bi.s bi.o b.i b.s b.o
+all:	clean b b.tar bl.i bl.s bl.o bi.i bi.s bi.o b.i b.s b.o
 
 clean:
 	rm -rf b *.tar *.o *.s *.i *.dSYM
