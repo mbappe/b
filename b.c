@@ -404,9 +404,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
 #if defined(SKIP_LINKS)
             assert(nDigitsLeft <= nDigitsLeftOld);
-            if (nDigitsLeft < nDigitsLeftOld - 1)
+// Would like to get rid of this install of the prefix when it is not
+// necessary.  It should not be necessary.
+            //if (nDigitsLeft == nDigitsLeftOld)
             {
-printf("\n\nNot installing prefix!\n");
+//printf("\n\nNot installing prefix left %d old %d\n",
+//    nDigitsLeft, nDigitsLeftOld);
                 set_sw_wKey(pSw, nDigitsLeft, wKey);
             }
 #endif // defined(SKIP_LINKS)
