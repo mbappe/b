@@ -11,11 +11,11 @@
 
 #include "b.h"
 
-#if defined(RAMMETRICS)
+#if defined(RAM_METRICS)
 Word_t j__AllocWordsJLLW;
 Word_t j__AllocWordsJBU;
 Word_t j__AllocWordsJLB1;
-#endif // defined(RAMMETRICS)
+#endif // defined(RAM_METRICS)
 
 // From Judy1LHTime.c for convenience.
 

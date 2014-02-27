@@ -9,11 +9,11 @@
 #if defined(LOOKUP)
 #define strLookupOrInsertOrRemove  "Lookup"
 #define DBGX  DBGL
-#if defined(RAMMETRICS)
+#if defined(SEARCH_METRICS)
 Word_t j__SearchCompares;
 Word_t j__SearchPopulation;
 Word_t j__TreeDepth;
-#endif // defined(RAMMETRICS)
+#endif // defined(SEARCH_METRICS)
 #else // defined(REMOVE)
 #define strLookupOrInsertOrRemove  "Remove"
 #define DBGX  DBGR
@@ -58,7 +58,7 @@ again:
     assert(nDigitsLeft > cnDigitsAtBottom); // keep LOOKUP lean
     DBGX(printf("# pwRoot %p ", pwRoot));
 #else // ( ! defined(LOOKUP) )
-    METRICS(j__TreeDepth++);
+    SMETRICS(j__TreeDepth++);
 #endif // ( ! defined(LOOKUP) )
     DBGX(printf("# wRoot "OWx" wKey "OWx" nDigitsLeft %d\n",
             wRoot, wKey, nDigitsLeft));
@@ -211,7 +211,7 @@ again:
         DBGX(printf("List\n"));
 
 #if defined(LOOKUP)
-        METRICS(j__SearchPopulation += ls_wPopCnt(wr_pwr(wRoot)));
+        SMETRICS(j__SearchPopulation += ls_wPopCnt(wr_pwr(wRoot)));
 #endif // defined(LOOKUP)
 
         // todo: save insertion point in sorted list and pass it to InsertGuts
@@ -219,7 +219,7 @@ again:
         for (i = 0; i < ls_wPopCnt(wr_pwr(wRoot)); i++)
         {
 #if defined(LOOKUP)
-            METRICS(j__SearchCompares++);
+            SMETRICS(j__SearchCompares++);
 #endif // defined(LOOKUP)
 
             if (wr_pwKeys(wRoot)[i] == wKey)

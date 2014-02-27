@@ -9,19 +9,23 @@
 // (16,  0) Bus error    15853, -s0 -S1 Bus error 912010843
 // ( 8,  0) Bus error  3981080, -s0 -S1 Bus error 912010843
 // ( 6,  0) Bus error 14454402, -s0 -S1 Bus error 912010843
+// Is the 912,010,843 where we run out of memory if all keys are in lists
+// or every key requires its own link/wRoot in a switch?
 //
 
 // Quick tested:
 // -m32 -O2 -g -Wall -Werror
-// JUDY_DEFINES += -DRAMMETRICS -DJUDYB -UGUARDBAND -UNDEBUG -DEBUG
+// JUDY_DEFINES += -DRAM_METRICS -DJUDYB -UGUARDBAND -UNDEBUG -DEBUG
 // B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -DSORT_LISTS
 // (cnBitsPerDigit, cnDigitsAtBottom, cwListPopCntMax)
-// (0,  X, 1), (1, 26, 1), (2, 10, 1), (3,  5, 1), (4,  2, 1)
-// (5,  1, 1), (6,  0, 1), (8,  0, 1),
-// (16,  0, 1) gives malloc error; can't get to full pop with
-// cnDigitsAtBottom = 0.
-// (11,  0, 1) gives malloc error; can't get to full pop
-// testing (16,  1, 1) ...
+// ( 0, X1,  X1), ( 1, 26,   1), ( 2, 10,   1), ( 3,  5,   1), ( 4,  2,   1)
+// ( 5,  1,   1), ( 6,  0,   1), ( 8,  0,   1),
+// (16,  0,   1) malloc error; can't get full pop with cnDigitsAtBottom = 0,
+// ( 6,  1,   1), ( 7,  1,   1), ( 8,  1,   1), (16,  1,   1), (20,  1,   1),
+// ( 1, 31,   1), ( 2, 15,   1), ( 3, 10,   1), ( 4,  7,   1), ( 5, 6,   1),
+// ( 6,  5,   1), ( 8,  3,   1), ( 7,  4,   1),
+// ( 1, 26,   0), ( 8,  3,   0),
+// ( 1, 26, 999), ( 5,  2, 999),
 
 // Choose bits per digit.
 // 0, smaller, equal and larger than cnLogBitsPerWord are all good
@@ -38,7 +42,7 @@
 // It does not depend on max list length since we currently
 // define bottom as where we create a bitmap.
 // Is it possible to get to max pop with cnDigitsAtBottom = 0?  No.
-#define cnDigitsAtBottom  (1U)
+#define cnDigitsAtBottom  (2U)
 
 // Choose max list length.
 // 0, 1, 2, 3, greater than 255 are all good values to test.
@@ -46,11 +50,11 @@
 // None with 128, 192, 224, 240.
 //const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
 //const Word_t cwListPopCntMax = 255;
-#define cwListPopCntMax  (1L)
+#define cwListPopCntMax  (999L)
 
 // Choose features.
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
-// -UNDEBUG, RAMMETRICS, GUARDBAND
+// -UNDEBUG, RAM_METRICS, GUARDBAND
 
 // To do:
 //
@@ -84,11 +88,17 @@
 #if ( ! defined(_B_H_INCLUDED) )
 #define _B_H_INCLUDED
 
-#if defined RAMMETRICS
+#if defined RAM_METRICS
 #define METRICS(x)  (x)
-#else // defined RAMMETRICS
+#else // defined RAM_METRICS
 #define METRICS(x)
-#endif // defined RAMMETRICS
+#endif // defined RAM_METRICS
+
+#if defined SEARCH_METRICS
+#define SMETRICS(x)  (x)
+#else // defined SEARCH_METRICS
+#define SMETRICS(x)
+#endif // defined SEARCH_METRICS
 
 #if defined(DEBUG_INSERT)
 #define DBGI(x)  if (wInserts >= cwDebugThreshold) (x)
