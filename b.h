@@ -47,9 +47,7 @@
 // depth with only the bottom list having more than one key.
 // We could vary the max length based on depth or be even more sophisticated.
 #define cwListPopCntMax  EXP(cnBitsPerDigit + 1)
-//const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
-//#define cwListPopCntMax  1L
-//const Word_t cwListPopCntMax = 1;
+//#define cwListPopCntMax  0L
 
 // Choose features.
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
@@ -177,7 +175,11 @@
 #define     wr_nType(_wr)         ((_wr) & cnMallocMask)
 #define set_wr_nType(_wr, _type)  ((_wr) = ((_wr) & ~cnMallocMask) | (_type))
 
+#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #define     wr_pwr(_wr)          ((Word_t *)((_wr) & ~cnMallocMask))
+#else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+#define     wr_pwr(_wr)          ((Word_t *)(_wr))
+#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #define set_wr_pwr(_wr, _pwr) \
     ((_wr) = ((_wr) & cnMallocMask) | (Word_t)(_pwr))
 
