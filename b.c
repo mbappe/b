@@ -133,9 +133,10 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
     assert(pSw != NULL);
 
 #if defined(RAM_METRICS)
-    if ((cnBitsPerDigit * nDigitsLeft) <= cnLogBitsPerWord)
+    if (((cnBitsPerDigit * cnDigitsAtBottom) <= cnLogBitsPerWord)
+        && (nDigitsLeft <= cnDigitsAtBottom + 1))
     {
-        assert(nDigitsLeft == cnDigitsAtBottom); // later
+        assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
         METRICS(j__AllocWordsJLB1 += sizeof(*pSw) / sizeof(Word_t));
     }
     else
@@ -162,9 +163,10 @@ OldSwitch(Switch_t *pSw)
 #endif // defined(RAM_METRICS)
 {
 #if defined(RAM_METRICS)
-    if ((cnBitsPerDigit * nDigitsLeft) <= cnLogBitsPerWord)
+    if (((cnBitsPerDigit * cnDigitsAtBottom) <= cnLogBitsPerWord)
+        && (nDigitsLeft <= cnDigitsAtBottom + 1))
     {
-        assert(nDigitsLeft == cnDigitsAtBottom); // later
+        assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
         METRICS(j__AllocWordsJLB1 -= sizeof(*pSw) / sizeof(Word_t));
     }
     else
