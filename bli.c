@@ -184,6 +184,9 @@ again:
                         ClrBitInWord(wRoot,
                             wKey & (EXP(cnBitsAtBottom)) - 1UL);
 #endif // defined(REMOVE)
+#if defined(INSERT)
+// BUG:  Should be decrementing the counts we incremented on the way in.
+#endif // defined(INSERT)
                         return KeyFound;
                     }
 
@@ -209,6 +212,9 @@ again:
                             ClrBit(wRoot, wKey & (EXP(cnBitsAtBottom)) - 1UL);
                         }
 #endif // defined(REMOVE)
+#if defined(INSERT)
+// BUG:  Should be decrementing the counts we incremented on the way in.
+#endif // defined(INSERT)
                         return KeyFound;
                     }
 
@@ -262,21 +268,27 @@ again:
                 // BUG:  We should check if the switch is empty
                 // and free it and so on.
 #endif // defined(REMOVE)
+#if defined(INSERT)
+// BUG:  Should be decrementing the counts we incremented on the way in.
+#endif // defined(INSERT)
                 return KeyFound;
             }
         }
     }
 
-#if defined(LOOKUP) || defined(REMOVE)
-    return ! KeyFound;
-#else // defined(LOOKUP) || defined(REMOVE)
+#if defined(INSERT)
     return InsertGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-#endif // defined(LOOKUP) || defined(REMOVE)
+#else // defined(INSERT)
+#if defined(REMOVE)
+// BUG:  Should be incrementing the counts we decremented on the way in.
+#endif // defined(REMOVE)
+    return ! KeyFound;
+#endif // defined(INSERT)
 
 }
 
 #undef InsertGuts
-#undef Insert
+#undef Tweak
 #undef DBGX
 #undef strLookupOrInsertOrRemove
 #undef KeyFound
