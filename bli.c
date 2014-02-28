@@ -18,7 +18,6 @@ Word_t j__TreeDepth;
 #define strLookupOrInsertOrRemove  "Remove"
 #define DBGX  DBGR
 #define Insert      Remove
-#define InsertGuts  RemoveGuts
 #endif // defined(REMOVE)
 #else // defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (assert(0), Failure)
@@ -104,28 +103,40 @@ again:
             nDigitsLeft = nDigitsLeftRoot;
 #endif // defined(SKIP_LINKS)
 
-#if defined(INSERT)
-            // increment population count on the way in
+#if !defined(LOOKUP)
+            // increment or decrement population count on the way in
             {
                 Word_t wPopCnt = sw_wPopCnt(pwr, nDigitsLeft);
 #if 0
                 // BUG: What if attempting to insert a dup and
                 // we're already at max pop?
                 if (wPopCnt == 0) && at least one pwRoots is not 0
+                // BUG: What if attempting to remove a key that isn't present
+                // and we're already at pop zero?
+                if (wPopCnt == 0) && all pwRoots are 0
                 {
-                    // subtree is at full population
+                    // subtree is at full population or zero population
                     return KeyFound;
                 }
 #endif
+
+#if defined(INSERT)
                 set_sw_wPopCnt(pwr, nDigitsLeft, wPopCnt + 1);
+                assert(sw_wPopCnt(pwr, nDigitsLeft)
+                    == ((wPopCnt + 1) & wPrefixPopMask(nDigitsLeft)));
+#endif // defined(INSERT)
+
+#if defined(REMOVE)
+                set_sw_wPopCnt(pwr, nDigitsLeft, wPopCnt - 1);
+                assert(sw_wPopCnt(pwr, nDigitsLeft)
+                    == ((wPopCnt - 1) & wPrefixPopMask(nDigitsLeft)));
+#endif // defined(REMOVE)
 
                 DBGI(printf("sw_wPopCnt "wd"\n",
                     sw_wPopCnt(pwr, nDigitsLeft)));
 
-                assert(sw_wPopCnt(pwr, nDigitsLeft)
-                    == ((wPopCnt + 1) & wPrefixPopMask(nDigitsLeft)));
             }
-#endif // defined(INSERT)
+#endif // defined(LOOKUP)
 
             nDigitsLeft -= (nBitsIndexSz / cnBitsPerDigit);
             nBitsLeft = nDigitsLeft * cnBitsPerDigit;
@@ -163,6 +174,10 @@ again:
                     if (BitIsSetInWord(wRoot,
                         wKey & (EXP(cnBitsAtBottom) - 1UL)))
                     {
+#if defined(REMOVE)
+                        ClrBitInWord(wRoot,
+                            wKey & (EXP(cnBitsAtBottom)) - 1UL);
+#endif // defined(REMOVE)
                         return KeyFound;
                     }
 
@@ -176,6 +191,9 @@ again:
 
                     if (BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)))
                     {
+#if defined(REMOVE)
+                        ClrBit(wRoot, wKey & (EXP(cnBitsAtBottom)) - 1UL);
+#endif // defined(REMOVE)
                         return KeyFound;
                     }
 
@@ -224,16 +242,19 @@ again:
 
             if (wr_pwKeys(wRoot)[i] == wKey)
             {
+#if defined(REMOVE)
+                RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+#endif // defined(REMOVE)
                 return KeyFound;
             }
         }
     }
 
-#if defined(LOOKUP)
+#if defined(LOOKUP) || defined(REMOVE)
     return ! KeyFound;
-#else // defined(LOOKUP)
+#else // defined(LOOKUP) || defined(REMOVE)
     return InsertGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-#endif // defined(LOOKUP)
+#endif // defined(LOOKUP) || defined(REMOVE)
 
 }
 

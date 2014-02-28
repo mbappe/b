@@ -26,11 +26,14 @@
 // ( 6,  5,   1), ( 8,  3,   1), ( 7,  4,   1),
 // ( 1, 26,   0), ( 8,  3,   0),
 // ( 1, 26, 999), ( 5,  2, 999),
+// -USORT_LISTS ( 5,  1, bPD),
+// -USORT_LISTS -DMIN_MAX_LISTS ( 5,  1, bPD),
+// -USORT_LISTS -DMIN_MAX_LISTS ( 8,  1, bPD),
 
 // Choose bits per digit.
 // 0, smaller, equal and larger than cnLogBitsPerWord are all good
 // numbers to test.
-#define cnBitsPerDigit  (5U)
+#define cnBitsPerDigit  (8U)
 
 // Choose bottom.
 // Bottom is where bitmap is created.  Maybe we should change the meaning.
@@ -42,15 +45,16 @@
 // It does not depend on max list length since we currently
 // define bottom as where we create a bitmap.
 // Is it possible to get to max pop with cnDigitsAtBottom = 0?  No.
-#define cnDigitsAtBottom  (2U)
+#define cnDigitsAtBottom  (1U)
 
 // Choose max list length.
 // 0, 1, 2, 3, greater than 255 are all good values to test.
 // Bus error at 912,010,843 with 255, 256 or 1024.
 // None with 128, 192, 224, 240.
+#define cwListPopCntMax  EXP(cnBitsPerDigit)
 //const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
-//const Word_t cwListPopCntMax = 255;
-#define cwListPopCntMax  (999L)
+//#define cwListPopCntMax  1L
+//const Word_t cwListPopCntMax = 1;
 
 // Choose features.
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
@@ -113,7 +117,7 @@
 #endif // defined(DEBUG_LOOKUP)
 
 #if defined(DEBUG_REMOVE)
-#define DBGR(x)  (x)
+#define DBGR(x)  if (wInserts >= cwDebugThreshold) (x)
 #else // defined(DEBUG_REMOVE)
 #define DBGR(x)
 #endif // defined(DEBUG_REMOVE)
@@ -125,7 +129,9 @@
 #endif // defined(DEBUG_MALLOC)
 
 #if defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || defined(DEBUG_MALLOC)
+#if !defined(DEBUG)
 #define DEBUG
+#endif // !defined(DEBUG)
 #endif // defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || ...
 
 #if defined(DEBUG)
@@ -251,11 +257,18 @@ Word_t wInserts;
 // These assume List == 0.
 #define     wr_pwKeys(_wr)   (&((Word_t *)(_wr))[1])
 
-#define     ls_wPopCnt(_ls)        ((_ls)[0])
-#define set_ls_wPopCnt(_ls, _cnt)  ((_ls)[0] = (_cnt))
+#define     ls_wPopCnt(_ls)        (((Word_t *)(_ls))[0] & 0xffff)
+#define set_ls_wPopCnt(_ls, _cnt) \
+    (((Word_t *)(_ls))[0] \
+        = (((Word_t *)(_ls))[0] & ~0xffff) | ((_cnt) & 0xffff))
+
+#define     ls_wLen(_ls)        (((Word_t *)(_ls))[0] >> 16)
+#define set_ls_wLen(_ls, _len) \
+    (((Word_t *)(_ls))[0] \
+        = (((Word_t *)(_ls))[0] & 0xffff) | ((_len) << 16))
 
 // Assume List == 0, i.e. wRoot is a valid pointer with no mask.
-#define     wr_ls_wPopCnt(_wr)        (((Word_t *)(_wr))[0])
+#define     wr_ls_wPopCnt(_wr)        (ls_wPopCnt(_wr))
 
 #define     ls_pwKeys(_ls)    (&(_ls)[1])
 #define     pwr_pwKeys(_pwr)  (ls_pwKeys(_pwr))
@@ -266,7 +279,8 @@ Word_t wInserts;
 
 #define BitIsSetInWord(_w, _b)  (((_w) & (1 << (_b))) != 0)
 
-#define SetBitInWord(_w, _b)  ((_w) |= (1 << (_b)))
+#define SetBitInWord(_w, _b)  ((_w) |=  (1 << (_b)))
+#define ClrBitInWord(_w, _b)  ((_w) &= ~(1 << (_b)))
 
 #define TestBit(_pBitMap, _key) \
     ((((char *)(_pBitMap))[BitMapByteNum(_key)] & BitMapByteMask(_key)) \
@@ -275,7 +289,9 @@ Word_t wInserts;
 #define BitIsSet  TestBit
 
 #define SetBit(_pBitMap, _key) \
-    (((char *)(_pBitMap))[BitMapByteNum(_key)] |= BitMapByteMask(_key))
+    (((char *)(_pBitMap))[BitMapByteNum(_key)] |=  BitMapByteMask(_key))
+#define ClrBit(_pBitMap, _key) \
+    (((char *)(_pBitMap))[BitMapByteNum(_key)] &= ~BitMapByteMask(_key))
 
 #define BitTestAndSet(_pBitMap, _key, _bSet) \
     (((_bSet) = TestBit((_pBitMap), (_key))), \
