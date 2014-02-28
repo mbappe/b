@@ -58,17 +58,18 @@ Tweak(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, int bCountOnly)
     Word_t *pwRoot;
 #else // defined(LOOKUP)
     Word_t wRoot;
-    Word_t wPopCnt;
 #if !defined(RECURSIVE_TWEAK)
     Word_t *pwRootOrig = pwRoot;
     unsigned nDigitsLeftOrig = nDigitsLeft;
     int bUndo = 0;
 #endif // !defined(RECURSIVE_TWEAK)
 #endif // defined(LOOKUP)
-    unsigned nBitsLeft;
 #if defined(SKIP_LINKS)
     unsigned nDigitsLeftRoot;
 #endif // defined(SKIP_LINKS)
+#if !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_DEREFERENCE)
+    Word_t wPopCnt;
+#endif // !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_DEREFERENCE)
     unsigned nType;
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
@@ -173,9 +174,10 @@ again:
 #endif // !defined(LOOKUP)
 
             nDigitsLeft -= (nBitsIndexSz / cnBitsPerDigit);
-            nBitsLeft = nDigitsLeft * cnBitsPerDigit;
 
-            nIndex = ((wKey >> nBitsLeft) & (EXP(nBitsIndexSz) - 1));
+            nIndex
+                = ((wKey >> (nDigitsLeft * cnBitsPerDigit))
+                    & (EXP(nBitsIndexSz) - 1));
 
             DBGX(printf("Next nDigitsLeft %d nIndex %d pwr %p pwRoots %p\n",
                 nDigitsLeft, nIndex, pwr, pwr_pwRoots(pwr)));
@@ -197,6 +199,9 @@ again:
             // We have to do the prefix check here if we're at the
             // bottom because wRoot contains a Bitmap.  Not a pointer.
             // Not a key.
+#if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREFERENCE)
+            return KeyFound;
+#else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREFERENCE)
 
 #if defined(SKIP_LINKS)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -206,6 +211,9 @@ again:
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
             {
+#if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
+                return KeyFound;
+#else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
                 if (cnBitsAtBottom <= cnLogBitsPerWord) // compile time
                 {
                     DBGX(printf(
@@ -272,6 +280,7 @@ again:
 
                     DBGX(printf("! BitIsSet\n"));
                 }
+#endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
             }
 #if defined(SKIP_LINKS)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -282,38 +291,38 @@ again:
             }
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
+#endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREFERENCE)
         }
     }
     else if (wRoot != 0)
     {
-#if 0
-#if defined(LOOKUP)
-#if 0
-        Word_t *pwKeys = wr_pwKeys(wRoot);
-        if (pwKeys[0] != 0) return KeyFound;
-#else
+#if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREFERENCE)
         return KeyFound;
-#endif
-#else // defined(LOOKUP)
-#endif // defined(LOOKUP)
-#endif
-        unsigned i;
+#else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREFERENCE)
+
+        unsigned n;
 
         DBGX(printf("List\n"));
 
+        wPopCnt = ls_wPopCnt(wRoot);
+
 #if defined(LOOKUP)
-        SMETRICS(j__SearchPopulation += ls_wPopCnt(wr_pwr(wRoot)));
+        SMETRICS(j__SearchPopulation += wPopCnt);
 #endif // defined(LOOKUP)
+
+#if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
+        return wPopCnt ? KeyFound : ! KeyFound;
+#else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 
         // todo: save insertion point in sorted list and pass it to InsertGuts
         // todo: possibly do insertion right here if list isn't full
-        for (i = 0; i < ls_wPopCnt(wr_pwr(wRoot)); i++)
+        for (n = 0; n < wPopCnt; n++)
         {
 #if defined(LOOKUP)
             SMETRICS(j__SearchCompares++);
 #endif // defined(LOOKUP)
 
-            if (wr_pwKeys(wRoot)[i] == wKey)
+            if (wr_pwKeys(wRoot)[n] == wKey)
             {
 #if defined(REMOVE)
                 RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
@@ -333,6 +342,8 @@ again:
                 return KeyFound;
             }
         }
+#endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
+#endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREFERENCE)
     }
 
 #if defined(INSERT)
