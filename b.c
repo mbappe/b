@@ -60,100 +60,6 @@ Word_t    j__AllocWordsJV;
 
 #if cnBitsPerDigit != 0
 
-#if defined(DEBUG)
-void
-Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft)
-{
-    unsigned nDigitsLeft;
-    Word_t *pwr;
-    unsigned nBitsIndexSz;
-    Word_t *pwRoots;
-    unsigned nType;
-    unsigned i;
-
-    if (wRoot == 0)
-    {
-        return;
-    }
-
-    printf(" nBitsLeft %2d", nBitsLeft);
-    // should enhance this to check for zeros in suffix and to print
-    // dots for suffix.
-    printf(" wPrefix "OWx, wPrefix);
-    printf(" wr "OWx, wRoot);
-
-    if (nBitsLeft <= cnBitsAtBottom)
-    {
-        if (cnBitsAtBottom > cnLogBitsPerWord)
-        {
-            for (i = 0;
-                (i < EXP(cnBitsAtBottom) / cnBitsPerWord) && (i < 8);
-                 i++)
-            {
-                printf(" "Owx, ((Word_t *)wRoot)[i]);
-            }
-        }
-        printf("\n");
-
-        return;
-    }
-
-    pwr = wr_pwr(wRoot);
-
-    if ((nType = wr_nType(wRoot)) == List)
-    {
-        Word_t wPopCnt = ls_wPopCnt(pwr);
-        Word_t *pwKeys = pwr_pwKeys(pwr);
-
-        assert(wr_nType(wRoot) == List);
-
-        printf(" wLen %3llu", (unsigned long long)ls_wLen(wRoot));
-        printf(" wPopCnt %3llu", (unsigned long long)wPopCnt);
-        for (i = 0; (i < wPopCnt) && (i < 8); i++) printf(" "Owx, pwKeys[i]);
-        printf("\n");
-
-        return;
-    }
-
-    // Switch
-
-    nDigitsLeft = tp_to_nDigitsLeft(nType);
-
-    if ((nBitsLeft = nDigitsLeft * cnBitsPerDigit) > cnBitsPerWord)
-    {
-        nBitsLeft = cnBitsPerWord;
-    }
-
-    wPrefix = sw_wPrefix(pwr, nDigitsLeft);
-    nBitsIndexSz = pwr_nBitsIndexSz(pwr);
-    pwRoots = pwr_pwRoots(pwr);
-
-    printf(" wPopCnt %3llu",
-        (unsigned long long)sw_wPopCnt(pwr, nDigitsLeft));
-    printf(" wr_nDigitsLeft %2d", nDigitsLeft);
-    // should enhance this to check for zeros in suffix and to print
-    // dots for suffix.
-    printf(" wPrefixPop "OWx, pwr_wPrefixPop(pwr));
-    printf(" wKeyPopMask "OWx, wPrefixPopMask(nDigitsLeft));
-    printf(" wr_wPrefix "OWx, wPrefix);
-    //printf(" pwRoots "OWx, (Word_t)pwRoots);
-    printf("\n");
-
-    nBitsLeft -= nBitsIndexSz;
-    // In case nBitsLeftState is not an integral number of digits.
-    if (cnBitsPerWord % cnBitsPerDigit != 0)
-    {
-        nBitsLeft = (nBitsLeft + nBitsIndexSz - 1)
-            / nBitsIndexSz * nBitsIndexSz;
-    }
-
-    for (i = 0; i < EXP(nBitsIndexSz); i++)
-    {
-        Dump(pwRoots[i], wPrefix | (i << nBitsLeft), nBitsLeft);
-    }
-}
-#endif // defined(DEBUG)
-
 INLINE Word_t *
 NewList(Word_t wPopCnt)
 {
@@ -180,7 +86,7 @@ OldList(Word_t *pwList)
     JudyFree(pwList, ls_wLen(pwList));
 }
 
-INLINE Word_t
+Word_t
 NewBitMap(void)
 {
     Word_t w = JudyMalloc(EXP(cnBitsAtBottom) / cnBitsPerWord);
@@ -198,6 +104,12 @@ NewBitMap(void)
     memset((void *)w, 0, EXP(cnBitsAtBottom) / cnBitsPerByte);
 
     return w;
+}
+
+void
+OldBitmap(Word_t wRoot)
+{
+    JudyFree((Word_t *)wRoot, EXP(cnBitsAtBottom) / cnBitsPerWord);
 }
 
 INLINE Switch_t *
@@ -224,13 +136,138 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
     return pSw;
 }
 
-#if 0
 INLINE void
 OldSwitch(Switch_t *pSw)
 {
     JudyFree((Word_t *)pSw, sizeof(*pSw) / sizeof(Word_t));
 }
-#endif
+
+void
+FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
+{
+    Word_t wRoot = *pwRoot;
+    unsigned nDigitsLeft;
+    Word_t *pwr;
+    unsigned nBitsIndexSz;
+    Word_t *pwRoots;
+    unsigned nType;
+    unsigned n;
+
+    if (wRoot == 0)
+    {
+        return;
+    }
+
+    if (bDump)
+    {
+        printf(" nBitsLeft %2d", nBitsLeft);
+        // should enhance this to check for zeros in suffix and to print
+        // dots for suffix.
+        printf(" wPrefix "OWx, wPrefix);
+        printf(" wr "OWx, wRoot);
+    }
+
+    if (nBitsLeft <= cnBitsAtBottom)
+    {
+        if (cnBitsAtBottom > cnLogBitsPerWord)
+        {
+            if (!bDump)
+            {
+                OldBitmap(wRoot);
+            }
+            else
+            {
+                for (n = 0;
+                    (n < EXP(cnBitsAtBottom) / cnBitsPerWord) && (n < 8);
+                     n++)
+                {
+                    printf(" "Owx, ((Word_t *)wRoot)[n]);
+                }
+            }
+        }
+
+        if (bDump) printf("\n");
+
+        return;
+    }
+
+    pwr = wr_pwr(wRoot);
+
+    if ((nType = wr_nType(wRoot)) == List)
+    {
+        Word_t wPopCnt = ls_wPopCnt(pwr);
+        Word_t *pwKeys = pwr_pwKeys(pwr);
+
+        assert(wr_nType(wRoot) == List);
+
+        if (!bDump)
+        {
+            OldList(pwr);
+        }
+        else
+        {
+            printf(" wLen %3llu", (unsigned long long)ls_wLen(wRoot));
+            printf(" wPopCnt %3llu", (unsigned long long)wPopCnt);
+
+            for (n = 0; (n < wPopCnt) && (n < 8); n++)
+            {
+                printf(" "Owx, pwKeys[n]);
+            }
+            printf("\n");
+        }
+
+        return;
+    }
+
+    // Switch
+
+    nDigitsLeft = tp_to_nDigitsLeft(nType);
+
+    if ((nBitsLeft = nDigitsLeft * cnBitsPerDigit) > cnBitsPerWord)
+    {
+        nBitsLeft = cnBitsPerWord;
+    }
+
+    wPrefix = sw_wPrefix(pwr, nDigitsLeft);
+    nBitsIndexSz = pwr_nBitsIndexSz(pwr);
+    pwRoots = pwr_pwRoots(pwr);
+
+    if (bDump)
+    {
+        printf(" wPopCnt %3llu",
+            (unsigned long long)sw_wPopCnt(pwr, nDigitsLeft));
+        printf(" wr_nDigitsLeft %2d", nDigitsLeft);
+        // should enhance this to check for zeros in suffix and to print
+        // dots for suffix.
+        printf(" wPrefixPop "OWx, pwr_wPrefixPop(pwr));
+        printf(" wKeyPopMask "OWx, wPrefixPopMask(nDigitsLeft));
+        printf(" wr_wPrefix "OWx, wPrefix);
+        //printf(" pwRoots "OWx, (Word_t)pwRoots);
+        printf("\n");
+    }
+
+    nBitsLeft -= nBitsIndexSz;
+    // In case nBitsLeftState is not an integral number of digits.
+    if (cnBitsPerWord % cnBitsPerDigit != 0)
+    {
+        nBitsLeft = (nBitsLeft + nBitsIndexSz - 1)
+            / nBitsIndexSz * nBitsIndexSz;
+    }
+
+    for (n = 0; n < EXP(nBitsIndexSz); n++)
+    {
+        FreeArrayGuts(&pwRoots[n],
+            wPrefix | (n << nBitsLeft), nBitsLeft, bDump);
+    }
+}
+
+#if defined(DEBUG)
+void
+Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft)
+{
+    FreeArrayGuts(&wRoot, wPrefix, nBitsLeft, /* bDump */ 1);
+}
+#endif // defined(DEBUG)
 
 #if defined(SORT_LISTS)
 // CopyWithInsert can handle pTgt == pSrc, but cannot handle any other
@@ -663,7 +700,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 }
 
 int
-Judy1Unset( PPvoid_t ppvRoot, Word_t wKey, P_JE)
+Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 {
 #if cnBitsPerDigit != 0
 
@@ -716,6 +753,29 @@ Judy1Unset( PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
 #endif // cnBitsPerDigit != 0
 
-    (void)PJError; // suppress "unused" compiler warnings
+    (void)PJError; // suppress "unused parameter" compiler warnings
+}
+
+Word_t
+Judy1FreeArray(PPvoid_t PPArray, P_JE)
+{
+    (void)PJError; // suppress "unused parameter" compiler warnings
+
+    DBGR(printf("Judy1FreeArray\n"));
+
+    FreeArrayGuts((Word_t *)PPArray,
+        /* wPrefix */ 0, cnBitsPerWord, /* bDump */ 0);
+
+    return wInserts;
+}
+
+Word_t
+Judy1Count(Pcvoid_t PArray, Word_t Index1, Word_t Index2, P_JE)
+{
+    (void)PJError; // suppress "unused parameter" compiler warnings
+
+    printf("Judy1Count\n");
+
+    return wInserts;
 }
 

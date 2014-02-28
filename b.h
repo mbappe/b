@@ -138,7 +138,6 @@
 #define INLINE
 #define DBG(x)  (x)
 #define cwDebugThreshold  0ULL
-Word_t wInserts;
 #else // defined(DEBUG)
 #define INLINE static inline
 #define DBG(x)
@@ -335,6 +334,8 @@ Status_t InsertGuts(Word_t *pwRoot,
 
 Status_t RemoveGuts(Word_t *pwRoot,
     Word_t wKey, unsigned nDigitsLeft, Word_t wRoot);
+
+Word_t wInserts;
 
 #endif // cnBitsPerDigit != 0
 
