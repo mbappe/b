@@ -223,7 +223,10 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
             }
         }
 
-        printf("\n");
+        if (bDump)
+        {
+            printf("\n");
+        }
 
         return 0;
     }
@@ -353,9 +356,13 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     unsigned nType;
 
     // Validate global constant parameters set up in the header file.
+#if 0
     assert(cnDigitsAtBottom > 0); // can't get to full pop
+#endif
     assert(cnDigitsAtBottom + 1 <= cnDigitsPerWord);
+#if defined(SKIP_LINKS)
     assert(cnDigitsAtBottom + cnMallocMask >= cnDigitsPerWord + 1);
+#endif // defined(SKIP_LINKS)
 
     DBGI(printf("InsertGuts pwRoot %p ", pwRoot));
     DBGI(printf(" wRoot "OWx" wKey "OWx" nDigitsLeft %d\n",
