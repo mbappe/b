@@ -523,26 +523,28 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 Status_t
 RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft, Word_t wRoot)
 {
-    unsigned i;
+    Word_t wPopCnt = ls_wPopCnt(wRoot);
+    unsigned n;
 
     DBGR(printf("RemoveGuts\n"));
 
-    if (ls_wPopCnt(wRoot) == 1)
+    if (wPopCnt == 1)
     {
         OldList((Word_t *)wRoot); *pwRoot = 0;
     }
     else
     {
-        for (i = 0; wr_pwKeys(wRoot)[i] != wKey; i++);
+        Word_t *pwKeys = wr_pwKeys(wRoot);
+
+        for (n = 0; pwKeys[n] != wKey; n++);
 
 #if defined(MAX_MIN_LISTS)
         assert(0); // later
 #else // defined(MAX_MIN_LISTS)
-        MOVE(&wr_pwKeys(wRoot)[i], &wr_pwKeys(wRoot)[i+i],
-            ls_wPopCnt(wRoot) - 1 - i);
+        MOVE(&pwKeys[n], &pwKeys[n + 1], wPopCnt - n - 1);
 #endif // defined(MAX_MIN_LISTS)
 
-        set_ls_wPopCnt(wRoot, ls_wPopCnt(wRoot) - 1);
+        set_ls_wPopCnt(wRoot, wPopCnt - 1);
     }
 
     // suppress "unused" compiler warnings
@@ -591,7 +593,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 {
 #if cnBitsPerDigit != 0
 
-    DBGI(printf("Judy1Set wKey "OWx"\n", wKey));
+    DBGI(printf("\nJudy1Set wKey "OWx"\n", wKey));
 
     int status = Insert((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
 
@@ -667,7 +669,7 @@ Judy1Unset( PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     int status;
 
-    DBGR(printf("Judy1Unset wKey "OWx"\n", wKey));
+    DBGR(printf("\nJudy1Unset wKey "OWx"\n", wKey));
 
     status = Remove((Word_t *)ppvRoot, wKey, cnBitsPerWord);
 
