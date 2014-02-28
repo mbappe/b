@@ -115,6 +115,8 @@ OldBitmap(Word_t wRoot)
 {
     JudyFree((Word_t *)wRoot, EXP(cnBitsAtBottom) / cnBitsPerWord);
 
+    METRICS(j__AllocWordsJLB1 -= (EXP(cnBitsAtBottom) / cnBitsPerWord));
+
     return EXP(cnBitsAtBottom) / cnBitsPerWord * sizeof(Word_t);
 }
 
@@ -130,7 +132,17 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
 #endif // cnDigitsAtBottom < (cnDigitsPerWord - 1)
     assert(pSw != NULL);
 
-    METRICS(j__AllocWordsJBU += sizeof(*pSw) / sizeof(Word_t));
+#if defined(RAM_METRICS)
+    if ((cnBitsPerDigit * nDigitsLeft) <= cnLogBitsPerWord)
+    {
+        assert(nDigitsLeft == cnDigitsAtBottom); // later
+        METRICS(j__AllocWordsJLB1 += sizeof(*pSw) / sizeof(Word_t));
+    }
+    else
+    {
+        METRICS(j__AllocWordsJBU += sizeof(*pSw) / sizeof(Word_t));
+    }
+#endif // defined(RAM_METRICS)
 
     assert((sizeof(*pSw) % sizeof(Word_t)) == 0);
 
@@ -143,8 +155,24 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
 }
 
 Word_t
+#if defined(RAM_METRICS)
+OldSwitch(Switch_t *pSw, unsigned nDigitsLeft)
+#else // defined(RAM_METRICS)
 OldSwitch(Switch_t *pSw)
+#endif // defined(RAM_METRICS)
 {
+#if defined(RAM_METRICS)
+    if ((cnBitsPerDigit * nDigitsLeft) <= cnLogBitsPerWord)
+    {
+        assert(nDigitsLeft == cnDigitsAtBottom); // later
+        METRICS(j__AllocWordsJLB1 -= sizeof(*pSw) / sizeof(Word_t));
+    }
+    else
+    {
+        METRICS(j__AllocWordsJBU -= sizeof(*pSw) / sizeof(Word_t));
+    }
+#endif // defined(RAM_METRICS)
+
     JudyFree((Word_t *)pSw, sizeof(*pSw) / sizeof(Word_t));
 
     return sizeof(*pSw);
@@ -265,7 +293,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
             wPrefix | (n << nBitsLeft), nBitsLeft, bDump);
     }
 
+#if defined(RAM_METRICS)
+    return bDump ? 0 : (OldSwitch((Switch_t *)pwr, nDigitsLeft) + wBytes);
+#else // defined(RAM_METRICS)
     return bDump ? 0 : (OldSwitch((Switch_t *)pwr) + wBytes);
+#endif // defined(RAM_METRICS)
 }
 
 #if defined(DEBUG)
