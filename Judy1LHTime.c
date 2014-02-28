@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.4 $ $Source: /home/doug/judy-1.0.5_no1_L1D_mod/test/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.1 $ $Source: /Users/mike/Documents/judy/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -2221,7 +2221,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
-            if (lp != 0)                // Remove previously inserted
+            if (lp != 0 && Tit)                // Remove previously inserted
             {
                 for (elm = 0; elm < Elements; elm++)
                 {
@@ -2324,7 +2324,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
-            if (lp != 0)                // Remove previously inserted
+            if (lp != 0 && Tit)                // Remove previously inserted
             {
                 for (elm = 0; elm < Elements; elm++)
                 {
@@ -2450,7 +2450,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
-            if (lp != 0)                // Remove previously inserted
+            if (lp != 0 && Tit)                // Remove previously inserted
             {
                 for (elm = 0; elm < Elements; elm++)
                 {
