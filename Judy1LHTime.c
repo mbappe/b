@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.1 $ $Source: /Users/mike/Documents/judy/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.11 $ $Source: /home/doug/MTD_20140212/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -8,7 +8,8 @@
 // =======================================================================
 
 #if (! (defined(JUDYA) || defined(JUDYB)))
-#error "-DJUDYA or -DJUDYB MUST be specified."
+// #error "-DJUDYA or -DJUDYB MUST be specified."
+#define JUDYA   1
 #endif
 
 #if (defined(JUDYA) && defined(JUDYB))
@@ -45,6 +46,34 @@
 //   cc -O -g Judy1LHTime.c -lm -lrt -lJudy -o Judy1LHTime 
 //           -or-
 //   cc -m32 -O3 -Wall -I../src Judy1LHTime.c -lm -lrt ../src/libJudy32.a -o Judy1LHTime32
+
+// =======================================================================
+//   A little help with printf("0x%016x...  vs printf(0x%08x...
+// =======================================================================
+
+#if defined(_WIN64)
+// typedef unsigned long long Word_t;
+#define Owx   "%016llx"
+#define OWx "0x%016llx"
+#define wx "%llx"
+
+#else // defined(_WIN64)
+
+// typedef unsigned long Word_t;
+#define EXP(_x)  (1L << (_x))
+
+#if defined(__LP64__)
+#define Owx   "%016lx"
+#define OWx "0x%016lx"
+
+#else // defined(__LP64__)
+
+#define Owx   "%08lx"
+#define OWx "0x%08lx"
+#endif // defined(__LP64__)
+
+#define wx "%lx"
+#endif // defined(_WIN64)
 
 //=======================================================================
 //             R A M   M E T R I C S  
@@ -112,10 +141,15 @@ uint64_t  start__;
 struct timespec TVBeg__, TVEnd__;
 
 // CLOCK_PROCESS_CPUTIME_ID
-#define STARTTm         (clock_gettime(CLOCK_MONOTONIC, &TVBeg__))
+#define STARTTm                                                         \
+{                                                                       \
+    clock_gettime(CLOCK_MONOTONIC, &TVBeg__);                           \
+/*  asm volatile("" ::: "memory");   */                                 \
+}
 
 #define ENDTm(D) 							\
 { 									\
+/*    asm volatile("" ::: "memory");        */                          \
     clock_gettime(CLOCK_MONOTONIC, &TVEnd__);   	                \
                                                                         \
     (D) = (double)(TVEnd__.tv_sec - TVBeg__.tv_sec) * 1E9 +             \
@@ -216,7 +250,7 @@ j__roundup2(Word_t Size)
     ret = j__log2(Size);
     if ((Size & -Size) != Size) ret++;
 
-    return(1 << ret);
+    return((Word_t)1 << ret);
 }
 
 #endif // SELFALIGNED
@@ -442,6 +476,10 @@ int       TestBitmapSet(PWord_t B1, PSeed_t PSeed, Word_t Meas);
 
 int       TestBitmapTest(PWord_t B1, PSeed_t PSeed, Word_t Meas);
 
+int       TestByteSet(PSeed_t PSeed, Word_t Meas);
+
+int       TestByteTest(PSeed_t PSeed, Word_t Meas);
+
 int       TimeNumberGen(void **TestRan, PSeed_t PSeed, Word_t Delta);
 
 // Routine to "mirror" the input data word
@@ -580,14 +618,16 @@ double    DeltanSec1 = 0.0;             // Global for measuring delta times
 double    DeltanSecL = 0.0;             // Global for measuring delta times
 double    DeltanSecHS = 0.0;            // Global for measuring delta times
 double    DeltanSecBt = 0.0;            // Global for measuring delta times
+double    DeltanSecBy = 0.0;            // Global for measuring delta times
 double    DeltaMalFre1 = 0.0;           // Delta mallocs/frees per inserted Key
 double    DeltaMalFreL = 0.0;           // Delta mallocs/frees per inserted Key
 double    DeltaMalFreHS = 0.0;          // Delta mallocs/frees per inserted Key
 
-Word_t    Judy1Dups = 0;
-Word_t    JudyLDups = 0;
+Word_t    Judy1Dups =  0;
+Word_t    JudyLDups =  0;
 Word_t    JudyHSDups = 0;
 Word_t    BitmapDups = 0;
+Word_t    ByteDups   = 0;
 
 Word_t    J1Flag = 0;                   // time Judy1
 Word_t    JLFlag = 0;                   // time JudyL
@@ -598,6 +638,7 @@ Word_t    CFlag = 0;                    // time Counting
 Word_t    cFlag = 0;                    // time Copy of Judy1 array
 Word_t    IFlag = 0;                    // time duplicate inserts/sets
 Word_t    bFlag = 0;                    // Time REAL bitmap of (2^-B #) in size
+Word_t    yFlag = 0;                    // Time REAL Bytemap of (2^-B #) in size
 Word_t    mFlag = 0;                    // words/Key for all structures
 Word_t    pFlag = 0;                    // Print number set
 Word_t    lFlag = 0;                    // do not do multi-insert tests
@@ -610,6 +651,8 @@ Word_t    VFlag = 1;                    // To verify Value Area contains good Da
 Word_t    fFlag = 0;
 Word_t    Warmup = WARMUPCPU;           // default calls to random() to warm up CPU
 Word_t    PreStack = 0;                 // to test for TLB collisions with stack
+
+Word_t    Offset = 0;                   // Added to Key upper bits
 
 Word_t    TValues = 1000000;            // Maximum numb retrieve timing tests
 Word_t    nElms = 10000000;             // Default population of arrays
@@ -662,6 +705,8 @@ GetNextKey(PSeed_t PSeed)
     else
         Key = RandomNumb(PSeed, SValue);
 
+    Key |= Offset;              // merge in offset bits
+   
     if (DFlag)
         return (Swizzle(Key));
     else
@@ -683,6 +728,8 @@ PrintHeader()
         printf("   JHSI");
     if (bFlag)
         printf("  BMSet");
+    if (yFlag)
+        printf("  ByMSet");
     if (tFlag)
         printf(" MeasOv");
     if (J1Flag)
@@ -691,6 +738,8 @@ PrintHeader()
         printf("    JLG");
     if (JHFlag)
         printf("   JHSG");
+    if (yFlag)
+        printf(" ByTest");
     if (bFlag)
         printf(" BMTest");
 
@@ -752,7 +801,7 @@ PrintHeader()
     if (JHFlag)
         printf(" HSheap/I");
 
-    if (mFlag && (bFlag == 0))
+    if (mFlag && (bFlag == 0) && (yFlag == 0))
     {
 
 #ifdef  JUDYA
@@ -806,6 +855,8 @@ PrintHeader()
 #undef __FUNCTI0N__
 #define __FUNCTI0N__ "main"
 
+uint8_t  *By = NULL;      // ByteMap
+
 int
 main(int argc, char *argv[])
 {
@@ -836,8 +887,12 @@ main(int argc, char *argv[])
     Word_t    Pop1;
     Word_t    Meas;
     double    TreeDepth = 0;
+
+#ifdef  JUDYB
     double    SearchCompares = 0;
     double    SearchPopulation = 0;          // Population of Searched object
+#endif  // JUDYB
+
 //    long      MaxNumb;
     Word_t    MaxNumb;
     int       Col;
@@ -900,7 +955,7 @@ main(int argc, char *argv[])
 // ============================================================
 
     errno = 0;
-    while ((c = getopt(argc, argv, "a:n:S:T:P:s:B:G:X:W:F:bdDcC1LHvIltmpxVfgi")) != -1)
+    while ((c = getopt(argc, argv, "a:n:S:T:P:s:B:G:X:W:O:F:bdDcC1LHvIltmpxVfgiy")) != -1)
     {
         switch (c)
         {
@@ -990,6 +1045,16 @@ main(int argc, char *argv[])
             }
             break;
 
+        case 'O':                      // Warm up CPU number of random() calls
+            Offset = strtoul(optarg, NULL, 0);
+
+            if ((Offset == 0) || (errno != 0))
+            {
+                printf("\nIllegal argument to \"-O %s\" -- errno = %d\n", optarg, errno);
+                ErrorFlag++;
+            }
+            break;
+
         case 'F':                      // Read Keys from file
             {
                 FILE *Pfile;
@@ -1056,6 +1121,10 @@ main(int argc, char *argv[])
 
         case 'b':                      // Turn on REAL bitmap testing
             bFlag = 1;
+            break;
+
+        case 'y':                      // Turn on REAL Bytemap testing
+            yFlag = 1;
             break;
 
         case 'v':
@@ -1132,6 +1201,20 @@ main(int argc, char *argv[])
 
 //  build the Random Number Generator starting seeds
     PStartSeed = RandomInit(BValue, GValue);
+
+    if ((BValue >= (sizeof(Word_t) * 8)) && (Offset != 0))
+    {
+        printf("\n# WARNING:  '-O 0x%lx'  ignored because  '-B %lu'  not less than %d\n", 
+                Offset, BValue, (int)(sizeof(Word_t) * 8));
+        fprintf(stderr, "\n# WARNING:  '-O 0x%lx'  ignored because  '-B %lu'  not less than %d\n", 
+                Offset, BValue, (int)(sizeof(Word_t) * 8));
+        Offset = 0;
+    }
+    else
+    {
+        Offset <<= BValue;
+    }
+
     if (PStartSeed == (PSeed_t) NULL)
     {
         printf("\nIllegal Number in -G%lu !!!\n", GValue);
@@ -1155,11 +1238,14 @@ main(int argc, char *argv[])
         printf
             ("-X <#>  Scale the numbers produced by '-m' flag (for plotting) [%d]\n", XScale);
         printf
+            ("-O <#>>   Key |= (# << (-B #)) for Diag only\n");
+        printf
             ("-F <filename>  Ascii file of Keys, zeros ignored -- must be last option!!!\n");
         printf("-1      Time Judy1\n");
         printf("-L      Time JudyL\n");
         printf("-H      Time JudyHS\n");
         printf("-b      Time a REAL BITMAP (-B # sets size == 2^<#>) [-B32]\n");
+        printf("-y      Time a REAL BYTEMAP (-B # sets size == 2^<#>) [-B32]\n");
         printf("-I      Time DUPLICATE (already in array) JudyIns/Set times\n");
         printf("-c      Time copying a Judy1 Array\n");
         printf("-C      Include timing of JudyCount tests\n");
@@ -1180,8 +1266,8 @@ main(int argc, char *argv[])
             ("-T <#>  Number of Keys to average JudyGet/Test times, 0 == MAX [1000000]\n");
         printf("-s <#>  Starting number in Number Generator [0x%lx]\n",
                StartSequent);
-        printf("-g      Do a Get/Test right after every Ins/Set (Diag only)\n");
-        printf("-i      Do a Ins/Set right after every Ins/Set (Diag only)\n");
+        printf("-g      Do a Get/Test right after every Ins/Set (Diag only - adds to Ins/Set times)\n");
+        printf("-i      Do a Ins/Set right after every Ins/Set (Diag only - adds to Ins/Set times)\n");
         printf("\n");
 
         exit(1);
@@ -1199,8 +1285,19 @@ main(int argc, char *argv[])
         MaxNumb = (RandomBit * 2) - 1;
         if (nElms > MaxNumb)
         {
-            printf("# Trim Max number of Elements -n%lu due to max -B%lu bit Keys\n",
+            printf("# Trim Max number of Elements -n%lu due to max -B%lu bit Keys",
                    MaxNumb, BValue);
+            fprintf(stderr, "# Trim Max number of Elements -n%lu due to max -B%lu bit Keys",
+                   MaxNumb, BValue);
+
+            if (Offset)
+            {
+                printf(" .ior. with Offset of 0x%lx", Offset);
+                fprintf(stderr, " .ior. with Offset of 0x%lx", Offset);
+            }
+            printf("\n");
+            fprintf(stderr, "\n");
+
             nElms = MaxNumb;
         }
         if (GValue != 0)
@@ -1235,11 +1332,15 @@ main(int argc, char *argv[])
 // 1          RightShift = __builtin_popcountll(PrintKey ^ (PrevPrintKey >> 1));
 // 1          PrevPrintKey = PrintKey;
 
+//            printf(""OWx"\n", PrintKey);
+
+            printf("0x"Owx"\n", PrintKey);
+
 #ifdef __LP64__
-            printf("0x%016lx\n", PrintKey);
+//            printf("0x%016lx\n", PrintKey);
 // 1          printf("0x%016lx %lu %lu, %4lu, %4lu\n", PrintKey, ii, BValue, LeftShift, RightShift);
 #else   // ! __LP64__
-            printf("0x%08lx\n", PrintKey);
+ //           printf("0x%08lx\n", PrintKey);
 // 1          printf("0x%08lx %lu %lu, %4lu, %4lu\n", PrintKey, ii, BValue, LeftShift, RightShift);
 #endif  // ! __LP64__
 
@@ -1297,6 +1398,8 @@ main(int argc, char *argv[])
 
     if (FValue)
         printf(" -F %s", keyfile);
+    if (Offset)
+        printf(" -O 0x%lx", Offset);
     printf("\n");
 
     if (mFlag)
@@ -1309,6 +1412,8 @@ main(int argc, char *argv[])
         if (JHFlag)
             count++;
         if (bFlag)
+            count++;
+        if (yFlag)
             count++;
 
         if (count != 1)
@@ -1440,6 +1545,8 @@ main(int argc, char *argv[])
         printf("# COLHEAD %2d JHSI - JudyHSIns\n", Col++);
     if (bFlag)
         printf("# COLHEAD %2d BMSet  - Bitmap Set\n", Col++);
+    if (yFlag)
+        printf("# COLHEAD %2d BySet  - ByteMap Set\n", Col++);
 
     if (tFlag)
         printf
@@ -1453,6 +1560,8 @@ main(int argc, char *argv[])
         printf("# COLHEAD %2d JHSG - JudyHSGet\n", Col++);
     if (bFlag)
         printf("# COLHEAD %2d BMTest  - Bitmap Test\n", Col++);
+    if (yFlag)
+        printf("# COLHEAD %2d ByTest  - ByteMap Test\n", Col++);
 
     if (IFlag)
     {
@@ -1710,8 +1819,11 @@ main(int argc, char *argv[])
             TestJudyGet(J1, JL, JH, &BeginSeed, Meas);
 
             TreeDepth        = j__TreeDepth;
+
+#ifdef  JUDYB
             SearchCompares   = j__SearchCompares;
             SearchPopulation = j__SearchPopulation;
+#endif  //JUDYB
 
             if (J1Flag)
             {
@@ -1787,6 +1899,64 @@ main(int argc, char *argv[])
             if (tFlag)
                 PRINT6_1f(DeltanBit);
             DONTPRINTLESSTHANZERO(DeltanSecBt, DeltanBit);
+            if (fFlag)
+                fflush(NULL);
+        }
+
+//      Test a REAL ByteMap
+        if (yFlag)
+        {
+            double    DeltanByte;
+
+//          Allocate a Bitmap, if not already done so
+            if (By == NULL)
+            {
+                Word_t    ii;
+                size_t    BYsize;
+
+                BYsize = (Word_t)1 << BValue;
+                printf("#\n# Attempting to malloc(%lu) Bytes\n", (Word_t)BYsize);
+
+                By = (uint8_t *)malloc(BYsize);
+                if (By == (uint8_t *)NULL)
+                {
+                    FAILURE("malloc failure, Bytes =", BYsize);
+                }
+//              clear the bitmap and bring into RAM
+                for (ii = 0; ii < BYsize; ii++)
+                    By[ii] = 0;
+            }
+            DummySeed = BitmapSeed;
+            GetNextKey(&DummySeed);   // warm up cache
+
+            Tit = 0;
+            DummySeed = BitmapSeed;
+            WaitForContextSwitch(Delta);
+            TestByteSet(&DummySeed, Delta);
+            DeltanByte = DeltanSecBy;
+
+            Tit = 1;
+            WaitForContextSwitch(Delta);
+            TestByteSet(&BitmapSeed, Delta);
+
+            if (tFlag)
+                PRINT6_1f(DeltanByte);
+            DONTPRINTLESSTHANZERO(DeltanSecBy, DeltanByte);
+
+            Tit = 0;
+            BeginSeed = StartSeed;      // reset at beginning
+            WaitForContextSwitch(Meas);
+            TestByteTest(&BeginSeed, Meas);
+            DeltanByte = DeltanSecBy;
+
+            Tit = 1;
+            BeginSeed = StartSeed;      // reset at beginning
+            WaitForContextSwitch(Meas);
+            TestByteTest(&BeginSeed, Meas);
+
+            if (tFlag)
+                PRINT6_1f(DeltanByte);
+            DONTPRINTLESSTHANZERO(DeltanSecBy, DeltanByte);
             if (fFlag)
                 fflush(NULL);
         }
@@ -1962,8 +2132,10 @@ main(int argc, char *argv[])
         if (JHFlag)
             PRINT7_3f((double)TotJudyHSMemUsed / (double)Pop1);
 
-        if (mFlag && (bFlag == 0))
+        if (mFlag && (bFlag == 0) && (yFlag == 0))
         {
+
+#ifdef  JUDYB
             double AveSrcCmp, PercentLeafSearched;
             
 //          Calc average compares done in Leaf for this measurement interval
@@ -1974,6 +2146,7 @@ main(int argc, char *argv[])
                 PercentLeafSearched = 0.0;
             else
                 PercentLeafSearched = SearchCompares / SearchPopulation * 100.0;
+#endif  // JUDYB
 
 #ifdef  JUDYA
             PRINT5_2f((double)j__AllocWordsJBB   / (double)Pop1);       // 16 node branch
@@ -2232,7 +2405,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
 #else
                     J1U(Rc, *J1, TstKey);
 #endif // SKIPMACRO
-
+                    
                 }
             }
 
@@ -2279,23 +2452,6 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                             FAILURE("Judy1Test failed at", elm);
                         }
                     }
-
-#ifdef DIAG
-//printf("Try reinsert dup Key = 0x%lx\n", TstKey);
-                    J1S(Rc, *J1, TstKey);
-                    if (Rc != 0)
-                        FAILURE("Judy1Set failed at", elm);
-
-//                    if (TstKey == 0x521c2) Flag++;
-//
-//                    if (Flag)
-//                    {
-//                    J1S(Rc, *J1, 0x521c2);
-//                    if (Rc != 0)
-//                        printf("0x521c2 successful -- wrong\n");
-//                    }
-#endif // DIAG
-
                 }
             }
             ENDTm(DeltanSec1);
@@ -3583,12 +3739,6 @@ TestJudyDel(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
             if (Tit)
             {
 
-#ifdef DIAG
-   Rc = Judy1Test(*J1, TstKey, PJE0);
-
-   if (Rc == 0) printf("nothingto delete 0x%lx\n", TstKey);
-#endif  // DIAG
-
 #ifdef SKIPMACRO
                 Rc = Judy1Unset(J1, TstKey, PJE0);
 #else
@@ -3677,6 +3827,106 @@ TestJudyDel(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
     }
     return (0);
 }
+
+// ********************************************************************
+
+#undef __FUNCTI0N__
+#define __FUNCTI0N__ "TestByteTest"
+
+int
+TestByteTest(PSeed_t PSeed, Word_t Elements)
+{
+    Word_t    TstKey;
+    Word_t    elm;
+    Seed_t    WorkingSeed;
+
+    double    DminTime;
+    Word_t    icnt;
+    Word_t    lp;
+    Word_t    Loops;
+
+    Loops = (MAXLOOPS / Elements) + MINLOOPS;
+
+    if (lFlag)
+        Loops = 1;
+
+    for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
+    {
+        WorkingSeed = *PSeed;
+
+        STARTTm;
+        for (elm = 0; elm < Elements; elm++)
+        {
+            TstKey = GetNextKey(&WorkingSeed);
+
+            if (Tit)
+            {
+                if (By[TstKey] == 0)
+                {
+                    printf("\nByteGet -- missing bit, Key = 0x%lx",
+                           TstKey);
+                    FAILURE("ByteGet Word = ", elm);
+                }
+            }
+        }
+        ENDTm(DeltanSecBy);
+
+        if (DminTime > DeltanSecBy)
+        {
+            icnt = ICNT;
+            if (DeltanSecBy > 0.0)        // Ignore 0
+                DminTime = DeltanSecBy;
+        }
+        else
+        {
+            if (--icnt == 0)
+                break;
+        }
+    }
+    DeltanSecBy = DminTime / (double)Elements;
+
+    return 0;
+}
+
+int
+TestByteSet(PSeed_t PSeed, Word_t Elements)
+{
+    Word_t    TstKey;
+    Word_t    elm;
+
+    STARTTm;
+    for (elm = 0; elm < Elements; elm++)
+    {
+        TstKey = GetNextKey(PSeed);
+
+        if (Tit)
+        {
+            if (By[TstKey] == 1)
+            {
+                if (GValue)
+                {
+                    ByteDups++;
+                }
+                else
+                {
+                    printf("\nByteSet -- Set bit, Key = 0x%lx", TstKey);
+                    FAILURE("ByteSet Word = ", elm);
+                }
+            }
+            else
+            {
+                By[TstKey] = 1;
+            }
+        }
+    }
+    ENDTm(DeltanSecBy);
+
+    DeltanSecBy /= (double)Elements;
+
+    return (0);
+}
+
+// ********************************************************************
 
 #undef __FUNCTI0N__
 #define __FUNCTI0N__ "TestBitmapSet"
