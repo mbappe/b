@@ -4,7 +4,7 @@ CC = cc
 #CC = clang
 #CC = gcc
 
-#STDFLAG = -std=c99
+STDFLAG = -std=c99
 #STDFLAG = -std=c90
 #STDFLAG = -std=c89
 #STDFLAG =

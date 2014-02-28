@@ -17,19 +17,20 @@ Word_t j__TreeDepth;
 #else // defined(REMOVE)
 #define strLookupOrInsertOrRemove  "Remove"
 #define DBGX  DBGR
-#define Insert      Remove
+#define Tweak  Remove
 #endif // defined(REMOVE)
 #else // defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (assert(0), Failure)
 #define strLookupOrInsertOrRemove  "Insert"
 #define DBGX  DBGI
+#define Tweak  Insert
 #endif // defined(LOOKUP) || defined(REMOVE)
 
 Status_t
 #if defined(LOOKUP)
 Lookup(Word_t wRoot, Word_t wKey)
 #else // defined(LOOKUP)
-Insert(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
+Tweak(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, int bCountOnly)
 #endif // defined(LOOKUP)
 {
 #if defined(LOOKUP)
