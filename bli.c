@@ -3,6 +3,21 @@
 // Once with #define LOOKUP, #undef INSERT and #undef REMOVE.
 // Once with #undef LOOKUP, #define INSERT and #undef REMOVE.
 // Once with #undef LOOKUP, #undef INSERT and #define REMOVE.
+// The ifdefs make the code hard to read.  But not all combinations are
+// valid so the best way to read the code is to pick a set of defines
+// and ignore the code that gets thrown away.  Or maybe even use unifdef.
+//
+// Here are the valid combinations:
+//
+//     LOOKUP
+//     LOOKUP && SKIP_LINKS
+//     LOOKUP && SKIP_LINKS && SKIP_PREFIX_CHECK
+//
+//     INSERT && SKIP_LINKS
+//     INSERT && SKIP_LINKS && RECURSIVE_TWEAK
+//
+//     REMOVE && SKIP_LINKS
+//     REMOVE && SKIP_LINKS && RECURSIVE_TWEAK
 
 #if defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (Success)
@@ -42,10 +57,15 @@ Tweak(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, int bCountOnly)
 #endif // defined(SKIP_LINKS)
     Word_t *pwRoot;
 #else // defined(LOOKUP)
-    Word_t wRoot = *pwRoot;
+    Word_t wRoot;
     Word_t wPopCnt;
+#if !defined(RECURSIVE_TWEAK)
+    Word_t *pwRootOrig = pwRoot;
+    unsigned nDigitsLeftOrig = nDigitsLeft;
+    int bUndo = 0;
+#endif // !defined(RECURSIVE_TWEAK)
 #endif // defined(LOOKUP)
-    unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+    unsigned nBitsLeft;
 #if defined(SKIP_LINKS)
     unsigned nDigitsLeftRoot;
 #endif // defined(SKIP_LINKS)
@@ -53,7 +73,15 @@ Tweak(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, int bCountOnly)
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
+#if !defined(LOOKUP)
+#if !defined(RECURSIVE_TWEAK)
+top:
+#endif // !defined(RECURSIVE_TWEAK)
+    wRoot = *pwRoot;
+#endif // !defined(LOOKUP)
+#if defined(LOOKUP) || !defined(RECURSIVE_TWEAK)
 again:
+#endif // defined(LOOKUP) || !defined(RECURSIVE_TWEAK)
 
 #if ( ! defined(LOOKUP) )
     assert(nDigitsLeft > cnDigitsAtBottom); // keep LOOKUP lean
@@ -108,6 +136,12 @@ again:
 #if !defined(LOOKUP)
             // increment or decrement population count on the way in
             {
+#if defined(INSERT)
+                Word_t wIncr = 1;
+#else // defined(INSERT)
+                Word_t wIncr = -1;
+#endif // defined(INSERT)
+
                 wPopCnt = sw_wPopCnt(pwr, nDigitsLeft);
 #if 0
                 // BUG:  What if attempting to insert a dup and
@@ -124,21 +158,17 @@ again:
                 }
 #endif
 
-#if defined(INSERT)
-                set_sw_wPopCnt(pwr, nDigitsLeft, wPopCnt + 1);
-                assert(sw_wPopCnt(pwr, nDigitsLeft)
-                    == ((wPopCnt + 1) & wPrefixPopMask(nDigitsLeft)));
-#endif // defined(INSERT)
+#if !defined(RECURSIVE_TWEAK)
+                if (bUndo) wIncr *= -1;
+#endif // !defined(RECURSIVE_TWEAK)
 
-#if defined(REMOVE)
-                set_sw_wPopCnt(pwr, nDigitsLeft, wPopCnt - 1);
+                set_sw_wPopCnt(pwr, nDigitsLeft, wPopCnt + wIncr);
+
                 assert(sw_wPopCnt(pwr, nDigitsLeft)
-                    == ((wPopCnt - 1) & wPrefixPopMask(nDigitsLeft)));
-#endif // defined(REMOVE)
+                    == ((wPopCnt + wIncr) & wPrefixPopMask(nDigitsLeft)));
 
                 DBGI(printf("sw_wPopCnt "wd"\n",
                     sw_wPopCnt(pwr, nDigitsLeft)));
-
             }
 #endif // !defined(LOOKUP)
 
@@ -155,7 +185,14 @@ again:
 
             DBGX(printf("pwRoot %p wRoot "OWx"\n", pwRoot, wRoot));
 
-            if (nDigitsLeft > cnDigitsAtBottom) goto again;
+            if (nDigitsLeft > cnDigitsAtBottom)
+            {
+#if defined(LOOKUP) || !defined(RECURSIVE_TWEAK)
+                goto again;
+#else // defined(LOOKUP) || !defined(RECURSIVE_TWEAK)
+                return Tweak(pwRoot, wKey, nDigitsLeft, bCountOnly);
+#endif // defined(LOOKUP) || !defined(RECURSIVE_TWEAK)
+            }
 
             // We have to do the prefix check here if we're at the
             // bottom because wRoot contains a Bitmap.  Not a pointer.
@@ -183,10 +220,18 @@ again:
                         // and free it and so on.
                         ClrBitInWord(wRoot,
                             wKey & (EXP(cnBitsAtBottom)) - 1UL);
+                        *pwRoot = wRoot;
 #endif // defined(REMOVE)
-#if defined(INSERT)
-// BUG:  Should be decrementing the counts we incremented on the way in.
-#endif // defined(INSERT)
+#if defined(INSERT) && !defined(RECURSIVE_TWEAK)
+                        if ( ! bUndo )
+                        {
+                            // Undo the counting we did on the way in.
+                            pwRoot = pwRootOrig;
+                            nDigitsLeft = nDigitsLeftOrig;
+                            bUndo = 1;
+                            goto top;
+                        }
+#endif // defined(INSERT) && !defined(RECURSIVE_TWEAK)
                         return KeyFound;
                     }
 
@@ -212,9 +257,16 @@ again:
                             ClrBit(wRoot, wKey & (EXP(cnBitsAtBottom)) - 1UL);
                         }
 #endif // defined(REMOVE)
-#if defined(INSERT)
-// BUG:  Should be decrementing the counts we incremented on the way in.
-#endif // defined(INSERT)
+#if defined(INSERT) && !defined(RECURSIVE_TWEAK)
+                        if ( ! bUndo )
+                        {
+                            // Undo the counting we did on the way in.
+                            pwRoot = pwRootOrig;
+                            nDigitsLeft = nDigitsLeftOrig;
+                            bUndo = 1;
+                            goto top;
+                        }
+#endif // defined(INSERT) && !defined(RECURSIVE_TWEAK)
                         return KeyFound;
                     }
 
@@ -268,9 +320,16 @@ again:
                 // BUG:  We should check if the switch is empty
                 // and free it and so on.
 #endif // defined(REMOVE)
-#if defined(INSERT)
-// BUG:  Should be decrementing the counts we incremented on the way in.
-#endif // defined(INSERT)
+#if defined(INSERT) && !defined(RECURSIVE_TWEAK)
+                if ( ! bUndo )
+                {
+                    // Undo the counting we did on the way in.
+                    pwRoot = pwRootOrig;
+                    nDigitsLeft = nDigitsLeftOrig;
+                    bUndo = 1;
+                    goto top;
+                }
+#endif // defined(INSERT) && !defined(RECURSIVE_TWEAK)
                 return KeyFound;
             }
         }
@@ -279,9 +338,16 @@ again:
 #if defined(INSERT)
     return InsertGuts(pwRoot, wKey, nDigitsLeft, wRoot);
 #else // defined(INSERT)
-#if defined(REMOVE)
-// BUG:  Should be incrementing the counts we decremented on the way in.
-#endif // defined(REMOVE)
+#if defined(REMOVE) && !defined(RECURSIVE_TWEAK)
+    if ( ! bUndo )
+    {
+        // Undo the counting we did on the way in.
+        pwRoot = pwRootOrig;
+        nDigitsLeft = nDigitsLeftOrig;
+        bUndo = 1;
+        goto top;
+    }
+#endif // defined(REMOVE) && !defined(RECURSIVE_TWEAK)
     return ! KeyFound;
 #endif // defined(INSERT)
 
