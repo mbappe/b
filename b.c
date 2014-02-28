@@ -60,7 +60,7 @@ Word_t    j__AllocWordsJV;
 
 #if cnBitsPerDigit != 0
 
-INLINE Word_t *
+Word_t *
 NewList(Word_t wPopCnt)
 {
     Word_t *pwList = (Word_t *)JudyMalloc(wPopCnt + 1);
@@ -75,15 +75,19 @@ NewList(Word_t wPopCnt)
     return pwList;
 }
 
-INLINE void
+Word_t
 OldList(Word_t *pwList)
 {
+    Word_t wLen = ls_wLen(pwList);
+
     DBGM(printf("Old pwList %p wLen "OWx" wPopCnt "OWx"\n",
-        pwList, ls_wLen(pwList), ls_wPopCnt(pwList)));
+        pwList, wLen, ls_wPopCnt(pwList)));
 
     METRICS(j__AllocWordsJLLW -= (ls_wLen(pwList)));
 
-    JudyFree(pwList, ls_wLen(pwList));
+    JudyFree(pwList, wLen);
+
+    return wLen * sizeof(Word_t);
 }
 
 Word_t
@@ -106,13 +110,15 @@ NewBitMap(void)
     return w;
 }
 
-void
+Word_t
 OldBitmap(Word_t wRoot)
 {
     JudyFree((Word_t *)wRoot, EXP(cnBitsAtBottom) / cnBitsPerWord);
+
+    return EXP(cnBitsAtBottom) / cnBitsPerWord * sizeof(Word_t);
 }
 
-INLINE Switch_t *
+Switch_t *
 NewSwitch(Word_t wKey, unsigned nDigitsLeft)
 {
     Switch_t *pSw;
@@ -136,13 +142,15 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
     return pSw;
 }
 
-INLINE void
+Word_t
 OldSwitch(Switch_t *pSw)
 {
     JudyFree((Word_t *)pSw, sizeof(*pSw) / sizeof(Word_t));
+
+    return sizeof(*pSw);
 }
 
-void
+Word_t
 FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 {
     Word_t wRoot = *pwRoot;
@@ -152,10 +160,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
     Word_t *pwRoots;
     unsigned nType;
     unsigned n;
+    Word_t wBytes = 0;
 
     if (wRoot == 0)
     {
-        return;
+        return 0;
     }
 
     if (bDump)
@@ -173,22 +182,20 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         {
             if (!bDump)
             {
-                OldBitmap(wRoot);
+                return OldBitmap(wRoot);
             }
-            else
+
+            for (n = 0;
+                (n < EXP(cnBitsAtBottom) / cnBitsPerWord) && (n < 8);
+                 n++)
             {
-                for (n = 0;
-                    (n < EXP(cnBitsAtBottom) / cnBitsPerWord) && (n < 8);
-                     n++)
-                {
-                    printf(" "Owx, ((Word_t *)wRoot)[n]);
-                }
+                printf(" "Owx, ((Word_t *)wRoot)[n]);
             }
         }
 
-        if (bDump) printf("\n");
+        printf("\n");
 
-        return;
+        return 0;
     }
 
     pwr = wr_pwr(wRoot);
@@ -202,21 +209,19 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
         if (!bDump)
         {
-            OldList(pwr);
+            return OldList(pwr);
         }
-        else
+
+        printf(" wLen %3llu", (unsigned long long)ls_wLen(wRoot));
+        printf(" wPopCnt %3llu", (unsigned long long)wPopCnt);
+
+        for (n = 0; (n < wPopCnt) && (n < 8); n++)
         {
-            printf(" wLen %3llu", (unsigned long long)ls_wLen(wRoot));
-            printf(" wPopCnt %3llu", (unsigned long long)wPopCnt);
-
-            for (n = 0; (n < wPopCnt) && (n < 8); n++)
-            {
-                printf(" "Owx, pwKeys[n]);
-            }
-            printf("\n");
+            printf(" "Owx, pwKeys[n]);
         }
+        printf("\n");
 
-        return;
+        return 0;
     }
 
     // Switch
@@ -256,9 +261,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
     for (n = 0; n < EXP(nBitsIndexSz); n++)
     {
-        FreeArrayGuts(&pwRoots[n],
+        wBytes += FreeArrayGuts(&pwRoots[n],
             wPrefix | (n << nBitsLeft), nBitsLeft, bDump);
     }
+
+    return bDump ? 0 : (OldSwitch((Switch_t *)pwr) + wBytes);
 }
 
 #if defined(DEBUG)
@@ -272,7 +279,7 @@ Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft)
 #if defined(SORT_LISTS)
 // CopyWithInsert can handle pTgt == pSrc, but cannot handle any other
 // overlapping buffer scenarios.
-INLINE void
+void
 CopyWithInsert(Word_t *pTgt, Word_t *pSrc, unsigned nWords, Word_t wKey)
 {
     Word_t aw[cwListPopCntMax]; // buffer for move if pSrc == pTgt
@@ -763,10 +770,8 @@ Judy1FreeArray(PPvoid_t PPArray, P_JE)
 
     DBGR(printf("Judy1FreeArray\n"));
 
-    FreeArrayGuts((Word_t *)PPArray,
+    return FreeArrayGuts((Word_t *)PPArray,
         /* wPrefix */ 0, cnBitsPerWord, /* bDump */ 0);
-
-    return wInserts;
 }
 
 Word_t
@@ -774,7 +779,7 @@ Judy1Count(Pcvoid_t PArray, Word_t Index1, Word_t Index2, P_JE)
 {
     (void)PJError; // suppress "unused parameter" compiler warnings
 
-    printf("Judy1Count\n");
+    DBGR(printf("Judy1Count\n"));
 
     return wInserts;
 }
