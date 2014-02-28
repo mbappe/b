@@ -43,6 +43,7 @@ Tweak(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, int bCountOnly)
     Word_t *pwRoot;
 #else // defined(LOOKUP)
     Word_t wRoot = *pwRoot;
+    Word_t wPopCnt;
 #endif // defined(LOOKUP)
     unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
 #if defined(SKIP_LINKS)
@@ -107,13 +108,15 @@ again:
 #if !defined(LOOKUP)
             // increment or decrement population count on the way in
             {
-                Word_t wPopCnt = sw_wPopCnt(pwr, nDigitsLeft);
+                wPopCnt = sw_wPopCnt(pwr, nDigitsLeft);
 #if 0
-                // BUG: What if attempting to insert a dup and
+                // BUG:  What if attempting to insert a dup and
                 // we're already at max pop?
                 if (wPopCnt == 0) && at least one pwRoots is not 0
-                // BUG: What if attempting to remove a key that isn't present
+                // BUG:  What if attempting to remove a key that isn't present
                 // and we're already at pop zero?
+                // What about empty subtrees with non-zero pointers left
+                // around after remove?
                 if (wPopCnt == 0) && all pwRoots are 0
                 {
                     // subtree is at full population or zero population
@@ -137,7 +140,7 @@ again:
                     sw_wPopCnt(pwr, nDigitsLeft)));
 
             }
-#endif // defined(LOOKUP)
+#endif // !defined(LOOKUP)
 
             nDigitsLeft -= (nBitsIndexSz / cnBitsPerDigit);
             nBitsLeft = nDigitsLeft * cnBitsPerDigit;
@@ -155,7 +158,7 @@ again:
             if (nDigitsLeft > cnDigitsAtBottom) goto again;
 
             // We have to do the prefix check here if we're at the
-            // bottom because wRoot contains a bitmap.  Not a pointer.
+            // bottom because wRoot contains a Bitmap.  Not a pointer.
             // Not a key.
 
 #if defined(SKIP_LINKS)
@@ -176,6 +179,8 @@ again:
                         wKey & (EXP(cnBitsAtBottom) - 1UL)))
                     {
 #if defined(REMOVE)
+                        // BUG:  We should check if the switch is empty
+                        // and free it and so on.
                         ClrBitInWord(wRoot,
                             wKey & (EXP(cnBitsAtBottom)) - 1UL);
 #endif // defined(REMOVE)
@@ -193,7 +198,16 @@ again:
                     if (BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)))
                     {
 #if defined(REMOVE)
-                        ClrBit(wRoot, wKey & (EXP(cnBitsAtBottom)) - 1UL);
+                        if (wPopCnt == 1)
+                        {
+                            OldBitmap(wRoot); *pwRoot = 0;
+                            // BUG:  We should check if the switch is empty
+                            // and free it and so on.
+                        }
+                        else
+                        {
+                            ClrBit(wRoot, wKey & (EXP(cnBitsAtBottom)) - 1UL);
+                        }
 #endif // defined(REMOVE)
                         return KeyFound;
                     }
@@ -205,7 +219,7 @@ again:
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
             else
             {
-                DBGX(printf("Prefix mismatch at bitmap wPrefix "OWx"\n",
+                DBGX(printf("Prefix mismatch at Bitmap wPrefix "OWx"\n",
                     sw_wPrefix(pwr, nDigitsLeftRoot)));
             }
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -245,6 +259,8 @@ again:
             {
 #if defined(REMOVE)
                 RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                // BUG:  We should check if the switch is empty
+                // and free it and so on.
 #endif // defined(REMOVE)
                 return KeyFound;
             }

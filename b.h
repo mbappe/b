@@ -36,14 +36,14 @@
 #define cnBitsPerDigit  (8U)
 
 // Choose bottom.
-// Bottom is where bitmap is created.  Maybe we should change the meaning.
+// Bottom is where Bitmap is created.  Maybe we should change the meaning.
 // Can we support bits at bottom instead of digits at bottom and count digits
 // up (and maybe down) from there?
 // Minimum digits at bottom:  (cnDigitsPerWord - cnMallocMask + 1)
 // Maximum digits at bottom:  (cnDigitsPerWord - 1)
 // Zero works (as long as it is not smaller than the minimum).
 // It does not depend on max list length since we currently
-// define bottom as where we create a bitmap.
+// define bottom as where we create a Bitmap.
 // Is it possible to get to max pop with cnDigitsAtBottom = 0?  No.
 #define cnDigitsAtBottom  (1U)
 
@@ -67,8 +67,8 @@
 //   memory usage must be no more than two words per key;
 //   if list leaf must be larger than cache line size, then might as
 //   well add a branch
-// - 3MB/4B/link ~ 750,000 links at full pop ~ 375,000 bitmaps ~ 18-19 bits
-//   decoded by switches; 13-14 bits per bitmap. 
+// - 3MB/4B/link ~ 750,000 links at full pop ~ 375,000 Bitmaps ~ 18-19 bits
+//   decoded by switches; 13-14 bits per Bitmap. 
 // - What about tlb entries?
 // - log(xor) for prefix check
 // - nDigitsLeftRoot - nDigitsLeft == -1 means double the size
@@ -82,7 +82,7 @@
 // - special variant of Lookup for undoing pop count increment
 //   of failed insert (or decrement of failed remove)
 // - list switches?  for wide switches?
-// - bitmap switches?  for wide switches?
+// - Bitmap switches?  for wide switches?
 
 #include <stdio.h>  // printf
 #include <string.h> // memcpy
@@ -272,29 +272,29 @@
 #define     ls_pwKeys(_ls)    (&(_ls)[1])
 #define     pwr_pwKeys(_pwr)  (ls_pwKeys(_pwr))
 
-#define BitMapByteNum(_key)  ((_key) >> cnLogBitsPerByte)
+#define BitmapByteNum(_key)  ((_key) >> cnLogBitsPerByte)
 
-#define BitMapByteMask(_key)  (1 << ((_key) % cnBitsPerByte))
+#define BitmapByteMask(_key)  (1 << ((_key) % cnBitsPerByte))
 
 #define BitIsSetInWord(_w, _b)  (((_w) & (1 << (_b))) != 0)
 
 #define SetBitInWord(_w, _b)  ((_w) |=  (1 << (_b)))
 #define ClrBitInWord(_w, _b)  ((_w) &= ~(1 << (_b)))
 
-#define TestBit(_pBitMap, _key) \
-    ((((char *)(_pBitMap))[BitMapByteNum(_key)] & BitMapByteMask(_key)) \
+#define TestBit(_pBitmap, _key) \
+    ((((char *)(_pBitmap))[BitmapByteNum(_key)] & BitmapByteMask(_key)) \
         != 0)
 
 #define BitIsSet  TestBit
 
-#define SetBit(_pBitMap, _key) \
-    (((char *)(_pBitMap))[BitMapByteNum(_key)] |=  BitMapByteMask(_key))
-#define ClrBit(_pBitMap, _key) \
-    (((char *)(_pBitMap))[BitMapByteNum(_key)] &= ~BitMapByteMask(_key))
+#define SetBit(_pBitmap, _key) \
+    (((char *)(_pBitmap))[BitmapByteNum(_key)] |=  BitmapByteMask(_key))
+#define ClrBit(_pBitmap, _key) \
+    (((char *)(_pBitmap))[BitmapByteNum(_key)] &= ~BitmapByteMask(_key))
 
-#define BitTestAndSet(_pBitMap, _key, _bSet) \
-    (((_bSet) = TestBit((_pBitMap), (_key))), \
-        BitSet((_pBitMap), (_key)), (_bSet))
+#define BitTestAndSet(_pBitmap, _key, _bSet) \
+    (((_bSet) = TestBit((_pBitmap), (_key))), \
+        BitSet((_pBitmap), (_key)), (_bSet))
 
 #define cnLogBitsPerByte  (3U)
 #define cnBitsPerByte  (EXP(cnLogBitsPerByte))
@@ -338,6 +338,8 @@ Status_t InsertGuts(Word_t *pwRoot,
 
 Status_t RemoveGuts(Word_t *pwRoot,
     Word_t wKey, unsigned nDigitsLeft, Word_t wRoot);
+
+Word_t OldBitmap(Word_t wRoot);
 
 Word_t wInserts;
 

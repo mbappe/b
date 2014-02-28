@@ -91,19 +91,19 @@ OldList(Word_t *pwList)
 }
 
 Word_t
-NewBitMap(void)
+NewBitmap(void)
 {
     Word_t w = JudyMalloc(EXP(cnBitsAtBottom) / cnBitsPerWord);
 
     METRICS(j__AllocWordsJLB1 += (EXP(cnBitsAtBottom) / cnBitsPerWord));
 
-    DBGM(printf("NewBitMap nBitsAtBottom %u nBits "OWx
+    DBGM(printf("NewBitmap nBitsAtBottom %u nBits "OWx
       " nBytes "OWx" nWords "OWx" w "OWx"\n",
         cnBitsAtBottom, EXP(cnBitsAtBottom),
         EXP(cnBitsAtBottom) / cnBitsPerByte,
         EXP(cnBitsAtBottom) / cnBitsPerWord, w));
 
-    if (w == 0) { fprintf(stderr, "NewBitMap malloc.\n"); exit(1); }
+    if (w == 0) { fprintf(stderr, "NewBitmap malloc.\n"); exit(1); }
 
     memset((void *)w, 0, EXP(cnBitsAtBottom) / cnBitsPerByte);
 
@@ -348,7 +348,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         {
             if (wRoot == 0)
             {
-                *pwRoot = wRoot = NewBitMap();
+                *pwRoot = wRoot = NewBitmap();
             }
 
             assert(!BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
@@ -464,7 +464,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             else
             {
                 // can't dereference list if there isn't one
-                nDigitsLeft = cnDigitsAtBottom + 1; // go directly to bitmap
+                nDigitsLeft = cnDigitsAtBottom + 1; // go directly to Bitmap
             }
 
             if (nDigitsLeft <= cnDigitsAtBottom)
@@ -575,6 +575,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft, Word_t wRoot)
     if (wPopCnt == 1)
     {
         OldList((Word_t *)wRoot); *pwRoot = 0;
+        // BUG:  We should check if the switch is empty and free it and so on.
     }
     else
     {
@@ -585,6 +586,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft, Word_t wRoot)
 #if defined(MAX_MIN_LISTS)
         assert(0); // later
 #else // defined(MAX_MIN_LISTS)
+        // BUG:  We should shrink the list.
         MOVE(&pwKeys[n], &pwKeys[n + 1], wPopCnt - n - 1);
 #endif // defined(MAX_MIN_LISTS)
 
@@ -613,7 +615,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, P_JE)
 
 #else // cnBitsPerDigit != 0
 
-    // one big bitmap
+    // one big Bitmap
     {
         Word_t wByteNum, wByteMask;
 
@@ -622,8 +624,8 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, P_JE)
             return Failure;
         }
 
-        wByteNum = BitMapByteNum(wKey);
-        wByteMask = BitMapByteMask(wKey);     
+        wByteNum = BitmapByteNum(wKey);
+        wByteMask = BitmapByteMask(wKey);     
 
         return (((char *)pcvRoot)[wByteNum] & wByteMask) ? Success : Failure;
     }
@@ -676,7 +678,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
 #else // cnBitsPerDigit != 0
 
-    // one big bitmap
+    // one big Bitmap
 
     Word_t wRoot;
     Word_t wByteNum, wByteMask;
@@ -690,8 +692,8 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
         *ppvRoot = (PPvoid_t)wRoot;
     }
 
-    wByteNum = BitMapByteNum(wKey);
-    wByteMask = BitMapByteMask(wKey);     
+    wByteNum = BitmapByteNum(wKey);
+    wByteMask = BitmapByteMask(wKey);     
 
     if ((c = ((char *)wRoot)[wByteNum]) & wByteMask)
     {
@@ -737,7 +739,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
 #else // cnBitsPerDigit != 0
 
-    // one big bitmap
+    // one big Bitmap
 
     Word_t wRoot;
     Word_t wByteNum, wByteMask;
@@ -748,8 +750,8 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
         return Failure; // not present
     }
 
-    wByteNum = BitMapByteNum(wKey);
-    wByteMask = BitMapByteMask(wKey);     
+    wByteNum = BitmapByteNum(wKey);
+    wByteMask = BitmapByteMask(wKey);     
 
     if ( ! ((c = ((char *)wRoot)[wByteNum]) & wByteMask) )
     {
