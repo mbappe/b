@@ -1,18 +1,7 @@
 
 //
-// (cnBitsPerDigit, cnDigitsAtBottom)
+// (cnBitsPerDigit, cnDigitsAtBottom, cwListPopCntMax)
 //
-// ( 1, 31) all the way, -s0 -S1 all the way
-// ( 1, 30) all the way, -s0 -S1 all the way
-// ( 2, 15) all the way, -s0 -S1 all the way
-// (16,  1) all the way, -s0 -S1 all the way
-// (16,  0) Bus error    15853, -s0 -S1 Bus error 912010843
-// ( 8,  0) Bus error  3981080, -s0 -S1 Bus error 912010843
-// ( 6,  0) Bus error 14454402, -s0 -S1 Bus error 912010843
-// Is the 912,010,843 where we run out of memory if all keys are in lists
-// or every key requires its own link/wRoot in a switch?
-//
-
 // Quick tested:
 // -m32 -O2 -g -Wall -Werror
 // JUDY_DEFINES += -DRAM_METRICS -DJUDYB -UGUARDBAND -UNDEBUG -DEBUG
@@ -30,10 +19,12 @@
 // -USORT_LISTS -DMIN_MAX_LISTS ( 5,  1, bPD),
 // -USORT_LISTS -DMIN_MAX_LISTS ( 8,  1, bPD),
 
-// Choose bits per digit.
-// 0, smaller, equal and larger than cnLogBitsPerWord are all good
-// numbers to test.
-#define cnBitsPerDigit  (8U)
+// Choose bits per digit.  Any value from zero through max is ok.
+// Zero is one big bitmap.  Max is where malloc fails when we can't allocate
+// the one big switch implied by cnBitsPerDigit of more than half a word.
+// Default is cnLogBitsPerWord because a bitmap is the size of a word when
+// cnDigitsAtBottom is one and we can embed the bitmap.
+#define cnBitsPerDigit  (cnLogBitsPerWord)
 
 // Choose bottom.
 // Bottom is where Bitmap is created.  Maybe we should change the meaning.
@@ -41,17 +32,21 @@
 // up (and maybe down) from there?
 // Minimum digits at bottom:  (cnDigitsPerWord - cnMallocMask + 1)
 // Maximum digits at bottom:  (cnDigitsPerWord - 1)
-// Zero works (as long as it is not smaller than the minimum).
-// It does not depend on max list length since we currently
-// define bottom as where we create a Bitmap.
-// Is it possible to get to max pop with cnDigitsAtBottom = 0?  No.
+// Min and max are good values to test.
+// Zero works (as long as it is not smaller than the minimum) but max pop
+// cannot be reached because we never transition to bitmap.
+// Default is one because a bitmap is the size of a word when cnBitsPerDigit
+// is cnLogBitsPerWord and we can embed the bitmap.
 #define cnDigitsAtBottom  (1U)
 
 // Choose max list length.
-// 0, 1, 2, 3, greater than 255 are all good values to test.
-// Bus error at 912,010,843 with 255, 256 or 1024.
-// None with 128, 192, 224, 240.
-#define cwListPopCntMax  EXP(cnBitsPerDigit)
+// 0, 1, 2, 3, 4 and greater than 255 are all good values to test.
+// Default is EXP(cnBitsPerDigit + 1) to try to offset the memory cost of a
+// new switch when max list length is reached.
+// But it doesn't work because we can end up with a new switch at every
+// depth with only the bottom list having more than one key.
+// We could vary the max length based on depth or be even more sophisticated.
+#define cwListPopCntMax  EXP(cnBitsPerDigit + 1)
 //const Word_t cwListPopCntMax = EXP(cnBitsPerDigit);
 //#define cwListPopCntMax  1L
 //const Word_t cwListPopCntMax = 1;
