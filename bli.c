@@ -67,10 +67,14 @@ Tweak(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, int bCountOnly)
 #if defined(SKIP_LINKS)
     unsigned nDigitsLeftRoot;
 #endif // defined(SKIP_LINKS)
-#if !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_DEREFERENCE)
+#if !defined(LOOKUP)
     Word_t wPopCnt;
-#endif // !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_DEREFERENCE)
+#elif (cwListPopCntMax != 0) && !defined(LOOKUP_NO_LIST_DEREF)
+    Word_t wPopCnt;
+#endif // !defined(LOOKUP) ... #elif ...
+#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     unsigned nType;
+#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
@@ -93,7 +97,11 @@ again:
     DBGX(printf("# wRoot "OWx" wKey "OWx" nDigitsLeft %d\n",
             wRoot, wKey, nDigitsLeft));
 
+#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     if ((nType = wr_nType(wRoot)) != List)
+#else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+    if (wRoot != 0)
+#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     {
         Word_t *pwr = wr_pwr(wRoot); // pointer extracted from wRoot
 
@@ -127,7 +135,6 @@ again:
 #endif // defined(SKIP_LINKS)
         {
             // size of array index
-            unsigned nBitsIndexSz = pwr_nBitsIndexSz(pwr);
             unsigned nIndex;
 
 #if defined(SKIP_LINKS)
@@ -173,11 +180,11 @@ again:
             }
 #endif // !defined(LOOKUP)
 
-            nDigitsLeft -= (nBitsIndexSz / cnBitsPerDigit);
+            nDigitsLeft -= (pwr_nBitsIndexSz(pwr) / cnBitsPerDigit);
 
             nIndex
                 = ((wKey >> (nDigitsLeft * cnBitsPerDigit))
-                    & (EXP(nBitsIndexSz) - 1));
+                    & (EXP(pwr_nBitsIndexSz(pwr)) - 1));
 
             DBGX(printf("Next nDigitsLeft %d nIndex %d pwr %p pwRoots %p\n",
                 nDigitsLeft, nIndex, pwr, pwr_pwRoots(pwr)));
@@ -199,15 +206,15 @@ again:
             // We have to do the prefix check here if we're at the
             // bottom because wRoot contains a Bitmap.  Not a pointer.
             // Not a key.
-#if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREFERENCE)
+#if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
             return KeyFound;
-#else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREFERENCE)
+#else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
 
 #if defined(SKIP_LINKS)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
             if (( ! bNeedPrefixCheck )
                 || (LOG(1 | (sw_wPrefixNotAtTop(pwr, nDigitsLeftRoot) ^ wKey))
-                    < (cnBitsAtBottom + nBitsIndexSz)))
+                    < (cnBitsAtBottom + pwr_nBitsIndexSz(pwr))))
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
             {
@@ -227,18 +234,11 @@ again:
                         // BUG:  We should check if the switch is empty
                         // and free it and so on.
                         ClrBitInWord(wRoot,
-                            wKey & (EXP(cnBitsAtBottom)) - 1UL);
+                            wKey & ((EXP(cnBitsAtBottom)) - 1UL));
                         *pwRoot = wRoot;
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE_TWEAK)
-                        if ( ! bUndo )
-                        {
-                            // Undo the counting we did on the way in.
-                            pwRoot = pwRootOrig;
-                            nDigitsLeft = nDigitsLeftOrig;
-                            bUndo = 1;
-                            goto top;
-                        }
+                        if ( ! bUndo ) goto undo; // undo counting
 #endif // defined(INSERT) && !defined(RECURSIVE_TWEAK)
                         return KeyFound;
                     }
@@ -262,18 +262,12 @@ again:
                         }
                         else
                         {
-                            ClrBit(wRoot, wKey & (EXP(cnBitsAtBottom)) - 1UL);
+                            ClrBit(wRoot,
+                                wKey & ((EXP(cnBitsAtBottom)) - 1UL));
                         }
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE_TWEAK)
-                        if ( ! bUndo )
-                        {
-                            // Undo the counting we did on the way in.
-                            pwRoot = pwRootOrig;
-                            nDigitsLeft = nDigitsLeftOrig;
-                            bUndo = 1;
-                            goto top;
-                        }
+                        if ( ! bUndo ) goto undo; // undo counting 
 #endif // defined(INSERT) && !defined(RECURSIVE_TWEAK)
                         return KeyFound;
                     }
@@ -291,14 +285,15 @@ again:
             }
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
-#endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREFERENCE)
+#endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
         }
     }
+#if (cwListPopCntMax != 0)
     else if (wRoot != 0)
     {
-#if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREFERENCE)
+#if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
         return KeyFound;
-#else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREFERENCE)
+#else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
         unsigned n;
 
@@ -330,38 +325,33 @@ again:
                 // and free it and so on.
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE_TWEAK)
-                if ( ! bUndo )
-                {
-                    // Undo the counting we did on the way in.
-                    pwRoot = pwRootOrig;
-                    nDigitsLeft = nDigitsLeftOrig;
-                    bUndo = 1;
-                    goto top;
-                }
+                if ( ! bUndo ) goto undo; // undo counting
 #endif // defined(INSERT) && !defined(RECURSIVE_TWEAK)
                 return KeyFound;
             }
         }
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
-#endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREFERENCE)
+#endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
     }
+#endif // (cwListPopCntMax != 0)
 
 #if defined(INSERT)
     return InsertGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-#else // defined(INSERT)
+undo:
+#endif // defined(INSERT)
 #if defined(REMOVE) && !defined(RECURSIVE_TWEAK)
     if ( ! bUndo )
+#endif // defined(REMOVE) && !defined(RECURSIVE_TWEAK)
+#if !defined(LOOKUP) && !defined(RECURSIVE_TWEAK)
     {
         // Undo the counting we did on the way in.
+        bUndo = 1;
         pwRoot = pwRootOrig;
         nDigitsLeft = nDigitsLeftOrig;
-        bUndo = 1;
         goto top;
     }
-#endif // defined(REMOVE) && !defined(RECURSIVE_TWEAK)
-    return ! KeyFound;
-#endif // defined(INSERT)
-
+#endif // !defined(LOOKUP) && !defined(RECURSIVE_TWEAK)
+    return Failure;
 }
 
 #undef InsertGuts
