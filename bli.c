@@ -14,11 +14,14 @@
 //     LOOKUP && SKIP_LINKS && SKIP_PREFIX_CHECK
 //
 //     INSERT && SKIP_LINKS
-//     INSERT && SKIP_LINKS && RECURSIVE_TWEAK
+//     INSERT && SKIP_LINKS && RECURSIVE_INSERT
 //
 //     REMOVE && SKIP_LINKS
-//     REMOVE && SKIP_LINKS && RECURSIVE_TWEAK
+//     REMOVE && SKIP_LINKS && RECURSIVE_REMOVE
 
+// One big bitmap is implemented completely in Judy1Test, Judy1Set
+// and Judy1Unset.  There is no need for Lookup, Insert and Remove.
+#if (cnBitsPerDigit != 0)
 #if defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (Success)
 #if defined(LOOKUP)
@@ -32,20 +35,26 @@ Word_t j__TreeDepth;
 #else // defined(REMOVE)
 #define strLookupOrInsertOrRemove  "Remove"
 #define DBGX  DBGR
-#define Tweak  Remove
+#define InsertRemove  Remove
+#if defined(RECURSIVE_REMOVE)
+#define RECURSIVE
+#endif // defined(RECURSIVE_REMOVE)
 #endif // defined(REMOVE)
 #else // defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (assert(0), Failure)
 #define strLookupOrInsertOrRemove  "Insert"
 #define DBGX  DBGI
-#define Tweak  Insert
+#define InsertRemove  Insert
+#if defined(RECURSIVE_INSERT)
+#define RECURSIVE
+#endif // defined(RECURSIVE_INSERT)
 #endif // defined(LOOKUP) || defined(REMOVE)
 
 Status_t
 #if defined(LOOKUP)
 Lookup(Word_t wRoot, Word_t wKey)
 #else // defined(LOOKUP)
-Tweak(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
+InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #endif // defined(LOOKUP)
 {
 #if defined(LOOKUP)
@@ -58,11 +67,11 @@ Tweak(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     Word_t *pwRoot;
 #else // defined(LOOKUP)
     Word_t wRoot;
-#if !defined(RECURSIVE_TWEAK)
+#if !defined(RECURSIVE)
     Word_t *pwRootOrig = pwRoot;
     unsigned nDigitsLeftOrig = nDigitsLeft;
     int bUndo = 0;
-#endif // !defined(RECURSIVE_TWEAK)
+#endif // !defined(RECURSIVE)
 #endif // defined(LOOKUP)
 #if defined(SKIP_LINKS)
     unsigned nDigitsLeftRoot;
@@ -79,14 +88,14 @@ Tweak(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
 #if !defined(LOOKUP)
-#if !defined(RECURSIVE_TWEAK)
+#if !defined(RECURSIVE)
 top:
-#endif // !defined(RECURSIVE_TWEAK)
+#endif // !defined(RECURSIVE)
     wRoot = *pwRoot;
 #endif // !defined(LOOKUP)
-#if defined(LOOKUP) || !defined(RECURSIVE_TWEAK)
+#if defined(LOOKUP) || !defined(RECURSIVE)
 again:
-#endif // defined(LOOKUP) || !defined(RECURSIVE_TWEAK)
+#endif // defined(LOOKUP) || !defined(RECURSIVE)
 
 #if ( ! defined(LOOKUP) )
     assert(nDigitsLeft > cnDigitsAtBottom); // keep LOOKUP lean
@@ -98,9 +107,12 @@ again:
             wRoot, wKey, nDigitsLeft));
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-    if ((nType = wr_nType(wRoot)) != List)
-#else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+    nType = wr_nType(wRoot);
+#if (cwListPopCntMax != 0)
+    if (nType != List)
+#else // (cwListPopCntMax != 0)
     if (wRoot != 0)
+#endif // (cwListPopCntMax != 0)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     {
         Word_t *pwr = wr_pwr(wRoot); // pointer extracted from wRoot
@@ -166,9 +178,9 @@ again:
                 }
 #endif
 
-#if !defined(RECURSIVE_TWEAK)
+#if !defined(RECURSIVE)
                 if (bUndo) wIncr *= -1;
-#endif // !defined(RECURSIVE_TWEAK)
+#endif // !defined(RECURSIVE)
 
                 set_sw_wPopCnt(pwr, nDigitsLeft, wPopCnt + wIncr);
 
@@ -196,11 +208,11 @@ again:
 
             if (nDigitsLeft > cnDigitsAtBottom)
             {
-#if defined(LOOKUP) || !defined(RECURSIVE_TWEAK)
+#if defined(LOOKUP) || !defined(RECURSIVE)
                 goto again;
-#else // defined(LOOKUP) || !defined(RECURSIVE_TWEAK)
-                return Tweak(pwRoot, wKey, nDigitsLeft);
-#endif // defined(LOOKUP) || !defined(RECURSIVE_TWEAK)
+#else // defined(LOOKUP) || !defined(RECURSIVE)
+                return InsertRemove(pwRoot, wKey, nDigitsLeft);
+#endif // defined(LOOKUP) || !defined(RECURSIVE)
             }
 
             // We have to do the prefix check here if we're at the
@@ -237,9 +249,9 @@ again:
                             wKey & ((EXP(cnBitsAtBottom)) - 1UL));
                         *pwRoot = wRoot;
 #endif // defined(REMOVE)
-#if defined(INSERT) && !defined(RECURSIVE_TWEAK)
+#if defined(INSERT) && !defined(RECURSIVE)
                         if ( ! bUndo ) goto undo; // undo counting
-#endif // defined(INSERT) && !defined(RECURSIVE_TWEAK)
+#endif // defined(INSERT) && !defined(RECURSIVE)
                         return KeyFound;
                     }
 
@@ -266,9 +278,9 @@ again:
                                 wKey & ((EXP(cnBitsAtBottom)) - 1UL));
                         }
 #endif // defined(REMOVE)
-#if defined(INSERT) && !defined(RECURSIVE_TWEAK)
+#if defined(INSERT) && !defined(RECURSIVE)
                         if ( ! bUndo ) goto undo; // undo counting 
-#endif // defined(INSERT) && !defined(RECURSIVE_TWEAK)
+#endif // defined(INSERT) && !defined(RECURSIVE)
                         return KeyFound;
                     }
 
@@ -324,9 +336,9 @@ again:
                 // BUG:  We should check if the switch is empty
                 // and free it and so on.
 #endif // defined(REMOVE)
-#if defined(INSERT) && !defined(RECURSIVE_TWEAK)
+#if defined(INSERT) && !defined(RECURSIVE)
                 if ( ! bUndo ) goto undo; // undo counting
-#endif // defined(INSERT) && !defined(RECURSIVE_TWEAK)
+#endif // defined(INSERT) && !defined(RECURSIVE)
                 return KeyFound;
             }
         }
@@ -339,10 +351,10 @@ again:
     return InsertGuts(pwRoot, wKey, nDigitsLeft, wRoot);
 undo:
 #endif // defined(INSERT)
-#if defined(REMOVE) && !defined(RECURSIVE_TWEAK)
+#if defined(REMOVE) && !defined(RECURSIVE)
     if ( ! bUndo )
-#endif // defined(REMOVE) && !defined(RECURSIVE_TWEAK)
-#if !defined(LOOKUP) && !defined(RECURSIVE_TWEAK)
+#endif // defined(REMOVE) && !defined(RECURSIVE)
+#if !defined(LOOKUP) && !defined(RECURSIVE)
     {
         // Undo the counting we did on the way in.
         bUndo = 1;
@@ -350,13 +362,201 @@ undo:
         nDigitsLeft = nDigitsLeftOrig;
         goto top;
     }
-#endif // !defined(LOOKUP) && !defined(RECURSIVE_TWEAK)
+#endif // !defined(LOOKUP) && !defined(RECURSIVE)
     return Failure;
 }
 
+#undef RECURSIVE
 #undef InsertGuts
-#undef Tweak
+#undef InsertRemove
 #undef DBGX
 #undef strLookupOrInsertOrRemove
 #undef KeyFound
+
+#endif // (cnBitsPerDigit != 0)
+
+#if defined(LOOKUP)
+
+int // Status_t
+Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, P_JE)
+{
+#if cnBitsPerDigit != 0
+
+    return Lookup((Word_t)pcvRoot, wKey);
+
+#else // cnBitsPerDigit != 0
+
+    // one big Bitmap
+
+    Word_t wByteNum, wByteMask;
+
+    DBGL(printf("\nJudy1Test(pcvRoot %p)\n", pcvRoot));
+
+    if (pcvRoot == NULL)
+    {
+        return Failure;
+    }
+
+    wByteNum = BitmapByteNum(wKey);
+    wByteMask = BitmapByteMask(wKey);     
+
+    DBGL(printf("Judy1Test num "OWx" mask "OWx"\n", wByteNum, wByteMask));
+    DBGL(printf("val %x\n", (int)(((char *)pcvRoot)[wByteNum] & wByteMask)));
+
+    return (((char *)pcvRoot)[wByteNum] & wByteMask) ? Success : Failure;
+
+#endif // cnBitsPerDigit != 0
+
+    (void)PJError; // suppress "unused parameter" compiler warning
+}
+
+#endif // defined(LOOKUP)
+
+#if defined(INSERT)
+
+int // Status_t
+Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
+{
+#if (cnBitsPerDigit != 0)
+
+    int status;
+
+    DBGI(printf("\nJudy1Set wKey "OWx"\n", wKey));
+
+    status = Insert((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
+
+#if defined(DEBUG)
+    if (status == Success) wInserts++; // count successful inserts
+#endif // defined(DEBUG)
+
+#if defined(DEBUG_INSERT)
+    if (wInserts >= cwDebugThreshold)
+    {
+        printf("\n# After Insert(wKey "OWx") Dump\n", wKey);
+        Dump((Word_t)*ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord);
+        printf("\n");
+    }
+#endif // defined(DEBUG_INSERT)
+
+#if defined(DEBUG)
+    {
+        Word_t wRoot = *(Word_t *)ppvRoot;
+        unsigned nType = wr_nType(wRoot);
+
+        if (nType != List)
+        {
+            assert(sw_wPopCnt(wr_pwr(wRoot), tp_to_nDigitsLeft(nType))
+                == (wInserts & wPrefixPopMask(tp_to_nDigitsLeft(nType))));
+        }
+        else
+        {
+            assert(wr_ls_wPopCnt(wRoot) == wInserts);
+        }
+    }
+#endif // defined(DEBUG)
+
+    return status;
+
+#else // (cnBitsPerDigit != 0)
+
+    // one big Bitmap
+
+    Word_t wRoot = (Word_t)*ppvRoot;
+    Word_t wByteNum, wByteMask;
+    char c;
+
+    DBGI(printf("\nJudy1Set(ppvRoot %p wKey "OWx") wRoot "OWx"\n",
+        ppvRoot, wKey, wRoot));
+
+    if (wRoot == 0)
+    {
+        wRoot = JudyMalloc
+            (EXP(cnBitsPerWord - cnLogBitsPerByte - cnLogBytesPerWord));
+
+        DBGI(printf("Malloc wRoot "OWx"\n", wRoot));
+
+        *ppvRoot = (PPvoid_t)wRoot;
+    }
+
+    wByteNum = BitmapByteNum(wKey);
+    wByteMask = BitmapByteMask(wKey);     
+
+    DBGI(printf("Judy1Set num "OWx" mask "OWx"\n", wByteNum, wByteMask));
+
+    if ((c = ((char *)wRoot)[wByteNum]) & wByteMask)
+    {
+        return Failure; // dup
+    }
+
+    ((char *)wRoot)[wByteNum] = c | wByteMask;
+
+    return Success;
+
+#endif // (cnBitsPerDigit != 0)
+
+    (void)PJError; // suppress "unused parameter" compiler warning
+}
+
+#endif // defined(INSERT)
+
+#if defined(REMOVE)
+
+int
+Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
+{
+#if (cnBitsPerDigit != 0)
+
+    int status;
+
+    DBGR(printf("\nJudy1Unset wKey "OWx"\n", wKey));
+
+    status = Remove((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
+
+#if defined(DEBUG)
+    if (status == Success) wInserts--; // count successful inserts
+#endif // defined(DEBUG)
+
+#if defined(DEBUG_REMOVE)
+    if (wInserts >= cwDebugThreshold)
+    {
+        printf("\n# After Remove(wKey "OWx") %s Dump\n", wKey,
+            status == Success ? "Success" : "Failure");
+        Dump((Word_t)*ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord);
+        printf("\n");
+    }
+#endif // defined(DEBUG_REMOVE)
+
+    return status;
+
+#else // (cnBitsPerDigit != 0)
+
+    // one big Bitmap
+
+    Word_t wRoot;
+    Word_t wByteNum, wByteMask;
+    char c;
+
+    if ((wRoot = (Word_t)*ppvRoot) == 0)
+    {
+        return Failure; // not present
+    }
+
+    wByteNum = BitmapByteNum(wKey);
+    wByteMask = BitmapByteMask(wKey);     
+
+    if ( ! ((c = ((char *)wRoot)[wByteNum]) & wByteMask) )
+    {
+        return Failure; // not present
+    }
+
+    ((char *)wRoot)[wByteNum] = c & ~wByteMask;
+
+    return Success;
+
+#endif // (cnBitsPerDigit != 0)
+
+    (void)PJError; // suppress "unused parameter" compiler warnings
+}
+
+#endif // defined(REMOVE)
 

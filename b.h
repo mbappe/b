@@ -47,7 +47,6 @@
 // depth with only the bottom list having more than one key.
 // We could vary the max length based on depth or be even more sophisticated.
 #define cwListPopCntMax  EXP(cnBitsPerDigit + 1)
-//#define cwListPopCntMax  0L
 
 // Choose features.
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
@@ -135,6 +134,11 @@
 #define INLINE static inline
 #define DBG(x)
 #endif // defined(DEBUG)
+
+// Undef EXP to avoid conflicts with previous definitions.
+// I had to do this for including this file in Judy1LHTime.c.
+// Might want to be careful about including this header file in front
+// of code which depends on an incompatible definition of EXP.
 
 #if defined(_WIN64)
 //typedef unsigned long long Word_t;
@@ -323,6 +327,7 @@ typedef struct {
 } Switch_t;
 
 Status_t Lookup(Word_t   wRoot, Word_t wKey);
+
 Status_t Insert(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft);
 Status_t Remove(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft);
 
@@ -336,7 +341,9 @@ Word_t OldBitmap(Word_t wRoot);
 
 #endif // (cnBitsPerDigit != 0)
 
+#if defined(DEBUG)
 Word_t wInserts;
+#endif // defined(DEBUG)
 
 #endif // ( ! defined(_B_H_INCLUDED) )
 

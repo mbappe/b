@@ -645,167 +645,6 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft, Word_t wRoot)
 // ****************************************************************************
 // JUDY1 FUNCTIONS:
 
-int // Status_t
-Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, P_JE)
-{
-    (void)PJError; // suppress "unused parameter" compiler warning
-
-#if cnBitsPerDigit != 0
-
-    return Lookup((Word_t)pcvRoot, wKey);
-
-#else // cnBitsPerDigit != 0
-
-    // one big Bitmap
-    {
-        Word_t wByteNum, wByteMask;
-
-        if (pcvRoot == NULL)
-        {
-            return Failure;
-        }
-
-        wByteNum = BitmapByteNum(wKey);
-        wByteMask = BitmapByteMask(wKey);     
-
-        return (((char *)pcvRoot)[wByteNum] & wByteMask) ? Success : Failure;
-    }
-
-#endif // cnBitsPerDigit != 0
-
-}
-
-int // Status_t
-Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
-{
-#if (cnBitsPerDigit != 0)
-
-    DBGI(printf("\nJudy1Set wKey "OWx"\n", wKey));
-
-    int status = Insert((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
-
-#if defined(DEBUG)
-    if (status == Success) wInserts++; // count successful inserts
-#endif // defined(DEBUG)
-
-#if defined(DEBUG_INSERT)
-    if (wInserts >= cwDebugThreshold)
-    {
-        printf("\n# After Insert(wKey "OWx") Dump\n", wKey);
-        Dump((Word_t)*ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord);
-        printf("\n");
-    }
-#endif // defined(DEBUG_INSERT)
-
-#if defined(DEBUG)
-    {
-        Word_t wRoot = *(Word_t *)ppvRoot;
-        unsigned nType = wr_nType(wRoot);
-
-        if (nType != List)
-        {
-            assert(sw_wPopCnt(wr_pwr(wRoot), tp_to_nDigitsLeft(nType))
-                == (wInserts & wPrefixPopMask(tp_to_nDigitsLeft(nType))));
-        }
-        else
-        {
-            assert(wr_ls_wPopCnt(wRoot) == wInserts);
-        }
-    }
-#endif // defined(DEBUG)
-
-    return status;
-
-#else // (cnBitsPerDigit != 0)
-
-    // one big Bitmap
-
-    Word_t wRoot;
-    Word_t wByteNum, wByteMask;
-    char c;
-
-    if ((wRoot = (Word_t)*ppvRoot) == 0)
-    {
-        wRoot = JudyMalloc
-            (EXP(cnBitsPerWord - cnLogBitsPerByte - cnLogBytesPerWord));
-
-        *ppvRoot = (PPvoid_t)wRoot;
-    }
-
-    wByteNum = BitmapByteNum(wKey);
-    wByteMask = BitmapByteMask(wKey);     
-
-    if ((c = ((char *)wRoot)[wByteNum]) & wByteMask)
-    {
-        return Failure; // dup
-    }
-
-    ((char *)wRoot)[wByteNum] = c | wByteMask;
-
-    return Success;
-
-#endif // (cnBitsPerDigit != 0)
-
-    (void)PJError; // suppress "unused parameter" compiler warning
-}
-
-int
-Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
-{
-#if (cnBitsPerDigit != 0)
-
-    int status;
-
-    DBGR(printf("\nJudy1Unset wKey "OWx"\n", wKey));
-
-    status = Remove((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
-
-#if defined(DEBUG)
-    if (status == Success) wInserts--; // count successful inserts
-#endif // defined(DEBUG)
-
-#if defined(DEBUG_REMOVE)
-    if (wInserts >= cwDebugThreshold)
-    {
-        printf("\n# After Remove(wKey "OWx") %s Dump\n", wKey,
-            status == Success ? "Success" : "Failure");
-        Dump((Word_t)*ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord);
-        printf("\n");
-    }
-#endif // defined(DEBUG_REMOVE)
-
-    return status;
-
-#else // (cnBitsPerDigit != 0)
-
-    // one big Bitmap
-
-    Word_t wRoot;
-    Word_t wByteNum, wByteMask;
-    char c;
-
-    if ((wRoot = (Word_t)*ppvRoot) == 0)
-    {
-        return Failure; // not present
-    }
-
-    wByteNum = BitmapByteNum(wKey);
-    wByteMask = BitmapByteMask(wKey);     
-
-    if ( ! ((c = ((char *)wRoot)[wByteNum]) & wByteMask) )
-    {
-        return Failure; // not present
-    }
-
-    ((char *)wRoot)[wByteNum] = c & ~wByteMask;
-
-    return Success;
-
-#endif // (cnBitsPerDigit != 0)
-
-    (void)PJError; // suppress "unused parameter" compiler warnings
-}
-
 Word_t
 Judy1FreeArray(PPvoid_t PPArray, P_JE)
 {
@@ -823,13 +662,23 @@ Judy1FreeArray(PPvoid_t PPArray, P_JE)
 #endif // (cnBitsPerDigit != 0)
 }
 
+// Return count of present keys, inclusive.
 Word_t
 Judy1Count(Pcvoid_t PArray, Word_t Index1, Word_t Index2, P_JE)
 {
-    (void)PJError; // suppress "unused parameter" compiler warnings
+    if (PJError != NULL)
+    {
+        JU_ERRNO(PJError) = JU_ERRNO_NONE; // zero pop
+        JU_ERRNO(PJError) = JU_ERRNO_FULL; // full pop
+        JU_ERRID(PJError) = __LINE__;
+    }
 
     DBGR(printf("Judy1Count\n"));
 
+#if defined(DEBUG)
     return wInserts;
+#else // defined(DEBUG)
+    return 0; // Can't use a global in production code.
+#endif // defined(DEBUG)
 }
 

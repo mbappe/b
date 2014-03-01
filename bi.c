@@ -8,12 +8,7 @@
 
 #include "b.h"
 
-#if cnBitsPerDigit != 0
-
 #define INSERT
 #include "bli.c"
 #undef INSERT
 
-void *__pInsert = (void *)Insert;
-
-#endif // cnBitsPerDigit != 0

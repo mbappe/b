@@ -8,13 +8,7 @@
 
 #include "b.h"
 
-#if cnBitsPerDigit != 0
-
 #define REMOVE
 #include "bli.c"
 #undef REMOVE
-
-void *__pRemove = (void *)Remove;
-
-#endif // cnBitsPerDigit != 0
 

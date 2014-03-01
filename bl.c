@@ -8,13 +8,7 @@
 
 #include "b.h"
 
-#if cnBitsPerDigit != 0
-
 #define LOOKUP
 #include "bli.c"
 #undef LOOKUP
-
-void *__pLookup = (void *)Lookup;
-
-#endif // cnBitsPerDigit != 0
 
