@@ -313,7 +313,7 @@
 
 typedef enum { Failure = 0, Success = 1 } Status_t;
 
-#if cnBitsPerDigit != 0
+#if (cnBitsPerDigit != 0)
 
 typedef enum { List = 0 } Type_t;
 
@@ -338,9 +338,9 @@ Status_t RemoveGuts(Word_t *pwRoot,
 
 Word_t OldBitmap(Word_t wRoot);
 
-Word_t wInserts;
+#endif // (cnBitsPerDigit != 0)
 
-#endif // cnBitsPerDigit != 0
+Word_t wInserts;
 
 #endif // ( ! defined(_B_H_INCLUDED) )
 

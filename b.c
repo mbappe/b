@@ -678,7 +678,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, P_JE)
 int // Status_t
 Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 {
-#if cnBitsPerDigit != 0
+#if (cnBitsPerDigit != 0)
 
     DBGI(printf("\nJudy1Set wKey "OWx"\n", wKey));
 
@@ -717,7 +717,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     return status;
 
-#else // cnBitsPerDigit != 0
+#else // (cnBitsPerDigit != 0)
 
     // one big Bitmap
 
@@ -727,8 +727,8 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     if ((wRoot = (Word_t)*ppvRoot) == 0)
     {
-        wRoot = JudyMalloc(EXP
-            (cnBitsPerWord - cnLogBitsPerByte - cnLogBytesPerWord));
+        wRoot = JudyMalloc
+            (EXP(cnBitsPerWord - cnLogBitsPerByte - cnLogBytesPerWord));
 
         *ppvRoot = (PPvoid_t)wRoot;
     }
@@ -745,7 +745,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     return Success;
 
-#endif // cnBitsPerDigit != 0
+#endif // (cnBitsPerDigit != 0)
 
     (void)PJError; // suppress "unused parameter" compiler warning
 }
@@ -753,14 +753,14 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 int
 Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 {
-#if cnBitsPerDigit != 0
+#if (cnBitsPerDigit != 0)
 
     int status;
 
     DBGR(printf("\nJudy1Unset wKey "OWx"\n", wKey));
 
     status = Remove((Word_t *)ppvRoot,
-        wKey, cnBitsPerWord, /* bCountOnly */ 0);
+        wKey, cnDigitsPerWord, /* bCountOnly */ 0);
 
 #if defined(DEBUG)
     if (status == Success) wInserts--; // count successful inserts
@@ -778,7 +778,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     return status;
 
-#else // cnBitsPerDigit != 0
+#else // (cnBitsPerDigit != 0)
 
     // one big Bitmap
 
@@ -803,7 +803,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     return Success;
 
-#endif // cnBitsPerDigit != 0
+#endif // (cnBitsPerDigit != 0)
 
     (void)PJError; // suppress "unused parameter" compiler warnings
 }
@@ -815,8 +815,14 @@ Judy1FreeArray(PPvoid_t PPArray, P_JE)
 
     DBGR(printf("Judy1FreeArray\n"));
 
+#if (cnBitsPerDigit != 0)
     return FreeArrayGuts((Word_t *)PPArray,
         /* wPrefix */ 0, cnBitsPerWord, /* bDump */ 0);
+#else // (cnBitsPerDigit != 0)
+    JudyFree(*PPArray,
+       EXP(cnBitsPerWord - cnLogBitsPerByte - cnLogBytesPerWord));
+    return EXP(cnBitsPerWord - cnLogBitsPerByte);
+#endif // (cnBitsPerDigit != 0)
 }
 
 Word_t
