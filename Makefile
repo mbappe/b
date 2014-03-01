@@ -4,7 +4,10 @@ CC = cc
 #CC = clang
 #CC = gcc
 
-STDFLAG = -std=c99
+# Judy1LHTime.c doesn't compile with -std=c99.  It complains about some
+# time.h symbol.  time.h is not included?
+
+#STDFLAG = -std=c99
 #STDFLAG = -std=c90
 #STDFLAG = -std=c89
 #STDFLAG =
@@ -34,7 +37,12 @@ FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c stubs.c Makefile
 FILES_FROM_DOUG_OR_DOUG = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_OR_DOUG)
 
-all:	clean b b.tar bl.i bl.s bl.o bi.i bi.s bi.o b.i b.s b.o
+# I can't figure out how to add dependencies for the .o files on b.h
+# for the .c.o rules without ending up with b.h on the compile line
+# coming from $^.  And b.h on the command line causes a problem for icc
+# and possibly other compilers.
+
+all:	clean b b.tar bl.i bl.s bl.o bi.i bi.s bi.o b.i b.s b.o Judy1LHTime.s
 
 clean:
 	rm -rf b *.tar *.o *.s *.i *.dSYM
@@ -72,14 +80,6 @@ b.i: b.c
 # The .c.i rule doesn't work for some reason.  Later.
 br.i: br.c
 	$(CC) $(CFLAGS) ${DEFINES} -E $^ | indent -i4 | expand > $@
-
-b.o:	b.h
-
-bl.o:	b.h
-
-bi.o:	b.h
-
-br.o:	b.h
 
 .c.o:
 	$(CC) $(CFLAGS) ${DEFINES} -c $^
