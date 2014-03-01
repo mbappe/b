@@ -549,10 +549,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
             for (w = 0; w < wPopCnt; w++)
             {
-                Insert(&wRoot, pwKeys[w], nDigitsLeft, /* bCountOnly */ 0);
+                Insert(&wRoot, pwKeys[w], nDigitsLeft);
             }
 
-            Insert(&wRoot, wKey, nDigitsLeft, /* bCountOnly */ 0);
+            Insert(&wRoot, wKey, nDigitsLeft);
         }
 
         if (wPopCnt != 0) OldList(pwr); // free old
@@ -596,7 +596,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         set_wr(wRoot, (Word_t *)pSw, nDigitsLeft_to_tp(nDigitsLeft));
 
-        Insert(&wRoot, wKey, nDigitsLeft, /* bCountOnly */ 0);
+        Insert(&wRoot, wKey, nDigitsLeft);
     }
 #endif // defined(SKIP_LINKS)
 
@@ -682,8 +682,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     DBGI(printf("\nJudy1Set wKey "OWx"\n", wKey));
 
-    int status = Insert((Word_t *)ppvRoot,
-            wKey, cnDigitsPerWord, /* bCountOnly */ 0);
+    int status = Insert((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
 
 #if defined(DEBUG)
     if (status == Success) wInserts++; // count successful inserts
@@ -759,8 +758,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     DBGR(printf("\nJudy1Unset wKey "OWx"\n", wKey));
 
-    status = Remove((Word_t *)ppvRoot,
-        wKey, cnDigitsPerWord, /* bCountOnly */ 0);
+    status = Remove((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
 
 #if defined(DEBUG)
     if (status == Success) wInserts--; // count successful inserts

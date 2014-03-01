@@ -322,13 +322,9 @@ typedef struct {
     Word_t sw_wPrefixPop;
 } Switch_t;
 
-Status_t Lookup(Word_t wRoot, Word_t wKey);
-
-Status_t Insert(Word_t *pwRoot,
-    Word_t wKey, unsigned nBitsLeft, int bCountOnly);
-
-Status_t Remove(Word_t *pwRoot,
-    Word_t wKey, unsigned nBitsLeft, int bCountOnly);
+Status_t Lookup(Word_t   wRoot, Word_t wKey);
+Status_t Insert(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft);
+Status_t Remove(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft);
 
 Status_t InsertGuts(Word_t *pwRoot,
     Word_t wKey, unsigned nDigitsLeft, Word_t wRoot);

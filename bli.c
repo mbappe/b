@@ -45,7 +45,7 @@ Status_t
 #if defined(LOOKUP)
 Lookup(Word_t wRoot, Word_t wKey)
 #else // defined(LOOKUP)
-Tweak(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, int bCountOnly)
+Tweak(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #endif // defined(LOOKUP)
 {
 #if defined(LOOKUP)
@@ -199,7 +199,7 @@ again:
 #if defined(LOOKUP) || !defined(RECURSIVE_TWEAK)
                 goto again;
 #else // defined(LOOKUP) || !defined(RECURSIVE_TWEAK)
-                return Tweak(pwRoot, wKey, nDigitsLeft, bCountOnly);
+                return Tweak(pwRoot, wKey, nDigitsLeft);
 #endif // defined(LOOKUP) || !defined(RECURSIVE_TWEAK)
             }
 
