@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.11 $ $Source: /home/doug/MTD_20140212/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.3 $ $Source: /Users/mike/Documents/judy/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -52,17 +52,15 @@
 // =======================================================================
 
 #if defined(_WIN64)
-// typedef unsigned long long Word_t;
+
 #define Owx   "%016llx"
 #define OWx "0x%016llx"
 #define wx "%llx"
 
 #else // defined(_WIN64)
 
-// typedef unsigned long Word_t;
-#define EXP(_x)  (1L << (_x))
-
 #if defined(__LP64__)
+
 #define Owx   "%016lx"
 #define OWx "0x%016lx"
 
@@ -70,9 +68,11 @@
 
 #define Owx   "%08lx"
 #define OWx "0x%08lx"
+
 #endif // defined(__LP64__)
 
 #define wx "%lx"
+
 #endif // defined(_WIN64)
 
 //=======================================================================
@@ -472,7 +472,7 @@ int       TestJudyNextEmpty(void *J1, void *JL, PSeed_t PSeed, Word_t Elems);
 
 int       TestJudyPrevEmpty(void *J1, void *JL, PSeed_t PSeed, Word_t Elems);
 
-int       TestBitmapSet(PWord_t B1, PSeed_t PSeed, Word_t Meas);
+int       TestBitmapSet(PWord_t *pB1, PSeed_t PSeed, Word_t Meas);
 
 int       TestBitmapTest(PWord_t B1, PSeed_t PSeed, Word_t Meas);
 
@@ -1758,6 +1758,34 @@ main(int argc, char *argv[])
 
         printf("%11lu %10lu %10lu", Pop1, Delta, Meas);
 
+#if defined(SWAP)
+        if (J1Flag)
+#else // defined(SWAP)
+        if (bFlag)
+#endif // defined(SWAP)
+        {
+//          Allocate a Bitmap, if not already done so
+            if (B1 == NULL)
+            {
+                Word_t    ii;
+                size_t    BMsize;
+
+                BMsize = 1UL << (BValue - 3);
+                B1 = (PWord_t)malloc(BMsize);
+                if (B1 == (PWord_t)NULL)
+                {
+                    FAILURE("malloc failure, Bytes =", BMsize);
+                }
+//              clear the bitmap and bring into RAM
+                for (ii = 0; ii < (BMsize / sizeof(Word_t)); ii++)
+                    B1[ii] = 0;
+
+#if defined(SWAP)
+                J1 = B1;
+#endif // defined(SWAP)
+            }
+        }
+
         if (J1Flag || JLFlag || JHFlag)
         {
 //          Test J1S, JLI, JLHS
@@ -1852,34 +1880,18 @@ main(int argc, char *argv[])
         {
             double    DeltanBit;
 
-//          Allocate a Bitmap, if not already done so
-            if (B1 == NULL)
-            {
-                Word_t    ii;
-                size_t    BMsize;
-
-                BMsize = 1UL << (BValue - 3);
-                B1 = (PWord_t)malloc(BMsize);
-                if (B1 == (PWord_t)NULL)
-                {
-                    FAILURE("malloc failure, Bytes =", BMsize);
-                }
-//              clear the bitmap and bring into RAM
-                for (ii = 0; ii < (BMsize / sizeof(Word_t)); ii++)
-                    B1[ii] = 0;
-            }
             DummySeed = BitmapSeed;
             GetNextKey(&DummySeed);   // warm up cache
 
             Tit = 0;
             DummySeed = BitmapSeed;
             WaitForContextSwitch(Delta);
-            TestBitmapSet(B1, &DummySeed, Delta);
+            TestBitmapSet(&B1, &DummySeed, Delta);
             DeltanBit = DeltanSecBt;
 
             Tit = 1;
             WaitForContextSwitch(Delta);
-            TestBitmapSet(B1, &BitmapSeed, Delta);
+            TestBitmapSet(&B1, &BitmapSeed, Delta);
 
             if (tFlag)
                 PRINT6_1f(DeltanBit);
@@ -2357,6 +2369,10 @@ TimeNumberGen(void **TestRan, PSeed_t PSeed, Word_t Elements)
 
 // static int Flag = 0;
 
+#if defined(SWAP)
+int BitmapSet(PWord_t B1, Word_t TstKey);
+#endif // defined(SWAP)
+
 int
 TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
 {
@@ -2417,7 +2433,11 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                 TstKey = GetNextKey(&WorkingSeed);
                 if (Tit)
                 {
+#if defined(SWAP)
+                    Rc = BitmapSet(*J1, TstKey);
+#else // defined(SWAP)
                     J1S(Rc, *J1, TstKey);
+#endif // defined(SWAP)
                     if (Rc == 0)
                     {
                         if (GValue)
@@ -2818,6 +2838,10 @@ TestJudyDup(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
 #undef __FUNCTI0N__
 #define __FUNCTI0N__ "TestJudyGet"
 
+#if defined(SWAP)
+int BitmapGet(PWord_t B1, Word_t TstKey);
+#endif // defined(SWAP)
+
 int
 TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
 {
@@ -2865,11 +2889,15 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
                 if (Tit)
                 {
 
+#if defined(SWAP)
+                    Rc = BitmapGet(J1, TstKey);
+#else // defined(SWAP)
 #ifdef SKIPMACRO
                     Rc = Judy1Test(J1, TstKey, PJE0);
 #else
                     J1T(Rc, J1, TstKey);
 #endif // SKIPMACRO
+#endif // defined(SWAP)
 
                     if (Rc != 1)
                     {
@@ -3937,6 +3965,11 @@ BitmapGet(PWord_t B1, Word_t TstKey)
     int       offset;
     int       bitnum;
 
+    if (B1 == NULL)
+    {
+        return (0);
+    }
+
     offset = TstKey / (sizeof(Word_t) * 8);
     bitnum = TstKey % (sizeof(Word_t) * 8);
 
@@ -3965,7 +3998,7 @@ BitmapSet(PWord_t B1, Word_t TstKey)
 }
 
 int
-TestBitmapSet(PWord_t B1, PSeed_t PSeed, Word_t Elements)
+TestBitmapSet(PWord_t *pB1, PSeed_t PSeed, Word_t Elements)
 {
     Word_t    TstKey;
     Word_t    elm;
@@ -3977,7 +4010,11 @@ TestBitmapSet(PWord_t B1, PSeed_t PSeed, Word_t Elements)
 
         if (Tit)
         {
-            if (BitmapSet(B1, TstKey) == 0)
+#if defined(SWAP)
+            if (Judy1Set((PPvoid_t)pB1, TstKey, PJE0) == 0)
+#else // defined(SWAP)
+            if (BitmapSet(*pB1, TstKey) == 0)
+#endif // defined(SWAP)
             {
                 if (GValue)
                 {
@@ -4029,7 +4066,11 @@ TestBitmapTest(PWord_t B1, PSeed_t PSeed, Word_t Elements)
 
             if (Tit)
             {
+#if defined(SWAP)
+                if (Judy1Test(B1, TstKey, PJE0) == 0)
+#else // defined(SWAP)
                 if (BitmapGet(B1, TstKey) == 0)
+#endif // defined(SWAP)
                 {
                     printf("\nBitMapGet -- missing bit, Key = 0x%lx",
                            TstKey);
