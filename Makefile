@@ -42,12 +42,18 @@ FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_OR_DOUG)
 # coming from $^.  And b.h on the command line causes a problem for icc
 # and possibly other compilers.
 
-all:	clean b b.tar bl.i bl.s bl.o bi.i bi.s bi.o b.i b.s b.o Judy1LHTime.s
+OBJS = b.o bl.o bi.o br.o stubs.o Judy1LHTime.o dlmalloc.o
+ASMS = b.s bl.s bi.s br.s stubs.s Judy1LHTime.s dlmalloc.s
+CPPS = b.i bl.i bi.i br.i stubs.i Judy1LHTime.i dlmalloc.i
+
+
+all:	clean b $(ASMS) $(CPPS) b.tar
 
 clean:
 	rm -rf b *.tar *.o *.s *.i *.dSYM
 
-b:	Judy1LHTime.o b.o bl.o bi.o br.o stubs.o dlmalloc.o
+b:	$(OBJS)
+	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
 
 b.tar:	$(FILES)
@@ -65,6 +71,10 @@ stubs.o: stubs.c
 dlmalloc.o: dlmalloc.c
 	$(CC) $(CFLAGS) ${DEFINES} -w -c $^
 
+# Suppress warnings.
+dlmalloc.s: dlmalloc.c
+	$(CC) $(CFLAGS) ${DEFINES} -w -S $^
+
 # The .c.i rule doesn't work for some reason.  Later.
 bl.i: bl.c
 	$(CC) $(CFLAGS) ${DEFINES} -E $^ | indent -i4 | expand > $@
@@ -79,6 +89,18 @@ b.i: b.c
 
 # The .c.i rule doesn't work for some reason.  Later.
 br.i: br.c
+	$(CC) $(CFLAGS) ${DEFINES} -E $^ | indent -i4 | expand > $@
+
+# The .c.i rule doesn't work for some reason.  Later.
+Judy1LHTime.i: Judy1LHTime.c
+	$(CC) $(CFLAGS) ${DEFINES} -E $^ | indent -i4 | expand > $@
+
+# The .c.i rule doesn't work for some reason.  Later.
+stubs.i: stubs.c
+	$(CC) $(CFLAGS) ${DEFINES} -E $^ | indent -i4 | expand > $@
+
+# The .c.i rule doesn't work for some reason.  Later.
+dlmalloc.i: dlmalloc.c
 	$(CC) $(CFLAGS) ${DEFINES} -E $^ | indent -i4 | expand > $@
 
 .c.o:
