@@ -25,7 +25,7 @@
 // Default is cnLogBitsPerWord because a bitmap is the size of a word when
 // cnDigitsAtBottom is one and we can embed the bitmap.
 //#define cnBitsPerDigit  (cnLogBitsPerWord)
-#define cnBitsPerDigit  0
+#define cnBitsPerDigit  5
 
 // Choose bottom.
 // Bottom is where Bitmap is created.  Maybe we should change the meaning.
@@ -293,13 +293,18 @@
     (((char *)(_pBitmap))[BitmapByteNum(_key)] &= ~BitmapByteMask(_key))
 
 #define BitIsSetByWord(_pBitmap, _key) \
-    ((((char *)(_pBitmap))[BitmapWordNum(_key)] & BitmapWordMask(_key)) \
+    ((((Word_t *)(_pBitmap))[BitmapWordNum(_key)] & BitmapWordMask(_key)) \
         != 0)
 
 #define SetBitByWord(_pBitmap, _key) \
-    (((char *)(_pBitmap))[BitmapWordNum(_key)] |=  BitmapWordMask(_key))
+    (((Word_t *)(_pBitmap))[BitmapWordNum(_key)] |=  BitmapWordMask(_key))
 #define ClrBitByWord(_pBitmap, _key) \
-    (((char *)(_pBitmap))[BitmapWordNum(_key)] &= ~BitmapWordMask(_key))
+    (((Word_t *)(_pBitmap))[BitmapWordNum(_key)] &= ~BitmapWordMask(_key))
+
+#define BitIsSet  BitIsSetByWord
+
+#define SetBit  SetBitByWord
+#define ClrBit  ClrBitByWord
 
 #define TestBit  BitIsSetByWord
 
@@ -348,6 +353,10 @@ Status_t RemoveGuts(Word_t *pwRoot,
     Word_t wKey, unsigned nDigitsLeft, Word_t wRoot);
 
 Word_t OldBitmap(Word_t wRoot);
+
+#if defined(DEBUG)
+void Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft);
+#endif // defined(DEBUG)
 
 #endif // (cnBitsPerDigit != 0)
 
