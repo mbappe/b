@@ -19,7 +19,7 @@
 // Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // _________________
 
-// @(#) $Revision: 1.1 $ $Source: /Users/mike/Documents/judy/b/RCS/Judy.h,v $
+// @(#) $Revision: 1.2 $ $Source: /Users/mike/Documents/judy/b/RCS/Judy.h,v $
 //
 // HEADER FILE FOR EXPORTED FEATURES IN JUDY LIBRARY, libJudy.*
 //
@@ -220,11 +220,7 @@ typedef struct J_UDY_ERROR_STRUCT
 // ****************************************************************************
 // JUDY1 FUNCTIONS:
 
-#if defined(NO_P_JE)
-extern int      Judy1Test(       Pcvoid_t  PArray, Word_t   Index);
-#else // defined(NO_P_JE)
 extern int      Judy1Test(       Pcvoid_t  PArray, Word_t   Index,   P_JE);
-#endif // defined(NO_P_JE)
 extern int      Judy1Set(        PPvoid_t PPArray, Word_t   Index,   P_JE);
 extern int      Judy1SetArray(   PPvoid_t PPArray, Word_t   Count,
                                              const Word_t * const PIndex,
@@ -521,13 +517,8 @@ extern void   JudyFreeVirtual(Pvoid_t, Word_t); // free, size in words.
 
 // This is a slower version with current processors, but in the future...
 
-#if defined(NO_P_JE)
-#define J1T(Rc,PArray,Index)                                            \
-    (Rc) = Judy1Test((Pvoid_t)(PArray), Index)
-#else // defined(NO_P_JE)
 #define J1T(Rc,PArray,Index)                                            \
     (Rc) = Judy1Test((Pvoid_t)(PArray), Index, PJE0)
-#endif // defined(NO_P_JE)
 
 #define J1S( Rc,    PArray,   Index) \
         J_1I(Rc, (&(PArray)), Index,  Judy1Set,   "Judy1Set")
