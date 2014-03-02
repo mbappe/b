@@ -39,7 +39,10 @@ OFLAGS = -g -O2
 
 CFLAGS = $(STDFLAG) $(MFLAG) $(WFLAGS) $(OFLAGS) -I.
 
-JUDY_DEFINES += -DJUDYB -DGUARDBAND -UNDEBUG -DEXTERN_BITMAP
+JUDY_DEFINES += -UNO_P_JE
+TIME_DEFINES += -UBITMAP_P_JE -UEXTERN_BITMAP -UINTERN_JUDY1 -UEXTERN_JUDY1
+TIME_DEFINES += -USWAP
+TIME_DEFINES += -DJUDYB -DGUARDBAND -UNDEBUG
 B_DEFINES += -DRAM_METRICS -DSEARCH_METRICS
 B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX
 B_DEFINES += -DSORT_LISTS -UMIN_MAX_LISTS
@@ -49,26 +52,33 @@ B_DEFINES += -ULOOKUP_NO_BITMAP_DEREF -ULOOKUP_NO_BITMAP_SEARCH
 # -DDEBUG adds some internal sanity checking not covered by assertions only.
 # It does not log anything unless something wrong is detected.
 B_DEFINES += -DDEBUG
-#B_DEBUG_DEFINES += -UDEBUG_INSERT -UDEBUG_LOOKUP -UDEBUG_MALLOC -UDEBUG_REMOVE
-DEFINES += $(JUDY_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
+##
+# Here are other defines that can be specified on the command line with
+# "DEFINES = ... make"
+#
+# -UDEBUG_INSERT -UDEBUG_LOOKUP -UDEBUG_MALLOC -UDEBUG_REMOVE
+##
+DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 
 LIBS = -lm
 
 FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c t.c bitmap.c stubs.c Makefile
+# I periodically make changes to the files provided by Doug.
 FILES_FROM_DOUG_OR_DOUG = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_OR_DOUG)
 
 EXES = t b bxc
-OBJS = Judy1LHTime.o bitmap.o bl.o bi.o br.o b.o stubs.o dlmalloc.o
-ASMS = Judy1LHTime.c bitmap.s bl.s bi.s br.s b.s stubs.s dlmalloc.s t.s
-CPPS = Judy1LHTime.i bitmap.i bl.i bi.i br.i b.i stubs.i dlmalloc.i t.i
+OBJS = Judy1LHTime.o judy1.o bitmap.o bl.o bi.o br.o b.o stubs.o dlmalloc.o
+ASMS = Judy1LHTime.s judy1.s bitmap.s bl.s bi.s br.s b.s stubs.s dlmalloc.s t.s
+CPPS = Judy1LHTime.i judy1.i bitmap.i bl.i bi.i br.i b.i stubs.i dlmalloc.i t.i
+SYMS = t.dSYM bxc.dSYM
 
 ##
 # Bx is an attempt to see if skipping intermediate .o file creation
 # can result in more inlining or otherwise better code.
 # Can we make Judy1LHTime -1 run as fast as Judy1LHTime -b?
 ##
-BXC_SRCS = Judy1LHTime.c bitmap.c bl.c bi.c br.c b.c
+BXC_SRCS = Judy1LHTime.c judy1.c bitmap.c bl.c bi.c br.c b.c
 BXC_OBJS = stubs.o dlmalloc.o
 
 T_SRCS = t.c
@@ -89,8 +99,8 @@ T_OBJS = stubs.o dlmalloc.o
 all:	clean $(EXES) $(ASMS) $(CPPS) b.tar
 
 clean:
-	rm -f $(EXES) *.tar *.o *.s *.i
-	rm -rf *.dSYM
+	rm -f $(EXES) *.tar $(OBJS) $(ASMS) $(CPPS)
+	rm -rf $(SYMS)
 
 t:	$(T_SRCS) $(T_OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
@@ -153,6 +163,14 @@ dlmalloc.s: dlmalloc.c
 
 .c.i:
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $^
+
+# The .c.i rule doesn't work for some reason.  Later.
+judy1.i: bitmap.c
+	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
+
+# The .c.i rule doesn't work for some reason.  Later.
+bitmap.i: bitmap.c
+	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
 bl.i: bl.c

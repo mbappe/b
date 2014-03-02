@@ -24,7 +24,8 @@
 // the one big switch implied by cnBitsPerDigit of more than half a word.
 // Default is cnLogBitsPerWord because a bitmap is the size of a word when
 // cnDigitsAtBottom is one and we can embed the bitmap.
-#define cnBitsPerDigit  (cnLogBitsPerWord)
+//#define cnBitsPerDigit  (cnLogBitsPerWord)
+#define cnBitsPerDigit  0
 
 // Choose bottom.
 // Bottom is where Bitmap is created.  Maybe we should change the meaning.
@@ -127,11 +128,9 @@
 #endif // defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || ...
 
 #if defined(DEBUG)
-#define INLINE
 #define DBG(x)  (x)
 #define cwDebugThreshold  0ULL
 #else // defined(DEBUG)
-#define INLINE static inline
 #define DBG(x)
 #endif // defined(DEBUG)
 
