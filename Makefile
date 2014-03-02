@@ -35,13 +35,20 @@ MFLAG = -m32
 #WFLAGS = -Wall -pedantic -Wstrict-prototypes -Wmissing-prototypes -W -Werror
 WFLAGS = -Wall -Werror
 
+# I have seen -O4 inline BitmapGet from bitmap.o into Judy1LHTime.o.
+# I don't know if it is possible to get -O4 without -O3.  I'm hoping
+# -O4 does not imply -Ofast which admits to violating the standard.
+# OFLAGS = -g -O4
 OFLAGS = -g -O2
 
 CFLAGS = $(STDFLAG) $(MFLAG) $(WFLAGS) $(OFLAGS) -I.
 
 JUDY_DEFINES += -UNO_P_JE
 TIME_DEFINES += -UBITMAP_P_JE -UEXTERN_BITMAP -UINTERN_JUDY1 -UEXTERN_JUDY1
-TIME_DEFINES += -USWAP
+# -DBITMAP_BY_WORD enables BitmapWordNum in Judy1Test in judy1x.c.
+# It is not long for this world.
+# -DBITMAP_BY_BYTE enables byte address and byte mask in bitmapx.c.
+TIME_DEFINES += -USWAP -DBITMAP_BY_WORD -UBITMAP_BY_BYTE
 TIME_DEFINES += -DJUDYB -DGUARDBAND -UNDEBUG
 B_DEFINES += -DRAM_METRICS -DSEARCH_METRICS
 B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX
