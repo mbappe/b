@@ -12,9 +12,11 @@
 #include "b.h"
 
 #if defined(RAM_METRICS)
-Word_t j__AllocWordsJLLW;
-Word_t j__AllocWordsJBU;
-Word_t j__AllocWordsJLB1;
+Word_t j__AllocWordsJBU;  // JUDYA
+Word_t j__AllocWordsJLB1; // JUDYA
+Word_t j__AllocWordsJLLW; // JUDYA  JUDYB
+Word_t j__AllocWordsJBU4; //        JUDYB
+Word_t j__AllocWordsJV12; //        JUDYB
 #endif // defined(RAM_METRICS)
 
 // From Judy1LHTime.c for convenience.
@@ -138,10 +140,12 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
     {
         assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
         METRICS(j__AllocWordsJLB1 += sizeof(*pSw) / sizeof(Word_t));
+        METRICS(j__AllocWordsJV12 += sizeof(*pSw) / sizeof(Word_t));
     }
     else
     {
-        METRICS(j__AllocWordsJBU += sizeof(*pSw) / sizeof(Word_t));
+        METRICS(j__AllocWordsJBU  += sizeof(*pSw) / sizeof(Word_t));
+        METRICS(j__AllocWordsJBU4 += sizeof(*pSw) / sizeof(Word_t));
     }
 #endif // defined(RAM_METRICS)
 
@@ -168,10 +172,12 @@ OldSwitch(Switch_t *pSw)
     {
         assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
         METRICS(j__AllocWordsJLB1 -= sizeof(*pSw) / sizeof(Word_t));
+        METRICS(j__AllocWordsJV12 -= sizeof(*pSw) / sizeof(Word_t));
     }
     else
     {
-        METRICS(j__AllocWordsJBU -= sizeof(*pSw) / sizeof(Word_t));
+        METRICS(j__AllocWordsJBU  -= sizeof(*pSw) / sizeof(Word_t));
+        METRICS(j__AllocWordsJBU4 -= sizeof(*pSw) / sizeof(Word_t));
     }
 #endif // defined(RAM_METRICS)
 
