@@ -273,28 +273,39 @@
 #define     pwr_pwKeys(_pwr)  (ls_pwKeys(_pwr))
 
 #define BitmapByteNum(_key)  ((_key) >> cnLogBitsPerByte)
+#define BitmapWordNum(_key)  ((_key) >> cnLogBitsPerWord)
 
 #define BitmapByteMask(_key)  (1 << ((_key) % cnBitsPerByte))
+#define BitmapWordMask(_key)  (1 << ((_key) % cnBitsPerWord))
 
 #define BitIsSetInWord(_w, _b)  (((_w) & (1 << (_b))) != 0)
 
 #define SetBitInWord(_w, _b)  ((_w) |=  (1 << (_b)))
 #define ClrBitInWord(_w, _b)  ((_w) &= ~(1 << (_b)))
 
-#define TestBit(_pBitmap, _key) \
+#define BitIsSetByByte(_pBitmap, _key) \
     ((((char *)(_pBitmap))[BitmapByteNum(_key)] & BitmapByteMask(_key)) \
         != 0)
 
-#define BitIsSet  TestBit
-
-#define SetBit(_pBitmap, _key) \
+#define SetBitByByte(_pBitmap, _key) \
     (((char *)(_pBitmap))[BitmapByteNum(_key)] |=  BitmapByteMask(_key))
-#define ClrBit(_pBitmap, _key) \
+#define ClrBitByByte(_pBitmap, _key) \
     (((char *)(_pBitmap))[BitmapByteNum(_key)] &= ~BitmapByteMask(_key))
+
+#define BitIsSetByWord(_pBitmap, _key) \
+    ((((char *)(_pBitmap))[BitmapWordNum(_key)] & BitmapWordMask(_key)) \
+        != 0)
+
+#define SetBitByWord(_pBitmap, _key) \
+    (((char *)(_pBitmap))[BitmapWordNum(_key)] |=  BitmapWordMask(_key))
+#define ClrBitByWord(_pBitmap, _key) \
+    (((char *)(_pBitmap))[BitmapWordNum(_key)] &= ~BitmapWordMask(_key))
+
+#define TestBit  BitIsSetByWord
 
 #define BitTestAndSet(_pBitmap, _key, _bSet) \
     (((_bSet) = TestBit((_pBitmap), (_key))), \
-        BitSet((_pBitmap), (_key)), (_bSet))
+        SetBitByWord((_pBitmap), (_key)), (_bSet))
 
 #define cnLogBitsPerByte  (3U)
 #define cnBitsPerByte  (EXP(cnLogBitsPerByte))
