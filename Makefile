@@ -39,7 +39,7 @@ OFLAGS = -g -O2
 
 CFLAGS = $(STDFLAG) $(MFLAG) $(WFLAGS) $(OFLAGS) -I.
 
-JUDY_DEFINES += -DJUDYA -DGUARDBAND -UNDEBUG
+JUDY_DEFINES += -DJUDYB -DGUARDBAND -UNDEBUG -DEXTERN_BITMAP
 B_DEFINES += -DRAM_METRICS -DSEARCH_METRICS
 B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX
 B_DEFINES += -DSORT_LISTS -UMIN_MAX_LISTS
@@ -54,25 +54,22 @@ DEFINES += $(JUDY_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 
 LIBS = -lm
 
-FILES_FROM_ME = b.h t.c b.c bli.c bl.c bi.c br.c stubs.c Makefile
+FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c t.c bitmap.c stubs.c Makefile
 FILES_FROM_DOUG_OR_DOUG = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_OR_DOUG)
 
-EXES = b bx t
-OBJS = b.o bl.o bi.o br.o stubs.o Judy1LHTime.o dlmalloc.o
-ASMS = b.s bl.s bi.s br.s stubs.s Judy1LHTime.s dlmalloc.s t.s
-CPPS = b.i bl.i bi.i br.i stubs.i Judy1LHTime.i dlmalloc.i
+EXES = t b bxc
+OBJS = Judy1LHTime.o bitmap.o bl.o bi.o br.o b.o stubs.o dlmalloc.o
+ASMS = Judy1LHTime.c bitmap.s bl.s bi.s br.s b.s stubs.s dlmalloc.s t.s
+CPPS = Judy1LHTime.i bitmap.i bl.i bi.i br.i b.i stubs.i dlmalloc.i t.i
 
 ##
 # Bx is an attempt to see if skipping intermediate .o file creation
 # can result in more inlining or otherwise better code.
 # Can we make Judy1LHTime -1 run as fast as Judy1LHTime -b?
 ##
-BX_SRCS = Judy1LHTime.c b.c bl.c bi.c br.c
-BX_OBJS = stubs.o dlmalloc.o
-
-BY_SRCS = Judy1LHTime.c b.c bl.c bi.c br.c
-BX_OBJS = stubs.o dlmalloc.o
+BXC_SRCS = Judy1LHTime.c bitmap.c bl.c bi.c br.c b.c
+BXC_OBJS = stubs.o dlmalloc.o
 
 T_SRCS = t.c
 T_OBJS = stubs.o dlmalloc.o
@@ -95,13 +92,13 @@ clean:
 	rm -f $(EXES) *.tar *.o *.s *.i
 	rm -rf *.dSYM
 
+t:	$(T_SRCS) $(T_OBJS)
+	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
+
 b:	$(OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
 
-bx:	$(BX_SRCS) $(BX_OBJS)
-	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
-
-t:	$(T_SRCS) $(T_OBJS)
+bxc:	$(BXC_SRCS) $(BXC_OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
 
 b.tar:	$(FILES)
@@ -179,6 +176,10 @@ stubs.i: stubs.c
 
 # The .c.i rule doesn't work for some reason.  Later.
 Judy1LHTime.i: Judy1LHTime.c
+	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
+
+# The .c.i rule doesn't work for some reason.  Later.
+t.i: t.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
