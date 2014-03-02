@@ -12,9 +12,9 @@
 #
 ###########################
 
-CC = cc
+CC = clang
+#CC = cc
 #CC = icc
-#CC = clang
 #CC = gcc
 
 ##################################
@@ -24,10 +24,14 @@ CC = cc
 #
 ##################################
 
+# Use -std=gnu99 for CLOCK_MONOTONIC which is not available with -std=c99. 
+# We use CLOCK_MONOTONIC on GNU/Linux, but not on Mac.  So we can use
+# -std=c99 on Mac, but not on GNU/Linux.
+STDFLAG = -std=gnu99
+#STDFLAG =
 #STDFLAG = -std=c99
 #STDFLAG = -std=c90
 #STDFLAG = -std=c89
-#STDFLAG =
 
 #MFLAG = -m64
 MFLAG = -m32
