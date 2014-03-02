@@ -36,8 +36,12 @@ STDFLAG = -std=gnu99
 #MFLAG = -m64
 MFLAG = -m32
 
+# Leave off -Wmissing-prototypes because I don't like providing prototypes
+# that have no value at all, i.e. when the function definition appears
+# before any use of the function.
+WFLAGS = -Wall -pedantic -Wstrict-prototypes -W -Werror
 #WFLAGS = -Wall -pedantic -Wstrict-prototypes -Wmissing-prototypes -W -Werror
-WFLAGS = -Wall -Werror
+#WFLAGS = -Wall -Werror
 
 # I have seen -O4 inline BitmapGet from bitmap.o into Judy1LHTime.o.
 # I don't know if it is possible to get -O4 without -O3.  I'm hoping
@@ -112,13 +116,13 @@ clean:
 	rm -rf $(SYMS)
 
 t:	$(T_SRCS) $(T_OBJS)
-	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
+	$(CC) $(CFLAGS) $(DEFINES) -w -o $@ $^ $(LIBS)
 
 b:	$(OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
 
 bxc:	$(BXC_SRCS) $(BXC_OBJS)
-	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
+	$(CC) $(CFLAGS) $(DEFINES) -w -o $@ $^ $(LIBS)
 
 b.tar:	$(FILES)
 	tar cf $@ $(FILES)
@@ -139,15 +143,23 @@ b.tar:	$(FILES)
 .c.o:
 	$(CC) $(CFLAGS) $(DEFINES) -c $^
 
+# Suppress warnings.  Empty translation unit for some ifdef combinations.
+judy1.o: judy1.c
+	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
+
+# Suppress warnings.  Empty translation unit for some ifdef combinations.
+bitmap.o: bitmap.c
+	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
+
 # Suppress warnings.
 Judy1LHTime.o: Judy1LHTime.c
 	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
 
-# Suppress warnings.
+# Suppress warnings.  Unused parameters.
 stubs.o: stubs.c
 	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
 
-# Suppress warnings.
+# Suppress warnings.  sbrk is deprecated.
 dlmalloc.o: dlmalloc.c
 	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
 
@@ -160,7 +172,27 @@ dlmalloc.o: dlmalloc.c
 .c.s:
 	$(CC) $(CFLAGS) $(DEFINES) -S $^
 
+# Suppress warnings.  Transitive warnings.  t.c just includes other files.
+t.s: t.c
+	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
+
+# Suppress warnings.  Empty translation unit for some ifdef combinations.
+judy1.s: judy1.c
+	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
+
+# Suppress warnings.  Empty translation unit for some ifdef combinations.
+bitmap.s: bitmap.c
+	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
+
 # Suppress warnings.
+Judy1LHTime.s: Judy1LHTime.c
+	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
+
+# Suppress warnings.  Unused parameters.
+stubs.s: stubs.c
+	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
+
+# Suppress warnings.  sbrk is deprecated.
 dlmalloc.s: dlmalloc.c
 	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
 
