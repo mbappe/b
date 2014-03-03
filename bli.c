@@ -109,7 +109,7 @@ again:
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     nType = wr_nType(wRoot);
 #if (cwListPopCntMax != 0)
-    if (nType != List)
+    if (tp_bIsSwitch(nType))
 #else // (cwListPopCntMax != 0)
     if (wRoot != 0)
 #endif // (cwListPopCntMax != 0)
@@ -303,6 +303,10 @@ again:
 #if (cwListPopCntMax != 0)
     else if (wRoot != 0)
     {
+#if 0
+        unsigned nTypeX = oh_nTypeX(wRoot);
+        unsigned nDigitsLeft = oh_nDigitsLeft(wRoot);
+#endif
 #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
         return KeyFound;
 #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)

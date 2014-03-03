@@ -243,12 +243,14 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
     pwr = wr_pwr(wRoot);
 
-    if ((nType = wr_nType(wRoot)) == List)
+    nType = wr_nType(wRoot);
+
+    if (!tp_bIsSwitch(nType))
     {
         Word_t wPopCnt = ls_wPopCnt(pwr);
         Word_t *pwKeys = pwr_pwKeys(pwr);
 
-        assert(wr_nType(wRoot) == List);
+        assert(nType == 0);
 
         if (!bDump)
         {
@@ -420,9 +422,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     nType = wr_nType(wRoot);
 
 #if defined(SKIP_LINKS)
-    if (nType == List)
+    if (!tp_bIsSwitch(nType))
 #else // defined(SKIP_LINKS)
-    assert(nType == List);
+    assert(nType == 0);
 #endif // defined(SKIP_LINKS)
     {
         Word_t wPopCnt;
@@ -438,6 +440,19 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             wPopCnt = 0;
             pwKeys = NULL; // make compiler happy about uninitialized variable
         }
+
+// We don't support skip links to lists or bitmaps yet.  And don't have
+// any criteria yet for converting from a list to a switch other than the
+// list is full.  So we just add to an existing list or create a new one
+// here.  But this is where we might make a decision to use a skip link
+// to a list or a bitmap or convert a list to a switch or convert the
+// other way or create a bitmap switch or ...
+// We need a new type field the destination of a link with type zero.
+//
+//  - bitmap leaf -- depth, prefix and pop (depth implies width), bits
+//  - list leaf -- depth, prefix, pop, capacity, key size, keys
+//  - bitmap switch -- depth, prefix, pop, capacity, bitmap, links
+//  - list switch -- depth, prefix, pop, capacity, (key, link) pairs
 
         if (wPopCnt < cwListPopCntMax)
         {
@@ -475,7 +490,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #endif // defined(SORT_LISTS)
             { ls_pwKeys(pwList)[wPopCnt] = wKey; }
 
-            set_wr(wRoot, pwList, List);
+            set_wr(wRoot, pwList, /* nType */ 0); // !tp_bIsSwitch
         }
         else
         {
@@ -518,6 +533,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 nDigitsLeft = cnDigitsAtBottom + 1; // go directly to Bitmap
             }
 
+            // We don't create a switch below cnDigitsAtBottom + 1.
+            // Why?  Because we've defined cnDigitsAtBottom as automatic
+            // bitmap (no switch) and we may need a prefix at
+            // cnDigitsAtBottom + 1 since we don't have one in the bitmap.
             if (nDigitsLeft <= cnDigitsAtBottom)
             {
                 DBGI(printf("InsertGuts nDigitsLeft <= cnDigitsAtBottom\n"));
@@ -572,6 +591,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     {
         // prefix mismatch
         // insert a switch so we can add just one key; seems like a waste
+// A bitmap switch would be great; no reason to consider converting the
+// existing bitmap to a list if a bitmap switch is short.
         unsigned nDigitsLeftRoot;
         Word_t wPopCnt;
 

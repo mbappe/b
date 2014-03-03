@@ -195,10 +195,13 @@
 #define set_wr_nDigitsLeft(_wr, _nDL) \
     (set_wr_nType((_wr), nDigitsLeft_to_tp((_nDL) + 1 - cnDigitsAtBottom)))
 
-#define     wr_bIsSwitch(_wr)          (wr_nType(_wr) != List)
+#define     tp_bIsSwitch(_tp)          ((_tp) != 0)
+
+#define     wr_bIsSwitch(_wr)          (tp_bIsSwitch(wr_nType(_wr))
 
 #define     wr_bIsSwitchDL(_wr, _tp, _nDL) \
-    ((_tp) = wr_nType(_wr), (_nDL) = tp_to_nDigitsLeft(_tp), (_tp))
+    ((_tp) = wr_nType(_wr), \
+        (_nDL) = tp_to_nDigitsLeft(_tp), tp_bIsSwitch(_tp))
 
 #define     pwr_nBitsIndexSz(_pwr)       (cnBitsPerDigit)
 #define set_pwr_nBitsIndexSz(_pwr, _sz)  (assert((_sz) == cnBitsPerDigit))
@@ -212,15 +215,29 @@
 #define wPrefixPopMaskNotAtTop(_nDL) \
     ((EXP((_nDL) * cnBitsPerDigit)) - 1)
 
+#define w_wPrefix(_w, _nDL)  ((_w) & ~wPrefixPopMask(_nDL))
+#define w_wPopCnt(_w, _nDL)  ((_w) &  wPrefixPopMask(_nDL))
+
+#define w_wPrefixNotAtTop(_w, _nDL)  ((_w) & ~wPrefixPopMaskNotAtTop(_nDL))
+#define w_wPopCntNotAtTop(_w, _nDL)  ((_w) &  wPrefixPopMaskNotAtTop(_nDL))
+
 #define sw_wPrefixPop(_psw)  (((Switch_t *)(_psw))->sw_wPrefixPop)
-#define sw_wPrefix(_psw, _nDL)  (sw_wPrefixPop(_psw) & ~wPrefixPopMask(_nDL))
-#define sw_wPopCnt(_psw, _nDL)  (sw_wPrefixPop(_psw) &  wPrefixPopMask(_nDL))
+#define sw_wPrefix(_psw, _nDL)  (w_wPrefix(sw_wPrefixPop(_psw), (_nDL)))
+#define sw_wPopCnt(_psw, _nDL)  (w_wPopCnt(sw_wPrefixPop(_psw), (_nDL)))
 
 #define sw_wPrefixNotAtTop(_psw, _nDL) \
-    (sw_wPrefixPop(_psw) & ~wPrefixPopMaskNotAtTop(_nDL))
+    (w_wPrefixNotAtTop(sw_wPrefixPop(_psw), (_nDL)))
 
 #define sw_wPopCntNotAtTop(_psw, _nDL) \
-    (sw_wPrefixPop(_psw) &  wPrefixPopMaskNotAtTop(_nDL))
+    (w_wPopCntNotAtTop(sw_wPrefixPop(_psw), (_nDL)))
+
+#define set_w_wPrefix(_w, _nDL, _key) \
+    ((_w) = (((_w) & wPrefixPopMask(_nDL)) \
+            | ((_key) & ~wPrefixPopMask(_nDL))))
+
+#define set_w_wPopCnt(_w, _nDL, _cnt) \
+    ((_w) = (((_w) & ~wPrefixPopMask(_nDL)) \
+            | ((_cnt) & wPrefixPopMask(_nDL))))
 
 #define set_sw_wPrefix(_psw, _nDL, _key) \
     (((Switch_t *)(_psw))->sw_wPrefixPop \
@@ -231,6 +248,14 @@
     (((Switch_t *)(_psw))->sw_wPrefixPop \
         = ((sw_wPrefixPop(_psw) & ~wPrefixPopMask(_nDL)) \
             | ((_cnt) & wPrefixPopMask(_nDL))))
+
+#define set_w_wPrefixNotAtTop(_w, _nDL, _key) \
+    ((_w) = (((_w) & wPrefixPopMaskNotAtTop(_nDL)) \
+            | ((_key) & ~wPrefixPopMaskNotAtTop(_nDL))))
+
+#define set_w_wPopCntNotAtTop(_w, _nDL, _cnt) \
+    ((_w) = (((_w) & ~wPrefixPopMaskNotAtTop(_nDL)) \
+            | ((_cnt) & wPrefixPopMaskNotAtTop(_nDL))))
 
 #define set_sw_wPrefixNotAtTop(_psw, _nDL, _key) \
     (((Switch_t *)(_psw))->sw_wPrefixPop \
@@ -253,7 +278,8 @@
 
 #define     pwr_pwRoots(_pwr)  (((Switch_t *)(_pwr))->sw_awRoots)
 
-// These assume List == 0.
+// These assume List == 0 by not bothering to clear the cnMallocMask
+// before dereferencing.
 #define     wr_pwKeys(_wr)   (&((Word_t *)(_wr))[1])
 
 #define     ls_wPopCnt(_ls)        (((Word_t *)(_ls))[0] & 0xffff)
@@ -334,10 +360,18 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 
 #if (cnBitsPerDigit != 0)
 
-typedef enum { List = 0 } Type_t;
-
 typedef struct {
-    Word_t sw_awRoots[EXP(cnBitsPerDigit)];
+    // we'll tighten up this encoding later
+    unsigned char oh_nTypeX; // bitmap leaf/switch, list leaf/switch
+    unsigned char oh_nDigitsLeft;
+    unsigned short oh_nCapacity;
+    Word_t oh_wPrefixPop;
+    Word_t oh_wBitmap[]; // for bitmap switches
+} NodeHdr_t;
+
+// Uncompressed switch.
+typedef struct {
+    Word_t sw_awRoots[EXP(cnBitsPerDigit)]; // links
     Word_t sw_wPrefixPop;
 } Switch_t;
 
