@@ -278,13 +278,13 @@
 
 #define     pwr_pwRoots(_pwr)  (((Switch_t *)(_pwr))->sw_awRoots)
 
-#define     ls_wPopCnt(_ls)        (((Node_t *)(_ls))->lw_wPrefixPop)
+#define     ls_wPopCnt(_ls)        (((LeafWord_t *)(_ls))->lw_wPrefixPlus)
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
 
-#define     ls_wLen(_ls)        (((Node_t *)(_ls))->lw_nWords)
+#define     ls_wLen(_ls)        (((LeafWord_t *)(_ls))->lw_nWords)
 #define set_ls_wLen(_ls, _len)  (ls_wLen(_ls) = (_len))
 
-#define     ls_pwKeys(_ls)    (((Node_t *)(_ls))->lw_awKeys)
+#define     ls_pwKeys(_ls)    (((LeafWord_t *)(_ls))->lw_awKeys)
 
 // these are just aliases as long as wRoot is a pointer to a list
 #define     pwr_pwKeys(_pwr)    (ls_pwKeys(_pwr))
@@ -354,21 +354,21 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 #if (cnBitsPerDigit != 0)
 
 typedef struct {
-    // we'll tighten up this encoding later
-    union {
-        struct {
-            Word_t lw_wPrefixPop;
-            unsigned char lw_nDigitsLeft;
-            unsigned char lw_nTypeX; // bitmap leaf/switch, list leaf/switch
-            unsigned short lw_nWords;
-            Word_t lw_awKeys[];
-        };
-    };
+    Word_t nh_wPrefixPlus; // includes prefix, node type and nDigitsLeft
+} NodeHdr_t;
+
+typedef struct {
+    Word_t lw_wPrefixPlus; // includes prefix, node type and nDigitsLeft
+    unsigned char lw_nWords;
+    Word_t lw_awKeys[];
+} LeafWord_t;
+
 #if 0
+    struct {
         Word_t bs_awBitmaps[]; // for bitmap leaves and bitmap switches
         Word_t ls_awKeyLinkPairs[]; // for list switches
+    };
 #endif
-} Node_t;
 
 // Uncompressed switch.
 typedef struct {

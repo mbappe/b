@@ -63,10 +63,13 @@ Word_t    j__AllocWordsJV;
 #if cnBitsPerDigit != 0
 
 static Word_t *
-NewList(Word_t wPopCnt)
+NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
 {
-    unsigned nWords = sizeof(Node_t) / sizeof(Word_t) + wPopCnt;
+    unsigned nWords = sizeof(LeafWord_t) / sizeof(Word_t) + wPopCnt;
     Word_t *pwList = (Word_t *)JudyMalloc(nWords);
+
+    (void)nDigitsLeft;
+    (void)wKey;
 
     DBGM(printf("New pwList %p wPopCnt "OWx" nWords %d\n",
         pwList, wPopCnt, nWords));
@@ -459,7 +462,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         if (wPopCnt < cwListPopCntMax)
         {
             // allocate a new list and init pop count in the first word
-            Word_t *pwList = NewList(wPopCnt + 1);
+            Word_t *pwList = NewList(wPopCnt + 1, nDigitsLeft, wKey);
 
             if (wPopCnt != 0)
 #if defined(SORT_LISTS)
