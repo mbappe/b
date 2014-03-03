@@ -278,13 +278,13 @@
 
 #define     pwr_pwRoots(_pwr)  (((Switch_t *)(_pwr))->sw_awRoots)
 
-#define     ls_wPopCnt(_ls)        (((List_t *)(_ls))->ls_wPopCnt)
+#define     ls_wPopCnt(_ls)        (((Node_t *)(_ls))->lw_wPrefixPop)
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
 
-#define     ls_wLen(_ls)        (((List_t *)(_ls))->ls_wLen)
+#define     ls_wLen(_ls)        (((Node_t *)(_ls))->lw_nWords)
 #define set_ls_wLen(_ls, _len)  (ls_wLen(_ls) = (_len))
 
-#define     ls_pwKeys(_ls)    (((List_t *)(_ls))->ls_wKeys)
+#define     ls_pwKeys(_ls)    (((Node_t *)(_ls))->lw_awKeys)
 
 // these are just aliases as long as wRoot is a pointer to a list
 #define     pwr_pwKeys(_pwr)    (ls_pwKeys(_pwr))
@@ -354,32 +354,21 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 #if (cnBitsPerDigit != 0)
 
 typedef struct {
-    unsigned char ls_wPopCnt;
-    unsigned char ls_dummy0;
-    unsigned char ls_wLen;
-    unsigned char ls_dummy1;
-    Word_t ls_wKeys[];
-} List_t;
-
-typedef struct {
     // we'll tighten up this encoding later
-    unsigned char oh_nTypeX; // bitmap leaf/switch, list leaf/switch
-    unsigned char oh_nDigitsLeft;
-    unsigned short oh_nCapacity;
-    Word_t oh_wPrefixPop;
-#if 0
     union {
-        Word_t oh_wKeys[]; // for list leaves
-        Word_t oh_wBitmaps[]; // for bitmap leaves and bitmap switches
-        Word_t oh_wKeyLinkPairs[]; // for list switches
+        struct {
+            Word_t lw_wPrefixPop;
+            unsigned char lw_nDigitsLeft;
+            unsigned char lw_nTypeX; // bitmap leaf/switch, list leaf/switch
+            unsigned short lw_nWords;
+            Word_t lw_awKeys[];
+        };
     };
+#if 0
+        Word_t bs_awBitmaps[]; // for bitmap leaves and bitmap switches
+        Word_t ls_awKeyLinkPairs[]; // for list switches
 #endif
-} NodeHdr_t;
-
-#define oh_nTypeX(_wr)  ((_wr)->oh_nTypeX)
-#define oh_nDigitsLeft(_wr)  ((_wr)->oh_nDigitsLeft)
-#define oh_nCapacity(_wr)  ((_wr)->oh_nCapacity)
-#define oh_wPrefixPop(_wr)  ((_wr)->oh_wPrefixPop)
+} Node_t;
 
 // Uncompressed switch.
 typedef struct {
