@@ -65,12 +65,13 @@ Word_t    j__AllocWordsJV;
 static Word_t *
 NewList(Word_t wPopCnt)
 {
-    Word_t *pwList = (Word_t *)JudyMalloc(wPopCnt + 1);
+    Word_t *pwList
+        = (Word_t *)JudyMalloc(wPopCnt + sizeof(List_t) / sizeof(Word_t));
 
     DBGM(printf("New pwList %p wPopCnt "OWx"\n", pwList, wPopCnt));
 
     set_ls_wPopCnt(pwList, wPopCnt);
-    set_ls_wLen(pwList, wPopCnt + 1);
+    set_ls_wLen(pwList, wPopCnt + sizeof(List_t) / sizeof(Word_t));
 
     METRICS(j__AllocWordsJLLW += (ls_wLen(pwList)));
 
