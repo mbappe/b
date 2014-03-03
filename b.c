@@ -62,7 +62,7 @@ Word_t    j__AllocWordsJV;
 
 #if cnBitsPerDigit != 0
 
-Word_t *
+static Word_t *
 NewList(Word_t wPopCnt)
 {
     Word_t *pwList = (Word_t *)JudyMalloc(wPopCnt + 1);
@@ -77,7 +77,7 @@ NewList(Word_t wPopCnt)
     return pwList;
 }
 
-Word_t
+static Word_t
 OldList(Word_t *pwList)
 {
     Word_t wLen = ls_wLen(pwList);
@@ -92,7 +92,7 @@ OldList(Word_t *pwList)
     return wLen * sizeof(Word_t);
 }
 
-Word_t
+static Word_t
 NewBitmap(void)
 {
     Word_t w = JudyMalloc(EXP(cnBitsAtBottom) / cnBitsPerWord);
@@ -122,10 +122,14 @@ OldBitmap(Word_t wRoot)
     return EXP(cnBitsAtBottom) / cnBitsPerWord * sizeof(Word_t);
 }
 
-Switch_t *
+static Switch_t *
 NewSwitch(Word_t wKey, unsigned nDigitsLeft)
 {
     Switch_t *pSw;
+
+    // wKey is provided in case we decide to initialize prefix here.
+    // But we don't have enough info to implement NO_UNNECESSARY_PREFIX here.
+    (void)wKey; // fix "unused parameter" compiler warning
 
 #if cnDigitsAtBottom < (cnDigitsPerWord - 1)
     pSw = (Switch_t *)JudyMalloc(sizeof(*pSw) / sizeof(Word_t));
@@ -159,7 +163,7 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
     return pSw;
 }
 
-Word_t
+static Word_t
 #if defined(RAM_METRICS)
 OldSwitch(Switch_t *pSw, unsigned nDigitsLeft)
 #else // defined(RAM_METRICS)
@@ -186,7 +190,7 @@ OldSwitch(Switch_t *pSw)
     return sizeof(*pSw);
 }
 
-Word_t
+static Word_t
 FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 {
     Word_t wRoot = *pwRoot;
@@ -322,7 +326,7 @@ Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft)
 #if defined(SORT_LISTS)
 // CopyWithInsert can handle pTgt == pSrc, but cannot handle any other
 // overlapping buffer scenarios.
-void
+static void
 CopyWithInsert(Word_t *pTgt, Word_t *pSrc, unsigned nWords, Word_t wKey)
 {
     Word_t aw[cwListPopCntMax]; // buffer for move if pSrc == pTgt
@@ -678,6 +682,12 @@ Judy1Count(Pcvoid_t PArray, Word_t Index1, Word_t Index2, P_JE)
         JU_ERRNO(PJError) = JU_ERRNO_FULL; // full pop
         JU_ERRID(PJError) = __LINE__;
     }
+
+    // Suppress "unused parameter" compiler warnings until we implement
+    // this function.
+    (void)PArray;
+    (void)Index1;
+    (void)Index2;
 
     DBGR(printf("Judy1Count\n"));
 

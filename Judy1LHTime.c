@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.4 $ $Source: /Users/mike/Documents/judy/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.5 $ $Source: /Users/mike/Documents/judy/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -1770,8 +1770,10 @@ main(int argc, char *argv[])
                 Word_t    ii;
                 size_t    BMsize;
 
-                BMsize = 1UL << (BValue - 3);
-                B1 = (PWord_t)malloc(BMsize);
+                // add one cache line for sister cache line read
+                BMsize = (1UL << (BValue - 3)) + 128;
+                posix_memalign(&B1, 4096, BMsize);
+                //B1 = (PWord_t)malloc(BMsize);
                 if (B1 == (PWord_t)NULL)
                 {
                     FAILURE("malloc failure, Bytes =", BMsize);
@@ -1779,7 +1781,6 @@ main(int argc, char *argv[])
 //              clear the bitmap and bring into RAM
                 for (ii = 0; ii < (BMsize / sizeof(Word_t)); ii++)
                     B1[ii] = 0;
-
 #if defined(SWAP)
                 J1 = B1;
 #endif // defined(SWAP)

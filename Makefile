@@ -38,10 +38,11 @@ MFLAG = -m32
 
 # Leave off -Wmissing-prototypes because I don't like providing prototypes
 # that have no value at all, i.e. when the function definition appears
-# before any use of the function.
-WFLAGS = -Wall -pedantic -Wstrict-prototypes -W -Werror
-#WFLAGS = -Wall -pedantic -Wstrict-prototypes -Wmissing-prototypes -W -Werror
-#WFLAGS = -Wall -Werror
+# before any use of the function.  Nevermind.  Looks like "static" addresses
+# the missing prototype just as well as a prototype does.  Yes!
+WFLAGS = -Wall -Werror
+WFLAGS += -pedantic -Wstrict-prototypes -W
+WFLAGS += -Wmissing-prototypes
 
 # I have seen -O4 inline BitmapGet from bitmap.o into Judy1LHTime.o.
 # I don't know if it is possible to get -O4 without -O3.  I'm hoping
@@ -55,6 +56,7 @@ TIME_DEFINES += -UBITMAP_P_JE -UEXTERN_BITMAP -UINTERN_JUDY1 -UEXTERN_JUDY1
 # -DBITMAP_BY_BYTE enables byte address/mask in judy1x.c and bitmapx.c.
 TIME_DEFINES += -USWAP -UBITMAP_BY_BYTE
 TIME_DEFINES += -DJUDYB -DGUARDBAND -UNDEBUG
+TIME_DEFINES += -DSISTER_SUM -DSISTER_READ -DSISTER_SISTER
 B_DEFINES += -DRAM_METRICS -DSEARCH_METRICS
 B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX
 B_DEFINES += -DSORT_LISTS -UMIN_MAX_LISTS
@@ -74,7 +76,7 @@ DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 
 LIBS = -lm
 
-FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c t.c stubs.c Makefile
+FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c t.c stubs.c Makefile tocsv toc90
 FILES_FROM_ME += bitmap.c bitmapx.c judy1.c judy1x.c
 # I periodically make changes to the files provided by Doug.
 FILES_FROM_DOUG_OR_DOUG = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c
@@ -109,7 +111,7 @@ T_OBJS = stubs.o dlmalloc.o
 #
 ##################################
 
-all:	clean $(EXES) $(ASMS) $(CPPS) b.tar
+all:	clean $(EXES) $(ASMS) $(CPPS) b.tar b.tgz b.tjz
 
 clean:
 	rm -f $(EXES) *.tar $(OBJS) $(ASMS) $(CPPS)
@@ -126,6 +128,13 @@ bxc:	$(BXC_SRCS) $(BXC_OBJS)
 
 b.tar:	$(FILES)
 	tar cf $@ $(FILES)
+
+b.tgz:	$(FILES)
+	tar czf $@ $(FILES)
+
+b.tjz:	$(FILES)
+	tar cjf $@ $(FILES)
+
 
 ############################
 #
