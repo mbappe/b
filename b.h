@@ -270,7 +270,7 @@
 #define     sw_wKey                   sw_wPrefix
 #define set_sw_wKey               set_sw_wPrefix
 
-#define     pwr_wPrefixPop               sw_wPrefixPop
+#define     pwr_wPrefixPop            sw_wPrefixPop
 #define     pwr_wKey                  sw_wKey
 #define set_pwr_wKey              set_sw_wKey
 #define     pwr_wPrefix               sw_wKey
@@ -278,25 +278,18 @@
 
 #define     pwr_pwRoots(_pwr)  (((Switch_t *)(_pwr))->sw_awRoots)
 
-// These assume List == 0 by not bothering to clear the cnMallocMask
-// before dereferencing.
-#define     wr_pwKeys(_wr)   (&((Word_t *)(_wr))[1])
+#define     ls_wPopCnt(_ls)        (((List_t *)(_ls))->ls_wPopCnt)
+#define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
 
-#define     ls_wPopCnt(_ls)        (((Word_t *)(_ls))[0] & 0xffff)
-#define set_ls_wPopCnt(_ls, _cnt) \
-    (((Word_t *)(_ls))[0] \
-        = (((Word_t *)(_ls))[0] & ~0xffff) | ((_cnt) & 0xffff))
+#define     ls_wLen(_ls)        (((List_t *)(_ls))->ls_wLen)
+#define set_ls_wLen(_ls, _len)  (ls_wLen(_ls) = (_len))
 
-#define     ls_wLen(_ls)        (((Word_t *)(_ls))[0] >> 16)
-#define set_ls_wLen(_ls, _len) \
-    (((Word_t *)(_ls))[0] \
-        = (((Word_t *)(_ls))[0] & 0xffff) | ((_len) << 16))
+#define     ls_pwKeys(_ls)    (((List_t *)(_ls))->ls_wKeys)
 
-// Assume List == 0, i.e. wRoot is a valid pointer with no mask.
-#define     wr_ls_wPopCnt(_wr)        (ls_wPopCnt(_wr))
-
-#define     ls_pwKeys(_ls)    (&(_ls)[1])
-#define     pwr_pwKeys(_pwr)  (ls_pwKeys(_pwr))
+// these are just aliases as long as wRoot is a pointer to a list
+#define     pwr_pwKeys(_pwr)    (ls_pwKeys(_pwr))
+#define     wr_ls_wPopCnt(_wr)  (ls_wPopCnt(_wr))
+#define     wr_pwKeys(_wr)      (ls_pwKeys(_wr))
 
 #define BitmapByteNum(_key)  ((_key) >> cnLogBitsPerByte)
 #define BitmapWordNum(_key)  ((_key) >> cnLogBitsPerWord)
@@ -361,13 +354,32 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 #if (cnBitsPerDigit != 0)
 
 typedef struct {
+    unsigned char ls_wPopCnt;
+    unsigned char ls_dummy0;
+    unsigned char ls_wLen;
+    unsigned char ls_dummy1;
+    Word_t ls_wKeys[];
+} List_t;
+
+typedef struct {
     // we'll tighten up this encoding later
     unsigned char oh_nTypeX; // bitmap leaf/switch, list leaf/switch
     unsigned char oh_nDigitsLeft;
     unsigned short oh_nCapacity;
     Word_t oh_wPrefixPop;
-    Word_t oh_wBitmap[]; // for bitmap switches
+#if 0
+    union {
+        Word_t oh_wKeys[]; // for list leaves
+        Word_t oh_wBitmaps[]; // for bitmap leaves and bitmap switches
+        Word_t oh_wKeyLinkPairs[]; // for list switches
+    };
+#endif
 } NodeHdr_t;
+
+#define oh_nTypeX(_wr)  ((_wr)->oh_nTypeX)
+#define oh_nDigitsLeft(_wr)  ((_wr)->oh_nDigitsLeft)
+#define oh_nCapacity(_wr)  ((_wr)->oh_nCapacity)
+#define oh_wPrefixPop(_wr)  ((_wr)->oh_wPrefixPop)
 
 // Uncompressed switch.
 typedef struct {
