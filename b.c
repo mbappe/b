@@ -373,7 +373,11 @@ static void
 CopyWithInsertShort(unsigned short *pTgt, unsigned short *pSrc,
     unsigned nKeys, unsigned short wKey)
 {
+#if (cwListPopCntMax != 0)
     unsigned short as[cwListPopCntMax]; // buffer for move if pSrc == pTgt
+#else // (cwListPopCntMax != 0)
+    unsigned short as[1]; // buffer for move if pSrc == pTgt
+#endif // (cwListPopCntMax != 0)
     unsigned n;
 
     // find the insertion point
@@ -405,7 +409,11 @@ static void
 CopyWithInsertChar(unsigned char *pTgt, unsigned char *pSrc,
     unsigned nKeys, unsigned short wKey)
 {
+#if (cwListPopCntMax != 0)
     unsigned char ac[cwListPopCntMax]; // buffer for move if pSrc == pTgt
+#else // (cwListPopCntMax != 0)
+    unsigned char ac[1]; // buffer for move if pSrc == pTgt
+#endif // (cwListPopCntMax != 0)
     unsigned n;
 
     // find the insertion point
@@ -688,6 +696,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             set_wr(wRoot, (Word_t *)pSw, nDigitsLeft_to_tp(nDigitsLeft));
 
 #if defined(COMPRESSED_LISTS)
+            unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
             if (nBitsLeft <= 8) {
                 for (w = 0; w < wPopCnt; w++)
                 {
