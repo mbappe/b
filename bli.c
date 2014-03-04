@@ -320,8 +320,8 @@ again:
                 }
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
-            }
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
+            }
         }
     }
 #if (cwListPopCntMax != 0)
