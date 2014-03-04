@@ -84,6 +84,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     unsigned nType;
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+    Word_t *pwr; // pointer extracted from wRoot
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
@@ -115,7 +116,7 @@ again:
 #endif // (cwListPopCntMax != 0)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     {
-        Word_t *pwr = wr_pwr(wRoot); // pointer extracted from wRoot
+        pwr = wr_pwr(wRoot); // pointer extracted from wRoot
 
 #if defined(SKIP_LINKS)
         nDigitsLeftRoot = tp_to_nDigitsLeft(nType);
@@ -206,102 +207,130 @@ again:
 
             DBGX(printf("pwRoot %p wRoot "OWx"\n", pwRoot, wRoot));
 
-            if (nDigitsLeft > cnDigitsAtBottom)
             {
-#if defined(LOOKUP) || !defined(RECURSIVE)
-                goto again;
-#else // defined(LOOKUP) || !defined(RECURSIVE)
-                return InsertRemove(pwRoot, wKey, nDigitsLeft);
-#endif // defined(LOOKUP) || !defined(RECURSIVE)
+                if (nDigitsLeft > cnDigitsAtBottom)
+                {
+#if defined(COMPRESSED_LISTS)
+            // can't just to to top because we may need to check the
+            // prefix of the parent switch
+            // the following is done again at the top of the loop
+            // maybe we can rearrange the top and goto a different top
+            // if defined(COMPRESSED_LISTS)
+            // or maybe the top can jump down here to start
+            // maybe we don't need to test for switch at the top
+            // if we never goto again with a non-switch
+            nType = wr_nType(wRoot);
+            if (!tp_bIsSwitch(nType))
+            {
+                goto notSwitchAndNotBitmap;
             }
+#endif // defined(COMPRESSED_LISTS)
+#if defined(LOOKUP) || !defined(RECURSIVE)
+                    goto again;
+#else // defined(LOOKUP) || !defined(RECURSIVE)
+                    return InsertRemove(pwRoot, wKey, nDigitsLeft);
+#endif // defined(LOOKUP) || !defined(RECURSIVE)
+                }
 
-            // We have to do the prefix check here if we're at the
-            // bottom because wRoot contains a Bitmap.  Not a pointer.
-            // Not a key.
+                // We have to do the prefix check here if we're at the
+                // bottom because wRoot contains a Bitmap.  Not a pointer.
+                // Not a key.
 #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
-            return KeyFound;
+                return KeyFound;
 #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
 
 #if defined(SKIP_LINKS)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-            if (( ! bNeedPrefixCheck )
-                || (LOG(1 | (sw_wPrefixNotAtTop(pwr, nDigitsLeftRoot) ^ wKey))
-                    < (cnBitsAtBottom + pwr_nBitsIndexSz(pwr))))
+                // would like to combine the source code for this prefix
+                // check and the one done in the compressed_lists section
+                if (( ! bNeedPrefixCheck )
+                    || (LOG(1 | (sw_wPrefixNotAtTop(pwr, nDigitsLeftRoot)
+                            ^ wKey))
+// ? is the addition of nBitsIndexSz a waste of energy ?
+// seems like it is; we picked the index based on the key; it must match
+                        < (cnBitsAtBottom + pwr_nBitsIndexSz(pwr))))
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
-            {
+                {
 #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
-                return KeyFound;
+                    return KeyFound;
 #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
-                if (cnBitsAtBottom <= cnLogBitsPerWord) // compile time
-                {
-                    DBGX(printf(
-                        "BitIsSetInWord(wRoot "OWx" wKey "OWx")\n",
-                            wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)));
-
-                    if (BitIsSetInWord(wRoot,
-                        wKey & (EXP(cnBitsAtBottom) - 1UL)))
+                    if (cnBitsAtBottom <= cnLogBitsPerWord) // compile time
                     {
-#if defined(REMOVE)
-                        // BUG:  We should check if the switch is empty
-                        // and free it and so on.
-                        ClrBitInWord(wRoot,
-                            wKey & ((EXP(cnBitsAtBottom)) - 1UL));
-                        *pwRoot = wRoot;
-#endif // defined(REMOVE)
-#if defined(INSERT) && !defined(RECURSIVE)
-                        if ( ! bUndo ) goto undo; // undo counting
-#endif // defined(INSERT) && !defined(RECURSIVE)
-                        return KeyFound;
-                    }
+                        DBGX(printf(
+                            "BitIsSetInWord(wRoot "OWx" wKey "OWx")\n",
+                                wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)));
 
-                    DBGX(printf("! BitIsSetInWord\n"));
-                }
-                else if (wRoot != 0)
-                {
-                    DBGX(printf(
-                        "BitIsSet(wRoot "OWx" wKey "OWx")\n",
-                            wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)));
-
-                    if (BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)))
-                    {
-#if defined(REMOVE)
-                        if (wPopCnt == 1)
+                        if (BitIsSetInWord(wRoot,
+                            wKey & (EXP(cnBitsAtBottom) - 1UL)))
                         {
-                            OldBitmap(wRoot); *pwRoot = 0;
+#if defined(REMOVE)
                             // BUG:  We should check if the switch is empty
                             // and free it and so on.
-                        }
-                        else
-                        {
-                            ClrBit(wRoot,
+                            ClrBitInWord(wRoot,
                                 wKey & ((EXP(cnBitsAtBottom)) - 1UL));
-                        }
+                            *pwRoot = wRoot;
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE)
-                        if ( ! bUndo ) goto undo; // undo counting 
+                            if ( ! bUndo ) goto undo; // undo counting
 #endif // defined(INSERT) && !defined(RECURSIVE)
-                        return KeyFound;
-                    }
+                            return KeyFound;
+                        }
 
-                    DBGX(printf("! BitIsSet\n"));
-                }
+                        DBGX(printf("! BitIsSetInWord\n"));
+                    }
+                    else if (wRoot != 0)
+                    {
+                        DBGX(printf(
+                            "BitIsSet(wRoot "OWx" wKey "OWx")\n",
+                                wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)));
+
+                        if (BitIsSet(wRoot,
+                            wKey & (EXP(cnBitsAtBottom) - 1UL)))
+                        {
+#if defined(REMOVE)
+                            if (wPopCnt == 1)
+                            {
+                                OldBitmap(wRoot); *pwRoot = 0;
+                                // BUG:  We should check if the switch is
+                                // empty and free it and so on.
+                            }
+                            else
+                            {
+                                ClrBit(wRoot,
+                                    wKey & ((EXP(cnBitsAtBottom)) - 1UL));
+                            }
+#endif // defined(REMOVE)
+#if defined(INSERT) && !defined(RECURSIVE)
+                            if ( ! bUndo ) goto undo; // undo counting 
+#endif // defined(INSERT) && !defined(RECURSIVE)
+                            return KeyFound;
+                        }
+
+                        DBGX(printf("! BitIsSet\n"));
+                    }
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
-            }
+                }
 #if defined(SKIP_LINKS)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-            else
-            {
-                DBGX(printf("Prefix mismatch at Bitmap wPrefix "OWx"\n",
-                    sw_wPrefix(pwr, nDigitsLeftRoot)));
-            }
+                else
+                {
+                    DBGX(printf("Prefix mismatch at Bitmap wPrefix "OWx"\n",
+                        sw_wPrefixNotAtTop(pwr, nDigitsLeftRoot)));
+                }
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
+            }
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
         }
     }
 #if (cwListPopCntMax != 0)
-    else if (wRoot != 0)
+    else
+    {
+#if defined(COMPRESSED_LISTS)
+notSwitchAndNotBitmap:
+#endif // defined(COMPRESSED_LISTS)
+    if (wRoot != 0)
     {
 #if 0
         unsigned nTypeX = oh_nTypeX(wRoot);
@@ -327,37 +356,70 @@ again:
         return wPopCnt ? KeyFound : ! KeyFound;
 #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 
-        // todo: save insertion point in sorted list and pass it to InsertGuts
-        // todo: possibly do insertion right here if list isn't full
-        for (n = 0; n < wPopCnt; n++)
+#if defined(COMPRESSED_LISTS)
+        unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+#if defined(SKIP_LINKS)
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+        // We don't support skip links directly to leaves yet so
+        // it is sufficient to check the prefix at the branch just
+        // above the leaf.
+        // would like to combine the source code for this prefix
+        // check and the one done in the bitmap section
+        if ((nBitsLeft > 16) // leaf has whole key
+            || ( ! bNeedPrefixCheck ) // we followed no skip links
+            || (LOG(1 | (sw_wPrefixNotAtTop(pwr, nDigitsLeft) ^ wKey))
+// We can change nBitsLeft to be a better function of the size of the keys
+// in the leaf.  How would it help?
+                < (nBitsLeft + pwr_nBitsIndexSz(pwr)))) // prefix matches
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#endif // defined(SKIP_LINKS)
+#endif // defined(COMPRESSED_LISTS)
         {
+            // todo: save insertion point in sorted list and pass it to
+            // InsertGuts
+            // todo: possibly do insertion right here if list isn't full
+            for (n = 0; n < wPopCnt; n++)
+            {
 #if defined(LOOKUP)
-            SMETRICS(j__SearchCompares++);
+                SMETRICS(j__SearchCompares++);
 #endif // defined(LOOKUP)
 
 #if defined(COMPRESSED_LISTS)
-            unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
-            if ((nBitsLeft > 16) ? (wr_pwKeys(wRoot)[n] == wKey)
+                if ((nBitsLeft > 16) ? (wr_pwKeys(wRoot)[n] == wKey)
                     : (nBitsLeft > 8)
                         ? (wr_psKeys(wRoot)[n] == (unsigned short)wKey)
                         : (wr_pcKeys(wRoot)[n] == (unsigned char)wKey))
 #else // defined(COMPRESSED_LISTS)
-            if (wr_pwKeys(wRoot)[n] == wKey)
+                if (wr_pwKeys(wRoot)[n] == wKey)
 #endif // defined(COMPRESSED_LISTS)
-            {
+                {
 #if defined(REMOVE)
-                RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                // BUG:  We should check if the switch is empty
-                // and free it and so on.
+                    RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                    // BUG:  We should check if the switch is empty
+                    // and free it and so on.
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE)
-                if ( ! bUndo ) goto undo; // undo counting
+                    if ( ! bUndo ) goto undo; // undo counting
 #endif // defined(INSERT) && !defined(RECURSIVE)
-                return KeyFound;
+                    return KeyFound;
+                }
             }
         }
+#if defined(COMPRESSED_LISTS)
+#if defined(SKIP_LINKS)
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+        else
+        {
+            DBGX(printf("Prefix mismatch at List wPrefix "OWx
+              " nDigitsLeft %d\n",
+                sw_wPrefixNotAtTop(wRoot, nDigitsLeft), nDigitsLeft));
+        }
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#endif // defined(SKIP_LINKS)
+#endif // defined(COMPRESSED_LISTS)
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
+    }
     }
 #endif // (cwListPopCntMax != 0)
 

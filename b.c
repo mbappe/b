@@ -267,7 +267,14 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
         for (n = 0; (n < wPopCnt) && (n < 8); n++)
         {
-            printf(" "Owx, pwKeys[n]);
+#if defined(COMPRESSED_LISTS)
+            if (nBitsLeft <= 8) {
+                printf(" %02x", ls_pcKeys(wRoot)[n]);
+            } else if (nBitsLeft <= 16) {
+                printf(" %04x", ls_psKeys(wRoot)[n]);
+            } else
+#endif // defined(COMPRESSED_LISTS)
+            { printf(" "Owx, pwKeys[n]); }
         }
         printf("\n");
 
@@ -512,16 +519,31 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     {
         Word_t wPopCnt;
         Word_t *pwKeys;
+#if defined(COMPRESSED_LISTS)
+        unsigned short *psKeys;
+        unsigned char *pcKeys;
+#endif // defined(COMPRESSED_LISTS)
 
         if (pwr != NULL) // pointer to old List
         {
             wPopCnt = ls_wPopCnt(pwr);
             pwKeys = ls_pwKeys(pwr); // list of keys in old List
+#if defined(COMPRESSED_LISTS)
+            psKeys = ls_psKeys(pwr);
+            pcKeys = ls_pcKeys(pwr);
+#endif // defined(COMPRESSED_LISTS)
         }
         else
         {
             wPopCnt = 0;
-            pwKeys = NULL; // make compiler happy about uninitialized variable
+            // make compiler happy about uninitialized variable
+            // it doesn't recognize that (wPopCnt == 0) ==> pwKeys will not
+            // be examined
+            pwKeys = NULL;
+#if defined(COMPRESSED_LISTS)
+            psKeys = NULL;
+            pcKeys = NULL;
+#endif // defined(COMPRESSED_LISTS)
         }
 
 // We don't support skip links to lists or bitmaps yet.  And don't have
@@ -620,12 +642,15 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #if defined(SORT_LISTS) || defined(MIN_MAX_LISTS)
 #if defined(COMPRESSED_LISTS)
                 unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+                Word_t wSuffix;
                 if (nBitsLeft <= 8) {
                     wMin = ls_pcKeys(wRoot)[0];
                     wMax = ls_pcKeys(wRoot)[wPopCnt - 1];
+                    wSuffix = wKey & 0xff;
                 } else if (nBitsLeft <= 16) {
                     wMin = ls_psKeys(wRoot)[0];
                     wMax = ls_psKeys(wRoot)[wPopCnt - 1];
+                    wSuffix = wKey & 0xffff;
                 } else 
 #endif // defined(COMPRESSED_LISTS)
                 { wMin = pwKeys[0]; wMax = pwKeys[wPopCnt - 1]; }
@@ -642,9 +667,20 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #endif // defined(SORT_LISTS) || defined(MIN_MAX_LISTS)
                 DBGI(printf("wMin "OWx" wMax "OWx"\n", wMin, wMax));
 
-                nDigitsLeft
-                    = LOG(1 | ((wKey ^ wMin) | (wKey ^ wMax)))
-                        / cnBitsPerDigit + 1;
+#if defined(COMPRESSED_LISTS)
+                if (nBitsLeft <= 16)
+                {
+                    nDigitsLeft
+                        = LOG(1 | ((wSuffix ^ wMin) | (wSuffix ^ wMax)))
+                            / cnBitsPerDigit + 1;
+                }
+                else
+#endif // defined(COMPRESSED_LISTS)
+                {
+                    nDigitsLeft
+                        = LOG(1 | ((wKey ^ wMin) | (wKey ^ wMax)))
+                            / cnBitsPerDigit + 1;
+                }
             }
             else
             {
@@ -696,16 +732,16 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             set_wr(wRoot, (Word_t *)pSw, nDigitsLeft_to_tp(nDigitsLeft));
 
 #if defined(COMPRESSED_LISTS)
-            unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
-            if (nBitsLeft <= 8) {
+            unsigned nBitsLeftOld = nDigitsLeftOld * cnBitsPerDigit;
+            if (nBitsLeftOld <= 8) {
                 for (w = 0; w < wPopCnt; w++)
                 {
-                    Insert(&wRoot, ls_pcKeys(wRoot)[w], nDigitsLeft);
+                    Insert(&wRoot, pcKeys[w] | (wKey & ~0xff), nDigitsLeft);
                 }
-            } else if (nBitsLeft <= 16) {
+            } else if (nBitsLeftOld <= 16) {
                 for (w = 0; w < wPopCnt; w++)
                 {
-                    Insert(&wRoot, ls_psKeys(wRoot)[w], nDigitsLeft);
+                    Insert(&wRoot, psKeys[w] | (wKey & ~0xffff), nDigitsLeft);
                 }
             } else
 #endif // defined(COMPRESSED_LISTS)
