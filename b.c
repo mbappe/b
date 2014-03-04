@@ -627,9 +627,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         else
         {
 #if defined(SKIP_LINKS)
-#if defined(NO_UNNECESSARY_PREFIX) || !defined(NDEBUG)
+#if defined(NO_UNNECESSARY_PREFIX) || defined(COMPRESSED_LISTS) \
+    || !defined(NDEBUG)
             unsigned nDigitsLeftOld = nDigitsLeft;
-#endif // defined(NO_UNNECESSARY_PREFIX) || !defined(NDEBUG)
+#endif // defined(NO_UNNECESSARY_PREFIX) || defined(COMPRESSED_LISTS) || ...
 #endif // defined(SKIP_LINKS)
             Word_t w;
 
@@ -732,7 +733,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             set_wr(wRoot, (Word_t *)pSw, nDigitsLeft_to_tp(nDigitsLeft));
 
 #if defined(COMPRESSED_LISTS)
+#if defined(SKIP_LINKS)
             unsigned nBitsLeftOld = nDigitsLeftOld * cnBitsPerDigit;
+#else // defined(SKIP_LINKS)
+// Revisit the use of "Old" here.
+            unsigned nBitsLeftOld = nDigitsLeft * cnBitsPerDigit;
+#endif // defined(SKIP_LINKS)
             if (nBitsLeftOld <= 8) {
                 for (w = 0; w < wPopCnt; w++)
                 {
