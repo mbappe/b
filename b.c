@@ -60,7 +60,9 @@ Word_t    j__AllocWordsJV;
 
 #endif // 0
 
-#if cnBitsPerDigit != 0
+#if (cnBitsPerDigit != 0)
+
+#if (cnListPopCntMax != 0)
 
 static Word_t *
 NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
@@ -96,6 +98,8 @@ OldList(Word_t *pwList)
 
     return wLen * sizeof(Word_t);
 }
+
+#endif // (cnListPopCntMax != 0)
 
 static Word_t
 NewBitmap(void)
@@ -250,6 +254,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
     nType = wr_nType(wRoot);
 
+#if (cnListPopCntMax != 0)
     if (!tp_bIsSwitch(nType))
     {
         Word_t wPopCnt = ls_wPopCnt(pwr);
@@ -273,6 +278,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
         return 0;
     }
+#endif // (cnListPopCntMax != 0)
 
     // Switch
 
@@ -330,6 +336,7 @@ Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft)
 }
 #endif // defined(DEBUG)
 
+#if (cnListPopCntMax != 0)
 #if defined(SORT_LISTS)
 // CopyWithInsert can handle pTgt == pSrc, but cannot handle any other
 // overlapping buffer scenarios.
@@ -364,6 +371,7 @@ CopyWithInsert(Word_t *pTgt, Word_t *pSrc, unsigned nWords, Word_t wKey)
     COPY(&pTgt[i+1], &pSrc[i], nWords - i); // copy the tail
 }
 #endif // defined(SORT_LISTS)
+#endif // (cnListPopCntMax != 0)
 
 Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
@@ -459,6 +467,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 //  - bitmap switch -- depth, prefix, pop, capacity, bitmap, links
 //  - list switch -- depth, prefix, pop, capacity, (key, link) pairs
 
+#if (cnListPopCntMax != 0)
         if (wPopCnt < cwListPopCntMax)
         {
             // allocate a new list and init pop count in the first word
@@ -498,6 +507,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             set_wr(wRoot, pwList, /* nType */ 0); // !tp_bIsSwitch
         }
         else
+#endif // (cnListPopCntMax != 0)
         {
 #if defined(SKIP_LINKS)
 #if defined(NO_UNNECESSARY_PREFIX) || !defined(NDEBUG)
@@ -589,7 +599,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             Insert(&wRoot, wKey, nDigitsLeft);
         }
 
+#if (cnListPopCntMax != 0)
         if (wPopCnt != 0) OldList(pwr); // free old
+#endif // (cnListPopCntMax != 0)
     }
 #if defined(SKIP_LINKS)
     else
@@ -644,6 +656,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 Status_t
 RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft, Word_t wRoot)
 {
+#if (cnListPopCntMax != 0)
     Word_t wPopCnt = ls_wPopCnt(wRoot);
     unsigned n;
 
@@ -669,6 +682,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft, Word_t wRoot)
 
         set_ls_wPopCnt(wRoot, wPopCnt - 1);
     }
+#endif // (cnListPopCntMax != 0)
 
     // suppress "unused" compiler warnings
     (void)pwRoot; (void)wKey; (void)nBitsLeft; (void)wRoot;
@@ -676,7 +690,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft, Word_t wRoot)
     return Success;
 }
 
-#endif // cnBitsPerDigit != 0
+#endif // (cnBitsPerDigit != 0)
 
 // ****************************************************************************
 // JUDY1 FUNCTIONS:
