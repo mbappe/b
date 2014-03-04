@@ -285,11 +285,15 @@
 #define set_ls_wLen(_ls, _len)  (ls_wLen(_ls) = (_len))
 
 #define     ls_pwKeys(_ls)    (((LeafWord_t *)(_ls))->lw_awKeys)
+#define     ls_psKeys(_ls)    ((unsigned short *)ls_pwKeys(_ls))
+#define     ls_pcKeys(_ls)    ((unsigned char *) ls_pwKeys(_ls))
 
 // these are just aliases as long as wRoot is a pointer to a list
 #define     pwr_pwKeys(_pwr)    (ls_pwKeys(_pwr))
 #define     wr_ls_wPopCnt(_wr)  (ls_wPopCnt(_wr))
 #define     wr_pwKeys(_wr)      (ls_pwKeys(_wr))
+#define     wr_psKeys(_wr)      (ls_psKeys(_wr))
+#define     wr_pcKeys(_wr)      (ls_pcKeys(_wr))
 
 #define BitmapByteNum(_key)  ((_key) >> cnLogBitsPerByte)
 #define BitmapWordNum(_key)  ((_key) >> cnLogBitsPerWord)
