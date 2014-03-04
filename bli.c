@@ -308,6 +308,7 @@ again:
         unsigned nDigitsLeft = oh_nDigitsLeft(wRoot);
 #endif
 #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
+// This short-circuit is for analysis only.
         return KeyFound;
 #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
@@ -322,6 +323,7 @@ again:
 #endif // defined(LOOKUP)
 
 #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
+// This short-circuit is for analysis only.
         return wPopCnt ? KeyFound : ! KeyFound;
 #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 
@@ -333,7 +335,15 @@ again:
             SMETRICS(j__SearchCompares++);
 #endif // defined(LOOKUP)
 
+#if defined(COMPRESSED_LISTS)
+            unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+            if ((nBitsLeft > 16) ? (wr_pwKeys(wRoot)[n] == wKey)
+                    : (nBitsLeft > 8)
+                        ? (wr_psKeys(wRoot)[n] == (unsigned short)wKey)
+                        : (wr_pcKeys(wRoot)[n] == (unsigned char)wKey))
+#else // defined(COMPRESSED_LISTS)
             if (wr_pwKeys(wRoot)[n] == wKey)
+#endif // defined(COMPRESSED_LISTS)
             {
 #if defined(REMOVE)
                 RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
