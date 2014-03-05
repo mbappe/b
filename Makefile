@@ -57,11 +57,11 @@ WFLAGS += -Wmissing-prototypes
 # I don't know if it is possible to get -O4 without -O3.  I'm assuming
 # -O4 does not imply -Ofast.  I wonder if -Ofast and -O4 can go together.
 # OFLAGS = -g -O4
-#OFLAGS = -g -O2
+OFLAGS = -g -O2
 #OFLAGS = -g -O3
 #OFLAGS = -g -O4
 #OFLAGS = -g -Os
-OFLAGS = -g -Oz
+#OFLAGS = -g -Oz
 #OFLAGS = -g -Ofast
 
 CFLAGS = $(STDFLAG) $(MFLAG) $(WFLAGS) $(OFLAGS) -I.
@@ -71,14 +71,20 @@ TIME_DEFINES += -UBITMAP_P_JE -UEXTERN_BITMAP -UINTERN_JUDY1 -UEXTERN_JUDY1
 TIME_DEFINES += -USWAP -UBITMAP_BY_BYTE
 #TIME_DEFINES += -DJUDYB -DGUARDBAND -UNDEBUG
 TIME_DEFINES += -DJUDYB -UGUARDBAND -DNDEBUG
+# SISTER_SUM, SISTER_READ and SISTER_SISTER are for measuring speed of
+# dereferencing subsequent cache lines using "Judy1LHTime -b".
 TIME_DEFINES += -USISTER_SUM -USISTER_READ -USISTER_SISTER
 #B_DEFINES += -DRAM_METRICS -DSEARCH_METRICS
 B_DEFINES += -DRAM_METRICS -USEARCH_METRICS
 B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX
 B_DEFINES += -DSORT_LISTS -UMIN_MAX_LISTS -UCOMPRESSED_LISTS
 B_DEFINES += -URECURSIVE_INSERT -URECURSIVE_REMOVE
+# LOOKUP_NO_BITMAP_SEARCH means return just before the list is searched.
+# LOOKUP_NO_BITMAP_DEREF means return before prefix/popcnt is retrieved.
 #B_DEFINES += -ULOOKUP_NO_LIST_DEREF -ULOOKUP_NO_LIST_SEARCH
 B_DEFINES += -ULOOKUP_NO_LIST_DEREF -ULOOKUP_NO_LIST_SEARCH
+# LOOKUP_NO_BITMAP_SEARCH means return before the bit is retrieved.
+# LOOKUP_NO_BITMAP_DEREF means return before the prefix is retrieved.
 #B_DEFINES += -ULOOKUP_NO_BITMAP_DEREF -ULOOKUP_NO_BITMAP_SEARCH
 B_DEFINES += -ULOOKUP_NO_BITMAP_DEREF -ULOOKUP_NO_BITMAP_SEARCH
 # -DDEBUG adds some internal sanity checking not covered by assertions only.
@@ -130,7 +136,7 @@ T_OBJS = stubs.o dlmalloc.o
 #
 ##################################
 
-default: clean t
+default: clean t b
 
 all: clean $(EXES) $(ASMS) $(CPPS) b.tar b.tgz b.tjz
 
