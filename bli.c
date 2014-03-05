@@ -179,8 +179,6 @@ again:
                     {
 #if defined(REMOVE)
                         RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                        // BUG:  We should check if the switch is empty
-                        // and free it and so on.
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE)
                         if ( ! bUndo ) goto undo; // undo counting
@@ -358,11 +356,7 @@ again:
                         wKey & (EXP(cnBitsAtBottom) - 1UL)))
                     {
 #if defined(REMOVE)
-                        // BUG:  We should check if the switch is empty
-                        // and free it (and on up the tree as necessary).
-                        ClrBitInWord(wRoot,
-                            wKey & ((EXP(cnBitsAtBottom)) - 1UL));
-                        *pwRoot = wRoot;
+                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE)
                         if ( ! bUndo ) goto undo; // undo counting
@@ -382,23 +376,7 @@ again:
                         wKey & (EXP(cnBitsAtBottom) - 1UL)))
                     {
 #if defined(REMOVE)
-                        if (wPopCnt == 1)
-                        {
-                            OldBitmap(wRoot); *pwRoot = 0;
-                            // BUG:  We just checked the population of
-                            // the switch so we know it is empty.
-                            // We should be freeing the switch (and on
-                            // up the tree as needed).
-                        }
-                        else
-                        {
-                            ClrBit(wRoot,
-                                wKey & ((EXP(cnBitsAtBottom)) - 1UL));
-                            // BUG: We should check if the bitmap is
-                            // empty and free it if so.  We know the
-                            // switch is not empty so there will be
-                            // no need to propagate beyond this bitmap.
-                        }
+                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE)
                         if ( ! bUndo ) goto undo; // undo counting 

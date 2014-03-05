@@ -816,13 +816,32 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 Status_t
 RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 {
+    DBGR(printf("RemoveGuts\n"));
+
+    if (nDigitsLeft <= cnDigitsAtBottom)
+    {
+        if (cnBitsAtBottom <= cnLogBitsPerWord)
+        {
+            // BUG:  We should check if the switch is empty
+            // and free it (and on up the tree as necessary).
+            ClrBitInWord(wRoot, wKey & ((EXP(cnBitsAtBottom)) - 1UL));
+            *pwRoot = wRoot;
+        }
+        else
+        {
+            ClrBit(wRoot, wKey & ((EXP(cnBitsAtBottom)) - 1UL));
+            // BUG: We should check if the bitmap is
+            // empty and free it if so.
+        }
+    }
+    else
+    {
+
 #if defined(COMPRESSED_LISTS)
     unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
 #endif // defined(COMPRESSED_LISTS)
     Word_t wPopCnt = ls_wPopCnt(wRoot);
     unsigned n;
-
-    DBGR(printf("RemoveGuts\n"));
 
     if (wPopCnt == 1)
     {
@@ -864,6 +883,9 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         set_ls_wPopCnt(wRoot, wPopCnt - 1);
     }
+
+    }
+
     (void)pwRoot; (void)wKey; (void)nDigitsLeft; (void)wRoot;
 
     return Success;
