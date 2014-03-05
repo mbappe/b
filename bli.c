@@ -114,9 +114,6 @@ again:
 #if (cwListPopCntMax != 0)
     if (!tp_bIsSwitch(nType))
     {
-#if defined(COMPRESSED_LISTS)
-notSwitchAndNotBitmap:
-#endif // defined(COMPRESSED_LISTS)
         if (wRoot != 0)
         {
 #if 0
