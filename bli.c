@@ -329,7 +329,9 @@ again:
             if (( ! bNeedPrefixCheck )
                 || (LOG(1 | (sw_wPrefixNotAtTop(pwr, nDigitsLeftRoot)
                         ^ wKey))
-                    < cnBitsAtBottom))
+                    // pwr_nBitsIndexSz term is necessary because pwr prefix
+                    // does not contain any less significant bits.
+                    < (cnBitsAtBottom + pwr_nBitsIndexSz(pwr))))
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
             {
