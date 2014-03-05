@@ -827,7 +827,8 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     if (wPopCnt == 1)
     {
         OldList((Word_t *)wRoot); *pwRoot = 0;
-        // BUG:  We should check if the switch is empty and free it and so on.
+        // BUG:  We should check if the switch is empty and free it
+        // (and on up the tree as necessary).
     }
     else
     {
