@@ -246,9 +246,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         return 0;
     }
 
-    pwr = wr_pwr(wRoot);
-
     nType = wr_nType(wRoot);
+
+    pwr = wr_pwr(wRoot, nType);
 
     if (!tp_bIsSwitch(nType))
     {
@@ -507,9 +507,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         return Success;
     }
 
-    pwr = wr_pwr(wRoot);
-
     nType = wr_nType(wRoot);
+
+    pwr = wr_pwr(wRoot, nType);
 
 #if defined(SKIP_LINKS)
     if (!tp_bIsSwitch(nType))

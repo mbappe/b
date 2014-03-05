@@ -46,28 +46,45 @@ WFLAGS = -Wall -Werror
 WFLAGS += -pedantic -Wstrict-prototypes -W
 WFLAGS += -Wmissing-prototypes
 
+# -O0 no optimization
+# -O1 between -O2 and -O0
+# -O2 moderate optimization enabling most optimizations
+# -Oz (reduce size further) ==> -Os (reduce size) ==> -O2
+# -O3 ==> -O2 optimizations may increase code size
+# -Ofast ==> -O3 (and may violate strict language standards)
+# -O4 link-level optimizations by storing files in LLVM bitcode
 # I have seen -O4 inline BitmapGet from bitmap.o into Judy1LHTime.o.
-# I don't know if it is possible to get -O4 without -O3.  I'm hoping
-# -O4 does not imply -Ofast which admits to violating the standard.
+# I don't know if it is possible to get -O4 without -O3.  I'm assuming
+# -O4 does not imply -Ofast.  I wonder if -Ofast and -O4 can go together.
 # OFLAGS = -g -O4
-OFLAGS = -g -O2
+#OFLAGS = -g -O2
+#OFLAGS = -g -O3
+#OFLAGS = -g -O4
+#OFLAGS = -g -Os
+OFLAGS = -g -Oz
+#OFLAGS = -g -Ofast
 
 CFLAGS = $(STDFLAG) $(MFLAG) $(WFLAGS) $(OFLAGS) -I.
 
 TIME_DEFINES += -UBITMAP_P_JE -UEXTERN_BITMAP -UINTERN_JUDY1 -UEXTERN_JUDY1
 # -DBITMAP_BY_BYTE enables byte address/mask in judy1x.c and bitmapx.c.
 TIME_DEFINES += -USWAP -UBITMAP_BY_BYTE
-TIME_DEFINES += -DJUDYB -DGUARDBAND -UNDEBUG
+#TIME_DEFINES += -DJUDYB -DGUARDBAND -UNDEBUG
+TIME_DEFINES += -DJUDYB -UGUARDBAND -DNDEBUG
 TIME_DEFINES += -USISTER_SUM -USISTER_READ -USISTER_SISTER
-B_DEFINES += -DRAM_METRICS -DSEARCH_METRICS
+#B_DEFINES += -DRAM_METRICS -DSEARCH_METRICS
+B_DEFINES += -DRAM_METRICS -USEARCH_METRICS
 B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX
-B_DEFINES += -DSORT_LISTS -UMIN_MAX_LISTS -DCOMPRESSED_LISTS
+B_DEFINES += -DSORT_LISTS -UMIN_MAX_LISTS -UCOMPRESSED_LISTS
 B_DEFINES += -URECURSIVE_INSERT -URECURSIVE_REMOVE
+#B_DEFINES += -ULOOKUP_NO_LIST_DEREF -ULOOKUP_NO_LIST_SEARCH
 B_DEFINES += -ULOOKUP_NO_LIST_DEREF -ULOOKUP_NO_LIST_SEARCH
+#B_DEFINES += -ULOOKUP_NO_BITMAP_DEREF -ULOOKUP_NO_BITMAP_SEARCH
 B_DEFINES += -ULOOKUP_NO_BITMAP_DEREF -ULOOKUP_NO_BITMAP_SEARCH
 # -DDEBUG adds some internal sanity checking not covered by assertions only.
 # It does not log anything unless something wrong is detected.
-B_DEFINES += -DDEBUG
+#B_DEFINES += -DDEBUG
+B_DEFINES += -UDEBUG
 ##
 # Here are other defines that can be specified on the command line with
 # "DEFINES = ... make"
@@ -113,7 +130,9 @@ T_OBJS = stubs.o dlmalloc.o
 #
 ##################################
 
-all:	clean $(EXES) $(ASMS) $(CPPS) b.tar b.tgz b.tjz
+default: clean t
+
+all: clean $(EXES) $(ASMS) $(CPPS) b.tar b.tgz b.tjz
 
 clean:
 	rm -f $(EXES) *.tar $(OBJS) $(ASMS) $(CPPS)

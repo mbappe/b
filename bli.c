@@ -125,8 +125,6 @@ again:
             return KeyFound;
 #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
-            unsigned n;
-
             DBGX(printf("List\n"));
 
             wPopCnt = ls_wPopCnt(wRoot);
@@ -163,7 +161,7 @@ again:
                 // todo: save insertion point in sorted list and pass it to
                 // InsertGuts
                 // todo: possibly do insertion right here if list isn't full
-                for (n = 0; n < wPopCnt; n++)
+                for (unsigned n = 0; n < wPopCnt; n++)
                 {
 #if defined(LOOKUP)
                     SMETRICS(j__SearchCompares++);
@@ -213,7 +211,7 @@ again:
     {
         // basic switch
 
-        pwr = wr_pwr(wRoot); // pointer extracted from wRoot
+        pwr = wr_pwr(wRoot, nType); // pointer extracted from wRoot
 
 #if defined(SKIP_LINKS)
         nDigitsLeftRoot = tp_to_nDigitsLeft(nType);

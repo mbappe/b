@@ -25,7 +25,7 @@
 // Default is cnLogBitsPerWord because a bitmap is the size of a word when
 // cnDigitsAtBottom is one and we can embed the bitmap.
 //#define cnBitsPerDigit  (cnLogBitsPerWord)
-#define cnBitsPerDigit  5
+#define cnBitsPerDigit  10
 
 // Choose bottom.
 // Bottom is where Bitmap is created.  Maybe we should change the meaning.
@@ -47,7 +47,8 @@
 // But it doesn't work because we can end up with a new switch at every
 // depth with only the bottom list having more than one key.
 // We could vary the max length based on depth or be even more sophisticated.
-#define cwListPopCntMax  EXP(cnBitsPerDigit + 1)
+//#define cwListPopCntMax  EXP(cnBitsPerDigit)
+#define cwListPopCntMax  16
 
 // Choose features.
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
@@ -179,9 +180,9 @@
 #define set_wr_nType(_wr, _type)  ((_wr) = ((_wr) & ~cnMallocMask) | (_type))
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-#define     wr_pwr(_wr)          ((Word_t *)((_wr) & ~cnMallocMask))
+#define     wr_pwr(_wr, _tp)          ((Word_t *)((_wr) ^ (_tp)))
 #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-#define     wr_pwr(_wr)          ((Word_t *)(_wr))
+#define     wr_pwr(_wr, _tp)          ((Word_t *)(_wr))
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #define set_wr_pwr(_wr, _pwr) \
     ((_wr) = ((_wr) & cnMallocMask) | (Word_t)(_pwr))
