@@ -257,12 +257,12 @@ again:
 #if 0
                 // BUG:  What if attempting to insert a dup and
                 // we're already at max pop?
-                if (wPopCnt == 0) && at least one pwRoots is not 0
+                if (wPopCnt == 0) && at least one link pop count is not 0
                 // BUG:  What if attempting to remove a key that isn't present
                 // and we're already at pop zero?
                 // What about empty subtrees with non-zero pointers left
                 // around after remove?
-                if (wPopCnt == 0) && all pwRoots are 0
+                if (wPopCnt == 0) && all links have pop count 0
                 {
                     // subtree is at full population or zero population
                     return KeyFound;
@@ -289,10 +289,10 @@ again:
                 = ((wKey >> (nDigitsLeft * cnBitsPerDigit))
                     & (EXP(pwr_nBitsIndexSz(pwr)) - 1));
 
-            DBGX(printf("Next nDigitsLeft %d nIndex %d pwr %p pwRoots %p\n",
-                nDigitsLeft, nIndex, pwr, pwr_pwRoots(pwr)));
+            DBGX(printf("Next nDigitsLeft %d nIndex %d pwr %p pLinks %p\n",
+                nDigitsLeft, nIndex, pwr, pwr_pLinks(pwr)));
 
-            pwRoot = &pwr_pwRoots(pwr)[nIndex];
+            pwRoot = &pwr_pLinks(pwr)[nIndex].ln_wRoot;
             wRoot = *pwRoot;
 
             DBGX(printf("pwRoot %p wRoot "OWx"\n", pwRoot, wRoot));

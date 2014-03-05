@@ -25,7 +25,7 @@
 // Default is cnLogBitsPerWord because a bitmap is the size of a word when
 // cnDigitsAtBottom is one and we can embed the bitmap.
 //#define cnBitsPerDigit  (cnLogBitsPerWord)
-#define cnBitsPerDigit  10
+#define cnBitsPerDigit  8
 
 // Choose bottom.
 // Bottom is where Bitmap is created.  Maybe we should change the meaning.
@@ -48,7 +48,7 @@
 // depth with only the bottom list having more than one key.
 // We could vary the max length based on depth or be even more sophisticated.
 //#define cwListPopCntMax  EXP(cnBitsPerDigit)
-#define cwListPopCntMax  16
+#define cwListPopCntMax  4
 
 // Choose features.
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
@@ -277,7 +277,7 @@
 #define     pwr_wPrefix               sw_wKey
 #define set_pwr_wPrefix           set_sw_wKey
 
-#define     pwr_pwRoots(_pwr)  (((Switch_t *)(_pwr))->sw_awRoots)
+#define     pwr_pLinks(_pwr)  (((Switch_t *)(_pwr))->sw_aLinks)
 
 #define     ls_wPopCnt(_ls)        (((LeafWord_t *)(_ls))->lw_wPrefixPlus)
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
@@ -364,7 +364,7 @@ typedef struct {
 
 typedef struct {
     Word_t lw_wPrefixPlus; // includes prefix, node type and nDigitsLeft
-    unsigned char lw_nWords;
+    unsigned lw_nWords;
     Word_t lw_awKeys[];
 } LeafWord_t;
 
@@ -375,9 +375,13 @@ typedef struct {
     };
 #endif
 
-// Uncompressed switch.
 typedef struct {
-    Word_t sw_awRoots[EXP(cnBitsPerDigit)]; // links
+    Word_t ln_wRoot;
+} Link_t;
+
+// Uncompressed, basic switch.
+typedef struct {
+    Link_t sw_aLinks[EXP(cnBitsPerDigit)];
     Word_t sw_wPrefixPop;
 } Switch_t;
 

@@ -202,7 +202,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
     unsigned nDigitsLeft;
     Word_t *pwr;
     unsigned nBitsIndexSz;
-    Word_t *pwRoots;
+    Link_t *pLinks;
     unsigned nType;
     unsigned n;
     Word_t wBytes = 0;
@@ -292,7 +292,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
     wPrefix = sw_wPrefix(pwr, nDigitsLeft);
     nBitsIndexSz = pwr_nBitsIndexSz(pwr);
-    pwRoots = pwr_pwRoots(pwr);
+    pLinks = pwr_pLinks(pwr);
 
     if (bDump)
     {
@@ -304,7 +304,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         printf(" wPrefixPop "OWx, pwr_wPrefixPop(pwr));
         printf(" wKeyPopMask "OWx, wPrefixPopMask(nDigitsLeft));
         printf(" wr_wPrefix "OWx, wPrefix);
-        //printf(" pwRoots "OWx, (Word_t)pwRoots);
+        //printf(" pLinks "OWx, (Word_t)pLinks);
         printf("\n");
     }
 
@@ -318,7 +318,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
     for (n = 0; n < EXP(nBitsIndexSz); n++)
     {
-        wBytes += FreeArrayGuts(&pwRoots[n],
+        wBytes += FreeArrayGuts(&pLinks[n].ln_wRoot,
             wPrefix | (n << nBitsLeft), nBitsLeft, bDump);
     }
 
@@ -797,10 +797,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         // copy old link to new switch
         // todo nBitsIndexSz; wide switch
         assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
-        pSw->sw_awRoots
+        pSw->sw_aLinks
             [(pwr_wKey(pwr, nDigitsLeftRoot)
                     >> ((nDigitsLeft - 1) * cnBitsPerDigit))
-                & (EXP(cnBitsPerDigit) - 1)] = wRoot;
+                & (EXP(cnBitsPerDigit) - 1)].ln_wRoot = wRoot;
 
         set_wr(wRoot, (Word_t *)pSw, nDigitsLeft_to_tp(nDigitsLeft));
 
