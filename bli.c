@@ -273,6 +273,10 @@ again:
                 if (bUndo) wIncr *= -1;
 #endif // !defined(RECURSIVE)
 
+// I wonder if I should check for the pop count decrementing to zero.
+// And add wRoot to a list for removal in case the remove is successful.
+// I think so.
+
                 set_sw_wPopCnt(pwr, nDigitsLeft, wPopCnt + wIncr);
 
                 assert(sw_wPopCnt(pwr, nDigitsLeft)
