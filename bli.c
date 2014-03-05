@@ -133,11 +133,6 @@ again:
             SMETRICS(j__SearchPopulation += wPopCnt);
 #endif // defined(LOOKUP)
 
-#if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
-// This short-circuit is for analysis only.
-            return wPopCnt ? KeyFound : ! KeyFound;
-#else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
-
 #if defined(COMPRESSED_LISTS)
             unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
 #if defined(SKIP_LINKS)
@@ -158,6 +153,12 @@ again:
 #endif // defined(SKIP_LINKS)
 #endif // defined(COMPRESSED_LISTS)
             {
+#if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
+// This short-circuit is for analysis only.  We have retrieved the pop count
+// and prefix but we have not dereferenced the list itself.
+                return wPopCnt ? KeyFound : ! KeyFound;
+#else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
+
                 // todo: save insertion point in sorted list and pass it to
                 // InsertGuts
                 // todo: possibly do insertion right here if list isn't full
@@ -187,6 +188,7 @@ again:
                         return KeyFound;
                     }
                 }
+#endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
             }
 #if defined(COMPRESSED_LISTS)
 #if defined(SKIP_LINKS)
@@ -200,7 +202,6 @@ again:
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
 #endif // defined(COMPRESSED_LISTS)
-#endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
         }
     }
@@ -320,19 +321,30 @@ again:
 
 #if defined(SKIP_LINKS)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-            // would like to combine the source code for this prefix
-            // check and the one done in the compressed_lists section
+            // Would like to combine the source code for this prefix
+            // check and the one done in the compressed_lists section.
+            // Notice that we're using pwr which was extracted from
+            // the previous wRoot -- not the current wRoot.
+            // The current wRoot might be an embedded bitmap.
             if (( ! bNeedPrefixCheck )
                 || (LOG(1 | (sw_wPrefixNotAtTop(pwr, nDigitsLeftRoot)
                         ^ wKey))
-// ? is the addition of nBitsIndexSz a waste of energy ?
-// seems like it is; we picked the index based on the key; it must match
-                    < (cnBitsAtBottom + pwr_nBitsIndexSz(pwr))))
+                    < cnBitsAtBottom))
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
             {
 #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
+#if 0
+                // Haven't really thought out use of cnDigitsAtBottom here.
+                return sw_wPopCntNotAtTop(pwr, cnDigitsAtBottom)
+                    ? KeyFound : ! KeyFound;
+#else
+                // Remove is incomplete and may leave the switch in
+                // place even after all keys in all lists have been removed.
+                // This makes it cumbersome to disambiguate a zero value
+                // returned from sw_wPopCntNotAtTop.
                 return KeyFound;
+#endif
 #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
                 if (cnBitsAtBottom <= cnLogBitsPerWord) // compile time
                 {
@@ -345,7 +357,7 @@ again:
                     {
 #if defined(REMOVE)
                         // BUG:  We should check if the switch is empty
-                        // and free it and so on.
+                        // and free it (and on up the tree as necessary).
                         ClrBitInWord(wRoot,
                             wKey & ((EXP(cnBitsAtBottom)) - 1UL));
                         *pwRoot = wRoot;
@@ -371,13 +383,19 @@ again:
                         if (wPopCnt == 1)
                         {
                             OldBitmap(wRoot); *pwRoot = 0;
-                            // BUG:  We should check if the switch is
-                            // empty and free it and so on.
+                            // BUG:  We just checked the population of
+                            // the switch so we know it is empty.
+                            // We should be freeing the switch (and on
+                            // up the tree as needed).
                         }
                         else
                         {
                             ClrBit(wRoot,
                                 wKey & ((EXP(cnBitsAtBottom)) - 1UL));
+                            // BUG: We should check if the bitmap is
+                            // empty and free it if so.  We know the
+                            // switch is not empty so there will be
+                            // no need to propagate beyond this bitmap.
                         }
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE)
