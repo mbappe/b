@@ -70,7 +70,11 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #if !defined(RECURSIVE)
     Word_t *pwRootOrig = pwRoot;
     unsigned nDigitsLeftOrig = nDigitsLeft;
-    int bUndo = 0;
+#if defined(INSERT)
+    int nIncr = 1;
+#else // defined(INSERT)
+    int nIncr = -1;
+#endif // defined(INSERT)
 #endif // !defined(RECURSIVE)
 #endif // defined(LOOKUP)
 #if defined(SKIP_LINKS)
@@ -181,7 +185,7 @@ again:
                         RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE)
-                        if ( ! bUndo ) goto undo; // undo counting
+                        if (nIncr > 0) goto undo; // undo counting
 #endif // defined(INSERT) && !defined(RECURSIVE)
                         return KeyFound;
                     }
@@ -247,12 +251,6 @@ again:
 #if !defined(LOOKUP)
             // increment or decrement population count on the way in
             {
-#if defined(INSERT)
-                Word_t wIncr = 1;
-#else // defined(INSERT)
-                Word_t wIncr = -1;
-#endif // defined(INSERT)
-
                 wPopCnt = sw_wPopCnt(pwr, nDigitsLeft);
 #if 0
                 // BUG:  What if attempting to insert a dup and
@@ -269,18 +267,14 @@ again:
                 }
 #endif
 
-#if !defined(RECURSIVE)
-                if (bUndo) wIncr *= -1;
-#endif // !defined(RECURSIVE)
-
 // I wonder if I should check for the pop count decrementing to zero.
 // And add wRoot to a list for removal in case the remove is successful.
 // I think so.
 
-                set_sw_wPopCnt(pwr, nDigitsLeft, wPopCnt + wIncr);
+                set_sw_wPopCnt(pwr, nDigitsLeft, wPopCnt + nIncr);
 
                 assert(sw_wPopCnt(pwr, nDigitsLeft)
-                    == ((wPopCnt + wIncr) & wPrefixPopMask(nDigitsLeft)));
+                    == ((wPopCnt + nIncr) & wPrefixPopMask(nDigitsLeft)));
 
                 DBGI(printf("sw_wPopCnt "wd"\n",
                     sw_wPopCnt(pwr, nDigitsLeft)));
@@ -363,7 +357,7 @@ again:
                         RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE)
-                        if ( ! bUndo ) goto undo; // undo counting
+                        if (nIncr > 0) goto undo; // undo counting
 #endif // defined(INSERT) && !defined(RECURSIVE)
                         return KeyFound;
                     }
@@ -383,7 +377,7 @@ again:
                         RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE)
-                        if ( ! bUndo ) goto undo; // undo counting 
+                        if (nIncr > 0) goto undo; // undo counting 
 #endif // defined(INSERT) && !defined(RECURSIVE)
                         return KeyFound;
                     }
@@ -410,12 +404,12 @@ again:
 undo:
 #endif // defined(INSERT)
 #if defined(REMOVE) && !defined(RECURSIVE)
-    if ( ! bUndo )
+    if (nIncr < 0)
 #endif // defined(REMOVE) && !defined(RECURSIVE)
 #if !defined(LOOKUP) && !defined(RECURSIVE)
     {
         // Undo the counting we did on the way in.
-        bUndo = 1;
+        nIncr *= -1;
         pwRoot = pwRootOrig;
         nDigitsLeft = nDigitsLeftOrig;
         goto top;
