@@ -222,15 +222,15 @@
 #define w_wPrefixNotAtTop(_w, _nDL)  ((_w) & ~wPrefixPopMaskNotAtTop(_nDL))
 #define w_wPopCntNotAtTop(_w, _nDL)  ((_w) &  wPrefixPopMaskNotAtTop(_nDL))
 
-#define sw_wPrefixPop(_psw)  (((Switch_t *)(_psw))->sw_wPrefixPop)
-#define sw_wPrefix(_psw, _nDL)  (w_wPrefix(sw_wPrefixPop(_psw), (_nDL)))
-#define sw_wPopCnt(_psw, _nDL)  (w_wPopCnt(sw_wPrefixPop(_psw), (_nDL)))
+#define pwr_wPrefixPop(_psw)  (((Switch_t *)(_psw))->sw_wPrefixPop)
+#define pwr_wPrefix(_psw, _nDL)  (w_wPrefix(pwr_wPrefixPop(_psw), (_nDL)))
+#define pwr_wPopCnt(_psw, _nDL)  (w_wPopCnt(pwr_wPrefixPop(_psw), (_nDL)))
 
-#define sw_wPrefixNotAtTop(_psw, _nDL) \
-    (w_wPrefixNotAtTop(sw_wPrefixPop(_psw), (_nDL)))
+#define pwr_wPrefixNotAtTop(_psw, _nDL) \
+    (w_wPrefixNotAtTop(pwr_wPrefixPop(_psw), (_nDL)))
 
-#define sw_wPopCntNotAtTop(_psw, _nDL) \
-    (w_wPopCntNotAtTop(sw_wPrefixPop(_psw), (_nDL)))
+#define pwr_wPopCntNotAtTop(_psw, _nDL) \
+    (w_wPopCntNotAtTop(pwr_wPrefixPop(_psw), (_nDL)))
 
 #define set_w_wPrefix(_w, _nDL, _key) \
     ((_w) = (((_w) & wPrefixPopMask(_nDL)) \
@@ -240,14 +240,14 @@
     ((_w) = (((_w) & ~wPrefixPopMask(_nDL)) \
             | ((_cnt) & wPrefixPopMask(_nDL))))
 
-#define set_sw_wPrefix(_psw, _nDL, _key) \
-    (((Switch_t *)(_psw))->sw_wPrefixPop \
-        = ((sw_wPrefixPop(_psw) & wPrefixPopMask(_nDL)) \
+#define set_pwr_wPrefix(_psw, _nDL, _key) \
+    (pwr_wPrefixPop(_psw) \
+        = ((pwr_wPrefixPop(_psw) & wPrefixPopMask(_nDL)) \
             | ((_key) & ~wPrefixPopMask(_nDL))))
 
-#define set_sw_wPopCnt(_psw, _nDL, _cnt) \
-    (((Switch_t *)(_psw))->sw_wPrefixPop \
-        = ((sw_wPrefixPop(_psw) & ~wPrefixPopMask(_nDL)) \
+#define set_pwr_wPopCnt(_psw, _nDL, _cnt) \
+    (pwr_wPrefixPop(_psw) \
+        = ((pwr_wPrefixPop(_psw) & ~wPrefixPopMask(_nDL)) \
             | ((_cnt) & wPrefixPopMask(_nDL))))
 
 #define set_w_wPrefixNotAtTop(_w, _nDL, _key) \
@@ -258,24 +258,15 @@
     ((_w) = (((_w) & ~wPrefixPopMaskNotAtTop(_nDL)) \
             | ((_cnt) & wPrefixPopMaskNotAtTop(_nDL))))
 
-#define set_sw_wPrefixNotAtTop(_psw, _nDL, _key) \
-    (((Switch_t *)(_psw))->sw_wPrefixPop \
-        = ((sw_wPrefixPop(_psw) & wPrefixPopMaskNotAtTop(_nDL)) \
+#define set_pwr_wPrefixNotAtTop(_psw, _nDL, _key) \
+    (pwr_wPrefixPop(_psw) \
+        = ((pwr_wPrefixPop(_psw) & wPrefixPopMaskNotAtTop(_nDL)) \
             | ((_key) & ~wPrefixPopMaskNotAtTop(_nDL))))
 
-#define set_sw_wPopCntNotAtTop(_psw, _nDL, _cnt) \
-    (((Switch_t *)(_psw))->sw_wPrefixPop \
-        = ((sw_wPrefixPop(_psw) & ~wPrefixPopMaskNotAtTop(_nDL)) \
+#define set_pwr_wPopCntNotAtTop(_psw, _nDL, _cnt) \
+    (pwr_wPrefixPop(_psw) \
+        = ((pwr_wPrefixPop(_psw) & ~wPrefixPopMaskNotAtTop(_nDL)) \
             | ((_cnt) & wPrefixPopMaskNotAtTop(_nDL))))
-
-#define     sw_wKey                   sw_wPrefix
-#define set_sw_wKey               set_sw_wPrefix
-
-#define     pwr_wPrefixPop            sw_wPrefixPop
-#define     pwr_wKey                  sw_wKey
-#define set_pwr_wKey              set_sw_wKey
-#define     pwr_wPrefix               sw_wKey
-#define set_pwr_wPrefix           set_sw_wKey
 
 #define     pwr_pLinks(_pwr)  (((Switch_t *)(_pwr))->sw_aLinks)
 

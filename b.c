@@ -288,14 +288,14 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         nBitsLeft = cnBitsPerWord;
     }
 
-    wPrefix = sw_wPrefix(pwr, nDigitsLeft);
+    wPrefix = pwr_wPrefix(pwr, nDigitsLeft);
     nBitsIndexSz = pwr_nBitsIndexSz(pwr);
     pLinks = pwr_pLinks(pwr);
 
     if (bDump)
     {
         printf(" wPopCnt %3llu",
-            (unsigned long long)sw_wPopCnt(pwr, nDigitsLeft));
+            (unsigned long long)pwr_wPopCnt(pwr, nDigitsLeft));
         printf(" wr_nDigitsLeft %2d", nDigitsLeft);
         // should enhance this to check for zeros in suffix and to print
         // dots for suffix.
@@ -703,7 +703,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
             pSw = NewSwitch(wKey, nDigitsLeft);
 
-            set_sw_wPopCnt(pSw, nDigitsLeft, 0);
+            set_pwr_wPopCnt(pSw, nDigitsLeft, 0);
 
 #if defined(SKIP_LINKS)
             assert(nDigitsLeft <= nDigitsLeftOld);
@@ -721,12 +721,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             else
 #endif // defined(NO_UNNECESSARY_PREFIX)
             {
-                set_sw_wKey(pSw, nDigitsLeft, wKey);
+                set_pwr_wPrefix(pSw, nDigitsLeft, wKey);
             }
 #endif // defined(SKIP_LINKS)
 
-            DBGM(printf("NewSwitch pSw->sw_wPrefixPop "OWx"\n",
-                pSw->sw_wPrefixPop));
+            DBGM(printf("NewSwitch pwr_wPrefixPop "OWx"\n",
+                pwr_wPrefixPop(pSw)));
 
             set_wr(wRoot, (Word_t *)pSw, nDigitsLeft_to_tp(nDigitsLeft));
 
@@ -776,27 +776,27 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         assert(nDigitsLeftRoot < nDigitsLeft);
 
         // figure new nDigitsLeft for old parent link
-        nDigitsLeft = LOG(1 | (pwr_wKey(pwr, nDigitsLeftRoot) ^ wKey))
+        nDigitsLeft = LOG(1 | (pwr_wPrefix(pwr, nDigitsLeftRoot) ^ wKey))
                 / cnBitsPerDigit + 1;
 
         assert(nDigitsLeft > nDigitsLeftRoot);
 
         pSw = NewSwitch(wKey, nDigitsLeft);
 
-        if ((wPopCnt = sw_wPopCnt(pwr, nDigitsLeftRoot)) == 0)
+        if ((wPopCnt = pwr_wPopCnt(pwr, nDigitsLeftRoot)) == 0)
         {
             wPopCnt = wPrefixPopMask(nDigitsLeftRoot) + 1;
         }
 
-        set_sw_wPopCnt(pSw, nDigitsLeft, wPopCnt);
+        set_pwr_wPopCnt(pSw, nDigitsLeft, wPopCnt);
 
-        set_sw_wKey(pSw, nDigitsLeft, wKey);
+        set_pwr_wPrefix(pSw, nDigitsLeft, wKey);
 
         // copy old link to new switch
         // todo nBitsIndexSz; wide switch
         assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
-        pSw->sw_aLinks
-            [(pwr_wKey(pwr, nDigitsLeftRoot)
+        pwr_pLinks(pSw)
+            [(pwr_wPrefix(pwr, nDigitsLeftRoot)
                     >> ((nDigitsLeft - 1) * cnBitsPerDigit))
                 & (EXP(cnBitsPerDigit) - 1)].ln_wRoot = wRoot;
 

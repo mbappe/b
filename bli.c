@@ -149,7 +149,7 @@ again:
             // pwr is left from the previous iteration of the goto again loop.
             if ((nBitsLeft > 16) // leaf has whole key
                 || ( ! bNeedPrefixCheck ) // we followed no skip links
-                || (LOG(1 | (sw_wPrefixNotAtTop(pwr, nDigitsLeft) ^ wKey))
+                || (LOG(1 | (pwr_wPrefixNotAtTop(pwr, nDigitsLeft) ^ wKey))
 // We can change nBitsLeft to be a better function of the size of the keys
 // in the leaf.  How would it help?
                     < (nBitsLeft + pwr_nBitsIndexSz(pwr)))) // prefix matches
@@ -199,7 +199,7 @@ again:
             {
                 DBGX(printf("Prefix mismatch at List wPrefix "OWx
                   " nDigitsLeft %d\n",
-                    sw_wPrefixNotAtTop(wRoot, nDigitsLeft), nDigitsLeft));
+                    pwr_wPrefixNotAtTop(wRoot, nDigitsLeft), nDigitsLeft));
             }
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
@@ -231,11 +231,11 @@ again:
         bNeedPrefixCheck |= (nDigitsLeftRoot < nDigitsLeft);
 #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         if ((nDigitsLeftRoot < nDigitsLeft)
-            && (LOG(1 | (sw_wPrefix(pwr, nDigitsLeftRoot) ^ wKey))
+            && (LOG(1 | (pwr_wPrefix(pwr, nDigitsLeftRoot) ^ wKey))
                 >= (nDigitsLeftRoot * cnBitsPerDigit)))
         {
             DBGX(printf("Prefix mismatch wPrefix "Owx"\n",
-                sw_wPrefix(pwr, nDigitsLeftRoot)));
+                pwr_wPrefix(pwr, nDigitsLeftRoot)));
         }
         else // !! the "else" here is only for the INSERT/REMOVE case !!
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -263,23 +263,20 @@ again:
             // if (wPopCnt == 0) && all links full) return KeyFound;
 
 
-            wPopCnt = sw_wPopCnt(pwr, nDigitsLeft);
-            set_sw_wPopCnt(pwr, nDigitsLeft, wPopCnt + nIncr);
-            DBGI(printf("wPopCnt "wd"\n", sw_wPopCnt(pwr, nDigitsLeft)));
+            wPopCnt = pwr_wPopCnt(pwr, nDigitsLeft);
+            set_pwr_wPopCnt(pwr, nDigitsLeft, wPopCnt + nIncr);
+            DBGI(printf("wPopCnt "wd"\n", pwr_wPopCnt(pwr, nDigitsLeft)));
 
 #endif // !defined(LOOKUP)
 
             nDigitsLeft -= (pwr_nBitsIndexSz(pwr) / cnBitsPerDigit);
-
-            nIndex
-                = ((wKey >> (nDigitsLeft * cnBitsPerDigit))
-                    & (EXP(pwr_nBitsIndexSz(pwr)) - 1));
+            nIndex = ((wKey >> (nDigitsLeft * cnBitsPerDigit))
+                        & (EXP(pwr_nBitsIndexSz(pwr)) - 1));
+            pwRoot = &pwr_pLinks(pwr)[nIndex].ln_wRoot;
+            wRoot = *pwRoot;
 
             DBGX(printf("Next nDigitsLeft %d nIndex %d pwr %p pLinks %p\n",
                 nDigitsLeft, nIndex, pwr, pwr_pLinks(pwr)));
-
-            pwRoot = &pwr_pLinks(pwr)[nIndex].ln_wRoot;
-            wRoot = *pwRoot;
 
             DBGX(printf("pwRoot %p wRoot "OWx"\n", pwRoot, wRoot));
 
@@ -311,7 +308,7 @@ again:
             // the previous wRoot -- not the current wRoot.
             // The current wRoot might be an embedded bitmap.
             if (( ! bNeedPrefixCheck )
-                || (LOG(1 | (sw_wPrefixNotAtTop(pwr, nDigitsLeftRoot)
+                || (LOG(1 | (pwr_wPrefixNotAtTop(pwr, nDigitsLeftRoot)
                         ^ wKey))
                     // pwr_nBitsIndexSz term is necessary because pwr prefix
                     // does not contain any less significant bits.
@@ -322,13 +319,13 @@ again:
 #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
 #if 0
                 // Haven't really thought out use of cnDigitsAtBottom here.
-                return sw_wPopCntNotAtTop(pwr, cnDigitsAtBottom)
+                return pwr_wPopCntNotAtTop(pwr, cnDigitsAtBottom)
                     ? KeyFound : ! KeyFound;
 #else
                 // Remove is incomplete and may leave the switch in
                 // place even after all keys in all lists have been removed.
                 // This makes it cumbersome to disambiguate a zero value
-                // returned from sw_wPopCntNotAtTop.
+                // returned from pwr_wPopCntNotAtTop.
                 return KeyFound;
 #endif
 #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
@@ -379,7 +376,7 @@ again:
             else
             {
                 DBGX(printf("Prefix mismatch at Bitmap wPrefix "OWx"\n",
-                    sw_wPrefixNotAtTop(pwr, nDigitsLeftRoot)));
+                    pwr_wPrefixNotAtTop(pwr, nDigitsLeftRoot)));
             }
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
