@@ -251,7 +251,7 @@ again:
 #if !defined(LOOKUP)
             // Increment or decrement population count on the way in.
             // I should check for the pop count decrementing to zero.
-            // And add wRoot to a list for removal in case the remove
+            // And add the switch to a list for removal in case the remove
             // is successful.
             // BUG:  What if attempting to insert a dup and
             // we're already at max pop?
@@ -265,8 +265,8 @@ again:
 
             wPopCnt = sw_wPopCnt(pwr, nDigitsLeft);
             set_sw_wPopCnt(pwr, nDigitsLeft, wPopCnt + nIncr);
+            DBGI(printf("wPopCnt "wd"\n", sw_wPopCnt(pwr, nDigitsLeft)));
 
-            DBGI(printf("wPopCnt "wd"\n", wPopCnt + nIncr));
 #endif // !defined(LOOKUP)
 
             nDigitsLeft -= (pwr_nBitsIndexSz(pwr) / cnBitsPerDigit);
