@@ -132,15 +132,13 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
 {
     Switch_t *pSw;
 
-    // wKey is provided in case we decide to initialize prefix here.
+    // wKey and nDigitsLeft are provided in case we decide to initialize
+    // prefix here.
     // But we don't have enough info to implement NO_UNNECESSARY_PREFIX here.
     (void)wKey; // fix "unused parameter" compiler warning
+    (void)nDigitsLeft; // nDigitsLeft is not used for all ifdef combos
 
-#if cnDigitsAtBottom < (cnDigitsPerWord - 1)
     pSw = (Switch_t *)JudyMalloc(sizeof(*pSw) / sizeof(Word_t));
-#else // cnDigitsAtBottom < (cnDigitsPerWord - 1)
-    posix_memalign((void **)&pSw, 128, sizeof(*pSw)); // double cache line
-#endif // cnDigitsAtBottom < (cnDigitsPerWord - 1)
     assert(pSw != NULL);
 
 #if defined(RAM_METRICS)
