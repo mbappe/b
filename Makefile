@@ -66,35 +66,50 @@ OFLAGS = -g -O2
 
 CFLAGS = $(STDFLAG) $(MFLAG) $(WFLAGS) $(OFLAGS) -I.
 
-TIME_DEFINES += -UBITMAP_P_JE -UEXTERN_BITMAP -UINTERN_JUDY1 -UEXTERN_JUDY1
+# Obsolete ifdefs used to figure out where overhead was coming from.
+# TIME_DEFINES += -DBITMAP_P_JE -DEXTERN_BITMAP -DINTERN_JUDY1 -DEXTERN_JUDY1
 # BITMAP_BY_BYTE enables byte address/mask in judy1x.c and bitmapx.c.
-TIME_DEFINES += -USWAP -UBITMAP_BY_BYTE
-#TIME_DEFINES += -DJUDYB -DGUARDBAND -UNDEBUG
-TIME_DEFINES += -DJUDYB -UGUARDBAND -DNDEBUG
-# SISTER_OVERHEAD, SISTER_READ and SISTER_SISTER are for measuring speed of
-# dereferencing subsequent cache lines using "Judy1LHTime -b".
-TIME_DEFINES += -USISTER_OVERHEAD -USISTER_READ -USISTER_SISTER
-#B_DEFINES += -DRAM_METRICS -DSEARCH_METRICS
-B_DEFINES += -DRAM_METRICS -USEARCH_METRICS
-B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX
-B_DEFINES += -DSORT_LISTS -UMIN_MAX_LISTS -UCOMPRESSED_LISTS
-B_DEFINES += -URECURSIVE_INSERT -URECURSIVE_REMOVE
+# TIME_DEFINES += -DSWAP -DBITMAP_BY_BYTE
+
+# Performance:
+TIME_DEFINES += -DNDEBUG
+
+# Debug/Check/Instrument:
+#
+# GUARDBAND checks for corruption of word following malloc buffer on free
+# TIME_DEFINES += -DGUARDBAND
+#
+# SISTER_READ is for measuring the speed of dereferencing subsequent
+# cache lines using "Judy1LHTime -b".
+#
+# TIME_DEFINES += -DSISTER_READ
+# B_DEFINES += -DRAM_METRICS -USEARCH_METRICS
+#
 # LOOKUP_NO_BITMAP_SEARCH means return just before the list is searched.
 # LOOKUP_NO_BITMAP_DEREF means return before prefix/popcnt is retrieved.
 B_DEFINES += -DLOOKUP_NO_LIST_DEREF -ULOOKUP_NO_LIST_SEARCH
+#
 # LOOKUP_NO_BITMAP_SEARCH means return before the bit is retrieved.
 # LOOKUP_NO_BITMAP_DEREF means return before the prefix is retrieved.
 B_DEFINES += -DLOOKUP_NO_BITMAP_DEREF -ULOOKUP_NO_BITMAP_SEARCH
-# -DDEBUG adds some internal sanity checking not covered by assertions only.
+#
+# DEBUG adds some internal sanity checking not covered by assertions only.
 # It does not log anything unless something wrong is detected.
-#B_DEFINES += -DDEBUG
-B_DEFINES += -UDEBUG
-##
-# Here are other defines that can be specified on the command line with
-# "DEFINES = ... make"
+# B_DEFINES += -DDEBUG
+#
+# These can be specified on the command line with "DEFINES = ... make"
 #
 # -UDEBUG_INSERT -UDEBUG_LOOKUP -UDEBUG_MALLOC -UDEBUG_REMOVE
-##
+
+# Always:
+#
+TIME_DEFINES += -DJUDYB
+# B_DEFINES += -UNO_UNNECESSARY_PREFIX
+B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK
+# B_DEFINES += -UMIN_MAX_LISTS
+B_DEFINES += -DSORT_LISTS -DCOMPRESSED_LISTS
+# B_DEFINES += -URECURSIVE_INSERT -URECURSIVE_REMOVE
+
 DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 
 LIBS = -lm
@@ -134,7 +149,7 @@ T_OBJS = stubs.o dlmalloc.o
 #
 ##################################
 
-default: clean t b
+default: clean t
 
 all: clean $(EXES) $(ASMS) $(CPPS) b.tar b.tgz b.tjz
 
