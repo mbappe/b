@@ -249,36 +249,24 @@ again:
 #endif // defined(SKIP_LINKS)
 
 #if !defined(LOOKUP)
-            // increment or decrement population count on the way in
-            {
-                wPopCnt = sw_wPopCnt(pwr, nDigitsLeft);
-#if 0
-                // BUG:  What if attempting to insert a dup and
-                // we're already at max pop?
-                if (wPopCnt == 0) && at least one link pop count is not 0
-                // BUG:  What if attempting to remove a key that isn't present
-                // and we're already at pop zero?
-                // What about empty subtrees with non-zero pointers left
-                // around after remove?
-                if (wPopCnt == 0) && all links have pop count 0
-                {
-                    // subtree is at full population or zero population
-                    return KeyFound;
-                }
-#endif
+            // Increment or decrement population count on the way in.
+            // I should check for the pop count decrementing to zero.
+            // And add wRoot to a list for removal in case the remove
+            // is successful.
+            // BUG:  What if attempting to insert a dup and
+            // we're already at max pop?
+            // if (wPopCnt == 0) && at least one link pop count is not 0
+            // BUG:  What if attempting to remove a key that isn't present
+            // and we're already at pop zero?
+            // What about empty subtrees with non-zero pointers left
+            // around after remove?
+            // if (wPopCnt == 0) && all links full) return KeyFound;
 
-// I wonder if I should check for the pop count decrementing to zero.
-// And add wRoot to a list for removal in case the remove is successful.
-// I think so.
 
-                set_sw_wPopCnt(pwr, nDigitsLeft, wPopCnt + nIncr);
+            wPopCnt = sw_wPopCnt(pwr, nDigitsLeft);
+            set_sw_wPopCnt(pwr, nDigitsLeft, wPopCnt + nIncr);
 
-                assert(sw_wPopCnt(pwr, nDigitsLeft)
-                    == ((wPopCnt + nIncr) & wPrefixPopMask(nDigitsLeft)));
-
-                DBGI(printf("sw_wPopCnt "wd"\n",
-                    sw_wPopCnt(pwr, nDigitsLeft)));
-            }
+            DBGI(printf("wPopCnt "wd"\n", wPopCnt + nIncr));
 #endif // !defined(LOOKUP)
 
             nDigitsLeft -= (pwr_nBitsIndexSz(pwr) / cnBitsPerDigit);
