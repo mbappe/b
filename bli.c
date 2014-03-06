@@ -77,9 +77,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #endif // defined(INSERT)
 #endif // !defined(RECURSIVE)
 #endif // defined(LOOKUP)
-#if defined(SKIP_LINKS)
     unsigned nDigitsLeftRoot;
-#endif // defined(SKIP_LINKS)
 #if !defined(LOOKUP)
     Word_t wPopCnt;
 #elif (cwListPopCntMax != 0) && !defined(LOOKUP_NO_LIST_DEREF)
@@ -218,14 +216,11 @@ again:
 
 #if defined(SKIP_LINKS)
         nDigitsLeftRoot = tp_to_nDigitsLeft(nType);
-
         DBGX(printf("Switch nDigitsLeft %d nDigitsLeftRoot %d pwr %p\n",
             nDigitsLeft, nDigitsLeftRoot, pwr));
-
 #if ( ! defined(LOOKUP) )
         assert(nDigitsLeftRoot <= nDigitsLeft); // reserved; keep lookup lean
 #endif // ( ! defined(LOOKUP) )
-
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // Record that there were prefix bits that were not checked.
         bNeedPrefixCheck |= (nDigitsLeftRoot < nDigitsLeft);
@@ -239,14 +234,24 @@ again:
         }
         else // !! the "else" here is only for the INSERT/REMOVE case !!
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#else // defined(SKIP_LINKS)
+        nDigitsLeftRoot = nDigitsLeft; // prev
 #endif // defined(SKIP_LINKS)
         {
             // size of array index
             unsigned nIndex;
 
-#if defined(SKIP_LINKS)
-            nDigitsLeft = nDigitsLeftRoot;
-#endif // defined(SKIP_LINKS)
+            nDigitsLeft
+                = nDigitsLeftRoot - (pwr_nBitsIndexSz(pwr) / cnBitsPerDigit);
+            nIndex = ((wKey >> (nDigitsLeft * cnBitsPerDigit))
+                        & (EXP(pwr_nBitsIndexSz(pwr)) - 1));
+            pwRoot = &pwr_pLinks(pwr)[nIndex].ln_wRoot;
+            wRoot = *pwRoot;
+
+            DBGX(printf("Next nDigitsLeft %d nIndex %d pwr %p pLinks %p\n",
+                nDigitsLeft, nIndex, pwr, pwr_pLinks(pwr)));
+
+            DBGX(printf("pwRoot %p wRoot "OWx"\n", pwRoot, wRoot));
 
 #if !defined(LOOKUP)
             // Increment or decrement population count on the way in.
@@ -261,24 +266,10 @@ again:
             // What about empty subtrees with non-zero pointers left
             // around after remove?
             // if (wPopCnt == 0) && all links full) return KeyFound;
-
-
-            wPopCnt = pwr_wPopCnt(pwr, nDigitsLeft);
-            set_pwr_wPopCnt(pwr, nDigitsLeft, wPopCnt + nIncr);
-            DBGI(printf("wPopCnt "wd"\n", pwr_wPopCnt(pwr, nDigitsLeft)));
-
+            wPopCnt = pwr_wPopCnt(pwr, nDigitsLeftRoot);
+            set_pwr_wPopCnt(pwr, nDigitsLeftRoot, wPopCnt + nIncr);
+            DBGI(printf("wPopCnt "wd"\n", pwr_wPopCnt(pwr, nDigitsLeftRoot)));
 #endif // !defined(LOOKUP)
-
-            nDigitsLeft -= (pwr_nBitsIndexSz(pwr) / cnBitsPerDigit);
-            nIndex = ((wKey >> (nDigitsLeft * cnBitsPerDigit))
-                        & (EXP(pwr_nBitsIndexSz(pwr)) - 1));
-            pwRoot = &pwr_pLinks(pwr)[nIndex].ln_wRoot;
-            wRoot = *pwRoot;
-
-            DBGX(printf("Next nDigitsLeft %d nIndex %d pwr %p pLinks %p\n",
-                nDigitsLeft, nIndex, pwr, pwr_pLinks(pwr)));
-
-            DBGX(printf("pwRoot %p wRoot "OWx"\n", pwRoot, wRoot));
 
             if (nDigitsLeft > cnDigitsAtBottom)
             {
