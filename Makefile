@@ -35,8 +35,9 @@ STDFLAG = -std=gnu99
 #STDFLAG = -std=c90
 #STDFLAG = -std=c89
 
-#MFLAG = -m64
-MFLAG = -m32
+#MFLAGS += -m64
+MFLAGS += -m32
+MFLAGS += -msse4.2
 
 # Leave off -Wmissing-prototypes because I don't like providing prototypes
 # that have no value at all, i.e. when the function definition appears
@@ -64,7 +65,7 @@ OFLAGS = -g -O2
 #OFLAGS = -g -Oz
 #OFLAGS = -g -Ofast
 
-CFLAGS = $(STDFLAG) $(MFLAG) $(WFLAGS) $(OFLAGS) -I.
+CFLAGS = $(STDFLAG) $(MFLAGS) $(WFLAGS) $(OFLAGS) -I.
 
 # Obsolete ifdefs used to figure out where overhead was coming from.
 # TIME_DEFINES += -DBITMAP_P_JE -DEXTERN_BITMAP -DINTERN_JUDY1 -DEXTERN_JUDY1
@@ -72,7 +73,13 @@ CFLAGS = $(STDFLAG) $(MFLAG) $(WFLAGS) $(OFLAGS) -I.
 # TIME_DEFINES += -DSWAP -DBITMAP_BY_BYTE
 
 # Performance:
-TIME_DEFINES += -DNDEBUG
+#
+# DEBUG adds some internal sanity checking in my code not covered by
+# assertions only.
+# It does not log anything unless something wrong is detected.
+# DEBUG is used by Judy1LHTime.c to turn off NDEBUG.
+#
+TIME_DEFINES += -DNDEBUG -UDEBUG
 
 # Debug/Check/Instrument:
 #
@@ -92,10 +99,6 @@ B_DEFINES += -DLOOKUP_NO_LIST_DEREF -ULOOKUP_NO_LIST_SEARCH
 # LOOKUP_NO_BITMAP_SEARCH means return before the bit is retrieved.
 # LOOKUP_NO_BITMAP_DEREF means return before the prefix is retrieved.
 B_DEFINES += -DLOOKUP_NO_BITMAP_DEREF -ULOOKUP_NO_BITMAP_SEARCH
-#
-# DEBUG adds some internal sanity checking not covered by assertions only.
-# It does not log anything unless something wrong is detected.
-# B_DEFINES += -DDEBUG
 #
 # These can be specified on the command line with "DEFINES = ... make"
 #
