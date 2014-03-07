@@ -166,6 +166,10 @@
 #define LOG(x)  ((Word_t)63 - __builtin_clzll(x))
 #define MASK(_x)  ((_x) - 1)
 
+// Do integer division, but round up instead of down.
+#define DIV_UP(_idend, _isor)  (((_idend) + (_isor) - 1) / (_isor))
+#define ALIGN_UP(_x, _a)  (DIV_UP((_x), (_a)) * (_a))
+
 #define OFFSET_OF(_type, _field) ((size_t)&((_type *)NULL)->_field)
 #define STRUCT_OF(_p, _type, _field) \
     ((_type *)((char *)(_p) - OFFSET_OF(_type, _field)))
@@ -230,6 +234,9 @@
 #define pwr_wPrefixPop(_pwr)  (((Switch_t *)(_pwr))->sw_wPrefixPop)
 #define pwr_wPrefix(_pwr, _nDL)  (w_wPrefix(pwr_wPrefixPop(_pwr), (_nDL)))
 #define pwr_wPopCnt(_pwr, _nDL)  (w_wPopCnt(pwr_wPrefixPop(_pwr), (_nDL)))
+
+#define set_pwr_wPrefixPop(_pwr, _x) \
+     (((Switch_t *)(_pwr))->sw_wPrefixPop = (_x))
 
 #define pwr_wPrefixNotAtTop(_pwr, _nDL) \
     (w_wPrefixNotAtTop(pwr_wPrefixPop(_pwr), (_nDL)))
