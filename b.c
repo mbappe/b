@@ -2,12 +2,8 @@
 // Todo:
 //
 // "pwr" is a confusing name.  We use it for pointer extracted from wRoot.
-// But it can be confused with pwRoot which is a pointer to a wRoot.
-// Especially since we use psw for pointer to Switch.
-// I think "wrp" might be better.  What do we use for other things extracted
-// from wRoot?  wr_nDigitsLeft we use nDigitsLeft.
-// How do we get "pwr"?  With wr_pwr.  Maybe wr_pw and pw would be better?
-// Or wr_pwNext and pwNext?
+// Do not confuse it with pointer to wRoot.  Even though they will be the
+// same when nType is zero.
 
 #include "b.h"
 
@@ -127,10 +123,10 @@ OldBitmap(Word_t wRoot)
     return EXP(cnBitsAtBottom) / cnBitsPerWord * sizeof(Word_t);
 }
 
-static Switch_t *
-NewSwitch(Word_t wKey, unsigned nDigitsLeft)
+static Word_t *
+NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 {
-    Switch_t *pSw;
+    Word_t *pwr;
 
     // wKey and nDigitsLeft are provided in case we decide to initialize
     // prefix here.
@@ -138,39 +134,41 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
     (void)wKey; // fix "unused parameter" compiler warning
     (void)nDigitsLeft; // nDigitsLeft is not used for all ifdef combos
 
-    pSw = (Switch_t *)JudyMalloc(sizeof(*pSw) / sizeof(Word_t));
-    assert(pSw != NULL);
+    assert((sizeof(Switch_t) % sizeof(Word_t)) == 0);
+
+    pwr = JudyMalloc(sizeof(Switch_t) / sizeof(Word_t));
+    assert(pwr != NULL);
 
 #if defined(RAM_METRICS)
     if (((cnBitsPerDigit * cnDigitsAtBottom) <= cnLogBitsPerWord)
         && (nDigitsLeft <= cnDigitsAtBottom + 1))
     {
         assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
-        METRICS(j__AllocWordsJLB1 += sizeof(*pSw) / sizeof(Word_t));
-        METRICS(j__AllocWordsJV12 += sizeof(*pSw) / sizeof(Word_t));
+        METRICS(j__AllocWordsJLB1 += sizeof(Switch_t) / sizeof(Word_t));
+        METRICS(j__AllocWordsJV12 += sizeof(Switch_t) / sizeof(Word_t));
     }
     else
     {
-        METRICS(j__AllocWordsJBU  += sizeof(*pSw) / sizeof(Word_t));
-        METRICS(j__AllocWordsJBU4 += sizeof(*pSw) / sizeof(Word_t));
+        METRICS(j__AllocWordsJBU  += sizeof(Switch_t) / sizeof(Word_t));
+        METRICS(j__AllocWordsJBU4 += sizeof(Switch_t) / sizeof(Word_t));
     }
 #endif // defined(RAM_METRICS)
 
-    assert((sizeof(*pSw) % sizeof(Word_t)) == 0);
+    DBGM(printf("NewSwitch(pwRoot %p wKey "OWx" nDigitsLeft %d) pwr %p\n",
+        pwRoot, wKey, nDigitsLeft, pwr));
 
-    DBGM(printf("NewSwitch(wKey "OWx" nDigitsLeft %d) pSw %p\n",
-        wKey, nDigitsLeft, pSw));
+    memset(pwr_pLinks(pwr), 0, sizeof(pwr_pLinks(pwr)));
 
-    memset(pwr_pLinks(pSw), 0, sizeof(pwr_pLinks(pSw)));
-
-    set_pwr_wPrefixPop(pSw, 0);
+    set_pwr_wPrefixPop(pwr, 0); // caller should do
 
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
-    memset(pwr_pwBm(pSw), -1,
+    memset(pwr_pwBm(pwr), -1,
            DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord) * cnBytesPerWord);
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
 
-    return pSw;
+    set_wr(*pwRoot, pwr, nDigitsLeft_to_tp(nDigitsLeft));
+
+    return pwr;
 }
 
 static Word_t
@@ -472,7 +470,7 @@ Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 {
     Word_t *pwr;
-    Switch_t *pSw;
+    Switch_t *pwSw;
     unsigned nType;
 
     // Validate global constant parameters set up in the header file.
@@ -723,9 +721,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             assert(nDigitsLeft > cnDigitsAtBottom);
 #endif // defined(SKIP_LINKS)
 
-            pSw = NewSwitch(wKey, nDigitsLeft);
+            pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft);
 
-            set_pwr_wPopCnt(pSw, nDigitsLeft, 0);
+            set_pwr_wPopCnt(pwSw, nDigitsLeft, 0);
 
 #if defined(SKIP_LINKS)
             assert(nDigitsLeft <= nDigitsLeftOld);
@@ -743,21 +741,17 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             else
 #endif // defined(NO_UNNECESSARY_PREFIX)
             {
-                set_pwr_wPrefix(pSw, nDigitsLeft, wKey);
+                set_pwr_wPrefix(pwSw, nDigitsLeft, wKey);
             }
 #endif // defined(SKIP_LINKS)
 
             DBGM(printf("NewSwitch pwr_wPrefixPop "OWx"\n",
-                pwr_wPrefixPop(pSw)));
-
-            set_wr(wRoot, (Word_t *)pSw, nDigitsLeft_to_tp(nDigitsLeft));
-
-            *pwRoot = wRoot; // install new
+                pwr_wPrefixPop(pwSw)));
 
 #if defined(BM_IN_LINK)
             if (nDigitsLeft < cnDigitsPerWord)
             {
-                memset(pwr_pwBm(pwRoot), -1,
+                memset(pwr_pwBm(pwSw), -1,
                        DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
                            * cnBytesPerWord);
             }
@@ -814,33 +808,29 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         assert(nDigitsLeft > nDigitsLeftRoot);
 
-        pSw = NewSwitch(wKey, nDigitsLeft);
+        pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft);
 
         if ((wPopCnt = pwr_wPopCnt(pwr, nDigitsLeftRoot)) == 0)
         {
             wPopCnt = wPrefixPopMask(nDigitsLeftRoot) + 1;
         }
 
-        set_pwr_wPopCnt(pSw, nDigitsLeft, wPopCnt);
+        set_pwr_wPopCnt(pwSw, nDigitsLeft, wPopCnt);
 
-        set_pwr_wPrefix(pSw, nDigitsLeft, wKey);
+        set_pwr_wPrefix(pwSw, nDigitsLeft, wKey);
 
         // copy old link to new switch
         // todo nBitsIndexSz; wide switch
         assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
-        pwr_pLinks(pSw)
+        pwr_pLinks(pwSw)
             [(pwr_wPrefix(pwr, nDigitsLeftRoot)
                     >> ((nDigitsLeft - 1) * cnBitsPerDigit))
                 & (EXP(cnBitsPerDigit) - 1)].ln_wRoot = wRoot;
 
-        set_wr(wRoot, (Word_t *)pSw, nDigitsLeft_to_tp(nDigitsLeft));
-
-        *pwRoot = wRoot; // install new
-
 #if defined(BM_IN_LINK)
         if (nDigitsLeft < cnDigitsPerWord)
         {
-            memset(pwr_pwBm(pwRoot), -1,
+            memset(pwr_pwBm(pwSw), -1,
                 DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord) * cnBytesPerWord);
         }
 #endif // defined(BM_IN_LINK)
