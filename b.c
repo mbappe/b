@@ -159,9 +159,16 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 
     memset(pwr_pLinks(pwr), 0, sizeof(pwr_pLinks(pwr)));
 
-    set_pwr_wPrefixPop(pwr, 0); // caller should do
+#if defined(BM_SWITCH)
+#if defined(BM_IN_LINK)
+    if (nDigitsLeft < cnDigitsPerWord)
+    {
+        memset(pwr_pwBm(pwRoot), -1,
+               DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
+                   * cnBytesPerWord);
+    }
+#endif // defined(BM_IN_LINK)
 
-#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
     memset(pwr_pwBm(pwr), -1,
            DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord) * cnBytesPerWord);
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
@@ -728,7 +735,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #if defined(SKIP_LINKS)
             assert(nDigitsLeft <= nDigitsLeftOld);
 #if defined(NO_UNNECESSARY_PREFIX)
-            // We could get rid of the bottom check if we enhance INSERT
+            // We could get rid of the bottom check if we enhance Insert
             // to keep track of any prefix checks done along the way and
             // pass that info to InsertGuts.
             if ((nDigitsLeft == nDigitsLeftOld)
@@ -737,6 +744,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 DBGI(printf(
                   "Not installing prefix left %d old %d wKey "OWx"\n",
                     nDigitsLeft, nDigitsLeftOld, wKey));
+
+                set_pwr_wPrefix(pwSw, nDigitsLeft, 0);
             }
             else
 #endif // defined(NO_UNNECESSARY_PREFIX)
@@ -747,15 +756,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
             DBGM(printf("NewSwitch pwr_wPrefixPop "OWx"\n",
                 pwr_wPrefixPop(pwSw)));
-
-#if defined(BM_IN_LINK)
-            if (nDigitsLeft < cnDigitsPerWord)
-            {
-                memset(pwr_pwBm(pwSw), -1,
-                       DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
-                           * cnBytesPerWord);
-            }
-#endif // defined(BM_IN_LINK)
 
 #if defined(COMPRESSED_LISTS)
 #if defined(SKIP_LINKS)
@@ -822,18 +822,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         // copy old link to new switch
         // todo nBitsIndexSz; wide switch
         assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
+// this needs work for Link_t
         pwr_pLinks(pwSw)
             [(pwr_wPrefix(pwr, nDigitsLeftRoot)
                     >> ((nDigitsLeft - 1) * cnBitsPerDigit))
                 & (EXP(cnBitsPerDigit) - 1)].ln_wRoot = wRoot;
-
-#if defined(BM_IN_LINK)
-        if (nDigitsLeft < cnDigitsPerWord)
-        {
-            memset(pwr_pwBm(pwSw), -1,
-                DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord) * cnBytesPerWord);
-        }
-#endif // defined(BM_IN_LINK)
 
         Insert(pwRoot, wKey, nDigitsLeft);
     }
