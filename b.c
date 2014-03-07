@@ -621,6 +621,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             }
 
             set_wr(wRoot, pwList, /* nType */ 0); // !tp_bIsSwitch
+
+            *pwRoot = wRoot; // install new
         }
         else
         {
@@ -730,6 +732,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
             set_wr(wRoot, (Word_t *)pSw, nDigitsLeft_to_tp(nDigitsLeft));
 
+            *pwRoot = wRoot; // install new
+
 #if defined(COMPRESSED_LISTS)
 #if defined(SKIP_LINKS)
             unsigned nBitsLeftOld = nDigitsLeftOld * cnBitsPerDigit;
@@ -802,11 +806,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         set_wr(wRoot, (Word_t *)pSw, nDigitsLeft_to_tp(nDigitsLeft));
 
+        *pwRoot = wRoot; // install new
+
         Insert(&wRoot, wKey, nDigitsLeft);
     }
 #endif // defined(SKIP_LINKS)
-
-    *pwRoot = wRoot; // install new
 
     return Success;
 }
