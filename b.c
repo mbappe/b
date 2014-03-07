@@ -161,13 +161,12 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
     DBGM(printf("NewSwitch(wKey "OWx" nDigitsLeft %d) pSw %p\n",
         wKey, nDigitsLeft, pSw));
 
-    memset(pSw, 0, sizeof(*pSw));
+    memset(pwr_pLinks(pSw), 0, sizeof(pwr_pLinks(pSw)));
+
+    set_pwr_wPrefixPop(pSw, 0);
 
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
-    for (unsigned nn = 0; nn < EXP(cnBitsPerDigit) / cnBitsPerWord; nn++)
-    {
-        pwr_pwBm(pSw)[nn] = (Word_t)-1;
-    }
+    memset(pwr_pwBm(pSw), -1, ALIGN_UP(EXP(cnBitsPerDigit), cnBitsPerWord));
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
 
     return pSw;
