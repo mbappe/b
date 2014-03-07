@@ -189,9 +189,11 @@
 #define set_wr_nType(_wr, _type)  ((_wr) = ((_wr) & ~cnMallocMask) | (_type))
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-#define     wr_pwr(_wr, _tp)          ((Word_t *)((_wr) ^ (_tp)))
+#define     wr_tp_pwr(_wr, _tp)          ((Word_t *)((_wr) ^ (_tp)))
+#define     wr_pwr(_wr)                  ((Word_t *)((_wr) & ~cnMallocMask))
 #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-#define     wr_pwr(_wr, _tp)          ((Word_t *)(_wr))
+#define     wr_tp_pwr(_wr, _tp)          ((Word_t *)(_wr))
+#define     wr_pwr(_wr)                  ((Word_t *)(_wr))
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #define set_wr_pwr(_wr, _pwr) \
     ((_wr) = ((_wr) & cnMallocMask) | (Word_t)(_pwr))
@@ -282,9 +284,9 @@
 
 #define     pwr_pLinks(_pwr)  (((Switch_t *)(_pwr))->sw_aLinks)
 #if defined(BM_IN_LINK)
-#define     pwr_pwBm(_pwr)    (STRUCT_OF((_pwr), Link_t, ln_wRoot)->ln_awBm)
+#define     pwR_pwBm(_pwR)    (STRUCT_OF((_pwR), Link_t, ln_wRoot)->ln_awBm)
 #else // defined(BM_IN_LINK)
-#define     pwr_pwBm(_pwr)    (((Switch_t *)(_pwr))->sw_awBm)
+#define     pwR_pwBm(_pwR)    (((Switch_t *)(wr_pwr(*(_pwR))))->sw_awBm)
 #endif // defined(BM_IN_LINK)
 
 #define     ls_wPopCnt(_ls)        (((LeafWord_t *)(_ls))->lw_wPrefixPlus)
@@ -384,7 +386,7 @@ typedef struct {
 #endif
 
 typedef struct {
-    Word_t ln_wRoot;
+    Word_t ln_wRoot; // must be 2-word aligned
 #if defined(BM_IN_LINK)
     Word_t ln_awBm [ EXP(cnBitsPerDigit) / cnBitsPerWord ] ;
 #endif // defined(BM_IN_LINK)
@@ -392,7 +394,7 @@ typedef struct {
 
 // Uncompressed, basic switch.
 typedef struct {
-    Link_t sw_aLinks[EXP(cnBitsPerDigit)];
+    Link_t sw_aLinks[EXP(cnBitsPerDigit)]; // must be 2-word aligned
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
     Word_t sw_awBm [ EXP(cnBitsPerDigit) / cnBitsPerWord ] ;
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
@@ -413,7 +415,7 @@ Status_t RemoveGuts(Word_t *pwRoot,
 Word_t OldBitmap(Word_t wRoot);
 
 #if defined(DEBUG)
-void Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft);
+void Dump(Word_t wRoot, Word_t wPrefix, unsigned nBL, unsigned nBLU);
 #endif // defined(DEBUG)
 
 #endif // (cnBitsPerDigit != 0)

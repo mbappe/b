@@ -124,7 +124,8 @@ OldBitmap(Word_t wRoot)
 }
 
 static Word_t *
-NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
+NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
+          unsigned nDigitsLeftUp)
 {
     Word_t *pwr;
 
@@ -133,10 +134,11 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     // But we don't have enough info to implement NO_UNNECESSARY_PREFIX here.
     (void)wKey; // fix "unused parameter" compiler warning
     (void)nDigitsLeft; // nDigitsLeft is not used for all ifdef combos
+    (void)nDigitsLeftUp; // nDigitsLeftUp is not used for all ifdef combos
 
     assert((sizeof(Switch_t) % sizeof(Word_t)) == 0);
 
-    pwr = JudyMalloc(sizeof(Switch_t) / sizeof(Word_t));
+    pwr = (Word_t *)JudyMalloc(sizeof(Switch_t) / sizeof(Word_t));
     assert(pwr != NULL);
 
 #if defined(RAM_METRICS)
@@ -157,23 +159,20 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     DBGM(printf("NewSwitch(pwRoot %p wKey "OWx" nDigitsLeft %d) pwr %p\n",
         pwRoot, wKey, nDigitsLeft, pwr));
 
+    set_wr(*pwRoot, pwr, nDigitsLeft_to_tp(nDigitsLeft));
+
     memset(pwr_pLinks(pwr), 0, sizeof(pwr_pLinks(pwr)));
 
 #if defined(BM_SWITCH)
 #if defined(BM_IN_LINK)
-    if (nDigitsLeft < cnDigitsPerWord)
+    if (nDigitsLeftUp < cnDigitsPerWord)
+#endif // defined(BM_IN_LINK)
     {
-        memset(pwr_pwBm(pwRoot), -1,
+        memset(pwR_pwBm(pwRoot), -1,
                DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
                    * cnBytesPerWord);
     }
-#endif // defined(BM_IN_LINK)
-
-    memset(pwr_pwBm(pwr), -1,
-           DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord) * cnBytesPerWord);
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
-
-    set_wr(*pwRoot, pwr, nDigitsLeft_to_tp(nDigitsLeft));
 
     return pwr;
 }
@@ -206,7 +205,8 @@ OldSwitch(Switch_t *pSw)
 }
 
 static Word_t
-FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
+FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft,
+              unsigned nBitsLeftUp, int bDump)
 {
     Word_t wRoot = *pwRoot;
     unsigned nDigitsLeft;
@@ -258,7 +258,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
     nType = wr_nType(wRoot);
 
-    pwr = wr_pwr(wRoot, nType);
+    pwr = wr_tp_pwr(wRoot, nType);
 
     if (!tp_bIsSwitch(nType))
     {
@@ -317,20 +317,22 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         //printf(" pLinks "OWx, (Word_t)pLinks);
 #if defined(BM_SWITCH)
 #if defined(BM_IN_LINK)
-        if (nDigitsLeft < cnDigitsPerWord)
+        if (nBitsLeftUp < cnBitsPerWord)
 #endif // defined(BM_IN_LINK)
         {
+            printf(" Bm");
             for (unsigned nn = 0;
                           nn < DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord);
                           nn ++)
             {
-                printf(" "OWx, pwr_pwBm(pwr)[nn]);
+                printf(" "OWx, pwR_pwBm(pwRoot)[nn]);
             }
         }
 #endif // defined(BM_SWITCH)
         printf("\n");
     }
 
+    nBitsLeftUp = nBitsLeft;
     nBitsLeft -= nBitsIndexSz;
     // In case nBitsLeftState is not an integral number of digits.
     if (cnBitsPerWord % cnBitsPerDigit != 0)
@@ -342,7 +344,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
     for (n = 0; n < EXP(nBitsIndexSz); n++)
     {
         wBytes += FreeArrayGuts(&pLinks[n].ln_wRoot,
-            wPrefix | (n << nBitsLeft), nBitsLeft, bDump);
+            wPrefix | (n << nBitsLeft), nBitsLeft, nBitsLeftUp, bDump);
     }
 
 #if defined(RAM_METRICS)
@@ -354,9 +356,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
 #if defined(DEBUG)
 void
-Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft)
+Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft, unsigned nBitsLeftUp)
 {
-    FreeArrayGuts(&wRoot, wPrefix, nBitsLeft, /* bDump */ 1);
+    FreeArrayGuts(&wRoot, wPrefix, nBitsLeft, nBitsLeftUp, /* bDump */ 1);
 }
 #endif // defined(DEBUG)
 
@@ -477,7 +479,7 @@ Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 {
     Word_t *pwr;
-    Switch_t *pwSw;
+    Word_t *pwSw;
     unsigned nType;
 
     // Validate global constant parameters set up in the header file.
@@ -532,7 +534,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
     nType = wr_nType(wRoot);
 
-    pwr = wr_pwr(wRoot, nType);
+    pwr = wr_tp_pwr(wRoot, nType);
 
 #if defined(SKIP_LINKS)
     if (!tp_bIsSwitch(nType))
@@ -728,7 +730,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             assert(nDigitsLeft > cnDigitsAtBottom);
 #endif // defined(SKIP_LINKS)
 
-            pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft);
+            pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftOld);
 
             set_pwr_wPopCnt(pwSw, nDigitsLeft, 0);
 
@@ -767,23 +769,23 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             if (nBitsLeftOld <= 8) {
                 for (w = 0; w < wPopCnt; w++)
                 {
-                    Insert(pwRoot, pcKeys[w] | (wKey & ~0xff), nDigitsLeft);
+                    Insert(pwRoot, pcKeys[w] | (wKey & ~0xff), nDigitsLeftOld);
                 }
             } else if (nBitsLeftOld <= 16) {
                 for (w = 0; w < wPopCnt; w++)
                 {
-                    Insert(pwRoot, psKeys[w] | (wKey & ~0xffff), nDigitsLeft);
+                    Insert(pwRoot, psKeys[w] | (wKey & ~0xffff), nDigitsLeftOld);
                 }
             } else
 #endif // defined(COMPRESSED_LISTS)
             {
                 for (w = 0; w < wPopCnt; w++)
                 {
-                    Insert(pwRoot, pwKeys[w], nDigitsLeft);
+                    Insert(pwRoot, pwKeys[w], nDigitsLeftOld);
                 }
             }
 
-            Insert(pwRoot, wKey, nDigitsLeft);
+            Insert(pwRoot, wKey, nDigitsLeftOld);
         }
 
         if (wPopCnt != 0) OldList(pwr); // free old
@@ -802,13 +804,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         assert(nDigitsLeftRoot < nDigitsLeft);
 
+        unsigned nDigitsLeftUp = nDigitsLeft;
         // figure new nDigitsLeft for old parent link
         nDigitsLeft = LOG(1 | (pwr_wPrefix(pwr, nDigitsLeftRoot) ^ wKey))
                 / cnBitsPerDigit + 1;
 
         assert(nDigitsLeft > nDigitsLeftRoot);
 
-        pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft);
+        pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftUp);
 
         if ((wPopCnt = pwr_wPopCnt(pwr, nDigitsLeftRoot)) == 0)
         {
@@ -828,7 +831,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                     >> ((nDigitsLeft - 1) * cnBitsPerDigit))
                 & (EXP(cnBitsPerDigit) - 1)].ln_wRoot = wRoot;
 
-        Insert(pwRoot, wKey, nDigitsLeft);
+        Insert(pwRoot, wKey, nDigitsLeftUp);
     }
 #endif // defined(SKIP_LINKS)
 
@@ -927,7 +930,7 @@ Judy1FreeArray(PPvoid_t PPArray, P_JE)
 
 #if (cnBitsPerDigit != 0)
     return FreeArrayGuts((Word_t *)PPArray,
-        /* wPrefix */ 0, cnBitsPerWord, /* bDump */ 0);
+        /* wPrefix */ 0, cnBitsPerWord, cnBitsPerWord, /* bDump */ 0);
 #else // (cnBitsPerDigit != 0)
     JudyFree(*PPArray,
        EXP(cnBitsPerWord - cnLogBitsPerByte - cnLogBytesPerWord));

@@ -64,7 +64,11 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     unsigned bNeedPrefixCheck = 0;
 #endif // defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
+#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+    Word_t *pwRoot = &wRoot;
+#else // defined(BM_SWITCH) && !defined(BM_IN_LINK)
     Word_t *pwRoot;
+#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
 #else // defined(LOOKUP)
     Word_t wRoot;
 #if !defined(RECURSIVE)
@@ -212,7 +216,7 @@ again:
     {
         // basic switch
 
-        pwr = wr_pwr(wRoot, nType); // pointer extracted from wRoot
+        pwr = wr_tp_pwr(wRoot, nType); // pointer extracted from wRoot
 
 #if defined(SKIP_LINKS)
         nDigitsLeftRoot = tp_to_nDigitsLeft(nType);
@@ -240,6 +244,9 @@ again:
         {
             // size of array index
             unsigned nIndex;
+#if defined(BM_IN_LINK)
+            unsigned nDigitsLeftOld = nDigitsLeft;
+#endif // defined(BM_IN_LINK)
 
             nDigitsLeft
                 = nDigitsLeftRoot - (pwr_nBitsIndexSz(pwr) / cnBitsPerDigit);
@@ -247,7 +254,7 @@ again:
                         & (EXP(pwr_nBitsIndexSz(pwr)) - 1));
 #if defined(BM_SWITCH)
 #if defined(BM_IN_LINK)
-            if (nDigitsLeft >= cnDigitsPerWord)
+            if (nDigitsLeftOld >= cnDigitsPerWord)
             {
                 pwRoot = &pwr_pLinks(pwr)[nIndex].ln_wRoot;
             }
@@ -263,10 +270,11 @@ again:
                 nBmOffset += nIndex >> cnLogBitsPerWord;
                 for (unsigned nn = 0; nn < nBmOffset; nn++)
                 {
-                    nLnOffset += __builtin_popcountll(pwr_pwBm(pwr)[nn]);
+                    nLnOffset += __builtin_popcountll(pwR_pwBm(pwRoot)[nn]);
                 }
 #endif // (cnBitsPerDigit > cnLogBitsPerWord)
-                Word_t wBm = pwr_pwBm(pwr)[nBmOffset];
+//printf("\npwRoot %p pwR_pwBm %p\n", pwRoot, pwR_pwBm(pwRoot));
+                Word_t wBm = pwR_pwBm(pwRoot)[nBmOffset];
 #if  defined(BM_IN_LINK)
                 assert((wBm == (Word_t)-1) || (wBm == 0));
 #else // defined(BM_IN_LINK)
@@ -284,9 +292,16 @@ again:
                     if (nLnOffset != nIndex)
                     {
                         printf(
-                          "nLnOffset 0x%x nIndex 0x%x"
+                          "\nnLnOffset 0x%x nIndex 0x%x"
                           " wBm "OWx" wBmMask "OWx"\n",
                             nLnOffset, nIndex, wBm, wBmMask);
+                        for (unsigned nn = 0;
+                             nn < DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord);
+                             nn ++)
+                        {
+                            printf(" "OWx, pwR_pwBm(pwRoot)[nn]);
+                        }
+                        printf("\n");
                     }
                     assert(nLnOffset == nIndex);
                     pwRoot = &pwr_pLinks(pwr)[nLnOffset].ln_wRoot;
@@ -482,7 +497,8 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     {
         printf("\n# After Remove(wKey "OWx") %s Dump\n", wKey,
             status == Success ? "Success" : "Failure");
-        Dump((Word_t)*ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord);
+        Dump((Word_t)*ppvRoot, /* wPrefix */ (Word_t)0,
+             cnBitsPerWord, cnBitsPerWord);
         printf("\n");
     }
 #endif // defined(DEBUG_REMOVE)

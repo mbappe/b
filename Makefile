@@ -80,27 +80,27 @@ CFLAGS = $(STDFLAG) $(MFLAGS) $(WFLAGS) $(OFLAGS) -I.
 # It does not log anything unless something wrong is detected.
 # DEBUG is used by Judy1LHTime.c to turn off NDEBUG.
 #
-TIME_DEFINES += -DNDEBUG -UDEBUG
+TIME_DEFINES += -UNDEBUG -DDEBUG
 
 # Debug/Check/Instrument:
 #
 # GUARDBAND checks for corruption of word following malloc buffer on free
-#TIME_DEFINES += -DGUARDBAND
+TIME_DEFINES += -DGUARDBAND
 #
 # SISTER_READ is for measuring the speed of dereferencing subsequent
 # cache lines using "Judy1LHTime -b".
 #
 # TIME_DEFINES += -DSISTER_READ
 B_DEFINES += -DRAM_METRICS
-B_DEFINES += -USEARCH_METRICS
+B_DEFINES += -DSEARCH_METRICS
 #
 # LOOKUP_NO_BITMAP_SEARCH means return just before the list is searched.
 # LOOKUP_NO_BITMAP_DEREF means return before prefix/popcnt is retrieved.
-B_DEFINES += -DLOOKUP_NO_LIST_DEREF -ULOOKUP_NO_LIST_SEARCH
+# B_DEFINES += -DLOOKUP_NO_LIST_DEREF -ULOOKUP_NO_LIST_SEARCH
 #
 # LOOKUP_NO_BITMAP_SEARCH means return before the bit is retrieved.
 # LOOKUP_NO_BITMAP_DEREF means return before the prefix is retrieved.
-B_DEFINES += -DLOOKUP_NO_BITMAP_DEREF -ULOOKUP_NO_BITMAP_SEARCH
+# B_DEFINES += -DLOOKUP_NO_BITMAP_DEREF -ULOOKUP_NO_BITMAP_SEARCH
 #
 # These can be specified on the command line with "DEFINES = ... make"
 #
@@ -114,7 +114,7 @@ B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK
 # B_DEFINES += -UMIN_MAX_LISTS
 B_DEFINES += -DSORT_LISTS -DCOMPRESSED_LISTS
 # B_DEFINES += -URECURSIVE_INSERT -URECURSIVE_REMOVE
-B_DEFINES += -DBM_SWITCH -DBM_IN_LINK
+# B_DEFINES += -DBM_SWITCH -DBM_IN_LINK
 
 DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 
