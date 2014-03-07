@@ -744,23 +744,23 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             if (nBitsLeftOld <= 8) {
                 for (w = 0; w < wPopCnt; w++)
                 {
-                    Insert(&wRoot, pcKeys[w] | (wKey & ~0xff), nDigitsLeft);
+                    Insert(pwRoot, pcKeys[w] | (wKey & ~0xff), nDigitsLeft);
                 }
             } else if (nBitsLeftOld <= 16) {
                 for (w = 0; w < wPopCnt; w++)
                 {
-                    Insert(&wRoot, psKeys[w] | (wKey & ~0xffff), nDigitsLeft);
+                    Insert(pwRoot, psKeys[w] | (wKey & ~0xffff), nDigitsLeft);
                 }
             } else
 #endif // defined(COMPRESSED_LISTS)
             {
                 for (w = 0; w < wPopCnt; w++)
                 {
-                    Insert(&wRoot, pwKeys[w], nDigitsLeft);
+                    Insert(pwRoot, pwKeys[w], nDigitsLeft);
                 }
             }
 
-            Insert(&wRoot, wKey, nDigitsLeft);
+            Insert(pwRoot, wKey, nDigitsLeft);
         }
 
         if (wPopCnt != 0) OldList(pwr); // free old
@@ -808,7 +808,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         *pwRoot = wRoot; // install new
 
-        Insert(&wRoot, wKey, nDigitsLeft);
+        Insert(pwRoot, wKey, nDigitsLeft);
     }
 #endif // defined(SKIP_LINKS)
 
