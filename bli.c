@@ -245,7 +245,56 @@ again:
                 = nDigitsLeftRoot - (pwr_nBitsIndexSz(pwr) / cnBitsPerDigit);
             nIndex = ((wKey >> (nDigitsLeft * cnBitsPerDigit))
                         & (EXP(pwr_nBitsIndexSz(pwr)) - 1));
+#if defined(BM_SWITCH)
+#if defined(BM_IN_LINK)
+            if (nDigitsLeft >= cnDigitsPerWord)
+            {
+                pwRoot = &pwr_pLinks(pwr)[nIndex].ln_wRoot;
+            }
+            else
+#endif // defined(BM_IN_LINK)
+            {
+                unsigned nBmOffset = 0;
+                Word_t wBit = ((Word_t)1 << (nIndex & (cnBitsPerWord - 1)));
+                // test to see if link exists here
+                Word_t wBmMask = wBit - 1;
+                unsigned nLnOffset = 0;
+#if (cnBitsPerDigit > cnLogBitsPerWord)
+                nBmOffset += nIndex >> cnLogBitsPerWord;
+                for (unsigned nn = 0; nn < nBmOffset; nn++)
+                {
+                    nLnOffset += __builtin_popcountll(pwr_pwBm(pwr)[nn]);
+                }
+#endif // (cnBitsPerDigit > cnLogBitsPerWord)
+                Word_t wBm = pwr_pwBm(pwr)[nBmOffset];
+#if  defined(BM_IN_LINK)
+                assert((wBm == (Word_t)-1) || (wBm == 0));
+#else // defined(BM_IN_LINK)
+                assert(wBm == (Word_t)-1);
+#endif // defined(BM_IN_LINK)
+                nLnOffset += __builtin_popcountll(wBm & wBmMask);
+#if defined(BM_IN_LINK)
+                if (wBm == 0)
+                {
+                    pwRoot = &pwr_pLinks(pwr)[nIndex].ln_wRoot;
+                }
+                else
+#endif // defined(BM_IN_LINK)
+                {
+                    if (nLnOffset != nIndex)
+                    {
+                        printf(
+                          "nLnOffset 0x%x nIndex 0x%x"
+                          " wBm "OWx" wBmMask "OWx"\n",
+                            nLnOffset, nIndex, wBm, wBmMask);
+                    }
+                    assert(nLnOffset == nIndex);
+                    pwRoot = &pwr_pLinks(pwr)[nLnOffset].ln_wRoot;
+                }
+            }
+#else // defined(BM_SWITCH)
             pwRoot = &pwr_pLinks(pwr)[nIndex].ln_wRoot;
+#endif // defined(BM_SWITCH)
             wRoot = *pwRoot;
 
             DBGX(printf("Next nDigitsLeft %d nIndex %d pwr %p pLinks %p\n",

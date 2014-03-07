@@ -25,7 +25,7 @@
 // Default is cnLogBitsPerWord because a bitmap is the size of a word when
 // cnDigitsAtBottom is one and we can embed the bitmap.
 //#define cnBitsPerDigit  (cnLogBitsPerWord)
-#define cnBitsPerDigit  8
+#define cnBitsPerDigit  5
 
 // Choose bottom.
 // Bottom is where Bitmap is created.  Maybe we should change the meaning.
@@ -162,8 +162,13 @@
 #endif // defined(_WIN64)
 
 // 64 - 1 - leading zeros
+// __builtin_clzll is undefined for zero
 #define LOG(x)  ((Word_t)63 - __builtin_clzll(x))
 #define MASK(_x)  ((_x) - 1)
+
+#define OFFSET_OF(_type, _field) ((size_t)&((_type *)NULL)->_field)
+#define STRUCT_OF(_p, _type, _field) \
+    ((_type *)((char *)(_p) - OFFSET_OF(_type, _field)))
 
 #define COPY(_tgt, _src, _cnt) \
     memcpy((_tgt), (_src), sizeof(*(_src)) * (_cnt))
@@ -269,6 +274,11 @@
             | ((_cnt) & wPrefixPopMaskNotAtTop(_nDL))))
 
 #define     pwr_pLinks(_pwr)  (((Switch_t *)(_pwr))->sw_aLinks)
+#if defined(BM_IN_LINK)
+#define     pwr_pwBm(_pwr)    (STRUCT_OF((_pwr), Link_t, ln_wRoot)->ln_awBm)
+#else // defined(BM_IN_LINK)
+#define     pwr_pwBm(_pwr)    (((Switch_t *)(_pwr))->sw_awBm)
+#endif // defined(BM_IN_LINK)
 
 #define     ls_wPopCnt(_ls)        (((LeafWord_t *)(_ls))->lw_wPrefixPlus)
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
@@ -368,11 +378,17 @@ typedef struct {
 
 typedef struct {
     Word_t ln_wRoot;
+#if defined(BM_IN_LINK)
+    Word_t ln_awBm [ EXP(cnBitsPerDigit) / cnBitsPerWord ] ;
+#endif // defined(BM_IN_LINK)
 } Link_t;
 
 // Uncompressed, basic switch.
 typedef struct {
     Link_t sw_aLinks[EXP(cnBitsPerDigit)];
+#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+    Word_t sw_awBm [ EXP(cnBitsPerDigit) / cnBitsPerWord ] ;
+#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
     Word_t sw_wPrefixPop;
 } Switch_t;
 

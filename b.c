@@ -163,6 +163,13 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
 
     memset(pSw, 0, sizeof(*pSw));
 
+#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+    for (unsigned nn = 0; nn < EXP(cnBitsPerDigit) / cnBitsPerWord; nn++)
+    {
+        pwr_pwBm(pSw)[nn] = (Word_t)-1;
+    }
+#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+
     return pSw;
 }
 
@@ -303,6 +310,19 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         printf(" wKeyPopMask "OWx, wPrefixPopMask(nDigitsLeft));
         printf(" wr_wPrefix "OWx, wPrefix);
         //printf(" pLinks "OWx, (Word_t)pLinks);
+#if defined(BM_SWITCH)
+#if defined(BM_IN_LINK)
+        if (nDigitsLeft < cnDigitsPerWord)
+#endif // defined(BM_IN_LINK)
+        {
+            printf(" pwr_awBm %p", pwr_pwBm(pwr));
+            for (unsigned nn = 0;
+                 nn < EXP(cnBitsPerDigit) / cnBitsPerWord; nn++)
+            {
+                printf(" "OWx, pwr_pwBm(pwr)[nn]);
+            }
+        }
+#endif // defined(BM_SWITCH)
         printf("\n");
     }
 
@@ -734,6 +754,17 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
             *pwRoot = wRoot; // install new
 
+#if defined(BM_IN_LINK)
+            if (nDigitsLeft < cnDigitsPerWord)
+            {
+                for (unsigned nn = 0;
+                     nn < EXP(cnBitsPerDigit) / cnBitsPerWord; nn++)
+                {
+                    pwr_pwBm(pwRoot)[nn] = (Word_t)-1;
+                }
+            }
+#endif // defined(BM_IN_LINK)
+
 #if defined(COMPRESSED_LISTS)
 #if defined(SKIP_LINKS)
             unsigned nBitsLeftOld = nDigitsLeftOld * cnBitsPerDigit;
@@ -807,6 +838,17 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         set_wr(wRoot, (Word_t *)pSw, nDigitsLeft_to_tp(nDigitsLeft));
 
         *pwRoot = wRoot; // install new
+
+#if defined(BM_IN_LINK)
+        if (nDigitsLeft < cnDigitsPerWord)
+        {
+            for (unsigned nn = 0;
+                 nn < EXP(cnBitsPerDigit) / cnBitsPerWord; nn++)
+            {
+                pwr_pwBm(pwRoot)[nn] = (Word_t)-1;
+            }
+        }
+#endif // defined(BM_IN_LINK)
 
         Insert(pwRoot, wKey, nDigitsLeft);
     }

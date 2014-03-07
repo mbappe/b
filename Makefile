@@ -38,6 +38,8 @@ STDFLAG = -std=gnu99
 #MFLAGS += -m64
 MFLAGS += -m32
 MFLAGS += -msse4.2
+#MFLAGS += -march=native
+#MFLAGS += -mfpmath=sse
 
 # Leave off -Wmissing-prototypes because I don't like providing prototypes
 # that have no value at all, i.e. when the function definition appears
@@ -73,7 +75,6 @@ CFLAGS = $(STDFLAG) $(MFLAGS) $(WFLAGS) $(OFLAGS) -I.
 # TIME_DEFINES += -DSWAP -DBITMAP_BY_BYTE
 
 # Performance:
-#
 # DEBUG adds some internal sanity checking in my code not covered by
 # assertions only.
 # It does not log anything unless something wrong is detected.
@@ -84,13 +85,14 @@ TIME_DEFINES += -DNDEBUG -UDEBUG
 # Debug/Check/Instrument:
 #
 # GUARDBAND checks for corruption of word following malloc buffer on free
-# TIME_DEFINES += -DGUARDBAND
+#TIME_DEFINES += -DGUARDBAND
 #
 # SISTER_READ is for measuring the speed of dereferencing subsequent
 # cache lines using "Judy1LHTime -b".
 #
 # TIME_DEFINES += -DSISTER_READ
-# B_DEFINES += -DRAM_METRICS -USEARCH_METRICS
+B_DEFINES += -DRAM_METRICS
+B_DEFINES += -USEARCH_METRICS
 #
 # LOOKUP_NO_BITMAP_SEARCH means return just before the list is searched.
 # LOOKUP_NO_BITMAP_DEREF means return before prefix/popcnt is retrieved.
@@ -112,6 +114,7 @@ B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK
 # B_DEFINES += -UMIN_MAX_LISTS
 B_DEFINES += -DSORT_LISTS -DCOMPRESSED_LISTS
 # B_DEFINES += -URECURSIVE_INSERT -URECURSIVE_REMOVE
+B_DEFINES += -DBM_SWITCH -DBM_IN_LINK
 
 DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 
