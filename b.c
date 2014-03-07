@@ -166,7 +166,8 @@ NewSwitch(Word_t wKey, unsigned nDigitsLeft)
     set_pwr_wPrefixPop(pSw, 0);
 
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
-    memset(pwr_pwBm(pSw), -1, ALIGN_UP(EXP(cnBitsPerDigit), cnBitsPerWord));
+    memset(pwr_pwBm(pSw), -1,
+           DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord) * cnBytesPerWord);
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
 
     return pSw;
@@ -314,9 +315,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         if (nDigitsLeft < cnDigitsPerWord)
 #endif // defined(BM_IN_LINK)
         {
-            printf(" pwr_awBm %p", pwr_pwBm(pwr));
             for (unsigned nn = 0;
-                 nn < EXP(cnBitsPerDigit) / cnBitsPerWord; nn++)
+                          nn < DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord);
+                          nn ++)
             {
                 printf(" "OWx, pwr_pwBm(pwr)[nn]);
             }
@@ -756,11 +757,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #if defined(BM_IN_LINK)
             if (nDigitsLeft < cnDigitsPerWord)
             {
-                for (unsigned nn = 0;
-                     nn < EXP(cnBitsPerDigit) / cnBitsPerWord; nn++)
-                {
-                    pwr_pwBm(pwRoot)[nn] = (Word_t)-1;
-                }
+                memset(pwr_pwBm(pwRoot), -1,
+                       DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
+                           * cnBytesPerWord);
             }
 #endif // defined(BM_IN_LINK)
 
@@ -841,11 +840,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #if defined(BM_IN_LINK)
         if (nDigitsLeft < cnDigitsPerWord)
         {
-            for (unsigned nn = 0;
-                 nn < EXP(cnBitsPerDigit) / cnBitsPerWord; nn++)
-            {
-                pwr_pwBm(pwRoot)[nn] = (Word_t)-1;
-            }
+            memset(pwr_pwBm(pwRoot), -1,
+                DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord) * cnBytesPerWord);
         }
 #endif // defined(BM_IN_LINK)
 
