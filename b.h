@@ -1,4 +1,7 @@
 
+#if ( ! defined(_B_H_INCLUDED) )
+#define _B_H_INCLUDED
+
 //
 // (cnBitsPerDigit, cnDigitsAtBottom, cwListPopCntMax)
 //
@@ -83,9 +86,6 @@
 #include <assert.h> // NDEBUG must be defined before including assert.h.
 #include "Judy.h"   // Word_t, JudyMalloc, ...
 
-#if ( ! defined(_B_H_INCLUDED) )
-#define _B_H_INCLUDED
-
 #if defined RAM_METRICS
 #define METRICS(x)  (x)
 #else // defined RAM_METRICS
@@ -140,30 +140,27 @@
 // Might want to be careful about including this header file in front
 // of code which depends on an incompatible definition of EXP.
 
+#if !defined(Owx)
+#if defined(__LP64__) || defined(_WIN64)
+#define Oz     "016"
+#else // defined(__LP64__) || defined(_WIN64)
+#define Oz     "08"
+#endif // defined(__LP64__) || defined(_WIN64)
+#define Owx   "%"Oz"zx"
+#define OWx "0x%"Oz"zx"
+#endif // !defined(Owx)
+
 #if defined(_WIN64)
-//typedef unsigned long long Word_t;
 #define EXP(_x)  (1ULL << (_x))
-#define Owx   "%016llx"
-#define OWx "0x%016llx"
-#define wx "%llx"
-#define wd "%lld"
 #else // defined(_WIN64)
-//typedef unsigned long Word_t;
 #define EXP(_x)  (1UL << (_x))
-#if defined(__LP64__)
-#define Owx   "%016lx"
-#define OWx "0x%016lx"
-#else // defined(__LP64__)
-#define Owx   "%08lx"
-#define OWx "0x%08lx"
-#endif // defined(__LP64__)
-#define wx "%lx"
-#define wd "%ld"
 #endif // defined(_WIN64)
 
-// 64 - 1 - leading zeros
-// __builtin_clzll is undefined for zero
-#define LOG(x)  ((Word_t)63 - __builtin_clzll(x))
+// Count leading zeros.
+// __builtin_clzll is undefined for zero so compiler can use bsr.
+// But actual x86 clz instruction is defined for zero.
+// This LOG macro is undefined for zero.
+#define LOG(_x)  ((Word_t)63 - __builtin_clzll(_x))
 #define MASK(_x)  ((_x) - 1)
 
 // Do integer division, but round up instead of down.
@@ -233,11 +230,24 @@
 #define w_wPrefixNotAtTop(_w, _nDL)  ((_w) & ~wPrefixPopMaskNotAtTop(_nDL))
 #define w_wPopCntNotAtTop(_w, _nDL)  ((_w) &  wPrefixPopMaskNotAtTop(_nDL))
 
+// It is a bit of a bummer that the macros for extracting fields that might
+// be in the switch or in the link depending on an ifdef require a mask and
+// and extra dereference in one of the cases.  I'm hoping the compiler can
+// optimize them out, but I'm not optimistic.
+// The macro is good for the source code -- I think,
+// but I'm not so sure it is good for the performance of the compiled code.
+// Maybe I'll have to fine-tune the performance path without using the macro?
+// Or using different macros for different cases?
+// Maybe a better option is to use one macro that takes both pwRoot and pwr.
 #if defined(PP_IN_LINK)
-#define pwR_wPrefixPop(_pwR) \
-    (STRUCT_OF((_pwR), Link_t, ln_wRoot)->ln_wPrefixPop)
+#define pwR_wPrefixPop(_pwRoot) \
+    (STRUCT_OF((_pwRoot), Link_t, ln_wRoot)->ln_wPrefixPop)
+#define PWR_wPrefixPop(_pwRoot, _pwr) \
+    (STRUCT_OF((_pwRoot), Link_t, ln_wRoot)->ln_wPrefixPop)
 #else // defined(PP_IN_LINK)
-#define pwR_wPrefixPop(_pwR)  ((((Switch_t *)wr_pwr(*(_pwR))))->sw_wPrefixPop)
+#define pwR_wPrefixPop(_pwRoot) \
+    ((((Switch_t *)wr_pwr(*(_pwRoot))))->sw_wPrefixPop)
+#define PWR_wPrefixPop(_pwRoot, _pwr)  (((Switch_t *)(_pwr))->sw_wPrefixPop)
 #endif // defined(PP_IN_LINK)
 
 #define pwR_wPrefix(_pwR, _nDL)  (w_wPrefix(pwR_wPrefixPop(_pwR), (_nDL)))
@@ -247,6 +257,9 @@
 
 #define pwR_wPrefixNotAtTop(_pwR, _nDL) \
     (w_wPrefixNotAtTop(pwR_wPrefixPop(_pwR), (_nDL)))
+
+#define PWR_wPrefixNotAtTop(_pwRoot, _pwr, _nDL) \
+    (w_wPrefixNotAtTop(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nDL)))
 
 #define pwR_wPopCntNotAtTop(_pwR, _nDL) \
     (w_wPopCntNotAtTop(pwR_wPrefixPop(_pwR), (_nDL)))
@@ -413,7 +426,8 @@ typedef struct {
 
 typedef struct {
     Word_t lw_wPrefixPlus; // includes prefix, node type and nDigitsLeft
-    unsigned lw_nWords;
+    uint16_t lw_nDigitsLeft;
+    uint16_t lw_nWords;
     Word_t lw_awKeys[];
 } LeafWord_t;
 
