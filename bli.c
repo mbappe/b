@@ -205,7 +205,7 @@ again:
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
             else
             {
-                DBGX(printf("Mismatch at list wPrefix "OZx" nDL %d\n",
+                DBGX(printf("Mismatch at list wPrefix "OWx" nDL %d\n",
                     wPrefix, nDigitsLeft));
             }
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -262,7 +262,7 @@ again:
             // if (wPopCnt == 0) && all links full) return KeyFound;
             wPopCnt = PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot);
             set_PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot, wPopCnt + nIncr);
-            DBGI(printf("wPopCnt "wd"\n",
+            DBGI(printf("wPopCnt %zd\n",
                  PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot)));
 #endif // !defined(LOOKUP)
 
