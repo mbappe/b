@@ -822,31 +822,42 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             wPopCnt = wPrefixPopMask(nDigitsLeftRoot) + 1;
         }
 
+// Have to get old prefix before inserting the new switch because
+// NewSwitch copies to *pwRoot.
+// But also have to deal with switch at top with no link if PP_IN_LINK.
+
+        unsigned nIndex;
+
+#if defined(PP_IN_LINK)
+        // PP_IN_LINK ==> no skip link at top ==> no prefix mismatch at top
+        assert(nDigitsLeftUp < cnDigitsPerWord);
+#endif // defined(PP_IN_LINK)
+
+        // todo nBitsIndexSz; wide switch
+        assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
+        nIndex = (pwR_wPrefix(pwRoot, nDigitsLeftRoot)
+                >> ((nDigitsLeft - 1) * cnBitsPerDigit))
+            & (EXP(cnBitsPerDigit) - 1);
+
         pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftUp);
 
         set_pwR_wPopCnt(pwRoot, nDigitsLeft, wPopCnt);
 
         set_pwR_wPrefix(pwRoot, nDigitsLeft, wKey);
 
+#if defined(PP_IN_LINK) || defined(BM_IN_LINK)
         // Copy old link to new switch.
+        // Be careful; NewSwitch has already updated wRoot in the old link.
         // What if we are at the top hence there is only wRoot -- no link?
         if (nDigitsLeftUp < cnDigitsPerWord)
         {
-            // todo nBitsIndexSz; wide switch
-            assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
-            pwr_pLinks(pwSw)
-                    [(pwr_wPrefix(pwr, nDigitsLeftRoot)
-                            >> ((nDigitsLeft - 1) * cnBitsPerDigit))
-                        & (EXP(cnBitsPerDigit) - 1)]
-                = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+            pwr_pLinks(pwSw)[nIndex] = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
         }
+#endif // defined(PP_IN_LINK) || defined(BM_IN_LINK)
 
-        // todo nBitsIndexSz; wide switch
-        assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
-        pwr_pLinks(pwSw)
-            [(pwr_wPrefix(pwr, nDigitsLeftRoot)
-                    >> ((nDigitsLeft - 1) * cnBitsPerDigit))
-                & (EXP(cnBitsPerDigit) - 1)].ln_wRoot = wRoot;
+        // Fix up wRoot in the new switch.  Maybe having NewSwitch initialize
+        // it is not quite right.
+        pwr_pLinks(pwSw)[nIndex].ln_wRoot = wRoot;
 
         Insert(pwRoot, wKey, nDigitsLeftUp);
     }
