@@ -307,18 +307,18 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft,
         nBitsLeft = cnBitsPerWord;
     }
 
-    wPrefix = pwR_wPrefix(pwRoot, nDigitsLeft);
+    wPrefix = PWR_wPrefix(pwRoot, pwr, nDigitsLeft);
     nBitsIndexSz = pwr_nBitsIndexSz(pwr);
     pLinks = pwr_pLinks(pwr);
 
     if (bDump)
     {
         printf(" wPopCnt %3llu",
-            (unsigned long long)pwR_wPopCnt(pwRoot, nDigitsLeft));
+            (unsigned long long)PWR_wPopCnt(pwRoot, pwr, nDigitsLeft));
         printf(" wr_nDigitsLeft %2d", nDigitsLeft);
         // should enhance this to check for zeros in suffix and to print
         // dots for suffix.
-        printf(" wPrefixPop "OWx, pwR_wPrefixPop(pwRoot));
+        printf(" wPrefixPop "OWx, PWR_wPrefixPop(pwRoot, pwr));
         printf(" wKeyPopMask "OWx, wPrefixPopMask(nDigitsLeft));
         printf(" wr_wPrefix "OWx, wPrefix);
         //printf(" pLinks "OWx, (Word_t)pLinks);
@@ -739,7 +739,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
             pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftOld);
 
-            set_pwR_wPopCnt(pwRoot, nDigitsLeft, 0);
+            set_PWR_wPopCnt(pwRoot, pwSw, nDigitsLeft, 0);
 
 #if defined(SKIP_LINKS)
             assert(nDigitsLeft <= nDigitsLeftOld);
@@ -754,17 +754,17 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                   "Not installing prefix left %d old %d wKey "OWx"\n",
                     nDigitsLeft, nDigitsLeftOld, wKey));
 
-                set_pwR_wPrefix(pwRoot, nDigitsLeft, 0);
+                set_PWR_wPrefix(pwRoot, pwSw, nDigitsLeft, 0);
             }
             else
 #endif // defined(NO_UNNECESSARY_PREFIX)
             {
-                set_pwR_wPrefix(pwRoot, nDigitsLeft, wKey);
+                set_PWR_wPrefix(pwRoot, pwSw, nDigitsLeft, wKey);
             }
 #endif // defined(SKIP_LINKS)
 
-            DBGM(printf("NewSwitch pwr_wPrefixPop "OWx"\n",
-                pwr_wPrefixPop(pwSw)));
+            DBGM(printf("NewSwitch PWR_wPrefixPop "OWx"\n",
+                PWR_wPrefixPop(pwRoot, pwSw)));
 
 #if defined(COMPRESSED_LISTS)
 #if defined(SKIP_LINKS)
@@ -814,13 +814,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         unsigned nDigitsLeftUp = nDigitsLeft;
 
         // figure new nDigitsLeft for old parent link
-        nDigitsLeft = LOG(1 | (pwR_wPrefix(pwRoot, nDigitsLeftRoot) ^ wKey))
-                / cnBitsPerDigit + 1;
+        Word_t wPrefix = PWR_wPrefix(pwRoot, pwr, nDigitsLeftRoot);
+        nDigitsLeft = LOG(1 | (wPrefix ^ wKey)) / cnBitsPerDigit + 1;
 
         assert(nDigitsLeft > nDigitsLeftRoot);
 
-        if ((wPopCnt = pwR_wPopCnt(pwRoot, nDigitsLeftRoot)) == 0)
+        if ((wPopCnt = PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot)) == 0)
         {
+            // full pop overflow
             wPopCnt = wPrefixPopMask(nDigitsLeftRoot) + 1;
         }
 
@@ -837,15 +838,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         // todo nBitsIndexSz; wide switch
         assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
-        nIndex = (pwR_wPrefix(pwRoot, nDigitsLeftRoot)
-                >> ((nDigitsLeft - 1) * cnBitsPerDigit))
+        nIndex = (wPrefix >> ((nDigitsLeft - 1) * cnBitsPerDigit))
             & (EXP(cnBitsPerDigit) - 1);
 
         pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftUp);
 
-        set_pwR_wPopCnt(pwRoot, nDigitsLeft, wPopCnt);
+        set_PWR_wPopCnt(pwRoot, pwSw, nDigitsLeft, wPopCnt);
 
-        set_pwR_wPrefix(pwRoot, nDigitsLeft, wKey);
+        set_PWR_wPrefix(pwRoot, pwSw, nDigitsLeft, wKey);
 
 #if defined(PP_IN_LINK) || defined(BM_IN_LINK)
         // Copy old link to new switch.

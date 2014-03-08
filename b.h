@@ -301,6 +301,11 @@
         = ((pwR_wPrefixPop(_pwR) & ~wPrefixPopMask(_nDL)) \
             | ((_cnt) & wPrefixPopMask(_nDL))))
 
+#define set_PWR_wPrefix(_pwRoot, _pwr, _nDL, _key) \
+    (PWR_wPrefixPop((_pwRoot), (_pwr)) \
+        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixPopMask(_nDL)) \
+            | ((_key) & ~wPrefixPopMask(_nDL))))
+
 #define set_PWR_wPopCnt(_pwRoot, _pwr, _nDL, _cnt) \
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
         = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMask(_nDL)) \
