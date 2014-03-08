@@ -294,11 +294,12 @@ again:
                 nBmOffset += nIndex >> cnLogBitsPerWord;
                 for (unsigned nn = 0; nn < nBmOffset; nn++)
                 {
-                    nLnOffset += __builtin_popcountll(pwR_pwBm(pwRoot)[nn]);
+                    nLnOffset
+                        += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
                 }
 #endif // (cnBitsPerDigit > cnLogBitsPerWord)
-//printf("\npwRoot %p pwR_pwBm %p\n", pwRoot, pwR_pwBm(pwRoot));
-                Word_t wBm = pwR_pwBm(pwRoot)[nBmOffset];
+//printf("\npwRoot %p PWR_pwBm %p\n", pwRoot, PWR_pwBm(pwRoot, pwr));
+                Word_t wBm = PWR_pwBm(pwRoot, pwr)[nBmOffset];
 #if  defined(BM_IN_LINK)
                 assert((wBm == (Word_t)-1) || (wBm == 0));
 #else // defined(BM_IN_LINK)
@@ -323,7 +324,7 @@ again:
                              nn < DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord);
                              nn ++)
                         {
-                            printf(" "OWx, pwR_pwBm(pwRoot)[nn]);
+                            printf(" "OWx, PWR_pwBm(pwRoot, pwr)[nn]);
                         }
                         printf("\n");
                     }

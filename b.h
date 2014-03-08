@@ -284,9 +284,10 @@
 #define     pwr_pLinks(_pwr)  (((Switch_t *)(_pwr))->sw_aLinks)
 
 #if defined(BM_IN_LINK)
-#define     pwR_pwBm(_pwR)    (STRUCT_OF((_pwR), Link_t, ln_wRoot)->ln_awBm)
+#define     PWR_pwBm(_pwRoot, _pwr) \
+    (STRUCT_OF((_pwRoot), Link_t, ln_wRoot)->ln_awBm)
 #else // defined(BM_IN_LINK)
-#define     pwR_pwBm(_pwR)    (((Switch_t *)wr_pwr(*(_pwR)))->sw_awBm)
+#define     PWR_pwBm(_pwRoot, _pwr)  (((Switch_t *)(_pwr))->sw_awBm)
 #endif // defined(BM_IN_LINK)
 
 #define     ls_wPopCnt(_ls)        (((LeafWord_t *)(_ls))->lw_wPrefixPlus)

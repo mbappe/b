@@ -175,7 +175,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     if (nDigitsLeftUp < cnDigitsPerWord)
 #endif // defined(BM_IN_LINK)
     {
-        memset(pwR_pwBm(pwRoot), -1,
+        memset(PWR_pwBm(pwRoot, pwr), -1,
                DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
                    * cnBytesPerWord);
     }
@@ -332,7 +332,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft,
                           nn < DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord);
                           nn ++)
             {
-                printf(" "OWx, pwR_pwBm(pwRoot)[nn]);
+                printf(" "OWx, PWR_pwBm(pwRoot, pwr)[nn]);
             }
         }
 #endif // defined(BM_SWITCH)
