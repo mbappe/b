@@ -233,6 +233,24 @@
 #define w_wPrefixNotAtTop(_w, _nDL)  ((_w) & ~wPrefixPopMaskNotAtTop(_nDL))
 #define w_wPopCntNotAtTop(_w, _nDL)  ((_w) &  wPrefixPopMaskNotAtTop(_nDL))
 
+#if defined(PP_IN_LINK)
+#define pwR_wPrefixPop(_pwR) \
+    (STRUCT_OF((_pwR), Link_t, ln_wRoot)->ln_wPrefixPop)
+#else // defined(PP_IN_LINK)
+#define pwR_wPrefixPop(_pwR)  ((((Switch_t *)wr_pwr(*(_pwR))))->sw_wPrefixPop)
+#endif // defined(PP_IN_LINK)
+
+#define pwR_wPrefix(_pwR, _nDL)  (w_wPrefix(pwR_wPrefixPop(_pwR), (_nDL)))
+#define pwR_wPopCnt(_pwR, _nDL)  (w_wPopCnt(pwR_wPrefixPop(_pwR), (_nDL)))
+
+#define set_pwR_wPrefixPop(_pwR, _x)  (pwR_wPrefixPop(_pwR) = (_x))
+
+#define pwR_wPrefixNotAtTop(_pwR, _nDL) \
+    (w_wPrefixNotAtTop(pwR_wPrefixPop(_pwR), (_nDL)))
+
+#define pwR_wPopCntNotAtTop(_pwR, _nDL) \
+    (w_wPopCntNotAtTop(pwR_wPrefixPop(_pwR), (_nDL)))
+
 #define pwr_wPrefixPop(_pwr)  (((Switch_t *)(_pwr))->sw_wPrefixPop)
 #define pwr_wPrefix(_pwr, _nDL)  (w_wPrefix(pwr_wPrefixPop(_pwr), (_nDL)))
 #define pwr_wPopCnt(_pwr, _nDL)  (w_wPopCnt(pwr_wPrefixPop(_pwr), (_nDL)))
@@ -252,6 +270,16 @@
 
 #define set_w_wPopCnt(_w, _nDL, _cnt) \
     ((_w) = (((_w) & ~wPrefixPopMask(_nDL)) \
+            | ((_cnt) & wPrefixPopMask(_nDL))))
+
+#define set_pwR_wPrefix(_pwR, _nDL, _key) \
+    (pwR_wPrefixPop(_pwR) \
+        = ((pwR_wPrefixPop(_pwR) & wPrefixPopMask(_nDL)) \
+            | ((_key) & ~wPrefixPopMask(_nDL))))
+
+#define set_pwR_wPopCnt(_pwR, _nDL, _cnt) \
+    (pwR_wPrefixPop(_pwR) \
+        = ((pwR_wPrefixPop(_pwR) & ~wPrefixPopMask(_nDL)) \
             | ((_cnt) & wPrefixPopMask(_nDL))))
 
 #define set_pwr_wPrefix(_pwr, _nDL, _key) \
@@ -282,11 +310,22 @@
         = ((pwr_wPrefixPop(_pwr) & ~wPrefixPopMaskNotAtTop(_nDL)) \
             | ((_cnt) & wPrefixPopMaskNotAtTop(_nDL))))
 
+#define set_pwR_wPrefixNotAtTop(_pwR, _nDL, _key) \
+    (pwR_wPrefixPop(_pwR) \
+        = ((pwR_wPrefixPop(_pwR) & wPrefixPopMaskNotAtTop(_nDL)) \
+            | ((_key) & ~wPrefixPopMaskNotAtTop(_nDL))))
+
+#define set_pwR_wPopCntNotAtTop(_pwR, _nDL, _cnt) \
+    (pwR_wPrefixPop(_pwR) \
+        = ((pwR_wPrefixPop(_pwR) & ~wPrefixPopMaskNotAtTop(_nDL)) \
+            | ((_cnt) & wPrefixPopMaskNotAtTop(_nDL))))
+
 #define     pwr_pLinks(_pwr)  (((Switch_t *)(_pwr))->sw_aLinks)
+
 #if defined(BM_IN_LINK)
 #define     pwR_pwBm(_pwR)    (STRUCT_OF((_pwR), Link_t, ln_wRoot)->ln_awBm)
 #else // defined(BM_IN_LINK)
-#define     pwR_pwBm(_pwR)    (((Switch_t *)(wr_pwr(*(_pwR))))->sw_awBm)
+#define     pwR_pwBm(_pwR)    (((Switch_t *)wr_pwr(*(_pwR)))->sw_awBm)
 #endif // defined(BM_IN_LINK)
 
 #define     ls_wPopCnt(_ls)        (((LeafWord_t *)(_ls))->lw_wPrefixPlus)
@@ -386,19 +425,24 @@ typedef struct {
 #endif
 
 typedef struct {
-    Word_t ln_wRoot; // must be 2-word aligned
+    Word_t ln_wRoot;
 #if defined(BM_IN_LINK)
     Word_t ln_awBm [ EXP(cnBitsPerDigit) / cnBitsPerWord ] ;
 #endif // defined(BM_IN_LINK)
+#if defined(PP_IN_LINK)
+    Word_t ln_wPrefixPop;
+#endif // defined(PP_IN_LINK)
 } Link_t;
 
 // Uncompressed, basic switch.
 typedef struct {
-    Link_t sw_aLinks[EXP(cnBitsPerDigit)]; // must be 2-word aligned
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
     Word_t sw_awBm [ EXP(cnBitsPerDigit) / cnBitsPerWord ] ;
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+    Link_t sw_aLinks[EXP(cnBitsPerDigit)];
+#if !defined(PP_IN_LINK)
     Word_t sw_wPrefixPop;
+#endif // !defined(PP_IN_LINK)
 } Switch_t;
 
 Status_t Lookup(Word_t   wRoot, Word_t wKey);

@@ -90,7 +90,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     unsigned nType;
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-    Word_t *pwr; // pointer extracted from wRoot
+    Word_t *pwr = pwr; // suppress "uninitialized" compiler warning
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 

@@ -61,13 +61,18 @@ Word_t    j__AllocWordsJV;
 static Word_t *
 NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
 {
+    DBGM(printf("NewList wPopCnt "OWx"\n", wPopCnt));
+
     unsigned nWords = sizeof(LeafWord_t) / sizeof(Word_t) + wPopCnt;
+
+    DBGM(printf("NewList nWords %d\n", nWords));
+
     Word_t *pwList = (Word_t *)JudyMalloc(nWords);
 
     (void)nDigitsLeft;
     (void)wKey;
 
-    DBGM(printf("New pwList %p wPopCnt "OWx" nWords %d\n",
+    DBGM(printf("NewList pwList %p wPopCnt "OWx" nWords %d\n",
         pwList, wPopCnt, nWords));
 
     set_ls_wPopCnt(pwList, wPopCnt);
@@ -300,18 +305,18 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft,
         nBitsLeft = cnBitsPerWord;
     }
 
-    wPrefix = pwr_wPrefix(pwr, nDigitsLeft);
+    wPrefix = pwR_wPrefix(pwRoot, nDigitsLeft);
     nBitsIndexSz = pwr_nBitsIndexSz(pwr);
     pLinks = pwr_pLinks(pwr);
 
     if (bDump)
     {
         printf(" wPopCnt %3llu",
-            (unsigned long long)pwr_wPopCnt(pwr, nDigitsLeft));
+            (unsigned long long)pwR_wPopCnt(pwRoot, nDigitsLeft));
         printf(" wr_nDigitsLeft %2d", nDigitsLeft);
         // should enhance this to check for zeros in suffix and to print
         // dots for suffix.
-        printf(" wPrefixPop "OWx, pwr_wPrefixPop(pwr));
+        printf(" wPrefixPop "OWx, pwR_wPrefixPop(pwRoot));
         printf(" wKeyPopMask "OWx, wPrefixPopMask(nDigitsLeft));
         printf(" wr_wPrefix "OWx, wPrefix);
         //printf(" pLinks "OWx, (Word_t)pLinks);
@@ -732,7 +737,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
             pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftOld);
 
-            set_pwr_wPopCnt(pwSw, nDigitsLeft, 0);
+            //set_pwr_wPopCnt(pwSw, nDigitsLeft, 0);
+            set_pwR_wPopCnt(pwRoot, nDigitsLeft, 0);
 
 #if defined(SKIP_LINKS)
             assert(nDigitsLeft <= nDigitsLeftOld);
@@ -747,12 +753,13 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                   "Not installing prefix left %d old %d wKey "OWx"\n",
                     nDigitsLeft, nDigitsLeftOld, wKey));
 
-                set_pwr_wPrefix(pwSw, nDigitsLeft, 0);
+                //set_pwr_wPrefix(pwSw, nDigitsLeft, 0);
+                set_pwR_wPrefix(pwRoot, nDigitsLeft, 0);
             }
             else
 #endif // defined(NO_UNNECESSARY_PREFIX)
             {
-                set_pwr_wPrefix(pwSw, nDigitsLeft, wKey);
+                set_pwR_wPrefix(pwRoot, nDigitsLeft, wKey);
             }
 #endif // defined(SKIP_LINKS)
 
