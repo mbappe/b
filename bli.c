@@ -133,6 +133,7 @@ again:
 
             DBGX(printf("List\n"));
 
+            // Will popcount be in link with PP_IN_LINK?
             wPopCnt = ls_wPopCnt(wRoot);
 
 #if defined(LOOKUP)
@@ -140,25 +141,30 @@ again:
 #endif // defined(LOOKUP)
 
 #if defined(COMPRESSED_LISTS)
+            // nDigitsLeft is relative to the bottom of the switch
+            // containing the pointer to the leaf.
             unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
 #if defined(SKIP_LINKS)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-            // We don't support skip links directly to leaves yet so
-            // it is sufficient to check the prefix at the branch just
+            // We don't support skip links directly to leaves -- yet.
+            // Even with defined(PP_IN_LINK).
+            // It is sufficient to check the prefix at the switch just
             // above the leaf.
+            // pwr is left from the previous iteration of the goto again loop.
             // Would like to combine the source code for this prefix
             // check and the one done in the bitmap section if possible.
-            // pwr is left from the previous iteration of the goto again loop.
+            Word_t wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeft);
             if ((nBitsLeft > 16) // leaf has whole key
                 || ( ! bNeedPrefixCheck ) // we followed no skip links
-                || (LOG(1 | (pwr_wPrefixNotAtTop(pwr, nDigitsLeft) ^ wKey))
-// We can change nBitsLeft to be a better function of the size of the keys
-// in the leaf.  How would it help?
+                || (LOG(1 | (wPrefix ^ wKey))
+                    // prefix in parent switch doesn't contain last digit
+                    // for !defined(PP_IN_LINK) case
                     < (nBitsLeft + pwr_nBitsIndexSz(pwr)))) // prefix matches
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
 #endif // defined(COMPRESSED_LISTS)
             {
+                assert(((LeafWord_t *)wRoot)->lw_nDigitsLeft == nDigitsLeft);
 #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 // This short-circuit is for analysis only.  We have retrieved the pop count
 // and prefix but we have not dereferenced the list itself.
@@ -199,9 +205,8 @@ again:
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
             else
             {
-                DBGX(printf("Prefix mismatch at List wPrefix "OWx
-                  " nDigitsLeft %d\n",
-                    pwr_wPrefixNotAtTop(wRoot, nDigitsLeft), nDigitsLeft));
+                DBGX(printf("Mismatch at list wPrefix "OZx" nDL %d\n",
+                    wPrefix, nDigitsLeft));
             }
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
@@ -238,8 +243,7 @@ again:
             && (LOG(1 | (wPrefix ^ wKey))
                 >= (nDigitsLeftRoot * cnBitsPerDigit)))
         {
-            DBGX(printf("Prefix mismatch wPrefix "Owx"\n",
-                pwr_wPrefix(pwr, nDigitsLeftRoot)));
+            DBGX(printf("Mismatch wPrefix "Owx"\n", wPrefix));
         }
         else // !! the "else" here is only for the INSERT/REMOVE case !!
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -441,7 +445,7 @@ again:
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
             else
             {
-                DBGX(printf("Prefix mismatch at Bitmap wPrefix "OWx"\n",
+                DBGX(printf("Mismatch at bitmap wPrefix "OWx"\n",
                     pwr_wPrefixNotAtTop(pwr, nDigitsLeftRoot)));
             }
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
