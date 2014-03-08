@@ -78,6 +78,8 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
     set_ls_wPopCnt(pwList, wPopCnt);
     set_ls_wLen(pwList, nWords);
 
+    ((LeafWord_t *)pwList)->lw_nDigitsLeft = nDigitsLeft;
+
     METRICS(j__AllocWordsJLLW += (ls_wLen(pwList)));
 
     return pwList;
