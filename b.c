@@ -536,6 +536,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             assert(BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
         }
 
+#if defined(PP_IN_LINK)
+        // What about no_unnecessary_prefix?
+        set_PWR_wPrefix(pwRoot, NULL, nDigitsLeft, wKey);
+#endif // defined(PP_IN_LINK)
+
         return Success;
     }
 
@@ -576,6 +581,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             psKeys = NULL;
             pcKeys = NULL;
 #endif // defined(COMPRESSED_LISTS)
+#if defined(PP_IN_LINK)
+            // What about no_unnecessary_prefix?
+            set_PWR_wPrefix(pwRoot, NULL, nDigitsLeft, wKey);
+#endif // defined(PP_IN_LINK)
         }
 
 // We don't support skip links to lists or bitmaps yet.  And don't have
@@ -670,57 +679,63 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
             // List is full; insert a switch
 
-#if defined(SKIP_LINKS)
-            if (cwListPopCntMax != 0) // use const for compile time check
+#if defined(PP_IN_LINK)
+            if (nDigitsLeft < cnDigitsPerWord)
+#endif // defined(PP_IN_LINK)
             {
-                Word_t wMax, wMin;
+#if defined(SKIP_LINKS)
+                if (cwListPopCntMax != 0) // use const for compile time check
+                {
+                    Word_t wMax, wMin;
 #if defined(SORT_LISTS) || defined(MIN_MAX_LISTS)
 #if defined(COMPRESSED_LISTS)
-                unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
-                Word_t wSuffix;
-                if (nBitsLeft <= 8) {
-                    wMin = ls_pcKeys(wRoot)[0];
-                    wMax = ls_pcKeys(wRoot)[wPopCnt - 1];
-                    wSuffix = wKey & 0xff;
-                } else if (nBitsLeft <= 16) {
-                    wMin = ls_psKeys(wRoot)[0];
-                    wMax = ls_psKeys(wRoot)[wPopCnt - 1];
-                    wSuffix = wKey & 0xffff;
-                } else 
+                    unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+                    Word_t wSuffix;
+                    if (nBitsLeft <= 8) {
+                        wMin = ls_pcKeys(wRoot)[0];
+                        wMax = ls_pcKeys(wRoot)[wPopCnt - 1];
+                        wSuffix = wKey & 0xff;
+                    } else if (nBitsLeft <= 16) {
+                        wMin = ls_psKeys(wRoot)[0];
+                        wMax = ls_psKeys(wRoot)[wPopCnt - 1];
+                        wSuffix = wKey & 0xffff;
+                    } else 
 #endif // defined(COMPRESSED_LISTS)
-                { wMin = pwKeys[0]; wMax = pwKeys[wPopCnt - 1]; }
+                    { wMin = pwKeys[0]; wMax = pwKeys[wPopCnt - 1]; }
 #else // defined(SORT_LISTS) || defined(MIN_MAX_LISTS)
-                // walk the list to find max and min
-                wMin = (Word_t)-1;
-                wMax = 0;
+                    // walk the list to find max and min
+                    wMin = (Word_t)-1;
+                    wMax = 0;
 
-                for (w = 0; w < wPopCnt; w++)
-                {
-                    if (pwKeys[w] < wMin) wMin = pwKeys[w];
-                    if (pwKeys[w] > wMax) wMax = pwKeys[w];
-                }
+                    for (w = 0; w < wPopCnt; w++)
+                    {
+                        if (pwKeys[w] < wMin) wMin = pwKeys[w];
+                        if (pwKeys[w] > wMax) wMax = pwKeys[w];
+                    }
 #endif // defined(SORT_LISTS) || defined(MIN_MAX_LISTS)
-                DBGI(printf("wMin "OWx" wMax "OWx"\n", wMin, wMax));
+                    DBGI(printf("wMin "OWx" wMax "OWx"\n", wMin, wMax));
 
 #if defined(COMPRESSED_LISTS)
-                if (nBitsLeft <= 16)
-                {
-                    nDigitsLeft
-                        = LOG(1 | ((wSuffix ^ wMin) | (wSuffix ^ wMax)))
-                            / cnBitsPerDigit + 1;
+                    if (nBitsLeft <= 16)
+                    {
+                        nDigitsLeft
+                            = LOG(1 | ((wSuffix ^ wMin) | (wSuffix ^ wMax)))
+                                / cnBitsPerDigit + 1;
+                    }
+                    else
+#endif // defined(COMPRESSED_LISTS)
+                    {
+                        nDigitsLeft
+                            = LOG(1 | ((wKey ^ wMin) | (wKey ^ wMax)))
+                                / cnBitsPerDigit + 1;
+                    }
                 }
                 else
-#endif // defined(COMPRESSED_LISTS)
                 {
-                    nDigitsLeft
-                        = LOG(1 | ((wKey ^ wMin) | (wKey ^ wMax)))
-                            / cnBitsPerDigit + 1;
+                    // can't dereference list if there isn't one
+                    // go directly to bitmap
+                    nDigitsLeft = cnDigitsAtBottom + 1;
                 }
-            }
-            else
-            {
-                // can't dereference list if there isn't one
-                nDigitsLeft = cnDigitsAtBottom + 1; // go directly to Bitmap
             }
 
             // We don't create a switch below cnDigitsAtBottom + 1.
@@ -845,6 +860,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         set_PWR_wPopCnt(pwRoot, pwSw, nDigitsLeft, wPopCnt);
 
+        // What about no_unnecessary_prefix?
         set_PWR_wPrefix(pwRoot, pwSw, nDigitsLeft, wKey);
 
 #if defined(PP_IN_LINK) || defined(BM_IN_LINK)
