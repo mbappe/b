@@ -368,9 +368,9 @@ again:
             // Notice that we're using pwr which was extracted from
             // the previous wRoot -- not the current wRoot.
             // The current wRoot might be an embedded bitmap.
+            Word_t wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeft);
             if (( ! bNeedPrefixCheck )
-                || (LOG(1 | (pwr_wPrefixNotAtTop(pwr, nDigitsLeftRoot)
-                        ^ wKey))
+                || (LOG(1 | (wPrefix ^ wKey))
                     // pwr_nBitsIndexSz term is necessary because pwr prefix
                     // does not contain any less significant bits.
                     < (cnBitsAtBottom + pwr_nBitsIndexSz(pwr))))
@@ -380,13 +380,16 @@ again:
 #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
 #if 0
                 // Haven't really thought out use of cnDigitsAtBottom here.
-                return pwr_wPopCntNotAtTop(pwr, cnDigitsAtBottom)
+                // Probably need cnDigitsAtBottom + 1 unless PP_IN_LINK.
+                // But cnDigitsAtBottom + 1 is probably just a waste of
+                // code since the switch probably won't exist in that case.
+                return PWR_wPopCntNotAtTop(pwRoot, pwr, cnDigitsAtBottom + 1)
                     ? KeyFound : ! KeyFound;
 #else
                 // Remove is incomplete and may leave the switch in
                 // place even after all keys in all lists have been removed.
                 // This makes it cumbersome to disambiguate a zero value
-                // returned from pwr_wPopCntNotAtTop.
+                // returned from PWR_wPopCntNotAtTop.
                 return KeyFound;
 #endif
 #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
@@ -437,7 +440,7 @@ again:
             else
             {
                 DBGX(printf("Mismatch at bitmap wPrefix "OWx"\n",
-                    pwr_wPrefixNotAtTop(pwr, nDigitsLeftRoot)));
+                    PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeftRoot)));
             }
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
