@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # THIS SCRIPT IS A "WRAPPER" FOR: gnuplot
 #
@@ -90,16 +90,16 @@
 # - Note, this will respect an environment variable, which could be set as:
 # - export OPT_JBGRAPH_geometry="600x450+20+20" # 4x3 aspect ratio.
 
-    OPT_JBGRAPH_geometry="${OPT_JBGRAPH_geometry:-1000x750+20+20}"
-    GNU_GEOMETRY_DEF="1000x750+20+20"	# 4x3 aspect ratio, default.
-    GNU_GEOMETRY="-geometry ${OPT_JBGRAPH_geometry:-$GNU_GEOMETRY_DEF}"
+#    OPT_JBGRAPH_geometry="${OPT_JBGRAPH_geometry:-2000x1500+20+20}"
+#    GNU_GEOMETRY_DEF="2000x1500+20+20"	# 4x3 aspect ratio, default.
+#    GNU_GEOMETRY="-geometry ${OPT_JBGRAPH_geometry:-$GNU_GEOMETRY_DEF}"
 
 # GNU_PSFILE name, (default):
 
     GNU_PSFILE="${OPT_JBGRAPH_psfile:-$COMMAND.GNU_PSFILE}" 
 
-    LP_DEV_DEF="${LP_DEV:-pastel}"	# Printer device (default).
-    LP_OPT_DEF="${LP_OPT:--olandscape}"	# Printer options (default).
+#    LP_DEV_DEF="${LP_DEV:-pastel}"	# Printer device (default).
+    LP_OPT_DEF="${LP_OPT:--ops}"	# Printer options (default).
 
 # PLOT AXIS NAMES:
 
@@ -124,8 +124,8 @@
     CHA[9]="bytes alloced"
     CHA[7]="dM/dI change in memory per index"
     CHA[10]="leaf count"
-    CHA[11]="leaf average size"
-    CHA[12]="leaf memory used per index"
+    CHA[11]="Judy1 malloc calls per Index"
+    CHA[12]="JudyL malloc calls per Index"
     CHA[13]="branch count"
     CHA[14]="branch average size"
     CHA[15]="branch memory used per index"
@@ -640,12 +640,12 @@ FUNCTION_gnuplot_init()			# Initialize gnuplot command file.
     ${v}echo "${C}.${0}:  beginning at `date`"	# beginning of function
   {
     echo "# ${C_PATH} ${*}"
-    echo "# gnuplot ${GNU_GEOMETRY} ${GNU_CMDFILE}"
+    echo "# gnuplot -p ${GNU_GEOMETRY} ${GNU_CMDFILE}"
     if [ "${OPT_L}" = "-L" ]; then	# -L set logscale axis
-        echo "set logscale ${OPT_L_xaxis}${OPT_L_yaxis}"
+        echo "set logscale ${OPT_L_xaxis}${OPT_L_yaxis};"
     fi
-    echo "set autoscale xy"
-    echo "set data style lines"
+    echo "set autoscale xy;"
+    echo "set style data lines"
     if [ ! -z "${OPT_G}" ]; then	# Turn on grids.
         echo "set grid"
     fi
@@ -654,7 +654,7 @@ FUNCTION_gnuplot_init()			# Initialize gnuplot command file.
 
     TITLE="${TITLE:-JUDY BENCHMARK:  $CMD_LINE }" # Set default.
 
-    echo "set title  \"${TITLE}\"  0,0 "
+    echo "set title  \"${TITLE}\""
     if [ "${xRANGE}" != "" ]; then
         echo "set xrange `FUNCTION_units ${xRANGE}`"
 	XLABEL="${XLABEL} ${xRANGE}"
@@ -663,8 +663,8 @@ FUNCTION_gnuplot_init()			# Initialize gnuplot command file.
         echo "set yrange `FUNCTION_units ${yRANGE}`"
 	YLABEL="${YLABEL} ${yRANGE}"
     fi
-    echo "set xlabel \"${XLABEL}\" 0,0"
-    echo "set ylabel \"${YLABEL}\" 0,0"
+    echo "set xlabel \"${XLABEL}\""
+    echo "set ylabel \"${YLABEL}\""
     echo "set label \"${XLOG}\" at  1,1"
   } >> ${GNU_CMDFILE}
 
@@ -699,7 +699,8 @@ FUNCTION_gnuplot_plot()			# Plot these files.
 	    CMN="${COL[$j]}"
             if [ ! -z "${CMN}" ]; then
 	      {
-		MSG="`basename ${i}`"
+#		MSG="`basename ${i}`"
+		MSG="${i}"
 		if [ "${OPT_H}" = "-H" ]; then
 		    echo "${FIRST}plot \"${i}\" using 1:${CMN} t \"${CHA[${CMN}]} ${MSG}\""
 		elif [ "${OPT_NH}" = "-NH" ]; then
@@ -733,7 +734,7 @@ FUNCTION_gnuplot_display()			# Plots the datapoints.
 
     if [ "${OPT_v}" = "-v" ]; then	# -v verbose mode.
         echo "${C}.${0}:  executing command:  "; echo "\n\
-        gnuplot ${GNU_GEOMETRY} ${GNU_CMDFILE}"
+        gnuplot -p ${GNU_GEOMETRY} ${GNU_CMDFILE}"
     fi
 
 # Add additional parameters as necessary to setup for printing:
@@ -748,7 +749,7 @@ FUNCTION_gnuplot_display()			# Plots the datapoints.
     LINE=""				# External response
     while [ "${LINE}" != "q" ]
     do
-        gnuplot ${GNU_GEOMETRY} ${GNU_CMDFILE}
+        gnuplot -p ${GNU_GEOMETRY} ${GNU_CMDFILE}
         LINE="q"			# Setup for quit.
         if [ "${OPT_V}" = "-V" ]; then
 	    echo "Pause: press return to vi again, \"q\" to quit ${C}"
@@ -772,7 +773,8 @@ FUNCTION_gnuplot_print()		# -p print the plot.
     GNU_PSFILE="${GNU_PSFILE:-$GNU_PSFILE_DEF}"
     ${v}echo "${C}.${0}:  GNU_PSFILE=${GNU_PSFILE}, # GNU_PSFILE name."
 
-    LP_DEV_PARM="-d ${LP_DEV:-$LP_DEV_DEF}" # Printer device parameter.
+#    LP_DEV_PARM="-d ${LP_DEV:-$LP_DEV_DEF}" # Printer device parameter.
+    LP_DEV_PARM="${LP_DEV:-$LP_DEV_DEF}" # Printer device parameter.
     LP_OPT_PARM="${LP_OPT:-$LP_OPT_DEF}"    # Printer option parameters.
 
     echo "${C}.${0}: executing command:  "; echo "\n\
@@ -884,7 +886,7 @@ FUNCTION_n()				# -n number plot descriptions.
 FUNCTION_units()			# Resolve units.
 {
 #
-# Expand units of the form 1K to 1000, 1M to 1000000, et.al.
+# Expand units of the form 1K to 2000, 1M to 1000000, et.al.
 # Used to format the gnuplot parameters xRANGE and yRANGE.
 # gnuplot data format:  "set xrange [1:1000000]"
 #
@@ -976,7 +978,7 @@ FUNCTION_b()				# -b Option description.
 
         FUNCTION_gnuplot_plot ${FILES}	# Plot these files.
 
-        echo pause -1 \'Pause: press return to continue.\' >> ${GNU_CMDFILE}
+#        echo pause -1 \'Pause: press return to continue.\' >> ${GNU_CMDFILE}
         echo				# Place blank line in log file.
     fi
 
@@ -984,6 +986,8 @@ FUNCTION_b()				# -b Option description.
 
 
     if [ ! -z "${OPT_p}" ]; then
+#        echo pause -1 \'Pause: press return to continue.\' >> ${GNU_CMDFILE}
+        echo				# Place blank line in log file.
         FUNCTION_gnuplot_print		# -p print the plot.
     fi
 
