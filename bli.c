@@ -230,7 +230,7 @@ again:
         bNeedPrefixCheck |= (nDigitsLeftRoot < nDigitsLeft);
 #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         if ((nDigitsLeftRoot < nDigitsLeft)
-            && (LOG(1 | (pwr_wPrefix(pwr, nDigitsLeftRoot) ^ wKey))
+            && (LOG(1 | (pwR_wPrefix(pwRoot, nDigitsLeftRoot) ^ wKey))
                 >= (nDigitsLeftRoot * cnBitsPerDigit)))
         {
             DBGX(printf("Prefix mismatch wPrefix "Owx"\n",
