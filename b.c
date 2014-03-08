@@ -737,7 +737,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
             pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftOld);
 
-            //set_pwr_wPopCnt(pwSw, nDigitsLeft, 0);
             set_pwR_wPopCnt(pwRoot, nDigitsLeft, 0);
 
 #if defined(SKIP_LINKS)
@@ -753,7 +752,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                   "Not installing prefix left %d old %d wKey "OWx"\n",
                     nDigitsLeft, nDigitsLeftOld, wKey));
 
-                //set_pwr_wPrefix(pwSw, nDigitsLeft, 0);
                 set_pwR_wPrefix(pwRoot, nDigitsLeft, 0);
             }
             else
@@ -825,9 +823,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             wPopCnt = wPrefixPopMask(nDigitsLeftRoot) + 1;
         }
 
-        set_pwr_wPopCnt(pwSw, nDigitsLeft, wPopCnt);
+        set_pwR_wPopCnt(pwRoot, nDigitsLeft, wPopCnt);
 
-        set_pwr_wPrefix(pwSw, nDigitsLeft, wKey);
+        set_pwR_wPrefix(pwRoot, nDigitsLeft, wKey);
 
         // copy old link to new switch
         // todo nBitsIndexSz; wide switch
