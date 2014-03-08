@@ -810,27 +810,39 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         assert(nDigitsLeftRoot < nDigitsLeft);
 
         unsigned nDigitsLeftUp = nDigitsLeft;
+
         // figure new nDigitsLeft for old parent link
-        nDigitsLeft = LOG(1 | (pwr_wPrefix(pwr, nDigitsLeftRoot) ^ wKey))
+        nDigitsLeft = LOG(1 | (pwR_wPrefix(pwRoot, nDigitsLeftRoot) ^ wKey))
                 / cnBitsPerDigit + 1;
 
         assert(nDigitsLeft > nDigitsLeftRoot);
 
-        pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftUp);
-
-        if ((wPopCnt = pwr_wPopCnt(pwr, nDigitsLeftRoot)) == 0)
+        if ((wPopCnt = pwR_wPopCnt(pwRoot, nDigitsLeftRoot)) == 0)
         {
             wPopCnt = wPrefixPopMask(nDigitsLeftRoot) + 1;
         }
+
+        pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftUp);
 
         set_pwR_wPopCnt(pwRoot, nDigitsLeft, wPopCnt);
 
         set_pwR_wPrefix(pwRoot, nDigitsLeft, wKey);
 
-        // copy old link to new switch
+        // Copy old link to new switch.
+        // What if we are at the top hence there is only wRoot -- no link?
+        if (nDigitsLeftUp < cnDigitsPerWord)
+        {
+            // todo nBitsIndexSz; wide switch
+            assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
+            pwr_pLinks(pwSw)
+                    [(pwr_wPrefix(pwr, nDigitsLeftRoot)
+                            >> ((nDigitsLeft - 1) * cnBitsPerDigit))
+                        & (EXP(cnBitsPerDigit) - 1)]
+                = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+        }
+
         // todo nBitsIndexSz; wide switch
         assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
-// this needs work for Link_t
         pwr_pLinks(pwSw)
             [(pwr_wPrefix(pwr, nDigitsLeftRoot)
                     >> ((nDigitsLeft - 1) * cnBitsPerDigit))
