@@ -234,11 +234,7 @@ again:
         // Record that there were prefix bits that were not checked.
         bNeedPrefixCheck |= (nDigitsLeftRoot < nDigitsLeft);
 #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-#if defined(PP_IN_LINK)
-        Word_t wPrefix = pwR_wPrefix(pwRoot, nDigitsLeftRoot);
-#else // defined(PP_IN_LINK)
-        Word_t wPrefix = pwr_wPrefix(pwr, nDigitsLeftRoot);
-#endif // defined(PP_IN_LINK)
+        Word_t wPrefix = PWR_wPrefix(pwRoot, pwr, nDigitsLeftRoot);
         if ((nDigitsLeftRoot < nDigitsLeft)
             && (LOG(1 | (wPrefix ^ wKey))
                 >= (nDigitsLeftRoot * cnBitsPerDigit)))
@@ -264,15 +260,10 @@ again:
             // What about empty subtrees with non-zero pointers left
             // around after remove?
             // if (wPopCnt == 0) && all links full) return KeyFound;
-#if defined(PP_IN_LINK)
-            wPopCnt = pwR_wPopCnt(pwRoot, nDigitsLeftRoot);
-            set_pwR_wPopCnt(pwRoot, nDigitsLeftRoot, wPopCnt + nIncr);
-#else // defined(PP_IN_LINK)
-            wPopCnt = pwr_wPopCnt(pwr, nDigitsLeftRoot);
-            set_pwr_wPopCnt(pwr, nDigitsLeftRoot, wPopCnt + nIncr);
-#endif // defined(PP_IN_LINK)
+            wPopCnt = PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot);
+            set_PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot, wPopCnt + nIncr);
             DBGI(printf("wPopCnt "wd"\n",
-                 pwR_wPopCnt(pwRoot, nDigitsLeftRoot)));
+                 PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot)));
 #endif // !defined(LOOKUP)
 
             // size of array index

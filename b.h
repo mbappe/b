@@ -253,6 +253,12 @@
 #define pwR_wPrefix(_pwR, _nDL)  (w_wPrefix(pwR_wPrefixPop(_pwR), (_nDL)))
 #define pwR_wPopCnt(_pwR, _nDL)  (w_wPopCnt(pwR_wPrefixPop(_pwR), (_nDL)))
 
+#define PWR_wPrefix(_pwRoot, _pwr, _nDL) \
+    (w_wPrefix(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nDL)))
+
+#define PWR_wPopCnt(_pwRoot, _pwr, _nDL) \
+    (w_wPopCnt(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nDL)))
+
 #define set_pwR_wPrefixPop(_pwR, _x)  (pwR_wPrefixPop(_pwR) = (_x))
 
 #define pwR_wPrefixNotAtTop(_pwR, _nDL) \
@@ -293,6 +299,11 @@
 #define set_pwR_wPopCnt(_pwR, _nDL, _cnt) \
     (pwR_wPrefixPop(_pwR) \
         = ((pwR_wPrefixPop(_pwR) & ~wPrefixPopMask(_nDL)) \
+            | ((_cnt) & wPrefixPopMask(_nDL))))
+
+#define set_PWR_wPopCnt(_pwRoot, _pwr, _nDL, _cnt) \
+    (PWR_wPrefixPop((_pwRoot), (_pwr)) \
+        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMask(_nDL)) \
             | ((_cnt) & wPrefixPopMask(_nDL))))
 
 #define set_pwr_wPrefix(_pwr, _nDL, _key) \
