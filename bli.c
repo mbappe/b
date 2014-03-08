@@ -229,8 +229,13 @@ again:
         // Record that there were prefix bits that were not checked.
         bNeedPrefixCheck |= (nDigitsLeftRoot < nDigitsLeft);
 #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#if defined(PP_IN_LINK)
+        Word_t wPrefix = pwR_wPrefix(pwRoot, nDigitsLeftRoot);
+#else // defined(PP_IN_LINK)
+        Word_t wPrefix = pwr_wPrefix(pwr, nDigitsLeftRoot);
+#endif // defined(PP_IN_LINK)
         if ((nDigitsLeftRoot < nDigitsLeft)
-            && (LOG(1 | (pwR_wPrefix(pwRoot, nDigitsLeftRoot) ^ wKey))
+            && (LOG(1 | (wPrefix ^ wKey))
                 >= (nDigitsLeftRoot * cnBitsPerDigit)))
         {
             DBGX(printf("Prefix mismatch wPrefix "Owx"\n",
@@ -242,6 +247,30 @@ again:
         nDigitsLeftRoot = nDigitsLeft; // prev
 #endif // defined(SKIP_LINKS)
         {
+#if !defined(LOOKUP)
+            // Increment or decrement population count on the way in.
+            // I should check for the pop count decrementing to zero.
+            // And add the switch to a list for removal in case the remove
+            // is successful.
+            // BUG:  What if attempting to insert a dup and
+            // we're already at max pop?
+            // if (wPopCnt == 0) && at least one link pop count is not 0
+            // BUG:  What if attempting to remove a key that isn't present
+            // and we're already at pop zero?
+            // What about empty subtrees with non-zero pointers left
+            // around after remove?
+            // if (wPopCnt == 0) && all links full) return KeyFound;
+#if defined(PP_IN_LINK)
+            wPopCnt = pwR_wPopCnt(pwRoot, nDigitsLeftRoot);
+            set_pwR_wPopCnt(pwRoot, nDigitsLeftRoot, wPopCnt + nIncr);
+#else // defined(PP_IN_LINK)
+            wPopCnt = pwr_wPopCnt(pwr, nDigitsLeftRoot);
+            set_pwr_wPopCnt(pwr, nDigitsLeftRoot, wPopCnt + nIncr);
+#endif // defined(PP_IN_LINK)
+            DBGI(printf("wPopCnt "wd"\n",
+                 pwR_wPopCnt(pwRoot, nDigitsLeftRoot)));
+#endif // !defined(LOOKUP)
+
             // size of array index
             unsigned nIndex;
 #if defined(BM_IN_LINK)
@@ -316,24 +345,6 @@ again:
                 nDigitsLeft, nIndex, pwr, pwr_pLinks(pwr)));
 
             DBGX(printf("pwRoot %p wRoot "OWx"\n", pwRoot, wRoot));
-
-#if !defined(LOOKUP)
-            // Increment or decrement population count on the way in.
-            // I should check for the pop count decrementing to zero.
-            // And add the switch to a list for removal in case the remove
-            // is successful.
-            // BUG:  What if attempting to insert a dup and
-            // we're already at max pop?
-            // if (wPopCnt == 0) && at least one link pop count is not 0
-            // BUG:  What if attempting to remove a key that isn't present
-            // and we're already at pop zero?
-            // What about empty subtrees with non-zero pointers left
-            // around after remove?
-            // if (wPopCnt == 0) && all links full) return KeyFound;
-            wPopCnt = pwr_wPopCnt(pwr, nDigitsLeftRoot);
-            set_pwr_wPopCnt(pwr, nDigitsLeftRoot, wPopCnt + nIncr);
-            DBGI(printf("wPopCnt "wd"\n", pwr_wPopCnt(pwr, nDigitsLeftRoot)));
-#endif // !defined(LOOKUP)
 
             if (nDigitsLeft > cnDigitsAtBottom)
             {
