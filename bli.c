@@ -64,11 +64,10 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     unsigned bNeedPrefixCheck = 0;
 #endif // defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
-#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
-    Word_t *pwRoot = &wRoot;
-#else // defined(BM_SWITCH) && !defined(BM_IN_LINK)
     Word_t *pwRoot;
-#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+#if defined(BM_IN_LINK) && !defined(RECURSIVE)
+    pwRoot = NULL; // no need for &wRoot; NULL might catch a bug
+#endif // defined(BM_IN_LINK) && !defined(RECURSIVE)
 #else // defined(LOOKUP)
     Word_t wRoot;
 #if !defined(RECURSIVE)
@@ -266,19 +265,23 @@ again:
                  PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot)));
 #endif // !defined(LOOKUP)
 
-            // size of array index
-            unsigned nIndex;
-#if defined(BM_IN_LINK)
-            unsigned nDigitsLeftOld = nDigitsLeft;
-#endif // defined(BM_IN_LINK)
-
             nDigitsLeft
                 = nDigitsLeftRoot - (pwr_nBitsIndexSz(pwr) / cnBitsPerDigit);
-            nIndex = ((wKey >> (nDigitsLeft * cnBitsPerDigit))
-                        & (EXP(pwr_nBitsIndexSz(pwr)) - 1));
+
+            unsigned nIndex = ((wKey >> (nDigitsLeft * cnBitsPerDigit))
+                                & (EXP(pwr_nBitsIndexSz(pwr)) - 1));
+
 #if defined(BM_SWITCH)
 #if defined(BM_IN_LINK)
-            if (nDigitsLeftOld >= cnDigitsPerWord)
+            // We avoid ambiguity by disallowing calls to Insert/Remove with
+            // nDigitsLeft == cnDigitsPerWord and pwRoot not at the top.
+            // We need to know if there is a link surrounding *pwRoot.
+            // InsertGuts always calls back into Insert with the same pwRoot
+            // it was called with.  So it means Insert cannot call InsertGuts
+            // with nDigitsLeft == cnDigitsPerWord and pwRoot not at the top.
+            // What about defined(RECURSIVE)?
+            // What about Remove and RemoveGuts?
+            if (pwRoot == pwRootOrig)
             {
                 pwRoot = &pwr_pLinks(pwr)[nIndex].ln_wRoot;
             }
@@ -450,6 +453,17 @@ again:
     }
 
 #if defined(INSERT)
+#if defined(BM_IN_LINK)
+#if defined(RECURSIVE)
+    assert(0); // haven't figured out how to avoid ambiguity at top yet
+#endif // defined(RECURSIVE)
+    if (nDigitsLeft == cnDigitsPerWord)
+    {
+        assert(nDigitsLeftOrig == cnDigitsPerWord);
+        pwRoot = pwRootOrig; // avoid ambiguity
+        wRoot = *pwRoot;
+    }
+#endif // defined(BM_IN_LINK)
     return InsertGuts(pwRoot, wKey, nDigitsLeft, wRoot);
 undo:
 #endif // defined(INSERT)
