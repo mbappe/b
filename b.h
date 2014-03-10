@@ -28,7 +28,7 @@
 // Default is cnLogBitsPerWord because a bitmap is the size of a word when
 // cnDigitsAtBottom is one and we can embed the bitmap.
 //#define cnBitsPerDigit  (cnLogBitsPerWord)
-#define cnBitsPerDigit  5
+#define cnBitsPerDigit  8
 
 // Choose bottom.
 // Bottom is where Bitmap is created.  Maybe we should change the meaning.
@@ -231,14 +231,12 @@
 #define w_wPopCntNotAtTop(_w, _nDL)  ((_w) &  wPrefixPopMaskNotAtTop(_nDL))
 
 // It is a bit of a bummer that the macros for extracting fields that might
-// be in the switch or in the link depending on an ifdef require a mask and
-// and extra dereference in one of the cases.  I'm hoping the compiler can
-// optimize them out, but I'm not optimistic.
-// The macro is good for the source code -- I think,
-// but I'm not so sure it is good for the performance of the compiled code.
-// Maybe I'll have to fine-tune the performance path without using the macro?
-// Or using different macros for different cases?
-// Maybe a better option is to use one macro that takes both pwRoot and pwr.
+// be in the switch or in the link depending on ifdefs require a mask and
+// and extra dereference in one of the cases if the only parameter is pwRoot.
+// It would be nice if the compiler could optimize them out, but I'm not
+// optimistic so I chose to make both pwRoot and pwr be parameters.
+// Only one will be used, for each field, in the compiled code, depending
+// on ifdefs.
 #if defined(PP_IN_LINK)
 #define PWR_wPrefixPop(_pwRoot, _pwr) \
     (STRUCT_OF((_pwRoot), Link_t, ln_wRoot)->ln_wPrefixPop)
