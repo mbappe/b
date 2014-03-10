@@ -531,8 +531,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     {
         printf("\n# After Remove(wKey "OWx") %s Dump\n", wKey,
             status == Success ? "Success" : "Failure");
-        Dump((Word_t)*ppvRoot, /* wPrefix */ (Word_t)0,
-             cnBitsPerWord, cnBitsPerWord);
+        Dump((Word_t)*ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord);
         printf("\n");
     }
 #endif // defined(DEBUG_REMOVE)
