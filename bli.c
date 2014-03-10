@@ -228,11 +228,14 @@ again:
 
 #if defined(SKIP_LINKS)
         nDigitsLeftRoot = tp_to_nDigitsLeft(nType);
-        DBGX(printf("Switch nDigitsLeft %d nDigitsLeftRoot %d pwr %p\n",
-            nDigitsLeft, nDigitsLeftRoot, pwr));
-#if ( ! defined(LOOKUP) )
-        assert(nDigitsLeftRoot <= nDigitsLeft); // reserved; keep lookup lean
-#endif // ( ! defined(LOOKUP) )
+        assert(nDigitsLeftRoot <= nDigitsLeft); // reserved
+#else // defined(SKIP_LINKS)
+        nDigitsLeftRoot = nDigitsLeft; // prev
+#endif // defined(SKIP_LINKS)
+
+        DBGX(printf("Switch nDLR %d pwr %p\n", nDigitsLeftRoot, pwr));
+
+#if defined(SKIP_LINKS)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // Record that there were prefix bits that were not checked.
         bNeedPrefixCheck |= (nDigitsLeftRoot < nDigitsLeft);
@@ -246,8 +249,6 @@ again:
         }
         else // !! the "else" here is only for the INSERT/REMOVE case !!
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-#else // defined(SKIP_LINKS)
-        nDigitsLeftRoot = nDigitsLeft; // prev
 #endif // defined(SKIP_LINKS)
         {
 #if !defined(LOOKUP)
