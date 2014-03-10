@@ -214,9 +214,9 @@ OldSwitch(Switch_t *pSw)
 static Word_t
 FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 {
-#if defined(BM_IN_LINK)
+#if defined(BM_IN_LINK) || defined(PP_IN_LINK)
     unsigned nBitsLeftArg = nBitsLeft;
-#endif // defined(BM_IN_LINK)
+#endif // defined(BM_IN_LINK) || defined(PP_IN_LINK)
     Word_t wRoot = *pwRoot;
     unsigned nDigitsLeft;
     Word_t *pwr;
@@ -237,7 +237,8 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         // should enhance this to check for zeros in suffix and to print
         // dots for suffix.
         printf(" wPrefix "OWx, wPrefix);
-        printf(" wr "OWx, wRoot);
+        printf(" pwRoot "OWx, (Word_t)pwRoot);
+        //printf(" wr "OWx, wRoot);
     }
 
     if (nBitsLeft <= cnBitsAtBottom)
@@ -318,14 +319,26 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
     if (bDump)
     {
-        printf(" wPopCnt %3llu",
-            (unsigned long long)PWR_wPopCnt(pwRoot, pwr, nDigitsLeft));
+#if defined(PP_IN_LINK)
+        if (nBitsLeftArg == cnBitsPerWord)
+        {
+            assert(nDigitsLeft == cnDigitsPerWord); // no skip for PP_IN_LINK
+            printf(" wPopCnt n/a");
+            printf(" wr_wPrefix n/a");
+        }
+        else
+#endif // defined(PP_IN_LINK)
+        {
+            //printf(" wPrefixPop "OWx, PWR_wPrefixPop(pwRoot, pwr));
+            printf(" wPopCnt %3llu",
+                (unsigned long long)PWR_wPopCnt(pwRoot, pwr, nDigitsLeft));
+            printf(" wr_wPrefix "OWx, wPrefix);
+        }
+
         printf(" wr_nDigitsLeft %2d", nDigitsLeft);
         // should enhance this to check for zeros in suffix and to print
         // dots for suffix.
-        printf(" wPrefixPop "OWx, PWR_wPrefixPop(pwRoot, pwr));
-        printf(" wKeyPopMask "OWx, wPrefixPopMask(nDigitsLeft));
-        printf(" wr_wPrefix "OWx, wPrefix);
+        //printf(" wKeyPopMask "OWx, wPrefixPopMask(nDigitsLeft));
         //printf(" pLinks "OWx, (Word_t)pLinks);
 #if defined(BM_SWITCH)
 #if defined(BM_IN_LINK)
