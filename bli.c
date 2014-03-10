@@ -65,13 +65,12 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #endif // defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
     Word_t *pwRoot;
-#if defined(BM_IN_LINK) && !defined(RECURSIVE)
+#if defined(BM_IN_LINK)
     pwRoot = NULL; // no need for &wRoot; NULL might catch a bug
-#endif // defined(BM_IN_LINK) && !defined(RECURSIVE)
+#endif // defined(BM_IN_LINK)
 #else // defined(LOOKUP)
     Word_t wRoot;
 #if !defined(RECURSIVE)
-    Word_t *pwRootOrig = pwRoot;
     unsigned nDigitsLeftOrig = nDigitsLeft;
 #if defined(INSERT)
     int nIncr = 1;
@@ -80,6 +79,11 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #endif // defined(INSERT)
 #endif // !defined(RECURSIVE)
 #endif // defined(LOOKUP)
+#if !defined(RECURSIVE)
+#if !defined(LOOKUP) || defined(BM_IN_LINK)
+    Word_t *pwRootOrig = pwRoot;
+#endif // !defined(LOOKUP) || defined(BM_IN_LINK)
+#endif // !defined(RECURSIVE)
     unsigned nDigitsLeftRoot;
 #if !defined(LOOKUP)
     Word_t wPopCnt;
@@ -281,7 +285,16 @@ again:
             // with nDigitsLeft == cnDigitsPerWord and pwRoot not at the top.
             // What about defined(RECURSIVE)?
             // What about Remove and RemoveGuts?
-            if (pwRoot == pwRootOrig)
+            if (1
+#if defined(RECURSIVE)
+                    && (nDigitsLeft == cnDigitsPerWord)
+#else // defined(RECURSIVE)
+                    && (pwRoot == pwRootOrig)
+#if !defined(LOOKUP)
+                    && (nDigitsLeftOrig == cnDigitsPerWord)
+#endif // !defined(LOOKUP)
+#endif // defined(RECURSIVE)
+                )
             {
                 pwRoot = &pwr_pLinks(pwr)[nIndex].ln_wRoot;
             }
@@ -454,15 +467,11 @@ again:
 
 #if defined(INSERT)
 #if defined(BM_IN_LINK)
-#if defined(RECURSIVE)
-    assert(0); // haven't figured out how to avoid ambiguity at top yet
-#endif // defined(RECURSIVE)
-    if (nDigitsLeft == cnDigitsPerWord)
-    {
-        assert(nDigitsLeftOrig == cnDigitsPerWord);
-        pwRoot = pwRootOrig; // avoid ambiguity
-        wRoot = *pwRoot;
-    }
+    // If InsertGuts calls Insert, then it is always with the same
+    // pwRoot and nDigitsLeft that Insert passed to InsertGuts.
+#if !defined(RECURSIVE)
+    assert((nDigitsLeft != cnDigitsPerWord) || (pwRoot == pwRootOrig));
+#endif // !defined(RECURSIVE)
 #endif // defined(BM_IN_LINK)
     return InsertGuts(pwRoot, wKey, nDigitsLeft, wRoot);
 undo:

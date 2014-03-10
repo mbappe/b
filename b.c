@@ -212,9 +212,11 @@ OldSwitch(Switch_t *pSw)
 }
 
 static Word_t
-FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft,
-              unsigned nBitsLeftUp, int bDump)
+FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 {
+#if defined(BM_IN_LINK)
+    unsigned nBitsLeftArg = nBitsLeft;
+#endif // defined(BM_IN_LINK)
     Word_t wRoot = *pwRoot;
     unsigned nDigitsLeft;
     Word_t *pwr;
@@ -264,6 +266,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft,
     }
 
     nType = wr_nType(wRoot);
+
+    assert((tp_to_nDigitsLeft(nType) * cnBitsPerDigit)
+        <= ALIGN_UP(nBitsLeft, cnBitsPerDigit));
 
     pwr = wr_tp_pwr(wRoot, nType);
 
@@ -324,7 +329,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft,
         //printf(" pLinks "OWx, (Word_t)pLinks);
 #if defined(BM_SWITCH)
 #if defined(BM_IN_LINK)
-        if (nBitsLeftUp < cnBitsPerWord)
+        if (nBitsLeftArg != cnBitsPerWord)
 #endif // defined(BM_IN_LINK)
         {
             printf(" Bm");
@@ -339,19 +344,14 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft,
         printf("\n");
     }
 
-    nBitsLeftUp = nBitsLeft;
-    nBitsLeft -= nBitsIndexSz;
-    // In case nBitsLeftState is not an integral number of digits.
-    if (cnBitsPerWord % cnBitsPerDigit != 0)
-    {
-        nBitsLeft = (nBitsLeft + nBitsIndexSz - 1)
-            / nBitsIndexSz * nBitsIndexSz;
-    }
+    nBitsLeft = ALIGN_UP(nBitsLeft - nBitsIndexSz, cnBitsPerDigit);
 
     for (n = 0; n < EXP(nBitsIndexSz); n++)
     {
-        wBytes += FreeArrayGuts(&pLinks[n].ln_wRoot,
-            wPrefix | (n << nBitsLeft), nBitsLeft, nBitsLeftUp, bDump);
+        pwRoot = &pLinks[n].ln_wRoot;
+
+        wBytes += FreeArrayGuts(pwRoot,
+                    wPrefix | (n << nBitsLeft), nBitsLeft, bDump);
     }
 
 #if defined(RAM_METRICS)
@@ -363,9 +363,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft,
 
 #if defined(DEBUG)
 void
-Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft, unsigned nBitsLeftUp)
+Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft)
 {
-    FreeArrayGuts(&wRoot, wPrefix, nBitsLeft, nBitsLeftUp, /* bDump */ 1);
+    FreeArrayGuts(&wRoot, wPrefix, nBitsLeft, /* bDump */ 1);
 }
 #endif // defined(DEBUG)
 
@@ -976,7 +976,7 @@ Judy1FreeArray(PPvoid_t PPArray, P_JE)
 
 #if (cnBitsPerDigit != 0)
     return FreeArrayGuts((Word_t *)PPArray,
-        /* wPrefix */ 0, cnBitsPerWord, cnBitsPerWord, /* bDump */ 0);
+        /* wPrefix */ 0, cnBitsPerWord, /* bDump */ 0);
 #else // (cnBitsPerDigit != 0)
     JudyFree(*PPArray,
        EXP(cnBitsPerWord - cnLogBitsPerByte - cnLogBytesPerWord));

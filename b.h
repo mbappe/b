@@ -422,7 +422,7 @@ Status_t RemoveGuts(Word_t *pwRoot,
 Word_t OldBitmap(Word_t wRoot);
 
 #if defined(DEBUG)
-void Dump(Word_t wRoot, Word_t wPrefix, unsigned nBL, unsigned nBLU);
+void Dump(Word_t wRoot, Word_t wPrefix, unsigned nBL);
 #endif // defined(DEBUG)
 
 #endif // (cnBitsPerDigit != 0)
