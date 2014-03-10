@@ -168,6 +168,9 @@ again:
 #endif // defined(COMPRESSED_LISTS)
             {
                 assert(((LeafWord_t *)wRoot)->lw_nDigitsLeft == nDigitsLeft);
+#if defined(PP_IN_LINK)
+                assert(PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == wPopCnt);
+#endif // defined(PP_IN_LINK)
 #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 // This short-circuit is for analysis only.  We have retrieved the pop count
 // and prefix but we have not dereferenced the list itself.
