@@ -211,14 +211,14 @@ OldSwitch(Switch_t *pSw)
     return sizeof(*pSw);
 }
 
-static Word_t
+Word_t
 FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 {
 #if defined(BM_IN_LINK) || defined(PP_IN_LINK)
     unsigned nBitsLeftArg = nBitsLeft;
 #endif // defined(BM_IN_LINK) || defined(PP_IN_LINK)
     Word_t wRoot = *pwRoot;
-    unsigned nDigitsLeft;
+    unsigned nDigitsLeft = DIV_UP(nBitsLeft, cnBitsPerDigit);
     Word_t *pwr;
     unsigned nBitsIndexSz;
     Link_t *pLinks;
@@ -233,16 +233,34 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
     if (bDump)
     {
-        printf(" nBitsLeft %2d", nBitsLeft);
         // should enhance this to check for zeros in suffix and to print
         // dots for suffix.
         printf(" wPrefix "OWx, wPrefix);
+        printf(" nBitsLeft %2d", nBitsLeft);
         printf(" pwRoot "OWx, (Word_t)pwRoot);
         //printf(" wr "OWx, wRoot);
     }
 
     if (nBitsLeft <= cnBitsAtBottom)
     {
+#if defined(PP_IN_LINK)
+        if (bDump)
+        {
+            if (nBitsLeftArg == cnBitsPerWord)
+            {
+                printf(" wr_wPopCnt N/A");
+                printf(" wr_wPrefix        N/A");
+            }
+            else
+            {
+                printf(" wr_wPopCnt %3zu",
+                       PWR_wPopCnt(pwRoot, NULL, nDigitsLeft));
+                printf(" wr_wPrefix "OWx,
+                       PWR_wPrefix(pwRoot, NULL, nDigitsLeft));
+            }
+        }
+#endif // defined(PP_IN_LINK)
+
         if (cnBitsAtBottom > cnLogBitsPerWord)
         {
             if (!bDump)
@@ -284,9 +302,22 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         {
             return OldList(pwr);
         }
+#if defined(PP_IN_LINK)
+        if (nBitsLeftArg == cnBitsPerWord)
+        {
+            printf(" wr_wPopCnt N/A");
+            printf(" wr_wPrefix        N/A");
+        }
+        else
+        {
+            printf(" wr_wPopCnt %3zu",
+                   PWR_wPopCnt(pwRoot, NULL, nDigitsLeft));
+            printf(" wr_wPrefix "OWx, PWR_wPrefix(pwRoot, NULL, nDigitsLeft));
+        }
+#endif // defined(PP_IN_LINK)
 
-        printf(" wLen %3llu", (unsigned long long)ls_wLen(wRoot));
-        printf(" wPopCnt %3llu", (unsigned long long)wPopCnt);
+        printf(" ls_wLen %3llu", (unsigned long long)ls_wLen(wRoot));
+        printf(" ls_wPopCnt %3llu", (unsigned long long)wPopCnt);
 
         for (n = 0; (n < wPopCnt) && (n < 8); n++)
         {
@@ -322,16 +353,13 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 #if defined(PP_IN_LINK)
         if (nBitsLeftArg == cnBitsPerWord)
         {
-            assert(nDigitsLeft == cnDigitsPerWord); // no skip for PP_IN_LINK
-            printf(" wPopCnt n/a");
-            printf(" wr_wPrefix n/a");
+            printf(" wr_wPopCnt N/A");
+            printf(" wr_wPrefix        N/A");
         }
         else
 #endif // defined(PP_IN_LINK)
         {
-            //printf(" wPrefixPop "OWx, PWR_wPrefixPop(pwRoot, pwr));
-            printf(" wPopCnt %3llu",
-                (unsigned long long)PWR_wPopCnt(pwRoot, pwr, nDigitsLeft));
+            printf(" wr_wPopCnt %3zu", PWR_wPopCnt(pwRoot, pwr, nDigitsLeft));
             printf(" wr_wPrefix "OWx, wPrefix);
         }
 
@@ -906,16 +934,31 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     {
         if (cnBitsAtBottom <= cnLogBitsPerWord)
         {
-            // BUG:  We should check if the switch is empty
-            // and free it (and on up the tree as necessary).
+            // What if link has more space than just *pwRoot due
+            // to BM_IN_LINK and/or PP_IN_LINK?
             ClrBitInWord(wRoot, wKey & ((EXP(cnBitsAtBottom)) - 1UL));
             *pwRoot = wRoot;
         }
         else
         {
             ClrBit(wRoot, wKey & ((EXP(cnBitsAtBottom)) - 1UL));
-            // BUG: We should check if the bitmap is
-            // empty and free it if so.
+#if defined(PP_IN_LINK)
+            if (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == 0)
+            {
+                DBGL(printf("RemoveGuts OldBitmap nDigitsLeft %d\n",
+                     nDigitsLeft));
+                OldBitmap(wRoot); *pwRoot = 0;
+            }
+#else // defined(PP_IN_LINK)
+            // BUG: We should check if the bitmap is empty and free it if so.
+            // Count bits?
+#endif // defined(PP_IN_LINK)
+        }
+
+        if (*pwRoot == 0)
+        {
+            // We return to Remove which will clean up ancestors.
+            DBGR(printf("RemoveGuts *pwRoot is now 0\n"));
         }
     }
     else

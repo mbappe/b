@@ -93,6 +93,9 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     unsigned nType;
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+#if defined(REMOVE)
+    int bCleanup = 0;
+#endif // defined(REMOVE)
     Word_t *pwr = pwr; // suppress "uninitialized" compiler warning
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
@@ -125,10 +128,46 @@ again:
     {
         if (wRoot != 0)
         {
+#if !defined(LOOKUP)
+#if defined(PP_IN_LINK)
+            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
+#if defined(REMOVE)
+            if (bCleanup)
+            {
+                // RemoveGuts already removed the list if necessary.
+                assert(wPopCnt != 0);
+                return KeyFound;
+            }
+            else
+#endif // defined(REMOVE)
+            {
+                DBGX(printf("List nDigitsLeft %d\n", nDigitsLeft));
+                DBGX(printf("wPopCnt (before incr) %zd\n", wPopCnt));
+                DBGX(printf("wKeyPopMask "OWx"\n",
+                    wPrefixPopMask(nDigitsLeft)));
+                set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
+                DBGX(printf("wPopCnt (after incr) %zd\n",
+                     PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
+            }
+#else // defined(PP_IN_LINK)
+            assert(0);
+#endif // defined(PP_IN_LINK)
+#endif // !defined(LOOKUP)
+
 #if 0
             unsigned nTypeX = oh_nTypeX(wRoot);
             unsigned nDigitsLeft = oh_nDigitsLeft(wRoot);
 #endif
+#if defined(LOOKUP) && defined(PP_IN_LINK) && defined(DEBUG_LOOKUP)
+            if ((nDigitsLeft != cnDigitsPerWord)
+                && (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) > cwListPopCntMax))
+            {
+                printf("PWR_wPopCnt %zd 0x%zx\n", 
+                       PWR_wPopCnt(pwRoot, NULL, nDigitsLeft),
+                       PWR_wPopCnt(pwRoot, NULL, nDigitsLeft));
+                assert(0);
+            }
+#endif // defined(LOOKUP) && defined(PP_IN_LINK) && defined(DEBUG_LOOKUP)
 #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 // This short-circuit is for analysis only.
             return KeyFound;
@@ -168,9 +207,16 @@ again:
 #endif // defined(COMPRESSED_LISTS)
             {
                 assert(((LeafWord_t *)wRoot)->lw_nDigitsLeft == nDigitsLeft);
-#if defined(PP_IN_LINK)
-                assert(PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == wPopCnt);
-#endif // defined(PP_IN_LINK)
+#if defined(LOOKUP) && defined(PP_IN_LINK) && defined(DEBUG_LOOKUP)
+                if ((nDigitsLeft != cnDigitsPerWord)
+                    && (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) != wPopCnt))
+                {
+                    printf("PWR_wPopCnt %zd 0x%zx wPopCnt %zd\n", 
+                           PWR_wPopCnt(pwRoot, NULL, nDigitsLeft),
+                           PWR_wPopCnt(pwRoot, NULL, nDigitsLeft), wPopCnt);
+                    assert(0);
+                }
+#endif // defined(LOOKUP) && defined(PP_IN_LINK) && defined(DEBUG_LOOKUP)
 #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 // This short-circuit is for analysis only.  We have retrieved the pop count
 // and prefix but we have not dereferenced the list itself.
@@ -197,6 +243,7 @@ again:
                     {
 #if defined(REMOVE)
                         RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                        goto cleanup;
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE)
                         if (nIncr > 0) goto undo; // undo counting
@@ -254,30 +301,84 @@ again:
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
         {
-#if !defined(LOOKUP)
-            // Increment or decrement population count on the way in.
-            // I should check for the pop count decrementing to zero.
-            // And add the switch to a list for removal in case the remove
-            // is successful.
-            // BUG:  What if attempting to insert a dup and
-            // we're already at max pop?
-            // if (wPopCnt == 0) && at least one link pop count is not 0
-            // BUG:  What if attempting to remove a key that isn't present
-            // and we're already at pop zero?
-            // What about empty subtrees with non-zero pointers left
-            // around after remove?
-            // if (wPopCnt == 0) && all links full) return KeyFound;
-            wPopCnt = PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot);
-            set_PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot, wPopCnt + nIncr);
-            DBGI(printf("wPopCnt %zd\n",
-                 PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot)));
-#endif // !defined(LOOKUP)
-
             nDigitsLeft
                 = nDigitsLeftRoot - (pwr_nBitsIndexSz(pwr) / cnBitsPerDigit);
 
-            unsigned nIndex = ((wKey >> (nDigitsLeft * cnBitsPerDigit))
+            Word_t wIndex = ((wKey >> (nDigitsLeft * cnBitsPerDigit))
                                 & (EXP(pwr_nBitsIndexSz(pwr)) - 1));
+
+#if !defined(LOOKUP)
+#if defined(PP_IN_LINK)
+            if (nDigitsLeftRoot == cnDigitsPerWord)
+            {
+#if defined(REMOVE)
+                if (bCleanup)
+                {
+                    DBGX(printf("Cleanup\n"));
+                    for (Word_t ww = 0; ww < EXP(cnBitsPerDigit); ww++)
+                    {
+// looking at the next pwRoot seems like something that should be deferred
+// but if we defer, then we won't have the previous pwRoot, but if this
+// only happens at the top, then the previous pwRoot will be pwRootOrig?
+                        if ((pwr_pLinks(pwr)[ww].ln_wRoot != 0)
+                            && ((ww != wIndex)
+                                || PWR_wPopCnt(&pwr_pLinks(pwr)[ww].ln_wRoot,
+                                        NULL,
+                                        wr_nDigitsLeft(
+                                            pwr_pLinks(pwr)[ww].ln_wRoot))
+                                    != 0))
+                        {
+                            DBGX(printf("Not empty ww %zd wIndex %zd\n",
+                                 ww, wIndex));
+                            goto notEmpty; // switch pop is not zero
+                        }
+                    }
+                    // switch pop is zero
+                    FreeArrayGuts(pwRoot, wKey,
+                        nDigitsLeftRoot * cnBitsPerDigit, /* bDump */ 0);
+                    *pwRoot = 0;
+                    return KeyFound;
+notEmpty:;
+                }
+#endif // defined(REMOVE)
+            }
+            else
+#endif // defined(PP_IN_LINK)
+            {
+                // Increment or decrement population count on the way in.
+                // I should check for the pop count decrementing to zero.
+                // And add the switch to a list for removal in case the remove
+                // is successful.
+                // BUG:  What if attempting to insert a dup and
+                // we're already at max pop?
+                // if (wPopCnt == 0) && at least one link pop count is not 0
+                // BUG:  What if attempting to remove a key that isn't present
+                // and we're already at pop zero?
+                // What about empty subtrees with non-zero pointers left
+                // around after remove?
+                // if (wPopCnt == 0) && all links full) return KeyFound;
+                wPopCnt = PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot);
+#if defined(REMOVE)
+                if (bCleanup)
+                {
+                    if (wPopCnt == 0)
+                    {
+                        FreeArrayGuts(pwRoot, wKey,
+                            nDigitsLeftRoot * cnBitsPerDigit, /* bDump */ 0);
+                        *pwRoot = 0;
+                        return KeyFound;
+                    }
+                }
+                else
+#endif // defined(REMOVE)
+                {
+                    set_PWR_wPopCnt(pwRoot, pwr,
+                                    nDigitsLeftRoot, wPopCnt + nIncr);
+                    DBGX(printf("wPopCnt %zd\n",
+                         PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot)));
+                }
+            }
+#endif // !defined(LOOKUP)
 
 #if defined(BM_SWITCH)
 #if defined(BM_IN_LINK)
@@ -300,18 +401,18 @@ again:
 #endif // defined(RECURSIVE)
                 )
             {
-                pwRoot = &pwr_pLinks(pwr)[nIndex].ln_wRoot;
+                pwRoot = &pwr_pLinks(pwr)[wIndex].ln_wRoot;
             }
             else
 #endif // defined(BM_IN_LINK)
             {
                 unsigned nBmOffset = 0;
-                Word_t wBit = ((Word_t)1 << (nIndex & (cnBitsPerWord - 1)));
+                Word_t wBit = ((Word_t)1 << (wIndex & (cnBitsPerWord - 1)));
                 // test to see if link exists here
                 Word_t wBmMask = wBit - 1;
                 unsigned nLnOffset = 0;
 #if (cnBitsPerDigit > cnLogBitsPerWord)
-                nBmOffset += nIndex >> cnLogBitsPerWord;
+                nBmOffset += wIndex >> cnLogBitsPerWord;
                 for (unsigned nn = 0; nn < nBmOffset; nn++)
                 {
                     nLnOffset
@@ -329,17 +430,17 @@ again:
 #if defined(BM_IN_LINK)
                 if (wBm == 0)
                 {
-                    pwRoot = &pwr_pLinks(pwr)[nIndex].ln_wRoot;
+                    pwRoot = &pwr_pLinks(pwr)[wIndex].ln_wRoot;
                 }
                 else
 #endif // defined(BM_IN_LINK)
                 {
-                    if (nLnOffset != nIndex)
+                    if (nLnOffset != wIndex)
                     {
                         printf(
-                          "\nnLnOffset 0x%x nIndex 0x%x"
+                          "\nnLnOffset 0x%x wIndex 0x%x"
                           " wBm "OWx" wBmMask "OWx"\n",
-                            nLnOffset, nIndex, wBm, wBmMask);
+                            nLnOffset, wIndex, wBm, wBmMask);
                         for (unsigned nn = 0;
                              nn < DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord);
                              nn ++)
@@ -348,17 +449,17 @@ again:
                         }
                         printf("\n");
                     }
-                    assert(nLnOffset == nIndex);
+                    assert(nLnOffset == wIndex);
                     pwRoot = &pwr_pLinks(pwr)[nLnOffset].ln_wRoot;
                 }
             }
 #else // defined(BM_SWITCH)
-            pwRoot = &pwr_pLinks(pwr)[nIndex].ln_wRoot;
+            pwRoot = &pwr_pLinks(pwr)[wIndex].ln_wRoot;
 #endif // defined(BM_SWITCH)
             wRoot = *pwRoot;
 
-            DBGX(printf("Next nDigitsLeft %d nIndex %d pwr %p pLinks %p\n",
-                nDigitsLeft, nIndex, pwr, pwr_pLinks(pwr)));
+            DBGX(printf("Next nDigitsLeft %d wIndex %zd pwr %p pLinks %p\n",
+                nDigitsLeft, wIndex, pwr, pwr_pLinks(pwr)));
 
             DBGX(printf("pwRoot %p wRoot "OWx"\n", pwRoot, wRoot));
 
@@ -374,6 +475,31 @@ again:
                 return InsertRemove(pwRoot, wKey, nDigitsLeft);
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
             }
+
+#if !defined(LOOKUP)
+#if defined(PP_IN_LINK)
+            DBGX(printf("Bitmap nDigitsLeft %d\n", nDigitsLeft));
+            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
+#if defined(REMOVE)
+            if (bCleanup)
+            {
+                // RemoveGuts already removed the bitmap if necessary.
+                return KeyFound;
+            }
+            else
+#endif // defined(REMOVE)
+            {
+                DBGX(printf("wPopCnt (before incr) %zd\n", wPopCnt));
+                DBGX(printf("wKeyPopMask "OWx"\n",
+                     wPrefixPopMask(nDigitsLeft)));
+                set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
+                DBGX(printf("wPopCnt %zd\n",
+                     PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
+            }
+#else // defined(PP_IN_LINK)
+            assert(0);
+#endif // defined(PP_IN_LINK)
+#endif // !defined(LOOKUP)
 
             // We have to do the prefix check here if we're at the
             // bottom because wRoot contains a Bitmap.  Not a pointer.
@@ -425,6 +551,7 @@ again:
                     {
 #if defined(REMOVE)
                         RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                        goto cleanup;
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE)
                         if (nIncr > 0) goto undo; // undo counting
@@ -445,6 +572,7 @@ again:
                     {
 #if defined(REMOVE)
                         RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                        goto cleanup;
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE)
                         if (nIncr > 0) goto undo; // undo counting 
@@ -485,14 +613,29 @@ undo:
 #endif // defined(REMOVE) && !defined(RECURSIVE)
 #if !defined(LOOKUP) && !defined(RECURSIVE)
     {
+#if defined(REMOVE)
+        if (bCleanup)
+        {
+            return KeyFound; // nothing to clean up
+        }
+        printf("\n# Not bCleanup -- Remove failure!\n");
+#endif // defined(REMOVE)
         // Undo the counting we did on the way in.
         nIncr *= -1;
+#if defined(REMOVE)
+restart:
+#endif // defined(REMOVE)
         pwRoot = pwRootOrig;
         nDigitsLeft = nDigitsLeftOrig;
         goto top;
     }
 #endif // !defined(LOOKUP) && !defined(RECURSIVE)
     return Failure;
+#if defined(REMOVE)
+cleanup:
+    bCleanup = 1; // ?? nIncr == 0 ??
+    goto restart;
+#endif // defined(REMOVE)
 }
 
 #undef RECURSIVE
@@ -521,7 +664,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     int status;
 
-    DBGR(printf("\nJudy1Unset wKey "OWx"\n", wKey));
+    DBGR(printf("\n\n# Judy1Unset wKey "OWx"\n", wKey));
 
     status = Remove((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
 

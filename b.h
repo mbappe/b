@@ -51,7 +51,7 @@
 // depth with only the bottom list having more than one key.
 // We could vary the max length based on depth or be even more sophisticated.
 //#define cwListPopCntMax  EXP(cnBitsPerDigit)
-#define cwListPopCntMax  4
+#define cwListPopCntMax  0
 
 // Choose features.
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
@@ -412,10 +412,13 @@ Status_t Insert(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft);
 Status_t Remove(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft);
 
 Status_t InsertGuts(Word_t *pwRoot,
-    Word_t wKey, unsigned nDigitsLeft, Word_t wRoot);
+                    Word_t wKey, unsigned nDigitsLeft, Word_t wRoot);
 
 Status_t RemoveGuts(Word_t *pwRoot,
-    Word_t wKey, unsigned nDigitsLeft, Word_t wRoot);
+                    Word_t wKey, unsigned nDigitsLeft, Word_t wRoot);
+
+Word_t FreeArrayGuts(Word_t *pwRoot,
+                     Word_t wPrefix, unsigned nBitsLeft, int bDump);
 
 Word_t OldBitmap(Word_t wRoot);
 
