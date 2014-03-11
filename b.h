@@ -51,7 +51,7 @@
 // depth with only the bottom list having more than one key.
 // We could vary the max length based on depth or be even more sophisticated.
 //#define cwListPopCntMax  EXP(cnBitsPerDigit)
-#define cwListPopCntMax  0
+#define cwListPopCntMax  4
 
 // Choose features.
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS

@@ -126,38 +126,27 @@ again:
 #if (cwListPopCntMax != 0)
     if (!tp_bIsSwitch(nType))
     {
-        if (wRoot != 0)
-        {
 #if !defined(LOOKUP)
-#if defined(PP_IN_LINK)
-            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
 #if defined(REMOVE)
             if (bCleanup)
             {
                 // RemoveGuts already removed the list if necessary.
-                assert(wPopCnt != 0);
                 return KeyFound;
             }
-            else
 #endif // defined(REMOVE)
-            {
-                DBGX(printf("List nDigitsLeft %d\n", nDigitsLeft));
-                DBGX(printf("wPopCnt (before incr) %zd\n", wPopCnt));
-                DBGX(printf("wKeyPopMask "OWx"\n",
-                    wPrefixPopMask(nDigitsLeft)));
-                set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
-                DBGX(printf("wPopCnt (after incr) %zd\n",
-                     PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
-            }
+#if defined(PP_IN_LINK)
+            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
+            DBGX(printf("List nDigitsLeft %d\n", nDigitsLeft));
+            DBGX(printf("wPopCnt (before incr) %zd\n", wPopCnt));
+            DBGX(printf("wKeyPopMask "OWx"\n",
+                wPrefixPopMask(nDigitsLeft)));
+            set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
+            DBGX(printf("wPopCnt (after incr) %zd\n",
+                 PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
 #else // defined(PP_IN_LINK)
-            assert(0);
 #endif // defined(PP_IN_LINK)
 #endif // !defined(LOOKUP)
 
-#if 0
-            unsigned nTypeX = oh_nTypeX(wRoot);
-            unsigned nDigitsLeft = oh_nDigitsLeft(wRoot);
-#endif
 #if defined(LOOKUP) && defined(PP_IN_LINK) && defined(DEBUG_LOOKUP)
             if ((nDigitsLeft != cnDigitsPerWord)
                 && (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) > cwListPopCntMax))
@@ -168,6 +157,12 @@ again:
                 assert(0);
             }
 #endif // defined(LOOKUP) && defined(PP_IN_LINK) && defined(DEBUG_LOOKUP)
+        if (wRoot != 0)
+        {
+#if 0
+            unsigned nTypeX = oh_nTypeX(wRoot);
+            unsigned nDigitsLeft = oh_nDigitsLeft(wRoot);
+#endif
 #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 // This short-circuit is for analysis only.
             return KeyFound;
@@ -477,27 +472,23 @@ notEmpty:;
             }
 
 #if !defined(LOOKUP)
-#if defined(PP_IN_LINK)
-            DBGX(printf("Bitmap nDigitsLeft %d\n", nDigitsLeft));
-            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
 #if defined(REMOVE)
             if (bCleanup)
             {
                 // RemoveGuts already removed the bitmap if necessary.
                 return KeyFound;
             }
-            else
 #endif // defined(REMOVE)
-            {
-                DBGX(printf("wPopCnt (before incr) %zd\n", wPopCnt));
-                DBGX(printf("wKeyPopMask "OWx"\n",
-                     wPrefixPopMask(nDigitsLeft)));
-                set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
-                DBGX(printf("wPopCnt %zd\n",
-                     PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
-            }
+#if defined(PP_IN_LINK)
+            DBGX(printf("Bitmap nDigitsLeft %d\n", nDigitsLeft));
+            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
+            DBGX(printf("wPopCnt (before incr) %zd\n", wPopCnt));
+            DBGX(printf("wKeyPopMask "OWx"\n",
+                 wPrefixPopMask(nDigitsLeft)));
+            set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
+            DBGX(printf("wPopCnt %zd\n",
+                 PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
 #else // defined(PP_IN_LINK)
-            assert(0);
 #endif // defined(PP_IN_LINK)
 #endif // !defined(LOOKUP)
 
