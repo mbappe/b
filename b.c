@@ -68,6 +68,7 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
     DBGM(printf("NewList nWords %d\n", nWords));
 
     Word_t *pwList = (Word_t *)JudyMalloc(nWords);
+    assert(pwList != NULL);
     assert(((Word_t)pwList & cnMallocMask) == 0);
 
     (void)nDigitsLeft;
@@ -105,6 +106,7 @@ static Word_t
 NewBitmap(void)
 {
     Word_t w = JudyMalloc(EXP(cnBitsAtBottom) / cnBitsPerWord);
+    assert(w != 0);
     assert((w & cnMallocMask) == 0);
 
     METRICS(j__AllocWordsJLB1 += (EXP(cnBitsAtBottom) / cnBitsPerWord));
