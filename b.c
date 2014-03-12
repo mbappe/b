@@ -523,6 +523,20 @@ CopyWithInsertChar(unsigned char *pTgt, unsigned char *pSrc,
 #endif // defined(COMPRESSED_LISTS)
 #endif // defined(SORT_LISTS)
 
+// InsertGuts
+// This function is called from the iterative Insert function once Insert has
+// determined that the key from an insert request is not present.
+// It is provided with a starting location for the insert.
+// InsertGuts does whatever is necessary to insert the key into the array
+// and returns back to Insert.
+// This is where the main runtime policy decisions are made.
+// Some are made in RemoveGuts, but those are closely aligned with
+// the decisions made here.
+// Do we create a list as high as possible or as low as possible?
+// When do we create a new switch for a list being too long?
+// When do we create a bitmap?
+// When do we uncompress switches?
+// When do we coalesce switches?
 Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 {
