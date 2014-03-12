@@ -41,7 +41,7 @@ Word_t j__TreeDepth;
 #endif // defined(RECURSIVE_REMOVE)
 #endif // defined(REMOVE)
 #else // defined(LOOKUP) || defined(REMOVE)
-#define KeyFound  (assert(0), Failure)
+#define KeyFound  (Failure)
 #define strLookupOrInsertOrRemove  "Insert"
 #define DBGX  DBGI
 #define InsertRemove  Insert
@@ -522,7 +522,11 @@ notEmpty:;
                         goto cleanup;
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE)
-                        if (nIncr > 0) goto undo; // undo counting
+                        if (nIncr > 0)
+                        {
+                            assert(0); // for testing with Judy1LHTime
+                            goto undo; // undo counting
+                        }
 #endif // defined(INSERT) && !defined(RECURSIVE)
                         return KeyFound;
                     }
@@ -532,7 +536,7 @@ notEmpty:;
                 else if (wRoot != 0)
                 {
                     DBGX(printf(
-                        "BitIsSet(wRoot "OWx" wKey "OWx")\n",
+                        "Evaluating BitIsSet(wRoot "OWx" wKey "OWx") ...\n",
                             wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)));
 
                     if (BitIsSet(wRoot,
@@ -543,12 +547,20 @@ notEmpty:;
                         goto cleanup;
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE)
-                        if (nIncr > 0) goto undo; // undo counting 
+                        if (nIncr > 0)
+                        {
+                            DBGX(printf(
+                              "BitmapWordNum %"_fw"d BitmapWordMask "OWx"\n",
+                               BitmapWordNum(wKey), BitmapWordMask(wKey)));
+                            DBGX(printf("Bit is set!\n"));
+                            assert(0); // for testing with Judy1LHTime
+                            goto undo; // undo counting 
+                        }
 #endif // defined(INSERT) && !defined(RECURSIVE)
                         return KeyFound;
                     }
 
-                    DBGX(printf("! BitIsSet\n"));
+                    DBGX(printf("Bit is not set.\n"));
                 }
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
             }
