@@ -51,7 +51,9 @@
 // depth with only the bottom list having more than one key.
 // We could vary the max length based on depth or be even more sophisticated.
 //#define cwListPopCntMax  EXP(cnBitsPerDigit)
-#define cwListPopCntMax  4
+// Use a small value for now to keep insert fast so data can be gathered
+// quickly.
+#define cwListPopCntMax  5
 
 // Choose features.
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
@@ -315,7 +317,7 @@
 #define BitmapWordNum(_key)  ((_key) >> cnLogBitsPerWord)
 
 #define BitmapByteMask(_key)  (1 << ((_key) % cnBitsPerByte))
-#define BitmapWordMask(_key)  (1 << ((_key) % cnBitsPerWord))
+#define BitmapWordMask(_key)  ((Word_t)1 << ((_key) % cnBitsPerWord))
 
 #define BitIsSetInWord(_w, _b)  (((_w) & (1 << (_b))) != 0)
 
