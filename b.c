@@ -179,7 +179,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
                DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
                    * cnBytesPerWord);
     }
-#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+#endif // defined(BM_SWITCH)
 
     return pwr;
 }
@@ -899,23 +899,27 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftUp);
 
-        set_PWR_wPopCnt(pwRoot, pwSw, nDigitsLeft, wPopCnt);
-
         // What about no_unnecessary_prefix?
         set_PWR_wPrefix(pwRoot, pwSw, nDigitsLeft, wKey);
+        set_PWR_wPopCnt(pwRoot, pwSw, nDigitsLeft, wPopCnt);
 
-#if defined(PP_IN_LINK) || defined(BM_IN_LINK)
-        // Copy old link to new switch.
-        // Be careful; NewSwitch has already updated wRoot in the old link.
+#if defined(BM_IN_LINK)
+        // Copy from old link to new switch.
         // What if we are at the top hence there is only wRoot -- no link?
-        if (nDigitsLeftUp < cnDigitsPerWord)
+        if (nDigitsLeftUp == cnDigitsPerWord)
         {
-            pwr_pLinks(pwSw)[nIndex] = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+            memset(pwr_pLinks(pwSw)[nIndex].ln_awBm, -1,
+                DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord) * cnBytesPerWord);
         }
-#endif // defined(PP_IN_LINK) || defined(BM_IN_LINK)
+        else
+        {
+            memcpy(pwr_pLinks(pwSw)[nIndex].ln_awBm, PWR_pwBm(pwRoot, NULL),
+                DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord) * cnBytesPerWord);
+        }
+#endif // defined(BM_IN_LINK)
 
-        // Fix up wRoot in the new switch.  Maybe having NewSwitch initialize
-        // it is not quite right.
+        // Fix up wRoot in the new switch.
+        // Maybe having NewSwitch initialize it is not quite right.
         pwr_pLinks(pwSw)[nIndex].ln_wRoot = wRoot;
 
         Insert(pwRoot, wKey, nDigitsLeftUp);

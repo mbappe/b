@@ -128,35 +128,36 @@ again:
     {
 #if !defined(LOOKUP)
 #if defined(REMOVE)
-            if (bCleanup)
-            {
-                // RemoveGuts already removed the list if necessary.
-                return KeyFound;
-            }
+        if (bCleanup)
+        {
+            // RemoveGuts already removed the list if necessary.
+            return KeyFound;
+        }
 #endif // defined(REMOVE)
 #if defined(PP_IN_LINK)
-            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
-            DBGX(printf("List nDigitsLeft %d\n", nDigitsLeft));
-            DBGX(printf("wPopCnt (before incr) %zd\n", wPopCnt));
-            DBGX(printf("wKeyPopMask "OWx"\n",
-                wPrefixPopMask(nDigitsLeft)));
-            set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
-            DBGX(printf("wPopCnt (after incr) %zd\n",
-                 PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
+        wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
+        DBGX(printf("List nDigitsLeft %d\n", nDigitsLeft));
+        DBGX(printf("wPopCnt (before incr) %zd\n", wPopCnt));
+        DBGX(printf("wKeyPopMask "OWx"\n",
+            wPrefixPopMask(nDigitsLeft)));
+        set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
+        DBGX(printf("wPopCnt (after incr) %zd\n",
+             PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
 #else // defined(PP_IN_LINK)
 #endif // defined(PP_IN_LINK)
 #endif // !defined(LOOKUP)
 
 #if defined(LOOKUP) && defined(PP_IN_LINK) && defined(DEBUG_LOOKUP)
-            if ((nDigitsLeft != cnDigitsPerWord)
-                && (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) > cwListPopCntMax))
-            {
-                printf("PWR_wPopCnt %zd 0x%zx\n", 
-                       PWR_wPopCnt(pwRoot, NULL, nDigitsLeft),
-                       PWR_wPopCnt(pwRoot, NULL, nDigitsLeft));
-                assert(0);
-            }
+        if ((nDigitsLeft != cnDigitsPerWord)
+            && (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) > cwListPopCntMax))
+        {
+            printf("PWR_wPopCnt %zd 0x%zx\n", 
+                   PWR_wPopCnt(pwRoot, NULL, nDigitsLeft),
+                   PWR_wPopCnt(pwRoot, NULL, nDigitsLeft));
+            assert(0);
+        }
 #endif // defined(LOOKUP) && defined(PP_IN_LINK) && defined(DEBUG_LOOKUP)
+
         if (wRoot != 0)
         {
 #if 0
@@ -385,7 +386,7 @@ notEmpty:;
             // with nDigitsLeft == cnDigitsPerWord and pwRoot not at the top.
             // What about defined(RECURSIVE)?
             // What about Remove and RemoveGuts?
-            if (1
+            if ( ! (1
 #if defined(RECURSIVE)
                     && (nDigitsLeft == cnDigitsPerWord)
 #else // defined(RECURSIVE)
@@ -394,63 +395,39 @@ notEmpty:;
                     && (nDigitsLeftOrig == cnDigitsPerWord)
 #endif // !defined(LOOKUP)
 #endif // defined(RECURSIVE)
-                )
-            {
-                pwRoot = &pwr_pLinks(pwr)[wIndex].ln_wRoot;
-            }
-            else
+                ) )
 #endif // defined(BM_IN_LINK)
             {
-                unsigned nBmOffset = 0;
-                Word_t wBit = ((Word_t)1 << (wIndex & (cnBitsPerWord - 1)));
-                // test to see if link exists here
-                Word_t wBmMask = wBit - 1;
-                unsigned nLnOffset = 0;
 #if (cnBitsPerDigit > cnLogBitsPerWord)
-                nBmOffset += wIndex >> cnLogBitsPerWord;
+                unsigned nBmOffset = wIndex >> cnLogBitsPerWord;
+#else // (cnBitsPerDigit > cnLogBitsPerWord)
+                unsigned nBmOffset = 0;
+#endif // (cnBitsPerDigit > cnLogBitsPerWord)
+                Word_t wBm = PWR_pwBm(pwRoot, pwr)[nBmOffset];
+                Word_t wBit = ((Word_t)1 << (wIndex & (cnBitsPerWord - 1)));
+                if ( ! (wBm & wBit) )
+                {
+#if defined(BM_SWITCH_FOR_REAL)
+                    goto notFound;
+#else // defined(BM_SWITCH_FOR_REAL)
+                    assert(0); // only for now
+#endif // defined(BM_SWITCH_FOR_REAL)
+                }
+                // Test to see if link exists before figuring out where it is.
+                Word_t wBmMask = wBit - 1;
+                wIndex = 0;
+#if (cnBitsPerDigit > cnLogBitsPerWord)
                 for (unsigned nn = 0; nn < nBmOffset; nn++)
                 {
-                    nLnOffset
-                        += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
+                    wIndex += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
                 }
 #endif // (cnBitsPerDigit > cnLogBitsPerWord)
-//printf("\npwRoot %p PWR_pwBm %p\n", pwRoot, PWR_pwBm(pwRoot, pwr));
-                Word_t wBm = PWR_pwBm(pwRoot, pwr)[nBmOffset];
-#if  defined(BM_IN_LINK)
-                assert((wBm == (Word_t)-1) || (wBm == 0));
-#else // defined(BM_IN_LINK)
-                assert(wBm == (Word_t)-1);
-#endif // defined(BM_IN_LINK)
-                nLnOffset += __builtin_popcountll(wBm & wBmMask);
-#if defined(BM_IN_LINK)
-                if (wBm == 0)
-                {
-                    pwRoot = &pwr_pLinks(pwr)[wIndex].ln_wRoot;
-                }
-                else
-#endif // defined(BM_IN_LINK)
-                {
-                    if (nLnOffset != wIndex)
-                    {
-                        printf(
-                          "\nnLnOffset 0x%x wIndex 0x%x"
-                          " wBm "OWx" wBmMask "OWx"\n",
-                            nLnOffset, wIndex, wBm, wBmMask);
-                        for (unsigned nn = 0;
-                             nn < DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord);
-                             nn ++)
-                        {
-                            printf(" "OWx, PWR_pwBm(pwRoot, pwr)[nn]);
-                        }
-                        printf("\n");
-                    }
-                    assert(nLnOffset == wIndex);
-                    pwRoot = &pwr_pLinks(pwr)[nLnOffset].ln_wRoot;
-                }
+                DBGX(printf("\npwRoot %p PWR_pwBm %p\n",
+                            pwRoot, PWR_pwBm(pwRoot, pwr)));
+                wIndex += __builtin_popcountll(wBm & wBmMask);
             }
-#else // defined(BM_SWITCH)
-            pwRoot = &pwr_pLinks(pwr)[wIndex].ln_wRoot;
 #endif // defined(BM_SWITCH)
+            pwRoot = &pwr_pLinks(pwr)[wIndex].ln_wRoot;
             wRoot = *pwRoot;
 
             DBGX(printf("Next nDigitsLeft %d wIndex %zd pwr %p pLinks %p\n",
@@ -588,6 +565,9 @@ notEmpty:;
         }
     }
 
+#if defined(BM_SWITCH_FOR_REAL)
+notFound:
+#endif // defined(BM_SWITCH_FOR_REAL)
 #if defined(INSERT)
 #if defined(BM_IN_LINK)
     // If InsertGuts calls Insert, then it is always with the same
