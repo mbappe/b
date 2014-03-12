@@ -319,10 +319,10 @@
 #define BitmapByteMask(_key)  (1 << ((_key) % cnBitsPerByte))
 #define BitmapWordMask(_key)  ((Word_t)1 << ((_key) % cnBitsPerWord))
 
-#define BitIsSetInWord(_w, _b)  (((_w) & (1 << (_b))) != 0)
+#define BitIsSetInWord(_w, _b)  (((_w) & ((Word_t)1 << (_b))) != 0)
 
-#define SetBitInWord(_w, _b)  ((_w) |=  (1 << (_b)))
-#define ClrBitInWord(_w, _b)  ((_w) &= ~(1 << (_b)))
+#define SetBitInWord(_w, _b)  ((_w) |=  ((Word_t)1 << (_b)))
+#define ClrBitInWord(_w, _b)  ((_w) &= ~((Word_t)1 << (_b)))
 
 #define BitIsSetByByte(_pBitmap, _key) \
     ((((char *)(_pBitmap))[BitmapByteNum(_key)] & BitmapByteMask(_key)) \
