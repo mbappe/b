@@ -151,7 +151,7 @@ again:
         if ((nDigitsLeft != cnDigitsPerWord)
             && (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) > cwListPopCntMax))
         {
-            printf("PWR_wPopCnt %zd 0x%zx\n", 
+            printf("PWR_wPopCnt %"_fw"d "OWx"\n", 
                    PWR_wPopCnt(pwRoot, NULL, nDigitsLeft),
                    PWR_wPopCnt(pwRoot, NULL, nDigitsLeft));
             assert(0);

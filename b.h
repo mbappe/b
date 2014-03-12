@@ -135,20 +135,26 @@
 #define DBG(x)
 #endif // defined(DEBUG)
 
-// Undef EXP to avoid conflicts with previous definitions.
-// I had to do this for including this file in Judy1LHTime.c.
-// Might want to be careful about including this header file in front
-// of code which depends on an incompatible definition of EXP.
-
 #if !defined(Owx)
-#if defined(__LP64__) || defined(_WIN64)
-#define Oz     "016"
-#else // defined(__LP64__) || defined(_WIN64)
-#define Oz     "08"
-#endif // defined(__LP64__) || defined(_WIN64)
-#define Owx   "%"Oz"zx"
-#define OWx "0x%"Oz"zx"
+#if defined(_WIN64)
+#define Owx   "%016llx"
+#define OWx "0x%016llx"
+#else // defined(_WIN64)
+#if defined(__LP64__)
+#define Owx   "%016lx"
+#define OWx "0x%016lx"
+#else // defined(__LP64__)
+#define Owx   "%08lx"
+#define OWx "0x%08lx"
+#endif // defined(__LP64__)
+#endif // defined(_WIN64)
 #endif // !defined(Owx)
+
+#if defined(_WIN64)
+#define _fw  "ll"
+#else // defined(_WIN64)
+#define _fw  "l"
+#endif // defined(_WIN64)
 
 #if defined(_WIN64)
 #define EXP(_x)  (1ULL << (_x))

@@ -253,7 +253,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
             }
             else
             {
-                printf(" wr_wPopCnt %3zu",
+                printf(" wr_wPopCnt %3"_fw"u",
                        PWR_wPopCnt(pwRoot, NULL, nDigitsLeft));
                 printf(" wr_wPrefix "OWx,
                        PWR_wPrefix(pwRoot, NULL, nDigitsLeft));
@@ -310,7 +310,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         }
         else
         {
-            printf(" wr_wPopCnt %3zu",
+            printf(" wr_wPopCnt %3"_fw"u",
                    PWR_wPopCnt(pwRoot, NULL, nDigitsLeft));
             printf(" wr_wPrefix "OWx, PWR_wPrefix(pwRoot, NULL, nDigitsLeft));
         }
@@ -359,7 +359,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         else
 #endif // defined(PP_IN_LINK)
         {
-            printf(" wr_wPopCnt %3zu", PWR_wPopCnt(pwRoot, pwr, nDigitsLeft));
+            printf(" wr_wPopCnt %3"_fw"u", PWR_wPopCnt(pwRoot, pwr, nDigitsLeft));
             printf(" wr_wPrefix "OWx, wPrefix);
         }
 
