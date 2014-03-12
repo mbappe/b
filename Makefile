@@ -35,8 +35,8 @@ STDFLAG = -std=gnu99
 #STDFLAG = -std=c90
 #STDFLAG = -std=c89
 
-#MFLAGS += -m64
-MFLAGS += -m32
+MFLAGS += -m64
+#MFLAGS += -m32
 MFLAGS += -msse4.2
 #MFLAGS += -march=native
 #MFLAGS += -mfpmath=sse
@@ -124,7 +124,7 @@ DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 LIBS = -lm
 
 FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c t.c stubs.c Makefile tocsv toc90
-FILES_FROM_ME += bitmap.c bitmapx.c judy1.c judy1x.c
+FILES_FROM_ME += bitmap.c bitmapx.c judy1.c judy1x.c bb
 # I periodically make changes to the files provided by Doug.
 FILES_FROM_DOUG_OR_DOUG = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_OR_DOUG)
