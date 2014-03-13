@@ -190,6 +190,23 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     if (nDigitsLeftUp < cnDigitsPerWord)
 #endif // defined(PP_IN_LINK)
     {
+#if defined(SKIP_LINKS)
+#if defined(NO_UNNECESSARY_PREFIX)
+        if ((nDigitsLeft == nDigitsLeftOld)
+            && (nDigitsLeft > cnDigitsAtBottom + 1))
+        {
+            DBGI(printf(
+              "Not installing prefix left %d old %d wKey "OWx"\n",
+                nDigitsLeft, nDigitsLeftOld, wKey));
+
+            set_PWR_wPrefix(pwRoot, pwSw, nDigitsLeft, 0);
+        }
+        else
+#endif // defined(NO_UNNECESSARY_PREFIX)
+        {
+            set_PWR_wPrefix(pwRoot, pwr, nDigitsLeft, wKey);
+        }
+#endif // defined(SKIP_LINKS)
         set_PWR_wPopCnt(pwRoot, pwr, nDigitsLeft, wPopCnt);
     }
 
@@ -822,31 +839,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftOld,
                              /* wPopCnt */ 0);
 
-#if defined(SKIP_LINKS)
-            assert(nDigitsLeft <= nDigitsLeftOld);
-#if defined(NO_UNNECESSARY_PREFIX)
-            // We could get rid of the bottom check if we enhance Insert
-            // to keep track of any prefix checks done along the way and
-            // pass that info to InsertGuts.
-            if ((nDigitsLeft == nDigitsLeftOld)
-                && (nDigitsLeft > cnDigitsAtBottom + 1))
-            {
-                DBGI(printf(
-                  "Not installing prefix left %d old %d wKey "OWx"\n",
-                    nDigitsLeft, nDigitsLeftOld, wKey));
-
-                set_PWR_wPrefix(pwRoot, pwSw, nDigitsLeft, 0);
-            }
-            else
-#endif // defined(NO_UNNECESSARY_PREFIX)
-            {
-                set_PWR_wPrefix(pwRoot, pwSw, nDigitsLeft, wKey);
-            }
-#endif // defined(SKIP_LINKS)
-
-            DBGM(printf("NewSwitch PWR_wPrefixPop "OWx"\n",
-                PWR_wPrefixPop(pwRoot, pwSw)));
-
 #if defined(COMPRESSED_LISTS)
 #if defined(SKIP_LINKS)
             unsigned nBitsLeftOld = nDigitsLeftOld * cnBitsPerDigit;
@@ -923,9 +915,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             & (EXP(cnBitsPerDigit) - 1);
 
         pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftUp, wPopCnt);
-
-        // What about no_unnecessary_prefix?
-        set_PWR_wPrefix(pwRoot, pwSw, nDigitsLeft, wKey);
 
 #if defined(BM_IN_LINK)
         // Copy from old link to new switch.
