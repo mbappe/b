@@ -202,7 +202,7 @@ again:
 #endif // defined(SKIP_LINKS)
 #endif // defined(COMPRESSED_LISTS)
             {
-                assert(((LeafWord_t *)wRoot)->lw_nDigitsLeft == nDigitsLeft);
+                assert(ll_nDigitsLeft(wRoot) == nDigitsLeft);
 #if defined(LOOKUP) && defined(PP_IN_LINK) && defined(DEBUG_LOOKUP)
                 if ((nDigitsLeft != cnDigitsPerWord)
                     && (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) != wPopCnt))

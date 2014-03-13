@@ -296,15 +296,19 @@
 #define     PWR_pwBm(_pwRoot, _pwr)  (((Switch_t *)(_pwr))->sw_awBm)
 #endif // defined(BM_IN_LINK)
 
-#define     ls_wPopCnt(_ls)        (((LeafWord_t *)(_ls))->lw_wPrefixPlus)
+#define     ll_nDigitsLeft(_wr)  (((ListLeaf_t *)(_wr))->ll_nDigitsLeft)
+#define set_ll_nDigitsLeft(_wr, _nDL) \
+    (((ListLeaf_t *)(_wr))->ll_nDigitsLeft = (_nDL))
+
+#define     ls_wPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_nPopCnt)
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
 
-#define     ls_wLen(_ls)        (((LeafWord_t *)(_ls))->lw_nWords)
+#define     ls_wLen(_ls)        (((ListLeaf_t *)(_ls))->ll_nWords)
 #define set_ls_wLen(_ls, _len)  (ls_wLen(_ls) = (_len))
 
-#define     ls_pwKeys(_ls)    (((LeafWord_t *)(_ls))->lw_awKeys)
-#define     ls_psKeys(_ls)    ((unsigned short *)ls_pwKeys(_ls))
-#define     ls_pcKeys(_ls)    ((unsigned char *) ls_pwKeys(_ls))
+#define     ls_pwKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_awKeys)
+#define     ls_psKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_asKeys)
+#define     ls_pcKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_acKeys)
 
 // these are just aliases as long as wRoot is a pointer to a list
 #define     pwr_pwKeys(_pwr)    (ls_pwKeys(_pwr))
@@ -376,22 +380,15 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 #if (cnBitsPerDigit != 0)
 
 typedef struct {
-    Word_t nh_wPrefixPlus; // includes prefix, node type and nDigitsLeft
-} NodeHdr_t;
-
-typedef struct {
-    Word_t lw_wPrefixPlus; // includes prefix, node type and nDigitsLeft
-    uint16_t lw_nDigitsLeft;
-    uint16_t lw_nWords;
-    Word_t lw_awKeys[];
-} LeafWord_t;
-
-#if 0
-    struct {
-        Word_t bs_awBitmaps[]; // for bitmap leaves and bitmap switches
-        Word_t ls_awKeyLinkPairs[]; // for list switches
+    uint16_t ll_nPopCnt; // includes prefix, node type and nDigitsLeft
+    uint8_t ll_nWords;
+    uint8_t ll_nDigitsLeft;
+    union {
+        uint8_t  ll_acKeys[4];
+        uint16_t ll_asKeys[2];
+        Word_t   ll_awKeys[1];
     };
-#endif
+} ListLeaf_t;
 
 typedef struct {
     Word_t ln_wRoot;

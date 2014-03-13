@@ -12,42 +12,40 @@
 #
 ###########################
 
-CC = clang
-#CC = cc
-#CC = icc
-#CC = gcc
+# CC = clang
+# CC = cc
+# CC = icc
+  CC = gcc
 
-##################################
-#
-# Judy1LHTime.c doesn't compile with -std=c99.  It complains about some
-# time.h symbol.  time.h is not included with -std=c99?
-#
-##################################
+##
+# -std=gnu11 and -std=gnu99 give CLOCK_MONOTONIC which is not available with
+# -std=c11 or -std=c99.
+# We use CLOCK_MONOTONIC on GNU/Linux, but not on Mac.
+# -std=c11 gives anonymous unions with no complaints.
+# -std=gnu99 gives a warning for anonymous unions.
+##
+# STDFLAG =
+  STDFLAG = -std=gnu11
+# STDFLAG = -std=c11
+# STDFLAG = -std=gnu99
+# STDFLAG = -std=c99
+# STDFLAG = -std=c90
+# STDFLAG = -std=c89
 
-# Use -std=gnu99 for CLOCK_MONOTONIC which is not available with -std=c99. 
-# We use CLOCK_MONOTONIC on GNU/Linux, but not on Mac.  So we can use
-# -std=c99 on Mac, but not on GNU/Linux.
-# -std=c11 gives anonymous unions.
-STDFLAG = -std=gnu99
-#STDFLAG = -std=c11
-#STDFLAG =
-#STDFLAG = -std=c99
-#STDFLAG = -std=c90
-#STDFLAG = -std=c89
+# MFLAGS += -m64
+  MFLAGS += -m32
 
-MFLAGS += -m64
-#MFLAGS += -m32
-MFLAGS += -msse4.2
-#MFLAGS += -march=native
-#MFLAGS += -mfpmath=sse
+  MFLAGS += -msse4.2
+# MFLAGS += -march=native
+# MFLAGS += -mfpmath=sse
 
 # Leave off -Wmissing-prototypes because I don't like providing prototypes
 # that have no value at all, i.e. when the function definition appears
 # before any use of the function.  Nevermind.  Looks like "static" addresses
 # the missing prototype just as well as a prototype does.  Yes!
-WFLAGS = -Wall -Werror
-WFLAGS += -pedantic -Wstrict-prototypes -W
-WFLAGS += -Wmissing-prototypes
+  WFLAGS += -Wall -Werror
+  WFLAGS += -pedantic -Wstrict-prototypes -W
+  WFLAGS += -Wmissing-prototypes
 
 # -O0 no optimization
 # -O1 between -O2 and -O0
@@ -59,17 +57,17 @@ WFLAGS += -Wmissing-prototypes
 # I have seen -O4 inline BitmapGet from bitmap.o into Judy1LHTime.o.
 # I don't know if it is possible to get -O4 without -O3.  I'm assuming
 # -O4 does not imply -Ofast.  I wonder if -Ofast and -O4 can go together.
+# OFLAGS = -g -O0
+# OFLAGS = -g -O1
+  OFLAGS = -g -O2
+# OFLAGS = -g -O3
 # OFLAGS = -g -O4
-#OFLAGS = -g -O0
-#OFLAGS = -g -O1
-OFLAGS = -g -O2
-#OFLAGS = -g -O3
-#OFLAGS = -g -O4
-#OFLAGS = -g -Os
-#OFLAGS = -g -Oz
-#OFLAGS = -g -Ofast
+# OFLAGS = -g -Os
+# OFLAGS = -g -Oz
+# OFLAGS = -g -Ofast
 
 CFLAGS = $(STDFLAG) $(MFLAGS) $(WFLAGS) $(OFLAGS) -I.
+CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
 
 # Obsolete ifdefs used to figure out where overhead was coming from.
 # TIME_DEFINES += -DBITMAP_P_JE -DEXTERN_BITMAP -DINTERN_JUDY1 -DEXTERN_JUDY1
@@ -110,7 +108,11 @@ B_DEFINES += -DSEARCH_METRICS
 
 # Always:
 #
+# _POSIX_C_SOURCE=199309L gives CLOCK_MONOTONIC on GNU/Linux even though
+# -std=c11 and -std=c99 don't.
+#
 TIME_DEFINES += -DJUDYB
+# TIME_DEFINES += -D_POSIX_C_SOURCE=199309L
 # B_DEFINES += -UNO_UNNECESSARY_PREFIX
 B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK
 # B_DEFINES += -UMIN_MAX_LISTS
@@ -167,13 +169,13 @@ clean:
 	rm -rf $(SYMS)
 
 t:	$(T_SRCS) $(T_OBJS)
-	$(CC) $(CFLAGS) $(DEFINES) -w -o $@ $^ $(LIBS)
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
 
 b:	$(OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
 
 bxc:	$(BXC_SRCS) $(BXC_OBJS)
-	$(CC) $(CFLAGS) $(DEFINES) -w -o $@ $^ $(LIBS)
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
 
 b.tar:	$(FILES)
 	tar cf $@ $(FILES)
@@ -211,7 +213,7 @@ bitmap.o: bitmap.c
 
 # Suppress warnings.
 Judy1LHTime.o: Judy1LHTime.c
-	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
 
 # Suppress warnings.  Unused parameters.
 stubs.o: stubs.c
@@ -219,7 +221,7 @@ stubs.o: stubs.c
 
 # Suppress warnings.  sbrk is deprecated.
 dlmalloc.o: dlmalloc.c
-	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
 
 ############################
 #
@@ -232,7 +234,7 @@ dlmalloc.o: dlmalloc.c
 
 # Suppress warnings.  Transitive warnings.  t.c just includes other files.
 t.s: t.c
-	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
 
 # Suppress warnings.  Empty translation unit for some ifdef combinations.
 judy1.s: judy1.c
@@ -244,7 +246,7 @@ bitmap.s: bitmap.c
 
 # Suppress warnings.
 Judy1LHTime.s: Judy1LHTime.c
-	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
 
 # Suppress warnings.  Unused parameters.
 stubs.s: stubs.c
@@ -252,7 +254,7 @@ stubs.s: stubs.c
 
 # Suppress warnings.  sbrk is deprecated.
 dlmalloc.s: dlmalloc.c
-	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
 
 ############################
 #

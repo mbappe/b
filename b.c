@@ -63,7 +63,7 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
 {
     DBGM(printf("NewList wPopCnt "OWx"\n", wPopCnt));
 
-    unsigned nWords = sizeof(LeafWord_t) / sizeof(Word_t) + wPopCnt;
+    unsigned nWords = sizeof(ListLeaf_t) / sizeof(Word_t) + wPopCnt;
 
     DBGM(printf("NewList nWords %d\n", nWords));
 
@@ -80,7 +80,7 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
     set_ls_wPopCnt(pwList, wPopCnt);
     set_ls_wLen(pwList, nWords);
 
-    ((LeafWord_t *)pwList)->lw_nDigitsLeft = nDigitsLeft;
+    set_ll_nDigitsLeft(pwList, nDigitsLeft);
 
     METRICS(j__AllocWordsJLLW += (ls_wLen(pwList)));
 
