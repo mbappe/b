@@ -186,7 +186,12 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     }
 #endif // defined(BM_SWITCH)
 
-    set_PWR_wPopCnt(pwRoot, pwr, nDigitsLeft, wPopCnt);
+#if defined(PP_IN_LINK)
+    if (nDigitsLeftUp < cnDigitsPerWord)
+#endif // defined(PP_IN_LINK)
+    {
+        set_PWR_wPopCnt(pwRoot, pwr, nDigitsLeft, wPopCnt);
+    }
 
     return pwr;
 }
