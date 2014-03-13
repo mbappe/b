@@ -192,14 +192,14 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     {
 #if defined(SKIP_LINKS)
 #if defined(NO_UNNECESSARY_PREFIX)
-        if ((nDigitsLeft == nDigitsLeftOld)
+        if ((nDigitsLeft == nDigitsLeftUp)
             && (nDigitsLeft > cnDigitsAtBottom + 1))
         {
             DBGI(printf(
-              "Not installing prefix left %d old %d wKey "OWx"\n",
-                nDigitsLeft, nDigitsLeftOld, wKey));
+              "Not installing prefix left %d up %d wKey "OWx"\n",
+                nDigitsLeft, nDigitsLeftUp, wKey));
 
-            set_PWR_wPrefix(pwRoot, pwSw, nDigitsLeft, 0);
+            set_PWR_wPrefix(pwRoot, pwr, nDigitsLeft, 0);
         }
         else
 #endif // defined(NO_UNNECESSARY_PREFIX)
