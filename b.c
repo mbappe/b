@@ -134,6 +134,15 @@ OldBitmap(Word_t wRoot)
     return EXP(cnBitsAtBottom) / cnBitsPerWord * sizeof(Word_t);
 }
 
+// Allocate a new switch.
+// Zero its links.
+// Initialize its prefix if there is one.  Need to know nDigitsLeftUp for
+// PP_IN_LINK to figure out if the prefix exists.
+// Initialize its bitmap if there is one.  Need to know nDigitsLeftUp for
+// BM_IN_LINK to figure out if the bitmap exists.
+// Install wRoot at pwRoot.  Need to know nDigitsLeft.
+// Account for the memory (for both JUDYA and JUDYB columns in Judy1LHTime).
+// Need to know if we are at the bottom so we should count it as a bitmap.
 static Word_t *
 NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
           unsigned nDigitsLeftUp, Word_t wPopCnt)
@@ -191,7 +200,12 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 #endif // defined(PP_IN_LINK)
     {
 #if defined(SKIP_LINKS)
+        assert(nDigitsLeft <= nDigitsLeftUp);
+
 #if defined(NO_UNNECESSARY_PREFIX)
+        // We could get rid of the bottom check if we enhance Insert
+        // to keep track of any prefix checks done along the way and
+        // pass that info to InsertGuts.
         if ((nDigitsLeft == nDigitsLeftUp)
             && (nDigitsLeft > cnDigitsAtBottom + 1))
         {
@@ -207,7 +221,11 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
             set_PWR_wPrefix(pwRoot, pwr, nDigitsLeft, wKey);
         }
 #endif // defined(SKIP_LINKS)
+
         set_PWR_wPopCnt(pwRoot, pwr, nDigitsLeft, wPopCnt);
+
+        DBGM(printf("NewSwitch PWR_wPrefixPop "OWx"\n",
+            PWR_wPrefixPop(pwRoot, pwr)));
     }
 
     return pwr;
@@ -889,6 +907,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         // figure new nDigitsLeft for old parent link
         Word_t wPrefix = PWR_wPrefix(pwRoot, pwr, nDigitsLeftRoot);
         nDigitsLeft = LOG(1 | (wPrefix ^ wKey)) / cnBitsPerDigit + 1;
+        // nDigitsLeft includes the digit that is different.
 
         assert(nDigitsLeft > nDigitsLeftRoot);
 
@@ -913,26 +932,40 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
         nIndex = (wPrefix >> ((nDigitsLeft - 1) * cnBitsPerDigit))
             & (EXP(cnBitsPerDigit) - 1);
+        // nIndex is the index in new switch.
+        // It may not be the same as the index in the old switch.
+
+#if defined(BM_IN_LINK)
+        // Save the old bitmap before it is trashed by NewSwitch.
+        // is it possible that nDigitsLeftUp != cnDigitsPerWord and
+        // we are at the top?
+        Link_t ln;
+        if (nDigitsLeftUp != cnDigitsPerWord)
+        {
+            memcpy(ln.ln_awBm, PWR_pwBm(pwRoot, NULL),
+                DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord) * cnBytesPerWord);
+            assert(ln.ln_awBm[0] == (Word_t)-1);
+        }
+#endif // defined(BM_IN_LINK)
 
         pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftUp, wPopCnt);
 
 #if defined(BM_IN_LINK)
-        // Copy from old link to new switch.
-        // What if we are at the top hence there is only wRoot -- no link?
-        if (nDigitsLeftUp == cnDigitsPerWord)
+        if (nDigitsLeftUp != cnDigitsPerWord)
         {
-            memset(pwr_pLinks(pwSw)[nIndex].ln_awBm, -1,
+            // Copy bitmap from old link to new link.
+            memcpy(pwr_pLinks(pwSw)[nIndex].ln_awBm, ln.ln_awBm,
                 DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord) * cnBytesPerWord);
         }
         else
         {
-            memcpy(pwr_pLinks(pwSw)[nIndex].ln_awBm, PWR_pwBm(pwRoot, NULL),
+            // Initialize bitmap in new link.
+            memset(pwr_pLinks(pwSw)[nIndex].ln_awBm, (Word_t)-1,
                 DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord) * cnBytesPerWord);
         }
 #endif // defined(BM_IN_LINK)
 
-        // Fix up wRoot in the new switch.
-        // Maybe having NewSwitch initialize it is not quite right.
+        // Copy wRoot from old link to new link.
         pwr_pLinks(pwSw)[nIndex].ln_wRoot = wRoot;
 
         Insert(pwRoot, wKey, nDigitsLeftUp);
