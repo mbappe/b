@@ -136,7 +136,7 @@ OldBitmap(Word_t wRoot)
 
 static Word_t *
 NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
-          unsigned nDigitsLeftUp)
+          unsigned nDigitsLeftUp, Word_t wPopCnt)
 {
     Word_t *pwr;
 
@@ -185,6 +185,8 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
                    * cnBytesPerWord);
     }
 #endif // defined(BM_SWITCH)
+
+    set_PWR_wPopCnt(pwRoot, pwr, nDigitsLeft, wPopCnt);
 
     return pwr;
 }
@@ -812,9 +814,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             assert(nDigitsLeft > cnDigitsAtBottom);
 #endif // defined(SKIP_LINKS)
 
-            pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftOld);
-
-            set_PWR_wPopCnt(pwRoot, pwSw, nDigitsLeft, 0);
+            pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftOld,
+                             /* wPopCnt */ 0);
 
 #if defined(SKIP_LINKS)
             assert(nDigitsLeft <= nDigitsLeftOld);
@@ -916,11 +917,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         nIndex = (wPrefix >> ((nDigitsLeft - 1) * cnBitsPerDigit))
             & (EXP(cnBitsPerDigit) - 1);
 
-        pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftUp);
+        pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftUp, wPopCnt);
 
         // What about no_unnecessary_prefix?
         set_PWR_wPrefix(pwRoot, pwSw, nDigitsLeft, wKey);
-        set_PWR_wPopCnt(pwRoot, pwSw, nDigitsLeft, wPopCnt);
 
 #if defined(BM_IN_LINK)
         // Copy from old link to new switch.
