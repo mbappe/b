@@ -95,11 +95,16 @@ B_DEFINES += -DRAM_METRICS
 B_DEFINES += -DSEARCH_METRICS
 #
 # LOOKUP_NO_BITMAP_SEARCH means return just before the list is searched.
+# After dereferencing the the first word of the list leaf.
+# What if prefix/popcnt are in the link?
 # LOOKUP_NO_BITMAP_DEREF means return before prefix/popcnt is retrieved.
+# Before dereferencing the the first word of the list leaf.
 # B_DEFINES += -DLOOKUP_NO_LIST_DEREF -ULOOKUP_NO_LIST_SEARCH
 #
 # LOOKUP_NO_BITMAP_SEARCH means return before the bit is retrieved.
 # LOOKUP_NO_BITMAP_DEREF means return before the prefix is retrieved.
+# Before dereferencing the the first word of the bitmap leaf if it
+# contains prefix/popcnt.
 # B_DEFINES += -DLOOKUP_NO_BITMAP_DEREF -ULOOKUP_NO_BITMAP_SEARCH
 #
 # These can be specified on the command line with "DEFINES = ... make"
