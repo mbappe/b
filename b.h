@@ -27,8 +27,8 @@
 // the one big switch implied by cnBitsPerDigit of more than half a word.
 // Default is cnLogBitsPerWord because a bitmap is the size of a word when
 // cnDigitsAtBottom is one and we can embed the bitmap.
-//#define cnBitsPerDigit  (cnLogBitsPerWord)
-#define cnBitsPerDigit  8
+#define cnBitsPerDigit  (cnLogBitsPerWord)
+//#define cnBitsPerDigit  4
 
 // Choose bottom.
 // Bottom is where Bitmap is created.  Maybe we should change the meaning.
@@ -214,7 +214,7 @@
 
 #define     tp_bIsSwitch(_tp)          ((_tp) != 0)
 
-#define     wr_bIsSwitch(_wr)          (tp_bIsSwitch(wr_nType(_wr))
+#define     wr_bIsSwitch(_wr)          (tp_bIsSwitch(wr_nType(_wr)))
 
 #define     wr_bIsSwitchDL(_wr, _tp, _nDL) \
     ((_tp) = wr_nType(_wr), \
