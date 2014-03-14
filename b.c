@@ -999,8 +999,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         pwr_pLinks(pwSw)[nIndex].ln_wRoot = wRoot;
 
 #if defined(PP_IN_LINK)
-        set_PWR_wPrefix(&pwr_pLinks(pwSw)[nIndex].ln_wRoot, NULL,
-                        nDigitsLeftRoot, wPrefix);
+#if defined(NO_UNNECESSARY_PREFIX)
+        if (nDigitsLeftRoot != nDigitsLeft - pwr_nBitsIndexSz(pwSw))
+#endif // defined(NO_UNNECESSARY_PREFIX)
+        {
+            set_PWR_wPrefix(&pwr_pLinks(pwSw)[nIndex].ln_wRoot, NULL,
+                            nDigitsLeftRoot, wPrefix);
+        }
+
         set_PWR_wPopCnt(&pwr_pLinks(pwSw)[nIndex].ln_wRoot, NULL,
                         nDigitsLeftRoot, wPopCnt);
 #endif // defined(PP_IN_LINK)
