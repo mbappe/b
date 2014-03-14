@@ -80,12 +80,11 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
 
     unsigned nBytesKeySz = (nBitsLeft <= 8) ? 1 : (nBitsLeft <= 16) ? 2
 #if (cnBitsPerWord > 32)
-        : (nBitsLeft <= 32) ? 4 : 8;
-#else // (cnBitsPerWord > 32)
-        : 4;
+        : (nBitsLeft <= 32) ? 4
 #endif // (cnBitsPerWord > 32)
+        : sizeof(Word_t);
 
-    unsigned nWords = (ALIGN_UP(wPopCnt * nBytesKeySz, cnBytesPerWord)
+    unsigned nWords = (DIV_UP(wPopCnt * nBytesKeySz, cnBytesPerWord)
         + OFFSET_OF(ListLeaf_t, ll_awKeys) / sizeof(Word_t)) | 1;
 
     if (nBytesKeySz == 1) {
@@ -128,6 +127,9 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
     set_ls_wLen(pwList, nWords);
 
     set_ll_nDigitsLeft(pwList, nDigitsLeft);
+
+// Should we be setting wPrefix here for PP_IN_LINK?
+// What about wPopCnt?
 
     return pwList;
 }
@@ -285,10 +287,25 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
         assert(nDigitsLeft <= nDigitsLeftUp);
 
 #if defined(NO_UNNECESSARY_PREFIX)
-        // We could get rid of the bottom check if we enhance Insert
+        // We need the prefix at the leaf even if there is no skip if
+        // defined(SKIP_PREFIX_CHECK).
+        // List leaf only needs it if the keys in the list are less than
+        // whole words.
+        // Bits in a bitmap are always less than whole words and always
+        // need the prefix.
+        // Does it mean we'd have to add the prefix when transitioning
+        // from list to bitmap?
+        // We could get rid of the leaf check if we enhance Insert
         // to keep track of any prefix checks done along the way and
         // pass that info to InsertGuts.
         if ((nDigitsLeft == nDigitsLeftUp)
+#if defined(COMPRESSED_LISTS)
+#if (cnBitsPerWord > 32)
+            && (nDigitsLeft * cnBitsPerDigit > 32)
+#else // (cnBitsPerWord > 32)
+            && (nDigitsLeft * cnBitsPerDigit > 16)
+#endif // (cnBitsPerWord > 32)
+#endif // defined(COMPRESSED_LISTS)
             && (nDigitsLeft > cnDigitsAtBottom + 1))
         {
             DBGI(printf(
@@ -392,7 +409,8 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
             }
 
             for (n = 0;
-                (n < EXP(cnBitsAtBottom) / cnBitsPerWord) && (n < 8);
+                //(n < EXP(cnBitsAtBottom) / cnBitsPerWord) && (n < 8);
+                (n < EXP(cnBitsAtBottom) / cnBitsPerWord);
                  n++)
             {
                 printf(" "Owx, ((Word_t *)wRoot)[n]);
@@ -442,13 +460,20 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         printf(" ls_wLen %3llu", (unsigned long long)ls_wLen(wRoot));
         printf(" ls_wPopCnt %3llu", (unsigned long long)wPopCnt);
 
-        for (n = 0; (n < wPopCnt) && (n < 8); n++)
+        for (n = 0;
+            //(n < wPopCnt) && (n < 8);
+            (n < wPopCnt);
+             n++)
         {
 #if defined(COMPRESSED_LISTS)
             if (nBitsLeft <= 8) {
                 printf(" %02x", ls_pcKeys(wRoot)[n]);
             } else if (nBitsLeft <= 16) {
                 printf(" %04x", ls_psKeys(wRoot)[n]);
+#if (cnBitsPerWord > 32)
+            } else if (nBitsLeft <= 32) {
+                printf(" %08x", ls_piKeys(wRoot)[n]);
+#endif // (cnBitsPerWord > 32)
             } else
 #endif // defined(COMPRESSED_LISTS)
             { printf(" "Owx, pwKeys[n]); }
@@ -545,12 +570,12 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
     nBitsLeft = ALIGN_UP(nBitsLeft - nBitsIndexSz, cnBitsPerDigit);
 
-    for (n = 0; n < EXP(nBitsIndexSz); n++)
+    for (Word_t nn = 0; nn < EXP(nBitsIndexSz); nn++)
     {
-        pwRoot = &pLinks[n].ln_wRoot;
+        pwRoot = &pLinks[nn].ln_wRoot;
 
         wBytes += FreeArrayGuts(pwRoot,
-                    wPrefix | (n << nBitsLeft), nBitsLeft, bDump);
+                    wPrefix | (nn << nBitsLeft), nBitsLeft, bDump);
     }
 
 #if defined(RAM_METRICS)
@@ -569,6 +594,7 @@ Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft)
 #endif // defined(DEBUG)
 
 #if defined(SORT_LISTS)
+
 // CopyWithInsert can handle pTgt == pSrc, but cannot handle any other
 // overlapping buffer scenarios.
 static void
@@ -607,6 +633,43 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, unsigned nKeys, Word_t wKey)
 }
 
 #if defined(COMPRESSED_LISTS)
+
+static void
+CopyWithInsertInt(unsigned int *pTgt, unsigned int *pSrc,
+    unsigned nKeys, unsigned int wKey)
+{
+#if (cwListPopCntMax != 0)
+    unsigned int ai[cwListPopCntMax]; // buffer for move if pSrc == pTgt
+#else // (cwListPopCntMax != 0)
+    unsigned int ai[1]; // buffer for move if pSrc == pTgt
+#endif // (cwListPopCntMax != 0)
+    unsigned n;
+
+    // find the insertion point
+    for (n = 0; n < nKeys; n++)
+    {
+        if (pSrc[n] >= wKey)
+        {
+            assert(pSrc[n] != wKey);
+            break;
+        }
+    }
+
+    if (pTgt != pSrc)
+    {
+        COPY(pTgt, pSrc, n); // copy the head
+    }
+    else
+    {
+        COPY(&ai[n], &pSrc[n], nKeys - n); // save the tail
+        pSrc = ai;
+    }
+
+    pTgt[n] = wKey; // insert the key
+
+    COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
+}
+
 static void
 CopyWithInsertShort(unsigned short *pTgt, unsigned short *pSrc,
     unsigned nKeys, unsigned short wKey)
@@ -678,6 +741,7 @@ CopyWithInsertChar(unsigned char *pTgt, unsigned char *pSrc,
 
     COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
 }
+
 #endif // defined(COMPRESSED_LISTS)
 #endif // defined(SORT_LISTS)
 
@@ -770,6 +834,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         Word_t wPopCnt;
         Word_t *pwKeys;
 #if defined(COMPRESSED_LISTS)
+#if (cnBitsPerWord > 32)
+        unsigned int *piKeys;
+#endif // (cnBitsPerWord > 32)
         unsigned short *psKeys;
         unsigned char *pcKeys;
 #endif // defined(COMPRESSED_LISTS)
@@ -779,6 +846,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             wPopCnt = ls_wPopCnt(pwr);
             pwKeys = ls_pwKeys(pwr); // list of keys in old List
 #if defined(COMPRESSED_LISTS)
+#if (cnBitsPerWord > 32)
+            piKeys = ls_piKeys(pwr);
+#endif // (cnBitsPerWord > 32)
             psKeys = ls_psKeys(pwr);
             pcKeys = ls_pcKeys(pwr);
 #endif // defined(COMPRESSED_LISTS)
@@ -791,6 +861,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             // be examined
             pwKeys = NULL;
 #if defined(COMPRESSED_LISTS)
+#if (cnBitsPerWord > 32)
+            piKeys = NULL;
+#endif // (cnBitsPerWord > 32)
             psKeys = NULL;
             pcKeys = NULL;
 #endif // defined(COMPRESSED_LISTS)
@@ -831,6 +904,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                     CopyWithInsertShort(ls_psKeys(pwList),
                         (unsigned short *)pwKeys, wPopCnt,
                         (unsigned short)wKey);
+#if (cnBitsPerWord > 32)
+                } else if (nBitsLeft <= 32) {
+                    CopyWithInsertInt(ls_piKeys(pwList),
+                        (unsigned int *)pwKeys, wPopCnt,
+                        (unsigned int)wKey);
+#endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
                 {
@@ -871,6 +950,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                     ls_pcKeys(pwList)[wPopCnt] = wKey;
                 } else if (nBitsLeft <= 16) {
                     ls_psKeys(pwList)[wPopCnt] = wKey;
+#if (cnBitsPerWord > 32)
+                } else if (nBitsLeft <= 32) {
+                    ls_piKeys(pwList)[wPopCnt] = wKey;
+#endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
                 { ls_pwKeys(pwList)[wPopCnt] = wKey; }
@@ -912,6 +995,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                         wMin = ls_psKeys(wRoot)[0];
                         wMax = ls_psKeys(wRoot)[wPopCnt - 1];
                         wSuffix = wKey & 0xffff;
+#if (cnBitsPerWord > 32)
+                    } else if (nBitsLeft <= 32) {
+                        wMin = ls_piKeys(wRoot)[0];
+                        wMax = ls_piKeys(wRoot)[wPopCnt - 1];
+                        wSuffix = wKey & 0xffffffff;
+#endif // (cnBitsPerWord > 32)
                     } else 
 #endif // defined(COMPRESSED_LISTS)
                     { wMin = pwKeys[0]; wMax = pwKeys[wPopCnt - 1]; }
@@ -929,7 +1018,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                     DBGI(printf("wMin "OWx" wMax "OWx"\n", wMin, wMax));
 
 #if defined(COMPRESSED_LISTS)
+#if (cnBitsPerWord > 32)
+                    if (nBitsLeft <= 32)
+#else // (cnBitsPerWord > 32)
                     if (nBitsLeft <= 16)
+#endif // (cnBitsPerWord > 32)
                     {
                         nDigitsLeft
                             = LOG(1 | ((wSuffix ^ wMin) | (wSuffix ^ wMax)))
@@ -978,13 +1071,23 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             if (nBitsLeftOld <= 8) {
                 for (w = 0; w < wPopCnt; w++)
                 {
-                    Insert(pwRoot, pcKeys[w] | (wKey & ~0xff), nDigitsLeftOld);
+                    Insert(pwRoot, pcKeys[w] | (wKey & ~0xff),
+                           nDigitsLeftOld);
                 }
             } else if (nBitsLeftOld <= 16) {
                 for (w = 0; w < wPopCnt; w++)
                 {
-                    Insert(pwRoot, psKeys[w] | (wKey & ~0xffff), nDigitsLeftOld);
+                    Insert(pwRoot, psKeys[w] | (wKey & ~0xffff),
+                           nDigitsLeftOld);
                 }
+#if (cnBitsPerWord > 32)
+            } else if (nBitsLeftOld <= 32) {
+                for (w = 0; w < wPopCnt; w++)
+                {
+                    Insert(pwRoot, piKeys[w] | (wKey & ~(Word_t)0xffffffff),
+                           nDigitsLeftOld);
+                }
+#endif // (cnBitsPerWord > 32)
             } else
 #endif // defined(COMPRESSED_LISTS)
             {
@@ -1163,10 +1266,15 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         for (n = 0;
 #if defined(COMPRESSED_LISTS)
-            (nBitsLeft > 16) ? (pwKeys[n] != wKey)
-                : (nBitsLeft >= 8)
-                    ? (wr_psKeys(wRoot)[n] != (unsigned short)wKey)
-                    : (wr_pcKeys(wRoot)[n] != (unsigned char )wKey);
+            (nBitsLeft <= 8)
+                ? (wr_pcKeys(wRoot)[n] != (unsigned char )wKey)
+            : (nBitsLeft <= 16)
+                ? (wr_psKeys(wRoot)[n] != (unsigned short)wKey)
+#if (cnBitsPerWord > 32)
+            : (nBitsLeft <= 32)
+                ? (wr_piKeys(wRoot)[n] != (unsigned int)wKey)
+#endif // (cnBitsPerWord > 32)
+                : (pwKeys[n] != wKey);
 #else // defined(COMPRESSED_LISTS)
             pwKeys[n] != wKey;
 #endif // defined(COMPRESSED_LISTS)
@@ -1184,6 +1292,11 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         } else if (nBitsLeft <= 16) {
             MOVE(&wr_psKeys(wRoot)[n],
                  &wr_psKeys(wRoot)[n + 1], wPopCnt - n - 1);
+#if (cnBitsPerWord > 32)
+        } else if (nBitsLeft <= 32) {
+            MOVE(&wr_piKeys(wRoot)[n],
+                 &wr_piKeys(wRoot)[n + 1], wPopCnt - n - 1);
+#endif // (cnBitsPerWord > 32)
         } else
 #endif // defined(COMPRESSED_LISTS)
         { MOVE(&pwKeys[n], &pwKeys[n + 1], wPopCnt - n - 1); }

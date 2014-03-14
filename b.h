@@ -28,7 +28,6 @@
 // Default is cnLogBitsPerWord because a bitmap is the size of a word when
 // cnDigitsAtBottom is one and we can embed the bitmap.
 #define cnBitsPerDigit  (cnLogBitsPerWord)
-//#define cnBitsPerDigit  4
 
 // Choose bottom.
 // Bottom is where Bitmap is created.  Maybe we should change the meaning.
@@ -50,10 +49,7 @@
 // But it doesn't work because we can end up with a new switch at every
 // depth with only the bottom list having more than one key.
 // We could vary the max length based on depth or be even more sophisticated.
-//#define cwListPopCntMax  EXP(cnBitsPerDigit)
-// Use a small value for now to keep insert fast so data can be gathered
-// quickly.
-#define cwListPopCntMax  5
+#define cwListPopCntMax  (EXP(cnBitsPerDigit) / 2)
 
 // Choose features.
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
@@ -87,6 +83,20 @@
 #include <string.h> // memcpy
 #include <assert.h> // NDEBUG must be defined before including assert.h.
 #include "Judy.h"   // Word_t, JudyMalloc, ...
+
+#define cnLogBitsPerByte  (3U)
+#define cnBitsPerByte  (EXP(cnLogBitsPerByte))
+
+#if defined(__LP64__) || defined(_WIN64)
+#define cnLogBytesPerWord  (3U)
+#else // defined(__LP64__) || defined(_WIN64)
+#define cnLogBytesPerWord  (2U)
+#endif // defined(__LP64__) || defined(_WIN64)
+
+#define cnBytesPerWord  (EXP(cnLogBytesPerWord))
+#define cnLogBitsPerWord  (cnLogBytesPerWord + cnLogBitsPerByte)
+#define cnBitsPerWord  (EXP(cnLogBitsPerWord))
+#define cnMallocMask  ((cnBytesPerWord * 2) - 1)
 
 #if defined RAM_METRICS
 #define METRICS(x)  (x)
@@ -306,16 +316,26 @@
 #define     ls_wLen(_ls)        (((ListLeaf_t *)(_ls))->ll_nWords)
 #define set_ls_wLen(_ls, _len)  (ls_wLen(_ls) = (_len))
 
-#define     ls_pwKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_awKeys)
-#define     ls_psKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_asKeys)
+#if defined(COMPRESSED_LISTS)
 #define     ls_pcKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_acKeys)
+#define     ls_psKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_asKeys)
+#if (cnBitsPerWord > 32)
+#define     ls_piKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_aiKeys)
+#endif // (cnBitsPerWord > 32)
+#endif // defined(COMPRESSED_LISTS)
+#define     ls_pwKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_awKeys)
 
 // these are just aliases as long as wRoot is a pointer to a list
 #define     pwr_pwKeys(_pwr)    (ls_pwKeys(_pwr))
 #define     wr_ls_wPopCnt(_wr)  (ls_wPopCnt(_wr))
-#define     wr_pwKeys(_wr)      (ls_pwKeys(_wr))
-#define     wr_psKeys(_wr)      (ls_psKeys(_wr))
+#if defined(COMPRESSED_LISTS)
 #define     wr_pcKeys(_wr)      (ls_pcKeys(_wr))
+#define     wr_psKeys(_wr)      (ls_psKeys(_wr))
+#if (cnBitsPerWord > 32)
+#define     wr_piKeys(_wr)      (ls_piKeys(_wr))
+#endif // (cnBitsPerWord > 32)
+#endif // defined(COMPRESSED_LISTS)
+#define     wr_pwKeys(_wr)      (ls_pwKeys(_wr))
 
 #define BitmapByteNum(_key)  ((_key) >> cnLogBitsPerByte)
 #define BitmapWordNum(_key)  ((_key) >> cnLogBitsPerWord)
@@ -357,20 +377,6 @@
     (((_bSet) = TestBit((_pBitmap), (_key))), \
         SetBitByWord((_pBitmap), (_key)), (_bSet))
 
-#define cnLogBitsPerByte  (3U)
-#define cnBitsPerByte  (EXP(cnLogBitsPerByte))
-
-#if defined(__LP64__) || defined(_WIN64)
-#define cnLogBytesPerWord  (3U)
-#else // defined(__LP64__) || defined(_WIN64)
-#define cnLogBytesPerWord  (2U)
-#endif // defined(__LP64__) || defined(_WIN64)
-
-#define cnBytesPerWord  (EXP(cnLogBytesPerWord))
-#define cnLogBitsPerWord  (cnLogBytesPerWord + cnLogBitsPerByte)
-#define cnBitsPerWord  (EXP(cnLogBitsPerWord))
-#define cnMallocMask  ((cnBytesPerWord * 2) - 1)
-
 #define cnBitsAtBottom  (cnDigitsAtBottom * cnBitsPerDigit)
 
 #define cnDigitsPerWord  (((cnBitsPerWord - 1) / cnBitsPerDigit) + 1)
@@ -384,8 +390,13 @@ typedef struct {
     uint8_t ll_nWords;
     uint8_t ll_nDigitsLeft;
     union {
-        uint8_t  ll_acKeys[4];
-        uint16_t ll_asKeys[2];
+#if defined(COMPRESSED_LISTS)
+        uint8_t  ll_acKeys[1];
+        uint16_t ll_asKeys[1];
+#if (cnBitsPerWord > 32)
+        uint32_t ll_aiKeys[1];
+#endif // (cnBitsPerWord > 32)
+#endif // defined(COMPRESSED_LISTS)
         Word_t   ll_awKeys[1];
     };
 } ListLeaf_t;

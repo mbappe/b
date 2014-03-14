@@ -192,7 +192,11 @@ again:
             // Would like to combine the source code for this prefix
             // check and the one done in the bitmap section if possible.
             Word_t wPrefix;
+#if (cnBitsPerWord > 32)
+            if ((nBitsLeft > 32) // leaf has whole key
+#else // (cnBitsPerWord > 32)
             if ((nBitsLeft > 16) // leaf has whole key
+#endif // (cnBitsPerWord > 32)
                 || ( ! bNeedPrefixCheck ) // we followed no skip links
                 || ((wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeft),
                     LOG(1 | (wPrefix ^ wKey))
@@ -230,10 +234,15 @@ again:
 #endif // defined(LOOKUP)
 
 #if defined(COMPRESSED_LISTS)
-                    if ((nBitsLeft > 16) ? (wr_pwKeys(wRoot)[n] == wKey)
-                        : (nBitsLeft > 8)
+                    if ((nBitsLeft <= 8)
+                            ? (wr_pcKeys(wRoot)[n] == (unsigned char)wKey)
+                        : (nBitsLeft <= 16)
                             ? (wr_psKeys(wRoot)[n] == (unsigned short)wKey)
-                            : (wr_pcKeys(wRoot)[n] == (unsigned char)wKey))
+#if (cnBitsPerWord > 32)
+                        : (nBitsLeft <= 32)
+                            ? (wr_piKeys(wRoot)[n] == (unsigned int)wKey)
+#endif // (cnBitsPerWord > 32)
+                        : (wr_pwKeys(wRoot)[n] == wKey))
 #else // defined(COMPRESSED_LISTS)
                     if (wr_pwKeys(wRoot)[n] == wKey)
 #endif // defined(COMPRESSED_LISTS)
