@@ -63,7 +63,31 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
 {
     DBGM(printf("NewList wPopCnt "OWx"\n", wPopCnt));
 
-    unsigned nWords = sizeof(ListLeaf_t) / sizeof(Word_t) + wPopCnt;
+#if defined(COMPRESSED_LISTS)
+
+    unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+
+    if (nBitsLeft > cnBitsPerWord)
+    {
+        nBitsLeft = cnBitsPerWord;
+    }
+
+    unsigned nBytesKeySz = (nBitsLeft <= 8) ? 1 : (nBitsLeft <= 16) ? 2
+#if (cnBitsPerWord > 32)
+        : (nBitsLeft <= 32) ? 4 : 8;
+#else // (cnBitsPerWord > 32)
+        : 4;
+#endif // (cnBitsPerWord > 32)
+
+    unsigned nWords = (ALIGN_UP(wPopCnt * nBytesKeySz, cnBytesPerWord)
+        + OFFSET_OF(ListLeaf_t, ll_awKeys) / sizeof(Word_t)) | 1;
+
+#else // defined(COMPRESSED_LISTS)
+
+    unsigned nWords = (wPopCnt
+        + OFFSET_OF(ListLeaf_t, ll_awKeys) / sizeof(Word_t)) | 1;
+
+#endif // defined(COMPRESSED_LISTS)
 
     DBGM(printf("NewList nWords %d\n", nWords));
 
