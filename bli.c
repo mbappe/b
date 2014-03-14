@@ -169,10 +169,10 @@ again:
             return KeyFound;
 #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
-            DBGX(printf("List\n"));
-
             // Will popcount be in link with PP_IN_LINK?
             wPopCnt = ls_wPopCnt(wRoot);
+
+            DBGX(printf("List wPopCnt %"_fw"u\n", wPopCnt));
 
 #if defined(LOOKUP)
             SMETRICS(j__SearchPopulation += wPopCnt);
@@ -191,13 +191,14 @@ again:
             // pwr is left from the previous iteration of the goto again loop.
             // Would like to combine the source code for this prefix
             // check and the one done in the bitmap section if possible.
-            Word_t wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeft);
+            Word_t wPrefix;
             if ((nBitsLeft > 16) // leaf has whole key
                 || ( ! bNeedPrefixCheck ) // we followed no skip links
-                || (LOG(1 | (wPrefix ^ wKey))
-                    // prefix in parent switch doesn't contain last digit
-                    // for !defined(PP_IN_LINK) case
-                    < (nBitsLeft + pwr_nBitsIndexSz(pwr)))) // prefix matches
+                || ((wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeft),
+                    LOG(1 | (wPrefix ^ wKey))
+                        // prefix in parent switch doesn't contain last digit
+                        // for !defined(PP_IN_LINK) case
+                        < (nBitsLeft + pwr_nBitsIndexSz(pwr)))))
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
 #endif // defined(COMPRESSED_LISTS)
@@ -297,6 +298,11 @@ again:
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
         {
+#if !defined(LOOKUP)
+#if defined(PP_IN_LINK)
+            unsigned nDigitsLeftUp = nDigitsLeft;
+#endif // defined(PP_IN_LINK)
+#endif // !defined(LOOKUP)
             nDigitsLeft
                 = nDigitsLeftRoot - (pwr_nBitsIndexSz(pwr) / cnBitsPerDigit);
 
@@ -305,7 +311,10 @@ again:
 
 #if !defined(LOOKUP)
 #if defined(PP_IN_LINK)
-            if (nDigitsLeftRoot == cnDigitsPerWord)
+// What if nDigitsLeft was cnDigitsPerWord before it was updated?
+// Don't we have to walk the switch in that case too?
+// Actually, doesn't 
+            if (nDigitsLeftUp == cnDigitsPerWord)
             {
 #if defined(REMOVE)
                 if (bCleanup)
@@ -316,13 +325,27 @@ again:
 // looking at the next pwRoot seems like something that should be deferred
 // but if we defer, then we won't have the previous pwRoot, but if this
 // only happens at the top, then the previous pwRoot will be pwRootOrig?
-                        if ((pwr_pLinks(pwr)[ww].ln_wRoot != 0)
-                            && ((ww != wIndex)
-                                || PWR_wPopCnt(&pwr_pLinks(pwr)[ww].ln_wRoot,
-                                        NULL,
+
+// What if ln_wRoot is a list?
+// nDL cannot be obtained from ln_wRoot.
+// We must use nDigitsLeft in that case.
+                        DBGX(printf("wr_nDL %"_fw"d\n",
                                         wr_nDigitsLeft(
-                                            pwr_pLinks(pwr)[ww].ln_wRoot))
-                                    != 0))
+                                            pwr_pLinks(pwr)[ww].ln_wRoot)));
+                        DBGX(printf("PWR_wPopCnt %"_fw"d\n",
+                            PWR_wPopCnt(&pwr_pLinks(pwr)[ww].ln_wRoot,
+                                        NULL, wr_nDigitsLeft(
+                                            pwr_pLinks(pwr)[ww].ln_wRoot))));
+                        if ((pwr_pLinks(pwr)[ww].ln_wRoot != 0)
+                            && (((ww != wIndex))
+                                || (PWR_wPopCnt(&pwr_pLinks(pwr)[ww].ln_wRoot,
+                                        NULL,
+                                        wr_bIsSwitch(pwr_pLinks(pwr)
+                                                [ww].ln_wRoot)
+                                            ? wr_nDigitsLeft(pwr_pLinks(pwr)
+                                                [ww].ln_wRoot)
+                                            : nDigitsLeft)
+                                    != 0)))
                         {
                             DBGX(printf("Not empty ww %zd wIndex %zd\n",
                                  ww, wIndex));
@@ -483,12 +506,13 @@ notEmpty:;
             // Notice that we're using pwr which was extracted from
             // the previous wRoot -- not the current wRoot.
             // The current wRoot might be an embedded bitmap.
-            Word_t wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeft);
+            Word_t wPrefix;
             if (( ! bNeedPrefixCheck )
-                || (LOG(1 | (wPrefix ^ wKey))
-                    // pwr_nBitsIndexSz term is necessary because pwr prefix
-                    // does not contain any less significant bits.
-                    < (cnBitsAtBottom + pwr_nBitsIndexSz(pwr))))
+                || ((wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeft),
+                    LOG(1 | (wPrefix ^ wKey)))
+                        // pwr_nBitsIndexSz term is necessary because pwr
+                        // prefix does not contain any less significant bits.
+                        < (cnBitsAtBottom + pwr_nBitsIndexSz(pwr))))
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
             {
