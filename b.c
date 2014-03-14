@@ -93,7 +93,7 @@ OldList(Word_t *pwList)
     Word_t wLen = ls_wLen(pwList);
 
     DBGM(printf("Old pwList %p wLen "OWx" wPopCnt "OWx"\n",
-        pwList, wLen, ls_wPopCnt(pwList)));
+        pwList, wLen, (Word_t)ls_wPopCnt(pwList)));
 
     METRICS(j__AllocWordsJLLW -= (ls_wLen(pwList)));
 
@@ -293,18 +293,12 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 #if defined(PP_IN_LINK)
         if (bDump)
         {
-            if (nBitsLeftArg == cnBitsPerWord)
-            {
-                printf(" wr_wPopCnt N/A");
-                printf(" wr_wPrefix        N/A");
-            }
-            else
-            {
-                printf(" wr_wPopCnt %3"_fw"u",
-                       PWR_wPopCnt(pwRoot, NULL, nDigitsLeft));
-                printf(" wr_wPrefix "OWx,
-                       PWR_wPrefix(pwRoot, NULL, nDigitsLeft));
-            }
+            assert(nBitsLeftArg != cnBitsPerWord);
+ 
+            printf(" wr_wPopCnt %3"_fw"u",
+                   PWR_wPopCnt(pwRoot, NULL, nDigitsLeft));
+            printf(" wr_wPrefix "OWx,
+                   PWR_wPrefix(pwRoot, NULL, nDigitsLeft));
         }
 #endif // defined(PP_IN_LINK)
 
@@ -352,7 +346,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 #if defined(PP_IN_LINK)
         if (nBitsLeftArg == cnBitsPerWord)
         {
-            printf(" wr_wPopCnt N/A");
+            printf(" ls_wPopCnt %3"_fw"u", wPopCnt);
             printf(" wr_wPrefix        N/A");
         }
         else
@@ -400,7 +394,42 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 #if defined(PP_IN_LINK)
         if (nBitsLeftArg == cnBitsPerWord)
         {
-            printf(" wr_wPopCnt N/A");
+// Add 'em up.
+            Word_t wPopCnt = 0;
+            for (unsigned nn = 0; nn < EXP(cnBitsPerDigit); nn++)
+            {
+                Word_t *pwRootLn = &pwr_pLinks(pwr)[nn].ln_wRoot;
+// *pwRootLn may not be a pointer to a switch
+// It may be a pointer to a list leaf.
+// And if cnDigitsAtBottom == cnDigitsPerWord - 1, then it could be a
+// pointer to a bitmap?
+                unsigned nTypeLn = wr_nType(*pwRootLn);
+                Word_t wPopCntLn;
+                if (tp_bIsSwitch(nTypeLn))
+                {
+                    wPopCntLn
+                        = PWR_wPopCnt(pwRootLn, NULL,
+                                      wr_nDigitsLeft(*pwRootLn));
+                }
+                else
+                {
+                    wPopCntLn
+                        = PWR_wPopCnt(pwRootLn, NULL, cnDigitsPerWord - 1);
+                }
+
+                wPopCnt += wPopCntLn;
+
+                // We use pwr_pLinks(pwr)[nn].ln_wRoot != 0 to disambiguate
+                // wPopCnt == 0.  Hence we cannot allow Remove to leave
+                // pwr_pLinks(pwr)[nn].ln_wRoot != 0 unless the actual
+                // population count is not zero.
+                if ((wPopCntLn == 0) && (*pwRootLn != 0))
+                {
+                    wPopCnt += wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1;
+                }
+            }
+
+            printf(" wr_wPopCnt %3"_fw"u", wPopCnt);
             printf(" wr_wPrefix        N/A");
         }
         else
@@ -948,6 +977,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         }
 #endif // defined(BM_IN_LINK)
 
+        // initialize prefix/pop for new switch
         pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftUp, wPopCnt);
 
 #if defined(BM_IN_LINK)
@@ -967,6 +997,13 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         // Copy wRoot from old link to new link.
         pwr_pLinks(pwSw)[nIndex].ln_wRoot = wRoot;
+
+#if defined(PP_IN_LINK)
+        set_PWR_wPrefix(&pwr_pLinks(pwSw)[nIndex].ln_wRoot, NULL,
+                        nDigitsLeftRoot, wPrefix);
+        set_PWR_wPopCnt(&pwr_pLinks(pwSw)[nIndex].ln_wRoot, NULL,
+                        nDigitsLeftRoot, wPopCnt);
+#endif // defined(PP_IN_LINK)
 
         Insert(pwRoot, wKey, nDigitsLeftUp);
     }
@@ -1016,7 +1053,13 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
 #if defined(COMPRESSED_LISTS)
     unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+
+    if (nBitsLeft > cnBitsPerWord)
+    {
+        nBitsLeft = cnBitsPerWord;
+    }
 #endif // defined(COMPRESSED_LISTS)
+
     Word_t wPopCnt = ls_wPopCnt(wRoot);
     unsigned n;
 
