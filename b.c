@@ -8,11 +8,17 @@
 #include "b.h"
 
 #if defined(RAM_METRICS)
-Word_t j__AllocWordsJBU;  // JUDYA
-Word_t j__AllocWordsJLB1; // JUDYA
 Word_t j__AllocWordsJLLW; // JUDYA  JUDYB
 Word_t j__AllocWordsJBU4; //        JUDYB
 Word_t j__AllocWordsJV12; //        JUDYB
+Word_t j__AllocWordsJL12; //        JUDYB
+Word_t j__AllocWordsJL16; //        JUDYB
+Word_t j__AllocWordsJL32; //        JUDYB
+Word_t j__AllocWordsJBU;  // JUDYA
+Word_t j__AllocWordsJLB1; // JUDYA
+Word_t j__AllocWordsJLL1; // JUDYA
+Word_t j__AllocWordsJLL2; // JUDYA
+Word_t j__AllocWordsJLL4; // JUDYA
 #endif // defined(RAM_METRICS)
 
 // From Judy1LHTime.c for convenience.
@@ -82,10 +88,27 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
     unsigned nWords = (ALIGN_UP(wPopCnt * nBytesKeySz, cnBytesPerWord)
         + OFFSET_OF(ListLeaf_t, ll_awKeys) / sizeof(Word_t)) | 1;
 
+    if (nBytesKeySz == 1) {
+        METRICS(j__AllocWordsJL12 += nWords); // JUDYB
+        METRICS(j__AllocWordsJLL1 += nWords); // JUDYA
+    } else if (nBytesKeySz == 2) {
+        METRICS(j__AllocWordsJL16 += nWords); // JUDYB
+        METRICS(j__AllocWordsJLL2 += nWords); // JUDYA
+#if (cnBitsPerWord > 32)
+    } else if (nBytesKeySz == 4) {
+        METRICS(j__AllocWordsJL32 += nWords); // JUDYB
+        METRICS(j__AllocWordsJLL4 += nWords); // JUDYA
+#endif // (cnBitsPerWord > 32)
+    } else {
+        METRICS(j__AllocWordsJLLW += nWords); // BOTH
+    }
+
 #else // defined(COMPRESSED_LISTS)
 
     unsigned nWords = (wPopCnt
         + OFFSET_OF(ListLeaf_t, ll_awKeys) / sizeof(Word_t)) | 1;
+
+    METRICS(j__AllocWordsJLLW += nWords);
 
 #endif // defined(COMPRESSED_LISTS)
 
@@ -106,24 +129,59 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
 
     set_ll_nDigitsLeft(pwList, nDigitsLeft);
 
-    METRICS(j__AllocWordsJLLW += (ls_wLen(pwList)));
-
     return pwList;
 }
 
 static Word_t
 OldList(Word_t *pwList)
 {
-    Word_t wLen = ls_wLen(pwList);
+    unsigned nWords = ls_wLen(pwList);
 
-    DBGM(printf("Old pwList %p wLen "OWx" wPopCnt "OWx"\n",
-        pwList, wLen, (Word_t)ls_wPopCnt(pwList)));
+    DBGM(printf("Old pwList %p wLen %d wPopCnt "OWx"\n",
+        pwList, nWords, (Word_t)ls_wPopCnt(pwList)));
 
-    METRICS(j__AllocWordsJLLW -= (ls_wLen(pwList)));
+#if defined(COMPRESSED_LISTS)
 
-    JudyFree(pwList, wLen);
+    unsigned nDigitsLeft = ll_nDigitsLeft(pwList);
 
-    return wLen * sizeof(Word_t);
+    unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+
+    if (nBitsLeft > cnBitsPerWord)
+    {
+        nBitsLeft = cnBitsPerWord;
+    }
+
+    unsigned nBytesKeySz = (nBitsLeft <= 8) ? 1 : (nBitsLeft <= 16) ? 2
+#if (cnBitsPerWord > 32)
+        : (nBitsLeft <= 32) ? 4 : 8;
+#else // (cnBitsPerWord > 32)
+        : 4;
+#endif // (cnBitsPerWord > 32)
+
+    if (nBytesKeySz == 1) {
+        METRICS(j__AllocWordsJL12 -= nWords); // JUDYB
+        METRICS(j__AllocWordsJLL1 -= nWords); // JUDYA
+    } else if (nBytesKeySz == 2) {
+        METRICS(j__AllocWordsJL16 -= nWords); // JUDYB
+        METRICS(j__AllocWordsJLL2 -= nWords); // JUDYA
+#if (cnBitsPerWord > 32)
+    } else if (nBytesKeySz == 4) {
+        METRICS(j__AllocWordsJL32 -= nWords); // JUDYB
+        METRICS(j__AllocWordsJLL4 -= nWords); // JUDYA
+#endif // (cnBitsPerWord > 32)
+    } else {
+        METRICS(j__AllocWordsJLLW -= nWords); // BOTH
+    }
+
+#else // defined(COMPRESSED_LISTS)
+
+    METRICS(j__AllocWordsJLLW -= nWords);
+
+#endif // defined(COMPRESSED_LISTS)
+
+    JudyFree(pwList, nWords);
+
+    return nWords * sizeof(Word_t);
 }
 
 static Word_t
