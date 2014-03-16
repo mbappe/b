@@ -40,7 +40,7 @@
 // cannot be reached because we never transition to bitmap.
 // Default is one because a bitmap is the size of a word when cnBitsPerDigit
 // is cnLogBitsPerWord and we can embed the bitmap.
-#define cnDigitsAtBottom  (1U)
+#define cnDigitsAtBottom  1U
 
 // Choose max list length.
 // 0, 1, 2, 3, 4 and greater than 255 are all good values to test.
@@ -49,7 +49,8 @@
 // But it doesn't work because we can end up with a new switch at every
 // depth with only the bottom list having more than one key.
 // We could vary the max length based on depth or be even more sophisticated.
-#define cwListPopCntMax  (EXP(cnBitsPerDigit) / 2)
+//#define cwListPopCntMax  (EXP(cnBitsPerDigit) / 2)
+#define cwListPopCntMax  0
 
 // Choose features.
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
@@ -204,31 +205,38 @@
 #define set_wr_nType(_wr, _type)  ((_wr) = ((_wr) & ~cnMallocMask) | (_type))
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+
 #define     wr_tp_pwr(_wr, _tp)          ((Word_t *)((_wr) ^ (_tp)))
 #define     wr_pwr(_wr)                  ((Word_t *)((_wr) & ~cnMallocMask))
-#else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-#define     wr_tp_pwr(_wr, _tp)          ((Word_t *)(_wr))
-#define     wr_pwr(_wr)                  ((Word_t *)(_wr))
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+
 #define set_wr_pwr(_wr, _pwr) \
-    ((_wr) = ((_wr) & cnMallocMask) | (Word_t)(_pwr))
+                ((_wr) = ((_wr) & cnMallocMask) | (Word_t)(_pwr))
 
 #define set_wr(_wr, _pwr, _type)  ((_wr) = (Word_t)(_pwr) | (_type))
 
-#define  tp_to_nDigitsLeft(_tp)   ((_tp) + cnDigitsAtBottom - 1)
-#define  nDigitsLeft_to_tp(_nDL)  ((_nDL) + 1 - cnDigitsAtBottom)
+#define tp_to_nDigitsLeft(_tp)   ((_tp) + cnDigitsAtBottom - 1)
+#define nDigitsLeft_to_tp(_nDL)  ((_nDL) + 1 - cnDigitsAtBottom)
 
 #define     wr_nDigitsLeft(_wr)     (tp_to_nDigitsLeft(wr_nType(_wr)))
 #define set_wr_nDigitsLeft(_wr, _nDL) \
     (set_wr_nType((_wr), nDigitsLeft_to_tp((_nDL) + 1 - cnDigitsAtBottom)))
 
 #define     tp_bIsSwitch(_tp)          ((_tp) != 0)
-
 #define     wr_bIsSwitch(_wr)          (tp_bIsSwitch(wr_nType(_wr)))
 
 #define     wr_bIsSwitchDL(_wr, _tp, _nDL) \
-    ((_tp) = wr_nType(_wr), \
-        (_nDL) = tp_to_nDigitsLeft(_tp), tp_bIsSwitch(_tp))
+   ((_tp) = wr_nType(_wr), (_nDL) = tp_to_nDigitsLeft(_tp), tp_bIsSwitch(_tp))
+
+#else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+
+#define     wr_pwr(_wr)                  ((Word_t *)(_wr))
+#define set_wr_pwr(_wr, _pwr)            ((_wr) = (Word_t)(_pwr))
+
+#define     wr_tp_pwr(_wr, _tp)          ((Word_t *)(_wr))
+
+#define set_wr(_wr, _pwr, _tp)         ((_wr) = (Word_t)(_pwr))
+
+#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
 #define     pwr_nBitsIndexSz(_pwr)       (cnBitsPerDigit)
 #define set_pwr_nBitsIndexSz(_pwr, _sz)  (assert((_sz) == cnBitsPerDigit))
@@ -416,7 +424,11 @@ typedef struct {
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
     Word_t sw_awBm [ DIV_UP ( EXP(cnBitsPerDigit) , cnBitsPerWord ) ] ;
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+#if defined(BM_SWITCH_FOR_REAL)
+    Link_t sw_aLinks[1];
+#else // defined(BM_SWITCH_FOR_REAL)
     Link_t sw_aLinks[EXP(cnBitsPerDigit)];
+#endif // defined(BM_SWITCH_FOR_REAL)
 #if !defined(PP_IN_LINK)
     Word_t sw_wPrefixPop;
 #endif // !defined(PP_IN_LINK)

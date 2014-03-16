@@ -338,6 +338,7 @@ again:
 // What if ln_wRoot is a list?
 // nDL cannot be obtained from ln_wRoot.
 // We must use nDigitsLeft in that case.
+#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                         DBGX(printf("wr_nDL %"_fw"d\n",
                                         wr_nDigitsLeft(
                                             pwr_pLinks(pwr)[ww].ln_wRoot)));
@@ -345,8 +346,10 @@ again:
                             PWR_wPopCnt(&pwr_pLinks(pwr)[ww].ln_wRoot,
                                         NULL, wr_nDigitsLeft(
                                             pwr_pLinks(pwr)[ww].ln_wRoot))));
+#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                         if ((pwr_pLinks(pwr)[ww].ln_wRoot != 0)
                             && (((ww != wIndex))
+#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                                 || (PWR_wPopCnt(&pwr_pLinks(pwr)[ww].ln_wRoot,
                                         NULL,
                                         wr_bIsSwitch(pwr_pLinks(pwr)
@@ -354,7 +357,13 @@ again:
                                             ? wr_nDigitsLeft(pwr_pLinks(pwr)
                                                 [ww].ln_wRoot)
                                             : nDigitsLeft)
-                                    != 0)))
+                                    != 0)
+#else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                                || (PWR_wPopCnt(&pwr_pLinks(pwr)[ww].ln_wRoot,
+                                        NULL, nDigitsLeft)
+                                    != 0)
+#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                                ))
                         {
                             DBGX(printf("Not empty ww %zd wIndex %zd\n",
                                  ww, wIndex));
@@ -435,8 +444,13 @@ notEmpty:;
 #else // (cnBitsPerDigit > cnLogBitsPerWord)
                 unsigned nBmOffset = 0;
 #endif // (cnBitsPerDigit > cnLogBitsPerWord)
+//printf("nBmOffset %d\n", nBmOffset);
+//printf("pwr %p\n", pwr);
+//printf("PWR_pwBm %p\n", PWR_pwBm(pwRoot, pwr));
                 Word_t wBm = PWR_pwBm(pwRoot, pwr)[nBmOffset];
+//printf("wBm "OWx"\n", wBm);
                 Word_t wBit = ((Word_t)1 << (wIndex & (cnBitsPerWord - 1)));
+//printf("wBit "OWx"\n", wBit);
                 // Test to see if link exists before figuring out where it is.
                 if ( ! (wBm & wBit) )
                 {
