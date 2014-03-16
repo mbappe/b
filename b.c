@@ -62,6 +62,31 @@ Word_t    j__AllocWordsJV;
 
 #endif // 0
 
+// Proposal for more generic names for the metrics.
+//
+// LB1 -- one-digit leaf bitmap
+// LB2 -- two-digit leaf bitmap
+// LB3 -- three-digit leaf bitmap
+//
+// LL1 -- one-byte leaf list
+// LL2 -- two-byte leaf list
+// LL3 -- three-byte leaf list
+// LL4
+// LL5
+// LL6
+// LL7
+// LLW -- one-word leaf list
+//
+// BU1 -- one-digit uncompressed branch
+// BU2 -- two-digit uncompressed branch
+// BU3 -- three-digit uncompressed branch
+//
+// BB1 -- one-digit bitmap branch
+// BB2 -- two-digit bitmap branch
+// BL  -- linear/list branch
+//
+// V   -- JudyL value area (when separate from leaf)
+
 #if cnBitsPerDigit != 0
 
 static Word_t *
@@ -570,12 +595,31 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
     nBitsLeft = ALIGN_UP(nBitsLeft - nBitsIndexSz, cnBitsPerDigit);
 
+#if defined(BM_SWITCH)
+    Word_t xx = 0;
+#endif // defined(BM_SWITCH)
     for (Word_t nn = 0; nn < EXP(nBitsIndexSz); nn++)
     {
-        pwRoot = &pLinks[nn].ln_wRoot;
-
-        wBytes += FreeArrayGuts(pwRoot,
+#if defined(BM_SWITCH)
+#if defined(BM_IN_LINK)
+        if ((nBitsLeftArg == cnBitsPerWord)
+            || BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
+#else // defined(BM_IN_LINK)
+        if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
+#endif // defined(BM_IN_LINK)
+        {
+            //printf("nn %"_fw"d\n", nn);
+            wBytes += FreeArrayGuts(&pLinks[xx].ln_wRoot,
                     wPrefix | (nn << nBitsLeft), nBitsLeft, bDump);
+            xx++;
+        }
+        else
+        {
+            //printf("nn %"_fw"d no bit\n", nn);
+        }
+#else // defined(BM_SWITCH)
+        pwRoot = &pLinks[nn].ln_wRoot;
+#endif // defined(BM_SWITCH)
     }
 
 #if defined(RAM_METRICS)
@@ -634,6 +678,7 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, unsigned nKeys, Word_t wKey)
 
 #if defined(COMPRESSED_LISTS)
 
+#if (cnBitsPerWord > 32)
 static void
 CopyWithInsertInt(unsigned int *pTgt, unsigned int *pSrc,
     unsigned nKeys, unsigned int wKey)
@@ -669,6 +714,7 @@ CopyWithInsertInt(unsigned int *pTgt, unsigned int *pSrc,
 
     COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
 }
+#endif // (cnBitsPerWord > 32)
 
 static void
 CopyWithInsertShort(unsigned short *pTgt, unsigned short *pSrc,
@@ -1334,29 +1380,121 @@ Judy1FreeArray(PPvoid_t PPArray, P_JE)
 #endif // (cnBitsPerDigit != 0)
 }
 
-// Return count of present keys, inclusive.
+// Return the number of keys that are present from wKey0 through wKey1.
+// Include wKey0 and wKey1 if they are present.
 Word_t
-Judy1Count(Pcvoid_t PArray, Word_t Index1, Word_t Index2, P_JE)
+Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 {
+    DBGR(printf("Judy1Count\n"));
+
+    // Return C_JERR if the array is empty or wKey0 > wKey1.
+    if ((PArray == (Pvoid_t) NULL) || (wKey0 > wKey1))
+    {
+        if (PJError != NULL)
+        {
+            JU_ERRNO(PJError) = JU_ERRNO_NONE; // zero pop
+            JU_ERRID(PJError) = __LINE__;
+        }
+
+        return 0; // C_JERR
+    }
+
     if (PJError != NULL)
     {
-        JU_ERRNO(PJError) = JU_ERRNO_NONE; // zero pop
         JU_ERRNO(PJError) = JU_ERRNO_FULL; // full pop
         JU_ERRID(PJError) = __LINE__;
     }
 
-    // Suppress "unused parameter" compiler warnings until we implement
-    // this function.
-    (void)PArray;
-    (void)Index1;
-    (void)Index2;
+    Word_t wRoot = (Word_t)PArray;
+    unsigned nType = wr_nType(wRoot);
+    Word_t *pwr = wr_tp_pwr(wRoot, nType);
+    Word_t wPopCnt;
 
-    DBGR(printf("Judy1Count\n"));
+    if (tp_bIsSwitch(nType))
+    {
+#if defined(PP_IN_LINK)
+        // no skip links at root for PP_IN_LINK -- no place for prefix
+        assert(tp_to_nDigitsLeft(nType) == cnDigitsPerWord);
+        // add up the pops in the links
+        // BUG: Remember to check the switch bitmap.
+        // BUG: nBitsPerIndex > cnBitsPerDigit.
+        wPopCnt = 0;
+        for (unsigned nn = 0; nn < EXP(cnBitsPerDigit); nn++)
+        {
+            Word_t *pwRootLn = &pwr_pLinks(pwr)[nn].ln_wRoot;
+// *pwRootLn may not be a pointer to a switch
+// It may be a pointer to a list leaf.
+// And if cnDigitsAtBottom == cnDigitsPerWord - 1, then it could be a
+// pointer to a bitmap?
+            unsigned nTypeLn = wr_nType(*pwRootLn);
+            Word_t wPopCntLn;
+            if (tp_bIsSwitch(nTypeLn))
+            {
+                wPopCntLn
+                    = PWR_wPopCnt(pwRootLn, NULL,
+                                  wr_nDigitsLeft(*pwRootLn));
+            }
+            else
+            {
+                wPopCntLn
+                    = PWR_wPopCnt(pwRootLn, NULL, cnDigitsPerWord - 1);
+            }
+
+#if defined(DEBUG_INSERT)
+            if (wPopCntLn != 0)
+            {
+                printf("Pop sum");
+                printf(" mask "OWx" %zd",
+                    wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)),
+                    wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)));
+                printf(" nn %d wPopCntLn %zd "OWx"\n",
+                       nn, wPopCntLn, wPopCntLn);
+            }
+#endif // defined(DEBUG_INSERT)
+
+            wPopCnt += wPopCntLn;
+
+            // We use pwr_pLinks(pwr)[nn].ln_wRoot != 0 to disambiguate
+            // wPopCnt == 0.  Hence we cannot allow Remove to leave
+            // pwr_pLinks(pwr)[nn].ln_wRoot != 0 unless the actual
+            // population count is not zero.
+            if ((wPopCntLn == 0) && (*pwRootLn != 0))
+            {
+#if defined(DEBUG_INSERT)
+                printf("Pop sum (full)");
+                printf(" mask "Owx" %zd\n",
+                    wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)),
+                    wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)));
+                printf("nn %d wPopCntLn %zd "OWx"\n",
+                    nn, wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1,
+                    wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1);
+#endif // defined(DEBUG_INSERT)
+
+                wPopCnt += wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1;
+            }
+        }
+        assert(wPopCnt - 1 <= wPrefixPopMask(tp_to_nDigitsLeft(nType)));
+#else // defined(PP_IN_LINK)
+        wPopCnt = PWR_wPopCnt(NULL, pwr, tp_to_nDigitsLeft(nType));
+        if (wPopCnt == 0)
+        {
+            wPopCnt = wPrefixPopMask(tp_to_nDigitsLeft(nType)) + 1;
+        }
+#endif // defined(PP_IN_LINK)
+    }
+    else
+    {
+        wPopCnt = wr_ls_wPopCnt(wRoot);
+    }
 
 #if defined(DEBUG)
-    return wInserts;
-#else // defined(DEBUG)
-    return 0; // Can't use a global in production code.
+    if (wPopCnt != wInserts)
+    {
+        printf("\nwPopCnt %"_fw"d wInserts %"_fw"d\n", wPopCnt, wInserts);
+    }
+    assert(wPopCnt == wInserts);
 #endif // defined(DEBUG)
+
+    return wPopCnt;
 }
 
