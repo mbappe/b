@@ -49,8 +49,7 @@
 // But it doesn't work because we can end up with a new switch at every
 // depth with only the bottom list having more than one key.
 // We could vary the max length based on depth or be even more sophisticated.
-//#define cwListPopCntMax  (EXP(cnBitsPerDigit) / 2)
-#define cwListPopCntMax  0
+#define cwListPopCntMax  (EXP(cnBitsPerDigit) / 2)
 
 // Choose features.
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
