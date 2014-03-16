@@ -437,6 +437,7 @@ notEmpty:;
 #endif // (cnBitsPerDigit > cnLogBitsPerWord)
                 Word_t wBm = PWR_pwBm(pwRoot, pwr)[nBmOffset];
                 Word_t wBit = ((Word_t)1 << (wIndex & (cnBitsPerWord - 1)));
+                // Test to see if link exists before figuring out where it is.
                 if ( ! (wBm & wBit) )
                 {
 #if defined(BM_SWITCH_FOR_REAL)
@@ -445,7 +446,6 @@ notEmpty:;
                     assert(0); // only for now
 #endif // defined(BM_SWITCH_FOR_REAL)
                 }
-                // Test to see if link exists before figuring out where it is.
                 Word_t wBmMask = wBit - 1;
                 wIndex = 0;
 #if (cnBitsPerDigit > cnLogBitsPerWord)
