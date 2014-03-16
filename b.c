@@ -298,9 +298,18 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     if (nDigitsLeftUp < cnDigitsPerWord)
 #endif // defined(BM_IN_LINK)
     {
+#if defined(BM_SWITCH_FOR_REAL)
+        unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+        if (nBitsLeft > cnBitsPerWord) nBitsLeft = cnBitsPerWord;
+        unsigned nBitsIndexSz = pwr_nBitsIndexSz(pwr);
+        Word_t wIndex
+            = (wKey >> (nBitsLeft - nBitsIndexSz)) & (EXP(nBitsIndexSz) - 1);
+        SetBit(PWR_pwBm(pwRoot, pwr), wIndex);
+#else // defined(BM_SWITCH_FOR_REAL)
         memset(PWR_pwBm(pwRoot, pwr), -1,
                DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
                    * cnBytesPerWord);
+#endif // defined(BM_SWITCH_FOR_REAL)
     }
 #endif // defined(BM_SWITCH)
 
@@ -1011,12 +1020,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         }
         else
         {
-#if defined(SKIP_LINKS)
-#if defined(NO_UNNECESSARY_PREFIX) || defined(COMPRESSED_LISTS) \
-    || !defined(NDEBUG)
             unsigned nDigitsLeftOld = nDigitsLeft;
-#endif // defined(NO_UNNECESSARY_PREFIX) || defined(COMPRESSED_LISTS) || ...
-#endif // defined(SKIP_LINKS)
             Word_t w;
 
             // List is full; insert a switch
@@ -1024,8 +1028,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #if defined(PP_IN_LINK)
             if (nDigitsLeft < cnDigitsPerWord)
 #endif // defined(PP_IN_LINK)
-            {
 #if defined(SKIP_LINKS)
+            {
                 if (cwListPopCntMax != 0) // use const for compile time check
                 {
                     Word_t wMax, wMin;
@@ -1103,7 +1107,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #else // defined(SKIP_LINKS)
             assert(nDigitsLeft > cnDigitsAtBottom);
 #endif // defined(SKIP_LINKS)
-
             pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftOld,
                              /* wPopCnt */ 0);
 
@@ -1148,9 +1151,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         if (wPopCnt != 0) OldList(pwr); // free old
     }
-#if defined(SKIP_LINKS)
+#if defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
     else
     {
+//#if defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
+//#endif // defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
+//#if defined(BM_SWITCH_FOR_REAL)
+//#endif // defined(BM_SWITCH_FOR_REAL)
+//#if defined(SKIP_LINKS)
         // prefix mismatch
         // insert a switch so we can add just one key; seems like a waste
 // A bitmap switch would be great; no reason to consider converting the
@@ -1243,8 +1251,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #endif // defined(PP_IN_LINK)
 
         Insert(pwRoot, wKey, nDigitsLeftUp);
+//#endif // defined(SKIP_LINKS)
     }
-#endif // defined(SKIP_LINKS)
+#endif // defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
 
     return Success;
 }
