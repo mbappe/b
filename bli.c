@@ -296,10 +296,11 @@ again:
         // Record that there were prefix bits that were not checked.
         bNeedPrefixCheck |= (nDigitsLeftRoot < nDigitsLeft);
 #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-        Word_t wPrefix = PWR_wPrefix(pwRoot, pwr, nDigitsLeftRoot);
+        Word_t wPrefix;
         if ((nDigitsLeftRoot < nDigitsLeft)
-            && (LOG(1 | (wPrefix ^ wKey))
-                >= (nDigitsLeftRoot * cnBitsPerDigit)))
+            && ((wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeftRoot)),
+                (LOG(1 | (wPrefix ^ wKey))
+                    >= (nDigitsLeftRoot * cnBitsPerDigit))))
         {
             DBGX(printf("Mismatch wPrefix "Owx"\n", wPrefix));
         }
