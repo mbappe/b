@@ -1070,7 +1070,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                         pwKeys, wPopCnt, wKey);
                 }
             } else
-#elif defined(MIN_MAX_LISTS)
+#else // defined(SORT_LISTS)
+#if defined(MIN_MAX_LISTS)
             {
                 COPY(ls_pwKeys(pwList), pwKeys, wPopCnt);
 
@@ -1109,6 +1110,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #endif // defined(COMPRESSED_LISTS)
                 { COPY(ls_pwKeys(pwList), pwKeys, wPopCnt); }
             }
+#endif // defined(MIN_MAX_LISTS)
 #endif // defined(SORT_LISTS)
             {
 #if defined(COMPRESSED_LISTS)
@@ -1444,70 +1446,134 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     }
     else
     {
-
 #if defined(COMPRESSED_LISTS)
-    unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+        unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
 
-    if (nBitsLeft > cnBitsPerWord)
-    {
-        nBitsLeft = cnBitsPerWord;
-    }
+        if (nBitsLeft > cnBitsPerWord)
+        {
+            nBitsLeft = cnBitsPerWord;
+        }
 #endif // defined(COMPRESSED_LISTS)
 
-    Word_t wPopCnt = ls_wPopCnt(wRoot);
-    unsigned n;
+        Word_t wPopCnt = ls_wPopCnt(wRoot);
 
-    if (wPopCnt == 1)
-    {
-        OldList((Word_t *)wRoot); *pwRoot = 0;
-        // BUG:  We should check if the switch is empty and free it
-        // (and on up the tree as necessary).
-    }
-    else
-    {
-        Word_t *pwKeys = wr_pwKeys(wRoot);
+        if (wPopCnt == 1)
+        {
+            OldList((Word_t *)wRoot); *pwRoot = 0;
+            // BUG:  We should check if the switch is empty and free it
+            // (and on up the tree as necessary).
+        }
+        else
+        {
+            Word_t *pwKeys = wr_pwKeys(wRoot);
 
-        for (n = 0;
+            unsigned nIndex;
+            for (nIndex = 0;
 #if defined(COMPRESSED_LISTS)
-            (nBitsLeft <= 8)
-                ? (wr_pcKeys(wRoot)[n] != (unsigned char )wKey)
-            : (nBitsLeft <= 16)
-                ? (wr_psKeys(wRoot)[n] != (unsigned short)wKey)
+                (nBitsLeft <= 8)
+                    ? (wr_pcKeys(wRoot)[nIndex] != (unsigned char )wKey)
+                : (nBitsLeft <= 16)
+                    ? (wr_psKeys(wRoot)[nIndex] != (unsigned short)wKey)
 #if (cnBitsPerWord > 32)
-            : (nBitsLeft <= 32)
-                ? (wr_piKeys(wRoot)[n] != (unsigned int)wKey)
+                : (nBitsLeft <= 32)
+                    ? (wr_piKeys(wRoot)[nIndex] != (unsigned int)wKey)
 #endif // (cnBitsPerWord > 32)
-                : (pwKeys[n] != wKey);
+                    : (pwKeys[nIndex] != wKey);
 #else // defined(COMPRESSED_LISTS)
-            pwKeys[n] != wKey;
+                pwKeys[nIndex] != wKey;
 #endif // defined(COMPRESSED_LISTS)
-            n++)
-            ; // semicolon on separate line to silence compiler warning
+                nIndex++)
+                ; // semicolon on separate line to silence compiler warning
 
-#if defined(MAX_MIN_LISTS)
-        assert(0); // later
-#else // defined(MAX_MIN_LISTS)
-        // BUG:  We should shrink the list.
+            // BUG:  We should malloc a new, smaller list.
 #if defined(COMPRESSED_LISTS)
-        if (nBitsLeft <= 8) {
-            MOVE(&wr_pcKeys(wRoot)[n],
-                 &wr_pcKeys(wRoot)[n + 1], wPopCnt - n - 1);
-        } else if (nBitsLeft <= 16) {
-            MOVE(&wr_psKeys(wRoot)[n],
-                 &wr_psKeys(wRoot)[n + 1], wPopCnt - n - 1);
+            if (nBitsLeft <= 8) {
+                MOVE(&wr_pcKeys(wRoot)[nIndex],
+                     &wr_pcKeys(wRoot)[nIndex + 1], wPopCnt - nIndex - 1);
+            } else if (nBitsLeft <= 16) {
+                MOVE(&wr_psKeys(wRoot)[nIndex],
+                     &wr_psKeys(wRoot)[nIndex + 1], wPopCnt - nIndex - 1);
 #if (cnBitsPerWord > 32)
-        } else if (nBitsLeft <= 32) {
-            MOVE(&wr_piKeys(wRoot)[n],
-                 &wr_piKeys(wRoot)[n + 1], wPopCnt - n - 1);
+            } else if (nBitsLeft <= 32) {
+                MOVE(&wr_piKeys(wRoot)[nIndex],
+                     &wr_piKeys(wRoot)[nIndex + 1], wPopCnt - nIndex - 1);
 #endif // (cnBitsPerWord > 32)
-        } else
+            } else
 #endif // defined(COMPRESSED_LISTS)
-        { MOVE(&pwKeys[n], &pwKeys[n + 1], wPopCnt - n - 1); }
-#endif // defined(MAX_MIN_LISTS)
+            {
+                MOVE(&pwKeys[nIndex], &pwKeys[nIndex + 1],
+                     wPopCnt - nIndex - 1);
+            }
 
-        set_ls_wPopCnt(wRoot, wPopCnt - 1);
-    }
+#if defined(MIN_MAX_LISTS) && !defined(SORT_LISTS)
+            // if we removed min or max, then we need to find a new one
+            if ((nIndex == 0) || (nIndex == wPopCnt - 1))
+            {
+                for (unsigned nn = 1; nn < wPopCnt - 2; nn++)
+                {
+#if defined(COMPRESSED_LISTS)
+                    if (nBitsLeft <= 8) {
+                        unsigned char knn = wr_pcKeys(wRoot)[nn];
+                        if (knn < wr_pcKeys(wRoot)[0])
+                        {
+                            wr_pcKeys(wRoot)[nn] = wr_pcKeys(wRoot)[0];
+                            wr_pcKeys(wRoot)[0] = knn;
+                        }
+                        if (knn > wr_pcKeys(wRoot)[wPopCnt - 2])
+                        {
+                            wr_pcKeys(wRoot)[nn]
+                                = wr_pcKeys(wRoot)[wPopCnt - 2];
+                            wr_pcKeys(wRoot)[wPopCnt - 2] = knn;
+                        }
+                    } else if (nBitsLeft <= 16) {
+                        unsigned char knn = wr_psKeys(wRoot)[nn];
+                        if (knn < wr_psKeys(wRoot)[0])
+                        {
+                            wr_psKeys(wRoot)[nn] = wr_psKeys(wRoot)[0];
+                            wr_psKeys(wRoot)[0] = knn;
+                        }
+                        if (knn > wr_psKeys(wRoot)[wPopCnt - 2])
+                        {
+                            wr_psKeys(wRoot)[nn]
+                                = wr_psKeys(wRoot)[wPopCnt - 2];
+                            wr_psKeys(wRoot)[wPopCnt - 2] = knn;
+                        }
+#if (cnBitsPerWord > 32)
+                    } else if (nBitsLeft <= 32) {
+                        unsigned char knn = wr_piKeys(wRoot)[nn];
+                        if (knn < wr_piKeys(wRoot)[0])
+                        {
+                            wr_piKeys(wRoot)[nn] = wr_piKeys(wRoot)[0];
+                            wr_piKeys(wRoot)[0] = knn;
+                        }
+                        if (knn > wr_piKeys(wRoot)[wPopCnt - 2])
+                        {
+                            wr_piKeys(wRoot)[nn]
+                                = wr_piKeys(wRoot)[wPopCnt - 2];
+                            wr_piKeys(wRoot)[wPopCnt - 2] = knn;
+                        }
+#endif // (cnBitsPerWord > 32)
+                    } else
+#endif // defined(COMPRESSED_LISTS)
+                    {
+                        unsigned char knn = pwKeys[nn];
+                        if (knn < pwKeys[0])
+                        {
+                            pwKeys[nn] = pwKeys[0];
+                            pwKeys[0] = knn;
+                        }
+                        if (knn > pwKeys[wPopCnt - 2])
+                        {
+                            pwKeys[nn] = pwKeys[wPopCnt - 2];
+                            pwKeys[wPopCnt - 2] = knn;
+                        }
+                    }
+                }
+            }
+#endif // defined(MIN_MAX_LISTS) && !defined(SORT_LISTS)
 
+            set_ls_wPopCnt(wRoot, wPopCnt - 1);
+        }
     }
 
     (void)pwRoot; (void)wKey; (void)nDigitsLeft; (void)wRoot;
