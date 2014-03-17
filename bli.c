@@ -256,6 +256,24 @@ again:
 #endif // defined(INSERT) && !defined(RECURSIVE)
                         return KeyFound;
                     }
+#if defined(SORT_LISTS)
+#if defined(COMPRESSED_LISTS)
+                    if ((nBitsLeft <= 8)
+                            ? (wr_pcKeys(wRoot)[n] > (unsigned char)wKey)
+                        : (nBitsLeft <= 16)
+                            ? (wr_psKeys(wRoot)[n] > (unsigned short)wKey)
+#if (cnBitsPerWord > 32)
+                        : (nBitsLeft <= 32)
+                            ? (wr_piKeys(wRoot)[n] > (unsigned int)wKey)
+#endif // (cnBitsPerWord > 32)
+                        : (wr_pwKeys(wRoot)[n] > wKey))
+#else // defined(COMPRESSED_LISTS)
+                    if (wr_pwKeys(wRoot)[n] > wKey)
+#endif // defined(COMPRESSED_LISTS)
+                    {
+                        break;
+                    }
+#endif // defined(SORT_LISTS)
                 }
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
             }
