@@ -326,8 +326,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
         assert(nDigitsLeft <= nDigitsLeftUp);
 
 #if defined(NO_UNNECESSARY_PREFIX)
-        // We need the prefix at the leaf even if there is no skip if
-        // defined(SKIP_PREFIX_CHECK).
+        // Revisit this.
+        // We need the prefix at the leaf even if there is no skip due to
+        // defined(SKIP_PREFIX_CHECK).  Why?  I'm not sure at the moment.
         // List leaf only needs it if the keys in the list are less than
         // whole words.
         // Bits in a bitmap are always less than whole words and always
@@ -336,7 +337,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
         // from list to bitmap?
         // We could get rid of the leaf check if we enhance Insert
         // to keep track of any prefix checks done along the way and
-        // pass that info to InsertGuts.
+        // pass that info to InsertGuts.  Wait.  What?
         if ((nDigitsLeft == nDigitsLeftUp)
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
