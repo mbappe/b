@@ -1527,7 +1527,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
     Word_t wPopCnt;
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-    if (tp_bIsSwitch(nType))
+    if (!tp_bIsSwitch(nType))
     {
         wPopCnt = wr_ls_wPopCnt(wRoot);
     }
