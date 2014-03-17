@@ -439,7 +439,9 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
         (wPopCnt - wIndex) * sizeof(Link_t));
 
     // Remember to finish updating *pwRoot.
+#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     set_wr_nType(*pwRoot, nDigitsLeft_to_tp(nDigitsLeft));
+#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 }
 #endif // defined(BM_SWITCH_FOR_REAL)
 
@@ -977,6 +979,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
     pwr = wr_tp_pwr(wRoot, nType);
 
+#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
     if (!tp_bIsSwitch(nType))
 #else // defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
@@ -1248,8 +1251,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         if (wPopCnt != 0) OldList(pwr); // free old
     }
-#if defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
     else
+#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+#if defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
     {
 //#if defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
 //#endif // defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
