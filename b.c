@@ -979,12 +979,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
     pwr = wr_tp_pwr(wRoot, nType);
 
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-#if defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
+#if defined(SKIP_LINKS)
     if (!tp_bIsSwitch(nType))
-#else // defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
-    assert(nType == 0);
-#endif // defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
+#endif // defined(SKIP_LINKS)
     {
         Word_t wPopCnt;
         Word_t *pwKeys;
@@ -1251,9 +1248,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         if (wPopCnt != 0) OldList(pwr); // free old
     }
-    else
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
+    else
     {
 //#if defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
 //#endif // defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
