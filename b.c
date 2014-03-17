@@ -1094,7 +1094,21 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 }
             } else
 #else // defined(MIN_MAX_LISTS)
-            { COPY(ls_pwKeys(pwList), pwKeys, wPopCnt); }
+            {
+#if defined(COMPRESSED_LISTS)
+                unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+                if (nBitsLeft <= 8) {
+                    COPY(ls_pcKeys(pwList), pcKeys, wPopCnt);
+                } else if (nBitsLeft <= 16) {
+                    COPY(ls_psKeys(pwList), psKeys, wPopCnt);
+#if (cnBitsPerWord > 32)
+                } else if (nBitsLeft <= 32) {
+                    COPY(ls_piKeys(pwList), piKeys, wPopCnt);
+#endif // (cnBitsPerWord > 32)
+                } else
+#endif // defined(COMPRESSED_LISTS)
+                { COPY(ls_pwKeys(pwList), pwKeys, wPopCnt); }
+            }
 #endif // defined(SORT_LISTS)
             {
 #if defined(COMPRESSED_LISTS)
@@ -1128,13 +1142,15 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #endif // defined(PP_IN_LINK)
 #if defined(SKIP_LINKS)
             {
+#if defined(COMPRESSED_LISTS)
+                unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+                Word_t wSuffix;
+#endif // defined(COMPRESSED_LISTS)
                 if (cwListPopCntMax != 0) // use const for compile time check
                 {
                     Word_t wMax, wMin;
 #if defined(SORT_LISTS) || defined(MIN_MAX_LISTS)
 #if defined(COMPRESSED_LISTS)
-                    unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
-                    Word_t wSuffix;
                     if (nBitsLeft <= 8) {
                         wMin = ls_pcKeys(wRoot)[0];
                         wMax = ls_pcKeys(wRoot)[wPopCnt - 1];
@@ -1157,10 +1173,40 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                     wMin = (Word_t)-1;
                     wMax = 0;
 
+#if defined(COMPRESSED_LISTS)
+                        wSuffix = (nBitsLeft <= 8) ? (wKey & 0xff)
+#if (cnBitsPerWord > 32)
+                                : (nBitsLeft > 16) ? (wKey & 0xffffffff)
+#endif // (cnBitsPerWord > 32)
+                                : (wKey & 0xffff);
+#endif // defined(COMPRESSED_LISTS)
+
                     for (w = 0; w < wPopCnt; w++)
                     {
-                        if (pwKeys[w] < wMin) wMin = pwKeys[w];
-                        if (pwKeys[w] > wMax) wMax = pwKeys[w];
+#if defined(COMPRESSED_LISTS)
+                        if (nBitsLeft <= 8) {
+                            if (ls_pcKeys(wRoot)[w] < wMin)
+                                wMin = ls_pcKeys(wRoot)[w];
+                            if (ls_pcKeys(wRoot)[w] > wMax)
+                                wMax = ls_pcKeys(wRoot)[w];
+                        } else if (nBitsLeft <= 16) {
+                            if (ls_psKeys(wRoot)[w] < wMin)
+                                wMin = ls_psKeys(wRoot)[w];
+                            if (ls_psKeys(wRoot)[w] > wMax)
+                                wMax = ls_psKeys(wRoot)[w];
+#if (cnBitsPerWord > 32)
+                        } else if (nBitsLeft <= 32) {
+                            if (ls_piKeys(wRoot)[w] < wMin)
+                                wMin = ls_piKeys(wRoot)[w];
+                            if (ls_psKeys(wRoot)[w] > wMax)
+                                wMax = ls_piKeys(wRoot)[w];
+#endif // (cnBitsPerWord > 32)
+                        } else 
+#endif // defined(COMPRESSED_LISTS)
+                        {
+                            if (pwKeys[w] < wMin) wMin = pwKeys[w];
+                            if (pwKeys[w] > wMax) wMax = pwKeys[w];
+                        }
                     }
 #endif // defined(SORT_LISTS) || defined(MIN_MAX_LISTS)
                     DBGI(printf("wMin "OWx" wMax "OWx"\n", wMin, wMax));
