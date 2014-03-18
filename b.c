@@ -1073,25 +1073,109 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #else // defined(SORT_LISTS)
 #if defined(MIN_MAX_LISTS)
             {
-                COPY(ls_pwKeys(pwList), pwKeys, wPopCnt);
+#if defined(COMPRESSED_LISTS)
+                unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
 
-                if (wKey < pwKeys[wPopCnt - 1])
+                if (nBitsLeft <= 8)
                 {
-                    ls_pwKeys(pwList)[wPopCnt] = pwKeys[wPopCnt - 1];
+                    unsigned char cKey = wKey;
 
-                    if (wKey < pwKeys[0])
+                    COPY(ls_pcKeys(pwList), pcKeys, wPopCnt);
+
+                    if (cKey < pcKeys[wPopCnt - 1])
                     {
-                        ls_pwKeys(pwList)[wPopCnt - 1] = pwKeys[0];
-                        ls_pwKeys(pwList)[0] = wKey;
+                        ls_pcKeys(pwList)[wPopCnt] = pcKeys[wPopCnt - 1];
+
+                        if (cKey < pcKeys[0])
+                        {
+                            ls_pcKeys(pwList)[wPopCnt - 1] = pcKeys[0];
+                            ls_pcKeys(pwList)[0] = wKey;
+                        }
+                        else
+                        {
+                            ls_pcKeys(pwList)[wPopCnt - 1] = wKey;
+                        }
                     }
                     else
                     {
-                        ls_pwKeys(pwList)[wPopCnt - 1] = wKey;
+                        ls_pcKeys(pwList)[wPopCnt] = wKey;
                     }
                 }
-                else
+                else if (nBitsLeft <= 16)
                 {
-                    ls_pwKeys(pwList)[wPopCnt] = wKey;
+                    unsigned short sKey = wKey;
+
+                    COPY(ls_psKeys(pwList), psKeys, wPopCnt);
+
+                    if (sKey < psKeys[wPopCnt - 1])
+                    {
+                        ls_psKeys(pwList)[wPopCnt] = psKeys[wPopCnt - 1];
+
+                        if (sKey < psKeys[0])
+                        {
+                            ls_psKeys(pwList)[wPopCnt - 1] = psKeys[0];
+                            ls_psKeys(pwList)[0] = wKey;
+                        }
+                        else
+                        {
+                            ls_psKeys(pwList)[wPopCnt - 1] = wKey;
+                        }
+                    }
+                    else
+                    {
+                        ls_psKeys(pwList)[wPopCnt] = wKey;
+                    }
+                }
+#if (cnBitsPerWord > 32)
+                else if (nBitsLeft <= 32)
+                {
+                    unsigned int iKey = wKey;
+
+                    COPY(ls_piKeys(pwList), piKeys, wPopCnt);
+
+                    if (iKey < piKeys[wPopCnt - 1])
+                    {
+                        ls_piKeys(pwList)[wPopCnt] = piKeys[wPopCnt - 1];
+
+                        if (iKey < piKeys[0])
+                        {
+                            ls_piKeys(pwList)[wPopCnt - 1] = piKeys[0];
+                            ls_piKeys(pwList)[0] = wKey;
+                        }
+                        else
+                        {
+                            ls_piKeys(pwList)[wPopCnt - 1] = wKey;
+                        }
+                    }
+                    else
+                    {
+                        ls_piKeys(pwList)[wPopCnt] = wKey;
+                    }
+                }
+#endif // (cnBitsPerWord > 32)
+                else
+#endif // defined(COMPRESSED_LISTS)
+                {
+                    COPY(ls_pwKeys(pwList), pwKeys, wPopCnt);
+
+                    if (wKey < pwKeys[wPopCnt - 1])
+                    {
+                        ls_pwKeys(pwList)[wPopCnt] = pwKeys[wPopCnt - 1];
+
+                        if (wKey < pwKeys[0])
+                        {
+                            ls_pwKeys(pwList)[wPopCnt - 1] = pwKeys[0];
+                            ls_pwKeys(pwList)[0] = wKey;
+                        }
+                        else
+                        {
+                            ls_pwKeys(pwList)[wPopCnt - 1] = wKey;
+                        }
+                    }
+                    else
+                    {
+                        ls_pwKeys(pwList)[wPopCnt] = wKey;
+                    }
                 }
             } else
 #else // defined(MIN_MAX_LISTS)
@@ -1526,7 +1610,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                             wr_pcKeys(wRoot)[wPopCnt - 2] = knn;
                         }
                     } else if (nBitsLeft <= 16) {
-                        unsigned char knn = wr_psKeys(wRoot)[nn];
+                        unsigned short knn = wr_psKeys(wRoot)[nn];
                         if (knn < wr_psKeys(wRoot)[0])
                         {
                             wr_psKeys(wRoot)[nn] = wr_psKeys(wRoot)[0];
@@ -1540,7 +1624,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                         }
 #if (cnBitsPerWord > 32)
                     } else if (nBitsLeft <= 32) {
-                        unsigned char knn = wr_piKeys(wRoot)[nn];
+                        unsigned int knn = wr_piKeys(wRoot)[nn];
                         if (knn < wr_piKeys(wRoot)[0])
                         {
                             wr_piKeys(wRoot)[nn] = wr_piKeys(wRoot)[0];
@@ -1556,7 +1640,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                     } else
 #endif // defined(COMPRESSED_LISTS)
                     {
-                        unsigned char knn = pwKeys[nn];
+                        Word_t knn = pwKeys[nn];
                         if (knn < pwKeys[0])
                         {
                             pwKeys[nn] = pwKeys[0];
