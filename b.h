@@ -40,7 +40,7 @@
 // cannot be reached because we never transition to bitmap.
 // Default is one because a bitmap is the size of a word when cnBitsPerDigit
 // is cnLogBitsPerWord and we can embed the bitmap.
-#define cnDigitsAtBottom  1U
+#define cnDigitsAtBottom  1
 
 // Choose max list length.
 // 0, 1, 2, 3, 4 and greater than 255 are all good values to test.
