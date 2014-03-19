@@ -437,6 +437,9 @@ typedef struct {
 
 // Uncompressed, basic switch.
 typedef struct {
+#if !defined(PP_IN_LINK)
+    Word_t sw_wPrefixPop;
+#endif // !defined(PP_IN_LINK)
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
     Word_t sw_awBm [ DIV_UP ( EXP(cnBitsPerDigit) , cnBitsPerWord ) ] ;
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
@@ -445,9 +448,6 @@ typedef struct {
 #else // defined(BM_SWITCH_FOR_REAL)
     Link_t sw_aLinks[EXP(cnBitsPerDigit)];
 #endif // defined(BM_SWITCH_FOR_REAL)
-#if !defined(PP_IN_LINK)
-    Word_t sw_wPrefixPop;
-#endif // !defined(PP_IN_LINK)
 } Switch_t;
 
 Status_t Lookup(Word_t   wRoot, Word_t wKey);
