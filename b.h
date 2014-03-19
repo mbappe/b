@@ -27,7 +27,9 @@
 // the one big switch implied by cnBitsPerDigit of more than half a word.
 // Default is cnLogBitsPerWord because a bitmap is the size of a word when
 // cnDigitsAtBottom is one and we can embed the bitmap.
+#if !defined(cnBitsPerDigit)
 #define cnBitsPerDigit  (cnLogBitsPerWord)
+#endif // !defined(cnBitsPerDigit)
 
 // Choose bottom.
 // Bottom is where Bitmap is created.  Maybe we should change the meaning.
@@ -40,7 +42,11 @@
 // cannot be reached because we never transition to bitmap.
 // Default is one because a bitmap is the size of a word when cnBitsPerDigit
 // is cnLogBitsPerWord and we can embed the bitmap.
+// I think I should change this to be relative to the minimum digits at
+// bottom based on cnBitsPerDigit and cnBitsPerWord.
+#if !defined(cnDigitsAtBottom)
 #define cnDigitsAtBottom  1
+#endif // !defined(cnDigitsAtBottom)
 
 // Choose max list length.
 // 0, 1, 2, 3, 4 and greater than 255 are all good values to test.
@@ -49,7 +55,9 @@
 // But it doesn't work because we can end up with a new switch at every
 // depth with only the bottom list having more than one key.
 // We could vary the max length based on depth or be even more sophisticated.
+#if !defined(cwListPopCntMax)
 #define cwListPopCntMax  (EXP(cnBitsPerDigit) / 2)
+#endif // !defined(cwListPopCntMax)
 
 // Choose features.
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
@@ -84,18 +92,40 @@
 #include <assert.h> // NDEBUG must be defined before including assert.h.
 #include "Judy.h"   // Word_t, JudyMalloc, ...
 
+#if defined(_WIN64)
+#define WORD_ONE  1ULL
+#else // defined(_WIN64)
+#define WORD_ONE  1UL
+#endif // defined(_WIN64)
+
+#define EXP(_x)  (WORD_ONE << (_x))
+
+// Count leading zeros.
+// __builtin_clzll is undefined for zero which allows the compiler to use bsr.
+// Actual x86 clz instruction is defined for zero.
+// This LOG macro is undefined for zero.
+#define LOG(_x)  ((Word_t)63 - __builtin_clzll(_x))
+#define MASK(_x)  ((_x) - 1)
+
 #define cnLogBitsPerByte  (3U)
 #define cnBitsPerByte  (EXP(cnLogBitsPerByte))
 
+#if !defined(cnBitsPerWord)
 #if defined(__LP64__) || defined(_WIN64)
-#define cnLogBytesPerWord  (3U)
+#define cnBitsPerWord  64
 #else // defined(__LP64__) || defined(_WIN64)
-#define cnLogBytesPerWord  (2U)
+#define cnBitsPerWord  32
 #endif // defined(__LP64__) || defined(_WIN64)
+#endif // !defined(cnBitsPerWord)
+
+#if (cnBitsPerWord == 64)
+#define cnLogBytesPerWord  (3U)
+#else // (cnBitsPerWord == 64)
+#define cnLogBytesPerWord  (2U)
+#endif // (cnBitsPerWord == 64)
 
 #define cnBytesPerWord  (EXP(cnLogBytesPerWord))
 #define cnLogBitsPerWord  (cnLogBytesPerWord + cnLogBitsPerByte)
-#define cnBitsPerWord  (EXP(cnLogBitsPerWord))
 #define cnMallocMask  ((cnBytesPerWord * 2) - 1)
 
 #if defined RAM_METRICS
@@ -167,19 +197,6 @@
 #else // defined(_WIN64)
 #define _fw  "l"
 #endif // defined(_WIN64)
-
-#if defined(_WIN64)
-#define EXP(_x)  (1ULL << (_x))
-#else // defined(_WIN64)
-#define EXP(_x)  (1UL << (_x))
-#endif // defined(_WIN64)
-
-// Count leading zeros.
-// __builtin_clzll is undefined for zero so compiler can use bsr.
-// But actual x86 clz instruction is defined for zero.
-// This LOG macro is undefined for zero.
-#define LOG(_x)  ((Word_t)63 - __builtin_clzll(_x))
-#define MASK(_x)  ((_x) - 1)
 
 // Do integer division, but round up instead of down.
 #define DIV_UP(_idend, _isor)  (((_idend) + (_isor) - 1) / (_isor))
@@ -456,6 +473,7 @@ void Dump(Word_t wRoot, Word_t wPrefix, unsigned nBL);
 #endif // (cnBitsPerDigit != 0)
 
 #if defined(DEBUG)
+Word_t *pwRootLast;
 Word_t wInserts;
 #endif // defined(DEBUG)
 
