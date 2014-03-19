@@ -1,23 +1,28 @@
 
+###########################
+#
+# Makefile for b.  Code for learning about Judy and possible improvements.
+#
+# How do I do things in here such that the Makefile provides a default
+# that I can override on the command line?
+#
+###########################
+
+  cnBitsPerWord = 32
+# cnBitsPerWord = 64
+
+# b.h will choose cnBitsPerDigit = cnLogBitsPerWord
+# B_DEFINES += -DcnBitsPerDigit=8
+# b.h will choose cwListPopCntMax = EXP(cnBitsPerDigit) / 2
+# B_DEFINES += -DcwListPopCntMax=$(cnBitsPerWord)
+# b.h will choose cnDigitsAtBottom = 1
+# B_DEFINES += -DcnDigitsAtBottom=1
 B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -DNO_UNNECESSARY_PREFIX
 B_DEFINES += -DCOMPRESSED_LISTS
 # Cannot define both SORT_LISTS and MIN_MAX_LISTS; SORT_LISTS wins.
 B_DEFINES += -DSORT_LISTS -UMIN_MAX_LISTS
 B_DEFINES += -DBM_SWITCH -DBM_IN_LINK
 B_DEFINES += -DPP_IN_LINK
-
-###########################
-#
-# Makefile for b.  Code for learning about Judy and possible improvements.
-#
-###########################
-
-###########################
-#
-# How do I do things in here such that the Makefile provides a default
-# that I can override on the command line?
-#
-###########################
 
 # CC = clang
 # CC = cc
@@ -39,9 +44,7 @@ B_DEFINES += -DPP_IN_LINK
 # STDFLAG = -std=c90
 # STDFLAG = -std=c89
 
-# MFLAGS += -m64
-  MFLAGS += -m32
-
+  MFLAGS += -m$(cnBitsPerWord)
   MFLAGS += -msse4.2
 # MFLAGS += -march=native
 # MFLAGS += -mfpmath=sse
@@ -126,6 +129,7 @@ B_DEFINES += -DSEARCH_METRICS
 TIME_DEFINES += -DJUDYB
 # TIME_DEFINES += -D_POSIX_C_SOURCE=199309L
 # B_DEFINES += -URECURSIVE_INSERT -URECURSIVE_REMOVE
+B_DEFINES += -DcnBitsPerWord=$(cnBitsPerWord)
 
 DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 
