@@ -87,8 +87,12 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     unsigned nDigitsLeftRoot;
 #if !defined(LOOKUP)
     Word_t wPopCnt;
-#elif (cwListPopCntMax != 0) && !defined(LOOKUP_NO_LIST_DEREF)
+#else // !defined(LOOKUP)
+#if (cwListPopCntMax != 0)
+#if !defined(LOOKUP_NO_LIST_DEREF)
     Word_t wPopCnt;
+#endif // !defined(LOOKUP_NO_LIST_DEREF)
+#endif // (cwListPopCntMax != 0)
 #endif // !defined(LOOKUP) ... #elif ...
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     unsigned nType;
