@@ -170,7 +170,7 @@ T_OBJS = stubs.o dlmalloc.o
 #
 ##################################
 
-default: clean t
+default: clean b
 
 all: clean $(EXES) $(ASMS) $(CPPS) b.tar b.tgz b.tjz
 
