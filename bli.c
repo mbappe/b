@@ -379,6 +379,7 @@ again:
                 if ( ! (wBm & wBit) )
                 {
 #if defined(BM_SWITCH_FOR_REAL)
+                    nDigitsLeft = nDigitsLeftRoot; // back up for InsertGuts
                     goto notFound;
 #else // defined(BM_SWITCH_FOR_REAL)
                     assert(0); // only for now

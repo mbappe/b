@@ -391,11 +391,12 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
             PWR_wPrefixPop(pwRoot, pwr)));
     }
 
+    DBGI(Dump(*pwRootLast, 0, cnBitsPerWord));
+
     return pwr;
 }
 
 #if defined(BM_SWITCH_FOR_REAL)
-// A little bit strangely, nDigitsLeft is the digits left below the link.
 static void
 NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 {
@@ -404,7 +405,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     DBGI(printf("NewLink(pwRoot %p wKey "OWx" nDigitsLeft %d)\n",
         pwRoot, wKey, nDigitsLeft));
     DBGI(printf("PWR_wPopCnt %"_fw"d\n",
-         PWR_wPopCnt(pwRoot, pwr, nDigitsLeft + 1)));
+         PWR_wPopCnt(pwRoot, pwr, nDigitsLeft)));
 
 #if defined(BM_IN_LINK)
     assert(nDigitsLeft != cnDigitsPerWord);
@@ -446,7 +447,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     // Where does the new link go?
     unsigned nBitsIndexSz = pwr_nBitsIndexSz(pwr);
     unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
-    Word_t wIndex = ((wKey >> nBitsLeft) & (EXP(nBitsIndexSz) - 1));
+    Word_t wIndex
+        = ((wKey >> (nBitsLeft - nBitsIndexSz)) & (EXP(nBitsIndexSz) - 1));
     DBGI(printf("wIndex "OWx"\n", wIndex));
     unsigned nBmOffset = wIndex >> cnLogBitsPerWord;
     Word_t wBm = PWR_pwBm(pwRoot, pwr)[nBmOffset];
@@ -469,30 +471,29 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     memcpy(wr_pwr(*pwRoot), pwr,
         sizeof(Switch_t) + (wIndex - 1) * sizeof(Link_t));
     DBGI(printf("PWR_wPopCnt %"_fw"d\n",
-         PWR_wPopCnt(pwRoot, *pwRoot, nDigitsLeft + 1)));
+         PWR_wPopCnt(pwRoot, *pwRoot, nDigitsLeft)));
     // Initialize the new link.
     DBGI(printf("pLinks %p\n", pwr_pLinks(*pwRoot)));
     DBGI(printf("memset %p\n", &pwr_pLinks(*pwRoot)[wIndex]));
     memset(&pwr_pLinks(*pwRoot)[wIndex], 0, sizeof(Link_t));
     DBGI(printf("PWR_wPopCnt A %"_fw"d\n",
-         PWR_wPopCnt(pwRoot, *pwRoot, nDigitsLeft + 1)));
+         PWR_wPopCnt(pwRoot, *pwRoot, nDigitsLeft)));
     memcpy(&pwr_pLinks(*pwRoot)[wIndex + 1], &pwr_pLinks(pwr)[wIndex],
         (wPopCnt - wIndex) * sizeof(Link_t));
 
     DBGI(printf("PWR_wPopCnt B %"_fw"d\n",
-         PWR_wPopCnt(pwRoot, *pwRoot, nDigitsLeft + 1)));
+         PWR_wPopCnt(pwRoot, *pwRoot, nDigitsLeft)));
     // Set the bit in the bitmap indicating that the new link exists.
     SetBit(PWR_pwBm(pwRoot, *pwRoot),
-        ((wKey >> nBitsLeft) & (EXP(nBitsIndexSz) - 1)));
+        ((wKey >> (nBitsLeft - nBitsIndexSz)) & (EXP(nBitsIndexSz) - 1)));
     DBGI(printf("PWR_wPopCnt %"_fw"d\n",
-         PWR_wPopCnt(pwRoot, *pwRoot, nDigitsLeft + 1)));
+         PWR_wPopCnt(pwRoot, *pwRoot, nDigitsLeft)));
 
     MyFree(pwr, nWords - sizeof(Link_t) / sizeof(Word_t));
 
     // Remember to finish updating *pwRoot.
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-    // revisit the minus one when we add variable width switches
-    set_wr_nType(*pwRoot, nDigitsLeft_to_tp(nDigitsLeft + 1));
+    set_wr_nType(*pwRoot, nDigitsLeft_to_tp(nDigitsLeft));
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     DBGI(Dump(*pwRootLast, 0, cnBitsPerWord));
 }
@@ -991,7 +992,7 @@ CopyWithInsertChar(unsigned char *pTgt, unsigned char *pSrc,
 // Some are made in RemoveGuts, but those are closely aligned with
 // the decisions made here.
 // Do we create a list as high as possible or as low as possible?
-// When do we create a new switch for a list being too long?
+// When do we create a new switch instead of adding to a list?
 // When do we create a bitmap?
 // When do we uncompress switches?
 // When do we coalesce switches?
@@ -1484,10 +1485,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     {
 #if defined(BM_SWITCH_FOR_REAL)
         // no link -- for now -- will eventually have to check
-        // A little strangely, nDigitsLeft is the digits left below the
-        // switch pointed to by pwRoot.
         NewLink(pwRoot, wKey, nDigitsLeft);
-        Insert(pwRoot, wKey, nDigitsLeft + 1); // revisit the plus 1
+        Insert( pwRoot, wKey, nDigitsLeft);
 #endif // defined(BM_SWITCH_FOR_REAL)
 #if defined(SKIP_LINKS)
         // prefix mismatch
