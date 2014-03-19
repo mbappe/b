@@ -473,8 +473,8 @@ void Dump(Word_t wRoot, Word_t wPrefix, unsigned nBL);
 #endif // (cnBitsPerDigit != 0)
 
 #if defined(DEBUG)
-Word_t *pwRootLast;
-Word_t wInserts;
+Word_t *pwRootLast; // allow dumping of tree when root is not known
+Word_t wInserts; // sanity checking
 #endif // defined(DEBUG)
 
 #endif // ( ! defined(_B_H_INCLUDED) )
