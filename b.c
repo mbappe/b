@@ -1483,104 +1483,126 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #if defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
     else
     {
+#if defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
+        Word_t wPrefix = PWR_wPrefix(pwRoot, pwr, nDigitsLeft);
+        if (wPrefix == w_wPrefix(wKey, nDigitsLeft))
+#endif // defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
 #if defined(BM_SWITCH_FOR_REAL)
-        // no link -- for now -- will eventually have to check
-        NewLink(pwRoot, wKey, nDigitsLeft);
-        Insert( pwRoot, wKey, nDigitsLeft);
-#endif // defined(BM_SWITCH_FOR_REAL)
-#if defined(SKIP_LINKS)
-        // prefix mismatch
-        // insert a switch so we can add just one key; seems like a waste
-// A bitmap switch would be great; no reason to consider converting the
-// existing bitmap to a list if a bitmap switch is short.
-        unsigned nDigitsLeftRoot;
-        Word_t wPopCnt;
-
-        nDigitsLeftRoot = tp_to_nDigitsLeft(nType);
-
-        assert(nDigitsLeftRoot < nDigitsLeft);
-
-        unsigned nDigitsLeftUp = nDigitsLeft;
-
-        // figure new nDigitsLeft for old parent link
-        Word_t wPrefix = PWR_wPrefix(pwRoot, pwr, nDigitsLeftRoot);
-        nDigitsLeft = LOG(1 | (wPrefix ^ wKey)) / cnBitsPerDigit + 1;
-        // nDigitsLeft includes the digit that is different.
-
-        assert(nDigitsLeft > nDigitsLeftRoot);
-
-        if ((wPopCnt = PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot)) == 0)
         {
-            // full pop overflow
-            wPopCnt = wPrefixPopMask(nDigitsLeftRoot) + 1;
+            // no link -- for now -- will eventually have to check
+            NewLink(pwRoot, wKey, nDigitsLeft);
+            Insert( pwRoot, wKey, nDigitsLeft);
         }
+#endif // defined(BM_SWITCH_FOR_REAL)
+#if defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
+        else
+#endif // defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
+#if defined(SKIP_LINKS)
+        {
+            // prefix mismatch
+            // insert a switch so we can add just one key; seems like a waste
+            // A bitmap switch would be great; no reason to consider
+            // converting the existing bitmap to a list if a bitmap switch is
+            // short.  Huh?
+            unsigned nDigitsLeftRoot;
+            Word_t wPopCnt;
 
-// Have to get old prefix before inserting the new switch because
-// NewSwitch copies to *pwRoot.
-// But also have to deal with switch at top with no link if PP_IN_LINK.
+            nDigitsLeftRoot = tp_to_nDigitsLeft(nType);
 
-        unsigned nIndex;
+            assert(nDigitsLeftRoot < nDigitsLeft);
+
+            unsigned nDigitsLeftUp = nDigitsLeft;
+
+            // figure new nDigitsLeft for old parent link
+            Word_t wPrefix = PWR_wPrefix(pwRoot, pwr, nDigitsLeftRoot);
+            nDigitsLeft = LOG(1 | (wPrefix ^ wKey)) / cnBitsPerDigit + 1;
+            // nDigitsLeft includes the digit that is different.
+
+            assert(nDigitsLeft > nDigitsLeftRoot);
+
+            if ((wPopCnt = PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot)) == 0)
+            {
+                // full pop overflow
+                wPopCnt = wPrefixPopMask(nDigitsLeftRoot) + 1;
+            }
+
+            // Have to get old prefix before inserting the new switch because
+            // NewSwitch copies to *pwRoot.
+            // Also deal with switch at top with no link if PP_IN_LINK.
+
+            unsigned nIndex;
 
 #if defined(PP_IN_LINK)
-        // PP_IN_LINK ==> no skip link at top ==> no prefix mismatch at top
-        assert(nDigitsLeftUp < cnDigitsPerWord);
+            // PP_IN_LINK => no skip link at top => no prefix mismatch at top
+            assert(nDigitsLeftUp < cnDigitsPerWord);
 #endif // defined(PP_IN_LINK)
 
-        // todo nBitsIndexSz; wide switch
-        assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
-        nIndex = (wPrefix >> ((nDigitsLeft - 1) * cnBitsPerDigit))
-            & (EXP(cnBitsPerDigit) - 1);
-        // nIndex is the index in new switch.
-        // It may not be the same as the index in the old switch.
+            // todo nBitsIndexSz; wide switch
+            assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
+            nIndex = (wPrefix >> ((nDigitsLeft - 1) * cnBitsPerDigit))
+                & (EXP(cnBitsPerDigit) - 1);
+            // nIndex is the index in new switch.
+            // It may not be the same as the index in the old switch.
 
 #if defined(BM_IN_LINK)
-        // Save the old bitmap before it is trashed by NewSwitch.
-        // is it possible that nDigitsLeftUp != cnDigitsPerWord and
-        // we are at the top?
-        Link_t ln;
-        if (nDigitsLeftUp != cnDigitsPerWord)
-        {
-            memcpy(ln.ln_awBm, PWR_pwBm(pwRoot, NULL),
-                DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord) * cnBytesPerWord);
-            assert(ln.ln_awBm[0] == (Word_t)-1);
-        }
+            // Save the old bitmap before it is trashed by NewSwitch.
+            // is it possible that nDigitsLeftUp != cnDigitsPerWord and
+            // we are at the top?
+            Link_t ln;
+            if (nDigitsLeftUp != cnDigitsPerWord)
+            {
+                memcpy(ln.ln_awBm, PWR_pwBm(pwRoot, NULL),
+                       DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
+                           * cnBytesPerWord);
+                assert(ln.ln_awBm[0] == (Word_t)-1);
+            }
 #endif // defined(BM_IN_LINK)
 
-        // initialize prefix/pop for new switch
-        pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftUp, wPopCnt);
+            // initialize prefix/pop for new switch
+            // Make sure to pass the right key for BM_SWITCH_FOR_REAL.
+            pwSw = NewSwitch(pwRoot,
+                             wPrefix, nDigitsLeft, nDigitsLeftUp, wPopCnt);
 
 #if defined(BM_IN_LINK)
-        if (nDigitsLeftUp != cnDigitsPerWord)
-        {
-            // Copy bitmap from old link to new link.
-            memcpy(pwr_pLinks(pwSw)[nIndex].ln_awBm, ln.ln_awBm,
-                DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord) * cnBytesPerWord);
-        }
-        else
-        {
-            // Initialize bitmap in new link.
-            memset(pwr_pLinks(pwSw)[nIndex].ln_awBm, (Word_t)-1,
-                DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord) * cnBytesPerWord);
-        }
+            if (nDigitsLeftUp != cnDigitsPerWord)
+            {
+                // Copy bitmap from old link to new link.
+                memcpy(pwr_pLinks(pwSw)[nIndex].ln_awBm, ln.ln_awBm,
+                       DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
+                           * cnBytesPerWord);
+            }
+            else
+            {
+                // Initialize bitmap in new link.
+                memset(pwr_pLinks(pwSw)[nIndex].ln_awBm, (Word_t)-1,
+                       DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
+                           * cnBytesPerWord);
+            }
 #endif // defined(BM_IN_LINK)
 
-        // Copy wRoot from old link to new link.
-        pwr_pLinks(pwSw)[nIndex].ln_wRoot = wRoot;
+#if defined(BM_SWITCH_FOR_REAL)
+            // Switch was created with only one link based on wKey passed in.
+            nIndex = 0;
+#endif // defined(BM_SWITCH_FOR_REAL)
+
+            // Copy wRoot from old link to new link.
+            pwr_pLinks(pwSw)[nIndex].ln_wRoot = wRoot;
 
 #if defined(PP_IN_LINK)
 #if defined(NO_UNNECESSARY_PREFIX)
-        if (nDigitsLeftRoot != nDigitsLeft - pwr_nBitsIndexSz(pwSw))
+            if (nDigitsLeftRoot != nDigitsLeft - pwr_nBitsIndexSz(pwSw))
 #endif // defined(NO_UNNECESSARY_PREFIX)
-        {
-            set_PWR_wPrefix(&pwr_pLinks(pwSw)[nIndex].ln_wRoot, NULL,
-                            nDigitsLeftRoot, wPrefix);
-        }
+            {
+                set_PWR_wPrefix(&pwr_pLinks(pwSw)[nIndex].ln_wRoot, NULL,
+                                nDigitsLeftRoot, wPrefix);
+            }
 
-        set_PWR_wPopCnt(&pwr_pLinks(pwSw)[nIndex].ln_wRoot, NULL,
-                        nDigitsLeftRoot, wPopCnt);
+            set_PWR_wPopCnt(&pwr_pLinks(pwSw)[nIndex].ln_wRoot, NULL,
+                            nDigitsLeftRoot, wPopCnt);
 #endif // defined(PP_IN_LINK)
 
-        Insert(pwRoot, wKey, nDigitsLeftUp);
+            Insert(pwRoot, wKey, nDigitsLeftUp);
+        }
 #endif // defined(SKIP_LINKS)
     }
 #endif // defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
