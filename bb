@@ -5,7 +5,7 @@
 
 set -x # turn echo on
 
-cp t b.bb
+cp b b.bb
 
 #B="b.bb -1l"
 #B="b.bb -1lm"
