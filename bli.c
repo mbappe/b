@@ -410,11 +410,17 @@ again:
                 if (bCleanup)
                 {
                     DBGX(printf("Cleanup\n"));
-#if defined(BM_SWITCH_FOR_REAL)
-assert(0); // later
-#endif // defined(BM_SWITCH_FOR_REAL)
+#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+                    Word_t xx = 0;
+#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
                     for (Word_t ww = 0; ww < EXP(cnBitsPerDigit); ww++)
                     {
+#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+                        Word_t *pwRootLn = &pwr_pLinks(pwr)[xx].ln_wRoot;
+                        xx++;
+#else // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+                        Word_t *pwRootLn = &pwr_pLinks(pwr)[ww].ln_wRoot;
+#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
 // looking at the next pwRoot seems like something that should be deferred
 // but if we defer, then we won't have the previous pwRoot, but if this
 // only happens at the top, then the previous pwRoot will be pwRootOrig?
@@ -424,27 +430,21 @@ assert(0); // later
 // We must use nDigitsLeft in that case.
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                         DBGX(printf("wr_nDL %"_fw"d\n",
-                                        wr_nDigitsLeft(
-                                            pwr_pLinks(pwr)[ww].ln_wRoot)));
+                                        wr_nDigitsLeft(*pwRootLn)));
                         DBGX(printf("PWR_wPopCnt %"_fw"d\n",
-                            PWR_wPopCnt(&pwr_pLinks(pwr)[ww].ln_wRoot,
-                                        NULL, wr_nDigitsLeft(
-                                            pwr_pLinks(pwr)[ww].ln_wRoot))));
+                            PWR_wPopCnt(pwRootLn,
+                                        NULL, wr_nDigitsLeft(pwRootLn))));
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                        if ((pwr_pLinks(pwr)[ww].ln_wRoot != 0)
-                            && (((ww != wIndex))
+                        if ((*pwRootLn != 0) && (((ww != wIndex))
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                                || (PWR_wPopCnt(&pwr_pLinks(pwr)[ww].ln_wRoot,
+                                || (PWR_wPopCnt(pwRootLn,
                                         NULL,
-                                        wr_bIsSwitch(pwr_pLinks(pwr)
-                                                [ww].ln_wRoot)
-                                            ? wr_nDigitsLeft(pwr_pLinks(pwr)
-                                                [ww].ln_wRoot)
+                                        wr_bIsSwitch(*pwRootLn)
+                                            ? wr_nDigitsLeft(*pwRootLn)
                                             : nDigitsLeft)
                                     != 0)
 #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                                || (PWR_wPopCnt(&pwr_pLinks(pwr)[ww].ln_wRoot,
-                                        NULL, nDigitsLeft)
+                                || (PWR_wPopCnt(pwRootLn, NULL, nDigitsLeft)
                                     != 0)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                                 ))
