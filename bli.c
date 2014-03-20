@@ -433,7 +433,7 @@ again:
                                         wr_nDigitsLeft(*pwRootLn)));
                         DBGX(printf("PWR_wPopCnt %"_fw"d\n",
                             PWR_wPopCnt(pwRootLn,
-                                        NULL, wr_nDigitsLeft(pwRootLn))));
+                                        NULL, wr_nDigitsLeft(*pwRootLn))));
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                         if ((*pwRootLn != 0) && (((ww != wIndex))
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
