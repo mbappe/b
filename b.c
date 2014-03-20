@@ -710,10 +710,23 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         if (nBitsLeftArg == cnBitsPerWord)
         {
 // Add 'em up.
+#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+    Word_t xx = 0;
+#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
             Word_t wPopCnt = 0;
             for (unsigned nn = 0; nn < EXP(cnBitsPerDigit); nn++)
             {
+#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+        if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
+#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+        {
+#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+                Word_t *pwRootLn = &pwr_pLinks(pwr)[xx].ln_wRoot;
+                xx++;
+#else // defined(BM_SWITCH) && !defined(BM_IN_LINK)
                 Word_t *pwRootLn = &pwr_pLinks(pwr)[nn].ln_wRoot;
+#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+
 // *pwRootLn may not be a pointer to a switch
 // It may be a pointer to a list leaf.
 // And if cnDigitsAtBottom == cnDigitsPerWord - 1, then it could be a
@@ -748,6 +761,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
                     wPopCnt += wPrefixPopMask(cnDigitsPerWord - 1) + 1;
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                 }
+        }
             }
 
             printf(" wr_wPopCnt %3"_fw"u", wPopCnt);
@@ -1854,10 +1868,23 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
         // add up the pops in the links
         // BUG: Remember to check the switch bitmap.
         // BUG: nBitsPerIndex > cnBitsPerDigit.
+#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+    Word_t xx = 0;
+#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
         wPopCnt = 0;
         for (unsigned nn = 0; nn < EXP(cnBitsPerDigit); nn++)
         {
-            Word_t *pwRootLn = &pwr_pLinks(pwr)[nn].ln_wRoot;
+#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+        if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
+#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+        {
+#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+                Word_t *pwRootLn = &pwr_pLinks(pwr)[xx].ln_wRoot;
+                xx++;
+#else // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+                Word_t *pwRootLn = &pwr_pLinks(pwr)[nn].ln_wRoot;
+#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+
 // *pwRootLn may not be a pointer to a switch
 // It may be a pointer to a list leaf.
 // And if cnDigitsAtBottom == cnDigitsPerWord - 1, then it could be a
@@ -1918,6 +1945,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
                 wPopCnt += wPrefixPopMask(cnDigitsPerWord - 1) + 1;
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
             }
+        }
         }
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         assert(wPopCnt - 1 <= wPrefixPopMask(tp_to_nDigitsLeft(nType)));
