@@ -139,15 +139,19 @@ again:
         }
 #endif // defined(REMOVE)
 #if defined(PP_IN_LINK)
-        wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
         DBGX(printf("List nDigitsLeft %d\n", nDigitsLeft));
-        DBGX(printf("wPopCnt (before incr) %zd\n", wPopCnt));
         DBGX(printf("wKeyPopMask "OWx"\n",
             wPrefixPopMask(nDigitsLeft)));
-        set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
-        DBGX(printf("wPopCnt (after incr) %zd\n",
-             PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
-#else // defined(PP_IN_LINK)
+#if !defined(RECURSIVE)
+        if (nDigitsLeftOrig != cnDigitsPerWord)
+#endif // !defined(RECURSIVE)
+        {
+            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
+            DBGX(printf("wPopCnt (before incr) %zd\n", wPopCnt));
+            set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
+            DBGX(printf("wPopCnt (after incr) %zd\n",
+                        PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
+        }
 #endif // defined(PP_IN_LINK)
 #endif // !defined(LOOKUP)
 
