@@ -57,7 +57,9 @@ Lookup(Word_t wRoot, Word_t wKey)
 InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #endif // defined(LOOKUP)
 {
+
 #if defined(LOOKUP)
+
     unsigned nDigitsLeft = cnDigitsPerWord;
 #if defined(SKIP_LINKS)
 #if defined(SKIP_PREFIX_CHECK)
@@ -68,7 +70,9 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #if defined(BM_IN_LINK)
     pwRoot = NULL; // no need for &wRoot; NULL might catch a bug
 #endif // defined(BM_IN_LINK)
+
 #else // defined(LOOKUP)
+
     Word_t wRoot;
 #if !defined(RECURSIVE)
     unsigned nDigitsLeftOrig = nDigitsLeft;
@@ -78,13 +82,17 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     int nIncr = -1;
 #endif // defined(INSERT)
 #endif // !defined(RECURSIVE)
+
 #endif // defined(LOOKUP)
+
 #if !defined(RECURSIVE)
 #if !defined(LOOKUP) || defined(BM_IN_LINK)
     Word_t *pwRootOrig = pwRoot;
 #endif // !defined(LOOKUP) || defined(BM_IN_LINK)
 #endif // !defined(RECURSIVE)
+
     unsigned nDigitsLeftRoot;
+
 #if !defined(LOOKUP)
     Word_t wPopCnt;
 #else // !defined(LOOKUP)
@@ -143,7 +151,7 @@ again:
         DBGX(printf("wKeyPopMask "OWx"\n",
             wPrefixPopMask(nDigitsLeft)));
 #if !defined(RECURSIVE)
-        if (nDigitsLeftOrig != cnDigitsPerWord)
+        if ((pwRoot != pwRootOrig) || (nDigitsLeftOrig != cnDigitsPerWord))
 #endif // !defined(RECURSIVE)
         {
             wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
