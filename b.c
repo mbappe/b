@@ -842,6 +842,11 @@ if (wPopCntLn != 0)
     nBitsLeft = ALIGN_UP(nBitsLeft - nBitsIndexSz, cnBitsPerDigit);
     DBGR(printf("nBitsLeft %d\n", nBitsLeft));
 
+    if (nBitsLeft + nBitsIndexSz > cnBitsPerWord)
+    {
+        nBitsIndexSz = cnBitsPerWord - nBitsLeft;
+    }
+
 #if defined(BM_SWITCH)
     Word_t xx = 0;
 #endif // defined(BM_SWITCH)
@@ -1921,7 +1926,10 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
     Word_t xx = 0;
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
         wPopCnt = 0;
-        for (unsigned nn = 0; nn < EXP(cnBitsPerDigit); nn++)
+        for (unsigned nn = 0;
+             nn < EXP(cnBitsPerWord
+                       - (cnDigitsPerWord - 1) * cnBitsPerDigit);
+             nn++)
         {
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
         if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn))

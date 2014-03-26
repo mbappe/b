@@ -12,10 +12,10 @@
 # cnBitsPerWord = 64
 
 # b.h will choose cnBitsPerDigit = cnLogBitsPerWord
-  B_DEFINES += -DcnBitsPerDigit=8
+# B_DEFINES += -DcnBitsPerDigit=8
 # b.h will choose cwListPopCntMax = EXP(cnBitsPerDigit) / 2
 # B_DEFINES += -DcwListPopCntMax=$(cnBitsPerWord)
-  B_DEFINES += -DcwListPopCntMax=1
+# B_DEFINES += -DcwListPopCntMax=1
 # b.h will choose cnDigitsAtBottom = 1
 # B_DEFINES += -DcnDigitsAtBottom=1
 # B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -DNO_UNNECESSARY_PREFIX
