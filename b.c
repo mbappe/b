@@ -89,25 +89,22 @@ Word_t    j__AllocWordsJV;
 
 #if cnBitsPerDigit != 0
 
-#if defined(DEBUG_MALLOC)
 static Word_t
 MyMalloc(Word_t wWords)
 {
     Word_t ww = JudyMalloc(wWords);
-    printf("M: "OWx" %"_fw"d\n", ww, wWords);
+    DBGM(printf("\nM: "OWx" %"_fw"d words\n", ww, wWords));
+    assert(ww != 0);
+    assert((ww & cnMallocMask) == 0);
     return ww;
 }
+
 static void
 MyFree(Word_t *pw, Word_t wWords)
 {
-    printf("F: "OWx" %"_fw"d\n", (Word_t)pw, wWords);
+    DBGM(printf("F: "OWx" %"_fw"d\n", (Word_t)pw, wWords));
     JudyFree(pw, wWords);
 }
-
-#else // defined(DEBUG_MALLOC)
-#define MyMalloc(_nWords)     JudyMalloc(_nWords)
-#define MyFree(_pw, _nWords)  JudyFree(_pw, _nWords)
-#endif // defined(DEBUG_MALLOC)
 
 static Word_t *
 NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
@@ -277,19 +274,38 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
           unsigned nDigitsLeftUp, Word_t wPopCnt)
 {
     Word_t *pwr;
-
-    // wKey and nDigitsLeft are provided in case we decide to initialize
-    // prefix here.
-    // But we don't have enough info to implement NO_UNNECESSARY_PREFIX here.
-    (void)wKey; // fix "unused parameter" compiler warning
-    (void)nDigitsLeft; // nDigitsLeft is not used for all ifdef combos
-    (void)nDigitsLeftUp; // nDigitsLeftUp is not used for all ifdef combos
+    unsigned nWords;
+    unsigned nBytesOfLinks;
 
     assert((sizeof(Switch_t) % sizeof(Word_t)) == 0);
 
-    pwr = (Word_t *)MyMalloc(sizeof(Switch_t) / sizeof(Word_t));
-    assert(pwr != NULL);
-    assert(((Word_t)pwr & cnMallocMask) == 0);
+#if defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
+    if (nDigitsLeftUp == cnDigitsPerWord)
+    {
+        unsigned nLinks
+            = EXP(cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit);
+
+        // sizeof(Switch_t) includes one link; add the others
+        nWords = (sizeof(Switch_t) + (nLinks - 1) * sizeof(Link_t))
+            / sizeof(Word_t);
+
+        DBGI(printf("nLinks %d sizeof(Switch_t) %zd sizeof(Link_t) %zd",
+             nLinks, sizeof(Switch_t), sizeof(Link_t)));
+
+        nBytesOfLinks = nLinks * sizeof(Link_t);
+    }
+    else
+#endif // defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
+    {
+        nWords = sizeof(Switch_t) / sizeof(Word_t);
+        pwr = (Word_t *)MyMalloc(sizeof(Switch_t) / sizeof(Word_t));
+
+        nBytesOfLinks = sizeof(pwr_pLinks(pwr));
+    }
+
+    pwr = (Word_t *)MyMalloc(nWords);
+
+    memset(pwr_pLinks(pwr), 0, nBytesOfLinks);
 
 #if defined(RAM_METRICS)
     if (((cnBitsPerDigit * cnDigitsAtBottom) <= cnLogBitsPerWord)
@@ -311,31 +327,29 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 
     set_wr(*pwRoot, pwr, nDigitsLeft_to_tp(nDigitsLeft));
 
-    memset(pwr_pLinks(pwr), 0, sizeof(pwr_pLinks(pwr)));
-
 #if defined(BM_SWITCH)
 #if defined(BM_IN_LINK)
     if (nDigitsLeftUp < cnDigitsPerWord)
 #endif // defined(BM_IN_LINK)
     {
 #if defined(BM_SWITCH_FOR_REAL)
+
+        memset(PWR_pwBm(pwRoot, pwr), 0, sizeof(PWR_pwBm(pwRoot, pwr)));
+
         unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
         if (nBitsLeft > cnBitsPerWord) nBitsLeft = cnBitsPerWord;
+
         unsigned nBitsIndexSz = pwr_nBitsIndexSz(pwr);
+
         Word_t wIndex
             = (wKey >> (nBitsLeft - nBitsIndexSz)) & (EXP(nBitsIndexSz) - 1);
-        DBGI(printf("sizeof(pwBm) %zd\n", sizeof(PWR_pwBm(pwRoot, pwr))));
-        memset(PWR_pwBm(pwRoot, pwr), 0, sizeof(PWR_pwBm(pwRoot, pwr)));
+
         SetBit(PWR_pwBm(pwRoot, pwr), wIndex);
+
 #else // defined(BM_SWITCH_FOR_REAL)
-#if 0
-        printf("nBytes %"_fw"d\n",
-            DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord) * cnBytesPerWord);
-#endif
-        memset(PWR_pwBm(pwRoot, pwr), -1,
-               DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
-                   * cnBytesPerWord);
-      //printf("PWR_pwBm(pwRoot, pwr)[0] "OWx"\n", PWR_pwBm(pwRoot, pwr)[0]);
+
+        memset(PWR_pwBm(pwRoot, pwr), -1, sizeof(PWR_pwBm(pwRoot, pwr)));
+
 #endif // defined(BM_SWITCH_FOR_REAL)
     }
 #endif // defined(BM_SWITCH)
@@ -391,9 +405,14 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
             PWR_wPrefixPop(pwRoot, pwr)));
     }
 
+    DBGI(printf("After NewSwitch"));
     DBGI(Dump(*pwRootLast, 0, cnBitsPerWord));
 
     return pwr;
+
+    (void)wKey; // fix "unused parameter" compiler warning
+    (void)nDigitsLeft; // nDigitsLeft is not used for all ifdef combos
+    (void)nDigitsLeftUp; // nDigitsLeftUp is not used for all ifdef combos
 }
 
 #if defined(BM_SWITCH_FOR_REAL)
@@ -495,6 +514,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     set_wr_nType(*pwRoot, nDigitsLeft_to_tp(nDigitsLeft));
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+    DBGI(printf("After NewLink"));
     DBGI(Dump(*pwRootLast, 0, cnBitsPerWord));
 }
 #endif // defined(BM_SWITCH_FOR_REAL)
@@ -510,14 +530,24 @@ OldSwitch(Word_t *pwRoot)
     unsigned nWords = sizeof(Switch_t) / sizeof(Word_t);
 
 #if defined(BM_SWITCH_FOR_REAL)
-
-    // How many links are there in the old switch?
-    Word_t wPopCnt = 0;
-    for (unsigned nn = 0; nn < EXP(cnBitsPerDigit) >> cnLogBitsPerWord; nn++)
+    Word_t wPopCnt;
+#if defined(BM_IN_LINK)
+    if (nDigitsLeft == cnDigitsPerWord)
     {
-        wPopCnt += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
+        wPopCnt = EXP(cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit);
     }
-    // Now we know how many links were in the old switch.
+    else
+#endif // defined(BM_IN_LINK)
+    {
+        // How many links are there in the old switch?
+        wPopCnt = 0;
+        for (unsigned nn = 0;
+             nn < EXP(cnBitsPerDigit) >> cnLogBitsPerWord; nn++)
+        {
+            wPopCnt += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
+        }
+        // Now we know how many links were in the old switch.
+    }
 
     // sizeof(Switch_t) includes one link; add the others
     nWords += (wPopCnt - 1) * sizeof(Link_t) / sizeof(Word_t);
@@ -538,6 +568,9 @@ OldSwitch(Word_t *pwRoot)
         METRICS(j__AllocWordsJBU4 -= nWords);
     }
 #endif // defined(RAM_METRICS)
+
+    DBGR(printf("\nOldSwitch nDigitsLeft %d nWords %d 0x%x\n",
+         nDigitsLeft, nWords, nWords));
 
     MyFree(pwr, nWords);
 
@@ -631,6 +664,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
     nType = wr_nType(wRoot);
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+    if ((tp_to_nDigitsLeft(nType) * cnBitsPerDigit)
+        > ALIGN_UP(nBitsLeft, cnBitsPerDigit))
+    {
+        DBGI(printf("\nnType %d\n", nType));
+    }
     assert((tp_to_nDigitsLeft(nType) * cnBitsPerDigit)
         <= ALIGN_UP(nBitsLeft, cnBitsPerDigit));
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -732,7 +770,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 // And if cnDigitsAtBottom == cnDigitsPerWord - 1, then it could be a
 // pointer to a bitmap?
                 Word_t wPopCntLn;
-#if defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
+#if defined(SKIP_LINKS)
                 unsigned nTypeLn = wr_nType(*pwRootLn);
                 if (tp_bIsSwitch(nTypeLn))
                 {
@@ -741,13 +779,17 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
                                       wr_nDigitsLeft(*pwRootLn));
                 }
                 else
-#endif // defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
+#endif // defined(SKIP_LINKS)
                 {
                     wPopCntLn
                         = PWR_wPopCnt(pwRootLn, NULL, cnDigitsPerWord - 1);
                 }
 
                 wPopCnt += wPopCntLn;
+if (wPopCntLn != 0)
+{
+    //DBGI(printf("nn 0x%x wPopCntLn %"_fw"d\n", nn, wPopCntLn));
+}
 
                 // We use pwr_pLinks(pwr)[nn].ln_wRoot != 0 to disambiguate
                 // wPopCnt == 0.  Hence we cannot allow Remove to leave
@@ -813,9 +855,13 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
 #endif // defined(BM_IN_LINK)
         {
-            //printf("nn %"_fw"x\n", nn);
-            wBytes += FreeArrayGuts(&pLinks[xx].ln_wRoot,
-                    wPrefix | (nn << nBitsLeft), nBitsLeft, bDump);
+            if (pLinks[xx].ln_wRoot != 0)
+            {
+                //printf("nn %"_fw"x\n", nn);
+                wBytes += FreeArrayGuts(&pLinks[xx].ln_wRoot,
+                        wPrefix | (nn << nBitsLeft), nBitsLeft, bDump);
+            }
+
             xx++;
         }
         else
@@ -838,7 +884,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 void
 Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft)
 {
+    printf("\nDump\n");
     FreeArrayGuts(&wRoot, wPrefix, nBitsLeft, /* bDump */ 1);
+    printf("End Dump\n");
 }
 #endif // defined(DEBUG)
 
@@ -1488,6 +1536,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 }
             }
 
+            DBGI(printf("Just Before InsertGuts calls Insert"));
             DBGI(Dump(*pwRootLast, 0, cnBitsPerWord));
             Insert(pwRoot, wKey, nDigitsLeftOld);
         }
