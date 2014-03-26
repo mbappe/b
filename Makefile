@@ -12,16 +12,16 @@
 # cnBitsPerWord = 64
 
 # b.h will choose cnBitsPerDigit = cnLogBitsPerWord
-  B_DEFINES += -DcnBitsPerDigit=8
+# B_DEFINES += -DcnBitsPerDigit=8
 # b.h will choose cwListPopCntMax = EXP(cnBitsPerDigit) / 2
 # B_DEFINES += -DcwListPopCntMax=$(cnBitsPerWord)
-  B_DEFINES += -DcwListPopCntMax=1
+# B_DEFINES += -DcwListPopCntMax=1
 # b.h will choose cnDigitsAtBottom = 1
 # B_DEFINES += -DcnDigitsAtBottom=1
-  B_DEFINES += -DSKIP_LINKS -USKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX
-# B_DEFINES += -DCOMPRESSED_LISTS
+  B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX
+  B_DEFINES += -DCOMPRESSED_LISTS
 # Cannot define both SORT_LISTS and MIN_MAX_LISTS; SORT_LISTS wins.
-# B_DEFINES += -DSORT_LISTS -UMIN_MAX_LISTS
+  B_DEFINES += -DSORT_LISTS -UMIN_MAX_LISTS
   B_DEFINES += -DBM_SWITCH -DBM_SWITCH_FOR_REAL -UBM_IN_LINK
 # B_DEFINES += -DPP_IN_LINK
 
