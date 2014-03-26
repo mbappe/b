@@ -1552,11 +1552,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     else
     {
 #if defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
-        Word_t wPrefix = PWR_wPrefix(pwRoot, pwr, nDigitsLeft);
-        if (wPrefix == w_wPrefix(wKey, nDigitsLeft))
+        unsigned nDLR = tp_to_nDigitsLeft(nType);
+        Word_t wPrefix = PWR_wPrefix(pwRoot, pwr, nDLR);
+        if (wPrefix == w_wPrefix(wKey, nDLR))
 #endif // defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
 #if defined(BM_SWITCH_FOR_REAL)
         {
+            DBGI(printf("wPrefix "OWx" w_wPrefix "OWx" nDLR %d\n",
+                 wPrefix, w_wPrefix(wKey, nDLR), nDLR));
             // no link -- for now -- will eventually have to check
             NewLink(pwRoot, wKey, nDigitsLeft);
             Insert( pwRoot, wKey, nDigitsLeft);
