@@ -611,7 +611,6 @@ notEmpty:;
 #if defined(INSERT) && !defined(RECURSIVE)
                         if (nIncr > 0)
                         {
-                            assert(0); // for testing with Judy1LHTime
                             goto undo; // undo counting
                         }
 #endif // defined(INSERT) && !defined(RECURSIVE)
