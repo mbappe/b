@@ -221,7 +221,11 @@ again:
                     LOG(1 | (wPrefix ^ wKey))
                         // prefix in parent switch doesn't contain last digit
                         // for !defined(PP_IN_LINK) case
-                        < (nBitsLeft + pwr_nBitsIndexSz(pwr)))))
+                        < (nBitsLeft
+#if !defined(PP_IN_LINK)
+                                + pwr_nBitsIndexSz(pwr)
+#endif // !defined(PP_IN_LINK)
+                           ))))
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(COMPRESSED_LISTS)
             {
@@ -569,15 +573,21 @@ notEmpty:;
             // Would like to combine the source code for this prefix
             // check and the one done in the compressed_lists section.
             // Notice that we're using pwr which was extracted from
-            // the previous wRoot -- not the current wRoot.
-            // The current wRoot might be an embedded bitmap.
+            // the previous wRoot -- not the current wRoot -- if
+            // not PP_IN_LINK.
+            // If PP_IN_LINK, then we are using the current pwRoot.
+            // nDigitsLeft is different for the two cases.
             Word_t wPrefix;
             if (( ! bNeedPrefixCheck )
                 || ((wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeft),
                     LOG(1 | (wPrefix ^ wKey)))
                         // pwr_nBitsIndexSz term is necessary because pwr
                         // prefix does not contain any less significant bits.
-                        < (cnBitsAtBottom + pwr_nBitsIndexSz(pwr))))
+                        < (cnBitsAtBottom
+#if !defined(PP_IN_LINK)
+                                + pwr_nBitsIndexSz(pwr)
+#endif // !defined(PP_IN_LINK)
+                           )))
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
             {
@@ -641,7 +651,6 @@ notEmpty:;
                               "BitmapWordNum %"_fw"d BitmapWordMask "OWx"\n",
                                BitmapWordNum(wKey), BitmapWordMask(wKey)));
                             DBGX(printf("Bit is set!\n"));
-                            assert(0); // for testing with Judy1LHTime
                             goto undo; // undo counting 
                         }
 #endif // defined(INSERT) && !defined(RECURSIVE)
