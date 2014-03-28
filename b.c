@@ -298,7 +298,6 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 #endif // defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
     {
         nWords = sizeof(Switch_t) / sizeof(Word_t);
-        pwr = (Word_t *)MyMalloc(sizeof(Switch_t) / sizeof(Word_t));
 
         nBytesOfLinks = sizeof(pwr_pLinks(pwr));
     }
@@ -520,11 +519,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #endif // defined(BM_SWITCH_FOR_REAL)
 
 static Word_t
-#if defined(RAM_METRICS)
 OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft)
-#else // defined(RAM_METRICS)
-OldSwitch(Word_t *pwRoot)
-#endif // defined(RAM_METRICS)
 {
     Word_t *pwr = wr_pwr(*pwRoot);
     unsigned nWords = sizeof(Switch_t) / sizeof(Word_t);
@@ -575,6 +570,8 @@ OldSwitch(Word_t *pwRoot)
     MyFree(pwr, nWords);
 
     return nWords * sizeof(Word_t);
+
+    (void)nDigitsLeft; // silence compiler
 }
 
 Word_t
@@ -840,7 +837,7 @@ if (wPopCntLn != 0)
     }
 
     nBitsLeft = ALIGN_UP(nBitsLeft - nBitsIndexSz, cnBitsPerDigit);
-    DBGR(printf("nBitsLeft %d\n", nBitsLeft));
+    //DBGR(printf("nBitsLeft %d\n", nBitsLeft));
 
     if (nBitsLeft + nBitsIndexSz > cnBitsPerWord)
     {
@@ -878,11 +875,7 @@ if (wPopCntLn != 0)
 #endif // defined(BM_SWITCH)
     }
 
-#if defined(RAM_METRICS)
     return bDump ? 0 : (OldSwitch(pwRootArg, nDigitsLeft) + wBytes);
-#else // defined(RAM_METRICS)
-    return bDump ? 0 : (OldSwitch(pwRootArg) + wBytes);
-#endif // defined(RAM_METRICS)
 }
 
 #if defined(DEBUG)
@@ -1619,7 +1612,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
 #if defined(BM_IN_LINK)
             // Save the old bitmap before it is trashed by NewSwitch.
-            // is it possible that nDigitsLeftUp != cnDigitsPerWord and
+            // Is it possible that nDigitsLeftUp != cnDigitsPerWord and
             // we are at the top?
             Link_t ln;
             if (nDigitsLeftUp != cnDigitsPerWord)
@@ -1635,6 +1628,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             // Make sure to pass the right key for BM_SWITCH_FOR_REAL.
             pwSw = NewSwitch(pwRoot,
                              wPrefix, nDigitsLeft, nDigitsLeftUp, wPopCnt);
+
+#if defined(BM_SWITCH_FOR_REAL)
+            // Switch was created with only one link based on wKey passed in.
+            nIndex = 0;
+#endif // defined(BM_SWITCH_FOR_REAL)
 
 #if defined(BM_IN_LINK)
             if (nDigitsLeftUp != cnDigitsPerWord)
@@ -1653,17 +1651,17 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             }
 #endif // defined(BM_IN_LINK)
 
-#if defined(BM_SWITCH_FOR_REAL)
-            // Switch was created with only one link based on wKey passed in.
-            nIndex = 0;
-#endif // defined(BM_SWITCH_FOR_REAL)
-
             // Copy wRoot from old link to new link.
             pwr_pLinks(pwSw)[nIndex].ln_wRoot = wRoot;
 
 #if defined(PP_IN_LINK)
 #if defined(NO_UNNECESSARY_PREFIX)
-            if (nDigitsLeftRoot != nDigitsLeft - pwr_nBitsIndexSz(pwSw))
+            if (nDigitsLeftRoot == nDigitsLeft - 1)
+            {
+                DBGI(printf("nDLR %d nDL %d\n",
+                            nDigitsLeftRoot, nDigitsLeft));
+            }
+            else
 #endif // defined(NO_UNNECESSARY_PREFIX)
             {
                 set_PWR_wPrefix(&pwr_pLinks(pwSw)[nIndex].ln_wRoot, NULL,
