@@ -195,10 +195,11 @@ again:
 #endif // defined(LOOKUP)
 
 #if defined(COMPRESSED_LISTS)
+#if !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
             // nDigitsLeft is relative to the bottom of the switch
             // containing the pointer to the leaf.
             unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
-#if defined(SKIP_LINKS)
+#endif // !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
             // We don't support skip links directly to leaves -- yet.
             // Even with defined(PP_IN_LINK).
@@ -213,6 +214,8 @@ again:
 #else // (cnBitsPerWord > 32)
             if ((nBitsLeft > 16) // leaf has whole key
 #endif // (cnBitsPerWord > 32)
+                // leaf does not have whole key
+                // What if there were no skips in the part that is missing?
                 || ( ! bNeedPrefixCheck ) // we followed no skip links
                 || ((wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeft),
                     LOG(1 | (wPrefix ^ wKey))
@@ -220,7 +223,6 @@ again:
                         // for !defined(PP_IN_LINK) case
                         < (nBitsLeft + pwr_nBitsIndexSz(pwr)))))
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-#endif // defined(SKIP_LINKS)
 #endif // defined(COMPRESSED_LISTS)
             {
                 assert(ll_nDigitsLeft(wRoot) == nDigitsLeft);

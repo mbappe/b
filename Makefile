@@ -3,13 +3,10 @@
 #
 # Makefile for b.  Code for learning about Judy and possible improvements.
 #
-# How do I do things in here such that the Makefile provides a default
-# that I can override on the command line?
-#
 ###########################
 
-# cnBitsPerWord = 32
-# cnBitsPerWord = 64
+# The default build is 32-bits.
+# Use "cnBitsPerWord=64 make" to get a 64-bit build.
 ifeq "$(cnBitsPerWord)" ""
 cnBitsPerWord = 32
 endif
@@ -28,7 +25,16 @@ endif
 # B_DEFINES += -DPP_IN_LINK
 # B_DEFINES += -DRAM_METRICS
 # B_DEFINES += -DSEARCH_METRICS
+# LOOKUP_NO_BITMAP_SEARCH means return just before the list is searched, i.e.
+# after dereferencing the the first word of the list leaf.
+# What if prefix/popcnt are in the link?
+# LOOKUP_NO_BITMAP_DEREF means return before prefix/popcnt is retrieved, i.e.
+# before dereferencing the the first word of the list leaf.
 # B_DEFINES += -DLOOKUP_NO_LIST_DEREF -DLOOKUP_NO_LIST_SEARCH
+# LOOKUP_NO_BITMAP_SEARCH means return before the bit is retrieved.
+# LOOKUP_NO_BITMAP_DEREF means return before the prefix is retrieved, i.e.
+# before dereferencing the the first word of the bitmap leaf if it
+# contains prefix/popcnt.
 # B_DEFINES += -DLOOKUP_NO_BITMAP_DEREF -DLOOKUP_NO_BITMAP_SEARCH
 # B_DEFINES += -URECURSIVE_INSERT -URECURSIVE_REMOVE
 # B_DEFINES += -DcnBitsPerWord=$(cnBitsPerWord)
@@ -99,37 +105,22 @@ CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
 # assertions only.
 # It does not log anything unless something wrong is detected.
 # DEBUG is used by Judy1LHTime.c to turn off NDEBUG.
-#
-TIME_DEFINES += -DDEBUG -UNDEBUG
+  TIME_DEFINES += -DDEBUG -UNDEBUG
 
 # Debug/Check/Instrument:
 #
 # GUARDBAND checks for corruption of word following malloc buffer on free
-TIME_DEFINES += -DGUARDBAND
-#
+  TIME_DEFINES += -DGUARDBAND
 # SISTER_READ is for measuring the speed of dereferencing subsequent
 # cache lines using "Judy1LHTime -b".
-#
 # TIME_DEFINES += -DSISTER_READ
-#
-# LOOKUP_NO_BITMAP_SEARCH means return just before the list is searched, i.e.
-# after dereferencing the the first word of the list leaf.
-# What if prefix/popcnt are in the link?
-# LOOKUP_NO_BITMAP_DEREF means return before prefix/popcnt is retrieved, i.e.
-# before dereferencing the the first word of the list leaf.
-#
-# LOOKUP_NO_BITMAP_SEARCH means return before the bit is retrieved.
-# LOOKUP_NO_BITMAP_DEREF means return before the prefix is retrieved, i.e.
-# before dereferencing the the first word of the bitmap leaf if it
-# contains prefix/popcnt.
-#
 
 # Always:
 #
 # _POSIX_C_SOURCE=199309L gives CLOCK_MONOTONIC on GNU/Linux even though
 # -std=c11 and -std=c99 don't.
 #
-TIME_DEFINES += -DJUDYB
+  TIME_DEFINES += -DJUDYB
 # TIME_DEFINES += -D_POSIX_C_SOURCE=199309L
 
 DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
@@ -137,7 +128,7 @@ DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 LIBS = -lm
 
 FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c t.c stubs.c Makefile tocsv toc90
-FILES_FROM_ME += bitmap.c bitmapx.c judy1.c judy1x.c bb
+FILES_FROM_ME += bitmap.c bitmapx.c judy1.c judy1x.c bb bbwrap
 # I periodically make changes to the files provided by Doug.
 FILES_FROM_DOUG_OR_DOUG = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c jbgraph
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_OR_DOUG)

@@ -2,6 +2,14 @@
 #if ( ! defined(_B_H_INCLUDED) )
 #define _B_H_INCLUDED
 
+#if defined(SKIP_PREFIX_CHECK) || defined(NO_UNNECESSARY_PREFIX)
+#define SKIP_LINKS
+#endif // defined(SKIP_PREFIX_CHECK) || defined(NO_UNNECESSARY_PREFIX)
+
+#if defined(BM_IN_LINK) || defined(BM_SWITCH_FOR_REAL)
+#define BM_SWITCH
+#endif // defined(BM_IN_LINK) || defined(BM_SWITCH_FOR_REAL)
+
 //
 // (cnBitsPerDigit, cnDigitsAtBottom, cwListPopCntMax)
 //
@@ -107,7 +115,7 @@
 #define LOG(_x)  ((Word_t)63 - __builtin_clzll(_x))
 #define MASK(_x)  ((_x) - 1)
 
-#define cnLogBitsPerByte  (3U)
+#define cnLogBitsPerByte  3
 #define cnBitsPerByte  (EXP(cnLogBitsPerByte))
 
 #if !defined(cnBitsPerWord)
@@ -119,9 +127,9 @@
 #endif // !defined(cnBitsPerWord)
 
 #if (cnBitsPerWord == 64)
-#define cnLogBytesPerWord  (3U)
+#define cnLogBytesPerWord  3
 #else // (cnBitsPerWord == 64)
-#define cnLogBytesPerWord  (2U)
+#define cnLogBytesPerWord  2
 #endif // (cnBitsPerWord == 64)
 
 #define cnBytesPerWord  (EXP(cnLogBytesPerWord))
