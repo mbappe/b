@@ -3,11 +3,15 @@
 #define _B_H_INCLUDED
 
 #if defined(SKIP_PREFIX_CHECK) || defined(NO_UNNECESSARY_PREFIX)
+#if ! defined(SKIP_LINKS)
 #define SKIP_LINKS
+#endif // ! defined(SKIP_LINKS)
 #endif // defined(SKIP_PREFIX_CHECK) || defined(NO_UNNECESSARY_PREFIX)
 
 #if defined(BM_IN_LINK) || defined(BM_SWITCH_FOR_REAL)
+#if ! defined(BM_SWITCH)
 #define BM_SWITCH
+#endif // ! defined(BM_SWITCH)
 #endif // defined(BM_IN_LINK) || defined(BM_SWITCH_FOR_REAL)
 
 //
