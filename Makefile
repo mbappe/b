@@ -8,27 +8,36 @@
 #
 ###########################
 
-  cnBitsPerWord = 32
+# cnBitsPerWord = 32
 # cnBitsPerWord = 64
+ifeq "$(cnBitsPerWord)" ""
+cnBitsPerWord = 32
+endif
 
 # b.h will choose cnBitsPerDigit = cnLogBitsPerWord
-# B_DEFINES += -DcnBitsPerDigit=8
+# B_DEFINES += -DcnBitsPerDigit=4
+# b.h will choose cnDigitsAtBottom = 1
+# B_DEFINES += -DcnDigitsAtBottom=2
 # b.h will choose cwListPopCntMax = EXP(cnBitsPerDigit) / 2
 # B_DEFINES += -DcwListPopCntMax=$(cnBitsPerWord)
-# B_DEFINES += -DcwListPopCntMax=1
-# b.h will choose cnDigitsAtBottom = 1
-# B_DEFINES += -DcnDigitsAtBottom=1
-  B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX
-  B_DEFINES += -DCOMPRESSED_LISTS
-# Cannot define both SORT_LISTS and MIN_MAX_LISTS; SORT_LISTS wins.
-  B_DEFINES += -DSORT_LISTS -UMIN_MAX_LISTS
-  B_DEFINES += -DBM_SWITCH -DBM_SWITCH_FOR_REAL -UBM_IN_LINK
+# B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -DNO_UNNECESSARY_PREFIX
+# B_DEFINES += -DCOMPRESSED_LISTS
+# SORT_LISTS wins if both SORT_LISTS and MIN_MAX_LISTS are defined.
+# B_DEFINES += -DSORT_LISTS -DMIN_MAX_LISTS
+# B_DEFINES += -DBM_SWITCH -DBM_SWITCH_FOR_REAL -DBM_IN_LINK
 # B_DEFINES += -DPP_IN_LINK
+# B_DEFINES += -DRAM_METRICS
+# B_DEFINES += -DSEARCH_METRICS
+# B_DEFINES += -DLOOKUP_NO_LIST_DEREF -DLOOKUP_NO_LIST_SEARCH
+# B_DEFINES += -DLOOKUP_NO_BITMAP_DEREF -DLOOKUP_NO_BITMAP_SEARCH
+# B_DEFINES += -URECURSIVE_INSERT -URECURSIVE_REMOVE
+# B_DEFINES += -DcnBitsPerWord=$(cnBitsPerWord)
+# B_DEFINES += -DDEBUG_INSERT -DDEBUG_LOOKUP -DDEBUG_MALLOC -DDEBUG_REMOVE
 
-# CC = clang
   CC = cc
-# CC = icc
+# CC = clang
 # CC = gcc
+# CC = icc
 
 ##
 # -std=gnu11 and -std=gnu99 give CLOCK_MONOTONIC which is not available with
@@ -91,7 +100,7 @@ CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
 # It does not log anything unless something wrong is detected.
 # DEBUG is used by Judy1LHTime.c to turn off NDEBUG.
 #
-TIME_DEFINES += -UNDEBUG -DDEBUG
+TIME_DEFINES += -DDEBUG -UNDEBUG
 
 # Debug/Check/Instrument:
 #
@@ -102,25 +111,18 @@ TIME_DEFINES += -DGUARDBAND
 # cache lines using "Judy1LHTime -b".
 #
 # TIME_DEFINES += -DSISTER_READ
-B_DEFINES += -DRAM_METRICS
-B_DEFINES += -DSEARCH_METRICS
 #
-# LOOKUP_NO_BITMAP_SEARCH means return just before the list is searched.
-# After dereferencing the the first word of the list leaf.
+# LOOKUP_NO_BITMAP_SEARCH means return just before the list is searched, i.e.
+# after dereferencing the the first word of the list leaf.
 # What if prefix/popcnt are in the link?
-# LOOKUP_NO_BITMAP_DEREF means return before prefix/popcnt is retrieved.
-# Before dereferencing the the first word of the list leaf.
-# B_DEFINES += -DLOOKUP_NO_LIST_DEREF -ULOOKUP_NO_LIST_SEARCH
+# LOOKUP_NO_BITMAP_DEREF means return before prefix/popcnt is retrieved, i.e.
+# before dereferencing the the first word of the list leaf.
 #
 # LOOKUP_NO_BITMAP_SEARCH means return before the bit is retrieved.
-# LOOKUP_NO_BITMAP_DEREF means return before the prefix is retrieved.
-# Before dereferencing the the first word of the bitmap leaf if it
+# LOOKUP_NO_BITMAP_DEREF means return before the prefix is retrieved, i.e.
+# before dereferencing the the first word of the bitmap leaf if it
 # contains prefix/popcnt.
-# B_DEFINES += -DLOOKUP_NO_BITMAP_DEREF -ULOOKUP_NO_BITMAP_SEARCH
 #
-# These can be specified on the command line with "DEFINES = ... make"
-#
-# -UDEBUG_INSERT -UDEBUG_LOOKUP -UDEBUG_MALLOC -UDEBUG_REMOVE
 
 # Always:
 #
@@ -129,8 +131,6 @@ B_DEFINES += -DSEARCH_METRICS
 #
 TIME_DEFINES += -DJUDYB
 # TIME_DEFINES += -D_POSIX_C_SOURCE=199309L
-# B_DEFINES += -URECURSIVE_INSERT -URECURSIVE_REMOVE
-B_DEFINES += -DcnBitsPerWord=$(cnBitsPerWord)
 
 DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 
