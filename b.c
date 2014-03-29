@@ -519,7 +519,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #endif // defined(BM_SWITCH_FOR_REAL)
 
 static Word_t
-OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft)
+OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
 {
     Word_t *pwr = wr_pwr(*pwRoot);
     unsigned nWords = sizeof(Switch_t) / sizeof(Word_t);
@@ -527,7 +527,7 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft)
 #if defined(BM_SWITCH_FOR_REAL)
     Word_t wPopCnt;
 #if defined(BM_IN_LINK)
-    if (nDigitsLeft == cnDigitsPerWord)
+    if (nDigitsLeftUp == cnDigitsPerWord)
     {
         wPopCnt = EXP(cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit);
     }
@@ -564,14 +564,15 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft)
     }
 #endif // defined(RAM_METRICS)
 
-    DBGR(printf("\nOldSwitch nDigitsLeft %d nWords %d 0x%x\n",
-         nDigitsLeft, nWords, nWords));
+    DBGR(printf("\nOldSwitch nDL %d nDLU %d nWords %d 0x%x\n",
+         nDigitsLeft, nDigitsLeftUp, nWords, nWords));
 
     MyFree(pwr, nWords);
 
     return nWords * sizeof(Word_t);
 
     (void)nDigitsLeft; // silence compiler
+    (void)nDigitsLeftUp; // silence compiler
 }
 
 Word_t
@@ -588,6 +589,12 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
     Link_t *pLinks;
     unsigned nType;
     Word_t wBytes = 0;
+
+    if ( ! bDump )
+    {
+        DBGR(printf("FreeArrayGuts pwR "OWx" wPrefix "OWx" nBL %d bDump %d\n",
+             (Word_t)pwRoot, wPrefix, nBitsLeft, bDump));
+    }
 
     if (wRoot == 0)
     {
@@ -727,6 +734,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
     // Switch
 
+    unsigned nDigitsLeftPrev = nDigitsLeft;
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     nDigitsLeft = tp_to_nDigitsLeft(nType);
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -875,7 +883,9 @@ if (wPopCntLn != 0)
 #endif // defined(BM_SWITCH)
     }
 
-    return bDump ? 0 : (OldSwitch(pwRootArg, nDigitsLeft) + wBytes);
+    if (bDump) return 0;
+
+    return OldSwitch(pwRootArg, nDigitsLeft, nDigitsLeftPrev) + wBytes;
 }
 
 #if defined(DEBUG)
@@ -1582,7 +1592,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             // figure new nDigitsLeft for old parent link
             Word_t wPrefix = PWR_wPrefix(pwRoot, pwr, nDigitsLeftRoot);
             nDigitsLeft = LOG(1 | (wPrefix ^ wKey)) / cnBitsPerDigit + 1;
-            // nDigitsLeft includes the digit that is different.
+            // nDigitsLeft includes the highest order digit that is different.
 
             assert(nDigitsLeft > nDigitsLeftRoot);
 
@@ -1620,7 +1630,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 memcpy(ln.ln_awBm, PWR_pwBm(pwRoot, NULL),
                        DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
                            * cnBytesPerWord);
+#if ! defined(BM_SWITCH_FOR_REAL)
                 assert(ln.ln_awBm[0] == (Word_t)-1);
+#endif // ! defined(BM_SWITCH_FOR_REAL)
             }
 #endif // defined(BM_IN_LINK)
 

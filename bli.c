@@ -82,6 +82,9 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     int nIncr = -1;
 #endif // defined(INSERT)
 #endif // !defined(RECURSIVE)
+#if defined(PP_IN_LINK) || defined(BM_IN_LINK)
+    unsigned nDigitsLeftUp = nDigitsLeft;
+#endif // defined(PP_IN_LINK) || defined(BM_IN_LINK)
 
 #endif // defined(LOOKUP)
 
@@ -349,9 +352,9 @@ again:
 #endif // defined(SKIP_LINKS)
         {
 #if !defined(LOOKUP)
-#if defined(PP_IN_LINK)
-            unsigned nDigitsLeftUp = nDigitsLeft;
-#endif // defined(PP_IN_LINK)
+#if defined(PP_IN_LINK) || defined(BM_IN_LINK)
+            nDigitsLeftUp = nDigitsLeft;
+#endif // defined(PP_IN_LINK) || defined(BM_IN_LINK)
 #endif // !defined(LOOKUP)
             nDigitsLeft
                 = nDigitsLeftRoot - (pwr_nBitsIndexSz(pwr) / cnBitsPerDigit);
@@ -421,7 +424,6 @@ again:
 #if defined(PP_IN_LINK)
 // What if nDigitsLeft was cnDigitsPerWord before it was updated?
 // Don't we have to walk the switch in that case too?
-// Actually, doesn't 
             if (nDigitsLeftUp == cnDigitsPerWord)
             {
 #if defined(REMOVE)
@@ -474,7 +476,10 @@ again:
                     }
                     // switch pop is zero
                     FreeArrayGuts(pwRoot, wKey,
-                        nDigitsLeftRoot * cnBitsPerDigit, /* bDump */ 0);
+                        (nDigitsLeftUp == cnDigitsPerWord)
+                            ? cnBitsPerWord : nDigitsLeftUp * cnBitsPerDigit,
+                        /* bDump */ 0);
+
                     *pwRoot = 0;
                     return KeyFound;
 notEmpty:;
@@ -503,7 +508,14 @@ notEmpty:;
                     if (wPopCnt == 0)
                     {
                         FreeArrayGuts(pwRoot, wKey,
-                            nDigitsLeftRoot * cnBitsPerDigit, /* bDump */ 0);
+#if defined(BM_IN_LINK)
+                            (nDigitsLeftUp == cnDigitsPerWord)
+                                ? cnBitsPerWord
+                                : nDigitsLeftUp * cnBitsPerDigit,
+#else // defined(BM_IN_LINK)
+                            nDigitsLeftRoot * cnBitsPerDigit,
+#endif // defined(BM_IN_LINK)
+                            /* bDump */ 0);
                         *pwRoot = 0;
                         return KeyFound;
                     }
@@ -714,6 +726,8 @@ restart:
 #if defined(REMOVE)
 cleanup:
     bCleanup = 1; // ?? nIncr == 0 ??
+    DBGX(printf("Cleanup pwRO "OWx" nDLO %d\n",
+                (Word_t)pwRootOrig, nDigitsLeftOrig));
     goto restart;
 #endif // defined(REMOVE)
 }
