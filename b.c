@@ -811,7 +811,7 @@ if (wPopCntLn != 0)
         }
             }
 
-            printf(" wr_wPopCnt %3"_fw"u", wPopCnt);
+            printf(" sm_wPopCnt %3"_fw"u", wPopCnt);
             printf(" wr_wPrefix        N/A");
         }
         else
@@ -852,9 +852,7 @@ if (wPopCntLn != 0)
         nBitsIndexSz = cnBitsPerWord - nBitsLeft;
     }
 
-#if defined(BM_SWITCH)
     Word_t xx = 0;
-#endif // defined(BM_SWITCH)
     for (Word_t nn = 0; nn < EXP(nBitsIndexSz); nn++)
     {
 #if defined(BM_SWITCH)
@@ -864,6 +862,7 @@ if (wPopCntLn != 0)
 #else // defined(BM_IN_LINK)
         if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
 #endif // defined(BM_IN_LINK)
+#endif // defined(BM_SWITCH)
         {
             if (pLinks[xx].ln_wRoot != 0)
             {
@@ -874,13 +873,6 @@ if (wPopCntLn != 0)
 
             xx++;
         }
-        else
-        {
-            //printf("nn %"_fw"d no bit\n", nn);
-        }
-#else // defined(BM_SWITCH)
-        pwRoot = &pLinks[nn].ln_wRoot;
-#endif // defined(BM_SWITCH)
     }
 
     if (bDump) return 0;
