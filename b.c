@@ -877,7 +877,17 @@ if (wPopCntLn != 0)
 
     if (bDump) return 0;
 
-    return OldSwitch(pwRootArg, nDigitsLeft, nDigitsLeftPrev) + wBytes;
+    // Someone has to clear PP and BM if PP_IN_LINK and BM_IN_LINK.
+    // OldSwitch looks at BM.
+
+    wBytes += OldSwitch(pwRootArg, nDigitsLeft, nDigitsLeftPrev);
+
+    DBGR(printf("memset(%p, 0, %zd)\n",
+                STRUCT_OF(pwRootArg, Link_t, ln_wRoot), sizeof(Link_t)));
+
+    memset(STRUCT_OF(pwRootArg, Link_t, ln_wRoot), 0, sizeof(Link_t));
+
+    return wBytes;
 }
 
 #if defined(DEBUG)
@@ -1694,9 +1704,12 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     {
         if (cnBitsAtBottom <= cnLogBitsPerWord)
         {
-            // What if link has more space than just *pwRoot due
-            // to BM_IN_LINK and/or PP_IN_LINK?
             ClrBitInWord(wRoot, wKey & ((EXP(cnBitsAtBottom)) - 1UL));
+            // What if link has more than just ln_wRoot due
+            // to BM_IN_LINK and/or PP_IN_LINK?
+            // What if population just went to 0?  Should we clear the rest
+            // of the link?
+            // Or can we rely on cleanup phase in Remove to do it?
             *pwRoot = wRoot;
         }
         else
@@ -1708,6 +1721,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 DBGL(printf("RemoveGuts OldBitmap nDigitsLeft %d\n",
                      nDigitsLeft));
                 OldBitmap(wRoot); *pwRoot = 0;
+                // Do we need to clear the rest of the link also?
             }
 #else // defined(PP_IN_LINK)
             //printf("RemoveGuts not checking for empty bitmap.\n");
@@ -1738,6 +1752,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         if (wPopCnt == 1)
         {
             OldList((Word_t *)wRoot); *pwRoot = 0;
+            // Do we need to clear the rest of the link also?
             // BUG:  We should check if the switch is empty and free it
             // (and on up the tree as necessary).
         }

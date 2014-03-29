@@ -479,6 +479,9 @@ again:
                         (nDigitsLeftUp == cnDigitsPerWord)
                             ? cnBitsPerWord : nDigitsLeftUp * cnBitsPerDigit,
                         /* bDump */ 0);
+#if defined(PP_IN_LINK)
+                    assert(PWR_wPrefix(pwRoot, NULL, nDigitsLeftUp) == 0);
+#endif // defined(PP_IN_LINK)
 
                     *pwRoot = 0;
                     return KeyFound;
@@ -516,6 +519,18 @@ notEmpty:;
                             nDigitsLeftRoot * cnBitsPerDigit,
 #endif // defined(BM_IN_LINK)
                             /* bDump */ 0);
+#if defined(PP_IN_LINK)
+#if defined(BM_IN_LINK)
+                    assert(PWR_wPrefix(pwRoot, NULL, nDigitsLeftUp) == 0);
+#else // defined(BM_IN_LINK)
+                    if (PWR_wPrefix(pwRoot, NULL, nDigitsLeftRoot) != 0)
+                    {
+                        DBGR(printf("wPrefixPop "OWx"\n",
+                                    PWR_wPrefixPop(pwRoot, NULL)));
+                    }
+                    assert(PWR_wPrefix(pwRoot, NULL, nDigitsLeftRoot) == 0);
+#endif // defined(BM_IN_LINK)
+#endif // defined(PP_IN_LINK)
                         *pwRoot = 0;
                         return KeyFound;
                     }
