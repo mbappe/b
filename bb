@@ -19,11 +19,11 @@ cp b b.bb
 # -x does wait for context switch; useful for timing with small pops
 # -l skips small-pop del/ins loop
 
-for SFLAG in 1 7 -1 -7 ""
+for SFLAG in 1 "" -7 -1 7
 do
 for DFLAG in -D ""
 do
-for BFLAG in -B15 ""
+for BFLAG in "" -B20
 do
     if [ "$SFLAG" != "" ]
     then
@@ -32,7 +32,7 @@ do
         CMD="${TIME} $B"
     fi
 
-    if ! $CMD $DFLAG $BFLAG -n20000
+    if ! $CMD $DFLAG $BFLAG -n50000
     then
         set +x # turn echo off
         echo
