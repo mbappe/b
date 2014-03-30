@@ -102,7 +102,7 @@ MyMalloc(Word_t wWords)
 static void
 MyFree(Word_t *pw, Word_t wWords)
 {
-    DBGM(printf("F: "OWx" %"_fw"d\n", (Word_t)pw, wWords));
+    DBGM(printf("F: "OWx" %"_fw"d words\n", (Word_t)pw, wWords));
     JudyFree(pw, wWords);
 }
 
@@ -433,7 +433,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 
     // How many links are there in the old switch?
     Word_t wPopCnt = 0;
-    for (unsigned nn = 0; nn < EXP(cnBitsPerDigit) >> cnLogBitsPerWord; nn++)
+    for (unsigned nn = 0;
+         nn < DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord); nn++)
     {
         wPopCnt += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
     }
@@ -445,7 +446,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     // sizeof(Switch_t) includes one link; add the others
     unsigned nWords
         = (sizeof(Switch_t) + wPopCnt * sizeof(Link_t)) / sizeof(Word_t);
-    DBGI(printf("wPopCnt %"_fw"d nWords %d\n", wPopCnt, nWords));
+    DBGI(printf("link count %"_fw"d nWords %d\n", wPopCnt, nWords));
     *pwRoot = MyMalloc(nWords);
     DBGI(printf("After malloc *pwRoot "OWx"\n", *pwRoot));
 
@@ -539,7 +540,7 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
         // How many links are there in the old switch?
         wPopCnt = 0;
         for (unsigned nn = 0;
-             nn < EXP(cnBitsPerDigit) >> cnLogBitsPerWord; nn++)
+             nn < DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord); nn++)
         {
             wPopCnt += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
         }
