@@ -398,6 +398,7 @@ again:
                 if ( ! (wBm & wBit) )
                 {
 #if defined(BM_SWITCH_FOR_REAL)
+                    DBGX(printf("missing link\n"));
                     nDigitsLeft = nDigitsLeftRoot; // back up for InsertGuts
                     goto notFound;
 #else // defined(BM_SWITCH_FOR_REAL)
