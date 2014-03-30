@@ -66,10 +66,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     unsigned bNeedPrefixCheck = 0;
 #endif // defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
-    Word_t *pwRoot;
-#if defined(BM_IN_LINK)
-    pwRoot = NULL; // no need for &wRoot; NULL might catch a bug
-#endif // defined(BM_IN_LINK)
+    Word_t *pwRoot = NULL; // shouldn't be necessary; gcc thinks it is
 
 #else // defined(LOOKUP)
 
@@ -83,7 +80,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #endif // defined(INSERT)
 #endif // !defined(RECURSIVE)
 #if defined(PP_IN_LINK) || defined(BM_IN_LINK)
-    unsigned nDigitsLeftUp = nDigitsLeft;
+    unsigned nDigitsLeftUp = nDigitsLeft; (void)nDigitsLeftUp; // silence gcc
 #endif // defined(PP_IN_LINK) || defined(BM_IN_LINK)
 
 #endif // defined(LOOKUP)
@@ -127,7 +124,7 @@ again:
 
 #if ( ! defined(LOOKUP) )
     assert(nDigitsLeft > cnDigitsAtBottom); // keep LOOKUP lean
-    DBGX(printf("# pwRoot %p ", pwRoot));
+    DBGX(printf("# pwRoot %p ", (void *)pwRoot));
 #else // ( ! defined(LOOKUP) )
     SMETRICS(j__TreeDepth++);
 #endif // ( ! defined(LOOKUP) )
@@ -158,10 +155,10 @@ again:
 #endif // !defined(RECURSIVE)
         {
             wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
-            DBGX(printf("wPopCnt (before incr) %zd\n", wPopCnt));
+            DBGX(printf("wPopCnt (before incr) %zd\n", (size_t)wPopCnt));
             set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
             DBGX(printf("wPopCnt (after incr) %zd\n",
-                        PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
+                        (size_t)PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
         }
 #endif // defined(PP_IN_LINK)
 #endif // !defined(LOOKUP)
@@ -238,8 +235,9 @@ again:
                     && (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) != wPopCnt))
                 {
                     printf("PWR_wPopCnt %zd 0x%zx wPopCnt %zd\n", 
-                           PWR_wPopCnt(pwRoot, NULL, nDigitsLeft),
-                           PWR_wPopCnt(pwRoot, NULL, nDigitsLeft), wPopCnt);
+                           (size_t)PWR_wPopCnt(pwRoot, NULL, nDigitsLeft),
+                           (size_t)PWR_wPopCnt(pwRoot, NULL, nDigitsLeft),
+                           (size_t)wPopCnt);
                     assert(0);
                 }
 #endif // defined(LOOKUP) && defined(PP_IN_LINK) && defined(DEBUG_LOOKUP)
@@ -332,7 +330,7 @@ again:
         nDigitsLeftRoot = nDigitsLeft; // prev
 #endif // defined(SKIP_LINKS)
 
-        DBGX(printf("Switch nDLR %d pwr %p\n", nDigitsLeftRoot, pwr));
+        DBGX(printf("Switch nDLR %d pwr %p\n", nDigitsLeftRoot, (void *)pwr));
 
 #if defined(SKIP_LINKS)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -390,8 +388,8 @@ again:
                 unsigned nBmOffset = 0;
 #endif // (cnBitsPerDigit > cnLogBitsPerWord)
 //printf("nBmOffset %d\n", nBmOffset);
-//printf("pwr %p\n", pwr);
-//printf("PWR_pwBm %p\n", PWR_pwBm(pwRoot, pwr));
+//printf("pwr %p\n", (void *)pwr);
+//printf("PWR_pwBm %p\n", (void *)PWR_pwBm(pwRoot, pwr));
                 Word_t wBm = PWR_pwBm(pwRoot, pwr)[nBmOffset];
 //printf("wBm "OWx"\n", wBm);
                 Word_t wBit = ((Word_t)1 << (wIndex & (cnBitsPerWord - 1)));
@@ -415,7 +413,7 @@ again:
                 }
 #endif // (cnBitsPerDigit > cnLogBitsPerWord)
                 DBGX(printf("\npwRoot %p PWR_pwBm %p\n",
-                            pwRoot, PWR_pwBm(pwRoot, pwr)));
+                            (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
                 wIndex += __builtin_popcountll(wBm & wBmMask);
             }
 #endif // defined(BM_SWITCH)
@@ -470,7 +468,7 @@ again:
                                 ))
                         {
                             DBGX(printf("Not empty ww %zd wIndex %zd\n",
-                                 ww, wIndex));
+                                 (size_t)ww, (size_t)wIndex));
                             goto notEmpty; // switch pop is not zero
                         }
                     }
@@ -541,7 +539,7 @@ notEmpty:;
                     set_PWR_wPopCnt(pwRoot, pwr,
                                     nDigitsLeftRoot, wPopCnt + nIncr);
                     DBGX(printf("wPopCnt %zd\n",
-                         PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot)));
+                         (size_t)PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot)));
                 }
             }
 #endif // !defined(LOOKUP)
@@ -550,9 +548,10 @@ notEmpty:;
             wRoot = *pwRoot;
 
             DBGX(printf("Next nDigitsLeft %d wIndex %zd pwr %p pLinks %p\n",
-                nDigitsLeft, wIndex, pwr, pwr_pLinks(pwr)));
+                nDigitsLeft, (size_t)wIndex,
+                (void *)pwr, (void *)pwr_pLinks(pwr)));
 
-            DBGX(printf("pwRoot %p wRoot "OWx"\n", pwRoot, wRoot));
+            DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
 
             if (nDigitsLeft > cnDigitsAtBottom)
             {
@@ -578,12 +577,12 @@ notEmpty:;
 #if defined(PP_IN_LINK)
             DBGX(printf("Bitmap nDigitsLeft %d\n", nDigitsLeft));
             wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
-            DBGX(printf("wPopCnt (before incr) %zd\n", wPopCnt));
+            DBGX(printf("wPopCnt (before incr) %zd\n", (size_t)wPopCnt));
             DBGX(printf("wKeyPopMask "OWx"\n",
                  wPrefixPopMask(nDigitsLeft)));
             set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
             DBGX(printf("wPopCnt %zd\n",
-                 PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
+                 (size_t)PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
 #else // defined(PP_IN_LINK)
 #endif // defined(PP_IN_LINK)
 #endif // !defined(LOOKUP)
@@ -782,7 +781,6 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 #endif // defined(DEBUG)
 
 #if defined(DEBUG_REMOVE)
-    if (wInserts >= cwDebugThreshold)
     {
         printf("\n# After Remove(wKey "OWx") %s Dump\n", wKey,
             status == Success ? "Success" : "Failure");

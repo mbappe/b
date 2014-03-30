@@ -106,6 +106,7 @@ MyFree(Word_t *pw, Word_t wWords)
     JudyFree(pw, wWords);
 }
 
+#if (cwListPopCntMax != 0)
 static Word_t *
 NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
 {
@@ -163,7 +164,7 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
     (void)wKey;
 
     DBGM(printf("NewList pwList %p wPopCnt "OWx" nWords %d\n",
-        pwList, wPopCnt, nWords));
+        (void *)pwList, wPopCnt, nWords));
 
     set_ls_wPopCnt(pwList, wPopCnt);
     set_ls_wLen(pwList, nWords);
@@ -182,7 +183,7 @@ OldList(Word_t *pwList)
     unsigned nWords = ls_wLen(pwList);
 
     DBGM(printf("Old pwList %p wLen %d wPopCnt "OWx"\n",
-        pwList, nWords, (Word_t)ls_wPopCnt(pwList)));
+        (void *)pwList, nWords, (Word_t)ls_wPopCnt(pwList)));
 
 #if defined(COMPRESSED_LISTS)
 
@@ -227,6 +228,7 @@ OldList(Word_t *pwList)
 
     return nWords * sizeof(Word_t);
 }
+#endif // (cwListPopCntMax != 0)
 
 static Word_t
 NewBitmap(void)
@@ -322,7 +324,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 #endif // defined(RAM_METRICS)
 
     DBGM(printf("NewSwitch(pwRoot %p wKey "OWx" nDL %d nDLU %d) pwr %p\n",
-        pwRoot, wKey, nDigitsLeft, nDigitsLeftUp, pwr));
+        (void *)pwRoot, wKey, nDigitsLeft, nDigitsLeftUp, (void *)pwr));
 
     set_wr(*pwRoot, pwr, nDigitsLeft_to_tp(nDigitsLeft));
 
@@ -421,7 +423,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     Word_t *pwr = wr_pwr(*pwRoot);
 
     DBGI(printf("NewLink(pwRoot %p wKey "OWx" nDigitsLeft %d)\n",
-        pwRoot, wKey, nDigitsLeft));
+        (void *)pwRoot, wKey, nDigitsLeft));
     DBGI(printf("PWR_wPopCnt %"_fw"d\n",
          PWR_wPopCnt(pwRoot, pwr, nDigitsLeft)));
 
@@ -491,8 +493,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     DBGI(printf("PWR_wPopCnt %"_fw"d\n",
          PWR_wPopCnt(pwRoot, *pwRoot, nDigitsLeft)));
     // Initialize the new link.
-    DBGI(printf("pLinks %p\n", pwr_pLinks(*pwRoot)));
-    DBGI(printf("memset %p\n", &pwr_pLinks(*pwRoot)[wIndex]));
+    DBGI(printf("pLinks %p\n", (void *)pwr_pLinks(*pwRoot)));
+    DBGI(printf("memset %p\n", (void *)&pwr_pLinks(*pwRoot)[wIndex]));
     memset(&pwr_pLinks(*pwRoot)[wIndex], 0, sizeof(Link_t));
     DBGI(printf("PWR_wPopCnt A %"_fw"d\n",
          PWR_wPopCnt(pwRoot, *pwRoot, nDigitsLeft)));
@@ -665,7 +667,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         return 0;
     }
 
-    nType = wr_nType(wRoot);
+    nType = wr_nType(wRoot); (void)nType; // silence gcc
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     if ((tp_to_nDigitsLeft(nType) * cnBitsPerDigit)
@@ -883,7 +885,7 @@ if (wPopCntLn != 0)
     wBytes += OldSwitch(pwRootArg, nDigitsLeft, nDigitsLeftPrev);
 
     DBGR(printf("memset(%p, 0, %zd)\n",
-                STRUCT_OF(pwRootArg, Link_t, ln_wRoot), sizeof(Link_t)));
+         (void *)STRUCT_OF(pwRootArg, Link_t, ln_wRoot), sizeof(Link_t)));
 
     memset(STRUCT_OF(pwRootArg, Link_t, ln_wRoot), 0, sizeof(Link_t));
 
@@ -900,6 +902,7 @@ Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft)
 }
 #endif // defined(DEBUG)
 
+#if (cwListPopCntMax != 0)
 #if defined(SORT_LISTS)
 
 // CopyWithInsert can handle pTgt == pSrc, but cannot handle any other
@@ -1053,6 +1056,7 @@ CopyWithInsertChar(unsigned char *pTgt, unsigned char *pSrc,
 
 #endif // defined(COMPRESSED_LISTS)
 #endif // defined(SORT_LISTS)
+#endif // (cwListPopCntMax != 0)
 
 // InsertGuts
 // This function is called from the iterative Insert function once Insert has
@@ -1072,7 +1076,6 @@ Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 {
     Word_t *pwr;
-    Word_t *pwSw;
     unsigned nType;
 
     // Validate global constant parameters set up in the header file.
@@ -1084,7 +1087,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     assert(cnDigitsAtBottom + cnMallocMask >= cnDigitsPerWord + 1);
 #endif // defined(SKIP_LINKS)
 
-    DBGI(printf("InsertGuts pwRoot %p ", pwRoot));
+    DBGI(printf("InsertGuts pwRoot %p ", (void *)pwRoot));
     DBGI(printf(" wRoot "OWx" wKey "OWx" nDigitsLeft %d\n",
             wRoot, wKey, nDigitsLeft));
 
@@ -1115,7 +1118,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             assert(!BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
 
             DBGI(printf("SetBit(wRoot "OWx" wKey "OWx") pwRoot %p\n",
-                wRoot, wKey & (EXP(cnBitsAtBottom) - 1), pwRoot));
+                wRoot, wKey & (EXP(cnBitsAtBottom) - 1), (void *)pwRoot));
 
             SetBit(wRoot, wKey & (EXP(cnBitsAtBottom) - 1));
 
@@ -1130,7 +1133,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         return Success;
     }
 
-    nType = wr_nType(wRoot);
+    nType = wr_nType(wRoot); (void)nType; // silence gcc
 
     pwr = wr_tp_pwr(wRoot, nType);
 
@@ -1209,6 +1212,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 //  - bitmap switch -- depth, prefix, pop, capacity, bitmap, links
 //  - list switch -- depth, prefix, pop, capacity, (key, link) pairs
 
+#if (cwListPopCntMax != 0)
         if (wPopCnt < cwListPopCntMax)
         {
             // allocate a new list and init pop count in the first word
@@ -1387,6 +1391,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             *pwRoot = wRoot; // install new
         }
         else
+#endif // (cwListPopCntMax != 0)
         {
             unsigned nDigitsLeftOld = nDigitsLeft;
             Word_t w;
@@ -1507,8 +1512,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #else // defined(SKIP_LINKS)
             assert(nDigitsLeft > cnDigitsAtBottom);
 #endif // defined(SKIP_LINKS)
-            pwSw = NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftOld,
-                             /* wPopCnt */ 0);
+            NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftOld,
+                      /* wPopCnt */ 0);
 
 #if defined(COMPRESSED_LISTS)
 #if defined(SKIP_LINKS)
@@ -1551,7 +1556,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             Insert(pwRoot, wKey, nDigitsLeftOld);
         }
 
+#if (cwListPopCntMax != 0)
         if (wPopCnt != 0) OldList(pwr); // free old
+#endif // (cwListPopCntMax != 0)
     }
 #if defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
     else
@@ -1638,6 +1645,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             }
 #endif // defined(BM_IN_LINK)
 
+            Word_t *pwSw;
             // initialize prefix/pop for new switch
             // Make sure to pass the right key for BM_SWITCH_FOR_REAL.
             pwSw = NewSwitch(pwRoot,
@@ -1659,7 +1667,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             else
             {
                 // Initialize bitmap in new link.
-                memset(pwr_pLinks(pwSw)[nIndex].ln_awBm, (Word_t)-1,
+                memset(pwr_pLinks(pwSw)[nIndex].ln_awBm, -1,
                        DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
                            * cnBytesPerWord);
             }
@@ -1700,7 +1708,11 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 {
     DBGR(printf("RemoveGuts\n"));
 
+#if (cwListPopCntMax != 0)
     if (nDigitsLeft <= cnDigitsAtBottom)
+#else // (cwListPopCntMax != 0)
+    assert(nDigitsLeft <= cnDigitsAtBottom);
+#endif // (cwListPopCntMax != 0)
     {
         if (cnBitsAtBottom <= cnLogBitsPerWord)
         {
@@ -1736,6 +1748,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             DBGR(printf("RemoveGuts *pwRoot is now 0\n"));
         }
     }
+#if (cwListPopCntMax != 0)
     else
     {
 #if defined(COMPRESSED_LISTS)
@@ -1868,6 +1881,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             set_ls_wPopCnt(wRoot, wPopCnt - 1);
         }
     }
+#endif // (cwListPopCntMax != 0)
 
     (void)pwRoot; (void)wKey; (void)nDigitsLeft; (void)wRoot;
 
@@ -1991,10 +2005,10 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                 printf(" mask "OWx" %zd",
                     wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)),
-                    wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)));
+                    (size_t)wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)));
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                 printf(" nn %d wPopCntLn %zd "OWx"\n",
-                       nn, wPopCntLn, wPopCntLn);
+                       nn, (size_t)wPopCntLn, wPopCntLn);
             }
 #endif // defined(DEBUG_INSERT)
 
@@ -2011,9 +2025,9 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                 printf(" mask "Owx" %zd\n",
                     wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)),
-                    wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)));
+                    (size_t)wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)));
                 printf("nn %d wPopCntLn %zd "OWx"\n",
-                    nn, wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1,
+                    nn, (size_t)wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1,
                     wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1);
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #endif // defined(DEBUG_INSERT)

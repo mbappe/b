@@ -68,7 +68,12 @@
 // depth with only the bottom list having more than one key.
 // We could vary the max length based on depth or be even more sophisticated.
 #if !defined(cwListPopCntMax)
+// ListLeaf_t has only one byte to store number of words in list.
+#if (cnBitsPerDigit <= 8)
 #define cwListPopCntMax  (EXP(cnBitsPerDigit) / 2)
+#else // (cnBitsPerDigit <= 8)
+#define cwListPopCntMax  250
+#endif // (cnBitsPerDigit <= 8)
 #endif // !defined(cwListPopCntMax)
 
 // Choose features.
@@ -153,25 +158,41 @@
 #endif // defined SEARCH_METRICS
 
 #if defined(DEBUG_INSERT)
+#if (cwDebugThreshold != 0)
 #define DBGI(x)  if (wInserts >= cwDebugThreshold) (x)
+#else // (cwDebugThreshold != 0)
+#define DBGI(x)  (x)
+#endif // (cwDebugThreshold != 0)
 #else // defined(DEBUG_INSERT)
 #define DBGI(x)
 #endif // defined(DEBUG_INSERT)
 
 #if defined(DEBUG_LOOKUP)
+#if (cwDebugThreshold != 0)
+#define DBGL(x)  if (wInserts >= cwDebugThreshold) (x)
+#else // (cwDebugThreshold != 0)
 #define DBGL(x)  (x)
+#endif // (cwDebugThreshold != 0)
 #else // defined(DEBUG_LOOKUP)
 #define DBGL(x)
 #endif // defined(DEBUG_LOOKUP)
 
 #if defined(DEBUG_REMOVE)
+#if (cwDebugThreshold != 0)
 #define DBGR(x)  if (wInserts >= cwDebugThreshold) (x)
+#else // (cwDebugThreshold != 0)
+#define DBGR(x)  (x)
+#endif // (cwDebugThreshold != 0)
 #else // defined(DEBUG_REMOVE)
 #define DBGR(x)
 #endif // defined(DEBUG_REMOVE)
 
 #if defined(DEBUG_MALLOC)
+#if (cwDebugThreshold != 0)
 #define DBGM(x)  if (wInserts >= cwDebugThreshold) (x)
+#else // (cwDebugThreshold != 0)
+#define DBGM(x)  (x)
+#endif // (cwDebugThreshold != 0)
 #else // defined(DEBUG_MALLOC)
 #define DBGM(x)
 #endif // defined(DEBUG_MALLOC)
