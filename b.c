@@ -1,6 +1,6 @@
 
+// @(#) $Id: b.c,v 1.159 2014/03/31 15:42:34 mike Exp mike $
 // @(#) $Source: /Users/mike/Documents/judy/b/RCS/b.c,v $
-// @(#) $Id$ $Revision: 1.158 $ $Date$
 
 #include "b.h"
 
