@@ -284,8 +284,17 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 #if defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
     if (nDigitsLeftUp == cnDigitsPerWord)
     {
-        unsigned nLinks
-            = EXP(cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit);
+        unsigned nLinks;
+
+        if (nDigitsLeft == cnDigitsPerWord)
+        {
+            nLinks
+                = EXP(cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit);
+        }
+        else
+        {
+            nLinks = EXP(cnBitsPerDigit);
+        }
 
         // sizeof(Switch_t) includes one link; add the others
         nWords = (sizeof(Switch_t) + (nLinks - 1) * sizeof(Link_t))
@@ -349,6 +358,8 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 
 #else // defined(BM_SWITCH_FOR_REAL)
 
+// Mind the high-order bits of the bitmap word if/when the bitmap is smaller
+// than a whole word.  See OldSwitch.
         memset(PWR_pwBm(pwRoot, pwr), -1, sizeof(PWR_pwBm(pwRoot, pwr)));
 
 #endif // defined(BM_SWITCH_FOR_REAL)
@@ -532,7 +543,15 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
 #if defined(BM_IN_LINK)
     if (nDigitsLeftUp == cnDigitsPerWord)
     {
-        wPopCnt = EXP(cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit);
+        if (nDigitsLeft == cnDigitsPerWord)
+        {
+            wPopCnt
+                = EXP(cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit);
+        }
+        else
+        {
+            wPopCnt = EXP(cnBitsPerDigit);
+        }
     }
     else
 #endif // defined(BM_IN_LINK)
@@ -544,6 +563,13 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
         {
             wPopCnt += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
         }
+#if (cnBitsPerDigit < cnBitsPerWord)
+        // trim the count if it is too big due to extra one bits in the bitmap
+        if (wPopCnt > EXP(cnBitsPerDigit))
+        {
+            wPopCnt = EXP(cnBitsPerDigit);
+        }
+#endif // (cnBitsPerDigit < cnBitsPerWord)
         // Now we know how many links were in the old switch.
     }
 
@@ -1573,7 +1599,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #if defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
         unsigned nDLR = tp_to_nDigitsLeft(nType);
         Word_t wPrefix = PWR_wPrefix(pwRoot, pwr, nDLR);
-        if (wPrefix == w_wPrefix(wKey, nDLR))
+        if ((nDLR == nDigitsLeft) || (wPrefix == w_wPrefix(wKey, nDLR)))
 #endif // defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
 #if defined(BM_SWITCH_FOR_REAL)
         {
@@ -1680,6 +1706,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             else
             {
                 // Initialize bitmap in new link.
+// Mind the high-order bits of the bitmap word if/when the bitmap is smaller
+// than a whole word.  See OldSwitch.
                 memset(pwr_pLinks(pwSw)[nIndex].ln_awBm, -1,
                        DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
                            * cnBytesPerWord);
