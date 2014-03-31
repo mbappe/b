@@ -338,7 +338,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
         memset(PWR_pwBm(pwRoot, pwr), 0, sizeof(PWR_pwBm(pwRoot, pwr)));
 
         unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
-        if (nBitsLeft > cnBitsPerWord) nBitsLeft = cnBitsPerWord;
+        // leave nBitsLeft greater than cnBitsPerWord intentionally for now
 
         unsigned nBitsIndexSz = pwr_nBitsIndexSz(pwr);
 
@@ -853,6 +853,12 @@ if (wPopCntLn != 0)
     if (nBitsLeft + nBitsIndexSz > cnBitsPerWord)
     {
         nBitsIndexSz = cnBitsPerWord - nBitsLeft;
+    }
+
+    // skip link has extra prefix bits
+    if (nDigitsLeftPrev > nDigitsLeft)
+    {
+        wPrefix = PWR_wPrefix(pwRoot, pwr, nDigitsLeft);
     }
 
     Word_t xx = 0;
@@ -1460,7 +1466,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                         } else if (nBitsLeft <= 32) {
                             if (ls_piKeys(wRoot)[w] < wMin)
                                 wMin = ls_piKeys(wRoot)[w];
-                            if (ls_psKeys(wRoot)[w] > wMax)
+                            if (ls_piKeys(wRoot)[w] > wMax)
                                 wMax = ls_piKeys(wRoot)[w];
 #endif // (cnBitsPerWord > 32)
                         } else 
@@ -1627,7 +1633,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
             nIndex = (wPrefix >> ((nDigitsLeft - 1) * cnBitsPerDigit))
                 & (EXP(cnBitsPerDigit) - 1);
-            // nIndex is the index in new switch.
+            // nIndex is the logical index in new switch.
             // It may not be the same as the index in the old switch.
 
 #if defined(BM_IN_LINK)
@@ -1653,8 +1659,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                              wPrefix, nDigitsLeft, nDigitsLeftUp, wPopCnt);
 
 #if defined(BM_SWITCH_FOR_REAL)
-            // Switch was created with only one link based on wKey passed in.
-            nIndex = 0;
+#if defined(BM_IN_LINK)
+            if (nDigitsLeftUp != cnDigitsPerWord)
+#endif // defined(BM_IN_LINK)
+            {
+                // Switch was created with only one link based on wKey
+                // passed in.  Unless BM_IN_LINK && switch is at top.
+                nIndex = 0;
+            }
 #endif // defined(BM_SWITCH_FOR_REAL)
 
 #if defined(BM_IN_LINK)
@@ -1681,6 +1693,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #if defined(NO_UNNECESSARY_PREFIX)
             if (nDigitsLeftRoot == nDigitsLeft - 1)
             {
+                // The previously necessary prefix in the old switch
+                // is now unnecessary.
                 DBGI(printf("nDLR %d nDL %d\n",
                             nDigitsLeftRoot, nDigitsLeft));
             }
@@ -1693,6 +1707,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
             set_PWR_wPopCnt(&pwr_pLinks(pwSw)[nIndex].ln_wRoot, NULL,
                             nDigitsLeftRoot, wPopCnt);
+#else // defined(PP_IN_LINK)
+#if defined(NO_UNNECESSARY_PREFIX)
+           // We could go to the trouble of zeroing the no-longer necessary
+           // prefix in the old switch. 
+#endif // defined(NO_UNNECESSARY_PREFIX)
 #endif // defined(PP_IN_LINK)
 
             Insert(pwRoot, wKey, nDigitsLeftUp);
