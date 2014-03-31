@@ -129,6 +129,7 @@ LIBS = -lm
 
 FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c t.c stubs.c Makefile tocsv toc90
 FILES_FROM_ME += bitmap.c bitmapx.c judy1.c judy1x.c bb bbwrap bbq bbwrapq
+FILES_FROM_ME += bench
 # I periodically make changes to the files provided by Doug.
 FILES_FROM_DOUG_OR_DOUG = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c jbgraph
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_OR_DOUG)
