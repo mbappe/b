@@ -1,4 +1,7 @@
 
+// @(#) $Id: b.c,v 1.160 2014/03/31 15:43:55 mike Exp mike $
+// @(#) $Source: /Users/mike/Documents/judy/b/RCS/b.c,v $
+
 // This file is #included in other .c files three times.
 // Once with #define LOOKUP, #undef INSERT and #undef REMOVE.
 // Once with #undef LOOKUP, #define INSERT and #undef REMOVE.
