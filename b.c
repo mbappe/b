@@ -1,9 +1,5 @@
 
-// Todo:
-//
-// "pwr" is a confusing name.  We use it for pointer extracted from wRoot.
-// Do not confuse it with pointer to wRoot.  Even though they will be the
-// same when nType is zero.
+// @(#) $Revision: 1.7 $ $Source: /Users/mike/Documents/judy/b/RCS/Judy1LHTime.c,v $
 
 #include "b.h"
 
