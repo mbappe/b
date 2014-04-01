@@ -640,7 +640,8 @@ FUNCTION_gnuplot_init()			# Initialize gnuplot command file.
     ${v}echo "${C}.${0}:  beginning at `date`"	# beginning of function
   {
     echo "# ${C_PATH} ${*}"
-    echo "# gnuplot -p ${GNU_GEOMETRY} ${GNU_CMDFILE}"
+#    echo "# gnuplot -p ${GNU_GEOMETRY} ${GNU_CMDFILE}"
+    echo "# gnuplot ${GNU_GEOMETRY} ${GNU_CMDFILE}"
     if [ "${OPT_L}" = "-L" ]; then	# -L set logscale axis
         echo "set logscale ${OPT_L_xaxis}${OPT_L_yaxis};"
     fi
@@ -734,7 +735,7 @@ FUNCTION_gnuplot_display()			# Plots the datapoints.
 
     if [ "${OPT_v}" = "-v" ]; then	# -v verbose mode.
         echo "${C}.${0}:  executing command:  "; echo "\n\
-        gnuplot -p ${GNU_GEOMETRY} ${GNU_CMDFILE}"
+        gnuplot ${GNU_GEOMETRY} ${GNU_CMDFILE}"
     fi
 
 # Add additional parameters as necessary to setup for printing:
@@ -749,7 +750,8 @@ FUNCTION_gnuplot_display()			# Plots the datapoints.
     LINE=""				# External response
     while [ "${LINE}" != "q" ]
     do
-        gnuplot -p ${GNU_GEOMETRY} ${GNU_CMDFILE}
+#        gnuplot -p ${GNU_GEOMETRY} ${GNU_CMDFILE}
+        gnuplot ${GNU_GEOMETRY} ${GNU_CMDFILE}
         LINE="q"			# Setup for quit.
         if [ "${OPT_V}" = "-V" ]; then
 	    echo "Pause: press return to vi again, \"q\" to quit ${C}"
@@ -978,7 +980,7 @@ FUNCTION_b()				# -b Option description.
 
         FUNCTION_gnuplot_plot ${FILES}	# Plot these files.
 
-#        echo pause -1 \'Pause: press return to continue.\' >> ${GNU_CMDFILE}
+        echo pause -1 \'Pause: press return to continue.\' >> ${GNU_CMDFILE}
         echo				# Place blank line in log file.
     fi
 
@@ -986,7 +988,7 @@ FUNCTION_b()				# -b Option description.
 
 
     if [ ! -z "${OPT_p}" ]; then
-#        echo pause -1 \'Pause: press return to continue.\' >> ${GNU_CMDFILE}
+        echo pause -1 \'Pause: press return to continue.\' >> ${GNU_CMDFILE}
         echo				# Place blank line in log file.
         FUNCTION_gnuplot_print		# -p print the plot.
     fi
