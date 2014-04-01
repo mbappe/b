@@ -5,10 +5,10 @@
 #
 ###########################
 
-# The default build is 32-bits.
-# Use "cnBitsPerWord=64 make" to get a 64-bit build.
+# The default build is 64-bits.
+# Use "cnBitsPerWord=32 make" to get a 32-bit build.
 ifeq "$(cnBitsPerWord)" ""
-cnBitsPerWord = 32
+cnBitsPerWord = 64
 endif
 
 # b.h will choose cnBitsPerDigit = cnLogBitsPerWord
@@ -17,13 +17,13 @@ endif
 # B_DEFINES += -DcnDigitsAtBottom=2
 # b.h will choose cwListPopCntMax = EXP(cnBitsPerDigit) / 2
 # B_DEFINES += -DcwListPopCntMax=$(cnBitsPerWord)
-# B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -DNO_UNNECESSARY_PREFIX
-# B_DEFINES += -DCOMPRESSED_LISTS
+  B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -DNO_UNNECESSARY_PREFIX
+  B_DEFINES += -DCOMPRESSED_LISTS
 # SORT_LISTS wins if both SORT_LISTS and MIN_MAX_LISTS are defined.
-# B_DEFINES += -DSORT_LISTS -DMIN_MAX_LISTS
-# B_DEFINES += -DBM_SWITCH -DBM_SWITCH_FOR_REAL -DBM_IN_LINK
+  B_DEFINES += -DSORT_LISTS -DMIN_MAX_LISTS
+  B_DEFINES += -DBM_SWITCH -DBM_SWITCH_FOR_REAL -DBM_IN_LINK
 # B_DEFINES += -DPP_IN_LINK
-# B_DEFINES += -DRAM_METRICS
+  B_DEFINES += -DRAM_METRICS
 # B_DEFINES += -DSEARCH_METRICS
 # LOOKUP_NO_BITMAP_SEARCH means return just before the list is searched, i.e.
 # after dereferencing the the first word of the list leaf.
@@ -40,9 +40,9 @@ endif
 # B_DEFINES += -DcnBitsPerWord=$(cnBitsPerWord)
 # B_DEFINES += -DDEBUG_INSERT -DDEBUG_LOOKUP -DDEBUG_MALLOC -DDEBUG_REMOVE
 
-  CC = cc
+# CC = cc
 # CC = clang
-# CC = gcc
+  CC = gcc
 # CC = icc
 
 ##
@@ -105,12 +105,12 @@ CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
 # assertions only.
 # It does not log anything unless something wrong is detected.
 # DEBUG is used by Judy1LHTime.c to turn off NDEBUG.
-  TIME_DEFINES += -DDEBUG -UNDEBUG
+  TIME_DEFINES += -UDEBUG -DNDEBUG
 
 # Debug/Check/Instrument:
 #
 # GUARDBAND checks for corruption of word following malloc buffer on free
-  TIME_DEFINES += -DGUARDBAND
+# TIME_DEFINES += -DGUARDBAND
 # SISTER_READ is for measuring the speed of dereferencing subsequent
 # cache lines using "Judy1LHTime -b".
 # TIME_DEFINES += -DSISTER_READ
@@ -129,7 +129,7 @@ LIBS = -lm
 
 FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c t.c stubs.c Makefile tocsv toc90
 FILES_FROM_ME += bitmap.c bitmapx.c judy1.c judy1x.c bb bbwrap bbq bbwrapq
-FILES_FROM_ME += bench
+FILES_FROM_ME += bench Makefile.perf
 # I periodically make changes to the files provided by Doug.
 FILES_FROM_DOUG_OR_DOUG = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c jbgraph
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_OR_DOUG)

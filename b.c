@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.159 2014/03/31 15:42:34 mike Exp mike $
+// @(#) $Id: b.c,v 1.160 2014/03/31 15:43:55 mike Exp mike $
 // @(#) $Source: /Users/mike/Documents/judy/b/RCS/b.c,v $
 
 #include "b.h"
@@ -130,6 +130,7 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
     if (nBytesKeySz == 1) {
         METRICS(j__AllocWordsJL12 += nWords); // JUDYB
         METRICS(j__AllocWordsJLL1 += nWords); // JUDYA
+        printf("j__AllocWordsJL12 "OWx"\n", j__AllocWordsJL12);
     } else if (nBytesKeySz == 2) {
         METRICS(j__AllocWordsJL16 += nWords); // JUDYB
         METRICS(j__AllocWordsJLL2 += nWords); // JUDYA
@@ -319,13 +320,13 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
         && (nDigitsLeft <= cnDigitsAtBottom + 1))
     {
         assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
-        METRICS(j__AllocWordsJLB1 += sizeof(Switch_t) / sizeof(Word_t));
-        METRICS(j__AllocWordsJV12 += sizeof(Switch_t) / sizeof(Word_t));
+        METRICS(j__AllocWordsJLB1 += nWords);
+        METRICS(j__AllocWordsJV12 += nWords);
     }
     else
     {
-        METRICS(j__AllocWordsJBU  += sizeof(Switch_t) / sizeof(Word_t));
-        METRICS(j__AllocWordsJBU4 += sizeof(Switch_t) / sizeof(Word_t));
+        METRICS(j__AllocWordsJBU  += nWords);
+        METRICS(j__AllocWordsJBU4 += nWords);
     }
 #endif // defined(RAM_METRICS)
 
@@ -463,13 +464,13 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
         && (nDigitsLeft <= cnDigitsAtBottom + 1))
     {
         assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
-        METRICS(j__AllocWordsJLB1 += sizeof(Link_t) / sizeof(Word_t));
-        METRICS(j__AllocWordsJV12 += sizeof(Link_t) / sizeof(Word_t));
+        METRICS(j__AllocWordsJLB1 += nWords);
+        METRICS(j__AllocWordsJV12 += nWords);
     }
     else
     {
-        METRICS(j__AllocWordsJBU  += sizeof(Link_t) / sizeof(Word_t));
-        METRICS(j__AllocWordsJBU4 += sizeof(Link_t) / sizeof(Word_t));
+        METRICS(j__AllocWordsJBU  += nWords);
+        METRICS(j__AllocWordsJBU4 += nWords);
     }
 #endif // defined(RAM_METRICS)
 
