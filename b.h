@@ -350,9 +350,6 @@
 #define     ls_wPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_nPopCnt)
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
 
-#define     ls_wLen(_ls)        (((ListLeaf_t *)(_ls))->ll_nWords)
-#define set_ls_wLen(_ls, _len)  (ls_wLen(_ls) = (_len))
-
 #if defined(COMPRESSED_LISTS)
 #define     ls_pcKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_acKeys)
 #define     ls_psKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_asKeys)
@@ -424,7 +421,6 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 
 typedef struct {
     uint16_t ll_nPopCnt; // includes prefix, node type and nDigitsLeft
-    uint8_t ll_nWords;
     uint8_t ll_nDigitsLeft;
     union {
 #if defined(COMPRESSED_LISTS)

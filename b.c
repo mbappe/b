@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.166 2014/04/02 11:52:40 mike Exp mike $
+// @(#) $Id: b.c,v 1.167 2014/04/02 12:32:24 mike Exp mike $
 // @(#) $Source: /Users/mike/Documents/judy/b/RCS/b.c,v $
 
 #include "b.h"
@@ -85,11 +85,9 @@ MyFree(Word_t *pw, Word_t wWords)
 
 #if (cwListPopCntMax != 0)
 
-static Word_t *
-NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
+static unsigned
+ListWords(Word_t wPopCnt, unsigned nDigitsLeft)
 {
-    (void)wKey;
-
     unsigned nWords;
 
 #if defined(COMPRESSED_LISTS)
@@ -112,7 +110,19 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
 
     nWords = (wPopCnt + OFFSET_OF(ListLeaf_t, ll_awKeys) / sizeof(Word_t)) | 1;
 
+    (void)nDigitsLeft;
+
 #endif // defined(COMPRESSED_LISTS)
+
+    return nWords;
+}
+
+static Word_t *
+NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
+{
+    (void)wKey;
+
+    unsigned nWords = ListWords(wPopCnt, nDigitsLeft);
 
 #if defined(COMPRESSED_LISTS)
     if (nBytesKeySz == 1) {
@@ -139,8 +149,6 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
         (void *)pwList, wPopCnt, nWords));
 
     set_ls_wPopCnt(pwList, wPopCnt);
-    set_ls_wLen(pwList, nWords);
-
     set_ll_nDigitsLeft(pwList, nDigitsLeft);
 
 // Should we be setting wPrefix here for PP_IN_LINK?
@@ -149,12 +157,14 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
 }
 
 static Word_t
-OldList(Word_t *pwList)
+OldList(Word_t *pwList, unsigned nDigitsLeft)
 {
-    unsigned nWords = ls_wLen(pwList);
+    unsigned nWords = ListWords(ls_wPopCnt(pwList), nDigitsLeft);
 
     DBGM(printf("Old pwList %p wLen %d wPopCnt "OWx"\n",
         (void *)pwList, nWords, (Word_t)ls_wPopCnt(pwList)));
+
+    assert(nDigitsLeft == ll_nDigitsLeft(pwList));
 
 #if defined(COMPRESSED_LISTS)
 
@@ -698,7 +708,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
         if (!bDump)
         {
-            return OldList(pwr);
+            return OldList(pwr, nDigitsLeft);
         }
 #if defined(PP_IN_LINK)
         if (nBitsLeftArg == cnBitsPerWord)
@@ -714,7 +724,6 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         }
 #endif // defined(PP_IN_LINK)
 
-        printf(" ls_wLen %3llu", (unsigned long long)ls_wLen(wRoot));
         printf(" ls_wPopCnt %3llu", (unsigned long long)wPopCnt);
 
         for (unsigned nn = 0;
@@ -1570,7 +1579,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         }
 
 #if (cwListPopCntMax != 0)
-        if (wPopCnt != 0) OldList(pwr); // free old
+        if (wPopCnt != 0) OldList(pwr, nDigitsLeft); // free old
 #endif // (cwListPopCntMax != 0)
     }
 #if defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
@@ -1780,19 +1789,17 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     else
     {
 #if defined(COMPRESSED_LISTS)
-        unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
 
-        if (nBitsLeft > cnBitsPerWord)
-        {
-            nBitsLeft = cnBitsPerWord;
-        }
+        unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+        if (nBitsLeft > cnBitsPerWord) { nBitsLeft = cnBitsPerWord; }
+
 #endif // defined(COMPRESSED_LISTS)
 
         Word_t wPopCnt = ls_wPopCnt(wRoot);
 
         if (wPopCnt == 1)
         {
-            OldList((Word_t *)wRoot); *pwRoot = 0;
+            OldList((Word_t *)wRoot, nDigitsLeft); *pwRoot = 0;
             // Do we need to clear the rest of the link also?
             // BUG:  We should check if the switch is empty and free it
             // (and on up the tree as necessary).
@@ -1819,24 +1826,44 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 nIndex++)
                 ; // semicolon on separate line to silence compiler warning
 
-            // BUG:  We should malloc a new, smaller list.
+            Word_t *pwList;
+            if (ListWords(wPopCnt - 1, nDigitsLeft)
+                    != ListWords(wPopCnt, nDigitsLeft))
+            {
+                // Malloc a new, smaller list.
+                pwList = NewList(wPopCnt - 1, nDigitsLeft, wKey);
+                COPY(pwList, (Word_t *)wRoot,
+                     ListWords(wPopCnt - 1, nDigitsLeft));
+            }
+            else
+            {
+                pwList = (Word_t *)wRoot;
+            }
+
 #if defined(COMPRESSED_LISTS)
             if (nBitsLeft <= 8) {
-                MOVE(&wr_pcKeys(wRoot)[nIndex],
+                MOVE(&wr_pcKeys(pwList)[nIndex],
                      &wr_pcKeys(wRoot)[nIndex + 1], wPopCnt - nIndex - 1);
             } else if (nBitsLeft <= 16) {
-                MOVE(&wr_psKeys(wRoot)[nIndex],
+                MOVE(&wr_psKeys(pwList)[nIndex],
                      &wr_psKeys(wRoot)[nIndex + 1], wPopCnt - nIndex - 1);
 #if (cnBitsPerWord > 32)
             } else if (nBitsLeft <= 32) {
-                MOVE(&wr_piKeys(wRoot)[nIndex],
+                MOVE(&wr_piKeys(pwList)[nIndex],
                      &wr_piKeys(wRoot)[nIndex + 1], wPopCnt - nIndex - 1);
 #endif // (cnBitsPerWord > 32)
             } else
 #endif // defined(COMPRESSED_LISTS)
             {
-                MOVE(&pwKeys[nIndex], &pwKeys[nIndex + 1],
+                MOVE(&wr_pwKeys(pwList)[nIndex], &pwKeys[nIndex + 1],
                      wPopCnt - nIndex - 1);
+            }
+
+            if (pwList != (Word_t *)wRoot)
+            {
+                OldList((Word_t *)wRoot, nDigitsLeft);
+                *pwRoot = wRoot = (Word_t)pwList;
+                pwKeys = wr_pwKeys(wRoot);
             }
 
 #if defined(MIN_MAX_LISTS) && !defined(SORT_LISTS)
