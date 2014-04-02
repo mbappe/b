@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.165 2014/04/02 01:51:36 mike Exp mike $
+// @(#) $Id: b.c,v 1.166 2014/04/02 11:52:40 mike Exp mike $
 // @(#) $Source: /Users/mike/Documents/judy/b/RCS/b.c,v $
 
 #include "b.h"
@@ -294,7 +294,11 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     }
     else
     {
+#if defined(BM_SWITCH)
+        METRICS(j__AllocWordsJBB  += nWords); // JUDYA
+#else // defined(BM_SWITCH)
         METRICS(j__AllocWordsJBU  += nWords); // JUDYA
+#endif // defined(BM_SWITCH)
         METRICS(j__AllocWordsJBU4 += nWords); // JUDYB
     }
 #endif // defined(RAM_METRICS)
@@ -439,7 +443,11 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     }
     else
     {
+#if defined(BM_SWITCH)
+        METRICS(j__AllocWordsJBB  += sizeof(Link_t) / sizeof(Word_t)); // JUDYA
+#else // defined(BM_SWITCH)
         METRICS(j__AllocWordsJBU  += sizeof(Link_t) / sizeof(Word_t)); // JUDYA
+#endif // defined(BM_SWITCH)
         METRICS(j__AllocWordsJBU4 += sizeof(Link_t) / sizeof(Word_t)); // JUDYB
     }
 #endif // defined(RAM_METRICS)
@@ -556,7 +564,11 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
     }
     else
     {
+#if defined(BM_SWITCH)
+        METRICS(j__AllocWordsJBB  -= nWords); // JUDYA
+#else // defined(BM_SWITCH)
         METRICS(j__AllocWordsJBU  -= nWords); // JUDYA
+#endif // defined(BM_SWITCH)
         METRICS(j__AllocWordsJBU4 -= nWords); // JUDYB
     }
 #endif // defined(RAM_METRICS)
