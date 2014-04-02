@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.162 2014/04/01 01:27:49 mike Exp mike $
+// @(#) $Id: b.c,v 1.165 2014/04/02 01:51:36 mike Exp mike $
 // @(#) $Source: /Users/mike/Documents/judy/b/RCS/b.c,v $
 
 #include "b.h"
@@ -84,62 +84,56 @@ MyFree(Word_t *pw, Word_t wWords)
 }
 
 #if (cwListPopCntMax != 0)
+
 static Word_t *
 NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
 {
-    DBGM(printf("NewList wPopCnt "OWx"\n", wPopCnt));
+    (void)wKey;
+
+    unsigned nWords;
 
 #if defined(COMPRESSED_LISTS)
 
     unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
 
-    if (nBitsLeft > cnBitsPerWord)
-    {
-        nBitsLeft = cnBitsPerWord;
-    }
+    if (nBitsLeft > cnBitsPerWord) { nBitsLeft = cnBitsPerWord; }
 
-    unsigned nBytesKeySz = (nBitsLeft <= 8) ? 1 : (nBitsLeft <= 16) ? 2
+    unsigned nBytesKeySz = (nBitsLeft <=  8) ? 1
+                         : (nBitsLeft <= 16) ? 2
 #if (cnBitsPerWord > 32)
-        : (nBitsLeft <= 32) ? 4
+                         : (nBitsLeft <= 32) ? 4
 #endif // (cnBitsPerWord > 32)
-        : sizeof(Word_t);
+                         : sizeof(Word_t);
 
-    unsigned nWords = (DIV_UP(wPopCnt * nBytesKeySz, cnBytesPerWord)
+    nWords = (DIV_UP(wPopCnt * nBytesKeySz, cnBytesPerWord)
         + OFFSET_OF(ListLeaf_t, ll_awKeys) / sizeof(Word_t)) | 1;
-
-    if (nBytesKeySz == 1) {
-        METRICS(j__AllocWordsJL12 += nWords); // JUDYB
-        METRICS(j__AllocWordsJLL1 += nWords); // JUDYA
-        printf("j__AllocWordsJL12 "OWx"\n", j__AllocWordsJL12);
-    } else if (nBytesKeySz == 2) {
-        METRICS(j__AllocWordsJL16 += nWords); // JUDYB
-        METRICS(j__AllocWordsJLL2 += nWords); // JUDYA
-#if (cnBitsPerWord > 32)
-    } else if (nBytesKeySz == 4) {
-        METRICS(j__AllocWordsJL32 += nWords); // JUDYB
-        METRICS(j__AllocWordsJLL4 += nWords); // JUDYA
-#endif // (cnBitsPerWord > 32)
-    } else {
-        METRICS(j__AllocWordsJLLW += nWords); // BOTH
-    }
 
 #else // defined(COMPRESSED_LISTS)
 
-    unsigned nWords = (wPopCnt
-        + OFFSET_OF(ListLeaf_t, ll_awKeys) / sizeof(Word_t)) | 1;
-
-    METRICS(j__AllocWordsJLLW += nWords);
+    nWords = (wPopCnt + OFFSET_OF(ListLeaf_t, ll_awKeys) / sizeof(Word_t)) | 1;
 
 #endif // defined(COMPRESSED_LISTS)
 
-    DBGM(printf("NewList nWords %d\n", nWords));
+#if defined(COMPRESSED_LISTS)
+    if (nBytesKeySz == 1) {
+        METRICS(j__AllocWordsJLL1 += nWords); // JUDYA
+        METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
+    } else if (nBytesKeySz == 2) {
+        METRICS(j__AllocWordsJLL2 += nWords); // JUDYA
+        METRICS(j__AllocWordsJL16 += nWords); // JUDYB
+#if (cnBitsPerWord > 32)
+    } else if (nBytesKeySz == 4) {
+        METRICS(j__AllocWordsJLL4 += nWords); // JUDYA
+        METRICS(j__AllocWordsJL32 += nWords); // JUDYB
+#endif // (cnBitsPerWord > 32)
+    }
+    else
+#endif // defined(COMPRESSED_LISTS)
+    {
+        METRICS(j__AllocWordsJLLW += nWords); // JUDYA and JUDYB
+    }
 
-    Word_t *pwList = (Word_t *)JudyMalloc(nWords);
-    assert(pwList != NULL);
-    assert(((Word_t)pwList & cnMallocMask) == 0);
-
-    (void)nDigitsLeft;
-    (void)wKey;
+    Word_t *pwList = (Word_t *)MyMalloc(nWords);
 
     DBGM(printf("NewList pwList %p wPopCnt "OWx" nWords %d\n",
         (void *)pwList, wPopCnt, nWords));
@@ -150,7 +144,6 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
     set_ll_nDigitsLeft(pwList, nDigitsLeft);
 
 // Should we be setting wPrefix here for PP_IN_LINK?
-// What about wPopCnt?
 
     return pwList;
 }
@@ -166,66 +159,58 @@ OldList(Word_t *pwList)
 #if defined(COMPRESSED_LISTS)
 
     unsigned nDigitsLeft = ll_nDigitsLeft(pwList);
-
     unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
 
-    if (nBitsLeft > cnBitsPerWord)
-    {
-        nBitsLeft = cnBitsPerWord;
-    }
+    if (nBitsLeft > cnBitsPerWord) { nBitsLeft = cnBitsPerWord; }
 
-    unsigned nBytesKeySz = (nBitsLeft <= 8) ? 1 : (nBitsLeft <= 16) ? 2
+    unsigned nBytesKeySz = (nBitsLeft <=  8) ? 1
+                         : (nBitsLeft <= 16) ? 2
 #if (cnBitsPerWord > 32)
-        : (nBitsLeft <= 32) ? 4 : 8;
-#else // (cnBitsPerWord > 32)
-        : 4;
+                         : (nBitsLeft <= 32) ? 4
 #endif // (cnBitsPerWord > 32)
+                         : sizeof(Word_t);
 
     if (nBytesKeySz == 1) {
-        METRICS(j__AllocWordsJL12 -= nWords); // JUDYB
         METRICS(j__AllocWordsJLL1 -= nWords); // JUDYA
+        METRICS(j__AllocWordsJL12 -= nWords); // JUDYB -- overloaded
     } else if (nBytesKeySz == 2) {
-        METRICS(j__AllocWordsJL16 -= nWords); // JUDYB
         METRICS(j__AllocWordsJLL2 -= nWords); // JUDYA
+        METRICS(j__AllocWordsJL16 -= nWords); // JUDYB
 #if (cnBitsPerWord > 32)
     } else if (nBytesKeySz == 4) {
-        METRICS(j__AllocWordsJL32 -= nWords); // JUDYB
         METRICS(j__AllocWordsJLL4 -= nWords); // JUDYA
+        METRICS(j__AllocWordsJL32 -= nWords); // JUDYB
 #endif // (cnBitsPerWord > 32)
-    } else {
-        METRICS(j__AllocWordsJLLW -= nWords); // BOTH
+    }
+    else
+#endif // defined(COMPRESSED_LISTS)
+    {
+        METRICS(j__AllocWordsJLLW -= nWords); // JUDYA and JUDYB
     }
 
-#else // defined(COMPRESSED_LISTS)
-
-    METRICS(j__AllocWordsJLLW -= nWords);
-
-#endif // defined(COMPRESSED_LISTS)
-
-    JudyFree(pwList, nWords);
+    MyFree(pwList, nWords);
 
     return nWords * sizeof(Word_t);
 }
+
 #endif // (cwListPopCntMax != 0)
 
 static Word_t
 NewBitmap(void)
 {
-    Word_t w = JudyMalloc(EXP(cnBitsAtBottom) / cnBitsPerWord);
-    assert(w != 0);
-    assert((w & cnMallocMask) == 0);
+    unsigned nWords = EXP(cnBitsAtBottom) / cnBitsPerWord;
 
-    METRICS(j__AllocWordsJLB1 += (EXP(cnBitsAtBottom) / cnBitsPerWord));
+    Word_t w = MyMalloc(nWords);
+
+    METRICS(j__AllocWordsJLB1 += nWords); // JUDYA
+    METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
 
     DBGM(printf("NewBitmap nBitsAtBottom %u nBits "OWx
       " nBytes "OWx" nWords "OWx" w "OWx"\n",
         cnBitsAtBottom, EXP(cnBitsAtBottom),
-        EXP(cnBitsAtBottom) / cnBitsPerByte,
-        EXP(cnBitsAtBottom) / cnBitsPerWord, w));
+        EXP(cnBitsAtBottom) / cnBitsPerByte, nWords, w));
 
-    if (w == 0) { fprintf(stderr, "NewBitmap malloc.\n"); exit(1); }
-
-    memset((void *)w, 0, EXP(cnBitsAtBottom) / cnBitsPerByte);
+    memset((void *)w, 0, nWords * sizeof(Word_t));
 
     return w;
 }
@@ -233,11 +218,14 @@ NewBitmap(void)
 Word_t
 OldBitmap(Word_t wRoot)
 {
-    JudyFree((Word_t *)wRoot, EXP(cnBitsAtBottom) / cnBitsPerWord);
+    unsigned nWords = EXP(cnBitsAtBottom) / cnBitsPerWord;
 
-    METRICS(j__AllocWordsJLB1 -= (EXP(cnBitsAtBottom) / cnBitsPerWord));
+    MyFree((Word_t *)wRoot, nWords);
 
-    return EXP(cnBitsAtBottom) / cnBitsPerWord * sizeof(Word_t);
+    METRICS(j__AllocWordsJLB1 -= nWords); // JUDYA
+    METRICS(j__AllocWordsJL12 -= nWords); // JUDYB -- overloaded
+
+    return nWords * sizeof(Word_t);
 }
 
 // Allocate a new switch.
@@ -299,14 +287,15 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     if (((cnBitsPerDigit * cnDigitsAtBottom) <= cnLogBitsPerWord)
         && (nDigitsLeft <= cnDigitsAtBottom + 1))
     {
+        // embedded bitmap
         assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
-        METRICS(j__AllocWordsJLB1 += nWords);
-        METRICS(j__AllocWordsJL12 += nWords);
+        METRICS(j__AllocWordsJLB1 += nWords); // JUDYA
+        METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
     }
     else
     {
-        METRICS(j__AllocWordsJBU  += nWords);
-        METRICS(j__AllocWordsJBU4 += nWords);
+        METRICS(j__AllocWordsJBU  += nWords); // JUDYA
+        METRICS(j__AllocWordsJBU4 += nWords); // JUDYB
     }
 #endif // defined(RAM_METRICS)
 
@@ -443,14 +432,15 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     if (((cnBitsPerDigit * cnDigitsAtBottom) <= cnLogBitsPerWord)
         && (nDigitsLeft <= cnDigitsAtBottom + 1))
     {
+        // embedded bitmap
         assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
-        METRICS(j__AllocWordsJLB1 += sizeof(Link_t) / sizeof(Word_t));
-        METRICS(j__AllocWordsJL12 += sizeof(Link_t) / sizeof(Word_t));
+        METRICS(j__AllocWordsJLB1 += sizeof(Link_t) / sizeof(Word_t)); // JUDYA
+        METRICS(j__AllocWordsJL12 += sizeof(Link_t) / sizeof(Word_t)); // JUDYB
     }
     else
     {
-        METRICS(j__AllocWordsJBU  += sizeof(Link_t) / sizeof(Word_t));
-        METRICS(j__AllocWordsJBU4 += sizeof(Link_t) / sizeof(Word_t));
+        METRICS(j__AllocWordsJBU  += sizeof(Link_t) / sizeof(Word_t)); // JUDYA
+        METRICS(j__AllocWordsJBU4 += sizeof(Link_t) / sizeof(Word_t)); // JUDYB
     }
 #endif // defined(RAM_METRICS)
 
@@ -561,13 +551,13 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
         && (nDigitsLeft <= cnDigitsAtBottom + 1))
     {
         assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
-        METRICS(j__AllocWordsJLB1 -= nWords);
-        METRICS(j__AllocWordsJL12 -= nWords);
+        METRICS(j__AllocWordsJLB1 -= nWords); // JUDYA
+        METRICS(j__AllocWordsJL12 -= nWords); // JUDYB -- overloaded
     }
     else
     {
-        METRICS(j__AllocWordsJBU  -= nWords);
-        METRICS(j__AllocWordsJBU4 -= nWords);
+        METRICS(j__AllocWordsJBU  -= nWords); // JUDYA
+        METRICS(j__AllocWordsJBU4 -= nWords); // JUDYB
     }
 #endif // defined(RAM_METRICS)
 
@@ -1930,7 +1920,7 @@ Judy1FreeArray(PPvoid_t PPArray, P_JE)
     return FreeArrayGuts((Word_t *)PPArray,
         /* wPrefix */ 0, cnBitsPerWord, /* bDump */ 0);
 #else // (cnBitsPerDigit != 0)
-    JudyFree(*PPArray,
+    MyFree(*PPArray,
        EXP(cnBitsPerWord - cnLogBitsPerByte - cnLogBytesPerWord));
     return EXP(cnBitsPerWord - cnLogBitsPerByte);
 #endif // (cnBitsPerDigit != 0)
