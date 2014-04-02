@@ -14,26 +14,6 @@
 #endif // ! defined(BM_SWITCH)
 #endif // defined(BM_IN_LINK) || defined(BM_SWITCH_FOR_REAL)
 
-//
-// (cnBitsPerDigit, cnDigitsAtBottom, cwListPopCntMax)
-//
-// Quick tested:
-// -m32 -O2 -g -Wall -Werror
-// JUDY_DEFINES += -DRAM_METRICS -DJUDYB -UGUARDBAND -UNDEBUG -DEBUG
-// B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -DSORT_LISTS
-// (cnBitsPerDigit, cnDigitsAtBottom, cwListPopCntMax)
-// ( 0, X1,  X1), ( 1, 26,   1), ( 2, 10,   1), ( 3,  5,   1), ( 4,  2,   1)
-// ( 5,  1,   1), ( 6,  0,   1), ( 8,  0,   1),
-// (16,  0,   1) malloc error; can't get full pop with cnDigitsAtBottom = 0,
-// ( 6,  1,   1), ( 7,  1,   1), ( 8,  1,   1), (16,  1,   1), (20,  1,   1),
-// ( 1, 31,   1), ( 2, 15,   1), ( 3, 10,   1), ( 4,  7,   1), ( 5, 6,   1),
-// ( 6,  5,   1), ( 8,  3,   1), ( 7,  4,   1),
-// ( 1, 26,   0), ( 8,  3,   0),
-// ( 1, 26, 999), ( 5,  2, 999),
-// -USORT_LISTS ( 5,  1, bPD),
-// -USORT_LISTS -DMIN_MAX_LISTS ( 5,  1, bPD),
-// -USORT_LISTS -DMIN_MAX_LISTS ( 8,  1, bPD),
-
 // Choose bits per digit.  Any value from zero through max is ok.
 // Zero is one big bitmap.  Max is where malloc fails when we can't allocate
 // the one big switch implied by cnBitsPerDigit of more than half a word.

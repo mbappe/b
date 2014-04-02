@@ -17,13 +17,13 @@ endif
 # B_DEFINES += -DcnDigitsAtBottom=2
 # b.h will choose cwListPopCntMax = EXP(cnBitsPerDigit) / 2
 # B_DEFINES += -DcwListPopCntMax=$(cnBitsPerWord)
-  B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -DNO_UNNECESSARY_PREFIX
-  B_DEFINES += -DCOMPRESSED_LISTS
+# B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -DNO_UNNECESSARY_PREFIX
+# B_DEFINES += -DCOMPRESSED_LISTS
 # SORT_LISTS wins if both SORT_LISTS and MIN_MAX_LISTS are defined.
-  B_DEFINES += -DSORT_LISTS -DMIN_MAX_LISTS
-  B_DEFINES += -DBM_SWITCH -DBM_SWITCH_FOR_REAL -DBM_IN_LINK
+# B_DEFINES += -DSORT_LISTS -DMIN_MAX_LISTS
+# B_DEFINES += -DBM_SWITCH -DBM_SWITCH_FOR_REAL -DBM_IN_LINK
 # B_DEFINES += -DPP_IN_LINK
-  B_DEFINES += -DRAM_METRICS
+# B_DEFINES += -DRAM_METRICS
 # B_DEFINES += -DSEARCH_METRICS
 # LOOKUP_NO_BITMAP_SEARCH means return just before the list is searched, i.e.
 # after dereferencing the the first word of the list leaf.
@@ -40,9 +40,11 @@ endif
 # B_DEFINES += -DcnBitsPerWord=$(cnBitsPerWord)
 # B_DEFINES += -DDEBUG_INSERT -DDEBUG_LOOKUP -DDEBUG_MALLOC -DDEBUG_REMOVE
 
+ifeq "$(CC)" ""
+  CC = gcc
+endif
 # CC = cc
 # CC = clang
-  CC = gcc
 # CC = icc
 
 ##
@@ -105,7 +107,7 @@ CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
 # assertions only.
 # It does not log anything unless something wrong is detected.
 # DEBUG is used by Judy1LHTime.c to turn off NDEBUG.
-  TIME_DEFINES += -UDEBUG -DNDEBUG
+# TIME_DEFINES += -UDEBUG -DNDEBUG
 
 # Debug/Check/Instrument:
 #
@@ -120,7 +122,7 @@ CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
 # _POSIX_C_SOURCE=199309L gives CLOCK_MONOTONIC on GNU/Linux even though
 # -std=c11 and -std=c99 don't.
 #
-  TIME_DEFINES += -DJUDYB
+# TIME_DEFINES += -DJUDYA
 # TIME_DEFINES += -D_POSIX_C_SOURCE=199309L
 
 DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
