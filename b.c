@@ -1,61 +1,41 @@
 
-// @(#) $Id: b.c,v 1.161 2014/04/01 00:28:06 mike Exp mike $
+// @(#) $Id: b.c,v 1.162 2014/04/01 01:27:49 mike Exp mike $
 // @(#) $Source: /Users/mike/Documents/judy/b/RCS/b.c,v $
 
 #include "b.h"
 
 #if defined(RAM_METRICS)
-Word_t j__AllocWordsJLLW; // JUDYA  JUDYB
-Word_t j__AllocWordsJBU4; //        JUDYB
-Word_t j__AllocWordsJV12; //        JUDYB
-Word_t j__AllocWordsJL12; //        JUDYB
-Word_t j__AllocWordsJL16; //        JUDYB
-Word_t j__AllocWordsJL32; //        JUDYB
-Word_t j__AllocWordsJBU;  // JUDYA
-Word_t j__AllocWordsJLB1; // JUDYA
-Word_t j__AllocWordsJLL1; // JUDYA
-Word_t j__AllocWordsJLL2; // JUDYA
-Word_t j__AllocWordsJLL4; // JUDYA
+Word_t j__AllocWordsJBB;  // JUDYA         Branch Bitmap
+Word_t j__AllocWordsJBU;  // JUDYA         Branch Uncompressed
+Word_t j__AllocWordsJLB1; // JUDYA         Leaf Bitmap 1-Byte/Digit
+Word_t j__AllocWordsJLL1; // JUDYA         Leaf Linear 1-Byte/Digit
+Word_t j__AllocWordsJLL2; // JUDYA         Leaf Linear 2-Byte/Digit
+Word_t j__AllocWordsJLL4; // JUDYA         Leaf Linear 4-Byte/Digit
+Word_t j__AllocWordsJLLW; // JUDYA  JUDYB  Leaf Linear Word
+Word_t j__AllocWordsJBU4; //        JUDYB  Branch Uncompressed 4-bit Digit
+Word_t j__AllocWordsJL12; //        JUDYB  Leaf 12-bit Decode/Key
+Word_t j__AllocWordsJL16; //        JUDYB  Leaf 16-bit Decode/Key
+Word_t j__AllocWordsJL32; //        JUDYB  Leaf 32-bit Decode/Key
 #endif // defined(RAM_METRICS)
 
 // From Judy1LHTime.c for convenience.
 
 #if 0
 
-Word_t    j__SearchCompares;            // number times LGet/1Test called
-Word_t    j__SearchPopulation;          // Population of Searched object
-Word_t    j__TreeDepth;                 // number time Branch_U called
+#ifdef JUDYA
+Word_t j__AllocWordsJBL;  // Branch Linear
+Word_t j__AllocWordsJLL3; // Leaf Linear 3-Byte/Digit
+Word_t j__AllocWordsJLL5; // Leaf Linear 5-Byte/Digit
+Word_t j__AllocWordsJLL6; // Leaf Linear 6-Byte/Digit
+Word_t j__AllocWordsJLL7; // Leaf Linear 7-Byte/Digit
+Word_t j__AllocWordsJV;   // Value Area
+#endif // JUDYA  
 
-#ifdef  JUDYA
-Word_t    j__AllocWordsJBB;
-Word_t    j__AllocWordsJBU;
-Word_t    j__AllocWordsJBL;
-Word_t    j__AllocWordsJLB1;
-Word_t    j__AllocWordsJLL1;
-Word_t    j__AllocWordsJLL2;
-Word_t    j__AllocWordsJLL3;
-
-Word_t    j__AllocWordsJLL4;
-Word_t    j__AllocWordsJLL5;
-Word_t    j__AllocWordsJLL6;
-Word_t    j__AllocWordsJLL7;
-#endif  // JUDYA  
-
-#ifdef  JUDYB
-Word_t    j__AllocWordsJBU4;
-Word_t    j__AllocWordsJBU8;
-Word_t    j__AllocWordsJBU16;
-Word_t    j__AllocWordsJV12;
-Word_t    j__AllocWordsJL12;
-Word_t    j__AllocWordsJL16;
-Word_t    j__AllocWordsJL32;
-#endif  // JUDYB   
-
-Word_t    j__AllocWordsJLLW;
-
-#ifdef  JUDYA
-Word_t    j__AllocWordsJV;
-#endif  // JUDYA 
+#ifdef JUDYB
+Word_t j__AllocWordsJBU8;  // Branch Uncompressed 8-bit Decode
+Word_t j__AllocWordsJBU16; // Branch Uncompressed 16-bit Decode
+Word_t j__AllocWordsJV12;  // Value Area 12-bit Decode
+#endif // JUDYB   
 
 #endif // 0
 
@@ -321,7 +301,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     {
         assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
         METRICS(j__AllocWordsJLB1 += nWords);
-        METRICS(j__AllocWordsJV12 += nWords);
+        METRICS(j__AllocWordsJL12 += nWords);
     }
     else
     {
@@ -465,7 +445,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     {
         assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
         METRICS(j__AllocWordsJLB1 += sizeof(Link_t) / sizeof(Word_t));
-        METRICS(j__AllocWordsJV12 += sizeof(Link_t) / sizeof(Word_t));
+        METRICS(j__AllocWordsJL12 += sizeof(Link_t) / sizeof(Word_t));
     }
     else
     {
@@ -582,7 +562,7 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
     {
         assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
         METRICS(j__AllocWordsJLB1 -= nWords);
-        METRICS(j__AllocWordsJV12 -= nWords);
+        METRICS(j__AllocWordsJL12 -= nWords);
     }
     else
     {
