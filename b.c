@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.169 2014/04/03 00:23:25 mike Exp mike $
+// @(#) $Id: b.c,v 1.170 2014/04/03 09:33:17 mike Exp mike $
 // @(#) $Source: /Users/mike/Documents/judy/b/RCS/b.c,v $
 
 #include "b.h"
@@ -157,7 +157,7 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
         (void *)pwList, wPopCnt, nWords));
 
 #if defined(PP_IN_LINK)
-    //if (nDigitsLeft == cnDigitsPerWord)
+    if (nDigitsLeft == cnDigitsPerWord)
 #endif // defined(PP_IN_LINK)
     {
         set_ls_wPopCnt(pwList, wPopCnt);
@@ -372,27 +372,35 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
         assert(nDigitsLeft <= nDigitsLeftUp);
 
 #if defined(NO_UNNECESSARY_PREFIX)
-        // Revisit this.
-        // We need the prefix at the leaf even if there is no skip due to
-        // defined(SKIP_PREFIX_CHECK).  Why?  I'm not sure at the moment.
-        // List leaf only needs it if the keys in the list are less than
-        // whole words.
-        // Bits in a bitmap are always less than whole words and always
-        // need the prefix.
+        // If defined(SKIP_PREFIX_CHECK) then we need the prefix at the leaf
+        // even if there is no skip to the leaf.  Why?  Because there may
+        // have been a skip somewhere above and we do the prefix check at the
+        // leaf.  List leaves only need it if the keys in the list are less than
+        // whole words.  For now we set prefix if we're at any compressed list
+        // level even if it isn't necessary.
+        // Bits in a bitmap leaf are always less than whole words and always
+        // need the prefix for this case.
         // Does it mean we'd have to add the prefix when transitioning
-        // from list to bitmap?
-        // We could get rid of the leaf check if we enhance Insert
+        // from full word list directly to bitmap?  Do we ever do this?
+        // We could get rid of the leaf check in some cases if we enhance Insert
         // to keep track of any prefix checks done along the way and
-        // pass that info to InsertGuts.  Wait.  What?
+        // pass that info to InsertGuts.
+        // We could go back up to where there is a skip (hence a prefix) and
+        // do the check.
         if ((nDigitsLeft == nDigitsLeftUp)
+#if defined(SKIP_PREFIX_CHECK)
+#if ! defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
-            && (nDigitsLeft * cnBitsPerDigit > 32)
+            && ((nDigitsLeft - 1) * cnBitsPerDigit > 32)
 #else // (cnBitsPerWord > 32)
-            && (nDigitsLeft * cnBitsPerDigit > 16)
+            && ((nDigitsLeft - 1) * cnBitsPerDigit > 16)
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-            && (nDigitsLeft > cnDigitsAtBottom + 1))
+            && ((nDigitsLeft - 1) > cnDigitsAtBottom)
+#endif // ! defined(PP_IN_LINK)
+#endif // defined(SKIP_PREFIX_CHECK)
+            && 1)
         {
             DBGI(printf(
               "Not installing prefix left %d up %d wKey "OWx"\n",
@@ -718,19 +726,31 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 #if (cwListPopCntMax != 0)
     if (!tp_bIsSwitch(nType))
     {
-        Word_t wPopCnt = ls_wPopCnt(pwr);
+        Word_t wPopCnt;
+
+#if defined(PP_IN_LINK)
+        if (nDigitsLeft != cnDigitsPerWord)
+        {
+            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
+        }
+        else
+#endif // defined(PP_IN_LINK)
+        {
+            wPopCnt = ls_wPopCnt(pwr);
+        }
+
         Word_t *pwKeys = pwr_pwKeys(pwr);
 
         assert(nType == 0);
 
         if (!bDump)
         {
-            return OldList(pwr, ls_wPopCnt(pwr), nDigitsLeft);
+            return OldList(pwr, wPopCnt, nDigitsLeft);
         }
 #if defined(PP_IN_LINK)
         if (nBitsLeftArg == cnBitsPerWord)
         {
-            printf(" ls_wPopCnt %3"_fw"u", wPopCnt);
+            printf(" ln_wPopCnt %3"_fw"u", wPopCnt);
             printf(" wr_wPrefix        N/A");
         }
         else
@@ -1208,7 +1228,17 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         if (pwr != NULL) // pointer to old List
         {
-            wPopCnt = ls_wPopCnt(pwr);
+#if defined(PP_IN_LINK)
+            if (nDigitsLeft != cnDigitsPerWord)
+            {
+                wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) - 1;
+            }
+            else
+#endif // defined(PP_IN_LINK)
+            {
+                wPopCnt = ls_wPopCnt(pwr);
+            }
+
             pwKeys = ls_pwKeys(pwr); // list of keys in old List
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
@@ -1596,7 +1626,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         }
 
 #if (cwListPopCntMax != 0)
-        if (wPopCnt != 0) OldList(pwr, ls_wPopCnt(pwr), nDigitsLeft); // free old
+        if (wPopCnt != 0) OldList(pwr, wPopCnt, nDigitsLeft);
 #endif // (cwListPopCntMax != 0)
     }
 #if defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
@@ -1812,11 +1842,22 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
 #endif // defined(COMPRESSED_LISTS)
 
-        Word_t wPopCnt = ls_wPopCnt(wRoot);
+        Word_t wPopCnt;
+
+#if defined(PP_IN_LINK)
+        if (nDigitsLeft != cnDigitsPerWord)
+        {
+            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) + 1;
+        }
+        else
+#endif // defined(PP_IN_LINK)
+        {
+            wPopCnt = ls_wPopCnt(wRoot);
+        }
 
         if (wPopCnt == 1)
         {
-            OldList((Word_t *)wRoot, ls_wPopCnt(wRoot), nDigitsLeft);
+            OldList((Word_t *)wRoot, wPopCnt, nDigitsLeft);
             *pwRoot = 0;
             // Do we need to clear the rest of the link also?
             // BUG:  We should check if the switch is empty and free it
@@ -1879,7 +1920,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
             if (pwList != (Word_t *)wRoot)
             {
-                OldList((Word_t *)wRoot, ls_wPopCnt(wRoot), nDigitsLeft);
+                OldList((Word_t *)wRoot, wPopCnt, nDigitsLeft);
                 *pwRoot = wRoot = (Word_t)pwList;
                 pwKeys = wr_pwKeys(wRoot);
             }
@@ -1951,7 +1992,12 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             }
 #endif // defined(MIN_MAX_LISTS) && !defined(SORT_LISTS)
 
-            set_ls_wPopCnt(wRoot, wPopCnt - 1);
+#if defined(PP_IN_LINK)
+            if (nDigitsLeft == cnDigitsPerWord)
+#endif // defined(PP_IN_LINK)
+            {
+                set_ls_wPopCnt(wRoot, wPopCnt - 1);
+            }
         }
     }
 #endif // (cwListPopCntMax != 0)

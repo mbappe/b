@@ -5,6 +5,11 @@
 #
 ###########################
 
+# Run the following command to build b:
+#   cnBitsPerWord=<32|64> DEFINES="..." make
+# Run the following command to build everything:
+#   cnBitsPerWord=<32|64> DEFINES="..." make all
+
 # The default build is 64-bits.
 # Use "cnBitsPerWord=32 make" to get a 32-bit build.
 ifeq "$(cnBitsPerWord)" ""
