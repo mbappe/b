@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.112 2014/03/31 15:44:54 mike Exp mike $
+// @(#) $Id: bli.c,v 1.113 2014/04/02 00:00:17 mike Exp mike $
 // @(#) $Source: /Users/mike/Documents/judy/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -232,7 +232,9 @@ again:
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(COMPRESSED_LISTS)
             {
+#if defined(DL_IN_LL)
                 assert(ll_nDigitsLeft(wRoot) == nDigitsLeft);
+#endif // defined(DL_IN_LL)
 #if defined(LOOKUP) && defined(PP_IN_LINK) && defined(DEBUG_LOOKUP)
                 if ((nDigitsLeft != cnDigitsPerWord)
                     && (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) != wPopCnt))

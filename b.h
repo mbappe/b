@@ -421,7 +421,9 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 
 typedef struct {
     uint16_t ll_nPopCnt; // includes prefix, node type and nDigitsLeft
+#if defined(DL_IN_LL)
     uint8_t ll_nDigitsLeft;
+#endif // defined(DL_IN_LL)
     union {
 #if defined(COMPRESSED_LISTS)
         uint8_t  ll_acKeys[1];

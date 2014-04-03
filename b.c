@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.167 2014/04/02 12:32:24 mike Exp mike $
+// @(#) $Id: b.c,v 1.168 2014/04/02 18:24:28 mike Exp mike $
 // @(#) $Source: /Users/mike/Documents/judy/b/RCS/b.c,v $
 
 #include "b.h"
@@ -93,7 +93,6 @@ ListWords(Word_t wPopCnt, unsigned nDigitsLeft)
 #if defined(COMPRESSED_LISTS)
 
     unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
-
     if (nBitsLeft > cnBitsPerWord) { nBitsLeft = cnBitsPerWord; }
 
     unsigned nBytesKeySz = (nBitsLeft <=  8) ? 1
@@ -125,6 +124,15 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
     unsigned nWords = ListWords(wPopCnt, nDigitsLeft);
 
 #if defined(COMPRESSED_LISTS)
+    unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+    if (nBitsLeft > cnBitsPerWord) { nBitsLeft = cnBitsPerWord; }
+
+    unsigned nBytesKeySz = (nBitsLeft <=  8) ? 1
+                         : (nBitsLeft <= 16) ? 2
+#if (cnBitsPerWord > 32)
+                         : (nBitsLeft <= 32) ? 4
+#endif // (cnBitsPerWord > 32)
+                         : sizeof(Word_t);
     if (nBytesKeySz == 1) {
         METRICS(j__AllocWordsJLL1 += nWords); // JUDYA
         METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
@@ -149,7 +157,9 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
         (void *)pwList, wPopCnt, nWords));
 
     set_ls_wPopCnt(pwList, wPopCnt);
+#if defined(DL_IN_LL)
     set_ll_nDigitsLeft(pwList, nDigitsLeft);
+#endif // defined(DL_IN_LL)
 
 // Should we be setting wPrefix here for PP_IN_LINK?
 
@@ -164,11 +174,12 @@ OldList(Word_t *pwList, unsigned nDigitsLeft)
     DBGM(printf("Old pwList %p wLen %d wPopCnt "OWx"\n",
         (void *)pwList, nWords, (Word_t)ls_wPopCnt(pwList)));
 
+#if defined(DL_IN_LL)
     assert(nDigitsLeft == ll_nDigitsLeft(pwList));
+#endif // defined(DL_IN_LL)
 
 #if defined(COMPRESSED_LISTS)
 
-    unsigned nDigitsLeft = ll_nDigitsLeft(pwList);
     unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
 
     if (nBitsLeft > cnBitsPerWord) { nBitsLeft = cnBitsPerWord; }
