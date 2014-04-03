@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.168 2014/04/02 18:24:28 mike Exp mike $
+// @(#) $Id: b.c,v 1.169 2014/04/03 00:23:25 mike Exp mike $
 // @(#) $Source: /Users/mike/Documents/judy/b/RCS/b.c,v $
 
 #include "b.h"
@@ -156,7 +156,13 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
     DBGM(printf("NewList pwList %p wPopCnt "OWx" nWords %d\n",
         (void *)pwList, wPopCnt, nWords));
 
-    set_ls_wPopCnt(pwList, wPopCnt);
+#if defined(PP_IN_LINK)
+    //if (nDigitsLeft == cnDigitsPerWord)
+#endif // defined(PP_IN_LINK)
+    {
+        set_ls_wPopCnt(pwList, wPopCnt);
+    }
+
 #if defined(DL_IN_LL)
     set_ll_nDigitsLeft(pwList, nDigitsLeft);
 #endif // defined(DL_IN_LL)
@@ -167,12 +173,12 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
 }
 
 static Word_t
-OldList(Word_t *pwList, unsigned nDigitsLeft)
+OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDigitsLeft)
 {
-    unsigned nWords = ListWords(ls_wPopCnt(pwList), nDigitsLeft);
+    unsigned nWords = ListWords(wPopCnt, nDigitsLeft);
 
     DBGM(printf("Old pwList %p wLen %d wPopCnt "OWx"\n",
-        (void *)pwList, nWords, (Word_t)ls_wPopCnt(pwList)));
+        (void *)pwList, nWords, (Word_t)wPopCnt));
 
 #if defined(DL_IN_LL)
     assert(nDigitsLeft == ll_nDigitsLeft(pwList));
@@ -227,7 +233,7 @@ NewBitmap(void)
     METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
 
     DBGM(printf("NewBitmap nBitsAtBottom %u nBits "OWx
-      " nBytes "OWx" nWords "OWx" w "OWx"\n",
+      " nBytes "OWx" nWords %d w "OWx"\n",
         cnBitsAtBottom, EXP(cnBitsAtBottom),
         EXP(cnBitsAtBottom) / cnBitsPerByte, nWords, w));
 
@@ -719,7 +725,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
         if (!bDump)
         {
-            return OldList(pwr, nDigitsLeft);
+            return OldList(pwr, ls_wPopCnt(pwr), nDigitsLeft);
         }
 #if defined(PP_IN_LINK)
         if (nBitsLeftArg == cnBitsPerWord)
@@ -1590,7 +1596,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         }
 
 #if (cwListPopCntMax != 0)
-        if (wPopCnt != 0) OldList(pwr, nDigitsLeft); // free old
+        if (wPopCnt != 0) OldList(pwr, ls_wPopCnt(pwr), nDigitsLeft); // free old
 #endif // (cwListPopCntMax != 0)
     }
 #if defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
@@ -1810,7 +1816,8 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         if (wPopCnt == 1)
         {
-            OldList((Word_t *)wRoot, nDigitsLeft); *pwRoot = 0;
+            OldList((Word_t *)wRoot, ls_wPopCnt(wRoot), nDigitsLeft);
+            *pwRoot = 0;
             // Do we need to clear the rest of the link also?
             // BUG:  We should check if the switch is empty and free it
             // (and on up the tree as necessary).
@@ -1872,7 +1879,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
             if (pwList != (Word_t *)wRoot)
             {
-                OldList((Word_t *)wRoot, nDigitsLeft);
+                OldList((Word_t *)wRoot, ls_wPopCnt(wRoot), nDigitsLeft);
                 *pwRoot = wRoot = (Word_t)pwList;
                 pwKeys = wr_pwKeys(wRoot);
             }
