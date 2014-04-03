@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.113 2014/04/02 00:00:17 mike Exp mike $
+// @(#) $Id: bli.c,v 1.114 2014/04/03 00:23:25 mike Exp mike $
 // @(#) $Source: /Users/mike/Documents/judy/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -141,7 +141,9 @@ again:
 #if (cwListPopCntMax != 0)
     if (!tp_bIsSwitch(nType))
     {
-#if !defined(LOOKUP)
+        DBGX(printf("List nDigitsLeft %d\n", nDigitsLeft));
+        DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMask(nDigitsLeft)));
+
 #if defined(REMOVE)
         if (bCleanup)
         {
@@ -149,33 +151,20 @@ again:
             return KeyFound;
         }
 #endif // defined(REMOVE)
+
 #if defined(PP_IN_LINK)
-        DBGX(printf("List nDigitsLeft %d\n", nDigitsLeft));
-        DBGX(printf("wKeyPopMask "OWx"\n",
-            wPrefixPopMask(nDigitsLeft)));
-#if !defined(RECURSIVE)
-        if ((pwRoot != pwRootOrig) || (nDigitsLeftOrig != cnDigitsPerWord))
-#endif // !defined(RECURSIVE)
+        // What about defined(RECURSIVE)?
+        if (nDigitsLeft != cnDigitsPerWord)
         {
             wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
+#if ! defined(LOOKUP)
             DBGX(printf("wPopCnt (before incr) %zd\n", (size_t)wPopCnt));
             set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
             DBGX(printf("wPopCnt (after incr) %zd\n",
                         (size_t)PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
+#endif // ! defined(LOOKUP)
         }
 #endif // defined(PP_IN_LINK)
-#endif // !defined(LOOKUP)
-
-#if defined(LOOKUP) && defined(PP_IN_LINK) && defined(DEBUG_LOOKUP)
-        if ((nDigitsLeft != cnDigitsPerWord)
-            && (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) > cwListPopCntMax))
-        {
-            printf("PWR_wPopCnt %"_fw"d "OWx"\n", 
-                   PWR_wPopCnt(pwRoot, NULL, nDigitsLeft),
-                   PWR_wPopCnt(pwRoot, NULL, nDigitsLeft));
-            assert(0);
-        }
-#endif // defined(LOOKUP) && defined(PP_IN_LINK) && defined(DEBUG_LOOKUP)
 
         if (wRoot != 0)
         {
@@ -188,14 +177,20 @@ again:
             return KeyFound;
 #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
-            // Will popcount be in link with PP_IN_LINK?
+#if defined(PP_IN_LINK)
+            if (nDigitsLeft == cnDigitsPerWord)
+            {
+                // Will have to figure this out to get rid
+                // of pop count in list.
+                wPopCnt = ls_wPopCnt(wRoot);
+            }
+#else // defined(PP_IN_LINK)
             wPopCnt = ls_wPopCnt(wRoot);
-
             DBGX(printf("List wPopCnt %"_fw"u\n", wPopCnt));
-
 #if defined(LOOKUP)
             SMETRICS(j__SearchPopulation += wPopCnt);
 #endif // defined(LOOKUP)
+#endif // defined(PP_IN_LINK)
 
 #if defined(COMPRESSED_LISTS)
 #if !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
@@ -235,21 +230,14 @@ again:
 #if defined(DL_IN_LL)
                 assert(ll_nDigitsLeft(wRoot) == nDigitsLeft);
 #endif // defined(DL_IN_LL)
-#if defined(LOOKUP) && defined(PP_IN_LINK) && defined(DEBUG_LOOKUP)
-                if ((nDigitsLeft != cnDigitsPerWord)
-                    && (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) != wPopCnt))
-                {
-                    printf("PWR_wPopCnt %zd 0x%zx wPopCnt %zd\n", 
-                           (size_t)PWR_wPopCnt(pwRoot, NULL, nDigitsLeft),
-                           (size_t)PWR_wPopCnt(pwRoot, NULL, nDigitsLeft),
-                           (size_t)wPopCnt);
-                    assert(0);
-                }
-#endif // defined(LOOKUP) && defined(PP_IN_LINK) && defined(DEBUG_LOOKUP)
 #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 // This short-circuit is for analysis only.  We have retrieved the pop count
 // and prefix but we have not dereferenced the list itself.
+#if defined(PP_IN_LINK)
+                return KeyFound;
+#else // defined(PP_IN_LINK)
                 return wPopCnt ? KeyFound : ! KeyFound;
+#endif // defined(PP_IN_LINK)
 #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 
                 // todo: save insertion point in sorted list and pass it to
