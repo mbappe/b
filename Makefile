@@ -138,6 +138,7 @@ LIBS = -lm
 FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c t.c stubs.c Makefile tocsv toc90
 FILES_FROM_ME += bitmap.c bitmapx.c judy1.c judy1x.c bb bbwrap bbq bbwrapq
 FILES_FROM_ME += bench Makefile.perf makewrap bench1 benchall README.meb
+FILES_FROM_ME += sister oa2ul.c
 # I periodically make changes to the files provided by Doug.
 FILES_FROM_DOUG_OR_DOUG = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c jbgraph
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_OR_DOUG)
@@ -173,7 +174,7 @@ T_OBJS = stubs.o dlmalloc.o
 
 default: clean b
 
-all: clean $(EXES) $(ASMS) $(CPPS) b.tar b.tgz b.tjz
+all: clean $(EXES) $(ASMS) $(CPPS) b.tar b.tgz b.tjz rcs.tjz
 
 clean:
 	rm -f $(EXES) *.tar $(OBJS) $(ASMS) $(CPPS)
@@ -196,6 +197,9 @@ b.tgz:	$(FILES)
 
 b.tjz:	$(FILES)
 	tar cjf $@ $(FILES)
+
+rcs.tjz: RCS
+	tar cjf $@ RCS
 
 
 ############################
