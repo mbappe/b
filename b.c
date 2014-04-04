@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.170 2014/04/03 09:33:17 mike Exp mike $
+// @(#) $Id: b.c,v 1.171 2014/04/03 13:36:17 mike Exp mike $
 // @(#) $Source: /Users/mike/Documents/judy/b/RCS/b.c,v $
 
 #include "b.h"
@@ -85,7 +85,7 @@ MyFree(Word_t *pw, Word_t wWords)
 
 #if (cwListPopCntMax != 0)
 
-static unsigned
+unsigned
 ListWords(Word_t wPopCnt, unsigned nDigitsLeft)
 {
     unsigned nWords;
@@ -116,7 +116,7 @@ ListWords(Word_t wPopCnt, unsigned nDigitsLeft)
     return nWords;
 }
 
-static Word_t *
+Word_t *
 NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
 {
     (void)wKey;
@@ -172,7 +172,7 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
     return pwList;
 }
 
-static Word_t
+Word_t
 OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDigitsLeft)
 {
     unsigned nWords = ListWords(wPopCnt, nDigitsLeft);

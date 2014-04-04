@@ -343,9 +343,11 @@
 #define     PWR_pwBm(_pwRoot, _pwr)  (((Switch_t *)(_pwr))->sw_awBm)
 #endif // defined(BM_IN_LINK)
 
+#if defined(DL_IN_LL)
 #define     ll_nDigitsLeft(_wr)  (((ListLeaf_t *)(_wr))->ll_nDigitsLeft)
 #define set_ll_nDigitsLeft(_wr, _nDL) \
     (((ListLeaf_t *)(_wr))->ll_nDigitsLeft = (_nDL))
+#endif // defined(DL_IN_LL)
 
 #define     ls_wPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_nPopCnt)
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
@@ -476,6 +478,10 @@ Word_t FreeArrayGuts(Word_t *pwRoot,
                      Word_t wPrefix, unsigned nBitsLeft, int bDump);
 
 Word_t OldBitmap(Word_t wRoot);
+
+unsigned ListWords(Word_t wPopCnt, unsigned nDigitsLeft);
+Word_t *NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey);
+Word_t OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDigitsLeft);
 
 #if defined(DEBUG)
 void Dump(Word_t wRoot, Word_t wPrefix, unsigned nBL);
