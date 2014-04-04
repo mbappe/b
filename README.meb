@@ -1,6 +1,7 @@
 Run makewrap to see if the builds work.  It will run for days.
 Run bbwrap to see if the code works.  It will run for days.
 Run bbwrapq for a less vigorous test.  It will run for days.
+rcs.tjz contains a copy of the RCS files in case the originals be found.
 Look for symbolic names in the RCS files.
 CP140404 is Checkpoint April 4, 2014.
 
