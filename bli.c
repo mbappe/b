@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.114 2014/04/03 00:23:25 mike Exp mike $
+// @(#) $Id: bli.c,v 1.115 2014/04/03 01:37:36 mike Exp mike $
 // @(#) $Source: /Users/mike/Documents/judy/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -768,7 +768,48 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     DBGR(printf("\n\n# Judy1Unset wKey "OWx"\n", wKey));
 
-    status = Remove((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
+#if (cwListPopCntMax != 0) && defined(PP_IN_LINK)
+    // Handle the top level list leaf.
+    // Do not assume the list is sorted, but maintain the current order so
+    // we don't have to bother with ifdefs in this code.
+    Word_t *pwRoot = (Word_t *)ppvRoot;
+    Word_t wRoot = *pwRoot;
+    unsigned nType = wr_nType(wRoot);
+    if (!tp_bIsSwitch(nType))
+    {
+        if (Judy1Test((Pcvoid_t)wRoot, wKey, PJError) == Failure)
+        {
+            status = Failure;
+        }
+        else
+        {
+            Word_t *pwListNew;
+            Word_t wPopCnt = ls_wPopCnt(wRoot);
+            if (wPopCnt != 1)
+            {
+                pwListNew = NewList(wPopCnt - 1, cnDigitsPerWord, wKey);
+                Word_t *pwKeysNew = ls_pwKeys(pwListNew);
+                Word_t *pwKeys = ls_pwKeys(wRoot);
+                unsigned nn;
+                for (nn = 0; pwKeys[nn] != wKey; nn++) { }
+                set_ls_wPopCnt(pwListNew, wPopCnt - 1);
+                COPY(pwKeysNew, pwKeys, nn);
+                COPY(&pwKeysNew[nn], &pwKeys[nn + 1], wPopCnt - nn - 1);
+            }
+            else
+            {
+                pwListNew = NULL;
+            }
+            OldList((Word_t *)*pwRoot, wPopCnt, cnDigitsPerWord);
+            *pwRoot = (Word_t)pwListNew;
+            status = Success;
+        }
+    }
+    else
+#endif // (cwListPopCntMax != 0) && defined(PP_IN_LINK)
+    {
+        status = Remove((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
+    }
 
 #if defined(DEBUG)
     if (status == Success) wInserts--; // count successful inserts
