@@ -1,6 +1,6 @@
 
-// @(#) $Id: bli.c,v 1.115 2014/04/03 01:37:36 mike Exp mike $
-// @(#) $Source: /Users/mike/Documents/judy/b/RCS/bli.c,v $
+// @(#) $Id: bli.c,v 1.116 2014/04/04 14:50:25 mike Exp mike $
+// @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
 // Once with #define LOOKUP, #undef INSERT and #undef REMOVE.
@@ -788,8 +788,8 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
             if (wPopCnt != 1)
             {
                 pwListNew = NewList(wPopCnt - 1, cnDigitsPerWord, wKey);
-                Word_t *pwKeysNew = ls_pwKeys(pwListNew);
-                Word_t *pwKeys = ls_pwKeys(wRoot);
+                Word_t *pwKeysNew = ls_pwKeys(pwListNew) + 1;
+                Word_t *pwKeys = ls_pwKeys(wRoot) + 1;
                 unsigned nn;
                 for (nn = 0; pwKeys[nn] != wKey; nn++) { }
                 set_ls_wPopCnt(pwListNew, wPopCnt - 1);

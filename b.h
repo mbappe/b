@@ -349,8 +349,19 @@
     (((ListLeaf_t *)(_wr))->ll_nDigitsLeft = (_nDL))
 #endif // defined(DL_IN_LL)
 
+#if defined(PP_IN_LINK)
+
+// For PP_IN_LINK ls_wPopCnt macros are only valid at
+// nDigitsLeft == cnDigitsPerWord.
+#define     ls_wPopCnt(_ls)        (*(Word_t *)(_ls))
+#define set_ls_wPopCnt(_ls, _cnt)  (*(Word_t *)(_ls) = (_cnt))
+
+#else // defined(PP_IN_LINK)
+
 #define     ls_wPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_nPopCnt)
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
+
+#endif // defined(PP_IN_LINK)
 
 #if defined(COMPRESSED_LISTS)
 #define     ls_pcKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_acKeys)
@@ -422,7 +433,9 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 #if (cnBitsPerDigit != 0)
 
 typedef struct {
+#if ! defined(PP_IN_LINK)
     uint16_t ll_nPopCnt; // includes prefix, node type and nDigitsLeft
+#endif // ! defined(PP_IN_LINK)
 #if defined(DL_IN_LL)
     uint8_t ll_nDigitsLeft;
 #endif // defined(DL_IN_LL)

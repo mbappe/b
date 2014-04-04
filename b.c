@@ -1,6 +1,6 @@
 
-// @(#) $Id: b.c,v 1.171 2014/04/03 13:36:17 mike Exp mike $
-// @(#) $Source: /Users/mike/Documents/judy/b/RCS/b.c,v $
+// @(#) $Id: b.c,v 1.172 2014/04/04 14:43:26 mike Exp mike $
+// @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
 
@@ -102,16 +102,28 @@ ListWords(Word_t wPopCnt, unsigned nDigitsLeft)
 #endif // (cnBitsPerWord > 32)
                          : sizeof(Word_t);
 
-    nWords = (DIV_UP(wPopCnt * nBytesKeySz, cnBytesPerWord)
-        + OFFSET_OF(ListLeaf_t, ll_awKeys) / sizeof(Word_t)) | 1;
+    nWords = DIV_UP(wPopCnt * nBytesKeySz, cnBytesPerWord);
 
 #else // defined(COMPRESSED_LISTS)
 
-    nWords = (wPopCnt + OFFSET_OF(ListLeaf_t, ll_awKeys) / sizeof(Word_t)) | 1;
+    nWords = wPopCnt;
 
     (void)nDigitsLeft;
 
 #endif // defined(COMPRESSED_LISTS)
+
+#if defined(PP_IN_LINK)
+    if (nDigitsLeft == cnDigitsPerWord)
+    {
+        nWords += 1; // make room for pop count in the list at top
+    }
+#endif // defined(PP_IN_LINK)
+
+    // Would be nice to do a better job of packing keys and pop count
+    // if COMPRESSED_LISTS and not PP_IN_LINK or at top.
+
+    nWords += OFFSET_OF(ListLeaf_t, ll_awKeys) / sizeof(Word_t);
+    nWords |= 1; // mallocs of an even number of words waste a word
 
     return nWords;
 }
@@ -1229,17 +1241,18 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         if (pwr != NULL) // pointer to old List
         {
 #if defined(PP_IN_LINK)
-            if (nDigitsLeft != cnDigitsPerWord)
-            {
+            if (nDigitsLeft != cnDigitsPerWord) {
                 wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) - 1;
-            }
-            else
-#endif // defined(PP_IN_LINK)
-            {
+                pwKeys = ls_pwKeys(pwr); // list of keys in old List
+            } else {
                 wPopCnt = ls_wPopCnt(pwr);
+                pwKeys = ls_pwKeys(pwr) + 1; // skip over pop count
             }
-
+#else // defined(PP_IN_LINK)
+            wPopCnt = ls_wPopCnt(pwr);
             pwKeys = ls_pwKeys(pwr); // list of keys in old List
+#endif // defined(PP_IN_LINK)
+
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
             piKeys = ls_piKeys(pwr);
@@ -1626,6 +1639,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         }
 
 #if (cwListPopCntMax != 0)
+        // Hmm.  Should this be nDigitsLeftOld?
         if (wPopCnt != 0) OldList(pwr, wPopCnt, nDigitsLeft);
 #endif // (cwListPopCntMax != 0)
     }
