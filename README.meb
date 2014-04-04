@@ -1,0 +1,30 @@
+Run makewrap to see if the builds work.  It will run for days.
+Run bbwrap to see if the code works.  It will run for days.
+Run bbwrapq for a less vigorous test.  It will run for days.
+
+To do:
+- Parallel search.
+- Level-specific bits per digit.
+- Use type values greater than current level for other things.
+- Use ls_nDigitsLeft/ls_wPrefix to implement skip link to list.
+- Allow lists at cnDigitsAtBottom.
+
+... Old ...
+
+Mike's high performance binary tree.
+
+Start with a basic binary tree and use compression techniques to improve
+memory usage and performance.
+
+- use immediate values, adjacent memory and/or various sized short pointers
+  to replace word-sized/long pointers
+- discard unnecessary sub-key bits
+- widen nodes from single bit to more
+- pull node parameters into pointer above
+- use bitmaps at bottom
+- discard full bitmaps
+- use population count to trigger some transformations, e.g. node merging
+- use lists instead of uncompressed wide nodes/leaves
+- use bitmapped nodes for wide nodes/leaves
+
+
