@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.172 2014/04/04 14:43:26 mike Exp mike $
+// @(#) $Id: b.c,v 1.173 2014/04/04 15:42:32 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1260,6 +1260,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             psKeys = ls_psKeys(pwr);
             pcKeys = ls_pcKeys(pwr);
 #endif // defined(COMPRESSED_LISTS)
+            // prefix is already set
         }
         else
         {
