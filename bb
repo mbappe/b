@@ -21,7 +21,14 @@ cp b b.bb
 
 for SFLAG in "" 1 -7 -1 7
 do
-for DFLAG in -D ""
+# -D (mirror the key after it is generated) has the effect of increasing
+# the expanse (-B option) to the full expanse (32 or 64) despite the use
+# of -B.  The -B in that case just makes sure all keys are a long ways from
+# each other.
+# Memory usage blows up with cnBitsPerWord=64 and small cnListPopCntMax.
+# I think Doug is going to change the behavior of -D so that it respects -B
+# but we have to do something in the meantime.
+for DFLAG in "" # -D
 do
 for BFLAG in "" -B15
 do
