@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.3.1.3 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.8 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -937,10 +937,73 @@ PrintHeader(void)
 // The purpose was to be able to measure the differences induced by the
 // infrastructure around the calls.
 
-#if defined(SWAP)
-int BitmapSet(PWord_t B1, Word_t TstKey);
-#endif // defined(SWAP)
+static int
+BitmapGet(PWord_t B1, Word_t TstKey)
+{
+    Word_t        offset;
+#if defined(SISTER_READ)
+    unsigned      n;
+    unsigned      nSisters = 0;
+#endif // defined(SISTER_READ)
+#if defined(BITMAP_BY_BYTE)
+    unsigned char *p = (unsigned char *)B1;
+#else // defined(BITMAP_BY_BYTE)
+    Word_t        *p = B1;
+#endif // defined(BITMAP_BY_BYTE)
+    unsigned      bitnum;
+    int      bSet;
 
+// Original -b did not have this check for NULL.
+#if 0
+    if (B1 == NULL)
+    {
+        return (0);
+    }
+#endif
+
+#if defined(LOOKUP_NO_BITMAP_DEREF)
+
+    return 1;
+
+#else // defined(LOOKUP_NO_BITMAP_DEREF)
+
+    offset = TstKey / (sizeof(*p) * 8);
+    bitnum = TstKey % (sizeof(*p) * 8);
+
+    bSet = ((p[offset] & ((Word_t)1 << bitnum)) != 0);
+#if defined(SISTER_READ)
+    // What about even sister and odd sister and same page sister?
+    for (unsigned n = 1; n <= nSisters; n++)
+    {
+        offset += 64 / sizeof(*p);
+        bSet += p[offset];
+    }
+#endif // defined(SISTER_READ)
+
+    return bSet;
+
+#endif // defined(LOOKUP_NO_BITMAP_DEREF)
+
+}
+
+// Note that the prototype for BitmapSet is different from that of Judy1Set.
+static int
+BitmapSet(PWord_t B1, Word_t TstKey)
+{
+    int       offset;
+    int       bitnum;
+    Word_t    bitmap;
+
+    offset = TstKey / (sizeof(Word_t) * 8);
+    bitnum = TstKey % (sizeof(Word_t) * 8);
+
+    bitmap = ((Word_t)1) << bitnum;
+    if (B1[offset] & bitmap)
+        return (0);             // Duplicate
+
+    B1[offset] |= bitmap;       // set the bit
+    return (1);
+}
 
 int
 main(int argc, char *argv[])
@@ -949,6 +1012,7 @@ main(int argc, char *argv[])
     void     *J1 = NULL;                // Judy1
     void     *JL = NULL;                // JudyL
     void     *JH = NULL;                // JudyHS
+
 
 #ifdef DEADCODE                         // see TimeNumberGen()
     void     *TestRan = NULL;           // Test Random generator
@@ -2028,8 +2092,13 @@ main(int argc, char *argv[])
                 Word_t    ii;
                 size_t    BMsize;
 
-                BMsize = 1UL << (BValue - 3);
-                B1 = (PWord_t)malloc(BMsize);
+                // add one cache line for sister cache line read
+                BMsize = (1UL << (BValue - 3));
+#if defined(SISTER_READ)
+                BMsize += 0x1000000 + 0x1000000;
+#endif // defined(SISTER_READ)
+                posix_memalign(&B1, 4096, BMsize);
+                //B1 = (PWord_t)malloc(BMsize);
                 if (B1 == (PWord_t)NULL)
                 {
                     FAILURE("malloc failure, Bytes =", BMsize);
@@ -2037,7 +2106,9 @@ main(int argc, char *argv[])
 //              clear the bitmap and bring into RAM
                 for (ii = 0; ii < (BMsize / sizeof(Word_t)); ii++)
                     B1[ii] = 0;
-
+#if defined(SISTER_READ)
+                B1 += 0x1000000 / sizeof(Word_t);
+#endif // defined(SISTER_READ)
 #if defined(SWAP)
                 J1 = B1;
 #endif // defined(SWAP)
@@ -3078,10 +3149,6 @@ TestJudyDup(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
 
 #undef __FUNCTI0N__
 #define __FUNCTI0N__ "TestJudyGet"
-
-#if defined(SWAP)
-int BitmapGet(PWord_t B1, Word_t TstKey);
-#endif // defined(SWAP)
 
 int
 TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
@@ -4202,50 +4269,6 @@ TestByteSet(PSeed_t PSeed, Word_t Elements)
 
 #undef __FUNCTI0N__
 #define __FUNCTI0N__ "TestBitmapSet"
-
-int
-BitmapGet(PWord_t, Word_t);
-
-int
-BitmapGet(PWord_t B1, Word_t TstKey)
-{
-    int       offset;
-    int       bitnum;
-
-    if (B1 == NULL)
-    {
-        return (0);
-    }
-
-    offset = TstKey / (sizeof(Word_t) * 8);
-    bitnum = TstKey % (sizeof(Word_t) * 8);
-
-    if ((B1[offset] & (((Word_t)1) << bitnum)) == 0)
-        return (0);
-    else
-        return (1);
-}
-
-int
-BitmapSet(PWord_t, Word_t);
-
-int
-BitmapSet(PWord_t B1, Word_t TstKey)
-{
-    int       offset;
-    int       bitnum;
-    Word_t    bitmap;
-
-    offset = TstKey / (sizeof(Word_t) * 8);
-    bitnum = TstKey % (sizeof(Word_t) * 8);
-
-    bitmap = ((Word_t)1) << bitnum;
-    if (B1[offset] & bitmap)
-        return (0);             // Duplicate
-
-    B1[offset] |= bitmap;       // set the bit
-    return (1);
-}
 
 int
 TestBitmapSet(PWord_t *pB1, PSeed_t PSeed, Word_t Elements)
