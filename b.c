@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.173 2014/04/04 15:42:32 mike Exp mike $
+// @(#) $Id: b.c,v 1.174 2014/04/05 00:17:33 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -234,6 +234,8 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDigitsLeft)
 
 #endif // (cwListPopCntMax != 0)
 
+#if (cnBitsAtBottom > cnLogBitsPerWord)
+
 static Word_t
 NewBitmap(void)
 {
@@ -266,6 +268,8 @@ OldBitmap(Word_t wRoot)
 
     return nWords * sizeof(Word_t);
 }
+
+#endif // (cnBitsAtBottom > cnLogBitsPerWord)
 
 // Allocate a new switch.
 // Zero its links.
@@ -692,26 +696,27 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 #endif // defined(PP_IN_LINK)
 
         // If the bitmap is not embedded, then we have more work to do.
-        if (cnBitsAtBottom > cnLogBitsPerWord)
-        {
-            if (!bDump)
-            {
-                return OldBitmap(wRoot);
-            }
+#if (cnBitsAtBottom > cnLogBitsPerWord)
 
-            printf(" nWords %2"_fw"d", EXP(cnBitsAtBottom) / cnBitsPerWord);
-            for (unsigned nn = 0;
-                //(nn < EXP(cnBitsAtBottom) / cnBitsPerWord) && (nn < 8);
-                (nn < EXP(cnBitsAtBottom) / cnBitsPerWord);
-                 nn++)
-            {
-                printf(" "Owx, ((Word_t *)wRoot)[nn]);
-            }
-        }
-        else
+        if (!bDump)
         {
-            if (bDump) printf(" wr "OWx, wRoot);
+            return OldBitmap(wRoot);
         }
+
+        printf(" nWords %2"_fw"d", EXP(cnBitsAtBottom) / cnBitsPerWord);
+        for (unsigned nn = 0;
+            //(nn < EXP(cnBitsAtBottom) / cnBitsPerWord) && (nn < 8);
+            (nn < EXP(cnBitsAtBottom) / cnBitsPerWord);
+             nn++)
+        {
+            printf(" "Owx, ((Word_t *)wRoot)[nn]);
+        }
+
+#else // (cnBitsAtBottom > cnLogBitsPerWord)
+
+        if (bDump) printf(" wr "OWx, wRoot);
+
+#endif // (cnBitsAtBottom > cnLogBitsPerWord)
 
         if (bDump)
         {
@@ -1155,6 +1160,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #endif
     assert(cnDigitsAtBottom + 1 <= cnDigitsPerWord);
 #if defined(SKIP_LINKS)
+    // type field must have enough values
     assert(cnDigitsAtBottom + cnMallocMask >= cnDigitsPerWord + 1);
 #endif // defined(SKIP_LINKS)
 
@@ -1164,37 +1170,30 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
     if (nDigitsLeft <= cnDigitsAtBottom)
     {
-        if (cnBitsAtBottom <= cnLogBitsPerWord) // compile time
+#if (cnBitsAtBottom <= cnLogBitsPerWord)
+
+        assert(!BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+
+        DBGI(printf("SetBitInWord(*pwRoot "OWx" wKey "OWx")\n",
+            *pwRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+
+        SetBitInWord(*pwRoot, wKey & (EXP(cnBitsAtBottom) - 1));
+
+#else // (cnBitsAtBottom <= cnLogBitsPerWord)
+
+        if (wRoot == 0)
         {
-            assert(!BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
-            assert(!BitIsSetInWord(*pwRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
-            assert(!BitIsSet(&wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
-            assert(!BitIsSet(pwRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
-
-            DBGI(printf("SetBitInWord(*pwRoot "OWx" wKey "OWx")\n",
-                *pwRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
-
-            SetBitInWord(*pwRoot, wKey & (EXP(cnBitsAtBottom) - 1));
-
-            assert(BitIsSet(pwRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
-            assert(BitIsSetInWord(*pwRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+            *pwRoot = wRoot = NewBitmap();
         }
-        else
-        {
-            if (wRoot == 0)
-            {
-                *pwRoot = wRoot = NewBitmap();
-            }
 
-            assert(!BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+        assert(!BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
 
-            DBGI(printf("SetBit(wRoot "OWx" wKey "OWx") pwRoot %p\n",
-                wRoot, wKey & (EXP(cnBitsAtBottom) - 1), (void *)pwRoot));
+        DBGI(printf("SetBit(wRoot "OWx" wKey "OWx") pwRoot %p\n",
+            wRoot, wKey & (EXP(cnBitsAtBottom) - 1), (void *)pwRoot));
 
-            SetBit(wRoot, wKey & (EXP(cnBitsAtBottom) - 1));
+        SetBit(wRoot, wKey & (EXP(cnBitsAtBottom) - 1));
 
-            assert(BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
-        }
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 
 #if defined(PP_IN_LINK)
         // What about no_unnecessary_prefix?
@@ -1813,33 +1812,34 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     assert(nDigitsLeft <= cnDigitsAtBottom);
 #endif // (cwListPopCntMax != 0)
     {
-        if (cnBitsAtBottom <= cnLogBitsPerWord)
-        {
-            ClrBitInWord(wRoot, wKey & ((EXP(cnBitsAtBottom)) - 1UL));
-            // What if link has more than just ln_wRoot due
-            // to BM_IN_LINK and/or PP_IN_LINK?
-            // What if population just went to 0?  Should we clear the rest
-            // of the link?
-            // Or can we rely on cleanup phase in Remove to do it?
-            *pwRoot = wRoot;
-        }
-        else
-        {
-            ClrBit(wRoot, wKey & ((EXP(cnBitsAtBottom)) - 1UL));
+#if (cnBitsAtBottom <= cnLogBitsPerWord)
+
+        ClrBitInWord(wRoot, wKey & ((EXP(cnBitsAtBottom)) - 1UL));
+        // What if link has more than just ln_wRoot due
+        // to BM_IN_LINK and/or PP_IN_LINK?
+        // What if population just went to 0?  Should we clear the rest
+        // of the link?
+        // Or can we rely on cleanup phase in Remove to do it?
+        *pwRoot = wRoot;
+
+#else // (cnBitsAtBottom <= cnLogBitsPerWord)
+
+        ClrBit(wRoot, wKey & ((EXP(cnBitsAtBottom)) - 1UL));
 #if defined(PP_IN_LINK)
-            if (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == 0)
-            {
-                DBGL(printf("RemoveGuts OldBitmap nDigitsLeft %d\n",
-                     nDigitsLeft));
-                OldBitmap(wRoot); *pwRoot = 0;
-                // Do we need to clear the rest of the link also?
-            }
-#else // defined(PP_IN_LINK)
-            //printf("RemoveGuts not checking for empty bitmap.\n");
-            // BUG: We should check if the bitmap is empty and free it if so.
-            // Count bits?
-#endif // defined(PP_IN_LINK)
+        if (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == 0)
+        {
+            DBGL(printf("RemoveGuts OldBitmap nDigitsLeft %d\n",
+                 nDigitsLeft));
+            OldBitmap(wRoot); *pwRoot = 0;
+            // Do we need to clear the rest of the link also?
         }
+#else // defined(PP_IN_LINK)
+        //printf("RemoveGuts not checking for empty bitmap.\n");
+        // BUG: We should check if the bitmap is empty and free it if so.
+        // Count bits?
+#endif // defined(PP_IN_LINK)
+
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 
         if (*pwRoot == 0)
         {
