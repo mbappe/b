@@ -384,6 +384,10 @@
 #endif // defined(COMPRESSED_LISTS)
 #define     wr_pwKeys(_wr)      (ls_pwKeys(_wr))
 
+// Bitmap macros.
+// Accessing a bitmap by byte can be more expensive than
+// accessing it by word.
+
 #define BitmapByteNum(_key)  ((_key) >> cnLogBitsPerByte)
 #define BitmapWordNum(_key)  ((_key) >> cnLogBitsPerWord)
 
