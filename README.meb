@@ -1,9 +1,27 @@
-Run makewrap to see if the builds work.  It will run for days.
-Run bbwrap to see if the code works.  It will run for days.
-Run bbwrapq for a less vigorous test.  It will run for days.
+Run makewrap to see if the builds work.  It will run for days (maybe not).
+Run bbwrap to see if the code works.  It will run for days (maybe not).
+Run bbwrapq for a less vigorous test.  It will run for days (maybe not).
 rcs.tjz contains a copy of the RCS files in case the originals be found.
 Look for symbolic names in the RCS files.
-CP140404 is Checkpoint April 4, 2014.
+CP140405 is Checkpoint April 5, 2014.
+
+Questions:
+- Which is faster to search?  Which is more memory efficient?
+  A long list of 16-bit keys.  A 64K bit bitmap is 1K words.  A 1K word list
+  contains 4K keys.  That's a long list.
+  Several lists of 8-bit keys, each with an 8-bit prefix.
+  Do we want the lists contiguous?  Or can we use a separate pointer for each?
+  A bitmap with 256 bits is only four 64-bit words.  A pointer is one word.
+  Three words of list is one 8-bit prefix and 23 keys.
+- Does it make sense to have level specific behavior?  Or is it possible
+  to maximize performance while minimizing level specific behavior?
+- Is it better to do an unconditional prefix check or to test to see if a
+  prefix check is necessary before doing the prefix check?  If the test
+  to see is just as expensive as the check itself, then it doesn't make
+  sense to do the test.  The prefix is a little more computation, but is
+  it any more conditional branches?  The prefix check requires reading the
+  prefix/pop word which may be an additional cache line if it is not in
+  the link.
 
 To do:
 - Parallel search.
