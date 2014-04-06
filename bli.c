@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.116 2014/04/04 14:50:25 mike Exp mike $
+// @(#) $Id: bli.c,v 1.117 2014/04/04 15:42:32 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -69,8 +69,16 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     unsigned bNeedPrefixCheck = 0;
 #endif // defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
-    Word_t *pwRoot = NULL; // shouldn't be necessary; gcc thinks it is
-
+    Word_t *pwRoot;
+#if defined(BM_IN_LINK)
+    pwRoot = NULL;
+#else // defined(BM_IN_LINK)
+#if defined(PP_IN_LINK) && defined(NO_UNNECESSARY_PREFIX)
+#if (cwListPopCntMax == 0)
+    pwRoot = NULL;
+#endif // (cwListPopCntMax == 0)
+#endif // defined(PP_IN_LINK) && defined(NO_UNNECESSARY_PREFIX)
+#endif // defined(BM_IN_LINK)
 #else // defined(LOOKUP)
 
     Word_t wRoot;
@@ -627,31 +635,29 @@ notEmpty:;
                 return KeyFound;
 #endif
 #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
-                if (cnBitsAtBottom <= cnLogBitsPerWord) // compile time
-                {
-                    DBGX(printf(
-                        "BitIsSetInWord(wRoot "OWx" wKey "OWx")\n",
-                            wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)));
+#if (cnBitsAtBottom <= cnLogBitsPerWord)
+                DBGX(printf(
+                    "BitIsSetInWord(wRoot "OWx" wKey "OWx")\n",
+                        wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)));
 
-                    if (BitIsSetInWord(wRoot,
-                        wKey & (EXP(cnBitsAtBottom) - 1UL)))
-                    {
+                if (BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)))
+                {
 #if defined(REMOVE)
-                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                        goto cleanup;
+                    RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                    goto cleanup;
 #endif // defined(REMOVE)
 #if defined(INSERT) && !defined(RECURSIVE)
-                        if (nIncr > 0)
-                        {
-                            goto undo; // undo counting
-                        }
-#endif // defined(INSERT) && !defined(RECURSIVE)
-                        return KeyFound;
+                    if (nIncr > 0)
+                    {
+                        goto undo; // undo counting
                     }
-
-                    DBGX(printf("! BitIsSetInWord\n"));
+#endif // defined(INSERT) && !defined(RECURSIVE)
+                    return KeyFound;
                 }
-                else if (wRoot != 0)
+
+                DBGX(printf("! BitIsSetInWord\n"));
+#else // (cnBitsAtBottom <= cnLogBitsPerWord)
+                if (wRoot != 0)
                 {
                     DBGX(printf(
                         "Evaluating BitIsSet(wRoot "OWx" wKey "OWx") ...\n",
@@ -679,6 +685,7 @@ notEmpty:;
 
                     DBGX(printf("Bit is not set.\n"));
                 }
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
             }
 #if defined(SKIP_LINKS)
