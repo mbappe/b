@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.117 2014/04/04 15:42:32 mike Exp mike $
+// @(#) $Id: bli.c,v 1.118 2014/04/06 15:37:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -119,7 +119,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #if defined(REMOVE)
     int bCleanup = 0;
 #endif // defined(REMOVE)
-    Word_t *pwr = pwr; // suppress "uninitialized" compiler warning
+    Word_t *pwr /* = pwr */; // suppress "uninitialized" compiler warning
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
