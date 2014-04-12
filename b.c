@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.174 2014/04/05 00:17:33 mike Exp mike $
+// @(#) $Id: b.c,v 1.175 2014/04/06 15:51:26 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -963,7 +963,16 @@ if (wPopCntLn != 0)
     DBGR(printf("memset(%p, 0, %zd)\n",
          (void *)STRUCT_OF(pwRootArg, Link_t, ln_wRoot), sizeof(Link_t)));
 
-    memset(STRUCT_OF(pwRootArg, Link_t, ln_wRoot), 0, sizeof(Link_t));
+#if defined(PP_IN_LINK) || defined(BM_IN_LINK)
+    if (nBitsLeftArg == cnBitsPerWord)
+    {
+        *pwRootArg = 0;
+    }
+    else
+#endif // defined(PP_IN_LINK) || defined(BM_IN_LINK)
+    {
+        memset(STRUCT_OF(pwRootArg, Link_t, ln_wRoot), 0, sizeof(Link_t));
+    }
 
     return wBytes;
 }
