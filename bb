@@ -19,7 +19,7 @@ cp b b.bb
 # -x does wait for context switch; useful for timing with small pops
 # -l skips small-pop del/ins loop
 
-for SFLAG in "" 1 -7 -1 7
+for SFLAG in 1 "" -7 -1 7
 do
 # -D (mirror the key after it is generated) has the effect of increasing
 # the expanse (-B option) to the full expanse (32 or 64) despite the use
@@ -30,7 +30,9 @@ do
 # but we have to do something in the meantime.
 for DFLAG in "" # -D
 do
-for BFLAG in "" -B15
+# Can't use -B15 with -n50000 because we get a duplicate key.  Will have
+# to wait for a fix for Judy1LHTime.
+for BFLAG in "" -B16
 do
 
     if [ "$SFLAG" != "" ]
