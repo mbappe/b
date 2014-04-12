@@ -5,6 +5,199 @@ rcs.tjz contains a copy of the RCS files in case the originals be found.
 Look for symbolic names in the RCS files.
 CP140405 is Checkpoint April 5, 2014.
 
+Below follows partially thought-out ideas.
+
+4/11/2014:
+
+With 6-bit switches we need 11 type values to decode a full 64-bit key.
+If we put a matrix leaf at 16 bits we need to decode only 48 bits before
+the leaf and that takes only 8 type values.
+
+A matrix leaf must be reconfigured when we don't have space for a key being
+added in the current row and the following key row id is not empty.
+Or when inserting a row would increase the size of the leaf to more than
+4K - 1 words.
+How do we choose the best next configuration?  Increase the size of the key
+row id such that the key row id with the most keys just barely fits in a row? 
+What configuration do we start with?
+A one-word bitmap decodes a 6-bit row id leaving a 10-bit key tail and six
+keys per word.  The description indicates the number of words of bitmap.
+One word is 6-bits of row id.  Two words of bitmap is 7-bits of row id.
+Four words of bitmap is 8-bits of row id.
+What is the smallest matrix leaf?  One word of description, One word of
+bitmap, and one word of keys.
+
+type: 0 => one word leaf
+type: 1 => three word leaf (third word is zero means two keys)
+type: 2 => five word leaf (fifth word is zero means four keys)
+type: 3 => matrix leaf, one-word bitmap, if all six keys have the same
+           high six bits, then we have 5 continuation rows
+When do we add a switch?
+Use a mask to indicate which bits from the key form the index into the
+matrix leaf bitmap?
+Use a lookup table to specify the bits per each digit.
+Digit 0: 16 bits
+Digit 1: 6 bits
+Digit 2: 6 bits
+Digit 3: 6 bits
+
+
+4/8/2014:
+
+======================
+One-word link scheme:
+--------------------
+All node types that require a header should share the same value from
+the 16 possible values of the low order bits of the pointer to the
+node.  The other 15 possible values should be carefully used for types
+that do not need a header, e.g. an uncompressed switch at the next level,
+an uncompressed switch at a lower level if we're not going to check the
+prefix during lookup, a bitmap leaf at the next level.
+X => node with header (compressed switch or list leaf or matrix leaf at
+     any level, skip to uncompressed switch or bitmap)
+Y => bitmap leaf at next level down
+Z => uncompressed switch at next level down
+{ 0 - 15 } - { X, Y, Z } => uncompressed switch at level(type)
+========================
+Multi-word link scheme N:
+------------------------
+Put some additional indexing info in the extra word(s) of the N-word link
+to help locate the relevant section of the next node, e.g. bitmap for
+compressed switch or matrix leaf, sub-expanse index for list leaf, and/or
+put some info that otherwise allows us to avoid looking at a discontiguous
+header, e.g. target level and prefix for skip, and/or put immediate
+key-tails in the link.
+========================
+Mixed-word link scheme 2:
+------------------------
+In addition to the X, Y and Z types from the one-word link scheme add a
+type, W, for uncompressed two-word switch and put the rest of the type
+info in the lower level link.
+{ 0 - 15 } - { W, X, Y, Z } => uncompressed one-word switch at next level
+========================
+Mixed-word link scheme N:
+------------------------
+In addition to the X, Y and Z types from the one-word link scheme add a
+type, W, for uncompressed N-word switch and put the rest of the type
+info in the lower level link.
+{ 0 - 15 } - { W, X, Y, Z } => uncompressed N-word switch at next level
+========================
+Mixed-word link scheme A:
+------------------------
+Divide the uncompressed switch at next level types from the one-word
+link scheme in half and use half for uncompressed one-word link switch
+at the next level and the other half for uncompressed two-word link
+switch at the next level.
+We get half as many levels as the one-word link scheme.
+======================
+
+Only one of the 16 values representable by the 4-bit type field in a
+pointer should be used for all types that require a discontiguous header.
+The other 15 values should be carefully assigned to allow high-performance
+traversal of the DAG.  If we don't check the prefix at every level during
+lookup, then it makes sense to encode the number of bits skipped in those
+values.  If we do check the prefix at every level, then we can't fit
+everything we need into those values so we might as well treat the next
+switch as an object with a header and not give it a special value.
+uncompressed branch.  If we check the prefix at every level then a skip
+might as well put the level in the same place.
+
+4/8/2014:
+
+The New Node:
+Summing the bits set in a virtual row id bitmap in the header of a node
+gives the physical row number of the start of a virtual row (if the
+virtual row id has any physical row(s)).  There is a continuation bit
+(possibly implied) in the first word of each physical row indicating
+whether or not the physical row is the beginning of a virtual row.
+If the continuation bit is set, then the physical row is a continuation
+of the virtual row from the previous physical row and it is not the
+beginning of a new virtual row.  It means the virtual row id has no
+physical presence and the virtual row id bit was set in the virtual row
+id bitmap only so that subsequent virtual rows can be located correctly.
+
+A row can contain key-tails.  A row can contain (sub-key, pointer-to-node)
+pairs.  Can a row contain both?  Can a row contain (sub-key, key-tails)?
+
+A bitmap leaf can be any size because there is only one dereference and it
+will probably be a TLB and a data cache miss.
+What about switches?  Does it make sense to group node headers for
+multiple nodes into a single page?
+
+root word -> top switch header -> top switch pointer -> next switch header
+          -> next switch pointer -> leaf (header and data)
+
+Switch headers are collected in switch header pages.
+
+root-word -> bitmap-descriptor(key, nBL) -> bitmap-bit
+root-word -> switch-descriptor(key, nBL) -> switch-entry
+
+4/7/2014: Are there benefits to using half-word and quarter-word local
+variables?  Can it make the code faster by giving the compiler more registers
+to work with?
+
+4/6/2014: The New (64-bit) Leaf:
+First word is prefix up and bits left?
+Type tells how many bits of prefix down, e.g. size of bitmap index.
+Bitmap locates start of list of keys for each prefix, if present.
+First word of row contains prefix -- may have prefix mismatch.
+First word also contains length of row in keys.
+Words contain integral number of keys for parallel search.
+BL=64,   1 Row  x n Words =   n     64-bit Keys (minus bits for prefix)
+...
+BL=64, 2^m Rows x n Words =   n*2^m 64-bit Keys (minus bits for prefix)
+BL=32,   1 Row  x n Words =  2n     32-bit Keys (minus bits for prefix)
+...
+BL=32, 2^m Rows x n Words =  2n*2^m 32-bit Keys (minus bits for prefix)
+BL=21,   1 Row  x n Words =  3n     21-bit Keys
+...
+BL=21, 2^m Rows x n Words =  3n*2^m 21-bit Keys
+
+****
+BL=16,   1 Row  x n Words =  4n     16-bit Keys
+...
+BL=16,  64 Rows x n Words =  4n*64  16-bit Keys **** start here ****
+...
+BL=16, 2^m Rows x n Words =  4n*2^m 16-bit Keys
+...
+BL=16,  1K Rows x 1 Word  =  Bitmap
+****
+
+BL=12,   1 Row  x n Words =  5n     12-bit Keys
+...
+BL=12, 2^m Row  x n Words =  5n*2^m 12-bit Keys
+BL=10,   1 Row  x n Words =  6n     10-bit Keys
+...
+BL=10, 2^m Rows x n Words =  6n*2^m 10-bit Keys
+BL= 9,   1 Row  x n Words =  7n      9-bit Keys
+...
+BL= 9, 2^m Rows x n Words =  7n*2^m  9-bit Keys
+BL= 8,   1 Row  x n Words =  8n      8-bit Keys
+...
+BL= 8, 2^m Rows x n Words =  8n*2^m  8-bit Keys
+BL= 7,   1 Row  x n Words =  9n      7-bit Keys
+BL= 6,   1 Row  x 1 Word  = Bitmap
+BL= 7,   2 Rows x 1 Word  = Bitmap 
+BL= 8,   4 Rows x 1 Word  = Bitmap 
+BL= 9,   8 Rows x 1 Word  = Bitmap 
+BL=10,  16 Rows x 1 Word  = Bitmap 
+BL=11,  32 Rows x 1 Word  = Bitmap 
+BL=12,  64 Rows x 1 Word  = Bitmap 
+BL=13, 128 Rows x 1 Word  = Bitmap 
+BL=14, 256 Rows x 1 Word  = Bitmap 
+BL=15, 512 Rows x 1 Word  = Bitmap 
+BL=16,  1K Rows x 1 Word  = Bitmap 
+BL=17,  2K Rows x 1 Word  = Bitmap 
+BL=18,  4K Rows x 1 Word  = Bitmap 
+BL=19,  8K Rows x 1 Word  = Bitmap 
+BL=20, 16K Rows x 1 Word  = Bitmap 
+
+Q: Is it desirable/possible to coalesce in small steps?  That is, all rows
+   are adjacent to start?
+Q: When do we create a leaf?  What kind of leaf?
+   
+
+
 Questions:
 - Which is faster to search?  Which is more memory efficient?
   A long list of 16-bit keys.  A 64K bit bitmap is 1K words.  A 1K word list
