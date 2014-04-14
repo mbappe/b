@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.175 2014/04/06 15:51:26 mike Exp mike $
+// @(#) $Id: b.c,v 1.176 2014/04/12 15:15:05 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -440,7 +440,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     }
 
     DBGI(printf("After NewSwitch"));
-    DBGI(Dump(*pwRootLast, 0, cnBitsPerWord));
+    DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
     return pwr;
 
@@ -555,7 +555,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     set_wr_nType(*pwRoot, nDigitsLeft_to_tp(nDigitsLeft));
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     DBGI(printf("After NewLink"));
-    DBGI(Dump(*pwRootLast, 0, cnBitsPerWord));
+    DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 }
 #endif // defined(BM_SWITCH_FOR_REAL)
 
@@ -785,18 +785,22 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
             (nn < wPopCnt);
              nn++)
         {
+            unsigned xx = nn;
+#if defined(PP_IN_LINK)
+            xx += (nBitsLeftArg == cnBitsPerWord);
+#endif // defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
             if (nBitsLeft <= 8) {
-                printf(" %02x", ls_pcKeys(wRoot)[nn]);
+                printf(" %02x", ls_pcKeys(wRoot)[xx]);
             } else if (nBitsLeft <= 16) {
-                printf(" %04x", ls_psKeys(wRoot)[nn]);
+                printf(" %04x", ls_psKeys(wRoot)[xx]);
 #if (cnBitsPerWord > 32)
             } else if (nBitsLeft <= 32) {
-                printf(" %08x", ls_piKeys(wRoot)[nn]);
+                printf(" %08x", ls_piKeys(wRoot)[xx]);
 #endif // (cnBitsPerWord > 32)
             } else
 #endif // defined(COMPRESSED_LISTS)
-            { printf(" "Owx, pwKeys[nn]); }
+            { printf(" "Owx, pwKeys[xx]); }
         }
         printf("\n");
 
@@ -825,11 +829,13 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         if (nBitsLeftArg == cnBitsPerWord)
         {
 // Add 'em up.
-#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
-    Word_t xx = 0;
-#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+            unsigned nBitsThisDigit
+                = cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit;
+#if defined(BM_SWITCH) && ! defined(BM_IN_LINK)
+            Word_t xx = 0;
+#endif // defined(BM_SWITCH) && ! defined(BM_IN_LINK)
             Word_t wPopCnt = 0;
-            for (unsigned nn = 0; nn < EXP(cnBitsPerDigit); nn++)
+            for (unsigned nn = 0; nn < EXP(nBitsThisDigit); nn++)
             {
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
         if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
@@ -863,10 +869,6 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
                 }
 
                 wPopCnt += wPopCntLn;
-if (wPopCntLn != 0)
-{
-    //DBGI(printf("nn 0x%x wPopCntLn %"_fw"d\n", nn, wPopCntLn));
-}
 
                 // We use pwr_pLinks(pwr)[nn].ln_wRoot != 0 to disambiguate
                 // wPopCnt == 0.  Hence we cannot allow Remove to leave
@@ -979,10 +981,10 @@ if (wPopCntLn != 0)
 
 #if defined(DEBUG)
 void
-Dump(Word_t wRoot, Word_t wPrefix, unsigned nBitsLeft)
+Dump(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft)
 {
     printf("\nDump\n");
-    FreeArrayGuts(&wRoot, wPrefix, nBitsLeft, /* bDump */ 1);
+    FreeArrayGuts(pwRoot, wPrefix, nBitsLeft, /* bDump */ 1);
     printf("End Dump\n");
 }
 #endif // defined(DEBUG)
@@ -1643,7 +1645,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             }
 
             DBGI(printf("Just Before InsertGuts calls Insert"));
-            DBGI(Dump(*pwRootLast, 0, cnBitsPerWord));
+            DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
             Insert(pwRoot, wKey, nDigitsLeftOld);
         }
 
@@ -2146,12 +2148,12 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             {
                 printf("Pop sum");
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                printf(" mask "OWx" %zd",
+                printf(" mask "OWx" %"_fw"d",
                     wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)),
-                    (size_t)wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)));
+                    wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)));
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                printf(" nn %d wPopCntLn %zd "OWx"\n",
-                       nn, (size_t)wPopCntLn, wPopCntLn);
+                printf(" nn %d wPopCntLn %"_fw"d "OWx"\n",
+                       nn, wPopCntLn, wPopCntLn);
             }
 #endif // defined(DEBUG_INSERT)
 
@@ -2166,11 +2168,11 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 #if defined(DEBUG_INSERT)
                 printf("Pop sum (full)");
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                printf(" mask "Owx" %zd\n",
+                printf(" mask "Owx" %"_fw"d\n",
                     wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)),
-                    (size_t)wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)));
-                printf("nn %d wPopCntLn %zd "OWx"\n",
-                    nn, (size_t)wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1,
+                    wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)));
+                printf("nn %d wPopCntLn %"_fw"d "OWx"\n",
+                    nn, wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1,
                     wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1);
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #endif // defined(DEBUG_INSERT)
