@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.119 2014/04/07 13:42:22 mike Exp mike $
+// @(#) $Id: bli.c,v 1.120 2014/04/12 16:49:01 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -434,10 +434,13 @@ again:
                 if (bCleanup)
                 {
                     DBGX(printf("Cleanup\n"));
+
+                    unsigned nBitsThisDigit = cnBitsPerWord
+                                 - (cnDigitsPerWord - 1) * cnBitsPerDigit;
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
                     Word_t xx = 0;
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
-                    for (Word_t ww = 0; ww < EXP(cnBitsPerDigit); ww++)
+                    for (Word_t ww = 0; ww < EXP(nBitsThisDigit); ww++)
                     {
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
                         Word_t *pwRootLn = &pwr_pLinks(pwr)[xx].ln_wRoot;
@@ -777,7 +780,8 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     int status;
 
-    DBGR(printf("\n\n# Judy1Unset wKey "OWx"\n", wKey));
+    DBGR(printf("\n\n# Judy1Unset ppvRoot %p wKey "OWx"\n",
+                (void *)ppvRoot, wKey));
 
 #if (cwListPopCntMax != 0) && defined(PP_IN_LINK)
     // Handle the top level list leaf.
@@ -830,7 +834,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     {
         printf("\n# After Remove(wKey "OWx") %s Dump\n", wKey,
             status == Success ? "Success" : "Failure");
-        Dump((Word_t)*ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord);
+        Dump((Word_t *)ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord);
         printf("\n");
     }
 #endif // defined(DEBUG_REMOVE)
