@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.120 2014/04/12 16:49:01 mike Exp mike $
+// @(#) $Id: bli.c,v 1.121 2014/04/14 04:41:00 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -71,13 +71,14 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #endif // defined(SKIP_LINKS)
     Word_t *pwRoot;
 #if defined(BM_IN_LINK)
-    pwRoot = NULL;
+    pwRoot = NULL; // used for top detection
 #else // defined(BM_IN_LINK)
-#if defined(PP_IN_LINK) && defined(NO_UNNECESSARY_PREFIX)
-#if (cwListPopCntMax == 0)
+#if defined(PP_IN_LINK) && ( ! defined(SKIP_PREFIX_CHECK) )
+    // silence unwarranted gcc used before initialized warning
+    // it is only uninitialized on the first time through the loop
+    // and we only use it if nBitsLeft != cnBitsPerWord
     pwRoot = NULL;
-#endif // (cwListPopCntMax == 0)
-#endif // defined(PP_IN_LINK) && defined(NO_UNNECESSARY_PREFIX)
+#endif // defined(PP_IN_LINK) && ( ! defined(SKIP_PREFIX_CHECK) )
 #endif // defined(BM_IN_LINK)
 #else // defined(LOOKUP)
 
