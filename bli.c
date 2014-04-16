@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.121 2014/04/14 04:41:00 mike Exp mike $
+// @(#) $Id: bli.c,v 1.122 2014/04/14 14:09:53 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -457,25 +457,28 @@ again:
 // nDL cannot be obtained from ln_wRoot.
 // We must use nDigitsLeft in that case.
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                        DBGX(printf("wr_nDL %"_fw"d\n",
+                        DBGX(printf("wr_nDL %"_fw"d",
                                         wr_nDigitsLeft(*pwRootLn)));
-                        DBGX(printf("PWR_wPopCnt %"_fw"d\n",
+                        DBGX(printf(" PWR_wPopCnt %"_fw"d\n",
                             PWR_wPopCnt(pwRootLn,
-                                        NULL, wr_nDigitsLeft(*pwRootLn))));
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                        if ((*pwRootLn != 0) && (((ww != wIndex))
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                                || (PWR_wPopCnt(pwRootLn,
                                         NULL,
                                         wr_bIsSwitch(*pwRootLn)
                                             ? wr_nDigitsLeft(*pwRootLn)
-                                            : nDigitsLeft)
-                                    != 0)
-#else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                                || (PWR_wPopCnt(pwRootLn, NULL, nDigitsLeft)
-                                    != 0)
+                                            : nDigitsLeft)));
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                                ))
+                        if (((*pwRootLn != 0) && (ww != wIndex))
+                                || (
+#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                                    PWR_wPopCnt(pwRootLn,
+                                            NULL,
+                                            wr_bIsSwitch(*pwRootLn)
+                                                ? wr_nDigitsLeft(*pwRootLn)
+                                                : nDigitsLeft)
+#else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                                    PWR_wPopCnt(pwRootLn, NULL, nDigitsLeft)
+#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                                        != 0)
+                            )
                         {
                             DBGX(printf("Not empty ww %zd wIndex %zd\n",
                                  (size_t)ww, (size_t)wIndex));
