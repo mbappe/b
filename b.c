@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.176 2014/04/12 15:15:05 mike Exp mike $
+// @(#) $Id: b.c,v 1.177 2014/04/14 04:41:00 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -709,6 +709,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
             (nn < EXP(cnBitsAtBottom) / cnBitsPerWord);
              nn++)
         {
+            if ((nn % 8) == 0) {
+                printf("\n");
+            }
             printf(" "Owx, ((Word_t *)wRoot)[nn]);
         }
 
@@ -907,11 +910,25 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 #endif // defined(BM_IN_LINK)
         {
             printf(" Bm");
+            unsigned nBitsThisDigit;
+            if (nBitsLeftArg == cnBitsPerWord)
+            {
+                nBitsThisDigit
+                    = cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit;
+            }
+            else
+            {
+                nBitsThisDigit = cnBitsPerDigit;
+            }
+            // Bitmaps are an integral number of words.
             for (unsigned nn = 0;
-                          nn < DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord);
+                          nn < DIV_UP(EXP(nBitsThisDigit), cnBitsPerWord);
                           nn ++)
             {
-                printf(" "OWx, PWR_pwBm(pwRoot, pwr)[nn]);
+                if ((nn % 8) == 0) {
+                    printf("\n");
+                }
+                printf(" "Owx, PWR_pwBm(pwRoot, pwr)[nn]);
             }
         }
 #endif // defined(BM_SWITCH)
