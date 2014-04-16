@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.177 2014/04/14 04:41:00 mike Exp mike $
+// @(#) $Id: b.c,v 1.178 2014/04/16 12:11:25 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -911,7 +911,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         {
             printf(" Bm");
             unsigned nBitsThisDigit;
-            if (nBitsLeftArg == cnBitsPerWord)
+            if (nBitsLeft == cnBitsPerWord)
             {
                 nBitsThisDigit
                     = cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit;
