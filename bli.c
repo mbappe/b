@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.122 2014/04/14 14:09:53 mike Exp mike $
+// @(#) $Id: bli.c,v 1.123 2014/04/16 12:11:00 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -24,7 +24,7 @@
 
 // One big bitmap is implemented completely in Judy1Test, Judy1Set
 // and Judy1Unset.  There is no need for Lookup, Insert and Remove.
-#if (cnBitsPerDigit != 0)
+#if (cnDigitsPerWord != 1)
 #if defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (Success)
 #if defined(LOOKUP)
@@ -181,10 +181,6 @@ again:
 
         if (wRoot != 0)
         {
-#if 0
-            unsigned nTypeX = oh_nTypeX(wRoot);
-            unsigned nDigitsLeft = oh_nDigitsLeft(wRoot);
-#endif
 #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 // This short-circuit is for analysis only.
             return KeyFound;
@@ -209,7 +205,7 @@ again:
 #if !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
             // nDigitsLeft is relative to the bottom of the switch
             // containing the pointer to the leaf.
-            unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+            unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
 #endif // !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
             // We don't support skip links directly to leaves -- yet.
@@ -234,7 +230,7 @@ again:
                         // for !defined(PP_IN_LINK) case
                         < (nBitsLeft
 #if !defined(PP_IN_LINK)
-                                + pwr_nBitsIndexSz(pwr)
+                                + nDL_to_nBitsIndexSzNAT(nDigitsLeft + 1)
 #endif // !defined(PP_IN_LINK)
                            ))))
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -347,7 +343,7 @@ again:
         if ((nDigitsLeftRoot < nDigitsLeft)
             && ((wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeftRoot)),
                 (LOG(1 | (wPrefix ^ wKey))
-                    >= (nDigitsLeftRoot * cnBitsPerDigit))))
+                    >= nDL_to_nBL_NotAtTop(nDigitsLeftRoot))))
         {
             DBGX(printf("Mismatch wPrefix "Owx"\n", wPrefix));
         }
@@ -360,11 +356,10 @@ again:
             nDigitsLeftUp = nDigitsLeft;
 #endif // defined(PP_IN_LINK) || defined(BM_IN_LINK)
 #endif // !defined(LOOKUP)
-            nDigitsLeft
-                = nDigitsLeftRoot - (pwr_nBitsIndexSz(pwr) / cnBitsPerDigit);
+            nDigitsLeft = nDigitsLeftRoot - 1;
 
-            Word_t wIndex = ((wKey >> (nDigitsLeft * cnBitsPerDigit))
-                                & (EXP(pwr_nBitsIndexSz(pwr)) - 1));
+            Word_t wIndex = ((wKey >> nDL_to_nBL_NotAtTop(nDigitsLeft))
+                          & (EXP(nDL_to_nBitsIndexSz(nDigitsLeftRoot)) - 1));
 
 #if defined(BM_SWITCH)
 #if defined(BM_IN_LINK)
@@ -388,6 +383,7 @@ again:
                 ) )
 #endif // defined(BM_IN_LINK)
             {
+// Is this ifdef necessary?  Or will the compiler figure it out?
 #if (cnBitsPerDigit > cnLogBitsPerWord)
                 unsigned nBmOffset = wIndex >> cnLogBitsPerWord;
 #else // (cnBitsPerDigit > cnLogBitsPerWord)
@@ -436,12 +432,10 @@ again:
                 {
                     DBGX(printf("Cleanup\n"));
 
-                    unsigned nBitsThisDigit = cnBitsPerWord
-                                 - (cnDigitsPerWord - 1) * cnBitsPerDigit;
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
                     Word_t xx = 0;
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
-                    for (Word_t ww = 0; ww < EXP(nBitsThisDigit); ww++)
+                    for (Word_t ww = 0; ww < EXP(cnBitsIndexSzAtTop); ww++)
                     {
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
                         Word_t *pwRootLn = &pwr_pLinks(pwr)[xx].ln_wRoot;
@@ -486,9 +480,7 @@ again:
                         }
                     }
                     // switch pop is zero
-                    FreeArrayGuts(pwRoot, wKey,
-                        (nDigitsLeftUp == cnDigitsPerWord)
-                            ? cnBitsPerWord : nDigitsLeftUp * cnBitsPerDigit,
+                    FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDigitsLeftUp),
                         /* bDump */ 0);
 #if defined(PP_IN_LINK)
                     assert(PWR_wPrefix(pwRoot, NULL, nDigitsLeftUp) == 0);
@@ -504,17 +496,6 @@ notEmpty:;
 #endif // defined(PP_IN_LINK)
             {
                 // Increment or decrement population count on the way in.
-                // I should check for the pop count decrementing to zero.
-                // And add the switch to a list for removal in case the remove
-                // is successful.
-                // BUG:  What if attempting to insert a dup and
-                // we're already at max pop?
-                // if (wPopCnt == 0) && at least one link pop count is not 0
-                // BUG:  What if attempting to remove a key that isn't present
-                // and we're already at pop zero?
-                // What about empty subtrees with non-zero pointers left
-                // around after remove?
-                // if (wPopCnt == 0) && all links full) return KeyFound;
                 wPopCnt = PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot);
 #if defined(REMOVE)
                 if (bCleanup)
@@ -523,11 +504,9 @@ notEmpty:;
                     {
                         FreeArrayGuts(pwRoot, wKey,
 #if defined(BM_IN_LINK)
-                            (nDigitsLeftUp == cnDigitsPerWord)
-                                ? cnBitsPerWord
-                                : nDigitsLeftUp * cnBitsPerDigit,
+                            nDL_to_nBL(nDigitsLeftUp),
 #else // defined(BM_IN_LINK)
-                            nDigitsLeftRoot * cnBitsPerDigit,
+                            nDL_to_nBL(nDigitsLeftRoot),
 #endif // defined(BM_IN_LINK)
                             /* bDump */ 0);
 #if defined(PP_IN_LINK)
@@ -624,7 +603,7 @@ notEmpty:;
                         // prefix does not contain any less significant bits.
                         < (cnBitsAtBottom
 #if !defined(PP_IN_LINK)
-                                + pwr_nBitsIndexSz(pwr)
+                                + nDL_to_nBitsIndexSzNAT(nDigitsLeft + 1)
 #endif // !defined(PP_IN_LINK)
                            )))
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -765,7 +744,7 @@ cleanup:
 #undef strLookupOrInsertOrRemove
 #undef KeyFound
 
-#endif // (cnBitsPerDigit != 0)
+#endif // (cnDigitsPerWord != 1)
 
 #if defined(LOOKUP)
 
@@ -780,7 +759,7 @@ cleanup:
 int
 Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 {
-#if (cnBitsPerDigit != 0)
+#if (cnDigitsPerWord != 1)
 
     int status;
 
@@ -845,7 +824,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     return status;
 
-#else // (cnBitsPerDigit != 0)
+#else // (cnDigitsPerWord != 1)
 
     // one big Bitmap
 
@@ -870,7 +849,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     return Success;
 
-#endif // (cnBitsPerDigit != 0)
+#endif // (cnDigitsPerWord != 1)
 
     (void)PJError; // suppress "unused parameter" compiler warnings
 }

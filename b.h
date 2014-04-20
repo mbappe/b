@@ -23,6 +23,25 @@
 #define cnBitsPerDigit  (cnLogBitsPerWord)
 #endif // !defined(cnBitsPerDigit)
 
+#define cnBitsIndexSzAtTop \
+        (cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit)
+
+#define nDL_to_nBitsIndexSzNAT(_nDL)  (cnBitsPerDigit)
+
+#define nDL_to_nBitsIndexSz(_nDL) \
+    (((_nDL) == cnDigitsPerWord) \
+        ? cnBitsIndexSzAtTop : nDL_to_nBitsIndexSzNAT(_nDL))
+
+#define nDL_to_nBL_NotAtTop(_nDL)  ((_nDL) * cnBitsPerDigit)
+
+#define nDL_to_nBL(_nDL) \
+    (((_nDL) == cnDigitsPerWord) ? cnBitsPerWord : nDL_to_nBL_NotAtTop(_nDL))
+
+#define nBL_to_nDL_NotAtTop(_nBL)  ((_nBL) / cnBitsPerDigit)
+
+#define nBL_to_nDL(_nBL) \
+    (((_nBL) == cnBitsPerWord) ? cnDigitsPerWord : nDL_to_nBL_NotAtTop(_nBL))
+
 // Choose bottom.
 // Bottom is where Bitmap is created.  Maybe we should change the meaning.
 // Can we support bits at bottom instead of digits at bottom and count digits
@@ -136,6 +155,19 @@
 #else // defined SEARCH_METRICS
 #define SMETRICS(x)
 #endif // defined SEARCH_METRICS
+
+#if defined(DEBUG_ALL)
+#undef DEBUG_INSERT
+#undef DEBUG_REMOVE
+#undef DEBUG_MALLOC
+#undef DEBUG_LOOKUP
+#undef DEBUG
+#define DEBUG_INSERT
+#define DEBUG_REMOVE
+#define DEBUG_MALLOC
+#define DEBUG_LOOKUP
+#define DEBUG
+#endif // defined(DEBUG_ALL)
 
 #if defined(DEBUG_INSERT)
 #if (cwDebugThreshold != 0)
@@ -267,17 +299,13 @@
 
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
-#define     pwr_nBitsIndexSz(_pwr)       (cnBitsPerDigit)
-#define set_pwr_nBitsIndexSz(_pwr, _sz)  (assert((_sz) == cnBitsPerDigit))
-
 // methods for Switch (and aliases)
 
-#define wPrefixPopMask(_nDL) \
-    ((((_nDL) == cnDigitsPerWord) \
-        ? (Word_t)-1 : (EXP((_nDL) * cnBitsPerDigit)) - (Word_t)1))
-
 #define wPrefixPopMaskNotAtTop(_nDL) \
-    ((EXP((_nDL) * cnBitsPerDigit)) - 1)
+    (EXP(nDL_to_nBL_NotAtTop(_nDL)) - (Word_t)1)
+
+#define wPrefixPopMask(_nDL) \
+    (((_nDL) == cnDigitsPerWord) ? (Word_t)-1 : wPrefixPopMaskNotAtTop(_nDL))
 
 #define w_wPrefix(_w, _nDL)  ((_w) & ~wPrefixPopMask(_nDL))
 #define w_wPopCnt(_w, _nDL)  ((_w) &  wPrefixPopMask(_nDL))
@@ -428,13 +456,13 @@
     (((_bSet) = TestBit((_pBitmap), (_key))), \
         SetBitByWord((_pBitmap), (_key)), (_bSet))
 
-#define cnBitsAtBottom  (cnDigitsAtBottom * cnBitsPerDigit)
+#define cnBitsAtBottom  nDL_to_nBL(cnDigitsAtBottom)
 
 #define cnDigitsPerWord  (((cnBitsPerWord - 1) / cnBitsPerDigit) + 1)
 
 typedef enum { Failure = 0, Success = 1 } Status_t;
 
-#if (cnBitsPerDigit != 0)
+#if (cnDigitsPerWord != 1)
 
 typedef struct {
 #if ! defined(PP_IN_LINK)
@@ -504,7 +532,7 @@ Word_t OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDigitsLeft);
 void Dump(Word_t *pwRoot, Word_t wPrefix, unsigned nBL);
 #endif // defined(DEBUG)
 
-#endif // (cnBitsPerDigit != 0)
+#endif // (cnDigitsPerWord != 1)
 
 #if defined(DEBUG)
 Word_t *pwRootLast; // allow dumping of tree when root is not known

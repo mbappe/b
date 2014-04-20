@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.179 2014/04/16 18:57:03 mike Exp mike $
+// @(#) $Id: b.c,v 1.180 2014/04/20 03:17:03 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -64,7 +64,7 @@ Word_t j__AllocWordsJV12;  // Value Area 12-bit Decode
 //
 // V   -- JudyL value area (when separate from leaf)
 
-#if cnBitsPerDigit != 0
+#if (cnDigitsPerWord != 1)
 
 static Word_t
 MyMalloc(Word_t wWords)
@@ -92,8 +92,7 @@ ListWords(Word_t wPopCnt, unsigned nDigitsLeft)
 
 #if defined(COMPRESSED_LISTS)
 
-    unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
-    if (nBitsLeft > cnBitsPerWord) { nBitsLeft = cnBitsPerWord; }
+    unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
 
     unsigned nBytesKeySz = (nBitsLeft <=  8) ? 1
                          : (nBitsLeft <= 16) ? 2
@@ -136,8 +135,7 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
     unsigned nWords = ListWords(wPopCnt, nDigitsLeft);
 
 #if defined(COMPRESSED_LISTS)
-    unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
-    if (nBitsLeft > cnBitsPerWord) { nBitsLeft = cnBitsPerWord; }
+    unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
 
     unsigned nBytesKeySz = (nBitsLeft <=  8) ? 1
                          : (nBitsLeft <= 16) ? 2
@@ -198,9 +196,7 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDigitsLeft)
 
 #if defined(COMPRESSED_LISTS)
 
-    unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
-
-    if (nBitsLeft > cnBitsPerWord) { nBitsLeft = cnBitsPerWord; }
+    unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
 
     unsigned nBytesKeySz = (nBitsLeft <=  8) ? 1
                          : (nBitsLeft <= 16) ? 2
@@ -295,15 +291,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     {
         unsigned nLinks;
 
-        if (nDigitsLeft == cnDigitsPerWord)
-        {
-            nLinks
-                = EXP(cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit);
-        }
-        else
-        {
-            nLinks = EXP(cnBitsPerDigit);
-        }
+        nLinks = EXP(nDL_to_nBitsIndexSz(nDigitsLeft));
 
         // sizeof(Switch_t) includes one link; add the others
         nWords = (sizeof(Switch_t) + (nLinks - 1) * sizeof(Link_t))
@@ -327,7 +315,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     memset(pwr_pLinks(pwr), 0, nBytesOfLinks);
 
 #if defined(RAM_METRICS)
-    if (((cnBitsPerDigit * cnDigitsAtBottom) <= cnLogBitsPerWord)
+    if ((cnBitsAtBottom <= cnLogBitsPerWord)
         && (nDigitsLeft <= cnDigitsAtBottom + 1))
     {
         // embedded bitmap
@@ -360,10 +348,10 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 
         memset(PWR_pwBm(pwRoot, pwr), 0, sizeof(PWR_pwBm(pwRoot, pwr)));
 
-        unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+        unsigned nBitsLeft = nDL_to_nBL_NotAtTop(nDigitsLeft);
         // leave nBitsLeft greater than cnBitsPerWord intentionally for now
 
-        unsigned nBitsIndexSz = pwr_nBitsIndexSz(pwr);
+        unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDigitsLeft);
 
         Word_t wIndex
             = (wKey >> (nBitsLeft - nBitsIndexSz)) & (EXP(nBitsIndexSz) - 1);
@@ -408,9 +396,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 #if ! defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
-            && ((nDigitsLeft - 1) * cnBitsPerDigit > 32)
+            && (nDL_to_nBL_NotAtTop(nDigitsLeft - 1) > 32)
 #else // (cnBitsPerWord > 32)
-            && ((nDigitsLeft - 1) * cnBitsPerDigit > 16)
+            && (nDL_to_nBL_NotAtTop(nDigitsLeft - 1) > 16)
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
             && ((nDigitsLeft - 1) > cnDigitsAtBottom)
@@ -467,7 +455,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     // How many links are there in the old switch?
     Word_t wPopCnt = 0;
     for (unsigned nn = 0;
-         nn < DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord); nn++)
+         nn < DIV_UP(EXP(nDL_to_nBitsIndexSz(nDigitsLeft)), cnBitsPerWord);
+         nn++)
     {
         wPopCnt += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
     }
@@ -484,7 +473,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     DBGI(printf("After malloc *pwRoot "OWx"\n", *pwRoot));
 
 #if defined(RAM_METRICS)
-    if (((cnBitsPerDigit * cnDigitsAtBottom) <= cnLogBitsPerWord)
+    if ((cnBitsAtBottom <= cnLogBitsPerWord)
         && (nDigitsLeft <= cnDigitsAtBottom + 1))
     {
         // embedded bitmap
@@ -504,8 +493,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #endif // defined(RAM_METRICS)
 
     // Where does the new link go?
-    unsigned nBitsIndexSz = pwr_nBitsIndexSz(pwr);
-    unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+    unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDigitsLeft);
+    unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
     Word_t wIndex
         = ((wKey >> (nBitsLeft - nBitsIndexSz)) & (EXP(nBitsIndexSz) - 1));
     DBGI(printf("wIndex "OWx"\n", wIndex));
@@ -570,15 +559,7 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
 #if defined(BM_IN_LINK)
     if (nDigitsLeftUp == cnDigitsPerWord)
     {
-        if (nDigitsLeft == cnDigitsPerWord)
-        {
-            wPopCnt
-                = EXP(cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit);
-        }
-        else
-        {
-            wPopCnt = EXP(cnBitsPerDigit);
-        }
+        wPopCnt = EXP(nDL_to_nBitsIndexSz(nDigitsLeft));
     }
     else
 #endif // defined(BM_IN_LINK)
@@ -586,15 +567,16 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
         // How many links are there in the old switch?
         wPopCnt = 0;
         for (unsigned nn = 0;
-             nn < DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord); nn++)
+            nn < DIV_UP(EXP(nDL_to_nBitsIndexSz(nDigitsLeft)), cnBitsPerWord);
+            nn++)
         {
             wPopCnt += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
         }
 #if (cnBitsPerDigit < cnBitsPerWord)
         // trim the count if it is too big due to extra one bits in the bitmap
-        if (wPopCnt > EXP(cnBitsPerDigit))
+        if (wPopCnt > EXP(nDL_to_nBitsIndexSz(nDigitsLeft)))
         {
-            wPopCnt = EXP(cnBitsPerDigit);
+            wPopCnt = EXP(nDL_to_nBitsIndexSz(nDigitsLeft));
         }
 #endif // (cnBitsPerDigit < cnBitsPerWord)
         // Now we know how many links were in the old switch.
@@ -606,7 +588,7 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
 #endif // defined(BM_SWITCH_FOR_REAL)
 
 #if defined(RAM_METRICS)
-    if (((cnBitsPerDigit * cnDigitsAtBottom) <= cnLogBitsPerWord)
+    if ((cnBitsAtBottom <= cnLogBitsPerWord)
         && (nDigitsLeft <= cnDigitsAtBottom + 1))
     {
         assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
@@ -643,7 +625,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
     unsigned nBitsLeftArg = nBitsLeft;
 #endif // defined(BM_IN_LINK) || defined(PP_IN_LINK)
     Word_t wRoot = *pwRoot;
-    unsigned nDigitsLeft = DIV_UP(nBitsLeft, cnBitsPerDigit);
+    unsigned nDigitsLeft = nBL_to_nDL(nBitsLeft);
     Word_t *pwr;
     unsigned nBitsIndexSz;
     Link_t *pLinks;
@@ -732,13 +714,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
     nType = wr_nType(wRoot); (void)nType; // silence gcc
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-    if ((tp_to_nDigitsLeft(nType) * cnBitsPerDigit)
-        > ALIGN_UP(nBitsLeft, cnBitsPerDigit))
+    if (tp_to_nDigitsLeft(nType) > nBL_to_nDL(nBitsLeft))
     {
         DBGI(printf("\nnType %d\n", nType));
     }
-    assert((tp_to_nDigitsLeft(nType) * cnBitsPerDigit)
-        <= ALIGN_UP(nBitsLeft, cnBitsPerDigit));
+    assert(tp_to_nDigitsLeft(nType) <= nBL_to_nDL(nBitsLeft));
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
     pwr = wr_tp_pwr(wRoot, nType);
@@ -818,12 +798,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
     nDigitsLeft = tp_to_nDigitsLeft(nType);
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
-    if ((nBitsLeft = nDigitsLeft * cnBitsPerDigit) > cnBitsPerWord)
-    {
-        nBitsLeft = cnBitsPerWord;
-    }
+    nBitsLeft = nDL_to_nBL(nDigitsLeft);
 
-    nBitsIndexSz = pwr_nBitsIndexSz(pwr);
+    nBitsIndexSz = nDL_to_nBitsIndexSz(nDigitsLeft);
     pLinks = pwr_pLinks(pwr);
 
     if (bDump)
@@ -832,13 +809,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         if (nBitsLeftArg == cnBitsPerWord)
         {
 // Add 'em up.
-            unsigned nBitsThisDigit
-                = cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit;
 #if defined(BM_SWITCH) && ! defined(BM_IN_LINK)
             Word_t xx = 0;
 #endif // defined(BM_SWITCH) && ! defined(BM_IN_LINK)
             Word_t wPopCnt = 0;
-            for (unsigned nn = 0; nn < EXP(nBitsThisDigit); nn++)
+            for (unsigned nn = 0; nn < EXP(cnBitsIndexSzAtTop); nn++)
             {
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
         if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
@@ -910,20 +885,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 #endif // defined(BM_IN_LINK)
         {
             printf(" Bm");
-            unsigned nBitsThisDigit;
-            if (nBitsLeft == cnBitsPerWord)
-            {
-                nBitsThisDigit
-                    = cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit;
-            }
-            else
-            {
-                nBitsThisDigit = cnBitsPerDigit;
-            }
             // Bitmaps are an integral number of words.
             for (unsigned nn = 0;
-                          nn < DIV_UP(EXP(nBitsThisDigit), cnBitsPerWord);
-                          nn ++)
+                 nn < DIV_UP(EXP(nDL_to_nBitsIndexSz(nDigitsLeft)),
+                             cnBitsPerWord);
+                 nn ++)
             {
                 if ((nn % 8) == 0) {
                     printf("\n");
@@ -935,13 +901,10 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         printf("\n");
     }
 
-    nBitsLeft = ALIGN_UP(nBitsLeft - nBitsIndexSz, cnBitsPerDigit);
+    nBitsLeft = nDL_to_nBL(nDigitsLeft - 1);
     //DBGR(printf("nBitsLeft %d\n", nBitsLeft));
 
-    if (nBitsLeft + nBitsIndexSz > cnBitsPerWord)
-    {
-        nBitsIndexSz = cnBitsPerWord - nBitsLeft;
-    }
+    nBitsIndexSz = nDL_to_nBitsIndexSz(nDigitsLeft);
 
     // skip link has extra prefix bits
     if (nDigitsLeftPrev > nDigitsLeft)
@@ -1335,7 +1298,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #if defined(SORT_LISTS)
             {
 #if defined(COMPRESSED_LISTS)
-                unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+                unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
                 if (nBitsLeft <= 8) {
                     CopyWithInsertChar(ls_pcKeys(pwList),
                         (unsigned char *)pwKeys, wPopCnt,
@@ -1361,7 +1324,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #if defined(MIN_MAX_LISTS)
             {
 #if defined(COMPRESSED_LISTS)
-                unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+                unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
 
                 if (nBitsLeft <= 8)
                 {
@@ -1468,7 +1431,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #else // defined(MIN_MAX_LISTS)
             {
 #if defined(COMPRESSED_LISTS)
-                unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+                unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
                 if (nBitsLeft <= 8) {
                     COPY(ls_pcKeys(pwList), pcKeys, wPopCnt);
                 } else if (nBitsLeft <= 16) {
@@ -1485,7 +1448,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #endif // defined(SORT_LISTS)
             {
 #if defined(COMPRESSED_LISTS)
-                unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+                unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
                 if (nBitsLeft <= 8) {
                     ls_pcKeys(pwList)[wPopCnt] = wKey;
                 } else if (nBitsLeft <= 16) {
@@ -1517,7 +1480,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #if defined(SKIP_LINKS)
             {
 #if defined(COMPRESSED_LISTS)
-                unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
+                unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
                 Word_t wSuffix;
 #endif // defined(COMPRESSED_LISTS)
                 if (cwListPopCntMax != 0) // use const for compile time check
@@ -1630,10 +1593,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
 #if defined(COMPRESSED_LISTS)
 #if defined(SKIP_LINKS)
-            unsigned nBitsLeftOld = nDigitsLeftOld * cnBitsPerDigit;
+            unsigned nBitsLeftOld = nDL_to_nBL(nDigitsLeftOld);
 #else // defined(SKIP_LINKS)
 // Revisit the use of "Old" here.
-            unsigned nBitsLeftOld = nDigitsLeft * cnBitsPerDigit;
+            unsigned nBitsLeftOld = nDL_to_nBL(nDigitsLeft);
 #endif // defined(SKIP_LINKS)
             if (nBitsLeftOld <= 8) {
                 for (w = 0; w < wPopCnt; w++)
@@ -1737,9 +1700,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #endif // defined(PP_IN_LINK)
 
             // todo nBitsIndexSz; wide switch
-            assert(pwr_nBitsIndexSz(pwr) == cnBitsPerDigit);
-            nIndex = (wPrefix >> ((nDigitsLeft - 1) * cnBitsPerDigit))
-                & (EXP(cnBitsPerDigit) - 1);
+            nIndex = (wPrefix >> nDL_to_nBL_NotAtTop(nDigitsLeft - 1))
+                & (EXP(nDL_to_nBitsIndexSz(nDigitsLeft)) - 1);
             // nIndex is the logical index in new switch.
             // It may not be the same as the index in the old switch.
 
@@ -1751,7 +1713,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             if (nDigitsLeftUp != cnDigitsPerWord)
             {
                 memcpy(ln.ln_awBm, PWR_pwBm(pwRoot, NULL),
-                       DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
+                       DIV_UP(EXP(nDL_to_nBitsIndexSzNAT(nDigitsLeftRoot)),
+                              cnBitsPerWord)
                            * cnBytesPerWord);
 #if ! defined(BM_SWITCH_FOR_REAL)
                 assert(ln.ln_awBm[0] == (Word_t)-1);
@@ -1781,7 +1744,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             {
                 // Copy bitmap from old link to new link.
                 memcpy(pwr_pLinks(pwSw)[nIndex].ln_awBm, ln.ln_awBm,
-                       DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
+                       DIV_UP(EXP(nDL_to_nBitsIndexSzNAT(nDigitsLeftRoot)),
+                              cnBitsPerWord)
                            * cnBytesPerWord);
             }
             else
@@ -1790,7 +1754,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 // Mind the high-order bits of the bitmap word if/when the bitmap is smaller
 // than a whole word.  See OldSwitch.
                 memset(pwr_pLinks(pwSw)[nIndex].ln_awBm, -1,
-                       DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
+                       DIV_UP(EXP(nDL_to_nBitsIndexSzNAT(nDigitsLeftRoot)),
+                              cnBitsPerWord)
                            * cnBytesPerWord);
             }
 #endif // defined(BM_IN_LINK)
@@ -1883,8 +1848,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     {
 #if defined(COMPRESSED_LISTS)
 
-        unsigned nBitsLeft = nDigitsLeft * cnBitsPerDigit;
-        if (nBitsLeft > cnBitsPerWord) { nBitsLeft = cnBitsPerWord; }
+        unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
 
 #endif // defined(COMPRESSED_LISTS)
 
@@ -2053,7 +2017,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     return Success;
 }
 
-#endif // cnBitsPerDigit != 0
+#endif // (cnDigitsPerWord != 1)
 
 // ****************************************************************************
 // JUDY1 FUNCTIONS:
@@ -2065,14 +2029,14 @@ Judy1FreeArray(PPvoid_t PPArray, P_JE)
 
     DBGR(printf("Judy1FreeArray\n"));
 
-#if (cnBitsPerDigit != 0)
+#if (cnDigitsPerWord != 1)
     return FreeArrayGuts((Word_t *)PPArray,
         /* wPrefix */ 0, cnBitsPerWord, /* bDump */ 0);
-#else // (cnBitsPerDigit != 0)
+#else // (cnDigitsPerWord != 1)
     MyFree(*PPArray,
        EXP(cnBitsPerWord - cnLogBitsPerByte - cnLogBytesPerWord));
     return EXP(cnBitsPerWord - cnLogBitsPerByte);
-#endif // (cnBitsPerDigit != 0)
+#endif // (cnDigitsPerWord != 1)
 }
 
 // Return the number of keys that are present from wKey0 through wKey1.
@@ -2127,10 +2091,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
     Word_t xx = 0;
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
         wPopCnt = 0;
-        for (unsigned nn = 0;
-             nn < EXP(cnBitsPerWord
-                       - (cnDigitsPerWord - 1) * cnBitsPerDigit);
-             nn++)
+        for (unsigned nn = 0; nn < EXP(cnBitsIndexSzAtTop); nn++)
         {
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
         if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
