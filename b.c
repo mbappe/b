@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.178 2014/04/16 12:11:25 mike Exp mike $
+// @(#) $Id: b.c,v 1.179 2014/04/16 18:57:03 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1304,8 +1304,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             pcKeys = NULL;
 #endif // defined(COMPRESSED_LISTS)
 #if defined(PP_IN_LINK)
-            // What about no_unnecessary_prefix?
-            set_PWR_wPrefix(pwRoot, NULL, nDigitsLeft, wKey);
+            if (nDigitsLeft != cnDigitsPerWord)
+            {
+                // What about no_unnecessary_prefix?
+                set_PWR_wPrefix(pwRoot, NULL, nDigitsLeft, wKey);
+            }
 #endif // defined(PP_IN_LINK)
         }
 
