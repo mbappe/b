@@ -22,25 +22,27 @@
 #if !defined(cnBitsPerDigit)
 #define cnBitsPerDigit  (cnLogBitsPerWord)
 #endif // !defined(cnBitsPerDigit)
+#define cnBitsPerDigitMax  (cnBitsPerDigit)
 
 #define cnBitsIndexSzAtTop \
         (cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit)
 
 #define nDL_to_nBitsIndexSzNAT(_nDL)  (cnBitsPerDigit)
 
+// this one is not used in the lookup performance path
 #define nDL_to_nBitsIndexSz(_nDL) \
     (((_nDL) == cnDigitsPerWord) \
         ? cnBitsIndexSzAtTop : nDL_to_nBitsIndexSzNAT(_nDL))
 
 #define nDL_to_nBL_NotAtTop(_nDL)  ((_nDL) * cnBitsPerDigit)
 
+// this one is not used in the lookup performance path
 #define nDL_to_nBL(_nDL) \
     (((_nDL) == cnDigitsPerWord) ? cnBitsPerWord : nDL_to_nBL_NotAtTop(_nDL))
 
-#define nBL_to_nDL_NotAtTop(_nBL)  ((_nBL) / cnBitsPerDigit)
+#define nBL_to_nDL(_nBL)  DIV_UP((_nBL), cnBitsPerDigit)
 
-#define nBL_to_nDL(_nBL) \
-    (((_nBL) == cnBitsPerWord) ? cnDigitsPerWord : nBL_to_nDL_NotAtTop(_nBL))
+#define nBL_to_nDL_NotAtTop(_nBL)  nBL_to_nDL(_nBL)
 
 // Choose bottom.
 // Bottom is where Bitmap is created.  Maybe we should change the meaning.

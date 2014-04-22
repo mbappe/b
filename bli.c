@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.123 2014/04/16 12:11:00 mike Exp $
+// @(#) $Id: bli.c,v 1.124 2014/04/20 23:12:05 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -359,7 +359,11 @@ again:
             nDigitsLeft = nDigitsLeftRoot - 1;
 
             Word_t wIndex = ((wKey >> nDL_to_nBL_NotAtTop(nDigitsLeft))
-                          & (EXP(nDL_to_nBitsIndexSz(nDigitsLeftRoot)) - 1));
+                // we can use NAT here even though we might be at top because
+                // we're using it to mask off high bits and if we're at the
+                // top then none of the high bits will be set anyway;
+                // it's faster to do arithmetic than test to avoid it
+                & (EXP(nDL_to_nBitsIndexSzNAT(nDigitsLeftRoot)) - 1));
 
 #if defined(BM_SWITCH)
 #if defined(BM_IN_LINK)
@@ -384,11 +388,11 @@ again:
 #endif // defined(BM_IN_LINK)
             {
 // Is this ifdef necessary?  Or will the compiler figure it out?
-#if (cnBitsPerDigit > cnLogBitsPerWord)
+#if (cnBitsPerDigitMax > cnLogBitsPerWord)
                 unsigned nBmOffset = wIndex >> cnLogBitsPerWord;
-#else // (cnBitsPerDigit > cnLogBitsPerWord)
+#else // (cnBitsPerDigitMax > cnLogBitsPerWord)
                 unsigned nBmOffset = 0;
-#endif // (cnBitsPerDigit > cnLogBitsPerWord)
+#endif // (cnBitsPerDigitMax > cnLogBitsPerWord)
 //printf("nBmOffset %d\n", nBmOffset);
 //printf("pwr %p\n", (void *)pwr);
 //printf("PWR_pwBm %p\n", (void *)PWR_pwBm(pwRoot, pwr));
@@ -409,12 +413,12 @@ again:
                 }
                 Word_t wBmMask = wBit - 1;
                 wIndex = 0;
-#if (cnBitsPerDigit > cnLogBitsPerWord)
+#if (cnBitsPerDigitMax > cnLogBitsPerWord)
                 for (unsigned nn = 0; nn < nBmOffset; nn++)
                 {
                     wIndex += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
                 }
-#endif // (cnBitsPerDigit > cnLogBitsPerWord)
+#endif // (cnBitsPerDigitMax > cnLogBitsPerWord)
                 DBGX(printf("\npwRoot %p PWR_pwBm %p\n",
                             (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
                 wIndex += __builtin_popcountll(wBm & wBmMask);
