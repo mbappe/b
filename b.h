@@ -40,7 +40,7 @@
 #define nBL_to_nDL_NotAtTop(_nBL)  ((_nBL) / cnBitsPerDigit)
 
 #define nBL_to_nDL(_nBL) \
-    (((_nBL) == cnBitsPerWord) ? cnDigitsPerWord : nDL_to_nBL_NotAtTop(_nBL))
+    (((_nBL) == cnBitsPerWord) ? cnDigitsPerWord : nBL_to_nDL_NotAtTop(_nBL))
 
 // Choose bottom.
 // Bottom is where Bitmap is created.  Maybe we should change the meaning.
