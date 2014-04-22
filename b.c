@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.181 2014/04/20 23:12:05 mike Exp mike $
+// @(#) $Id: b.c,v 1.182 2014/04/22 03:17:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -570,13 +570,11 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
         {
             wPopCnt += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
         }
-#if (cnBitsPerDigit < cnLogBitsPerWord)
         // trim the count if it is too big due to extra one bits in the bitmap
         if (wPopCnt > EXP(nDL_to_nBitsIndexSz(nDigitsLeft)))
         {
             wPopCnt = EXP(nDL_to_nBitsIndexSz(nDigitsLeft));
         }
-#endif // (cnBitsPerDigit < cnLogBitsPerWord)
         // Now we know how many links were in the old switch.
     }
 
