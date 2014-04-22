@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.181 2014/04/20 23:12:05 mike Exp $
+// @(#) $Id: b.c,v 1.186 2014/04/22 20:47:39 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -344,6 +344,8 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     if (nDigitsLeftUp < cnDigitsPerWord)
 #endif // defined(BM_IN_LINK)
     {
+        unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDigitsLeft);
+        Word_t wIndexMask = EXP(nBitsIndexSz) - 1;
 #if defined(BM_SWITCH_FOR_REAL)
 
         memset(PWR_pwBm(pwRoot, pwr), 0, sizeof(PWR_pwBm(pwRoot, pwr)));
@@ -351,10 +353,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
         unsigned nBitsLeft = nDL_to_nBL_NotAtTop(nDigitsLeft);
         // leave nBitsLeft greater than cnBitsPerWord intentionally for now
 
-        unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDigitsLeft);
-
-        Word_t wIndex
-            = (wKey >> (nBitsLeft - nBitsIndexSz)) & (EXP(nBitsIndexSz) - 1);
+        Word_t wIndex = (wKey >> (nBitsLeft - nBitsIndexSz)) & wIndexMask;
 
         SetBit(PWR_pwBm(pwRoot, pwr), wIndex);
 
@@ -362,7 +361,14 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 
 // Mind the high-order bits of the bitmap word if/when the bitmap is smaller
 // than a whole word.  See OldSwitch.
-        memset(PWR_pwBm(pwRoot, pwr), -1, sizeof(PWR_pwBm(pwRoot, pwr)));
+        if (nBitsIndexSz < cnLogBitsPerWord)
+        {
+            *PWR_pwBm(pwRoot, pwr) = wIndexMask;
+        }
+        else
+        {
+            memset(PWR_pwBm(pwRoot, pwr), -1, sizeof(PWR_pwBm(pwRoot, pwr)));
+        }
 
 #endif // defined(BM_SWITCH_FOR_REAL)
     }
@@ -573,6 +579,8 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
         // trim the count if it is too big due to extra one bits in the bitmap
         if (wPopCnt > EXP(nDL_to_nBitsIndexSz(nDigitsLeft)))
         {
+            assert(wPopCnt == cnBitsPerWord);
+            assert(PWR_pwBm(pwRoot, pwr)[0] == (Word_t)-1);
             wPopCnt = EXP(nDL_to_nBitsIndexSz(nDigitsLeft));
         }
         // Now we know how many links were in the old switch.
@@ -1707,14 +1715,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             // Is it possible that nDigitsLeftUp != cnDigitsPerWord and
             // we are at the top?
             Link_t ln;
+            unsigned wIndexCnt = EXP(nDL_to_nBitsIndexSzNAT(nDigitsLeftRoot));
             if (nDigitsLeftUp != cnDigitsPerWord)
             {
                 memcpy(ln.ln_awBm, PWR_pwBm(pwRoot, NULL),
-                       DIV_UP(EXP(nDL_to_nBitsIndexSzNAT(nDigitsLeftRoot)),
-                              cnBitsPerWord)
-                           * cnBytesPerWord);
+                       DIV_UP(wIndexCnt, cnBitsPerWord) * cnBytesPerWord);
 #if ! defined(BM_SWITCH_FOR_REAL)
-                assert(ln.ln_awBm[0] == (Word_t)-1);
+                assert((wIndexCnt < cnBitsPerWord)
+                    || (ln.ln_awBm[0] == (Word_t)-1));
 #endif // ! defined(BM_SWITCH_FOR_REAL)
             }
 #endif // defined(BM_IN_LINK)
@@ -1741,19 +1749,22 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             {
                 // Copy bitmap from old link to new link.
                 memcpy(pwr_pLinks(pwSw)[nIndex].ln_awBm, ln.ln_awBm,
-                       DIV_UP(EXP(nDL_to_nBitsIndexSzNAT(nDigitsLeftRoot)),
-                              cnBitsPerWord)
-                           * cnBytesPerWord);
+                       DIV_UP(wIndexCnt, cnBitsPerWord) * cnBytesPerWord);
             }
             else
             {
                 // Initialize bitmap in new link.
 // Mind the high-order bits of the bitmap word if/when the bitmap is smaller
 // than a whole word.  See OldSwitch.
-                memset(pwr_pLinks(pwSw)[nIndex].ln_awBm, -1,
-                       DIV_UP(EXP(nDL_to_nBitsIndexSzNAT(nDigitsLeftRoot)),
-                              cnBitsPerWord)
-                           * cnBytesPerWord);
+                if (wIndexCnt < cnBitsPerWord)
+                {
+                    *pwr_pLinks(pwSw)[nIndex].ln_awBm = wIndexCnt - 1;
+                }
+                else
+                {
+                    memset(pwr_pLinks(pwSw)[nIndex].ln_awBm, -1,
+                           DIV_UP(wIndexCnt, cnBitsPerWord) * cnBytesPerWord);
+                }
             }
 #endif // defined(BM_IN_LINK)
 
