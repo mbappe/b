@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.180 2014/04/20 03:17:03 mike Exp mike $
+// @(#) $Id: b.c,v 1.181 2014/04/20 23:12:05 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -505,12 +505,10 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     Word_t wBmMask = wBit - 1;
     // recalculate index as link number in sparse array of links
     wIndex = 0;
-#if (cnBitsPerDigit > cnLogBitsPerWord)
     for (unsigned nn = 0; nn < nBmOffset; nn++)
     {
         wIndex += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
     }
-#endif // (cnBitsPerDigit > cnLogBitsPerWord)
     wIndex += __builtin_popcountll(wBm & wBmMask);
     // Now we know where the new link goes.
     DBGI(printf("wIndex "OWx"\n", wIndex));
@@ -572,13 +570,13 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
         {
             wPopCnt += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
         }
-#if (cnBitsPerDigit < cnBitsPerWord)
+#if (cnBitsPerDigit < cnLogBitsPerWord)
         // trim the count if it is too big due to extra one bits in the bitmap
         if (wPopCnt > EXP(nDL_to_nBitsIndexSz(nDigitsLeft)))
         {
             wPopCnt = EXP(nDL_to_nBitsIndexSz(nDigitsLeft));
         }
-#endif // (cnBitsPerDigit < cnBitsPerWord)
+#endif // (cnBitsPerDigit < cnLogBitsPerWord)
         // Now we know how many links were in the old switch.
     }
 
@@ -2085,8 +2083,6 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
         assert(tp_to_nDigitsLeft(nType) == cnDigitsPerWord);
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         // add up the pops in the links
-        // BUG: Remember to check the switch bitmap.
-        // BUG: nBitsPerIndex > cnBitsPerDigit.
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
     Word_t xx = 0;
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
