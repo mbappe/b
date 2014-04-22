@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.182 2014/04/22 03:17:55 mike Exp mike $
+// @(#) $Id: b.c,v 1.184 2014/04/22 17:20:05 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -577,13 +577,13 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
         {
             wPopCnt += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
         }
-        // trim the count if it is too big due to extra one bits in the bitmap
         if (wPopCnt > EXP(nDL_to_nBitsIndexSz(nDigitsLeft)))
         {
             assert(wPopCnt == cnBitsPerWord);
             assert(PWR_pwBm(pwRoot, pwr)[0] == (Word_t)-1);
             wPopCnt = EXP(nDL_to_nBitsIndexSz(nDigitsLeft));
         }
+        assert(wPopCnt <= EXP(nDL_to_nBitsIndexSz(nDigitsLeft)));
         // Now we know how many links were in the old switch.
     }
 
@@ -1757,9 +1757,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 // Initialize bitmap in new link.
 // Mind the high-order bits of the bitmap word if/when the bitmap is smaller
 // than a whole word.  See OldSwitch.
-                if (wIndexCnt < cnLogBitsPerWord)
+                if (wIndexCnt < cnBitsPerWord)
                 {
-                    *PWR_pwBm(pwRoot, pwr) = wIndexCnt - 1;
+                    pwr_pLinks(pwSw)[nIndex].ln_awBm[0] = wIndexCnt - 1;
+                    //pwr_pLinks(pwSw)[nIndex].ln_awBm[0] = -1;
                 }
                 else
                 {
