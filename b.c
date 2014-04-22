@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.184 2014/04/22 17:20:05 mike Exp mike $
+// @(#) $Id: b.c,v 1.181 2014/04/20 23:12:05 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -352,9 +352,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
         // leave nBitsLeft greater than cnBitsPerWord intentionally for now
 
         unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDigitsLeft);
-        Word_t wIndexMask = EXP(nBitsIndexSz) - 1;
 
-        Word_t wIndex = (wKey >> (nBitsLeft - nBitsIndexSz)) & wIndexMask;
+        Word_t wIndex
+            = (wKey >> (nBitsLeft - nBitsIndexSz)) & (EXP(nBitsIndexSz) - 1);
 
         SetBit(PWR_pwBm(pwRoot, pwr), wIndex);
 
@@ -362,14 +362,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 
 // Mind the high-order bits of the bitmap word if/when the bitmap is smaller
 // than a whole word.  See OldSwitch.
-        if (nBitsIndexSz < cnLogBitsPerWord)
-        {
-            *PWR_pwBm(pwRoot, pwr) = wIndexMask;
-        }
-        else
-        {
-            memset(PWR_pwBm(pwRoot, pwr), -1, sizeof(PWR_pwBm(pwRoot, pwr)));
-        }
+        memset(PWR_pwBm(pwRoot, pwr), -1, sizeof(PWR_pwBm(pwRoot, pwr)));
 
 #endif // defined(BM_SWITCH_FOR_REAL)
     }
@@ -577,13 +570,11 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
         {
             wPopCnt += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
         }
+        // trim the count if it is too big due to extra one bits in the bitmap
         if (wPopCnt > EXP(nDL_to_nBitsIndexSz(nDigitsLeft)))
         {
-            assert(wPopCnt == cnBitsPerWord);
-            assert(PWR_pwBm(pwRoot, pwr)[0] == (Word_t)-1);
             wPopCnt = EXP(nDL_to_nBitsIndexSz(nDigitsLeft));
         }
-        assert(wPopCnt <= EXP(nDL_to_nBitsIndexSz(nDigitsLeft)));
         // Now we know how many links were in the old switch.
     }
 
@@ -1560,18 +1551,18 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                     if (nBitsLeft <= 16)
 #endif // (cnBitsPerWord > 32)
                     {
-                        nBitsLeft
-                            = LOG(1 | ((wSuffix ^ wMin) | (wSuffix ^ wMax)))
-                                + 1;
+                        nDigitsLeft
+                            = nBL_to_nDL(
+                                LOG(1 | ((wSuffix ^ wMin) | (wSuffix ^ wMax)))
+                                + 1);
                     }
                     else
 #endif // defined(COMPRESSED_LISTS)
                     {
-                        nBitsLeft = LOG(1 | ((wKey ^ wMin) | (wKey ^ wMax)))
-                                      + 1;
+                        nDigitsLeft
+                            = nBL_to_nDL(
+                                LOG(1 | ((wKey ^ wMin) | (wKey ^ wMax))) + 1);
                     }
-
-                    nDigitsLeft = nBL_to_nDL(nBitsLeft);
                 }
                 else
                 {
@@ -1712,7 +1703,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             // It may not be the same as the index in the old switch.
 
 #if defined(BM_IN_LINK)
-            Word_t wIndexCnt = EXP(nDL_to_nBitsIndexSzNAT(nDigitsLeftRoot));
             // Save the old bitmap before it is trashed by NewSwitch.
             // Is it possible that nDigitsLeftUp != cnDigitsPerWord and
             // we are at the top?
@@ -1720,10 +1710,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             if (nDigitsLeftUp != cnDigitsPerWord)
             {
                 memcpy(ln.ln_awBm, PWR_pwBm(pwRoot, NULL),
-                       DIV_UP(wIndexCnt, cnBitsPerWord) * cnBytesPerWord);
+                       DIV_UP(EXP(nDL_to_nBitsIndexSzNAT(nDigitsLeftRoot)),
+                              cnBitsPerWord)
+                           * cnBytesPerWord);
 #if ! defined(BM_SWITCH_FOR_REAL)
-                assert((wIndexCnt < cnLogBitsPerWord)
-                    || (ln.ln_awBm[0] == (Word_t)-1));
+                assert(ln.ln_awBm[0] == (Word_t)-1);
 #endif // ! defined(BM_SWITCH_FOR_REAL)
             }
 #endif // defined(BM_IN_LINK)
@@ -1750,23 +1741,19 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             {
                 // Copy bitmap from old link to new link.
                 memcpy(pwr_pLinks(pwSw)[nIndex].ln_awBm, ln.ln_awBm,
-                       DIV_UP(wIndexCnt, cnBitsPerWord) * cnBytesPerWord);
+                       DIV_UP(EXP(nDL_to_nBitsIndexSzNAT(nDigitsLeftRoot)),
+                              cnBitsPerWord)
+                           * cnBytesPerWord);
             }
             else
             {
                 // Initialize bitmap in new link.
 // Mind the high-order bits of the bitmap word if/when the bitmap is smaller
 // than a whole word.  See OldSwitch.
-                if (wIndexCnt < cnBitsPerWord)
-                {
-                    pwr_pLinks(pwSw)[nIndex].ln_awBm[0] = wIndexCnt - 1;
-                    //pwr_pLinks(pwSw)[nIndex].ln_awBm[0] = -1;
-                }
-                else
-                {
-                    memset(pwr_pLinks(pwSw)[nIndex].ln_awBm, -1,
-                        DIV_UP(wIndexCnt, cnBitsPerWord) * cnBytesPerWord);
-                }
+                memset(pwr_pLinks(pwSw)[nIndex].ln_awBm, -1,
+                       DIV_UP(EXP(nDL_to_nBitsIndexSzNAT(nDigitsLeftRoot)),
+                              cnBitsPerWord)
+                           * cnBytesPerWord);
             }
 #endif // defined(BM_IN_LINK)
 
