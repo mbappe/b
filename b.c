@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.189 2014/04/23 15:19:13 mike Exp mike $
+// @(#) $Id: b.c,v 1.190 2014/04/23 17:35:24 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -359,8 +359,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 
 #else // defined(BM_SWITCH_FOR_REAL)
 
-// Mind the high-order bits of the bitmap word if/when the bitmap is smaller
-// than a whole word.  See OldSwitch.
+        // Mind the high-order bits of the bitmap word if/when the bitmap
+        // is smaller than a whole word.
+        // Mind endianness.
         if (nBitsIndexSz < cnLogBitsPerWord)
         {
             Word_t wIndexMask = EXP(EXP(nBitsIndexSz)) - 1;
@@ -577,13 +578,7 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
         {
             wPopCnt += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
         }
-        // trim the count if it is too big due to extra one bits in the bitmap
-        if (wPopCnt > EXP(nDL_to_nBitsIndexSz(nDigitsLeft)))
-        {
-            assert(wPopCnt == cnBitsPerWord);
-            assert(PWR_pwBm(pwRoot, pwr)[0] == (Word_t)-1);
-            wPopCnt = EXP(nDL_to_nBitsIndexSz(nDigitsLeft));
-        }
+        assert(wPopCnt <= EXP(nDL_to_nBitsIndexSz(nDigitsLeft)));
         // Now we know how many links were in the old switch.
     }
 
@@ -1755,8 +1750,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             else
             {
                 // Initialize bitmap in new link.
-// Mind the high-order bits of the bitmap word if/when the bitmap is smaller
-// than a whole word.  See OldSwitch.
+                // Mind the high-order bits of the bitmap word if/when the
+                // bitmap is smaller than a whole word.
+                // Mind endianness.
                 if (wIndexCnt < cnBitsPerWord)
                 {
                     *pwr_pLinks(pwSw)[nIndex].ln_awBm = EXP(wIndexCnt) - 1;
