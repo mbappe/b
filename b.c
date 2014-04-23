@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.186 2014/04/22 20:47:39 mike Exp mike $
+// @(#) $Id: b.c,v 1.187 2014/04/22 21:11:26 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -345,7 +345,6 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 #endif // defined(BM_IN_LINK)
     {
         unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDigitsLeft);
-        Word_t wIndexMask = EXP(nBitsIndexSz) - 1;
 #if defined(BM_SWITCH_FOR_REAL)
 
         memset(PWR_pwBm(pwRoot, pwr), 0, sizeof(PWR_pwBm(pwRoot, pwr)));
@@ -353,7 +352,8 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
         unsigned nBitsLeft = nDL_to_nBL_NotAtTop(nDigitsLeft);
         // leave nBitsLeft greater than cnBitsPerWord intentionally for now
 
-        Word_t wIndex = (wKey >> (nBitsLeft - nBitsIndexSz)) & wIndexMask;
+        Word_t wIndex
+            = (wKey >> (nBitsLeft - nBitsIndexSz)) & (EXP(nBitsIndexSz) - 1);
 
         SetBit(PWR_pwBm(pwRoot, pwr), wIndex);
 
@@ -361,11 +361,13 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 
 // Mind the high-order bits of the bitmap word if/when the bitmap is smaller
 // than a whole word.  See OldSwitch.
+#if 0
         if (nBitsIndexSz < cnLogBitsPerWord)
         {
-            *PWR_pwBm(pwRoot, pwr) = wIndexMask;
+            *PWR_pwBm(pwRoot, pwr) = EXP(nBitsIndexSz) - 1;
         }
         else
+#endif
         {
             memset(PWR_pwBm(pwRoot, pwr), -1, sizeof(PWR_pwBm(pwRoot, pwr)));
         }
@@ -1756,11 +1758,13 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 // Initialize bitmap in new link.
 // Mind the high-order bits of the bitmap word if/when the bitmap is smaller
 // than a whole word.  See OldSwitch.
+#if 0
                 if (wIndexCnt < cnBitsPerWord)
                 {
                     *pwr_pLinks(pwSw)[nIndex].ln_awBm = wIndexCnt - 1;
                 }
                 else
+#endif
                 {
                     memset(pwr_pLinks(pwSw)[nIndex].ln_awBm, -1,
                            DIV_UP(wIndexCnt, cnBitsPerWord) * cnBytesPerWord);
