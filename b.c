@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.188 2014/04/23 14:52:46 mike Exp mike $
+// @(#) $Id: b.c,v 1.189 2014/04/23 15:19:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -363,8 +363,8 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 // than a whole word.  See OldSwitch.
         if (nBitsIndexSz < cnLogBitsPerWord)
         {
-            *PWR_pwBm(pwRoot, pwr) = (Word_t)-1;
-            //*PWR_pwBm(pwRoot, pwr) = EXP(nBitsIndexSz) - 1;
+            Word_t wIndexMask = EXP(EXP(nBitsIndexSz)) - 1;
+            *PWR_pwBm(pwRoot, pwr) = wIndexMask;
         }
         else
         {
@@ -1716,7 +1716,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             // Is it possible that nDigitsLeftUp != cnDigitsPerWord and
             // we are at the top?
             Link_t ln;
-            unsigned wIndexCnt = EXP(nDL_to_nBitsIndexSzNAT(nDigitsLeftRoot));
+            Word_t wIndexCnt = EXP(nDL_to_nBitsIndexSzNAT(nDigitsLeftRoot));
             if (nDigitsLeftUp != cnDigitsPerWord)
             {
                 memcpy(ln.ln_awBm, PWR_pwBm(pwRoot, NULL),
@@ -1759,8 +1759,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 // than a whole word.  See OldSwitch.
                 if (wIndexCnt < cnBitsPerWord)
                 {
-                    *pwr_pLinks(pwSw)[nIndex].ln_awBm = (Word_t)-1;
-                    //*pwr_pLinks(pwSw)[nIndex].ln_awBm = wIndexCnt - 1;
+                    *pwr_pLinks(pwSw)[nIndex].ln_awBm = EXP(wIndexCnt) - 1;
                 }
                 else
                 {
