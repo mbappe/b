@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.187 2014/04/22 21:11:26 mike Exp mike $
+// @(#) $Id: b.c,v 1.188 2014/04/23 14:52:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -361,13 +361,12 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 
 // Mind the high-order bits of the bitmap word if/when the bitmap is smaller
 // than a whole word.  See OldSwitch.
-#if 0
         if (nBitsIndexSz < cnLogBitsPerWord)
         {
-            *PWR_pwBm(pwRoot, pwr) = EXP(nBitsIndexSz) - 1;
+            *PWR_pwBm(pwRoot, pwr) = (Word_t)-1;
+            //*PWR_pwBm(pwRoot, pwr) = EXP(nBitsIndexSz) - 1;
         }
         else
-#endif
         {
             memset(PWR_pwBm(pwRoot, pwr), -1, sizeof(PWR_pwBm(pwRoot, pwr)));
         }
@@ -1758,13 +1757,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 // Initialize bitmap in new link.
 // Mind the high-order bits of the bitmap word if/when the bitmap is smaller
 // than a whole word.  See OldSwitch.
-#if 0
                 if (wIndexCnt < cnBitsPerWord)
                 {
-                    *pwr_pLinks(pwSw)[nIndex].ln_awBm = wIndexCnt - 1;
+                    *pwr_pLinks(pwSw)[nIndex].ln_awBm = (Word_t)-1;
+                    //*pwr_pLinks(pwSw)[nIndex].ln_awBm = wIndexCnt - 1;
                 }
                 else
-#endif
                 {
                     memset(pwr_pLinks(pwSw)[nIndex].ln_awBm, -1,
                            DIV_UP(wIndexCnt, cnBitsPerWord) * cnBytesPerWord);
