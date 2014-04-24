@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.191 2014/04/23 18:00:13 mike Exp mike $
+// @(#) $Id: b.c,v 1.192 2014/04/24 08:27:19 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -282,6 +282,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 {
     assert((sizeof(Switch_t) % sizeof(Word_t)) == 0);
 
+    unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDigitsLeft);
+    Word_t wIndexCnt = EXP(nBitsIndexSz);
+
     Word_t wLinks;
 #if defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
     if (nDigitsLeftUp != cnDigitsPerWord)
@@ -296,7 +299,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 #endif // defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
 #if ( ! defined(BM_SWITCH_FOR_REAL) ) || defined(BM_IN_LINK)
     {
-        wLinks = EXP(nDL_to_nBitsIndexSz(nDigitsLeft));
+        wLinks = wIndexCnt;
     }
 #endif // ( ! defined(BM_SWITCH_FOR_REAL) ) || defined(BM_IN_LINK)
 
@@ -338,7 +341,6 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     if (nDigitsLeftUp < cnDigitsPerWord)
 #endif // defined(BM_IN_LINK)
     {
-        unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDigitsLeft);
 #if defined(BM_SWITCH_FOR_REAL)
 
         memset(PWR_pwBm(pwRoot, pwr), 0, sizeof(PWR_pwBm(pwRoot, pwr)));
@@ -347,7 +349,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
         // leave nBitsLeft greater than cnBitsPerWord intentionally for now
 
         Word_t wIndex
-            = (wKey >> (nBitsLeft - nBitsIndexSz)) & (EXP(nBitsIndexSz) - 1);
+            = (wKey >> (nBitsLeft - nBitsIndexSz)) & (wIndexCnt - 1);
 
         SetBit(PWR_pwBm(pwRoot, pwr), wIndex);
 
@@ -358,8 +360,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
         // Mind endianness.
         if (nBitsIndexSz < cnLogBitsPerWord)
         {
-            Word_t wIndexMask = EXP(EXP(nBitsIndexSz)) - 1;
-            *PWR_pwBm(pwRoot, pwr) = wIndexMask;
+            *PWR_pwBm(pwRoot, pwr) = EXP(wIndexCnt) - 1;
         }
         else
         {
@@ -603,7 +604,7 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
     }
 #endif // defined(RAM_METRICS)
 
-    DBGR(printf("\nOldSwitch nDL %d nDLU %d wWords %d 0x%x\n",
+    DBGR(printf("\nOldSwitch nDL %d nDLU %d wWords %"_fw"d "OWx"\n",
          nDigitsLeft, nDigitsLeftUp, wWords, wWords));
 
     MyFree(pwr, wWords);
