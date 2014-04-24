@@ -493,7 +493,7 @@ typedef struct {
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
     Word_t sw_awBm [ DIV_UP ( EXP(cnBitsPerDigit) , cnBitsPerWord ) ] ;
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
-    Link_t sw_aLinks[1];
+    Link_t sw_aLinks[1]; // variable size
 } Switch_t;
 
 Status_t Lookup(Word_t   wRoot, Word_t wKey);
