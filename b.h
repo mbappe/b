@@ -44,8 +44,10 @@
 
 #define nBL_to_nDL_NotAtTop(_nBL)  nBL_to_nDL(_nBL)
 
+#define cnDigitsPerWord  (((cnBitsPerWord - 1) / cnBitsPerDigit) + 1)
+
 // Choose bottom.
-// Bottom is where Bitmap is created.  Maybe we should change the meaning.
+// Bottom is where Bitmap is created automatically.
 // Can we support bits at bottom instead of digits at bottom and count digits
 // up (and maybe down) from there?
 // Minimum digits at bottom:  (cnDigitsPerWord - cnMallocMask + 1)
@@ -61,20 +63,12 @@
 #define cnDigitsAtBottom  1
 #endif // !defined(cnDigitsAtBottom)
 
+#define cnBitsAtBottom  nDL_to_nBL(cnDigitsAtBottom)
+
 // Choose max list length.
-// 0, 1, 2, 3, 4 and greater than 255 are all good values to test.
-// Default is EXP(cnBitsPerDigit + 1) to try to offset the memory cost of a
-// new switch when max list length is reached.
-// But it doesn't work because we can end up with a new switch at every
-// depth with only the bottom list having more than one key.
-// We could vary the max length based on depth or be even more sophisticated.
+// Mind sizeof(ll_nPopCnt) and the maximum value it implies.
 #if !defined(cwListPopCntMax)
-// ListLeaf_t has only one byte to store number of words in list.
-#if (cnBitsPerDigit <= 8)
-#define cwListPopCntMax  (EXP(cnBitsPerDigit) / 2)
-#else // (cnBitsPerDigit <= 8)
-#define cwListPopCntMax  250
-#endif // (cnBitsPerDigit <= 8)
+#define cwListPopCntMax  64
 #endif // !defined(cwListPopCntMax)
 
 // Choose features.
@@ -458,10 +452,6 @@
     (((_bSet) = TestBit((_pBitmap), (_key))), \
         SetBitByWord((_pBitmap), (_key)), (_bSet))
 
-#define cnBitsAtBottom  nDL_to_nBL(cnDigitsAtBottom)
-
-#define cnDigitsPerWord  (((cnBitsPerWord - 1) / cnBitsPerDigit) + 1)
-
 typedef enum { Failure = 0, Success = 1 } Status_t;
 
 #if (cnDigitsPerWord != 1)
@@ -503,11 +493,7 @@ typedef struct {
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
     Word_t sw_awBm [ DIV_UP ( EXP(cnBitsPerDigit) , cnBitsPerWord ) ] ;
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
-#if defined(BM_SWITCH_FOR_REAL)
     Link_t sw_aLinks[1];
-#else // defined(BM_SWITCH_FOR_REAL)
-    Link_t sw_aLinks[EXP(cnBitsPerDigit)];
-#endif // defined(BM_SWITCH_FOR_REAL)
 } Switch_t;
 
 Status_t Lookup(Word_t   wRoot, Word_t wKey);

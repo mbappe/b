@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.190 2014/04/23 17:35:24 mike Exp mike $
+// @(#) $Id: b.c,v 1.191 2014/04/23 18:00:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -280,39 +280,33 @@ static Word_t *
 NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
           unsigned nDigitsLeftUp, Word_t wPopCnt)
 {
-    Word_t *pwr;
-    unsigned nWords;
-    unsigned nBytesOfLinks;
-
     assert((sizeof(Switch_t) % sizeof(Word_t)) == 0);
 
+    Word_t wLinks;
 #if defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
-    if (nDigitsLeftUp == cnDigitsPerWord)
+    if (nDigitsLeftUp != cnDigitsPerWord)
+#endif // defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
+#if defined(BM_SWITCH_FOR_REAL)
     {
-        unsigned nLinks;
-
-        nLinks = EXP(nDL_to_nBitsIndexSz(nDigitsLeft));
-
-        // sizeof(Switch_t) includes one link; add the others
-        nWords = (sizeof(Switch_t) + (nLinks - 1) * sizeof(Link_t))
-            / sizeof(Word_t);
-
-        DBGI(printf("nLinks %d sizeof(Switch_t) %zd sizeof(Link_t) %zd",
-             nLinks, sizeof(Switch_t), sizeof(Link_t)));
-
-        nBytesOfLinks = nLinks * sizeof(Link_t);
+        wLinks = 1;
     }
+#endif // defined(BM_SWITCH_FOR_REAL)
+#if defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
     else
 #endif // defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
+#if ( ! defined(BM_SWITCH_FOR_REAL) ) || defined(BM_IN_LINK)
     {
-        nWords = sizeof(Switch_t) / sizeof(Word_t);
-
-        nBytesOfLinks = sizeof(pwr_pLinks(pwr));
+        wLinks = EXP(nDL_to_nBitsIndexSz(nDigitsLeft));
     }
+#endif // ( ! defined(BM_SWITCH_FOR_REAL) ) || defined(BM_IN_LINK)
 
-    pwr = (Word_t *)MyMalloc(nWords);
+    // sizeof(Switch_t) includes one link; add the others
+    Word_t wWords
+        = (sizeof(Switch_t) + (wLinks - 1) * sizeof(Link_t)) / sizeof(Word_t);
 
-    memset(pwr_pLinks(pwr), 0, nBytesOfLinks);
+    Word_t *pwr = (Word_t *)MyMalloc(wWords);
+
+    memset(pwr_pLinks(pwr), 0, wLinks * sizeof(Link_t));
 
 #if defined(RAM_METRICS)
     if ((cnBitsAtBottom <= cnLogBitsPerWord)
@@ -320,17 +314,17 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     {
         // embedded bitmap
         assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
-        METRICS(j__AllocWordsJLB1 += nWords); // JUDYA
-        METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
+        METRICS(j__AllocWordsJLB1 += wWords); // JUDYA
+        METRICS(j__AllocWordsJL12 += wWords); // JUDYB -- overloaded
     }
     else
     {
 #if defined(BM_SWITCH)
-        METRICS(j__AllocWordsJBB  += nWords); // JUDYA
+        METRICS(j__AllocWordsJBB  += wWords); // JUDYA
 #else // defined(BM_SWITCH)
-        METRICS(j__AllocWordsJBU  += nWords); // JUDYA
+        METRICS(j__AllocWordsJBU  += wWords); // JUDYA
 #endif // defined(BM_SWITCH)
-        METRICS(j__AllocWordsJBU4 += nWords); // JUDYB
+        METRICS(j__AllocWordsJBU4 += wWords); // JUDYB
     }
 #endif // defined(RAM_METRICS)
 
@@ -558,60 +552,63 @@ static Word_t
 OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
 {
     Word_t *pwr = wr_pwr(*pwRoot);
-    unsigned nWords = sizeof(Switch_t) / sizeof(Word_t);
 
+    Word_t wLinks;
+#if defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
+    if (nDigitsLeftUp != cnDigitsPerWord)
+#endif // defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
 #if defined(BM_SWITCH_FOR_REAL)
-    Word_t wPopCnt;
-#if defined(BM_IN_LINK)
-    if (nDigitsLeftUp == cnDigitsPerWord)
-    {
-        wPopCnt = EXP(nDL_to_nBitsIndexSz(nDigitsLeft));
-    }
-    else
-#endif // defined(BM_IN_LINK)
     {
         // How many links are there in the old switch?
-        wPopCnt = 0;
+        wLinks = 0;
         for (unsigned nn = 0;
             nn < DIV_UP(EXP(nDL_to_nBitsIndexSz(nDigitsLeft)), cnBitsPerWord);
             nn++)
         {
-            wPopCnt += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
+            wLinks += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
         }
-        assert(wPopCnt <= EXP(nDL_to_nBitsIndexSz(nDigitsLeft)));
+        assert(wLinks <= EXP(nDL_to_nBitsIndexSz(nDigitsLeft)));
         // Now we know how many links were in the old switch.
     }
+#endif // defined(BM_SWITCH_FOR_REAL)
+#if defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
+    else
+#endif // defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
+#if ( ! defined(BM_SWITCH_FOR_REAL) ) || defined(BM_IN_LINK)
+    {
+        wLinks = EXP(nDL_to_nBitsIndexSz(nDigitsLeft));
+    }
+#endif // ( ! defined(BM_SWITCH_FOR_REAL) ) || defined(BM_IN_LINK)
 
     // sizeof(Switch_t) includes one link; add the others
-    nWords += (wPopCnt - 1) * sizeof(Link_t) / sizeof(Word_t);
-
-#endif // defined(BM_SWITCH_FOR_REAL)
+    Word_t wWords
+        = (sizeof(Switch_t) + (wLinks - 1) * sizeof(Link_t)) / sizeof(Word_t);
 
 #if defined(RAM_METRICS)
     if ((cnBitsAtBottom <= cnLogBitsPerWord)
         && (nDigitsLeft <= cnDigitsAtBottom + 1))
     {
         assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
-        METRICS(j__AllocWordsJLB1 -= nWords); // JUDYA
-        METRICS(j__AllocWordsJL12 -= nWords); // JUDYB -- overloaded
+        METRICS(j__AllocWordsJLB1 -= wWords); // JUDYA
+        METRICS(j__AllocWordsJL12 -= wWords); // JUDYB -- overloaded
     }
     else
     {
 #if defined(BM_SWITCH)
-        METRICS(j__AllocWordsJBB  -= nWords); // JUDYA
+        METRICS(j__AllocWordsJBB  -= wWords); // JUDYA
 #else // defined(BM_SWITCH)
-        METRICS(j__AllocWordsJBU  -= nWords); // JUDYA
+        METRICS(j__AllocWordsJBU  -= wWords); // JUDYA
 #endif // defined(BM_SWITCH)
-        METRICS(j__AllocWordsJBU4 -= nWords); // JUDYB
+        METRICS(j__AllocWordsJBU4 -= wWords); // JUDYB
     }
 #endif // defined(RAM_METRICS)
 
-    DBGR(printf("\nOldSwitch nDL %d nDLU %d nWords %d 0x%x\n",
-         nDigitsLeft, nDigitsLeftUp, nWords, nWords));
+    DBGR(printf("\nOldSwitch nDL %d nDLU %d wWords %d 0x%x\n",
+         nDigitsLeft, nDigitsLeftUp, wWords, wWords));
 
-    MyFree(pwr, nWords);
+    MyFree(pwr, wWords);
 
-    return nWords * sizeof(Word_t);
+    return wWords * sizeof(Word_t);
 
     (void)nDigitsLeft; // silence compiler
     (void)nDigitsLeftUp; // silence compiler
