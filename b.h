@@ -475,10 +475,12 @@ typedef struct {
     };
 } ListLeaf_t;
 
+#define N_WORDS_SWITCH_BM  DIV_UP(EXP(cnBitsPerDigitMax), cnBitsPerWord)
+
 typedef struct {
     Word_t ln_wRoot;
 #if defined(BM_IN_LINK)
-    Word_t ln_awBm [ DIV_UP ( EXP(cnBitsPerDigit) , cnBitsPerWord ) ] ;
+    Word_t ln_awBm[N_WORDS_SWITCH_BM];
 #endif // defined(BM_IN_LINK)
 #if defined(PP_IN_LINK)
     Word_t ln_wPrefixPop;
@@ -491,7 +493,7 @@ typedef struct {
     Word_t sw_wPrefixPop;
 #endif // !defined(PP_IN_LINK)
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
-    Word_t sw_awBm [ DIV_UP ( EXP(cnBitsPerDigit) , cnBitsPerWord ) ] ;
+    Word_t sw_awBm[N_WORDS_SWITCH_BM];
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
     Link_t sw_aLinks[1]; // variable size
 } Switch_t;

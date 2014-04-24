@@ -1,6 +1,6 @@
 
-// @(#) $Id: b.c,v 1.192 2014/04/24 08:27:19 mike Exp mike $
-// @(#) $Source: /Users/mike/b/RCS/b.c,v $
+// @(#) $Id: b.c,v 1.193 2014/04/24 16:51:13 mike Exp mike $
+// @(#) $Source: /Users/mike/Documents/judy/b/RCS/b.c,v $
 
 #include "b.h"
 
@@ -284,6 +284,16 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 
     unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDigitsLeft);
     Word_t wIndexCnt = EXP(nBitsIndexSz);
+
+#if defined(BM_SWITCH)
+#if !defined(NDEBUG)
+#if defined(BM_IN_LINK)
+    { Link_t ln; assert(wIndexCnt <= sizeof(ln.ln_awBm) * cnBitsPerByte); }
+#else // defined(BM_IN_LINK)
+    { Switch_t sw; assert(wIndexCnt <= sizeof(sw.sw_awBm) * cnBitsPerByte); }
+#endif // defined(BM_IN_LINK)
+#endif // !defined(NDEBUG)
+#endif // defined(BM_SWITCH)
 
     Word_t wLinks;
 #if defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
