@@ -1,6 +1,6 @@
 
-// @(#) $Id: b.c,v 1.193 2014/04/24 16:51:13 mike Exp mike $
-// @(#) $Source: /Users/mike/Documents/judy/b/RCS/b.c,v $
+// @(#) $Id: b.c,v 1.194 2014/04/24 17:34:53 mike Exp mike $
+// @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
 
@@ -38,6 +38,26 @@ Word_t j__AllocWordsJV12;  // Value Area 12-bit Decode
 #endif // JUDYB   
 
 #endif // 0
+
+#if ( ! defined(cnBitsPerDigit) )
+
+const unsigned anDL_to_nBitsIndexSz[] = {
+    0, cnBitsPerDigitMax, cnBitsPerDigitMax, cnBitsPerDigitMax,
+       cnBitsPerDigitMax, cnBitsPerDigitMax, cnBitsPerDigitMax,
+       cnBitsPerDigitMax, cnBitsPerDigitMax, cnBitsPerDigitMax,
+       cnBitsPerDigitMax, cnBitsPerDigitMax, cnBitsPerDigitMax,
+       cnBitsPerDigitMax, cnBitsPerDigitMax, cnBitsPerDigitMax
+};
+
+const unsigned anDL_to_nBL[] = {
+    0,  1 * cnBitsPerDigitMax,  2 * cnBitsPerDigitMax,  3 * cnBitsPerDigitMax,
+        4 * cnBitsPerDigitMax,  5 * cnBitsPerDigitMax,  6 * cnBitsPerDigitMax,
+        7 * cnBitsPerDigitMax,  8 * cnBitsPerDigitMax,  9 * cnBitsPerDigitMax,
+       10 * cnBitsPerDigitMax, 11 * cnBitsPerDigitMax, 12 * cnBitsPerDigitMax,
+       13 * cnBitsPerDigitMax, 14 * cnBitsPerDigitMax, 15 * cnBitsPerDigitMax
+};
+
+#endif // ( ! defined(cnBitsPerDigit) )
 
 // Proposal for more generic names for the metrics.
 //

@@ -14,57 +14,6 @@
 #endif // ! defined(BM_SWITCH)
 #endif // defined(BM_IN_LINK) || defined(BM_SWITCH_FOR_REAL)
 
-// Choose bits per digit.  Any value from zero through max is ok.
-// Zero is one big bitmap.  Max is where malloc fails when we can't allocate
-// the one big switch implied by cnBitsPerDigit of more than half a word.
-// Default is cnLogBitsPerWord because a bitmap is the size of a word when
-// cnDigitsAtBottom is one and we can embed the bitmap.
-#if !defined(cnBitsPerDigit)
-#define cnBitsPerDigit  (cnLogBitsPerWord)
-#endif // !defined(cnBitsPerDigit)
-#define cnBitsPerDigitMax  (cnBitsPerDigit)
-
-#define cnBitsIndexSzAtTop \
-        (cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit)
-
-#define nDL_to_nBitsIndexSzNAT(_nDL)  (cnBitsPerDigit)
-
-// this one is not used in the lookup performance path
-#define nDL_to_nBitsIndexSz(_nDL) \
-    (((_nDL) == cnDigitsPerWord) \
-        ? cnBitsIndexSzAtTop : nDL_to_nBitsIndexSzNAT(_nDL))
-
-#define nDL_to_nBL_NotAtTop(_nDL)  ((_nDL) * cnBitsPerDigit)
-
-// this one is not used in the lookup performance path
-#define nDL_to_nBL(_nDL) \
-    (((_nDL) == cnDigitsPerWord) ? cnBitsPerWord : nDL_to_nBL_NotAtTop(_nDL))
-
-#define nBL_to_nDL(_nBL)  DIV_UP((_nBL), cnBitsPerDigit)
-
-#define nBL_to_nDL_NotAtTop(_nBL)  nBL_to_nDL(_nBL)
-
-#define cnDigitsPerWord  (((cnBitsPerWord - 1) / cnBitsPerDigit) + 1)
-
-// Choose bottom.
-// Bottom is where Bitmap is created automatically.
-// Can we support bits at bottom instead of digits at bottom and count digits
-// up (and maybe down) from there?
-// Minimum digits at bottom:  (cnDigitsPerWord - cnMallocMask + 1)
-// Maximum digits at bottom:  (cnDigitsPerWord - 1)
-// Min and max are good values to test.
-// Zero works (as long as it is not smaller than the minimum) but max pop
-// cannot be reached because we never transition to bitmap.
-// Default is one because a bitmap is the size of a word when cnBitsPerDigit
-// is cnLogBitsPerWord and we can embed the bitmap.
-// I think I should change this to be relative to the minimum digits at
-// bottom based on cnBitsPerDigit and cnBitsPerWord.
-#if !defined(cnDigitsAtBottom)
-#define cnDigitsAtBottom  1
-#endif // !defined(cnDigitsAtBottom)
-
-#define cnBitsAtBottom  nDL_to_nBL(cnDigitsAtBottom)
-
 // Choose max list length.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
 #if !defined(cwListPopCntMax)
@@ -139,6 +88,105 @@
 #define cnBytesPerWord  (EXP(cnLogBytesPerWord))
 #define cnLogBitsPerWord  (cnLogBytesPerWord + cnLogBitsPerByte)
 #define cnMallocMask  ((cnBytesPerWord * 2) - 1)
+
+#if defined(cnBitsPerDigit)
+
+// Choose bottom.
+// Bottom is where Bitmap is created automatically.
+// Can we support bits at bottom instead of digits at bottom and count digits
+// up (and maybe down) from there?
+// Minimum digits at bottom:  (cnDigitsPerWord - cnMallocMask + 1)
+// Maximum digits at bottom:  (cnDigitsPerWord - 1)
+// Min and max are good values to test.
+// Zero works (as long as it is not smaller than the minimum) but max pop
+// cannot be reached because we never transition to bitmap.
+// Default is one because a bitmap is the size of a word when cnBitsPerDigit
+// is cnLogBitsPerWord and we can embed the bitmap.
+// I think I should change this to be relative to the minimum digits at
+// bottom based on cnBitsPerDigit and cnBitsPerWord.
+#if !defined(cnDigitsAtBottom)
+#define cnDigitsAtBottom  1
+#endif // !defined(cnDigitsAtBottom)
+
+#define cnBitsAtBottom  nDL_to_nBL(cnDigitsAtBottom)
+
+// Bits-per-digit.  Any value from zero through max is ok.
+// Zero is one big bitmap.  Max is where malloc fails when we can't allocate
+// the one big switch implied by cnBitsPerDigit of more than half a word.
+
+#define cnDigitsPerWord  (((cnBitsPerWord - 1) / cnBitsPerDigit) + 1)
+
+#define cnBitsIndexSzAtTop \
+        (cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit)
+
+#define nDL_to_nBitsIndexSzNAT(_nDL)  (cnBitsPerDigit)
+
+// this one is not used in the lookup performance path
+#define nDL_to_nBitsIndexSz(_nDL) \
+    (((_nDL) == cnDigitsPerWord) \
+        ? cnBitsIndexSzAtTop : nDL_to_nBitsIndexSzNAT(_nDL))
+
+#define nDL_to_nBL_NotAtTop(_nDL)  ((_nDL) * cnBitsPerDigit)
+
+// this one is not used in the lookup performance path
+#define nDL_to_nBL(_nDL) \
+    (((_nDL) == cnDigitsPerWord) ? cnBitsPerWord : nDL_to_nBL_NotAtTop(_nDL))
+
+// this one is not used in the lookup performance path
+#define nBL_to_nDL(_nBL)  DIV_UP((_nBL), cnBitsPerDigit)
+
+// this one is not used in the lookup performance path
+#define nBL_to_nDL_NotAtTop(_nBL)  nBL_to_nDL(_nBL)
+
+#if defined(cnBitsPerDigitMax)
+#error "Can't define both cnBitsPerDigit and cnBitsPerDigitMax"
+#endif // defined(cnBitsPerDigitMax)
+
+#define cnBitsPerDigitMax  (cnBitsPerDigit)
+
+#else // defined(cnBitsPerDigit)
+
+// Use lookup tables (which support depth-based bits per digit) instead
+// of cnBitsPerDigit.
+// Default is cnLogBitsPerWord because a bitmap is the size of a word when
+// cnDigitsAtBottom is one and we can embed the bitmap.
+
+#if !defined(cnBitsPerDigitMax)
+#define cnBitsPerDigitMax  (cnLogBitsPerWord)
+#endif // !defined(cnBitsPerDigitMax)
+
+extern const unsigned anDL_to_nBitsIndexSz[];
+
+extern const unsigned anDL_to_nBL[];
+
+#define cnDigitsPerWord  (((cnBitsPerWord - 1) / cnBitsPerDigitMax) + 1)
+
+// this one is not used in the lookup performance path
+#define nDL_to_nBitsIndexSz(_nDL)  anDL_to_nBitsIndexSz[_nDL]
+
+#define nDL_to_nBitsIndexSzNAT(_nDL)  nDL_to_nBitsIndexSz(_nDL)
+
+// this one is not used in the lookup performance path
+#define cnBitsIndexSzAtTop  nDL_to_nBitsIndexSz(cnDigitsPerWord)
+
+// this one is not used in the lookup performance path
+#define nDL_to_nBL(_nDL)  anDL_to_nBL[_nDL]
+
+#define nDL_to_nBL_NotAtTop(_nDL)  nDL_to_nBL(_nDL)
+
+// this one is not used in the lookup performance path
+#define nBL_to_nDL(_nBL)  DIV_UP((_nBL), cnBitsPerDigitMax)
+
+// this one is not used in the lookup performance path
+#define nBL_to_nDL_NotAtTop(_nBL)  nBL_to_nDL(_nBL)
+
+#if !defined(cnDigitsAtBottom)
+#define cnDigitsAtBottom  1
+#endif // !defined(cnDigitsAtBottom)
+
+#define cnBitsAtBottom  (cnDigitsAtBottom * cnBitsPerDigitMax)
+
+#endif // defined(cnBitsPerDigit)
 
 #if defined RAM_METRICS
 #define METRICS(x)  (x)
@@ -475,6 +523,8 @@ typedef struct {
     };
 } ListLeaf_t;
 
+// It's not ideal that we always allocate a bitmap big enough for the
+// maximum switch size, but that is what we have for now.
 #define N_WORDS_SWITCH_BM  DIV_UP(EXP(cnBitsPerDigitMax), cnBitsPerWord)
 
 typedef struct {
