@@ -572,11 +572,15 @@ Word_t OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDigitsLeft);
 void Dump(Word_t *pwRoot, Word_t wPrefix, unsigned nBL);
 #endif // defined(DEBUG)
 
+#else // (cnDigitsPerWord != 1)
+Word_t wInserts; // sanity checking
 #endif // (cnDigitsPerWord != 1)
 
 #if defined(DEBUG)
 Word_t *pwRootLast; // allow dumping of tree when root is not known
+#if (cnDigitsPerWord != 1)
 Word_t wInserts; // sanity checking
+#endif // (cnDigitsPerWord != 1)
 #endif // defined(DEBUG)
 
 #endif // ( ! defined(_B_H_INCLUDED) )

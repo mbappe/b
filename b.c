@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.194 2014/04/24 17:34:53 mike Exp mike $
+// @(#) $Id: b.c,v 1.195 2014/04/25 04:45:00 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2066,7 +2066,7 @@ Judy1FreeArray(PPvoid_t PPArray, P_JE)
     return FreeArrayGuts((Word_t *)PPArray,
         /* wPrefix */ 0, cnBitsPerWord, /* bDump */ 0);
 #else // (cnDigitsPerWord != 1)
-    MyFree(*PPArray,
+    JudyFree(*PPArray,
        EXP(cnBitsPerWord - cnLogBitsPerByte - cnLogBytesPerWord));
     return EXP(cnBitsPerWord - cnLogBitsPerByte);
 #endif // (cnDigitsPerWord != 1)
@@ -2078,6 +2078,8 @@ Word_t
 Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 {
     DBGR(printf("Judy1Count\n"));
+
+#if (cnDigitsPerWord != 1)
 
     // Return C_JERR if the array is empty or wKey0 > wKey1.
     if ((PArray == (Pvoid_t) NULL) || (wKey0 > wKey1))
@@ -2222,5 +2224,12 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 #endif // defined(DEBUG)
 
     return wPopCnt;
+
+#else // (cnDigitsPerWord != 1)
+
+    (void)PArray; (void)wKey0; (void)wKey1, (void)PJError;
+    return wInserts;
+
+#endif // (cnDigitsPerWord != 1)
 }
 
