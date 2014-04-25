@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.124 2014/04/20 23:12:05 mike Exp mike $
+// @(#) $Id: bli.c,v 1.125 2014/04/22 15:58:47 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -109,9 +109,9 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     Word_t wPopCnt;
 #else // !defined(LOOKUP)
 #if (cwListPopCntMax != 0)
-#if !defined(LOOKUP_NO_LIST_DEREF)
+#if !defined(LOOKUP_NO_LIST_DEREF) || defined(PP_IN_LINK)
     Word_t wPopCnt;
-#endif // !defined(LOOKUP_NO_LIST_DEREF)
+#endif // !defined(LOOKUP_NO_LIST_DEREF) || defined(PP_IN_LINK)
 #endif // (cwListPopCntMax != 0)
 #endif // !defined(LOOKUP) ... #elif ...
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
