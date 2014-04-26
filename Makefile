@@ -149,26 +149,18 @@ DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 LIBS = -lm
 
 FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c t.c stubs.c Makefile tocsv toc90
-FILES_FROM_ME += bitmap.c bitmapx.c judy1.c judy1x.c bb bbwrap bbq bbwrapq
+FILES_FROM_ME += bb bbwrap bbq bbwrapq
 FILES_FROM_ME += bench Makefile.perf makewrap bench1 benchall README.meb
 FILES_FROM_ME += sister oa2ul.c rcs.tjz
 # I periodically make changes to the files provided by Doug.
 FILES_FROM_DOUG_OR_DOUG = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c jbgraph
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_OR_DOUG)
 
-EXES = t b bxc
-OBJS = Judy1LHTime.o judy1.o bitmap.o bl.o bi.o br.o b.o stubs.o dlmalloc.o
-ASMS = Judy1LHTime.s judy1.s bitmap.s bl.s bi.s br.s b.s stubs.s dlmalloc.s t.s
-CPPS = Judy1LHTime.i judy1.i bitmap.i bl.i bi.i br.i b.i stubs.i dlmalloc.i t.i
+EXES = t b
+OBJS = Judy1LHTime.o bl.o bi.o br.o b.o stubs.o dlmalloc.o
+ASMS = Judy1LHTime.s bl.s bi.s br.s b.s stubs.s dlmalloc.s t.s
+CPPS = Judy1LHTime.i bl.i bi.i br.i b.i stubs.i dlmalloc.i t.i
 SYMS = t.dSYM bxc.dSYM
-
-##
-# Bx is an attempt to see if skipping intermediate .o file creation
-# can result in more inlining or otherwise better code.
-# Can we make Judy1LHTime -1 run as fast as Judy1LHTime -b?
-##
-BXC_SRCS = Judy1LHTime.c judy1.c bitmap.c bl.c bi.c br.c b.c
-BXC_OBJS = stubs.o dlmalloc.o
 
 T_SRCS = t.c
 T_OBJS = stubs.o dlmalloc.o
@@ -187,7 +179,7 @@ T_OBJS = stubs.o dlmalloc.o
 
 default: clean b
 
-all: clean $(EXES) $(ASMS) $(CPPS) b.tar b.tgz b.tjz rcs.tjz
+all: clean $(EXES) $(ASMS) $(CPPS) b.tjz rcs.tjz
 
 clean:
 	rm -f $(EXES) *.tar $(OBJS) $(ASMS) $(CPPS)
@@ -198,15 +190,6 @@ t:	$(T_SRCS) $(T_OBJS)
 
 b:	$(OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
-
-bxc:	$(BXC_SRCS) $(BXC_OBJS)
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
-
-b.tar:	$(FILES)
-	tar cf $@ $(FILES)
-
-b.tgz:	$(FILES)
-	tar czf $@ $(FILES)
 
 b.tjz:	$(FILES)
 	tar cjf $@ $(FILES)
@@ -230,14 +213,6 @@ rcs.tjz: RCS
 
 .c.o:
 	$(CC) $(CFLAGS) $(DEFINES) -c $^
-
-# Suppress warnings.  Empty translation unit for some ifdef combinations.
-judy1.o: judy1.c
-	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
-
-# Suppress warnings.  Empty translation unit for some ifdef combinations.
-bitmap.o: bitmap.c
-	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
 
 # Suppress warnings.
 Judy1LHTime.o: Judy1LHTime.c
@@ -264,14 +239,6 @@ dlmalloc.o: dlmalloc.c
 t.s: t.c
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
 
-# Suppress warnings.  Empty translation unit for some ifdef combinations.
-judy1.s: judy1.c
-	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
-
-# Suppress warnings.  Empty translation unit for some ifdef combinations.
-bitmap.s: bitmap.c
-	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
-
 # Suppress warnings.
 Judy1LHTime.s: Judy1LHTime.c
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
@@ -292,14 +259,6 @@ dlmalloc.s: dlmalloc.c
 
 .c.i:
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $^
-
-# The .c.i rule doesn't work for some reason.  Later.
-judy1.i: judy1.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
-
-# The .c.i rule doesn't work for some reason.  Later.
-bitmap.i: bitmap.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
 bl.i: bl.c
