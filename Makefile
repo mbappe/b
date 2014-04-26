@@ -103,8 +103,21 @@ endif
 CFLAGS = $(STDFLAG) $(MFLAGS) $(WFLAGS) $(OFLAGS) -I.
 CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
 
-# Obsolete ifdefs used to figure out where overhead was coming from.
-# TIME_DEFINES += -DBITMAP_P_JE -DEXTERN_BITMAP -DINTERN_JUDY1 -DEXTERN_JUDY1
+# Obsolete ifdefs used to figure out where overhead was coming from that
+# was making Time -b get times faster than Time -1 get times for libjudy
+# configured to allocate one bit bitmap.
+# Bitmap[Set|Get] don't have P_JE.  Judy1[Set|Test] do have P_JE.
+# These ifdefs were used to level the field.
+# TIME_DEFINES += -DBITMAP_P_JE -DNO_P_JE
+# EXTERN_JUDY1 puts Judy1[Test|Set] in judy1.c via judy1x.c.
+# INTERN_JUDY1 used to put Judy1[Test|Set] in Judy1LHTime.c via judy1x.c.
+# But Doug doesn't want judy1.c or judy1x.c.
+# Neither puts Judy1[Test|Set] in bl.c via bli.c via judy1x.c.
+# EXTERN_BITMAP used to put Bitmap[Set|Get] in bitmap.c via bitmapx.c.
+# No EXTERN_BITMAP used to put Bitmap[Set|Get] in Judy1LHTime.c via bitmapx.c.
+# But Doug doesn't want bitmap.c or bitmapx.c.
+# TIME_DEFINES += -DEXTERN_BITMAP -DINTERN_JUDY1 -DEXTERN_JUDY1
+# SWAP causes Time -1 to use Bitmap[S|G]et and Time -b to use Judy1[Set|Test].
 # BITMAP_BY_BYTE enables byte address/mask in judy1x.c and bitmapx.c.
 # TIME_DEFINES += -DSWAP -DBITMAP_BY_BYTE
 
@@ -281,7 +294,7 @@ dlmalloc.s: dlmalloc.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $^
 
 # The .c.i rule doesn't work for some reason.  Later.
-judy1.i: bitmap.c
+judy1.i: judy1.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
