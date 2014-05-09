@@ -224,7 +224,7 @@ stubs.o: stubs.c
 
 # Suppress warnings.  sbrk is deprecated.
 dlmalloc.o: dlmalloc.c
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -Dmalloc_getpagesize=2097152 -c $^
 
 ############################
 #
