@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.8 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.9 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -153,11 +153,13 @@ struct timespec TVBeg__, TVEnd__;
 {                                                                       \
     clock_gettime(CLOCK_MONOTONIC, &TVBeg__);                           \
 /*  asm volatile("" ::: "memory");   */                                 \
+    __sync_synchronize();                                               \
 }
 
 #define ENDTm(D) 							\
 { 									\
 /*    asm volatile("" ::: "memory");        */                          \
+    __sync_synchronize();                                               \
     clock_gettime(CLOCK_MONOTONIC, &TVEnd__);   	                \
                                                                         \
     (D) = (double)(TVEnd__.tv_sec - TVBeg__.tv_sec) * 1E9 +             \
