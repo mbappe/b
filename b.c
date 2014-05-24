@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.195 2014/04/25 04:45:00 mike Exp mike $
+// @(#) $Id: b.c,v 1.196 2014/04/25 17:54:17 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -340,6 +340,10 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     Word_t *pwr = (Word_t *)MyMalloc(wWords);
 
     memset(pwr_pLinks(pwr), 0, wLinks * sizeof(Link_t));
+
+#if defined(DUMMY_IN_SW)
+    ((Switch_t *)pwr)->sw_dummy = 0;
+#endif // defined(DUMMY_IN_SW)
 
 #if defined(RAM_METRICS)
     if ((cnBitsAtBottom <= cnLogBitsPerWord)
