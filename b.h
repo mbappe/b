@@ -20,6 +20,26 @@
 #define cwListPopCntMax  8
 #endif // !defined(cwListPopCntMax)
 
+#if defined(DEBUG_ALL)
+
+#undef DEBUG_INSERT
+#undef DEBUG_REMOVE
+#undef DEBUG_MALLOC
+#undef DEBUG_LOOKUP
+#undef DEBUG
+
+#define DEBUG_INSERT
+#define DEBUG_REMOVE
+#define DEBUG_MALLOC
+#define DEBUG_LOOKUP
+#define DEBUG
+
+#endif // defined(DEBUG_ALL)
+
+#if ! defined(NDEBUG)
+#define NDEBUG
+#endif // ! defined(NDEBUG)
+
 // Choose features.
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
 // -UNDEBUG, RAM_METRICS, GUARDBAND
@@ -222,19 +242,6 @@ extern const unsigned anDL_to_nBL[];
 #else // defined SEARCH_METRICS
 #define SMETRICS(x)
 #endif // defined SEARCH_METRICS
-
-#if defined(DEBUG_ALL)
-#undef DEBUG_INSERT
-#undef DEBUG_REMOVE
-#undef DEBUG_MALLOC
-#undef DEBUG_LOOKUP
-#undef DEBUG
-#define DEBUG_INSERT
-#define DEBUG_REMOVE
-#define DEBUG_MALLOC
-#define DEBUG_LOOKUP
-#define DEBUG
-#endif // defined(DEBUG_ALL)
 
 #if defined(DEBUG_INSERT)
 #if (cwDebugThreshold != 0)
