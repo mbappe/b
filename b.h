@@ -2,11 +2,11 @@
 #if ( ! defined(_B_H_INCLUDED) )
 #define _B_H_INCLUDED
 
-#if defined(SKIP_PREFIX_CHECK) || defined(NO_UNNECESSARY_PREFIX)
 #if ! defined(SKIP_LINKS)
+#if ! defined(NO_SKIP_LINKS)
 #define SKIP_LINKS
+#endif // ! defined(NO_SKIP_LINKS)
 #endif // ! defined(SKIP_LINKS)
-#endif // defined(SKIP_PREFIX_CHECK) || defined(NO_UNNECESSARY_PREFIX)
 
 #if defined(BM_IN_LINK) || defined(BM_SWITCH_FOR_REAL)
 #if ! defined(BM_SWITCH)
@@ -17,7 +17,7 @@
 // Choose max list length.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
 #if !defined(cwListPopCntMax)
-#define cwListPopCntMax  64
+#define cwListPopCntMax  8
 #endif // !defined(cwListPopCntMax)
 
 // Choose features.
@@ -91,6 +91,9 @@
 
 #if defined(cnBitsPerDigit)
 
+// Bits-per-digit.
+// Zero is equivalent to cnBitsPerWord and yields one big bitmap.
+
 // Choose bottom.
 // Bottom is where Bitmap is created automatically.
 // Can we support bits at bottom instead of digits at bottom and count digits
@@ -105,14 +108,36 @@
 // I think I should change this to be relative to the minimum digits at
 // bottom based on cnBitsPerDigit and cnBitsPerWord.
 #if !defined(cnDigitsAtBottom)
+#if   (cnBitsPerDigit >= 14)
 #define cnDigitsAtBottom  1
+#elif (cnBitsPerDigit >=  7)
+#define cnDigitsAtBottom  2
+#elif (cnBitsPerDigit >=  5)
+#define cnDigitsAtBottom  3
+#elif (cnBitsPerDigit >=  4)
+#define cnDigitsAtBottom  4
+#elif (cnBitsPerDigit >=  3)
+#if (cnBitsPerWord == 32)
+#define cnDigitsAtBottom  5
+#else
+#define cnDigitsAtBottom  8
+#endif
+#elif (cnBitsPerDigit ==  2)
+#if (cnBitsPerWord == 32)
+#define cnDigitsAtBottom 10
+#else
+#define cnDigitsAtBottom 18
+#endif
+#elif (cnBitsPerDigit ==  1)
+#if (cnBitsPerWord == 32)
+#define cnDigitsAtBottom 26
+#else
+#define cnDigitsAtBottom 50
+#endif // cnBitsPerWord
+#endif // cnBitsPerDigit
 #endif // !defined(cnDigitsAtBottom)
 
 #define cnBitsAtBottom  nDL_to_nBL(cnDigitsAtBottom)
-
-// Bits-per-digit.  Any value from zero through max is ok.
-// Zero is one big bitmap.  Max is where malloc fails when we can't allocate
-// the one big switch implied by cnBitsPerDigit of more than half a word.
 
 #define cnDigitsPerWord  (((cnBitsPerWord - 1) / cnBitsPerDigit) + 1)
 
@@ -148,11 +173,9 @@
 
 // Use lookup tables (which support depth-based bits per digit) instead
 // of cnBitsPerDigit.
-// Default is cnLogBitsPerWord because a bitmap is the size of a word when
-// cnDigitsAtBottom is one and we can embed the bitmap.
 
 #if !defined(cnBitsPerDigitMax)
-#define cnBitsPerDigitMax  (cnLogBitsPerWord)
+#define cnBitsPerDigitMax  (8)
 #endif // !defined(cnBitsPerDigitMax)
 
 extern const unsigned anDL_to_nBitsIndexSz[];
@@ -535,6 +558,9 @@ typedef struct {
 #if defined(PP_IN_LINK)
     Word_t ln_wPrefixPop;
 #endif // defined(PP_IN_LINK)
+#if defined(DUMMY_IN_LN)
+    Word_t ln_wDummy;
+#endif // defined(DUMMY_IN_LN)
 } Link_t;
 
 // Uncompressed, basic switch.
@@ -545,6 +571,9 @@ typedef struct {
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
     Word_t sw_awBm[N_WORDS_SWITCH_BM];
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+#if defined(DUMMY_IN_SW)
+    Word_t sw_wDummy;
+#endif // defined(DUMMY_IN_SW)
     Link_t sw_aLinks[1]; // variable size
 } Switch_t;
 
