@@ -1321,6 +1321,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 //  - list switch -- depth, prefix, pop, capacity, (key, link) pairs
 
 #if (cwListPopCntMax != 0)
+        unsigned nDigitsLeftOld = nDigitsLeft;
         if (wPopCnt < cwListPopCntMax)
         {
             // allocate a new list and init pop count in the first word
@@ -1501,7 +1502,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         else
 #endif // (cwListPopCntMax != 0)
         {
-            unsigned nDigitsLeftOld = nDigitsLeft;
             Word_t w;
 
             // List is full; insert a switch
@@ -1667,7 +1667,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
 #if (cwListPopCntMax != 0)
         // Hmm.  Should this be nDigitsLeftOld?
-        if (wPopCnt != 0) OldList(pwr, wPopCnt, nDigitsLeft);
+        if (wPopCnt != 0) OldList(pwr, wPopCnt, nDigitsLeftOld);
 #endif // (cwListPopCntMax != 0)
     }
 #if defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
