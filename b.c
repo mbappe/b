@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.196 2014/04/25 17:54:17 mike Exp $
+// @(#) $Id: b.c,v 1.198 2014/05/24 17:31:05 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -39,25 +39,25 @@ Word_t j__AllocWordsJV12;  // Value Area 12-bit Decode
 
 #endif // 0
 
-#if ( ! defined(cnBitsPerDigit) )
+#if defined(BPD_TABLE)
 
 const unsigned anDL_to_nBitsIndexSz[] = {
-    0, cnBitsPerDigitMax, cnBitsPerDigitMax, cnBitsPerDigitMax,
-       cnBitsPerDigitMax, cnBitsPerDigitMax, cnBitsPerDigitMax,
-       cnBitsPerDigitMax, cnBitsPerDigitMax, cnBitsPerDigitMax,
-       cnBitsPerDigitMax, cnBitsPerDigitMax, cnBitsPerDigitMax,
-       cnBitsPerDigitMax, cnBitsPerDigitMax, cnBitsPerDigitMax
+    0, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit
 };
 
 const unsigned anDL_to_nBL[] = {
-    0,  1 * cnBitsPerDigitMax,  2 * cnBitsPerDigitMax,  3 * cnBitsPerDigitMax,
-        4 * cnBitsPerDigitMax,  5 * cnBitsPerDigitMax,  6 * cnBitsPerDigitMax,
-        7 * cnBitsPerDigitMax,  8 * cnBitsPerDigitMax,  9 * cnBitsPerDigitMax,
-       10 * cnBitsPerDigitMax, 11 * cnBitsPerDigitMax, 12 * cnBitsPerDigitMax,
-       13 * cnBitsPerDigitMax, 14 * cnBitsPerDigitMax, 15 * cnBitsPerDigitMax
+    0,  1 * cnBitsPerDigit,  2 * cnBitsPerDigit,  3 * cnBitsPerDigit,
+        4 * cnBitsPerDigit,  5 * cnBitsPerDigit,  6 * cnBitsPerDigit,
+        7 * cnBitsPerDigit,  8 * cnBitsPerDigit,  9 * cnBitsPerDigit,
+       10 * cnBitsPerDigit, 11 * cnBitsPerDigit, 12 * cnBitsPerDigit,
+       13 * cnBitsPerDigit, 14 * cnBitsPerDigit, 15 * cnBitsPerDigit
 };
 
-#endif // ( ! defined(cnBitsPerDigit) )
+#endif // defined(BPD_TABLE)
 
 // Proposal for more generic names for the metrics.
 //
@@ -1320,8 +1320,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 //  - bitmap switch -- depth, prefix, pop, capacity, bitmap, links
 //  - list switch -- depth, prefix, pop, capacity, (key, link) pairs
 
-#if (cwListPopCntMax != 0)
         unsigned nDigitsLeftOld = nDigitsLeft;
+#if (cwListPopCntMax != 0)
         if (wPopCnt < cwListPopCntMax)
         {
             // allocate a new list and init pop count in the first word
