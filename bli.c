@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.128 2014/05/24 12:40:44 mike Exp $
+// @(#) $Id: bli.c,v 1.128 2014/05/24 12:40:44 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -139,7 +139,7 @@ again:
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
 #if ( ! defined(LOOKUP) )
-    assert(nDigitsLeft > cnDigitsAtBottom); // keep LOOKUP lean
+    assert(nDigitsLeft > nBL_to_nDL(cnBitsAtBottom)); // valid for LOOKUP too
     DBGX(printf("# pwRoot %p ", (void *)pwRoot));
 #else // ( ! defined(LOOKUP) )
     SMETRICS(j__TreeDepth++);
@@ -555,7 +555,8 @@ notEmpty:;
 
             DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
 
-            if (nDigitsLeft > cnDigitsAtBottom)
+// Simplify this to nDigitsLeft > 1 when we get rid of non-1 cnDigitsAtBottom.
+            if (nDigitsLeft > nBL_to_nDL(cnBitsAtBottom))
             {
                 // We may need to check the prefix of the switch we just
                 // visited in the next iteration of the loop
