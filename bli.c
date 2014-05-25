@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.128 2014/05/24 12:40:44 mike Exp mike $
+// @(#) $Id: bli.c,v 1.127 2014/04/26 00:50:38 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -149,14 +149,10 @@ again:
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     nType = wr_nType(wRoot);
-
-    switch (nType)
-#else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-    if (wRoot != 0)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-    {
+
 #if (cwListPopCntMax != 0)
-    case 0:
+    if (!tp_bIsSwitch(nType))
     {
         DBGX(printf("List nDigitsLeft %d\n", nDigitsLeft));
         DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMask(nDigitsLeft)));
@@ -319,15 +315,13 @@ again:
 #endif // defined(COMPRESSED_LISTS)
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
         }
-
-        break;
-
-    } // end of case
-
-    default:
+    }
+    else
+#else // (cwListPopCntMax != 0)
+    if (wRoot != 0)
 #endif // (cwListPopCntMax != 0)
     {
-        // switch
+        // basic switch
 
         pwr = wr_tp_pwr(wRoot, nType); // pointer extracted from wRoot
 
@@ -700,9 +694,7 @@ notEmpty:;
 #endif // defined(SKIP_LINKS)
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
         }
-    } // end of case
-
-    } // end of switch
+    }
 
 #if defined(BM_SWITCH_FOR_REAL)
 notFound:
