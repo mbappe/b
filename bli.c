@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.127 2014/04/26 00:50:38 mike Exp mike $
+// @(#) $Id: bli.c,v 1.128 2014/05/24 12:40:44 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -394,11 +394,11 @@ again:
 #endif // defined(BM_IN_LINK)
             {
 // Is this ifdef necessary?  Or will the compiler figure it out?
-#if (cnBitsPerDigitMax > cnLogBitsPerWord)
+#if (cnBitsPerDigit > cnLogBitsPerWord)
                 unsigned nBmOffset = wIndex >> cnLogBitsPerWord;
-#else // (cnBitsPerDigitMax > cnLogBitsPerWord)
+#else // (cnBitsPerDigit > cnLogBitsPerWord)
                 unsigned nBmOffset = 0;
-#endif // (cnBitsPerDigitMax > cnLogBitsPerWord)
+#endif // (cnBitsPerDigit > cnLogBitsPerWord)
 //printf("nBmOffset %d\n", nBmOffset);
 //printf("pwr %p\n", (void *)pwr);
 //printf("PWR_pwBm %p\n", (void *)PWR_pwBm(pwRoot, pwr));
@@ -419,12 +419,12 @@ again:
                 }
                 Word_t wBmMask = wBit - 1;
                 wIndex = 0;
-#if (cnBitsPerDigitMax > cnLogBitsPerWord)
+#if (cnBitsPerDigit > cnLogBitsPerWord)
                 for (unsigned nn = 0; nn < nBmOffset; nn++)
                 {
                     wIndex += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
                 }
-#endif // (cnBitsPerDigitMax > cnLogBitsPerWord)
+#endif // (cnBitsPerDigit > cnLogBitsPerWord)
                 DBGX(printf("\npwRoot %p PWR_pwBm %p\n",
                             (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
                 wIndex += __builtin_popcountll(wBm & wBmMask);
