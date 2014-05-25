@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.198 2014/05/24 17:31:05 mike Exp mike $
+// @(#) $Id: b.c,v 1.199 2014/05/25 12:51:12 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -347,10 +347,10 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 
 #if defined(RAM_METRICS)
     if ((cnBitsAtBottom <= cnLogBitsPerWord)
-        && (nDigitsLeft <= cnDigitsAtBottom + 1))
+        && (nDigitsLeft <= nBL_to_nDL(cnBitsAtBottom) + 1))
     {
         // embedded bitmap
-        assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
+        assert(nDigitsLeft == nBL_to_nDL(cnBitsAtBottom) + 1); // later
         METRICS(j__AllocWordsJLB1 += wWords); // JUDYA
         METRICS(j__AllocWordsJL12 += wWords); // JUDYB -- overloaded
     }
@@ -438,7 +438,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
             && (nDL_to_nBL_NotAtTop(nDigitsLeft - 1) > 16)
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-            && ((nDigitsLeft - 1) > cnDigitsAtBottom)
+            && ((nDigitsLeft - 1) > nBL_to_nDL(cnBitsAtBottom))
 #endif // ! defined(PP_IN_LINK)
 #endif // defined(SKIP_PREFIX_CHECK)
             && 1)
@@ -511,21 +511,21 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 
 #if defined(RAM_METRICS)
     if ((cnBitsAtBottom <= cnLogBitsPerWord)
-        && (nDigitsLeft <= cnDigitsAtBottom + 1))
+        && (nDigitsLeft <= nBL_to_nDL(cnBitsAtBottom) + 1))
     {
         // embedded bitmap
-        assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
-        METRICS(j__AllocWordsJLB1 += sizeof(Link_t) / sizeof(Word_t)); // JUDYA
-        METRICS(j__AllocWordsJL12 += sizeof(Link_t) / sizeof(Word_t)); // JUDYB
+        assert(nDigitsLeft == nBL_to_nDL(cnBitsAtBottom) + 1); // later
+        METRICS(j__AllocWordsJLB1 += sizeof(Link_t)/sizeof(Word_t)); // JUDYA
+        METRICS(j__AllocWordsJL12 += sizeof(Link_t)/sizeof(Word_t)); // JUDYB
     }
     else
     {
 #if defined(BM_SWITCH)
-        METRICS(j__AllocWordsJBB  += sizeof(Link_t) / sizeof(Word_t)); // JUDYA
+        METRICS(j__AllocWordsJBB  += sizeof(Link_t)/sizeof(Word_t)); // JUDYA
 #else // defined(BM_SWITCH)
-        METRICS(j__AllocWordsJBU  += sizeof(Link_t) / sizeof(Word_t)); // JUDYA
+        METRICS(j__AllocWordsJBU  += sizeof(Link_t)/sizeof(Word_t)); // JUDYA
 #endif // defined(BM_SWITCH)
-        METRICS(j__AllocWordsJBU4 += sizeof(Link_t) / sizeof(Word_t)); // JUDYB
+        METRICS(j__AllocWordsJBU4 += sizeof(Link_t)/sizeof(Word_t)); // JUDYB
     }
 #endif // defined(RAM_METRICS)
 
@@ -621,9 +621,9 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
 
 #if defined(RAM_METRICS)
     if ((cnBitsAtBottom <= cnLogBitsPerWord)
-        && (nDigitsLeft <= cnDigitsAtBottom + 1))
+        && (nDigitsLeft <= nBL_to_nDL(cnBitsAtBottom) + 1))
     {
-        assert(nDigitsLeft == cnDigitsAtBottom + 1); // later
+        assert(nDigitsLeft == nBL_to_nDL(cnBitsAtBottom) + 1); // later
         METRICS(j__AllocWordsJLB1 -= wWords); // JUDYA
         METRICS(j__AllocWordsJL12 -= wWords); // JUDYB -- overloaded
     }
@@ -860,8 +860,8 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
 // *pwRootLn may not be a pointer to a switch
 // It may be a pointer to a list leaf.
-// And if cnDigitsAtBottom == cnDigitsPerWord - 1, then it could be a
-// pointer to a bitmap?
+// And if nBL_to_nDL(cnBitsAtBottom) == cnDigitsPerWord - 1, then it could be
+// a pointer to a bitmap?
                 Word_t wPopCntLn;
 #if defined(SKIP_LINKS)
                 unsigned nTypeLn = wr_nType(*pwRootLn);
@@ -1179,19 +1179,19 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
     // Validate global constant parameters set up in the header file.
 #if 0
-    assert(cnDigitsAtBottom > 0); // can't get to full pop
+    assert(nBL_to_nDL(cnBitsAtBottom) > 0); // can't get to full pop
 #endif
-    assert(cnDigitsAtBottom + 1 <= cnDigitsPerWord);
+    assert(nBL_to_nDL(cnBitsAtBottom) + 1 <= cnDigitsPerWord);
 #if defined(SKIP_LINKS)
     // type field must have enough values
-    assert(cnDigitsAtBottom + cnMallocMask >= cnDigitsPerWord + 1);
+    assert(nBL_to_nDL(cnBitsAtBottom) + cnMallocMask >= cnDigitsPerWord + 1);
 #endif // defined(SKIP_LINKS)
 
     DBGI(printf("InsertGuts pwRoot %p ", (void *)pwRoot));
     DBGI(printf(" wRoot "OWx" wKey "OWx" nDigitsLeft %d\n",
             wRoot, wKey, nDigitsLeft));
 
-    if (nDigitsLeft <= cnDigitsAtBottom)
+    if (nDigitsLeft <= nBL_to_nDL(cnBitsAtBottom))
     {
 #if (cnBitsAtBottom <= cnLogBitsPerWord)
 
@@ -1604,22 +1604,24 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 {
                     // can't dereference list if there isn't one
                     // go directly to bitmap
-                    nDigitsLeft = cnDigitsAtBottom + 1;
+                    nDigitsLeft = nBL_to_nDL(cnBitsAtBottom) + 1;
                 }
             }
 
-            // We don't create a switch below cnDigitsAtBottom + 1.
-            // Why?  Because we've defined cnDigitsAtBottom as automatic
-            // bitmap (no switch) and we may need a prefix at
-            // cnDigitsAtBottom + 1 since we don't have one in the bitmap.
-            if (nDigitsLeft <= cnDigitsAtBottom)
+            // We don't create a switch below nBL_to_nDL(cnBitsAtBottom) + 1.
+            // Why?  Because we've defined nBL_to_nDL(cnBitsAtBottom) as
+            // automatic bitmap (no switch) and we may need a prefix at
+            // nBL_to_nDL(cnBitsAtBottom) + 1 since we don't have one in the
+            // bitmap.
+            if (nDigitsLeft <= nBL_to_nDL(cnBitsAtBottom))
             {
-                DBGI(printf("InsertGuts nDigitsLeft <= cnDigitsAtBottom\n"));
+                DBGI(printf("InsertGuts nDigitsLeft"
+                            " <= nBL_to_nDL(cnBitsAtBottom)\n"));
 
-                nDigitsLeft = cnDigitsAtBottom + 1;
+                nDigitsLeft = nBL_to_nDL(cnBitsAtBottom) + 1;
             }
 #else // defined(SKIP_LINKS)
-            assert(nDigitsLeft > cnDigitsAtBottom);
+            assert(nDigitsLeft > nBL_to_nDL(cnBitsAtBottom));
 #endif // defined(SKIP_LINKS)
             NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftOld,
                       /* wPopCnt */ 0);
@@ -1840,9 +1842,9 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     DBGR(printf("RemoveGuts\n"));
 
 #if (cwListPopCntMax != 0)
-    if (nDigitsLeft <= cnDigitsAtBottom)
+    if (nDigitsLeft <= nBL_to_nDL(cnBitsAtBottom))
 #else // (cwListPopCntMax != 0)
-    assert(nDigitsLeft <= cnDigitsAtBottom);
+    assert(nDigitsLeft <= nBL_to_nDL(cnBitsAtBottom));
 #endif // (cwListPopCntMax != 0)
     {
 #if (cnBitsAtBottom <= cnLogBitsPerWord)
@@ -2143,8 +2145,8 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 
 // *pwRootLn may not be a pointer to a switch
 // It may be a pointer to a list leaf.
-// And if cnDigitsAtBottom == cnDigitsPerWord - 1, then it could be a
-// pointer to a bitmap?
+// And if nBL_to_nDL(cnBitsAtBottom) == cnDigitsPerWord - 1, then it could be
+// a pointer to a bitmap?
             Word_t wPopCntLn;
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
             unsigned nTypeLn = wr_nType(*pwRootLn);
