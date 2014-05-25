@@ -167,8 +167,6 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #else // defined(BPD_TABLE)
 
-#endif // defined(BPD_TABLE)
-
 #define cnDigitsPerWord  (((cnBitsPerWord - 1) / cnBitsPerDigit) + 1)
 
 #define cnBitsIndexSzAtTop \
@@ -192,6 +190,8 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 // this one is not used in the lookup performance path
 #define nBL_to_nDL_NotAtTop(_nBL)  nBL_to_nDL(_nBL)
+
+#endif // defined(BPD_TABLE)
 
 // Choose bottom.
 // Bottom is where Bitmap is created automatically.
