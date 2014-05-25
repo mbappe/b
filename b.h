@@ -136,6 +136,8 @@
     #endif // (cnBitsPerDigit <= 0) || (cnBitsPerDigit > cnBitsPerWord)
 #endif // ! defined(cnBitsPerDigit)
 
+#define cnDigitsPerWord  DIV_UP(cnBitsPerWord, cnBitsPerDigit)
+
 #if defined(BPD_TABLE)
 
 // Use lookup tables (which theoretically support depth-based bits per digit)
@@ -143,8 +145,6 @@
 
 extern const unsigned anDL_to_nBL[];
 extern const unsigned anDL_to_nBitsIndexSz[];
-
-#define cnDigitsPerWord  (((cnBitsPerWord - 1) / cnBitsPerDigit) + 1)
 
 // this one is not used in the lookup performance path
 #define nDL_to_nBitsIndexSz(_nDL)  anDL_to_nBitsIndexSz[_nDL]
@@ -166,8 +166,6 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define nBL_to_nDL_NotAtTop(_nBL)  nBL_to_nDL(_nBL)
 
 #else // defined(BPD_TABLE)
-
-#define cnDigitsPerWord  (((cnBitsPerWord - 1) / cnBitsPerDigit) + 1)
 
 #define cnBitsIndexSzAtTop \
         (cnBitsPerWord - (cnDigitsPerWord - 1) * cnBitsPerDigit)
