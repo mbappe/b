@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.199 2014/05/25 12:51:12 mike Exp mike $
+// @(#) $Id: b.c,v 1.200 2014/05/25 17:10:59 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -42,11 +42,23 @@ Word_t j__AllocWordsJV12;  // Value Area 12-bit Decode
 #if defined(BPD_TABLE)
 
 const unsigned anDL_to_nBitsIndexSz[] = {
-    0, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
-       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
-       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
-       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
-       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit
+                    0, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+       cnBitsPerDigit
 };
 
 const unsigned anDL_to_nBL[] = {
@@ -54,7 +66,24 @@ const unsigned anDL_to_nBL[] = {
         4 * cnBitsPerDigit,  5 * cnBitsPerDigit,  6 * cnBitsPerDigit,
         7 * cnBitsPerDigit,  8 * cnBitsPerDigit,  9 * cnBitsPerDigit,
        10 * cnBitsPerDigit, 11 * cnBitsPerDigit, 12 * cnBitsPerDigit,
-       13 * cnBitsPerDigit, 14 * cnBitsPerDigit, 15 * cnBitsPerDigit
+       13 * cnBitsPerDigit, 14 * cnBitsPerDigit, 15 * cnBitsPerDigit,
+       16 * cnBitsPerDigit, 17 * cnBitsPerDigit, 18 * cnBitsPerDigit,
+       19 * cnBitsPerDigit, 20 * cnBitsPerDigit, 21 * cnBitsPerDigit,
+       22 * cnBitsPerDigit, 23 * cnBitsPerDigit, 24 * cnBitsPerDigit,
+       25 * cnBitsPerDigit, 26 * cnBitsPerDigit, 27 * cnBitsPerDigit,
+       28 * cnBitsPerDigit, 29 * cnBitsPerDigit, 30 * cnBitsPerDigit,
+       31 * cnBitsPerDigit, 32 * cnBitsPerDigit, 33 * cnBitsPerDigit,
+       34 * cnBitsPerDigit, 35 * cnBitsPerDigit, 36 * cnBitsPerDigit,
+       37 * cnBitsPerDigit, 38 * cnBitsPerDigit, 39 * cnBitsPerDigit,
+       40 * cnBitsPerDigit, 41 * cnBitsPerDigit, 42 * cnBitsPerDigit,
+       43 * cnBitsPerDigit, 44 * cnBitsPerDigit, 45 * cnBitsPerDigit,
+       46 * cnBitsPerDigit, 47 * cnBitsPerDigit, 48 * cnBitsPerDigit,
+       49 * cnBitsPerDigit, 50 * cnBitsPerDigit, 51 * cnBitsPerDigit,
+       52 * cnBitsPerDigit, 53 * cnBitsPerDigit, 54 * cnBitsPerDigit,
+       55 * cnBitsPerDigit, 56 * cnBitsPerDigit, 57 * cnBitsPerDigit,
+       58 * cnBitsPerDigit, 59 * cnBitsPerDigit, 60 * cnBitsPerDigit,
+       61 * cnBitsPerDigit, 62 * cnBitsPerDigit, 63 * cnBitsPerDigit,
+       64 * cnBitsPerDigit
 };
 
 #endif // defined(BPD_TABLE)
