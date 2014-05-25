@@ -5,7 +5,222 @@ rcs.tjz contains a copy of the RCS files in case the originals be found.
 Look for symbolic names in the RCS files.
 CP140405 is Checkpoint April 5, 2014.
 
+
+For 64-bit, bpd8, dab2, lsmax16, nobm, (gcc or clang):
+ -  best: ppsw
+ - worst: ppln (not much different; full spread is 43-46)
+For 32-bit, bpd8, dab2, (gcc or clang):
+ -  best: ppsw
+ - worst: ppln (10% worse; 25-27))
+For 64-bit, bpd6, dab3, lsmax16, nobm, (gcc or clang):
+ -  best: ppsw
+ - worst: ppln (50% worse; 48.5 - 74.5))
+For 32-bit, bpd6, dab3, (gcc or clang):
+ -  best: ppsw
+ - worst: ppln (10% worse; 35.5 - 39.5)
+For 64-bit, bpd4, dab4, lsmax16, nobm, (gcc or clang):
+ -  best: ppsw
+ - worst: ppln (10% worse; 85.5 - 94.5)
+For 32-bit, bpd4, dab4, lsmax16, nobm, (gcc or clang):
+ -  best: ppsw
+ - worst: ppln (10% worse; 41 - 44)
+For 64-bit, bpd3, dab5, lsmax16, nobm, (gcc or clang):
+ -  best: ppsw (noskipln is a little better)
+ - worst: ppln (10% ish)
+For 32-bit, bpd3, dab5, lsmax16, nobm, (gcc or clang):
+ -  best: ppsw
+ - worst: ppln (12% worse; 50 - 56) (skipln slightly better than other two)
+
+For 64-bit, bpd3, dab5, lsmax16, (gcc or clang): nobm-bmsw: 82-118
+For 64-bit, bpd8, dab2, lsmax16, (gcc or clang): nobm-bmsw: 44-92
+For 64-bit, bpd6, dab3, lsmax16, (gcc or clang): nobm-bmsw: 49-88
+
 Below follows partially thought-out ideas.
+
+5/24/14:
+
+Decode the relatively small type field encoded in the low bits of the
+link pointer with the help of a context.  The context can be inferred
+from the traversal down the tree.  A simple example of context is the
+number of switches traversed so far.  But we could add context from
+the population and/or by explicitly including it in nodes that have
+decode information in the first word.
+
+The ultimate performance (until totally full population) is a bitmap
+that spans the expanse.  We can't use this from the outset because it
+would use too much memory.
+
+A binary tree to a one-word bitmap leaf uses too much memory and has
+too many levels.
+
+Stick with the one-word bitmap.
+
+First insert creates skip link to one word bitmap leaf with one bit set.
+How do we know it is a skip link to a one word bitmap leaf?
+If we need an extra word for it, then it's two words for the first key.
+Second insert creates a one bit switch (if necessary) at the appropriate
+level.  Now using seven words.  Yuck.
+Third insert creates another switch and now using 11 words.
+
+First insert creates a list using two words (one word for key and one
+word of malloc overhead) (requires the use of one precious type value;
+at least one type value at the top).
+Second insert makes it four words (one word of length plus two words
+of keys plus one word of malloc overhead).
+Third insert makes it six words (one word of length plus three words
+of keys plus two words of malloc overhead).
+Fourth insert is still six words.
+Fifth insert is eight words.
+Seventh insert is ten words.
+Ninth insert creates a binary switch makes it 16 or 18 words (three words
+for switch plus one word malloc overhead plus two lists with 12 or 14 words).
+We could put the switch and the lists in the same chunk of memory, e.g.
+(type, len0, len1, key00, key01, ... , key10, key11, key12, ...).
+How big can this (type, len0, ... lenN-1, keys) get?  Concern is insert
+times?
+
+5/24/14:
+
+Representation:
+
+There is one line per non-NULL link.
+The number in the line is the sub-key of the link (it might not be the
+same as the offset if we have a compressed switch or the link
+is a skip link.
+Dot means ditto, i.e. bit is the same as in the previous line.
+Do we distinguish an uncompressed switch explicitly?
+Do we distinguish a skip link explicitly?
+Do we support non-NULL links with zero population?
+
+We use colons after the sub-key to indicate how many bits are decoded by
+the switch pointed to.
+If the sub-key in the next line extends beyond the colons then it is a
+skip link.
+
+0:                // Link to a 1-bit switch.
+.0::::            // Link to a 4-bit switch.
+..1001::          // Link to a 2-bit switch.
+......010101::    // Skip link to a 2-bit switch.
+............00::  // Link to a 2-bit switch at the bottom.
+..............01  // Link to leaf.
+..............11
+............10::
+..............01
+..............11
+............11::
+..............10
+......11:::       // Link to a 3-bit switch.
+........01111001  // Skip link to leaf.
+1001::::::::::::  // Skip link to a 12-bit switch at the bottom.
+....101010101101  // Link to leaf.
+....101011000100
+
+5/21/2014:
+- Bitmap leaf.
+- Uncompressed switch.
+- List leaf.
+- Bitmap switch.
+type 0: Look at first word of object pointed to for additional type info.
+type N: Uncompressed switch at f(N, nDL) digits left.
+type C: Bitmap switch at next digit down.
+
+5/16/2014:
+Use type==0 for anything other than uncompressed switch with one-word links.
+
+5/15/2014:
+
+When list gets too long create a two or four way switch.  Or add one more
+bit to the parent switch.  Where do we keep switch width/depth info?  At
+beginning of switch?
+
+==============
+
+First 63 keys go into double cache line list (128 bytes).
+What happens when the 64th key is inserted?
+64 keys supports 512 bytes.
+How do I insert 64 keys in the 512 bytes supported by them and how do we
+index them?
+Divide 64 keys into eighths?  firstkey[0..7] gives first key in each eighth.
+Put one eighth of keys in each eighth of 512 bytes.
+Insert maintains firstkey[0..7] and moves keys to balance if/when necessary.
+Is firstkey in switch or at beginning of buf?
+What happens when 256th key is inserted?
+256 keys support 2K bytes.
+How do I insert 256 keys into the 2K bytes supported by them and how do we
+index them?
+Divide into 32?  firstkey[0..31]?  One single cache line of first key.
+One single cache line of keys per search.
+Firstkey is at beginning of buf?
+What happens with 1Kth key is inserted?  Convert to bitmap.
+Convert to bitmap on 1024th key for one word  per key.
+Convert to bitmap on  512th key for two words per key.
+
+5/13/2014:
+
+One bit for each cache line that has a key.
+One cache line for each key.
+Each cache line is 128 bytes which is 16 words.  Too much.
+
+The partition with the most keys must fit in one cache line.
+Can other cache lines represent multiple partitions?
+
+The bitmap is 8K bytes which is 64 double cache lines or 128 single
+cache lines.
+No need for our lists to handle more than 128 single cache lines.
+Let's say we can grow to 127 single cache lines before converting to bitmap.
+What do the cache lines hold and how do we represent what they hold?
+Each single cache line could be a list of keys.
+How do we know which line the key we're looking for is in?
+7-bits picks a line.  9-bits of key left.  7 keys per word.  56 keys per line.
+128 keys using 8K bytes = 8 words per key.
+We can't dedicate a whole single cache line to one key.
+We must pick the correct line for each key.
+
+5/13/2014:
+
+First notes after experiencing the benefits of malloc using huge pages.
+The encoded type field in the least significant bits of the root word could
+be used to index into a table of decoded types (in the way Doug
+uses one big switch statement to decode a larger type field).  We could also
+use the current depth to index into the table for free with a one word link.
+A combination of the two indexes could give us number-of-types times
+number-of-depths possible decoded types.  But the decoded type at any point
+in the tree can't really be dynamic because it doesn't depend on anything
+specific about this particular tree.  In order to improve adaptibility we
+have to include the population in the index into the decode of the type.
+In order for that to be free in a one-word link we have to include the
+population in the least significant bits of the root word -- or -- not
+necessarily the population, but we have to change the encoded type based
+on the population.  We have 2^lsbits * depth to tell us what we are pointing
+at.  Or another way to look at it is we have 2^lsbits at every depth to
+tell us what we're pointing at.  But, at large depths we have to represent
+all possible smaller depths which takes away a bunch of our 2^lsbits values.
+Unless we restrict the smaller depths we choose to allow.
+We want to avoid extra memory references when out of the cache.  They
+shouldn't matter as much when in the cache.  So we want to restrict lists
+that are out of the cache to a single cache line (64 or 128 bytes) and that
+line must include the list header.
+And we want to make sure that the switch above a bitmap is in the cache.
+I think it implies the lowest level switch is at the same level whether the
+leaf is a bitmap or a list.
+For 64-bit pointers and a 32-bit expanse, leaving 12-bits to decode below
+the lowest level switch means 1 million links at the next level up.  That's
+8 million bytes with one word links and 16 million bytes with two word links.
+The second word doubles our cache requirements or makes our cache half as
+effective.  What if we tailor the type table based on how much cache we want
+the array to use?  Less cache means more bits to decode at the leaf.
+Does it mean more memory used because we transition to bitmap sooner with
+smaller population?  Yes.  Exciting.
+A 16-bit bitmap means 16-bit keys.  31 keys in one cache line.  63 keys in
+two cache lines.  64 keys uses 8K bytes.  That's 16 words per key.  Yikes.
+How do we improve memory usage?  Decode more bits in the switch.  But do
+it with an implied offset into a contiguous list of lists.
+64 keys becomes 128 words which is eight cache lines.  3-bits of decode picks
+the cache line leaving 13 bits of key and still only 4 keys per word.
+So still only 63 keys in one line pushes us to the next level.  Worst case
+is ugly.  We need population based division of the list.  To pick the cache
+line.  But isn't insert going to be expensive and involve numerous cache
+lines?
 
 4/11/2014:
 
