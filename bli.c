@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.131 2014/05/25 17:46:31 mike Exp mike $
+// @(#) $Id: bli.c,v 1.132 2014/05/26 13:50:31 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -73,12 +73,14 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #if defined(BM_IN_LINK)
     pwRoot = NULL; // used for top detection
 #else // defined(BM_IN_LINK)
-#if defined(PP_IN_LINK) && ( ! defined(SKIP_PREFIX_CHECK) )
-    // silence unwarranted gcc used before initialized warning
-    // it is only uninitialized on the first time through the loop
-    // and we only use it if nBitsLeft != cnBitsPerWord
+#if defined(PP_IN_LINK)
+    // Silence unwarranted gcc used before initialized warning.
+    // pwRoot is only uninitialized on the first time through the loop.
+    // And we only use it if nBitsLeft != cnBitsPerWord
+    // or if bNeedsPrefixCheck is true.
+    // And both of those imply it's not the first time through the loop.
     pwRoot = NULL;
-#endif // defined(PP_IN_LINK) && ( ! defined(SKIP_PREFIX_CHECK) )
+#endif // defined(PP_IN_LINK)
 #endif // defined(BM_IN_LINK)
 #else // defined(LOOKUP)
 
@@ -173,6 +175,8 @@ again:
         // What about defined(RECURSIVE)?
         if (nDigitsLeft != cnDigitsPerWord)
         {
+            // If nDigitsLeft != cnDigitsPerWord then we're not at the top.
+            // And pwRoot is initialized despite what gcc might think.
             wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
 #if ! defined(LOOKUP)
             DBGX(printf("wPopCnt (before incr) %zd\n", (size_t)wPopCnt));
@@ -228,6 +232,8 @@ again:
                 // leaf does not have whole key
                 // What if there were no skips in the part that is missing?
                 || ( ! bNeedPrefixCheck ) // we followed no skip links
+                // If we need a prefix check, then we're not at the top.
+                // And pwRoot is initialized despite what gcc might think.
                 || ((wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeft),
                     LOG(1 | (wPrefix ^ wKey))
                         // prefix in parent switch doesn't contain last digit
