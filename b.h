@@ -132,6 +132,7 @@
     #define cnBitsPerDigit 8
 #else // ! defined(cnBitsPerDigit)
     #if (cnBitsPerDigit <= 0) || (cnBitsPerDigit > cnBitsPerWord)
+        #undef  cnBitsPerDigit
         #define cnBitsPerDigit  cnBitsPerWord
     #endif // (cnBitsPerDigit <= 0) || (cnBitsPerDigit > cnBitsPerWord)
 #endif // ! defined(cnBitsPerDigit)
