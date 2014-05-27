@@ -609,10 +609,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 
     MyFree(pwr, nWords - sizeof(Link_t) / sizeof(Word_t));
 
-    // Remember to finish updating *pwRoot.
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-    set_wr_nType(*pwRoot, nDigitsLeft_to_tp(nDigitsLeft));
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+    // Caller updates type field in *pwRoot if necessary.
+
     DBGI(printf("After NewLink"));
     DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 }
@@ -1726,7 +1724,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
     else
     {
 #if defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
+#if defined(TYPE_IS_RELATIVE)
+        unsigned nDLR = nDigitsLeft - tp_to_nDS(nType);
+#else // defined(TYPE_IS_RELATIVE)
         unsigned nDLR = tp_to_nDigitsLeft(nType);
+#endif // defined(TYPE_IS_RELATIVE)
         Word_t wPrefix = PWR_wPrefix(pwRoot, pwr, nDLR);
         if ((nDLR == nDigitsLeft) || (wPrefix == w_wPrefix(wKey, nDLR)))
 #endif // defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
@@ -1738,7 +1740,16 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #endif // defined(SKIP_LINKS)
             // no link -- for now -- will eventually have to check
             NewLink(pwRoot, wKey, nDigitsLeft);
-            Insert( pwRoot, wKey, nDigitsLeft);
+            // Remember to update type field in *pwRoot if necessary.
+            // Would need to add a parameter to NewLink to do it there.
+#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+#if defined(TYPE_IS_RELATIVE)
+            set_wr_nType(*pwRoot, nDS_to_tp(nDigitsLeft - nDLR));
+#else // defined(TYPE_IS_RELATIVE)
+            set_wr_nType(*pwRoot, nDigitsLeft_to_tp(nDigitsLeft));
+#endif // defined(TYPE_IS_RELATIVE)
+#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+            Insert(pwRoot, wKey, nDigitsLeft);
         }
 #endif // defined(BM_SWITCH_FOR_REAL)
 #if defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
