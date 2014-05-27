@@ -343,31 +343,52 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 // Data structure constants and macros.
 
+// Extract nType from wRoot.
 #define     wr_nType(_wr)         ((_wr) & cnMallocMask)
+// Set the nType field in wRoot.
 #define set_wr_nType(_wr, _type)  ((_wr) = ((_wr) & ~cnMallocMask) | (_type))
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
+// Extract the pwRoot field from wRoot given the value of the type field.
 #define     wr_tp_pwr(_wr, _tp)          ((Word_t *)((_wr) ^ (_tp)))
+// Extract the pwRoot field from wRoot.
 #define     wr_pwr(_wr)                  ((Word_t *)((_wr) & ~cnMallocMask))
 
+// Set the pwRoot field in wRoot.
 #define set_wr_pwr(_wr, _pwr) \
                 ((_wr) = ((_wr) & cnMallocMask) | (Word_t)(_pwr))
 
+// Set the pwRoot and nType fields in wRoot.
 #define set_wr(_wr, _pwr, _type)  ((_wr) = (Word_t)(_pwr) | (_type))
+
+#if defined(TYPE_IS_RELATIVE)
+
+#define tp_to_nDS(_tp)   ((_tp) - 1)
+#define nDS_to_tp(_nDS)  ((_nDS) + 1)
+
+#define     wr_nDS(_wr)        (tp_to_nDS(wr_nType(_wr)))
+#define set_wr_nDS(_wr, _nDS)  (set_wr_nType((_wr), nDS_to_tp(_nDS)))
+
+#define     wr_bIsSwitchDS(_wr, _tp, _nDS) \
+   ((_tp) = wr_nType(_wr), \ (_nDS) = tp_to_nDS(_tp), \ tp_bIsSwitch(_tp))
+
+#else // defined(TYPE_IS_RELATIVE)
 
 #define tp_to_nDigitsLeft(_tp)   ((_tp) + cnDigitsAtBottom - 1)
 #define nDigitsLeft_to_tp(_nDL)  ((_nDL) + 1 - cnDigitsAtBottom)
 
 #define     wr_nDigitsLeft(_wr)     (tp_to_nDigitsLeft(wr_nType(_wr)))
 #define set_wr_nDigitsLeft(_wr, _nDL) \
-    (set_wr_nType((_wr), nDigitsLeft_to_tp((_nDL) + 1 - cnDigitsAtBottom)))
-
-#define     tp_bIsSwitch(_tp)          ((_tp) != 0)
-#define     wr_bIsSwitch(_wr)          (tp_bIsSwitch(wr_nType(_wr)))
+    (set_wr_nType((_wr), nDigitsLeft_to_tp(_nDL)))
 
 #define     wr_bIsSwitchDL(_wr, _tp, _nDL) \
    ((_tp) = wr_nType(_wr), (_nDL) = tp_to_nDigitsLeft(_tp), tp_bIsSwitch(_tp))
+
+#endif // defined(TYPE_IS_RELATIVE)
+
+#define     tp_bIsSwitch(_tp)          ((_tp) != 0)
+#define     wr_bIsSwitch(_wr)          (tp_bIsSwitch(wr_nType(_wr)))
 
 #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 

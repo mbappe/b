@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.200 2014/05/25 17:10:59 mike Exp $
+// @(#) $Id: b.c,v 1.201 2014/05/25 20:30:47 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -322,6 +322,7 @@ OldBitmap(Word_t wRoot)
 // PP_IN_LINK to figure out if the prefix exists.
 // Initialize its bitmap if there is one.  Need to know nDigitsLeftUp for
 // BM_IN_LINK to figure out if the bitmap exists.
+// Need to know nDigitsLeftUp if TYPE_IS_RELATIVE to figure nDS.
 // Install wRoot at pwRoot.  Need to know nDigitsLeft.
 // Account for the memory (for both JUDYA and JUDYB columns in Judy1LHTime).
 // Need to know if we are at the bottom so we should count it as a bitmap.
@@ -397,7 +398,12 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     DBGM(printf("NewSwitch(pwRoot %p wKey "OWx" nDL %d nDLU %d) pwr %p\n",
         (void *)pwRoot, wKey, nDigitsLeft, nDigitsLeftUp, (void *)pwr));
 
+#if defined(TYPE_IS_RELATIVE)
+    set_wr(*pwRoot, pwr,
+           nDS_to_tp(nDigitsLeftUp - nDigitsLeft));
+#else // defined(TYPE_IS_RELATIVE)
     set_wr(*pwRoot, pwr, nDigitsLeft_to_tp(nDigitsLeft));
+#endif // defined(TYPE_IS_RELATIVE)
 
 #if defined(BM_SWITCH)
 #if defined(BM_IN_LINK)
@@ -775,11 +781,12 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
     nType = wr_nType(wRoot); (void)nType; // silence gcc
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-    if (tp_to_nDigitsLeft(nType) > nBL_to_nDL(nBitsLeft))
-    {
-        DBGI(printf("\nnType %d\n", nType));
-    }
+#if ! defined(TYPE_IS_RELATIVE)
+    assert(nDigitsLeft - tp_to_nDS(nType)
+        >= nBL_to_nDL(cnBitsAtBottom));
+#else // defined(TYPE_IS_RELATIVE)
     assert(tp_to_nDigitsLeft(nType) <= nBL_to_nDL(nBitsLeft));
+#endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
     pwr = wr_tp_pwr(wRoot, nType);
@@ -856,7 +863,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
     unsigned nDigitsLeftPrev = nDigitsLeft;
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+#if defined(TYPE_IS_RELATIVE)
+    nDigitsLeft = nDigitsLeft - tp_to_nDS(nType);
+#else // defined(TYPE_IS_RELATIVE)
     nDigitsLeft = tp_to_nDigitsLeft(nType);
+#endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
     nBitsLeft = nDL_to_nBL(nDigitsLeft);
@@ -1733,8 +1744,13 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             unsigned nDigitsLeftRoot;
             Word_t wPopCnt;
 
+#if defined(TYPE_IS_RELATIVE)
+            nDigitsLeftRoot = nDigitsLeft - tp_to_nDS(nType);
+#else // defined(TYPE_IS_RELATIVE)
             nDigitsLeftRoot = tp_to_nDigitsLeft(nType);
+#endif // defined(TYPE_IS_RELATIVE)
 
+            // Can't have a prefix mismatch if there is no skip.
             assert(nDigitsLeftRoot < nDigitsLeft);
 
             unsigned nDigitsLeftUp = nDigitsLeft;
@@ -1828,6 +1844,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             }
 #endif // defined(BM_IN_LINK)
 
+#if defined(TYPE_IS_RELATIVE)
+            DBGI(printf("nDL %d nDLR %d nDLU %d\n",
+                   nDigitsLeft, nDigitsLeftRoot, nDigitsLeftUp));
+            set_wr_nDS(wRoot, nDigitsLeft - nDigitsLeftRoot - 1);
+#endif // defined(TYPE_IS_RELATIVE)
             // Copy wRoot from old link to new link.
             pwr_pLinks(pwSw)[nIndex].ln_wRoot = wRoot;
 
@@ -2239,11 +2260,19 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #else // defined(PP_IN_LINK)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+#if defined(TYPE_IS_RELATIVE)
+        wPopCnt = PWR_wPopCnt(NULL, pwr, cnDigitsPerWord - tp_to_nDS(nType));
+        if (wPopCnt == 0)
+        {
+            wPopCnt = 1 + wPrefixPopMask(cnDigitsPerWord - tp_to_nDS(nType));
+        }
+#else // defined(TYPE_IS_RELATIVE)
         wPopCnt = PWR_wPopCnt(NULL, pwr, tp_to_nDigitsLeft(nType));
         if (wPopCnt == 0)
         {
             wPopCnt = wPrefixPopMask(tp_to_nDigitsLeft(nType)) + 1;
         }
+#endif // defined(TYPE_IS_RELATIVE)
 #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         wPopCnt = PWR_wPopCnt(NULL, pwr, cnDigitsPerWord);
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
