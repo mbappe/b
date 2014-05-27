@@ -908,8 +908,13 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
                 if (tp_bIsSwitch(nTypeLn))
                 {
                     wPopCntLn
+#if defined(TYPE_IS_RELATIVE)
+                        = PWR_wPopCnt(pwRootLn, NULL,
+                                      nDigitsLeft - wr_nDS(*pwRootLn));
+#else // defined(TYPE_IS_RELATIVE)
                         = PWR_wPopCnt(pwRootLn, NULL,
                                       wr_nDigitsLeft(*pwRootLn));
+#endif // defined(TYPE_IS_RELATIVE)
                 }
                 else
 #endif // defined(SKIP_LINKS)
@@ -927,7 +932,12 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
                 if ((wPopCntLn == 0) && (*pwRootLn != 0))
                 {
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+#if defined(TYPE_IS_RELATIVE)
+                    wPopCnt += 1
+                            + wPrefixPopMask(nDigitsLeft - wr_nDS(*pwRootLn));
+#else // defined(TYPE_IS_RELATIVE)
                     wPopCnt += wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1;
+#endif // defined(TYPE_IS_RELATIVE)
 #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                     wPopCnt += wPrefixPopMask(cnDigitsPerWord - 1) + 1;
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -2203,8 +2213,12 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             if (tp_bIsSwitch(nTypeLn))
             {
                 wPopCntLn
+#if defined(TYPE_IS_RELATIVE)
                     = PWR_wPopCnt(pwRootLn, NULL,
-                                  wr_nDigitsLeft(*pwRootLn));
+                                  cnDigitsPerWord - wr_nDS(*pwRootLn));
+#else // defined(TYPE_IS_RELATIVE)
+                    = PWR_wPopCnt(pwRootLn, NULL, wr_nDigitsLeft(*pwRootLn));
+#endif // defined(TYPE_IS_RELATIVE)
             }
             else
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -2235,20 +2249,29 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             // population count is not zero.
             if ((wPopCntLn == 0) && (*pwRootLn != 0))
             {
+#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                int nDigitsLeft =
+#if defined(TYPE_IS_RELATIVE)
+                    cnDigitsPerWord - wr_nDS(*pwRootLn)
+#else // defined(TYPE_IS_RELATIVE)
+                    wr_nDigitsLeft(*pwRootLn)
+#endif // defined(TYPE_IS_RELATIVE)
+                    ;
+#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+
 #if defined(DEBUG_INSERT)
                 printf("Pop sum (full)");
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                 printf(" mask "Owx" %"_fw"d\n",
-                    wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)),
-                    wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)));
+                    wPrefixPopMask(nDigitsLeft), wPrefixPopMask(nDigitsLeft));
                 printf("nn %d wPopCntLn %"_fw"d "OWx"\n",
-                    nn, wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1,
-                    wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1);
+                    nn, wPrefixPopMask(nDigitsLeft) + 1,
+                    wPrefixPopMask(nDigitsLeft) + 1);
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #endif // defined(DEBUG_INSERT)
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                wPopCnt += wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1;
+                wPopCnt += wPrefixPopMask(nDigitsLeft) + 1;
 #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                 wPopCnt += wPrefixPopMask(cnDigitsPerWord - 1) + 1;
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -2256,23 +2279,31 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
         }
         }
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-        assert(wPopCnt - 1 <= wPrefixPopMask(tp_to_nDigitsLeft(nType)));
+#if ! defined(NDEBUG)
+        int nDigitsLeft =
+#if defined(TYPE_IS_RELATIVE)
+            cnDigitsPerWord - tp_to_nDS(nType)
+#else // defined(TYPE_IS_RELATIVE)
+            tp_to_nDigitsLeft(nType)
+#endif // defined(TYPE_IS_RELATIVE)
+            ;
+        assert(wPopCnt - 1 <= wPrefixPopMask(nDigitsLeft));
+#endif // ! defined(NDEBUG)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #else // defined(PP_IN_LINK)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+        int nDigitsLeft =
 #if defined(TYPE_IS_RELATIVE)
-        wPopCnt = PWR_wPopCnt(NULL, pwr, cnDigitsPerWord - tp_to_nDS(nType));
-        if (wPopCnt == 0)
-        {
-            wPopCnt = 1 + wPrefixPopMask(cnDigitsPerWord - tp_to_nDS(nType));
-        }
+            cnDigitsPerWord - tp_to_nDS(nType)
 #else // defined(TYPE_IS_RELATIVE)
-        wPopCnt = PWR_wPopCnt(NULL, pwr, tp_to_nDigitsLeft(nType));
+            tp_to_nDigitsLeft(nType)
+#endif // defined(TYPE_IS_RELATIVE)
+            ;
+        wPopCnt = PWR_wPopCnt(NULL, pwr, nDigitsLeft);
         if (wPopCnt == 0)
         {
-            wPopCnt = wPrefixPopMask(tp_to_nDigitsLeft(nType)) + 1;
+            wPopCnt = wPrefixPopMask(nDigitsLeft) + 1;
         }
-#endif // defined(TYPE_IS_RELATIVE)
 #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         wPopCnt = PWR_wPopCnt(NULL, pwr, cnDigitsPerWord);
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)

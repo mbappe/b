@@ -445,12 +445,12 @@ again:
           #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
                     for (Word_t ww = 0; ww < EXP(cnBitsIndexSzAtTop); ww++)
                     {
-      #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+          #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
                         Word_t *pwRootLn = &pwr_pLinks(pwr)[xx].ln_wRoot;
                         xx++;
-      #else // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+          #else // defined(BM_SWITCH) && !defined(BM_IN_LINK)
                         Word_t *pwRootLn = &pwr_pLinks(pwr)[ww].ln_wRoot;
-      #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+          #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
 // looking at the next pwRoot seems like something that should be deferred
 // but if we defer, then we won't have the previous pwRoot, but if this
 // only happens at the top, then the previous pwRoot will be pwRootOrig?
@@ -458,27 +458,28 @@ again:
 // What if ln_wRoot is a list?
 // nDL cannot be obtained from ln_wRoot.
 // We must use nDigitsLeft in that case.
-      #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                        DBGX(printf("wr_nDL %"_fw"d",
-                                        wr_nDigitsLeft(*pwRootLn)));
+          #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                        // Do we really need a new variable here?
+                        // Or can we just use nDigitsLeft?
+                        int nDigitsLeftX = wr_bIsSwitch(*pwRootLn) ?
+              #if defined(TYPE_IS_RELATIVE)
+                                           nDigitsLeft - wr_nDS(*pwRootLn)
+              #else // defined(TYPE_IS_RELATIVE)
+                                           wr_nDigitsLeft(*pwRootLn)
+              #endif // defined(TYPE_IS_RELATIVE)
+                                       : nDigitsLeft;
+                        DBGX(printf("wr_nDLX %"_fw"d", nDigitsLeftX));
                         DBGX(printf(" PWR_wPopCnt %"_fw"d\n",
-                            PWR_wPopCnt(pwRootLn,
-                                        NULL,
-                                        wr_bIsSwitch(*pwRootLn)
-                                            ? wr_nDigitsLeft(*pwRootLn)
-                                            : nDigitsLeft)));
-      #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                                    PWR_wPopCnt(pwRootLn, NULL, nDigitsLeftX)
+                                    ));
+          #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                         if (((*pwRootLn != 0) && (ww != wIndex))
                                 || (
-      #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                                    PWR_wPopCnt(pwRootLn,
-                                            NULL,
-                                            wr_bIsSwitch(*pwRootLn)
-                                                ? wr_nDigitsLeft(*pwRootLn)
-                                                : nDigitsLeft)
-      #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+          #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                                    PWR_wPopCnt(pwRootLn, NULL, nDigitsLeftX)
+          #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                                     PWR_wPopCnt(pwRootLn, NULL, nDigitsLeft)
-      #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+          #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                                         != 0)
                             )
                         {
@@ -490,32 +491,32 @@ again:
                     // switch pop is zero
                     FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDigitsLeftUp),
                         /* bDump */ 0);
-      #if defined(PP_IN_LINK)
+          #if defined(PP_IN_LINK)
                     assert(PWR_wPrefix(pwRoot, NULL, nDigitsLeftUp) == 0);
-      #endif // defined(PP_IN_LINK)
+          #endif // defined(PP_IN_LINK)
 
                     *pwRoot = 0;
                     return KeyFound;
 notEmpty:;
                 }
-  #endif // defined(REMOVE)
+      #endif // defined(REMOVE)
             }
             else
-#endif // defined(PP_IN_LINK)
+  #endif // defined(PP_IN_LINK)
             {
                 // Increment or decrement population count on the way in.
                 wPopCnt = PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot);
-#if defined(REMOVE)
+  #if defined(REMOVE)
                 if (bCleanup)
                 {
                     if (wPopCnt == 0)
                     {
                         FreeArrayGuts(pwRoot, wKey,
-  #if defined(BM_IN_LINK)
+      #if defined(BM_IN_LINK)
                             nDL_to_nBL(nDigitsLeftUp),
-  #else // defined(BM_IN_LINK)
+      #else // defined(BM_IN_LINK)
                             nDL_to_nBL(nDigitsLeftRoot),
-  #endif // defined(BM_IN_LINK)
+      #endif // defined(BM_IN_LINK)
                             /* bDump */ 0);
       #if defined(PP_IN_LINK)
           #if defined(BM_IN_LINK)
