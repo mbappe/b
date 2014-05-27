@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.131 2014/05/25 17:46:31 mike Exp mike $
+// @(#) $Id: bli.c,v 1.134 2014/05/26 13:57:36 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -143,15 +143,16 @@ again:
     DBGX(printf("# wRoot "OWx" wKey "OWx" nDigitsLeft %d\n",
             wRoot, wKey, nDigitsLeft));
 
+#if (cwListPopCntMax == 0)
+    if (wRoot != 0)
+#endif // (cwListPopCntMax == 0)
+    {
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     nType = wr_nType(wRoot);
-
-    switch (nType)
-#else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-    if (wRoot != 0)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-    {
 #if (cwListPopCntMax != 0)
+    switch (nType)
+    {
     case 0:
     {
         DBGX(printf("List nDigitsLeft %d\n", nDigitsLeft));
@@ -320,20 +321,21 @@ again:
       #endif // defined(COMPRESSED_LISTS)
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
         }
-
         break;
-
     } // end of case
-
     default:
-#endif // (cwListPopCntMax != 0)
     {
+#endif // (cwListPopCntMax != 0)
         // switch
 
         pwr = wr_tp_pwr(wRoot, nType); // pointer extracted from wRoot
 
 #if defined(SKIP_LINKS)
+  #if defined(TYPE_IS_RELATIVE)
+        nDigitsLeftRoot = nDigitsLeft - tp_to_nDS(nType);
+  #else // defined(TYPE_IS_RELATIVE)
         nDigitsLeftRoot = tp_to_nDigitsLeft(nType);
+  #endif // defined(TYPE_IS_RELATIVE)
         assert(nDigitsLeftRoot <= nDigitsLeft); // reserved
 #else // defined(SKIP_LINKS)
         nDigitsLeftRoot = nDigitsLeft; // prev
@@ -695,9 +697,12 @@ notEmpty:;
   #endif // defined(SKIP_LINKS)
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
         }
+#if (cwListPopCntMax != 0)
+        break;
     } // end of case
-
     } // end of switch
+#endif // (cwListPopCntMax != 0)
+    } // end of if (wRoot != 0)
 
 #if defined(BM_SWITCH_FOR_REAL)
 notFound:
@@ -1028,11 +1033,25 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
           #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
       #else // defined(PP_IN_LINK)
           #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+              #if defined(TYPE_IS_RELATIVE)
+
+            wPopCnt = PWR_wPopCnt(NULL, pwr,
+                               cnDigitsPerWord - tp_to_nDS(nType));
+            if (wPopCnt == 0)
+            {
+                wPopCnt = wPrefixPopMask(
+                           cnDigitsPerWord - tp_to_nDS(nType)) + 1;
+            }
+
+              #else // defined(TYPE_IS_RELATIVE)
+
             wPopCnt = PWR_wPopCnt(NULL, pwr, tp_to_nDigitsLeft(nType));
             if (wPopCnt == 0)
             {
                 wPopCnt = wPrefixPopMask(tp_to_nDigitsLeft(nType)) + 1;
             }
+
+              #endif // defined(TYPE_IS_RELATIVE)
           #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
             wPopCnt = PWR_wPopCnt(NULL, pwr, cnDigitsPerWord);
           #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
