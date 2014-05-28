@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.201 2014/05/25 20:30:47 mike Exp mike $
+// @(#) $Id: b.c,v 1.204 2014/05/27 12:20:03 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1730,7 +1730,19 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         unsigned nDLR = tp_to_nDigitsLeft(nType);
 #endif // defined(TYPE_IS_RELATIVE)
         Word_t wPrefix = PWR_wPrefix(pwRoot, pwr, nDLR);
-        if ((nDLR == nDigitsLeft) || (wPrefix == w_wPrefix(wKey, nDLR)))
+        // Test to see if this is a missing link case.
+        // If not, then it is a prefix mismatch case.
+        // nDigitsLeft does not include any skip indicated in nType.
+        // If nDS == 0 or nDigitsLeft == tp_to_nDigitsLeft, then we know
+        // it is a missing link because it can't be a prefix mismatch.
+        // Unfortunately, nDS != 0 (or the other) does not imply a prefix
+        // mismatch.
+        // It's a bit of a bummer that we are doing the prefix check again.
+        // Can we avoid it as follows:
+        // if ((nDLR == nDigitsLeft)
+        //     || (wPrefix == w_wPrefixNotAtTop(wKey, nDLR)))
+        // If nDS != 0 then we're not at the top or PP_IN_LINK is not defined.
+        if (wPrefix == w_wPrefix(wKey, nDLR))
 #endif // defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
 #if defined(BM_SWITCH_FOR_REAL)
         {
@@ -1739,14 +1751,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                  wPrefix, w_wPrefix(wKey, nDLR), nDLR));
 #endif // defined(SKIP_LINKS)
             // no link -- for now -- will eventually have to check
-            NewLink(pwRoot, wKey, nDigitsLeft);
+            NewLink(pwRoot, wKey, nDLR);
             // Remember to update type field in *pwRoot if necessary.
             // Would need to add a parameter to NewLink to do it there.
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(TYPE_IS_RELATIVE)
             set_wr_nType(*pwRoot, nDS_to_tp(nDigitsLeft - nDLR));
 #else // defined(TYPE_IS_RELATIVE)
-            set_wr_nType(*pwRoot, nDigitsLeft_to_tp(nDigitsLeft));
+            set_wr_nType(*pwRoot, nDigitsLeft_to_tp(nDLR));
 #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
             Insert(pwRoot, wKey, nDigitsLeft);

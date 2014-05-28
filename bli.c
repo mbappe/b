@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.134 2014/05/26 13:57:36 mike Exp $
+// @(#) $Id: bli.c,v 1.136 2014/05/27 05:18:34 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -60,7 +60,7 @@ Lookup(Word_t wRoot, Word_t wKey)
 InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #endif // defined(LOOKUP)
 {
-
+    unsigned nDigitsLeftUp; (void)nDigitsLeftUp; // silence gcc
 #if defined(LOOKUP)
     unsigned nDigitsLeft = cnDigitsPerWord;
   #if defined(SKIP_LINKS)
@@ -92,7 +92,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
           #endif // defined(INSERT)
   #endif // !defined(RECURSIVE)
   #if defined(PP_IN_LINK) || defined(BM_IN_LINK)
-    unsigned nDigitsLeftUp = nDigitsLeft; (void)nDigitsLeftUp; // silence gcc
+    nDigitsLeftUp = nDigitsLeft;
   #endif // defined(PP_IN_LINK) || defined(BM_IN_LINK)
 #endif // defined(LOOKUP)
 #if !defined(RECURSIVE)
@@ -360,11 +360,11 @@ again:
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
         {
-#if !defined(LOOKUP)
-  #if defined(PP_IN_LINK) || defined(BM_IN_LINK)
+#if defined(BM_SWITCH_FOR_REAL) \
+    || ( ! defined(LOOKUP) \
+        && (defined(PP_IN_LINK) || defined(BM_IN_LINK)) )
             nDigitsLeftUp = nDigitsLeft;
-  #endif // defined(PP_IN_LINK) || defined(BM_IN_LINK)
-#endif // !defined(LOOKUP)
+#endif // defined(BM_SWITCH_FOR_REAL) ...
             nDigitsLeft = nDigitsLeftRoot - 1;
 
             Word_t wIndex = ((wKey >> nDL_to_nBL_NotAtTop(nDigitsLeft))
@@ -409,7 +409,7 @@ again:
                 {
   #if defined(BM_SWITCH_FOR_REAL)
                     DBGX(printf("missing link\n"));
-                    nDigitsLeft = nDigitsLeftRoot; // back up for InsertGuts
+                    nDigitsLeft = nDigitsLeftUp; // back up for InsertGuts
                     goto notFound;
   #else // defined(BM_SWITCH_FOR_REAL)
                     assert(0); // only for now
@@ -716,6 +716,9 @@ notFound:
     assert((nDigitsLeft != cnDigitsPerWord) || (pwRoot == pwRootOrig));
       #endif // !defined(RECURSIVE)
   #endif // defined(BM_IN_LINK)
+    // InsertGuts is called with a pwRoot and nDigitsLeft indicates the
+    // bits that were not decoded in identifying pwRoot.  nDigitsLeft
+    // does not include any skip indicated in the type field of *pwRoot.
     return InsertGuts(pwRoot, wKey, nDigitsLeft, wRoot);
 undo:
 #endif // defined(INSERT)
@@ -908,13 +911,9 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     }
   #endif // defined(DEBUG)
 
-  #if defined(DEBUG_INSERT)
-    {
-        printf("\n# After Insert(wKey "OWx") Dump\n", wKey);
-        Dump((Word_t *)ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord);
-        printf("\n");
-    }
-  #endif // defined(DEBUG_INSERT)
+    DBGI(printf("\n# After Insert(wKey "OWx") Dump\n", wKey));
+    DBGI(Dump((Word_t *)ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord));
+    DBGI(printf("\n"));
 
   #if defined(DEBUG)
     {
