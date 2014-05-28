@@ -250,6 +250,13 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define SMETRICS(x)
 #endif // defined SEARCH_METRICS
 
+#if defined(DEBUG)
+#define DBG(x)  (x)
+#define cwDebugThreshold  0ULL
+#else // defined(DEBUG)
+#define DBG(x)
+#endif // defined(DEBUG)
+
 #if defined(DEBUG_INSERT)
 #if (cwDebugThreshold != 0)
 #define DBGI(x)  if (wInserts >= cwDebugThreshold) (x)
@@ -295,13 +302,6 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define DEBUG
 #endif // !defined(DEBUG)
 #endif // defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || ...
-
-#if defined(DEBUG)
-#define DBG(x)  (x)
-#define cwDebugThreshold  0ULL
-#else // defined(DEBUG)
-#define DBG(x)
-#endif // defined(DEBUG)
 
 #if !defined(Owx)
 #if defined(_WIN64)
