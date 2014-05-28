@@ -1729,7 +1729,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #else // defined(TYPE_IS_RELATIVE)
         unsigned nDLR = tp_to_nDigitsLeft(nType);
 #endif // defined(TYPE_IS_RELATIVE)
-        Word_t wPrefix = PWR_wPrefix(pwRoot, pwr, nDLR);
+        Word_t wPrefix;
         // Test to see if this is a missing link case.
         // If not, then it is a prefix mismatch case.
         // nDigitsLeft does not include any skip indicated in nType.
@@ -1737,18 +1737,20 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         // it is a missing link because it can't be a prefix mismatch.
         // Unfortunately, nDS != 0 (or the other) does not imply a prefix
         // mismatch.
+        // if (wPrefix == w_wPrefix(wKey, nDLR))
         // It's a bit of a bummer that we are doing the prefix check again.
         // Can we avoid it as follows:
-        // if ((nDLR == nDigitsLeft)
-        //     || (wPrefix == w_wPrefixNotAtTop(wKey, nDLR)))
+        if ((nDLR == nDigitsLeft)
+            || ((wPrefix = PWR_wPrefix(pwRoot, pwr, nDLR))
+                == w_wPrefixNotAtTop(wKey, nDLR)))
         // If nDS != 0 then we're not at the top or PP_IN_LINK is not defined.
-        if (wPrefix == w_wPrefix(wKey, nDLR))
 #endif // defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
 #if defined(BM_SWITCH_FOR_REAL)
         {
 #if defined(SKIP_LINKS)
             DBGI(printf("wPrefix "OWx" w_wPrefix "OWx" nDLR %d\n",
-                 wPrefix, w_wPrefix(wKey, nDLR), nDLR));
+                        PWR_wPrefix(pwRoot, pwr, nDLR),
+                        w_wPrefix(wKey, nDLR), nDLR));
 #endif // defined(SKIP_LINKS)
             // no link -- for now -- will eventually have to check
             NewLink(pwRoot, wKey, nDLR);
