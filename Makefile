@@ -149,7 +149,7 @@ DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 LIBS = -lm
 
 FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c t.c stubs.c Makefile tocsv toc90
-FILES_FROM_ME += bb bbwrap bbq bbwrapq
+FILES_FROM_ME += bb bbwrap
 FILES_FROM_ME += bench Makefile.perf makewrap bench1 benchall README.meb
 FILES_FROM_ME += sister oa2ul.c rcs.tjz
 # I periodically make changes to the files provided by Doug.
