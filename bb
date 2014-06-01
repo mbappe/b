@@ -7,6 +7,17 @@ set -x # turn echo on
 
 cp b b.bb
 
+if [ $1 = -q ]
+then
+    SLIST='1'
+    NOPT=-n10000
+else
+    SLIST='1 -7 -1 7'
+    DLIST=-D
+    BLIST=-B16
+    NOPT=-n50000
+fi
+
 # TIME=time
 
 # B="b.bb -1l"
@@ -19,7 +30,7 @@ cp b b.bb
 # -x does wait for context switch; useful for timing with small pops
 # -l skips small-pop del/ins loop
 
-for SFLAG in 1 "" -7 -1 7
+for SFLAG in "" $SLIST
 do
 # -D (mirror the key after it is generated) has the effect of increasing
 # the expanse (-B option) to the full expanse (32 or 64) despite the use
@@ -28,13 +39,12 @@ do
 # Memory usage blows up with cnBitsPerWord=64 and small cnListPopCntMax.
 # I think Doug is going to change the behavior of -D so that it respects -B
 # but we have to do something in the meantime.
-for DFLAG in "" # -D
+for DFLAG in "" $DLIST # -D (-D doesn't respect -B)
 do
 # Can't use -B15 with -n50000 because we get a duplicate key.  Will have
 # to wait for a fix for Judy1LHTime.
-for BFLAG in "" -B16
+for BFLAG in "" $BLIST
 do
-
     if [ "$SFLAG" != "" ]
     then
         CMD="${TIME} $B -s0 -S$SFLAG"
@@ -42,7 +52,7 @@ do
         CMD="${TIME} $B"
     fi
 
-    if ! $CMD $DFLAG $BFLAG -n50000
+    if ! $CMD $DFLAG $BFLAG $NOPT
     then
         set +x # turn echo off
         echo
@@ -50,7 +60,6 @@ do
         echo
         exit 1
     fi
-
 done
 done
 done
