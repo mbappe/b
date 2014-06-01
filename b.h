@@ -137,7 +137,55 @@
     #endif // (cnBitsPerDigit <= 0) || (cnBitsPerDigit > cnBitsPerWord)
 #endif // ! defined(cnBitsPerDigit)
 
-#define cnDigitsPerWord  DIV_UP(cnBitsPerWord, cnBitsPerDigit)
+// Choose bottom.
+// Bottom is where Bitmap is created automatically.
+// Can we support bits at bottom instead of digits at bottom and count digits
+// up (and maybe down) from there?
+// Minimum digits at bottom:  (cnDigitsPerWord - cnMallocMask + 1)
+// Maximum digits at bottom:  (cnDigitsPerWord - 1)
+// Min and max are good values to test.
+// Zero works (as long as it is not smaller than the minimum) but max pop
+// cannot be reached because we never transition to bitmap.
+// Default is one because a bitmap is the size of a word when cnBitsPerDigit
+// is cnLogBitsPerWord and we can embed the bitmap.
+// I think I should change this to be relative to the minimum digits at
+// bottom based on cnBitsPerDigit and cnBitsPerWord.
+#if !defined(cnDigitsAtBottom)
+#if   (cnBitsPerDigit >= 14)
+#define cnDigitsAtBottom  1
+#elif (cnBitsPerDigit >=  7)
+#define cnDigitsAtBottom  2
+#elif (cnBitsPerDigit >=  5)
+#define cnDigitsAtBottom  3
+#elif (cnBitsPerDigit >=  4)
+#define cnDigitsAtBottom  4
+#elif (cnBitsPerDigit >=  3)
+#if (cnBitsPerWord == 32)
+#define cnDigitsAtBottom  5
+#else
+#define cnDigitsAtBottom  8
+#endif
+#elif (cnBitsPerDigit ==  2)
+#if (cnBitsPerWord == 32)
+#define cnDigitsAtBottom 10
+#else
+#define cnDigitsAtBottom 18
+#endif
+#elif (cnBitsPerDigit ==  1)
+#if (cnBitsPerWord == 32)
+#define cnDigitsAtBottom 26
+#else
+#define cnDigitsAtBottom 50
+#endif // cnBitsPerWord
+#endif // cnBitsPerDigit
+#endif // !defined(cnDigitsAtBottom)
+
+//#define cnBitsAtBottom  nDL_to_nBL_NotAtTop(cnDigitsAtBottom)
+#define cnBitsAtBottom  (cnDigitsAtBottom * cnBitsPerDigit)
+
+#define cnDigitsPerWord \
+    (DIV_UP(cnBitsPerWord - cnBitsAtBottom, cnBitsPerDigit) \
+        + cnDigitsAtBottom)
 
 #if defined(BPD_TABLE)
 
@@ -191,52 +239,6 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define nBL_to_nDL_NotAtTop(_nBL)  nBL_to_nDL(_nBL)
 
 #endif // defined(BPD_TABLE)
-
-// Choose bottom.
-// Bottom is where Bitmap is created automatically.
-// Can we support bits at bottom instead of digits at bottom and count digits
-// up (and maybe down) from there?
-// Minimum digits at bottom:  (cnDigitsPerWord - cnMallocMask + 1)
-// Maximum digits at bottom:  (cnDigitsPerWord - 1)
-// Min and max are good values to test.
-// Zero works (as long as it is not smaller than the minimum) but max pop
-// cannot be reached because we never transition to bitmap.
-// Default is one because a bitmap is the size of a word when cnBitsPerDigit
-// is cnLogBitsPerWord and we can embed the bitmap.
-// I think I should change this to be relative to the minimum digits at
-// bottom based on cnBitsPerDigit and cnBitsPerWord.
-#if !defined(cnDigitsAtBottom)
-#if   (cnBitsPerDigit >= 14)
-#define cnDigitsAtBottom  1
-#elif (cnBitsPerDigit >=  7)
-#define cnDigitsAtBottom  2
-#elif (cnBitsPerDigit >=  5)
-#define cnDigitsAtBottom  3
-#elif (cnBitsPerDigit >=  4)
-#define cnDigitsAtBottom  4
-#elif (cnBitsPerDigit >=  3)
-#if (cnBitsPerWord == 32)
-#define cnDigitsAtBottom  5
-#else
-#define cnDigitsAtBottom  8
-#endif
-#elif (cnBitsPerDigit ==  2)
-#if (cnBitsPerWord == 32)
-#define cnDigitsAtBottom 10
-#else
-#define cnDigitsAtBottom 18
-#endif
-#elif (cnBitsPerDigit ==  1)
-#if (cnBitsPerWord == 32)
-#define cnDigitsAtBottom 26
-#else
-#define cnDigitsAtBottom 50
-#endif // cnBitsPerWord
-#endif // cnBitsPerDigit
-#endif // !defined(cnDigitsAtBottom)
-
-//#define cnBitsAtBottom  nDL_to_nBL_NotAtTop(cnDigitsAtBottom)
-#define cnBitsAtBottom  (cnDigitsAtBottom * cnBitsPerDigit)
 
 #if defined RAM_METRICS
 #define METRICS(x)  (x)
