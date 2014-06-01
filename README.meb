@@ -1,10 +1,9 @@
 Run makewrap to see if the builds work.  It will run for days (maybe not).
 Run bbwrap to see if the code works.  It will run for days (maybe not).
-Run bbwrapq for a less vigorous test.  It will run for days (maybe not).
+Run bbwrap -q for a less vigorous test.  It will run for days (maybe not).
 rcs.tjz contains a copy of the RCS files in case the originals be found.
 Look for symbolic names in the RCS files.
 CP140405 is Checkpoint April 5, 2014.
-
 
 For 64-bit, bpd8, dab2, lsmax16, nobm, (gcc or clang):
  -  best: ppsw
