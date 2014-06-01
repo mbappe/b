@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.137 2014/05/28 01:25:34 mike Exp mike $
+// @(#) $Id: bli.c,v 1.138 2014/06/01 12:57:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -970,8 +970,13 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                     if (tp_bIsSwitch(nTypeLn))
                     {
                         wPopCntLn
+#if defined(TYPE_IS_RELATIVE)
+                            = PWR_wPopCnt(pwRootLn, NULL,
+                                  cnDigitsPerWord - 1 - wr_nDS(*pwRootLn));
+#else // defined(TYPE_IS_RELATIVE)
                             = PWR_wPopCnt(pwRootLn, NULL,
                                           wr_nDigitsLeft(*pwRootLn));
+#endif // defined(TYPE_IS_RELATIVE)
                     }
                     else
           #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -988,8 +993,16 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                         printf("Pop sum");
               #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                         printf(" mask "OWx" %"_fw"d",
+#if defined(TYPE_IS_RELATIVE)
+                            wPrefixPopMask(
+                                  cnDigitsPerWord - 1 - wr_nDS(*pwRootLn)),
+                            wPrefixPopMask(
+                                  cnDigitsPerWord - 1 - wr_nDS(*pwRootLn))
+#else // defined(TYPE_IS_RELATIVE)
                             wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)),
-                            wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)));
+                            wPrefixPopMask(wr_nDigitsLeft(*pwRootLn))
+#endif // defined(TYPE_IS_RELATIVE)
+                            );
               #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                         printf(" nn %3d wPopCntLn %"_fw"d "OWx"\n",
                                nn, wPopCntLn, wPopCntLn);
@@ -1008,20 +1021,41 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                         printf("Pop sum (full)");
               #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                         printf(" mask "Owx" %zd\n",
+#if defined(TYPE_IS_RELATIVE)
+                            wPrefixPopMask(
+                                  cnDigitsPerWord - 1 - wr_nDS(*pwRootLn)),
+                            wPrefixPopMask(
+                                  cnDigitsPerWord - 1 - wr_nDS(*pwRootLn))
+#else // defined(TYPE_IS_RELATIVE)
                             wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)),
                             (size_t)wPrefixPopMask(
-                                wr_nDigitsLeft(*pwRootLn)));
+                                wr_nDigitsLeft(*pwRootLn))
+#endif // defined(TYPE_IS_RELATIVE)
+                            );
                         printf("nn %d wPopCntLn %zd "OWx"\n",
                             nn,
+#if defined(TYPE_IS_RELATIVE)
+                            wPrefixPopMask(
+                                  cnDigitsPerWord - wr_nDS(*pwRootLn)),
+                            wPrefixPopMask(
+                                  cnDigitsPerWord - wr_nDS(*pwRootLn))
+#else // defined(TYPE_IS_RELATIVE)
                             (size_t)wPrefixPopMask(
                                 wr_nDigitsLeft(*pwRootLn)) + 1,
-                            wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1);
+                            wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1
+#endif // defined(TYPE_IS_RELATIVE)
               #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                            );
           #endif // defined(DEBUG_INSERT)
 
           #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                         wPopCnt
+#if defined(TYPE_IS_RELATIVE)
+                            += wPrefixPopMask(
+                                  cnDigitsPerWord - wr_nDS(*pwRootLn));
+#else // defined(TYPE_IS_RELATIVE)
                             += wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1;
+#endif // defined(TYPE_IS_RELATIVE)
           #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                         wPopCnt += wPrefixPopMask(cnDigitsPerWord - 1) + 1;
           #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)

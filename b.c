@@ -2261,9 +2261,15 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             {
                 printf("Pop sum");
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                unsigned nDigitsLeft
+#if defined(TYPE_IS_RELATIVE)
+                    = cnDigitsPerWord - 1 - wr_nDS(*pwRootLn);
+#else // defined(TYPE_IS_RELATIVE)
+                    = wr_nDigitsLeft(*pwRootLn);
+#endif // defined(TYPE_IS_RELATIVE)
                 printf(" mask "OWx" %"_fw"d",
-                    wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)),
-                    wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)));
+                    wPrefixPopMask(nDigitsLeft),
+                    wPrefixPopMask(nDigitsLeft));
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                 printf(" nn %d wPopCntLn %"_fw"d "OWx"\n",
                        nn, wPopCntLn, wPopCntLn);

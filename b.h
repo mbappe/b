@@ -151,39 +151,38 @@
 // I think I should change this to be relative to the minimum digits at
 // bottom based on cnBitsPerDigit and cnBitsPerWord.
 #if   (cnBitsPerDigit >= 14)
-#define cnDigitsAtBottom  1
+    #define cnBitsAtBottom   cnBitsPerDigit
 #elif (cnBitsPerDigit >=  7)
-#define cnDigitsAtBottom  2
+    #define cnBitsAtBottom  (cnBitsPerDigit *  2)
 #elif (cnBitsPerDigit >=  5)
-#define cnDigitsAtBottom  3
+    #define cnBitsAtBottom  (cnBitsPerDigit *  3)
 #elif (cnBitsPerDigit >=  4)
-#define cnDigitsAtBottom  4
+    #define cnBitsAtBottom  (cnBitsPerDigit *  4)
 #elif (cnBitsPerDigit >=  3)
-#if (cnBitsPerWord == 32)
-#define cnDigitsAtBottom  5
-#else
-#define cnDigitsAtBottom  8
-#endif
+  #if (cnBitsPerWord == 32)
+        #define cnBitsAtBottom  (cnBitsPerDigit *  5)
+  #else
+        #define cnBitsAtBottom  (cnBitsPerDigit *  8)
+  #endif
 #elif (cnBitsPerDigit ==  2)
-#if (cnBitsPerWord == 32)
-#define cnDigitsAtBottom 10
-#else
-#define cnDigitsAtBottom 18
-#endif
+  #if (cnBitsPerWord == 32)
+        #define cnBitsAtBottom  (cnBitsPerDigit * 10)
+  #else
+        #define cnBitsAtBottom  (cnBitsPerDigit * 18)
+  #endif
 #elif (cnBitsPerDigit ==  1)
-#if (cnBitsPerWord == 32)
-#define cnDigitsAtBottom 26
-#else
-#define cnDigitsAtBottom 50
-#endif // cnBitsPerWord
+  #if (cnBitsPerWord == 32)
+        #define cnBitsAtBottom  (cnBitsPerDigit * 26)
+  #else
+        #define cnBitsAtBottom  (cnBitsPerDigit * 50)
+  #endif // cnBitsPerWord
 #endif // cnBitsPerDigit
 
 //#define cnBitsAtBottom  nDL_to_nBL_NotAtTop(cnDigitsAtBottom)
-#define cnBitsAtBottom  (cnDigitsAtBottom * cnBitsPerDigit)
 
 #define cnDigitsPerWord \
     (DIV_UP(cnBitsPerWord - cnBitsAtBottom, cnBitsPerDigit) \
-        + cnDigitsAtBottom)
+        + cnBitsAtBottom / cnBitsPerDigit)
 
 #if defined(BPD_TABLE)
 
@@ -375,8 +374,8 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #else // defined(TYPE_IS_RELATIVE)
 
-#define tp_to_nDigitsLeft(_tp)   ((_tp) + cnDigitsAtBottom - 1)
-#define nDigitsLeft_to_tp(_nDL)  ((_nDL) + 1 - cnDigitsAtBottom)
+#define tp_to_nDigitsLeft(_tp)  ((_tp) + cnBitsAtBottom / cnBitsPerDigit - 1)
+#define nDigitsLeft_to_tp(_nDL) ((_nDL) + 1 - cnBitsAtBottom / cnBitsPerDigit)
 
 #define     wr_nDigitsLeft(_wr)     (tp_to_nDigitsLeft(wr_nType(_wr)))
 #define set_wr_nDigitsLeft(_wr, _nDL) \
