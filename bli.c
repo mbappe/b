@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.136 2014/05/27 05:18:34 mike Exp mike $
+// @(#) $Id: bli.c,v 1.137 2014/05/28 01:25:34 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -24,7 +24,7 @@
 
 // One big bitmap is implemented completely in Judy1Test, Judy1Set
 // and Judy1Unset.  There is no need for Lookup, Insert and Remove.
-#if (cnDigitsPerWord != 1)
+#if (cnBitsAtBottom != cnBitsPerWord)
 #if defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (Success)
 #if defined(LOOKUP)
@@ -468,7 +468,7 @@ again:
                                            wr_nDigitsLeft(*pwRootLn)
               #endif // defined(TYPE_IS_RELATIVE)
                                        : nDigitsLeft;
-                        DBGX(printf("wr_nDLX %"_fw"d", nDigitsLeftX));
+                        DBGX(printf("wr_nDLX %d", nDigitsLeftX));
                         DBGX(printf(" PWR_wPopCnt %"_fw"d\n",
                                     PWR_wPopCnt(pwRootLn, NULL, nDigitsLeftX)
                                     ));
@@ -761,14 +761,14 @@ cleanup:
 #undef strLookupOrInsertOrRemove
 #undef KeyFound
 
-#endif // (cnDigitsPerWord != 1)
+#endif // (cnBitsAtBottom != cnBitsPerWord)
 
 #if defined(LOOKUP)
 
 int // Status_t
 Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 {
-#if (cnDigitsPerWord != 1)
+#if (cnBitsAtBottom != cnBitsPerWord)
 
   #if (cwListPopCntMax != 0) && defined(PP_IN_LINK)
     // Handle the top level list leaf.
@@ -790,7 +790,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
     return Lookup((Word_t)pcvRoot, wKey);
 
-#else // (cnDigitsPerWord != 1)
+#else // (cnBitsAtBottom != cnBitsPerWord)
 
     // one big Bitmap
 
@@ -833,7 +833,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
   #endif // defined(BITMAP_BY_BYTE)
 
-#endif // (cnDigitsPerWord != 1)
+#endif // (cnBitsAtBottom != cnBitsPerWord)
 
     (void)PJError; // suppress "unused parameter" compiler warning
 }
@@ -845,7 +845,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 int // Status_t
 Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 {
-#if (cnDigitsPerWord != 1)
+#if (cnBitsAtBottom != cnBitsPerWord)
 
     int status;
 
@@ -1068,7 +1068,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     return status;
 
-#else // (cnDigitsPerWord != 1)
+#else // (cnBitsAtBottom != cnBitsPerWord)
 
     // one big Bitmap
 
@@ -1105,7 +1105,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     return Success;
 
-#endif // (cnDigitsPerWord != 1)
+#endif // (cnBitsAtBottom != cnBitsPerWord)
 
     (void)PJError; // suppress "unused parameter" compiler warning
 }
@@ -1117,7 +1117,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 int
 Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 {
-#if (cnDigitsPerWord != 1)
+#if (cnBitsAtBottom != cnBitsPerWord)
 
     int status;
 
@@ -1182,7 +1182,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     return status;
 
-#else // (cnDigitsPerWord != 1)
+#else // (cnBitsAtBottom != cnBitsPerWord)
 
     // one big Bitmap
 
@@ -1207,7 +1207,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     return Success;
 
-#endif // (cnDigitsPerWord != 1)
+#endif // (cnBitsAtBottom != cnBitsPerWord)
 
     (void)PJError; // suppress "unused parameter" compiler warnings
 }
