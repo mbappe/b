@@ -7,7 +7,7 @@ set -x # turn echo on
 
 cp b b.bb
 
-if [ $1 = -q ]
+if [ "$1" = -q ]
 then
     SLIST='1'
     NOPT=-n10000
@@ -25,6 +25,7 @@ fi
 # B="b.bb -1"
 # B="b.bb -1ld"
 # B="b.bb -1d"
+# B="b.bb -1gi"
   B="b.bb -1dgi"
 
 # -x does wait for context switch; useful for timing with small pops
