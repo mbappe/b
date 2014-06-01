@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.204 2014/05/27 12:20:03 mike Exp mike $
+// @(#) $Id: b.c,v 1.206 2014/05/28 01:26:48 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1661,6 +1661,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             // automatic bitmap (no switch) and we may need a prefix at
             // nBL_to_nDL(cnBitsAtBottom) + 1 since we don't have one in the
             // bitmap.
+            // Creating a switch just above the bottom can be a problem, e.g.
+            // (bitsPerWord=64, bitsPerDigit=32) will try to create a very
+            // large switch.  We'd be much better off with a skip link to
+            // a bitmap or a bitmap switch.
             if (nDigitsLeft <= nBL_to_nDL(cnBitsAtBottom))
             {
                 DBGI(printf("InsertGuts nDigitsLeft"

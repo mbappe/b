@@ -150,7 +150,6 @@
 // is cnLogBitsPerWord and we can embed the bitmap.
 // I think I should change this to be relative to the minimum digits at
 // bottom based on cnBitsPerDigit and cnBitsPerWord.
-#if !defined(cnDigitsAtBottom)
 #if   (cnBitsPerDigit >= 14)
 #define cnDigitsAtBottom  1
 #elif (cnBitsPerDigit >=  7)
@@ -178,7 +177,6 @@
 #define cnDigitsAtBottom 50
 #endif // cnBitsPerWord
 #endif // cnBitsPerDigit
-#endif // !defined(cnDigitsAtBottom)
 
 //#define cnBitsAtBottom  nDL_to_nBL_NotAtTop(cnDigitsAtBottom)
 #define cnBitsAtBottom  (cnDigitsAtBottom * cnBitsPerDigit)
