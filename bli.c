@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.138 2014/06/01 12:57:29 mike Exp mike $
+// @(#) $Id: bli.c,v 1.139 2014/06/01 14:13:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -362,7 +362,8 @@ again:
         {
 #if defined(BM_SWITCH_FOR_REAL) \
     || ( ! defined(LOOKUP) \
-        && (defined(PP_IN_LINK) || defined(BM_IN_LINK)) )
+        && (defined(PP_IN_LINK) || defined(BM_IN_LINK)) \
+            || (defined(REMOVE) && ! defined(BM_IN_LINK)) )
             nDigitsLeftUp = nDigitsLeft;
 #endif // defined(BM_SWITCH_FOR_REAL) ...
             nDigitsLeft = nDigitsLeftRoot - 1;
@@ -511,12 +512,7 @@ notEmpty:;
                 {
                     if (wPopCnt == 0)
                     {
-                        FreeArrayGuts(pwRoot, wKey,
-      #if defined(BM_IN_LINK)
-                            nDL_to_nBL(nDigitsLeftUp),
-      #else // defined(BM_IN_LINK)
-                            nDL_to_nBL(nDigitsLeftRoot),
-      #endif // defined(BM_IN_LINK)
+                        FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDigitsLeftUp),
                             /* bDump */ 0);
       #if defined(PP_IN_LINK)
           #if defined(BM_IN_LINK)

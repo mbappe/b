@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.206 2014/05/28 01:26:48 mike Exp mike $
+// @(#) $Id: b.c,v 1.208 2014/06/01 14:13:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -697,10 +697,13 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
     unsigned nType;
     Word_t wBytes = 0;
 
+    assert(nBitsLeft >= cnBitsAtBottom);
+
     if ( ! bDump )
     {
         DBGR(printf("FreeArrayGuts pwR "OWx" wPrefix "OWx" nBL %d bDump %d\n",
              (Word_t)pwRoot, wPrefix, nBitsLeft, bDump));
+        DBGR(printf("wRoot "OWx"\n", wRoot));
     }
 
     if (wRoot == 0)
@@ -981,8 +984,10 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         printf("\n");
     }
 
+    DBGR(printf("nDigitsLeftPrev %d\n", nDigitsLeftPrev));
+    DBGR(printf("nDigitsLeft %d\n", nDigitsLeft));
     nBitsLeft = nDL_to_nBL(nDigitsLeft - 1);
-    //DBGR(printf("nBitsLeft %d\n", nBitsLeft));
+    DBGR(printf("nBitsLeft %d\n", nBitsLeft));
 
     nBitsIndexSz = nDL_to_nBitsIndexSz(nDigitsLeft);
 
@@ -1958,9 +1963,19 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             // Do we need to clear the rest of the link also?
         }
 #else // defined(PP_IN_LINK)
-        //printf("RemoveGuts not checking for empty bitmap.\n");
-        // BUG: We should check if the bitmap is empty and free it if so.
-        // Count bits?
+
+        // Free the bitmap if it is empty.
+        for (unsigned nn = 0; nn < EXP(cnBitsAtBottom - cnLogBitsPerWord); nn++)
+        {
+            if (__builtin_popcountll(((Word_t *)wRoot)[nn]))
+            {
+                goto done;
+            }
+        }
+
+        OldBitmap(wRoot); *pwRoot = 0;
+done:
+
 #endif // defined(PP_IN_LINK)
 
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
