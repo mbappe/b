@@ -364,7 +364,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define set_wr_nDS(_wr, _nDS)  (set_wr_nType((_wr), nDS_to_tp(_nDS)))
 
 #define     wr_bIsSwitchDS(_wr, _tp, _nDS) \
-   ((_tp) = wr_nType(_wr), \ (_nDS) = tp_to_nDS(_tp), \ tp_bIsSwitch(_tp))
+   ((_tp) = wr_nType(_wr), (_nDS) = tp_to_nDS(_tp), tp_bIsSwitch(_tp))
 
 #else // defined(TYPE_IS_RELATIVE)
 
