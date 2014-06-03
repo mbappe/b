@@ -40,23 +40,36 @@
 
 #if defined(DEBUG_ALL)
 
-#undef DEBUG_INSERT
-#undef DEBUG_REMOVE
-#undef DEBUG_MALLOC
-#undef DEBUG_LOOKUP
-#undef DEBUG
+    #undef DEBUG_INSERT
+    #undef DEBUG_REMOVE
+    #undef DEBUG_MALLOC
+    #undef DEBUG_LOOKUP
+    #undef DEBUG
 
-#define DEBUG_INSERT
-#define DEBUG_REMOVE
-#define DEBUG_MALLOC
-#define DEBUG_LOOKUP
-#define DEBUG
+    #define DEBUG_INSERT
+    #define DEBUG_REMOVE
+    #define DEBUG_MALLOC
+    #define DEBUG_LOOKUP
+    #define DEBUG
+
+#else // defined(DEBUG_ALL)
+
+  #if defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) \
+          || defined(DEBUG_REMOVE) || defined(DEBUG_MALLOC)
+
+    #undef DEBUG
+    #define DEBUG
+
+  #endif // defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || ...
 
 #endif // defined(DEBUG_ALL)
 
-#if ! defined(NDEBUG)
-#define NDEBUG
-#endif // ! defined(NDEBUG)
+#if ! defined(DEBUG)
+
+    #undef NDEBUG
+    #define NDEBUG
+
+#endif // ! defined(DEBUG)
 
 // Choose features.
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
@@ -150,27 +163,30 @@
 // is cnLogBitsPerWord and we can embed the bitmap.
 // I think I should change this to be relative to the minimum digits at
 // bottom based on cnBitsPerDigit and cnBitsPerWord.
-#if (cnBitsPerDigit >=  4)
+#if ! defined(cnBitsAtBottom)
+  #if (cnBitsPerDigit >=  4)
     #define cnBitsAtBottom  16
-#elif (cnBitsPerDigit ==  3)
-  #if (cnBitsPerWord == 32)
+  #elif (cnBitsPerDigit ==  3)
+      #if (cnBitsPerWord == 32)
         #define cnBitsAtBottom  17
-  #else
+      #else
         #define cnBitsAtBottom  25
-  #endif
-#elif (cnBitsPerDigit ==  2)
-  #if (cnBitsPerWord == 32)
+      #endif
+  #elif (cnBitsPerDigit ==  2)
+      #if (cnBitsPerWord == 32)
         #define cnBitsAtBottom  22
-  #else
+      #else
         #define cnBitsAtBottom  38
-  #endif
-#elif (cnBitsPerDigit ==  1)
-  #if (cnBitsPerWord == 32)
+      #endif
+  #elif (cnBitsPerDigit ==  1)
+      #if (cnBitsPerWord == 32)
         #define cnBitsAtBottom  27
-  #else
+      #else
+        // A bitmap decoding 51 bits would require 1/4 petabyte.
         #define cnBitsAtBottom  51
-  #endif // cnBitsPerWord
-#endif // cnBitsPerDigit
+      #endif // cnBitsPerWord
+  #endif // cnBitsPerDigit
+#endif // ! defined(cnBitsAtBottom)
 
 #define cnDigitsPerWord \
     (DIV_UP(cnBitsPerWord - cnBitsAtBottom, cnBitsPerDigit) + 1)
@@ -283,12 +299,6 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #else // defined(DEBUG_MALLOC)
 #define DBGM(x)
 #endif // defined(DEBUG_MALLOC)
-
-#if defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || defined(DEBUG_MALLOC)
-#if !defined(DEBUG)
-#define DEBUG
-#endif // !defined(DEBUG)
-#endif // defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || ...
 
 #if !defined(Owx)
 #if defined(_WIN64)
