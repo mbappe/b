@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.142 2014/06/03 16:36:40 mike Exp mike $
+// @(#) $Id: bli.c,v 1.143 2014/06/03 19:11:07 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1111,7 +1111,11 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
       #if defined(PP_IN_LINK)
             // no skip links at root for PP_IN_LINK -- no place for prefix
           #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+              #if defined(TYPE_IS_RELATIVE)
+            assert(tp_to_nDS(nType) == 0);
+              #else // defined(TYPE_IS_RELATIVE)
             assert(tp_to_nDigitsLeft(nType) == cnDigitsPerWord);
+              #endif // defined(TYPE_IS_RELATIVE)
           #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
             // add up the pops in the links
 
@@ -1238,7 +1242,12 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 }
             }
           #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+              #if defined(TYPE_IS_RELATIVE)
+            assert(wPopCnt - 1
+                    <= wPrefixPopMask(cnDigitsPerWord - tp_to_nDS(nType)));
+              #else // defined(TYPE_IS_RELATIVE)
             assert(wPopCnt - 1 <= wPrefixPopMask(tp_to_nDigitsLeft(nType)));
+              #endif // defined(TYPE_IS_RELATIVE)
           #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
       #else // defined(PP_IN_LINK)
           #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)

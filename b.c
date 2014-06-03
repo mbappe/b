@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.212 2014/06/03 16:16:10 mike Exp mike $
+// @(#) $Id: b.c,v 1.213 2014/06/03 16:36:40 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -327,19 +327,19 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDigitsLeft)
 static Word_t *
 NewBitmap(void)
 {
-    unsigned nWords = EXP(cnBitsAtBottom) / cnBitsPerWord;
+    Word_t wWords = EXP(cnBitsAtBottom - cnLogBitsPerWord);
 
-    Word_t w = MyMalloc(nWords);
+    Word_t w = MyMalloc(wWords);
 
-    METRICS(j__AllocWordsJLB1 += nWords); // JUDYA
-    METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
+    METRICS(j__AllocWordsJLB1 += wWords); // JUDYA
+    METRICS(j__AllocWordsJL12 += wWords); // JUDYB -- overloaded
 
     DBGM(printf("NewBitmap nBitsAtBottom %u nBits "OWx
-      " nBytes "OWx" nWords %d w "OWx"\n",
+      " nBytes "OWx" wWords "OWx" w "OWx"\n",
         cnBitsAtBottom, EXP(cnBitsAtBottom),
-        EXP(cnBitsAtBottom) / cnBitsPerByte, nWords, w));
+        EXP(cnBitsAtBottom - cnLogBitsPerByte), wWords, w));
 
-    memset((void *)w, 0, nWords * sizeof(Word_t));
+    memset((void *)w, 0, wWords * sizeof(Word_t));
 
     return (Word_t *)w;
 }
@@ -347,14 +347,14 @@ NewBitmap(void)
 Word_t
 OldBitmap(Word_t *pwr)
 {
-    unsigned nWords = EXP(cnBitsAtBottom) / cnBitsPerWord;
+    Word_t wWords = EXP(cnBitsAtBottom - cnLogBitsPerWord);
 
-    MyFree(pwr, nWords);
+    MyFree(pwr, wWords);
 
-    METRICS(j__AllocWordsJLB1 -= nWords); // JUDYA
-    METRICS(j__AllocWordsJL12 -= nWords); // JUDYB -- overloaded
+    METRICS(j__AllocWordsJLB1 -= wWords); // JUDYA
+    METRICS(j__AllocWordsJL12 -= wWords); // JUDYB -- overloaded
 
-    return nWords * sizeof(Word_t);
+    return wWords * sizeof(Word_t);
 }
 
 #endif // (cnBitsAtBottom > cnLogBitsPerWord)
@@ -796,15 +796,14 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         }
 
         printf(" nWords %2"_fw"d", EXP(cnBitsAtBottom) / cnBitsPerWord);
-        for (unsigned nn = 0;
-            //(nn < EXP(cnBitsAtBottom) / cnBitsPerWord) && (nn < 8);
-            (nn < EXP(cnBitsAtBottom) / cnBitsPerWord);
-             nn++)
+        for (Word_t ww = 0;
+            (ww < EXP(cnBitsAtBottom - cnLogBitsPerWord));
+             ww++)
         {
-            if ((nn % 8) == 0) {
+            if ((ww % 8) == 0) {
                 printf("\n");
             }
-            printf(" "Owx, pwr[nn]);
+            printf(" "Owx, pwr[ww]);
         }
 
 #else // (cnBitsAtBottom > cnLogBitsPerWord)
@@ -822,7 +821,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
     }
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-#if ! defined(TYPE_IS_RELATIVE)
+#if defined(TYPE_IS_RELATIVE)
     assert(nDigitsLeft - tp_to_nDS(nType)
         >= nBL_to_nDL(cnBitsAtBottom));
 #else // defined(TYPE_IS_RELATIVE)
@@ -848,7 +847,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
         Word_t *pwKeys = pwr_pwKeys(pwr);
 
-        assert(nType == 0);
+        assert(nType == T_OTHER);
 
         if (!bDump)
         {
@@ -2006,10 +2005,10 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #else // defined(PP_IN_LINK)
 
         // Free the bitmap if it is empty.
-        for (unsigned nn = 0;
-             nn < EXP(cnBitsAtBottom - cnLogBitsPerWord); nn++)
+        for (Word_t ww = 0;
+             ww < EXP(cnBitsAtBottom - cnLogBitsPerWord); ww++)
         {
-            if (__builtin_popcountll(pwr[nn]))
+            if (__builtin_popcountll(pwr[ww]))
             {
                 goto done;
             }
@@ -2112,7 +2111,7 @@ done:
                      wPopCnt - nIndex - 1);
             }
 
-            if (pwList != (Word_t *)wRoot)
+            if (pwList != pwr)
             {
                 OldList(pwr, wPopCnt, nDigitsLeft);
                 set_wr(wRoot, pwList, T_OTHER);
@@ -2269,7 +2268,11 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 #if defined(PP_IN_LINK)
         // no skip links at root for PP_IN_LINK -- no place for prefix
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+  #if defined(TYPE_IS_RELATIVE)
+        assert(tp_to_nDS(nType) == 0);
+  #else // defined(TYPE_IS_RELATIVE)
         assert(tp_to_nDigitsLeft(nType) == cnDigitsPerWord);
+  #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         // add up the pops in the links
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
