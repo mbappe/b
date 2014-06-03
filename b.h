@@ -178,13 +178,10 @@
   #endif // cnBitsPerWord
 #endif // cnBitsPerDigit
 
-//#define cnBitsAtBottom  nDL_to_nBL_NotAtTop(cnDigitsAtBottom)
+#define cnDigitsPerWord \
+    (DIV_UP(cnBitsPerWord - cnBitsAtBottom, cnBitsPerDigit) + 1)
 
 #if defined(BPD_TABLE)
-
-#define cnDigitsPerWord \
-    (DIV_UP(cnBitsPerWord - cnBitsAtBottom, cnBitsPerDigit) \
-        + cnBitsAtBottom / cnBitsPerDigit)
 
 // Use lookup tables (which theoretically support depth-based bits per digit)
 // instead of a constant bits-per-digit throughout the tree.
@@ -205,16 +202,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #define nDL_to_nBL_NotAtTop(_nDL)  nDL_to_nBL(_nDL)
 
-// this one is not used in the lookup performance path
-#define nBL_to_nDL(_nBL)  DIV_UP((_nBL), cnBitsPerDigit)
-
-// this one is not used in the lookup performance path
-#define nBL_to_nDL_NotAtTop(_nBL)  nBL_to_nDL(_nBL)
-
 #else // defined(BPD_TABLE)
-
-#define cnDigitsPerWord \
-    (DIV_UP(cnBitsPerWord - cnBitsAtBottom, cnBitsPerDigit) + 1)
 
 #define cnBitsIndexSzAtTop \
     (cnBitsPerWord - cnBitsAtBottom - (cnDigitsPerWord - 2) * cnBitsPerDigit)
@@ -234,14 +222,14 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define nDL_to_nBL(_nDL) \
     (((_nDL) == cnDigitsPerWord) ? cnBitsPerWord : nDL_to_nBL_NotAtTop(_nDL))
 
+#endif // defined(BPD_TABLE)
+
 // this one is not used in the lookup performance path
 #define nBL_to_nDL(_nBL) \
      (DIV_UP((_nBL) - cnBitsAtBottom, cnBitsPerDigit) + 1)
 
 // this one is not used in the lookup performance path
 #define nBL_to_nDL_NotAtTop(_nBL)  nBL_to_nDL(_nBL)
-
-#endif // defined(BPD_TABLE)
 
 #if defined RAM_METRICS
 #define METRICS(x)  (x)
@@ -380,8 +368,8 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #else // defined(TYPE_IS_RELATIVE)
 
-#define tp_to_nDigitsLeft(_tp)  ((_tp) + cnBitsAtBottom / cnBitsPerDigit - 1)
-#define nDigitsLeft_to_tp(_nDL) ((_nDL) + 1 - cnBitsAtBottom / cnBitsPerDigit)
+#define tp_to_nDigitsLeft(_tp)   (_tp)
+#define nDigitsLeft_to_tp(_nDL)  (_nDL)
 
 #define     wr_nDigitsLeft(_wr)     (tp_to_nDigitsLeft(wr_nType(_wr)))
 #define set_wr_nDigitsLeft(_wr, _nDL) \

@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.208 2014/06/01 14:13:08 mike Exp mike $
+// @(#) $Id: b.c,v 1.209 2014/06/02 00:32:19 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -42,7 +42,7 @@ Word_t j__AllocWordsJV12;  // Value Area 12-bit Decode
 #if defined(BPD_TABLE)
 
 const unsigned anDL_to_nBitsIndexSz[] = {
-                    0, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
+                    0, cnBitsAtBottom, cnBitsPerDigit, cnBitsPerDigit,
        cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
        cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
        cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
@@ -62,28 +62,71 @@ const unsigned anDL_to_nBitsIndexSz[] = {
 };
 
 const unsigned anDL_to_nBL[] = {
-    0,  1 * cnBitsPerDigit,  2 * cnBitsPerDigit,  3 * cnBitsPerDigit,
-        4 * cnBitsPerDigit,  5 * cnBitsPerDigit,  6 * cnBitsPerDigit,
-        7 * cnBitsPerDigit,  8 * cnBitsPerDigit,  9 * cnBitsPerDigit,
-       10 * cnBitsPerDigit, 11 * cnBitsPerDigit, 12 * cnBitsPerDigit,
-       13 * cnBitsPerDigit, 14 * cnBitsPerDigit, 15 * cnBitsPerDigit,
-       16 * cnBitsPerDigit, 17 * cnBitsPerDigit, 18 * cnBitsPerDigit,
-       19 * cnBitsPerDigit, 20 * cnBitsPerDigit, 21 * cnBitsPerDigit,
-       22 * cnBitsPerDigit, 23 * cnBitsPerDigit, 24 * cnBitsPerDigit,
-       25 * cnBitsPerDigit, 26 * cnBitsPerDigit, 27 * cnBitsPerDigit,
-       28 * cnBitsPerDigit, 29 * cnBitsPerDigit, 30 * cnBitsPerDigit,
-       31 * cnBitsPerDigit, 32 * cnBitsPerDigit, 33 * cnBitsPerDigit,
-       34 * cnBitsPerDigit, 35 * cnBitsPerDigit, 36 * cnBitsPerDigit,
-       37 * cnBitsPerDigit, 38 * cnBitsPerDigit, 39 * cnBitsPerDigit,
-       40 * cnBitsPerDigit, 41 * cnBitsPerDigit, 42 * cnBitsPerDigit,
-       43 * cnBitsPerDigit, 44 * cnBitsPerDigit, 45 * cnBitsPerDigit,
-       46 * cnBitsPerDigit, 47 * cnBitsPerDigit, 48 * cnBitsPerDigit,
-       49 * cnBitsPerDigit, 50 * cnBitsPerDigit, 51 * cnBitsPerDigit,
-       52 * cnBitsPerDigit, 53 * cnBitsPerDigit, 54 * cnBitsPerDigit,
-       55 * cnBitsPerDigit, 56 * cnBitsPerDigit, 57 * cnBitsPerDigit,
-       58 * cnBitsPerDigit, 59 * cnBitsPerDigit, 60 * cnBitsPerDigit,
-       61 * cnBitsPerDigit, 62 * cnBitsPerDigit, 63 * cnBitsPerDigit,
-       64 * cnBitsPerDigit
+    0,
+    cnBitsAtBottom +  0 * cnBitsPerDigit,
+    cnBitsAtBottom +  1 * cnBitsPerDigit,
+    cnBitsAtBottom +  2 * cnBitsPerDigit,
+    cnBitsAtBottom +  3 * cnBitsPerDigit,
+    cnBitsAtBottom +  4 * cnBitsPerDigit,
+    cnBitsAtBottom +  5 * cnBitsPerDigit,
+    cnBitsAtBottom +  6 * cnBitsPerDigit,
+    cnBitsAtBottom +  7 * cnBitsPerDigit,
+    cnBitsAtBottom +  8 * cnBitsPerDigit,
+    cnBitsAtBottom +  9 * cnBitsPerDigit,
+    cnBitsAtBottom + 10 * cnBitsPerDigit,
+    cnBitsAtBottom + 11 * cnBitsPerDigit,
+    cnBitsAtBottom + 12 * cnBitsPerDigit,
+    cnBitsAtBottom + 13 * cnBitsPerDigit,
+    cnBitsAtBottom + 14 * cnBitsPerDigit,
+    cnBitsAtBottom + 15 * cnBitsPerDigit,
+    cnBitsAtBottom + 16 * cnBitsPerDigit,
+    cnBitsAtBottom + 17 * cnBitsPerDigit,
+    cnBitsAtBottom + 18 * cnBitsPerDigit,
+    cnBitsAtBottom + 19 * cnBitsPerDigit,
+    cnBitsAtBottom + 20 * cnBitsPerDigit,
+    cnBitsAtBottom + 21 * cnBitsPerDigit,
+    cnBitsAtBottom + 22 * cnBitsPerDigit,
+    cnBitsAtBottom + 23 * cnBitsPerDigit,
+    cnBitsAtBottom + 24 * cnBitsPerDigit,
+    cnBitsAtBottom + 25 * cnBitsPerDigit,
+    cnBitsAtBottom + 26 * cnBitsPerDigit,
+    cnBitsAtBottom + 27 * cnBitsPerDigit,
+    cnBitsAtBottom + 28 * cnBitsPerDigit,
+    cnBitsAtBottom + 29 * cnBitsPerDigit,
+    cnBitsAtBottom + 30 * cnBitsPerDigit,
+    cnBitsAtBottom + 31 * cnBitsPerDigit,
+    cnBitsAtBottom + 32 * cnBitsPerDigit,
+    cnBitsAtBottom + 33 * cnBitsPerDigit,
+    cnBitsAtBottom + 34 * cnBitsPerDigit,
+    cnBitsAtBottom + 35 * cnBitsPerDigit,
+    cnBitsAtBottom + 36 * cnBitsPerDigit,
+    cnBitsAtBottom + 37 * cnBitsPerDigit,
+    cnBitsAtBottom + 38 * cnBitsPerDigit,
+    cnBitsAtBottom + 39 * cnBitsPerDigit,
+    cnBitsAtBottom + 40 * cnBitsPerDigit,
+    cnBitsAtBottom + 41 * cnBitsPerDigit,
+    cnBitsAtBottom + 42 * cnBitsPerDigit,
+    cnBitsAtBottom + 43 * cnBitsPerDigit,
+    cnBitsAtBottom + 44 * cnBitsPerDigit,
+    cnBitsAtBottom + 45 * cnBitsPerDigit,
+    cnBitsAtBottom + 46 * cnBitsPerDigit,
+    cnBitsAtBottom + 47 * cnBitsPerDigit,
+    cnBitsAtBottom + 48 * cnBitsPerDigit,
+    cnBitsAtBottom + 49 * cnBitsPerDigit,
+    cnBitsAtBottom + 50 * cnBitsPerDigit,
+    cnBitsAtBottom + 51 * cnBitsPerDigit,
+    cnBitsAtBottom + 52 * cnBitsPerDigit,
+    cnBitsAtBottom + 53 * cnBitsPerDigit,
+    cnBitsAtBottom + 54 * cnBitsPerDigit,
+    cnBitsAtBottom + 55 * cnBitsPerDigit,
+    cnBitsAtBottom + 56 * cnBitsPerDigit,
+    cnBitsAtBottom + 57 * cnBitsPerDigit,
+    cnBitsAtBottom + 58 * cnBitsPerDigit,
+    cnBitsAtBottom + 59 * cnBitsPerDigit,
+    cnBitsAtBottom + 60 * cnBitsPerDigit,
+    cnBitsAtBottom + 61 * cnBitsPerDigit,
+    cnBitsAtBottom + 62 * cnBitsPerDigit,
+    cnBitsAtBottom + 63 * cnBitsPerDigit,
 };
 
 #endif // defined(BPD_TABLE)
@@ -399,8 +442,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
         (void *)pwRoot, wKey, nDigitsLeft, nDigitsLeftUp, (void *)pwr));
 
 #if defined(TYPE_IS_RELATIVE)
-    set_wr(*pwRoot, pwr,
-           nDS_to_tp(nDigitsLeftUp - nDigitsLeft));
+    set_wr(*pwRoot, pwr, nDS_to_tp(nDigitsLeftUp - nDigitsLeft));
 #else // defined(TYPE_IS_RELATIVE)
     set_wr(*pwRoot, pwr, nDigitsLeft_to_tp(nDigitsLeft));
 #endif // defined(TYPE_IS_RELATIVE)
@@ -1642,15 +1684,19 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                     {
                         nDigitsLeft
                             = nBL_to_nDL(
-                                LOG(1 | ((wSuffix ^ wMin) | (wSuffix ^ wMax)))
-                                + 1);
+                                LOG((EXP(cnBitsAtBottom) - 1)
+                                        | ((wSuffix ^ wMin)
+                                        | (wSuffix ^ wMax)))
+                                    + 1);
                     }
                     else
 #endif // defined(COMPRESSED_LISTS)
                     {
                         nDigitsLeft
                             = nBL_to_nDL(
-                                LOG(1 | ((wKey ^ wMin) | (wKey ^ wMax))) + 1);
+                                LOG((EXP(cnBitsAtBottom) - 1)
+                                        | ((wKey ^ wMin) | (wKey ^ wMax)))
+                                    + 1);
                     }
                 }
                 else
