@@ -376,7 +376,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #endif // defined(TYPE_IS_RELATIVE)
 
-#define     tp_bIsSwitch(_tp)          ((_tp) != 0)
+#define     tp_bIsSwitch(_tp)          ((_tp) > T_OTHER)
 #define     wr_bIsSwitch(_wr)          (tp_bIsSwitch(wr_nType(_wr)))
 
 #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)

@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.211 2014/06/03 15:21:25 mike Exp mike $
+// @(#) $Id: b.c,v 1.212 2014/06/03 16:16:10 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -732,11 +732,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
     unsigned nBitsLeftArg = nBitsLeft;
 #endif // defined(BM_IN_LINK) || defined(PP_IN_LINK)
     Word_t wRoot = *pwRoot;
+    unsigned nType = wr_nType(wRoot); (void)nType; // silence gcc
+    Word_t *pwr = wr_tp_pwr(wRoot, nType);
     unsigned nDigitsLeft = nBL_to_nDL(nBitsLeft);
-    Word_t *pwr;
     unsigned nBitsIndexSz;
     Link_t *pLinks;
-    unsigned nType;
     Word_t wBytes = 0;
 
     assert(nBitsLeft >= cnBitsAtBottom);
@@ -792,7 +792,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
         if (!bDump)
         {
-            return OldBitmap((Word_t *)wRoot);
+            return OldBitmap(pwr);
         }
 
         printf(" nWords %2"_fw"d", EXP(cnBitsAtBottom) / cnBitsPerWord);
@@ -804,7 +804,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
             if ((nn % 8) == 0) {
                 printf("\n");
             }
-            printf(" "Owx, ((Word_t *)wRoot)[nn]);
+            printf(" "Owx, pwr[nn]);
         }
 
 #else // (cnBitsAtBottom > cnLogBitsPerWord)
@@ -821,8 +821,6 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         return 0;
     }
 
-    nType = wr_nType(wRoot); (void)nType; // silence gcc
-
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if ! defined(TYPE_IS_RELATIVE)
     assert(nDigitsLeft - tp_to_nDS(nType)
@@ -831,8 +829,6 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
     assert(tp_to_nDigitsLeft(nType) <= nBL_to_nDL(nBitsLeft));
 #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-
-    pwr = wr_tp_pwr(wRoot, nType);
 
 #if (cwListPopCntMax != 0)
     if (!tp_bIsSwitch(nType))
@@ -885,12 +881,12 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 #endif // defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
             if (nBitsLeft <= 8) {
-                printf(" %02x", ls_pcKeys(wRoot)[xx]);
+                printf(" %02x", ls_pcKeys(pwr)[xx]);
             } else if (nBitsLeft <= 16) {
-                printf(" %04x", ls_psKeys(wRoot)[xx]);
+                printf(" %04x", ls_psKeys(pwr)[xx]);
 #if (cnBitsPerWord > 32)
             } else if (nBitsLeft <= 32) {
-                printf(" %08x", ls_piKeys(wRoot)[xx]);
+                printf(" %08x", ls_piKeys(pwr)[xx]);
 #endif // (cnBitsPerWord > 32)
             } else
 #endif // defined(COMPRESSED_LISTS)

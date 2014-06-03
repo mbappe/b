@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.140 2014/06/02 00:32:19 mike Exp mike $
+// @(#) $Id: bli.c,v 1.141 2014/06/03 16:16:10 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -772,10 +772,11 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     // be ifdef'd.
     Word_t wRoot = (Word_t)pcvRoot;
     unsigned nType = wr_nType(wRoot);
+    Word_t *pwr = wr_tp_pwr(wRoot, nType);
     if (!tp_bIsSwitch(nType) && (wRoot != 0))
     {
-        Word_t wPopCnt = ls_wPopCnt(wRoot);
-        Word_t *pwKeys = ls_pwKeys(wRoot) + 1;
+        Word_t wPopCnt = ls_wPopCnt(pwr);
+        Word_t *pwKeys = ls_pwKeys(pwr) + 1;
         for (unsigned nn = 0; nn < wPopCnt; nn++)
         {
             if (pwKeys[nn] == wKey) { return Success; }
@@ -860,6 +861,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     Word_t *pwRoot = (Word_t *)ppvRoot;
     Word_t wRoot = *pwRoot;
     unsigned nType = wr_nType(wRoot);
+    Word_t *pwr = wr_tp_pwr(wRoot, nType);
     if (!tp_bIsSwitch(nType))
     {
         if (Judy1Test((Pcvoid_t)wRoot, wKey, PJError) == Success)
@@ -868,7 +870,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         }
         else
         {
-            Word_t wPopCnt = (wRoot != 0) ? ls_wPopCnt(wRoot) : 0;
+            Word_t wPopCnt = (wRoot != 0) ? ls_wPopCnt(pwr) : 0;
             if (wPopCnt == cwListPopCntMax)
             {
                 status = InsertGuts(pwRoot, wKey, cnDigitsPerWord, wRoot);
@@ -878,7 +880,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 Word_t *pwListNew
                     = NewList(wPopCnt + 1, cnDigitsPerWord, wKey);
                 Word_t *pwKeysNew = ls_pwKeys(pwListNew) + 1;
-                Word_t *pwKeys = ls_pwKeys(wRoot) + 1;
+                Word_t *pwKeys = ls_pwKeys(pwr) + 1;
                 unsigned nn;
                 for (nn = 0; (nn < wPopCnt) && (pwKeys[nn] < wKey); nn++) { }
                 set_ls_wPopCnt(pwKeysNew, wPopCnt + 1);
@@ -887,9 +889,10 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 COPY(&pwKeysNew[nn + 1], &pwKeys[nn], wPopCnt - nn);
                 if (wPopCnt != 0)
                 {
-                    OldList((Word_t *)*pwRoot, wPopCnt, cnDigitsPerWord);
+                    OldList(pwr, wPopCnt, cnDigitsPerWord);
                 }
-                *pwRoot = (Word_t)pwListNew;
+                set_wr(wRoot, pwListNew, T_OTHER);
+                *pwRoot = wRoot;
                 status = Success;
             }
         }
@@ -924,7 +927,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
       #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         if (!tp_bIsSwitch(nType))
         {
-            wPopCnt = wr_ls_wPopCnt(wRoot);
+            wPopCnt = wr_ls_wPopCnt(pwr);
         }
         else
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -1161,6 +1164,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     Word_t *pwRoot = (Word_t *)ppvRoot;
     Word_t wRoot = *pwRoot;
     unsigned nType = wr_nType(wRoot);
+    Word_t *pwr = wr_tp_pwr(wRoot, nType);
     if (!tp_bIsSwitch(nType))
     {
         if (Judy1Test((Pcvoid_t)wRoot, wKey, PJError) == Failure)
@@ -1170,12 +1174,12 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
         else
         {
             Word_t *pwListNew;
-            Word_t wPopCnt = ls_wPopCnt(wRoot);
+            Word_t wPopCnt = ls_wPopCnt(pwr);
             if (wPopCnt != 1)
             {
                 pwListNew = NewList(wPopCnt - 1, cnDigitsPerWord, wKey);
                 Word_t *pwKeysNew = ls_pwKeys(pwListNew) + 1;
-                Word_t *pwKeys = ls_pwKeys(wRoot) + 1;
+                Word_t *pwKeys = ls_pwKeys(pwr) + 1;
                 unsigned nn;
                 for (nn = 0; pwKeys[nn] != wKey; nn++) { }
                 set_ls_wPopCnt(pwListNew, wPopCnt - 1);
@@ -1186,8 +1190,9 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
             {
                 pwListNew = NULL;
             }
-            OldList((Word_t *)*pwRoot, wPopCnt, cnDigitsPerWord);
-            *pwRoot = (Word_t)pwListNew;
+            OldList(pwr, wPopCnt, cnDigitsPerWord);
+            set_wr(wRoot, pwListNew, T_OTHER);
+            *pwRoot = wRoot;
             status = Success;
         }
     }
