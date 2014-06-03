@@ -353,8 +353,8 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #if defined(TYPE_IS_RELATIVE)
 
-#define tp_to_nDS(_tp)   ((_tp) - 1)
-#define nDS_to_tp(_nDS)  ((_nDS) + 1)
+#define tp_to_nDS(_tp)   ((_tp)  - (T_OTHER + 1))
+#define nDS_to_tp(_nDS)  ((_nDS) + (T_OTHER + 1))
 
 #define     wr_nDS(_wr)        (tp_to_nDS(wr_nType(_wr)))
 #define set_wr_nDS(_wr, _nDS)  (set_wr_nType((_wr), nDS_to_tp(_nDS)))
@@ -364,8 +364,8 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #else // defined(TYPE_IS_RELATIVE)
 
-#define tp_to_nDigitsLeft(_tp)   (_tp)
-#define nDigitsLeft_to_tp(_nDL)  (_nDL)
+#define tp_to_nDigitsLeft(_tp)   ((_tp)  - T_OTHER)
+#define nDigitsLeft_to_tp(_nDL)  ((_nDL) - T_OTHER)
 
 #define     wr_nDigitsLeft(_wr)     (tp_to_nDigitsLeft(wr_nType(_wr)))
 #define set_wr_nDigitsLeft(_wr, _nDL) \
