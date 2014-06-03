@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.141 2014/06/03 16:16:10 mike Exp mike $
+// @(#) $Id: bli.c,v 1.142 2014/06/03 16:36:40 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -194,10 +194,10 @@ again:
             {
                 // Will have to figure this out to get rid
                 // of pop count in list.
-                wPopCnt = ls_wPopCnt(wRoot);
+                wPopCnt = ls_wPopCnt(wr_tp_pwr(wRoot, nType));
             }
       #else // defined(PP_IN_LINK)
-            wPopCnt = ls_wPopCnt(wRoot);
+            wPopCnt = ls_wPopCnt(wr_tp_pwr(wRoot, nType));
             DBGX(printf("List wPopCnt %"_fw"u\n", wPopCnt));
           #if defined(LOOKUP)
             SMETRICS(j__SearchPopulation += wPopCnt);
@@ -264,18 +264,20 @@ again:
                     SMETRICS(j__SearchCompares++);
           #endif // defined(LOOKUP)
 
+                    pwr = wr_tp_pwr(wRoot, nType);
+
           #if defined(COMPRESSED_LISTS)
                     if ((nBitsLeft <= 8)
-                            ? (wr_pcKeys(wRoot)[n] == (unsigned char)wKey)
+                            ? (wr_pcKeys(pwr)[n] == (unsigned char)wKey)
                         : (nBitsLeft <= 16)
-                            ? (wr_psKeys(wRoot)[n] == (unsigned short)wKey)
+                            ? (wr_psKeys(pwr)[n] == (unsigned short)wKey)
               #if (cnBitsPerWord > 32)
                         : (nBitsLeft <= 32)
-                            ? (wr_piKeys(wRoot)[n] == (unsigned int)wKey)
+                            ? (wr_piKeys(pwr)[n] == (unsigned int)wKey)
               #endif // (cnBitsPerWord > 32)
-                        : (wr_pwKeys(wRoot)[n] == wKey))
+                        : (wr_pwKeys(pwr)[n] == wKey))
           #else // defined(COMPRESSED_LISTS)
-                    if (wr_pwKeys(wRoot)[n] == wKey)
+                    if (wr_pwKeys(pwr)[n] == wKey)
           #endif // defined(COMPRESSED_LISTS)
                     {
           #if defined(REMOVE)
@@ -290,16 +292,16 @@ again:
           #if defined(SORT_LISTS)
               #if defined(COMPRESSED_LISTS)
                     if ((nBitsLeft <= 8)
-                            ? (wr_pcKeys(wRoot)[n] > (unsigned char)wKey)
+                            ? (wr_pcKeys(pwr)[n] > (unsigned char)wKey)
                         : (nBitsLeft <= 16)
-                            ? (wr_psKeys(wRoot)[n] > (unsigned short)wKey)
+                            ? (wr_psKeys(pwr)[n] > (unsigned short)wKey)
                   #if (cnBitsPerWord > 32)
                         : (nBitsLeft <= 32)
-                            ? (wr_piKeys(wRoot)[n] > (unsigned int)wKey)
+                            ? (wr_piKeys(pwr)[n] > (unsigned int)wKey)
                   #endif // (cnBitsPerWord > 32)
-                        : (wr_pwKeys(wRoot)[n] > wKey))
+                        : (wr_pwKeys(pwr)[n] > wKey))
               #else // defined(COMPRESSED_LISTS)
-                    if (wr_pwKeys(wRoot)[n] > wKey)
+                    if (wr_pwKeys(pwr)[n] > wKey)
               #endif // defined(COMPRESSED_LISTS)
                     {
                         break;
@@ -323,6 +325,180 @@ again:
         }
         break;
     } // end of case
+#if (T_OTHER != T_NULL)
+    case T_NULL:
+    {
+        DBGX(printf("List nDigitsLeft %d\n", nDigitsLeft));
+        DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMask(nDigitsLeft)));
+
+  #if defined(REMOVE)
+        if (bCleanup)
+        {
+            // RemoveGuts already removed the list if necessary.
+            return KeyFound;
+        }
+  #endif // defined(REMOVE)
+
+  #if defined(PP_IN_LINK)
+        // What about defined(RECURSIVE)?
+        if (nDigitsLeft != cnDigitsPerWord)
+        {
+            // If nDigitsLeft != cnDigitsPerWord then we're not at the top.
+            // And pwRoot is initialized despite what gcc might think.
+            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
+      #if ! defined(LOOKUP)
+            DBGX(printf("wPopCnt (before incr) %zd\n", (size_t)wPopCnt));
+            set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
+            DBGX(printf("wPopCnt (after incr) %zd\n",
+                        (size_t)PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
+      #endif // ! defined(LOOKUP)
+        }
+  #endif // defined(PP_IN_LINK)
+
+        if (wRoot != 0)
+        {
+  #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
+// This short-circuit is for analysis only.
+            return KeyFound;
+  #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
+
+      #if defined(PP_IN_LINK)
+            if (nDigitsLeft == cnDigitsPerWord)
+            {
+                // Will have to figure this out to get rid
+                // of pop count in list.
+                wPopCnt = ls_wPopCnt(wr_tp_pwr(wRoot, nType));
+            }
+      #else // defined(PP_IN_LINK)
+            wPopCnt = ls_wPopCnt(wr_tp_pwr(wRoot, nType));
+            DBGX(printf("List wPopCnt %"_fw"u\n", wPopCnt));
+          #if defined(LOOKUP)
+            SMETRICS(j__SearchPopulation += wPopCnt);
+          #endif // defined(LOOKUP)
+      #endif // defined(PP_IN_LINK)
+
+      #if defined(COMPRESSED_LISTS)
+          #if !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
+            // nDigitsLeft is relative to the bottom of the switch
+            // containing the pointer to the leaf.
+            unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
+          #endif // !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
+          #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+            // We don't support skip links directly to leaves -- yet.
+            // Even with defined(PP_IN_LINK).
+            // It is sufficient to check the prefix at the switch just
+            // above the leaf.
+            // pwr is left from the previous iteration of the goto again loop.
+            // Would like to combine the source code for this prefix
+            // check and the one done in the bitmap section if possible.
+            Word_t wPrefix;
+              #if (cnBitsPerWord > 32)
+            if ((nBitsLeft > 32) // leaf has whole key
+              #else // (cnBitsPerWord > 32)
+            if ((nBitsLeft > 16) // leaf has whole key
+              #endif // (cnBitsPerWord > 32)
+                // leaf does not have whole key
+                // What if there were no skips in the part that is missing?
+                || ( ! bNeedPrefixCheck ) // we followed no skip links
+                // If we need a prefix check, then we're not at the top.
+                // And pwRoot is initialized despite what gcc might think.
+                || ((wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeft),
+                    LOG(1 | (wPrefix ^ wKey))
+                        // prefix in parent switch doesn't contain last digit
+                        // for !defined(PP_IN_LINK) case
+                        < (nBitsLeft
+              #if !defined(PP_IN_LINK)
+                                + nDL_to_nBitsIndexSzNAT(nDigitsLeft + 1)
+              #endif // !defined(PP_IN_LINK)
+                           ))))
+          #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+      #endif // defined(COMPRESSED_LISTS)
+            {
+      #if defined(DL_IN_LL)
+                assert(ll_nDigitsLeft(wRoot) == nDigitsLeft);
+      #endif // defined(DL_IN_LL)
+      #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
+          // This short-circuit is for analysis only.  We have retrieved the
+          // pop count and prefix but we have not dereferenced the list
+          // itself.
+          #if defined(PP_IN_LINK)
+                return KeyFound;
+          #else // defined(PP_IN_LINK)
+                return wPopCnt ? KeyFound : ! KeyFound;
+          #endif // defined(PP_IN_LINK)
+      #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
+
+                pwr = wr_tp_pwr(wRoot, nType);
+
+                // todo: save insertion point in sorted list and pass it to
+                // InsertGuts
+                // todo: possibly do insertion right here if list isn't full
+                for (unsigned n = 0; n < wPopCnt; n++)
+                {
+          #if defined(LOOKUP)
+                    SMETRICS(j__SearchCompares++);
+          #endif // defined(LOOKUP)
+
+          #if defined(COMPRESSED_LISTS)
+                    if ((nBitsLeft <= 8)
+                            ? (wr_pcKeys(pwr)[n] == (unsigned char)wKey)
+                        : (nBitsLeft <= 16)
+                            ? (wr_psKeys(pwr)[n] == (unsigned short)wKey)
+              #if (cnBitsPerWord > 32)
+                        : (nBitsLeft <= 32)
+                            ? (wr_piKeys(pwr)[n] == (unsigned int)wKey)
+              #endif // (cnBitsPerWord > 32)
+                        : (wr_pwKeys(pwr)[n] == wKey))
+          #else // defined(COMPRESSED_LISTS)
+                    if (wr_pwKeys(pwr)[n] == wKey)
+          #endif // defined(COMPRESSED_LISTS)
+                    {
+          #if defined(REMOVE)
+                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                        goto cleanup;
+          #endif // defined(REMOVE)
+          #if defined(INSERT) && !defined(RECURSIVE)
+                        if (nIncr > 0) goto undo; // undo counting
+          #endif // defined(INSERT) && !defined(RECURSIVE)
+                        return KeyFound;
+                    }
+          #if defined(SORT_LISTS)
+              #if defined(COMPRESSED_LISTS)
+                    if ((nBitsLeft <= 8)
+                            ? (wr_pcKeys(pwr)[n] > (unsigned char)wKey)
+                        : (nBitsLeft <= 16)
+                            ? (wr_psKeys(pwr)[n] > (unsigned short)wKey)
+                  #if (cnBitsPerWord > 32)
+                        : (nBitsLeft <= 32)
+                            ? (wr_piKeys(pwr)[n] > (unsigned int)wKey)
+                  #endif // (cnBitsPerWord > 32)
+                        : (wr_pwKeys(pwr)[n] > wKey))
+              #else // defined(COMPRESSED_LISTS)
+                    if (wr_pwKeys(pwr)[n] > wKey)
+              #endif // defined(COMPRESSED_LISTS)
+                    {
+                        break;
+                    }
+          #endif // defined(SORT_LISTS)
+                }
+      #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
+            }
+      #if defined(COMPRESSED_LISTS)
+          #if defined(SKIP_LINKS)
+              #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+            else
+            {
+                DBGX(printf("Mismatch at list wPrefix "OWx" nDL %d\n",
+                    wPrefix, nDigitsLeft));
+            }
+              #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+          #endif // defined(SKIP_LINKS)
+      #endif // defined(COMPRESSED_LISTS)
+  #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
+        }
+        break;
+    } // end of case
+#endif // (T_OTHER != T_NULL)
     default:
     {
 #endif // (cwListPopCntMax != 0)
@@ -658,7 +834,7 @@ notEmpty:;
                         "Evaluating BitIsSet(wRoot "OWx" wKey "OWx") ...\n",
                             wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)));
 
-                    if (BitIsSet(wRoot,
+                    if (BitIsSet(wr_pwr(wRoot),
                         wKey & (EXP(cnBitsAtBottom) - 1UL)))
                     {
           #if defined(REMOVE)

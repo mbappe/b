@@ -349,6 +349,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 // Set the pwRoot and nType fields in wRoot.
 #define set_wr(_wr, _pwr, _type)  ((_wr) = (Word_t)(_pwr) | (_type))
 
+#define T_NULL   0
 #define T_OTHER  0
 
 #if defined(TYPE_IS_RELATIVE)
@@ -365,7 +366,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #else // defined(TYPE_IS_RELATIVE)
 
 #define tp_to_nDigitsLeft(_tp)   ((_tp)  - T_OTHER)
-#define nDigitsLeft_to_tp(_nDL)  ((_nDL) - T_OTHER)
+#define nDigitsLeft_to_tp(_nDL)  ((_nDL) + T_OTHER)
 
 #define     wr_nDigitsLeft(_wr)     (tp_to_nDigitsLeft(wr_nType(_wr)))
 #define set_wr_nDigitsLeft(_wr, _nDL) \
