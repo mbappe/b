@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.139 2014/06/01 14:13:08 mike Exp mike $
+// @(#) $Id: bli.c,v 1.140 2014/06/02 00:32:19 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -153,7 +153,7 @@ again:
 #if (cwListPopCntMax != 0)
     switch (nType)
     {
-    case 0:
+    case T_OTHER:
     {
         DBGX(printf("List nDigitsLeft %d\n", nDigitsLeft));
         DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMask(nDigitsLeft)));

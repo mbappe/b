@@ -613,7 +613,7 @@ Status_t RemoveGuts(Word_t *pwRoot,
 Word_t FreeArrayGuts(Word_t *pwRoot,
                      Word_t wPrefix, unsigned nBitsLeft, int bDump);
 
-Word_t OldBitmap(Word_t wRoot);
+Word_t OldBitmap(Word_t *pwr);
 
 unsigned ListWords(Word_t wPopCnt, unsigned nDigitsLeft);
 Word_t *NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey);

@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.210 2014/06/03 00:51:33 mike Exp mike $
+// @(#) $Id: b.c,v 1.211 2014/06/03 15:21:25 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -324,7 +324,7 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDigitsLeft)
 
 #if (cnBitsAtBottom > cnLogBitsPerWord)
 
-static Word_t
+static Word_t *
 NewBitmap(void)
 {
     unsigned nWords = EXP(cnBitsAtBottom) / cnBitsPerWord;
@@ -341,15 +341,15 @@ NewBitmap(void)
 
     memset((void *)w, 0, nWords * sizeof(Word_t));
 
-    return w;
+    return (Word_t *)w;
 }
 
 Word_t
-OldBitmap(Word_t wRoot)
+OldBitmap(Word_t *pwr)
 {
     unsigned nWords = EXP(cnBitsAtBottom) / cnBitsPerWord;
 
-    MyFree((Word_t *)wRoot, nWords);
+    MyFree(pwr, nWords);
 
     METRICS(j__AllocWordsJLB1 -= nWords); // JUDYA
     METRICS(j__AllocWordsJL12 -= nWords); // JUDYB -- overloaded
@@ -792,7 +792,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
         if (!bDump)
         {
-            return OldBitmap(wRoot);
+            return OldBitmap((Word_t *)wRoot);
         }
 
         printf(" nWords %2"_fw"d", EXP(cnBitsAtBottom) / cnBitsPerWord);
@@ -1269,8 +1269,8 @@ CopyWithInsertChar(unsigned char *pTgt, unsigned char *pSrc,
 Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 {
-    Word_t *pwr;
-    unsigned nType;
+    unsigned nType = wr_nType(wRoot); (void)nType; // silence gcc
+    Word_t *pwr = wr_tp_pwr(wRoot, nType);
 
     // Validate global constant parameters set up in the header file.
 #if 0
@@ -1299,17 +1299,19 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
 #else // (cnBitsAtBottom <= cnLogBitsPerWord)
 
-        if (wRoot == 0)
+        if (pwr == NULL)
         {
-            *pwRoot = wRoot = NewBitmap();
+            pwr = NewBitmap();
+            set_wr(wRoot, pwr, T_OTHER);
+            *pwRoot = wRoot;
         }
 
-        assert(!BitIsSet(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+        assert(!BitIsSet(pwr, wKey & (EXP(cnBitsAtBottom) - 1)));
 
         DBGI(printf("SetBit(wRoot "OWx" wKey "OWx") pwRoot %p\n",
             wRoot, wKey & (EXP(cnBitsAtBottom) - 1), (void *)pwRoot));
 
-        SetBit(wRoot, wKey & (EXP(cnBitsAtBottom) - 1));
+        SetBit(pwr, wKey & (EXP(cnBitsAtBottom) - 1));
 
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 
@@ -1320,10 +1322,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         return Success;
     }
-
-    nType = wr_nType(wRoot); (void)nType; // silence gcc
-
-    pwr = wr_tp_pwr(wRoot, nType);
 
 // This first clause handles wRoot == 0 by treating it like a list leaf
 // with zero population (and no allocated memory).
@@ -1591,7 +1589,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             }
 
             set_wr(wRoot, pwList, T_OTHER);
-
             *pwRoot = wRoot; // install new
         }
         else
@@ -1616,17 +1613,17 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #if defined(SORT_LISTS) || defined(MIN_MAX_LISTS)
 #if defined(COMPRESSED_LISTS)
                     if (nBitsLeft <= 8) {
-                        wMin = ls_pcKeys(wRoot)[0];
-                        wMax = ls_pcKeys(wRoot)[wPopCnt - 1];
+                        wMin = ls_pcKeys(pwr)[0];
+                        wMax = ls_pcKeys(pwr)[wPopCnt - 1];
                         wSuffix = wKey & 0xff;
                     } else if (nBitsLeft <= 16) {
-                        wMin = ls_psKeys(wRoot)[0];
-                        wMax = ls_psKeys(wRoot)[wPopCnt - 1];
+                        wMin = ls_psKeys(pwr)[0];
+                        wMax = ls_psKeys(pwr)[wPopCnt - 1];
                         wSuffix = wKey & 0xffff;
 #if (cnBitsPerWord > 32)
                     } else if (nBitsLeft <= 32) {
-                        wMin = ls_piKeys(wRoot)[0];
-                        wMax = ls_piKeys(wRoot)[wPopCnt - 1];
+                        wMin = ls_piKeys(pwr)[0];
+                        wMax = ls_piKeys(pwr)[wPopCnt - 1];
                         wSuffix = wKey & 0xffffffff;
 #endif // (cnBitsPerWord > 32)
                     } else 
@@ -1649,21 +1646,21 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                     {
 #if defined(COMPRESSED_LISTS)
                         if (nBitsLeft <= 8) {
-                            if (ls_pcKeys(wRoot)[w] < wMin)
-                                wMin = ls_pcKeys(wRoot)[w];
-                            if (ls_pcKeys(wRoot)[w] > wMax)
-                                wMax = ls_pcKeys(wRoot)[w];
+                            if (ls_pcKeys(pwr)[w] < wMin)
+                                wMin = ls_pcKeys(pwr)[w];
+                            if (ls_pcKeys(pwr)[w] > wMax)
+                                wMax = ls_pcKeys(pwr)[w];
                         } else if (nBitsLeft <= 16) {
-                            if (ls_psKeys(wRoot)[w] < wMin)
-                                wMin = ls_psKeys(wRoot)[w];
-                            if (ls_psKeys(wRoot)[w] > wMax)
-                                wMax = ls_psKeys(wRoot)[w];
+                            if (ls_psKeys(pwr)[w] < wMin)
+                                wMin = ls_psKeys(pwr)[w];
+                            if (ls_psKeys(pwr)[w] > wMax)
+                                wMax = ls_psKeys(pwr)[w];
 #if (cnBitsPerWord > 32)
                         } else if (nBitsLeft <= 32) {
-                            if (ls_piKeys(wRoot)[w] < wMin)
-                                wMin = ls_piKeys(wRoot)[w];
-                            if (ls_piKeys(wRoot)[w] > wMax)
-                                wMax = ls_piKeys(wRoot)[w];
+                            if (ls_piKeys(pwr)[w] < wMin)
+                                wMin = ls_piKeys(pwr)[w];
+                            if (ls_piKeys(pwr)[w] > wMax)
+                                wMax = ls_piKeys(pwr)[w];
 #endif // (cnBitsPerWord > 32)
                         } else 
 #endif // defined(COMPRESSED_LISTS)
@@ -2007,7 +2004,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         {
             DBGL(printf("RemoveGuts OldBitmap nDigitsLeft %d\n",
                  nDigitsLeft));
-            OldBitmap(wRoot); *pwRoot = 0;
+            OldBitmap((Word_t *)wRoot); *pwRoot = 0;
             // Do we need to clear the rest of the link also?
         }
 #else // defined(PP_IN_LINK)
@@ -2022,7 +2019,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             }
         }
 
-        OldBitmap(wRoot); *pwRoot = 0;
+        OldBitmap((Word_t *)wRoot); *pwRoot = 0;
 done:
 
 #endif // defined(PP_IN_LINK)
