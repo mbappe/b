@@ -150,31 +150,25 @@
 // is cnLogBitsPerWord and we can embed the bitmap.
 // I think I should change this to be relative to the minimum digits at
 // bottom based on cnBitsPerDigit and cnBitsPerWord.
-#if   (cnBitsPerDigit >= 14)
-    #define cnBitsAtBottom   cnBitsPerDigit
-#elif (cnBitsPerDigit >=  7)
-    #define cnBitsAtBottom  (cnBitsPerDigit *  2)
-#elif (cnBitsPerDigit >=  5)
-    #define cnBitsAtBottom  (cnBitsPerDigit *  3)
-#elif (cnBitsPerDigit >=  4)
-    #define cnBitsAtBottom  (cnBitsPerDigit *  4)
-#elif (cnBitsPerDigit >=  3)
+#if (cnBitsPerDigit >=  4)
+    #define cnBitsAtBottom  16
+#elif (cnBitsPerDigit ==  3)
   #if (cnBitsPerWord == 32)
-        #define cnBitsAtBottom  (cnBitsPerDigit *  5)
+        #define cnBitsAtBottom  17
   #else
-        #define cnBitsAtBottom  (cnBitsPerDigit *  8)
+        #define cnBitsAtBottom  25
   #endif
 #elif (cnBitsPerDigit ==  2)
   #if (cnBitsPerWord == 32)
-        #define cnBitsAtBottom  (cnBitsPerDigit * 10)
+        #define cnBitsAtBottom  22
   #else
-        #define cnBitsAtBottom  (cnBitsPerDigit * 18)
+        #define cnBitsAtBottom  38
   #endif
 #elif (cnBitsPerDigit ==  1)
   #if (cnBitsPerWord == 32)
-        #define cnBitsAtBottom  (cnBitsPerDigit * 26)
+        #define cnBitsAtBottom  27
   #else
-        #define cnBitsAtBottom  (cnBitsPerDigit * 50)
+        #define cnBitsAtBottom  51
   #endif // cnBitsPerWord
 #endif // cnBitsPerDigit
 
