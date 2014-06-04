@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.150 2014/06/04 23:14:33 mike Exp mike $
+// @(#) $Id: bli.c,v 1.151 2014/06/04 23:24:10 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -779,6 +779,8 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
   #if (cwListPopCntMax != 0) && defined(PP_IN_LINK)
     // Handle the top level list leaf.
+    // Why?  So we don't have to handle lists with wPopCnt in them
+    // in the mainline code for PP_IN_LINK?
     // Do not assume the list is sorted -- so this code doesn't have to
     // be ifdef'd.
     Word_t wRoot = (Word_t)pcvRoot;
@@ -943,13 +945,12 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         {
       #if defined(PP_IN_LINK)
             // no skip links at root for PP_IN_LINK -- no place for prefix
-          #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-              #if defined(TYPE_IS_RELATIVE)
+          #if defined(TYPE_IS_RELATIVE)
             assert(tp_to_nDS(nType) == 0);
-              #else // defined(TYPE_IS_RELATIVE)
+          #else // defined(TYPE_IS_RELATIVE)
             assert(tp_to_nDigitsLeft(nType) == cnDigitsPerWord);
-              #endif // defined(TYPE_IS_RELATIVE)
-          #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+          #endif // defined(TYPE_IS_RELATIVE)
+
             // add up the pops in the links
 
           #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
