@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.213 2014/06/03 16:36:40 mike Exp mike $
+// @(#) $Id: b.c,v 1.214 2014/06/03 23:11:54 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1999,7 +1999,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         {
             DBGL(printf("RemoveGuts OldBitmap nDigitsLeft %d\n",
                  nDigitsLeft));
-            OldBitmap((Word_t *)wRoot); *pwRoot = 0;
+            OldBitmap(pwr); *pwRoot = 0;
             // Do we need to clear the rest of the link also?
         }
 #else // defined(PP_IN_LINK)
@@ -2014,7 +2014,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             }
         }
 
-        OldBitmap((Word_t *)wRoot); *pwRoot = 0;
+        OldBitmap(pwr); *pwRoot = 0;
 done:
 
 #endif // defined(PP_IN_LINK)
