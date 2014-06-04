@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.148 2014/06/04 22:41:13 mike Exp mike $
+// @(#) $Id: bli.c,v 1.149 2014/06/04 23:11:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -101,15 +101,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
   #endif // !defined(LOOKUP) || defined(BM_IN_LINK)
 #endif // !defined(RECURSIVE)
     unsigned nDigitsLeftRoot;
-#if !defined(LOOKUP)
-    Word_t wPopCnt;
-#else // !defined(LOOKUP)
-  #if (cwListPopCntMax != 0)
-          #if !defined(LOOKUP_NO_LIST_DEREF) || defined(PP_IN_LINK)
-    Word_t wPopCnt;
-          #endif // !defined(LOOKUP_NO_LIST_DEREF) || defined(PP_IN_LINK)
-  #endif // (cwListPopCntMax != 0)
-#endif // !defined(LOOKUP)
+    Word_t wPopCnt; (void)wPopCnt;
     unsigned nType;
 #if defined(REMOVE)
     int bCleanup = 0;
@@ -141,12 +133,7 @@ again:
     DBGX(printf("# wRoot "OWx" wKey "OWx" nDigitsLeft %d\n",
             wRoot, wKey, nDigitsLeft));
 
-#if (cwListPopCntMax == 0)
-    if (wRoot != 0)
-#endif // (cwListPopCntMax == 0)
-    {
     nType = wr_nType(wRoot);
-#if (cwListPopCntMax != 0)
     switch (nType)
     {
     case T_OTHER:
@@ -359,8 +346,6 @@ again:
 
     default:
     {
-#endif // (cwListPopCntMax != 0)
-
         // pwr points to a switch
 
         pwr = wr_tp_pwr(wRoot, nType); // pointer extracted from wRoot
@@ -729,12 +714,9 @@ notEmpty:;
   #endif // defined(SKIP_LINKS)
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
         }
-#if (cwListPopCntMax != 0)
         break;
     } // end of case
     } // end of switch
-#endif // (cwListPopCntMax != 0)
-    } // end of if (wRoot != 0)
 
 #if defined(BM_SWITCH_FOR_REAL)
 notFound:
