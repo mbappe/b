@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.214 2014/06/03 23:11:54 mike Exp mike $
+// @(#) $Id: b.c,v 1.215 2014/06/04 01:57:25 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2260,7 +2260,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     if (!tp_bIsSwitch(nType))
     {
-        wPopCnt = wr_ls_wPopCnt(wRoot);
+        wPopCnt = ls_wPopCnt(pwr);
     }
     else
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -2304,7 +2304,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
                 wPopCntLn
 #if defined(TYPE_IS_RELATIVE)
                     = PWR_wPopCnt(pwRootLn, NULL,
-                                  cnDigitsPerWord - wr_nDS(*pwRootLn));
+                                  cnDigitsPerWord - 1 - wr_nDS(*pwRootLn));
 #else // defined(TYPE_IS_RELATIVE)
                     = PWR_wPopCnt(pwRootLn, NULL, wr_nDigitsLeft(*pwRootLn));
 #endif // defined(TYPE_IS_RELATIVE)
@@ -2409,6 +2409,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
     if (wPopCnt != wInserts)
     {
         printf("\nwPopCnt %"_fw"d wInserts %"_fw"d\n", wPopCnt, wInserts);
+        Dump(pwRootLast, 0, cnBitsPerWord);
     }
     assert(wPopCnt == wInserts);
 #endif // defined(DEBUG)
