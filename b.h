@@ -345,8 +345,6 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 // Set the nType field in wRoot.
 #define set_wr_nType(_wr, _type)  ((_wr) = ((_wr) & ~cnMallocMask) | (_type))
 
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-
 // Extract the pwRoot field from wRoot given the value of the type field.
 #define     wr_tp_pwr(_wr, _tp)          ((Word_t *)((_wr) ^ (_tp)))
 // Extract the pwRoot field from wRoot.
@@ -389,17 +387,6 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #define     tp_bIsSwitch(_tp)          ((_tp) > T_OTHER)
 #define     wr_bIsSwitch(_wr)          (tp_bIsSwitch(wr_nType(_wr)))
-
-#else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-
-#define     wr_pwr(_wr)                  ((Word_t *)(_wr))
-#define set_wr_pwr(_wr, _pwr)            ((_wr) = (Word_t)(_pwr))
-
-#define     wr_tp_pwr(_wr, _tp)          ((Word_t *)(_wr))
-
-#define set_wr(_wr, _pwr, _tp)         ((_wr) = (Word_t)(_pwr))
-
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
 // methods for Switch (and aliases)
 

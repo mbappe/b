@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.216 2014/06/04 02:45:19 mike Exp mike $
+// @(#) $Id: b.c,v 1.217 2014/06/04 03:03:06 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2251,9 +2251,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
     }
 
     Word_t wRoot = (Word_t)PArray;
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     unsigned nType = wr_nType(wRoot);
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     Word_t *pwr = wr_tp_pwr(wRoot, nType);
     Word_t wPopCnt;
 

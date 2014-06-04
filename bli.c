@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.147 2014/06/04 22:06:42 mike Exp mike $
+// @(#) $Id: bli.c,v 1.148 2014/06/04 22:41:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -110,9 +110,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
           #endif // !defined(LOOKUP_NO_LIST_DEREF) || defined(PP_IN_LINK)
   #endif // (cwListPopCntMax != 0)
 #endif // !defined(LOOKUP)
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     unsigned nType;
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(REMOVE)
     int bCleanup = 0;
 #endif // defined(REMOVE)
@@ -147,9 +145,7 @@ again:
     if (wRoot != 0)
 #endif // (cwListPopCntMax == 0)
     {
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     nType = wr_nType(wRoot);
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if (cwListPopCntMax != 0)
     switch (nType)
     {
@@ -957,9 +953,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     {
         Word_t *pwRoot = (Word_t *)ppvRoot;
         Word_t wRoot = *pwRoot;
-      #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         unsigned nType = wr_nType(wRoot);
-      #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         Word_t *pwr = wr_tp_pwr(wRoot, nType);
         Word_t wPopCnt;
 
