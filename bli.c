@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.144 2014/06/03 23:12:48 mike Exp mike $
+// @(#) $Id: bli.c,v 1.145 2014/06/04 02:01:21 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -268,16 +268,16 @@ again:
 
           #if defined(COMPRESSED_LISTS)
                     if ((nBitsLeft <= 8)
-                            ? (wr_pcKeys(pwr)[n] == (unsigned char)wKey)
+                            ? (pwr_pcKeys(pwr)[n] == (unsigned char)wKey)
                         : (nBitsLeft <= 16)
-                            ? (wr_psKeys(pwr)[n] == (unsigned short)wKey)
+                            ? (pwr_psKeys(pwr)[n] == (unsigned short)wKey)
               #if (cnBitsPerWord > 32)
                         : (nBitsLeft <= 32)
-                            ? (wr_piKeys(pwr)[n] == (unsigned int)wKey)
+                            ? (pwr_piKeys(pwr)[n] == (unsigned int)wKey)
               #endif // (cnBitsPerWord > 32)
-                        : (wr_pwKeys(pwr)[n] == wKey))
+                        : (pwr_pwKeys(pwr)[n] == wKey))
           #else // defined(COMPRESSED_LISTS)
-                    if (wr_pwKeys(pwr)[n] == wKey)
+                    if (pwr_pwKeys(pwr)[n] == wKey)
           #endif // defined(COMPRESSED_LISTS)
                     {
           #if defined(REMOVE)
@@ -292,14 +292,14 @@ again:
           #if defined(SORT_LISTS)
               #if defined(COMPRESSED_LISTS)
                     if ((nBitsLeft <= 8)
-                            ? (wr_pcKeys(pwr)[n] > (unsigned char)wKey)
+                            ? (pwr_pcKeys(pwr)[n] > (unsigned char)wKey)
                         : (nBitsLeft <= 16)
-                            ? (wr_psKeys(pwr)[n] > (unsigned short)wKey)
+                            ? (pwr_psKeys(pwr)[n] > (unsigned short)wKey)
                   #if (cnBitsPerWord > 32)
                         : (nBitsLeft <= 32)
-                            ? (wr_piKeys(pwr)[n] > (unsigned int)wKey)
+                            ? (pwr_piKeys(pwr)[n] > (unsigned int)wKey)
                   #endif // (cnBitsPerWord > 32)
-                        : (wr_pwKeys(pwr)[n] > wKey))
+                        : (pwr_pwKeys(pwr)[n] > wKey))
               #else // defined(COMPRESSED_LISTS)
                     if (wr_pwKeys(pwr)[n] > wKey)
               #endif // defined(COMPRESSED_LISTS)
@@ -441,16 +441,16 @@ again:
 
           #if defined(COMPRESSED_LISTS)
                     if ((nBitsLeft <= 8)
-                            ? (wr_pcKeys(pwr)[n] == (unsigned char)wKey)
+                            ? (pwr_pcKeys(pwr)[n] == (unsigned char)wKey)
                         : (nBitsLeft <= 16)
-                            ? (wr_psKeys(pwr)[n] == (unsigned short)wKey)
+                            ? (pwr_psKeys(pwr)[n] == (unsigned short)wKey)
               #if (cnBitsPerWord > 32)
                         : (nBitsLeft <= 32)
-                            ? (wr_piKeys(pwr)[n] == (unsigned int)wKey)
+                            ? (pwr_piKeys(pwr)[n] == (unsigned int)wKey)
               #endif // (cnBitsPerWord > 32)
-                        : (wr_pwKeys(pwr)[n] == wKey))
+                        : (pwr_pwKeys(pwr)[n] == wKey))
           #else // defined(COMPRESSED_LISTS)
-                    if (wr_pwKeys(pwr)[n] == wKey)
+                    if (pwr_pwKeys(pwr)[n] == wKey)
           #endif // defined(COMPRESSED_LISTS)
                     {
           #if defined(REMOVE)
@@ -465,16 +465,16 @@ again:
           #if defined(SORT_LISTS)
               #if defined(COMPRESSED_LISTS)
                     if ((nBitsLeft <= 8)
-                            ? (wr_pcKeys(pwr)[n] > (unsigned char)wKey)
+                            ? (pwr_pcKeys(pwr)[n] > (unsigned char)wKey)
                         : (nBitsLeft <= 16)
-                            ? (wr_psKeys(pwr)[n] > (unsigned short)wKey)
+                            ? (pwr_psKeys(pwr)[n] > (unsigned short)wKey)
                   #if (cnBitsPerWord > 32)
                         : (nBitsLeft <= 32)
-                            ? (wr_piKeys(pwr)[n] > (unsigned int)wKey)
+                            ? (pwr_piKeys(pwr)[n] > (unsigned int)wKey)
                   #endif // (cnBitsPerWord > 32)
-                        : (wr_pwKeys(pwr)[n] > wKey))
+                        : (pwr_pwKeys(pwr)[n] > wKey))
               #else // defined(COMPRESSED_LISTS)
-                    if (wr_pwKeys(pwr)[n] > wKey)
+                    if (pwr_pwKeys(pwr)[n] > wKey)
               #endif // defined(COMPRESSED_LISTS)
                     {
                         break;
@@ -1103,7 +1103,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
       #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         if (!tp_bIsSwitch(nType))
         {
-            wPopCnt = wr_ls_wPopCnt(pwr);
+            wPopCnt = ls_wPopCnt(pwr);
         }
         else
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)

@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.215 2014/06/04 01:57:25 mike Exp mike $
+// @(#) $Id: b.c,v 1.216 2014/06/04 02:45:19 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2059,18 +2059,18 @@ done:
         }
         else
         {
-            Word_t *pwKeys = wr_pwKeys(pwr);
+            Word_t *pwKeys = pwr_pwKeys(pwr);
 
             unsigned nIndex;
             for (nIndex = 0;
 #if defined(COMPRESSED_LISTS)
                 (nBitsLeft <= 8)
-                    ? (wr_pcKeys(pwr)[nIndex] != (unsigned char )wKey)
+                    ? (pwr_pcKeys(pwr)[nIndex] != (unsigned char )wKey)
                 : (nBitsLeft <= 16)
-                    ? (wr_psKeys(pwr)[nIndex] != (unsigned short)wKey)
+                    ? (pwr_psKeys(pwr)[nIndex] != (unsigned short)wKey)
 #if (cnBitsPerWord > 32)
                 : (nBitsLeft <= 32)
-                    ? (wr_piKeys(pwr)[nIndex] != (unsigned int)wKey)
+                    ? (pwr_piKeys(pwr)[nIndex] != (unsigned int)wKey)
 #endif // (cnBitsPerWord > 32)
                     : (pwKeys[nIndex] != wKey);
 #else // defined(COMPRESSED_LISTS)
@@ -2094,20 +2094,20 @@ done:
 
 #if defined(COMPRESSED_LISTS)
             if (nBitsLeft <= 8) {
-                MOVE(&wr_pcKeys(pwList)[nIndex],
-                     &wr_pcKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+                MOVE(&pwr_pcKeys(pwList)[nIndex],
+                     &pwr_pcKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
             } else if (nBitsLeft <= 16) {
-                MOVE(&wr_psKeys(pwList)[nIndex],
-                     &wr_psKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+                MOVE(&pwr_psKeys(pwList)[nIndex],
+                     &pwr_psKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
 #if (cnBitsPerWord > 32)
             } else if (nBitsLeft <= 32) {
-                MOVE(&wr_piKeys(pwList)[nIndex],
-                     &wr_piKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+                MOVE(&pwr_piKeys(pwList)[nIndex],
+                     &pwr_piKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
 #endif // (cnBitsPerWord > 32)
             } else
 #endif // defined(COMPRESSED_LISTS)
             {
-                MOVE(&wr_pwKeys(pwList)[nIndex], &pwKeys[nIndex + 1],
+                MOVE(&pwr_pwKeys(pwList)[nIndex], &pwKeys[nIndex + 1],
                      wPopCnt - nIndex - 1);
             }
 
@@ -2116,7 +2116,7 @@ done:
                 OldList(pwr, wPopCnt, nDigitsLeft);
                 set_wr(wRoot, pwList, T_OTHER);
                 *pwRoot = wRoot;
-                pwKeys = wr_pwKeys(pwList);
+                pwKeys = pwr_pwKeys(pwList);
             }
 
 #if defined(MIN_MAX_LISTS) && !defined(SORT_LISTS)
@@ -2127,44 +2127,44 @@ done:
                 {
 #if defined(COMPRESSED_LISTS)
                     if (nBitsLeft <= 8) {
-                        unsigned char knn = wr_pcKeys(pwList)[nn];
-                        if (knn < wr_pcKeys(pwList)[0])
+                        unsigned char knn = pwr_pcKeys(pwList)[nn];
+                        if (knn < pwr_pcKeys(pwList)[0])
                         {
-                            wr_pcKeys(pwList)[nn] = wr_pcKeys(pwList)[0];
-                            wr_pcKeys(pwList)[0] = knn;
+                            pwr_pcKeys(pwList)[nn] = pwr_pcKeys(pwList)[0];
+                            pwr_pcKeys(pwList)[0] = knn;
                         }
-                        if (knn > wr_pcKeys(pwList)[wPopCnt - 2])
+                        if (knn > pwr_pcKeys(pwList)[wPopCnt - 2])
                         {
-                            wr_pcKeys(pwList)[nn]
-                                = wr_pcKeys(pwList)[wPopCnt - 2];
-                            wr_pcKeys(pwList)[wPopCnt - 2] = knn;
+                            pwr_pcKeys(pwList)[nn]
+                                = pwr_pcKeys(pwList)[wPopCnt - 2];
+                            pwr_pcKeys(pwList)[wPopCnt - 2] = knn;
                         }
                     } else if (nBitsLeft <= 16) {
-                        unsigned short knn = wr_psKeys(pwList)[nn];
-                        if (knn < wr_psKeys(pwList)[0])
+                        unsigned short knn = pwr_psKeys(pwList)[nn];
+                        if (knn < pwr_psKeys(pwList)[0])
                         {
-                            wr_psKeys(pwList)[nn] = wr_psKeys(pwList)[0];
-                            wr_psKeys(pwList)[0] = knn;
+                            pwr_psKeys(pwList)[nn] = pwr_psKeys(pwList)[0];
+                            pwr_psKeys(pwList)[0] = knn;
                         }
-                        if (knn > wr_psKeys(pwList)[wPopCnt - 2])
+                        if (knn > pwr_psKeys(pwList)[wPopCnt - 2])
                         {
-                            wr_psKeys(pwList)[nn]
-                                = wr_psKeys(pwList)[wPopCnt - 2];
-                            wr_psKeys(pwList)[wPopCnt - 2] = knn;
+                            pwr_psKeys(pwList)[nn]
+                                = pwr_psKeys(pwList)[wPopCnt - 2];
+                            pwr_psKeys(pwList)[wPopCnt - 2] = knn;
                         }
 #if (cnBitsPerWord > 32)
                     } else if (nBitsLeft <= 32) {
-                        unsigned int knn = wr_piKeys(pwList)[nn];
-                        if (knn < wr_piKeys(pwList)[0])
+                        unsigned int knn = pwr_piKeys(pwList)[nn];
+                        if (knn < pwr_piKeys(pwList)[0])
                         {
-                            wr_piKeys(pwList)[nn] = wr_piKeys(pwList)[0];
-                            wr_piKeys(pwList)[0] = knn;
+                            pwr_piKeys(pwList)[nn] = pwr_piKeys(pwList)[0];
+                            pwr_piKeys(pwList)[0] = knn;
                         }
-                        if (knn > wr_piKeys(pwList)[wPopCnt - 2])
+                        if (knn > pwr_piKeys(pwList)[wPopCnt - 2])
                         {
-                            wr_piKeys(pwList)[nn]
-                                = wr_piKeys(pwList)[wPopCnt - 2];
-                            wr_piKeys(pwList)[wPopCnt - 2] = knn;
+                            pwr_piKeys(pwList)[nn]
+                                = pwr_piKeys(pwList)[wPopCnt - 2];
+                            pwr_piKeys(pwList)[wPopCnt - 2] = knn;
                         }
 #endif // (cnBitsPerWord > 32)
                     } else

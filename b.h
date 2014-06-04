@@ -360,7 +360,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define set_wr(_wr, _pwr, _type)  ((_wr) = (Word_t)(_pwr) | (_type))
 
 #define T_NULL   0
-#define T_OTHER  0
+#define T_OTHER  1
 
 #if defined(TYPE_IS_RELATIVE)
 
@@ -502,17 +502,16 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #endif // defined(COMPRESSED_LISTS)
 #define     ls_pwKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_awKeys)
 
-// these are just aliases as long as wRoot is a pointer to a list
+// these are just aliases
 #define     pwr_pwKeys(_pwr)    (ls_pwKeys(_pwr))
-#define     wr_ls_wPopCnt(_wr)  (ls_wPopCnt(_wr))
 #if defined(COMPRESSED_LISTS)
-#define     wr_pcKeys(_wr)      (ls_pcKeys(_wr))
-#define     wr_psKeys(_wr)      (ls_psKeys(_wr))
+#define     pwr_pcKeys(_pwr)     (ls_pcKeys(_pwr))
+#define     pwr_psKeys(_pwr)     (ls_psKeys(_pwr))
 #if (cnBitsPerWord > 32)
-#define     wr_piKeys(_wr)      (ls_piKeys(_wr))
+#define     pwr_piKeys(_pwr)     (ls_piKeys(_pwr))
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-#define     wr_pwKeys(_wr)      (ls_pwKeys(_wr))
+#define     pwr_pwKeys(_pwr)     (ls_pwKeys(_pwr))
 
 // Bitmap macros.
 // Accessing a bitmap by byte can be more expensive than
