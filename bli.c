@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.143 2014/06/03 19:11:07 mike Exp mike $
+// @(#) $Id: bli.c,v 1.144 2014/06/03 23:12:48 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1370,13 +1370,13 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
                 set_ls_wPopCnt(pwListNew, wPopCnt - 1);
                 COPY(pwKeysNew, pwKeys, nn);
                 COPY(&pwKeysNew[nn], &pwKeys[nn + 1], wPopCnt - nn - 1);
+                set_wr(wRoot, pwListNew, T_OTHER);
             }
             else
             {
-                pwListNew = NULL;
+                wRoot = T_NULL;
             }
             OldList(pwr, wPopCnt, cnDigitsPerWord);
-            set_wr(wRoot, pwListNew, T_OTHER);
             *pwRoot = wRoot;
             status = Success;
         }
