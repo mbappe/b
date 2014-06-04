@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.149 2014/06/04 23:11:29 mike Exp mike $
+// @(#) $Id: bli.c,v 1.150 2014/06/04 23:14:33 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -479,7 +479,6 @@ again:
 // What if ln_wRoot is a list?
 // nDL cannot be obtained from ln_wRoot.
 // We must use nDigitsLeft in that case.
-          #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                         // Do we really need a new variable here?
                         // Or can we just use nDigitsLeft?
                         int nDigitsLeftX = wr_bIsSwitch(*pwRootLn) ?
@@ -493,14 +492,9 @@ again:
                         DBGX(printf(" PWR_wPopCnt %"_fw"d\n",
                                     PWR_wPopCnt(pwRootLn, NULL, nDigitsLeftX)
                                     ));
-          #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                         if (((*pwRootLn != 0) && (ww != wIndex))
                                 || (
-          #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                                     PWR_wPopCnt(pwRootLn, NULL, nDigitsLeftX)
-          #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                                    PWR_wPopCnt(pwRootLn, NULL, nDigitsLeft)
-          #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                                         != 0)
                             )
                         {
@@ -1062,8 +1056,8 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                                 wr_nDigitsLeft(*pwRootLn)) + 1,
                             wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1
 #endif // defined(TYPE_IS_RELATIVE)
-              #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                             );
+              #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
           #endif // defined(DEBUG_INSERT)
 
           #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
