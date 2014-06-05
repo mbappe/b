@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.151 2014/06/04 23:24:10 mike Exp mike $
+// @(#) $Id: bli.c,v 1.152 2014/06/04 23:30:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -165,10 +165,6 @@ again:
         }
   #endif // defined(PP_IN_LINK)
 
-  #if (T_OTHER == T_NULL)
-        if (wRoot != 0)
-  #endif // (T_OTHER == T_NULL)
-        {
   #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 // This short-circuit is for analysis only.
             return KeyFound;
@@ -307,7 +303,6 @@ again:
           #endif // defined(SKIP_LINKS)
       #endif // defined(COMPRESSED_LISTS)
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
-        }
         break;
     } // end of case
 
