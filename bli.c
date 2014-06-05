@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.152 2014/06/04 23:30:55 mike Exp mike $
+// @(#) $Id: bli.c,v 1.156 2014/06/05 00:02:12 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -373,10 +373,17 @@ again:
       #endif // defined(TYPE_IS_RELATIVE)
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // Record that there were prefix bits that were not checked.
+      #if defined(TYPE_IS_RELATIVE)
+        bNeedPrefixCheck |= 1;
+      #else // defined(TYPE_IS_RELATIVE)
         bNeedPrefixCheck |= (nDigitsLeftRoot < nDigitsLeft);
+      #endif // defined(TYPE_IS_RELATIVE)
   #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         Word_t wPrefix;
-        if ((nDigitsLeftRoot < nDigitsLeft)
+        if (1
+      #if ! defined(TYPE_IS_RELATIVE)
+            && (nDigitsLeftRoot < nDigitsLeft)
+      #endif // ! defined(TYPE_IS_RELATIVE)
             && ((wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeftRoot)),
                 (LOG(1 | (wPrefix ^ wKey))
                     >= nDL_to_nBL_NotAtTop(nDigitsLeftRoot))))
