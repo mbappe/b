@@ -193,8 +193,31 @@
 #define cnDigitsPerWord \
     (DIV_UP(cnBitsPerWord - cnBitsAtBottom, cnBitsPerDigit) + 1)
 
-// Default is -UBPD_TABLE.
-#if defined(BPD_TABLE)
+// Default is -DBPD_TABLE.
+#if defined(NO_BPD_TABLE)
+
+#define cnBitsIndexSzAtTop \
+    (cnBitsPerWord - cnBitsAtBottom - (cnDigitsPerWord - 2) * cnBitsPerDigit)
+
+#define nDL_to_nBitsIndexSzNAT(_nDL) \
+    (((_nDL) == 1) ? cnBitsAtBottom : cnBitsPerDigit)
+
+// this one is not used in the lookup performance path
+#define nDL_to_nBitsIndexSz(_nDL) \
+    (((_nDL) == cnDigitsPerWord) \
+        ? cnBitsIndexSzAtTop : nDL_to_nBitsIndexSzNAT(_nDL))
+
+#define nDL_to_nBL_NotAtTop(_nDL) \
+    (((_nDL) - 1) * cnBitsPerDigit + cnBitsAtBottom)
+
+// this one is not used in the lookup performance path
+#define nDL_to_nBL(_nDL) \
+    (((_nDL) == cnDigitsPerWord) ? cnBitsPerWord : nDL_to_nBL_NotAtTop(_nDL))
+
+#else // defined(NO_BPD_TABLE)
+
+#undef  BPD_TABLE
+#define BPD_TABLE
 
 // Use lookup tables (which theoretically support depth-based bits per digit)
 // instead of a constant bits-per-digit throughout the tree.
@@ -214,26 +237,6 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define nDL_to_nBL(_nDL)  anDL_to_nBL[_nDL]
 
 #define nDL_to_nBL_NotAtTop(_nDL)  nDL_to_nBL(_nDL)
-
-#else // defined(BPD_TABLE)
-
-#define cnBitsIndexSzAtTop \
-    (cnBitsPerWord - cnBitsAtBottom - (cnDigitsPerWord - 2) * cnBitsPerDigit)
-
-#define nDL_to_nBitsIndexSzNAT(_nDL) \
-    (((_nDL) == 1) ? cnBitsAtBottom : cnBitsPerDigit)
-
-// this one is not used in the lookup performance path
-#define nDL_to_nBitsIndexSz(_nDL) \
-    (((_nDL) == cnDigitsPerWord) \
-        ? cnBitsIndexSzAtTop : nDL_to_nBitsIndexSzNAT(_nDL))
-
-#define nDL_to_nBL_NotAtTop(_nDL) \
-    (((_nDL) - 1) * cnBitsPerDigit + cnBitsAtBottom)
-
-// this one is not used in the lookup performance path
-#define nDL_to_nBL(_nDL) \
-    (((_nDL) == cnDigitsPerWord) ? cnBitsPerWord : nDL_to_nBL_NotAtTop(_nDL))
 
 #endif // defined(BPD_TABLE)
 
