@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.166 2014/06/05 18:53:44 mike Exp mike $
+// @(#) $Id: bli.c,v 1.167 2014/06/05 19:14:18 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -277,12 +277,11 @@ again:
                 return wPopCnt ? KeyFound : ! KeyFound;
           #endif // defined(PP_IN_LINK)
       #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
-                switch (nBitsLeft)
+                switch ( LOG(nBitsLeft - 1) - 2)
                 {
           #if defined(COMPRESSED_LISTS)
               #if (cnBitsAtBottom < 8)
-                case 1: case 2: case 3: case 4:
-                case 5: case 6: case 7: case 8:
+                case 0:
                 {
                     unsigned char *pcKeys = pwr_pcKeys(pwr);
                     unsigned char cKey = wKey;
@@ -310,8 +309,7 @@ again:
                 }
               #endif // (cnBitsAtBottom < 8)
               #if (cnBitsAtBottom < 16)
-                case  9: case 10: case 11: case 12:
-                case 13: case 14: case 15: case 16:
+                case 1:
                 {
                     unsigned short *psKeys = pwr_psKeys(pwr);
                     unsigned short sKey = wKey;
@@ -339,10 +337,7 @@ again:
                 }
               #endif // (cnBitsAtBottom < 16)
               #if (cnBitsAtBottom < 32) && (cnBitsPerWord > 32)
-                case 17: case 18: case 19: case 20:
-                case 21: case 22: case 23: case 24:
-                case 25: case 26: case 27: case 28:
-                case 29: case 30: case 31: case 32:
+                case 2:
                 {
                     unsigned int *piKeys = pwr_piKeys(pwr);
                     unsigned int iKey = wKey;
