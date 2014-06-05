@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.159 2014/06/05 12:07:36 mike Exp mike $
+// @(#) $Id: bli.c,v 1.160 2014/06/05 12:39:39 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -390,8 +390,8 @@ again:
                     >= nDL_to_nBL_NotAtTop(nDigitsLeftRoot))))
         {
             DBGX(printf("Mismatch wPrefix "Owx"\n", wPrefix));
+            break;
         }
-        else // !! the "else" here is only for the INSERT/REMOVE case !!
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
         {
