@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.157 2014/06/05 00:07:02 mike Exp mike $
+// @(#) $Id: bli.c,v 1.158 2014/06/05 12:00:24 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -137,6 +137,7 @@ again:
             wRoot, wKey, nDigitsLeft));
 
     nType = wr_nType(wRoot);
+    pwr = wr_tp_pwr(wRoot, nType);
     switch (nType)
     {
     case T_NULL:
@@ -279,8 +280,6 @@ again:
                     SMETRICS(j__SearchCompares++);
           #endif // defined(LOOKUP)
 
-                    pwr = wr_tp_pwr(wRoot, nType);
-
           #if defined(COMPRESSED_LISTS)
                     if ((nBitsLeft <= 8)
                             ? (pwr_pcKeys(pwr)[n] == (unsigned char)wKey)
@@ -345,7 +344,6 @@ again:
     case T_NO_SKIP_SWITCH:
     {
         // pwr points to a switch and *pwRoot is not a skip link
-        pwr = wr_tp_pwr(wRoot, nType);
         assert(tp_to_nDS(nType) == 0);
         nDigitsLeftRoot = nDigitsLeft;
         goto bypass;
@@ -356,8 +354,6 @@ again:
     default:
     {
         // pwr points to a switch
-
-        pwr = wr_tp_pwr(wRoot, nType); // pointer extracted from wRoot
 
 #if defined(SKIP_LINKS)
   #if defined(TYPE_IS_RELATIVE)
