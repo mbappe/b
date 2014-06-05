@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.167 2014/06/05 19:14:18 mike Exp mike $
+// @(#) $Id: bli.c,v 1.168 2014/06/05 19:24:27 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -229,6 +229,8 @@ again:
           #if !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
             // nDigitsLeft is relative to the bottom of the switch
             // containing the pointer to the leaf.
+            // Can we use NAT here since bNeedPrefixCheck will never
+            // be true if we are at the top?
             unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
           #endif // !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
           #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -467,7 +469,7 @@ again:
                 // we're using it to mask off high bits and if we're at the
                 // top then none of the high bits will be set anyway;
                 // it's faster to do arithmetic than test to avoid it
-                & (EXP(nDL_to_nBitsIndexSzNAT(nDigitsLeftRoot)) - 1));
+                & (EXP(nDL_to_nBitsIndexSzNAX(nDigitsLeftRoot)) - 1));
 
 #if defined(BM_SWITCH)
   #if defined(BM_IN_LINK)

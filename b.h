@@ -205,8 +205,9 @@ extern const unsigned anDL_to_nBL[];
 extern const unsigned anDL_to_nBitsIndexSz[];
 
 // this one is not used in the lookup performance path
-#define nDL_to_nBitsIndexSz(_nDL)  anDL_to_nBitsIndexSz[_nDL]
-
+#define nDL_to_nBitsIndexSz(_nDL)     anDL_to_nBitsIndexSz[_nDL]
+#define nDL_to_nBitsIndexSzNAX(_nDL)  nDL_to_nBitsIndexSz(_nDL)
+#define nDL_to_nBitsIndexSzNAB(_nDL)  nDL_to_nBitsIndexSz(_nDL)
 #define nDL_to_nBitsIndexSzNAT(_nDL)  nDL_to_nBitsIndexSz(_nDL)
 
 // this one is not used in the lookup performance path
@@ -221,6 +222,11 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #define cnBitsIndexSzAtTop \
     (cnBitsPerWord - cnBitsAtBottom - (cnDigitsPerWord - 2) * cnBitsPerDigit)
+
+#define nDL_to_nBitsIndexSzNAX(_nDL)  (cnBitsPerDigit)
+
+#define nDL_to_nBitsIndexSzNAB(_nDL) \
+    (((_nDL) == cnDigitsPerWord) ? cnBitsIndexSzAtTop : cnBitsPerDigit)
 
 #define nDL_to_nBitsIndexSzNAT(_nDL) \
     (((_nDL) == 1) ? cnBitsAtBottom : cnBitsPerDigit)
