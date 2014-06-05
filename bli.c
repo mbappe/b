@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.161 2014/06/05 15:45:19 mike Exp mike $
+// @(#) $Id: bli.c,v 1.162 2014/06/05 16:39:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -278,56 +278,125 @@ again:
           #endif // defined(PP_IN_LINK)
       #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 
-                // todo: save insertion point in sorted list and pass it to
-                // InsertGuts
-                // todo: possibly do insertion right here if list isn't full
-                for (unsigned n = 0; n < wPopCnt; n++)
+                switch (nBitsLeft)
                 {
-          #if defined(LOOKUP)
-                    SMETRICS(j__SearchCompares++);
-          #endif // defined(LOOKUP)
 
           #if defined(COMPRESSED_LISTS)
-                    if ((nBitsLeft <= 8)
-                            ? (pwr_pcKeys(pwr)[n] == (unsigned char)wKey)
-                        : (nBitsLeft <= 16)
-                            ? (pwr_psKeys(pwr)[n] == (unsigned short)wKey)
+
+                case 1: case 2: case 3: case 4:
+                case 5: case 6: case 7: case 8:
+
+                    for (unsigned n = 0; n < wPopCnt; n++)
+                    {
+              #if defined(LOOKUP)
+                        SMETRICS(j__SearchCompares++);
+              #endif // defined(LOOKUP)
+                        if (pwr_pcKeys(pwr)[n] == (unsigned char)wKey)
+                        {
+              #if defined(REMOVE)
+                            RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                            goto cleanup;
+              #endif // defined(REMOVE)
+              #if defined(INSERT) && !defined(RECURSIVE)
+                            if (nIncr > 0) goto undo; // undo counting
+              #endif // defined(INSERT) && !defined(RECURSIVE)
+                            return KeyFound;
+                        }
+              #if defined(SORT_LISTS)
+                        if (pwr_pcKeys(pwr)[n] > (unsigned char)wKey)
+                        {
+                            break;
+                        }
+              #endif // defined(SORT_LISTS)
+                    }
+
+                case  9: case 10: case 11: case 12:
+                case 13: case 14: case 15: case 16:
+
+                    for (unsigned n = 0; n < wPopCnt; n++)
+                    {
+              #if defined(LOOKUP)
+                        SMETRICS(j__SearchCompares++);
+              #endif // defined(LOOKUP)
+                        if (pwr_psKeys(pwr)[n] == (unsigned short)wKey)
+                        {
+              #if defined(REMOVE)
+                            RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                            goto cleanup;
+              #endif // defined(REMOVE)
+              #if defined(INSERT) && !defined(RECURSIVE)
+                            if (nIncr > 0) goto undo; // undo counting
+              #endif // defined(INSERT) && !defined(RECURSIVE)
+                            return KeyFound;
+                        }
+              #if defined(SORT_LISTS)
+                        if (pwr_psKeys(pwr)[n] > (unsigned short)wKey)
+                        {
+                            break;
+                        }
+              #endif // defined(SORT_LISTS)
+                    }
+
               #if (cnBitsPerWord > 32)
-                        : (nBitsLeft <= 32)
-                            ? (pwr_piKeys(pwr)[n] == (unsigned int)wKey)
+
+                case 17: case 18: case 19: case 20:
+                case 21: case 22: case 23: case 24:
+                case 25: case 26: case 27: case 28:
+                case 29: case 30: case 31: case 32:
+
+                    for (unsigned n = 0; n < wPopCnt; n++)
+                    {
+                  #if defined(LOOKUP)
+                        SMETRICS(j__SearchCompares++);
+                  #endif // defined(LOOKUP)
+                        if (pwr_piKeys(pwr)[n] == (unsigned int)wKey)
+                        {
+                  #if defined(REMOVE)
+                            RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                            goto cleanup;
+                  #endif // defined(REMOVE)
+                  #if defined(INSERT) && !defined(RECURSIVE)
+                            if (nIncr > 0) goto undo; // undo counting
+                  #endif // defined(INSERT) && !defined(RECURSIVE)
+                            return KeyFound;
+                        }
+                  #if defined(SORT_LISTS)
+                        if (pwr_piKeys(pwr)[n] > (unsigned int)wKey)
+                        {
+                            break;
+                        }
+                  #endif // defined(SORT_LISTS)
+                    }
+
               #endif // (cnBitsPerWord > 32)
-                        : (pwr_pwKeys(pwr)[n] == wKey))
-          #else // defined(COMPRESSED_LISTS)
-                    if (pwr_pwKeys(pwr)[n] == wKey)
+
           #endif // defined(COMPRESSED_LISTS)
+
+                default:
+
+                    for (unsigned n = 0; n < wPopCnt; n++)
                     {
-          #if defined(REMOVE)
-                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                        goto cleanup;
-          #endif // defined(REMOVE)
-          #if defined(INSERT) && !defined(RECURSIVE)
-                        if (nIncr > 0) goto undo; // undo counting
-          #endif // defined(INSERT) && !defined(RECURSIVE)
-                        return KeyFound;
+              #if defined(LOOKUP)
+                        SMETRICS(j__SearchCompares++);
+              #endif // defined(LOOKUP)
+                        if (pwr_pwKeys(pwr)[n] == wKey)
+                        {
+              #if defined(REMOVE)
+                            RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                            goto cleanup;
+              #endif // defined(REMOVE)
+              #if defined(INSERT) && !defined(RECURSIVE)
+                            if (nIncr > 0) goto undo; // undo counting
+              #endif // defined(INSERT) && !defined(RECURSIVE)
+                            return KeyFound;
+                        }
+              #if defined(SORT_LISTS)
+                        if (pwr_pwKeys(pwr)[n] > wKey)
+                        {
+                            break;
+                        }
+              #endif // defined(SORT_LISTS)
                     }
-          #if defined(SORT_LISTS)
-              #if defined(COMPRESSED_LISTS)
-                    if ((nBitsLeft <= 8)
-                            ? (pwr_pcKeys(pwr)[n] > (unsigned char)wKey)
-                        : (nBitsLeft <= 16)
-                            ? (pwr_psKeys(pwr)[n] > (unsigned short)wKey)
-                  #if (cnBitsPerWord > 32)
-                        : (nBitsLeft <= 32)
-                            ? (pwr_piKeys(pwr)[n] > (unsigned int)wKey)
-                  #endif // (cnBitsPerWord > 32)
-                        : (pwr_pwKeys(pwr)[n] > wKey))
-              #else // defined(COMPRESSED_LISTS)
-                    if (wr_pwKeys(pwr)[n] > wKey)
-              #endif // defined(COMPRESSED_LISTS)
-                    {
-                        break;
-                    }
-          #endif // defined(SORT_LISTS)
                 }
       #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
             }
@@ -346,20 +415,7 @@ again:
         break;
     } // end of case T_LIST
 
-#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
-
-    case T_NO_SKIP_SWITCH:
-    {
-        // pwr points to a switch and *pwRoot is not a skip link
-        assert(tp_to_nDS(nType) == 0);
-        assert(nDigitsLeftRoot == nDigitsLeft);
-        goto bypass;
-    } // end of case T_NO_SKIP_SWITCH
-
-#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
-
     default:
-    {
         // pwr points to a switch
 
 #if defined(SKIP_LINKS)
@@ -401,9 +457,9 @@ again:
         }
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
-        {
 #if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
-bypass:
+        // fall into next case
+    case T_NO_SKIP_SWITCH:
 #endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 #if defined(BM_SWITCH_FOR_REAL) \
     || ( ! defined(LOOKUP) \
@@ -589,8 +645,7 @@ notEmpty:;
 
             DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
 
-// Simplify this to nDigitsLeft > 1 when we get rid of non-1 cnDigitsAtBottom.
-            if (nDigitsLeft > nBL_to_nDL(cnBitsAtBottom))
+            if (nDigitsLeft != 1)
             {
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
                 // We may need to check the prefix of the switch we just
@@ -740,9 +795,7 @@ notEmpty:;
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
   #endif // defined(SKIP_LINKS)
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
-        }
         break;
-    } // end of default case
     } // end of switch
 
 #if defined(BM_SWITCH_FOR_REAL)
