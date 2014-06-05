@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.219 2014/06/05 12:00:24 mike Exp mike $
+// @(#) $Id: b.c,v 1.220 2014/06/05 12:39:39 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1777,12 +1777,13 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #if defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
     else
     {
-#if defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
+#if defined(BM_SWITCH_FOR_REAL)
 #if defined(TYPE_IS_RELATIVE)
         unsigned nDLR = nDigitsLeft - tp_to_nDS(nType);
 #else // defined(TYPE_IS_RELATIVE)
         unsigned nDLR = tp_to_nDigitsLeft(nType);
 #endif // defined(TYPE_IS_RELATIVE)
+#if defined(SKIP_LINKS)
         Word_t wPrefix;
         // Test to see if this is a missing link case.
         // If not, then it is a prefix mismatch case.
@@ -1798,7 +1799,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             || ((wPrefix = PWR_wPrefix(pwRoot, pwr, nDLR))
                 == w_wPrefixNotAtTop(wKey, nDLR)))
         // If nDS != 0 then we're not at the top or PP_IN_LINK is not defined.
-#endif // defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
+#endif // defined(SKIP_LINKS)
+#endif // defined(BM_SWITCH_FOR_REAL)
 #if defined(BM_SWITCH_FOR_REAL)
         {
 #if defined(SKIP_LINKS)
