@@ -2,12 +2,14 @@
 #if ( ! defined(_B_H_INCLUDED) )
 #define _B_H_INCLUDED
 
+// Default is -DSKIP_LINKS -USKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX.
 #if ! defined(SKIP_LINKS)
 #if ! defined(NO_SKIP_LINKS)
 #define SKIP_LINKS
 #endif // ! defined(NO_SKIP_LINKS)
 #endif // ! defined(SKIP_LINKS)
 
+// Default is -UBM_SWITCH -UBM_IN_LINK -UBM_SWITCH_FOR_REAL.
 #if defined(BM_IN_LINK) || defined(BM_SWITCH_FOR_REAL)
 #if ! defined(BM_SWITCH)
 #define BM_SWITCH
@@ -16,28 +18,35 @@
 
 // Choose max list length.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
+// Default is cwListPopCntMax = 8.
 #if !defined(cwListPopCntMax)
 #define cwListPopCntMax  8
 #endif // !defined(cwListPopCntMax)
 
+// Default is -DSORT_LISTS.
 #if ! defined(SORT_LISTS) && ! defined(MIN_MAX_LISTS)
 #if ! defined(NO_SORT_LISTS)
 #define SORT_LISTS
 #endif // ! defined(NO_SORT_LISTS)
 #endif // ! defined(SORT_LISTS) && ! defined(MIN_MAX_LISTS)
 
+// Default is -DCOMPRESSED_LISTS.
 #if ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
 #define COMPRESSED_LISTS
 #endif // ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
 
+// Default is -DRAM_METRICS.
 #if ! defined(RAM_METRICS) && ! defined(NO_RAM_METRICS)
 #define RAM_METRICS
 #endif // ! defined(RAM_METRICS) && ! defined(RAM_METRICS)
 
+// Default is -DJUDYA -UJUDYB.
 #if ! defined(JUDYA) && ! defined(JUDYB)
 #define JUDYA
 #endif // ! defined(JUDYA) && ! defined(JUDYB)
 
+// Default is -DNDEBUG -UDEBUG_ALL -UDEBUG.
+// Default is -UDEBUG_INSERT -UDEBUG_REMOVE -UDEBUG_LOOKUP -UDEBUG_MALLOC.
 #if defined(DEBUG_ALL)
 
     #undef DEBUG_INSERT
@@ -122,6 +131,7 @@
 #define cnLogBitsPerByte  3
 #define cnBitsPerByte  (EXP(cnLogBitsPerByte))
 
+// Default is cnBitsPerWord = 64.
 #if !defined(cnBitsPerWord)
 #if defined(__LP64__) || defined(_WIN64)
 #define cnBitsPerWord  64
@@ -141,6 +151,7 @@
 #define cnMallocMask  ((cnBytesPerWord * 2) - 1)
 
 // Bits-per-digit.
+// Default is cnBitsPerDigit = 8.
 #if ! defined(cnBitsPerDigit)
     #define cnBitsPerDigit 8
 #else // ! defined(cnBitsPerDigit)
@@ -152,17 +163,8 @@
 
 // Choose bottom.
 // Bottom is where Bitmap is created automatically.
-// Can we support bits at bottom instead of digits at bottom and count digits
-// up (and maybe down) from there?
-// Minimum digits at bottom:  (cnDigitsPerWord - cnMallocMask + 1)
-// Maximum digits at bottom:  (cnDigitsPerWord - 1)
-// Min and max are good values to test.
-// Zero works (as long as it is not smaller than the minimum) but max pop
-// cannot be reached because we never transition to bitmap.
-// Default is one because a bitmap is the size of a word when cnBitsPerDigit
-// is cnLogBitsPerWord and we can embed the bitmap.
-// I think I should change this to be relative to the minimum digits at
-// bottom based on cnBitsPerDigit and cnBitsPerWord.
+// We count digits up from there.
+// Default is cnBitsAtBottom = MAX(16, minimum allowed by cnBitsPerDigit).
 #if ! defined(cnBitsAtBottom)
   #if (cnBitsPerDigit >=  4)
     #define cnBitsAtBottom  16
@@ -191,6 +193,7 @@
 #define cnDigitsPerWord \
     (DIV_UP(cnBitsPerWord - cnBitsAtBottom, cnBitsPerDigit) + 1)
 
+// Default is -UBPD_TABLE.
 #if defined(BPD_TABLE)
 
 // Use lookup tables (which theoretically support depth-based bits per digit)
@@ -247,6 +250,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define METRICS(x)
 #endif // defined RAM_METRICS
 
+// Default is -USEARCH_METRICS.
 #if defined SEARCH_METRICS
 #define SMETRICS(x)  (x)
 #else // defined SEARCH_METRICS
@@ -360,7 +364,23 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define T_NULL  0
 #define T_LIST  1
 
-#if defined(TYPE_IS_RELATIVE)
+// Default is -UDL_IN_TYPE_IS_ABSOLUTE.
+#if defined(DL_IN_TYPE_IS_ABSOLUTE)
+
+#define tp_to_nDigitsLeft(_tp)   ((_tp)  - T_LIST)
+#define nDigitsLeft_to_tp(_nDL)  ((_nDL) + T_LIST)
+
+#define     wr_nDigitsLeft(_wr)     (tp_to_nDigitsLeft(wr_nType(_wr)))
+#define set_wr_nDigitsLeft(_wr, _nDL) \
+    (set_wr_nType((_wr), nDigitsLeft_to_tp(_nDL)))
+
+#define     wr_bIsSwitchDL(_wr, _tp, _nDL) \
+   ((_tp) = wr_nType(_wr), (_nDL) = tp_to_nDigitsLeft(_tp), tp_bIsSwitch(_tp))
+
+#else // defined(DL_IN_TYPE_IS_ABSOLUTE)
+
+#undef  TYPE_IS_RELATIVE
+#define TYPE_IS_RELATIVE
 
 #define T_NO_SKIP_SWITCH  (T_LIST + 1)
 
@@ -373,19 +393,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define     wr_bIsSwitchDS(_wr, _tp, _nDS) \
    ((_tp) = wr_nType(_wr), (_nDS) = tp_to_nDS(_tp), tp_bIsSwitch(_tp))
 
-#else // defined(TYPE_IS_RELATIVE)
-
-#define tp_to_nDigitsLeft(_tp)   ((_tp)  - T_LIST)
-#define nDigitsLeft_to_tp(_nDL)  ((_nDL) + T_LIST)
-
-#define     wr_nDigitsLeft(_wr)     (tp_to_nDigitsLeft(wr_nType(_wr)))
-#define set_wr_nDigitsLeft(_wr, _nDL) \
-    (set_wr_nType((_wr), nDigitsLeft_to_tp(_nDL)))
-
-#define     wr_bIsSwitchDL(_wr, _tp, _nDL) \
-   ((_tp) = wr_nType(_wr), (_nDL) = tp_to_nDigitsLeft(_tp), tp_bIsSwitch(_tp))
-
-#endif // defined(TYPE_IS_RELATIVE)
+#endif // defined(DL_IN_TYPE_IS_ABSOLUTE)
 
 #define     tp_bIsSwitch(_tp)          ((_tp) > T_LIST)
 #define     wr_bIsSwitch(_wr)          (tp_bIsSwitch(wr_nType(_wr)))
@@ -411,6 +419,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 // optimistic so I chose to make both pwRoot and pwr be parameters.
 // Only one will be used, for each field, in the compiled code, depending
 // on ifdefs.
+// Default is -UPP_IN_LINK.
 #if defined(PP_IN_LINK)
 #define PWR_wPrefixPop(_pwRoot, _pwr) \
     (STRUCT_OF((_pwRoot), Link_t, ln_wRoot)->ln_wPrefixPop)
