@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.154 2014/06/05 00:00:44 mike Exp mike $
+// @(#) $Id: bli.c,v 1.152 2014/06/04 23:30:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -163,7 +163,7 @@ again:
 
         break;
 
-    } // end of case
+    } // end of case T_NULL
 
     case T_OTHER:
     {
@@ -333,7 +333,20 @@ again:
       #endif // defined(COMPRESSED_LISTS)
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
         break;
-    } // end of case
+    } // end of case T_OTHER
+
+#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+
+    case T_OTHER + 1:
+    {
+        // pwr points to a switch and *pwRoot is not a skip link
+        pwr = wr_tp_pwr(wRoot, nType);
+        assert(tp_to_nDS(nType) == 0);
+        nDigitsLeftRoot = nDigitsLeft;
+        goto bypass;
+    } // end of case T_OTHER + 1
+
+#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 
     default:
     {
@@ -355,6 +368,9 @@ again:
         DBGX(printf("Switch nDLR %d pwr %p\n", nDigitsLeftRoot, (void *)pwr));
 
 #if defined(SKIP_LINKS)
+      #if defined(TYPE_IS_RELATIVE)
+        assert(nDigitsLeftRoot < nDigitsLeft);
+      #endif // defined(TYPE_IS_RELATIVE)
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // Record that there were prefix bits that were not checked.
         bNeedPrefixCheck |= (nDigitsLeftRoot < nDigitsLeft);
@@ -371,6 +387,9 @@ again:
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
         {
+#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+bypass:
+#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 #if defined(BM_SWITCH_FOR_REAL) \
     || ( ! defined(LOOKUP) \
         && (defined(PP_IN_LINK) || defined(BM_IN_LINK)) \
@@ -700,7 +719,7 @@ notEmpty:;
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
         }
         break;
-    } // end of case
+    } // end of default case
     } // end of switch
 
 #if defined(BM_SWITCH_FOR_REAL)
