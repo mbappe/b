@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.160 2014/06/05 12:39:39 mike Exp mike $
+// @(#) $Id: bli.c,v 1.161 2014/06/05 15:45:19 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -123,10 +123,17 @@ top:
   #endif // !defined(RECURSIVE)
     wRoot = *pwRoot;
 #endif // !defined(LOOKUP)
+#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+    nDigitsLeftRoot = nDigitsLeft;
+#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+
 #if defined(LOOKUP) || !defined(RECURSIVE)
 again:
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
+#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+    assert(nDigitsLeftRoot == nDigitsLeft);
+#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 #if ( ! defined(LOOKUP) )
     assert(nDigitsLeft > nBL_to_nDL(cnBitsAtBottom)); // valid for LOOKUP too
     DBGX(printf("# pwRoot %p ", (void *)pwRoot));
@@ -345,7 +352,7 @@ again:
     {
         // pwr points to a switch and *pwRoot is not a skip link
         assert(tp_to_nDS(nType) == 0);
-        nDigitsLeftRoot = nDigitsLeft;
+        assert(nDigitsLeftRoot == nDigitsLeft);
         goto bypass;
     } // end of case T_NO_SKIP_SWITCH
 
@@ -592,6 +599,9 @@ notEmpty:;
                 // so we preserve the value of pwr.
                 pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+                nDigitsLeftRoot = nDigitsLeft;
+#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 #if defined(LOOKUP) || !defined(RECURSIVE)
                 goto again;
 #else // defined(LOOKUP) || !defined(RECURSIVE)
