@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.163 2014/06/05 18:31:07 mike Exp mike $
+// @(#) $Id: bli.c,v 1.164 2014/06/05 18:46:38 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -344,12 +344,15 @@ again:
                 case 25: case 26: case 27: case 28:
                 case 29: case 30: case 31: case 32:
                 {
+                    unsigned int *piKeys = pwr_piKeys(pwr);
+                    unsigned int iKey = wKey;
                     for (unsigned nn = 0; nn < wPopCnt; nn++)
                     {
+                        unsigned int iKeyLoop = piKeys[nn];
                   #if defined(LOOKUP)
                         SMETRICS(j__SearchCompares++);
                   #endif // defined(LOOKUP)
-                        if (pwr_piKeys(pwr)[nn] == (unsigned int)wKey)
+                        if (iKeyLoop == iKey)
                         {
                   #if defined(REMOVE)
                             RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
@@ -361,7 +364,7 @@ again:
                             return KeyFound;
                         }
                   #if defined(SORT_LISTS)
-                        if (pwr_piKeys(pwr)[nn] > (unsigned int)wKey)
+                        if (iKeyLoop > iKey)
                         {
                             break;
                         }
