@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.168 2014/06/05 19:24:27 mike Exp mike $
+// @(#) $Id: bli.c,v 1.169 2014/06/05 23:32:56 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -231,7 +231,9 @@ again:
             // containing the pointer to the leaf.
             // Can we use NAT here since bNeedPrefixCheck will never
             // be true if we are at the top?
-            unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
+            // If the top digit is smaller than the rest, then NAT will
+            // return nBitsLeft > cnBitsPerWord which works out perfectly.
+            unsigned nBitsLeft = nDL_to_nBL_NAT(nDigitsLeft);
           #endif // !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
           #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
             // We don't support skip links directly to leaves -- yet.
@@ -445,7 +447,7 @@ again:
       #endif // ! defined(TYPE_IS_RELATIVE)
             && ((wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeftRoot)),
                 (LOG(1 | (wPrefix ^ wKey))
-                    >= nDL_to_nBL_NotAtTop(nDigitsLeftRoot))))
+                    >= nDL_to_nBL_NAT(nDigitsLeftRoot))))
         {
             DBGX(printf("Mismatch wPrefix "Owx"\n", wPrefix));
             break;
@@ -464,7 +466,7 @@ again:
 #endif // defined(BM_SWITCH_FOR_REAL) ...
             nDigitsLeft = nDigitsLeftRoot - 1;
 
-            Word_t wIndex = ((wKey >> nDL_to_nBL_NotAtTop(nDigitsLeft))
+            Word_t wIndex = ((wKey >> nDL_to_nBL_NAT(nDigitsLeft))
                 // we can use NAT here even though we might be at top because
                 // we're using it to mask off high bits and if we're at the
                 // top then none of the high bits will be set anyway;
@@ -640,6 +642,10 @@ notEmpty:;
 
             DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
 
+            // Can we use a type for bitmap instead of testing nDigitsLeft?
+            // 8 types: T_NULL, T_LIST (non-null), T_BITMAP (non-null).
+            // It also allows us to do bitmap at any level and have
+            // jagged bottom.
             if (nDigitsLeft != 1)
             {
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
