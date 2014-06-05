@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.164 2014/06/05 18:46:38 mike Exp mike $
+// @(#) $Id: bli.c,v 1.165 2014/06/05 18:49:23 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -352,23 +352,20 @@ again:
                   #if defined(LOOKUP)
                         SMETRICS(j__SearchCompares++);
                   #endif // defined(LOOKUP)
-                        if (iKeyLoop == iKey)
-                        {
+                  #if defined(SORT_LISTS)
+                        if (iKeyLoop < iKey) { continue; }
+			if (iKeyLoop != iKey) { break; }
+                  #else // defined(SORT_LISTS)
+                        if (iKeyLoop != iKey) { continue; }
+                  #endif // defined(SORT_LISTS)
                   #if defined(REMOVE)
-                            RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                            goto cleanup;
+                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                        goto cleanup;
                   #endif // defined(REMOVE)
                   #if defined(INSERT) && !defined(RECURSIVE)
-                            if (nIncr > 0) goto undo; // undo counting
+                        if (nIncr > 0) { goto undo; } // undo counting
                   #endif // defined(INSERT) && !defined(RECURSIVE)
-                            return KeyFound;
-                        }
-                  #if defined(SORT_LISTS)
-                        if (iKeyLoop > iKey)
-                        {
-                            break;
-                        }
-                  #endif // defined(SORT_LISTS)
+                        return KeyFound;
                     }
                 }
 
