@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.217 2014/06/04 03:03:06 mike Exp mike $
+// @(#) $Id: b.c,v 1.218 2014/06/04 23:11:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -847,7 +847,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
         Word_t *pwKeys = pwr_pwKeys(pwr);
 
-        assert(nType == T_OTHER);
+        assert(nType == T_LIST);
 
         if (!bDump)
         {
@@ -1297,7 +1297,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         if (pwr == NULL)
         {
             pwr = NewBitmap();
-            set_wr(wRoot, pwr, T_OTHER);
+            set_wr(wRoot, pwr, T_LIST);
             *pwRoot = wRoot;
         }
 
@@ -1583,7 +1583,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 { ls_pwKeys(pwList)[wPopCnt] = wKey; }
             }
 
-            set_wr(wRoot, pwList, T_OTHER);
+            set_wr(wRoot, pwList, T_LIST);
             *pwRoot = wRoot; // install new
         }
         else
@@ -2114,7 +2114,7 @@ done:
             if (pwList != pwr)
             {
                 OldList(pwr, wPopCnt, nDigitsLeft);
-                set_wr(wRoot, pwList, T_OTHER);
+                set_wr(wRoot, pwList, T_LIST);
                 *pwRoot = wRoot;
                 pwKeys = pwr_pwKeys(pwList);
             }

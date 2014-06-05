@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.156 2014/06/05 00:02:12 mike Exp mike $
+// @(#) $Id: bli.c,v 1.157 2014/06/05 00:07:02 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -111,6 +111,9 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+    Word_t *pwrPrev;
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
@@ -165,7 +168,7 @@ again:
 
     } // end of case T_NULL
 
-    case T_OTHER:
+    case T_LIST:
     {
         DBGX(printf("List nDigitsLeft %d\n", nDigitsLeft));
         DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMask(nDigitsLeft)));
@@ -225,7 +228,8 @@ again:
             // Even with defined(PP_IN_LINK).
             // It is sufficient to check the prefix at the switch just
             // above the leaf.
-            // pwr is left from the previous iteration of the goto again loop.
+            // pwrPrev is left from the previous iteration of the goto again
+            // loop.
             // Would like to combine the source code for this prefix
             // check and the one done in the bitmap section if possible.
             Word_t wPrefix;
@@ -239,7 +243,8 @@ again:
                 || ( ! bNeedPrefixCheck ) // we followed no skip links
                 // If we need a prefix check, then we're not at the top.
                 // And pwRoot is initialized despite what gcc might think.
-                || ((wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeft),
+                || ((wPrefix
+                        = PWR_wPrefixNotAtTop(pwRoot, pwrPrev, nDigitsLeft),
                     LOG(1 | (wPrefix ^ wKey))
                         // prefix in parent switch doesn't contain last digit
                         // for !defined(PP_IN_LINK) case
@@ -333,18 +338,18 @@ again:
       #endif // defined(COMPRESSED_LISTS)
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
         break;
-    } // end of case T_OTHER
+    } // end of case T_LIST
 
 #if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 
-    case T_OTHER + 1:
+    case T_NO_SKIP_SWITCH:
     {
         // pwr points to a switch and *pwRoot is not a skip link
         pwr = wr_tp_pwr(wRoot, nType);
         assert(tp_to_nDS(nType) == 0);
         nDigitsLeftRoot = nDigitsLeft;
         goto bypass;
-    } // end of case T_OTHER + 1
+    } // end of case T_NO_SKIP_SWITCH
 
 #endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 
@@ -584,16 +589,21 @@ notEmpty:;
 // Simplify this to nDigitsLeft > 1 when we get rid of non-1 cnDigitsAtBottom.
             if (nDigitsLeft > nBL_to_nDL(cnBitsAtBottom))
             {
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
                 // We may need to check the prefix of the switch we just
                 // visited in the next iteration of the loop
-                // #if defined(COMPRESSED_LISTS).
-                // We preserve the value of pwr.
+                // #if defined(COMPRESSED_LISTS)
+                // so we preserve the value of pwr.
+                pwrPrev = pwr;
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #if defined(LOOKUP) || !defined(RECURSIVE)
                 goto again;
 #else // defined(LOOKUP) || !defined(RECURSIVE)
                 return InsertRemove(pwRoot, wKey, nDigitsLeft);
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
             }
+
+            // We are at the bottom.
 
 #if !defined(LOOKUP)
   #if defined(REMOVE)
@@ -921,7 +931,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 {
                     OldList(pwr, wPopCnt, cnDigitsPerWord);
                 }
-                set_wr(wRoot, pwListNew, T_OTHER);
+                set_wr(wRoot, pwListNew, T_LIST);
                 *pwRoot = wRoot;
                 status = Success;
             }
@@ -1221,7 +1231,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
                 set_ls_wPopCnt(pwListNew, wPopCnt - 1);
                 COPY(pwKeysNew, pwKeys, nn);
                 COPY(&pwKeysNew[nn], &pwKeys[nn + 1], wPopCnt - nn - 1);
-                set_wr(wRoot, pwListNew, T_OTHER);
+                set_wr(wRoot, pwListNew, T_LIST);
             }
             else
             {
