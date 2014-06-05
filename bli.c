@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.158 2014/06/05 12:00:24 mike Exp mike $
+// @(#) $Id: bli.c,v 1.159 2014/06/05 12:07:36 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -695,7 +695,7 @@ notEmpty:;
                         "Evaluating BitIsSet(wRoot "OWx" wKey "OWx") ...\n",
                             wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)));
 
-                    if (BitIsSet(wr_pwr(wRoot),
+                    if (BitIsSet(wRoot,
                         wKey & (EXP(cnBitsAtBottom) - 1UL)))
                     {
           #if defined(REMOVE)

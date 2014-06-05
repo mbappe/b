@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.218 2014/06/04 23:11:29 mike Exp mike $
+// @(#) $Id: b.c,v 1.219 2014/06/05 12:00:24 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1297,8 +1297,15 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         if (pwr == NULL)
         {
             pwr = NewBitmap();
-            set_wr(wRoot, pwr, T_LIST);
-            *pwRoot = wRoot;
+            // If we set the type field to 0 in the *pwRoot to
+            // the bitmap, then we don't need to extract pwr before
+            // derefencing it during lookup.
+            // But we have to be sure that the code does not assume this
+            // nType == T_NULL case implies the whole pwRoot is NULL.
+            // We use nDigitsLeft == 1 to avoid examining nType throughout
+            // the code.
+            // set_wr(wRoot, pwr, T_NULL);
+            *pwRoot = wRoot = (Word_t)pwr;
         }
 
         assert(!BitIsSet(pwr, wKey & (EXP(cnBitsAtBottom) - 1)));
