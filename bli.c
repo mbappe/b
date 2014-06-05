@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.152 2014/06/04 23:30:55 mike Exp mike $
+// @(#) $Id: bli.c,v 1.153 2014/06/05 00:00:17 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -306,8 +306,6 @@ again:
         break;
     } // end of case
 
-#if (T_OTHER != T_NULL)
-
     case T_NULL:
     {
         assert(wRoot == 0);
@@ -336,8 +334,6 @@ again:
         break;
 
     } // end of case
-
-#endif // (T_OTHER != T_NULL)
 
     default:
     {
