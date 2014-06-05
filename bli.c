@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.153 2014/06/05 00:00:17 mike Exp mike $
+// @(#) $Id: bli.c,v 1.154 2014/06/05 00:00:44 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -136,6 +136,35 @@ again:
     nType = wr_nType(wRoot);
     switch (nType)
     {
+    case T_NULL:
+    {
+        assert(wRoot == 0);
+
+  // Adjust wPopCnt in link to leaf for PP_IN_LINK.
+  // wPopCnt in switch and in link to switch are adjusted elsewhere.
+  #if defined(PP_IN_LINK)
+      #if defined(REMOVE)
+        // Can we combine bCleanup context with nType in switch variable?
+        if ( ! bCleanup )
+      #endif // defined(REMOVE)
+        {
+      #if ! defined(LOOKUP)
+            // What about defined(RECURSIVE)?
+            if (nDigitsLeft != cnDigitsPerWord)
+            {
+                // If nDigitsLeft != cnDigitsPerWord then we're not at top.
+                // And pwRoot is initialized despite what gcc might think.
+                assert(PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == 0);
+                set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, nIncr);
+            }
+      #endif // ! defined(LOOKUP)
+        }
+  #endif // defined(PP_IN_LINK)
+
+        break;
+
+    } // end of case
+
     case T_OTHER:
     {
         DBGX(printf("List nDigitsLeft %d\n", nDigitsLeft));
@@ -304,35 +333,6 @@ again:
       #endif // defined(COMPRESSED_LISTS)
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
         break;
-    } // end of case
-
-    case T_NULL:
-    {
-        assert(wRoot == 0);
-
-  // Adjust wPopCnt in link to leaf for PP_IN_LINK.
-  // wPopCnt in switch and in link to switch are adjusted elsewhere.
-  #if defined(PP_IN_LINK)
-      #if defined(REMOVE)
-        // Can we combine bCleanup context with nType in switch variable?
-        if ( ! bCleanup )
-      #endif // defined(REMOVE)
-        {
-      #if ! defined(LOOKUP)
-            // What about defined(RECURSIVE)?
-            if (nDigitsLeft != cnDigitsPerWord)
-            {
-                // If nDigitsLeft != cnDigitsPerWord then we're not at top.
-                // And pwRoot is initialized despite what gcc might think.
-                assert(PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == 0);
-                set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, nIncr);
-            }
-      #endif // ! defined(LOOKUP)
-        }
-  #endif // defined(PP_IN_LINK)
-
-        break;
-
     } // end of case
 
     default:
