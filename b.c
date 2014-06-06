@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.221 2014/06/05 13:50:14 mike Exp mike $
+// @(#) $Id: b.c,v 1.222 2014/06/06 00:02:23 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1021,11 +1021,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         printf("\n");
     }
 
-    DBGR(printf("nDigitsLeftPrev %d\n", nDigitsLeftPrev));
-    DBGR(printf("nDigitsLeft %d\n", nDigitsLeft));
     nBitsLeft = nDL_to_nBL(nDigitsLeft - 1);
-    DBGR(printf("nBitsLeft %d\n", nBitsLeft));
-
     nBitsIndexSz = nDL_to_nBitsIndexSz(nDigitsLeft);
 
     // skip link has extra prefix bits
