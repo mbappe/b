@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.220 2014/06/05 12:39:39 mike Exp mike $
+// @(#) $Id: b.c,v 1.221 2014/06/05 13:50:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -456,7 +456,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 
         memset(PWR_pwBm(pwRoot, pwr), 0, sizeof(PWR_pwBm(pwRoot, pwr)));
 
-        unsigned nBitsLeft = nDL_to_nBL_NotAtTop(nDigitsLeft);
+        unsigned nBitsLeft = nDL_to_nBL_NAT(nDigitsLeft);
         // leave nBitsLeft greater than cnBitsPerWord intentionally for now
 
         Word_t wIndex
@@ -510,9 +510,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 #if ! defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
-            && (nDL_to_nBL_NotAtTop(nDigitsLeft - 1) > 32)
+            && (nDL_to_nBL_NAT(nDigitsLeft - 1) > 32)
 #else // (cnBitsPerWord > 32)
-            && (nDL_to_nBL_NotAtTop(nDigitsLeft - 1) > 16)
+            && (nDL_to_nBL_NAT(nDigitsLeft - 1) > 16)
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
             && ((nDigitsLeft - 1) > nBL_to_nDL(cnBitsAtBottom))
@@ -1304,8 +1304,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             // nType == T_NULL case implies the whole pwRoot is NULL.
             // We use nDigitsLeft == 1 to avoid examining nType throughout
             // the code.
-            // set_wr(wRoot, pwr, T_NULL);
-            *pwRoot = wRoot = (Word_t)pwr;
+            set_wr(wRoot, pwr, T_BITMAP);
+            *pwRoot = wRoot;
         }
 
         assert(!BitIsSet(pwr, wKey & (EXP(cnBitsAtBottom) - 1)));
@@ -1871,7 +1871,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #endif // defined(PP_IN_LINK)
 
             // todo nBitsIndexSz; wide switch
-            nIndex = (wPrefix >> nDL_to_nBL_NotAtTop(nDigitsLeft - 1))
+            nIndex = (wPrefix >> nDL_to_nBL_NAT(nDigitsLeft - 1))
                 & (EXP(nDL_to_nBitsIndexSz(nDigitsLeft)) - 1);
             // nIndex is the logical index in new switch.
             // It may not be the same as the index in the old switch.

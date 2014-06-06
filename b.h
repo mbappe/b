@@ -216,7 +216,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 // this one is not used in the lookup performance path
 #define nDL_to_nBL(_nDL)  anDL_to_nBL[_nDL]
 
-#define nDL_to_nBL_NotAtTop(_nDL)  nDL_to_nBL(_nDL)
+#define nDL_to_nBL_NAT(_nDL)  nDL_to_nBL(_nDL)
 
 #else // defined(BPD_TABLE)
 
@@ -236,12 +236,11 @@ extern const unsigned anDL_to_nBitsIndexSz[];
     (((_nDL) == cnDigitsPerWord) \
         ? cnBitsIndexSzAtTop : nDL_to_nBitsIndexSzNAT(_nDL))
 
-#define nDL_to_nBL_NotAtTop(_nDL) \
+#define nDL_to_nBL_NAT(_nDL) \
     (((_nDL) - 1) * cnBitsPerDigit + cnBitsAtBottom)
 
-// this one is not used in the lookup performance path
 #define nDL_to_nBL(_nDL) \
-    (((_nDL) == cnDigitsPerWord) ? cnBitsPerWord : nDL_to_nBL_NotAtTop(_nDL))
+    (((_nDL) == cnDigitsPerWord) ? cnBitsPerWord : nDL_to_nBL_NAT(_nDL))
 
 #endif // defined(BPD_TABLE)
 
@@ -369,8 +368,9 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 // Set the pwRoot and nType fields in wRoot.
 #define set_wr(_wr, _pwr, _type)  ((_wr) = (Word_t)(_pwr) | (_type))
 
-#define T_NULL  0
-#define T_LIST  1
+#define T_NULL    0
+#define T_BITMAP  1
+#define T_LIST    2
 
 // Default is -UDL_IN_TYPE_IS_ABSOLUTE.
 #if defined(DL_IN_TYPE_IS_ABSOLUTE)
@@ -409,7 +409,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 // methods for Switch (and aliases)
 
 #define wPrefixPopMaskNotAtTop(_nDL) \
-    (EXP(nDL_to_nBL_NotAtTop(_nDL)) - (Word_t)1)
+    (EXP(nDL_to_nBL_NAT(_nDL)) - (Word_t)1)
 
 #define wPrefixPopMask(_nDL) \
     (((_nDL) == cnDigitsPerWord) ? (Word_t)-1 : wPrefixPopMaskNotAtTop(_nDL))
