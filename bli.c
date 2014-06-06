@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.172 2014/06/06 01:02:45 mike Exp mike $
+// @(#) $Id: bli.c,v 1.173 2014/06/06 01:19:01 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -519,7 +519,7 @@ notEmpty:;
                   #endif // defined(LOOKUP)
                   #if defined(SORT_LISTS)
                         if (cKeyLoop < cKey) { continue; }
-			if (cKeyLoop != cKey) { break; }
+                        if (cKeyLoop != cKey) { break; }
                   #else // defined(SORT_LISTS)
                         if (cKeyLoop != cKey) { continue; }
                   #endif // defined(SORT_LISTS)
@@ -547,7 +547,7 @@ notEmpty:;
                   #endif // defined(LOOKUP)
                   #if defined(SORT_LISTS)
                         if (sKeyLoop < sKey) { continue; }
-			if (sKeyLoop != sKey) { break; }
+                        if (sKeyLoop != sKey) { break; }
                   #else // defined(SORT_LISTS)
                         if (sKeyLoop != sKey) { continue; }
                   #endif // defined(SORT_LISTS)
@@ -575,7 +575,7 @@ notEmpty:;
                   #endif // defined(LOOKUP)
                   #if defined(SORT_LISTS)
                         if (iKeyLoop < iKey) { continue; }
-			if (iKeyLoop != iKey) { break; }
+                        if (iKeyLoop != iKey) { break; }
                   #else // defined(SORT_LISTS)
                         if (iKeyLoop != iKey) { continue; }
                   #endif // defined(SORT_LISTS)
@@ -602,7 +602,7 @@ notEmpty:;
               #endif // defined(LOOKUP)
               #if defined(SORT_LISTS)
                         if (wKeyLoop < wKey) { continue; }
-			if (wKeyLoop != wKey) { break; }
+                        if (wKeyLoop != wKey) { break; }
               #else // defined(SORT_LISTS)
                         if (wKeyLoop != wKey) { continue; }
               #endif // defined(SORT_LISTS)
