@@ -196,8 +196,6 @@
 // Default is -UBPD_TABLE, i.e. -DNO_BPD_TABLE.
 #if defined(BPD_TABLE)
 
-#undef  BPD_TABLE
-
 // Use lookup tables (which theoretically support depth-based bits per digit)
 // instead of a constant bits-per-digit throughout the tree.
 
