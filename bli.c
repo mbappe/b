@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.173 2014/06/06 01:19:01 mike Exp mike $
+// @(#) $Id: bli.c,v 1.174 2014/06/06 03:12:17 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -503,9 +503,9 @@ notEmpty:;
                 return wPopCnt ? KeyFound : ! KeyFound;
           #endif // defined(PP_IN_LINK)
       #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
+          #if defined(COMPRESSED_LISTS)
                 switch ( LOG(nBitsLeft - 1) - 2)
                 {
-          #if defined(COMPRESSED_LISTS)
               #if (cnBitsAtBottom < 8)
                 case 0:
                 {
@@ -518,11 +518,9 @@ notEmpty:;
                         SMETRICS(j__SearchCompares++);
                   #endif // defined(LOOKUP)
                   #if defined(SORT_LISTS)
-                        if (cKeyLoop < cKey) { continue; }
-                        if (cKeyLoop != cKey) { break; }
-                  #else // defined(SORT_LISTS)
-                        if (cKeyLoop != cKey) { continue; }
+                        if (cKeyLoop > cKey) { break; }
                   #endif // defined(SORT_LISTS)
+                        if (cKeyLoop != cKey) { continue; }
                   #if defined(REMOVE)
                         RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
                         goto cleanup;
@@ -532,6 +530,7 @@ notEmpty:;
                   #endif // defined(INSERT) && !defined(RECURSIVE)
                         return KeyFound;
                     }
+                    break;
                 }
               #endif // (cnBitsAtBottom < 8)
               #if (cnBitsAtBottom < 16)
@@ -546,11 +545,9 @@ notEmpty:;
                         SMETRICS(j__SearchCompares++);
                   #endif // defined(LOOKUP)
                   #if defined(SORT_LISTS)
-                        if (sKeyLoop < sKey) { continue; }
-                        if (sKeyLoop != sKey) { break; }
-                  #else // defined(SORT_LISTS)
-                        if (sKeyLoop != sKey) { continue; }
+                        if (sKeyLoop > sKey) { break; }
                   #endif // defined(SORT_LISTS)
+                        if (sKeyLoop != sKey) { continue; }
                   #if defined(REMOVE)
                         RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
                         goto cleanup;
@@ -560,6 +557,7 @@ notEmpty:;
                   #endif // defined(INSERT) && !defined(RECURSIVE)
                         return KeyFound;
                     }
+                    break;
                 }
               #endif // (cnBitsAtBottom < 16)
               #if (cnBitsAtBottom < 32) && (cnBitsPerWord > 32)
@@ -574,11 +572,9 @@ notEmpty:;
                         SMETRICS(j__SearchCompares++);
                   #endif // defined(LOOKUP)
                   #if defined(SORT_LISTS)
-                        if (iKeyLoop < iKey) { continue; }
-                        if (iKeyLoop != iKey) { break; }
-                  #else // defined(SORT_LISTS)
-                        if (iKeyLoop != iKey) { continue; }
+                        if (iKeyLoop > iKey) { break; }
                   #endif // defined(SORT_LISTS)
+                        if (iKeyLoop != iKey) { continue; }
                   #if defined(REMOVE)
                         RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
                         goto cleanup;
@@ -588,11 +584,12 @@ notEmpty:;
                   #endif // defined(INSERT) && !defined(RECURSIVE)
                         return KeyFound;
                     }
+                    break;
                 }
               #endif // (cnBitsAtBottom < 32) && (cnBitsPerWord > 32)
-          #endif // defined(COMPRESSED_LISTS)
                 default:
                 {
+          #endif // defined(COMPRESSED_LISTS)
                     Word_t *pwKeys = pwr_pwKeys(pwr);
                     for (unsigned nn = 0; nn < wPopCnt; nn++)
                     {
@@ -601,11 +598,9 @@ notEmpty:;
                         SMETRICS(j__SearchCompares++);
               #endif // defined(LOOKUP)
               #if defined(SORT_LISTS)
-                        if (wKeyLoop < wKey) { continue; }
-                        if (wKeyLoop != wKey) { break; }
-              #else // defined(SORT_LISTS)
-                        if (wKeyLoop != wKey) { continue; }
+                        if (wKeyLoop > wKey) { break; }
               #endif // defined(SORT_LISTS)
+                        if (wKeyLoop != wKey) { continue; }
               #if defined(REMOVE)
                         RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
                         goto cleanup;
@@ -615,8 +610,11 @@ notEmpty:;
               #endif // defined(INSERT) && !defined(RECURSIVE)
                         return KeyFound;
                     }
+          #if defined(COMPRESSED_LISTS)
+                    break;
                 } // end of default case
                 } // end of switch
+          #endif // defined(COMPRESSED_LISTS)
       #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
             }
       #if defined(COMPRESSED_LISTS)
