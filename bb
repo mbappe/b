@@ -1,9 +1,9 @@
 
-#!/bin/sh
+#!/bin/bash
 
 # Regression test script.
 
-set -x # turn echo on
+# set -x # turn echo on
 
 cp b b.bb
 
