@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.176 2014/06/06 06:43:14 mike Exp mike $
+// @(#) $Id: bli.c,v 1.177 2014/06/06 06:52:02 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -423,6 +423,13 @@ notEmpty:;
             set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
             DBGX(printf("wPopCnt (after incr) %zd\n",
                         (size_t)PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
+          // Adjust wPopCnt to actual list size for undo case.
+          // There must be a better way to do this.
+          #if defined(INSERT)
+            if (nIncr == -1) { --wPopCnt; }
+          #else // defined(INSERT)
+            if (nIncr == 1) { ++wPopCnt; } // REMOVE
+          #endif // defined(INSERT)
       #endif // ! defined(LOOKUP)
         }
   #endif // defined(PP_IN_LINK)
