@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.170 2014/06/05 23:55:49 mike Exp mike $
+// @(#) $Id: bli.c,v 1.171 2014/06/06 00:52:48 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -748,34 +748,31 @@ notEmpty:;
 
             DBGX(printf("! BitIsSetInWord\n"));
       #else // (cnBitsAtBottom <= cnLogBitsPerWord)
-            if (wRoot != 0)
-            {
-                DBGX(printf(
-                    "Evaluating BitIsSet(wRoot "OWx" wKey "OWx") ...\n",
-                        wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)));
+            DBGX(printf(
+                "Evaluating BitIsSet(wRoot "OWx" wKey "OWx") ...\n",
+                    wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)));
 
-                if (BitIsSet(wr_pwr(wRoot),
-                    wKey & (EXP(cnBitsAtBottom) - 1UL)))
-                {
+            if (BitIsSet(wr_pwr(wRoot),
+                wKey & (EXP(cnBitsAtBottom) - 1UL)))
+            {
           #if defined(REMOVE)
-                    RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                    goto cleanup;
+                RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                goto cleanup;
           #endif // defined(REMOVE)
           #if defined(INSERT) && !defined(RECURSIVE)
-                    if (nIncr > 0)
-                    {
-                        DBGX(printf(
-                          "BitmapWordNum %"_fw"d BitmapWordMask "OWx"\n",
-                           BitmapWordNum(wKey), BitmapWordMask(wKey)));
-                        DBGX(printf("Bit is set!\n"));
-                        goto undo; // undo counting 
-                    }
-          #endif // defined(INSERT) && !defined(RECURSIVE)
-                    return KeyFound;
+                if (nIncr > 0)
+                {
+                    DBGX(printf(
+                      "BitmapWordNum %"_fw"d BitmapWordMask "OWx"\n",
+                       BitmapWordNum(wKey), BitmapWordMask(wKey)));
+                    DBGX(printf("Bit is set!\n"));
+                    goto undo; // undo counting 
                 }
-
-                DBGX(printf("Bit is not set.\n"));
+          #endif // defined(INSERT) && !defined(RECURSIVE)
+                return KeyFound;
             }
+
+            DBGX(printf("Bit is not set.\n"));
       #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
         }
