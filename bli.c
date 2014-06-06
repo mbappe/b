@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.175 2014/06/06 06:28:03 mike Exp mike $
+// @(#) $Id: bli.c,v 1.176 2014/06/06 06:43:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -565,25 +565,36 @@ notEmpty:;
                 {
                     unsigned int *piKeys = pwr_piKeys(pwr);
                     unsigned int iKey = wKey;
+          #if defined(SORT_LISTS)
+                    if (piKeys[wPopCnt - 1] >= iKey)
+                    {
+                        for (unsigned int iKeyLoop;
+                             (iKeyLoop = *piKeys++) <= iKey;)
+          #else // defined(SORT_LISTS)
                     for (unsigned nn = 0; nn < wPopCnt; nn++)
                     {
                         unsigned int iKeyLoop = piKeys[nn];
+          #endif // defined(SORT_LISTS)
+                        {
                   #if defined(LOOKUP)
-                        SMETRICS(j__SearchCompares++);
+                            SMETRICS(j__SearchCompares++);
                   #endif // defined(LOOKUP)
-                  #if defined(SORT_LISTS)
-                        if (iKeyLoop > iKey) { break; }
-                  #endif // defined(SORT_LISTS)
-                        if (iKeyLoop != iKey) { continue; }
+                            if (iKeyLoop != iKey) { continue; }
                   #if defined(REMOVE)
-                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                        goto cleanup;
+                            RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                            goto cleanup;
                   #endif // defined(REMOVE)
                   #if defined(INSERT) && !defined(RECURSIVE)
-                        if (nIncr > 0) { goto undo; } // undo counting
+                            if (nIncr > 0) { goto undo; } // undo counting
                   #endif // defined(INSERT) && !defined(RECURSIVE)
-                        return KeyFound;
+                            return KeyFound;
+                        }
+          // use ifdef here to keep parens matched
+          #if defined(SORT_LISTS)
                     }
+          #else // defined(SORT_LISTS)
+                    }
+          #endif // defined(SORT_LISTS)
                     break;
                 }
               #endif // (cnBitsAtBottom < 32) && (cnBitsPerWord > 32)
@@ -614,6 +625,7 @@ notEmpty:;
           #endif // defined(INSERT) && !defined(RECURSIVE)
                             return KeyFound;
                         }
+          // use ifdef here to keep parens matched
           #if defined(SORT_LISTS)
                     }
           #else // defined(SORT_LISTS)
