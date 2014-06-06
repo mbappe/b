@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.174 2014/06/06 03:12:17 mike Exp $
+// @(#) $Id: bli.c,v 1.175 2014/06/06 06:28:03 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -591,25 +591,34 @@ notEmpty:;
                 {
           #endif // defined(COMPRESSED_LISTS)
                     Word_t *pwKeys = pwr_pwKeys(pwr);
+          #if defined(SORT_LISTS)
+                    if (pwKeys[wPopCnt - 1] >= wKey)
+                    {
+                        for (Word_t wKeyLoop; (wKeyLoop = *pwKeys++) <= wKey;)
+          #else // defined(SORT_LISTS)
                     for (unsigned nn = 0; nn < wPopCnt; nn++)
                     {
                         Word_t wKeyLoop = pwKeys[nn];
-              #if defined(LOOKUP)
-                        SMETRICS(j__SearchCompares++);
-              #endif // defined(LOOKUP)
-              #if defined(SORT_LISTS)
-                        if (wKeyLoop > wKey) { break; }
-              #endif // defined(SORT_LISTS)
-                        if (wKeyLoop != wKey) { continue; }
-              #if defined(REMOVE)
-                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                        goto cleanup;
-              #endif // defined(REMOVE)
-              #if defined(INSERT) && !defined(RECURSIVE)
-                        if (nIncr > 0) { goto undo; } // undo counting
-              #endif // defined(INSERT) && !defined(RECURSIVE)
-                        return KeyFound;
+          #endif // defined(SORT_LISTS)
+                        {
+          #if defined(LOOKUP)
+                            SMETRICS(j__SearchCompares++);
+          #endif // defined(LOOKUP)
+		    	    if (wKeyLoop != wKey) { continue; }
+          #if defined(REMOVE)
+                            RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                            goto cleanup;
+          #endif // defined(REMOVE)
+          #if defined(INSERT) && !defined(RECURSIVE)
+                            if (nIncr > 0) { goto undo; } // undo counting
+          #endif // defined(INSERT) && !defined(RECURSIVE)
+                            return KeyFound;
+                        }
+          #if defined(SORT_LISTS)
                     }
+          #else // defined(SORT_LISTS)
+                    }
+          #endif // defined(SORT_LISTS)
           #if defined(COMPRESSED_LISTS)
                     break;
                 } // end of default case
