@@ -19,21 +19,21 @@ for pp in pps # ppl
 do
 for bab in 10
 do
-for bits in 64 32
+for bits in 64 # 32
 do
-for lsmax in ff 07 3f # 10 # 00 01 02 20 80
+for lsmax in ff # 07 3f # 10 # 00 01 02 20 80
 do
-for search in srf sro srb
+for search in srf # sro srb
 do
-for bpd in 10 08 04 0c 06 # 07 09 06 02 03 05
+for bpd in 10 # 08 04 0c 06 # 07 09 06 02 03 05
 do
-for cc in ccc gcc icc
+for cc in ccc # gcc icc
 do
-for skip in skipl skipy skipd skipn skipu skipx
+for skip in skipl # skipy skipd skipn skipu skipx
 do
-for type in tpr tpa
+for type in tpr # tpa
 do
-for table in tbn tby
+for table in tbn # tby
 do
     date
 
@@ -192,8 +192,8 @@ do
     fi
 
     echo "#######################################################"
-    echo $bits-$bm-$pp-$skip-bpd$bpd-bab$bab-ls$lsmax-$tpr-$table-$search-$cc
-     tag=$bits-$bm-$pp-$skip-bpd$bpd-bab$bab-ls$lsmax-$tpr-$table-$search-$cc
+    echo $bits-$skip-$pp-$bm-bpd$bpd-bab$bab-$type-$table-ls$lsmax-$search-$cc
+     tag=$bits-$skip-$pp-$bm-bpd$bpd-bab$bab-$type-$table-ls$lsmax-$search-$cc
 
     if [ "$1" = make ]
     then
@@ -280,7 +280,13 @@ done
 
 date
 
+echo "#######################################################"
 if [ $status = 1 ]
 then
+    echo "  FAILURE!"
+    echo "#######################################################"
     exit $status
+else
+    echo "  SUCCESS!"
 fi
+echo "#######################################################"
