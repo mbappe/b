@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.181 2014/06/07 16:11:12 mike Exp mike $
+// @(#) $Id: bli.c,v 1.182 2014/06/07 21:24:50 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -112,7 +112,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     Word_t *pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-    Word_t *pwrPrev;
+    Word_t *pwrPrev = pwrPrev; // suppress "uninitialized" compiler warning
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
