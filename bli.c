@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.179 2014/06/07 14:12:11 mike Exp mike $
+// @(#) $Id: bli.c,v 1.180 2014/06/07 15:06:03 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -455,6 +455,8 @@ notEmpty:;
           #endif // defined(LOOKUP)
       #endif // defined(PP_IN_LINK)
 
+      // Search the list.  wPopCnt is the number of keys in the list.
+
       #if defined(COMPRESSED_LISTS)
           #if !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
             // nDigitsLeft is relative to the bottom of the switch
@@ -574,6 +576,7 @@ notEmpty:;
               #if (cnBitsAtBottom < 32) && (cnBitsPerWord > 32)
                 case 2:
                 {
+#if defined(ONE_WAY)
                     unsigned int *piKeys = pwr_piKeys(pwr);
                     unsigned int iKey = wKey;
           #if defined(SORT_LISTS)
@@ -606,12 +609,49 @@ notEmpty:;
           #else // defined(SORT_LISTS)
                     }
           #endif // defined(SORT_LISTS)
+#else // defined(ONE_WAY)
+          #if defined(FOUND_IT)
+                    int bFoundIt = 0;
+          #endif // defined(FOUND_IT)
+                    unsigned int iKey = wKey;
+                    unsigned int *piKeys = pwr_piKeys(pwr);
+                    unsigned int *piKeysEnd = &piKeys[wPopCnt];
+                    for (; piKeys < piKeysEnd; piKeys++)
+                    {
+                        if (*piKeys == iKey)
+                        {
+          #if defined(FOUND_IT)
+                            bFoundIt = 1;
+          #else // defined(FOUND_IT)
+                            break;
+          #endif // defined(FOUND_IT)
+                        }
+                    }
+                    if (
+          #if defined(FOUND_IT)
+                        (bFoundIt)
+          #else // defined(FOUND_IT)
+                        (piKeys < piKeysEnd)
+          #endif // defined(FOUND_IT)
+                        )
+                    {
+          #if defined(REMOVE)
+                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                        goto cleanup;
+          #endif // defined(REMOVE)
+          #if defined(INSERT) && !defined(RECURSIVE)
+                        if (nIncr > 0) { goto undo; } // undo counting
+          #endif // defined(INSERT) && !defined(RECURSIVE)
+                        return KeyFound;
+                    }
+#endif // defined(ONE_WAY)
                     break;
                 }
               #endif // (cnBitsAtBottom < 32) && (cnBitsPerWord > 32)
                 default:
                 {
           #endif // defined(COMPRESSED_LISTS)
+#if defined(ONE_WAY)
                     Word_t *pwKeys = pwr_pwKeys(pwr);
           #if defined(SORT_LISTS)
                     if (pwKeys[wPopCnt - 1] >= wKey)
@@ -642,6 +682,41 @@ notEmpty:;
           #else // defined(SORT_LISTS)
                     }
           #endif // defined(SORT_LISTS)
+#else // defined(ONE_WAY)
+          #if defined(FOUND_IT)
+                    int bFoundIt = 0;
+          #endif // defined(FOUND_IT)
+                    Word_t *pwKeys = pwr_pwKeys(pwr);
+                    Word_t *pwKeysEnd = &pwKeys[wPopCnt];
+                    for (; pwKeys < pwKeysEnd; pwKeys++)
+                    {
+                        if (*pwKeys == wKey)
+                        {
+          #if defined(FOUND_IT)
+                            bFoundIt = 1;
+          #else // defined(FOUND_IT)
+                            break;
+          #endif // defined(FOUND_IT)
+                        }
+                    }
+                    if (
+          #if defined(FOUND_IT)
+                        (bFoundIt)
+          #else // defined(FOUND_IT)
+                        (pwKeys < pwKeysEnd)
+          #endif // defined(FOUND_IT)
+                        )
+                    {
+          #if defined(REMOVE)
+                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                        goto cleanup;
+          #endif // defined(REMOVE)
+          #if defined(INSERT) && !defined(RECURSIVE)
+                        if (nIncr > 0) { goto undo; } // undo counting
+          #endif // defined(INSERT) && !defined(RECURSIVE)
+                        return KeyFound;
+                    }
+#endif // defined(ONE_WAY)
           #if defined(COMPRESSED_LISTS)
                     break;
                 } // end of default case
