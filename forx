@@ -7,33 +7,33 @@
 
 status=0
 
-for sort in sorty # sortx sortn
+for sort in sorty sortx sortn
 do
-for pack in packy # packn
+for pack in packy packn
 do
-for deref in dr # nodr # nolsdr nobmdr nolssearch nobmsearch
+for deref in dr nodr nolsdr nobmdr nolssearch nobmsearch
 do
-for bm in bmn # bms bml
+for bm in bmn bms bml
 do
-for pp in pps # ppl
+for pp in pps ppl
 do
-for bab in 10
+for bab in 10 0c 32 08
 do
-for bits in 64 # 32
+for bits in 64 32
 do
-for lsmax in ff # 07 3f # 10 # 00 01 02 20 80
+for lsmax in ff 00
 do
-for search in srf # sro srb
+for search in srf sro srb
 do
-for bpd in 10 # 08 04 0c 06 # 07 09 06 02 03 05
+for bpd in 08 20 04 10
 do
-for cc in ccc # gcc icc
+for cc in ccc gcc icc
 do
-for skip in skipl # skipy skipd skipn skipu skipx
+for skip in skipl skipy skipd skipn # skipu skipx
 do
-for type in tpr # tpa
+for type in tpr tpa
 do
-for table in tbn # tby
+for table in tbn tby
 do
     date
 
@@ -192,8 +192,9 @@ do
     fi
 
     echo "#######################################################"
-    echo $bits-$skip-$pp-$bm-bpd$bpd-bab$bab-$type-$table-ls$lsmax-$search-$cc
-     tag=$bits-$skip-$pp-$bm-bpd$bpd-bab$bab-$type-$table-ls$lsmax-$search-$cc
+    tag=$bits-$skip-$pp-$bm-bpd$bpd-bab$bab-$type-$table-ls$lsmax-$search
+    tag=$tag-$sort-$pack-$cc
+    echo $tag
 
     if [ "$1" = make ]
     then
