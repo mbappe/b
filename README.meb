@@ -5,6 +5,19 @@ rcs.tjz contains a copy of the RCS files in case the originals be found.
 Look for symbolic names in the RCS files.
 CP140405 is Checkpoint April 5, 2014.
 
+6/7/14:
+
+- DL_IN_TYPE_IS_RELATIVE allows us to avoid the test to see if the
+  link is a skip link; but we still check the prefix on the first
+  (and only in our testing) skip link.
+- For DL_IN_TYPE_IS_ABSOLUTE could we always do the prefix check at the
+  leaf and avoid test at each level above, i.e. PREFIX_CHECK_AT_LEAF.
+- Table lookup for index size and or bits left appears to be more
+  expensive than calculating.  It might make more sense if we are
+  putting more info in a single table lookup.  Or maybe I should scan
+  the code to see if we're doing more lookups than necessary.
+==================================
+
 For 64-bit, bpd8, dab2, lsmax16, nobm, (gcc or clang):
  -  best: ppsw
  - worst: ppln (not much different; full spread is 43-46)
