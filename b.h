@@ -3,6 +3,7 @@
 #define _B_H_INCLUDED
 
 // Default is -DSKIP_LINKS -USKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX.
+// Default is -UALWAYS_CHECK_PREFIX_AT_LEAF.
 #if ! defined(SKIP_LINKS)
 #if ! defined(NO_SKIP_LINKS)
 #define SKIP_LINKS
@@ -439,7 +440,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define PWR_wPopCnt(_pwRoot, _pwr, _nDL) \
     (w_wPopCnt(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nDL)))
 
-#define PWR_wPrefixNotAtTop(_pwRoot, _pwr, _nDL) \
+#define PWR_wPrefixNAT(_pwRoot, _pwr, _nDL) \
     (w_wPrefixNotAtTop(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nDL)))
 
 #define set_w_wPrefix(_w, _nDL, _key) \

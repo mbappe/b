@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.177 2014/06/06 06:52:02 mike Exp mike $
+// @(#) $Id: bli.c,v 1.178 2014/06/06 23:38:17 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -64,9 +64,9 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #if defined(LOOKUP)
     unsigned nDigitsLeft = cnDigitsPerWord;
   #if defined(SKIP_LINKS)
-          #if defined(SKIP_PREFIX_CHECK)
+      #if defined(SKIP_PREFIX_CHECK) && ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
     unsigned bNeedPrefixCheck = 0;
-          #endif // defined(SKIP_PREFIX_CHECK)
+      #endif // defined(SKIP_PREFIX_CHECK) && ! ALWAYS_CHECK_PREFIX_AT_LEAF
   #endif // defined(SKIP_LINKS)
     Word_t *pwRoot;
   #if defined(BM_IN_LINK)
@@ -169,23 +169,24 @@ again:
         assert(nDigitsLeftRoot < nDigitsLeft);
       #endif // defined(TYPE_IS_RELATIVE)
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+      #if defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
         // Record that there were prefix bits that were not checked.
-      #if defined(TYPE_IS_RELATIVE)
+          #if defined(TYPE_IS_RELATIVE)
         bNeedPrefixCheck |= 1;
-      #else // defined(TYPE_IS_RELATIVE)
+          #else // defined(TYPE_IS_RELATIVE)
         bNeedPrefixCheck |= (nDigitsLeftRoot < nDigitsLeft);
-      #endif // defined(TYPE_IS_RELATIVE)
+          #endif // defined(TYPE_IS_RELATIVE)
+      #endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
   #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-        Word_t wPrefix;
         if (1
       #if ! defined(TYPE_IS_RELATIVE)
             && (nDigitsLeftRoot < nDigitsLeft)
       #endif // ! defined(TYPE_IS_RELATIVE)
-            && ((wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeftRoot)),
-                (LOG(1 | (wPrefix ^ wKey))
-                    >= nDL_to_nBL_NAT(nDigitsLeftRoot))))
+            && (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwr, nDigitsLeftRoot) ^ wKey))
+                    >= nDL_to_nBL_NAT(nDigitsLeftRoot)))
         {
-            DBGX(printf("Mismatch wPrefix "Owx"\n", wPrefix));
+            DBGX(printf("Mismatch wPrefix "Owx"\n",
+                        PWR_wPrefixNAT(pwRoot, pwr, nDigitsLeftRoot)));
             break;
         }
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -473,26 +474,27 @@ notEmpty:;
             // loop.
             // Would like to combine the source code for this prefix
             // check and the one done in the bitmap section if possible.
-            Word_t wPrefix;
+            if ( 0
+              #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
               #if (cnBitsPerWord > 32)
-            if ((nBitsLeft > 32) // leaf has whole key
+                || (nBitsLeft > 32) // leaf has whole key
               #else // (cnBitsPerWord > 32)
-            if ((nBitsLeft > 16) // leaf has whole key
+                || (nBitsLeft > 16) // leaf has whole key
               #endif // (cnBitsPerWord > 32)
                 // leaf does not have whole key
                 // What if there were no skips in the part that is missing?
                 || ( ! bNeedPrefixCheck ) // we followed no skip links
+              #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
                 // If we need a prefix check, then we're not at the top.
                 // And pwRoot is initialized despite what gcc might think.
-                || ((wPrefix
-                        = PWR_wPrefixNotAtTop(pwRoot, pwrPrev, nDigitsLeft),
-                    LOG(1 | (wPrefix ^ wKey))
+                || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft)
+                        ^ wKey))
+                    < (nBitsLeft
+              #if ! defined(PP_IN_LINK)
                         // prefix in parent switch doesn't contain last digit
-                        // for !defined(PP_IN_LINK) case
-                        < (nBitsLeft
-              #if !defined(PP_IN_LINK)
-                                + nDL_to_nBitsIndexSzNAT(nDigitsLeft + 1)
-              #endif // !defined(PP_IN_LINK)
+                        // for ! defined(PP_IN_LINK) case
+                        + nDL_to_nBitsIndexSzNAT(nDigitsLeft + 1)
+              #endif // ! defined(PP_IN_LINK)
                            ))))
           #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #endif // defined(COMPRESSED_LISTS)
@@ -651,7 +653,8 @@ notEmpty:;
             else
             {
                 DBGX(printf("Mismatch at list wPrefix "OWx" nDL %d\n",
-                    wPrefix, nDigitsLeft));
+                            PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft),
+                            nDigitsLeft);
             }
               #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
           #endif // defined(SKIP_LINKS)
@@ -700,16 +703,17 @@ notEmpty:;
         // not PP_IN_LINK.
         // If PP_IN_LINK, then we are using the current pwRoot.
         // nDigitsLeft is different for the two cases.
-        Word_t wPrefix;
-        if (( ! bNeedPrefixCheck )
-            || ((wPrefix = PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeft),
-                LOG(1 | (wPrefix ^ wKey)))
+        if ( 0
+          #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+            || ! bNeedPrefixCheck )
+          #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+            || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwr, nDigitsLeft) ^ wKey)))
                     // pwr_nBitsIndexSz term is necessary because pwr
                     // prefix does not contain any less significant bits.
                     < (cnBitsAtBottom
-          #if !defined(PP_IN_LINK)
+          #if ! defined(PP_IN_LINK)
                             + nDL_to_nBitsIndexSzNAT(nDigitsLeft + 1)
-          #endif // !defined(PP_IN_LINK)
+          #endif // ! defined(PP_IN_LINK)
                        )))
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
   #endif // defined(SKIP_LINKS)
@@ -785,7 +789,7 @@ notEmpty:;
         else
         {
             DBGX(printf("Mismatch at bitmap wPrefix "OWx"\n",
-                PWR_wPrefixNotAtTop(pwRoot, pwr, nDigitsLeftRoot)));
+                        PWR_wPrefixNAT(pwRoot, pwr, nDigitsLeftRoot)));
         }
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
   #endif // defined(SKIP_LINKS)
