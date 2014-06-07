@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.180 2014/06/07 15:06:03 mike Exp mike $
+// @(#) $Id: bli.c,v 1.181 2014/06/07 16:11:12 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1235,7 +1235,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 #if defined(TYPE_IS_RELATIVE)
                             wPrefixPopMask(
                                   cnDigitsPerWord - 1 - wr_nDS(*pwRootLn)),
-                            wPrefixPopMask(
+                            (size_t)wPrefixPopMask(
                                   cnDigitsPerWord - 1 - wr_nDS(*pwRootLn))
 #else // defined(TYPE_IS_RELATIVE)
                             wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)),
@@ -1246,7 +1246,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                         printf("nn %d wPopCntLn %zd "OWx"\n",
                             nn,
 #if defined(TYPE_IS_RELATIVE)
-                            wPrefixPopMask(
+                            (size_t)wPrefixPopMask(
                                   cnDigitsPerWord - wr_nDS(*pwRootLn)),
                             wPrefixPopMask(
                                   cnDigitsPerWord - wr_nDS(*pwRootLn))
