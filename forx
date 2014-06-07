@@ -200,7 +200,7 @@ do
         echo "#######################################################"
         echo CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG_ALL" make
              CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG_ALL" make
-        if $? 
+        if [ ! $? ]
         then
             status=1
         fi
@@ -208,7 +208,7 @@ do
         echo "#######################################################"
         echo CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG_INSERT" make
              CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG_INSERT" make
-        if $? 
+        if [ ! $? ]
         then
             status=1
         fi
@@ -219,7 +219,7 @@ do
         echo "#######################################################"
         echo CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG" make
              CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG" make
-        if $? 
+        if [ ! $? ]
         then
             status=1
         fi
@@ -232,7 +232,7 @@ do
             #
             echo bb $2
                  bb $2
-            if $?
+            if [ ! $? ]
             then
                 status=1
             fi
@@ -244,7 +244,7 @@ do
         echo "#######################################################"
         echo CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DNDEBUG" make
              CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DNDEBUG" make
-        if $? 
+        if [ ! $? ]
         then
             status=1
         fi
@@ -252,11 +252,11 @@ do
         if [ "$1" = bench ]
         then
             echo "#######################################################"
-            echo  mv b b-$tag
-                  mv b b-$tag
-            echo "time b-$tag -1m -n5000000 | tee b-$tag.plot"
-                  time b-$tag -1m -n5000000 | tee b-$tag.plot
-            if $?
+            echo mv b b-$tag
+                 mv b b-$tag
+            echo b-$tag -1m -n5000000 | tee b-$tag.plot
+                 b-$tag -1m -n5000000 | tee b-$tag.plot
+            if [ ! $? ]
             then
                 status=1
             fi
