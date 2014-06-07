@@ -148,10 +148,10 @@ DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 
 LIBS = -lm
 
-FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c t.c stubs.c Makefile tocsv toc90
-FILES_FROM_ME += bb bbwrap
-FILES_FROM_ME += bench Makefile.perf makewrap bench1 benchall README.meb
-FILES_FROM_ME += sister oa2ul.c rcs.tjz
+FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c t.c stubs.c Makefile
+FILES_FROM_ME += bb forx
+FILES_FROM_ME += README.meb
+FILES_FROM_ME += rcs.tjz
 # I periodically make changes to the files provided by Doug.
 FILES_FROM_DOUG_OR_DOUG = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c jbgraph
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_OR_DOUG)
