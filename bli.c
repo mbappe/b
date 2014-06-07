@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.178 2014/06/06 23:38:17 mike Exp mike $
+// @(#) $Id: bli.c,v 1.179 2014/06/07 14:12:11 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -76,7 +76,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     // Silence unwarranted gcc used before initialized warning.
     // pwRoot is only uninitialized on the first time through the loop.
     // And we only use it if nBitsLeft != cnBitsPerWord
-    // or if bNeedsPrefixCheck is true.
+    // or if bNeedPrefixCheck is true.
     // And both of those imply it's not the first time through the loop.
     pwRoot = NULL;
           #endif // defined(PP_IN_LINK)
@@ -169,14 +169,14 @@ again:
         assert(nDigitsLeftRoot < nDigitsLeft);
       #endif // defined(TYPE_IS_RELATIVE)
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-      #if defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
         // Record that there were prefix bits that were not checked.
           #if defined(TYPE_IS_RELATIVE)
         bNeedPrefixCheck |= 1;
           #else // defined(TYPE_IS_RELATIVE)
         bNeedPrefixCheck |= (nDigitsLeftRoot < nDigitsLeft);
           #endif // defined(TYPE_IS_RELATIVE)
-      #endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
   #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         if (1
       #if ! defined(TYPE_IS_RELATIVE)
@@ -475,12 +475,14 @@ notEmpty:;
             // Would like to combine the source code for this prefix
             // check and the one done in the bitmap section if possible.
             if ( 0
-              #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
               #if (cnBitsPerWord > 32)
                 || (nBitsLeft > 32) // leaf has whole key
               #else // (cnBitsPerWord > 32)
                 || (nBitsLeft > 16) // leaf has whole key
               #endif // (cnBitsPerWord > 32)
+              // can't skip nBitsLeft check above or we might be at top
+              // hmm; check nBitsLeft or check at top; which is better?
+              #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
                 // leaf does not have whole key
                 // What if there were no skips in the part that is missing?
                 || ( ! bNeedPrefixCheck ) // we followed no skip links
@@ -495,7 +497,7 @@ notEmpty:;
                         // for ! defined(PP_IN_LINK) case
                         + nDL_to_nBitsIndexSzNAT(nDigitsLeft + 1)
               #endif // ! defined(PP_IN_LINK)
-                           ))))
+                           )))
           #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #endif // defined(COMPRESSED_LISTS)
             {
@@ -654,12 +656,14 @@ notEmpty:;
             {
                 DBGX(printf("Mismatch at list wPrefix "OWx" nDL %d\n",
                             PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft),
-                            nDigitsLeft);
+                            nDigitsLeft));
             }
               #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
           #endif // defined(SKIP_LINKS)
       #endif // defined(COMPRESSED_LISTS)
+DBGL(printf("\nT_LIST break\n"));
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
+
 
         break;
 
@@ -705,10 +709,10 @@ notEmpty:;
         // nDigitsLeft is different for the two cases.
         if ( 0
           #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-            || ! bNeedPrefixCheck )
+            || ! bNeedPrefixCheck
           #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-            || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwr, nDigitsLeft) ^ wKey)))
-                    // pwr_nBitsIndexSz term is necessary because pwr
+            || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft) ^ wKey))
+                    // pwr_nBitsIndexSz term is necessary because pwrPrev
                     // prefix does not contain any less significant bits.
                     < (cnBitsAtBottom
           #if ! defined(PP_IN_LINK)
@@ -724,7 +728,7 @@ notEmpty:;
             // Probably need cnDigitsAtBottom + 1 unless PP_IN_LINK.
             // But cnDigitsAtBottom + 1 is probably just a waste of
             // code since the switch probably won't exist in that case.
-            return PWR_wPopCntNotAtTop(pwRoot, pwr, cnDigitsAtBottom + 1)
+            return PWR_wPopCntNotAtTop(pwRoot, pwrPrev, cnDigitsAtBottom + 1)
                 ? KeyFound : ! KeyFound;
       #else
             // Remove is incomplete and may leave the switch in
@@ -789,10 +793,11 @@ notEmpty:;
         else
         {
             DBGX(printf("Mismatch at bitmap wPrefix "OWx"\n",
-                        PWR_wPrefixNAT(pwRoot, pwr, nDigitsLeftRoot)));
+                        PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeftRoot)));
         }
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
   #endif // defined(SKIP_LINKS)
+DBGL(printf("\nT_BITMAP break\n"));
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
 
         break;
