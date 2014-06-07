@@ -1,0 +1,286 @@
+#!/bin/bash
+
+# Usage: forx make
+#        forx bb [-q]
+#        forx bench
+#        forx
+
+status=0
+
+for sort in sorty # sortx sortn
+do
+for pack in packy # packn
+do
+for deref in dr # nodr # nolsdr nobmdr nolssearch nobmsearch
+do
+for bm in bmn # bms bml
+do
+for pp in pps # ppl
+do
+for bab in 10
+do
+for bits in 64 32
+do
+for lsmax in ff 07 3f # 10 # 00 01 02 20 80
+do
+for search in srf sro srb
+do
+for bpd in 10 08 04 0c 06 # 07 09 06 02 03 05
+do
+for cc in ccc gcc icc
+do
+for skip in skipl skipy skipd skipn skipu skipx
+do
+for type in tpr tpa
+do
+for table in tbn tby
+do
+    date
+
+    # A large cnBitsPerDigit (think 17 for 32-bit) combined with a large
+    # BM_IN_LINK can give a too large switch.
+    # Also, don't waste time with large bitmap switches at all.
+    if [ $((0x$bpd)) -gt 8 -a $bm = bmln ]
+    then
+        continue
+    fi
+
+    if [ $((0x$bpd)) -gt 10 -a $bm = bms ]
+    then
+        continue
+    fi
+
+    # Don't waste time testing skip links and 32-bit.
+    if [ $bits = 32 -a $skip != skipn ]
+    then
+        continue
+    fi
+
+    if [ $table = tby ]
+    then
+        TABLE=-DBPD_TABLE
+    else
+        TABLE=-DNO_BPD_TABLE
+    fi
+
+    if [ $skip = skipy ]
+    then
+        SKIP=-DSKIP_LINKS
+    elif [ $skip = skipl ]
+    then
+        SKIP=-DALWAYS_CHECK_PREFIX_AT_LEAF
+    elif [ $skip = skipd ]
+    then
+        SKIP=-DSKIP_PREFIX_CHECK
+    elif [ $skip = skipu ]
+    then
+        SKIP=-DNO_UNNECESSARY_PREFIX
+    elif [ $skip = skipx ]
+    then
+        SKIP="-DSKIP_PREFIX_CHECK -DNO_UNNECESSARY_PREFIX"
+    elif [ $skip = skipn ]
+    then
+        SKIP=-DNO_SKIP_LINKS
+    else
+        echo Invalid skip $skip.
+        exit 1
+    fi
+
+    if [ $search = sro ]
+    then
+        SEARCH=-DONE_WAY
+    elif [ $search = srf ]
+    then
+        SEARCH=-DFOUND_IT
+    elif [ $search = srb ]
+    then
+        SEARCH="-UONE_WAY -UFOUND_IT"
+    else
+        echo Invalid search $search.
+        exit 1
+    fi
+
+    if [ $pp = ppl ]
+    then
+        PP="-DPP_IN_LINK"
+    elif [ $pp = pps ]
+    then
+        PP=
+    else
+        echo Invalid pp $pp.
+        exit 1
+    fi
+
+    if [ $bm = bms ]
+    then
+        BM="-DBM_SWITCH_FOR_REAL"
+    elif [ $bm = bml ]
+    then
+        BM="-DBM_SWITCH_FOR_REAL -DBM_IN_LINK"
+    elif [ $bm = bmn ]
+    then
+        BM=
+    else
+        echo Invalid bm $bm.
+        exit 1
+    fi
+
+    if [ $pack = packy ]
+    then
+        PACK=-DCOMPRESSED_LISTS
+    else
+        PACK=-DNO_COMPRESSED_LISTS
+    fi
+
+    if [ $deref = "nodr" ]
+    then
+        DR="-DLOOKUP_NO_LIST_DEREF -DLOOKUP_NO_BITMAP_DEREF"
+    elif [ $deref = "nolsdr" ]
+    then
+        DR="-DLOOKUP_NO_LIST_DEREF"
+    elif [ $deref = "nobmdr" ]
+    then
+        DR="-DLOOKUP_NO_BITMAP_DEREF"
+    elif [ $deref = "nolssearch" ]
+    then
+        DR="-DLOOKUP_NO_LIST_SEARCH"
+    elif [ $deref = "nobmsearch" ]
+    then
+        DR="-DLOOKUP_NO_BITMAP_SEARCH"
+    else
+        DR=
+    fi
+
+    if [ $sort = sorty ]
+    then
+        SORT=-DSORT_LISTS
+    elif [ $sort = sortx ]
+    then
+        SORT=-DMIN_MAX_LISTS
+    elif [ $sort = sortn ]
+    then
+        SORT=-DNO_SORT_LISTS
+    else
+        echo Invalid sort $sort.
+        exit 1
+    fi
+
+    if [ $lsmax = "def" ]
+    then
+        LSMAX=
+    else
+        LSMAX=-DcwListPopCntMax=0x$lsmax
+    fi
+
+    if [ $type = tpr ]
+    then
+        TYPE=-DTYPE_IS_RELATIVE
+    else
+        TYPE=-DDL_IN_TYPE_IS_ABSOLUTE
+    fi
+
+    DEFS="-DRAM_METRICS -USEARCH_METRICS -DJUDYA"
+    DEFS="$DEFS $PP $BM $SKIP $TYPE $TABLE"
+    DEFS="$DEFS -DcnBitsPerDigit=0x$bpd -DcnBitsAtBottom=0x$bab"
+    DEFS="$DEFS $LSMAX $DR $SORT $PACK"
+
+    if [ $cc = ccc ]
+    then
+        CC=clang
+    else
+        CC=$cc
+    fi
+
+    echo "#######################################################"
+    echo $bits-$bm-$pp-$skip-bpd$bpd-bab$bab-ls$lsmax-$tpr-$table-$search-$cc
+     tag=$bits-$bm-$pp-$skip-bpd$bpd-bab$bab-ls$lsmax-$tpr-$table-$search-$cc
+
+    if [ "$1" = make ]
+    then
+        echo "#######################################################"
+        echo CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG_ALL" make
+             CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG_ALL" make
+        if $? 
+        then
+            status=1
+        fi
+
+        echo "#######################################################"
+        echo CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG_INSERT" make
+             CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG_INSERT" make
+        if $? 
+        then
+            status=1
+        fi
+    fi
+
+    if [ "$1" = make -o "$1" = bb ]
+    then
+        echo "#######################################################"
+        echo CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG" make
+             CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG" make
+        if $? 
+        then
+            status=1
+        fi
+
+        if [ "$1" = bb ]
+        then
+            echo "#######################################################"
+            #
+            # Pass -q on to bb if it was given to this program, wrap.
+            #
+            echo bb $2
+                 bb $2
+            if $?
+            then
+                status=1
+            fi
+        fi
+    fi
+
+    if [ "$1" = make -o "$1" = bench ]
+    then
+        echo "#######################################################"
+        echo CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DNDEBUG" make
+             CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DNDEBUG" make
+        if $? 
+        then
+            status=1
+        fi
+
+        if [ "$1" = bench ]
+        then
+            echo "#######################################################"
+            echo  mv b b-$tag
+                  mv b b-$tag
+            echo "time b-$tag -1m -n5000000 | tee b-$tag.plot"
+                  time b-$tag -1m -n5000000 | tee b-$tag.plot
+            if $?
+            then
+                status=1
+            fi
+        fi
+    fi
+
+done # search
+done # table
+done # bab
+done # tpr
+done # deref
+done # pack
+done
+done
+done
+done
+done
+done
+done
+done
+
+date
+
+if [ $status = 1 ]
+then
+    exit $status
+fi
