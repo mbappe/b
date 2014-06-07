@@ -53,25 +53,27 @@
 // Default is -UDEBUG_INSERT -UDEBUG_REMOVE -UDEBUG_LOOKUP -UDEBUG_MALLOC.
 #if defined(DEBUG_ALL)
 
-    #undef DEBUG_INSERT
-    #undef DEBUG_REMOVE
-    #undef DEBUG_MALLOC
-    #undef DEBUG_LOOKUP
-    #undef DEBUG
+    #undef  NDEBUG
+    #undef   DEBUG
+    #undef   DEBUG_INSERT
+    #undef   DEBUG_REMOVE
+    #undef   DEBUG_MALLOC
+    #undef   DEBUG_LOOKUP
 
-    #define DEBUG_INSERT
-    #define DEBUG_REMOVE
-    #define DEBUG_MALLOC
-    #define DEBUG_LOOKUP
-    #define DEBUG
+    #define  DEBUG
+    #define  DEBUG_INSERT
+    #define  DEBUG_REMOVE
+    #define  DEBUG_MALLOC
+    #define  DEBUG_LOOKUP
 
 #else // defined(DEBUG_ALL)
 
   #if defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) \
           || defined(DEBUG_REMOVE) || defined(DEBUG_MALLOC)
 
-    #undef DEBUG
-    #define DEBUG
+    #undef  NDEBUG
+    #undef   DEBUG
+    #define  DEBUG
 
   #endif // defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || ...
 
