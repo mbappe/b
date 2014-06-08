@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.182 2014/06/07 21:24:50 mike Exp mike $
+// @(#) $Id: bli.c,v 1.183 2014/06/07 23:56:40 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -868,7 +868,7 @@ DBGL(printf("\nT_LIST break\n"));
         else
         {
             DBGX(printf("Mismatch at bitmap wPrefix "OWx"\n",
-                        PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeftRoot)));
+                        PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft)));
         }
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
   #endif // defined(SKIP_LINKS)
