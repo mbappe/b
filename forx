@@ -7,8 +7,6 @@
 
 status=0
 
-for sort in sorty # sortx sortn
-do
 for pack in packy # packn
 do
 for deref in dr # nodr nolsdr nobmdr nolssearch nobmsearch
@@ -23,22 +21,32 @@ for bits in 64 # 32
 do
 for lsmax in ff # 00
 do
-for search in srl srs srx
-do
 for bpd in 08 # 20 04 10
-do
-for cc in ccc gcc # icc
-do
-for skip in skipl skipy skipd skipn # skipu skipx
 do
 for type in tpr tpa
 do
 for table in tbn tby
 do
+for cc in ccc gcc # icc
+do
+for skip in skipl skipy skipd skipn # skipu skipx
+do
+for sort in sorty sortn # sortx
+do
+for search in srl srs srx
+do
+for srt in 20 40 10 08
+do
     date
 
     # Fancy searches only work with sorted lists.
     if [ $sort != sorty -a $search != srx ]
+    then
+        continue;
+    fi
+
+    # srt only makes sense for (srl || srs)
+    if [ $search = srx -a $srl != 20 ]
     then
         continue;
     fi
@@ -189,6 +197,7 @@ do
     DEFS="$DEFS $PP $BM $SKIP $TYPE $TABLE"
     DEFS="$DEFS -DcnBitsPerDigit=0x$bpd -DcnBitsAtBottom=0x$bab"
     DEFS="$DEFS $LSMAX $SORT $PACK $SEARCH $DR"
+    DEFS="$DEFS -DcnSplitSearchThreshold=0x$srt"
 
     if [ $cc = ccc ]
     then
@@ -199,7 +208,7 @@ do
 
     echo "#######################################################"
     tag=$bits-$skip-$pp-$bm-bpd$bpd-bab$bab-$type-$table-ls$lsmax-$search
-    tag=$tag-$sort-$pack-$cc
+    tag=$tag-$sort-srt$srt-$pack-$cc
     echo $tag
 
     if [ "$1" = make ]
@@ -270,6 +279,7 @@ do
         fi
     fi
 
+done # srt
 done # search
 done # table
 done # bab

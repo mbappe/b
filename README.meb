@@ -5,6 +5,13 @@ rcs.tjz contains a copy of the RCS files in case the originals be found.
 Look for symbolic names in the RCS files.
 CP140405 is Checkpoint April 5, 2014.
 
+6/8/14:
+Todo:
+- Use only one key-size for pop count in list.
+- One key list at top.  Dedicate a type or overload T_NULL or another.
+- Break through bottom and put a list, then a switch.
+- Add support for immediates.
+
 6/7/14:
 
 - DL_IN_TYPE_IS_RELATIVE allows us to avoid the test to see if the
