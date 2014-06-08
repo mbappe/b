@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.222 2014/06/06 00:02:23 mike Exp $
+// @(#) $Id: b.c,v 1.223 2014/06/06 23:37:37 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -193,27 +193,24 @@ ListWords(Word_t wPopCnt, unsigned nDigitsLeft)
 #endif // (cnBitsPerWord > 32)
                          : sizeof(Word_t);
 
-    nWords = DIV_UP(wPopCnt * nBytesKeySz, cnBytesPerWord);
-
 #else // defined(COMPRESSED_LISTS)
 
-    nWords = wPopCnt;
+    unsigned nBytesKeySz = sizeof(Word_t);
 
     (void)nDigitsLeft;
 
 #endif // defined(COMPRESSED_LISTS)
 
+    // make room for pop count in the list
 #if defined(PP_IN_LINK)
     if (nDigitsLeft == cnDigitsPerWord)
-    {
-        nWords += 1; // make room for pop count in the list at top
-    }
 #endif // defined(PP_IN_LINK)
+    {
+        ++wPopCnt;
+    }
 
-    // Would be nice to do a better job of packing keys and pop count
-    // if COMPRESSED_LISTS and not PP_IN_LINK or at top.
+    nWords = DIV_UP(wPopCnt * nBytesKeySz, sizeof(Word_t));
 
-    nWords += OFFSET_OF(ListLeaf_t, ll_awKeys) / sizeof(Word_t);
     nWords |= 1; // mallocs of an even number of words waste a word
 
     return nWords;
@@ -1134,6 +1131,8 @@ static void
 CopyWithInsertInt(unsigned int *pTgt, unsigned int *pSrc,
     unsigned nKeys, unsigned int wKey)
 {
+    DBGI(printf("\nCopyWithInsertInt(pTgt %p pSrc %p nKeys %d wKey 0x%x\n",
+                pTgt, pSrc, nKeys, wKey));
 #if (cwListPopCntMax != 0)
     unsigned int ai[cwListPopCntMax]; // buffer for move if pSrc == pTgt
 #else // (cwListPopCntMax != 0)
@@ -1425,17 +1424,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
                 if (nBitsLeft <= 8) {
                     CopyWithInsertChar(ls_pcKeys(pwList),
-                        (unsigned char *)pwKeys, wPopCnt,
-                        (unsigned char)wKey);
+                        pcKeys, wPopCnt, (unsigned char)wKey);
                 } else if (nBitsLeft <= 16) {
                     CopyWithInsertShort(ls_psKeys(pwList),
-                        (unsigned short *)pwKeys, wPopCnt,
-                        (unsigned short)wKey);
+                        psKeys, wPopCnt, (unsigned short)wKey);
 #if (cnBitsPerWord > 32)
                 } else if (nBitsLeft <= 32) {
                     CopyWithInsertInt(ls_piKeys(pwList),
-                        (unsigned int *)pwKeys, wPopCnt,
-                        (unsigned int)wKey);
+                        piKeys, wPopCnt, (unsigned int)wKey);
 #endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
@@ -1757,6 +1753,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 for (w = 0; w < wPopCnt; w++)
                 {
                     Insert(pwRoot, pwKeys[w], nDigitsLeftOld);
+    DBGI(printf("\n# InsertGuts After Insert(wKey "OWx") Dump\n", wKey));
+    DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
+    DBGI(printf("\n"));
                 }
             }
 
