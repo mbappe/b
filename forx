@@ -182,7 +182,7 @@ do
     DEFS="-DRAM_METRICS -USEARCH_METRICS -DJUDYA"
     DEFS="$DEFS $PP $BM $SKIP $TYPE $TABLE"
     DEFS="$DEFS -DcnBitsPerDigit=0x$bpd -DcnBitsAtBottom=0x$bab"
-    DEFS="$DEFS $LSMAX $DR $SORT $PACK"
+    DEFS="$DEFS $LSMAX $SORT $PACK $SEARCH $DR"
 
     if [ $cc = ccc ]
     then
