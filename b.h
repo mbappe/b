@@ -495,9 +495,12 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #endif // defined(BM_IN_LINK)
 
 #if defined(DL_IN_LL)
-#define     ll_nDigitsLeft(_wr)  (((ListLeaf_t *)(_wr))->ll_nDigitsLeft)
+#define FIRST_KEY  2
+#define     ll_nDigitsLeft(_wr)  (((ListLeaf_t *)(_wr))->ll_acKeys[1])
 #define set_ll_nDigitsLeft(_wr, _nDL) \
     (((ListLeaf_t *)(_wr))->ll_nDigitsLeft = (_nDL))
+#else // defined(DL_IN_LL)
+#define FIRST_KEY  1
 #endif // defined(DL_IN_LL)
 
 #if defined(PP_IN_LINK)
@@ -509,19 +512,19 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #else // defined(PP_IN_LINK)
 
-#define     ls_wPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_nPopCnt)
+#define     ls_wPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_acKeys[0])
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
 
 #endif // defined(PP_IN_LINK)
 
 #if defined(COMPRESSED_LISTS)
-#define     ls_pcKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_acKeys)
-#define     ls_psKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_asKeys)
+#define     ls_pcKeys(_ls)    (&((ListLeaf_t *)(_ls))->ll_acKeys[FIRST_KEY])
+#define     ls_psKeys(_ls)    (&((ListLeaf_t *)(_ls))->ll_asKeys[FIRST_KEY])
 #if (cnBitsPerWord > 32)
-#define     ls_piKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_aiKeys)
+#define     ls_piKeys(_ls)    (&((ListLeaf_t *)(_ls))->ll_aiKeys[FIRST_KEY])
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-#define     ls_pwKeys(_ls)    (((ListLeaf_t *)(_ls))->ll_awKeys)
+#define     ls_pwKeys(_ls)    (&((ListLeaf_t *)(_ls))->ll_awKeys[FIRST_KEY])
 
 // these are just aliases
 #define     pwr_pwKeys(_pwr)    (ls_pwKeys(_pwr))
@@ -583,21 +586,15 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 #if (cnDigitsPerWord != 1)
 
 typedef struct {
-#if ! defined(PP_IN_LINK)
-    uint16_t ll_nPopCnt; // includes prefix, node type and nDigitsLeft
-#endif // ! defined(PP_IN_LINK)
-#if defined(DL_IN_LL)
-    uint8_t ll_nDigitsLeft;
-#endif // defined(DL_IN_LL)
     union {
 #if defined(COMPRESSED_LISTS)
-        uint8_t  ll_acKeys[1];
-        uint16_t ll_asKeys[1];
+        uint8_t  ll_acKeys[FIRST_KEY];
+        uint16_t ll_asKeys[FIRST_KEY];
 #if (cnBitsPerWord > 32)
-        uint32_t ll_aiKeys[1];
+        uint32_t ll_aiKeys[FIRST_KEY];
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-        Word_t   ll_awKeys[1];
+        Word_t   ll_awKeys[FIRST_KEY];
     };
 } ListLeaf_t;
 
