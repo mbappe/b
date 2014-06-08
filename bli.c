@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.183 2014/06/07 23:56:40 mike Exp mike $
+// @(#) $Id: bli.c,v 1.182 2014/06/07 21:24:50 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -522,26 +522,30 @@ notEmpty:;
               #if (cnBitsAtBottom < 8)
                 case 0:
                 {
-                    unsigned char *pcKeys = pwr_pcKeys(pwr);
+                    unsigned char cKeyLoop;
                     unsigned char cKey = wKey;
-                    for (unsigned nn = 0; nn < wPopCnt; nn++)
-                    {
-                        unsigned char cKeyLoop = pcKeys[nn];
-                  #if defined(LOOKUP)
-                        SMETRICS(j__SearchCompares++);
-                  #endif // defined(LOOKUP)
+                    unsigned char *pcKeys = pwr_pcKeys(pwr);
                   #if defined(SORT_LISTS)
-                        if (cKeyLoop > cKey) { break; }
+                    if ((cKeyLoop = pcKeys[wPopCnt - 1]) > cKey)
+                    {
+                        while ((cKeyLoop = *pcKeys++) < cKey);
+                    }
+                  #else // defined(SORT_LISTS)
+                    unsigned char *pcKeysEnd = &pcKeys[wPopCnt];
+                    while (cKeyLoop = *pcKeys, pcKeys++ < pcKeysEnd)
                   #endif // defined(SORT_LISTS)
-                        if (cKeyLoop != cKey) { continue; }
+                    {
+                        if (cKeyLoop == cKey)
+                        {
                   #if defined(REMOVE)
-                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                        goto cleanup;
+                            RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                            goto cleanup;
                   #endif // defined(REMOVE)
                   #if defined(INSERT) && !defined(RECURSIVE)
-                        if (nIncr > 0) { goto undo; } // undo counting
+                            if (nIncr > 0) { goto undo; } // undo counting
                   #endif // defined(INSERT) && !defined(RECURSIVE)
-                        return KeyFound;
+                            return KeyFound;
+                        }
                     }
                     break;
                 }
@@ -549,26 +553,30 @@ notEmpty:;
               #if (cnBitsAtBottom < 16)
                 case 1:
                 {
-                    unsigned short *psKeys = pwr_psKeys(pwr);
+                    unsigned short sKeyLoop;
                     unsigned short sKey = wKey;
-                    for (unsigned nn = 0; nn < wPopCnt; nn++)
-                    {
-                        unsigned short sKeyLoop = psKeys[nn];
-                  #if defined(LOOKUP)
-                        SMETRICS(j__SearchCompares++);
-                  #endif // defined(LOOKUP)
+                    unsigned short *psKeys = pwr_psKeys(pwr);
                   #if defined(SORT_LISTS)
-                        if (sKeyLoop > sKey) { break; }
+                    if ((sKeyLoop = psKeys[wPopCnt - 1]) > sKey)
+                    {
+                        while ((sKeyLoop = *psKeys++) < sKey);
+                    }
+                  #else // defined(SORT_LISTS)
+                    unsigned short *psKeysEnd = &psKeys[wPopCnt];
+                    while (sKeyLoop = *psKeys, psKeys++ < psKeysEnd)
                   #endif // defined(SORT_LISTS)
-                        if (sKeyLoop != sKey) { continue; }
+                    {
+                        if (sKeyLoop == sKey)
+                        {
                   #if defined(REMOVE)
-                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                        goto cleanup;
+                            RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                            goto cleanup;
                   #endif // defined(REMOVE)
                   #if defined(INSERT) && !defined(RECURSIVE)
-                        if (nIncr > 0) { goto undo; } // undo counting
+                            if (nIncr > 0) { goto undo; } // undo counting
                   #endif // defined(INSERT) && !defined(RECURSIVE)
-                        return KeyFound;
+                            return KeyFound;
+                        }
                     }
                     break;
                 }
@@ -576,24 +584,21 @@ notEmpty:;
               #if (cnBitsAtBottom < 32) && (cnBitsPerWord > 32)
                 case 2:
                 {
-#if defined(ONE_WAY)
-                    unsigned int *piKeys = pwr_piKeys(pwr);
+                    unsigned int iKeyLoop;
                     unsigned int iKey = wKey;
-          #if defined(SORT_LISTS)
-                    if (piKeys[wPopCnt - 1] >= iKey)
+                    unsigned int *piKeys = pwr_piKeys(pwr);
+                  #if defined(SORT_LISTS)
+                    if ((iKeyLoop = piKeys[wPopCnt - 1]) > iKey)
                     {
-                        for (unsigned int iKeyLoop;
-                             (iKeyLoop = *piKeys++) <= iKey;)
-          #else // defined(SORT_LISTS)
-                    for (unsigned nn = 0; nn < wPopCnt; nn++)
+                        while ((iKeyLoop = *piKeys++) < iKey);
+                    }
+                  #else // defined(SORT_LISTS)
+                    unsigned int *piKeysEnd = &piKeys[wPopCnt];
+                    while (iKeyLoop = *piKeys, piKeys++ < piKeysEnd)
+                  #endif // defined(SORT_LISTS)
                     {
-                        unsigned int iKeyLoop = piKeys[nn];
-          #endif // defined(SORT_LISTS)
+                        if (iKeyLoop == iKey)
                         {
-                  #if defined(LOOKUP)
-                            SMETRICS(j__SearchCompares++);
-                  #endif // defined(LOOKUP)
-                            if (iKeyLoop != iKey) { continue; }
                   #if defined(REMOVE)
                             RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
                             goto cleanup;
@@ -603,70 +608,27 @@ notEmpty:;
                   #endif // defined(INSERT) && !defined(RECURSIVE)
                             return KeyFound;
                         }
-          // use ifdef here to keep parens matched
-          #if defined(SORT_LISTS)
                     }
-          #else // defined(SORT_LISTS)
-                    }
-          #endif // defined(SORT_LISTS)
-#else // defined(ONE_WAY)
-          #if defined(FOUND_IT)
-                    int bFoundIt = 0;
-          #endif // defined(FOUND_IT)
-                    unsigned int iKey = wKey;
-                    unsigned int *piKeys = pwr_piKeys(pwr);
-                    unsigned int *piKeysEnd = &piKeys[wPopCnt];
-                    for (; piKeys < piKeysEnd; piKeys++)
-                    {
-                        if (*piKeys == iKey)
-                        {
-          #if defined(FOUND_IT)
-                            bFoundIt = 1;
-          #else // defined(FOUND_IT)
-                            break;
-          #endif // defined(FOUND_IT)
-                        }
-                    }
-                    if (
-          #if defined(FOUND_IT)
-                        (bFoundIt)
-          #else // defined(FOUND_IT)
-                        (piKeys < piKeysEnd)
-          #endif // defined(FOUND_IT)
-                        )
-                    {
-          #if defined(REMOVE)
-                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                        goto cleanup;
-          #endif // defined(REMOVE)
-          #if defined(INSERT) && !defined(RECURSIVE)
-                        if (nIncr > 0) { goto undo; } // undo counting
-          #endif // defined(INSERT) && !defined(RECURSIVE)
-                        return KeyFound;
-                    }
-#endif // defined(ONE_WAY)
                     break;
                 }
               #endif // (cnBitsAtBottom < 32) && (cnBitsPerWord > 32)
                 default:
                 {
           #endif // defined(COMPRESSED_LISTS)
-#if defined(ONE_WAY)
+                    Word_t wKeyLoop;
                     Word_t *pwKeys = pwr_pwKeys(pwr);
           #if defined(SORT_LISTS)
-                    if (pwKeys[wPopCnt - 1] >= wKey)
+                    if ((wKeyLoop = pwKeys[wPopCnt - 1]) > wKey)
                     {
-                        for (Word_t wKeyLoop; (wKeyLoop = *pwKeys++) <= wKey;)
+                        while ((wKeyLoop = *pwKeys++) < wKey);
+                    }
           #else // defined(SORT_LISTS)
-                    for (unsigned nn = 0; nn < wPopCnt; nn++)
-                    {
-                        Word_t wKeyLoop = pwKeys[nn];
+                    Word_t *pwKeysEnd = &pwKeys[wPopCnt];
+                    while (wKeyLoop = *pwKeys, pwKeys++ < pwKeysEnd)
           #endif // defined(SORT_LISTS)
+                    {
+                        if (wKeyLoop == wKey)
                         {
-          #if defined(LOOKUP)
-                            SMETRICS(j__SearchCompares++);
-          #endif // defined(LOOKUP)
-		    	    if (wKeyLoop != wKey) { continue; }
           #if defined(REMOVE)
                             RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
                             goto cleanup;
@@ -676,47 +638,7 @@ notEmpty:;
           #endif // defined(INSERT) && !defined(RECURSIVE)
                             return KeyFound;
                         }
-          // use ifdef here to keep parens matched
-          #if defined(SORT_LISTS)
                     }
-          #else // defined(SORT_LISTS)
-                    }
-          #endif // defined(SORT_LISTS)
-#else // defined(ONE_WAY)
-          #if defined(FOUND_IT)
-                    int bFoundIt = 0;
-          #endif // defined(FOUND_IT)
-                    Word_t *pwKeys = pwr_pwKeys(pwr);
-                    Word_t *pwKeysEnd = &pwKeys[wPopCnt];
-                    for (; pwKeys < pwKeysEnd; pwKeys++)
-                    {
-                        if (*pwKeys == wKey)
-                        {
-          #if defined(FOUND_IT)
-                            bFoundIt = 1;
-          #else // defined(FOUND_IT)
-                            break;
-          #endif // defined(FOUND_IT)
-                        }
-                    }
-                    if (
-          #if defined(FOUND_IT)
-                        (bFoundIt)
-          #else // defined(FOUND_IT)
-                        (pwKeys < pwKeysEnd)
-          #endif // defined(FOUND_IT)
-                        )
-                    {
-          #if defined(REMOVE)
-                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                        goto cleanup;
-          #endif // defined(REMOVE)
-          #if defined(INSERT) && !defined(RECURSIVE)
-                        if (nIncr > 0) { goto undo; } // undo counting
-          #endif // defined(INSERT) && !defined(RECURSIVE)
-                        return KeyFound;
-                    }
-#endif // defined(ONE_WAY)
           #if defined(COMPRESSED_LISTS)
                     break;
                 } // end of default case
