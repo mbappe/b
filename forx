@@ -23,7 +23,7 @@ for bits in 64 # 32
 do
 for lsmax in ff # 00
 do
-for search in srf sro srb
+for search in srl srs srx
 do
 for bpd in 08 # 20 04 10
 do
@@ -36,6 +36,12 @@ do
 for table in tbn tby
 do
     date
+
+    # Fancy searches only work with sorted lists.
+    if [ $sort != sorty -a $search != srx ]
+    then
+        continue;
+    fi
 
     # A large cnBitsPerDigit (think 17 for 32-bit) combined with a large
     # BM_IN_LINK can give a too large switch.
@@ -86,15 +92,15 @@ do
         exit 1
     fi
 
-    if [ $search = sro ]
+    if [ $search = srl ]
     then
-        SEARCH=-DONE_WAY
-    elif [ $search = srf ]
+        SEARCH=-DSPLIT_SEARCH_LOOP
+    elif [ $search = srs ]
     then
-        SEARCH=-DFOUND_IT
-    elif [ $search = srb ]
+        SEARCH=-DSPLIT_SEARCH
+    elif [ $search = srx ]
     then
-        SEARCH="-UONE_WAY -UFOUND_IT"
+        SEARCH="-USPLIT_SEARCH"
     else
         echo Invalid search $search.
         exit 1

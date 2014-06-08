@@ -28,11 +28,18 @@
 #endif // !defined(cwListPopCntMax)
 
 // Default is -DSORT_LISTS.
-#if ! defined(SORT_LISTS) && ! defined(MIN_MAX_LISTS)
-#if ! defined(NO_SORT_LISTS)
+#if ! defined(NO_SORT_LISTS) && ! defined(MIN_MAX_LISTS)
+#undef  SORT_LISTS
 #define SORT_LISTS
-#endif // ! defined(NO_SORT_LISTS)
-#endif // ! defined(SORT_LISTS) && ! defined(MIN_MAX_LISTS)
+#endif // ! defined(NO_SORT_LISTS) && ! defined(MIN_MAX_LISTS)
+#if defined(SPLIT_SEARCH_LOOP)
+#undef  SPLIT_SEARCH
+#define SPLIT_SEARCH
+#endif // defined(SPLIT_SEARCH_LOOP)
+#if defined(SPLIT_SEARCH)
+#undef  SORT_LISTS
+#define SORT_LISTS
+#endif // defined(SPLIT_SEARCH)
 
 // Default is -DCOMPRESSED_LISTS.
 #if ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)

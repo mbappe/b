@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.182 2014/06/07 21:24:50 mike Exp mike $
+// @(#) $Id: bli.c,v 1.185 2014/06/08 03:42:03 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -618,6 +618,25 @@ notEmpty:;
                     Word_t wKeyLoop;
                     Word_t *pwKeys = pwr_pwKeys(pwr);
           #if defined(SORT_LISTS)
+              #if defined(SPLIT_SEARCH)
+              #if defined(SPLIT_SEARCH_LOOP)
+                    while
+              #else // defined(SPLIT_SEARCH_LOOP)
+                    if
+              #endif // defined(SPLIT_SEARCH_LOOP)
+                       (wPopCnt >= 32) // 32 is arbitrary
+                    {
+                        if (pwKeys[wPopCnt / 2] <= wKey)
+                        {
+                            pwKeys = &pwKeys[wPopCnt / 2];
+                            wPopCnt -= wPopCnt / 2;
+                        }
+                        else
+                        {
+                            wPopCnt /= 2;
+                        }
+                    }
+              #endif // defined(SPLIT_SEARCH)
                     if ((wKeyLoop = pwKeys[wPopCnt - 1]) > wKey)
                     {
                         while ((wKeyLoop = *pwKeys++) < wKey);
