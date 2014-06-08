@@ -5,6 +5,21 @@
 #        forx b
 #        forx
 
+quit()
+{
+    echo "#######################################################"
+    if [ "$1" = 1 ]
+    then
+        echo "  FAILURE!"
+        echo "#######################################################"
+        exit $status
+    else
+        echo "  SUCCESS!"
+    fi
+    echo "#######################################################"
+    exit $1
+}
+
 status=0
 
 for pack in packy # packn
@@ -42,13 +57,13 @@ do
     # Fancy searches only work with sorted lists.
     if [ $sort != sorty -a $search != srx ]
     then
-        continue;
+        continue
     fi
 
     # srt only makes sense for (srl || srs)
-    if [ $search = srx -a $srl != 20 ]
+    if [ $search = srx -a $srt != 20 ]
     then
-        continue;
+        continue
     fi
 
     # A large cnBitsPerDigit (think 17 for 32-bit) combined with a large
@@ -216,17 +231,17 @@ do
         echo "#######################################################"
         echo CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG_ALL" make
              CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG_ALL" make
-        if [ ! $? ]
+        if [ $? != 0 ]
         then
-            status=1
+            quit 1
         fi
 
         echo "#######################################################"
         echo CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG_INSERT" make
              CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG_INSERT" make
-        if [ ! $? ]
+        if [ $? != 0 ]
         then
-            status=1
+            quit 1
         fi
     fi
 
@@ -235,9 +250,9 @@ do
         echo "#######################################################"
         echo CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG" make
              CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DDEBUG" make
-        if [ ! $? ]
+        if [ $? != 0 ]
         then
-            status=1
+            quit 1
         fi
 
         if [ "$1" = bb ]
@@ -248,9 +263,9 @@ do
             #
             echo bb $2
                  bb $2
-            if [ ! $? ]
+            if [ $? != 0 ]
             then
-                status=1
+                quit 1
             fi
         fi
     fi
@@ -260,9 +275,13 @@ do
         echo "#######################################################"
         echo CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DNDEBUG" make
              CC=$CC cnBitsPerWord=$bits DEFINES="$DEFS -DNDEBUG" make
-        if [ ! $? ]
+        if [ $? != 0 ]
         then
             status=1
+            if [ "$1" = make ]
+            then
+                quit 1
+            fi
         fi
 
         if [ "$1" = b ]
@@ -272,7 +291,7 @@ do
                  mv b b-$tag
             echo b-$tag -1m -n5000000 | tee b-$tag.plot
                  b-$tag -1m -n5000000 | tee b-$tag.plot
-            if [ ! $? ]
+            if [ $? != 0 ]
             then
                 status=1
             fi
@@ -297,13 +316,5 @@ done
 
 date
 
-echo "#######################################################"
-if [ $status = 1 ]
-then
-    echo "  FAILURE!"
-    echo "#######################################################"
-    exit $status
-else
-    echo "  SUCCESS!"
-fi
-echo "#######################################################"
+quit $status
+
