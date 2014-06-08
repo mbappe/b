@@ -35,12 +35,12 @@
 #if defined(SPLIT_SEARCH_LOOP)
 #undef  SPLIT_SEARCH
 #define SPLIT_SEARCH
+#endif // defined(SPLIT_SEARCH_LOOP)
+#if defined(SPLIT_SEARCH)
 // Default is cnSplitSearchThreshold = 32.
 #if ! defined(cnSplitSearchThreshold)
 #define cnSplitSearchThreshold  32
 #endif // ! defined(cnSplitSearchThreshold)
-#endif // defined(SPLIT_SEARCH_LOOP)
-#if defined(SPLIT_SEARCH)
 #undef  SORT_LISTS
 #define SORT_LISTS
 #endif // defined(SPLIT_SEARCH)
