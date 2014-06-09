@@ -28,10 +28,10 @@
 #endif // !defined(cwListPopCntMax)
 
 // Default is -DSORT_LISTS.
-#if ! defined(NO_SORT_LISTS) && ! defined(MIN_MAX_LISTS)
+#if ! defined(NO_SORT_LISTS)
 #undef  SORT_LISTS
 #define SORT_LISTS
-#endif // ! defined(NO_SORT_LISTS) && ! defined(MIN_MAX_LISTS)
+#endif // ! defined(NO_SORT_LISTS)
 #if defined(SPLIT_SEARCH_LOOP)
 #undef  SPLIT_SEARCH
 #define SPLIT_SEARCH
@@ -384,8 +384,9 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define set_wr(_wr, _pwr, _type)  ((_wr) = (Word_t)(_pwr) | (_type))
 
 #define T_NULL    0
-#define T_BITMAP  1
-#define T_LIST    2
+#define T_ONE     1
+#define T_BITMAP  2
+#define T_LIST    3
 
 // Default is -UDL_IN_TYPE_IS_ABSOLUTE.
 #if defined(DL_IN_TYPE_IS_ABSOLUTE)
