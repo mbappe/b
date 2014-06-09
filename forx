@@ -51,7 +51,7 @@ do
 for search in srl srs srx
 do
 # if we don't include 20 then we won't get numbers for srx
-for srti in 20 40 10 08
+for srti in 20 28 30 18
 do
 # if we don't include 08 then we won't get numbers for srx
 for srtw in 08 02 04
@@ -72,6 +72,12 @@ do
 
     # srt only makes sense for (srl || srs)
     if [ $search = srx -a $srtw != 8 ]
+    then
+        continue
+    fi
+
+    # don't bother testing so many combinations
+    if [ $srtw != 08 -o $srti != 20 ]
     then
         continue
     fi
