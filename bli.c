@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.188 2014/06/09 00:50:52 mike Exp mike $
+// @(#) $Id: bli.c,v 1.189 2014/06/09 15:25:05 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -414,285 +414,278 @@ notEmpty:;
 
   #if defined(PP_IN_LINK)
         // What about defined(RECURSIVE)?
-        if (nDigitsLeft != cnDigitsPerWord)
-        {
-            // If nDigitsLeft != cnDigitsPerWord then we're not at the top.
-            // And pwRoot is initialized despite what gcc might think.
-            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
+        assert(nDigitsLeft != cnDigitsPerWord); // handled in wrapper
+        // If nDigitsLeft != cnDigitsPerWord then we're not at the top.
+        // And pwRoot is initialized despite what gcc might think.
+        wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
       #if ! defined(LOOKUP)
-            DBGX(printf("wPopCnt (before incr) %zd\n", (size_t)wPopCnt));
-            set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
-            DBGX(printf("wPopCnt (after incr) %zd\n",
-                        (size_t)PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
-          // Adjust wPopCnt to actual list size for undo case.
-          // There must be a better way to do this.
-          #if defined(INSERT)
-            if (nIncr == -1) { --wPopCnt; }
-          #else // defined(INSERT)
-            if (nIncr == 1) { ++wPopCnt; } // REMOVE
-          #endif // defined(INSERT)
+        DBGX(printf("wPopCnt (before incr) %zd\n", (size_t)wPopCnt));
+        set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
+        DBGX(printf("wPopCnt (after incr) %zd\n",
+                    (size_t)PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
       #endif // ! defined(LOOKUP)
-        }
   #endif // defined(PP_IN_LINK)
 
   #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 // This short-circuit is for analysis only.
-            return KeyFound;
+        return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
       #if defined(PP_IN_LINK)
-            if (nDigitsLeft == cnDigitsPerWord)
-            {
-                // Will have to figure this out to get rid
-                // of pop count in list.
-                wPopCnt = ls_wPopCnt(wr_tp_pwr(wRoot, nType));
-            }
+          // Adjust wPopCnt to actual list size for undo case.
+          // There must be a better way to do this.
+          #if defined(INSERT)
+        if (nIncr == -1) { --wPopCnt; }
+          #endif // defined(INSERT)
+          #if defined(REMOVE)
+        if (nIncr == 1) { ++wPopCnt; }
+          #endif // defined(REMOVE)
       #else // defined(PP_IN_LINK)
-            wPopCnt = ls_wPopCnt(wr_tp_pwr(wRoot, nType));
-            DBGX(printf("List wPopCnt %"_fw"u\n", wPopCnt));
-          #if defined(LOOKUP)
-            SMETRICS(j__SearchPopulation += wPopCnt);
-          #endif // defined(LOOKUP)
+        wPopCnt = ls_wPopCnt(wr_tp_pwr(wRoot, nType));
       #endif // defined(PP_IN_LINK)
 
-      // Search the list.  wPopCnt is the number of keys in the list.
+      #if defined(LOOKUP)
+        SMETRICS(j__SearchPopulation += wPopCnt);
+      #endif // defined(LOOKUP)
+
+        // Search the list.  wPopCnt is the number of keys in the list.
 
       #if defined(COMPRESSED_LISTS)
           #if !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
-            // nDigitsLeft is relative to the bottom of the switch
-            // containing the pointer to the leaf.
-            // Can we use NAT here since bNeedPrefixCheck will never
-            // be true if we are at the top?
-            // If the top digit is smaller than the rest, then NAT will
-            // return nBitsLeft > cnBitsPerWord which works out perfectly.
-            unsigned nBitsLeft = nDL_to_nBL_NAT(nDigitsLeft);
+        // nDigitsLeft is relative to the bottom of the switch
+        // containing the pointer to the leaf.
+        // Can we use NAT here since bNeedPrefixCheck will never
+        // be true if we are at the top?
+        // If the top digit is smaller than the rest, then NAT will
+        // return nBitsLeft > cnBitsPerWord which works out perfectly.
+        unsigned nBitsLeft = nDL_to_nBL_NAT(nDigitsLeft);
           #endif // !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
           #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-            // We don't support skip links directly to leaves -- yet.
-            // Even with defined(PP_IN_LINK).
-            // It is sufficient to check the prefix at the switch just
-            // above the leaf.
-            // pwrPrev is left from the previous iteration of the goto again
-            // loop.
-            // Would like to combine the source code for this prefix
-            // check and the one done in the bitmap section if possible.
-            if ( 0
+        // We don't support skip links directly to leaves -- yet.
+        // Even with defined(PP_IN_LINK).
+        // It is sufficient to check the prefix at the switch just
+        // above the leaf.
+        // pwrPrev is left from the previous iteration of the goto again
+        // loop.
+        // Would like to combine the source code for this prefix
+        // check and the one done in the bitmap section if possible.
+        if ( 0
               #if (cnBitsPerWord > 32)
-                || (nBitsLeft > 32) // leaf has whole key
+            || (nBitsLeft > 32) // leaf has whole key
               #else // (cnBitsPerWord > 32)
-                || (nBitsLeft > 16) // leaf has whole key
+            || (nBitsLeft > 16) // leaf has whole key
               #endif // (cnBitsPerWord > 32)
-              // can't skip nBitsLeft check above or we might be at top
-              // hmm; check nBitsLeft or check at top; which is better?
+          // can't skip nBitsLeft check above or we might be at top
+          // hmm; check nBitsLeft or check at top; which is better?
               #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-                // leaf does not have whole key
-                // What if there were no skips in the part that is missing?
-                || ( ! bNeedPrefixCheck ) // we followed no skip links
+            // leaf does not have whole key
+            // What if there were no skips in the part that is missing?
+            || ( ! bNeedPrefixCheck ) // we followed no skip links
               #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-                // If we need a prefix check, then we're not at the top.
-                // And pwRoot is initialized despite what gcc might think.
-                || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft)
-                        ^ wKey))
-                    < (nBitsLeft
+            // If we need a prefix check, then we're not at the top.
+            // And pwRoot is initialized despite what gcc might think.
+            || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft)
+                    ^ wKey))
+                < (nBitsLeft
               #if ! defined(PP_IN_LINK)
-                        // prefix in parent switch doesn't contain last digit
-                        // for ! defined(PP_IN_LINK) case
-                        + nDL_to_nBitsIndexSzNAT(nDigitsLeft + 1)
+                    // prefix in parent switch doesn't contain last digit
+                    // for ! defined(PP_IN_LINK) case
+                    + nDL_to_nBitsIndexSzNAT(nDigitsLeft + 1)
               #endif // ! defined(PP_IN_LINK)
-                           )))
+                       )))
           #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #endif // defined(COMPRESSED_LISTS)
-            {
+        {
       #if defined(DL_IN_LL)
-                assert(ll_nDigitsLeft(wRoot) == nDigitsLeft);
+            assert(ll_nDigitsLeft(wRoot) == nDigitsLeft);
       #endif // defined(DL_IN_LL)
       #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
           // This short-circuit is for analysis only.  We have retrieved the
           // pop count and prefix but we have not dereferenced the list
           // itself.
           #if defined(PP_IN_LINK)
-                return KeyFound;
+            return KeyFound;
           #else // defined(PP_IN_LINK)
-                return wPopCnt ? KeyFound : ! KeyFound;
+            return wPopCnt ? KeyFound : ! KeyFound;
           #endif // defined(PP_IN_LINK)
       #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
           #if defined(COMPRESSED_LISTS)
-                switch ( LOG(nBitsLeft - 1) - 2)
-                {
+            switch ( LOG(nBitsLeft - 1) - 2)
+            {
               #if (cnBitsAtBottom < 8)
-                case 0:
-                {
-                    unsigned char cKeyLoop;
-                    unsigned char cKey = wKey;
-                    unsigned char *pcKeys = pwr_pcKeys(pwr);
+            case 0:
+            {
+                unsigned char cKeyLoop;
+                unsigned char cKey = wKey;
+                unsigned char *pcKeys = pwr_pcKeys(pwr);
                   #if defined(SORT_LISTS)
-                    if ((cKeyLoop = pcKeys[wPopCnt - 1]) > cKey)
-                    {
-                        while ((cKeyLoop = *pcKeys++) < cKey);
-                    }
+                if ((cKeyLoop = pcKeys[wPopCnt - 1]) > cKey)
+                {
+                    while ((cKeyLoop = *pcKeys++) < cKey);
+                }
                   #else // defined(SORT_LISTS)
-                    unsigned char *pcKeysEnd = &pcKeys[wPopCnt];
-                    while (cKeyLoop = *pcKeys, pcKeys++ < pcKeysEnd)
+                unsigned char *pcKeysEnd = &pcKeys[wPopCnt];
+                while (cKeyLoop = *pcKeys, pcKeys++ < pcKeysEnd)
                   #endif // defined(SORT_LISTS)
+                {
+                    if (cKeyLoop == cKey)
                     {
-                        if (cKeyLoop == cKey)
-                        {
                   #if defined(REMOVE)
-                            RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                            goto cleanup;
+                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                        goto cleanup;
                   #endif // defined(REMOVE)
                   #if defined(INSERT) && !defined(RECURSIVE)
-                            if (nIncr > 0) { goto undo; } // undo counting
+                        if (nIncr > 0) { goto undo; } // undo counting
                   #endif // defined(INSERT) && !defined(RECURSIVE)
-                            return KeyFound;
-                        }
+                        return KeyFound;
                     }
-                    break;
                 }
+                break;
+            }
               #endif // (cnBitsAtBottom < 8)
               #if (cnBitsAtBottom < 16)
-                case 1:
-                {
-                    unsigned short sKeyLoop;
-                    unsigned short sKey = wKey;
-                    unsigned short *psKeys = pwr_psKeys(pwr);
+            case 1:
+            {
+                unsigned short sKeyLoop;
+                unsigned short sKey = wKey;
+                unsigned short *psKeys = pwr_psKeys(pwr);
                   #if defined(SORT_LISTS)
-                    if ((sKeyLoop = psKeys[wPopCnt - 1]) > sKey)
-                    {
-                        while ((sKeyLoop = *psKeys++) < sKey);
-                    }
+                if ((sKeyLoop = psKeys[wPopCnt - 1]) > sKey)
+                {
+                    while ((sKeyLoop = *psKeys++) < sKey);
+                }
                   #else // defined(SORT_LISTS)
-                    unsigned short *psKeysEnd = &psKeys[wPopCnt];
-                    while (sKeyLoop = *psKeys, psKeys++ < psKeysEnd)
+                unsigned short *psKeysEnd = &psKeys[wPopCnt];
+                while (sKeyLoop = *psKeys, psKeys++ < psKeysEnd)
                   #endif // defined(SORT_LISTS)
+                {
+                    if (sKeyLoop == sKey)
                     {
-                        if (sKeyLoop == sKey)
-                        {
                   #if defined(REMOVE)
-                            RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                            goto cleanup;
+                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                        goto cleanup;
                   #endif // defined(REMOVE)
                   #if defined(INSERT) && !defined(RECURSIVE)
-                            if (nIncr > 0) { goto undo; } // undo counting
+                        if (nIncr > 0) { goto undo; } // undo counting
                   #endif // defined(INSERT) && !defined(RECURSIVE)
-                            return KeyFound;
-                        }
+                        return KeyFound;
                     }
-                    break;
                 }
+                break;
+            }
               #endif // (cnBitsAtBottom < 16)
               #if (cnBitsAtBottom < 32) && (cnBitsPerWord > 32)
-                case 2:
-                {
-                    unsigned int iKeyLoop;
-                    unsigned int iKey = wKey;
-                    unsigned int *piKeys = pwr_piKeys(pwr);
+            case 2:
+            {
+                unsigned int iKeyLoop;
+                unsigned int iKey = wKey;
+                unsigned int *piKeys = pwr_piKeys(pwr);
                   #if defined(SORT_LISTS)
                       #if defined(SPLIT_SEARCH)
                       #if defined(SPLIT_SEARCH_LOOP)
-                    while
+                while
                       #else // defined(SPLIT_SEARCH_LOOP)
-                    if
+                if
                       #endif // defined(SPLIT_SEARCH_LOOP)
-                       (wPopCnt >= cnSplitSearchThreshold)
+                   (wPopCnt >= cnSplitSearchThreshold)
+                {
+                    if (piKeys[wPopCnt / 2] <= iKey)
                     {
-                        if (piKeys[wPopCnt / 2] <= iKey)
-                        {
-                            piKeys = &piKeys[wPopCnt / 2];
-                            wPopCnt -= wPopCnt / 2;
-                        }
-                        else
-                        {
-                            wPopCnt /= 2;
-                        }
+                        piKeys = &piKeys[wPopCnt / 2];
+                        wPopCnt -= wPopCnt / 2;
                     }
+                    else
+                    {
+                        wPopCnt /= 2;
+                    }
+                }
                       #endif // defined(SPLIT_SEARCH)
-                    if ((iKeyLoop = piKeys[wPopCnt - 1]) > iKey)
-                    {
-                        while ((iKeyLoop = *piKeys++) < iKey);
-                    }
+                if ((iKeyLoop = piKeys[wPopCnt - 1]) > iKey)
+                {
+                    while ((iKeyLoop = *piKeys++) < iKey);
+                }
                   #else // defined(SORT_LISTS)
-                    unsigned int *piKeysEnd = &piKeys[wPopCnt];
-                    while (iKeyLoop = *piKeys, piKeys++ < piKeysEnd)
+                unsigned int *piKeysEnd = &piKeys[wPopCnt];
+                while (iKeyLoop = *piKeys, piKeys++ < piKeysEnd)
                   #endif // defined(SORT_LISTS)
+                {
+                    if (iKeyLoop == iKey)
                     {
-                        if (iKeyLoop == iKey)
-                        {
                   #if defined(REMOVE)
-                            RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                            goto cleanup;
+                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                        goto cleanup;
                   #endif // defined(REMOVE)
                   #if defined(INSERT) && !defined(RECURSIVE)
-                            if (nIncr > 0) { goto undo; } // undo counting
+                        if (nIncr > 0) { goto undo; } // undo counting
                   #endif // defined(INSERT) && !defined(RECURSIVE)
-                            return KeyFound;
-                        }
+                        return KeyFound;
                     }
-                    break;
                 }
+                break;
+            }
               #endif // (cnBitsAtBottom < 32) && (cnBitsPerWord > 32)
-                default:
-                {
+            default:
+            {
           #endif // defined(COMPRESSED_LISTS)
-                    Word_t wKeyLoop;
-                    Word_t *pwKeys = pwr_pwKeys(pwr);
+                Word_t wKeyLoop;
+                Word_t *pwKeys = pwr_pwKeys(pwr);
           #if defined(SORT_LISTS)
               #if defined(SPLIT_SEARCH)
               #if defined(SPLIT_SEARCH_LOOP)
-                    while
+                while
               #else // defined(SPLIT_SEARCH_LOOP)
-                    if
+                if
               #endif // defined(SPLIT_SEARCH_LOOP)
-                       (wPopCnt >= cnSplitSearchThreshold)
+                   (wPopCnt >= cnSplitSearchThreshold)
+                {
+                    if (pwKeys[wPopCnt / 2] <= wKey)
                     {
-                        if (pwKeys[wPopCnt / 2] <= wKey)
-                        {
-                            pwKeys = &pwKeys[wPopCnt / 2];
-                            wPopCnt -= wPopCnt / 2;
-                        }
-                        else
-                        {
-                            wPopCnt /= 2;
-                        }
+                        pwKeys = &pwKeys[wPopCnt / 2];
+                        wPopCnt -= wPopCnt / 2;
                     }
+                    else
+                    {
+                        wPopCnt /= 2;
+                    }
+                }
               #endif // defined(SPLIT_SEARCH)
-                    if ((wKeyLoop = pwKeys[wPopCnt - 1]) > wKey)
-                    {
-                        while ((wKeyLoop = *pwKeys++) < wKey);
-                    }
+                if ((wKeyLoop = pwKeys[wPopCnt - 1]) > wKey)
+                {
+                    while ((wKeyLoop = *pwKeys++) < wKey);
+                }
           #else // defined(SORT_LISTS)
-                    Word_t *pwKeysEnd = &pwKeys[wPopCnt];
-                    while (wKeyLoop = *pwKeys, pwKeys++ < pwKeysEnd)
+                Word_t *pwKeysEnd = &pwKeys[wPopCnt];
+                while (wKeyLoop = *pwKeys, pwKeys++ < pwKeysEnd)
           #endif // defined(SORT_LISTS)
+                {
+                    if (wKeyLoop == wKey)
                     {
-                        if (wKeyLoop == wKey)
-                        {
           #if defined(REMOVE)
-                            RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                            goto cleanup;
+                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                        goto cleanup;
           #endif // defined(REMOVE)
           #if defined(INSERT) && !defined(RECURSIVE)
-                            if (nIncr > 0) { goto undo; } // undo counting
+                        if (nIncr > 0) { goto undo; } // undo counting
           #endif // defined(INSERT) && !defined(RECURSIVE)
-                            return KeyFound;
-                        }
+                        return KeyFound;
                     }
+                }
           #if defined(COMPRESSED_LISTS)
-                    break;
-                } // end of default case
-                } // end of switch
+                break;
+            } // end of default case
+            } // end of switch
           #endif // defined(COMPRESSED_LISTS)
       #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
-            }
+        }
       #if defined(COMPRESSED_LISTS)
           #if defined(SKIP_LINKS)
               #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-            else
-            {
-                DBGX(printf("Mismatch at list wPrefix "OWx" nDL %d\n",
-                            PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft),
-                            nDigitsLeft));
-            }
+        else
+        {
+            DBGX(printf("Mismatch at list wPrefix "OWx" nDL %d\n",
+                        PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft),
+                        nDigitsLeft));
+        }
               #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
           #endif // defined(SKIP_LINKS)
       #endif // defined(COMPRESSED_LISTS)
