@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.226 2014/06/09 03:40:14 mike Exp mike $
+// @(#) $Id: b.c,v 1.227 2014/06/09 15:29:50 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1415,23 +1415,23 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #endif // defined(T_ONE)
             {
 #if defined(PP_IN_LINK)
-            if (nDigitsLeft != cnDigitsPerWord) {
-                wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) - 1;
-                pwKeys = ls_pwKeys(pwr); // list of keys in old List
-            } else {
-                wPopCnt = ls_wPopCnt(pwr);
-                pwKeys = ls_pwKeys(pwr) + 1; // skip over pop count
-            }
+                if (nDigitsLeft != cnDigitsPerWord) {
+                    wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) - 1;
+                    pwKeys = ls_pwKeys(pwr); // list of keys in old List
+                } else {
+                    wPopCnt = ls_wPopCnt(pwr);
+                    pwKeys = ls_pwKeys(pwr) + 1; // skip over pop count
+                }
 #else // defined(PP_IN_LINK)
-            wPopCnt = ls_wPopCnt(pwr);
-            pwKeys = ls_pwKeys(pwr); // list of keys in old List
+                wPopCnt = ls_wPopCnt(pwr);
+                pwKeys = ls_pwKeys(pwr); // list of keys in old List
 #endif // defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
-            piKeys = ls_piKeys(pwr);
+                piKeys = ls_piKeys(pwr);
 #endif // (cnBitsPerWord > 32)
-            psKeys = ls_psKeys(pwr);
-            pcKeys = ls_pcKeys(pwr);
+                psKeys = ls_psKeys(pwr);
+                pcKeys = ls_pcKeys(pwr);
 #endif // defined(COMPRESSED_LISTS)
             }
             // prefix is already set
@@ -1543,6 +1543,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             }
 #endif // defined(SORT_LISTS)
             {
+// shared code for (SORT && wPopCnt == 0)
+// and ! SORT
 #if defined(COMPRESSED_LISTS)
                 unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
                 if (nBitsLeft <= 8) {
@@ -1556,10 +1558,13 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 } else
 #endif // defined(COMPRESSED_LISTS)
 #if defined(T_ONE)
-                { *pwList = wKey; set_wr_nType(wRoot, T_ONE); }
-#else // defined(T_ONE)
-                { ls_pwKeys(pwList)[wPopCnt] = wKey; }
+                if (wPopCnt == 0)
+                {
+                    *pwList = wKey; set_wr_nType(wRoot, T_ONE);
+                }
+                else
 #endif // defined(T_ONE)
+                { ls_pwKeys(pwList)[wPopCnt] = wKey; }
             }
 
             *pwRoot = wRoot; // install new
