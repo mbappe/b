@@ -26,17 +26,17 @@ for pack in packy # packn
 do
 for deref in dr # nodr nolsdr nobmdr nolssearch nobmsearch
 do
-for bm in bmn # bms bml
+for bm in bmn bms # bml
 do
-for pp in pps # ppl
+for pp in pps ppl
 do
-for bab in 10 # 0c 32 08
+for bab in 10 0e # 32 08
 do
-for bits in 64 # 32
+for bits in 64 32
 do
-for lsmax in ff # 00
+for lsmax in ff 7f # 00
 do
-for bpd in 08 # 20 04 10
+for bpd in 06 08 10 # 20 04
 do
 for type in tpr tpa
 do
@@ -46,15 +46,15 @@ for cc in ccc gcc # icc
 do
 for skip in skipl skipy skipd skipn # skipu skipx
 do
-for sort in sorty sortn
+for sort in sorty # sortn
 do
-for search in srl srs srx
+for search in srl # srs srx
 do
 # if we don't include 20 then we won't get numbers for srx
-for srti in 20 28 30 18
+for srti in 20
 do
 # if we don't include 08 then we won't get numbers for srx
-for srtw in 08 02 04
+for srtw in 08
 do
     date
 
@@ -139,7 +139,7 @@ do
         SEARCH=-DSPLIT_SEARCH
     elif [ $search = srx ]
     then
-        SEARCH="-USPLIT_SEARCH"
+        SEARCH="-DNO_SPLIT_SEARCH"
     else
         echo Invalid search $search.
         exit 1
