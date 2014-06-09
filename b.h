@@ -32,10 +32,18 @@
 #undef  SORT_LISTS
 #define SORT_LISTS
 #endif // ! defined(NO_SORT_LISTS)
+
+#if defined(SORT_LISTS)
+#if ! defined(SPLIT_SEARCH) && ! defined(NO_SPLIT_SEARCH)
+#undef  SPLIT_SEARCH_LOOP
+#define SPLIT_SEARCH_LOOP
+#endif // ! defined(SPLIT_SEARCH) && ! defined(NO_SPLIT_SEARCH_LOOP)
+
 #if defined(SPLIT_SEARCH_LOOP)
 #undef  SPLIT_SEARCH
 #define SPLIT_SEARCH
 #endif // defined(SPLIT_SEARCH_LOOP)
+
 #if defined(SPLIT_SEARCH)
 // Default is cnSplitSearchThresholdWord = 8.
 #if ! defined(cnSplitSearchThresholdWord)
