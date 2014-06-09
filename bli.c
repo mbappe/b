@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.189 2014/06/09 15:25:05 mike Exp mike $
+// @(#) $Id: bli.c,v 1.190 2014/06/09 15:46:29 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -405,11 +405,7 @@ notEmpty:;
         DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMask(nDigitsLeft)));
 
   #if defined(REMOVE)
-        if (bCleanup)
-        {
-            // RemoveGuts already removed the list if necessary.
-            return KeyFound;
-        }
+        if (bCleanup) { return Success; }
   #endif // defined(REMOVE)
 
   #if defined(PP_IN_LINK)
@@ -834,7 +830,7 @@ notEmpty:;
     case T_ONE: // one key (full word) list
     {
   #if defined(REMOVE)
-        assert( ! bCleanup );
+        if (bCleanup) { return Success; }
   #endif // defined(REMOVE)
 
   #if defined(PP_IN_LINK)
