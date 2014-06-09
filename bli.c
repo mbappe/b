@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.191 2014/06/09 17:01:16 mike Exp mike $
+// @(#) $Id: bli.c,v 1.192 2014/06/09 20:36:50 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -573,6 +573,13 @@ notEmpty:;
               #if (cnBitsAtBottom < 32) && (cnBitsPerWord > 32)
             case 2:
             {
+                // Looks like we might want a linear search of 32-bit
+                // keys up to a population nearing 128.
+                // And a single split is good enough up to 256.
+                // But the threshold doesn't make a sigificant
+                // difference.  And loop vs single split doesn't
+                // make much difference.  And no splits is ok for
+                // pops less than 128.
                 unsigned int iKeyLoop;
                 unsigned int iKey = wKey;
                 unsigned int *piKeys = pwr_piKeys(pwr);
@@ -623,6 +630,12 @@ notEmpty:;
             default:
             {
           #endif // defined(COMPRESSED_LISTS)
+                // Looks like we might want a loop threshold of 8 for
+                // 64-bit keys at the top level.
+                // And there's not much difference with threshold of
+                // 16 or 32.
+                // Not sure about 64-bit
+                // keys at a lower level or 32-bit keys at the top level.
                 Word_t wKeyLoop;
                 Word_t *pwKeys = pwr_pwKeys(pwr);
           #if defined(SORT_LISTS)
@@ -645,14 +658,14 @@ notEmpty:;
                     }
                 }
               #endif // defined(SPLIT_SEARCH)
-              #if defined(SPLIT_SEARCH_LOOP) \
-                  && (cnSplitSearchThresholdWord > 2)
+              #if ! defined(SPLIT_SEARCH_LOOP) \
+                  || (cnSplitSearchThresholdWord > 2)
                 if ((wKeyLoop = pwKeys[wPopCnt - 1]) > wKey) {
                     while ((wKeyLoop = *pwKeys++) < wKey);
                 }
-              #else // (cnSplitSearchThresholdWord > 2) && ...
+              #else // ! defined(SPLIT_SEARCH_LOOP) || ...
                 wKeyLoop = *pwKeys;
-              #endif // (cnSplitSearchThresholdWord > 2) && ...
+              #endif // ! defined(SPLIT_SEARCH_LOOP) || ...
           #else // defined(SORT_LISTS)
                 Word_t *pwKeysEnd = &pwKeys[wPopCnt];
                 while (wKeyLoop = *pwKeys, pwKeys++ < pwKeysEnd)

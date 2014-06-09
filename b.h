@@ -39,7 +39,7 @@
 #if defined(SPLIT_SEARCH)
 // Default is cnSplitSearchThresholdWord = 8.
 #if ! defined(cnSplitSearchThresholdWord)
-#define cnSplitSearchThresholdWord  2
+#define cnSplitSearchThresholdWord  8
 #endif // ! defined(cnSplitSearchThresholdWord)
 // Default is cnSplitSearchThresholdInt = 32.
 #if ! defined(cnSplitSearchThresholdInt)
