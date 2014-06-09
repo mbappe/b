@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.224 2014/06/08 16:50:14 mike Exp mike $
+// @(#) $Id: b.c,v 1.225 2014/06/09 00:49:49 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1139,6 +1139,8 @@ Dump(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft)
 static void
 CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, unsigned nKeys, Word_t wKey)
 {
+    DBGI(printf("\nCopyWithInsertWord(pTgt %p pSrc %p nKeys %d wKey "OWx"\n",
+                pTgt, pSrc, nKeys, wKey));
 #if (cwListPopCntMax != 0)
     Word_t aw[cwListPopCntMax]; // buffer for move if pSrc == pTgt
 #else // (cwListPopCntMax != 0)
@@ -1470,8 +1472,20 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #if (cwListPopCntMax != 0)
         if (wPopCnt < cwListPopCntMax)
         {
-            // allocate a new list and init pop count in the first word
-            Word_t *pwList = NewList(wPopCnt + 1, nDigitsLeft, wKey);
+            Word_t *pwList;
+
+            if ((pwr == NULL)
+                || (ListWords(wPopCnt + 1, nDigitsLeft)
+                    != ListWords(wPopCnt, nDigitsLeft)))
+            {
+                // allocate a new list and init pop count in the first word
+                pwList = NewList(wPopCnt + 1, nDigitsLeft, wKey);
+            }
+            else
+            {
+                pwList = pwr;
+                set_ls_wPopCnt(pwList, wPopCnt + 1);
+            }
 
             set_wr(wRoot, pwList, T_LIST);
 
@@ -1536,6 +1550,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             }
 
             *pwRoot = wRoot; // install new
+
+            if ((wPopCnt != 0) && (pwr != pwList))
+            {
+                OldList(pwr, wPopCnt, nDigitsLeft);
+            }
         }
         else
 #endif // (cwListPopCntMax != 0)
@@ -1715,12 +1734,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             DBGI(printf("Just Before InsertGuts calls final Insert"));
             DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
             Insert(pwRoot, wKey, nDigitsLeftOld);
-        }
 
 #if (cwListPopCntMax != 0)
-        // Hmm.  Should this be nDigitsLeftOld?
-        if (wPopCnt != 0) OldList(pwr, wPopCnt, nDigitsLeftOld);
+            // Hmm.  Should this be nDigitsLeftOld?
+            if (wPopCnt != 0) { OldList(pwr, wPopCnt, nDigitsLeftOld); }
 #endif // (cwListPopCntMax != 0)
+        }
     }
 #if defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
     else
