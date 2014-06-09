@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.186 2014/06/08 04:14:33 mike Exp mike $
+// @(#) $Id: bli.c,v 1.187 2014/06/08 14:04:52 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -696,9 +696,7 @@ notEmpty:;
               #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
           #endif // defined(SKIP_LINKS)
       #endif // defined(COMPRESSED_LISTS)
-DBGL(printf("\nT_LIST break\n"));
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
-
 
         break;
 
@@ -832,12 +830,33 @@ DBGL(printf("\nT_LIST break\n"));
         }
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
   #endif // defined(SKIP_LINKS)
-DBGL(printf("\nT_BITMAP break\n"));
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
 
         break;
 
     } // end of case T_BITMAP
+
+#if defined(T_ONE)
+
+    case T_ONE: // one key (full word) list
+    {
+        if (*pwr == wKey)
+        {
+#if defined(REMOVE)
+            RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+            goto cleanup;
+#endif // defined(REMOVE)
+#if defined(INSERT) && !defined(RECURSIVE)
+            if (nIncr > 0) { goto undo; } // undo counting
+#endif // defined(INSERT) && !defined(RECURSIVE)
+            return KeyFound;
+        }
+
+        break;
+
+    } // end of case T_ONE
+
+#endif // defined(T_ONE)
 
     case T_NULL:
     {
@@ -1075,10 +1094,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     }
 
   #if defined(DEBUG)
-    if (status == Success)
-    {
-        wInserts++; // count successful inserts
-    }
+    if (status == Success) { wInserts++; } // count successful inserts
   #endif // defined(DEBUG)
 
     DBGI(printf("\n# After Insert(wKey "OWx") Dump\n", wKey));
@@ -1086,194 +1102,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     DBGI(printf("\n"));
 
   #if defined(DEBUG)
-    {
-        Word_t *pwRoot = (Word_t *)ppvRoot;
-        Word_t wRoot = *pwRoot;
-        unsigned nType = wr_nType(wRoot);
-        Word_t *pwr = wr_tp_pwr(wRoot, nType);
-        Word_t wPopCnt;
-
-      #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-        if (!tp_bIsSwitch(nType))
-        {
-            wPopCnt = ls_wPopCnt(pwr);
-        }
-        else
-      #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-        {
-      #if defined(PP_IN_LINK)
-            // no skip links at root for PP_IN_LINK -- no place for prefix
-          #if defined(TYPE_IS_RELATIVE)
-            assert(tp_to_nDS(nType) == 0);
-          #else // defined(TYPE_IS_RELATIVE)
-            assert(tp_to_nDigitsLeft(nType) == cnDigitsPerWord);
-          #endif // defined(TYPE_IS_RELATIVE)
-
-            // add up the pops in the links
-
-          #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
-            Word_t xx = 0;
-          #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
-            wPopCnt = 0;
-            for (unsigned nn = 0;
-                 // PP_IN_LINK implies no skip link at top.
-                 nn < EXP(nDL_to_nBitsIndexSz(cnDigitsPerWord));
-                 nn++)
-            {
-          #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
-                if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
-          #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
-                {
-          #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
-                    Word_t *pwRootLn = &pwr_pLinks(pwr)[xx].ln_wRoot;
-                    xx++;
-          #else // defined(BM_SWITCH) && !defined(BM_IN_LINK)
-                    Word_t *pwRootLn = &pwr_pLinks(pwr)[nn].ln_wRoot;
-          #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
-
-// *pwRootLn may not be a pointer to a switch
-// It may be a pointer to a list leaf.
-// And if cnDigitsAtBottom == cnDigitsPerWord - 1, then it could be a
-// pointer to a bitmap?
-                    Word_t wPopCntLn;
-          #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                    unsigned nTypeLn = wr_nType(*pwRootLn);
-                    if (tp_bIsSwitch(nTypeLn))
-                    {
-                        wPopCntLn
-#if defined(TYPE_IS_RELATIVE)
-                            = PWR_wPopCnt(pwRootLn, NULL,
-                                  cnDigitsPerWord - 1 - wr_nDS(*pwRootLn));
-#else // defined(TYPE_IS_RELATIVE)
-                            = PWR_wPopCnt(pwRootLn, NULL,
-                                          wr_nDigitsLeft(*pwRootLn));
-#endif // defined(TYPE_IS_RELATIVE)
-                    }
-                    else
-          #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                    {
-// 0 will come here.
-                        wPopCntLn
-                            = PWR_wPopCnt(pwRootLn,
-                                          NULL, cnDigitsPerWord - 1);
-                    }
-
-          #if defined(DEBUG_INSERT)
-                    if (wPopCntLn != 0)
-                    {
-                        printf("Pop sum");
-              #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                        printf(" mask "OWx" %"_fw"d",
-#if defined(TYPE_IS_RELATIVE)
-                            wPrefixPopMask(
-                                  cnDigitsPerWord - 1 - wr_nDS(*pwRootLn)),
-                            wPrefixPopMask(
-                                  cnDigitsPerWord - 1 - wr_nDS(*pwRootLn))
-#else // defined(TYPE_IS_RELATIVE)
-                            wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)),
-                            wPrefixPopMask(wr_nDigitsLeft(*pwRootLn))
-#endif // defined(TYPE_IS_RELATIVE)
-                            );
-              #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                        printf(" nn %3d wPopCntLn %"_fw"d "OWx"\n",
-                               nn, wPopCntLn, wPopCntLn);
-                    }
-          #endif // defined(DEBUG_INSERT)
-
-                    wPopCnt += wPopCntLn;
-
-                    // We use pwr_pLinks..ln_wRoot != 0 to disambiguate
-                    // wPopCnt == 0.  Hence we cannot allow Remove to leave
-                    // pwr_pLinks(pwr)[nn].ln_wRoot != 0 unless the actual
-                    // population count is not zero.
-                    if ((wPopCntLn == 0) && (*pwRootLn != 0))
-                    {
-          #if defined(DEBUG_INSERT)
-                        printf("Pop sum (full)");
-              #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                        printf(" mask "Owx" %zd\n",
-#if defined(TYPE_IS_RELATIVE)
-                            wPrefixPopMask(
-                                  cnDigitsPerWord - 1 - wr_nDS(*pwRootLn)),
-                            (size_t)wPrefixPopMask(
-                                  cnDigitsPerWord - 1 - wr_nDS(*pwRootLn))
-#else // defined(TYPE_IS_RELATIVE)
-                            wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)),
-                            (size_t)wPrefixPopMask(
-                                wr_nDigitsLeft(*pwRootLn))
-#endif // defined(TYPE_IS_RELATIVE)
-                            );
-                        printf("nn %d wPopCntLn %zd "OWx"\n",
-                            nn,
-#if defined(TYPE_IS_RELATIVE)
-                            (size_t)wPrefixPopMask(
-                                  cnDigitsPerWord - wr_nDS(*pwRootLn)),
-                            wPrefixPopMask(
-                                  cnDigitsPerWord - wr_nDS(*pwRootLn))
-#else // defined(TYPE_IS_RELATIVE)
-                            (size_t)wPrefixPopMask(
-                                wr_nDigitsLeft(*pwRootLn)) + 1,
-                            wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1
-#endif // defined(TYPE_IS_RELATIVE)
-                            );
-              #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-          #endif // defined(DEBUG_INSERT)
-
-          #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                        wPopCnt
-#if defined(TYPE_IS_RELATIVE)
-                            += wPrefixPopMask(
-                                  cnDigitsPerWord - wr_nDS(*pwRootLn));
-#else // defined(TYPE_IS_RELATIVE)
-                            += wPrefixPopMask(wr_nDigitsLeft(*pwRootLn)) + 1;
-#endif // defined(TYPE_IS_RELATIVE)
-          #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                        wPopCnt += wPrefixPopMask(cnDigitsPerWord - 1) + 1;
-          #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                    }
-                }
-            }
-          #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-              #if defined(TYPE_IS_RELATIVE)
-            assert(wPopCnt - 1
-                    <= wPrefixPopMask(cnDigitsPerWord - tp_to_nDS(nType)));
-              #else // defined(TYPE_IS_RELATIVE)
-            assert(wPopCnt - 1 <= wPrefixPopMask(tp_to_nDigitsLeft(nType)));
-              #endif // defined(TYPE_IS_RELATIVE)
-          #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-      #else // defined(PP_IN_LINK)
-          #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-              #if defined(TYPE_IS_RELATIVE)
-
-            wPopCnt = PWR_wPopCnt(NULL, pwr,
-                               cnDigitsPerWord - tp_to_nDS(nType));
-            if (wPopCnt == 0)
-            {
-                wPopCnt = wPrefixPopMask(
-                           cnDigitsPerWord - tp_to_nDS(nType)) + 1;
-            }
-
-              #else // defined(TYPE_IS_RELATIVE)
-
-            wPopCnt = PWR_wPopCnt(NULL, pwr, tp_to_nDigitsLeft(nType));
-            if (wPopCnt == 0)
-            {
-                wPopCnt = wPrefixPopMask(tp_to_nDigitsLeft(nType)) + 1;
-            }
-
-              #endif // defined(TYPE_IS_RELATIVE)
-          #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-            wPopCnt = PWR_wPopCnt(NULL, pwr, cnDigitsPerWord);
-          #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-      #endif // defined(PP_IN_LINK)
-        }
-
-        if (wPopCnt != wInserts)
-        {
-            printf("\nwPopCnt %"_fw"d wInserts %"_fw"d\n", wPopCnt, wInserts);
-        }
-        assert(wPopCnt == wInserts);
-    }
+    assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wInserts);
   #endif // defined(DEBUG)
 
     return status;
@@ -1391,6 +1220,10 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
         printf("\n");
     }
   #endif // defined(DEBUG_REMOVE)
+
+  #if defined(DEBUG)
+    assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wInserts);
+  #endif // defined(DEBUG)
 
     return status;
 
