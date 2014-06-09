@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.223 2014/06/06 23:37:37 mike Exp mike $
+// @(#) $Id: b.c,v 1.224 2014/06/08 16:50:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -202,11 +202,20 @@ ListWords(Word_t wPopCnt, unsigned nDigitsLeft)
 #endif // defined(COMPRESSED_LISTS)
 
     // make room for pop count in the list
-#if defined(PP_IN_LINK)
-    if (nDigitsLeft == cnDigitsPerWord)
-#endif // defined(PP_IN_LINK)
+#if defined(T_ONE)
+    if ((wPopCnt > 1)
+  #if defined(COMPRESSED_LISTS)
+        || (nBytesKeySz != sizeof(Word_t))
+  #endif // defined(COMPRESSED_LISTS)
+        )
+#endif // defined(T_ONE)
     {
-        ++wPopCnt;
+#if defined(PP_IN_LINK)
+	if (nDigitsLeft == cnDigitsPerWord)
+#endif // defined(PP_IN_LINK)
+        {
+            ++wPopCnt;
+        }
     }
 
     nWords = DIV_UP(wPopCnt * nBytesKeySz, sizeof(Word_t));
@@ -255,16 +264,24 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
     DBGM(printf("NewList pwList %p wPopCnt "OWx" nWords %d\n",
         (void *)pwList, wPopCnt, nWords));
 
-#if defined(PP_IN_LINK)
-    if (nDigitsLeft == cnDigitsPerWord)
-#endif // defined(PP_IN_LINK)
+#if defined(T_ONE)
+    if ((wPopCnt > 1)
+  #if defined(COMPRESSED_LISTS)
+        || (nBytesKeySz != sizeof(Word_t))
+  #endif // defined(COMPRESSED_LISTS)
+        )
+#endif // defined(T_ONE)
     {
-        set_ls_wPopCnt(pwList, wPopCnt);
-    }
-
+#if defined(PP_IN_LINK)
+        if (nDigitsLeft == cnDigitsPerWord)
+#endif // defined(PP_IN_LINK)
+        {
+            set_ls_wPopCnt(pwList, wPopCnt);
+        }
 #if defined(DL_IN_LL)
-    set_ll_nDigitsLeft(pwList, nDigitsLeft);
+        set_ll_nDigitsLeft(pwList, nDigitsLeft);
 #endif // defined(DL_IN_LL)
+    }
 
 // Should we be setting wPrefix here for PP_IN_LINK?
 
@@ -827,9 +844,40 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
 #if (cwListPopCntMax != 0)
+
     if (!tp_bIsSwitch(nType))
     {
         Word_t wPopCnt;
+
+#if defined(T_ONE)
+
+        if (nType == T_ONE)
+        {
+            if (!bDump)
+            {
+                return OldList(pwr, 1, nDigitsLeft);
+            }
+
+            printf(" tp_wPopCnt %3d", 1);
+
+#if defined(PP_IN_LINK)
+            if (nBitsLeftArg == cnBitsPerWord)
+            {
+                printf(" wr_wPrefix        N/A");
+            }
+            else
+            {
+                printf(" wr_wPrefix "OWx,
+                       PWR_wPrefix(pwRoot, NULL, nDigitsLeft));
+            }
+#endif // defined(PP_IN_LINK)
+
+            printf(" "Owx"\n", *pwr);
+        }
+        else
+#endif // defined(T_ONE)
+        {
+        assert(nType == T_LIST);
 
 #if defined(PP_IN_LINK)
         if (nDigitsLeft != cnDigitsPerWord)
@@ -842,24 +890,22 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
             wPopCnt = ls_wPopCnt(pwr);
         }
 
-        Word_t *pwKeys = pwr_pwKeys(pwr);
-
-        assert(nType == T_LIST);
-
         if (!bDump)
         {
             return OldList(pwr, wPopCnt, nDigitsLeft);
         }
+
+        Word_t *pwKeys = pwr_pwKeys(pwr);
+
 #if defined(PP_IN_LINK)
         if (nBitsLeftArg == cnBitsPerWord)
         {
-            printf(" ln_wPopCnt %3"_fw"u", wPopCnt);
+            printf(" ls_wPopCnt %3"_fw"u", wPopCnt);
             printf(" wr_wPrefix        N/A");
         }
         else
         {
-            printf(" wr_wPopCnt %3"_fw"u",
-                   PWR_wPopCnt(pwRoot, NULL, nDigitsLeft));
+            printf(" wr_wPopCnt %3"_fw"u", wPopCnt);
             printf(" wr_wPrefix "OWx, PWR_wPrefix(pwRoot, NULL, nDigitsLeft));
         }
 #endif // defined(PP_IN_LINK)
@@ -889,6 +935,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
             { printf(" "Owx, pwKeys[xx]); }
         }
         printf("\n");
+        }
 
         return 0;
     }
@@ -1352,6 +1399,15 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         if (pwr != NULL) // pointer to old List
         {
+#if defined(T_ONE)
+            if (nType == T_ONE)
+            {
+                wPopCnt = 1;
+                pwKeys = pwr;
+            }
+            else
+#endif // defined(T_ONE)
+            {
 #if defined(PP_IN_LINK)
             if (nDigitsLeft != cnDigitsPerWord) {
                 wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) - 1;
@@ -1364,7 +1420,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             wPopCnt = ls_wPopCnt(pwr);
             pwKeys = ls_pwKeys(pwr); // list of keys in old List
 #endif // defined(PP_IN_LINK)
-
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
             piKeys = ls_piKeys(pwr);
@@ -1372,6 +1427,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             psKeys = ls_psKeys(pwr);
             pcKeys = ls_pcKeys(pwr);
 #endif // defined(COMPRESSED_LISTS)
+            }
             // prefix is already set
         }
         else
@@ -1417,6 +1473,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             // allocate a new list and init pop count in the first word
             Word_t *pwList = NewList(wPopCnt + 1, nDigitsLeft, wKey);
 
+            set_wr(wRoot, pwList, T_LIST);
+
             if (wPopCnt != 0)
 #if defined(SORT_LISTS)
             {
@@ -1441,114 +1499,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 }
             } else
 #else // defined(SORT_LISTS)
-#if defined(MIN_MAX_LISTS)
-            {
-#if defined(COMPRESSED_LISTS)
-                unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
-
-                if (nBitsLeft <= 8)
-                {
-                    unsigned char cKey = wKey;
-
-                    COPY(ls_pcKeys(pwList), pcKeys, wPopCnt);
-
-                    if (cKey < pcKeys[wPopCnt - 1])
-                    {
-                        ls_pcKeys(pwList)[wPopCnt] = pcKeys[wPopCnt - 1];
-
-                        if (cKey < pcKeys[0])
-                        {
-                            ls_pcKeys(pwList)[wPopCnt - 1] = pcKeys[0];
-                            ls_pcKeys(pwList)[0] = wKey;
-                        }
-                        else
-                        {
-                            ls_pcKeys(pwList)[wPopCnt - 1] = wKey;
-                        }
-                    }
-                    else
-                    {
-                        ls_pcKeys(pwList)[wPopCnt] = wKey;
-                    }
-                }
-                else if (nBitsLeft <= 16)
-                {
-                    unsigned short sKey = wKey;
-
-                    COPY(ls_psKeys(pwList), psKeys, wPopCnt);
-
-                    if (sKey < psKeys[wPopCnt - 1])
-                    {
-                        ls_psKeys(pwList)[wPopCnt] = psKeys[wPopCnt - 1];
-
-                        if (sKey < psKeys[0])
-                        {
-                            ls_psKeys(pwList)[wPopCnt - 1] = psKeys[0];
-                            ls_psKeys(pwList)[0] = wKey;
-                        }
-                        else
-                        {
-                            ls_psKeys(pwList)[wPopCnt - 1] = wKey;
-                        }
-                    }
-                    else
-                    {
-                        ls_psKeys(pwList)[wPopCnt] = wKey;
-                    }
-                }
-#if (cnBitsPerWord > 32)
-                else if (nBitsLeft <= 32)
-                {
-                    unsigned int iKey = wKey;
-
-                    COPY(ls_piKeys(pwList), piKeys, wPopCnt);
-
-                    if (iKey < piKeys[wPopCnt - 1])
-                    {
-                        ls_piKeys(pwList)[wPopCnt] = piKeys[wPopCnt - 1];
-
-                        if (iKey < piKeys[0])
-                        {
-                            ls_piKeys(pwList)[wPopCnt - 1] = piKeys[0];
-                            ls_piKeys(pwList)[0] = wKey;
-                        }
-                        else
-                        {
-                            ls_piKeys(pwList)[wPopCnt - 1] = wKey;
-                        }
-                    }
-                    else
-                    {
-                        ls_piKeys(pwList)[wPopCnt] = wKey;
-                    }
-                }
-#endif // (cnBitsPerWord > 32)
-                else
-#endif // defined(COMPRESSED_LISTS)
-                {
-                    COPY(ls_pwKeys(pwList), pwKeys, wPopCnt);
-
-                    if (wKey < pwKeys[wPopCnt - 1])
-                    {
-                        ls_pwKeys(pwList)[wPopCnt] = pwKeys[wPopCnt - 1];
-
-                        if (wKey < pwKeys[0])
-                        {
-                            ls_pwKeys(pwList)[wPopCnt - 1] = pwKeys[0];
-                            ls_pwKeys(pwList)[0] = wKey;
-                        }
-                        else
-                        {
-                            ls_pwKeys(pwList)[wPopCnt - 1] = wKey;
-                        }
-                    }
-                    else
-                    {
-                        ls_pwKeys(pwList)[wPopCnt] = wKey;
-                    }
-                }
-            } else
-#else // defined(MIN_MAX_LISTS)
             {
 #if defined(COMPRESSED_LISTS)
                 unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
@@ -1564,7 +1514,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #endif // defined(COMPRESSED_LISTS)
                 { COPY(ls_pwKeys(pwList), pwKeys, wPopCnt); }
             }
-#endif // defined(MIN_MAX_LISTS)
 #endif // defined(SORT_LISTS)
             {
 #if defined(COMPRESSED_LISTS)
@@ -1579,10 +1528,13 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
+#if defined(T_ONE)
+                { *pwList = wKey; set_wr_nType(wRoot, T_ONE); }
+#else // defined(T_ONE)
                 { ls_pwKeys(pwList)[wPopCnt] = wKey; }
+#endif // defined(T_ONE)
             }
 
-            set_wr(wRoot, pwList, T_LIST);
             *pwRoot = wRoot; // install new
         }
         else
@@ -1604,7 +1556,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 if (cwListPopCntMax != 0) // use const for compile time check
                 {
                     Word_t wMax, wMin;
-#if defined(SORT_LISTS) || defined(MIN_MAX_LISTS)
+#if defined(SORT_LISTS)
 #if defined(COMPRESSED_LISTS)
                     if (nBitsLeft <= 8) {
                         wMin = ls_pcKeys(pwr)[0];
@@ -1623,7 +1575,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                     } else 
 #endif // defined(COMPRESSED_LISTS)
                     { wMin = pwKeys[0]; wMax = pwKeys[wPopCnt - 1]; }
-#else // defined(SORT_LISTS) || defined(MIN_MAX_LISTS)
+#else // defined(SORT_LISTS)
                     // walk the list to find max and min
                     wMin = (Word_t)-1;
                     wMax = 0;
@@ -1663,7 +1615,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                             if (pwKeys[w] > wMax) wMax = pwKeys[w];
                         }
                     }
-#endif // defined(SORT_LISTS) || defined(MIN_MAX_LISTS)
+#endif // defined(SORT_LISTS)
                     DBGI(printf("wMin "OWx" wMax "OWx"\n", wMin, wMax));
 
 #if defined(COMPRESSED_LISTS)
@@ -1753,13 +1705,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 for (w = 0; w < wPopCnt; w++)
                 {
                     Insert(pwRoot, pwKeys[w], nDigitsLeftOld);
-    DBGI(printf("\n# InsertGuts After Insert(wKey "OWx") Dump\n", wKey));
-    DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
-    DBGI(printf("\n"));
+
+                    DBGI(printf("\n# InsertGuts After Insert(wKey "OWx") Dump\n", wKey));
+                    DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
+                    DBGI(printf("\n"));
                 }
             }
 
-            DBGI(printf("Just Before InsertGuts calls Insert"));
+            DBGI(printf("Just Before InsertGuts calls final Insert"));
             DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
             Insert(pwRoot, wKey, nDigitsLeftOld);
         }
@@ -2042,6 +1995,14 @@ done:
 
         Word_t wPopCnt;
 
+#if defined(T_ONE)
+        if (wr_nType(wRoot) == T_ONE)
+        {
+            wPopCnt = 1;
+        }
+        else
+#endif // defined(T_ONE)
+        {
 #if defined(PP_IN_LINK)
         if (nDigitsLeft != cnDigitsPerWord)
         {
@@ -2051,6 +2012,7 @@ done:
 #endif // defined(PP_IN_LINK)
         {
             wPopCnt = ls_wPopCnt(pwr);
+        }
         }
 
         if (wPopCnt == 1)
@@ -2083,17 +2045,31 @@ done:
                 nIndex++)
                 ; // semicolon on separate line to silence compiler warning
 
+            // nIndex identifies the key being removed.
+
             Word_t *pwList;
             if (ListWords(wPopCnt - 1, nDigitsLeft)
                     != ListWords(wPopCnt, nDigitsLeft))
             {
                 // Malloc a new, smaller list.
                 pwList = NewList(wPopCnt - 1, nDigitsLeft, wKey);
+                // Why are we copying the old list to the new one?
+                // Because the beginning will be the same.
+                // Except for the the pop count.
                 COPY(pwList, pwr, ListWords(wPopCnt - 1, nDigitsLeft));
+
+                set_wr(wRoot, pwList, T_LIST);
             }
             else
             {
                 pwList = pwr;
+            }
+
+#if defined(PP_IN_LINK)
+            if (nDigitsLeft == cnDigitsPerWord)
+#endif // defined(PP_IN_LINK)
+            {
+                set_ls_wPopCnt(pwList, wPopCnt - 1);
             }
 
 #if defined(COMPRESSED_LISTS)
@@ -2111,90 +2087,28 @@ done:
             } else
 #endif // defined(COMPRESSED_LISTS)
             {
-                MOVE(&pwr_pwKeys(pwList)[nIndex], &pwKeys[nIndex + 1],
-                     wPopCnt - nIndex - 1);
+#if defined(T_ONE)
+                if ((wPopCnt == 2)
+#if defined(COMPRESSED_LISTS)
+                    && (nBitsLeft > cnBitsPerWord / 2)
+#endif // defined(COMPRESSED_LISTS)
+                    )
+                {
+                    *pwList = pwKeys[ ! nIndex ];
+                    set_wr_nType(wRoot, T_ONE);
+                }
+                else
+#endif // defined(T_ONE)
+                {
+                    MOVE(&pwr_pwKeys(pwList)[nIndex], &pwKeys[nIndex + 1],
+                         wPopCnt - nIndex - 1);
+                }
             }
 
             if (pwList != pwr)
             {
                 OldList(pwr, wPopCnt, nDigitsLeft);
-                set_wr(wRoot, pwList, T_LIST);
                 *pwRoot = wRoot;
-                pwKeys = pwr_pwKeys(pwList);
-            }
-
-#if defined(MIN_MAX_LISTS) && !defined(SORT_LISTS)
-            // if we removed min or max, then we need to find a new one
-            if ((nIndex == 0) || (nIndex == wPopCnt - 1))
-            {
-                for (unsigned nn = 1; nn < wPopCnt - 2; nn++)
-                {
-#if defined(COMPRESSED_LISTS)
-                    if (nBitsLeft <= 8) {
-                        unsigned char knn = pwr_pcKeys(pwList)[nn];
-                        if (knn < pwr_pcKeys(pwList)[0])
-                        {
-                            pwr_pcKeys(pwList)[nn] = pwr_pcKeys(pwList)[0];
-                            pwr_pcKeys(pwList)[0] = knn;
-                        }
-                        if (knn > pwr_pcKeys(pwList)[wPopCnt - 2])
-                        {
-                            pwr_pcKeys(pwList)[nn]
-                                = pwr_pcKeys(pwList)[wPopCnt - 2];
-                            pwr_pcKeys(pwList)[wPopCnt - 2] = knn;
-                        }
-                    } else if (nBitsLeft <= 16) {
-                        unsigned short knn = pwr_psKeys(pwList)[nn];
-                        if (knn < pwr_psKeys(pwList)[0])
-                        {
-                            pwr_psKeys(pwList)[nn] = pwr_psKeys(pwList)[0];
-                            pwr_psKeys(pwList)[0] = knn;
-                        }
-                        if (knn > pwr_psKeys(pwList)[wPopCnt - 2])
-                        {
-                            pwr_psKeys(pwList)[nn]
-                                = pwr_psKeys(pwList)[wPopCnt - 2];
-                            pwr_psKeys(pwList)[wPopCnt - 2] = knn;
-                        }
-#if (cnBitsPerWord > 32)
-                    } else if (nBitsLeft <= 32) {
-                        unsigned int knn = pwr_piKeys(pwList)[nn];
-                        if (knn < pwr_piKeys(pwList)[0])
-                        {
-                            pwr_piKeys(pwList)[nn] = pwr_piKeys(pwList)[0];
-                            pwr_piKeys(pwList)[0] = knn;
-                        }
-                        if (knn > pwr_piKeys(pwList)[wPopCnt - 2])
-                        {
-                            pwr_piKeys(pwList)[nn]
-                                = pwr_piKeys(pwList)[wPopCnt - 2];
-                            pwr_piKeys(pwList)[wPopCnt - 2] = knn;
-                        }
-#endif // (cnBitsPerWord > 32)
-                    } else
-#endif // defined(COMPRESSED_LISTS)
-                    {
-                        Word_t knn = pwKeys[nn];
-                        if (knn < pwKeys[0])
-                        {
-                            pwKeys[nn] = pwKeys[0];
-                            pwKeys[0] = knn;
-                        }
-                        if (knn > pwKeys[wPopCnt - 2])
-                        {
-                            pwKeys[nn] = pwKeys[wPopCnt - 2];
-                            pwKeys[wPopCnt - 2] = knn;
-                        }
-                    }
-                }
-            }
-#endif // defined(MIN_MAX_LISTS) && !defined(SORT_LISTS)
-
-#if defined(PP_IN_LINK)
-            if (nDigitsLeft == cnDigitsPerWord)
-#endif // defined(PP_IN_LINK)
-            {
-                set_ls_wPopCnt(pwList, wPopCnt - 1);
             }
         }
     }
@@ -2262,6 +2176,9 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     if (!tp_bIsSwitch(nType))
     {
+#if defined(T_ONE)
+        if (nType == T_ONE) { wPopCnt = 1; } else
+#endif // defined(T_ONE)
         wPopCnt = ls_wPopCnt(pwr);
     }
     else
@@ -2410,8 +2327,8 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 #if defined(DEBUG)
     if (wPopCnt != wInserts)
     {
-        printf("\nwPopCnt %"_fw"d wInserts %"_fw"d\n", wPopCnt, wInserts);
         Dump(pwRootLast, 0, cnBitsPerWord);
+        printf("\nwPopCnt %"_fw"d wInserts %"_fw"d\n", wPopCnt, wInserts);
     }
     assert(wPopCnt == wInserts);
 #endif // defined(DEBUG)
