@@ -16,21 +16,17 @@ ifeq "$(cnBitsPerWord)" ""
 cnBitsPerWord = 64
 endif
 
-# b.h will choose cnBitsPerDigit = cnLogBitsPerWord
-# B_DEFINES += -DcnBitsPerDigit=4
-# b.h will choose cnDigitsAtBottom = 1
-# B_DEFINES += -DcnDigitsAtBottom=2
-# b.h will choose cwListPopCntMax = EXP(cnBitsPerDigit) / 2
+# B_DEFINES += -DcnBitsPerDigit=8
+# B_DEFINES += -DcnBitsAtBottom=16
 # B_DEFINES += -DcwListPopCntMax=$(cnBitsPerWord)
-# B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -DNO_UNNECESSARY_PREFIX
+# B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX
 # B_DEFINES += -DCOMPRESSED_LISTS
-# SORT_LISTS wins if both SORT_LISTS and MIN_MAX_LISTS are defined.
-# B_DEFINES += -DSORT_LISTS -DMIN_MAX_LISTS
-# B_DEFINES += -DBM_SWITCH -DBM_SWITCH_FOR_REAL -DBM_IN_LINK
-# B_DEFINES += -DPP_IN_LINK
-# B_DEFINES += -DDL_IN_LL
+# B_DEFINES += -DSORT_LISTS
+# B_DEFINES += -UBM_SWITCH -UBM_SWITCH_FOR_REAL -UBM_IN_LINK
+# B_DEFINES += -UPP_IN_LINK
+# B_DEFINES += -UDL_IN_LL
 # B_DEFINES += -DRAM_METRICS
-# B_DEFINES += -DSEARCH_METRICS
+# B_DEFINES += -USEARCH_METRICS
 # LOOKUP_NO_BITMAP_SEARCH means return just before the list is searched, i.e.
 # after dereferencing the the first word of the list leaf.
 # What if prefix/popcnt are in the link?
@@ -45,6 +41,7 @@ endif
 # B_DEFINES += -URECURSIVE_INSERT -URECURSIVE_REMOVE
 # B_DEFINES += -DcnBitsPerWord=$(cnBitsPerWord)
 # B_DEFINES += -DDEBUG_INSERT -DDEBUG_LOOKUP -DDEBUG_MALLOC -DDEBUG_REMOVE
+# B_DEFINES += -UDEBUG_ALL
 
 ifeq "$(CC)" ""
   CC = gcc
@@ -105,7 +102,7 @@ CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
 
 # Obsolete ifdefs used to figure out where overhead was coming from that
 # was making Time -b get times faster than Time -1 get times for libjudy
-# configured to allocate one bit bitmap.
+# configured to allocate one big bitmap.
 # Bitmap[Set|Get] don't have P_JE.  Judy1[Set|Test] do have P_JE.
 # These ifdefs were used to level the field.
 # TIME_DEFINES += -DBITMAP_P_JE -DNO_P_JE
