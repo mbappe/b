@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.190 2014/06/09 15:46:29 mike Exp $
+// @(#) $Id: bli.c,v 1.191 2014/06/09 17:01:16 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -583,7 +583,7 @@ notEmpty:;
                       #else // defined(SPLIT_SEARCH_LOOP)
                 if
                       #endif // defined(SPLIT_SEARCH_LOOP)
-                   (wPopCnt >= cnSplitSearchThreshold)
+                   (wPopCnt >= cnSplitSearchThresholdInt)
                 {
                     if (piKeys[wPopCnt / 2] <= iKey)
                     {
@@ -632,7 +632,7 @@ notEmpty:;
               #else // defined(SPLIT_SEARCH_LOOP)
                 if
               #endif // defined(SPLIT_SEARCH_LOOP)
-                   (wPopCnt >= cnSplitSearchThreshold)
+                   (wPopCnt >= cnSplitSearchThresholdWord)
                 {
                     if (pwKeys[wPopCnt / 2] <= wKey)
                     {
@@ -645,10 +645,14 @@ notEmpty:;
                     }
                 }
               #endif // defined(SPLIT_SEARCH)
-                if ((wKeyLoop = pwKeys[wPopCnt - 1]) > wKey)
-                {
+              #if defined(SPLIT_SEARCH_LOOP) \
+                  && (cnSplitSearchThresholdWord > 2)
+                if ((wKeyLoop = pwKeys[wPopCnt - 1]) > wKey) {
                     while ((wKeyLoop = *pwKeys++) < wKey);
                 }
+              #else // (cnSplitSearchThresholdWord > 2) && ...
+                wKeyLoop = *pwKeys;
+              #endif // (cnSplitSearchThresholdWord > 2) && ...
           #else // defined(SORT_LISTS)
                 Word_t *pwKeysEnd = &pwKeys[wPopCnt];
                 while (wKeyLoop = *pwKeys, pwKeys++ < pwKeysEnd)

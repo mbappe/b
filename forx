@@ -50,7 +50,11 @@ for sort in sorty sortn
 do
 for search in srl srs srx
 do
-for srt in 20 40 10 08
+# if we don't include 20 then we won't get numbers for srx
+for srti in 20 40 10 08
+do
+# if we don't include 08 then we won't get numbers for srx
+for srtw in 08 02 04
 do
     date
 
@@ -61,7 +65,13 @@ do
     fi
 
     # srt only makes sense for (srl || srs)
-    if [ $search = srx -a $srt != 20 ]
+    if [ $search = srx -a $srti != 20 ]
+    then
+        continue
+    fi
+
+    # srt only makes sense for (srl || srs)
+    if [ $search = srx -a $srtw != 8 ]
     then
         continue
     fi
@@ -209,7 +219,8 @@ do
     DEFS="$DEFS $PP $BM $SKIP $TYPE $TABLE"
     DEFS="$DEFS -DcnBitsPerDigit=0x$bpd -DcnBitsAtBottom=0x$bab"
     DEFS="$DEFS $LSMAX $SORT $PACK $SEARCH $DR"
-    DEFS="$DEFS -DcnSplitSearchThreshold=0x$srt"
+    DEFS="$DEFS -DcnSplitSearchThresholdWord=0x$srtw"
+    DEFS="$DEFS -DcnSplitSearchThresholdInt=0x$srti"
 
     if [ $cc = ccc ]
     then
@@ -220,7 +231,7 @@ do
 
     echo "#######################################################"
     tag=$bits-$skip-$pp-$bm-bpd$bpd-bab$bab-$type-$table-ls$lsmax-$search
-    tag=$tag-$sort-srt$srt-$pack-$cc
+    tag=$tag-$sort-srti$srti-srtw$srtw-$pack-$cc
     echo $tag
 
     if [ "$1" = make ]
@@ -295,7 +306,8 @@ do
         fi
     fi
 
-done # srt
+done # srtw
+done # srti
 done # search
 done # table
 done # bab
