@@ -495,29 +495,28 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define     PWR_pwBm(_pwRoot, _pwr)  (((Switch_t *)(_pwr))->sw_awBm)
 #endif // defined(BM_IN_LINK)
 
-#if defined(DL_IN_LL)
-#define FIRST_KEY  2
-#define     ll_nDigitsLeft(_wr)  (((ListLeaf_t *)(_wr))->ll_acKeys[1])
-#define set_ll_nDigitsLeft(_wr, _nDL) \
-    (((ListLeaf_t *)(_wr))->ll_nDigitsLeft = (_nDL))
-#else // defined(DL_IN_LL)
-#define FIRST_KEY  1
-#endif // defined(DL_IN_LL)
-
 #if defined(PP_IN_LINK)
 
-// For PP_IN_LINK ls_wPopCnt macros are only valid at
-// nDigitsLeft == cnDigitsPerWord.
+// For PP_IN_LINK ls_wPopCnt macros are only valid at top, i.e.
+// nDigitsLeft == cnDigitsPerWord, and only for T_LIST - not for T_ONE.
 #define     ls_wPopCnt(_ls)        (*(Word_t *)(_ls))
 #define set_ls_wPopCnt(_ls, _cnt)  (*(Word_t *)(_ls) = (_cnt))
+
+// Index of first key within leaf (for nDigitsLeft != cnDigitsPerWord).
+#define FIRST_KEY  0
 
 #else // defined(PP_IN_LINK)
 
 #define     ls_wPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_acKeys[0])
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
 
+// Index of first key within leaf (for all cases).
+#define FIRST_KEY  1
+
 #endif // defined(PP_IN_LINK)
 
+// For PP_IN_LINK ls_pxKeys macros are only valid not at top or for
+// T_ONE - not T_LIST - at top.
 #if defined(COMPRESSED_LISTS)
 #define     ls_pcKeys(_ls)    (&((ListLeaf_t *)(_ls))->ll_acKeys[FIRST_KEY])
 #define     ls_psKeys(_ls)    (&((ListLeaf_t *)(_ls))->ll_asKeys[FIRST_KEY])
@@ -589,13 +588,13 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 typedef struct {
     union {
 #if defined(COMPRESSED_LISTS)
-        uint8_t  ll_acKeys[FIRST_KEY];
-        uint16_t ll_asKeys[FIRST_KEY];
+        uint8_t  ll_acKeys[FIRST_KEY+1];
+        uint16_t ll_asKeys[FIRST_KEY+1];
 #if (cnBitsPerWord > 32)
-        uint32_t ll_aiKeys[FIRST_KEY];
+        uint32_t ll_aiKeys[FIRST_KEY+1];
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-        Word_t   ll_awKeys[FIRST_KEY];
+        Word_t   ll_awKeys[FIRST_KEY+1];
     };
 } ListLeaf_t;
 

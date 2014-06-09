@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.187 2014/06/08 14:04:52 mike Exp mike $
+// @(#) $Id: bli.c,v 1.188 2014/06/09 00:50:52 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -840,17 +840,34 @@ notEmpty:;
 
     case T_ONE: // one key (full word) list
     {
+  #if defined(REMOVE)
+        assert( ! bCleanup );
+  #endif // defined(REMOVE)
+
+  #if defined(PP_IN_LINK)
+        assert(nDigitsLeft != cnDigitsPerWord); // handled in wrapper
+      #if ! defined(LOOKUP)
+        set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft,
+            PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) + 1);
+      #endif // ! defined(LOOKUP)
+  #endif // defined(PP_IN_LINK)
+
+  #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
+        return KeyFound;
+  #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
+
         if (*pwr == wKey)
         {
-#if defined(REMOVE)
+      #if defined(REMOVE)
             RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
             goto cleanup;
-#endif // defined(REMOVE)
-#if defined(INSERT) && !defined(RECURSIVE)
+      #endif // defined(REMOVE)
+      #if defined(INSERT) && !defined(RECURSIVE)
             if (nIncr > 0) { goto undo; } // undo counting
-#endif // defined(INSERT) && !defined(RECURSIVE)
+      #endif // defined(INSERT) && !defined(RECURSIVE)
             return KeyFound;
         }
+  #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
         break;
 
@@ -965,8 +982,19 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     Word_t *pwr = wr_tp_pwr(wRoot, nType);
     if (!tp_bIsSwitch(nType) && (wRoot != 0))
     {
-        Word_t wPopCnt = ls_wPopCnt(pwr);
-        Word_t *pwKeys = ls_pwKeys(pwr) + 1;
+        Word_t wPopCnt;
+        Word_t *pwKeys;
+#if defined(T_ONE)
+        if (nType == T_ONE) {
+            wPopCnt = 1;
+            pwKeys = ls_pwKeys(pwr);
+        } else
+#endif // defined(T_ONE)
+        {
+            wPopCnt = ls_wPopCnt(pwr);
+            pwKeys = ls_pwKeys(pwr) + 1; // pop count is in 1st element at top
+        }
+
         for (unsigned nn = 0; nn < wPopCnt; nn++)
         {
             if (pwKeys[nn] == wKey) { return Success; }
@@ -1044,7 +1072,8 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #endif // defined(DEBUG)
 
   #if (cwListPopCntMax != 0) && defined(PP_IN_LINK)
-    // Handle the top level list leaf.
+    // Handle the top level list leaf.  Why?
+    // To simplify Lookup for PP_IN_LINK.  Does it still apply?
     // Do not assume the list is sorted.
     // But if we do the insert here, and the list is sorted, then leave it
     // sorted -- so we don't have to worry about ifdefs in this code.
@@ -1060,7 +1089,13 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         }
         else
         {
-            Word_t wPopCnt = (wRoot != 0) ? ls_wPopCnt(pwr) : 0;
+            Word_t wPopCnt
+                = (nType == T_NULL) ? 0
+#if defined(T_ONE)
+                : (nType == T_ONE) ? 1
+#endif // defined(T_ONE)
+                : ls_wPopCnt(pwr);
+
             if (wPopCnt == cwListPopCntMax)
             {
                 status = InsertGuts(pwRoot, wKey, cnDigitsPerWord, wRoot);
@@ -1068,12 +1103,27 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             else
             {
                 Word_t *pwListNew
-                    = NewList(wPopCnt + 1, cnDigitsPerWord, wKey);
-                Word_t *pwKeysNew = ls_pwKeys(pwListNew) + 1;
-                Word_t *pwKeys = ls_pwKeys(pwr) + 1;
+                            = NewList(wPopCnt + 1, cnDigitsPerWord, wKey);
+                Word_t *pwKeysNew = ls_pwKeys(pwListNew);
+#if defined(T_ONE)
+                if (wPopCnt == 0) {
+                    set_wr(wRoot, pwListNew, T_ONE);
+                } else
+#endif // defined(T_ONE)
+                {
+                    ++pwKeysNew; // pop count is in first element at top
+                    set_ls_wPopCnt(pwKeysNew, wPopCnt + 1);
+                    set_wr(wRoot, pwListNew, T_LIST);
+                }
+                Word_t *pwKeys = ls_pwKeys(pwr);
+#if defined(T_ONE)
+                if (wPopCnt != 1)
+#endif // defined(T_ONE)
+                {
+                    ++pwKeys; // pop count is in first element at top
+                }
                 unsigned nn;
                 for (nn = 0; (nn < wPopCnt) && (pwKeys[nn] < wKey); nn++) { }
-                set_ls_wPopCnt(pwKeysNew, wPopCnt + 1);
                 COPY(pwKeysNew, pwKeys, nn);
                 pwKeysNew[nn] = wKey;
                 COPY(&pwKeysNew[nn + 1], &pwKeys[nn], wPopCnt - nn);
@@ -1081,7 +1131,6 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 {
                     OldList(pwr, wPopCnt, cnDigitsPerWord);
                 }
-                set_wr(wRoot, pwListNew, T_LIST);
                 *pwRoot = wRoot;
                 status = Success;
             }
@@ -1179,19 +1228,39 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
         }
         else
         {
+            Word_t wPopCnt = 
+#if defined(T_ONE)
+                    (nType == T_ONE) ? 1 :
+#endif // defined(T_ONE)
+                    ls_wPopCnt(pwr);
+
             Word_t *pwListNew;
-            Word_t wPopCnt = ls_wPopCnt(pwr);
             if (wPopCnt != 1)
             {
                 pwListNew = NewList(wPopCnt - 1, cnDigitsPerWord, wKey);
-                Word_t *pwKeysNew = ls_pwKeys(pwListNew) + 1;
-                Word_t *pwKeys = ls_pwKeys(pwr) + 1;
+                Word_t *pwKeysNew = ls_pwKeys(pwListNew);
+#if defined(T_ONE)
+                if (wPopCnt == 2) {
+                    set_wr(wRoot, pwListNew, T_ONE);
+                } else
+#endif // defined(T_ONE)
+                {
+                    ++pwKeysNew; // pop count is in 1st element at top
+                    set_ls_wPopCnt(pwKeysNew, wPopCnt - 1);
+                    set_wr(wRoot, pwListNew, T_LIST);
+                }
+
+                Word_t *pwKeys = ls_pwKeys(pwr);
+#if defined(T_ONE)
+                if (wPopCnt != 1)
+#endif // defined(T_ONE)
+                {
+                    ++pwKeys; // pop count is in first element at top
+                }
                 unsigned nn;
                 for (nn = 0; pwKeys[nn] != wKey; nn++) { }
-                set_ls_wPopCnt(pwListNew, wPopCnt - 1);
                 COPY(pwKeysNew, pwKeys, nn);
                 COPY(&pwKeysNew[nn], &pwKeys[nn + 1], wPopCnt - nn - 1);
-                set_wr(wRoot, pwListNew, T_LIST);
             }
             else
             {
