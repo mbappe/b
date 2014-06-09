@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.225 2014/06/09 00:49:49 mike Exp mike $
+// @(#) $Id: b.c,v 1.226 2014/06/09 03:40:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1405,6 +1405,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             if (nType == T_ONE)
             {
                 wPopCnt = 1;
+#if defined(PP_IN_LINK)
+                // pop count in link should have been bumped by now
+                assert(PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == 2);
+#endif // defined(PP_IN_LINK)
                 pwKeys = pwr;
             }
             else
@@ -1480,11 +1484,20 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             {
                 // allocate a new list and init pop count in the first word
                 pwList = NewList(wPopCnt + 1, nDigitsLeft, wKey);
+#if defined(PP_IN_LINK)
+                assert(PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == wPopCnt + 1);
+#endif // defined(PP_IN_LINK)
             }
             else
             {
                 pwList = pwr;
+
+#if defined(PP_IN_LINK)
+                assert(nDigitsLeft != cnDigitsPerWord);
+                assert(PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == wPopCnt + 1);
+#else // defined(PP_IN_LINK)
                 set_ls_wPopCnt(pwList, wPopCnt + 1);
+#endif // defined(PP_IN_LINK)
             }
 
             set_wr(wRoot, pwList, T_LIST);
@@ -1725,8 +1738,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 {
                     Insert(pwRoot, pwKeys[w], nDigitsLeftOld);
 
-                    DBGI(printf("\n# InsertGuts After Insert(wKey "OWx") Dump\n", wKey));
-                    DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
+                    DBGI(printf(
+                        "\n# InsertGuts After Insert(wKey "OWx") Dump\n",
+                        pwKeys[w]));
+                    DBGI(Dump(pwRootLast,
+                              /* wPrefix */ (Word_t)0, cnBitsPerWord));
                     DBGI(printf("\n"));
                 }
             }
@@ -2085,11 +2101,10 @@ done:
             }
 
 #if defined(PP_IN_LINK)
-            if (nDigitsLeft == cnDigitsPerWord)
+            assert(nDigitsLeft != cnDigitsPerWord);
+#else // defined(PP_IN_LINK)
+            set_ls_wPopCnt(pwList, wPopCnt - 1);
 #endif // defined(PP_IN_LINK)
-            {
-                set_ls_wPopCnt(pwList, wPopCnt - 1);
-            }
 
 #if defined(COMPRESSED_LISTS)
             if (nBitsLeft <= 8) {
