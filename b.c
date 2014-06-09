@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.227 2014/06/09 15:29:50 mike Exp mike $
+// @(#) $Id: b.c,v 1.228 2014/06/09 16:05:52 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1558,11 +1558,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 } else
 #endif // defined(COMPRESSED_LISTS)
 #if defined(T_ONE)
-                if (wPopCnt == 0)
-                {
+                if (wPopCnt == 0) { // always true for SORT_LISTS
                     *pwList = wKey; set_wr_nType(wRoot, T_ONE);
-                }
-                else
+                } else
 #endif // defined(T_ONE)
                 { ls_pwKeys(pwList)[wPopCnt] = wKey; }
             }
