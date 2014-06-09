@@ -8,6 +8,7 @@
 #undef  SKIP_LINKS
 #define SKIP_LINKS
 #endif // ! defined(NO_SKIP_LINKS)
+
 #if defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
 #undef  SKIP_PREFIX_CHECK
 #define SKIP_PREFIX_CHECK
@@ -38,6 +39,7 @@
 #undef  SPLIT_SEARCH_LOOP
 #define SPLIT_SEARCH_LOOP
 #endif // ! defined(SPLIT_SEARCH) && ! defined(NO_SPLIT_SEARCH_LOOP)
+#endif // defined(SORT_LISTS)
 
 #if defined(SPLIT_SEARCH_LOOP)
 #undef  SPLIT_SEARCH
