@@ -46,7 +46,7 @@ for cc in ccc gcc # icc
 do
 for skip in skipl skipy skipd skipn # skipu skipx
 do
-for sort in sorty sortn # sortx
+for sort in sorty sortn
 do
 for search in srl srs srx
 do
@@ -183,9 +183,6 @@ do
     if [ $sort = sorty ]
     then
         SORT=-DSORT_LISTS
-    elif [ $sort = sortx ]
-    then
-        SORT=-DMIN_MAX_LISTS
     elif [ $sort = sortn ]
     then
         SORT=-DNO_SORT_LISTS
