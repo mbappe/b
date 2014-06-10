@@ -1,30 +1,20 @@
 
-// @(#) $Id: bli.c,v 1.195 2014/06/10 04:08:38 mike Exp mike $
+// @(#) $Id: bli.c,v 1.196 2014/06/10 14:28:09 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
 // Once with #define LOOKUP, #undef INSERT and #undef REMOVE.
 // Once with #undef LOOKUP, #define INSERT and #undef REMOVE.
 // Once with #undef LOOKUP, #undef INSERT and #define REMOVE.
-// The ifdefs make the code hard to read.  But not all combinations are
-// valid so the best way to read the code is to pick a set of defines
+// The best way to read the code is to pick a set of defines
 // and ignore the code that gets thrown away.  Or maybe even use unifdef.
-//
-// Here are the valid combinations:
-//
-//     LOOKUP
-//     LOOKUP && SKIP_LINKS
-//     LOOKUP && SKIP_LINKS && SKIP_PREFIX_CHECK
-//
-//     INSERT && SKIP_LINKS
-//     INSERT && SKIP_LINKS && RECURSIVE_INSERT
-//
-//     REMOVE && SKIP_LINKS
-//     REMOVE && SKIP_LINKS && RECURSIVE_REMOVE
 
 // One big bitmap is implemented completely in Judy1Test, Judy1Set
 // and Judy1Unset.  There is no need for Lookup, Insert and Remove.
-#if (cnBitsAtBottom != cnBitsPerWord)
+#if (cnDigitsPerWord <= 1)
+#if (cnBitsPerDigit >= cnBitsPerWord)
+#if (cnBitsAtBottom >= cnBitsPerWord)
+
 #if defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (Success)
 #if defined(LOOKUP)
@@ -1005,7 +995,9 @@ cleanup:
 #undef strLookupOrInsertOrRemove
 #undef KeyFound
 
-#endif // (cnBitsAtBottom != cnBitsPerWord)
+#endif // (cnBitsAtBottom >= cnBitsPerWord)
+#endif // (cnBitsPerDigit >= cnBitsPerWord)
+#endif // (cnDigitsPerWord <= 1)
 
 #if defined(LOOKUP)
 
