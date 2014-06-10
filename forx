@@ -116,7 +116,7 @@ do
         SKIP=-DALWAYS_CHECK_PREFIX_AT_LEAF
     elif [ $skip = skipd ]
     then
-        SKIP=-DDEFER_PREFIX_CHECK
+        SKIP=-UNO_DEFERRED_PREFIX_CHECK
     elif [ $skip = skipv ]
     then
         SKIP=-DSAVE_PREFIX
@@ -131,7 +131,7 @@ do
         SKIP=-DNO_UNNECESSARY_PREFIX
     elif [ $skip = skipx ]
     then
-        SKIP="-DDEFER_PREFIX_CHECK -DNO_UNNECESSARY_PREFIX"
+        SKIP="-UNO_DEFERRED_PREFIX_CHECK -DNO_UNNECESSARY_PREFIX"
     else
         echo Invalid skip $skip.
         exit 1

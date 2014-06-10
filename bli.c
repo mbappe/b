@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.198 2014/06/10 14:53:20 mike Exp mike $
+// @(#) $Id: bli.c,v 1.199 2014/06/10 15:04:43 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -54,9 +54,10 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #if defined(LOOKUP)
     unsigned nDigitsLeft = cnDigitsPerWord;
   #if ! defined(NO_SKIP_LINKS)
-      #if defined(DEFER_PREFIX_CHECK) && ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+      #if ! defined(NO_DEFERRED_PREFIX_CHECK) \
+           && ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
     unsigned bNeedPrefixCheck = 0;
-      #endif // defined(DEFER_PREFIX_CHECK) && ! ALWAYS_CHECK_PREFIX_AT_LEAF
+      #endif // ! defined(NO_DEFERRED_PREFIX_CHECK) && ...
   #endif // ! defined(NO_SKIP_LINKS)
     Word_t *pwRoot;
   #if defined(BM_IN_LINK)
@@ -96,23 +97,22 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #if defined(REMOVE)
     int bCleanup = 0;
 #endif // defined(REMOVE)
-#if defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
-    Word_t *pwr = pwr; // suppress "uninitialized" compiler warning
-#else // defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
+#if defined(LOOKUP) && defined(NO_DEFERRED_PREFIX_CHECK)
     Word_t *pwr;
-#endif // defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
-#if defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
+#else // defined(LOOKUP) && defined(NO_DEFERRED_PREFIX_CHECK)
+    Word_t *pwr = pwr; // suppress "uninitialized" compiler warning
     Word_t *pwrPrev = pwrPrev; // suppress "uninitialized" compiler warning
-#endif // defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
+#endif // defined(LOOKUP) && defined(NO_DEFERRED_PREFIX_CHECK)
 
-#if defined(LOOKUP) && defined(DEFER_PREFIX_CHECK) && defined(SAVE_PREFIX)
+#if defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK) \
+      && defined(SAVE_PREFIX)
   #if defined(PP_IN_LINK)
     Word_t *pwRootPrefix = NULL;
   #else // defined(PP_IN_LINK)
     Word_t *pwrPrefix = NULL;
   #endif // defined(PP_IN_LINK)
     Word_t nDLRPrefix = 0;
-#endif // defined(LOOKUP) && defined(DEFER_PREFIX_CHECK) && defined(SAVE_PREFIX)
+#endif // defined(LOOKUP) && ...
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
@@ -167,7 +167,19 @@ again:
   #if defined(TYPE_IS_RELATIVE)
         assert(nDigitsLeftRoot < nDigitsLeft);
   #endif // defined(TYPE_IS_RELATIVE)
-  #if defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
+  #if defined(LOOKUP) && defined(NO_DEFERRED_PREFIX_CHECK)
+        if (1
+      #if ! defined(TYPE_IS_RELATIVE)
+            && (nDigitsLeftRoot < nDigitsLeft)
+      #endif // ! defined(TYPE_IS_RELATIVE)
+            && (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwr, nDigitsLeftRoot) ^ wKey))
+                    >= nDL_to_nBL_NAT(nDigitsLeftRoot)))
+        {
+            DBGX(printf("Mismatch wPrefix "Owx"\n",
+                        PWR_wPrefixNAT(pwRoot, pwr, nDigitsLeftRoot)));
+            break;
+        }
+  #else // defined(LOOKUP) && defined(NO_DEFERRED_PREFIX_CHECK)
       #if defined(SAVE_PREFIX)
         // Save info needed for prefix check at leaf.
         // Does this obviate the need for requiring a branch above the
@@ -190,19 +202,7 @@ again:
         bNeedPrefixCheck |= (nDigitsLeftRoot < nDigitsLeft);
           #endif // defined(TYPE_IS_RELATIVE)
       #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-  #else // defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
-        if (1
-      #if ! defined(TYPE_IS_RELATIVE)
-            && (nDigitsLeftRoot < nDigitsLeft)
-      #endif // ! defined(TYPE_IS_RELATIVE)
-            && (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwr, nDigitsLeftRoot) ^ wKey))
-                    >= nDL_to_nBL_NAT(nDigitsLeftRoot)))
-        {
-            DBGX(printf("Mismatch wPrefix "Owx"\n",
-                        PWR_wPrefixNAT(pwRoot, pwr, nDigitsLeftRoot)));
-            break;
-        }
-  #endif // defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
+  #endif // defined(LOOKUP) && defined(NO_DEFERRED_PREFIX_CHECK)
 #endif // ! defined(NO_SKIP_LINKS)
 #if ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
         // fall into next case
@@ -394,13 +394,13 @@ notEmpty:;
 
         DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
 
-#if defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
+#if defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
         // We may need to check the prefix of the switch we just
         // visited in the next iteration of the loop
         // #if defined(COMPRESSED_LISTS)
         // so we preserve the value of pwr.
         pwrPrev = pwr;
-#endif // defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
+#endif // defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
 #if ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
         nDigitsLeftRoot = nDigitsLeft;
 #endif // ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
@@ -469,7 +469,7 @@ notEmpty:;
         // return nBitsLeft > cnBitsPerWord which works out perfectly.
         unsigned nBitsLeft = nDL_to_nBL_NAT(nDigitsLeft);
           #endif // !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
-          #if defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
+          #if defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
         // We don't support skip links directly to leaves -- yet.
         // Even with defined(PP_IN_LINK).
         // It is sufficient to check the prefix at the switch just
@@ -509,7 +509,7 @@ notEmpty:;
                 ))
               #endif // defined(SAVE_PREFIX)
             )
-          #endif // defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
+          #endif // defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
       #endif // defined(COMPRESSED_LISTS)
         {
       #if defined(DL_IN_LL)
@@ -712,14 +712,14 @@ notEmpty:;
         }
       #if defined(COMPRESSED_LISTS)
           #if ! defined(NO_SKIP_LINKS)
-              #if defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
+              #if defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
         else
         {
             DBGX(printf("Mismatch at list wPrefix "OWx" nDL %d\n",
                         PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft),
                         nDigitsLeft));
         }
-              #endif // defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
+              #endif // defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
           #endif // ! defined(NO_SKIP_LINKS)
       #endif // defined(COMPRESSED_LISTS)
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
@@ -758,7 +758,7 @@ notEmpty:;
 #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
 
   #if ! defined(NO_SKIP_LINKS)
-      #if defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
+      #if defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
         // Would like to combine the source code for this prefix
         // check and the one done in the compressed_lists section.
         // Notice that we're using pwr which was extracted from
@@ -785,7 +785,7 @@ notEmpty:;
                 ))
           #endif // defined(SAVE_PREFIX)
             )
-      #endif // defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
+      #endif // defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
   #endif // ! defined(NO_SKIP_LINKS)
         {
   #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
@@ -855,13 +855,13 @@ notEmpty:;
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
         }
   #if ! defined(NO_SKIP_LINKS)
-      #if defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
+      #if defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
         else
         {
             DBGX(printf("Mismatch at bitmap wPrefix "OWx"\n",
                         PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft)));
         }
-      #endif // defined(LOOKUP) && defined(DEFER_PREFIX_CHECK)
+      #endif // defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
   #endif // ! defined(NO_SKIP_LINKS)
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
 
