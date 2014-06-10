@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.193 2014/06/09 21:24:43 mike Exp mike $
+// @(#) $Id: bli.c,v 1.195 2014/06/10 04:08:38 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -63,11 +63,11 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     unsigned nDigitsLeftUp; (void)nDigitsLeftUp; // silence gcc
 #if defined(LOOKUP)
     unsigned nDigitsLeft = cnDigitsPerWord;
-  #if defined(SKIP_LINKS)
+  #if ! defined(NO_SKIP_LINKS)
       #if defined(SKIP_PREFIX_CHECK) && ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
     unsigned bNeedPrefixCheck = 0;
       #endif // defined(SKIP_PREFIX_CHECK) && ! ALWAYS_CHECK_PREFIX_AT_LEAF
-  #endif // defined(SKIP_LINKS)
+  #endif // ! defined(NO_SKIP_LINKS)
     Word_t *pwRoot;
   #if defined(BM_IN_LINK)
     pwRoot = NULL; // used for top detection
@@ -117,11 +117,11 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && defined(SAVE_PREFIX)
   #if defined(PP_IN_LINK)
-    Word_t *pwRootPrefix;
+    Word_t *pwRootPrefix = NULL;
   #else // defined(PP_IN_LINK)
-    Word_t *pwrPrefix;
+    Word_t *pwrPrefix = NULL;
   #endif // defined(PP_IN_LINK)
-    Word_t nDLRPrefix;
+    Word_t nDLRPrefix = 0;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && defined(SAVE_PREFIX)
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
@@ -132,17 +132,17 @@ top:
   #endif // !defined(RECURSIVE)
     wRoot = *pwRoot;
 #endif // !defined(LOOKUP)
-#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#if ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
     nDigitsLeftRoot = nDigitsLeft;
-#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#endif // ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 
 #if defined(LOOKUP) || !defined(RECURSIVE)
 again:
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
-#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#if ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
     assert(nDigitsLeftRoot == nDigitsLeft);
-#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#endif // ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 #if ( ! defined(LOOKUP) )
     assert(nDigitsLeft >= nBL_to_nDL(cnBitsAtBottom)); // valid for LOOKUP too
     DBGX(printf("# pwRoot %p ", (void *)pwRoot));
@@ -156,32 +156,35 @@ again:
     pwr = wr_tp_pwr(wRoot, nType);
     switch (nType)
     {
-    default: // skip link to a switch (if -DSKIP_LINKS && -DTYPE_IS_RELATIVE)
+    default: // skip link (if -UNO_SKIP_LINKS && -DTYPE_IS_RELATIVE)
     {
         // pwr points to a switch
 
-#if defined(SKIP_LINKS)
+#if defined(NO_SKIP_LINKS)
+        nDigitsLeftRoot = nDigitsLeft; // prev
+#else // defined(NO_SKIP_LINKS)
   #if defined(TYPE_IS_RELATIVE)
         nDigitsLeftRoot = nDigitsLeft - tp_to_nDS(nType);
   #else // defined(TYPE_IS_RELATIVE)
         nDigitsLeftRoot = tp_to_nDigitsLeft(nType);
   #endif // defined(TYPE_IS_RELATIVE)
         assert(nDigitsLeftRoot <= nDigitsLeft); // reserved
-#else // defined(SKIP_LINKS)
-        nDigitsLeftRoot = nDigitsLeft; // prev
-#endif // defined(SKIP_LINKS)
+#endif // defined(NO_SKIP_LINKS)
 
         DBGX(printf("Switch nDLR %d pwr %p\n", nDigitsLeftRoot, (void *)pwr));
 
-#if defined(SKIP_LINKS)
+#if ! defined(NO_SKIP_LINKS)
   #if defined(TYPE_IS_RELATIVE)
         assert(nDigitsLeftRoot < nDigitsLeft);
   #endif // defined(TYPE_IS_RELATIVE)
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #if defined(SAVE_PREFIX)
         // Save info needed for prefix check at leaf.
+        // Does this obviate the need for requiring a branch above the
+        // bitmap as a place holder for the prefix check at the leaf?
+        // It just might.
         // Maybe it's faster to use a word that is shared by all
-        // than one that is shared by few.
+        // than one that is shared by fewer.
           #if defined(PP_IN_LINK)
         pwRootPrefix = pwRoot;
           #else // defined(PP_IN_LINK)
@@ -210,13 +213,13 @@ again:
             break;
         }
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-#endif // defined(SKIP_LINKS)
-#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#endif // ! defined(NO_SKIP_LINKS)
+#if ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
         // fall into next case
     }
     case T_NO_SKIP_SWITCH:
     {
-#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#endif // ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 #if defined(BM_SWITCH_FOR_REAL) \
     || ( ! defined(LOOKUP) \
         && (defined(PP_IN_LINK) || defined(BM_IN_LINK)) \
@@ -408,9 +411,9 @@ notEmpty:;
         // so we preserve the value of pwr.
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#if ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
         nDigitsLeftRoot = nDigitsLeft;
-#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#endif // ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again;
 #else // defined(LOOKUP) || !defined(RECURSIVE)
@@ -718,7 +721,7 @@ notEmpty:;
       #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
         }
       #if defined(COMPRESSED_LISTS)
-          #if defined(SKIP_LINKS)
+          #if ! defined(NO_SKIP_LINKS)
               #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         else
         {
@@ -727,7 +730,7 @@ notEmpty:;
                         nDigitsLeft));
         }
               #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-          #endif // defined(SKIP_LINKS)
+          #endif // ! defined(NO_SKIP_LINKS)
       #endif // defined(COMPRESSED_LISTS)
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
@@ -764,7 +767,7 @@ notEmpty:;
         return KeyFound;
 #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
 
-  #if defined(SKIP_LINKS)
+  #if ! defined(NO_SKIP_LINKS)
       #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // Would like to combine the source code for this prefix
         // check and the one done in the compressed_lists section.
@@ -793,7 +796,7 @@ notEmpty:;
           #endif // defined(SAVE_PREFIX)
             )
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-  #endif // defined(SKIP_LINKS)
+  #endif // ! defined(NO_SKIP_LINKS)
         {
   #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
       #if 0
@@ -861,7 +864,7 @@ notEmpty:;
       #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
         }
-  #if defined(SKIP_LINKS)
+  #if ! defined(NO_SKIP_LINKS)
       #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         else
         {
@@ -869,7 +872,7 @@ notEmpty:;
                         PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft)));
         }
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-  #endif // defined(SKIP_LINKS)
+  #endif // ! defined(NO_SKIP_LINKS)
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
 
         break;
