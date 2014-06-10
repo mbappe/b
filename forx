@@ -110,7 +110,7 @@ do
 
     if [ $skip = skipy ]
     then
-        SKIP=-DSKIP_LINKS
+        SKIP=-UNO_SKIP_LINKS
     elif [ $skip = skipl ]
     then
         SKIP=-DALWAYS_CHECK_PREFIX_AT_LEAF

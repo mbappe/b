@@ -2,12 +2,8 @@
 #if ( ! defined(_B_H_INCLUDED) )
 #define _B_H_INCLUDED
 
-// Default is -DSKIP_LINKS -USKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX.
+// Default is -UNO_SKIP_LINKS -USKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX.
 // Default is -UALWAYS_CHECK_PREFIX_AT_LEAF.
-#if ! defined(NO_SKIP_LINKS)
-#undef  SKIP_LINKS
-#define SKIP_LINKS
-#endif // ! defined(NO_SKIP_LINKS)
 
 #if defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 #undef  SKIP_PREFIX_CHECK
@@ -110,10 +106,6 @@
     #define NDEBUG
 
 #endif // ! defined(DEBUG)
-
-// Choose features.
-// SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
-// -UNDEBUG, RAM_METRICS, GUARDBAND
 
 // To do:
 //
