@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.231 2014/06/10 14:20:04 mike Exp mike $
+// @(#) $Id: b.c,v 1.232 2014/06/10 14:44:51 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -507,7 +507,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
         assert(nDigitsLeft <= nDigitsLeftUp);
 
 #if defined(NO_UNNECESSARY_PREFIX)
-        // If defined(SKIP_PREFIX_CHECK) then we may need the prefix at the
+        // If defined(DEFER_PREFIX_CHECK) then we may need the prefix at the
         // leaf even if there is no skip directly to the leaf.  Why?  Because
         // there may have been a skip somewhere above and we do the prefix
         // check at the leaf.
@@ -524,7 +524,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
         // Does it mean we'd have to add the prefix when transitioning
         // from full word list directly to bitmap?  Do we ever do this?
         if ((nDigitsLeft == nDigitsLeftUp)
-#if defined(SKIP_PREFIX_CHECK)
+#if defined(DEFER_PREFIX_CHECK)
 #if ! defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
@@ -535,7 +535,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 #endif // defined(COMPRESSED_LISTS)
             && ((nDigitsLeft - 1) > nBL_to_nDL(cnBitsAtBottom))
 #endif // ! defined(PP_IN_LINK)
-#endif // defined(SKIP_PREFIX_CHECK)
+#endif // defined(DEFER_PREFIX_CHECK)
             && 1)
         {
             DBGI(printf(

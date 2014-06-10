@@ -2,12 +2,16 @@
 #if ( ! defined(_B_H_INCLUDED) )
 #define _B_H_INCLUDED
 
-// Default is -UNO_SKIP_LINKS -USKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX.
+// Default is -UNO_SKIP_LINKS.
+// Default is -UDEFER_PREFIX_CHECK, i.e. defer prefix check to leaf.
 // Default is -UALWAYS_CHECK_PREFIX_AT_LEAF.
+// Default is -USAVE_PREFIX, i.e. save pointer to prefix at skip.
+// Default is -UNO_UNNECESSARY_PREFIX, i.e. prefix in node only when needed.
 
 #if defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
-#undef  SKIP_PREFIX_CHECK
-#define SKIP_PREFIX_CHECK
+#undef  NO_SKIP_LINKS
+#undef  DEFER_PREFIX_CHECK
+#define DEFER_PREFIX_CHECK
 #endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 
 // Default is -UBM_SWITCH -UBM_IN_LINK -UBM_SWITCH_FOR_REAL.
