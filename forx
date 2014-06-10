@@ -44,7 +44,7 @@ for table in tbn tby
 do
 for cc in ccc gcc # icc
 do
-for skip in skipy skipl skipd skipn # skipu skipx
+for skip in skipy skipv skipl skipd skipn # skipu skipx
 do
 for sort in sorty # sortn
 do
@@ -117,15 +117,18 @@ do
     elif [ $skip = skipd ]
     then
         SKIP=-DSKIP_PREFIX_CHECK
+    elif [ $skip = skipv ]
+    then
+        SKIP="-DSKIP_PREFIX_CHECK -DSAVE_PREFIX"
+    elif [ $skip = skipn ]
+    then
+        SKIP=-DNO_SKIP_LINKS
     elif [ $skip = skipu ]
     then
         SKIP=-DNO_UNNECESSARY_PREFIX
     elif [ $skip = skipx ]
     then
         SKIP="-DSKIP_PREFIX_CHECK -DNO_UNNECESSARY_PREFIX"
-    elif [ $skip = skipn ]
-    then
-        SKIP=-DNO_SKIP_LINKS
     else
         echo Invalid skip $skip.
         exit 1
