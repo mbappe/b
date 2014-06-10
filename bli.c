@@ -115,6 +115,15 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     Word_t *pwrPrev = pwrPrev; // suppress "uninitialized" compiler warning
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && defined(SAVE_PREFIX)
+  #if defined(PP_IN_LINK)
+    Word_t *pwRootPrefix;
+  #else // defined(PP_IN_LINK)
+    Word_t *pwrPrefix;
+  #endif // defined(PP_IN_LINK)
+    Word_t nDLRPrefix;
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && defined(SAVE_PREFIX)
+
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
 #if !defined(LOOKUP)
@@ -169,6 +178,17 @@ again:
         assert(nDigitsLeftRoot < nDigitsLeft);
   #endif // defined(TYPE_IS_RELATIVE)
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+      #if defined(SAVE_PREFIX)
+        // Save info needed for prefix check at leaf.
+        // Maybe it's faster to use a word that is shared by all
+        // than one that is shared by few.
+          #if defined(PP_IN_LINK)
+        pwRootPrefix = pwRoot;
+          #else // defined(PP_IN_LINK)
+        pwrPrefix = pwr;
+          #endif // defined(PP_IN_LINK)
+        nDLRPrefix = nDigitsLeftRoot;
+      #endif // defined(SAVE_PREFIX)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
         // Record that there were prefix bits that were not checked.
           #if defined(TYPE_IS_RELATIVE)
@@ -480,15 +500,22 @@ notEmpty:;
               #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
             // If we need a prefix check, then we're not at the top.
             // And pwRoot is initialized despite what gcc might think.
+              #if defined(SAVE_PREFIX)
+            || (LOG(1 | (PWR_wPrefixNAT(pwRootPrefix, pwrPrefix, nDLRPrefix)
+                    ^ wKey))
+                < nDL_to_nBL(nDLRPrefix))
+              #else // defined(SAVE_PREFIX)
             || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft)
                     ^ wKey))
                 < (nBitsLeft
-              #if ! defined(PP_IN_LINK)
+                  #if ! defined(PP_IN_LINK)
                     // prefix in parent switch doesn't contain last digit
                     // for ! defined(PP_IN_LINK) case
                     + nDL_to_nBitsIndexSzNAT(nDigitsLeft + 1)
-              #endif // ! defined(PP_IN_LINK)
-                       )))
+                  #endif // ! defined(PP_IN_LINK)
+                ))
+              #endif // defined(SAVE_PREFIX)
+            )
           #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #endif // defined(COMPRESSED_LISTS)
         {
@@ -750,14 +777,21 @@ notEmpty:;
           #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
             || ! bNeedPrefixCheck
           #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+          #if defined(SAVE_PREFIX)
+            || (LOG(1 | (PWR_wPrefixNAT(pwRootPrefix, pwrPrefix, nDLRPrefix)
+                    ^ wKey))
+                < nDL_to_nBL(nDLRPrefix))
+          #else // defined(SAVE_PREFIX)
             || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft) ^ wKey))
                     // pwr_nBitsIndexSz term is necessary because pwrPrev
                     // prefix does not contain any less significant bits.
                     < (cnBitsAtBottom
-          #if ! defined(PP_IN_LINK)
+              #if ! defined(PP_IN_LINK)
                             + nDL_to_nBitsIndexSzNAT(nDigitsLeft + 1)
-          #endif // ! defined(PP_IN_LINK)
-                       )))
+              #endif // ! defined(PP_IN_LINK)
+                ))
+          #endif // defined(SAVE_PREFIX)
+            )
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
   #endif // defined(SKIP_LINKS)
         {
