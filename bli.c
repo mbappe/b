@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.192 2014/06/09 20:36:50 mike Exp mike $
+// @(#) $Id: bli.c,v 1.193 2014/06/09 21:24:43 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -165,9 +165,9 @@ again:
         DBGX(printf("Switch nDLR %d pwr %p\n", nDigitsLeftRoot, (void *)pwr));
 
 #if defined(SKIP_LINKS)
-      #if defined(TYPE_IS_RELATIVE)
+  #if defined(TYPE_IS_RELATIVE)
         assert(nDigitsLeftRoot < nDigitsLeft);
-      #endif // defined(TYPE_IS_RELATIVE)
+  #endif // defined(TYPE_IS_RELATIVE)
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
         // Record that there were prefix bits that were not checked.

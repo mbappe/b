@@ -44,7 +44,7 @@ for table in tbn tby
 do
 for cc in ccc gcc # icc
 do
-for skip in skipl skipy skipd skipn # skipu skipx
+for skip in skipy skipl skipd skipn # skipu skipx
 do
 for sort in sorty # sortn
 do
