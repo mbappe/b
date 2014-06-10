@@ -1,20 +1,30 @@
 
-// @(#) $Id: bli.c,v 1.200 2014/06/10 15:19:43 mike Exp mike $
+// @(#) $Id: bli.c,v 1.196 2014/06/10 14:28:09 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
 // Once with #define LOOKUP, #undef INSERT and #undef REMOVE.
 // Once with #undef LOOKUP, #define INSERT and #undef REMOVE.
 // Once with #undef LOOKUP, #undef INSERT and #define REMOVE.
-// The best way to read the code is to pick a set of defines
+// The ifdefs make the code hard to read.  But not all combinations are
+// valid so the best way to read the code is to pick a set of defines
 // and ignore the code that gets thrown away.  Or maybe even use unifdef.
+//
+// Here are the valid combinations:
+//
+//     LOOKUP
+//     LOOKUP && SKIP_LINKS
+//     LOOKUP && SKIP_LINKS && SKIP_PREFIX_CHECK
+//
+//     INSERT && SKIP_LINKS
+//     INSERT && SKIP_LINKS && RECURSIVE_INSERT
+//
+//     REMOVE && SKIP_LINKS
+//     REMOVE && SKIP_LINKS && RECURSIVE_REMOVE
 
 // One big bitmap is implemented completely in Judy1Test, Judy1Set
 // and Judy1Unset.  There is no need for Lookup, Insert and Remove.
-#if (cnDigitsPerWord > 1)
-#if (cnBitsPerDigit < cnBitsPerWord)
-#if (cnBitsAtBottom < cnBitsPerWord)
-
+#if (cnBitsAtBottom != cnBitsPerWord)
 #if defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (Success)
 #if defined(LOOKUP)
@@ -53,12 +63,11 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     unsigned nDigitsLeftUp; (void)nDigitsLeftUp; // silence gcc
 #if defined(LOOKUP)
     unsigned nDigitsLeft = cnDigitsPerWord;
-  #if ! defined(NO_SKIP_LINKS)
-      #if ! defined(NO_DEFERRED_PREFIX_CHECK) \
-           && ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+  #if defined(SKIP_LINKS)
+      #if defined(SKIP_PREFIX_CHECK) && ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
     unsigned bNeedPrefixCheck = 0;
-      #endif // ! defined(NO_DEFERRED_PREFIX_CHECK) && ...
-  #endif // ! defined(NO_SKIP_LINKS)
+      #endif // defined(SKIP_PREFIX_CHECK) && ! ALWAYS_CHECK_PREFIX_AT_LEAF
+  #endif // defined(SKIP_LINKS)
     Word_t *pwRoot;
   #if defined(BM_IN_LINK)
     pwRoot = NULL; // used for top detection
@@ -97,22 +106,23 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #if defined(REMOVE)
     int bCleanup = 0;
 #endif // defined(REMOVE)
-#if defined(LOOKUP) && defined(NO_DEFERRED_PREFIX_CHECK)
-    Word_t *pwr;
-#else // defined(LOOKUP) && defined(NO_DEFERRED_PREFIX_CHECK)
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwr = pwr; // suppress "uninitialized" compiler warning
+#else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+    Word_t *pwr;
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrPrev = pwrPrev; // suppress "uninitialized" compiler warning
-#endif // defined(LOOKUP) && defined(NO_DEFERRED_PREFIX_CHECK)
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 
-#if defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK) \
-      && defined(SAVE_PREFIX)
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && defined(SAVE_PREFIX)
   #if defined(PP_IN_LINK)
     Word_t *pwRootPrefix = NULL;
   #else // defined(PP_IN_LINK)
     Word_t *pwrPrefix = NULL;
   #endif // defined(PP_IN_LINK)
     Word_t nDLRPrefix = 0;
-#endif // defined(LOOKUP) && ...
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && defined(SAVE_PREFIX)
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
@@ -122,17 +132,17 @@ top:
   #endif // !defined(RECURSIVE)
     wRoot = *pwRoot;
 #endif // !defined(LOOKUP)
-#if ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
     nDigitsLeftRoot = nDigitsLeft;
-#endif // ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 
 #if defined(LOOKUP) || !defined(RECURSIVE)
 again:
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
-#if ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
     assert(nDigitsLeftRoot == nDigitsLeft);
-#endif // ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 #if ( ! defined(LOOKUP) )
     assert(nDigitsLeft >= nBL_to_nDL(cnBitsAtBottom)); // valid for LOOKUP too
     DBGX(printf("# pwRoot %p ", (void *)pwRoot));
@@ -146,40 +156,28 @@ again:
     pwr = wr_tp_pwr(wRoot, nType);
     switch (nType)
     {
-    default: // skip link (if -UNO_SKIP_LINKS && -DTYPE_IS_RELATIVE)
+    default: // skip link (if -DSKIP_LINKS && -DTYPE_IS_RELATIVE)
     {
         // pwr points to a switch
 
-#if defined(NO_SKIP_LINKS)
-        nDigitsLeftRoot = nDigitsLeft; // prev
-#else // defined(NO_SKIP_LINKS)
+#if defined(SKIP_LINKS)
   #if defined(TYPE_IS_RELATIVE)
         nDigitsLeftRoot = nDigitsLeft - tp_to_nDS(nType);
   #else // defined(TYPE_IS_RELATIVE)
         nDigitsLeftRoot = tp_to_nDigitsLeft(nType);
   #endif // defined(TYPE_IS_RELATIVE)
         assert(nDigitsLeftRoot <= nDigitsLeft); // reserved
-#endif // defined(NO_SKIP_LINKS)
+#else // defined(SKIP_LINKS)
+        nDigitsLeftRoot = nDigitsLeft; // prev
+#endif // defined(SKIP_LINKS)
 
         DBGX(printf("Switch nDLR %d pwr %p\n", nDigitsLeftRoot, (void *)pwr));
 
-#if ! defined(NO_SKIP_LINKS)
+#if defined(SKIP_LINKS)
   #if defined(TYPE_IS_RELATIVE)
         assert(nDigitsLeftRoot < nDigitsLeft);
   #endif // defined(TYPE_IS_RELATIVE)
-  #if defined(LOOKUP) && defined(NO_DEFERRED_PREFIX_CHECK)
-        if (1
-      #if ! defined(TYPE_IS_RELATIVE)
-            && (nDigitsLeftRoot < nDigitsLeft)
-      #endif // ! defined(TYPE_IS_RELATIVE)
-            && (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwr, nDigitsLeftRoot) ^ wKey))
-                    >= nDL_to_nBL_NAT(nDigitsLeftRoot)))
-        {
-            DBGX(printf("Mismatch wPrefix "Owx"\n",
-                        PWR_wPrefixNAT(pwRoot, pwr, nDigitsLeftRoot)));
-            break;
-        }
-  #else // defined(LOOKUP) && defined(NO_DEFERRED_PREFIX_CHECK)
+  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #if defined(SAVE_PREFIX)
         // Save info needed for prefix check at leaf.
         // Does this obviate the need for requiring a branch above the
@@ -202,14 +200,26 @@ again:
         bNeedPrefixCheck |= (nDigitsLeftRoot < nDigitsLeft);
           #endif // defined(TYPE_IS_RELATIVE)
       #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-  #endif // defined(LOOKUP) && defined(NO_DEFERRED_PREFIX_CHECK)
-#endif // ! defined(NO_SKIP_LINKS)
-#if ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+  #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+        if (1
+      #if ! defined(TYPE_IS_RELATIVE)
+            && (nDigitsLeftRoot < nDigitsLeft)
+      #endif // ! defined(TYPE_IS_RELATIVE)
+            && (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwr, nDigitsLeftRoot) ^ wKey))
+                    >= nDL_to_nBL_NAT(nDigitsLeftRoot)))
+        {
+            DBGX(printf("Mismatch wPrefix "Owx"\n",
+                        PWR_wPrefixNAT(pwRoot, pwr, nDigitsLeftRoot)));
+            break;
+        }
+  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#endif // defined(SKIP_LINKS)
+#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
         // fall into next case
     }
     case T_NO_SKIP_SWITCH:
     {
-#endif // ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 #if defined(BM_SWITCH_FOR_REAL) \
     || ( ! defined(LOOKUP) \
         && (defined(PP_IN_LINK) || defined(BM_IN_LINK)) \
@@ -394,16 +404,16 @@ notEmpty:;
 
         DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
 
-#if defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We may need to check the prefix of the switch we just
         // visited in the next iteration of the loop
         // #if defined(COMPRESSED_LISTS)
         // so we preserve the value of pwr.
         pwrPrev = pwr;
-#endif // defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
-#if ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
         nDigitsLeftRoot = nDigitsLeft;
-#endif // ! defined(NO_SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again;
 #else // defined(LOOKUP) || !defined(RECURSIVE)
@@ -469,7 +479,7 @@ notEmpty:;
         // return nBitsLeft > cnBitsPerWord which works out perfectly.
         unsigned nBitsLeft = nDL_to_nBL_NAT(nDigitsLeft);
           #endif // !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
-          #if defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
+          #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We don't support skip links directly to leaves -- yet.
         // Even with defined(PP_IN_LINK).
         // It is sufficient to check the prefix at the switch just
@@ -509,7 +519,7 @@ notEmpty:;
                 ))
               #endif // defined(SAVE_PREFIX)
             )
-          #endif // defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
+          #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #endif // defined(COMPRESSED_LISTS)
         {
       #if defined(DL_IN_LL)
@@ -534,15 +544,15 @@ notEmpty:;
                 unsigned char cKeyLoop;
                 unsigned char cKey = wKey;
                 unsigned char *pcKeys = pwr_pcKeys(pwr);
-                  #if defined(NO_SORTED_LISTS)
-                unsigned char *pcKeysEnd = &pcKeys[wPopCnt];
-                  #else // defined(NO_SORTED_LISTS)
-                while (cKeyLoop = *pcKeys, pcKeys++ < pcKeysEnd)
+                  #if defined(SORT_LISTS)
                 if ((cKeyLoop = pcKeys[wPopCnt - 1]) > cKey)
                 {
                     while ((cKeyLoop = *pcKeys++) < cKey);
                 }
-                  #endif // defined(NO_SORTED_LISTS)
+                  #else // defined(SORT_LISTS)
+                unsigned char *pcKeysEnd = &pcKeys[wPopCnt];
+                while (cKeyLoop = *pcKeys, pcKeys++ < pcKeysEnd)
+                  #endif // defined(SORT_LISTS)
                 {
                     if (cKeyLoop == cKey)
                     {
@@ -565,15 +575,15 @@ notEmpty:;
                 unsigned short sKeyLoop;
                 unsigned short sKey = wKey;
                 unsigned short *psKeys = pwr_psKeys(pwr);
-                  #if defined(NO_SORTED_LISTS)
-                unsigned short *psKeysEnd = &psKeys[wPopCnt];
-                while (sKeyLoop = *psKeys, psKeys++ < psKeysEnd)
-                  #else // defined(NO_SORTED_LISTS)
+                  #if defined(SORT_LISTS)
                 if ((sKeyLoop = psKeys[wPopCnt - 1]) > sKey)
                 {
                     while ((sKeyLoop = *psKeys++) < sKey);
                 }
-                  #endif // defined(NO_SORTED_LISTS)
+                  #else // defined(SORT_LISTS)
+                unsigned short *psKeysEnd = &psKeys[wPopCnt];
+                while (sKeyLoop = *psKeys, psKeys++ < psKeysEnd)
+                  #endif // defined(SORT_LISTS)
                 {
                     if (sKeyLoop == sKey)
                     {
@@ -603,10 +613,7 @@ notEmpty:;
                 unsigned int iKeyLoop;
                 unsigned int iKey = wKey;
                 unsigned int *piKeys = pwr_piKeys(pwr);
-                  #if defined(NO_SORTED_LISTS)
-                unsigned int *piKeysEnd = &piKeys[wPopCnt];
-                while (iKeyLoop = *piKeys, piKeys++ < piKeysEnd)
-                  #else // defined(NO_SORTED_LISTS)
+                  #if defined(SORT_LISTS)
                       #if defined(SPLIT_SEARCH)
                       #if defined(SPLIT_SEARCH_LOOP)
                 while
@@ -630,7 +637,10 @@ notEmpty:;
                 {
                     while ((iKeyLoop = *piKeys++) < iKey);
                 }
-                  #endif // defined(NO_SORTED_LISTS)
+                  #else // defined(SORT_LISTS)
+                unsigned int *piKeysEnd = &piKeys[wPopCnt];
+                while (iKeyLoop = *piKeys, piKeys++ < piKeysEnd)
+                  #endif // defined(SORT_LISTS)
                 {
                     if (iKeyLoop == iKey)
                     {
@@ -658,10 +668,7 @@ notEmpty:;
                 // keys at a lower level or 32-bit keys at the top level.
                 Word_t wKeyLoop;
                 Word_t *pwKeys = pwr_pwKeys(pwr);
-          #if defined(NO_SORTED_LISTS)
-                Word_t *pwKeysEnd = &pwKeys[wPopCnt];
-                while (wKeyLoop = *pwKeys, pwKeys++ < pwKeysEnd)
-          #else // defined(NO_SORTED_LISTS)
+          #if defined(SORT_LISTS)
               #if defined(SPLIT_SEARCH)
               #if defined(SPLIT_SEARCH_LOOP)
                 while
@@ -689,7 +696,10 @@ notEmpty:;
               #else // ! defined(SPLIT_SEARCH_LOOP) || ...
                 wKeyLoop = *pwKeys;
               #endif // ! defined(SPLIT_SEARCH_LOOP) || ...
-          #endif // defined(NO_SORTED_LISTS)
+          #else // defined(SORT_LISTS)
+                Word_t *pwKeysEnd = &pwKeys[wPopCnt];
+                while (wKeyLoop = *pwKeys, pwKeys++ < pwKeysEnd)
+          #endif // defined(SORT_LISTS)
                 {
                     if (wKeyLoop == wKey)
                     {
@@ -711,16 +721,16 @@ notEmpty:;
       #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
         }
       #if defined(COMPRESSED_LISTS)
-          #if ! defined(NO_SKIP_LINKS)
-              #if defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
+          #if defined(SKIP_LINKS)
+              #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         else
         {
             DBGX(printf("Mismatch at list wPrefix "OWx" nDL %d\n",
                         PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft),
                         nDigitsLeft));
         }
-              #endif // defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
-          #endif // ! defined(NO_SKIP_LINKS)
+              #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+          #endif // defined(SKIP_LINKS)
       #endif // defined(COMPRESSED_LISTS)
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
@@ -757,8 +767,8 @@ notEmpty:;
         return KeyFound;
 #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
 
-  #if ! defined(NO_SKIP_LINKS)
-      #if defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
+  #if defined(SKIP_LINKS)
+      #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // Would like to combine the source code for this prefix
         // check and the one done in the compressed_lists section.
         // Notice that we're using pwr which was extracted from
@@ -785,8 +795,8 @@ notEmpty:;
                 ))
           #endif // defined(SAVE_PREFIX)
             )
-      #endif // defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
-  #endif // ! defined(NO_SKIP_LINKS)
+      #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+  #endif // defined(SKIP_LINKS)
         {
   #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
       #if 0
@@ -854,15 +864,15 @@ notEmpty:;
       #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
         }
-  #if ! defined(NO_SKIP_LINKS)
-      #if defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
+  #if defined(SKIP_LINKS)
+      #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         else
         {
             DBGX(printf("Mismatch at bitmap wPrefix "OWx"\n",
                         PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft)));
         }
-      #endif // defined(LOOKUP) && ! defined(NO_DEFERRED_PREFIX_CHECK)
-  #endif // ! defined(NO_SKIP_LINKS)
+      #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+  #endif // defined(SKIP_LINKS)
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
 
         break;
@@ -995,9 +1005,7 @@ cleanup:
 #undef strLookupOrInsertOrRemove
 #undef KeyFound
 
-#endif // (cnBitsAtBottom < cnBitsPerWord)
-#endif // (cnBitsPerDigit < cnBitsPerWord)
-#endif // (cnDigitsPerWord > 1)
+#endif // (cnBitsAtBottom != cnBitsPerWord)
 
 #if defined(LOOKUP)
 

@@ -110,13 +110,13 @@ do
 
     if [ $skip = skipy ]
     then
-        SKIP=-UNO_SKIP_LINKS
+        SKIP=-DSKIP_LINKS
     elif [ $skip = skipl ]
     then
         SKIP=-DALWAYS_CHECK_PREFIX_AT_LEAF
     elif [ $skip = skipd ]
     then
-        SKIP=-UNO_DEFERRED_PREFIX_CHECK
+        SKIP=-DSKIP_PREFIX_CHECK
     elif [ $skip = skipv ]
     then
         SKIP=-DSAVE_PREFIX
@@ -131,7 +131,7 @@ do
         SKIP=-DNO_UNNECESSARY_PREFIX
     elif [ $skip = skipx ]
     then
-        SKIP="-UNO_DEFERRED_PREFIX_CHECK -DNO_UNNECESSARY_PREFIX"
+        SKIP="-DSKIP_PREFIX_CHECK -DNO_UNNECESSARY_PREFIX"
     else
         echo Invalid skip $skip.
         exit 1
@@ -204,10 +204,10 @@ do
 
     if [ $sort = sorty ]
     then
-        SORT=-UNO_SORTED_LISTS
+        SORT=-DSORT_LISTS
     elif [ $sort = sortn ]
     then
-        SORT=-DNO_SORTED_LISTS
+        SORT=-DNO_SORT_LISTS
     else
         echo Invalid sort $sort.
         exit 1

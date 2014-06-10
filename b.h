@@ -2,15 +2,16 @@
 #if ( ! defined(_B_H_INCLUDED) )
 #define _B_H_INCLUDED
 
-// Default is -UNO_SKIP_LINKS.
-// Default is -UNO_DEFERRED_PREFIX_CHECK, i.e. check prefix at leaf.
-// Default is -UALWAYS_CHECK_PREFIX_AT_LEAF, i.e. don't track if skip seen.
-// Default is -USAVE_PREFIX, i.e. save pointer to prefix at lowest skip level.
-// Default is -UNO_UNNECESSARY_PREFIX, i.e. prefix in node only when needed.
+// Default is -DSKIP_LINKS -USKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX.
+// Default is -UALWAYS_CHECK_PREFIX_AT_LEAF.
+#if ! defined(NO_SKIP_LINKS)
+#undef  SKIP_LINKS
+#define SKIP_LINKS
+#endif // ! defined(NO_SKIP_LINKS)
 
 #if defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
-#undef  NO_SKIP_LINKS
-#undef  NO_DEFERRED_PREFIX_CHECK
+#undef  SKIP_PREFIX_CHECK
+#define SKIP_PREFIX_CHECK
 #endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 
 // Default is -UBM_SWITCH -UBM_IN_LINK -UBM_SWITCH_FOR_REAL.
@@ -27,15 +28,18 @@
 #define cwListPopCntMax  8
 #endif // !defined(cwListPopCntMax)
 
-// Default is -UNO_SORTED_LISTS.
-// Default is -DSPLIT_SEARCH_LOOP.
+// Default is -DSORT_LISTS.
+#if ! defined(NO_SORT_LISTS)
+#undef  SORT_LISTS
+#define SORT_LISTS
+#endif // ! defined(NO_SORT_LISTS)
 
-#if ! defined(NO_SORTED_LISTS)
+#if defined(SORT_LISTS)
 #if ! defined(SPLIT_SEARCH) && ! defined(NO_SPLIT_SEARCH)
 #undef  SPLIT_SEARCH_LOOP
 #define SPLIT_SEARCH_LOOP
 #endif // ! defined(SPLIT_SEARCH) && ! defined(NO_SPLIT_SEARCH_LOOP)
-#endif // ! defined(NO_SORTED_LISTS)
+#endif // defined(SORT_LISTS)
 
 #if defined(SPLIT_SEARCH_LOOP)
 #undef  SPLIT_SEARCH
@@ -51,6 +55,8 @@
 #if ! defined(cnSplitSearchThresholdInt)
 #define cnSplitSearchThresholdInt  32
 #endif // ! defined(cnSplitSearchThresholdInt)
+#undef  SORT_LISTS
+#define SORT_LISTS
 #endif // defined(SPLIT_SEARCH)
 
 // Default is -DCOMPRESSED_LISTS.
@@ -104,6 +110,10 @@
     #define NDEBUG
 
 #endif // ! defined(DEBUG)
+
+// Choose features.
+// SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
+// -UNDEBUG, RAM_METRICS, GUARDBAND
 
 // To do:
 //
