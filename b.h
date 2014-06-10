@@ -9,10 +9,10 @@
 #define SKIP_LINKS
 #endif // ! defined(NO_SKIP_LINKS)
 
-#if defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+#if defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 #undef  SKIP_PREFIX_CHECK
 #define SKIP_PREFIX_CHECK
-#endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+#endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 
 // Default is -UBM_SWITCH -UBM_IN_LINK -UBM_SWITCH_FOR_REAL.
 #if defined(BM_IN_LINK) || defined(BM_SWITCH_FOR_REAL)
