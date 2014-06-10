@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.229 2014/06/09 16:26:41 mike Exp mike $
+// @(#) $Id: b.c,v 1.230 2014/06/10 01:38:48 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -504,21 +504,22 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
         assert(nDigitsLeft <= nDigitsLeftUp);
 
 #if defined(NO_UNNECESSARY_PREFIX)
-        // If defined(SKIP_PREFIX_CHECK) then we need the prefix at the leaf
-        // even if there is no skip to the leaf.  Why?  Because there may
-        // have been a skip somewhere above and we do the prefix check at the
-        // leaf.  List leaves only need it if the keys in the list are less than
-        // whole words.  For now we set prefix if we're at any compressed list
-        // level even if it isn't necessary.
+        // If defined(SKIP_PREFIX_CHECK) then we may need the prefix at the
+        // leaf even if there is no skip directly to the leaf.  Why?  Because
+        // there may have been a skip somewhere above and we do the prefix
+        // check at the leaf.
+        // If defined(SAVE_PREFIX) then we save a pointer to the prefix at
+        // the place where the skip occurred so there is no need to have the
+        // prefix at the leaf unless the skip goes directly to the leaf.
+        // List leaves only need a prefix check if there is a skip link if
+        // the keys in the list are less than whole words.  For now we set
+        // prefix if we're at any compressed list level even if it isn't
+        // necessary.
         // Bits in a bitmap leaf are always less than whole words and always
-        // need the prefix for this case.
+        // need the prefix if there is a skip link and we skip the check
+        // at the point of skip and we don't save a pointer to the prefix.
         // Does it mean we'd have to add the prefix when transitioning
         // from full word list directly to bitmap?  Do we ever do this?
-        // We could get rid of the leaf check in some cases if we enhance Insert
-        // to keep track of any prefix checks done along the way and
-        // pass that info to InsertGuts.
-        // We could go back up to where there is a skip (hence a prefix) and
-        // do the check.
         if ((nDigitsLeft == nDigitsLeftUp)
 #if defined(SKIP_PREFIX_CHECK)
 #if ! defined(PP_IN_LINK)
