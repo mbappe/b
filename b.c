@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.228 2014/06/09 16:05:52 mike Exp mike $
+// @(#) $Id: b.c,v 1.229 2014/06/09 16:26:41 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2125,7 +2125,7 @@ done:
 #endif // defined(COMPRESSED_LISTS)
             {
 #if defined(T_ONE)
-                if ((wPopCnt == 2)
+                if ((2 == wPopCnt)
 #if defined(COMPRESSED_LISTS)
                     && (nBitsLeft > cnBitsPerWord / 2)
 #endif // defined(COMPRESSED_LISTS)

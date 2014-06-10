@@ -601,8 +601,10 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 
 typedef struct {
     union {
-#if defined(COMPRESSED_LISTS)
+#if defined(COMPRESSED_LISTS) || ! defined(PP_IN_LINK)
         uint8_t  ll_acKeys[FIRST_KEY+1];
+#endif // defined(COMPRESSED_LISTS) || ! defined(PP_IN_LINK)
+#if defined(COMPRESSED_LISTS)
         uint16_t ll_asKeys[FIRST_KEY+1];
 #if (cnBitsPerWord > 32)
         uint32_t ll_aiKeys[FIRST_KEY+1];
