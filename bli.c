@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.199 2014/06/10 15:04:43 mike Exp mike $
+// @(#) $Id: bli.c,v 1.200 2014/06/10 15:19:43 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -534,15 +534,15 @@ notEmpty:;
                 unsigned char cKeyLoop;
                 unsigned char cKey = wKey;
                 unsigned char *pcKeys = pwr_pcKeys(pwr);
-                  #if defined(SORT_LISTS)
+                  #if defined(NO_SORTED_LISTS)
+                unsigned char *pcKeysEnd = &pcKeys[wPopCnt];
+                  #else // defined(NO_SORTED_LISTS)
+                while (cKeyLoop = *pcKeys, pcKeys++ < pcKeysEnd)
                 if ((cKeyLoop = pcKeys[wPopCnt - 1]) > cKey)
                 {
                     while ((cKeyLoop = *pcKeys++) < cKey);
                 }
-                  #else // defined(SORT_LISTS)
-                unsigned char *pcKeysEnd = &pcKeys[wPopCnt];
-                while (cKeyLoop = *pcKeys, pcKeys++ < pcKeysEnd)
-                  #endif // defined(SORT_LISTS)
+                  #endif // defined(NO_SORTED_LISTS)
                 {
                     if (cKeyLoop == cKey)
                     {
@@ -565,15 +565,15 @@ notEmpty:;
                 unsigned short sKeyLoop;
                 unsigned short sKey = wKey;
                 unsigned short *psKeys = pwr_psKeys(pwr);
-                  #if defined(SORT_LISTS)
+                  #if defined(NO_SORTED_LISTS)
+                unsigned short *psKeysEnd = &psKeys[wPopCnt];
+                while (sKeyLoop = *psKeys, psKeys++ < psKeysEnd)
+                  #else // defined(NO_SORTED_LISTS)
                 if ((sKeyLoop = psKeys[wPopCnt - 1]) > sKey)
                 {
                     while ((sKeyLoop = *psKeys++) < sKey);
                 }
-                  #else // defined(SORT_LISTS)
-                unsigned short *psKeysEnd = &psKeys[wPopCnt];
-                while (sKeyLoop = *psKeys, psKeys++ < psKeysEnd)
-                  #endif // defined(SORT_LISTS)
+                  #endif // defined(NO_SORTED_LISTS)
                 {
                     if (sKeyLoop == sKey)
                     {
@@ -603,7 +603,10 @@ notEmpty:;
                 unsigned int iKeyLoop;
                 unsigned int iKey = wKey;
                 unsigned int *piKeys = pwr_piKeys(pwr);
-                  #if defined(SORT_LISTS)
+                  #if defined(NO_SORTED_LISTS)
+                unsigned int *piKeysEnd = &piKeys[wPopCnt];
+                while (iKeyLoop = *piKeys, piKeys++ < piKeysEnd)
+                  #else // defined(NO_SORTED_LISTS)
                       #if defined(SPLIT_SEARCH)
                       #if defined(SPLIT_SEARCH_LOOP)
                 while
@@ -627,10 +630,7 @@ notEmpty:;
                 {
                     while ((iKeyLoop = *piKeys++) < iKey);
                 }
-                  #else // defined(SORT_LISTS)
-                unsigned int *piKeysEnd = &piKeys[wPopCnt];
-                while (iKeyLoop = *piKeys, piKeys++ < piKeysEnd)
-                  #endif // defined(SORT_LISTS)
+                  #endif // defined(NO_SORTED_LISTS)
                 {
                     if (iKeyLoop == iKey)
                     {
@@ -658,7 +658,10 @@ notEmpty:;
                 // keys at a lower level or 32-bit keys at the top level.
                 Word_t wKeyLoop;
                 Word_t *pwKeys = pwr_pwKeys(pwr);
-          #if defined(SORT_LISTS)
+          #if defined(NO_SORTED_LISTS)
+                Word_t *pwKeysEnd = &pwKeys[wPopCnt];
+                while (wKeyLoop = *pwKeys, pwKeys++ < pwKeysEnd)
+          #else // defined(NO_SORTED_LISTS)
               #if defined(SPLIT_SEARCH)
               #if defined(SPLIT_SEARCH_LOOP)
                 while
@@ -686,10 +689,7 @@ notEmpty:;
               #else // ! defined(SPLIT_SEARCH_LOOP) || ...
                 wKeyLoop = *pwKeys;
               #endif // ! defined(SPLIT_SEARCH_LOOP) || ...
-          #else // defined(SORT_LISTS)
-                Word_t *pwKeysEnd = &pwKeys[wPopCnt];
-                while (wKeyLoop = *pwKeys, pwKeys++ < pwKeysEnd)
-          #endif // defined(SORT_LISTS)
+          #endif // defined(NO_SORTED_LISTS)
                 {
                     if (wKeyLoop == wKey)
                     {

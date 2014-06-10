@@ -204,10 +204,10 @@ do
 
     if [ $sort = sorty ]
     then
-        SORT=-DSORT_LISTS
+        SORT=-UNO_SORTED_LISTS
     elif [ $sort = sortn ]
     then
-        SORT=-DNO_SORT_LISTS
+        SORT=-DNO_SORTED_LISTS
     else
         echo Invalid sort $sort.
         exit 1

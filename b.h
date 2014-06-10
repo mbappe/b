@@ -4,8 +4,8 @@
 
 // Default is -UNO_SKIP_LINKS.
 // Default is -UNO_DEFERRED_PREFIX_CHECK, i.e. check prefix at leaf.
-// Default is -UALWAYS_CHECK_PREFIX_AT_LEAF.
-// Default is -USAVE_PREFIX, i.e. save pointer to prefix at skip.
+// Default is -UALWAYS_CHECK_PREFIX_AT_LEAF, i.e. don't track if skip seen.
+// Default is -USAVE_PREFIX, i.e. save pointer to prefix at lowest skip level.
 // Default is -UNO_UNNECESSARY_PREFIX, i.e. prefix in node only when needed.
 
 #if defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
@@ -27,18 +27,15 @@
 #define cwListPopCntMax  8
 #endif // !defined(cwListPopCntMax)
 
-// Default is -DSORT_LISTS.
-#if ! defined(NO_SORT_LISTS)
-#undef  SORT_LISTS
-#define SORT_LISTS
-#endif // ! defined(NO_SORT_LISTS)
+// Default is -UNO_SORTED_LISTS.
+// Default is -DSPLIT_SEARCH_LOOP.
 
-#if defined(SORT_LISTS)
+#if ! defined(NO_SORTED_LISTS)
 #if ! defined(SPLIT_SEARCH) && ! defined(NO_SPLIT_SEARCH)
 #undef  SPLIT_SEARCH_LOOP
 #define SPLIT_SEARCH_LOOP
 #endif // ! defined(SPLIT_SEARCH) && ! defined(NO_SPLIT_SEARCH_LOOP)
-#endif // defined(SORT_LISTS)
+#endif // ! defined(NO_SORTED_LISTS)
 
 #if defined(SPLIT_SEARCH_LOOP)
 #undef  SPLIT_SEARCH
@@ -54,8 +51,6 @@
 #if ! defined(cnSplitSearchThresholdInt)
 #define cnSplitSearchThresholdInt  32
 #endif // ! defined(cnSplitSearchThresholdInt)
-#undef  SORT_LISTS
-#define SORT_LISTS
 #endif // defined(SPLIT_SEARCH)
 
 // Default is -DCOMPRESSED_LISTS.
