@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.202 2014/06/10 16:02:17 mike Exp mike $
+// @(#) $Id: bli.c,v 1.203 2014/06/11 02:20:51 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -10,8 +10,8 @@
 // One big bitmap is implemented completely in Judy1Test, Judy1Set
 // and Judy1Unset.  There is no need for Lookup, Insert and Remove.
 #if (cnDigitsPerWord > 1)
-#if (cnBitsAtBottom < cnBitsPerWord)
 #if (cnBitsPerDigit < cnBitsPerWord)
+#if (cnBitsAtBottom < cnBitsPerWord)
 
 #if defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (Success)
@@ -770,33 +770,28 @@ notEmpty:;
             // current pwRoot to find the prefix.
             // nDigitsLeft is different for the two cases.
             || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft) ^ wKey))
-                    // pwr_nBitsIndexSz term is necessary because pwrPrev
-                    // prefix does not contain any less significant bits.
-                    < (nDL_to_nBL(nDigitsLeft)
-              #if ! defined(PP_IN_LINK)
-                            + nDL_to_nBitsIndexSzNAT(nDigitsLeft + 1)
-              #endif // ! defined(PP_IN_LINK)
-                ))
+                // The +1 is necessary because the pwrPrev
+                // prefix does not contain any less significant bits.
+              #if defined(PP_IN_LINK)
+                < nDL_to_nBL_NAT(nDigitsLeft    )
+              #else // defined(PP_IN_LINK)
+                < nDL_to_nBL_NAT(nDigitsLeft + 1)
+              #endif // defined(PP_IN_LINK)
+                                  )
           #endif // defined(SAVE_PREFIX)
             )
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
   #endif // defined(SKIP_LINKS)
         {
   #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
-      #if 0
-            // Haven't really thought out use of cnDigitsAtBottom here.
-            // Probably need cnDigitsAtBottom + 1 unless PP_IN_LINK.
-            // But cnDigitsAtBottom + 1 is probably just a waste of
-            // code since the switch probably won't exist in that case.
-            return PWR_wPopCntNotAtTop(pwRoot, pwrPrev, cnDigitsAtBottom + 1)
-                ? KeyFound : ! KeyFound;
-      #else
-            // Remove is incomplete and may leave the switch in
-            // place even after all keys in all lists have been removed.
-            // This makes it cumbersome to disambiguate a zero value
-            // returned from PWR_wPopCntNotAtTop.
+            assert(PWR_wPopCnt(pwRoot, pwrPrev,
+              #if defined(PP_IN_LINK)
+                nDL_to_nBL_NAT(nDigitsLeft    )
+              #else // defined(PP_IN_LINK)
+                nDL_to_nBL_NAT(nDigitsLeft + 1)
+              #endif // defined(PP_IN_LINK)
+                               ) != 0);
             return KeyFound;
-      #endif
   #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
       #if (cnBitsAtBottom <= cnLogBitsPerWord)
             DBGX(printf(
@@ -989,8 +984,8 @@ cleanup:
 #undef strLookupOrInsertOrRemove
 #undef KeyFound
 
-#endif // (cnBitsPerDigit < cnBitsPerWord)
 #endif // (cnBitsAtBottom < cnBitsPerWord)
+#endif // (cnBitsPerDigit < cnBitsPerWord)
 #endif // (cnDigitsPerWord > 1)
 
 #if defined(LOOKUP)
@@ -998,7 +993,7 @@ cleanup:
 int // Status_t
 Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 {
-#if (cnBitsAtBottom != cnBitsPerWord)
+#if (cnDigitsPerWord > 1)
 
   #if (cwListPopCntMax != 0) && defined(PP_IN_LINK)
     // Handle the top level list leaf.
@@ -1034,7 +1029,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
     return Lookup((Word_t)pcvRoot, wKey);
 
-#else // (cnBitsAtBottom != cnBitsPerWord)
+#else // (cnDigitsPerWord > 1)
 
     // one big Bitmap
 
@@ -1077,7 +1072,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
   #endif // defined(BITMAP_BY_BYTE)
 
-#endif // (cnBitsAtBottom != cnBitsPerWord)
+#endif // (cnDigitsPerWord > 1)
 
     (void)PJError; // suppress "unused parameter" compiler warning
 }
@@ -1089,7 +1084,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 int // Status_t
 Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 {
-#if (cnBitsAtBottom != cnBitsPerWord)
+#if (cnDigitsPerWord > 1)
 
     int status;
 
@@ -1185,7 +1180,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     return status;
 
-#else // (cnBitsAtBottom != cnBitsPerWord)
+#else // (cnDigitsPerWord > 1)
 
     // one big Bitmap
 
@@ -1222,7 +1217,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     return Success;
 
-#endif // (cnBitsAtBottom != cnBitsPerWord)
+#endif // (cnDigitsPerWord > 1)
 
     (void)PJError; // suppress "unused parameter" compiler warning
 }
@@ -1234,7 +1229,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 int
 Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 {
-#if (cnBitsAtBottom != cnBitsPerWord)
+#if (cnDigitsPerWord > 1)
 
     int status;
 
@@ -1325,7 +1320,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     return status;
 
-#else // (cnBitsAtBottom != cnBitsPerWord)
+#else // (cnDigitsPerWord > 1)
 
     // one big Bitmap
 
@@ -1350,7 +1345,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     return Success;
 
-#endif // (cnBitsAtBottom != cnBitsPerWord)
+#endif // (cnDigitsPerWord > 1)
 
     (void)PJError; // suppress "unused parameter" compiler warnings
 }
