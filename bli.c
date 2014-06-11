@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.206 2014/06/11 20:43:15 mike Exp mike $
+// @(#) $Id: bli.c,v 1.207 2014/06/11 22:12:09 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -402,6 +402,13 @@ notEmpty:;
 #if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
         nDigitsLeftRoot = nDigitsLeft;
 #endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#if (cnBitsAtBottom <= cnLogBitsPerWord)
+        if (nDigitsLeft == 1) {
+            // wr_nType is not valid in this case.
+            // We have to skip the switch.
+            goto t_bitmap;
+        }
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again;
 #else // defined(LOOKUP) || !defined(RECURSIVE)
@@ -728,10 +735,15 @@ notEmpty:;
 
     case T_BITMAP:
     {
+t_bitmap:
         // This case has been enhanced to handle a bitmap at any level.
         // It used to assume we were at nDigitsLeft == 1.  And before we
         // had cnBitsAtBottom it assumed we were at
         // nDigitsLeft == cnDigitsAtBottom.
+        // Shoot.  If we use the type field to identify a bitmap, then
+        // we can't use the whole wRoot as an embedded bitmap.
+        // There is an ugly workaround.  Jump directly here when
+        // nDigitsLeft becomes one rather than jumping to "again".
 #if !defined(LOOKUP)
   #if defined(REMOVE)
         if (bCleanup)
