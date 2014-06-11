@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.203 2014/06/11 02:20:51 mike Exp mike $
+// @(#) $Id: bli.c,v 1.204 2014/06/11 03:47:54 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -10,8 +10,8 @@
 // One big bitmap is implemented completely in Judy1Test, Judy1Set
 // and Judy1Unset.  There is no need for Lookup, Insert and Remove.
 #if (cnDigitsPerWord > 1)
-#if (cnBitsPerDigit < cnBitsPerWord)
-#if (cnBitsAtBottom < cnBitsPerWord)
+//#if (cnBitsPerDigit < cnBitsPerWord)
+//#if (cnBitsAtBottom < cnBitsPerWord)
 
 #if defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (Success)
@@ -796,9 +796,10 @@ notEmpty:;
       #if (cnBitsAtBottom <= cnLogBitsPerWord)
             DBGX(printf(
                 "BitIsSetInWord(wRoot "OWx" wKey "OWx")\n",
-                    wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)));
+                    wRoot, wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)));
 
-            if (BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)))
+            if (BitIsSetInWord(wRoot,
+                    wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)))
             {
           #if defined(REMOVE)
                 RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
@@ -817,10 +818,10 @@ notEmpty:;
       #else // (cnBitsAtBottom <= cnLogBitsPerWord)
             DBGX(printf(
                 "Evaluating BitIsSet(wRoot "OWx" wKey "OWx") ...\n",
-                    wRoot, wKey & (EXP(cnBitsAtBottom) - 1UL)));
+                    wRoot, wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)));
 
             if (BitIsSet(wr_pwr(wRoot),
-                wKey & (EXP(cnBitsAtBottom) - 1UL)))
+                    wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)))
             {
           #if defined(REMOVE)
                 RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
@@ -984,8 +985,8 @@ cleanup:
 #undef strLookupOrInsertOrRemove
 #undef KeyFound
 
-#endif // (cnBitsAtBottom < cnBitsPerWord)
-#endif // (cnBitsPerDigit < cnBitsPerWord)
+//#endif // (cnBitsAtBottom < cnBitsPerWord)
+//#endif // (cnBitsPerDigit < cnBitsPerWord)
 #endif // (cnDigitsPerWord > 1)
 
 #if defined(LOOKUP)
