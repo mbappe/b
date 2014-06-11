@@ -15,7 +15,8 @@ else
     SLIST='1 -7 -1 7'
     DLIST=-D
     BLIST=-B16
-    NOPT=-n50000
+    # Test full pop for -B16.
+    NOPT=-n65536
 fi
 
 # TIME=time
