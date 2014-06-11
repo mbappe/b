@@ -5,6 +5,30 @@ rcs.tjz contains a copy of the RCS files in case the originals be found.
 Look for symbolic names in the RCS files.
 CP140405 is Checkpoint April 5, 2014.
 
+6/11/14:
+- Minimize the number of cache lines accessed once the working set is too
+  big to fit completely in the cache.
+- There is only one cache line hit when accessing a bitmap no matter how
+  big the bitmap is.  We need to worry about cache lines only when dealing
+  with other kinds of leaves.
+- One cache is at least 64 bytes.  One-byte keys cover an expanse of only
+  8-bits which can also be covered by a 32-byte bitmap.  Hence one-byte
+  keys make no sense for populations of more than 32.
+  32 bytes is only four 64-bit words.  We're at two words per key with only
+  two keys (ignoring higher level overhead).
+- Two-byte keys cover an expanse of 16-bits which can also be covered by
+  an 8K bitmap.  4K keys (of a possible 64K) takes as much space as a bitmap.
+  512 keys is 2 words per key.
+- At 2 words per key, 64 keys support a 1024 byte bitmap which covers
+  a 13-bit expanse.  64 two-byte keys cover a whole 128-byte cache line.
+- 128 keys supports a 14-bit expanse.
+- I need 512 keys to support a 16-bit expanse bitmap.
+- Let's try 14 bits at bottom.  With 128 keys in a list.  9-bit digits is
+  even at 32 and 10 bit digits is even at 64.
+  A 9-bit switch is 512 words is a 4Kbyte switch.
+  A 6-bit switch is 64 words is a 512byte switch.
+  
+
 6/8/14:
 Todo:
 - Use only one key-size for pop count in list.

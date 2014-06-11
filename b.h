@@ -4,6 +4,11 @@
 
 // Default is -DSKIP_LINKS -USKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX.
 // Default is -UALWAYS_CHECK_PREFIX_AT_LEAF.
+// -DALWAYS_CHECK_PREFIX_AT_LEAF appears to be best for 64-bit Judy1 with
+// 16-bit digits and a 16-bit bitmap.  More digits and -DSKIP_LINKS of any
+// flavor seems similar.
+// -USKIP_LINKS is a lot better for 32-bit Judy1 with 16-bit digits and a
+// 16-bit bitmap.  Less so for 8-bit digits.  Maybe.
 #if ! defined(NO_SKIP_LINKS)
 #undef  SKIP_LINKS
 #define SKIP_LINKS

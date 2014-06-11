@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.205 2014/06/11 03:56:46 mike Exp mike $
+// @(#) $Id: bli.c,v 1.206 2014/06/11 20:43:15 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -881,14 +881,24 @@ notEmpty:;
     case T_ONE: // one key (full word) list
     {
   #if defined(REMOVE)
-        if (bCleanup) { return Success; }
+        if (bCleanup) { return Success; } // cleanup is complete
   #endif // defined(REMOVE)
 
   #if defined(PP_IN_LINK)
-        assert(nDigitsLeft != cnDigitsPerWord); // handled in wrapper
+        // For PP_IN_LINK, T_LIST at the top is handled directly in Judy1Test
+        // because a T_LIST at the top has a pop count byte at the beginning
+        // and T_LISTs not at the top do not.  The list access macros are
+        // coded for the non-top case.  And I didn't want to have to special
+        // case all of the code that uses the macros.
+        // Subsequently, I implemented T_ONE in the same way without much
+        // thought.  It allows us to assume it's okay to use PWR_wPopCnt here
+        // But I'm still not sure it was the best way to go.
+        assert(nDigitsLeft != cnDigitsPerWord);
       #if ! defined(LOOKUP)
+        // Adjust pop count on the way in for INSERT and REMOVE.
         set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft,
-            PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) + 1);
+            PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) + nIncr);
+        assert(0); // Is this code being tested?
       #endif // ! defined(LOOKUP)
   #endif // defined(PP_IN_LINK)
 
@@ -900,7 +910,7 @@ notEmpty:;
         {
       #if defined(REMOVE)
             RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-            goto cleanup;
+            goto cleanup; // free memory or reconfigure tree if necessary
       #endif // defined(REMOVE)
       #if defined(INSERT) && !defined(RECURSIVE)
             if (nIncr > 0) { goto undo; } // undo counting
@@ -969,10 +979,7 @@ undo:
 #if !defined(LOOKUP) && !defined(RECURSIVE)
     {
   #if defined(REMOVE)
-        if (bCleanup)
-        {
-            return KeyFound; // nothing to clean up
-        }
+        if (bCleanup) { return KeyFound; } // nothing to clean up
         printf("\n# Not bCleanup -- Remove failure!\n");
   #endif // defined(REMOVE)
         // Undo the counting we did on the way in.
