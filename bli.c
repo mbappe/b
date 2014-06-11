@@ -1,30 +1,18 @@
 
-// @(#) $Id: bli.c,v 1.196 2014/06/10 14:28:09 mike Exp $
+// @(#) $Id: bli.c,v 1.202 2014/06/10 16:02:17 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
 // Once with #define LOOKUP, #undef INSERT and #undef REMOVE.
 // Once with #undef LOOKUP, #define INSERT and #undef REMOVE.
 // Once with #undef LOOKUP, #undef INSERT and #define REMOVE.
-// The ifdefs make the code hard to read.  But not all combinations are
-// valid so the best way to read the code is to pick a set of defines
-// and ignore the code that gets thrown away.  Or maybe even use unifdef.
-//
-// Here are the valid combinations:
-//
-//     LOOKUP
-//     LOOKUP && SKIP_LINKS
-//     LOOKUP && SKIP_LINKS && SKIP_PREFIX_CHECK
-//
-//     INSERT && SKIP_LINKS
-//     INSERT && SKIP_LINKS && RECURSIVE_INSERT
-//
-//     REMOVE && SKIP_LINKS
-//     REMOVE && SKIP_LINKS && RECURSIVE_REMOVE
 
 // One big bitmap is implemented completely in Judy1Test, Judy1Set
 // and Judy1Unset.  There is no need for Lookup, Insert and Remove.
-#if (cnBitsAtBottom != cnBitsPerWord)
+#if (cnDigitsPerWord > 1)
+#if (cnBitsAtBottom < cnBitsPerWord)
+#if (cnBitsPerDigit < cnBitsPerWord)
+
 #if defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (Success)
 #if defined(LOOKUP)
@@ -144,7 +132,7 @@ again:
     assert(nDigitsLeftRoot == nDigitsLeft);
 #endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 #if ( ! defined(LOOKUP) )
-    assert(nDigitsLeft >= nBL_to_nDL(cnBitsAtBottom)); // valid for LOOKUP too
+    assert(nDigitsLeft >= 1); // valid for LOOKUP too
     DBGX(printf("# pwRoot %p ", (void *)pwRoot));
 #else // ( ! defined(LOOKUP) )
     SMETRICS(j__TreeDepth++);
@@ -536,7 +524,7 @@ notEmpty:;
           #endif // defined(PP_IN_LINK)
       #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
           #if defined(COMPRESSED_LISTS)
-            switch ( LOG(nBitsLeft - 1) - 2)
+            switch ( LOG(nBitsLeft - 1) - 2 )
             {
               #if (cnBitsAtBottom < 8)
             case 0:
@@ -760,22 +748,13 @@ notEmpty:;
   #endif // defined(PP_IN_LINK)
 #endif // !defined(LOOKUP)
 
-        // We have to do the prefix check here if we're at the
-        // bottom because wRoot contains a Bitmap.  Not a pointer.
-        // Not a key.
 #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
         return KeyFound;
 #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
 
   #if defined(SKIP_LINKS)
       #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-        // Would like to combine the source code for this prefix
-        // check and the one done in the compressed_lists section.
-        // Notice that we're using pwr which was extracted from
-        // the previous wRoot -- not the current wRoot -- if
-        // not PP_IN_LINK.
-        // If PP_IN_LINK, then we are using the current pwRoot.
-        // nDigitsLeft is different for the two cases.
+        // We have to do the prefix check here.
         if ( 0
           #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
             || ! bNeedPrefixCheck
@@ -785,10 +764,15 @@ notEmpty:;
                     ^ wKey))
                 < nDL_to_nBL(nDLRPrefix))
           #else // defined(SAVE_PREFIX)
+            // Notice that we're using pwr which was extracted from the
+            // previous wRoot -- not the current wRoot -- to find the prefix,
+            // if not PP_IN_LINK.  If PP_IN_LINK, then we are using the
+            // current pwRoot to find the prefix.
+            // nDigitsLeft is different for the two cases.
             || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft) ^ wKey))
                     // pwr_nBitsIndexSz term is necessary because pwrPrev
                     // prefix does not contain any less significant bits.
-                    < (cnBitsAtBottom
+                    < (nDL_to_nBL(nDigitsLeft)
               #if ! defined(PP_IN_LINK)
                             + nDL_to_nBitsIndexSzNAT(nDigitsLeft + 1)
               #endif // ! defined(PP_IN_LINK)
@@ -1005,7 +989,9 @@ cleanup:
 #undef strLookupOrInsertOrRemove
 #undef KeyFound
 
-#endif // (cnBitsAtBottom != cnBitsPerWord)
+#endif // (cnBitsPerDigit < cnBitsPerWord)
+#endif // (cnBitsAtBottom < cnBitsPerWord)
+#endif // (cnDigitsPerWord > 1)
 
 #if defined(LOOKUP)
 
