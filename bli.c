@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.204 2014/06/11 03:47:54 mike Exp mike $
+// @(#) $Id: bli.c,v 1.205 2014/06/11 03:56:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -728,6 +728,10 @@ notEmpty:;
 
     case T_BITMAP:
     {
+        // This case has been enhanced to handle a bitmap at any level.
+        // It used to assume we were at nDigitsLeft == 1.  And before we
+        // had cnBitsAtBottom it assumed we were at
+        // nDigitsLeft == cnDigitsAtBottom.
 #if !defined(LOOKUP)
   #if defined(REMOVE)
         if (bCleanup)
@@ -753,6 +757,14 @@ notEmpty:;
 #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
 
   #if defined(SKIP_LINKS)
+      // Code below uses NAT and we don't really enforce it so we put an
+      // assertion here to remind us that not all values of cnBitsAtBottom
+      // and cnBitsPerDigit will work.
+      #if defined(PP_IN_LINK)
+        assert(nDigitsLeft < cnDigitsPerWord);
+      #else // defined(PP_IN_LINK)
+        assert(nDigitsLeft + 1 < cnDigitsPerWord);
+      #endif // defined(PP_IN_LINK)
       #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We have to do the prefix check here.
         if ( 0
@@ -794,54 +806,59 @@ notEmpty:;
             return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
       #if (cnBitsAtBottom <= cnLogBitsPerWord)
-            DBGX(printf(
-                "BitIsSetInWord(wRoot "OWx" wKey "OWx")\n",
-                    wRoot, wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)));
-
-            if (BitIsSetInWord(wRoot,
-                    wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)))
+            if (nDL_to_nBL_NAT(nDigitsLeft) <= cnLogBitsPerWord)
             {
+                DBGX(printf("BitIsSetInWord(wRoot "OWx" wKey "OWx")\n",
+                            wRoot,
+                            wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)));
+
+                if (BitIsSetInWord(wRoot,
+                        wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)))
+                {
           #if defined(REMOVE)
-                RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                goto cleanup;
+                    RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                    goto cleanup;
           #endif // defined(REMOVE)
           #if defined(INSERT) && !defined(RECURSIVE)
-                if (nIncr > 0)
-                {
-                    goto undo; // undo counting
-                }
+                    if (nIncr > 0)
+                    {
+                        goto undo; // undo counting
+                    }
           #endif // defined(INSERT) && !defined(RECURSIVE)
-                return KeyFound;
-            }
-
-            DBGX(printf("! BitIsSetInWord\n"));
-      #else // (cnBitsAtBottom <= cnLogBitsPerWord)
-            DBGX(printf(
-                "Evaluating BitIsSet(wRoot "OWx" wKey "OWx") ...\n",
-                    wRoot, wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)));
-
-            if (BitIsSet(wr_pwr(wRoot),
-                    wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)))
-            {
-          #if defined(REMOVE)
-                RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                goto cleanup;
-          #endif // defined(REMOVE)
-          #if defined(INSERT) && !defined(RECURSIVE)
-                if (nIncr > 0)
-                {
-                    DBGX(printf(
-                      "BitmapWordNum %"_fw"d BitmapWordMask "OWx"\n",
-                       BitmapWordNum(wKey), BitmapWordMask(wKey)));
-                    DBGX(printf("Bit is set!\n"));
-                    goto undo; // undo counting 
+                    return KeyFound;
                 }
-          #endif // defined(INSERT) && !defined(RECURSIVE)
-                return KeyFound;
-            }
 
-            DBGX(printf("Bit is not set.\n"));
+                DBGX(printf("! BitIsSetInWord\n"));
+            }
+            else
       #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
+            {
+                DBGX(printf(
+                    "Evaluating BitIsSet(wRoot "OWx" wKey "OWx") ...\n",
+                    wRoot, wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)));
+
+                if (BitIsSet(wr_pwr(wRoot),
+                        wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)))
+                {
+          #if defined(REMOVE)
+                    RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                    goto cleanup;
+          #endif // defined(REMOVE)
+          #if defined(INSERT) && !defined(RECURSIVE)
+                    if (nIncr > 0)
+                    {
+                        DBGX(printf(
+                          "BitmapWordNum %"_fw"d BitmapWordMask "OWx"\n",
+                           BitmapWordNum(wKey), BitmapWordMask(wKey)));
+                        DBGX(printf("Bit is set!\n"));
+                        goto undo; // undo counting 
+                    }
+          #endif // defined(INSERT) && !defined(RECURSIVE)
+                    return KeyFound;
+                }
+
+                DBGX(printf("Bit is not set.\n"));
+            }
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
         }
   #if defined(SKIP_LINKS)
