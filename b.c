@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.232 2014/06/10 14:44:51 mike Exp $
+// @(#) $Id: b.c,v 1.236 2014/06/10 16:02:17 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1969,7 +1969,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 Status_t
 RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 {
+#if (cwListPopCntMax != 0)
     Word_t *pwr = wr_pwr(wRoot);
+#endif // (cwListPopCntMax != 0)
 
     DBGR(printf("RemoveGuts\n"));
 
@@ -1992,6 +1994,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #else // (cnBitsAtBottom <= cnLogBitsPerWord)
 
         ClrBit(pwr, wKey & ((EXP(cnBitsAtBottom)) - 1UL));
+
 #if defined(PP_IN_LINK)
         if (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == 0)
         {
