@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.209 2014/06/12 02:19:33 mike Exp mike $
+// @(#) $Id: bli.c,v 1.210 2014/06/12 19:45:51 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -823,12 +823,13 @@ t_bitmap:
             if (nDL_to_nBL_NAT(nDigitsLeft) <= cnLogBitsPerWord)
           #endif // defined(BITMAP_ANYWHERE)
             {
-                DBGX(printf("BitIsSetInWord(wRoot "OWx" wKey "OWx")\n",
-                            wRoot,
-                            wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)));
-
+          #if defined(BITMAP_ANYWHERE)
                 if (BitIsSetInWord(wRoot,
                         wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)))
+          #else // defined(BITMAP_ANYWHERE)
+                if (BitIsSetInWord(wRoot,
+                        wKey & (EXP(cnBitsAtBottom) - 1UL)))
+          #endif // defined(BITMAP_ANYWHERE)
                 {
           #if defined(REMOVE)
                     RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
@@ -843,19 +844,20 @@ t_bitmap:
                     return KeyFound;
                 }
 
-                DBGX(printf("! BitIsSetInWord\n"));
+                DBGX(printf("Bit is not set.\n"));
             }
           #if defined(BITMAP_ANYWHERE)
             else
           #endif // defined(BITMAP_ANYWHERE)
-      #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
+      #else // (cnBitsAtBottom <= cnLogBitsPerWord)
             {
-                DBGX(printf(
-                    "Evaluating BitIsSet(wRoot "OWx" wKey "OWx") ...\n",
-                    wRoot, wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)));
-
+          #if defined(BITMAP_ANYWHERE)
                 if (BitIsSet(wr_pwr(wRoot),
                         wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)))
+          #else // defined(BITMAP_ANYWHERE)
+                if (BitIsSet(wr_pwr(wRoot),
+                        wKey & (EXP(cnBitsAtBottom) - 1UL)))
+          #endif // defined(BITMAP_ANYWHERE)
                 {
           #if defined(REMOVE)
                     RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
@@ -876,6 +878,7 @@ t_bitmap:
 
                 DBGX(printf("Bit is not set.\n"));
             }
+      #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
         }
   #if defined(SKIP_LINKS)
