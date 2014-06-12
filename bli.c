@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.207 2014/06/11 22:12:09 mike Exp mike $
+// @(#) $Id: bli.c,v 1.208 2014/06/11 22:51:01 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -735,7 +735,9 @@ notEmpty:;
 
     case T_BITMAP:
     {
+#if (cnBitsAtBottom <= cnLogBitsPerWord)
 t_bitmap:
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
         // This case has been enhanced to handle a bitmap at any level.
         // It used to assume we were at nDigitsLeft == 1.  And before we
         // had cnBitsAtBottom it assumed we were at
