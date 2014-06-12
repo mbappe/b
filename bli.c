@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.210 2014/06/12 19:45:51 mike Exp mike $
+// @(#) $Id: bli.c,v 1.211 2014/06/12 22:51:09 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -531,46 +531,37 @@ notEmpty:;
           #endif // defined(PP_IN_LINK)
       #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
           #if defined(COMPRESSED_LISTS)
-            switch ( LOG(nBitsLeft - 1) - 2 )
+              #if defined(T_LIST_SWITCH_STMT)
+            switch ( LOG(nBitsLeft - 1) - 3 )
+              #endif // defined(T_LIST_SWITCH_STMT)
             {
-              #if (cnBitsAtBottom < 8)
+              #if ((cnBitsAtBottom + cnBitsPerDigit) <= 16)
+                  #if defined(T_LIST_SWITCH_STMT)
             case 0:
-            {
-                unsigned char cKeyLoop;
-                unsigned char cKey = wKey;
-                unsigned char *pcKeys = pwr_pcKeys(pwr);
-                  #if defined(SORT_LISTS)
-                if ((cKeyLoop = pcKeys[wPopCnt - 1]) > cKey)
-                {
-                    while ((cKeyLoop = *pcKeys++) < cKey);
-                }
-                  #else // defined(SORT_LISTS)
-                unsigned char *pcKeysEnd = &pcKeys[wPopCnt];
-                while (cKeyLoop = *pcKeys, pcKeys++ < pcKeysEnd)
-                  #endif // defined(SORT_LISTS)
-                {
-                    if (cKeyLoop == cKey)
-                    {
-                  #if defined(REMOVE)
-                        RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
-                        goto cleanup;
-                  #endif // defined(REMOVE)
-                  #if defined(INSERT) && !defined(RECURSIVE)
-                        if (nIncr > 0) { goto undo; } // undo counting
-                  #endif // defined(INSERT) && !defined(RECURSIVE)
-                        return KeyFound;
-                    }
-                }
-                break;
-            }
-              #endif // (cnBitsAtBottom < 8)
-              #if (cnBitsAtBottom < 16)
-            case 1:
+                  #else // defined(T_LIST_SWITCH_STMT)
+            if (nBitsLeft <= 16)
+                  #endif // defined(T_LIST_SWITCH_STMT)
             {
                 unsigned short sKeyLoop;
                 unsigned short sKey = wKey;
                 unsigned short *psKeys = pwr_psKeys(pwr);
                   #if defined(SORT_LISTS)
+                      #if defined(SPLIT_SEARCH)
+                          #if defined(SPLIT_SEARCH_LOOP)
+                while
+                          #else // defined(SPLIT_SEARCH_LOOP)
+                if
+                          #endif // defined(SPLIT_SEARCH_LOOP)
+                   (wPopCnt >= cnSplitSearchThresholdShort)
+                {
+                    if (psKeys[wPopCnt / 2] <= sKey) {
+                        psKeys = &psKeys[wPopCnt / 2];
+                        wPopCnt -= wPopCnt / 2;
+                    } else {
+                        wPopCnt /= 2;
+                    }
+                }
+                      #endif // defined(SPLIT_SEARCH)
                 if ((sKeyLoop = psKeys[wPopCnt - 1]) > sKey)
                 {
                     while ((sKeyLoop = *psKeys++) < sKey);
@@ -592,11 +583,21 @@ notEmpty:;
                         return KeyFound;
                     }
                 }
+                  #if defined(T_LIST_SWITCH_STMT)
                 break;
+                  #endif // defined(T_LIST_SWITCH_STMT)
             }
-              #endif // (cnBitsAtBottom < 16)
-              #if (cnBitsAtBottom < 32) && (cnBitsPerWord > 32)
-            case 2:
+                  #if ! defined(T_LIST_SWITCH_STMT)
+            else
+                  #endif // ! defined(T_LIST_SWITCH_STMT)
+              #endif // ((cnBitsAtBottom + cnBitsPerDigit) <= 16)
+              #if ((cnBitsAtBottom + cnBitsPerDigit) <= 32) \
+                      && (cnBitsPerWord > 32)
+                  #if defined(T_LIST_SWITCH_STMT)
+            case 1:
+                  #else // defined(T_LIST_SWITCH_STMT)
+            if (nBitsLeft <= 32)
+                  #endif // defined(T_LIST_SWITCH_STMT)
             {
                 // Looks like we might want a linear search of 32-bit
                 // keys up to a population nearing 128.
@@ -610,20 +611,17 @@ notEmpty:;
                 unsigned int *piKeys = pwr_piKeys(pwr);
                   #if defined(SORT_LISTS)
                       #if defined(SPLIT_SEARCH)
-                      #if defined(SPLIT_SEARCH_LOOP)
+                          #if defined(SPLIT_SEARCH_LOOP)
                 while
-                      #else // defined(SPLIT_SEARCH_LOOP)
+                          #else // defined(SPLIT_SEARCH_LOOP)
                 if
-                      #endif // defined(SPLIT_SEARCH_LOOP)
+                          #endif // defined(SPLIT_SEARCH_LOOP)
                    (wPopCnt >= cnSplitSearchThresholdInt)
                 {
-                    if (piKeys[wPopCnt / 2] <= iKey)
-                    {
+                    if (piKeys[wPopCnt / 2] <= iKey) {
                         piKeys = &piKeys[wPopCnt / 2];
                         wPopCnt -= wPopCnt / 2;
-                    }
-                    else
-                    {
+                    } else {
                         wPopCnt /= 2;
                     }
                 }
@@ -649,10 +647,17 @@ notEmpty:;
                         return KeyFound;
                     }
                 }
+                  #if defined(T_LIST_SWITCH_STMT)
                 break;
+                  #endif // defined(T_LIST_SWITCH_STMT)
             }
-              #endif // (cnBitsAtBottom < 32) && (cnBitsPerWord > 32)
+                  #if ! defined(T_LIST_SWITCH_STMT)
+            else
+                  #endif // ! defined(T_LIST_SWITCH_STMT)
+              #endif // ((cnBitsAtBottom + cnBitsPerDigit) <= 32) && ...
+                  #if defined(T_LIST_SWITCH_STMT)
             default:
+                  #endif // defined(T_LIST_SWITCH_STMT)
             {
           #endif // defined(COMPRESSED_LISTS)
                 // Looks like we might want a loop threshold of 8 for
@@ -665,20 +670,17 @@ notEmpty:;
                 Word_t *pwKeys = pwr_pwKeys(pwr);
           #if defined(SORT_LISTS)
               #if defined(SPLIT_SEARCH)
-              #if defined(SPLIT_SEARCH_LOOP)
+                  #if defined(SPLIT_SEARCH_LOOP)
                 while
-              #else // defined(SPLIT_SEARCH_LOOP)
+                  #else // defined(SPLIT_SEARCH_LOOP)
                 if
-              #endif // defined(SPLIT_SEARCH_LOOP)
+                  #endif // defined(SPLIT_SEARCH_LOOP)
                    (wPopCnt >= cnSplitSearchThresholdWord)
                 {
-                    if (pwKeys[wPopCnt / 2] <= wKey)
-                    {
+                    if (pwKeys[wPopCnt / 2] <= wKey) {
                         pwKeys = &pwKeys[wPopCnt / 2];
                         wPopCnt -= wPopCnt / 2;
-                    }
-                    else
-                    {
+                    } else {
                         wPopCnt /= 2;
                     }
                 }

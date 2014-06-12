@@ -60,6 +60,10 @@
 #if ! defined(cnSplitSearchThresholdInt)
 #define cnSplitSearchThresholdInt  32
 #endif // ! defined(cnSplitSearchThresholdInt)
+// Default is cnSplitSearchThresholdShort = 32.
+#if ! defined(cnSplitSearchThresholdShort)
+#define cnSplitSearchThresholdShort  32
+#endif // ! defined(cnSplitSearchThresholdShort)
 #undef  SORT_LISTS
 #define SORT_LISTS
 #endif // defined(SPLIT_SEARCH)
