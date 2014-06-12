@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.208 2014/06/11 22:51:01 mike Exp mike $
+// @(#) $Id: bli.c,v 1.209 2014/06/12 02:19:33 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -423,7 +423,7 @@ notEmpty:;
         DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMask(nDigitsLeft)));
 
   #if defined(REMOVE)
-        if (bCleanup) { return Success; }
+        if (bCleanup) { return Success; } // cleanup is complete
   #endif // defined(REMOVE)
 
   #if defined(PP_IN_LINK)
@@ -738,6 +738,7 @@ notEmpty:;
 #if (cnBitsAtBottom <= cnLogBitsPerWord)
 t_bitmap:
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
+
         // This case has been enhanced to handle a bitmap at any level.
         // It used to assume we were at nDigitsLeft == 1.  And before we
         // had cnBitsAtBottom it assumed we were at
@@ -746,25 +747,15 @@ t_bitmap:
         // we can't use the whole wRoot as an embedded bitmap.
         // There is an ugly workaround.  Jump directly here when
         // nDigitsLeft becomes one rather than jumping to "again".
-#if !defined(LOOKUP)
-  #if defined(REMOVE)
-        if (bCleanup)
-        {
-            // RemoveGuts already removed the bitmap if necessary.
-            return KeyFound;
-        }
-  #endif // defined(REMOVE)
-  #if defined(PP_IN_LINK)
-        DBGX(printf("Bitmap nDigitsLeft %d\n", nDigitsLeft));
+
+#if defined(REMOVE)
+        if (bCleanup) { return KeyFound; } // cleanup is complete
+#endif // defined(REMOVE)
+
+#if ! defined(LOOKUP) && defined(PP_IN_LINK)
         wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
-        DBGX(printf("wPopCnt (before incr) %zd\n", (size_t)wPopCnt));
-        DBGX(printf("wKeyPopMask "OWx"\n",
-             wPrefixPopMask(nDigitsLeft)));
         set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
-        DBGX(printf("wPopCnt %zd\n",
-             (size_t)PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
-  #endif // defined(PP_IN_LINK)
-#endif // !defined(LOOKUP)
+#endif // !defined(LOOKUP) && defined(PP_IN_LINK)
 
 #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
         return KeyFound;
@@ -798,11 +789,19 @@ t_bitmap:
             || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft) ^ wKey))
                 // The +1 is necessary because the pwrPrev
                 // prefix does not contain any less significant bits.
-              #if defined(PP_IN_LINK)
+              #if defined(BITMAP_ANYWHERE)
+                  #if defined(PP_IN_LINK)
                 < nDL_to_nBL_NAT(nDigitsLeft    )
-              #else // defined(PP_IN_LINK)
+                  #else // defined(PP_IN_LINK)
                 < nDL_to_nBL_NAT(nDigitsLeft + 1)
-              #endif // defined(PP_IN_LINK)
+                  #endif // defined(PP_IN_LINK)
+              #else // defined(BITMAP_ANYWHERE)
+                  #if defined(PP_IN_LINK)
+                < (cnBitsAtBottom                 )
+                  #else // defined(PP_IN_LINK)
+                < (cnBitsAtBottom + cnBitsPerDigit)
+                  #endif // defined(PP_IN_LINK)
+              #endif // defined(BITMAP_ANYWHERE)
                                   )
           #endif // defined(SAVE_PREFIX)
             )
@@ -820,7 +819,9 @@ t_bitmap:
             return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
       #if (cnBitsAtBottom <= cnLogBitsPerWord)
+          #if defined(BITMAP_ANYWHERE)
             if (nDL_to_nBL_NAT(nDigitsLeft) <= cnLogBitsPerWord)
+          #endif // defined(BITMAP_ANYWHERE)
             {
                 DBGX(printf("BitIsSetInWord(wRoot "OWx" wKey "OWx")\n",
                             wRoot,
@@ -844,7 +845,9 @@ t_bitmap:
 
                 DBGX(printf("! BitIsSetInWord\n"));
             }
+          #if defined(BITMAP_ANYWHERE)
             else
+          #endif // defined(BITMAP_ANYWHERE)
       #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
             {
                 DBGX(printf(
