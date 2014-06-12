@@ -5,7 +5,7 @@
 #        forx b
 #        forx
 
-quit()
+function quit
 {
     echo "#######################################################"
     if [ "$1" = 1 ]
@@ -20,85 +20,22 @@ quit()
     exit $1
 }
 
-status=0
-
-for pack in packy # packn
-do
-for deref in dr # nodr nolsdr nobmdr nolssearch nobmsearch
-do
-for bm in bmn bms # bml
-do
-for pp in pps ppl
-do
-for bab in 10 0e # 32 08
-do
-for bits in 64 32
-do
-for lsmax in ff 7f # 00
-do
-for bpd in 08 10 06 # 20 04
-do
-for type in tpr tpa
-do
-for table in tbn tby
-do
-for cc in ccc gcc # icc
-do
-for sort in sorty # sortn
-do
-for search in srl # srs srx
-do
-# if we don't include 20 then we won't get numbers for srx
-for srti in 20 10
-do
-# if we don't include 08 then we won't get numbers for srx
-for srtw in 08 10
-do
-for skip in skipy skipv skipz skipl skipd skipn # skipu skipx
-do
+function doit
+{
     date
 
-    # Fancy searches only work with sorted lists.
-    if [ $sort != sorty -a $search != srx ]
+    if [ $bma = bmay ]
     then
-        continue
+        BMA=-DBITMAP_ANYWHERE
+    else
+        BMA=-UBITMAP_ANYWHERE
     fi
 
-    # srt only makes sense for (srl || srs)
-    if [ $search = srx -a $srti != 20 ]
+    if [ $tlss = tlssy ]
     then
-        continue
-    fi
-
-    # srt only makes sense for (srl || srs)
-    if [ $search = srx -a $srtw != 8 ]
-    then
-        continue
-    fi
-
-    # don't bother testing so many combinations
-    if [ $srtw != 08 -a $srti != 20 ]
-    then
-        continue
-    fi
-
-    # A large cnBitsPerDigit (think 17 for 32-bit) combined with a large
-    # BM_IN_LINK can give a too large switch.
-    # Also, don't waste time with large bitmap switches at all.
-    if [ $((0x$bpd)) -gt 8 -a $bm = bmln ]
-    then
-        continue
-    fi
-
-    if [ $((0x$bpd)) -gt 10 -a $bm = bms ]
-    then
-        continue
-    fi
-
-    # Don't waste time testing skip links and 32-bit.
-    if [ $bits = 32 -a $skip != skipn ]
-    then
-        continue
+        TLSS=-DT_LIST_SWITCH_STMT
+    else
+        TLSS=-UT_LIST_SWITCH_STMT
     fi
 
     if [ $table = tby ]
@@ -317,7 +254,96 @@ do
             fi
         fi
     fi
+}
 
+status=0
+
+for pack in packy # packn
+do
+for deref in dr # nodr nolsdr nobmdr nolssearch nobmsearch
+do
+for bm in bmn bms # bml
+do
+for pp in pps ppl
+do
+for lsmax in ff 7f # 00
+do
+for type in tpr tpa
+do
+for table in tbn tby
+do
+for cc in ccc gcc # icc
+do
+for sort in sorty # sortn
+do
+for search in srl # srs srx
+do
+# if we don't include 20 then we won't get numbers for srx
+for srti in 20 10
+do
+# if we don't include 08 then we won't get numbers for srx
+for srtw in 08 10
+do
+for bab in 06 10 0e # 32 08
+do
+for bpd in 08 10 06 # 20 04
+do
+for bits in 64 32
+do
+for skip in skipy skipv skipz skipl skipd skipn # skipu skipx
+do
+for bma in bmay bman
+do
+for tlss in tlssy tlssn
+do
+    # Fancy searches only work with sorted lists.
+    if [ $sort != sorty -a $search != srx ]
+    then
+        continue
+    fi
+
+    # srt only makes sense for (srl || srs)
+    if [ $search = srx -a $srti != 20 ]
+    then
+        continue
+    fi
+
+    # srt only makes sense for (srl || srs)
+    if [ $search = srx -a $srtw != 8 ]
+    then
+        continue
+    fi
+
+    # don't bother testing so many combinations
+    if [ $srtw != 08 -a $srti != 20 ]
+    then
+        continue
+    fi
+
+    # A large cnBitsPerDigit (think 17 for 32-bit) combined with a large
+    # BM_IN_LINK can give a too large switch.
+    # Also, don't waste time with large bitmap switches at all.
+    if [ $((0x$bpd)) -gt 8 -a $bm = bmln ]
+    then
+        continue
+    fi
+
+    if [ $((0x$bpd)) -gt 10 -a $bm = bms ]
+    then
+        continue
+    fi
+
+    # Don't waste time testing skip links and 32-bit.
+    if [ $bits = 32 -a $skip != skipn ]
+    then
+        continue
+    fi
+
+    echo doit $*
+    doit $*
+
+done # tlss; T_LIST_SWITCH_STATEMENT
+done # bma; BITMAP_ANYWHRE
 done # srtw
 done # srti
 done # search
