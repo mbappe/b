@@ -24,6 +24,13 @@ function doit
 {
     date
 
+    if [ $pl = ply ]
+    then
+        PL=-DPLACE_LISTS
+    else
+        PL=-UPLACE_LISTS
+    fi
+
     if [ $bma = bmay ]
     then
         BMA=-DBITMAP_ANYWHERE
@@ -78,6 +85,9 @@ function doit
     then
         SEARCH=-DSPLIT_SEARCH_LOOP
     elif [ $search = srs ]
+    then
+        SEARCH="-DSPLIT_SEARCH -DBINARY_SEARCH"
+    elif [ $search = srp ]
     then
         SEARCH=-DSPLIT_SEARCH
     elif [ $search = srx ]
@@ -165,11 +175,16 @@ function doit
     fi
 
     DEFS="-DRAM_METRICS -USEARCH_METRICS -DJUDYA"
-    DEFS="$DEFS $PP $BM $SKIP $TYPE $TABLE"
+    DEFS="$DEFS $PP $BM $SKIP $TYPE $TABLE $BMA $TLSS"
     DEFS="$DEFS -DcnBitsPerDigit=0x$bpd -DcnBitsAtBottom=0x$bab"
-    DEFS="$DEFS $LSMAX $SORT $PACK $SEARCH $DR"
+    DEFS="$DEFS $LSMAX $PL $SORT $PACK $SEARCH $DR"
     DEFS="$DEFS -DcnSplitSearchThresholdWord=0x$srtw"
     DEFS="$DEFS -DcnSplitSearchThresholdInt=0x$srti"
+    DEFS="$DEFS -DcnSplitSearchThresholdShort=0x$srts"
+    # Use CLI_DEFS environment variable to pass things in.
+    DEFS="$DEFS $CLI_DEFS"
+
+    echo DEFS=\"$DEFS\"
 
     if [ $cc = ccc ]
     then
@@ -180,7 +195,7 @@ function doit
 
     echo "#######################################################"
     tag=$bits-$skip-$pp-$bm-bpd$bpd-bab$bab-$type-$table-ls$lsmax-$search
-    tag=$tag-$sort-srti$srti-srtw$srtw-$pack-$cc
+    tag=$tag-$pl-$sort-srts$srts-srti$srti-srtw$srtw-$pack-$bma-$tlss-$cc
     echo $tag
 
     if [ "$1" = make ]
@@ -246,8 +261,15 @@ function doit
             echo "#######################################################"
             echo mv b b-$tag
                  mv b b-$tag
-            echo b-$tag -1m -n5000000 | tee b-$tag.plot
-                 b-$tag -1m -n5000000 | tee b-$tag.plot
+            if [ $((0x$bab)) -lt $((0x10)) ]
+            then
+                echo b-$tag -1m -n400000000 | tee b-$tag.plot
+                     b-$tag -1m -n400000000 | tee b-$tag.plot
+            else
+                echo b-$tag -1m -n5000000 | tee b-$tag.plot
+                     b-$tag -1m -n5000000 | tee b-$tag.plot
+            fi
+
             if [ $? != 0 ]
             then
                 status=1
@@ -276,7 +298,10 @@ for cc in ccc gcc # icc
 do
 for sort in sorty # sortn
 do
-for search in srl # srs srx
+for search in srp srl srx srs
+do
+# if we don't include 40 then we won't get numbers for srx
+for srts in 40
 do
 # if we don't include 20 then we won't get numbers for srx
 for srti in 20 10
@@ -296,8 +321,22 @@ for bma in bmay bman
 do
 for tlss in tlssy tlssn
 do
+for pl in ply pln
+do
+    if [ $pl = ply ]
+    then
+        PL=-DPLACE_LISTS
+    else
+        PL=-DPLACE_LISTS
+    fi
     # Fancy searches only work with sorted lists.
     if [ $sort != sorty -a $search != srx ]
+    then
+        continue
+    fi
+
+    # srt only makes sense for (srl || srs)
+    if [ $search = srx -a $srts != 40 ]
     then
         continue
     fi
@@ -309,13 +348,13 @@ do
     fi
 
     # srt only makes sense for (srl || srs)
-    if [ $search = srx -a $srtw != 8 ]
+    if [ $search = srx -a $srtw != 08 ]
     then
         continue
     fi
 
     # don't bother testing so many combinations
-    if [ $srtw != 08 -a $srti != 20 ]
+    if [ $srtw != 08 -a $srti != 20 -a $srts != 40 ]
     then
         continue
     fi
@@ -342,10 +381,12 @@ do
     echo doit $*
     doit $*
 
+done
 done # tlss; T_LIST_SWITCH_STATEMENT
 done # bma; BITMAP_ANYWHRE
 done # srtw
 done # srti
+done # srts
 done # search
 done # table
 done # bab
