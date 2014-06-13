@@ -49,8 +49,6 @@
 #if defined(SPLIT_SEARCH_LOOP)
 #undef  SPLIT_SEARCH
 #define SPLIT_SEARCH
-#undef  BINARY_SEARCH
-#define BINARY_SEARCH
 #endif // defined(SPLIT_SEARCH_LOOP)
 
 #if defined(SPLIT_SEARCH)
