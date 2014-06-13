@@ -25,7 +25,7 @@ endif
 # B_DEFINES += -UBM_SWITCH -UBM_SWITCH_FOR_REAL -UBM_IN_LINK
 # B_DEFINES += -UPP_IN_LINK
 # B_DEFINES += -UDL_IN_LL
-# B_DEFINES += -DRAM_METRICS
+# B_DEFINES += -DRAMMETRICS
 # B_DEFINES += -USEARCH_METRICS
 # LOOKUP_NO_BITMAP_SEARCH means return just before the list is searched, i.e.
 # after dereferencing the the first word of the list leaf.
