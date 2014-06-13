@@ -83,16 +83,24 @@ function doit
 
     if [ $search = srl ]
     then
+        # Binary loop.
         SEARCH=-DSPLIT_SEARCH_LOOP
     elif [ $search = srs ]
     then
+        # Binary split once.
         SEARCH="-DSPLIT_SEARCH -DBINARY_SEARCH"
     elif [ $search = srp ]
     then
+        # Proportional split once.
         SEARCH=-DSPLIT_SEARCH
     elif [ $search = srx ]
     then
+        # Linear search with last element check.
         SEARCH="-DNO_SPLIT_SEARCH"
+    elif [ $search = srr ]
+    then
+        # Linear search with no last element check.
+        SEARCH=-DLINEAR_SEARCH
     else
         echo Invalid search $search.
         exit 1
@@ -263,8 +271,8 @@ function doit
                  mv b b-$tag
             if [ $((0x$bab)) -lt $((0x10)) ]
             then
-                echo b-$tag -1m -n400000000 | tee b-$tag.plot
-                     b-$tag -1m -n400000000 | tee b-$tag.plot
+                echo b-$tag -1m -n40000000 | tee b-$tag.plot
+                     b-$tag -1m -n40000000 | tee b-$tag.plot
             else
                 echo b-$tag -1m -n5000000 | tee b-$tag.plot
                      b-$tag -1m -n5000000 | tee b-$tag.plot
@@ -284,44 +292,44 @@ for pack in packy # packn
 do
 for deref in dr # nodr nolsdr nobmdr nolssearch nobmsearch
 do
-for bm in bmn bms # bml
+for bm in bmn # bms # bml
 do
-for pp in pps ppl
+for pp in pps # ppl
 do
-for lsmax in ff 7f # 00
+for lsmax in 7f # ff # 00
 do
-for type in tpr tpa
+for type in tpr # tpa
 do
-for table in tbn tby
+for table in tbn # tby
 do
-for cc in ccc gcc # icc
+for cc in ccc # gcc # icc
 do
 for sort in sorty # sortn
 do
-for search in srp srl srx srs
+for search in srr srx srp srl srs
 do
 # if we don't include 40 then we won't get numbers for srx
 for srts in 40
 do
 # if we don't include 20 then we won't get numbers for srx
-for srti in 20 10
+for srti in 20 # 10
 do
 # if we don't include 08 then we won't get numbers for srx
-for srtw in 08 10
+for srtw in 08 # 10
 do
-for bab in 06 10 0e # 32 08
+for bab in 06 10 # 0e # 32 08
 do
-for bpd in 08 10 06 # 20 04
+for bpd in 08 # 10 06 # 20 04
 do
 for bits in 64 32
 do
-for skip in skipy skipv skipz skipl skipd skipn # skipu skipx
+for skip in skipy # skipv skipz skipl skipd skipn # skipu skipx
 do
 for bma in bmay bman
 do
 for tlss in tlssy tlssn
 do
-for pl in ply pln
+for pl in ply # pln
 do
     if [ $pl = ply ]
     then
