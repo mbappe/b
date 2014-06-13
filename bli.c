@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.213 2014/06/13 12:55:55 mike Exp mike $
+// @(#) $Id: bli.c,v 1.214 2014/06/13 14:12:44 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -866,7 +866,8 @@ t_bitmap:
           #if defined(BITMAP_ANYWHERE)
             else
           #endif // defined(BITMAP_ANYWHERE)
-      #else // (cnBitsAtBottom <= cnLogBitsPerWord)
+      #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
+      #if (cnBitsAtBottom > cnLogBitsPerWord) || defined(BITMAP_ANYWHERE)
             {
           #if defined(BITMAP_ANYWHERE)
                 if (BitIsSet(wr_pwr(wRoot),
@@ -895,7 +896,7 @@ t_bitmap:
 
                 DBGX(printf("Bit is not set.\n"));
             }
-      #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
+      #endif // (cnBitsAtBottom > cnLogBitsPerWord) || defined(BITMAP_ANYWHERE)
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
         }
   #if defined(SKIP_LINKS)
