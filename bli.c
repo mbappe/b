@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.211 2014/06/12 22:51:09 mike Exp mike $
+// @(#) $Id: bli.c,v 1.212 2014/06/12 23:13:52 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -546,7 +546,8 @@ notEmpty:;
                 unsigned short sKey = wKey;
                 unsigned short *psKeys = pwr_psKeys(pwr);
                   #if defined(SORT_LISTS)
-                      #if defined(SPLIT_SEARCH)
+                      #if defined(SPLIT_SEARCH) \
+                              && (cnSplitSearchThresholdShort > 1)
                           #if defined(SPLIT_SEARCH_LOOP)
                 while
                           #else // defined(SPLIT_SEARCH_LOOP)
@@ -554,14 +555,24 @@ notEmpty:;
                           #endif // defined(SPLIT_SEARCH_LOOP)
                    (wPopCnt >= cnSplitSearchThresholdShort)
                 {
-                    if (psKeys[wPopCnt / 2] <= sKey) {
-                        psKeys = &psKeys[wPopCnt / 2];
-                        wPopCnt -= wPopCnt / 2;
+                    // pick a starting point
+                          #if defined(BINARY_SEARCH)
+                    unsigned nSplit = wPopCnt / 2;
+                          #else // defined(BINARY_SEARCH)
+                    unsigned nSplit
+                        = wKey % EXP(nBitsLeft) * wPopCnt / EXP(nBitsLeft);
+                          #endif // defined(BINARY_SEARCH)
+                    if (psKeys[nSplit] <= sKey) {
+                        psKeys = &psKeys[nSplit];
+                        wPopCnt -= nSplit;
+// Shouldn't we go backwards if we exit the loop after this step?
+// It might be very important.
+// What about cache line alignment?
                     } else {
-                        wPopCnt /= 2;
+                        wPopCnt = nSplit;
                     }
                 }
-                      #endif // defined(SPLIT_SEARCH)
+                      #endif // defined(SPLIT_SEARCH) && ...
                 if ((sKeyLoop = psKeys[wPopCnt - 1]) > sKey)
                 {
                     while ((sKeyLoop = *psKeys++) < sKey);
