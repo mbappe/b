@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.214 2014/06/13 14:12:44 mike Exp mike $
+// @(#) $Id: bli.c,v 1.215 2014/06/13 18:28:32 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -546,6 +546,19 @@ notEmpty:;
                 unsigned short sKey = wKey;
                 unsigned short *psKeys = pwr_psKeys(pwr);
                   #if defined(SORT_LISTS)
+                    #if defined(LINEAR_SEARCH)
+                sKeyLoop = *psKeys;
+                if (wPopCnt != 1)
+                {
+                    unsigned short *psLastKey = &psKeys[wPopCnt-1];
+                    while (sKeyLoop < sKey) {
+                        sKeyLoop = *++psKeys;
+                        if (psKeys == psLastKey) {
+                            break;
+                        }
+                    }
+                }
+                    #else // defined(LINEAR_SEARCH)
                       #if defined(SPLIT_SEARCH) \
                               && (cnSplitSearchThresholdShort > 1)
                           #if defined(SPLIT_SEARCH_LOOP)
@@ -574,13 +587,19 @@ notEmpty:;
 // What about cache line alignment?
                     } else {
                         wPopCnt = nSplit;
+                        goto loop;
                     }
                 }
                       #endif // defined(SPLIT_SEARCH) && ...
                 if ((sKeyLoop = psKeys[wPopCnt - 1]) > sKey)
                 {
+                      #if defined(SPLIT_SEARCH) \
+                              && (cnSplitSearchThresholdShort > 1)
+loop:
+                      #endif // defined(SPLIT_SEARCH) && ...
                     while ((sKeyLoop = *psKeys++) < sKey);
                 }
+                    #endif // defined(LINEAR_SEARCH)
                   #else // defined(SORT_LISTS)
                 unsigned short *psKeysEnd = &psKeys[wPopCnt];
                 while (sKeyLoop = *psKeys, psKeys++ < psKeysEnd)
