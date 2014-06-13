@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.212 2014/06/12 23:13:52 mike Exp mike $
+// @(#) $Id: bli.c,v 1.213 2014/06/13 12:55:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -555,17 +555,21 @@ notEmpty:;
                           #endif // defined(SPLIT_SEARCH_LOOP)
                    (wPopCnt >= cnSplitSearchThresholdShort)
                 {
+// To do: Try to minimize the number of cache lines we hit.
+// If ! PP_IN_LINK then we already hit the first one to get the pop count.
+// Let's try aligning these lists.
                     // pick a starting point
-                          #if defined(BINARY_SEARCH)
+                          #if defined(BINARY_SEARCH) \
+                              || defined(SPLIT_SEARCH_LOOP)
                     unsigned nSplit = wPopCnt / 2;
-                          #else // defined(BINARY_SEARCH)
+                          #else // defined(BINARY_SEARCH) || ...
                     unsigned nSplit
                         = wKey % EXP(nBitsLeft) * wPopCnt / EXP(nBitsLeft);
-                          #endif // defined(BINARY_SEARCH)
+                          #endif // defined(BINARY_SEARCH) || ...
                     if (psKeys[nSplit] <= sKey) {
                         psKeys = &psKeys[nSplit];
                         wPopCnt -= nSplit;
-// Shouldn't we go backwards if we exit the loop after this step?
+// To do: Shouldn't we go backwards if we exit the loop after this step?
 // It might be very important.
 // What about cache line alignment?
                     } else {
