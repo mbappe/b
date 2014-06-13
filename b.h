@@ -73,10 +73,10 @@
 #define COMPRESSED_LISTS
 #endif // ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
 
-// Default is -DRAM_METRICS.
-#if ! defined(RAM_METRICS) && ! defined(NO_RAM_METRICS)
-#define RAM_METRICS
-#endif // ! defined(RAM_METRICS) && ! defined(RAM_METRICS)
+// Default is -DRAMMETRICS.
+#if ! defined(RAMMETRICS) && ! defined(NO_RAMMETRICS)
+#define RAMMETRICS
+#endif // ! defined(RAMMETRICS) && ! defined(RAMMETRICS)
 
 // Default is -DJUDYA -UJUDYB.
 #if ! defined(JUDYA) && ! defined(JUDYB)
@@ -122,7 +122,7 @@
 
 // Choose features.
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
-// -UNDEBUG, RAM_METRICS, GUARDBAND
+// -UNDEBUG, RAMMETRICS, GUARDBAND
 
 // To do:
 //
@@ -289,11 +289,11 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 // this one is not used in the lookup performance path
 #define nBL_to_nDL_NotAtTop(_nBL)  nBL_to_nDL(_nBL)
 
-#if defined RAM_METRICS
+#if defined RAMMETRICS
 #define METRICS(x)  (x)
-#else // defined RAM_METRICS
+#else // defined RAMMETRICS
 #define METRICS(x)
-#endif // defined RAM_METRICS
+#endif // defined RAMMETRICS
 
 // Default is -USEARCH_METRICS.
 #if defined SEARCH_METRICS

@@ -1,10 +1,10 @@
 
-// @(#) $Id: b.c,v 1.236 2014/06/10 16:02:17 mike Exp mike $
+// @(#) $Id: b.c,v 1.237 2014/06/12 23:13:41 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
 
-#if defined(RAM_METRICS)
+#if defined(RAMMETRICS)
 Word_t j__AllocWordsJBB;  // JUDYA         Branch Bitmap
 Word_t j__AllocWordsJBU;  // JUDYA         Branch Uncompressed
 Word_t j__AllocWordsJLB1; // JUDYA         Leaf Bitmap 1-Byte/Digit
@@ -16,7 +16,7 @@ Word_t j__AllocWordsJBU4; //        JUDYB  Branch Uncompressed 4-bit Digit
 Word_t j__AllocWordsJL12; //        JUDYB  Leaf 12-bit Decode/Key
 Word_t j__AllocWordsJL16; //        JUDYB  Leaf 16-bit Decode/Key
 Word_t j__AllocWordsJL32; //        JUDYB  Leaf 32-bit Decode/Key
-#endif // defined(RAM_METRICS)
+#endif // defined(RAMMETRICS)
 
 // From Judy1LHTime.c for convenience.
 
@@ -259,7 +259,17 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
         METRICS(j__AllocWordsJLLW += nWords); // JUDYA and JUDYB
     }
 
-    Word_t *pwList = (Word_t *)MyMalloc(nWords);
+    Word_t *pwList;
+#if defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
+    // this is overkill since we don't care if lists are aligned;
+    // only that we don't cross a cache line boundary unnecessarily
+    if (nBitsLeft <= 16) {
+        posix_memalign((void **)&pwList, 64, nWords * sizeof(Word_t));
+    } else
+#endif // defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
+    {
+        pwList = (Word_t *)MyMalloc(nWords);
+    }
 
     DBGM(printf("NewList pwList %p wPopCnt "OWx" nWords %d\n",
         (void *)pwList, wPopCnt, nWords));
@@ -329,7 +339,16 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDigitsLeft)
         METRICS(j__AllocWordsJLLW -= nWords); // JUDYA and JUDYB
     }
 
-    MyFree(pwList, nWords);
+#if defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
+    // this is overkill since we don't care if lists are aligned;
+    // only that we don't cross a cache line boundary unnecessarily
+    if (nBitsLeft <= 16) {
+        free(pwList);
+    } else
+#endif // defined(COMPRESSED_LISTS) && defined(ALIGN_LISTS)
+    {
+        MyFree(pwList, nWords);
+    }
 
     return nWords * sizeof(Word_t);
 }
@@ -432,7 +451,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
     ((Switch_t *)pwr)->sw_dummy = 0;
 #endif // defined(DUMMY_IN_SW)
 
-#if defined(RAM_METRICS)
+#if defined(RAMMETRICS)
     if ((cnBitsAtBottom <= cnLogBitsPerWord)
         && (nDigitsLeft <= nBL_to_nDL(cnBitsAtBottom) + 1))
     {
@@ -450,7 +469,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft,
 #endif // defined(BM_SWITCH)
         METRICS(j__AllocWordsJBU4 += wWords); // JUDYB
     }
-#endif // defined(RAM_METRICS)
+#endif // defined(RAMMETRICS)
 
     DBGM(printf("NewSwitch(pwRoot %p wKey "OWx" nDL %d nDLU %d) pwr %p\n",
         (void *)pwRoot, wKey, nDigitsLeft, nDigitsLeftUp, (void *)pwr));
@@ -602,7 +621,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     *pwRoot = MyMalloc(nWords);
     DBGI(printf("After malloc *pwRoot "OWx"\n", *pwRoot));
 
-#if defined(RAM_METRICS)
+#if defined(RAMMETRICS)
     if ((cnBitsAtBottom <= cnLogBitsPerWord)
         && (nDigitsLeft <= nBL_to_nDL(cnBitsAtBottom) + 1))
     {
@@ -620,7 +639,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #endif // defined(BM_SWITCH)
         METRICS(j__AllocWordsJBU4 += sizeof(Link_t)/sizeof(Word_t)); // JUDYB
     }
-#endif // defined(RAM_METRICS)
+#endif // defined(RAMMETRICS)
 
     // Where does the new link go?
     unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDigitsLeft);
@@ -710,7 +729,7 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
     Word_t wWords
         = (sizeof(Switch_t) + (wLinks - 1) * sizeof(Link_t)) / sizeof(Word_t);
 
-#if defined(RAM_METRICS)
+#if defined(RAMMETRICS)
     if ((cnBitsAtBottom <= cnLogBitsPerWord)
         && (nDigitsLeft <= nBL_to_nDL(cnBitsAtBottom) + 1))
     {
@@ -727,7 +746,7 @@ OldSwitch(Word_t *pwRoot, unsigned nDigitsLeft, unsigned nDigitsLeftUp)
 #endif // defined(BM_SWITCH)
         METRICS(j__AllocWordsJBU4 -= wWords); // JUDYB
     }
-#endif // defined(RAM_METRICS)
+#endif // defined(RAMMETRICS)
 
     DBGR(printf("\nOldSwitch nDL %d nDLU %d wWords %"_fw"d "OWx"\n",
          nDigitsLeft, nDigitsLeftUp, wWords, wWords));
