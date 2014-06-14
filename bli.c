@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.222 2014/06/14 13:05:26 mike Exp mike $
+// @(#) $Id: bli.c,v 1.223 2014/06/14 13:27:59 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -730,11 +730,7 @@ t_bitmap:
   #endif // defined(REMOVE)
 
   #if ! defined(LOOKUP) && defined(PP_IN_LINK)
-      #if defined(REMOVE)
         if (nDigitsLeft != cnDigitsPerWord)
-      #else // defined(REMOVE)
-        assert(nDigitsLeft != cnDigitsPerWord);
-      #endif // defined(REMOVE)
         {
             // Adjust pop count in the link on the way in.
             set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft,
@@ -955,11 +951,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     Word_t *pwRoot = (Word_t *)ppvRoot;
     Word_t wRoot = *pwRoot;
     unsigned nType = wr_nType(wRoot);
-    if ((T_LIST == nType)
-#if defined(T_ONE)
-        || (T_ONE == nType)
-#endif // defined(T_ONE)
-        )
+    if (nType == T_LIST)
     {
         if (Judy1Test((Pcvoid_t)wRoot, wKey, PJError) == Success)
         {
@@ -968,12 +960,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         else
         {
             Word_t *pwr = wr_tp_pwr(wRoot, nType);
-
-            Word_t wPopCnt = 
-#if defined(T_ONE)
-                (nType == T_ONE) ? 1 :
-#endif // defined(T_ONE)
-                ls_wPopCnt(pwr);
+            Word_t wPopCnt = ls_wPopCnt(pwr);
 
             if (wPopCnt == cwListPopCntMax)
             {
@@ -990,17 +977,10 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 } else
 #endif // defined(T_ONE)
                 {
-                    ++pwKeysNew; // pop count is in first element at top
-                    set_ls_wPopCnt(pwKeysNew, wPopCnt + 1);
                     set_wr(wRoot, pwListNew, T_LIST);
+                    ++pwKeysNew; // pop count is in first element at top
                 }
-                Word_t *pwKeys = ls_pwKeys(pwr);
-#if defined(T_ONE)
-                if (wPopCnt != 1)
-#endif // defined(T_ONE)
-                {
-                    ++pwKeys; // pop count is in first element at top
-                }
+                Word_t *pwKeys = ls_pwKeys(pwr) + 1;
                 unsigned nn;
                 for (nn = 0; (nn < wPopCnt) && (pwKeys[nn] < wKey); nn++) { }
                 COPY(pwKeysNew, pwKeys, nn);
