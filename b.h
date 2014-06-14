@@ -672,6 +672,8 @@ unsigned ListWords(Word_t wPopCnt, unsigned nDigitsLeft);
 Word_t *NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey);
 Word_t OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDigitsLeft);
 
+Status_t SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt);
+
 #if defined(DEBUG)
 void Dump(Word_t *pwRoot, Word_t wPrefix, unsigned nBL);
 #endif // defined(DEBUG)
