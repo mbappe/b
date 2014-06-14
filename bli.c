@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.226 2014/06/14 16:00:45 mike Exp mike $
+// @(#) $Id: bli.c,v 1.227 2014/06/14 17:28:43 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -90,15 +90,9 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 #endif // !defined(RECURSIVE)
     unsigned nDLR;
     Word_t wPopCnt; (void)wPopCnt;
-    unsigned nType;
 #if defined(REMOVE)
     int bCleanup = 0;
 #endif // defined(REMOVE)
-#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-    Word_t *pwr = pwr; // suppress "uninitialized" compiler warning
-#else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-    Word_t *pwr;
-#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrPrev = pwrPrev; // suppress "uninitialized" compiler warning
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -140,8 +134,8 @@ again:
     DBGX(printf("# wRoot "OWx" wKey "OWx" nDL %d\n",
             wRoot, wKey, nDL));
 
-    nType = wr_nType(wRoot);
-    pwr = wr_tp_pwr(wRoot, nType);
+    unsigned nType = wr_nType(wRoot);
+    Word_t *pwr = wr_tp_pwr(wRoot, nType);
     switch (nType)
     {
     default: // skip link (if -DSKIP_LINKS && -DTYPE_IS_RELATIVE)
