@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.225 2014/06/14 14:24:59 mike Exp mike $
+// @(#) $Id: bli.c,v 1.226 2014/06/14 16:00:45 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -459,7 +459,7 @@ notEmpty:;
         if (nIncr == 1) { ++wPopCnt; }
           #endif // defined(REMOVE)
       #else // defined(PP_IN_LINK)
-        wPopCnt = ls_wPopCnt(wr_tp_pwr(wRoot, nType));
+        wPopCnt = ls_wPopCnt(pwr);
       #endif // defined(PP_IN_LINK)
 
       #if defined(LOOKUP)
