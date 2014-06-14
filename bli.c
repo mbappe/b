@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.217 2014/06/14 03:24:44 mike Exp mike $
+// @(#) $Id: bli.c,v 1.220 2014/06/14 12:31:11 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -730,11 +730,10 @@ t_bitmap:
   #endif // defined(REMOVE)
 
   #if ! defined(LOOKUP) && defined(PP_IN_LINK)
+        assert(nDigitsLeft != cnDigitsPerWord);
         // Adjust pop count in the link on the way in for INSERT and REMOVE.
-        if (nDigitsLeft != cnDigitsPerWord) {
-            set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft,
-                PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) + nIncr);
-        }
+        set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft,
+            PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) + nIncr);
   #endif // ! defined(LOOKUP) && defined(PP_IN_LINK)
 
   #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
@@ -950,7 +949,6 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     Word_t *pwRoot = (Word_t *)ppvRoot;
     Word_t wRoot = *pwRoot;
     unsigned nType = wr_nType(wRoot);
-    Word_t *pwr = wr_tp_pwr(wRoot, nType);
     if (!tp_bIsSwitch(nType))
     {
         if (Judy1Test((Pcvoid_t)wRoot, wKey, PJError) == Success)
@@ -959,6 +957,8 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         }
         else
         {
+            Word_t *pwr = wr_tp_pwr(wRoot, nType);
+
             Word_t wPopCnt
                 = (nType == T_NULL) ? 0
 #if defined(T_ONE)
