@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.227 2014/06/14 17:28:43 mike Exp mike $
+// @(#) $Id: bli.c,v 1.228 2014/06/14 18:26:40 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -96,6 +96,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrPrev = pwrPrev; // suppress "uninitialized" compiler warning
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+    int bPrefixMismatch = 0; (void)bPrefixMismatch;
 
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && defined(SAVE_PREFIX)
   #if defined(PP_IN_LINK)
@@ -183,17 +184,20 @@ again:
           #endif // defined(TYPE_IS_RELATIVE)
       #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
   #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-        if (1
+        bPrefixMismatch = (1
       #if ! defined(TYPE_IS_RELATIVE)
             && (nDLR < nDL)
       #endif // ! defined(TYPE_IS_RELATIVE)
             && (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwr, nDLR) ^ wKey))
-                    >= nDL_to_nBL_NAT(nDLR)))
+                    >= nDL_to_nBL_NAT(nDLR)));
+      #if ! defined(LOOKUP) || ! defined(SAVE_PREFIX_TEST_RESULT)
+        if (bPrefixMismatch)
         {
             DBGX(printf("Mismatch wPrefix "Owx"\n",
                         PWR_wPrefixNAT(pwRoot, pwr, nDLR)));
             break;
         }
+      #endif // ! defined(LOOKUP) || ! defined(SAVE_PREFIX_TEST_RESULT)
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
 #if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
@@ -528,10 +532,15 @@ notEmpty:;
           #if defined(REMOVE)
                 RemoveGuts(pwRoot, wKey, nDL, wRoot); goto cleanup;
           #endif // defined(REMOVE)
-          #if defined(INSERT) && !defined(RECURSIVE)
+          #if defined(INSERT) && ! defined(RECURSIVE)
                 if (nIncr > 0) { goto undo; } // undo counting
-          #endif // defined(INSERT) && !defined(RECURSIVE)
-                return KeyFound;
+          #endif // defined(INSERT) && ! defined(RECURSIVE)
+          #if defined(LOOKUP) && defined(SAVE_PREFIX_TEST_RESULT)
+                if ( ! bPrefixMismatch )
+          #endif // defined(INSERT) && defined(SAVE_PREFIX_TEST_RESULT)
+                {
+                    return KeyFound;
+                }
             }
         }
       #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) \
@@ -747,6 +756,7 @@ t_bitmap:
       #endif // defined(INSERT) && !defined(RECURSIVE)
             return KeyFound;
         }
+
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
         break;
