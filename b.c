@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.241 2014/06/14 12:24:00 mike Exp mike $
+// @(#) $Id: b.c,v 1.242 2014/06/14 13:27:31 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1742,7 +1742,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 } else
 #endif // defined(COMPRESSED_LISTS)
                 {
-                    CopyWithInsertWord(ls_pwKeys(pwList),
+                    CopyWithInsertWord(
+#if defined(PP_IN_LINK) && defined(T_ONE)
+                        (nDigitsLeft == cnDigitsPerWord) +
+#endif // defined(PP_IN_LINK) && defined(T_ONE)
+                        ls_pwKeys(pwList),
                         pwKeys, wPopCnt, wKey);
                 }
             } else
