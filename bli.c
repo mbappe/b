@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.218 2014/06/14 12:11:17 mike Exp mike $
+// @(#) $Id: bli.c,v 1.217 2014/06/14 03:24:44 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -729,22 +729,13 @@ t_bitmap:
         if (bCleanup) { return Success; } // cleanup is complete
   #endif // defined(REMOVE)
 
-  #if defined(PP_IN_LINK)
-        // For PP_IN_LINK, T_LIST at the top is handled directly in Judy1Test
-        // because a T_LIST at the top has a pop count byte at the beginning
-        // and T_LISTs not at the top do not.  The list access macros are
-        // coded for the non-top case.  And I didn't want to have to special
-        // case all of the code that uses the macros.
-        // Subsequently, I implemented T_ONE in the same way without much
-        // thought.  It allows us to assume it's okay to use PWR_wPopCnt here
-        // But I'm still not sure it was the best way to go.
-        assert(nDigitsLeft != cnDigitsPerWord);
-      #if ! defined(LOOKUP)
-        // Adjust pop count on the way in for INSERT and REMOVE.
-        set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft,
-            PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) + nIncr);
-      #endif // ! defined(LOOKUP)
-  #endif // defined(PP_IN_LINK)
+  #if ! defined(LOOKUP) && defined(PP_IN_LINK)
+        // Adjust pop count in the link on the way in for INSERT and REMOVE.
+        if (nDigitsLeft != cnDigitsPerWord) {
+            set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft,
+                PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) + nIncr);
+        }
+  #endif // ! defined(LOOKUP) && defined(PP_IN_LINK)
 
   #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
         return KeyFound;
@@ -865,34 +856,20 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 #if (cnDigitsPerWord > 1)
 
   #if (cwListPopCntMax != 0) && defined(PP_IN_LINK)
-    // Handle the top level list leaf.
-    // Why?  So we don't have to handle lists with wPopCnt in them
-    // in the mainline code for PP_IN_LINK?
-    // Do not assume the list is sorted -- so this code doesn't have to
+    // Handle the top level T_LIST leaf here because for PP_IN_LINK a T_LIST
+    // at the top has a pop count byte at the beginning and T_LISTs not at
+    // the top do not.  I didn't want to have to have all of the mainline
+    // list handling code have to know or test if it is at the top.
+    // Do not assume the list is sorted here -- so this code doesn't have to
     // be ifdef'd.
-    Word_t wRoot = (Word_t)pcvRoot;
-    unsigned nType = wr_nType(wRoot);
-    Word_t *pwr = wr_tp_pwr(wRoot, nType);
-    if (!tp_bIsSwitch(nType) && (wRoot != 0))
+    unsigned nType = wr_nType((Word_t)pcvRoot);
+    if (nType == T_LIST)
     {
-        Word_t wPopCnt;
-        Word_t *pwKeys;
-#if defined(T_ONE)
-        if (nType == T_ONE) {
-            wPopCnt = 1;
-            pwKeys = ls_pwKeys(pwr);
-        } else
-#endif // defined(T_ONE)
-        {
-            wPopCnt = ls_wPopCnt(pwr);
-            pwKeys = ls_pwKeys(pwr) + 1; // pop count is in 1st element at top
-        }
+        Word_t *pwr = wr_tp_pwr((Word_t)pcvRoot, nType);
 
-        for (unsigned nn = 0; nn < wPopCnt; nn++)
-        {
-            if (pwKeys[nn] == wKey) { return Success; }
-        }
-        return Failure;
+        // ls_wPopCount is valid only at the top for PP_IN_LINK
+        return SearchList(ls_pwKeys(pwr) + 1,
+                          wKey, cnBitsPerWord, ls_wPopCnt(pwr));
     }
   #endif // (cwListPopCntMax != 0) && defined(PP_IN_LINK)
 
