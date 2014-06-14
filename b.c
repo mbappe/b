@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.244 2014/06/14 14:39:40 mike Exp mike $
+// @(#) $Id: b.c,v 1.245 2014/06/14 14:42:22 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1819,17 +1819,17 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #if defined(SORT_LISTS)
 #if defined(COMPRESSED_LISTS)
                     if (nBitsLeft <= 8) {
-                        wMin = ls_pcKeys(pwr)[0];
-                        wMax = ls_pcKeys(pwr)[wPopCnt - 1];
+                        wMin = pcKeys[0];
+                        wMax = pcKeys[wPopCnt - 1];
                         wSuffix = wKey & 0xff;
                     } else if (nBitsLeft <= 16) {
-                        wMin = ls_psKeys(pwr)[0];
-                        wMax = ls_psKeys(pwr)[wPopCnt - 1];
+                        wMin = psKeys[0];
+                        wMax = psKeys[wPopCnt - 1];
                         wSuffix = wKey & 0xffff;
 #if (cnBitsPerWord > 32)
                     } else if (nBitsLeft <= 32) {
-                        wMin = ls_piKeys(pwr)[0];
-                        wMax = ls_piKeys(pwr)[wPopCnt - 1];
+                        wMin = piKeys[0];
+                        wMax = piKeys[wPopCnt - 1];
                         wSuffix = wKey & 0xffffffff;
 #endif // (cnBitsPerWord > 32)
                     } else 
@@ -1852,21 +1852,21 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                     {
 #if defined(COMPRESSED_LISTS)
                         if (nBitsLeft <= 8) {
-                            if (ls_pcKeys(pwr)[w] < wMin)
-                                wMin = ls_pcKeys(pwr)[w];
-                            if (ls_pcKeys(pwr)[w] > wMax)
-                                wMax = ls_pcKeys(pwr)[w];
+                            if (pcKeys[w] < wMin)
+                                wMin = pcKeys[w];
+                            if (pcKeys[w] > wMax)
+                                wMax = pcKeys[w];
                         } else if (nBitsLeft <= 16) {
-                            if (ls_psKeys(pwr)[w] < wMin)
-                                wMin = ls_psKeys(pwr)[w];
-                            if (ls_psKeys(pwr)[w] > wMax)
-                                wMax = ls_psKeys(pwr)[w];
+                            if (psKeys[w] < wMin)
+                                wMin = psKeys[w];
+                            if (psKeys[w] > wMax)
+                                wMax = psKeys[w];
 #if (cnBitsPerWord > 32)
                         } else if (nBitsLeft <= 32) {
-                            if (ls_piKeys(pwr)[w] < wMin)
-                                wMin = ls_piKeys(pwr)[w];
-                            if (ls_piKeys(pwr)[w] > wMax)
-                                wMax = ls_piKeys(pwr)[w];
+                            if (piKeys[w] < wMin)
+                                wMin = piKeys[w];
+                            if (piKeys[w] > wMax)
+                                wMax = piKeys[w];
 #endif // (cnBitsPerWord > 32)
                         } else 
 #endif // defined(COMPRESSED_LISTS)
