@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.216 2014/06/13 21:26:01 mike Exp mike $
+// @(#) $Id: bli.c,v 1.217 2014/06/14 03:24:44 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -417,6 +417,8 @@ notEmpty:;
 
     } // end of default case
 
+#if (cwListPopCntMax != 0)
+
     case T_LIST:
     {
         DBGX(printf("List nDigitsLeft %d\n", nDigitsLeft));
@@ -552,6 +554,8 @@ notEmpty:;
         break;
 
     } // end of case T_LIST
+
+#endif // (cwListPopCntMax != 0)
 
     case T_BITMAP:
     {
