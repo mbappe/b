@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.224 2014/06/14 14:21:33 mike Exp mike $
+// @(#) $Id: bli.c,v 1.225 2014/06/14 14:24:59 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -45,12 +45,12 @@ Status_t
 #if defined(LOOKUP)
 Lookup(Word_t wRoot, Word_t wKey)
 #else // defined(LOOKUP)
-InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
+InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 #endif // defined(LOOKUP)
 {
-    unsigned nDigitsLeftUp; (void)nDigitsLeftUp; // silence gcc
+    unsigned nDLUp; (void)nDLUp; // silence gcc
 #if defined(LOOKUP)
-    unsigned nDigitsLeft = cnDigitsPerWord;
+    unsigned nDL = cnDigitsPerWord;
   #if defined(SKIP_LINKS)
       #if defined(SKIP_PREFIX_CHECK) && ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
     unsigned bNeedPrefixCheck = 0;
@@ -72,7 +72,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
 #else // defined(LOOKUP)
     Word_t wRoot;
   #if !defined(RECURSIVE)
-    unsigned nDigitsLeftOrig = nDigitsLeft;
+    unsigned nDLOrig = nDL;
           #if defined(INSERT)
     int nIncr = 1;
           #else // defined(INSERT)
@@ -80,7 +80,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
           #endif // defined(INSERT)
   #endif // !defined(RECURSIVE)
   #if defined(PP_IN_LINK) || defined(BM_IN_LINK)
-    nDigitsLeftUp = nDigitsLeft;
+    nDLUp = nDL;
   #endif // defined(PP_IN_LINK) || defined(BM_IN_LINK)
 #endif // defined(LOOKUP)
 #if !defined(RECURSIVE)
@@ -88,7 +88,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft)
     Word_t *pwRootOrig = pwRoot;
   #endif // !defined(LOOKUP) || defined(BM_IN_LINK)
 #endif // !defined(RECURSIVE)
-    unsigned nDigitsLeftRoot;
+    unsigned nDLR;
     Word_t wPopCnt; (void)wPopCnt;
     unsigned nType;
 #if defined(REMOVE)
@@ -121,7 +121,7 @@ top:
     wRoot = *pwRoot;
 #endif // !defined(LOOKUP)
 #if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
-    nDigitsLeftRoot = nDigitsLeft;
+    nDLR = nDL;
 #endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 
 #if defined(LOOKUP) || !defined(RECURSIVE)
@@ -129,16 +129,16 @@ again:
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
 #if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
-    assert(nDigitsLeftRoot == nDigitsLeft);
+    assert(nDLR == nDL);
 #endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 #if ( ! defined(LOOKUP) )
-    assert(nDigitsLeft >= 1); // valid for LOOKUP too
+    assert(nDL >= 1); // valid for LOOKUP too
     DBGX(printf("# pwRoot %p ", (void *)pwRoot));
 #else // ( ! defined(LOOKUP) )
     SMETRICS(j__TreeDepth++);
 #endif // ( ! defined(LOOKUP) )
-    DBGX(printf("# wRoot "OWx" wKey "OWx" nDigitsLeft %d\n",
-            wRoot, wKey, nDigitsLeft));
+    DBGX(printf("# wRoot "OWx" wKey "OWx" nDL %d\n",
+            wRoot, wKey, nDL));
 
     nType = wr_nType(wRoot);
     pwr = wr_tp_pwr(wRoot, nType);
@@ -150,20 +150,20 @@ again:
 
 #if defined(SKIP_LINKS)
   #if defined(TYPE_IS_RELATIVE)
-        nDigitsLeftRoot = nDigitsLeft - tp_to_nDS(nType);
+        nDLR = nDL - tp_to_nDS(nType);
   #else // defined(TYPE_IS_RELATIVE)
-        nDigitsLeftRoot = tp_to_nDigitsLeft(nType);
+        nDLR = tp_to_nDL(nType);
   #endif // defined(TYPE_IS_RELATIVE)
-        assert(nDigitsLeftRoot <= nDigitsLeft); // reserved
+        assert(nDLR <= nDL); // reserved
 #else // defined(SKIP_LINKS)
-        nDigitsLeftRoot = nDigitsLeft; // prev
+        nDLR = nDL; // prev
 #endif // defined(SKIP_LINKS)
 
-        DBGX(printf("Switch nDLR %d pwr %p\n", nDigitsLeftRoot, (void *)pwr));
+        DBGX(printf("Switch nDLR %d pwr %p\n", nDLR, (void *)pwr));
 
 #if defined(SKIP_LINKS)
   #if defined(TYPE_IS_RELATIVE)
-        assert(nDigitsLeftRoot < nDigitsLeft);
+        assert(nDLR < nDL);
   #endif // defined(TYPE_IS_RELATIVE)
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #if defined(SAVE_PREFIX)
@@ -178,26 +178,26 @@ again:
           #else // defined(PP_IN_LINK)
         pwrPrefix = pwr;
           #endif // defined(PP_IN_LINK)
-        nDLRPrefix = nDigitsLeftRoot;
+        nDLRPrefix = nDLR;
       #endif // defined(SAVE_PREFIX)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
         // Record that there were prefix bits that were not checked.
           #if defined(TYPE_IS_RELATIVE)
         bNeedPrefixCheck |= 1;
           #else // defined(TYPE_IS_RELATIVE)
-        bNeedPrefixCheck |= (nDigitsLeftRoot < nDigitsLeft);
+        bNeedPrefixCheck |= (nDLR < nDL);
           #endif // defined(TYPE_IS_RELATIVE)
       #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
   #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         if (1
       #if ! defined(TYPE_IS_RELATIVE)
-            && (nDigitsLeftRoot < nDigitsLeft)
+            && (nDLR < nDL)
       #endif // ! defined(TYPE_IS_RELATIVE)
-            && (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwr, nDigitsLeftRoot) ^ wKey))
-                    >= nDL_to_nBL_NAT(nDigitsLeftRoot)))
+            && (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwr, nDLR) ^ wKey))
+                    >= nDL_to_nBL_NAT(nDLR)))
         {
             DBGX(printf("Mismatch wPrefix "Owx"\n",
-                        PWR_wPrefixNAT(pwRoot, pwr, nDigitsLeftRoot)));
+                        PWR_wPrefixNAT(pwRoot, pwr, nDLR)));
             break;
         }
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -212,34 +212,34 @@ again:
     || ( ! defined(LOOKUP) \
         && (defined(PP_IN_LINK) || defined(BM_IN_LINK)) \
             || (defined(REMOVE) && ! defined(BM_IN_LINK)) )
-        nDigitsLeftUp = nDigitsLeft;
+        nDLUp = nDL;
 #endif // defined(BM_SWITCH_FOR_REAL) ...
-        nDigitsLeft = nDigitsLeftRoot - 1;
+        nDL = nDLR - 1;
 
-        Word_t wIndex = ((wKey >> nDL_to_nBL_NAT(nDigitsLeft))
+        Word_t wIndex = ((wKey >> nDL_to_nBL_NAT(nDL))
             // we can use NAT here even though we might be at top because
             // we're using it to mask off high bits and if we're at the
             // top then none of the high bits will be set anyway;
             // it's faster to do arithmetic than test to avoid it
-            & (EXP(nDL_to_nBitsIndexSzNAX(nDigitsLeftRoot)) - 1));
+            & (EXP(nDL_to_nBitsIndexSzNAX(nDLR)) - 1));
 
 #if defined(BM_SWITCH)
   #if defined(BM_IN_LINK)
         // We avoid ambiguity by disallowing calls to Insert/Remove with
-        // nDigitsLeft == cnDigitsPerWord and pwRoot not at the top.
+        // nDL == cnDigitsPerWord and pwRoot not at the top.
         // We need to know if there is a link surrounding *pwRoot.
         // InsertGuts always calls back into Insert with the same pwRoot
         // it was called with.  So it means Insert cannot call InsertGuts
-        // with nDigitsLeft == cnDigitsPerWord and pwRoot not at the top.
+        // with nDL == cnDigitsPerWord and pwRoot not at the top.
         // What about defined(RECURSIVE)?
         // What about Remove and RemoveGuts?
         if ( ! (1
       #if defined(RECURSIVE)
-                && (nDigitsLeft == cnDigitsPerWord)
+                && (nDL == cnDigitsPerWord)
       #else // defined(RECURSIVE)
                 && (pwRoot == pwRootOrig)
           #if !defined(LOOKUP)
-                && (nDigitsLeftOrig == cnDigitsPerWord)
+                && (nDLOrig == cnDigitsPerWord)
           #endif // !defined(LOOKUP)
       #endif // defined(RECURSIVE)
             ) )
@@ -258,7 +258,7 @@ again:
            {
   #if defined(BM_SWITCH_FOR_REAL)
                 DBGX(printf("missing link\n"));
-                nDigitsLeft = nDigitsLeftUp; // back up for InsertGuts
+                nDL = nDLUp; // back up for InsertGuts
                 goto notFound;
   #else // defined(BM_SWITCH_FOR_REAL)
                 assert(0); // only for now
@@ -280,9 +280,9 @@ again:
 
 #if !defined(LOOKUP)
   #if defined(PP_IN_LINK)
-// What if nDigitsLeft was cnDigitsPerWord before it was updated?
+// What if nDL was cnDigitsPerWord before it was updated?
 // Don't we have to walk the switch in that case too?
-        if (nDigitsLeftUp == cnDigitsPerWord)
+        if (nDLUp == cnDigitsPerWord)
         {
       #if defined(REMOVE)
             if (bCleanup)
@@ -306,23 +306,23 @@ again:
 
 // What if ln_wRoot is a list?
 // nDL cannot be obtained from ln_wRoot.
-// We must use nDigitsLeft in that case.
+// We must use nDL in that case.
                     // Do we really need a new variable here?
-                    // Or can we just use nDigitsLeft?
-                    int nDigitsLeftX = wr_bIsSwitch(*pwRootLn) ?
+                    // Or can we just use nDL?
+                    int nDLX = wr_bIsSwitch(*pwRootLn) ?
               #if defined(TYPE_IS_RELATIVE)
-                                       nDigitsLeft - wr_nDS(*pwRootLn)
+                                       nDL - wr_nDS(*pwRootLn)
               #else // defined(TYPE_IS_RELATIVE)
-                                       wr_nDigitsLeft(*pwRootLn)
+                                       wr_nDL(*pwRootLn)
               #endif // defined(TYPE_IS_RELATIVE)
-                                   : nDigitsLeft;
-                    DBGX(printf("wr_nDLX %d", nDigitsLeftX));
+                                   : nDL;
+                    DBGX(printf("wr_nDLX %d", nDLX));
                     DBGX(printf(" PWR_wPopCnt %"_fw"d\n",
-                                PWR_wPopCnt(pwRootLn, NULL, nDigitsLeftX)
+                                PWR_wPopCnt(pwRootLn, NULL, nDLX)
                                 ));
                     if (((*pwRootLn != 0) && (ww != wIndex))
                             || (
-                                PWR_wPopCnt(pwRootLn, NULL, nDigitsLeftX)
+                                PWR_wPopCnt(pwRootLn, NULL, nDLX)
                                     != 0)
                         )
                     {
@@ -332,10 +332,10 @@ again:
                     }
                 }
                 // switch pop is zero
-                FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDigitsLeftUp),
+                FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDLUp),
                     /* bDump */ 0);
           #if defined(PP_IN_LINK)
-                assert(PWR_wPrefix(pwRoot, NULL, nDigitsLeftUp) == 0);
+                assert(PWR_wPrefix(pwRoot, NULL, nDLUp) == 0);
           #endif // defined(PP_IN_LINK)
 
                 *pwRoot = 0;
@@ -348,24 +348,24 @@ notEmpty:;
   #endif // defined(PP_IN_LINK)
         {
             // Increment or decrement population count on the way in.
-            wPopCnt = PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot);
+            wPopCnt = PWR_wPopCnt(pwRoot, pwr, nDLR);
   #if defined(REMOVE)
             if (bCleanup)
             {
                 if (wPopCnt == 0)
                 {
-                    FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDigitsLeftUp),
+                    FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDLUp),
                         /* bDump */ 0);
       #if defined(PP_IN_LINK)
           #if defined(BM_IN_LINK)
-                assert(PWR_wPrefix(pwRoot, NULL, nDigitsLeftUp) == 0);
+                assert(PWR_wPrefix(pwRoot, NULL, nDLUp) == 0);
           #else // defined(BM_IN_LINK)
-                if (PWR_wPrefix(pwRoot, NULL, nDigitsLeftRoot) != 0)
+                if (PWR_wPrefix(pwRoot, NULL, nDLR) != 0)
                 {
                     DBGR(printf("wPrefixPop "OWx"\n",
                                 PWR_wPrefixPop(pwRoot, NULL)));
                 }
-                assert(PWR_wPrefix(pwRoot, NULL, nDigitsLeftRoot) == 0);
+                assert(PWR_wPrefix(pwRoot, NULL, nDLR) == 0);
           #endif // defined(BM_IN_LINK)
       #endif // defined(PP_IN_LINK)
                     *pwRoot = 0;
@@ -376,9 +376,9 @@ notEmpty:;
   #endif // defined(REMOVE)
             {
                 set_PWR_wPopCnt(pwRoot, pwr,
-                                nDigitsLeftRoot, wPopCnt + nIncr);
+                                nDLR, wPopCnt + nIncr);
                 DBGX(printf("wPopCnt %zd\n",
-                     (size_t)PWR_wPopCnt(pwRoot, pwr, nDigitsLeftRoot)));
+                     (size_t)PWR_wPopCnt(pwRoot, pwr, nDLR)));
             }
         }
 #endif // !defined(LOOKUP)
@@ -386,8 +386,8 @@ notEmpty:;
         pwRoot = &pwr_pLinks(pwr)[wIndex].ln_wRoot;
         wRoot = *pwRoot;
 
-        DBGX(printf("Next nDigitsLeft %d wIndex %zd pwr %p pLinks %p\n",
-            nDigitsLeft, (size_t)wIndex,
+        DBGX(printf("Next nDL %d wIndex %zd pwr %p pLinks %p\n",
+            nDL, (size_t)wIndex,
             (void *)pwr, (void *)pwr_pLinks(pwr)));
 
         DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
@@ -400,10 +400,10 @@ notEmpty:;
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
-        nDigitsLeftRoot = nDigitsLeft;
+        nDLR = nDL;
 #endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 #if (cnBitsAtBottom <= cnLogBitsPerWord)
-        if (nDigitsLeft == 1) {
+        if (nDL == 1) {
             // wr_nType is not valid in this case.
             // We have to skip the switch.
             goto t_bitmap;
@@ -412,7 +412,7 @@ notEmpty:;
 #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again;
 #else // defined(LOOKUP) || !defined(RECURSIVE)
-        return InsertRemove(pwRoot, wKey, nDigitsLeft);
+        return InsertRemove(pwRoot, wKey, nDL);
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
     } // end of default case
@@ -421,8 +421,8 @@ notEmpty:;
 
     case T_LIST:
     {
-        DBGX(printf("List nDigitsLeft %d\n", nDigitsLeft));
-        DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMask(nDigitsLeft)));
+        DBGX(printf("List nDL %d\n", nDL));
+        DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMask(nDL)));
 
   #if defined(REMOVE)
         if (bCleanup) { return Success; } // cleanup is complete
@@ -430,15 +430,15 @@ notEmpty:;
 
   #if defined(PP_IN_LINK)
         // What about defined(RECURSIVE)?
-        assert(nDigitsLeft != cnDigitsPerWord); // handled in wrapper
-        // If nDigitsLeft != cnDigitsPerWord then we're not at the top.
+        assert(nDL != cnDigitsPerWord); // handled in wrapper
+        // If nDL != cnDigitsPerWord then we're not at the top.
         // And pwRoot is initialized despite what gcc might think.
-        wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
+        wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
       #if ! defined(LOOKUP)
         DBGX(printf("wPopCnt (before incr) %zd\n", (size_t)wPopCnt));
-        set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
+        set_PWR_wPopCnt(pwRoot, NULL, nDL, wPopCnt + nIncr);
         DBGX(printf("wPopCnt (after incr) %zd\n",
-                    (size_t)PWR_wPopCnt(pwRoot, NULL, nDigitsLeft)));
+                    (size_t)PWR_wPopCnt(pwRoot, NULL, nDL)));
       #endif // ! defined(LOOKUP)
   #endif // defined(PP_IN_LINK)
 
@@ -470,13 +470,13 @@ notEmpty:;
 
       #if defined(COMPRESSED_LISTS)
           #if !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
-        // nDigitsLeft is relative to the bottom of the switch
+        // nDL is relative to the bottom of the switch
         // containing the pointer to the leaf.
         // Can we use NAT here since bNeedPrefixCheck will never
         // be true if we are at the top?
         // If the top digit is smaller than the rest, then NAT will
         // return nBitsLeft > cnBitsPerWord which works out perfectly.
-        unsigned nBitsLeft = nDL_to_nBL_NAT(nDigitsLeft);
+        unsigned nBitsLeft = nDL_to_nBL_NAT(nDL);
           #endif // !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
           #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We don't support skip links directly to leaves -- yet.
@@ -507,13 +507,13 @@ notEmpty:;
                     ^ wKey))
                 < nDL_to_nBL(nDLRPrefix))
               #else // defined(SAVE_PREFIX)
-            || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft)
+            || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwrPrev, nDL)
                     ^ wKey))
                 < (nBitsLeft
                   #if ! defined(PP_IN_LINK)
                     // prefix in parent switch doesn't contain last digit
                     // for ! defined(PP_IN_LINK) case
-                    + nDL_to_nBitsIndexSzNAT(nDigitsLeft + 1)
+                    + nDL_to_nBitsIndexSzNAT(nDL + 1)
                   #endif // ! defined(PP_IN_LINK)
                 ))
               #endif // defined(SAVE_PREFIX)
@@ -522,7 +522,7 @@ notEmpty:;
       #endif // defined(COMPRESSED_LISTS)
         {
       #if defined(DL_IN_LL)
-            assert(ll_nDigitsLeft(wRoot) == nDigitsLeft);
+            assert(ll_nDL(wRoot) == nDL);
       #endif // defined(DL_IN_LL)
 
       // LOOKUP_NO_LIST_SEARCH is for analysis only.  We have retrieved the
@@ -532,7 +532,7 @@ notEmpty:;
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
           #if defined(REMOVE)
-                RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot); goto cleanup;
+                RemoveGuts(pwRoot, wKey, nDL, wRoot); goto cleanup;
           #endif // defined(REMOVE)
           #if defined(INSERT) && !defined(RECURSIVE)
                 if (nIncr > 0) { goto undo; } // undo counting
@@ -545,7 +545,7 @@ notEmpty:;
         else
         {
             DBGX(printf("Mismatch at list wPrefix "OWx" nDL %d\n",
-                 PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft), nDigitsLeft));
+                 PWR_wPrefixNAT(pwRoot, pwrPrev, nDL), nDL));
         }
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && ...
 
@@ -564,21 +564,21 @@ t_bitmap:
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 
         // This case has been enhanced to handle a bitmap at any level.
-        // It used to assume we were at nDigitsLeft == 1.  And before we
+        // It used to assume we were at nDL == 1.  And before we
         // had cnBitsAtBottom it assumed we were at
-        // nDigitsLeft == cnDigitsAtBottom.
+        // nDL == cnDigitsAtBottom.
         // Shoot.  If we use the type field to identify a bitmap, then
         // we can't use the whole wRoot as an embedded bitmap.
         // There is an ugly workaround.  Jump directly here when
-        // nDigitsLeft becomes one rather than jumping to "again".
+        // nDL becomes one rather than jumping to "again".
 
 #if defined(REMOVE)
         if (bCleanup) { return KeyFound; } // cleanup is complete
 #endif // defined(REMOVE)
 
 #if ! defined(LOOKUP) && defined(PP_IN_LINK)
-        wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
-        set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, wPopCnt + nIncr);
+        wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
+        set_PWR_wPopCnt(pwRoot, NULL, nDL, wPopCnt + nIncr);
 #endif // !defined(LOOKUP) && defined(PP_IN_LINK)
 
 #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
@@ -590,9 +590,9 @@ t_bitmap:
       // assertion here to remind us that not all values of cnBitsAtBottom
       // and cnBitsPerDigit will work.
       #if defined(PP_IN_LINK)
-        assert(nDigitsLeft < cnDigitsPerWord);
+        assert(nDL < cnDigitsPerWord);
       #else // defined(PP_IN_LINK)
-        assert(nDigitsLeft + 1 < cnDigitsPerWord);
+        assert(nDL + 1 < cnDigitsPerWord);
       #endif // defined(PP_IN_LINK)
       #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We have to do the prefix check here.
@@ -609,15 +609,15 @@ t_bitmap:
             // previous wRoot -- not the current wRoot -- to find the prefix,
             // if not PP_IN_LINK.  If PP_IN_LINK, then we are using the
             // current pwRoot to find the prefix.
-            // nDigitsLeft is different for the two cases.
-            || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft) ^ wKey))
+            // nDL is different for the two cases.
+            || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwrPrev, nDL) ^ wKey))
                 // The +1 is necessary because the pwrPrev
                 // prefix does not contain any less significant bits.
               #if defined(BITMAP_ANYWHERE)
                   #if defined(PP_IN_LINK)
-                < nDL_to_nBL_NAT(nDigitsLeft    )
+                < nDL_to_nBL_NAT(nDL    )
                   #else // defined(PP_IN_LINK)
-                < nDL_to_nBL_NAT(nDigitsLeft + 1)
+                < nDL_to_nBL_NAT(nDL + 1)
                   #endif // defined(PP_IN_LINK)
               #else // defined(BITMAP_ANYWHERE)
                   #if defined(PP_IN_LINK)
@@ -635,28 +635,28 @@ t_bitmap:
   #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
             assert(PWR_wPopCnt(pwRoot, pwrPrev,
               #if defined(PP_IN_LINK)
-                nDL_to_nBL_NAT(nDigitsLeft    )
+                nDL_to_nBL_NAT(nDL    )
               #else // defined(PP_IN_LINK)
-                nDL_to_nBL_NAT(nDigitsLeft + 1)
+                nDL_to_nBL_NAT(nDL + 1)
               #endif // defined(PP_IN_LINK)
                                ) != 0);
             return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
       #if (cnBitsAtBottom <= cnLogBitsPerWord)
           #if defined(BITMAP_ANYWHERE)
-            if (nDL_to_nBL_NAT(nDigitsLeft) <= cnLogBitsPerWord)
+            if (nDL_to_nBL_NAT(nDL) <= cnLogBitsPerWord)
           #endif // defined(BITMAP_ANYWHERE)
             {
           #if defined(BITMAP_ANYWHERE)
                 if (BitIsSetInWord(wRoot,
-                        wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)))
+                        wKey & (EXP(nDL_to_nBL_NAT(nDL)) - 1UL)))
           #else // defined(BITMAP_ANYWHERE)
                 if (BitIsSetInWord(wRoot,
                         wKey & (EXP(cnBitsAtBottom) - 1UL)))
           #endif // defined(BITMAP_ANYWHERE)
                 {
           #if defined(REMOVE)
-                    RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                    RemoveGuts(pwRoot, wKey, nDL, wRoot);
                     goto cleanup;
           #endif // defined(REMOVE)
           #if defined(INSERT) && !defined(RECURSIVE)
@@ -678,14 +678,14 @@ t_bitmap:
             {
           #if defined(BITMAP_ANYWHERE)
                 if (BitIsSet(wr_pwr(wRoot),
-                        wKey & (EXP(nDL_to_nBL_NAT(nDigitsLeft)) - 1UL)))
+                        wKey & (EXP(nDL_to_nBL_NAT(nDL)) - 1UL)))
           #else // defined(BITMAP_ANYWHERE)
                 if (BitIsSet(wr_pwr(wRoot),
                         wKey & (EXP(cnBitsAtBottom) - 1UL)))
           #endif // defined(BITMAP_ANYWHERE)
                 {
           #if defined(REMOVE)
-                    RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+                    RemoveGuts(pwRoot, wKey, nDL, wRoot);
                     goto cleanup;
           #endif // defined(REMOVE)
           #if defined(INSERT) && !defined(RECURSIVE)
@@ -711,7 +711,7 @@ t_bitmap:
         else
         {
             DBGX(printf("Mismatch at bitmap wPrefix "OWx"\n",
-                        PWR_wPrefixNAT(pwRoot, pwrPrev, nDigitsLeft)));
+                        PWR_wPrefixNAT(pwRoot, pwrPrev, nDL)));
         }
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
   #endif // defined(SKIP_LINKS)
@@ -730,11 +730,11 @@ t_bitmap:
   #endif // defined(REMOVE)
 
   #if ! defined(LOOKUP) && defined(PP_IN_LINK)
-        if (nDigitsLeft != cnDigitsPerWord)
+        if (nDL != cnDigitsPerWord)
         {
             // Adjust pop count in the link on the way in.
-            set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft,
-                PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) + nIncr);
+            set_PWR_wPopCnt(pwRoot, NULL, nDL,
+                PWR_wPopCnt(pwRoot, NULL, nDL) + nIncr);
         }
   #endif // ! defined(LOOKUP) && defined(PP_IN_LINK)
 
@@ -745,7 +745,7 @@ t_bitmap:
         if (*pwr == wKey)
         {
       #if defined(REMOVE)
-            RemoveGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+            RemoveGuts(pwRoot, wKey, nDL, wRoot);
             goto cleanup; // free memory or reconfigure tree if necessary
       #endif // defined(REMOVE)
       #if defined(INSERT) && !defined(RECURSIVE)
@@ -775,12 +775,12 @@ t_bitmap:
         {
       #if ! defined(LOOKUP)
             // What about defined(RECURSIVE)?
-            if (nDigitsLeft != cnDigitsPerWord)
+            if (nDL != cnDigitsPerWord)
             {
-                // If nDigitsLeft != cnDigitsPerWord then we're not at top.
+                // If nDL != cnDigitsPerWord then we're not at top.
                 // And pwRoot is initialized despite what gcc might think.
-                assert(PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == 0);
-                set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft, nIncr);
+                assert(PWR_wPopCnt(pwRoot, NULL, nDL) == 0);
+                set_PWR_wPopCnt(pwRoot, NULL, nDL, nIncr);
             }
       #endif // ! defined(LOOKUP)
         }
@@ -798,15 +798,15 @@ notFound:
 #if defined(INSERT)
   #if defined(BM_IN_LINK)
     // If InsertGuts calls Insert, then it is always with the same
-    // pwRoot and nDigitsLeft that Insert passed to InsertGuts.
+    // pwRoot and nDL that Insert passed to InsertGuts.
       #if !defined(RECURSIVE)
-    assert((nDigitsLeft != cnDigitsPerWord) || (pwRoot == pwRootOrig));
+    assert((nDL != cnDigitsPerWord) || (pwRoot == pwRootOrig));
       #endif // !defined(RECURSIVE)
   #endif // defined(BM_IN_LINK)
-    // InsertGuts is called with a pwRoot and nDigitsLeft indicates the
-    // bits that were not decoded in identifying pwRoot.  nDigitsLeft
+    // InsertGuts is called with a pwRoot and nDL indicates the
+    // bits that were not decoded in identifying pwRoot.  nDL
     // does not include any skip indicated in the type field of *pwRoot.
-    return InsertGuts(pwRoot, wKey, nDigitsLeft, wRoot);
+    return InsertGuts(pwRoot, wKey, nDL, wRoot);
 undo:
 #endif // defined(INSERT)
 #if defined(REMOVE) && !defined(RECURSIVE)
@@ -824,7 +824,7 @@ undo:
 restart:
   #endif // defined(REMOVE)
         pwRoot = pwRootOrig;
-        nDigitsLeft = nDigitsLeftOrig;
+        nDL = nDLOrig;
         goto top;
     }
   #endif // !defined(LOOKUP) && !defined(RECURSIVE)
@@ -833,7 +833,7 @@ restart:
 cleanup:
     bCleanup = 1; // ?? nIncr == 0 ??
     DBGX(printf("Cleanup pwRO "OWx" nDLO %d\n",
-                (Word_t)pwRootOrig, nDigitsLeftOrig));
+                (Word_t)pwRootOrig, nDLOrig));
     goto restart;
   #endif // defined(REMOVE)
 }
