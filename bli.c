@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.228 2014/06/14 18:26:40 mike Exp mike $
+// @(#) $Id: bli.c,v 1.229 2014/06/14 20:51:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -526,7 +526,14 @@ notEmpty:;
       // LOOKUP_NO_LIST_SEARCH is for analysis only.  We have retrieved the
       // pop count and prefix but we have not dereferenced the list itself.
       #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
-            if (SearchList(pwr, wKey, nBitsLeft, wPopCnt) == Success)
+            if (SearchList(pwr, wKey,
+#if defined(COMPRESSED_LISTS)
+                           nBitsLeft,
+#else // defined(COMPRESSED_LISTS)
+                           cnBitsPerWord,
+#endif // defined(COMPRESSED_LISTS)
+                           wPopCnt)
+                == Success)
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
           #if defined(REMOVE)
