@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.223 2014/06/14 13:27:59 mike Exp mike $
+// @(#) $Id: bli.c,v 1.224 2014/06/14 14:21:33 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -981,6 +981,8 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                     ++pwKeysNew; // pop count is in first element at top
                 }
                 Word_t *pwKeys = ls_pwKeys(pwr) + 1;
+
+ // Isn't this chunk of code already in InsertGuts?
                 unsigned nn;
                 for (nn = 0; (nn < wPopCnt) && (pwKeys[nn] < wKey); nn++) { }
                 COPY(pwKeysNew, pwKeys, nn);
@@ -988,6 +990,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 COPY(&pwKeysNew[nn + 1], &pwKeys[nn], wPopCnt - nn);
                 OldList(pwr, wPopCnt, cnDigitsPerWord);
                 *pwRoot = wRoot;
+
                 status = Success;
             }
         }
@@ -1096,13 +1099,13 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
                 } else
 #endif // defined(T_ONE)
                 {
-                    ++pwKeysNew; // pop count is in 1st element at top
-                    set_ls_wPopCnt(pwKeysNew, wPopCnt - 1);
                     set_wr(wRoot, pwListNew, T_LIST);
+                    ++pwKeysNew; // pop count is in 1st element at top
                 }
 
-                Word_t *pwKeys = ls_pwKeys(pwr);
-                ++pwKeys; // pop count is in first element at top
+                Word_t *pwKeys = ls_pwKeys(pwr) + 1;
+
+ // Isn't this chunk of code already in RemoveGuts?
                 unsigned nn;
                 for (nn = 0; pwKeys[nn] != wKey; nn++) { }
                 COPY(pwKeysNew, pwKeys, nn);
