@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.243 2014/06/14 13:52:50 mike Exp mike $
+// @(#) $Id: b.c,v 1.244 2014/06/14 14:39:40 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2303,8 +2303,7 @@ done:
                     ? (pwr_piKeys(pwr)[nIndex] != (unsigned int)wKey) :
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-                (pwKeys[nIndex] != wKey);
-                nIndex++) { }
+                (pwKeys[nIndex] != wKey); nIndex++) { }
 
             // nIndex identifies the key being removed.
 
