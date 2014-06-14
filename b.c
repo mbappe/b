@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.239 2014/06/14 03:24:44 mike Exp mike $
+// @(#) $Id: b.c,v 1.240 2014/06/14 12:11:17 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1624,7 +1624,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 wPopCnt = 1;
 #if defined(PP_IN_LINK)
                 // pop count in link should have been bumped by now
-                assert(PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == 2);
+                // if we're not at the top
+                assert((nDigitsLeft == cnDigitsPerWord)
+                    || (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == 2));
 #endif // defined(PP_IN_LINK)
                 pwKeys = pwr;
             }

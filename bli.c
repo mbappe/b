@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.217 2014/06/14 03:24:44 mike Exp mike $
+// @(#) $Id: bli.c,v 1.218 2014/06/14 12:11:17 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -743,7 +743,6 @@ t_bitmap:
         // Adjust pop count on the way in for INSERT and REMOVE.
         set_PWR_wPopCnt(pwRoot, NULL, nDigitsLeft,
             PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) + nIncr);
-        assert(0); // Is this code being tested?
       #endif // ! defined(LOOKUP)
   #endif // defined(PP_IN_LINK)
 
