@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.237 2014/06/12 23:13:41 mike Exp mike $
+// @(#) $Id: b.c,v 1.238 2014/06/13 18:12:35 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1154,6 +1154,201 @@ Dump(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft)
 #endif // defined(DEBUG)
 
 #if (cwListPopCntMax != 0)
+
+#if defined(COMPRESSED_LISTS) && ((cnBitsAtBottom + cnBitsPerDigit) <= 16)
+static Status_t
+SearchList16(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
+{
+    (void)nBL;
+    unsigned short *psKeys = pwr_psKeys(pwr);
+    unsigned short sKey = wKey;
+    unsigned short sKeyLoop;
+      #if defined(SORT_LISTS)
+        #if defined(LINEAR_SEARCH)
+    sKeyLoop = *psKeys;
+    if (nPopCnt != 1)
+    {
+        unsigned short *psLastKey = &psKeys[nPopCnt-1];
+        while (sKeyLoop < sKey) {
+            sKeyLoop = *++psKeys;
+            if (psKeys == psLastKey) {
+                break;
+            }
+        }
+    }
+        #else // defined(LINEAR_SEARCH)
+          #if defined(SPLIT_SEARCH) \
+                  && (cnSplitSearchThresholdShort > 1)
+              #if defined(SPLIT_SEARCH_LOOP)
+    while
+              #else // defined(SPLIT_SEARCH_LOOP)
+    if
+              #endif // defined(SPLIT_SEARCH_LOOP)
+       (nPopCnt >= cnSplitSearchThresholdShort)
+    {
+// To do: Try to minimize the number of cache lines we hit.
+// If ! PP_IN_LINK then we already hit the first one to get the pop count.
+// Let's try aligning these lists.
+        // pick a starting point
+              #if defined(BINARY_SEARCH) \
+                  || defined(SPLIT_SEARCH_LOOP)
+        unsigned nSplit = nPopCnt / 2;
+              #else // defined(BINARY_SEARCH) || ...
+        unsigned nSplit
+            = wKey % EXP(nBL) * nPopCnt / EXP(nBL);
+              #endif // defined(BINARY_SEARCH) || ...
+        if (psKeys[nSplit] <= sKey) {
+            psKeys = &psKeys[nSplit];
+            nPopCnt -= nSplit;
+// To do: Shouldn't we go backwards if we exit the loop after this step?
+// It might be very important.
+// What about cache line alignment?
+        } else {
+            nPopCnt = nSplit;
+            goto loop;
+        }
+    }
+          #endif // defined(SPLIT_SEARCH) && ...
+    if ((sKeyLoop = psKeys[nPopCnt - 1]) > sKey)
+    {
+          #if defined(SPLIT_SEARCH) \
+                  && (cnSplitSearchThresholdShort > 1)
+loop:
+          #endif // defined(SPLIT_SEARCH) && ...
+        while ((sKeyLoop = *psKeys++) < sKey);
+    }
+        #endif // defined(LINEAR_SEARCH)
+      #else // defined(SORT_LISTS)
+    unsigned short *psKeysEnd = &psKeys[nPopCnt];
+    while (sKeyLoop = *psKeys, psKeys++ < psKeysEnd)
+      #endif // defined(SORT_LISTS)
+    {
+        if (sKeyLoop == sKey)
+        {
+            return Success;
+        }
+    }
+
+    return Failure;
+}
+#endif // defined(COMPRESSED_LISTS) && ...
+
+#if defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) \
+    && ((cnBitsAtBottom + cnBitsPerDigit) <= 32)
+static Status_t
+SearchList32(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
+{
+    (void)nBL;
+    unsigned int *piKeys = pwr_piKeys(pwr);
+    unsigned int iKey = wKey;
+    unsigned int iKeyLoop;
+      #if defined(SORT_LISTS)
+          #if defined(SPLIT_SEARCH)
+              #if defined(SPLIT_SEARCH_LOOP)
+    while
+              #else // defined(SPLIT_SEARCH_LOOP)
+    if
+              #endif // defined(SPLIT_SEARCH_LOOP)
+       (nPopCnt >= cnSplitSearchThresholdInt)
+    {
+        if (piKeys[nPopCnt / 2] <= iKey) {
+            piKeys = &piKeys[nPopCnt / 2];
+            nPopCnt -= nPopCnt / 2;
+        } else {
+            nPopCnt /= 2;
+        }
+    }
+          #endif // defined(SPLIT_SEARCH)
+    if ((iKeyLoop = piKeys[nPopCnt - 1]) > iKey)
+    {
+        while ((iKeyLoop = *piKeys++) < iKey);
+    }
+      #else // defined(SORT_LISTS)
+    unsigned int *piKeysEnd = &piKeys[nPopCnt];
+    while (iKeyLoop = *piKeys, piKeys++ < piKeysEnd)
+      #endif // defined(SORT_LISTS)
+    {
+        if (iKeyLoop == iKey)
+        {
+            return Success;
+        }
+    }
+
+    return Failure;
+}
+#endif // defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) && ...
+
+static Status_t
+SearchListWord(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
+{
+    (void)nBL;
+        // Looks like we might want a loop threshold of 8 for
+        // 64-bit keys at the top level.
+        // And there's not much difference with threshold of
+        // 16 or 32.
+        // Not sure about 64-bit
+        // keys at a lower level or 32-bit keys at the top level.
+    Word_t *pwKeys = pwr_pwKeys(pwr);
+    Word_t wKeyLoop;
+  #if defined(SORT_LISTS)
+  #if defined(SPLIT_SEARCH)
+      #if defined(SPLIT_SEARCH_LOOP)
+    while
+      #else // defined(SPLIT_SEARCH_LOOP)
+    if
+      #endif // defined(SPLIT_SEARCH_LOOP)
+       (nPopCnt >= cnSplitSearchThresholdWord)
+    {
+        if (pwKeys[nPopCnt / 2] <= wKey) {
+            pwKeys = &pwKeys[nPopCnt / 2];
+            nPopCnt -= nPopCnt / 2;
+        } else {
+            nPopCnt /= 2;
+        }
+    }
+  #endif // defined(SPLIT_SEARCH)
+  #if ! defined(SPLIT_SEARCH_LOOP) \
+      || (cnSplitSearchThresholdWord > 2)
+    if ((wKeyLoop = pwKeys[nPopCnt - 1]) > wKey) {
+        while ((wKeyLoop = *pwKeys++) < wKey);
+    }
+  #else // ! defined(SPLIT_SEARCH_LOOP) || ...
+    wKeyLoop = *pwKeys;
+  #endif // ! defined(SPLIT_SEARCH_LOOP) || ...
+  #else // defined(SORT_LISTS)
+    Word_t *pwKeysEnd = &pwKeys[nPopCnt];
+    while (wKeyLoop = *pwKeys, pwKeys++ < pwKeysEnd)
+  #endif // defined(SORT_LISTS)
+    {
+        if (wKeyLoop == wKey)
+        {
+            return Success;
+        }
+    }
+
+    return Failure;
+}
+
+Status_t
+SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
+{
+  #if defined(COMPRESSED_LISTS)
+      #if ((cnBitsAtBottom + cnBitsPerDigit) <= 16)
+    if (nBL <= 16) {
+        return SearchList16(pwr, wKey, nBL, nPopCnt);
+    } else
+      #endif // ((cnBitsAtBottom + cnBitsPerDigit) <= 16)
+      #if ((cnBitsAtBottom + cnBitsPerDigit) <= 32) && (cnBitsPerWord > 32)
+    if (nBL <= 32) {
+        return SearchList32(pwr, wKey, nBL, nPopCnt);
+    } else
+      #endif // ((cnBitsAtBottom + cnBitsPerDigit) <= 32) && ...
+  #endif // defined(COMPRESSED_LISTS)
+    {
+        return SearchListWord(pwr, wKey, nBL, nPopCnt);
+    }
+}
+
 #if defined(SORT_LISTS)
 
 // CopyWithInsert can handle pTgt == pSrc, but cannot handle any other
