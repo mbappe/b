@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.220 2014/06/14 12:31:11 mike Exp mike $
+// @(#) $Id: bli.c,v 1.221 2014/06/14 12:53:44 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -949,7 +949,11 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     Word_t *pwRoot = (Word_t *)ppvRoot;
     Word_t wRoot = *pwRoot;
     unsigned nType = wr_nType(wRoot);
-    if (!tp_bIsSwitch(nType))
+    if ((T_LIST == nType)
+#if defined(T_ONE)
+        || (T_ONE == nType)
+#endif // defined(T_ONE)
+        )
     {
         if (Judy1Test((Pcvoid_t)wRoot, wKey, PJError) == Success)
         {
@@ -959,12 +963,11 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         {
             Word_t *pwr = wr_tp_pwr(wRoot, nType);
 
-            Word_t wPopCnt
-                = (nType == T_NULL) ? 0
+            Word_t wPopCnt = 
 #if defined(T_ONE)
-                : (nType == T_ONE) ? 1
+                (nType == T_ONE) ? 1 :
 #endif // defined(T_ONE)
-                : ls_wPopCnt(pwr);
+                ls_wPopCnt(pwr);
 
             if (wPopCnt == cwListPopCntMax)
             {
@@ -997,10 +1000,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 COPY(pwKeysNew, pwKeys, nn);
                 pwKeysNew[nn] = wKey;
                 COPY(&pwKeysNew[nn + 1], &pwKeys[nn], wPopCnt - nn);
-                if (wPopCnt != 0)
-                {
-                    OldList(pwr, wPopCnt, cnDigitsPerWord);
-                }
+                OldList(pwr, wPopCnt, cnDigitsPerWord);
                 *pwRoot = wRoot;
                 status = Success;
             }
