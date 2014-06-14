@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.242 2014/06/14 13:27:31 mike Exp mike $
+// @(#) $Id: b.c,v 1.243 2014/06/14 13:52:50 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2295,19 +2295,16 @@ done:
             for (nIndex = 0;
 #if defined(COMPRESSED_LISTS)
                 (nBitsLeft <= 8)
-                    ? (pwr_pcKeys(pwr)[nIndex] != (unsigned char )wKey)
-                : (nBitsLeft <= 16)
-                    ? (pwr_psKeys(pwr)[nIndex] != (unsigned short)wKey)
+                    ? (pwr_pcKeys(pwr)[nIndex] != (unsigned char )wKey) :
+                (nBitsLeft <= 16)
+                    ? (pwr_psKeys(pwr)[nIndex] != (unsigned short)wKey) :
 #if (cnBitsPerWord > 32)
-                : (nBitsLeft <= 32)
-                    ? (pwr_piKeys(pwr)[nIndex] != (unsigned int)wKey)
+                (nBitsLeft <= 32)
+                    ? (pwr_piKeys(pwr)[nIndex] != (unsigned int)wKey) :
 #endif // (cnBitsPerWord > 32)
-                    : (pwKeys[nIndex] != wKey);
-#else // defined(COMPRESSED_LISTS)
-                pwKeys[nIndex] != wKey;
 #endif // defined(COMPRESSED_LISTS)
-                nIndex++)
-                ; // semicolon on separate line to silence compiler warning
+                (pwKeys[nIndex] != wKey);
+                nIndex++) { }
 
             // nIndex identifies the key being removed.
 
