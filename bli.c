@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.229 2014/06/14 20:51:55 mike Exp mike $
+// @(#) $Id: bli.c,v 1.228 2014/06/14 18:26:40 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -752,8 +752,41 @@ t_bitmap:
         return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
+  #if defined(COMPRESSED_LISTS)
+        unsigned nBL = nDL_to_nBL(nDL);
+      #if (cnBitsAtBottom + cnBitsPerDigit <= 16)
+        if (nBL <= 16) {
+            unsigned nPopCnt = (wRoot >> 8) & 0xff;
+            if ((nPopCnt >= 3)
+                && (((wRoot >> 16) & 0xffff) == (wKey & 0xffff)))
+            {
+                goto foundIt;
+            }
+ // Is it ok to shift by 32?
+            if ((nPopCnt >= 2)
+                && (((wRoot >> 32) & 0xffff) == (wKey & 0xffff)))
+            {
+                goto foundIt;
+            }
+ // Is it ok to shift by 48?
+            if ((nPopCnt >= 1)
+                && (((wRoot >> 48) & 0xffff) == (wKey & 0xffff)))
+            {
+                goto foundIt;
+            }
+        } else
+      #endif // (cnBitsAtBottom + cnBitsPerDigit <= 16)
+      #if (cnBitsPerWord > 32)
+        if (nBL <= 32) {
+            if ((wRoot >> 32) == (unsigned int)wKey) { goto foundIt; }
+        } else
+      #endif // (cnBitsPerWord > 32)
+  #endif // defined(COMPRESSED_LISTS)
         if (*pwr == wKey)
         {
+      #if defined(COMPRESSED_LISTS)
+foundIt:
+      #endif // defined(COMPRESSED_LISTS)
       #if defined(REMOVE)
             RemoveGuts(pwRoot, wKey, nDL, wRoot);
             goto cleanup; // free memory or reconfigure tree if necessary

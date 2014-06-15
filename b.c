@@ -193,6 +193,12 @@ ListWords(Word_t wPopCnt, unsigned nDigitsLeft)
 #endif // (cnBitsPerWord > 32)
                          : sizeof(Word_t);
 
+#if defined(T_ONE)
+    if ((wPopCnt == 1) && (nBitsLeft > 16) && (nBitsLeft <= 32)) {
+        return 0; // Use wRoot for the key.
+    }
+#endif // defined(T_ONE)
+
 #else // defined(COMPRESSED_LISTS)
 
     unsigned nBytesKeySz = sizeof(Word_t);
@@ -231,6 +237,11 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
     (void)wKey;
 
     unsigned nWords = ListWords(wPopCnt, nDigitsLeft);
+
+#if defined(T_ONE)
+    // I wonder if we should return T_ONE.
+    if (nWords == 0) return NULL;
+#endif // defined(T_ONE)
 
 #if defined(COMPRESSED_LISTS)
     unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
@@ -305,6 +316,11 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDigitsLeft)
 
     DBGM(printf("Old pwList %p wLen %d wPopCnt "OWx"\n",
         (void *)pwList, nWords, (Word_t)wPopCnt));
+
+    if (nWords == 0) {
+        printf("OldList nWords 0\n");
+        return 0;
+    }
 
 #if defined(DL_IN_LL)
     assert(nDigitsLeft == ll_nDigitsLeft(pwList));
@@ -876,7 +892,12 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         {
             if (!bDump)
             {
-                return OldList(pwr, 1, nDigitsLeft);
+                // only full word T_ONE leaves have
+                // memory outside the link
+                if (nBitsLeft > cnBitsPerWord / 2)
+                {
+                    return OldList(pwr, 1, nDigitsLeft);
+                }
             }
 
             printf(" tp_wPopCnt %3d", 1);
@@ -893,7 +914,14 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
             }
 #endif // defined(PP_IN_LINK)
 
-            printf(" "Owx"\n", *pwr);
+            if (nBitsLeft > cnBitsPerWord / 2)
+            {
+                printf(" "Owx"\n", *pwr);
+            }
+            else
+            {
+                printf(" 0x%08x\n", (unsigned int)(wRoot >> 32));
+            }
         }
         else
 #endif // defined(T_ONE)
@@ -1628,7 +1656,21 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 assert((nDigitsLeft == cnDigitsPerWord)
                     || (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == 2));
 #endif // defined(PP_IN_LINK)
-                pwKeys = pwr;
+#if defined(COMPRESSED_LISTS)
+                unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
+#if (cnBitsPerWord > 32)
+                if (nBitsLeft <= 32)
+                {
+                    assert(nBitsLeft > 16);
+                    piKeys = &((unsigned int *)pwRoot)[1]; // little endian
+printf("piKeys %p\n", (void *)piKeys);
+                }
+                else
+#endif // (cnBitsPerWord > 32)
+#endif // defined(COMPRESSED_LISTS)
+                {
+                    pwKeys = pwr;
+                }
             }
             else
 #endif // defined(T_ONE)
@@ -1678,6 +1720,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #endif // defined(PP_IN_LINK)
         }
 
+printf("a\n");
 // We don't support skip links to lists or bitmaps yet.  And don't have
 // any criteria yet for converting from a list to a switch other than the
 // list is full.  So we just add to an existing list or create a new one
@@ -1768,8 +1811,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             }
 #endif // defined(SORT_LISTS)
             {
-// shared code for (SORT && wPopCnt == 0)
-// and ! SORT
+// shared code for (SORT && wPopCnt == 0)  and ! SORT
 #if defined(COMPRESSED_LISTS)
                 unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
                 if (nBitsLeft <= 8) {
@@ -1778,7 +1820,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                     ls_psKeys(pwList)[wPopCnt] = wKey;
 #if (cnBitsPerWord > 32)
                 } else if (nBitsLeft <= 32) {
-                    ls_piKeys(pwList)[wPopCnt] = wKey;
+#if defined(T_ONE)
+                    if (wPopCnt == 0) { // always true for SORT_LISTS
+                        wRoot = (wKey << 32) | T_ONE;
+                    } else
+#endif // defined(T_ONE)
+                    { ls_piKeys(pwList)[wPopCnt] = wKey; }
 #endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
@@ -1802,6 +1849,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
         {
             Word_t w;
 
+printf("b\n");
             // List is full; insert a switch
 
 #if defined(PP_IN_LINK)
@@ -1831,6 +1879,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                         wMin = piKeys[0];
                         wMax = piKeys[wPopCnt - 1];
                         wSuffix = wKey & 0xffffffff;
+printf("c\n");
 #endif // (cnBitsPerWord > 32)
                     } else 
 #endif // defined(COMPRESSED_LISTS)
@@ -1889,8 +1938,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                             = nBL_to_nDL(
                                 LOG((EXP(cnBitsAtBottom) - 1)
                                         | ((wSuffix ^ wMin)
-                                        | (wSuffix ^ wMax)))
+                                        |  (wSuffix ^ wMax)))
                                     + 1);
+printf("a nDL %d\n", nDigitsLeft);
+printf("wSuffix "OWx"\n", wSuffix);
                     }
                     else
 #endif // defined(COMPRESSED_LISTS)
@@ -1929,6 +1980,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #else // defined(SKIP_LINKS)
             assert(nDigitsLeft > nBL_to_nDL(cnBitsAtBottom));
 #endif // defined(SKIP_LINKS)
+
+// NewSwitch overwrites *pwRoot which is a problem for T_ONE
+// with immediate values.
+
             NewSwitch(pwRoot, wKey, nDigitsLeft, nDigitsLeftOld,
                       /* wPopCnt */ 0);
 
@@ -1953,10 +2008,24 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 }
 #if (cnBitsPerWord > 32)
             } else if (nBitsLeftOld <= 32) {
+printf("Getting ready to insert.\n");
+printf("piKeys %p\n", (void *)piKeys);
+printf("*piKeys 0x%08x\n", *piKeys);
+printf("pwRoot %p\n", (void *)pwRoot);
+printf("wPopCnt %d\n", (int)wPopCnt);
                 for (w = 0; w < wPopCnt; w++)
                 {
+ // NewSwitch overwrote *pwRoot.  But piKeys may point to *pwRoot.
+ if (nType == T_ONE)
+ {
+                    Insert(pwRoot, (wRoot >> 32) | (wKey & ~(Word_t)0xffffffff),
+                           nDigitsLeftOld);
+ }
+ else
+ {
                     Insert(pwRoot, piKeys[w] | (wKey & ~(Word_t)0xffffffff),
                            nDigitsLeftOld);
+ }
                 }
 #endif // (cnBitsPerWord > 32)
             } else
@@ -2490,8 +2559,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             else
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
             {
-                wPopCntLn
-                    = PWR_wPopCnt(pwRootLn, NULL, cnDigitsPerWord - 1);
+                wPopCntLn = PWR_wPopCnt(pwRootLn, NULL, cnDigitsPerWord - 1);
             }
 
 #if defined(DEBUG_INSERT)
