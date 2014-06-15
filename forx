@@ -134,7 +134,12 @@ function doit
         exit 1
     fi
 
-    if [ $pack = packy ]
+    if [ $pack = packe ]
+    then
+        # EMBED_KEYS implies COMPRESSED_LISTS, and requires T_ONE,
+        # and, temporarily, is ignored if cnBitsPerWord != 64
+        PACK=-DEMBED_KEYS
+    elif [ $pack = packy ]
     then
         PACK=-DCOMPRESSED_LISTS
     else
@@ -330,9 +335,9 @@ for pp in pps # ppl
 do
 for bits in 64 # 32
 do
-for pack in packy packn
-do
 for sort in sorty sortn
+do
+for pack in packe packy packn
 do
     if [ $pl = ply ]
     then

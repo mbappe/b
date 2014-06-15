@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.228 2014/06/14 18:26:40 mike Exp mike $
+// @(#) $Id: bli.c,v 1.231 2014/06/15 01:32:15 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -752,7 +752,7 @@ t_bitmap:
         return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
-  #if defined(COMPRESSED_LISTS)
+  #if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
         unsigned nBL = nDL_to_nBL(nDL);
       #if (cnBitsAtBottom + cnBitsPerDigit <= 16)
         if (nBL <= 16) {
@@ -781,12 +781,12 @@ t_bitmap:
             if ((wRoot >> 32) == (unsigned int)wKey) { goto foundIt; }
         } else
       #endif // (cnBitsPerWord > 32)
-  #endif // defined(COMPRESSED_LISTS)
+  #endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
         if (*pwr == wKey)
         {
-      #if defined(COMPRESSED_LISTS)
+  #if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
 foundIt:
-      #endif // defined(COMPRESSED_LISTS)
+  #endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
       #if defined(REMOVE)
             RemoveGuts(pwRoot, wKey, nDL, wRoot);
             goto cleanup; // free memory or reconfigure tree if necessary
