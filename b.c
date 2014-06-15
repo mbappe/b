@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.247 2014/06/15 01:32:15 mike Exp mike $
+// @(#) $Id: b.c,v 1.248 2014/06/15 02:00:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1536,6 +1536,9 @@ CopyWithInsertChar(unsigned char *pTgt, unsigned char *pSrc,
 #endif // defined(SORT_LISTS)
 #endif // (cwListPopCntMax != 0)
 
+Status_t
+InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
+
 // InsertGuts
 // This function is called from the iterative Insert function once Insert has
 // determined that the key from an insert request is not present.
@@ -1553,66 +1556,22 @@ CopyWithInsertChar(unsigned char *pTgt, unsigned char *pSrc,
 Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 {
+    DBGI(printf("InsertGuts pwRoot %p wKey "OWx" nDL %d wRoot "OWx"\n",
+               (void *)pwRoot, wKey, nDigitsLeft, wRoot));
+
+    assert(nDigitsLeft >= 1); // for now; may use these values later
+
+    // Would be nice to validate sanity of ifdefs here.  Or somewhere.
+    assert(cnBitsAtBottom >= cnLogBitsPerWord);
+
+    // Check to see if we're at the bottom before checking nType since
+    // nType may be invalid if wRoot is an embedded bitmap.
+    if (nDigitsLeft == 1) {
+        return InsertAtBottom(pwRoot, wKey, nDigitsLeft, wRoot);
+    }
+
     unsigned nType = wr_nType(wRoot); (void)nType; // silence gcc
     Word_t *pwr = wr_tp_pwr(wRoot, nType);
-
-    // Validate global constant parameters set up in the header file.
-#if 0
-    assert(nBL_to_nDL(cnBitsAtBottom) > 0); // can't get to full pop
-#endif
-    assert(nBL_to_nDL(cnBitsAtBottom) + 1 <= cnDigitsPerWord);
-#if defined(SKIP_LINKS)
-    // type field must have enough values
-    assert(nBL_to_nDL(cnBitsAtBottom) + cnMallocMask >= cnDigitsPerWord + 1);
-#endif // defined(SKIP_LINKS)
-
-    DBGI(printf("InsertGuts pwRoot %p ", (void *)pwRoot));
-    DBGI(printf(" wRoot "OWx" wKey "OWx" nDigitsLeft %d\n",
-            wRoot, wKey, nDigitsLeft));
-
-    if (nDigitsLeft <= nBL_to_nDL(cnBitsAtBottom))
-    {
-#if (cnBitsAtBottom <= cnLogBitsPerWord)
-
-        assert(!BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
-
-        DBGI(printf("SetBitInWord(*pwRoot "OWx" wKey "OWx")\n",
-            *pwRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
-
-        SetBitInWord(*pwRoot, wKey & (EXP(cnBitsAtBottom) - 1));
-
-#else // (cnBitsAtBottom <= cnLogBitsPerWord)
-
-        if (pwr == NULL)
-        {
-            pwr = NewBitmap();
-            // If we set the type field to 0 in the *pwRoot to
-            // the bitmap, then we don't need to extract pwr before
-            // derefencing it during lookup.
-            // But we have to be sure that the code does not assume this
-            // nType == T_NULL case implies the whole pwRoot is NULL.
-            // We use nDigitsLeft == 1 to avoid examining nType throughout
-            // the code.
-            set_wr(wRoot, pwr, T_BITMAP);
-            *pwRoot = wRoot;
-        }
-
-        assert(!BitIsSet(pwr, wKey & (EXP(cnBitsAtBottom) - 1)));
-
-        DBGI(printf("SetBit(wRoot "OWx" wKey "OWx") pwRoot %p\n",
-            wRoot, wKey & (EXP(cnBitsAtBottom) - 1), (void *)pwRoot));
-
-        SetBit(pwr, wKey & (EXP(cnBitsAtBottom) - 1));
-
-#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
-
-#if defined(PP_IN_LINK)
-        // What about no_unnecessary_prefix?
-        set_PWR_wPrefix(pwRoot, NULL, nDigitsLeft, wKey);
-#endif // defined(PP_IN_LINK)
-
-        return Success;
-    }
 
 // This first clause handles wRoot == 0 by treating it like a list leaf
 // with zero population (and no allocated memory).
@@ -2244,6 +2203,57 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 #endif // defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
 
     return Success;
+}
+
+Status_t
+InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
+{
+        assert(nDL == 1); (void)nDL; // use depends on ifdefs
+
+#if (cnBitsAtBottom <= cnLogBitsPerWord)
+
+        assert( ! BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)) );
+
+        DBGI(printf("SetBitInWord(*pwRoot "OWx" wKey "OWx")\n",
+                    *pwRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+
+        SetBitInWord(*pwRoot, wKey & (EXP(cnBitsAtBottom) - 1));
+
+#else // (cnBitsAtBottom <= cnLogBitsPerWord)
+
+        Word_t *pwr = wr_pwr(wRoot);
+
+        if (pwr == NULL)
+        {
+            pwr = NewBitmap();
+
+            // If we set the type field to 0 in the *pwRoot to the bitmap,
+            // then we wouldn't need to extract pwr before derefencing it
+            // during lookup.
+            // We could use nDL == 1 to indicate that T_NULL does
+            // not imply pwr == NULL.
+            set_wr(wRoot, pwr, T_BITMAP);
+
+            *pwRoot = wRoot;
+        }
+
+        assert( ! BitIsSet(pwr, wKey & (EXP(cnBitsAtBottom) - 1)) );
+
+        DBGI(printf("SetBit(wRoot "OWx" wKey "OWx") pwRoot %p\n",
+                    wRoot, wKey & (EXP(cnBitsAtBottom) - 1), (void *)pwRoot));
+
+        SetBit(pwr, wKey & (EXP(cnBitsAtBottom) - 1));
+
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
+
+#if defined(PP_IN_LINK)
+
+        // What about no_unnecessary_prefix?
+        set_PWR_wPrefix(pwRoot, NULL, nDL, wKey);
+
+#endif // defined(PP_IN_LINK)
+
+        return Success;
 }
 
 Status_t
