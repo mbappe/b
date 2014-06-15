@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.245 2014/06/14 14:42:22 mike Exp mike $
+// @(#) $Id: b.c,v 1.247 2014/06/15 01:32:15 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -318,7 +318,7 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDigitsLeft)
         (void *)pwList, nWords, (Word_t)wPopCnt));
 
     if (nWords == 0) {
-        printf("OldList nWords 0\n");
+        //printf("OldList nWords 0\n");
         return 0;
     }
 
@@ -1663,7 +1663,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 {
                     assert(nBitsLeft > 16);
                     piKeys = &((unsigned int *)pwRoot)[1]; // little endian
-printf("piKeys %p\n", (void *)piKeys);
                 }
                 else
 #endif // (cnBitsPerWord > 32)
@@ -1720,7 +1719,6 @@ printf("piKeys %p\n", (void *)piKeys);
 #endif // defined(PP_IN_LINK)
         }
 
-printf("a\n");
 // We don't support skip links to lists or bitmaps yet.  And don't have
 // any criteria yet for converting from a list to a switch other than the
 // list is full.  So we just add to an existing list or create a new one
@@ -1849,7 +1847,6 @@ printf("a\n");
         {
             Word_t w;
 
-printf("b\n");
             // List is full; insert a switch
 
 #if defined(PP_IN_LINK)
@@ -1879,7 +1876,6 @@ printf("b\n");
                         wMin = piKeys[0];
                         wMax = piKeys[wPopCnt - 1];
                         wSuffix = wKey & 0xffffffff;
-printf("c\n");
 #endif // (cnBitsPerWord > 32)
                     } else 
 #endif // defined(COMPRESSED_LISTS)
@@ -1940,8 +1936,6 @@ printf("c\n");
                                         | ((wSuffix ^ wMin)
                                         |  (wSuffix ^ wMax)))
                                     + 1);
-printf("a nDL %d\n", nDigitsLeft);
-printf("wSuffix "OWx"\n", wSuffix);
                     }
                     else
 #endif // defined(COMPRESSED_LISTS)
@@ -2008,11 +2002,6 @@ printf("wSuffix "OWx"\n", wSuffix);
                 }
 #if (cnBitsPerWord > 32)
             } else if (nBitsLeftOld <= 32) {
-printf("Getting ready to insert.\n");
-printf("piKeys %p\n", (void *)piKeys);
-printf("*piKeys 0x%08x\n", *piKeys);
-printf("pwRoot %p\n", (void *)pwRoot);
-printf("wPopCnt %d\n", (int)wPopCnt);
                 for (w = 0; w < wPopCnt; w++)
                 {
  // NewSwitch overwrote *pwRoot.  But piKeys may point to *pwRoot.
@@ -2353,8 +2342,7 @@ done:
             OldList(pwr, wPopCnt, nDigitsLeft);
             *pwRoot = 0;
             // Do we need to clear the rest of the link also?
-            // BUG:  We should check if the switch is empty and free it
-            // (and on up the tree as necessary).
+            // See bCleanup in Lookup/Remove for the rest.
         }
         else
         {
@@ -2385,9 +2373,23 @@ done:
                 // Why are we copying the old list to the new one?
                 // Because the beginning will be the same.
                 // Except for the the pop count.
-                COPY(pwList, pwr, ListWords(wPopCnt - 1, nDigitsLeft));
+#if defined(COMPRESSED_LISTS)
+                if ((wPopCnt == 2)
+                    && (nBitsLeft <= 32) && (nBitsLeft > 16))
+                {
+                    // nIndex is 0 or 1
+                    set_wr(wRoot,
+                          (Word_t)(pwr_piKeys(pwr)[ ! nIndex ]) << 32, T_ONE);
+                    goto cleanup;
+                }
+                else
+#endif // defined(COMPRESSED_LISTS)
+                {
+                    COPY(pwList, pwr,
+                         ListWords(wPopCnt - 1, nDigitsLeft));
 
-                set_wr(wRoot, pwList, T_LIST);
+                    set_wr(wRoot, pwList, T_LIST);
+                }
             }
             else
             {
@@ -2397,7 +2399,17 @@ done:
 #if defined(PP_IN_LINK)
             assert(nDigitsLeft != cnDigitsPerWord);
 #else // defined(PP_IN_LINK)
-            set_ls_wPopCnt(pwList, wPopCnt - 1);
+#if defined(COMPRESSED_LISTS)
+            if ((wPopCnt == 2)
+                && (nBitsLeft <= 32) && (nBitsLeft > 16))
+            {
+                // really just avoiding set_ls_wPopCnt in else
+            }
+            else
+#endif // defined(COMPRESSED_LISTS)
+            {
+                set_ls_wPopCnt(pwList, wPopCnt - 1);
+            }
 #endif // defined(PP_IN_LINK)
 
 #if defined(COMPRESSED_LISTS)
@@ -2435,6 +2447,9 @@ done:
 
             if (pwList != pwr)
             {
+#if defined(COMPRESSED_LISTS)
+cleanup:
+#endif // defined(COMPRESSED_LISTS)
                 OldList(pwr, wPopCnt, nDigitsLeft);
                 *pwRoot = wRoot;
             }
