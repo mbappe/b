@@ -55,6 +55,9 @@ function doit
     if [ $skip = skipy ]
     then
         SKIP=-DSKIP_LINKS
+    elif [ $skip = skips ]
+    then
+        SKIP=-DSAVE_PREFIX_TEST_RESULT
     elif [ $skip = skipl ]
     then
         SKIP=-DALWAYS_CHECK_PREFIX_AT_LEAF
@@ -288,15 +291,11 @@ function doit
 
 status=0
 
-for pack in packy # packn
-do
 for deref in dr # nodr nolsdr nobmdr nolssearch nobmsearch
 do
 for bm in bmn # bms # bml
 do
-for pp in pps # ppl
-do
-for lsmax in 7f # ff # 00
+for lsmax in 3f # ff # 00
 do
 for type in tpr # tpa
 do
@@ -304,9 +303,7 @@ for table in tbn # tby
 do
 for cc in ccc # gcc # icc
 do
-for sort in sorty # sortn
-do
-for search in srr srx srp srl srs
+for search in srl # srr srx srp srs
 do
 # if we don't include 40 then we won't get numbers for srx
 for srts in 40
@@ -317,19 +314,25 @@ do
 # if we don't include 08 then we won't get numbers for srx
 for srtw in 08 # 10
 do
-for bab in 06 10 # 0e # 32 08
+for bab in 10 # 06 0e # 32 08
 do
-for bpd in 08 # 10 06 # 20 04
+for bpd in 08 10 # 06 # 20 04
 do
-for bits in 64 32
+for skip in skips skipy skipv skipz skipl skipd # skipn # skipu skipx
 do
-for skip in skipy # skipv skipz skipl skipd skipn # skipu skipx
+for bma in bmay # bman
 do
-for bma in bmay bman
+for tlss in tlssn # tlssy
 do
-for tlss in tlssy tlssn
+for pl in pln # ply
 do
-for pl in ply # pln
+for pp in pps # ppl
+do
+for bits in 64 # 32
+do
+for pack in packy packn
+do
+for sort in sorty sortn
 do
     if [ $pl = ply ]
     then
