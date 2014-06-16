@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.253 2014/06/16 11:32:25 mike Exp mike $
+// @(#) $Id: b.c,v 1.254 2014/06/16 17:06:42 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2213,6 +2213,7 @@ Status_t
 InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 {
         assert(nDL == 1); (void)nDL; // use depends on ifdefs
+        (void)wRoot;
 
 #if (cnBitsAtBottom <= cnLogBitsPerWord)
 
