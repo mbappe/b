@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.251 2014/06/16 04:09:14 mike Exp mike $
+// @(#) $Id: b.c,v 1.252 2014/06/16 04:30:41 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2399,9 +2399,6 @@ done:
             }
             else
             {
-#if defined(T_ONE)
-                assert(wPopCnt != 2);
-#endif // defined(T_ONE)
                 pwList = pwr;
             }
 
