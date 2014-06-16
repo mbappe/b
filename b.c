@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.252 2014/06/16 04:30:41 mike Exp mike $
+// @(#) $Id: b.c,v 1.253 2014/06/16 11:32:25 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -201,11 +201,13 @@ ListWords(Word_t wPopCnt, unsigned nDigitsLeft)
 
 #endif // defined(COMPRESSED_LISTS)
 
-#if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
-    if ((wPopCnt == 1) && (nBytesKeySz == 4)) {
+#if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+    if ((wPopCnt == 1)
+        && (nBitsLeft <= cnBitsPerWord - cnLogBitsPerWord - 1))
+    {
         return 0; // Use wRoot for the key.
     }
-#endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
+#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
 
     // make room for pop count in the list
 #if defined(T_ONE)
@@ -234,9 +236,9 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
 
     unsigned nWords = ListWords(wPopCnt, nDigitsLeft);
 
-#if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
+#if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
     if (nWords == 0) return NULL; // I wonder if we should return T_ONE.
-#endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
+#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
 
 #if defined(COMPRESSED_LISTS)
     unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
@@ -308,9 +310,9 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDigitsLeft)
     DBGM(printf("Old pwList %p wLen %d wPopCnt "OWx"\n",
         (void *)pwList, nWords, (Word_t)wPopCnt));
 
-#if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
+#if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
     if (nWords == 0) { return 0; }
-#endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
+#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
 
 #if defined(DL_IN_LL)
     assert(nDigitsLeft == ll_nDigitsLeft(pwList));
@@ -882,13 +884,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         {
             if (!bDump)
             {
-#if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
-                // only full word T_ONE leaves have a pointer to memory
-                if (nBitsLeft > cnBitsPerWord / 2)
-#endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
-                {
-                    return OldList(pwr, /* wPopCnt */ 1, nDigitsLeft);
-                }
+                return OldList(pwr, /* wPopCnt */ 1, nDigitsLeft);
             }
 
             printf(" tp_wPopCnt %3d", 1);
@@ -902,11 +898,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
             }
 #endif // defined(PP_IN_LINK)
 
-#if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
-            if (nBitsLeft <= cnBitsPerWord / 2) {
-                printf(" 0x%08x\n", (unsigned int)(wRoot >> 32));
+#if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+            if (nBitsLeft <= cnBitsPerWord - cnLogBitsPerWord - 1) {
+                printf(" %"_fw"x\n", wRoot >> (cnBitsPerWord - nBitsLeft));
             } else
-#endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
+#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
             {
                 printf(" "Owx"\n", *pwr);
             }
@@ -1601,7 +1597,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 
         DBGI(printf("InsertGuts List\n"));
 
-        if (pwr != NULL) // pointer to old List
+        if (wRoot != 0) // pointer to old List
         {
 #if defined(T_ONE)
             if (nType == T_ONE)
@@ -1613,22 +1609,30 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 assert((nDigitsLeft == cnDigitsPerWord)
                     || (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == 2));
   #endif // defined(PP_IN_LINK)
-  #if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
+  #if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
                 unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
-                if (nBitsLeft <= 32)
+                if (nBitsLeft <= cnBitsPerWord - cnLogBitsPerWord - 1)
                 {
-                    assert(nBitsLeft > 16); // very temporary
-                    piKeys = &((unsigned int *)pwRoot)[1]; // little endian
+                    Word_t ww = wRoot >> (cnBitsPerWord - nBitsLeft);
+                    ww |= wKey & ~(EXP(nBitsLeft) - 1);
+
+                    pwKeys = &ww;
+#if defined(COMPRESSED_LISTS)
+#if (cnBitsPerWord > 32)
+                    iKey = (uint32_t)ww; piKeys = &iKey;
+#endif // (cnBitsPerWord > 32)
+                    sKey = (uint16_t)ww; psKeys = &sKey;
+#endif // defined(COMPRESSED_LISTS)
                 }
                 else
-  #endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
+  #endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
                 {
                     pwKeys = pwr;
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
-                    iKey = (unsigned int)*pwr; piKeys = &iKey;
+                    iKey = (uint32_t)*pwr; piKeys = &iKey;
 #endif // (cnBitsPerWord > 32)
-                    sKey = (unsigned short)*pwr; psKeys = &sKey;
+                    sKey = (uint16_t)*pwr; psKeys = &sKey;
 #endif // defined(COMPRESSED_LISTS)
                 }
             }
@@ -1774,7 +1778,16 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft); (void)nBitsLeft;
 #if defined(T_ONE)
                 if (wPopCnt == 0) {
-                    *pwList = wKey; set_wr_nType(wRoot, T_ONE);
+#if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+                    if (nBitsLeft <= cnBitsPerWord - cnLogBitsPerWord - 1) {
+                        set_wr(wRoot, wKey << (cnBitsPerWord - nBitsLeft),
+                               T_ONE);
+                    }
+                    else
+#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+                    {
+                        *pwList = wKey; set_wr_nType(wRoot, T_ONE);
+                    }
                 } else
 #endif // defined(T_ONE)
 #if defined(COMPRESSED_LISTS)
@@ -1784,11 +1797,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                     ls_psKeys(pwList)[wPopCnt] = wKey;
 #if (cnBitsPerWord > 32)
                 } else if (nBitsLeft <= 32) {
-  #if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
-                    if (wPopCnt == 0) { // always true for SORT_LISTS
-                        wRoot = (wKey << 32) | T_ONE;
-                    } else
-  #endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
                     { ls_piKeys(pwList)[wPopCnt] = wKey; }
 #endif // (cnBitsPerWord > 32)
                 } else
@@ -1954,34 +1962,22 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
             if (nBitsLeftOld <= 8) {
                 for (w = 0; w < wPopCnt; w++)
                 {
-                    Insert(pwRoot, pcKeys[w] | (wKey & ~0xff),
+                    Insert(pwRoot, pcKeys[w] | (wKey & ~(Word_t)0xff),
                            nDigitsLeftOld);
                 }
             } else if (nBitsLeftOld <= 16) {
                 for (w = 0; w < wPopCnt; w++)
                 {
-                    Insert(pwRoot, psKeys[w] | (wKey & ~0xffff),
+                    Insert(pwRoot, psKeys[w] | (wKey & ~(Word_t)0xffff),
                            nDigitsLeftOld);
                 }
 #if (cnBitsPerWord > 32)
             } else if (nBitsLeftOld <= 32) {
                 for (w = 0; w < wPopCnt; w++)
                 {
-  #if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
-                    if (nType == T_ONE) // move this outside loop
-                    {
-                        // NewSwitch overwrote *pwRoot.  Use wRoot instead.
-                        Insert(pwRoot,
-                              (wRoot >> 32) | (wKey & ~(Word_t)0xffffffff),
-                               nDigitsLeftOld);
-                    }
-                    else
-  #endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
-                    {
-                        Insert(pwRoot,
-                               piKeys[w] | (wKey & ~(Word_t)0xffffffff),
-                               nDigitsLeftOld);
-                    }
+                    Insert(pwRoot,
+                           piKeys[w] | (wKey & ~(Word_t)0xffffffff),
+                           nDigitsLeftOld);
                 }
 #endif // (cnBitsPerWord > 32)
             } else
@@ -2267,7 +2263,7 @@ InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 Status_t
 RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 {
-    Word_t *pwr = wr_pwr(wRoot);
+    Word_t *pwr = wr_pwr(wRoot); (void)pwr;
 
     DBGR(printf("RemoveGuts\n"));
 
@@ -2384,11 +2380,21 @@ done:
                 // Because the beginning will be the same.
                 // Except for the the pop count.
 #if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
-                if ((wPopCnt == 2) && (nBitsLeft <= 32) && (nBitsLeft > 16))
+                if ((wPopCnt == 2)
+                    && (nBitsLeft <= cnBitsPerWord - cnLogBitsPerWord - 1))
                 {
                     // nIndex is 0 or 1
-                    set_wr(wRoot,
-                          (Word_t)(pwr_piKeys(pwr)[ ! nIndex ]) << 32, T_ONE);
+                    if (nBitsLeft <= 16) {
+                        set_wr(wRoot,
+                              (Word_t)(pwr_psKeys(pwr)[ ! nIndex ])
+                                  << (cnBitsPerWord - nBitsLeft),
+                               T_ONE);
+                    } else if (nBitsLeft <= 32) {
+                        set_wr(wRoot,
+                              (Word_t)(pwr_piKeys(pwr)[ ! nIndex ])
+                                  << (cnBitsPerWord - nBitsLeft),
+                               T_ONE);
+                    }
                     goto cleanup; // stop pretending; it's painful
                 }
 #endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
@@ -2408,10 +2414,6 @@ done:
 #if defined(T_ONE)
             if (wPopCnt != 2)
 #endif // defined(T_ONE)
-#if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
-            // Hmm.  Can't we get rid of this because of goto cleanup above?
-            if ( ! ((wPopCnt == 2) && (nBitsLeft <= 32) && (nBitsLeft > 16)) )
-#endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
             {
                 set_ls_wPopCnt(pwList, wPopCnt - 1);
             }
@@ -2431,6 +2433,7 @@ done:
                     *pwList = pwKeys[ ! nIndex ];
                 }
                 set_wr_nType(wRoot, T_ONE);
+                *pwRoot = wRoot;
             } else
 #endif // defined(T_ONE)
 #if defined(COMPRESSED_LISTS)
@@ -2613,9 +2616,14 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             if ((wPopCntLn == 0) && (*pwRootLn != 0))
             {
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                // Isn't this assuming tp_bIsSwitch(nTypeLn)?
+                // T_LIST and T_ONE can't be full pop?
+                // And we don't skip directly to T_BITMAP?
+                // What if bitmap is direcly below top switch?
+                assert(tp_bIsSwitch(nTypeLn));
                 int nDigitsLeft =
 #if defined(TYPE_IS_RELATIVE)
-                    cnDigitsPerWord - wr_nDS(*pwRootLn)
+                    cnDigitsPerWord - 1 - wr_nDS(*pwRootLn)
 #else // defined(TYPE_IS_RELATIVE)
                     wr_nDigitsLeft(*pwRootLn)
 #endif // defined(TYPE_IS_RELATIVE)

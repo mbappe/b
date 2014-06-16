@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.231 2014/06/15 01:32:15 mike Exp mike $
+// @(#) $Id: bli.c,v 1.232 2014/06/15 14:34:00 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -752,36 +752,37 @@ t_bitmap:
         return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
-  #if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
+      #if defined(EMBED_KEYS)
+        // How many keys will fit?  We're just doing one for now.
+        //
+        //  - (cnBitsPerWord - cnBitsPerType - cnBitsPerPopCnt) / nBL
+        //
+        //      1 x 60-bit key  ... 1 x 30-bit key
+        //      2 x 29-bit keys ... 2 x 20-bit keys
+        //      3 x 19-bit keys ... 3 x 15-bit keys
+        //      4 x 14-bit keys ... 4 x 12-bit keys
+        //      5 x 11-bit keys ... 5 x 10-bit keys
+        //      6 x  9-bit keys
+        //      7 x  8-bit keys
+        //      8 x  7-bit keys
+        //     64 x  6-bit keys in embedded bitmap
+        //
+        //      1 x 29-bit key  ... 1 x 15-bit key
+        //      2 x 14-bit keys ... 2 x 10-bit keys
+        //      3 x  9-bit keys ... 3 x  7-bit keys
+        //      4 x  6-bit keys
+        //     32 x  5-bit keys in embedded bimtap
+          #if (cnBitsPerWord == 64)
         unsigned nBL = nDL_to_nBL(nDL);
-      #if (cnBitsAtBottom + cnBitsPerDigit <= 16)
-        if (nBL <= 16) {
-            unsigned nPopCnt = (wRoot >> 8) & 0xff;
-            if ((nPopCnt >= 3)
-                && (((wRoot >> 16) & 0xffff) == (wKey & 0xffff)))
-            {
-                goto foundIt;
-            }
- // Is it ok to shift by 32?
-            if ((nPopCnt >= 2)
-                && (((wRoot >> 32) & 0xffff) == (wKey & 0xffff)))
-            {
-                goto foundIt;
-            }
- // Is it ok to shift by 48?
-            if ((nPopCnt >= 1)
-                && (((wRoot >> 48) & 0xffff) == (wKey & 0xffff)))
-            {
+        if (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1) {
+            // First embedded key is in high bits of wRoot.
+            Word_t wKeyRoot = (wRoot >> (cnBitsPerWord - nBL));
+            if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) {
                 goto foundIt;
             }
         } else
-      #endif // (cnBitsAtBottom + cnBitsPerDigit <= 16)
-      #if (cnBitsPerWord > 32)
-        if (nBL <= 32) {
-            if ((wRoot >> 32) == (unsigned int)wKey) { goto foundIt; }
-        } else
-      #endif // (cnBitsPerWord > 32)
-  #endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
+          #endif // (cnBitsPerWord == 64)
+      #endif // defined(EMBED_KEYS)
         if (*pwr == wKey)
         {
   #if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
