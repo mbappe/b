@@ -139,6 +139,7 @@ function doit
         # EMBED_KEYS implies COMPRESSED_LISTS, and requires T_ONE,
         # and, temporarily, is ignored if cnBitsPerWord != 64
         PACK=-DEMBED_KEYS
+#endif // defined(T_ONE)
     elif [ $pack = packy ]
     then
         PACK=-DCOMPRESSED_LISTS
@@ -298,10 +299,6 @@ status=0
 
 for deref in dr # nodr nolsdr nobmdr nolssearch nobmsearch
 do
-for bm in bmn # bms # bml
-do
-for lsmax in 3f # ff # 00
-do
 for type in tpr # tpa
 do
 for table in tbn # tby
@@ -319,11 +316,15 @@ do
 # if we don't include 08 then we won't get numbers for srx
 for srtw in 08 # 10
 do
-for bab in 10 # 06 0e # 32 08
+for bab in 06 08 # 0e # 32 08
 do
-for bpd in 08 10 # 06 # 20 04
+for bpd in 06 07 08 # 06 # 20 04
 do
-for skip in skips skipy skipv skipz skipl skipd # skipn # skipu skipx
+for lsmax in 4 2 1 0 # ff # 00
+do
+for bm in bmn bms bml
+do
+for skip in skipy # skips skipv skipz skipl skipd # skipn # skipu skipx
 do
 for bma in bmay # bman
 do
@@ -331,13 +332,13 @@ for tlss in tlssn # tlssy
 do
 for pl in pln # ply
 do
-for pp in pps # ppl
-do
 for bits in 64 # 32
 do
 for sort in sorty sortn
 do
-for pack in packe packy packn
+for pack in packy packe packn
+do
+for pp in ppl pps
 do
     if [ $pl = ply ]
     then
