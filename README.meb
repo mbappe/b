@@ -1,9 +1,11 @@
-Run makewrap to see if the builds work.  It will run for days (maybe not).
-Run bbwrap to see if the code works.  It will run for days (maybe not).
-Run bbwrap -q for a less vigorous test.  It will run for days (maybe not).
+Run "forx make" to see if the builds work.  It will run for days (maybe not).
+Run "forx bb" to see if the code works.  It will run for days (maybe not).
+Run "forx bb -q" for a less vigorous test.  It will run for days (maybe not).
 rcs.tjz contains a copy of the RCS files in case the originals be found.
-Look for symbolic names in the RCS files.
+Look for symbolic names in the RCS files with "rcs -h b.h".
 CP140405 is Checkpoint April 5, 2014.
+The most recent checkpoint should be the latest and greatest somewhat
+functional code.
 
 6/11/14:
 - Minimize the number of cache lines accessed once the working set is too
