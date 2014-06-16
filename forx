@@ -280,8 +280,8 @@ function doit
                  mv b b-$tag
             if [ $((0x$bab)) -lt $((0x10)) ]
             then
-                echo b-$tag -1m -n40000000 | tee b-$tag.plot
-                     b-$tag -1m -n40000000 | tee b-$tag.plot
+                echo b-$tag -1m -n400000000 | tee b-$tag.plot
+                     b-$tag -1m -n400000000 | tee b-$tag.plot
             else
                 echo b-$tag -1m -n5000000 | tee b-$tag.plot
                      b-$tag -1m -n5000000 | tee b-$tag.plot
