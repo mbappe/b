@@ -166,13 +166,13 @@
 #endif // defined(_WIN64)
 
 #define EXP(_x)  (WORD_ONE << (_x))
+#define MSK(_x)  (EXP(_x) - 1)
 
 // Count leading zeros.
 // __builtin_clzll is undefined for zero which allows the compiler to use bsr.
 // Actual x86 clz instruction is defined for zero.
 // This LOG macro is undefined for zero.
 #define LOG(_x)  ((Word_t)63 - __builtin_clzll(_x))
-#define MASK(_x)  ((_x) - 1)
 
 #define cnLogBitsPerByte  3
 #define cnBitsPerByte  (EXP(cnLogBitsPerByte))
