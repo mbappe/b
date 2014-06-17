@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.255 2014/06/16 17:23:47 mike Exp mike $
+// @(#) $Id: b.c,v 1.256 2014/06/17 02:29:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2302,218 +2302,269 @@ InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 }
 
 Status_t
+RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
+
+#if defined(T_ONE) && (cwListPopCntMax != 0)
+Status_t
+RemoveTypeOne(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t *pwr);
+#endif // defined(T_ONE) && (cwListPopCntMax != 0)
+
+Status_t
 RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
 {
     Word_t *pwr = wr_pwr(wRoot); (void)pwr;
 
     DBGR(printf("RemoveGuts\n"));
 
+#if (cwListPopCntMax != 0)
+    if (nDigitsLeft <= 1) {
+        return RemoveBitmap(pwRoot, wKey, nDigitsLeft, wRoot);
+    }
+#else // (cwListPopCntMax != 0)
+    assert(nDigitsLeft <= 1);
+#endif // (cwListPopCntMax != 0)
+
     unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft); (void)nBitsLeft;
 
 #if (cwListPopCntMax != 0)
-    if (nDigitsLeft <= nBL_to_nDL(cnBitsAtBottom))
-#else // (cwListPopCntMax != 0)
-    assert(nDigitsLeft <= nBL_to_nDL(cnBitsAtBottom));
-#endif // (cwListPopCntMax != 0)
-    {
-#if (cnBitsAtBottom <= cnLogBitsPerWord)
 
-        ClrBitInWord(wRoot, wKey & ((EXP(cnBitsAtBottom)) - 1UL));
-        // What if link has more than just ln_wRoot due
-        // to BM_IN_LINK and/or PP_IN_LINK?
-        // What if population just went to 0?  Should we clear the rest
-        // of the link?
-        // Or can we rely on cleanup phase in Remove to do it?
-        *pwRoot = wRoot;
-
-#else // (cnBitsAtBottom <= cnLogBitsPerWord)
-
-        ClrBit(pwr, wKey & ((EXP(cnBitsAtBottom)) - 1UL));
-
-#if defined(PP_IN_LINK)
-        if (PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) == 0)
-        {
-            DBGL(printf("RemoveGuts OldBitmap nDigitsLeft %d\n",
-                 nDigitsLeft));
-            OldBitmap(pwr); *pwRoot = 0;
-            // Do we need to clear the rest of the link also?
-        }
-#else // defined(PP_IN_LINK)
-
-        // Free the bitmap if it is empty.
-        for (Word_t ww = 0;
-             ww < EXP(cnBitsAtBottom - cnLogBitsPerWord); ww++)
-        {
-            if (__builtin_popcountll(pwr[ww]))
-            {
-                goto done;
-            }
-        }
-
-        OldBitmap(pwr); *pwRoot = 0;
-done:
-
-#endif // defined(PP_IN_LINK)
-
-#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
-
-        if (*pwRoot == 0)
-        {
-            // We return to Remove which will clean up ancestors.
-            DBGR(printf("RemoveGuts *pwRoot is now 0\n"));
-        }
-    }
-#if (cwListPopCntMax != 0)
-    else
-    {
-        Word_t wPopCnt;
+    Word_t wPopCnt;
 
 #if defined(T_ONE)
-        if (wr_nType(wRoot) == T_ONE) {
-            wPopCnt = 1;
-        } else
+    if (wr_nType(wRoot) == T_ONE) {
+        return RemoveTypeOne(pwRoot, wKey, nDigitsLeft, pwr);
+    }
 #endif // defined(T_ONE)
-        {
-#if defined(PP_IN_LINK)
-            if (nDigitsLeft != cnDigitsPerWord) {
-                wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) + 1;
-            } else
-#endif // defined(PP_IN_LINK)
-            {
-                wPopCnt = ls_wPopCnt(pwr);
-            }
-        }
 
-        if (wPopCnt == 1)
+    {
+#if defined(PP_IN_LINK)
+        if (nDigitsLeft != cnDigitsPerWord) {
+            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft) + 1;
+        } else
+#endif // defined(PP_IN_LINK)
         {
-            OldList(pwr, wPopCnt, nDigitsLeft);
-            *pwRoot = 0;
-            // Do we need to clear the rest of the link also?
-            // See bCleanup in Lookup/Remove for the rest.
+            wPopCnt = ls_wPopCnt(pwr);
+        }
+    }
+
+    if (wPopCnt == 1)
+    {
+        OldList(pwr, wPopCnt, nDigitsLeft);
+        *pwRoot = 0;
+        // Do we need to clear the rest of the link also?
+        // See bCleanup in Lookup/Remove for the rest.
+    }
+    else
+    {
+        Word_t *pwKeys = pwr_pwKeys(pwr);
+
+        unsigned nIndex;
+        for (nIndex = 0;
+#if defined(COMPRESSED_LISTS)
+            (nBitsLeft <= 8)
+                ? (pwr_pcKeys(pwr)[nIndex] != (unsigned char )wKey) :
+            (nBitsLeft <= 16)
+                ? (pwr_psKeys(pwr)[nIndex] != (unsigned short)wKey) :
+#if (cnBitsPerWord > 32)
+            (nBitsLeft <= 32)
+                ? (pwr_piKeys(pwr)[nIndex] != (unsigned int)wKey) :
+#endif // (cnBitsPerWord > 32)
+#endif // defined(COMPRESSED_LISTS)
+            (pwKeys[nIndex] != wKey); nIndex++) { }
+
+        // nIndex identifies the key being removed.
+
+        Word_t *pwList;
+        if (ListWords(wPopCnt - 1, nDigitsLeft)
+                != ListWords(wPopCnt, nDigitsLeft))
+        {
+            // Malloc a new, smaller list.
+            pwList = NewList(wPopCnt - 1, nDigitsLeft, wKey);
+            // Why are we copying the old list to the new one?
+            // Because the beginning will be the same.
+            // Except for the the pop count.
+#if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
+            if ((wPopCnt == 2)
+                && (nBitsLeft <= cnBitsPerWord - cnLogBitsPerWord - 1))
+            {
+                // nIndex is 0 or 1
+                if (nBitsLeft <= 16) {
+                    set_wr(wRoot,
+                          ((Word_t)(pwr_psKeys(pwr)[ ! nIndex ])
+                              << (cnBitsPerWord - nBitsLeft))
+                                   | ((nBitsLeft < 60) << 4),
+                           T_ONE);
+                } else if (nBitsLeft <= 32) {
+                    set_wr(wRoot,
+                          ((Word_t)(pwr_piKeys(pwr)[ ! nIndex ])
+                              << (cnBitsPerWord - nBitsLeft))
+                                   | ((nBitsLeft < 60) << 4),
+                           T_ONE);
+                }
+                goto cleanup; // stop pretending; it's painful
+            }
+#endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
+
+            COPY(pwList, pwr, ListWords(wPopCnt - 1, nDigitsLeft));
+
+            set_wr(wRoot, pwList, T_LIST);
         }
         else
         {
-            Word_t *pwKeys = pwr_pwKeys(pwr);
-
-            unsigned nIndex;
-            for (nIndex = 0;
-#if defined(COMPRESSED_LISTS)
-                (nBitsLeft <= 8)
-                    ? (pwr_pcKeys(pwr)[nIndex] != (unsigned char )wKey) :
-                (nBitsLeft <= 16)
-                    ? (pwr_psKeys(pwr)[nIndex] != (unsigned short)wKey) :
-#if (cnBitsPerWord > 32)
-                (nBitsLeft <= 32)
-                    ? (pwr_piKeys(pwr)[nIndex] != (unsigned int)wKey) :
-#endif // (cnBitsPerWord > 32)
-#endif // defined(COMPRESSED_LISTS)
-                (pwKeys[nIndex] != wKey); nIndex++) { }
-
-            // nIndex identifies the key being removed.
-
-            Word_t *pwList;
-            if (ListWords(wPopCnt - 1, nDigitsLeft)
-                    != ListWords(wPopCnt, nDigitsLeft))
-            {
-                // Malloc a new, smaller list.
-                pwList = NewList(wPopCnt - 1, nDigitsLeft, wKey);
-                // Why are we copying the old list to the new one?
-                // Because the beginning will be the same.
-                // Except for the the pop count.
-#if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
-                if ((wPopCnt == 2)
-                    && (nBitsLeft <= cnBitsPerWord - cnLogBitsPerWord - 1))
-                {
-                    // nIndex is 0 or 1
-                    if (nBitsLeft <= 16) {
-                        set_wr(wRoot,
-                              ((Word_t)(pwr_psKeys(pwr)[ ! nIndex ])
-                                  << (cnBitsPerWord - nBitsLeft))
-                                       | ((nBitsLeft < 60) << 4),
-                               T_ONE);
-                    } else if (nBitsLeft <= 32) {
-                        set_wr(wRoot,
-                              ((Word_t)(pwr_piKeys(pwr)[ ! nIndex ])
-                                  << (cnBitsPerWord - nBitsLeft))
-                                       | ((nBitsLeft < 60) << 4),
-                               T_ONE);
-                    }
-                    goto cleanup; // stop pretending; it's painful
-                }
-#endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
-
-                COPY(pwList, pwr, ListWords(wPopCnt - 1, nDigitsLeft));
-
-                set_wr(wRoot, pwList, T_LIST);
-            }
-            else
-            {
-                pwList = pwr;
-            }
+            pwList = pwr;
+        }
 
 #if defined(PP_IN_LINK)
-            assert(nDigitsLeft != cnDigitsPerWord);
+        assert(nDigitsLeft != cnDigitsPerWord);
 #else // defined(PP_IN_LINK)
 #if defined(T_ONE)
-            if (wPopCnt != 2)
+        if (wPopCnt != 2)
 #endif // defined(T_ONE)
-            {
-                set_ls_wPopCnt(pwList, wPopCnt - 1);
-            }
+        {
+            set_ls_wPopCnt(pwList, wPopCnt - 1);
+        }
 #endif // defined(PP_IN_LINK)
 
 #if defined(T_ONE)
-            if (wPopCnt == 2) {
+        if (wPopCnt == 2) {
 #if defined(COMPRESSED_LISTS)
-                Word_t wPrefix = wKey & ~(EXP(nBitsLeft) - 1);
-                if (nBitsLeft <= 16) {
-                    *pwList = wPrefix | pwr_psKeys(pwr)[ ! nIndex ];
-                } else if (nBitsLeft <= 32) {
-                    *pwList = wPrefix | pwr_piKeys(pwr)[ ! nIndex ];
-                } else
-#endif // defined(COMPRESSED_LISTS)
-                {
-                    *pwList = pwKeys[ ! nIndex ];
-                }
-                set_wr_nType(wRoot, T_ONE);
-                *pwRoot = wRoot;
+            Word_t wPrefix = wKey & ~(EXP(nBitsLeft) - 1);
+            if (nBitsLeft <= 16) {
+                *pwList = wPrefix | pwr_psKeys(pwr)[ ! nIndex ];
+            } else if (nBitsLeft <= 32) {
+                *pwList = wPrefix | pwr_piKeys(pwr)[ ! nIndex ];
             } else
+#endif // defined(COMPRESSED_LISTS)
+            {
+                *pwList = pwKeys[ ! nIndex ];
+            }
+            set_wr_nType(wRoot, T_ONE);
+            *pwRoot = wRoot;
+        } else
 #endif // defined(T_ONE)
 #if defined(COMPRESSED_LISTS)
-            if (nBitsLeft <= 8) {
-                MOVE(&pwr_pcKeys(pwList)[nIndex],
-                     &pwr_pcKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
-            } else if (nBitsLeft <= 16) {
-                MOVE(&pwr_psKeys(pwList)[nIndex],
-                     &pwr_psKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+        if (nBitsLeft <= 8) {
+            MOVE(&pwr_pcKeys(pwList)[nIndex],
+                 &pwr_pcKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+        } else if (nBitsLeft <= 16) {
+            MOVE(&pwr_psKeys(pwList)[nIndex],
+                 &pwr_psKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
 #if (cnBitsPerWord > 32)
-            } else if (nBitsLeft <= 32) {
-                MOVE(&pwr_piKeys(pwList)[nIndex],
-                     &pwr_piKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+        } else if (nBitsLeft <= 32) {
+            MOVE(&pwr_piKeys(pwList)[nIndex],
+                 &pwr_piKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
 #endif // (cnBitsPerWord > 32)
-            } else
+        } else
 #endif // defined(COMPRESSED_LISTS)
-            {
-                MOVE(&pwr_pwKeys(pwList)[nIndex], &pwKeys[nIndex + 1],
-                     wPopCnt - nIndex - 1);
-            }
+        {
+            MOVE(&pwr_pwKeys(pwList)[nIndex], &pwKeys[nIndex + 1],
+                 wPopCnt - nIndex - 1);
+        }
 
-            if (pwList != pwr)
-            {
+        if (pwList != pwr)
+        {
 #if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
 cleanup:
 #endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
-                OldList(pwr, wPopCnt, nDigitsLeft);
-                *pwRoot = wRoot;
-            }
+            OldList(pwr, wPopCnt, nDigitsLeft);
+            *pwRoot = wRoot;
         }
     }
+
+    return Success;
+
 #endif // (cwListPopCntMax != 0)
 
     (void)pwRoot; (void)wKey; (void)nDigitsLeft; (void)wRoot;
+}
+
+// Clear the bit for wKey in the bitmap.
+// And free the bitmap if it is empty and not embedded.
+Status_t
+RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
+{
+    (void)nDL;
+
+#if (cnBitsAtBottom <= cnLogBitsPerWord)
+
+    ClrBitInWord(wRoot, wKey & MSK(cnBitsAtBottom));
+
+    // What if link has more than just ln_wRoot due
+    // to BM_IN_LINK and/or PP_IN_LINK?
+    // What if population just went to 0?
+    // Should we clear the rest of the link?
+    // Or can we rely on bCleanup phase in Remove to do it if necessary?
+
+    *pwRoot = wRoot;
+
+#else // (cnBitsAtBottom <= cnLogBitsPerWord)
+
+    Word_t *pwr = wr_pwr(wRoot);
+
+    ClrBit(pwr, wKey & MSK(cnBitsAtBottom));
+
+  #if defined(PP_IN_LINK)
+
+    if (PWR_wPopCnt(pwRoot, NULL, nDL) != 0) {
+        goto skipOldBitmap; // bitmap is not empty
+    }
+
+  #else // defined(PP_IN_LINK)
+
+    // Free the bitmap if it is empty.
+    for (Word_t ww = 0; ww < EXP(cnBitsAtBottom - cnLogBitsPerWord); ww++) {
+        if (__builtin_popcountll(pwr[ww])) {
+            goto skipOldBitmap; // bitmap is not empty
+        }
+    }
+
+  #endif // defined(PP_IN_LINK)
+
+    OldBitmap(pwr);
+
+    *pwRoot = 0; // Do we need to clear the rest of the link, e.g. PP_IN_LINK?
+
+skipOldBitmap:
+
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
+
+    if (*pwRoot == 0)
+    {
+        // We return to Remove which will clean up ancestors.
+        DBGR(printf("RemoveGuts *pwRoot is now 0\n"));
+    }
 
     return Success;
 }
+
+#if defined(T_ONE) && (cwListPopCntMax != 0)
+
+// Remove the key from a T_ONE leaf.
+Status_t
+RemoveTypeOne(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t *pwr)
+{
+    (void)wKey;
+
+#if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+  #if defined(DEBUG_REMOVE)
+    unsigned nBL = nDL_to_nBL(nDL);
+    if (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1) {
+        assert((((Word_t)pwr >> (cnBitsPerWord - nBL) ^ wKey) & ~MSK(nBL))
+               == 0);
+    } else
+  #endif // defined(DEBUG_REMOVE)
+#else // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+    assert(*pwr == wKey);
+#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+    
+    OldList(pwr, 1, nDL); // OldList is a no-op if the is embedded.
+
+    *pwRoot = 0; // Do we need to clear the rest of the link also?
+
+    return Success; // Return to Remove for bCleanup phase.
+}
+
+#endif // defined(T_ONE) && (cwListPopCntMax != 0)
 
 #endif // (cnDigitsPerWord != 1)
 
