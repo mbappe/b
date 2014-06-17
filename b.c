@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.254 2014/06/16 17:06:42 mike Exp mike $
+// @(#) $Id: b.c,v 1.255 2014/06/16 17:23:47 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -882,14 +882,27 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
         if (nType == T_ONE)
         {
+#if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+            if (nBitsLeft <= cnBitsPerWord - cnLogBitsPerWord - 1) {
+                wPopCnt = (wRoot >> 4) & (EXP(LOG(119 / nBitsLeft)) - 1);
+                if (wPopCnt == 0) { wPopCnt = 1; }
+            } else
+#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+            {
+                wPopCnt = 1;
+            }
+
             if (!bDump)
             {
+                // This OldList is a no-op and will return zero if
+                // the key(s) is(are) embedded.
                 return OldList(pwr, /* wPopCnt */ 1, nDigitsLeft);
             }
 
-            printf(" tp_wPopCnt %3d", 1);
+            printf(" tp_wPopCnt %3d", (int)wPopCnt);
 
 #if defined(PP_IN_LINK)
+            assert(nBitsLeft == nBitsLeftArg);
             if (nBitsLeftArg == cnBitsPerWord) {
                 printf(" wr_wPrefix        N/A");
             } else {
@@ -900,7 +913,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 
 #if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
             if (nBitsLeft <= cnBitsPerWord - cnLogBitsPerWord - 1) {
-                printf(" %"_fw"x\n", wRoot >> (cnBitsPerWord - nBitsLeft));
+                for (unsigned nn = 1; nn <= wPopCnt; nn++) {
+                    printf(" %"_fw"x\n",
+                        (wRoot >> (cnBitsPerWord - (nn * nBitsLeft)))
+                            & (EXP(nBitsLeft) - 1));
+                }
             } else
 #endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
             {
@@ -910,64 +927,65 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
         else
 #endif // defined(T_ONE)
         {
-        assert(nType == T_LIST);
+            assert(nType == T_LIST);
 
 #if defined(PP_IN_LINK)
-        if (nDigitsLeft != cnDigitsPerWord)
-        {
-            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
-        }
-        else
+            if (nDigitsLeft != cnDigitsPerWord)
+            {
+                wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDigitsLeft);
+            }
+            else
 #endif // defined(PP_IN_LINK)
-        {
-            wPopCnt = ls_wPopCnt(pwr);
-        }
+            {
+                wPopCnt = ls_wPopCnt(pwr);
+            }
 
-        if (!bDump)
-        {
-            return OldList(pwr, wPopCnt, nDigitsLeft);
-        }
+            if (!bDump)
+            {
+                return OldList(pwr, wPopCnt, nDigitsLeft);
+            }
 
-        Word_t *pwKeys = pwr_pwKeys(pwr);
+            Word_t *pwKeys = pwr_pwKeys(pwr);
 
 #if defined(PP_IN_LINK)
-        if (nBitsLeftArg == cnBitsPerWord)
-        {
-            printf(" ls_wPopCnt %3"_fw"u", wPopCnt);
-            printf(" wr_wPrefix        N/A");
-        }
-        else
-        {
-            printf(" wr_wPopCnt %3"_fw"u", wPopCnt);
-            printf(" wr_wPrefix "OWx, PWR_wPrefix(pwRoot, NULL, nDigitsLeft));
-        }
+            if (nBitsLeftArg == cnBitsPerWord)
+            {
+                printf(" ls_wPopCnt %3"_fw"u", wPopCnt);
+                printf(" wr_wPrefix        N/A");
+            }
+            else
+            {
+                printf(" wr_wPopCnt %3"_fw"u", wPopCnt);
+                printf(" wr_wPrefix "OWx,
+                       PWR_wPrefix(pwRoot, NULL, nDigitsLeft));
+            }
 #endif // defined(PP_IN_LINK)
 
-        printf(" ls_wPopCnt %3llu", (unsigned long long)wPopCnt);
+            printf(" ls_wPopCnt %3llu", (unsigned long long)wPopCnt);
 
-        for (unsigned nn = 0;
-            //(nn < wPopCnt) && (nn < 8);
-            (nn < wPopCnt);
-             nn++)
-        {
-            unsigned xx = nn;
+            for (unsigned nn = 0;
+                //(nn < wPopCnt) && (nn < 8);
+                (nn < wPopCnt);
+                 nn++)
+            {
+                unsigned xx = nn;
 #if defined(PP_IN_LINK)
-            xx += (nBitsLeftArg == cnBitsPerWord);
+                xx += (nBitsLeftArg == cnBitsPerWord);
 #endif // defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
-            if (nBitsLeft <= 8) {
-                printf(" %02x", ls_pcKeys(pwr)[xx]);
-            } else if (nBitsLeft <= 16) {
-                printf(" %04x", ls_psKeys(pwr)[xx]);
+                if (nBitsLeft <= 8) {
+                    printf(" %02x", ls_pcKeys(pwr)[xx]);
+                } else if (nBitsLeft <= 16) {
+                    printf(" %04x", ls_psKeys(pwr)[xx]);
 #if (cnBitsPerWord > 32)
-            } else if (nBitsLeft <= 32) {
-                printf(" %08x", ls_piKeys(pwr)[xx]);
+                } else if (nBitsLeft <= 32) {
+                    printf(" %08x", ls_piKeys(pwr)[xx]);
 #endif // (cnBitsPerWord > 32)
-            } else
+                } else
 #endif // defined(COMPRESSED_LISTS)
-            { printf(" "Owx, pwKeys[xx]); }
-        }
-        printf("\n");
+                { printf(" "Owx, pwKeys[xx]); }
+            }
+            printf("\n");
         }
 
         return 0;
@@ -1340,6 +1358,26 @@ SearchListWord(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 
     return Failure;
 }
+
+#ifdef  TBD
+
+#define repbyte1(s) (((-((Word_t)1))/255) * (s))
+#define haszero1(v) (((v) - repbyte1(0x1)) & ~(v) & repbyte1(0x80))
+#define hasvalue1(x,n) haszero1((x) ^ (n))
+
+// For finding a zero byte in a Word_t may be usefull someday
+// Note: untested
+// #define haszero(v)        (((v) - 0x01010101UL) & ~(v) & 0x80808080UL)
+
+// Does Word x have a byte == v
+// #define hasvalue(x,n)     (haszero((x) ^ (~0UL/255 * (n))))
+
+// For finding if Word_t has a byte == VALUE
+#define haszero(VALUE)                                                  \
+    ((VALUE) ((-((Word_t)1)) * 255) & ~(v) & (-((((Word_t)1) * 255) * 8)))
+
+#define hasvalue(x,n) (haszero((x) ^ (-((Word_t)1))/255 * (n)))
+#endif  // TBD
 
 Status_t
 SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
@@ -1780,7 +1818,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDigitsLeft, Word_t wRoot)
                 if (wPopCnt == 0) {
 #if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
                     if (nBitsLeft <= cnBitsPerWord - cnLogBitsPerWord - 1) {
-                        set_wr(wRoot, wKey << (cnBitsPerWord - nBitsLeft),
+                        set_wr(wRoot,
+                              (wKey << (cnBitsPerWord - nBitsLeft))
+                                   | ((nBitsLeft < 60) << 4),
                                T_ONE);
                     }
                     else
@@ -2387,13 +2427,15 @@ done:
                     // nIndex is 0 or 1
                     if (nBitsLeft <= 16) {
                         set_wr(wRoot,
-                              (Word_t)(pwr_psKeys(pwr)[ ! nIndex ])
-                                  << (cnBitsPerWord - nBitsLeft),
+                              ((Word_t)(pwr_psKeys(pwr)[ ! nIndex ])
+                                  << (cnBitsPerWord - nBitsLeft))
+                                       | ((nBitsLeft < 60) << 4),
                                T_ONE);
                     } else if (nBitsLeft <= 32) {
                         set_wr(wRoot,
-                              (Word_t)(pwr_piKeys(pwr)[ ! nIndex ])
-                                  << (cnBitsPerWord - nBitsLeft),
+                              ((Word_t)(pwr_piKeys(pwr)[ ! nIndex ])
+                                  << (cnBitsPerWord - nBitsLeft))
+                                       | ((nBitsLeft < 60) << 4),
                                T_ONE);
                     }
                     goto cleanup; // stop pretending; it's painful
@@ -2527,169 +2569,173 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
     Word_t *pwr = wr_tp_pwr(wRoot, nType);
     Word_t wPopCnt;
 
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-    if (!tp_bIsSwitch(nType))
+  #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+    if ( ! tp_bIsSwitch(nType) )
     {
-#if defined(T_ONE)
-        if (nType == T_ONE) { wPopCnt = 1; } else
-#endif // defined(T_ONE)
-        wPopCnt = ls_wPopCnt(pwr);
+      #if defined(T_ONE)
+        if (nType == T_ONE) {
+            wPopCnt = 1; // Always a full word to top; never embedded.
+        } else
+      #endif // defined(T_ONE)
+        wPopCnt = ls_wPopCnt(pwr); // valid at top for PP_IN_LINK if ! T_ONE
     }
     else
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+  #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     {
-#if defined(PP_IN_LINK)
+  #if defined(PP_IN_LINK)
         // no skip links at root for PP_IN_LINK -- no place for prefix
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-  #if defined(TYPE_IS_RELATIVE)
+      #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+          #if defined(TYPE_IS_RELATIVE)
         assert(tp_to_nDS(nType) == 0);
-  #else // defined(TYPE_IS_RELATIVE)
+          #else // defined(TYPE_IS_RELATIVE)
         assert(tp_to_nDigitsLeft(nType) == cnDigitsPerWord);
-  #endif // defined(TYPE_IS_RELATIVE)
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+          #endif // defined(TYPE_IS_RELATIVE)
+      #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         // add up the pops in the links
-#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
-    Word_t xx = 0;
-#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+      #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+        Word_t xx = 0;
+      #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
         wPopCnt = 0;
         for (unsigned nn = 0; nn < EXP(cnBitsIndexSzAtTop); nn++)
         {
-#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
-        if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
-#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
-        {
-#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+      #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+            if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
+      #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+            {
+      #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
                 Word_t *pwRootLn = &pwr_pLinks(pwr)[xx].ln_wRoot;
                 xx++;
-#else // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+      #else // defined(BM_SWITCH) && !defined(BM_IN_LINK)
                 Word_t *pwRootLn = &pwr_pLinks(pwr)[nn].ln_wRoot;
-#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+      #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
 
-// *pwRootLn may not be a pointer to a switch
-// It may be a pointer to a list leaf.
-// And if nBL_to_nDL(cnBitsAtBottom) == cnDigitsPerWord - 1, then it could be
-// a pointer to a bitmap?
-            Word_t wPopCntLn;
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-            unsigned nTypeLn = wr_nType(*pwRootLn);
-            if (tp_bIsSwitch(nTypeLn))
-            {
-                wPopCntLn
-#if defined(TYPE_IS_RELATIVE)
-                    = PWR_wPopCnt(pwRootLn, NULL,
+                // *pwRootLn may not be a pointer to a switch
+                // It may be a pointer to a list leaf.
+                // And if nBL_to_nDL(cnBitsAtBottom) == cnDigitsPerWord - 1,
+                // then it could be a pointer to a bitmap?
+                Word_t wPopCntLn;
+      #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                unsigned nTypeLn = wr_nType(*pwRootLn);
+                if (tp_bIsSwitch(nTypeLn))
+                {
+                    wPopCntLn
+          #if defined(TYPE_IS_RELATIVE)
+                        = PWR_wPopCnt(pwRootLn, NULL,
                                   cnDigitsPerWord - 1 - wr_nDS(*pwRootLn));
-#else // defined(TYPE_IS_RELATIVE)
-                    = PWR_wPopCnt(pwRootLn, NULL, wr_nDigitsLeft(*pwRootLn));
-#endif // defined(TYPE_IS_RELATIVE)
-            }
-            else
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-            {
-                wPopCntLn = PWR_wPopCnt(pwRootLn, NULL, cnDigitsPerWord - 1);
-            }
+          #else // defined(TYPE_IS_RELATIVE)
+                        = PWR_wPopCnt(pwRootLn,
+                                      NULL, wr_nDigitsLeft(*pwRootLn));
+          #endif // defined(TYPE_IS_RELATIVE)
+                }
+                else
+      #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                {
+                    wPopCntLn = PWR_wPopCnt(pwRootLn,
+                                            NULL, cnDigitsPerWord - 1);
+                }
 
-#if defined(DEBUG_INSERT)
-            if (wPopCntLn != 0)
-            {
-                printf("Pop sum");
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                unsigned nDigitsLeft
-#if defined(TYPE_IS_RELATIVE)
-                    = cnDigitsPerWord - 1 - wr_nDS(*pwRootLn);
-#else // defined(TYPE_IS_RELATIVE)
-                    = wr_nDigitsLeft(*pwRootLn);
-#endif // defined(TYPE_IS_RELATIVE)
-                printf(" mask "OWx" %"_fw"d",
-                    wPrefixPopMask(nDigitsLeft),
-                    wPrefixPopMask(nDigitsLeft));
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                printf(" nn %d wPopCntLn %"_fw"d "OWx"\n",
-                       nn, wPopCntLn, wPopCntLn);
-            }
-#endif // defined(DEBUG_INSERT)
+      #if defined(DEBUG_INSERT)
+                if (wPopCntLn != 0)
+                {
+                    printf("Pop sum");
+          #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                    unsigned nDigitsLeft
+              #if defined(TYPE_IS_RELATIVE)
+                        = cnDigitsPerWord - 1 - wr_nDS(*pwRootLn);
+              #else // defined(TYPE_IS_RELATIVE)
+                        = wr_nDigitsLeft(*pwRootLn);
+              #endif // defined(TYPE_IS_RELATIVE)
+                    printf(" mask "OWx" %"_fw"d",
+                           wPrefixPopMask(nDigitsLeft),
+                           wPrefixPopMask(nDigitsLeft));
+          #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                    printf(" nn %d wPopCntLn %"_fw"d "OWx"\n",
+                           nn, wPopCntLn, wPopCntLn);
+                }
+      #endif // defined(DEBUG_INSERT)
 
-            wPopCnt += wPopCntLn;
+                wPopCnt += wPopCntLn;
 
-            // We use pwr_pLinks(pwr)[nn].ln_wRoot != 0 to disambiguate
-            // wPopCnt == 0.  Hence we cannot allow Remove to leave
-            // pwr_pLinks(pwr)[nn].ln_wRoot != 0 unless the actual
-            // population count is not zero.
-            if ((wPopCntLn == 0) && (*pwRootLn != 0))
-            {
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                // Isn't this assuming tp_bIsSwitch(nTypeLn)?
-                // T_LIST and T_ONE can't be full pop?
-                // And we don't skip directly to T_BITMAP?
-                // What if bitmap is direcly below top switch?
-                assert(tp_bIsSwitch(nTypeLn));
-                int nDigitsLeft =
-#if defined(TYPE_IS_RELATIVE)
-                    cnDigitsPerWord - 1 - wr_nDS(*pwRootLn)
-#else // defined(TYPE_IS_RELATIVE)
-                    wr_nDigitsLeft(*pwRootLn)
-#endif // defined(TYPE_IS_RELATIVE)
-                    ;
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                // We use pwr_pLinks(pwr)[nn].ln_wRoot != 0 to disambiguate
+                // wPopCnt == 0.  Hence we cannot allow Remove to leave
+                // pwr_pLinks(pwr)[nn].ln_wRoot != 0 unless the actual
+                // population count is not zero.
+                if ((wPopCntLn == 0) && (*pwRootLn != 0))
+                {
+      #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                    // Isn't this assuming tp_bIsSwitch(nTypeLn)?
+                    // T_LIST and T_ONE can't be full pop?
+                    // And we don't skip directly to T_BITMAP?
+                    // What if bitmap is direcly below top switch?
+                    assert(tp_bIsSwitch(nTypeLn));
+                    int nDigitsLeft =
+          #if defined(TYPE_IS_RELATIVE)
+                        cnDigitsPerWord - 1 - wr_nDS(*pwRootLn)
+          #else // defined(TYPE_IS_RELATIVE)
+                        wr_nDigitsLeft(*pwRootLn)
+          #endif // defined(TYPE_IS_RELATIVE)
+                        ;
+      #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
-#if defined(DEBUG_INSERT)
-                printf("Pop sum (full)");
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                printf(" mask "Owx" %"_fw"d\n",
-                    wPrefixPopMask(nDigitsLeft), wPrefixPopMask(nDigitsLeft));
-                printf("nn %d wPopCntLn %"_fw"d "OWx"\n",
-                    nn, wPrefixPopMask(nDigitsLeft) + 1,
-                    wPrefixPopMask(nDigitsLeft) + 1);
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-#endif // defined(DEBUG_INSERT)
+      #if defined(DEBUG_INSERT)
+                    printf("Pop sum (full)");
+          #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                    printf(" mask "Owx" %"_fw"d\n",
+                           wPrefixPopMask(nDigitsLeft),
+                           wPrefixPopMask(nDigitsLeft));
+                    printf("nn %d wPopCntLn %"_fw"d "OWx"\n",
+                           nn, wPrefixPopMask(nDigitsLeft) + 1,
+                           wPrefixPopMask(nDigitsLeft) + 1);
+          #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+      #endif // defined(DEBUG_INSERT)
 
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                wPopCnt += wPrefixPopMask(nDigitsLeft) + 1;
-#else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-                wPopCnt += wPrefixPopMask(cnDigitsPerWord - 1) + 1;
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+      #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                    wPopCnt += wPrefixPopMask(nDigitsLeft) + 1;
+      #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                    wPopCnt += wPrefixPopMask(cnDigitsPerWord - 1) + 1;
+      #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                }
             }
         }
-        }
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-#if ! defined(NDEBUG)
+      #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+          #if ! defined(NDEBUG)
         int nDigitsLeft =
-#if defined(TYPE_IS_RELATIVE)
+              #if defined(TYPE_IS_RELATIVE)
             cnDigitsPerWord - tp_to_nDS(nType)
-#else // defined(TYPE_IS_RELATIVE)
+              #else // defined(TYPE_IS_RELATIVE)
             tp_to_nDigitsLeft(nType)
-#endif // defined(TYPE_IS_RELATIVE)
+              #endif // defined(TYPE_IS_RELATIVE)
             ;
         assert(wPopCnt - 1 <= wPrefixPopMask(nDigitsLeft));
-#endif // ! defined(NDEBUG)
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-#else // defined(PP_IN_LINK)
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+          #endif // ! defined(NDEBUG)
+      #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+  #else // defined(PP_IN_LINK)
+      #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         int nDigitsLeft =
-#if defined(TYPE_IS_RELATIVE)
+          #if defined(TYPE_IS_RELATIVE)
             cnDigitsPerWord - tp_to_nDS(nType)
-#else // defined(TYPE_IS_RELATIVE)
+          #else // defined(TYPE_IS_RELATIVE)
             tp_to_nDigitsLeft(nType)
-#endif // defined(TYPE_IS_RELATIVE)
+          #endif // defined(TYPE_IS_RELATIVE)
             ;
         wPopCnt = PWR_wPopCnt(NULL, pwr, nDigitsLeft);
-        if (wPopCnt == 0)
-        {
+        if (wPopCnt == 0) {
             wPopCnt = wPrefixPopMask(nDigitsLeft) + 1;
         }
-#else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+      #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         wPopCnt = PWR_wPopCnt(NULL, pwr, cnDigitsPerWord);
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-#endif // defined(PP_IN_LINK)
+      #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+  #endif // defined(PP_IN_LINK)
     }
 
-#if defined(DEBUG)
+  #if defined(DEBUG)
     if (wPopCnt != wInserts)
     {
         Dump(pwRootLast, 0, cnBitsPerWord);
         printf("\nwPopCnt %"_fw"d wInserts %"_fw"d\n", wPopCnt, wInserts);
     }
     assert(wPopCnt == wInserts);
-#endif // defined(DEBUG)
+  #endif // defined(DEBUG)
 
     return wPopCnt;
 

@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.232 2014/06/15 14:34:00 mike Exp mike $
+// @(#) $Id: bli.c,v 1.233 2014/06/16 17:06:42 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -757,28 +757,55 @@ t_bitmap:
         //
         //  - (cnBitsPerWord - cnBitsPerType - cnBitsPerPopCnt) / nBL
         //
-        //      1 x 60-bit key  ... 1 x 30-bit key
-        //      2 x 29-bit keys ... 2 x 20-bit keys
-        //      3 x 19-bit keys ... 3 x 15-bit keys
-        //      4 x 14-bit keys ... 4 x 12-bit keys
-        //      5 x 11-bit keys ... 5 x 10-bit keys
-        //      6 x  9-bit keys
-        //      7 x  8-bit keys
-        //      8 x  7-bit keys
+        //      1 x 60-bit key  ... 1 x 30-bit key  (0 or 1-bit pop cnt)
+        //      2 x 29-bit keys ... 2 x 20-bit keys (     2-bit pop cnt)
+        //      3 x 19-bit keys ... 3 x 15-bit keys (2 or 3-bit pop cnt)
+        //      4 x 14-bit keys ... 4 x 12-bit keys (2 to 8-bit pop cnt)
+        //      5 x 11-bit keys ... 5 x 10-bit keys (3 to 5-bit pop cnt)
+        //      6 x  9-bit keys                     (3 to 6-bit pop cnt)
+        //      7 x  8-bit keys                     (3 or 4-bit pop cnt)
+        //      8 x  7-bit keys                     (3 or 4-bit pop cnt)
         //     64 x  6-bit keys in embedded bitmap
         //
-        //      1 x 29-bit key  ... 1 x 15-bit key
-        //      2 x 14-bit keys ... 2 x 10-bit keys
-        //      3 x  9-bit keys ... 3 x  7-bit keys
-        //      4 x  6-bit keys
+        //      1 x 29-bit key  ... 1 x 15-bit key  (   no pop cnt)
+        //      2 x 14-bit keys ... 2 x 10-bit keys (1-bit pop cnt)
+        //      3 x  9-bit keys ... 3 x  7-bit keys (2-bit pop cnt)
+        //      4 x  6-bit keys                     (5-bit pop cnt)
         //     32 x  5-bit keys in embedded bimtap
           #if (cnBitsPerWord == 64)
         unsigned nBL = nDL_to_nBL(nDL);
         if (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1) {
-            // First embedded key is in high bits of wRoot.
-            Word_t wKeyRoot = (wRoot >> (cnBitsPerWord - nBL));
-            if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) {
-                goto foundIt;
+            unsigned nBitsPopCntSz = LOG(119 / nBL);
+            unsigned nPopCnt = (wRoot >> 4) & (EXP(nBitsPopCntSz) - 1);
+            // nPopCnt could be zero for 60-bit key, but it really means 1
+            //printf("\nnBL %d nBitsPopCntSz %d nPopCnt %d\n",
+            //       nBL, nBitsPopCntSz, nPopCnt);
+            Word_t wKeyRoot;
+            switch (nPopCnt) {
+            case 8:
+                wKeyRoot = wRoot >> (cnBitsPerWord - (nPopCnt * nBL));
+                if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) goto foundIt;
+            case 7:
+                wKeyRoot = wRoot >> (cnBitsPerWord - (nPopCnt * nBL));
+                if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) goto foundIt;
+            case 6:
+                wKeyRoot = wRoot >> (cnBitsPerWord - (nPopCnt * nBL));
+                if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) goto foundIt;
+            case 5:
+                wKeyRoot = wRoot >> (cnBitsPerWord - (nPopCnt * nBL));
+                if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) goto foundIt;
+            case 4:
+                wKeyRoot = wRoot >> (cnBitsPerWord - (nPopCnt * nBL));
+                if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) goto foundIt;
+            case 3:
+                wKeyRoot = wRoot >> (cnBitsPerWord - (nPopCnt * nBL));
+                if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) goto foundIt;
+            case 2:
+                wKeyRoot = wRoot >> (cnBitsPerWord - (nPopCnt * nBL));
+                if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) goto foundIt;
+            default:
+                wKeyRoot = wRoot >> (cnBitsPerWord - (      1 * nBL));
+                if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) goto foundIt;
             }
         } else
           #endif // (cnBitsPerWord == 64)
