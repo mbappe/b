@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.257 2014/06/17 17:19:39 mike Exp mike $
+// @(#) $Id: b.c,v 1.258 2014/06/17 20:38:00 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2540,22 +2540,50 @@ RemoveTypeOne(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t *pwr)
     (void)wKey;
 
 #if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
-  #if defined(DEBUG_REMOVE)
+
     unsigned nBL = nDL_to_nBL(nDL);
-    if (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1) {
-        assert((((Word_t)pwr >> (cnBitsPerWord - nBL) ^ wKey) & ~MSK(nBL))
-               == 0);
-    } else
-  #endif // defined(DEBUG_REMOVE)
-#else // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
-    assert(*pwr == wKey);
+    unsigned nBitsPopCnt = LOG(119 / nBL);
+    unsigned nPopCnt
+             = ((Word_t)pwr >> (cnLogBitsPerWord + 1)) & MSK(nBitsPopCnt);
+
+    Word_t wRoot = (Word_t)pwr;
+
+    if (nPopCnt <= 1)
 #endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
-    
-    OldList(pwr, 1, nDL); // OldList is a no-op if the is embedded.
+    {
+        OldList(pwr, 1, nDL); // OldList is a no-op if the list is embedded.
+        *pwRoot = 0; // Do we need to clear the rest of the link also?
+        return Success;
+    }
 
-    *pwRoot = 0; // Do we need to clear the rest of the link also?
+#if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
 
-    return Success; // Return to Remove for bCleanup phase.
+    assert(nPopCnt * nBL
+           <= cnBitsPerWord - cnLogBitsPerWord - 1 - nBitsPopCnt);
+
+    // Copy the last key in the embedded list to the slot currently
+    // occupied by the key being removed.
+    // Embedded lists are not sorted.
+
+    unsigned nn;
+    for (nn = 1;
+        (((wRoot >> (cnBitsPerWord - (nn * nBL))) ^ wKey) & ~MSK(nBL));
+         ++nn) { }
+
+    Word_t wKeyLast = (wRoot >> (cnBitsPerWord - (nPopCnt * nBL))) & MSK(nBL);
+
+    wRoot &= ~(MSK(nBL) << (cnBitsPerWord - (nn * nBL))); // clear slot
+    wRoot |= wKeyLast << (cnBitsPerWord - (nn * nBL)); // or in key
+    wRoot &= ~(MSK(nBitsPopCnt) << (cnLogBitsPerWord + 1)); // clear pop cnt
+    wRoot |= (nPopCnt - 1) << (cnLogBitsPerWord + 1); // or in new pop cnt
+    // Do we need to care about clearing the vacated slot?
+
+    *pwRoot = wRoot;
+
+    return Success;
+ 
+#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+
 }
 
 #endif // defined(T_ONE) && (cwListPopCntMax != 0)
