@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.233 2014/06/16 17:06:42 mike Exp mike $
+// @(#) $Id: bli.c,v 1.234 2014/06/17 02:29:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1023,7 +1023,12 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     Word_t *pwRoot = (Word_t *)ppvRoot;
     Word_t wRoot = *pwRoot;
     unsigned nType = wr_nType(wRoot);
-    if (nType == T_LIST)
+
+    if ((T_LIST == nType)
+      #if ! defined(T_ONE)
+        || (nType == T_NULL)
+      #endif // ! defined(T_ONE)
+        )
     {
         if (Judy1Test((Pcvoid_t)wRoot, wKey, PJError) == Success)
         {
@@ -1032,7 +1037,17 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         else
         {
             Word_t *pwr = wr_tp_pwr(wRoot, nType);
-            Word_t wPopCnt = ls_wPopCnt(pwr);
+            Word_t wPopCnt;
+
+      #if ! defined(T_ONE)
+            if (nType == T_NULL) {
+                assert(pwr == NULL);
+                wPopCnt = 0;
+            } else
+      #endif // ! defined(T_ONE)
+            {
+                wPopCnt = ls_wPopCnt(pwr);
+            }
 
             if (wPopCnt == cwListPopCntMax)
             {
@@ -1043,15 +1058,8 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 Word_t *pwListNew
                             = NewList(wPopCnt + 1, cnDigitsPerWord, wKey);
                 Word_t *pwKeysNew = ls_pwKeys(pwListNew);
-#if defined(T_ONE)
-                if (wPopCnt == 0) {
-                    set_wr(wRoot, pwListNew, T_ONE);
-                } else
-#endif // defined(T_ONE)
-                {
-                    set_wr(wRoot, pwListNew, T_LIST);
-                    ++pwKeysNew; // pop count is in first element at top
-                }
+                set_wr(wRoot, pwListNew, T_LIST);
+                ++pwKeysNew; // pop count is in first element at top
                 Word_t *pwKeys = ls_pwKeys(pwr) + 1;
 
  // Isn't this chunk of code already in InsertGuts?
