@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.258 2014/06/17 20:38:00 mike Exp mike $
+// @(#) $Id: b.c,v 1.259 2014/06/17 21:58:18 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -201,13 +201,15 @@ ListWords(Word_t wPopCnt, unsigned nDigitsLeft)
 
 #endif // defined(COMPRESSED_LISTS)
 
+    if ((0 == wPopCnt)
 #if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
-    if ((wPopCnt == 1)
-        && (nBitsLeft <= cnBitsPerWord - cnLogBitsPerWord - 1))
+        || ((wPopCnt == 1)
+            && (nBitsLeft <= cnBitsPerWord - cnLogBitsPerWord - 1))
+#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+        )
     {
         return 0; // Use wRoot for the key.
     }
-#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
 
     // make room for pop count in the list
 #if defined(T_ONE)
@@ -236,9 +238,7 @@ NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey)
 
     unsigned nWords = ListWords(wPopCnt, nDigitsLeft);
 
-#if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
-    if (nWords == 0) return NULL; // I wonder if we should return T_ONE.
-#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+    if (nWords == 0) { return NULL; }
 
 #if defined(COMPRESSED_LISTS)
     unsigned nBitsLeft = nDL_to_nBL(nDigitsLeft);
@@ -310,9 +310,7 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDigitsLeft)
     DBGM(printf("Old pwList %p wLen %d wPopCnt "OWx"\n",
         (void *)pwList, nWords, (Word_t)wPopCnt));
 
-#if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
     if (nWords == 0) { return 0; }
-#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
 
 #if defined(DL_IN_LL)
     assert(nDigitsLeft == ll_nDigitsLeft(pwList));
@@ -938,6 +936,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBitsLeft, int bDump)
 #endif // defined(PP_IN_LINK)
             {
                 wPopCnt = ls_wPopCnt(pwr);
+printf("\nwPopCnt "OWx" pwr %p\n", wPopCnt, (void *)pwr);
             }
 
             if (!bDump)
@@ -2317,12 +2316,13 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     DBGR(printf("RemoveGuts\n"));
 
 #if (cwListPopCntMax != 0)
-    if (nDL <= 1) {
-        return RemoveBitmap(pwRoot, wKey, nDL, wRoot);
-    }
+    if (nDL <= 1)
 #else // (cwListPopCntMax != 0)
     assert(nDL <= 1);
 #endif // (cwListPopCntMax != 0)
+    {
+        return RemoveBitmap(pwRoot, wKey, nDL, wRoot);
+    }
 
 #if (cwListPopCntMax != 0)
 
@@ -2351,6 +2351,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         *pwRoot = 0;
         // Do we need to clear the rest of the link also?
         // See bCleanup in Lookup/Remove for the rest.
+        return Success;
     }
 #endif // ! defined(T_ONE)
 
