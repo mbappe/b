@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.236 2014/06/18 12:18:24 mike Exp mike $
+// @(#) $Id: bli.c,v 1.237 2014/06/18 13:02:28 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -753,13 +753,21 @@ t_bitmap:
   #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
       #if defined(EMBED_KEYS)
-        // How many keys will fit?  We're just doing one for now.
+        //
+        // How many keys will fit?  Need space for the keys plus type plus
+        // pop count.
         //
         //  - (cnBitsPerWord - cnBitsPerType - cnBitsPerPopCnt) / nBL
         //
-        //      1 x 60-bit key  ... 1 x 30-bit key  (0 or 1-bit pop cnt)
-        //      2 x 29-bit keys ... 2 x 20-bit keys (     2-bit pop cnt)
-        //      3 x 19-bit keys ... 3 x 15-bit keys (2 or 3-bit pop cnt)
+        //      1 x 60-bit key                      (0 to 0-bit pop cnt)
+        //      1 x 59-bit key                      (0 or 1-bit pop cnt)
+        //      1 x 58-bit key                      (0 to 2-bit pop cnt)
+        //      1 x 57-bit key                      (0 to 3-bit pop cnt)
+        //      1 x 56-bit key  ... 1 x 30-bit key  (0 to 4-bit pop cnt)
+        //      2 x 29-bit keys                     (1 to 2-bit pop cnt)
+        //      2 x 28-bit keys ... 2 x 20-bit keys (1 to 4-bit pop cnt)
+        //      3 x 19-bit keys                     (2 or 3-bit pop cnt)
+        //      3 x 18-bit keys ... 3 x 15-bit keys (2 to 6-bit pop cnt)
         //      4 x 14-bit keys ... 4 x 12-bit keys (2 to 8-bit pop cnt)
         //      5 x 11-bit keys ... 5 x 10-bit keys (3 to 5-bit pop cnt)
         //      6 x  9-bit keys                     (3 to 6-bit pop cnt)
@@ -767,11 +775,52 @@ t_bitmap:
         //      8 x  7-bit keys                     (3 or 4-bit pop cnt)
         //     64 x  6-bit keys in embedded bitmap
         //
-        //      1 x 29-bit key  ... 1 x 15-bit key  (   no pop cnt)
-        //      2 x 14-bit keys ... 2 x 10-bit keys (1-bit pop cnt)
-        //      3 x  9-bit keys ... 3 x  7-bit keys (2-bit pop cnt)
-        //      4 x  6-bit keys                     (5-bit pop cnt)
+        // Does LOG(X / nBL) work?
+        //
+        //                  ... LOG(119/60) = 0
+        //      LOG(119/59) ... LOG(119/30) = 1
+        //      LOG(119/29) ... LOG(119/15) = 2
+        //      LOG(119/14) ... LOG(119/ 8) = 3
+        //      LOG(119/ 7) ... LOG(119/ 4) = 4
+        //
+        //      LOG( 64/64) ... LOG( 64/33) = 0
+        //      LOG( 64/32) ... LOG( 64/17) = 1 (19 needs at least 2)
+        //
+        //      LOG( 76/64) ... LOG( 76/39) = 0
+        //      LOG( 76/38) ... LOG( 76/20) = 1
+        //      LOG( 76/19) ... LOG( 76/10) = 2 (11 needs at least 3)
+        //
+        //      LOG( 88/64) ... LOG( 88/45) = 0
+        //      LOG( 88/44) ... LOG( 88/23) = 1
+        //      LOG( 88/22) ... LOG( 88/12) = 2
+        //      LOG( 88/11) ... LOG( 88/ 6) = 3
+        //      LOG( 88/ 5) ... LOG( 88/ 3) = 4
+        //      LOG( 88/ 2) ... LOG( 88/ 2) = 5
+        //
+        // Looks like anything from 88 - 119 will work.
+        //
+        //      1 x 29-bit key                      (0 to 0-bit pop cnt)
+        //      1 x 28-bit key  ... 1 x 15-bit key  (0 or 1-bit pop cnt)
+        //      2 x 14-bit keys                     (1 to 1-bit pop cnt)
+        //      2 x 13-bit keys                     (1 to 3-bit pop cnt)
+        //      2 x 12-bit keys ... 2 x 10-bit keys (1 to 5-bit pop cnt)
+        //      3 x  9-bit keys                     (2 to 2-bit pop cnt)
+        //      3 x  8-bit keys ... 3 x  7-bit keys (2 to 5-bit pop cnt)
+        //      4 x  6-bit keys                     (2 to 5-bit pop cnt)
         //     32 x  5-bit keys in embedded bimtap
+        //
+        //                  ... LOG( 36/19) = 0
+        //      LOG( 36/18) ... LOG( 36/10) = 1
+        //      LOG( 36/ 9) ... LOG( 36/ 5) = 2
+        //      LOG( 36/ 4) ... LOG( 36/ 3) = 3
+        //      LOG( 36/ 2) ... LOG( 36/ 2) = 4
+        //
+        //                  ... LOG( 36/19) = 0
+        //      LOG( 44/22) ... LOG( 36/12) = 1
+        //      LOG( 44/11) ... LOG( 36/ 6) = 2
+        //      LOG( 44/ 5) ... LOG( 36/ 3) = 3
+        //      LOG( 44/ 2) ... LOG( 36/ 2) = 4
+        //
           #if (cnBitsPerWord == 64)
         unsigned nBL = nDL_to_nBL(nDL);
         if (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1) {
