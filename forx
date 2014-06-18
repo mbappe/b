@@ -104,6 +104,10 @@ function doit
     then
         # Linear search with no last element check.
         SEARCH=-DLINEAR_SEARCH
+    elif [ $search = srn ]
+    then
+        # Linear search with no last element check.
+        SEARCH="-DNO_SPLIT_SEARCH -DNO_SORT_LISTS"
     else
         echo Invalid search $search.
         exit 1
@@ -136,10 +140,12 @@ function doit
 
     if [ $pack = packe ]
     then
-        # EMBED_KEYS implies COMPRESSED_LISTS, and requires T_ONE,
+        # EMBED_KEYS implies T_ONE,
         # and, temporarily, is ignored if cnBitsPerWord != 64
         PACK=-DEMBED_KEYS
-#endif // defined(T_ONE)
+    elif [ $pack = packo ]
+    then
+        PACK=-DT_ONE
     elif [ $pack = packy ]
     then
         PACK=-DCOMPRESSED_LISTS
@@ -166,17 +172,6 @@ function doit
         DR=
     fi
 
-    if [ $sort = sorty ]
-    then
-        SORT=-DSORT_LISTS
-    elif [ $sort = sortn ]
-    then
-        SORT=-DNO_SORT_LISTS
-    else
-        echo Invalid sort $sort.
-        exit 1
-    fi
-
     if [ $lsmax = "def" ]
     then
         LSMAX=
@@ -184,7 +179,7 @@ function doit
         LSMAX=-DcwListPopCntMax=0x$lsmax
     fi
 
-    if [ $type = tpr ]
+    if [ $tp = tpr ]
     then
         TYPE=-DTYPE_IS_RELATIVE
     else
@@ -194,7 +189,7 @@ function doit
     DEFS="-DRAMMETRICS -USEARCH_METRICS -DJUDYA"
     DEFS="$DEFS $PP $BM $SKIP $TYPE $TABLE $BMA $TLSS"
     DEFS="$DEFS -DcnBitsPerDigit=0x$bpd -DcnBitsAtBottom=0x$bab"
-    DEFS="$DEFS $LSMAX $PL $SORT $PACK $SEARCH $DR"
+    DEFS="$DEFS $LSMAX $PL $PACK $SEARCH $DR"
     DEFS="$DEFS -DcnSplitSearchThresholdWord=0x$srtw"
     DEFS="$DEFS -DcnSplitSearchThresholdInt=0x$srti"
     DEFS="$DEFS -DcnSplitSearchThresholdShort=0x$srts"
@@ -211,8 +206,8 @@ function doit
     fi
 
     echo "#######################################################"
-    tag=$bits-$skip-$pp-$bm-bpd$bpd-bab$bab-$type-$table-ls$lsmax-$search
-    tag=$tag-$pl-$sort-srts$srts-srti$srti-srtw$srtw-$pack-$bma-$tlss-$cc
+    tag=$bits-$skip-$pp-$bm-bpd$bpd-bab$bab-$tp-$table-ls$lsmax-$search
+    tag=$tag-$pl-srts$srts-srti$srti-srtw$srtw-$pack-$bma-$tlss-$cc
     echo $tag
 
     if [ "$1" = make ]
@@ -299,13 +294,11 @@ status=0
 
 for deref in dr # nodr nolsdr nobmdr nolssearch nobmsearch
 do
-for type in tpr # tpa
+for tp in tpa tpr
 do
-for table in tbn # tby
+for table in tby tbn
 do
 for cc in ccc # gcc # icc
-do
-for search in srl # srr srx srp srs
 do
 # if we don't include 40 then we won't get numbers for srx
 for srts in 40
@@ -318,7 +311,7 @@ for srtw in 08 # 10
 do
 for bab in 06 08 # 0e # 32 08
 do
-for bpd in 06 07 08 # 06 # 20 04
+for bpd in 06 08 # 06 # 20 04
 do
 for lsmax in 4 2 1 0 # ff # 00
 do
@@ -326,17 +319,19 @@ for bm in bmn bms bml
 do
 for skip in skipy # skips skipv skipz skipl skipd # skipn # skipu skipx
 do
-for bma in bmay # bman
+for bma in bmay bman
 do
-for tlss in tlssn # tlssy
+for tlss in tlssn tlssy
 do
-for pl in pln # ply
+for pl in pln ply
 do
-for bits in 64 # 32
+for bits in 64 32
 do
-for sort in sorty sortn
+# srn is the only search that used -DNO_SORT_LISTS
+# srx is the same search but with sorted lists
+for search in srl srn srr srp srs srx
 do
-for pack in packy packe packn
+for pack in packe packo packy packn
 do
 for pp in ppl pps
 do
@@ -345,11 +340,6 @@ do
         PL=-DPLACE_LISTS
     else
         PL=-DPLACE_LISTS
-    fi
-    # Fancy searches only work with sorted lists.
-    if [ $sort != sorty -a $search != srx ]
-    then
-        continue
     fi
 
     # srt only makes sense for (srl || srs)
@@ -398,7 +388,6 @@ do
     echo doit $*
     doit $*
 
-done
 done # tlss; T_LIST_SWITCH_STATEMENT
 done # bma; BITMAP_ANYWHRE
 done # srtw
