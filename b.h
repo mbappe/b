@@ -422,9 +422,19 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #if defined(T_ONE)
 
+#if (cnBitsPerWord == 64)
+#define nBL_to_nBitsPopCntSz(_nBL)  LOG(88 / (_nBL))
+#elif (cnBitsPerWord == 32)
+#define nBL_to_nBitsPopCntSz(_nBL)  LOG(44 / (_nBL))
+#else
+#error "Invalid cnBitsPerWord."
+#endif
+
 // Pop cnt bits are just above the type field.
 // A value of zero means a pop cnt of one. 
-#define wr_nPopCnt(_wr, _nBL)  ((((_wr) >> 4) & MSK(119 / (_nBL))) + 1)
+
+#define wr_nPopCnt(_wr, _nBL) \
+    ((((_wr) >> 4) & MSK(nBL_to_nBitsPopCntSz(_nBL))) + 1)
 
 #endif // defined(T_ONE)
 
