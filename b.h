@@ -68,12 +68,6 @@
 #define SORT_LISTS
 #endif // defined(SPLIT_SEARCH)
 
-// EMBED_KEYS implies COMPRESSED_LISTS
-#if defined(EMBED_KEYS)
-#undef  COMPRESSED_LISTS
-#define COMPRESSED_LISTS
-#endif // defined(EMBED_KEYS)
-
 // Default is -DCOMPRESSED_LISTS.
 #if ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
 #define COMPRESSED_LISTS
