@@ -135,11 +135,11 @@
 //   decoded by switches; 13-14 bits per Bitmap. 
 // - What about tlb entries?
 // - log(xor) for prefix check
-// - nDigitsLeftRoot - nDigitsLeft == -1 means double the size
+// - nDLRoot - nDL == -1 means double the size
 //   of the index for the next switch
-// - nDigitsLeftRoot - nDigitsLeft == -2 means quadruple the
+// - nDLRoot - nDL == -2 means quadruple the
 //   size of the index for the next switch
-// - nDigitsLeftRoot - nDigitsLeft == -3 means times eight the
+// - nDLRoot - nDL == -3 means times eight the
 //   size of the index for the next switch
 // - 1-byte, 2-byte, 4-byte lists
 // - pop count
@@ -432,14 +432,14 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #if defined(DL_IN_TYPE_IS_ABSOLUTE)
 
 #define tp_to_nDL(_tp)   ((_tp)  - T_LIST)
-#define nDigitsLeft_to_tp(_nDL)  ((_nDL) + T_LIST)
+#define nDL_to_tp(_nDL)  ((_nDL) + T_LIST)
 
 #define     wr_nDL(_wr)     (tp_to_nDL(wr_nType(_wr)))
-#define set_wr_nDigitsLeft(_wr, _nDL) \
-    (set_wr_nType((_wr), nDigitsLeft_to_tp(_nDL)))
+#define set_wr_nDL(_wr, _nDL) \
+    (set_wr_nType((_wr), nDL_to_tp(_nDL)))
 
 #define     wr_bIsSwitchDL(_wr, _tp, _nDL) \
-   ((_tp) = wr_nType(_wr), (_nDL) = tp_to_nDigitsLeft(_tp), tp_bIsSwitch(_tp))
+   ((_tp) = wr_nType(_wr), (_nDL) = tp_to_nDL(_tp), tp_bIsSwitch(_tp))
 
 #else // defined(DL_IN_TYPE_IS_ABSOLUTE)
 
@@ -538,11 +538,11 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #if defined(PP_IN_LINK)
 
 // For PP_IN_LINK ls_wPopCnt macros are only valid at top, i.e.
-// nDigitsLeft == cnDigitsPerWord, and only for T_LIST - not for T_ONE.
+// nDL == cnDigitsPerWord, and only for T_LIST - not for T_ONE.
 #define     ls_wPopCnt(_ls)        (*(Word_t *)(_ls))
 #define set_ls_wPopCnt(_ls, _cnt)  (*(Word_t *)(_ls) = (_cnt))
 
-// Index of first key within leaf (for nDigitsLeft != cnDigitsPerWord).
+// Index of first key within leaf (for nDL != cnDigitsPerWord).
 #define FIRST_KEY  0
 
 #else // defined(PP_IN_LINK)
@@ -671,23 +671,23 @@ typedef struct {
 
 Status_t Lookup(Word_t   wRoot, Word_t wKey);
 
-Status_t Insert(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft);
-Status_t Remove(Word_t *pwRoot, Word_t wKey, unsigned nBitsLeft);
+Status_t Insert(Word_t *pwRoot, Word_t wKey, unsigned nBL);
+Status_t Remove(Word_t *pwRoot, Word_t wKey, unsigned nBL);
 
 Status_t InsertGuts(Word_t *pwRoot,
-                    Word_t wKey, unsigned nDigitsLeft, Word_t wRoot);
+                    Word_t wKey, unsigned nDL, Word_t wRoot);
 
 Status_t RemoveGuts(Word_t *pwRoot,
-                    Word_t wKey, unsigned nDigitsLeft, Word_t wRoot);
+                    Word_t wKey, unsigned nDL, Word_t wRoot);
 
 Word_t FreeArrayGuts(Word_t *pwRoot,
-                     Word_t wPrefix, unsigned nBitsLeft, int bDump);
+                     Word_t wPrefix, unsigned nBL, int bDump);
 
 Word_t OldBitmap(Word_t *pwr);
 
-unsigned ListWords(Word_t wPopCnt, unsigned nDigitsLeft);
-Word_t *NewList(Word_t wPopCnt, unsigned nDigitsLeft, Word_t wKey);
-Word_t OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDigitsLeft);
+unsigned ListWords(Word_t wPopCnt, unsigned nDL);
+Word_t *NewList(Word_t wPopCnt, unsigned nDL, Word_t wKey);
+Word_t OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL);
 
 Status_t SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt);
 

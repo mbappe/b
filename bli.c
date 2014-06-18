@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.235 2014/06/17 23:08:21 mike Exp mike $
+// @(#) $Id: bli.c,v 1.236 2014/06/18 12:18:24 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -63,7 +63,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
           #if defined(PP_IN_LINK)
     // Silence unwarranted gcc used before initialized warning.
     // pwRoot is only uninitialized on the first time through the loop.
-    // And we only use it if nBitsLeft != cnBitsPerWord
+    // And we only use it if nBL != cnBitsPerWord
     // or if bNeedPrefixCheck is true.
     // And both of those imply it's not the first time through the loop.
     pwRoot = NULL;
@@ -473,8 +473,8 @@ notEmpty:;
         // Can we use NAT here since bNeedPrefixCheck will never
         // be true if we are at the top?
         // If the top digit is smaller than the rest, then NAT will
-        // return nBitsLeft > cnBitsPerWord which works out perfectly.
-        unsigned nBitsLeft = nDL_to_nBL_NAT(nDL);
+        // return nBL > cnBitsPerWord which works out perfectly.
+        unsigned nBL = nDL_to_nBL_NAT(nDL);
           #endif // !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
           #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We don't support skip links directly to leaves -- yet.
@@ -487,12 +487,12 @@ notEmpty:;
         // check and the one done in the bitmap section if possible.
         if ( 0
               #if (cnBitsPerWord > 32)
-            || (nBitsLeft > 32) // leaf has whole key
+            || (nBL > 32) // leaf has whole key
               #else // (cnBitsPerWord > 32)
-            || (nBitsLeft > 16) // leaf has whole key
+            || (nBL > 16) // leaf has whole key
               #endif // (cnBitsPerWord > 32)
-          // can't skip nBitsLeft check above or we might be at top
-          // hmm; check nBitsLeft or check at top; which is better?
+          // can't skip nBL check above or we might be at top
+          // hmm; check nBL or check at top; which is better?
               #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
             // leaf does not have whole key
             // What if there were no skips in the part that is missing?
@@ -507,7 +507,7 @@ notEmpty:;
               #else // defined(SAVE_PREFIX)
             || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwrPrev, nDL)
                     ^ wKey))
-                < (nBitsLeft
+                < (nBL
                   #if ! defined(PP_IN_LINK)
                     // prefix in parent switch doesn't contain last digit
                     // for ! defined(PP_IN_LINK) case
@@ -528,7 +528,7 @@ notEmpty:;
       #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
             if (SearchList(pwr, wKey,
 #if defined(COMPRESSED_LISTS)
-                           nBitsLeft,
+                           nBL,
 #else // defined(COMPRESSED_LISTS)
                            cnBitsPerWord,
 #endif // defined(COMPRESSED_LISTS)
