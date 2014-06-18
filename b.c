@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.261 2014/06/18 02:47:15 mike Exp mike $
+// @(#) $Id: b.c,v 1.262 2014/06/18 02:48:05 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -866,7 +866,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     assert(nDL - tp_to_nDS(nType)
         >= nBL_to_nDL(cnBitsAtBottom));
 #else // defined(TYPE_IS_RELATIVE)
-    assert(tp_to_nDL(nType) <= nBL_to_nDL(nBL));
+    if (tp_to_nDL(nType) > nBL_to_nDL(nBL))
+printf("nType %d nBL %d tpnDL %d nBLnDL %d\n",
+    nType, nBL, tp_to_nDL(nType), nBL_to_nDL(nBL));
+
+    assert( ! tp_bIsSwitch(nType) || (tp_to_nDL(nType) <= nBL_to_nDL(nBL)));
 #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
@@ -936,7 +940,6 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #endif // defined(PP_IN_LINK)
             {
                 wPopCnt = ls_wPopCnt(pwr);
-printf("\nwPopCnt "OWx" pwr %p\n", wPopCnt, (void *)pwr);
             }
 
             if (!bDump)
@@ -1639,27 +1642,34 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if defined(T_ONE)
             if (nType == T_ONE)
             {
-                wPopCnt = 1;
+  #if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+                unsigned nBL = nDL_to_nBL(nDL);
+                if (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1) {
+                    wPopCnt = wr_nPopCnt(wRoot, nBL);
+                } else
+  #endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+                {
+                    wPopCnt = 1;
+                }
   #if defined(PP_IN_LINK)
                 // pop count in link should have been bumped by now
                 // if we're not at the top
                 assert((nDL == cnDigitsPerWord)
-                    || (PWR_wPopCnt(pwRoot, NULL, nDL) == 2));
+                    || (PWR_wPopCnt(pwRoot, NULL, nDL) == wPopCnt + 1));
   #endif // defined(PP_IN_LINK)
   #if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
-                unsigned nBL = nDL_to_nBL(nDL);
                 if (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1)
                 {
                     Word_t ww = wRoot >> (cnBitsPerWord - nBL);
                     ww |= wKey & ~(EXP(nBL) - 1);
 
                     pwKeys = &ww;
-#if defined(COMPRESSED_LISTS)
-#if (cnBitsPerWord > 32)
+      #if defined(COMPRESSED_LISTS)
+          #if (cnBitsPerWord > 32)
                     iKey = (uint32_t)ww; piKeys = &iKey;
-#endif // (cnBitsPerWord > 32)
+          #endif // (cnBitsPerWord > 32)
                     sKey = (uint16_t)ww; psKeys = &sKey;
-#endif // defined(COMPRESSED_LISTS)
+      #endif // defined(COMPRESSED_LISTS)
                 }
                 else
   #endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
@@ -1789,7 +1799,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if defined(PP_IN_LINK)
                         (nDL == cnDigitsPerWord) +
 #endif // defined(PP_IN_LINK)
-                        ls_pwKeys(pwList),
+                            ls_pwKeys(pwList),
                         pwKeys, wPopCnt, wKey);
                 }
             } else
@@ -1807,7 +1817,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
-                { COPY(ls_pwKeys(pwList), pwKeys, wPopCnt); }
+                {
+#if defined(PP_IN_LINK)
+                    COPY(ls_pwKeys(pwList) + (nDL == cnDigitsPerWord),
+                         pwKeys, wPopCnt);
+#else // defined(PP_IN_LINK)
+                    COPY(ls_pwKeys(pwList), pwKeys, wPopCnt);
+#endif // defined(PP_IN_LINK)
+                }
             }
 #endif // defined(SORT_LISTS)
             {
@@ -1817,10 +1834,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 if (wPopCnt == 0) {
 #if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
                     if (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1) {
-                        set_wr(wRoot,
-                              (wKey << (cnBitsPerWord - nBL))
-                                   | ((nBL < 60) << 4),
-                               T_ONE);
+                        set_wr(wRoot, (wKey << (cnBitsPerWord - nBL)), T_ONE);
                     }
                     else
 #endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
@@ -1841,7 +1855,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 } else
 #endif // defined(COMPRESSED_LISTS)
                 {
-                    ls_pwKeys(pwList)[wPopCnt] = wKey;
+#if defined(PP_IN_LINK)
+                    ls_pwKeys(pwList)[wPopCnt + (nDL == cnDigitsPerWord)]
+#else // defined(PP_IN_LINK)
+                    ls_pwKeys(pwList)[wPopCnt]
+#endif // defined(PP_IN_LINK)
+                        = wKey;
                 }
             }
 
@@ -2387,14 +2406,12 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
             if (nBL <= 16) {
                 set_wr(wRoot,
                       ((Word_t)(pwr_psKeys(pwr)[ ! nIndex ])
-                          << (cnBitsPerWord - nBL))
-                               | ((nBL < 60) << 4),
+                          << (cnBitsPerWord - nBL)),
                        T_ONE);
             } else if (nBL <= 32) {
                 set_wr(wRoot,
                       ((Word_t)(pwr_piKeys(pwr)[ ! nIndex ])
-                          << (cnBitsPerWord - nBL))
-                               | ((nBL < 60) << 4),
+                          << (cnBitsPerWord - nBL)),
                        T_ONE);
             }
             goto cleanup; // stop pretending; it's painful
@@ -2662,7 +2679,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
           #if defined(TYPE_IS_RELATIVE)
         assert(tp_to_nDS(nType) == 0);
           #else // defined(TYPE_IS_RELATIVE)
-        assert(tp_to_nDigitsLeft(nType) == cnDigitsPerWord);
+        assert(tp_to_nDL(nType) == cnDigitsPerWord);
           #endif // defined(TYPE_IS_RELATIVE)
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         // add up the pops in the links
@@ -2698,7 +2715,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
                                   cnDigitsPerWord - 1 - wr_nDS(*pwRootLn));
           #else // defined(TYPE_IS_RELATIVE)
                         = PWR_wPopCnt(pwRootLn,
-                                      NULL, wr_nDigitsLeft(*pwRootLn));
+                                      NULL, wr_nDL(*pwRootLn));
           #endif // defined(TYPE_IS_RELATIVE)
                 }
                 else
@@ -2746,7 +2763,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
           #if defined(TYPE_IS_RELATIVE)
                         cnDigitsPerWord - 1 - wr_nDS(*pwRootLn)
           #else // defined(TYPE_IS_RELATIVE)
-                        wr_nDigitsLeft(*pwRootLn)
+                        wr_nDL(*pwRootLn)
           #endif // defined(TYPE_IS_RELATIVE)
                         ;
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -2777,7 +2794,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
               #if defined(TYPE_IS_RELATIVE)
             cnDigitsPerWord - tp_to_nDS(nType)
               #else // defined(TYPE_IS_RELATIVE)
-            tp_to_nDigitsLeft(nType)
+            tp_to_nDL(nType)
               #endif // defined(TYPE_IS_RELATIVE)
             ;
         assert(wPopCnt - 1 <= wPrefixPopMask(nDigitsLeft));
@@ -2789,7 +2806,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
           #if defined(TYPE_IS_RELATIVE)
             cnDigitsPerWord - tp_to_nDS(nType)
           #else // defined(TYPE_IS_RELATIVE)
-            tp_to_nDigitsLeft(nType)
+            tp_to_nDL(nType)
           #endif // defined(TYPE_IS_RELATIVE)
             ;
         wPopCnt = PWR_wPopCnt(NULL, pwr, nDigitsLeft);

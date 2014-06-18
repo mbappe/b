@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.234 2014/06/17 02:29:08 mike Exp mike $
+// @(#) $Id: bli.c,v 1.235 2014/06/17 23:08:21 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -775,11 +775,7 @@ t_bitmap:
           #if (cnBitsPerWord == 64)
         unsigned nBL = nDL_to_nBL(nDL);
         if (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1) {
-            unsigned nBitsPopCntSz = LOG(119 / nBL);
-            unsigned nPopCnt = (wRoot >> 4) & (EXP(nBitsPopCntSz) - 1);
-            // nPopCnt could be zero for 60-bit key, but it really means 1
-            //printf("\nnBL %d nBitsPopCntSz %d nPopCnt %d\n",
-            //       nBL, nBitsPopCntSz, nPopCnt);
+            unsigned nPopCnt = wr_nPopCnt(wRoot, nBL);
             Word_t wKeyRoot;
             switch (nPopCnt) {
             case 8:

@@ -233,6 +233,20 @@
 #define cnDigitsPerWord \
     (DIV_UP(cnBitsPerWord - cnBitsAtBottom, cnBitsPerDigit) + 1)
 
+// EMBED_KEYS implies T_ONE
+#if defined(EMBED_KEYS)
+#undef  T_ONE
+#define T_ONE
+#endif // defined(EMBED_KEYS)
+
+#define T_NULL    0
+#if defined(T_ONE)
+#undef T_ONE
+#define T_ONE     1
+#endif // defined(T_ONE)
+#define T_BITMAP  2
+#define T_LIST    3
+
 // Default is -UBPD_TABLE, i.e. -DNO_BPD_TABLE.
 #if defined(BPD_TABLE)
 
@@ -406,18 +420,21 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 // Set the pwRoot and nType fields in wRoot.
 #define set_wr(_wr, _pwr, _type)  ((_wr) = (Word_t)(_pwr) | (_type))
 
-#define T_NULL    0
-#define T_ONE     1
-#define T_BITMAP  2
-#define T_LIST    3
+#if defined(T_ONE)
+
+// Pop cnt bits are just above the type field.
+// A value of zero means a pop cnt of one. 
+#define wr_nPopCnt(_wr, _nBL)  ((((_wr) >> 4) & MSK(119 / (_nBL))) + 1)
+
+#endif // defined(T_ONE)
 
 // Default is -UDL_IN_TYPE_IS_ABSOLUTE.
 #if defined(DL_IN_TYPE_IS_ABSOLUTE)
 
-#define tp_to_nDigitsLeft(_tp)   ((_tp)  - T_LIST)
+#define tp_to_nDL(_tp)   ((_tp)  - T_LIST)
 #define nDigitsLeft_to_tp(_nDL)  ((_nDL) + T_LIST)
 
-#define     wr_nDigitsLeft(_wr)     (tp_to_nDigitsLeft(wr_nType(_wr)))
+#define     wr_nDL(_wr)     (tp_to_nDL(wr_nType(_wr)))
 #define set_wr_nDigitsLeft(_wr, _nDL) \
     (set_wr_nType((_wr), nDigitsLeft_to_tp(_nDL)))
 
