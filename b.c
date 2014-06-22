@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.271 2014/06/22 19:16:13 mike Exp mike $
+// @(#) $Id: b.c,v 1.272 2014/06/22 19:19:07 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2611,6 +2611,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #endif // defined(T_ONE)
 
     assert(wr_nType(wRoot) == T_LIST);
+    assert(nType == T_LIST);
 
     Word_t wPopCnt;
 
@@ -2696,6 +2697,17 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         OldList(pwr, wPopCnt, nDL, nType);
         *pwRoot = wRoot;
     }
+
+#if defined(EMBED_KEYS)
+    // Embed the list if it fits.
+    assert(wr_nType(wRoot) == T_LIST);
+    assert(nType == T_LIST);
+    if (nBL * (wPopCnt - 1)
+            <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL))
+    {
+        DeflateExternalList(pwRoot, wPopCnt - 1, nBL, pwList);
+    }
+#endif // defined(EMBED_KEYS)
 
     return Success;
 
