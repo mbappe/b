@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.265 2014/06/22 00:19:14 mike Exp mike $
+// @(#) $Id: b.c,v 1.266 2014/06/22 02:05:52 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -189,16 +189,14 @@ ListWordsTypeList(Word_t wPopCnt, unsigned nBL)
 
     if (wPopCnt == 0) { return 0; }
 
+    unsigned nBytesKeySz =
 #if defined(COMPRESSED_LISTS)
-    unsigned nBytesKeySz = (nBL <=  8) ? 1
-                         : (nBL <= 16) ? 2
+                           (nBL <=  8) ? 1 : (nBL <= 16) ? 2 :
   #if (cnBitsPerWord > 32)
-                         : (nBL <= 32) ? 4
+                           (nBL <= 32) ? 4 :
   #endif // (cnBitsPerWord > 32)
-                         : sizeof(Word_t);
-#else // defined(COMPRESSED_LISTS)
-    unsigned nBytesKeySz = sizeof(Word_t);
 #endif // defined(COMPRESSED_LISTS)
+                           sizeof(Word_t);
 
     // make room for pop count in the list, if necessary
 #if defined(PP_IN_LINK)
@@ -310,24 +308,25 @@ NewList(Word_t wPopCnt, unsigned nDL)
 
 #if defined(EMBED_KEYS)
     // We need space for the keys, the pop count and the type.
-    // What about PP_IN_LINK?  Do we need space for pop count if not at top?
-    // What difference would it make?
-    // One more embedded 30, 20, 15, 12 and 10-bit key?  Assuming we don't use
-    // the extra word in the link for embedded values?
-    if (wPopCnt * nBL
-            > (cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL)))
+    // What about PP_IN_LINK?  See ListWords for more comments.
+    if (wPopCnt * nBL + nBL_to_nBitsPopCntSz(nBL) + cnBitsMallocMask
+            > cnBitsPerWord)
 #endif // defined(EMBED_KEYS)
-#if defined(T_ONE)
     {
-        if (wPopCnt != 1) { return NewListTypeList(wPopCnt, nBL); }
-    }
+#if defined(T_ONE)
+        if (wPopCnt != 1)
 #endif // defined(T_ONE)
+        {
+            return NewListTypeList(wPopCnt, nBL);
+        }
+    }
 
     unsigned nWords = ListWords(wPopCnt, nDL);
 
-    if (nWords == 0) { return NULL; }
+    if (nWords == 0) { return NULL; } // embed
 
     // external T_ONE
+    assert(nWords == 1);
 
 #if defined(COMPRESSED_LISTS)
     unsigned nBytesKeySz = (nBL <=  8) ? 1
@@ -355,31 +354,10 @@ NewList(Word_t wPopCnt, unsigned nDL)
         METRICS(j__AllocWordsJLLW += nWords); // JUDYA and JUDYB
     }
 
-    Word_t *pwList;
-#if defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
-    // this is overkill since we don't care if lists are aligned;
-    // only that we don't cross a cache line boundary unnecessarily
-    if ((nBL <= 16) && (nWords > 2)) {
-        posix_memalign((void **)&pwList, 64, nWords * sizeof(Word_t));
-    } else
-#endif // defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
-    {
-        pwList = (Word_t *)MyMalloc(nWords);
-    }
+    Word_t *pwList = (Word_t *)MyMalloc(nWords);
 
-    DBGM(printf("NewList pwList %p wPopCnt "OWx" nWords %d\n",
+    DBGM(printf("NewList external T_ONE pwList %p wPopCnt "OWx" nWords %d\n",
         (void *)pwList, wPopCnt, nWords));
-
-#if defined(PP_IN_LINK)
-    if (nDL == cnDigitsPerWord)
-#endif // defined(PP_IN_LINK)
-    {
-        set_ls_wPopCnt(pwList, wPopCnt);
-    }
-
-#if defined(DL_IN_LL)
-    set_ll_nDL(pwList, nDL);
-#endif // defined(DL_IN_LL)
 
     return pwList;
 }
@@ -1745,53 +1723,29 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
         DBGI(printf("InsertGuts List\n"));
 
+        // Initialize wPopCnt, pwKeys, piKeys, psKeys and pcKeys for copy.
+        // And set prefix in link if PP_IN_LINK and the list is empty and
+        // we're not at the top.
         if (wRoot != 0) // pointer to old List
         {
 #if defined(T_ONE)
             if (nType == T_ONE)
             {
-  #if defined(EMBED_KEYS)
-                unsigned nBL = nDL_to_nBL(nDL);
-                if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
-                    wPopCnt = wr_nPopCnt(wRoot, nBL);
-                } else
-  #endif // defined(EMBED_KEYS)
-                {
-                    wPopCnt = 1;
-                }
+                wPopCnt = 1;
   #if defined(PP_IN_LINK)
                 // pop count in link should have been bumped by now
                 // if we're not at the top
                 assert((nDL == cnDigitsPerWord)
                     || (PWR_wPopCnt(pwRoot, NULL, nDL) == wPopCnt + 1));
   #endif // defined(PP_IN_LINK)
-  #if defined(EMBED_KEYS)
-                // copy the embedded list into a temporary external list
-                if (nBL <= cnBitsPerWord - cnBitsMallocMask)
-                {
-                    Word_t ww = wRoot >> (cnBitsPerWord - nBL);
-                    ww |= wKey & ~(EXP(nBL) - 1);
-
-                    pwKeys = &ww;
-      #if defined(COMPRESSED_LISTS)
-          #if (cnBitsPerWord > 32)
-                    iKey = (uint32_t)ww; piKeys = &iKey;
-          #endif // (cnBitsPerWord > 32)
-                    sKey = (uint16_t)ww; psKeys = &sKey;
-      #endif // defined(COMPRESSED_LISTS)
-                }
-                else
-  #endif // defined(EMBED_KEYS)
-                {
-                    pwKeys = pwr;
-                    // can we really not just to pxKeys = pwr?
+                pwKeys = pwr;
+                // can we really not just do pxKeys = pwr?
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
-                    iKey = (uint32_t)*pwr; piKeys = &iKey;
+                iKey = (uint32_t)*pwr; piKeys = &iKey;
 #endif // (cnBitsPerWord > 32)
-                    sKey = (uint16_t)*pwr; psKeys = &sKey;
+                sKey = (uint16_t)*pwr; psKeys = &sKey;
 #endif // defined(COMPRESSED_LISTS)
-                }
             }
             else
 #endif // defined(T_ONE)
@@ -1860,7 +1814,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         {
             Word_t *pwList;
 
+            // Allocate memory for a new list necessary.
+            // Init or update pop count if necessary.
             if ((pwr == NULL)
+// This is broken.  Compare using ListWords and create using NewListTypeList.
                 || (ListWords(wPopCnt + 1, nDL) != ListWords(wPopCnt, nDL)))
             {
                 // allocate a new list and init pop count in the first byte
