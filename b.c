@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.266 2014/06/22 02:05:52 mike Exp mike $
+// @(#) $Id: b.c,v 1.267 2014/06/22 17:32:03 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -211,11 +211,22 @@ ListWordsTypeList(Word_t wPopCnt, unsigned nBL)
 }
 
 // How many words needed for leaf?  Use T_ONE instead of T_LIST if possible.
+// But do not embed.
+static unsigned
+ListWordsExternal(Word_t wPopCnt, unsigned nBL)
+{
+#if defined(T_ONE)
+    if (wPopCnt == 1) { return 1; }
+#endif // defined(T_ONE)
+
+    return ListWordsTypeList(wPopCnt, nBL);
+}
+
+// How many words needed for leaf?  Use T_ONE instead of T_LIST if possible.
+// Use embedded T_ONE instead of external T_ONE if possible.
 unsigned
 ListWords(Word_t wPopCnt, unsigned nDL)
 {
-    if (wPopCnt == 0) { return 0; }
-
     unsigned nBL = nDL_to_nBL(nDL);
 
 #if defined(EMBED_KEYS)
@@ -231,17 +242,15 @@ ListWords(Word_t wPopCnt, unsigned nDL)
     }
 #endif // defined(EMBED_KEYS)
 
-#if defined(T_ONE)
-    if (wPopCnt == 1) { return 1; }
-#endif // defined(T_ONE)
-
-    return ListWordsTypeList(wPopCnt, nBL);
+    return ListWordsExternal(wPopCnt, nBL);
 }
 
 // Allocate a new T_LIST leaf (even if the leaf could be embedded).
 static Word_t *
 NewListTypeList(Word_t wPopCnt, unsigned nBL)
 {
+    assert(wPopCnt != 0);
+
     unsigned nWords = ListWordsTypeList(wPopCnt, nBL);
 
 #if defined(COMPRESSED_LISTS)
@@ -301,34 +310,43 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
     return pwList;
 }
 
-Word_t *
-NewList(Word_t wPopCnt, unsigned nDL)
+static Word_t *
+NewListExternal(Word_t wPopCnt, unsigned nBL)
 {
-    unsigned nBL = nDL_to_nBL(nDL); (void)nBL;
+    Word_t *pwList;
+    unsigned nWords;
 
-#if defined(EMBED_KEYS)
-    // We need space for the keys, the pop count and the type.
-    // What about PP_IN_LINK?  See ListWords for more comments.
-    if (wPopCnt * nBL + nBL_to_nBitsPopCntSz(nBL) + cnBitsMallocMask
-            > cnBitsPerWord)
-#endif // defined(EMBED_KEYS)
-    {
+    assert(wPopCnt != 0);
+
 #if defined(T_ONE)
-        if (wPopCnt != 1)
+    if (wPopCnt == 1) {
+        nWords = 1;
+        pwList = (Word_t *)MyMalloc(nWords);
+    } else
 #endif // defined(T_ONE)
+    {
+        nWords = ListWordsTypeList(wPopCnt, nBL);
+        assert(nWords != 0);
+#if defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
+        // this is overkill since we don't care if lists are aligned;
+        // only that we don't cross a cache line boundary unnecessarily
+        if ((nBL <= 16) && (nWords > 2)) {
+            posix_memalign((void **)&pwList, 64, nWords * sizeof(Word_t));
+        } else
+#endif // defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
         {
-            return NewListTypeList(wPopCnt, nBL);
+            pwList = (Word_t *)MyMalloc(nWords);
+        }
+#if defined(PP_IN_LINK)
+        if (nBL >= cnBitsPerWord)
+#endif // defined(PP_IN_LINK)
+        {
+            set_ls_wPopCnt(pwList, wPopCnt);
         }
     }
 
-    unsigned nWords = ListWords(wPopCnt, nDL);
-
-    if (nWords == 0) { return NULL; } // embed
-
-    // external T_ONE
-    assert(nWords == 1);
-
 #if defined(COMPRESSED_LISTS)
+
     unsigned nBytesKeySz = (nBL <=  8) ? 1
                          : (nBL <= 16) ? 2
   #if (cnBitsPerWord > 32)
@@ -354,12 +372,35 @@ NewList(Word_t wPopCnt, unsigned nDL)
         METRICS(j__AllocWordsJLLW += nWords); // JUDYA and JUDYB
     }
 
-    Word_t *pwList = (Word_t *)MyMalloc(nWords);
-
-    DBGM(printf("NewList external T_ONE pwList %p wPopCnt "OWx" nWords %d\n",
-        (void *)pwList, wPopCnt, nWords));
+    DBGM(printf("NewListExternal wPopCnt "OWx" nWords %d pwList %p\n",
+        wPopCnt, nWords, (void *)pwList));
 
     return pwList;
+}
+
+// Allocate memory for a new list for the given wPopCnt.
+// Use an embedded list if possible.
+// If an embedded list is not possible,
+// then use an external T_ONE if possible.
+// Otherwise use T_LIST.
+// Return NULL if no memory is allocated, i.e. wPopCnt == 0 or
+// embedded list is possible.
+Word_t *
+NewList(Word_t wPopCnt, unsigned nDL)
+{
+    unsigned nBL = nDL_to_nBL(nDL); (void)nBL;
+
+#if defined(EMBED_KEYS)
+    // We need space for the keys, the pop count and the type.
+    // What about PP_IN_LINK?  See ListWords for more comments.
+    if (wPopCnt * nBL + nBL_to_nBitsPopCntSz(nBL) + cnBitsMallocMask
+            <= cnBitsPerWord)
+    {
+        return NULL;
+    }
+#endif // defined(EMBED_KEYS)
+
+    return NewListExternal(wPopCnt, nBL);
 }
 
 Word_t
@@ -1817,13 +1858,13 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
             // Allocate memory for a new list necessary.
             // Init or update pop count if necessary.
             if ((pwr == NULL)
-// This is broken.  Compare using ListWords and create using NewListTypeList.
-                || (ListWords(wPopCnt + 1, nDL) != ListWords(wPopCnt, nDL)))
+                || (ListWordsExternal(wPopCnt + 1, nBL)
+                        != ListWordsExternal(wPopCnt, nBL)))
             {
                 // allocate a new list and init pop count in the first byte
                 // if the first byte of the list needs a pop count
                 unsigned nBL = nDL_to_nBL(nDL);
-                pwList = NewListTypeList(wPopCnt + 1, nBL);
+                pwList = NewListExternal(wPopCnt + 1, nBL);
 #if defined(PP_IN_LINK)
                 assert((nDL == cnDigitsPerWord)
                     || (PWR_wPopCnt(pwRoot, NULL, nDL)
