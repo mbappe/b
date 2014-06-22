@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.269 2014/06/22 18:38:23 mike Exp mike $
+// @(#) $Id: b.c,v 1.270 2014/06/22 18:41:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2437,6 +2437,9 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
     {
+#if defined(COMPRESSED_LISTS)
+        assert(nPopCnt == 1);
+#endif // defined(COMPRESSED_LISTS)
         pwKeys = ls_pwKeys(pwList);
 #if defined(PP_IN_LINK)
         if (nBL == cnBitsPerWord) { ++pwKeys; }
@@ -2593,6 +2596,15 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     }
 
 #if (cwListPopCntMax != 0)
+
+#if defined(EMBED_KEYS)
+    if ((nType == T_ONE) && (nBL <= cnBitsPerWord - cnBitsMallocMask)) {
+        wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot);
+        nType = T_LIST;
+        pwr = wr_pwr(wRoot);
+        assert(wr_nType(wRoot) == nType);
+    }
+#endif // defined(EMBED_KEYS)
 
 #if defined(T_ONE)
     if (nType == T_ONE) {
