@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.264 2014/06/18 13:02:28 mike Exp mike $
+// @(#) $Id: b.c,v 1.265 2014/06/22 00:19:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2770,7 +2770,6 @@ RemoveTypeOne(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t *pwr)
 #if defined(EMBED_KEYS)
 
     unsigned nBL = nDL_to_nBL(nDL);
-    unsigned nBitsPopCnt = nBL_to_nBitsPopCntSz(nBL);
     unsigned nPopCnt = wr_nPopCnt((Word_t)pwr, nBL);
 
     DBGR(printf("nBL %d\n", nBL));
@@ -2787,7 +2786,8 @@ RemoveTypeOne(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t *pwr)
 
 #if defined(EMBED_KEYS)
 
-    assert(nPopCnt * nBL <= cnBitsPerWord - cnBitsMallocMask - nBitsPopCnt);
+    assert(nPopCnt * nBL
+            <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
 
     // Copy the last key in the embedded list to the slot currently
     // occupied by the key being removed.

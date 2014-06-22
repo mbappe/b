@@ -3,6 +3,7 @@
 #define _B_H_INCLUDED
 
 // Default is -DSKIP_LINKS -USKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX.
+// Default is -USAVE_PREFIX -USAVE_PREFIX_TEST_RESULT
 // Default is -UALWAYS_CHECK_PREFIX_AT_LEAF.
 // -DALWAYS_CHECK_PREFIX_AT_LEAF appears to be best for 64-bit Judy1 with
 // 16-bit digits and a 16-bit bitmap.  More digits and -DSKIP_LINKS of any
@@ -190,9 +191,9 @@
 #define cnMallocMask  MSK(cnBitsMallocMask)
 
 // Bits-per-digit.
-// Default is cnBitsPerDigit = 8.
+// Default is cnBitsPerDigit = cnLogBitsPerWord.
 #if ! defined(cnBitsPerDigit)
-    #define cnBitsPerDigit 8
+    #define cnBitsPerDigit cnLogBitsPerWord
 #else // ! defined(cnBitsPerDigit)
     #if (cnBitsPerDigit <= 0) || (cnBitsPerDigit > cnBitsPerWord)
         #undef  cnBitsPerDigit
@@ -203,36 +204,29 @@
 // Choose bottom.
 // Bottom is where Bitmap is created automatically.
 // We count digits up from there.
-// Default is cnBitsAtBottom = MAX(16, minimum allowed by cnBitsPerDigit).
+// Default is cnBitsAtBottom = cnLogBitsPerWord.
+// Old default is cnBitsAtBottom = MAX(16, minimum allowed by cnBitsPerDigit).
 #if ! defined(cnBitsAtBottom)
-  #if (cnBitsPerDigit >=  4)
-    #define cnBitsAtBottom  16
-  #elif (cnBitsPerDigit ==  3)
-      #if (cnBitsPerWord == 32)
-        #define cnBitsAtBottom  17
-      #else
-        #define cnBitsAtBottom  25
-      #endif
-  #elif (cnBitsPerDigit ==  2)
-      #if (cnBitsPerWord == 32)
-        #define cnBitsAtBottom  22
-      #else
-        #define cnBitsAtBottom  38
-      #endif
-  #elif (cnBitsPerDigit ==  1)
-      #if (cnBitsPerWord == 32)
-        #define cnBitsAtBottom  27
-      #else
-        // A bitmap decoding 51 bits would require 1/4 petabyte.
-        #define cnBitsAtBottom  51
-      #endif // cnBitsPerWord
-  #endif // cnBitsPerDigit
+#undef  cnBitsAtBottom
+#define cnBitsAtBottom  cnLogBitsPerWord
 #endif // ! defined(cnBitsAtBottom)
+
+// Default is -DBITMAP_ANYWHERE.
+#if ! defined(NO_BITMAP_ANYWHERE)
+#undef  BITMAP_ANYWHERE
+#define BITMAP_ANYWHERE
+#endif // ! defined(NO_BITMAP_ANYWHERE)
 
 #define cnDigitsPerWord \
     (DIV_UP(cnBitsPerWord - cnBitsAtBottom, cnBitsPerDigit) + 1)
 
+// Default is -DEMBED_KEYS which implies T_ONE.
 // EMBED_KEYS implies T_ONE
+#if ! defined(NO_EMBED_KEYS)
+#undef  EMBED_KEYS
+#define EMBED_KEYS
+#endif // ! defined(NO_EMBED_KEYS)
+
 #if defined(EMBED_KEYS)
 #undef  T_ONE
 #define T_ONE
@@ -445,7 +439,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #endif // defined(T_ONE)
 
-// Default is -UDL_IN_TYPE_IS_ABSOLUTE.
+// Default is -UDL_IN_TYPE_IS_ABSOLUTE, i.e. -DTYPE_IS_RELATIVE.
 #if defined(DL_IN_TYPE_IS_ABSOLUTE)
 
 #define tp_to_nDL(_tp)   ((_tp)  - T_LIST)
@@ -500,7 +494,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 // optimistic so I chose to make both pwRoot and pwr be parameters.
 // Only one will be used, for each field, in the compiled code, depending
 // on ifdefs.
-// Default is -UPP_IN_LINK.
+// Default is -UPP_IN_LINK, i.e. -DPP_IN_SWITCH.
 #if defined(PP_IN_LINK)
 #define PWR_wPrefixPop(_pwRoot, _pwr) \
     (STRUCT_OF((_pwRoot), Link_t, ln_wRoot)->ln_wPrefixPop)
