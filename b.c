@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.270 2014/06/22 18:41:14 mike Exp mike $
+// @(#) $Id: b.c,v 1.271 2014/06/22 19:16:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2572,11 +2572,6 @@ InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 Status_t
 RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
 
-#if defined(T_ONE) && (cwListPopCntMax != 0)
-Status_t
-RemoveTypeOne(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t *pwr);
-#endif // defined(T_ONE) && (cwListPopCntMax != 0)
-
 Status_t
 RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 {
@@ -2608,12 +2603,10 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
 #if defined(T_ONE)
     if (nType == T_ONE) {
-        if (nBL > cnBitsPerWord - cnBitsMallocMask) {
-            OldList(pwr, /* wPopCnt */ 1, nDL, T_ONE);
-            *pwRoot = 0; // Do we need to clear the rest of the link also?
-           return Success;
-        }
-        return RemoveTypeOne(pwRoot, wKey, nDL, pwr);
+        assert(nBL > cnBitsPerWord - cnBitsMallocMask);
+        OldList(pwr, /* wPopCnt */ 1, nDL, T_ONE);
+        *pwRoot = 0; // Do we need to clear the rest of the link also?
+        return Success;
     }
 #endif // defined(T_ONE)
 
@@ -2769,67 +2762,6 @@ skipOldBitmap:
 
     return Success;
 }
-
-#if defined(T_ONE) && (cwListPopCntMax != 0)
-
-// Remove the key from a T_ONE leaf.
-Status_t
-RemoveTypeOne(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t *pwr)
-{
-    (void)wKey;
-
-    DBGR(printf("RemoveTypeOne pwRoot "OWx" wKey "OWx" nDL %d pwr "OWx"\n",
-                *pwRoot, wKey, nDL, (Word_t)pwr));
-
-#if defined(EMBED_KEYS)
-
-    unsigned nBL = nDL_to_nBL(nDL);
-    unsigned nPopCnt = wr_nPopCnt((Word_t)pwr, nBL);
-
-    DBGR(printf("nBL %d\n", nBL));
-
-    Word_t wRoot = (Word_t)pwr | T_ONE;
-
-    if (nPopCnt <= 1)
-#endif // defined(EMBED_KEYS)
-    {
-        OldList(pwr, 1, nDL, T_ONE); // OldList is no-op if list is embedded.
-        *pwRoot = 0; // Do we need to clear the rest of the link also?
-        return Success;
-    }
-
-#if defined(EMBED_KEYS)
-
-    assert(nPopCnt * nBL
-            <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
-
-    // Copy the last key in the embedded list to the slot currently
-    // occupied by the key being removed.
-    // Embedded lists are not sorted.
-
-    unsigned nn;
-    for (nn = 1;
-        (((wRoot >> (cnBitsPerWord - (nn * nBL))) ^ wKey) & MSK(nBL));
-         ++nn) { }
-
-    Word_t wKeyLast = (wRoot >> (cnBitsPerWord - (nPopCnt * nBL))) & MSK(nBL);
-    DBGR(printf("wKeyLast "OWx"\n", wKeyLast));
-
-    wRoot &= ~(MSK(nBL) << (cnBitsPerWord - (nn * nBL))); // clear slot
-    wRoot |= wKeyLast << (cnBitsPerWord - (nn * nBL)); // or in key
-    set_wr_nPopCnt(wRoot, nBL, nPopCnt - 1);
-    // Do we need to care about clearing the vacated slot?
-    DBGR(printf("wRoot "OWx"\n", wRoot));
-
-    *pwRoot = wRoot;
-
-    return Success;
- 
-#endif // defined(EMBED_KEYS)
-
-}
-
-#endif // defined(T_ONE) && (cwListPopCntMax != 0)
 
 #endif // (cnDigitsPerWord != 1)
 
