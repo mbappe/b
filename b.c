@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.267 2014/06/22 17:32:03 mike Exp mike $
+// @(#) $Id: b.c,v 1.268 2014/06/22 18:19:56 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2579,6 +2579,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 {
     unsigned nType = wr_nType(wRoot); (void)nType;
     Word_t *pwr = wr_pwr(wRoot); (void)pwr;
+    unsigned nBL = nDL_to_nBL(nDL);
 
     DBGR(printf("RemoveGuts\n"));
 
@@ -2594,7 +2595,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if (cwListPopCntMax != 0)
 
 #if defined(T_ONE)
-    if (wr_nType(wRoot) == T_ONE) {
+    if (nType == T_ONE) {
         return RemoveTypeOne(pwRoot, wKey, nDL, pwr);
     }
 #endif // defined(T_ONE)
@@ -2621,8 +2622,6 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         return Success;
     }
 //#endif // ! defined(T_ONE)
-
-    unsigned nBL = nDL_to_nBL(nDL);
 
     Word_t *pwKeys = pwr_pwKeys(pwr);
 
