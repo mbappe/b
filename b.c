@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.268 2014/06/22 18:19:56 mike Exp mike $
+// @(#) $Id: b.c,v 1.269 2014/06/22 18:38:23 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2596,6 +2596,11 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
 #if defined(T_ONE)
     if (nType == T_ONE) {
+        if (nBL > cnBitsPerWord - cnBitsMallocMask) {
+            OldList(pwr, /* wPopCnt */ 1, nDL, T_ONE);
+            *pwRoot = 0; // Do we need to clear the rest of the link also?
+           return Success;
+        }
         return RemoveTypeOne(pwRoot, wKey, nDL, pwr);
     }
 #endif // defined(T_ONE)
