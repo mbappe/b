@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.237 2014/06/18 13:02:28 mike Exp mike $
+// @(#) $Id: bli.c,v 1.238 2014/06/18 18:17:01 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -433,9 +433,9 @@ notEmpty:;
         // And pwRoot is initialized despite what gcc might think.
         wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
       #if ! defined(LOOKUP)
-        DBGX(printf("wPopCnt (before incr) %zd\n", (size_t)wPopCnt));
+        DBGX(printf("wPopCnt in link (before incr) %zd\n", (size_t)wPopCnt));
         set_PWR_wPopCnt(pwRoot, NULL, nDL, wPopCnt + nIncr);
-        DBGX(printf("wPopCnt (after incr) %zd\n",
+        DBGX(printf("wPopCnt in link (after incr) %zd\n",
                     (size_t)PWR_wPopCnt(pwRoot, NULL, nDL)));
       #endif // ! defined(LOOKUP)
   #endif // defined(PP_IN_LINK)
@@ -733,7 +733,10 @@ t_bitmap:
 
 #if defined(T_ONE)
 
-    case T_ONE: // one key (full word) list
+    // T_ONE is a one-key/word external leaf or an embedded/internal list.
+    // The latter is only possible if EMBED_KEYS is defined.  In the latter
+    // case an embedded list is assumed for one key if the key will fit.
+    case T_ONE:
     {
   #if defined(REMOVE)
         if (bCleanup) { return Success; } // cleanup is complete
@@ -821,45 +824,45 @@ t_bitmap:
         //      LOG( 44/ 5) ... LOG( 36/ 3) = 3
         //      LOG( 44/ 2) ... LOG( 36/ 2) = 4
         //
-          #if (cnBitsPerWord == 64)
         unsigned nBL = nDL_to_nBL(nDL);
-        if (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1) {
+        if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
             unsigned nPopCnt = wr_nPopCnt(wRoot, nBL);
             Word_t wKeyRoot;
             switch (nPopCnt) {
-            case 8:
-                wKeyRoot = wRoot >> (cnBitsPerWord - (nPopCnt * nBL));
-                if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) goto foundIt;
-            case 7:
-                wKeyRoot = wRoot >> (cnBitsPerWord - (nPopCnt * nBL));
-                if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) goto foundIt;
-            case 6:
-                wKeyRoot = wRoot >> (cnBitsPerWord - (nPopCnt * nBL));
-                if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) goto foundIt;
-            case 5:
-                wKeyRoot = wRoot >> (cnBitsPerWord - (nPopCnt * nBL));
-                if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) goto foundIt;
-            case 4:
-                wKeyRoot = wRoot >> (cnBitsPerWord - (nPopCnt * nBL));
-                if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) goto foundIt;
-            case 3:
-                wKeyRoot = wRoot >> (cnBitsPerWord - (nPopCnt * nBL));
-                if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) goto foundIt;
-            case 2:
-                wKeyRoot = wRoot >> (cnBitsPerWord - (nPopCnt * nBL));
-                if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) goto foundIt;
-            default:
-                wKeyRoot = wRoot >> (cnBitsPerWord - (      1 * nBL));
-                if (((wKeyRoot ^ wKey) & (EXP(nBL) - 1)) == 0) goto foundIt;
+          #if (cnBitsPerWord == 64)
+            case 8: // max for 7-bit keys and 64 bits;
+                wKeyRoot = wRoot >> (cnBitsPerWord - (8 * nBL));
+                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+            case 7: // max for 8-bit keys and 64 bits;
+                wKeyRoot = wRoot >> (cnBitsPerWord - (7 * nBL));
+                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+            case 6: // max for 9-bit keys and 64 bits;
+                wKeyRoot = wRoot >> (cnBitsPerWord - (6 * nBL));
+                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+            case 5: // max for 10 to 11-bit keys and 64 bits;
+                wKeyRoot = wRoot >> (cnBitsPerWord - (5 * nBL));
+                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+          #endif // (cnBitsPerWord == 64)
+            case 4: // max for 12 to 14-bit keys and 64 bits; 6 for 32
+                wKeyRoot = wRoot >> (cnBitsPerWord - (4 * nBL));
+                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+            case 3: // max for 15 to 19-bit keys and 64 bits; 7-9 for 32
+                wKeyRoot = wRoot >> (cnBitsPerWord - (3 * nBL));
+                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+            case 2: // max for 20 to 29-bit keys and 64 bits; 10-14 for 32
+                wKeyRoot = wRoot >> (cnBitsPerWord - (2 * nBL));
+                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+            default: // max for 30 to 60-bit keys and 64 bits; 15-29 for 32
+                wKeyRoot = wRoot >> (cnBitsPerWord - (1 * nBL));
+                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
             }
         } else
-          #endif // (cnBitsPerWord == 64)
       #endif // defined(EMBED_KEYS)
         if (*pwr == wKey)
         {
-  #if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
+  #if defined(EMBED_KEYS)
 foundIt:
-  #endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
+  #endif // defined(EMBED_KEYS)
       #if defined(REMOVE)
             RemoveGuts(pwRoot, wKey, nDL, wRoot);
             goto cleanup; // free memory or reconfigure tree if necessary
@@ -896,6 +899,10 @@ foundIt:
             {
                 // If nDL != cnDigitsPerWord then we're not at top.
                 // And pwRoot is initialized despite what gcc might think.
+                if (PWR_wPopCnt(pwRoot, NULL, nDL) != 0) {
+                    printf("\nhuh wPopCnt %d nIncr %d\n",
+                          (int)PWR_wPopCnt(pwRoot, NULL, nDL), nIncr);
+                }
                 assert(PWR_wPopCnt(pwRoot, NULL, nDL) == 0);
                 set_PWR_wPopCnt(pwRoot, NULL, nDL, nIncr);
             }
@@ -1100,8 +1107,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             }
             else
             {
-                Word_t *pwListNew
-                            = NewList(wPopCnt + 1, cnDigitsPerWord, wKey);
+                Word_t *pwListNew = NewList(wPopCnt + 1, cnDigitsPerWord);
                 Word_t *pwKeysNew = ls_pwKeys(pwListNew);
                 set_wr(wRoot, pwListNew, T_LIST);
                 ++pwKeysNew; // pop count is in first element at top
@@ -1113,7 +1119,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 COPY(pwKeysNew, pwKeys, nn);
                 pwKeysNew[nn] = wKey;
                 COPY(&pwKeysNew[nn + 1], &pwKeys[nn], wPopCnt - nn);
-                OldList(pwr, wPopCnt, cnDigitsPerWord);
+                OldList(pwr, wPopCnt, cnDigitsPerWord, nType);
                 *pwRoot = wRoot;
 
                 status = Success;
@@ -1127,7 +1133,16 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     }
 
   #if defined(DEBUG)
-    if (status == Success) { wInserts++; } // count successful inserts
+    if (status == Success) {
+        // count successful inserts minus successful removes
+        wDebugPopCnt++;
+        if (!bHitDebugThreshold && (wDebugPopCnt > cwDebugThreshold)) {
+            bHitDebugThreshold = 1;
+            if (cwDebugThreshold != 0) {
+                printf("\nHit debug threshold.\n");
+            }
+        }
+    }
   #endif // defined(DEBUG)
 
     DBGI(printf("\n# After Insert(wKey "OWx") Dump\n", wKey));
@@ -1135,7 +1150,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     DBGI(printf("\n"));
 
   #if defined(DEBUG)
-    assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wInserts);
+    assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wDebugPopCnt);
   #endif // defined(DEBUG)
 
     return status;
@@ -1153,8 +1168,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     if (wRoot == 0)
     {
-        wRoot = JudyMalloc
-            (EXP(cnBitsPerWord - cnLogBitsPerByte - cnLogBytesPerWord));
+        wRoot = JudyMalloc(EXP(cnBitsPerWord - cnLogBitsPerWord));
         assert(wRoot != 0);
         assert((wRoot & cnMallocMask) == 0);
 
@@ -1216,7 +1230,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
             Word_t *pwListNew;
             if (wPopCnt != 1)
             {
-                pwListNew = NewList(wPopCnt - 1, cnDigitsPerWord, wKey);
+                pwListNew = NewList(wPopCnt - 1, cnDigitsPerWord);
                 Word_t *pwKeysNew = ls_pwKeys(pwListNew);
 #if defined(T_ONE)
                 if (wPopCnt == 2) {
@@ -1240,7 +1254,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
             {
                 set_wr(wRoot, NULL, T_NULL);
             }
-            OldList(pwr, wPopCnt, cnDigitsPerWord);
+            OldList(pwr, wPopCnt, cnDigitsPerWord, nType);
             *pwRoot = wRoot;
             status = Success;
         }
@@ -1252,20 +1266,18 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     }
 
   #if defined(DEBUG)
-    if (status == Success) wInserts--; // count successful inserts
+    if (status == Success) { wDebugPopCnt--; }
   #endif // defined(DEBUG)
 
   #if defined(DEBUG_REMOVE)
-    {
-        printf("\n# After Remove(wKey "OWx") %s Dump\n", wKey,
-            status == Success ? "Success" : "Failure");
-        Dump((Word_t *)ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord);
-        printf("\n");
-    }
+    DBGR(printf("\n# After Remove(wKey "OWx") %s Dump\n", wKey,
+            status == Success ? "Success" : "Failure"));
+    DBGR(Dump((Word_t *)ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord));
+    DBGR(printf("\n"));
   #endif // defined(DEBUG_REMOVE)
 
   #if defined(DEBUG)
-    assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wInserts);
+    assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wDebugPopCnt);
   #endif // defined(DEBUG)
 
     return status;

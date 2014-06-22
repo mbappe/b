@@ -313,8 +313,6 @@ for bab in 06 08 # 0e # 32 08
 do
 for bpd in 06 08 # 06 # 20 04
 do
-for lsmax in 4 2 1 0 # ff # 00
-do
 for bm in bmn bms bml
 do
 for skip in skipy # skips skipv skipz skipl skipd # skipn # skipu skipx
@@ -325,7 +323,9 @@ for tlss in tlssn tlssy
 do
 for pl in pln ply
 do
-for bits in 64 32
+for lsmax in 0f 04 00 03 02 01 07 # 0f # 4 2 1 0 # ff # 00
+do
+for bits in 32 64
 do
 # srn is the only search that used -DNO_SORT_LISTS
 # srx is the same search but with sorted lists

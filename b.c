@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.263 2014/06/18 12:18:24 mike Exp mike $
+// @(#) $Id: b.c,v 1.264 2014/06/18 13:02:28 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -156,6 +156,10 @@ const unsigned anDL_to_nBL[] = {
 //
 // V   -- JudyL value area (when separate from leaf)
 
+#if defined(DEBUG)
+int bHitDebugThreshold;
+#endif // defined(DEBUG)
+
 #if (cnDigitsPerWord != 1)
 
 static Word_t
@@ -177,78 +181,79 @@ MyFree(Word_t *pw, Word_t wWords)
 
 #if (cwListPopCntMax != 0)
 
+// How many words needed for a T_LIST?
+static unsigned
+ListWordsTypeList(Word_t wPopCnt, unsigned nBL)
+{
+    (void)nBL;
+
+    if (wPopCnt == 0) { return 0; }
+
+#if defined(COMPRESSED_LISTS)
+    unsigned nBytesKeySz = (nBL <=  8) ? 1
+                         : (nBL <= 16) ? 2
+  #if (cnBitsPerWord > 32)
+                         : (nBL <= 32) ? 4
+  #endif // (cnBitsPerWord > 32)
+                         : sizeof(Word_t);
+#else // defined(COMPRESSED_LISTS)
+    unsigned nBytesKeySz = sizeof(Word_t);
+#endif // defined(COMPRESSED_LISTS)
+
+    // make room for pop count in the list, if necessary
+#if defined(PP_IN_LINK)
+    if (nBL >= cnBitsPerWord)
+#endif // defined(PP_IN_LINK)
+    {
+        ++wPopCnt;
+    }
+
+    // always malloc an odd number of words since the odd word is free
+    return DIV_UP(wPopCnt * nBytesKeySz, sizeof(Word_t)) | 1;
+}
+
+// How many words needed for leaf?  Use T_ONE instead of T_LIST if possible.
 unsigned
 ListWords(Word_t wPopCnt, unsigned nDL)
 {
-    unsigned nWords;
-
-#if defined(COMPRESSED_LISTS)
+    if (wPopCnt == 0) { return 0; }
 
     unsigned nBL = nDL_to_nBL(nDL);
 
-    unsigned nBytesKeySz = (nBL <=  8) ? 1
-                         : (nBL <= 16) ? 2
-#if (cnBitsPerWord > 32)
-                         : (nBL <= 32) ? 4
-#endif // (cnBitsPerWord > 32)
-                         : sizeof(Word_t);
-
-#else // defined(COMPRESSED_LISTS)
-
-    unsigned nBytesKeySz = sizeof(Word_t);
-
-    (void)nDL;
-
-#endif // defined(COMPRESSED_LISTS)
-
-    if ((0 == wPopCnt)
-#if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
-        || ((wPopCnt == 1)
-            && (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1))
-#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
-        )
+#if defined(EMBED_KEYS)
+    // We need space for the keys, the pop count and the type.
+    // What about PP_IN_LINK?  Do we need space for pop count if not at top?
+    // What difference would it make?
+    // One more embedded 30, 20, 15, 12 and 10-bit key?  Assuming we don't use
+    // the extra word in the link for embedded values?
+    if (wPopCnt * nBL
+            <= (cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL)))
     {
-        return 0; // Use wRoot for the key.
+        return 0; // Embed the keys, if any, in wRoot.
     }
+#endif // defined(EMBED_KEYS)
 
-    // make room for pop count in the list
 #if defined(T_ONE)
-    if (wPopCnt > 1)
+    if (wPopCnt == 1) { return 1; }
 #endif // defined(T_ONE)
-    {
-#if defined(PP_IN_LINK)
-	if (nDL == cnDigitsPerWord)
-#endif // defined(PP_IN_LINK)
-        {
-            ++wPopCnt;
-        }
-    }
 
-    nWords = DIV_UP(wPopCnt * nBytesKeySz, sizeof(Word_t));
-
-    nWords |= 1; // mallocs of an even number of words waste a word
-
-    return nWords;
+    return ListWordsTypeList(wPopCnt, nBL);
 }
 
-Word_t *
-NewList(Word_t wPopCnt, unsigned nDL, Word_t wKey)
+// Allocate a new T_LIST leaf (even if the leaf could be embedded).
+static Word_t *
+NewListTypeList(Word_t wPopCnt, unsigned nBL)
 {
-    (void)wKey;
-
-    unsigned nWords = ListWords(wPopCnt, nDL);
-
-    if (nWords == 0) { return NULL; }
+    unsigned nWords = ListWordsTypeList(wPopCnt, nBL);
 
 #if defined(COMPRESSED_LISTS)
-    unsigned nBL = nDL_to_nBL(nDL);
-
     unsigned nBytesKeySz = (nBL <=  8) ? 1
                          : (nBL <= 16) ? 2
 #if (cnBitsPerWord > 32)
                          : (nBL <= 32) ? 4
 #endif // (cnBitsPerWord > 32)
                          : sizeof(Word_t);
+
     if (nBytesKeySz == 1) {
         METRICS(j__AllocWordsJLL1 += nWords); // JUDYA
         METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
@@ -271,7 +276,90 @@ NewList(Word_t wPopCnt, unsigned nDL, Word_t wKey)
 #if defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
     // this is overkill since we don't care if lists are aligned;
     // only that we don't cross a cache line boundary unnecessarily
-    if (nBL <= 16) {
+    if ((nBL <= 16) && (nWords > 2)) {
+        posix_memalign((void **)&pwList, 64, nWords * sizeof(Word_t));
+    } else
+#endif // defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
+    {
+        pwList = (Word_t *)MyMalloc(nWords);
+    }
+
+    DBGM(printf("NewListTypeList pwList %p wPopCnt "OWx" nBL %d nWords %d\n",
+        (void *)pwList, wPopCnt, nBL, nWords));
+
+#if defined(PP_IN_LINK)
+    if (nBL >= cnBitsPerWord)
+#endif // defined(PP_IN_LINK)
+    {
+        set_ls_wPopCnt(pwList, wPopCnt);
+    }
+
+#if defined(DL_IN_LL)
+    set_ll_nDL(pwList, nBL_to_nDL(nBL));
+#endif // defined(DL_IN_LL)
+
+    // Should we be setting wPrefix here for PP_IN_LINK?
+
+    return pwList;
+}
+
+Word_t *
+NewList(Word_t wPopCnt, unsigned nDL)
+{
+    unsigned nBL = nDL_to_nBL(nDL); (void)nBL;
+
+#if defined(EMBED_KEYS)
+    // We need space for the keys, the pop count and the type.
+    // What about PP_IN_LINK?  Do we need space for pop count if not at top?
+    // What difference would it make?
+    // One more embedded 30, 20, 15, 12 and 10-bit key?  Assuming we don't use
+    // the extra word in the link for embedded values?
+    if (wPopCnt * nBL
+            > (cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL)))
+#endif // defined(EMBED_KEYS)
+#if defined(T_ONE)
+    {
+        if (wPopCnt != 1) { return NewListTypeList(wPopCnt, nBL); }
+    }
+#endif // defined(T_ONE)
+
+    unsigned nWords = ListWords(wPopCnt, nDL);
+
+    if (nWords == 0) { return NULL; }
+
+    // external T_ONE
+
+#if defined(COMPRESSED_LISTS)
+    unsigned nBytesKeySz = (nBL <=  8) ? 1
+                         : (nBL <= 16) ? 2
+  #if (cnBitsPerWord > 32)
+                         : (nBL <= 32) ? 4
+  #endif // (cnBitsPerWord > 32)
+                         : sizeof(Word_t);
+
+    if (nBytesKeySz == 1) {
+        METRICS(j__AllocWordsJLL1 += nWords); // JUDYA
+        METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
+    } else if (nBytesKeySz == 2) {
+        METRICS(j__AllocWordsJLL2 += nWords); // JUDYA
+        METRICS(j__AllocWordsJL16 += nWords); // JUDYB
+#if (cnBitsPerWord > 32)
+    } else if (nBytesKeySz == 4) {
+        METRICS(j__AllocWordsJLL4 += nWords); // JUDYA
+        METRICS(j__AllocWordsJL32 += nWords); // JUDYB
+#endif // (cnBitsPerWord > 32)
+    }
+    else
+#endif // defined(COMPRESSED_LISTS)
+    {
+        METRICS(j__AllocWordsJLLW += nWords); // JUDYA and JUDYB
+    }
+
+    Word_t *pwList;
+#if defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
+    // this is overkill since we don't care if lists are aligned;
+    // only that we don't cross a cache line boundary unnecessarily
+    if ((nBL <= 16) && (nWords > 2)) {
         posix_memalign((void **)&pwList, 64, nWords * sizeof(Word_t));
     } else
 #endif // defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
@@ -282,33 +370,29 @@ NewList(Word_t wPopCnt, unsigned nDL, Word_t wKey)
     DBGM(printf("NewList pwList %p wPopCnt "OWx" nWords %d\n",
         (void *)pwList, wPopCnt, nWords));
 
-#if defined(T_ONE)
-    if (wPopCnt > 1)
-#endif // defined(T_ONE)
-    {
 #if defined(PP_IN_LINK)
-        if (nDL == cnDigitsPerWord)
+    if (nDL == cnDigitsPerWord)
 #endif // defined(PP_IN_LINK)
-        {
-            set_ls_wPopCnt(pwList, wPopCnt);
-        }
-#if defined(DL_IN_LL)
-        set_ll_nDL(pwList, nDL);
-#endif // defined(DL_IN_LL)
+    {
+        set_ls_wPopCnt(pwList, wPopCnt);
     }
 
-// Should we be setting wPrefix here for PP_IN_LINK?
+#if defined(DL_IN_LL)
+    set_ll_nDL(pwList, nDL);
+#endif // defined(DL_IN_LL)
 
     return pwList;
 }
 
 Word_t
-OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL)
+OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType)
 {
-    unsigned nWords = ListWords(wPopCnt, nDL);
+    unsigned nBL = nDL_to_nBL(nDL);
+    unsigned nWords = ((nType == T_LIST) ? ListWordsTypeList(wPopCnt, nBL)
+                                         : ListWords(wPopCnt, nDL));
 
-    DBGM(printf("Old pwList %p wLen %d wPopCnt "OWx"\n",
-        (void *)pwList, nWords, (Word_t)wPopCnt));
+    DBGM(printf("Old pwList %p wLen %d nBL %d wPopCnt "OWx" nType %d\n",
+        (void *)pwList, nWords, nDL_to_nBL(nDL), (Word_t)wPopCnt, nType));
 
     if (nWords == 0) { return 0; }
 
@@ -317,8 +401,6 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL)
 #endif // defined(DL_IN_LL)
 
 #if defined(COMPRESSED_LISTS)
-
-    unsigned nBL = nDL_to_nBL(nDL);
 
     unsigned nBytesKeySz = (nBL <=  8) ? 1
                          : (nBL <= 16) ? 2
@@ -348,7 +430,7 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL)
 #if defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
     // this is overkill since we don't care if lists are aligned;
     // only that we don't cross a cache line boundary unnecessarily
-    if (nBL <= 16) {
+    if ((nBL <= 16) && (nWords > 2)) {
         free(pwList);
     } else
 #endif // defined(COMPRESSED_LISTS) && defined(ALIGN_LISTS)
@@ -582,8 +664,8 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
             PWR_wPrefixPop(pwRoot, pwr)));
     }
 
-    DBGI(printf("After NewSwitch"));
-    DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+    //DBGI(printf("After NewSwitch"));
+    //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
     return pwr;
 
@@ -694,8 +776,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 
     // Caller updates type field in *pwRoot if necessary.
 
-    DBGI(printf("After NewLink"));
-    DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+    //DBGI(printf("After NewLink"));
+    //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 }
 #endif // defined(BM_SWITCH_FOR_REAL)
 
@@ -866,10 +948,6 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     assert(nDL - tp_to_nDS(nType)
         >= nBL_to_nDL(cnBitsAtBottom));
 #else // defined(TYPE_IS_RELATIVE)
-    if (tp_to_nDL(nType) > nBL_to_nDL(nBL))
-printf("nType %d nBL %d tpnDL %d nBLnDL %d\n",
-    nType, nBL, tp_to_nDL(nType), nBL_to_nDL(nBL));
-
     assert( ! tp_bIsSwitch(nType) || (tp_to_nDL(nType) <= nBL_to_nDL(nBL)));
 #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -884,12 +962,11 @@ printf("nType %d nBL %d tpnDL %d nBLnDL %d\n",
 
         if (nType == T_ONE)
         {
-#if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
-            if (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1) {
-                wPopCnt = (wRoot >> 4) & (EXP(LOG(119 / nBL)) - 1);
-                if (wPopCnt == 0) { wPopCnt = 1; }
+#if defined(EMBED_KEYS)
+            if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
+                wPopCnt = wr_nPopCnt(wRoot, nBL);
             } else
-#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+#endif // defined(EMBED_KEYS)
             {
                 wPopCnt = 1;
             }
@@ -898,7 +975,7 @@ printf("nType %d nBL %d tpnDL %d nBLnDL %d\n",
             {
                 // This OldList is a no-op and will return zero if
                 // the key(s) is(are) embedded.
-                return OldList(pwr, /* wPopCnt */ 1, nDL);
+                return OldList(pwr, /* wPopCnt */ 1, nDL, nType);
             }
 
             printf(" tp_wPopCnt %3d", (int)wPopCnt);
@@ -913,15 +990,16 @@ printf("nType %d nBL %d tpnDL %d nBLnDL %d\n",
             }
 #endif // defined(PP_IN_LINK)
 
-#if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
-            if (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1) {
+#if defined(EMBED_KEYS)
+            if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
                 for (unsigned nn = 1; nn <= wPopCnt; nn++) {
-                    printf(" %"_fw"x\n",
+                    printf(" %08"_fw"x",
                         (wRoot >> (cnBitsPerWord - (nn * nBL)))
                             & (EXP(nBL) - 1));
                 }
+                printf("\n");
             } else
-#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+#endif // defined(EMBED_KEYS)
             {
                 printf(" "Owx"\n", *pwr);
             }
@@ -944,7 +1022,7 @@ printf("nType %d nBL %d tpnDL %d nBLnDL %d\n",
 
             if (!bDump)
             {
-                return OldList(pwr, wPopCnt, nDL);
+                return OldList(pwr, wPopCnt, nDL, nType);
             }
 
             Word_t *pwKeys = pwr_pwKeys(pwr);
@@ -1013,7 +1091,7 @@ printf("nType %d nBL %d tpnDL %d nBLnDL %d\n",
     if (bDump)
     {
 #if defined(PP_IN_LINK)
-        if (nBLArg == cnBitsPerWord)
+        if (nBLArg >= cnBitsPerWord)
         {
 // Add 'em up.
 #if defined(BM_SWITCH) && ! defined(BM_IN_LINK)
@@ -1179,9 +1257,11 @@ printf("nType %d nBL %d tpnDL %d nBLnDL %d\n",
 void
 Dump(Word_t *pwRoot, Word_t wPrefix, unsigned nBL)
 {
-    printf("\nDump\n");
-    FreeArrayGuts(pwRoot, wPrefix, nBL, /* bDump */ 1);
-    printf("End Dump\n");
+    if (bHitDebugThreshold) {
+        printf("\nDump\n");
+        FreeArrayGuts(pwRoot, wPrefix, nBL, /* bDump */ 1);
+        printf("End Dump\n");
+    }
 }
 #endif // defined(DEBUG)
 
@@ -1563,6 +1643,19 @@ CopyWithInsertChar(unsigned char *pTgt, unsigned char *pSrc,
 Status_t
 InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
 
+#if (cwListPopCntMax != 0)
+#if defined(EMBED_KEYS)
+
+Word_t
+InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot);
+
+Word_t
+DeflateExternalList(Word_t *pwRoot,
+                    unsigned nPopCnt, unsigned nBL, Word_t *pwr);
+
+#endif // defined(EMBED_KEYS)
+#endif // (cwListPopCntMax != 0)
+
 // InsertGuts
 // This function is called from the iterative Insert function once Insert has
 // determined that the key from an insert request is not present.
@@ -1605,6 +1698,21 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     }
 
     unsigned nType = wr_nType(wRoot); (void)nType; // silence gcc
+
+#if (cwListPopCntMax != 0)
+#if defined(EMBED_KEYS)
+    unsigned nBL = nDL_to_nBL(nDL);
+    if ((nType == T_ONE)
+            && (nDL_to_nBL(nDL) <= cnBitsPerWord - cnBitsMallocMask))
+    {
+        wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot);
+        // BUG: The list may not be sorted at this point.
+        // I wonder if it matters.
+        nType = wr_nType(wRoot);
+    }
+#endif // defined(EMBED_KEYS)
+#endif // (cwListPopCntMax != 0)
+
     Word_t *pwr = wr_tp_pwr(wRoot, nType);
 
 // This first clause handles wRoot == 0 by treating it like a list leaf
@@ -1642,12 +1750,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if defined(T_ONE)
             if (nType == T_ONE)
             {
-  #if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+  #if defined(EMBED_KEYS)
                 unsigned nBL = nDL_to_nBL(nDL);
-                if (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1) {
+                if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
                     wPopCnt = wr_nPopCnt(wRoot, nBL);
                 } else
-  #endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+  #endif // defined(EMBED_KEYS)
                 {
                     wPopCnt = 1;
                 }
@@ -1657,9 +1765,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 assert((nDL == cnDigitsPerWord)
                     || (PWR_wPopCnt(pwRoot, NULL, nDL) == wPopCnt + 1));
   #endif // defined(PP_IN_LINK)
-  #if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+  #if defined(EMBED_KEYS)
                 // copy the embedded list into a temporary external list
-                if (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1)
+                if (nBL <= cnBitsPerWord - cnBitsMallocMask)
                 {
                     Word_t ww = wRoot >> (cnBitsPerWord - nBL);
                     ww |= wKey & ~(EXP(nBL) - 1);
@@ -1673,7 +1781,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
       #endif // defined(COMPRESSED_LISTS)
                 }
                 else
-  #endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+  #endif // defined(EMBED_KEYS)
                 {
                     pwKeys = pwr;
                     // can we really not just to pxKeys = pwr?
@@ -1753,11 +1861,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
             Word_t *pwList;
 
             if ((pwr == NULL)
-                || (ListWords(wPopCnt + 1, nDL)
-                    != ListWords(wPopCnt, nDL)))
+                || (ListWords(wPopCnt + 1, nDL) != ListWords(wPopCnt, nDL)))
             {
-                // allocate a new list and init pop count in the first word
-                pwList = NewList(wPopCnt + 1, nDL, wKey);
+                // allocate a new list and init pop count in the first byte
+                // if the first byte of the list needs a pop count
+                unsigned nBL = nDL_to_nBL(nDL);
+                pwList = NewListTypeList(wPopCnt + 1, nBL);
 #if defined(PP_IN_LINK)
                 assert((nDL == cnDigitsPerWord)
                     || (PWR_wPopCnt(pwRoot, NULL, nDL)
@@ -1834,12 +1943,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 unsigned nBL = nDL_to_nBL(nDL); (void)nBL;
 #if defined(T_ONE)
                 if (wPopCnt == 0) {
-#if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
-                    if (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1) {
+#if defined(EMBED_KEYS)
+                    if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
                         set_wr(wRoot, (wKey << (cnBitsPerWord - nBL)), T_ONE);
                     }
                     else
-#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+#endif // defined(EMBED_KEYS)
                     {
                         *pwList = wKey; set_wr_nType(wRoot, T_ONE);
                     }
@@ -1870,8 +1979,21 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
             if ((wPopCnt != 0) && (pwr != pwList))
             {
-                OldList(pwr, wPopCnt, nDL);
+                OldList(pwr, wPopCnt, nDL, nType);
             }
+
+#if defined(EMBED_KEYS)
+            // Embed the list if it fits.
+            if (wr_nType(wRoot) == T_LIST) {
+                unsigned nBL = nDL_to_nBL(nDL);
+                if (nBL * (wPopCnt + 1)
+                    <= cnBitsPerWord - cnBitsMallocMask
+                        - nBL_to_nBitsPopCntSz(nBL))
+                {
+                    DeflateExternalList(pwRoot, wPopCnt + 1, nBL, pwList);
+                }
+            }
+#endif // defined(EMBED_KEYS)
         }
         else
 #endif // (cwListPopCntMax != 0)
@@ -1879,6 +2001,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
             Word_t w;
 
             // List is full; insert a switch
+            DBGI(printf("List is full.\n"));
 
 #if defined(PP_IN_LINK)
             if (nDL < cnDigitsPerWord)
@@ -1928,21 +2051,15 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                     {
 #if defined(COMPRESSED_LISTS)
                         if (nBL <= 8) {
-                            if (pcKeys[w] < wMin)
-                                wMin = pcKeys[w];
-                            if (pcKeys[w] > wMax)
-                                wMax = pcKeys[w];
+                            if (pcKeys[w] < wMin) wMin = pcKeys[w];
+                            if (pcKeys[w] > wMax) wMax = pcKeys[w];
                         } else if (nBL <= 16) {
-                            if (psKeys[w] < wMin)
-                                wMin = psKeys[w];
-                            if (psKeys[w] > wMax)
-                                wMax = psKeys[w];
+                            if (psKeys[w] < wMin) wMin = psKeys[w];
+                            if (psKeys[w] > wMax) wMax = psKeys[w];
 #if (cnBitsPerWord > 32)
                         } else if (nBL <= 32) {
-                            if (piKeys[w] < wMin)
-                                wMin = piKeys[w];
-                            if (piKeys[w] > wMax)
-                                wMax = piKeys[w];
+                            if (piKeys[w] < wMin) wMin = piKeys[w];
+                            if (piKeys[w] > wMax) wMax = piKeys[w];
 #endif // (cnBitsPerWord > 32)
                         } else 
 #endif // defined(COMPRESSED_LISTS)
@@ -2047,22 +2164,22 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 {
                     Insert(pwRoot, pwKeys[w], nDLOld);
 
-                    DBGI(printf(
-                        "\n# InsertGuts After Insert(wKey "OWx") Dump\n",
-                        pwKeys[w]));
-                    DBGI(Dump(pwRootLast,
-                              /* wPrefix */ (Word_t)0, cnBitsPerWord));
-                    DBGI(printf("\n"));
+                    //DBGI(printf(
+                     //   "\n# InsertGuts After Insert(wKey "OWx") Dump\n",
+                      //  pwKeys[w]));
+                    //DBGI(Dump(pwRootLast,
+                    //          /* wPrefix */ (Word_t)0, cnBitsPerWord));
+                    //DBGI(printf("\n"));
                 }
             }
 
-            DBGI(printf("Just Before InsertGuts calls final Insert"));
-            DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+            //DBGI(printf("Just Before InsertGuts calls final Insert"));
+            //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
             Insert(pwRoot, wKey, nDLOld);
 
 #if (cwListPopCntMax != 0)
             // Hmm.  Should this be nDLOld?
-            if (wPopCnt != 0) { OldList(pwr, wPopCnt, nDLOld); }
+            if (wPopCnt != 0) { OldList(pwr, wPopCnt, nDLOld, nType); }
 #endif // (cwListPopCntMax != 0)
         }
     }
@@ -2269,6 +2386,136 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     return Success;
 }
 
+#if (cwListPopCntMax != 0)
+#if defined(EMBED_KEYS)
+
+// Replace a wRoot with embedded keys with an external T_LIST leaf.
+// BUG: This function is not sorting the list and the embedded list may
+// not be sorted.
+Word_t
+InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
+{
+    DBGI(printf(
+         "InflateEmbeddedList pwRoot %p wKey "OWx" nBL %d wRoot "OWx"\n",
+         (void *)pwRoot, wKey, nBL, wRoot));
+
+    Word_t *pwKeys;
+#if defined(COMPRESSED_LISTS)
+#if (cnBitsPerWord > 32)
+    uint32_t *piKeys;
+#endif // (cnBitsPerWord > 32)
+    uint16_t *psKeys;
+#endif // defined(COMPRESSED_LISTS)
+
+    unsigned nPopCnt = wr_nPopCnt(wRoot, nBL);
+
+    assert(nBL * nPopCnt
+        <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
+
+    Word_t *pwList = NewListTypeList(nPopCnt, nBL);
+#if defined(PP_IN_LINK)
+    if (nBL == cnBitsPerWord)
+#endif // defined(PP_IN_LINK)
+    {
+        set_ls_wPopCnt(pwList, nPopCnt);
+    }
+    Word_t wBLM = MSK(nBL); // Bits left mask.
+#if defined(COMPRESSED_LISTS)
+    if (nBL <= 16) {
+        psKeys = ls_psKeys(pwList);
+        for (unsigned nn = 1; nn <= nPopCnt; nn++) {
+            psKeys[nn-1] = (uint16_t)((wKey & ~wBLM)
+                | ((wRoot >> (cnBitsPerWord - (nn * nBL))) & wBLM));
+        }
+    } else
+#if (cnBitsPerWord > 32)
+    if (nBL <= 32) {
+        piKeys = ls_piKeys(pwList);
+        for (unsigned nn = 1; nn <= nPopCnt; nn++) {
+            piKeys[nn-1] = (uint32_t)((wKey & ~wBLM)
+                | ((wRoot >> (cnBitsPerWord - (nn * nBL))) & wBLM));
+        }
+    } else
+#endif // (cnBitsPerWord > 32)
+#endif // defined(COMPRESSED_LISTS)
+    {
+        pwKeys = ls_pwKeys(pwList);
+#if defined(PP_IN_LINK)
+        if (nBL == cnBitsPerWord) { ++pwKeys; }
+#endif // defined(PP_IN_LINK)
+        for (unsigned nn = 1; nn <= nPopCnt; nn++) {
+            pwKeys[nn-1] = (wKey & ~wBLM)
+                | ((wRoot >> (cnBitsPerWord - (nn * nBL))) & wBLM);
+        }
+    }
+
+    set_wr(wRoot, pwList, T_LIST);
+    *pwRoot = wRoot;
+
+    return wRoot;
+}
+
+// Replace an external T_LIST leaf with a wRoot with embedded keys.
+Word_t
+DeflateExternalList(Word_t *pwRoot,
+                    unsigned nPopCnt, unsigned nBL, Word_t *pwr)
+{
+    DBGI(printf("DeflateExternalList pwRoot %p nPopCnt %d nBL %d pwr %p\n",
+               (void *)pwRoot, nPopCnt, nBL, (void *)pwr));
+
+    assert(nBL * nPopCnt
+        <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
+
+    Word_t wRoot = 0;
+
+    Word_t *pwKeys;
+#if defined(COMPRESSED_LISTS)
+#if (cnBitsPerWord > 32)
+    uint32_t *piKeys;
+#endif // (cnBitsPerWord > 32)
+    uint16_t *psKeys;
+#endif // defined(COMPRESSED_LISTS)
+
+    set_wr_nType(wRoot, T_ONE);
+    set_wr_nPopCnt(wRoot, nBL, nPopCnt);
+
+    Word_t wBLM = MSK(nBL);
+#if defined(COMPRESSED_LISTS)
+    if (nBL <= 16) {
+        psKeys = ls_psKeys(pwr);
+        for (unsigned nn = 1; nn <= nPopCnt; nn++) {
+           wRoot |= (psKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
+        }
+    } else
+#if (cnBitsPerWord > 32)
+    if (nBL <= 32) {
+        piKeys = ls_piKeys(pwr);
+        for (unsigned nn = 1; nn <= wr_nPopCnt(wRoot, nBL); nn++) {
+           wRoot |= (piKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
+        }
+    } else
+#endif // (cnBitsPerWord > 32)
+#endif // defined(COMPRESSED_LISTS)
+    {
+        pwKeys = ls_pwKeys(pwr);
+#if defined(PP_IN_LINK)
+        if (nBL == cnBitsPerWord) { ++pwKeys; }
+#endif // defined(PP_IN_LINK)
+        for (unsigned nn = 1; nn <= wr_nPopCnt(wRoot, nBL); nn++) {
+           wRoot |= (pwKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
+        }
+    }
+
+    OldList(pwr, nPopCnt, nBL_to_nDL(nBL), T_LIST);
+
+    *pwRoot = wRoot;
+
+    return wRoot;
+}
+
+#endif // defined(EMBED_KEYS)
+#endif // (cwListPopCntMax != 0)
+
 Status_t
 InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 {
@@ -2332,6 +2579,7 @@ RemoveTypeOne(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t *pwr);
 Status_t
 RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 {
+    unsigned nType = wr_nType(wRoot); (void)nType;
     Word_t *pwr = wr_pwr(wRoot); (void)pwr;
 
     DBGR(printf("RemoveGuts\n"));
@@ -2366,17 +2614,17 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         wPopCnt = ls_wPopCnt(pwr);
     }
 
-#if ! defined(T_ONE)
+//#if ! defined(T_ONE)
     if (wPopCnt == 1) {
-        OldList(pwr, wPopCnt, nDL);
+        OldList(pwr, wPopCnt, nDL, nType);
         *pwRoot = 0;
         // Do we need to clear the rest of the link also?
         // See bCleanup in Lookup/Remove for the rest.
         return Success;
     }
-#endif // ! defined(T_ONE)
+//#endif // ! defined(T_ONE)
 
-    unsigned nBL = nDL_to_nBL(nDL); (void)nBL;
+    unsigned nBL = nDL_to_nBL(nDL);
 
     Word_t *pwKeys = pwr_pwKeys(pwr);
 
@@ -2393,34 +2641,16 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     // nIndex identifies the key being removed.
 
     Word_t *pwList;
-    if (ListWords(wPopCnt - 1, nDL) != ListWords(wPopCnt, nDL))
+    if (ListWordsTypeList(wPopCnt - 1, nBL)
+        != ListWordsTypeList(wPopCnt, nBL))
     {
         // Malloc a new, smaller list.
-        pwList = NewList(wPopCnt - 1, nDL, wKey);
+        pwList = NewListTypeList(wPopCnt - 1, nBL);
         // Why are we copying the old list to the new one?
         // Because the beginning will be the same.
         // Except for the the pop count.
-#if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
-        if ((wPopCnt == 2)
-            && (nBL <= cnBitsPerWord - cnLogBitsPerWord - 1))
-        {
-            // nIndex is 0 or 1
-            if (nBL <= 16) {
-                set_wr(wRoot,
-                      ((Word_t)(pwr_psKeys(pwr)[ ! nIndex ])
-                          << (cnBitsPerWord - nBL)),
-                       T_ONE);
-            } else if (nBL <= 32) {
-                set_wr(wRoot,
-                      ((Word_t)(pwr_piKeys(pwr)[ ! nIndex ])
-                          << (cnBitsPerWord - nBL)),
-                       T_ONE);
-            }
-            goto cleanup; // stop pretending; it's painful
-        }
-#endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
 
-        COPY(pwList, pwr, ListWords(wPopCnt - 1, nDL));
+        COPY(pwList, pwr, ListWordsTypeList(wPopCnt - 1, nBL));
 
         set_wr(wRoot, pwList, T_LIST);
     }
@@ -2430,33 +2660,11 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     }
 
 #if defined(PP_IN_LINK)
-    assert(nDL != cnDigitsPerWord);
+    assert(nDL != cnDigitsPerWord); // T_LIST at top is handled by Judy1Unset?
 #else // defined(PP_IN_LINK)
-#if defined(T_ONE)
-    if (wPopCnt != 2)
-#endif // defined(T_ONE)
-    {
-        set_ls_wPopCnt(pwList, wPopCnt - 1);
-    }
+    set_ls_wPopCnt(pwList, wPopCnt - 1);
 #endif // defined(PP_IN_LINK)
 
-#if defined(T_ONE)
-    if (wPopCnt == 2) {
-#if defined(COMPRESSED_LISTS)
-        Word_t wPrefix = wKey & ~(EXP(nBL) - 1);
-        if (nBL <= 16) {
-            *pwList = wPrefix | pwr_psKeys(pwr)[ ! nIndex ];
-        } else if (nBL <= 32) {
-            *pwList = wPrefix | pwr_piKeys(pwr)[ ! nIndex ];
-        } else
-#endif // defined(COMPRESSED_LISTS)
-        {
-            *pwList = pwKeys[ ! nIndex ];
-        }
-        set_wr_nType(wRoot, T_ONE);
-        *pwRoot = wRoot;
-    } else
-#endif // defined(T_ONE)
 #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
         MOVE(&pwr_pcKeys(pwList)[nIndex],
@@ -2478,10 +2686,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
     if (pwList != pwr)
     {
-#if (cnBitsPerWord == 64) && defined(EMBED_KEYS)
-cleanup:
-#endif // (cnBitsPerWord == 64) && defined(EMBED_KEYS)
-        OldList(pwr, wPopCnt, nDL);
+        OldList(pwr, wPopCnt, nDL, nType);
         *pwRoot = wRoot;
     }
 
@@ -2559,27 +2764,30 @@ RemoveTypeOne(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t *pwr)
 {
     (void)wKey;
 
-#if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+    DBGR(printf("RemoveTypeOne pwRoot "OWx" wKey "OWx" nDL %d pwr "OWx"\n",
+                *pwRoot, wKey, nDL, (Word_t)pwr));
+
+#if defined(EMBED_KEYS)
 
     unsigned nBL = nDL_to_nBL(nDL);
-    unsigned nBitsPopCnt = LOG(119 / nBL);
-    unsigned nPopCnt
-             = ((Word_t)pwr >> (cnLogBitsPerWord + 1)) & MSK(nBitsPopCnt);
+    unsigned nBitsPopCnt = nBL_to_nBitsPopCntSz(nBL);
+    unsigned nPopCnt = wr_nPopCnt((Word_t)pwr, nBL);
 
-    Word_t wRoot = (Word_t)pwr;
+    DBGR(printf("nBL %d\n", nBL));
+
+    Word_t wRoot = (Word_t)pwr | T_ONE;
 
     if (nPopCnt <= 1)
-#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+#endif // defined(EMBED_KEYS)
     {
-        OldList(pwr, 1, nDL); // OldList is a no-op if the list is embedded.
+        OldList(pwr, 1, nDL, T_ONE); // OldList is no-op if list is embedded.
         *pwRoot = 0; // Do we need to clear the rest of the link also?
         return Success;
     }
 
-#if defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+#if defined(EMBED_KEYS)
 
-    assert(nPopCnt * nBL
-           <= cnBitsPerWord - cnLogBitsPerWord - 1 - nBitsPopCnt);
+    assert(nPopCnt * nBL <= cnBitsPerWord - cnBitsMallocMask - nBitsPopCnt);
 
     // Copy the last key in the embedded list to the slot currently
     // occupied by the key being removed.
@@ -2587,22 +2795,23 @@ RemoveTypeOne(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t *pwr)
 
     unsigned nn;
     for (nn = 1;
-        (((wRoot >> (cnBitsPerWord - (nn * nBL))) ^ wKey) & ~MSK(nBL));
+        (((wRoot >> (cnBitsPerWord - (nn * nBL))) ^ wKey) & MSK(nBL));
          ++nn) { }
 
     Word_t wKeyLast = (wRoot >> (cnBitsPerWord - (nPopCnt * nBL))) & MSK(nBL);
+    DBGR(printf("wKeyLast "OWx"\n", wKeyLast));
 
     wRoot &= ~(MSK(nBL) << (cnBitsPerWord - (nn * nBL))); // clear slot
     wRoot |= wKeyLast << (cnBitsPerWord - (nn * nBL)); // or in key
-    wRoot &= ~(MSK(nBitsPopCnt) << (cnLogBitsPerWord + 1)); // clear pop cnt
-    wRoot |= (nPopCnt - 1) << (cnLogBitsPerWord + 1); // or in new pop cnt
+    set_wr_nPopCnt(wRoot, nBL, nPopCnt - 1);
     // Do we need to care about clearing the vacated slot?
+    DBGR(printf("wRoot "OWx"\n", wRoot));
 
     *pwRoot = wRoot;
 
     return Success;
  
-#endif // defined(EMBED_KEYS) && (cnBitsPerWord == 64)
+#endif // defined(EMBED_KEYS)
 
 }
 
@@ -2624,8 +2833,7 @@ Judy1FreeArray(PPvoid_t PPArray, P_JE)
     return FreeArrayGuts((Word_t *)PPArray,
         /* wPrefix */ 0, cnBitsPerWord, /* bDump */ 0);
 #else // (cnDigitsPerWord != 1)
-    JudyFree(*PPArray,
-       EXP(cnBitsPerWord - cnLogBitsPerByte - cnLogBytesPerWord));
+    JudyFree(*PPArray, EXP(cnBitsPerWord - cnLogBitsPerWord));
     return EXP(cnBitsPerWord - cnLogBitsPerByte);
 #endif // (cnDigitsPerWord != 1)
 }
@@ -2670,7 +2878,10 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             wPopCnt = 1; // Always a full word to top; never embedded.
         } else
       #endif // defined(T_ONE)
-        wPopCnt = ls_wPopCnt(pwr); // valid at top for PP_IN_LINK if ! T_ONE
+        {
+            // ls_wPopCnt is valid at top for PP_IN_LINK if ! T_ONE
+            wPopCnt = ls_wPopCnt(pwr);
+        }
     }
     else
   #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -2728,7 +2939,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
                 }
 
       #if defined(DEBUG_INSERT)
-                if (wPopCntLn != 0)
+                if (bHitDebugThreshold && (wPopCntLn != 0))
                 {
                     printf("Pop sum");
           #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -2771,6 +2982,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
       #if defined(DEBUG_INSERT)
+                if (bHitDebugThreshold) {
                     printf("Pop sum (full)");
           #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                     printf(" mask "Owx" %"_fw"d\n",
@@ -2780,6 +2992,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
                            nn, wPrefixPopMask(nDL) + 1,
                            wPrefixPopMask(nDL) + 1);
           #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+                }
       #endif // defined(DEBUG_INSERT)
 
       #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -2822,12 +3035,13 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
     }
 
   #if defined(DEBUG)
-    if (wPopCnt != wInserts)
+    if (wPopCnt != wDebugPopCnt)
     {
         Dump(pwRootLast, 0, cnBitsPerWord);
-        printf("\nwPopCnt %"_fw"d wInserts %"_fw"d\n", wPopCnt, wInserts);
+        printf("\nwPopCnt %"_fw"d wDebugPopCnt %"_fw"d\n",
+               wPopCnt, wDebugPopCnt);
     }
-    assert(wPopCnt == wInserts);
+    assert(wPopCnt == wDebugPopCnt);
   #endif // defined(DEBUG)
 
     return wPopCnt;
@@ -2835,7 +3049,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 #else // (cnDigitsPerWord != 1)
 
     (void)PArray; (void)wKey0; (void)wKey1, (void)PJError;
-    return wInserts;
+    return wDebugPopCnt;
 
 #endif // (cnDigitsPerWord != 1)
 }

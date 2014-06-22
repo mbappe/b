@@ -92,13 +92,11 @@
     #undef   DEBUG_INSERT
     #undef   DEBUG_REMOVE
     #undef   DEBUG_MALLOC
-    #undef   DEBUG_LOOKUP
 
     #define  DEBUG
     #define  DEBUG_INSERT
     #define  DEBUG_REMOVE
     #define  DEBUG_MALLOC
-    #define  DEBUG_LOOKUP
 
 #else // defined(DEBUG_ALL)
 
@@ -188,7 +186,8 @@
 
 #define cnBytesPerWord  (EXP(cnLogBytesPerWord))
 #define cnLogBitsPerWord  (cnLogBytesPerWord + cnLogBitsPerByte)
-#define cnMallocMask  ((cnBytesPerWord * 2) - 1)
+#define cnBitsMallocMask  (cnLogBytesPerWord + 1)
+#define cnMallocMask  MSK(cnBitsMallocMask)
 
 // Bits-per-digit.
 // Default is cnBitsPerDigit = 8.
@@ -266,7 +265,8 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define cnBitsIndexSzAtTop  nDL_to_nBitsIndexSz(cnDigitsPerWord)
 
 // this one is not used in the lookup performance path
-#define nDL_to_nBL(_nDL)  anDL_to_nBL[_nDL]
+#define nDL_to_nBL(_nDL) \
+    (((_nDL) < cnDigitsPerWord) ? anDL_to_nBL[_nDL] : cnBitsPerWord)
 
 #define nDL_to_nBL_NAT(_nDL)  nDL_to_nBL(_nDL)
 
@@ -318,14 +318,17 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #if defined(DEBUG)
 #define DBG(x)  (x)
+// Default is cwDebugThreshold = 0.
+#if ! defined(cwDebugThreshold)
 #define cwDebugThreshold  0ULL
+#endif // ! defined(cwDebugThreshold)
 #else // defined(DEBUG)
 #define DBG(x)
 #endif // defined(DEBUG)
 
 #if defined(DEBUG_INSERT)
 #if (cwDebugThreshold != 0)
-#define DBGI(x)  if (wInserts >= cwDebugThreshold) (x)
+#define DBGI(x)  if (bHitDebugThreshold) (x)
 #else // (cwDebugThreshold != 0)
 #define DBGI(x)  (x)
 #endif // (cwDebugThreshold != 0)
@@ -335,7 +338,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #if defined(DEBUG_LOOKUP)
 #if (cwDebugThreshold != 0)
-#define DBGL(x)  if (wInserts >= cwDebugThreshold) (x)
+#define DBGL(x)  if (bHitDebugThreshold) (x)
 #else // (cwDebugThreshold != 0)
 #define DBGL(x)  (x)
 #endif // (cwDebugThreshold != 0)
@@ -345,7 +348,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #if defined(DEBUG_REMOVE)
 #if (cwDebugThreshold != 0)
-#define DBGR(x)  if (wInserts >= cwDebugThreshold) (x)
+#define DBGR(x)  if (bHitDebugThreshold) (x)
 #else // (cwDebugThreshold != 0)
 #define DBGR(x)  (x)
 #endif // (cwDebugThreshold != 0)
@@ -355,7 +358,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #if defined(DEBUG_MALLOC)
 #if (cwDebugThreshold != 0)
-#define DBGM(x)  if (wInserts >= cwDebugThreshold) (x)
+#define DBGM(x)  if (bHitDebugThreshold) (x)
 #else // (cwDebugThreshold != 0)
 #define DBGM(x)  (x)
 #endif // (cwDebugThreshold != 0)
@@ -433,8 +436,12 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 // Pop cnt bits are just above the type field.
 // A value of zero means a pop cnt of one. 
 
-#define wr_nPopCnt(_wr, _nBL) \
+#define     wr_nPopCnt(_wr, _nBL) \
     ((((_wr) >> 4) & MSK(nBL_to_nBitsPopCntSz(_nBL))) + 1)
+
+#define set_wr_nPopCnt(_wr, _nBL, _nPopCnt) \
+    ((_wr) &= ~(MSK(nBL_to_nBitsPopCntSz(_nBL)) << cnBitsMallocMask), \
+        (_wr) |= ((_nPopCnt) - 1) << cnBitsMallocMask)
 
 #endif // defined(T_ONE)
 
@@ -695,9 +702,13 @@ Word_t FreeArrayGuts(Word_t *pwRoot,
 
 Word_t OldBitmap(Word_t *pwr);
 
+#if defined(DEBUG)
+extern int bHitDebugThreshold;
+#endif // defined(DEBUG)
+
 unsigned ListWords(Word_t wPopCnt, unsigned nDL);
-Word_t *NewList(Word_t wPopCnt, unsigned nDL, Word_t wKey);
-Word_t OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL);
+Word_t *NewList(Word_t wPopCnt, unsigned nDL);
+Word_t OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType);
 
 Status_t SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt);
 
@@ -706,13 +717,13 @@ void Dump(Word_t *pwRoot, Word_t wPrefix, unsigned nBL);
 #endif // defined(DEBUG)
 
 #else // (cnDigitsPerWord != 1)
-Word_t wInserts; // sanity checking
+Word_t wDebugPopCnt; // sanity checking
 #endif // (cnDigitsPerWord != 1)
 
 #if defined(DEBUG)
 Word_t *pwRootLast; // allow dumping of tree when root is not known
 #if (cnDigitsPerWord != 1)
-Word_t wInserts; // sanity checking
+Word_t wDebugPopCnt; // sanity checking
 #endif // (cnDigitsPerWord != 1)
 #endif // defined(DEBUG)
 
