@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.272 2014/06/22 19:19:07 mike Exp mike $
+// @(#) $Id: b.c,v 1.273 2014/06/22 21:26:43 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1864,7 +1864,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 // allocate a new list and init pop count in the first byte
                 // if the first byte of the list needs a pop count
                 unsigned nBL = nDL_to_nBL(nDL);
-                pwList = NewListExternal(wPopCnt + 1, nBL);
+                pwList = NewListTypeList(wPopCnt + 1, nBL);
 #if defined(PP_IN_LINK)
                 assert((nDL == cnDigitsPerWord)
                     || (PWR_wPopCnt(pwRoot, NULL, nDL)
@@ -1939,19 +1939,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
             {
 // shared code for (SORT && wPopCnt == 0) and ! SORT
                 unsigned nBL = nDL_to_nBL(nDL); (void)nBL;
-#if defined(T_ONE)
-                if (wPopCnt == 0) {
-#if defined(EMBED_KEYS)
-                    if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
-                        set_wr(wRoot, (wKey << (cnBitsPerWord - nBL)), T_ONE);
-                    }
-                    else
-#endif // defined(EMBED_KEYS)
-                    {
-                        *pwList = wKey; set_wr_nType(wRoot, T_ONE);
-                    }
-                } else
-#endif // defined(T_ONE)
 #if defined(COMPRESSED_LISTS)
                 if (nBL <= 8) {
                     ls_pcKeys(pwList)[wPopCnt] = wKey;
@@ -2387,15 +2374,17 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if (cwListPopCntMax != 0)
 #if defined(EMBED_KEYS)
 
-// Replace a wRoot with embedded keys with an external T_LIST leaf.
-// BUG: This function is not sorting the list and the embedded list may
-// not be sorted.
+// Replace a wRoot that has embedded keys with an external T_LIST leaf.
+// This function never creates a T_ONE.
+// It assumes the input is an embedded list and not and external T_ONE.
 Word_t
 InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
 {
     DBGI(printf(
          "InflateEmbeddedList pwRoot %p wKey "OWx" nBL %d wRoot "OWx"\n",
          (void *)pwRoot, wKey, nBL, wRoot));
+
+    assert(wr_nType(wRoot) == T_ONE);
 
     Word_t *pwKeys;
 #if defined(COMPRESSED_LISTS)
@@ -2411,12 +2400,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
         <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
 
     Word_t *pwList = NewListTypeList(nPopCnt, nBL);
-#if defined(PP_IN_LINK)
-    if (nBL == cnBitsPerWord)
-#endif // defined(PP_IN_LINK)
-    {
-        set_ls_wPopCnt(pwList, nPopCnt);
-    }
+
     Word_t wBLM = MSK(nBL); // Bits left mask.
 #if defined(COMPRESSED_LISTS)
     if (nBL <= 16) {
@@ -2457,6 +2441,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
 }
 
 // Replace an external T_LIST leaf with a wRoot with embedded keys.
+// It does not convert a T_LIST to an external T_ONE, but I guess it should.
 Word_t
 DeflateExternalList(Word_t *pwRoot,
                     unsigned nPopCnt, unsigned nBL, Word_t *pwr)
