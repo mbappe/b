@@ -40,6 +40,8 @@
 #define SORT_LISTS
 #endif // ! defined(NO_SORT_LISTS)
 
+// Default is -USPLIT_SEARCH -USPLIT_SEARCH_LOOP.
+// Default is -UBINARY_SEARCH -ULINEAR_SEARCH.
 #if defined(SORT_LISTS)
 #if ! defined(SPLIT_SEARCH) && ! defined(NO_SPLIT_SEARCH)
 #undef  SPLIT_SEARCH_LOOP
@@ -73,6 +75,8 @@
 #if ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
 #define COMPRESSED_LISTS
 #endif // ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
+
+// Default is -UPLACE_LISTS.
 
 // Default is -DRAMMETRICS.
 #if ! defined(RAMMETRICS) && ! defined(NO_RAMMETRICS)
