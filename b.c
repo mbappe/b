@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.273 2014/06/22 21:26:43 mike Exp mike $
+// @(#) $Id: b.c,v 1.274 2014/06/24 13:36:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1969,14 +1969,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
 #if defined(EMBED_KEYS)
             // Embed the list if it fits.
-            if (wr_nType(wRoot) == T_LIST) {
-                unsigned nBL = nDL_to_nBL(nDL);
-                if (nBL * (wPopCnt + 1)
+            assert(wr_nType(wRoot) == T_LIST);
+            unsigned nBL = nDL_to_nBL(nDL);
+            if ((nBL * (wPopCnt + 1)
                     <= cnBitsPerWord - cnBitsMallocMask
                         - nBL_to_nBitsPopCntSz(nBL))
-                {
-                    DeflateExternalList(pwRoot, wPopCnt + 1, nBL, pwList);
-                }
+                || (wPopCnt == 0))
+            {
+                DeflateExternalList(pwRoot, wPopCnt + 1, nBL, pwList);
             }
 #endif // defined(EMBED_KEYS)
         }
@@ -2440,8 +2440,9 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
     return wRoot;
 }
 
-// Replace an external T_LIST leaf with a wRoot with embedded keys.
-// It does not convert a T_LIST to an external T_ONE, but I guess it should.
+// Replace an external T_LIST leaf with a wRoot with embedded keys or
+// an external T_ONE leaf.
+// The function assumes it is possible.
 Word_t
 DeflateExternalList(Word_t *pwRoot,
                     unsigned nPopCnt, unsigned nBL, Word_t *pwr)
@@ -2449,10 +2450,16 @@ DeflateExternalList(Word_t *pwRoot,
     DBGI(printf("DeflateExternalList pwRoot %p nPopCnt %d nBL %d pwr %p\n",
                (void *)pwRoot, nPopCnt, nBL, (void *)pwr));
 
-    assert(nBL * nPopCnt
-        <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
+    assert((nBL * nPopCnt
+            <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL))
+        || (nPopCnt == 1));
 
-    Word_t wRoot = 0;
+    Word_t wRoot;
+
+    if (nBL * nPopCnt
+            <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL))
+    {
+    wRoot = 0;
 
     Word_t *pwKeys;
 #if defined(COMPRESSED_LISTS)
@@ -2490,6 +2497,19 @@ DeflateExternalList(Word_t *pwRoot,
         for (unsigned nn = 1; nn <= wr_nPopCnt(wRoot, nBL); nn++) {
            wRoot |= (pwKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
         }
+    }
+    }
+    else
+    {
+        assert(nPopCnt == 1);
+        assert(nBL + cnBitsMallocMask > cnBitsPerWord);
+        Word_t *pwList = NewList(1, nBL_to_nDL(nBL));
+        set_wr(wRoot, pwList, T_ONE);
+        Word_t *pwKeys = ls_pwKeys(pwr);
+#if defined(PP_IN_LINK)
+        if (nBL == cnBitsPerWord) { ++pwKeys; }
+#endif // defined(PP_IN_LINK)
+        *pwList = pwKeys[0];
     }
 
     OldList(pwr, nPopCnt, nBL_to_nDL(nBL), T_LIST);
@@ -2687,8 +2707,9 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     // Embed the list if it fits.
     assert(wr_nType(wRoot) == T_LIST);
     assert(nType == T_LIST);
-    if (nBL * (wPopCnt - 1)
+    if ((nBL * (wPopCnt - 1)
             <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL))
+        || (wPopCnt == 2))
     {
         DeflateExternalList(pwRoot, wPopCnt - 1, nBL, pwList);
     }
