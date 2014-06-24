@@ -318,11 +318,11 @@ for lsmax in 0f 04 00 03 02 01 07 # 0f # 4 2 1 0 # ff # 00
 do
 for bits in 32 64
 do
-# srn is the only search that used -DNO_SORT_LISTS
+# srn is the only search that uses -DNO_SORT_LISTS
 # srx is the same search but with sorted lists
 for search in srl srn srr srp srs srx
 do
-for pack in packe packo packy packn
+for pack in packe # packo packy packn
 do
 for pp in ppl pps
 do
