@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.275 2014/06/24 13:55:41 mike Exp mike $
+// @(#) $Id: b.c,v 1.278 2014/06/29 14:56:09 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2101,95 +2101,92 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 unsigned nBL = nDL_to_nBL(nDL);
                 Word_t wSuffix;
 #endif // defined(COMPRESSED_LISTS)
-                if (cwListPopCntMax != 0) // use const for compile time check
-                {
-                    Word_t wMax, wMin;
+#if (cwListPopCntMax != 0)
+                Word_t wMax, wMin;
 #if defined(SORT_LISTS)
 #if defined(COMPRESSED_LISTS)
+                if (nBL <= 8) {
+                    wMin = pcKeys[0];
+                    wMax = pcKeys[wPopCnt - 1];
+                    wSuffix = wKey & 0xff;
+                } else if (nBL <= 16) {
+                    wMin = psKeys[0];
+                    wMax = psKeys[wPopCnt - 1];
+                    wSuffix = wKey & 0xffff;
+#if (cnBitsPerWord > 32)
+                } else if (nBL <= 32) {
+                    wMin = piKeys[0];
+                    wMax = piKeys[wPopCnt - 1];
+                    wSuffix = wKey & 0xffffffff;
+#endif // (cnBitsPerWord > 32)
+                } else 
+#endif // defined(COMPRESSED_LISTS)
+                { wMin = pwKeys[0]; wMax = pwKeys[wPopCnt - 1]; }
+#else // defined(SORT_LISTS)
+                // walk the list to find max and min
+                wMin = (Word_t)-1;
+                wMax = 0;
+
+#if defined(COMPRESSED_LISTS)
+                    wSuffix = (nBL <= 8) ? (wKey & 0xff)
+#if (cnBitsPerWord > 32)
+                            : (nBL > 16) ? (wKey & 0xffffffff)
+#endif // (cnBitsPerWord > 32)
+                            : (wKey & 0xffff);
+#endif // defined(COMPRESSED_LISTS)
+
+                for (w = 0; w < wPopCnt; w++)
+                {
+#if defined(COMPRESSED_LISTS)
                     if (nBL <= 8) {
-                        wMin = pcKeys[0];
-                        wMax = pcKeys[wPopCnt - 1];
-                        wSuffix = wKey & 0xff;
+                        if (pcKeys[w] < wMin) wMin = pcKeys[w];
+                        if (pcKeys[w] > wMax) wMax = pcKeys[w];
                     } else if (nBL <= 16) {
-                        wMin = psKeys[0];
-                        wMax = psKeys[wPopCnt - 1];
-                        wSuffix = wKey & 0xffff;
+                        if (psKeys[w] < wMin) wMin = psKeys[w];
+                        if (psKeys[w] > wMax) wMax = psKeys[w];
 #if (cnBitsPerWord > 32)
                     } else if (nBL <= 32) {
-                        wMin = piKeys[0];
-                        wMax = piKeys[wPopCnt - 1];
-                        wSuffix = wKey & 0xffffffff;
+                        if (piKeys[w] < wMin) wMin = piKeys[w];
+                        if (piKeys[w] > wMax) wMax = piKeys[w];
 #endif // (cnBitsPerWord > 32)
                     } else 
 #endif // defined(COMPRESSED_LISTS)
-                    { wMin = pwKeys[0]; wMax = pwKeys[wPopCnt - 1]; }
-#else // defined(SORT_LISTS)
-                    // walk the list to find max and min
-                    wMin = (Word_t)-1;
-                    wMax = 0;
-
-#if defined(COMPRESSED_LISTS)
-                        wSuffix = (nBL <= 8) ? (wKey & 0xff)
-#if (cnBitsPerWord > 32)
-                                : (nBL > 16) ? (wKey & 0xffffffff)
-#endif // (cnBitsPerWord > 32)
-                                : (wKey & 0xffff);
-#endif // defined(COMPRESSED_LISTS)
-
-                    for (w = 0; w < wPopCnt; w++)
                     {
-#if defined(COMPRESSED_LISTS)
-                        if (nBL <= 8) {
-                            if (pcKeys[w] < wMin) wMin = pcKeys[w];
-                            if (pcKeys[w] > wMax) wMax = pcKeys[w];
-                        } else if (nBL <= 16) {
-                            if (psKeys[w] < wMin) wMin = psKeys[w];
-                            if (psKeys[w] > wMax) wMax = psKeys[w];
-#if (cnBitsPerWord > 32)
-                        } else if (nBL <= 32) {
-                            if (piKeys[w] < wMin) wMin = piKeys[w];
-                            if (piKeys[w] > wMax) wMax = piKeys[w];
-#endif // (cnBitsPerWord > 32)
-                        } else 
-#endif // defined(COMPRESSED_LISTS)
-                        {
-                            if (pwKeys[w] < wMin) wMin = pwKeys[w];
-                            if (pwKeys[w] > wMax) wMax = pwKeys[w];
-                        }
+                        if (pwKeys[w] < wMin) wMin = pwKeys[w];
+                        if (pwKeys[w] > wMax) wMax = pwKeys[w];
                     }
+                }
 #endif // defined(SORT_LISTS)
-                    DBGI(printf("wMin "OWx" wMax "OWx"\n", wMin, wMax));
+                DBGI(printf("wMin "OWx" wMax "OWx"\n", wMin, wMax));
 
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
-                    if (nBL <= 32)
+                if (nBL <= 32)
 #else // (cnBitsPerWord > 32)
-                    if (nBL <= 16)
+                if (nBL <= 16)
 #endif // (cnBitsPerWord > 32)
-                    {
-                        nDL
-                            = nBL_to_nDL(
-                                LOG((EXP(cnBitsAtBottom) - 1)
-                                        | ((wSuffix ^ wMin)
-                                        |  (wSuffix ^ wMax)))
-                                    + 1);
-                    }
-                    else
-#endif // defined(COMPRESSED_LISTS)
-                    {
-                        nDL
-                            = nBL_to_nDL(
-                                LOG((EXP(cnBitsAtBottom) - 1)
-                                        | ((wKey ^ wMin) | (wKey ^ wMax)))
-                                    + 1);
-                    }
+                {
+                    nDL
+                        = nBL_to_nDL(
+                            LOG((EXP(cnBitsAtBottom) - 1)
+                                    | ((wSuffix ^ wMin)
+                                    |  (wSuffix ^ wMax)))
+                                + 1);
                 }
                 else
+#endif // defined(COMPRESSED_LISTS)
                 {
-                    // can't dereference list if there isn't one
-                    // go directly to bitmap
-                    nDL = nBL_to_nDL(cnBitsAtBottom) + 1;
+                    nDL
+                        = nBL_to_nDL(
+                            LOG((EXP(cnBitsAtBottom) - 1)
+                                    | ((wKey ^ wMin) | (wKey ^ wMax)))
+                                + 1);
                 }
+#else // (cwListPopCntMax != 0)
+                // can't dereference list if there isn't one
+                // go directly to bitmap
+                nDL = nBL_to_nDL(cnBitsAtBottom) + 1;
+#endif // (cwListPopCntMax != 0)
             }
 
             // We don't create a switch below nBL_to_nDL(cnBitsAtBottom) + 1.
