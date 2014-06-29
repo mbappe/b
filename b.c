@@ -1287,57 +1287,14 @@ Dump(Word_t *pwRoot, Word_t wPrefix, unsigned nBL)
 #if (cwListPopCntMax != 0)
 
 #if defined(COMPRESSED_LISTS) && ((cnBitsAtBottom + cnBitsPerDigit) <= 16)
-#if 1
 static Status_t
 SearchList16(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
     (void)nBL;
-    uint16_t  sKey = wKey;
+    uint16_t sKey = wKey;
+    uint16_t sKeyLoop;
+#if defined(OLD_SEARCH)
     uint16_t *psKeys = pwr_psKeys(pwr);
-    uint16_t *psKeysEnd = &psKeys[nPopCnt];
-    goto start;
-    while (psKeys < psKeysEnd)
-    {
-        uint16_t sKeyLoop;
-start:
-        sKeyLoop = *psKeys++;
-#if defined(GREATER_OR_EQUAL_FIRST)
-        if (sKeyLoop >= sKey) {
-            if (sKeyLoop == sKey) { return Success; } else { break; }
-        }
-#elif defined(GREATER_FIRST)
-        if (sKeyLoop > sKey) { break; }
-        if (sKeyLoop == sKey) { return Success; }
-#elif defined(EQUAL_FIRST) // does not imply SORT_LISTS
-        if (sKeyLoop == sKey) { return Success; }
-        if (sKeyLoop > sKey) { break; }
-#elif defined(EQUAL_ONLY)
-        // We're cheating here if we ignore the fact that the list is
-        // sorted and look only for a match rather than checking to
-        // see if we're passed the point where the key would be.
-        if (sKeyLoop == sKey) { return Success; }
-#elif defined(LESS_FIRST)
-        if (sKeyLoop < sKey) { continue; }
-        if (sKeyLoop == sKey) { return Success; }
-        break;
-#elif defined(LESS_OR_EQUAL_FIRST)
-        if (sKeyLoop <= sKey) {
-            if (sKeyLoop == sKey) { return Success; } else { continue; }
-        }
-        break;
-#endif // ...
-    }
-
-    return Failure;
-}
-#else // 1
-static Status_t
-SearchList16(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
-{
-    (void)nBL;
-    unsigned short *psKeys = pwr_psKeys(pwr);
-    unsigned short sKey = wKey;
-    unsigned short sKeyLoop;
       #if defined(SORT_LISTS)
         #if defined(SIMPLE_SEARCH_16) // two tests per iteration
     sKeyLoop = *psKeys;
@@ -1403,10 +1360,67 @@ loop:
             return Success;
         }
     }
+#else // defined(OLD_SEARCH)
+  #if defined(BACKWARD_SEARCH)
+    uint16_t *psKeysEnd = pwr_psKeys(pwr);
+    uint16_t *psKeys = &psKeysEnd[nPopCnt - 1];
+      #if defined(END_CHECK)
+    if (*psKeysEnd > sKey) { return Failure; }
+    for (;;)
+      #else // defined(END_CHECK)
+    do
+      #endif // defined(END_CHECK)
+    {
+        sKeyLoop = *psKeys--;
+      #if defined(CONTINUE_FIRST)
+        if (sKeyLoop > sKey) { continue; }
+      #elif defined(FAIL_FIRST)
+        if (sKeyLoop < sKey) { break; }
+      #endif
+        if (sKeyLoop == sKey) { return Success; }
+      #if defined(SUCCEED_FIRST)
+        if (sKeyLoop < sKey) { break; }
+      #else // defined(SUCCEED_FIRST)
+        // We're cheating here if we ignore the fact that the list is
+        // sorted and look only for a match rather than checking to
+        // see if we're passed the point where the key would be.
+        // It's cheating because it's probably faster when the key
+        // is present (which is the case for our performance testing)
+        // and slower if the key is not present.
+      #endif // defined(SUCCEED_FIRST)
+    }
+      #if ! defined(END_CHECK)
+    while (psKeys >= psKeysEnd);
+      #endif // ! defined(END_CHECK)
+  #else // defined(BACKWARD_SEARCH)
+    uint16_t *psKeys = pwr_psKeys(pwr);
+    uint16_t *psKeysEnd = &psKeys[nPopCnt - 1];
+      #if defined(END_CHECK)
+    if (*psKeysEnd < sKey) { return Failure; }
+    for (;;)
+      #else // defined(END_CHECK)
+    do
+      #endif // defined(END_CHECK)
+    {
+        sKeyLoop = *psKeys++;
+      #if defined(CONTINUE_FIRST)
+        if (sKeyLoop < sKey) { continue; }
+      #elif defined(FAIL_FIRST)
+        if (sKeyLoop > sKey) { break; }
+      #endif
+        if (sKeyLoop == sKey) { return Success; }
+      #if defined(SUCCEED_FIRST)
+        if (sKeyLoop > sKey) { break; }
+      #endif // defined(SUCCEED_FIRST)
+    }
+      #if ! defined(END_CHECK)
+    while (psKeys <= psKeysEnd);
+      #endif // ! defined(END_CHECK)
+  #endif // defined(BACKWARD_SEARCH)
+#endif // defined(OLD_SEARCH)
 
     return Failure;
 }
-#endif // 1
 #endif // defined(COMPRESSED_LISTS) && ...
 
 #if defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) \
@@ -1505,6 +1519,51 @@ SearchListWord(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     return Failure;
 }
 
+#if 0
+#define MAGIC1(_nBL)  MAXUINT / ((1 << (_nBL)) - 1)
+#define MAGIC1(_nBL)  (cnMagic[_nBL])
+#define MAGIC2(_nBL)  (MAGIC1(_nBL) << ((_nBL) - 1))
+// Index cnMagic by nBitsLeft.
+// Keys are stored by packing them at the high-order end of the word
+// and leaving enough room for pop count and type and the low end.
+Word_t cnMagic[] = {
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+    0x0010010010010000,
+    0x0008004002001000,
+    0x0004001000400100,
+    0x0002000400080000,
+};
+#endif
+
+// Magics for replicating keys and anding:
+// Second one is first one shifted left by (nBitsLeft - 1).
+
+// 6+6: 0x0010010010010000
+// 6+6: 0x8008008008000000
+
+// 6+7: 0x0008004002001000
+// 6+7: 0x8004002001000000
+
+// 6+8: 0x0004001000400100
+// 6+8: 0x8002000800200000
+
+// 6+9: 0x0002000400080000
+// 6+9: 0x8001000200040000
+//
+// HasZero subtracts one from each which will leave all ones.
+// And it complements the whole value (all ones) and ands it with high bit.
+// Then it ands the two intermediate results.
+//
+// (abc - 001) & (ABC & 100)
+// (a-b+C))(b-C)C    &  A00
+//  000  111 & 100 => 100
+//  001  000 & 100 => 000
+//  010  001 & 100 => 000
+//  011  010 & 100 => 000
+//  100  011 & 000 => 000
+//  101  100 & 000 => 000
+//  110  101 & 000 => 000
+//  111  110 & 000 => 000
 #ifdef  TBD
 
 #define repbyte1(s) (((-((Word_t)1))/255) * (s))

@@ -78,27 +78,60 @@ function doit
     fi
 
     SEARCH=-DSPLIT_SEARCH_LOOP
-    if [ $search = srge ]
+      if [ $search = srfo ] # forward, succeed only
     then
-        SEARCH="$SEARCH -DGREATER_OR_EQUAL_FIRST"
-    elif [ $search = srgt ]
+        SEARCH="$SEARCH -UBACKWARD_SEARCH"
+    elif [ $search = srfon ]
     then
-        SEARCH="$SEARCH -DGREATER_FIRST"
-    elif [ $search = sref ]
+        SEARCH="-UBACKWARD_SEARCH -DNO_SORT_LISTS"
+    elif [ $search = srfc ]
     then
-        SEARCH="$SEARCH -DEQUAL_FIRST"
-    elif [ $search = sreo ]
+        SEARCH="$SEARCH -UBACKWARD_SEARCH -DCONTINUE_FIRST"
+    elif [ $search = srfs ]
     then
-        SEARCH="$SEARCH -DEQUAL_ONLY"
-    elif [ $search = sren ]
+        SEARCH="$SEARCH -UBACKWARD_SEARCH -DSUCCEED_FIRST"
+    elif [ $search = srff ]
     then
-        SEARCH="-DEQUAL_ONLY -DNO_SORT_LISTS"
-    elif [ $search = srlt ]
+        SEARCH="$SEARCH -UBACKWARD_SEARCH -DFAIL_FIRST"
+    elif [ $search = srbo ]
     then
-        SEARCH="$SEARCH -DLESS_FIRST"
-    elif [ $search = srle ]
+        SEARCH="$SEARCH -DBACKWARD_SEARCH"
+    elif [ $search = srbon ]
     then
-        SEARCH="$SEARCH -DLESS_OR_EQUAL_FIRST"
+        SEARCH="-DBACKWARD_SEARCH -DNO_SORT_LISTS"
+    elif [ $search = srbc ]
+    then
+        SEARCH="$SEARCH -DBACKWARD_SEARCH -DCONTINUE_FIRST"
+    elif [ $search = srbs ]
+    then
+        SEARCH="$SEARCH -DBACKWARD_SEARCH -DSUCCEED_FIRST"
+    elif [ $search = srbf ]
+    then
+        SEARCH="$SEARCH -DBACKWARD_SEARCH -DFAIL_FIRST"
+    elif [ $search = srfoe ]
+    then
+        SEARCH="$SEARCH -UBACKWARD_SEARCH -DEND_CHECK"
+    elif [ $search = srfce ]
+    then
+        SEARCH="$SEARCH -UBACKWARD_SEARCH -DCONTINUE_FIRST -DEND_CHECK"
+    elif [ $search = srfse ]
+    then
+        SEARCH="$SEARCH -UBACKWARD_SEARCH -DSUCCEED_FIRST -DEND_CHECK"
+    elif [ $search = srffe ]
+    then
+        SEARCH="$SEARCH -UBACKWARD_SEARCH -DFAIL_FIRST -DEND_CHECK"
+    elif [ $search = srboe ]
+    then
+        SEARCH="$SEARCH -DBACKWARD_SEARCH -DEND_CHECK"
+    elif [ $search = srbce ]
+    then
+        SEARCH="$SEARCH -DBACKWARD_SEARCH -DCONTINUE_FIRST -DEND_CHECK"
+    elif [ $search = srbse ]
+    then
+        SEARCH="$SEARCH -DBACKWARD_SEARCH -DSUCCEED_FIRST -DEND_CHECK"
+    elif [ $search = srbfe ]
+    then
+        SEARCH="$SEARCH -DBACKWARD_SEARCH -DFAIL_FIRST -DEND_CHECK"
     else
         echo Invalid search $search.
         exit 1
@@ -285,7 +318,7 @@ function doit
 
 status=0
 
-# cp b.c.275-b-0 b.c
+# cp b.c.275-c b.c
 
 for deref in dr # nodr nolsdr nobmdr nolssearch nobmsearch
 do
@@ -293,7 +326,7 @@ for tp in tpr # tpa
 do
 for table in tbn # tby
 do
-for cc in ccc # gcc icc
+for cc in ccc # gcc # icc
 do
 # if we don't include 40 then we won't get numbers for srx
 for srts in 40
@@ -306,7 +339,7 @@ for srtw in 08 # 10
 do
 for bab in 06 # 08 # 0e # 32 08
 do
-for bpd in 06 # 08 # 06 # 20 04
+for bpd in 06 07 08 09 # 20 04
 do
 for bm in bmn # bms bml
 do
@@ -316,11 +349,11 @@ for bma in bmay # bman
 do
 for pl in pln # ply
 do
-for lsmax in 3f # 0f # 4 2 1 0 # ff # 00
+for lsmax in 1f 2f 3f 4f 5f 6f 7f # 04 00 03 02 01 07 # 0f # 4 2 1 0 # ff # 00
 do
 for bits in 64 # 32
 do
-for search in sren sreo srge srgt sref # srle srlt
+for search in srfon # srfo srbo srbon srfc srbc srff srbf srfs srbs srfoe srboe srfce srbce srffe srbfe srfse srbse
 do
 for pack in packe # packo packy packn
 do
