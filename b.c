@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.274 2014/06/24 13:36:46 mike Exp mike $
+// @(#) $Id: b.c,v 1.275 2014/06/24 13:55:41 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1295,7 +1295,7 @@ SearchList16(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     unsigned short sKey = wKey;
     unsigned short sKeyLoop;
       #if defined(SORT_LISTS)
-        #if defined(LINEAR_SEARCH)
+        #if defined(SIMPLE_SEARCH_16) // two tests per iteration
     sKeyLoop = *psKeys;
     if (nPopCnt != 1)
     {
@@ -1307,27 +1307,27 @@ SearchList16(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
             }
         }
     }
-        #else // defined(LINEAR_SEARCH)
-          #if defined(SPLIT_SEARCH) \
+        #else // defined(SIMPLE_SEARCH_16)
+          #if defined(SPLIT_SEARCH_16) \
                   && (cnSplitSearchThresholdShort > 1)
-              #if defined(SPLIT_SEARCH_LOOP)
+              #if defined(SPLIT_SEARCH_LOOP_16)
     while
-              #else // defined(SPLIT_SEARCH_LOOP)
+              #else // defined(SPLIT_SEARCH_LOOP_16)
     if
-              #endif // defined(SPLIT_SEARCH_LOOP)
+              #endif // defined(SPLIT_SEARCH_LOOP_16)
        (nPopCnt >= cnSplitSearchThresholdShort)
     {
 // To do: Try to minimize the number of cache lines we hit.
 // If ! PP_IN_LINK then we already hit the first one to get the pop count.
 // Let's try aligning these lists.
         // pick a starting point
-              #if defined(BINARY_SEARCH) \
-                  || defined(SPLIT_SEARCH_LOOP)
+              #if defined(BINARY_SEARCH_16) \
+                  || defined(SPLIT_SEARCH_LOOP_16)
         unsigned nSplit = nPopCnt / 2;
-              #else // defined(BINARY_SEARCH) || ...
+              #else // defined(BINARY_SEARCH_16) || ...
         unsigned nSplit
             = wKey % EXP(nBL) * nPopCnt / EXP(nBL);
-              #endif // defined(BINARY_SEARCH) || ...
+              #endif // defined(BINARY_SEARCH_16) || ...
         if (psKeys[nSplit] <= sKey) {
             psKeys = &psKeys[nSplit];
             nPopCnt -= nSplit;
@@ -1339,16 +1339,16 @@ SearchList16(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
             goto loop;
         }
     }
-          #endif // defined(SPLIT_SEARCH) && ...
+          #endif // defined(SPLIT_SEARCH_16) && ...
     if ((sKeyLoop = psKeys[nPopCnt - 1]) > sKey)
     {
-          #if defined(SPLIT_SEARCH) \
+          #if defined(SPLIT_SEARCH_16) \
                   && (cnSplitSearchThresholdShort > 1)
 loop:
-          #endif // defined(SPLIT_SEARCH) && ...
+          #endif // defined(SPLIT_SEARCH_16) && ...
         while ((sKeyLoop = *psKeys++) < sKey);
     }
-        #endif // defined(LINEAR_SEARCH)
+        #endif // defined(SIMPLE_SEARCH_16)
       #else // defined(SORT_LISTS)
     unsigned short *psKeysEnd = &psKeys[nPopCnt];
     while (sKeyLoop = *psKeys, psKeys++ < psKeysEnd)

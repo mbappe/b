@@ -81,26 +81,31 @@ function doit
     then
         # Binary loop.
         SEARCH=-DSPLIT_SEARCH_LOOP
+        SEARCH="$SEARCH -DSPLIT_SEARCH_LOOP_16"
     elif [ $search = srs ]
     then
+        SEARCH=-DSPLIT_SEARCH_LOOP
         # Binary split once.
-        SEARCH="-DSPLIT_SEARCH -DBINARY_SEARCH"
+        SEARCH="$SEARCH -DSPLIT_SEARCH_16 -DBINARY_SEARCH_16"
     elif [ $search = srp ]
     then
+        SEARCH=-DSPLIT_SEARCH_LOOP
         # Proportional split once.
-        SEARCH=-DSPLIT_SEARCH
+        SEARCH="$SEARCH -DSPLIT_SEARCH_16"
     elif [ $search = srx ]
     then
+        SEARCH=-DSPLIT_SEARCH_LOOP
         # Linear search with last element check.
-        SEARCH="-DNO_SPLIT_SEARCH"
+        SEARCH="$SEARCH -DNO_SPLIT_SEARCH_16"
     elif [ $search = srr ]
     then
+        SEARCH=-DSPLIT_SEARCH_LOOP
         # Linear search with no last element check.
-        SEARCH=-DLINEAR_SEARCH
+        SEARCH="$SEARCH -DSIMPLE_SEARCH_16"
     elif [ $search = srn ]
     then
         # Linear search with no last element check.
-        SEARCH="-DNO_SPLIT_SEARCH -DNO_SORT_LISTS"
+        SEARCH=-DNO_SORT_LISTS
     else
         echo Invalid search $search.
         exit 1
