@@ -279,6 +279,8 @@ function doit
             then
                 status=1
             fi
+
+            rm b-$tag
         fi
     fi
 }
