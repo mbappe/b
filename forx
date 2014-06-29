@@ -77,35 +77,28 @@ function doit
         exit 1
     fi
 
-    if [ $search = srl ]
+    SEARCH=-DSPLIT_SEARCH_LOOP
+    if [ $search = srge ]
     then
-        # Binary loop.
-        SEARCH=-DSPLIT_SEARCH_LOOP
-        SEARCH="$SEARCH -DSPLIT_SEARCH_LOOP_16"
-    elif [ $search = srs ]
+        SEARCH="$SEARCH -DGREATER_OR_EQUAL_FIRST"
+    elif [ $search = srgt ]
     then
-        SEARCH=-DSPLIT_SEARCH_LOOP
-        # Binary split once.
-        SEARCH="$SEARCH -DSPLIT_SEARCH_16 -DBINARY_SEARCH_16"
-    elif [ $search = srp ]
+        SEARCH="$SEARCH -DGREATER_FIRST"
+    elif [ $search = sref ]
     then
-        SEARCH=-DSPLIT_SEARCH_LOOP
-        # Proportional split once.
-        SEARCH="$SEARCH -DSPLIT_SEARCH_16"
-    elif [ $search = srx ]
+        SEARCH="$SEARCH -DEQUAL_FIRST"
+    elif [ $search = sreo ]
     then
-        SEARCH=-DSPLIT_SEARCH_LOOP
-        # Linear search with last element check.
-        SEARCH="$SEARCH -DNO_SPLIT_SEARCH_16"
-    elif [ $search = srr ]
+        SEARCH="$SEARCH -DEQUAL_ONLY"
+    elif [ $search = sren ]
     then
-        SEARCH=-DSPLIT_SEARCH_LOOP
-        # Linear search with no last element check.
-        SEARCH="$SEARCH -DSIMPLE_SEARCH_16"
-    elif [ $search = srn ]
+        SEARCH="-DEQUAL_ONLY -DNO_SORT_LISTS"
+    elif [ $search = srlt ]
     then
-        # Linear search with no last element check.
-        SEARCH=-DNO_SORT_LISTS
+        SEARCH="$SEARCH -DLESS_FIRST"
+    elif [ $search = srle ]
+    then
+        SEARCH="$SEARCH -DLESS_OR_EQUAL_FIRST"
     else
         echo Invalid search $search.
         exit 1
@@ -292,13 +285,15 @@ function doit
 
 status=0
 
+# cp b.c.275-b-0 b.c
+
 for deref in dr # nodr nolsdr nobmdr nolssearch nobmsearch
 do
-for tp in tpa tpr
+for tp in tpr # tpa
 do
-for table in tby tbn
+for table in tbn # tby
 do
-for cc in ccc # gcc # icc
+for cc in ccc # gcc icc
 do
 # if we don't include 40 then we won't get numbers for srx
 for srts in 40
@@ -309,29 +304,27 @@ do
 # if we don't include 08 then we won't get numbers for srx
 for srtw in 08 # 10
 do
-for bab in 06 08 # 0e # 32 08
+for bab in 06 # 08 # 0e # 32 08
 do
-for bpd in 06 08 # 06 # 20 04
+for bpd in 06 # 08 # 06 # 20 04
 do
-for bm in bmn bms bml
+for bm in bmn # bms bml
 do
 for skip in skipy # skips skipv skipz skipl skipd # skipn # skipu skipx
 do
-for bma in bmay bman
+for bma in bmay # bman
 do
-for pl in pln ply
+for pl in pln # ply
 do
-for lsmax in 0f 04 00 03 02 01 07 # 0f # 4 2 1 0 # ff # 00
+for lsmax in 3f # 0f # 4 2 1 0 # ff # 00
 do
-for bits in 32 64
+for bits in 64 # 32
 do
-# srn is the only search that uses -DNO_SORT_LISTS
-# srx is the same search but with sorted lists
-for search in srl srn srr srp srs srx
+for search in sren sreo srge srgt sref # srle srlt
 do
 for pack in packe # packo packy packn
 do
-for pp in ppl pps
+for pp in pps # ppl
 do
     if [ $pl = ply ]
     then

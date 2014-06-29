@@ -1287,6 +1287,50 @@ Dump(Word_t *pwRoot, Word_t wPrefix, unsigned nBL)
 #if (cwListPopCntMax != 0)
 
 #if defined(COMPRESSED_LISTS) && ((cnBitsAtBottom + cnBitsPerDigit) <= 16)
+#if 1
+static Status_t
+SearchList16(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
+{
+    (void)nBL;
+    uint16_t  sKey = wKey;
+    uint16_t *psKeys = pwr_psKeys(pwr);
+    uint16_t *psKeysEnd = &psKeys[nPopCnt];
+    goto start;
+    while (psKeys < psKeysEnd)
+    {
+        uint16_t sKeyLoop;
+start:
+        sKeyLoop = *psKeys++;
+#if defined(GREATER_OR_EQUAL_FIRST)
+        if (sKeyLoop >= sKey) {
+            if (sKeyLoop == sKey) { return Success; } else { break; }
+        }
+#elif defined(GREATER_FIRST)
+        if (sKeyLoop > sKey) { break; }
+        if (sKeyLoop == sKey) { return Success; }
+#elif defined(EQUAL_FIRST) // does not imply SORT_LISTS
+        if (sKeyLoop == sKey) { return Success; }
+        if (sKeyLoop > sKey) { break; }
+#elif defined(EQUAL_ONLY)
+        // We're cheating here if we ignore the fact that the list is
+        // sorted and look only for a match rather than checking to
+        // see if we're passed the point where the key would be.
+        if (sKeyLoop == sKey) { return Success; }
+#elif defined(LESS_FIRST)
+        if (sKeyLoop < sKey) { continue; }
+        if (sKeyLoop == sKey) { return Success; }
+        break;
+#elif defined(LESS_OR_EQUAL_FIRST)
+        if (sKeyLoop <= sKey) {
+            if (sKeyLoop == sKey) { return Success; } else { continue; }
+        }
+        break;
+#endif // ...
+    }
+
+    return Failure;
+}
+#else // 1
 static Status_t
 SearchList16(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
@@ -1362,6 +1406,7 @@ loop:
 
     return Failure;
 }
+#endif // 1
 #endif // defined(COMPRESSED_LISTS) && ...
 
 #if defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) \
