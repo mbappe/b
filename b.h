@@ -562,7 +562,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #else // defined(PP_IN_LINK)
 
-#define     ls_wPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_acKeys[0])
+#define     ls_wPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_asKeys[0])
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
 
 // Index of first key within leaf (for all cases).
