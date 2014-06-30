@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.278 2014/06/29 14:56:09 mike Exp mike $
+// @(#) $Id: b.c,v 1.279 2014/06/29 15:02:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1767,6 +1767,7 @@ Status_t
 InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
 
 #if (cwListPopCntMax != 0)
+
 #if defined(EMBED_KEYS)
 
 Word_t
@@ -1777,6 +1778,18 @@ DeflateExternalList(Word_t *pwRoot,
                     unsigned nPopCnt, unsigned nBL, Word_t *pwr);
 
 #endif // defined(EMBED_KEYS)
+
+// Max list length as a function of nBL.
+// Array is indexed by LOG(nBL-1).
+unsigned anListPopCntMax[] = {
+                    0, //  1 < nBL <=  2
+                    0, //  2 < nBL <=  4
+                    0, //  4 < nBL <=  8
+    cnListPopCntMax16, //  8 < nBL <= 16
+    cnListPopCntMax32, // 16 < nBL <= 32
+    cnListPopCntMax64, // 32 < nBL <= 64
+    };
+
 #endif // (cwListPopCntMax != 0)
 
 // InsertGuts
@@ -1796,6 +1809,7 @@ DeflateExternalList(Word_t *pwRoot,
 Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 {
+    unsigned nBL = nDL_to_nBL(nDL); (void)nBL;
     DBGI(printf("InsertGuts pwRoot %p wKey "OWx" nDL %d wRoot "OWx"\n",
                (void *)pwRoot, wKey, nDL, wRoot));
 
@@ -1824,7 +1838,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
 #if (cwListPopCntMax != 0)
 #if defined(EMBED_KEYS)
-    unsigned nBL = nDL_to_nBL(nDL);
     if ((nType == T_ONE)
             && (nDL_to_nBL(nDL) <= cnBitsPerWord - cnBitsMallocMask))
     {
@@ -1863,7 +1876,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         unsigned int *piKeys;
 #endif // (cnBitsPerWord > 32)
         unsigned short *psKeys;
-        unsigned char *pcKeys;
+        unsigned char *pcKeys = NULL;
 #endif // defined(COMPRESSED_LISTS)
 
         DBGI(printf("InsertGuts List\n"));
@@ -1955,7 +1968,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
         unsigned nDLOld = nDL;
 #if (cwListPopCntMax != 0)
-        if (wPopCnt < cwListPopCntMax)
+        if (wPopCnt < anListPopCntMax[LOG(nBL - 1)])
         {
             Word_t *pwList;
 
@@ -1967,7 +1980,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
             {
                 // allocate a new list and init pop count in the first byte
                 // if the first byte of the list needs a pop count
-                unsigned nBL = nDL_to_nBL(nDL);
                 pwList = NewListTypeList(wPopCnt + 1, nBL);
 #if defined(PP_IN_LINK)
                 assert((nDL == cnDigitsPerWord)
@@ -1993,7 +2005,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if defined(SORT_LISTS)
             {
 #if defined(COMPRESSED_LISTS)
-                unsigned nBL = nDL_to_nBL(nDL);
                 if (nBL <= 8) {
                     CopyWithInsertChar(ls_pcKeys(pwList),
                         pcKeys, wPopCnt, (unsigned char)wKey);
@@ -2019,7 +2030,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #else // defined(SORT_LISTS)
             {
 #if defined(COMPRESSED_LISTS)
-                unsigned nBL = nDL_to_nBL(nDL);
                 if (nBL <= 8) {
                     COPY(ls_pcKeys(pwList), pcKeys, wPopCnt);
                 } else if (nBL <= 16) {
@@ -2042,7 +2052,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #endif // defined(SORT_LISTS)
             {
 // shared code for (SORT && wPopCnt == 0) and ! SORT
-                unsigned nBL = nDL_to_nBL(nDL); (void)nBL;
 #if defined(COMPRESSED_LISTS)
                 if (nBL <= 8) {
                     ls_pcKeys(pwList)[wPopCnt] = wKey;
@@ -2074,7 +2083,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if defined(EMBED_KEYS)
             // Embed the list if it fits.
             assert(wr_nType(wRoot) == T_LIST);
-            unsigned nBL = nDL_to_nBL(nDL);
             if ((nBL * (wPopCnt + 1)
                     <= cnBitsPerWord - cnBitsMallocMask
                         - nBL_to_nBitsPopCntSz(nBL))
@@ -2098,7 +2106,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if defined(SKIP_LINKS)
             {
 #if defined(COMPRESSED_LISTS)
-                unsigned nBL = nDL_to_nBL(nDL);
                 Word_t wSuffix;
 #endif // defined(COMPRESSED_LISTS)
 #if (cwListPopCntMax != 0)

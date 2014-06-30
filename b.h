@@ -29,10 +29,32 @@
 
 // Choose max list length.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
-// Default is cwListPopCntMax = 8.
-#if !defined(cwListPopCntMax)
-#define cwListPopCntMax  8
-#endif // !defined(cwListPopCntMax)
+// Default is cnListPopCntMax16 = 512.
+// Default is cnListPopCntMax32 = 32.
+// Default is cnListPopCntMax64 = 16.
+#if defined(cwListPopCntMax)
+#undef  cnListPopCntMax64
+#define cnListPopCntMax64  cwListPopCntMax
+#undef  cnListPopCntMax32
+#define cnListPopCntMax32  cwListPopCntMax
+#undef  cnListPopCntMax16
+#define cnListPopCntMax16  cwListPopCntMax
+#endif // defined(cwListPopCntMax)
+
+#if ! defined(cnListPopCntMax64)
+#define cnListPopCntMax64  16 
+#endif // ! defined(cnListPopCntMax64)
+#if ! defined(cnListPopCntMax32)
+#define cnListPopCntMax32  32
+#endif // ! defined(cnListPopCntMax32)
+#if ! defined(cnListPopCntMax16)
+#define cnListPopCntMax16  512
+#endif // ! defined(cnListPopCntMax16)
+
+#if ! defined(cwListPopCntMax)
+#define cwListPopCntMax \
+    (cnListPopCntMax64 + cnListPopCntMax32 + cnListPopCntMax16)
+#endif // ! defined(cwListPopCntMax)
 
 // Default is -DSORT_LISTS.
 #if ! defined(NO_SORT_LISTS)
