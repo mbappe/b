@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.279 2014/06/29 15:02:46 mike Exp mike $
+// @(#) $Id: b.c,v 1.280 2014/06/30 13:16:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1293,7 +1293,7 @@ SearchList16(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     (void)nBL;
     uint16_t sKey = wKey;
     uint16_t sKeyLoop;
-#if defined(OLD_SEARCH)
+#if defined(OLD_SEARCH_16)
     uint16_t *psKeys = pwr_psKeys(pwr);
       #if defined(SORT_LISTS)
         #if defined(SIMPLE_SEARCH_16) // two tests per iteration
@@ -1322,13 +1322,13 @@ SearchList16(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 // If ! PP_IN_LINK then we already hit the first one to get the pop count.
 // Let's try aligning these lists.
         // pick a starting point
-              #if defined(BINARY_SEARCH_16) \
+              #if ! defined(RATIO_SPLIT_16) \
                   || defined(SPLIT_SEARCH_LOOP_16)
         unsigned nSplit = nPopCnt / 2;
-              #else // defined(BINARY_SEARCH_16) || ...
+              #else // ! defined(RATIO_SPLIT_16) || ...
         unsigned nSplit
             = wKey % EXP(nBL) * nPopCnt / EXP(nBL);
-              #endif // defined(BINARY_SEARCH_16) || ...
+              #endif // ! defined(RATIO_SPLIT_16) || ...
         if (psKeys[nSplit] <= sKey) {
             psKeys = &psKeys[nSplit];
             nPopCnt -= nSplit;
@@ -1360,16 +1360,16 @@ loop:
             return Success;
         }
     }
-#else // defined(OLD_SEARCH)
-  #if defined(BACKWARD_SEARCH)
+#else // defined(OLD_SEARCH_16)
+  #if defined(BACKWARD_SEARCH_16)
     uint16_t *psKeysEnd = pwr_psKeys(pwr);
     uint16_t *psKeys = &psKeysEnd[nPopCnt - 1];
-      #if defined(END_CHECK)
+      #if defined(END_CHECK_16)
     if (*psKeysEnd > sKey) { return Failure; }
     for (;;)
-      #else // defined(END_CHECK)
+      #else // defined(END_CHECK_16)
     do
-      #endif // defined(END_CHECK)
+      #endif // defined(END_CHECK_16)
     {
         sKeyLoop = *psKeys--;
       #if defined(CONTINUE_FIRST)
@@ -1378,29 +1378,22 @@ loop:
         if (sKeyLoop < sKey) { break; }
       #endif
         if (sKeyLoop == sKey) { return Success; }
-      #if defined(SUCCEED_FIRST)
+      #if defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
         if (sKeyLoop < sKey) { break; }
-      #else // defined(SUCCEED_FIRST)
-        // We're cheating here if we ignore the fact that the list is
-        // sorted and look only for a match rather than checking to
-        // see if we're passed the point where the key would be.
-        // It's cheating because it's probably faster when the key
-        // is present (which is the case for our performance testing)
-        // and slower if the key is not present.
-      #endif // defined(SUCCEED_FIRST)
+      #endif // defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
     }
-      #if ! defined(END_CHECK)
+      #if ! defined(END_CHECK_16)
     while (psKeys >= psKeysEnd);
-      #endif // ! defined(END_CHECK)
-  #else // defined(BACKWARD_SEARCH)
+      #endif // ! defined(END_CHECK_16)
+  #else // defined(BACKWARD_SEARCH_16)
     uint16_t *psKeys = pwr_psKeys(pwr);
     uint16_t *psKeysEnd = &psKeys[nPopCnt - 1];
-      #if defined(END_CHECK)
+      #if defined(END_CHECK_16)
     if (*psKeysEnd < sKey) { return Failure; }
     for (;;)
-      #else // defined(END_CHECK)
+      #else // defined(END_CHECK_16)
     do
-      #endif // defined(END_CHECK)
+      #endif // defined(END_CHECK_16)
     {
         sKeyLoop = *psKeys++;
       #if defined(CONTINUE_FIRST)
@@ -1410,14 +1403,23 @@ loop:
       #endif
         if (sKeyLoop == sKey) { return Success; }
       #if defined(SUCCEED_FIRST)
-        if (sKeyLoop > sKey) { break; }
+        if (sKeyLoop > sKey)
       #endif // defined(SUCCEED_FIRST)
+      #if defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
+        { break; }
+      #endif // defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
+        // We're cheating here if we ignore the fact that the list is
+        // sorted and look only for a match rather than checking to
+        // see if we're passed the point where the key would be.
+        // It's cheating because it's probably faster when the key
+        // is present (which is the case for our performance testing)
+        // and slower if the key is not present.
     }
-      #if ! defined(END_CHECK)
+      #if ! defined(END_CHECK_16)
     while (psKeys <= psKeysEnd);
-      #endif // ! defined(END_CHECK)
-  #endif // defined(BACKWARD_SEARCH)
-#endif // defined(OLD_SEARCH)
+      #endif // ! defined(END_CHECK_16)
+  #endif // defined(BACKWARD_SEARCH_16)
+#endif // defined(OLD_SEARCH_16)
 
     return Failure;
 }
@@ -1432,7 +1434,6 @@ SearchList32(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     unsigned int *piKeys = pwr_piKeys(pwr);
     unsigned int iKey = wKey;
     unsigned int iKeyLoop;
-      #if defined(SORT_LISTS)
           #if defined(SPLIT_SEARCH)
               #if defined(SPLIT_SEARCH_LOOP)
     while
@@ -1449,14 +1450,13 @@ SearchList32(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
         }
     }
           #endif // defined(SPLIT_SEARCH)
-    if ((iKeyLoop = piKeys[nPopCnt - 1]) > iKey)
-    {
-        while ((iKeyLoop = *piKeys++) < iKey);
-    }
-      #else // defined(SORT_LISTS)
-    unsigned int *piKeysEnd = &piKeys[nPopCnt];
-    while (iKeyLoop = *piKeys, piKeys++ < piKeysEnd)
-      #endif // defined(SORT_LISTS)
+          #if defined(END_CHECK_32)
+    if (piKeys[nPopCnt - 1]) < iKey) { return Failure; }
+    while ((iKeyLoop = *piKeys++) < iKey);
+          #else // defined(END_CHECK_32)
+    unsigned int *piKeysEnd = &piKeys[nPopCnt - 1];
+    while (iKeyLoop = *piKeys, piKeys++ <= piKeysEnd)
+          #endif // defined(END_CHECK_32)
     {
         if (iKeyLoop == iKey)
         {
@@ -1468,53 +1468,158 @@ SearchList32(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 }
 #endif // defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) && ...
 
+//
+// Valid combinations:
+// ==================
+//
+// (qty  2) [ratio-]split-loop-w-threshold=2
+// (qty 80) no-split|[ratio-]split-w-no-loop|[ratio-]split-loop-w-threshold>2
+//            x [no-]end-check
+//            x (for|back)ward
+//            x (continue|succeed|fail)-first|succeed-only
+//
+// split-loop-w-threshold=2 is a binary search
+//
+// no-split => no-split-loop
+// ratio-split => split
+// split-loop => split
+// succeed-only <=> no-(continue|succeed|fail)-first
+// continue-first => no-(succeed|fail)-first
+// fail-first => no-(continue|succeed)-first
+// succeed-first => no-(continue|fail)-first
+// no-sort => no-split && no-end-check && succeed-only
+//
+// Common combinations:
+// ===================
+//
+// default: no-split, no-end-check, succeed-only, forward <=> no-sort, forward
+// split-ratio-loop-w-threshold=8, [no-]end-check, continue-first|succeed-only
+// 
+//
 static Status_t
 SearchListWord(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
     (void)nBL;
-        // Looks like we might want a loop threshold of 8 for
-        // 64-bit keys at the top level.
-        // And there's not much difference with threshold of
-        // 16 or 32.
-        // Not sure about 64-bit
-        // keys at a lower level or 32-bit keys at the top level.
     Word_t *pwKeys = pwr_pwKeys(pwr);
-    Word_t wKeyLoop;
-  #if defined(SORT_LISTS)
+  // SPLIT_SEARCH narrows the scope of the linear search that follows, if any.
   #if defined(SPLIT_SEARCH)
+    unsigned nSplit;
+      #if defined(RATIO_SPLIT)
+    if (nPopCnt >= cnSplitSearchThresholdWord) {
+          #if (cnBitsPerWord == 64)
+        if (nBL >= cnBitsPerWord) {
+            nSplit = wKey / cnListPopCntMax64 * nPopCnt
+                   / ((Word_t)-1 / cnListPopCntMax64);
+        } else {
+            nSplit = wKey % EXP(nBL) / cnListPopCntMax64 * nPopCnt
+                   / (EXP(nBL) / cnListPopCntMax64);
+        }
+          #else // (cnBitsPerWord == 64)
+        if (nBL >= cnBitsPerWord) {
+            nSplit = wKey / cnListPopCntMax32 * nPopCnt
+                   / ((Word_t)-1 / cnListPopCntMax32);
+        } else {
+            nSplit = wKey % EXP(nBL) / cnListPopCntMax32 * nPopCnt
+                   / (EXP(nBL) / cnListPopCntMax32);
+        }
+          #endif // (cnBitsPerWord == 64)
+        goto split;
+    }
+      #endif // defined(RATIO_SPLIT)
       #if defined(SPLIT_SEARCH_LOOP)
     while
       #else // defined(SPLIT_SEARCH_LOOP)
     if
       #endif // defined(SPLIT_SEARCH_LOOP)
-       (nPopCnt >= cnSplitSearchThresholdWord)
+        // Looks like we might want a loop threshold of 8 for
+        // 64-bit keys at the top level.
+        // And there's not much difference with threshold of
+        // 16 or 32.
+        // Not sure about 64-bit keys at a lower level or
+        // 32-bit keys at the top level.
+        (nPopCnt >= cnSplitSearchThresholdWord)
     {
-        if (pwKeys[nPopCnt / 2] <= wKey) {
-            pwKeys = &pwKeys[nPopCnt / 2];
-            nPopCnt -= nPopCnt / 2;
+        nSplit = nPopCnt / 2;
+      #if defined(RATIO_SPLIT)
+split: // should go backwards if key is in first part
+      #endif // defined(RATIO_SPLIT)
+        if (pwKeys[nSplit] <= wKey) {
+            pwKeys = &pwKeys[nSplit];
+            nPopCnt -= nSplit;
         } else {
-            nPopCnt /= 2;
+            nPopCnt = nSplit;
+            if (nPopCnt == 0) { return Failure; }
         }
     }
   #endif // defined(SPLIT_SEARCH)
-  #if ! defined(SPLIT_SEARCH_LOOP) \
-      || (cnSplitSearchThresholdWord > 2)
-    if ((wKeyLoop = pwKeys[nPopCnt - 1]) > wKey) {
-        while ((wKeyLoop = *pwKeys++) < wKey);
-    }
-  #else // ! defined(SPLIT_SEARCH_LOOP) || ...
+    Word_t *pwKeysEnd = &pwKeys[nPopCnt-1]; (void)pwKeysEnd;
+    Word_t wKeyLoop;
+  #if defined(SPLIT_SEARCH_LOOP) && (cnSplitSearchThresholdWord <= 2)
+    assert(nPopCnt == 1);
     wKeyLoop = *pwKeys;
-  #endif // ! defined(SPLIT_SEARCH_LOOP) || ...
-  #else // defined(SORT_LISTS)
-    Word_t *pwKeysEnd = &pwKeys[nPopCnt];
-    while (wKeyLoop = *pwKeys, pwKeys++ < pwKeysEnd)
-  #endif // defined(SORT_LISTS)
+  #else // defined(SPLIT_SEARCH_LOOP) && (cnSplitSearchThresholdWord <= 2)
+      // Should we add a threshold for END_CHECK?
+      #if defined(END_CHECK)
+          #if defined(BACKWARD_SEARCH)
+    if (*pwKeys > wKey) { return Failure; }
+    while ((wKeyLoop = *pwKeysEnd--) > wKey) { }
+          #else // defined(BACKWARD_SEARCH)
+    if (*pwKeysEnd < wKey) { return Failure; }
+    while ((wKeyLoop = *pwKeys++) < wKey) { }
+          #endif // defined(BACKWARD_SEARCH)
+      #else // defined(END_CHECK)
+    do
+      #endif // defined(END_CHECK)
+  #endif // defined(SPLIT_SEARCH_LOOP) && (cnSplitSearchThresholdWord <= 2)
     {
-        if (wKeyLoop == wKey)
-        {
-            return Success;
-        }
+  #if ( ! defined(SPLIT_SEARCH_LOOP) || (cnSplitSearchThresholdWord > 2) ) \
+          && ! defined(END_CHECK)
+      #if defined(BACKWARD_SEARCH)
+        wKeyLoop = *pwKeysEnd;
+      #else // defined(BACKWARD_SEARCH)
+        wKeyLoop = *pwKeys;
+      #endif // defined(BACKWARD_SEARCH)
+      // Should we add a threshold for <XYZ>_FIRST?
+      #if ! defined(BACKWARD_SEARCH) && defined(CONTINUE_FIRST)
+        if (wKeyLoop < wKey) { continue; }
+      #endif // ! defined(BACKWARD_SEARCH) && defined(CONTINUE_FIRST)
+      #if defined(BACKWARD_SEARCH) && defined(CONTINUE_FIRST)
+        if (wKeyLoop > wKey) { continue; }
+      #endif // defined(BACKWARD_SEARCH) && defined(CONTINUE_FIRST)
+
+      #if defined(FAIL_FIRST)
+          #if defined(BACKWARD_SEARCH)
+        if (wKeyLoop < wKey) { break; }
+          #else // defined(BACKWARD_SEARCH)
+        if (wKeyLoop > wKey) { break; }
+          #endif // defined(BACKWARD_SEARCH)
+      #endif // defined(FAIL_FIRST)
+  #endif // ( ! defined(SPLIT_SEARCH_LOOP) || ... ) && ! defined(END_CHECK)
+
+        if (wKeyLoop == wKey) { return Success; }
+
+  #if ( ! defined(SPLIT_SEARCH_LOOP) || (cnSplitSearchThresholdWord > 2) ) \
+          && ! defined(END_CHECK)
+      #if defined(SUCCEED_FIRST)
+          #if defined(BACKWARD_SEARCH)
+        if (wKeyLoop < wKey)
+          #else // defined(BACKWARD_SEARCH)
+        if (wKeyLoop > wKey)
+          #endif // defined(BACKWARD_SEARCH)
+      #endif // defined(SUCCEED_FIRST)
+      #if defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
+        { break; }
+      #endif // defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
+  #endif // ( ! defined(SPLIT_SEARCH_LOOP) || ... ) && ! defined(END_CHECK)
     }
+  #if ( ! defined(SPLIT_SEARCH_LOOP) || (cnSplitSearchThresholdWord > 2) ) \
+          && ! defined(END_CHECK)
+      #if defined(BACKWARD_SEARCH)
+    while (--pwKeysEnd >= pwKeys);
+      #else // defined(BACKWARD_SEARCH)
+    while (++pwKeys <= pwKeysEnd);
+      #endif // defined(BACKWARD_SEARCH)
+  #endif // ( ! defined(SPLIT_SEARCH_LOOP) || ... ) && ! defined(END_CHECK)
 
     return Failure;
 }

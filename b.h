@@ -57,24 +57,55 @@
 #endif // ! defined(cwListPopCntMax)
 
 // Default is -DSORT_LISTS.
-#if ! defined(NO_SORT_LISTS)
+#if defined(NO_SORT_LISTS)
+#if defined(CONTINUE_FIRST) || defined(FAIL_FIRST) || defined(SUCCEED_FIRST) \
+    || defined(SPLIT_SEARCH) || defined(SPLIT_SEARCH_LOOP) \
+    || defined(END_CHECK) \
+    || defined(CONTINUE_FIRST_16) || defined(FAIL_FIRST_16) \
+    || defined(SUCCEED_FIRST_16) \
+    || defined(SPLIT_SEARCH_16) || defined(SPLIT_SEARCH_LOOP_16) \
+    || defined(END_CHECK_16)
+#error "Can't have fancy search with NO_SORT_LISTS."
+#endif // defined(CONTINUE_FIRST) || defined(FAIL_FIRST) || ...
+#else // defined(NO_SORT_LISTS)
 #undef  SORT_LISTS
 #define SORT_LISTS
-#endif // ! defined(NO_SORT_LISTS)
+#endif // defined(NO_SORT_LISTS)
 
-// Default is -USPLIT_SEARCH -USPLIT_SEARCH_LOOP.
-// Default is -UBINARY_SEARCH -ULINEAR_SEARCH.
-#if defined(SORT_LISTS)
-#if ! defined(SPLIT_SEARCH) && ! defined(NO_SPLIT_SEARCH)
-#undef  SPLIT_SEARCH_LOOP
-#define SPLIT_SEARCH_LOOP
-#endif // ! defined(SPLIT_SEARCH) && ! defined(NO_SPLIT_SEARCH_LOOP)
-#endif // defined(SORT_LISTS)
+// Default is -UEND_CHECK.
 
+// Default is -USPLIT_SEARCH -USPLIT_SEARCH_LOOP -URATIO_SPLIT.
 #if defined(SPLIT_SEARCH_LOOP)
 #undef  SPLIT_SEARCH
 #define SPLIT_SEARCH
 #endif // defined(SPLIT_SEARCH_LOOP)
+
+// Default is -USPLIT_SEARCH_16 -USPLIT_SEARCH_LOOP_16 -URATIO_SPLIT_16.
+#if defined(SPLIT_SEARCH_LOOP_16)
+#undef  SPLIT_SEARCH_16
+#define SPLIT_SEARCH_16
+#endif // defined(SPLIT_SEARCH_LOOP_16)
+
+// Default is -USUCCEED_FIRST -UFAIL_FIRST -UCONTINUE_FIRST: succeed-only.
+#if defined(CONTINUE_FIRST)
+  #if defined(FAIL_FIRST) || defined(SUCCEED_FIRST)
+    #error "Can't have CONTINUE_FIRST with (FAIL|SUCCEED)_FIRST."
+  #endif // defined(FAIL_FIRST) || defined(SUCCEED_FIRST)
+#elif defined(FAIL_FIRST)
+  #if defined(SUCCEED_FIRST)
+    #error "Can't have FAIL_FIRST with SUCCEED_FIRST."
+  #endif // defined(SUCCEED_FIRST)
+#endif // ...
+
+#if defined(CONTINUE_FIRST_16)
+  #if defined(FAIL_FIRST_16) || defined(SUCCEED_FIRST_16)
+    #error "Can't have CONTINUE_FIRST_16 with (FAIL|SUCCEED)_FIRST_16."
+  #endif // defined(FAIL_FIRST_16) || defined(SUCCEED_FIRST_16)
+#elif defined(FAIL_FIRST_16)
+  #if defined(SUCCEED_FIRST_16)
+    #error "Can't have FAIL_FIRST_16 with SUCCEED_FIRST_16."
+  #endif // defined(SUCCEED_FIRST_16)
+#endif // ...
 
 #if defined(SPLIT_SEARCH)
 // Default is cnSplitSearchThresholdWord = 8.
