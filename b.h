@@ -29,7 +29,7 @@
 
 // Choose max list length.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
-// Default is cnListPopCntMax16 = 512.
+// Default is cnListPopCntMax16 = 64.
 // Default is cnListPopCntMax32 = 32.
 // Default is cnListPopCntMax64 = 16.
 #if defined(cwListPopCntMax)
@@ -48,7 +48,7 @@
 #define cnListPopCntMax32  32
 #endif // ! defined(cnListPopCntMax32)
 #if ! defined(cnListPopCntMax16)
-#define cnListPopCntMax16  512
+#define cnListPopCntMax16  64
 #endif // ! defined(cnListPopCntMax16)
 
 #if ! defined(cwListPopCntMax)
@@ -72,7 +72,17 @@
 #define SORT_LISTS
 #endif // defined(NO_SORT_LISTS)
 
-// Default is -UEND_CHECK.
+// Default is -DEND_CHECK.
+#if ! defined(NO_END_CHECK)
+#undef  END_CHECK
+#define END_CHECK
+#endif // defined(NO_END_CHECK)
+
+// Default is -DEND_CHECK_16.
+#if ! defined(NO_END_CHECK_16)
+#undef  END_CHECK_16
+#define END_CHECK_16
+#endif // defined(NO_END_CHECK_16)
 
 // Default is -USPLIT_SEARCH -USPLIT_SEARCH_LOOP -URATIO_SPLIT.
 #if defined(SPLIT_SEARCH_LOOP)
@@ -86,7 +96,7 @@
 #define SPLIT_SEARCH_16
 #endif // defined(SPLIT_SEARCH_LOOP_16)
 
-// Default is -USUCCEED_FIRST -UFAIL_FIRST -UCONTINUE_FIRST: succeed-only.
+// Default is -DCONTINUE_FIRST -UFAIL_FIRST -USUCCEED_FIRST.
 #if defined(CONTINUE_FIRST)
   #if defined(FAIL_FIRST) || defined(SUCCEED_FIRST)
     #error "Can't have CONTINUE_FIRST with (FAIL|SUCCEED)_FIRST."
@@ -95,8 +105,11 @@
   #if defined(SUCCEED_FIRST)
     #error "Can't have FAIL_FIRST with SUCCEED_FIRST."
   #endif // defined(SUCCEED_FIRST)
+#elif ! defined(SUCCEED_FIRST)
+  #define CONTINUE_FIRST
 #endif // ...
 
+// Default is -DCONTINUE_FIRST_16 -UFAIL_FIRST_16 -USUCCEED_FIRST_16.
 #if defined(CONTINUE_FIRST_16)
   #if defined(FAIL_FIRST_16) || defined(SUCCEED_FIRST_16)
     #error "Can't have CONTINUE_FIRST_16 with (FAIL|SUCCEED)_FIRST_16."
@@ -105,20 +118,22 @@
   #if defined(SUCCEED_FIRST_16)
     #error "Can't have FAIL_FIRST_16 with SUCCEED_FIRST_16."
   #endif // defined(SUCCEED_FIRST_16)
+#elif ! defined(SUCCEED_FIRST)
+  #define CONTINUE_FIRST_16
 #endif // ...
 
 #if defined(SPLIT_SEARCH)
-// Default is cnSplitSearchThresholdWord = 8.
+// Default is cnSplitSearchThresholdWord = 20.
 #if ! defined(cnSplitSearchThresholdWord)
-#define cnSplitSearchThresholdWord  8
+#define cnSplitSearchThresholdWord  20
 #endif // ! defined(cnSplitSearchThresholdWord)
-// Default is cnSplitSearchThresholdInt = 32.
+// Default is cnSplitSearchThresholdInt = 40.
 #if ! defined(cnSplitSearchThresholdInt)
-#define cnSplitSearchThresholdInt  32
+#define cnSplitSearchThresholdInt  40
 #endif // ! defined(cnSplitSearchThresholdInt)
-// Default is cnSplitSearchThresholdShort = 32.
+// Default is cnSplitSearchThresholdShort = 64.
 #if ! defined(cnSplitSearchThresholdShort)
-#define cnSplitSearchThresholdShort  32
+#define cnSplitSearchThresholdShort  64
 #endif // ! defined(cnSplitSearchThresholdShort)
 #undef  SORT_LISTS
 #define SORT_LISTS
