@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.280 2014/06/30 13:16:46 mike Exp mike $
+// @(#) $Id: b.c,v 1.281 2014/07/01 22:39:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -207,7 +207,11 @@ ListWordsTypeList(Word_t wPopCnt, unsigned nBL)
     }
 
     // always malloc an odd number of words since the odd word is free
+#if defined(DUMMY_IN_LIST)
+    return DIV_UP(wPopCnt * nBytesKeySz + sizeof(Word_t), sizeof(Word_t)) | 1;
+#else // defined(DUMMY_IN_LIST)
     return DIV_UP(wPopCnt * nBytesKeySz, sizeof(Word_t)) | 1;
+#endif // defined(DUMMY_IN_LIST)
 }
 
 // How many words needed for leaf?  Use T_ONE instead of T_LIST if possible.
@@ -555,7 +559,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
     memset(pwr_pLinks(pwr), 0, wLinks * sizeof(Link_t));
 
 #if defined(DUMMY_IN_SW)
-    ((Switch_t *)pwr)->sw_dummy = 0;
+    ((Switch_t *)pwr)->sw_wDummy = 0;
 #endif // defined(DUMMY_IN_SW)
 
 #if defined(RAMMETRICS)
@@ -1492,11 +1496,10 @@ SearchList32(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 // Common combinations:
 // ===================
 //
-// default: no-split, no-end-check, succeed-only, forward <=> no-sort, forward
-// split-ratio-loop-w-threshold=8, [no-]end-check, continue-first|succeed-only
-// 
+// default: no-split, no-end-check, succeed-only, forward
+// split-loop-w-threshold=20, end-check, continue-first
 //
-static Status_t
+Status_t
 SearchListWord(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
     (void)nBL;

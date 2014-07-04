@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.238 2014/06/18 18:17:01 mike Exp mike $
+// @(#) $Id: bli.c,v 1.239 2014/06/22 00:19:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -993,7 +993,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
         Word_t *pwr = wr_tp_pwr((Word_t)pcvRoot, nType);
 
         // ls_wPopCount is valid only at the top for PP_IN_LINK
-        return SearchList(ls_pwKeys(pwr) + 1,
+        return SearchListWord(pwr + 1,
                           wKey, cnBitsPerWord, ls_wPopCnt(pwr));
     }
   #endif // (cwListPopCntMax != 0) && defined(PP_IN_LINK)
@@ -1101,7 +1101,11 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 wPopCnt = ls_wPopCnt(pwr);
             }
 
-            if (wPopCnt == cwListPopCntMax)
+#if (cnBitsPerWord == 64)
+            if (wPopCnt == cnListPopCntMax64)
+#else // (cnBitsPerWord == 64)
+            if (wPopCnt == cnListPopCntMax32)
+#endif // (cnBitsPerWord == 64)
             {
                 status = InsertGuts(pwRoot, wKey, cnDigitsPerWord, wRoot);
             }
@@ -1231,14 +1235,16 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
             if (wPopCnt != 1)
             {
                 pwListNew = NewList(wPopCnt - 1, cnDigitsPerWord);
-                Word_t *pwKeysNew = ls_pwKeys(pwListNew);
+                Word_t *pwKeysNew;
 #if defined(T_ONE)
                 if (wPopCnt == 2) {
                     set_wr(wRoot, pwListNew, T_ONE);
+                    pwKeysNew = pwListNew;
                 } else
 #endif // defined(T_ONE)
                 {
                     set_wr(wRoot, pwListNew, T_LIST);
+                    pwKeysNew = ls_pwKeys(pwListNew);
                     ++pwKeysNew; // pop count is in 1st element at top
                 }
 

@@ -622,8 +622,8 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 // For PP_IN_LINK ls_wPopCnt macros are only valid at top, i.e.
 // nDL == cnDigitsPerWord, and only for T_LIST - not for T_ONE.
-#define     ls_wPopCnt(_ls)        (*(Word_t *)(_ls))
-#define set_ls_wPopCnt(_ls, _cnt)  (*(Word_t *)(_ls) = (_cnt))
+#define     ls_wPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_awKeys[0])
+#define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
 
 // Index of first key within leaf (for nDL != cnDigitsPerWord).
 #define FIRST_KEY  0
@@ -709,6 +709,9 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 #if (cnDigitsPerWord != 1)
 
 typedef struct {
+#if defined(DUMMY_IN_LIST)
+    Word_t ll_wDummy;
+#endif // defined(DUMMY_IN_LIST)
     union {
 #if defined(COMPRESSED_LISTS) || ! defined(PP_IN_LINK)
         uint8_t  ll_acKeys[FIRST_KEY+1];
@@ -775,6 +778,9 @@ extern int bHitDebugThreshold;
 unsigned ListWords(Word_t wPopCnt, unsigned nDL);
 Word_t *NewList(Word_t wPopCnt, unsigned nDL);
 Word_t OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType);
+
+Status_t SearchListWord(Word_t *pwr,
+                        Word_t wKey, unsigned nBL, unsigned nPopCnt);
 
 Status_t SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt);
 
