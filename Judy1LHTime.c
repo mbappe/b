@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.9 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.10 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -455,7 +455,7 @@ fprintf(stderr,"\n--- Error: %s %lu, file='%s', 'function='%s', line %d\n", \
 #define MINLOOPS 2
 #define MAXLOOPS 1000
 
-// Maximum or 10 loops with no improvement
+// Maximum of 10 loops with no improvement
 #define ICNT 10
 
 // Structure to keep track of times
@@ -476,6 +476,8 @@ ms_t     , *Pms_t;
 int       TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed,
                       Word_t Elems);
 
+void      TestJudyLIns(void **JL, PSeed_t PSeed, Word_t Elems);
+
 int       TestJudyDup(void **J1, void **JL, void **JH, PSeed_t PSeed,
                       Word_t Elems);
 
@@ -484,6 +486,8 @@ int       TestJudyDel(void **J1, void **JL, void **JH, PSeed_t PSeed,
 
 int       TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed,
                       Word_t Elems);
+
+void      TestJudyLGet(void *JL, PSeed_t PSeed, Word_t Elems);
 
 int       TestJudy1Copy(void *J1, Word_t Elem);
 
@@ -688,6 +692,7 @@ Word_t    ByteDups   = 0;
 
 Word_t    J1Flag = 0;                   // time Judy1
 Word_t    JLFlag = 0;                   // time JudyL
+Word_t    RFlag  = 0;                   // time JudyL with no cheat
 Word_t    JHFlag = 0;                   // time JudyHS
 Word_t    dFlag = 0;                    // time Judy1Unset JudyLDel
 Word_t    vFlag = 0;                    // time Searching 
@@ -766,18 +771,22 @@ GetNextKey(PSeed_t PSeed)
         Key = FileKeys[PSeed->Order++];
     else
         Key = RandomNumb(PSeed, SValue);
-
-    Key |= Offset;              // merge in offset bits
    
     if (DFlag)
     {
-        return (Swizzle(Key) >> ((sizeof(Word_t) * 8) - BValue));
+        Word_t SwizzledKey;
+
+//      move the mirror bits into the least bits determined -B#
+        SwizzledKey = Swizzle(Key) >> ((sizeof(Word_t) * 8) - BValue);
+
+        return (SwizzledKey | Offset);
     }
     else
     {
         if ((sizeof(Word_t) * 8) != BValue)
             Key %= (Word_t)1 << BValue;
-        return (Key);
+        
+        return (Key |= Offset);         // merge in offset bits;
     }
 }
 
@@ -795,6 +804,8 @@ PrintHeader(void)
         printf("    J1S");
     if (JLFlag)
         printf("    JLI");
+    if (RFlag)
+        printf("  JLI-R");
     if (JHFlag)
         printf("   JHSI");
     if (bFlag)
@@ -807,6 +818,8 @@ PrintHeader(void)
         printf("    J1T");
     if (JLFlag)
         printf("    JLG");
+    if (RFlag)
+        printf("  JLG-R");
     if (JHFlag)
         printf("   JHSG");
     if (yFlag)
@@ -871,7 +884,7 @@ PrintHeader(void)
         printf("  Heap: Words/Key");
     if (J1Flag)
         printf(" 1heap/K");
-    if (JLFlag)
+    if (JLFlag || RFlag)
         printf(" Lheap/K");
     if (JHFlag)
         printf(" HSheap/K");
@@ -919,7 +932,7 @@ PrintHeader(void)
 
         if (J1Flag)
             printf(" MF1/K");
-        if (JLFlag)
+        if (JLFlag || RFlag)
             printf(" MFL/K");
         if (JHFlag)
             printf(" MFHS/K");
@@ -1107,7 +1120,7 @@ main(int argc, char *argv[])
     errno = 0;
     while (1)
     {
-        c = getopt(argc, argv, "a:n:S:T:P:s:B:G:X:W:O:F:b:dDcC1LHvIltmpxVfgiy");
+        c = getopt(argc, argv, "a:n:S:T:P:s:B:G:X:W:O:F:b:dDcC1LHvIltmpxVfgiyR");
         if (c == -1)
             break;
 
@@ -1155,9 +1168,9 @@ main(int argc, char *argv[])
             }
             break;
 
-        case 's':                      // May not work past 35 bits if changed
+        case 's':
             StartSequent = strtoul(optarg, NULL, 0);
-            if (StartSequent == 0 && errno != 0)
+            if (StartSequent == 0)
             {
                 printf("\nError --- Illegal argument to \"-s %s\" -- errno = %d\n", optarg, errno);
                 ErrorFlag++;
@@ -1404,6 +1417,10 @@ main(int argc, char *argv[])
             iFlag = 1;
             break;
 
+        case 'R':                      // Use *PValue as next Key
+            RFlag = 1;
+            break;
+
         default:
             ErrorFlag++;
             break;
@@ -1438,6 +1455,20 @@ main(int argc, char *argv[])
         ErrorFlag++;
     }
 
+//  Set MSB number of Random bits in LFSR
+    RandomBit = (Word_t)1 << (BValue - 1);
+    MaxNumb = (RandomBit * 2) - 1;
+
+//  Check if starting number is too big
+    if ((StartSequent > MaxNumb) || (StartSequent == 0))
+    {
+        printf("\nArgument in '-s %lu' option is zero or greater than %lu\n", StartSequent, MaxNumb);
+        ErrorFlag++;
+    }
+
+//  Set the starting number in number Generator
+    PStartSeed->Seeds[0] = StartSequent;
+
     if (ErrorFlag)
     {
         printf
@@ -1462,6 +1493,7 @@ main(int argc, char *argv[])
             ("-b <#> :#:# ... 1st number required [1] where each number is the next level of tree\n");
         printf("-1      Time Judy1\n");
         printf("-L      Time JudyL\n");
+        printf("-R      Time JudyL using *PValue as next TstKey\n");
         printf("-H      Time JudyHS\n");
         printf("-y      Time a REAL BYTEMAP (-B # sets size == 2^<#>) [-B32]\n");
         printf("-I      Time DUPLICATE (already in array) JudyIns/Set times\n");
@@ -1482,23 +1514,21 @@ main(int argc, char *argv[])
             ("-l      Do not smooth data with loops on same Keys (JudyGet/Test)\n");
         printf
             ("-T <#>  Number of Keys to average JudyGet/Test times, 0 == MAX [1000000]\n");
-        printf("-s <#>  Starting number in Number Generator [0x%lx]\n",
-               StartSequent);
-        printf("-g      Do a Get/Test right after every Ins/Set/Del/Unset (Diag only - adds to Ins/Set times)\n");
-        printf("-i      Do a Ins/Set right after every Ins/Set (Diag only - adds to Ins/Set times)\n");
+        printf("-s <#>  Starting number in Number Generator [0x%lx]\n", StartSequent);
+        printf("-g      Do a Get/Test right after every Ins/Set/Del/Unset (Diag only - adds to times)\n");
+        printf("-i      Do a Ins/Set right after every Ins/Set (Diag only - adds to times)\n");
+
         printf("\n");
 
         exit(1);
     }
 
-//  Set MSB number of Random bits in LFSR
-    RandomBit = (Word_t)1 << (BValue - 1);
 
-    if (SValue)                         // if sequential numbers
-    {
+////    if (SValue)                         // if sequential numbers
+////    {
         PStartSeed->Seeds[0] = StartSequent;
-    }
-    else
+////    }
+////    else
     {
         MaxNumb = (RandomBit * 2) - 1;
         if (nElms > MaxNumb)
@@ -1575,6 +1605,8 @@ main(int argc, char *argv[])
         printf("1");
     if (JLFlag)
         printf("L");
+    if (RFlag)
+        printf("R");
     if (JHFlag)
         printf("H");
     if (tFlag)
@@ -1635,6 +1667,8 @@ main(int argc, char *argv[])
         int       count = 0;
         if (JLFlag)
             count++;
+        if (RFlag)
+            count++;
         if (J1Flag)
             count++;
         if (JHFlag)
@@ -1649,7 +1683,7 @@ main(int argc, char *argv[])
             printf
                 (" ========================================================\n");
             printf
-                (" Sorry, '-m' measurements compatable with only ONE of -1LHb.\n");
+                (" Sorry, '-m' measurements compatable with only ONE of -1LRHb.\n");
             printf
                 (" This is because Judy object measurements include RAM sum of all.\n");
             printf
@@ -1769,6 +1803,8 @@ main(int argc, char *argv[])
         printf("# COLHEAD %2d J1S  - Judy1Set\n", Col++);
     if (JLFlag)
         printf("# COLHEAD %2d JLI  - JudyLIns\n", Col++);
+    if (RFlag)
+        printf("# COLHEAD %2d JLI-R  - JudyLIns\n", Col++);
     if (JHFlag)
         printf("# COLHEAD %2d JHSI - JudyHSIns\n", Col++);
     if (bFlag)
@@ -1784,6 +1820,8 @@ main(int argc, char *argv[])
         printf("# COLHEAD %2d J1T  - Judy1Test\n", Col++);
     if (JLFlag)
         printf("# COLHEAD %2d JLG  - JudyLGet\n", Col++);
+    if (RFlag)
+        printf("# COLHEAD %2d JLG-R  - JudyLGet\n", Col++);
     if (JHFlag)
         printf("# COLHEAD %2d JHSG - JudyHSGet\n", Col++);
     if (bFlag)
@@ -2206,6 +2244,52 @@ main(int argc, char *argv[])
                 fflush(NULL);
         }
 
+//      Insert/Get JudyL using Value area as next Key
+        if (RFlag)
+        {
+//          Test JLI
+//          Exit with InsertSeed/Key ready for next batch
+
+            Tit = 0;                    // exclude Judy
+            DummySeed = InsertSeed;
+            WaitForContextSwitch(Delta);
+            TestJudyLIns(&JL, &DummySeed, Delta);
+            DeltaGenL = DeltanSecL;
+
+            Tit = 1;                    // include Judy
+            WaitForContextSwitch(Delta);
+            TestJudyLIns(&JL, &InsertSeed, Delta);
+            if (tFlag)
+                PRINT6_1f(DeltaGenL);
+            DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+            if (fFlag)
+                fflush(NULL);
+
+            Tit = 0;                    // exclude Judy
+            BeginSeed = StartSeed;      // reset at beginning
+            WaitForContextSwitch(Meas);
+            TestJudyLGet(JL, &BeginSeed, Meas);
+            DeltaGenL = DeltanSecL;
+
+            Tit = 1;                    // include Judy
+            BeginSeed = StartSeed;      // reset at beginning
+            WaitForContextSwitch(Meas);
+            TestJudyLGet(JL, &BeginSeed, Meas);
+
+            TreeDepth        = j__TreeDepth;
+
+#ifdef  JUDYB
+            SearchCompares   = j__SearchCompares;
+            SearchPopulation = j__SearchPopulation;
+#endif  //JUDYB
+
+            if (tFlag)
+                PRINT6_1f(DeltaGenL);
+            DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+            if (fFlag)
+                fflush(NULL);
+        }
+
 //      Test a REAL bitmap
         if (bFlag)
         {
@@ -2451,7 +2535,7 @@ main(int argc, char *argv[])
         if (J1Flag)
             PRINT7_3f((double)TotJudy1MemUsed / (double)Pop1);
 
-        if (JLFlag)
+        if (JLFlag || RFlag)
             PRINT7_3f((double)TotJudyLMemUsed / (double)Pop1);
 
         if (JHFlag)
@@ -2523,7 +2607,7 @@ main(int argc, char *argv[])
 
             if (J1Flag)
                 PRINT5_2f((double)DeltaMalFre1);
-            if (JLFlag)
+            if (JLFlag || RFlag)
                 PRINT5_2f((double)DeltaMalFreL);
             if (JHFlag)
                 PRINT5_2f((double)DeltaMalFreHS);
@@ -2540,16 +2624,16 @@ main(int argc, char *argv[])
 #ifdef SKIPMACRO
     if (J1Flag)
         Count1 = Judy1Count(J1, 0, -1, PJE0);
-    if (JLFlag)
+    if (JLFlag || RFlag)
         CountL = JudyLCount(JL, 0, -1, PJE0);
 #else
     if (J1Flag)
         J1C(Count1, J1, 0, -1);
-    if (JLFlag)
+    if (JLFlag || RFlag)
         JLC(CountL, JL, 0, -1);         // get the counts
 #endif // SKIPMACRO
 
-    if (JLFlag && J1Flag)
+    if ((JLFlag | RFlag) && J1Flag)
     {
         if (CountL != Count1)
             FAILURE("Judy1/LCount not equal", Count1);
@@ -2575,16 +2659,10 @@ main(int argc, char *argv[])
              DeltanSec1);
     }
 
-    if (JLFlag)
+    if (JLFlag || RFlag)
     {
         STARTTm;
-
-//#ifdef SKIPMACRO
         Bytes = JudyLFreeArray(&JL, PJE0);
-//#else
-//        JLFA(Bytes, JL);                // Free the JudyL Array
-//#endif // SKIPMACRO
-
         ENDTm(DeltanSecL);
 
         DeltanSecL /= (double)CountL;
@@ -3000,6 +3078,102 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
     return 0;
 }
 
+
+//  JudyLIns timings
+void
+TestJudyLIns(void **JL, PSeed_t PSeed, Word_t Elements)
+{
+    Word_t    TstKey;
+    Word_t    elm;
+    Word_t   *PValue;
+    Seed_t    WorkingSeed;
+    Seed_t    SaveSeed;
+
+    double    DminTime;
+    Word_t    icnt;
+    Word_t    lp;
+    Word_t    Loops;
+    Word_t    StartMallocs;
+
+    DeltanSecL = 0.0;
+
+    WorkingSeed = *PSeed;
+
+    Loops = 1;
+    if (!lFlag)
+    {
+        if (Elements < 100)
+            Loops = (MAXLOOPS / Elements) + MINLOOPS;
+    }
+
+//  JudyLIns timings
+    MalFlag = JudyMalL;
+    for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
+    {
+        WorkingSeed = *PSeed;
+        if (lp != 0 && Tit)                // Remove previously inserted
+        {
+            for (elm = 0; elm < Elements; elm++)
+            {
+                TstKey = GetNextKey(&WorkingSeed);
+                JudyLDel(JL, TstKey, PJE0);
+            }
+        }
+
+        StartMallocs = MalFreeCnt;
+        WorkingSeed = *PSeed;           // restore after Del
+
+        STARTTm;                        // start timer
+        TstKey = GetNextKey(&WorkingSeed);
+        if (Tit)
+        {
+            PValue = (PWord_t)JudyLIns(JL, TstKey, PJE0);
+            if (PValue == (PWord_t)NULL)
+                FAILURE("JudyLIns failed - NULL PValue", TstKey);
+            if (*PValue != 0)
+                FAILURE("JudyLIns failed - *PValue not = 0", TstKey);
+        }
+
+        for (elm = 0; elm < (Elements - 1); elm++)
+        {
+            TstKey = GetNextKey(&WorkingSeed);
+            if (Tit)
+            {
+                *PValue = TstKey;                   // save in previous
+                PValue = (PWord_t)JudyLIns(JL, TstKey, PJE0);
+                if (PValue == (PWord_t)NULL)
+                    FAILURE("JudyLIns failed - NULL PValue", TstKey);
+                if (*PValue != 0)
+                    FAILURE("JudyLIns failed - *PValue not = 0", TstKey);
+            }
+        }
+
+        SaveSeed = WorkingSeed;           // save for next time
+        TstKey = GetNextKey(&WorkingSeed);
+        if (Tit)
+            *PValue = TstKey;
+        WorkingSeed = SaveSeed;
+
+        ENDTm(DeltanSecL);
+
+        DeltanSecL /= Elements;
+        DeltaMalFreL = (double)(MalFreeCnt - StartMallocs) / Elements;
+
+        if (DminTime > DeltanSecL)
+        {
+            icnt = ICNT;
+            if (DeltanSecL > 0.0)   // Ignore 0
+                DminTime = DeltanSecL;
+        }
+        else
+        {
+            if (--icnt == 0)
+                break;
+        }
+    }
+    *PSeed = WorkingSeed;               // advance
+}
+
 #undef __FUNCTI0N__
 #define __FUNCTI0N__ "TestJudyDup"
 
@@ -3283,7 +3457,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
                 if (DeltanSecL > 0.0)   // Ignore 0
                     DminTime = DeltanSecL;
             }
-
+            else
             {
                 if (--icnt == 0)
                     break;
@@ -3340,6 +3514,57 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
         DeltanSecHS = DminTime / (double)Elements;
     }
     return 0;
+}
+
+void
+TestJudyLGet(void *JL, PSeed_t PSeed, Word_t Elements)
+{
+    Word_t    TstKey;
+    Word_t    elm;
+    Word_t   *PValue;
+
+    double    DminTime;
+    Word_t    icnt;
+    Word_t    lp;
+    Word_t    Loops;
+    Seed_t    WorkingSeed;
+
+    Loops = (MAXLOOPS / Elements) + MINLOOPS;
+
+    if (lFlag)
+        Loops = 1;
+
+    icnt = ICNT;
+
+    for (DminTime = 1e40, lp = 0; lp < Loops; lp++)
+    {
+        WorkingSeed = *PSeed;
+
+//      reset for next measurement
+        j__SearchPopulation = j__TreeDepth = j__SearchCompares = 0;
+
+        TstKey = GetNextKey(&WorkingSeed);      // Get 1st Key
+        STARTTm;
+        for (elm = 0; elm < Elements; elm++)
+        {
+            if (Tit)
+                TstKey = *(PWord_t)JudyLGet(JL, TstKey, PJE0);
+        }
+        ENDTm(DeltanSecL);
+
+        if (DminTime > DeltanSecL)
+        {
+            icnt = ICNT;
+            if (DeltanSecL > 0.0)   // Ignore 0
+                DminTime = DeltanSecL;
+        }
+        else
+        {
+            if (--icnt == 0)
+                break;
+        }
+    }
+    DeltanSecL = DminTime / (double)Elements;
 }
 
 #undef __FUNCTI0N__
@@ -4201,12 +4426,17 @@ TestByteTest(PSeed_t PSeed, Word_t Elements)
 
             if (Tit)
             {
+//    __sync_synchronize();  /* really slow */ 
                 if (By[TstKey] == 0)
                 {
                     printf("\nByteGet -- missing bit, Key = 0x%lx",
                            TstKey);
                     FAILURE("ByteGet Word = ", elm);
                 }
+            }
+//            else
+            {
+//    __sync_synchronize();  /* really slow */ 
             }
         }
         ENDTm(DeltanSecBy);
