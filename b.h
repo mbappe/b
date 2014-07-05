@@ -779,7 +779,7 @@ unsigned ListWords(Word_t wPopCnt, unsigned nDL);
 Word_t *NewList(Word_t wPopCnt, unsigned nDL);
 Word_t OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType);
 
-Status_t SearchListWord(Word_t *pwr,
+Status_t SearchListWord(Word_t *pwKeys,
                         Word_t wKey, unsigned nBL, unsigned nPopCnt);
 
 Status_t SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt);

@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.282 2014/07/04 00:19:43 mike Exp mike $
+// @(#) $Id: b.c,v 1.283 2014/07/05 14:50:10 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -200,7 +200,7 @@ ListWordsTypeList(Word_t wPopCnt, unsigned nBL)
 
     // make room for pop count in the list, if necessary
 #if defined(PP_IN_LINK)
-    if (nBL >= cnBitsPerWord)
+    if ((nBL >= cnBitsPerWord) /* && (cnDummiesInList == 0)*/ )
 #endif // defined(PP_IN_LINK)
     {
         ++wPopCnt;
@@ -1289,19 +1289,18 @@ Dump(Word_t *pwRoot, Word_t wPrefix, unsigned nBL)
 
 #if defined(COMPRESSED_LISTS) && ((cnBitsAtBottom + cnBitsPerDigit) <= 16)
 static Status_t
-SearchList16(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
+SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
     (void)nBL;
     uint16_t sKey = wKey;
     uint16_t sKeyLoop;
 #if defined(OLD_SEARCH_16)
-    uint16_t *psKeys = pwr_psKeys(pwr);
       #if defined(SORT_LISTS)
         #if defined(SIMPLE_SEARCH_16) // two tests per iteration
     sKeyLoop = *psKeys;
     if (nPopCnt != 1)
     {
-        unsigned short *psLastKey = &psKeys[nPopCnt-1];
+        uint16_t *psLastKey = &psKeys[nPopCnt-1];
         while (sKeyLoop < sKey) {
             sKeyLoop = *++psKeys;
             if (psKeys == psLastKey) {
@@ -1352,7 +1351,7 @@ loop:
     }
         #endif // defined(SIMPLE_SEARCH_16)
       #else // defined(SORT_LISTS)
-    unsigned short *psKeysEnd = &psKeys[nPopCnt];
+    uint16_t *psKeysEnd = &psKeys[nPopCnt];
     while (sKeyLoop = *psKeys, psKeys++ < psKeysEnd)
       #endif // defined(SORT_LISTS)
     {
@@ -1363,7 +1362,7 @@ loop:
     }
 #else // defined(OLD_SEARCH_16)
   #if defined(BACKWARD_SEARCH_16)
-    uint16_t *psKeysEnd = pwr_psKeys(pwr);
+    uint16_t *psKeysEnd = psKeys;
     uint16_t *psKeys = &psKeysEnd[nPopCnt - 1];
       #if defined(END_CHECK_16)
     if (*psKeysEnd > sKey) { return Failure; }
@@ -1387,7 +1386,6 @@ loop:
     while (psKeys >= psKeysEnd);
       #endif // ! defined(END_CHECK_16)
   #else // defined(BACKWARD_SEARCH_16)
-    uint16_t *psKeys = pwr_psKeys(pwr);
     uint16_t *psKeysEnd = &psKeys[nPopCnt - 1];
       #if defined(END_CHECK_16)
     if (*psKeysEnd < sKey) { return Failure; }
@@ -1429,12 +1427,11 @@ loop:
 #if defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) \
     && ((cnBitsAtBottom + cnBitsPerDigit) <= 32)
 static Status_t
-SearchList32(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
+SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
     (void)nBL;
-    unsigned int *piKeys = pwr_piKeys(pwr);
-    unsigned int iKey = wKey;
-    unsigned int iKeyLoop;
+    uint32_t iKey = wKey;
+    uint32_t iKeyLoop;
           #if defined(SPLIT_SEARCH)
               #if defined(SPLIT_SEARCH_LOOP)
     while
@@ -1455,7 +1452,7 @@ SearchList32(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     if (piKeys[nPopCnt - 1]) < iKey) { return Failure; }
     while ((iKeyLoop = *piKeys++) < iKey);
           #else // defined(END_CHECK_32)
-    unsigned int *piKeysEnd = &piKeys[nPopCnt - 1];
+    uint32_t *piKeysEnd = &piKeys[nPopCnt - 1];
     while (iKeyLoop = *piKeys, piKeys++ <= piKeysEnd)
           #endif // defined(END_CHECK_32)
     {
@@ -1497,10 +1494,9 @@ SearchList32(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 // split-loop-w-threshold=20, end-check, continue-first
 //
 Status_t
-SearchListWord(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
+SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
     (void)nBL;
-    Word_t *pwKeys = pwr_pwKeys(pwr);
   // SPLIT_SEARCH narrows the scope of the linear search that follows, if any.
   #if defined(SPLIT_SEARCH)
     unsigned nSplit;
@@ -1695,17 +1691,17 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
   #if defined(COMPRESSED_LISTS)
       #if ((cnBitsAtBottom + cnBitsPerDigit) <= 16)
     if (nBL <= 16) {
-        return SearchList16(pwr, wKey, nBL, nPopCnt);
+        return SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // ((cnBitsAtBottom + cnBitsPerDigit) <= 16)
       #if ((cnBitsAtBottom + cnBitsPerDigit) <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {
-        return SearchList32(pwr, wKey, nBL, nPopCnt);
+        return SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // ((cnBitsAtBottom + cnBitsPerDigit) <= 32) && ...
   #endif // defined(COMPRESSED_LISTS)
     {
-        return SearchListWord(pwr, wKey, nBL, nPopCnt);
+        return SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt);
     }
 }
 

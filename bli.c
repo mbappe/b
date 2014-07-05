@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.239 2014/06/22 00:19:14 mike Exp mike $
+// @(#) $Id: bli.c,v 1.240 2014/07/04 00:19:43 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -993,7 +993,8 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
         Word_t *pwr = wr_tp_pwr((Word_t)pcvRoot, nType);
 
         // ls_wPopCount is valid only at the top for PP_IN_LINK
-        return SearchListWord(pwr + 1,
+        // the first word in the list is used for pop count at the top
+        return SearchListWord(ls_pwKeys(pwr) + 1,
                           wKey, cnBitsPerWord, ls_wPopCnt(pwr));
     }
   #endif // (cwListPopCntMax != 0) && defined(PP_IN_LINK)
