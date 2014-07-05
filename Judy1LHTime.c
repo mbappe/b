@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.14 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.15 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -1028,7 +1028,7 @@ BitmapSet(PWord_t B1, Word_t TstKey)
 // silently treats the -y as a 0 and the -y is never processed as an option
 // letter by getopt.  Make sense?
 //
-Word_t
+static Word_t
 oa2w(char *str, char **endptr, int base, int ch)
 {
     char *lendptr;
@@ -2207,9 +2207,7 @@ main(int argc, char *argv[])
 #if defined(SISTER_READ)
                 BMsize += 0x1000000 + 0x1000000;
 #endif // defined(SISTER_READ)
-                posix_memalign(&B1, 4096, BMsize);
-                //B1 = (PWord_t)malloc(BMsize);
-                if (B1 == (PWord_t)NULL)
+                if (posix_memalign((void **)&B1, 4096, BMsize) != 0)
                 {
                     FAILURE("malloc failure, Bytes =", BMsize);
                 }
@@ -3592,7 +3590,6 @@ TestJudyLGet(void *JL, PSeed_t PSeed, Word_t Elements)
 {
     Word_t    TstKey;
     Word_t    elm;
-    Word_t   *PValue;
 
     double    DminTime;
     Word_t    icnt;
