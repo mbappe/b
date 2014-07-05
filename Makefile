@@ -213,7 +213,7 @@ rcs.tjz: RCS
 
 # Suppress warnings.
 Judy1LHTime.o: Judy1LHTime.c
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
+	$(CC) $(CFLAGS) $(DEFINES) -c $^
 
 # Suppress warnings.  Unused parameters.
 stubs.o: stubs.c
