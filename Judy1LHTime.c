@@ -1186,7 +1186,7 @@ main(int argc, char *argv[])
         switch (c)
         {
         case 'a':                      // Max population of arrays
-            PreStack = strtoul(optarg, NULL, 0);   // Size of PreStack
+            PreStack = oa2w(optarg, NULL, 0, c);   // Size of PreStack
             if (PreStack == 0 && errno != 0)
             {
                 printf("\nError --- Illegal argument to \"-a %s\" -- errno = %d\n", optarg, errno);
@@ -1194,14 +1194,14 @@ main(int argc, char *argv[])
             }
             break;
         case 'n':                      // Max population of arrays
-            nElms = strtoul(optarg, NULL, 0);   // Size of Linear Array
+            nElms = oa2w(optarg, NULL, 0, c);   // Size of Linear Array
             if (nElms == 0)
                 FAILURE("Error --- No tests: -n", nElms);
             break;
 
         case 'S':                      // Step Size, 0 == Random
         {
-            SValue = strtoul(optarg, NULL, 0);
+            SValue = oa2w(optarg, NULL, 0, c);
             if (SValue == 0 && errno != 0)
             {
                 printf("\nError --- Illegal argument to \"-S %s\" -- errno = %d\n", optarg, errno);
@@ -1210,7 +1210,7 @@ main(int argc, char *argv[])
             break;
         }
         case 'T':                      // Maximum retrieve tests for timing 
-            TValues = strtoul(optarg, NULL, 0);
+            TValues = oa2w(optarg, NULL, 0, c);
             if (TValues == 0 && errno != 0)
             {
                 printf("\nError --- Illegal argument to \"-T %s\" -- errno = %d\n", optarg, errno);
@@ -1219,7 +1219,7 @@ main(int argc, char *argv[])
             break;
 
         case 'P':                      // measurement points per decade
-            PtsPdec = strtoul(optarg, NULL, 0);
+            PtsPdec = oa2w(optarg, NULL, 0, c);
             if (PtsPdec == 0 && errno != 0)
             {
                 printf("\nError --- Illegal argument to \"-P %s\" -- errno = %d\n", optarg, errno);
@@ -1228,16 +1228,11 @@ main(int argc, char *argv[])
             break;
 
         case 's':
-            StartSequent = strtoul(optarg, NULL, 0);
-            if (StartSequent == 0 && errno != 0)
-            {
-                printf("\nError --- Illegal argument to \"-s %s\" -- errno = %d\n", optarg, errno);
-                ErrorFlag++;
-            }
+            StartSequent = oa2w(optarg, NULL, 0, c);
             break;
 
         case 'B':                      // expanse of data points (random only)
-            BValue = strtoul(optarg, NULL, 0);
+            BValue = oa2w(optarg, NULL, 0, c);
             if ((BValue > sizeof(Word_t) * 8) || (BValue < 15))
             {
                 ErrorFlag++;
@@ -1246,7 +1241,7 @@ main(int argc, char *argv[])
             break;
 
         case 'G':                      // Gaussian Random numbers
-            GValue = strtoul(optarg, NULL, 0);  // 0..4 -- check by RandomInit()
+            GValue = oa2w(optarg, NULL, 0, c);  // 0..4 -- check by RandomInit()
             if (GValue == 0 && errno != 0)
             {
                 printf("\nError --- Illegal argument to \"-G %s\" -- errno = %d\n", optarg, errno);
@@ -1263,7 +1258,7 @@ main(int argc, char *argv[])
             }
 
         case 'W':                      // Warm up CPU number of random() calls
-            Warmup = strtoul(optarg, NULL, 0);
+            Warmup = oa2w(optarg, NULL, 0, c);
             if (Warmup == 0 && errno != 0)
             {
                 printf("\nError --- Illegal argument to \"-W %s\" -- errno = %d\n", optarg, errno);
@@ -1276,7 +1271,7 @@ main(int argc, char *argv[])
             break;
 
         case 'O': // Add <#> << B# to generated keys, aka --BigOffset=<#>.
-            offset = strtoul(optarg, NULL, 0);
+            offset = oa2w(optarg, NULL, 0, c);
 
             if ((offset == 0) || (errno != 0))
             {
@@ -1523,9 +1518,14 @@ main(int argc, char *argv[])
     MaxNumb = (RandomBit * 2) - 1;
 
 //  Check if starting number is too big
-    if ((StartSequent > MaxNumb) /* || (StartSequent == 0) */)
+    if (StartSequent > MaxNumb)
     {
-        printf("\nArgument in '-s %lu' option is zero or greater than %lu\n", StartSequent, MaxNumb);
+        printf("\nArgument in '-s %lu' option is greater than %lu\n", StartSequent, MaxNumb);
+        ErrorFlag++;
+    }
+    if (StartSequent == 0 && (SValue == 0))
+    {
+        printf("\nError --- '-s 0' option Illegal if Random\n");
         ErrorFlag++;
     }
 
@@ -1588,12 +1588,7 @@ main(int argc, char *argv[])
         exit(1);
     }
 
-
-////    if (SValue)                         // if sequential numbers
-////    {
-        PStartSeed->Seeds[0] = StartSequent;
-////    }
-////    else
+    PStartSeed->Seeds[0] = StartSequent;
     {
         MaxNumb = (RandomBit * 2) - 1;
         if (nElms > MaxNumb)
@@ -2207,7 +2202,7 @@ main(int argc, char *argv[])
 #if defined(SISTER_READ)
                 BMsize += 0x1000000 + 0x1000000;
 #endif // defined(SISTER_READ)
-                if (posix_memalign((void **)&B1, 4096, BMsize) != 0)
+                if (posix_memalign((void **)&B1, 4096, BMsize) == 0)
                 {
                     FAILURE("malloc failure, Bytes =", BMsize);
                 }
@@ -3590,6 +3585,7 @@ TestJudyLGet(void *JL, PSeed_t PSeed, Word_t Elements)
 {
     Word_t    TstKey;
     Word_t    elm;
+//    Word_t   *PValue;
 
     double    DminTime;
     Word_t    icnt;
