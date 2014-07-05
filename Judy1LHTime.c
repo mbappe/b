@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.10 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.11 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -153,13 +153,11 @@ struct timespec TVBeg__, TVEnd__;
 {                                                                       \
     clock_gettime(CLOCK_MONOTONIC, &TVBeg__);                           \
 /*  asm volatile("" ::: "memory");   */                                 \
-    __sync_synchronize();                                               \
 }
 
 #define ENDTm(D) 							\
 { 									\
 /*    asm volatile("" ::: "memory");        */                          \
-    __sync_synchronize();                                               \
     clock_gettime(CLOCK_MONOTONIC, &TVEnd__);   	                \
                                                                         \
     (D) = (double)(TVEnd__.tv_sec - TVBeg__.tv_sec) * 1E9 +             \
@@ -719,7 +717,7 @@ Word_t    fFlag = 0;
 Word_t    Warmup = WARMUPCPU;           // default calls to random() to warm up CPU
 Word_t    PreStack = 0;                 // to test for TLB collisions with stack
 
-Word_t    Offset = 0;                   // Added to Key upper bits
+Word_t    Offset = 0;                   // Added to Key
 
 Word_t    TValues = 1000000;            // Maximum numb retrieve timing tests
 Word_t    nElms = 10000000;             // Default population of arrays
@@ -779,14 +777,14 @@ GetNextKey(PSeed_t PSeed)
 //      move the mirror bits into the least bits determined -B#
         SwizzledKey = Swizzle(Key) >> ((sizeof(Word_t) * 8) - BValue);
 
-        return (SwizzledKey | Offset);
+        return (SwizzledKey + Offset);
     }
     else
     {
         if ((sizeof(Word_t) * 8) != BValue)
             Key %= (Word_t)1 << BValue;
         
-        return (Key |= Offset);         // merge in offset bits;
+        return (Key += Offset);         // add in Offset;
     }
 }
 
@@ -1020,6 +1018,50 @@ BitmapSet(PWord_t B1, Word_t TstKey)
     return (1);
 }
 
+//
+// oa2w is an abbreviation for OptArgToWord.
+// It is a wrapper for strtoul for use when converting an optarg to an
+// unsigned long to help save the user from a painful mistake.
+// The mistake is the user typing "-S -y" on the command line where
+// -S requires an argument and getopt uses -y as that argument and strtoul
+// silently treats the -y as a 0 and the -y is never processed as an option
+// letter by getopt.  Make sense?
+//
+Word_t
+oa2w(char *str, char **endptr, int base, int ch)
+{
+    char *lendptr;
+    unsigned long ul;
+
+    if ((str == NULL) || *str == '\0') {
+        printf("\nError --- Illegal optarg, \"\", for option \"-%c\".\n", ch);
+        exit(1);
+    }
+
+    errno = 0;
+
+    ul = strtoul(str, &lendptr, base);
+
+    if (errno != 0) {
+        printf("\nError --- Illegal optarg, \"%s\", for option \"-%c\": %s.\n",
+               str, ch, strerror(errno));
+        exit(1);
+    }
+
+    if (*lendptr != '\0') {
+        printf(
+          "\nError --- Illegal optarg, \"%s\", for option \"-%c\" is not a number.\n",
+            str, ch);
+        exit(1);
+    }
+
+    if (endptr != NULL) {
+        *endptr = lendptr;
+    }
+
+    return (Word_t)ul;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1050,6 +1092,7 @@ main(int argc, char *argv[])
     Word_t    Pop1;
     Word_t    Meas;
     double    TreeDepth = 0;
+    Word_t    offset;
 
 #ifdef  JUDYB
     double    SearchCompares = 0;
@@ -1120,7 +1163,8 @@ main(int argc, char *argv[])
     errno = 0;
     while (1)
     {
-        c = getopt(argc, argv, "a:n:S:T:P:s:B:G:X:W:O:F:b:dDcC1LHvIltmpxVfgiyR");
+        c = getopt(argc, argv,
+                   "a:n:S:T:P:s:B:G:X:W:o:O:F:b:dDcC1LHvIltmpxVfgiyR");
         if (c == -1)
             break;
 
@@ -1212,10 +1256,14 @@ main(int argc, char *argv[])
             }
             break;
 
-        case 'O':                      // Warm up CPU number of random() calls
-            Offset = strtoul(optarg, NULL, 0);
+        case 'o':                      // Add optarg to generated keys.
+            Offset = oa2w(optarg, NULL, 0, c);
+            break;
 
-            if ((Offset == 0) || (errno != 0))
+        case 'O':                      // Add optarg << B# to generated keys.
+            offset = strtoul(optarg, NULL, 0);
+
+            if ((offset == 0) || (errno != 0))
             {
                 printf("\nError --- Illegal argument to \"-O %s\" -- errno = %d\n", optarg, errno);
                 ErrorFlag++;
@@ -1436,17 +1484,17 @@ main(int argc, char *argv[])
 //   build the Random Number Generator starting seeds
     PStartSeed = RandomInit(BValue, GValue);
 
-    if ((BValue >= (sizeof(Word_t) * 8)) && (Offset != 0))
+    if ((BValue >= (sizeof(Word_t) * 8)) && ((offset != 0) || (Offset != 0)))
     {
-        printf("\n# WARNING:  '-O 0x%lx'  ignored because  '-B %lu'  not less than %d\n", 
-                Offset, BValue, (int)(sizeof(Word_t) * 8));
-        fprintf(stderr, "\n# WARNING:  '-O 0x%lx'  ignored because  '-B %lu'  not less than %d\n", 
-                Offset, BValue, (int)(sizeof(Word_t) * 8));
+        printf("\n# WARNING:  '-O 0x%lx' or '-o 0x%lx' ignored because  '-B %lu'  not less than %d\n", 
+                offset, Offset, BValue, (int)(sizeof(Word_t) * 8));
+        fprintf(stderr, "\n# WARNING:  '-O 0x%lx' or '-o 0x%lx' ignored because  '-B %lu'  not less than %d\n", 
+                offset, Offset, BValue, (int)(sizeof(Word_t) * 8));
         Offset = 0;
     }
-    else
+    else if (offset != 0)
     {
-        Offset <<= BValue;
+        Offset = offset << BValue;
     }
 
     if (PStartSeed == (PSeed_t) NULL)
@@ -1486,7 +1534,9 @@ main(int argc, char *argv[])
         printf
             ("-X <#>  Scale the numbers produced by '-m' flag (for plotting) [%d]\n", XScale);
         printf
-            ("-O <#>>   Key |= (# << (-B #)) for Diag only\n");
+            ("-o <#>>   Key += (#) for Diag only\n");
+        printf
+            ("-O <#>>   Key += (# << (-B #)) for Diag only\n");
         printf
             ("-F <filename>  Ascii file of Keys, zeros ignored -- must be last option!!!\n");
         printf
@@ -1540,8 +1590,8 @@ main(int argc, char *argv[])
 
             if (Offset)
             {
-                printf(" .ior. with Offset of 0x%lx", Offset);
-                fprintf(stderr, " .ior. with Offset of 0x%lx", Offset);
+                printf(" plus Offset of 0x%lx", Offset);
+                fprintf(stderr, " plus Offset of 0x%lx", Offset);
             }
             printf("\n");
             fprintf(stderr, "\n");
@@ -1658,8 +1708,13 @@ main(int argc, char *argv[])
 
     if (FValue)
         printf(" -F %s", keyfile);
-    if (Offset)
-        printf(" -O 0x%lx", Offset);
+    if (Offset) {
+        if (offset) {
+            printf(" -O 0x%lx", offset);
+        } else {
+            printf(" -o 0x%lx", Offset);
+        }
+    }
     printf("\n");
 
     if (mFlag)
@@ -3372,7 +3427,6 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
 
                 if (Tit)
                 {
-
 #if defined(SWAP)
                     Rc = BitmapGet(J1, TstKey);
 #else // defined(SWAP)
@@ -3391,6 +3445,8 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
                         FAILURE("Judy1Test Rc != 1", Rc);
                     }
                 }
+
+                //__sync_synchronize();
             }
             ENDTm(DeltanSec1);
 
