@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.281 2014/07/01 22:39:13 mike Exp mike $
+// @(#) $Id: b.c,v 1.282 2014/07/04 00:19:43 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -207,11 +207,12 @@ ListWordsTypeList(Word_t wPopCnt, unsigned nBL)
     }
 
     // always malloc an odd number of words since the odd word is free
-#if defined(DUMMY_IN_LIST)
-    return DIV_UP(wPopCnt * nBytesKeySz + sizeof(Word_t), sizeof(Word_t)) | 1;
-#else // defined(DUMMY_IN_LIST)
+#if (cnDummiesInList != 0)
+    return DIV_UP(wPopCnt * nBytesKeySz + cnDummiesInList * sizeof(Word_t),
+                  sizeof(Word_t)) | 1;
+#else // (cnDummiesInList != 0)
     return DIV_UP(wPopCnt * nBytesKeySz, sizeof(Word_t)) | 1;
-#endif // defined(DUMMY_IN_LIST)
+#endif // (cnDummiesInList != 0)
 }
 
 // How many words needed for leaf?  Use T_ONE instead of T_LIST if possible.
@@ -557,10 +558,6 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
     Word_t *pwr = (Word_t *)MyMalloc(wWords);
 
     memset(pwr_pLinks(pwr), 0, wLinks * sizeof(Link_t));
-
-#if defined(DUMMY_IN_SW)
-    ((Switch_t *)pwr)->sw_wDummy = 0;
-#endif // defined(DUMMY_IN_SW)
 
 #if defined(RAMMETRICS)
     if ((cnBitsAtBottom <= cnLogBitsPerWord)

@@ -709,9 +709,9 @@ typedef enum { Failure = 0, Success = 1 } Status_t;
 #if (cnDigitsPerWord != 1)
 
 typedef struct {
-#if defined(DUMMY_IN_LIST)
-    Word_t ll_wDummy;
-#endif // defined(DUMMY_IN_LIST)
+#if (cnDummiesInList != 0)
+    Word_t ll_awDummies[cnDummiesInList];
+#endif // (cnDummiesInList != 0)
     union {
 #if defined(COMPRESSED_LISTS) || ! defined(PP_IN_LINK)
         uint8_t  ll_acKeys[FIRST_KEY+1];
@@ -736,9 +736,9 @@ typedef struct {
 #if defined(PP_IN_LINK)
     Word_t ln_wPrefixPop;
 #endif // defined(PP_IN_LINK)
-#if defined(DUMMY_IN_LN)
-    Word_t ln_wDummy;
-#endif // defined(DUMMY_IN_LN)
+#if (cnDummiesInLink != 0)
+    Word_t ln_awDummies[cnDummiesInLink];
+#endif // (cnDummiesInLink != 0)
 } Link_t;
 
 // Uncompressed, basic switch.
@@ -749,9 +749,9 @@ typedef struct {
 #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
     Word_t sw_awBm[N_WORDS_SWITCH_BM];
 #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
-#if defined(DUMMY_IN_SW)
-    Word_t sw_wDummy;
-#endif // defined(DUMMY_IN_SW)
+#if (cnDummiesInSwitch != 0)
+    Word_t sw_awDummies[cnDummiesInSwitch];
+#endif // (cnDummiesInSwitch != 0)
     Link_t sw_aLinks[1]; // variable size
 } Switch_t;
 
