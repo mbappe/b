@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.283 2014/07/05 14:50:10 mike Exp mike $
+// @(#) $Id: b.c,v 1.284 2014/07/05 17:14:40 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2201,9 +2201,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
             // List is full; insert a switch
             DBGI(printf("List is full.\n"));
 
-#if defined(PP_IN_LINK)
+#if defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
             if (nDL < cnDigitsPerWord)
-#endif // defined(PP_IN_LINK)
+#endif // defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
 #if defined(SKIP_LINKS)
             {
 #if defined(COMPRESSED_LISTS)
