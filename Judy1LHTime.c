@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.13 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.14 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -1229,7 +1229,7 @@ main(int argc, char *argv[])
 
         case 's':
             StartSequent = strtoul(optarg, NULL, 0);
-            if (StartSequent == 0)
+            if (StartSequent == 0 && errno != 0)
             {
                 printf("\nError --- Illegal argument to \"-s %s\" -- errno = %d\n", optarg, errno);
                 ErrorFlag++;
@@ -1523,7 +1523,7 @@ main(int argc, char *argv[])
     MaxNumb = (RandomBit * 2) - 1;
 
 //  Check if starting number is too big
-    if ((StartSequent > MaxNumb) || (StartSequent == 0))
+    if ((StartSequent > MaxNumb) /* || (StartSequent == 0) */)
     {
         printf("\nArgument in '-s %lu' option is zero or greater than %lu\n", StartSequent, MaxNumb);
         ErrorFlag++;
