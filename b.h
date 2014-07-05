@@ -622,7 +622,12 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 // For PP_IN_LINK ls_wPopCnt macros are only valid at top, i.e.
 // nDL == cnDigitsPerWord, and only for T_LIST - not for T_ONE.
-#define     ls_wPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_awKeys[0])
+#if (cnDummiesInList == 0)
+#define     ls_wPopCnt(_ls)  (((ListLeaf_t *)(_ls))->ll_awKeys[0])
+#else // (cnDummiesInList == 0)
+#define     ls_wPopCnt(_ls) \
+    (((ListLeaf_t *)(_ls))->ll_awDummies[cnDummiesInList - 1])
+#endif // (cnDummiesInList == 0)
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
 
 // Index of first key within leaf (for nDL != cnDigitsPerWord).
@@ -707,6 +712,16 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 typedef enum { Failure = 0, Success = 1 } Status_t;
 
 #if (cnDigitsPerWord != 1)
+
+#if ! defined(cnDummiesInList)
+#define cnDummiesInList  0
+#endif // ! defined(cnDummiesInList)
+#if ! defined(cnDummiesInSwitch)
+#define cnDummiesInSwitch  0
+#endif // ! defined(cnDummiesInSwitch)
+#if ! defined(cnDummiesInLink)
+#define cnDummiesInLink  0
+#endif // ! defined(cnDummiesInLink)
 
 typedef struct {
 #if (cnDummiesInList != 0)
