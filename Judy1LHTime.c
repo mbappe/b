@@ -939,6 +939,64 @@ PrintHeader(void)
     printf("\n");
 }
 
+static void Usage(int argc, char **argv)
+{
+    (void) argc;
+
+    printf
+        ("\n<<< Program to do performance measurements on Judy Arrays >>>\n\n");
+    printf("%s -n# -P# -S# -B# -T# -G# -s# -X# -1LHbIcCvdtDl\n\n", argv[0]);
+    printf("Where: (default value is shown as [#])\n");
+    printf("-n <#>  Max number of Keys used in JudyLGet/1Test [10000000]\n");
+    printf("-P <#>  Measurement points per decade (1..1000) [50]\n");
+    printf("-S <#>  Number Generator skip amount, 0 == Random [0]\n");
+    printf
+        ("-B <#>  Significant bits output (15..%d) in random Number Generator [32]\n",
+         (int)sizeof(Word_t) * 8);
+    printf ("-G <#>  Type (0..4) of random numbers 0==flat spectrum, 1..4==Gaussian [0]\n");
+    printf ("-X <#>  Scale the numbers produced by '-m' flag (for plotting) [%d]\n", XScale);
+
+    printf ("-o <#>   Key += (#) for Diag only\n");
+    printf ("--Offset=<#>   Key += (#) for Diag only\n");
+
+    printf ("-O <#>   Key += (# << (-B #)) for Diag only\n");
+    printf ("--BigOffset=<#>   Key += (# << (-B #)) for Diag only\n");
+
+    printf
+        ("-F <filename>  Ascii file of Keys, zeros ignored -- must be last option!!!\n");
+    printf
+        ("-b <#> :#:# ... 1st number required [1] where each number is the next level of tree\n");
+    printf("-1      Time Judy1\n");
+    printf("-L      Time JudyL\n");
+    printf("-R      Time JudyL using *PValue as next TstKey\n");
+    printf("-H      Time JudyHS\n");
+    printf("-y      Time a REAL BYTEMAP (-B # sets size == 2^<#>) [-B32]\n");
+    printf("-I      Time DUPLICATE (already in array) JudyIns/Set times\n");
+    printf("-c      Time copying a Judy1 Array\n");
+    printf("-C      Include timing of JudyCount tests\n");
+    printf("-v      Include timing of Judy First/Last/Next/Prev tests\n");
+    printf("-d      Include timing of Del/Unset\n");
+    printf("-p      Print number set used for testing (Diag)\n");
+    printf
+        ("-V      Turn OFF JudyLGet() verification tests (saving a cache-hit on 'Value')\n");
+    printf
+        ("-x      Turn ON 'waiting for context switch' flag -- smoother plots??\n");
+    printf
+        ("-t      Print measured 'overhead' (nS) subtracted out (Number Generator, etc)\n");
+    printf
+        ("-D      'Mirror' Numbers from Generator (as in binary viewed with a mirror)\n");
+    printf
+        ("-l      Do not smooth data with loops on same Keys (JudyGet/Test)\n");
+    printf
+        ("-T <#>  Number of Keys to average JudyGet/Test times, 0 == MAX [1000000]\n");
+    printf("-s <#>  Starting number in Number Generator [0x%lx]\n", StartSequent);
+    printf("-g      Do a Get/Test right after every Ins/Set/Del/Unset (Diag only - adds to times)\n");
+    printf("-i      Do a Ins/Set right after every Ins/Set (Diag only - adds to times)\n");
+
+    printf("\n");
+
+    exit(1);
+}
 #undef __FUNCTI0N__
 #define __FUNCTI0N__ "main"
 
@@ -1068,7 +1126,7 @@ static struct option longopts[] = {
  // { name,               has_arg,          flag,      val },
 
     // Long option "--LittleOffset=<#>" is equivalent to short option "-o<#>".
-    { "LittleOffset",    required_argument, NULL,      'o' },
+    { "Offset",    required_argument, NULL,      'o' },
 
     // Long option "--BigOffset=<#>" is equivalent to short option '-o<#>".
     { "BigOffset",       required_argument, NULL,      'O' },
@@ -1187,11 +1245,6 @@ main(int argc, char *argv[])
         {
         case 'a':                      // Max population of arrays
             PreStack = oa2w(optarg, NULL, 0, c);   // Size of PreStack
-            if (PreStack == 0 && errno != 0)
-            {
-                printf("\nError --- Illegal argument to \"-a %s\" -- errno = %d\n", optarg, errno);
-                ErrorFlag++;
-            }
             break;
         case 'n':                      // Max population of arrays
             nElms = oa2w(optarg, NULL, 0, c);   // Size of Linear Array
@@ -1202,29 +1255,14 @@ main(int argc, char *argv[])
         case 'S':                      // Step Size, 0 == Random
         {
             SValue = oa2w(optarg, NULL, 0, c);
-            if (SValue == 0 && errno != 0)
-            {
-                printf("\nError --- Illegal argument to \"-S %s\" -- errno = %d\n", optarg, errno);
-                ErrorFlag++;
-            }
             break;
         }
         case 'T':                      // Maximum retrieve tests for timing 
             TValues = oa2w(optarg, NULL, 0, c);
-            if (TValues == 0 && errno != 0)
-            {
-                printf("\nError --- Illegal argument to \"-T %s\" -- errno = %d\n", optarg, errno);
-                ErrorFlag++;
-            }
             break;
 
         case 'P':                      // measurement points per decade
             PtsPdec = oa2w(optarg, NULL, 0, c);
-            if (PtsPdec == 0 && errno != 0)
-            {
-                printf("\nError --- Illegal argument to \"-P %s\" -- errno = %d\n", optarg, errno);
-                ErrorFlag++;
-            }
             break;
 
         case 's':
@@ -1242,11 +1280,6 @@ main(int argc, char *argv[])
 
         case 'G':                      // Gaussian Random numbers
             GValue = oa2w(optarg, NULL, 0, c);  // 0..4 -- check by RandomInit()
-            if (GValue == 0 && errno != 0)
-            {
-                printf("\nError --- Illegal argument to \"-G %s\" -- errno = %d\n", optarg, errno);
-                ErrorFlag++;
-            }
             break;
 
         case 'X':                      // Scale numbers under the '-m' flag
@@ -1259,11 +1292,6 @@ main(int argc, char *argv[])
 
         case 'W':                      // Warm up CPU number of random() calls
             Warmup = oa2w(optarg, NULL, 0, c);
-            if (Warmup == 0 && errno != 0)
-            {
-                printf("\nError --- Illegal argument to \"-W %s\" -- errno = %d\n", optarg, errno);
-                ErrorFlag++;
-            }
             break;
 
         case 'o': // Add <#> to generated keys, aka --LittleOffset=<#>.
@@ -1272,12 +1300,6 @@ main(int argc, char *argv[])
 
         case 'O': // Add <#> << B# to generated keys, aka --BigOffset=<#>.
             offset = oa2w(optarg, NULL, 0, c);
-
-            if ((offset == 0) || (errno != 0))
-            {
-                printf("\nError --- Illegal argument to \"-O %s\" -- errno = %d\n", optarg, errno);
-                ErrorFlag++;
-            }
             break;
 
         case 'b':                      // Turn on REAL bitmap testing
@@ -1486,12 +1508,7 @@ main(int argc, char *argv[])
         if (FValue)
             break;
     }
-//    if (optind >= argc)
-//    {
-//        fprintf(stderr, "--- Error Expected argument after option\n");
-//    }
-
-//   build the Random Number Generator starting seeds
+//  build the Random Number Generator starting seeds
     PStartSeed = RandomInit(BValue, GValue);
 
     if ((BValue >= (sizeof(Word_t) * 8)) && ((offset != 0) || (Offset != 0)))
@@ -1533,60 +1550,7 @@ main(int argc, char *argv[])
     PStartSeed->Seeds[0] = StartSequent;
 
     if (ErrorFlag)
-    {
-        printf
-            ("\n<<< Program to do performance measurements on Judy Arrays >>>\n\n");
-        printf("%s -n# -P# -S# -B# -T# -G# -s# -X# -1LHbIcCvdtDl\n\n", argv[0]);
-        printf("Where: (default value is shown as [#])\n");
-        printf("-n <#>  Max number of Keys used in JudyLGet/1Test [10000000]\n");
-        printf("-P <#>  Measurement points per decade (1..1000) [50]\n");
-        printf("-S <#>  Number Generator skip amount, 0 == Random [0]\n");
-        printf
-            ("-B <#>  Significant bits output (15..%d) in random Number Generator [32]\n",
-             (int)sizeof(Word_t) * 8);
-        printf
-            ("-G <#>  Type (0..4) of random numbers 0==flat spectrum, 1..4==Gaussian [0]\n");
-        printf
-            ("-X <#>  Scale the numbers produced by '-m' flag (for plotting) [%d]\n", XScale);
-        printf
-            ("-o <#>>   Key += (#) for Diag only\n");
-        printf
-            ("-O <#>>   Key += (# << (-B #)) for Diag only\n");
-        printf
-            ("-F <filename>  Ascii file of Keys, zeros ignored -- must be last option!!!\n");
-        printf
-            ("-b <#> :#:# ... 1st number required [1] where each number is the next level of tree\n");
-        printf("-1      Time Judy1\n");
-        printf("-L      Time JudyL\n");
-        printf("-R      Time JudyL using *PValue as next TstKey\n");
-        printf("-H      Time JudyHS\n");
-        printf("-y      Time a REAL BYTEMAP (-B # sets size == 2^<#>) [-B32]\n");
-        printf("-I      Time DUPLICATE (already in array) JudyIns/Set times\n");
-        printf("-c      Time copying a Judy1 Array\n");
-        printf("-C      Include timing of JudyCount tests\n");
-        printf("-v      Include timing of Judy First/Last/Next/Prev tests\n");
-        printf("-d      Include timing of Del/Unset\n");
-        printf("-p      Print number set used for testing (Diag)\n");
-        printf
-            ("-V      Turn OFF JudyLGet() verification tests (saving a cache-hit on 'Value')\n");
-        printf
-            ("-x      Turn ON 'waiting for context switch' flag -- smoother plots??\n");
-        printf
-            ("-t      Print measured 'overhead' (nS) subtracted out (Number Generator, etc)\n");
-        printf
-            ("-D      'Mirror' Numbers from Generator (as in binary viewed with a mirror)\n");
-        printf
-            ("-l      Do not smooth data with loops on same Keys (JudyGet/Test)\n");
-        printf
-            ("-T <#>  Number of Keys to average JudyGet/Test times, 0 == MAX [1000000]\n");
-        printf("-s <#>  Starting number in Number Generator [0x%lx]\n", StartSequent);
-        printf("-g      Do a Get/Test right after every Ins/Set/Del/Unset (Diag only - adds to times)\n");
-        printf("-i      Do a Ins/Set right after every Ins/Set (Diag only - adds to times)\n");
-
-        printf("\n");
-
-        exit(1);
-    }
+        Usage(argc, argv);
 
     PStartSeed->Seeds[0] = StartSequent;
     {
