@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.284 2014/07/05 17:14:40 mike Exp mike $
+// @(#) $Id: b.c,v 1.285 2014/07/05 17:56:35 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -3210,9 +3210,9 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
   #if defined(DEBUG)
     if (wPopCnt != wDebugPopCnt)
     {
-        Dump(pwRootLast, 0, cnBitsPerWord);
         printf("\nwPopCnt %"_fw"d wDebugPopCnt %"_fw"d\n",
                wPopCnt, wDebugPopCnt);
+        Dump(pwRootLast, 0, cnBitsPerWord);
     }
     assert(wPopCnt == wDebugPopCnt);
   #endif // defined(DEBUG)
