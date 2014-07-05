@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.11 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.12 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -25,6 +25,7 @@
 #include <errno.h>                      // errnoerrno
 #include <string.h>                     // strtok_r
 #include <strings.h>                    // bzero
+#include <getopt.h>
 
 // Turn off assert(0) by default
 #ifndef DEBUG
@@ -1062,6 +1063,20 @@ oa2w(char *str, char **endptr, int base, int ch)
     return (Word_t)ul;
 }
 
+static struct option longopts[] = {
+
+ // { name,               has_arg,          flag,      val },
+
+    // Long option "--LittleOffset=<#>" is equivalent to short option "-o<#>".
+    { "LittleOffset",    required_argument, NULL,      'o' },
+
+    // Long option "--BigOffset=<#>" is equivalent to short option '-o<#>".
+    { "BigOffset",       required_argument, NULL,      'O' },
+
+    // Last struct option in array must be filled with zeros.
+    { NULL,              0,                 NULL,      0 }
+};
+
 int
 main(int argc, char *argv[])
 {
@@ -1163,8 +1178,8 @@ main(int argc, char *argv[])
     errno = 0;
     while (1)
     {
-        c = getopt(argc, argv,
-                   "a:n:S:T:P:s:B:G:X:W:o:O:F:b:dDcC1LHvIltmpxVfgiyR");
+        c = getopt_long(argc, argv,
+                   "Aa:n:S:T:P:s:B:G:X:W:o:O:F:b:dDcC1LHvIltmpxVfgiyR", longopts, NULL);
         if (c == -1)
             break;
 
@@ -1256,11 +1271,11 @@ main(int argc, char *argv[])
             }
             break;
 
-        case 'o':                      // Add optarg to generated keys.
+        case 'o': // Add <#> to generated keys, aka --LittleOffset=<#>.
             Offset = oa2w(optarg, NULL, 0, c);
             break;
 
-        case 'O':                      // Add optarg << B# to generated keys.
+        case 'O': // Add <#> << B# to generated keys, aka --BigOffset=<#>.
             offset = strtoul(optarg, NULL, 0);
 
             if ((offset == 0) || (errno != 0))
