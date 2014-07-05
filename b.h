@@ -625,6 +625,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #if (cnDummiesInList == 0)
 #define     ls_wPopCnt(_ls)  (((ListLeaf_t *)(_ls))->ll_awKeys[0])
 #else // (cnDummiesInList == 0)
+// Use the last dummy for pop count if we have at least one dummy.
 #define     ls_wPopCnt(_ls) \
     (((ListLeaf_t *)(_ls))->ll_awDummies[cnDummiesInList - 1])
 #endif // (cnDummiesInList == 0)
