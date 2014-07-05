@@ -168,11 +168,8 @@ struct timespec TVBeg__, TVEnd__;
 
 Word_t    xFlag = 0;    // Turn ON 'waiting for Context Switch'
 
-void      
-WaitForContextSwitch(Word_t); // shutup the compiler
-
 // Wait for an extraordinary long Delta time (context switch?)
-void
+static void
 WaitForContextSwitch(Word_t Loops)
 {
     double    DeltanSecw;
@@ -224,7 +221,7 @@ Word_t    TotOtherMemUsed = 0;
 // Did not think very hard on this one.  I am sure their is a much
 // faster way to do it. (dlb)
 
-int
+static int
 j__log2(uint32_t num)
 {
     int       __lb = 0;
@@ -256,7 +253,7 @@ j__log2(uint32_t num)
     return (__lb);
 }
 
-Word_t
+static Word_t
 j__roundup2(Word_t Size)
 {
     Word_t ret;
@@ -566,10 +563,7 @@ Swizzle(Word_t word)
 
 int       XScale = 100;                   // for scaling number output under the -m flag
 
-void
-PRINT5_2f(double);
-
-void
+static void
 PRINT5_2f(double __X)
 {
     if (XScale == 100)
@@ -624,10 +618,7 @@ PRINT5_2f(double __X)
     }
 }
 
-void
-PRINT7_3f(double);
-
-void
+static void
 PRINT7_3f(double __X)
 {
     if (__X > .0005)
@@ -651,10 +642,7 @@ PRINT7_3f(double __X)
     }
 }
 
-void
-PRINT6_1f(double);
-void
-
+static void
 PRINT6_1f(double __X)
 {
     if (__X >= .05)
@@ -789,10 +777,7 @@ GetNextKey(PSeed_t PSeed)
     }
 }
 
-void    
-PrintHeader(void);
-
-void
+static void
 PrintHeader(void)
 {
     printf("# Population  DeltaIns GetMeasmts");
@@ -939,7 +924,8 @@ PrintHeader(void)
     printf("\n");
 }
 
-static void Usage(int argc, char **argv)
+static void 
+Usage(int argc, char **argv)
 {
     (void) argc;
 
@@ -2731,7 +2717,7 @@ main(int argc, char *argv[])
 #undef __FUNCTI0N__
 #define __FUNCTI0N__ "TimeNumberGen"
 
-int
+static int
 TimeNumberGen(void **TestRan, PSeed_t PSeed, Word_t Elements)
 {
     Word_t    TstKey;
