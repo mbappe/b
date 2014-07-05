@@ -183,7 +183,7 @@ clean:
 	rm -rf $(SYMS)
 
 t:	$(T_SRCS) $(T_OBJS)
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
+	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
 
 b:	$(OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
