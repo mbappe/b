@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.288 2014/07/06 00:16:57 mike Exp mike $
+// @(#) $Id: b.c,v 1.289 2014/07/06 00:28:06 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -198,10 +198,13 @@ ListWordsTypeList(Word_t wPopCnt, unsigned nBL)
 #endif // defined(COMPRESSED_LISTS)
                            sizeof(Word_t);
 
-    // make room for pop count in the list, if necessary
-#if defined(PP_IN_LINK)
+    // Make room for pop count in the list, if necessary.
+    // Adding a whole extra word with cnDummiesInList is too much when trying
+    // to add dummy space to make PP_IN_LINK use the same amount of space as
+    // PP in switch.  So we use DUMMY_POP_CNT_IN_LIST.
+#if defined(PP_IN_LINK) && ! defined(DUMMY_POP_CNT_IN_LIST)
     if ((nBL >= cnBitsPerWord) && (cnDummiesInList == 0))
-#endif // defined(PP_IN_LINK)
+#endif // defined(PP_IN_LINK) && ! defined(DUMMY_POP_CNT_IN_LIST)
     {
         ++wPopCnt;
     }
