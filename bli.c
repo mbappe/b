@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.243 2014/07/06 00:14:16 mike Exp mike $
+// @(#) $Id: bli.c,v 1.244 2014/07/06 16:37:45 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -41,10 +41,11 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 #endif // defined(RECURSIVE_INSERT)
 #endif // defined(LOOKUP) || defined(REMOVE)
 
-Status_t
 #if defined(LOOKUP)
+static Status_t
 Lookup(Word_t wRoot, Word_t wKey)
 #else // defined(LOOKUP)
+Status_t
 InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 #endif // defined(LOOKUP)
 {

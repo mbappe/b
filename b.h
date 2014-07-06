@@ -771,8 +771,6 @@ typedef struct {
     Link_t sw_aLinks[1]; // variable size
 } Switch_t;
 
-Status_t Lookup(Word_t   wRoot, Word_t wKey);
-
 Status_t Insert(Word_t *pwRoot, Word_t wKey, unsigned nBL);
 Status_t Remove(Word_t *pwRoot, Word_t wKey, unsigned nBL);
 
