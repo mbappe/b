@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.242 2014/07/05 21:48:33 mike Exp mike $
+// @(#) $Id: bli.c,v 1.243 2014/07/06 00:14:16 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -980,7 +980,8 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 {
 #if (cnDigitsPerWord > 1)
 
-  #if (cwListPopCntMax != 0) && defined(PP_IN_LINK)
+  #if (cwListPopCntMax != 0)
+      #if defined(PP_IN_LINK) || defined(SEARCH_FROM_J1T)
     // Handle the top level T_LIST leaf here because for PP_IN_LINK a T_LIST
     // at the top has a pop count byte at the beginning and T_LISTs not at
     // the top do not.  I didn't want to have to have all of the mainline
@@ -994,10 +995,15 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
         // ls_wPopCount is valid only at the top for PP_IN_LINK
         // the first word in the list is used for pop count at the top
-        return SearchListWord(ls_pwKeys(pwr) + (cnDummiesInList == 0),
+        return SearchListWord(ls_pwKeys(pwr)
+          #if defined(PP_IN_LINK)
+                                  + (cnDummiesInList == 0)
+          #endif // defined(PP_IN_LINK)
+                                  ,
                           wKey, cnBitsPerWord, ls_wPopCnt(pwr));
     }
-  #endif // (cwListPopCntMax != 0) && defined(PP_IN_LINK)
+      #endif // defined(PP_IN_LINK) || defined(SEARCH_FROM_J1T)
+  #endif // (cwListPopCntMax != 0)
 
     return Lookup((Word_t)pcvRoot, wKey);
 
