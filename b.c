@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.286 2014/07/05 23:15:43 mike Exp mike $
+// @(#) $Id: b.c,v 1.287 2014/07/06 00:14:16 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -200,7 +200,7 @@ ListWordsTypeList(Word_t wPopCnt, unsigned nBL)
 
     // make room for pop count in the list, if necessary
 #if defined(PP_IN_LINK)
-    if ((nBL >= cnBitsPerWord) /* && (cnDummiesInList == 0)*/ )
+    if ((nBL >= cnBitsPerWord) && (cnDummiesInList == 0))
 #endif // defined(PP_IN_LINK)
     {
         ++wPopCnt;
