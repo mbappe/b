@@ -220,8 +220,30 @@ stubs.o: stubs.c
 	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
 
 # Suppress warnings.  sbrk is deprecated.
+# Direct dlmalloc to use sbrk.
+#  -DHAVE_MORECORE=1 (default)
+# Direct dlmalloc to use 2MB sbrks.
+#  -Dmalloc_getpagesize=0x200000
+# Direct dlmalloc not to use sbrk.
+#  -DHAVE_MORECORE=0
+# Direct dlmalloc to use 2MB allocations with mmap.
+#  -DDEFAULT_MMAP_THRESHOLD=0x200000 -DDEFAULT_GRANULARITY=0X200000
+#
+# Doug's observations for linux kernel 3.14:
+#  - can request aligned buf from kernel with <huge-page> flag to mmap
+#  - but the number of successful such requests are subject to a kernel
+#    parameter which can be set via /proc, but the parameter has an upper
+#    limit of about 75% of system ram (?possibly affected by amount of
+#    swap space?)
+#  - without <huge-page> flag mmap will provide more than 75% of system
+#    ram in huge pages
+#
 dlmalloc.o: dlmalloc.c
+ifeq ($(SMALL_PAGES), 1)
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
+else
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -Dmalloc_getpagesize=0x200000 -c $^
+endif
 
 ############################
 #
