@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.287 2014/07/06 00:14:16 mike Exp mike $
+// @(#) $Id: b.c,v 1.288 2014/07/06 00:16:57 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2640,7 +2640,8 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
 #endif // defined(COMPRESSED_LISTS)
         pwKeys = ls_pwKeys(pwList);
 #if defined(PP_IN_LINK)
-        if (nBL == cnBitsPerWord) { ++pwKeys; }
+        assert(nBL != cnBitsPerWord);
+        //if ((nBL == cnBitsPerWord) && (cnDummiesInList == 0)) { ++pwKeys; }
 #endif // defined(PP_IN_LINK)
         for (unsigned nn = 1; nn <= nPopCnt; nn++) {
             pwKeys[nn-1] = (wKey & ~wBLM)
