@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.241 2014/07/05 17:14:40 mike Exp mike $
+// @(#) $Id: bli.c,v 1.242 2014/07/05 21:48:33 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -994,7 +994,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
         // ls_wPopCount is valid only at the top for PP_IN_LINK
         // the first word in the list is used for pop count at the top
-        return SearchListWord(ls_pwKeys(pwr) + /*(cnDummiesInList == 0)*/1,
+        return SearchListWord(ls_pwKeys(pwr) + (cnDummiesInList == 0),
                           wKey, cnBitsPerWord, ls_wPopCnt(pwr));
     }
   #endif // (cwListPopCntMax != 0) && defined(PP_IN_LINK)
@@ -1121,7 +1121,8 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 Word_t *pwListNew = NewList(wPopCnt + 1, cnDigitsPerWord);
                 Word_t *pwKeysNew = ls_pwKeys(pwListNew);
                 set_wr(wRoot, pwListNew, T_LIST);
-                ++pwKeysNew; // pop count is in first element at top
+                // pop count is in first element at top
+                pwKeysNew += (cnDummiesInList == 0);
                 Word_t *pwKeys;
       #if defined(T_ONE)
                 if (nType == T_ONE) {
@@ -1129,7 +1130,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 } else
       #endif // defined(T_ONE)
                 {
-                    pwKeys = ls_pwKeys(pwr) + /*(cnDummiesInList == 0)*/1;
+                    pwKeys = ls_pwKeys(pwr) + (cnDummiesInList == 0);
                 }
 
  // Isn't this chunk of code already in InsertGuts?
@@ -1260,10 +1261,11 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
                 {
                     set_wr(wRoot, pwListNew, T_LIST);
                     pwKeysNew = ls_pwKeys(pwListNew);
-                    ++pwKeysNew; // pop count is in 1st element at top
+                    // pop count is in 1st element at top
+                    pwKeysNew += (cnDummiesInList == 0);
                 }
 
-                Word_t *pwKeys = ls_pwKeys(pwr) + /*(cnDummiesInList == 0)*/1;
+                Word_t *pwKeys = ls_pwKeys(pwr) + (cnDummiesInList == 0);
 
  // Isn't this chunk of code already in RemoveGuts?
                 unsigned nn;
