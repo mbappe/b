@@ -67,6 +67,10 @@
 #if defined(CONTINUE_FIRST) || defined(FAIL_FIRST) || defined(SUCCEED_FIRST) \
     || defined(SPLIT_SEARCH) || defined(SPLIT_SEARCH_LOOP) \
     || defined(END_CHECK) \
+    || defined(CONTINUE_FIRST_32) || defined(FAIL_FIRST_32) \
+    || defined(SUCCEED_FIRST_32) \
+    || defined(SPLIT_SEARCH_32) || defined(SPLIT_SEARCH_LOOP_32) \
+    || defined(END_CHECK_32)
     || defined(CONTINUE_FIRST_16) || defined(FAIL_FIRST_16) \
     || defined(SUCCEED_FIRST_16) \
     || defined(SPLIT_SEARCH_16) || defined(SPLIT_SEARCH_LOOP_16) \
@@ -84,6 +88,12 @@
 #define END_CHECK
 #endif // defined(NO_END_CHECK)
 
+// Default is -DEND_CHECK_32.
+#if ! defined(NO_END_CHECK_32)
+#undef  END_CHECK_32
+#define END_CHECK_32
+#endif // defined(NO_END_CHECK_32)
+
 // Default is -DEND_CHECK_16.
 #if ! defined(NO_END_CHECK_16)
 #undef  END_CHECK_16
@@ -100,6 +110,12 @@
 #undef  SPLIT_SEARCH
 #define SPLIT_SEARCH
 #endif // defined(SPLIT_SEARCH_LOOP)
+
+// Default is -USPLIT_SEARCH_32 -USPLIT_SEARCH_LOOP_32 -URATIO_SPLIT_32.
+#if defined(SPLIT_SEARCH_LOOP_32)
+#undef  SPLIT_SEARCH_32
+#define SPLIT_SEARCH_32
+#endif // defined(SPLIT_SEARCH_LOOP_32)
 
 // Default is -USPLIT_SEARCH_16 -USPLIT_SEARCH_LOOP_16 -URATIO_SPLIT_16.
 #if defined(SPLIT_SEARCH_LOOP_16)
@@ -803,11 +819,6 @@ extern int bHitDebugThreshold;
 unsigned ListWords(Word_t wPopCnt, unsigned nDL);
 Word_t *NewList(Word_t wPopCnt, unsigned nDL);
 Word_t OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType);
-
-Status_t SearchListWord(Word_t *pwKeys,
-                        Word_t wKey, unsigned nBL, unsigned nPopCnt);
-
-Status_t SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt);
 
 #if defined(DEBUG)
 void Dump(Word_t *pwRoot, Word_t wPrefix, unsigned nBL);
