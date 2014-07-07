@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.245 2014/07/06 21:06:37 mike Exp mike $
+// @(#) $Id: bli.c,v 1.246 2014/07/07 22:45:51 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -45,6 +45,11 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 
 #if defined(COMPRESSED_LISTS) && ((cnBitsAtBottom + cnBitsPerDigit) <= 16)
 
+// Return non-negative index, x, for key found at index x.
+// Return negative (index + 1) for key not found, and index is where
+// key should be.
+// Lookup doesn't need to know where key should be.
+// Only Insert and Remove benefit from that information.
 static Status_t
 SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
@@ -104,7 +109,7 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
                   && (cnSplitSearchThresholdShort > 1)
 loop:
           #endif // defined(SPLIT_SEARCH_16) && ...
-        while ((sKeyLoop = *psKeys++) < sKey);
+        while ((sKeyLoop = *psKeys++) < sKey) { }
     }
         #endif // defined(SIMPLE_SEARCH_16)
       #else // defined(SORT_LISTS)
