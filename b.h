@@ -15,6 +15,12 @@
 #define SKIP_LINKS
 #endif // ! defined(NO_SKIP_LINKS)
 
+// Default is -DSEARCH_FROM_J1T.
+#if ! defined(NO_SEARCH_FROM_J1T)
+#undef  SEARCH_FROM_J1T
+#define SEARCH_FROM_J1T
+#endif // ! defined(NO_SEARCH_FROM_J1T)
+
 #if defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 #undef  SKIP_PREFIX_CHECK
 #define SKIP_PREFIX_CHECK
@@ -31,7 +37,7 @@
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
 // Default is cnListPopCntMax16 = 64.
 // Default is cnListPopCntMax32 = 32.
-// Default is cnListPopCntMax64 = 16.
+// Default is cnListPopCntMax64 = 236.
 #if defined(cwListPopCntMax)
 #undef  cnListPopCntMax64
 #define cnListPopCntMax64  cwListPopCntMax
@@ -42,7 +48,7 @@
 #endif // defined(cwListPopCntMax)
 
 #if ! defined(cnListPopCntMax64)
-#define cnListPopCntMax64  16 
+#define cnListPopCntMax64  236
 #endif // ! defined(cnListPopCntMax64)
 #if ! defined(cnListPopCntMax32)
 #define cnListPopCntMax32  32
@@ -84,7 +90,12 @@
 #define END_CHECK_16
 #endif // defined(NO_END_CHECK_16)
 
-// Default is -USPLIT_SEARCH -USPLIT_SEARCH_LOOP -URATIO_SPLIT.
+// Default is -DSPLIT_SEARCH -DSPLIT_SEARCH_LOOP -URATIO_SPLIT.
+#if ! defined(NO_SPLIT_SEARCH_LOOP)
+#undef  SPLIT_SEARCH_LOOP
+#define SPLIT_SEARCH_LOOP
+#endif // ! defined(NO_SPLIT_SEARCH_LOOP)
+
 #if defined(SPLIT_SEARCH_LOOP)
 #undef  SPLIT_SEARCH
 #define SPLIT_SEARCH
@@ -123,9 +134,9 @@
 #endif // ...
 
 #if defined(SPLIT_SEARCH)
-// Default is cnSplitSearchThresholdWord = 20.
+// Default is cnSplitSearchThresholdWord = 16.
 #if ! defined(cnSplitSearchThresholdWord)
-#define cnSplitSearchThresholdWord  20
+#define cnSplitSearchThresholdWord  16
 #endif // ! defined(cnSplitSearchThresholdWord)
 // Default is cnSplitSearchThresholdInt = 40.
 #if ! defined(cnSplitSearchThresholdInt)

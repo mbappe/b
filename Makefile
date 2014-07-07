@@ -43,11 +43,11 @@ endif
 # B_DEFINES += -DDEBUG_INSERT -DDEBUG_LOOKUP -DDEBUG_MALLOC -DDEBUG_REMOVE
 # B_DEFINES += -UDEBUG_ALL
 
-ifeq "$(CC)" ""
-  CC = gcc
+ifeq "$(CC)" "cc"
+  CC = clang
 endif
 # CC = cc
-# CC = clang
+# CC = gcc
 # CC = icc
 
 ##
