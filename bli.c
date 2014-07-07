@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.246 2014/07/07 22:45:51 mike Exp mike $
+// @(#) $Id: bli.c,v 1.247 2014/07/07 22:58:16 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -190,6 +190,11 @@ loop:
 #if defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) \
     && ((cnBitsAtBottom + cnBitsPerDigit) <= 32)
 
+// Return non-negative index, x, for key found at index x.
+// Return negative (index + 1) for key not found, and index is where
+// key should be.
+// Lookup doesn't need to know where key should be.
+// Only Insert and Remove benefit from that information.
 static Status_t
 SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
@@ -447,6 +452,11 @@ Word_t cnMagic[] = {
 #define hasvalue(x,n) (haszero((x) ^ (-((Word_t)1))/255 * (n)))
 #endif  // TBD
 
+// Return non-negative index, x, for key found at index x.
+// Return negative (index + 1) for key not found, and index is where
+// key should be.
+// Lookup doesn't need to know where key should be.
+// Only Insert and Remove benefit from that information.
 static Status_t
 SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
