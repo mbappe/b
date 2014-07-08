@@ -338,6 +338,7 @@
 #endif // defined(T_ONE)
 #define T_BITMAP  2
 #define T_LIST    3
+#define T_SW_BASE  (T_LIST + 1)
 
 // Default is -UBPD_TABLE, i.e. -DNO_BPD_TABLE.
 #if defined(BPD_TABLE)
@@ -541,8 +542,15 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 // Default is -UDL_IN_TYPE_IS_ABSOLUTE, i.e. -DTYPE_IS_RELATIVE.
 #if defined(DL_IN_TYPE_IS_ABSOLUTE)
 
-#define tp_to_nDL(_tp)   ((_tp)  - T_LIST)
-#define nDL_to_tp(_nDL)  ((_nDL) + T_LIST)
+// Why do we need to support nDL == 1?
+// Is it for cnBitsAtBottom > cnLogBitsPerWord?
+#if (cnBitsAtBottom > cnLogBitsPerWord)
+  #define tp_to_nDL(_tp)   ((_tp)  - T_SW_BASE + 1)
+  #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 1)
+#else // (cnBitsAtBottom > cnLogBitsPerWord)
+  #define tp_to_nDL(_tp)   ((_tp)  - T_SW_BASE + 2)
+  #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 2)
+#endif // (cnBitsAtBottom > cnLogBitsPerWord)
 
 #define     wr_nDL(_wr)     (tp_to_nDL(wr_nType(_wr)))
 #define set_wr_nDL(_wr, _nDL) \
@@ -556,10 +564,8 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #undef  TYPE_IS_RELATIVE
 #define TYPE_IS_RELATIVE
 
-#define T_NO_SKIP_SWITCH  (T_LIST + 1)
-
-#define tp_to_nDS(_tp)   ((_tp)  - T_NO_SKIP_SWITCH)
-#define nDS_to_tp(_nDS)  ((_nDS) + T_NO_SKIP_SWITCH)
+#define tp_to_nDS(_tp)   ((_tp)  - T_SW_BASE)
+#define nDS_to_tp(_nDS)  ((_nDS) + T_SW_BASE)
 
 #define     wr_nDS(_wr)        (tp_to_nDS(wr_nType(_wr)))
 #define set_wr_nDS(_wr, _nDS)  (set_wr_nType((_wr), nDS_to_tp(_nDS)))
@@ -569,7 +575,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #endif // defined(DL_IN_TYPE_IS_ABSOLUTE)
 
-#define     tp_bIsSwitch(_tp)          ((_tp) > T_LIST)
+#define     tp_bIsSwitch(_tp)          ((_tp) >= T_SW_BASE)
 #define     wr_bIsSwitch(_wr)          (tp_bIsSwitch(wr_nType(_wr)))
 
 // methods for Switch (and aliases)
@@ -663,7 +669,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #else // defined(PP_IN_LINK)
 
-#define     ls_wPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_asKeys[0])
+#define     ls_wPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_acKeys[0])
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
 
 // Index of first key within leaf (for all cases).

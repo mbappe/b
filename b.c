@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.290 2014/07/06 16:37:31 mike Exp mike $
+// @(#) $Id: b.c,v 1.291 2014/07/07 22:45:51 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1470,7 +1470,7 @@ DeflateExternalList(Word_t *pwRoot,
 unsigned anListPopCntMax[] = {
                     0, //  1 < nBL <=  2
                     0, //  2 < nBL <=  4
-                    0, //  4 < nBL <=  8
+                    7, //  4 < nBL <=  8
     cnListPopCntMax16, //  8 < nBL <= 16
     cnListPopCntMax32, // 16 < nBL <= 32
     cnListPopCntMax64, // 32 < nBL <= 64
@@ -1495,6 +1495,7 @@ unsigned anListPopCntMax[] = {
 Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 {
+    (void)nDL;
     unsigned nBL = nDL_to_nBL(nDL); (void)nBL;
     DBGI(printf("InsertGuts pwRoot %p wKey "OWx" nDL %d wRoot "OWx"\n",
                (void *)pwRoot, wKey, nDL, wRoot));
@@ -1503,8 +1504,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
 #if defined(T_ONE)
 #if defined(COMPRESSED_LISTS)
-    uint16_t asKeys[16], sKey; (void)asKeys;
-    uint32_t aiKeys[4], iKey; (void)aiKeys;
+    uint8_t  cKey;
+    uint16_t sKey;
+    uint32_t iKey;
 #endif // defined(COMPRESSED_LISTS)
 #endif // defined(T_ONE)
 
@@ -1562,7 +1564,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         unsigned int *piKeys;
 #endif // (cnBitsPerWord > 32)
         unsigned short *psKeys;
-        unsigned char *pcKeys = NULL;
+        unsigned char *pcKeys;
 #endif // defined(COMPRESSED_LISTS)
 
         DBGI(printf("InsertGuts List\n"));
@@ -1589,6 +1591,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 iKey = (uint32_t)*pwr; piKeys = &iKey;
 #endif // (cnBitsPerWord > 32)
                 sKey = (uint16_t)*pwr; psKeys = &sKey;
+                cKey = (uint8_t)*pwr; pcKeys = &cKey;
 #endif // defined(COMPRESSED_LISTS)
             }
             else
@@ -1790,6 +1793,15 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
             // List is full; insert a switch
             DBGI(printf("List is full.\n"));
+#if    (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) \
+    || (cnListPopCntMax16 == 0)
+            if (wPopCnt == 0) {
+                // can't dereference list if there isn't one
+                // go directly to bitmap
+                nDL = nBL_to_nDL(cnBitsAtBottom) + 1;
+                goto newSwitch;
+            }
+#endif // (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) || ...
 
 #if defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
             if (nDL < cnDigitsPerWord)
@@ -1797,7 +1809,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if defined(SKIP_LINKS)
             {
 #if defined(COMPRESSED_LISTS)
-                Word_t wSuffix;
+                Word_t wSuffix; (void)wSuffix;
 #endif // defined(COMPRESSED_LISTS)
 #if (cwListPopCntMax != 0)
                 Word_t wMax, wMin;
@@ -1886,6 +1898,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 nDL = nBL_to_nDL(cnBitsAtBottom) + 1;
 #endif // (cwListPopCntMax != 0)
             }
+#if (cwListPopCntMax != 0)
+#if    (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) \
+    || (cnListPopCntMax16 == 0)
+newSwitch:
+#endif // (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) || ...
+#endif // (cwListPopCntMax != 0)
 
             // We don't create a switch below nBL_to_nDL(cnBitsAtBottom) + 1.
             // Why?  Because we've defined nBL_to_nDL(cnBitsAtBottom) as
@@ -1903,6 +1921,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
                 nDL = nBL_to_nDL(cnBitsAtBottom) + 1;
             }
+#if defined(TYPE_IS_RELATIVE)
+            if (nDS_to_tp(nDLOld - nDL) > cnMallocMask) {
+                nDL = nDLOld - tp_to_nDS(cnMallocMask);
+            }
+#endif // defined(TYPE_IS_RELATIVE)
 #else // defined(SKIP_LINKS)
             assert(nDL > nBL_to_nDL(cnBitsAtBottom));
 #endif // defined(SKIP_LINKS)
@@ -2191,6 +2214,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
     uint32_t *piKeys;
 #endif // (cnBitsPerWord > 32)
     uint16_t *psKeys;
+    uint8_t  *pcKeys;
 #endif // defined(COMPRESSED_LISTS)
 
     unsigned nPopCnt = wr_nPopCnt(wRoot, nBL);
@@ -2202,6 +2226,13 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
 
     Word_t wBLM = MSK(nBL); // Bits left mask.
 #if defined(COMPRESSED_LISTS)
+    if (nBL <= 8) {
+        pcKeys = ls_pcKeys(pwList);
+        for (unsigned nn = 1; nn <= nPopCnt; nn++) {
+            pcKeys[nn-1] = (uint8_t)((wKey & ~wBLM)
+                | ((wRoot >> (cnBitsPerWord - (nn * nBL))) & wBLM));
+        }
+    } else
     if (nBL <= 16) {
         psKeys = ls_psKeys(pwList);
         for (unsigned nn = 1; nn <= nPopCnt; nn++) {
@@ -2267,6 +2298,7 @@ DeflateExternalList(Word_t *pwRoot,
     uint32_t *piKeys;
 #endif // (cnBitsPerWord > 32)
     uint16_t *psKeys;
+    uint8_t  *pcKeys;
 #endif // defined(COMPRESSED_LISTS)
 
     set_wr_nType(wRoot, T_ONE);
@@ -2274,6 +2306,12 @@ DeflateExternalList(Word_t *pwRoot,
 
     Word_t wBLM = MSK(nBL);
 #if defined(COMPRESSED_LISTS)
+    if (nBL <= 8) {
+        pcKeys = ls_pcKeys(pwr);
+        for (unsigned nn = 1; nn <= nPopCnt; nn++) {
+           wRoot |= (pcKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
+        }
+    } else
     if (nBL <= 16) {
         psKeys = ls_psKeys(pwr);
         for (unsigned nn = 1; nn <= nPopCnt; nn++) {
@@ -2382,7 +2420,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 {
     unsigned nType = wr_nType(wRoot); (void)nType;
     Word_t *pwr = wr_pwr(wRoot); (void)pwr;
-    unsigned nBL = nDL_to_nBL(nDL);
+    unsigned nBL = nDL_to_nBL(nDL); (void)nBL;
 
     DBGR(printf("RemoveGuts\n"));
 
@@ -2444,6 +2482,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     unsigned nIndex;
     for (nIndex = 0;
 #if defined(COMPRESSED_LISTS)
+        (nBL <=  8) ? (pwr_pcKeys(pwr)[nIndex] != (uint8_t) wKey) :
         (nBL <= 16) ? (pwr_psKeys(pwr)[nIndex] != (uint16_t)wKey) :
 #if (cnBitsPerWord > 32)
         (nBL <= 32) ? (pwr_piKeys(pwr)[nIndex] != (uint32_t)wKey) :

@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.247 2014/07/07 22:58:16 mike Exp mike $
+// @(#) $Id: bli.c,v 1.248 2014/07/07 22:59:06 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -642,7 +642,7 @@ again:
 #if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
         // fall into next case
     }
-    case T_NO_SKIP_SWITCH:
+    case T_SW_BASE: // no skip switch
     {
 #endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 #if defined(BM_SWITCH_FOR_REAL) \
@@ -1397,6 +1397,7 @@ cleanup:
     bCleanup = 1; // ?? nIncr == 0 ??
     DBGX(printf("Cleanup pwRO "OWx" nDLO %d\n",
                 (Word_t)pwRootOrig, nDLOrig));
+    DBGR(Dump(pwRootOrig, /* wPrefix */ (Word_t)0, nDL_to_nBL(nDLOrig)));
     goto restart;
   #endif // defined(REMOVE)
 }
