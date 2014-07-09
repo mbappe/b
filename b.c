@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.291 2014/07/07 22:45:51 mike Exp mike $
+// @(#) $Id: b.c,v 1.292 2014/07/08 23:25:22 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1506,7 +1506,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if defined(COMPRESSED_LISTS)
     uint8_t  cKey;
     uint16_t sKey;
+#if (cnBitsPerWord > 32)
     uint32_t iKey;
+#endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
 #endif // defined(T_ONE)
 
