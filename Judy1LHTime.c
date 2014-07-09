@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.15 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.9 $ $Source: /home/doug/judy-1.0.5_PatchR/test/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -679,7 +679,7 @@ Word_t    ByteDups   = 0;
 
 Word_t    J1Flag = 0;                   // time Judy1
 Word_t    JLFlag = 0;                   // time JudyL
-Word_t    RFlag  = 0;                   // time JudyL with no cheat
+Word_t    JRFlag = 0;                   // time JudyL with no cheat
 Word_t    JHFlag = 0;                   // time JudyHS
 Word_t    dFlag = 0;                    // time Judy1Unset JudyLDel
 Word_t    vFlag = 0;                    // time Searching 
@@ -747,13 +747,15 @@ Word_t    StartSequent = 0xc1fc;        // default beginning sequential numbers
 
 // Global to store the current Value return from PSeed.
 //
-Word_t    Key = 0xc1fc;
+//Word_t    Key = 0xc1fc;
 
 // returns next Key, depending on SValue, DFlag and GValue.
 //
 static inline Word_t
 GetNextKey(PSeed_t PSeed)
 {
+    Word_t    Key = 0xc1fc;
+
     if (FValue)
         Key = FileKeys[PSeed->Order++];
     else
@@ -773,7 +775,7 @@ GetNextKey(PSeed_t PSeed)
         if ((sizeof(Word_t) * 8) != BValue)
             Key %= (Word_t)1 << BValue;
         
-        return (Key += Offset);         // add in Offset;
+        return (Key + Offset);         // add in Offset;
     }
 }
 
@@ -788,7 +790,7 @@ PrintHeader(void)
         printf("    J1S");
     if (JLFlag)
         printf("    JLI");
-    if (RFlag)
+    if (JRFlag)
         printf("  JLI-R");
     if (JHFlag)
         printf("   JHSI");
@@ -802,7 +804,7 @@ PrintHeader(void)
         printf("    J1T");
     if (JLFlag)
         printf("    JLG");
-    if (RFlag)
+    if (JRFlag)
         printf("  JLG-R");
     if (JHFlag)
         printf("   JHSG");
@@ -868,7 +870,7 @@ PrintHeader(void)
         printf("  Heap: Words/Key");
     if (J1Flag)
         printf(" 1heap/K");
-    if (JLFlag || RFlag)
+    if (JLFlag || JRFlag)
         printf(" Lheap/K");
     if (JHFlag)
         printf(" HSheap/K");
@@ -916,7 +918,7 @@ PrintHeader(void)
 
         if (J1Flag)
             printf(" MF1/K");
-        if (JLFlag || RFlag)
+        if (JLFlag || JRFlag)
             printf(" MFL/K");
         if (JHFlag)
             printf(" MFHS/K");
@@ -962,7 +964,7 @@ Usage(int argc, char **argv)
     printf("-C      Include timing of JudyCount tests\n");
     printf("-v      Include timing of Judy First/Last/Next/Prev tests\n");
     printf("-d      Include timing of Del/Unset\n");
-    printf("-p      Print number set used for testing (Diag)\n");
+    printf("-p      Print number set used for testing (Diag) - takes presedence\n");
     printf
         ("-V      Turn OFF JudyLGet() verification tests (saving a cache-hit on 'Value')\n");
     printf
@@ -1076,7 +1078,7 @@ static Word_t
 oa2w(char *str, char **endptr, int base, int ch)
 {
     char *lendptr;
-    unsigned long ul;
+    Word_t ul;
 
     if ((str == NULL) || *str == '\0') {
         printf("\nError --- Illegal optarg, \"\", for option \"-%c\".\n", ch);
@@ -1104,7 +1106,7 @@ oa2w(char *str, char **endptr, int base, int ch)
         *endptr = lendptr;
     }
 
-    return (Word_t)ul;
+    return (ul);
 }
 
 static struct option longopts[] = {
@@ -1151,7 +1153,8 @@ main(int argc, char *argv[])
     Word_t    Pop1;
     Word_t    Meas;
     double    TreeDepth = 0;
-    Word_t    offset;
+    Word_t    LittleOffset = 0;
+    Word_t    BigOffset = 0;
 
 #ifdef  JUDYB
     double    SearchCompares = 0;
@@ -1281,11 +1284,11 @@ main(int argc, char *argv[])
             break;
 
         case 'o': // Add <#> to generated keys, aka --LittleOffset=<#>.
-            Offset = oa2w(optarg, NULL, 0, c);
+            LittleOffset = oa2w(optarg, NULL, 0, c);
             break;
 
         case 'O': // Add <#> << B# to generated keys, aka --BigOffset=<#>.
-            offset = oa2w(optarg, NULL, 0, c);
+            BigOffset = oa2w(optarg, NULL, 0, c);
             break;
 
         case 'b':                      // Turn on REAL bitmap testing
@@ -1484,7 +1487,7 @@ main(int argc, char *argv[])
             break;
 
         case 'R':                      // Use *PValue as next Key
-            RFlag = 1;
+            JRFlag = 1;
             break;
 
         default:
@@ -1494,21 +1497,38 @@ main(int argc, char *argv[])
         if (FValue)
             break;
     }
+    if (JLFlag && JRFlag)
+    {
+        printf (" ========================================================\n");
+        printf(" Sorry '-L' and '-R' options are mutually exclusive\n");
+        printf (" ========================================================\n");
+        exit(1);
+    }
+    if (JRFlag && !VFlag)
+    {
+        printf("\n# Warning -- '-V' ignored, because '-R' is set\n");
+        fprintf(stderr, "\n# Warning -- '-V' ignored, because '-R' is set\n");
+    }
 //  build the Random Number Generator starting seeds
     PStartSeed = RandomInit(BValue, GValue);
 
-    if ((BValue >= (sizeof(Word_t) * 8)) && ((offset != 0) || (Offset != 0)))
+//  BValue already check to be <= 64 or <=32 and >=15
+    if (BigOffset)
     {
-        printf("\n# WARNING:  '-O 0x%lx' or '-o 0x%lx' ignored because  '-B %lu'  not less than %d\n", 
-                offset, Offset, BValue, (int)(sizeof(Word_t) * 8));
-        fprintf(stderr, "\n# WARNING:  '-O 0x%lx' or '-o 0x%lx' ignored because  '-B %lu'  not less than %d\n", 
-                offset, Offset, BValue, (int)(sizeof(Word_t) * 8));
-        Offset = 0;
+        Word_t bigoffset = BigOffset;
+
+        if (BValue >= (sizeof(Word_t) * 8))
+            BigOffset = 0;
+
+        BigOffset <<= BValue;           // offset past BValue 
+
+        if (BigOffset == 0)
+        {
+            printf("\n# Warning -- '-O 0x%lx' ignored, because '-B %lu' option too big\n", bigoffset, BValue);
+            fprintf(stderr, "\n# Warning -- '-O 0x%lx' ignored, because '-B %lu' option too big\n", bigoffset, BValue);
+        }
     }
-    else if (offset != 0)
-    {
-        Offset = offset << BValue;
-    }
+    Offset = BigOffset + LittleOffset;  // why not?
 
     if (PStartSeed == (PSeed_t) NULL)
     {
@@ -1550,8 +1570,8 @@ main(int argc, char *argv[])
 
             if (Offset)
             {
-                printf(" plus Offset of 0x%lx", Offset);
-                fprintf(stderr, " plus Offset of 0x%lx", Offset);
+                printf(", add %ld (0x%lx) to Key values", Offset, Offset);
+                fprintf(stderr,", add %ld (0x%lx) to Key values", Offset, Offset);
             }
             printf("\n");
             fprintf(stderr, "\n");
@@ -1615,7 +1635,7 @@ main(int argc, char *argv[])
         printf("1");
     if (JLFlag)
         printf("L");
-    if (RFlag)
+    if (JRFlag)
         printf("R");
     if (JHFlag)
         printf("H");
@@ -1668,13 +1688,10 @@ main(int argc, char *argv[])
 
     if (FValue)
         printf(" -F %s", keyfile);
-    if (Offset) {
-        if (offset) {
-            printf(" -O 0x%lx", offset);
-        } else {
-            printf(" -o 0x%lx", Offset);
-        }
-    }
+
+    if (Offset) 
+        printf(" -o 0x%lx", Offset);
+
     printf("\n");
 
     if (mFlag)
@@ -1682,7 +1699,7 @@ main(int argc, char *argv[])
         int       count = 0;
         if (JLFlag)
             count++;
-        if (RFlag)
+        if (JRFlag)
             count++;
         if (J1Flag)
             count++;
@@ -1818,7 +1835,7 @@ main(int argc, char *argv[])
         printf("# COLHEAD %2d J1S  - Judy1Set\n", Col++);
     if (JLFlag)
         printf("# COLHEAD %2d JLI  - JudyLIns\n", Col++);
-    if (RFlag)
+    if (JRFlag)
         printf("# COLHEAD %2d JLI-R  - JudyLIns\n", Col++);
     if (JHFlag)
         printf("# COLHEAD %2d JHSI - JudyHSIns\n", Col++);
@@ -1835,7 +1852,7 @@ main(int argc, char *argv[])
         printf("# COLHEAD %2d J1T  - Judy1Test\n", Col++);
     if (JLFlag)
         printf("# COLHEAD %2d JLG  - JudyLGet\n", Col++);
-    if (RFlag)
+    if (JRFlag)
         printf("# COLHEAD %2d JLG-R  - JudyLGet\n", Col++);
     if (JHFlag)
         printf("# COLHEAD %2d JHSG - JudyHSGet\n", Col++);
@@ -2258,7 +2275,7 @@ main(int argc, char *argv[])
         }
 
 //      Insert/Get JudyL using Value area as next Key
-        if (RFlag)
+        if (JRFlag)
         {
 //          Test JLI
 //          Exit with InsertSeed/Key ready for next batch
@@ -2548,7 +2565,7 @@ main(int argc, char *argv[])
         if (J1Flag)
             PRINT7_3f((double)TotJudy1MemUsed / (double)Pop1);
 
-        if (JLFlag || RFlag)
+        if (JLFlag || JRFlag)
             PRINT7_3f((double)TotJudyLMemUsed / (double)Pop1);
 
         if (JHFlag)
@@ -2620,7 +2637,7 @@ main(int argc, char *argv[])
 
             if (J1Flag)
                 PRINT5_2f((double)DeltaMalFre1);
-            if (JLFlag || RFlag)
+            if (JLFlag || JRFlag)
                 PRINT5_2f((double)DeltaMalFreL);
             if (JHFlag)
                 PRINT5_2f((double)DeltaMalFreHS);
@@ -2637,16 +2654,16 @@ main(int argc, char *argv[])
 #ifdef SKIPMACRO
     if (J1Flag)
         Count1 = Judy1Count(J1, 0, -1, PJE0);
-    if (JLFlag || RFlag)
+    if (JLFlag || JRFlag)
         CountL = JudyLCount(JL, 0, -1, PJE0);
 #else
     if (J1Flag)
         J1C(Count1, J1, 0, -1);
-    if (JLFlag || RFlag)
+    if (JLFlag || JRFlag)
         JLC(CountL, JL, 0, -1);         // get the counts
 #endif // SKIPMACRO
 
-    if ((JLFlag | RFlag) && J1Flag)
+    if ((JLFlag | JRFlag) && J1Flag)
     {
         if (CountL != Count1)
             FAILURE("Judy1/LCount not equal", Count1);
@@ -2672,7 +2689,7 @@ main(int argc, char *argv[])
              DeltanSec1);
     }
 
-    if (JLFlag || RFlag)
+    if (JLFlag || JRFlag)
     {
         STARTTm;
         Bytes = JudyLFreeArray(&JL, PJE0);
@@ -3143,7 +3160,7 @@ TestJudyLIns(void **JL, PSeed_t PSeed, Word_t Elements)
             PValue = (PWord_t)JudyLIns(JL, TstKey, PJE0);
             if (PValue == (PWord_t)NULL)
                 FAILURE("JudyLIns failed - NULL PValue", TstKey);
-            if (*PValue != 0)
+            if ((*PValue != 0) && (TstKey != 0))
                 FAILURE("JudyLIns failed - *PValue not = 0", TstKey);
         }
 
@@ -3156,7 +3173,7 @@ TestJudyLIns(void **JL, PSeed_t PSeed, Word_t Elements)
                 PValue = (PWord_t)JudyLIns(JL, TstKey, PJE0);
                 if (PValue == (PWord_t)NULL)
                     FAILURE("JudyLIns failed - NULL PValue", TstKey);
-                if (*PValue != 0)
+                if ((*PValue != 0) && (TstKey != 0))
                     FAILURE("JudyLIns failed - *PValue not = 0", TstKey);
             }
         }
