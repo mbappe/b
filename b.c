@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.292 2014/07/08 23:25:22 mike Exp mike $
+// @(#) $Id: b.c,v 1.293 2014/07/09 00:41:57 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1470,7 +1470,7 @@ DeflateExternalList(Word_t *pwRoot,
 unsigned anListPopCntMax[] = {
                     0, //  1 < nBL <=  2
                     0, //  2 < nBL <=  4
-                    7, //  4 < nBL <=  8
+    cnListPopCntMax8 , //  4 < nBL <=  8
     cnListPopCntMax16, //  8 < nBL <= 16
     cnListPopCntMax32, // 16 < nBL <= 32
     cnListPopCntMax64, // 32 < nBL <= 64
@@ -1795,6 +1795,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
             // List is full; insert a switch
             DBGI(printf("List is full.\n"));
+#if (cwListPopCntMax != 0)
 #if    (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) \
     || (cnListPopCntMax16 == 0)
             if (wPopCnt == 0) {
@@ -1804,6 +1805,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 goto newSwitch;
             }
 #endif // (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) || ...
+#endif // (cwListPopCntMax != 0)
 
 #if defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
             if (nDL < cnDigitsPerWord)

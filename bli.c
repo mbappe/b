@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.248 2014/07/07 22:59:06 mike Exp mike $
+// @(#) $Id: bli.c,v 1.249 2014/07/08 23:25:22 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -42,6 +42,150 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 #endif // defined(LOOKUP) || defined(REMOVE)
 
 #if (cwListPopCntMax != 0)
+
+#if defined(COMPRESSED_LISTS) && ((cnBitsAtBottom + cnBitsPerDigit) <= 8)
+
+// Return non-negative index, x, for key found at index x.
+// Return negative (index + 1) for key not found, and index is where
+// key should be.
+// Lookup doesn't need to know where key should be.
+// Only Insert and Remove benefit from that information.
+static Status_t
+SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
+{
+    (void)nBL;
+    uint8_t cKey = wKey;
+    uint8_t cKeyLoop;
+#if defined(OLD_SEARCH_8)
+      #if defined(SORT_LISTS)
+        #if defined(SIMPLE_SEARCH_8) // two tests per iteration
+    cKeyLoop = *pcKeys;
+    if (nPopCnt != 1)
+    {
+        uint8_t *psLastKey = &pcKeys[nPopCnt-1];
+        while (cKeyLoop < cKey) {
+            cKeyLoop = *++pcKeys;
+            if (pcKeys == psLastKey) {
+                break;
+            }
+        }
+    }
+        #else // defined(SIMPLE_SEARCH_8)
+          #if defined(SPLIT_SEARCH_8) \
+                  && (cnSplitSearchThresholdShort > 1)
+              #if defined(SPLIT_SEARCH_LOOP_8)
+    while
+              #else // defined(SPLIT_SEARCH_LOOP_8)
+    if
+              #endif // defined(SPLIT_SEARCH_LOOP_8)
+       (nPopCnt >= cnSplitSearchThresholdShort)
+    {
+// To do: Try to minimize the number of cache lines we hit.
+// If ! PP_IN_LINK then we already hit the first one to get the pop count.
+// Let's try aligning these lists.
+        // pick a starting point
+              #if ! defined(RATIO_SPLIT_8) \
+                  || defined(SPLIT_SEARCH_LOOP_8)
+        unsigned nSplit = nPopCnt / 2;
+              #else // ! defined(RATIO_SPLIT_8) || ...
+        unsigned nSplit
+            = wKey % EXP(nBL) * nPopCnt / EXP(nBL);
+              #endif // ! defined(RATIO_SPLIT_8) || ...
+        if (pcKeys[nSplit] <= cKey) {
+            pcKeys = &pcKeys[nSplit];
+            nPopCnt -= nSplit;
+// To do: Shouldn't we go backwards if we exit the loop after this step?
+// It might be very important.
+// What about cache line alignment?
+        } else {
+            nPopCnt = nSplit;
+            goto loop;
+        }
+    }
+          #endif // defined(SPLIT_SEARCH_8) && ...
+    if ((cKeyLoop = pcKeys[nPopCnt - 1]) > cKey)
+    {
+          #if defined(SPLIT_SEARCH_8) \
+                  && (cnSplitSearchThresholdShort > 1)
+loop:
+          #endif // defined(SPLIT_SEARCH_8) && ...
+        while ((cKeyLoop = *pcKeys++) < cKey) { }
+    }
+        #endif // defined(SIMPLE_SEARCH_8)
+      #else // defined(SORT_LISTS)
+    uint8_t *pcKeysEnd = &pcKeys[nPopCnt];
+    while (cKeyLoop = *pcKeys, pcKeys++ < pcKeysEnd)
+      #endif // defined(SORT_LISTS)
+    {
+        if (cKeyLoop == cKey)
+        {
+            return Success;
+        }
+    }
+#else // defined(OLD_SEARCH_8)
+  #if defined(BACKWARD_SEARCH_8)
+    uint8_t *pcKeysEnd = pcKeys;
+    uint8_t *pcKeys = &pcKeysEnd[nPopCnt - 1];
+      #if defined(END_CHECK_8)
+    if (*pcKeysEnd > cKey) { return Failure; }
+    for (;;)
+      #else // defined(END_CHECK_8)
+    do
+      #endif // defined(END_CHECK_8)
+    {
+        cKeyLoop = *pcKeys--;
+      #if defined(CONTINUE_FIRST)
+        if (cKeyLoop > cKey) { continue; }
+      #elif defined(FAIL_FIRST)
+        if (cKeyLoop < cKey) { break; }
+      #endif
+        if (cKeyLoop == cKey) { return Success; }
+      #if defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
+        if (cKeyLoop < cKey) { break; }
+      #endif // defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
+    }
+      #if ! defined(END_CHECK_8)
+    while (pcKeys >= pcKeysEnd);
+      #endif // ! defined(END_CHECK_8)
+  #else // defined(BACKWARD_SEARCH_8)
+    uint8_t *pcKeysEnd = &pcKeys[nPopCnt - 1];
+      #if defined(END_CHECK_8)
+    if (*pcKeysEnd < cKey) { return Failure; }
+    for (;;)
+      #else // defined(END_CHECK_8)
+    do
+      #endif // defined(END_CHECK_8)
+    {
+        cKeyLoop = *pcKeys++;
+      #if defined(CONTINUE_FIRST)
+        if (cKeyLoop < cKey) { continue; }
+      #elif defined(FAIL_FIRST)
+        if (cKeyLoop > cKey) { break; }
+      #endif
+        if (cKeyLoop == cKey) { return Success; }
+      #if defined(SUCCEED_FIRST)
+        if (cKeyLoop > cKey)
+      #endif // defined(SUCCEED_FIRST)
+      #if defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
+        { break; }
+      #endif // defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
+        // We're cheating here if we ignore the fact that the list is
+        // sorted and look only for a match rather than checking to
+        // see if we're passed the point where the key would be.
+        // It's cheating because it's probably faster when the key
+        // is present (which is the case for our performance testing)
+        // and slower if the key is not present.
+    }
+      #if ! defined(END_CHECK_8)
+    while (pcKeys <= pcKeysEnd);
+      #endif // ! defined(END_CHECK_8)
+  #endif // defined(BACKWARD_SEARCH_8)
+#endif // defined(OLD_SEARCH_8)
+
+    return Failure;
+}
+
+#endif // defined(COMPRESSED_LISTS) && ...
 
 #if defined(COMPRESSED_LISTS) && ((cnBitsAtBottom + cnBitsPerDigit) <= 16)
 
@@ -461,6 +605,11 @@ static Status_t
 SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
   #if defined(COMPRESSED_LISTS)
+      #if ((cnBitsAtBottom + cnBitsPerDigit) <= 8)
+    if (nBL <= 8) {
+        return SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt);
+    } else
+      #endif // ((cnBitsAtBottom + cnBitsPerDigit) <= 8)
       #if ((cnBitsAtBottom + cnBitsPerDigit) <= 16)
     if (nBL <= 16) {
         return SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt);
