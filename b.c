@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.293 2014/07/09 00:41:57 mike Exp mike $
+// @(#) $Id: b.c,v 1.294 2014/07/09 04:17:45 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -42,7 +42,7 @@ Word_t j__AllocWordsJV12;  // Value Area 12-bit Decode
 #if defined(BPD_TABLE)
 
 const unsigned anDL_to_nBitsIndexSz[] = {
-                    0, cnBitsAtBottom, cnBitsPerDigit, cnBitsPerDigit,
+                    0, cnBitsAtBottom, cnBitsPerDigit/2, cnBitsPerDigit/2,
        cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
        cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
        cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
@@ -64,6 +64,7 @@ const unsigned anDL_to_nBitsIndexSz[] = {
 const unsigned anDL_to_nBL[] = {
     0,
     cnBitsAtBottom +  0 * cnBitsPerDigit,
+    cnBitsAtBottom +  1 * cnBitsPerDigit/2,
     cnBitsAtBottom +  1 * cnBitsPerDigit,
     cnBitsAtBottom +  2 * cnBitsPerDigit,
     cnBitsAtBottom +  3 * cnBitsPerDigit,
@@ -2357,6 +2358,8 @@ DeflateExternalList(Word_t *pwRoot,
     OldList(pwr, nPopCnt, nBL_to_nDL(nBL), T_LIST);
 
     *pwRoot = wRoot;
+
+    DBGI(printf("DEL wRoot "OWx"\n", wRoot));
 
     return wRoot;
 }

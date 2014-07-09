@@ -323,8 +323,14 @@
 #define BITMAP_ANYWHERE
 #endif // ! defined(NO_BITMAP_ANYWHERE)
 
+#if defined(BPD_TABLE)
+// Yuck!  This assumes two half-size digits above the bottom.
+#define cnDigitsPerWord \
+    (DIV_UP(cnBitsPerWord - cnBitsAtBottom, cnBitsPerDigit) + 2)
+#else // defined(BPD_TABLE)
 #define cnDigitsPerWord \
     (DIV_UP(cnBitsPerWord - cnBitsAtBottom, cnBitsPerDigit) + 1)
+#endif // defined(BPD_TABLE)
 
 // Default is -DEMBED_KEYS which implies T_ONE.
 // EMBED_KEYS implies T_ONE
@@ -387,6 +393,11 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #define nDL_to_nBL_NAT(_nDL)  nDL_to_nBL(_nDL)
 
+#define nBL_to_nDL(_nBL) \
+    (((_nBL) <= cnBitsAtBottom) ? 1 \
+        : ((_nBL) <= cnBitsAtBottom + cnBitsPerDigit / 2) ? 2 \
+        : (DIV_UP((_nBL) - cnBitsAtBottom, cnBitsPerDigit) + 2))
+
 #else // defined(BPD_TABLE)
 
 #define cnBitsIndexSzAtTop \
@@ -411,11 +422,11 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define nDL_to_nBL(_nDL) \
     (((_nDL) == cnDigitsPerWord) ? cnBitsPerWord : nDL_to_nBL_NAT(_nDL))
 
-#endif // defined(BPD_TABLE)
-
 // this one is not used in the lookup performance path
 #define nBL_to_nDL(_nBL) \
      (DIV_UP((_nBL) - cnBitsAtBottom, cnBitsPerDigit) + 1)
+
+#endif // defined(BPD_TABLE)
 
 // this one is not used in the lookup performance path
 #define nBL_to_nDL_NotAtTop(_nBL)  nBL_to_nDL(_nBL)

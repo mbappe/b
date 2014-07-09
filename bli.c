@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.249 2014/07/08 23:25:22 mike Exp mike $
+// @(#) $Id: bli.c,v 1.250 2014/07/09 04:17:54 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -972,9 +972,8 @@ notEmpty:;
         pwRoot = &pwr_pLinks(pwr)[wIndex].ln_wRoot;
         wRoot = *pwRoot;
 
-        DBGX(printf("Next nDL %d wIndex %zd pwr %p pLinks %p\n",
-            nDL, (size_t)wIndex,
-            (void *)pwr, (void *)pwr_pLinks(pwr)));
+        DBGX(printf("Next pLinks %p wIndex %d\n",
+            (void *)pwr_pLinks(pwr), (int)wIndex));
 
         DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
 
