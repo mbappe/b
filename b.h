@@ -331,14 +331,30 @@
 #define T_ONE
 #endif // defined(EMBED_KEYS)
 
+#if 1
 #define T_NULL    0
 #if defined(T_ONE)
 #undef T_ONE
 #define T_ONE     1
+#define T_LIST     (T_ONE + 1)
+#else // defined(T_ONE)
+#define T_LIST     (T_NULL + 1)
 #endif // defined(T_ONE)
-#define T_BITMAP  2
-#define T_LIST    3
-#define T_SW_BASE  (T_LIST + 1)
+#define T_BITMAP   (T_LIST + 1)
+#define T_SW_BASE  (T_BITMAP + 1)
+#else
+
+enum {
+    T_NULL,
+#if defined(T_ONE)
+#undef T_ONE
+    T_ONE,
+#endif // defined(T_ONE)
+    T_LIST,
+    T_BITMAP,
+    T_SW_BASE
+};
+#endif
 
 // Default is -UBPD_TABLE, i.e. -DNO_BPD_TABLE.
 #if defined(BPD_TABLE)
@@ -531,7 +547,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 // A value of zero means a pop cnt of one. 
 
 #define     wr_nPopCnt(_wr, _nBL) \
-    ((((_wr) >> 4) & MSK(nBL_to_nBitsPopCntSz(_nBL))) + 1)
+    ((((_wr) >> cnBitsMallocMask) & MSK(nBL_to_nBitsPopCntSz(_nBL))) + 1)
 
 #define set_wr_nPopCnt(_wr, _nBL, _nPopCnt) \
     ((_wr) &= ~(MSK(nBL_to_nBitsPopCntSz(_nBL)) << cnBitsMallocMask), \
