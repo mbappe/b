@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.251 2014/07/09 23:23:11 mike Exp mike $
+// @(#) $Id: bli.c,v 1.252 2014/07/12 19:53:04 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1476,7 +1476,8 @@ foundIt:
         assert(wRoot == 0);
 
   // Adjust wPopCnt in link to leaf for PP_IN_LINK.
-  // wPopCnt in switch and in link to switch are adjusted elsewhere.
+  // wPopCnt in link to switch is adjusted elsewhere, i.e. in the same place
+  // as wPopCnt in switch is adjusted for pp-in-switch.
   #if defined(PP_IN_LINK)
       #if defined(REMOVE)
         // Can we combine bCleanup context with nType in switch variable?
@@ -1530,7 +1531,7 @@ undo:
     {
   #if defined(REMOVE)
         if (bCleanup) { return KeyFound; } // nothing to clean up
-        printf("\n# Not bCleanup -- Remove failure!\n");
+        printf("\n# Not bCleanup -- Remove failure wRoot "OWx"!\n", wRoot);
   #endif // defined(REMOVE)
         // Undo the counting we did on the way in.
         nIncr *= -1;

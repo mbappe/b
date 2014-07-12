@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.294 2014/07/09 04:17:45 mike Exp mike $
+// @(#) $Id: b.c,v 1.295 2014/07/09 23:23:11 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -493,7 +493,7 @@ NewBitmap(void)
     return (Word_t *)w;
 }
 
-Word_t
+static Word_t
 OldBitmap(Word_t *pwr)
 {
     Word_t wWords = EXP(cnBitsAtBottom - cnLogBitsPerWord);
