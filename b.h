@@ -325,6 +325,7 @@
 
 #if defined(BPD_TABLE)
 // Yuck!  This assumes two half-size digits above the bottom.
+// Or the insertion of an extra digit somewhere else.
 #define cnDigitsPerWord \
     (DIV_UP(cnBitsPerWord - cnBitsAtBottom, cnBitsPerDigit) + 2)
 #else // defined(BPD_TABLE)

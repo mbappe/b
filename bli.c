@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.250 2014/07/09 04:17:54 mike Exp mike $
+// @(#) $Id: bli.c,v 1.251 2014/07/09 23:23:11 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1341,6 +1341,9 @@ t_bitmap:
   #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
         return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
+      #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
+        return wRoot ? Success : Failure;
+      #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 
       #if defined(EMBED_KEYS)
         //
