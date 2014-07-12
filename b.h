@@ -851,8 +851,6 @@ Status_t RemoveGuts(Word_t *pwRoot,
 Word_t FreeArrayGuts(Word_t *pwRoot,
                      Word_t wPrefix, unsigned nBL, int bDump);
 
-Word_t OldBitmap(Word_t *pwr);
-
 #if defined(DEBUG)
 extern int bHitDebugThreshold;
 #endif // defined(DEBUG)
