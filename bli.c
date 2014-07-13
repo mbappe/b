@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.252 2014/07/12 19:53:04 mike Exp mike $
+// @(#) $Id: bli.c,v 1.253 2014/07/12 23:29:00 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -43,7 +43,7 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 
 #if (cwListPopCntMax != 0)
 
-#if defined(COMPRESSED_LISTS) && ((cnBitsAtBottom + cnBitsPerDigit) <= 8)
+#if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
 
 // Return non-negative index, x, for key found at index x.
 // Return negative (index + 1) for key not found, and index is where
@@ -185,9 +185,9 @@ loop:
     return Failure;
 }
 
-#endif // defined(COMPRESSED_LISTS) && ...
+#endif // defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
 
-#if defined(COMPRESSED_LISTS) && ((cnBitsAtBottom + cnBitsPerDigit) <= 16)
+#if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 16)
 
 // Return non-negative index, x, for key found at index x.
 // Return negative (index + 1) for key not found, and index is where
@@ -197,6 +197,7 @@ loop:
 static Status_t
 SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
+    DBGL(printf("SearchList16\n"));
     (void)nBL;
     uint16_t sKey = wKey;
     uint16_t sKeyLoop;
@@ -293,8 +294,10 @@ loop:
       #endif // ! defined(END_CHECK_16)
   #else // defined(BACKWARD_SEARCH_16)
     uint16_t *psKeysEnd = &psKeys[nPopCnt - 1];
+DBGL(printf("psKeysEnd %p\n", (void *)psKeysEnd));
       #if defined(END_CHECK_16)
     if (*psKeysEnd < sKey) { return Failure; }
+DBGL(printf("got past end check\n"));
     for (;;)
       #else // defined(END_CHECK_16)
     do
@@ -329,10 +332,10 @@ loop:
     return Failure;
 }
 
-#endif // defined(COMPRESSED_LISTS) && ...
+#endif // defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 16)
 
 #if defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) \
-    && ((cnBitsAtBottom + cnBitsPerDigit) <= 32)
+    && (cnBitsAtBottom <= 32)
 
 // Return non-negative index, x, for key found at index x.
 // Return negative (index + 1) for key not found, and index is where
@@ -604,22 +607,24 @@ Word_t cnMagic[] = {
 static Status_t
 SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
+    DBGL(printf("SearchList\n"));
   #if defined(COMPRESSED_LISTS)
-      #if ((cnBitsAtBottom + cnBitsPerDigit) <= 8)
+      // Could be more strict if NO_LIST_AT_DL1.
+      #if (cnBitsAtBottom <= 8)
     if (nBL <= 8) {
         return SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt);
     } else
-      #endif // ((cnBitsAtBottom + cnBitsPerDigit) <= 8)
-      #if ((cnBitsAtBottom + cnBitsPerDigit) <= 16)
+      #endif // (cnBitsAtBottom <= 8)
+      #if (cnBitsAtBottom <= 16)
     if (nBL <= 16) {
         return SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt);
     } else
-      #endif // ((cnBitsAtBottom + cnBitsPerDigit) <= 16)
-      #if ((cnBitsAtBottom + cnBitsPerDigit) <= 32) && (cnBitsPerWord > 32)
+      #endif // (cnBitsAtBottom <= 16)
+      #if (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {
         return SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt);
     } else
-      #endif // ((cnBitsAtBottom + cnBitsPerDigit) <= 32) && ...
+      #endif // (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     {
         return SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt);

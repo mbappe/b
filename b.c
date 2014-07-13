@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.295 2014/07/09 23:23:11 mike Exp mike $
+// @(#) $Id: b.c,v 1.297 2014/07/13 00:24:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -471,7 +471,7 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType)
 
 #endif // (cwListPopCntMax != 0)
 
-#if (cnBitsAtBottom > cnLogBitsPerWord) || defined(BITMAP_AT_DL2)
+#if (cnBitsAtBottom > cnLogBitsPerWord)
 
 static Word_t *
 NewBitmap(Word_t *pwRoot, unsigned nBL)
@@ -497,7 +497,7 @@ NewBitmap(Word_t *pwRoot, unsigned nBL)
     return pwBitmap;
 }
 
-#endif // (cnBitsAtBottom > cnLogBitsPerWord) || defined(BITMAP_AT_DL2)
+#endif // (cnBitsAtBottom > cnLogBitsPerWord)
 
 static Word_t
 OldBitmap(Word_t *pwRoot, Word_t *pwr, unsigned nBL)
@@ -927,7 +927,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
         printf(" wr "OWx, wRoot);
     }
 
-    if ((nDL == 1) || (nType == T_BITMAP))
+#if (cnBitsAtBottom <= cnLogBitsPerWord)
+    if ((nDL <= 1) || (nType == T_BITMAP))
+#else // (cnBitsAtBottom <= cnLogBitsPerWord)
+    if (nType == T_BITMAP)
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
     {
 #if defined(PP_IN_LINK)
         if (bDump)
@@ -1489,10 +1493,10 @@ unsigned anListPopCntMax[] = {
 // InsertGuts
 // This function is called from the iterative Insert function once Insert has
 // determined that the key from an insert request is not present.
-// It is provided with a starting location for the insert.
+// It is provided with a starting pwRoot for the insert.
 // InsertGuts does whatever is necessary to insert the key into the array
 // and returns back to Insert.
-// This is where the main runtime policy decisions are made.
+// InsertGuts is where the main runtime policy decisions are made.
 // Some are made in RemoveGuts, but those are closely aligned with
 // the decisions made here.
 // Do we create a list as high as possible or as low as possible?
@@ -1508,7 +1512,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     DBGI(printf("InsertGuts pwRoot %p wKey "OWx" nDL %d wRoot "OWx"\n",
                (void *)pwRoot, wKey, nDL, wRoot));
 
-    assert(nDL >= 1); // for now; may use these values later
+    assert(nDL >= 1);
 
 #if defined(T_ONE)
 #if defined(COMPRESSED_LISTS)
@@ -1521,16 +1525,18 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #endif // defined(T_ONE)
 
     // Would be nice to validate sanity of ifdefs here.  Or somewhere.
-    assert(cnBitsAtBottom >= cnLogBitsPerWord);
+    // assert(cnBitsAtBottom >= cnLogBitsPerWord);
 #if defined(EMBED_KEYS) && ! defined(T_ONE)
     assert(0); // EMBED_KEYS requires T_ONE
 #endif // defined(EMBED_KEYS) && ! defined(T_ONE)
 
+#if (cnBitsAtBottom <= cnLogBitsPerWord) || defined(NO_LIST_AT_DL1)
     // Check to see if we're at the bottom before checking nType since
     // nType may be invalid if wRoot is an embedded bitmap.
     if (nDL == 1) {
         return InsertAtBottom(pwRoot, wKey, nDL, wRoot);
     }
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord) || defined(NO_LIST_AT_DL1)
 
     unsigned nType = wr_nType(wRoot); (void)nType; // silence gcc
 
@@ -1676,7 +1682,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         {
             Word_t *pwList;
 
-            // Allocate memory for a new list necessary.
+            // Allocate memory for a new list if necessary.
             // Init or update pop count if necessary.
             if ((pwr == NULL)
                 || (ListWordsExternal(wPopCnt + 1, nBL)
@@ -1811,9 +1817,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if    (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) \
     || (cnListPopCntMax16 == 0)
             if (wPopCnt == 0) {
-                // can't dereference list if there isn't one
-                // go directly to bitmap
-                nDL = nBL_to_nDL(cnBitsAtBottom) + 1;
+                // Can't dereference list if there isn't one.
+                // Go directly to bitmap.  Going to bitmap is a two-step
+                // process.  First create the switch above the bitmap.
+                // Can't skip directly to bitmap since bitmap has no
+                // prefix.  Then create the bitmap below the switch.
+                if (nDLOld >= 2) {
+                    nDL = 2; // first step
+                }
                 goto newSwitch;
             }
 #endif // (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) || ...
@@ -1909,9 +1920,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                                 + 1);
                 }
 #else // (cwListPopCntMax != 0)
-                // can't dereference list if there isn't one
-                // go directly to bitmap
-                nDL = 2;
+                // Can't dereference list if there isn't one.
+                // Go directly to bitmap.  Going to bitmap is a two-step
+                // process.  First create the switch above the bitmap.
+                // Can't skip directly to bitmap since bitmap has no
+                // prefix.  Then create the bitmap below the switch.
+                if (nDLOld >= 2) {
+                    nDL = 2;
+                }
 #endif // (cwListPopCntMax != 0)
             }
 #if (cwListPopCntMax != 0)
@@ -1926,7 +1942,9 @@ newSwitch:
             if (nDL < 2)
             {
                 DBGI(printf("InsertGuts nDL %d nBL %d", nDL, nBL));
-                nDL = 2;
+                if (nDLOld >= 2) {
+                    nDL = 2;
+                }
             }
 
 #if defined(TYPE_IS_RELATIVE)
@@ -1938,10 +1956,10 @@ newSwitch:
             assert(nDL > 1);
 #endif // defined(SKIP_LINKS)
 
-#if defined(BITMAP_AT_DL2)
+#if defined(BM_AT_DL2)
 #if defined(SKIP_LINKS)
             // no skip link to bitmap
-            // and no puny bitmap for BITMAP_AT_DL2
+            // and no puny bitmap for BM_AT_DL2
             if (nDL == 2) {
                 if (nDLOld > 2) { nDL = 3; }
             }
@@ -1955,7 +1973,20 @@ newSwitch:
 #endif // defined(PP_IN_LINK)
             }
             else
-#endif // defined(BITMAP_AT_DL2)
+#else // defined(BM_AT_DL2)
+// This ifdef should use max len of list at nDL == 1, e.g. cnListPopCntMax16.
+#if (cwListPopCntMax != 0)
+#if (cnBitsAtBottom > cnLogBitsPerWord)
+            if (nDL == 1) {
+                NewBitmap(pwRoot, cnBitsAtBottom);
+#if defined(PP_IN_LINK)
+                set_PWR_wPopCnt(pwRoot,
+                                /* pwr */ NULL, nDL, /* wPopCnt */ 0);
+#endif // defined(PP_IN_LINK)
+            } else
+#endif // (cnBitsAtBottom > cnLogBitsPerWord)
+#endif // (cwListPopCntMax != 0)
+#endif // defined(BM_AT_DL2)
             {
                 // NewSwitch overwrites *pwRoot which is a problem for
                 // T_ONE with embedded keys.
@@ -2416,7 +2447,8 @@ InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         assert( ! BitIsSet(pwr, wKey & (EXP(cnBitsAtBottom) - 1)) );
 
         DBGI(printf("SetBit(pwr "OWx" wKey "OWx") pwRoot %p\n",
-                    pwr, wKey & (EXP(cnBitsAtBottom) - 1), (void *)pwRoot));
+                    (Word_t)pwr,
+                    wKey & (EXP(cnBitsAtBottom) - 1), (void *)pwRoot));
 
         SetBit(pwr, wKey & (EXP(cnBitsAtBottom) - 1));
 
@@ -2445,7 +2477,7 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         assert( ! BitIsSet(pwr, wKey & (EXP(nBL) - 1)) );
 
         DBGI(printf("SetBit(pwr "OWx" wKey "OWx") pwRoot %p\n",
-                    pwr, wKey & (EXP(nBL) - 1), (void *)pwRoot));
+                    (Word_t)pwr, wKey & (EXP(nBL) - 1), (void *)pwRoot));
 
         SetBit(pwr, wKey & (EXP(nBL) - 1));
 
@@ -2474,10 +2506,19 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
     DBGR(printf("RemoveGuts\n"));
 
+// Could we be more specific in this ifdef, e.g. cnListPopCntMax16?
 #if (cwListPopCntMax != 0)
+#if (cnBitsAtBottom <= cnLogBitsPerWord)
     if ((nDL <= 1) || (nType == T_BITMAP))
+#else // (cnBitsAtBottom <= cnLogBitsPerWord)
+    if (nType == T_BITMAP)
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 #else // (cwListPopCntMax != 0)
+#if (cnBitsAtBottom <= cnLogBitsPerWord)
     assert((nDL <= 1) || (nType == T_BITMAP));
+#else // (cnBitsAtBottom <= cnLogBitsPerWord)
+    assert(nType == T_BITMAP);
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 #endif // (cwListPopCntMax != 0)
     {
         return RemoveBitmap(pwRoot, wKey, nDL, wRoot);
