@@ -471,42 +471,48 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType)
 
 #endif // (cwListPopCntMax != 0)
 
-#if (cnBitsAtBottom > cnLogBitsPerWord)
+#if (cnBitsAtBottom > cnLogBitsPerWord) || defined(BITMAP_AT_DL2)
 
 static Word_t *
-NewBitmap(void)
+NewBitmap(Word_t *pwRoot, unsigned nBL)
 {
-    Word_t wWords = EXP(cnBitsAtBottom - cnLogBitsPerWord);
+    Word_t wWords = EXP(nBL - cnLogBitsPerWord);
 
-    Word_t w = MyMalloc(wWords);
+    Word_t *pwBitmap = (Word_t *)MyMalloc(wWords);
 
     METRICS(j__AllocWordsJLB1 += wWords); // JUDYA
     METRICS(j__AllocWordsJL12 += wWords); // JUDYB -- overloaded
 
-    DBGM(printf("NewBitmap nBitsAtBottom %u nBits "OWx
-      " nBytes "OWx" wWords "OWx" w "OWx"\n",
-        cnBitsAtBottom, EXP(cnBitsAtBottom),
-        EXP(cnBitsAtBottom - cnLogBitsPerByte), wWords, w));
+    DBGM(printf("NewBitmap nBL %u nBits "OWx
+      " nBytes "OWx" wWords "OWx" pwBitmap "OWx"\n",
+        nBL, EXP(nBL), EXP(nBL - cnLogBitsPerByte), wWords,
+        (Word_t)pwBitmap));
 
-    memset((void *)w, 0, wWords * sizeof(Word_t));
+    memset((void *)pwBitmap, 0, wWords * sizeof(Word_t));
 
-    return (Word_t *)w;
+    Word_t wRoot; set_wr(wRoot, pwBitmap, T_BITMAP);
+
+    *pwRoot = wRoot;
+
+    return pwBitmap;
 }
 
+#endif // (cnBitsAtBottom > cnLogBitsPerWord) || defined(BITMAP_AT_DL2)
+
 static Word_t
-OldBitmap(Word_t *pwr)
+OldBitmap(Word_t *pwRoot, Word_t *pwr, unsigned nBL)
 {
-    Word_t wWords = EXP(cnBitsAtBottom - cnLogBitsPerWord);
+    Word_t wWords = EXP(nBL - cnLogBitsPerWord);
 
     MyFree(pwr, wWords);
 
     METRICS(j__AllocWordsJLB1 -= wWords); // JUDYA
     METRICS(j__AllocWordsJL12 -= wWords); // JUDYB -- overloaded
 
+    *pwRoot = 0; // Do we need to clear the rest of the link, e.g. PP_IN_LINK?
+
     return wWords * sizeof(Word_t);
 }
-
-#endif // (cnBitsAtBottom > cnLogBitsPerWord)
 
 // Allocate a new switch.
 // Zero its links.
@@ -887,6 +893,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     Word_t wBytes = 0;
 
     assert(nBL >= cnBitsAtBottom);
+    assert(nDL >= 1);
 
     if ( ! bDump )
     {
@@ -920,7 +927,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
         printf(" wr "OWx, wRoot);
     }
 
-    if (nBL <= cnBitsAtBottom)
+    if ((nDL == 1) || (nType == T_BITMAP))
     {
 #if defined(PP_IN_LINK)
         if (bDump)
@@ -937,16 +944,13 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
         // If the bitmap is not embedded, then we have more work to do.
 #if (cnBitsAtBottom > cnLogBitsPerWord)
 
-        if (!bDump)
+        if ( ! bDump )
         {
-            return OldBitmap(pwr);
+            return OldBitmap(pwRoot, pwr, nBL);
         }
 
-        printf(" nWords %2"_fw"d", EXP(cnBitsAtBottom) / cnBitsPerWord);
-        for (Word_t ww = 0;
-            (ww < EXP(cnBitsAtBottom - cnLogBitsPerWord));
-             ww++)
-        {
+        printf(" nWords %4"_fw"d", EXP(nBL - cnLogBitsPerWord));
+        for (Word_t ww = 0; (ww < EXP(nBL - cnLogBitsPerWord)); ww++) {
             if ((ww % 8) == 0) {
                 printf("\n");
             }
@@ -1453,6 +1457,9 @@ CopyWithInsertChar(unsigned char *pTgt, unsigned char *pSrc,
 Status_t
 InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
 
+Status_t
+InsertAtBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
+
 #if (cwListPopCntMax != 0)
 
 #if defined(EMBED_KEYS)
@@ -1526,6 +1533,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     }
 
     unsigned nType = wr_nType(wRoot); (void)nType; // silence gcc
+
+    if (nType == T_BITMAP) {
+        return InsertAtBitmap(pwRoot, wKey, nDL, wRoot);
+    }
 
 #if (cwListPopCntMax != 0)
 #if defined(EMBED_KEYS)
@@ -1900,7 +1911,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #else // (cwListPopCntMax != 0)
                 // can't dereference list if there isn't one
                 // go directly to bitmap
-                nDL = nBL_to_nDL(cnBitsAtBottom) + 1;
+                nDL = 2;
 #endif // (cwListPopCntMax != 0)
             }
 #if (cwListPopCntMax != 0)
@@ -1910,36 +1921,47 @@ newSwitch:
 #endif // (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) || ...
 #endif // (cwListPopCntMax != 0)
 
-            // We don't create a switch below nBL_to_nDL(cnBitsAtBottom) + 1.
-            // Why?  Because we've defined nBL_to_nDL(cnBitsAtBottom) as
-            // automatic bitmap (no switch) and we may need a prefix at
-            // nBL_to_nDL(cnBitsAtBottom) + 1 since we don't have one in the
-            // bitmap.
-            // Creating a switch just above the bottom can be a problem, e.g.
-            // (bitsPerWord=64, bitsPerDigit=32) will try to create a very
-            // large switch.  We'd be much better off with a skip link to
-            // a bitmap or a bitmap switch.
-            if (nDL <= nBL_to_nDL(cnBitsAtBottom))
+            // We don't create a switch below nDL == 2.
+            // Nor do we support a skip link directly to a bitmap -- yet.
+            if (nDL < 2)
             {
-                DBGI(printf("InsertGuts nDL"
-                            " <= nBL_to_nDL(cnBitsAtBottom)\n"));
-
-                nDL = nBL_to_nDL(cnBitsAtBottom) + 1;
+                DBGI(printf("InsertGuts nDL %d nBL %d", nDL, nBL));
+                nDL = 2;
             }
+
 #if defined(TYPE_IS_RELATIVE)
             if (nDS_to_tp(nDLOld - nDL) > cnMallocMask) {
                 nDL = nDLOld - tp_to_nDS(cnMallocMask);
             }
 #endif // defined(TYPE_IS_RELATIVE)
 #else // defined(SKIP_LINKS)
-            assert(nDL > nBL_to_nDL(cnBitsAtBottom));
+            assert(nDL > 1);
 #endif // defined(SKIP_LINKS)
 
-            // NewSwitch overwrites *pwRoot which is a problem for
-            // T_ONE with embedded keys.
+#if defined(BITMAP_AT_DL2)
+#if defined(SKIP_LINKS)
+            // no skip link to bitmap
+            // and no puny bitmap for BITMAP_AT_DL2
+            if (nDL == 2) {
+                if (nDLOld > 2) { nDL = 3; }
+            }
+#endif // defined(SKIP_LINKS)
+            if (nDL == 2)
+            {
+                assert(nDLOld == 2);
+                NewBitmap(pwRoot, nDL_to_nBL(nDL));
+#if defined(PP_IN_LINK)
+                set_PWR_wPopCnt(pwRoot, NULL, nDL, 0);
+#endif // defined(PP_IN_LINK)
+            }
+            else
+#endif // defined(BITMAP_AT_DL2)
+            {
+                // NewSwitch overwrites *pwRoot which is a problem for
+                // T_ONE with embedded keys.
 
-            NewSwitch(pwRoot, wKey, nDL, nDLOld,
-                      /* wPopCnt */ 0);
+                NewSwitch(pwRoot, wKey, nDL, nDLOld, /* wPopCnt */ 0);
+            }
 
 #if defined(COMPRESSED_LISTS)
 #if defined(SKIP_LINKS)
@@ -2388,28 +2410,49 @@ InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
         if (pwr == NULL)
         {
-            pwr = NewBitmap();
-
-            // If we set the type field to 0 in the *pwRoot to the bitmap,
-            // then we wouldn't need to extract pwr before derefencing it
-            // during lookup.
-            // We could use nDL == 1 to indicate that T_NULL does
-            // not imply pwr == NULL.
-            set_wr(wRoot, pwr, T_BITMAP);
-
-            *pwRoot = wRoot;
+            pwr = NewBitmap(pwRoot, cnBitsAtBottom);
         }
 
         assert( ! BitIsSet(pwr, wKey & (EXP(cnBitsAtBottom) - 1)) );
 
-        DBGI(printf("SetBit(wRoot "OWx" wKey "OWx") pwRoot %p\n",
-                    wRoot, wKey & (EXP(cnBitsAtBottom) - 1), (void *)pwRoot));
+        DBGI(printf("SetBit(pwr "OWx" wKey "OWx") pwRoot %p\n",
+                    pwr, wKey & (EXP(cnBitsAtBottom) - 1), (void *)pwRoot));
 
         SetBit(pwr, wKey & (EXP(cnBitsAtBottom) - 1));
 
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 
 #if defined(PP_IN_LINK)
+
+        // What about no_unnecessary_prefix?
+        set_PWR_wPrefix(pwRoot, NULL, nDL, wKey);
+
+#endif // defined(PP_IN_LINK)
+
+        return Success;
+}
+
+Status_t
+InsertAtBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
+{
+        (void)pwRoot;
+        unsigned nBL = nDL_to_nBL(nDL);
+
+        Word_t *pwr = wr_pwr(wRoot);
+
+        assert(pwr != NULL);
+
+        assert( ! BitIsSet(pwr, wKey & (EXP(nBL) - 1)) );
+
+        DBGI(printf("SetBit(pwr "OWx" wKey "OWx") pwRoot %p\n",
+                    pwr, wKey & (EXP(nBL) - 1), (void *)pwRoot));
+
+        SetBit(pwr, wKey & (EXP(nBL) - 1));
+
+#if defined(PP_IN_LINK)
+
+// Shouldn't we do this when we create the switch with the link that
+// points to this bitmap rather than on every insert into the bitmap?
 
         // What about no_unnecessary_prefix?
         set_PWR_wPrefix(pwRoot, NULL, nDL, wKey);
@@ -2432,9 +2475,9 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     DBGR(printf("RemoveGuts\n"));
 
 #if (cwListPopCntMax != 0)
-    if (nDL <= 1)
+    if ((nDL <= 1) || (nType == T_BITMAP))
 #else // (cwListPopCntMax != 0)
-    assert(nDL <= 1);
+    assert((nDL <= 1) || (nType == T_BITMAP));
 #endif // (cwListPopCntMax != 0)
     {
         return RemoveBitmap(pwRoot, wKey, nDL, wRoot);
@@ -2568,60 +2611,74 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     (void)pwRoot; (void)wKey; (void)nDL; (void)wRoot;
 }
 
+#if defined(PP_IN_LINK)
+static void
+HexDump(char *str, Word_t *pw, unsigned nWords)
+{
+    printf("\n%s (pw %p nWords %d):\n", str, pw, nWords);
+    for (unsigned ii = 0; ii < nWords; ii++) {
+        printf(OWx"\n", pw[ii]);
+    }
+}
+#endif // defined(PP_IN_LINK)
+
 // Clear the bit for wKey in the bitmap.
 // And free the bitmap if it is empty and not embedded.
 Status_t
 RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 {
-    (void)nDL;
-
 #if (cnBitsAtBottom <= cnLogBitsPerWord)
-
-    ClrBitInWord(wRoot, wKey & MSK(cnBitsAtBottom));
-
-    // What if link has more than just ln_wRoot due
-    // to BM_IN_LINK and/or PP_IN_LINK?
-    // What if population just went to 0?
-    // Should we clear the rest of the link?
-    // Or can we rely on bCleanup phase in Remove to do it if necessary?
-
-    *pwRoot = wRoot;
-
-#else // (cnBitsAtBottom <= cnLogBitsPerWord)
-
-    Word_t *pwr = wr_pwr(wRoot);
-
-    ClrBit(pwr, wKey & MSK(cnBitsAtBottom));
-
-  #if defined(PP_IN_LINK)
-
-    if (PWR_wPopCnt(pwRoot, NULL, nDL) != 0) {
-        goto skipOldBitmap; // bitmap is not empty
-    }
-
-  #else // defined(PP_IN_LINK)
-
-    // Free the bitmap if it is empty.
-    for (Word_t ww = 0; ww < EXP(cnBitsAtBottom - cnLogBitsPerWord); ww++) {
-        if (__builtin_popcountll(pwr[ww])) {
-            goto skipOldBitmap; // bitmap is not empty
-        }
-    }
-
-  #endif // defined(PP_IN_LINK)
-
-    OldBitmap(pwr);
-
-    *pwRoot = 0; // Do we need to clear the rest of the link, e.g. PP_IN_LINK?
-
-skipOldBitmap:
-
-#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
-
-    if (*pwRoot == 0)
+    if (nDL == 1)
     {
-        // We return to Remove which will clean up ancestors.
-        DBGR(printf("RemoveGuts *pwRoot is now 0\n"));
+        ClrBitInWord(wRoot, wKey & MSK(cnBitsAtBottom));
+
+        // What if link has more than just ln_wRoot due
+        // to BM_IN_LINK and/or PP_IN_LINK?
+        // What if population just went to 0?
+        // Should we clear the rest of the link?
+        // Or can we rely on bCleanup phase in Remove to do it if necessary?
+
+        *pwRoot = wRoot;
+    }
+    else
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
+    {
+        unsigned nBL = nDL_to_nBL(nDL);
+        Word_t *pwr = wr_pwr(wRoot);
+
+        ClrBit(pwr, wKey & MSK(nBL));
+
+#if defined(PP_IN_LINK)
+
+#if defined(DEBUG)
+        Word_t wPopCnt = 0;
+        for (Word_t ww = 0; ww < EXP(nBL - cnLogBitsPerWord); ww++) {
+            wPopCnt += __builtin_popcountll(pwr[ww]);
+        }
+        if (wPopCnt != PWR_wPopCnt(pwRoot, NULL, nDL)) {
+            printf("\nwPopCnt "OWx" PWR_wPopCnt "OWx"\n",
+                   wPopCnt, PWR_wPopCnt(pwRoot, NULL, nDL));
+            HexDump("Bitmap", pwr, EXP(nBL - cnLogBitsPerWord));
+        }
+        assert(wPopCnt == PWR_wPopCnt(pwRoot, NULL, nDL));
+#endif // defined(DEBUG)
+
+        if (PWR_wPopCnt(pwRoot, NULL, nDL) != 0) {
+            return Success; // bitmap is not empty
+        }
+
+#else // defined(PP_IN_LINK)
+
+        // Free the bitmap if it is empty.
+        for (Word_t ww = 0; ww < EXP(nBL - cnLogBitsPerWord); ww++) {
+            if (__builtin_popcountll(pwr[ww])) {
+                return Success; // bitmap is not empty
+            }
+        }
+
+#endif // defined(PP_IN_LINK)
+
+        OldBitmap(pwRoot, pwr, nBL);
     }
 
     return Success;
