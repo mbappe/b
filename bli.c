@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.264 2014/07/14 20:43:00 mike Exp mike $
+// @(#) $Id: bli.c,v 1.265 2014/07/14 20:56:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1520,17 +1520,17 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
 #if defined(DEBUG)
 
-static int bInitializedForDebug;
+static int bInitialized;
 
 static void
-InitializeForDebug(void)
+Initialize(void)
 {
     // cnBitsAtBottom less than or equal to cnLogBitsPerWord makes
     // no sense anymore.  It's equivalent to cnBitsAtBottom equals
     // cnLogBitsPerWord plus cnBitsPerDigit -- only worse.
     assert(cnBitsAtBottom > cnLogBitsPerWord);
 
-    bInitializedForDebug = 1;
+    bInitialized= 1;
 }
 
 #endif // defined(DEBUG)
@@ -1551,8 +1551,8 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     pwRootLast = pwRoot;
 
-    if ((*pwRoot == (Word_t)0) && ! bInitializedForDebug ) {
-        InitializeForDebug();
+    if ((*pwRoot == (Word_t)0) && ! bInitialized ) {
+        Initialize();
     }
 
   #endif // defined(DEBUG)

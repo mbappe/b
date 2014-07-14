@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.297 2014/07/13 00:24:13 mike Exp mike $
+// @(#) $Id: b.c,v 1.298 2014/07/13 13:28:39 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1479,7 +1479,7 @@ DeflateExternalList(Word_t *pwRoot,
 
 // Max list length as a function of nBL.
 // Array is indexed by LOG(nBL-1).
-unsigned anListPopCntMax[] = {
+const unsigned anListPopCntMax[] = {
                     0, //  1 < nBL <=  2
                     0, //  2 < nBL <=  4
     cnListPopCntMax8 , //  4 < nBL <=  8
@@ -1678,7 +1678,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
         unsigned nDLOld = nDL;
 #if (cwListPopCntMax != 0)
-        if (wPopCnt < anListPopCntMax[LOG(nBL - 1)])
+        if (((nDL == 1) && (wPopCnt < cnListPopCntMaxDl1))
+            || ((nDL != 1) && (wPopCnt < anListPopCntMax[LOG(nBL - 1)])))
         {
             Word_t *pwList;
 
