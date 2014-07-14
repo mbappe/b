@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.258 2014/07/14 17:35:46 mike Exp mike $
+// @(#) $Id: bli.c,v 1.256 2014/07/14 15:58:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -407,10 +407,15 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 // default: no-split, no-end-check, succeed-only, forward
 // split-loop-w-threshold=20, end-check, continue-first
 //
-static Status_t
+
+// Find wKey in the list.  If it exists, then return its index in the list.
+// If it does not exist, then return the one's complement of the index where
+// it belongs.
+static int
 SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
     (void)nBL;
+    Word_t *pwKeysOrig = pwKeys;
   // SPLIT_SEARCH narrows the scope of the linear search that follows, if any.
   #if defined(SPLIT_SEARCH)
     unsigned nSplit;
@@ -458,7 +463,10 @@ split: // should go backwards if key is in first part
             nPopCnt -= nSplit;
         } else {
             nPopCnt = nSplit;
-            if (nPopCnt == 0) { return Failure; }
+            if (nPopCnt == 0) {
+                assert(~(pwKeys - pwKeysOrig) < 0);
+                return ~(pwKeys - pwKeysOrig);
+            }
         }
     }
   #endif // defined(SPLIT_SEARCH)
@@ -471,10 +479,16 @@ split: // should go backwards if key is in first part
       // Should we add a threshold for END_CHECK?
       #if defined(END_CHECK)
           #if defined(BACKWARD_SEARCH)
-    if (*pwKeys > wKey) { return Failure; }
+    if (*pwKeys > wKey) {
+        assert(~(pwKeys - pwKeysOrig) < 0);
+        return ~(pwKeys - pwKeysOrig);
+    }
     while ((wKeyLoop = *pwKeysEnd--) > wKey) { }
           #else // defined(BACKWARD_SEARCH)
-    if (*pwKeysEnd < wKey) { return Failure; }
+    if (*pwKeysEnd < wKey) {
+        assert(~(pwKeysEnd + 1 - pwKeysOrig) < 0);
+        return ~(pwKeysEnd + 1 - pwKeysOrig);
+    }
     while ((wKeyLoop = *pwKeys++) < wKey) { }
           #endif // defined(BACKWARD_SEARCH)
       #else // defined(END_CHECK)
@@ -506,7 +520,17 @@ split: // should go backwards if key is in first part
       #endif // defined(FAIL_FIRST)
   #endif // ( ! defined(SPLIT_SEARCH_LOOP) || ... ) && ! defined(END_CHECK)
 
-        if (wKeyLoop == wKey) { return Success; }
+#if defined(BACKWARD_SEARCH)
+        if (wKeyLoop == wKey) {
+            assert(pwKeysEnd - pwKeysOrig >= 0);
+            return pwKeysEnd - pwKeysOrig;
+        }
+#else // defined(BACKWARD_SEARCH)
+        if (wKeyLoop == wKey) {
+            assert(pwKeys - pwKeysOrig >= 0);
+            return pwKeys - pwKeysOrig;
+        }
+#endif // defined(BACKWARD_SEARCH)
 
   #if ( ! defined(SPLIT_SEARCH_LOOP) || (cnSplitSearchThresholdWord > 2) ) \
           && ! defined(END_CHECK)
@@ -531,7 +555,13 @@ split: // should go backwards if key is in first part
       #endif // defined(BACKWARD_SEARCH)
   #endif // ( ! defined(SPLIT_SEARCH_LOOP) || ... ) && ! defined(END_CHECK)
 
-    return Failure;
+#if defined(BACKWARD_SEARCH)
+    assert(~(pwKeysEnd + 1 - pwKeysOrig) < 0);
+    return ~(pwKeysEnd + 1 - pwKeysOrig);
+#else // defined(BACKWARD_SEARCH)
+    assert(~(pwKeys - pwKeysOrig) < 0);
+    return ~(pwKeys - pwKeysOrig);
+#endif // defined(BACKWARD_SEARCH)
 }
 
 #if 0
@@ -627,7 +657,8 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
       #endif // (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     {
-        return SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt);
+        return (SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt) >= 0)
+                   ? Success : Failure;
     }
 }
 
@@ -1538,12 +1569,13 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
         // ls_wPopCount is valid only at the top for PP_IN_LINK
         // the first word in the list is used for pop count at the top
-        return SearchListWord(ls_pwKeys(pwr)
+        return (SearchListWord(ls_pwKeys(pwr)
           #if defined(PP_IN_LINK)
                                   + (cnDummiesInList == 0)
           #endif // defined(PP_IN_LINK)
                                   ,
-                          wKey, cnBitsPerWord, ls_wPopCnt(pwr));
+                          wKey, cnBitsPerWord, ls_wPopCnt(pwr)) >= 0)
+                   ? Success : Failure;
     }
       #endif // defined(PP_IN_LINK) || defined(SEARCH_FROM_J1T)
   #endif // (cwListPopCntMax != 0)
