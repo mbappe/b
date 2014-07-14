@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.262 2014/07/14 17:55:33 mike Exp mike $
+// @(#) $Id: bli.c,v 1.264 2014/07/14 20:43:00 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -45,89 +45,27 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
 
-// Return non-negative index, x, for key found at index x.
-// Return negative (index + 1) for key not found, and index is where
-// key should be.
-// Lookup doesn't need to know where key should be.
+// Find wKey (the undecoded bits) in the list.
+// If it exists, then return its index in the list.
+// If it does not exist, then return the one's complement of the index where
+// it belongs.
+// Lookup doesn't need to know where key should be if it is not in the list.
 // Only Insert and Remove benefit from that information.
-static Status_t
+// And even Insert and Remove don't need to know where the key is if it is
+// in the list (until we start thinking about JudyL).
+static int
 SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
+    uint8_t *pcKeysOrig = pcKeys;
     (void)nBL;
     uint8_t cKey = wKey;
     uint8_t cKeyLoop;
-#if defined(OLD_SEARCH_8)
-      #if defined(SORT_LISTS)
-        #if defined(SIMPLE_SEARCH_8) // two tests per iteration
-    cKeyLoop = *pcKeys;
-    if (nPopCnt != 1)
-    {
-        uint8_t *psLastKey = &pcKeys[nPopCnt-1];
-        while (cKeyLoop < cKey) {
-            cKeyLoop = *++pcKeys;
-            if (pcKeys == psLastKey) {
-                break;
-            }
-        }
-    }
-        #else // defined(SIMPLE_SEARCH_8)
-          #if defined(SPLIT_SEARCH_8) \
-                  && (cnSplitSearchThresholdShort > 1)
-              #if defined(SPLIT_SEARCH_LOOP_8)
-    while
-              #else // defined(SPLIT_SEARCH_LOOP_8)
-    if
-              #endif // defined(SPLIT_SEARCH_LOOP_8)
-       (nPopCnt >= cnSplitSearchThresholdShort)
-    {
-// To do: Try to minimize the number of cache lines we hit.
-// If ! PP_IN_LINK then we already hit the first one to get the pop count.
-// Let's try aligning these lists.
-        // pick a starting point
-              #if ! defined(RATIO_SPLIT_8) \
-                  || defined(SPLIT_SEARCH_LOOP_8)
-        unsigned nSplit = nPopCnt / 2;
-              #else // ! defined(RATIO_SPLIT_8) || ...
-        unsigned nSplit
-            = wKey % EXP(nBL) * nPopCnt / EXP(nBL);
-              #endif // ! defined(RATIO_SPLIT_8) || ...
-        if (pcKeys[nSplit] <= cKey) {
-            pcKeys = &pcKeys[nSplit];
-            nPopCnt -= nSplit;
-// To do: Shouldn't we go backwards if we exit the loop after this step?
-// It might be very important.
-// What about cache line alignment?
-        } else {
-            nPopCnt = nSplit;
-            goto loop;
-        }
-    }
-          #endif // defined(SPLIT_SEARCH_8) && ...
-    if ((cKeyLoop = pcKeys[nPopCnt - 1]) > cKey)
-    {
-          #if defined(SPLIT_SEARCH_8) \
-                  && (cnSplitSearchThresholdShort > 1)
-loop:
-          #endif // defined(SPLIT_SEARCH_8) && ...
-        while ((cKeyLoop = *pcKeys++) < cKey) { }
-    }
-        #endif // defined(SIMPLE_SEARCH_8)
-      #else // defined(SORT_LISTS)
-    uint8_t *pcKeysEnd = &pcKeys[nPopCnt];
-    while (cKeyLoop = *pcKeys, pcKeys++ < pcKeysEnd)
-      #endif // defined(SORT_LISTS)
-    {
-        if (cKeyLoop == cKey)
-        {
-            return Success;
-        }
-    }
-#else // defined(OLD_SEARCH_8)
+
   #if defined(BACKWARD_SEARCH_8)
     uint8_t *pcKeysEnd = pcKeys;
     uint8_t *pcKeys = &pcKeysEnd[nPopCnt - 1];
       #if defined(END_CHECK_8)
-    if (*pcKeysEnd > cKey) { return Failure; }
+    if (*pcKeysEnd > cKey) { return ~(pcKeysEnd - pcKeysOrig); }
     for (;;)
       #else // defined(END_CHECK_8)
     do
@@ -139,7 +77,7 @@ loop:
       #elif defined(FAIL_FIRST)
         if (cKeyLoop < cKey) { break; }
       #endif
-        if (cKeyLoop == cKey) { return Success; }
+        if (cKeyLoop == cKey) { return pcKeys + 1 - pcKeysOrig; }
       #if defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
         if (cKeyLoop < cKey) { break; }
       #endif // defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
@@ -147,10 +85,11 @@ loop:
       #if ! defined(END_CHECK_8)
     while (pcKeys >= pcKeysEnd);
       #endif // ! defined(END_CHECK_8)
+    return ~(pcKeys + 1 - pcKeysOrig);
   #else // defined(BACKWARD_SEARCH_8)
     uint8_t *pcKeysEnd = &pcKeys[nPopCnt - 1];
       #if defined(END_CHECK_8)
-    if (*pcKeysEnd < cKey) { return Failure; }
+    if (*pcKeysEnd < cKey) { return ~(pcKeysEnd + 1 - pcKeysOrig); }
     for (;;)
       #else // defined(END_CHECK_8)
     do
@@ -162,7 +101,7 @@ loop:
       #elif defined(FAIL_FIRST)
         if (cKeyLoop > cKey) { break; }
       #endif
-        if (cKeyLoop == cKey) { return Success; }
+        if (cKeyLoop == cKey) { return pcKeys - 1 - pcKeysOrig; }
       #if defined(SUCCEED_FIRST)
         if (cKeyLoop > cKey)
       #endif // defined(SUCCEED_FIRST)
@@ -179,23 +118,22 @@ loop:
       #if ! defined(END_CHECK_8)
     while (pcKeys <= pcKeysEnd);
       #endif // ! defined(END_CHECK_8)
+    return ~(pcKeys - pcKeysOrig);
   #endif // defined(BACKWARD_SEARCH_8)
-#endif // defined(OLD_SEARCH_8)
-
-    return Failure;
 }
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
 
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 16)
 
-// Find wKey in the list.  If it exists, then return its index in the list.
+// Find wKey (the undecoded bits) in the list.
+// If it exists, then return its index in the list.
 // If it does not exist, then return the one's complement of the index where
 // it belongs.
-// Lookup doesn't need to know where key should be.
+// Lookup doesn't need to know where key should be if it is not in the list.
 // Only Insert and Remove benefit from that information.
-// And Insert and Remove don't even need to know where it is (until we start
-// thinking about JudyL).
+// And even Insert and Remove don't need to know where the key is if it is
+// in the list (until we start thinking about JudyL).
 static int
 SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
@@ -228,6 +166,7 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
       #if ! defined(END_CHECK_16)
     while (psKeys >= psKeysEnd);
       #endif // ! defined(END_CHECK_16)
+    return ~(psKeys + 1 - psKeysOrig);
   #else // defined(BACKWARD_SEARCH_16)
     uint16_t *psKeysEnd = &psKeys[nPopCnt - 1];
 DBGL(printf("psKeysEnd %p\n", (void *)psKeysEnd));
@@ -262,11 +201,6 @@ DBGL(printf("got past end check\n"));
       #if ! defined(END_CHECK_16)
     while (psKeys <= psKeysEnd);
       #endif // ! defined(END_CHECK_16)
-  #endif // defined(BACKWARD_SEARCH_16)
-
-  #if defined(BACKWARD_SEARCH_16)
-    return ~(psKeys + 1 - psKeysOrig);
-  #else // defined(BACKWARD_SEARCH_16)
     return ~(psKeys - psKeysOrig);
   #endif // defined(BACKWARD_SEARCH_16)
 }
@@ -276,13 +210,14 @@ DBGL(printf("got past end check\n"));
 #if defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) \
     && (cnBitsAtBottom <= 32)
 
-// Find wKey in the list.  If it exists, then return its index in the list.
+// Find wKey (the undecoded bits) in the list.
+// If it exists, then return its index in the list.
 // If it does not exist, then return the one's complement of the index where
 // it belongs.
-// Lookup doesn't need to know where key should be.
+// Lookup doesn't need to know where key should be if it is not in the list.
 // Only Insert and Remove benefit from that information.
-// And Insert and Remove don't even need to know where it is (until we start
-// thinking about JudyL).
+// And even Insert and Remove don't need to know where the key is if it is
+// in the list (until we start thinking about JudyL).
 static int
 SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
@@ -352,11 +287,14 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 // split-loop-w-threshold=20, end-check, continue-first
 //
 
-// Find wKey in the list.  If it exists, then return its index in the list.
+// Find wKey (the undecoded bits) in the list.
+// If it exists, then return its index in the list.
 // If it does not exist, then return the one's complement of the index where
 // it belongs.
-// Lookup doesn't need to know where key should be.
+// Lookup doesn't need to know where key should be if it is not in the list.
 // Only Insert and Remove benefit from that information.
+// And even Insert and Remove don't need to know where the key is if it is
+// in the list (until we start thinking about JudyL).
 static int
 SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
@@ -502,10 +440,8 @@ split: // should go backwards if key is in first part
   #endif // ( ! defined(SPLIT_SEARCH_LOOP) || ... ) && ! defined(END_CHECK)
 
 #if defined(BACKWARD_SEARCH)
-    assert(~(pwKeysEnd + 1 - pwKeysOrig) < 0);
     return ~(pwKeysEnd + 1 - pwKeysOrig);
 #else // defined(BACKWARD_SEARCH)
-    assert(~(pwKeys - pwKeysOrig) < 0);
     return ~(pwKeys - pwKeysOrig);
 #endif // defined(BACKWARD_SEARCH)
 }
@@ -575,11 +511,14 @@ Word_t cnMagic[] = {
 #define hasvalue(x,n) (haszero((x) ^ (-((Word_t)1))/255 * (n)))
 #endif  // TBD
 
-// Find wKey in the list.  If it exists, then return its index in the list.
+// Find wKey (the undecoded bits) in the list.
+// If it exists, then return its index in the list.
 // If it does not exist, then return the one's complement of the index where
 // it belongs.
-// Lookup doesn't need to know where key should be.
+// Lookup doesn't need to know where key should be if it is not in the list.
 // Only Insert and Remove benefit from that information.
+// And even Insert and Remove don't need to know where the key is if it is
+// in the list (until we start thinking about JudyL).
 static int
 SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
@@ -588,8 +527,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
       // Could be more strict if NO_LIST_AT_DL1.
       #if (cnBitsAtBottom <= 8)
     if (nBL <= 8) {
-        return (SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt) == Success)
-                   ? 0 : -1;
+        return SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsAtBottom <= 8)
       #if (cnBitsAtBottom <= 16)
