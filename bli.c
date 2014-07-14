@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.256 2014/07/14 15:58:46 mike Exp mike $
+// @(#) $Id: bli.c,v 1.258 2014/07/14 17:35:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1604,7 +1604,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
 #if defined(DEBUG)
 
-static int bInitializedForDebug = 0;
+static int bInitializedForDebug;
 
 static void
 InitializeForDebug(void)
@@ -1635,7 +1635,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     pwRootLast = pwRoot;
 
-    if ((pwRoot == NULL) && ! bInitializedForDebug ) {
+    if ((*pwRoot == (Word_t)0) && ! bInitializedForDebug ) {
         InitializeForDebug();
     }
 
