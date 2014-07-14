@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.260 2014/07/14 17:39:19 mike Exp mike $
+// @(#) $Id: bli.c,v 1.261 2014/07/14 17:47:57 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -337,14 +337,17 @@ DBGL(printf("got past end check\n"));
 #if defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) \
     && (cnBitsAtBottom <= 32)
 
-// Return non-negative index, x, for key found at index x.
-// Return negative (index + 1) for key not found, and index is where
-// key should be.
+// Find wKey in the list.  If it exists, then return its index in the list.
+// If it does not exist, then return the one's complement of the index where
+// it belongs.
 // Lookup doesn't need to know where key should be.
 // Only Insert and Remove benefit from that information.
-static Status_t
+// And Insert and Remove don't even need to know where it is (until we start
+// thinking about JudyL).
+static int
 SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
+    uint32_t *piKeysOrig = piKeys;
     (void)nBL;
     uint32_t iKey = wKey;
     uint32_t iKeyLoop;
@@ -365,17 +368,19 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     }
           #endif // defined(SPLIT_SEARCH_32)
           #if defined(END_CHECK_32)
-    if ((piKeys[nPopCnt - 1]) < iKey) { return Failure; }
+    if ((piKeys[nPopCnt - 1]) < iKey) {
+        return ~(piKeys[nPopCnt] - piKeysOrig);
+    }
     while ((iKeyLoop = *piKeys++) < iKey) { }
           #else // defined(END_CHECK_32)
     uint32_t *piKeysEnd = &piKeys[nPopCnt - 1];
     while (iKeyLoop = *piKeys, piKeys++ <= piKeysEnd)
           #endif // defined(END_CHECK_32)
     {
-        if (iKeyLoop == iKey) { return Success; }
+        if (iKeyLoop == iKey) { return piKeys - 1 - piKeysOrig; }
     }
 
-    return Failure;
+    return ~(piKeys - piKeysOrig);
 }
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) && ...
@@ -411,6 +416,8 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 // Find wKey in the list.  If it exists, then return its index in the list.
 // If it does not exist, then return the one's complement of the index where
 // it belongs.
+// Lookup doesn't need to know where key should be.
+// Only Insert and Remove benefit from that information.
 static int
 SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
@@ -654,8 +661,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
       #endif // (cnBitsAtBottom <= 16)
       #if (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {
-        return (SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt) == Success)
-                   ? 0 : -1;
+        return SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
