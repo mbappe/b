@@ -189,90 +189,26 @@ loop:
 
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 16)
 
-// Return non-negative index, x, for key found at index x.
-// Return negative (index + 1) for key not found, and index is where
-// key should be.
+// Find wKey in the list.  If it exists, then return its index in the list.
+// If it does not exist, then return the one's complement of the index where
+// it belongs.
 // Lookup doesn't need to know where key should be.
 // Only Insert and Remove benefit from that information.
-static Status_t
+// And Insert and Remove don't even need to know where it is (until we start
+// thinking about JudyL).
+static int
 SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
     DBGL(printf("SearchList16\n"));
+    uint16_t *psKeysOrig = psKeys;
     (void)nBL;
     uint16_t sKey = wKey;
     uint16_t sKeyLoop;
-#if defined(OLD_SEARCH_16)
-      #if defined(SORT_LISTS)
-        #if defined(SIMPLE_SEARCH_16) // two tests per iteration
-    sKeyLoop = *psKeys;
-    if (nPopCnt != 1)
-    {
-        uint16_t *psLastKey = &psKeys[nPopCnt-1];
-        while (sKeyLoop < sKey) {
-            sKeyLoop = *++psKeys;
-            if (psKeys == psLastKey) {
-                break;
-            }
-        }
-    }
-        #else // defined(SIMPLE_SEARCH_16)
-          #if defined(SPLIT_SEARCH_16) \
-                  && (cnSplitSearchThresholdShort > 1)
-              #if defined(SPLIT_SEARCH_LOOP_16)
-    while
-              #else // defined(SPLIT_SEARCH_LOOP_16)
-    if
-              #endif // defined(SPLIT_SEARCH_LOOP_16)
-       (nPopCnt >= cnSplitSearchThresholdShort)
-    {
-// To do: Try to minimize the number of cache lines we hit.
-// If ! PP_IN_LINK then we already hit the first one to get the pop count.
-// Let's try aligning these lists.
-        // pick a starting point
-              #if ! defined(RATIO_SPLIT_16) \
-                  || defined(SPLIT_SEARCH_LOOP_16)
-        unsigned nSplit = nPopCnt / 2;
-              #else // ! defined(RATIO_SPLIT_16) || ...
-        unsigned nSplit
-            = wKey % EXP(nBL) * nPopCnt / EXP(nBL);
-              #endif // ! defined(RATIO_SPLIT_16) || ...
-        if (psKeys[nSplit] <= sKey) {
-            psKeys = &psKeys[nSplit];
-            nPopCnt -= nSplit;
-// To do: Shouldn't we go backwards if we exit the loop after this step?
-// It might be very important.
-// What about cache line alignment?
-        } else {
-            nPopCnt = nSplit;
-            goto loop;
-        }
-    }
-          #endif // defined(SPLIT_SEARCH_16) && ...
-    if ((sKeyLoop = psKeys[nPopCnt - 1]) > sKey)
-    {
-          #if defined(SPLIT_SEARCH_16) \
-                  && (cnSplitSearchThresholdShort > 1)
-loop:
-          #endif // defined(SPLIT_SEARCH_16) && ...
-        while ((sKeyLoop = *psKeys++) < sKey) { }
-    }
-        #endif // defined(SIMPLE_SEARCH_16)
-      #else // defined(SORT_LISTS)
-    uint16_t *psKeysEnd = &psKeys[nPopCnt];
-    while (sKeyLoop = *psKeys, psKeys++ < psKeysEnd)
-      #endif // defined(SORT_LISTS)
-    {
-        if (sKeyLoop == sKey)
-        {
-            return Success;
-        }
-    }
-#else // defined(OLD_SEARCH_16)
   #if defined(BACKWARD_SEARCH_16)
     uint16_t *psKeysEnd = psKeys;
     uint16_t *psKeys = &psKeysEnd[nPopCnt - 1];
       #if defined(END_CHECK_16)
-    if (*psKeysEnd > sKey) { return Failure; }
+    if (*psKeysEnd > sKey) { return ~(psKeysEnd - psKeysOrig); }
     for (;;)
       #else // defined(END_CHECK_16)
     do
@@ -284,7 +220,7 @@ loop:
       #elif defined(FAIL_FIRST)
         if (sKeyLoop < sKey) { break; }
       #endif
-        if (sKeyLoop == sKey) { return Success; }
+        if (sKeyLoop == sKey) { return psKeys + 1 - psKeysOrig; }
       #if defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
         if (sKeyLoop < sKey) { break; }
       #endif // defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
@@ -296,7 +232,7 @@ loop:
     uint16_t *psKeysEnd = &psKeys[nPopCnt - 1];
 DBGL(printf("psKeysEnd %p\n", (void *)psKeysEnd));
       #if defined(END_CHECK_16)
-    if (*psKeysEnd < sKey) { return Failure; }
+    if (*psKeysEnd < sKey) { return ~(psKeysEnd + 1 - psKeysOrig); }
 DBGL(printf("got past end check\n"));
     for (;;)
       #else // defined(END_CHECK_16)
@@ -309,7 +245,7 @@ DBGL(printf("got past end check\n"));
       #elif defined(FAIL_FIRST)
         if (sKeyLoop > sKey) { break; }
       #endif
-        if (sKeyLoop == sKey) { return Success; }
+        if (sKeyLoop == sKey) { return psKeys - 1 - psKeysOrig; }
       #if defined(SUCCEED_FIRST)
         if (sKeyLoop > sKey)
       #endif // defined(SUCCEED_FIRST)
@@ -327,9 +263,12 @@ DBGL(printf("got past end check\n"));
     while (psKeys <= psKeysEnd);
       #endif // ! defined(END_CHECK_16)
   #endif // defined(BACKWARD_SEARCH_16)
-#endif // defined(OLD_SEARCH_16)
 
-    return Failure;
+  #if defined(BACKWARD_SEARCH_16)
+    return ~(psKeys + 1 - psKeysOrig);
+  #else // defined(BACKWARD_SEARCH_16)
+    return ~(psKeys - psKeysOrig);
+  #endif // defined(BACKWARD_SEARCH_16)
 }
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 16)
@@ -655,8 +594,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
       #endif // (cnBitsAtBottom <= 8)
       #if (cnBitsAtBottom <= 16)
     if (nBL <= 16) {
-        return (SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt) == Success)
-                   ? 0 : -1;
+        return SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsAtBottom <= 16)
       #if (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
