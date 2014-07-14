@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.255 2014/07/14 15:41:40 mike Exp mike $
+// @(#) $Id: bli.c,v 1.254 2014/07/13 13:28:39 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -992,6 +992,13 @@ notEmpty:;
 #if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
         nDLR = nDL;
 #endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#if (cnBitsAtBottom <= cnLogBitsPerWord)
+        if (nDL == 1) {
+            // wr_nType is not valid in this case.
+            // We have to skip the switch.
+            goto t_bitmap;
+        }
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again;
 #else // defined(LOOKUP) || !defined(RECURSIVE)
@@ -1154,8 +1161,18 @@ notEmpty:;
 
     case T_BITMAP:
     {
+#if (cnBitsAtBottom <= cnLogBitsPerWord)
+t_bitmap:
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
+
         // This case has been enhanced to handle a bitmap at any level.
-        // It used to assume we were at nDL == 1.
+        // It used to assume we were at nDL == 1.  And before we
+        // had cnBitsAtBottom it assumed we were at
+        // nDL == cnDigitsAtBottom.
+        // Shoot.  If we use the type field to identify a bitmap, then
+        // we can't use the whole wRoot as an embedded bitmap.
+        // There is an ugly workaround.  Jump directly here when
+        // nDL becomes one rather than jumping to "again".
 
 #if defined(REMOVE)
         if (bCleanup) { return KeyFound; } // cleanup is complete
@@ -1173,8 +1190,7 @@ notEmpty:;
   #if defined(SKIP_LINKS)
       // Code below uses NAT and we don't really enforce it so we put an
       // assertion here to remind us that not all values of cnBitsAtBottom
-      // and cnBitsPerDigit will work for type-is-absolute aka
-      // ! defined(TYPE_IS_RELATIVE).
+      // and cnBitsPerDigit will work.
       #if defined(PP_IN_LINK)
         assert(nDL < cnDigitsPerWord);
       #else // defined(PP_IN_LINK)
@@ -1228,30 +1244,68 @@ notEmpty:;
                                ) != 0);
             return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
-      #if defined(BITMAP_ANYWHERE)
-            if (BitIsSet(wr_pwr(wRoot),
-                    wKey & (EXP(nDL_to_nBL_NAT(nDL)) - 1UL)))
-      #else // defined(BITMAP_ANYWHERE)
-            if (BitIsSet(wr_pwr(wRoot), wKey & (EXP(cnBitsAtBottom) - 1UL)))
-      #endif // defined(BITMAP_ANYWHERE)
+      #if (cnBitsAtBottom <= cnLogBitsPerWord)
+          #if defined(BITMAP_ANYWHERE)
+            if (nDL_to_nBL_NAT(nDL) <= cnLogBitsPerWord)
+          #endif // defined(BITMAP_ANYWHERE)
             {
-      #if defined(REMOVE)
-                RemoveGuts(pwRoot, wKey, nDL, wRoot);
-                goto cleanup;
-      #endif // defined(REMOVE)
-      #if defined(INSERT) && !defined(RECURSIVE)
-                if (nIncr > 0)
+          #if defined(BITMAP_ANYWHERE)
+                if (BitIsSetInWord(wRoot,
+                        wKey & (EXP(nDL_to_nBL_NAT(nDL)) - 1UL)))
+          #else // defined(BITMAP_ANYWHERE)
+                if (BitIsSetInWord(wRoot,
+                        wKey & (EXP(cnBitsAtBottom) - 1UL)))
+          #endif // defined(BITMAP_ANYWHERE)
                 {
-                    DBGX(printf(
-                      "BitmapWordNum %"_fw"d BitmapWordMask "OWx"\n",
-                       BitmapWordNum(wKey), BitmapWordMask(wKey)));
-                    DBGX(printf("Bit is set!\n"));
-                    goto undo; // undo counting 
+          #if defined(REMOVE)
+                    RemoveGuts(pwRoot, wKey, nDL, wRoot);
+                    goto cleanup;
+          #endif // defined(REMOVE)
+          #if defined(INSERT) && !defined(RECURSIVE)
+                    if (nIncr > 0)
+                    {
+                        goto undo; // undo counting
+                    }
+          #endif // defined(INSERT) && !defined(RECURSIVE)
+                    return KeyFound;
                 }
-      #endif // defined(INSERT) && !defined(RECURSIVE)
-                return KeyFound;
+
+                DBGX(printf("Bit is not set.\n"));
             }
-            DBGX(printf("Bit is not set.\n"));
+          #if defined(BITMAP_ANYWHERE)
+            else
+          #endif // defined(BITMAP_ANYWHERE)
+      #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
+      #if (cnBitsAtBottom > cnLogBitsPerWord) || defined(BITMAP_ANYWHERE)
+            {
+          #if defined(BITMAP_ANYWHERE)
+                if (BitIsSet(wr_pwr(wRoot),
+                        wKey & (EXP(nDL_to_nBL_NAT(nDL)) - 1UL)))
+          #else // defined(BITMAP_ANYWHERE)
+                if (BitIsSet(wr_pwr(wRoot),
+                        wKey & (EXP(cnBitsAtBottom) - 1UL)))
+          #endif // defined(BITMAP_ANYWHERE)
+                {
+          #if defined(REMOVE)
+                    RemoveGuts(pwRoot, wKey, nDL, wRoot);
+                    goto cleanup;
+          #endif // defined(REMOVE)
+          #if defined(INSERT) && !defined(RECURSIVE)
+                    if (nIncr > 0)
+                    {
+                        DBGX(printf(
+                          "BitmapWordNum %"_fw"d BitmapWordMask "OWx"\n",
+                           BitmapWordNum(wKey), BitmapWordMask(wKey)));
+                        DBGX(printf("Bit is set!\n"));
+                        goto undo; // undo counting 
+                    }
+          #endif // defined(INSERT) && !defined(RECURSIVE)
+                    return KeyFound;
+                }
+
+                DBGX(printf("Bit is not set.\n"));
+            }
+      #endif // (cnBitsAtBottom > cnLogBitsPerWord) || defined(BITMAP_ANYWHERE)
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
         }
   #if defined(SKIP_LINKS)
@@ -1604,7 +1658,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
 #if defined(DEBUG)
 
-static int bInitializedForDebug;
+static int bInitializedForDebug = 0;
 
 static void
 InitializeForDebug(void)
@@ -1623,7 +1677,6 @@ int // Status_t
 Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 {
     Word_t *pwRoot = (Word_t *)ppvRoot;
-
 #if (cnDigitsPerWord > 1)
 
     int status;
@@ -1632,18 +1685,16 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 (void *)ppvRoot, wKey));
 
   #if defined(DEBUG)
-
     pwRootLast = pwRoot;
 
-    if ((*pwRoot == NULL) && ! bInitializedForDebug ) {
+    if ((pwRoot == NULL) && ! bInitializedForDebug ) {
         InitializeForDebug();
     }
-
   #endif // defined(DEBUG)
 
   #if (cwListPopCntMax != 0) && defined(PP_IN_LINK)
-    // Handle the top level list leaf before calling Insert.  Why?
-    // To simplify Insert for PP_IN_LINK.  Does it still apply?
+    // Handle the top level list leaf.  Why?
+    // To simplify Lookup for PP_IN_LINK.  Does it still apply?
     // Do not assume the list is sorted.
     // But if we do the insert here, and the list is sorted, then leave it
     // sorted -- so we don't have to worry about ifdefs in this code.
@@ -1739,7 +1790,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #endif // defined(DEBUG)
 
     DBGI(printf("\n# After Insert(wKey "OWx") Dump\n", wKey));
-    DBGI(Dump((Word_t *)ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord));
+    DBGI(Dump(pwRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord));
     DBGI(printf("\n"));
 
   #if defined(DEBUG)
@@ -1752,7 +1803,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     // one big Bitmap
 
-    Word_t wRoot = *pwRoot;
+    Word_t wRoot = (Word_t)*ppvRoot;
     Word_t wByteNum, wByteMask;
     char c;
 
