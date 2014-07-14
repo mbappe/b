@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.256 2014/07/14 15:58:46 mike Exp mike $
+// @(#) $Id: bli.c,v 1.260 2014/07/14 17:39:19 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -629,12 +629,12 @@ Word_t cnMagic[] = {
 #define hasvalue(x,n) (haszero((x) ^ (-((Word_t)1))/255 * (n)))
 #endif  // TBD
 
-// Return non-negative index, x, for key found at index x.
-// Return negative (index + 1) for key not found, and index is where
-// key should be.
+// Find wKey in the list.  If it exists, then return its index in the list.
+// If it does not exist, then return the one's complement of the index where
+// it belongs.
 // Lookup doesn't need to know where key should be.
 // Only Insert and Remove benefit from that information.
-static Status_t
+static int
 SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
     DBGL(printf("SearchList\n"));
@@ -642,23 +642,25 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
       // Could be more strict if NO_LIST_AT_DL1.
       #if (cnBitsAtBottom <= 8)
     if (nBL <= 8) {
-        return SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt);
+        return (SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt) == Success)
+                   ? 0 : -1;
     } else
       #endif // (cnBitsAtBottom <= 8)
       #if (cnBitsAtBottom <= 16)
     if (nBL <= 16) {
-        return SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt);
+        return (SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt) == Success)
+                   ? 0 : -1;
     } else
       #endif // (cnBitsAtBottom <= 16)
       #if (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {
-        return SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt);
+        return (SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt) == Success)
+                   ? 0 : -1;
     } else
       #endif // (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     {
-        return (SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt) >= 0)
-                   ? Success : Failure;
+        return SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt);
     }
 }
 
@@ -1149,7 +1151,7 @@ notEmpty:;
                            cnBitsPerWord,
 #endif // defined(COMPRESSED_LISTS)
                            wPopCnt)
-                == Success)
+                >= 0)
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
           #if defined(REMOVE)
