@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.253 2014/07/12 23:29:00 mike Exp mike $
+// @(#) $Id: bli.c,v 1.254 2014/07/13 13:28:39 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1656,9 +1656,28 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
 #if defined(INSERT)
 
+#if defined(DEBUG)
+
+static int bInitializedForDebug;
+
+static void
+InitializeForDebug(void)
+{
+    // cnBitsAtBottom less than or equal to cnLogBitsPerWord makes
+    // no sense anymore.  It's equivalent to cnBitsAtBottom equals
+    // cnLogBitsPerWord plus cnBitsPerDigit -- only worse.
+    assert(cnBitsAtBottom > cnLogBitsPerWord);
+
+    bInitializedForDebug = 1;
+}
+
+#endif // defined(DEBUG)
+
 int // Status_t
 Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 {
+    Word_t *pwRoot = (Word_t *)ppvRoot;
+
 #if (cnDigitsPerWord > 1)
 
     int status;
@@ -1667,16 +1686,21 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 (void *)ppvRoot, wKey));
 
   #if defined(DEBUG)
-    pwRootLast = (Word_t *)ppvRoot;
+
+    pwRootLast = pwRoot;
+
+    if ((*pwRoot == NULL) && ! bInitializedForDebug ) {
+        InitializeForDebug();
+    }
+
   #endif // defined(DEBUG)
 
   #if (cwListPopCntMax != 0) && defined(PP_IN_LINK)
-    // Handle the top level list leaf.  Why?
-    // To simplify Lookup for PP_IN_LINK.  Does it still apply?
+    // Handle the top level list leaf before calling Insert.  Why?
+    // To simplify Insert for PP_IN_LINK.  Does it still apply?
     // Do not assume the list is sorted.
     // But if we do the insert here, and the list is sorted, then leave it
     // sorted -- so we don't have to worry about ifdefs in this code.
-    Word_t *pwRoot = (Word_t *)ppvRoot;
     Word_t wRoot = *pwRoot;
     unsigned nType = wr_nType(wRoot);
 
@@ -1752,7 +1776,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     else
   #endif // (cwListPopCntMax != 0) && defined(PP_IN_LINK)
     {
-        status = Insert((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
+        status = Insert(pwRoot, wKey, cnDigitsPerWord);
     }
 
   #if defined(DEBUG)
@@ -1782,7 +1806,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     // one big Bitmap
 
-    Word_t wRoot = (Word_t)*ppvRoot;
+    Word_t wRoot = *pwRoot;
     Word_t wByteNum, wByteMask;
     char c;
 
