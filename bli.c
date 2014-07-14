@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.261 2014/07/14 17:47:57 mike Exp mike $
+// @(#) $Id: bli.c,v 1.262 2014/07/14 17:55:33 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -369,7 +369,7 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
           #endif // defined(SPLIT_SEARCH_32)
           #if defined(END_CHECK_32)
     if ((piKeys[nPopCnt - 1]) < iKey) {
-        return ~(piKeys[nPopCnt] - piKeysOrig);
+        return ~(&piKeys[nPopCnt] - piKeysOrig);
     }
     while ((iKeyLoop = *piKeys++) < iKey) { }
           #else // defined(END_CHECK_32)
