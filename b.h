@@ -307,14 +307,12 @@
     #endif // (cnBitsPerDigit <= 0) || (cnBitsPerDigit > cnBitsPerWord)
 #endif // ! defined(cnBitsPerDigit)
 
-// Choose bottom.
-// Bottom is where Bitmap is created automatically.
+// Choose bottom, i.e.  the number of bits in the least significant digit.
 // We count digits up from there.
-// Default is cnBitsAtBottom = cnLogBitsPerWord.
-// Old default is cnBitsAtBottom = MAX(16, minimum allowed by cnBitsPerDigit).
+// Default is cnBitsAtBottom = cnLogBitsPerWord + 3.
 #if ! defined(cnBitsAtBottom)
 #undef  cnBitsAtBottom
-#define cnBitsAtBottom  cnLogBitsPerWord
+#define cnBitsAtBottom  (cnLogBitsPerWord + 3)
 #endif // ! defined(cnBitsAtBottom)
 
 // Default is -DBITMAP_ANYWHERE.
