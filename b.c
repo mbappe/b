@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.298 2014/07/13 13:28:39 mike Exp mike $
+// @(#) $Id: b.c,v 1.299 2014/07/14 21:26:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2337,64 +2337,81 @@ Word_t
 DeflateExternalList(Word_t *pwRoot,
                     unsigned nPopCnt, unsigned nBL, Word_t *pwr)
 {
+    unsigned nPopCntMax
+      = (cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL)) / nBL;
+
     DBGI(printf("DeflateExternalList pwRoot %p nPopCnt %d nBL %d pwr %p\n",
                (void *)pwRoot, nPopCnt, nBL, (void *)pwr));
 
-    assert((nBL * nPopCnt
-            <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL))
-        || (nPopCnt == 1));
+    assert((nPopCnt <= nPopCntMax) || (nPopCnt == 1));
 
     Word_t wRoot;
 
-    if (nBL * nPopCnt
-            <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL))
+    if (nPopCnt <= nPopCntMax)
     {
-    wRoot = 0;
+        wRoot = 0;
 
-    Word_t *pwKeys;
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
-    uint32_t *piKeys;
+        uint32_t *piKeys;
 #endif // (cnBitsPerWord > 32)
-    uint16_t *psKeys;
-    uint8_t  *pcKeys;
+        uint16_t *psKeys;
+        uint8_t  *pcKeys;
 #endif // defined(COMPRESSED_LISTS)
 
-    set_wr_nType(wRoot, T_ONE);
-    set_wr_nPopCnt(wRoot, nBL, nPopCnt);
+        set_wr_nType(wRoot, T_ONE);
+        set_wr_nPopCnt(wRoot, nBL, nPopCnt);
 
-    Word_t wBLM = MSK(nBL);
+        Word_t wBLM = MSK(nBL);
 #if defined(COMPRESSED_LISTS)
-    if (nBL <= 8) {
-        pcKeys = ls_pcKeys(pwr);
-        for (unsigned nn = 1; nn <= nPopCnt; nn++) {
-           wRoot |= (pcKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
-        }
-    } else
-    if (nBL <= 16) {
-        psKeys = ls_psKeys(pwr);
-        for (unsigned nn = 1; nn <= nPopCnt; nn++) {
-           wRoot |= (psKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
-        }
-    } else
+        if (nBL <= 8) {
+            pcKeys = ls_pcKeys(pwr);
+            unsigned nn = 1;
+            for (; nn <= nPopCnt; nn++) {
+               wRoot |= (pcKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
+            }
+#if defined(PAD_T_ONE)
+            while (nn <= nPopCntMax) {
+               wRoot |= (pcKeys[0] & wBLM) << (cnBitsPerWord - (nn * nBL));
+               ++nn;
+            }
+#endif // defined(PAD_T_ONE)
+        } else
+        if (nBL <= 16) {
+            psKeys = ls_psKeys(pwr);
+            unsigned nn = 1;
+            for (; nn <= nPopCnt; nn++) {
+               wRoot |= (psKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
+            }
+#if defined(PAD_T_ONE)
+            while (nn <= nPopCntMax) {
+               wRoot |= (psKeys[0] & wBLM) << (cnBitsPerWord - (nn * nBL));
+               ++nn;
+            }
+#endif // defined(PAD_T_ONE)
+        } else
 #if (cnBitsPerWord > 32)
-    if (nBL <= 32) {
-        piKeys = ls_piKeys(pwr);
-        for (unsigned nn = 1; nn <= wr_nPopCnt(wRoot, nBL); nn++) {
-           wRoot |= (piKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
-        }
-    } else
+        if (nBL <= 32) {
+            piKeys = ls_piKeys(pwr);
+            unsigned nn = 1;
+            for (; nn <= wr_nPopCnt(wRoot, nBL); nn++) {
+               wRoot |= (piKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
+            }
+#if defined(PAD_T_ONE)
+            while (nn <= nPopCntMax) {
+               wRoot |= (piKeys[0] & wBLM) << (cnBitsPerWord - (nn * nBL));
+               ++nn;
+            }
+#endif // defined(PAD_T_ONE)
+        } else
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-    {
-        pwKeys = ls_pwKeys(pwr);
-#if defined(PP_IN_LINK)
-        if ((nBL == cnBitsPerWord) && (cnDummiesInList == 0)) { ++pwKeys; }
-#endif // defined(PP_IN_LINK)
-        for (unsigned nn = 1; nn <= wr_nPopCnt(wRoot, nBL); nn++) {
-           wRoot |= (pwKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
+        {
+            // I don't think we have to worry about adjusting ls_pwKeys
+            // for PP_IN_LINK here since we will not be at the top.
+            assert(nBL != cnBitsPerWord);
+            wRoot |= (ls_pwKeys(pwr)[0] & wBLM) << (cnBitsPerWord - nBL);
         }
-    }
     }
     else
     {
@@ -2654,6 +2671,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 }
 
 #if defined(PP_IN_LINK)
+#if defined(DEBUG)
 static void
 HexDump(char *str, Word_t *pw, unsigned nWords)
 {
@@ -2662,6 +2680,7 @@ HexDump(char *str, Word_t *pw, unsigned nWords)
         printf(OWx"\n", pw[ii]);
     }
 }
+#endif // defined(DEBUG)
 #endif // defined(PP_IN_LINK)
 
 // Clear the bit for wKey in the bitmap.
