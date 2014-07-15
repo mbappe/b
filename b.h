@@ -69,24 +69,6 @@
    + cnListPopCntMax16 + cnListPopCntMax8)
 #endif // ! defined(cwListPopCntMax)
 
-#if ! defined(cnListPopCntMaxDl1)
-  #  if (cnBitsAtBottom == 7)
-      #define cnListPopCntMaxDl1  0x08
-  #elif (cnBitsAtBottom == 8)
-      #define cnListPopCntMaxDl1  0x07
-  #elif (cnBitsAtBottom == 9)
-      #define cnListPopCntMaxDl1  0x06
-  #elif (cnBitsAtBottom == 10)
-      #define cnListPopCntMaxDl1  0x05
-  #elif (cnBitsAtBottom == 11)
-      #define cnListPopCntMaxDl1  0x0b
-  #elif (cnBitsAtBottom == 12)
-      #define cnListPopCntMaxDl1  0x1b
-  #else
-      #define cnListPopCntMaxDl1  0x3b
-  #endif // cnBitsAtBottom
-#endif // ! defined(cnListPopCntMaxDl1)
-
 // Default is -DSORT_LISTS.
 #if defined(NO_SORT_LISTS)
 #if defined(CONTINUE_FIRST) || defined(FAIL_FIRST) || defined(SUCCEED_FIRST) \
@@ -332,6 +314,25 @@
 #undef  cnBitsAtBottom
 #define cnBitsAtBottom  (cnLogBitsPerWord + 3)
 #endif // ! defined(cnBitsAtBottom)
+
+// Default cnListPopCntMaxDl1 depends on cnBitsAtBottom.
+#if ! defined(cnListPopCntMaxDl1)
+  #  if (cnBitsAtBottom == 7)
+      #define cnListPopCntMaxDl1  0x08
+  #elif (cnBitsAtBottom == 8)
+      #define cnListPopCntMaxDl1  0x07
+  #elif (cnBitsAtBottom == 9)
+      #define cnListPopCntMaxDl1  0x06
+  #elif (cnBitsAtBottom == 10)
+      #define cnListPopCntMaxDl1  0x05
+  #elif (cnBitsAtBottom == 11)
+      #define cnListPopCntMaxDl1  0x0b
+  #elif (cnBitsAtBottom == 12)
+      #define cnListPopCntMaxDl1  0x1b
+  #else
+      #define cnListPopCntMaxDl1  0x3b
+  #endif // cnBitsAtBottom
+#endif // ! defined(cnListPopCntMaxDl1)
 
 // Default is -DBITMAP_ANYWHERE.
 #if ! defined(NO_BITMAP_ANYWHERE)
