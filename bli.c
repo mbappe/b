@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.266 2014/07/14 21:26:29 mike Exp mike $
+// @(#) $Id: bli.c,v 1.267 2014/07/15 18:03:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1322,7 +1322,7 @@ notEmpty:;
         unsigned nBL = nDL_to_nBL(nDL);
         if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
   #if defined(HAS_KEY)
-            if (EmbeddedListHasKey1(wRoot, wKey, nBL) == Success) goto foundIt;
+            if (EmbeddedListHasKey(wRoot, wKey, nBL) == Success) goto foundIt;
   #else // defined(HAS_KEY)
             // I wonder if PAD_T_ONE and not needing to know the pop count
             // would help this code like it does HAS_KEY.
