@@ -35,10 +35,10 @@
 
 // Choose max list length.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
-// Default is cnListPopCntMax8 = 8.
-// Default is cnListPopCntMax16 = 64.
-// Default is cnListPopCntMax32 = 32.
-// Default is cnListPopCntMax64 = 236.
+// Default is cnListPopCntMax8  = 0x07.
+// Default is cnListPopCntMax16 = 0x13.
+// Default is cnListPopCntMax32 = 0x35.
+// Default is cnListPopCntMax64 = 0x7e.
 #if defined(cwListPopCntMax)
 #undef  cnListPopCntMax64
 #define cnListPopCntMax64  cwListPopCntMax
@@ -51,16 +51,30 @@
 #endif // defined(cwListPopCntMax)
 
 #if ! defined(cnListPopCntMax64)
-#define cnListPopCntMax64  236
+//#define cnListPopCntMax64  0xec
+#define cnListPopCntMax64  0x7e
 #endif // ! defined(cnListPopCntMax64)
 #if ! defined(cnListPopCntMax32)
-#define cnListPopCntMax32  32
+// One  64-bit word  is 0x01.  Three 64-bit words is 0x05.
+// Five 64-bit words is 0x09.  Seven 64-bit words is 0x0d.
+// Nine 64-bit words is 0x11.  11    64-bit words is 0x15.
+// 13   64-bit words is 0x19.  15    64-bit words is 0x1d.
+// 17   64-bit word  is 0x21.  19    64-bit words is 0x25.
+// 21   64-bit words is 0x29.  23    64-bit words is 0x2d.
+// 25   64-bit words is 0x31.  27    64-bit words is 0x35.
+// 29   64-bit words is 0x39.  31    64-bit words is 0x3d.
+#define cnListPopCntMax32  0x35
 #endif // ! defined(cnListPopCntMax32)
 #if ! defined(cnListPopCntMax16)
-#define cnListPopCntMax16  64
+// One  64-bit word  is 0x03.  Three 64-bit words is 0x0b.
+// Five 64-bit words is 0x13.  Seven 64-bit words is 0x1b.
+// Nine 64-bit words is 0x23.  11    64-bit words is 0x2b.
+// 13   64-bit words is 0x33.  15    64-bit words is 0x3b.
+#define cnListPopCntMax16  0x13
 #endif // ! defined(cnListPopCntMax16)
 #if ! defined(cnListPopCntMax8)
-#define cnListPopCntMax8   15
+// One 64-bit word is 0x07.  Three 64-bit words is 0x17.
+#define cnListPopCntMax8   0x07
 #endif // ! defined(cnListPopCntMax8)
 
 #if ! defined(cwListPopCntMax)
@@ -68,6 +82,16 @@
     (cnListPopCntMax64 + cnListPopCntMax32 \
    + cnListPopCntMax16 + cnListPopCntMax8)
 #endif // ! defined(cwListPopCntMax)
+
+// Default is -DHAS_KEY and -DPAD_T_ONE.
+#if ! defined(NO_HAS_KEY)
+#define HAS_KEY
+#endif // ! defined(NO_HAS_KEY)
+
+// Default is -DPAD_T_ONE.
+#if ! defined(NO_PAD_T_ONE)
+#define PAD_T_ONE
+#endif // ! defined(NO_PAD_T_ONE)
 
 // Default is -DSORT_LISTS.
 #if defined(NO_SORT_LISTS)
@@ -309,10 +333,10 @@
 
 // Choose bottom, i.e.  the number of bits in the least significant digit.
 // We count digits up from there.
-// Default is cnBitsAtBottom = cnLogBitsPerWord + 3.
+// Default is cnBitsAtBottom = 8.
 #if ! defined(cnBitsAtBottom)
 #undef  cnBitsAtBottom
-#define cnBitsAtBottom  (cnLogBitsPerWord + 3)
+#define cnBitsAtBottom  8
 #endif // ! defined(cnBitsAtBottom)
 
 // Default cnListPopCntMaxDl1 depends on cnBitsAtBottom.
