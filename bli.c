@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.267 2014/07/15 18:03:08 mike Exp mike $
+// @(#) $Id: bli.c,v 1.268 2014/07/15 18:07:58 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -137,11 +137,11 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 static int
 SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
-    DBGL(printf("SearchList16\n"));
     uint16_t *psKeysOrig = psKeys;
-    (void)nBL;
     uint16_t sKey = wKey;
     uint16_t sKeyLoop;
+#if ! defined(PSPLIT_16)
+    (void)nBL;
   #if defined(BACKWARD_SEARCH_16)
     uint16_t *psKeysEnd = psKeys;
     uint16_t *psKeys = &psKeysEnd[nPopCnt - 1];
@@ -203,6 +203,25 @@ DBGL(printf("got past end check\n"));
       #endif // ! defined(END_CHECK_16)
     return ~(psKeys - psKeysOrig);
   #endif // defined(BACKWARD_SEARCH_16)
+#else // ! defined(PSPLIT_16)
+    unsigned nSplit = sKey % EXP(nBL) * nPopCnt / EXP(nBL);
+    if (psKeys[nSplit] <= sKey) {
+        uint16_t *psKeysEnd = &psKeys[nPopCnt - 1];
+        if (*psKeysEnd < sKey) { return ~(psKeysEnd + 1 - psKeys); }
+        nPopCnt -= nSplit;
+        psKeys = &psKeys[nSplit];
+        while ((sKeyLoop = *psKeys++) < sKey) { }
+        return (sKeyLoop == sKey)
+                ? psKeys - 1 - psKeysOrig : ~(psKeys - psKeysOrig);
+    } else {
+        if (((nPopCnt = nSplit) == 0) || (*psKeys > sKey)) { return ~(0); }
+        uint16_t *psKeysEnd = psKeys;
+        psKeys = &psKeysEnd[nPopCnt - 1];
+        while ((sKeyLoop = *psKeys--) > sKey) { }
+        return (sKeyLoop == sKey)
+                ? psKeys + 1 - psKeysOrig : ~(psKeys + 1 - psKeysOrig);
+    }
+#endif // ! defined(PSPLIT_16)
 }
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 16)
