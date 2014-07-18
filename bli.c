@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.268 2014/07/15 18:07:58 mike Exp mike $
+// @(#) $Id: bli.c,v 1.269 2014/07/18 03:50:22 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -126,6 +126,20 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 16)
 
+// Generic linear search with end check.  Supports forward and backward.
+#define SEARCH(_x_t, _pxKeys, _nPopCnt, _xKey, _bBack, _nResult) \
+{ \
+    int nn = (_bBack) ? -1 : 1; \
+    _x_t *px = (_x_t *)(_pxKeys) + ((_nPopCnt) - 1) * (_bBack); \
+    if ((long)((_x_t)_xKey - *(px + ((int)(_nPopCnt) - 1) * nn)) * nn > 0) { \
+        (_nResult) = ~(_nPopCnt * !(_bBack)); \
+    } else { \
+        while ((long)((_x_t)_xKey - *px) * nn > 0) { px += nn; } \
+        (_nResult) = (*px == (_x_t)_xKey) \
+            ? px - (_x_t *)(_pxKeys) : ~(px - (_x_t *)(_pxKeys) + (_bBack)); \
+    } \
+}
+
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
 // If it does not exist, then return the one's complement of the index where
@@ -140,7 +154,30 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     uint16_t *psKeysOrig = psKeys;
     uint16_t sKey = wKey;
     uint16_t sKeyLoop;
-#if ! defined(PSPLIT_16)
+#if defined(PSPLIT_16)
+#if defined(PSPLIT_XOR_16)
+    uint16_t sKeyMin = psKeys[0];
+    uint16_t sKeyMax = psKeys[nPopCnt - 1];
+    nBL = LOG(sKeyMin ^ sKeyMax) + 1;
+#endif // defined(PSPLIT_XOR_16)
+    unsigned nSplit = sKey % EXP(nBL) * nPopCnt / EXP(nBL);
+    if (psKeys[nSplit] <= sKey) {
+        uint16_t *psKeysEnd = &psKeys[nPopCnt - 1];
+        if (*psKeysEnd < sKey) { return ~(psKeysEnd + 1 - psKeys); }
+        nPopCnt -= nSplit;
+        psKeys = &psKeys[nSplit];
+        while ((sKeyLoop = *psKeys++) < sKey) { }
+        return (sKeyLoop == sKey)
+                ? psKeys - 1 - psKeysOrig : ~(psKeys - psKeysOrig);
+    } else {
+        if (((nPopCnt = nSplit) == 0) || (*psKeys > sKey)) { return ~(0); }
+        uint16_t *psKeysEnd = psKeys;
+        psKeys = &psKeysEnd[nPopCnt - 1];
+        while ((sKeyLoop = *psKeys--) > sKey) { }
+        return (sKeyLoop == sKey)
+                ? psKeys + 1 - psKeysOrig : ~(psKeys + 1 - psKeysOrig);
+    }
+#else // defined(PSPLIT_16)
     (void)nBL;
   #if defined(BACKWARD_SEARCH_16)
     uint16_t *psKeysEnd = psKeys;
@@ -203,25 +240,7 @@ DBGL(printf("got past end check\n"));
       #endif // ! defined(END_CHECK_16)
     return ~(psKeys - psKeysOrig);
   #endif // defined(BACKWARD_SEARCH_16)
-#else // ! defined(PSPLIT_16)
-    unsigned nSplit = sKey % EXP(nBL) * nPopCnt / EXP(nBL);
-    if (psKeys[nSplit] <= sKey) {
-        uint16_t *psKeysEnd = &psKeys[nPopCnt - 1];
-        if (*psKeysEnd < sKey) { return ~(psKeysEnd + 1 - psKeys); }
-        nPopCnt -= nSplit;
-        psKeys = &psKeys[nSplit];
-        while ((sKeyLoop = *psKeys++) < sKey) { }
-        return (sKeyLoop == sKey)
-                ? psKeys - 1 - psKeysOrig : ~(psKeys - psKeysOrig);
-    } else {
-        if (((nPopCnt = nSplit) == 0) || (*psKeys > sKey)) { return ~(0); }
-        uint16_t *psKeysEnd = psKeys;
-        psKeys = &psKeysEnd[nPopCnt - 1];
-        while ((sKeyLoop = *psKeys--) > sKey) { }
-        return (sKeyLoop == sKey)
-                ? psKeys + 1 - psKeysOrig : ~(psKeys + 1 - psKeysOrig);
-    }
-#endif // ! defined(PSPLIT_16)
+#endif // defined(PSPLIT_16)
 }
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 16)
@@ -306,6 +325,7 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 // split-loop-w-threshold=20, end-check, continue-first
 //
 
+#if defined(LOOKUP) || 0
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
 // If it does not exist, then return the one's complement of the index where
@@ -430,8 +450,8 @@ split: // should go backwards if key is in first part
         }
 #else // defined(BACKWARD_SEARCH)
         if (wKeyLoop == wKey) {
-            assert(pwKeys - pwKeysOrig >= 0);
-            return pwKeys - pwKeysOrig;
+            assert(pwKeys - pwKeysOrig - 1 >= 0);
+            return pwKeys - pwKeysOrig - 1;
         }
 #endif // defined(BACKWARD_SEARCH)
 
@@ -461,9 +481,10 @@ split: // should go backwards if key is in first part
 #if defined(BACKWARD_SEARCH)
     return ~(pwKeysEnd + 1 - pwKeysOrig);
 #else // defined(BACKWARD_SEARCH)
-    return ~(pwKeys - pwKeysOrig);
+    return ~(pwKeys - 1 - pwKeysOrig);
 #endif // defined(BACKWARD_SEARCH)
 }
+#endif // defined(LOOKUP) || 0
 
 #if 0
 #define MAGIC1(_nBL)  MAXUINT / ((1 << (_nBL)) - 1)
@@ -561,7 +582,13 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
       #endif // (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     {
-        return SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt);
+        int nResult;
+#if 0
+        nResult = SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt);
+#else // 0
+        SEARCH(Word_t, pwr_pwKeys(pwr), nPopCnt, wKey, 0, nResult);
+#endif // 0
+        return nResult;
     }
 }
 
