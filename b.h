@@ -63,6 +63,9 @@
 // 21   64-bit words is 0x29.  23    64-bit words is 0x2d.
 // 25   64-bit words is 0x31.  27    64-bit words is 0x35.
 // 29   64-bit words is 0x39.  31    64-bit words is 0x3d.
+// 33   64-bit words is 0x41.  35    64-bit words is 0x45.
+// 37   64-bit words is 0x49.  39    64-bit words is 0x4d.
+// 41   64-bit words is 0x51.  43    64-bit words is 0x55.
 #define cnListPopCntMax32  0x35
 #endif // ! defined(cnListPopCntMax32)
 #if ! defined(cnListPopCntMax16)

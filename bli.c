@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.273 2014/07/18 23:22:12 mike Exp mike $
+// @(#) $Id: bli.c,v 1.274 2014/07/18 23:29:09 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -114,70 +114,14 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 static int
 SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
-    uint8_t *pcKeysOrig = pcKeys;
     (void)nBL;
-    uint8_t cKey = wKey;
-    uint8_t cKeyLoop;
-
+    int nResult;
   #if defined(BACKWARD_SEARCH_8)
-    uint8_t *pcKeysEnd = pcKeys;
-    uint8_t *pcKeys = &pcKeysEnd[nPopCnt - 1];
-      #if defined(END_CHECK_8)
-    if (*pcKeysEnd > cKey) { return ~(pcKeysEnd - pcKeysOrig); }
-    for (;;)
-      #else // defined(END_CHECK_8)
-    do
-      #endif // defined(END_CHECK_8)
-    {
-        cKeyLoop = *pcKeys--;
-      #if defined(CONTINUE_FIRST)
-        if (cKeyLoop > cKey) { continue; }
-      #elif defined(FAIL_FIRST)
-        if (cKeyLoop < cKey) { break; }
-      #endif
-        if (cKeyLoop == cKey) { return pcKeys + 1 - pcKeysOrig; }
-      #if defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
-        if (cKeyLoop < cKey) { break; }
-      #endif // defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
-    }
-      #if ! defined(END_CHECK_8)
-    while (pcKeys >= pcKeysEnd);
-      #endif // ! defined(END_CHECK_8)
-    return ~(pcKeys + 1 - pcKeysOrig);
+    SEARCH(int8_t, pcKeys, nPopCnt, wKey, 1, nResult);
   #else // defined(BACKWARD_SEARCH_8)
-    uint8_t *pcKeysEnd = &pcKeys[nPopCnt - 1];
-      #if defined(END_CHECK_8)
-    if (*pcKeysEnd < cKey) { return ~(pcKeysEnd + 1 - pcKeysOrig); }
-    for (;;)
-      #else // defined(END_CHECK_8)
-    do
-      #endif // defined(END_CHECK_8)
-    {
-        cKeyLoop = *pcKeys++;
-      #if defined(CONTINUE_FIRST)
-        if (cKeyLoop < cKey) { continue; }
-      #elif defined(FAIL_FIRST)
-        if (cKeyLoop > cKey) { break; }
-      #endif
-        if (cKeyLoop == cKey) { return pcKeys - 1 - pcKeysOrig; }
-      #if defined(SUCCEED_FIRST)
-        if (cKeyLoop > cKey)
-      #endif // defined(SUCCEED_FIRST)
-      #if defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
-        { break; }
-      #endif // defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
-        // We're cheating here if we ignore the fact that the list is
-        // sorted and look only for a match rather than checking to
-        // see if we're passed the point where the key would be.
-        // It's cheating because it's probably faster when the key
-        // is present (which is the case for our performance testing)
-        // and slower if the key is not present.
-    }
-      #if ! defined(END_CHECK_8)
-    while (pcKeys <= pcKeysEnd);
-      #endif // ! defined(END_CHECK_8)
-    return ~(pcKeys - pcKeysOrig);
+    SEARCH(int8_t, pcKeys, nPopCnt, wKey, 0, nResult);
   #endif // defined(BACKWARD_SEARCH_8)
+    return nResult;
 }
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
@@ -195,89 +139,26 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 static int
 SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
-    uint16_t sKey = wKey;
+    int nResult;
 #if defined(PSPLIT_16)
 #if defined(PSPLIT_XOR_16)
     uint16_t sKeyMin = psKeys[0];
     uint16_t sKeyMax = psKeys[nPopCnt - 1];
     nBL = LOG(sKeyMin ^ sKeyMax) + 1;
 #endif // defined(PSPLIT_XOR_16)
-    unsigned nSplit = sKey % EXP(nBL) * nPopCnt / EXP(nBL);
-    int nResult;
-    if (psKeys[nSplit] <= sKey) {
+    unsigned nSplit = wKey % EXP(nBL) * nPopCnt / EXP(nBL);
+    if (psKeys[nSplit] <= (uint16_t)wKey) {
         SUB_SEARCH(int16_t, &psKeys[nSplit], nPopCnt - nSplit,
-                   sKey, 0, psKeys, nResult);
+                   wKey, 0, psKeys, nResult);
     } else {
         if (nSplit == 0) { return ~(0); }
-        SEARCH(int16_t, psKeys, nSplit, sKey, 1, nResult);
+        SEARCH(int16_t, psKeys, nSplit, wKey, 1, nResult);
     }
-    return nResult;
 #else // defined(PSPLIT_16)
-    uint16_t *psKeysOrig = psKeys;
-    uint16_t sKeyLoop;
     (void)nBL;
-  #if defined(BACKWARD_SEARCH_16)
-    uint16_t *psKeysEnd = psKeys;
-    uint16_t *psKeys = &psKeysEnd[nPopCnt - 1];
-      #if defined(END_CHECK_16)
-    if (*psKeysEnd > sKey) { return ~(psKeysEnd - psKeysOrig); }
-    for (;;)
-      #else // defined(END_CHECK_16)
-    do
-      #endif // defined(END_CHECK_16)
-    {
-        sKeyLoop = *psKeys--;
-      #if defined(CONTINUE_FIRST)
-        if (sKeyLoop > sKey) { continue; }
-      #elif defined(FAIL_FIRST)
-        if (sKeyLoop < sKey) { break; }
-      #endif
-        if (sKeyLoop == sKey) { return psKeys + 1 - psKeysOrig; }
-      #if defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
-        if (sKeyLoop < sKey) { break; }
-      #endif // defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
-    }
-      #if ! defined(END_CHECK_16)
-    while (psKeys >= psKeysEnd);
-      #endif // ! defined(END_CHECK_16)
-    return ~(psKeys + 1 - psKeysOrig);
-  #else // defined(BACKWARD_SEARCH_16)
-    uint16_t *psKeysEnd = &psKeys[nPopCnt - 1];
-DBGL(printf("psKeysEnd %p\n", (void *)psKeysEnd));
-      #if defined(END_CHECK_16)
-    if (*psKeysEnd < sKey) { return ~(psKeysEnd + 1 - psKeysOrig); }
-DBGL(printf("got past end check\n"));
-    for (;;)
-      #else // defined(END_CHECK_16)
-    do
-      #endif // defined(END_CHECK_16)
-    {
-        sKeyLoop = *psKeys++;
-      #if defined(CONTINUE_FIRST)
-        if (sKeyLoop < sKey) { continue; }
-      #elif defined(FAIL_FIRST)
-        if (sKeyLoop > sKey) { break; }
-      #endif
-        if (sKeyLoop == sKey) { return psKeys - 1 - psKeysOrig; }
-      #if defined(SUCCEED_FIRST)
-        if (sKeyLoop > sKey)
-      #endif // defined(SUCCEED_FIRST)
-      #if defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
-        { break; }
-      #endif // defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
-        // We're cheating here if we ignore the fact that the list is
-        // sorted and look only for a match rather than checking to
-        // see if we're passed the point where the key would be.
-        // It's cheating because it's probably faster when the key
-        // is present (which is the case for our performance testing)
-        // and slower if the key is not present.
-    }
-      #if ! defined(END_CHECK_16)
-    while (psKeys <= psKeysEnd);
-      #endif // ! defined(END_CHECK_16)
-    return ~(psKeys - 1 - psKeysOrig);
-  #endif // defined(BACKWARD_SEARCH_16)
+    SEARCH(int16_t, psKeys, nPopCnt, wKey, 0, nResult);
 #endif // defined(PSPLIT_16)
+    return nResult;
 }
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 16)
@@ -296,16 +177,15 @@ DBGL(printf("got past end check\n"));
 static int
 SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
-    uint32_t *piKeysOrig = piKeys;
     (void)nBL;
+    uint32_t *piKeysOrig = piKeys;
+#if defined(SPLIT_SEARCH_32)
     uint32_t iKey = wKey;
-    uint32_t iKeyLoop;
-          #if defined(SPLIT_SEARCH_32)
-              #if defined(SPLIT_SEARCH_LOOP_32)
+  #if defined(SPLIT_SEARCH_LOOP_32)
     while
-              #else // defined(SPLIT_SEARCH_LOOP_32)
+  #else // defined(SPLIT_SEARCH_LOOP_32)
     if
-              #endif // defined(SPLIT_SEARCH_LOOP_32)
+  #endif // defined(SPLIT_SEARCH_LOOP_32)
        (nPopCnt >= cnSplitSearchThresholdInt)
     {
         if (piKeys[nPopCnt / 2] <= iKey) {
@@ -315,21 +195,10 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
             nPopCnt /= 2;
         }
     }
-          #endif // defined(SPLIT_SEARCH_32)
-          #if defined(END_CHECK_32)
-    if ((piKeys[nPopCnt - 1]) < iKey) {
-        return ~(&piKeys[nPopCnt] - piKeysOrig);
-    }
-    while ((iKeyLoop = *piKeys++) < iKey) { }
-          #else // defined(END_CHECK_32)
-    uint32_t *piKeysEnd = &piKeys[nPopCnt - 1];
-    while (iKeyLoop = *piKeys, piKeys++ <= piKeysEnd)
-          #endif // defined(END_CHECK_32)
-    {
-        if (iKeyLoop == iKey) { return piKeys - 1 - piKeysOrig; }
-    }
-
-    return ~(piKeys - 1 - piKeysOrig);
+#endif // defined(SPLIT_SEARCH_32)
+    int nResult;
+    SUB_SEARCH(int32_t, piKeys, nPopCnt, wKey, 0, piKeysOrig, nResult);
+    return nResult;
 }
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) && ...
@@ -510,56 +379,28 @@ Word_t cnMagic[] = {
 static int
 SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
-    int nResult;
     DBGL(printf("SearchList\n"));
   #if defined(COMPRESSED_LISTS)
       // Could be more strict if NO_LIST_AT_DL1.
       #if (cnBitsAtBottom <= 8)
     if (nBL <= 8) {
-        SEARCH(int8_t, pwr_pcKeys(pwr), nPopCnt, wKey, 1, nResult);
-        if (SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt) != nResult) {
-            printf("nResult %d SearchList8 %d\n",
-                nResult, SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt));
-            SEARCHD(int8_t, pwr_pcKeys(pwr), nPopCnt, wKey, 0, nResult);
-        }
-        assert(SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt) == nResult);
+        return SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsAtBottom <= 8)
       #if (cnBitsAtBottom <= 16)
     if (nBL <= 16) {
-        SEARCH(int16_t, pwr_psKeys(pwr), nPopCnt, wKey, 1, nResult);
-        if (SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt) != nResult) {
-            printf("nResult %d SearchList16 %d\n",
-                nResult, SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt));
-            SEARCHD(int16_t, pwr_psKeys(pwr), nPopCnt, wKey, 0, nResult);
-        }
-        assert(SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt) == nResult);
+        return SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsAtBottom <= 16)
       #if (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {
-        SEARCH(int32_t, pwr_piKeys(pwr), nPopCnt, wKey, 0, nResult);
-        if (SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt) != nResult)
-        {
-            printf("\nnResult %d SearchList32 %d\n",
-                nResult, SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt));
-            SEARCHD(int32_t, pwr_piKeys(pwr), nPopCnt, wKey, 0, nResult);
-        }
-        assert(SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt) == nResult);
+        return SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     {
-        SEARCH(long, pwr_pwKeys(pwr), nPopCnt, wKey, 1, nResult);
-        if (SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt) != nResult)
-        {
-            printf("\nnResult %d SearchListWord %d\n",
-                nResult, SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt));
-            SEARCHD(long, pwr_pwKeys(pwr), nPopCnt, wKey, 0, nResult);
-        }
-        assert(SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt) == nResult);
+        return SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt);
     }
-    return nResult;
 }
 
 #endif // (cwListPopCntMax != 0)
