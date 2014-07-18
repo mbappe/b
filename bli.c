@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.270 2014/07/18 19:08:36 mike Exp mike $
+// @(#) $Id: bli.c,v 1.271 2014/07/18 22:13:38 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -635,7 +635,6 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
                 nResult, SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt));
             SEARCHD(long, pwr_pwKeys(pwr), nPopCnt, wKey, 0, nResult);
         }
-        assert(SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt) == nResult);
         assert(SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt) == nResult);
     }
     return nResult;
