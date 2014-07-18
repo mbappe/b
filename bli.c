@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.271 2014/07/18 22:13:38 mike Exp mike $
+// @(#) $Id: bli.c,v 1.272 2014/07/18 22:30:35 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -43,7 +43,8 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 
 #if (cwListPopCntMax != 0)
 
-// Generic linear search with end check.  Supports forward and backward.
+// Generic linear search with end check of list.
+// Supports forward and backward search.
 #define SEARCH(_x_t, _pxKeys, _nPopCnt, _xKey, _bBack, _nResult) \
 { \
     int nn = (_bBack) ? -1 : 1; \
@@ -54,6 +55,23 @@ Word_t j__TreeDepth;                 // number time Branch_U called
         while (((_x_t)_xKey - *px) * nn > 0) { px += nn; } \
         (_nResult) = (*px == (_x_t)_xKey) \
             ? px - (_x_t *)(_pxKeys) : ~(px - (_x_t *)(_pxKeys) + (_bBack)); \
+    } \
+}
+
+// Generic linear search with end check of sub-list.
+// Supports forward and backward search.
+#define SUB_SEARCH(_x_t, \
+                   _pxKeys, _nPopCnt, _xKey, _bBack, _pxKeys0, _nResult) \
+{ \
+    int nn = (_bBack) ? -1 : 1; \
+    _x_t *px = (_x_t *)(_pxKeys) + ((_nPopCnt) - 1) * (_bBack); \
+    if (((_x_t)_xKey - *(px + ((int)(_nPopCnt) - 1) * nn)) * nn > 0) { \
+        (_nResult) = ~((_pxKeys) + (_nPopCnt) * !(_bBack) - (_pxKeys0)); \
+    } else { \
+        while (((_x_t)_xKey - *px) * nn > 0) { px += nn; } \
+        (_nResult) = (*px == (_x_t)_xKey) \
+            ?   px - (_x_t *)(_pxKeys0) \
+            : ~(px - (_x_t *)(_pxKeys0) + (_bBack)); \
     } \
 }
 
@@ -420,96 +438,9 @@ split: // should go backwards if key is in first part
         }
     }
   #endif // defined(SPLIT_SEARCH)
-    Word_t *pwKeysEnd = &pwKeys[nPopCnt-1]; (void)pwKeysEnd;
-    Word_t wKeyLoop;
-  #if defined(SPLIT_SEARCH_LOOP) && (cnSplitSearchThresholdWord <= 2)
-    assert(nPopCnt == 1);
-    wKeyLoop = *pwKeys;
-  #else // defined(SPLIT_SEARCH_LOOP) && (cnSplitSearchThresholdWord <= 2)
-      // Should we add a threshold for END_CHECK?
-      #if defined(END_CHECK)
-          #if defined(BACKWARD_SEARCH)
-    if (*pwKeys > wKey) {
-        assert(~(pwKeys - pwKeysOrig) < 0);
-        return ~(pwKeys - pwKeysOrig);
-    }
-    while ((wKeyLoop = *pwKeysEnd--) > wKey) { }
-          #else // defined(BACKWARD_SEARCH)
-    if (*pwKeysEnd < wKey) {
-        assert(~(pwKeysEnd + 1 - pwKeysOrig) < 0);
-        return ~(pwKeysEnd + 1 - pwKeysOrig);
-    }
-    while ((wKeyLoop = *pwKeys++) < wKey) { }
-          #endif // defined(BACKWARD_SEARCH)
-      #else // defined(END_CHECK)
-    do
-      #endif // defined(END_CHECK)
-  #endif // defined(SPLIT_SEARCH_LOOP) && (cnSplitSearchThresholdWord <= 2)
-    {
-  #if ( ! defined(SPLIT_SEARCH_LOOP) || (cnSplitSearchThresholdWord > 2) ) \
-          && ! defined(END_CHECK)
-      #if defined(BACKWARD_SEARCH)
-        wKeyLoop = *pwKeysEnd;
-      #else // defined(BACKWARD_SEARCH)
-        wKeyLoop = *pwKeys;
-      #endif // defined(BACKWARD_SEARCH)
-      // Should we add a threshold for <XYZ>_FIRST?
-      #if ! defined(BACKWARD_SEARCH) && defined(CONTINUE_FIRST)
-        if (wKeyLoop < wKey) { continue; }
-      #endif // ! defined(BACKWARD_SEARCH) && defined(CONTINUE_FIRST)
-      #if defined(BACKWARD_SEARCH) && defined(CONTINUE_FIRST)
-        if (wKeyLoop > wKey) { continue; }
-      #endif // defined(BACKWARD_SEARCH) && defined(CONTINUE_FIRST)
-
-      #if defined(FAIL_FIRST)
-          #if defined(BACKWARD_SEARCH)
-        if (wKeyLoop < wKey) { break; }
-          #else // defined(BACKWARD_SEARCH)
-        if (wKeyLoop > wKey) { break; }
-          #endif // defined(BACKWARD_SEARCH)
-      #endif // defined(FAIL_FIRST)
-  #endif // ( ! defined(SPLIT_SEARCH_LOOP) || ... ) && ! defined(END_CHECK)
-
-#if defined(BACKWARD_SEARCH)
-        if (wKeyLoop == wKey) {
-            assert(pwKeysEnd - pwKeysOrig >= 0);
-            return pwKeysEnd - pwKeysOrig;
-        }
-#else // defined(BACKWARD_SEARCH)
-        if (wKeyLoop == wKey) {
-            assert(pwKeys - pwKeysOrig - 1 >= 0);
-            return pwKeys - pwKeysOrig - 1;
-        }
-#endif // defined(BACKWARD_SEARCH)
-
-  #if ( ! defined(SPLIT_SEARCH_LOOP) || (cnSplitSearchThresholdWord > 2) ) \
-          && ! defined(END_CHECK)
-      #if defined(SUCCEED_FIRST)
-          #if defined(BACKWARD_SEARCH)
-        if (wKeyLoop < wKey)
-          #else // defined(BACKWARD_SEARCH)
-        if (wKeyLoop > wKey)
-          #endif // defined(BACKWARD_SEARCH)
-      #endif // defined(SUCCEED_FIRST)
-      #if defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
-        { break; }
-      #endif // defined(SUCCEED_FIRST) || defined(CONTINUE_FIRST)
-  #endif // ( ! defined(SPLIT_SEARCH_LOOP) || ... ) && ! defined(END_CHECK)
-    }
-  #if ( ! defined(SPLIT_SEARCH_LOOP) || (cnSplitSearchThresholdWord > 2) ) \
-          && ! defined(END_CHECK)
-      #if defined(BACKWARD_SEARCH)
-    while (--pwKeysEnd >= pwKeys);
-      #else // defined(BACKWARD_SEARCH)
-    while (++pwKeys <= pwKeysEnd);
-      #endif // defined(BACKWARD_SEARCH)
-  #endif // ( ! defined(SPLIT_SEARCH_LOOP) || ... ) && ! defined(END_CHECK)
-
-#if defined(BACKWARD_SEARCH)
-    return ~(pwKeysEnd + 1 - pwKeysOrig);
-#else // defined(BACKWARD_SEARCH)
-    return ~(pwKeys - 1 - pwKeysOrig);
-#endif // defined(BACKWARD_SEARCH)
+    int nResult;
+    SUB_SEARCH(long, pwKeys, nPopCnt, wKey, 0, pwKeysOrig, nResult);
+    return nResult;
 }
 
 #if 0
