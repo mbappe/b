@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.269 2014/07/18 03:50:22 mike Exp mike $
+// @(#) $Id: bli.c,v 1.270 2014/07/18 19:08:36 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -42,6 +42,46 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 #endif // defined(LOOKUP) || defined(REMOVE)
 
 #if (cwListPopCntMax != 0)
+
+// Generic linear search with end check.  Supports forward and backward.
+#define SEARCH(_x_t, _pxKeys, _nPopCnt, _xKey, _bBack, _nResult) \
+{ \
+    int nn = (_bBack) ? -1 : 1; \
+    _x_t *px = (_x_t *)(_pxKeys) + ((_nPopCnt) - 1) * (_bBack); \
+    if (((_x_t)_xKey - *(px + ((int)(_nPopCnt) - 1) * nn)) * nn > 0) { \
+        (_nResult) = ~(_nPopCnt * !(_bBack)); \
+    } else { \
+        while (((_x_t)_xKey - *px) * nn > 0) { px += nn; } \
+        (_nResult) = (*px == (_x_t)_xKey) \
+            ? px - (_x_t *)(_pxKeys) : ~(px - (_x_t *)(_pxKeys) + (_bBack)); \
+    } \
+}
+
+#define SEARCHD(_x_t, _pxKeys, _nPopCnt, _xKey, _bBack, _nResult) \
+{ \
+    int nn = (_bBack) ? -1 : 1; \
+    _x_t *px = (_x_t *)(_pxKeys) + ((_nPopCnt) - 1) * (_bBack); \
+    if (((_x_t)_xKey - *(px + ((int)(_nPopCnt) - 1) * nn)) * nn > 0) { \
+        printf("\nend check\n"); \
+        printf("key "OWx" keyLoop "OWx" nn %d\n", (Word_t)_xKey, \
+            (Word_t)*(px + ((int)(_nPopCnt) - 1) * nn), nn); \
+        printf(#_x_t "\n"); \
+        int  ii = ((_x_t)_xKey - *(px + ((int)(_nPopCnt) - 1) * nn)) * nn; \
+        printf("ii 0x%08x\n", ii); \
+        long ll = ((_x_t)_xKey - *(px + ((int)(_nPopCnt) - 1) * nn)) * nn; \
+        printf("ll "OWx"\n", ll);\
+        printf("pKeys %p nPopCnt %d key "OWx" bBack %d\n", \
+            _pxKeys, _nPopCnt, _xKey, _bBack); \
+        for (unsigned ii = 0; ii < _nPopCnt; ii++) { \
+            printf("%3d "OWx"\n", ii, (Word_t)((_x_t *)_pxKeys)[ii]); } \
+        (_nResult) = ~(_nPopCnt * !(_bBack)); \
+    } else { \
+        printf("\nno end check\n"); \
+        while (((_x_t)_xKey - *px) * nn > 0) { px += nn; } \
+        (_nResult) = (*px == (_x_t)_xKey) \
+            ? px - (_x_t *)(_pxKeys) : ~(px - (_x_t *)(_pxKeys) + (_bBack)); \
+    } \
+}
 
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
 
@@ -126,20 +166,6 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 16)
 
-// Generic linear search with end check.  Supports forward and backward.
-#define SEARCH(_x_t, _pxKeys, _nPopCnt, _xKey, _bBack, _nResult) \
-{ \
-    int nn = (_bBack) ? -1 : 1; \
-    _x_t *px = (_x_t *)(_pxKeys) + ((_nPopCnt) - 1) * (_bBack); \
-    if ((long)((_x_t)_xKey - *(px + ((int)(_nPopCnt) - 1) * nn)) * nn > 0) { \
-        (_nResult) = ~(_nPopCnt * !(_bBack)); \
-    } else { \
-        while ((long)((_x_t)_xKey - *px) * nn > 0) { px += nn; } \
-        (_nResult) = (*px == (_x_t)_xKey) \
-            ? px - (_x_t *)(_pxKeys) : ~(px - (_x_t *)(_pxKeys) + (_bBack)); \
-    } \
-}
-
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
 // If it does not exist, then return the one's complement of the index where
@@ -168,14 +194,16 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
         psKeys = &psKeys[nSplit];
         while ((sKeyLoop = *psKeys++) < sKey) { }
         return (sKeyLoop == sKey)
-                ? psKeys - 1 - psKeysOrig : ~(psKeys - psKeysOrig);
+                ?   psKeys - 1 - psKeysOrig
+                : ~(psKeys - 1 - psKeysOrig);
     } else {
         if (((nPopCnt = nSplit) == 0) || (*psKeys > sKey)) { return ~(0); }
         uint16_t *psKeysEnd = psKeys;
         psKeys = &psKeysEnd[nPopCnt - 1];
         while ((sKeyLoop = *psKeys--) > sKey) { }
         return (sKeyLoop == sKey)
-                ? psKeys + 1 - psKeysOrig : ~(psKeys + 1 - psKeysOrig);
+                ?   psKeys + 1 - psKeysOrig
+                : ~(psKeys + 2 - psKeysOrig);
     }
 #else // defined(PSPLIT_16)
     (void)nBL;
@@ -238,7 +266,7 @@ DBGL(printf("got past end check\n"));
       #if ! defined(END_CHECK_16)
     while (psKeys <= psKeysEnd);
       #endif // ! defined(END_CHECK_16)
-    return ~(psKeys - psKeysOrig);
+    return ~(psKeys - 1 - psKeysOrig);
   #endif // defined(BACKWARD_SEARCH_16)
 #endif // defined(PSPLIT_16)
 }
@@ -292,7 +320,7 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
         if (iKeyLoop == iKey) { return piKeys - 1 - piKeysOrig; }
     }
 
-    return ~(piKeys - piKeysOrig);
+    return ~(piKeys - 1 - piKeysOrig);
 }
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) && ...
@@ -325,7 +353,6 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 // split-loop-w-threshold=20, end-check, continue-first
 //
 
-#if defined(LOOKUP) || 0
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
 // If it does not exist, then return the one's complement of the index where
@@ -484,7 +511,6 @@ split: // should go backwards if key is in first part
     return ~(pwKeys - 1 - pwKeysOrig);
 #endif // defined(BACKWARD_SEARCH)
 }
-#endif // defined(LOOKUP) || 0
 
 #if 0
 #define MAGIC1(_nBL)  MAXUINT / ((1 << (_nBL)) - 1)
@@ -562,34 +588,57 @@ Word_t cnMagic[] = {
 static int
 SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
+    int nResult;
     DBGL(printf("SearchList\n"));
   #if defined(COMPRESSED_LISTS)
       // Could be more strict if NO_LIST_AT_DL1.
       #if (cnBitsAtBottom <= 8)
     if (nBL <= 8) {
-        return SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt);
+        SEARCH(int8_t, pwr_pcKeys(pwr), nPopCnt, wKey, 1, nResult);
+        if (SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt) != nResult) {
+            printf("nResult %d SearchList8 %d\n",
+                nResult, SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt));
+            SEARCHD(int8_t, pwr_pcKeys(pwr), nPopCnt, wKey, 0, nResult);
+        }
+        assert(SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt) == nResult);
     } else
       #endif // (cnBitsAtBottom <= 8)
       #if (cnBitsAtBottom <= 16)
     if (nBL <= 16) {
-        return SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt);
+        SEARCH(int16_t, pwr_psKeys(pwr), nPopCnt, wKey, 1, nResult);
+        if (SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt) != nResult) {
+            printf("nResult %d SearchList16 %d\n",
+                nResult, SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt));
+            SEARCHD(int16_t, pwr_psKeys(pwr), nPopCnt, wKey, 0, nResult);
+        }
+        assert(SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt) == nResult);
     } else
       #endif // (cnBitsAtBottom <= 16)
       #if (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {
-        return SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt);
+        SEARCH(int32_t, pwr_piKeys(pwr), nPopCnt, wKey, 0, nResult);
+        if (SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt) != nResult)
+        {
+            printf("\nnResult %d SearchList32 %d\n",
+                nResult, SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt));
+            SEARCHD(int32_t, pwr_piKeys(pwr), nPopCnt, wKey, 0, nResult);
+        }
+        assert(SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt) == nResult);
     } else
       #endif // (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     {
-        int nResult;
-#if 0
-        nResult = SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt);
-#else // 0
-        SEARCH(Word_t, pwr_pwKeys(pwr), nPopCnt, wKey, 0, nResult);
-#endif // 0
-        return nResult;
+        SEARCH(long, pwr_pwKeys(pwr), nPopCnt, wKey, 1, nResult);
+        if (SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt) != nResult)
+        {
+            printf("\nnResult %d SearchListWord %d\n",
+                nResult, SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt));
+            SEARCHD(long, pwr_pwKeys(pwr), nPopCnt, wKey, 0, nResult);
+        }
+        assert(SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt) == nResult);
+        assert(SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt) == nResult);
     }
+    return nResult;
 }
 
 #endif // (cwListPopCntMax != 0)
