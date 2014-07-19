@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.275 2014/07/18 23:47:41 mike Exp mike $
+// @(#) $Id: bli.c,v 1.276 2014/07/19 18:43:07 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -72,83 +72,6 @@ Word_t j__TreeDepth;                 // number time Branch_U called
         (_nResult) = (*px == (_x_t)_xKey) \
             ?   px - (_pxKeys0) : ~(px - (_pxKeys0) + (_bBack)); \
     } \
-}
-
-#define SEARCHD(_x_t, _pxKeys, _nPopCnt, _xKey, _bBack, _nResult) \
-{ \
-    printf("\n" #_x_t " pKeys %p nPopCnt %d key "OWx" bBack %d\n", \
-        _pxKeys, _nPopCnt, (Word_t)_xKey, _bBack); \
-    int nn = (_bBack) ? -1 : 1; \
-    u ## _x_t *px = (_pxKeys) + ((_nPopCnt) - 1) * (_bBack); \
-    if ((u ## _x_t)_xKey * nn > *(px + ((_nPopCnt) - 1) * nn) * nn) { \
-        printf("Out of range\n"); \
-        printf("keyLoop "OWx"\n", (Word_t)*(px + ((_nPopCnt) - 1) * nn)); \
-        word_t wDiff = (word_t)((u ## _x_t)_xKey - *(px + ((_nPopCnt) - 1) * nn)); \
-        printf("signed (key - keyLoop) "OWx"\n", wDiff); \
-        word_t wLeft = (word_t)((u ## _x_t)_xKey - *(px + ((_nPopCnt) - 1) * nn)) * nn; \
-        printf("wLeft "OWx"\n", wLeft); \
-        (_nResult) = ~(_nPopCnt * !(_bBack)); \
-    } else { \
-        printf("\nno end check\n"); \
-        printf(" px %p\n", px); \
-        while ((u ## _x_t)_xKey * nn > *px * nn) { \
-            printf("xKey - *px "OWx" left "OWx"\n", (Word_t)(_x_t)((u ## _x_t)_xKey - *px), \
-                (Word_t)((_x_t)((u ## _x_t)_xKey - *px) * nn)); \
-            px += nn; \
-        } \
-        printf("xKey "OWx" *px "OWx"\n", (Word_t)_xKey, (Word_t)*px); \
-        printf("diff "OWx" left "OWx"\n", (Word_t)((_x_t)_xKey - *px), \
-            (Word_t)(((_x_t)_xKey - *px) * nn)); \
-        (_nResult) = (*px == (u ## _x_t)_xKey) \
-            ? px - (_pxKeys) : ~(px - (_pxKeys) + (_bBack)); \
-    } \
-    for (unsigned ii = 0; ii < _nPopCnt; ii++) { \
-        printf("%3d "OWx"\n", ii, (Word_t)(_pxKeys)[ii]); } \
-    printf("nResult %d\n", _nResult); \
-}
-
-#define SUB_SEARCHD(_x_t, \
-                   _pxKeys, _nPopCnt, _xKey, _bBack, _pxKeys0, _nResult) \
-{ \
-    printf("\nsub " #_x_t " pKeys %p nPopCnt %d key "OWx" bBack %d pKeys0 %p\n", \
-        _pxKeys, _nPopCnt, (Word_t)_xKey, _bBack, _pxKeys0); \
-    for (unsigned ii = 0; ii < _nPopCnt; ii++) { \
-        printf("%3d "OWx"\n", ii, (Word_t)(_pxKeys)[ii]); } \
-    int nn = (_bBack) ? -1 : 1; \
-    u ## _x_t *px = (_pxKeys) + ((_nPopCnt) - 1) * (_bBack); \
-    if ((u ## _x_t)_xKey * nn > *(px + ((_nPopCnt) - 1) * nn) * nn) { \
-        printf("Out of range\n"); \
-        printf("keyLoop "OWx"\n", (Word_t)*(px + ((_nPopCnt) - 1) * nn)); \
-        printf("? "OWx" > "OWx" ?\n", \
-            (Word_t)((u ## _x_t)_xKey * nn), \
-            (Word_t)(*(px + ((_nPopCnt) - 1) * nn) * nn)); \
-        (_nResult) = ~((_pxKeys) + (_nPopCnt) * !(_bBack) - (_pxKeys0)); \
-    } else { \
-        printf("In range\n"); \
-        printf("? key*nn == "OWx" >  "OWx" == *px*nn\n", \
-            (Word_t)((u ## _x_t)_xKey * nn), \
-            (Word_t)(*px * nn)); \
-        while ((u ## _x_t)_xKey * nn > *px * nn) { \
-            printf("  key*nn == "OWx" >  "OWx" == *px*nn\n", \
-                (Word_t)((u ## _x_t)_xKey * nn), \
-                (Word_t)(*px * nn)); \
-            px += nn; \
-            printf("? key*nn == "OWx" >  "OWx" == *px*nn\n", \
-                (Word_t)((u ## _x_t)_xKey * nn), \
-                (Word_t)(*px * nn)); \
-        } \
-        printf("  key*nn == "OWx" <= "OWx" == *px*nn px %p\n", \
-            (Word_t)((u ## _x_t)_xKey * nn), \
-            (Word_t)(*px * nn), px); \
-        if ((*px == (u ## _x_t)_xKey)) { \
-            printf("equals\n"); \
-        } else { \
-            printf("not equal\n"); \
-        } \
-        (_nResult) = (*px == (u ## _x_t)_xKey) \
-            ? px - (_pxKeys) : ~(px - (_pxKeys) + (_bBack)); \
-    } \
-    printf("nResult %d\n", _nResult); \
 }
 
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
