@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.276 2014/07/19 18:43:07 mike Exp mike $
+// @(#) $Id: bli.c,v 1.277 2014/07/19 18:46:00 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -353,29 +353,27 @@ static int
 SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
     DBGL(printf("SearchList\n"));
-    int nResult;
   #if defined(COMPRESSED_LISTS)
       // Could be more strict if NO_LIST_AT_DL1.
       #if (cnBitsAtBottom <= 8)
     if (nBL <= 8) {
-        SEARCH(uint8_t, pwr_pcKeys(pwr), nPopCnt, wKey, 0, nResult);
+        return SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsAtBottom <= 8)
       #if (cnBitsAtBottom <= 16)
     if (nBL <= 16) {
-        SEARCH(uint16_t, pwr_psKeys(pwr), nPopCnt, (uint16_t)wKey, 0, nResult);
+        return SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsAtBottom <= 16)
       #if (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {
-        SEARCH(uint32_t, pwr_piKeys(pwr), nPopCnt, wKey, 0, nResult);
+        return SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     {
-        SEARCH(Word_t, pwr_pwKeys(pwr), nPopCnt, wKey, 0, nResult);
+        return SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt);
     }
-    return nResult;
 }
 
 #endif // (cwListPopCntMax != 0)
