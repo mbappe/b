@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.277 2014/07/19 18:46:00 mike Exp mike $
+// @(#) $Id: bli.c,v 1.278 2014/07/19 19:01:57 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -129,7 +129,11 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     }
 #else // defined(PSPLIT_16)
     (void)nBL;
+#if defined(BACKWARD_SEARCH_16)
+    SEARCH(uint16_t, psKeys, nPopCnt, wKey, 1, nResult);
+#else // defined(BACKWARD_SEARCH_16)
     SEARCH(uint16_t, psKeys, nPopCnt, wKey, 0, nResult);
+#endif // defined(BACKWARD_SEARCH_16)
 #endif // defined(PSPLIT_16)
     return nResult;
 }
@@ -170,7 +174,11 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     }
 #endif // defined(SPLIT_SEARCH_32)
     int nResult;
+#if defined(BACKWARD_SEARCH_32)
+    SUB_SEARCH(uint32_t, piKeys, nPopCnt, wKey, 1, piKeysOrig, nResult);
+#else // defined(BACKWARD_SEARCH_32)
     SUB_SEARCH(uint32_t, piKeys, nPopCnt, wKey, 0, piKeysOrig, nResult);
+#endif // defined(BACKWARD_SEARCH_32)
     return nResult;
 }
 
@@ -272,7 +280,11 @@ split: // should go backwards if key is in first part
     }
   #endif // defined(SPLIT_SEARCH)
     int nResult;
+#if defined(BACKWARD_SEARCH_64)
+    SUB_SEARCH(Word_t, pwKeys, nPopCnt, wKey, 1, pwKeysOrig, nResult);
+#else // defined(BACKWARD_SEARCH_64)
     SUB_SEARCH(Word_t, pwKeys, nPopCnt, wKey, 0, pwKeysOrig, nResult);
+#endif // defined(BACKWARD_SEARCH_64)
     return nResult;
 }
 
