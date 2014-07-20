@@ -923,5 +923,17 @@ Word_t wDebugPopCnt; // sanity checking
 #endif // (cnDigitsPerWord != 1)
 #endif // defined(DEBUG)
 
+// Default is -DPSPLIT_16.
+#if ! defined(NO_PSPLIT_16)
+#undef  PSPLIT_16
+#define PSPLIT_16
+#endif // ! defined(NO_PSPLIT_16)
+
+// Default is -DPSPLIT_32.
+#if ! defined(NO_PSPLIT_32)
+#undef  PSPLIT_32
+#define PSPLIT_32
+#endif // ! defined(NO_PSPLIT_32)
+
 #endif // ( ! defined(_B_H_INCLUDED) )
 
