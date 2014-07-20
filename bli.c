@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.280 2014/07/20 02:35:11 mike Exp mike $
+// @(#) $Id: bli.c,v 1.281 2014/07/20 11:30:02 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -45,36 +45,76 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 
 // Linear search of list (for any size key and with end check).
 // Supports forward and backward search.
-#define SEARCH(_x_t, _pxKeys, _nPopCnt, _xKey, _bBack, _nResult) \
+#define SEARCH(_x_t, _pxKeys, _nPopCnt, _xKey, _bBack, _nPos) \
 { \
     int nn = (_bBack) ? -1 : 1; \
     _x_t *px = (_pxKeys) + ((_nPopCnt) - 1) * (_bBack); \
-    if ((_bBack) ? (_x_t)(_xKey) < (_pxKeys)[0] \
-                 : (_pxKeys)[(_nPopCnt) - 1] < (_x_t)(_xKey)) \
+    if ((_bBack) ? (_xKey) < (_pxKeys)[0] \
+                 : (_pxKeys)[(_nPopCnt) - 1] < (_xKey)) \
     { \
-        (_nResult) = ~(_nPopCnt * !(_bBack)); \
+        (_nPos) = ~(_nPopCnt * !(_bBack)); \
     } else { \
-        while ((_bBack) ? (_x_t)(_xKey) < *px : *px < (_x_t)(_xKey)) { px += nn; } \
-        (_nResult) = (*px == (_x_t)_xKey) \
-            ? px - (_pxKeys) : ~(px - (_pxKeys) + (_bBack)); \
+        while ((_bBack) ? (_xKey) < *px : *px < (_xKey)) { px += nn; } \
+        (_nPos) = (*px == (_xKey)) \
+                ? px - (_pxKeys) : ~(px - (_pxKeys) + (_bBack)); \
+    } \
+}
+
+#define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos) \
+{ \
+    if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
+        (_nPos) = ~(_nPopCnt); \
+    } else { \
+        _x_t *px = (_pxKeys); while (*px < (_xKey)) ++px; \
+        (_nPos) = (*px == (_xKey)) ? px - (_pxKeys) : ~(px - (_pxKeys)); \
+    } \
+}
+
+#define SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos) \
+{ \
+    if ((_xKey) < (_pxKeys)[0]) { \
+        (_nPos) = ~(0); \
+    } else { \
+        _x_t *px = (_pxKeys) + (_nPopCnt) - 1; while ((_xKey) < *px) --px; \
+        (_nPos) = (*px == (_xKey)) ? px - (_pxKeys) : ~(++px - (_pxKeys)); \
     } \
 }
 
 // Linear search of sub-list (for any size key and with end check).
 // Supports forward and backward search.
 #define SUB_SEARCH(_x_t, \
-                   _pxKeys, _nPopCnt, _xKey, _bBack, _pxKeys0, _nResult) \
+                   _pxKeys, _nPopCnt, _xKey, _bBack, _pxKeys0, _nPos) \
 { \
     int nn = (_bBack) ? -1 : 1; \
     _x_t *px = (_pxKeys) + ((_nPopCnt) - 1) * (_bBack); \
-    if ((_bBack) ? (_x_t)(_xKey) < (_pxKeys)[0] \
-                 : (_pxKeys)[(_nPopCnt) - 1] < (_x_t)(_xKey)) \
+    if ((_bBack) ? (_xKey) < (_pxKeys)[0] \
+                 : (_pxKeys)[(_nPopCnt) - 1] < (_xKey)) \
     { \
-        (_nResult) = ~((_pxKeys) + (_nPopCnt) * !(_bBack) - (_pxKeys0)); \
+        (_nPos) = ~((_pxKeys) + (_nPopCnt) * !(_bBack) - (_pxKeys0)); \
     } else { \
-        while ((_bBack) ? (_x_t)(_xKey) < *px : *px < (_x_t)(_xKey)) { px += nn; } \
-        (_nResult) = (*px == (_x_t)_xKey) \
-            ?   px - (_pxKeys0) : ~(px - (_pxKeys0) + (_bBack)); \
+        while ((_bBack) ? (_xKey) < *px : *px < (_xKey)) { px += nn; } \
+        (_nPos) = (*px == (_xKey)) \
+                ? px - (_pxKeys0) : ~(px - (_pxKeys0) + (_bBack)); \
+    } \
+}
+
+#define SUB_SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+{ \
+    if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
+        (_nPos) = ~((_pxKeys) + (_nPopCnt) - (_pxKeys0)); \
+    } else { \
+        _x_t *px = (_pxKeys); while (*px < (_xKey)) ++px; \
+        (_nPos) = (*px == (_xKey)) ? px - (_pxKeys0) : ~(px - (_pxKeys0)); \
+    } \
+}
+
+#define SUB_SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+{ \
+    if ((_x_t)(_xKey) < (_pxKeys)[0]) { \
+        (_nPos) = ~((_pxKeys) - (_pxKeys0)); \
+    } else { \
+        _x_t *px = (_pxKeys) + (_nPopCnt) - 1; while ((_xKey) < *px) --px; \
+        (_nPos) = (*px == (_xKey)) ? px - (_pxKeys0) : ~(++px - (_pxKeys0)); \
     } \
 }
 
@@ -92,13 +132,13 @@ static int
 SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
     (void)nBL;
-    int nResult;
+    int nPos;
   #if defined(BACKWARD_SEARCH_8)
-    SEARCH(uint8_t, pcKeys, nPopCnt, wKey, 1, nResult);
+    SEARCHB(uint8_t, pcKeys, nPopCnt, (uint8_t)wKey, nPos);
   #else // defined(BACKWARD_SEARCH_8)
-    SEARCH(uint8_t, pcKeys, nPopCnt, wKey, 0, nResult);
+    SEARCHF(uint8_t, pcKeys, nPopCnt, (uint8_t)wKey, nPos);
   #endif // defined(BACKWARD_SEARCH_8)
-    return nResult;
+    return nPos;
 }
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
@@ -116,7 +156,7 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 static int
 SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
-    int nResult;
+    int nPos;
 #if defined(PSPLIT_16)
 #if defined(PSPLIT_XOR_16)
     uint16_t sKeyMin = psKeys[0];
@@ -125,21 +165,21 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 #endif // defined(PSPLIT_XOR_16)
     unsigned nSplit = wKey % EXP(nBL) * nPopCnt / EXP(nBL);
     if (psKeys[nSplit] <= (uint16_t)wKey) {
-        SUB_SEARCH(uint16_t, &psKeys[nSplit], nPopCnt - nSplit,
-                   wKey, 0, psKeys, nResult);
+        SUB_SEARCHF(uint16_t, &psKeys[nSplit], nPopCnt - nSplit,
+                  (uint16_t)wKey, psKeys, nPos);
     } else {
         if (nSplit == 0) { return ~(0); }
-        SEARCH(uint16_t, psKeys, nSplit, wKey, 1, nResult);
+        SEARCHB(uint16_t, psKeys, nSplit, (uint16_t)wKey, nPos);
     }
 #else // defined(PSPLIT_16)
     (void)nBL;
 #if defined(BACKWARD_SEARCH_16)
-    SEARCH(uint16_t, psKeys, nPopCnt, wKey, 1, nResult);
+    SEARCHB(uint16_t, psKeys, nPopCnt, (uint16_t)wKey, nPos);
 #else // defined(BACKWARD_SEARCH_16)
-    SEARCH(uint16_t, psKeys, nPopCnt, wKey, 0, nResult);
+    SEARCHF(uint16_t, psKeys, nPopCnt, (uint16_t)wKey, nPos);
 #endif // defined(BACKWARD_SEARCH_16)
 #endif // defined(PSPLIT_16)
-    return nResult;
+    return nPos;
 }
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 16)
@@ -158,7 +198,7 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 static int
 SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
-    int nResult;
+    int nPos;
 #if defined(PSPLIT_32)
 #if defined(PSPLIT_XOR_32)
     uint32_t iKeyMin = piKeys[0];
@@ -167,11 +207,11 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 #endif // defined(PSPLIT_XOR_32)
     unsigned nSplit = wKey % EXP(nBL) * nPopCnt / EXP(nBL);
     if (piKeys[nSplit] <= (uint32_t)wKey) {
-        SUB_SEARCH(uint32_t, &piKeys[nSplit], nPopCnt - nSplit,
-                   wKey, 0, piKeys, nResult);
+        SUB_SEARCHF(uint32_t, &piKeys[nSplit], nPopCnt - nSplit,
+                  (uint32_t)wKey, piKeys, nPos);
     } else {
         if (nSplit == 0) { return ~(0); }
-        SEARCH(uint32_t, piKeys, nSplit, wKey, 1, nResult);
+        SEARCHB(uint32_t, piKeys, nSplit, (uint32_t)wKey, nPos);
     }
 #else // defined(PSPLIT_32)
     (void)nBL;
@@ -194,12 +234,12 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     }
 #endif // defined(SPLIT_SEARCH_32)
 #if defined(BACKWARD_SEARCH_32)
-    SUB_SEARCH(uint32_t, piKeys, nPopCnt, wKey, 1, piKeysOrig, nResult);
+    SUB_SEARCHB(uint32_t, piKeys, nPopCnt, (uint32_t)wKey, piKeysOrig, nPos);
 #else // defined(BACKWARD_SEARCH_32)
-    SUB_SEARCH(uint32_t, piKeys, nPopCnt, wKey, 0, piKeysOrig, nResult);
+    SUB_SEARCHF(uint32_t, piKeys, nPopCnt, (uint32_t)wKey, piKeysOrig, nPos);
 #endif // defined(BACKWARD_SEARCH_32)
 #endif // defined(PSPLIT_32)
-    return nResult;
+    return nPos;
 }
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) && ...
@@ -299,13 +339,13 @@ split: // should go backwards if key is in first part
         }
     }
   #endif // defined(SPLIT_SEARCH)
-    int nResult;
+    int nPos;
 #if defined(BACKWARD_SEARCH_64)
-    SUB_SEARCH(Word_t, pwKeys, nPopCnt, wKey, 1, pwKeysOrig, nResult);
+    SUB_SEARCHB(Word_t, pwKeys, nPopCnt, wKey, pwKeysOrig, nPos);
 #else // defined(BACKWARD_SEARCH_64)
-    SUB_SEARCH(Word_t, pwKeys, nPopCnt, wKey, 0, pwKeysOrig, nResult);
+    SUB_SEARCHF(Word_t, pwKeys, nPopCnt, wKey, pwKeysOrig, nPos);
 #endif // defined(BACKWARD_SEARCH_64)
-    return nResult;
+    return nPos;
 }
 
 #if 0
