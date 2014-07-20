@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.284 2014/07/20 12:48:34 mike Exp mike $
+// @(#) $Id: bli.c,v 1.285 2014/07/20 12:56:22 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -44,7 +44,7 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 #if (cwListPopCntMax != 0)
 
 // Linear search of list (for any size key and with end check).
-#define SEARCHF_EC(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos) \
+#define SEARCHF_EC(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
         (_nPos) = ~(_nPopCnt); \
@@ -54,7 +54,7 @@ Word_t j__TreeDepth;                 // number time Branch_U called
     } \
 }
 
-#define SEARCHB_EC(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos) \
+#define SEARCHB_EC(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     if ((_xKey) < *(_pxKeys)) { \
         (_nPos) = ~(0); \
@@ -68,7 +68,7 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 // I wonder if the non-SUB_ variants are necessary or if the compiler would
 // make the SUB_ variants equivalent to the non-SUB_ variants by noticing
 // that _pxKeys and _pxKeys0 are the same.
-#define SUB_SEARCHF_EC(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+#define SUB_SEARCHF_EC(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
     if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
         (_nPos) = ~((_pxKeys) + (_nPopCnt) - (_pxKeys0)); \
@@ -78,7 +78,7 @@ Word_t j__TreeDepth;                 // number time Branch_U called
     } \
 }
 
-#define SUB_SEARCHB_EC(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+#define SUB_SEARCHB_EC(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
     if ((_xKey) < *(_pxKeys)) { \
         (_nPos) = ~((_pxKeys) - (_pxKeys0)); \
@@ -89,7 +89,7 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 }
 
 // Linear search of list (for any size key and with end check).
-#define SEARCHF_EE(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos) \
+#define SEARCHF_EE(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     if ((_pxKeys)[(_nPopCnt) - 1] <= (_xKey)) { \
         (_nPos) = (_nPopCnt); \
@@ -100,7 +100,7 @@ Word_t j__TreeDepth;                 // number time Branch_U called
     } \
 }
 
-#define SEARCHB_EE(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos) \
+#define SEARCHB_EE(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     if ((_xKey) <= *(_pxKeys)) { \
         (_nPos) = (*(_pxKeys) == (_xKey)) ? 0 : ~0; \
@@ -111,7 +111,7 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 }
 
 // Linear search of sub-list (for any size key and with end check).
-#define SUB_SEARCHF_EE(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+#define SUB_SEARCHF_EE(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
     if ((_pxKeys)[(_nPopCnt) - 1] <= (_xKey)) { \
         (_nPos) = (_pxKeys) + (_nPopCnt) - (_pxKeys0); \
@@ -122,7 +122,7 @@ Word_t j__TreeDepth;                 // number time Branch_U called
     } \
 }
 
-#define SUB_SEARCHB_EE(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+#define SUB_SEARCHB_EE(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
     if ((_xKey) <= *(_pxKeys)) { \
         (_nPos) = (_pxKeys) - (_pxKeys0); \
@@ -147,11 +147,11 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 
 #if defined(ALL_SUB)
 #undef  SEARCHF
-#define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey,          _nPos) \
-    SUB_SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys, _nPos)
+#define SEARCHF(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey,          _nPos) \
+    SUB_SEARCHF(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _pxKeys, _nPos)
 #undef  SEARCHB
-#define SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey,          _nPos) \
-    SUB_SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys, _nPos)
+#define SEARCHB(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey,          _nPos) \
+    SUB_SEARCHB(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _pxKeys, _nPos)
 #endif // defined(ALL_SUB)
 
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
@@ -170,9 +170,9 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     (void)nBL;
     int nPos;
   #if defined(BACKWARD_SEARCH_8)
-    SEARCHB(uint8_t, pcKeys, nPopCnt, (uint8_t)wKey, nPos);
+    SEARCHB(uint8_t, nBL, pcKeys, nPopCnt, (uint8_t)wKey, nPos);
   #else // defined(BACKWARD_SEARCH_8)
-    SEARCHF(uint8_t, pcKeys, nPopCnt, (uint8_t)wKey, nPos);
+    SEARCHF(uint8_t, nBL, pcKeys, nPopCnt, (uint8_t)wKey, nPos);
   #endif // defined(BACKWARD_SEARCH_8)
     return nPos;
 }
@@ -201,18 +201,18 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 #endif // defined(PSPLIT_XOR_16)
     unsigned nSplit = wKey % EXP(nBL) * nPopCnt / EXP(nBL);
     if (psKeys[nSplit] <= (uint16_t)wKey) {
-        SUB_SEARCHF(uint16_t, &psKeys[nSplit], nPopCnt - nSplit,
+        SUB_SEARCHF(uint16_t, nBL, &psKeys[nSplit], nPopCnt - nSplit,
                   (uint16_t)wKey, psKeys, nPos);
     } else {
         if (nSplit == 0) { return ~(0); }
-        SEARCHB(uint16_t, psKeys, nSplit, (uint16_t)wKey, nPos);
+        SEARCHB(uint16_t, nBL, psKeys, nSplit, (uint16_t)wKey, nPos);
     }
 #else // defined(PSPLIT_16)
     (void)nBL;
 #if defined(BACKWARD_SEARCH_16)
-    SEARCHB(uint16_t, psKeys, nPopCnt, (uint16_t)wKey, nPos);
+    SEARCHB(uint16_t, nBL, psKeys, nPopCnt, (uint16_t)wKey, nPos);
 #else // defined(BACKWARD_SEARCH_16)
-    SEARCHF(uint16_t, psKeys, nPopCnt, (uint16_t)wKey, nPos);
+    SEARCHF(uint16_t, nBL, psKeys, nPopCnt, (uint16_t)wKey, nPos);
 #endif // defined(BACKWARD_SEARCH_16)
 #endif // defined(PSPLIT_16)
     return nPos;
@@ -243,11 +243,11 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 #endif // defined(PSPLIT_XOR_32)
     unsigned nSplit = wKey % EXP(nBL) * nPopCnt / EXP(nBL);
     if (piKeys[nSplit] <= (uint32_t)wKey) {
-        SUB_SEARCHF(uint32_t, &piKeys[nSplit], nPopCnt - nSplit,
+        SUB_SEARCHF(uint32_t, nBL, &piKeys[nSplit], nPopCnt - nSplit,
                   (uint32_t)wKey, piKeys, nPos);
     } else {
         if (nSplit == 0) { return ~(0); }
-        SEARCHB(uint32_t, piKeys, nSplit, (uint32_t)wKey, nPos);
+        SEARCHB(uint32_t, nBL, piKeys, nSplit, (uint32_t)wKey, nPos);
     }
 #else // defined(PSPLIT_32)
     (void)nBL;
@@ -270,9 +270,11 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     }
 #endif // defined(SPLIT_SEARCH_32)
 #if defined(BACKWARD_SEARCH_32)
-    SUB_SEARCHB(uint32_t, piKeys, nPopCnt, (uint32_t)wKey, piKeysOrig, nPos);
+    SUB_SEARCHB(uint32_t, nBL, piKeys, nPopCnt, (uint32_t)wKey,
+                piKeysOrig, nPos);
 #else // defined(BACKWARD_SEARCH_32)
-    SUB_SEARCHF(uint32_t, piKeys, nPopCnt, (uint32_t)wKey, piKeysOrig, nPos);
+    SUB_SEARCHF(uint32_t, nBL, piKeys, nPopCnt, (uint32_t)wKey,
+                piKeysOrig, nPos);
 #endif // defined(BACKWARD_SEARCH_32)
 #endif // defined(PSPLIT_32)
     return nPos;
@@ -377,9 +379,9 @@ split: // should go backwards if key is in first part
   #endif // defined(SPLIT_SEARCH)
     int nPos;
 #if defined(BACKWARD_SEARCH_64)
-    SUB_SEARCHB(Word_t, pwKeys, nPopCnt, wKey, pwKeysOrig, nPos);
+    SUB_SEARCHB(Word_t, nBL, pwKeys, nPopCnt, wKey, pwKeysOrig, nPos);
 #else // defined(BACKWARD_SEARCH_64)
-    SUB_SEARCHF(Word_t, pwKeys, nPopCnt, wKey, pwKeysOrig, nPos);
+    SUB_SEARCHF(Word_t, nBL, pwKeys, nPopCnt, wKey, pwKeysOrig, nPos);
 #endif // defined(BACKWARD_SEARCH_64)
     return nPos;
 }
