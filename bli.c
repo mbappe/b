@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.278 2014/07/19 19:01:57 mike Exp mike $
+// @(#) $Id: bli.c,v 1.279 2014/07/19 19:27:17 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -49,10 +49,12 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 { \
     int nn = (_bBack) ? -1 : 1; \
     _x_t *px = (_pxKeys) + ((_nPopCnt) - 1) * (_bBack); \
-    if ((_x_t)_xKey * nn > *(px + ((_nPopCnt) - 1) * nn) * nn) { \
+    if ((_bBack) ? (_x_t)(_xKey) < (_pxKeys)[0] \
+                 : (_pxKeys)[(_nPopCnt) - 1] < (_x_t)(_xKey)) \
+    { \
         (_nResult) = ~(_nPopCnt * !(_bBack)); \
     } else { \
-        while ((_x_t)_xKey * nn > *px * nn) { px += nn; } \
+        while ((_bBack) ? (_x_t)(_xKey) < *px : *px < (_x_t)(_xKey)) { px += nn; } \
         (_nResult) = (*px == (_x_t)_xKey) \
             ? px - (_pxKeys) : ~(px - (_pxKeys) + (_bBack)); \
     } \
@@ -65,10 +67,12 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 { \
     int nn = (_bBack) ? -1 : 1; \
     _x_t *px = (_pxKeys) + ((_nPopCnt) - 1) * (_bBack); \
-    if ((_x_t)_xKey * nn > *(px + ((_nPopCnt) - 1) * nn) * nn) { \
+    if ((_bBack) ? (_x_t)(_xKey) < (_pxKeys)[0] \
+                 : (_pxKeys)[(_nPopCnt) - 1] < (_x_t)(_xKey)) \
+    { \
         (_nResult) = ~((_pxKeys) + (_nPopCnt) * !(_bBack) - (_pxKeys0)); \
     } else { \
-        while ((_x_t)_xKey * nn > *px * nn) { px += nn; } \
+        while ((_bBack) ? (_x_t)(_xKey) < *px : *px < (_x_t)(_xKey)) { px += nn; } \
         (_nResult) = (*px == (_x_t)_xKey) \
             ?   px - (_pxKeys0) : ~(px - (_pxKeys0) + (_bBack)); \
     } \
