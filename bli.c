@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.281 2014/07/20 11:30:02 mike Exp mike $
+// @(#) $Id: bli.c,v 1.282 2014/07/20 12:15:04 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -44,22 +44,6 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 #if (cwListPopCntMax != 0)
 
 // Linear search of list (for any size key and with end check).
-// Supports forward and backward search.
-#define SEARCH(_x_t, _pxKeys, _nPopCnt, _xKey, _bBack, _nPos) \
-{ \
-    int nn = (_bBack) ? -1 : 1; \
-    _x_t *px = (_pxKeys) + ((_nPopCnt) - 1) * (_bBack); \
-    if ((_bBack) ? (_xKey) < (_pxKeys)[0] \
-                 : (_pxKeys)[(_nPopCnt) - 1] < (_xKey)) \
-    { \
-        (_nPos) = ~(_nPopCnt * !(_bBack)); \
-    } else { \
-        while ((_bBack) ? (_xKey) < *px : *px < (_xKey)) { px += nn; } \
-        (_nPos) = (*px == (_xKey)) \
-                ? px - (_pxKeys) : ~(px - (_pxKeys) + (_bBack)); \
-    } \
-}
-
 #define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
@@ -72,7 +56,7 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 
 #define SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    if ((_xKey) < (_pxKeys)[0]) { \
+    if ((_xKey) < *(_pxKeys)) { \
         (_nPos) = ~(0); \
     } else { \
         _x_t *px = (_pxKeys) + (_nPopCnt) - 1; while ((_xKey) < *px) --px; \
@@ -81,23 +65,6 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 }
 
 // Linear search of sub-list (for any size key and with end check).
-// Supports forward and backward search.
-#define SUB_SEARCH(_x_t, \
-                   _pxKeys, _nPopCnt, _xKey, _bBack, _pxKeys0, _nPos) \
-{ \
-    int nn = (_bBack) ? -1 : 1; \
-    _x_t *px = (_pxKeys) + ((_nPopCnt) - 1) * (_bBack); \
-    if ((_bBack) ? (_xKey) < (_pxKeys)[0] \
-                 : (_pxKeys)[(_nPopCnt) - 1] < (_xKey)) \
-    { \
-        (_nPos) = ~((_pxKeys) + (_nPopCnt) * !(_bBack) - (_pxKeys0)); \
-    } else { \
-        while ((_bBack) ? (_xKey) < *px : *px < (_xKey)) { px += nn; } \
-        (_nPos) = (*px == (_xKey)) \
-                ? px - (_pxKeys0) : ~(px - (_pxKeys0) + (_bBack)); \
-    } \
-}
-
 #define SUB_SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
     if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
@@ -110,7 +77,7 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 
 #define SUB_SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
-    if ((_x_t)(_xKey) < (_pxKeys)[0]) { \
+    if ((_xKey) < *(_pxKeys)) { \
         (_nPos) = ~((_pxKeys) - (_pxKeys0)); \
     } else { \
         _x_t *px = (_pxKeys) + (_nPopCnt) - 1; while ((_xKey) < *px) --px; \
