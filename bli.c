@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.283 2014/07/20 12:41:22 mike Exp mike $
+// @(#) $Id: bli.c,v 1.284 2014/07/20 12:48:34 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -139,11 +139,20 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 #define SUB_SEARCHF  SUB_SEARCHF_EE
 #define SUB_SEARCHB  SUB_SEARCHB_EE
 #else // defined(END_EQUAL)
-#define     SEARCHF      SEARCHF_EC
-#define     SEARCHB      SEARCHB_EC
+#define SEARCHF      SEARCHF_EC
+#define SEARCHB      SEARCHB_EC
 #define SUB_SEARCHF  SUB_SEARCHF_EC
 #define SUB_SEARCHB  SUB_SEARCHB_EC
 #endif // defined(END_EQUAL)
+
+#if defined(ALL_SUB)
+#undef  SEARCHF
+#define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey,          _nPos) \
+    SUB_SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys, _nPos)
+#undef  SEARCHB
+#define SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey,          _nPos) \
+    SUB_SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys, _nPos)
+#endif // defined(ALL_SUB)
 
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
 
