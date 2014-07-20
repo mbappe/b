@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.279 2014/07/19 19:27:17 mike Exp mike $
+// @(#) $Id: bli.c,v 1.280 2014/07/20 02:35:11 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -158,6 +158,22 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 static int
 SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
+    int nResult;
+#if defined(PSPLIT_32)
+#if defined(PSPLIT_XOR_32)
+    uint32_t iKeyMin = piKeys[0];
+    uint32_t iKeyMax = piKeys[nPopCnt - 1];
+    nBL = LOG(iKeyMin ^ iKeyMax) + 1;
+#endif // defined(PSPLIT_XOR_32)
+    unsigned nSplit = wKey % EXP(nBL) * nPopCnt / EXP(nBL);
+    if (piKeys[nSplit] <= (uint32_t)wKey) {
+        SUB_SEARCH(uint32_t, &piKeys[nSplit], nPopCnt - nSplit,
+                   wKey, 0, piKeys, nResult);
+    } else {
+        if (nSplit == 0) { return ~(0); }
+        SEARCH(uint32_t, piKeys, nSplit, wKey, 1, nResult);
+    }
+#else // defined(PSPLIT_32)
     (void)nBL;
     uint32_t *piKeysOrig = piKeys;
 #if defined(SPLIT_SEARCH_32)
@@ -177,12 +193,12 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
         }
     }
 #endif // defined(SPLIT_SEARCH_32)
-    int nResult;
 #if defined(BACKWARD_SEARCH_32)
     SUB_SEARCH(uint32_t, piKeys, nPopCnt, wKey, 1, piKeysOrig, nResult);
 #else // defined(BACKWARD_SEARCH_32)
     SUB_SEARCH(uint32_t, piKeys, nPopCnt, wKey, 0, piKeysOrig, nResult);
 #endif // defined(BACKWARD_SEARCH_32)
+#endif // defined(PSPLIT_32)
     return nResult;
 }
 
