@@ -299,12 +299,12 @@
 // Choose max list lengths.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
 
-// Default is cnListPopCntMax64 = 0xee.
+// Default is cnListPopCntMax64 = 0x3e.
 #if ! defined(cnListPopCntMax64)
-#define cnListPopCntMax64  0xee
+#define cnListPopCntMax64  0x3e
 #endif // ! defined(cnListPopCntMax64)
 
-// Default is cnListPopCntMax32 = 0x5d.
+// Default is cnListPopCntMax32 = 0x3d.
 #if ! defined(cnListPopCntMax32)
 // One  64-bit word  is 0x01.  Three 64-bit words is 0x05.
 // Five 64-bit words is 0x09.  Seven 64-bit words is 0x0d.
@@ -318,10 +318,10 @@
 // 37   64-bit words is 0x49.  39    64-bit words is 0x4d.
 // 41   64-bit words is 0x51.  43    64-bit words is 0x55.
 // 45   64-bit words is 0x59.  47    64-bit words is 0x5d.
-#define cnListPopCntMax32  0x5d
+#define cnListPopCntMax32  0x3d
 #endif // ! defined(cnListPopCntMax32)
 
-// Default is cnListPopCntMax16 = 0x5b.
+// Default is cnListPopCntMax16 = 0x3b.
 #if ! defined(cnListPopCntMax16)
 // One  64-bit word  is 0x03.  Three 64-bit words is 0x0b.
 // Five 64-bit words is 0x13.  Seven 64-bit words is 0x1b.
@@ -329,15 +329,15 @@
 // 13   64-bit words is 0x33.  15    64-bit words is 0x4b.
 // 17   64-bit words is 0x43.  19    64-bit words is 0x5b.
 // 21   64-bit words is 0x53.  23    64-bit words is 0x6b.
-#define cnListPopCntMax16  0x5b
+#define cnListPopCntMax16  0x3b
 #endif // ! defined(cnListPopCntMax16)
 
-// Default is cnListPopCntMax8  = 0x57.
+// Default is cnListPopCntMax8  = 0x37.
 #if ! defined(cnListPopCntMax8)
 // One  64-bit word  is 0x07.  Three 64-bit words is 0x17.
 // Five 64-bit words is 0x27.  Seven 64-bit words is 0x37.
 // Nine 64-bit words is 0x47.  11    64-bit words is 0x57.
-#define cnListPopCntMax8   0x57
+#define cnListPopCntMax8   0x37
 #endif // ! defined(cnListPopCntMax8)
 
 // Default cnListPopCntMaxDl1 depends on cnBitsAtBottom.
@@ -923,6 +923,12 @@ Word_t wDebugPopCnt; // sanity checking
 #endif // (cnDigitsPerWord != 1)
 #endif // defined(DEBUG)
 
+// Default is -DPSPLIT_8
+#if ! defined(NO_PSPLIT_8)
+#undef  PSPLIT_8
+#define PSPLIT_8
+#endif // ! defined(NO_PSPLIT_8)
+
 // Default is -DPSPLIT_16.
 #if ! defined(NO_PSPLIT_16)
 #undef  PSPLIT_16
@@ -934,6 +940,18 @@ Word_t wDebugPopCnt; // sanity checking
 #undef  PSPLIT_32
 #define PSPLIT_32
 #endif // ! defined(NO_PSPLIT_32)
+
+// Default is -DSPLIT_XOR.
+#if ! defined(NO_PSPLIT_XOR)
+#undef  PSPLIT_XOR
+#define PSPLIT_XOR
+#endif // ! defined(NO_PSPLIT_XOR)
+
+// Default is -DPSPLIT.
+#if ! defined(NO_PSPLIT)
+#undef  PSPLIT
+#define PSPLIT
+#endif // ! defined(NO_PSPLIT)
 
 #endif // ( ! defined(_B_H_INCLUDED) )
 
