@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.291 2014/07/21 21:54:31 mike Exp mike $
+// @(#) $Id: bli.c,v 1.293 2014/07/21 22:53:15 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -394,6 +394,7 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 static int
 SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
+    int nPos;
 #if defined(PSPLIT)
 #if defined(PSPLIT_XOR)
     Word_t wKeyMin = pwKeys[0];
@@ -443,6 +444,7 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 #endif // defined(PSPLIT_LE)
 #else // defined(PSPLIT)
     (void)nBL;
+    (void)nPos;
     Word_t *pwKeysOrig = pwKeys;
   // SPLIT_SEARCH narrows the scope of the linear search that follows, if any.
   #if defined(SPLIT_SEARCH)
@@ -498,7 +500,6 @@ split: // should go backwards if key is in first part
         }
     }
   #endif // defined(SPLIT_SEARCH)
-    int nPos;
 #if defined(BACKWARD_SEARCH)
     SEARCHB(Word_t, pwKeys, nPopCnt, wKey, pwKeysOrig, nPos);
 #else // defined(BACKWARD_SEARCH)
