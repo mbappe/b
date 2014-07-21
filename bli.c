@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.287 2014/07/21 00:07:07 mike Exp mike $
+// @(#) $Id: bli.c,v 1.288 2014/07/21 20:18:35 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -44,31 +44,7 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 #if (cwListPopCntMax != 0)
 
 // Linear search of list (for any size key and with end check).
-#define SEARCHF_EC(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-{ \
-    if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
-        (_nPos) = ~(_nPopCnt); \
-    } else { \
-        _x_t *px = (_pxKeys); while (*px < (_xKey)) ++px; \
-        (_nPos) = (*px == (_xKey)) ? px - (_pxKeys) : ~(px - (_pxKeys)); \
-    } \
-}
-
-#define SEARCHB_EC(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-{ \
-    if ((_xKey) < *(_pxKeys)) { \
-        (_nPos) = ~(0); \
-    } else { \
-        _x_t *px = (_pxKeys) + (_nPopCnt) - 1; while ((_xKey) < *px) --px; \
-        (_nPos) = (*px == (_xKey)) ? px - (_pxKeys) : ~(++px - (_pxKeys)); \
-    } \
-}
-
-// Linear search of sub-list (for any size key and with end check).
-// I wonder if the non-SUB_ variants are necessary or if the compiler would
-// make the SUB_ variants equivalent to the non-SUB_ variants by noticing
-// that _pxKeys and _pxKeys0 are the same.
-#define SUB_SEARCHF_EC(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+#define SEARCHF_EC(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
     if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
         (_nPos) = ~((_pxKeys) + (_nPopCnt) - (_pxKeys0)); \
@@ -78,7 +54,7 @@ Word_t j__TreeDepth;                 // number time Branch_U called
     } \
 }
 
-#define SUB_SEARCHB_EC(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+#define SEARCHB_EC(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
     if ((_xKey) < *(_pxKeys)) { \
         (_nPos) = ~((_pxKeys) - (_pxKeys0)); \
@@ -89,29 +65,7 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 }
 
 // Linear search of list (for any size key and with end check).
-#define SEARCHF_EE(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-{ \
-    if ((_pxKeys)[(_nPopCnt) - 1] <= (_xKey)) { \
-        (_nPos) = (_nPopCnt); \
-        if ((_pxKeys)[(_nPopCnt) - 1] != (_xKey)) { (_nPos) = ~(_nPos); } \
-    } else { \
-        _x_t *px = (_pxKeys); while (*px < (_xKey)) ++px; \
-        (_nPos) = (*px == (_xKey)) ? px - (_pxKeys) : ~(px - (_pxKeys)); \
-    } \
-}
-
-#define SEARCHB_EE(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-{ \
-    if ((_xKey) <= *(_pxKeys)) { \
-        (_nPos) = (*(_pxKeys) == (_xKey)) ? 0 : ~0; \
-    } else { \
-        _x_t *px = (_pxKeys) + (_nPopCnt) - 1; while ((_xKey) < *px) --px; \
-        (_nPos) = (*px == (_xKey)) ? px - (_pxKeys) : ~(++px - (_pxKeys)); \
-    } \
-}
-
-// Linear search of sub-list (for any size key and with end check).
-#define SUB_SEARCHF_EE(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+#define SEARCHF_EE(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
     if ((_pxKeys)[(_nPopCnt) - 1] <= (_xKey)) { \
         (_nPos) = (_pxKeys) + (_nPopCnt) - (_pxKeys0); \
@@ -122,7 +76,7 @@ Word_t j__TreeDepth;                 // number time Branch_U called
     } \
 }
 
-#define SUB_SEARCHB_EE(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+#define SEARCHB_EE(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
     if ((_xKey) <= *(_pxKeys)) { \
         (_nPos) = (_pxKeys) - (_pxKeys0); \
@@ -134,25 +88,12 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 }
 
 #if defined(END_EQUAL)
-#define     SEARCHF      SEARCHF_EE
-#define     SEARCHB      SEARCHB_EE
-#define SUB_SEARCHF  SUB_SEARCHF_EE
-#define SUB_SEARCHB  SUB_SEARCHB_EE
+#define SEARCHF  SEARCHF_EE
+#define SEARCHB  SEARCHB_EE
 #else // defined(END_EQUAL)
-#define SEARCHF      SEARCHF_EC
-#define SEARCHB      SEARCHB_EC
-#define SUB_SEARCHF  SUB_SEARCHF_EC
-#define SUB_SEARCHB  SUB_SEARCHB_EC
+#define SEARCHF  SEARCHF_EC
+#define SEARCHB  SEARCHB_EC
 #endif // defined(END_EQUAL)
-
-#if defined(ALL_SUB)
-#undef  SEARCHF
-#define SEARCHF(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey,          _nPos) \
-    SUB_SEARCHF(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _pxKeys, _nPos)
-#undef  SEARCHB
-#define SEARCHB(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey,          _nPos) \
-    SUB_SEARCHB(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _pxKeys, _nPos)
-#endif // defined(ALL_SUB)
 
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
 
