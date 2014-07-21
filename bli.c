@@ -62,41 +62,43 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 // Linear search of list (for any size key and with end check).
 #define SEARCHF_EC(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
+    (_nPos) = (_pxKeys) - (_pxKeys0); \
     if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
-        (_nPos) = ~((_pxKeys) + (_nPopCnt) - (_pxKeys0)); \
+        (_nPos) = ~((_nPos) + (_nPopCnt)); \
     } else { \
-        (_nPos) = (_pxKeys) - (_pxKeys0); SSEARCHF(_pxKeys0, _xKey, _nPos); \
+        SSEARCHF(_pxKeys0, _xKey, _nPos); \
     } \
 }
 
 #define SEARCHB_EC(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
+    (_nPos) = (_pxKeys) - (_pxKeys0); \
     if ((_xKey) < *(_pxKeys)) { \
-        (_nPos) = ~((_pxKeys) - (_pxKeys0)); \
+        (_nPos) = ~(_nPos); \
     } else { \
-        (_nPos) = (_pxKeys) + (_nPopCnt) - 1 - (_pxKeys0); \
-        SSEARCHB(_pxKeys0, _xKey, _nPos); \
+        (_nPos) += (_nPopCnt) - 1; SSEARCHB(_pxKeys0, _xKey, _nPos); \
     } \
 }
 
 // Linear search of list (for any size key and with end check).
 #define SEARCHF_EE(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
+    (_nPos) = (_pxKeys) - (_pxKeys0); \
     if ((_pxKeys)[(_nPopCnt) - 1] <= (_xKey)) { \
-        (_nPos) = (_pxKeys) + (_nPopCnt) - (_pxKeys0); \
+        (_nPos) += (_nPopCnt); \
         if ((_pxKeys)[(_nPopCnt) - 1] != (_xKey)) { (_nPos) = ~(_nPos); } \
     } else { \
-        SSEARCHF(_x_t, _pxKeys, _xKey, _pxKeys0, _nPos); \
+        SSEARCHF(_pxKeys0, _xKey, _nPos); \
     } \
 }
 
 #define SEARCHB_EE(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
+    (_nPos) = (_pxKeys) - (_pxKeys0); \
     if ((_xKey) <= *(_pxKeys)) { \
-        (_nPos) = (_pxKeys) - (_pxKeys0); \
         if (*(_pxKeys) != (_xKey)) { (_nPos) = ~(_nPos); } \
     } else { \
-        SSEARCHB(_x_t, &(_pxKeys)[(_nPopCnt) - 1], _xKey, _pxKeys0, _nPos); \
+        (_nPos) += (_nPopCnt) - 1; SSEARCHB(_pxKeys0, _xKey, _nPos); \
     } \
 }
 
