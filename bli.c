@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.290 2014/07/21 20:32:58 mike Exp mike $
+// @(#) $Id: bli.c,v 1.291 2014/07/21 21:54:31 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -43,22 +43,20 @@ Word_t j__TreeDepth;                 // number time Branch_U called
 
 #if (cwListPopCntMax != 0)
 
-// Simple linear search of list that assumes the list contains a key
+// Simple linear search of a list that assumes the list contains a key
 // that is greater than or equal to the key we're searching for.
-#define SSEARCHF(_x_t, _pxKeys, _xKey, _pxKeys0, _nPos) \
+#define SSEARCHF(_pxKeys, _xKey, _nPos) \
 { \
-    _x_t *px = (_pxKeys); \
-    while (*px < (_xKey)) { ++px; } \
-    (_nPos) = (*px == (_xKey)) ? px - (_pxKeys0) : ~(px - (_pxKeys0)); \
+    while ((_pxKeys)[_nPos] < (_xKey)) { ++(_nPos); } \
+    if ((_pxKeys)[_nPos] > (_xKey)) { (_nPos) = ~(_nPos); } \
 }
 
-// pxKeys is a pointer to the key where the search should start.
-// It is the last key in the list for a backward search.
-#define SSEARCHB(_x_t, _pxKeys, _xKey, _pxKeys0, _nPos) \
+// Simple linear search of a list that assumes the list contains a key
+// that is less than or equal to the key we're searching for.
+#define SSEARCHB(_pxKeys, _xKey, _nPos) \
 { \
-    _x_t *px = (_pxKeys); \
-    while ((_xKey) < *px) { --px; } \
-    (_nPos) = (*px == (_xKey)) ? px - (_pxKeys0) : ~(++px - (_pxKeys0)); \
+    while ((_xKey) < (_pxKeys)[_nPos]) { --(_nPos); } \
+    if ((_xKey) > (_pxKeys)[_nPos]) { ++(_nPos); (_nPos) = ~(_nPos); } \
 }
 
 // Linear search of list (for any size key and with end check).
@@ -67,7 +65,7 @@ Word_t j__TreeDepth;                 // number time Branch_U called
     if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
         (_nPos) = ~((_pxKeys) + (_nPopCnt) - (_pxKeys0)); \
     } else { \
-        SSEARCHF(_x_t, _pxKeys, _xKey, _pxKeys0, _nPos); \
+        (_nPos) = (_pxKeys) - (_pxKeys0); SSEARCHF(_pxKeys0, _xKey, _nPos); \
     } \
 }
 
@@ -76,7 +74,8 @@ Word_t j__TreeDepth;                 // number time Branch_U called
     if ((_xKey) < *(_pxKeys)) { \
         (_nPos) = ~((_pxKeys) - (_pxKeys0)); \
     } else { \
-        SSEARCHB(_x_t, &(_pxKeys)[(_nPopCnt) - 1], _xKey, _pxKeys0, _nPos); \
+        (_nPos) = (_pxKeys) + (_nPopCnt) - 1 - (_pxKeys0); \
+        SSEARCHB(_pxKeys0, _xKey, _nPos); \
     } \
 }
 
