@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.286 2014/07/20 16:51:35 mike Exp mike $
+// @(#) $Id: bli.c,v 1.287 2014/07/21 00:07:07 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -208,9 +208,9 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     uint16_t *psKeysSplit
         = (uint16_t *)((Word_t)&psKeys[nSplit] | (cnBytesSplitAlign16 - 1));
     nSplit = psKeysSplit - psKeys;
-#else // defined(cnBytesPSplitAlign16)
+#else // defined(cnBytesSplitAlign16)
     unsigned nSplit = ((wKey & MSK(nBL)) * nPopCnt) >> nBL;
-#endif // defined(cnBytesPSplitAlign16)
+#endif // defined(cnBytesSplitAlign16)
     if (psKeys[nSplit] <= (uint16_t)wKey) {
         SUB_SEARCHF(uint16_t, nBL, &psKeys[nSplit], nPopCnt - nSplit,
                    (uint16_t)wKey, psKeys, nPos);
@@ -252,7 +252,17 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     uint32_t iKeyMax = piKeys[nPopCnt - 1];
     nBL = LOG(iKeyMin ^ iKeyMax) + 1;
 #endif // defined(PSPLIT_XOR_32)
+#if defined(cnBytesSplitAlign32)
+    uint32_t *piKeysSplitEnd = (uint32_t *)
+                    ((Word_t)&piKeys[nPopCnt - 1] & MSK(cnBytesSplitAlign32));
+    unsigned nPopCntAligned = piKeysSplitEnd - piKeys;
+    unsigned nSplit = ((wKey & MSK(nBL)) * nPopCntAligned) >> nBL;
+    uint32_t *piKeysSplit
+        = (uint32_t *)((Word_t)&piKeys[nSplit] | (cnBytesSplitAlign32 - 1));
+    nSplit = piKeysSplit - piKeys;
+#else // defined(cnBytesSplitAlign32)
     unsigned nSplit = wKey % EXP(nBL) * nPopCnt / EXP(nBL);
+#endif // defined(cnBytesSplitAlign32)
     if (piKeys[nSplit] <= (uint32_t)wKey) {
         SUB_SEARCHF(uint32_t, nBL, &piKeys[nSplit], nPopCnt - nSplit,
                   (uint32_t)wKey, piKeys, nPos);
