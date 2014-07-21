@@ -101,6 +101,9 @@ CFLAGS = $(STDFLAG) $(MFLAGS) $(WFLAGS) $(OFLAGS) -I.
 CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
 
 # Obsolete ifdefs used to figure out where overhead was coming from that
+CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
+
+# Obsolete ifdefs used to figure out where overhead was coming from that
 # was making Time -b get times faster than Time -1 get times for libjudy
 # configured to allocate one big bitmap.
 # Bitmap[Set|Get] don't have P_JE.  Judy1[Set|Test] do have P_JE.
@@ -206,9 +209,6 @@ rcs.tjz: RCS
 # So we are going without the .h file dependencies for now which is
 # part of the reason the "all" target starts with "clean".
 #
-############################
-
-.c.o:
 	$(CC) $(CFLAGS) $(DEFINES) -c $^
 
 # Suppress warnings.
