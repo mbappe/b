@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.293 2014/07/21 22:53:15 mike Exp mike $
+// @(#) $Id: bli.c,v 1.294 2014/07/21 22:59:33 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -449,28 +449,6 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
   // SPLIT_SEARCH narrows the scope of the linear search that follows, if any.
   #if defined(SPLIT_SEARCH)
     unsigned nSplit;
-      #if defined(RATIO_SPLIT)
-    if (nPopCnt >= cnSplitSearchThresholdWord) {
-          #if (cnBitsPerWord == 64)
-        if (nBL >= cnBitsPerWord) {
-            nSplit = wKey / cnListPopCntMax64 * nPopCnt
-                   / ((Word_t)-1 / cnListPopCntMax64);
-        } else {
-            nSplit = wKey % EXP(nBL) / cnListPopCntMax64 * nPopCnt
-                   / (EXP(nBL) / cnListPopCntMax64);
-        }
-          #else // (cnBitsPerWord == 64)
-        if (nBL >= cnBitsPerWord) {
-            nSplit = wKey / cnListPopCntMax64 * nPopCnt
-                   / ((Word_t)-1 / cnListPopCntMax64);
-        } else {
-            nSplit = wKey % EXP(nBL) / cnListPopCntMax64 * nPopCnt
-                   / (EXP(nBL) / cnListPopCntMax64);
-        }
-          #endif // (cnBitsPerWord == 64)
-        goto split;
-    }
-      #endif // defined(RATIO_SPLIT)
       #if defined(SPLIT_SEARCH_LOOP)
     while
       #else // defined(SPLIT_SEARCH_LOOP)
@@ -485,9 +463,6 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
         (nPopCnt >= cnSplitSearchThresholdWord)
     {
         nSplit = nPopCnt / 2;
-      #if defined(RATIO_SPLIT)
-split: // should go backwards if key is in first part
-      #endif // defined(RATIO_SPLIT)
         if (pwKeys[nSplit] <= wKey) {
             pwKeys = &pwKeys[nSplit];
             nPopCnt -= nSplit;
