@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.288 2014/07/21 20:18:35 mike Exp mike $
+// @(#) $Id: bli.c,v 1.289 2014/07/21 20:26:33 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -111,9 +111,9 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     (void)nBL;
     int nPos;
   #if defined(BACKWARD_SEARCH_8)
-    SEARCHB(uint8_t, nBL, pcKeys, nPopCnt, (uint8_t)wKey, nPos);
+    SEARCHB(uint8_t, nBL, pcKeys, nPopCnt, (uint8_t)wKey, pcKeys, nPos);
   #else // defined(BACKWARD_SEARCH_8)
-    SEARCHF(uint8_t, nBL, pcKeys, nPopCnt, (uint8_t)wKey, nPos);
+    SEARCHF(uint8_t, nBL, pcKeys, nPopCnt, (uint8_t)wKey, pcKeys, nPos);
   #endif // defined(BACKWARD_SEARCH_8)
     return nPos;
 }
@@ -153,18 +153,18 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     unsigned nSplit = ((wKey & MSK(nBL)) * nPopCnt) >> nBL;
 #endif // defined(cnBytesSplitAlign16)
     if (psKeys[nSplit] <= (uint16_t)wKey) {
-        SUB_SEARCHF(uint16_t, nBL, &psKeys[nSplit], nPopCnt - nSplit,
+        SEARCHF(uint16_t, nBL, &psKeys[nSplit], nPopCnt - nSplit,
                    (uint16_t)wKey, psKeys, nPos);
-    } else {
+    } else { // here if wKey < psKeys[nSplit]
         if (nSplit == 0) { return ~(0); }
-        SEARCHB(uint16_t, nBL, psKeys, nSplit, (uint16_t)wKey, nPos);
+        SEARCHB(uint16_t, nBL, psKeys, nSplit, (uint16_t)wKey, psKeys, nPos);
     }
 #else // defined(PSPLIT_16)
     (void)nBL;
 #if defined(BACKWARD_SEARCH_16)
-    SEARCHB(uint16_t, nBL, psKeys, nPopCnt, (uint16_t)wKey, nPos);
+    SEARCHB(uint16_t, nBL, psKeys, nPopCnt, (uint16_t)wKey, psKeys, nPos);
 #else // defined(BACKWARD_SEARCH_16)
-    SEARCHF(uint16_t, nBL, psKeys, nPopCnt, (uint16_t)wKey, nPos);
+    SEARCHF(uint16_t, nBL, psKeys, nPopCnt, (uint16_t)wKey, psKeys, nPos);
 #endif // defined(BACKWARD_SEARCH_16)
 #endif // defined(PSPLIT_16)
     return nPos;
@@ -205,11 +205,11 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     unsigned nSplit = wKey % EXP(nBL) * nPopCnt / EXP(nBL);
 #endif // defined(cnBytesSplitAlign32)
     if (piKeys[nSplit] <= (uint32_t)wKey) {
-        SUB_SEARCHF(uint32_t, nBL, &piKeys[nSplit], nPopCnt - nSplit,
+        SEARCHF(uint32_t, nBL, &piKeys[nSplit], nPopCnt - nSplit,
                   (uint32_t)wKey, piKeys, nPos);
     } else {
         if (nSplit == 0) { return ~(0); }
-        SEARCHB(uint32_t, nBL, piKeys, nSplit, (uint32_t)wKey, nPos);
+        SEARCHB(uint32_t, nBL, piKeys, nSplit, (uint32_t)wKey, piKeys, nPos);
     }
 #else // defined(PSPLIT_32)
     (void)nBL;
@@ -232,10 +232,10 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     }
 #endif // defined(SPLIT_SEARCH_32)
 #if defined(BACKWARD_SEARCH_32)
-    SUB_SEARCHB(uint32_t, nBL, piKeys, nPopCnt, (uint32_t)wKey,
+    SEARCHB(uint32_t, nBL, piKeys, nPopCnt, (uint32_t)wKey,
                 piKeysOrig, nPos);
 #else // defined(BACKWARD_SEARCH_32)
-    SUB_SEARCHF(uint32_t, nBL, piKeys, nPopCnt, (uint32_t)wKey,
+    SEARCHF(uint32_t, nBL, piKeys, nPopCnt, (uint32_t)wKey,
                 piKeysOrig, nPos);
 #endif // defined(BACKWARD_SEARCH_32)
 #endif // defined(PSPLIT_32)
@@ -341,9 +341,9 @@ split: // should go backwards if key is in first part
   #endif // defined(SPLIT_SEARCH)
     int nPos;
 #if defined(BACKWARD_SEARCH_64)
-    SUB_SEARCHB(Word_t, nBL, pwKeys, nPopCnt, wKey, pwKeysOrig, nPos);
+    SEARCHB(Word_t, nBL, pwKeys, nPopCnt, wKey, pwKeysOrig, nPos);
 #else // defined(BACKWARD_SEARCH_64)
-    SUB_SEARCHF(Word_t, nBL, pwKeys, nPopCnt, wKey, pwKeysOrig, nPos);
+    SEARCHF(Word_t, nBL, pwKeys, nPopCnt, wKey, pwKeysOrig, nPos);
 #endif // defined(BACKWARD_SEARCH_64)
     return nPos;
 }
