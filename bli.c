@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.285 2014/07/20 12:56:22 mike Exp mike $
+// @(#) $Id: bli.c,v 1.286 2014/07/20 16:51:35 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -195,14 +195,25 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     int nPos;
 #if defined(PSPLIT_16)
 #if defined(PSPLIT_XOR_16)
+    // Should be keeping track of effective expanse at insert time.
     uint16_t sKeyMin = psKeys[0];
     uint16_t sKeyMax = psKeys[nPopCnt - 1];
     nBL = LOG(sKeyMin ^ sKeyMax) + 1;
 #endif // defined(PSPLIT_XOR_16)
-    unsigned nSplit = wKey % EXP(nBL) * nPopCnt / EXP(nBL);
+#if defined(cnBytesSplitAlign16)
+    uint16_t *psKeysSplitEnd = (uint16_t *)
+                    ((Word_t)&psKeys[nPopCnt - 1] & MSK(cnBytesSplitAlign16));
+    unsigned nPopCntAligned = psKeysSplitEnd - psKeys;
+    unsigned nSplit = ((wKey & MSK(nBL)) * nPopCntAligned) >> nBL;
+    uint16_t *psKeysSplit
+        = (uint16_t *)((Word_t)&psKeys[nSplit] | (cnBytesSplitAlign16 - 1));
+    nSplit = psKeysSplit - psKeys;
+#else // defined(cnBytesPSplitAlign16)
+    unsigned nSplit = ((wKey & MSK(nBL)) * nPopCnt) >> nBL;
+#endif // defined(cnBytesPSplitAlign16)
     if (psKeys[nSplit] <= (uint16_t)wKey) {
         SUB_SEARCHF(uint16_t, nBL, &psKeys[nSplit], nPopCnt - nSplit,
-                  (uint16_t)wKey, psKeys, nPos);
+                   (uint16_t)wKey, psKeys, nPos);
     } else {
         if (nSplit == 0) { return ~(0); }
         SEARCHB(uint16_t, nBL, psKeys, nSplit, (uint16_t)wKey, nPos);
