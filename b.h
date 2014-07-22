@@ -924,34 +924,32 @@ Word_t wDebugPopCnt; // sanity checking
 #endif // defined(DEBUG)
 
 // Default is -DPSPLIT_8
+// Default is -UPSPLIT_XOR_8
+// This depends on uniform distribution / flat spectrum data.
 #if ! defined(NO_PSPLIT_8)
 #undef  PSPLIT_8
 #define PSPLIT_8
 #endif // ! defined(NO_PSPLIT_8)
 
 // Default is -DPSPLIT_16.
+// Default is -UPSPLIT_XOR_16
+// This depends on uniform distribution / flat spectrum data.
 #if ! defined(NO_PSPLIT_16)
 #undef  PSPLIT_16
 #define PSPLIT_16
 #endif // ! defined(NO_PSPLIT_16)
 
 // Default is -DPSPLIT_32.
+// Default is -UPSPLIT_XOR_32.
+// This depends on uniform distribution / flat spectrum data.
 #if ! defined(NO_PSPLIT_32)
 #undef  PSPLIT_32
 #define PSPLIT_32
 #endif // ! defined(NO_PSPLIT_32)
 
-// Default is -DSPLIT_XOR.
-#if ! defined(NO_PSPLIT_XOR)
-#undef  PSPLIT_XOR
-#define PSPLIT_XOR
-#endif // ! defined(NO_PSPLIT_XOR)
-
-// Default is -DPSPLIT.
-#if ! defined(NO_PSPLIT)
-#undef  PSPLIT
-#define PSPLIT
-#endif // ! defined(NO_PSPLIT)
+// Default is -UPSPLIT.
+// Default is -UPSPLIT_XOR.
+// -B32 is not uniform distribution / flat spectrum data at the top.
 
 #endif // ( ! defined(_B_H_INCLUDED) )
 
