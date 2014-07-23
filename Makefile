@@ -194,7 +194,7 @@ b:	$(OBJS)
 b.tjz:	$(FILES)
 	tar cjf $@ $(FILES)
 
-rcs.tjz: RCS
+rcs.tjz:
 	tar cjf $@ RCS
 
 
