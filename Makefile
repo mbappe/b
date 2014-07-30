@@ -26,7 +26,7 @@ endif
 # B_DEFINES += -UPP_IN_LINK
 # B_DEFINES += -UDL_IN_LL
 # B_DEFINES += -DRAMMETRICS
-# B_DEFINES += -USEARCH_METRICS
+# B_DEFINES += -USEARCHMETRICS
 # LOOKUP_NO_BITMAP_SEARCH means return just before the list is searched, i.e.
 # after dereferencing the the first word of the list leaf.
 # What if prefix/popcnt are in the link?
@@ -209,6 +209,7 @@ rcs.tjz:
 # So we are going without the .h file dependencies for now which is
 # part of the reason the "all" target starts with "clean".
 #
+.c.o:
 	$(CC) $(CFLAGS) $(DEFINES) -c $^
 
 # Suppress warnings.
@@ -246,7 +247,8 @@ else
 		-DDEFAULT_MMAP_THRESHOLD=0x200000 \
 		-DDEFAULT_GRANULARITY=0X200000 -DHAVE_MORECORE=0 \
 		-Dmmap=Judy_mmap -Dsbrk=Judy_sbrk -Dmunmap=Judy_munmap -c $^
-	#$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -Dmalloc_getpagesize=0x200000 -c $^
+#	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) \
+#		-Dmalloc_getpagesize=0x200000 -c $^
 endif
 
 ############################
