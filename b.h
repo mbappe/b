@@ -299,9 +299,9 @@
 // Choose max list lengths.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
 
-// Default is cnListPopCntMax64 = 0x3e.
+// Default is cnListPopCntMax64 = 0xec.
 #if ! defined(cnListPopCntMax64)
-#define cnListPopCntMax64  0x3e
+#define cnListPopCntMax64  0xec
 #endif // ! defined(cnListPopCntMax64)
 
 // Default is cnListPopCntMax32 = 0x3d.
@@ -923,33 +923,34 @@ Word_t wDebugPopCnt; // sanity checking
 #endif // (cnDigitsPerWord != 1)
 #endif // defined(DEBUG)
 
-// Default is -DPSPLIT_8
-// Default is -UPSPLIT_XOR_8
+// Default is -DPSPLIT_SEARCH_8
 // This depends on uniform distribution / flat spectrum data.
-#if ! defined(NO_PSPLIT_8)
-#undef  PSPLIT_8
-#define PSPLIT_8
-#endif // ! defined(NO_PSPLIT_8)
+#if ! defined(NO_PSPLIT_SEARCH_8)
+#undef  PSPLIT_SEARCH_8
+#define PSPLIT_SEARCH_8
+#endif // ! defined(NO_PSPLIT_SEARCH_8)
 
 // Default is -DPSPLIT_16.
-// Default is -UPSPLIT_XOR_16
 // This depends on uniform distribution / flat spectrum data.
-#if ! defined(NO_PSPLIT_16)
-#undef  PSPLIT_16
-#define PSPLIT_16
-#endif // ! defined(NO_PSPLIT_16)
+#if ! defined(NO_PSPLIT_SEARCH_16)
+#undef  PSPLIT_SEARCH_16
+#define PSPLIT_SEARCH_16
+#endif // ! defined(NO_PSPLIT_SEARCH_16)
 
 // Default is -DPSPLIT_32.
-// Default is -UPSPLIT_XOR_32.
 // This depends on uniform distribution / flat spectrum data.
-#if ! defined(NO_PSPLIT_32)
-#undef  PSPLIT_32
-#define PSPLIT_32
-#endif // ! defined(NO_PSPLIT_32)
+#if ! defined(NO_PSPLIT_SEARCH_32)
+#undef  PSPLIT_SEARCH_32
+#define PSPLIT_SEARCH_32
+#endif // ! defined(NO_PSPLIT_SEARCH_32)
 
-// Default is -UPSPLIT.
-// Default is -UPSPLIT_XOR.
+// Default is -DBINARY_SEARCH_WORD -UBACKWARD_SEARCH_WORD.
+// Default is -UPSPLIT_SEARCH_WORD -UPSPLIT_SEARCH_XOR_WORD.
 // -B32 is not uniform distribution / flat spectrum data at the top.
+#if ! defined(NO_BINARY_SEARCH_WORD)
+#undef  BINARY_SEARCH_WORD
+#define BINARY_SEARCH_WORD
+#endif // ! defined(NO_BINARY_SEARCH_WORD)
 
 #endif // ( ! defined(_B_H_INCLUDED) )
 
