@@ -487,12 +487,12 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define METRICS(x)
 #endif // defined RAMMETRICS
 
-// Default is -USEARCH_METRICS.
-#if defined SEARCH_METRICS
+// Default is -USEARCHMETRICS.
+#if defined SEARCHMETRICS
 #define SMETRICS(x)  (x)
-#else // defined SEARCH_METRICS
+#else // defined SEARCHMETRICS
 #define SMETRICS(x)
-#endif // defined SEARCH_METRICS
+#endif // defined SEARCHMETRICS
 
 #if defined(DEBUG)
 #define DBG(x)  (x)

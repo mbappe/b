@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.295 2014/07/21 23:59:46 mike Exp mike $
+// @(#) $Id: bli.c,v 1.296 2014/07/22 00:28:52 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -18,11 +18,6 @@
 #if defined(LOOKUP)
 #define strLookupOrInsertOrRemove  "Lookup"
 #define DBGX  DBGL
-#if defined(SEARCH_METRICS)
-Word_t j__SearchCompares;            // number times LGet/1Test called
-Word_t j__SearchPopulation;          // Population of Searched object
-Word_t j__TreeDepth;                 // number time Branch_U called
-#endif // defined(SEARCH_METRICS)
 #else // defined(REMOVE)
 #define strLookupOrInsertOrRemove  "Remove"
 #define DBGX  DBGR

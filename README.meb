@@ -7,6 +7,18 @@ CP140405 is Checkpoint April 5, 2014.
 The most recent checkpoint should be the latest and greatest somewhat
 functional code.
 
+7/14/14:
+= We need a bm switch to be complete.
+- Steal another bit from pwr to distinguish bm switch from uncompressed.
+  All malloc'd buffers are 2-word aligned.
+  If we allocate two extra words for all switches (3% overhead for 6-bit
+  uncompressed switches with one-word links) we could force 4-word
+  alignment for bm switches and 2-word alignment for uncompressed switches
+  or vice-versa.  How would we keep track for when we free the switch?
+  Yet another word?  Now it's 6% overhead?
+- No skip to bm switch?  Doesn't it limit effectiveness of bm switch to
+  force an uncompressed switch above it?
+
 6/11/14:
 - Minimize the number of cache lines accessed once the working set is too
   big to fit completely in the cache.
