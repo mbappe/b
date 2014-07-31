@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.301 2014/07/31 16:21:00 mike Exp mike $
+// @(#) $Id: bli.c,v 1.302 2014/07/31 22:16:16 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -416,6 +416,21 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 
 #endif // (cwListPopCntMax != 0)
 
+#if 0 // WordHasKey is not used yet.
+static Status_t
+WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
+{
+    // We replicate the first key in the word into any unused slots
+    // at Insert time to make sure the unused slots don't cause a false
+    // wHasZero.
+    Word_t wLsbs = (Word_t)-1 / (EXP(nBL) - 1); // lsb in each key
+    Word_t wReplicatedKey = (wKey & MSK(nBL)) * wLsbs;
+    Word_t wXor = wReplicatedKey ^ ww;
+    Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key
+    return ((wXor - wLsbs) & ~wXor & wMsbs) ? Success : Failure;
+}
+#endif
+
 #if (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(HAS_KEY)
 #if defined(PAD_T_ONE)
 
@@ -437,8 +452,7 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     // Is there a better way?
     wXor |= MSK(cnBitsMallocMask + 1);
     Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key
-    Word_t wHasZero = ((wXor - wLsbs) & ~wXor & wMsbs);
-    return wHasZero ? Success : Failure;
+    return ((wXor - wLsbs) & ~wXor & wMsbs) ? Success : Failure;
 }
 
 #else // defined(PAD_T_ONE)
@@ -453,8 +467,7 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     Word_t wReplicatedKey = (wKey & MSK(nBL)) * wLsbs;
     Word_t wXor = wReplicatedKey ^ wRoot;
     Word_t wMsbs = wLsbs << (nBL - 1);
-    Word_t wHasZero = (wXor - wLsbs) & ~wXor & wMsbs;
-    return wHasZero ? Success : Failure;
+    return ((wXor - wLsbs) & ~wXor & wMsbs) ? Success : Failure;
 }
 
 #endif // defined(PAD_T_ONE)
