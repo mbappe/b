@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.300 2014/07/15 18:02:35 mike Exp mike $
+// @(#) $Id: b.c,v 1.301 2014/07/31 00:35:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -267,21 +267,14 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
     unsigned nWords = ListWordsTypeList(wPopCnt, nBL);
 
 #if defined(COMPRESSED_LISTS)
-    unsigned nBytesKeySz = (nBL <=  8) ? 1
-                         : (nBL <= 16) ? 2
-#if (cnBitsPerWord > 32)
-                         : (nBL <= 32) ? 4
-#endif // (cnBitsPerWord > 32)
-                         : sizeof(Word_t);
-
-    if (nBytesKeySz == 1) {
+    if (nBL <= 8) {
         METRICS(j__AllocWordsJLL1 += nWords); // JUDYA
         METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
-    } else if (nBytesKeySz == 2) {
+    } else if (nBL == 16) {
         METRICS(j__AllocWordsJLL2 += nWords); // JUDYA
         METRICS(j__AllocWordsJL16 += nWords); // JUDYB
 #if (cnBitsPerWord > 32)
-    } else if (nBytesKeySz == 4) {
+    } else if (nBL <= 32) {
         METRICS(j__AllocWordsJLL4 += nWords); // JUDYA
         METRICS(j__AllocWordsJL32 += nWords); // JUDYB
 #endif // (cnBitsPerWord > 32)
@@ -360,21 +353,14 @@ NewListExternal(Word_t wPopCnt, unsigned nBL)
 
 #if defined(COMPRESSED_LISTS)
 
-    unsigned nBytesKeySz = (nBL <=  8) ? 1
-                         : (nBL <= 16) ? 2
-  #if (cnBitsPerWord > 32)
-                         : (nBL <= 32) ? 4
-  #endif // (cnBitsPerWord > 32)
-                         : sizeof(Word_t);
-
-    if (nBytesKeySz == 1) {
+    if (nBL <= 8) {
         METRICS(j__AllocWordsJLL1 += nWords); // JUDYA
         METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
-    } else if (nBytesKeySz == 2) {
+    } else if (nBL <= 16) {
         METRICS(j__AllocWordsJLL2 += nWords); // JUDYA
         METRICS(j__AllocWordsJL16 += nWords); // JUDYB
 #if (cnBitsPerWord > 32)
-    } else if (nBytesKeySz == 4) {
+    } else if (nBL <= 32) {
         METRICS(j__AllocWordsJLL4 += nWords); // JUDYA
         METRICS(j__AllocWordsJL32 += nWords); // JUDYB
 #endif // (cnBitsPerWord > 32)
@@ -434,21 +420,14 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType)
 
 #if defined(COMPRESSED_LISTS)
 
-    unsigned nBytesKeySz = (nBL <=  8) ? 1
-                         : (nBL <= 16) ? 2
-#if (cnBitsPerWord > 32)
-                         : (nBL <= 32) ? 4
-#endif // (cnBitsPerWord > 32)
-                         : sizeof(Word_t);
-
-    if (nBytesKeySz == 1) {
+    if (nBL <= 8) {
         METRICS(j__AllocWordsJLL1 -= nWords); // JUDYA
         METRICS(j__AllocWordsJL12 -= nWords); // JUDYB -- overloaded
-    } else if (nBytesKeySz == 2) {
+    } else if (nBL <= 16) {
         METRICS(j__AllocWordsJLL2 -= nWords); // JUDYA
         METRICS(j__AllocWordsJL16 -= nWords); // JUDYB
 #if (cnBitsPerWord > 32)
-    } else if (nBytesKeySz == 4) {
+    } else if (nBL <= 32) {
         METRICS(j__AllocWordsJLL4 -= nWords); // JUDYA
         METRICS(j__AllocWordsJL32 -= nWords); // JUDYB
 #endif // (cnBitsPerWord > 32)
