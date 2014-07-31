@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.300 2014/07/31 16:02:41 mike Exp mike $
+// @(#) $Id: bli.c,v 1.301 2014/07/31 16:21:00 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -418,40 +418,45 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 
 #if (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(HAS_KEY)
 #if defined(PAD_T_ONE)
+
 static Status_t
 EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 {
-    Word_t wLowBits = (Word_t)-1 / (EXP(nBL) - 1);
-    Word_t wReplicatedKey = (wKey & MSK(nBL)) * wLowBits;
+    Word_t wLsbs = (Word_t)-1 / (EXP(nBL) - 1); // lsb in each key
+    Word_t wReplicatedKey = (wKey & MSK(nBL)) * wLsbs;
     Word_t wXor = wReplicatedKey ^ wRoot;
     // It helps Lookup performance to eliminate the need to know nPopCnt.
-    // So we pad the embedded list at Insert time and make sure the low
-    // bits don't cause a false wHasZero.
-    // Is MSK(cnBitsMallocMask + 1) correct/sufficient?
+    // So we replicate the first key in the list into the unused slots
+    // at Insert time to make sure the unused slots don't cause a false
+    // wHasZero.
+    // But how do we make sure the type and pop count bits don't
+    // cause a false wHasZero?
+    // Or'ing MSK(nBL_to_nBitsPopCntSz(nBL) + cnBitsMallocMask) is
+    // correct, but maybe expensive.
+    // Is or'ing in MSK(cnBitsMallocMask << 1) sufficient?
     // Is there a better way?
-#if 0
-    wXor |= MSK(nBL_to_nBitsPopCntSz(nBL) + cnBitsMallocMask);
-#else // 0
     wXor |= MSK(cnBitsMallocMask + 1);
-#endif // 0
-    Word_t wHighBits = wLowBits << (nBL - 1);
-    Word_t wHasZero = ((wXor - wLowBits) & ~wXor & wHighBits);
+    Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key
+    Word_t wHasZero = ((wXor - wLsbs) & ~wXor & wMsbs);
     return wHasZero ? Success : Failure;
 }
+
 #else // defined(PAD_T_ONE)
+
 static Status_t
 EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 {
     unsigned nPopCnt = wr_nPopCnt(wRoot, nBL);
     unsigned nBitsOfKeys = nPopCnt * nBL;
-    Word_t wLowBits = ((Word_t)-1 / (EXP(nBL) - 1))
+    Word_t wLsbs = ((Word_t)-1 / (EXP(nBL) - 1))
                     & ((Word_t)-1 << (cnBitsPerWord - nBitsOfKeys));
-    Word_t wReplicatedKey = (wKey & MSK(nBL)) * wLowBits;
+    Word_t wReplicatedKey = (wKey & MSK(nBL)) * wLsbs;
     Word_t wXor = wReplicatedKey ^ wRoot;
-    Word_t wHighBits = wLowBits << (nBL - 1);
-    Word_t wHasZero = (wXor - wLowBits) & ~wXor & wHighBits;
+    Word_t wMsbs = wLsbs << (nBL - 1);
+    Word_t wHasZero = (wXor - wLsbs) & ~wXor & wMsbs;
     return wHasZero ? Success : Failure;
 }
+
 #endif // defined(PAD_T_ONE)
 #endif // (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(HAS_KEY)
 
