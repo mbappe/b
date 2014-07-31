@@ -130,11 +130,12 @@
   #define CONTINUE_FIRST_16
 #endif // ...
 
-#if defined(SPLIT_SEARCH)
-// Default is cnSplitSearchThresholdWord = 16.
+// Default is cnSplitSearchThresholdWord is 16.
 #if ! defined(cnSplitSearchThresholdWord)
 #define cnSplitSearchThresholdWord  16
 #endif // ! defined(cnSplitSearchThresholdWord)
+
+#if defined(SPLIT_SEARCH)
 // Default is cnSplitSearchThresholdInt = 40.
 #if ! defined(cnSplitSearchThresholdInt)
 #define cnSplitSearchThresholdInt  40

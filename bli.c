@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.302 2014/07/31 22:16:16 mike Exp mike $
+// @(#) $Id: bli.c,v 1.303 2014/07/31 22:34:56 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1460,6 +1460,11 @@ Initialize(void)
     // no sense anymore.  It's equivalent to cnBitsAtBottom equals
     // cnLogBitsPerWord plus cnBitsPerDigit -- only worse.
     assert(cnBitsAtBottom > cnLogBitsPerWord);
+
+    // Search assumes lists are sorted if LIST_END_MARKERS is defined.
+#if defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
+    assert(0);
+#endif // defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
 
     bInitialized= 1;
 }
