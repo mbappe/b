@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.299 2014/07/31 15:42:59 mike Exp mike $
+// @(#) $Id: bli.c,v 1.300 2014/07/31 16:02:41 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -67,6 +67,18 @@
     } \
 }
 
+#define SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+{ \
+    (_nPos) = (_pxKeys) - (_pxKeys0); \
+    (_nPos) += (_nPopCnt) - 1; \
+    while ((_xKey) < (_pxKeys0)[_nPos]) { --(_nPos); } \
+    if ((((_xKey) > (_pxKeys0)[_nPos]) || ((_nPos) < 0)) \
+        || (&(_pxKeys0)[_nPos] < (_pxKeys))) \
+    { \
+        ++(_nPos); (_nPos) = ~(_nPos); \
+    } \
+}
+
 #else // defined(LIST_END_MARKERS)
 
 // Linear search of list (for any size key and with end check).
@@ -80,8 +92,6 @@
     } \
 }
 
-#endif // defined(LIST_END_MARKERS)
-
 // Backward linear search of list (for any size key and with end check).
 #define SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
@@ -92,6 +102,8 @@
         (_nPos) += (_nPopCnt) - 1; SSEARCHB((_pxKeys0), (_xKey), (_nPos)); \
     } \
 }
+
+#endif // defined(LIST_END_MARKERS)
 
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
