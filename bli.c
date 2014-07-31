@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.298 2014/07/30 12:15:23 mike Exp mike $
+// @(#) $Id: bli.c,v 1.299 2014/07/31 15:42:59 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -54,6 +54,21 @@
     if ((_xKey) > (_pxKeys)[_nPos]) { ++(_nPos); (_nPos) = ~(_nPos); } \
 }
 
+#if defined(LIST_END_MARKERS)
+
+#define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+{ \
+    (_nPos) = (_pxKeys) - (_pxKeys0); \
+    while ((_pxKeys0)[_nPos] < (_xKey)) { ++(_nPos); } \
+    if (((_pxKeys0)[_nPos] > (_xKey)) \
+        || (&(_pxKeys0)[_nPos] >= &(_pxKeys)[_nPopCnt])) \
+    { \
+        (_nPos) = ~(_nPos); \
+    } \
+}
+
+#else // defined(LIST_END_MARKERS)
+
 // Linear search of list (for any size key and with end check).
 #define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
@@ -61,9 +76,11 @@
     if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
         (_nPos) = ~((_nPos) + (_nPopCnt)); \
     } else { \
-        SSEARCHF(_pxKeys0, _xKey, _nPos); \
+        SSEARCHF((_pxKeys0), (_xKey), (_nPos)); \
     } \
 }
+
+#endif // defined(LIST_END_MARKERS)
 
 // Backward linear search of list (for any size key and with end check).
 #define SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
@@ -72,7 +89,7 @@
     if ((_xKey) < *(_pxKeys)) { \
         (_nPos) = ~(_nPos); \
     } else { \
-        (_nPos) += (_nPopCnt) - 1; SSEARCHB(_pxKeys0, _xKey, _nPos); \
+        (_nPos) += (_nPopCnt) - 1; SSEARCHB((_pxKeys0), (_xKey), (_nPos)); \
     } \
 }
 
