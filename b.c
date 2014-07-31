@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.301 2014/07/31 00:35:14 mike Exp mike $
+// @(#) $Id: b.c,v 1.302 2014/07/31 02:24:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -211,6 +211,7 @@ ListWordsTypeList(Word_t wPopCnt, unsigned nBL)
     }
 
 #if defined(LIST_END_MARKERS)
+    // Make room for 0 at beginning and -1 at end to help make search faster.
     wPopCnt += 2;
 #endif // defined(LIST_END_MARKERS)
 
@@ -258,23 +259,37 @@ ListWords(Word_t wPopCnt, unsigned nDL)
     return ListWordsExternal(wPopCnt, nBL);
 }
 
-// Allocate a new T_LIST leaf (even if the leaf could be embedded).
-static Word_t *
-NewListTypeList(Word_t wPopCnt, unsigned nBL)
+static void
+NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 {
-    assert(wPopCnt != 0);
-
-    unsigned nWords = ListWordsTypeList(wPopCnt, nBL);
-
+    (void)pwList; (void)wPopCnt; (void)nBL; (void)nWords;
 #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
+#if defined(LIST_END_MARKERS)
+#if defined(T_ONE)
+        if (wPopCnt != 1)
+#endif // defined(T_ONE)
+        { ls_pcKeys(pwList)[-1] = 0; }
+#endif // defined(LIST_END_MARKERS)
         METRICS(j__AllocWordsJLL1 += nWords); // JUDYA
         METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
     } else if (nBL == 16) {
+#if defined(LIST_END_MARKERS)
+#if defined(T_ONE)
+        if (wPopCnt != 1)
+#endif // defined(T_ONE)
+        { ls_psKeys(pwList)[-1] = 0; }
+#endif // defined(LIST_END_MARKERS)
         METRICS(j__AllocWordsJLL2 += nWords); // JUDYA
         METRICS(j__AllocWordsJL16 += nWords); // JUDYB
 #if (cnBitsPerWord > 32)
     } else if (nBL <= 32) {
+#if defined(LIST_END_MARKERS)
+#if defined(T_ONE)
+        if (wPopCnt != 1)
+#endif // defined(T_ONE)
+        { ls_piKeys(pwList)[-1] = 0; }
+#endif // defined(LIST_END_MARKERS)
         METRICS(j__AllocWordsJLL4 += nWords); // JUDYA
         METRICS(j__AllocWordsJL32 += nWords); // JUDYB
 #endif // (cnBitsPerWord > 32)
@@ -282,8 +297,28 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
     else
 #endif // defined(COMPRESSED_LISTS)
     {
+#if defined(LIST_END_MARKERS)
+#if defined(T_ONE)
+        if (wPopCnt != 1)
+#endif // defined(T_ONE)
+        { ls_pwKeys(pwList)[-1] = 0; }
+#endif // defined(LIST_END_MARKERS)
         METRICS(j__AllocWordsJLLW += nWords); // JUDYA and JUDYB
     }
+
+    // Should we be setting wPrefix here for PP_IN_LINK?
+
+    DBGM(printf("NewList pwList %p wPopCnt "OWx" nBL %d nWords %d\n",
+        (void *)pwList, wPopCnt, nBL, nWords));
+}
+
+// Allocate a new T_LIST leaf (even if the leaf could be embedded).
+static Word_t *
+NewListTypeList(Word_t wPopCnt, unsigned nBL)
+{
+    assert(wPopCnt != 0);
+
+    unsigned nWords = ListWordsTypeList(wPopCnt, nBL);
 
     Word_t *pwList;
 #if defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
@@ -297,9 +332,6 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
         pwList = (Word_t *)MyMalloc(nWords);
     }
 
-    DBGM(printf("NewListTypeList pwList %p wPopCnt "OWx" nBL %d nWords %d\n",
-        (void *)pwList, wPopCnt, nBL, nWords));
-
 #if defined(PP_IN_LINK)
     if (nBL >= cnBitsPerWord)
 #endif // defined(PP_IN_LINK)
@@ -311,7 +343,7 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
     set_ll_nDL(pwList, nBL_to_nDL(nBL));
 #endif // defined(DL_IN_LL)
 
-    // Should we be setting wPrefix here for PP_IN_LINK?
+    NewListCommon(pwList, wPopCnt, nBL, nWords);
 
     return pwList;
 }
@@ -319,62 +351,16 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
 static Word_t *
 NewListExternal(Word_t wPopCnt, unsigned nBL)
 {
-    Word_t *pwList;
-    unsigned nWords;
-
-    assert(wPopCnt != 0);
-
 #if defined(T_ONE)
     if (wPopCnt == 1) {
-        nWords = 1;
-        pwList = (Word_t *)MyMalloc(nWords);
-    } else
+        assert(wPopCnt != 0);
+        Word_t *pwList = (Word_t *)MyMalloc(1);
+        NewListCommon(pwList, wPopCnt, nBL, /* nWords */ 1);
+        return pwList;
+    }
 #endif // defined(T_ONE)
-    {
-        nWords = ListWordsTypeList(wPopCnt, nBL);
-        assert(nWords != 0);
-#if defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
-        // this is overkill since we don't care if lists are aligned;
-        // only that we don't cross a cache line boundary unnecessarily
-        if ((nBL <= 16) && (nWords > 2)) {
-            posix_memalign((void **)&pwList, 64, nWords * sizeof(Word_t));
-        } else
-#endif // defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
-        {
-            pwList = (Word_t *)MyMalloc(nWords);
-        }
-#if defined(PP_IN_LINK)
-        if (nBL >= cnBitsPerWord)
-#endif // defined(PP_IN_LINK)
-        {
-            set_ls_wPopCnt(pwList, wPopCnt);
-        }
-    }
 
-#if defined(COMPRESSED_LISTS)
-
-    if (nBL <= 8) {
-        METRICS(j__AllocWordsJLL1 += nWords); // JUDYA
-        METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
-    } else if (nBL <= 16) {
-        METRICS(j__AllocWordsJLL2 += nWords); // JUDYA
-        METRICS(j__AllocWordsJL16 += nWords); // JUDYB
-#if (cnBitsPerWord > 32)
-    } else if (nBL <= 32) {
-        METRICS(j__AllocWordsJLL4 += nWords); // JUDYA
-        METRICS(j__AllocWordsJL32 += nWords); // JUDYB
-#endif // (cnBitsPerWord > 32)
-    }
-    else
-#endif // defined(COMPRESSED_LISTS)
-    {
-        METRICS(j__AllocWordsJLLW += nWords); // JUDYA and JUDYB
-    }
-
-    DBGM(printf("NewListExternal wPopCnt "OWx" nWords %d pwList %p\n",
-        wPopCnt, nWords, (void *)pwList));
-
-    return pwList;
+    return NewListTypeList(wPopCnt, nBL);
 }
 
 // Allocate memory for a new list for the given wPopCnt.
@@ -1702,13 +1688,22 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 if (nBL <= 8) {
                     CopyWithInsertChar(ls_pcKeys(pwList),
                         pcKeys, wPopCnt, (unsigned char)wKey);
+#if defined(LIST_END_MARKERS)
+                    ls_pcKeys(pwList)[wPopCnt + 1] = -1;
+#endif // defined(LIST_END_MARKERS)
                 } else if (nBL <= 16) {
                     CopyWithInsertShort(ls_psKeys(pwList),
                         psKeys, wPopCnt, (unsigned short)wKey);
+#if defined(LIST_END_MARKERS)
+                    ls_psKeys(pwList)[wPopCnt + 1] = -1;
+#endif // defined(LIST_END_MARKERS)
 #if (cnBitsPerWord > 32)
                 } else if (nBL <= 32) {
                     CopyWithInsertInt(ls_piKeys(pwList),
                         piKeys, wPopCnt, (unsigned int)wKey);
+#if defined(LIST_END_MARKERS)
+                    ls_piKeys(pwList)[wPopCnt + 1] = -1;
+#endif // defined(LIST_END_MARKERS)
 #endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
@@ -1719,6 +1714,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #endif // defined(PP_IN_LINK)
                             ls_pwKeys(pwList),
                         pwKeys, wPopCnt, wKey);
+#if defined(LIST_END_MARKERS)
+//printf("\npwList %p ls_pwKeys(pwList) %p pwKeys %p wPopCnt %ld\n", pwList, ls_pwKeys(pwList), pwKeys, wPopCnt);
+                    ls_pwKeys(pwList)[wPopCnt + 1] = -1;
+#endif // defined(LIST_END_MARKERS)
                 }
             } else
 #else // defined(SORT_LISTS)
