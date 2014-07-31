@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.297 2014/07/30 01:55:19 mike Exp mike $
+// @(#) $Id: bli.c,v 1.298 2014/07/30 12:15:23 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -102,6 +102,10 @@
 static int
 SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
+#if defined(LIST_END_MARKERS)
+    assert(pcKeys[-1] == 0);
+    assert(pcKeys[nPopCnt] == (uint8_t)-1);
+#endif // defined(LIST_END_MARKERS)
     uint8_t cKey = (uint8_t)wKey;
     int nPos;
 #if defined(PSPLIT_SEARCH_8)
@@ -129,6 +133,10 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 static int
 SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
+#if defined(LIST_END_MARKERS)
+    assert(psKeys[-1] == 0);
+    assert(psKeys[nPopCnt] == (uint16_t)-1);
+#endif // defined(LIST_END_MARKERS)
     uint16_t sKey = (uint16_t)wKey;
     int nPos;
 #if defined(PSPLIT_SEARCH_16)
@@ -157,6 +165,10 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 static int
 SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
+#if defined(LIST_END_MARKERS)
+    assert(piKeys[-1] == 0);
+    assert(piKeys[nPopCnt] == (uint32_t)-1);
+#endif // defined(LIST_END_MARKERS)
     uint32_t iKey = (uint32_t)wKey;
     int nPos;
 #if defined(PSPLIT_SEARCH_32)
@@ -210,6 +222,10 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 static int
 SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
+#if defined(LIST_END_MARKERS)
+    assert(pwKeys[-1] == 0);
+    assert(pwKeys[nPopCnt] == (Word_t)-1);
+#endif // defined(LIST_END_MARKERS)
     int nPos;
 #if defined(PSPLIT_SEARCH_WORD)
 #if defined(PSPLIT_SEARCH_XOR_WORD)

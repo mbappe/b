@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.302 2014/07/31 02:24:55 mike Exp mike $
+// @(#) $Id: b.c,v 1.303 2014/07/31 15:26:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2558,6 +2558,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         wPopCnt = ls_wPopCnt(pwr);
     }
 
+// Why was this #if defined(T_ONE) ever here?
 //#if ! defined(T_ONE)
     if (wPopCnt == 1) {
         OldList(pwr, wPopCnt, nDL, nType);
@@ -2612,19 +2613,31 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     if (nBL <= 8) {
         MOVE(&pwr_pcKeys(pwList)[nIndex],
              &pwr_pcKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+#if defined(LIST_END_MARKERS)
+        pwr_pcKeys(pwList)[wPopCnt - 1] = -1;
+#endif // defined(LIST_END_MARKERS)
     } else if (nBL <= 16) {
         MOVE(&pwr_psKeys(pwList)[nIndex],
              &pwr_psKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+#if defined(LIST_END_MARKERS)
+        pwr_psKeys(pwList)[wPopCnt - 1] = -1;
+#endif // defined(LIST_END_MARKERS)
 #if (cnBitsPerWord > 32)
     } else if (nBL <= 32) {
         MOVE(&pwr_piKeys(pwList)[nIndex],
              &pwr_piKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+#if defined(LIST_END_MARKERS)
+        pwr_piKeys(pwList)[wPopCnt - 1] = -1;
+#endif // defined(LIST_END_MARKERS)
 #endif // (cnBitsPerWord > 32)
     } else
 #endif // defined(COMPRESSED_LISTS)
     {
         MOVE(&pwr_pwKeys(pwList)[nIndex], &pwKeys[nIndex + 1],
              wPopCnt - nIndex - 1);
+#if defined(LIST_END_MARKERS)
+        pwr_pwKeys(pwList)[wPopCnt - 1] = -1;
+#endif // defined(LIST_END_MARKERS)
     }
 
     if (pwList != pwr)
