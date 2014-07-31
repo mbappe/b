@@ -749,7 +749,11 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
 
 // Index of first key within leaf (for nDL != cnDigitsPerWord).
+#if defined(LIST_END_MARKERS)
+#define FIRST_KEY  1
+#else // defined(LIST_END_MARKERS)
 #define FIRST_KEY  0
+#endif // defined(LIST_END_MARKERS)
 
 #else // defined(PP_IN_LINK)
 
@@ -757,7 +761,11 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
 
 // Index of first key within leaf (for all cases).
+#if defined(LIST_END_MARKERS)
+#define FIRST_KEY  2
+#else // defined(LIST_END_MARKERS)
 #define FIRST_KEY  1
+#endif // defined(LIST_END_MARKERS)
 
 #endif // defined(PP_IN_LINK)
 

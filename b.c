@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.299 2014/07/14 21:26:29 mike Exp mike $
+// @(#) $Id: b.c,v 1.300 2014/07/15 18:02:35 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -209,6 +209,10 @@ ListWordsTypeList(Word_t wPopCnt, unsigned nBL)
     {
         ++wPopCnt;
     }
+
+#if defined(LIST_END_MARKERS)
+    wPopCnt += 2;
+#endif // defined(LIST_END_MARKERS)
 
     // always malloc an odd number of words since the odd word is free
 #if (cnDummiesInList != 0)
