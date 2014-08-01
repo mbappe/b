@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.304 2014/07/31 22:57:19 mike Exp mike $
+// @(#) $Id: bli.c,v 1.305 2014/08/01 12:46:19 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -64,8 +64,8 @@
 #define PAST_ENDB(_pxKeys, _pxKeys0, _nPos) \
     (&(_pxKeys0)[_nPos] < (_pxKeys))
 
-#define IS_KEY_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)
-#define IS_KEY_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)
+#define TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)  0
+#define TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 
 #else // defined(PAST_END)
 
@@ -73,14 +73,10 @@
 #define PAST_ENDB(_pxKeys, _pxKeys0, _nPos)  0
 
 // BUG: Refine this with nBL; this won't work for non-native sizes as it is.
-#define IS_KEY_MAX(_x_t, _pxKeys, _nPopCnt, _xKey) \
-    if ((_xKey) == (_x_t)-1) { \
-        return ((_pxKeys)[(_nPopCnt) - 1] == (_x_t)-1) \
-            ? (_nPopCnt) - 1 : ~(_nPopCnt); \
-    }
+#define TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey) \
+    ((_xKey) == (_x_t)-1)
 
-#define IS_KEY_MIN(_x_t, _pxKeys, _nPopCnt, _xKey) \
-    if ((_xKey) == 0) { return ((_pxKeys)[0] == 0) ? 0 : ~0; }
+#define TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)  ((_xKey) == 0)
 
 #endif // defined(PAST_END)
 
@@ -110,8 +106,8 @@
 
 #else // defined(LIST_END_MARKERS)
 
-#define IS_KEY_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)
-#define IS_KEY_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)
+#define TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)  0
+#define TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 
 // Linear search of list (for any size key and with end check).
 #define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
@@ -151,12 +147,26 @@
     IS_KEY_EQ(_pxKeys, _xKey); /* return if key = keys[split] */ \
     if ((_pxKeys)[nSplit] < (_xKey)) { \
         if (nSplit == (_nPopCnt) - 1) { return ~(_nPopCnt); } \
-        IS_KEY_MAX(_x_t, _pxKeys, _nPopCnt, _xKey); /* return if key is -1 */\
-        SEARCHF(_x_t, &(_pxKeys)[nSplit + 1], (_nPopCnt) - nSplit - 1, \
+        if (TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)) \
+        { \
+            (_nPos) = ((_pxKeys)[(_nPopCnt) - 1] == (_x_t)-1) \
+                ? (_nPopCnt) - 1 : ~(_nPopCnt); \
+        } \
+        else \
+        { \
+            SEARCHF(_x_t, &(_pxKeys)[nSplit + 1], (_nPopCnt) - nSplit - 1, \
                    (_xKey), (_pxKeys), (_nPos)); \
+        } \
     } else { /* here if (_xKey) <= (_pxKeys)[nSplit] */ \
-        IS_KEY_MIN(_x_t, _pxKeys, _nPopCnt, _xKey); /* return if key is 0 */ \
-        SEARCHB(_x_t, (_pxKeys), nSplit + 1, (_xKey), (_pxKeys), (_nPos)); \
+        if (TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)) \
+        { \
+            (_nPos) = ((_pxKeys)[0] == 0) ? 0 : ~0; \
+        } \
+        else \
+        { \
+            SEARCHB(_x_t, (_pxKeys), nSplit + 1, \
+                    (_xKey), (_pxKeys), (_nPos)); \
+        } \
     } \
 }
 
