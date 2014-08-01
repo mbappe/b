@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.303 2014/07/31 22:34:56 mike Exp mike $
+// @(#) $Id: bli.c,v 1.304 2014/07/31 22:57:19 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -56,12 +56,41 @@
 
 #if defined(LIST_END_MARKERS)
 
+#if defined(PAST_END)
+
+#define PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos) \
+    (&(_pxKeys0)[_nPos] >= &(_pxKeys)[_nPopCnt])
+
+#define PAST_ENDB(_pxKeys, _pxKeys0, _nPos) \
+    (&(_pxKeys0)[_nPos] < (_pxKeys))
+
+#define IS_KEY_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)
+#define IS_KEY_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)
+
+#else // defined(PAST_END)
+
+#define PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos)  0
+#define PAST_ENDB(_pxKeys, _pxKeys0, _nPos)  0
+
+// BUG: Refine this with nBL; this won't work for non-native sizes as it is.
+#define IS_KEY_MAX(_x_t, _pxKeys, _nPopCnt, _xKey) \
+    if ((_xKey) == (_x_t)-1) { \
+        return ((_pxKeys)[(_nPopCnt) - 1] == (_x_t)-1) \
+            ? (_nPopCnt) - 1 : ~(_nPopCnt); \
+    }
+
+#define IS_KEY_MIN(_x_t, _pxKeys, _nPopCnt, _xKey) \
+    if ((_xKey) == 0) { return ((_pxKeys)[0] == 0) ? 0 : ~0; }
+
+#endif // defined(PAST_END)
+
+// Is nPos ^= -1 equivalent to nPos |= nPos?
 #define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
     (_nPos) = (_pxKeys) - (_pxKeys0); \
     while ((_pxKeys0)[_nPos] < (_xKey)) { ++(_nPos); } \
     if (((_pxKeys0)[_nPos] > (_xKey)) \
-        || (&(_pxKeys0)[_nPos] >= &(_pxKeys)[_nPopCnt])) \
+        || PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos)) \
     { \
         (_nPos) = ~(_nPos); \
     } \
@@ -72,14 +101,17 @@
     (_nPos) = (_pxKeys) - (_pxKeys0); \
     (_nPos) += (_nPopCnt) - 1; \
     while ((_xKey) < (_pxKeys0)[_nPos]) { --(_nPos); } \
-    if ((((_xKey) > (_pxKeys0)[_nPos]) || ((_nPos) < 0)) \
-        || (&(_pxKeys0)[_nPos] < (_pxKeys))) \
+    if (((_xKey) > (_pxKeys0)[_nPos]) \
+        || PAST_ENDB(_pxKeys, _pxKeys0, _nPos)) \
     { \
         ++(_nPos); (_nPos) = ~(_nPos); \
     } \
 }
 
 #else // defined(LIST_END_MARKERS)
+
+#define IS_KEY_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)
+#define IS_KEY_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)
 
 // Linear search of list (for any size key and with end check).
 #define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
@@ -105,15 +137,25 @@
 
 #endif // defined(LIST_END_MARKERS)
 
+#define IS_KEY_EQ(_pxKeys, _xKey) \
+   if ((_pxKeys)[nSplit] == (_xKey)) { return nSplit; }
+
+// Can we test for key == keys[split] and avoid doing anything else special
+// at the end for the markers because we know if key == 0 or -1 that we
+// will have returned due to that first test, i.e. split will be 0 or
+// nPopCnt - 1?
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     unsigned nSplit \
         = (((_xKey) & MSK(_nBL)) * (_nPopCnt) + (_nPopCnt) / 2) >> (_nBL); \
+    IS_KEY_EQ(_pxKeys, _xKey); /* return if key = keys[split] */ \
     if ((_pxKeys)[nSplit] < (_xKey)) { \
         if (nSplit == (_nPopCnt) - 1) { return ~(_nPopCnt); } \
+        IS_KEY_MAX(_x_t, _pxKeys, _nPopCnt, _xKey); /* return if key is -1 */\
         SEARCHF(_x_t, &(_pxKeys)[nSplit + 1], (_nPopCnt) - nSplit - 1, \
                    (_xKey), (_pxKeys), (_nPos)); \
     } else { /* here if (_xKey) <= (_pxKeys)[nSplit] */ \
+        IS_KEY_MIN(_x_t, _pxKeys, _nPopCnt, _xKey); /* return if key is 0 */ \
         SEARCHB(_x_t, (_pxKeys), nSplit + 1, (_xKey), (_pxKeys), (_nPos)); \
     } \
 }
