@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.307 2014/08/01 17:20:01 mike Exp mike $
+// @(#) $Id: bli.c,v 1.308 2014/08/01 17:30:22 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -56,9 +56,9 @@
 
 #if defined(LIST_END_MARKERS)
 
-#define TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)  0
-
 #if defined(PAST_END)
+
+#define TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)  0
 
 #define PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos) \
     (&(_pxKeys0)[_nPos] >= &(_pxKeys)[_nPopCnt])
@@ -70,6 +70,8 @@
 #define TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 
 #else // defined(PAST_END)
+
+#define TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)  ((_pxKeys)[nSplit] == (_xKey))
 
 #define PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos)  0
 #define PAST_ENDB(_pxKeys, _pxKeys0, _nPos)  0
@@ -108,7 +110,7 @@
 
 #else // defined(LIST_END_MARKERS)
 
-#define TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)  ((_pxKeys)[nSplit] == (_xKey))
+#define TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)  0
 
 #define TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 #define TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)  0
