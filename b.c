@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.303 2014/07/31 15:26:29 mike Exp mike $
+// @(#) $Id: b.c,v 1.304 2014/07/31 15:42:59 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -313,6 +313,9 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 }
 
 // Allocate a new T_LIST leaf (even if the leaf could be embedded).
+// If we want to do a one-word parallel search when doing PSPLIT_SEARCH
+// then we have to make sure every word in the list is full of keys, e.g.
+// no pop count.
 static Word_t *
 NewListTypeList(Word_t wPopCnt, unsigned nBL)
 {
