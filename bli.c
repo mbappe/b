@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.305 2014/08/01 12:46:19 mike Exp mike $
+// @(#) $Id: bli.c,v 1.306 2014/08/01 17:14:24 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -56,6 +56,8 @@
 
 #if defined(LIST_END_MARKERS)
 
+#define TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)  0
+
 #if defined(PAST_END)
 
 #define PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos) \
@@ -106,6 +108,8 @@
 
 #else // defined(LIST_END_MARKERS)
 
+#define TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)  ((_pxKeys)[nSplit] == (_xKey))
+
 #define TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 #define TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 
@@ -133,9 +137,6 @@
 
 #endif // defined(LIST_END_MARKERS)
 
-#define IS_KEY_EQ(_pxKeys, _xKey) \
-   if ((_pxKeys)[nSplit] == (_xKey)) { return nSplit; }
-
 // Can we test for key == keys[split] and avoid doing anything else special
 // at the end for the markers because we know if key == 0 or -1 that we
 // will have returned due to that first test, i.e. split will be 0 or
@@ -144,8 +145,12 @@
 { \
     unsigned nSplit \
         = (((_xKey) & MSK(_nBL)) * (_nPopCnt) + (_nPopCnt) / 2) >> (_nBL); \
-    IS_KEY_EQ(_pxKeys, _xKey); /* return if key = keys[split] */ \
-    if ((_pxKeys)[nSplit] < (_xKey)) { \
+    if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) \
+    { \
+        (_nPos) = nSplit; \
+    } \
+    else if ((_pxKeys)[nSplit] < (_xKey)) \
+    { \
         if (nSplit == (_nPopCnt) - 1) { return ~(_nPopCnt); } \
         if (TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)) \
         { \
@@ -157,7 +162,9 @@
             SEARCHF(_x_t, &(_pxKeys)[nSplit + 1], (_nPopCnt) - nSplit - 1, \
                    (_xKey), (_pxKeys), (_nPos)); \
         } \
-    } else { /* here if (_xKey) <= (_pxKeys)[nSplit] */ \
+    } \
+    else /* here if (_xKey) < (_pxKeys)[nSplit] (and possibly if equal) */ \
+    { \
         if (TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)) \
         { \
             (_nPos) = ((_pxKeys)[0] == 0) ? 0 : ~0; \
