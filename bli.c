@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.306 2014/08/01 17:14:24 mike Exp mike $
+// @(#) $Id: bli.c,v 1.307 2014/08/01 17:20:01 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -43,7 +43,7 @@
 #define SSEARCHF(_pxKeys, _xKey, _nPos) \
 { \
     while ((_pxKeys)[_nPos] < (_xKey)) { ++(_nPos); } \
-    if ((_pxKeys)[_nPos] > (_xKey)) { (_nPos) = ~(_nPos); } \
+    if ((_pxKeys)[_nPos] > (_xKey)) { (_nPos) ^= -1; } \
 }
 
 // Simple backward linear search of a list that assumes the list contains a
@@ -51,7 +51,7 @@
 #define SSEARCHB(_pxKeys, _xKey, _nPos) \
 { \
     while ((_xKey) < (_pxKeys)[_nPos]) { --(_nPos); } \
-    if ((_xKey) > (_pxKeys)[_nPos]) { ++(_nPos); (_nPos) = ~(_nPos); } \
+    if ((_xKey) > (_pxKeys)[_nPos]) { ++(_nPos); (_nPos) ^= -1; } \
 }
 
 #if defined(LIST_END_MARKERS)
@@ -90,7 +90,7 @@
     if (((_pxKeys0)[_nPos] > (_xKey)) \
         || PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos)) \
     { \
-        (_nPos) = ~(_nPos); \
+        (_nPos) ^= -1; \
     } \
 }
 
@@ -102,7 +102,7 @@
     if (((_xKey) > (_pxKeys0)[_nPos]) \
         || PAST_ENDB(_pxKeys, _pxKeys0, _nPos)) \
     { \
-        ++(_nPos); (_nPos) = ~(_nPos); \
+        ++(_nPos); (_nPos) ^= -1; \
     } \
 }
 
@@ -129,7 +129,7 @@
 { \
     (_nPos) = (_pxKeys) - (_pxKeys0); \
     if ((_xKey) < *(_pxKeys)) { \
-        (_nPos) = ~(_nPos); \
+        (_nPos) ^= -1; \
     } else { \
         (_nPos) += (_nPopCnt) - 1; SSEARCHB((_pxKeys0), (_xKey), (_nPos)); \
     } \
