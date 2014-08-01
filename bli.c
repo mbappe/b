@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.308 2014/08/01 17:30:22 mike Exp mike $
+// @(#) $Id: bli.c,v 1.309 2014/08/01 17:36:34 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -56,9 +56,12 @@
 
 #if defined(LIST_END_MARKERS)
 
-#if defined(PAST_END)
+#if defined(TEST_PAST_END)
 
 #define TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)  0
+
+#define TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)  0
+#define TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 
 #define PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos) \
     (&(_pxKeys0)[_nPos] >= &(_pxKeys)[_nPopCnt])
@@ -66,15 +69,19 @@
 #define PAST_ENDB(_pxKeys, _pxKeys0, _nPos) \
     (&(_pxKeys0)[_nPos] < (_pxKeys))
 
-#define TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)  0
-#define TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)  0
-
-#else // defined(PAST_END)
+#elif defined(TEST_SPLIT_EQ_KEY)
 
 #define TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)  ((_pxKeys)[nSplit] == (_xKey))
 
+#define TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)  0
+#define TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)  0
+
 #define PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos)  0
 #define PAST_ENDB(_pxKeys, _pxKeys0, _nPos)  0
+
+#else // TEST_KEY_IS_MAX_MIN
+
+#define TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)  0
 
 // BUG: Refine this with nBL; this won't work for non-native sizes as it is.
 #define TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey) \
@@ -82,7 +89,10 @@
 
 #define TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)  ((_xKey) == 0)
 
-#endif // defined(PAST_END)
+#define PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos)  0
+#define PAST_ENDB(_pxKeys, _pxKeys0, _nPos)  0
+
+#endif // ...
 
 // Is nPos ^= -1 equivalent to nPos |= nPos?
 #define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
