@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.309 2014/08/01 17:36:34 mike Exp mike $
+// @(#) $Id: bli.c,v 1.310 2014/08/01 17:48:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -149,14 +149,32 @@
 
 #endif // defined(LIST_END_MARKERS)
 
-// Can we test for key == keys[split] and avoid doing anything else special
-// at the end for the markers because we know if key == 0 or -1 that we
-// will have returned due to that first test, i.e. split will be 0 or
-// nPopCnt - 1?
+// Old method:
+// nSplit = (((_xKey) & MSK(_nBL)) * (_nPopCnt) + (_nPopCnt) / 2) >> (_nBL);
+// New method:
+// Take N most significant bits of key times pop count and divide by 2^N.
+// If key has fewer than N significant bits, then shift key left as needed.
+// The rounding term is probably insignificant and unnecessary.
+#define PSPLIT(_nPopCnt, _nBL, _xKey) \
+    ((((((Word_t)(_xKey) << (cnBitsPerWord - (_nBL))) \
+                            >> (cnBitsPerWord - 9)) \
+                        * (_nPopCnt)) \
+                    /* + ((_nPopCnt) / 2) */ ) \
+                / EXP(9)); \
+
+
+#if 0
+#define PSPLIT(_nn, _nBL, _xKeyMin, _xKeyMax, _xKey) \
+    (((_xKey) - (_xKeyMin)) * (_nn) + (_nn) / 2 / ((_xKeyMax) - (_xKeyMin)))
+    unsigned nSplit \
+        = PSPLIT((_nPopCnt), \
+                 (_nBL), (_pxKeys)[0], (_pxKeys)[(_nPopCnt) - 1], (_xKey)); \
+
+#endif
+
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    unsigned nSplit \
-        = (((_xKey) & MSK(_nBL)) * (_nPopCnt) + (_nPopCnt) / 2) >> (_nBL); \
+    unsigned nSplit = PSPLIT((_nPopCnt), (_nBL), (_xKey)); \
     if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) \
     { \
         (_nPos) = nSplit; \
@@ -202,6 +220,7 @@
 static int
 SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
+    (void)nBL;
 #if defined(LIST_END_MARKERS)
     assert(pcKeys[-1] == 0);
     assert(pcKeys[nPopCnt] == (uint8_t)-1);
@@ -233,6 +252,7 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 static int
 SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
+    (void)nBL;
 #if defined(LIST_END_MARKERS)
     assert(psKeys[-1] == 0);
     assert(psKeys[nPopCnt] == (uint16_t)-1);
@@ -265,6 +285,7 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 static int
 SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
+    (void)nBL;
 #if defined(LIST_END_MARKERS)
     assert(piKeys[-1] == 0);
     assert(piKeys[nPopCnt] == (uint32_t)-1);
@@ -322,6 +343,7 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 static int
 SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
+    (void)nBL;
 #if defined(LIST_END_MARKERS)
     assert(pwKeys[-1] == 0);
     assert(pwKeys[nPopCnt] == (Word_t)-1);
