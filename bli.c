@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.310 2014/08/01 17:48:55 mike Exp mike $
+// @(#) $Id: bli.c,v 1.311 2014/08/02 15:00:54 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -155,26 +155,39 @@
 // Take N most significant bits of key times pop count and divide by 2^N.
 // If key has fewer than N significant bits, then shift key left as needed.
 // The rounding term is probably insignificant and unnecessary.
-#define PSPLIT(_nPopCnt, _nBL, _xKey) \
-    ((((((Word_t)(_xKey) << (cnBitsPerWord - (_nBL))) \
+#if 0
+#define PSPLIT(_nPopCnt, _nBL, _xKey, _nSplit) \
+{ \
+    (_nSplit) = ((((((Word_t)(_xKey) << (cnBitsPerWord - (_nBL))) \
+                            >> (cnBitsPerWord - 9)) \
+                        * (_nPopCnt)) \
+                    /* + ((_nPopCnt) / 2) */ ) \
+                / EXP(9)) \
+}
+#endif
+
+#if 0
+#define PSPLIT(_nPopCnt, _xKeyMin, _xKeyMax, _xKey, _nSplit) \
+{ \
+    unsigned nBL = LOG(((_xKeyMin) ^ (_xKeyMax)) | 1) + 1; \
+    (_nSplit) = ((((((Word_t)(_xKey) << (cnBitsPerWord - (nBL))) \
                             >> (cnBitsPerWord - 9)) \
                         * (_nPopCnt)) \
                     /* + ((_nPopCnt) / 2) */ ) \
                 / EXP(9)); \
-
-
-#if 0
-#define PSPLIT(_nn, _nBL, _xKeyMin, _xKeyMax, _xKey) \
-    (((_xKey) - (_xKeyMin)) * (_nn) + (_nn) / 2 / ((_xKeyMax) - (_xKeyMin)))
-    unsigned nSplit \
-        = PSPLIT((_nPopCnt), \
-                 (_nBL), (_pxKeys)[0], (_pxKeys)[(_nPopCnt) - 1], (_xKey)); \
-
+}
 #endif
+
+#define PSPLIT(_nn, _xKeyMin, _xKeyMax, _xKey, _nSplit) \
+{ \
+    (_nSplit) \
+        = ((((Word_t)(_xKey) - (_xKeyMin)) * (_nn) + (_nn) / 2) \
+            / ((Word_t)(_xKeyMax) - (_xKeyMin) + 1)); \
+}
 
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    unsigned nSplit = PSPLIT((_nPopCnt), (_nBL), (_xKey)); \
+    unsigned nSplit; PSPLIT((_nPopCnt), 0, (_x_t)-1, (_xKey), nSplit); \
     if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) \
     { \
         (_nPos) = nSplit; \
