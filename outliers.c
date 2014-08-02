@@ -1,11 +1,17 @@
 
-#include <stdint.h> // for gcc/linux
-#include <assert.h>
+
+#if defined(_WIN64)
+typedef unsigned long long Word_t;
+#define W  "ll"
+#else // defined(_WIN64)
+typedef unsigned long Word_t;
+#define W  "l"
+#endif // defined(_WIN64)
 
 #if defined(__LP64__) || defined(_WIN64)
-typedef uint64_t Word_t;
+#define ZWX  "016"
 #else // defined(__LP64__) || defined(_WIN64)
-typedef uint32_t Word_t;
+#define ZWX  "08"
 #endif // defined(__LP64__) || defined(_WIN64)
 
 #define BITSPW (sizeof(Word_t) * 8)
@@ -16,27 +22,43 @@ typedef uint32_t Word_t;
 
 #define MASK(x)  ((x) - 1)
 
+#define KEYS_PER_OTHER_INDEX  1
+
 Word_t
-Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerBitmap)
+Next(int nBitsPerDigit, int nDigitsAtBottom, Word_t wKeysAtBottom)
 {
     static Word_t wPrefix = 1;
     static Word_t wKeyNext = 0;
     static int nExp = BITSPW;
 
     int nBitsAtBitmap = nDigitsAtBitmap * nBitsPerDigit;
-    int wKeyNow = wKeyNext;
+    Word_t wKeyNow = wKeyNext;
+    Word_t wBottomDigitsMax = MASK(EXP(nBitsPerDigit));
 
+    //
+    // Use wKeysPerBitmap for the digit 0 in the node/branch above the bitmap
+    // leaves.
+    // Use 1 for the digit 1 in the node/branch.
+    //
     Word_t wKeysPerNow
-        = ((wKeyNext % EXP(nBitsAtBitmap + 1)) == EXP(nBitsAtBitmap))
-            ? 1 : wKeysPerBitmap;
+#if defined(PACK_KEYS_IN_FIRST_BITMAP)
+        = (((wKeyNext >> nBitsAtBitmap) & wDigitMax) == 0)
+            ? wKeysPerBitmap : KEYS_PER_OTHER_INDEX;
+#else
+        = (wKeysAtBottom >> nBitsPerDigit >> nDigitsAtBottom) + 1;
+#endif
 
-    if (((++wKeyNext & MASK(EXP(nBitsAtBitmap))) % wKeysPerNow) == 0)
+    if (((++wKeyNext & wDigitMax) % wKeysPerNow) == 0)
     {
+        // We've filled the link/jp.  Next link/jp.
+
         wKeyNext &= ~MASK(EXP(nBitsAtBitmap));
         wKeyNext += EXP(nBitsAtBitmap);
 
         if ((wKeyNext % EXP(nBitsAtBitmap + 2)) == EXP(nBitsAtBitmap + 1))
         {
+            // We've filled two of the links/jps.
+
             if (nExp == nBitsAtBitmap + nBitsPerDigit)
             {
                 wPrefix += 2;
@@ -45,13 +67,13 @@ Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerBitmap)
 
                 if (nExp < nBitsAtBitmap + nBitsPerDigit)
                 {
-                    //printf("wPrefix %x nExp %d\n", wPrefix, nExp);
+                    // Out of ideas -- repeat.
 
-                    assert(0);
-                    // repeat
                     wKeyNext = 0;
                     wPrefix = 1;
                     nExp = BITSPW;
+
+                    return wKeyNow;
                 }
 
                 wKeyNext = wPrefix << nExp;
@@ -78,8 +100,7 @@ void
 usage(void)
 {
     fprintf(stderr,
-      "usage: a.out [[[[<BitsPerDigit>"
-      " [[[<DigitsLeft> [[<KeysPerX> [<KeyStep>]]]]\n");
+      "usage: a.out [ <BitsPerDigit> [ <DigitsLeft> [ <KeysPerX>]]]\n");
 
     exit(1);
 }
@@ -140,9 +161,10 @@ oa2ul(char *str, char **endptr, int base)
 int
 main(int argc, char *argv[])
 {
-    long nBitsPerDigit = 4;
-    long nDigitsAtBottom = 3;
+    int nBitsPerDigit = 4;
+    int nDigitsAtBottom = 3;
     Word_t wKeysPerX = 200;
+    Word_t wKey;
 
     switch (argc)
     {
@@ -153,23 +175,26 @@ main(int argc, char *argv[])
     case 1: ;
     }
 
-    fprintf(stderr, "BitsPerDigit %ld\n", nBitsPerDigit);
-    fprintf(stderr, "DigitsAtBottom %ld\n", nDigitsAtBottom);
+    fprintf(stderr, "BitsPerDigit %d\n", nBitsPerDigit);
+    fprintf(stderr, "DigitsAtBottom %d\n", nDigitsAtBottom);
 
-#if defined(__LP64__) || defined(_WIN64)
-    fprintf(stderr, "KeysPerX %lld\n", (long long)wKeysPerX);
-#else // defined(__LP64__) || defined(_WIN64)
-    fprintf(stderr, "KeysPerX %d\n", wKeysPerX);
-#endif // defined(__LP64__) || defined(_WIN64)
+    fprintf(stderr, "KeysPerX %"W"d\n", wKeysPerX);
+
+    wKey = Next(nBitsPerDigit, nDigitsAtBottom, wKeysPerX);
 
     for (;;)
     {
-#if defined(__LP64__) || defined(_WIN64)
-        printf("0x%016llx\n",
-            (long long)Next(nBitsPerDigit, nDigitsAtBottom, wKeysPerX));
-#else // defined(__LP64__) || defined(_WIN64)
-        printf("0x%08x\n", Next(nBitsPerDigit, nDigitsAtBottom, wKeysPerX));
-#endif // defined(__LP64__) || defined(_WIN64)
+#define PRINT
+#if defined(PRINT)
+        printf("0x%"ZWX W"x\n", wKey);
+#endif // defined(PRINT)
+
+        wKey = Next(nBitsPerDigit, nDigitsAtBottom, wKeysPerX);
+
+        if (wKey == 0)
+        {
+            exit(1);
+        }
     }
 
     return 0;
