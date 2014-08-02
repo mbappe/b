@@ -1,9 +1,5 @@
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h> // for gcc/linux
-#include <string.h>
-#include <errno.h>
 #include <assert.h>
 
 #if defined(__LP64__) || defined(_WIN64)
@@ -16,31 +12,67 @@ typedef uint32_t Word_t;
 
 #define EXP(x)  ((Word_t)1 << (x))
 
+#define LOG(x)  ((Word_t)64 - 1 - __builtin_clzll(x))
+
 #define MASK(x)  ((x) - 1)
 
 Word_t
-Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerX)
+Next(int nBitsPerDigit, int nDigitsAtBitmap, Word_t wKeysPerBitmap)
 {
+    static Word_t wPrefix = 1;
     static Word_t wKeyNext = 0;
     static int nExp = BITSPW;
 
     int nBitsAtBitmap = nDigitsAtBitmap * nBitsPerDigit;
     int wKeyNow = wKeyNext;
 
-    if (((++wKeyNext & MASK(EXP(nBitsAtBitmap))) % wKeysPerX) == 0)
+    Word_t wKeysPerNow
+        = ((wKeyNext % EXP(nBitsAtBitmap + 1)) == EXP(nBitsAtBitmap))
+            ? 1 : wKeysPerBitmap;
+
+    if (((++wKeyNext & MASK(EXP(nBitsAtBitmap))) % wKeysPerNow) == 0)
     {
-        if (nExp == nBitsAtBitmap + nBitsPerDigit)
+        wKeyNext &= ~MASK(EXP(nBitsAtBitmap));
+        wKeyNext += EXP(nBitsAtBitmap);
+
+        if ((wKeyNext % EXP(nBitsAtBitmap + 2)) == EXP(nBitsAtBitmap + 1))
         {
-            exit(1);
-        }
-        else
-        {
-            wKeyNext = EXP(--nExp);
+            if (nExp == nBitsAtBitmap + nBitsPerDigit)
+            {
+                wPrefix += 2;
+
+                nExp = BITSPW - LOG(wPrefix) - 1;
+
+                if (nExp < nBitsAtBitmap + nBitsPerDigit)
+                {
+                    //printf("wPrefix %x nExp %d\n", wPrefix, nExp);
+
+                    assert(0);
+                    // repeat
+                    wKeyNext = 0;
+                    wPrefix = 1;
+                    nExp = BITSPW;
+                }
+
+                wKeyNext = wPrefix << nExp;
+            }
+            else
+            {
+                wKeyNext = wPrefix << --nExp;
+            }
         }
     }
 
     return wKeyNow;
 }
+
+#if 1
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <assert.h>
 
 void
 usage(void)
@@ -110,7 +142,7 @@ main(int argc, char *argv[])
 {
     long nBitsPerDigit = 4;
     long nDigitsAtBottom = 3;
-    Word_t wKeysPerX = 257;
+    Word_t wKeysPerX = 200;
 
     switch (argc)
     {
@@ -142,4 +174,6 @@ main(int argc, char *argv[])
 
     return 0;
 }
+
+#endif
 
