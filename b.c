@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.304 2014/07/31 15:42:59 mike Exp mike $
+// @(#) $Id: b.c,v 1.305 2014/08/01 01:21:28 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -258,6 +258,23 @@ ListWords(Word_t wPopCnt, unsigned nDL)
 
     return ListWordsExternal(wPopCnt, nBL);
 }
+
+#if 0
+#define PSPLIT(_nWords, _nBL, _xKeyMin, _KeyMax, _xKey) \
+    (_xKey - xKeyMin) * _nWords + _nWords / 2 / (_xKeyMax - _xKeyMin);
+
+unsigned
+HolyListWords(Word_t *pwKeys, unsigned nPopCnt, unsigned nBL)
+{
+    if (nBL != sizeof(uint16_t) * 8) { return 0; }
+    unsigned nKeysPerWord = sizeof(Word_t) / sizeof(uint16_t);
+    if (nPopCnt <= nKeysPerWord) { return 1; }
+    uint16_t psKeys = pwKeys;
+    sKeyMin = psKeys[0];
+    sKeyMax = psKeys[nPopCnt - 1];
+    //unsigned nWords = nPopCnt + (nKeysPerWord - 1) / nKeysPerWord;
+}
+#endif
 
 static void
 NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
@@ -1292,6 +1309,7 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, unsigned nKeys, Word_t wKey)
     {
         if (pSrc[n] >= wKey)
         {
+            //if (pSrc[n] == wKey) Dump(pwRootLast, 0, cnBitsPerWord);
             assert(pSrc[n] != wKey);
             break;
         }

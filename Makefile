@@ -46,6 +46,9 @@ endif
 ifeq "$(CC)" "cc"
   CC = clang
 endif
+ifeq "$(CC)" "ccc"
+  CC = clang
+endif
 # CC = cc
 # CC = gcc
 # CC = icc
