@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.311 2014/08/02 15:00:54 mike Exp mike $
+// @(#) $Id: bli.c,v 1.312 2014/08/02 15:32:56 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -155,18 +155,17 @@
 // Take N most significant bits of key times pop count and divide by 2^N.
 // If key has fewer than N significant bits, then shift key left as needed.
 // The rounding term is probably insignificant and unnecessary.
-#if 0
 #define PSPLIT(_nPopCnt, _nBL, _xKey, _nSplit) \
 { \
     (_nSplit) = ((((((Word_t)(_xKey) << (cnBitsPerWord - (_nBL))) \
                             >> (cnBitsPerWord - 9)) \
                         * (_nPopCnt)) \
                     /* + ((_nPopCnt) / 2) */ ) \
-                / EXP(9)) \
+                / EXP(9)); \
 }
-#endif
 
 #if 0
+
 #define PSPLIT(_nPopCnt, _xKeyMin, _xKeyMax, _xKey, _nSplit) \
 { \
     unsigned nBL = LOG(((_xKeyMin) ^ (_xKeyMax)) | 1) + 1; \
@@ -176,18 +175,27 @@
                     /* + ((_nPopCnt) / 2) */ ) \
                 / EXP(9)); \
 }
+
 #endif
+
+#if 0
 
 #define PSPLIT(_nn, _xKeyMin, _xKeyMax, _xKey, _nSplit) \
 { \
     (_nSplit) \
         = ((((Word_t)(_xKey) - (_xKeyMin)) * (_nn) + (_nn) / 2) \
             / ((Word_t)(_xKeyMax) - (_xKeyMin) + 1)); \
+    if ((_nSplit) < 0) { (_nSplit) = 0; } \
+    else if ((_nSplit) >= (_nn)) { (_nSplit) = (_nn) - 1; } \
 }
+
+#endif
+
+// unsigned nSplit; PSPLIT((_nPopCnt), 0, (_x_t)-1, (_xKey), nSplit);
 
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    unsigned nSplit; PSPLIT((_nPopCnt), 0, (_x_t)-1, (_xKey), nSplit); \
+    unsigned nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
     if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) \
     { \
         (_nPos) = nSplit; \
@@ -676,7 +684,11 @@ again:
 
     unsigned nType = wr_nType(wRoot);
     Word_t *pwr = wr_tp_pwr(wRoot, nType);
+#if defined(EXTRA_TYPES)
+    switch (wRoot & MSK(cnBitsMallocMask + 1))
+#else // defined(EXTRA_TYPES)
     switch (nType)
+#endif // defined(EXTRA_TYPES)
     {
     default: // skip link (if -DSKIP_LINKS && -DTYPE_IS_RELATIVE)
     {
@@ -743,6 +755,9 @@ again:
         // fall into next case
     }
     case T_SW_BASE: // no skip switch
+#if defined(EXTRA_TYPES)
+    case T_SW_BASE | EXP(cnBitsMallocMask): // no skip switch
+#endif // defined(EXTRA_TYPES)
     {
 #endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 #if defined(BM_SWITCH_FOR_REAL) \
@@ -949,6 +964,9 @@ notEmpty:;
 #if (cwListPopCntMax != 0)
 
     case T_LIST:
+#if defined(EXTRA_TYPES)
+    case T_LIST | EXP(cnBitsMallocMask):
+#endif // defined(EXTRA_TYPES)
     {
         DBGX(printf("List nDL %d\n", nDL));
         DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMask(nDL)));
@@ -1099,6 +1117,9 @@ notEmpty:;
 #endif // (cwListPopCntMax != 0)
 
     case T_BITMAP:
+#if defined(EXTRA_TYPES)
+    case T_BITMAP | EXP(cnBitsMallocMask):
+#endif // defined(EXTRA_TYPES)
     {
         // This case has been enhanced to handle a bitmap at any level.
         // It used to assume we were at nDL == 1.
@@ -1221,6 +1242,9 @@ notEmpty:;
     // The latter is only possible if EMBED_KEYS is defined.  In the latter
     // case an embedded list is assumed for one key if the key will fit.
     case T_ONE:
+#if defined(EXTRA_TYPES)
+    case T_ONE | EXP(cnBitsMallocMask):
+#endif // defined(EXTRA_TYPES)
     {
   #if defined(REMOVE)
         if (bCleanup) { return Success; } // cleanup is complete
@@ -1375,6 +1399,7 @@ foundIt:
 #endif // defined(T_ONE)
 
     case T_NULL:
+    case T_NULL | EXP(cnBitsMallocMask):
     {
         assert(wRoot == 0);
 
