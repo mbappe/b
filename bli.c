@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.312 2014/08/02 15:32:56 mike Exp mike $
+// @(#) $Id: bli.c,v 1.313 2014/08/03 18:54:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1399,7 +1399,9 @@ foundIt:
 #endif // defined(T_ONE)
 
     case T_NULL:
+#if defined(EXTRA_TYPES)
     case T_NULL | EXP(cnBitsMallocMask):
+#endif // defined(EXTRA_TYPES)
     {
         assert(wRoot == 0);
 
