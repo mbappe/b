@@ -33,7 +33,7 @@
 #endif // ! defined(BM_SWITCH)
 #endif // defined(BM_IN_LINK) || defined(BM_SWITCH_FOR_REAL)
 
-// Default is -DHAS_KEY and -DPAD_T_ONE.
+// Default is -DHAS_KEY.
 #if ! defined(NO_HAS_KEY)
 #define HAS_KEY
 #endif // ! defined(NO_HAS_KEY)
@@ -44,109 +44,15 @@
 #endif // ! defined(NO_PAD_T_ONE)
 
 // Default is -DSORT_LISTS.
-#if defined(NO_SORT_LISTS)
-#if defined(CONTINUE_FIRST) || defined(FAIL_FIRST) || defined(SUCCEED_FIRST) \
-    || defined(SPLIT_SEARCH) || defined(SPLIT_SEARCH_LOOP) \
-    || defined(END_CHECK) \
-    || defined(CONTINUE_FIRST_32) || defined(FAIL_FIRST_32) \
-    || defined(SUCCEED_FIRST_32) \
-    || defined(SPLIT_SEARCH_32) || defined(SPLIT_SEARCH_LOOP_32) \
-    || defined(END_CHECK_32)
-    || defined(CONTINUE_FIRST_16) || defined(FAIL_FIRST_16) \
-    || defined(SUCCEED_FIRST_16) \
-    || defined(SPLIT_SEARCH_16) || defined(SPLIT_SEARCH_LOOP_16) \
-    || defined(END_CHECK_16)
-#error "Can't have fancy search with NO_SORT_LISTS."
-#endif // defined(CONTINUE_FIRST) || defined(FAIL_FIRST) || ...
-#else // defined(NO_SORT_LISTS)
+#if ! defined(NO_SORT_LISTS)
 #undef  SORT_LISTS
 #define SORT_LISTS
 #endif // defined(NO_SORT_LISTS)
 
-// Default is -DEND_CHECK.
-#if ! defined(NO_END_CHECK)
-#undef  END_CHECK
-#define END_CHECK
-#endif // defined(NO_END_CHECK)
-
-// Default is -DEND_CHECK_32.
-#if ! defined(NO_END_CHECK_32)
-#undef  END_CHECK_32
-#define END_CHECK_32
-#endif // defined(NO_END_CHECK_32)
-
-// Default is -DEND_CHECK_16.
-#if ! defined(NO_END_CHECK_16)
-#undef  END_CHECK_16
-#define END_CHECK_16
-#endif // defined(NO_END_CHECK_16)
-
-// Default is -DSPLIT_SEARCH -DSPLIT_SEARCH_LOOP -URATIO_SPLIT.
-#if ! defined(NO_SPLIT_SEARCH_LOOP)
-#undef  SPLIT_SEARCH_LOOP
-#define SPLIT_SEARCH_LOOP
-#endif // ! defined(NO_SPLIT_SEARCH_LOOP)
-
-#if defined(SPLIT_SEARCH_LOOP)
-#undef  SPLIT_SEARCH
-#define SPLIT_SEARCH
-#endif // defined(SPLIT_SEARCH_LOOP)
-
-// Default is -USPLIT_SEARCH_32 -USPLIT_SEARCH_LOOP_32 -URATIO_SPLIT_32.
-#if defined(SPLIT_SEARCH_LOOP_32)
-#undef  SPLIT_SEARCH_32
-#define SPLIT_SEARCH_32
-#endif // defined(SPLIT_SEARCH_LOOP_32)
-
-// Default is -USPLIT_SEARCH_16 -USPLIT_SEARCH_LOOP_16 -URATIO_SPLIT_16.
-#if defined(SPLIT_SEARCH_LOOP_16)
-#undef  SPLIT_SEARCH_16
-#define SPLIT_SEARCH_16
-#endif // defined(SPLIT_SEARCH_LOOP_16)
-
-// Default is -DCONTINUE_FIRST -UFAIL_FIRST -USUCCEED_FIRST.
-#if defined(CONTINUE_FIRST)
-  #if defined(FAIL_FIRST) || defined(SUCCEED_FIRST)
-    #error "Can't have CONTINUE_FIRST with (FAIL|SUCCEED)_FIRST."
-  #endif // defined(FAIL_FIRST) || defined(SUCCEED_FIRST)
-#elif defined(FAIL_FIRST)
-  #if defined(SUCCEED_FIRST)
-    #error "Can't have FAIL_FIRST with SUCCEED_FIRST."
-  #endif // defined(SUCCEED_FIRST)
-#elif ! defined(SUCCEED_FIRST)
-  #define CONTINUE_FIRST
-#endif // ...
-
-// Default is -DCONTINUE_FIRST_16 -UFAIL_FIRST_16 -USUCCEED_FIRST_16.
-#if defined(CONTINUE_FIRST_16)
-  #if defined(FAIL_FIRST_16) || defined(SUCCEED_FIRST_16)
-    #error "Can't have CONTINUE_FIRST_16 with (FAIL|SUCCEED)_FIRST_16."
-  #endif // defined(FAIL_FIRST_16) || defined(SUCCEED_FIRST_16)
-#elif defined(FAIL_FIRST_16)
-  #if defined(SUCCEED_FIRST_16)
-    #error "Can't have FAIL_FIRST_16 with SUCCEED_FIRST_16."
-  #endif // defined(SUCCEED_FIRST_16)
-#elif ! defined(SUCCEED_FIRST)
-  #define CONTINUE_FIRST_16
-#endif // ...
-
-// Default is cnSplitSearchThresholdWord is 16.
-#if ! defined(cnSplitSearchThresholdWord)
-#define cnSplitSearchThresholdWord  16
-#endif // ! defined(cnSplitSearchThresholdWord)
-
-#if defined(SPLIT_SEARCH)
-// Default is cnSplitSearchThresholdInt = 40.
-#if ! defined(cnSplitSearchThresholdInt)
-#define cnSplitSearchThresholdInt  40
-#endif // ! defined(cnSplitSearchThresholdInt)
-// Default is cnSplitSearchThresholdShort = 64.
-#if ! defined(cnSplitSearchThresholdShort)
-#define cnSplitSearchThresholdShort  64
-#endif // ! defined(cnSplitSearchThresholdShort)
-#undef  SORT_LISTS
-#define SORT_LISTS
-#endif // defined(SPLIT_SEARCH)
+// Default is cnBinarySearchThresholdWord is 16.
+#if ! defined(cnBinarySearchThresholdWord)
+#define cnBinarySearchThresholdWord  16
+#endif // ! defined(cnBinarySearchThresholdWord)
 
 // Default is -DCOMPRESSED_LISTS.
 #if ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
@@ -939,14 +845,14 @@ Word_t wDebugPopCnt; // sanity checking
 #define PSPLIT_SEARCH_8
 #endif // ! defined(NO_PSPLIT_SEARCH_8)
 
-// Default is -DPSPLIT_16.
+// Default is -DPSPLIT_SEARCH_16.
 // This depends on uniform distribution / flat spectrum data.
 #if ! defined(NO_PSPLIT_SEARCH_16)
 #undef  PSPLIT_SEARCH_16
 #define PSPLIT_SEARCH_16
 #endif // ! defined(NO_PSPLIT_SEARCH_16)
 
-// Default is -DPSPLIT_32.
+// Default is -DPSPLIT_SEARCH_32.
 // This depends on uniform distribution / flat spectrum data.
 #if ! defined(NO_PSPLIT_SEARCH_32)
 #undef  PSPLIT_SEARCH_32
@@ -956,10 +862,17 @@ Word_t wDebugPopCnt; // sanity checking
 // Default is -DBINARY_SEARCH_WORD -UBACKWARD_SEARCH_WORD.
 // Default is -UPSPLIT_SEARCH_WORD -UPSPLIT_SEARCH_XOR_WORD.
 // -B32 is not uniform distribution / flat spectrum data at the top.
-#if ! defined(NO_BINARY_SEARCH_WORD)
+#if ! defined(NO_BINARY_SEARCH_WORD) && ! defined(PSPLIT_SEARCH_WORD)
+#if ! defined(PSPLIT_SEARCH_XOR_WORD)
 #undef  BINARY_SEARCH_WORD
 #define BINARY_SEARCH_WORD
-#endif // ! defined(NO_BINARY_SEARCH_WORD)
+#endif // ! defined(PSPLIT_SEARCH_XOR_WORD)
+#endif // ! defined(NO_BINARY_SEARCH_WORD) && ! defined(PSPLIT_SEARCH_WORD)
+
+#if defined(PSPLIT_SEARCH_XOR_WORD)
+#undef  PSPLIT_SEARCH_WORD
+#define PSPLIT_SEARCH_WORD
+#endif // defined(PSPLIT_SEARCH_XOR_WORD)
 
 #endif // ( ! defined(_B_H_INCLUDED) )
 

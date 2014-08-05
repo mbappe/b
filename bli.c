@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.313 2014/08/03 18:54:14 mike Exp mike $
+// @(#) $Id: bli.c,v 1.314 2014/08/04 01:32:03 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -404,7 +404,7 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     // 16 or 64.
     // Not sure about 64-bit keys at a lower level or
     // 64-bit keys at the top level.
-    while (nPopCnt >= cnSplitSearchThresholdWord)
+    while (nPopCnt >= cnBinarySearchThresholdWord)
     {
         nSplit = nPopCnt / 2;
         if (pwKeys[nSplit] <= wKey) {
