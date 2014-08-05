@@ -247,7 +247,8 @@
 #define cnListPopCntMax8   0x37
 #endif // ! defined(cnListPopCntMax8)
 
-// Default cnListPopCntMaxDl1 depends on cnBitsAtBottom.
+// Default cnListPopCntMaxDl1 is 7 for cnBitsAtBottom = 8.
+// Default cnListPopCntMaxDl1 is embedded keys only.
 #if ! defined(cnListPopCntMaxDl1)
   #  if (cnBitsAtBottom == 7)
       #define cnListPopCntMaxDl1  0x08
