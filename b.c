@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.305 2014/08/01 01:21:28 mike Exp mike $
+// @(#) $Id: b.c,v 1.306 2014/08/03 22:51:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -290,7 +290,7 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 #endif // defined(LIST_END_MARKERS)
         METRICS(j__AllocWordsJLL1 += nWords); // JUDYA
         METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
-    } else if (nBL == 16) {
+    } else if (nBL <= 16) {
 #if defined(LIST_END_MARKERS)
 #if defined(T_ONE)
         if (wPopCnt != 1)
