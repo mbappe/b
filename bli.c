@@ -506,6 +506,13 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 {
     DBGL(printf("SearchList\n"));
   #if defined(COMPRESSED_LISTS)
+      #if 0
+      #if (cnBitsAtBottom <= 16)
+    if (nBL == 16) {
+        return SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt);
+    } else
+      #endif // (cnBitsAtBottom <= 16)
+      #endif // 0
       // Could be more strict if NO_LIST_AT_DL1.
       #if (cnBitsAtBottom <= 8)
     if (nBL <= 8) {
