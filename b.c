@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.306 2014/08/03 22:51:13 mike Exp mike $
+// @(#) $Id: b.c,v 1.307 2014/08/08 20:16:38 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1669,6 +1669,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         unsigned nDLOld = nDL;
 #if (cwListPopCntMax != 0)
         if (((nDL == 1) && (wPopCnt < cnListPopCntMaxDl1))
+#if defined(cnListPopCntMaxDl2)
+            || ((nDL == 2) && (wPopCnt < cnListPopCntMaxDl2))
+#endif // defined(cnListPopCntMaxDl2)
             || ((nDL != 1) && (wPopCnt < anListPopCntMax[LOG(nBL - 1)])))
         {
             Word_t *pwList;

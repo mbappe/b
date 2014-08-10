@@ -256,14 +256,16 @@
       #define cnListPopCntMaxDl1  0x07
   #elif (cnBitsAtBottom == 9)
       #define cnListPopCntMaxDl1  0x06
-  #elif (cnBitsAtBottom == 10)
+  #elif (cnBitsAtBottom <= 11)
       #define cnListPopCntMaxDl1  0x05
-  #elif (cnBitsAtBottom == 11)
-      #define cnListPopCntMaxDl1  0x0b
-  #elif (cnBitsAtBottom == 12)
-      #define cnListPopCntMaxDl1  0x1b
+  #elif (cnBitsAtBottom <= 16)
+      #define cnListPopCntMaxDl1  0x04
+  #elif (cnBitsAtBottom <= 19)
+      #define cnListPopCntMaxDl1  0x03
+  #elif (cnBitsAtBottom <= 29)
+      #define cnListPopCntMaxDl1  0x02
   #else
-      #define cnListPopCntMaxDl1  0x3b
+      #define cnListPopCntMaxDl1  0x01
   #endif // cnBitsAtBottom
 #endif // ! defined(cnListPopCntMaxDl1)
 
