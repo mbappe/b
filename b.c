@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.308 2014/08/10 01:00:07 mike Exp mike $
+// @(#) $Id: b.c,v 1.309 2014/08/14 21:43:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -569,8 +569,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL, int bBmSw,
     }
 #endif // defined(RAMMETRICS)
 
-    DBGM(printf("NewSwitch(pwRoot %p wKey "OWx" nDL %d bBmSw %d, nDLU %d) pwr %p\n",
-        (void *)pwRoot, wKey, nDL, bBmSw, nDLUp, (void *)pwr));
+    DBGM(printf("NewSwitch(pwRoot %p wKey "OWx" nDL %d bBmSw %d nDLU %d)"
+                " pwr %p\n",
+                (void *)pwRoot, wKey, nDL, bBmSw, nDLUp, (void *)pwr));
 
 #if defined(TYPE_IS_RELATIVE)
     set_wr(*pwRoot, pwr, nDS_to_tp(nDLUp - nDL));
@@ -793,62 +794,54 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 #endif // defined(BM_SWITCH_FOR_REAL)
 
 static Word_t
-OldSwitch(Word_t *pwRoot, unsigned nDL, unsigned nDLUp)
+OldSwitch(Word_t *pwRoot, unsigned nDL, int bBmSw, unsigned nDLUp)
 {
     Word_t *pwr = wr_pwr(*pwRoot);
 
-    Word_t wLinks;
-#if defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
-    if (nDLUp != cnDigitsPerWord)
-#endif // defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
+    Word_t wLinks = EXP(nDL_to_nBitsIndexSz(nDL));
+
 #if defined(BM_SWITCH_FOR_REAL)
+    if (bBmSw)
     {
-        // How many links are there in the old switch?
-        wLinks = 0;
-        for (unsigned nn = 0;
-            nn < DIV_UP(EXP(nDL_to_nBitsIndexSz(nDL)), cnBitsPerWord);
-            nn++)
+  #if defined(BM_IN_LINK)
+        if (nDLUp != cnDigitsPerWord)
+  #endif // defined(BM_IN_LINK)
         {
-            wLinks += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
+            // How many links are there in the old switch?
+            wLinks = 0;
+            for (unsigned nn = 0;
+                nn < DIV_UP(EXP(nDL_to_nBitsIndexSz(nDL)), cnBitsPerWord);
+                nn++)
+            {
+                wLinks += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
+            }
+            assert(wLinks <= EXP(nDL_to_nBitsIndexSz(nDL)));
+            // Now we know how many links were in the old switch.
         }
-        assert(wLinks <= EXP(nDL_to_nBitsIndexSz(nDL)));
-        // Now we know how many links were in the old switch.
     }
 #endif // defined(BM_SWITCH_FOR_REAL)
-#if defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
-    else
-#endif // defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
-#if ( ! defined(BM_SWITCH_FOR_REAL) ) || defined(BM_IN_LINK)
-    {
-        wLinks = EXP(nDL_to_nBitsIndexSz(nDL));
-    }
-#endif // ( ! defined(BM_SWITCH_FOR_REAL) ) || defined(BM_IN_LINK)
 
-    // sizeof(Switch_t) includes one link; add the others
-    Word_t wWords
-        = (sizeof(Switch_t) + (wLinks - 1) * sizeof(Link_t)) / sizeof(Word_t);
+    Word_t wWords = bBmSw ? sizeof(BmSwitch_t) : sizeof(Switch_t);
+    // sizeof([Bm]Switch_t) includes one link; add the others
+    wWords += (wLinks - 1) * sizeof(Link_t) / sizeof(Word_t);
 
 #if defined(RAMMETRICS)
-    if ((cnBitsAtBottom <= cnLogBitsPerWord)
-        && (nDL <= nBL_to_nDL(cnBitsAtBottom) + 1))
-    {
+    if (bBmSw) {
+        METRICS(j__AllocWordsJBB  -= wWords); // JUDYA
+    } else if ((cnBitsAtBottom <= cnLogBitsPerWord)
+            && (nDL <= nBL_to_nDL(cnBitsAtBottom) + 1)) {
+        // embedded bitmap
         assert(nDL == nBL_to_nDL(cnBitsAtBottom) + 1); // later
         METRICS(j__AllocWordsJLB1 -= wWords); // JUDYA
         METRICS(j__AllocWordsJL12 -= wWords); // JUDYB -- overloaded
-    }
-    else
-    {
-#if defined(BM_SWITCH)
-        METRICS(j__AllocWordsJBB  -= wWords); // JUDYA
-#else // defined(BM_SWITCH)
+    } else {
         METRICS(j__AllocWordsJBU  -= wWords); // JUDYA
-#endif // defined(BM_SWITCH)
         METRICS(j__AllocWordsJBU4 -= wWords); // JUDYB
     }
 #endif // defined(RAMMETRICS)
 
-    DBGR(printf("\nOldSwitch nDL %d nDLU %d wWords %"_fw"d "OWx"\n",
-         nDL, nDLUp, wWords, wWords));
+    DBGR(printf("\nOldSwitch nDL %d bBmSw %d nDLU %d wWords %"_fw"d "OWx"\n",
+         nDL, bBmSw, nDLUp, wWords, wWords));
 
     MyFree(pwr, wWords);
 
@@ -1247,7 +1240,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     // Someone has to clear PP and BM if PP_IN_LINK and BM_IN_LINK.
     // OldSwitch looks at BM.
 
-    wBytes += OldSwitch(pwRootArg, nDL, nDLPrev);
+    wBytes += OldSwitch(pwRootArg, nDL, /* bBmSw */ 0, nDLPrev);
 
     DBGR(printf("memset(%p, 0, %zd)\n",
          (void *)STRUCT_OF(pwRootArg, Link_t, ln_wRoot), sizeof(Link_t)));
