@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.312 2014/08/14 22:46:40 mike Exp mike $
+// @(#) $Id: b.c,v 1.313 2014/08/14 22:59:04 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -571,11 +571,15 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL, int bBmSw,
                 " pwr %p\n",
                 (void *)pwRoot, wKey, nDL, bBmSw, nDLUp, (void *)pwr));
 
+    if (bBmSw) {
+        set_wr(*pwRoot, pwr, T_BM_SW);
+    } else {
 #if defined(TYPE_IS_RELATIVE)
-    set_wr(*pwRoot, pwr, nDS_to_tp(nDLUp - nDL));
+        set_wr(*pwRoot, pwr, nDS_to_tp(nDLUp - nDL));
 #else // defined(TYPE_IS_RELATIVE)
-    set_wr(*pwRoot, pwr, nDL_to_tp(nDL));
+        set_wr(*pwRoot, pwr, nDL_to_tp(nDL));
 #endif // defined(TYPE_IS_RELATIVE)
+    }
 
     if (bBmSw)
     {
