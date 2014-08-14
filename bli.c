@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.314 2014/08/04 01:32:03 mike Exp mike $
+// @(#) $Id: bli.c,v 1.316 2014/08/08 13:37:36 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -758,6 +758,7 @@ again:
       #endif // ! defined(LOOKUP) || ! defined(SAVE_PREFIX_TEST_RESULT)
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #endif // defined(SKIP_LINKS)
+
 #if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
         // fall into next case
     }
@@ -767,6 +768,144 @@ again:
 #endif // defined(EXTRA_TYPES)
     {
 #endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+
+#if ( ! defined(LOOKUP) && defined(PP_IN_LINK) || defined(REMOVE) )
+        nDLUp = nDL;
+#endif // ( ! defined(LOOKUP) && defined(PP_IN_LINK) || defined(REMOVE) )
+        nDL = nDLR - 1;
+
+        Word_t wIndex = ((wKey >> nDL_to_nBL_NAT(nDL))
+            // we can use NAT here even though we might be at top because
+            // we're using it to mask off high bits and if we're at the
+            // top then none of the high bits will be set anyway;
+            // it's faster to do arithmetic than test to avoid it
+            & (EXP(nDL_to_nBitsIndexSzNAX(nDLR)) - 1));
+
+#if !defined(LOOKUP)
+  #if defined(PP_IN_LINK)
+// What if nDL was cnDigitsPerWord before it was updated?
+// Don't we have to walk the switch in that case too?
+        if (nDLUp == cnDigitsPerWord)
+        {
+      #if defined(REMOVE)
+            if (bCleanup)
+            {
+                DBGX(printf("Cleanup\n"));
+
+                for (Word_t ww = 0; ww < EXP(cnBitsIndexSzAtTop); ww++)
+                {
+                    Word_t *pwRootLn = &pwr_pLinks(pwr)[ww].ln_wRoot;
+// looking at the next pwRoot seems like something that should be deferred
+// but if we defer, then we won't have the previous pwRoot, but if this
+// only happens at the top, then the previous pwRoot will be pwRootOrig?
+
+// What if ln_wRoot is a list?
+// nDL cannot be obtained from ln_wRoot.
+// We must use nDL in that case.
+                    // Do we really need a new variable here?
+                    // Or can we just use nDL?
+                    int nDLX = wr_bIsSwitch(*pwRootLn) ?
+              #if defined(TYPE_IS_RELATIVE)
+                                       nDL - wr_nDS(*pwRootLn)
+              #else // defined(TYPE_IS_RELATIVE)
+                                       wr_nDL(*pwRootLn)
+              #endif // defined(TYPE_IS_RELATIVE)
+                                   : nDL;
+                    DBGX(printf("wr_nDLX %d", nDLX));
+                    DBGX(printf(" PWR_wPopCnt %"_fw"d\n",
+                                PWR_wPopCnt(pwRootLn, NULL, nDLX)
+                                ));
+                    if (((*pwRootLn != 0) && (ww != wIndex))
+                            || (
+                                PWR_wPopCnt(pwRootLn, NULL, nDLX)
+                                    != 0)
+                        )
+                    {
+                        DBGX(printf("Not empty ww %zd wIndex %zd\n",
+                             (size_t)ww, (size_t)wIndex));
+                        goto notEmpty; // switch pop is not zero
+                    }
+                }
+                // switch pop is zero
+                FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDLUp),
+                    /* bDump */ 0);
+          #if defined(PP_IN_LINK)
+                assert(PWR_wPrefix(pwRoot, NULL, nDLUp) == 0);
+          #endif // defined(PP_IN_LINK)
+
+                *pwRoot = 0;
+                return KeyFound;
+notEmpty:;
+            }
+      #endif // defined(REMOVE)
+        }
+        else
+  #endif // defined(PP_IN_LINK)
+        {
+            // Increment or decrement population count on the way in.
+            wPopCnt = PWR_wPopCnt(pwRoot, pwr, nDLR);
+  #if defined(REMOVE)
+            if (bCleanup)
+            {
+                if (wPopCnt == 0)
+                {
+                    FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDLUp),
+                        /* bDump */ 0);
+      #if defined(PP_IN_LINK)
+                if (PWR_wPrefix(pwRoot, NULL, nDLR) != 0)
+                {
+                    DBGR(printf("wPrefixPop "OWx"\n",
+                                PWR_wPrefixPop(pwRoot, NULL)));
+                }
+                assert(PWR_wPrefix(pwRoot, NULL, nDLR) == 0);
+      #endif // defined(PP_IN_LINK)
+                    *pwRoot = 0;
+                    return KeyFound;
+                }
+            }
+            else
+  #endif // defined(REMOVE)
+            {
+                set_PWR_wPopCnt(pwRoot, pwr,
+                                nDLR, wPopCnt + nIncr);
+                DBGX(printf("wPopCnt %zd\n",
+                     (size_t)PWR_wPopCnt(pwRoot, pwr, nDLR)));
+            }
+        }
+#endif // !defined(LOOKUP)
+
+        pwRoot = &pwr_pLinks(pwr)[wIndex].ln_wRoot;
+        wRoot = *pwRoot;
+
+        DBGX(printf("Next pLinks %p wIndex %d\n",
+            (void *)pwr_pLinks(pwr), (int)wIndex));
+
+        DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
+
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+        // We may need to check the prefix of the switch we just
+        // visited in the next iteration of the loop
+        // #if defined(COMPRESSED_LISTS)
+        // so we preserve the value of pwr.
+        pwrPrev = pwr;
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+        nDLR = nDL;
+#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#if defined(LOOKUP) || !defined(RECURSIVE)
+        goto again;
+#else // defined(LOOKUP) || !defined(RECURSIVE)
+        return InsertRemove(pwRoot, wKey, nDL);
+#endif // defined(LOOKUP) || !defined(RECURSIVE)
+
+    } // end of default case
+
+    case T_BM_SW:
+#if defined(EXTRA_TYPES)
+    case T_BM_SW | EXP(cnBitsMallocMask): // no skip switch
+#endif // defined(EXTRA_TYPES)
+    {
+
 #if defined(BM_SWITCH_FOR_REAL) \
     || ( ! defined(LOOKUP) \
         && (defined(PP_IN_LINK) || defined(BM_IN_LINK)) \
@@ -782,7 +921,6 @@ again:
             // it's faster to do arithmetic than test to avoid it
             & (EXP(nDL_to_nBitsIndexSzNAX(nDLR)) - 1));
 
-#if defined(BM_SWITCH)
   #if defined(BM_IN_LINK)
         // We avoid ambiguity by disallowing calls to Insert/Remove with
         // nDL == cnDigitsPerWord and pwRoot not at the top.
@@ -835,7 +973,6 @@ again:
                         (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
             wIndex += __builtin_popcountll(wBm & wBmMask);
         }
-#endif // defined(BM_SWITCH)
 
 #if !defined(LOOKUP)
   #if defined(PP_IN_LINK)
@@ -848,17 +985,17 @@ again:
             {
                 DBGX(printf("Cleanup\n"));
 
-          #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+          #if ! defined(BM_IN_LINK)
                 Word_t xx = 0;
-          #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+          #endif // ! defined(BM_IN_LINK)
                 for (Word_t ww = 0; ww < EXP(cnBitsIndexSzAtTop); ww++)
                 {
-          #if defined(BM_SWITCH) && !defined(BM_IN_LINK)
+          #if !defined(BM_IN_LINK)
                     Word_t *pwRootLn = &pwr_pLinks(pwr)[xx].ln_wRoot;
                     xx++;
-          #else // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+          #else // ! defined(BM_IN_LINK)
                     Word_t *pwRootLn = &pwr_pLinks(pwr)[ww].ln_wRoot;
-          #endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+          #endif // ! defined(BM_IN_LINK)
 // looking at the next pwRoot seems like something that should be deferred
 // but if we defer, then we won't have the previous pwRoot, but if this
 // only happens at the top, then the previous pwRoot will be pwRootOrig?
@@ -966,7 +1103,7 @@ notEmpty:;
         return InsertRemove(pwRoot, wKey, nDL);
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
-    } // end of default case
+    } // end of case T_BM_SW
 
 #if (cwListPopCntMax != 0)
 

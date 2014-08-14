@@ -26,12 +26,7 @@
 #define SKIP_PREFIX_CHECK
 #endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 
-// Default is -UBM_SWITCH -UBM_IN_LINK -UBM_SWITCH_FOR_REAL.
-#if defined(BM_IN_LINK) || defined(BM_SWITCH_FOR_REAL)
-#if ! defined(BM_SWITCH)
-#define BM_SWITCH
-#endif // ! defined(BM_SWITCH)
-#endif // defined(BM_IN_LINK) || defined(BM_SWITCH_FOR_REAL)
+// Default is -UBM_SWITCH_FOR_REAL -UBM_IN_LINK.
 
 // Default is -DHAS_KEY.
 #if ! defined(NO_HAS_KEY)
@@ -314,7 +309,8 @@
 #define T_LIST     (T_NULL + 1)
 #endif // defined(T_ONE)
 #define T_BITMAP   (T_LIST + 1)
-#define T_SW_BASE  (T_BITMAP + 1)
+#define T_BM_SW   (T_BITMAP + 1)
+#define T_SW_BASE  (T_BM_SW + 1)
 #else
 
 enum {
@@ -642,7 +638,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define     PWR_pwBm(_pwRoot, _pwr) \
     (STRUCT_OF((_pwRoot), Link_t, ln_wRoot)->ln_awBm)
 #else // defined(BM_IN_LINK)
-#define     PWR_pwBm(_pwRoot, _pwr)  (((Switch_t *)(_pwr))->sw_awBm)
+#define     PWR_pwBm(_pwRoot, _pwr)  (((BmSwitch_t *)(_pwr))->sw_awBm)
 #endif // defined(BM_IN_LINK)
 
 #if defined(PP_IN_LINK)
@@ -797,14 +793,25 @@ typedef struct {
 #if !defined(PP_IN_LINK)
     Word_t sw_wPrefixPop;
 #endif // !defined(PP_IN_LINK)
-#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
-    Word_t sw_awBm[N_WORDS_SWITCH_BM];
-#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
 #if (cnDummiesInSwitch != 0)
     Word_t sw_awDummies[cnDummiesInSwitch];
 #endif // (cnDummiesInSwitch != 0)
     Link_t sw_aLinks[1]; // variable size
 } Switch_t;
+
+// Bitmap switch.
+typedef struct {
+#if !defined(PP_IN_LINK)
+    Word_t sw_wPrefixPop;
+#endif // !defined(PP_IN_LINK)
+#if ! defined(BM_IN_LINK)
+    Word_t sw_awBm[N_WORDS_SWITCH_BM];
+#endif // ! defined(BM_IN_LINK)
+#if (cnDummiesInSwitch != 0)
+    Word_t sw_awDummies[cnDummiesInSwitch];
+#endif // (cnDummiesInSwitch != 0)
+    Link_t sw_aLinks[1]; // variable size
+} BmSwitch_t;
 
 Status_t Insert(Word_t *pwRoot, Word_t wKey, unsigned nBL);
 Status_t Remove(Word_t *pwRoot, Word_t wKey, unsigned nBL);
