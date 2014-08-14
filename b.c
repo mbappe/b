@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.311 2014/08/14 22:26:01 mike Exp mike $
+// @(#) $Id: b.c,v 1.312 2014/08/14 22:46:40 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1072,28 +1072,37 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     nBitsIndexSz = nDL_to_nBitsIndexSz(nDL);
     pLinks = pwr_pLinks(pwr);
 
+    int bBmSw = 0;
+  #if defined(EXTRA_TYPES)
+    if ((nType == T_BM_SW) || (nType == T_BM_SW + EXP(cnBitsMallocMask)))
+  #else // defined(EXTRA_TYPES)
+    if (nType == T_BM_SW)
+  #endif // defined(EXTRA_TYPES)
+    {
+        bBmSw = 1;
+    }
+
     if (bDump)
     {
 #if defined(PP_IN_LINK)
         if (nBLArg >= cnBitsPerWord)
         {
-// Add 'em up.
-#if defined(BM_SWITCH) && ! defined(BM_IN_LINK)
+            // Add 'em up.
             Word_t xx = 0;
-#endif // defined(BM_SWITCH) && ! defined(BM_IN_LINK)
             Word_t wPopCnt = 0;
             for (unsigned nn = 0; nn < EXP(cnBitsIndexSzAtTop); nn++)
             {
-#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
-        if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
-#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+#if ! defined(BM_IN_LINK)
+        if ( ! bBmSw || BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
+#endif // ! defined(BM_IN_LINK)
         {
-#if defined(BM_SWITCH) && !defined(BM_IN_LINK)
-                Word_t *pwRootLn = &pwr_pLinks(pwr)[xx].ln_wRoot;
-                xx++;
-#else // defined(BM_SWITCH) && !defined(BM_IN_LINK)
                 Word_t *pwRootLn = &pwr_pLinks(pwr)[nn].ln_wRoot;
-#endif // defined(BM_SWITCH) && !defined(BM_IN_LINK)
+#if ! defined(BM_IN_LINK)
+                if (bBmSw) {
+                    Word_t *pwRootLn = &pwr_pLinks(pwr)[xx].ln_wRoot;
+                    xx++;
+                }
+#endif // ! defined(BM_IN_LINK)
 
 // *pwRootLn may not be a pointer to a switch
 // It may be a pointer to a list leaf.
@@ -1159,7 +1168,8 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
         // dots for suffix.
         //printf(" wKeyPopMask "OWx, wPrefixPopMask(nDL));
         //printf(" pLinks "OWx, (Word_t)pLinks);
-#if defined(BM_SWITCH)
+        if (bBmSw)
+        {
 #if defined(BM_IN_LINK)
         if (nBLArg != cnBitsPerWord)
 #endif // defined(BM_IN_LINK)
@@ -1177,7 +1187,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
                 printf(" "Owx, PWR_pwBm(pwRoot, pwr)[nn]);
             }
         }
-#endif // defined(BM_SWITCH)
+        }
         printf("\n");
     }
 
@@ -1193,14 +1203,13 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     Word_t xx = 0;
     for (Word_t nn = 0; nn < EXP(nBitsIndexSz); nn++)
     {
-#if defined(BM_SWITCH)
 #if defined(BM_IN_LINK)
-        if ((nBLArg == cnBitsPerWord)
-            || BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
+        if ( ! bBmSw
+            || ((nBLArg == cnBitsPerWord)
+                || BitIsSet(PWR_pwBm(pwRoot, pwr), nn)))
 #else // defined(BM_IN_LINK)
-        if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
+        if ( ! bBmSw || BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
 #endif // defined(BM_IN_LINK)
-#endif // defined(BM_SWITCH)
         {
             if (pLinks[xx].ln_wRoot != 0)
             {
@@ -2798,7 +2807,6 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
   #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     {
         int bBmSw = 0;
-
   #if defined(EXTRA_TYPES)
         if ((nType == T_BM_SW) || (nType == T_BM_SW + EXP(cnBitsMallocMask)))
   #else // defined(EXTRA_TYPES)
@@ -2828,8 +2836,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             {
                 Word_t *pwRootLn = &pwr_pLinks(pwr)[nn].ln_wRoot;
       #if ! defined(BM_IN_LINK)
-                if (bBmSw)
-                {
+                if (bBmSw) {
                     pwRootLn = &pwr_pLinks(pwr)[xx].ln_wRoot;
                     xx++;
                 }
