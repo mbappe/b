@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.309 2014/08/14 21:43:46 mike Exp mike $
+// @(#) $Id: b.c,v 1.310 2014/08/14 22:16:02 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -562,10 +562,8 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL, int bBmSw,
         // embedded bitmap
         assert(nDL == nBL_to_nDL(cnBitsAtBottom) + 1); // later
         METRICS(j__AllocWordsJLB1 += wWords); // JUDYA
-        METRICS(j__AllocWordsJL12 += wWords); // JUDYB -- overloaded
     } else {
         METRICS(j__AllocWordsJBU  += wWords); // JUDYA
-        METRICS(j__AllocWordsJBU4 += wWords); // JUDYB
     }
 #endif // defined(RAMMETRICS)
 
@@ -721,25 +719,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
     *pwRoot = MyMalloc(nWords);
     DBGI(printf("After malloc *pwRoot "OWx"\n", *pwRoot));
 
-#if defined(RAMMETRICS)
-    if ((cnBitsAtBottom <= cnLogBitsPerWord)
-        && (nDL <= nBL_to_nDL(cnBitsAtBottom) + 1))
-    {
-        // embedded bitmap
-        assert(nDL == nBL_to_nDL(cnBitsAtBottom) + 1); // later
-        METRICS(j__AllocWordsJLB1 += sizeof(Link_t)/sizeof(Word_t)); // JUDYA
-        METRICS(j__AllocWordsJL12 += sizeof(Link_t)/sizeof(Word_t)); // JUDYB
-    }
-    else
-    {
-#if defined(BM_SWITCH)
-        METRICS(j__AllocWordsJBB  += sizeof(Link_t)/sizeof(Word_t)); // JUDYA
-#else // defined(BM_SWITCH)
-        METRICS(j__AllocWordsJBU  += sizeof(Link_t)/sizeof(Word_t)); // JUDYA
-#endif // defined(BM_SWITCH)
-        METRICS(j__AllocWordsJBU4 += sizeof(Link_t)/sizeof(Word_t)); // JUDYB
-    }
-#endif // defined(RAMMETRICS)
+    METRICS(j__AllocWordsJBB  += sizeof(Link_t)/sizeof(Word_t)); // JUDYA
 
     // Where does the new link go?
     unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDL);
@@ -833,10 +813,8 @@ OldSwitch(Word_t *pwRoot, unsigned nDL, int bBmSw, unsigned nDLUp)
         // embedded bitmap
         assert(nDL == nBL_to_nDL(cnBitsAtBottom) + 1); // later
         METRICS(j__AllocWordsJLB1 -= wWords); // JUDYA
-        METRICS(j__AllocWordsJL12 -= wWords); // JUDYB -- overloaded
     } else {
         METRICS(j__AllocWordsJBU  -= wWords); // JUDYA
-        METRICS(j__AllocWordsJBU4 -= wWords); // JUDYB
     }
 #endif // defined(RAMMETRICS)
 
