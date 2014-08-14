@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.307 2014/08/08 20:16:38 mike Exp mike $
+// @(#) $Id: b.c,v 1.308 2014/08/10 01:00:07 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -514,72 +514,63 @@ OldBitmap(Word_t *pwRoot, Word_t *pwr, unsigned nBL)
 // Account for the memory (for both JUDYA and JUDYB columns in Judy1LHTime).
 // Need to know if we are at the bottom so we should count it as a bitmap.
 static Word_t *
-NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
+NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL, int bBmSw,
           unsigned nDLUp, Word_t wPopCnt)
 {
     assert((sizeof(Switch_t) % sizeof(Word_t)) == 0);
+    assert((sizeof(BmSwitch_t) % sizeof(Word_t)) == 0);
 
     unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDL);
     Word_t wIndexCnt = EXP(nBitsIndexSz);
 
-#if defined(BM_SWITCH)
-#if !defined(NDEBUG)
+#if ! defined(NDEBUG)
+    if (bBmSw)
 #if defined(BM_IN_LINK)
     { Link_t ln; assert(wIndexCnt <= sizeof(ln.ln_awBm) * cnBitsPerByte); }
 #else // defined(BM_IN_LINK)
-    { Switch_t sw; assert(wIndexCnt <= sizeof(sw.sw_awBm) * cnBitsPerByte); }
+    { BmSwitch_t sw; assert(wIndexCnt <= sizeof(sw.sw_awBm) * cnBitsPerByte); }
 #endif // defined(BM_IN_LINK)
-#endif // !defined(NDEBUG)
-#endif // defined(BM_SWITCH)
+#endif // ! defined(NDEBUG)
 
-    Word_t wLinks;
-#if defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
-    if (nDLUp != cnDigitsPerWord)
-#endif // defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
+    Word_t wLinks = wIndexCnt;
+
 #if defined(BM_SWITCH_FOR_REAL)
+    if (bBmSw)
     {
-        wLinks = 1;
+  #if defined(BM_IN_LINK)
+        if (nDLUp != cnDigitsPerWord)
+  #endif // defined(BM_IN_LINK)
+        {
+            wLinks = 1;
+        }
     }
 #endif // defined(BM_SWITCH_FOR_REAL)
-#if defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
-    else
-#endif // defined(BM_SWITCH_FOR_REAL) && defined(BM_IN_LINK)
-#if ( ! defined(BM_SWITCH_FOR_REAL) ) || defined(BM_IN_LINK)
-    {
-        wLinks = wIndexCnt;
-    }
-#endif // ( ! defined(BM_SWITCH_FOR_REAL) ) || defined(BM_IN_LINK)
 
-    // sizeof(Switch_t) includes one link; add the others
-    Word_t wWords
-        = (sizeof(Switch_t) + (wLinks - 1) * sizeof(Link_t)) / sizeof(Word_t);
+    Word_t wWords = bBmSw ? sizeof(BmSwitch_t) : sizeof(Switch_t);
+    // sizeof([Bm]Switch_t) includes one link; add the others
+    wWords += (wLinks - 1) * sizeof(Link_t) / sizeof(Word_t);
 
     Word_t *pwr = (Word_t *)MyMalloc(wWords);
 
     memset(pwr_pLinks(pwr), 0, wLinks * sizeof(Link_t));
 
 #if defined(RAMMETRICS)
-    if ((cnBitsAtBottom <= cnLogBitsPerWord)
-        && (nDL <= nBL_to_nDL(cnBitsAtBottom) + 1))
-    {
+    if (bBmSw) {
+        METRICS(j__AllocWordsJBB  += wWords); // JUDYA
+    } else if ((cnBitsAtBottom <= cnLogBitsPerWord)
+            && (nDL <= nBL_to_nDL(cnBitsAtBottom) + 1)) {
         // embedded bitmap
         assert(nDL == nBL_to_nDL(cnBitsAtBottom) + 1); // later
         METRICS(j__AllocWordsJLB1 += wWords); // JUDYA
         METRICS(j__AllocWordsJL12 += wWords); // JUDYB -- overloaded
-    }
-    else
-    {
-#if defined(BM_SWITCH)
-        METRICS(j__AllocWordsJBB  += wWords); // JUDYA
-#else // defined(BM_SWITCH)
+    } else {
         METRICS(j__AllocWordsJBU  += wWords); // JUDYA
-#endif // defined(BM_SWITCH)
         METRICS(j__AllocWordsJBU4 += wWords); // JUDYB
     }
 #endif // defined(RAMMETRICS)
 
-    DBGM(printf("NewSwitch(pwRoot %p wKey "OWx" nDL %d nDLU %d) pwr %p\n",
-        (void *)pwRoot, wKey, nDL, nDLUp, (void *)pwr));
+    DBGM(printf("NewSwitch(pwRoot %p wKey "OWx" nDL %d bBmSw %d, nDLU %d) pwr %p\n",
+        (void *)pwRoot, wKey, nDL, bBmSw, nDLUp, (void *)pwr));
 
 #if defined(TYPE_IS_RELATIVE)
     set_wr(*pwRoot, pwr, nDS_to_tp(nDLUp - nDL));
@@ -587,40 +578,41 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
     set_wr(*pwRoot, pwr, nDL_to_tp(nDL));
 #endif // defined(TYPE_IS_RELATIVE)
 
-#if defined(BM_SWITCH)
-#if defined(BM_IN_LINK)
-    if (nDLUp < cnDigitsPerWord)
-#endif // defined(BM_IN_LINK)
+    if (bBmSw)
     {
+#if defined(BM_IN_LINK)
+        if (nDLUp < cnDigitsPerWord)
+#endif // defined(BM_IN_LINK)
+        {
 #if defined(BM_SWITCH_FOR_REAL)
 
-        memset(PWR_pwBm(pwRoot, pwr), 0, sizeof(PWR_pwBm(pwRoot, pwr)));
+            memset(PWR_pwBm(pwRoot, pwr), 0, sizeof(PWR_pwBm(pwRoot, pwr)));
 
-        unsigned nBL = nDL_to_nBL_NAT(nDL);
-        // leave nBL greater than cnBitsPerWord intentionally for now
+            unsigned nBL = nDL_to_nBL_NAT(nDL);
+            // leave nBL greater than cnBitsPerWord intentionally for now
 
-        Word_t wIndex
-            = (wKey >> (nBL - nBitsIndexSz)) & (wIndexCnt - 1);
+            Word_t wIndex
+                = (wKey >> (nBL - nBitsIndexSz)) & (wIndexCnt - 1);
 
-        SetBit(PWR_pwBm(pwRoot, pwr), wIndex);
+            SetBit(PWR_pwBm(pwRoot, pwr), wIndex);
 
 #else // defined(BM_SWITCH_FOR_REAL)
 
-        // Mind the high-order bits of the bitmap word if/when the bitmap
-        // is smaller than a whole word.
-        // Mind endianness.
-        if (nBitsIndexSz < cnLogBitsPerWord)
-        {
-            *PWR_pwBm(pwRoot, pwr) = EXP(wIndexCnt) - 1;
-        }
-        else
-        {
-            memset(PWR_pwBm(pwRoot, pwr), -1, sizeof(PWR_pwBm(pwRoot, pwr)));
-        }
+            // Mind the high-order bits of the bitmap word if/when the bitmap
+            // is smaller than a whole word.
+            // Mind endianness.
+            if (nBitsIndexSz < cnLogBitsPerWord)
+            {
+                *PWR_pwBm(pwRoot, pwr) = EXP(wIndexCnt) - 1;
+            }
+            else
+            {
+                memset(PWR_pwBm(pwRoot, pwr), -1, sizeof(PWR_pwBm(pwRoot, pwr)));
+            }
 
 #endif // defined(BM_SWITCH_FOR_REAL)
+        }
     }
-#endif // defined(BM_SWITCH)
 
 #if defined(PP_IN_LINK)
     if (nDLUp < cnDigitsPerWord)
@@ -1998,7 +1990,8 @@ newSwitch:
                 // NewSwitch overwrites *pwRoot which is a problem for
                 // T_ONE with embedded keys.
 
-                NewSwitch(pwRoot, wKey, nDL, nDLOld, /* wPopCnt */ 0);
+                NewSwitch(pwRoot, wKey, nDL, /* bBmSw */ 0,
+                          nDLOld, /* wPopCnt */ 0);
             }
 
 #if defined(COMPRESSED_LISTS)
@@ -2178,7 +2171,7 @@ newSwitch:
             // initialize prefix/pop for new switch
             // Make sure to pass the right key for BM_SWITCH_FOR_REAL.
             pwSw = NewSwitch(pwRoot,
-                             wPrefix, nDL, nDLUp, wPopCnt);
+                             wPrefix, nDL, /* bBmSw */ 0, nDLUp, wPopCnt);
 
 #if defined(BM_SWITCH_FOR_REAL)
 #if defined(BM_IN_LINK)
