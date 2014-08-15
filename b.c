@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.313 2014/08/14 22:59:04 mike Exp mike $
+// @(#) $Id: b.c,v 1.314 2014/08/14 23:14:53 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -548,22 +548,27 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL, int bBmSw,
 
     Word_t wWords = bBmSw ? sizeof(BmSwitch_t) : sizeof(Switch_t);
     // sizeof([Bm]Switch_t) includes one link; add the others
-    wWords += (wLinks - 1) * sizeof(Link_t) / sizeof(Word_t);
+    wWords += (wLinks - 1) * sizeof(Link_t);
+    wWords /= sizeof(Word_t);
 
     Word_t *pwr = (Word_t *)MyMalloc(wWords);
 
-    memset(pwr_pLinks(pwr), 0, wLinks * sizeof(Link_t));
+    if (bBmSw) {
+        memset(pwr_pLinks((BmSwitch_t *)pwr), 0, wLinks * sizeof(Link_t));
+    } else {
+        memset(pwr_pLinks((Switch_t *)pwr), 0, wLinks * sizeof(Link_t));
+    }
 
 #if defined(RAMMETRICS)
     if (bBmSw) {
-        METRICS(j__AllocWordsJBB  += wWords); // JUDYA
+        METRICS(j__AllocWordsJBB += wWords); // JUDYA
     } else if ((cnBitsAtBottom <= cnLogBitsPerWord)
             && (nDL <= nBL_to_nDL(cnBitsAtBottom) + 1)) {
         // embedded bitmap
         assert(nDL == nBL_to_nDL(cnBitsAtBottom) + 1); // later
         METRICS(j__AllocWordsJLB1 += wWords); // JUDYA
     } else {
-        METRICS(j__AllocWordsJBU  += wWords); // JUDYA
+        METRICS(j__AllocWordsJBU += wWords); // JUDYA
     }
 #endif // defined(RAMMETRICS)
 
@@ -610,7 +615,8 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL, int bBmSw,
             }
             else
             {
-                memset(PWR_pwBm(pwRoot, pwr), -1, sizeof(PWR_pwBm(pwRoot, pwr)));
+                memset(PWR_pwBm(pwRoot, pwr), -1,
+                       sizeof(PWR_pwBm(pwRoot, pwr)));
             }
 
 #endif // defined(BM_SWITCH_FOR_REAL)
@@ -665,17 +671,30 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL, int bBmSw,
         else
 #endif // defined(NO_UNNECESSARY_PREFIX)
         {
-            set_PWR_wPrefix(pwRoot, pwr, nDL, wKey);
+            if (bBmSw) {
+                set_PWR_wPrefix(pwRoot, (BmSwitch_t *)pwr, nDL, wKey);
+            } else {
+                set_PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDL, wKey);
+            }
         }
 #else // defined(SKIP_LINKS)
         // Why do we bother with this?  Should we make it debug only?
-        set_PWR_wPrefix(pwRoot, pwr, nDL, 0);
+        if (bBmSw) {
+            set_PWR_wPrefix(pwRoot, (BmSwitch_t *)pwr, nDL, 0);
+        } else {
+            set_PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDL, 0);
+        }
 #endif // defined(SKIP_LINKS)
 
-        set_PWR_wPopCnt(pwRoot, pwr, nDL, wPopCnt);
+        if (bBmSw) {
+            set_PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDL, wPopCnt);
+        } else {
+            set_PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDL, wPopCnt);
+        }
 
         DBGM(printf("NewSwitch PWR_wPrefixPop "OWx"\n",
-            PWR_wPrefixPop(pwRoot, pwr)));
+            bBmSw ? PWR_wPrefixPop(pwRoot, (BmSwitch_t *)pwr)
+                  : PWR_wPrefixPop(pwRoot, (Switch_t *)pwr)));
     }
 
     //DBGI(printf("After NewSwitch"));
@@ -807,7 +826,8 @@ OldSwitch(Word_t *pwRoot, unsigned nDL, int bBmSw, unsigned nDLUp)
 
     Word_t wWords = bBmSw ? sizeof(BmSwitch_t) : sizeof(Switch_t);
     // sizeof([Bm]Switch_t) includes one link; add the others
-    wWords += (wLinks - 1) * sizeof(Link_t) / sizeof(Word_t);
+    wWords += (wLinks - 1) * sizeof(Link_t);
+    wWords /= sizeof(Word_t);
 
 #if defined(RAMMETRICS)
     if (bBmSw) {
@@ -1073,9 +1093,6 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 
     nBL = nDL_to_nBL(nDL);
 
-    nBitsIndexSz = nDL_to_nBitsIndexSz(nDL);
-    pLinks = pwr_pLinks(pwr);
-
     int bBmSw = 0;
   #if defined(EXTRA_TYPES)
     if ((nType == T_BM_SW) || (nType == T_BM_SW + EXP(cnBitsMallocMask)))
@@ -1085,6 +1102,10 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     {
         bBmSw = 1;
     }
+
+    nBitsIndexSz = nDL_to_nBitsIndexSz(nDL);
+    pLinks = bBmSw ? pwr_pLinks((BmSwitch_t *)pwr)
+                   : pwr_pLinks((Switch_t *)pwr);
 
     if (bDump)
     {
@@ -1163,8 +1184,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #endif // defined(PP_IN_LINK)
         {
             printf(" wr_wPopCnt %3"_fw"u",
-                PWR_wPopCnt(pwRoot, pwr, nDL));
-            printf(" wr_wPrefix "OWx, PWR_wPrefix(pwRoot, pwr, nDL));
+                   bBmSw ? PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDL)
+                         : PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDL));
+            printf(" wr_wPrefix "OWx,
+                   bBmSw ? PWR_wPrefix(pwRoot, (BmSwitch_t *)pwr, nDL)
+                         : PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDL));
         }
 
         printf(" wr_nDL %2d", nDL);
@@ -1201,7 +1225,8 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     // skip link has extra prefix bits
     if (nDLPrev > nDL)
     {
-        wPrefix = PWR_wPrefix(pwRoot, pwr, nDL);
+        wPrefix = bBmSw ? PWR_wPrefix(pwRoot, (BmSwitch_t *)pwr, nDL)
+                        : PWR_wPrefix(pwRoot, (  Switch_t *)pwr, nDL);
     }
 
     Word_t xx = 0;
@@ -1974,8 +1999,14 @@ newSwitch:
                 // NewSwitch overwrites *pwRoot which is a problem for
                 // T_ONE with embedded keys.
 
-                NewSwitch(pwRoot, wKey, nDL, /* bBmSw */ 0,
+                NewSwitch(pwRoot, wKey, nDL, /* bBmSw */ nDL == nDLOld,
                           nDLOld, /* wPopCnt */ 0);
+                    if (nDL == nDLOld) {
+                    DBGI(printf("\n# InsertGuts After NewSwitch Dump\n"));
+                    DBGI(Dump(pwRootLast,
+                              /* wPrefix */ (Word_t)0, cnBitsPerWord));
+                    DBGI(printf("\n"));
+                    }
             }
 
 #if defined(COMPRESSED_LISTS)
@@ -2004,6 +2035,14 @@ newSwitch:
                     Insert(pwRoot,
                            piKeys[w] | (wKey & ~(Word_t)0xffffffff),
                            nDLOld);
+                    if (nDL == nDLOld) {
+                    DBGI(printf(
+                         "\n# InsertGuts After Insert(wKey 0x%x) Dump\n",
+                         piKeys[w]));
+                    DBGI(Dump(pwRootLast,
+                              /* wPrefix */ (Word_t)0, cnBitsPerWord));
+                    DBGI(printf("\n"));
+                    }
                 }
 #endif // (cnBitsPerWord > 32)
             } else
@@ -2013,17 +2052,21 @@ newSwitch:
                 {
                     Insert(pwRoot, pwKeys[w], nDLOld);
 
-                    //DBGI(printf(
-                     //   "\n# InsertGuts After Insert(wKey "OWx") Dump\n",
-                      //  pwKeys[w]));
-                    //DBGI(Dump(pwRootLast,
-                    //          /* wPrefix */ (Word_t)0, cnBitsPerWord));
-                    //DBGI(printf("\n"));
+                    if (nDL == nDLOld) {
+                    DBGI(printf(
+                         "\n# InsertGuts After Insert(wKey "OWx") Dump\n",
+                         pwKeys[w]));
+                    DBGI(Dump(pwRootLast,
+                              /* wPrefix */ (Word_t)0, cnBitsPerWord));
+                    DBGI(printf("\n"));
+                    }
                 }
             }
 
-            //DBGI(printf("Just Before InsertGuts calls final Insert"));
-            //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+            if (nDL == nDLOld) {
+                DBGI(printf("Just Before InsertGuts calls final Insert"));
+                DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+            }
             Insert(pwRoot, wKey, nDLOld);
 
 #if (cwListPopCntMax != 0)
@@ -2105,13 +2148,13 @@ newSwitch:
             unsigned nDLUp = nDL;
 
             // figure new nDL for old parent link
-            Word_t wPrefix = PWR_wPrefix(pwRoot, pwr, nDLRoot);
+            Word_t wPrefix = PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDLRoot);
             nDL = nBL_to_nDL(LOG(1 | (wPrefix ^ wKey)) + 1);
             // nDL includes the highest order digit that is different.
 
             assert(nDL > nDLRoot);
 
-            if ((wPopCnt = PWR_wPopCnt(pwRoot, pwr, nDLRoot)) == 0)
+            if ((wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDLRoot)) == 0)
             {
                 // full pop overflow
                 wPopCnt = wPrefixPopMask(nDLRoot) + 1;
@@ -2199,7 +2242,7 @@ newSwitch:
             set_wr_nDS(wRoot, nDL - nDLRoot - 1);
 #endif // defined(TYPE_IS_RELATIVE)
             // Copy wRoot from old link to new link.
-            pwr_pLinks(pwSw)[nIndex].ln_wRoot = wRoot;
+            pwr_pLinks((Switch_t *)pwSw)[nIndex].ln_wRoot = wRoot;
 
 #if defined(PP_IN_LINK)
 #if defined(NO_UNNECESSARY_PREFIX)
@@ -2957,7 +3000,8 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             tp_to_nDL(nType)
           #endif // defined(TYPE_IS_RELATIVE)
             ;
-        wPopCnt = PWR_wPopCnt(NULL, pwr, nDL);
+        wPopCnt = bBmSw ? PWR_wPopCnt(NULL, (BmSwitch_t *)pwr, nDL)
+                        : PWR_wPopCnt(NULL, (  Switch_t *)pwr, nDL);
         if (wPopCnt == 0) {
             wPopCnt = wPrefixPopMask(nDL) + 1;
         }

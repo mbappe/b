@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.316 2014/08/08 13:37:36 mike Exp mike $
+// @(#) $Id: bli.c,v 1.317 2014/08/14 21:42:50 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -746,13 +746,14 @@ again:
       #if ! defined(TYPE_IS_RELATIVE)
             && (nDLR < nDL)
       #endif // ! defined(TYPE_IS_RELATIVE)
-            && (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwr, nDLR) ^ wKey))
+            && (LOG(1 | (PWR_wPrefixNAT(pwRoot,
+                                        (Switch_t *)pwr, nDLR) ^ wKey))
                     >= nDL_to_nBL_NAT(nDLR)));
       #if ! defined(LOOKUP) || ! defined(SAVE_PREFIX_TEST_RESULT)
         if (bPrefixMismatch)
         {
             DBGX(printf("Mismatch wPrefix "Owx"\n",
-                        PWR_wPrefixNAT(pwRoot, pwr, nDLR)));
+                        PWR_wPrefixNAT(pwRoot, (Switch_t *)pwr, nDLR)));
             break;
         }
       #endif // ! defined(LOOKUP) || ! defined(SAVE_PREFIX_TEST_RESULT)
@@ -843,7 +844,7 @@ notEmpty:;
   #endif // defined(PP_IN_LINK)
         {
             // Increment or decrement population count on the way in.
-            wPopCnt = PWR_wPopCnt(pwRoot, pwr, nDLR);
+            wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDLR);
   #if defined(REMOVE)
             if (bCleanup)
             {
@@ -866,19 +867,19 @@ notEmpty:;
             else
   #endif // defined(REMOVE)
             {
-                set_PWR_wPopCnt(pwRoot, pwr,
+                set_PWR_wPopCnt(pwRoot, (Switch_t *)pwr,
                                 nDLR, wPopCnt + nIncr);
                 DBGX(printf("wPopCnt %zd\n",
-                     (size_t)PWR_wPopCnt(pwRoot, pwr, nDLR)));
+                     (size_t)PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDLR)));
             }
         }
 #endif // !defined(LOOKUP)
 
-        pwRoot = &pwr_pLinks(pwr)[wIndex].ln_wRoot;
+        pwRoot = &pwr_pLinks((Switch_t *)pwr)[wIndex].ln_wRoot;
         wRoot = *pwRoot;
 
         DBGX(printf("Next pLinks %p wIndex %d\n",
-            (void *)pwr_pLinks(pwr), (int)wIndex));
+            (void *)pwr_pLinks((Switch_t *)pwr), (int)wIndex));
 
         DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
 
@@ -1044,7 +1045,7 @@ notEmpty:;
   #endif // defined(PP_IN_LINK)
         {
             // Increment or decrement population count on the way in.
-            wPopCnt = PWR_wPopCnt(pwRoot, pwr, nDLR);
+            wPopCnt = PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDLR);
   #if defined(REMOVE)
             if (bCleanup)
             {
@@ -1071,19 +1072,19 @@ notEmpty:;
             else
   #endif // defined(REMOVE)
             {
-                set_PWR_wPopCnt(pwRoot, pwr,
+                set_PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr,
                                 nDLR, wPopCnt + nIncr);
                 DBGX(printf("wPopCnt %zd\n",
-                     (size_t)PWR_wPopCnt(pwRoot, pwr, nDLR)));
+                     (size_t)PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDLR)));
             }
         }
 #endif // !defined(LOOKUP)
 
-        pwRoot = &pwr_pLinks(pwr)[wIndex].ln_wRoot;
+        pwRoot = &pwr_pLinks((BmSwitch_t *)pwr)[wIndex].ln_wRoot;
         wRoot = *pwRoot;
 
         DBGX(printf("Next pLinks %p wIndex %d\n",
-            (void *)pwr_pLinks(pwr), (int)wIndex));
+            (void *)pwr_pLinks((BmSwitch_t *)pwr), (int)wIndex));
 
         DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
 

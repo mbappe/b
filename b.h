@@ -565,7 +565,12 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #endif // defined(DL_IN_TYPE_IS_ABSOLUTE)
 
-#define     tp_bIsSwitch(_tp)          ((_tp) >= T_SW_BASE)
+#if defined(EXTRA_TYPES)
+#define     tp_bIsSwitch(_tp)          ((_tp) & cnMallocMask) >= T_BM_SW)
+#else // defined(EXTRA_TYPES)
+#define     tp_bIsSwitch(_tp)          ((_tp) >= T_BM_SW)
+#endif // defined(EXTRA_TYPES)
+
 #define     wr_bIsSwitch(_wr)          (tp_bIsSwitch(wr_nType(_wr)))
 
 // methods for Switch (and aliases)
@@ -594,7 +599,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define PWR_wPrefixPop(_pwRoot, _pwr) \
     (STRUCT_OF((_pwRoot), Link_t, ln_wRoot)->ln_wPrefixPop)
 #else // defined(PP_IN_LINK)
-#define PWR_wPrefixPop(_pwRoot, _pwr)  (((Switch_t *)(_pwr))->sw_wPrefixPop)
+#define PWR_wPrefixPop(_pwRoot, _pwr)  ((_pwr)->sw_wPrefixPop)
 #endif // defined(PP_IN_LINK)
 
 #define PWR_wPrefix(_pwRoot, _pwr, _nDL) \
@@ -632,7 +637,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
     ((_w) = (((_w) & ~wPrefixPopMaskNotAtTop(_nDL)) \
             | ((_cnt) & wPrefixPopMaskNotAtTop(_nDL))))
 
-#define     pwr_pLinks(_pwr)  (((Switch_t *)(_pwr))->sw_aLinks)
+#define     pwr_pLinks(_pwr)  ((_pwr)->sw_aLinks)
 
 #if defined(BM_IN_LINK)
 #define     PWR_pwBm(_pwRoot, _pwr) \
