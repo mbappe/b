@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.314 2014/08/14 23:14:53 mike Exp mike $
+// @(#) $Id: b.c,v 1.315 2014/08/15 01:42:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -569,6 +569,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL, int bBmSw,
         METRICS(j__AllocWordsJLB1 += wWords); // JUDYA
     } else {
         METRICS(j__AllocWordsJBU += wWords); // JUDYA
+        // printf("\nNS: BU wWords "OWx" JBU "OWx"\n", wWords, j__AllocWordsJBU);
     }
 #endif // defined(RAMMETRICS)
 
@@ -716,7 +717,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
     DBGI(printf("NewLink(pwRoot %p wKey "OWx" nDL %d)\n",
         (void *)pwRoot, wKey, nDL));
     DBGI(printf("PWR_wPopCnt %"_fw"d\n",
-         PWR_wPopCnt(pwRoot, pwr, nDL)));
+         PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDL)));
 
 #if defined(BM_IN_LINK)
     assert(nDL != cnDigitsPerWord);
@@ -735,9 +736,9 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
     // Allocate memory for a new switch with one more link than the old one.
     // Update *pwRoot.
 
-    // sizeof(Switch_t) includes one link; add the others
+    // sizeof(BmSwitch_t) includes one link; add the others
     unsigned nWords
-        = (sizeof(Switch_t) + wPopCnt * sizeof(Link_t)) / sizeof(Word_t);
+        = (sizeof(BmSwitch_t) + wPopCnt * sizeof(Link_t)) / sizeof(Word_t);
     DBGI(printf("link count %"_fw"d nWords %d\n", wPopCnt, nWords));
     *pwRoot = MyMalloc(nWords);
     DBGI(printf("After malloc *pwRoot "OWx"\n", *pwRoot));
@@ -749,7 +750,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
     unsigned nBL = nDL_to_nBL(nDL);
     Word_t wIndex
         = ((wKey >> (nBL - nBitsIndexSz)) & (EXP(nBitsIndexSz) - 1));
-    DBGI(printf("wIndex "OWx"\n", wIndex));
+    DBGI(printf("wKey "OWx" nBL %d nBitsIndexSz %d wIndex (virtual) "OWx"\n",
+                wKey, nBL, nBitsIndexSz, wIndex));
     unsigned nBmOffset = wIndex >> cnLogBitsPerWord;
     Word_t wBm = PWR_pwBm(pwRoot, pwr)[nBmOffset];
     Word_t wBit = ((Word_t)1 << (wIndex & (cnBitsPerWord - 1)));
@@ -763,29 +765,31 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
     }
     wIndex += __builtin_popcountll(wBm & wBmMask);
     // Now we know where the new link goes.
-    DBGI(printf("wIndex "OWx"\n", wIndex));
+    DBGI(printf("wIndex (physical) "OWx"\n", wIndex));
 
     // Copy the old switch to the new switch and insert the new link.
     memcpy(wr_pwr(*pwRoot), pwr,
-        sizeof(Switch_t) + (wIndex - 1) * sizeof(Link_t));
+        sizeof(BmSwitch_t) + (wIndex - 1) * sizeof(Link_t));
     DBGI(printf("PWR_wPopCnt %"_fw"d\n",
-         PWR_wPopCnt(pwRoot, *pwRoot, nDL)));
+         PWR_wPopCnt(pwRoot, (BmSwitch_t *)*pwRoot, nDL)));
     // Initialize the new link.
-    DBGI(printf("pLinks %p\n", (void *)pwr_pLinks(*pwRoot)));
-    DBGI(printf("memset %p\n", (void *)&pwr_pLinks(*pwRoot)[wIndex]));
-    memset(&pwr_pLinks(*pwRoot)[wIndex], 0, sizeof(Link_t));
+    DBGI(printf("pLinks %p\n", (void *)pwr_pLinks((BmSwitch_t *)*pwRoot)));
+    DBGI(printf("memset %p\n",
+                (void *)&pwr_pLinks((BmSwitch_t *)*pwRoot)[wIndex]));
+    memset(&pwr_pLinks((BmSwitch_t *)*pwRoot)[wIndex], 0, sizeof(Link_t));
     DBGI(printf("PWR_wPopCnt A %"_fw"d\n",
-         PWR_wPopCnt(pwRoot, *pwRoot, nDL)));
-    memcpy(&pwr_pLinks(*pwRoot)[wIndex + 1], &pwr_pLinks(pwr)[wIndex],
+         PWR_wPopCnt(pwRoot, (BmSwitch_t *)*pwRoot, nDL)));
+    memcpy(&pwr_pLinks((BmSwitch_t *)*pwRoot)[wIndex + 1],
+           &pwr_pLinks((BmSwitch_t *)pwr)[wIndex],
         (wPopCnt - wIndex) * sizeof(Link_t));
 
     DBGI(printf("PWR_wPopCnt B %"_fw"d\n",
-         PWR_wPopCnt(pwRoot, *pwRoot, nDL)));
+         PWR_wPopCnt(pwRoot, (BmSwitch_t *)*pwRoot, nDL)));
     // Set the bit in the bitmap indicating that the new link exists.
     SetBit(PWR_pwBm(pwRoot, *pwRoot),
         ((wKey >> (nBL - nBitsIndexSz)) & (EXP(nBitsIndexSz) - 1)));
     DBGI(printf("PWR_wPopCnt %"_fw"d\n",
-         PWR_wPopCnt(pwRoot, *pwRoot, nDL)));
+         PWR_wPopCnt(pwRoot, (BmSwitch_t *)*pwRoot, nDL)));
 
     MyFree(pwr, nWords - sizeof(Link_t) / sizeof(Word_t));
 
@@ -839,6 +843,7 @@ OldSwitch(Word_t *pwRoot, unsigned nDL, int bBmSw, unsigned nDLUp)
         METRICS(j__AllocWordsJLB1 -= wWords); // JUDYA
     } else {
         METRICS(j__AllocWordsJBU  -= wWords); // JUDYA
+        //printf("\nOS: BU wWords "OWx" JBU "OWx"\n", wWords, j__AllocWordsJBU);
     }
 #endif // defined(RAMMETRICS)
 
@@ -1091,8 +1096,6 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
-    nBL = nDL_to_nBL(nDL);
-
     int bBmSw = 0;
   #if defined(EXTRA_TYPES)
     if ((nType == T_BM_SW) || (nType == T_BM_SW + EXP(cnBitsMallocMask)))
@@ -1101,7 +1104,10 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
   #endif // defined(EXTRA_TYPES)
     {
         bBmSw = 1;
+        nDL = nDLPrev;
     }
+
+    nBL = nDL_to_nBL(nDL);
 
     nBitsIndexSz = nDL_to_nBitsIndexSz(nDL);
     pLinks = bBmSw ? pwr_pLinks((BmSwitch_t *)pwr)
@@ -1256,7 +1262,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     // Someone has to clear PP and BM if PP_IN_LINK and BM_IN_LINK.
     // OldSwitch looks at BM.
 
-    wBytes += OldSwitch(pwRootArg, nDL, /* bBmSw */ 0, nDLPrev);
+    wBytes += OldSwitch(pwRootArg, nDL, bBmSw, nDLPrev);
 
     DBGR(printf("memset(%p, 0, %zd)\n",
          (void *)STRUCT_OF(pwRootArg, Link_t, ln_wRoot), sizeof(Link_t)));
@@ -1480,6 +1486,15 @@ const unsigned anListPopCntMax[] = {
     };
 
 #endif // (cwListPopCntMax != 0)
+
+void
+HexDump(char *str, Word_t *pw, unsigned nWords)
+{
+    printf("\n%s (pw %p nWords %d):\n", str, pw, nWords);
+    for (unsigned ii = 0; ii < nWords; ii++) {
+        printf(OWx"\n", pw[ii]);
+    }
+}
 
 // InsertGuts
 // This function is called from the iterative Insert function once Insert has
@@ -2084,6 +2099,14 @@ newSwitch:
 #else // defined(TYPE_IS_RELATIVE)
         unsigned nDLR = tp_to_nDL(nType);
 #endif // defined(TYPE_IS_RELATIVE)
+  #if defined(EXTRA_TYPES)
+        if ((nType == T_BM_SW) || (nType == T_BM_SW + EXP(cnBitsMallocMask)))
+  #else // defined(EXTRA_TYPES)
+        if (nType == T_BM_SW)
+  #endif // defined(EXTRA_TYPES)
+        {
+            nDLR = nDL;
+        }
 #if defined(SKIP_LINKS)
         Word_t wPrefix;
         // Test to see if this is a missing link case.
@@ -2097,16 +2120,19 @@ newSwitch:
         // It's a bit of a bummer that we are doing the prefix check again.
         // Can we avoid it as follows:
         if ((nDLR == nDL)
-            || ((wPrefix = PWR_wPrefix(pwRoot, pwr, nDLR))
+            || ((wPrefix = PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDLR))
                 == w_wPrefixNotAtTop(wKey, nDLR)))
         // If nDS != 0 then we're not at the top or PP_IN_LINK is not defined.
 #endif // defined(SKIP_LINKS)
-#endif // defined(BM_SWITCH_FOR_REAL)
-#if defined(BM_SWITCH_FOR_REAL)
         {
+  #if defined(EXTRA_TYPES)
+            assert((nType == T_BM_SW) || (nType == T_BM_SW + EXP(cnBitsMallocMask)));
+  #else // defined(EXTRA_TYPES)
+            assert(nType == T_BM_SW);
+  #endif // defined(EXTRA_TYPES)
 #if defined(SKIP_LINKS)
             DBGI(printf("wPrefix "OWx" w_wPrefix "OWx" nDLR %d\n",
-                        PWR_wPrefix(pwRoot, pwr, nDLR),
+                        PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDLR),
                         w_wPrefix(wKey, nDLR), nDLR));
 #endif // defined(SKIP_LINKS)
             // no link -- for now -- will eventually have to check
@@ -2114,11 +2140,7 @@ newSwitch:
             // Remember to update type field in *pwRoot if necessary.
             // Would need to add a parameter to NewLink to do it there.
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-#if defined(TYPE_IS_RELATIVE)
-            set_wr_nType(*pwRoot, nDS_to_tp(nDL - nDLR));
-#else // defined(TYPE_IS_RELATIVE)
-            set_wr_nType(*pwRoot, nDL_to_tp(nDLR));
-#endif // defined(TYPE_IS_RELATIVE)
+            set_wr_nType(*pwRoot, T_BM_SW);
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
             Insert(pwRoot, wKey, nDL);
         }
@@ -2135,6 +2157,7 @@ newSwitch:
             // short.  Huh?
             unsigned nDLRoot;
             Word_t wPopCnt;
+            int bBmSw = 0; // new switch type
 
 #if defined(TYPE_IS_RELATIVE)
             nDLRoot = nDL - tp_to_nDS(nType);
@@ -2177,6 +2200,8 @@ newSwitch:
             // nIndex is the logical index in new switch.
             // It may not be the same as the index in the old switch.
 
+            if (bBmSw)
+            {
 #if defined(BM_IN_LINK)
             // Save the old bitmap before it is trashed by NewSwitch.
             // Is it possible that nDLUp != cnDigitsPerWord and
@@ -2193,13 +2218,18 @@ newSwitch:
 #endif // ! defined(BM_SWITCH_FOR_REAL)
             }
 #endif // defined(BM_IN_LINK)
+            }
 
             Word_t *pwSw;
             // initialize prefix/pop for new switch
             // Make sure to pass the right key for BM_SWITCH_FOR_REAL.
-            pwSw = NewSwitch(pwRoot,
-                             wPrefix, nDL, /* bBmSw */ 0, nDLUp, wPopCnt);
+            pwSw = NewSwitch(pwRoot, wPrefix, nDL, bBmSw, nDLUp, wPopCnt);
+            DBGI(HexDump("After NewSwitch", pwSw, 65));
+            DBGI(printf("Just after InsertGuts calls NewSwitch for prefix mismatch.\n"));
+            DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
+            if (bBmSw)
+            {
 #if defined(BM_SWITCH_FOR_REAL)
 #if defined(BM_IN_LINK)
             if (nDLUp != cnDigitsPerWord)
@@ -2235,6 +2265,7 @@ newSwitch:
                 }
             }
 #endif // defined(BM_IN_LINK)
+            }
 
 #if defined(TYPE_IS_RELATIVE)
             DBGI(printf("nDL %d nDLR %d nDLU %d\n",
@@ -2268,6 +2299,8 @@ newSwitch:
            // prefix in the old switch. 
 #endif // defined(NO_UNNECESSARY_PREFIX)
 #endif // defined(PP_IN_LINK)
+            DBGI(printf("Just before InsertGuts calls Insert for prefix mismatch.\n"));
+            DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
             Insert(pwRoot, wKey, nDLUp);
         }
@@ -2708,19 +2741,6 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
     (void)pwRoot; (void)wKey; (void)nDL; (void)wRoot;
 }
-
-#if defined(PP_IN_LINK)
-#if defined(DEBUG)
-static void
-HexDump(char *str, Word_t *pw, unsigned nWords)
-{
-    printf("\n%s (pw %p nWords %d):\n", str, pw, nWords);
-    for (unsigned ii = 0; ii < nWords; ii++) {
-        printf(OWx"\n", pw[ii]);
-    }
-}
-#endif // defined(DEBUG)
-#endif // defined(PP_IN_LINK)
 
 // Clear the bit for wKey in the bitmap.
 // And free the bitmap if it is empty and not embedded.
