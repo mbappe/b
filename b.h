@@ -889,5 +889,7 @@ Word_t wDebugPopCnt; // sanity checking
 #define PSPLIT_SEARCH_WORD
 #endif // defined(PSPLIT_SEARCH_XOR_WORD)
 
+void HexDump(char *str, Word_t *pw, unsigned nWords);
+
 #endif // ( ! defined(_B_H_INCLUDED) )
 
