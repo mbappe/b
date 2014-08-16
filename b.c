@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.315 2014/08/15 01:42:29 mike Exp mike $
+// @(#) $Id: b.c,v 1.316 2014/08/15 23:31:28 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2200,14 +2200,14 @@ newSwitch:
             // nIndex is the logical index in new switch.
             // It may not be the same as the index in the old switch.
 
+#if defined(BM_IN_LINK)
+            Link_t ln;
+            Word_t wIndexCnt = EXP(nDL_to_nBitsIndexSzNAT(nDLRoot));
             if (bBmSw)
             {
-#if defined(BM_IN_LINK)
             // Save the old bitmap before it is trashed by NewSwitch.
             // Is it possible that nDLUp != cnDigitsPerWord and
             // we are at the top?
-            Link_t ln;
-            Word_t wIndexCnt = EXP(nDL_to_nBitsIndexSzNAT(nDLRoot));
             if (nDLUp != cnDigitsPerWord)
             {
                 memcpy(ln.ln_awBm, PWR_pwBm(pwRoot, NULL),
@@ -2217,8 +2217,8 @@ newSwitch:
                     || (ln.ln_awBm[0] == (Word_t)-1));
 #endif // ! defined(BM_SWITCH_FOR_REAL)
             }
-#endif // defined(BM_IN_LINK)
             }
+#endif // defined(BM_IN_LINK)
 
             Word_t *pwSw;
             // initialize prefix/pop for new switch
@@ -2245,7 +2245,8 @@ newSwitch:
             if (nDLUp != cnDigitsPerWord)
             {
                 // Copy bitmap from old link to new link.
-                memcpy(pwr_pLinks(pwSw)[nIndex].ln_awBm, ln.ln_awBm,
+                memcpy(pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_awBm,
+                       ln.ln_awBm,
                        DIV_UP(wIndexCnt, cnBitsPerWord) * cnBytesPerWord);
             }
             else
@@ -2256,11 +2257,12 @@ newSwitch:
                 // Mind endianness.
                 if (wIndexCnt < cnBitsPerWord)
                 {
-                    *pwr_pLinks(pwSw)[nIndex].ln_awBm = EXP(wIndexCnt) - 1;
+                    *pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_awBm
+                        = EXP(wIndexCnt) - 1;
                 }
                 else
                 {
-                    memset(pwr_pLinks(pwSw)[nIndex].ln_awBm, -1,
+                    memset(pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_awBm, -1,
                            DIV_UP(wIndexCnt, cnBitsPerWord) * cnBytesPerWord);
                 }
             }
