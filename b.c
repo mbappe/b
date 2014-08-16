@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.317 2014/08/16 00:18:51 mike Exp mike $
+// @(#) $Id: b.c,v 1.318 2014/08/16 00:45:04 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2160,7 +2160,6 @@ newSwitch:
             // short.  Huh?
             unsigned nDLRoot;
             Word_t wPopCnt;
-            int bBmSw = 0; // new switch type
 
 #if defined(TYPE_IS_RELATIVE)
             nDLRoot = nDL - tp_to_nDS(nType);
@@ -2179,6 +2178,7 @@ newSwitch:
             // nDL includes the highest order digit that is different.
 
             assert(nDL > nDLRoot);
+            assert(nDL <= nDLUp);
 
             if ((wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDLRoot)) == 0)
             {
@@ -2203,10 +2203,13 @@ newSwitch:
             // nIndex is the logical index in new switch.
             // It may not be the same as the index in the old switch.
 
+            int bBmSwNew = (nDL == nDLUp); // new switch type
+            int bBmSwOld = 0;
+
 #if defined(BM_IN_LINK)
             Link_t ln;
             Word_t wIndexCnt = EXP(nDL_to_nBitsIndexSzNAT(nDLRoot));
-            if (bBmSw)
+            if (bBmSwOld)
             {
             // Save the old bitmap before it is trashed by NewSwitch.
             // Is it possible that nDLUp != cnDigitsPerWord and
@@ -2226,12 +2229,13 @@ newSwitch:
             Word_t *pwSw;
             // initialize prefix/pop for new switch
             // Make sure to pass the right key for BM_SWITCH_FOR_REAL.
-            pwSw = NewSwitch(pwRoot, wPrefix, nDL, bBmSw, nDLUp, wPopCnt);
-            DBGI(HexDump("After NewSwitch", pwSw, 65));
+            DBGI(printf("IG: nDL %d nDLUp %d\n", nDL, nDLUp));
+            pwSw = NewSwitch(pwRoot, wPrefix, nDL, bBmSwNew, nDLUp, wPopCnt);
+            DBGI(HexDump("After NewSwitch", pwSw, bBmSwNew ? 3 : (EXP(cnBitsPerDigit) + 1)));
             DBGI(printf("Just after InsertGuts calls NewSwitch for prefix mismatch.\n"));
             DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
-            if (bBmSw)
+            if (bBmSwNew)
             {
 #if defined(BM_SWITCH_FOR_REAL)
 #if defined(BM_IN_LINK)
@@ -2243,7 +2247,10 @@ newSwitch:
                 nIndex = 0;
             }
 #endif // defined(BM_SWITCH_FOR_REAL)
+            }
 
+            if (bBmSwOld)
+            {
 #if defined(BM_IN_LINK)
             if (nDLUp != cnDigitsPerWord)
             {
@@ -2273,12 +2280,18 @@ newSwitch:
             }
 
 #if defined(TYPE_IS_RELATIVE)
+            // Update type field in wRoot that points to old switch since
+            // it is not skipping as many digits now.
             DBGI(printf("nDL %d nDLR %d nDLU %d\n",
                    nDL, nDLRoot, nDLUp));
             set_wr_nDS(wRoot, nDL - nDLRoot - 1);
 #endif // defined(TYPE_IS_RELATIVE)
-            // Copy wRoot from old link to new link.
-            pwr_pLinks((Switch_t *)pwSw)[nIndex].ln_wRoot = wRoot;
+            // Copy wRoot from old link (after being updated) to new link.
+            if (bBmSwNew) {
+                pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_wRoot = wRoot;
+            } else {
+                pwr_pLinks((  Switch_t *)pwSw)[nIndex].ln_wRoot = wRoot;
+            }
 
 #if defined(PP_IN_LINK)
 #if defined(NO_UNNECESSARY_PREFIX)
@@ -2293,14 +2306,16 @@ newSwitch:
 #endif // defined(NO_UNNECESSARY_PREFIX)
             {
                 set_PWR_wPrefix(
-                    bBmSw ? &pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_wRoot
-                          : &pwr_pLinks((  Switch_t *)pwSw)[nIndex].ln_wRoot,
+                    bBmSwNew
+                        ? &pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_wRoot
+                        : &pwr_pLinks((  Switch_t *)pwSw)[nIndex].ln_wRoot,
                     NULL, nDLRoot, wPrefix);
             }
 
             set_PWR_wPopCnt(
-                    bBmSw ? &pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_wRoot
-                          : &pwr_pLinks((  Switch_t *)pwSw)[nIndex].ln_wRoot,
+                    bBmSwNew
+                        ? &pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_wRoot
+                        : &pwr_pLinks((  Switch_t *)pwSw)[nIndex].ln_wRoot,
                     NULL, nDLRoot, wPopCnt);
 #else // defined(PP_IN_LINK)
 #if defined(NO_UNNECESSARY_PREFIX)
