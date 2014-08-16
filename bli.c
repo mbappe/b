@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.318 2014/08/15 01:42:29 mike Exp mike $
+// @(#) $Id: bli.c,v 1.319 2014/08/15 23:31:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -795,7 +795,8 @@ again:
 
                 for (Word_t ww = 0; ww < EXP(cnBitsIndexSzAtTop); ww++)
                 {
-                    Word_t *pwRootLn = &pwr_pLinks(pwr)[ww].ln_wRoot;
+                    Word_t *pwRootLn
+                                = &pwr_pLinks((Switch_t *)pwr)[ww].ln_wRoot;
 // looking at the next pwRoot seems like something that should be deferred
 // but if we defer, then we won't have the previous pwRoot, but if this
 // only happens at the top, then the previous pwRoot will be pwRootOrig?
@@ -992,10 +993,12 @@ notEmpty:;
                 for (Word_t ww = 0; ww < EXP(cnBitsIndexSzAtTop); ww++)
                 {
           #if !defined(BM_IN_LINK)
-                    Word_t *pwRootLn = &pwr_pLinks(pwr)[xx].ln_wRoot;
+                    Word_t *pwRootLn
+                                = &pwr_pLinks((BmSwitch_t *)pwr)[xx].ln_wRoot;
                     xx++;
           #else // ! defined(BM_IN_LINK)
-                    Word_t *pwRootLn = &pwr_pLinks(pwr)[ww].ln_wRoot;
+                    Word_t *pwRootLn
+                                = &pwr_pLinks((BmSwitch_t *)pwr)[ww].ln_wRoot;
           #endif // ! defined(BM_IN_LINK)
 // looking at the next pwRoot seems like something that should be deferred
 // but if we defer, then we won't have the previous pwRoot, but if this
@@ -1025,7 +1028,7 @@ notEmpty:;
                     {
                         DBGX(printf("Not empty ww %zd wIndex %zd\n",
                              (size_t)ww, (size_t)wIndex));
-                        goto notEmpty; // switch pop is not zero
+                        goto notEmptyBm; // switch pop is not zero
                     }
                 }
                 // switch pop is zero
@@ -1037,7 +1040,7 @@ notEmpty:;
 
                 *pwRoot = 0;
                 return KeyFound;
-notEmpty:;
+notEmptyBm:;
             }
       #endif // defined(REMOVE)
         }

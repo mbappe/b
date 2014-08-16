@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.316 2014/08/15 23:31:28 mike Exp mike $
+// @(#) $Id: b.c,v 1.317 2014/08/16 00:18:51 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1119,7 +1119,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
         if (nBLArg >= cnBitsPerWord)
         {
             // Add 'em up.
-            Word_t xx = 0;
+            Word_t xx = 0; (void)xx;
             Word_t wPopCnt = 0;
             for (unsigned nn = 0; nn < EXP(cnBitsIndexSzAtTop); nn++)
             {
@@ -1127,10 +1127,13 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
         if ( ! bBmSw || BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
 #endif // ! defined(BM_IN_LINK)
         {
-                Word_t *pwRootLn = &pwr_pLinks(pwr)[nn].ln_wRoot;
+                Word_t *pwRootLn
+                            = bBmSw
+                                ? &pwr_pLinks((BmSwitch_t *)pwr)[nn].ln_wRoot
+                                : &pwr_pLinks((  Switch_t *)pwr)[nn].ln_wRoot;
 #if ! defined(BM_IN_LINK)
                 if (bBmSw) {
-                    Word_t *pwRootLn = &pwr_pLinks(pwr)[xx].ln_wRoot;
+                    pwRootLn = &pwr_pLinks((BmSwitch_t *)pwr)[xx].ln_wRoot;
                     xx++;
                 }
 #endif // ! defined(BM_IN_LINK)
@@ -2289,12 +2292,16 @@ newSwitch:
             else
 #endif // defined(NO_UNNECESSARY_PREFIX)
             {
-                set_PWR_wPrefix(&pwr_pLinks(pwSw)[nIndex].ln_wRoot, NULL,
-                                nDLRoot, wPrefix);
+                set_PWR_wPrefix(
+                    bBmSw ? &pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_wRoot
+                          : &pwr_pLinks((  Switch_t *)pwSw)[nIndex].ln_wRoot,
+                    NULL, nDLRoot, wPrefix);
             }
 
-            set_PWR_wPopCnt(&pwr_pLinks(pwSw)[nIndex].ln_wRoot, NULL,
-                            nDLRoot, wPopCnt);
+            set_PWR_wPopCnt(
+                    bBmSw ? &pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_wRoot
+                          : &pwr_pLinks((  Switch_t *)pwSw)[nIndex].ln_wRoot,
+                    NULL, nDLRoot, wPopCnt);
 #else // defined(PP_IN_LINK)
 #if defined(NO_UNNECESSARY_PREFIX)
            // We could go to the trouble of zeroing the no-longer necessary
@@ -2889,13 +2896,13 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
         // no skip links at root for PP_IN_LINK -- no place for prefix
       #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
           #if defined(TYPE_IS_RELATIVE)
-        assert(tp_to_nDS(nType) == 0);
+        assert((tp_to_nDS(nType) == 0) || (nType == T_BM_SW));
           #else // defined(TYPE_IS_RELATIVE)
-        assert(tp_to_nDL(nType) == cnDigitsPerWord);
+        assert((tp_to_nDL(nType) == cnDigitsPerWord) || (nType = T_BM_SW));
           #endif // defined(TYPE_IS_RELATIVE)
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         // add up the pops in the links
-        Word_t xx = 0;
+        Word_t xx = 0; (void)xx;
         wPopCnt = 0;
         for (unsigned nn = 0; nn < EXP(cnBitsIndexSzAtTop); nn++)
         {
@@ -2903,10 +2910,13 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             if ( ! bBmSw || BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
       #endif // ! defined(BM_IN_LINK)
             {
-                Word_t *pwRootLn = &pwr_pLinks(pwr)[nn].ln_wRoot;
+                Word_t *pwRootLn
+                            = bBmSw
+                                ? &pwr_pLinks((BmSwitch_t *)pwr)[nn].ln_wRoot
+                                : &pwr_pLinks((  Switch_t *)pwr)[nn].ln_wRoot;
       #if ! defined(BM_IN_LINK)
                 if (bBmSw) {
-                    pwRootLn = &pwr_pLinks(pwr)[xx].ln_wRoot;
+                    pwRootLn = &pwr_pLinks((BmSwitch_t *)pwr)[xx].ln_wRoot;
                     xx++;
                 }
       #endif // ! defined(BM_IN_LINK)
@@ -3010,6 +3020,12 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             tp_to_nDL(nType)
               #endif // defined(TYPE_IS_RELATIVE)
             ;
+        if (bBmSw) {
+            nDL = cnDigitsPerWord;
+        }
+        if (!(wPopCnt - 1 <= wPrefixPopMask(nDL))) {
+            printf("bBmSw %d\n", bBmSw);
+        }
         assert(wPopCnt - 1 <= wPrefixPopMask(nDL));
           #endif // ! defined(NDEBUG)
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
