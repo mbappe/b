@@ -7,6 +7,150 @@ CP140405 is Checkpoint April 5, 2014.
 The most recent checkpoint should be the latest and greatest somewhat
 functional code.
 
+8/13/14:
+
+- Do we really need skip links to wide uncompressed branches?
+  Not for memory efficiency.  But performance may be a different issue.
+
+ skip  0 digits to bitmap switch (6 bits wide)
+ skip  1 digit  to bitmap switch (6 bits wide)
+ skip  2 digits to bitmap switch (6 bits wide)
+ skip  4 digits to bitmap switch (6 bits wide)
+
+ skip  0 digits to 1-digit wide uncompressed switch
+ skip  1 digits to 1-digit wide uncompressed switch
+ skip  2 digits to 1-digit wide uncompressed switch
+ skip  4 digits to 1-digit wide uncompressed switch
+
+ skip  0 digits to 2-digit wide uncompressed switch
+ skip  0 digits to 3-digit wide uncompressed switch
+
+ T_BITMAP
+ T_LIST
+ T_EMBED
+ T_NULL
+
+- Do we really need the type to specify the number of digits
+  skipped to a bitmap branch?
+
+8/10/14:
+- How about a hierarchy of bitmaps and embedded lists.
+  - One bit for each key.
+  - One bit for each word of bits. 6 bit expanse.
+  - One bit for each word of bits times 2. 12 bit expanse.
+    - One word (skip link to or embedded list or ) for each non-zero bit.
+  - One bit for each word of bits times 3. 18 bit expanse.
+    - One pointer (or skip link) for each non-zero bit.
+  - One bit for each word of bits times 4. 24 bit expanse.
+    - One pointer (or skip link) for each non-zero bit.
+  - One bit for each word of bits times 5. 30 bit expanse.
+    - One pointer (or skip link) for each non-zero bit.
+  - One bit for each word of bits times 6. 36 bit expanse.
+    - One pointer (or skip link) for each non-zero bit.
+  - One bit for each word of bits times 7. 42 bit expanse.
+    - One pointer (or skip link) for each non-zero bit.
+  - One bit for each word of bits times 8. 48 bit expanse.
+    - One pointer (or skip link) for each non-zero bit.
+  - One bit for each word of bits times 9. 54 bit expanse.
+    - One pointer (or skip link) for each non-zero bit.
+  - One bit for each word of bits times 10. 60 bit expanse.
+    - One pointer (or skip link) for each non-zero bit.
+  - One bit for each word of bits times 11. 66 bit expanse.
+    - One entry for each non-zero bit.
+      - An entry can be an embedded list.
+      - An entry can be a link to a switch.
+      - A link can be a skip link or not.
+      - A switch decodes the high N bits of an M-bit expanse.
+      - A switch can be a bitmap switch or an uncompressed switch.
+
+Large bitmap switches can be a problem to expand -- and to count bits.
+Do we want to limit bitmap switches to 6 bits wide?
+
+Switch width: 1-64 bits takes 6 bits
+Switch height: 7 to 63 takes 6 bits
+Switch is bitmap or uncompressed: 1 bit
+target of link is switch or embedded list: 1
+Uncompressed switches get an extra bit of type by allocating an extra 32 bytes?
+
+skip digits: 0, 1, 2, 4, 8, 16
+uncompressed switch width: 6, 12, 18, 24, 30, 36, 42, 48, 54, 60
+
+ skip  0 digits to bitmap switch (6 bits wide)
+ skip  1 digit  to bitmap switch (6 bits wide)
+ skip  2 digits to bitmap switch (6 bits wide)
+
+ skip  0 digits to 1-digit wide uncompressed switch
+ skip  0 digits to 2-digit wide uncompressed switch
+ skip  0 digits to 3-digit wide uncompressed switch
+
+ skip  1 digits to 1-digit wide uncompressed switch
+ skip  1 digits to 2-digit wide uncompressed switch
+ skip  1 digits to 3-digit wide uncompressed switch
+
+ skip  2 digits to 1-digit wide uncompressed switch
+ skip  2 digits to 2-digit wide uncompressed switch
+ skip  2 digits to 3-digit wide uncompressed switch
+
+ T_BITMAP
+ T_LIST
+ T_EMBED
+ T_NULL
+
+1st key:
+  - makes wRoot a ptr to a 1-key, 1-word (plus overhead) list, or
+  - makes wRoot a ptr to a 1-key, 2-word (plus overhead) list, or
+  - makes wRoot a link to a bm switch with a pre-pop word,
+    a bm word and 1 entry with 1 key (plus overhead)
+  - makes wRoot a link to a bm switch at bl=12 with a pre-pop word,
+    a bm word and 1 bm entry (plus overhead)
+2nd key:
+  - adds 1 entry with 1 key to the existing switch, or
+  - pushes the bm switch down and adds 1 entry with 1 key, or
+  - pushes the bm switch down and adds 1 key to its 1 entry
+  - pushes the bm switch down and adds 1 key to its 1 entry
+3rd key:
+  - adds a bm switch with a pre-pop word, a bm word and 1 link entry to
+    the existing switch and 1 entry with 1 key
+  - adds 1 entry with 1 key to the existing switch, or
+  - pushes the bm switch down and adds 1 entry with 1 key, or
+  - pushes the switch down to where a single bm switch with 3 entries
+    can be used
+
+8/3/14:
+
+- T_NULL_OR_ONE_A
+- T_NULL_OR_ONE_B
+- T_EMBED_A
+- T_EMBED_B
+- T_LIST_A
+- T_LIST_B
+- T_BITMAP_A
+- T_BITMAP_B
+- T_SWITCH_A
+- T_SWITCH_B
+- T_SKIP_SWITCH_A
+- T_SKIP_SWITCH_B
+- T_SKIP_SWITCH_A
+- T_SKIP_SWITCH_B
+
+Discovered today that the compilers usually put at least one conditional
+branch in front of the indirect branch through the jump table.  How do I
+get rid of it?
+
+    if (nType <= T_SW_BASE) { goto LBB0_3; }
+    ... // default
+    if (prefix match) { goto LBB0_16; // T_SW_BASE }
+    goto LBB0_67; // prefix mismatch; lookup failure
+LBB0_3:
+    jmp LJTI0_0[nType]
+
+LJTI0_0:
+0: LBB0_67 // T_NULL
+1: LBB0_64
+2: LBB0_17
+3: LBB0_63
+4: LBB0_16 // T_SW_BASE
+
 7/14/14:
 = We need a bm switch to be complete.
 - Steal another bit from pwr to distinguish bm switch from uncompressed.
