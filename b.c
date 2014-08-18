@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.318 2014/08/16 00:45:04 mike Exp mike $
+// @(#) $Id: b.c,v 1.319 2014/08/16 04:09:50 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2017,8 +2017,13 @@ newSwitch:
                 // NewSwitch overwrites *pwRoot which is a problem for
                 // T_ONE with embedded keys.
 
+#if defined(USE_BM_SW)
                 NewSwitch(pwRoot, wKey, nDL, /* bBmSw */ nDL == nDLOld,
                           nDLOld, /* wPopCnt */ 0);
+#else // defined(USE_BM_SW)
+                NewSwitch(pwRoot, wKey, nDL, /* bBmSw */ 0,
+                          nDLOld, /* wPopCnt */ 0);
+#endif // defined(USE_BM_SW)
                     if (nDL == nDLOld) {
                     DBGI(printf("\n# InsertGuts After NewSwitch Dump\n"));
                     DBGI(Dump(pwRootLast,
@@ -2203,7 +2208,11 @@ newSwitch:
             // nIndex is the logical index in new switch.
             // It may not be the same as the index in the old switch.
 
+#if defined(USE_BM_SW)
             int bBmSwNew = (nDL == nDLUp); // new switch type
+#else // defined(USE_BM_SW)
+            int bBmSwNew = 0; // new switch type
+#endif // defined(USE_BM_SW)
             int bBmSwOld = 0;
 
 #if defined(BM_IN_LINK)
