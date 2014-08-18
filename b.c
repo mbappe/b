@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.319 2014/08/16 04:09:50 mike Exp mike $
+// @(#) $Id: b.c,v 1.320 2014/08/18 00:08:12 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -909,7 +909,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     }
 
 #if (cnBitsAtBottom <= cnLogBitsPerWord)
-    if ((nDL <= 1) || (nType == T_BITMAP))
+    if ((nBL <= cnLogBitsPerWord) || (nType == T_BITMAP))
 #else // (cnBitsAtBottom <= cnLogBitsPerWord)
     if (nType == T_BITMAP)
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
@@ -1459,7 +1459,8 @@ CopyWithInsertChar(unsigned char *pTgt, unsigned char *pSrc,
 #endif // (cwListPopCntMax != 0)
 
 Status_t
-InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
+InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL,
+               unsigned nBL, Word_t wRoot);
 
 Status_t
 InsertAtBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
@@ -1542,8 +1543,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if (cnBitsAtBottom <= cnLogBitsPerWord) || defined(NO_LIST_AT_DL1)
     // Check to see if we're at the bottom before checking nType since
     // nType may be invalid if wRoot is an embedded bitmap.
-    if (nDL == 1) {
-        return InsertAtBottom(pwRoot, wKey, nDL, wRoot);
+    if (nBL <= cnLogBitsPerWord) {
+        return InsertAtBottom(pwRoot, wKey, nDL, nBL, wRoot);
     }
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord) || defined(NO_LIST_AT_DL1)
 
@@ -1964,6 +1965,7 @@ newSwitch:
 #endif // (cwListPopCntMax != 0)
 
             // We don't create a switch below nDL == 2.
+            // Nor do we create a switch below nBL == cnLogBitsPerWord.
             // Nor do we support a skip link directly to a bitmap -- yet.
             if (nDL < 2)
             {
@@ -1972,6 +1974,11 @@ newSwitch:
                     nDL = 2;
                 }
             }
+#if (cnBitsAtBottom < cnLogBitsPerWord)
+            while (nDL_to_nBL(nDL) <= cnLogBitsPerWord) {
+                ++nDL;
+            }
+#endif // (cnBitsAtBottom < cnLogBitsPerWord)
 
 #if defined(TYPE_IS_RELATIVE)
             if (nDS_to_tp(nDLOld - nDL) > cnMallocMask) {
@@ -2530,22 +2537,29 @@ DeflateExternalList(Word_t *pwRoot,
 #endif // defined(EMBED_KEYS)
 #endif // (cwListPopCntMax != 0)
 
+// "Bottom" here means nDL == 1 (if cnBitsAtBottom >= cnLogBitsPerWord),
+// or nBL <= cnLogBitsPerWord (if cnBitsAtBottom <= cnLogBitsPerWord).
 Status_t
-InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
+InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL,
+               unsigned nBL, Word_t wRoot)
 {
-        assert(nDL == 1); (void)nDL; // use depends on ifdefs
-        (void)wRoot;
+        (void)nDL; (void)nBL; (void)wRoot;
 
 #if (cnBitsAtBottom <= cnLogBitsPerWord)
 
-        assert( ! BitIsSetInWord(wRoot, wKey & (EXP(cnBitsAtBottom) - 1)) );
+        assert(nBL <= cnLogBitsPerWord);
+
+        assert( ! BitIsSetInWord(wRoot, wKey & (EXP(nBL) - 1)) );
 
         DBGI(printf("SetBitInWord(*pwRoot "OWx" wKey "OWx")\n",
-                    *pwRoot, wKey & (EXP(cnBitsAtBottom) - 1)));
+                    *pwRoot, wKey & (EXP(nBL) - 1)));
 
-        SetBitInWord(*pwRoot, wKey & (EXP(cnBitsAtBottom) - 1));
+        SetBitInWord(*pwRoot, wKey & (EXP(nBL) - 1));
 
 #else // (cnBitsAtBottom <= cnLogBitsPerWord)
+
+        assert(nDL == 1);
+        assert(nBL == cnBitsAtBottom);
 
         Word_t *pwr = wr_pwr(wRoot);
 
@@ -2574,6 +2588,7 @@ InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         return Success;
 }
 
+// InsertAtBitmap is for a bitmap that is not at the bottom.
 Status_t
 InsertAtBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 {
@@ -2605,7 +2620,8 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 }
 
 Status_t
-RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
+RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL,
+             unsigned nBL, Word_t wRoot);
 
 Status_t
 RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
@@ -2619,19 +2635,19 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 // Could we be more specific in this ifdef, e.g. cnListPopCntMax16?
 #if (cwListPopCntMax != 0)
 #if (cnBitsAtBottom <= cnLogBitsPerWord)
-    if ((nDL <= 1) || (nType == T_BITMAP))
+    if ((nBL <= cnLogBitsPerWord) || (nType == T_BITMAP))
 #else // (cnBitsAtBottom <= cnLogBitsPerWord)
     if (nType == T_BITMAP)
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 #else // (cwListPopCntMax != 0)
 #if (cnBitsAtBottom <= cnLogBitsPerWord)
-    assert((nDL <= 1) || (nType == T_BITMAP));
+    assert((nBL <= cnLogBitsPerWord) || (nType == T_BITMAP));
 #else // (cnBitsAtBottom <= cnLogBitsPerWord)
     assert(nType == T_BITMAP);
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 #endif // (cwListPopCntMax != 0)
     {
-        return RemoveBitmap(pwRoot, wKey, nDL, wRoot);
+        return RemoveBitmap(pwRoot, wKey, nDL, nBL, wRoot);
     }
 
 #if (cwListPopCntMax != 0)
@@ -2778,12 +2794,15 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 // Clear the bit for wKey in the bitmap.
 // And free the bitmap if it is empty and not embedded.
 Status_t
-RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
+RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL,
+             unsigned nBL, Word_t wRoot)
 {
+    (void)nDL;
+
 #if (cnBitsAtBottom <= cnLogBitsPerWord)
-    if (nDL == 1)
+    if (nBL <= cnLogBitsPerWord)
     {
-        ClrBitInWord(wRoot, wKey & MSK(cnBitsAtBottom));
+        ClrBitInWord(wRoot, wKey & MSK(nBL));
 
         // What if link has more than just ln_wRoot due
         // to BM_IN_LINK and/or PP_IN_LINK?
@@ -2796,7 +2815,6 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     else
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
     {
-        unsigned nBL = nDL_to_nBL(nDL);
         Word_t *pwr = wr_pwr(wRoot);
 
         ClrBit(pwr, wKey & MSK(nBL));
