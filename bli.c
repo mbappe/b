@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.322 2014/08/18 00:26:30 mike Exp mike $
+// @(#) $Id: bli.c,v 1.323 2014/08/18 14:50:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -571,7 +571,9 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     // correct, but maybe expensive.
     // Is or'ing in MSK(cnBitsMallocMask << 1) sufficient?
     // Is there a better way?
-    wXor |= MSK(cnBitsMallocMask + 1);
+    //wXor |= MSK(cnBitsMallocMask + 1);
+    wXor |= (nBL == (cnBitsPerWord - cnBitsMallocMask))
+                 ? cnMallocMask : MSK(cnBitsMallocMask + 1);
     Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key
     return ((wXor - wLsbs) & ~wXor & wMsbs) ? Success : Failure;
 }

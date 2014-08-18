@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.320 2014/08/18 00:08:12 mike Exp mike $
+// @(#) $Id: b.c,v 1.321 2014/08/18 14:53:10 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -460,7 +460,7 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType)
 
 #endif // (cwListPopCntMax != 0)
 
-#if (cnBitsAtBottom > cnLogBitsPerWord)
+#if (cnBitsAtBottom > cnLogBitsPerWord) || defined(BM_AT_DL2)
 
 static Word_t *
 NewBitmap(Word_t *pwRoot, unsigned nBL)
@@ -486,7 +486,7 @@ NewBitmap(Word_t *pwRoot, unsigned nBL)
     return pwBitmap;
 }
 
-#endif // (cnBitsAtBottom > cnLogBitsPerWord)
+#endif // (cnBitsAtBottom > cnLogBitsPerWord) || defined(BM_AT_DL2)
 
 static Word_t
 OldBitmap(Word_t *pwRoot, Word_t *pwr, unsigned nBL)
