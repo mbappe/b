@@ -272,10 +272,9 @@
 #endif // ! defined(cwListPopCntMax)
 
 #if defined(BPD_TABLE)
-// Yuck!  This assumes two half-size digits above the bottom.
-// Or the insertion of an extra digit somewhere else.
+#define cnBitsAtDl2  (cnBitsPerDigit / 2)
 #define cnDigitsPerWord \
-    (DIV_UP(cnBitsPerWord - cnBitsAtBottom, cnBitsPerDigit) + 2)
+    (DIV_UP(cnBitsPerWord - cnBitsAtBottom - cnBitsAtDl2, cnBitsPerDigit) + 2)
 #else // defined(BPD_TABLE)
 #define cnDigitsPerWord \
     (DIV_UP(cnBitsPerWord - cnBitsAtBottom, cnBitsPerDigit) + 1)
@@ -328,11 +327,14 @@ enum {
 extern const unsigned anDL_to_nBL[];
 extern const unsigned anDL_to_nBitsIndexSz[];
 
-// this one is not used in the lookup performance path
-#define nDL_to_nBitsIndexSz(_nDL)     anDL_to_nBitsIndexSz[_nDL]
-#define nDL_to_nBitsIndexSzNAX(_nDL)  nDL_to_nBitsIndexSz(_nDL)
-#define nDL_to_nBitsIndexSzNAB(_nDL)  nDL_to_nBitsIndexSz(_nDL)
-#define nDL_to_nBitsIndexSzNAT(_nDL)  nDL_to_nBitsIndexSz(_nDL)
+#define nDL_to_nBitsIndexSz(_nDL) \
+    (((_nDL) < cnDigitsPerWord) \
+        ? anDL_to_nBitsIndexSz[_nDL] \
+        : cnBitsPerWord - nDL_to_nBL_NAT((_nDL) - 1))
+
+#define nDL_to_nBitsIndexSzNAX(_nDL)  anDL_to_nBitsIndexSz[_nDL]
+#define nDL_to_nBitsIndexSzNAB(_nDL)  anDL_to_nBitsIndexSz[_nDL]
+#define nDL_to_nBitsIndexSzNAT(_nDL)  anDL_to_nBitsIndexSz[_nDL]
 
 // this one is not used in the lookup performance path
 #define cnBitsIndexSzAtTop  nDL_to_nBitsIndexSz(cnDigitsPerWord)
