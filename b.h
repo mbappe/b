@@ -327,6 +327,11 @@ enum {
 extern const unsigned anDL_to_nBL[];
 extern const unsigned anDL_to_nBitsIndexSz[];
 
+#define nDL_to_nBL_NAT(_nDL)  anDL_to_nBL[_nDL]
+
+#define nDL_to_nBL(_nDL) \
+    (((_nDL) < cnDigitsPerWord) ? anDL_to_nBL[_nDL] : cnBitsPerWord)
+
 #define nDL_to_nBitsIndexSz(_nDL) \
     (((_nDL) < cnDigitsPerWord) \
         ? anDL_to_nBitsIndexSz[_nDL] \
@@ -339,16 +344,10 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 // this one is not used in the lookup performance path
 #define cnBitsIndexSzAtTop  nDL_to_nBitsIndexSz(cnDigitsPerWord)
 
-// this one is not used in the lookup performance path
-#define nDL_to_nBL(_nDL) \
-    (((_nDL) < cnDigitsPerWord) ? anDL_to_nBL[_nDL] : cnBitsPerWord)
-
-#define nDL_to_nBL_NAT(_nDL)  nDL_to_nBL(_nDL)
-
 #define nBL_to_nDL(_nBL) \
     (((_nBL) <= cnBitsAtBottom) ? 1 \
-        : ((_nBL) <= cnBitsAtBottom + cnBitsPerDigit / 2) ? 2 \
-        : (DIV_UP((_nBL) - cnBitsAtBottom, cnBitsPerDigit) + 2))
+        : ((_nBL) <= cnBitsAtBottom + cnBitsAtDl2) ? 2 \
+        : (DIV_UP((_nBL) - cnBitsAtBottom - cnBitsAtDl2, cnBitsPerDigit) + 2))
 
 #else // defined(BPD_TABLE)
 
