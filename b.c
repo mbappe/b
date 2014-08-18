@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.323 2014/08/18 20:47:26 mike Exp mike $
+// @(#) $Id: b.c,v 1.324 2014/08/18 20:56:52 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -40,6 +40,10 @@ Word_t j__AllocWordsJV12;  // Value Area 12-bit Decode
 #endif // 0
 
 #if defined(BPD_TABLE)
+
+// Unfortunately, it is not sufficient to change these two tables to
+// effect arbitrary switch sizes.
+// It is necessary to tweak cnDigitsPerWord in b.h also.
 
 const unsigned anDL_to_nBitsIndexSz[] = {
                  0, cnBitsAtBottom, cnBitsAtDl2,    cnBitsPerDigit,

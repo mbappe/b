@@ -271,14 +271,12 @@
    + cnListPopCntMaxDl1)
 #endif // ! defined(cwListPopCntMax)
 
-#if defined(BPD_TABLE)
-  #if ! defined(cnBitsAtDl2)
-#define cnBitsAtDl2  (cnBitsPerDigit / 2)
-  #endif // ! defined(cnBitsAtDl2)
-#else // defined(BPD_TABLE)
+#if ! defined(cnBitsAtDl2)
 #define cnBitsAtDl2  (cnBitsPerDigit)
-#endif // defined(BPD_TABLE)
+#endif // ! defined(cnBitsAtDl2)
 
+// cnDigitsPerWord makes assumptions about anDL_to_nBitsIndexSz[] and
+// anDL_to_nBL.  Yuck.
 #define cnDigitsPerWord \
     (DIV_UP(cnBitsPerWord - cnBitsAtBottom - cnBitsAtDl2, cnBitsPerDigit) + 2)
 
@@ -354,30 +352,53 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #else // defined(BPD_TABLE)
 
 #define cnBitsIndexSzAtTop \
-    (cnBitsPerWord - cnBitsAtBottom - (cnDigitsPerWord - 2) * cnBitsPerDigit)
+    (cnBitsPerWord - cnBitsAtBottom - cnBitsAtDl2 \
+        - (cnDigitsPerWord - 3) * cnBitsPerDigit)
+
+#if (cnBitsAtDl2 == cnBitsPerDigit)
 
 #define nDL_to_nBitsIndexSzNAX(_nDL)  (cnBitsPerDigit)
-
-#define nDL_to_nBitsIndexSzNAB(_nDL) \
-    (((_nDL) == cnDigitsPerWord) ? cnBitsIndexSzAtTop : cnBitsPerDigit)
-
-#define nDL_to_nBitsIndexSzNAT(_nDL) \
-    (((_nDL) == 1) ? cnBitsAtBottom : cnBitsPerDigit)
-
-// this one is not used in the lookup performance path
-#define nDL_to_nBitsIndexSz(_nDL) \
-    (((_nDL) == cnDigitsPerWord) \
-        ? cnBitsIndexSzAtTop : nDL_to_nBitsIndexSzNAT(_nDL))
 
 #define nDL_to_nBL_NAT(_nDL) \
     (((_nDL) - 1) * cnBitsPerDigit + cnBitsAtBottom)
 
+#define nBL_to_nDL(_nBL) \
+    (DIV_UP((_nBL) + (cnBitsPerDigit * 64) - cnBitsAtBottom, cnBitsPerDigit) \
+        - 63)
+ 
+#else // (cnBitsAtDl2 == cnBitsPerDigit)
+
+#define nDL_to_nBitsIndexSzNAX(_nDL) \
+    ((_nDL) == 2 ? cnBitsAtDl2 : cnBitsPerDigit)
+
+#define nDL_to_nBL_NAT(_nDL) \
+    (((_nDL) == 1) ? cnBitsAtBottom \
+                   : cnBitsAtBottom + cnBitsAtDl2 \
+                       + ((_nDL) - 2) * cnBitsPerDigit)
+
+#define nBL_to_nDL(_nBL) \
+    ((_nBL) <= cnBitsAtBottom ? 1 \
+        : (DIV_UP((_nBL) + (cnBitsPerDigit * 64) \
+                    - cnBitsAtBottom - cnBitsAtDl2, \
+                cnBitsPerDigit) \
+            - 62))
+
+#endif // (cnBitsAtDl2 == cnBitsPerDigit)
+
+#define nDL_to_nBitsIndexSzNAB(_nDL) \
+    (((_nDL) == cnDigitsPerWord) \
+        ? cnBitsIndexSzAtTop \
+        : nDL_to_nBitsIndexSzNAX(_nDL))
+
+#define nDL_to_nBitsIndexSzNAT(_nDL) \
+    (((_nDL) == 1) ? cnBitsAtBottom : nDL_to_nBitsIndexSzNAX(_nDL))
+
+#define nDL_to_nBitsIndexSz(_nDL) \
+    (((_nDL) == cnDigitsPerWord) \
+        ? cnBitsIndexSzAtTop : nDL_to_nBitsIndexSzNAT(_nDL))
+
 #define nDL_to_nBL(_nDL) \
     (((_nDL) == cnDigitsPerWord) ? cnBitsPerWord : nDL_to_nBL_NAT(_nDL))
-
-// this one is not used in the lookup performance path
-#define nBL_to_nDL(_nBL) \
-     (DIV_UP((_nBL) - cnBitsAtBottom, cnBitsPerDigit) + 1)
 
 #endif // defined(BPD_TABLE)
 
