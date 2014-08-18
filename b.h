@@ -271,12 +271,6 @@
    + cnListPopCntMaxDl1)
 #endif // ! defined(cwListPopCntMax)
 
-// Default is -DBITMAP_ANYWHERE.
-#if ! defined(NO_BITMAP_ANYWHERE)
-#undef  BITMAP_ANYWHERE
-#define BITMAP_ANYWHERE
-#endif // ! defined(NO_BITMAP_ANYWHERE)
-
 #if defined(BPD_TABLE)
 // Yuck!  This assumes two half-size digits above the bottom.
 // Or the insertion of an extra digit somewhere else.
