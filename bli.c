@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.319 2014/08/15 23:31:13 mike Exp mike $
+// @(#) $Id: bli.c,v 1.320 2014/08/16 00:44:52 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -594,6 +594,84 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 #endif // defined(PAD_T_ONE)
 #endif // (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(HAS_KEY)
 
+static int
+PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t wKey, unsigned nDL,
+               unsigned *pnDLR,
+               Word_t **ppwRootPrefix,
+               Word_t **ppwrPrefix,
+               unsigned *pnDLRPrefix,
+               int *pbNeedPrefixCheck)
+{
+    (void)pwRoot; (void)pnDLR; (void)ppwRootPrefix; (void)ppwrPrefix;
+    (void)pnDLRPrefix; (void)pbNeedPrefixCheck;
+
+    unsigned nType = wr_nType(wRoot);
+    Word_t *pwr = wr_tp_pwr(wRoot, nType); (void)pwr;
+    unsigned nDLR;
+    int bPrefixMismatch;
+
+#if defined(SKIP_LINKS)
+  #if defined(TYPE_IS_RELATIVE)
+        nDLR = nDL - tp_to_nDS(nType);
+  #else // defined(TYPE_IS_RELATIVE)
+        nDLR = tp_to_nDL(nType);
+  #endif // defined(TYPE_IS_RELATIVE)
+        assert(nDLR <= nDL); // reserved
+#else // defined(SKIP_LINKS)
+        nDLR = nDL; // prev
+#endif // defined(SKIP_LINKS)
+
+#if defined(SKIP_LINKS)
+  #if defined(TYPE_IS_RELATIVE)
+        assert(nDLR < nDL);
+  #endif // defined(TYPE_IS_RELATIVE)
+  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+      #if defined(SAVE_PREFIX)
+        // Save info needed for prefix check at leaf.
+        // Does this obviate the need for requiring a branch above the
+        // bitmap as a place holder for the prefix check at the leaf?
+        // It just might.
+        // Maybe it's faster to use a word that is shared by all
+        // than one that is shared by fewer.
+          #if defined(PP_IN_LINK)
+        pwRootPrefix = pwRoot;
+          #else // defined(PP_IN_LINK)
+        pwrPrefix = pwr;
+          #endif // defined(PP_IN_LINK)
+        nDLRPrefix = nDLR;
+      #endif // defined(SAVE_PREFIX)
+      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+        // Record that there were prefix bits that were not checked.
+          #if defined(TYPE_IS_RELATIVE)
+        bNeedPrefixCheck |= 1;
+          #else // defined(TYPE_IS_RELATIVE)
+        bNeedPrefixCheck |= (nDLR < nDL);
+          #endif // defined(TYPE_IS_RELATIVE)
+      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+  #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+        bPrefixMismatch = (1
+      #if ! defined(TYPE_IS_RELATIVE)
+            && (nDLR < nDL)
+      #endif // ! defined(TYPE_IS_RELATIVE)
+            && (LOG(1 | (PWR_wPrefixNAT(pwRoot,
+                                        (Switch_t *)pwr, nDLR) ^ wKey))
+                    >= nDL_to_nBL_NAT(nDLR)));
+      #if ! defined(LOOKUP) || ! defined(SAVE_PREFIX_TEST_RESULT)
+        if (bPrefixMismatch)
+        {
+            DBGX(printf("Mismatch wPrefix "Owx"\n",
+                        PWR_wPrefixNAT(pwRoot, (Switch_t *)pwr, nDLR)));
+            return 1; // prefix mismatch
+        }
+      #endif // ! defined(LOOKUP) || ! defined(SAVE_PREFIX_TEST_RESULT)
+  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#endif // defined(SKIP_LINKS)
+
+    *pnDLR = nDLR;
+
+    return 0; // no prefix mismatch
+}
+
 #if defined(LOOKUP)
 static Status_t
 Lookup(Word_t wRoot, Word_t wKey)
@@ -603,13 +681,9 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 #endif // defined(LOOKUP)
 {
     unsigned nDLUp; (void)nDLUp; // silence gcc
+    int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
 #if defined(LOOKUP)
     unsigned nDL = cnDigitsPerWord;
-  #if defined(SKIP_LINKS)
-      #if defined(SKIP_PREFIX_CHECK) && ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-    unsigned bNeedPrefixCheck = 0;
-      #endif // defined(SKIP_PREFIX_CHECK) && ! ALWAYS_CHECK_PREFIX_AT_LEAF
-  #endif // defined(SKIP_LINKS)
     Word_t *pwRoot;
   #if defined(BM_IN_LINK)
     pwRoot = NULL; // used for top detection
@@ -652,14 +726,9 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     int bPrefixMismatch = 0; (void)bPrefixMismatch;
 
-#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && defined(SAVE_PREFIX)
-  #if defined(PP_IN_LINK)
-    Word_t *pwRootPrefix = NULL;
-  #else // defined(PP_IN_LINK)
-    Word_t *pwrPrefix = NULL;
-  #endif // defined(PP_IN_LINK)
-    Word_t nDLRPrefix = 0;
-#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && defined(SAVE_PREFIX)
+    Word_t *pwRootPrefix = NULL; (void)pwRootPrefix;
+    Word_t *pwrPrefix = NULL; (void)pwrPrefix;
+    unsigned nDLRPrefix = 0; (void)nDLRPrefix;
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
@@ -701,64 +770,11 @@ again:
     {
         // pwr points to a switch
 
-#if defined(SKIP_LINKS)
-  #if defined(TYPE_IS_RELATIVE)
-        nDLR = nDL - tp_to_nDS(nType);
-  #else // defined(TYPE_IS_RELATIVE)
-        nDLR = tp_to_nDL(nType);
-  #endif // defined(TYPE_IS_RELATIVE)
-        assert(nDLR <= nDL); // reserved
-#else // defined(SKIP_LINKS)
-        nDLR = nDL; // prev
-#endif // defined(SKIP_LINKS)
-
-        DBGX(printf("Switch nDLR %d pwr %p\n", nDLR, (void *)pwr));
-
-#if defined(SKIP_LINKS)
-  #if defined(TYPE_IS_RELATIVE)
-        assert(nDLR < nDL);
-  #endif // defined(TYPE_IS_RELATIVE)
-  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-      #if defined(SAVE_PREFIX)
-        // Save info needed for prefix check at leaf.
-        // Does this obviate the need for requiring a branch above the
-        // bitmap as a place holder for the prefix check at the leaf?
-        // It just might.
-        // Maybe it's faster to use a word that is shared by all
-        // than one that is shared by fewer.
-          #if defined(PP_IN_LINK)
-        pwRootPrefix = pwRoot;
-          #else // defined(PP_IN_LINK)
-        pwrPrefix = pwr;
-          #endif // defined(PP_IN_LINK)
-        nDLRPrefix = nDLR;
-      #endif // defined(SAVE_PREFIX)
-      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-        // Record that there were prefix bits that were not checked.
-          #if defined(TYPE_IS_RELATIVE)
-        bNeedPrefixCheck |= 1;
-          #else // defined(TYPE_IS_RELATIVE)
-        bNeedPrefixCheck |= (nDLR < nDL);
-          #endif // defined(TYPE_IS_RELATIVE)
-      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-  #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-        bPrefixMismatch = (1
-      #if ! defined(TYPE_IS_RELATIVE)
-            && (nDLR < nDL)
-      #endif // ! defined(TYPE_IS_RELATIVE)
-            && (LOG(1 | (PWR_wPrefixNAT(pwRoot,
-                                        (Switch_t *)pwr, nDLR) ^ wKey))
-                    >= nDL_to_nBL_NAT(nDLR)));
-      #if ! defined(LOOKUP) || ! defined(SAVE_PREFIX_TEST_RESULT)
-        if (bPrefixMismatch)
+        if (PrefixMismatch(pwRoot, wRoot, wKey, nDL, &nDLR, &pwRootPrefix,
+                           &pwrPrefix, &nDLRPrefix, &bNeedPrefixCheck))
         {
-            DBGX(printf("Mismatch wPrefix "Owx"\n",
-                        PWR_wPrefixNAT(pwRoot, (Switch_t *)pwr, nDLR)));
             break;
         }
-      #endif // ! defined(LOOKUP) || ! defined(SAVE_PREFIX_TEST_RESULT)
-  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-#endif // defined(SKIP_LINKS)
 
 #if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
         // fall into next case
