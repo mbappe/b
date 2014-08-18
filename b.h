@@ -774,6 +774,12 @@ typedef struct {
 
 #define N_WORDS_SWITCH_BM  DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
 
+//
+// When trying to make ! PP_IN_LINK use the same amount of memory as
+// PP_IN_LINK:
+//   -UPP_IN_LINK -DcnDummiesInLink=1 -DNO_SKIP_AT_TOP
+//   -DPP_IN_LINK -DDUMMY_POP_CNT_IN_LIST
+//
 typedef struct {
     Word_t ln_wRoot;
 #if defined(BM_IN_LINK)
