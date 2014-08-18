@@ -272,13 +272,15 @@
 #endif // ! defined(cwListPopCntMax)
 
 #if defined(BPD_TABLE)
+  #if ! defined(cnBitsAtDl2)
 #define cnBitsAtDl2  (cnBitsPerDigit / 2)
+  #endif // ! defined(cnBitsAtDl2)
+#else // defined(BPD_TABLE)
+#define cnBitsAtDl2  (cnBitsPerDigit)
+#endif // defined(BPD_TABLE)
+
 #define cnDigitsPerWord \
     (DIV_UP(cnBitsPerWord - cnBitsAtBottom - cnBitsAtDl2, cnBitsPerDigit) + 2)
-#else // defined(BPD_TABLE)
-#define cnDigitsPerWord \
-    (DIV_UP(cnBitsPerWord - cnBitsAtBottom, cnBitsPerDigit) + 1)
-#endif // defined(BPD_TABLE)
 
 // Default is -DEMBED_KEYS which implies T_ONE.
 // EMBED_KEYS implies T_ONE
