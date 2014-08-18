@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.321 2014/08/18 00:08:20 mike Exp mike $
+// @(#) $Id: bli.c,v 1.322 2014/08/18 00:26:30 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -683,6 +683,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 {
     unsigned nDLUp; (void)nDLUp; // silence gcc
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
+    unsigned nBL; (void)nBL;
 #if defined(LOOKUP)
     unsigned nDL = cnDigitsPerWord;
     Word_t *pwRoot;
@@ -792,12 +793,14 @@ again:
         nDLUp = nDL;
 #endif // ( ! defined(LOOKUP) && defined(PP_IN_LINK) || defined(REMOVE) )
         nDL = nDLR - 1;
+        nBL = nDL_to_nBL_NAT(nDL);
 
-        Word_t wIndex = ((wKey >> nDL_to_nBL_NAT(nDL))
-            // we can use NAT here even though we might be at top because
-            // we're using it to mask off high bits and if we're at the
-            // top then none of the high bits will be set anyway;
-            // it's faster to do arithmetic than test to avoid it
+        Word_t wIndex = ((wKey >> nBL)
+            // It is ok to use NAX here even though we might be at top because
+            // we don't care if it returns an index size that is too big.
+            // Of course, this assumes that NAX will yield nBitsIndexSz
+            // greater than or equal to the actual value and won't cause
+            // a crash.
             & (EXP(nDL_to_nBitsIndexSzNAX(nDLR)) - 1));
 
 #if !defined(LOOKUP)
@@ -903,12 +906,14 @@ notEmpty:;
         DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
 
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-        // We may need to check the prefix of the switch we just
-        // visited in the next iteration of the loop
-        // #if defined(COMPRESSED_LISTS)
-        // so we preserve the value of pwr.
+        // We may need to check the prefix of the switch we just visited in
+        // the next iteration of the loop if we've reached a leaf so we
+        // preserve the value of pwr.
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#if (cnBitsAtBottom <= cnLogBitsPerWord)
+        if (nBL <= cnLogBitsPerWord) { goto embeddedBitmap; }
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 #if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
         nDLR = nDL;
 #endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
@@ -933,12 +938,14 @@ notEmpty:;
         nDLUp = nDL;
 #endif // defined(BM_SWITCH_FOR_REAL) ...
         nDL = nDLR - 1;
+        nBL = nDL_to_nBL_NAT(nDL);
 
-        Word_t wIndex = ((wKey >> nDL_to_nBL_NAT(nDL))
-            // we can use NAT here even though we might be at top because
-            // we're using it to mask off high bits and if we're at the
-            // top then none of the high bits will be set anyway;
-            // it's faster to do arithmetic than test to avoid it
+        Word_t wIndex = ((wKey >> nBL)
+            // It is ok to use NAX here even though we might be at top because
+            // we don't care if it returns an index size that is too big.
+            // Of course, this assumes that NAX will yield nBitsIndexSz
+            // greater than or equal to the actual value and won't cause
+            // a crash.
             & (EXP(nDL_to_nBitsIndexSzNAX(nDLR)) - 1));
 
   #if defined(BM_IN_LINK)
@@ -1110,12 +1117,14 @@ notEmptyBm:;
         DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
 
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-        // We may need to check the prefix of the switch we just
-        // visited in the next iteration of the loop
-        // #if defined(COMPRESSED_LISTS)
-        // so we preserve the value of pwr.
+        // We may need to check the prefix of the switch we just visited in
+        // the next iteration of the loop if we've reached a leaf so we
+        // preserve the value of pwr.
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#if (cnBitsAtBottom <= cnLogBitsPerWord)
+        if (nBL <= cnLogBitsPerWord) { goto embeddedBitmap; }
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 #if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
         nDLR = nDL;
 #endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
@@ -1288,6 +1297,9 @@ notEmptyBm:;
     case T_BITMAP | EXP(cnBitsMallocMask):
 #endif // defined(EXTRA_TYPES)
     {
+#if (cnBitsAtBottom <= cnLogBitsPerWord)
+embeddedBitmap:
+#endif // (cnBitsAtBottom <= cnLogBitsPerWord)
         // This case has been enhanced to handle a bitmap at any level.
         // It used to assume we were at nDL == 1.
 
@@ -1334,19 +1346,11 @@ notEmptyBm:;
                             ^ wKey))
                 // The +1 is necessary because the pwrPrev
                 // prefix does not contain any less significant bits.
-              #if defined(BITMAP_ANYWHERE)
-                  #if defined(PP_IN_LINK)
+              #if defined(PP_IN_LINK)
                 < nDL_to_nBL_NAT(nDL    )
-                  #else // defined(PP_IN_LINK)
+              #else // defined(PP_IN_LINK)
                 < nDL_to_nBL_NAT(nDL + 1)
-                  #endif // defined(PP_IN_LINK)
-              #else // defined(BITMAP_ANYWHERE)
-                  #if defined(PP_IN_LINK)
-                < (cnBitsAtBottom                 )
-                  #else // defined(PP_IN_LINK)
-                < (cnBitsAtBottom + cnBitsPerDigit)
-                  #endif // defined(PP_IN_LINK)
-              #endif // defined(BITMAP_ANYWHERE)
+              #endif // defined(PP_IN_LINK)
                                   )
           #endif // defined(SAVE_PREFIX)
             )
@@ -1354,6 +1358,8 @@ notEmptyBm:;
   #endif // defined(SKIP_LINKS)
         {
   #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
+            // BUG?: Is pwrPrev valid here, i.e. does it mean what this code
+            // thinks it means?  Since SKIP_PREFIX_CHECK may not be #defined?
             assert(PWR_wPopCnt(pwRoot, pwrPrev,
               #if defined(PP_IN_LINK)
                 nDL_to_nBL_NAT(nDL    )
@@ -1363,12 +1369,15 @@ notEmptyBm:;
                                ) != 0);
             return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
-      #if defined(BITMAP_ANYWHERE)
-            if (BitIsSet(wr_pwr(wRoot),
-                    wKey & (EXP(nDL_to_nBL_NAT(nDL)) - 1UL)))
-      #else // defined(BITMAP_ANYWHERE)
-            if (BitIsSet(wr_pwr(wRoot), wKey & (EXP(cnBitsAtBottom) - 1UL)))
-      #endif // defined(BITMAP_ANYWHERE)
+            nBL = nDL_to_nBL_NAT(nDL);
+      #if (cnBitsAtBottom <= cnLogBitsPerWord)
+            // If nBL == cnLogBitsPerWord, then do we really need to
+            // mask wKey or would the shift in the macro take care of it?
+            // We definitely need the mask if nBL < cnLogBitsPerWord.
+            if (BitIsSetInWord(wRoot, wKey & (EXP(nBL) - 1UL)))
+      #else // (cnBitsAtBottom <= cnLogBitsPerWord)
+            if (BitIsSet(wr_pwr(wRoot), wKey & (EXP(nBL) - 1UL)))
+      #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
             {
       #if defined(REMOVE)
                 RemoveGuts(pwRoot, wKey, nDL, wRoot);
@@ -1377,9 +1386,6 @@ notEmptyBm:;
       #if defined(INSERT) && !defined(RECURSIVE)
                 if (nIncr > 0)
                 {
-                    DBGX(printf(
-                      "BitmapWordNum %"_fw"d BitmapWordMask "OWx"\n",
-                       BitmapWordNum(wKey), BitmapWordMask(wKey)));
                     DBGX(printf("Bit is set!\n"));
                     goto undo; // undo counting 
                 }
@@ -1757,11 +1763,6 @@ static int bInitialized;
 static void
 Initialize(void)
 {
-    // cnBitsAtBottom less than or equal to cnLogBitsPerWord makes
-    // no sense anymore.  It's equivalent to cnBitsAtBottom equals
-    // cnLogBitsPerWord plus cnBitsPerDigit -- only worse.
-    assert(cnBitsAtBottom > cnLogBitsPerWord);
-
     // Search assumes lists are sorted if LIST_END_MARKERS is defined.
 #if defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
     assert(0);
