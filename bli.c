@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.320 2014/08/16 00:44:52 mike Exp mike $
+// @(#) $Id: bli.c,v 1.321 2014/08/18 00:08:20 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -602,13 +602,14 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t wKey, unsigned nDL,
                unsigned *pnDLRPrefix,
                int *pbNeedPrefixCheck)
 {
-    (void)pwRoot; (void)pnDLR; (void)ppwRootPrefix; (void)ppwrPrefix;
-    (void)pnDLRPrefix; (void)pbNeedPrefixCheck;
+    (void)pwRoot; (void)wKey; (void)pnDLR;
+    (void)ppwRootPrefix; (void)ppwrPrefix; (void)pnDLRPrefix;
+    (void)pbNeedPrefixCheck;
 
     unsigned nType = wr_nType(wRoot);
     Word_t *pwr = wr_tp_pwr(wRoot, nType); (void)pwr;
     unsigned nDLR;
-    int bPrefixMismatch;
+    int bPrefixMismatch; (void)bPrefixMismatch;
 
 #if defined(SKIP_LINKS)
   #if defined(TYPE_IS_RELATIVE)
@@ -634,18 +635,18 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t wKey, unsigned nDL,
         // Maybe it's faster to use a word that is shared by all
         // than one that is shared by fewer.
           #if defined(PP_IN_LINK)
-        pwRootPrefix = pwRoot;
+        *ppwRootPrefix = pwRoot;
           #else // defined(PP_IN_LINK)
-        pwrPrefix = pwr;
+        *ppwrPrefix = pwr;
           #endif // defined(PP_IN_LINK)
-        nDLRPrefix = nDLR;
+        *pnDLRPrefix = nDLR;
       #endif // defined(SAVE_PREFIX)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
         // Record that there were prefix bits that were not checked.
           #if defined(TYPE_IS_RELATIVE)
-        bNeedPrefixCheck |= 1;
+        *pbNeedPrefixCheck |= 1;
           #else // defined(TYPE_IS_RELATIVE)
-        bNeedPrefixCheck |= (nDLR < nDL);
+        *pbNeedPrefixCheck |= (nDLR < nDL);
           #endif // defined(TYPE_IS_RELATIVE)
       #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
   #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -770,7 +771,8 @@ again:
     {
         // pwr points to a switch
 
-        if (PrefixMismatch(pwRoot, wRoot, wKey, nDL, &nDLR, &pwRootPrefix,
+        if (PrefixMismatch(pwRoot, wRoot, wKey, nDL,
+                           &nDLR, &pwRootPrefix,
                            &pwrPrefix, &nDLRPrefix, &bNeedPrefixCheck))
         {
             break;
@@ -1214,11 +1216,12 @@ notEmptyBm:;
             // If we need a prefix check, then we're not at the top.
             // And pwRoot is initialized despite what gcc might think.
               #if defined(SAVE_PREFIX)
-            || (LOG(1 | (PWR_wPrefixNAT(pwRootPrefix, pwrPrefix, nDLRPrefix)
-                    ^ wKey))
+            || (LOG(1 | (PWR_wPrefixNAT(pwRootPrefix,
+                                        (Switch_t *)pwrPrefix, nDLRPrefix)
+                            ^ wKey))
                 < nDL_to_nBL(nDLRPrefix))
               #else // defined(SAVE_PREFIX)
-            || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwrPrev, nDL)
+            || (LOG(1 | (PWR_wPrefixNAT(pwRoot, (Switch_t *)pwrPrev, nDL)
                     ^ wKey))
                 < (nBL
                   #if ! defined(PP_IN_LINK)
@@ -1327,7 +1330,8 @@ notEmptyBm:;
             // if not PP_IN_LINK.  If PP_IN_LINK, then we are using the
             // current pwRoot to find the prefix.
             // nDL is different for the two cases.
-            || (LOG(1 | (PWR_wPrefixNAT(pwRoot, pwrPrev, nDL) ^ wKey))
+            || (LOG(1 | (PWR_wPrefixNAT(pwRoot, (Switch_t *)pwrPrev, nDL)
+                            ^ wKey))
                 // The +1 is necessary because the pwrPrev
                 // prefix does not contain any less significant bits.
               #if defined(BITMAP_ANYWHERE)
