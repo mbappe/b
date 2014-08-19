@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.324 2014/08/18 20:56:52 mike Exp $
+// @(#) $Id: b.c,v 1.325 2014/08/18 21:53:47 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2032,8 +2032,19 @@ newSwitch:
                 NewSwitch(pwRoot, wKey, nDL, /* bBmSw */ nDL == nDLOld,
                           nDLOld, /* wPopCnt */ 0);
 #else // defined(USE_BM_SW)
+#if defined(BM_SW_AT_DL2)
+                // We want a bm switch at dl2, but we don't currently support
+                // skipping to a bm switch.
+                if ((nDL == 2) && (nDLOld != nDL)) {
+                    assert(nDLOld >= 3);
+                    nDL = 3;
+                }
+                NewSwitch(pwRoot, wKey, nDL, /* bBmSw */ (nDL == 2),
+                          nDLOld, /* wPopCnt */ 0);
+#else // defined(BM_SW_AT_DL2)
                 NewSwitch(pwRoot, wKey, nDL, /* bBmSw */ 0,
                           nDLOld, /* wPopCnt */ 0);
+#endif // defined(BM_SW_AT_DL2)
 #endif // defined(USE_BM_SW)
                     if (nDL == nDLOld) {
                     DBGI(printf("\n# InsertGuts After NewSwitch Dump\n"));
