@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.323 2014/08/18 14:50:29 mike Exp mike $
+// @(#) $Id: bli.c,v 1.324 2014/08/18 16:00:47 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -260,6 +260,7 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
 
+#if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 16)
 
 // Find wKey (the undecoded bits) in the list.
@@ -324,6 +325,7 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 }
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) && ...
+#endif // ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
 
 //
 // Valid combinations:
@@ -493,6 +495,7 @@ Word_t cnMagic[] = {
 #define hasvalue(x,n) (haszero((x) ^ (-((Word_t)1))/255 * (n)))
 #endif  // TBD
 
+#if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
 // If it does not exist, then return the one's complement of the index where
@@ -534,6 +537,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
         return SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt);
     }
 }
+#endif // ! defined(LOOKUP_NO_LIST_DEREF)
 
 #endif // (cwListPopCntMax != 0)
 
@@ -552,6 +556,7 @@ WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
 }
 #endif
 
+#if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
 #if (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(HAS_KEY)
 #if defined(PAD_T_ONE)
 
@@ -595,6 +600,7 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 
 #endif // defined(PAD_T_ONE)
 #endif // (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(HAS_KEY)
+#endif // ! defined(LOOKUP_NO_LIST_DEREF)
 
 static int
 PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t wKey, unsigned nDL,
@@ -914,6 +920,7 @@ notEmpty:;
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #if (cnBitsAtBottom <= cnLogBitsPerWord)
+        // We have to get rid of this 'if' by putting it in the switch.  How?
         if (nBL <= cnLogBitsPerWord) { goto embeddedBitmap; }
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 #if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
@@ -1125,6 +1132,7 @@ notEmptyBm:;
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #if (cnBitsAtBottom <= cnLogBitsPerWord)
+        // We have to get rid of this 'if' by putting it in the switch.  How?
         if (nBL <= cnLogBitsPerWord) { goto embeddedBitmap; }
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 #if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
