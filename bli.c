@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.324 2014/08/18 16:00:47 mike Exp mike $
+// @(#) $Id: bli.c,v 1.325 2014/08/19 11:51:58 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1132,8 +1132,15 @@ notEmptyBm:;
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #if (cnBitsAtBottom <= cnLogBitsPerWord)
+#if defined(BM_SW_AT_DL2_ONLY)
+        assert(nBL <= cnLogBitsPerWord);
+#else // defined(BM_SW_AT_DL2_ONLY)
         // We have to get rid of this 'if' by putting it in the switch.  How?
-        if (nBL <= cnLogBitsPerWord) { goto embeddedBitmap; }
+        if (nBL <= cnLogBitsPerWord)
+#endif // defined(BM_SW_AT_DL2_ONLY)
+        {
+            goto embeddedBitmap;
+        }
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
 #if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
         nDLR = nDL;

@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.325 2014/08/18 21:53:47 mike Exp mike $
+// @(#) $Id: b.c,v 1.326 2014/08/19 11:51:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2028,10 +2028,6 @@ newSwitch:
                 // NewSwitch overwrites *pwRoot which is a problem for
                 // T_ONE with embedded keys.
 
-#if defined(USE_BM_SW)
-                NewSwitch(pwRoot, wKey, nDL, /* bBmSw */ nDL == nDLOld,
-                          nDLOld, /* wPopCnt */ 0);
-#else // defined(USE_BM_SW)
 #if defined(BM_SW_AT_DL2)
                 // We want a bm switch at dl2, but we don't currently support
                 // skipping to a bm switch.
@@ -2039,19 +2035,26 @@ newSwitch:
                     assert(nDLOld >= 3);
                     nDL = 3;
                 }
-                NewSwitch(pwRoot, wKey, nDL, /* bBmSw */ (nDL == 2),
-                          nDLOld, /* wPopCnt */ 0);
+#endif // defined(BM_SW_AT_DL2)
+
+                NewSwitch(pwRoot, wKey, nDL,
+#if defined(USE_BM_SW)
+                          /* bBmSw */ nDL == nDLOld,
+#else // defined(USE_BM_SW)
+#if defined(BM_SW_AT_DL2)
+                          /* bBmSw */ (nDL == 2),
 #else // defined(BM_SW_AT_DL2)
-                NewSwitch(pwRoot, wKey, nDL, /* bBmSw */ 0,
-                          nDLOld, /* wPopCnt */ 0);
+                          /* bBmSw */ 0,
 #endif // defined(BM_SW_AT_DL2)
 #endif // defined(USE_BM_SW)
-                    if (nDL == nDLOld) {
+                          nDLOld, /* wPopCnt */ 0);
+
+                if (nDL == nDLOld) {
                     DBGI(printf("\n# InsertGuts After NewSwitch Dump\n"));
                     DBGI(Dump(pwRootLast,
                               /* wPrefix */ (Word_t)0, cnBitsPerWord));
                     DBGI(printf("\n"));
-                    }
+                }
             }
 
 #if defined(COMPRESSED_LISTS)

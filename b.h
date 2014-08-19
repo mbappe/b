@@ -271,14 +271,23 @@
    + cnListPopCntMaxDl1)
 #endif // ! defined(cwListPopCntMax)
 
+#define cnBitsAtDl1  (cnBitsAtBottom)
+
 #if ! defined(cnBitsAtDl2)
 #define cnBitsAtDl2  (cnBitsPerDigit)
 #endif // ! defined(cnBitsAtDl2)
 
 // cnDigitsPerWord makes assumptions about anDL_to_nBitsIndexSz[] and
 // anDL_to_nBL.  Yuck.
+#if defined(cnBitsAtDl3)
+#define cnDigitsPerWord \
+    (DIV_UP(cnBitsPerWord - cnBitsAtBottom - cnBitsAtDl2 + cnBitsAtDl3, \
+            cnBitsPerDigit) \
+        + 3)
+#else // defined(cnBitsAtDl3)
 #define cnDigitsPerWord \
     (DIV_UP(cnBitsPerWord - cnBitsAtBottom - cnBitsAtDl2, cnBitsPerDigit) + 2)
+#endif // defined(cnBitsAtDl3)
 
 // Default is -DEMBED_KEYS which implies T_ONE.
 // EMBED_KEYS implies T_ONE
@@ -912,6 +921,13 @@ Word_t wDebugPopCnt; // sanity checking
 #undef  PSPLIT_SEARCH_WORD
 #define PSPLIT_SEARCH_WORD
 #endif // defined(PSPLIT_SEARCH_XOR_WORD)
+
+// Default is -UUSE_BM_SW, -UBM_SW_AT_DL2 and -UBM_SW_AT_DL2_ONLY.
+#if defined(BM_SW_AT_DL2_ONLY)
+#undef  USE_BM_SW
+#undef  BM_SW_AT_DL2
+#define BM_SW_AT_DL2
+#endif // defined(BM_SW_AT_DL2_ONLY)
 
 void HexDump(char *str, Word_t *pw, unsigned nWords);
 
