@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.327 2014/08/19 15:12:23 mike Exp mike $
+// @(#) $Id: b.c,v 1.328 2014/08/20 11:49:50 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -186,13 +186,29 @@ MyFree(Word_t *pw, Word_t wWords)
 
 #if (cwListPopCntMax != 0)
 
-// How many words needed for a T_LIST?
+// How many words are needed for a T_LIST leaf?
+// The layout of a list leaf depends on ifdefs and context.
+// One thing all T_LIST leaves have in common (presently) is an array of keys.
+// There may or may not be:
+// - some dummy words at the beginning: cnDummiesInList
+// - followed by a pop count: ! PP_IN_LINK or (list hangs from root word
+//   and cnDummiesInList == 0)
+// - or followed by a dummy pop count: PP_IN_LINK and DUMMY_POP_CNT_IN_LIST
+//   and list doesn't hang from root word
+//   - PP_IN_LINK root pop count goes in a dummy word: cnDummiesInList
+// - followed by some padding to align beginning of list: PSPLIT_PARALLEL
+// - followed by a marker key 0 at pxKeys[-1]
+// - followed by the array of keys at pxKeys[0] - pxKeys[nPopCnt - 1]
+// - followed by replicas of last key to align end of list: PSPLIT_PARALLEL
+// - followed by a marker key -1
+// - followed by padding to an odd word boundary for malloc optimization
 static unsigned
-ListWordsTypeList(Word_t wPopCnt, unsigned nBL)
+ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 {
     (void)nBL;
+    unsigned nPopCntLocal = 0;
 
-    if (wPopCnt == 0) { return 0; }
+    if (wPopCntArg == 0) { return 0; }
 
     unsigned nBytesKeySz =
 #if defined(COMPRESSED_LISTS)
@@ -211,21 +227,57 @@ ListWordsTypeList(Word_t wPopCnt, unsigned nBL)
     if ((nBL >= cnBitsPerWord) && (cnDummiesInList == 0))
 #endif // defined(PP_IN_LINK) && ! defined(DUMMY_POP_CNT_IN_LIST)
     {
-        ++wPopCnt;
+        ++nPopCntLocal;
     }
 
 #if defined(LIST_END_MARKERS)
-    // Make room for 0 at beginning and -1 at end to help make search faster.
-    wPopCnt += 2;
+    // Make room for 0 at the beginning to help make search faster.
+    ++nPopCntLocal;
+#endif // defined(LIST_END_MARKERS)
+
+#if defined(PSPLIT_PARALLEL)
+    //printf("\na %d\n", nPopCntLocal);
+    // Pad list header so array of real keys starts on a word boundary.
+    nPopCntLocal
+        = ((nPopCntLocal * nBytesKeySz + sizeof(Word_t) - 1)
+                & ~MSK(cnLogBytesPerWord))
+            / nBytesKeySz;
+    //printf("b %d\n", nPopCntLocal);
+#endif // defined(PSPLIT_PARALLEL)
+
+    nPopCntLocal += wPopCntArg; // add list of real keys
+
+#if defined(PSPLIT_PARALLEL)
+    //printf("c %d\n", nPopCntLocal);
+    // Pad array of real keys to a whole word boundary.
+    nPopCntLocal
+        = ((nPopCntLocal * nBytesKeySz + sizeof(Word_t) - 1)
+                & ~MSK(cnLogBytesPerWord))
+            / nBytesKeySz;
+    //printf("d %d\n", nPopCntLocal);
+#endif // defined(PSPLIT_PARALLEL)
+
+#if defined(LIST_END_MARKERS)
+    // Make room for -1 at the end to help make search faster.
+    nPopCntLocal += 1;
 #endif // defined(LIST_END_MARKERS)
 
     // always malloc an odd number of words since the odd word is free
-#if (cnDummiesInList != 0)
-    return DIV_UP(wPopCnt * nBytesKeySz + cnDummiesInList * sizeof(Word_t),
-                  sizeof(Word_t)) | 1;
-#else // (cnDummiesInList != 0)
-    return DIV_UP(wPopCnt * nBytesKeySz, sizeof(Word_t)) | 1;
-#endif // (cnDummiesInList != 0)
+    unsigned nListWords
+        = DIV_UP(nPopCntLocal * nBytesKeySz
+                     + cnDummiesInList * sizeof(Word_t),
+                 sizeof(Word_t))
+            | 1;
+
+#if defined(PSPLIT_PARALLEL)
+#if 0
+    printf("\nListWordsTypeList wPopCntArg %d nBL %d"
+           " nPopCntLocal %d nListWords %d\n",
+        (int)wPopCntArg, nBL, nPopCntLocal, nListWords);
+#endif // 0
+#endif // defined(PSPLIT_PARALLEL)
+
+    return nListWords;
 }
 
 // How many words needed for leaf?  Use T_ONE instead of T_LIST if possible.
@@ -328,7 +380,7 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
         { ls_pwKeys(pwList)[-1 + (nBL == cnBitsPerWord)] = 0; }
 #else // defined(PP_IN_LINK) && (cnDummiesInList == 0)
         { ls_pwKeys(pwList)[-1] = 0; }
-#endif // defined(PP_IN_LINK) && (cnDummiesInLIst == 0)
+#endif // defined(PP_IN_LINK) && (cnDummiesInList == 0)
 #endif // defined(LIST_END_MARKERS)
         METRICS(j__AllocWordsJLLW += nWords); // JUDYA and JUDYB
     }

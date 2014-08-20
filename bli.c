@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.326 2014/08/19 15:12:23 mike Exp mike $
+// @(#) $Id: bli.c,v 1.327 2014/08/20 11:49:50 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -193,6 +193,16 @@
 
 // unsigned nSplit; PSPLIT((_nPopCnt), 0, (_x_t)-1, (_xKey), nSplit);
 
+#if 0
+    if (WordHasKey(*(Word_t *)((uintptr_t)&(_pxKeys)[nSplit] & ~7), \
+                   (_xKey), sizeof(_x_t) * 8)) \
+    { \
+        (_nPos) = nSplit; \
+    } \
+    else \
+
+#endif // 0
+
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     unsigned nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
@@ -229,6 +239,33 @@
 }
 
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
+
+#if 0
+// Do a parallel search of a word for a key that is smaller than a word.
+// WordHasKey expects the keys to be packed towards the most significant bits,
+// and it assumes all slots in the word are occupied.
+// I'm not sure what happens with left over bits if there are any.
+static Status_t
+WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
+{
+    Status_t status;
+    Word_t wLsbs = (Word_t)-1 / (EXP(nBL) - 1); // lsb in each key
+    Word_t wReplicatedKey = (wKey & MSK(nBL)) * wLsbs;
+    Word_t wXor = wReplicatedKey ^ ww;
+    Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key
+    //return ((wXor - wLsbs) & ~wXor & wMsbs) ? Success : Failure;
+    status = (((wXor - wLsbs) & ~wXor & wMsbs) != 0);
+#if 0
+    printf("\nWordHasKey ww "OWx" wKey "OWx" nBL %d status %d\n",
+           ww, wKey, nBL, status);
+#endif
+    if (status == Success) {
+        return Success;
+    } else {
+        return Failure;
+    }
+}
+#endif // 0
 
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
@@ -540,21 +577,6 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 #endif // ! defined(LOOKUP_NO_LIST_DEREF)
 
 #endif // (cwListPopCntMax != 0)
-
-#if 0 // WordHasKey is not used yet.
-static Status_t
-WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
-{
-    // We replicate the first key in the word into any unused slots
-    // at Insert time to make sure the unused slots don't cause a false
-    // wHasZero.
-    Word_t wLsbs = (Word_t)-1 / (EXP(nBL) - 1); // lsb in each key
-    Word_t wReplicatedKey = (wKey & MSK(nBL)) * wLsbs;
-    Word_t wXor = wReplicatedKey ^ ww;
-    Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key
-    return ((wXor - wLsbs) & ~wXor & wMsbs) ? Success : Failure;
-}
-#endif
 
 #if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
 #if (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(HAS_KEY)
