@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.328 2014/08/20 12:21:23 mike Exp mike $
+// @(#) $Id: bli.c,v 1.329 2014/08/20 16:50:02 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -281,9 +281,13 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     (void)nBL;
 #if defined(LIST_END_MARKERS)
     assert(pcKeys[-1] == 0);
-#if ! defined(PSPLIT_PARALLEL)
+#if defined(PSPLIT_PARALLEL)
+    assert(*(uint8_t *)(((Word_t)&pcKeys[nPopCnt] + sizeof(Word_t) - 1)
+            & ~MSK(cnLogBytesPerWord))
+        == (uint8_t)-1);
+#else // defined(PSPLIT_PARALLEL)
     assert(pcKeys[nPopCnt] == (uint8_t)-1);
-#endif // ! defined(PSPLIT_PARALLEL)
+#endif // defined(PSPLIT_PARALLEL)
 #endif // defined(LIST_END_MARKERS)
     uint8_t cKey = (uint8_t)wKey;
     int nPos;
@@ -316,9 +320,13 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     (void)nBL;
 #if defined(LIST_END_MARKERS)
     assert(psKeys[-1] == 0);
-#if ! defined(PSPLIT_PARALLEL)
+#if defined(PSPLIT_PARALLEL)
+    assert(*(uint16_t *)(((Word_t)&psKeys[nPopCnt] + sizeof(Word_t) - 1)
+            & ~MSK(cnLogBytesPerWord))
+        == (uint16_t)-1);
+#else // defined(PSPLIT_PARALLEL)
     assert(psKeys[nPopCnt] == (uint16_t)-1);
-#endif // ! defined(PSPLIT_PARALLEL)
+#endif // defined(PSPLIT_PARALLEL)
 #endif // defined(LIST_END_MARKERS)
     uint16_t sKey = (uint16_t)wKey;
     int nPos;
@@ -351,7 +359,11 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     (void)nBL;
 #if defined(LIST_END_MARKERS)
     assert(piKeys[-1] == 0);
-#if ! defined(PSPLIT_PARALLEL)
+#if defined(PSPLIT_PARALLEL)
+    assert(*(uint32_t *)(((Word_t)&piKeys[nPopCnt] + sizeof(Word_t) - 1)
+            & ~MSK(cnLogBytesPerWord))
+        == (uint32_t)-1);
+#else // defined(PSPLIT_PARALLEL)
     assert(piKeys[nPopCnt] == (uint32_t)-1);
 #endif // ! defined(PSPLIT_PARALLEL)
 #endif // defined(LIST_END_MARKERS)
