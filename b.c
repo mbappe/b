@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.326 2014/08/19 11:51:46 mike Exp mike $
+// @(#) $Id: b.c,v 1.327 2014/08/19 15:12:23 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -322,7 +322,13 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 #if defined(T_ONE)
         if (wPopCnt != 1)
 #endif // defined(T_ONE)
+#if defined(PP_IN_LINK) && (cnDummiesInList == 0)
+        // ls_pwKeys is for T_LIST not at top (it incorporates dummies
+        // and markers, but not pop count)
+        { ls_pwKeys(pwList)[-1 + (nBL == cnBitsPerWord)] = 0; }
+#else // defined(PP_IN_LINK) && (cnDummiesInList == 0)
         { ls_pwKeys(pwList)[-1] = 0; }
+#endif // defined(PP_IN_LINK) && (cnDummiesInLIst == 0)
 #endif // defined(LIST_END_MARKERS)
         METRICS(j__AllocWordsJLLW += nWords); // JUDYA and JUDYB
     }
@@ -1757,14 +1763,18 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #endif // defined(COMPRESSED_LISTS)
                 {
                     CopyWithInsertWord(
-#if defined(PP_IN_LINK)
+#if defined(PP_IN_LINK) && (cnDummiesInList == 0)
                         (nDL == cnDigitsPerWord) +
-#endif // defined(PP_IN_LINK)
+#endif // defined(PP_IN_LINK) && (cnDummiesInList == 0)
                             ls_pwKeys(pwList),
                         pwKeys, wPopCnt, wKey);
 #if defined(LIST_END_MARKERS)
-//printf("\npwList %p ls_pwKeys(pwList) %p pwKeys %p wPopCnt %ld\n", pwList, ls_pwKeys(pwList), pwKeys, wPopCnt);
-                    ls_pwKeys(pwList)[wPopCnt + 1] = -1;
+                    ls_pwKeys(pwList)[wPopCnt
+#if defined(PP_IN_LINK) && (cnDummiesInList == 0)
+                        + (nDL == cnDigitsPerWord)
+#endif // defined(PP_IN_LINK) && (cnDummiesInList == 0)
+                            + 1]
+                        = -1;
 #endif // defined(LIST_END_MARKERS)
                 }
             } else
@@ -2777,6 +2787,11 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     } else
 #endif // defined(COMPRESSED_LISTS)
     {
+#if defined(LIST_END_MARKERS)
+#if defined(PP_IN_LINK) && (cnDummiesInList == 0)
+        assert(0);
+#endif // defined(PP_IN_LINK) && (cnDummiesInList == 0)
+#endif // defined(LIST_END_MARKERS)
         MOVE(&pwr_pwKeys(pwList)[nIndex], &pwKeys[nIndex + 1],
              wPopCnt - nIndex - 1);
 #if defined(LIST_END_MARKERS)

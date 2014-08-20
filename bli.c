@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.325 2014/08/19 11:51:58 mike Exp mike $
+// @(#) $Id: bli.c,v 1.326 2014/08/19 15:12:23 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1883,6 +1883,11 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 COPY(pwKeysNew, pwKeys, nn);
                 pwKeysNew[nn] = wKey;
                 COPY(&pwKeysNew[nn + 1], &pwKeys[nn], wPopCnt - nn);
+      #if defined(LIST_END_MARKERS)
+                // pwKeysNew incorporates top pop count and markers
+                pwKeysNew[wPopCnt + 1] = -1;
+      #endif // defined(LIST_END_MARKERS)
+
                 OldList(pwr, wPopCnt, cnDigitsPerWord, nType);
                 *pwRoot = wRoot;
 
@@ -1996,12 +2001,12 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
             {
                 pwListNew = NewList(wPopCnt - 1, cnDigitsPerWord);
                 Word_t *pwKeysNew;
-#if defined(T_ONE)
+      #if defined(T_ONE)
                 if (wPopCnt == 2) {
                     set_wr(wRoot, pwListNew, T_ONE);
                     pwKeysNew = pwListNew;
                 } else
-#endif // defined(T_ONE)
+      #endif // defined(T_ONE)
                 {
                     set_wr(wRoot, pwListNew, T_LIST);
                     pwKeysNew = ls_pwKeys(pwListNew);
@@ -2016,6 +2021,13 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
                 for (nn = 0; pwKeys[nn] != wKey; nn++) { }
                 COPY(pwKeysNew, pwKeys, nn);
                 COPY(&pwKeysNew[nn], &pwKeys[nn + 1], wPopCnt - nn - 1);
+      #if defined(LIST_END_MARKERS)
+          #if defined(T_ONE)
+                if (wPopCnt != 2)
+          #endif // defined(T_ONE)
+                // pwKeysNew incorporates top pop count and markers
+                { pwKeysNew[wPopCnt - 1] = -1; }
+      #endif // defined(LIST_END_MARKERS)
             }
             else
             {
