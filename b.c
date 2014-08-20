@@ -1400,17 +1400,21 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, unsigned nKeys, Word_t wKey)
     pTgt[n] = wKey; // insert the key
 
     COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
+
+#if defined(LIST_END_MARKERS)
+    pTgt[nKeys+1] = -1;
+#endif // defined(LIST_END_MARKERS)
 }
 
 #if defined(COMPRESSED_LISTS)
 
 #if (cnBitsPerWord > 32)
 static void
-CopyWithInsertInt(unsigned int *pTgt, unsigned int *pSrc,
-    unsigned nKeys, unsigned int wKey)
+CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, unsigned nKeys,
+                  uint32_t iKey)
 {
-    DBGI(printf("\nCopyWithInsertInt(pTgt %p pSrc %p nKeys %d wKey 0x%x\n",
-                pTgt, pSrc, nKeys, wKey));
+    DBGI(printf("\nCopyWithInsertInt(pTgt %p pSrc %p nKeys %d iKey 0x%x\n",
+                pTgt, pSrc, nKeys, iKey));
 #if (cwListPopCntMax != 0)
     unsigned int ai[cwListPopCntMax]; // buffer for move if pSrc == pTgt
 #else // (cwListPopCntMax != 0)
@@ -1421,9 +1425,9 @@ CopyWithInsertInt(unsigned int *pTgt, unsigned int *pSrc,
     // find the insertion point
     for (n = 0; n < nKeys; n++)
     {
-        if (pSrc[n] >= wKey)
+        if (pSrc[n] >= iKey)
         {
-            assert(pSrc[n] != wKey);
+            assert(pSrc[n] != iKey);
             break;
         }
     }
@@ -1438,15 +1442,27 @@ CopyWithInsertInt(unsigned int *pTgt, unsigned int *pSrc,
         pSrc = ai;
     }
 
-    pTgt[n] = wKey; // insert the key
+    pTgt[n] = iKey; // insert the key
 
     COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
+
+#if defined(PSPLIT_PARALLEL)
+    // pad to a word boundary with a key that exists in the list so
+    // parallel search won't give a false positive
+    while (((Word_t)&pTgt[nKeys+1] & MSK(cnLogBytesPerWord)) != 0) {
+        pTgt[nKeys+1] = pTgt[nKeys]; // or pTgt[0] or iKey
+        ++nKeys;
+    }
+#endif // defined(PSPLIT_PARALLEL)
+#if defined(LIST_END_MARKERS)
+    pTgt[nKeys+1] = -1;
+#endif // defined(LIST_END_MARKERS)
 }
 #endif // (cnBitsPerWord > 32)
 
 static void
-CopyWithInsertShort(unsigned short *pTgt, unsigned short *pSrc,
-    unsigned nKeys, unsigned short wKey)
+CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc, unsigned nKeys,
+                    uint16_t sKey)
 {
 #if (cwListPopCntMax != 0)
     unsigned short as[cwListPopCntMax]; // buffer for move if pSrc == pTgt
@@ -1458,9 +1474,9 @@ CopyWithInsertShort(unsigned short *pTgt, unsigned short *pSrc,
     // find the insertion point
     for (n = 0; n < nKeys; n++)
     {
-        if (pSrc[n] >= wKey)
+        if (pSrc[n] >= sKey)
         {
-            assert(pSrc[n] != wKey);
+            assert(pSrc[n] != sKey);
             break;
         }
     }
@@ -1475,14 +1491,25 @@ CopyWithInsertShort(unsigned short *pTgt, unsigned short *pSrc,
         pSrc = as;
     }
 
-    pTgt[n] = wKey; // insert the key
+    pTgt[n] = sKey; // insert the key
 
     COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
+
+#if defined(PSPLIT_PARALLEL)
+    // pad to a word boundary with a key that exists in the list so
+    // parallel search won't give a false positive
+    while (((Word_t)&pTgt[nKeys+1] & MSK(cnLogBytesPerWord)) != 0) {
+        pTgt[nKeys+1] = pTgt[nKeys]; // or pTgt[0] or sKey
+        ++nKeys;
+    }
+#endif // defined(PSPLIT_PARALLEL)
+#if defined(LIST_END_MARKERS)
+    pTgt[nKeys+1] = -1;
+#endif // defined(LIST_END_MARKERS)
 }
 
 static void
-CopyWithInsertChar(unsigned char *pTgt, unsigned char *pSrc,
-    unsigned nKeys, unsigned short wKey)
+CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, unsigned nKeys, uint8_t cKey)
 {
 #if (cwListPopCntMax != 0)
     unsigned char ac[cwListPopCntMax]; // buffer for move if pSrc == pTgt
@@ -1494,9 +1521,9 @@ CopyWithInsertChar(unsigned char *pTgt, unsigned char *pSrc,
     // find the insertion point
     for (n = 0; n < nKeys; n++)
     {
-        if (pSrc[n] >= wKey)
+        if (pSrc[n] >= cKey)
         {
-            assert(pSrc[n] != wKey);
+            assert(pSrc[n] != cKey);
             break;
         }
     }
@@ -1511,9 +1538,21 @@ CopyWithInsertChar(unsigned char *pTgt, unsigned char *pSrc,
         pSrc = ac;
     }
 
-    pTgt[n] = wKey; // insert the key
+    pTgt[n] = cKey; // insert the key
 
     COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
+
+#if defined(PSPLIT_PARALLEL)
+    // pad to a word boundary with a key that exists in the list so
+    // parallel search won't give a false positive
+    while (((Word_t)&pTgt[nKeys+1] & MSK(cnLogBytesPerWord)) != 0) {
+        pTgt[nKeys+1] = pTgt[nKeys]; // or pTgt[0] or cKey
+        ++nKeys;
+    }
+#endif // defined(PSPLIT_PARALLEL)
+#if defined(LIST_END_MARKERS)
+    pTgt[nKeys+1] = -1;
+#endif // defined(LIST_END_MARKERS)
 }
 
 #endif // defined(COMPRESSED_LISTS)
@@ -1794,22 +1833,13 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 if (nBL <= 8) {
                     CopyWithInsertChar(ls_pcKeys(pwList),
                         pcKeys, wPopCnt, (unsigned char)wKey);
-#if defined(LIST_END_MARKERS)
-                    ls_pcKeys(pwList)[wPopCnt + 1] = -1;
-#endif // defined(LIST_END_MARKERS)
                 } else if (nBL <= 16) {
                     CopyWithInsertShort(ls_psKeys(pwList),
                         psKeys, wPopCnt, (unsigned short)wKey);
-#if defined(LIST_END_MARKERS)
-                    ls_psKeys(pwList)[wPopCnt + 1] = -1;
-#endif // defined(LIST_END_MARKERS)
 #if (cnBitsPerWord > 32)
                 } else if (nBL <= 32) {
                     CopyWithInsertInt(ls_piKeys(pwList),
                         piKeys, wPopCnt, (unsigned int)wKey);
-#if defined(LIST_END_MARKERS)
-                    ls_piKeys(pwList)[wPopCnt + 1] = -1;
-#endif // defined(LIST_END_MARKERS)
 #endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
@@ -1820,14 +1850,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #endif // defined(PP_IN_LINK) && (cnDummiesInList == 0)
                             ls_pwKeys(pwList),
                         pwKeys, wPopCnt, wKey);
-#if defined(LIST_END_MARKERS)
-                    ls_pwKeys(pwList)[wPopCnt
-#if defined(PP_IN_LINK) && (cnDummiesInList == 0)
-                        + (nDL == cnDigitsPerWord)
-#endif // defined(PP_IN_LINK) && (cnDummiesInList == 0)
-                            + 1]
-                        = -1;
-#endif // defined(LIST_END_MARKERS)
                 }
             } else
 #else // defined(SORT_LISTS)
@@ -2815,25 +2837,52 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     set_ls_wPopCnt(pwList, wPopCnt - 1);
 #endif // defined(PP_IN_LINK)
 
+#if defined(LIST_END_MARKERS) || defined(PSPLIT_PARALLEL)
+        unsigned nKeys = wPopCnt - 1; (void)nKeys;
+#endif // defined(LIST_END_MARKERS) || defined(PSPLIT_PARALLEL)
 #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
         MOVE(&pwr_pcKeys(pwList)[nIndex],
              &pwr_pcKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+#if defined(PSPLIT_PARALLEL)
+        // need to pad the list to a word boundary with a key that exists
+        // so parallel search won't return a false positive
+        while ((Word_t)&pwr_pcKeys(pwr)[nKeys] & MSK(cnLogBytesPerWord)) {
+            pwr_pcKeys(pwr)[nKeys] = pwr_pcKeys(pwr)[nKeys-1];
+            ++nKeys;
+        }
+#endif // defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
-        pwr_pcKeys(pwList)[wPopCnt - 1] = -1;
+        pwr_pcKeys(pwList)[nKeys] = -1;
 #endif // defined(LIST_END_MARKERS)
     } else if (nBL <= 16) {
         MOVE(&pwr_psKeys(pwList)[nIndex],
              &pwr_psKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+#if defined(PSPLIT_PARALLEL)
+        // need to pad the list to a word boundary with a key that exists
+        // so parallel search won't return a false positive
+        while ((Word_t)&pwr_psKeys(pwr)[nKeys] & MSK(cnLogBytesPerWord)) {
+            pwr_psKeys(pwr)[nKeys] = pwr_psKeys(pwr)[nKeys-1];
+            ++nKeys;
+        }
+#endif // defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
-        pwr_psKeys(pwList)[wPopCnt - 1] = -1;
+        pwr_psKeys(pwList)[nKeys] = -1;
 #endif // defined(LIST_END_MARKERS)
 #if (cnBitsPerWord > 32)
     } else if (nBL <= 32) {
         MOVE(&pwr_piKeys(pwList)[nIndex],
              &pwr_piKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+#if defined(PSPLIT_PARALLEL)
+        // need to pad the list to a word boundary with a key that exists
+        // so parallel search won't return a false positive
+        while ((Word_t)&pwr_piKeys(pwr)[nKeys] & MSK(cnLogBytesPerWord)) {
+            pwr_piKeys(pwr)[nKeys] = pwr_piKeys(pwr)[nKeys-1];
+            ++nKeys;
+        }
+#endif // defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
-        pwr_piKeys(pwList)[wPopCnt - 1] = -1;
+        pwr_piKeys(pwList)[nKeys] = -1;
 #endif // defined(LIST_END_MARKERS)
 #endif // (cnBitsPerWord > 32)
     } else
@@ -2847,7 +2896,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         MOVE(&pwr_pwKeys(pwList)[nIndex], &pwKeys[nIndex + 1],
              wPopCnt - nIndex - 1);
 #if defined(LIST_END_MARKERS)
-        pwr_pwKeys(pwList)[wPopCnt - 1] = -1;
+        pwr_pwKeys(pwList)[nKeys] = -1;
 #endif // defined(LIST_END_MARKERS)
     }
 
