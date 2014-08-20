@@ -709,14 +709,40 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 // For PP_IN_LINK ls_pxKeys macros are only valid not at top or for
 // T_ONE - not T_LIST - at top.
+#define ls_pwKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_awKeys[FIRST_KEY])
+
 #if defined(COMPRESSED_LISTS)
-#define     ls_pcKeys(_ls)    (&((ListLeaf_t *)(_ls))->ll_acKeys[FIRST_KEY])
-#define     ls_psKeys(_ls)    (&((ListLeaf_t *)(_ls))->ll_asKeys[FIRST_KEY])
-#if (cnBitsPerWord > 32)
-#define     ls_piKeys(_ls)    (&((ListLeaf_t *)(_ls))->ll_aiKeys[FIRST_KEY])
-#endif // (cnBitsPerWord > 32)
+  #if defined(PSPLIT_PARALLEL)
+
+#define ls_pcKeys(_ls) \
+    ((uint8_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_acKeys[FIRST_KEY] \
+            + sizeof(Word_t) - 1) \
+        & ~MSK(cnLogBytesPerWord)))
+
+#define ls_psKeys(_ls) \
+    ((uint16_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_asKeys[FIRST_KEY] \
+            + sizeof(Word_t) - 1) \
+        & ~MSK(cnLogBytesPerWord)))
+
+      #if (cnBitsPerWord > 32)
+#define ls_piKeys(_ls) \
+    ((uint32_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_aiKeys[FIRST_KEY] \
+            + sizeof(Word_t) - 1) \
+        & ~MSK(cnLogBytesPerWord)))
+      #endif // (cnBitsPerWord > 32)
+
+  #else // defined(PSPLIT_PARALLEL)
+
+#define ls_pcKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_acKeys[FIRST_KEY])
+
+#define ls_psKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_asKeys[FIRST_KEY])
+
+      #if (cnBitsPerWord > 32)
+#define ls_piKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_aiKeys[FIRST_KEY])
+      #endif // (cnBitsPerWord > 32)
+
+  #endif // defined(PSPLIT_PARALLEL)
 #endif // defined(COMPRESSED_LISTS)
-#define     ls_pwKeys(_ls)    (&((ListLeaf_t *)(_ls))->ll_awKeys[FIRST_KEY])
 
 // these are just aliases
 #define     pwr_pwKeys(_pwr)    (ls_pwKeys(_pwr))
