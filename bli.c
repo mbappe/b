@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.329 2014/08/20 16:50:02 mike Exp mike $
+// @(#) $Id: bli.c,v 1.330 2014/08/20 16:57:45 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -149,11 +149,22 @@
 
 #endif // defined(LIST_END_MARKERS)
 
+#define PSPLIT_P(_nPopCnt, _nBL, _xKey, _nSplit) \
+{ \
+    (_nSplit) = (((((((Word_t)(_xKey) << (cnBitsPerWord - (_nBL))) \
+                            >> (cnBitsPerWord - 9)) \
+                        * (_nPopCnt) * sizeof(_xKey)) \
+                    /* + ((_nPopCnt) * sizeof(_xKey) / 2) */ ) \
+                    / sizeof(Word_t)) \
+                >> 9); \
+}
+
 // Old method:
 // nSplit = (((_xKey) & MSK(_nBL)) * (_nPopCnt) + (_nPopCnt) / 2) >> (_nBL);
 // New method:
 // Take N most significant bits of key times pop count and divide by 2^N.
 // If key has fewer than N significant bits, then shift key left as needed.
+// Where N = 9.
 // The rounding term is probably insignificant and unnecessary.
 #define PSPLIT(_nPopCnt, _nBL, _xKey, _nSplit) \
 { \
@@ -161,7 +172,7 @@
                             >> (cnBitsPerWord - 9)) \
                         * (_nPopCnt)) \
                     /* + ((_nPopCnt) / 2) */ ) \
-                / EXP(9)); \
+                >> 9); \
 }
 
 #if 0
@@ -203,6 +214,76 @@
 
 #endif // 0
 
+#if defined(PSPLIT_PARALLEL)
+
+// nSplit is a word number
+#define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
+{ \
+    Word_t *pw = (Word_t *)(_pxKeys); \
+    assert(((Word_t)(_pxKeys) & MSK(cnLogBytesPerWord)) == 0); \
+    unsigned nSplitP; PSPLIT_P((_nPopCnt), (_nBL), (_xKey), nSplitP); \
+    /*if (((nSplit * sizeof(_x_t)) >> cnLogBytesPerWord) != nSplitP) { \
+        printf("\nnSplit %d nSplitP %d key "OWx" nBL %d nPopCnt %d\n", \
+               nSplit, nSplitP, (Word_t)(_xKey), (_nBL), (_nPopCnt)); \
+    }*/ \
+    assert(((nSplit * sizeof(_x_t)) >> cnLogBytesPerWord) == nSplitP); \
+    if (WordHasKey(pw[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
+        (_nPos) = nSplitP * sizeof(Word_t) / sizeof(_x_t); \
+    } \
+    else /*if(pw[nSplitP] < (_xKey) << (cnBitsPerWord - sizeof(_x_t) * 8))*/ \
+    { \
+    unsigned nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
+    if ((_pxKeys)[nSplit] < (_xKey)) \
+    { \
+        if (nSplit == (_nPopCnt) - 1) { return ~(_nPopCnt); } \
+        if (TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)) \
+        { \
+            (_nPos) = ((_pxKeys)[(_nPopCnt) - 1] == (_x_t)-1) \
+                ? (_nPopCnt) - 1 : ~(_nPopCnt); \
+        } \
+        else \
+        { \
+            SEARCHF(_x_t, &(_pxKeys)[nSplit + 1], (_nPopCnt) - nSplit - 1, \
+                   (_xKey), (_pxKeys), (_nPos)); \
+        } \
+    } \
+    else /* here if (_xKey) < (_pxKeys)[nSplit] (and possibly if equal) */ \
+    { \
+        if (TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)) \
+        { \
+            (_nPos) = ((_pxKeys)[0] == 0) ? 0 : ~0; \
+        } \
+        else \
+        { \
+            SEARCHB(_x_t, (_pxKeys), nSplit + 1, \
+                    (_xKey), (_pxKeys), (_nPos)); \
+        } \
+    } \
+    assert(((_nPos) < 0) \
+        || WordHasKey(*(Word_t *) \
+                        ((Word_t)&(_pxKeys)[_nPos] \
+                            & ~MSK(cnLogBytesPerWord)), \
+                      (_xKey), sizeof(_x_t) * 8)); \
+    if ((_nPos) < 0) { \
+        assert(~(_nPos) >= 0); \
+        assert(~(_nPos) <= (int)(_nPopCnt)); \
+        assert((~(_nPos) == (int)(_nPopCnt)) \
+            || ( ! WordHasKey(*(Word_t *) \
+                        ((Word_t)&(_pxKeys)[~(_nPos)] \
+                            & ~MSK(cnLogBytesPerWord)), \
+                      (_xKey), sizeof(_x_t) * 8) )); \
+        for (unsigned ii = 0; ii < (_nPopCnt); ++ii) { \
+            assert( ! WordHasKey(*(Word_t *) \
+                        ((Word_t)&(_pxKeys)[ii] \
+                            & ~MSK(cnLogBytesPerWord)), \
+                      (_xKey), sizeof(_x_t) * 8) ); \
+        } \
+    } \
+    } \
+}
+
+#else // defined(PSPLIT_PARALLEL)
+
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     unsigned nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
@@ -238,9 +319,10 @@
     } \
 }
 
+#endif // defined(PSPLIT_PARALLEL)
+
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
 
-#if 0
 // Do a parallel search of a word for a key that is smaller than a word.
 // WordHasKey expects the keys to be packed towards the most significant bits,
 // and it assumes all slots in the word are occupied.
@@ -265,7 +347,6 @@ WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
         return Failure;
     }
 }
-#endif // 0
 
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
