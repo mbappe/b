@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.331 2014/08/21 02:20:28 mike Exp mike $
+// @(#) $Id: bli.c,v 1.332 2014/08/21 12:19:34 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -235,9 +235,12 @@
     unsigned nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
     if ((_pxKeys)[nSplit] < (_xKey)) \
     { \
-        if (nSplit == (_nPopCnt) - 1) { return ~(_nPopCnt); } \
-        SEARCHF(_x_t, &(_pxKeys)[nSplit + 1], (_nPopCnt) - nSplit - 1, \
-                (_xKey), (_pxKeys), (_nPos)); \
+        if (nSplit == (_nPopCnt) - 1) { \
+            (_nPos) = ~(_nPopCnt); \
+        } else { \
+            SEARCHF(_x_t, &(_pxKeys)[nSplit + 1], (_nPopCnt) - nSplit - 1, \
+                    (_xKey), (_pxKeys), (_nPos)); \
+        } \
     } \
     else /* here if (_xKey) < (_pxKeys)[nSplit] (and possibly if equal) */ \
     { \
@@ -277,16 +280,19 @@
     } \
     else if ((_pxKeys)[nSplit] < (_xKey)) \
     { \
-        if (nSplit == (_nPopCnt) - 1) { return ~(_nPopCnt); } \
-        if (TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)) \
+        if (nSplit == (_nPopCnt) - 1) \
+        { \
+            (_nPos) = ~(_nPopCnt); \
+        } \
+        else if (TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)) \
         { \
             (_nPos) = ((_pxKeys)[(_nPopCnt) - 1] == (_x_t)-1) \
-                ? (_nPopCnt) - 1 : ~(_nPopCnt); \
+                        ? (_nPopCnt) - 1 : ~(_nPopCnt); \
         } \
         else \
         { \
             SEARCHF(_x_t, &(_pxKeys)[nSplit + 1], (_nPopCnt) - nSplit - 1, \
-                   (_xKey), (_pxKeys), (_nPos)); \
+                    (_xKey), (_pxKeys), (_nPos)); \
         } \
     } \
     else /* here if (_xKey) < (_pxKeys)[nSplit] (and possibly if equal) */ \
@@ -307,6 +313,7 @@
 
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
 
+#if defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 // Do a parallel search of a word for a key that is smaller than a word.
 // WordHasKey expects the keys to be packed towards the most significant bits,
 // and it assumes all slots in the word are occupied.
@@ -331,6 +338,7 @@ WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
         return Failure;
     }
 }
+#endif // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
