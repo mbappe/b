@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.330 2014/08/20 16:57:45 mike Exp mike $
+// @(#) $Id: bli.c,v 1.331 2014/08/21 02:20:28 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -56,7 +56,7 @@
 
 #if defined(LIST_END_MARKERS)
 
-#if defined(TEST_PAST_END)
+  #if defined(TEST_PAST_END)
 
 #define TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)  0
 
@@ -69,7 +69,7 @@
 #define PAST_ENDB(_pxKeys, _pxKeys0, _nPos) \
     (&(_pxKeys0)[_nPos] < (_pxKeys))
 
-#elif defined(TEST_SPLIT_EQ_KEY)
+  #elif defined(TEST_SPLIT_EQ_KEY)
 
 #define TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)  ((_pxKeys)[nSplit] == (_xKey))
 
@@ -79,7 +79,7 @@
 #define PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos)  0
 #define PAST_ENDB(_pxKeys, _pxKeys0, _nPos)  0
 
-#else // TEST_KEY_IS_MAX_MIN
+  #else // TEST_KEY_IS_MAX_MIN
 
 #define TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)  0
 
@@ -92,7 +92,7 @@
 #define PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos)  0
 #define PAST_ENDB(_pxKeys, _pxKeys0, _nPos)  0
 
-#endif // ...
+  #endif // ...
 
 // Is nPos ^= -1 equivalent to nPos |= nPos?
 #define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
@@ -214,7 +214,7 @@
 
 #endif // 0
 
-#if defined(PSPLIT_PARALLEL)
+#if defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
 // nSplit is a word number
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
@@ -236,28 +236,12 @@
     if ((_pxKeys)[nSplit] < (_xKey)) \
     { \
         if (nSplit == (_nPopCnt) - 1) { return ~(_nPopCnt); } \
-        if (TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)) \
-        { \
-            (_nPos) = ((_pxKeys)[(_nPopCnt) - 1] == (_x_t)-1) \
-                ? (_nPopCnt) - 1 : ~(_nPopCnt); \
-        } \
-        else \
-        { \
-            SEARCHF(_x_t, &(_pxKeys)[nSplit + 1], (_nPopCnt) - nSplit - 1, \
-                   (_xKey), (_pxKeys), (_nPos)); \
-        } \
+        SEARCHF(_x_t, &(_pxKeys)[nSplit + 1], (_nPopCnt) - nSplit - 1, \
+                (_xKey), (_pxKeys), (_nPos)); \
     } \
     else /* here if (_xKey) < (_pxKeys)[nSplit] (and possibly if equal) */ \
     { \
-        if (TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)) \
-        { \
-            (_nPos) = ((_pxKeys)[0] == 0) ? 0 : ~0; \
-        } \
-        else \
-        { \
-            SEARCHB(_x_t, (_pxKeys), nSplit + 1, \
-                    (_xKey), (_pxKeys), (_nPos)); \
-        } \
+        SEARCHB(_x_t, (_pxKeys), nSplit + 1, (_xKey), (_pxKeys), (_nPos)); \
     } \
     assert(((_nPos) < 0) \
         || WordHasKey(*(Word_t *) \
@@ -282,7 +266,7 @@
     } \
 }
 
-#else // defined(PSPLIT_PARALLEL)
+#else // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
@@ -319,7 +303,7 @@
     } \
 }
 
-#endif // defined(PSPLIT_PARALLEL)
+#endif // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
 
