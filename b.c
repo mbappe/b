@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.328 2014/08/20 11:49:50 mike Exp $
+// @(#) $Id: b.c,v 1.330 2014/08/20 16:50:02 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1447,8 +1447,9 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, unsigned nKeys,
     COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
 
 #if defined(PSPLIT_PARALLEL)
-    // pad to a word boundary with a key that exists in the list so
-    // parallel search won't give a false positive
+    // pad to a word boundary with the last key in the list so
+    // parallel search won't give a false positive and the last key
+    // in the last word is the maximum key in the list
     while (((Word_t)&pTgt[nKeys+1] & MSK(cnLogBytesPerWord)) != 0) {
         pTgt[nKeys+1] = pTgt[nKeys]; // or pTgt[0] or iKey
         ++nKeys;
@@ -1595,7 +1596,7 @@ const unsigned anListPopCntMax[] = {
 void
 HexDump(char *str, Word_t *pw, unsigned nWords)
 {
-    printf("\n%s (pw %p nWords %d):\n", str, pw, nWords);
+    printf("\n%s (pw %p nWords %d):\n", str, (void *)pw, nWords);
     for (unsigned ii = 0; ii < nWords; ii++) {
         printf(OWx"\n", pw[ii]);
     }
