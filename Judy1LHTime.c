@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.12 $ $Source: /home/doug/judy-1.0.5_PatchRPARA2a/test/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.21 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -3525,7 +3525,9 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
                     }
                 }
 
-                //__sync_synchronize();
+#if defined(SYNC_SYNCHRONIZE)
+                __sync_synchronize();
+#endif // defined(SYNC_SYNCHRONIZE)
             }
             ENDTm(DeltanSec1);
 
