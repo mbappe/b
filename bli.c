@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.332 2014/08/21 12:19:34 mike Exp mike $
+// @(#) $Id: bli.c,v 1.331 2014/08/21 02:20:28 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -216,35 +216,130 @@
 
 #if defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
+// Little endian:
+// 00:      10: smallest key
+// 02:    32  : next smallest key
+// 04:  54
+// 06:76
+// 08:fedcba98
+// 10:76543210
+// 18:fedcba98
+
+//   key               key
+// | big              small|
+// |fe:dc|ba:98|76:54|32:10|
+
+// Simple linear parallel search of a list that assumes the list contains a
+// key that is greater than or equal to the key we're searching for.
+// It also assumes the last key in the last word is equal to the largest
+// key in the list even if it is beyond the population.
+#define PSSEARCHF(_pxKeys, _xKey, _nPos) \
+{ \
+    assert(((Word_t)(_pxKeys) & MSK(cnLogBytesPerWord)) == 0); \
+    Word_t *pw = (Word_t *)(_pxKeys); \
+    int nwPos = (_nPos) * sizeof(_xKey) / sizeof(Word_t); \
+    (_nPos) = (nwPos * sizeof(Word_t) | MSK(cnLogBytesPerWord)) \
+                / sizeof(_xKey);; \
+    while ( ! WordHasKey(pw[nwPos], (_xKey), sizeof(_xKey) * 8) ) { \
+        if ((_pxKeys)[_nPos] > (_xKey)) { (_nPos) ^= -1; break; } \
+        ++nwPos; (_nPos) += sizeof(Word_t) / sizeof(_xKey); \
+    } \
+}
+
+#if defined(PSPLIT_EARLY_OUT)
+
+// Simple backward linear parallel search of a list that assumes the list
+// contains a key that is less than or equal to the key we're searching for.
+#define PSSEARCHB(_pxKeys, _xKey, _nPos) \
+{ \
+    assert(((Word_t)(_pxKeys) & MSK(cnLogBytesPerWord)) == 0); \
+    Word_t *pw = (Word_t *)(_pxKeys); \
+    int nwPos = (_nPos) * sizeof(_xKey) / sizeof(Word_t); \
+    (_nPos) = nwPos * sizeof(Word_t) / sizeof(_xKey); \
+    while ( ! WordHasKey(pw[nwPos], (_xKey), sizeof(_xKey) * 8) ) { \
+        if ((_pxKeys)[_nPos] < (_xKey)) { (_nPos) ^= -1; break; } \
+        --nwPos; (_nPos) -= sizeof(Word_t) / sizeof(_xKey); \
+    } \
+}
+
+#else // defined(PSPLIT_EARLY_OUT)
+
+// Simple backward linear parallel search of a list that assumes the list
+// contains a key that is less than or equal to the key we're searching for.
+#define PSSEARCHB(_pxKeys, _xKey, _nPos) \
+{ \
+    assert(((Word_t)(_pxKeys) & MSK(cnLogBytesPerWord)) == 0); \
+    Word_t *pw = (Word_t *)(_pxKeys); \
+    int nwPos = (_nPos) * sizeof(_xKey) / sizeof(Word_t); \
+    (_nPos) = nwPos * sizeof(Word_t) / sizeof(_xKey); \
+    while ( ! WordHasKey(pw[nwPos], (_xKey), sizeof(_xKey) * 8) ) { \
+        if (nwPos <= 0) { (_nPos) ^= -1; break; } \
+        --nwPos; (_nPos) -= sizeof(Word_t) / sizeof(_xKey); \
+    } \
+}
+
+#endif // defined(PSPLIT_EARLY_OUT)
+
+#if defined(PSPLIT_HYBRID)
+
+// Linear parallel search of list (for any size key and with end check).
+#define PSEARCHF  SEARCHF
+
+// Backward linear search of list (for any size key and with end check).
+#define PSEARCHB  SEARCHB
+
+#else // defined(PSPLIT_HYBRID)
+
+// Linear parallel search of list (for any size key and with end check).
+#define PSEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+{ \
+    (_nPos) = (_pxKeys) - (_pxKeys0); \
+    if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
+        (_nPos) = ~((_nPos) + (_nPopCnt)); \
+    } else { \
+        PSSEARCHF((_pxKeys0), (_xKey), (_nPos)); \
+    } \
+}
+
+// Backward linear search of list (for any size key and with end check).
+#define PSEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+{ \
+    (_nPos) = (_pxKeys) - (_pxKeys0); \
+    if ((_xKey) < *(_pxKeys)) { \
+        (_nPos) ^= -1; \
+    } else { \
+        (_nPos) += (_nPopCnt) - 1; PSSEARCHB((_pxKeys0), (_xKey), (_nPos)); \
+    } \
+}
+
+#endif // defined(PSPLIT_HYBRID)
+
 // nSplit is a word number
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     Word_t *pw = (Word_t *)(_pxKeys); \
     assert(((Word_t)(_pxKeys) & MSK(cnLogBytesPerWord)) == 0); \
-    unsigned nSplitP; PSPLIT_P((_nPopCnt), (_nBL), (_xKey), nSplitP); \
-    /*if (((nSplit * sizeof(_x_t)) >> cnLogBytesPerWord) != nSplitP) { \
-        printf("\nnSplit %d nSplitP %d key "OWx" nBL %d nPopCnt %d\n", \
-               nSplit, nSplitP, (Word_t)(_xKey), (_nBL), (_nPopCnt)); \
-    }*/ \
+    /*unsigned nSplitP; PSPLIT_P((_nPopCnt), (_nBL), (_xKey), nSplitP);*/ \
+    unsigned nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
+    unsigned nSplitP = nSplit * sizeof(_x_t) >> cnLogBytesPerWord; \
     assert(((nSplit * sizeof(_x_t)) >> cnLogBytesPerWord) == nSplitP); \
     if (WordHasKey(pw[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
         (_nPos) = nSplitP * sizeof(Word_t) / sizeof(_x_t); \
     } \
     else /*if(pw[nSplitP] < (_xKey) << (cnBitsPerWord - sizeof(_x_t) * 8))*/ \
     { \
-    unsigned nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
     if ((_pxKeys)[nSplit] < (_xKey)) \
     { \
-        if (nSplit == (_nPopCnt) - 1) { \
+        if (nSplitP == ((_nPopCnt) - 1) * sizeof(_x_t) / sizeof(Word_t)) { \
             (_nPos) = ~(_nPopCnt); \
         } else { \
-            SEARCHF(_x_t, &(_pxKeys)[nSplit + 1], (_nPopCnt) - nSplit - 1, \
+            PSEARCHF(_x_t, &(_pxKeys)[nSplit + 1], (_nPopCnt) - nSplit - 1, \
                     (_xKey), (_pxKeys), (_nPos)); \
         } \
     } \
     else /* here if (_xKey) < (_pxKeys)[nSplit] (and possibly if equal) */ \
     { \
-        SEARCHB(_x_t, (_pxKeys), nSplit + 1, (_xKey), (_pxKeys), (_nPos)); \
+        PSEARCHB(_x_t, (_pxKeys), nSplit + 1, (_xKey), (_pxKeys), (_nPos)); \
     } \
     assert(((_nPos) < 0) \
         || WordHasKey(*(Word_t *) \
@@ -253,16 +348,19 @@
                       (_xKey), sizeof(_x_t) * 8)); \
     if ((_nPos) < 0) { \
         assert(~(_nPos) >= 0); \
-        assert(~(_nPos) <= (int)(_nPopCnt)); \
-        assert((~(_nPos) == (int)(_nPopCnt)) \
-            || ( ! WordHasKey(*(Word_t *) \
-                        ((Word_t)&(_pxKeys)[~(_nPos)] \
-                            & ~MSK(cnLogBytesPerWord)), \
-                      (_xKey), sizeof(_x_t) * 8) )); \
-        for (unsigned ii = 0; ii < (_nPopCnt); ++ii) { \
-            assert( ! WordHasKey(*(Word_t *) \
-                        ((Word_t)&(_pxKeys)[ii] \
-                            & ~MSK(cnLogBytesPerWord)), \
+        /*assert(~(_nPos) <= (int)(_nPopCnt))*/; \
+        for (unsigned ii = 0; ii < (_nPopCnt); \
+             ii += sizeof(Word_t) / sizeof(_xKey)) \
+        { \
+            if ( ! ( ! WordHasKey(*(Word_t *)&(_pxKeys)[ii], \
+                      (_xKey), sizeof(_x_t) * 8) ) ) { \
+printf("\npxKeys %p nPopCnt %d xKey "OWx" nPos %d\n", \
+       (void *)(_pxKeys), (_nPopCnt), (Word_t)(_xKey), (_nPos)); \
+HexDump("pw", (Word_t *)(_pxKeys), \
+        ((_nPopCnt) * sizeof(_xKey) + sizeof(Word_t) - 1) / sizeof(Word_t)); \
+printf("nSplit %d nSplitP %d\n", nSplit, nSplitP); \
+            } \
+            assert( ! WordHasKey(*(Word_t *)&(_pxKeys)[ii], \
                       (_xKey), sizeof(_x_t) * 8) ); \
         } \
     } \
@@ -861,9 +959,7 @@ top:
   #endif // !defined(RECURSIVE)
     wRoot = *pwRoot;
 #endif // !defined(LOOKUP)
-#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
     nDLR = nDL;
-#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 
 #if defined(LOOKUP) || !defined(RECURSIVE)
 again:
