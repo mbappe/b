@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.331 2014/08/21 02:20:28 mike Exp mike $
+// @(#) $Id: bli.c,v 1.334 2014/08/22 02:20:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -409,8 +409,6 @@ printf("nSplit %d nSplitP %d\n", nSplit, nSplitP); \
 
 #endif // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
-#if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
-
 #if defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 // Do a parallel search of a word for a key that is smaller than a word.
 // WordHasKey expects the keys to be packed towards the most significant bits,
@@ -437,6 +435,8 @@ WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
     }
 }
 #endif // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
+
+#if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
 
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
