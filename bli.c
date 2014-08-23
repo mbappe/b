@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.334 2014/08/22 02:20:14 mike Exp mike $
+// @(#) $Id: bli.c,v 1.335 2014/08/22 02:30:39 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -436,6 +436,10 @@ WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
 }
 #endif // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
+#if ! defined(ONE_DEREF_AT_LIST) || ! defined(LOOKUP)
+#if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
+#if ! defined(LOOKUP_NO_LIST_SEARCH) || ! defined(LOOKUP)
+
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
 
 // Find wKey (the undecoded bits) in the list.
@@ -474,7 +478,6 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 8)
 
-#if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
 #if defined(COMPRESSED_LISTS) && (cnBitsAtBottom <= 16)
 
 // Find wKey (the undecoded bits) in the list.
@@ -551,7 +554,10 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 }
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) && ...
+
+#endif // ! defined(LOOKUP_NO_LIST_SEARCH) || ! defined(LOOKUP)
 #endif // ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
+#endif // ! defined(ONE_DEREF_AT_LIST) || ! defined(LOOKUP)
 
 //
 // Valid combinations:
@@ -721,7 +727,10 @@ Word_t cnMagic[] = {
 #define hasvalue(x,n) (haszero((x) ^ (-((Word_t)1))/255 * (n)))
 #endif  // TBD
 
+#if ! defined(ONE_DEREF_AT_LIST) || ! defined(LOOKUP)
 #if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
+#if ! defined(LOOKUP_NO_LIST_SEARCH) || ! defined(LOOKUP)
+
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
 // If it does not exist, then return the one's complement of the index where
@@ -763,7 +772,10 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
         return SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt);
     }
 }
-#endif // ! defined(LOOKUP_NO_LIST_DEREF)
+
+#endif // ! defined(LOOKUP_NO_LIST_SEARCH) || ! defined(LOOKUP)
+#endif // ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
+#endif // ! defined(ONE_DEREF_AT_LIST) || ! defined(LOOKUP)
 
 #endif // (cwListPopCntMax != 0)
 
@@ -1372,6 +1384,12 @@ notEmptyBm:;
         DBGX(printf("List nDL %d\n", nDL));
         DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMask(nDL)));
 
+  #if defined(LOOKUP) && defined(ONE_DEREF_AT_LIST)
+
+        if (*pwr != 0) { return  KeyFound; }
+
+  #else // defined(LOOKUP) && defined(ONE_DEREF_AT_LIST)
+
   #if defined(REMOVE)
         if (bCleanup) { return Success; } // cleanup is complete
   #endif // defined(REMOVE)
@@ -1511,6 +1529,8 @@ notEmptyBm:;
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && ...
 
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
+
+  #endif // defined(LOOKUP) && defined(ONE_DEREF_AT_LIST)
 
         break;
 
