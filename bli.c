@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.335 2014/08/22 02:30:39 mike Exp mike $
+// @(#) $Id: bli.c,v 1.336 2014/08/23 12:45:30 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -410,6 +410,38 @@ printf("nSplit %d nSplitP %d\n", nSplit, nSplitP); \
 #endif // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
 #if defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
+
+#if 0
+static Status_t
+TwoWordsHaveKey(Word_t *pw, Word_t wKey, unsigned nBL)
+{
+    Word_t wLsbs = (Word_t)-1 / (EXP(nBL) - 1); // lsb in each key
+    Word_t wReplicatedKey = (wKey & MSK(nBL)) * wLsbs;
+    Word_t awXor[2] = { wReplicatedKey ^ pw[0], wReplicatedKey ^ pw[1] };
+    Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key
+    int bHasKey = ((((awXor[0] - wLsbs) & ~awXor[0] & wMsbs) != 0)
+                || (((awXor[1] - wLsbs) & ~awXor[1] & wMsbs) != 0));
+    return bHasKey ? Success : Failure;
+}
+#endif
+
+#if defined(USE_WORD_ARRAY_HAS_KEY)
+
+static Status_t
+WordArrayHasKey(Word_t *pw, unsigned nWords, Word_t wKey, unsigned nBL)
+{
+    Word_t wLsbs = (Word_t)-1 / (EXP(nBL) - 1); // lsb in each key
+    Word_t wReplicatedKey = (wKey & MSK(nBL)) * wLsbs;
+    Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key
+    int bHasKey = 0;
+    unsigned nn = 0;
+    do {
+        Word_t wXor = wReplicatedKey ^ pw[nn];
+        bHasKey |= (((wXor - wLsbs) & ~wXor & wMsbs) != 0);
+    } while (++nn < nWords);
+    return bHasKey ? Success : Failure;
+}
+
 // Do a parallel search of a word for a key that is smaller than a word.
 // WordHasKey expects the keys to be packed towards the most significant bits,
 // and it assumes all slots in the word are occupied.
@@ -417,23 +449,27 @@ printf("nSplit %d nSplitP %d\n", nSplit, nSplitP); \
 static Status_t
 WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
 {
-    Status_t status;
+    return WordArrayHasKey(&ww, /* nWords */ 1, wKey, nBL);
+}
+
+#else // defined(USE_WORD_ARRAY_HAS_KEY)
+
+// Do a parallel search of a word for a key that is smaller than a word.
+// WordHasKey expects the keys to be packed towards the most significant bits,
+// and it assumes all slots in the word are occupied.
+// I'm not sure what happens with left over bits if there are any.
+static Status_t
+WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
+{
     Word_t wLsbs = (Word_t)-1 / (EXP(nBL) - 1); // lsb in each key
     Word_t wReplicatedKey = (wKey & MSK(nBL)) * wLsbs;
     Word_t wXor = wReplicatedKey ^ ww;
     Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key
-    //return ((wXor - wLsbs) & ~wXor & wMsbs) ? Success : Failure;
-    status = (((wXor - wLsbs) & ~wXor & wMsbs) != 0);
-#if 0
-    printf("\nWordHasKey ww "OWx" wKey "OWx" nBL %d status %d\n",
-           ww, wKey, nBL, status);
-#endif
-    if (status == Success) {
-        return Success;
-    } else {
-        return Failure;
-    }
+    return ((wXor - wLsbs) & ~wXor & wMsbs) ? Success : Failure;
 }
+
+#endif // defined(USE_WORD_ARRAY_HAS_KEY)
+
 #endif // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
 #if ! defined(ONE_DEREF_AT_LIST) || ! defined(LOOKUP)
