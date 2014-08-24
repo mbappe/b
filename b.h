@@ -273,6 +273,7 @@
 
 #define cnBitsAtDl1  (cnBitsAtBottom)
 
+// Bits in the digit next to the bottom.
 #if ! defined(cnBitsAtDl2)
 #define cnBitsAtDl2  (cnBitsPerDigit)
 #endif // ! defined(cnBitsAtDl2)
@@ -281,51 +282,36 @@
 // anDL_to_nBL.  Yuck.
 #if defined(cnBitsAtDl3)
 #define cnDigitsPerWord \
-    (DIV_UP(cnBitsPerWord - cnBitsAtBottom - cnBitsAtDl2 + cnBitsAtDl3, \
+    (DIV_UP(cnBitsPerWord - cnBitsAtDl1 - cnBitsAtDl2 - cnBitsAtDl3, \
             cnBitsPerDigit) \
         + 3)
 #else // defined(cnBitsAtDl3)
 #define cnDigitsPerWord \
-    (DIV_UP(cnBitsPerWord - cnBitsAtBottom - cnBitsAtDl2, cnBitsPerDigit) + 2)
+    (DIV_UP(cnBitsPerWord - cnBitsAtDl1 - cnBitsAtDl2, cnBitsPerDigit) + 2)
 #endif // defined(cnBitsAtDl3)
 
-// Default is -DEMBED_KEYS which implies T_ONE.
-// EMBED_KEYS implies T_ONE
+// Default is -DEMBED_KEYS which implies -DUSE_T_ONE.
 #if ! defined(NO_EMBED_KEYS)
 #undef  EMBED_KEYS
 #define EMBED_KEYS
 #endif // ! defined(NO_EMBED_KEYS)
 
 #if defined(EMBED_KEYS)
-#undef  T_ONE
-#define T_ONE
+#undef  USE_T_ONE
+#define USE_T_ONE
 #endif // defined(EMBED_KEYS)
-
-#if 1
-#define T_NULL    0
-#if defined(T_ONE)
-#undef T_ONE
-#define T_ONE     1
-#define T_LIST     (T_ONE + 1)
-#else // defined(T_ONE)
-#define T_LIST     (T_NULL + 1)
-#endif // defined(T_ONE)
-#define T_BITMAP   (T_LIST + 1)
-#define T_BM_SW   (T_BITMAP + 1)
-#define T_SW_BASE  (T_BM_SW + 1)
-#else
 
 enum {
     T_NULL,
-#if defined(T_ONE)
-#undef T_ONE
+#if defined(USE_T_ONE)
     T_ONE,
-#endif // defined(T_ONE)
+#endif // defined(USE_T_ONE)
     T_LIST,
     T_BITMAP,
-    T_SW_BASE
+    T_BM_SW,
+    T_OTHER,
+    T_SW_BASE,
 };
-#endif
 
 // Default is -UBPD_TABLE, i.e. -DNO_BPD_TABLE.
 #if defined(BPD_TABLE)
@@ -534,7 +520,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 // Set the pwRoot and nType fields in wRoot.
 #define set_wr(_wr, _pwr, _type)  ((_wr) = (Word_t)(_pwr) | (_type))
 
-#if defined(T_ONE)
+#if defined(USE_T_ONE)
 
 #if (cnBitsPerWord == 64)
 #define nBL_to_nBitsPopCntSz(_nBL)  LOG(88 / (_nBL))
@@ -554,10 +540,10 @@ extern const unsigned anDL_to_nBitsIndexSz[];
     ((_wr) &= ~(MSK(nBL_to_nBitsPopCntSz(_nBL)) << cnBitsMallocMask), \
         (_wr) |= ((_nPopCnt) - 1) << cnBitsMallocMask)
 
-#endif // defined(T_ONE)
+#endif // defined(USE_T_ONE)
 
-// Default is -UDL_IN_TYPE_IS_ABSOLUTE, i.e. -DTYPE_IS_RELATIVE.
-#if defined(DL_IN_TYPE_IS_ABSOLUTE)
+// Default is -UTYPE_IS_ABSOLUTE, i.e. -DTYPE_IS_RELATIVE.
+#if defined(TYPE_IS_ABSOLUTE)
 
 // Why do we need to support nDL == 1?
 // Is it for cnBitsAtBottom > cnLogBitsPerWord?
@@ -565,8 +551,12 @@ extern const unsigned anDL_to_nBitsIndexSz[];
   #define tp_to_nDL(_tp)   ((_tp)  - T_SW_BASE + 1)
   #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 1)
 #else // (cnBitsAtBottom > cnLogBitsPerWord)
-  #define tp_to_nDL(_tp)   ((_tp)  - T_SW_BASE + 2)
-  #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 2)
+  #define tp_to_nDL(_tp) \
+           ((_tp)  - T_SW_BASE \
+               - ((cnLogBitsPerWord - cnBitsAtBottom) / cnBitsPerDigit))
+  #define nDL_to_tp(_nDL) \
+           ((_nDL) + T_SW_BASE \
+               - ((cnLogBitsPerWord - cnBitsAtBottom) / cnBitsPerDigit))
 #endif // (cnBitsAtBottom > cnLogBitsPerWord)
 
 #define     wr_nDL(_wr)     (tp_to_nDL(wr_nType(_wr)))
@@ -576,7 +566,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define     wr_bIsSwitchDL(_wr, _tp, _nDL) \
    ((_tp) = wr_nType(_wr), (_nDL) = tp_to_nDL(_tp), tp_bIsSwitch(_tp))
 
-#else // defined(DL_IN_TYPE_IS_ABSOLUTE)
+#else // defined(TYPE_IS_ABSOLUTE)
 
 #undef  TYPE_IS_RELATIVE
 #define TYPE_IS_RELATIVE
@@ -590,7 +580,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define     wr_bIsSwitchDS(_wr, _tp, _nDS) \
    ((_tp) = wr_nType(_wr), (_nDS) = tp_to_nDS(_tp), tp_bIsSwitch(_tp))
 
-#endif // defined(DL_IN_TYPE_IS_ABSOLUTE)
+#endif // defined(TYPE_IS_ABSOLUTE)
 
 #if defined(EXTRA_TYPES)
 #define     tp_bIsSwitch(_tp)          ((_tp) & cnMallocMask) >= T_BM_SW)

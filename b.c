@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.330 2014/08/20 16:50:02 mike Exp mike $
+// @(#) $Id: b.c,v 1.331 2014/08/22 02:16:12 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -285,9 +285,9 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 static unsigned
 ListWordsExternal(Word_t wPopCnt, unsigned nBL)
 {
-#if defined(T_ONE)
+#if defined(USE_T_ONE)
     if (wPopCnt == 1) { return 1; }
-#endif // defined(T_ONE)
+#endif // defined(USE_T_ONE)
 
     return ListWordsTypeList(wPopCnt, nBL);
 }
@@ -339,18 +339,18 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
 #if defined(LIST_END_MARKERS)
-#if defined(T_ONE)
+#if defined(USE_T_ONE)
         if (wPopCnt != 1)
-#endif // defined(T_ONE)
+#endif // defined(USE_T_ONE)
         { ls_pcKeys(pwList)[-1] = 0; }
 #endif // defined(LIST_END_MARKERS)
         METRICS(j__AllocWordsJLL1 += nWords); // JUDYA
         METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
     } else if (nBL <= 16) {
 #if defined(LIST_END_MARKERS)
-#if defined(T_ONE)
+#if defined(USE_T_ONE)
         if (wPopCnt != 1)
-#endif // defined(T_ONE)
+#endif // defined(USE_T_ONE)
         { ls_psKeys(pwList)[-1] = 0; }
 #endif // defined(LIST_END_MARKERS)
         METRICS(j__AllocWordsJLL2 += nWords); // JUDYA
@@ -358,9 +358,9 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 #if (cnBitsPerWord > 32)
     } else if (nBL <= 32) {
 #if defined(LIST_END_MARKERS)
-#if defined(T_ONE)
+#if defined(USE_T_ONE)
         if (wPopCnt != 1)
-#endif // defined(T_ONE)
+#endif // defined(USE_T_ONE)
         { ls_piKeys(pwList)[-1] = 0; }
 #endif // defined(LIST_END_MARKERS)
         METRICS(j__AllocWordsJLL4 += nWords); // JUDYA
@@ -371,9 +371,9 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 #endif // defined(COMPRESSED_LISTS)
     {
 #if defined(LIST_END_MARKERS)
-#if defined(T_ONE)
+#if defined(USE_T_ONE)
         if (wPopCnt != 1)
-#endif // defined(T_ONE)
+#endif // defined(USE_T_ONE)
 #if defined(PP_IN_LINK) && (cnDummiesInList == 0)
         // ls_pwKeys is for T_LIST not at top (it incorporates dummies
         // and markers, but not pop count)
@@ -433,14 +433,14 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
 static Word_t *
 NewListExternal(Word_t wPopCnt, unsigned nBL)
 {
-#if defined(T_ONE)
+#if defined(USE_T_ONE)
     if (wPopCnt == 1) {
         assert(wPopCnt != 0);
         Word_t *pwList = (Word_t *)MyMalloc(1);
         NewListCommon(pwList, wPopCnt, nBL, /* nWords */ 1);
         return pwList;
     }
-#endif // defined(T_ONE)
+#endif // defined(USE_T_ONE)
 
     return NewListTypeList(wPopCnt, nBL);
 }
@@ -1033,7 +1033,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     {
         Word_t wPopCnt;
 
-#if defined(T_ONE)
+#if defined(USE_T_ONE)
 
         if (nType == T_ONE)
         {
@@ -1080,7 +1080,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
             }
         }
         else
-#endif // defined(T_ONE)
+#endif // defined(USE_T_ONE)
         {
             assert(nType == T_LIST);
 
@@ -1626,7 +1626,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
     assert(nDL >= 1);
 
-#if defined(T_ONE)
+#if defined(USE_T_ONE)
 #if defined(COMPRESSED_LISTS)
     uint8_t  cKey;
     uint16_t sKey;
@@ -1634,13 +1634,13 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     uint32_t iKey;
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-#endif // defined(T_ONE)
+#endif // defined(USE_T_ONE)
 
     // Would be nice to validate sanity of ifdefs here.  Or somewhere.
     // assert(cnBitsAtBottom >= cnLogBitsPerWord);
-#if defined(EMBED_KEYS) && ! defined(T_ONE)
-    assert(0); // EMBED_KEYS requires T_ONE
-#endif // defined(EMBED_KEYS) && ! defined(T_ONE)
+#if defined(EMBED_KEYS) && ! defined(USE_T_ONE)
+    assert(0); // EMBED_KEYS requires USE_T_ONE
+#endif // defined(EMBED_KEYS) && ! defined(USE_T_ONE)
 
 #if (cnBitsAtBottom <= cnLogBitsPerWord) || defined(NO_LIST_AT_DL1)
     // Check to see if we're at the bottom before checking nType since
@@ -1706,7 +1706,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         // we're not at the top.
         if (wRoot != 0) // pointer to old List
         {
-#if defined(T_ONE)
+#if defined(USE_T_ONE)
             if (nType == T_ONE)
             {
                 wPopCnt = 1;
@@ -1727,7 +1727,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #endif // defined(COMPRESSED_LISTS)
             }
             else
-#endif // defined(T_ONE)
+#endif // defined(USE_T_ONE)
             {
 #if defined(PP_IN_LINK)
                 if (nDL != cnDigitsPerWord) {
@@ -2070,6 +2070,7 @@ newSwitch:
 #endif // (cnBitsAtBottom < cnLogBitsPerWord)
 
 #if defined(TYPE_IS_RELATIVE)
+            // cnMallocMask is the largest nType value.
             if (nDS_to_tp(nDLOld - nDL) > cnMallocMask) {
                 nDL = nDLOld - tp_to_nDS(cnMallocMask);
             }
@@ -2764,14 +2765,14 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     }
 #endif // defined(EMBED_KEYS)
 
-#if defined(T_ONE)
+#if defined(USE_T_ONE)
     if (nType == T_ONE) {
         assert(nBL > cnBitsPerWord - cnBitsMallocMask);
         OldList(pwr, /* wPopCnt */ 1, nDL, T_ONE);
         *pwRoot = 0; // Do we need to clear the rest of the link also?
         return Success;
     }
-#endif // defined(T_ONE)
+#endif // defined(USE_T_ONE)
 
     assert(wr_nType(wRoot) == T_LIST);
     assert(nType == T_LIST);
@@ -2787,8 +2788,8 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         wPopCnt = ls_wPopCnt(pwr);
     }
 
-// Why was this #if defined(T_ONE) ever here?
-//#if ! defined(T_ONE)
+// Why was this #if defined(USE_T_ONE) ever here?
+//#if ! defined(USE_T_ONE)
     if (wPopCnt == 1) {
         OldList(pwr, wPopCnt, nDL, nType);
         *pwRoot = 0;
@@ -2796,7 +2797,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         // See bCleanup in Lookup/Remove for the rest.
         return Success;
     }
-//#endif // ! defined(T_ONE)
+//#endif // ! defined(USE_T_ONE)
 
     Word_t *pwKeys = pwr_pwKeys(pwr);
 
@@ -3046,13 +3047,13 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
   #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     if ( ! tp_bIsSwitch(nType) )
     {
-      #if defined(T_ONE)
+      #if defined(USE_T_ONE)
         if (nType == T_ONE) {
             wPopCnt = 1; // Always a full word to top; never embedded.
         } else
-      #endif // defined(T_ONE)
+      #endif // defined(USE_T_ONE)
         {
-            // ls_wPopCnt is valid at top for PP_IN_LINK if ! T_ONE
+            // ls_wPopCnt is valid at top for PP_IN_LINK if ! USE_T_ONE
             wPopCnt = ls_wPopCnt(pwr);
         }
     }

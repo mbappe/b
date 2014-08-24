@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.336 2014/08/23 12:45:30 mike Exp mike $
+// @(#) $Id: bli.c,v 1.337 2014/08/23 12:52:51 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1692,7 +1692,7 @@ embeddedBitmap:
 
     } // end of case T_BITMAP
 
-#if defined(T_ONE)
+#if defined(USE_T_ONE)
 
     // T_ONE is a one-key/word external leaf or an embedded/internal list.
     // The latter is only possible if EMBED_KEYS is defined.  In the latter
@@ -1852,7 +1852,7 @@ foundIt:
 
     } // end of case T_ONE
 
-#endif // defined(T_ONE)
+#endif // defined(USE_T_ONE)
 
     case T_NULL:
 #if defined(EXTRA_TYPES)
@@ -2049,6 +2049,16 @@ Initialize(void)
 #if defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
     assert(0);
 #endif // defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
+#if defined(TYPE_IS_ABSOLUTE)
+    if ( ! (nDL_to_tp(cnDigitsPerWord) <= cnMallocMask) ) {
+        printf("\n");
+        printf("nDL_to_tp(%d) %d\n",
+               cnDigitsPerWord, nDL_to_tp(cnDigitsPerWord));
+        printf("tp_to_nDL(%d) %d\n",
+               (int)cnMallocMask, (int)tp_to_nDL(cnMallocMask));
+    }
+    assert(nDL_to_tp(cnDigitsPerWord) <= cnMallocMask);
+#endif // defined(TYPE_IS_ABSOLUTE)
 
     bInitialized= 1;
 }
@@ -2087,11 +2097,11 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     unsigned nType = wr_nType(wRoot);
 
     if ((T_LIST == nType)
-      #if defined(T_ONE)
+      #if defined(USE_T_ONE)
         || (nType == T_ONE)
-      #else // defined(T_ONE)
+      #else // defined(USE_T_ONE)
         || (nType == T_NULL)
-      #endif // defined(T_ONE)
+      #endif // defined(USE_T_ONE)
         )
     {
         if (Judy1Test((Pcvoid_t)wRoot, wKey, PJError) == Success)
@@ -2103,16 +2113,16 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             Word_t *pwr = wr_tp_pwr(wRoot, nType);
             Word_t wPopCnt;
 
-      #if defined(T_ONE)
+      #if defined(USE_T_ONE)
             if (nType == T_ONE) {
                 wPopCnt = 1;
             } else
-      #else // defined(T_ONE)
+      #else // defined(USE_T_ONE)
             if (nType == T_NULL) {
                 assert(pwr == NULL);
                 wPopCnt = 0;
             } else
-      #endif // defined(T_ONE)
+      #endif // defined(USE_T_ONE)
             {
                 wPopCnt = ls_wPopCnt(pwr);
             }
@@ -2133,11 +2143,11 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 // pop count is in first element at top
                 pwKeysNew += (cnDummiesInList == 0);
                 Word_t *pwKeys;
-      #if defined(T_ONE)
+      #if defined(USE_T_ONE)
                 if (nType == T_ONE) {
                     pwKeys = pwr;
                 } else
-      #endif // defined(T_ONE)
+      #endif // defined(USE_T_ONE)
                 {
                     pwKeys = ls_pwKeys(pwr) + (cnDummiesInList == 0);
                 }
@@ -2266,12 +2276,12 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
             {
                 pwListNew = NewList(wPopCnt - 1, cnDigitsPerWord);
                 Word_t *pwKeysNew;
-      #if defined(T_ONE)
+      #if defined(USE_T_ONE)
                 if (wPopCnt == 2) {
                     set_wr(wRoot, pwListNew, T_ONE);
                     pwKeysNew = pwListNew;
                 } else
-      #endif // defined(T_ONE)
+      #endif // defined(USE_T_ONE)
                 {
                     set_wr(wRoot, pwListNew, T_LIST);
                     pwKeysNew = ls_pwKeys(pwListNew);
@@ -2287,9 +2297,9 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
                 COPY(pwKeysNew, pwKeys, nn);
                 COPY(&pwKeysNew[nn], &pwKeys[nn + 1], wPopCnt - nn - 1);
       #if defined(LIST_END_MARKERS)
-          #if defined(T_ONE)
+          #if defined(USE_T_ONE)
                 if (wPopCnt != 2)
-          #endif // defined(T_ONE)
+          #endif // defined(USE_T_ONE)
                 // pwKeysNew incorporates top pop count and markers
                 { pwKeysNew[wPopCnt - 1] = -1; }
       #endif // defined(LIST_END_MARKERS)
