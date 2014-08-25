@@ -301,6 +301,7 @@
 #define USE_T_ONE
 #endif // defined(EMBED_KEYS)
 
+// Values for nType.
 enum {
     T_NULL,
 #if defined(USE_T_ONE)
@@ -545,18 +546,18 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 // Default is -UTYPE_IS_ABSOLUTE, i.e. -DTYPE_IS_RELATIVE.
 #if defined(TYPE_IS_ABSOLUTE)
 
-// Why do we need to support nDL == 1?
-// Is it for cnBitsAtBottom > cnLogBitsPerWord?
+// Why do we need nType to be able to represent nDL == 1?
+// We have to test for nDL == 1 before looping back to the switch statement
+// that checks nType if cnBitsAtBottom == cnLogBitsPerWord because there is
+// no room for a type field when all the bits are used for an embedded bitmap.
+// But if cnBitsAtBottom > cnLogBitsPerWord we don't want to waste the
+// conditional branch.
 #if (cnBitsAtBottom > cnLogBitsPerWord)
   #define tp_to_nDL(_tp)   ((_tp)  - T_SW_BASE + 1)
   #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 1)
 #else // (cnBitsAtBottom > cnLogBitsPerWord)
-  #define tp_to_nDL(_tp) \
-           ((_tp)  - T_SW_BASE \
-               - ((cnLogBitsPerWord - cnBitsAtBottom) / cnBitsPerDigit))
-  #define nDL_to_tp(_nDL) \
-           ((_nDL) + T_SW_BASE \
-               - ((cnLogBitsPerWord - cnBitsAtBottom) / cnBitsPerDigit))
+  #define tp_to_nDL(_tp)   ((_tp)  - T_SW_BASE + 2)
+  #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 2)
 #endif // (cnBitsAtBottom > cnLogBitsPerWord)
 
 #define     wr_nDL(_wr)     (tp_to_nDL(wr_nType(_wr)))
