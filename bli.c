@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.337 2014/08/23 12:52:51 mike Exp mike $
+// @(#) $Id: bli.c,v 1.338 2014/08/24 17:13:56 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -166,7 +166,7 @@
 // If key has fewer than N significant bits, then shift key left as needed.
 // Where N = 9.
 // The rounding term is probably insignificant and unnecessary.
-#define PSPLIT(_nPopCnt, _nBL, _xKey, _nSplit) \
+#define PSPLIT_X(_nPopCnt, _nBL, _xKey, _nSplit) \
 { \
     (_nSplit) = ((((((Word_t)(_xKey) << (cnBitsPerWord - (_nBL))) \
                             >> (cnBitsPerWord - 9)) \
@@ -174,6 +174,52 @@
                     /* + ((_nPopCnt) / 2) */ ) \
                 >> 9); \
 }
+
+#define PSPLIT_0(_nPopCnt, _nBL, _xKey, _nSplit) \
+{ \
+    assert((_nBL) < cnBitsPerWord); \
+    assert((_nPopCnt) <= (1 << (cnBitsPerWord - (_nBL)))); \
+    (_nSplit) = ((((((Word_t)(_xKey) << (cnBitsPerWord - (_nBL))) \
+                            >> (cnBitsPerWord - (_nBL))) \
+                        * (_nPopCnt)) \
+                    + ((_nPopCnt) / 2)) \
+                >> (_nBL)); \
+}
+
+#define PSPLIT_1(_nPopCnt, _nBL, _xKey, _nSplit) \
+{ \
+    assert((_nPopCnt) <= (1 << (cnBitsPerWord - (_nBL) + 1))); \
+    (_nSplit) = ((((((Word_t)(_xKey) << (cnBitsPerWord - (_nBL))) \
+                            >> (cnBitsPerWord + 1 - (_nBL))) \
+                        * (_nPopCnt)) \
+                    + ((_nPopCnt) / 2)) \
+                >> ((_nBL) - 1)); \
+}
+
+// The trick is finding an expression for _nn.
+#define PSPLIT_NN(_nPopCnt, _nBL, _xKey, _nSplit, _nn) \
+{ \
+    assert((_nPopCnt) <= (1 << (cnBitsPerWord - (_nBL) + (_nn)))); \
+    (_nSplit) = ((((((Word_t)(_xKey) << (cnBitsPerWord - (_nBL))) \
+                            >> (cnBitsPerWord + (_nn) - (_nBL))) \
+                        * (_nPopCnt)) \
+                    + ((_nPopCnt) / 2)) \
+                >> ((_nBL) - (_nn))); \
+}
+
+// I think this may work for everything except:
+//    (_nBL == cnBitsPerWord) && (_nPopCnt == 1)
+#define PSPLIT(_nPopCnt, _nBL, _xKey, _nSplit) \
+        PSPLIT_NN((_nPopCnt), (_nBL), (_xKey), (_nSplit), \
+            LOG((((_nPopCnt) << 1) - 1)) - cnBitsPerWord + (_nBL))
+
+#if 0
+pop <= 2 ^ (bpw - nbl + nn)
+ceil(log(pop)) <= bpw - nbl + nn
+LOG(pop * 2 - 1) <= bpw - nbl + nn
+nn >= LOG(pop * 2 - 1) - bpw + nbl
+nn  = LOG(pop * 2 - 1) - bpw + nbl
+#endif
 
 #if 0
 
