@@ -523,18 +523,24 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #if defined(USE_T_ONE)
 
+// Fixed-size pop count field to make code simpler.
+// We only give up one 29-bit slot in 64-bit and one 14-bit slot in 32-bit.
+#if ! defined(NO_EMBEDDED_LIST_FIXED_POP)
+#undef  EMBEDDED_LIST_FIXED_POP
+#define EMBEDDED_LIST_FIXED_POP
+#endif // ! defined(NO_EMBEDDED_LIST_FIXED_POP)
 #if (cnBitsPerWord == 64)
-#if defined(LIST_HAS_KEY_SHORTCUT)
+#if defined(EMBEDDED_LIST_FIXED_POP)
 #define nBL_to_nBitsPopCntSz(_nBL)  3
-#else // defined(LIST_HAS_KEY_SHORTCUT)
+#else // defined(EMBEDDED_LIST_FIXED_POP)
 #define nBL_to_nBitsPopCntSz(_nBL)  LOG(88 / (_nBL))
-#endif // defined(LIST_HAS_KEY_SHORTCUT)
+#endif // defined(EMBEDDED_LIST_FIXED_POP)
 #elif (cnBitsPerWord == 32)
-#if defined(LIST_HAS_KEY_SHORTCUT)
+#if defined(EMBEDDED_LIST_FIXED_POP)
 #define nBL_to_nBitsPopCntSz(_nBL)  2
-#else // defined(LIST_HAS_KEY_SHORTCUT)
+#else // defined(EMBEDDED_LIST_FIXED_POP)
 #define nBL_to_nBitsPopCntSz(_nBL)  LOG(44 / (_nBL))
-#endif // defined(LIST_HAS_KEY_SHORTCUT)
+#endif // defined(EMBEDDED_LIST_FIXED_POP)
 #else
 #error "Invalid cnBitsPerWord."
 #endif
@@ -709,6 +715,15 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 // For PP_IN_LINK ls_pxKeys macros are only valid not at top or for
 // T_ONE - not T_LIST - at top.
 #define ls_pwKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_awKeys[FIRST_KEY])
+
+#if ! defined(NO_PSPLIT_PARALLEL)
+#undef  PSPLIT_PARALLEL
+#define PSPLIT_PARALLEL
+#endif // ! defined(NO_PSPLIT_PARALLEL)
+#if ! defined(NO_PSPLIT_EARLY_OUT)
+#undef  PSPLIT_EARLY_OUT
+#define PSPLIT_EARLY_OUT
+#endif // ! defined(NO_PSPLIT_EARLY_OUT)
 
 #if defined(COMPRESSED_LISTS)
   #if defined(PSPLIT_PARALLEL)
