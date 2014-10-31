@@ -524,9 +524,17 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #if defined(USE_T_ONE)
 
 #if (cnBitsPerWord == 64)
+#if defined(LIST_HAS_KEY_SHORTCUT)
+#define nBL_to_nBitsPopCntSz(_nBL)  3
+#else // defined(LIST_HAS_KEY_SHORTCUT)
 #define nBL_to_nBitsPopCntSz(_nBL)  LOG(88 / (_nBL))
+#endif // defined(LIST_HAS_KEY_SHORTCUT)
 #elif (cnBitsPerWord == 32)
+#if defined(LIST_HAS_KEY_SHORTCUT)
+#define nBL_to_nBitsPopCntSz(_nBL)  2
+#else // defined(LIST_HAS_KEY_SHORTCUT)
 #define nBL_to_nBitsPopCntSz(_nBL)  LOG(44 / (_nBL))
+#endif // defined(LIST_HAS_KEY_SHORTCUT)
 #else
 #error "Invalid cnBitsPerWord."
 #endif
