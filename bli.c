@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.339 2014/08/25 20:19:23 mike Exp mike $
+// @(#) $Id: bli.c,v 1.340 2014/10/31 12:24:32 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -489,7 +489,7 @@ TwoWordsHaveKey(Word_t *pw, Word_t wKey, unsigned nBL)
 // using a parallel search of each word.
 // WordArrayHasKey expects the keys to be packed towards the most significant
 // bits, and it assumes all slots in every word have valid keys, i.e. the
-// would-be empty slots have been paddd with copies of some key/keys that
+// would-be empty slots have been padded with copies of some key/keys that
 // is/are present.
 // It also assumes that keys do not cross word boundaries.
 static Status_t
@@ -511,7 +511,7 @@ WordArrayHasKey(Word_t *pw, unsigned nWords, Word_t wKey, unsigned nBL)
 // Do a parallel search of a word for a key that is smaller than a word.
 // WordHasKey expects the keys to be packed towards the most significant bits,
 // and it assumes all slots in the word have valid keys, i.e. the would-be
-// empty slots have been paddd with copies of some key/keys that is/are
+// empty slots have been padded with copies of some key/keys that is/are
 // present.
 static Status_t
 WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
@@ -528,7 +528,7 @@ WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
 // Do a parallel search of a word for a key that is smaller than a word.
 // WordHasKey expects the keys to be packed towards the most significant bits,
 // and it assumes all slots in the word have valid keys, i.e. the would-be
-// empty slots have been paddd with copies of some key/keys that is/are
+// empty slots have been padded with copies of some key/keys that is/are
 // present.
 static Status_t
 WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
@@ -900,7 +900,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 // Do a parallel search of a word for a key that is smaller than a word.
 // WordHasKey expects the keys to be packed towards the most significant bits,
 // and it assumes all slots in the word have valid keys, i.e. the would-be
-// empty slots have been paddd with copies of some key/keys that is/are
+// empty slots have been padded with copies of some key/keys that is/are
 // present.
 // The cnBitsMallocMask least-significant bits of the word are used for a
 // type field and the next least-significant nBL_to_nBitsPopCntSz(nBL) bits
@@ -909,7 +909,7 @@ static Status_t
 EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 {
     // It helps Lookup performance to eliminate the need to know nPopCnt.
-    // So we replicate the first key in the list into the unused slots
+    // So we replicate the last key in the list into the unused slots
     // at insert time to make sure the unused slots don't cause a false
     // bXorHasZero.
     // But how do we make sure the type and pop count bits don't
@@ -942,17 +942,27 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 
 #else // defined(PAD_T_ONE)
 
+// Do a parallel search of a word for a key that is smaller than a word.
+// WordHasKey expects the keys to be packed towards the most significant bits.
+// and it assumes all slots in the word have valid keys, i.e. the would-be
+// empty slots have been paded with copies of some key/keys that is/are
+// present.
+// The cnBitsMallocMask least-significant bits of the word are used for a
+// type field and the next least-significant nBL_to_nBitsPopCntSz(nBL) bits
+// of the word are used for a population count.
 static Status_t
 EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 {
-    unsigned nPopCnt = wr_nPopCnt(wRoot, nBL);
+    unsigned nPopCnt = wr_nPopCnt(wRoot, nBL); // number of keys present
     unsigned nBitsOfKeys = nPopCnt * nBL;
-    Word_t wLsbs = ((Word_t)-1 / (EXP(nBL) - 1))
+    Word_t wMask = MSK(nBL); // (1 << nBL) - 1
+    Word_t wLsbs = ((Word_t)-1 / wMask)
                     & ((Word_t)-1 << (cnBitsPerWord - nBitsOfKeys));
-    Word_t wReplicatedKey = (wKey & MSK(nBL)) * wLsbs;
-    Word_t wXor = wReplicatedKey ^ wRoot;
-    Word_t wMsbs = wLsbs << (nBL - 1);
-    return ((wXor - wLsbs) & ~wXor & wMsbs) ? Success : Failure;
+    Word_t wKeys = (wKey & wMask) * wLsbs; // replicate key; put in every slot
+    Word_t wXor = wKeys ^ wRoot; // get zero in slot with matching key
+    Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
+    int bXorHasZero = (((wXor - wLsbs) & ~wXor & wMsbs) != 0); // magic
+    return bXorHasZero ? Success : Failure;
 }
 
 #endif // defined(PAD_T_ONE)
