@@ -44,7 +44,9 @@ typedef unsigned long Word_t;
 
 //#define P_M(cbPK,POP0) (((Word_t)((1 << ((cbPK) - 1)) * 2) << ((POP0) * cbPK)) - 1)
 
-void printBits(Word_t num, int nbits)
+#if 0
+static void
+printBits(Word_t num, int nbits)
 {
     int bit;
 
@@ -56,10 +58,11 @@ void printBits(Word_t num, int nbits)
     }
 //    printf("] ");
 }
+#endif
 
 
 // slow way to replicate a Key in a Word_t
-Word_t
+static Word_t
 REPKEY1(int bitsPKey, Word_t Key)
 {
     int ii;
@@ -76,7 +79,7 @@ REPKEY1(int bitsPKey, Word_t Key)
 
 // Build and return random valid Bucket and SearchKey, given bits-Per-Key
 // Warning: This Does not generate a NULL ( == -1) Key
-int 
+static int 
 GetValidBucket(Word_t *Bucket, Word_t *SearchKey, int bitsPerKey)
 {
     int    KeyMask;                     // Key mask or max Key
@@ -151,8 +154,8 @@ GetValidBucket(Word_t *Bucket, Word_t *SearchKey, int bitsPerKey)
 
 }
 
-
-Word_t
+#if 0
+static Word_t
 BucketHasKey7(Word_t Bucket, Word_t Key)
 {
     Word_t      repLsbKey;
@@ -189,11 +192,12 @@ BucketHasKey7(Word_t Bucket, Word_t Key)
 
     return(newBucket);
 }
+#endif
 
 // If matching Key in Bucket, then offset into Bucket is returned
 // else -1 if no Key was found
 
-int
+static int
 BucketHasKey(Word_t Bucket, Word_t Key, int bPK)
 {
     Word_t      repLsbKey;
@@ -245,7 +249,7 @@ BucketHasKey(Word_t Bucket, Word_t Key, int bPK)
 
 // Given Bucket, Key and bitsPerKey, return offset 0..KPB-1 of found Key
 // if not found, return ~offset of where to insert new Key
-int
+static int
 BucketHasKeyIns(Word_t Bucket, Word_t Key, int bitsPerKey)
 {
     Word_t KeyMask;                     // Key mask or max Key
