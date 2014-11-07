@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.343 2014/11/07 15:37:20 mike Exp mike $
+// @(#) $Id: bli.c,v 1.345 2014/11/07 16:32:03 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -898,7 +898,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 #if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
 #if (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(HAS_KEY)
 
-// Do a parallel search of a word for a key that is smaller than a word.
+// Do a parallel search of a list embedded in a link given the key size.
 // EmbeddedListHasKey expects the keys to be packed towards the most
 // significant bits.
 // The cnBitsMallocMask least-significant bits of the word are used for a
