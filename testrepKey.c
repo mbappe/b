@@ -4,6 +4,7 @@
 #include        <assert.h>
 
 #define LEFT
+//#define USE_WORD_HAS_KEY
 
 typedef unsigned long Word_t;
 
@@ -198,20 +199,201 @@ GetValidBucket(Word_t *Bucket, Word_t *SearchKey, int bitsPerKey)
 // else -1 if no Key was found
 
 #if defined(LEFT)
+
 #define EXP(_x)  ((Word_t)1 << (_x))
 #define MSK(_x)  (EXP(_x) - 1)
 
+#if 0
+// Do a parallel search of a list embedded in a word given the key size,
+// and assuming the list has at least one key.
+// EmbeddedListHasKey expects the keys to be packed towards the most
+// significant bits.
+// The cnBitsMallocMask least-significant bits of the word are used for a
+// type field and the next least-significant nBL_to_nBitsPopCntSz(nBL) bits
+// of the word are used for a population count.
+// It helps Lookup performance to eliminate the need to know nPopCnt.
+// So, if PAD_T_ONE, we replicate the last key in the list into the unused
+// slots at insert time to make sure the unused slots don't cause a false
+// bXorHasZero.
+// But how do we make sure the type and pop count bits don't
+// cause a false bXorHasZero due to a slot that can't really be used?
+// Or'ing MSK(nBL_to_nBitsPopCntSz(nBL) + cnBitsMallocMask)
+// would be sufficient, but it may be expensive.
+// Can we do something simpler/faster?  Something at insert time?
+// Unfortunately, it doesn't matter how the pop and type bits are set
+// in the word since we are xoring them with the key we're looking for
+// before calculating bXorHasZero.  And whatever they are set to will
+// match the key/keys that is/are the same.
+// I wonder if the next best thing is to have a constant that we can
+// or into wXor before calculating bXorHasZero.
+// Does cnMallocMask work?  It will cover any key slot that extends
+// into cnMallocMask.  But what about a slot that extends into the pop
+// count field and not into cnMallocMask?
+// Sure would be nice if we had a constant width pop field.  What would
+// be the cost?  3-bits of pop for 64-bit costs one 29-bit key slot.
+// 2-bits of pop for 32-bit costs one 14-bit key slot.
+// If we're not using those key sizes, then there is no cost.
+int EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL);
+int
+EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
+{
+#if (cbPW == 64)
+#define cnLogBytesPerWord  3
+#else // (cbPW == 64)
+#define cnLogBytesPerWord  2
+#endif // (cbPW == 64)
+
+#define cnBitsMallocMask  (cnLogBytesPerWord + 1)
+#define cnMallocMask  MSK(cnBitsMallocMask)
+
+// Fixed-size pop count field to make code simpler.
+// We only give up one 29-bit slot in 64-bit and one 14-bit slot in 32-bit.
+#if ! defined(NO_EMBEDDED_LIST_FIXED_POP)
+#undef  EMBEDDED_LIST_FIXED_POP
+#define EMBEDDED_LIST_FIXED_POP
+#endif // ! defined(NO_EMBEDDED_LIST_FIXED_POP)
+#if (cbPW == 64)
+#if defined(EMBEDDED_LIST_FIXED_POP)
+#define nBL_to_nBitsPopCntSz(_nBL)  3
+#else // defined(EMBEDDED_LIST_FIXED_POP)
+#define nBL_to_nBitsPopCntSz(_nBL)  LOG(88 / (_nBL))
+#endif // defined(EMBEDDED_LIST_FIXED_POP)
+#elif (cbPW == 32)
+#if defined(EMBEDDED_LIST_FIXED_POP)
+#define nBL_to_nBitsPopCntSz(_nBL)  2
+#else // defined(EMBEDDED_LIST_FIXED_POP)
+#define nBL_to_nBitsPopCntSz(_nBL)  LOG(44 / (_nBL))
+#endif // defined(EMBEDDED_LIST_FIXED_POP)
+#else
+#error "Unsupported cbPW."
+#endif
+
+#define     wr_nPopCnt(_wr, _nBL) \
+    ((((_wr) >> cnBitsMallocMask) & MSK(nBL_to_nBitsPopCntSz(_nBL))) + 1)
+
+#if ! defined(PAD_WITH_KEY)
+    unsigned nPopCnt = wr_nPopCnt(wRoot, nBL); // number of keys present
+    unsigned nBitsOfKeys = nPopCnt * nBL;
+#endif // ! defined(PAD_WITH_KEY)
+    Word_t wMask = MSK(nBL); // (1 << nBL) - 1
+    Word_t wLsbs = (Word_t)-1 / wMask;
+#if ! defined(PAD_WITH_KEY) && ! defined(ONE_WAY)
+    wLsbs &= (Word_t)-1 << (cbPW - nBitsOfKeys); // type and empties
+#endif // ! defined(PAD_WITH_KEY) && ! defined(ONE_WAY)
+    Word_t wKeys = (wKey & wMask) * wLsbs; // replicate key; put in every slot
+    Word_t wXor = wKeys ^ wRoot; // get zero in slot with matching key
+#if ! defined(PAD_WITH_KEY) && defined(ONE_WAY)
+    wXor |= MSK(cnBitsPerWord - nBitsOfKeys); // type and empty slots
+#endif // ! defined(PAD_WITH_KEY) && defined(ONE_WAY)
+#if defined(PAD_WITH_KEY)
+    wXor |= MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL)); // pop and type
+#endif // defined(PAD_WITH_KEY)
+    Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
+    int bXorHasZero = (((wXor - wLsbs) & ~wXor & wMsbs) != 0); // magic
+    return bXorHasZero;
+}
+#endif
+
+// There are a lot of ways we can represent a bucket.
+// Which way will be fastest?
+// Should we require that the keys in the list be sorted?  Why?
+// Is has-key faster if we fill empty slots with a present key?
+// What about offset?  Assumes key is present.
+// What about has-key-and-offset?  No offset returned if key is not present.
+// What about offset-of-missing-key?  Assumes key is not present.
+// What about has-key-or-offset-of-missing-key?  No off ret if key is present.
+// What about has-key-and-offset-or-offset-of-missing-key?
+//
+// If keys are sorted and key[n+1] < key[n] && k[n+1] != 0, then bucket is
+// illegal and we could use that to mean the bucket is empty.  It only
+// requires that buckets can always hold more than one key,
+// i.e. key_size <= word_size / 2.
+// The second half of the test isn't necessary if we fill empty slots
+// with the biggest present key.
+//
+// fill empty slots with 0
+// fill empty slots with smallest key
+// fill empty slots with largest key
+// fill empty slots with -1
+//
+// sort with most-significant non-empty slot having the smallest key
+// sort with least-significant slot having the smallest key
+// don't sort
+//
+// empty slots are on most-significant end
+// empty slots are on least-significant end
+// empty slots are anywhere
+
+// (EMPTY_SLOT == 0) && (EMPTY_BUCKET == (Word_t)-1)
+// (EMPTY_SLOT == -1 & MSK(nBL)) && (EMPTY_BUCKET == 0)
+#if ! defined(EMPTY_SLOT)
+#define EMPTY_SLOT  (0)
+#define EMPTY_BUCKET  ((Word_t)-1)
+#else // ! defined(EMPTY_SLOT)
+#define EMPTY_BUCKET  ((EMPTY_SLOT) - (Word_t)1)
+#endif // ! defined(EMPTY_SLOT)
+
+int WordHasKey(Word_t ww, Word_t wKey, int nBL);
+int
+WordHasKey(Word_t ww, Word_t wKey, int nBL)
+{
+#if defined(OPTION_A)
+    if (ww == EMPTY_BUCKET) { return 0; }
+#endif // defined(OPTION_A)
+    Word_t wMask = MSK(nBL);
+    wKey &= wMask; // get rid of already-decoded bits
+#if defined(OPTION_B)
+    if ((wKey == EMPTY_SLOT) && (ww == EMPTY_BUCKET)) { return 0; }
+#endif // defined(OPTION_B)
+    Word_t wLsbs = (Word_t)-1 / wMask; // lsb in each key slot
+    Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
+    Word_t wKeys = wKey * wLsbs; // replicate key; put in every slot
+    Word_t wXor = wKeys ^ ww; // get zero in slot with matching key
+    //wXor |= MSK(cbPW - nBitsOfKeys); // type and empty slots
+    Word_t wMagic = (wXor - wLsbs) & ~wXor & wMsbs; 
+    int bXorHasZero = (wMagic != 0);
+#if defined(OPTION_A) || defined(OPTION_B)
+    int bHasKey = bXorHasZero;
+#else // defined(OPTION_A) || defined(OPTION_B)
+    int bHasKey = bXorHasZero && (ww != EMPTY_BUCKET);
+#endif // defined(OPTION_A) || defined(OPTION_B)
+#if defined(HAS_KEY_ONLY)
+    // any sort; empty slots anywhere
+    return bHasKey;
+#else // defined(HAS_KEY_ONLY)
+    if ( ! bHasKey ) { return -1; }
+    // sort with most-significant non-empty slot having the smallest key
+    // empty slots are on most-significant end
+    if (wKey == 0) { return 0; }
+    //int offset = (cbPW - 1 - __builtin_ctzll(wMagic)) / nBL;
+    int offset = JU_POP0(wMagic, cbPW, nBL);
+    return offset;
+#endif // defined(HAS_KEY_ONLY)
+}
+
+#if defined(USE_WORD_HAS_KEY)
+
+#define BucketHasKey  WordHasKey
+
+#else // defined(USE_WORD_HAS_KEY)
+
+// Judy1Test only needs to know if the key is present or not.
+// Judy1Set needs to know where the key belongs if it is not present.
+// JudyLGet needs to know the offset of the key if the key is present.
+// JudyLInsert needs to know the offset of the key if the key is present.
+// 
+// It needs to determine the offset of a found key for JudyL.
+// only for Lookup.
 static int
 BucketHasKey(Word_t ww, Word_t wKey, int nBL)
 {
-    Word_t wMask = MSK(nBL); // (1 << nBL) - 1
+    Word_t wMask = MSK(nBL);
     wKey &= wMask;
     if (ww == 0) { return -(wKey != 0); }
     int nPopCnt = JU_POP0(ww, cbPW, nBL) + 1;
     int nBitsOfKeys = nPopCnt * nBL;
     // lsb in each slot that has a key
-    Word_t wLsbs = ((Word_t)-1 / wMask)
-                    & ((Word_t)-1 << (cbPW - nBitsOfKeys));
+    Word_t wLsbs = (Word_t)-1 / wMask;
     Word_t wKeys = (wKey & wMask) * wLsbs; // replicate key; put in every slot
     Word_t wXor = wKeys ^ ww; // get zero in slot with matching key
     wXor |= MSK(cbPW - nBitsOfKeys);
@@ -223,6 +405,8 @@ BucketHasKey(Word_t ww, Word_t wKey, int nBL)
     if ( ! bXorHasZero ) { return -1; }
     return offset;
 }
+
+#endif // defined(USE_WORD_HAS_KEY)
 
 #else // defined(LEFT)
 
