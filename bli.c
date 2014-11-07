@@ -897,78 +897,60 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 
 #if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
 #if (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(HAS_KEY)
-#if defined(PAD_T_ONE)
 
 // Do a parallel search of a word for a key that is smaller than a word.
-// WordHasKey expects the keys to be packed towards the most significant bits,
-// and it assumes all slots in the word have valid keys, i.e. the would-be
-// empty slots have been padded with copies of some key/keys that is/are
-// present.
+// EmbeddedListHasKey expects the keys to be packed towards the most
+// significant bits.
 // The cnBitsMallocMask least-significant bits of the word are used for a
 // type field and the next least-significant nBL_to_nBitsPopCntSz(nBL) bits
 // of the word are used for a population count.
+// It helps Lookup performance to eliminate the need to know nPopCnt.
+// So, if PAD_T_ONE, we replicate the last key in the list into the unused
+// slots at insert time to make sure the unused slots don't cause a false
+// bXorHasZero.
+// But how do we make sure the type and pop count bits don't
+// cause a false bXorHasZero due to a slot that can't really be used?
+// Or'ing MSK(nBL_to_nBitsPopCntSz(nBL) + cnBitsMallocMask)
+// would be sufficient, but it may be expensive.
+// Can we do something simpler/faster?  Something at insert time?
+// Unfortunately, it doesn't matter how the pop and type bits are set
+// in the word since we are xoring them with the key we're looking for
+// before calculating bXorHasZero.  And whatever they are set to will
+// match the key/keys that is/are the same.
+// I wonder if the next best thing is to have a constant that we can
+// or into wXor before calculating bXorHasZero.
+// Does cnMallocMask work?  It will cover any key slot that extends
+// into cnMallocMask.  But what about a slot that extends into the pop
+// count field and not into cnMallocMask?
+// Sure would be nice if we had a constant width pop field.  What would
+// be the cost?  3-bits of pop for 64-bit costs one 29-bit key slot.
+// 2-bits of pop for 32-bit costs one 14-bit key slot.
+// If we're not using those key sizes, then there is no cost.
 static Status_t
 EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 {
-    // It helps Lookup performance to eliminate the need to know nPopCnt.
-    // So we replicate the last key in the list into the unused slots
-    // at insert time to make sure the unused slots don't cause a false
-    // bXorHasZero.
-    // But how do we make sure the type and pop count bits don't
-    // cause a false bXorHasZero due to a slot that can't really be used?
-    // Or'ing MSK(nBL_to_nBitsPopCntSz(nBL) + cnBitsMallocMask)
-    // would be sufficient, but it may be expensive.
-    // Can we do something simpler/faster?  Something at insert time?
-    // Unfortunately, it doesn't matter how the pop and type bits are set
-    // in the word since we are xoring them with the key we're looking for
-    // before calculating bXorHasZero.  And whatever they are set to will
-    // match the key/keys that is/are the same.
-    // I wonder if the next best thing is to have a constant that we can
-    // or into wXor before calculating bXorHasZero.
-    // Does cnMallocMask work?  It will cover any key slot that extends
-    // into cnMallocMask.  But what about a slot that extends into the pop
-    // count field and not into cnMallocMask?
-    // Sure would be nice if we had a constant width pop field.  What would
-    // be the cost?  3-bits of pop for 64-bit costs one 29-bit key slot.
-    // 2-bits of pop for 32-bit costs one 14-bit key slot.
-    // If we're not using those key sizes, then there is no cost.
-    Word_t wMask = MSK(nBL); // (1 << nBL) - 1
-    Word_t wLsbs = (Word_t)-1 / wMask; // lsb in each key slot
-    Word_t wKeys = (wKey & wMask) * wLsbs; // replicate key; put in every slot
-    Word_t wXor = wKeys ^ wRoot; // get zero in slot with matching key
-    wXor |= MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL)); // pop and type
-    Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
-    int bXorHasZero = (((wXor - wLsbs) & ~wXor & wMsbs) != 0); // magic
-    return bXorHasZero ? Success : Failure;
-}
-
-#else // defined(PAD_T_ONE)
-
-// Do a parallel search of a word for a key that is smaller than a word.
-// The cnBitsMallocMask least-significant bits of the word are used for a
-// type field and the next least-significant nBL_to_nBitsPopCntSz(nBL) bits
-// of the word are used for a population count.
-static Status_t
-EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
-{
+#if ! defined(PAD_T_ONE)
     unsigned nPopCnt = wr_nPopCnt(wRoot, nBL); // number of keys present
     unsigned nBitsOfKeys = nPopCnt * nBL;
+#endif // ! defined(PAD_T_ONE)
     Word_t wMask = MSK(nBL); // (1 << nBL) - 1
     Word_t wLsbs = (Word_t)-1 / wMask;
-#if defined(ONE_WAY)
-    wLsbs &= (Word_t)-1 << (cnBitsPerWord - nBitsOfKeys); // empty slots
-#endif // defined(ONE_WAY)
+#if ! defined(PAD_T_ONE) && ! defined(ONE_WAY)
+    wLsbs &= (Word_t)-1 << (cnBitsPerWord - nBitsOfKeys); // type and empties
+#endif // ! defined(PAD_T_ONE) && ! defined(ONE_WAY)
     Word_t wKeys = (wKey & wMask) * wLsbs; // replicate key; put in every slot
     Word_t wXor = wKeys ^ wRoot; // get zero in slot with matching key
-#if ! defined(ONE_WAY)
-    wXor |= MSK(cnBitsPerWord - nBitsOfKeys); // type and unused slots
-#endif // ! defined(ONE_WAY)
+#if ! defined(PAD_T_ONE) && defined(ONE_WAY)
+    wXor |= MSK(cnBitsPerWord - nBitsOfKeys); // type and empty slots
+#endif // ! defined(PAD_T_ONE) && defined(ONE_WAY)
+#if defined(PAD_T_ONE)
+    wXor |= MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL)); // pop and type
+#endif // defined(PAD_T_ONE)
     Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
     int bXorHasZero = (((wXor - wLsbs) & ~wXor & wMsbs) != 0); // magic
     return bXorHasZero ? Success : Failure;
 }
 
-#endif // defined(PAD_T_ONE)
 #endif // (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(HAS_KEY)
 #endif // ! defined(LOOKUP_NO_LIST_DEREF)
 
