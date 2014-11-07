@@ -1,6 +1,9 @@
 #include        <stdio.h>
 #include        <stdint.h>
 #include        <stdlib.h>
+#include        <assert.h>
+
+#define LEFT
 
 typedef unsigned long Word_t;
 
@@ -14,9 +17,22 @@ typedef unsigned long Word_t;
 #define cbPW        (sizeof(Word_t) * 8)
 
 // WTF, compilers should warn about this or fix it
-#define JU_CLZ(BUCKET)       ((Word_t)(BUCKET) > 0 ? (int)__builtin_clzl((Word_t)BUCKET) : (int)cbPW)
+// MEB: __builtin_clzl is undefined for 0;
+// I think so it can be implemented with Intel's bsr.
 
-#define JU_POP0(BUCKET)      ((int)((cbPW - 1) - JU_CLZ(*Bucket)) / bitsPerKey)
+#define JU_CLZ(BUCKET, _cbPW) \
+    ((Word_t)(BUCKET) > 0 ? (int)__builtin_clzl((Word_t)BUCKET) : (int)(_cbPW))
+
+#define JU_CTZ(BUCKET, _cbPW) \
+    ((Word_t)(BUCKET) > 0 ? (int)__builtin_ctzl((Word_t)BUCKET) : (int)(_cbPW))
+
+#if defined(LEFT)
+#define JU_POP0(BUCKET, _cbPW, _nBL) \
+    ((int)(((_cbPW) - 1) - JU_CTZ((BUCKET), (_cbPW))) / (_nBL))
+#else // defined(LEFT)
+#define JU_POP0(BUCKET, _cbPW, _nBL) \
+    ((int)(((_cbPW) - 1) - JU_CLZ((BUCKET), (_cbPW))) / (_nBL))
+#endif // defined(LEFT)
 
 // Used to right justify the replicated Keys
 #define REMb(cbPK)              (cbPW - ((cbPW / (cbPK)) * (cbPK)))
@@ -25,9 +41,14 @@ typedef unsigned long Word_t;
 #define MskK(cbPK, KEY)         ((Word_t)((KEY) & ((1 << (cbPK)) - 1)))
 //define MskK(cbPK, KEY)        (((Word_t)(KEY)) % (1 << (cbPK))) longer
 
+#if defined(LEFT)
+#define REPKEY(cbPK, KEY)                                        \
+    (((Word_t)(-1) / MskK(cbPK, -1)) * MskK(cbPK, KEY))
+#else // defined(LEFT)
 // Replicate a KEY as many times as possible in a Word_t
 #define REPKEY(cbPK, KEY)                                        \
     ((((Word_t)(-1) / MskK(cbPK, -1)) * MskK(cbPK, KEY)) >> REMb(cbPK))
+#endif // defined(LEFT)
 
 // Check if any Key in the Word_t has a zero value
 #define HAS0KEY(cbPK, BUCKET)                                      \
@@ -60,7 +81,6 @@ printBits(Word_t num, int nbits)
 }
 #endif
 
-
 // slow way to replicate a Key in a Word_t
 static Word_t
 REPKEY1(int bitsPKey, Word_t Key)
@@ -69,16 +89,28 @@ REPKEY1(int bitsPKey, Word_t Key)
     Word_t repkeys = 0;
 
 //  mask Key to bitsPKey bits
-    Key = MskK(bitsPKey, Key);
+    Key = MskK(bitsPKey, Key); // Key & ((1 << bitsPKey) - 1)
 
-    for (ii = 0; ii < (int)(cbPW / bitsPKey); ii++)
+    for (ii = 0; ii < (int)(cbPW / bitsPKey); ii++) {
+#if defined(LEFT)
+        // Keys are packed at the most significant end of the word and the
+        // word is padded with zeros at the least significant end if there
+        // are any bits left over.
+        repkeys |= Key << (cbPW - (ii + 1) * bitsPKey);
+#else // defined(LEFT)
+        // Keys are packed at the least significant end of the word and the
+        // word is padded with zeros at the most significant end if there
+        // are any bits left over.
         repkeys |= Key << (bitsPKey * ii);
+#endif // if defined(LEFT)
+    }
 
     return(repkeys);
 }
 
 // Build and return random valid Bucket and SearchKey, given bits-Per-Key
 // Warning: This Does not generate a NULL ( == -1) Key
+// MEB: Huh?
 static int 
 GetValidBucket(Word_t *Bucket, Word_t *SearchKey, int bitsPerKey)
 {
@@ -112,7 +144,11 @@ GetValidBucket(Word_t *Bucket, Word_t *SearchKey, int bitsPerKey)
         PreviousKey = Key;
 
 //      Put in the bucket
+#if defined(LEFT)
+        *Bucket |= (Word_t)Key << (cbPW - (bitsPerKey * (offset + 1)));
+#else // defined(LEFT)
         *Bucket |= (Word_t)Key << (bitsPerKey * offset);
+#endif // defined(LEFT)
         pop1++;
 
         if (Key == (int)*SearchKey)
@@ -121,10 +157,10 @@ GetValidBucket(Word_t *Bucket, Word_t *SearchKey, int bitsPerKey)
         if ((retoffset == -1000) && (Key > (int)*SearchKey))
             retoffset = ~offset;
 
-        if (Key == KeyMask) 
+        if (Key == KeyMask)
             break;
     }
-    
+
     int         clzpop0;
     int         loop = 0;
 
@@ -132,11 +168,15 @@ GetValidBucket(Word_t *Bucket, Word_t *SearchKey, int bitsPerKey)
 
     do 
     {
+#if defined(LEFT)
+        buck <<= bitsPerKey;
+#else // defined(LEFT)
         buck >>= bitsPerKey;
+#endif // defined(LEFT)
         loop++;
     } while (buck);
 
-    clzpop0 = JU_POP0(*Bucket);
+    clzpop0 = JU_POP0(*Bucket, cbPW, bitsPerKey);
 
     if ((loop != (clzpop0 + 1)) || (loop != pop1))
         printf(" Oops!! Bucket = 0x%lx, Key = 0x%x,Pop1=%d, loop=%d, clz=%d\n", 
@@ -197,6 +237,48 @@ BucketHasKey7(Word_t Bucket, Word_t Key)
 // If matching Key in Bucket, then offset into Bucket is returned
 // else -1 if no Key was found
 
+#if defined(LEFT)
+#define EXP(_x)  ((Word_t)1 << (_x))
+#define MSK(_x)  (EXP(_x) - 1)
+
+static int
+BucketHasKey(Word_t ww, Word_t wKey, int nBL)
+{
+    unsigned nPopCnt = JU_POP0(ww, cbPW, nBL) + 1;
+    unsigned nBitsOfKeys = nPopCnt * nBL;
+    Word_t wMask = MSK(nBL); // (1 << nBL) - 1
+    // lsb in each slot that has a key
+    Word_t wLsbs = ((Word_t)-1 / wMask)
+                    & ((Word_t)-1 << (cbPW - nBitsOfKeys));
+    Word_t wKeys = (wKey & wMask) * wLsbs; // replicate key; put in every slot
+    Word_t wXor = wKeys ^ ww; // get zero in slot with matching key
+    wXor |= MSK(cbPW - nBitsOfKeys);
+    Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
+    Word_t wMagic = (wXor - wLsbs) & ~wXor & wMsbs;
+    int bXorHasZero = (wMagic != 0);
+    // where is the match?
+    int offset = JU_POP0(wMagic, cbPW, nBL);
+    wKey &= wMask;
+    if ((nPopCnt == 0) || (nPopCnt > cbPW/nBL)) {
+        printf("nPopCnt %d nBitsOfKeys %d ww 0x%016lx nBL %d\n", nPopCnt, nBitsOfKeys, ww, nBL);
+        printf("ctz %d\n", JU_CTZ(ww, cbPW));
+        printf("63 - ctz %d\n", (int)((cbPW - 1) - JU_CTZ(ww, cbPW)));
+        printf("POP0 %d\n", (int)((cbPW - 1) - JU_CTZ(ww, cbPW)) / nBL);
+        //POP0: ((int)(((_cbPW) - 1) - JU_CTZ((BUCKET), (_cbPW))) / (_nBL))
+    }
+    //if ((ww == 0) && (wKey == 0) /* && (offset != 0) */) {
+        //printf("nPopCnt %d nBitsOfKeys %d wXor 0x%016lx wMagic 0x%016lx\n", nPopCnt, nBitsOfKeys, wXor, wMagic);
+    //}
+    if ( ! bXorHasZero ) { return -1; }
+    //if ((ww == 0) && (wKey == 0)) { printf("wMagic 0x%016lx\n", wMagic); }
+    //printf("clz/nBL %d\n", JU_CLZ(wMagic, cbPW) / nBL);
+    //printf("ctz/nBL %d\n", JU_CTZ(wMagic, cbPW) / nBL);
+    //printf("cbPW/nBL - clz/nBL %d\n", (int)cbPW/nBL - JU_CLZ(wMagic, cbPW) / nBL);
+    //printf("cbPW/nBL - ctz/nBL %d\n", (int)cbPW/nBL - JU_CTZ(wMagic, cbPW) / nBL);
+    return offset;
+}
+#else // defined(LEFT)
+
 static int
 BucketHasKey(Word_t Bucket, Word_t Key, int bPK)
 {
@@ -215,7 +297,7 @@ BucketHasKey(Word_t Bucket, Word_t Key, int bPK)
         if (Bucket & KeyMask)
             return (-1);        // no match and offset = -1
         else
-            return (0);         // no match and offset = 0
+            return (0);         // match and offset = 0
     }
 //  replicate the Lsb in every Key position
     repLsbKey = REPKEY(bPK, 1);
@@ -246,6 +328,7 @@ BucketHasKey(Word_t Bucket, Word_t Key, int bPK)
 //  return the offset into Bucket that Key was found
     return (offset);
 }
+#endif // defined(LEFT)
 
 // Given Bucket, Key and bitsPerKey, return offset 0..KPB-1 of found Key
 // if not found, return ~offset of where to insert new Key
@@ -268,10 +351,12 @@ BucketHasKeyIns(Word_t Bucket, Word_t Key, int bitsPerKey)
 //  Note: Keys must be sorted and no synonym Keys in Bucket
     Key &= KeyMask;
 
+#if 0 // ! defined(LEFT)
 //  Check special case of Key & Bucket[0] & offset == 0
 //  This is because a zero Key terminates the list
     if (((Key | Bucket) & KeyMask) == 0) 
         return(0);                      // match and offset = 0
+#endif // ! defined(LEFT)
 
 //  first Key in Bucket or Key not equal 0
     for (offset = 0; offset < KeysPerBucket; offset++)
@@ -279,7 +364,11 @@ BucketHasKeyIns(Word_t Bucket, Word_t Key, int bitsPerKey)
         Word_t NextKey;
 
 //      Check next Key in Bucket
+#if defined(LEFT)
+        NextKey = (Bucket >> ((cbPW - ((offset + 1) * bitsPerKey))) & KeyMask);
+#else // defined(LEFT)
         NextKey = (Bucket >> (offset * bitsPerKey)) & KeyMask;
+#endif // defined(LEFT)
 
         if (NextKey == Key)             // Found
             return(offset);
@@ -303,6 +392,7 @@ main()
 
     printf("\n\nBits per Bucket(Word_t) = %d\n", (int)cbPW);
 
+    // verify that REPKEY == REPKEY1 for all keys at all key sizes
     for (bitsPKey = 2; bitsPKey <= 16; bitsPKey++)
     {
         Word_t Key;
@@ -334,11 +424,9 @@ main()
 
     for (ii = 0; ii < 1000000000; ii++)
     {
-        int    nBitsPKey;
-
         if ((ii % 1000000) == 0) printf("%d\n", ii);
 
-        for (nBitsPKey = 2; nBitsPKey <= 16; nBitsPKey++)
+        for (int nBitsPKey = 4; nBitsPKey <= 16; nBitsPKey++)
         {
             Word_t      Bucket;
             Word_t      Key;
@@ -360,7 +448,8 @@ main()
                         Key,
                         nBitsPKey,
                         ii);
-                    exit(-1);
+                    //exit(-1);
+                    continue;
             }
 //          BucketHasKey() only returns -1 for No match
             if (offset < 0)
@@ -374,7 +463,8 @@ main()
                         Key,
                         nBitsPKey,
                         ii);
-                    exit(-1);
+                    //exit(-1);
+                    continue;
                 }
             }
             else        // if (offset >= 0) 
@@ -388,9 +478,16 @@ main()
                         Key,
                         nBitsPKey,
                         ii);
-                    exit(-1);
+                    //exit(-1);
+                    continue;
                 }
             }
+#if 0
+            if (offset2 != -1) {
+                printf(" offset = %d, offset2 = %d, Bucket = 0x%016lx Key = 0x%lx, nBits = %d, ii = %d\n", 
+                        offset, offset2, Bucket, Key, nBitsPKey, ii);
+            }
+#endif
         }
     }
     printf(" Good finish if after 32 * 15 billion tests\n");
