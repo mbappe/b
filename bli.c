@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.340 2014/10/31 12:24:32 mike Exp mike $
+// @(#) $Id: bli.c,v 1.341 2014/10/31 13:29:54 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -538,11 +538,13 @@ WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
     // at insert time to make sure the unused slots don't cause a false
     // bXorHasZero.
     Word_t wMask = MSK(nBL); // (1 << nBL) - 1
+    wKey &= wMask; // get rid of already-decoded bits
     Word_t wLsbs = (Word_t)-1 / wMask; // lsb in each key slot
-    Word_t wKeys = (wKey & wMask) * wLsbs; // replicate key; put in every slot
+    Word_t wKeys = wKey * wLsbs; // replicate key; put in every slot
     Word_t wXor = wKeys ^ ww; // get zero in slot with matching key
     Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
-    int bXorHasZero = (((wXor - wLsbs) & ~wXor & wMsbs) != 0); // magic
+    Word_t wMagic = (wXor - wLsbs) & ~wXor & wMsbs;
+    int bXorHasZero = (wMagic != 0);
     return bXorHasZero ? Success : Failure;
 }
 
@@ -943,10 +945,6 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 #else // defined(PAD_T_ONE)
 
 // Do a parallel search of a word for a key that is smaller than a word.
-// WordHasKey expects the keys to be packed towards the most significant bits.
-// and it assumes all slots in the word have valid keys, i.e. the would-be
-// empty slots have been paded with copies of some key/keys that is/are
-// present.
 // The cnBitsMallocMask least-significant bits of the word are used for a
 // type field and the next least-significant nBL_to_nBitsPopCntSz(nBL) bits
 // of the word are used for a population count.
@@ -956,8 +954,8 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     unsigned nPopCnt = wr_nPopCnt(wRoot, nBL); // number of keys present
     unsigned nBitsOfKeys = nPopCnt * nBL;
     Word_t wMask = MSK(nBL); // (1 << nBL) - 1
-    Word_t wLsbs = ((Word_t)-1 / wMask)
-                    & ((Word_t)-1 << (cnBitsPerWord - nBitsOfKeys));
+    Word_t wLsbs = (Word_t)-1 / wMask;
+    wLsbs &= (Word_t)-1 << (cnBitsPerWord - nBitsOfKeys); // empty slots
     Word_t wKeys = (wKey & wMask) * wLsbs; // replicate key; put in every slot
     Word_t wXor = wKeys ^ wRoot; // get zero in slot with matching key
     Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
