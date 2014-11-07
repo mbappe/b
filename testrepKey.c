@@ -194,46 +194,6 @@ GetValidBucket(Word_t *Bucket, Word_t *SearchKey, int bitsPerKey)
 
 }
 
-#if 0
-static Word_t
-BucketHasKey7(Word_t Bucket, Word_t Key)
-{
-    Word_t      repLsbKey;
-    Word_t      repMsbKey;
-    Word_t      newBucket;
-    Word_t      KeyMask;
-    Word_t      bPK = 7;
-
-    KeyMask = (Word_t)((1 << bPK) - 1);  // max Key value or Mask
-    Key &= KeyMask;                     // get rid of high bits
-
-//  Check special case of Key == 0
-    if (Key == 0)
-    {
-        if (Bucket & KeyMask)
-            return (-1);        // no match and offset = -1
-        else
-            return (0);         // no match and offset = 0
-    }
-//  replicate the Lsb in every Key position
-    repLsbKey = REPKEY(bPK, 1);
-
-//  replicate the Msb in every Key position
-    repMsbKey = repLsbKey << (bPK - 1);
-
-//  make zero the searched for Key in new Bucket
-    newBucket = Bucket ^ REPKEY(bPK, Key);
-
-//  Magic, the Lsb is located in the matching Key position
-    newBucket = (newBucket - repLsbKey) & (~newBucket) & repMsbKey;
-
-    if (newBucket == 0)                    // Key not found in Bucket
-        return((Word_t)-1);
-
-    return(newBucket);
-}
-#endif
-
 // If matching Key in Bucket, then offset into Bucket is returned
 // else -1 if no Key was found
 
@@ -259,24 +219,10 @@ BucketHasKey(Word_t ww, Word_t wKey, int nBL)
     // where is the match?
     int offset = JU_POP0(wMagic, cbPW, nBL);
     wKey &= wMask;
-    if ((nPopCnt == 0) || (nPopCnt > cbPW/nBL)) {
-        printf("nPopCnt %d nBitsOfKeys %d ww 0x%016lx nBL %d\n", nPopCnt, nBitsOfKeys, ww, nBL);
-        printf("ctz %d\n", JU_CTZ(ww, cbPW));
-        printf("63 - ctz %d\n", (int)((cbPW - 1) - JU_CTZ(ww, cbPW)));
-        printf("POP0 %d\n", (int)((cbPW - 1) - JU_CTZ(ww, cbPW)) / nBL);
-        //POP0: ((int)(((_cbPW) - 1) - JU_CTZ((BUCKET), (_cbPW))) / (_nBL))
-    }
-    //if ((ww == 0) && (wKey == 0) /* && (offset != 0) */) {
-        //printf("nPopCnt %d nBitsOfKeys %d wXor 0x%016lx wMagic 0x%016lx\n", nPopCnt, nBitsOfKeys, wXor, wMagic);
-    //}
     if ( ! bXorHasZero ) { return -1; }
-    //if ((ww == 0) && (wKey == 0)) { printf("wMagic 0x%016lx\n", wMagic); }
-    //printf("clz/nBL %d\n", JU_CLZ(wMagic, cbPW) / nBL);
-    //printf("ctz/nBL %d\n", JU_CTZ(wMagic, cbPW) / nBL);
-    //printf("cbPW/nBL - clz/nBL %d\n", (int)cbPW/nBL - JU_CLZ(wMagic, cbPW) / nBL);
-    //printf("cbPW/nBL - ctz/nBL %d\n", (int)cbPW/nBL - JU_CTZ(wMagic, cbPW) / nBL);
     return offset;
 }
+
 #else // defined(LEFT)
 
 static int
