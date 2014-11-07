@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.341 2014/10/31 13:29:54 mike Exp mike $
+// @(#) $Id: bli.c,v 1.342 2014/11/07 15:30:06 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -955,9 +955,14 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     unsigned nBitsOfKeys = nPopCnt * nBL;
     Word_t wMask = MSK(nBL); // (1 << nBL) - 1
     Word_t wLsbs = (Word_t)-1 / wMask;
+#if defined(ONE_WAY)
     wLsbs &= (Word_t)-1 << (cnBitsPerWord - nBitsOfKeys); // empty slots
+#endif // defined(ONE_WAY)
     Word_t wKeys = (wKey & wMask) * wLsbs; // replicate key; put in every slot
     Word_t wXor = wKeys ^ wRoot; // get zero in slot with matching key
+#if ! defined(ONE_WAY)
+    wXor |= MSK(cnBitsPerWord - nBitsOfKeys); // type and unused slots
+#else // ! defined(ONE_WAY)
     Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
     int bXorHasZero = (((wXor - wLsbs) & ~wXor & wMsbs) != 0); // magic
     return bXorHasZero ? Success : Failure;
