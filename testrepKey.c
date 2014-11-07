@@ -24,7 +24,7 @@ typedef unsigned long Word_t;
     ((Word_t)(BUCKET) > 0 ? (int)__builtin_clzl((Word_t)BUCKET) : (int)(_cbPW))
 
 #define JU_CTZ(BUCKET, _cbPW) \
-    ((Word_t)(BUCKET) > 0 ? (int)__builtin_ctzl((Word_t)BUCKET) : (int)(_cbPW))
+    ((Word_t)(BUCKET) > 0 ? (int)__builtin_ctzll((Word_t)BUCKET) : (int)(_cbPW))
 
 #if defined(LEFT)
 #define JU_POP0(BUCKET, _cbPW, _nBL) \
@@ -204,9 +204,11 @@ GetValidBucket(Word_t *Bucket, Word_t *SearchKey, int bitsPerKey)
 static int
 BucketHasKey(Word_t ww, Word_t wKey, int nBL)
 {
-    unsigned nPopCnt = JU_POP0(ww, cbPW, nBL) + 1;
-    unsigned nBitsOfKeys = nPopCnt * nBL;
     Word_t wMask = MSK(nBL); // (1 << nBL) - 1
+    wKey &= wMask;
+    if (ww == 0) { return -(wKey != 0); }
+    int nPopCnt = JU_POP0(ww, cbPW, nBL) + 1;
+    int nBitsOfKeys = nPopCnt * nBL;
     // lsb in each slot that has a key
     Word_t wLsbs = ((Word_t)-1 / wMask)
                     & ((Word_t)-1 << (cbPW - nBitsOfKeys));
@@ -218,7 +220,6 @@ BucketHasKey(Word_t ww, Word_t wKey, int nBL)
     int bXorHasZero = (wMagic != 0);
     // where is the match?
     int offset = JU_POP0(wMagic, cbPW, nBL);
-    wKey &= wMask;
     if ( ! bXorHasZero ) { return -1; }
     return offset;
 }
