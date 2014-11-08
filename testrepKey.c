@@ -3,7 +3,7 @@
 #include        <stdlib.h>
 #include        <assert.h>
 
-#define LEFT
+//#define LEFT
 //#define USE_WORD_HAS_KEY
 
 typedef unsigned long Word_t;
@@ -109,6 +109,8 @@ REPKEY1(int bitsPKey, Word_t Key)
     return(repkeys);
 }
 
+#define EMPTY_BUCKET  ((Word_t)-1)
+
 // Build and return random valid Bucket and SearchKey, given bits-Per-Key
 // Warning: This Does not generate a NULL ( == -1) Key
 // MEB: Huh?
@@ -127,10 +129,13 @@ GetValidBucket(Word_t *Bucket, Word_t *SearchKey, int bitsPerKey)
     KeysPerBucket = cbPW / bitsPerKey;          // max Keys per Bucket
 
 //  Get a valid Key to search - anything 0..KeyMask
-    *SearchKey = (Word_t)(random() & KeyMask);
+    *SearchKey = (Word_t)random() & KeyMask;
 
-//  get a random population  keys 1..maxKey 
-    nKeys = (random() % KeysPerBucket) + 1;
+//  get a random population from 0 through number of slots
+    nKeys = random() % (KeysPerBucket + 1);
+
+    if (nKeys == 0) { *Bucket = EMPTY_BUCKET; return ~0; }
+
     retoffset = -1000; 
 
     int pop1 = 0;
@@ -158,41 +163,14 @@ GetValidBucket(Word_t *Bucket, Word_t *SearchKey, int bitsPerKey)
         if ((retoffset == -1000) && (Key > (int)*SearchKey))
             retoffset = ~offset;
 
-        if (Key == KeyMask)
-            break;
+        if (Key == KeyMask) { break; }
     }
 
-    int         clzpop0;
-    int         loop = 0;
+    if (*SearchKey > (Word_t)Key) { retoffset = ~offset; }
 
-    Word_t buck = *Bucket;
+    assert(JU_POP0(*Bucket, cbPW, bitsPerKey) == pop1 - 1);
 
-    do 
-    {
-#if defined(LEFT)
-        buck <<= bitsPerKey;
-#else // defined(LEFT)
-        buck >>= bitsPerKey;
-#endif // defined(LEFT)
-        loop++;
-    } while (buck);
-
-    clzpop0 = JU_POP0(*Bucket, cbPW, bitsPerKey);
-
-    if ((loop != (clzpop0 + 1)) || (loop != pop1))
-        printf(" Oops!! Bucket = 0x%lx, Key = 0x%x,Pop1=%d, loop=%d, clz=%d\n", 
-                *Bucket,
-                Key,
-                pop1,
-                loop,
-                clzpop0 + 1);
-
-
-    if (retoffset == -1000) 
-        retoffset = ~(offset);
-
-    return (retoffset);                    // ~offset
-
+    return retoffset;
 }
 
 // If matching Key in Bucket, then offset into Bucket is returned
@@ -389,20 +367,29 @@ BucketHasKey(Word_t ww, Word_t wKey, int nBL)
 {
     Word_t wMask = MSK(nBL);
     wKey &= wMask;
-    if (ww == 0) { return -(wKey != 0); }
+    Word_t wLsbs = (Word_t)-1 / wMask;
+    Word_t wKeys = (wKey & wMask) * wLsbs; // replicate key; put in every slot
+    Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
+    Word_t wXor = wKeys ^ ww; // get zero in slot with matching key
+
+    //if (ww == 0) { return -(wKey != 0); }
     int nPopCnt = JU_POP0(ww, cbPW, nBL) + 1;
     int nBitsOfKeys = nPopCnt * nBL;
     // lsb in each slot that has a key
-    Word_t wLsbs = (Word_t)-1 / wMask;
-    Word_t wKeys = (wKey & wMask) * wLsbs; // replicate key; put in every slot
-    Word_t wXor = wKeys ^ ww; // get zero in slot with matching key
     wXor |= MSK(cbPW - nBitsOfKeys);
-    Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
-    Word_t wMagic = (wXor - wLsbs) & ~wXor & wMsbs;
+
+    Word_t wMagic = (wXor - wLsbs) & ~wXor & wMsbs; // xor-has-zero
     int bXorHasZero = (wMagic != 0);
+    int bHasKey = bXorHasZero && (ww != (Word_t)-1);
+    if ( ! bHasKey ) { return -1; }
     // where is the match?
-    int offset = JU_POP0(wMagic, cbPW, nBL);
-    if ( ! bXorHasZero ) { return -1; }
+#define CTZ(BUCKET, _cbPW) \
+    ((Word_t)(BUCKET) > 0 ? (int)__builtin_ctzll((Word_t)BUCKET) : (int)(_cbPW))
+
+#define POP0(BUCKET, _cbPW, _nBL) \
+    ((int)(((_cbPW) - 1) - CTZ((BUCKET), (_cbPW))) / (_nBL))
+
+    int offset = POP0(wMagic, cbPW, nBL);
     return offset;
 }
 
@@ -418,6 +405,8 @@ BucketHasKey(Word_t Bucket, Word_t Key, int bPK)
     Word_t      newBucket;
     Word_t      KeyMask;
     int         offset;
+
+    if (Bucket == EMPTY_BUCKET) { return ~0; }
 
     KeyMask = (Word_t)((1 << bPK) - 1);  // max Key value or Mask
 
@@ -470,12 +459,8 @@ BucketHasKeyIns(Word_t Bucket, Word_t Key, int bitsPerKey)
     int    offset;                      // offset of Key in Bucket
     int    KeysPerBucket;               // Max Keys per Bucket
 
-//  Since a 0 Bucket is legal, use an impossible Bucket as NULL (no Keys).
-    if (Bucket == (Word_t)-1)           // if NULL, return bogas offset
-    {
-        printf("\n Oops!!, no NULLs allowed yet!!!\n");
-        exit(-1);
-    }
+    if (Bucket == EMPTY_BUCKET) { return -1; }
+ 
     KeyMask = (Word_t)((1 << bitsPerKey) - 1);  // max Key value and Mask
     KeysPerBucket = cbPW / bitsPerKey;          // max Keys per Bucket
 
