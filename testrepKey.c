@@ -6,7 +6,7 @@
 #define EXP(_x)  ((Word_t)1 << (_x))
 #define MSK(_x)  (EXP(_x) - 1)
 
-//#define LEFT
+#define LEFT
 //#define USE_WORD_HAS_KEY
 
 typedef unsigned long Word_t;
@@ -24,15 +24,28 @@ typedef unsigned long Word_t;
 // MEB: __builtin_clzl is undefined for 0;
 // I think so it can be implemented with Intel's bsr.
 
+// Count leading zeros.
+// __builtin_clz is undefined for zero.
 #define JU_CLZ(BUCKET, _cbPW) \
     ((Word_t)(BUCKET) > 0 ? (int)__builtin_clzl((Word_t)BUCKET) : (int)(_cbPW))
 
+// Count trailing zeros.
+// __builtin_ctz is undefined for zero.
 #define JU_CTZ(BUCKET, _cbPW) \
     ((Word_t)(BUCKET) > 0 ? (int)__builtin_ctzll((Word_t)BUCKET) : (int)(_cbPW))
 
+
 #if defined(LEFT)
+#if 0
 #define JU_POP0(BUCKET, _cbPW, _nBL) \
     ((int)(((_cbPW) - 1) - JU_CTZ((BUCKET), (_cbPW))) / (_nBL))
+#else
+// __builtin_ffs returns one more than __builtin_ctz for all non-zero values.
+// __builtin_ctz is undefined for zero.
+// __builtin_ffs returns zero for zero.
+#define JU_POP0(BUCKET, _cbPW, _nBL) \
+    ((int)((_cbPW) - __builtin_ffsll(BUCKET)) / (_nBL))
+#endif
 #else // defined(LEFT)
 #define JU_POP0(BUCKET, _cbPW, _nBL) \
     ((int)(((_cbPW) - 1) - JU_CLZ((BUCKET), (_cbPW))) / (_nBL))
