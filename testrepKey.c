@@ -305,13 +305,7 @@ BucketHasKey(Word_t ww, Word_t wKey, int nBL)
     int bHasKey = bXorHasZero && (ww != (Word_t)-1);
     if ( ! bHasKey ) { return -1; }
     // where is the match?
-#define CTZ(BUCKET) \
-    ((Word_t)(BUCKET) > 0 ? (int)__builtin_ctzll((Word_t)BUCKET) : (int)cbPW)
-
-#define POP0(BUCKET, _nBL) \
-    ((int)((cbPW - 1) - CTZ(BUCKET)) / (_nBL))
-
-    int offset = POP0(wMagic, nBL);
+    int offset = (int)(cbPW - __builtin_ffsll(wMagic)) / nBL; // POP0
     return offset;
 }
 
