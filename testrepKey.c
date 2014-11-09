@@ -3,9 +3,6 @@
 #include        <stdlib.h>
 #include        <assert.h>
 
-#define EXP(_x)  ((Word_t)1 << (_x))
-#define MSK(_x)  (EXP(_x) - 1)
-
 #define LEFT
 //#define USE_WORD_HAS_KEY
 
@@ -24,28 +21,15 @@ typedef unsigned long Word_t;
 // MEB: __builtin_clzl is undefined for 0;
 // I think so it can be implemented with Intel's bsr.
 
-// Count leading zeros.
-// __builtin_clz is undefined for zero.
 #define JU_CLZ(BUCKET, _cbPW) \
     ((Word_t)(BUCKET) > 0 ? (int)__builtin_clzl((Word_t)BUCKET) : (int)(_cbPW))
 
-// Count trailing zeros.
-// __builtin_ctz is undefined for zero.
 #define JU_CTZ(BUCKET, _cbPW) \
     ((Word_t)(BUCKET) > 0 ? (int)__builtin_ctzll((Word_t)BUCKET) : (int)(_cbPW))
 
-
 #if defined(LEFT)
-#if 0
 #define JU_POP0(BUCKET, _cbPW, _nBL) \
     ((int)(((_cbPW) - 1) - JU_CTZ((BUCKET), (_cbPW))) / (_nBL))
-#else
-// __builtin_ffs returns one more than __builtin_ctz for all non-zero values.
-// __builtin_ctz is undefined for zero.
-// __builtin_ffs returns zero for zero.
-#define JU_POP0(BUCKET, _cbPW, _nBL) \
-    ((int)((_cbPW) - __builtin_ffsll(BUCKET)) / (_nBL))
-#endif
 #else // defined(LEFT)
 #define JU_POP0(BUCKET, _cbPW, _nBL) \
     ((int)(((_cbPW) - 1) - JU_CLZ((BUCKET), (_cbPW))) / (_nBL))
@@ -127,71 +111,75 @@ REPKEY1(int bitsPKey, Word_t Key)
 
 #define EMPTY_BUCKET  ((Word_t)-1)
 
-// Given nBitsPerKey,
-// build a random valid bucket and pick a random key.
-// Pass them back in the output parameters and return the offset
-// that should be returned by search for the key in the bucket.
+// Build and return random valid Bucket and SearchKey, given bits-Per-Key
+// Warning: This Does not generate a NULL ( == -1) Key
+// MEB: Huh?
 static int 
-GetValidBucket(int nBitsPerKey, Word_t *pwBucket, Word_t *pwSearchKey)
+GetValidBucket(Word_t *Bucket, Word_t *SearchKey, int bitsPerKey)
 {
-    *pwSearchKey = random(); // Pick a key for the caller.
+    int    KeyMask;                     // Key mask or max Key
+    int    KeysPerBucket;               // Max Keys per Bucket
+    int    nKeys;                       // number of Key
+    int    PreviousKey;
+    int    Key;                         // 16 bits max
+    int    offset;                      // offset of Key in Bucket
+    int    retoffset;                   // 
 
-    int nKeySlotsPerBucket = cbPW / nBitsPerKey; // max keys per bucket
+    KeyMask = (Word_t)((1 << bitsPerKey) - 1);  // max Key value or Mask
+    KeysPerBucket = cbPW / bitsPerKey;          // max Keys per Bucket
 
-    // Pick a target pop for the bucket in the range 0..nKeySlotsPerBucket.
-    int nKeys = random() % (nKeySlotsPerBucket + 1);
+//  Get a valid Key to search - anything 0..KeyMask
+    *SearchKey = (Word_t)random() & KeyMask;
 
-    if (nKeys == 0) {
-        *pwBucket = EMPTY_BUCKET;
-        return ~0;
-    }
+//  get a random population from 0 through number of slots
+    nKeys = random() % (KeysPerBucket + 1);
 
-    Word_t wKeyMask = MSK(nBitsPerKey); // mask for nBitsPerKey
+    if (nKeys == 0) { *Bucket = EMPTY_BUCKET; return ~0; }
 
-    Word_t wSearchSubKey = *pwSearchKey & wKeyMask;
+    retoffset = -1000; 
 
-    int nSearchResult = ~0; // 1's complement of offset of first larger key
-    int nPop = 0;
+    int pop1 = 0;
 
-    // fill bucket with ascending keys
-    Word_t wSubKey;
-    Word_t wPreviousSubKey = -1;
-    for (int nOffset = *pwBucket = 0; nOffset < nKeys; nOffset++)
+//  fill out Bucket with assending Keys values
+//  Set previous key to impossible low
+    PreviousKey = -1;
+    for (*Bucket = offset = 0; offset < nKeys; offset++)
     {
-        // Get a subkey larger than previous subkey.
-        while ((wSubKey = random() & wKeyMask) <= wPreviousSubKey);
-        wPreviousSubKey = wSubKey;
+//      Get a Key larger than previous Key  (0..KeyMask)
+        while ((Key = (int)(random() & KeyMask)) <= PreviousKey);
+        PreviousKey = Key;
 
-        // Put it in the bucket
-        #if defined(LEFT)
-        *pwBucket |= wSubKey << (cbPW - (nBitsPerKey * (nOffset + 1)));
-        #else // defined(LEFT)
-        *pwBucket |= wSubKey << (nBitsPerKey * nOffset);
-        #endif // defined(LEFT)
-        nPop++;
+//      Put in the bucket
+#if defined(LEFT)
+        *Bucket |= (Word_t)Key << (cbPW - (bitsPerKey * (offset + 1)));
+#else // defined(LEFT)
+        *Bucket |= (Word_t)Key << (bitsPerKey * offset);
+#endif // defined(LEFT)
+        pop1++;
 
-        if (wSubKey == wSearchSubKey) {
-            nSearchResult = nOffset;
-        }
+        if (Key == (int)*SearchKey)
+            retoffset = offset;
 
-        if ((nSearchResult == ~0) && (wSubKey > wSearchSubKey)) {
-            nSearchResult = ~nOffset;
-        }
+        if ((retoffset == -1000) && (Key > (int)*SearchKey))
+            retoffset = ~offset;
 
-        if (wSubKey == wKeyMask) { break; }
+        if (Key == KeyMask) { break; }
     }
 
-    if (wSearchSubKey > wSubKey) { nSearchResult = ~nPop; }
+    if (*SearchKey > (Word_t)Key) { retoffset = ~offset; }
 
-    assert(JU_POP0(*pwBucket, cbPW, nBitsPerKey) == nPop - 1);
+    assert(JU_POP0(*Bucket, cbPW, bitsPerKey) == pop1 - 1);
 
-    return nSearchResult;
+    return retoffset;
 }
 
 // If matching Key in Bucket, then offset into Bucket is returned
 // else -1 if no Key was found
 
 #if defined(LEFT)
+
+#define EXP(_x)  ((Word_t)1 << (_x))
+#define MSK(_x)  (EXP(_x) - 1)
 
 #if 0
 // Do a parallel search of a list embedded in a word given the key size,
@@ -562,7 +550,7 @@ main()
             int         offset1;
             int         offset2;
 
-            offset =  GetValidBucket(nBitsPKey, &Bucket, &Key);
+            offset =  GetValidBucket(&Bucket, &Key, nBitsPKey);
 
             offset1 = BucketHasKeyIns(Bucket, Key, nBitsPKey);
             offset2 = BucketHasKey(Bucket, Key, nBitsPKey);
