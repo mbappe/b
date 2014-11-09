@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.345 2014/11/07 16:32:03 mike Exp mike $
+// @(#) $Id: bli.c,v 1.346 2014/11/07 16:53:21 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -926,29 +926,47 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 // be the cost?  3-bits of pop for 64-bit costs one 29-bit key slot.
 // 2-bits of pop for 32-bit costs one 14-bit key slot.
 // If we're not using those key sizes, then there is no cost.
-static Status_t
+// What if we have no valid-key fill?  And no pop field?
+static int // bool
 EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 {
-#if ! defined(PAD_T_ONE)
-    unsigned nPopCnt = wr_nPopCnt(wRoot, nBL); // number of keys present
-    unsigned nBitsOfKeys = nPopCnt * nBL;
-#endif // ! defined(PAD_T_ONE)
     Word_t wMask = MSK(nBL); // (1 << nBL) - 1
+    wKey &= wMask; // discard already-decoded bits
+#if ! defined(PAD_T_ONE) && ! defined(T_ONE_MASK)
+    // If we're filling empty slots with zero, then check for wKey == 0
+    // here so we don't have to worry about a false positive later.
+    // We still have to mask off the type and pop count bits from wXor later
+    // but that is a constant.
+    if (wKey == 0) { return ((wRoot >> (cnBitsPerWord - nBL)) == 0); }
+#endif // ! defined(PAD_T_ONE) && ! defined(T_ONE_MASK)
     Word_t wLsbs = (Word_t)-1 / wMask;
-#if ! defined(PAD_T_ONE) && ! defined(ONE_WAY)
-    wLsbs &= (Word_t)-1 << (cnBitsPerWord - nBitsOfKeys); // type and empties
-#endif // ! defined(PAD_T_ONE) && ! defined(ONE_WAY)
-    Word_t wKeys = (wKey & wMask) * wLsbs; // replicate key; put in every slot
+    Word_t wKeys = wKey * wLsbs; // replicate key; put in every slot
     Word_t wXor = wKeys ^ wRoot; // get zero in slot with matching key
-#if ! defined(PAD_T_ONE) && defined(ONE_WAY)
-    wXor |= MSK(cnBitsPerWord - nBitsOfKeys); // type and empty slots
-#endif // ! defined(PAD_T_ONE) && defined(ONE_WAY)
-#if defined(PAD_T_ONE)
+#if defined(PAD_T_ONE) || ! defined(T_ONE_MASK)
     wXor |= MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL)); // pop and type
-#endif // defined(PAD_T_ONE)
+#endif // defined(PAD_T_ONE) || ! defined(T_ONE_MASK)
+#if ! defined(PAD_T_ONE) && defined(T_ONE_MASK)
+    // If we're filling empty slots with zero, then we have to mask off
+    // the empty slots so we don't get a false positive if/when wKey == 0.
+#if defined(T_ONE_CALC_POP)
+    Word_t ww = wRoot & ~MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL));
+    ww |= (Word_t)1 << (cnBitsPerWord - 1);
+    unsigned nPopCnt = ((cnBitsPerWord - __builtin_ffsll(ww)) / nBL) + 1;
+#if 0
+if (nPopCnt != wr_nPopCnt(wRoot, nBL)) {
+    printf("nPopCnt %d wr %ld\n", nPopCnt, wr_nPopCnt(wRoot, nBL));
+    printf("wRoot %lx ww %lx nBL %d\n", wRoot, ww, nBL);
+}
+#endif
+#else // defined(T_ONE_CALC_POP)
+    unsigned nPopCnt = wr_nPopCnt(wRoot, nBL); // number of keys present
+#endif // defined(T_ONE_CALC_POP)
+    unsigned nBitsOfKeys = nPopCnt * nBL;
+    wXor |= (Word_t)-1 >> nBitsOfKeys; // type and empty slots
+#endif // ! defined(PAD_T_ONE) && defined(T_ONE_MASK)
     Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
     int bXorHasZero = (((wXor - wLsbs) & ~wXor & wMsbs) != 0); // magic
-    return bXorHasZero ? Success : Failure;
+    return bXorHasZero;
 }
 
 #endif // (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(HAS_KEY)
@@ -1887,7 +1905,7 @@ embeddedBitmap:
         unsigned nBL = nDL_to_nBL(nDL);
         if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
   #if defined(HAS_KEY)
-            if (EmbeddedListHasKey(wRoot, wKey, nBL) == Success) goto foundIt;
+            if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto foundIt;
   #else // defined(HAS_KEY)
             // I wonder if PAD_T_ONE and not needing to know the pop count
             // would help this code like it does HAS_KEY.
