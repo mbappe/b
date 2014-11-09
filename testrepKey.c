@@ -24,19 +24,32 @@ typedef unsigned long Word_t;
 // MEB: __builtin_clzl is undefined for 0;
 // I think so it can be implemented with Intel's bsr.
 
+// Count leading zeros.
+// __builtin_clz is undefined for zero.
 #define JU_CLZ(BUCKET) \
     ((Word_t)(BUCKET) > 0 ? (int)__builtin_clzl((Word_t)BUCKET) : (int)cbPW)
 
+// Count trailing zeros.
+// __builtin_ctz is undefined for zero.
 #define JU_CTZ(BUCKET) \
     ((Word_t)(BUCKET) > 0 ? (int)__builtin_ctzll((Word_t)BUCKET) : (int)cbPW)
 
 #if defined(LEFT)
-#define JU_POP0(BUCKET, _nBL) \
-    ((int)((cbPW - 1) - JU_CTZ(BUCKET)) / (_nBL))
+#if 0
+// This POP0 func will return max pop for a bucket of all zeros.
+#define JU_POP0(_wBucket, _nBL) \
+    ((int)(cbPW - __builtin_ffsll(_wBucket)) / (_nBL))
+#endif
+// This POP0 func will return 0 for a bucket of all zeros.
+#define JU_POP0(_wBucket, _nBL) \
+    ((int)((cbPW - __builtin_ffsll(_wBucket | ((Word_t)1 << (cbPW - 1)))) \
+        / (_nBL)))
+
 #else // defined(LEFT)
 #define JU_POP0(BUCKET, _nBL) \
     ((int)((cbPW - 1) - JU_CLZ(BUCKET)) / (_nBL))
 #endif // defined(LEFT)
+
 
 // Used to right justify the replicated Keys
 #define REMb(cbPK)              (cbPW - ((cbPW / (cbPK)) * (cbPK)))
