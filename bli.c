@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.347 2014/11/09 14:30:18 mike Exp mike $
+// @(#) $Id: bli.c,v 1.348 2014/11/10 13:45:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -930,6 +930,11 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 static int // bool
 EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 {
+#if defined(EMBEDDED_LIST_FIXED_POP)
+    // Reminder about losing a slot with fixed-size pop field.
+    assert((cnBitsPerWord != 32) || (nDL != 14));
+    assert((cnBitsPerWord != 64) || (nDL != 29));
+#endif // defined(EMBEDDED_LIST_FIXED_POP)
     Word_t wMask = MSK(nBL); // (1 << nBL) - 1
     wKey &= wMask; // discard already-decoded bits
 #if ! defined(PAD_T_ONE) && ! defined(T_ONE_MASK)
@@ -945,6 +950,8 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 #if defined(PAD_T_ONE) || ! defined(T_ONE_MASK)
     wXor |= MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL)); // pop and type
 #endif // defined(PAD_T_ONE) || ! defined(T_ONE_MASK)
+// Looks like ! PAD_T_ONE, T_ONE_MASK (and ! EMBEDDED_LIST_FIXED_POP) is a
+// bad combination.
 #if ! defined(PAD_T_ONE) && defined(T_ONE_MASK)
     // If we're filling empty slots with zero, then we have to mask off
     // the empty slots so we don't get a false positive if/when wKey == 0.

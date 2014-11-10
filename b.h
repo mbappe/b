@@ -33,10 +33,7 @@
 #define HAS_KEY
 #endif // ! defined(NO_HAS_KEY)
 
-// Default is -DPAD_T_ONE.
-#if ! defined(NO_PAD_T_ONE)
-#define PAD_T_ONE
-#endif // ! defined(NO_PAD_T_ONE)
+// Default is -UPAD_T_ONE.
 
 // Default is -DSORT_LISTS.
 #if ! defined(NO_SORT_LISTS)
@@ -301,6 +298,9 @@
 #define USE_T_ONE
 #endif // defined(EMBED_KEYS)
 
+// Default is -UT_ONE_MASK and -UT_ONE_CALC_POP.
+// See EmbeddedListHasKey.
+
 // Values for nType.
 enum {
     T_NULL,
@@ -523,6 +523,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #if defined(USE_T_ONE)
 
+// Default is -DEMBEDDED_LIST_FIXED_POP.
 // Fixed-size pop count field to make code simpler.
 // We only give up one 29-bit slot in 64-bit and one 14-bit slot in 32-bit.
 #if ! defined(NO_EMBEDDED_LIST_FIXED_POP)
