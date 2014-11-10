@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.346 2014/11/07 16:53:21 mike Exp mike $
+// @(#) $Id: bli.c,v 1.347 2014/11/09 14:30:18 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1903,6 +1903,19 @@ embeddedBitmap:
         //      LOG( 44/ 2) ... LOG( 36/ 2) = 4
         //
         unsigned nBL = nDL_to_nBL(nDL);
+  #if defined(HAS_KEY)
+        if (nBL == cnBitsAtDl1) {
+            if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto foundIt;
+        } else if (nBL == cnBitsAtDl2) {
+            if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto foundIt;
+#if defined(cnBitsAtDl3)
+        } else if (nBL == cnBitsAtDl3) {
+#else // defined(cnBitsAtDl3)
+        } else if (nBL == cnBitsAtDl2 + cnBitsPerDigit) {
+#endif // defined(cnBitsAtDl3)
+            if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto foundIt;
+        } else
+  #endif // defined(HAS_KEY)
         if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
   #if defined(HAS_KEY)
             if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto foundIt;
