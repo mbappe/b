@@ -530,7 +530,7 @@ WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
 // and it assumes all slots in the word have valid keys, i.e. the would-be
 // empty slots have been padded with copies of some key/keys that is/are
 // present.
-static Status_t
+static Word_t // bool
 WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
 {
     // It helps Lookup performance to eliminate the need to know nPopCnt.
@@ -544,8 +544,7 @@ WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
     Word_t wXor = wKeys ^ ww; // get zero in slot with matching key
     Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
     Word_t wMagic = (wXor - wLsbs) & ~wXor & wMsbs;
-    int bXorHasZero = (wMagic != 0);
-    return bXorHasZero ? Success : Failure;
+    return wMagic; // bXorHasZero = (wMagic != 0);
 }
 
 #endif // defined(USE_WORD_ARRAY_HAS_KEY)
@@ -743,7 +742,6 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     }
 #else // defined(PSPLIT_SEARCH_WORD)
     Word_t *pwKeysOrig = pwKeys;
-    (void)nBL;
     (void)nPos;
   #if defined(BINARY_SEARCH_WORD)
   // BINARY_SEARCH narrows the scope of the linear search that follows.
@@ -1151,6 +1149,34 @@ again:
     switch (nType)
 #endif // defined(EXTRA_TYPES)
     {
+#if 0
+    case T_OTHER: // Direct-access leaf; half size of uncompressed bitmap.
+    {
+        assert(0);
+  #if defined(REMOVE)
+        if (bCleanup) { return Success; } // cleanup is complete
+  #endif // defined(REMOVE)
+
+        Word_t wSubKey = wKey & MSK(nBL);
+        int nBucketIndex = wSubKey >> (cnBitsAtBottom + 1);
+        Word_t wBucket = pwr[nBucketIndex];
+
+        if (WordHasKey(wBucket, wSubKey, nBL))
+        {
+      #if defined(REMOVE)
+            RemoveGuts(pwRoot, wKey, nDL, wRoot);
+            goto cleanup; // free memory or reconfigure tree if necessary
+      #endif // defined(REMOVE)
+      #if defined(INSERT) && !defined(RECURSIVE)
+            if (nIncr > 0) { goto undo; } // undo counting
+      #endif // defined(INSERT) && !defined(RECURSIVE)
+            return KeyFound;
+        }
+
+        break;
+    }
+#endif // 0
+
     default: // skip link (if -DSKIP_LINKS && -DTYPE_IS_RELATIVE)
     {
         // pwr points to a switch
@@ -1911,17 +1937,23 @@ embeddedBitmap:
         //
         unsigned nBL = nDL_to_nBL(nDL);
   #if defined(HAS_KEY)
-        if (nBL == cnBitsAtDl1) {
+        if (nBL == cnBitsAtDl1)
+        {
             if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto foundIt;
-        } else if (nBL == cnBitsAtDl2) {
+        }
+        else if (nBL == cnBitsAtDl1 + cnBitsAtDl2)
+        {
             if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto foundIt;
+        }
 #if defined(cnBitsAtDl3)
-        } else if (nBL == cnBitsAtDl3) {
+        else if (nBL == cnBitsAtDl1 + cnBitsAtDl2 + cnBitsAtDl3)
 #else // defined(cnBitsAtDl3)
-        } else if (nBL == cnBitsAtDl2 + cnBitsPerDigit) {
+        else if (nBL == cnBitsAtDl1 + cnBitsAtDl2 + cnBitsPerDigit)
 #endif // defined(cnBitsAtDl3)
+        {
             if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto foundIt;
-        } else
+        }
+        else
   #endif // defined(HAS_KEY)
         if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
   #if defined(HAS_KEY)
@@ -1960,7 +1992,8 @@ embeddedBitmap:
                 if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
             }
   #endif // defined(HAS_KEY)
-        } else
+        }
+        else
       #endif // defined(EMBED_KEYS)
         if (*pwr == wKey)
         {
