@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.351 2014/11/12 11:17:50 mike Exp mike $
+// @(#) $Id: bli.c,v 1.348 2014/11/10 13:45:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1939,6 +1939,32 @@ embeddedBitmap:
         //
         unsigned nBL = nDL_to_nBL(nDL);
   #if defined(HAS_KEY)
+#if 0
+        if (nBL >=7 && nBL <= 16) {
+        switch (nBL) {
+        case 7:
+            if (EmbeddedListHasKey(wRoot, wKey, 7)) goto foundIt; break;
+        case 8:
+            if (EmbeddedListHasKey(wRoot, wKey, 8)) goto foundIt; break;
+        case 9:
+            if (EmbeddedListHasKey(wRoot, wKey, 9)) goto foundIt; break;
+        case 10:
+            if (EmbeddedListHasKey(wRoot, wKey, 10)) goto foundIt; break;
+        case 11:
+            if (EmbeddedListHasKey(wRoot, wKey, 11)) goto foundIt; break;
+        case 12:
+            if (EmbeddedListHasKey(wRoot, wKey, 12)) goto foundIt; break;
+        case 13:
+            if (EmbeddedListHasKey(wRoot, wKey, 13)) goto foundIt; break;
+        case 14:
+            if (EmbeddedListHasKey(wRoot, wKey, 14)) goto foundIt; break;
+        case 15:
+            if (EmbeddedListHasKey(wRoot, wKey, 15)) goto foundIt; break;
+        case 16:
+            if (EmbeddedListHasKey(wRoot, wKey, 16)) goto foundIt; break;
+        }
+        }
+#else // 0
         if (nBL == cnBitsAtDl1)
         {
             if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto foundIt;
@@ -1955,6 +1981,7 @@ embeddedBitmap:
         {
             if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto foundIt;
         }
+#endif // 0
         else
   #endif // defined(HAS_KEY)
         if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
