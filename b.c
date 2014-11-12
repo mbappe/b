@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.331 2014/08/22 02:16:12 mike Exp mike $
+// @(#) $Id: b.c,v 1.332 2014/08/24 17:13:56 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1789,12 +1789,36 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 //  - list switch -- depth, prefix, pop, capacity, (key, link) pairs
 
         unsigned nDLOld = nDL;
-#if (cwListPopCntMax != 0)
-        if (((nDL == 1) && (wPopCnt < cnListPopCntMaxDl1))
+
+#if defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
+        // It makes no sense to impose a pop limit that is less than what
+        // will fit as embedded keys.  If we want to be able to do that for
+        // running experiments, then we can use POP_CNT_MAX_IS_KING.
+        int nEmbeddedListPopCntMax
+            = (cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL))
+                / nBL;
+#endif // defined(EMBED_KEYS)
+
+#if (cwListPopCntMax != 0) // true if we are using lists; embedded or external
+        if (0
+#if defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
+            || (wPopCnt < (Word_t)nEmbeddedListPopCntMax)
+#endif // defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
+            || ((nDL == 1) && (wPopCnt < cnListPopCntMaxDl1))
 #if defined(cnListPopCntMaxDl2)
             || ((nDL == 2) && (wPopCnt < cnListPopCntMaxDl2))
 #endif // defined(cnListPopCntMaxDl2)
-            || ((nDL != 1) && (wPopCnt < anListPopCntMax[LOG(nBL - 1)])))
+#if defined(cnListPopCntMaxDl3)
+            || ((nDL == 3) && (wPopCnt < cnListPopCntMaxDl3))
+#endif // defined(cnListPopCntMaxDl3)
+            || ((nDL != 1)
+#if defined(cnListPopCntMaxDl2)
+                && (nDL != 2)
+#endif // defined(cnListPopCntMaxDl2)
+#if defined(cnListPopCntMaxDl3)
+                && (nDL != 3)
+#endif // defined(cnListPopCntMaxDl3)
+                && (wPopCnt < anListPopCntMax[LOG(nBL - 1)])))
         {
             Word_t *pwList;
 
@@ -1927,7 +1951,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         {
             Word_t w;
 
-            // List is full; insert a switch
+            // List is full; insert a switch or create a bitmap.
             DBGI(printf("List is full.\n"));
 #if (cwListPopCntMax != 0)
 #if    (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) \
@@ -2101,6 +2125,9 @@ newSwitch:
 #if (cwListPopCntMax != 0)
 #if (cnBitsAtBottom > cnLogBitsPerWord)
             if (nDL == 1) {
+                // Let's not jump straight to bitmap.
+                // Let's try a bucket list first.
+//printf("Calling NewBitmap at nDL==1; wPopCnt %ld.\n", wPopCnt);
                 NewBitmap(pwRoot, cnBitsAtBottom);
 #if defined(PP_IN_LINK)
                 set_PWR_wPopCnt(pwRoot,
@@ -2643,6 +2670,7 @@ DeflateExternalList(Word_t *pwRoot,
 
 // "Bottom" here means nDL == 1 (if cnBitsAtBottom >= cnLogBitsPerWord),
 // or nBL <= cnLogBitsPerWord (if cnBitsAtBottom <= cnLogBitsPerWord).
+// It's possible that we will fill up a list at the bottom before
 Status_t
 InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL,
                unsigned nBL, Word_t wRoot)
