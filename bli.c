@@ -1,6 +1,10 @@
 
-// @(#) $Id: bli.c,v 1.348 2014/11/10 13:45:29 mike Exp mike $
+// @(#) $Id: bli.c,v 1.353 2014/11/12 14:16:05 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
+
+#if defined(TRY_MEMCHR)
+#include <wchar.h>
+#endif // defined(TRY_MEMCHR)
 
 // This file is #included in other .c files three times.
 // Once with #define LOOKUP, #undef INSERT and #undef REMOVE.
@@ -126,6 +130,32 @@
 #define TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 
 // Linear search of list (for any size key and with end check).
+//#define TRY_MEMCHR
+#define SEARCHFX(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+{ \
+    (_nPos) = (_pxKeys) - (_pxKeys0); \
+    if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
+        (_nPos) = ~((_nPos) + (_nPopCnt)); \
+    } else { \
+        SSEARCHF((_pxKeys0), (_xKey), (_nPos)); \
+    } \
+}
+#if defined(TRY_MEMCHR)
+#define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+{ \
+    if (sizeof(_x_t) == sizeof(unsigned char)) { \
+        _x_t *px; \
+        px = (_x_t *)memchr((_pxKeys), (_xKey), (_nPopCnt)); \
+        (_nPos) = (px == NULL) ? -1 : px - (_pxKeys0); \
+    } else if (sizeof(_x_t) == sizeof(wchar_t)) { \
+        _x_t *px; \
+        px = (_x_t *)wmemchr((wchar_t *)(_pxKeys), (_xKey), (_nPopCnt)); \
+        (_nPos) = (px == NULL) ? -1 : px - (_pxKeys0); \
+    } else { \
+        SEARCHFX(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos); \
+    } \
+}
+#else // defined(TRY_MEMCHR)
 #define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
     (_nPos) = (_pxKeys) - (_pxKeys0); \
@@ -135,6 +165,7 @@
         SSEARCHF((_pxKeys0), (_xKey), (_nPos)); \
     } \
 }
+#endif // defined(TRY_MEMCHR)
 
 // Backward linear search of list (for any size key and with end check).
 #define SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
