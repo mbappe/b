@@ -261,11 +261,20 @@
   #endif // cnBitsAtBottom
 #endif // ! defined(cnListPopCntMaxDl1)
 
+// cwListPopCntMax is mostly used as a boolean that indicates whether
+// or not we are using lists at all; embedded or external.
+// But it is also used to size the temporary buffer used when copying
+// one list to another hence it must be at least as big as the
+// biggest list.
+// 8 is the maximum number of keys we can embed (assuming at least two
+// bits of type info in the link).  Hence the 8 in the expression below.
 #if ! defined(cwListPopCntMax)
+#define MAX(_x, _y)  ((_x) > (_y) ? (_x) : (_y))
 #define cwListPopCntMax \
-    (cnListPopCntMax64 + cnListPopCntMax32 \
-   + cnListPopCntMax16 + cnListPopCntMax8 \
-   + cnListPopCntMaxDl1)
+   MAX(cnListPopCntMax64, \
+       MAX(cnListPopCntMax32, \
+           MAX(cnListPopCntMax16, \
+               MAX(cnListPopCntMax8, 8))))
 #endif // ! defined(cwListPopCntMax)
 
 #define cnBitsAtDl1  (cnBitsAtBottom)

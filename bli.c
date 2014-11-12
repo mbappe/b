@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.348 2014/11/10 13:45:29 mike Exp mike $
+// @(#) $Id: bli.c,v 1.350 2014/11/12 11:14:11 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -483,6 +483,7 @@ TwoWordsHaveKey(Word_t *pw, Word_t wKey, unsigned nBL)
 }
 #endif
 
+#if defined(COMPRESSED_LISTS)
 #if defined(USE_WORD_ARRAY_HAS_KEY)
 
 // Search an array of words packed with keys that are smaller than a word
@@ -548,6 +549,7 @@ WordHasKey(Word_t ww, Word_t wKey, unsigned nBL)
 }
 
 #endif // defined(USE_WORD_ARRAY_HAS_KEY)
+#endif // defined(COMPRESSED_LISTS)
 
 #endif // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
