@@ -238,8 +238,14 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 #if defined(PSPLIT_PARALLEL)
     //printf("\na %d\n", nPopCntLocal);
     // Pad list header so array of real keys starts on a word boundary.
+    // Two-word boundary if ALIGN_LISTS.
+    // PSPLIT_PARALLEL_X2 requires ALIGN_LISTS.
     nPopCntLocal
+#if defined(ALIGN_LISTS)
+        = ((nPopCntLocal * nBytesKeySz + sizeof(Word_t) * 2 - 1)
+#else // defined(ALIGN_LISTS)
         = ((nPopCntLocal * nBytesKeySz + sizeof(Word_t) - 1)
+#endif // defined(ALIGN_LISTS)
                 & ~MSK(cnLogBytesPerWord))
             / nBytesKeySz;
     //printf("b %d\n", nPopCntLocal);
@@ -250,8 +256,13 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 #if defined(PSPLIT_PARALLEL)
     //printf("c %d\n", nPopCntLocal);
     // Pad array of real keys to a whole word boundary.
+    // Two words if ALIGN_LIST_ENDS.
     nPopCntLocal
+#if defined(ALIGN_LIST_ENDS)
+        = ((nPopCntLocal * nBytesKeySz + sizeof(Word_t) * 2 - 1)
+#else // defined(ALIGN_LIST_ENDS)
         = ((nPopCntLocal * nBytesKeySz + sizeof(Word_t) - 1)
+#endif // defined(ALIGN_LIST_ENDS)
                 & ~MSK(cnLogBytesPerWord))
             / nBytesKeySz;
     //printf("d %d\n", nPopCntLocal);
