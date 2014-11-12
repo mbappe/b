@@ -2572,6 +2572,7 @@ DeflateExternalList(Word_t *pwRoot,
 
     DBGI(printf("DeflateExternalList pwRoot %p nPopCnt %d nBL %d pwr %p\n",
                (void *)pwRoot, nPopCnt, nBL, (void *)pwr));
+    //HexDump("External List", pwr, nPopCnt + 1);
 
     assert((nPopCnt <= nPopCntMax) || (nPopCnt == 1));
 
@@ -2640,7 +2641,22 @@ DeflateExternalList(Word_t *pwRoot,
             // I don't think we have to worry about adjusting ls_pwKeys
             // for PP_IN_LINK here since we will not be at the top.
             assert(nBL != cnBitsPerWord);
+#if defined(COMPRESSED_LISTS)
+            assert(nPopCnt == 1);
             wRoot |= (ls_pwKeys(pwr)[0] & wBLM) << (cnBitsPerWord - nBL);
+#else // defined(COMPRESSED_LISTS)
+            Word_t *pwKeys = ls_pwKeys(pwr);
+            unsigned nn = 1;
+            for (; nn <= wr_nPopCnt(wRoot, nBL); nn++) {
+               wRoot |= (pwKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
+            }
+#if defined(PAD_T_ONE)
+            while (nn <= nPopCntMax) {
+               wRoot |= (pwKeys[0] & wBLM) << (cnBitsPerWord - (nn * nBL));
+               ++nn;
+            }
+#endif // defined(PAD_T_ONE)
+#endif // defined(COMPRESSED_LISTS)
         }
     }
     else
