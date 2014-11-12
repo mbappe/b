@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.350 2014/11/12 11:14:11 mike Exp mike $
+// @(#) $Id: bli.c,v 1.351 2014/11/12 11:17:50 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -932,8 +932,8 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 {
 #if defined(EMBEDDED_LIST_FIXED_POP)
     // Reminder about losing a slot with fixed-size pop field.
-    assert((cnBitsPerWord != 32) || (nDL != 14));
-    assert((cnBitsPerWord != 64) || (nDL != 29));
+    assert((cnBitsPerWord != 32) || (nBL != 14));
+    assert((cnBitsPerWord != 64) || (nBL != 29));
 #endif // defined(EMBEDDED_LIST_FIXED_POP)
     Word_t wMask = MSK(nBL); // (1 << nBL) - 1
     wKey &= wMask; // discard already-decoded bits
