@@ -702,6 +702,10 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
 
 // Index of first key within leaf (for nDL != cnDigitsPerWord).
+// Or is it the number of key slots needed for header info after
+// cnDummiesInList?
+// How do we handle FIRST_KEY if cnDummiesInList is odd and
+// ALIGN_LISTS is defined?
 #if defined(LIST_END_MARKERS)
 #define FIRST_KEY  1
 #else // defined(LIST_END_MARKERS)
@@ -714,6 +718,8 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
 
 // Index of first key within leaf (for all cases).
+// Or is it the number of key slots needed for header info after
+// cnDummiesInList?
 #if defined(LIST_END_MARKERS)
 #define FIRST_KEY  2
 #else // defined(LIST_END_MARKERS)
@@ -724,7 +730,17 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 // For PP_IN_LINK ls_pxKeys macros are only valid not at top or for
 // T_ONE - not T_LIST - at top.
+#if defined(ALIGN_LISTS)
+// Assume two words is always enough space for the list header, and that
+// ll_awKeys is always two-word aligned.
+// The latter won't be true if cnDummiesInList is odd.
+#if (cnDummiesInList & 1)
+#error Odd cnDummiesInList doesn't work with ALIGN_LISTS.
+#endif // (cnDummiesInList & 1)
+#define ls_pwKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_awKeys[2])
+#else // defined(ALIGN_LISTS)
 #define ls_pwKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_awKeys[FIRST_KEY])
+#endif // defined(ALIGN_LISTS)
 
 #if ! defined(NO_PSPLIT_PARALLEL)
 #undef  PSPLIT_PARALLEL
@@ -736,6 +752,17 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #endif // ! defined(NO_PSPLIT_EARLY_OUT)
 
 #if defined(COMPRESSED_LISTS)
+  #if defined(ALIGN_LISTS)
+
+#define ls_pcKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_acKeys[sizeof(Word_t) * 2])
+
+#define ls_psKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_asKeys[sizeof(Word_t)])
+
+      #if (cnBitsPerWord > 32)
+#define ls_piKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_aiKeys[sizeof(Word_t) / 2])
+      #endif // (cnBitsPerWord > 32)
+
+  #else // defined(ALIGN_LISTS)
   #if defined(PSPLIT_PARALLEL)
 
 #define ls_pcKeys(_ls) \
@@ -766,6 +793,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
       #endif // (cnBitsPerWord > 32)
 
   #endif // defined(PSPLIT_PARALLEL)
+  #endif // defined(ALIGN_LISTS)
 #endif // defined(COMPRESSED_LISTS)
 
 // these are just aliases
@@ -843,15 +871,19 @@ typedef struct {
 #endif // (cnDummiesInList != 0)
     union {
 #if defined(COMPRESSED_LISTS) || ! defined(PP_IN_LINK)
-        uint8_t  ll_acKeys[FIRST_KEY+1];
+        //uint8_t  ll_acKeys[FIRST_KEY+1];
+        uint8_t  ll_acKeys[sizeof(Word_t) * 2 + 1];
 #endif // defined(COMPRESSED_LISTS) || ! defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
-        uint16_t ll_asKeys[FIRST_KEY+1];
+        //uint16_t ll_asKeys[FIRST_KEY+1];
+        uint16_t ll_asKeys[sizeof(Word_t) + 1];
 #if (cnBitsPerWord > 32)
-        uint32_t ll_aiKeys[FIRST_KEY+1];
+        //uint32_t ll_aiKeys[FIRST_KEY+1];
+        uint32_t ll_aiKeys[sizeof(Word_t) / 2 + 1];
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-        Word_t   ll_awKeys[FIRST_KEY+1];
+        //Word_t   ll_awKeys[FIRST_KEY+1];
+        Word_t   ll_awKeys[3];
     };
 } ListLeaf_t;
 
