@@ -33,6 +33,12 @@
 #define HAS_KEY
 #endif // ! defined(NO_HAS_KEY)
 
+// Default is -UHAS_KEY_128 -UALIGN_LISTS -UALIGN_LIST_ENDS.
+#if defined(HAS_KEY_128)
+#define ALIGN_LISTS
+#define ALIGN_LIST_ENDS
+#endif // defined(HAS_KEY_128)
+
 // Default is -UPAD_T_ONE.
 
 // Default is -DSORT_LISTS.
@@ -746,6 +752,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #undef  PSPLIT_PARALLEL
 #define PSPLIT_PARALLEL
 #endif // ! defined(NO_PSPLIT_PARALLEL)
+// Default is -DPSPLIT_EARLY_OUT.
 #if ! defined(NO_PSPLIT_EARLY_OUT)
 #undef  PSPLIT_EARLY_OUT
 #define PSPLIT_EARLY_OUT
