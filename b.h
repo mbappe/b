@@ -336,15 +336,24 @@ enum {
     T_SW_BASE,
 };
 
-#define cnBitsLeftAtDl2  (cnBitsAtBottom  + cnBitsAtDl2)
-#define cnBitsLeftAtDl3  (cnBitsLeftAtDl2 + cnBitsAtDl3)
+#define cnBitsLeftAtBottom  (cnBitsAtBottom)
 
-#define nBL_from_nDL(_nDL) \
-    ( (_nDL) <= 0 ? 0 \
-    : (_nDL) == 1 ? cnBitsAtBottom \
-    : (_nDL) == 2 ? cnBitsLeftAtDl2 \
-    : cnBitsLeftAtDl3 + ((_nDL) - 3) * cnBitsPerDigit )
+#define cnBitsLeftAtDl1     (cnBitsAtDl1)
+#define cnBitsLeftAtDl2     (cnBitsLeftAtDl1 + cnBitsAtDl2)
+#define cnBitsLeftAtDl3     (cnBitsLeftAtDl2 + cnBitsAtDl3)
 
+#if ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit) \
+  && (cnBitsAtDl1 == cnBitsPerDigit) && (cnBitsPerWord % cnBitsPerDigit) == 0)
+
+#define nBitsIndexSz_from_nDL(_nDL)  (cnBitsPerDigit)
+#define nBL_from_nDL(_nDL)           (cnBitsPerDigit * (_nDL))
+#define nDL_from_nBL(_nBL)           ((_nBL) / cnBitsPerDigit)
+
+#define cnBitsIndexSzAtTop  (cnBitsPerDigit)
+
+#else // ((cnBitsAtDl3 == cnBitsPerDigit) ...
+
+// Do we need this to be valid for _nDL < 1?
 #define nBitsIndexSz_from_nDL(_nDL) \
     ( ((_nDL) <= 1) ? cnBitsAtBottom \
     : ((_nDL) == 2) ? cnBitsAtDl2 \
@@ -352,12 +361,32 @@ enum {
     : ((_nDL) < cnDigitsPerWord) ? cnBitsPerDigit \
     : cnBitsPerWord - nBL_from_nDL((_nDL) - 1) )
 
+// Do we need this to be valid for _nDL < 1?
+// This can be optimized if cnBitsAtDl3 == cnBitsPerDigit.
+// More if cnBitsAtDl3 == cnBitsAtDl2 == cnBitsPerDigit.
+// Still more if cnBitsAtDl3 == cnBitsAtDl2 == cnBitsAtDl1 == cnBitsPerDigit.
+// It can also be optimized if cnBitsPerWord % cnBitsPerDigit == 0.
+// It can be optimized most cnBitsPerWord % cnBitsPerDigit == 0 and
+// cnBitsAtDl3 == cnBitsAtDl2 == cnBitsAtDl1 == cnBitsPerDigit.
+#define nBL_from_nDL(_nDL) \
+    ( (_nDL) <= 1 ? cnBitsAtBottom \
+    : (_nDL) == 2 ? cnBitsLeftAtDl2 \
+    : (_nDL) < cnDigitsPerWord \
+                 ? cnBitsLeftAtDl3 + ((_nDL) - 3) * cnBitsPerDigit \
+    : cnBitsPerWord )
+
+// Do we need this to be valid for _nBL < cnBitsAtBottom?
+// Or for _nBL > cnBitsPerWord?
+// Or for _nBL that is not an integral number of digits?
 #define nDL_from_nBL(_nBL) \
-    ( ((_nBL) <= 0 ) ? 0 \
-    : ((_nBL) <= cnBitsAtBottom ) ? 1 \
+    ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
     : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
     : ((_nBL) <= cnBitsLeftAtDl3) ? 3 \
     : 3 + ((_nBL) - cnBitsLeftAtDl3 + cnBitsPerDigit - 1) / cnBitsPerDigit )
+
+#define cnBitsIndexSzAtTop  (nBitsIndexSz_from_nDL(cnDigitsPerWord))
+
+#endif // ((cnBitsAtDl3 == cnBitsPerDigit) ...
 
 // Default is -UBPD_TABLE, i.e. -DNO_BPD_TABLE.
 #if defined(BPD_TABLE)
@@ -375,122 +404,23 @@ extern const unsigned anDL_to_nBL[];
 extern const unsigned anBL_to_nDL[];
 #endif // defined(BPD_TABLE_RUNTIME_INIT)
 
-// nDL_to_nBitsIndexSz(3) is the same as cnBitsAtDl3, for example, for now
-#define nDL_to_nBitsIndexSz(_nDL)  anDL_to_nBitsIndexSz[_nDL]
-#define nDL_to_nBL(_nDL)  anDL_to_nBL[_nDL]
-#define nBL_to_nDL(_nBL)  (anBL_to_nDL[_nBL])
-
-#define nDL_to_nBL_NAT(_nDL)  nDL_to_nBL(_nDL)
-
-#if ((cnBitsPerWord - cnBitsAtDl3) % cnBitsPerDigit == 0)
-#define cnBitsIndexSzAtTop  (cnBitsPerDigit)
-#else // ((cnBitsPerWord - cnBitsAtDl3) % cnBitsPerDigit == 0)
-#define cnBitsIndexSzAtTop  nDL_to_nBitsIndexSz(cnDigitsPerWord)
-#endif // ((cnBitsPerWord - cnBitsAtDl3) % cnBitsPerDigit == 0)
-
-#define nDL_to_nBitsIndexSzNAX(_nDL)  anDL_to_nBitsIndexSz[_nDL]
-#define nDL_to_nBitsIndexSzNAB(_nDL)  anDL_to_nBitsIndexSz[_nDL]
-#define nDL_to_nBitsIndexSzNAT(_nDL)  anDL_to_nBitsIndexSz[_nDL]
+#define nDL_to_nBitsIndexSz(_nDL)  (anDL_to_nBitsIndexSz[_nDL])
+#define nDL_to_nBL(_nDL)           (anDL_to_nBL[_nDL])
+#define nBL_to_nDL(_nBL)           (anBL_to_nDL[_nBL])
 
 #else // defined(BPD_TABLE)
 
-#if (cnBitsAtDl3 != 0)
-#define cnBitsIndexSzAtTop  (cnBitsPerWord - cnBitsLeftAtDl3 % cnBitsPerDigit)
-#elif (cnBitsAtDl2 != 0)
-#define cnBitsIndexSzAtTop  (cnBitsPerWord - cnBitsLeftAtDl2 % cnBitsPerDigit)
-#else
-#define cnBitsIndexSzAtTop  (cnBitsPerWord - cnBitsAtBottom % cnBitsPerDigit)
-#endif
-
-#if (cnBitsAtDl3 == cnBitsPerDigit) \
-    && (cnBitsAtDl2 == cnBitsPerDigit) && (cnBitsAtDl1 == cnBitsPerDigit) \
-    && (cnBitsIndexSzAtTop == cnBitsPerDigit)
-
-#define nDL_to_nBitsIndexSz(_nDL)  (cnBitsPerDigit)
-#define nDL_to_nBL(_nDL) (cnBitsPerDigit * (_nDL))
-#define nBL_to_nDL(_nBL) ((_nBL) / cnBitsPerDigit)
-
-#else // (cnBitsAtDl3 == cnBitsPerDigit) ...
-
-#if (cnBitsAtDl2 == cnBitsPerDigit)
-
-// What if cnBitsAtDl3 != cnBitsPerDigit?
-#if (cnBitsAtDl3 != cnBitsPerDigit)
-#error Oops. (cnBitsAtDl3 != cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit)
-#endif // (cnBitsAtDl3 != cnBitsPerDigit)
-
-#define nDL_to_nBitsIndexSzNAX(_nDL)  (cnBitsPerDigit)
-
-#define nDL_to_nBL_NAT(_nDL) \
-    (((_nDL) - 1) * cnBitsPerDigit + cnBitsAtBottom)
-
-// Add cnBitsPerDigit * cnBitsPerWord before to make sure
-// our dividend is positive.
-#define nBL_to_nDL(_nBL) \
-    (DIV_UP((_nBL) + (cnBitsPerDigit * 64) - cnBitsAtBottom, cnBitsPerDigit) \
-        - 63)
- 
-#else // (cnBitsAtDl2 == cnBitsPerDigit)
-
-#if (cnBitsAtDl3 != cnBitsPerDigit)
-
-#define nDL_to_nBitsIndexSzNAX(_nDL) \
-    ((_nDL) == 3 ? cnBitsAtDl3 : ((_nDL) == 2 ? cnBitsAtDl2 : cnBitsPerDigit))
-
-#define nDL_to_nBL_NAT(_nDL) \
-    (((_nDL) == 1) ? cnBitsAtDl1 \
-   : ((_nDL) == 2) ? cnBitsAtDl1 + cnBitsAtDl2 \
-   : cnBitsAtDl1 + cnBitsAtDl2 + cnBitsAtDl3 + ((_nDL) - 3) * cnBitsPerDigit)
-
-#define nBL_to_nDL(_nBL) \
-    ((_nBL) <= cnBitsAtDl1 ? 1 \
-   : (_nBL) <= cnBitsAtDl1 + cnBitsAtDl2 ? 2 \
-   : (DIV_UP((_nBL) + (cnBitsPerDigit * 64) \
-                    - cnBitsAtDl1 - cnBitsAtDl2 - cnBitsAtDl3, \
-                cnBitsPerDigit) \
-            - 61))
-
-#else // (cnBitsAtDl3 != cnBitsPerDigit)
-
-#define nDL_to_nBitsIndexSzNAX(_nDL) \
-    ((_nDL) == 2 ? cnBitsAtDl2 : cnBitsPerDigit)
-
-#define nDL_to_nBL_NAT(_nDL) \
-    (((_nDL) == 1) ? cnBitsAtBottom \
-                   : cnBitsAtBottom + cnBitsAtDl2 \
-                       + ((_nDL) - 2) * cnBitsPerDigit)
-
-#define nBL_to_nDL(_nBL) \
-    ((_nBL) <= cnBitsAtBottom ? 1 \
-        : (DIV_UP((_nBL) + (cnBitsPerDigit * 64) \
-                    - cnBitsAtBottom - cnBitsAtDl2, \
-                cnBitsPerDigit) \
-            - 62))
-
-#endif // (cnBitsAtDl3 != cnBitsPerDigit)
-
-#endif // (cnBitsAtDl2 == cnBitsPerDigit)
-
-#define nDL_to_nBitsIndexSzNAB(_nDL) \
-    (((_nDL) == cnDigitsPerWord) \
-        ? cnBitsIndexSzAtTop \
-        : nDL_to_nBitsIndexSzNAX(_nDL))
-
-#define nDL_to_nBitsIndexSzNAT(_nDL) \
-    (((_nDL) == 1) ? cnBitsAtBottom : nDL_to_nBitsIndexSzNAX(_nDL))
-
-#define nDL_to_nBitsIndexSz(_nDL) \
-    (((_nDL) == cnDigitsPerWord) \
-        ? cnBitsIndexSzAtTop : nDL_to_nBitsIndexSzNAT(_nDL))
-
-#define nDL_to_nBL(_nDL) \
-    (((_nDL) == cnDigitsPerWord) ? cnBitsPerWord : nDL_to_nBL_NAT(_nDL))
-
-#endif // (cnBitsAtDl3 == cnBitsPerDigit) ...
+#define nDL_to_nBitsIndexSz(_nDL)  (nBitsIndexSz_from_nDL(_nDL))
+#define nDL_to_nBL(_nDL)           (nBL_from_nDL(_nDL))
+#define nBL_to_nDL(_nBL)           (nDL_from_nBL(_nBL))
 
 #endif // defined(BPD_TABLE)
 
-// this one is not used in the lookup performance path
+// These two can be further optimized for ! defined(BPD_TABLE).
+#define nDL_to_nBitsIndexSzNAX(_nDL)  (nDL_to_nBitsIndexSz(_nDL))
+#define nDL_to_nBL_NAT(_nDL)          (nDL_to_nBL(_nDL))
+
+// This one is not used in the lookup performance path.
 #define nBL_to_nDL_NotAtTop(_nBL)  nBL_to_nDL(_nBL)
 
 #if defined RAMMETRICS
