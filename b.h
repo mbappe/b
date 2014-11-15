@@ -394,19 +394,23 @@ extern const unsigned anBL_to_nDL[];
 
 #else // defined(BPD_TABLE)
 
-#if (cnBitsAtDl3 != cnBitsPerDigit)
+#if (cnBitsAtDl3 != 0)
+#define cnBitsIndexSzAtTop  (cnBitsPerWord - cnBitsLeftAtDl3 % cnBitsPerDigit)
+#elif (cnBitsAtDl2 != 0)
+#define cnBitsIndexSzAtTop  (cnBitsPerWord - cnBitsLeftAtDl2 % cnBitsPerDigit)
+#else
+#define cnBitsIndexSzAtTop  (cnBitsPerWord - cnBitsAtBottom % cnBitsPerDigit)
+#endif
 
-#define cnBitsIndexSzAtTop \
-    (cnBitsPerWord - cnBitsAtDl1 - cnBitsAtDl2 - cnBitsAtDl3 \
-        - (cnDigitsPerWord - 4) * cnBitsPerDigit)
+#if (cnBitsAtDl3 == cnBitsPerDigit) \
+    && (cnBitsAtDl2 == cnBitsPerDigit) && (cnBitsAtDl1 == cnBitsPerDigit) \
+    && (cnBitsIndexSzAtTop == cnBitsPerDigit)
 
-#else // (cnBitsAtDl3 != cnBitsPerDigit)
+#define nDL_to_nBitsIndexSz(_nDL)  (cnBitsPerDigit)
+#define nDL_to_nBL(_nDL) (cnBitsPerDigit * (_nDL))
+#define nBL_to_nDL(_nBL) ((_nBL) / cnBitsPerDigit)
 
-#define cnBitsIndexSzAtTop \
-    (cnBitsPerWord - cnBitsAtBottom - cnBitsAtDl2 \
-        - (cnDigitsPerWord - 3) * cnBitsPerDigit)
-
-#endif // (cnBitsAtDl3 != cnBitsPerDigit)
+#else // (cnBitsAtDl3 == cnBitsPerDigit) ...
 
 #if (cnBitsAtDl2 == cnBitsPerDigit)
 
@@ -481,6 +485,8 @@ extern const unsigned anBL_to_nDL[];
 
 #define nDL_to_nBL(_nDL) \
     (((_nDL) == cnDigitsPerWord) ? cnBitsPerWord : nDL_to_nBL_NAT(_nDL))
+
+#endif // (cnBitsAtDl3 == cnBitsPerDigit) ...
 
 #endif // defined(BPD_TABLE)
 
