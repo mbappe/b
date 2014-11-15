@@ -365,8 +365,15 @@ enum {
 // Use lookup tables (which theoretically support depth-based bits per digit)
 // instead of a constant bits-per-digit throughout the tree.
 
-extern const unsigned anDL_to_nBL[];
+#if defined(BPD_TABLE_RUNTIME_INIT)
+extern unsigned anDL_to_nBitsIndexSz[ cnBitsPerWord + 1 ];
+extern unsigned anDL_to_nBL[ cnBitsPerWord + 1 ];
+extern unsigned anBL_to_nDL[ cnBitsPerWord * 2 ];
+#else // defined(BPD_TABLE_RUNTIME_INIT)
 extern const unsigned anDL_to_nBitsIndexSz[];
+extern const unsigned anDL_to_nBL[];
+extern const unsigned anBL_to_nDL[];
+#endif // defined(BPD_TABLE_RUNTIME_INIT)
 
 #define nDL_to_nBL_NAT(_nDL)  anDL_to_nBL[_nDL]
 

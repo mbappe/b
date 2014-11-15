@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.355 2014/11/14 01:34:49 mike Exp mike $
+// @(#) $Id: bli.c,v 1.357 2014/11/15 13:36:38 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2471,13 +2471,21 @@ Initialize(void)
 #endif // defined(TYPE_IS_ABSOLUTE)
 
 #if defined(BPD_TABLE_RUNTIME_INIT)
-    for (int nDL = 0; nDL <= cnBitsPerWord; ++nDL) {
-        anDL_to_nBL[nDL] = nDL_to_nBL(nDL);
-        anDL_to_nBitsIndexSz[nDL] = nDL_to_nBitsIndexSz(nDL);
+    for (unsigned nDL = 0;
+         nDL < sizeof(anDL_to_nBitsIndexSz) / sizeof(anDL_to_nBitsIndexSz[0]);
+         nDL++)
+    {
+        anDL_to_nBitsIndexSz[nDL] = nBitsIndexSz_from_nDL(nDL);
     }
-    for (int nBL = 0; nBL <= 2 * cnBitsPerWord; ++nBL) {
-        anBL_to_nDL[nBL] = nBL_to_nDL(nBL);
-        anBL_to_nBitsIndexSz[nBL] = nBL_to_nBitsIndexSz(nBL);
+    for (unsigned nDL = 0;
+         nDL < sizeof(anDL_to_nBL) / sizeof(anDL_to_nBL[0]); ++nDL)
+    {
+        anDL_to_nBL[nDL] = nBL_from_nDL(nDL);
+    }
+    for (unsigned nBL = 0;
+         nDL < sizeof(anBL_to_nDL) / sizeof(anBL_to_nDL[0]); ++nDL)
+    {
+        anBL_to_nDL[nBL] = nDL_from_nBL(nBL);
     }
 #endif // defined(BPD_TABLE_RUNTIME_INIT)
 
