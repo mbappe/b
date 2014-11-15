@@ -413,18 +413,20 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 #if defined(PSPLIT_HYBRID)
 
 // Linear parallel search of list (for any size key and with end check).
-#define PSEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos, _xKeys0) \
-         SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos)
+#define PSEARCHF(_b_t, _x_t, \
+                 _pxKeys, _nPopCnt, _xKey, _pxKeys0, _xKeys0, _nPos) \
+    SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos)
 
 // Backward linear search of list (for any size key and with end check).
-#define PSEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos, _xKeySplit) \
-         SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos)
+#define PSEARCHB(_b_t, _x_t, \
+                 _pxKeys, _nPopCnt, _xKey, _pxKeys0, _xKeySplit, _nPos) \
+    SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos)
 
 #else // defined(PSPLIT_HYBRID)
 
 // Linear parallel search of list (for any size key and with end check).
 #define PSEARCHF(_b_t, _x_t, \
-                 _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos, _xKeySplit) \
+                 _pxKeys, _nPopCnt, _xKey, _pxKeys0, _xKeySplit, _nPos) \
 { \
     (_nPos) = (_pxKeys) - (_pxKeys0); \
 /* Is it wise to check the end here ? */ \
@@ -441,7 +443,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 // Backward linear parallel search (for any size key and with end check).
 #define PSEARCHB(_b_t, _x_t, \
-                 _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos, _xKeySplit) \
+                 _pxKeys, _nPopCnt, _xKey, _pxKeys0, _xKeySplit, _nPos) \
 { \
     (_nPos) = (_pxKeys) - (_pxKeys0); \
 /* Is it wise to check the start here ? */ \
@@ -482,13 +484,13 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
             } else { \
                 PSEARCHF(_b_t, _x_t, &(_pxKeys)[nSplit + 1], \
                          (_nPopCnt) - nSplit - 1, \
-                         (_xKey), (_pxKeys), (_nPos), xKeySplit); \
+                         (_xKey), (_pxKeys), xKeySplit, (_nPos)); \
             } \
         } \
         else \
         { \
             PSEARCHB(_b_t, _x_t, (_pxKeys), \
-                     nSplit + 1, (_xKey), (_pxKeys), (_nPos), xKeySplit); \
+                     nSplit + 1, (_xKey), (_pxKeys), xKeySplit, (_nPos)); \
         } \
         assert(((_nPos) < 0) \
             || BUCKET_HAS_KEY((_b_t *) \
@@ -749,9 +751,12 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     uint8_t cKey = (uint8_t)wKey;
     int nPos;
 #if defined(PSPLIT_SEARCH_8)
+#if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 8) {
         PSPLIT_SEARCH(uint8_t, nBL, pcKeys, nPopCnt, cKey, nPos);
-    } else {
+    } else
+#endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
+    {
         PSPLIT_SEARCH(uint8_t, nBL, pcKeys, nPopCnt, cKey, nPos);
     }
 #elif defined(BACKWARD_SEARCH_8)
@@ -791,9 +796,12 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     uint16_t sKey = (uint16_t)wKey;
     int nPos;
 #if defined(PSPLIT_SEARCH_16)
+#if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 16) {
         PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
-    } else {
+    } else
+#endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
+    {
         PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     }
 #elif defined(BACKWARD_SEARCH_16)
@@ -834,11 +842,14 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     uint32_t iKey = (uint32_t)wKey;
     int nPos;
 #if defined(PSPLIT_SEARCH_32)
+#if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 32) {
         PSPLIT_SEARCH(uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
     } else if (nBL == 24) {
         PSPLIT_SEARCH(uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
-    } else {
+    } else
+#endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
+    {
         PSPLIT_SEARCH(uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
     }
 #elif defined(BACKWARD_SEARCH_32)
@@ -909,6 +920,7 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     // nBL could be 64 and it could be 0.
 #endif // defined(PSPLIT_SEARCH_XOR_WORD)
     if (nBL <= (cnBitsPerWord - 8)) {
+#if defined(BL_SPECIFIC_PSPLIT_SEARCH)
         if (nBL == 32) {
             PSPLIT_SEARCH(Word_t, nBL, pwKeys, nPopCnt, wKey, nPos);
         } else
@@ -921,6 +933,7 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
             PSPLIT_SEARCH(Word_t, nBL, pwKeys, nPopCnt, wKey, nPos);
         } else
 #endif // (cnBitsPerWord > 32)
+#endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
         {
             PSPLIT_SEARCH(Word_t, nBL, pwKeys, nPopCnt, wKey, nPos);
         }
@@ -2129,10 +2142,18 @@ embeddedBitmap:
         //      LOG( 44/ 5) ... LOG( 36/ 3) = 3
         //      LOG( 44/ 2) ... LOG( 36/ 2) = 4
         //
+#if defined(DL_SPECIFIC_T_ONE)
+        if (nDL == 1) {
+            if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL(nDL))) goto foundIt;
+        } else if (nDL == 2) {
+            if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL(nDL))) goto foundIt;
+        } else {
+#endif // defined(DL_SPECIFIC_T_ONE)
         unsigned nBL = nDL_to_nBL(nDL);
+#if defined(DL_SPECIFIC_T_ONE)
   #if defined(HAS_KEY)
 #if 0
-        if (nBL >=7 && nBL <= 16) {
+        if (nBL >= 7 && nBL <= 16) {
         switch (nBL) {
         case 7:
             if (EmbeddedListHasKey(wRoot, wKey, 7)) goto foundIt; break;
@@ -2176,6 +2197,7 @@ embeddedBitmap:
 #endif // 0
         else
   #endif // defined(HAS_KEY)
+#endif // defined(DL_SPECIFIC_T_ONE)
         if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
   #if defined(HAS_KEY)
             if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto foundIt;
@@ -2230,6 +2252,9 @@ foundIt:
       #endif // defined(INSERT) && !defined(RECURSIVE)
             return KeyFound;
         }
+#if defined(DL_SPECIFIC_T_ONE)
+        }
+#endif // defined(DL_SPECIFIC_T_ONE)
 
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
@@ -2444,6 +2469,17 @@ Initialize(void)
     }
     assert(nDL_to_tp(cnDigitsPerWord) <= cnMallocMask);
 #endif // defined(TYPE_IS_ABSOLUTE)
+
+#if defined(BPD_TABLE_RUNTIME_INIT)
+    for (int nDL = 0; nDL <= cnBitsPerWord; ++nDL) {
+        anDL_to_nBL[nDL] = nDL_to_nBL(nDL);
+        anDL_to_nBitsIndexSz[nDL] = nDL_to_nBitsIndexSz(nDL);
+    }
+    for (int nBL = 0; nBL <= 2 * cnBitsPerWord; ++nBL) {
+        anBL_to_nDL[nBL] = nBL_to_nDL(nBL);
+        anBL_to_nBitsIndexSz[nBL] = nBL_to_nBitsIndexSz(nBL);
+    }
+#endif // defined(BPD_TABLE_RUNTIME_INIT)
 
     bInitialized= 1;
 }
