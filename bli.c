@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.357 2014/11/15 13:36:38 mike Exp mike $
+// @(#) $Id: bli.c,v 1.358 2014/11/15 17:40:56 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2448,8 +2448,6 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
 #if defined(INSERT)
 
-#if defined(DEBUG)
-
 static int bInitialized;
 
 static void
@@ -2483,7 +2481,7 @@ Initialize(void)
         anDL_to_nBL[nDL] = nBL_from_nDL(nDL);
     }
     for (unsigned nBL = 0;
-         nDL < sizeof(anBL_to_nDL) / sizeof(anBL_to_nDL[0]); ++nDL)
+         nBL < sizeof(anBL_to_nDL) / sizeof(anBL_to_nDL[0]); ++nBL)
     {
         anBL_to_nDL[nBL] = nDL_from_nBL(nBL);
     }
@@ -2491,8 +2489,6 @@ Initialize(void)
 
     bInitialized= 1;
 }
-
-#endif // defined(DEBUG)
 
 int // Status_t
 Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
@@ -2510,11 +2506,11 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     pwRootLast = pwRoot;
 
+  #endif // defined(DEBUG)
+
     if ((*pwRoot == (Word_t)0) && ! bInitialized ) {
         Initialize();
     }
-
-  #endif // defined(DEBUG)
 
   #if (cwListPopCntMax != 0) && defined(PP_IN_LINK)
     // Handle the top level list leaf before calling Insert.  Why?

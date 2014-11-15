@@ -375,40 +375,22 @@ extern const unsigned anDL_to_nBL[];
 extern const unsigned anBL_to_nDL[];
 #endif // defined(BPD_TABLE_RUNTIME_INIT)
 
-#define nDL_to_nBL_NAT(_nDL)  anDL_to_nBL[_nDL]
-
-// Macros are simpler if the digit at the top is a whole cnBitsPerDigit bits.
-#if ((cnBitsPerWord - cnBitsAtBottom - cnBitsAtDl2 - cnBitsAtDl3) \
-        % cnBitsPerDigit == 0)
-
-#define nDL_to_nBL(_nDL)  nDL_to_nBL_NAT(_nDL)
-
 // nDL_to_nBitsIndexSz(3) is the same as cnBitsAtDl3, for example, for now
 #define nDL_to_nBitsIndexSz(_nDL)  anDL_to_nBitsIndexSz[_nDL]
+#define nDL_to_nBL(_nDL)  anDL_to_nBL[_nDL]
+#define nBL_to_nDL(_nBL)  (anBL_to_nDL[_nBL])
 
+#define nDL_to_nBL_NAT(_nDL)  nDL_to_nBL(_nDL)
+
+#if ((cnBitsPerWord - cnBitsAtDl3) % cnBitsPerDigit == 0)
 #define cnBitsIndexSzAtTop  (cnBitsPerDigit)
-
-#else // here if the digit at the top is not a whole cnBitsPerDigit bits.
-#error Are you sure you want to take this performance hit?
-
-#define nDL_to_nBL(_nDL) \
-    (((_nDL) < cnDigitsPerWord) ? anDL_to_nBL[_nDL] : cnBitsPerWord)
-
-#define nDL_to_nBitsIndexSz(_nDL) \
-    (((_nDL) < cnDigitsPerWord) \
-        ? anDL_to_nBitsIndexSz[_nDL] \
-        : cnBitsPerWord - nDL_to_nBL_NAT((_nDL) - 1))
-
-// this one is not used in the lookup performance path
+#else // ((cnBitsPerWord - cnBitsAtDl3) % cnBitsPerDigit == 0)
 #define cnBitsIndexSzAtTop  nDL_to_nBitsIndexSz(cnDigitsPerWord)
-
-#endif // digit at the top is a whole cnBitsPerDigit bits.
+#endif // ((cnBitsPerWord - cnBitsAtDl3) % cnBitsPerDigit == 0)
 
 #define nDL_to_nBitsIndexSzNAX(_nDL)  anDL_to_nBitsIndexSz[_nDL]
 #define nDL_to_nBitsIndexSzNAB(_nDL)  anDL_to_nBitsIndexSz[_nDL]
 #define nDL_to_nBitsIndexSzNAT(_nDL)  anDL_to_nBitsIndexSz[_nDL]
-
-#define nBL_to_nDL(_nBL)  (anBL_to_nDL[_nBL])
 
 #else // defined(BPD_TABLE)
 
