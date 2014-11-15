@@ -336,6 +336,15 @@ enum {
     T_SW_BASE,
 };
 
+#define cnBitsLeftAtDl2  (cnBitsAtBottom  + cnBitsAtDl2)
+#define cnBitsLeftAtDl3  (cnBitsLeftAtDl2 + cnBitsAtDl3)
+
+#define nDL_from_nBL(_nBL) \
+    ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
+    : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
+    : ((_nBL) <= cnBitsLeftAtDl3) ? 3 \
+    : 3 + ((_nBL) - cnBitsLeftAtDl3 + cnBitsPerDigit - 1) / cnBitsPerDigit )
+
 // Default is -UBPD_TABLE, i.e. -DNO_BPD_TABLE.
 #if defined(BPD_TABLE)
 
@@ -378,14 +387,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #define nDL_to_nBitsIndexSzNAB(_nDL)  anDL_to_nBitsIndexSz[_nDL]
 #define nDL_to_nBitsIndexSzNAT(_nDL)  anDL_to_nBitsIndexSz[_nDL]
 
-// Can I make this into an anBL_to_nDL[] table?
-// Maybe build the table at run time?
-#define nBL_to_nDL(_nBL) \
-    (((_nBL) <= cnBitsAtBottom) ? 1 \
-        : ((_nBL) <= cnBitsAtBottom + cnBitsAtDl2) ? 2 \
-        : ((_nBL) <= cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3) ? 3 \
-        : (DIV_UP((_nBL) - cnBitsAtBottom - cnBitsAtDl2 - cnBitsAtDl3, \
-                  cnBitsPerDigit) + 3))
+#define nBL_to_nDL(_nBL)  (anBL_to_nDL[_nBL])
 
 #else // defined(BPD_TABLE)
 
