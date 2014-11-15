@@ -339,8 +339,22 @@ enum {
 #define cnBitsLeftAtDl2  (cnBitsAtBottom  + cnBitsAtDl2)
 #define cnBitsLeftAtDl3  (cnBitsLeftAtDl2 + cnBitsAtDl3)
 
+#define nBL_from_nDL(_nDL) \
+    ( (_nDL) <= 0 ? 0 \
+    : (_nDL) == 1 ? cnBitsAtBottom \
+    : (_nDL) == 2 ? cnBitsLeftAtDl2 \
+    : cnBitsLeftAtDl3 + ((_nDL) - 3) * cnBitsPerDigit )
+
+#define nBitsIndexSz_from_nDL(_nDL) \
+    ( ((_nDL) <= 1) ? cnBitsAtBottom \
+    : ((_nDL) == 2) ? cnBitsAtDl2 \
+    : ((_nDL) == 3) ? cnBitsAtDl3 \
+    : ((_nDL) < cnDigitsPerWord) ? cnBitsPerDigit \
+    : cnBitsPerWord - nBL_from_nDL((_nDL) - 1) )
+
 #define nDL_from_nBL(_nBL) \
-    ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
+    ( ((_nBL) <= 0 ) ? 0 \
+    : ((_nBL) <= cnBitsAtBottom ) ? 1 \
     : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
     : ((_nBL) <= cnBitsLeftAtDl3) ? 3 \
     : 3 + ((_nBL) - cnBitsLeftAtDl3 + cnBitsPerDigit - 1) / cnBitsPerDigit )
