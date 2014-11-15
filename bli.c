@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.354 2014/11/12 20:06:23 mike Exp mike $
+// @(#) $Id: bli.c,v 1.355 2014/11/14 01:34:49 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -201,6 +201,9 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 
 #endif // defined(LIST_END_MARKERS)
 
+// Pick a bucket position directly rather than picking a key position first
+// then deriving the bucket position from the key position.
+// PSPLIT_NN picks a key position.
 #define PSPLIT_P(_nPopCnt, _nBL, _xKey, _nSplit) \
 { \
     (_nSplit) = (((((((Word_t)(_xKey) << (cnBitsPerWord - (_nBL))) \
@@ -255,7 +258,7 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 // some cases.
 // The trick is finding an expression for _nn that will work for all values
 // of _nBL.
-#define PSPLIT_NN(_nPopCnt, _nBL, _xKey, _nSplit, _nn) \
+#define PSPLIT_NN(_nPopCnt, _nBL, _xKey, _nn, _nSplit) \
 { \
     /* make sure we don't overflow when we shift _nPopCnt with big _nBL */ \
     assert((_nPopCnt) <= (1 << (cnBitsPerWord - (_nBL) + (_nn)))); \
@@ -274,8 +277,9 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 // We need to make sure we are passing a constant in for _nBL for the
 // performance path cases so the compiler can simplify this.
 #define PSPLIT(_nPopCnt, _nBL, _xKey, _nSplit) \
-        PSPLIT_NN((_nPopCnt), (_nBL), (_xKey), (_nSplit), \
-            LOG((((_nPopCnt) << 1) - 1)) - cnBitsPerWord + (_nBL))
+        PSPLIT_NN((_nPopCnt), (_nBL), (_xKey), \
+                  LOG((((_nPopCnt) << 1) - 1)) - cnBitsPerWord + (_nBL), \
+                  (_nSplit))
 
 #if 0
 pop <= 2 ^ (bpw - nbl + nn)
@@ -431,6 +435,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
         (_nPos) = ~((_nPos) + (_nPopCnt)); \
     } else { \
         PSSEARCHF(_b_t, (_pxKeys0), (_xKey), (_nPos), (_xKeySplit), xKeyEnd); \
+/*PSPLIT_SEARCH_RANGE(_xKey, _pxKeys, _nPopCnt, _xKeySplit, xKeyEnd, _nPos)*/ \
     } \
 }
 
