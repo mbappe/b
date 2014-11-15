@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.335 2014/11/12 14:10:43 mike Exp mike $
+// @(#) $Id: b.c,v 1.336 2014/11/14 01:26:18 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #if defined(HAS_KEY_128)
@@ -48,8 +48,17 @@ Word_t j__AllocWordsJV12;  // Value Area 12-bit Decode
 // effect arbitrary switch sizes.
 // It is necessary to tweak cnDigitsPerWord in b.h also.
 
+#if defined(BPD_TABLE_RUNTIME_INIT)
+
+int anDL_to_nBL[ cnBitsPerWord + 1 ];
+int anDL_to_nBitsIndexSz[ cnBitsPerWord + 1 ];
+int anBL_to_nDL[ cnBitsPerWord * 2 ];
+int anBL_to_nBitsIndexSz[ cnBitsPerWord * 2 ];
+
+#else // defined(BPD_TABLE_RUNTIME_INIT)
+
 const unsigned anDL_to_nBitsIndexSz[] = {
-                 0, cnBitsAtBottom, cnBitsAtDl2,    cnBitsPerDigit,
+                 0, cnBitsAtBottom, cnBitsAtDl2,    cnBitsAtDl3,
     cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
     cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
     cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit, cnBitsPerDigit,
@@ -72,70 +81,71 @@ const unsigned anDL_to_nBL[] = {
     0,
     cnBitsAtBottom,
     cnBitsAtBottom + cnBitsAtDl2,
-    cnBitsAtBottom + cnBitsAtDl2 +  1 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 +  2 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 +  3 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 +  4 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 +  5 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 +  6 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 +  7 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 +  8 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 +  9 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 10 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 11 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 12 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 13 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 14 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 15 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 16 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 17 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 18 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 19 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 20 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 21 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 22 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 23 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 24 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 25 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 26 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 27 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 28 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 29 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 30 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 31 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 32 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 33 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 34 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 35 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 36 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 37 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 38 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 39 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 40 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 41 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 42 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 43 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 44 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 45 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 46 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 47 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 48 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 49 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 50 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 51 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 52 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 53 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 54 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 55 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 56 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 57 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 58 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 59 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 60 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 61 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 62 * cnBitsPerDigit,
-    cnBitsAtBottom + cnBitsAtDl2 + 63 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 +  1 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 +  2 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 +  3 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 +  4 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 +  5 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 +  6 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 +  7 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 +  8 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 +  9 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 10 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 11 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 12 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 13 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 14 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 15 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 16 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 17 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 18 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 19 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 20 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 21 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 22 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 23 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 24 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 25 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 26 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 27 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 28 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 29 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 30 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 31 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 32 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 33 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 34 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 35 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 36 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 37 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 38 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 39 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 40 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 41 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 42 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 43 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 44 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 45 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 46 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 47 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 48 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 49 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 50 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 51 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 52 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 53 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 54 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 55 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 56 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 57 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 58 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 59 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 60 * cnBitsPerDigit,
+    cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3 + 61 * cnBitsPerDigit,
 };
+
+#endif // defined(BPD_TABLE_RUNTIME_INIT)
 
 #endif // defined(BPD_TABLE)
 
@@ -652,6 +662,15 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL, int bBmSw,
     DBGM(printf("NewSwitch(pwRoot %p wKey "OWx" nDL %d bBmSw %d nDLU %d)"
                 " pwr %p\n",
                 (void *)pwRoot, wKey, nDL, bBmSw, nDLUp, (void *)pwr));
+    DBGI(printf("\nNewSwitch nDL %d nBL %d nDLU %d\n",
+                nDL, nDL_to_nBL(nDL), nDLUp));
+#if 0
+    for (int ii = 1; ii < cnBitsPerWord; ii++) {
+        int jj = nBL_to_nDL(ii);
+        DBGI(printf("nBL %d nDL %d nDL_to_nBL %d nBitsIndexSz %d\n",
+                    ii, jj, nDL_to_nBL(jj), nDL_to_nBitsIndexSz(jj)));
+    }
+#endif
 
     if (bBmSw) {
         set_wr(*pwRoot, pwr, T_BM_SW);
