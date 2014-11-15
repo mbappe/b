@@ -196,10 +196,9 @@
 // Choose bottom, i.e.  the number of bits in the least significant digit.
 // We count digits up from there.
 // Default is cnBitsAtBottom = 8.
-#if ! defined(cnBitsAtBottom)
-#undef  cnBitsAtBottom
+#if ! defined(cnBitsAtDl1) && ! defined(cnBitsAtBottom)
 #define cnBitsAtBottom  8
-#endif // ! defined(cnBitsAtBottom)
+#endif // ! defined(cnBitsAtDl1) && ! defined(cnBitsAtBottom)
 
 // Choose max list lengths.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
@@ -283,24 +282,32 @@
                MAX(cnListPopCntMax8, 8))))
 #endif // ! defined(cwListPopCntMax)
 
+#if defined(cnBitsAtDl1)
+#define cnBitsAtBottom (cnBitsAtDl1)
+#else // defined(cnBitsAtDl1)
 #define cnBitsAtDl1  (cnBitsAtBottom)
+#endif // defined(cnBitsAtDl1)
 
-// Bits in the digit next to the bottom.
+// Bits in the digit next to the bottom -- not bits-left.
 #if ! defined(cnBitsAtDl2)
 #define cnBitsAtDl2  (cnBitsPerDigit)
 #endif // ! defined(cnBitsAtDl2)
 
+#if ! defined(cnBitsAtDl3)
+#define cnBitsAtDl3  (cnBitsPerDigit)
+#endif // ! defined(cnBitsAtDl3)
+
 // cnDigitsPerWord makes assumptions about anDL_to_nBitsIndexSz[] and
-// anDL_to_nBL.  Yuck.
-#if defined(cnBitsAtDl3)
+// anDL_to_nBL[].  Yuck.
+#if (cnBitsAtDl3 != cnBitsPerDigit)
 #define cnDigitsPerWord \
     (DIV_UP(cnBitsPerWord - cnBitsAtDl1 - cnBitsAtDl2 - cnBitsAtDl3, \
             cnBitsPerDigit) \
         + 3)
-#else // defined(cnBitsAtDl3)
+#else // (cnBitsAtDl3 != cnBitsPerDigit)
 #define cnDigitsPerWord \
     (DIV_UP(cnBitsPerWord - cnBitsAtDl1 - cnBitsAtDl2, cnBitsPerDigit) + 2)
-#endif // defined(cnBitsAtDl3)
+#endif // (cnBitsAtDl3 != cnBitsPerDigit)
 
 // Default is -DEMBED_KEYS which implies -DUSE_T_ONE.
 #if ! defined(NO_EMBED_KEYS)
@@ -340,6 +347,20 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 
 #define nDL_to_nBL_NAT(_nDL)  anDL_to_nBL[_nDL]
 
+// Macros are simpler if the digit at the top is a whole cnBitsPerDigit bits.
+#if ((cnBitsPerWord - cnBitsAtBottom - cnBitsAtDl2 - cnBitsAtDl3) \
+        % cnBitsPerDigit == 0)
+
+#define nDL_to_nBL(_nDL)  nDL_to_nBL_NAT(_nDL)
+
+// nDL_to_nBitsIndexSz(3) is the same as cnBitsAtDl3, for example, for now
+#define nDL_to_nBitsIndexSz(_nDL)  anDL_to_nBitsIndexSz[_nDL]
+
+#define cnBitsIndexSzAtTop  (cnBitsPerDigit)
+
+#else // here if the digit at the top is not a whole cnBitsPerDigit bits.
+#error Are you sure you want to take this performance hit?
+
 #define nDL_to_nBL(_nDL) \
     (((_nDL) < cnDigitsPerWord) ? anDL_to_nBL[_nDL] : cnBitsPerWord)
 
@@ -348,36 +369,79 @@ extern const unsigned anDL_to_nBitsIndexSz[];
         ? anDL_to_nBitsIndexSz[_nDL] \
         : cnBitsPerWord - nDL_to_nBL_NAT((_nDL) - 1))
 
+// this one is not used in the lookup performance path
+#define cnBitsIndexSzAtTop  nDL_to_nBitsIndexSz(cnDigitsPerWord)
+
+#endif // digit at the top is a whole cnBitsPerDigit bits.
+
 #define nDL_to_nBitsIndexSzNAX(_nDL)  anDL_to_nBitsIndexSz[_nDL]
 #define nDL_to_nBitsIndexSzNAB(_nDL)  anDL_to_nBitsIndexSz[_nDL]
 #define nDL_to_nBitsIndexSzNAT(_nDL)  anDL_to_nBitsIndexSz[_nDL]
 
-// this one is not used in the lookup performance path
-#define cnBitsIndexSzAtTop  nDL_to_nBitsIndexSz(cnDigitsPerWord)
-
+// Can I make this into an anBL_to_nDL[] table?
+// Maybe build the table at run time?
 #define nBL_to_nDL(_nBL) \
     (((_nBL) <= cnBitsAtBottom) ? 1 \
         : ((_nBL) <= cnBitsAtBottom + cnBitsAtDl2) ? 2 \
-        : (DIV_UP((_nBL) - cnBitsAtBottom - cnBitsAtDl2, cnBitsPerDigit) + 2))
+        : ((_nBL) <= cnBitsAtBottom + cnBitsAtDl2 + cnBitsAtDl3) ? 3 \
+        : (DIV_UP((_nBL) - cnBitsAtBottom - cnBitsAtDl2 - cnBitsAtDl3, \
+                  cnBitsPerDigit) + 3))
 
 #else // defined(BPD_TABLE)
+
+#if (cnBitsAtDl3 != cnBitsPerDigit)
+
+#define cnBitsIndexSzAtTop \
+    (cnBitsPerWord - cnBitsAtDl1 - cnBitsAtDl2 - cnBitsAtDl3 \
+        - (cnDigitsPerWord - 4) * cnBitsPerDigit)
+
+#else // (cnBitsAtDl3 != cnBitsPerDigit)
 
 #define cnBitsIndexSzAtTop \
     (cnBitsPerWord - cnBitsAtBottom - cnBitsAtDl2 \
         - (cnDigitsPerWord - 3) * cnBitsPerDigit)
 
+#endif // (cnBitsAtDl3 != cnBitsPerDigit)
+
 #if (cnBitsAtDl2 == cnBitsPerDigit)
+
+// What if cnBitsAtDl3 != cnBitsPerDigit?
+#if (cnBitsAtDl3 != cnBitsPerDigit)
+#error Oops. (cnBitsAtDl3 != cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit)
+#endif // (cnBitsAtDl3 != cnBitsPerDigit)
 
 #define nDL_to_nBitsIndexSzNAX(_nDL)  (cnBitsPerDigit)
 
 #define nDL_to_nBL_NAT(_nDL) \
     (((_nDL) - 1) * cnBitsPerDigit + cnBitsAtBottom)
 
+// Add cnBitsPerDigit * cnBitsPerWord before to make sure
+// our dividend is positive.
 #define nBL_to_nDL(_nBL) \
     (DIV_UP((_nBL) + (cnBitsPerDigit * 64) - cnBitsAtBottom, cnBitsPerDigit) \
         - 63)
  
 #else // (cnBitsAtDl2 == cnBitsPerDigit)
+
+#if (cnBitsAtDl3 != cnBitsPerDigit)
+
+#define nDL_to_nBitsIndexSzNAX(_nDL) \
+    ((_nDL) == 3 ? cnBitsAtDl3 : ((_nDL) == 2 ? cnBitsAtDl2 : cnBitsPerDigit))
+
+#define nDL_to_nBL_NAT(_nDL) \
+    (((_nDL) == 1) ? cnBitsAtDl1 \
+   : ((_nDL) == 2) ? cnBitsAtDl1 + cnBitsAtDl2 \
+   : cnBitsAtDl1 + cnBitsAtDl2 + cnBitsAtDl3 + ((_nDL) - 3) * cnBitsPerDigit)
+
+#define nBL_to_nDL(_nBL) \
+    ((_nBL) <= cnBitsAtDl1 ? 1 \
+   : (_nBL) <= cnBitsAtDl1 + cnBitsAtDl2 ? 2 \
+   : (DIV_UP((_nBL) + (cnBitsPerDigit * 64) \
+                    - cnBitsAtDl1 - cnBitsAtDl2 - cnBitsAtDl3, \
+                cnBitsPerDigit) \
+            - 61))
+
+#else // (cnBitsAtDl3 != cnBitsPerDigit)
 
 #define nDL_to_nBitsIndexSzNAX(_nDL) \
     ((_nDL) == 2 ? cnBitsAtDl2 : cnBitsPerDigit)
@@ -393,6 +457,8 @@ extern const unsigned anDL_to_nBitsIndexSz[];
                     - cnBitsAtBottom - cnBitsAtDl2, \
                 cnBitsPerDigit) \
             - 62))
+
+#endif // (cnBitsAtDl3 != cnBitsPerDigit)
 
 #endif // (cnBitsAtDl2 == cnBitsPerDigit)
 
@@ -614,7 +680,7 @@ extern const unsigned anDL_to_nBitsIndexSz[];
 #endif // defined(TYPE_IS_ABSOLUTE)
 
 #if defined(EXTRA_TYPES)
-#define     tp_bIsSwitch(_tp)          ((_tp) & cnMallocMask) >= T_BM_SW)
+#define     tp_bIsSwitch(_tp)          (((_tp) & cnMallocMask) >= T_BM_SW)
 #else // defined(EXTRA_TYPES)
 #define     tp_bIsSwitch(_tp)          ((_tp) >= T_BM_SW)
 #endif // defined(EXTRA_TYPES)
