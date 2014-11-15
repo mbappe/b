@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.336 2014/11/14 01:26:18 mike Exp mike $
+// @(#) $Id: b.c,v 1.337 2014/11/15 13:37:04 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #if defined(HAS_KEY_128)
@@ -50,10 +50,10 @@ Word_t j__AllocWordsJV12;  // Value Area 12-bit Decode
 
 #if defined(BPD_TABLE_RUNTIME_INIT)
 
-int anDL_to_nBL[ cnBitsPerWord + 1 ];
-int anDL_to_nBitsIndexSz[ cnBitsPerWord + 1 ];
-int anBL_to_nDL[ cnBitsPerWord * 2 ];
-int anBL_to_nBitsIndexSz[ cnBitsPerWord * 2 ];
+unsigned anDL_to_nBL[ cnBitsPerWord + 1 ];
+unsigned anDL_to_nBitsIndexSz[ cnBitsPerWord + 1 ];
+unsigned anBL_to_nDL[ cnBitsPerWord * 2 ];
+unsigned anBL_to_nBitsIndexSz[ cnBitsPerWord * 2 ];
 
 #else // defined(BPD_TABLE_RUNTIME_INIT)
 
