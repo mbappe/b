@@ -28,12 +28,22 @@
 
 // Default is -UBM_SWITCH_FOR_REAL -UBM_IN_LINK.
 
+// Default is -DDL_SPECIFIC_T_ONE.
+#if ! defined(NO_DL_SPECIFIC_T_ONE)
+#define DL_SPECIFIC_T_ONE
+#endif // ! defined(NO_DL_SPECIFIC_T_ONE)
+
+// Default is -UBL_SPECIFIC_PSPLIT_SEARCH.
+
 // Default is -DHAS_KEY.
 #if ! defined(NO_HAS_KEY)
 #define HAS_KEY
 #endif // ! defined(NO_HAS_KEY)
 
-// Default is -UHAS_KEY_128 -UALIGN_LISTS -UALIGN_LIST_ENDS.
+// Default is -DHAS_KEY_128 which forces -DALIGN_LISTS -DALIGN_LIST_ENDS.
+#if ! defined(NO_HAS_KEY_128)
+#define HAS_KEY_128
+#endif // ! defined(NO_HAS_KEY_128)
 #if defined(HAS_KEY_128)
 #define ALIGN_LISTS
 #define ALIGN_LIST_ENDS
@@ -208,39 +218,18 @@
 #define cnListPopCntMax64  0xec
 #endif // ! defined(cnListPopCntMax64)
 
-// Default is cnListPopCntMax32 = 0x3d.
+// Default is cnListPopCntMax32 = 0xf0.
 #if ! defined(cnListPopCntMax32)
-// One  64-bit word  is 0x01.  Three 64-bit words is 0x05.
-// Five 64-bit words is 0x09.  Seven 64-bit words is 0x0d.
-// Nine 64-bit words is 0x11.  11    64-bit words is 0x15.
-// 13   64-bit words is 0x19.  15    64-bit words is 0x1d.
-// 17   64-bit word  is 0x21.  19    64-bit words is 0x25.
-// 21   64-bit words is 0x29.  23    64-bit words is 0x2d.
-// 25   64-bit words is 0x31.  27    64-bit words is 0x35.
-// 29   64-bit words is 0x39.  31    64-bit words is 0x3d.
-// 33   64-bit words is 0x41.  35    64-bit words is 0x45.
-// 37   64-bit words is 0x49.  39    64-bit words is 0x4d.
-// 41   64-bit words is 0x51.  43    64-bit words is 0x55.
-// 45   64-bit words is 0x59.  47    64-bit words is 0x5d.
-#define cnListPopCntMax32  0x3d
+#define cnListPopCntMax32  0xf0
 #endif // ! defined(cnListPopCntMax32)
 
-// Default is cnListPopCntMax16 = 0x3b.
+// Default is cnListPopCntMax16 = 0x48.
 #if ! defined(cnListPopCntMax16)
-// One  64-bit word  is 0x03.  Three 64-bit words is 0x0b.
-// Five 64-bit words is 0x13.  Seven 64-bit words is 0x1b.
-// Nine 64-bit words is 0x23.  11    64-bit words is 0x2b.
-// 13   64-bit words is 0x33.  15    64-bit words is 0x4b.
-// 17   64-bit words is 0x43.  19    64-bit words is 0x5b.
-// 21   64-bit words is 0x53.  23    64-bit words is 0x6b.
-#define cnListPopCntMax16  0x3b
+#define cnListPopCntMax16  0x48
 #endif // ! defined(cnListPopCntMax16)
 
 // Default is cnListPopCntMax8  = 0x37.
 #if ! defined(cnListPopCntMax8)
-// One  64-bit word  is 0x07.  Three 64-bit words is 0x17.
-// Five 64-bit words is 0x27.  Seven 64-bit words is 0x37.
-// Nine 64-bit words is 0x47.  11    64-bit words is 0x57.
 #define cnListPopCntMax8   0x37
 #endif // ! defined(cnListPopCntMax8)
 
@@ -342,16 +331,128 @@ enum {
 #define cnBitsLeftAtDl2     (cnBitsLeftAtDl1 + cnBitsAtDl2)
 #define cnBitsLeftAtDl3     (cnBitsLeftAtDl2 + cnBitsAtDl3)
 
-#if ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit) \
-  && (cnBitsAtDl1 == cnBitsPerDigit) && (cnBitsPerWord % cnBitsPerDigit) == 0)
+// Optimize nBitsIndexSz_from_nDL, nBL_from_nDL, nBL_from_nDL and
+// cnBitsIndexSzAtTop based on ifdef parameters.
+#if (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
+
+#define cnBitsIndexSzAtTop  (cnBitsPerDigit)
+
+#if ( (cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit) \
+   && (cnBitsAtDl1 == cnBitsPerDigit) )
 
 #define nBitsIndexSz_from_nDL(_nDL)  (cnBitsPerDigit)
 #define nBL_from_nDL(_nDL)           (cnBitsPerDigit * (_nDL))
 #define nDL_from_nBL(_nBL)           ((_nBL) / cnBitsPerDigit)
 
-#define cnBitsIndexSzAtTop  (cnBitsPerDigit)
+#elif ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
 
-#else // ((cnBitsAtDl3 == cnBitsPerDigit) ...
+#define nBitsIndexSz_from_nDL(_nDL) \
+    ( ((_nDL) <= 1) ? cnBitsAtDl1 : cnBitsPerDigit )
+
+#define nBL_from_nDL(_nDL) \
+    ( (_nDL) <= 1 ? cnBitsAtDl1 \
+    : cnBitsLeftAtDl1 + ((_nDL) - 1) * cnBitsPerDigit )
+
+// rounding up is free and it might be necessary -- not sure
+#define nDL_from_nBL(_nBL) \
+    ( ((_nBL) <= cnBitsAtDl1 ) ? 1 \
+    : 1 + ((_nBL) - cnBitsLeftAtDl1 + cnBitsPerDigit - 1) / cnBitsPerDigit )
+
+#elif (cnBitsAtDl3 == cnBitsPerDigit)
+
+#define nBitsIndexSz_from_nDL(_nDL) \
+    ( ((_nDL) <= 1) ? cnBitsAtBottom \
+    : ((_nDL) == 2) ? cnBitsAtDl2 \
+    : cnBitsPerDigit )
+
+#define nBL_from_nDL(_nDL) \
+    ( (_nDL) <= 1 ? cnBitsAtBottom \
+    : (_nDL) == 2 ? cnBitsLeftAtDl2 \
+    : cnBitsLeftAtDl2 + ((_nDL) - 2) * cnBitsPerDigit )
+
+// rounding up is free and it might be necessary -- not sure
+#define nDL_from_nBL(_nBL) \
+    ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
+    : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
+    : 2 + ((_nBL) - cnBitsLeftAtDl2 + cnBitsPerDigit - 1) / cnBitsPerDigit )
+
+#else // (cnBitsAtDl3 == cnBitsPerDigit) && ...
+
+#define nBitsIndexSz_from_nDL(_nDL) \
+    ( ((_nDL) <= 1) ? cnBitsAtBottom \
+    : ((_nDL) == 2) ? cnBitsAtDl2 \
+    : ((_nDL) == 3) ? cnBitsAtDl3 \
+    : cnBitsPerDigit )
+
+#define nBL_from_nDL(_nDL) \
+    ( (_nDL) <= 1 ? cnBitsAtBottom \
+    : (_nDL) == 2 ? cnBitsLeftAtDl2 \
+    : (_nDL) == 3 ? cnBitsLeftAtDl3 \
+    : cnBitsLeftAtDl3 + ((_nDL) - 3) * cnBitsPerDigit )
+
+// rounding up is free and it might be necessary -- not sure
+#define nDL_from_nBL(_nBL) \
+    ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
+    : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
+    : ((_nBL) <= cnBitsLeftAtDl2) ? 3 \
+    : 3 + ((_nBL) - cnBitsLeftAtDl3 + cnBitsPerDigit - 1) / cnBitsPerDigit )
+
+#endif // (cnBitsAtDl3 == cnBitsPerDigit) && ...
+
+#else // (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
+
+#define cnBitsIndexSzAtTop ((cnBitsPerWord - cnBitsAtDl3) % cnBitsPerDigit)
+
+#if ( (cnBitsAtDl3 == cnBitsPerDigit) \
+   && (cnBitsAtDl2 == cnBitsPerDigit) && (cnBitsAtDl1 == cnBitsPerDigit) )
+
+#define nBitsIndexSz_from_nDL(_nDL) \
+    ( ((_nDL) < cnDigitsPerWord) ? cnBitsPerDigit : cnBitsIndexSzAtTop )
+
+#define nBL_from_nDL(_nDL) \
+    ( (_nDL) < cnDigitsPerWord ? (_nDL) * cnBitsPerDigit : cnBitsPerWord )
+
+// Do we need to bother rounding up?  Yes.  For _nBL == cnBitsPerWord.
+#define nDL_from_nBL(_nBL)  (((_nBL) + cnBitsPerDigit - 1) / cnBitsPerDigit)
+
+#elif ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
+
+#define nBitsIndexSz_from_nDL(_nDL) \
+    ( ((_nDL) <= 1) ? cnBitsAtBottom \
+    : ((_nDL) < cnDigitsPerWord) ? cnBitsPerDigit \
+    : cnBitsIndexSzAtTop )
+
+#define nBL_from_nDL(_nDL) \
+    ( (_nDL) <= 1 ? cnBitsAtBottom \
+    : (_nDL) < cnDigitsPerWord \
+                 ? cnBitsLeftAtDl1 + ((_nDL) - 1) * cnBitsPerDigit \
+    : cnBitsPerWord )
+
+#define nDL_from_nBL(_nBL) \
+    ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
+    : 1 + ((_nBL) - cnBitsLeftAtDl1 + cnBitsPerDigit - 1) / cnBitsPerDigit )
+
+#elif (cnBitsAtDl3 == cnBitsPerDigit)
+
+#define nBitsIndexSz_from_nDL(_nDL) \
+    ( ((_nDL) <= 1) ? cnBitsAtBottom \
+    : ((_nDL) == 2) ? cnBitsAtDl2 \
+    : ((_nDL) < cnDigitsPerWord) ? cnBitsPerDigit \
+    : cnBitsIndexSzAtTop )
+
+#define nBL_from_nDL(_nDL) \
+    ( (_nDL) <= 1 ? cnBitsAtBottom \
+    : (_nDL) == 2 ? cnBitsLeftAtDl2 \
+    : (_nDL) < cnDigitsPerWord \
+                 ? cnBitsLeftAtDl2 + ((_nDL) - 2) * cnBitsPerDigit \
+    : cnBitsPerWord )
+
+#define nDL_from_nBL(_nBL) \
+    ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
+    : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
+    : 2 + ((_nBL) - cnBitsLeftAtDl2 + cnBitsPerDigit - 1) / cnBitsPerDigit )
+
+#else // (cnBitsAtDl3 == cnBitsPerDigit)
 
 // Do we need this to be valid for _nDL < 1?
 #define nBitsIndexSz_from_nDL(_nDL) \
@@ -359,15 +460,9 @@ enum {
     : ((_nDL) == 2) ? cnBitsAtDl2 \
     : ((_nDL) == 3) ? cnBitsAtDl3 \
     : ((_nDL) < cnDigitsPerWord) ? cnBitsPerDigit \
-    : cnBitsPerWord - nBL_from_nDL((_nDL) - 1) )
+    : cnBitsIndexSzAtTop )
 
 // Do we need this to be valid for _nDL < 1?
-// This can be optimized if cnBitsAtDl3 == cnBitsPerDigit.
-// More if cnBitsAtDl3 == cnBitsAtDl2 == cnBitsPerDigit.
-// Still more if cnBitsAtDl3 == cnBitsAtDl2 == cnBitsAtDl1 == cnBitsPerDigit.
-// It can also be optimized if cnBitsPerWord % cnBitsPerDigit == 0.
-// It can be optimized most cnBitsPerWord % cnBitsPerDigit == 0 and
-// cnBitsAtDl3 == cnBitsAtDl2 == cnBitsAtDl1 == cnBitsPerDigit.
 #define nBL_from_nDL(_nDL) \
     ( (_nDL) <= 1 ? cnBitsAtBottom \
     : (_nDL) == 2 ? cnBitsLeftAtDl2 \
@@ -384,9 +479,9 @@ enum {
     : ((_nBL) <= cnBitsLeftAtDl3) ? 3 \
     : 3 + ((_nBL) - cnBitsLeftAtDl3 + cnBitsPerDigit - 1) / cnBitsPerDigit )
 
-#define cnBitsIndexSzAtTop  (nBitsIndexSz_from_nDL(cnDigitsPerWord))
+#endif // (cnBitsAtDl3 == cnBitsPerDigit) && ...
 
-#endif // ((cnBitsAtDl3 == cnBitsPerDigit) ...
+#endif // (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
 
 // Default is -UBPD_TABLE, i.e. -DNO_BPD_TABLE.
 #if defined(BPD_TABLE)

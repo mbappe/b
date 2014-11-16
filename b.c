@@ -1,11 +1,12 @@
 
-// @(#) $Id: b.c,v 1.341 2014/11/15 17:25:16 mike Exp mike $
+// @(#) $Id: b.c,v 1.342 2014/11/15 17:28:49 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
+
+#include "b.h"
 
 #if defined(HAS_KEY_128)
 #include <immintrin.h> // __m128i
 #endif // defined(HAS_KEY_128)
-#include "b.h"
 
 #if defined(RAMMETRICS)
 Word_t j__AllocWordsJBB;  // JUDYA         Branch Bitmap
