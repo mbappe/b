@@ -477,40 +477,37 @@ enum {
 
 #endif // (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
 
-// Default is -UBPD_TABLE, i.e. -DNO_BPD_TABLE.
+// Default is -DBPD_TABLE.  This causes the table to exist and allows
+// us to reference it in cases when we think it will be faster.
+// Doing a table lookup is slower than doing a calculation, but it
+// may be faster than evaluating a complicated conditional expression.
+// Lookup tables theoretically support depth-based bits per digit
+// instead of a constant bits per digit throughout the tree.
+// But we have created tables and macros that allow us to mix/match
+// table use and calculation.
+
+#if ! defined(NO_BPD_TABLE)
+  #define BPD_TABLE
+#endif // ! defined(NO_BPD_TABLE)
+
 #if defined(BPD_TABLE)
 
-// Use lookup tables (which theoretically support depth-based bits per digit)
-// instead of a constant bits-per-digit throughout the tree.
-
-#if defined(BPD_TABLE_RUNTIME_INIT)
-extern unsigned anDL_to_nBitsIndexSz[ cnBitsPerWord + 1 ];
-extern unsigned anDL_to_nBL[ cnBitsPerWord + 1 ];
-extern unsigned anBL_to_nDL[ cnBitsPerWord * 2 ];
-#else // defined(BPD_TABLE_RUNTIME_INIT)
-extern const unsigned anDL_to_nBitsIndexSz[];
-extern const unsigned anDL_to_nBL[];
-extern const unsigned anBL_to_nDL[];
-#endif // defined(BPD_TABLE_RUNTIME_INIT)
-
-#define nDL_to_nBitsIndexSz(_nDL)  (anDL_to_nBitsIndexSz[_nDL])
-#define nDL_to_nBL(_nDL)           (anDL_to_nBL[_nDL])
-#define nBL_to_nDL(_nBL)           (anBL_to_nDL[_nBL])
-
-#else // defined(BPD_TABLE)
-
-#define nDL_to_nBitsIndexSz(_nDL)  (nBitsIndexSz_from_nDL(_nDL))
-#define nDL_to_nBL(_nDL)           (nBL_from_nDL(_nDL))
-#define nBL_to_nDL(_nBL)           (nDL_from_nBL(_nBL))
+  #define nDL_to_nBitsIndexSz(_nDL)  (anDL_to_nBitsIndexSz[_nDL])
+  #define nDL_to_nBL(_nDL)           (anDL_to_nBL[_nDL])
+  #define nBL_to_nDL(_nBL)           (anBL_to_nDL[_nBL])
 
 #endif // defined(BPD_TABLE)
 
-// These two can be further optimized for ! defined(BPD_TABLE).
+#if ! defined(BPD_TABLE)
+
+  #define nDL_to_nBitsIndexSz(_nDL)  (nBitsIndexSz_from_nDL(_nDL))
+  #define nDL_to_nBL(_nDL)           (nBL_from_nDL(_nDL))
+  #define nBL_to_nDL(_nBL)           (nDL_from_nBL(_nBL))
+
+#endif // ! defined(BPD_TABLE)
+
 #define nDL_to_nBitsIndexSzNAX(_nDL)  (nBitsIndexSz_from_nDL_NAX(_nDL))
 #define nDL_to_nBL_NAT(_nDL)          (nBL_from_nDL_NAT(_nDL))
-
-// This one is not used in the lookup performance path.
-#define nBL_to_nDL_NotAtTop(_nBL)  nBL_to_nDL(_nBL)
 
 #if defined RAMMETRICS
   #define METRICS(x)  (x)
@@ -1115,6 +1112,18 @@ Word_t wDebugPopCnt; // sanity checking
 #endif // defined(BM_SW_AT_DL2_ONLY)
 
 void HexDump(char *str, Word_t *pw, unsigned nWords);
+
+#if defined(BPD_TABLE)
+  #if defined(BPD_TABLE_RUNTIME_INIT)
+extern unsigned anDL_to_nBitsIndexSz[ cnBitsPerWord + 1 ];
+extern unsigned anDL_to_nBL[ cnBitsPerWord + 1 ];
+extern unsigned anBL_to_nDL[ cnBitsPerWord * 2 ];
+  #else // defined(BPD_TABLE_RUNTIME_INIT)
+extern const unsigned anDL_to_nBitsIndexSz[];
+extern const unsigned anDL_to_nBL[];
+extern const unsigned anBL_to_nDL[];
+  #endif // defined(BPD_TABLE_RUNTIME_INIT)
+#endif // defined(BPD_TABLE)
 
 #endif // ( ! defined(_B_H_INCLUDED) )
 
