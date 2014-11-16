@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.360 2014/11/16 21:04:59 mike Exp mike $
+// @(#) $Id: bli.c,v 1.361 2014/11/16 21:43:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2047,11 +2047,8 @@ embeddedBitmap:
 
     } // end of case T_BITMAP
 
-#if defined(USE_T_ONE)
+#if defined(EMBED_KEYS)
 
-    // T_ONE is a one-key/word external leaf or an embedded/internal list.
-    // The latter is only possible if EMBED_KEYS is defined.  In the latter
-    // case an embedded list is assumed for one key if the key will fit.
     case T_EMBEDDED_KEYS:
 #if defined(EXTRA_TYPES)
     case T_EMBEDDED_KEYS | EXP(cnBitsMallocMask):
@@ -2079,7 +2076,6 @@ embeddedBitmap:
         return wRoot ? Success : Failure;
       #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 
-      #if defined(EMBED_KEYS)
         //
         // How many keys will fit?  Need space for the keys plus type plus
         // pop count.
@@ -2184,27 +2180,14 @@ embeddedBitmap:
         }
         }
 #else // 0
-        if (nBL == cnBitsAtDl1)
+        if (0)
         {
-            if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto foundIt;
-        }
-        else if (nBL == cnBitsAtDl1 + cnBitsAtDl2)
-        {
-            if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto foundIt;
-        }
-#if defined(cnBitsAtDl3)
-        else if (nBL == cnBitsAtDl1 + cnBitsAtDl2 + cnBitsAtDl3)
-#else // defined(cnBitsAtDl3)
-        else if (nBL == cnBitsAtDl1 + cnBitsAtDl2 + cnBitsPerDigit)
-#endif // defined(cnBitsAtDl3)
-        {
-            if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto foundIt;
         }
 #endif // 0
         else
   #endif // defined(HAS_KEY)
 #endif // defined(DL_SPECIFIC_T_ONE)
-        if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
+        if (1) {
   #if defined(HAS_KEY)
             if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto foundIt;
   #else // defined(HAS_KEY)
@@ -2243,12 +2226,8 @@ embeddedBitmap:
   #endif // defined(HAS_KEY)
         }
         else
-      #endif // defined(EMBED_KEYS)
-        if (*pwr == wKey)
         {
-  #if defined(EMBED_KEYS)
 foundIt:
-  #endif // defined(EMBED_KEYS)
       #if defined(REMOVE)
             RemoveGuts(pwRoot, wKey, nDL, wRoot);
             goto cleanup; // free memory or reconfigure tree if necessary
@@ -2266,7 +2245,11 @@ foundIt:
 
         break;
 
-    } // end of case T_ONE
+    } // end of case T_EMBEDDED_KEYS
+
+#endif // defined(EMBED_KEYS)
+
+#if defined(USE_T_ONE)
 
     case T_ONE:
 #if defined(EXTRA_TYPES)
@@ -2275,6 +2258,7 @@ foundIt:
     {
         assert(nDL_to_nBL(nDL)
             > cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
+
   #if defined(REMOVE)
         if (bCleanup) { return Success; } // cleanup is complete
   #endif // defined(REMOVE)
@@ -2291,180 +2275,13 @@ foundIt:
   #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
         return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
+
       #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
         return wRoot ? Success : Failure;
       #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 
-      #if defined(EMBED_KEYS)
-        //
-        // How many keys will fit?  Need space for the keys plus type plus
-        // pop count.
-        //
-        //  - (cnBitsPerWord - cnBitsPerType - cnBitsPerPopCnt) / nBL
-        //
-        //      1 x 60-bit key                      (0 to 0-bit pop cnt)
-        //      1 x 59-bit key                      (0 or 1-bit pop cnt)
-        //      1 x 58-bit key                      (0 to 2-bit pop cnt)
-        //      1 x 57-bit key                      (0 to 3-bit pop cnt)
-        //      1 x 56-bit key  ... 1 x 30-bit key  (0 to 4-bit pop cnt)
-        //      2 x 29-bit keys                     (1 to 2-bit pop cnt)
-        //      2 x 28-bit keys ... 2 x 20-bit keys (1 to 4-bit pop cnt)
-        //      3 x 19-bit keys                     (2 or 3-bit pop cnt)
-        //      3 x 18-bit keys ... 3 x 15-bit keys (2 to 6-bit pop cnt)
-        //      4 x 14-bit keys ... 4 x 12-bit keys (2 to 8-bit pop cnt)
-        //      5 x 11-bit keys ... 5 x 10-bit keys (3 to 5-bit pop cnt)
-        //      6 x  9-bit keys                     (3 to 6-bit pop cnt)
-        //      7 x  8-bit keys                     (3 or 4-bit pop cnt)
-        //      8 x  7-bit keys                     (3 or 4-bit pop cnt)
-        //     64 x  6-bit keys in embedded bitmap
-        //
-        // Does LOG(X / nBL) work?
-        //
-        //                  ... LOG(119/60) = 0
-        //      LOG(119/59) ... LOG(119/30) = 1
-        //      LOG(119/29) ... LOG(119/15) = 2
-        //      LOG(119/14) ... LOG(119/ 8) = 3
-        //      LOG(119/ 7) ... LOG(119/ 4) = 4
-        //
-        //      LOG( 64/64) ... LOG( 64/33) = 0
-        //      LOG( 64/32) ... LOG( 64/17) = 1 (19 needs at least 2)
-        //
-        //      LOG( 76/64) ... LOG( 76/39) = 0
-        //      LOG( 76/38) ... LOG( 76/20) = 1
-        //      LOG( 76/19) ... LOG( 76/10) = 2 (11 needs at least 3)
-        //
-        //      LOG( 88/64) ... LOG( 88/45) = 0
-        //      LOG( 88/44) ... LOG( 88/23) = 1
-        //      LOG( 88/22) ... LOG( 88/12) = 2
-        //      LOG( 88/11) ... LOG( 88/ 6) = 3
-        //      LOG( 88/ 5) ... LOG( 88/ 3) = 4
-        //      LOG( 88/ 2) ... LOG( 88/ 2) = 5
-        //
-        // Looks like anything from 88 - 119 will work.
-        //
-        //      1 x 29-bit key                      (0 to 0-bit pop cnt)
-        //      1 x 28-bit key  ... 1 x 15-bit key  (0 or 1-bit pop cnt)
-        //      2 x 14-bit keys                     (1 to 1-bit pop cnt)
-        //      2 x 13-bit keys                     (1 to 3-bit pop cnt)
-        //      2 x 12-bit keys ... 2 x 10-bit keys (1 to 5-bit pop cnt)
-        //      3 x  9-bit keys                     (2 to 2-bit pop cnt)
-        //      3 x  8-bit keys ... 3 x  7-bit keys (2 to 5-bit pop cnt)
-        //      4 x  6-bit keys                     (2 to 5-bit pop cnt)
-        //     32 x  5-bit keys in embedded bimtap
-        //
-        //                  ... LOG( 36/19) = 0
-        //      LOG( 36/18) ... LOG( 36/10) = 1
-        //      LOG( 36/ 9) ... LOG( 36/ 5) = 2
-        //      LOG( 36/ 4) ... LOG( 36/ 3) = 3
-        //      LOG( 36/ 2) ... LOG( 36/ 2) = 4
-        //
-        //                  ... LOG( 36/19) = 0
-        //      LOG( 44/22) ... LOG( 36/12) = 1
-        //      LOG( 44/11) ... LOG( 36/ 6) = 2
-        //      LOG( 44/ 5) ... LOG( 36/ 3) = 3
-        //      LOG( 44/ 2) ... LOG( 36/ 2) = 4
-        //
-#if defined(DL_SPECIFIC_T_ONE)
-        if (nDL == 1) {
-            if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL(nDL))) goto found2;
-        } else if (nDL == 2) {
-            if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL(nDL))) goto found2;
-        } else {
-#endif // defined(DL_SPECIFIC_T_ONE)
-        unsigned nBL = nDL_to_nBL(nDL);
-#if defined(DL_SPECIFIC_T_ONE)
-  #if defined(HAS_KEY)
-#if 0
-        if (nBL >= 7 && nBL <= 16) {
-        switch (nBL) {
-        case 7:
-            if (EmbeddedListHasKey(wRoot, wKey, 7)) goto found2; break;
-        case 8:
-            if (EmbeddedListHasKey(wRoot, wKey, 8)) goto found2; break;
-        case 9:
-            if (EmbeddedListHasKey(wRoot, wKey, 9)) goto found2; break;
-        case 10:
-            if (EmbeddedListHasKey(wRoot, wKey, 10)) goto found2; break;
-        case 11:
-            if (EmbeddedListHasKey(wRoot, wKey, 11)) goto found2; break;
-        case 12:
-            if (EmbeddedListHasKey(wRoot, wKey, 12)) goto found2; break;
-        case 13:
-            if (EmbeddedListHasKey(wRoot, wKey, 13)) goto found2; break;
-        case 14:
-            if (EmbeddedListHasKey(wRoot, wKey, 14)) goto found2; break;
-        case 15:
-            if (EmbeddedListHasKey(wRoot, wKey, 15)) goto found2; break;
-        case 16:
-            if (EmbeddedListHasKey(wRoot, wKey, 16)) goto found2; break;
-        }
-        }
-#else // 0
-        if (nBL == cnBitsAtDl1)
-        {
-            if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto found2;
-        }
-        else if (nBL == cnBitsAtDl1 + cnBitsAtDl2)
-        {
-            if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto found2;
-        }
-#if defined(cnBitsAtDl3)
-        else if (nBL == cnBitsAtDl1 + cnBitsAtDl2 + cnBitsAtDl3)
-#else // defined(cnBitsAtDl3)
-        else if (nBL == cnBitsAtDl1 + cnBitsAtDl2 + cnBitsPerDigit)
-#endif // defined(cnBitsAtDl3)
-        {
-            if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto found2;
-        }
-#endif // 0
-        else
-  #endif // defined(HAS_KEY)
-#endif // defined(DL_SPECIFIC_T_ONE)
-        if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
-  #if defined(HAS_KEY)
-            if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto found2;
-  #else // defined(HAS_KEY)
-            // I wonder if PAD_T_ONE and not needing to know the pop count
-            // would help this code like it does HAS_KEY.
-            unsigned nPopCnt = wr_nPopCnt(wRoot, nBL);
-            Word_t wKeyRoot;
-            switch (nPopCnt) {
-          #if (cnBitsPerWord == 64)
-            case 8: // max for 7-bit keys and 64 bits;
-                wKeyRoot = wRoot >> (cnBitsPerWord - (8 * nBL));
-                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto found2;
-            case 7: // max for 8-bit keys and 64 bits;
-                wKeyRoot = wRoot >> (cnBitsPerWord - (7 * nBL));
-                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto found2;
-            case 6: // max for 9-bit keys and 64 bits;
-                wKeyRoot = wRoot >> (cnBitsPerWord - (6 * nBL));
-                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto found2;
-            case 5: // max for 10 to 11-bit keys and 64 bits;
-                wKeyRoot = wRoot >> (cnBitsPerWord - (5 * nBL));
-                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto found2;
-          #endif // (cnBitsPerWord == 64)
-            case 4: // max for 12 to 14-bit keys and 64 bits; 6 for 32
-                wKeyRoot = wRoot >> (cnBitsPerWord - (4 * nBL));
-                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto found2;
-            case 3: // max for 15 to 19-bit keys and 64 bits; 7-9 for 32
-                wKeyRoot = wRoot >> (cnBitsPerWord - (3 * nBL));
-                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto found2;
-            case 2: // max for 20 to 29-bit keys and 64 bits; 10-14 for 32
-                wKeyRoot = wRoot >> (cnBitsPerWord - (2 * nBL));
-                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto found2;
-            default: // max for 30 to 60-bit keys and 64 bits; 15-29 for 32
-                wKeyRoot = wRoot >> (cnBitsPerWord - (1 * nBL));
-                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto found2;
-            }
-  #endif // defined(HAS_KEY)
-        }
-        else
-      #endif // defined(EMBED_KEYS)
         if (*pwr == wKey)
         {
-  #if defined(EMBED_KEYS)
-found2:
-  #endif // defined(EMBED_KEYS)
       #if defined(REMOVE)
             RemoveGuts(pwRoot, wKey, nDL, wRoot);
             goto cleanup; // free memory or reconfigure tree if necessary
@@ -2474,9 +2291,6 @@ found2:
       #endif // defined(INSERT) && !defined(RECURSIVE)
             return KeyFound;
         }
-#if defined(DL_SPECIFIC_T_ONE)
-        }
-#endif // defined(DL_SPECIFIC_T_ONE)
 
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
