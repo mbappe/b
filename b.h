@@ -331,23 +331,39 @@ enum {
 #define cnBitsLeftAtDl2     (cnBitsLeftAtDl1 + cnBitsAtDl2)
 #define cnBitsLeftAtDl3     (cnBitsLeftAtDl2 + cnBitsAtDl3)
 
-// Optimize nBitsIndexSz_from_nDL, nBL_from_nDL, nBL_from_nDL and
-// cnBitsIndexSzAtTop based on ifdef parameters.
+// Define and optimize nBitsIndexSz_from_nDL, nBL_from_nDL, nBL_from_nDL,
+// et. al. based on ifdef parameters.
+
+#if ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
+  #define nBitsIndexSz_from_nDL_NAX(_nDL)  (cnBitsPerDigit)
+#elif (cnBitsAtDl3 == cnBitsPerDigit)
+  #define nBitsIndexSz_from_nDL_NAX(_nDL) \
+    (((_nDL) == 2) ? cnBitsAtDl2 : cnBitsPerDigit)
+#else // ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
+  #define nBitsIndexSz_from_nDL_NAX(_nDL) \
+    ( ((_nDL) == 2) ? cnBitsAtDl2 \
+    : ((_nDL) == 3) ? cnBitsAtDl3 \
+    : cnBitsPerDigit )
+#endif // ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
+
 #if (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
 
 #define cnBitsIndexSzAtTop  (cnBitsPerDigit)
 
+#if (cnBitsAtDl1 == cnBitsPerDigit)
+  #define nBitsIndexSz_from_nDL(_nDL)  (nBitsIndexSz_from_nDL_NAX(_nDL))
+#else // (cnBitsAtDl1 == cnBitsPerDigit)
+  #define nBitsIndexSz_from_nDL(_nDL) \
+    ( ((_nDL) <= 1) ? cnBitsAtDl1 : nBitsIndexSz_from_nDL_NAX(_nDL) )
+#endif // (cnBitsAtDl1 == cnBitsPerDigit)
+
 #if ( (cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit) \
    && (cnBitsAtDl1 == cnBitsPerDigit) )
 
-#define nBitsIndexSz_from_nDL(_nDL)  (cnBitsPerDigit)
 #define nBL_from_nDL_NAT(_nDL)       (cnBitsPerDigit * (_nDL))
 #define nDL_from_nBL(_nBL)           ((_nBL) / cnBitsPerDigit)
 
 #elif ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
-
-#define nBitsIndexSz_from_nDL(_nDL) \
-    ( ((_nDL) <= 1) ? cnBitsAtDl1 : cnBitsPerDigit )
 
 #define nBL_from_nDL_NAT(_nDL) \
     ( (_nDL) <= 1 ? cnBitsAtDl1 \
@@ -359,11 +375,6 @@ enum {
     : 1 + ((_nBL) - cnBitsLeftAtDl1 + cnBitsPerDigit - 1) / cnBitsPerDigit )
 
 #elif (cnBitsAtDl3 == cnBitsPerDigit)
-
-#define nBitsIndexSz_from_nDL(_nDL) \
-    ( ((_nDL) <= 1) ? cnBitsAtBottom \
-    : ((_nDL) == 2) ? cnBitsAtDl2 \
-    : cnBitsPerDigit )
 
 #define nBL_from_nDL_NAT(_nDL) \
     ( (_nDL) <= 1 ? cnBitsAtBottom \
@@ -377,12 +388,6 @@ enum {
     : 2 + ((_nBL) - cnBitsLeftAtDl2 + cnBitsPerDigit - 1) / cnBitsPerDigit )
 
 #else // (cnBitsAtDl3 == cnBitsPerDigit) && ...
-
-#define nBitsIndexSz_from_nDL(_nDL) \
-    ( ((_nDL) <= 1) ? cnBitsAtBottom \
-    : ((_nDL) == 2) ? cnBitsAtDl2 \
-    : ((_nDL) == 3) ? cnBitsAtDl3 \
-    : cnBitsPerDigit )
 
 #define nBL_from_nDL_NAT(_nDL) \
     ( (_nDL) <= 1 ? cnBitsAtBottom \
@@ -405,11 +410,20 @@ enum {
 
 #define cnBitsIndexSzAtTop ((cnBitsPerWord - cnBitsAtDl3) % cnBitsPerDigit)
 
+#if (cnBitsAtDl1 == cnBitsPerDigit)
+  #define nBitsIndexSz_from_nDL(_nDL) \
+    ( ((_nDL) < cnDigitsPerWord) ? nBitsIndexSz_from_nDL_NAX(_nDL) \
+    : cnBitsIndexSzAtTop )
+#else // (cnBitsAtDl1 == cnBitsPerDigit)
+  // Do we need this to be valid for _nDL < 1?
+  #define nBitsIndexSz_from_nDL(_nDL) \
+    ( ((_nDL) <= 1) ? cnBitsAtBottom \
+    : ((_nDL) < cnDigitsPerWord) ? nBitsIndexSz_from_nDL_NAX(_nDL) \
+    : cnBitsIndexSzAtTop )
+#endif // (cnBitsAtDl1 == cnBitsPerDigit)
+
 #if ( (cnBitsAtDl3 == cnBitsPerDigit) \
    && (cnBitsAtDl2 == cnBitsPerDigit) && (cnBitsAtDl1 == cnBitsPerDigit) )
-
-#define nBitsIndexSz_from_nDL(_nDL) \
-    ( ((_nDL) < cnDigitsPerWord) ? cnBitsPerDigit : cnBitsIndexSzAtTop )
 
 #define nBL_from_nDL(_nDL) \
     ( (_nDL) < cnDigitsPerWord ? (_nDL) * cnBitsPerDigit : cnBitsPerWord )
@@ -418,11 +432,6 @@ enum {
 #define nDL_from_nBL(_nBL)  (((_nBL) + cnBitsPerDigit - 1) / cnBitsPerDigit)
 
 #elif ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
-
-#define nBitsIndexSz_from_nDL(_nDL) \
-    ( ((_nDL) <= 1) ? cnBitsAtBottom \
-    : ((_nDL) < cnDigitsPerWord) ? cnBitsPerDigit \
-    : cnBitsIndexSzAtTop )
 
 #define nBL_from_nDL_NAT(_nDL) \
     ( (_nDL) <= 1 ? cnBitsAtBottom \
@@ -433,12 +442,6 @@ enum {
     : 1 + ((_nBL) - cnBitsLeftAtDl1 + cnBitsPerDigit - 1) / cnBitsPerDigit )
 
 #elif (cnBitsAtDl3 == cnBitsPerDigit)
-
-#define nBitsIndexSz_from_nDL(_nDL) \
-    ( ((_nDL) <= 1) ? cnBitsAtBottom \
-    : ((_nDL) == 2) ? cnBitsAtDl2 \
-    : ((_nDL) < cnDigitsPerWord) ? cnBitsPerDigit \
-    : cnBitsIndexSzAtTop )
 
 #define nBL_from_nDL_NAT(_nDL) \
     ( (_nDL) <= 1 ? cnBitsAtBottom \
@@ -451,14 +454,6 @@ enum {
     : 2 + ((_nBL) - cnBitsLeftAtDl2 + cnBitsPerDigit - 1) / cnBitsPerDigit )
 
 #else // (cnBitsAtDl3 == cnBitsPerDigit)
-
-// Do we need this to be valid for _nDL < 1?
-#define nBitsIndexSz_from_nDL(_nDL) \
-    ( ((_nDL) <= 1) ? cnBitsAtBottom \
-    : ((_nDL) == 2) ? cnBitsAtDl2 \
-    : ((_nDL) == 3) ? cnBitsAtDl3 \
-    : ((_nDL) < cnDigitsPerWord) ? cnBitsPerDigit \
-    : cnBitsIndexSzAtTop )
 
 // Do we need this to be valid for _nDL < 1?
 #define nBL_from_nDL_NAT(_nDL) \
@@ -511,53 +506,53 @@ extern const unsigned anBL_to_nDL[];
 #endif // defined(BPD_TABLE)
 
 // These two can be further optimized for ! defined(BPD_TABLE).
-#define nDL_to_nBitsIndexSzNAX(_nDL)  (nDL_to_nBitsIndexSz(_nDL))
+#define nDL_to_nBitsIndexSzNAX(_nDL)  (nBitsIndexSz_from_nDL_NAX(_nDL))
 #define nDL_to_nBL_NAT(_nDL)          (nBL_from_nDL_NAT(_nDL))
 
 // This one is not used in the lookup performance path.
 #define nBL_to_nDL_NotAtTop(_nBL)  nBL_to_nDL(_nBL)
 
 #if defined RAMMETRICS
-#define METRICS(x)  (x)
+  #define METRICS(x)  (x)
 #else // defined RAMMETRICS
-#define METRICS(x)
+  #define METRICS(x)
 #endif // defined RAMMETRICS
 
 // Default is -USEARCHMETRICS.
 #if defined SEARCHMETRICS
-#define SMETRICS(x)  (x)
+  #define SMETRICS(x)  (x)
 #else // defined SEARCHMETRICS
-#define SMETRICS(x)
+  #define SMETRICS(x)
 #endif // defined SEARCHMETRICS
 
 #if defined(DEBUG)
-#define DBG(x)  (x)
+  #define DBG(x)  (x)
 // Default is cwDebugThreshold = 0.
-#if ! defined(cwDebugThreshold)
-#define cwDebugThreshold  0ULL
-#endif // ! defined(cwDebugThreshold)
+  #if ! defined(cwDebugThreshold)
+    #define cwDebugThreshold  0ULL
+  #endif // ! defined(cwDebugThreshold)
 #else // defined(DEBUG)
-#define DBG(x)
+  #define DBG(x)
 #endif // defined(DEBUG)
 
 #if defined(DEBUG_INSERT)
-#if (cwDebugThreshold != 0)
-#define DBGI(x)  if (bHitDebugThreshold) (x)
-#else // (cwDebugThreshold != 0)
-#define DBGI(x)  (x)
-#endif // (cwDebugThreshold != 0)
+  #if (cwDebugThreshold != 0)
+    #define DBGI(x)  if (bHitDebugThreshold) (x)
+  #else // (cwDebugThreshold != 0)
+    #define DBGI(x)  (x)
+  #endif // (cwDebugThreshold != 0)
 #else // defined(DEBUG_INSERT)
-#define DBGI(x)
+  #define DBGI(x)
 #endif // defined(DEBUG_INSERT)
 
 #if defined(DEBUG_LOOKUP)
-#if (cwDebugThreshold != 0)
-#define DBGL(x)  if (bHitDebugThreshold) (x)
-#else // (cwDebugThreshold != 0)
-#define DBGL(x)  (x)
-#endif // (cwDebugThreshold != 0)
+  #if (cwDebugThreshold != 0)
+    #define DBGL(x)  if (bHitDebugThreshold) (x)
+  #else // (cwDebugThreshold != 0)
+    #define DBGL(x)  (x)
+  #endif // (cwDebugThreshold != 0)
 #else // defined(DEBUG_LOOKUP)
-#define DBGL(x)
+  #define DBGL(x)
 #endif // defined(DEBUG_LOOKUP)
 
 #if defined(DEBUG_REMOVE)
