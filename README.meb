@@ -7,6 +7,57 @@ CP140405 is Checkpoint April 5, 2014.
 The most recent checkpoint should be the latest and greatest somewhat
 functional code.
 
+11/13/14:
+
+Key observations about HasKey:
+HasKey creates a magic number with the high bit set in the key slots
+that match the target key.  It also sets the high bit in the key slot
+to the left of any other slot with its high bit set if the key in that
+slot is one less than the target key.
+
+Sorting from the right and padding with the lowest present key (or with zero)
+on the right ensures that only matching slots will have a bit set and would
+allow us to use clz (undefined for zero) to identify the slot with a match.
+We'd have to use a value with a reverse sort to identify an empty bucket;
+this is how we'd know a word with all slots zero is not empty.
+Packing the key slots on the left and putting the left-over bits (the bits
+not used for key slots) on the right might make identifying the offset
+easier.
+
+Sorting from the right and padding with the highest present key (or with -1)
+on the left means using ctz (undefined for zero) or ffs (defined as zero for
+zero).
+
+We might also be able to take advantage of the fact that only the msb of
+the slot with a match will be set.
+
+11/11/14:
+- Wait.  What?  Isn't this Linear-hash list just a variable-width switch
+  with immediates?
+
+8/22/14:
+- Linear-hash lists.  If the data is linearly distributed, then we can
+  eliminate searching.  We use an array of word-sized buckets that each
+  hold up to n keys.  We choose the bucket using the high-order bits
+  of the key.  When a bucket fills up we double the number of buckets
+  and decode one more bit of each key to identify its bucket.  Each
+  doubling makes room for one more key in each word in the 11-bit key
+  to 7-bit key range and when we get to a 6-bit key we are at the bitmap.
+  Four twelve-bit keys fit in a one-word immediate.  The fifth key forces
+  an external list -- we use a two word list so we can fit five 11-bit
+  keys in each word.  The sixth key could force double to four words.
+  The seventh key could force double to eight words.  Maximum list length
+  is 64 words.
+  With 16-bit key we have to decode five high bits before we get the
+  fifth key in each word.  We have 32 words at that point.  And we have
+  1024 words of bitmap.
+- What about data that is not linearly distributed over a 2^n expanse?
+
+8/17/14:
+- We may not need skip link to bm switch.  Since we have to reference the
+  bitmap at the beginning of the switch anyway we could put the extra type
+  bits at the beginning of the switch as well.  Maybe in the prefix word.
+
 8/13/14:
 
 - Do we really need skip links to wide uncompressed branches?

@@ -6,7 +6,7 @@
 #define EXP(_x)  ((Word_t)1 << (_x))
 #define MSK(_x)  (EXP(_x) - 1)
 
-#define LEFT
+//#define LEFT
 //#define USE_WORD_HAS_KEY
 
 typedef unsigned long Word_t;
@@ -53,6 +53,7 @@ typedef unsigned long Word_t;
 
 // Used to right justify the replicated Keys
 #define REMb(cbPK)              (cbPW - ((cbPW / (cbPK)) * (cbPK)))
+//#define REMb(cbPK)              (cbPW % (cbPK))
 
 // Used to mask to single Key
 #define MskK(cbPK, KEY)         ((Word_t)((KEY) & ((1 << (cbPK)) - 1)))
@@ -182,12 +183,27 @@ GetValidBucket(Word_t *Bucket, Word_t *SearchKey, int bitsPerKey)
         if (Key == KeyMask) { break; }
     }
 
+#if 0
+    for (int fill = pop1; fill < KeysPerBucket; fill++) {
+#if defined(LEFT)
+        *Bucket |= (Word_t)Key << (cbPW - (bitsPerKey * (fill + 1)));
+#else // defined(LEFT)
+        *Bucket |= (Word_t)Key << (bitsPerKey * fill);
+#endif // defined(LEFT)
+    }
+if ((bitsPerKey % 4) == 0) {
+    printf("nBL %d pop1 %d Key %x *Bucket 0x%016lx\n", bitsPerKey, pop1, Key, *Bucket);
+}
+#endif
+
     if (*SearchKey > (Word_t)Key) { retoffset = ~offset; }
 
     assert(JU_POP0(*Bucket, bitsPerKey) == pop1 - 1);
 
     return retoffset;
 }
+
+int BucketHasKey(Word_t wBucket, Word_t wKey, int nBL);
 
 // If matching Key in Bucket, then offset into Bucket is returned
 // else -1 if no Key was found
@@ -218,11 +234,23 @@ GetValidBucket(Word_t *Bucket, Word_t *SearchKey, int bitsPerKey)
 //
 // sort with most-significant non-empty slot having the smallest key
 // sort with least-significant slot having the smallest key
-// don't sort
+// don't sort; couldn't possibly help search
 //
 // empty slots are on most-significant end
 // empty slots are on least-significant end
-// empty slots are anywhere
+// empty slots are anywhere; can't imagine this helping search
+//
+// remainder bits are at the most-significant end
+// remainder bits are at the least-significant end
+//
+// The value(s) we can use to represent an empty bucket depend
+// on the choices made for the others.
+//
+// Key observations about HasKey:
+// HasKey creates a magic number with the high bit set in the key slots
+// that match the target key.  It also sets the high bit in the key slot
+// to the left of any other slot with its high bit set if the key in that
+// slot is one less than the target key.
 
 // (EMPTY_SLOT == 0) && (EMPTY_BUCKET == (Word_t)-1)
 // (EMPTY_SLOT == -1 & MSK(nBL)) && (EMPTY_BUCKET == 0)
@@ -284,9 +312,11 @@ WordHasKey(Word_t ww, Word_t wKey, int nBL)
 // 
 // It needs to determine the offset of a found key for JudyL.
 // only for Lookup.
-static int
+int
 BucketHasKey(Word_t ww, Word_t wKey, int nBL)
 {
+//nBL=7;
+    if (ww == EMPTY_BUCKET) { return -1; } // could be common
     Word_t wMask = MSK(nBL);
     wKey &= wMask;
     Word_t wLsbs = (Word_t)-1 / wMask;
@@ -294,47 +324,78 @@ BucketHasKey(Word_t ww, Word_t wKey, int nBL)
     Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
     Word_t wXor = wKeys ^ ww; // get zero in slot with matching key
 
-    //if (ww == 0) { return -(wKey != 0); }
+#define TEST_ZERO
+#if ! defined(TEST_ZERO)
     int nPopCnt = JU_POP0(ww, nBL) + 1;
     int nBitsOfKeys = nPopCnt * nBL;
     // lsb in each slot that has a key
     wXor |= MSK(cbPW - nBitsOfKeys);
+#endif // ! defined(TEST_ZERO)
 
     Word_t wMagic = (wXor - wLsbs) & ~wXor & wMsbs; // xor-has-zero
-    int bXorHasZero = (wMagic != 0);
-    int bHasKey = bXorHasZero && (ww != (Word_t)-1);
-    if ( ! bHasKey ) { return -1; }
+    if (wMagic == 0) { return -1; }
+#if defined(TEST_ZERO)
+    if (wKey == 0) { return (ww >> (cbPW - nBL)) ? -1 : 0; }
+#endif // defined(TEST_ZERO)
     // where is the match?
     int offset = (int)(cbPW - __builtin_ffsll(wMagic)) / nBL; // POP0
+    int offset2 = __builtin_clzll(wMagic) / nBL;
+if (offset2 != offset) {
+    assert(offset2 == offset - 1);
+    Word_t wPrev = (ww >> (cbPW - (offset2 + 1) * nBL)) & wMask;
+    assert(wPrev == wKey - 1);
+    //printf("wKey %lx wPrev %lx\n", wKey, wPrev);
+    //printf("offset %d offset2 %d wMagic %016lx nBL %d ww %016lx wKey %lx\n", offset, offset2, wMagic, nBL, ww, wKey);
+}
     return offset;
 }
+
+#if 0
+// fill with some key
+int
+BucketHasKey(Word_t ww, Word_t wKey, int nBL)
+{
+//nBL=7;
+    if (ww == EMPTY_BUCKET) { return -1; } // could be common
+    Word_t wMask = MSK(nBL);
+    wKey &= wMask;
+    Word_t wLsbs = (Word_t)-1 / wMask;
+    Word_t wKeys = (wKey & wMask) * wLsbs; // replicate key; put in every slot
+    Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
+    Word_t wXor = wKeys ^ ww; // get zero in slot with matching key
+    Word_t wMagic = (wXor - wLsbs) & ~wXor & wMsbs; // xor-has-zero
+    if (wMagic == 0) { return -1; }
+    // The key is present.  Where is it?
+    // where is the match?
+    // Does wMagic always have the high bit set in every matching slot?
+    // And no other bits set?  If so can we just find the most or least
+    // significant match?
+    int offset = (int)(cbPW - __builtin_ffsll(wMagic)) / nBL; // POP0
+    return offset;
+
+abccc
+
+}
+#endif
 
 #endif // defined(USE_WORD_HAS_KEY)
 
 #else // defined(LEFT)
 
-static int
+int
 BucketHasKey(Word_t Bucket, Word_t Key, int bPK)
 {
+//bPK=7;
     Word_t      repLsbKey;
     Word_t      repMsbKey;
     Word_t      newBucket;
-    Word_t      KeyMask;
     int         offset;
 
     if (Bucket == EMPTY_BUCKET) { return ~0; }
-
-    KeyMask = (Word_t)((1 << bPK) - 1);  // max Key value or Mask
-
+    Word_t KeyMask = (Word_t)((1 << bPK) - 1);  // max Key value or Mask
     Key &= KeyMask;                     // get rid of high bits
 //  Check special case of Key == 0
-    if (Key == 0)
-    {
-        if (Bucket & KeyMask)
-            return (-1);        // no match and offset = -1
-        else
-            return (0);         // match and offset = 0
-    }
+    if (Key == 0) { return (Bucket & KeyMask) ? -1 : 0; }
 //  replicate the Lsb in every Key position
     repLsbKey = REPKEY(bPK, 1);
 
@@ -353,6 +414,17 @@ BucketHasKey(Word_t Bucket, Word_t Key, int bPK)
 //  calc offset for Pjv_t -- this should be done outside of this subroutine because it
 //  is not needed the Judy1Test code
     offset = __builtin_ctzl(newBucket) / bPK;
+    int offset2 = (cbPW - 1 - __builtin_clzl(newBucket)) / bPK;
+if (offset2 != offset) {
+    //printf("offset %d offset2 %d\n", offset, offset2);
+    if (offset2 != offset + 1) {
+assert(Key == 1);
+// could it be that the problematic case is when the slot to the left of the
+// match is one less than the key and each of the slots left of that are the same?
+    //printf("Key %lx wPrev %lx\n", Key, wPrev);
+    //printf("offset %d offset2 %d wMagic %016lx nBL %d ww %016lx wKey %lx\n", offset, offset2, newBucket, bPK, Bucket, Key);
+    }
+}
 
 //    printf(" bPK = %d, Key =0x%lx, Bucket = 0x%lx, newBucket = 0x%lx, offset = %d\n",
 //        bPK,
