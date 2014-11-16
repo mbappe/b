@@ -341,7 +341,7 @@ enum {
    && (cnBitsAtDl1 == cnBitsPerDigit) )
 
 #define nBitsIndexSz_from_nDL(_nDL)  (cnBitsPerDigit)
-#define nBL_from_nDL(_nDL)           (cnBitsPerDigit * (_nDL))
+#define nBL_from_nDL_NAT(_nDL)       (cnBitsPerDigit * (_nDL))
 #define nDL_from_nBL(_nBL)           ((_nBL) / cnBitsPerDigit)
 
 #elif ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
@@ -349,7 +349,7 @@ enum {
 #define nBitsIndexSz_from_nDL(_nDL) \
     ( ((_nDL) <= 1) ? cnBitsAtDl1 : cnBitsPerDigit )
 
-#define nBL_from_nDL(_nDL) \
+#define nBL_from_nDL_NAT(_nDL) \
     ( (_nDL) <= 1 ? cnBitsAtDl1 \
     : cnBitsLeftAtDl1 + ((_nDL) - 1) * cnBitsPerDigit )
 
@@ -365,7 +365,7 @@ enum {
     : ((_nDL) == 2) ? cnBitsAtDl2 \
     : cnBitsPerDigit )
 
-#define nBL_from_nDL(_nDL) \
+#define nBL_from_nDL_NAT(_nDL) \
     ( (_nDL) <= 1 ? cnBitsAtBottom \
     : (_nDL) == 2 ? cnBitsLeftAtDl2 \
     : cnBitsLeftAtDl2 + ((_nDL) - 2) * cnBitsPerDigit )
@@ -384,7 +384,7 @@ enum {
     : ((_nDL) == 3) ? cnBitsAtDl3 \
     : cnBitsPerDigit )
 
-#define nBL_from_nDL(_nDL) \
+#define nBL_from_nDL_NAT(_nDL) \
     ( (_nDL) <= 1 ? cnBitsAtBottom \
     : (_nDL) == 2 ? cnBitsLeftAtDl2 \
     : (_nDL) == 3 ? cnBitsLeftAtDl3 \
@@ -398,6 +398,8 @@ enum {
     : 3 + ((_nBL) - cnBitsLeftAtDl3 + cnBitsPerDigit - 1) / cnBitsPerDigit )
 
 #endif // (cnBitsAtDl3 == cnBitsPerDigit) && ...
+
+#define nBL_from_nDL(_nDL)  (nBL_from_nDL_NAT(_nDL))
 
 #else // (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
 
@@ -422,11 +424,9 @@ enum {
     : ((_nDL) < cnDigitsPerWord) ? cnBitsPerDigit \
     : cnBitsIndexSzAtTop )
 
-#define nBL_from_nDL(_nDL) \
+#define nBL_from_nDL_NAT(_nDL) \
     ( (_nDL) <= 1 ? cnBitsAtBottom \
-    : (_nDL) < cnDigitsPerWord \
-                 ? cnBitsLeftAtDl1 + ((_nDL) - 1) * cnBitsPerDigit \
-    : cnBitsPerWord )
+    : cnBitsLeftAtDl1 + ((_nDL) - 1) * cnBitsPerDigit )
 
 #define nDL_from_nBL(_nBL) \
     ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
@@ -440,12 +440,10 @@ enum {
     : ((_nDL) < cnDigitsPerWord) ? cnBitsPerDigit \
     : cnBitsIndexSzAtTop )
 
-#define nBL_from_nDL(_nDL) \
+#define nBL_from_nDL_NAT(_nDL) \
     ( (_nDL) <= 1 ? cnBitsAtBottom \
     : (_nDL) == 2 ? cnBitsLeftAtDl2 \
-    : (_nDL) < cnDigitsPerWord \
-                 ? cnBitsLeftAtDl2 + ((_nDL) - 2) * cnBitsPerDigit \
-    : cnBitsPerWord )
+    : cnBitsLeftAtDl2 + ((_nDL) - 2) * cnBitsPerDigit )
 
 #define nDL_from_nBL(_nBL) \
     ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
@@ -463,12 +461,10 @@ enum {
     : cnBitsIndexSzAtTop )
 
 // Do we need this to be valid for _nDL < 1?
-#define nBL_from_nDL(_nDL) \
+#define nBL_from_nDL_NAT(_nDL) \
     ( (_nDL) <= 1 ? cnBitsAtBottom \
     : (_nDL) == 2 ? cnBitsLeftAtDl2 \
-    : (_nDL) < cnDigitsPerWord \
-                 ? cnBitsLeftAtDl3 + ((_nDL) - 3) * cnBitsPerDigit \
-    : cnBitsPerWord )
+    : cnBitsLeftAtDl3 + ((_nDL) - 3) * cnBitsPerDigit )
 
 // Do we need this to be valid for _nBL < cnBitsAtBottom?
 // Or for _nBL > cnBitsPerWord?
@@ -480,6 +476,9 @@ enum {
     : 3 + ((_nBL) - cnBitsLeftAtDl3 + cnBitsPerDigit - 1) / cnBitsPerDigit )
 
 #endif // (cnBitsAtDl3 == cnBitsPerDigit) && ...
+
+#define nBL_from_nDL(_nDL) \
+    ( (_nDL) < cnDigitsPerWord ? nBL_from_nDL_NAT(_nDL) : cnBitsPerWord )
 
 #endif // (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
 
@@ -513,7 +512,7 @@ extern const unsigned anBL_to_nDL[];
 
 // These two can be further optimized for ! defined(BPD_TABLE).
 #define nDL_to_nBitsIndexSzNAX(_nDL)  (nDL_to_nBitsIndexSz(_nDL))
-#define nDL_to_nBL_NAT(_nDL)          (nDL_to_nBL(_nDL))
+#define nDL_to_nBL_NAT(_nDL)          (nBL_from_nDL_NAT(_nDL))
 
 // This one is not used in the lookup performance path.
 #define nBL_to_nDL_NotAtTop(_nBL)  nBL_to_nDL(_nBL)
