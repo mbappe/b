@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.343 2014/11/16 00:16:55 mike Exp mike $
+// @(#) $Id: b.c,v 1.345 2014/11/16 21:08:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1064,7 +1064,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 
 #if defined(USE_T_ONE)
 
-        if (nType == T_ONE)
+        if ((nType == T_ONE) || (nType == T_EMBEDDED_KEYS))
         {
 #if defined(EMBED_KEYS)
             if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
@@ -1725,7 +1725,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
 #if (cwListPopCntMax != 0)
 #if defined(EMBED_KEYS)
-    if ((nType == T_ONE)
+    if (((nType == T_ONE) || (nType == T_EMBEDDED_KEYS))
             && (nDL_to_nBL(nDL) <= cnBitsPerWord - cnBitsMallocMask))
     {
         wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot);
@@ -1774,7 +1774,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         if (wRoot != 0) // pointer to old List
         {
 #if defined(USE_T_ONE)
-            if (nType == T_ONE)
+            if ((nType == T_ONE) || (nType == T_EMBEDDED_KEYS))
             {
                 wPopCnt = 1;
   #if defined(PP_IN_LINK)
@@ -2580,7 +2580,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
          "InflateEmbeddedList pwRoot %p wKey "OWx" nBL %d wRoot "OWx"\n",
          (void *)pwRoot, wKey, nBL, wRoot));
 
-    assert(wr_nType(wRoot) == T_ONE);
+    assert((wr_nType(wRoot) == T_ONE) || (wr_nType(wRoot) == T_EMBEDDED_KEYS));
 
     Word_t *pwKeys;
 #if defined(COMPRESSED_LISTS)
@@ -2675,7 +2675,7 @@ DeflateExternalList(Word_t *pwRoot,
         uint8_t  *pcKeys;
 #endif // defined(COMPRESSED_LISTS)
 
-        set_wr_nType(wRoot, T_ONE);
+        set_wr_nType(wRoot, T_EMBEDDED_KEYS);
         set_wr_nPopCnt(wRoot, nBL, nPopCnt);
 
         Word_t wBLM = MSK(nBL);
@@ -2749,7 +2749,7 @@ DeflateExternalList(Word_t *pwRoot,
         assert(nPopCnt == 1);
         assert(nBL + cnBitsMallocMask > cnBitsPerWord);
         Word_t *pwList = NewList(1, nBL_to_nDL(nBL));
-        set_wr(wRoot, pwList, T_ONE);
+        set_wr(wRoot, pwList, T_ONE); // external T_ONE list
         Word_t *pwKeys = ls_pwKeys(pwr);
 #if defined(PP_IN_LINK)
         if ((nBL == cnBitsPerWord) && (cnDummiesInList == 0)) { ++pwKeys; }
@@ -2886,7 +2886,9 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if (cwListPopCntMax != 0)
 
 #if defined(EMBED_KEYS)
-    if ((nType == T_ONE) && (nBL <= cnBitsPerWord - cnBitsMallocMask)) {
+    if (((nType == T_ONE) || (nType == T_EMBEDDED_KEYS))
+        && (nBL <= cnBitsPerWord - cnBitsMallocMask))
+    {
         wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot);
         nType = T_LIST;
         pwr = wr_pwr(wRoot);
@@ -2895,9 +2897,10 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #endif // defined(EMBED_KEYS)
 
 #if defined(USE_T_ONE)
-    if (nType == T_ONE) {
+    if ((nType == T_ONE) || (nType == T_EMBEDDED_KEYS)) {
         assert(nBL > cnBitsPerWord - cnBitsMallocMask);
-        OldList(pwr, /* wPopCnt */ 1, nDL, T_ONE);
+        //OldList(pwr, /* wPopCnt */ 1, nDL, T_ONE);
+        OldList(pwr, /* wPopCnt */ 1, nDL, T_EMBEDDED_KEYS);
         *pwRoot = 0; // Do we need to clear the rest of the link also?
         return Success;
     }
@@ -3192,7 +3195,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
     if ( ! tp_bIsSwitch(nType) )
     {
       #if defined(USE_T_ONE)
-        if (nType == T_ONE) {
+        if ((nType == T_ONE) || (nType == T_EMBEDDED_KEYS)) {
             wPopCnt = 1; // Always a full word to top; never embedded.
         } else
       #endif // defined(USE_T_ONE)
