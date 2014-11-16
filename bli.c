@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.358 2014/11/15 17:40:56 mike Exp mike $
+// @(#) $Id: bli.c,v 1.359 2014/11/15 18:13:28 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1542,6 +1542,8 @@ notEmpty:;
 
     } // end of default case
 
+#if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+
     case T_BM_SW:
 #if defined(EXTRA_TYPES)
     case T_BM_SW | EXP(cnBitsMallocMask): // no skip switch
@@ -1760,6 +1762,8 @@ notEmptyBm:;
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
     } // end of case T_BM_SW
+
+#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
 
 #if (cwListPopCntMax != 0)
 
@@ -2048,6 +2052,10 @@ embeddedBitmap:
     // T_ONE is a one-key/word external leaf or an embedded/internal list.
     // The latter is only possible if EMBED_KEYS is defined.  In the latter
     // case an embedded list is assumed for one key if the key will fit.
+    case T_EMBEDDED_KEYS:
+#if defined(EXTRA_TYPES)
+    case T_EMBEDDED_KEYS | EXP(cnBitsMallocMask):
+#endif // defined(EXTRA_TYPES)
     case T_ONE:
 #if defined(EXTRA_TYPES)
     case T_ONE | EXP(cnBitsMallocMask):

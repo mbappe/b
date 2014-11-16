@@ -310,16 +310,26 @@
 // Default is -UT_ONE_MASK and -UT_ONE_CALC_POP.
 // See EmbeddedListHasKey.
 
+// Default is -UUSE_BM_SW, -UBM_SW_AT_DL2 and -UBM_SW_AT_DL2_ONLY.
+#if defined(BM_SW_AT_DL2_ONLY)
+#undef  USE_BM_SW
+#undef  BM_SW_AT_DL2
+#define BM_SW_AT_DL2
+#endif // defined(BM_SW_AT_DL2_ONLY)
+
 // Values for nType.
 enum {
     T_NULL,
 #if defined(USE_T_ONE)
     T_ONE,
 #endif // defined(USE_T_ONE)
+    T_EMBEDDED_KEYS,
     T_LIST,
+    /*T_OTHER,*/
     T_BITMAP,
+#if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
     T_BM_SW,
-    T_OTHER,
+#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
     T_SW_BASE,
 };
 
@@ -707,11 +717,19 @@ enum {
 
 #endif // defined(TYPE_IS_ABSOLUTE)
 
+#if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
 #if defined(EXTRA_TYPES)
 #define     tp_bIsSwitch(_tp)          (((_tp) & cnMallocMask) >= T_BM_SW)
 #else // defined(EXTRA_TYPES)
 #define     tp_bIsSwitch(_tp)          ((_tp) >= T_BM_SW)
 #endif // defined(EXTRA_TYPES)
+#else // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+#if defined(EXTRA_TYPES)
+#define     tp_bIsSwitch(_tp)          (((_tp) & cnMallocMask) >= T_SW_BASE)
+#else // defined(EXTRA_TYPES)
+#define     tp_bIsSwitch(_tp)          ((_tp) >= T_SW_BASE)
+#endif // defined(EXTRA_TYPES)
+#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
 
 #define     wr_bIsSwitch(_wr)          (tp_bIsSwitch(wr_nType(_wr)))
 
@@ -1104,13 +1122,6 @@ Word_t wDebugPopCnt; // sanity checking
 #undef  PSPLIT_SEARCH_WORD
 #define PSPLIT_SEARCH_WORD
 #endif // defined(PSPLIT_SEARCH_XOR_WORD)
-
-// Default is -UUSE_BM_SW, -UBM_SW_AT_DL2 and -UBM_SW_AT_DL2_ONLY.
-#if defined(BM_SW_AT_DL2_ONLY)
-#undef  USE_BM_SW
-#undef  BM_SW_AT_DL2
-#define BM_SW_AT_DL2
-#endif // defined(BM_SW_AT_DL2_ONLY)
 
 void HexDump(char *str, Word_t *pw, unsigned nWords);
 

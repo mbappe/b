@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.342 2014/11/15 17:28:49 mike Exp mike $
+// @(#) $Id: b.c,v 1.343 2014/11/16 00:16:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -626,9 +626,12 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL, int bBmSw,
     }
 #endif
 
+#if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
     if (bBmSw) {
         set_wr(*pwRoot, pwr, T_BM_SW);
-    } else {
+    } else
+#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+    {
 #if defined(TYPE_IS_RELATIVE)
         set_wr(*pwRoot, pwr, nDS_to_tp(nDLUp - nDL));
 #else // defined(TYPE_IS_RELATIVE)
@@ -1146,6 +1149,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
     int bBmSw = 0;
+#if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
   #if defined(EXTRA_TYPES)
     if ((nType == T_BM_SW) || (nType == T_BM_SW + EXP(cnBitsMallocMask)))
   #else // defined(EXTRA_TYPES)
@@ -1155,6 +1159,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
         bBmSw = 1;
         nDL = nDLPrev;
     }
+#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
 
     nBL = nDL_to_nBL(nDL);
 
@@ -3122,6 +3127,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
   #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     {
         int bBmSw = 0;
+#if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
   #if defined(EXTRA_TYPES)
         if ((nType == T_BM_SW) || (nType == T_BM_SW + EXP(cnBitsMallocMask)))
   #else // defined(EXTRA_TYPES)
@@ -3130,6 +3136,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
         {
             bBmSw = 1;
         }
+#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
 
   #if defined(PP_IN_LINK)
         // no skip links at root for PP_IN_LINK -- no place for prefix
