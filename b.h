@@ -481,18 +481,15 @@ enum {
 
 #endif // (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
 
-// Default is -DBPD_TABLE.  This causes the table to exist and allows
+// Default is -UBPD_TABLE.  This causes the table to exist and allows
 // us to reference it in cases when we think it will be faster.
 // Doing a table lookup is slower than doing a calculation, but it
 // may be faster than evaluating a complicated conditional expression.
+// I have not seen any evidence that the table lookup is ever faster.
 // Lookup tables theoretically support depth-based bits per digit
 // instead of a constant bits per digit throughout the tree.
 // But we have created tables and macros that allow us to mix/match
 // table use and calculation.
-
-#if ! defined(NO_BPD_TABLE)
-  #define BPD_TABLE
-#endif // ! defined(NO_BPD_TABLE)
 
 #if defined(BPD_TABLE)
 
