@@ -703,6 +703,10 @@ enum {
 #undef  TYPE_IS_RELATIVE
 #define TYPE_IS_RELATIVE
 
+// These two macros should be used sparingly outside of wr_nDS and set_wr_nDS.
+// Why?  Because the type field in wRoot does not contain this information
+// for DEPTH_IN_SW so code that uses these macros may need to be ifdef'd
+// to do something like what is done in wr_nDS anyway.
 #define tp_to_nDS(_tp)   ((_tp)  - T_SW_BASE)
 #define nDS_to_tp(_nDS)  ((_nDS) + T_SW_BASE)
 
@@ -720,10 +724,12 @@ enum {
 // switch statment.
 #define POP_WORD_IN_SW
 
+#define wr_nDS_NZ(_wr) \
+    (assert(tp_to_nDS(wr_nType(_wr)) != 0), \
+      tp_to_nDS(w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1)))
+
 #define wr_nDS(_wr) \
-    ((tp_to_nDS(wr_nType(_wr)) == 0) ? 0 \
-        : tp_to_nDS(w_wPopCnt(PWR_wPrefixPop(NULL, \
-                                             (Switch_t *)wr_pwr(_wr)), 1)))
+    ((tp_to_nDS(wr_nType(_wr)) == 0) ? 0 : wr_nDS_NZ(_wr))
 
 #define set_wr_nDS(_wr, _nDS) \
     (set_wr_nType((_wr), nDS_to_tp((_nDS) != 0)), \
@@ -734,8 +740,10 @@ enum {
                 | (nDS_to_tp(_nDS) & wPrefixPopMask(1)))))
 
 #else // defined(DEPTH_IN_SW)
+
 #define     wr_nDS(_wr)        (tp_to_nDS(wr_nType(_wr)))
 #define set_wr_nDS(_wr, _nDS)  (set_wr_nType((_wr), nDS_to_tp(_nDS)))
+
 #endif // defined(DEPTH_IN_SW)
 
 #endif // defined(TYPE_IS_ABSOLUTE)
