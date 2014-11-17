@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.346 2014/11/16 21:43:08 mike Exp mike $
+// @(#) $Id: b.c,v 1.347 2014/11/17 04:01:54 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -648,10 +648,11 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
     } else
 #endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
     {
+        set_wr_pwr(*pwRoot, pwr);
 #if defined(TYPE_IS_RELATIVE)
-        set_wr(*pwRoot, pwr, nDS_to_tp(nDLUp - nDL));
+        set_wr_nDS(*pwRoot, nDLUp - nDL);
 #else // defined(TYPE_IS_RELATIVE)
-        set_wr(*pwRoot, pwr, nDL_to_tp(nDL));
+        set_wr_nDL(*pwRoot, nDL);
 #endif // defined(TYPE_IS_RELATIVE)
     }
 
@@ -1049,10 +1050,10 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(TYPE_IS_RELATIVE)
-    assert(nDL - tp_to_nDS(nType)
-        >= nBL_to_nDL(cnBitsAtBottom));
+    assert( ! tp_bIsSwitch(nType)
+        || (nDL - wr_nDS(wRoot) >= nBL_to_nDL(cnBitsAtBottom)) );
 #else // defined(TYPE_IS_RELATIVE)
-    assert( ! tp_bIsSwitch(nType) || (tp_to_nDL(nType) <= nBL_to_nDL(nBL)));
+    assert( ! tp_bIsSwitch(nType) || (wr_nDL(wRoot) <= nBL_to_nDL(nBL)));
 #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
@@ -1181,9 +1182,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     unsigned nDLPrev = nDL;
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(TYPE_IS_RELATIVE)
-    nDL = nDL - tp_to_nDS(nType);
+    nDL = nDL - wr_nDS(wRoot);
 #else // defined(TYPE_IS_RELATIVE)
-    nDL = tp_to_nDL(nType);
+    nDL = wr_nDL(wRoot);
 #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
@@ -2316,9 +2317,9 @@ newSwitch:
     {
 #if defined(BM_SWITCH_FOR_REAL)
 #if defined(TYPE_IS_RELATIVE)
-        unsigned nDLR = nDL - tp_to_nDS(nType);
+        unsigned nDLR = nDL - wr_nDS(wRoot);
 #else // defined(TYPE_IS_RELATIVE)
-        unsigned nDLR = tp_to_nDL(nType);
+        unsigned nDLR = wr_nDL(wRoot);
 #endif // defined(TYPE_IS_RELATIVE)
   #if defined(EXTRA_TYPES)
         if ((nType == T_BM_SW) || (nType == T_BM_SW + EXP(cnBitsMallocMask)))
@@ -2380,9 +2381,9 @@ newSwitch:
             Word_t wPopCnt;
 
 #if defined(TYPE_IS_RELATIVE)
-            nDLRoot = nDL - tp_to_nDS(nType);
+            nDLRoot = nDL - wr_nDS(wRoot);
 #else // defined(TYPE_IS_RELATIVE)
-            nDLRoot = tp_to_nDL(nType);
+            nDLRoot = wr_nDL(wRoot);
 #endif // defined(TYPE_IS_RELATIVE)
 
             // Can't have a prefix mismatch if there is no skip.
@@ -3239,9 +3240,9 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
       #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
           #if defined(TYPE_IS_RELATIVE)
-        assert((tp_to_nDS(nType) == 0) || (nType == T_BM_SW));
+        assert((wr_nDS(wRoot) == 0) || (nType == T_BM_SW));
           #else // defined(TYPE_IS_RELATIVE)
-        assert((tp_to_nDL(nType) == cnDigitsPerWord) || (nType = T_BM_SW));
+        assert((wr_nDL(wRoot) == cnDigitsPerWord) || (nType = T_BM_SW));
           #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -3364,9 +3365,9 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
           #if ! defined(NDEBUG)
         int nDL =
               #if defined(TYPE_IS_RELATIVE)
-            cnDigitsPerWord - tp_to_nDS(nType)
+            cnDigitsPerWord - wr_nDS(wRoot)
               #else // defined(TYPE_IS_RELATIVE)
-            tp_to_nDL(nType)
+            wr_nDL(wRoot)
               #endif // defined(TYPE_IS_RELATIVE)
             ;
 #if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
@@ -3384,9 +3385,9 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
       #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         int nDL =
           #if defined(TYPE_IS_RELATIVE)
-            cnDigitsPerWord - tp_to_nDS(nType)
+            cnDigitsPerWord - wr_nDS(wRoot)
           #else // defined(TYPE_IS_RELATIVE)
-            tp_to_nDL(nType)
+            wr_nDL(wRoot)
           #endif // defined(TYPE_IS_RELATIVE)
             ;
         wPopCnt =
