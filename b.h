@@ -698,9 +698,6 @@ enum {
 #define     wr_nDL(_wr)        (tp_to_nDL(wr_nType(_wr)))
 #define set_wr_nDL(_wr, _nDL)  (set_wr_nType((_wr), nDL_to_tp(_nDL)))
 
-#define     wr_bIsSwitchDL(_wr, _tp, _nDL) \
-   ((_tp) = wr_nType(_wr), (_nDL) = tp_to_nDL(_tp), tp_bIsSwitch(_tp))
-
 #else // defined(TYPE_IS_ABSOLUTE)
 
 #undef  TYPE_IS_RELATIVE
@@ -709,11 +706,37 @@ enum {
 #define tp_to_nDS(_tp)   ((_tp)  - T_SW_BASE)
 #define nDS_to_tp(_nDS)  ((_nDS) + T_SW_BASE)
 
+#if defined(DEPTH_IN_SW)
+// DEPTH_IN_SW directs us to use the low bits of sw_wPrefixPop for skip count
+// instead of encoding the skip count into the type field directly.
+// It means we can't use the low bits of sw_wPrefixPop for pop.  So we
+// define POP_WORD_IN_SW and use a separate word.
+// We assume the value we put into the low bits will will fit in the number
+// of bits used for the pop count at DL=1, i.e. cnBitsAtBottom.  Or maybe
+// it doesn't matter since we always create an embedded bitmap when
+// nBL <= cnLogBitsPerWord.
+// We might want to use an abbreviated version of wr_nDS in the
+// SW_BASE + 1 case in Lookup since the test for 0 is handled by the
+// switch statment.
+#define POP_WORD_IN_SW
+
+#define wr_nDS(_wr) \
+    ((tp_to_nDS(wr_nType(_wr)) == 0) ? 0 \
+        : tp_to_nDS(w_wPopCnt(PWR_wPrefixPop(NULL, \
+                                             (Switch_t *)wr_pwr(_wr)), 1)))
+
+#define set_wr_nDS(_wr, _nDS) \
+    (set_wr_nType((_wr), nDS_to_tp((_nDS) != 0)), \
+        /* put real skip cnt in the PP pop field but use DL=1 for mask */ \
+        (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
+            = ((PWR_wPrefixPop(NULL, \
+                    (Switch_t *)wr_pwr(_wr)) & ~wPrefixPopMask(1)) \
+                | (nDS_to_tp(_nDS) & wPrefixPopMask(1)))))
+
+#else // defined(DEPTH_IN_SW)
 #define     wr_nDS(_wr)        (tp_to_nDS(wr_nType(_wr)))
 #define set_wr_nDS(_wr, _nDS)  (set_wr_nType((_wr), nDS_to_tp(_nDS)))
-
-#define     wr_bIsSwitchDS(_wr, _tp, _nDS) \
-   ((_tp) = wr_nType(_wr), (_nDS) = tp_to_nDS(_tp), tp_bIsSwitch(_tp))
+#endif // defined(DEPTH_IN_SW)
 
 #endif // defined(TYPE_IS_ABSOLUTE)
 
