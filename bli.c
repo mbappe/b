@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.361 2014/11/16 21:43:08 mike Exp mike $
+// @(#) $Id: bli.c,v 1.362 2014/11/16 22:20:17 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1306,7 +1306,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 #endif // defined(LOOKUP)
 #if !defined(RECURSIVE)
   #if !defined(LOOKUP) || defined(BM_IN_LINK)
-    Word_t *pwRootOrig = pwRoot;
+    Word_t *pwRootOrig = pwRoot; (void)pwRootOrig;
   #endif // !defined(LOOKUP) || defined(BM_IN_LINK)
 #endif // !defined(RECURSIVE)
     unsigned nDLR;
