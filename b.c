@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.345 2014/11/16 21:08:55 mike Exp mike $
+// @(#) $Id: b.c,v 1.346 2014/11/16 21:43:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -593,7 +593,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 
     Word_t wWords =
 #if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
-        bBmSw ? sizeof(BmSwitch_t)
+        bBmSw ? sizeof(BmSwitch_t) :
 #endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
             sizeof(Switch_t);
 
@@ -1220,14 +1220,20 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
             Word_t wPopCnt = 0;
             for (unsigned nn = 0; nn < EXP(cnBitsIndexSzAtTop); nn++)
             {
+#if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
 #if ! defined(BM_IN_LINK)
         if ( ! bBmSw || BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
 #endif // ! defined(BM_IN_LINK)
+#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
         {
+#if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
                 Word_t *pwRootLn
                             = bBmSw
                                 ? &pwr_pLinks((BmSwitch_t *)pwr)[nn].ln_wRoot
                                 : &pwr_pLinks((  Switch_t *)pwr)[nn].ln_wRoot;
+#else // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+                Word_t *pwRootLn = &pwr_pLinks((Switch_t *)pwr)[nn].ln_wRoot;
+#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
 #if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
 #if ! defined(BM_IN_LINK)
                 if (bBmSw) {
@@ -2425,6 +2431,7 @@ newSwitch:
 #endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
 
 #if defined(BM_IN_LINK)
+#if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
             Link_t ln;
             Word_t wIndexCnt = EXP(nDL_to_nBitsIndexSzNAT(nDLRoot));
             if (bBmSwOld)
@@ -2442,6 +2449,7 @@ newSwitch:
 #endif // ! defined(BM_SWITCH_FOR_REAL)
             }
             }
+#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
 #endif // defined(BM_IN_LINK)
 
             Word_t *pwSw;
@@ -2533,22 +2541,29 @@ newSwitch:
             else
 #endif // defined(NO_UNNECESSARY_PREFIX)
             {
-                set_PWR_wPrefix(
 #if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+                set_PWR_wPrefix(
                     bBmSwNew
                         ? &pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_wRoot :
-#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
                           &pwr_pLinks((  Switch_t *)pwSw)[nIndex].ln_wRoot,
                     NULL, nDLRoot, wPrefix);
+#else // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+                set_PWR_wPrefix(
+                    &pwr_pLinks((Switch_t *)pwSw)[nIndex].ln_wRoot,
+                    NULL, nDLRoot, wPrefix);
+#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
             }
 
-            set_PWR_wPopCnt(
 #if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+            set_PWR_wPopCnt(
                     bBmSwNew
                         ? &pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_wRoot :
-#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
                           &pwr_pLinks((  Switch_t *)pwSw)[nIndex].ln_wRoot,
                     NULL, nDLRoot, wPopCnt);
+#else // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+            set_PWR_wPopCnt(&pwr_pLinks((  Switch_t *)pwSw)[nIndex].ln_wRoot,
+                    NULL, nDLRoot, wPopCnt);
+#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
 #else // defined(PP_IN_LINK)
 #if defined(NO_UNNECESSARY_PREFIX)
            // We could go to the trouble of zeroing the no-longer necessary
@@ -3222,11 +3237,13 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
   #if defined(PP_IN_LINK)
         // no skip links at root for PP_IN_LINK -- no place for prefix
       #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+#if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
           #if defined(TYPE_IS_RELATIVE)
         assert((tp_to_nDS(nType) == 0) || (nType == T_BM_SW));
           #else // defined(TYPE_IS_RELATIVE)
         assert((tp_to_nDL(nType) == cnDigitsPerWord) || (nType = T_BM_SW));
           #endif // defined(TYPE_IS_RELATIVE)
+#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         // add up the pops in the links
         Word_t xx = 0; (void)xx;
@@ -3352,12 +3369,14 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             tp_to_nDL(nType)
               #endif // defined(TYPE_IS_RELATIVE)
             ;
+#if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
         if (bBmSw) {
             nDL = cnDigitsPerWord;
         }
         if (!(wPopCnt - 1 <= wPrefixPopMask(nDL))) {
             printf("bBmSw %d\n", bBmSw);
         }
+#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
         assert(wPopCnt - 1 <= wPrefixPopMask(nDL));
           #endif // ! defined(NDEBUG)
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)

@@ -519,6 +519,7 @@ enum {
 
 #define nDL_to_nBitsIndexSzNAX(_nDL)  (nBitsIndexSz_from_nDL_NAX(_nDL))
 #define nDL_to_nBL_NAT(_nDL)          (nBL_from_nDL_NAT(_nDL))
+#define nDL_to_nBitsIndexSzNAT(_nDL)  (nDL_to_nBitsIndexSz(_nDL))
 
 #if defined RAMMETRICS
   #define METRICS(x)  (x)
@@ -694,9 +695,8 @@ enum {
   #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 2)
 #endif // (cnBitsAtBottom > cnLogBitsPerWord)
 
-#define     wr_nDL(_wr)     (tp_to_nDL(wr_nType(_wr)))
-#define set_wr_nDL(_wr, _nDL) \
-    (set_wr_nType((_wr), nDL_to_tp(_nDL)))
+#define     wr_nDL(_wr)        (tp_to_nDL(wr_nType(_wr)))
+#define set_wr_nDL(_wr, _nDL)  (set_wr_nType((_wr), nDL_to_tp(_nDL)))
 
 #define     wr_bIsSwitchDL(_wr, _tp, _nDL) \
    ((_tp) = wr_nType(_wr), (_nDL) = tp_to_nDL(_tp), tp_bIsSwitch(_tp))
@@ -765,9 +765,6 @@ enum {
 #define PWR_wPrefix(_pwRoot, _pwr, _nDL) \
     (w_wPrefix(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nDL)))
 
-#define PWR_wPopCnt(_pwRoot, _pwr, _nDL) \
-    (w_wPopCnt(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nDL)))
-
 #define PWR_wPrefixNAT(_pwRoot, _pwr, _nDL) \
     (w_wPrefixNotAtTop(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nDL)))
 
@@ -784,10 +781,29 @@ enum {
         = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixPopMask(_nDL)) \
             | ((_key) & ~wPrefixPopMask(_nDL))))
 
+#if defined(POP_WORD_IN_SW)
+
+#define PWR_wPopWord(_pwRoot, _pwr)  ((_pwr)->sw_wPopWord)
+
+#define PWR_wPopCnt(_pwRoot, _pwr, _nDL) \
+    (w_wPopCnt(PWR_wPopWord((_pwRoot), (_pwr)), (_nDL)))
+
+#define set_PWR_wPopCnt(_pwRoot, _pwr, _nDL, _cnt) \
+    (PWR_wPopWord((_pwRoot), (_pwr)) \
+        = ((PWR_wPopWord((_pwRoot), (_pwr)) & ~wPrefixPopMask(_nDL)) \
+            | ((_cnt) & wPrefixPopMask(_nDL))))
+
+#else // defined(POP_WORD_IN_SW)
+
+#define PWR_wPopCnt(_pwRoot, _pwr, _nDL) \
+    (w_wPopCnt(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nDL)))
+
 #define set_PWR_wPopCnt(_pwRoot, _pwr, _nDL, _cnt) \
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
         = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMask(_nDL)) \
             | ((_cnt) & wPrefixPopMask(_nDL))))
+
+#endif // defined(POP_WORD_IN_SW)
 
 #define set_w_wPrefixNotAtTop(_w, _nDL, _key) \
     ((_w) = (((_w) & wPrefixPopMaskNotAtTop(_nDL)) \
@@ -1032,6 +1048,9 @@ typedef struct {
 #if !defined(PP_IN_LINK)
     Word_t sw_wPrefixPop;
 #endif // !defined(PP_IN_LINK)
+#if defined(POP_WORD_IN_SW)
+    Word_t sw_wPopWord;
+#endif // defined(POP_WORD_IN_SW)
 #if (cnDummiesInSwitch != 0)
     Word_t sw_awDummies[cnDummiesInSwitch];
 #endif // (cnDummiesInSwitch != 0)
@@ -1043,6 +1062,9 @@ typedef struct {
 #if !defined(PP_IN_LINK)
     Word_t sw_wPrefixPop;
 #endif // !defined(PP_IN_LINK)
+#if defined(POP_WORD_IN_SW)
+    Word_t sw_wPopWord;
+#endif // defined(POP_WORD_IN_SW)
 #if ! defined(BM_IN_LINK)
     Word_t sw_awBm[N_WORDS_SWITCH_BM];
 #endif // ! defined(BM_IN_LINK)
