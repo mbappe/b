@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.366 2014/11/18 15:00:16 mike Exp mike $
+// @(#) $Id: bli.c,v 1.367 2014/11/18 15:02:39 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -242,10 +242,22 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 // and 32-bit values.
 // We need to make sure we are passing a constant in for _nBL for the
 // performance path cases so the compiler can simplify this.
-#define SPLIT(_nPopCnt, _nBL, _xKey, _nSplit) \
+#define PSPLIT(_nPopCnt, _nBL, _xKey, _nSplit) \
         PSPLIT_NN((_nPopCnt), (_nBL), (_xKey), \
                   LOG((((_nPopCnt) << 1) - 1)) - cnBitsPerWord + (_nBL), \
                   (_nSplit))
+
+#if defined(SPLIT_SEARCH_BINARY)
+
+  #define SPLIT(_nPopCnt, _nBL, _xKey, _nSplit)  ((_nSplit) = (_nPopCnt) >> 1)
+
+#else // defined(SPLIT_SEARCH_BINARY)
+
+  #define SPLIT(_nPopCnt, _nBL, _xKey, _nSplit) \
+      PSPLIT(_nPopCnt, _nBL, _xKey, _nSplit)
+
+#endif // defined(SPLIT_SEARCH_BINARY)
+
 
 #if 0
 pop <= 2 ^ (bpw - nbl + nn)
