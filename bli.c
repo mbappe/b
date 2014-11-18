@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.365 2014/11/18 04:26:23 mike Exp mike $
+// @(#) $Id: bli.c,v 1.366 2014/11/18 15:00:16 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -242,7 +242,7 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 // and 32-bit values.
 // We need to make sure we are passing a constant in for _nBL for the
 // performance path cases so the compiler can simplify this.
-#define PSPLIT(_nPopCnt, _nBL, _xKey, _nSplit) \
+#define SPLIT(_nPopCnt, _nBL, _xKey, _nSplit) \
         PSPLIT_NN((_nPopCnt), (_nBL), (_xKey), \
                   LOG((((_nPopCnt) << 1) - 1)) - cnBitsPerWord + (_nBL), \
                   (_nSplit))
@@ -257,7 +257,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 #if 0
 
-#define PSPLIT(_nPopCnt, _xKeyMin, _xKeyMax, _xKey, _nSplit) \
+#define SPLIT(_nPopCnt, _xKeyMin, _xKeyMax, _xKey, _nSplit) \
 { \
     unsigned nBL = LOG(((_xKeyMin) ^ (_xKeyMax)) | 1) + 1; \
     (_nSplit) = ((((((Word_t)(_xKey) << (cnBitsPerWord - (nBL))) \
@@ -271,7 +271,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 #if 0
 
-#define PSPLIT(_nn, _xKeyMin, _xKeyMax, _xKey, _nSplit) \
+#define SPLIT(_nn, _xKeyMin, _xKeyMax, _xKey, _nSplit) \
 { \
     (_nSplit) \
         = ((((Word_t)(_xKey) - (_xKeyMin)) * (_nn) + (_nn) / 2) \
@@ -418,11 +418,11 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 // A bucket is a Word_t or an __m128i.  Or whatever else we decide to pass
 // into _b_t in the future.
 // nSplit is a word number.
-#define PSPLIT_SEARCH_BASE(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
+#define SPLIT_SEARCH_GUTS(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     _b_t *px = (_b_t *)(_pxKeys); \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
-    unsigned nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
+    unsigned nSplit; SPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
     unsigned nSplitP = nSplit * sizeof(_x_t) >> LOG(sizeof(_b_t)); \
     assert(((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
     if (BUCKET_HAS_KEY(&px[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
@@ -472,17 +472,17 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 #if defined(HAS_KEY_128)
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-    PSPLIT_SEARCH_BASE(__m128i, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) 
+    SPLIT_SEARCH_GUTS(__m128i, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) 
 #else // defined(HAS_KEY_128)
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-    PSPLIT_SEARCH_BASE(Word_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) 
+    SPLIT_SEARCH_GUTS(Word_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) 
 #endif // defined(HAS_KEY_128)
 
 #else // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    unsigned nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
+    unsigned nSplit; SPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
     if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) \
     { \
         (_nPos) = nSplit; \
