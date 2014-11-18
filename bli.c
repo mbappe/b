@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.369 2014/11/18 16:00:12 mike Exp mike $
+// @(#) $Id: bli.c,v 1.370 2014/11/18 21:50:00 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -75,8 +75,8 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 // key that is less than or equal to the key we're searching for.
 #define SSEARCHB(_pxKeys, _xKey, _nPos) \
 { \
-    while ((_xKey) < (_pxKeys)[_nPos]) { --(_nPos); } \
-    if ((_xKey) > (_pxKeys)[_nPos]) { ++(_nPos); (_nPos) ^= -1; } \
+    int ii = 1; while ((_pxKeys)[--ii] < (_xKey)) { } (_nPos) += ii; \
+    if ((_pxKeys)[ii] > (_xKey)) { (_nPos) ^= -1; } \
 }
 
 #if defined(LIST_END_MARKERS)
