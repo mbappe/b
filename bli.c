@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.364 2014/11/17 19:03:30 mike Exp mike $
+// @(#) $Id: bli.c,v 1.365 2014/11/18 04:26:23 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -214,43 +214,9 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
                 >> 9); \
 }
 
-// Old method:
+// One old method:
 // nSplit = (((_xKey) & MSK(_nBL)) * (_nPopCnt) + (_nPopCnt) / 2) >> (_nBL);
-// New method:
-// Take N most significant bits of key times pop count and divide by 2^N.
-// If key has fewer than N significant bits, then shift key left as needed.
-// Where N = 9.
-// The rounding term is probably insignificant and unnecessary.
-#define PSPLIT_X(_nPopCnt, _nBL, _xKey, _nSplit) \
-{ \
-    (_nSplit) = ((((((Word_t)(_xKey) << (cnBitsPerWord - (_nBL))) \
-                            >> (cnBitsPerWord - 9)) \
-                        * (_nPopCnt)) \
-                    /* + ((_nPopCnt) / 2) */ ) \
-                >> 9); \
-}
-
-#define PSPLIT_0(_nPopCnt, _nBL, _xKey, _nSplit) \
-{ \
-    assert((_nBL) < cnBitsPerWord); \
-    assert((_nPopCnt) <= (1 << (cnBitsPerWord - (_nBL)))); \
-    (_nSplit) = ((((((Word_t)(_xKey) << (cnBitsPerWord - (_nBL))) \
-                            >> (cnBitsPerWord - (_nBL))) \
-                        * (_nPopCnt)) \
-                    + ((_nPopCnt) / 2)) \
-                >> (_nBL)); \
-}
-
-#define PSPLIT_1(_nPopCnt, _nBL, _xKey, _nSplit) \
-{ \
-    assert((_nPopCnt) <= (1 << (cnBitsPerWord - (_nBL) + 1))); \
-    (_nSplit) = ((((((Word_t)(_xKey) << (cnBitsPerWord - (_nBL))) \
-                            >> (cnBitsPerWord + 1 - (_nBL))) \
-                        * (_nPopCnt)) \
-                    + ((_nPopCnt) / 2)) \
-                >> ((_nBL) - 1)); \
-}
-
+// Current method:
 // Take the (_nBL - _nn) most significant bits of the _nBL least significant
 // bits in _xKey times _nPopCnt and divide by EXP(_nBL - _nn).
 // If _nBL < _nn then shift _wKey left as needed.
@@ -315,18 +281,6 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 }
 
 #endif
-
-// unsigned nSplit; PSPLIT((_nPopCnt), 0, (_x_t)-1, (_xKey), nSplit);
-
-#if 0
-    if (WordHasKey((Word_t *)((uintptr_t)&(_pxKeys)[nSplit] & ~7), \
-                   (_xKey), sizeof(_x_t) * 8)) \
-    { \
-        (_nPos) = nSplit; \
-    } \
-    else \
-
-#endif // 0
 
 #if defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
@@ -460,7 +414,9 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 #endif // defined(PSPLIT_HYBRID)
 
-// PSPLIT_SEARCH with parallel search of the word at the split point.
+// Split search with a parallel search of the bucket at the split point.
+// A bucket is a Word_t or an __m128i.  Or whatever else we decide to pass
+// into _b_t in the future.
 // nSplit is a word number.
 #define PSPLIT_SEARCH_BASE(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
