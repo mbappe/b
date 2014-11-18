@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.363 2014/11/17 04:01:40 mike Exp mike $
+// @(#) $Id: bli.c,v 1.364 2014/11/17 19:03:30 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2493,16 +2493,18 @@ Initialize(void)
 #if defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
     assert(0);
 #endif // defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
-#if defined(TYPE_IS_ABSOLUTE)
+#if ! defined(DEPTH_IN_SW)
+#if ! defined(TYPE_IS_RELATIVE)
     if ( ! (nDL_to_tp(cnDigitsPerWord) <= cnMallocMask) ) {
         printf("\n");
-        printf("nDL_to_tp(%d) %d\n",
+        printf("nDL_to_tp(%d) 0x%x\n",
                cnDigitsPerWord, nDL_to_tp(cnDigitsPerWord));
         printf("tp_to_nDL(%d) %d\n",
                (int)cnMallocMask, (int)tp_to_nDL(cnMallocMask));
     }
     assert(nDL_to_tp(cnDigitsPerWord) <= cnMallocMask);
-#endif // defined(TYPE_IS_ABSOLUTE)
+#endif // ! defined(TYPE_IS_RELATIVE)
+#endif // ! defined(DEPTH_IN_SW)
 
 #if defined(BPD_TABLE_RUNTIME_INIT)
     for (unsigned nDL = 0;

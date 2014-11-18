@@ -317,6 +317,11 @@
 #define BM_SW_AT_DL2
 #endif // defined(BM_SW_AT_DL2_ONLY)
 
+// Default is -DTYPE_IS_RELATIVE.  Use -DTYPE_IS_ABSOLUTE to change it.
+#if ! defined(TYPE_IS_ABSOLUTE)
+#define TYPE_IS_RELATIVE
+#endif // ! defined(TYPE_IS_ABSOLUTE)
+
 // Values for nType.
 enum {
     T_NULL,
@@ -330,7 +335,15 @@ enum {
 #if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
     T_BM_SW,
 #endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+#if defined(DEPTH_IN_SW)
+#if defined(TYPE_IS_RELATIVE)
+    T_SW_BASE = cnMallocMask - 1,
+#else // defined(TYPE_IS_RELATIVE)
+    T_SW_BASE = cnMallocMask,
+#endif // defined(TYPE_IS_RELATIVE)
+#else // defined(DEPTH_IN_SW)
     T_SW_BASE,
+#endif // defined(DEPTH_IN_SW)
 };
 
 #define cnBitsLeftAtBottom  (cnBitsAtBottom)
@@ -678,8 +691,35 @@ enum {
 
 #endif // defined(USE_T_ONE)
 
-// Default is -UTYPE_IS_ABSOLUTE, i.e. -DTYPE_IS_RELATIVE.
 #if defined(TYPE_IS_ABSOLUTE)
+
+#if defined(DEPTH_IN_SW)
+// DEPTH_IN_SW directs us to use the low bits of sw_wPrefixPop for absolute
+// depth instead of encoding it into the type field directly.
+// It means we can't use the low bits of sw_wPrefixPop for pop.  So we
+// define POP_WORD_IN_SW and use a separate word.
+// We assume the value we put into the low bits will will fit in the number
+// of bits used for the pop count at DL=1, i.e. cnBitsAtBottom.  Or maybe
+// it doesn't matter since we always create an embedded bitmap when
+// nBL <= cnLogBitsPerWord.
+#define POP_WORD_IN_SW
+
+// As it stands we always get the absolute type from sw_wPrefixPop if
+// DEPTH_IN_SW.  We could enhance it to use one type value to indicate
+// that we have to go to sw_wPrefixPop and use any other values that we
+// have available to represent some key absolute depths.
+#define     wr_nDL(_wr) \
+    (assert(wr_nType(_wr) == T_SW_BASE), \
+        w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1))
+
+#define set_wr_nDL(_wr, _nDL) \
+    (set_wr_nType((_wr), T_SW_BASE), \
+        PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
+            = ((PWR_wPrefixPop(NULL, \
+                    (Switch_t *)wr_pwr(_wr)) & ~wPrefixPopMask(1)) \
+                | (_nDL)))
+
+#else // defined(DEPTH_IN_SW)
 
 // Why do we need nType to be able to represent nDL == 1?
 // We have to test for nDL == 1 before looping back to the switch statement
@@ -698,10 +738,9 @@ enum {
 #define     wr_nDL(_wr)        (tp_to_nDL(wr_nType(_wr)))
 #define set_wr_nDL(_wr, _nDL)  (set_wr_nType((_wr), nDL_to_tp(_nDL)))
 
-#else // defined(TYPE_IS_ABSOLUTE)
+#endif // defined(DEPTH_IN_SW)
 
-#undef  TYPE_IS_RELATIVE
-#define TYPE_IS_RELATIVE
+#else // defined(TYPE_IS_ABSOLUTE)
 
 // These two macros should be used sparingly outside of wr_nDS and set_wr_nDS.
 // Why?  Because the type field in wRoot does not contain this information
@@ -712,21 +751,20 @@ enum {
 
 #if defined(DEPTH_IN_SW)
 // DEPTH_IN_SW directs us to use the low bits of sw_wPrefixPop for skip count
-// instead of encoding the skip count into the type field directly.
+// instead of encoding it into the type field directly.
 // It means we can't use the low bits of sw_wPrefixPop for pop.  So we
 // define POP_WORD_IN_SW and use a separate word.
 // We assume the value we put into the low bits will will fit in the number
 // of bits used for the pop count at DL=1, i.e. cnBitsAtBottom.  Or maybe
 // it doesn't matter since we always create an embedded bitmap when
 // nBL <= cnLogBitsPerWord.
-// We might want to use an abbreviated version of wr_nDS in the
-// SW_BASE + 1 case in Lookup since the test for 0 is handled by the
-// switch statment.
 #define POP_WORD_IN_SW
 
+// wr_nDS_NZ is for the Lookup performance path.  It avoids a test that
+// is required in wr_nDS.  NZ is for not-zero.
 #define wr_nDS_NZ(_wr) \
     (assert(tp_to_nDS(wr_nType(_wr)) != 0), \
-      tp_to_nDS(w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1)))
+      w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1))
 
 #define wr_nDS(_wr) \
     ((tp_to_nDS(wr_nType(_wr)) == 0) ? 0 : wr_nDS_NZ(_wr))
@@ -737,7 +775,7 @@ enum {
         (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
             = ((PWR_wPrefixPop(NULL, \
                     (Switch_t *)wr_pwr(_wr)) & ~wPrefixPopMask(1)) \
-                | (nDS_to_tp(_nDS) & wPrefixPopMask(1)))))
+                | (_nDS))))
 
 #else // defined(DEPTH_IN_SW)
 

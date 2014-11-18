@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.347 2014/11/17 04:01:54 mike Exp mike $
+// @(#) $Id: b.c,v 1.348 2014/11/17 19:04:24 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2167,12 +2167,18 @@ newSwitch:
             }
 #endif // (cnBitsAtBottom < cnLogBitsPerWord)
 
+#if ! defined(DEPTH_IN_SW)
 #if defined(TYPE_IS_RELATIVE)
-            // cnMallocMask is the largest nType value.
+            // cnMallocMask is the largest nType value
+            // if we're storing it in wRoot.
+            // How do we handle this for ! defined(TYPE_IS_RELATIVE)?
+            // We can't unless defined(DEPTH_IN_SW).  So we have an
+            // assertion in Initialize().
             if (nDS_to_tp(nDLOld - nDL) > cnMallocMask) {
                 nDL = nDLOld - tp_to_nDS(cnMallocMask);
             }
 #endif // defined(TYPE_IS_RELATIVE)
+#endif // ! defined(DEPTH_IN_SW)
 #else // defined(SKIP_LINKS)
             assert(nDL > 1);
 #endif // defined(SKIP_LINKS)
