@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.367 2014/11/18 15:02:39 mike Exp mike $
+// @(#) $Id: bli.c,v 1.368 2014/11/18 15:15:17 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -86,7 +86,7 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 #define TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)  0
 
 #define TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)  0
-#define TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)  0
+#define TEST_AND_KEY_IS_ZERO(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 
 #define PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos) \
     (&(_pxKeys0)[_nPos] >= &(_pxKeys)[_nPopCnt])
@@ -99,7 +99,7 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 #define TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)  ((_pxKeys)[nSplit] == (_xKey))
 
 #define TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)  0
-#define TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)  0
+#define TEST_AND_KEY_IS_ZERO(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 
 #define PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos)  0
 #define PAST_ENDB(_pxKeys, _pxKeys0, _nPos)  0
@@ -112,7 +112,7 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 #define TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey) \
     ((_xKey) == (_x_t)-1)
 
-#define TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)  ((_xKey) == 0)
+#define TEST_AND_KEY_IS_ZERO(_x_t, _pxKeys, _nPopCnt, _xKey)  ((_xKey) == 0)
 
 #define PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos)  0
 #define PAST_ENDB(_pxKeys, _pxKeys0, _nPos)  0
@@ -148,7 +148,7 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 #define TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)  0
 
 #define TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)  0
-#define TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)  0
+#define TEST_AND_KEY_IS_ZERO(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 
 // Linear search of list (for any size key and with end check).
 //#define TRY_MEMCHR
@@ -430,6 +430,18 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 // A bucket is a Word_t or an __m128i.  Or whatever else we decide to pass
 // into _b_t in the future.
 // nSplit is a word number.
+// We need a function we can call iteratively.  The position returned
+// ultimately must be relative to the original beginning of the list.
+// What parameters must we pass?
+// We have to pass the following information:
+// - First key/bucket of the sub-list to search: _pxKeys.
+// - Number of keys/buckets in the sub-list to search: _nPopCnt. 
+// - What is the offset within the full list of the sub-list to search: _nPos.
+// We'd also like to be able to pass information about the key at the
+// beginning and/or end of the list if we already know either or both of them.
+// Can we use 0 and -1 for cases where we don't know them?  It might be
+// more efficient to have separate macros for all cases.  Or maybe just
+// a special case for neither is known.
 #define SPLIT_SEARCH_GUTS(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     _b_t *px = (_b_t *)(_pxKeys); \
@@ -438,7 +450,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     unsigned nSplitP = nSplit * sizeof(_x_t) >> LOG(sizeof(_b_t)); \
     assert(((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
     if (BUCKET_HAS_KEY(&px[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
-        (_nPos) = nSplitP * sizeof(_b_t) / sizeof(_x_t); \
+        (_nPos) += nSplitP * sizeof(_b_t) / sizeof(_x_t); \
     } \
     else \
     { \
@@ -497,17 +509,17 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     unsigned nSplit; SPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
     if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) \
     { \
-        (_nPos) = nSplit; \
+        (_nPos) += nSplit; \
     } \
     else if ((_pxKeys)[nSplit] < (_xKey)) \
     { \
         if (nSplit == (_nPopCnt) - 1) \
         { \
-            (_nPos) = ~(_nPopCnt); \
+            (_nPos) = ~((_nPos) + (_nPopCnt)); \
         } \
         else if (TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)) \
         { \
-            (_nPos) = ((_pxKeys)[(_nPopCnt) - 1] == (_x_t)-1) \
+            (_nPos) += ((_pxKeys)[(_nPopCnt) - 1] == (_x_t)-1) \
                         ? (_nPopCnt) - 1 : ~(_nPopCnt); \
         } \
         else \
@@ -518,9 +530,9 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     } \
     else /* here if (_xKey) < (_pxKeys)[nSplit] (and possibly if equal) */ \
     { \
-        if (TEST_AND_KEY_IS_MIN(_x_t, _pxKeys, _nPopCnt, _xKey)) \
+        if (TEST_AND_KEY_IS_ZERO(_x_t, _pxKeys, _nPopCnt, _xKey)) \
         { \
-            (_nPos) = ((_pxKeys)[0] == 0) ? 0 : ~0; \
+            if ((_pxKeys)[0] != 0) { (_nPos) ^= -1; } \
         } \
         else \
         { \
@@ -717,7 +729,7 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 #endif // defined(PSPLIT_PARALLEL)
 #endif // defined(LIST_END_MARKERS)
     uint8_t cKey = (uint8_t)wKey;
-    int nPos;
+    int nPos = 0;
 #if defined(PSPLIT_SEARCH_8)
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 8) {
@@ -762,7 +774,7 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 #endif // defined(PSPLIT_PARALLEL)
 #endif // defined(LIST_END_MARKERS)
     uint16_t sKey = (uint16_t)wKey;
-    int nPos;
+    int nPos = 0;
 #if defined(PSPLIT_SEARCH_16)
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 16) {
@@ -808,7 +820,7 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 #endif // ! defined(PSPLIT_PARALLEL)
 #endif // defined(LIST_END_MARKERS)
     uint32_t iKey = (uint32_t)wKey;
-    int nPos;
+    int nPos = 0;
 #if defined(PSPLIT_SEARCH_32)
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 32) {
@@ -878,7 +890,7 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     assert(pwKeys[-1] == 0);
     assert(pwKeys[nPopCnt] == (Word_t)-1);
 #endif // defined(LIST_END_MARKERS)
-    int nPos;
+    int nPos = 0;
 #if defined(PSPLIT_SEARCH_WORD)
 #if defined(PSPLIT_SEARCH_XOR_WORD)
     Word_t wKeyMin = pwKeys[0];
