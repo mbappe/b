@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.368 2014/11/18 15:15:17 mike Exp mike $
+// @(#) $Id: bli.c,v 1.369 2014/11/18 16:00:12 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -67,8 +67,8 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 // key that is greater than or equal to the key we're searching for.
 #define SSEARCHF(_pxKeys, _xKey, _nPos) \
 { \
-    while ((_pxKeys)[_nPos] < (_xKey)) { ++(_nPos); } \
-    if ((_pxKeys)[_nPos] > (_xKey)) { (_nPos) ^= -1; } \
+    int ii = -1; while ((_pxKeys)[++ii] < (_xKey)) { } (_nPos) += ii; \
+    if ((_pxKeys)[ii] > (_xKey)) { (_nPos) ^= -1; } \
 }
 
 // Simple backward linear search of a list that assumes the list contains a
@@ -158,7 +158,7 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
     if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
         (_nPos) = ~((_nPos) + (_nPopCnt)); \
     } else { \
-        SSEARCHF((_pxKeys0), (_xKey), (_nPos)); \
+        SSEARCHF((_pxKeys), (_xKey), (_nPos)); \
     } \
 }
 #if defined(TRY_MEMCHR)
@@ -183,7 +183,7 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
     if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
         (_nPos) = ~((_nPos) + (_nPopCnt)); \
     } else { \
-        SSEARCHF((_pxKeys0), (_xKey), (_nPos)); \
+        SSEARCHF((_pxKeys), (_xKey), (_nPos)); \
     } \
 }
 #endif // defined(TRY_MEMCHR)
