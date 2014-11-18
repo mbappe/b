@@ -766,6 +766,10 @@ enum {
     (assert(tp_to_nDS(wr_nType(_wr)) != 0), \
       w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1))
 
+// As it stands we always get the skip count from sw_wPrefixPop if
+// DEPTH_IN_SW.  We could enhance it to use one type value to indicate
+// that we have to go to sw_wPrefixPop and use any other values that we
+// have available to represent some key skip counts.
 #define wr_nDS(_wr) \
     ((tp_to_nDS(wr_nType(_wr)) == 0) ? 0 : wr_nDS_NZ(_wr))
 
