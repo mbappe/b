@@ -1,4 +1,4 @@
-// @(#) $Id: bli.c,v 1.372 2014/11/18 23:45:43 mike Exp mike $
+// @(#) $Id: bli.c,v 1.373 2014/11/19 00:34:47 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -109,8 +109,7 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 
 #define PAST_ENDF(_nPopCnt, _nPos)  ((_nPos) >= (_nPopCnt))
 
-#define PAST_ENDB(_pxKeys, _pxKeys0, _nPos) \
-    (&(_pxKeys0)[_nPos] < (_pxKeys))
+#define PAST_ENDB(_nPos)  ((_nPos) < 0)
 
   #elif defined(TEST_SPLIT_EQ_KEY)
 
@@ -120,7 +119,7 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 #define TEST_AND_KEY_IS_ZERO(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 
 #define PAST_ENDF(_nPopCnt, _nPos)  0
-#define PAST_ENDB(_pxKeys, _pxKeys0, _nPos)  0
+#define PAST_ENDB(_nPos)  0
 
   #else // TEST_KEY_IS_MAX_MIN
 
@@ -133,7 +132,7 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 #define TEST_AND_KEY_IS_ZERO(_x_t, _pxKeys, _nPopCnt, _xKey)  ((_xKey) == 0)
 
 #define PAST_ENDF(_nPopCnt, _nPos)  0
-#define PAST_ENDB(_pxKeys, _pxKeys0, _nPos)  0
+#define PAST_ENDB(_nPos)  0
 
   #endif // ...
 
@@ -156,10 +155,8 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 { \
     (_nPos) = (_pxKeys) - (_pxKeys0); \
     (_nPos) += (_nPopCnt) - 1; \
-    while ((_xKey) < (_pxKeys0)[_nPos]) { --(_nPos); } \
-    if (((_xKey) > (_pxKeys0)[_nPos]) \
-        || PAST_ENDB(_pxKeys, _pxKeys0, _nPos)) \
-    { \
+    int ii = _nPopCnt; while ((_xKey) < (_pxKeys)[--ii]) { } (_nPos) += ii; \
+    if (((_xKey) > (_pxKeys)[ii]) || PAST_ENDB(ii)) { \
         ++(_nPos); (_nPos) ^= -1; \
     } \
 }
