@@ -1,4 +1,5 @@
-// @(#) $Id: bli.c,v 1.376 2014/11/19 01:06:11 mike Exp mike $
+
+// @(#) $Id: bli.c,v 1.369 2014/11/18 16:00:12 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -62,40 +63,24 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 
 #if (cwListPopCntMax != 0)
 
-// Simple forward linear search of a sub-list.  It assumes the sub-list
-// contains a key that is greater than or equal to the search key.
-// _pxKeys points to the first key in the sub-list.  We infer the size of the
-// keys in the list from the type of _pxKeys.  No masking is done.
-// _xKeys is key we are searching for.  It must be of a type that can be
-// compared to *(_pxKeys).
-// _nPos is the number of keys before *(_pxKeys) in the whole list that
-// contains the sub-list.
-// _nPos becomes the number of keys from the beginning of the whole list
-// at which _xKey exists.
-// If _xKey does not exist in the list, then _nPos becomes the one's
-// complement of the first key in the whole list that is bigger than _xKey.
+// Simple forward linear search of a sub-list.  It assumes the list contains
+// a key that is greater than or equal to _xKey.
+// The search starts at _pxKeys[_nPos].
+// _pxKeys is the beginning of the whole list.
 #define SSEARCHF(_pxKeys, _xKey, _nPos) \
 { \
-    int ii = -1; while ((_pxKeys)[++ii] < (_xKey)) { } (_nPos) += ii; \
-    if ((_pxKeys)[ii] > (_xKey)) { (_nPos) ^= -1; } \
+    while ((_pxKeys)[_nPos] < (_xKey)) { ++(_nPos); } \
+    if ((_pxKeys)[_nPos] > (_xKey)) { (_nPos) ^= -1; } \
 }
 
-// Simple backward linear search of a sub-list.  It assumes the sub-list
-// contains a key that is less than or equal to the search key.
-// _pxKeys points to the last key in the sub-list.  We infer the size of the
-// keys in the list from the type of _pxKeys.
-// _xKeys is the key we are searching for, aka the search key.  It must be
-// of a type that can be compared to *(_pxKeys).  No masking is done.
-// _nPos is the number of keys before *(_pxKeys) in the whole list that
-// contains the sub-list.
-// _nPos becomes the number of keys from the beginning of the whole list
-// at which _xKey exists.
-// If _xKey does not exist in the list, then _nPos becomes the one's
-// complement of the first key in the whole list that is bigger than _xKey.
+// Simple backward linear search of a sub-list.  It assumes the list contains
+// a key that is less than or equal to _xKey.
+// The search starts at _pxKeys[_nPos].
+// _pxKeys is the beginning of the whole list.
 #define SSEARCHB(_pxKeys, _xKey, _nPos) \
 { \
-    int ii = 1; while ((_pxKeys)[--ii] < (_xKey)) { } (_nPos) += ii; \
-    if ((_pxKeys)[ii] > (_xKey)) { (_nPos) ^= -1; } \
+    while ((_pxKeys)[_nPos] > (_xKey)) { --(_nPos); } \
+    if ((_pxKeys)[_nPos] < (_xKey)) { ++(_nPos); (_nPos) ^= -1; } \
 }
 
 #if defined(LIST_END_MARKERS)
@@ -107,9 +92,11 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 #define TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 #define TEST_AND_KEY_IS_ZERO(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 
-#define PAST_ENDF(_nPopCnt, _nPos)  ((_nPos) >= (_nPopCnt))
+#define PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos) \
+    (&(_pxKeys0)[_nPos] >= &(_pxKeys)[_nPopCnt])
 
-#define PAST_ENDB(_nPos)  ((_nPos) < 0)
+#define PAST_ENDB(_pxKeys, _pxKeys0, _nPos) \
+    (&(_pxKeys0)[_nPos] < (_pxKeys))
 
   #elif defined(TEST_SPLIT_EQ_KEY)
 
@@ -118,8 +105,8 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 #define TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 #define TEST_AND_KEY_IS_ZERO(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 
-#define PAST_ENDF(_nPopCnt, _nPos)  0
-#define PAST_ENDB(_nPos)  0
+#define PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos)  0
+#define PAST_ENDB(_pxKeys, _pxKeys0, _nPos)  0
 
   #else // TEST_KEY_IS_MAX_MIN
 
@@ -131,32 +118,33 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 
 #define TEST_AND_KEY_IS_ZERO(_x_t, _pxKeys, _nPopCnt, _xKey)  ((_xKey) == 0)
 
-#define PAST_ENDF(_nPopCnt, _nPos)  0
-#define PAST_ENDB(_nPos)  0
+#define PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos)  0
+#define PAST_ENDB(_pxKeys, _pxKeys0, _nPos)  0
 
   #endif // ...
 
-// SEARCHF is the same as SSEARCHF except it has an _nPopCnt parameter that
-// is used to check to see if we've gone past the end of the list after
-// we've reached a key that is greater than or equal to the search key.
-// _nPopCnt is the the number of keys in the sub-list.  But we're going
-// to change that.
-// There is no reason to use this method to search a sub-list that ends
-// before the end of the whole list.
-#define SEARCHF(_pxKeys, _nPopCnt, _xKey, _nPos) \
+// Simple linear forward search of a sub-list.  It assumes key past the
+// end of the list is the maximum key so there is no need to do the bounds
+// check until we've found a key that is greater than or equal to _xKey.
+#define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
-    int ii = -1; while ((_pxKeys)[++ii] < (_xKey)) { } \
-    (_nPos) += ii; \
-    if (((_pxKeys)[ii] > (_xKey)) || PAST_ENDF(_nPopCnt, ii)) { \
+    assert((_nPos) == (_pxKeys) - (_pxKeys0)); \
+    while ((_pxKeys0)[_nPos] < (_xKey)) { ++(_nPos); } \
+    if (((_pxKeys0)[_nPos] > (_xKey)) \
+        || PAST_ENDF(_pxKeys, _nPopCnt, _pxKeys0, _nPos)) \
+    { \
         (_nPos) ^= -1; \
     } \
 }
 
-#define SEARCHB(_pxKeys, _nPopCnt, _xKey, _nPos) \
+#define SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
-    int ii = (_nPopCnt); while ((_xKey) < (_pxKeys)[--ii]) { } \
-    (_nPos) += (_nPopCnt) - 1 - ii; \
-    if (((_xKey) > (_pxKeys)[ii]) || PAST_ENDB(ii)) { \
+    assert((_nPos) == (_pxKeys) - (_pxKeys0)); \
+    (_nPos) += (_nPopCnt) - 1; \
+    while ((_xKey) < (_pxKeys0)[_nPos]) { --(_nPos); } \
+    if (((_xKey) > (_pxKeys0)[_nPos]) \
+        || PAST_ENDB(_pxKeys, _pxKeys0, _nPos)) \
+    { \
         ++(_nPos); (_nPos) ^= -1; \
     } \
 }
@@ -169,51 +157,52 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 #define TEST_AND_KEY_IS_ZERO(_x_t, _pxKeys, _nPopCnt, _xKey)  0
 
 // Linear search of list (for any size key and with end check).
-#define SEARCHFX(_pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+//#define TRY_MEMCHR
+#define SEARCHFX(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
     (_nPos) = (_pxKeys) - (_pxKeys0); \
     if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
         (_nPos) = ~((_nPos) + (_nPopCnt)); \
     } else { \
-        SSEARCHF((_pxKeys), (_xKey), (_nPos)); \
+        SSEARCHF((_pxKeys0), (_xKey), (_nPos)); \
     } \
 }
-
-//#define TRY_MEMCHR
 #if defined(TRY_MEMCHR)
-#define SEARCHF(_pxKeys, _nPopCnt, _xKey, _nPos) \
+#define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
-    if (sizeof(_xKey) == sizeof(unsigned char)) { \
-        unsigned char *px; \
-        px = (unsigned char *)memchr((_pxKeys), (_xKey), (_nPopCnt)); \
-        (_nPos) = (px == NULL) ? -1 : (_nPos) + (px - (_pxKeys)); \
-    } else if (sizeof(_xKey) == sizeof(wchar_t)) { \
-        wchar_t *px; \
-        px = (wchar_t *)wmemchr((wchar_t *)(_pxKeys), (_xKey), (_nPopCnt)); \
-        (_nPos) = (px == NULL) ? -1 : (_nPos) + (px - (_pxKeys)); \
+    assert((_nPos) == (_pxKeys) - (_pxKeys0)); \
+    if (sizeof(_x_t) == sizeof(unsigned char)) { \
+        _x_t *px; \
+        px = (_x_t *)memchr((_pxKeys), (_xKey), (_nPopCnt)); \
+        (_nPos) = (px == NULL) ? -1 : px - (_pxKeys0); \
+    } else if (sizeof(_x_t) == sizeof(wchar_t)) { \
+        _x_t *px; \
+        px = (_x_t *)wmemchr((wchar_t *)(_pxKeys), (_xKey), (_nPopCnt)); \
+        (_nPos) = (px == NULL) ? -1 : px - (_pxKeys0); \
     } else { \
-        SEARCHFX(_pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos); \
+        SEARCHFX(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos); \
     } \
 }
 #else // defined(TRY_MEMCHR)
-#define SEARCHF(_pxKeys, _nPopCnt, _xKey, _nPos) \
+#define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
+    assert((_nPos) == (_pxKeys) - (_pxKeys0)); \
     if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
         (_nPos) = ~((_nPos) + (_nPopCnt)); \
     } else { \
-        SSEARCHF((_pxKeys), (_xKey), (_nPos)); \
+        SSEARCHF((_pxKeys0), (_xKey), (_nPos)); \
     } \
 }
 #endif // defined(TRY_MEMCHR)
 
 // Backward linear search of list (for any size key and with end check).
-#define SEARCHB(_pxKeys, _nPopCnt, _xKey, _nPos) \
+#define SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
+    assert((_nPos) == (_pxKeys) - (_pxKeys0)); \
     if ((_xKey) < *(_pxKeys)) { \
         (_nPos) ^= -1; \
     } else { \
-        (_nPos) += (_nPopCnt) - 1; \
-        SSEARCHB(((_pxKeys) - (_nPos)), (_xKey), (_nPos)); \
+        (_nPos) += (_nPopCnt) - 1; SSEARCHB((_pxKeys0), (_xKey), (_nPos)); \
     } \
 }
 
@@ -397,15 +386,20 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 #if defined(PSPLIT_HYBRID)
 
 // Linear parallel search of list (for any size key and with end check).
-#define PSEARCHF(_b_t, _x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _xKeys0, _nPos) \
+#define PSEARCHF(_b_t, _x_t, \
+                 _pxKeys, _nPopCnt, _xKey, _pxKeys0, _xKeys0, _nPos) \
 { \
-    SEARCHF(_pxKeys, _nPopCnt, _xKey, _nPos); \
+    assert((_nPos) == (_pxKeys) - (_pxKeys0)); \
+    SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos); \
 }
 
 // Backward linear search of list (for any size key and with end check).
 #define PSEARCHB(_b_t, _x_t, \
                  _pxKeys, _nPopCnt, _xKey, _pxKeys0, _xKeySplit, _nPos) \
-    SEARCHB(_pxKeys, _nPopCnt, _xKey, _nPos)
+{ \
+    assert((_nPos) == (_pxKeys) - (_pxKeys0)); \
+    SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+}
 
 #else // defined(PSPLIT_HYBRID)
 
@@ -413,6 +407,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 #define PSEARCHF(_b_t, _x_t, \
                  _pxKeys, _nPopCnt, _xKey, _pxKeys0, _xKeySplit, _nPos) \
 { \
+    (_nPos) = (_pxKeys) - (_pxKeys0); \
 /* Is it wise to check the end here ? */ \
 /* Or should we consider a search that checks if we're too far each time? */ \
     _x_t xKeyEnd = (_pxKeys)[(_nPopCnt) - 1]; \
@@ -420,8 +415,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     if (xKeyEnd < (_xKey)) { \
         (_nPos) = ~((_nPos) + (_nPopCnt)); \
     } else { \
-        _x_t *pxKeys0 = (_pxKeys) - (_nPos); /* Why is a new var needed ? */ \
-        PSSEARCHF(_b_t, pxKeys0, (_xKey), (_nPos), (_xKeySplit), xKeyEnd); \
+        PSSEARCHF(_b_t, (_pxKeys0), (_xKey), (_nPos), (_xKeySplit), xKeyEnd); \
 /*PSPLIT_SEARCH_RANGE(_xKey, _pxKeys, _nPopCnt, _xKeySplit, xKeyEnd, _nPos)*/ \
     } \
 }
@@ -481,7 +475,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
             { \
                 (_nPos) = ~(_nPopCnt); \
             } else { \
-                (_nPos) = nSplit + 1; \
+                (_nPos) = (int)nSplit + 1; \
                 PSEARCHF(_b_t, _x_t, &(_pxKeys)[nSplit + 1], \
                          (_nPopCnt) - nSplit - 1, \
                          (_xKey), (_pxKeys), xKeySplit, (_nPos)); \
@@ -489,6 +483,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
         } \
         else \
         { \
+            assert((_nPos) == 0); \
             PSEARCHB(_b_t, _x_t, (_pxKeys), \
                      nSplit + 1, (_xKey), (_pxKeys), xKeySplit, (_nPos)); \
         } \
@@ -544,8 +539,9 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
         } \
         else \
         { \
-            SEARCHF(&(_pxKeys)[nSplit + 1], (_nPopCnt) - nSplit - 1, \
-                    (_xKey), (_nPos)); \
+            (_nPos) = nSplit + 1; \
+            SEARCHF(_x_t, &(_pxKeys)[nSplit + 1], (_nPopCnt) - nSplit - 1, \
+                    (_xKey), (_pxKeys), (_nPos)); \
         } \
     } \
     else /* here if (_xKey) < (_pxKeys)[nSplit] (and possibly if equal) */ \
@@ -556,7 +552,9 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
         } \
         else \
         { \
-            SEARCHB((_pxKeys), nSplit + 1, (_xKey), (_nPos)); \
+            assert((_nPos) == 0); \
+            SEARCHB(_x_t, (_pxKeys), nSplit + 1, \
+                    (_xKey), (_pxKeys), (_nPos)); \
         } \
     } \
 }
@@ -662,8 +660,8 @@ m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 #endif // ! defined(HAS_KEY_LOAD_EACH_WORD)
 #if defined(HAS_KEY_128_NATIVE)
 #if defined(HAS_KEY_LOAD_EACH_WORD)
-    __m128i xBucket = _mm_set_epi64(((__m64 *)pxBucket)[0],
-                                    ((__m64 *)pxBucket)[1]);
+    __m128i xBucket = _mm_set_epi64(((_m64 *)pxBucket)[0],
+                                    ((_m64 *)pxBucket)[1]);
 #endif // defined(HAS_KEY_LOAD_EACH_WORD)
     __m128i xKeys = _mm_set1_epi64((__m64)wKeys);
     __m128i xXor = xKeys ^ xBucket;
@@ -759,9 +757,9 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
         PSPLIT_SEARCH(uint8_t, nBL, pcKeys, nPopCnt, cKey, nPos);
     }
 #elif defined(BACKWARD_SEARCH_8)
-    SEARCHB(pcKeys, nPopCnt, cKey, nPos); (void)nBL;
+    SEARCHB(uint8_t, pcKeys, nPopCnt, cKey, pcKeys, nPos); (void)nBL;
 #else // here for forward linear search with end check
-    SEARCHF(pcKeys, nPopCnt, cKey, nPos); (void)nBL;
+    SEARCHF(uint8_t, pcKeys, nPopCnt, cKey, pcKeys, nPos); (void)nBL;
 #endif // ...
     return nPos;
 }
@@ -804,9 +802,9 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
         PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     }
 #elif defined(BACKWARD_SEARCH_16)
-    SEARCHB(psKeys, nPopCnt, sKey, nPos); (void)nBL;
+    SEARCHB(uint16_t, psKeys, nPopCnt, sKey, psKeys, nPos); (void)nBL;
 #else // here for forward linear search with end check
-    SEARCHF(psKeys, nPopCnt, sKey, nPos); (void)nBL;
+    SEARCHF(uint16_t, psKeys, nPopCnt, sKey, psKeys, nPos); (void)nBL;
 #endif // ...
     return nPos;
 }
@@ -852,9 +850,9 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
         PSPLIT_SEARCH(uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
     }
 #elif defined(BACKWARD_SEARCH_32)
-    SEARCHB(piKeys, nPopCnt, iKey, nPos); (void)nBL;
+    SEARCHB(uint32_t, piKeys, nPopCnt, iKey, piKeys, nPos); (void)nBL;
 #else // here for forward linear search with end check
-    SEARCHF(piKeys, nPopCnt, iKey, nPos); (void)nBL;
+    SEARCHF(uint32_t, piKeys, nPopCnt, iKey, piKeys, nPos); (void)nBL;
 #endif // ...
     return nPos;
 }
@@ -941,13 +939,15 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
             = ((wKey & MSK(nBL)) >> 8) * nPopCnt + nPopCnt / 2 >> (nBL - 8);
         if (pwKeys[nSplit] < wKey) {
             if (nSplit == nPopCnt - 1) { return ~nPopCnt; }
-            SEARCHF(&pwKeys[nSplit + 1], nPopCnt - nSplit - 1, wKey, nPos);
+            SEARCHF(Word_t, &pwKeys[nSplit + 1], nPopCnt - nSplit - 1,
+                       wKey, pwKeys, nPos);
         } else { // here if wKey <= pwKeys[nSplit]
-            SEARCHB(pwKeys, nSplit + 1, wKey, nPos);
+            SEARCHB(Word_t, pwKeys, nSplit + 1, wKey, pwKeys, nPos);
         }
     }
 #else // defined(PSPLIT_SEARCH_WORD)
     Word_t *pwKeysOrig = pwKeys;
+    (void)nPos;
   #if defined(BINARY_SEARCH_WORD)
   // BINARY_SEARCH narrows the scope of the linear search that follows.
     unsigned nSplit;
@@ -974,9 +974,9 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
   #endif // defined(BINARY_SEARCH_WORD)
     nPos = pwKeys - pwKeysOrig;
   #if defined(BACKWARD_SEARCH_WORD)
-    SEARCHB(pwKeys, nPopCnt, wKey, nPos);
+    SEARCHB(Word_t, pwKeys, nPopCnt, wKey, pwKeysOrig, nPos);
   #else // defined(BACKWARD_SEARCH_WORD)
-    SEARCHF(pwKeys, nPopCnt, wKey, nPos);
+    SEARCHF(Word_t, pwKeys, nPopCnt, wKey, pwKeysOrig, nPos);
   #endif // defined(BACKWARD_SEARCH_WORD)
 #endif // defined(PSPLIT_SEARCH_WORD)
     return nPos;
