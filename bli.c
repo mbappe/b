@@ -1,5 +1,4 @@
-
-// @(#) $Id: bli.c,v 1.371 2014/11/18 22:56:29 mike Exp mike $
+// @(#) $Id: bli.c,v 1.372 2014/11/18 23:45:43 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -401,10 +400,8 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 #if defined(PSPLIT_HYBRID)
 
 // Linear parallel search of list (for any size key and with end check).
-#define PSEARCHF(_b_t, _x_t, \
-                 _pxKeys, _nPopCnt, _xKey, _pxKeys0, _xKeys0, _nPos) \
+#define PSEARCHF(_b_t, _x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _xKeys0, _nPos) \
 { \
-    (_nPos) = (_pxKeys) - (_pxKeys0); \
     SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos); \
 }
 
@@ -419,7 +416,6 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 #define PSEARCHF(_b_t, _x_t, \
                  _pxKeys, _nPopCnt, _xKey, _pxKeys0, _xKeySplit, _nPos) \
 { \
-    (_nPos) = (_pxKeys) - (_pxKeys0); \
 /* Is it wise to check the end here ? */ \
 /* Or should we consider a search that checks if we're too far each time? */ \
     _x_t xKeyEnd = (_pxKeys)[(_nPopCnt) - 1]; \
@@ -427,7 +423,8 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     if (xKeyEnd < (_xKey)) { \
         (_nPos) = ~((_nPos) + (_nPopCnt)); \
     } else { \
-        PSSEARCHF(_b_t, (_pxKeys0), (_xKey), (_nPos), (_xKeySplit), xKeyEnd); \
+        _x_t *pxKeys0 = (_pxKeys) - (_nPos); /* Why is a new var needed ? */ \
+        PSSEARCHF(_b_t, pxKeys0, (_xKey), (_nPos), (_xKeySplit), xKeyEnd); \
 /*PSPLIT_SEARCH_RANGE(_xKey, _pxKeys, _nPopCnt, _xKeySplit, xKeyEnd, _nPos)*/ \
     } \
 }
@@ -487,6 +484,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
             { \
                 (_nPos) = ~(_nPopCnt); \
             } else { \
+                (_nPos) = nSplit + 1; \
                 PSEARCHF(_b_t, _x_t, &(_pxKeys)[nSplit + 1], \
                          (_nPopCnt) - nSplit - 1, \
                          (_xKey), (_pxKeys), xKeySplit, (_nPos)); \
@@ -668,8 +666,8 @@ m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 #endif // ! defined(HAS_KEY_LOAD_EACH_WORD)
 #if defined(HAS_KEY_128_NATIVE)
 #if defined(HAS_KEY_LOAD_EACH_WORD)
-    __m128i xBucket = _mm_set_epi64(((_m64 *)pxBucket)[0],
-                                    ((_m64 *)pxBucket)[1]);
+    __m128i xBucket = _mm_set_epi64(((__m64 *)pxBucket)[0],
+                                    ((__m64 *)pxBucket)[1]);
 #endif // defined(HAS_KEY_LOAD_EACH_WORD)
     __m128i xKeys = _mm_set1_epi64((__m64)wKeys);
     __m128i xXor = xKeys ^ xBucket;
