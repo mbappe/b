@@ -1,4 +1,4 @@
-// @(#) $Id: bli.c,v 1.373 2014/11/19 00:34:47 mike Exp mike $
+// @(#) $Id: bli.c,v 1.374 2014/11/19 00:50:32 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -145,7 +145,8 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 // before the end of the whole list.
 #define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    int ii = -1; while ((_pxKeys)[++ii] < (_xKey)) { } (_nPos) += ii; \
+    int ii = -1; while ((_pxKeys)[++ii] < (_xKey)) { } \
+    (_nPos) += ii; \
     if (((_pxKeys)[ii] > (_xKey)) || PAST_ENDF(_nPopCnt, ii)) { \
         (_nPos) ^= -1; \
     } \
@@ -153,9 +154,8 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 
 #define SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
 { \
-    (_nPos) = (_pxKeys) - (_pxKeys0); \
-    (_nPos) += (_nPopCnt) - 1; \
-    int ii = _nPopCnt; while ((_xKey) < (_pxKeys)[--ii]) { } (_nPos) += ii; \
+    int ii = (_nPopCnt); while ((_xKey) < (_pxKeys)[--ii]) { } \
+    (_nPos) += (_nPopCnt) - 1 - ii; \
     if (((_xKey) > (_pxKeys)[ii]) || PAST_ENDB(ii)) { \
         ++(_nPos); (_nPos) ^= -1; \
     } \
@@ -213,7 +213,8 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
     if ((_xKey) < *(_pxKeys)) { \
         (_nPos) ^= -1; \
     } else { \
-        (_nPos) += (_nPopCnt) - 1; SSEARCHB((_pxKeys0), (_xKey), (_nPos)); \
+        _x_t pxKeys0 = (_pxKeys) - (nPos); \
+        (_nPos) += (_nPopCnt) - 1; SSEARCHB(pxKeys0, (_xKey), (_nPos)); \
     } \
 }
 
