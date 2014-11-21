@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.378 2014/11/19 03:09:37 mike Exp mike $
+// @(#) $Id: bli.c,v 1.379 2014/11/20 22:40:42 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -471,7 +471,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 // Split search with a parallel search of the bucket at the split point.
 // A bucket is a Word_t or an __m128i.  Or whatever else we decide to pass
 // into _b_t in the future.
-// nSplit is a word number.
+// nSplit is a bucket number.
 // We need a function we can call iteratively.  The position returned
 // ultimately must be relative to the original beginning of the list.
 // What parameters must we pass?
@@ -492,17 +492,17 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     unsigned nSplitP = nSplit * sizeof(_x_t) >> LOG(sizeof(_b_t)); \
     assert(((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
     if (BUCKET_HAS_KEY(&px[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
-        (_nPos) += nSplitP * sizeof(_b_t) / sizeof(_x_t); \
+        (_nPos) = 0; /* key exists, but we don't know the exact position */ \
     } \
     else \
     { \
-        _x_t xKeySplit = (_pxKeys)[nSplit]; \
+        _x_t xKeySplit = (_pxKeys)[nSplitP * sizeof(_b_t) / sizeof(_x_t)]; \
 /* now we know the value of a key in the middle */ \
-        if (xKeySplit < (_xKey)) \
+        if ((_xKey) > xKeySplit) \
         { \
-            if (nSplitP == ((_nPopCnt) - 1) * sizeof(_x_t) / sizeof(_b_t)) \
-            { \
-                (_nPos) = ~(_nPopCnt); \
+            if (nSplitP == ((_nPopCnt) - 1) * sizeof(_x_t) / sizeof(_b_t)) { \
+                /* we searched the last bucket and the key is not there */ \
+                (_nPos) = -1; /* we don't know where to insert */ \
             } else { \
                 (_nPos) = (int)nSplit + 1; \
                 PSEARCHF(_b_t, _x_t, &(_pxKeys)[nSplit + 1], \
