@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.385 2014/11/22 12:25:34 mike Exp mike $
+// @(#) $Id: bli.c,v 1.386 2014/11/22 12:31:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -137,11 +137,11 @@ typedef Word_t Bucket_t;
 // check until we've found a key that is greater than or equal to _xKey.
 // _nPopCnt is the number of keys in the whole list minus _nPos.
 // The search starts at _pxKeys0[_nPos].
-#define SEARCHF(_x_t, _pxKeys0, _nPopCnt, _xKey, _nPos) \
+#define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    while ((_pxKeys0)[_nPos] < (_xKey)) { ++(_nPos); } \
-    if (((_pxKeys0)[_nPos] > (_xKey)) \
-        || PAST_ENDF(((_pxKeys0) + (_nPos)), _nPopCnt, _pxKeys0, _nPos)) \
+    while ((_pxKeys)[_nPos] < (_xKey)) { ++(_nPos); } \
+    if (((_pxKeys)[_nPos] > (_xKey)) \
+        || PAST_ENDF(((_pxKeys) + (_nPos)), _nPopCnt, _pxKeys, _nPos)) \
     { \
         (_nPos) ^= -1; \
     } \
@@ -191,20 +191,20 @@ typedef Word_t Bucket_t;
 // Backward linear search of sub-list (for any size key and with end check).
 // _nPopCnt is the number of keys in the whole list minus _nPos.
 // The search starts at _pxKeys0[_nPos].
-#define SEARCHF(_x_t, _pxKeys0, _nPopCnt, _xKey, _nPos) \
+#define SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     if (sizeof(_x_t) == sizeof(unsigned char)) { \
         _x_t *px; \
-        px = (_x_t *)memchr(((_pxKeys0) + (_nPos)), (_xKey), (_nPopCnt)); \
-        (_nPos) = (px == NULL) ? -1 : px - (_pxKeys0); \
+        px = (_x_t *)memchr(((_pxKeys) + (_nPos)), (_xKey), (_nPopCnt)); \
+        (_nPos) = (px == NULL) ? -1 : px - (_pxKeys); \
     } else if (sizeof(_x_t) == sizeof(wchar_t)) { \
         _x_t *px; \
-        px = (_x_t *)wmemchr((wchar_t *)((_pxKeys0) + (_nPos)), \
+        px = (_x_t *)wmemchr((wchar_t *)((_pxKeys) + (_nPos)), \
                                          (_xKey), (_nPopCnt)); \
-        (_nPos) = (px == NULL) ? -1 : px - (_pxKeys0); \
+        (_nPos) = (px == NULL) ? -1 : px - (_pxKeys); \
     } else { \
-        SEARCHFX(_x_t, ((_pxKeys0) + (_nPos)), \
-                 _nPopCnt, _xKey, _pxKeys0, _nPos); \
+        SEARCHFX(_x_t, ((_pxKeys) + (_nPos)), \
+                 _nPopCnt, _xKey, _pxKeys, _nPos); \
     } \
 }
 
