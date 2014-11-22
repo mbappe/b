@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.388 2014/11/22 12:35:32 mike Exp mike $
+// @(#) $Id: bli.c,v 1.389 2014/11/22 12:37:51 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -83,15 +83,15 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
     if ((_pxKeys)[_nPos] < (_xKey)) { ++(_nPos); (_nPos) ^= -1; } \
 }
 
-#if defined(LIST_END_MARKERS)
-
-  #if defined(PSPLIT_PARALLEL)
-      #if defined(HAS_KEY_128)
+#if defined(PSPLIT_PARALLEL)
+  #if defined(HAS_KEY_128)
 typedef __m128i Bucket_t;
-      #else // defined(HAS_KEY_128)
+  #else // defined(HAS_KEY_128)
 typedef Word_t Bucket_t;
-      #endif // defined(HAS_KEY_128)
-  #endif // defined(PSPLIT_PARALLEL)
+  #endif // defined(HAS_KEY_128)
+#endif // defined(PSPLIT_PARALLEL)
+
+#if defined(LIST_END_MARKERS)
 
   #if defined(TEST_PAST_END)
 
@@ -495,6 +495,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
                 /* we searched the last bucket and the key is not there */ \
                 (_nPos) = -1; /* we don't know where to insert */ \
             } else { \
+                /* search the tail of the list */ \
                 /* ++nSplitP; */ \
                 (_nPos) = (int)nSplit + sizeof(_b_t) / sizeof(_x_t); \
                 PSEARCHF(_b_t, _x_t, (_pxKeys), \
@@ -503,6 +504,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
         } \
         else \
         { \
+            /* search the head of the list */ \
             assert((_nPos) == 0); \
             PSEARCHB(_b_t, _x_t, (_pxKeys), /* nPopCnt */ nSplit, \
                      (_xKey), xKeySplit, (_nPos)); \
@@ -512,6 +514,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
                                   ((Word_t)&(_pxKeys)[_nPos] \
                                       & ~MSK(LOG(sizeof(_b_t)))), \
                               (_xKey), sizeof(_x_t) * 8)); \
+        /* everything below is just assertions */ \
         if ((_nPos) < 0) { \
             /* assert(~(_nPos) <= (int)(_nPopCnt)); not true */ \
             assert((~(_nPos) == (int)(_nPopCnt)) \
@@ -527,6 +530,46 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
             } \
         } \
     } \
+}
+
+static int
+PSplitSearchGuts16(int nBL,
+                   uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
+{
+    unsigned nSplit; SPLIT(nPopCnt, nBL, sKey, nSplit);
+    unsigned nSplitP = nSplit * sizeof(sKey) >> LOG(sizeof(Bucket_t));
+    nSplit = nSplitP * sizeof(Bucket_t) / sizeof(sKey);
+    if (BUCKET_HAS_KEY((Bucket_t *)&psKeys[nSplit], sKey, sizeof(sKey) * 8))
+    {
+        nPos = 0; // key exists, but we don't know the exact position
+    }
+    else
+    {
+        uint16_t sKeySplit = psKeys[nSplit];
+// now we know the value of a key in the middle
+        if (sKey > sKeySplit)
+        {
+            if (nSplitP == (nPopCnt - 1) * sizeof(sKey) / sizeof(Bucket_t)) {
+                // we searched the last bucket and the key is not there
+                nPos = -1; // we don't know where to insert
+            } else {
+                // search the tail of the list
+                // ++nSplitP;
+                nPos = (int)nSplit + sizeof(Bucket_t) / sizeof(sKey);
+                PSEARCHF(Bucket_t, uint16_t, psKeys,
+                         nPopCnt - nPos, sKey, sKeySplit, nPos);
+            }
+        }
+        else
+        {
+            // search the head of the list
+            assert(nPos == 0);
+            PSEARCHB(Bucket_t, uint16_t, psKeys, /* nPopCnt */ nSplit,
+                     sKey, sKeySplit, nPos);
+        }
+    }
+
+    return nPos;
 }
 
 #if defined(HAS_KEY_128)
@@ -814,11 +857,13 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 #if defined(PSPLIT_SEARCH_16)
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 16) {
-        PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
+        nPos = PSplitSearchGuts16(nBL, psKeys, nPopCnt, sKey, nPos);
+        //PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     } else
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
-        PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
+        nPos = PSplitSearchGuts16(nBL, psKeys, nPopCnt, sKey, nPos);
+        //PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     }
 #elif defined(BACKWARD_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;
