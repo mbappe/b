@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.386 2014/11/22 12:31:14 mike Exp mike $
+// @(#) $Id: bli.c,v 1.387 2014/11/22 12:32:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -153,13 +153,11 @@ typedef Word_t Bucket_t;
 // equal to _xKey.
 // _nPopCnt is the number of keys in the whole list minus _nPos.
 // The search starts at _pxKeys0[_nPos + _nPopCnt - 1].
-#define SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+#define SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    assert((_nPos) == (_pxKeys) - (_pxKeys0)); \
-    (_nPos) += (_nPopCnt) - 1; \
-    while ((_xKey) < (_pxKeys0)[_nPos]) { --(_nPos); } \
-    if (((_xKey) > (_pxKeys0)[_nPos]) \
-        || PAST_ENDB(_pxKeys, _pxKeys0, _nPos)) \
+    while ((_xKey) < (_pxKeys)[_nPos]) { --(_nPos); } \
+    if (((_xKey) > (_pxKeys)[_nPos]) \
+        || PAST_ENDB(((_pxKeys) + (_nPos)), _pxKeys, _nPos)) \
     { \
         ++(_nPos); (_nPos) ^= -1; \
     } \
@@ -224,13 +222,12 @@ typedef Word_t Bucket_t;
 // Backward linear search of sub-list (for any size key and with end check).
 // _nPopCnt is the number of keys in the whole list minus _nPos.
 // The search starts at _pxKeys0[_nPos + _nPopCnt - 1].
-#define SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+#define SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    assert((_nPos) == (_pxKeys) - (_pxKeys0)); \
-    if ((_xKey) < *(_pxKeys)) { \
+    if ((_xKey) < (_pxKeys)[_nPos]) { \
         (_nPos) ^= -1; \
     } else { \
-        (_nPos) += (_nPopCnt) - 1; SSEARCHB((_pxKeys0), (_xKey), (_nPos)); \
+        (_nPos) += (_nPopCnt) - 1; SSEARCHB((_pxKeys), (_xKey), (_nPos)); \
     } \
 }
 
@@ -424,7 +421,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 #define PSEARCHB(_b_t, _x_t, \
                  _pxKeys, _nPopCnt, _xKey, _xKeySplit, _nPos) \
 { \
-    SEARCHB(_x_t, ((_pxKeys) + (_nPos)), _nPopCnt, _xKey, _pxKeys, _nPos) \
+    SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos) \
 }
 
 #else // defined(PSPLIT_HYBRID)
@@ -578,8 +575,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
         else \
         { \
             assert((_nPos) == 0); \
-            SEARCHB(_x_t, (_pxKeys), nSplit + 1, \
-                    (_xKey), (_pxKeys), (_nPos)); \
+            SEARCHB(_x_t, (_pxKeys), nSplit + 1, (_xKey), (_nPos)); \
         } \
     } \
 }
@@ -782,7 +778,7 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
         PSPLIT_SEARCH(uint8_t, nBL, pcKeys, nPopCnt, cKey, nPos);
     }
 #elif defined(BACKWARD_SEARCH_8)
-    SEARCHB(uint8_t, pcKeys, nPopCnt, cKey, pcKeys, nPos); (void)nBL;
+    SEARCHB(uint8_t, pcKeys, nPopCnt, cKey, nPos); (void)nBL;
 #else // here for forward linear search with end check
     SEARCHF(uint8_t, pcKeys, nPopCnt, cKey, nPos); (void)nBL;
 #endif // ...
@@ -827,7 +823,7 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
         PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     }
 #elif defined(BACKWARD_SEARCH_16)
-    SEARCHB(uint16_t, psKeys, nPopCnt, sKey, psKeys, nPos); (void)nBL;
+    SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;
 #else // here for forward linear search with end check
     SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;
 #endif // ...
@@ -875,7 +871,7 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
         PSPLIT_SEARCH(uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
     }
 #elif defined(BACKWARD_SEARCH_32)
-    SEARCHB(uint32_t, piKeys, nPopCnt, iKey, piKeys, nPos); (void)nBL;
+    SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
 #else // here for forward linear search with end check
     SEARCHF(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
 #endif // ...
@@ -967,7 +963,7 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
             SEARCHF(Word_t, pwKeys, nPopCnt - nSplit - 1,
                        wKey, nPos);
         } else { // here if wKey <= pwKeys[nSplit]
-            SEARCHB(Word_t, pwKeys, nSplit + 1, wKey, pwKeys, nPos);
+            SEARCHB(Word_t, pwKeys, nSplit + 1, wKey, nPos);
         }
     }
 #else // defined(PSPLIT_SEARCH_WORD)
@@ -999,7 +995,7 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
   #endif // defined(BINARY_SEARCH_WORD)
     nPos = pwKeys - pwKeysOrig;
   #if defined(BACKWARD_SEARCH_WORD)
-    SEARCHB(Word_t, pwKeys, nPopCnt, wKey, pwKeysOrig, nPos);
+    SEARCHB(Word_t, pwKeysOrig, nPopCnt, wKey, nPos);
   #else // defined(BACKWARD_SEARCH_WORD)
     SEARCHF(Word_t, pwKeysOrig, nPopCnt, wKey, nPos);
   #endif // defined(BACKWARD_SEARCH_WORD)
