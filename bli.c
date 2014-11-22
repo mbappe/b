@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.393 2014/11/22 15:28:13 mike Exp $
+// @(#) $Id: bli.c,v 1.395 2014/11/22 19:50:43 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -540,6 +540,7 @@ PSplitSearch16(int nBL,
     assert(nPos >= 0);
     int nSplit; SPLIT(nPopCnt, nBL, sKey, nSplit);
 // nSplit is a portion of nPopCnt and nPopCnt is relative to nPos
+    nSplit += nPos; // make relative to psKeys
     assert(nSplit >= nPos);
     // bucket number of split
     unsigned nSplitP = nSplit * sizeof(sKey) >> LOG(sizeof(Bucket_t));
