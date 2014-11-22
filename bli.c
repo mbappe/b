@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.392 2014/11/22 14:30:04 mike Exp mike $
+// @(#) $Id: bli.c,v 1.393 2014/11/22 15:28:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -539,44 +539,63 @@ PSplitSearch16(int nBL,
     assert(nPopCnt > 0);
     assert(nPos >= 0);
     int nSplit; SPLIT(nPopCnt, nBL, sKey, nSplit);
+// nSplit is a portion of nPopCnt and nPopCnt is relative to nPos
+    nSplit += nPos; // make relative to psKeys
     assert(nSplit >= nPos);
-    unsigned nSplitP = nSplit * sizeof(sKey) >> LOG(sizeof(Bucket_t));
-    nSplit = nSplitP * sizeof(Bucket_t) / sizeof(sKey);
+    // bucket number of split
+    int nSplitP = nSplit * sizeof(sKey) >> LOG(sizeof(Bucket_t));
+    nSplit = nSplitP * sizeof(Bucket_t) / sizeof(sKey); // first key in bucket
     assert(nSplit >= nPos);
     assert(nSplit < nPos + nPopCnt);
 
     if (BUCKET_HAS_KEY((Bucket_t *)&psKeys[nSplit], sKey, sizeof(sKey) * 8)) {
+//printf("0\n");
         return 0; // key exists, but we don't know the exact position
     }
+
+#if 0
+    printf("\nsKey 0x%04x psKeys %p\n", sKey, (void *)psKeys);
+    printf("nPos %d nPopCnt %d nSplit %d nSplitP %d\n", nPos, nPopCnt, nSplit, nSplitP);
+    HexDump("", (Word_t *)psKeys,
+            ((nPos + nPopCnt) * sizeof(uint16_t) + sizeof(Word_t) - 1)
+                        / sizeof(Word_t));
+#endif
 
     uint16_t sKeySplit = psKeys[nSplit];
 // now we know the value of a key in the middle
     if (sKey > sKeySplit)
     {
-        if (nSplitP == (nPopCnt - 1) * sizeof(sKey) / sizeof(Bucket_t)) {
+        int nSplitPLast
+            = ((nPos + nPopCnt) * sizeof(sKey) + sizeof(Bucket_t) - 1) / sizeof(Bucket_t);
+        --nSplitPLast;
+        //printf("nSplitPLast %d\n", nSplitPLast);
+        if (nSplitP == nSplitPLast) {
             // we searched the last bucket and the key is not there
+//printf("-1\n");
             return -1; // we don't know where to insert
         }
-
-        // search the tail of the list
-        // ++nSplitP;
+        nPopCnt += nPos; // whole pop
         nPos = (int)nSplit + sizeof(Bucket_t) / sizeof(sKey);
-        PSEARCHF(Bucket_t, uint16_t, psKeys,
-                 nPopCnt - nPos, sKey, sKeySplit, nPos);
+        nPos = PSplitSearch16(nBL, psKeys, nPopCnt - nPos, sKey, nPos);
+//printf("nPos A %d\n", nPos);
         return nPos;
     }
 
-    if (nSplit == 0) { /*printf("(nSplit == 0) return -1;\n");*/ return -1; }
+    if (nSplit == 0) {
+//printf("-1\n");
+/*printf("(nSplit == 0) return -1;\n");*/ return -1; }
 #if 0
     printf("\nsKey 0x%04x psKeys %p\n", sKey, (void *)psKeys);
     printf("nPos %d nPopCnt %d nSplit %d\n", nPos, nPopCnt, nSplit);
     HexDump("", (Word_t *)psKeys,
-            nPos + (nPopCnt * sizeof(uint16_t) + sizeof(Word_t) - 1)
+            ((nPos + nPopCnt) * sizeof(uint16_t) + sizeof(Word_t) - 1)
                         / sizeof(Word_t));
 #endif
 
     assert(nPos == 0);
-    return PSplitSearch16(nBL, psKeys, nSplit, sKey, nPos);
+    nPos = PSplitSearch16(nBL, psKeys, nSplit, sKey, nPos);
+//printf("nPos %d\n", nPos);
+    return nPos;
 }
 
 #if defined(HAS_KEY_128)
