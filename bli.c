@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.380 2014/11/21 18:06:07 mike Exp mike $
+// @(#) $Id: bli.c,v 1.381 2014/11/22 11:29:52 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -416,10 +416,9 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 // Linear parallel search of list (for any size key and with end check).
 #define PSEARCHF(_b_t, _x_t, \
-                 _pxKeys, _nPopCnt, _xKey, _pxKeys0, _xKeys0, _nPos) \
+                 _pxKeys0, _nPopCnt, _xKey, _xKeys0, _nPos) \
 { \
-    assert((_nPos) == (_pxKeys) - (_pxKeys0)); \
-    SEARCHF(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos); \
+    SEARCHF(_x_t, ((_pxKeys0) + (_nPos)), _nPopCnt, _xKey, _pxKeys0, _nPos); \
 }
 
 // Backward linear search of list (for any size key and with end check).
@@ -434,13 +433,11 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 // Linear parallel search of list (for any size key and with end check).
 #define PSEARCHF(_b_t, _x_t, \
-                 _pxKeys, _nPopCnt, _xKey, _pxKeys0, _xKeySplit, _nPos) \
+                 _pxKeys0, _nPopCnt, _xKey, _xKeySplit, _nPos) \
 { \
-    assert((_nPos) == (_pxKeys) - (_pxKeys0)); \
-    (_nPos) = (_pxKeys) - (_pxKeys0); \
 /* Is it wise to check the end here ? */ \
 /* Or should we consider a search that checks if we're too far each time? */ \
-    _x_t xKeyEnd = (_pxKeys)[(_nPopCnt) - 1]; \
+    _x_t xKeyEnd = (_pxKeys0)[(_nPos) + (_nPopCnt) - 1]; \
 /* now we know the value of the key at the start and end of the range */ \
     if (xKeyEnd < (_xKey)) { \
         (_nPos) = ~((_nPos) + (_nPopCnt)); \
@@ -509,9 +506,8 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
             } else { \
                 /* ++nSplitP; */ \
                 (_nPos) = (int)nSplit + sizeof(_b_t) / sizeof(_x_t); \
-                PSEARCHF(_b_t, _x_t, &(_pxKeys)[_nPos], \
-                         (_nPopCnt) - (_nPos), \
-                         (_xKey), (_pxKeys), xKeySplit, (_nPos)); \
+                PSEARCHF(_b_t, _x_t, (_pxKeys), \
+                         (_nPopCnt) - (_nPos), (_xKey), xKeySplit, (_nPos)); \
             } \
         } \
         else \
