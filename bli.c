@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.379 2014/11/20 22:40:42 mike Exp mike $
+// @(#) $Id: bli.c,v 1.380 2014/11/21 18:06:07 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -436,6 +436,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 #define PSEARCHF(_b_t, _x_t, \
                  _pxKeys, _nPopCnt, _xKey, _pxKeys0, _xKeySplit, _nPos) \
 { \
+    assert((_nPos) == (_pxKeys) - (_pxKeys0)); \
     (_nPos) = (_pxKeys) - (_pxKeys0); \
 /* Is it wise to check the end here ? */ \
 /* Or should we consider a search that checks if we're too far each time? */ \
@@ -453,6 +454,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 #define PSEARCHB(_b_t, _x_t, \
                  _pxKeys, _nPopCnt, _xKey, _pxKeys0, _xKeySplit, _nPos) \
 { \
+    assert((_nPos) == (_pxKeys) - (_pxKeys0)); \
     (_nPos) = (_pxKeys) - (_pxKeys0); \
 /* Is it wise to check the start here ? */ \
 /* Or should we consider a search that checks if we're too far each time? */ \
@@ -496,7 +498,8 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     } \
     else \
     { \
-        _x_t xKeySplit = (_pxKeys)[nSplitP * sizeof(_b_t) / sizeof(_x_t)]; \
+        nSplit = nSplitP * sizeof(_b_t) / sizeof(_x_t); \
+        _x_t xKeySplit = (_pxKeys)[nSplit]; \
 /* now we know the value of a key in the middle */ \
         if ((_xKey) > xKeySplit) \
         { \
@@ -504,17 +507,18 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
                 /* we searched the last bucket and the key is not there */ \
                 (_nPos) = -1; /* we don't know where to insert */ \
             } else { \
-                (_nPos) = (int)nSplit + 1; \
-                PSEARCHF(_b_t, _x_t, &(_pxKeys)[nSplit + 1], \
-                         (_nPopCnt) - nSplit - 1, \
+                /* ++nSplitP; */ \
+                (_nPos) = (int)nSplit + sizeof(_b_t) / sizeof(_x_t); \
+                PSEARCHF(_b_t, _x_t, &(_pxKeys)[_nPos], \
+                         (_nPopCnt) - (_nPos), \
                          (_xKey), (_pxKeys), xKeySplit, (_nPos)); \
             } \
         } \
         else \
         { \
             assert((_nPos) == 0); \
-            PSEARCHB(_b_t, _x_t, (_pxKeys), \
-                     nSplit + 1, (_xKey), (_pxKeys), xKeySplit, (_nPos)); \
+            PSEARCHB(_b_t, _x_t, (_pxKeys), /* nPopCnt */ nSplit, \
+                     (_xKey), (_pxKeys), xKeySplit, (_nPos)); \
         } \
         assert(((_nPos) < 0) \
             || BUCKET_HAS_KEY((_b_t *) \
