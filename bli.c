@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.387 2014/11/22 12:32:08 mike Exp mike $
+// @(#) $Id: bli.c,v 1.388 2014/11/22 12:35:32 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -173,13 +173,12 @@ typedef Word_t Bucket_t;
 // Forward linear search of sub-list (for any size key and with end check).
 // _nPopCnt is the number of keys in the whole list minus _nPos.
 // The search starts at _pxKeys0[_nPos].
-#define SEARCHFX(_x_t, _pxKeys, _nPopCnt, _xKey, _pxKeys0, _nPos) \
+#define SEARCHFX(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    assert((_nPos) == (_pxKeys) - (_pxKeys0)); \
-    if ((_pxKeys)[(_nPopCnt) - 1] < (_xKey)) { \
+    if ((_pxKeys)[(_nPos) + (_nPopCnt) - 1] < (_xKey)) { \
         (_nPos) = ~((_nPos) + (_nPopCnt)); \
     } else { \
-        SSEARCHF((_pxKeys0), (_xKey), (_nPos)); \
+        SSEARCHF((_pxKeys), (_xKey), (_nPos)); \
     } \
 }
 
@@ -201,8 +200,7 @@ typedef Word_t Bucket_t;
                                          (_xKey), (_nPopCnt)); \
         (_nPos) = (px == NULL) ? -1 : px - (_pxKeys); \
     } else { \
-        SEARCHFX(_x_t, ((_pxKeys) + (_nPos)), \
-                 _nPopCnt, _xKey, _pxKeys, _nPos); \
+        SEARCHFX(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos); \
     } \
 }
 
