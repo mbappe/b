@@ -416,9 +416,9 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 // Linear parallel search of list (for any size key and with end check).
 #define PSEARCHF(_b_t, _x_t, \
-                 _pxKeys0, _nPopCnt, _xKey, _xKeys0, _nPos) \
+                 _pxKeys, _nPopCnt, _xKey, _xKeys0, _nPos) \
 { \
-    SEARCHF(_x_t, ((_pxKeys0) + (_nPos)), _nPopCnt, _xKey, _pxKeys0, _nPos); \
+    SEARCHF(_x_t, ((_pxKeys) + (_nPos)), _nPopCnt, _xKey, _pxKeys, _nPos); \
 }
 
 // Backward linear search of list (for any size key and with end check).
@@ -433,16 +433,16 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 // Linear parallel search of list (for any size key and with end check).
 #define PSEARCHF(_b_t, _x_t, \
-                 _pxKeys0, _nPopCnt, _xKey, _xKeySplit, _nPos) \
+                 _pxKeys, _nPopCnt, _xKey, _xKeySplit, _nPos) \
 { \
 /* Is it wise to check the end here ? */ \
 /* Or should we consider a search that checks if we're too far each time? */ \
-    _x_t xKeyEnd = (_pxKeys0)[(_nPos) + (_nPopCnt) - 1]; \
+    _x_t xKeyEnd = (_pxKeys)[(_nPos) + (_nPopCnt) - 1]; \
 /* now we know the value of the key at the start and end of the range */ \
     if (xKeyEnd < (_xKey)) { \
         (_nPos) = ~((_nPos) + (_nPopCnt)); \
     } else { \
-        PSSEARCHF(_b_t, (_pxKeys0), (_xKey), (_nPos), (_xKeySplit), xKeyEnd); \
+        PSSEARCHF(_b_t, (_pxKeys), (_xKey), (_nPos), (_xKeySplit), xKeyEnd); \
 /*PSPLIT_SEARCH_RANGE(_xKey, _pxKeys, _nPopCnt, _xKeySplit, xKeyEnd, _nPos)*/ \
     } \
 }
@@ -451,8 +451,6 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 #define PSEARCHB(_b_t, _x_t, \
                  _pxKeys, _nPopCnt, _xKey, _pxKeys0, _xKeySplit, _nPos) \
 { \
-    assert((_nPos) == (_pxKeys) - (_pxKeys0)); \
-    (_nPos) = (_pxKeys) - (_pxKeys0); \
 /* Is it wise to check the start here ? */ \
 /* Or should we consider a search that checks if we're too far each time? */ \
     _x_t xKey0 = *(_pxKeys); \
