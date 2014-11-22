@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.389 2014/11/22 12:37:51 mike Exp mike $
+// @(#) $Id: bli.c,v 1.390 2014/11/22 13:04:28 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -536,39 +536,36 @@ static int
 PSplitSearchGuts16(int nBL,
                    uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 {
+    assert(nPopCnt > 0);
+    assert(nPos >= 0);
     unsigned nSplit; SPLIT(nPopCnt, nBL, sKey, nSplit);
     unsigned nSplitP = nSplit * sizeof(sKey) >> LOG(sizeof(Bucket_t));
     nSplit = nSplitP * sizeof(Bucket_t) / sizeof(sKey);
-    if (BUCKET_HAS_KEY((Bucket_t *)&psKeys[nSplit], sKey, sizeof(sKey) * 8))
-    {
-        nPos = 0; // key exists, but we don't know the exact position
-    }
-    else
-    {
-        uint16_t sKeySplit = psKeys[nSplit];
-// now we know the value of a key in the middle
-        if (sKey > sKeySplit)
-        {
-            if (nSplitP == (nPopCnt - 1) * sizeof(sKey) / sizeof(Bucket_t)) {
-                // we searched the last bucket and the key is not there
-                nPos = -1; // we don't know where to insert
-            } else {
-                // search the tail of the list
-                // ++nSplitP;
-                nPos = (int)nSplit + sizeof(Bucket_t) / sizeof(sKey);
-                PSEARCHF(Bucket_t, uint16_t, psKeys,
-                         nPopCnt - nPos, sKey, sKeySplit, nPos);
-            }
-        }
-        else
-        {
-            // search the head of the list
-            assert(nPos == 0);
-            PSEARCHB(Bucket_t, uint16_t, psKeys, /* nPopCnt */ nSplit,
-                     sKey, sKeySplit, nPos);
-        }
+
+    if (BUCKET_HAS_KEY((Bucket_t *)&psKeys[nSplit], sKey, sizeof(sKey) * 8)) {
+        return 0; // key exists, but we don't know the exact position
     }
 
+    uint16_t sKeySplit = psKeys[nSplit];
+// now we know the value of a key in the middle
+    if (sKey > sKeySplit)
+    {
+        if (nSplitP == (nPopCnt - 1) * sizeof(sKey) / sizeof(Bucket_t)) {
+            // we searched the last bucket and the key is not there
+            return -1; // we don't know where to insert
+        }
+
+        // search the tail of the list
+        // ++nSplitP;
+        nPos = (int)nSplit + sizeof(Bucket_t) / sizeof(sKey);
+        PSEARCHF(Bucket_t, uint16_t, psKeys,
+                 nPopCnt - nPos, sKey, sKeySplit, nPos);
+        return nPos;
+    }
+
+    assert(nPos == 0);
+    PSEARCHB(Bucket_t, uint16_t, psKeys, /* nPopCnt */ nSplit,
+             sKey, sKeySplit, nPos);
     return nPos;
 }
 
