@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.395 2014/11/22 19:50:43 mike Exp mike $
+// @(#) $Id: bli.c,v 1.396 2014/11/22 19:52:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -570,6 +570,7 @@ PSplitSearch16(int nBL,
 //printf("-1\n");
             return -1; // we don't know where to insert
         }
+        nPopCnt += nPos; // whole pop
         nPos = (int)nSplit + sizeof(Bucket_t) / sizeof(sKey);
         PSEARCHF(Bucket_t, uint16_t, psKeys,
                  nPopCnt - nPos, sKey, sKeySplit, nPos);
@@ -584,7 +585,7 @@ PSplitSearch16(int nBL,
     printf("\nsKey 0x%04x psKeys %p\n", sKey, (void *)psKeys);
     printf("nPos %d nPopCnt %d nSplit %d\n", nPos, nPopCnt, nSplit);
     HexDump("", (Word_t *)psKeys,
-            nPos + (nPopCnt * sizeof(uint16_t) + sizeof(Word_t) - 1)
+            ((nPos + nPopCnt) * sizeof(uint16_t) + sizeof(Word_t) - 1)
                         / sizeof(Word_t));
 #endif
 
