@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.383 2014/11/22 12:21:28 mike Exp mike $
+// @(#) $Id: bli.c,v 1.384 2014/11/22 12:24:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -423,9 +423,9 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 // Backward linear search of list (for any size key and with end check).
 #define PSEARCHB(_b_t, _x_t, \
-                 _pxKeys0, _nPopCnt, _xKey, _xKeySplit, _nPos) \
+                 _pxKeys, _nPopCnt, _xKey, _xKeySplit, _nPos) \
 { \
-    SEARCHB(_x_t, ((_pxKeys0) + (_nPos)), _nPopCnt, _xKey, _pxKeys0, _nPos) \
+    SEARCHB(_x_t, ((_pxKeys) + (_nPos)), _nPopCnt, _xKey, _pxKeys, _nPos) \
 }
 
 #else // defined(PSPLIT_HYBRID)
@@ -448,17 +448,17 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 // Backward linear parallel search (for any size key and with end check).
 #define PSEARCHB(_b_t, _x_t, \
-                 _pxKeys0, _nPopCnt, _xKey, _xKeySplit, _nPos) \
+                 _pxKeys, _nPopCnt, _xKey, _xKeySplit, _nPos) \
 { \
 /* Is it wise to check the start here ? */ \
 /* Or should we consider a search that checks if we're too far each time? */ \
-    _x_t xKey0 = (_pxKeys0)[_nPos]; \
+    _x_t xKey0 = (_pxKeys)[_nPos]; \
 /* now we know the value of the key at the start and end of the range */ \
     if ((_xKey) < xKey0) { \
         (_nPos) ^= -1; \
     } else { \
         (_nPos) += (_nPopCnt) - 1; \
-        PSSEARCHB(_b_t, (_pxKeys0), (_xKey), (_nPos), xKey0, (_xKeySplit)); \
+        PSSEARCHB(_b_t, (_pxKeys), (_xKey), (_nPos), xKey0, (_xKeySplit)); \
     } \
 }
 
