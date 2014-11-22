@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.390 2014/11/22 13:04:28 mike Exp mike $
+// @(#) $Id: bli.c,v 1.391 2014/11/22 14:02:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -533,14 +533,17 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 }
 
 static int
-PSplitSearchGuts16(int nBL,
-                   uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
+PSplitSearch16(int nBL,
+               uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 {
     assert(nPopCnt > 0);
     assert(nPos >= 0);
-    unsigned nSplit; SPLIT(nPopCnt, nBL, sKey, nSplit);
+    int nSplit; SPLIT(nPopCnt, nBL, sKey, nSplit);
+    assert(nSplit >= nPos);
     unsigned nSplitP = nSplit * sizeof(sKey) >> LOG(sizeof(Bucket_t));
     nSplit = nSplitP * sizeof(Bucket_t) / sizeof(sKey);
+    assert(nSplit >= nPos);
+    assert(nSplit < nPos + nPopCnt);
 
     if (BUCKET_HAS_KEY((Bucket_t *)&psKeys[nSplit], sKey, sizeof(sKey) * 8)) {
         return 0; // key exists, but we don't know the exact position
@@ -854,12 +857,12 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 #if defined(PSPLIT_SEARCH_16)
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 16) {
-        nPos = PSplitSearchGuts16(nBL, psKeys, nPopCnt, sKey, nPos);
+        nPos = PSplitSearch16(nBL, psKeys, nPopCnt, sKey, nPos);
         //PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     } else
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
-        nPos = PSplitSearchGuts16(nBL, psKeys, nPopCnt, sKey, nPos);
+        nPos = PSplitSearch16(nBL, psKeys, nPopCnt, sKey, nPos);
         //PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     }
 #elif defined(BACKWARD_SEARCH_16)
