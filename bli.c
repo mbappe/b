@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.391 2014/11/22 14:02:13 mike Exp mike $
+// @(#) $Id: bli.c,v 1.392 2014/11/22 14:30:04 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -566,10 +566,17 @@ PSplitSearch16(int nBL,
         return nPos;
     }
 
+    if (nSplit == 0) { /*printf("(nSplit == 0) return -1;\n");*/ return -1; }
+#if 0
+    printf("\nsKey 0x%04x psKeys %p\n", sKey, (void *)psKeys);
+    printf("nPos %d nPopCnt %d nSplit %d\n", nPos, nPopCnt, nSplit);
+    HexDump("", (Word_t *)psKeys,
+            nPos + (nPopCnt * sizeof(uint16_t) + sizeof(Word_t) - 1)
+                        / sizeof(Word_t));
+#endif
+
     assert(nPos == 0);
-    PSEARCHB(Bucket_t, uint16_t, psKeys, /* nPopCnt */ nSplit,
-             sKey, sKeySplit, nPos);
-    return nPos;
+    return PSplitSearch16(nBL, psKeys, nSplit, sKey, nPos);
 }
 
 #if defined(HAS_KEY_128)
