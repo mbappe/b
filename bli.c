@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.393 2014/11/22 15:28:13 mike Exp mike $
+// @(#) $Id: bli.c,v 1.393 2014/11/22 15:28:13 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -540,11 +540,10 @@ PSplitSearch16(int nBL,
     assert(nPos >= 0);
     int nSplit; SPLIT(nPopCnt, nBL, sKey, nSplit);
 // nSplit is a portion of nPopCnt and nPopCnt is relative to nPos
-    nSplit += nPos; // make relative to psKeys
     assert(nSplit >= nPos);
     // bucket number of split
-    int nSplitP = nSplit * sizeof(sKey) >> LOG(sizeof(Bucket_t));
-    nSplit = nSplitP * sizeof(Bucket_t) / sizeof(sKey); // first key in bucket
+    unsigned nSplitP = nSplit * sizeof(sKey) >> LOG(sizeof(Bucket_t));
+    nSplit = nSplitP * sizeof(Bucket_t) / sizeof(sKey);
     assert(nSplit >= nPos);
     assert(nSplit < nPos + nPopCnt);
 
@@ -565,18 +564,14 @@ PSplitSearch16(int nBL,
 // now we know the value of a key in the middle
     if (sKey > sKeySplit)
     {
-        int nSplitPLast
-            = ((nPos + nPopCnt) * sizeof(sKey) + sizeof(Bucket_t) - 1) / sizeof(Bucket_t);
-        --nSplitPLast;
-        //printf("nSplitPLast %d\n", nSplitPLast);
-        if (nSplitP == nSplitPLast) {
+        if (nSplitP == (nPopCnt - 1) * sizeof(sKey) / sizeof(Bucket_t)) {
             // we searched the last bucket and the key is not there
 //printf("-1\n");
             return -1; // we don't know where to insert
         }
-        nPopCnt += nPos; // whole pop
         nPos = (int)nSplit + sizeof(Bucket_t) / sizeof(sKey);
-        nPos = PSplitSearch16(nBL, psKeys, nPopCnt - nPos, sKey, nPos);
+        PSEARCHF(Bucket_t, uint16_t, psKeys,
+                 nPopCnt - nPos, sKey, sKeySplit, nPos);
 //printf("nPos A %d\n", nPos);
         return nPos;
     }
@@ -588,7 +583,7 @@ PSplitSearch16(int nBL,
     printf("\nsKey 0x%04x psKeys %p\n", sKey, (void *)psKeys);
     printf("nPos %d nPopCnt %d nSplit %d\n", nPos, nPopCnt, nSplit);
     HexDump("", (Word_t *)psKeys,
-            ((nPos + nPopCnt) * sizeof(uint16_t) + sizeof(Word_t) - 1)
+            nPos + (nPopCnt * sizeof(uint16_t) + sizeof(Word_t) - 1)
                         / sizeof(Word_t));
 #endif
 
