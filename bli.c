@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.416 2014/11/23 16:37:35 mike Exp mike $
+// @(#) $Id: bli.c,v 1.416 2014/11/23 16:46:39 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -480,6 +480,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 /*again:*/ \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
     unsigned nSplit; SPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
+    nSplit += (_nPos); \
     unsigned nSplitP = nSplit * sizeof(_x_t) >> LOG(sizeof(_b_t)); \
     assert(((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
     if (BUCKET_HAS_KEY(&px[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
@@ -492,7 +493,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 /* now we know the value of a key in the middle */ \
         if ((_xKey) > xKeySplit) \
         { \
-            if (nSplitP == ((_nPopCnt) - 1) * sizeof(_x_t) / sizeof(_b_t)) { \
+            if (nSplitP == ((_nPos) + (_nPopCnt) - 1) * sizeof(_x_t) / sizeof(_b_t)) { \
                 /* we searched the last bucket and the key is not there */ \
                 (_nPos) = -1; /* we don't know where to insert */ \
             } else { \
