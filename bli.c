@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.399 2014/11/23 10:18:32 mike Exp mike $
+// @(#) $Id: bli.c,v 1.400 2014/11/23 10:38:09 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -578,8 +578,8 @@ PSplitSearch16(int nBL,
         }
         nPopCnt += nPos; // whole pop
         nPos = (int)nSplit + sizeof(Bucket_t) / sizeof(sKey);
-        PSEARCHF(Bucket_t, uint16_t, psKeys,
-                 nPopCnt - nPos, sKey, sKeySplit, nPos);
+        //PSEARCHF(Bucket_t, uint16_t, psKeys, nPopCnt - nPos, sKey, sKeySplit, nPos);
+        nPos = PSplitSearch16(nBL, psKeys, nPopCnt - nPos, sKey, nPos);
 //printf("nPos A %d\n", nPos);
         return nPos;
     }
