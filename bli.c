@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.408 2014/11/23 15:30:36 mike Exp mike $
+// @(#) $Id: bli.c,v 1.409 2014/11/23 15:39:40 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -541,9 +541,10 @@ PSplitSearch16(int nBL,
     assert(nPos >= 0); assert((nPos & ~MSK(sizeof(Bucket_t))) == 0);
 
     Bucket_t *px = (Bucket_t *)psKeys;
-    int nSplit; SPLIT(nPopCnt - nPos, nBL, sKey, nSplit);
+    int nSplit; SPLIT(nPopCnt, nBL, sKey, nSplit);
     // nSplit is a portion of (nPopCnt - nPos)
-    assert(nSplit >= 0); assert(nSplit < (nPopCnt - nPos));
+    assert(nSplit >= 0); assert(nSplit < nPopCnt);
+    nSplit += nPos; // make relative to psKeys
     int nSplitP = nSplit * sizeof(sKey) / sizeof(Bucket_t);
 
     if (BUCKET_HAS_KEY(&px[nSplitP], sKey, sizeof(sKey) * 8)) {
@@ -551,7 +552,6 @@ PSplitSearch16(int nBL,
     }
 
     nSplit = nSplitP * sizeof(Bucket_t) / sizeof(sKey);
-    nSplit += nPos; // make relative to psKeys
     uint16_t sKeySplit = psKeys[nSplit];
     if (sKey > sKeySplit)
     {
