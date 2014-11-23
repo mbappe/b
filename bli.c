@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.414 2014/11/23 16:04:39 mike Exp mike $
+// @(#) $Id: bli.c,v 1.416 2014/11/23 16:37:35 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -477,6 +477,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 #define SPLIT_SEARCH_GUTS(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     _b_t *px = (_b_t *)(_pxKeys); \
+/*again:*/ \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
     unsigned nSplit; SPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
     unsigned nSplitP = nSplit * sizeof(_x_t) >> LOG(sizeof(_b_t)); \
@@ -497,9 +498,11 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
             } else { \
                 /* search the tail of the list */ \
                 /* ++nSplitP; */ \
+(_nPopCnt) += (_nPos); \
                 (_nPos) = (int)nSplit + sizeof(_b_t) / sizeof(_x_t); \
-                PSEARCHF(_b_t, _x_t, (_pxKeys), \
-                         (_nPopCnt) - (_nPos), (_xKey), xKeySplit, (_nPos)); \
+(_nPopCnt) -= (_nPos); \
+                PSEARCHF(_b_t, _x_t, (_pxKeys), (_nPopCnt), (_xKey), xKeySplit, (_nPos)); \
+/*goto again;*/ \
             } \
         } \
         else \
