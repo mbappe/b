@@ -49,6 +49,11 @@
 #define ALIGN_LIST_ENDS
 #endif // defined(HAS_KEY_128)
 
+// Default is -DHAS_KEY_128_NATIVE
+#if ! defined(NO_HAS_KEY_128_NATIVE)
+#define HAS_KEY_128_NATIVE
+#endif // ! defined(NO_HAS_KEY_128_NATIVE)
+
 // Default is -UPAD_T_ONE.
 
 // Default is -DSORT_LISTS.
