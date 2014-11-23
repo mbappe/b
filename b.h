@@ -942,7 +942,7 @@ enum {
 // ll_awKeys is always two-word aligned.
 // The latter won't be true if cnDummiesInList is odd.
 #if (cnDummiesInList & 1)
-#error Odd cnDummiesInList doesn't work with ALIGN_LISTS.
+#error Odd cnDummiesInList does not work with ALIGN_LISTS.
 #endif // (cnDummiesInList & 1)
 #define ls_pwKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_awKeys[2])
 #else // defined(ALIGN_LISTS)
