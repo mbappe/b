@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.397 2014/11/22 20:17:05 mike Exp mike $
+// @(#) $Id: bli.c,v 1.398 2014/11/22 20:19:30 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -538,13 +538,15 @@ PSplitSearch16(int nBL,
 {
     assert(nPopCnt > 0);
     assert(nPos >= 0);
+    assert((nPos & ~MSK(sizeof(Bucket_t))) == 0);
     int nSplit; SPLIT(nPopCnt, nBL, sKey, nSplit);
+    nSplit &= ~MSK(sizeof(Bucket_t)); // first key in bucket
 // nSplit is a portion of nPopCnt and nPopCnt is relative to nPos
     nSplit += nPos; // make relative to psKeys
     assert(nSplit >= nPos);
     // bucket number of split
     int nSplitP = nSplit * sizeof(sKey) >> LOG(sizeof(Bucket_t));
-    nSplit = nSplitP * sizeof(Bucket_t) / sizeof(sKey);
+    //nSplit = nSplitP * sizeof(Bucket_t) / sizeof(sKey); // first key in bucket
     assert(nSplit >= nPos);
     assert(nSplit < nPos + nPopCnt);
 
@@ -565,6 +567,10 @@ PSplitSearch16(int nBL,
 // now we know the value of a key in the middle
     if (sKey > sKeySplit)
     {
+        int nSplitPLast
+            = ((nPos + nPopCnt) * sizeof(sKey) + sizeof(Bucket_t) - 1) / sizeof(Bucket_t);
+        --nSplitPLast;
+        //printf("nSplitPLast %d\n", nSplitPLast);
         if (nSplitP == (nPopCnt - 1) * sizeof(sKey) / sizeof(Bucket_t)) {
             // we searched the last bucket and the key is not there
 //printf("-1\n");
@@ -578,7 +584,7 @@ PSplitSearch16(int nBL,
         return nPos;
     }
 
-    if (nSplit == 0) {
+    if (nSplit == nPos) {
 //printf("-1\n");
 /*printf("(nSplit == 0) return -1;\n");*/ return -1; }
 #if 0
