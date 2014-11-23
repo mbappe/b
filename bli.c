@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.406 2014/11/23 11:02:20 mike Exp mike $
+// @(#) $Id: bli.c,v 1.407 2014/11/23 11:18:17 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -536,20 +536,22 @@ static int
 PSplitSearch16(int nBL,
                uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 {
-again:
+//again:
     assert(nPopCnt > 0);
     assert(nPos >= 0); assert((nPos & ~MSK(sizeof(Bucket_t))) == 0);
 
+    Bucket_t *px = (Bucket_t *)psKeys;
     int nSplit; SPLIT(nPopCnt - nPos, nBL, sKey, nSplit);
     // nSplit is a portion of (nPopCnt - nPos)
     assert(nSplit >= 0); assert(nSplit < (nPopCnt - nPos));
-    nSplit &= ~MSK(sizeof(Bucket_t)); // first key in bucket
-    nSplit += nPos; // make relative to psKeys
+    int nSplitP = nSplit * sizeof(sKey) / sizeof(Bucket_t);
 
-    if (BUCKET_HAS_KEY((Bucket_t *)&psKeys[nSplit], sKey, sizeof(sKey) * 8)) {
+    if (BUCKET_HAS_KEY(&px[nSplitP], sKey, sizeof(sKey) * 8)) {
         return 0; // key exists, but we don't know the exact position
     }
 
+    nSplit = nSplitP * sizeof(Bucket_t) / sizeof(sKey);
+    nSplit += nPos; // make relative to psKeys
     uint16_t sKeySplit = psKeys[nSplit];
     if (sKey > sKeySplit)
     {
@@ -561,13 +563,23 @@ again:
             return -1; // we don't know where to insert
         }
         nPos = (int)nSplit + sizeof(Bucket_t) / sizeof(sKey);
+#if 1
+        PSEARCHF(Bucket_t, uint16_t, psKeys, nPopCnt - nPos, sKey, 0, nPos);
+        return nPos;
+#else
         goto again;
+#endif
     }
 
     if (nSplit == nPos) { return -1; }
 
     nPopCnt = nSplit;
+#if 1
+    PSEARCHB(Bucket_t, uint16_t, psKeys, nPopCnt - nPos, sKey, 0, nPos);
+    return nPos;
+#else
     goto again;
+#endif
 }
 
 #if defined(HAS_KEY_128)
