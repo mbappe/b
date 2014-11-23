@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.403 2014/11/23 10:49:24 mike Exp mike $
+// @(#) $Id: bli.c,v 1.404 2014/11/23 10:56:25 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -541,9 +541,9 @@ again:
     assert(nPos >= 0);
     assert((nPos & ~MSK(sizeof(Bucket_t))) == 0);
     int nSplit; SPLIT(nPopCnt - nPos, nBL, sKey, nSplit);
+    // nSplit is a portion of (nPopCnt - nPos)
     assert(nSplit >= 0);
     nSplit &= ~MSK(sizeof(Bucket_t)); // first key in bucket
-// nSplit is a portion of nPopCnt and nPopCnt is relative to nPos
     nSplit += nPos; // make relative to psKeys
     assert(nSplit < nPopCnt);
 
@@ -556,9 +556,8 @@ again:
     if (sKey > sKeySplit)
     {
         // bucket number of split
-        int nSplitP = nSplit * sizeof(sKey) >> LOG(sizeof(Bucket_t));
-        int nSplitPLast
-            = (nPopCnt * sizeof(sKey) + sizeof(Bucket_t) - 1) / sizeof(Bucket_t);
+        int nSplitP = nSplit * sizeof(sKey) / sizeof(Bucket_t);
+        int nSplitPLast = (nPopCnt * sizeof(sKey) + sizeof(Bucket_t) - 1) / sizeof(Bucket_t);
         --nSplitPLast;
         if (nSplitP == nSplitPLast) {
             // we searched the last bucket and the key is not there
