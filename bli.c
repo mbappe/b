@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.407 2014/11/23 11:18:17 mike Exp mike $
+// @(#) $Id: bli.c,v 1.408 2014/11/23 15:30:36 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -563,8 +563,9 @@ PSplitSearch16(int nBL,
             return -1; // we don't know where to insert
         }
         nPos = (int)nSplit + sizeof(Bucket_t) / sizeof(sKey);
+        nPopCnt -= nPos;
 #if 1
-        PSEARCHF(Bucket_t, uint16_t, psKeys, nPopCnt - nPos, sKey, 0, nPos);
+        PSEARCHF(Bucket_t, uint16_t, psKeys, nPopCnt, sKey, 0, nPos);
         return nPos;
 #else
         goto again;
@@ -574,8 +575,9 @@ PSplitSearch16(int nBL,
     if (nSplit == nPos) { return -1; }
 
     nPopCnt = nSplit;
+    nPopCnt -= nPos;
 #if 1
-    PSEARCHB(Bucket_t, uint16_t, psKeys, nPopCnt - nPos, sKey, 0, nPos);
+    PSEARCHB(Bucket_t, uint16_t, psKeys, nPopCnt, sKey, 0, nPos);
     return nPos;
 #else
     goto again;
