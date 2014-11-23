@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.401 2014/11/23 10:40:38 mike Exp mike $
+// @(#) $Id: bli.c,v 1.402 2014/11/23 10:45:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -545,21 +545,18 @@ again:
 // nSplit is a portion of nPopCnt and nPopCnt is relative to nPos
     nSplit += nPos; // make relative to psKeys
     assert(nSplit >= nPos);
-    // bucket number of split
-    int nSplitP = nSplit * sizeof(sKey) >> LOG(sizeof(Bucket_t));
-    //nSplit = nSplitP * sizeof(Bucket_t) / sizeof(sKey); // first key in bucket
-    assert(nSplit >= nPos);
     assert(nSplit < nPos + nPopCnt);
 
     if (BUCKET_HAS_KEY((Bucket_t *)&psKeys[nSplit], sKey, sizeof(sKey) * 8)) {
         return 0; // key exists, but we don't know the exact position
     }
 
-
     uint16_t sKeySplit = psKeys[nSplit];
 // now we know the value of a key in the middle
     if (sKey > sKeySplit)
     {
+        // bucket number of split
+        int nSplitP = nSplit * sizeof(sKey) >> LOG(sizeof(Bucket_t));
         int nSplitPLast
             = ((nPos + nPopCnt) * sizeof(sKey) + sizeof(Bucket_t) - 1) / sizeof(Bucket_t);
         --nSplitPLast;
