@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.404 2014/11/23 10:56:25 mike Exp mike $
+// @(#) $Id: bli.c,v 1.405 2014/11/23 10:59:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -557,8 +557,7 @@ again:
     {
         // bucket number of split
         int nSplitP = nSplit * sizeof(sKey) / sizeof(Bucket_t);
-        int nSplitPLast = (nPopCnt * sizeof(sKey) + sizeof(Bucket_t) - 1) / sizeof(Bucket_t);
-        --nSplitPLast;
+        int nSplitPLast = (nPopCnt - 1) * sizeof(sKey) / sizeof(Bucket_t);
         if (nSplitP == nSplitPLast) {
             // we searched the last bucket and the key is not there
             return -1; // we don't know where to insert
