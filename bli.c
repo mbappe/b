@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.398 2014/11/22 20:19:30 mike Exp mike $
+// @(#) $Id: bli.c,v 1.399 2014/11/23 10:18:32 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -571,7 +571,7 @@ PSplitSearch16(int nBL,
             = ((nPos + nPopCnt) * sizeof(sKey) + sizeof(Bucket_t) - 1) / sizeof(Bucket_t);
         --nSplitPLast;
         //printf("nSplitPLast %d\n", nSplitPLast);
-        if (nSplitP == (nPopCnt - 1) * sizeof(sKey) / sizeof(Bucket_t)) {
+        if (nSplitP == nSplitPLast) {
             // we searched the last bucket and the key is not there
 //printf("-1\n");
             return -1; // we don't know where to insert
