@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.405 2014/11/23 10:59:46 mike Exp mike $
+// @(#) $Id: bli.c,v 1.406 2014/11/23 11:02:20 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -538,21 +538,19 @@ PSplitSearch16(int nBL,
 {
 again:
     assert(nPopCnt > 0);
-    assert(nPos >= 0);
-    assert((nPos & ~MSK(sizeof(Bucket_t))) == 0);
+    assert(nPos >= 0); assert((nPos & ~MSK(sizeof(Bucket_t))) == 0);
+
     int nSplit; SPLIT(nPopCnt - nPos, nBL, sKey, nSplit);
     // nSplit is a portion of (nPopCnt - nPos)
-    assert(nSplit >= 0);
+    assert(nSplit >= 0); assert(nSplit < (nPopCnt - nPos));
     nSplit &= ~MSK(sizeof(Bucket_t)); // first key in bucket
     nSplit += nPos; // make relative to psKeys
-    assert(nSplit < nPopCnt);
 
     if (BUCKET_HAS_KEY((Bucket_t *)&psKeys[nSplit], sKey, sizeof(sKey) * 8)) {
         return 0; // key exists, but we don't know the exact position
     }
 
     uint16_t sKeySplit = psKeys[nSplit];
-// now we know the value of a key in the middle
     if (sKey > sKeySplit)
     {
         // bucket number of split
@@ -564,14 +562,12 @@ again:
         }
         nPos = (int)nSplit + sizeof(Bucket_t) / sizeof(sKey);
         goto again;
-        // return PSplitSearch16(nBL, psKeys, nPopCnt - nPos, sKey, nPos);
     }
 
     if (nSplit == nPos) { return -1; }
 
-    assert(nPos == 0);
-    nPopCnt = nSplit; goto again;
-    // return PSplitSearch16(nBL, psKeys, nSplit, sKey, nPos);
+    nPopCnt = nSplit;
+    goto again;
 }
 
 #if defined(HAS_KEY_128)
