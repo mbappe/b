@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.402 2014/11/23 10:45:13 mike Exp mike $
+// @(#) $Id: bli.c,v 1.403 2014/11/23 10:49:24 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -540,12 +540,12 @@ again:
     assert(nPopCnt > 0);
     assert(nPos >= 0);
     assert((nPos & ~MSK(sizeof(Bucket_t))) == 0);
-    int nSplit; SPLIT(nPopCnt, nBL, sKey, nSplit);
+    int nSplit; SPLIT(nPopCnt - nPos, nBL, sKey, nSplit);
+    assert(nSplit >= 0);
     nSplit &= ~MSK(sizeof(Bucket_t)); // first key in bucket
 // nSplit is a portion of nPopCnt and nPopCnt is relative to nPos
     nSplit += nPos; // make relative to psKeys
-    assert(nSplit >= nPos);
-    assert(nSplit < nPos + nPopCnt);
+    assert(nSplit < nPopCnt);
 
     if (BUCKET_HAS_KEY((Bucket_t *)&psKeys[nSplit], sKey, sizeof(sKey) * 8)) {
         return 0; // key exists, but we don't know the exact position
@@ -558,15 +558,13 @@ again:
         // bucket number of split
         int nSplitP = nSplit * sizeof(sKey) >> LOG(sizeof(Bucket_t));
         int nSplitPLast
-            = ((nPos + nPopCnt) * sizeof(sKey) + sizeof(Bucket_t) - 1) / sizeof(Bucket_t);
+            = (nPopCnt * sizeof(sKey) + sizeof(Bucket_t) - 1) / sizeof(Bucket_t);
         --nSplitPLast;
         if (nSplitP == nSplitPLast) {
             // we searched the last bucket and the key is not there
             return -1; // we don't know where to insert
         }
-        nPopCnt += nPos; // whole pop
         nPos = (int)nSplit + sizeof(Bucket_t) / sizeof(sKey);
-        nPopCnt -= nPos;
         goto again;
         // return PSplitSearch16(nBL, psKeys, nPopCnt - nPos, sKey, nPos);
     }
