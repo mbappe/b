@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.412 2014/11/23 15:52:20 mike Exp mike $
+// @(#) $Id: bli.c,v 1.413 2014/11/23 16:01:34 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -534,8 +534,13 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 static int
 PSplitSearch16(int nBL,
-               uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
+               uint16_t *psKeys, int nPopCnt,
+               uint16_t sKeyMin, uint16_t sKeyMax,
+               uint16_t sKey,
+               int nPos)
 {
+    (void)sKeyMin;
+    (void)sKeyMax;
 again:
     assert(nPopCnt > 0);
     assert(nPos >= 0); assert((nPos & ~MSK(sizeof(Bucket_t))) == 0);
@@ -867,12 +872,12 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 #if defined(PSPLIT_SEARCH_16)
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 16) {
-        nPos = PSplitSearch16(nBL, psKeys, nPopCnt, sKey, nPos);
+        nPos = PSplitSearch16(nBL, psKeys, nPopCnt, 0, -1, sKey, nPos);
         //PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     } else
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
-        nPos = PSplitSearch16(nBL, psKeys, nPopCnt, sKey, nPos);
+        nPos = PSplitSearch16(nBL, psKeys, nPopCnt, 0, -1, sKey, nPos);
         //PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     }
 #elif defined(BACKWARD_SEARCH_16)
