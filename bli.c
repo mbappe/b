@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.410 2014/11/23 15:44:28 mike Exp mike $
+// @(#) $Id: bli.c,v 1.411 2014/11/23 15:46:52 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -536,7 +536,7 @@ static int
 PSplitSearch16(int nBL,
                uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 {
-//again:
+again:
     assert(nPopCnt > 0);
     assert(nPos >= 0); assert((nPos & ~MSK(sizeof(Bucket_t))) == 0);
 
@@ -562,9 +562,10 @@ PSplitSearch16(int nBL,
             // we searched the last bucket and the key is not there
             return -1; // we don't know where to insert
         }
+        nPopCnt += nPos;
         nPos = (int)nSplit + sizeof(Bucket_t) / sizeof(sKey);
         nPopCnt -= nPos;
-#if 1
+#if 0
         PSEARCHF(Bucket_t, uint16_t, psKeys, nPopCnt, sKey, 0, nPos);
         return nPos;
 #else
