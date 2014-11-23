@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.411 2014/11/23 15:46:52 mike Exp mike $
+// @(#) $Id: bli.c,v 1.412 2014/11/23 15:52:20 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -541,9 +541,9 @@ again:
     assert(nPos >= 0); assert((nPos & ~MSK(sizeof(Bucket_t))) == 0);
 
     Bucket_t *px = (Bucket_t *)psKeys;
-    int nSplit; SPLIT(nPopCnt, nBL, sKey, nSplit);
+    int nSplit; SPLIT(nPopCnt - nPos, nBL, sKey, nSplit);
     // nSplit is a portion of (nPopCnt - nPos)
-    assert(nSplit >= 0); assert(nSplit < nPopCnt);
+    assert(nSplit >= 0); assert(nSplit < nPopCnt - nPos);
     nSplit += nPos; // make relative to psKeys
     int nSplitP = nSplit * sizeof(sKey) / sizeof(Bucket_t);
 
@@ -557,16 +557,14 @@ again:
     {
         // bucket number of split
         int nSplitP = nSplit * sizeof(sKey) / sizeof(Bucket_t);
-        int nSplitPLast = (nPos + nPopCnt - 1) * sizeof(sKey) / sizeof(Bucket_t);
+        int nSplitPLast = (nPopCnt - 1) * sizeof(sKey) / sizeof(Bucket_t);
         if (nSplitP == nSplitPLast) {
             // we searched the last bucket and the key is not there
             return -1; // we don't know where to insert
         }
-        nPopCnt += nPos;
         nPos = (int)nSplit + sizeof(Bucket_t) / sizeof(sKey);
-        nPopCnt -= nPos;
 #if 0
-        PSEARCHF(Bucket_t, uint16_t, psKeys, nPopCnt, sKey, 0, nPos);
+        PSEARCHF(Bucket_t, uint16_t, psKeys, nPopCnt - nPos, sKey, 0, nPos);
         return nPos;
 #else
         goto again;
@@ -576,9 +574,8 @@ again:
     if (nSplit == nPos) { return -1; }
 
     nPopCnt = nSplit;
-    nPopCnt -= nPos;
-#if 1
-    PSEARCHB(Bucket_t, uint16_t, psKeys, nPopCnt, sKey, 0, nPos);
+#if 0
+    PSEARCHB(Bucket_t, uint16_t, psKeys, nPopCnt - nPos, sKey, 0, nPos);
     return nPos;
 #else
     goto again;
