@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.409 2014/11/23 15:39:40 mike Exp mike $
+// @(#) $Id: bli.c,v 1.410 2014/11/23 15:44:28 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -557,7 +557,7 @@ PSplitSearch16(int nBL,
     {
         // bucket number of split
         int nSplitP = nSplit * sizeof(sKey) / sizeof(Bucket_t);
-        int nSplitPLast = (nPopCnt - 1) * sizeof(sKey) / sizeof(Bucket_t);
+        int nSplitPLast = (nPos + nPopCnt - 1) * sizeof(sKey) / sizeof(Bucket_t);
         if (nSplitP == nSplitPLast) {
             // we searched the last bucket and the key is not there
             return -1; // we don't know where to insert
