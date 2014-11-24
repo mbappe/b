@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.416 2014/11/23 16:46:39 mike Exp mike $
+// @(#) $Id: bli.c,v 1.407.1.11 2014/11/24 04:09:27 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -344,19 +344,21 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 // Key size is some power of two bytes.
 // It also assumes the last key in the last _b_t is equal to the largest
 // key in the list even if it is beyond the population.
-#define PSSEARCHF(_b_t, _pxKeys, _xKey, _nPos, _xKeySplit, _xKeyEnd) \
+// _nPopCnt is relative to _nPos
+#define PSSEARCHF(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
-    assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
-    _b_t *px = (_b_t *)(_pxKeys); \
+    assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
+    assert((((_nPos) * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
     /* starting _b_t */ \
-    int nxPos = (_nPos) * sizeof(_xKey) / sizeof(_b_t); \
+    Word_t wEnd = (Word_t)&(_pxKeys)[_nPos + _nPopCnt]; \
+    _b_t *px = (_b_t *)&(_pxKeys)[_nPos]; \
     /* number of last key in starting _b_t */ \
-    (_nPos) = (nxPos * sizeof(_b_t) | MSK(LOG(sizeof(_b_t)))) \
-                / sizeof(_xKey); \
-    while ( ! BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
+    (_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1; \
+    while ( ! BUCKET_HAS_KEY(px, (_xKey), sizeof(_xKey) * 8) ) { \
         /* check the last key in the _b_t to see if we've gone too far */ \
-        if ((_pxKeys)[_nPos] > (_xKey)) { (_nPos) ^= -1; break; } \
-        ++nxPos; (_nPos) += sizeof(_b_t) / sizeof(_xKey); \
+        if ((_xKey) < (_pxKeys)[_nPos]) { (_nPos) ^= -1; break; } \
+        ++px; (_nPos) += sizeof(_b_t) / sizeof(_xKey); \
+        if ((Word_t)px >= wEnd) { (_nPos) ^= -1; break; } \
     } \
 }
 
@@ -365,18 +367,21 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 // Simple backward linear parallel search of a list that assumes the list
 // contains a key that is less than or equal to the key we're searching for.
 // Key size is some power of two bytes.
-#define PSSEARCHB(_b_t, _pxKeys, _xKey, _nPos, _xKey0, _xKeySplit) \
+#define PSSEARCHB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
-    assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
+    assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
     _b_t *px = (_b_t *)(_pxKeys); \
     /* starting _b_t */ \
-    int nxPos = (_nPos) * sizeof(_xKey) / sizeof(_b_t); \
+    int nxPos = ((_nPos) + (_nPopCnt) - 1) * sizeof(_xKey) / sizeof(_b_t); \
     /* number of first key in starting _b_t */ \
+    Word_t wEnd = (Word_t)&(_pxKeys)[_nPos]; \
     (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
+    /*assert((((_nPos) * sizeof(_xKey)) % sizeof(_b_t)) == 0);*/ \
     while ( ! BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
         /* check the first key in the _b_t to see if we've gone too far */ \
         if ((_pxKeys)[_nPos] < (_xKey)) { (_nPos) ^= -1; break; } \
         --nxPos; (_nPos) -= sizeof(_b_t) / sizeof(_xKey); \
+        if ((Word_t)&px[nxPos] < wEnd) { (_nPos) = -1; break; } \
     } \
 }
 
@@ -384,12 +389,12 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 // Can't have a non-PSPLIT_EARLY_OUT version of PSSEARCHF because because
 // we don't know where the end of the list is. 
-// #define PSSEARCHF(_b_t, _pxKeys, _xKey, _nPos, _xKeySplit, _xKeyEnd) \
+// #define PSSEARCHF(_b_t, _pxKeys, _xKey, _nPos, _xKeySplit, _xKeyEnd)
 
 // Simple backward linear parallel search of a list that assumes the list
 // contains a key that is less than or equal to the key we're searching for.
 // Key size is some power of two bytes.
-#define PSSEARCHB(_b_t, _pxKeys, _xKey, _nPos, _xKey0, _xKeySplit) \
+#define PSSEARCHB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
     _b_t *px = (_b_t *)(_pxKeys); \
@@ -435,7 +440,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     if (xKeyEnd < (_xKey)) { \
         (_nPos) = ~((_nPos) + (_nPopCnt)); \
     } else { \
-        PSSEARCHF(_b_t, (_pxKeys), (_xKey), (_nPos), (_xKeySplit), xKeyEnd); \
+        PSSEARCHF(_b_t, (_xKey), (_pxKeys), (_nPopCnt), (_nPos)); \
 /*PSPLIT_SEARCH_RANGE(_xKey, _pxKeys, _nPopCnt, _xKeySplit, xKeyEnd, _nPos)*/ \
     } \
 }
@@ -451,12 +456,39 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     if ((_xKey) < xKey0) { \
         (_nPos) ^= -1; \
     } else { \
-        (_nPos) += (_nPopCnt) - 1; \
-        PSSEARCHB(_b_t, (_pxKeys), (_xKey), (_nPos), xKey0, (_xKeySplit)); \
+        /*(_nPos) += (_nPopCnt) - 1;*/ \
+        PSSEARCHB(_b_t, (_xKey), (_pxKeys), (_nPopCnt), (_nPos)); \
     } \
 }
 
 #endif // defined(PSPLIT_HYBRID)
+
+#define HAS_KEY_128_SETUP(_wKey, _nBL, _xLsbs, _xMsbs, _xKeys) \
+{ \
+    Word_t wMask = MSK(_nBL); /* (1 << nBL) - 1 */ \
+    _wKey &= wMask; \
+    Word_t wLsbs = (Word_t)-1 / wMask; \
+    _xLsbs = _mm_set1_epi64((__m64)wLsbs); \
+    Word_t wMsbs = wLsbs << (nBL - 1); /* msb in each key slot */ \
+    _xMsbs = _mm_set1_epi64((__m64)wMsbs); \
+    Word_t wKeys = wKey * wLsbs; /* replicate key; put in every slot */ \
+    _xKeys = _mm_set1_epi64((__m64)wKeys); \
+}
+
+#if defined(LOOKUP)
+static Word_t // bool
+m128iHasKeyTail(__m128i *pxBucket,
+    __m128i xLsbs,
+    __m128i xMsbs,
+    __m128i xKeys)
+{
+    __m128i xBucket = *pxBucket;
+    __m128i xXor = xKeys ^ xBucket;
+    __m128i xMagic = (xXor - xLsbs) & ~xXor & xMsbs;
+    __m128i xZero = _mm_setzero_si128();
+    return ! _mm_testc_si128(xZero, xMagic);
+}
+#endif // defined(LOOKUP)
 
 // Split search with a parallel search of the bucket at the split point.
 // A bucket is a Word_t or an __m128i.  Or whatever else we decide to pass
@@ -477,12 +509,12 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 #define SPLIT_SEARCH_GUTS(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     _b_t *px = (_b_t *)(_pxKeys); \
-/*again:*/ \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
     unsigned nSplit; SPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
-    nSplit += (_nPos); \
-    unsigned nSplitP = nSplit * sizeof(_x_t) >> LOG(sizeof(_b_t)); \
+    unsigned nSplitP = nSplit * sizeof(_x_t) / sizeof(_b_t); \
     assert(((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
+    /*__m128i xLsbs, xMsbs, xKeys;*/ \
+    /*HAS_KEY_128_SETUP((_xKey), sizeof(_x_t) * 8, xLsbs, xMsbs, xKeys);*/ \
     if (BUCKET_HAS_KEY(&px[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
         (_nPos) = 0; /* key exists, but we don't know the exact position */ \
     } \
@@ -493,26 +525,26 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 /* now we know the value of a key in the middle */ \
         if ((_xKey) > xKeySplit) \
         { \
-            if (nSplitP == ((_nPos) + (_nPopCnt) - 1) * sizeof(_x_t) / sizeof(_b_t)) { \
+            if (nSplitP == ((_nPopCnt) - 1) * sizeof(_x_t) / sizeof(_b_t)) { \
                 /* we searched the last bucket and the key is not there */ \
                 (_nPos) = -1; /* we don't know where to insert */ \
             } else { \
                 /* search the tail of the list */ \
                 /* ++nSplitP; */ \
-(_nPopCnt) += (_nPos); \
                 (_nPos) = (int)nSplit + sizeof(_b_t) / sizeof(_x_t); \
-(_nPopCnt) -= (_nPos); \
-                PSEARCHF(_b_t, _x_t, (_pxKeys), (_nPopCnt), (_xKey), xKeySplit, (_nPos)); \
-/*goto again;*/ \
+                PSSEARCHF(_b_t, (_xKey), \
+                          (_pxKeys), (_nPopCnt) - (_nPos), (_nPos)); \
             } \
         } \
         else \
         { \
-            if (nSplit == 0) { return -1; } \
             /* search the head of the list */ \
-            assert((_nPos) == 0); \
-            PSEARCHB(_b_t, _x_t, (_pxKeys), /* nPopCnt */ nSplit, \
-                     (_xKey), xKeySplit, (_nPos)); \
+            if (nSplitP == 0) { \
+                /* we searched the first bucket and the key is not there */ \
+                (_nPos) = -1; /* we don't know where to insert */ \
+            } else { \
+                PSSEARCHB(_b_t, (_xKey), (_pxKeys), nSplit, (_nPos)); \
+            } \
         } \
         assert(((_nPos) < 0) \
             || BUCKET_HAS_KEY((_b_t *) \
@@ -537,39 +569,25 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     } \
 }
 
-#if defined(LOOKUP)
-int
-PSplitSearch16Guts(int nBL,
-               uint16_t *psKeys, int nPopCnt,
-               uint16_t sKeyMin, uint16_t sKeyMax,
-               uint16_t sKey,
-               int nPos);
-int
-PSplitSearch16Guts(int nBL,
-               uint16_t *psKeys, int nPopCnt,
-               uint16_t sKeyMin, uint16_t sKeyMax,
-               uint16_t sKey,
-               int nPos)
+#if 0
+static int
+PSplitSearch16(int nBL,
+               uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 {
-    (void)sKeyMin;
-    (void)sKeyMax;
 again:
     assert(nPopCnt > 0);
     assert(nPos >= 0); assert((nPos & ~MSK(sizeof(Bucket_t))) == 0);
 
-    nBL = LOG(((sKeyMin) ^ (sKeyMax)) | 1) + 1; \
-    Bucket_t *px = (Bucket_t *)psKeys;
     int nSplit; SPLIT(nPopCnt - nPos, nBL, sKey, nSplit);
     // nSplit is a portion of (nPopCnt - nPos)
-    assert(nSplit >= 0); assert(nSplit < nPopCnt - nPos);
+    assert(nSplit >= 0); assert(nSplit < (nPopCnt - nPos));
+    nSplit &= ~MSK(sizeof(Bucket_t)); // first key in bucket
     nSplit += nPos; // make relative to psKeys
-    int nSplitP = nSplit * sizeof(sKey) / sizeof(Bucket_t);
 
-    if (BUCKET_HAS_KEY(&px[nSplitP], sKey, sizeof(sKey) * 8)) {
+    if (BUCKET_HAS_KEY((Bucket_t *)&psKeys[nSplit], sKey, sizeof(sKey) * 8)) {
         return 0; // key exists, but we don't know the exact position
     }
 
-    nSplit = nSplitP * sizeof(Bucket_t) / sizeof(sKey);
     uint16_t sKeySplit = psKeys[nSplit];
     if (sKey > sKeySplit)
     {
@@ -581,131 +599,15 @@ again:
             return -1; // we don't know where to insert
         }
         nPos = (int)nSplit + sizeof(Bucket_t) / sizeof(sKey);
-        sKeyMin = sKeySplit;
-#if 0
-        PSEARCHF(Bucket_t, uint16_t, psKeys, nPopCnt - nPos, sKey, 0, nPos);
-        return nPos;
-#else
         goto again;
-#endif
     }
 
     if (nSplit == nPos) { return -1; }
 
-    sKeyMax = sKeySplit;
     nPopCnt = nSplit;
-#if 0
-    PSEARCHB(Bucket_t, uint16_t, psKeys, nPopCnt - nPos, sKey, 0, nPos);
-    return nPos;
-#else
     goto again;
-#endif
 }
-
-int
-PSplitSearch16(int nBL,
-               uint16_t *psKeys, int nPopCnt,
-               uint16_t sKeyMin, uint16_t sKeyMax,
-               uint16_t sKey,
-               int nPos);
-int
-PSplitSearch16(int nBL,
-               uint16_t *psKeys, int nPopCnt,
-               uint16_t sKeyMin, uint16_t sKeyMax,
-               uint16_t sKey,
-               int nPos)
-{
-    (void)sKeyMin;
-    (void)sKeyMax;
-again:
-    assert(nPopCnt > 0);
-    assert(nPos >= 0); assert((nPos & ~MSK(sizeof(Bucket_t))) == 0);
-
-    Bucket_t *px = (Bucket_t *)psKeys;
-    int nSplit; SPLIT(nPopCnt - nPos, nBL, sKey, nSplit);
-    // nSplit is a portion of (nPopCnt - nPos)
-    assert(nSplit >= 0); assert(nSplit < nPopCnt - nPos);
-    nSplit += nPos; // make relative to psKeys
-    int nSplitP = nSplit * sizeof(sKey) / sizeof(Bucket_t);
-
-    if (BUCKET_HAS_KEY(&px[nSplitP], sKey, sizeof(sKey) * 8)) {
-        return 0; // key exists, but we don't know the exact position
-    }
-
-    nSplit = nSplitP * sizeof(Bucket_t) / sizeof(sKey);
-    uint16_t sKeySplit = psKeys[nSplit];
-    if (sKey > sKeySplit)
-    {
-        // bucket number of split
-        int nSplitP = nSplit * sizeof(sKey) / sizeof(Bucket_t);
-        int nSplitPLast = (nPopCnt - 1) * sizeof(sKey) / sizeof(Bucket_t);
-        if (nSplitP == nSplitPLast) {
-            // we searched the last bucket and the key is not there
-            return -1; // we don't know where to insert
-        }
-        nPos = (int)nSplit + sizeof(Bucket_t) / sizeof(sKey);
-        sKeyMin = sKeySplit;
-#if 1
-        nBL = LOG(((sKeyMin) ^ (sKeyMax)) | 1) + 1; \
-        switch (nBL) {
-        case 16:
-            return PSplitSearch16Guts(nBL, psKeys, nPopCnt,
-                                      sKeyMin, sKeyMax, sKey, nPos);
-        case 15:
-            return PSplitSearch16Guts(nBL, psKeys, nPopCnt,
-                                      sKeyMin, sKeyMax, sKey, nPos);
-        case 14:
-            return PSplitSearch16Guts(nBL, psKeys, nPopCnt,
-                                      sKeyMin, sKeyMax, sKey, nPos);
-        case 13:
-            return PSplitSearch16Guts(nBL, psKeys, nPopCnt,
-                                      sKeyMin, sKeyMax, sKey, nPos);
-        case 12:
-            return PSplitSearch16Guts(nBL, psKeys, nPopCnt,
-                                      sKeyMin, sKeyMax, sKey, nPos);
-        case 11:
-            return PSplitSearch16Guts(nBL, psKeys, nPopCnt,
-                                      sKeyMin, sKeyMax, sKey, nPos);
-        case 10:
-            return PSplitSearch16Guts(nBL, psKeys, nPopCnt,
-                                      sKeyMin, sKeyMax, sKey, nPos);
-        case  9:
-            return PSplitSearch16Guts(nBL, psKeys, nPopCnt,
-                                      sKeyMin, sKeyMax, sKey, nPos);
-        case  8:
-            return PSplitSearch16Guts(nBL, psKeys, nPopCnt,
-                                      sKeyMin, sKeyMax, sKey, nPos);
-        case  7:
-            return PSplitSearch16Guts(nBL, psKeys, nPopCnt,
-                                      sKeyMin, sKeyMax, sKey, nPos);
-        case  6:
-            return PSplitSearch16Guts(nBL, psKeys, nPopCnt,
-                                      sKeyMin, sKeyMax, sKey, nPos);
-        }
-        return PSplitSearch16Guts(nBL, psKeys, nPopCnt,
-                                  sKeyMin, sKeyMax, sKey, nPos);
-#else
-#if 0
-        PSEARCHF(Bucket_t, uint16_t, psKeys, nPopCnt - nPos, sKey, 0, nPos);
-        return nPos;
-#else
-        goto again;
 #endif
-#endif
-    }
-
-    if (nSplit == nPos) { return -1; }
-
-    sKeyMax = sKeySplit;
-    nPopCnt = nSplit;
-#if 0
-    PSEARCHB(Bucket_t, uint16_t, psKeys, nPopCnt - nPos, sKey, 0, nPos);
-    return nPos;
-#else
-    goto again;
-#endif
-}
-#endif // defined(LOOKUP)
 
 #if defined(HAS_KEY_128)
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
@@ -847,62 +749,9 @@ WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
 Word_t // bool
 m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 {
-    Word_t wMask = MSK(nBL); // (1 << nBL) - 1
-    wKey &= wMask;
-    Word_t wLsbs = (Word_t)-1 / wMask;
-    Word_t wKeys = wKey * wLsbs; // replicate key; put in every slot
-    Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
-#if ! defined(HAS_KEY_LOAD_EACH_WORD)
-    __m128i xBucket = *pxBucket;
-#endif // ! defined(HAS_KEY_LOAD_EACH_WORD)
-#if defined(HAS_KEY_128_NATIVE)
-#if defined(HAS_KEY_LOAD_EACH_WORD)
-    __m128i xBucket = _mm_set_epi64(((_m64 *)pxBucket)[0],
-                                    ((_m64 *)pxBucket)[1]);
-#endif // defined(HAS_KEY_LOAD_EACH_WORD)
-    __m128i xKeys = _mm_set1_epi64((__m64)wKeys);
-    __m128i xXor = xKeys ^ xBucket;
-    __m128i xLsbs = _mm_set1_epi64((__m64)wLsbs);
-    __m128i xMsbs = _mm_set1_epi64((__m64)wMsbs);
-    __m128i xMagic = (xXor - xLsbs) & ~xXor & xMsbs;
-    __m128i xZero = _mm_setzero_ps();
-    int bHasKey = ! _mm_testc_si128(xZero, xMagic);
-
-    DBGL(printf("xBucket %016llx%016llx\n", _mm_extract_epi64(xBucket, 1),
-                                            _mm_extract_epi64(xBucket, 0)));
-    DBGL(printf("xKeys   %016llx%016llx\n", _mm_extract_epi64(xKeys, 1),
-                                            _mm_extract_epi64(xKeys, 0)));
-    DBGL(printf("xXor    %016llx%016llx\n", _mm_extract_epi64(xXor, 1),
-                                            _mm_extract_epi64(xXor, 0)));
-    DBGL(printf("xMagic  %016llx%016llx\n", _mm_extract_epi64(xMagic, 1),
-                                            _mm_extract_epi64(xMagic, 0)));
-    DBGL(printf("bHasKey %d\n", bHasKey));
-
-    return bHasKey;
-#else // defined(HAS_KEY_128_NATIVE)
-#if defined(HAS_KEY_LOAD_EACH_WORD)
-    Word_t wBucket0 = ((Word_t *)pxBucket)[0];
-#else // defined(HAS_KEY_LOAD_EACH_WORD)
-    Word_t wBucket0 = _mm_extract_epi64(xBucket, 0);
-#endif // defined(HAS_KEY_LOAD_EACH_WORD)
-    Word_t wXor0 = wKeys ^ wBucket0;
-    Word_t wMagic0 = (wXor0 - wLsbs) & ~wXor0 & wMsbs;
-#if defined(HAS_KEY_128_EARLY_OUT)
-    if (wMagic0 != 0) { return wMagic0; }
-#endif // defined(HAS_KEY_128_EARLY_OUT)
-#if defined(HAS_KEY_LOAD_EACH_WORD)
-    Word_t wBucket1 = ((Word_t *)pxBucket)[0];
-#else // defined(HAS_KEY_LOAD_EACH_WORD)
-    Word_t wBucket1 = _mm_extract_epi64(xBucket, 1);
-#endif // defined(HAS_KEY_LOAD_EACH_WORD)
-    Word_t wXor1 = wKeys ^ wBucket1;
-    Word_t wMagic1 = (wXor1 - wLsbs) & ~wXor1 & wMsbs;
-#if defined(HAS_KEY_128_EARLY_OUT)
-    return wMagic1;
-#else // defined(HAS_KEY_128_EARLY_OUT)
-    return wMagic0 | wMagic1;
-#endif // defined(HAS_KEY_128_EARLY_OUT)
-#endif // defined(HAS_KEY_128_NATIVE)
+    __m128i xLsbs, xMsbs, xKeys;
+    HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys); 
+    return m128iHasKeyTail(pxBucket, xLsbs, xMsbs, xKeys);
 }
 
 #endif // defined(HAS_KEY_128)
@@ -992,12 +841,12 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 #if defined(PSPLIT_SEARCH_16)
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 16) {
-        nPos = PSplitSearch16(nBL, psKeys, nPopCnt, 0, -1, sKey, nPos);
-        //PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
+        //nPos = PSplitSearch16(nBL, psKeys, nPopCnt, sKey, nPos);
+        PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     } else
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
-        //nPos = PSplitSearch16(nBL, psKeys, nPopCnt, 0, -1, sKey, nPos);
+        //nPos = PSplitSearch16(nBL, psKeys, nPopCnt, sKey, nPos);
         PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     }
 #elif defined(BACKWARD_SEARCH_16)
