@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.418 2014/11/24 05:11:51 mike Exp mike $
+// @(#) $Id: bli.c,v 1.419 2014/11/24 13:21:10 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -386,7 +386,21 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 }
 
 #if 0
-// Amazingly, the variant above was better performing in my tests.
+// Amazingly, the variant above was the best performing in my tests.
+#define PSSEARCHB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
+{ \
+    _b_t *px = (_b_t *)(_pxKeys); \
+    int nxPos = ((_nPos) + (_nPopCnt) - 1) * sizeof(_xKey) / sizeof(_b_t); \
+    (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
+    do { \
+        if ((_xKey) >= (_pxKeys)[_nPos]) { \
+            if (!BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8)) { \
+                (_nPos = -1); \
+            } \
+            break; \
+        } \
+    } while (((_nPos) -= sizeof(_b_t) / sizeof(_xKey)), (nxPos-- >= 0)); \
+}
 #define PSSEARCHB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
     _b_t *px = (_b_t *)(_pxKeys); \
