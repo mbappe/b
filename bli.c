@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.407.1.11 2014/11/24 04:09:27 mike Exp mike $
+// @(#) $Id: bli.c,v 1.418 2014/11/24 05:11:51 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -376,7 +376,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     /* number of first key in starting _b_t */ \
     Word_t wEnd = (Word_t)&(_pxKeys)[_nPos]; \
     (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
-    /*assert((((_nPos) * sizeof(_xKey)) % sizeof(_b_t)) == 0);*/ \
+    assert((((_nPos) * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
     while ( ! BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
         /* check the first key in the _b_t to see if we've gone too far */ \
         if ((_pxKeys)[_nPos] < (_xKey)) { (_nPos) ^= -1; break; } \
@@ -384,6 +384,23 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
         if ((Word_t)&px[nxPos] < wEnd) { (_nPos) = -1; break; } \
     } \
 }
+
+#if 0
+// Amazingly, the variant above was better performing in my tests.
+#define PSSEARCHB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
+{ \
+    _b_t *px = (_b_t *)(_pxKeys); \
+    int nxPos = ((_nPos) + (_nPopCnt) - 1) * sizeof(_xKey) / sizeof(_b_t); \
+    (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
+    while ( ! BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
+        /* check the first key in the _b_t to see if we've gone too far */ \
+        if (((_xKey) > (_pxKeys)[_nPos]) || (nxPos-- == 0)) { \
+            (_nPos) = -1; break; \
+        } \
+        (_nPos) -= sizeof(_b_t) / sizeof(_xKey); \
+    } \
+}
+#endif // 0
 
 #else // defined(PSPLIT_EARLY_OUT)
 
