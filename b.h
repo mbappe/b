@@ -15,11 +15,7 @@
 #define SKIP_LINKS
 #endif // ! defined(NO_SKIP_LINKS)
 
-// Default is -DSEARCH_FROM_J1T.
-#if ! defined(NO_SEARCH_FROM_J1T)
-#undef  SEARCH_FROM_J1T
-#define SEARCH_FROM_J1T
-#endif // ! defined(NO_SEARCH_FROM_J1T)
+// Default is -USEARCH_FROM_J1T.
 
 #if defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 #undef  SKIP_PREFIX_CHECK

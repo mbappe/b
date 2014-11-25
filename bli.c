@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.420 2014/11/24 13:26:09 mike Exp mike $
+// @(#) $Id: bli.c,v 1.421 2014/11/25 00:13:27 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2533,12 +2533,17 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
   #if (cwListPopCntMax != 0)
       #if defined(PP_IN_LINK) || defined(SEARCH_FROM_J1T)
-    // Handle the top level T_LIST leaf here because for PP_IN_LINK a T_LIST
-    // at the top has a pop count byte at the beginning and T_LISTs not at
-    // the top do not.  I didn't want to have to have all of the mainline
-    // list handling code have to know or test if it is at the top.
+    // Handle a top level T_LIST leaf here because for PP_IN_LINK a T_LIST
+    // leaf at the top has a pop count field and T_LIST leaves not at the
+    // top do not.
+    // I wanted to avoid making the mainline T_LIST leaf handling code have
+    // to know or test if it is at the top.
     // Do not assume the list is sorted here -- so this code doesn't have to
     // be ifdef'd.
+    // Use SEARCH_FROM_J1T to force the search of a top level T_LIST leaf
+    // from here if not PP_IN_LINK.  It's a bit faster, 1-2 ns out of
+    // 2-16 ns, if all we have is a T_LIST leaf, but there is a very small,
+    // sub-nanosecond, cost for all other cases.
     unsigned nType = wr_nType((Word_t)pcvRoot);
     if (nType == T_LIST)
     {
