@@ -901,13 +901,20 @@ enum {
 // For PP_IN_LINK ls_wPopCnt macros are only valid at top, i.e.
 // nDL == cnDigitsPerWord, and only for T_LIST - not for T_ONE.
 #if (cnDummiesInList == 0)
-#define     ls_wPopCnt(_ls)  (((ListLeaf_t *)(_ls))->ll_awKeys[0])
+#define     ls_wPopCnt(_ls, _nBL) \
+    (assert((_nBL) == cnBitsPerWord), ((ListLeaf_t *)(_ls))->ll_awKeys[0])
+#define set_ls_wPopCnt(_ls, _nBL, _cnt) \
+    (assert((_nBL) == cnBitsPerWord), \
+        ((ListLeaf_t *)(_ls))->ll_awKeys[0] = (_cnt))
 #else // (cnDummiesInList == 0)
 // Use the last dummy for pop count if we have at least one dummy.
-#define     ls_wPopCnt(_ls) \
-    (((ListLeaf_t *)(_ls))->ll_awDummies[cnDummiesInList - 1])
+#define     ls_wPopCnt(_ls, _nBL) \
+    (assert((_nBL) == cnBitsPerWord), \
+        ((ListLeaf_t *)(_ls))->ll_awDummies[cnDummiesInList - 1])
+#define set_ls_wPopCnt(_ls, _nBL, _cnt) \
+    (assert((_nBL) == cnBitsPerWord), \
+        ((ListLeaf_t *)(_ls))->ll_awDummies[cnDummiesInList - 1] = (_cnt))
 #endif // (cnDummiesInList == 0)
-#define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
 
 // Index of first key within leaf (for nDL != cnDigitsPerWord).
 // Or is it the number of key slots needed for header info after
@@ -922,8 +929,22 @@ enum {
 
 #else // defined(PP_IN_LINK)
 
-#define     ls_wPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_acKeys[0])
-#define set_ls_wPopCnt(_ls, _cnt)  (ls_wPopCnt(_ls) = (_cnt))
+#define     ls_wPopCnt(_ls, _nBL) \
+  (((_nBL) > 8) ? ls_sPopCnt(_ls) : ls_cPopCnt(_ls))
+
+#define set_ls_wPopCnt(_ls, _nBL, _cnt) \
+  (((_nBL) > 8) ? set_ls_sPopCnt((_ls), (_cnt)) \
+                : set_ls_cPopCnt((_ls), (_cnt)))
+
+// Use ls_sPopCnt in the performance path when we know the keys are bigger
+// than one byte.
+#define     ls_sPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_asKeys[0])
+#define set_ls_sPopCnt(_ls, _cnt)  (ls_sPopCnt(_ls) = (_cnt))
+
+// Use ls_cPopCnt in the performance path when we know the keys are one byte.
+// PopCnt fits in a single key slot.
+#define     ls_cPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_acKeys[0])
+#define set_ls_cPopCnt(_ls, _cnt)  (ls_cPopCnt(_ls) = (_cnt))
 
 // Index of first key within leaf (for all cases).
 // Or is it the number of key slots needed for header info after

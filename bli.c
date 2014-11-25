@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.421 2014/11/25 00:13:27 mike Exp mike $
+// @(#) $Id: bli.c,v 1.422 2014/11/25 16:07:47 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1153,18 +1153,18 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
           #if (cnBitsAtDl1 <= 8) // nDL == 1 is handled here
               #if (cnListPopCntMaxDl1 <= 16) // list fits in one __m128i
                   #if (cnBitsLeftAtDl2 <= 8) // need to test nDL
-        nPopCnt = (nBL == cnBitsAtDl1) ? cnListPopCntMaxDl1 : ls_wPopCnt(pwr);
+        nPopCnt = (nBL == cnBitsAtDl1) ? cnListPopCntMaxDl1 : ls_cPopCnt(pwr);
                   #else // (cnBitsLeftAtDl2 <= 8)
         nPopCnt = cnListPopCntMaxDl1;
                   #endif // (cnBitsLeftAtDl2 <= 8)
               #else // (cnListPopCntMaxDl1 <= 16)
-        nPopCnt = ls_wPopCnt(pwr);
+        nPopCnt = ls_cPopCnt(pwr);
               #endif // (cnListPopCntMaxDl1 <= 16)
           #else // (cnBitsAtDl1 <= 8)
-        nPopCnt = ls_wPopCnt(pwr);
+        nPopCnt = ls_cPopCnt(pwr);
           #endif // (cnBitsAtDl1 <= 8)
       #else // defined(HAS_KEY_128)
-        nPopCnt = ls_wPopCnt(pwr);
+        nPopCnt = ls_cPopCnt(pwr);
       #endif // defined(HAS_KEY_128)
       #endif // defined(LOOKUP) && ! defined(PP_IN_LINK)
         nPos = SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt);
@@ -1177,18 +1177,18 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
           #if (cnBitsAtDl1 > 8) // nDL == 1 is handled here
               #if (cnListPopCntMaxDl1 <= 8) // list fits in one __m128i
                   #if (cnBitsLeftAtDl2 <= 16) // need to test nDL
-        nPopCnt = (nBL == cnBitsAtDl1) ? cnListPopCntMaxDl1 : ls_wPopCnt(pwr);
+        nPopCnt = (nBL == cnBitsAtDl1) ? cnListPopCntMaxDl1 : ls_sPopCnt(pwr);
                   #else // (cnBitsLeftAtDl2 <= 16)
         nPopCnt = cnListPopCntMaxDl1;
                   #endif // (cnBitsLeftAtDl2 <= 16)
               #else // (cnListPopCntMaxDl1 <= 8)
-        nPopCnt = ls_wPopCnt(pwr);
+        nPopCnt = ls_sPopCnt(pwr);
               #endif // (cnListPopCntMaxDl1 <= 8)
           #else // (cnBitsAtDl1 <= 8)
-        nPopCnt = ls_wPopCnt(pwr);
+        nPopCnt = ls_sPopCnt(pwr);
           #endif // (cnBitsAtDl1 <= 8)
       #else // defined(HAS_KEY_128)
-        nPopCnt = ls_wPopCnt(pwr);
+        nPopCnt = ls_sPopCnt(pwr);
       #endif // defined(HAS_KEY_128)
       #endif // defined(LOOKUP) && ! defined(PP_IN_LINK)
         nPos = SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt);
@@ -1197,7 +1197,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
       #if (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {
           #if defined(LOOKUP) && ! defined(PP_IN_LINK)
-        nPopCnt = ls_wPopCnt(pwr);
+        nPopCnt = ls_sPopCnt(pwr);
           #endif // defined(LOOKUP) && ! defined(PP_IN_LINK)
         nPos = SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt);
     } else
@@ -1205,7 +1205,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
   #endif // defined(COMPRESSED_LISTS)
     {
   #if defined(LOOKUP) && ! defined(PP_IN_LINK)
-        nPopCnt = ls_wPopCnt(pwr);
+        nPopCnt = ls_sPopCnt(pwr);
   #endif // defined(LOOKUP) && ! defined(PP_IN_LINK)
         nPos = SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt);
     }
@@ -1941,7 +1941,7 @@ notEmptyBm:;
           #if defined(LOOKUP)
         // we'll get wPopCnt in SearchList if we need it
           #else // defined(LOOKUP)
-        wPopCnt = ls_wPopCnt(pwr);
+        wPopCnt = ls_wPopCnt(pwr, nBL);
           #endif // defined(LOOKUP)
       #endif // defined(PP_IN_LINK)
 
@@ -2553,10 +2553,12 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
         // the first word in the list is used for pop count at the top
         return (SearchListWord(ls_pwKeys(pwr)
           #if defined(PP_IN_LINK)
-                                  + (cnDummiesInList == 0)
+                                   + (cnDummiesInList == 0)
           #endif // defined(PP_IN_LINK)
-                                  ,
-                          wKey, cnBitsPerWord, ls_wPopCnt(pwr)) >= 0)
+                                   ,
+                               wKey, cnBitsPerWord,
+                           ls_wPopCnt(pwr, cnBitsPerWord))
+                       >= 0)
                    ? Success : Failure;
     }
       #endif // defined(PP_IN_LINK) || defined(SEARCH_FROM_J1T)
@@ -2719,7 +2721,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             } else
       #endif // defined(USE_T_ONE)
             {
-                wPopCnt = ls_wPopCnt(pwr);
+                wPopCnt = ls_wPopCnt(pwr, cnBitsPerWord);
             }
 
 #if (cnBitsPerWord == 64)
@@ -2865,7 +2867,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
         else
         {
             Word_t *pwr = wr_tp_pwr(wRoot, nType);
-            Word_t wPopCnt = ls_wPopCnt(pwr);
+            Word_t wPopCnt = ls_wPopCnt(pwr, cnBitsPerWord);
             Word_t *pwListNew;
             if (wPopCnt != 1)
             {

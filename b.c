@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.348 2014/11/17 19:04:24 mike Exp mike $
+// @(#) $Id: b.c,v 1.349 2014/11/18 04:26:23 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -396,7 +396,7 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
     if (nBL >= cnBitsPerWord)
 #endif // defined(PP_IN_LINK)
     {
-        set_ls_wPopCnt(pwList, wPopCnt);
+        set_ls_wPopCnt(pwList, nBL, wPopCnt);
     }
 
 #if defined(DL_IN_LL)
@@ -1122,7 +1122,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
             else
 #endif // defined(PP_IN_LINK)
             {
-                wPopCnt = ls_wPopCnt(pwr);
+                wPopCnt = ls_wPopCnt(pwr, nBL);
             }
 
             if (!bDump)
@@ -1808,12 +1808,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                     wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL) - 1;
                     pwKeys = ls_pwKeys(pwr); // list of keys in old List
                 } else {
-                    wPopCnt = ls_wPopCnt(pwr);
+                    wPopCnt = ls_wPopCnt(pwr, nBL);
                     // skip over pop count
                     pwKeys = ls_pwKeys(pwr) + (cnDummiesInList == 0);
                 }
 #else // defined(PP_IN_LINK)
-                wPopCnt = ls_wPopCnt(pwr);
+                wPopCnt = ls_wPopCnt(pwr, nBL);
                 pwKeys = ls_pwKeys(pwr); // list of keys in old List
 #endif // defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
@@ -1919,7 +1919,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 assert(nDL != cnDigitsPerWord);
                 assert(PWR_wPopCnt(pwRoot, NULL, nDL) == wPopCnt + 1);
 #else // defined(PP_IN_LINK)
-                set_ls_wPopCnt(pwList, wPopCnt + 1);
+                set_ls_wPopCnt(pwList, nBL, wPopCnt + 1);
 #endif // defined(PP_IN_LINK)
             }
 
@@ -2939,7 +2939,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     } else
 #endif // defined(PP_IN_LINK)
     {
-        wPopCnt = ls_wPopCnt(pwr);
+        wPopCnt = ls_wPopCnt(pwr, nBL);
     }
 
 // Why was this #if defined(USE_T_ONE) ever here?
@@ -2990,7 +2990,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if defined(PP_IN_LINK)
     assert(nDL != cnDigitsPerWord); // T_LIST at top is handled by Judy1Unset?
 #else // defined(PP_IN_LINK)
-    set_ls_wPopCnt(pwList, wPopCnt - 1);
+    set_ls_wPopCnt(pwList, nBL, wPopCnt - 1);
 #endif // defined(PP_IN_LINK)
 
 #if defined(LIST_END_MARKERS) || defined(PSPLIT_PARALLEL)
@@ -3223,7 +3223,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
       #endif // defined(USE_T_ONE)
         {
             // ls_wPopCnt is valid at top for PP_IN_LINK if ! USE_T_ONE
-            wPopCnt = ls_wPopCnt(pwr);
+            wPopCnt = ls_wPopCnt(pwr, cnBitsPerWord);
         }
     }
     else
