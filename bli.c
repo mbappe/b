@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.422 2014/11/25 16:07:47 mike Exp mike $
+// @(#) $Id: bli.c,v 1.423 2014/11/25 17:40:53 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1148,7 +1148,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
   #if defined(COMPRESSED_LISTS)
       #if (cnBitsAtBottom <= 8)
     if (nBL <= 8) {
-      #if defined(LOOKUP) && ! defined(PP_IN_LINK)
+      #if ! defined(PP_IN_LINK)
       #if defined(HAS_KEY_128) // sizeof(__m128i) == 16 bytes
           #if (cnBitsAtDl1 <= 8) // nDL == 1 is handled here
               #if (cnListPopCntMaxDl1 <= 16) // list fits in one __m128i
@@ -1166,13 +1166,13 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
       #else // defined(HAS_KEY_128)
         nPopCnt = ls_cPopCnt(pwr);
       #endif // defined(HAS_KEY_128)
-      #endif // defined(LOOKUP) && ! defined(PP_IN_LINK)
+      #endif // ! defined(PP_IN_LINK)
         nPos = SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsAtBottom <= 8)
       #if (cnBitsAtBottom <= 16)
     if (nBL <= 16) {
-      #if defined(LOOKUP) && ! defined(PP_IN_LINK)
+      #if ! defined(PP_IN_LINK)
       #if defined(HAS_KEY_128) // sizeof(__m128i) == 16 bytes
           #if (cnBitsAtDl1 > 8) // nDL == 1 is handled here
               #if (cnListPopCntMaxDl1 <= 8) // list fits in one __m128i
@@ -1190,23 +1190,23 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
       #else // defined(HAS_KEY_128)
         nPopCnt = ls_sPopCnt(pwr);
       #endif // defined(HAS_KEY_128)
-      #endif // defined(LOOKUP) && ! defined(PP_IN_LINK)
+      #endif // ! defined(PP_IN_LINK)
         nPos = SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsAtBottom <= 16)
       #if (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {
-          #if defined(LOOKUP) && ! defined(PP_IN_LINK)
+          #if ! defined(PP_IN_LINK)
         nPopCnt = ls_sPopCnt(pwr);
-          #endif // defined(LOOKUP) && ! defined(PP_IN_LINK)
+          #endif // ! defined(PP_IN_LINK)
         nPos = SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsAtBottom <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     {
-  #if defined(LOOKUP) && ! defined(PP_IN_LINK)
+  #if ! defined(PP_IN_LINK)
         nPopCnt = ls_sPopCnt(pwr);
-  #endif // defined(LOOKUP) && ! defined(PP_IN_LINK)
+  #endif // ! defined(PP_IN_LINK)
         nPos = SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt);
     }
 
@@ -1938,11 +1938,7 @@ notEmptyBm:;
         if (nIncr == 1) { ++wPopCnt; }
           #endif // defined(REMOVE)
       #else // defined(PP_IN_LINK)
-          #if defined(LOOKUP)
         // we'll get wPopCnt in SearchList if we need it
-          #else // defined(LOOKUP)
-        wPopCnt = ls_wPopCnt(pwr, nBL);
-          #endif // defined(LOOKUP)
       #endif // defined(PP_IN_LINK)
 
         // Search the list.  wPopCnt is the number of keys in the list.
@@ -2014,11 +2010,11 @@ notEmptyBm:;
 #else // defined(COMPRESSED_LISTS)
                            cnBitsPerWord,
 #endif // defined(COMPRESSED_LISTS)
-#if defined(LOOKUP) && ! defined(PP_IN_LINK)
-                           0 // bogus value for wPopCnt; we overwrite later
-#else // defined(LOOKUP) && ! defined(PP_IN_LINK)
+#if defined(PP_IN_LINK)
                            wPopCnt
-#endif // defined(LOOKUP) && ! defined(PP_IN_LINK)
+#else // defined(PP_IN_LINK)
+                           0 // bogus value for wPopCnt; we overwrite later
+#endif // defined(PP_IN_LINK)
                            )
                 >= 0)
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
