@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.423 2014/11/25 17:40:53 mike Exp mike $
+// @(#) $Id: bli.c,v 1.424 2014/11/25 17:56:53 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -506,7 +506,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     _xKeys = _mm_set1_epi64((__m64)wKeys); \
 }
 
-#if defined(LOOKUP)
+#if defined(LOOKUP) && defined(HAS_KEY_128)
 static Word_t // bool
 m128iHasKeyTail(__m128i *pxBucket,
     __m128i xLsbs,
@@ -519,7 +519,7 @@ m128iHasKeyTail(__m128i *pxBucket,
     __m128i xZero = _mm_setzero_si128();
     return ! _mm_testc_si128(xZero, xMagic);
 }
-#endif // defined(LOOKUP)
+#endif // defined(LOOKUP) && defined(HAS_KEY_128)
 
 // Split search with a parallel search of the bucket at the split point.
 // A bucket is a Word_t or an __m128i.  Or whatever else we decide to pass
@@ -1981,7 +1981,7 @@ notEmptyBm:;
             || (LOG(1 | (PWR_wPrefixNAT(pwRootPrefix,
                                         (Switch_t *)pwrPrefix, nDLRPrefix)
                             ^ wKey))
-                < nDL_to_nBL(nDLRPrefix))
+                < nDL_to_nBL_NAT(nDLRPrefix))
               #else // defined(SAVE_PREFIX)
             || (LOG(1 | (PWR_wPrefixNAT(pwRoot, (Switch_t *)pwrPrev, nDL)
                     ^ wKey))
@@ -1989,7 +1989,7 @@ notEmptyBm:;
                   #if ! defined(PP_IN_LINK)
                     // prefix in parent switch doesn't contain last digit
                     // for ! defined(PP_IN_LINK) case
-                    + nDL_to_nBitsIndexSzNAT(nDL + 1)
+                    + nDL_to_nBitsIndexSzNAX(nDL + 1)
                   #endif // ! defined(PP_IN_LINK)
                 ))
               #endif // defined(SAVE_PREFIX)
@@ -2095,7 +2095,7 @@ embeddedBitmap:
           #if defined(SAVE_PREFIX)
             || (LOG(1 | (PWR_wPrefixNAT(pwRootPrefix, pwrPrefix, nDLRPrefix)
                     ^ wKey))
-                < nDL_to_nBL(nDLRPrefix))
+                < nDL_to_nBL_NAT(nDLRPrefix))
           #else // defined(SAVE_PREFIX)
             // Notice that we're using pwr which was extracted from the
             // previous wRoot -- not the current wRoot -- to find the prefix,
@@ -2177,7 +2177,7 @@ embeddedBitmap:
     case T_EMBEDDED_KEYS | EXP(cnBitsMallocMask):
 #endif // defined(EXTRA_TYPES)
     {
-        assert(nDL_to_nBL(nDL)
+        assert(nDL_to_nBL_NAT(nDL)
             <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
   #if defined(REMOVE)
         if (bCleanup) { return Success; } // cleanup is complete
@@ -2269,12 +2269,16 @@ embeddedBitmap:
         //
 #if defined(DL_SPECIFIC_T_ONE)
         if (nDL == 1) {
-            if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL(nDL))) goto foundIt;
+            if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL_NAT(nDL))) {
+                goto foundIt;
+            }
         } else if (nDL == 2) {
-            if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL(nDL))) goto foundIt;
+            if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL_NAT(nDL))) {
+                goto foundIt;
+            }
         } else {
 #endif // defined(DL_SPECIFIC_T_ONE)
-        unsigned nBL = nDL_to_nBL(nDL);
+        unsigned nBL = nDL_to_nBL_NAT(nDL);
 #if defined(DL_SPECIFIC_T_ONE)
   #if defined(HAS_KEY)
 #if 0

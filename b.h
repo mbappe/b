@@ -398,31 +398,47 @@ enum {
 #endif // (cnBitsAtDl3 == cnBitsPerDigit) && ...
 
 // nDL_from_nBL(_nBL)
-#if ( (cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit) \
-                                      && (cnBitsAtDl1 == cnBitsPerDigit) )
-    // We have to round up for when this is used to figure the depth of a skip
+// nDL_from_nBL_NIB(_nBL) _nBL must be an integral number of digits 
+#if ( (cnBitsAtDl1 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit) \
+                                      && (cnBitsAtDl3 == cnBitsPerDigit) )
+
+    // Rounding up is not free since we don't otherwise need to add a               // constant before (or after) dividing.
+    // But we have to round up when this is used to figure the depth of a skip
     // link from a common prefix which may be a non-integral number of digits.
-    // If we don't need to round up in Lookup, then maybe we should optimize.
     #define nDL_from_nBL(_nBL)  (DIV_UP((_nBL), cnBitsPerDigit))
-#elif ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
-    // rounding up is free and it might be necessary -- not sure
+
+    // In cases where rounding is not necessary we can use this.
+    #define nDL_from_nBL_NIB(_nBL)  ((_nBL) / cnBitsPerDigit)
+
+#else // (cnBitsAtDl1 == cnBitsPerDigit) ...
+
+  // nDL_from_nBL(_nBL)
+  #if ((cnBitsAtDl2 == cnBitsPerDigit) && (cnBitsAtDl3 == cnBitsPerDigit))
+    // Rounding up is free since we already have to add a constant before
+    // (or after) dividing.
     #define nDL_from_nBL(_nBL) \
         ( ((_nBL) <= cnBitsAtDl1 ) ? 1 \
         : 1 + DIV_UP((_nBL) - cnBitsLeftAtDl1, cnBitsPerDigit) )
-#elif (cnBitsAtDl3 == cnBitsPerDigit)
-    // rounding up is free and it might be necessary -- not sure
+  #elif (cnBitsAtDl3 == cnBitsPerDigit)
+    // Rounding up is free since we already have to add a constant before
+    // (or after) dividing.
     #define nDL_from_nBL(_nBL) \
         ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
         : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
         : 2 + DIV_UP((_nBL) - cnBitsLeftAtDl2, cnBitsPerDigit) )
-#else // (cnBitsAtDl3 == cnBitsPerDigit) && ...
-    // rounding up is free and it might be necessary -- not sure
+  #else // (cnBitsAtDl2 == cnBitsPerDigit) && ...
+    // Rounding up is free since we already have to add a constant before
+    // (or after) dividing.
     #define nDL_from_nBL(_nBL) \
         ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
         : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
         : ((_nBL) <= cnBitsLeftAtDl2) ? 3 \
         : 3 + DIV_UP((_nBL) - cnBitsLeftAtDl3, cnBitsPerDigit) )
-#endif // (cnBitsAtDl3 == cnBitsPerDigit) && ...
+  #endif // (cnBitsAtDl2 == cnBitsPerDigit) ...
+
+    #define nDL_from_nBL_NIB(_nBL)  nDL_from_nBL(_nBL)
+
+#endif // (cnBitsAtDl1 == cnBitsPerDigit) && ...
 
 #if (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
 
