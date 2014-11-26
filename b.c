@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.353 2014/11/26 15:26:16 mike Exp mike $
+// @(#) $Id: b.c,v 1.354 2014/11/26 17:33:26 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -619,13 +619,12 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
     } else
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     if ((cnBitsAtBottom <= cnLogBitsPerWord)
-            && (nDL <= nBL_to_nDL(cnBitsAtBottom) + 1)) {
+            && (nDL_to_nBL(nDL) - nBitsIndexSz <= cnBitsAtBottom))
+    {
         // embedded bitmap
-        assert(nDL == nBL_to_nDL(cnBitsAtBottom) + 1); // later
         METRICS(j__AllocWordsJLB1 += wWords); // JUDYA
     } else {
         METRICS(j__AllocWordsJBU += wWords); // JUDYA
-        // printf("\nNS: BU wWords "OWx" JBU "OWx"\n", wWords, j__AllocWordsJBU);
     }
 #endif // defined(RAMMETRICS)
 
@@ -880,7 +879,16 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
     //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
     if (wPopCnt == EXP(nBitsIndexSz) - 1) {
-//printf("\nBitmap switch is fully populated.\n");
+        // Bitmap switch is fully populated.
+        METRICS(j__AllocWordsJBB -= nWords - sizeof(Link_t) / sizeof(Word_t));
+        if ((cnBitsAtBottom <= cnLogBitsPerWord)
+            && (nDL_to_nBL(nDL) - nBitsIndexSz <= cnBitsAtBottom))
+        {
+            // embedded bitmap
+            METRICS(j__AllocWordsJLB1 += nWords); // JUDYA
+        } else {
+            METRICS(j__AllocWordsJBU += nWords); // JUDYA
+        }
         return 1;
     }
 
@@ -933,19 +941,19 @@ OldSwitch(Word_t *pwRoot, unsigned nDL,
     wWords /= sizeof(Word_t);
 
 #if defined(RAMMETRICS)
+    unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDL);
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-    if (bBmSw) {
+    if (wr_nType(*pwRoot) == T_BM_SW) {
         METRICS(j__AllocWordsJBB  -= wWords); // JUDYA
     } else
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     if ((cnBitsAtBottom <= cnLogBitsPerWord)
-            && (nDL <= nBL_to_nDL(cnBitsAtBottom) + 1)) {
+        && (nDL_to_nBL(nDL) - nBitsIndexSz <= cnBitsAtBottom))
+    {
         // embedded bitmap
-        assert(nDL == nBL_to_nDL(cnBitsAtBottom) + 1); // later
         METRICS(j__AllocWordsJLB1 -= wWords); // JUDYA
     } else {
         METRICS(j__AllocWordsJBU  -= wWords); // JUDYA
-        //printf("\nOS: BU wWords "OWx" JBU "OWx"\n", wWords, j__AllocWordsJBU);
     }
 #endif // defined(RAMMETRICS)
 

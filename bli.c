@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.429 2014/11/26 16:34:58 mike Exp mike $
+// @(#) $Id: bli.c,v 1.430 2014/11/26 17:33:26 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1517,9 +1517,15 @@ again:
 #endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-#if defined(LOOKUP)
+  #if defined(BM_IN_NON_BM_SW)
+    }
+    case T_FULL_BM_SW:
+    {
+  #else // defined(BM_IN_NON_BM_SW)
+      #if defined(LOOKUP)
 t_sw_base:
-#endif // defined(LOOKUP)
+      #endif // defined(LOOKUP)
+  #endif // defined(BM_IN_NON_BM_SW)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
 #if ( ! defined(LOOKUP) && defined(PP_IN_LINK) || defined(REMOVE) )
@@ -1661,9 +1667,9 @@ notEmpty:;
 
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
+#if ! defined(BM_IN_NON_BM_SW)
     case T_FULL_BM_SW:
     {
-
 #if defined(LOOKUP)
 //printf("\nT_FULL_BM_SW\n");
         pwr = (Word_t *)&((BmSwitch_t *)pwr)->sw_wPrefixPop;
@@ -1672,6 +1678,7 @@ notEmpty:;
 
         // fall through
     }
+#endif // ! defined(BM_IN_NON_BM_SW)
 
     case T_BM_SW:
 #if defined(EXTRA_TYPES)

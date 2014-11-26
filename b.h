@@ -1138,6 +1138,13 @@ typedef struct {
 
 // Uncompressed, basic switch.
 typedef struct {
+#if defined(USE_BM_SW) || defined(BM_AT_DL2)
+#if defined(BM_IN_NON_BM_SW)
+#if ! defined(BM_IN_LINK)
+    Word_t sw_awBm[N_WORDS_SWITCH_BM];
+#endif // ! defined(BM_IN_LINK)
+#endif // defined(BM_IN_NON_BM_SW)
+#endif // defined(USE_BM_SW) || defined(BM_AT_DL2)
 #if !defined(PP_IN_LINK)
     Word_t sw_wPrefixPop;
 #endif // !defined(PP_IN_LINK)
@@ -1150,6 +1157,7 @@ typedef struct {
     Link_t sw_aLinks[1]; // variable size
 } Switch_t;
 
+#if defined(USE_BM_SW) || defined(BM_AT_DL2)
 // Bitmap switch.
 typedef struct {
 #if ! defined(BM_IN_LINK)
@@ -1166,6 +1174,7 @@ typedef struct {
 #endif // (cnDummiesInSwitch != 0)
     Link_t sw_aLinks[1]; // variable size
 } BmSwitch_t;
+#endif // defined(USE_BM_SW) || defined(BM_AT_DL2)
 
 Status_t Insert(Word_t *pwRoot, Word_t wKey, unsigned nBL);
 Status_t Remove(Word_t *pwRoot, Word_t wKey, unsigned nBL);
