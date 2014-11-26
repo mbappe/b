@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.352 2014/11/26 15:18:55 mike Exp mike $
+// @(#) $Id: b.c,v 1.353 2014/11/26 15:26:16 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -790,7 +790,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 #if defined(BM_SW_FOR_REAL)
-static void
+static int // returns true if the bitmap is fully populated
 NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 {
     Word_t *pwr = wr_pwr(*pwRoot);
@@ -878,6 +878,13 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 
     //DBGI(printf("After NewLink"));
     //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+
+    if (wPopCnt == EXP(nBitsIndexSz) - 1) {
+//printf("\nBitmap switch is fully populated.\n");
+        return 1;
+    }
+
+    return 0;
 }
 #endif // defined(BM_SW_FOR_REAL)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
@@ -1196,7 +1203,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
   #if defined(EXTRA_TYPES)
     if ((nType == T_BM_SW) || (nType == T_BM_SW + EXP(cnBitsMallocMask)))
   #else // defined(EXTRA_TYPES)
-    if (nType == T_BM_SW)
+    if ((nType == T_BM_SW) || (nType == T_FULL_BM_SW))
   #endif // defined(EXTRA_TYPES)
     {
         bBmSw = 1;
@@ -2333,7 +2340,7 @@ newSwitch:
   #if defined(EXTRA_TYPES)
         if ((nType == T_BM_SW) || (nType == T_BM_SW + EXP(cnBitsMallocMask)))
   #else // defined(EXTRA_TYPES)
-        if (nType == T_BM_SW)
+        if ((nType == T_BM_SW) || (nType == T_FULL_BM_SW))
   #endif // defined(EXTRA_TYPES)
         {
             nDLR = nDL;
@@ -2367,11 +2374,11 @@ newSwitch:
                         w_wPrefix(wKey, nDLR), nDLR));
 #endif // defined(SKIP_LINKS)
             // no link -- for now -- will eventually have to check
-            NewLink(pwRoot, wKey, nDLR);
+            int bSwitchIsFull = NewLink(pwRoot, wKey, nDLR);
             // Remember to update type field in *pwRoot if necessary.
             // Would need to add a parameter to NewLink to do it there.
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-            set_wr_nType(*pwRoot, T_BM_SW);
+            set_wr_nType(*pwRoot, bSwitchIsFull ? T_FULL_BM_SW : T_BM_SW);
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
             Insert(pwRoot, wKey, nDL);
         }
@@ -3237,7 +3244,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
   #if defined(EXTRA_TYPES)
         if ((nType == T_BM_SW) || (nType == T_BM_SW + EXP(cnBitsMallocMask)))
   #else // defined(EXTRA_TYPES)
-        if (nType == T_BM_SW)
+        if ((nType == T_BM_SW) || (nType == T_FULL_BM_SW))
   #endif // defined(EXTRA_TYPES)
         {
             bBmSw = 1;
@@ -3249,9 +3256,11 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
       #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
           #if defined(TYPE_IS_RELATIVE)
-        assert((wr_nDS(wRoot) == 0) || (nType == T_BM_SW));
+        assert((wr_nDS(wRoot) == 0)
+            || ((nType == T_BM_SW) || (nType == T_FULL_BM_SW)));
           #else // defined(TYPE_IS_RELATIVE)
-        assert((wr_nDL(wRoot) == cnDigitsPerWord) || (nType = T_BM_SW));
+        assert((wr_nDL(wRoot) == cnDigitsPerWord)
+            || ((nType == T_BM_SW) || (nType == T_FULL_BM_SW)));
           #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)

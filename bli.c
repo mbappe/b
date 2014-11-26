@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.428 2014/11/26 15:26:16 mike Exp mike $
+// @(#) $Id: bli.c,v 1.429 2014/11/26 16:34:58 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1516,6 +1516,12 @@ again:
     {
 #endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 
+#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(LOOKUP)
+t_sw_base:
+#endif // defined(LOOKUP)
+#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+
 #if ( ! defined(LOOKUP) && defined(PP_IN_LINK) || defined(REMOVE) )
         nDLUp = nDL;
 #endif // ( ! defined(LOOKUP) && defined(PP_IN_LINK) || defined(REMOVE) )
@@ -1654,6 +1660,18 @@ notEmpty:;
     } // end of default case
 
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+
+    case T_FULL_BM_SW:
+    {
+
+#if defined(LOOKUP)
+//printf("\nT_FULL_BM_SW\n");
+        pwr = (Word_t *)&((BmSwitch_t *)pwr)->sw_wPrefixPop;
+        goto t_sw_base;
+#endif // defined(LOOKUP)
+
+        // fall through
+    }
 
     case T_BM_SW:
 #if defined(EXTRA_TYPES)

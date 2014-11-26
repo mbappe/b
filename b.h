@@ -357,6 +357,7 @@ enum {
     T_BITMAP,
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     T_BM_SW,
+    T_FULL_BM_SW,
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 #if defined(DEPTH_IN_SW)
 #if defined(TYPE_IS_RELATIVE)
@@ -1151,15 +1152,15 @@ typedef struct {
 
 // Bitmap switch.
 typedef struct {
+#if ! defined(BM_IN_LINK)
+    Word_t sw_awBm[N_WORDS_SWITCH_BM];
+#endif // ! defined(BM_IN_LINK)
 #if !defined(PP_IN_LINK)
     Word_t sw_wPrefixPop;
 #endif // !defined(PP_IN_LINK)
 #if defined(POP_WORD_IN_SW)
     Word_t sw_wPopWord;
 #endif // defined(POP_WORD_IN_SW)
-#if ! defined(BM_IN_LINK)
-    Word_t sw_awBm[N_WORDS_SWITCH_BM];
-#endif // ! defined(BM_IN_LINK)
 #if (cnDummiesInSwitch != 0)
     Word_t sw_awDummies[cnDummiesInSwitch];
 #endif // (cnDummiesInSwitch != 0)
