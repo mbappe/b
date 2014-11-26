@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.426 2014/11/26 14:54:46 mike Exp mike $
+// @(#) $Id: bli.c,v 1.427 2014/11/26 15:18:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1672,12 +1672,12 @@ notEmpty:;
 #endif // defined(EXTRA_TYPES)
     {
 
-#if defined(BM_SWITCH_FOR_REAL) \
+#if defined(BM_SW_FOR_REAL) \
     || ( ! defined(LOOKUP) \
         && (defined(PP_IN_LINK) || defined(BM_IN_LINK)) \
             || (defined(REMOVE) && ! defined(BM_IN_LINK)) )
         nDLUp = nDL;
-#endif // defined(BM_SWITCH_FOR_REAL) ...
+#endif // defined(BM_SW_FOR_REAL) ...
         nDL = nDLR - 1;
         nBL = nDL_to_nBL_NAX(nDL); // Probably near the top.
 
@@ -1721,13 +1721,13 @@ notEmpty:;
            // Test to see if link exists before figuring out where it is.
            if ( ! (wBm & wBit) )
            {
-  #if defined(BM_SWITCH_FOR_REAL)
+  #if defined(BM_SW_FOR_REAL)
                 DBGX(printf("missing link\n"));
                 nDL = nDLUp; // back up for InsertGuts
                 goto notFound;
-  #else // defined(BM_SWITCH_FOR_REAL)
+  #else // defined(BM_SW_FOR_REAL)
                 assert(0); // only for now
-  #endif // defined(BM_SWITCH_FOR_REAL)
+  #endif // defined(BM_SW_FOR_REAL)
             }
             Word_t wBmMask = wBit - 1;
             wIndex = 0;
@@ -2468,9 +2468,9 @@ foundIt:
 
     } // end of switch
 
-#if defined(BM_SWITCH_FOR_REAL)
+#if defined(BM_SW_FOR_REAL)
 notFound:
-#endif // defined(BM_SWITCH_FOR_REAL)
+#endif // defined(BM_SW_FOR_REAL)
 #if defined(INSERT)
   #if defined(BM_IN_LINK)
     // If InsertGuts calls Insert, then it is always with the same

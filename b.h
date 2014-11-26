@@ -22,7 +22,14 @@
 #define SKIP_PREFIX_CHECK
 #endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 
-// Default is -UBM_SWITCH_FOR_REAL -UBM_IN_LINK.
+// Default is -UBM_IN_LINK.
+// Default is -UUSE_BM_SW, -UBM_SW_AT_DL2.
+// USE_BM_SW means always use bm sw when creating a switch with no skip.
+// BM_SW_AT_DL2 means always use bm sw at dl2, i.e. do not skip to dl2.
+// Default is -DBM_SW_FOR_REAL but no matter if -UUSE_BM_SW and -UBM_AT_DL2.
+#if ! defined(NO_BM_SW_FOR_REAL)
+#define BM_SW_FOR_REAL
+#endif // ! defined(NO_BM_SW_FOR_REAL)
 
 // Default is -DDL_SPECIFIC_T_ONE.
 #if ! defined(NO_DL_SPECIFIC_T_ONE)
@@ -322,10 +329,6 @@
 
 // Default is -UT_ONE_MASK and -UT_ONE_CALC_POP.
 // See EmbeddedListHasKey.
-
-// Default is -UUSE_BM_SW, -UBM_SW_AT_DL2.
-// USE_BM_SW means always use bm sw when creating a switch with no skip.
-// BM_SW_AT_DL2 means always use bm sw at dl2, i.e. do not skip to dl2.
 
 // Default is -DTYPE_IS_RELATIVE.  Use -DTYPE_IS_ABSOLUTE to change it.
 #if ! defined(TYPE_IS_ABSOLUTE)

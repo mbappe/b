@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.351 2014/11/26 03:13:17 mike Exp mike $
+// @(#) $Id: b.c,v 1.352 2014/11/26 15:18:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -579,7 +579,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 
     Word_t wLinks = wIndexCnt;
 
-#if defined(BM_SWITCH_FOR_REAL)
+#if defined(BM_SW_FOR_REAL)
     if (bBmSw)
     {
   #if defined(BM_IN_LINK)
@@ -589,7 +589,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
             wLinks = 1; // number of links in switch
         }
     }
-#endif // defined(BM_SWITCH_FOR_REAL)
+#endif // defined(BM_SW_FOR_REAL)
 
     Word_t wWords =
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
@@ -663,7 +663,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
         if (nDLUp < cnDigitsPerWord)
 #endif // defined(BM_IN_LINK)
         {
-#if defined(BM_SWITCH_FOR_REAL)
+#if defined(BM_SW_FOR_REAL)
 
             memset(PWR_pwBm(pwRoot, pwr), 0, sizeof(PWR_pwBm(pwRoot, pwr)));
 
@@ -675,7 +675,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 
             SetBit(PWR_pwBm(pwRoot, pwr), wIndex);
 
-#else // defined(BM_SWITCH_FOR_REAL)
+#else // defined(BM_SW_FOR_REAL)
 
             // Mind the high-order bits of the bitmap word if/when the bitmap
             // is smaller than a whole word.
@@ -690,7 +690,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
                        sizeof(PWR_pwBm(pwRoot, pwr)));
             }
 
-#endif // defined(BM_SWITCH_FOR_REAL)
+#endif // defined(BM_SW_FOR_REAL)
         }
     }
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
@@ -789,7 +789,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 }
 
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-#if defined(BM_SWITCH_FOR_REAL)
+#if defined(BM_SW_FOR_REAL)
 static void
 NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 {
@@ -879,7 +879,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
     //DBGI(printf("After NewLink"));
     //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 }
-#endif // defined(BM_SWITCH_FOR_REAL)
+#endif // defined(BM_SW_FOR_REAL)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
 static Word_t
@@ -894,7 +894,7 @@ OldSwitch(Word_t *pwRoot, unsigned nDL,
     Word_t wLinks = EXP(nDL_to_nBitsIndexSz(nDL));
 
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-#if defined(BM_SWITCH_FOR_REAL)
+#if defined(BM_SW_FOR_REAL)
     if (bBmSw)
     {
   #if defined(BM_IN_LINK)
@@ -913,7 +913,7 @@ OldSwitch(Word_t *pwRoot, unsigned nDL,
             // Now we know how many links were in the old switch.
         }
     }
-#endif // defined(BM_SWITCH_FOR_REAL)
+#endif // defined(BM_SW_FOR_REAL)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
@@ -980,7 +980,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 
     if (wRoot == 0)
     {
-#if defined(BM_SWITCH_FOR_REAL)
+#if defined(BM_SW_FOR_REAL)
         if (bDump)
         {
             printf(" wPrefix "OWx, wPrefix);
@@ -989,7 +989,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
             printf(" wr "OWx, wRoot);
             printf("\n");
         }
-#endif // defined(BM_SWITCH_FOR_REAL)
+#endif // defined(BM_SW_FOR_REAL)
         return 0;
     }
 
@@ -1751,19 +1751,19 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 // This first clause handles wRoot == 0 by treating it like a list leaf
 // with zero population (and no allocated memory).
 // But why is it ok to skip the test for a switch if ! defined(SKIP_LINKS)
-// and !defined(BM_SWITCH_FOR_REAL)?
+// and !defined(BM_SW_FOR_REAL)?
 // InsertGuts is called with a wRoot
 // that points to a switch only for prefix mismatch or missing link cases.
 #if defined(SKIP_LINKS) 
     if (!tp_bIsSwitch(nType))
 #else // defined(SKIP_LINKS)
-#if defined(BM_SWITCH_FOR_REAL)
+#if defined(BM_SW_FOR_REAL)
 #if (cwListPopCntMax != 0)
     if (!tp_bIsSwitch(nType))
 #else // (cwListPopCntMax == 0)
     if (pwr == NULL)
 #endif // (cwListPopCntMax == 0)
-#endif // defined(BM_SWITCH_FOR_REAL)
+#endif // defined(BM_SW_FOR_REAL)
 #endif // defined(SKIP_LINKS)
     {
         Word_t wPopCnt;
@@ -2321,10 +2321,10 @@ newSwitch:
 #endif // (cwListPopCntMax != 0)
         }
     }
-#if defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
+#if defined(SKIP_LINKS) || defined(BM_SW_FOR_REAL)
     else
     {
-#if defined(BM_SWITCH_FOR_REAL)
+#if defined(BM_SW_FOR_REAL)
 #if defined(TYPE_IS_RELATIVE)
         unsigned nDLR = nDL - wr_nDS(wRoot);
 #else // defined(TYPE_IS_RELATIVE)
@@ -2375,10 +2375,10 @@ newSwitch:
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
             Insert(pwRoot, wKey, nDL);
         }
-#endif // defined(BM_SWITCH_FOR_REAL)
-#if defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
+#endif // defined(BM_SW_FOR_REAL)
+#if defined(SKIP_LINKS) && defined(BM_SW_FOR_REAL)
         else
-#endif // defined(SKIP_LINKS) && defined(BM_SWITCH_FOR_REAL)
+#endif // defined(SKIP_LINKS) && defined(BM_SW_FOR_REAL)
 #if defined(SKIP_LINKS)
         {
             // prefix mismatch
@@ -2453,10 +2453,10 @@ newSwitch:
             {
                 memcpy(ln.ln_awBm, PWR_pwBm(pwRoot, NULL),
                        DIV_UP(wIndexCnt, cnBitsPerWord) * cnBytesPerWord);
-#if ! defined(BM_SWITCH_FOR_REAL)
+#if ! defined(BM_SW_FOR_REAL)
                 assert((wIndexCnt < cnBitsPerWord)
                     || (ln.ln_awBm[0] == (Word_t)-1));
-#endif // ! defined(BM_SWITCH_FOR_REAL)
+#endif // ! defined(BM_SW_FOR_REAL)
             }
             }
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
@@ -2464,7 +2464,7 @@ newSwitch:
 
             Word_t *pwSw;
             // initialize prefix/pop for new switch
-            // Make sure to pass the right key for BM_SWITCH_FOR_REAL.
+            // Make sure to pass the right key for BM_SW_FOR_REAL.
             DBGI(printf("IG: nDL %d nDLUp %d\n", nDL, nDLUp));
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
             pwSw = NewSwitch(pwRoot, wPrefix, nDL, bBmSwNew, nDLUp, wPopCnt);
@@ -2479,7 +2479,7 @@ newSwitch:
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
             if (bBmSwNew)
             {
-#if defined(BM_SWITCH_FOR_REAL)
+#if defined(BM_SW_FOR_REAL)
 #if defined(BM_IN_LINK)
             if (nDLUp != cnDigitsPerWord)
 #endif // defined(BM_IN_LINK)
@@ -2488,7 +2488,7 @@ newSwitch:
                 // passed in.  Unless BM_IN_LINK && switch is at top.
                 nIndex = 0;
             }
-#endif // defined(BM_SWITCH_FOR_REAL)
+#endif // defined(BM_SW_FOR_REAL)
             }
 
             if (bBmSwOld)
@@ -2587,7 +2587,7 @@ newSwitch:
         }
 #endif // defined(SKIP_LINKS)
     }
-#endif // defined(SKIP_LINKS) || defined(BM_SWITCH_FOR_REAL)
+#endif // defined(SKIP_LINKS) || defined(BM_SW_FOR_REAL)
 
     return Success;
 }
