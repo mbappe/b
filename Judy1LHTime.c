@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.21 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.22 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -867,6 +867,10 @@ static inline Word_t
 GetNextKey(PSeed_t PSeed)
 {
     Word_t    Key = 0xc1fc;
+
+#if defined(SYNC_SYNCHRONIZE)
+    __sync_synchronize();
+#endif // defined(SYNC_SYNCHRONIZE)
 
     if (FValue)
         Key = FileKeys[PSeed->Order++];
@@ -3524,10 +3528,6 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
                         FAILURE("Judy1Test Rc != 1", Rc);
                     }
                 }
-
-#if defined(SYNC_SYNCHRONIZE)
-                __sync_synchronize();
-#endif // defined(SYNC_SYNCHRONIZE)
             }
             ENDTm(DeltanSec1);
 
