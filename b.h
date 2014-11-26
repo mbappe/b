@@ -323,12 +323,9 @@
 // Default is -UT_ONE_MASK and -UT_ONE_CALC_POP.
 // See EmbeddedListHasKey.
 
-// Default is -UUSE_BM_SW, -UBM_SW_AT_DL2 and -UBM_SW_AT_DL2_ONLY.
-#if defined(BM_SW_AT_DL2_ONLY)
-#undef  USE_BM_SW
-#undef  BM_SW_AT_DL2
-#define BM_SW_AT_DL2
-#endif // defined(BM_SW_AT_DL2_ONLY)
+// Default is -UUSE_BM_SW, -UBM_SW_AT_DL2.
+// USE_BM_SW means always use bm sw when creating a switch with no skip.
+// BM_SW_AT_DL2 means always use bm sw at dl2, i.e. do not skip to dl2.
 
 // Default is -DTYPE_IS_RELATIVE.  Use -DTYPE_IS_ABSOLUTE to change it.
 #if ! defined(TYPE_IS_ABSOLUTE)
@@ -345,9 +342,9 @@ enum {
     T_LIST,
     /*T_OTHER,*/
     T_BITMAP,
-#if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     T_BM_SW,
-#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 #if defined(DEPTH_IN_SW)
 #if defined(TYPE_IS_RELATIVE)
     T_SW_BASE = cnMallocMask - 1,
@@ -778,19 +775,19 @@ enum {
 
 #endif // defined(TYPE_IS_ABSOLUTE)
 
-#if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 #if defined(EXTRA_TYPES)
 #define     tp_bIsSwitch(_tp)          (((_tp) & cnMallocMask) >= T_BM_SW)
 #else // defined(EXTRA_TYPES)
 #define     tp_bIsSwitch(_tp)          ((_tp) >= T_BM_SW)
 #endif // defined(EXTRA_TYPES)
-#else // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+#else // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 #if defined(EXTRA_TYPES)
 #define     tp_bIsSwitch(_tp)          (((_tp) & cnMallocMask) >= T_SW_BASE)
 #else // defined(EXTRA_TYPES)
 #define     tp_bIsSwitch(_tp)          ((_tp) >= T_SW_BASE)
 #endif // defined(EXTRA_TYPES)
-#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
 #define     wr_bIsSwitch(_wr)          (tp_bIsSwitch(wr_nType(_wr)))
 

@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.425 2014/11/26 14:10:46 mike Exp mike $
+// @(#) $Id: bli.c,v 1.426 2014/11/26 14:54:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1664,7 +1664,7 @@ notEmpty:;
 
     } // end of default case
 
-#if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
     case T_BM_SW:
 #if defined(EXTRA_TYPES)
@@ -1864,12 +1864,12 @@ notEmptyBm:;
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 #if (cnBitsAtBottom <= cnLogBitsPerWord)
-#if defined(BM_SW_AT_DL2_ONLY)
+#if defined(BM_SW_AT_DL2) && ! defined(USE_BM_SW)
         assert(nBL <= cnLogBitsPerWord);
-#else // defined(BM_SW_AT_DL2_ONLY)
+#else // defined(BM_SW_AT_DL2) && ! defined(USE_BM_SW)
         // We have to get rid of this 'if' by putting it in the switch.  How?
         if (nBL <= cnLogBitsPerWord)
-#endif // defined(BM_SW_AT_DL2_ONLY)
+#endif // defined(BM_SW_AT_DL2) && ! defined(USE_BM_SW)
         {
             goto embeddedBitmap;
         }
@@ -1885,7 +1885,7 @@ notEmptyBm:;
 
     } // end of case T_BM_SW
 
-#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
 #if (cwListPopCntMax != 0)
 
