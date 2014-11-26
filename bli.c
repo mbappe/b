@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.427 2014/11/26 15:18:55 mike Exp mike $
+// @(#) $Id: bli.c,v 1.428 2014/11/26 15:26:16 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1150,21 +1150,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     if (nBL <= 8) {
       #if ! defined(PP_IN_LINK)
       #if defined(HAS_KEY_128) // sizeof(__m128i) == 16 bytes
-          #if (cnBitsAtDl1 <= 8) // nDL == 1 is handled here
-              #if (cnListPopCntMaxDl1 <= 16) // list fits in one __m128i
-                  #if (cnBitsLeftAtDl2 <= 8) // need to test nDL
-        nPopCnt = (nBL == cnBitsAtDl1) ? cnListPopCntMaxDl1 : ls_cPopCnt(pwr);
-                  #else // (cnBitsLeftAtDl2 <= 8)
-        nPopCnt = cnListPopCntMaxDl1;
-                  #endif // (cnBitsLeftAtDl2 <= 8)
-              #else // (cnListPopCntMaxDl1 <= 16)
-        nPopCnt = ls_cPopCnt(pwr);
-              #endif // (cnListPopCntMaxDl1 <= 16)
-          #else // (cnBitsAtDl1 <= 8)
-        nPopCnt = ls_cPopCnt(pwr);
-          #endif // (cnBitsAtDl1 <= 8)
-      #else // defined(HAS_KEY_128)
-        nPopCnt = ls_cPopCnt(pwr);
+        nPopCnt = 16; // Sixteen fit so why do less?
       #endif // defined(HAS_KEY_128)
       #endif // ! defined(PP_IN_LINK)
         nPos = SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt);
@@ -1172,21 +1158,24 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
       #endif // (cnBitsAtBottom <= 8)
       #if (cnBitsAtBottom <= 16)
     if (nBL <= 16) {
-      #if ! defined(PP_IN_LINK)
+      #if ! defined(PP_IN_LINK) // nPopCnt is not valid yet
       #if defined(HAS_KEY_128) // sizeof(__m128i) == 16 bytes
-          #if (cnBitsAtDl1 > 8) // nDL == 1 is handled here
+          #if (cnListPopCntMax16 <= 8)
+        nPopCnt = 8; // Eight fit so why do less?
+        assert((cnListPopCntMaxDl1 <= 8) || (cnBitsAtDl1 <= 8));
+          #elif (cnBitsAtDl1 > 8) // nDL == 1 is handled here
               #if (cnListPopCntMaxDl1 <= 8) // list fits in one __m128i
                   #if (cnBitsLeftAtDl2 <= 16) // need to test nDL
-        nPopCnt = (nBL == cnBitsAtDl1) ? cnListPopCntMaxDl1 : ls_sPopCnt(pwr);
+        nPopCnt = (nBL == cnBitsAtDl1) ? 8 : ls_sPopCnt(pwr);
                   #else // (cnBitsLeftAtDl2 <= 16)
-        nPopCnt = cnListPopCntMaxDl1;
+        nPopCnt = 8; // Eight fit so why do less?
                   #endif // (cnBitsLeftAtDl2 <= 16)
               #else // (cnListPopCntMaxDl1 <= 8)
         nPopCnt = ls_sPopCnt(pwr);
               #endif // (cnListPopCntMaxDl1 <= 8)
-          #else // (cnBitsAtDl1 <= 8)
+          #else // (cnListPopCntMax16 <= 8)
         nPopCnt = ls_sPopCnt(pwr);
-          #endif // (cnBitsAtDl1 <= 8)
+          #endif // (cnListPopCntMax16 <= 8)
       #else // defined(HAS_KEY_128)
         nPopCnt = ls_sPopCnt(pwr);
       #endif // defined(HAS_KEY_128)

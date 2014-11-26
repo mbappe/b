@@ -27,6 +27,8 @@
 // USE_BM_SW means always use bm sw when creating a switch with no skip.
 // BM_SW_AT_DL2 means always use bm sw at dl2, i.e. do not skip to dl2.
 // Default is -DBM_SW_FOR_REAL iff -DUSE_BM_SW or -DBM_AT_DL2.
+// Would be nice to be able to specify no exernal list (or one bucket only)
+// at dl2 if BM_AT_DL2.
 #if defined(USE_BM_SW) || defined(BM_AT_DL2)
 #if ! defined(NO_BM_SW_FOR_REAL)
 #define BM_SW_FOR_REAL
@@ -238,9 +240,15 @@
 #define cnListPopCntMax16  0x48
 #endif // ! defined(cnListPopCntMax16)
 
-// Default is cnListPopCntMax8  = 0x37.
+// An 8-bit bitmap uses only 32-bytes plus malloc overhead.
+// It makes no sense to have a list that uses as much.
+// Default is cnListPopCntMax8  = ??.
 #if ! defined(cnListPopCntMax8)
-#define cnListPopCntMax8   0x37
+#if defined(HAS_KEY)
+#define cnListPopCntMax8   0x10
+#else // defined(HAS_KEY)
+#define cnListPopCntMax8   0x17
+#endif // defined(HAS_KEY)
 #endif // ! defined(cnListPopCntMax8)
 
 // Default cnListPopCntMaxDl1 is 7 for cnBitsAtBottom = 8.
