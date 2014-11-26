@@ -375,23 +375,40 @@ enum {
     : cnBitsPerDigit )
 #endif // ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
 
+// nBL_from_nDL_NAX(_nDL)
+#if ( (cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit) \
+                                      && (cnBitsAtDl1 == cnBitsPerDigit) )
+    #define nBL_from_nDL_NAX(_nDL)  (cnBitsPerDigit * (_nDL))
+#elif ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
+    #define nBL_from_nDL_NAX(_nDL) \
+        ( cnBitsLeftAtDl1 + ((_nDL) - 1) * cnBitsPerDigit )
+#elif (cnBitsAtDl3 == cnBitsPerDigit)
+    #define nBL_from_nDL_NAX(_nDL) \
+        ( (_nDL) >= 3 ? cnBitsLeftAtDl2 + ((_nDL) - 2) * cnBitsPerDigit \
+        : cnBitsLeftAtDl2 )
+#else // (cnBitsAtDl3 == cnBitsPerDigit) && ...
+    #define nBL_from_nDL_NAX(_nDL) \
+        ( (_nDL) >= 4 ? cnBitsLeftAtDl3 + ((_nDL) - 3) * cnBitsPerDigit \
+        : (_nDL) == 3 ? cnBitsLeftAtDl3 \
+        : cnBitsLeftAtDl2 )
+#endif // (cnBitsAtDl3 == cnBitsPerDigit) && ...
+
 // nBL_from_nDL_NAT(_nDL)
-// Do we need this to be valid for _nDL < 1?
 #if ( (cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit) \
                                       && (cnBitsAtDl1 == cnBitsPerDigit) )
     #define nBL_from_nDL_NAT(_nDL)  (cnBitsPerDigit * (_nDL))
 #elif ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
     #define nBL_from_nDL_NAT(_nDL) \
-        ( (_nDL) <= 1 ? cnBitsAtDl1 \
+        ( (_nDL) == 1 ? cnBitsAtDl1 \
         : cnBitsLeftAtDl1 + ((_nDL) - 1) * cnBitsPerDigit )
 #elif (cnBitsAtDl3 == cnBitsPerDigit)
     #define nBL_from_nDL_NAT(_nDL) \
-        ( (_nDL) <= 1 ? cnBitsAtBottom \
+        ( (_nDL) == 1 ? cnBitsAtBottom \
         : (_nDL) == 2 ? cnBitsLeftAtDl2 \
         : cnBitsLeftAtDl2 + ((_nDL) - 2) * cnBitsPerDigit )
 #else // (cnBitsAtDl3 == cnBitsPerDigit) && ...
     #define nBL_from_nDL_NAT(_nDL) \
-        ( (_nDL) <= 1 ? cnBitsAtBottom \
+        ( (_nDL) == 1 ? cnBitsAtBottom \
         : (_nDL) == 2 ? cnBitsLeftAtDl2 \
         : (_nDL) == 3 ? cnBitsLeftAtDl3 \
         : cnBitsLeftAtDl3 + ((_nDL) - 3) * cnBitsPerDigit )
@@ -500,6 +517,7 @@ enum {
 
 #endif // ! defined(BPD_TABLE)
 
+#define nDL_to_nBL_NAX(_nDL)          (nBL_from_nDL_NAX(_nDL))
 #define nDL_to_nBitsIndexSzNAX(_nDL)  (nBitsIndexSz_from_nDL_NAX(_nDL))
 #define nDL_to_nBL_NAT(_nDL)          (nBL_from_nDL_NAT(_nDL))
 #define nDL_to_nBitsIndexSzNAT(_nDL)  (nDL_to_nBitsIndexSz(_nDL))

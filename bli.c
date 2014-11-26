@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.424 2014/11/25 17:56:53 mike Exp mike $
+// @(#) $Id: bli.c,v 1.425 2014/11/26 14:10:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1531,7 +1531,7 @@ again:
         nDLUp = nDL;
 #endif // ( ! defined(LOOKUP) && defined(PP_IN_LINK) || defined(REMOVE) )
         nDL = nDLR - 1;
-        nBL = nDL_to_nBL_NAT(nDL);
+        nBL = nDL_to_nBL_NAX(nDL); // Probably near the top.
 
         Word_t wIndex = ((wKey >> nBL)
             // It is ok to use NAX here even though we might be at top because
@@ -1679,7 +1679,7 @@ notEmpty:;
         nDLUp = nDL;
 #endif // defined(BM_SWITCH_FOR_REAL) ...
         nDL = nDLR - 1;
-        nBL = nDL_to_nBL_NAT(nDL);
+        nBL = nDL_to_nBL_NAX(nDL); // Probably near the top.
 
         Word_t wIndex = ((wKey >> nBL)
             // It is ok to use NAX here even though we might be at top because
@@ -1981,7 +1981,7 @@ notEmptyBm:;
             || (LOG(1 | (PWR_wPrefixNAT(pwRootPrefix,
                                         (Switch_t *)pwrPrefix, nDLRPrefix)
                             ^ wKey))
-                < nDL_to_nBL_NAT(nDLRPrefix))
+                < nDL_to_nBL_NAB(nDLRPrefix))
               #else // defined(SAVE_PREFIX)
             || (LOG(1 | (PWR_wPrefixNAT(pwRoot, (Switch_t *)pwrPrev, nDL)
                     ^ wKey))
@@ -2095,7 +2095,7 @@ embeddedBitmap:
           #if defined(SAVE_PREFIX)
             || (LOG(1 | (PWR_wPrefixNAT(pwRootPrefix, pwrPrefix, nDLRPrefix)
                     ^ wKey))
-                < nDL_to_nBL_NAT(nDLRPrefix))
+                < nDL_to_nBL_NAX(nDLRPrefix))
           #else // defined(SAVE_PREFIX)
             // Notice that we're using pwr which was extracted from the
             // previous wRoot -- not the current wRoot -- to find the prefix,
@@ -2107,9 +2107,9 @@ embeddedBitmap:
                 // The +1 is necessary because the pwrPrev
                 // prefix does not contain any less significant bits.
               #if defined(PP_IN_LINK)
-                < nDL_to_nBL_NAT(nDL    )
+                < nDL_to_nBL_NAX(nDL    )
               #else // defined(PP_IN_LINK)
-                < nDL_to_nBL_NAT(nDL + 1)
+                < nDL_to_nBL_NAX(nDL + 1)
               #endif // defined(PP_IN_LINK)
                                   )
           #endif // defined(SAVE_PREFIX)
@@ -2129,7 +2129,7 @@ embeddedBitmap:
                                ) != 0);
             return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
-            nBL = nDL_to_nBL_NAT(nDL);
+            nBL = nDL_to_nBL_NAT(nDL); // Probably at the bottom.
       #if (cnBitsAtBottom <= cnLogBitsPerWord)
             // If nBL == cnLogBitsPerWord, then do we really need to
             // mask wKey or would the shift in the macro take care of it?
@@ -2273,12 +2273,14 @@ embeddedBitmap:
                 goto foundIt;
             }
         } else if (nDL == 2) {
-            if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL_NAT(nDL))) {
+            if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL_NAX(nDL))) {
                 goto foundIt;
             }
         } else {
+            unsigned nBL = nDL_to_nBL_NAX(nDL);
+#else // defined(DL_SPECIFIC_T_ONE)
+            unsigned nBL = nDL_to_nBL_NAT(nDL);
 #endif // defined(DL_SPECIFIC_T_ONE)
-        unsigned nBL = nDL_to_nBL_NAT(nDL);
 #if defined(DL_SPECIFIC_T_ONE)
   #if defined(HAS_KEY)
 #if 0
