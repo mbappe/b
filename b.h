@@ -368,66 +368,65 @@ enum {
     : cnBitsPerDigit )
 #endif // ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
 
+// nBL_from_nDL_NAT(_nDL)
+// Do we need this to be valid for _nDL < 1?
+#if ( (cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit) \
+                                      && (cnBitsAtDl1 == cnBitsPerDigit) )
+    #define nBL_from_nDL_NAT(_nDL)  (cnBitsPerDigit * (_nDL))
+#elif ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
+    #define nBL_from_nDL_NAT(_nDL) \
+        ( (_nDL) <= 1 ? cnBitsAtDl1 \
+        : cnBitsLeftAtDl1 + ((_nDL) - 1) * cnBitsPerDigit )
+#elif (cnBitsAtDl3 == cnBitsPerDigit)
+    #define nBL_from_nDL_NAT(_nDL) \
+        ( (_nDL) <= 1 ? cnBitsAtBottom \
+        : (_nDL) == 2 ? cnBitsLeftAtDl2 \
+        : cnBitsLeftAtDl2 + ((_nDL) - 2) * cnBitsPerDigit )
+#else // (cnBitsAtDl3 == cnBitsPerDigit) && ...
+    #define nBL_from_nDL_NAT(_nDL) \
+        ( (_nDL) <= 1 ? cnBitsAtBottom \
+        : (_nDL) == 2 ? cnBitsLeftAtDl2 \
+        : (_nDL) == 3 ? cnBitsLeftAtDl3 \
+        : cnBitsLeftAtDl3 + ((_nDL) - 3) * cnBitsPerDigit )
+#endif // (cnBitsAtDl3 == cnBitsPerDigit) && ...
+
 #if (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
 
 #define cnBitsIndexSzAtTop  (cnBitsPerDigit)
 
+// nBitsIndexSz_from_nDL(_nDL)
 #if (cnBitsAtDl1 == cnBitsPerDigit)
-  #define nBitsIndexSz_from_nDL(_nDL)  (nBitsIndexSz_from_nDL_NAX(_nDL))
+    #define nBitsIndexSz_from_nDL(_nDL)  (nBitsIndexSz_from_nDL_NAX(_nDL))
 #else // (cnBitsAtDl1 == cnBitsPerDigit)
-  #define nBitsIndexSz_from_nDL(_nDL) \
-    ( ((_nDL) <= 1) ? cnBitsAtDl1 : nBitsIndexSz_from_nDL_NAX(_nDL) )
+    #define nBitsIndexSz_from_nDL(_nDL) \
+        ( ((_nDL) <= 1) ? cnBitsAtDl1 : nBitsIndexSz_from_nDL_NAX(_nDL) )
 #endif // (cnBitsAtDl1 == cnBitsPerDigit)
 
+// nDL_from_nBL(_nBL)
 #if ( (cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit) \
-   && (cnBitsAtDl1 == cnBitsPerDigit) )
-
-#define nBL_from_nDL_NAT(_nDL)       (cnBitsPerDigit * (_nDL))
-
-// We have to round up for when this is used to figure the depth of a skip
-// link from the common prefix which may not be an integral number of digits.
-// If we don't need to round up in Lookup, then maybe we should optimize.
-#define nDL_from_nBL(_nBL)           (DIV_UP((_nBL), cnBitsPerDigit))
-
+                                      && (cnBitsAtDl1 == cnBitsPerDigit) )
+    // We have to round up for when this is used to figure the depth of a skip
+    // link from a common prefix which may be a non-integral number of digits.
+    // If we don't need to round up in Lookup, then maybe we should optimize.
+    #define nDL_from_nBL(_nBL)           (DIV_UP((_nBL), cnBitsPerDigit))
 #elif ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
-
-#define nBL_from_nDL_NAT(_nDL) \
-    ( (_nDL) <= 1 ? cnBitsAtDl1 \
-    : cnBitsLeftAtDl1 + ((_nDL) - 1) * cnBitsPerDigit )
-
-// rounding up is free and it might be necessary -- not sure
-#define nDL_from_nBL(_nBL) \
-    ( ((_nBL) <= cnBitsAtDl1 ) ? 1 \
-    : 1 + DIV_UP((_nBL) - cnBitsLeftAtDl1, cnBitsPerDigit) )
-
+    // rounding up is free and it might be necessary -- not sure
+    #define nDL_from_nBL(_nBL) \
+        ( ((_nBL) <= cnBitsAtDl1 ) ? 1 \
+        : 1 + DIV_UP((_nBL) - cnBitsLeftAtDl1, cnBitsPerDigit) )
 #elif (cnBitsAtDl3 == cnBitsPerDigit)
-
-#define nBL_from_nDL_NAT(_nDL) \
-    ( (_nDL) <= 1 ? cnBitsAtBottom \
-    : (_nDL) == 2 ? cnBitsLeftAtDl2 \
-    : cnBitsLeftAtDl2 + ((_nDL) - 2) * cnBitsPerDigit )
-
-// rounding up is free and it might be necessary -- not sure
-#define nDL_from_nBL(_nBL) \
-    ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
-    : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
-    : 2 + DIV_UP((_nBL) - cnBitsLeftAtDl2, cnBitsPerDigit) )
-
+    // rounding up is free and it might be necessary -- not sure
+    #define nDL_from_nBL(_nBL) \
+        ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
+        : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
+        : 2 + DIV_UP((_nBL) - cnBitsLeftAtDl2, cnBitsPerDigit) )
 #else // (cnBitsAtDl3 == cnBitsPerDigit) && ...
-
-#define nBL_from_nDL_NAT(_nDL) \
-    ( (_nDL) <= 1 ? cnBitsAtBottom \
-    : (_nDL) == 2 ? cnBitsLeftAtDl2 \
-    : (_nDL) == 3 ? cnBitsLeftAtDl3 \
-    : cnBitsLeftAtDl3 + ((_nDL) - 3) * cnBitsPerDigit )
-
-// rounding up is free and it might be necessary -- not sure
-#define nDL_from_nBL(_nBL) \
-    ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
-    : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
-    : ((_nBL) <= cnBitsLeftAtDl2) ? 3 \
-    : 3 + DIV_UP((_nBL) - cnBitsLeftAtDl3, cnBitsPerDigit) )
-
+    // rounding up is free and it might be necessary -- not sure
+    #define nDL_from_nBL(_nBL) \
+        ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
+        : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
+        : ((_nBL) <= cnBitsLeftAtDl2) ? 3 \
+        : 3 + DIV_UP((_nBL) - cnBitsLeftAtDl3, cnBitsPerDigit) )
 #endif // (cnBitsAtDl3 == cnBitsPerDigit) && ...
 
 #define nBL_from_nDL(_nDL)  (nBL_from_nDL_NAT(_nDL))
@@ -451,9 +450,6 @@ enum {
 #if ( (cnBitsAtDl3 == cnBitsPerDigit) \
    && (cnBitsAtDl2 == cnBitsPerDigit) && (cnBitsAtDl1 == cnBitsPerDigit) )
 
-#define nBL_from_nDL(_nDL) \
-    ( (_nDL) < cnDigitsPerWord ? (_nDL) * cnBitsPerDigit : cnBitsPerWord )
-
 // Do we need to bother rounding up?  Yes.
 // For _nBL == cnBitsPerWord and when calculating depth of skip link
 // with common prefix.
@@ -461,20 +457,11 @@ enum {
 
 #elif ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
 
-#define nBL_from_nDL_NAT(_nDL) \
-    ( (_nDL) <= 1 ? cnBitsAtBottom \
-    : cnBitsLeftAtDl1 + ((_nDL) - 1) * cnBitsPerDigit )
-
 #define nDL_from_nBL(_nBL) \
     ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
     : 1 + DIV_UP((_nBL) - cnBitsLeftAtDl1, cnBitsPerDigit) )
 
 #elif (cnBitsAtDl3 == cnBitsPerDigit)
-
-#define nBL_from_nDL_NAT(_nDL) \
-    ( (_nDL) <= 1 ? cnBitsAtBottom \
-    : (_nDL) == 2 ? cnBitsLeftAtDl2 \
-    : cnBitsLeftAtDl2 + ((_nDL) - 2) * cnBitsPerDigit )
 
 #define nDL_from_nBL(_nBL) \
     ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
@@ -482,12 +469,6 @@ enum {
     : 2 + DIV_UP((_nBL) - cnBitsLeftAtDl2, cnBitsPerDigit) )
 
 #else // (cnBitsAtDl3 == cnBitsPerDigit)
-
-// Do we need this to be valid for _nDL < 1?
-#define nBL_from_nDL_NAT(_nDL) \
-    ( (_nDL) <= 1 ? cnBitsAtBottom \
-    : (_nDL) == 2 ? cnBitsLeftAtDl2 \
-    : cnBitsLeftAtDl3 + ((_nDL) - 3) * cnBitsPerDigit )
 
 // Do we need this to be valid for _nBL < cnBitsAtBottom?
 // Or for _nBL > cnBitsPerWord?
