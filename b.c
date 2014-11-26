@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.349 2014/11/18 04:26:23 mike Exp $
+// @(#) $Id: b.c,v 1.350 2014/11/25 17:40:53 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -754,9 +754,12 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
         }
 #else // defined(SKIP_LINKS)
         // Why do we bother with this?  Should we make it debug only?
+#if defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
         if (bBmSw) {
             set_PWR_wPrefix(pwRoot, (BmSwitch_t *)pwr, nDL, 0);
-        } else {
+        } else
+#endif // defined(USE_BM_SW) || defined(USE_BM_SW_AT_DL2)
+        {
             set_PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDL, 0);
         }
 #endif // defined(SKIP_LINKS)
