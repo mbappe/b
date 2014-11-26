@@ -26,10 +26,12 @@
 // Default is -UUSE_BM_SW, -UBM_SW_AT_DL2.
 // USE_BM_SW means always use bm sw when creating a switch with no skip.
 // BM_SW_AT_DL2 means always use bm sw at dl2, i.e. do not skip to dl2.
-// Default is -DBM_SW_FOR_REAL but no matter if -UUSE_BM_SW and -UBM_AT_DL2.
+// Default is -DBM_SW_FOR_REAL iff -DUSE_BM_SW or -DBM_AT_DL2.
+#if defined(USE_BM_SW) || defined(BM_AT_DL2)
 #if ! defined(NO_BM_SW_FOR_REAL)
 #define BM_SW_FOR_REAL
 #endif // ! defined(NO_BM_SW_FOR_REAL)
+#endif // defined(USE_BM_SW) || defined(BM_AT_DL2)
 
 // Default is -DDL_SPECIFIC_T_ONE.
 #if ! defined(NO_DL_SPECIFIC_T_ONE)
