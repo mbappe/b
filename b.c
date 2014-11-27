@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.357 2014/11/27 14:12:10 mike Exp mike $
+// @(#) $Id: b.c,v 1.358 2014/11/27 20:02:51 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -809,11 +809,17 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
     assert(nDL != cnDigitsPerWord);
 #endif // defined(BM_IN_LINK)
 
+    // What is the index of the new link?
+    unsigned nBL = nDL_to_nBL(nDL);
+    unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDL);
+    Word_t wIndex
+        = ((wKey >> (nBL - nBitsIndexSz)) & (EXP(nBitsIndexSz) - 1));
+    DBGI(printf("wKey "OWx" nBL %d nBitsIndexSz %d wIndex (virtual) "OWx"\n",
+                wKey, nBL, nBitsIndexSz, wIndex));
+
     // How many links are there in the old switch?
     Word_t wPopCnt = 0;
-    for (unsigned nn = 0;
-         nn < DIV_UP(EXP(nDL_to_nBitsIndexSz(nDL)), cnBitsPerWord);
-         nn++)
+    for (unsigned nn = 0; nn < DIV_UP(EXP(nBitsIndexSz), cnBitsPerWord); nn++)
     {
         wPopCnt += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
     }
@@ -832,12 +838,6 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
     METRICS(j__AllocWordsJBB  += sizeof(Link_t)/sizeof(Word_t)); // JUDYA
 
     // Where does the new link go?
-    unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDL);
-    unsigned nBL = nDL_to_nBL(nDL);
-    Word_t wIndex
-        = ((wKey >> (nBL - nBitsIndexSz)) & (EXP(nBitsIndexSz) - 1));
-    DBGI(printf("wKey "OWx" nBL %d nBitsIndexSz %d wIndex (virtual) "OWx"\n",
-                wKey, nBL, nBitsIndexSz, wIndex));
     unsigned nBmOffset = wIndex >> cnLogBitsPerWord;
     Word_t wBm = PWR_pwBm(pwRoot, pwr)[nBmOffset];
     Word_t wBit = ((Word_t)1 << (wIndex & (cnBitsPerWord - 1)));
