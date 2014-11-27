@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.355 2014/11/26 22:30:53 mike Exp mike $
+// @(#) $Id: b.c,v 1.356 2014/11/27 03:15:44 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -202,38 +202,38 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
     ++nPopCntLocal;
 #endif // defined(LIST_END_MARKERS)
 
-#if defined(PSPLIT_PARALLEL)
-    //printf("\na %d\n", nPopCntLocal);
-    // Pad list header so array of real keys starts on a word boundary.
-    // Two-word boundary if ALIGN_LISTS.
-    // PSPLIT_PARALLEL_X2 requires ALIGN_LISTS.
+    // Pad list header so array of real keys is aligned.
+    // PSPLIT_PARALLEL without HAS_KEY_128 requires ALIGN_LISTS_WORD.
+    // PSPLIT_PARALLEL with HAS_KEY_128 requires ALIGN_LISTS_128.
+    // Consider using sizeof(Bucket_t) instead of ifdefs here.
     nPopCntLocal
 #if defined(ALIGN_LISTS)
-        = ((nPopCntLocal * nBytesKeySz + sizeof(Word_t) * 2 - 1)
-#else // defined(ALIGN_LISTS)
+        = ((nPopCntLocal * nBytesKeySz + sizeof(__m128i) - 1)
+                & ~(sizeof(__m128i) - 1))
+#elif defined(PSPLIT_PARALLEL)
         = ((nPopCntLocal * nBytesKeySz + sizeof(Word_t) - 1)
+                & ~(sizeof(Word_t) - 1))
+#else // #elif defined(PSPLIT_PARALLEL)
+        = (nPopCntLocal * nBytesKeySz)
 #endif // defined(ALIGN_LISTS)
-                & ~MSK(cnLogBytesPerWord))
             / nBytesKeySz;
-    //printf("b %d\n", nPopCntLocal);
-#endif // defined(PSPLIT_PARALLEL)
 
     nPopCntLocal += wPopCntArg; // add list of real keys
 
-#if defined(PSPLIT_PARALLEL)
-    //printf("c %d\n", nPopCntLocal);
-    // Pad array of real keys to a whole word boundary.
-    // Two words if ALIGN_LIST_ENDS.
+    // Pad array of keys so the end is aligned.
+    // We'll fill the padding with a replica of the last real key
+    // so parallel searching yields no false positives.
     nPopCntLocal
 #if defined(ALIGN_LIST_ENDS)
-        = ((nPopCntLocal * nBytesKeySz + sizeof(Word_t) * 2 - 1)
-#else // defined(ALIGN_LIST_ENDS)
+        = ((nPopCntLocal * nBytesKeySz + sizeof(__m128i) - 1)
+                & ~(sizeof(__m128i) - 1))
+#elif defined(PSPLIT_PARALLEL)
         = ((nPopCntLocal * nBytesKeySz + sizeof(Word_t) - 1)
+                & ~(sizeof(Word_t) - 1))
+#else // #elif defined(PSPLIT_PARALLEL)
+        = (nPopCntLocal * nBytesKeySz)
 #endif // defined(ALIGN_LIST_ENDS)
-                & ~MSK(cnLogBytesPerWord))
             / nBytesKeySz;
-    //printf("d %d\n", nPopCntLocal);
-#endif // defined(PSPLIT_PARALLEL)
 
 #if defined(LIST_END_MARKERS)
     // Make room for -1 at the end to help make search faster.
@@ -490,7 +490,7 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType)
     if ((nBL <= 16) && (nWords > 2)) {
         free(pwList);
     } else
-#endif // defined(COMPRESSED_LISTS) && defined(ALIGN_LISTS)
+#endif // defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
     {
         MyFree(pwList, nWords);
     }
@@ -630,9 +630,11 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
     }
 #endif // defined(RAMMETRICS)
 
+#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     DBGM(printf("NewSwitch(pwRoot %p wKey "OWx" nDL %d bBmSw %d nDLU %d)"
                 " pwr %p\n",
                 (void *)pwRoot, wKey, nDL, bBmSw, nDLUp, (void *)pwr));
+#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     DBGI(printf("\nNewSwitch nDL %d nBL %d nDLU %d\n",
                 nDL, nDL_to_nBL(nDL), nDLUp));
 #if 0
@@ -774,9 +776,11 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
             set_PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDL, wPopCnt);
         }
 
+#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
         DBGM(printf("NewSwitch PWR_wPrefixPop "OWx"\n",
             bBmSw ? PWR_wPrefixPop(pwRoot, (BmSwitch_t *)pwr)
                   : PWR_wPrefixPop(pwRoot, (Switch_t *)pwr)));
+#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     }
 
     //DBGI(printf("After NewSwitch"));
@@ -959,8 +963,10 @@ OldSwitch(Word_t *pwRoot, unsigned nDL,
     }
 #endif // defined(RAMMETRICS)
 
+#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     DBGR(printf("\nOldSwitch nDL %d bBmSw %d nDLU %d wWords %"_fw"d "OWx"\n",
          nDL, bBmSw, nDLUp, wWords, wWords));
+#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
     MyFree(pwr, wWords);
 
@@ -1529,11 +1535,11 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, unsigned nKeys,
     // pad to a word boundary with the last key in the list so
     // parallel search won't give a false positive and the last key
     // in the last word is the maximum key in the list
-#if defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#if defined(HAS_KEY_128) // requires ALIGN_LIST_ENDS
     while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(__m128i)))) != 0)
-#else // defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#else // defined(HAS_KEY_128)
     while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(Word_t)))) != 0)
-#endif // defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#endif // defined(HAS_KEY_128)
     {
         pTgt[nKeys+1] = pTgt[nKeys]; // or pTgt[0] or iKey
         ++nKeys;
@@ -1752,12 +1758,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
 #if (cwListPopCntMax != 0)
 #if defined(EMBED_KEYS)
-    if (((nType == T_ONE) || (nType == T_EMBEDDED_KEYS))
-            && (nDL_to_nBL(nDL) <= cnBitsPerWord - cnBitsMallocMask))
-    {
+    // Change an embedded list into an external list to make things
+    // easier for Insert.  We'll change it back later if it makes sense.
+    // We used to use T_ONE for a single embedded key.  But not anymore.
+    if (nType == T_EMBEDDED_KEYS) {
         wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot);
-        // BUG: The list may not be sorted at this point.
-        // I wonder if it matters.
+        // BUG: The list may not be sorted at this point.  Does it matter?
+        // Update: I'm not sure why I wrote that the list may not be sorted
+        // at this point.  I can't think of why it would not be sorted.
         nType = wr_nType(wRoot);
     }
 #endif // defined(EMBED_KEYS)
@@ -1800,8 +1808,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         // we're not at the top.
         if (wRoot != 0) // pointer to old List
         {
+            assert(nType != T_EMBEDDED_KEYS);
 #if defined(USE_T_ONE)
-            if ((nType == T_ONE) || (nType == T_EMBEDDED_KEYS))
+            if (nType == T_ONE)
             {
                 wPopCnt = 1;
   #if defined(PP_IN_LINK)
@@ -1922,8 +1931,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 || (ListWordsExternal(wPopCnt + 1, nBL)
                         != ListWordsExternal(wPopCnt, nBL)))
             {
-                // allocate a new list and init pop count in the first byte
-                // if the first byte of the list needs a pop count
+                // Allocate a new list and init pop count if pop count is
+                // in the list.  Also init the beginning of the list marker
+                // if LIST_END_MARKERS.
                 pwList = NewListTypeList(wPopCnt + 1, nBL);
 #if defined(PP_IN_LINK)
                 assert((nDL == cnDigitsPerWord)
@@ -2622,7 +2632,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
          "InflateEmbeddedList pwRoot %p wKey "OWx" nBL %d wRoot "OWx"\n",
          (void *)pwRoot, wKey, nBL, wRoot));
 
-    assert((wr_nType(wRoot) == T_ONE) || (wr_nType(wRoot) == T_EMBEDDED_KEYS));
+    assert(wr_nType(wRoot) == T_EMBEDDED_KEYS);
 
     Word_t *pwKeys;
 #if defined(COMPRESSED_LISTS)
@@ -2789,7 +2799,7 @@ DeflateExternalList(Word_t *pwRoot,
     else
     {
         assert(nPopCnt == 1);
-        assert(nBL + cnBitsMallocMask > cnBitsPerWord);
+        assert(nPopCntMax == 0);
         Word_t *pwList = NewList(1, nBL_to_nDL(nBL));
         set_wr(wRoot, pwList, T_ONE); // external T_ONE list
         Word_t *pwKeys = ls_pwKeys(pwr);
