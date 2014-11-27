@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.354 2014/11/26 17:33:26 mike Exp mike $
+// @(#) $Id: b.c,v 1.355 2014/11/26 22:30:53 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -561,7 +561,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
           unsigned nDLUp, Word_t wPopCnt)
 {
     assert((sizeof(Switch_t) % sizeof(Word_t)) == 0);
+#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     assert((sizeof(BmSwitch_t) % sizeof(Word_t)) == 0);
+#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
     unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDL);
     Word_t wIndexCnt = EXP(nBitsIndexSz);
