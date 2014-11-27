@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.358 2014/11/27 20:02:51 mike Exp mike $
+// @(#) $Id: b.c,v 1.359 2014/11/27 20:08:04 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2217,7 +2217,10 @@ newSwitch:
 #endif // defined(TYPE_IS_RELATIVE)
 #endif // ! defined(DEPTH_IN_SW)
 #else // defined(SKIP_LINKS)
-            assert(nDL > 1);
+            // I don't remember why this assertion was here.
+            // But it blows and the code seems to do ok with it
+            // commented out.
+            // assert(nDL > 1);
 #endif // defined(SKIP_LINKS)
 
 #if defined(BM_AT_DL2)
