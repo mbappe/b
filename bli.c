@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.430 2014/11/26 17:33:26 mike Exp mike $
+// @(#) $Id: bli.c,v 1.431 2014/11/26 22:30:53 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2206,15 +2206,15 @@ embeddedBitmap:
         }
   #endif // ! defined(LOOKUP) && defined(PP_IN_LINK)
 
-  #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
-        return KeyFound;
-  #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
+  #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_DEREF)
+
       #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
         return wRoot ? Success : Failure;
       #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 
         //
-        // How many keys will fit?  Need space for the keys plus type plus
+        // How many keys will fit?  And how many bits do we need for pop
+        // count in each case.  Need space for the keys plus type plus
         // pop count.
         //
         //  - (cnBitsPerWord - cnBitsPerType - cnBitsPerPopCnt) / nBL
@@ -2281,7 +2281,10 @@ embeddedBitmap:
         //      LOG( 44/ 5) ... LOG( 36/ 3) = 3
         //      LOG( 44/ 2) ... LOG( 36/ 2) = 4
         //
-#if defined(DL_SPECIFIC_T_ONE)
+      #if defined(HAS_KEY)
+
+          #if defined(DL_SPECIFIC_T_ONE)
+
         if (nDL == 1) {
             if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL_NAT(nDL))) {
                 goto foundIt;
@@ -2290,103 +2293,70 @@ embeddedBitmap:
             if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL_NAX(nDL))) {
                 goto foundIt;
             }
-        } else {
-            unsigned nBL = nDL_to_nBL_NAX(nDL);
-#else // defined(DL_SPECIFIC_T_ONE)
-            unsigned nBL = nDL_to_nBL_NAT(nDL);
-#endif // defined(DL_SPECIFIC_T_ONE)
-#if defined(DL_SPECIFIC_T_ONE)
-  #if defined(HAS_KEY)
-#if 0
-        if (nBL >= 7 && nBL <= 16) {
-        switch (nBL) {
-        case 7:
-            if (EmbeddedListHasKey(wRoot, wKey, 7)) goto foundIt; break;
-        case 8:
-            if (EmbeddedListHasKey(wRoot, wKey, 8)) goto foundIt; break;
-        case 9:
-            if (EmbeddedListHasKey(wRoot, wKey, 9)) goto foundIt; break;
-        case 10:
-            if (EmbeddedListHasKey(wRoot, wKey, 10)) goto foundIt; break;
-        case 11:
-            if (EmbeddedListHasKey(wRoot, wKey, 11)) goto foundIt; break;
-        case 12:
-            if (EmbeddedListHasKey(wRoot, wKey, 12)) goto foundIt; break;
-        case 13:
-            if (EmbeddedListHasKey(wRoot, wKey, 13)) goto foundIt; break;
-        case 14:
-            if (EmbeddedListHasKey(wRoot, wKey, 14)) goto foundIt; break;
-        case 15:
-            if (EmbeddedListHasKey(wRoot, wKey, 15)) goto foundIt; break;
-        case 16:
-            if (EmbeddedListHasKey(wRoot, wKey, 16)) goto foundIt; break;
+        } else
+
+          #endif // defined(DL_SPECIFIC_T_ONE)
+
+        if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL_NAX(nDL))) {
+            goto foundIt;
         }
-        }
-#else // 0
-        if (0)
-        {
-        }
-#endif // 0
-        else
-  #endif // defined(HAS_KEY)
-#endif // defined(DL_SPECIFIC_T_ONE)
-        if (1) {
-  #if defined(HAS_KEY)
-            if (EmbeddedListHasKey(wRoot, wKey, nBL)) goto foundIt;
-  #else // defined(HAS_KEY)
-            // I wonder if PAD_T_ONE and not needing to know the pop count
-            // would help this code like it does HAS_KEY.
-            unsigned nPopCnt = wr_nPopCnt(wRoot, nBL);
-            Word_t wKeyRoot;
-            switch (nPopCnt) {
+
+      #else // defined(HAS_KEY)
+
+        unsigned nBL = nDL_to_nBL_NAT(nDL);
+
+        // I wonder if PAD_T_ONE and not needing to know the pop count
+        // would help this code like it does HAS_KEY.
+        unsigned nPopCnt = wr_nPopCnt(wRoot, nBL);
+
+        Word_t wKeyRoot;
+
+        switch (nPopCnt) {
           #if (cnBitsPerWord == 64)
-            case 8: // max for 7-bit keys and 64 bits;
-                wKeyRoot = wRoot >> (cnBitsPerWord - (8 * nBL));
-                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
-            case 7: // max for 8-bit keys and 64 bits;
-                wKeyRoot = wRoot >> (cnBitsPerWord - (7 * nBL));
-                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
-            case 6: // max for 9-bit keys and 64 bits;
-                wKeyRoot = wRoot >> (cnBitsPerWord - (6 * nBL));
-                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
-            case 5: // max for 10 to 11-bit keys and 64 bits;
-                wKeyRoot = wRoot >> (cnBitsPerWord - (5 * nBL));
-                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+        case 8: // max for 7-bit keys and 64 bits;
+            wKeyRoot = wRoot >> (cnBitsPerWord - (8 * nBL));
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+        case 7: // max for 8-bit keys and 64 bits;
+            wKeyRoot = wRoot >> (cnBitsPerWord - (7 * nBL));
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+        case 6: // max for 9-bit keys and 64 bits;
+            wKeyRoot = wRoot >> (cnBitsPerWord - (6 * nBL));
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+        case 5: // max for 10 to 11-bit keys and 64 bits;
+            wKeyRoot = wRoot >> (cnBitsPerWord - (5 * nBL));
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
           #endif // (cnBitsPerWord == 64)
-            case 4: // max for 12 to 14-bit keys and 64 bits; 6 for 32
-                wKeyRoot = wRoot >> (cnBitsPerWord - (4 * nBL));
-                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
-            case 3: // max for 15 to 19-bit keys and 64 bits; 7-9 for 32
-                wKeyRoot = wRoot >> (cnBitsPerWord - (3 * nBL));
-                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
-            case 2: // max for 20 to 29-bit keys and 64 bits; 10-14 for 32
-                wKeyRoot = wRoot >> (cnBitsPerWord - (2 * nBL));
-                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
-            default: // max for 30 to 60-bit keys and 64 bits; 15-29 for 32
-                wKeyRoot = wRoot >> (cnBitsPerWord - (1 * nBL));
-                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
-            }
-  #endif // defined(HAS_KEY)
+        case 4: // max for 12 to 14-bit keys and 64 bits; 6 for 32
+            wKeyRoot = wRoot >> (cnBitsPerWord - (4 * nBL));
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+        case 3: // max for 15 to 19-bit keys and 64 bits; 7-9 for 32
+            wKeyRoot = wRoot >> (cnBitsPerWord - (3 * nBL));
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+        case 2: // max for 20 to 29-bit keys and 64 bits; 10-14 for 32
+            wKeyRoot = wRoot >> (cnBitsPerWord - (2 * nBL));
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+        default: // max for 30 to 60-bit keys and 64 bits; 15-29 for 32
+            wKeyRoot = wRoot >> (cnBitsPerWord - (1 * nBL));
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
         }
-        else
-        {
+
+      #endif // defined(HAS_KEY)
+
+        break;
+
 foundIt:
+
       #if defined(REMOVE)
-            RemoveGuts(pwRoot, wKey, nDL, wRoot);
-            goto cleanup; // free memory or reconfigure tree if necessary
+        RemoveGuts(pwRoot, wKey, nDL, wRoot);
+        goto cleanup; // free memory or reconfigure tree if necessary
       #endif // defined(REMOVE)
       #if defined(INSERT) && !defined(RECURSIVE)
-            if (nIncr > 0) { goto undo; } // undo counting
+        if (nIncr > 0) { goto undo; } // undo counting
       #endif // defined(INSERT) && !defined(RECURSIVE)
-            return KeyFound;
-        }
-#if defined(DL_SPECIFIC_T_ONE)
-        }
-#endif // defined(DL_SPECIFIC_T_ONE)
 
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
-        break;
+        return KeyFound;
 
     } // end of case T_EMBEDDED_KEYS
 
