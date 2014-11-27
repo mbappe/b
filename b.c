@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.356 2014/11/27 03:15:44 mike Exp mike $
+// @(#) $Id: b.c,v 1.357 2014/11/27 14:12:10 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -795,7 +795,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 #if defined(BM_SW_FOR_REAL)
-static int // returns true if the bitmap is fully populated
+static void
 NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 {
     Word_t *pwr = wr_pwr(*pwRoot);
@@ -879,13 +879,20 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 
     MyFree(pwr, nWords - sizeof(Link_t) / sizeof(Word_t));
 
-    // Caller updates type field in *pwRoot if necessary.
+    // Update the type field in *pwRoot if necessary.
+#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+    set_wr_nType(*pwRoot, T_BM_SW);
+#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
-    //DBGI(printf("After NewLink"));
-    //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
-
-    if (wPopCnt == EXP(nBitsIndexSz) - 1) {
+    if (wPopCnt == EXP(nBitsIndexSz) - 1)
+    {
         // Bitmap switch is fully populated.
+        // Let's change the type so it is faster.
+
+#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+        set_wr_nType(*pwRoot, T_FULL_BM_SW);
+#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+
         METRICS(j__AllocWordsJBB -= nWords - sizeof(Link_t) / sizeof(Word_t));
         if ((cnBitsAtBottom <= cnLogBitsPerWord)
             && (nDL_to_nBL(nDL) - nBitsIndexSz <= cnBitsAtBottom))
@@ -895,10 +902,10 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
         } else {
             METRICS(j__AllocWordsJBU += nWords); // JUDYA
         }
-        return 1;
     }
 
-    return 0;
+    //DBGI(printf("After NewLink"));
+    //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 }
 #endif // defined(BM_SW_FOR_REAL)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
@@ -2383,23 +2390,23 @@ newSwitch:
         // If nDS != 0 then we're not at the top or PP_IN_LINK is not defined.
 #endif // defined(SKIP_LINKS)
         {
+            // Missing link.
+
   #if defined(EXTRA_TYPES)
-            assert((nType == T_BM_SW) || (nType == T_BM_SW + EXP(cnBitsMallocMask)));
+            assert((nType == T_BM_SW)
+                        || (nType == T_BM_SW + EXP(cnBitsMallocMask)));
   #else // defined(EXTRA_TYPES)
             assert(nType == T_BM_SW);
   #endif // defined(EXTRA_TYPES)
+
 #if defined(SKIP_LINKS)
             DBGI(printf("wPrefix "OWx" w_wPrefix "OWx" nDLR %d\n",
                         PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDLR),
                         w_wPrefix(wKey, nDLR), nDLR));
 #endif // defined(SKIP_LINKS)
-            // no link -- for now -- will eventually have to check
-            int bSwitchIsFull = NewLink(pwRoot, wKey, nDLR);
-            // Remember to update type field in *pwRoot if necessary.
-            // Would need to add a parameter to NewLink to do it there.
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-            set_wr_nType(*pwRoot, bSwitchIsFull ? T_FULL_BM_SW : T_BM_SW);
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+
+            NewLink(pwRoot, wKey, nDLR);
+
             Insert(pwRoot, wKey, nDL);
         }
 #endif // defined(BM_SW_FOR_REAL)
