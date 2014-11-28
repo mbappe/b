@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.431 2014/11/26 22:30:53 mike Exp mike $
+// @(#) $Id: bli.c,v 1.432 2014/11/27 03:15:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1654,9 +1654,9 @@ notEmpty:;
         // We have to get rid of this 'if' by putting it in the switch.  How?
         if (nBL <= cnLogBitsPerWord) { goto embeddedBitmap; }
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
-#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#if defined(TYPE_IS_RELATIVE)
         nDLR = nDL;
-#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#endif // defined(TYPE_IS_RELATIVE)
 #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again;
 #else // defined(LOOKUP) || !defined(RECURSIVE)
@@ -1671,7 +1671,6 @@ notEmpty:;
     case T_FULL_BM_SW:
     {
 #if defined(LOOKUP)
-//printf("\nT_FULL_BM_SW\n");
         pwr = (Word_t *)&((BmSwitch_t *)pwr)->sw_wPrefixPop;
         goto t_sw_base;
 #endif // defined(LOOKUP)
@@ -1888,9 +1887,9 @@ notEmptyBm:;
             goto embeddedBitmap;
         }
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
-#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#if defined(TYPE_IS_RELATIVE)
         nDLR = nDL;
-#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#endif // defined(TYPE_IS_RELATIVE)
 #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again;
 #else // defined(LOOKUP) || !defined(RECURSIVE)
