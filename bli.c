@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.432 2014/11/27 03:15:55 mike Exp mike $
+// @(#) $Id: bli.c,v 1.433 2014/11/28 00:26:27 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1517,15 +1517,17 @@ again:
 #endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
 
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-  #if defined(BM_IN_NON_BM_SW)
+  #if defined(RETYPE_FULL_BM_SW)
+      #if defined(BM_IN_NON_BM_SW)
     }
     case T_FULL_BM_SW:
     {
-  #else // defined(BM_IN_NON_BM_SW)
-      #if defined(LOOKUP)
+      #else // defined(BM_IN_NON_BM_SW)
+          #if defined(LOOKUP)
 t_sw_base:
-      #endif // defined(LOOKUP)
-  #endif // defined(BM_IN_NON_BM_SW)
+          #endif // defined(LOOKUP)
+      #endif // defined(BM_IN_NON_BM_SW)
+  #endif // defined(RETYPE_FULL_BM_SW)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
 #if ( ! defined(LOOKUP) && defined(PP_IN_LINK) || defined(REMOVE) )
@@ -1667,30 +1669,32 @@ notEmpty:;
 
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
-#if ! defined(BM_IN_NON_BM_SW)
+  #if defined(RETYPE_FULL_BM_SW)
+      #if ! defined(BM_IN_NON_BM_SW)
     case T_FULL_BM_SW:
     {
-#if defined(LOOKUP)
+          #if defined(LOOKUP)
         pwr = (Word_t *)&((BmSwitch_t *)pwr)->sw_wPrefixPop;
         goto t_sw_base;
-#endif // defined(LOOKUP)
+          #endif // defined(LOOKUP)
 
         // fall through
     }
-#endif // ! defined(BM_IN_NON_BM_SW)
+      #endif // ! defined(BM_IN_NON_BM_SW)
+  #endif // defined(RETYPE_FULL_BM_SW)
 
     case T_BM_SW:
-#if defined(EXTRA_TYPES)
+  #if defined(EXTRA_TYPES)
     case T_BM_SW | EXP(cnBitsMallocMask): // no skip switch
-#endif // defined(EXTRA_TYPES)
+  #endif // defined(EXTRA_TYPES)
     {
 
-#if defined(BM_SW_FOR_REAL) \
-    || ( ! defined(LOOKUP) \
-        && (defined(PP_IN_LINK) || defined(BM_IN_LINK)) \
-            || (defined(REMOVE) && ! defined(BM_IN_LINK)) )
+  #if defined(BM_SW_FOR_REAL) \
+      || ( ! defined(LOOKUP) \
+          && (defined(PP_IN_LINK) || defined(BM_IN_LINK)) \
+              || (defined(REMOVE) && ! defined(BM_IN_LINK)) )
         nDLUp = nDL;
-#endif // defined(BM_SW_FOR_REAL) ...
+  #endif // defined(BM_SW_FOR_REAL) ...
         nDL = nDLR - 1;
         nBL = nDL_to_nBL_NAX(nDL); // Probably near the top.
 
@@ -1876,6 +1880,7 @@ notEmptyBm:;
         // preserve the value of pwr.
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+
 #if (cnBitsAtBottom <= cnLogBitsPerWord)
 #if defined(BM_SW_AT_DL2) && ! defined(USE_BM_SW)
         assert(nBL <= cnLogBitsPerWord);

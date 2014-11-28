@@ -26,14 +26,14 @@
 // Default is -UUSE_BM_SW, -UBM_SW_AT_DL2.
 // USE_BM_SW means always use bm sw when creating a switch with no skip.
 // BM_SW_AT_DL2 means always use bm sw at dl2, i.e. do not skip to dl2.
-// Default is -DBM_SW_FOR_REAL iff -DUSE_BM_SW or -DBM_AT_DL2.
+// Default is -DBM_SW_FOR_REAL iff -DUSE_BM_SW or -DBM_SW_AT_DL2.
 // Would be nice to be able to specify no exernal list (or one bucket only)
-// at dl2 if BM_AT_DL2.
-#if defined(USE_BM_SW) || defined(BM_AT_DL2)
+// at dl2 if BM_SW_AT_DL2.
+#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 #if ! defined(NO_BM_SW_FOR_REAL)
 #define BM_SW_FOR_REAL
 #endif // ! defined(NO_BM_SW_FOR_REAL)
-#endif // defined(USE_BM_SW) || defined(BM_AT_DL2)
+#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
 // Default is -DDL_SPECIFIC_T_ONE.
 #if ! defined(NO_DL_SPECIFIC_T_ONE)
@@ -357,16 +357,21 @@ enum {
     T_BITMAP,
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     T_BM_SW,
+#if defined(RETYPE_FULL_BM_SW)
     T_FULL_BM_SW,
+#endif // defined(RETYPE_FULL_BM_SW)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+
+    // T_SW_BASE has to have the biggest value in this enum.
+    // All of the values above it have a meaning.
 #if defined(DEPTH_IN_SW)
 #if defined(TYPE_IS_RELATIVE)
-    T_SW_BASE = cnMallocMask - 1,
+    T_SW_BASE = cnMallocMask - 1, // cnMallocMask means skip link
 #else // defined(TYPE_IS_RELATIVE)
-    T_SW_BASE = cnMallocMask,
+    T_SW_BASE = cnMallocMask, // must find level in the switch
 #endif // defined(TYPE_IS_RELATIVE)
 #else // defined(DEPTH_IN_SW)
-    T_SW_BASE,
+    T_SW_BASE, // level is determined by (nType - T_SW_BASE)
 #endif // defined(DEPTH_IN_SW)
 };
 
@@ -1138,13 +1143,13 @@ typedef struct {
 
 // Uncompressed, basic switch.
 typedef struct {
-#if defined(USE_BM_SW) || defined(BM_AT_DL2)
+#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 #if defined(BM_IN_NON_BM_SW)
 #if ! defined(BM_IN_LINK)
     Word_t sw_awBm[N_WORDS_SWITCH_BM];
 #endif // ! defined(BM_IN_LINK)
 #endif // defined(BM_IN_NON_BM_SW)
-#endif // defined(USE_BM_SW) || defined(BM_AT_DL2)
+#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 #if !defined(PP_IN_LINK)
     Word_t sw_wPrefixPop;
 #endif // !defined(PP_IN_LINK)
@@ -1157,7 +1162,7 @@ typedef struct {
     Link_t sw_aLinks[1]; // variable size
 } Switch_t;
 
-#if defined(USE_BM_SW) || defined(BM_AT_DL2)
+#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 // Bitmap switch.
 typedef struct {
 #if ! defined(BM_IN_LINK)
@@ -1174,7 +1179,7 @@ typedef struct {
 #endif // (cnDummiesInSwitch != 0)
     Link_t sw_aLinks[1]; // variable size
 } BmSwitch_t;
-#endif // defined(USE_BM_SW) || defined(BM_AT_DL2)
+#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
 Status_t Insert(Word_t *pwRoot, Word_t wKey, unsigned nBL);
 Status_t Remove(Word_t *pwRoot, Word_t wKey, unsigned nBL);
