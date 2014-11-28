@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.359 2014/11/27 20:08:04 mike Exp mike $
+// @(#) $Id: b.c,v 1.361 2014/11/28 05:30:18 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2335,7 +2335,7 @@ newSwitch:
 #if defined(USE_BM_SW)
                           /* bBmSw */ nDL == nDLOld,
 #elif defined(BM_SW_AT_DL2)
-                          /* bBmSw */ (printf("here %d\n", nDL), (nDL == 2)),
+                          /* bBmSw */ (nDL == 2),
 #else // defined(BM_SW_AT_DL2)
                           /* bBmSw */ 0,
 #endif // defined(USE_BM_SW)
