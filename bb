@@ -27,7 +27,8 @@ fi
 # B="b.bb -1ld"
 # B="b.bb -1d"
 # B="b.bb -1gi"
-  B="b.bb -1dgi"
+# B="b.bb -1dgi"
+  B="b.bb -1dgim"
 
 # -x does wait for context switch; useful for timing with small pops
 # -l skips small-pop del/ins loop
