@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.22 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.23 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -2268,8 +2268,6 @@ main(int argc, char *argv[])
             PrintHeader();
         }
 
-        printf("%11lu %10lu %10lu", Pop1, Delta, Meas);
-
 #if defined(SWAP)
         if (J1Flag)
 #else // defined(SWAP)
@@ -2319,11 +2317,14 @@ main(int argc, char *argv[])
             Tit = 1;                    // include Judy
             WaitForContextSwitch(Delta);
             TestJudyIns(&J1, &JL, &JH, &InsertSeed, Delta);
+            double J1S1 = DeltanSec1; // save for printing later
+            double J1S0 = DeltaGen1; // save for printing later
+
             if (J1Flag)
             {
                 if (tFlag)
                     PRINT6_1f(DeltaGen1);
-                DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
+                //DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
             }
             if (JLFlag)
             {
@@ -2372,6 +2373,8 @@ main(int argc, char *argv[])
             {
                 if (tFlag)
                     PRINT6_1f(DeltaGen1);
+printf("%11lu %10lu %10lu", Pop1, Delta, Meas);
+DONTPRINTLESSTHANZERO(J1S1, J1S0);
                 DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
             }
             if (JLFlag)
