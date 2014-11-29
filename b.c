@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.361 2014/11/28 05:30:18 mike Exp mike $
+// @(#) $Id: b.c,v 1.363 2014/11/29 04:09:23 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -871,8 +871,16 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
     (void)nWordsNull;
     // if (wPopCntKeys / nWordsNull / nDL > 10)
 
-    DBGI(static int16_t sDigitsReportedMask = 0);
-    if (wPopCntTotal * 2 >= wWordsAllocated + wMallocs + wEvenMallocs + nWordsNull)
+#if defined(DEBUG_INSERT)
+    static int16_t sDigitsReportedMask = 0;
+    (void)sDigitsReportedMask;
+#endif // defined(DEBUG_INSERT)
+#if 0
+    if (0)
+#else
+    if (wPopCntTotal * 2
+        >= wWordsAllocated + wMallocs + wEvenMallocs + nWordsNull)
+#endif
     {
 #if defined(DEBUG_INSERT)
         if ( ! (EXP(nDL) & sDigitsReportedMask) )
@@ -901,9 +909,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
                 ++mm;
             }
         }
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-        set_wr_nType(*pwRoot, T_SW_BASE);
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+        // NewSwitch installs a proper wRoot at *pwRoot.
     } else {
         // Allocate memory for a new switch with one more link than the
         // old one.
@@ -963,7 +969,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
             if ( ! (EXP(nDL) & sDigitsReportedMask) )
             {
                 sDigitsReportedMask |= EXP(nDL);
-                printf("# Converting full BM_SW nKeys %ld nLinks %ld nDL %d",
+                printf("# Retyping full BM_SW nKeys %ld nLinks %ld nDL %d",
                        wPopCntKeys, wPopCnt, nDL);
                 printf(" wPopCntTotal %ld wWordsAllocated %ld",
                        wPopCntTotal, wWordsAllocated);
@@ -1183,10 +1189,10 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(TYPE_IS_RELATIVE)
-    assert( ! tp_bIsSwitch(nType)
-        || (nDL - wr_nDS(wRoot) >= nBL_to_nDL(cnBitsAtBottom)) );
+    assert((nType < T_SW_BASE)
+        || (nDL - wr_nDS(wRoot) >= nBL_to_nDL(cnBitsAtBottom)));
 #else // defined(TYPE_IS_RELATIVE)
-    assert( ! tp_bIsSwitch(nType) || (wr_nDL(wRoot) <= nBL_to_nDL(nBL)));
+    assert((nType < T_SW_BASE) || (wr_nDL(wRoot) <= nBL_to_nDL(nBL)));
 #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
