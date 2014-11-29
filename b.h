@@ -355,6 +355,9 @@ enum {
     T_LIST,
     /*T_OTHER,*/
     T_BITMAP,
+
+    // All of the type values below T_SWITCH are assumed to not be switches.
+    // All of the type values at T_SWITCH and above are assumed to be switches.
     T_SWITCH, // Basic (i.e. uncompressed), close (i.e. no-skip) switch.
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     T_BM_SW,
@@ -795,19 +798,11 @@ enum {
 
 #endif // defined(TYPE_IS_ABSOLUTE)
 
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 #if defined(EXTRA_TYPES)
-#define     tp_bIsSwitch(_tp)          (((_tp) & cnMallocMask) >= T_BM_SW)
+#define     tp_bIsSwitch(_tp)          (((_tp) & cnMallocMask) >= T_SWITCH)
 #else // defined(EXTRA_TYPES)
-#define     tp_bIsSwitch(_tp)          ((_tp) >= T_BM_SW)
+#define     tp_bIsSwitch(_tp)          ((_tp) >= T_SWITCH)
 #endif // defined(EXTRA_TYPES)
-#else // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-#if defined(EXTRA_TYPES)
-#define     tp_bIsSwitch(_tp)          (((_tp) & cnMallocMask) >= T_SW_BASE)
-#else // defined(EXTRA_TYPES)
-#define     tp_bIsSwitch(_tp)          ((_tp) >= T_SW_BASE)
-#endif // defined(EXTRA_TYPES)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
 #define     wr_bIsSwitch(_wr)          (tp_bIsSwitch(wr_nType(_wr)))
 
