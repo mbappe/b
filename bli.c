@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.436 2014/11/29 16:25:45 mike Exp mike $
+// @(#) $Id: bli.c,v 1.437 2014/11/29 17:05:27 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1309,14 +1309,19 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t wKey, unsigned nDL,
     (void)pbNeedPrefixCheck;
 
     unsigned nType = wr_nType(wRoot);
+    assert(nType >= T_SW_BASE);
+    assert(nType != T_SWITCH);
+    assert(nType != T_BM_SW);
     Word_t *pwr = wr_tp_pwr(wRoot, nType); (void)pwr;
     unsigned nDLR;
     int bPrefixMismatch; (void)bPrefixMismatch;
 
 #if defined(SKIP_LINKS)
   #if defined(TYPE_IS_RELATIVE)
+        assert(nType >= T_SW_BASE);
         nDLR = nDL - wr_nDS(wRoot);
   #else // defined(TYPE_IS_RELATIVE)
+        assert(nType >= T_SW_BASE);
         nDLR = wr_nDL(wRoot);
   #endif // defined(TYPE_IS_RELATIVE)
         assert(nDLR <= nDL); // reserved
@@ -1529,6 +1534,10 @@ again:
 
 #endif // defined(SKIP_LINKS)
 
+    case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
+#if defined(EXTRA_TYPES)
+    case T_SWITCH | EXP(cnBitsMallocMask): // close switch w/o bm
+#endif // defined(EXTRA_TYPES)
     case T_SW_BASE: // no-skip (aka close) switch (vs. distant switch)
 #if defined(EXTRA_TYPES)
     case T_SW_BASE | EXP(cnBitsMallocMask): // no skip switch
@@ -1579,7 +1588,8 @@ t_switch:
               #if defined(TYPE_IS_RELATIVE)
                                        nDL - wr_nDS(*pwRootLn)
               #else // defined(TYPE_IS_RELATIVE)
-                                       wr_nDL(*pwRootLn)
+                                       (wr_nType(*pwRootLn) == T_SWITCH
+                                           ? nDL : wr_nDL(*pwRootLn))
               #endif // defined(TYPE_IS_RELATIVE)
                                    : nDL;
                     DBGX(printf("wr_nDLX %d", nDLX));
@@ -1672,7 +1682,7 @@ notEmpty:;
         return InsertRemove(pwRoot, wKey, nDL);
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
-    } // end of T_SWITCH
+    } // end of case T_SWITCH
 
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
@@ -1689,7 +1699,8 @@ notEmpty:;
           #endif // ! defined(BM_IN_NON_BM_SW)
         goto t_switch;
       #endif // defined(LOOKUP)
-    }
+
+    } // end of case T_FULL_BM_SW
 
   #endif // defined(RETYPE_FULL_BM_SW)
 
