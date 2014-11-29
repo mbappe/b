@@ -355,15 +355,16 @@ enum {
     T_LIST,
     /*T_OTHER,*/
     T_BITMAP,
+    T_SWITCH, // Basic (i.e. uncompressed), close (i.e. no-skip) switch.
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     T_BM_SW,
 #if defined(RETYPE_FULL_BM_SW)
-    T_FULL_BM_SW,
+    T_FULL_BM_SW, // BM_SW with all bits set.
 #endif // defined(RETYPE_FULL_BM_SW)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
     // T_SW_BASE has to have the biggest value in this enum.
-    // All of the values above it have a meaning.
+    // All of the values above it have a meaning relative to T_SW_BASE.
 #if defined(DEPTH_IN_SW)
 #if defined(TYPE_IS_RELATIVE)
     T_SW_BASE = cnMallocMask - 1, // cnMallocMask means skip link
