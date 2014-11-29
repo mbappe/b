@@ -69,7 +69,18 @@ endif
 # STDFLAG = -std=c89
 
   MFLAGS += -m$(cnBitsPerWord)
+# MFLAGS += -mmmx
+# MFLAGS += -mno-mmx
+# MFLAGS += -msse2
+# MFLAGS += -no-msse2
+# MFLAGS += -msse3
+# MFLAGS += -mno-sse3
+# MFLAGS += -mssse3
+# MFLAGS += -mno-ssse3
+# MFLAGS += -msse4.1
+# MFLAGS += -mno-sse4.1
   MFLAGS += -msse4.2
+# MFLAGS += -mno-sse4.2
 # MFLAGS += -march=native
 # MFLAGS += -mfpmath=sse
 
