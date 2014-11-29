@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.434 2014/11/28 05:30:18 mike Exp mike $
+// @(#) $Id: bli.c,v 1.435 2014/11/29 04:09:23 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1364,6 +1364,7 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t wKey, unsigned nDL,
         {
             DBGX(printf("Mismatch wPrefix "Owx"\n",
                         PWR_wPrefixNAT(pwRoot, (Switch_t *)pwr, nDLR)));
+            // Caller doesn't need/get an updated *pnDLR in this case.
             return 1; // prefix mismatch
         }
       #endif // ! defined(LOOKUP) || ! defined(SAVE_PREFIX_TEST_RESULT)
@@ -1448,9 +1449,11 @@ top:
 again:
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
-#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#if defined(SKIP_LINKS)
+#if defined(TYPE_IS_RELATIVE) || defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     assert(nDLR == nDL);
-#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
+#endif // defined(TYPE_IS_RELATIVE) || ...
+#endif // defined(SKIP_LINKS)
 #if ( ! defined(LOOKUP) )
     assert(nDL >= 1); // valid for LOOKUP too
     DBGX(printf("# pwRoot %p ", (void *)pwRoot));
@@ -1470,6 +1473,9 @@ again:
     {
 #if 0
     case T_OTHER: // Direct-access leaf; half size of uncompressed bitmap.
+#if defined(EXTRA_TYPES)
+    case T_OTHER | EXP(cnBitsMallocMask):
+#endif // defined(EXTRA_TYPES)
     {
         assert(0);
   #if defined(REMOVE)
@@ -1495,6 +1501,8 @@ again:
     }
 #endif // 0
 
+#if defined(SKIP_LINKS)
+
     default: // skip link (if -DSKIP_LINKS && -DTYPE_IS_RELATIVE)
     {
         // pwr points to a switch
@@ -1506,34 +1514,44 @@ again:
             break;
         }
 
-#if defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
-        // fall into next case
-    }
-    case T_SW_BASE: // no skip switch
+        // Logically, if we could arrange the source code accordingly,
+        // we could just fall through to T_SWITCH.
+        // But, with so many ifdefs, it is easier to use goto.
+        // Is falling through to the next case faster than a goto?
+        // Does the compiler turn a fall-through into a goto?
+        // Does the compiler rearrange code to make gotos (in and/or out
+        // of switch statements) be fall-throughs when possible?
+        // Is it a waste of energy for us to try to figure out how
+        // to ifdef the code to prefer fall-through to goto?
+        // I have a limited amount of empirical evidence suggesting that
+        // a goto is equivalent to a fall-through in this particular case.
+        goto t_switch;
+
+    } // end of default case
+
+#endif // defined(SKIP_LINKS)
+
+#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+  #if defined(RETYPE_FULL_BM_SW) && defined(BM_IN_NON_BM_SW)
+    case T_FULL_BM_SW: // bm switch will all bits set, i.e. all links present
+      #if defined(EXTRA_TYPES)
+    case T_FULL_BM_SW | EXP(cnBitsMallocMask): // bm switch with all links
+      #endif // defined(EXTRA_TYPES)
+  #endif // defined(RETYPE_FULL_BM_SW) && defined(BM_IN_NON_BM_SW)
+#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+
+    case T_SW_BASE: // no-skip (aka close) switch (vs. distant switch)
 #if defined(EXTRA_TYPES)
     case T_SW_BASE | EXP(cnBitsMallocMask): // no skip switch
 #endif // defined(EXTRA_TYPES)
     {
-#endif // defined(SKIP_LINKS) && defined(TYPE_IS_RELATIVE)
-
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-  #if defined(RETYPE_FULL_BM_SW)
-      #if defined(BM_IN_NON_BM_SW)
-    }
-    case T_FULL_BM_SW:
-    {
-      #else // defined(BM_IN_NON_BM_SW)
-          #if defined(LOOKUP)
-t_sw_base:
-          #endif // defined(LOOKUP)
-      #endif // defined(BM_IN_NON_BM_SW)
-  #endif // defined(RETYPE_FULL_BM_SW)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-
+    goto t_switch; // silence cc in case other the gotos are ifdef'd out
+t_switch:
 #if ( ! defined(LOOKUP) && defined(PP_IN_LINK) || defined(REMOVE) )
         nDLUp = nDL;
 #endif // ( ! defined(LOOKUP) && defined(PP_IN_LINK) || defined(REMOVE) )
-        nDL = nDLR - 1;
+        // nDLR is digits left including this switch but not skipped digits
+        nDL = nDLR - 1; // digits left below this switch
         nBL = nDL_to_nBL_NAX(nDL); // Probably near the top.
 
         Word_t wIndex = ((wKey >> nBL)
@@ -1656,26 +1674,31 @@ notEmpty:;
         // We have to get rid of this 'if' by putting it in the switch.  How?
         if (nBL <= cnLogBitsPerWord) { goto embeddedBitmap; }
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
-#if defined(TYPE_IS_RELATIVE)
-        nDLR = nDL;
-#endif // defined(TYPE_IS_RELATIVE)
+#if defined(TYPE_IS_RELATIVE) || defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+        nDLR = nDL; // advance nDLR to the bottom of this switch
+        // We call PrefixMismatch to initialize nDLR if TYPE_IS_ABSOLUTE.
+        // Unless T_BM_SW.
+#endif // defined(TYPE_IS_RELATIVE) || ...
 #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again;
 #else // defined(LOOKUP) || !defined(RECURSIVE)
         return InsertRemove(pwRoot, wKey, nDL);
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
-    } // end of default case
+    } // end of T_SWITCH
 
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
   #if defined(RETYPE_FULL_BM_SW)
       #if ! defined(BM_IN_NON_BM_SW)
     case T_FULL_BM_SW:
+#if defined(EXTRA_TYPES)
+    case T_FULL_BM_SW | EXP(cnBitsMallocMask): // no skip switch
+#endif // defined(EXTRA_TYPES)
     {
           #if defined(LOOKUP)
         pwr = (Word_t *)&((BmSwitch_t *)pwr)->sw_wPrefixPop;
-        goto t_sw_base;
+        goto t_switch;
           #endif // defined(LOOKUP)
 
         // fall through
@@ -1892,9 +1915,11 @@ notEmptyBm:;
             goto embeddedBitmap;
         }
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
-#if defined(TYPE_IS_RELATIVE)
-        nDLR = nDL;
-#endif // defined(TYPE_IS_RELATIVE)
+#if defined(TYPE_IS_RELATIVE) || defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+        nDLR = nDL; // advance nDLR to the bottom of this switch
+        // We call PrefixMismatch to initialize nDLR if TYPE_IS_ABSOLUTE.
+        // Unless T_BM_SW.
+#endif // defined(TYPE_IS_RELATIVE) || ...
 #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again;
 #else // defined(LOOKUP) || !defined(RECURSIVE)
