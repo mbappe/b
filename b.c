@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.364 2014/11/29 16:24:36 mike Exp mike $
+// @(#) $Id: b.c,v 1.365 2014/11/29 18:03:49 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2693,6 +2693,10 @@ newSwitch:
             DBGI(printf("nDL %d nDLR %d nDLU %d\n",
                    nDL, nDLRoot, nDLUp));
             set_wr_nDS(wRoot, nDL - nDLRoot - 1);
+#else // defined(TYPE_IS_RELATIVE)
+            if (nDL - nDLRoot - 1 == 0) {
+               set_wr_nType(wRoot, T_SWITCH);
+            }
 #endif // defined(TYPE_IS_RELATIVE)
             // Copy wRoot from old link (after being updated) to new link.
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
