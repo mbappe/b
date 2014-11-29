@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.433 2014/11/28 00:26:27 mike Exp mike $
+// @(#) $Id: bli.c,v 1.434 2014/11/28 05:30:18 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2763,25 +2763,25 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         status = Insert(pwRoot, wKey, cnDigitsPerWord);
     }
 
-  #if defined(DEBUG)
     if (status == Success) {
         // count successful inserts minus successful removes
-        wDebugPopCnt++;
-        if (!bHitDebugThreshold && (wDebugPopCnt > cwDebugThreshold)) {
+        wPopCntTotal++;
+  #if defined(DEBUG)
+        if (!bHitDebugThreshold && (wPopCntTotal > cwDebugThreshold)) {
             bHitDebugThreshold = 1;
             if (cwDebugThreshold != 0) {
                 printf("\nHit debug threshold.\n");
             }
         }
-    }
   #endif // defined(DEBUG)
+    }
 
     DBGI(printf("\n# After Insert(wKey "OWx") Dump\n", wKey));
     DBGI(Dump((Word_t *)ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord));
     DBGI(printf("\n"));
 
   #if defined(DEBUG)
-    assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wDebugPopCnt);
+    assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
   #endif // defined(DEBUG)
 
     return status;
@@ -2906,9 +2906,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
         status = Remove((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
     }
 
-  #if defined(DEBUG)
-    if (status == Success) { wDebugPopCnt--; }
-  #endif // defined(DEBUG)
+    if (status == Success) { wPopCntTotal--; }
 
   #if defined(DEBUG_REMOVE)
     DBGR(printf("\n# After Remove(wKey "OWx") %s Dump\n", wKey,
@@ -2918,7 +2916,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
   #endif // defined(DEBUG_REMOVE)
 
   #if defined(DEBUG)
-    assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wDebugPopCnt);
+    assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
   #endif // defined(DEBUG)
 
     return status;

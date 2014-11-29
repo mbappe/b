@@ -1206,15 +1206,15 @@ void Dump(Word_t *pwRoot, Word_t wPrefix, unsigned nBL);
 #endif // defined(DEBUG)
 
 #else // (cnDigitsPerWord != 1)
-Word_t wDebugPopCnt; // sanity checking
+Word_t wPopCntTotal;
 #endif // (cnDigitsPerWord != 1)
 
 #if defined(DEBUG)
 Word_t *pwRootLast; // allow dumping of tree when root is not known
-#if (cnDigitsPerWord != 1)
-Word_t wDebugPopCnt; // sanity checking
-#endif // (cnDigitsPerWord != 1)
 #endif // defined(DEBUG)
+#if (cnDigitsPerWord != 1)
+Word_t wPopCntTotal;
+#endif // (cnDigitsPerWord != 1)
 
 // Default is -DPSPLIT_SEARCH_8
 // This depends on uniform distribution / flat spectrum data.

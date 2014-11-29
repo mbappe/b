@@ -134,6 +134,10 @@ int bHitDebugThreshold;
 
 #if (cnDigitsPerWord != 1)
 
+Word_t wWordsAllocated; // number of words allocated but not freed
+Word_t wMallocs; // number of unfreed mallocs
+Word_t wEvenMallocs; // number of unfreed mallocs of an even number of words
+
 static Word_t
 MyMalloc(Word_t wWords)
 {
@@ -141,12 +145,16 @@ MyMalloc(Word_t wWords)
     DBGM(printf("\nM: "OWx" %"_fw"d words\n", ww, wWords));
     assert(ww != 0);
     assert((ww & cnMallocMask) == 0);
+    ++wMallocs; wWordsAllocated += wWords;
+    if ( ! (wWords & 1) ) { ++wEvenMallocs; }
     return ww;
 }
 
 static void
 MyFree(Word_t *pw, Word_t wWords)
 {
+    if ( ! (wWords & 1) ) { --wEvenMallocs; }
+    --wMallocs; wWordsAllocated -= wWords;
     DBGM(printf("F: "OWx" %"_fw"d words\n", (Word_t)pw, wWords));
     JudyFree(pw, wWords);
 }
@@ -847,14 +855,42 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
         METRICS(j__AllocWordsJBB  -= nWordsOld); // JUDYA
     }
 
+    // What rule should we use to decide when to uncompress a bitmap switch?
+
     // 5/8 is close to the golden ratio
-    if (wPopCnt >= EXP(nBitsIndexSz) * 5 / 8)
+    // if (wPopCnt >= EXP(nBitsIndexSz) * 5 / 8)
+
+    // Does this include the key were inserting now?  I think it does.
+    Word_t wPopCntKeys = PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDL);
+    (void)wPopCntKeys;
+
+    // If the number of null words we'd add by uncompressing the switch
+    // is insignificant w.r.t. the population, then do it.
+    int nWordsNull = sizeof(Switch_t) - nWordsOld
+           + (EXP(nBitsIndexSz) - 2) * sizeof(Link_t) / sizeof(Word_t);
+    (void)nWordsNull;
+    // if (wPopCntKeys / nWordsNull / nDL > 10)
+
+    DBGI(static int16_t sDigitsReportedMask = 0);
+    if (wPopCntTotal * 2 >= wWordsAllocated + wMallocs + wEvenMallocs + nWordsNull)
     {
+#if defined(DEBUG_INSERT)
+        if ( ! (EXP(nDL) & sDigitsReportedMask) )
+        {
+            sDigitsReportedMask |= EXP(nDL);
+            printf("# Converting nKeys %ld nLinks %ld nDL %d",
+                   wPopCntKeys, wPopCnt, nDL);
+            printf(" wPopCntTotal %ld wWordsAllocated %ld",
+               wPopCntTotal, wWordsAllocated);
+            printf(" wMallocs %ld wEvenMallocs %ld nWordsNull %d\n",
+               wMallocs, wEvenMallocs, nWordsNull);
+        }
+#endif // defined(DEBUG_INSERT)
+
         // We don't currently support skip links to bitmap switches.
         // As such, nDLUp always equals nDL.  But we should be
         // supporting skip links to bitmap switches so we'll have
         // to do something different when that happens.
-        Word_t wPopCntKeys = PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDL);
         Word_t *pwrNew = NewSwitch(pwRoot, wKey,
                                    nDL, /* bBmSw */ 0, nDL, wPopCntKeys);
         unsigned mm = 0;
@@ -923,6 +959,18 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
         } else
 #if defined(RETYPE_FULL_BM_SW)
         if (wPopCnt == EXP(nBitsIndexSz) - 1) {
+  #if defined(DEBUG_INSERT)
+            if ( ! (EXP(nDL) & sDigitsReportedMask) )
+            {
+                sDigitsReportedMask |= EXP(nDL);
+                printf("# Converting full BM_SW nKeys %ld nLinks %ld nDL %d",
+                       wPopCntKeys, wPopCnt, nDL);
+                printf(" wPopCntTotal %ld wWordsAllocated %ld",
+                       wPopCntTotal, wWordsAllocated);
+                printf(" wMallocs %ld wEvenMallocs %ld nWordsNull %d\n",
+                       wMallocs, wEvenMallocs, nWordsNull);
+            }
+  #endif // defined(DEBUG_INSERT)
             METRICS(j__AllocWordsJBU  += nWordsNew); // JUDYA
         } else
 #endif // defined(RETYPE_FULL_BM_SW)
@@ -3528,13 +3576,14 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
     }
 
   #if defined(DEBUG)
-    if (wPopCnt != wDebugPopCnt)
+    if (wPopCnt != wPopCntTotal)
     {
-        printf("\nwPopCnt %"_fw"d wDebugPopCnt %"_fw"d\n",
-               wPopCnt, wDebugPopCnt);
+        printf("\nAssertion error debug:\n");
+        printf("\nwPopCnt %"_fw"d wPopCntTotal %"_fw"d\n",
+               wPopCnt, wPopCntTotal);
         Dump(pwRootLast, 0, cnBitsPerWord);
     }
-    assert(wPopCnt == wDebugPopCnt);
+    assert(wPopCnt == wPopCntTotal);
   #endif // defined(DEBUG)
 
     return wPopCnt;
@@ -3542,7 +3591,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 #else // (cnDigitsPerWord != 1)
 
     (void)PArray; (void)wKey0; (void)wKey1, (void)PJError;
-    return wDebugPopCnt;
+    return wPopCntTotal;
 
 #endif // (cnDigitsPerWord != 1)
 }
