@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.435 2014/11/29 04:09:23 mike Exp $
+// @(#) $Id: bli.c,v 1.436 2014/11/29 16:25:45 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1450,9 +1450,7 @@ again:
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
 #if defined(SKIP_LINKS)
-#if defined(TYPE_IS_RELATIVE) || defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     assert(nDLR == nDL);
-#endif // defined(TYPE_IS_RELATIVE) || ...
 #endif // defined(SKIP_LINKS)
 #if ( ! defined(LOOKUP) )
     assert(nDL >= 1); // valid for LOOKUP too
@@ -1530,15 +1528,6 @@ again:
     } // end of default case
 
 #endif // defined(SKIP_LINKS)
-
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-  #if defined(RETYPE_FULL_BM_SW) && defined(BM_IN_NON_BM_SW)
-    case T_FULL_BM_SW: // bm switch will all bits set, i.e. all links present
-      #if defined(EXTRA_TYPES)
-    case T_FULL_BM_SW | EXP(cnBitsMallocMask): // bm switch with all links
-      #endif // defined(EXTRA_TYPES)
-  #endif // defined(RETYPE_FULL_BM_SW) && defined(BM_IN_NON_BM_SW)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
     case T_SW_BASE: // no-skip (aka close) switch (vs. distant switch)
 #if defined(EXTRA_TYPES)
@@ -1674,11 +1663,9 @@ notEmpty:;
         // We have to get rid of this 'if' by putting it in the switch.  How?
         if (nBL <= cnLogBitsPerWord) { goto embeddedBitmap; }
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
-#if defined(TYPE_IS_RELATIVE) || defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-        nDLR = nDL; // advance nDLR to the bottom of this switch
-        // We call PrefixMismatch to initialize nDLR if TYPE_IS_ABSOLUTE.
-        // Unless T_BM_SW.
-#endif // defined(TYPE_IS_RELATIVE) || ...
+        // Advance nDLR to the bottom of this switch now just in case
+        // we have a non-skip link to a switch.  We could do it later.
+        nDLR = nDL;
 #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again;
 #else // defined(LOOKUP) || !defined(RECURSIVE)
@@ -1690,20 +1677,20 @@ notEmpty:;
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
   #if defined(RETYPE_FULL_BM_SW)
-      #if ! defined(BM_IN_NON_BM_SW)
-    case T_FULL_BM_SW:
-#if defined(EXTRA_TYPES)
-    case T_FULL_BM_SW | EXP(cnBitsMallocMask): // no skip switch
-#endif // defined(EXTRA_TYPES)
-    {
-          #if defined(LOOKUP)
-        pwr = (Word_t *)&((BmSwitch_t *)pwr)->sw_wPrefixPop;
-        goto t_switch;
-          #endif // defined(LOOKUP)
 
-        // fall through
+    case T_FULL_BM_SW:
+      #if defined(EXTRA_TYPES)
+    case T_FULL_BM_SW | EXP(cnBitsMallocMask): // no skip switch
+      #endif // defined(EXTRA_TYPES)
+    {
+      #if defined(LOOKUP)
+          #if ! defined(BM_IN_NON_BM_SW)
+        pwr = (Word_t *)&((BmSwitch_t *)pwr)->sw_wPrefixPop;
+          #endif // ! defined(BM_IN_NON_BM_SW)
+        goto t_switch;
+      #endif // defined(LOOKUP)
     }
-      #endif // ! defined(BM_IN_NON_BM_SW)
+
   #endif // defined(RETYPE_FULL_BM_SW)
 
     case T_BM_SW:
@@ -1915,11 +1902,9 @@ notEmptyBm:;
             goto embeddedBitmap;
         }
 #endif // (cnBitsAtBottom <= cnLogBitsPerWord)
-#if defined(TYPE_IS_RELATIVE) || defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-        nDLR = nDL; // advance nDLR to the bottom of this switch
-        // We call PrefixMismatch to initialize nDLR if TYPE_IS_ABSOLUTE.
-        // Unless T_BM_SW.
-#endif // defined(TYPE_IS_RELATIVE) || ...
+        // Advance nDLR to the bottom of this switch now just in case
+        // we have a non-skip link to a switch.  We could do it later.
+        nDLR = nDL;
 #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again;
 #else // defined(LOOKUP) || !defined(RECURSIVE)
