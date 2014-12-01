@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.366 2014/11/29 18:14:09 mike Exp mike $
+// @(#) $Id: b.c,v 1.367 2014/12/01 20:38:41 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -171,17 +171,16 @@ MyFree(Word_t *pw, Word_t wWords)
 // - or followed by a dummy pop count: PP_IN_LINK and DUMMY_POP_CNT_IN_LIST
 //   and list doesn't hang from root word
 //   - PP_IN_LINK root pop count goes in a dummy word: cnDummiesInList
-// - followed by some padding to align beginning of list: PSPLIT_PARALLEL
 // - followed by a marker key 0 at pxKeys[-1]
+// - followed by some padding to align beginning of list: PSPLIT_PARALLEL
 // - followed by the array of keys at pxKeys[0] - pxKeys[nPopCnt - 1]
 // - followed by replicas of last key to align end of list: PSPLIT_PARALLEL
-// - followed by a marker key -1
 // - followed by padding to an odd word boundary for malloc optimization
+// - followed by a marker key -1
 static unsigned
 ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 {
     (void)nBL;
-    unsigned nPopCntLocal = 0;
 
     if (wPopCntArg == 0) { return 0; }
 
@@ -194,61 +193,47 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 #endif // defined(COMPRESSED_LISTS)
                            sizeof(Word_t);
 
+    int nBytes = cnDummiesInList * sizeof(Word_t);
+#if defined(PP_IN_LINK) && ! defined(DUMMY_POP_CNT_IN_LIST)
     // Make room for pop count in the list, if necessary.
     // Adding a whole extra word with cnDummiesInList is too much when trying
     // to add dummy space to make PP_IN_LINK use the same amount of space as
     // PP in switch.  So we use DUMMY_POP_CNT_IN_LIST.
-#if defined(PP_IN_LINK) && ! defined(DUMMY_POP_CNT_IN_LIST)
     if ((nBL >= cnBitsPerWord) && (cnDummiesInList == 0))
 #endif // defined(PP_IN_LINK) && ! defined(DUMMY_POP_CNT_IN_LIST)
-    {
-        ++nPopCntLocal;
-    }
-
+    { nBytes += nBytesKeySz; } // pop count
 #if defined(LIST_END_MARKERS)
     // Make room for 0 at the beginning to help make search faster.
     // How should we handle LIST_END_MARKERS for parallel searches?
-    ++nPopCntLocal;
+    nBytes += nBytesKeySz;
 #endif // defined(LIST_END_MARKERS)
-
 #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
     // Pad list header so array of real keys is aligned.
-    nPopCntLocal
-        = (DIV_UP(cnDummiesInList * sizeof(Word_t)
-                        + nPopCntLocal * nBytesKeySz,
-                    sizeof(Bucket_t))
-                * sizeof(Bucket_t) - cnDummiesInList * sizeof(Word_t))
-            / nBytesKeySz;
+    nBytes = DIV_UP(nBytes, sizeof(Bucket_t)) * sizeof(Bucket_t);
 #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
-
-    nPopCntLocal += wPopCntArg; // add list of real keys
-
-#if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
+    int nBytes1 = 
+#if defined(COMPRESSED_LISTS)
+        (nBL <= 8) ? (int)ls_pcKeys(0) : (nBL <= 16) ? (int)ls_psKeys(0) : 
+  #if (cnBitsPerWord > 32)
+        (nBL <= 32) ? (int)ls_piKeys(0) :
+  #endif // (cnBitsPerWord > 32)
+        (int)ls_pwKeys(0);
+#endif // defined(COMPRESSED_LISTS)
+    (void)nBytes1;
+    assert(nBytes1 == nBytes);
+    nBytes += wPopCntArg * nBytesKeySz; // add list of real keys
+#if defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)
     // Pad array of keys so the end is aligned.
     // We'll eventually fill the padding with a replica of the last real key
     // so parallel searching yields no false positives.
-    nPopCntLocal
-        = (DIV_UP(cnDummiesInList * sizeof(Word_t)
-                        + nPopCntLocal * nBytesKeySz,
-                    sizeof(Bucket_t))
-                * sizeof(Bucket_t) - cnDummiesInList * sizeof(Word_t))
-            / nBytesKeySz;
-#endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
-
+    nBytes = DIV_UP(nBytes, sizeof(Bucket_t)) * sizeof(Bucket_t);
+#endif // defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
     // Make room for -1 at the end to help make search faster.
     // How should we handle LIST_END_MARKERS for parallel searches?
-    ++nPopCntLocal;
+    nBytes += nBytesKeySz;
 #endif // defined(LIST_END_MARKERS)
-
-    // always malloc an odd number of words since the odd word is free
-    unsigned nListWords
-        = DIV_UP(nPopCntLocal * nBytesKeySz
-                     + cnDummiesInList * sizeof(Word_t),
-                 sizeof(Word_t))
-            | 1;
-
-    return nListWords;
+    return DIV_UP(nBytes, sizeof(Word_t)) | 1;
 }
 
 // How many words needed for leaf?  Use T_ONE instead of T_LIST if possible.
