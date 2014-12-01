@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.365 2014/11/29 18:03:49 mike Exp mike $
+// @(#) $Id: b.c,v 1.366 2014/11/29 18:14:09 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -207,45 +207,38 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 
 #if defined(LIST_END_MARKERS)
     // Make room for 0 at the beginning to help make search faster.
+    // How should we handle LIST_END_MARKERS for parallel searches?
     ++nPopCntLocal;
 #endif // defined(LIST_END_MARKERS)
 
+#if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
     // Pad list header so array of real keys is aligned.
-    // PSPLIT_PARALLEL without HAS_KEY_128 requires ALIGN_LISTS_WORD.
-    // PSPLIT_PARALLEL with HAS_KEY_128 requires ALIGN_LISTS_128.
-    // Consider using sizeof(Bucket_t) instead of ifdefs here.
     nPopCntLocal
-#if defined(ALIGN_LISTS)
-        = ((nPopCntLocal * nBytesKeySz + sizeof(__m128i) - 1)
-                & ~(sizeof(__m128i) - 1))
-#elif defined(PSPLIT_PARALLEL)
-        = ((nPopCntLocal * nBytesKeySz + sizeof(Word_t) - 1)
-                & ~(sizeof(Word_t) - 1))
-#else // #elif defined(PSPLIT_PARALLEL)
-        = (nPopCntLocal * nBytesKeySz)
-#endif // defined(ALIGN_LISTS)
+        = (DIV_UP(cnDummiesInList * sizeof(Word_t)
+                        + nPopCntLocal * nBytesKeySz,
+                    sizeof(Bucket_t))
+                * sizeof(Bucket_t) - cnDummiesInList * sizeof(Word_t))
             / nBytesKeySz;
+#endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 
     nPopCntLocal += wPopCntArg; // add list of real keys
 
+#if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
     // Pad array of keys so the end is aligned.
-    // We'll fill the padding with a replica of the last real key
+    // We'll eventually fill the padding with a replica of the last real key
     // so parallel searching yields no false positives.
     nPopCntLocal
-#if defined(ALIGN_LIST_ENDS)
-        = ((nPopCntLocal * nBytesKeySz + sizeof(__m128i) - 1)
-                & ~(sizeof(__m128i) - 1))
-#elif defined(PSPLIT_PARALLEL)
-        = ((nPopCntLocal * nBytesKeySz + sizeof(Word_t) - 1)
-                & ~(sizeof(Word_t) - 1))
-#else // #elif defined(PSPLIT_PARALLEL)
-        = (nPopCntLocal * nBytesKeySz)
-#endif // defined(ALIGN_LIST_ENDS)
+        = (DIV_UP(cnDummiesInList * sizeof(Word_t)
+                        + nPopCntLocal * nBytesKeySz,
+                    sizeof(Bucket_t))
+                * sizeof(Bucket_t) - cnDummiesInList * sizeof(Word_t))
             / nBytesKeySz;
+#endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 
 #if defined(LIST_END_MARKERS)
     // Make room for -1 at the end to help make search faster.
-    nPopCntLocal += 1;
+    // How should we handle LIST_END_MARKERS for parallel searches?
+    ++nPopCntLocal;
 #endif // defined(LIST_END_MARKERS)
 
     // always malloc an odd number of words since the odd word is free
@@ -254,14 +247,6 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
                      + cnDummiesInList * sizeof(Word_t),
                  sizeof(Word_t))
             | 1;
-
-#if defined(PSPLIT_PARALLEL)
-#if 0
-    printf("\nListWordsTypeList wPopCntArg %d nBL %d"
-           " nPopCntLocal %d nListWords %d\n",
-        (int)wPopCntArg, nBL, nPopCntLocal, nListWords);
-#endif // 0
-#endif // defined(PSPLIT_PARALLEL)
 
     return nListWords;
 }

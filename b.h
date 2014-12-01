@@ -192,7 +192,6 @@
 #define cnLogBytesPerWord  2
 #endif // (cnBitsPerWord == 64)
 
-#define cnBytesPerWord  (EXP(cnLogBytesPerWord))
 #define cnLogBitsPerWord  (cnLogBytesPerWord + cnLogBitsPerByte)
 #define cnBitsMallocMask  (cnLogBytesPerWord + 1)
 #define cnMallocMask  MSK(cnBitsMallocMask)
@@ -206,8 +205,6 @@ typedef __m128i Bucket_t;
 typedef Word_t Bucket_t;
 #define cnLogBytesPerBucket  cnLogBytesPerWord
 #endif // defined(ALIGN_LISTS)
-
-#define cnBytesPerBucket  EXP(cnLogBytesPerBucket)
 
 // Bits-per-digit.
 #if 0
@@ -931,14 +928,6 @@ enum {
     (assert((_nBL) == cnBitsPerWord), \
         ((ListLeaf_t *)(_ls))->ll_awDummies[cnDummiesInList - 1] = (_cnt))
 
-  #if defined(ALIGN_LISTS)
-// Code assumes ll_awKeys is __m128i aligned.
-// It wouldn't be true for some values of cnDummiesInList.
-      #if ((cnDummiesInList % (/*log(128/8)*/ 4 - cnLogBytesPerWord + 1)) != 0)
-#error cnDummiesInList must yield an __m128i-aligned ll_awKeys
-      #endif // ((cnDummiesInList % ... ))
-  #endif // defined(ALIGN_LISTS)
-
 #endif // (cnDummiesInList == 0)
 
 // Number of key slots needed for header info after cnDummiesInList
@@ -982,20 +971,10 @@ enum {
 // For PP_IN_LINK ls_pxKeys macros are only valid not at top or for
 // T_ONE - not T_LIST - at top.
 #if defined(ALIGN_LISTS)
-#if 0
-#define N_LIST_HDR_BUCKETS_WORD \
-    ((N_LIST_HDR_KEYS * cnBytesPerWord + cnBytesPerBucket - 1) \
-        / cnBytesPerBucket)
-#define N_LIST_HDR_KEYS_ALIGNED_WORD \
-    (N_LIST_HDR_BUCKETS_WORD * cnBytesPerBucket / cnBytesPerWord)
-#define ls_pwKeys(_ls) \
-    (&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS_ALIGNED_WORD])
-#else
 #define ls_pwKeys(_ls) \
     ((Word_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS] \
             + sizeof(Bucket_t) - 1) \
-        & ~(cnBytesPerBucket - 1)))
-#endif
+        & ~(sizeof(Bucket_t) - 1)))
 #else // defined(ALIGN_LISTS)
 #define ls_pwKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS])
 #endif // defined(ALIGN_LISTS)
@@ -1011,78 +990,28 @@ enum {
 #endif // ! defined(NO_PSPLIT_EARLY_OUT)
 
 #if defined(COMPRESSED_LISTS)
-  #if defined(ALIGN_LISTS)
-
-#if 0
-
-#define N_LIST_HDR_BUCKETS_8 \
-    ((N_LIST_HDR_KEYS + cnBytesPerBucket - 1) \
-        / cnBytesPerBucket)
-#define N_LIST_HDR_KEYS_ALIGNED_8 \
-    (N_LIST_HDR_BUCKETS_8 * cnBytesPerBucket)
-#define ls_pcKeys(_ls) \
-    (&((ListLeaf_t *)(_ls))->ll_acKeys[N_LIST_HDR_KEYS_ALIGNED_8])
-
-#define N_LIST_HDR_BUCKETS_16 \
-    ((N_LIST_HDR_KEYS * 2 + cnBytesPerBucket - 1) \
-        / cnBytesPerBucket)
-#define N_LIST_HDR_KEYS_ALIGNED_16 \
-    (N_LIST_HDR_BUCKETS_16 * cnBytesPerBucket / 2)
-#define ls_psKeys(_ls) \
-    (&((ListLeaf_t *)(_ls))->ll_asKeys[N_LIST_HDR_KEYS_ALIGNED_16])
-
-      #if (cnBitsPerWord > 32)
-#define N_LIST_HDR_BUCKETS_32 \
-    ((N_LIST_HDR_KEYS * 4 + cnBytesPerBucket - 1) \
-        / cnBytesPerBucket)
-#define N_LIST_HDR_KEYS_ALIGNED_32 \
-    (N_LIST_HDR_BUCKETS_32 * cnBytesPerBucket / 4)
-#define ls_piKeys(_ls) \
-    (&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS_ALIGNED_32])
-      #endif // (cnBitsPerWord > 32)
-
-#else
+  #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
+// What if we want 128-byte alignment and one-word parallel search?
+// Ifdefs don't allow it at the moment.
 
 #define ls_pcKeys(_ls) \
     ((uint8_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_acKeys[N_LIST_HDR_KEYS] \
             + sizeof(Bucket_t) - 1) \
-        & ~(cnBytesPerBucket - 1)))
+        & ~(sizeof(Bucket_t) - 1)))
 
 #define ls_psKeys(_ls) \
     ((uint16_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_asKeys[N_LIST_HDR_KEYS] \
             + sizeof(Bucket_t) - 1) \
-        & ~(cnBytesPerBucket - 1)))
+        & ~(sizeof(Bucket_t) - 1)))
 
       #if (cnBitsPerWord > 32)
 #define ls_piKeys(_ls) \
     ((uint32_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS] \
             + sizeof(Bucket_t) - 1) \
-        & ~(cnBytesPerBucket - 1)))
+        & ~(sizeof(Bucket_t) - 1)))
       #endif // (cnBitsPerWord > 32)
 
-#endif
-
-  #else // defined(ALIGN_LISTS)
-      #if defined(PSPLIT_PARALLEL)
-
-#define ls_pcKeys(_ls) \
-    ((uint8_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_acKeys[N_LIST_HDR_KEYS] \
-            + sizeof(Word_t) - 1) \
-        & ~MSK(cnLogBytesPerWord)))
-
-#define ls_psKeys(_ls) \
-    ((uint16_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_asKeys[N_LIST_HDR_KEYS] \
-            + sizeof(Word_t) - 1) \
-        & ~MSK(cnLogBytesPerWord)))
-
-      #if (cnBitsPerWord > 32)
-#define ls_piKeys(_ls) \
-    ((uint32_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS] \
-            + sizeof(Word_t) - 1) \
-        & ~MSK(cnLogBytesPerWord)))
-      #endif // (cnBitsPerWord > 32)
-
-      #else // defined(PSPLIT_PARALLEL)
+  #else // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 
 #define ls_pcKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_acKeys[N_LIST_HDR_KEYS])
 
@@ -1092,8 +1021,7 @@ enum {
 #define ls_piKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS])
           #endif // (cnBitsPerWord > 32)
 
-      #endif // defined(PSPLIT_PARALLEL)
-  #endif // defined(ALIGN_LISTS)
+  #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 #endif // defined(COMPRESSED_LISTS)
 
 // these are just aliases
