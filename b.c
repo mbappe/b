@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.367 2014/12/01 20:38:41 mike Exp mike $
+// @(#) $Id: b.c,v 1.368 2014/12/01 22:05:58 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -193,25 +193,7 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 #endif // defined(COMPRESSED_LISTS)
                            sizeof(Word_t);
 
-    int nBytes = cnDummiesInList * sizeof(Word_t);
-#if defined(PP_IN_LINK) && ! defined(DUMMY_POP_CNT_IN_LIST)
-    // Make room for pop count in the list, if necessary.
-    // Adding a whole extra word with cnDummiesInList is too much when trying
-    // to add dummy space to make PP_IN_LINK use the same amount of space as
-    // PP in switch.  So we use DUMMY_POP_CNT_IN_LIST.
-    if ((nBL >= cnBitsPerWord) && (cnDummiesInList == 0))
-#endif // defined(PP_IN_LINK) && ! defined(DUMMY_POP_CNT_IN_LIST)
-    { nBytes += nBytesKeySz; } // pop count
-#if defined(LIST_END_MARKERS)
-    // Make room for 0 at the beginning to help make search faster.
-    // How should we handle LIST_END_MARKERS for parallel searches?
-    nBytes += nBytesKeySz;
-#endif // defined(LIST_END_MARKERS)
-#if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
-    // Pad list header so array of real keys is aligned.
-    nBytes = DIV_UP(nBytes, sizeof(Bucket_t)) * sizeof(Bucket_t);
-#endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
-    int nBytes1 = 
+    int nBytes = 
 #if defined(COMPRESSED_LISTS)
         (nBL <= 8) ? (int)ls_pcKeys(0) : (nBL <= 16) ? (int)ls_psKeys(0) : 
   #if (cnBitsPerWord > 32)
@@ -219,8 +201,6 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
   #endif // (cnBitsPerWord > 32)
         (int)ls_pwKeys(0);
 #endif // defined(COMPRESSED_LISTS)
-    (void)nBytes1;
-    assert(nBytes1 == nBytes);
     nBytes += wPopCntArg * nBytesKeySz; // add list of real keys
 #if defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)
     // Pad array of keys so the end is aligned.
