@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.438 2014/11/29 18:03:49 mike Exp mike $
+// @(#) $Id: bli.c,v 1.439 2014/11/29 18:14:09 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -82,14 +82,6 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
     while ((_pxKeys)[_nPos] > (_xKey)) { --(_nPos); } \
     if ((_pxKeys)[_nPos] < (_xKey)) { ++(_nPos); (_nPos) ^= -1; } \
 }
-
-#if defined(PSPLIT_PARALLEL)
-  #if defined(HAS_KEY_128)
-typedef __m128i Bucket_t;
-  #else // defined(HAS_KEY_128)
-typedef Word_t Bucket_t;
-  #endif // defined(HAS_KEY_128)
-#endif // defined(PSPLIT_PARALLEL)
 
 #if defined(LIST_END_MARKERS)
 
@@ -1310,8 +1302,6 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t wKey, unsigned nDL,
 
     unsigned nType = wr_nType(wRoot);
     assert(nType >= T_SW_BASE);
-    assert(nType != T_SWITCH);
-    assert(nType != T_BM_SW);
     Word_t *pwr = wr_tp_pwr(wRoot, nType); (void)pwr;
     unsigned nDLR;
     int bPrefixMismatch; (void)bPrefixMismatch;

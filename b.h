@@ -197,6 +197,18 @@
 #define cnBitsMallocMask  (cnLogBytesPerWord + 1)
 #define cnMallocMask  MSK(cnBitsMallocMask)
 
+// Default is -DHAS_KEY_128 which forces -DALIGN_LISTS -DALIGN_LIST_ENDS.
+#if defined(ALIGN_LISTS)
+#include <immintrin.h> // __m128i
+typedef __m128i Bucket_t;
+#define cnLogBytesPerBucket  4
+#else // defined(ALIGN_LISTS)
+typedef Word_t Bucket_t;
+#define cnLogBytesPerBucket  cnLogBytesPerWord
+#endif // defined(ALIGN_LISTS)
+
+#define cnBytesPerBucket  EXP(cnLogBytesPerBucket)
+
 // Bits-per-digit.
 #if 0
 // If default is cnBitsPerDigit = cnLogBitsPerWord.
@@ -687,9 +699,9 @@ enum {
 #error "Invalid cnBitsPerWord."
 #endif
 
-// Pop cnt bits are just above the type field.
+// wr_nPopCnt(_wr, _nBL) gets the pop count for a list of embedded keys.
+// For embedded keys the pop cnt bits are just above the type field.
 // A value of zero means a pop cnt of one. 
-
 #define     wr_nPopCnt(_wr, _nBL) \
     ((((_wr) >> cnBitsMallocMask) & MSK(nBL_to_nBitsPopCntSz(_nBL))) + 1)
 
@@ -759,13 +771,15 @@ enum {
 
 #if defined(DEPTH_IN_SW)
 // DEPTH_IN_SW directs us to use the low bits of sw_wPrefixPop for skip count
-// instead of encoding it into the type field directly.
+// for skip links instead of encoding skip count into the type field directly.
+// We use T_SW_BASE to indicate no skip.  And T_SW_BASE + 1 to indicate that
+// a non-zero skip count is in sw_wPrefixPop.
 // It means we can't use the low bits of sw_wPrefixPop for pop.  So we
 // define POP_WORD_IN_SW and use a separate word.
 // We assume the value we put into the low bits will will fit in the number
-// of bits used for the pop count at DL=1, i.e. cnBitsAtBottom.  Or maybe
-// it doesn't matter since we always create an embedded bitmap when
-// nBL <= cnLogBitsPerWord.
+// of bits used for the pop count in the switch at the bottom so we have
+// to be careful when choosing the level of the lowest level switch and
+// the number of digits above it.
 #define POP_WORD_IN_SW
 
 // wr_nDS_NZ is for the Lookup performance path.  It avoids a test that
@@ -900,12 +914,15 @@ enum {
 // For PP_IN_LINK ls_wPopCnt macros are only valid at top, i.e.
 // nDL == cnDigitsPerWord, and only for T_LIST - not for T_ONE.
 #if (cnDummiesInList == 0)
+
 #define     ls_wPopCnt(_ls, _nBL) \
     (assert((_nBL) == cnBitsPerWord), ((ListLeaf_t *)(_ls))->ll_awKeys[0])
 #define set_ls_wPopCnt(_ls, _nBL, _cnt) \
     (assert((_nBL) == cnBitsPerWord), \
         ((ListLeaf_t *)(_ls))->ll_awKeys[0] = (_cnt))
+
 #else // (cnDummiesInList == 0)
+
 // Use the last dummy for pop count if we have at least one dummy.
 #define     ls_wPopCnt(_ls, _nBL) \
     (assert((_nBL) == cnBitsPerWord), \
@@ -913,17 +930,23 @@ enum {
 #define set_ls_wPopCnt(_ls, _nBL, _cnt) \
     (assert((_nBL) == cnBitsPerWord), \
         ((ListLeaf_t *)(_ls))->ll_awDummies[cnDummiesInList - 1] = (_cnt))
+
+  #if defined(ALIGN_LISTS)
+// Code assumes ll_awKeys is __m128i aligned.
+// It wouldn't be true for some values of cnDummiesInList.
+      #if ((cnDummiesInList % (/*log(128/8)*/ 4 - cnLogBytesPerWord + 1)) != 0)
+#error cnDummiesInList must yield an __m128i-aligned ll_awKeys
+      #endif // ((cnDummiesInList % ... ))
+  #endif // defined(ALIGN_LISTS)
+
 #endif // (cnDummiesInList == 0)
 
-// Index of first key within leaf (for nDL != cnDigitsPerWord).
-// Or is it the number of key slots needed for header info after
-// cnDummiesInList?
-// How do we handle FIRST_KEY if cnDummiesInList is odd and
-// ALIGN_LISTS is defined?
+// Number of key slots needed for header info after cnDummiesInList
+// (for nDL != cnDigitsPerWord).
 #if defined(LIST_END_MARKERS)
-#define FIRST_KEY  1
+#define N_LIST_HDR_KEYS  1
 #else // defined(LIST_END_MARKERS)
-#define FIRST_KEY  0
+#define N_LIST_HDR_KEYS  0
 #endif // defined(LIST_END_MARKERS)
 
 #else // defined(PP_IN_LINK)
@@ -949,9 +972,9 @@ enum {
 // Or is it the number of key slots needed for header info after
 // cnDummiesInList?
 #if defined(LIST_END_MARKERS)
-#define FIRST_KEY  2
+#define N_LIST_HDR_KEYS  2
 #else // defined(LIST_END_MARKERS)
-#define FIRST_KEY  1
+#define N_LIST_HDR_KEYS  1
 #endif // defined(LIST_END_MARKERS)
 
 #endif // defined(PP_IN_LINK)
@@ -959,15 +982,22 @@ enum {
 // For PP_IN_LINK ls_pxKeys macros are only valid not at top or for
 // T_ONE - not T_LIST - at top.
 #if defined(ALIGN_LISTS)
-// Assume two words is always enough space for the list header, and that
-// ll_awKeys is always two-word aligned.
-// The latter won't be true if cnDummiesInList is odd.
-#if (cnDummiesInList & 1)
-#error Odd cnDummiesInList does not work with ALIGN_LISTS.
-#endif // (cnDummiesInList & 1)
-#define ls_pwKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_awKeys[2])
+#if 0
+#define N_LIST_HDR_BUCKETS_WORD \
+    ((N_LIST_HDR_KEYS * cnBytesPerWord + cnBytesPerBucket - 1) \
+        / cnBytesPerBucket)
+#define N_LIST_HDR_KEYS_ALIGNED_WORD \
+    (N_LIST_HDR_BUCKETS_WORD * cnBytesPerBucket / cnBytesPerWord)
+#define ls_pwKeys(_ls) \
+    (&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS_ALIGNED_WORD])
+#else
+#define ls_pwKeys(_ls) \
+    ((Word_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS] \
+            + sizeof(Bucket_t) - 1) \
+        & ~(cnBytesPerBucket - 1)))
+#endif
 #else // defined(ALIGN_LISTS)
-#define ls_pwKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_awKeys[FIRST_KEY])
+#define ls_pwKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS])
 #endif // defined(ALIGN_LISTS)
 
 #if ! defined(NO_PSPLIT_PARALLEL)
@@ -983,45 +1013,86 @@ enum {
 #if defined(COMPRESSED_LISTS)
   #if defined(ALIGN_LISTS)
 
-#define ls_pcKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_acKeys[sizeof(Word_t) * 2])
+#if 0
 
-#define ls_psKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_asKeys[sizeof(Word_t)])
+#define N_LIST_HDR_BUCKETS_8 \
+    ((N_LIST_HDR_KEYS + cnBytesPerBucket - 1) \
+        / cnBytesPerBucket)
+#define N_LIST_HDR_KEYS_ALIGNED_8 \
+    (N_LIST_HDR_BUCKETS_8 * cnBytesPerBucket)
+#define ls_pcKeys(_ls) \
+    (&((ListLeaf_t *)(_ls))->ll_acKeys[N_LIST_HDR_KEYS_ALIGNED_8])
+
+#define N_LIST_HDR_BUCKETS_16 \
+    ((N_LIST_HDR_KEYS * 2 + cnBytesPerBucket - 1) \
+        / cnBytesPerBucket)
+#define N_LIST_HDR_KEYS_ALIGNED_16 \
+    (N_LIST_HDR_BUCKETS_16 * cnBytesPerBucket / 2)
+#define ls_psKeys(_ls) \
+    (&((ListLeaf_t *)(_ls))->ll_asKeys[N_LIST_HDR_KEYS_ALIGNED_16])
 
       #if (cnBitsPerWord > 32)
-#define ls_piKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_aiKeys[sizeof(Word_t) / 2])
+#define N_LIST_HDR_BUCKETS_32 \
+    ((N_LIST_HDR_KEYS * 4 + cnBytesPerBucket - 1) \
+        / cnBytesPerBucket)
+#define N_LIST_HDR_KEYS_ALIGNED_32 \
+    (N_LIST_HDR_BUCKETS_32 * cnBytesPerBucket / 4)
+#define ls_piKeys(_ls) \
+    (&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS_ALIGNED_32])
       #endif // (cnBitsPerWord > 32)
 
-  #else // defined(ALIGN_LISTS)
-  #if defined(PSPLIT_PARALLEL)
+#else
 
 #define ls_pcKeys(_ls) \
-    ((uint8_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_acKeys[FIRST_KEY] \
+    ((uint8_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_acKeys[N_LIST_HDR_KEYS] \
+            + sizeof(Bucket_t) - 1) \
+        & ~(cnBytesPerBucket - 1)))
+
+#define ls_psKeys(_ls) \
+    ((uint16_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_asKeys[N_LIST_HDR_KEYS] \
+            + sizeof(Bucket_t) - 1) \
+        & ~(cnBytesPerBucket - 1)))
+
+      #if (cnBitsPerWord > 32)
+#define ls_piKeys(_ls) \
+    ((uint32_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS] \
+            + sizeof(Bucket_t) - 1) \
+        & ~(cnBytesPerBucket - 1)))
+      #endif // (cnBitsPerWord > 32)
+
+#endif
+
+  #else // defined(ALIGN_LISTS)
+      #if defined(PSPLIT_PARALLEL)
+
+#define ls_pcKeys(_ls) \
+    ((uint8_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_acKeys[N_LIST_HDR_KEYS] \
             + sizeof(Word_t) - 1) \
         & ~MSK(cnLogBytesPerWord)))
 
 #define ls_psKeys(_ls) \
-    ((uint16_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_asKeys[FIRST_KEY] \
+    ((uint16_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_asKeys[N_LIST_HDR_KEYS] \
             + sizeof(Word_t) - 1) \
         & ~MSK(cnLogBytesPerWord)))
 
       #if (cnBitsPerWord > 32)
 #define ls_piKeys(_ls) \
-    ((uint32_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_aiKeys[FIRST_KEY] \
+    ((uint32_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS] \
             + sizeof(Word_t) - 1) \
         & ~MSK(cnLogBytesPerWord)))
       #endif // (cnBitsPerWord > 32)
 
-  #else // defined(PSPLIT_PARALLEL)
+      #else // defined(PSPLIT_PARALLEL)
 
-#define ls_pcKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_acKeys[FIRST_KEY])
+#define ls_pcKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_acKeys[N_LIST_HDR_KEYS])
 
-#define ls_psKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_asKeys[FIRST_KEY])
+#define ls_psKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_asKeys[N_LIST_HDR_KEYS])
 
-      #if (cnBitsPerWord > 32)
-#define ls_piKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_aiKeys[FIRST_KEY])
-      #endif // (cnBitsPerWord > 32)
+          #if (cnBitsPerWord > 32)
+#define ls_piKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS])
+          #endif // (cnBitsPerWord > 32)
 
-  #endif // defined(PSPLIT_PARALLEL)
+      #endif // defined(PSPLIT_PARALLEL)
   #endif // defined(ALIGN_LISTS)
 #endif // defined(COMPRESSED_LISTS)
 
@@ -1100,18 +1171,18 @@ typedef struct {
 #endif // (cnDummiesInList != 0)
     union {
 #if defined(COMPRESSED_LISTS) || ! defined(PP_IN_LINK)
-        //uint8_t  ll_acKeys[FIRST_KEY+1];
+        //uint8_t  ll_acKeys[N_LIST_HDR_KEYS+1];
         uint8_t  ll_acKeys[sizeof(Word_t) * 2 + 1];
 #endif // defined(COMPRESSED_LISTS) || ! defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
-        //uint16_t ll_asKeys[FIRST_KEY+1];
+        //uint16_t ll_asKeys[N_LIST_HDR_KEYS+1];
         uint16_t ll_asKeys[sizeof(Word_t) + 1];
 #if (cnBitsPerWord > 32)
-        //uint32_t ll_aiKeys[FIRST_KEY+1];
+        //uint32_t ll_aiKeys[N_LIST_HDR_KEYS+1];
         uint32_t ll_aiKeys[sizeof(Word_t) / 2 + 1];
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-        //Word_t   ll_awKeys[FIRST_KEY+1];
+        //Word_t   ll_awKeys[N_LIST_HDR_KEYS+1];
         Word_t   ll_awKeys[3];
     };
 } ListLeaf_t;
