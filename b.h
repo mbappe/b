@@ -1065,6 +1065,7 @@ enum {
                 [N_LIST_HDR_KEYS \
                     + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))] \
             + sizeof(Bucket_t) - 1) \
+        & ~(sizeof(Bucket_t) - 1)))
 
   #else // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 
