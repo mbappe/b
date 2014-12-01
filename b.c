@@ -184,23 +184,21 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 
     if (wPopCntArg == 0) { return 0; }
 
-    unsigned nBytesKeySz =
+    int nBytes, nBytesKeySz;
 #if defined(COMPRESSED_LISTS)
-                           (nBL <=  8) ? 1 : (nBL <= 16) ? 2 :
+    if (nBL <= 8) {
+        nBytes = (int)ls_pcKeys(0); nBytesKeySz = 1;
+    } else if (nBL <= 16) {
+        nBytes = (int)ls_psKeys(0); nBytesKeySz = 2;
+    } else
   #if (cnBitsPerWord > 32)
-                           (nBL <= 32) ? 4 :
+    if (nBL <= 32) {
+        nBytes = (int)ls_piKeys(0); nBytesKeySz = 4;
+    } else
   #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-                           sizeof(Word_t);
+    { nBytes = (int)ls_pwKeys(0); nBytesKeySz = 8; }
 
-    int nBytes = 
-#if defined(COMPRESSED_LISTS)
-        (nBL <= 8) ? (int)ls_pcKeys(0) : (nBL <= 16) ? (int)ls_psKeys(0) : 
-  #if (cnBitsPerWord > 32)
-        (nBL <= 32) ? (int)ls_piKeys(0) :
-  #endif // (cnBitsPerWord > 32)
-        (int)ls_pwKeys(0);
-#endif // defined(COMPRESSED_LISTS)
     nBytes += wPopCntArg * nBytesKeySz; // add list of real keys
 #if defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)
     // Pad array of keys so the end is aligned.
