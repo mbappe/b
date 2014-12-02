@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.368 2014/12/01 22:05:58 mike Exp mike $
+// @(#) $Id: b.c,v 1.370 2014/12/01 22:20:23 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -187,17 +187,17 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
     int nBytes, nBytesKeySz;
 #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
-        nBytes = (int)ls_pcKeys(0); nBytesKeySz = 1;
+        nBytes = (int)ls_pcKeysX(0, nBL); nBytesKeySz = 1;
     } else if (nBL <= 16) {
-        nBytes = (int)ls_psKeys(0); nBytesKeySz = 2;
+        nBytes = (int)ls_psKeysX(0, nBL); nBytesKeySz = 2;
     } else
   #if (cnBitsPerWord > 32)
     if (nBL <= 32) {
-        nBytes = (int)ls_piKeys(0); nBytesKeySz = 4;
+        nBytes = (int)ls_piKeysX(0, nBL); nBytesKeySz = 4;
     } else
   #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-    { nBytes = (int)ls_pwKeys(0); nBytesKeySz = 8; }
+    { nBytes = (int)ls_pwKeysX(0, nBL); nBytesKeySz = 8; }
 
     nBytes += wPopCntArg * nBytesKeySz; // add list of real keys
 #if defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)
@@ -1917,8 +1917,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                     pwKeys = ls_pwKeys(pwr); // list of keys in old List
                 } else {
                     wPopCnt = ls_wPopCnt(pwr, nBL);
-                    // skip over pop count
-                    pwKeys = ls_pwKeys(pwr) + (cnDummiesInList == 0);
+                    pwKeys = ls_pwKeysX(pwr, cnBitsPerWord);
                 }
 #else // defined(PP_IN_LINK)
                 wPopCnt = ls_wPopCnt(pwr, nBL);
@@ -2052,12 +2051,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 } else
 #endif // defined(COMPRESSED_LISTS)
                 {
-                    CopyWithInsertWord(
-#if defined(PP_IN_LINK) && (cnDummiesInList == 0)
-                        (nDL == cnDigitsPerWord) +
-#endif // defined(PP_IN_LINK) && (cnDummiesInList == 0)
-                            ls_pwKeys(pwList),
-                        pwKeys, wPopCnt, wKey);
+                    CopyWithInsertWord(ls_pwKeysX(pwList, nBL),
+                                       pwKeys, wPopCnt, wKey);
                 }
             } else
 #else // defined(SORT_LISTS)
@@ -2074,14 +2069,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 } else
 #endif // defined(COMPRESSED_LISTS)
                 {
-#if defined(PP_IN_LINK)
-                    COPY(ls_pwKeys(pwList)
-                             + ((nDL == cnDigitsPerWord)
-                                 && (cnDummiesInList == 0)),
-                         pwKeys, wPopCnt);
-#else // defined(PP_IN_LINK)
-                    COPY(ls_pwKeys(pwList), pwKeys, wPopCnt);
-#endif // defined(PP_IN_LINK)
+                    COPY(ls_pwKeysX(pwList, nBL), pwKeys, wPopCnt);
                 }
             }
 #endif // defined(SORT_LISTS)
@@ -2099,14 +2087,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 } else
 #endif // defined(COMPRESSED_LISTS)
                 {
-#if defined(PP_IN_LINK)
-                    ls_pwKeys(pwList)[wPopCnt
-                        + ((nDL == cnDigitsPerWord)
-                            && (cnDummiesInList == 0))]
-#else // defined(PP_IN_LINK)
-                    ls_pwKeys(pwList)[wPopCnt]
-#endif // defined(PP_IN_LINK)
-                        = wKey;
+                    ls_pwKeysX(pwList, nBL)[wPopCnt] = wKey;
                 }
             }
 
@@ -2774,7 +2755,6 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
         pwKeys = ls_pwKeys(pwList);
 #if defined(PP_IN_LINK)
         assert(nBL != cnBitsPerWord);
-        //if ((nBL == cnBitsPerWord) && (cnDummiesInList == 0)) { ++pwKeys; }
 #endif // defined(PP_IN_LINK)
         for (unsigned nn = 1; nn <= nPopCnt; nn++) {
             pwKeys[nn-1] = (wKey & ~wBLM)
@@ -2893,10 +2873,7 @@ DeflateExternalList(Word_t *pwRoot,
         assert(nPopCntMax == 0);
         Word_t *pwList = NewList(1, nBL_to_nDL(nBL));
         set_wr(wRoot, pwList, T_ONE); // external T_ONE list
-        Word_t *pwKeys = ls_pwKeys(pwr);
-#if defined(PP_IN_LINK)
-        if ((nBL == cnBitsPerWord) && (cnDummiesInList == 0)) { ++pwKeys; }
-#endif // defined(PP_IN_LINK)
+        Word_t *pwKeys = ls_pwKeysX(pwr, nBL);
         *pwList = pwKeys[0];
     }
 

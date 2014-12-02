@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.439 2014/11/29 18:14:09 mike Exp mike $
+// @(#) $Id: bli.c,v 1.440 2014/12/01 19:02:26 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2552,11 +2552,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
         // ls_wPopCount is valid only at the top for PP_IN_LINK
         // the first word in the list is used for pop count at the top
-        return (SearchListWord(ls_pwKeys(pwr)
-          #if defined(PP_IN_LINK)
-                                   + (cnDummiesInList == 0)
-          #endif // defined(PP_IN_LINK)
-                                   ,
+        return (SearchListWord(ls_pwKeysX(pwr, cnBitsPerWord),
                                wKey, cnBitsPerWord,
                            ls_wPopCnt(pwr, cnBitsPerWord))
                        >= 0)
@@ -2736,19 +2732,15 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             else
             {
                 Word_t *pwListNew = NewList(wPopCnt + 1, cnDigitsPerWord);
-                Word_t *pwKeysNew = ls_pwKeys(pwListNew);
+                Word_t *pwKeysNew = ls_pwKeysX(pwListNew, cnBitsPerWord);
                 set_wr(wRoot, pwListNew, T_LIST);
-                // pop count is in first element at top
-                pwKeysNew += (cnDummiesInList == 0);
                 Word_t *pwKeys;
       #if defined(USE_T_ONE)
                 if (nType == T_ONE) {
                     pwKeys = pwr;
                 } else
       #endif // defined(USE_T_ONE)
-                {
-                    pwKeys = ls_pwKeys(pwr) + (cnDummiesInList == 0);
-                }
+                { pwKeys = ls_pwKeysX(pwr, cnBitsPerWord); }
 
  // Isn't this chunk of code already in InsertGuts?
                 unsigned nn;
@@ -2882,12 +2874,10 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
       #endif // defined(USE_T_ONE)
                 {
                     set_wr(wRoot, pwListNew, T_LIST);
-                    pwKeysNew = ls_pwKeys(pwListNew);
-                    // pop count is in 1st element at top
-                    pwKeysNew += (cnDummiesInList == 0);
+                    pwKeysNew = ls_pwKeysX(pwListNew, cnBitsPerWord);
                 }
 
-                Word_t *pwKeys = ls_pwKeys(pwr) + (cnDummiesInList == 0);
+                Word_t *pwKeys = ls_pwKeysX(pwr, cnBitsPerWord);
 
  // Isn't this chunk of code already in RemoveGuts?
                 unsigned nn;
