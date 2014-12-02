@@ -1059,19 +1059,20 @@ enum {
 
       #endif // defined(COMPRESSED_LISTS)
 
-      #if defined(PSPLIT_SEARCH_WORD) || defined(ALIGN_LISTS)
+      #if (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)) \
+          || ( defined(ALIGN_LISTS) && ! defined(PSPLIT_PARALLEL) )
 #define ls_pwKeysX(_ls, _nBL) \
     ((Word_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_awKeys \
                 [N_LIST_HDR_KEYS \
                     + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))] \
             + sizeof(Bucket_t) - 1) \
         & ~(sizeof(Bucket_t) - 1)))
-      #else // defined(PSPLIT_SEARCH_WORD) || defined(ALIGN_LISTS)
+      #else // (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)) ...
 #define ls_pwKeysX(_ls, _nBL) \
     (&((ListLeaf_t *)(_ls))->ll_awKeys \
                 [N_LIST_HDR_KEYS \
                     + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))])
-      #endif // defined(PSPLIT_SEARCH_WORD) || defined(ALIGN_LISTS)
+      #endif // (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)) ...
 
   #else // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 
