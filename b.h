@@ -408,17 +408,12 @@ enum {
 #if ( (cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit) \
                                       && (cnBitsAtDl1 == cnBitsPerDigit) )
     #define nBL_from_nDL_NAX(_nDL)  (cnBitsPerDigit * (_nDL))
-#elif ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
-    #define nBL_from_nDL_NAX(_nDL) \
-        ( cnBitsLeftAtDl1 + ((_nDL) - 1) * cnBitsPerDigit )
 #elif (cnBitsAtDl3 == cnBitsPerDigit)
     #define nBL_from_nDL_NAX(_nDL) \
-        ( (_nDL) >= 3 ? cnBitsLeftAtDl2 + ((_nDL) - 2) * cnBitsPerDigit \
-        : cnBitsLeftAtDl2 )
+        ( cnBitsLeftAtDl2 + ((_nDL) - 2) * cnBitsPerDigit )
 #else // (cnBitsAtDl3 == cnBitsPerDigit) && ...
     #define nBL_from_nDL_NAX(_nDL) \
-        ( (_nDL) >= 4 ? cnBitsLeftAtDl3 + ((_nDL) - 3) * cnBitsPerDigit \
-        : (_nDL) == 3 ? cnBitsLeftAtDl3 \
+        ( (_nDL) >= 3 ? cnBitsLeftAtDl3 + ((_nDL) - 3) * cnBitsPerDigit \
         : cnBitsLeftAtDl2 )
 #endif // (cnBitsAtDl3 == cnBitsPerDigit) && ...
 
