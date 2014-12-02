@@ -42,24 +42,15 @@
 
 // Default is -UBL_SPECIFIC_PSPLIT_SEARCH.
 
-// Default is -DHAS_KEY.
-#if ! defined(NO_HAS_KEY)
-#define HAS_KEY
-#endif // ! defined(NO_HAS_KEY)
+// Default is -DEMBEDDED_KEYS_PARALLEL.
+#if ! defined(NO_EMBEDDED_KEYS_PARALLEL)
+#define EMBEDDED_KEYS_PARALLEL
+#endif // ! defined(NO_EMBEDDED_KEYS_PARALLEL)
 
-// Default is -DHAS_KEY_128 which forces -DALIGN_LISTS -DALIGN_LIST_ENDS.
-#if ! defined(NO_HAS_KEY_128)
-#define HAS_KEY_128
-#endif // ! defined(NO_HAS_KEY_128)
-#if defined(HAS_KEY_128)
-#define ALIGN_LISTS
-#define ALIGN_LIST_ENDS
-#endif // defined(HAS_KEY_128)
-
-// Default is -DHAS_KEY_128_NATIVE
-#if ! defined(NO_HAS_KEY_128_NATIVE)
-#define HAS_KEY_128_NATIVE
-#endif // ! defined(NO_HAS_KEY_128_NATIVE)
+// Default is -DPARALLEL_128.
+#if ! defined(NO_PARALLEL_128)
+#define PARALLEL_128
+#endif // ! defined(NO_PARALLEL_128)
 
 // Default is -UPAD_T_ONE.
 
@@ -196,14 +187,32 @@
 #define cnBitsMallocMask  (cnLogBytesPerWord + 1)
 #define cnMallocMask  MSK(cnBitsMallocMask)
 
-// Default is -DHAS_KEY_128 which forces -DALIGN_LISTS -DALIGN_LIST_ENDS.
+// Default is -DPSPLIT_PARALLEL which forces -DALIGN_LISTS -DALIGN_LIST_ENDS.
+#if ! defined(NO_PSPLIT_PARALLEL)
+#undef  PSPLIT_PARALLEL
+#define PSPLIT_PARALLEL
+#endif // ! defined(NO_PSPLIT_PARALLEL)
+
+#if defined(PSPLIT_PARALLEL)
+#define ALIGN_LISTS
+#define ALIGN_LIST_ENDS
+#endif // defined(PSPLIT_PARALLEL)
+
+// Default is -DPSPLIT_EARLY_OUT which is applicable only if PSPLIT_PARALLEL.
+#if ! defined(NO_PSPLIT_EARLY_OUT)
+#undef  PSPLIT_EARLY_OUT
+#define PSPLIT_EARLY_OUT
+#endif // ! defined(NO_PSPLIT_EARLY_OUT)
+
 #if defined(ALIGN_LISTS)
+#if defined(PARALLEL_128)
 #include <immintrin.h> // __m128i
 typedef __m128i Bucket_t;
 #define cnLogBytesPerBucket  4
-#else // defined(ALIGN_LISTS)
+#else // defined(PARALLEL_128)
 typedef Word_t Bucket_t;
 #define cnLogBytesPerBucket  cnLogBytesPerWord
+#endif // defined(PARALLEL_128)
 #endif // defined(ALIGN_LISTS)
 
 // Bits-per-digit.
@@ -253,11 +262,11 @@ typedef Word_t Bucket_t;
 // It makes no sense to have a list that uses as much.
 // Default is cnListPopCntMax8  = ??.
 #if ! defined(cnListPopCntMax8)
-#if defined(HAS_KEY)
+#if defined(EMBEDDED_KEYS_PARALLEL)
 #define cnListPopCntMax8   0x10
-#else // defined(HAS_KEY)
+#else // defined(EMBEDDED_KEYS_PARALLEL)
 #define cnListPopCntMax8   0x17
-#endif // defined(HAS_KEY)
+#endif // defined(EMBEDDED_KEYS_PARALLEL)
 #endif // ! defined(cnListPopCntMax8)
 
 // Default cnListPopCntMaxDl1 is 7 for cnBitsAtBottom = 8.
@@ -963,16 +972,6 @@ enum {
 #endif // defined(LIST_END_MARKERS)
 
 #endif // defined(PP_IN_LINK)
-
-#if ! defined(NO_PSPLIT_PARALLEL)
-#undef  PSPLIT_PARALLEL
-#define PSPLIT_PARALLEL
-#endif // ! defined(NO_PSPLIT_PARALLEL)
-// Default is -DPSPLIT_EARLY_OUT.
-#if ! defined(NO_PSPLIT_EARLY_OUT)
-#undef  PSPLIT_EARLY_OUT
-#define PSPLIT_EARLY_OUT
-#endif // ! defined(NO_PSPLIT_EARLY_OUT)
 
 // For PP_IN_LINK ls_pxKeys macros are only valid not at top or for
 // T_ONE - not T_LIST - at top.

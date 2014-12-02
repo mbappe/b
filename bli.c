@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.441 2014/12/02 00:02:20 mike Exp mike $
+// @(#) $Id: bli.c,v 1.442 2014/12/02 13:16:45 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -9,19 +9,19 @@
 Word_t WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL);
 Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 
-#if defined(HAS_KEY_128)
+#if defined(PARALLEL_128)
 
-#define BUCKET_HAS_KEY(_pxBucket, _wKey, _nBL) \
+#define BUCKET_EMBEDDED_KEYS_PARALLEL(_pxBucket, _wKey, _nBL) \
     ((sizeof(*(_pxBucket)) == sizeof(Word_t)) \
         ? WordHasKey((void *)(_pxBucket), (_wKey), (_nBL)) \
         : m128iHasKey((void *)(_pxBucket), (_wKey), (_nBL)))
 
-#else // defined(HAS_KEY_128)
+#else // defined(PARALLEL_128)
 
-#define BUCKET_HAS_KEY(_pxBucket, _wKey, _nBL) \
+#define BUCKET_EMBEDDED_KEYS_PARALLEL(_pxBucket, _wKey, _nBL) \
     WordHasKey((_pxBucket), (_wKey), (_nBL))
 
-#endif // defined(HAS_KEY_128)
+#endif // defined(PARALLEL_128)
 
 #if defined(TRY_MEMCHR)
 #include <wchar.h>
@@ -346,7 +346,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     _b_t *px = (_b_t *)&(_pxKeys)[_nPos]; \
     /* number of last key in starting _b_t */ \
     (_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1; \
-    while ( ! BUCKET_HAS_KEY(px, (_xKey), sizeof(_xKey) * 8) ) { \
+    while ( ! BUCKET_EMBEDDED_KEYS_PARALLEL(px, (_xKey), sizeof(_xKey) * 8) ) { \
         /* check the last key in the _b_t to see if we've gone too far */ \
         if ((_xKey) < (_pxKeys)[_nPos]) { (_nPos) ^= -1; break; } \
         ++px; (_nPos) += sizeof(_b_t) / sizeof(_xKey); \
@@ -369,7 +369,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     Word_t wEnd = (Word_t)&(_pxKeys)[_nPos]; \
     (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
     assert((((_nPos) * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
-    while ( ! BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
+    while ( ! BUCKET_EMBEDDED_KEYS_PARALLEL(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
         /* check the first key in the _b_t to see if we've gone too far */ \
         if ((_pxKeys)[_nPos] < (_xKey)) { (_nPos) ^= -1; break; } \
         --nxPos; (_nPos) -= sizeof(_b_t) / sizeof(_xKey); \
@@ -386,7 +386,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
     do { \
         if ((_xKey) >= (_pxKeys)[_nPos]) { \
-            if (!BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8)) { \
+            if (!BUCKET_EMBEDDED_KEYS_PARALLEL(&px[nxPos], (_xKey), sizeof(_xKey) * 8)) { \
                 (_nPos = -1); \
             } \
             break; \
@@ -398,7 +398,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     _b_t *px = (_b_t *)(_pxKeys); \
     int nxPos = ((_nPos) + (_nPopCnt) - 1) * sizeof(_xKey) / sizeof(_b_t); \
     (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
-    while ( ! BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
+    while ( ! BUCKET_EMBEDDED_KEYS_PARALLEL(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
         /* check the first key in the _b_t to see if we've gone too far */ \
         if (((_xKey) > (_pxKeys)[_nPos]) || (nxPos-- == 0)) { \
             (_nPos) = -1; break; \
@@ -425,7 +425,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     int nxPos = (_nPos) * sizeof(_xKey) / sizeof(_b_t); \
     /* number of first key in starting _b_t */ \
     (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
-    while ( ! BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
+    while ( ! BUCKET_EMBEDDED_KEYS_PARALLEL(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
         /* check to see if we've reached the beginning of the list */ \
         if (nxPos <= 0) { (_nPos) ^= -1; break; } \
         --nxPos; (_nPos) -= sizeof(_b_t) / sizeof(_xKey); \
@@ -486,7 +486,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 #endif // defined(PSPLIT_HYBRID)
 
-#define HAS_KEY_128_SETUP(_wKey, _nBL, _xLsbs, _xMsbs, _xKeys) \
+#define PARALLEL_128_SETUP(_wKey, _nBL, _xLsbs, _xMsbs, _xKeys) \
 { \
     Word_t wMask = MSK(_nBL); /* (1 << nBL) - 1 */ \
     _wKey &= wMask; \
@@ -498,7 +498,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     _xKeys = _mm_set1_epi64((__m64)wKeys); \
 }
 
-#if defined(LOOKUP) && defined(HAS_KEY_128)
+#if defined(LOOKUP) && defined(PARALLEL_128)
 static Word_t // bool
 m128iHasKeyTail(__m128i *pxBucket,
     __m128i xLsbs,
@@ -511,7 +511,7 @@ m128iHasKeyTail(__m128i *pxBucket,
     __m128i xZero = _mm_setzero_si128();
     return ! _mm_testc_si128(xZero, xMagic);
 }
-#endif // defined(LOOKUP) && defined(HAS_KEY_128)
+#endif // defined(LOOKUP) && defined(PARALLEL_128)
 
 // Split search with a parallel search of the bucket at the split point.
 // A bucket is a Word_t or an __m128i.  Or whatever else we decide to pass
@@ -537,8 +537,8 @@ m128iHasKeyTail(__m128i *pxBucket,
     unsigned nSplitP = nSplit * sizeof(_x_t) / sizeof(_b_t); \
     assert(((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
     /*__m128i xLsbs, xMsbs, xKeys;*/ \
-    /*HAS_KEY_128_SETUP((_xKey), sizeof(_x_t) * 8, xLsbs, xMsbs, xKeys);*/ \
-    if (BUCKET_HAS_KEY(&px[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
+    /*PARALLEL_128_SETUP((_xKey), sizeof(_x_t) * 8, xLsbs, xMsbs, xKeys);*/ \
+    if (BUCKET_EMBEDDED_KEYS_PARALLEL(&px[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
         (_nPos) = 0; /* key exists, but we don't know the exact position */ \
     } \
     else \
@@ -570,7 +570,7 @@ m128iHasKeyTail(__m128i *pxBucket,
             } \
         } \
         assert(((_nPos) < 0) \
-            || BUCKET_HAS_KEY((_b_t *) \
+            || BUCKET_EMBEDDED_KEYS_PARALLEL((_b_t *) \
                                   ((Word_t)&(_pxKeys)[_nPos] \
                                       & ~MSK(LOG(sizeof(_b_t)))), \
                               (_xKey), sizeof(_x_t) * 8)); \
@@ -585,7 +585,7 @@ m128iHasKeyTail(__m128i *pxBucket,
             for (unsigned ii = 0; ii < (_nPopCnt); \
                  ii += sizeof(_b_t) / sizeof(_xKey)) \
             { \
-                assert( ! BUCKET_HAS_KEY((_b_t *)&(_pxKeys)[ii], \
+                assert( ! BUCKET_EMBEDDED_KEYS_PARALLEL((_b_t *)&(_pxKeys)[ii], \
                           (_xKey), sizeof(_x_t) * 8) ); \
             } \
         } \
@@ -607,7 +607,7 @@ again:
     nSplit &= ~MSK(sizeof(Bucket_t)); // first key in bucket
     nSplit += nPos; // make relative to psKeys
 
-    if (BUCKET_HAS_KEY((Bucket_t *)&psKeys[nSplit], sKey, sizeof(sKey) * 8)) {
+    if (BUCKET_EMBEDDED_KEYS_PARALLEL((Bucket_t *)&psKeys[nSplit], sKey, sizeof(sKey) * 8)) {
         return 0; // key exists, but we don't know the exact position
     }
 
@@ -632,13 +632,13 @@ again:
 }
 #endif
 
-#if defined(HAS_KEY_128)
+#if defined(PARALLEL_128)
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
     SPLIT_SEARCH_GUTS(__m128i, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) 
-#else // defined(HAS_KEY_128)
+#else // defined(PARALLEL_128)
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
     SPLIT_SEARCH_GUTS(Word_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) 
-#endif // defined(HAS_KEY_128)
+#endif // defined(PARALLEL_128)
 
 #else // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
@@ -700,7 +700,7 @@ TwoWordsHaveKey(Word_t *pw, Word_t wKey, unsigned nBL)
 #endif
 
 #if defined(COMPRESSED_LISTS)
-#if defined(USE_WORD_ARRAY_HAS_KEY)
+#if defined(USE_WORD_ARRAY_EMBEDDED_KEYS_PARALLEL)
 
 // Search an array of words packed with keys that are smaller than a word
 // using a parallel search of each word.
@@ -740,7 +740,7 @@ WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
     return WordArrayHasKey(pw, /* nWords */ 1, wKey, nBL);
 }
 
-#else // defined(USE_WORD_ARRAY_HAS_KEY)
+#else // defined(USE_WORD_ARRAY_EMBEDDED_KEYS_PARALLEL)
 
 #if defined(LOOKUP)
 
@@ -767,21 +767,21 @@ WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
     return wMagic; // bXorHasZero = (wMagic != 0);
 }
 
-#if defined(HAS_KEY_128)
+#if defined(PARALLEL_128)
 
 Word_t // bool
 m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 {
     __m128i xLsbs, xMsbs, xKeys;
-    HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys); 
+    PARALLEL_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys); 
     return m128iHasKeyTail(pxBucket, xLsbs, xMsbs, xKeys);
 }
 
-#endif // defined(HAS_KEY_128)
+#endif // defined(PARALLEL_128)
 
 #endif // defined(LOOKUP)
 
-#endif // defined(USE_WORD_ARRAY_HAS_KEY)
+#endif // defined(USE_WORD_ARRAY_EMBEDDED_KEYS_PARALLEL)
 #endif // defined(COMPRESSED_LISTS)
 
 #endif // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
@@ -1141,9 +1141,9 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
       #if (cnBitsAtBottom <= 8)
     if (nBL <= 8) {
       #if ! defined(PP_IN_LINK)
-      #if defined(HAS_KEY_128) // sizeof(__m128i) == 16 bytes
+      #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
         nPopCnt = 16; // Sixteen fit so why do less?
-      #endif // defined(HAS_KEY_128)
+      #endif // defined(PARALLEL_128)
       #endif // ! defined(PP_IN_LINK)
         nPos = SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt);
     } else
@@ -1151,7 +1151,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
       #if (cnBitsAtBottom <= 16)
     if (nBL <= 16) {
       #if ! defined(PP_IN_LINK) // nPopCnt is not valid yet
-      #if defined(HAS_KEY_128) // sizeof(__m128i) == 16 bytes
+      #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
           #if (cnListPopCntMax16 <= 8)
         nPopCnt = 8; // Eight fit so why do less?
         assert((cnListPopCntMaxDl1 <= 8) || (cnBitsAtDl1 <= 8));
@@ -1168,9 +1168,9 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
           #else // (cnListPopCntMax16 <= 8)
         nPopCnt = ls_sPopCnt(pwr);
           #endif // (cnListPopCntMax16 <= 8)
-      #else // defined(HAS_KEY_128)
+      #else // defined(PARALLEL_128)
         nPopCnt = ls_sPopCnt(pwr);
-      #endif // defined(HAS_KEY_128)
+      #endif // defined(PARALLEL_128)
       #endif // ! defined(PP_IN_LINK)
         nPos = SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt);
     } else
@@ -1205,7 +1205,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 #endif // (cwListPopCntMax != 0)
 
 #if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
-#if (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(HAS_KEY)
+#if (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(EMBEDDED_KEYS_PARALLEL)
 
 // Do a parallel search of a list embedded in a link given the key size.
 // EmbeddedListHasKey expects the keys to be packed towards the most
@@ -1285,7 +1285,7 @@ if (nPopCnt != wr_nPopCnt(wRoot, nBL)) {
     return bXorHasZero;
 }
 
-#endif // (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(HAS_KEY)
+#endif // (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(EMBEDDED_KEYS_PARALLEL)
 #endif // ! defined(LOOKUP_NO_LIST_DEREF)
 
 static int
@@ -1478,7 +1478,7 @@ again:
         Word_t wSubKey = wKey & MSK(nBL);
         int nBucketIndex = wSubKey >> (cnBitsAtBottom + 1);
 
-        if (BUCKET_HAS_KEY(&pwr[nBucketIndex], wSubKey, nBL))
+        if (BUCKET_EMBEDDED_KEYS_PARALLEL(&pwr[nBucketIndex], wSubKey, nBL))
         {
       #if defined(REMOVE)
             RemoveGuts(pwRoot, wKey, nDL, wRoot);
@@ -2296,7 +2296,7 @@ embeddedBitmap:
         //      LOG( 44/ 5) ... LOG( 36/ 3) = 3
         //      LOG( 44/ 2) ... LOG( 36/ 2) = 4
         //
-      #if defined(HAS_KEY)
+      #if defined(EMBEDDED_KEYS_PARALLEL)
 
           #if defined(DL_SPECIFIC_T_ONE)
 
@@ -2316,12 +2316,12 @@ embeddedBitmap:
             goto foundIt;
         }
 
-      #else // defined(HAS_KEY)
+      #else // defined(EMBEDDED_KEYS_PARALLEL)
 
         unsigned nBL = nDL_to_nBL_NAT(nDL);
 
         // I wonder if PAD_T_ONE and not needing to know the pop count
-        // would help this code like it does HAS_KEY.
+        // would help this code like it does EMBEDDED_KEYS_PARALLEL.
         unsigned nPopCnt = wr_nPopCnt(wRoot, nBL);
 
         Word_t wKeyRoot;
@@ -2355,7 +2355,7 @@ embeddedBitmap:
             if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
         }
 
-      #endif // defined(HAS_KEY)
+      #endif // defined(EMBEDDED_KEYS_PARALLEL)
 
         break;
 

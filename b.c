@@ -1,12 +1,12 @@
 
-// @(#) $Id: b.c,v 1.372 2014/12/02 01:52:36 mike Exp mike $
+// @(#) $Id: b.c,v 1.373 2014/12/02 16:10:20 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
 
-#if defined(HAS_KEY_128)
+#if defined(PARALLEL_128)
 #include <immintrin.h> // __m128i
-#endif // defined(HAS_KEY_128)
+#endif // defined(PARALLEL_128)
 
 #if defined(RAMMETRICS)
 Word_t j__AllocWordsJBB;  // JUDYA         Branch Bitmap
@@ -1620,11 +1620,11 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, unsigned nKeys,
     // pad to a word boundary with the last key in the list so
     // parallel search won't give a false positive and the last key
     // in the last word is the maximum key in the list
-#if defined(HAS_KEY_128) // requires ALIGN_LIST_ENDS
+#if defined(PARALLEL_128) // requires ALIGN_LIST_ENDS
     while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(__m128i)))) != 0)
-#else // defined(HAS_KEY_128)
+#else // defined(PARALLEL_128)
     while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(Word_t)))) != 0)
-#endif // defined(HAS_KEY_128)
+#endif // defined(PARALLEL_128)
     {
         pTgt[nKeys+1] = pTgt[nKeys]; // or pTgt[0] or iKey
         ++nKeys;
@@ -1674,11 +1674,11 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc, unsigned nKeys,
 #if defined(PSPLIT_PARALLEL)
     // pad to a word boundary with a key that exists in the list so
     // parallel search won't give a false positive
-#if defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#if defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
     while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(__m128i)))) != 0)
-#else // defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#else // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
     while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(Word_t)))) != 0)
-#endif // defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#endif // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
     {
         pTgt[nKeys+1] = pTgt[nKeys]; // or pTgt[0] or sKey
         ++nKeys;
@@ -1726,11 +1726,11 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, unsigned nKeys, uint8_t cKey)
 #if defined(PSPLIT_PARALLEL)
     // pad to a word boundary with a key that exists in the list so
     // parallel search won't give a false positive
-#if defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#if defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
     while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(__m128i)))) != 0)
-#else // defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#else // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
     while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(Word_t)))) != 0)
-#endif // defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#endif // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
     {
         pTgt[nKeys+1] = pTgt[nKeys]; // or pTgt[0] or cKey
         ++nKeys;
@@ -3107,11 +3107,11 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if defined(PSPLIT_PARALLEL)
         // need to pad the list to a word boundary with a key that exists
         // so parallel search won't return a false positive
-#if defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#if defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
         while ((Word_t)&pwr_pcKeys(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
-#else // defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#else // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
         while ((Word_t)&pwr_pcKeys(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
-#endif // defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#endif // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
         {
             pwr_pcKeys(pwr)[nKeys] = pwr_pcKeys(pwr)[nKeys-1];
             ++nKeys;
@@ -3126,11 +3126,11 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if defined(PSPLIT_PARALLEL)
         // need to pad the list to a word boundary with a key that exists
         // so parallel search won't return a false positive
-#if defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#if defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
         while ((Word_t)&pwr_psKeys(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
-#else // defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#else // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
         while ((Word_t)&pwr_psKeys(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
-#endif // defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#endif // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
         {
             pwr_psKeys(pwr)[nKeys] = pwr_psKeys(pwr)[nKeys-1];
             ++nKeys;
@@ -3146,11 +3146,11 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if defined(PSPLIT_PARALLEL)
         // need to pad the list to a word boundary with a key that exists
         // so parallel search won't return a false positive
-#if defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#if defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
         while ((Word_t)&pwr_piKeys(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
-#else // defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#else // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
         while ((Word_t)&pwr_piKeys(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
-#endif // defined(ALIGN_LIST_ENDS) && defined(HAS_KEY_128)
+#endif // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
         {
             pwr_piKeys(pwr)[nKeys] = pwr_piKeys(pwr)[nKeys-1];
             ++nKeys;
