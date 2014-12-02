@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.370 2014/12/01 22:20:23 mike Exp mike $
+// @(#) $Id: b.c,v 1.371 2014/12/02 00:02:20 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -204,7 +204,10 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
     // Pad array of keys so the end is aligned.
     // We'll eventually fill the padding with a replica of the last real key
     // so parallel searching yields no false positives.
-    nBytes = DIV_UP(nBytes, sizeof(Bucket_t)) * sizeof(Bucket_t);
+#if ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LIST_ENDS)
+    if (nBL < cnBitsPerWord)
+#endif // ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LIST_ENDS)
+    { nBytes = DIV_UP(nBytes, sizeof(Bucket_t)) * sizeof(Bucket_t); }
 #endif // defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
     // Make room for -1 at the end to help make search faster.
