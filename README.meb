@@ -7,6 +7,139 @@ CP140405 is Checkpoint April 5, 2014.
 The most recent checkpoint should be the latest and greatest somewhat
 functional code.
 
+12/2/14:
+
+How about a special skip link that presumes the skipped digits are zeros?
+
+11/28/14:
+
+Discovered that BM_IN_LINK is much faster than BM_IN_SWITCH when out
+of cache.  Conclude that all switch attributes should be in the link.
+Especially those needed for lookup.
+
+Use a variable width link by starting with an array of one word per link
+and appending one or more arrays with additional information about the
+links that need it.
+
+types:
+  - NULL
+  - embedded keys
+  - no-skip, digit-width, uncompressed node
+  - early, external bitmap
+  - smallest mallocable chunk of keys
+
+link0, ..., linkn-1, pop0, ..., popm-1, skip0, ..., skipx-1,
+log(width)0, ..., log(width)y-1, doubled0, ..., doubledz-1,
+list-or-bm-of-present-links0, ..., list-or-bm-of-present-linksi-1
+ 
+Null links don't need explicit pop -- pop is zero.
+Do we bother to compress pop array separate from link array?
+Size of pop varies a lot from top to bottom.
+Non-skip links don't need explicit skipped-bits/digits.
+Do we bother to compress skipped-bits/digits array separate from link array?
+Size of skipped-bits/digits can vary.
+Does the presence of one skip link imply the presence of many?
+Non-wide links don't need explicit log(width) -- log(width) is bits-per-digit.
+Do we bother to compress log(width) array separate from link array?
+How big is log(width)?  It is relative to the default.  Is it bit or digit
+level granularity?
+Does the presence of one non-wide node imply the presence of many?
+Do we bother to compress doubled-up array separate from link array?
+How big is doubled-up info? log(log(width))
+Does the presence of one doubled-up node imply the presence of many?
+Do we bother to compress list-or-bm-of-present-links array separate from
+link array?
+Does a list-of-present-links make sense?  If the bitmap is big?
+
+It would be nice to pack all of the additional link descriptor stuff into
+as few words as possible.
+Any non-NULL link requires a pop.  Do we want to try to use the rest of
+the pop word for other stuff?
+
+Extreme compression:
+- array of links
+  - array of link-pops
+    - uncompressed (w.r.t. array of links), i.e. one link-pop array element
+      for each link array element
+    - linear-compressed (w.r.t. array of links), i.e. list of indexes
+      of the link array elements with link-pop array elements
+    - bitmap-compressed (w.r.t. array of links), i.e. bitmap of indexes
+      of the link array elements with link-pop array elements
+    - not present; there are no links that need a pop, pathological case
+  - array of skip-info (digit-cnt, skipped-bits/digits)
+    - not present; there are no skip links to nodes below
+    - uncompressed (w.r.t. array of link-pops), i.e. one skip-info array
+      element for each link-pop array element
+    - linear-compressed (w.r.t. array of link-pops), i.e. list of indexes
+      of the link-pop array elements with skip-info array elements
+    - bitmap-compressed (w.r.t. array of link-pops), i.e. bitmap of indexes
+      of the link-pop array elements with skip-info array elements
+  - array of width-info (log(virtual-width))
+    - not present; there are no links to non-digit-width nodes below
+    - uncompressed (w.r.t. array of link-pops)
+    - linear-compressed (w.r.t. array of link-pops)
+    - bitmap-compressed (w.r.t. array of link-pops)
+  - array of doubled-up-info (doubled-up-cnt)
+    - not present; there are no links to doubled-up nodes below
+    - uncompressed (w.r.t. array of link-pops)
+    - linear-compressed (w.r.t. array of link-pops)
+    - bitmap-compressed (w.r.t. array of link-pops)
+  - array of links-present-below-info (below link is present or not)
+    - uncompressed / not present; all links in this node are to uncompressed
+      nodes below, all below links are present
+    - linear-compressed (w.r.t. array of link-pops), i.e. list of indexes
+      of the link-pop array elements with a link in the node below
+    - bitmap-compressed (w.r.t. array of link-pops), i.e. bitmap of indexes
+      of the link-pop array elements with a link in the node below
+  - array of key-buckets (keys)
+    - not present; there are no links to key-buckets
+    - uncompressed (w.r.t. array of link-pops)
+    - linear-compressed (w.r.t. array of link-pops)
+    - bitmap-compressed (w.r.t. array of link-pops)
+
+Oops.  Don't really need link-pop for embedded keys -- it should be easy to
+calculate.  Don't really need link-pop for key-buckets -- it should be easy
+to calculate.  Don't really need width, doubled-up or links-present
+info for key-buckets -- or do we need doubled-up info for lazy key-buckets?
+
+The four-bit type field in the link should give information about any
+link extension words/buckets, e.g. how big the link's extension is and if
+it includes anything that is needed for Lookup, e.g. pop is not needed
+for lookup, but could reside in the extension.
+We need uniform-sized extensions so we can put them
+in arrays and access them directly after consulting a linear or bitmap index.
+0, 1, 2, 4, 8, and 16-byte extensions would take only 6 different type values.
+We'd need one array of each size of extension, but we'd need to be able to
+find the beginning of each array.  An array of starting offsets might be
+fast enough, but it might give all nodes a high instantiation overhead.
+It means we need a lot of keys to feed it.
+
+Hmm.  I wonder if the extensions must be contiguous with the main node.
+Or if it is good enough to just avoid interspersing them with the lower node.
+I think we wan't the act of pulling an extension into the cache to pull in
+adjacent extensions which are more likely to be helpful on subsequent lookups
+than pulling in lower level info.
+
+The extension for the overall root word/link, if needed, could reside in the
+top node.
+
+11/24/14:
+
+Insert:
+If the key belongs at a NULL link/leaf,
+then if the key is small enough to embed, then embed it.
+If it is not small enough to embed, then create a list.
+If the key fits in an existing embedded leaf then put it there.
+If the link is full and doubling works then double.
+If the link is full and doubling does not work then create a list.
+When adding the key to an existing list consider doubling the parent
+and consider a smart splay.
+If the key fits in an existing list then put it in the list.
+If the key fits in an existing link, then put it in the link.
+Otherwise, if we can make room by doubling the switch, then do it.
+Otherwise, create a list.
+If the smallest ancestor can be doubled, then do it.
+
 11/23/14:
 
 What if we modify psplit search to check just one key per bucket before
