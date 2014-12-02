@@ -323,7 +323,8 @@ typedef Word_t Bucket_t;
 
 #define cnBitsLeftAtDl3     (cnBitsLeftAtDl2 + cnBitsAtDl3)
 
-#define cnBitsIndexSzAtTop ((cnBitsPerWord - cnBitsAtDl3) % cnBitsPerDigit)
+#define cnBitsIndexSzAtTop \
+    ((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit)
 
 // cnDigitsPerWord makes assumptions about anDL_to_nBitsIndexSz[] and
 // anDL_to_nBL[].  Yuck.
@@ -464,16 +465,16 @@ enum {
     // Rounding up is free since we already have to add a constant before
     // (or after) dividing.
     #define nDL_from_nBL(_nBL) \
-        ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
+        ( ((_nBL) <= cnBitsLeftAtDl1 ) ? 1 \
         : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
         : 2 + DIV_UP((_nBL) - cnBitsLeftAtDl2, cnBitsPerDigit) )
   #else // (cnBitsAtDl2 == cnBitsPerDigit) && ...
     // Rounding up is free since we already have to add a constant before
     // (or after) dividing.
     #define nDL_from_nBL(_nBL) \
-        ( ((_nBL) <= cnBitsAtBottom ) ? 1 \
+        ( ((_nBL) <= cnBitsLeftAtDl1 ) ? 1 \
         : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
-        : ((_nBL) <= cnBitsLeftAtDl2) ? 3 \
+        : ((_nBL) <= cnBitsLeftAtDl3) ? 3 \
         : 3 + DIV_UP((_nBL) - cnBitsLeftAtDl3, cnBitsPerDigit) )
   #endif // (cnBitsAtDl2 == cnBitsPerDigit) ...
 
