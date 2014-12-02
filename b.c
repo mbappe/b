@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.373 2014/12/02 16:10:20 mike Exp mike $
+// @(#) $Id: b.c,v 1.374 2014/12/02 16:40:07 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2550,7 +2550,7 @@ newSwitch:
             if (nDLUp != cnDigitsPerWord)
             {
                 memcpy(ln.ln_awBm, PWR_pwBm(pwRoot, NULL),
-                       DIV_UP(wIndexCnt, cnBitsPerWord) * cnBytesPerWord);
+                       DIV_UP(wIndexCnt, cnBitsPerWord) * sizeof(Word_t));
 #if ! defined(BM_SW_FOR_REAL)
                 assert((wIndexCnt < cnBitsPerWord)
                     || (ln.ln_awBm[0] == (Word_t)-1));
@@ -2599,7 +2599,7 @@ newSwitch:
                 // Copy bitmap from old link to new link.
                 memcpy(pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_awBm,
                        ln.ln_awBm,
-                       DIV_UP(wIndexCnt, cnBitsPerWord) * cnBytesPerWord);
+                       DIV_UP(wIndexCnt, cnBitsPerWord) * sizeof(Word_t));
             }
             else
             {
@@ -2615,7 +2615,7 @@ newSwitch:
                 else
                 {
                     memset(pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_awBm, -1,
-                           DIV_UP(wIndexCnt, cnBitsPerWord) * cnBytesPerWord);
+                           DIV_UP(wIndexCnt, cnBitsPerWord) * sizeof(Word_t));
                 }
             }
 #endif // defined(BM_IN_LINK)
