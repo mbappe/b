@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.374 2014/12/02 16:40:07 mike Exp mike $
+// @(#) $Id: b.c,v 1.375 2014/12/02 16:50:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -836,8 +836,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 #if 0
     if (0)
 #else
-    if (wPopCntTotal * 2
-        >= wWordsAllocated + wMallocs + wEvenMallocs + nWordsNull)
+    if (wPopCntTotal 
+        >= (wWordsAllocated /* + wMallocs + wEvenMallocs */ + nWordsNull) / 2)
 #endif
     {
 #if defined(DEBUG_INSERT)
