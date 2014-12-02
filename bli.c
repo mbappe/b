@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.440 2014/12/01 19:02:26 mike Exp mike $
+// @(#) $Id: bli.c,v 1.441 2014/12/02 00:02:20 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1540,7 +1540,7 @@ t_switch:
 #endif // ( ! defined(LOOKUP) && defined(PP_IN_LINK) || defined(REMOVE) )
         // nDLR is digits left including this switch but not skipped digits
         nDL = nDLR - 1; // digits left below this switch
-        nBL = nDL_to_nBL_NAX(nDL); // Probably near the top.
+        nBL = nDL_to_nBL_NAT(nDL); // Probably near the top.
 
         Word_t wIndex = ((wKey >> nBL)
             // It is ok to use NAX here even though we might be at top because
@@ -1707,7 +1707,7 @@ notEmpty:;
         nDLUp = nDL;
   #endif // defined(BM_SW_FOR_REAL) ...
         nDL = nDLR - 1;
-        nBL = nDL_to_nBL_NAX(nDL); // Probably near the top.
+        nBL = nDL_to_nBL_NAT(nDL); // Probably near the top.
 
         Word_t wIndex = ((wKey >> nBL)
             // It is ok to use NAX here even though we might be at top because
