@@ -964,17 +964,6 @@ enum {
 
 #endif // defined(PP_IN_LINK)
 
-// For PP_IN_LINK ls_pxKeys macros are only valid not at top or for
-// T_ONE - not T_LIST - at top.
-#if defined(ALIGN_LISTS)
-#define ls_pwKeys(_ls) \
-    ((Word_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS] \
-            + sizeof(Bucket_t) - 1) \
-        & ~(sizeof(Bucket_t) - 1)))
-#else // defined(ALIGN_LISTS)
-#define ls_pwKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS])
-#endif // defined(ALIGN_LISTS)
-
 #if ! defined(NO_PSPLIT_PARALLEL)
 #undef  PSPLIT_PARALLEL
 #define PSPLIT_PARALLEL
@@ -984,6 +973,20 @@ enum {
 #undef  PSPLIT_EARLY_OUT
 #define PSPLIT_EARLY_OUT
 #endif // ! defined(NO_PSPLIT_EARLY_OUT)
+
+// For PP_IN_LINK ls_pxKeys macros are only valid not at top or for
+// T_ONE - not T_LIST - at top.
+#if ( defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL) ) \
+    || ( defined(ALIGN_LISTS) && ! defined(PSPLIT_PARALLEL) )
+#define ls_pwKeys(_ls) \
+    ((Word_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS] \
+            + sizeof(Bucket_t) - 1) \
+        & ~(sizeof(Bucket_t) - 1)))
+#else // defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)
+  // Ignore ALIGN_LISTS for (nBL >= cnBitsPerWord) unless PSPLIT_SEARCH_WORD
+  // && PSPLIT_PARALLEL in order to improve memory usage at the top.
+#define ls_pwKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS])
+#endif // defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)
 
 #if defined(COMPRESSED_LISTS)
   #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
