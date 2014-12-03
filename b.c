@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.377 2014/12/03 01:12:11 mike Exp mike $
+// @(#) $Id: b.c,v 1.378 2014/12/03 01:45:24 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -462,8 +462,7 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType)
 
 #endif // (cwListPopCntMax != 0)
 
-// This is not BM_SW_AT_DL2.
-#if (cnBitsInD1 > cnLogBitsPerWord) || defined(BM_AT_DL2)
+#if (nBL_from_nDL(cnDlAtBitmap) > cnLogBitsPerWord)
 
 static Word_t *
 NewBitmap(Word_t *pwRoot, unsigned nBL)
@@ -489,8 +488,7 @@ NewBitmap(Word_t *pwRoot, unsigned nBL)
     return pwBitmap;
 }
 
-// This is not BM_SW_AT_DL2.
-#endif // (cnBitsInD1 > cnLogBitsPerWord) || defined(BM_AT_DL2)
+#endif // (nBL_from_nDL(cnDlAtBitmap) > cnLogBitsPerWord)
 
 static Word_t
 OldBitmap(Word_t *pwRoot, Word_t *pwr, unsigned nBL)
@@ -2284,40 +2282,25 @@ newSwitch:
             // assert(nDL > 1);
 #endif // defined(SKIP_LINKS)
 
-#if defined(BM_AT_DL2) // This is not BM_SW_AT_DL2.
+#if (nBL_from_nDL(cnDlAtBitmap) > cnLogBitsPerWord)
 #if defined(SKIP_LINKS)
             // no skip link to bitmap
-            // and no puny bitmap for BM_AT_DL2
-            if (nDL == 2) {
-                if (nDLOld > 2) { nDL = 3; }
+            if (nDL == cnDlAtBitmap) {
+                if (nDLOld > cnDlAtBitmap) { nDL = cnDlAtBitmap + 1; }
             }
 #endif // defined(SKIP_LINKS)
-            if (nDL == 2)
+            if (nDL == cnDlAtBitmap)
             {
-                assert(nDLOld == 2);
+                assert(nDLOld == nDL);
                 NewBitmap(pwRoot, nDL_to_nBL(nDL));
 #if defined(PP_IN_LINK)
                 set_PWR_wPopCnt(pwRoot, NULL, nDL, 0);
 #endif // defined(PP_IN_LINK)
             }
             else
-#else // defined(BM_AT_DL2) -- This is not BM_SW_AT_DL2.
-// This ifdef should use max len of list at nDL == 1, e.g. cnListPopCntMax16.
-#if (cwListPopCntMax != 0)
-#if (cnBitsInD1 > cnLogBitsPerWord)
-            if (nDL == 1) {
-                // Let's not jump straight to bitmap.
-                // Let's try a bucket list first.
-//printf("Calling NewBitmap at nDL==1; wPopCnt %ld.\n", wPopCnt);
-                NewBitmap(pwRoot, cnBitsInD1);
-#if defined(PP_IN_LINK)
-                set_PWR_wPopCnt(pwRoot,
-                                /* pwr */ NULL, nDL, /* wPopCnt */ 0);
-#endif // defined(PP_IN_LINK)
-            } else
-#endif // (cnBitsInD1 > cnLogBitsPerWord)
-#endif // (cwListPopCntMax != 0)
-#endif // defined(BM_AT_DL2) -- This is not BM_SW_AT_DL2.
+#else // (nBL_from_nDL(cnDlAtBitmap) > cnLogBitsPerWord)
+            assert(nDL != cnDlAtBitmap);
+#endif // (nBL_from_nDL(cnDlAtBitmap) > cnLogBitsPerWord)
             {
                 // NewSwitch overwrites *pwRoot which is a problem for
                 // T_ONE with embedded keys.

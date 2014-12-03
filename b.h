@@ -150,6 +150,10 @@
 #include <assert.h> // NDEBUG must be defined before including assert.h.
 #include "Judy.h"   // Word_t, JudyMalloc, ...
 
+// Do integer division, but round up instead of down.
+#define DIV_UP(_idend, _isor)  (((_idend) + (_isor) - 1) / (_isor))
+#define ALIGN_UP(_x, _a)  (DIV_UP((_x), (_a)) * (_a))
+
 #if defined(_WIN64)
 #define WORD_ONE  1ULL
 #else // defined(_WIN64)
@@ -549,6 +553,25 @@ enum {
 #define nDL_to_nBL_NAT(_nDL)          (nBL_from_nDL_NAT(_nDL))
 #define nDL_to_nBitsIndexSzNAT(_nDL)  (nDL_to_nBitsIndexSz(_nDL))
 
+// Default is cnDlAtBitmap = 1 (or max value yielding an embedded bitmap).
+#if ! defined(cnDlAtBitmap)
+  #if (cnBitsInD1 >= cnLogBitsPerWord)
+    #define cnDlAtBitmap  1
+  #elif (nBL_from_nDL(nDL_from_nBL(cnLogBitsPerWord)) == cnLogBitsPerWord)
+    #define cnDlAtBitmap  nDL_from_nBL(cnLogBitsPerWord)
+  #else // (nBL_from_nDL(nDL_from_nBL(cnLogBitsPerWord)) == cnLogBitsPerWord)
+    #define cnDlAtBitmap  (nDL_from_nBL(cnLogBitsPerWord) - 1)
+  #endif // (cnBitsInD1 >= cnLogBitsPerWord)
+#else // ! defined(cnDlAtBitmap)
+  #if (nBL_from_nDL(cnDlAtBitmap + 1) <= cnLogBitsPerWord) 
+    // The code can handle this just fine.  I just want to warn that
+    // cnDlAtBitmap doesn't make sense.  It will be ignored.
+    #error Bitmap would be created before cnDlAtBitmap.
+  #endif // (nBL_from_nDL(cnDlAtBitmap + 1) <= cnLogBitsPerWord) 
+#endif // ! defined(cnDlAtBitmap)
+
+#define cnBlAtBitmap  nBL_from_nDL(cnDlAtBitmap)
+
 #if defined RAMMETRICS
   #define METRICS(x)  (x)
 #else // defined RAMMETRICS
@@ -632,10 +655,6 @@ enum {
 #else // defined(_WIN64)
 #define _fw  "l"
 #endif // defined(_WIN64)
-
-// Do integer division, but round up instead of down.
-#define DIV_UP(_idend, _isor)  (((_idend) + (_isor) - 1) / (_isor))
-#define ALIGN_UP(_x, _a)  (DIV_UP((_x), (_a)) * (_a))
 
 #define OFFSET_OF(_type, _field) ((size_t)&((_type *)NULL)->_field)
 #define STRUCT_OF(_p, _type, _field) \

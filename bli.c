@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.444 2014/12/03 01:12:11 mike Exp mike $
+// @(#) $Id: bli.c,v 1.445 2014/12/03 01:45:24 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1659,10 +1659,12 @@ notEmpty:;
         // preserve the value of pwr.
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-#if (cnBitsInD1 <= cnLogBitsPerWord)
-        // We have to get rid of this 'if' by putting it in the switch.  How?
+#if (cnBlAtBitmap <= cnLogBitsPerWord)
+        // We should get rid of this 'if' by putting it in the switch.  How?
+        // Or, we might be able to streamline things if 
+        // (nBL_from_nDL(cnDlAtBitmap) < cnLogBitsPerWord).
         if (nBL <= cnLogBitsPerWord) { goto embeddedBitmap; }
-#endif // (cnBitsInD1 <= cnLogBitsPerWord)
+#endif // (cnBlAtBitmap <= cnLogBitsPerWord)
         // Advance nDLR to the bottom of this switch now just in case
         // we have a non-skip link to a switch.  We could do it later.
         nDLR = nDL;
@@ -1892,17 +1894,12 @@ notEmptyBm:;
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 
-#if (cnBitsInD1 <= cnLogBitsPerWord)
-#if defined(BM_SW_AT_DL2) && ! defined(USE_BM_SW)
-        assert(nBL <= cnLogBitsPerWord);
-#else // defined(BM_SW_AT_DL2) && ! defined(USE_BM_SW)
-        // We have to get rid of this 'if' by putting it in the switch.  How?
-        if (nBL <= cnLogBitsPerWord)
-#endif // defined(BM_SW_AT_DL2) && ! defined(USE_BM_SW)
-        {
-            goto embeddedBitmap;
-        }
-#endif // (cnBitsInD1 <= cnLogBitsPerWord)
+#if (cnBlAtBitmap <= cnLogBitsPerWord)
+        // We should get rid of this 'if' by putting it in the switch.  How?
+        // Or, we might be able to streamline things if 
+        // (nBL_from_nDL(cnDlAtBitmap) < cnLogBitsPerWord).
+        if (nBL <= cnLogBitsPerWord) { goto embeddedBitmap; }
+#endif // (cnBlAtBitmap <= cnLogBitsPerWord)
         // Advance nDLR to the bottom of this switch now just in case
         // we have a non-skip link to a switch.  We could do it later.
         nDLR = nDL;
@@ -2086,9 +2083,9 @@ notEmptyBm:;
     case T_BITMAP | EXP(cnBitsMallocMask):
 #endif // defined(EXTRA_TYPES)
     {
-#if (cnBitsInD1 <= cnLogBitsPerWord)
+#if (cnBlAtBitmap <= cnLogBitsPerWord)
 embeddedBitmap:
-#endif // (cnBitsInD1 <= cnLogBitsPerWord)
+#endif // (cnBlAtBitmap <= cnLogBitsPerWord)
         // This case has been enhanced to handle a bitmap at any level.
         // It used to assume we were at nDL == 1.
 
@@ -2159,14 +2156,14 @@ embeddedBitmap:
             return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
             nBL = nDL_to_nBL_NAT(nDL); // Probably at the bottom.
-      #if (cnBitsInD1 <= cnLogBitsPerWord)
+      #if (cnBlAtBitmap <= cnLogBitsPerWord)
             // If nBL == cnLogBitsPerWord, then do we really need to
             // mask wKey or would the shift in the macro take care of it?
             // We definitely need the mask if nBL < cnLogBitsPerWord.
             if (BitIsSetInWord(wRoot, wKey & (EXP(nBL) - 1UL)))
-      #else // (cnBitsInD1 <= cnLogBitsPerWord)
+      #else // (cnBlAtBitmap <= cnLogBitsPerWord)
             if (BitIsSet(wr_pwr(wRoot), wKey & (EXP(nBL) - 1UL)))
-      #endif // (cnBitsInD1 <= cnLogBitsPerWord)
+      #endif // (cnBlAtBitmap <= cnLogBitsPerWord)
             {
       #if defined(REMOVE)
                 RemoveGuts(pwRoot, wKey, nDL, wRoot);
@@ -2655,6 +2652,48 @@ Initialize(void)
         anBL_to_nDL[nBL] = nDL_from_nBL(nBL);
     }
 #endif // defined(BPD_TABLE_RUNTIME_INIT)
+
+    printf("\n");
+    printf("# cnBitsInD1 %d\n", cnBitsInD1);
+    printf("# cnBitsInD2 %d\n", cnBitsInD2);
+    printf("# cnBitsInD3 %d\n", cnBitsInD3);
+    printf("# cnBitsPerDigit %d\n", cnBitsPerDigit);
+    printf("# cnDlAtBitmap %d\n", cnDlAtBitmap);
+    printf("# cnBlAtBitmap %d\n", cnBlAtBitmap);
+    printf("# cnListPopCntMax8  %d\n", cnListPopCntMax8);
+    printf("# cnListPopCntMax16 %d\n", cnListPopCntMax16);
+    printf("# cnListPopCntMax32 %d\n", cnListPopCntMax32);
+    printf("# cnListPopCntMax64 %d\n", cnListPopCntMax64);
+    printf("# cnListPopCntMaxDl1 %d\n", cnListPopCntMaxDl1);
+#if defined(cnListPopCntMaxDl2)
+    printf("# cnListPopCntMaxDl2 %d\n", cnListPopCntMaxDl2);
+#else // defined(cnListPopCntMaxDl2)
+    printf("# cnListPopCntMaxDl2 n/a\n");
+#endif // defined(cnListPopCntMaxDl2)
+#if defined(cnListPopCntMaxDl3)
+    printf("# cnListPopCntMaxDl3 %d\n", cnListPopCntMaxDl3);
+#else // defined(cnListPopCntMaxDl3)
+    printf("# cnListPopCntMaxDl3 n/a\n");
+#endif // defined(cnListPopCntMaxDl3)
+
+#if defined(USE_BM_SW)
+    printf("# USE_BM_SW\n");
+#else // defined(USE_BM_SW)
+    printf("# NO USE_BM_SW\n");
+#endif // defined(USE_BM_SW)
+
+#if defined(BM_IN_LINK)
+    printf("# BM_IN_LINK\n");
+#else // defined(BM_IN_LINK)
+    printf("# NO BM_IN_LINK\n");
+#endif // defined(BM_IN_LINK)
+
+#if defined(PP_IN_LINK)
+    printf("# PP_IN_LINK\n");
+#else // defined(PP_IN_LINK)
+    printf("# NO PP_IN_LINK\n");
+#endif // defined(PP_IN_LINK)
+    printf("\n");
 
     bInitialized= 1;
 }
