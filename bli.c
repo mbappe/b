@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.449 2014/12/03 18:15:40 mike Exp mike $
+// @(#) $Id: bli.c,v 1.450 2014/12/03 18:46:38 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -7,14 +7,14 @@
 #include <immintrin.h> // __m128i
 
 Word_t WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL);
-Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
+Word_t HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 
 #if defined(PARALLEL_128)
 
 #define BUCKET_EMBEDDED_KEYS_PARALLEL(_pxBucket, _wKey, _nBL) \
     ((sizeof(*(_pxBucket)) == sizeof(Word_t)) \
         ? WordHasKey((void *)(_pxBucket), (_wKey), (_nBL)) \
-        : m128iHasKey((void *)(_pxBucket), (_wKey), (_nBL)))
+        : HasKey128((void *)(_pxBucket), (_wKey), (_nBL)))
 
 #else // defined(PARALLEL_128)
 
@@ -486,7 +486,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 #endif // defined(PSPLIT_HYBRID)
 
-#define PARALLEL_128_SETUP(_wKey, _nBL, _xLsbs, _xMsbs, _xKeys) \
+#define HAS_KEY_128_SETUP(_wKey, _nBL, _xLsbs, _xMsbs, _xKeys) \
 { \
     Word_t wMask = MSK(_nBL); /* (1 << nBL) - 1 */ \
     _wKey &= wMask; \
@@ -500,7 +500,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 #if defined(LOOKUP) && defined(PARALLEL_128)
 static Word_t // bool
-m128iHasKeyTail(__m128i *pxBucket,
+HasKey128Tail(__m128i *pxBucket,
     __m128i xLsbs,
     __m128i xMsbs,
     __m128i xKeys)
@@ -537,7 +537,7 @@ m128iHasKeyTail(__m128i *pxBucket,
     unsigned nSplitP = nSplit * sizeof(_x_t) / sizeof(_b_t); \
     assert(((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
     /*__m128i xLsbs, xMsbs, xKeys;*/ \
-    /*PARALLEL_128_SETUP((_xKey), sizeof(_x_t) * 8, xLsbs, xMsbs, xKeys);*/ \
+    /*HAS_KEY_128_SETUP((_xKey), sizeof(_x_t) * 8, xLsbs, xMsbs, xKeys);*/ \
     if (BUCKET_EMBEDDED_KEYS_PARALLEL(&px[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
         (_nPos) = 0; /* key exists, but we don't know the exact position */ \
     } \
@@ -770,11 +770,11 @@ WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
 #if defined(PARALLEL_128)
 
 Word_t // bool
-m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL)
+HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 {
     __m128i xLsbs, xMsbs, xKeys;
-    PARALLEL_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys); 
-    return m128iHasKeyTail(pxBucket, xLsbs, xMsbs, xKeys);
+    HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys); 
+    return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
 }
 
 #endif // defined(PARALLEL_128)
