@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.446 2014/12/03 03:15:08 mike Exp mike $
+// @(#) $Id: bli.c,v 1.447 2014/12/03 16:30:41 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2165,10 +2165,10 @@ embeddedBitmap:
             nBL = nDL_to_nBL_NAT(nDL); // Probably at the bottom.
             int bBitIsSet
                 = /*(nBL <= cnLogBitsPerWord)
-                    ? (printf("1"), BitIsSetInWord(wRoot, wKey & MSK(nBL)))
+                    ? (BitIsSetInWord(wRoot, wKey & MSK(nBL)))
                 : */(EXP(nBL) <= sizeof(Link_t) * 8)
-                    ? (printf("2"), BitIsSet(pwRoot, wKey & MSK(nBL)))
-                : (printf("3"), BitIsSet(wr_pwr(wRoot), wKey & MSK(nBL)));
+                    ? (BitIsSet(pwRoot, wKey & MSK(nBL)))
+                : (BitIsSet(wr_pwr(wRoot), wKey & MSK(nBL)));
             if (bBitIsSet)
             {
       #if defined(REMOVE)
