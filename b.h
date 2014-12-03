@@ -35,13 +35,6 @@
 #endif // ! defined(NO_BM_SW_FOR_REAL)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
-// Default is cnDigitsAtBitmap = 1.
-// Embedded bitmap is created at nBL <= cnLogBitsPerWord so we might not get
-// to cnDigitsAtBitmap before creating the bitmap.
-#if ! defined(cnDigitsAtBitmap)
-#define cnDigitsAtBitmap  1
-#endif // ! defined(cnDigitsAtBitmap)
-
 // Default is -DDL_SPECIFIC_T_ONE.
 #if ! defined(NO_DL_SPECIFIC_T_ONE)
 #define DL_SPECIFIC_T_ONE
@@ -241,10 +234,10 @@ typedef Word_t Bucket_t;
 #endif // 0
 
 // Choose the number of bits in the least significant digit of the key.
-// Default is cnBitsAtDL1 = 8.  We count digits up from there.
-#if ! defined(cnBitsAtDl1)
-#define cnBitsAtDl1  8
-#endif // ! defined(cnBitsAtDl1)
+// Default is cnBitsInD1 = 8.  We count digits up from there.
+#if ! defined(cnBitsInD1)
+#define cnBitsInD1  8
+#endif // ! defined(cnBitsInD1)
 
 // Choose max list lengths.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
@@ -275,26 +268,26 @@ typedef Word_t Bucket_t;
 #endif // defined(EMBEDDED_KEYS_PARALLEL)
 #endif // ! defined(cnListPopCntMax8)
 
-// Default cnListPopCntMaxDl1 is 7 for cnBitsAtDl1 = 8.
+// Default cnListPopCntMaxDl1 is 7 for cnBitsInD1 = 8.
 // Default cnListPopCntMaxDl1 is embedded keys only.
 #if ! defined(cnListPopCntMaxDl1)
-  #  if (cnBitsAtDl1 == 7)
+  #  if (cnBitsInD1 == 7)
       #define cnListPopCntMaxDl1  0x08
-  #elif (cnBitsAtDl1 == 8)
+  #elif (cnBitsInD1 == 8)
       #define cnListPopCntMaxDl1  0x07
-  #elif (cnBitsAtDl1 == 9)
+  #elif (cnBitsInD1 == 9)
       #define cnListPopCntMaxDl1  0x06
-  #elif (cnBitsAtDl1 <= 11)
+  #elif (cnBitsInD1 <= 11)
       #define cnListPopCntMaxDl1  0x05
-  #elif (cnBitsAtDl1 <= 16)
+  #elif (cnBitsInD1 <= 16)
       #define cnListPopCntMaxDl1  0x04
-  #elif (cnBitsAtDl1 <= 19)
+  #elif (cnBitsInD1 <= 19)
       #define cnListPopCntMaxDl1  0x03
-  #elif (cnBitsAtDl1 <= 29)
+  #elif (cnBitsInD1 <= 29)
       #define cnListPopCntMaxDl1  0x02
   #else
       #define cnListPopCntMaxDl1  0x01
-  #endif // cnBitsAtDl1
+  #endif // cnBitsInD1
 #endif // ! defined(cnListPopCntMaxDl1)
 
 // cwListPopCntMax is mostly used as a boolean that indicates whether
@@ -313,37 +306,37 @@ typedef Word_t Bucket_t;
                MAX(cnListPopCntMax8, 8))))
 #endif // ! defined(cwListPopCntMax)
 
-#define cnBitsLeftAtDl1     (cnBitsAtDl1)
+#define cnBitsLeftAtDl1     (cnBitsInD1)
 
 // Bits in the second least significant digit of the key.  Not bits left.
-#if ! defined(cnBitsAtDl2)
-#define cnBitsAtDl2 \
+#if ! defined(cnBitsInD2)
+#define cnBitsInD2 \
     (((cnBitsLeftAtDl1) + (cnBitsPerDigit) <= (cnBitsPerWord)) \
         ? (cnBitsPerDigit) : (cnBitsPerWord) - (cnBitsLeftAtDl1))
-#endif // ! defined(cnBitsAtDl2)
+#endif // ! defined(cnBitsInD2)
 
-#define cnBitsLeftAtDl2     (cnBitsLeftAtDl1 + cnBitsAtDl2)
+#define cnBitsLeftAtDl2     (cnBitsLeftAtDl1 + cnBitsInD2)
 
-#if ! defined(cnBitsAtDl3)
-#define cnBitsAtDl3 \
+#if ! defined(cnBitsInD3)
+#define cnBitsInD3 \
     (((cnBitsLeftAtDl2) + (cnBitsPerDigit) <= (cnBitsPerWord)) \
         ? (cnBitsPerDigit) : (cnBitsPerWord) - (cnBitsLeftAtDl2))
-#endif // ! defined(cnBitsAtDl3)
+#endif // ! defined(cnBitsInD3)
 
-#define cnBitsLeftAtDl3     (cnBitsLeftAtDl2 + cnBitsAtDl3)
+#define cnBitsLeftAtDl3     (cnBitsLeftAtDl2 + cnBitsInD3)
 
 #define cnBitsIndexSzAtTop \
     ((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit)
 
 // cnDigitsPerWord makes assumptions about anDL_to_nBitsIndexSz[] and
 // anDL_to_nBL[].  Yuck.
-#if (cnBitsAtDl3 != cnBitsPerDigit)
+#if (cnBitsInD3 != cnBitsPerDigit)
 #define cnDigitsPerWord \
     (DIV_UP(cnBitsPerWord - cnBitsLeftAtDl3, cnBitsPerDigit) + 3)
-#else // (cnBitsAtDl3 != cnBitsPerDigit)
+#else // (cnBitsInD3 != cnBitsPerDigit)
 #define cnDigitsPerWord \
-    (DIV_UP(cnBitsPerWord - cnBitsAtDl1 - cnBitsAtDl2, cnBitsPerDigit) + 2)
-#endif // (cnBitsAtDl3 != cnBitsPerDigit)
+    (DIV_UP(cnBitsPerWord - cnBitsInD1 - cnBitsInD2, cnBitsPerDigit) + 2)
+#endif // (cnBitsInD3 != cnBitsPerDigit)
 
 // Default is -DEMBED_KEYS which implies -DUSE_T_ONE.
 #if ! defined(NO_EMBED_KEYS)
@@ -402,56 +395,56 @@ enum {
 // et. al. based on ifdef parameters.
 
 // nBitsIndexSz_from_nDL_NAX(_nDL)
-#if ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
+#if ((cnBitsInD3 == cnBitsPerDigit) && (cnBitsInD2 == cnBitsPerDigit))
   #define nBitsIndexSz_from_nDL_NAX(_nDL)  (cnBitsPerDigit)
-#elif (cnBitsAtDl3 == cnBitsPerDigit)
+#elif (cnBitsInD3 == cnBitsPerDigit)
   #define nBitsIndexSz_from_nDL_NAX(_nDL) \
-    (((_nDL) == 2) ? cnBitsAtDl2 : cnBitsPerDigit)
-#else // ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
+    (((_nDL) == 2) ? cnBitsInD2 : cnBitsPerDigit)
+#else // ((cnBitsInD3 == cnBitsPerDigit) && (cnBitsInD2 == cnBitsPerDigit))
   #define nBitsIndexSz_from_nDL_NAX(_nDL) \
-    ( ((_nDL) == 2) ? cnBitsAtDl2 \
-    : ((_nDL) == 3) ? cnBitsAtDl3 \
+    ( ((_nDL) == 2) ? cnBitsInD2 \
+    : ((_nDL) == 3) ? cnBitsInD3 \
     : cnBitsPerDigit )
-#endif // ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
+#endif // ((cnBitsInD3 == cnBitsPerDigit) && (cnBitsInD2 == cnBitsPerDigit))
 
 // nBL_from_nDL_NAX(_nDL)
-#if ( (cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit) \
-                                      && (cnBitsAtDl1 == cnBitsPerDigit) )
+#if ( (cnBitsInD3 == cnBitsPerDigit) && (cnBitsInD2 == cnBitsPerDigit) \
+                                      && (cnBitsInD1 == cnBitsPerDigit) )
     #define nBL_from_nDL_NAX(_nDL)  (cnBitsPerDigit * (_nDL))
-#elif (cnBitsAtDl3 == cnBitsPerDigit)
+#elif (cnBitsInD3 == cnBitsPerDigit)
     #define nBL_from_nDL_NAX(_nDL) \
         ( cnBitsLeftAtDl2 + ((_nDL) - 2) * cnBitsPerDigit )
-#else // (cnBitsAtDl3 == cnBitsPerDigit) && ...
+#else // (cnBitsInD3 == cnBitsPerDigit) && ...
     #define nBL_from_nDL_NAX(_nDL) \
         ( (_nDL) >= 3 ? cnBitsLeftAtDl3 + ((_nDL) - 3) * cnBitsPerDigit \
         : cnBitsLeftAtDl2 )
-#endif // (cnBitsAtDl3 == cnBitsPerDigit) && ...
+#endif // (cnBitsInD3 == cnBitsPerDigit) && ...
 
 // nBL_from_nDL_NAT(_nDL)
-#if ( (cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit) \
-                                      && (cnBitsAtDl1 == cnBitsPerDigit) )
+#if ( (cnBitsInD3 == cnBitsPerDigit) && (cnBitsInD2 == cnBitsPerDigit) \
+                                      && (cnBitsInD1 == cnBitsPerDigit) )
     #define nBL_from_nDL_NAT(_nDL)  (cnBitsPerDigit * (_nDL))
-#elif ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
+#elif ((cnBitsInD3 == cnBitsPerDigit) && (cnBitsInD2 == cnBitsPerDigit))
     #define nBL_from_nDL_NAT(_nDL) \
         ( (_nDL) == 1 ? cnBitsLeftAtDl1 \
         : cnBitsLeftAtDl1 + ((_nDL) - 1) * cnBitsPerDigit )
-#elif (cnBitsAtDl3 == cnBitsPerDigit)
+#elif (cnBitsInD3 == cnBitsPerDigit)
     #define nBL_from_nDL_NAT(_nDL) \
         ( (_nDL) == 1 ? cnBitsLeftAtDl1 \
         : (_nDL) == 2 ? cnBitsLeftAtDl2 \
         : cnBitsLeftAtDl2 + ((_nDL) - 2) * cnBitsPerDigit )
-#else // (cnBitsAtDl3 == cnBitsPerDigit) && ...
+#else // (cnBitsInD3 == cnBitsPerDigit) && ...
     #define nBL_from_nDL_NAT(_nDL) \
         ( (_nDL) == 1 ? cnBitsLeftAtDl1 \
         : (_nDL) == 2 ? cnBitsLeftAtDl2 \
         : (_nDL) == 3 ? cnBitsLeftAtDl3 \
         : cnBitsLeftAtDl3 + ((_nDL) - 3) * cnBitsPerDigit )
-#endif // (cnBitsAtDl3 == cnBitsPerDigit) && ...
+#endif // (cnBitsInD3 == cnBitsPerDigit) && ...
 
 // nDL_from_nBL(_nBL)
 // nDL_from_nBL_NIB(_nBL) _nBL must be an integral number of digits 
-#if ( (cnBitsAtDl1 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit) \
-                                      && (cnBitsAtDl3 == cnBitsPerDigit) )
+#if ( (cnBitsInD1 == cnBitsPerDigit) && (cnBitsInD2 == cnBitsPerDigit) \
+                                      && (cnBitsInD3 == cnBitsPerDigit) )
 
     // Rounding up is not free since we don't otherwise need to add a               // constant before (or after) dividing.
     // But we have to round up when this is used to figure the depth of a skip
@@ -461,23 +454,23 @@ enum {
     // In cases where rounding is not necessary we can use this.
     #define nDL_from_nBL_NIB(_nBL)  ((_nBL) / cnBitsPerDigit)
 
-#else // (cnBitsAtDl1 == cnBitsPerDigit) ...
+#else // (cnBitsInD1 == cnBitsPerDigit) ...
 
   // nDL_from_nBL(_nBL)
-  #if ((cnBitsAtDl2 == cnBitsPerDigit) && (cnBitsAtDl3 == cnBitsPerDigit))
+  #if ((cnBitsInD2 == cnBitsPerDigit) && (cnBitsInD3 == cnBitsPerDigit))
     // Rounding up is free since we already have to add a constant before
     // (or after) dividing.
     #define nDL_from_nBL(_nBL) \
-        ( ((_nBL) <= cnBitsAtDl1 ) ? 1 \
+        ( ((_nBL) <= cnBitsInD1 ) ? 1 \
         : 1 + DIV_UP((_nBL) - cnBitsLeftAtDl1, cnBitsPerDigit) )
-  #elif (cnBitsAtDl3 == cnBitsPerDigit)
+  #elif (cnBitsInD3 == cnBitsPerDigit)
     // Rounding up is free since we already have to add a constant before
     // (or after) dividing.
     #define nDL_from_nBL(_nBL) \
         ( ((_nBL) <= cnBitsLeftAtDl1 ) ? 1 \
         : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
         : 2 + DIV_UP((_nBL) - cnBitsLeftAtDl2, cnBitsPerDigit) )
-  #else // (cnBitsAtDl2 == cnBitsPerDigit) && ...
+  #else // (cnBitsInD2 == cnBitsPerDigit) && ...
     // Rounding up is free since we already have to add a constant before
     // (or after) dividing.
     #define nDL_from_nBL(_nBL) \
@@ -485,21 +478,21 @@ enum {
         : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
         : ((_nBL) <= cnBitsLeftAtDl3) ? 3 \
         : 3 + DIV_UP((_nBL) - cnBitsLeftAtDl3, cnBitsPerDigit) )
-  #endif // (cnBitsAtDl2 == cnBitsPerDigit) ...
+  #endif // (cnBitsInD2 == cnBitsPerDigit) ...
 
     #define nDL_from_nBL_NIB(_nBL)  nDL_from_nBL(_nBL)
 
-#endif // (cnBitsAtDl1 == cnBitsPerDigit) && ...
+#endif // (cnBitsInD1 == cnBitsPerDigit) && ...
 
 #if (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
 
 // nBitsIndexSz_from_nDL(_nDL)
-#if (cnBitsAtDl1 == cnBitsPerDigit)
+#if (cnBitsInD1 == cnBitsPerDigit)
     #define nBitsIndexSz_from_nDL(_nDL)  (nBitsIndexSz_from_nDL_NAX(_nDL))
-#else // (cnBitsAtDl1 == cnBitsPerDigit)
+#else // (cnBitsInD1 == cnBitsPerDigit)
     #define nBitsIndexSz_from_nDL(_nDL) \
         ( ((_nDL) <= 1) ? cnBitsLeftAtDl1 : nBitsIndexSz_from_nDL_NAX(_nDL) )
-#endif // (cnBitsAtDl1 == cnBitsPerDigit)
+#endif // (cnBitsInD1 == cnBitsPerDigit)
 
 // nBL_from_nDL(_nDL)
 #define nBL_from_nDL(_nDL)  (nBL_from_nDL_NAT(_nDL))
@@ -507,17 +500,17 @@ enum {
 #else // (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
 
 // nBitsIndexSz_from_nDL(_nDL)
-#if (cnBitsAtDl1 == cnBitsPerDigit)
+#if (cnBitsInD1 == cnBitsPerDigit)
   #define nBitsIndexSz_from_nDL(_nDL) \
     ( ((_nDL) < cnDigitsPerWord) ? nBitsIndexSz_from_nDL_NAX(_nDL) \
     : cnBitsIndexSzAtTop )
-#else // (cnBitsAtDl1 == cnBitsPerDigit)
+#else // (cnBitsInD1 == cnBitsPerDigit)
   // Do we need this to be valid for _nDL < 1?
   #define nBitsIndexSz_from_nDL(_nDL) \
-    ( ((_nDL) <= 1) ? cnBitsAtDl1 \
+    ( ((_nDL) <= 1) ? cnBitsInD1 \
     : ((_nDL) < cnDigitsPerWord) ? nBitsIndexSz_from_nDL_NAX(_nDL) \
     : cnBitsIndexSzAtTop )
-#endif // (cnBitsAtDl1 == cnBitsPerDigit)
+#endif // (cnBitsInD1 == cnBitsPerDigit)
 
 // nBL_from_nDL(_nDL)
 #define nBL_from_nDL(_nDL) \
@@ -745,17 +738,17 @@ enum {
 
 // Why do we need nType to be able to represent nDL == 1?
 // We have to test for nDL == 1 before looping back to the switch statement
-// that checks nType if cnBitsAtDl1 == cnLogBitsPerWord because there is
+// that checks nType if cnBitsInD1 == cnLogBitsPerWord because there is
 // no room for a type field when all the bits are used for an embedded bitmap.
-// But if cnBitsAtDl1 > cnLogBitsPerWord we don't want to waste the
+// But if cnBitsInD1 > cnLogBitsPerWord we don't want to waste the
 // conditional branch.
-#if (cnBitsAtDl1 > cnLogBitsPerWord)
+#if (cnBitsInD1 > cnLogBitsPerWord)
   #define tp_to_nDL(_tp)   ((_tp)  - T_SW_BASE + 1)
   #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 1)
-#else // (cnBitsAtDl1 > cnLogBitsPerWord)
+#else // (cnBitsInD1 > cnLogBitsPerWord)
   #define tp_to_nDL(_tp)   ((_tp)  - T_SW_BASE + 2)
   #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 2)
-#endif // (cnBitsAtDl1 > cnLogBitsPerWord)
+#endif // (cnBitsInD1 > cnLogBitsPerWord)
 
 #define     wr_nDL(_wr)        (tp_to_nDL(wr_nType(_wr)))
 #define set_wr_nDL(_wr, _nDL)  (set_wr_nType((_wr), nDL_to_tp(_nDL)))

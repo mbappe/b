@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.443 2014/12/02 16:40:07 mike Exp mike $
+// @(#) $Id: bli.c,v 1.444 2014/12/03 01:12:11 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -36,7 +36,7 @@ Word_t m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 // and Judy1Unset.  There is no need for Lookup, Insert and Remove.
 #if (cnDigitsPerWord > 1)
 //#if (cnBitsPerDigit < cnBitsPerWord)
-//#if (cnBitsAtDl1 < cnBitsPerWord)
+//#if (cnBitsInD1 < cnBitsPerWord)
 
 #if defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (Success)
@@ -790,7 +790,7 @@ m128iHasKey(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 #if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
 #if ! defined(LOOKUP_NO_LIST_SEARCH) || ! defined(LOOKUP)
 
-#if defined(COMPRESSED_LISTS) && (cnBitsAtDl1 <= 8)
+#if defined(COMPRESSED_LISTS) && (cnBitsInD1 <= 8)
 
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
@@ -833,9 +833,9 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     return nPos;
 }
 
-#endif // defined(COMPRESSED_LISTS) && (cnBitsAtDl1 <= 8)
+#endif // defined(COMPRESSED_LISTS) && (cnBitsInD1 <= 8)
 
-#if defined(COMPRESSED_LISTS) && (cnBitsAtDl1 <= 16)
+#if defined(COMPRESSED_LISTS) && (cnBitsInD1 <= 16)
 
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
@@ -880,10 +880,10 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     return nPos;
 }
 
-#endif // defined(COMPRESSED_LISTS) && (cnBitsAtDl1 <= 16)
+#endif // defined(COMPRESSED_LISTS) && (cnBitsInD1 <= 16)
 
 #if defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) \
-    && (cnBitsAtDl1 <= 32)
+    && (cnBitsInD1 <= 32)
 
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
@@ -1138,7 +1138,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
     int nPos;
 
   #if defined(COMPRESSED_LISTS)
-      #if (cnBitsAtDl1 <= 8)
+      #if (cnBitsInD1 <= 8)
     if (nBL <= 8) {
       #if ! defined(PP_IN_LINK)
       #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
@@ -1147,18 +1147,18 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
       #endif // ! defined(PP_IN_LINK)
         nPos = SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt);
     } else
-      #endif // (cnBitsAtDl1 <= 8)
-      #if (cnBitsAtDl1 <= 16)
+      #endif // (cnBitsInD1 <= 8)
+      #if (cnBitsInD1 <= 16)
     if (nBL <= 16) {
       #if ! defined(PP_IN_LINK) // nPopCnt is not valid yet
       #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
           #if (cnListPopCntMax16 <= 8)
         nPopCnt = 8; // Eight fit so why do less?
-        assert((cnListPopCntMaxDl1 <= 8) || (cnBitsAtDl1 <= 8));
-          #elif (cnBitsAtDl1 > 8) // nDL == 1 is handled here
+        assert((cnListPopCntMaxDl1 <= 8) || (cnBitsInD1 <= 8));
+          #elif (cnBitsInD1 > 8) // nDL == 1 is handled here
               #if (cnListPopCntMaxDl1 <= 8) // list fits in one __m128i
                   #if (cnBitsLeftAtDl2 <= 16) // need to test nDL
-        nPopCnt = (nBL == cnBitsAtDl1) ? 8 : ls_sPopCnt(pwr);
+        nPopCnt = (nBL == cnBitsInD1) ? 8 : ls_sPopCnt(pwr);
                   #else // (cnBitsLeftAtDl2 <= 16)
         nPopCnt = 8; // Eight fit so why do less?
                   #endif // (cnBitsLeftAtDl2 <= 16)
@@ -1174,15 +1174,15 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
       #endif // ! defined(PP_IN_LINK)
         nPos = SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt);
     } else
-      #endif // (cnBitsAtDl1 <= 16)
-      #if (cnBitsAtDl1 <= 32) && (cnBitsPerWord > 32)
+      #endif // (cnBitsInD1 <= 16)
+      #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {
           #if ! defined(PP_IN_LINK)
         nPopCnt = ls_sPopCnt(pwr);
           #endif // ! defined(PP_IN_LINK)
         nPos = SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt);
     } else
-      #endif // (cnBitsAtDl1 <= 32) && (cnBitsPerWord > 32)
+      #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     {
   #if ! defined(PP_IN_LINK)
@@ -1476,7 +1476,7 @@ again:
   #endif // defined(REMOVE)
 
         Word_t wSubKey = wKey & MSK(nBL);
-        int nBucketIndex = wSubKey >> (cnBitsAtDl1 + 1);
+        int nBucketIndex = wSubKey >> (cnBitsInD1 + 1);
 
         if (BUCKET_EMBEDDED_KEYS_PARALLEL(&pwr[nBucketIndex], wSubKey, nBL))
         {
@@ -1659,10 +1659,10 @@ notEmpty:;
         // preserve the value of pwr.
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-#if (cnBitsAtDl1 <= cnLogBitsPerWord)
+#if (cnBitsInD1 <= cnLogBitsPerWord)
         // We have to get rid of this 'if' by putting it in the switch.  How?
         if (nBL <= cnLogBitsPerWord) { goto embeddedBitmap; }
-#endif // (cnBitsAtDl1 <= cnLogBitsPerWord)
+#endif // (cnBitsInD1 <= cnLogBitsPerWord)
         // Advance nDLR to the bottom of this switch now just in case
         // we have a non-skip link to a switch.  We could do it later.
         nDLR = nDL;
@@ -1892,7 +1892,7 @@ notEmptyBm:;
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 
-#if (cnBitsAtDl1 <= cnLogBitsPerWord)
+#if (cnBitsInD1 <= cnLogBitsPerWord)
 #if defined(BM_SW_AT_DL2) && ! defined(USE_BM_SW)
         assert(nBL <= cnLogBitsPerWord);
 #else // defined(BM_SW_AT_DL2) && ! defined(USE_BM_SW)
@@ -1902,7 +1902,7 @@ notEmptyBm:;
         {
             goto embeddedBitmap;
         }
-#endif // (cnBitsAtDl1 <= cnLogBitsPerWord)
+#endif // (cnBitsInD1 <= cnLogBitsPerWord)
         // Advance nDLR to the bottom of this switch now just in case
         // we have a non-skip link to a switch.  We could do it later.
         nDLR = nDL;
@@ -2086,9 +2086,9 @@ notEmptyBm:;
     case T_BITMAP | EXP(cnBitsMallocMask):
 #endif // defined(EXTRA_TYPES)
     {
-#if (cnBitsAtDl1 <= cnLogBitsPerWord)
+#if (cnBitsInD1 <= cnLogBitsPerWord)
 embeddedBitmap:
-#endif // (cnBitsAtDl1 <= cnLogBitsPerWord)
+#endif // (cnBitsInD1 <= cnLogBitsPerWord)
         // This case has been enhanced to handle a bitmap at any level.
         // It used to assume we were at nDL == 1.
 
@@ -2107,7 +2107,7 @@ embeddedBitmap:
 
   #if defined(SKIP_LINKS)
       // Code below uses NAT and we don't really enforce it so we put an
-      // assertion here to remind us that not all values of cnBitsAtDl1
+      // assertion here to remind us that not all values of cnBitsInD1
       // and cnBitsPerDigit will work for type-is-absolute aka
       // ! defined(TYPE_IS_RELATIVE).
       #if defined(PP_IN_LINK)
@@ -2159,14 +2159,14 @@ embeddedBitmap:
             return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
             nBL = nDL_to_nBL_NAT(nDL); // Probably at the bottom.
-      #if (cnBitsAtDl1 <= cnLogBitsPerWord)
+      #if (cnBitsInD1 <= cnLogBitsPerWord)
             // If nBL == cnLogBitsPerWord, then do we really need to
             // mask wKey or would the shift in the macro take care of it?
             // We definitely need the mask if nBL < cnLogBitsPerWord.
             if (BitIsSetInWord(wRoot, wKey & (EXP(nBL) - 1UL)))
-      #else // (cnBitsAtDl1 <= cnLogBitsPerWord)
+      #else // (cnBitsInD1 <= cnLogBitsPerWord)
             if (BitIsSet(wr_pwr(wRoot), wKey & (EXP(nBL) - 1UL)))
-      #endif // (cnBitsAtDl1 <= cnLogBitsPerWord)
+      #endif // (cnBitsInD1 <= cnLogBitsPerWord)
             {
       #if defined(REMOVE)
                 RemoveGuts(pwRoot, wKey, nDL, wRoot);
@@ -2521,7 +2521,7 @@ cleanup:
 #undef strLookupOrInsertOrRemove
 #undef KeyFound
 
-//#endif // (cnBitsAtDl1 < cnBitsPerWord)
+//#endif // (cnBitsInD1 < cnBitsPerWord)
 //#endif // (cnBitsPerDigit < cnBitsPerWord)
 #endif // (cnDigitsPerWord > 1)
 

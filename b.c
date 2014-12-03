@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.376 2014/12/02 23:13:25 mike Exp mike $
+// @(#) $Id: b.c,v 1.377 2014/12/03 01:12:11 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -463,7 +463,7 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType)
 #endif // (cwListPopCntMax != 0)
 
 // This is not BM_SW_AT_DL2.
-#if (cnBitsAtDl1 > cnLogBitsPerWord) || defined(BM_AT_DL2)
+#if (cnBitsInD1 > cnLogBitsPerWord) || defined(BM_AT_DL2)
 
 static Word_t *
 NewBitmap(Word_t *pwRoot, unsigned nBL)
@@ -490,7 +490,7 @@ NewBitmap(Word_t *pwRoot, unsigned nBL)
 }
 
 // This is not BM_SW_AT_DL2.
-#endif // (cnBitsAtDl1 > cnLogBitsPerWord) || defined(BM_AT_DL2)
+#endif // (cnBitsInD1 > cnLogBitsPerWord) || defined(BM_AT_DL2)
 
 static Word_t
 OldBitmap(Word_t *pwRoot, Word_t *pwr, unsigned nBL)
@@ -581,8 +581,8 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 #if defined(RAMMETRICS)
     // Is a branch with embedded bitmaps a branch?
     // Or is it a bitmap?  Let's use bitmap since we get more info that way.
-    if ((cnBitsAtDl1 <= cnLogBitsPerWord)
-        && (nDL_to_nBL(nDL) - nBitsIndexSz <= cnBitsAtDl1))
+    if ((cnBitsInD1 <= cnLogBitsPerWord)
+        && (nDL_to_nBL(nDL) - nBitsIndexSz <= cnBitsInD1))
     {
         // Embedded bitmaps.
         // What if we have bits in the links that are not used as
@@ -707,7 +707,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
             && (nDL_to_nBL_NAT(nDL - 1) > 16)
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-            && ((nDL - 1) > nBL_to_nDL(cnBitsAtDl1))
+            && ((nDL - 1) > nBL_to_nDL(cnBitsInD1))
 #endif // ! defined(PP_IN_LINK)
 #endif // defined(SKIP_PREFIX_CHECK)
             && 1)
@@ -805,8 +805,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
          = (sizeof(BmSwitch_t) + (wPopCnt - 1) * sizeof(Link_t))
             / sizeof(Word_t);
     DBGI(printf("link count %"_fw"d nWordsOld %d\n", wPopCnt, nWordsOld));
-    if ((cnBitsAtDl1 <= cnLogBitsPerWord)
-        && (nDL_to_nBL(nDL) - nBitsIndexSz <= cnBitsAtDl1))
+    if ((cnBitsInD1 <= cnLogBitsPerWord)
+        && (nDL_to_nBL(nDL) - nBitsIndexSz <= cnBitsInD1))
     {
         METRICS(j__AllocWordsJLB1 -= nWordsOld); // JUDYA
     } else {
@@ -916,8 +916,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
         DBGI(printf("PWR_wPopCnt %"_fw"d\n",
              PWR_wPopCnt(pwRoot, (BmSwitch_t *)*pwRoot, nDL)));
 
-        if ((cnBitsAtDl1 <= cnLogBitsPerWord)
-            && (nDL_to_nBL(nDL) - nBitsIndexSz <= cnBitsAtDl1))
+        if ((cnBitsInD1 <= cnLogBitsPerWord)
+            && (nDL_to_nBL(nDL) - nBitsIndexSz <= cnBitsInD1))
         {
             METRICS(j__AllocWordsJLB1 += nWordsNew); // JUDYA
         } else
@@ -1024,8 +1024,8 @@ OldSwitch(Word_t *pwRoot, unsigned nDL,
     } else
 #endif // defined(RETYPE_FULL_BM_SW)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-    if ((cnBitsAtDl1 <= cnLogBitsPerWord)
-        && (nDL_to_nBL(nDL) - nBitsIndexSz <= cnBitsAtDl1))
+    if ((cnBitsInD1 <= cnLogBitsPerWord)
+        && (nDL_to_nBL(nDL) - nBitsIndexSz <= cnBitsInD1))
     {
         // Embedded bitmaps.
         METRICS(j__AllocWordsJLB1 -= wWords); // JUDYA
@@ -1062,7 +1062,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     Link_t *pLinks;
     Word_t wBytes = 0;
 
-    assert(nBL >= cnBitsAtDl1);
+    assert(nBL >= cnBitsInD1);
     assert(nDL >= 1);
 
     if ( ! bDump )
@@ -1097,11 +1097,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
         printf(" wr "OWx, wRoot);
     }
 
-#if (cnBitsAtDl1 <= cnLogBitsPerWord)
+#if (cnBitsInD1 <= cnLogBitsPerWord)
     if ((nBL <= cnLogBitsPerWord) || (nType == T_BITMAP))
-#else // (cnBitsAtDl1 <= cnLogBitsPerWord)
+#else // (cnBitsInD1 <= cnLogBitsPerWord)
     if (nType == T_BITMAP)
-#endif // (cnBitsAtDl1 <= cnLogBitsPerWord)
+#endif // (cnBitsInD1 <= cnLogBitsPerWord)
     {
 #if defined(PP_IN_LINK)
         if (bDump)
@@ -1116,7 +1116,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #endif // defined(PP_IN_LINK)
 
         // If the bitmap is not embedded, then we have more work to do.
-#if (cnBitsAtDl1 > cnLogBitsPerWord)
+#if (cnBitsInD1 > cnLogBitsPerWord)
 
         if ( ! bDump )
         {
@@ -1131,11 +1131,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
             printf(" "Owx, pwr[ww]);
         }
 
-#else // (cnBitsAtDl1 > cnLogBitsPerWord)
+#else // (cnBitsInD1 > cnLogBitsPerWord)
 
         if (bDump) printf(" wr "OWx, wRoot);
 
-#endif // (cnBitsAtDl1 > cnLogBitsPerWord)
+#endif // (cnBitsInD1 > cnLogBitsPerWord)
 
         if (bDump)
         {
@@ -1148,7 +1148,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(TYPE_IS_RELATIVE)
     assert((nType < T_SW_BASE)
-        || (nDL - wr_nDS(wRoot) >= nBL_to_nDL(cnBitsAtDl1)));
+        || (nDL - wr_nDS(wRoot) >= nBL_to_nDL(cnBitsInD1)));
 #else // defined(TYPE_IS_RELATIVE)
     assert((nType < T_SW_BASE) || (wr_nDL(wRoot) <= nBL_to_nDL(nBL)));
 #endif // defined(TYPE_IS_RELATIVE)
@@ -1353,7 +1353,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 
 // *pwRootLn may not be a pointer to a switch
 // It may be a pointer to a list leaf.
-// And if nBL_to_nDL(cnBitsAtDl1) == cnDigitsPerWord - 1, then it could be
+// And if nBL_to_nDL(cnBitsInD1) == cnDigitsPerWord - 1, then it could be
 // a pointer to a bitmap?
                 Word_t wPopCntLn;
 #if defined(SKIP_LINKS)
@@ -1822,18 +1822,18 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #endif // defined(USE_T_ONE)
 
     // Would be nice to validate sanity of ifdefs here.  Or somewhere.
-    // assert(cnBitsAtDl1 >= cnLogBitsPerWord);
+    // assert(cnBitsInD1 >= cnLogBitsPerWord);
 #if defined(EMBED_KEYS) && ! defined(USE_T_ONE)
     assert(0); // EMBED_KEYS requires USE_T_ONE
 #endif // defined(EMBED_KEYS) && ! defined(USE_T_ONE)
 
-#if (cnBitsAtDl1 <= cnLogBitsPerWord) || defined(NO_LIST_AT_DL1)
+#if (cnBitsInD1 <= cnLogBitsPerWord) || defined(NO_LIST_AT_DL1)
     // Check to see if we're at the bottom before checking nType since
     // nType may be invalid if wRoot is an embedded bitmap.
     if (nBL <= cnLogBitsPerWord) {
         return InsertAtBottom(pwRoot, wKey, nDL, nBL, wRoot);
     }
-#endif // (cnBitsAtDl1 <= cnLogBitsPerWord) || defined(NO_LIST_AT_DL1)
+#endif // (cnBitsInD1 <= cnLogBitsPerWord) || defined(NO_LIST_AT_DL1)
 
     unsigned nType = wr_nType(wRoot); (void)nType; // silence gcc
 
@@ -2217,7 +2217,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 {
                     nDL
                         = nBL_to_nDL(
-                            LOG((EXP(cnBitsAtDl1) - 1)
+                            LOG((EXP(cnBitsInD1) - 1)
                                     | ((wSuffix ^ wMin)
                                     |  (wSuffix ^ wMax)))
                                 + 1);
@@ -2227,7 +2227,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 {
                     nDL
                         = nBL_to_nDL(
-                            LOG((EXP(cnBitsAtDl1) - 1)
+                            LOG((EXP(cnBitsInD1) - 1)
                                     | ((wKey ^ wMin) | (wKey ^ wMax)))
                                 + 1);
                 }
@@ -2259,11 +2259,11 @@ newSwitch:
                     nDL = 2;
                 }
             }
-#if (cnBitsAtDl1 < cnLogBitsPerWord)
+#if (cnBitsInD1 < cnLogBitsPerWord)
             while (nDL_to_nBL(nDL) <= cnLogBitsPerWord) {
                 ++nDL;
             }
-#endif // (cnBitsAtDl1 < cnLogBitsPerWord)
+#endif // (cnBitsInD1 < cnLogBitsPerWord)
 
 #if ! defined(DEPTH_IN_SW)
 #if defined(TYPE_IS_RELATIVE)
@@ -2304,18 +2304,18 @@ newSwitch:
 #else // defined(BM_AT_DL2) -- This is not BM_SW_AT_DL2.
 // This ifdef should use max len of list at nDL == 1, e.g. cnListPopCntMax16.
 #if (cwListPopCntMax != 0)
-#if (cnBitsAtDl1 > cnLogBitsPerWord)
+#if (cnBitsInD1 > cnLogBitsPerWord)
             if (nDL == 1) {
                 // Let's not jump straight to bitmap.
                 // Let's try a bucket list first.
 //printf("Calling NewBitmap at nDL==1; wPopCnt %ld.\n", wPopCnt);
-                NewBitmap(pwRoot, cnBitsAtDl1);
+                NewBitmap(pwRoot, cnBitsInD1);
 #if defined(PP_IN_LINK)
                 set_PWR_wPopCnt(pwRoot,
                                 /* pwr */ NULL, nDL, /* wPopCnt */ 0);
 #endif // defined(PP_IN_LINK)
             } else
-#endif // (cnBitsAtDl1 > cnLogBitsPerWord)
+#endif // (cnBitsInD1 > cnLogBitsPerWord)
 #endif // (cwListPopCntMax != 0)
 #endif // defined(BM_AT_DL2) -- This is not BM_SW_AT_DL2.
             {
@@ -2895,8 +2895,8 @@ DeflateExternalList(Word_t *pwRoot,
 #endif // defined(EMBED_KEYS)
 #endif // (cwListPopCntMax != 0)
 
-// "Bottom" here means nDL == 1 (if cnBitsAtDl1 >= cnLogBitsPerWord),
-// or nBL <= cnLogBitsPerWord (if cnBitsAtDl1 <= cnLogBitsPerWord).
+// "Bottom" here means nDL == 1 (if cnBitsInD1 >= cnLogBitsPerWord),
+// or nBL <= cnLogBitsPerWord (if cnBitsInD1 <= cnLogBitsPerWord).
 // It's possible that we will fill up a list at the bottom before
 Status_t
 InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL,
@@ -2904,7 +2904,7 @@ InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 {
         (void)nDL; (void)nBL; (void)wRoot;
 
-#if (cnBitsAtDl1 <= cnLogBitsPerWord)
+#if (cnBitsInD1 <= cnLogBitsPerWord)
 
         assert(nBL <= cnLogBitsPerWord);
 
@@ -2915,27 +2915,27 @@ InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 
         SetBitInWord(*pwRoot, wKey & (EXP(nBL) - 1));
 
-#else // (cnBitsAtDl1 <= cnLogBitsPerWord)
+#else // (cnBitsInD1 <= cnLogBitsPerWord)
 
         assert(nDL == 1);
-        assert(nBL == cnBitsAtDl1);
+        assert(nBL == cnBitsInD1);
 
         Word_t *pwr = wr_pwr(wRoot);
 
         if (pwr == NULL)
         {
-            pwr = NewBitmap(pwRoot, cnBitsAtDl1);
+            pwr = NewBitmap(pwRoot, cnBitsInD1);
         }
 
-        assert( ! BitIsSet(pwr, wKey & (EXP(cnBitsAtDl1) - 1)) );
+        assert( ! BitIsSet(pwr, wKey & (EXP(cnBitsInD1) - 1)) );
 
         DBGI(printf("SetBit(pwr "OWx" wKey "OWx") pwRoot %p\n",
                     (Word_t)pwr,
-                    wKey & (EXP(cnBitsAtDl1) - 1), (void *)pwRoot));
+                    wKey & (EXP(cnBitsInD1) - 1), (void *)pwRoot));
 
-        SetBit(pwr, wKey & (EXP(cnBitsAtDl1) - 1));
+        SetBit(pwr, wKey & (EXP(cnBitsInD1) - 1));
 
-#endif // (cnBitsAtDl1 <= cnLogBitsPerWord)
+#endif // (cnBitsInD1 <= cnLogBitsPerWord)
 
 #if defined(PP_IN_LINK)
 
@@ -2993,17 +2993,17 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
 // Could we be more specific in this ifdef, e.g. cnListPopCntMax16?
 #if (cwListPopCntMax != 0)
-#if (cnBitsAtDl1 <= cnLogBitsPerWord)
+#if (cnBitsInD1 <= cnLogBitsPerWord)
     if ((nBL <= cnLogBitsPerWord) || (nType == T_BITMAP))
-#else // (cnBitsAtDl1 <= cnLogBitsPerWord)
+#else // (cnBitsInD1 <= cnLogBitsPerWord)
     if (nType == T_BITMAP)
-#endif // (cnBitsAtDl1 <= cnLogBitsPerWord)
+#endif // (cnBitsInD1 <= cnLogBitsPerWord)
 #else // (cwListPopCntMax != 0)
-#if (cnBitsAtDl1 <= cnLogBitsPerWord)
+#if (cnBitsInD1 <= cnLogBitsPerWord)
     assert((nBL <= cnLogBitsPerWord) || (nType == T_BITMAP));
-#else // (cnBitsAtDl1 <= cnLogBitsPerWord)
+#else // (cnBitsInD1 <= cnLogBitsPerWord)
     assert(nType == T_BITMAP);
-#endif // (cnBitsAtDl1 <= cnLogBitsPerWord)
+#endif // (cnBitsInD1 <= cnLogBitsPerWord)
 #endif // (cwListPopCntMax != 0)
     {
         return RemoveBitmap(pwRoot, wKey, nDL, nBL, wRoot);
@@ -3208,7 +3208,7 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 {
     (void)nDL;
 
-#if (cnBitsAtDl1 <= cnLogBitsPerWord)
+#if (cnBitsInD1 <= cnLogBitsPerWord)
     if (nBL <= cnLogBitsPerWord)
     {
         ClrBitInWord(wRoot, wKey & MSK(nBL));
@@ -3222,7 +3222,7 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL,
         *pwRoot = wRoot;
     }
     else
-#endif // (cnBitsAtDl1 <= cnLogBitsPerWord)
+#endif // (cnBitsInD1 <= cnLogBitsPerWord)
     {
         Word_t *pwr = wr_pwr(wRoot);
 
@@ -3397,7 +3397,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 
                 // *pwRootLn may not be a pointer to a switch
                 // It may be a pointer to a list leaf.
-                // And if nBL_to_nDL(cnBitsAtDl1) == cnDigitsPerWord - 1,
+                // And if nBL_to_nDL(cnBitsInD1) == cnDigitsPerWord - 1,
                 // then it could be a pointer to a bitmap?
                 Word_t wPopCntLn;
       #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
