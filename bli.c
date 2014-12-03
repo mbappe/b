@@ -1646,10 +1646,9 @@ notEmpty:;
 #endif // !defined(LOOKUP)
 
         pwRoot = &pwr_pLinks((Switch_t *)pwr)[wIndex].ln_wRoot;
-#if ! defined(LOOKUP)
+#if ! defined(LOOKUP) || (cnBitsInD1 <= cnLogBitsPerWord)
         wRoot = *pwRoot;
-#endif // ! defined(LOOKUP)
-
+#endif // ! defined(LOOKUP) || (cnBitsInD1 <= cnLogBitsPerWord)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We may need to check the prefix of the switch we just visited in
         // the next iteration of the loop if we've reached a leaf so we
@@ -1657,15 +1656,17 @@ notEmpty:;
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // first test is done at compile time and might make the rest go away
-        if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
-                && (EXP(nBL) <= sizeof(Link_t) * 8))
+#if defined(BIG_EMBEDDED_BITMAP)
+        if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nDL == 1))
+#else // defined(BIG_EMBEDDED_BITMAP)
+        if ((cnBitsInD1 <= cnLogBitsPerWord) && (nDL == 1))
+#endif // defined(BIG_EMBEDDED_BITMAP)
         {
             goto embeddedBitmap;
         }
-
-#if defined(LOOKUP)
+#if defined(LOOKUP) && (cnBitsInD1 > cnLogBitsPerWord)
         wRoot = *pwRoot;
-#endif // defined(LOOKUP)
+#endif // defined(LOOKUP) && (cnBitsInD1 > cnLogBitsPerWord)
         DBGX(printf("Next pLinks %p wIndex %d 0x%x\n",
             (void *)pwr_pLinks((Switch_t *)pwr), (int)wIndex, (int)wIndex));
         DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
@@ -1885,10 +1886,9 @@ notEmptyBm:;
 #endif // !defined(LOOKUP)
 
         pwRoot = &pwr_pLinks((BmSwitch_t *)pwr)[wIndex].ln_wRoot;
-#if ! defined(LOOKUP)
+#if ! defined(LOOKUP) || (cnBitsInD1 <= cnLogBitsPerWord)
         wRoot = *pwRoot;
-#endif // ! defined(LOOKUP)
-
+#endif // ! defined(LOOKUP) || (cnBitsInD1 <= cnLogBitsPerWord)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We may need to check the prefix of the switch we just visited in
         // the next iteration of the loop if we've reached a leaf so we
@@ -1896,15 +1896,17 @@ notEmptyBm:;
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // first test is done at compile time and might make the rest go away
-        if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
-                && (EXP(nBL) <= sizeof(Link_t) * 8))
+#if defined(BIG_EMBEDDED_BITMAP)
+        if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nDL == 1))
+#else // defined(BIG_EMBEDDED_BITMAP)
+        if ((cnBitsInD1 <= cnLogBitsPerWord) && (nDL == 1))
+#endif // defined(BIG_EMBEDDED_BITMAP)
         {
             goto embeddedBitmap;
         }
-
-#if defined(LOOKUP)
+#if defined(LOOKUP) && (cnBitsInD1 > cnLogBitsPerWord)
         wRoot = *pwRoot;
-#endif // defined(LOOKUP)
+#endif // defined(LOOKUP) && (cnBitsInD1 > cnLogBitsPerWord)
         DBGX(printf("Next pLinks %p wIndex %d\n",
             (void *)pwr_pLinks((BmSwitch_t *)pwr), (int)wIndex));
         DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
@@ -2093,8 +2095,14 @@ notEmptyBm:;
 #endif // defined(EXTRA_TYPES)
     {
 embeddedBitmap:
-        // This case has been enhanced to handle a bitmap at any level.
-        // It used to assume we were at nDL == 1.
+        // This case assumes we are at nDL == 1.
+        // There is an assertion in Initialize that should blow before
+        // we get here.
+        // It is more efficient this way and there is no reason to do
+        // otherwise just yet.
+        // We might want to use a different case if we ever do support
+        // bitmaps at nDL != 1.
+        assert(nDL == 1);
 
 #if defined(REMOVE)
         if (bCleanup) { return KeyFound; } // cleanup is complete
@@ -2110,15 +2118,6 @@ embeddedBitmap:
 #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
 
   #if defined(SKIP_LINKS)
-      // Code below uses NAT and we don't really enforce it so we put an
-      // assertion here to remind us that not all values of cnBitsInD1
-      // and cnBitsPerDigit will work for type-is-absolute aka
-      // ! defined(TYPE_IS_RELATIVE).
-      #if defined(PP_IN_LINK)
-        assert(nDL < cnDigitsPerWord);
-      #else // defined(PP_IN_LINK)
-        assert(nDL + 1 < cnDigitsPerWord);
-      #endif // defined(PP_IN_LINK)
       #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We have to do the prefix check here.
         if ( 0
@@ -2135,16 +2134,16 @@ embeddedBitmap:
             // if not PP_IN_LINK.  If PP_IN_LINK, then we are using the
             // current pwRoot to find the prefix.
             // nDL is different for the two cases.
-            || (LOG(1 | (PWR_wPrefixNAT(pwRoot, (Switch_t *)pwrPrev, nDL)
+            || (LOG(1 | (PWR_wPrefixNAT(pwRoot, (Switch_t *)pwrPrev, /*nDL*/ 1)
                             ^ wKey))
                 // The +1 is necessary because the pwrPrev
                 // prefix does not contain any less significant bits.
               #if defined(PP_IN_LINK)
-                < nDL_to_nBL_NAX(nDL    )
+                    < cnBitsInD1
               #else // defined(PP_IN_LINK)
-                < nDL_to_nBL_NAX(nDL + 1)
+                    < cnBitsInD2
               #endif // defined(PP_IN_LINK)
-                                  )
+                )
           #endif // defined(SAVE_PREFIX)
             )
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -2153,22 +2152,19 @@ embeddedBitmap:
   #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
             // BUG?: Is pwrPrev valid here, i.e. does it mean what this code
             // thinks it means?  Since SKIP_PREFIX_CHECK may not be #defined?
-            assert(PWR_wPopCnt(pwRoot, pwrPrev,
               #if defined(PP_IN_LINK)
-                nDL_to_nBL_NAT(nDL    )
+            assert(PWR_wPopCnt(pwRoot, pwrPrev, cnBitsInD1) != 0);
               #else // defined(PP_IN_LINK)
-                nDL_to_nBL_NAT(nDL + 1)
+            assert(PWR_wPopCnt(pwRoot, pwrPrev, cnBitsInD2) != 0);
               #endif // defined(PP_IN_LINK)
-                               ) != 0);
             return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
-            nBL = nDL_to_nBL_NAT(nDL); // Probably at the bottom.
             int bBitIsSet
-                = /*(nBL <= cnLogBitsPerWord)
-                    ? (BitIsSetInWord(wRoot, wKey & MSK(nBL)))
-                : */(EXP(nBL) <= sizeof(Link_t) * 8)
-                    ? (BitIsSet(pwRoot, wKey & MSK(nBL)))
-                : (BitIsSet(wr_pwr(wRoot), wKey & MSK(nBL)));
+                = (cnBitsInD1 <= cnLogBitsPerWord)
+                    ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
+                /* : (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
+                    ? BitIsSet(pwRoot, wKey & MSK(cnBitsInD1)) */
+                : BitIsSet(wr_pwr(wRoot), wKey & MSK(cnBitsInD1));
             if (bBitIsSet)
             {
       #if defined(REMOVE)
@@ -2627,6 +2623,14 @@ Initialize(void)
 #if defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
     assert(0);
 #endif // defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
+    // Why would we want to be able to fit more than one digits' worth of
+    // keys into a Link_t as an embedded bitmap?
+    if (EXP(cnBitsLeftAtDl2) <= sizeof(Link_t) * 8) {
+        printf("Warning: (EXP(cnBitsLeftAtDl2) <= sizeof(Link_t) * 8)"
+               " makes no sense.\n");
+        printf("Try increasing cnBitsInD1 or decreasing sizeof(Link_t).\n");
+    }
+    assert(EXP(cnBitsLeftAtDl2) > sizeof(Link_t) * 8);
 #if ! defined(DEPTH_IN_SW)
 #if ! defined(TYPE_IS_RELATIVE)
     if ( ! (nDL_to_tp(cnDigitsPerWord) <= cnMallocMask) ) {

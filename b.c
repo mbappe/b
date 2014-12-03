@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.378 2014/12/03 01:45:24 mike Exp mike $
+// @(#) $Id: b.c,v 1.379 2014/12/03 03:15:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -462,7 +462,9 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType)
 
 #endif // (cwListPopCntMax != 0)
 
-#if (nBL_from_nDL(cnDlAtBitmap) > cnLogBitsPerWord)
+// We don't need NewBitmap unless cnBitsLeftAtD1 > LOG(sizeof(Link_t) * 8).
+// But I don't know how to get sizeof into an ifdef.
+#if (cnBitsLeftAtDl1 > cnLogBitsPerWord)
 
 static Word_t *
 NewBitmap(Word_t *pwRoot, unsigned nBL)
@@ -488,7 +490,7 @@ NewBitmap(Word_t *pwRoot, unsigned nBL)
     return pwBitmap;
 }
 
-#endif // (nBL_from_nDL(cnDlAtBitmap) > cnLogBitsPerWord)
+#endif // (cnBitsLeftAtDl1 > cnLogBitsPerWord)
 
 static Word_t
 OldBitmap(Word_t *pwRoot, Word_t *pwr, unsigned nBL)
@@ -2282,25 +2284,23 @@ newSwitch:
             // assert(nDL > 1);
 #endif // defined(SKIP_LINKS)
 
-#if (nBL_from_nDL(cnDlAtBitmap) > cnLogBitsPerWord)
+#if (cnBitsLeftAtDl1 > cnLogBitsPerWord)
 #if defined(SKIP_LINKS)
             // no skip link to bitmap
-            if (nDL == cnDlAtBitmap) {
-                if (nDLOld > cnDlAtBitmap) { nDL = cnDlAtBitmap + 1; }
+            if (nDL == 1) {
+                if (nDLOld > 2) { nDL = 2; }
             }
 #endif // defined(SKIP_LINKS)
-            if (nDL == cnDlAtBitmap)
+            if (nDL == 1)
             {
                 assert(nDLOld == nDL);
-                NewBitmap(pwRoot, nDL_to_nBL(nDL));
+                NewBitmap(pwRoot, cnBitsInD1);
 #if defined(PP_IN_LINK)
-                set_PWR_wPopCnt(pwRoot, NULL, nDL, 0);
+                set_PWR_wPopCnt(pwRoot, NULL, /* nDL */ 1, 0);
 #endif // defined(PP_IN_LINK)
             }
             else
-#else // (nBL_from_nDL(cnDlAtBitmap) > cnLogBitsPerWord)
-            assert(nDL != cnDlAtBitmap);
-#endif // (nBL_from_nDL(cnDlAtBitmap) > cnLogBitsPerWord)
+#endif // (cnBitsLeftAtDl1 > cnLogBitsPerWord)
             {
                 // NewSwitch overwrites *pwRoot which is a problem for
                 // T_ONE with embedded keys.
