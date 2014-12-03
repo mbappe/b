@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.445 2014/12/03 01:45:24 mike Exp mike $
+// @(#) $Id: bli.c,v 1.446 2014/12/03 03:15:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1646,12 +1646,9 @@ notEmpty:;
 #endif // !defined(LOOKUP)
 
         pwRoot = &pwr_pLinks((Switch_t *)pwr)[wIndex].ln_wRoot;
+#if ! defined(LOOKUP)
         wRoot = *pwRoot;
-
-        DBGX(printf("Next pLinks %p wIndex %d 0x%x\n",
-            (void *)pwr_pLinks((Switch_t *)pwr), (int)wIndex, (int)wIndex));
-
-        DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
+#endif // ! defined(LOOKUP)
 
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We may need to check the prefix of the switch we just visited in
@@ -1659,12 +1656,20 @@ notEmpty:;
         // preserve the value of pwr.
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-#if (cnBlAtBitmap <= cnLogBitsPerWord)
-        // We should get rid of this 'if' by putting it in the switch.  How?
-        // Or, we might be able to streamline things if 
-        // (nBL_from_nDL(cnDlAtBitmap) < cnLogBitsPerWord).
-        if (nBL <= cnLogBitsPerWord) { goto embeddedBitmap; }
-#endif // (cnBlAtBitmap <= cnLogBitsPerWord)
+        // first test is done at compile time and might make the rest go away
+        if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
+                && (EXP(nBL) <= sizeof(Link_t) * 8))
+        {
+            goto embeddedBitmap;
+        }
+
+#if defined(LOOKUP)
+        wRoot = *pwRoot;
+#endif // defined(LOOKUP)
+        DBGX(printf("Next pLinks %p wIndex %d 0x%x\n",
+            (void *)pwr_pLinks((Switch_t *)pwr), (int)wIndex, (int)wIndex));
+        DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
+
         // Advance nDLR to the bottom of this switch now just in case
         // we have a non-skip link to a switch.  We could do it later.
         nDLR = nDL;
@@ -1880,12 +1885,9 @@ notEmptyBm:;
 #endif // !defined(LOOKUP)
 
         pwRoot = &pwr_pLinks((BmSwitch_t *)pwr)[wIndex].ln_wRoot;
+#if ! defined(LOOKUP)
         wRoot = *pwRoot;
-
-        DBGX(printf("Next pLinks %p wIndex %d\n",
-            (void *)pwr_pLinks((BmSwitch_t *)pwr), (int)wIndex));
-
-        DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
+#endif // ! defined(LOOKUP)
 
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We may need to check the prefix of the switch we just visited in
@@ -1893,13 +1895,20 @@ notEmptyBm:;
         // preserve the value of pwr.
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+        // first test is done at compile time and might make the rest go away
+        if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
+                && (EXP(nBL) <= sizeof(Link_t) * 8))
+        {
+            goto embeddedBitmap;
+        }
 
-#if (cnBlAtBitmap <= cnLogBitsPerWord)
-        // We should get rid of this 'if' by putting it in the switch.  How?
-        // Or, we might be able to streamline things if 
-        // (nBL_from_nDL(cnDlAtBitmap) < cnLogBitsPerWord).
-        if (nBL <= cnLogBitsPerWord) { goto embeddedBitmap; }
-#endif // (cnBlAtBitmap <= cnLogBitsPerWord)
+#if defined(LOOKUP)
+        wRoot = *pwRoot;
+#endif // defined(LOOKUP)
+        DBGX(printf("Next pLinks %p wIndex %d\n",
+            (void *)pwr_pLinks((BmSwitch_t *)pwr), (int)wIndex));
+        DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
+
         // Advance nDLR to the bottom of this switch now just in case
         // we have a non-skip link to a switch.  We could do it later.
         nDLR = nDL;
@@ -2083,9 +2092,7 @@ notEmptyBm:;
     case T_BITMAP | EXP(cnBitsMallocMask):
 #endif // defined(EXTRA_TYPES)
     {
-#if (cnBlAtBitmap <= cnLogBitsPerWord)
 embeddedBitmap:
-#endif // (cnBlAtBitmap <= cnLogBitsPerWord)
         // This case has been enhanced to handle a bitmap at any level.
         // It used to assume we were at nDL == 1.
 
@@ -2156,14 +2163,13 @@ embeddedBitmap:
             return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
             nBL = nDL_to_nBL_NAT(nDL); // Probably at the bottom.
-      #if (cnBlAtBitmap <= cnLogBitsPerWord)
-            // If nBL == cnLogBitsPerWord, then do we really need to
-            // mask wKey or would the shift in the macro take care of it?
-            // We definitely need the mask if nBL < cnLogBitsPerWord.
-            if (BitIsSetInWord(wRoot, wKey & (EXP(nBL) - 1UL)))
-      #else // (cnBlAtBitmap <= cnLogBitsPerWord)
-            if (BitIsSet(wr_pwr(wRoot), wKey & (EXP(nBL) - 1UL)))
-      #endif // (cnBlAtBitmap <= cnLogBitsPerWord)
+            int bBitIsSet
+                = /*(nBL <= cnLogBitsPerWord)
+                    ? (printf("1"), BitIsSetInWord(wRoot, wKey & MSK(nBL)))
+                : */(EXP(nBL) <= sizeof(Link_t) * 8)
+                    ? (printf("2"), BitIsSet(pwRoot, wKey & MSK(nBL)))
+                : (printf("3"), BitIsSet(wr_pwr(wRoot), wKey & MSK(nBL)));
+            if (bBitIsSet)
             {
       #if defined(REMOVE)
                 RemoveGuts(pwRoot, wKey, nDL, wRoot);
