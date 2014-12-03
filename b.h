@@ -35,6 +35,13 @@
 #endif // ! defined(NO_BM_SW_FOR_REAL)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
+// Default is cnDigitsAtBitmap = 1.
+// Embedded bitmap is created at nBL <= cnLogBitsPerWord so we might not get
+// to cnDigitsAtBitmap before creating the bitmap.
+#if ! defined(cnDigitsAtBitmap)
+#define cnDigitsAtBitmap  1
+#endif // ! defined(cnDigitsAtBitmap)
+
 // Default is -DDL_SPECIFIC_T_ONE.
 #if ! defined(NO_DL_SPECIFIC_T_ONE)
 #define DL_SPECIFIC_T_ONE
@@ -124,7 +131,7 @@
 // To do:
 //
 // - Constraints: cache size; goal is only one cache miss per get;
-//   only bottom level can be out of cache; 
+//   only leaf level can be out of cache; 
 //   memory usage must be no more than two words per key;
 //   if list leaf must be larger than cache line size, then might as
 //   well add a branch
@@ -233,12 +240,11 @@ typedef Word_t Bucket_t;
 #endif // ! defined(cnBitsPerDigit)
 #endif // 0
 
-// Choose bottom, i.e.  the number of bits in the least significant digit.
-// We count digits up from there.
-// Default is cnBitsAtBottom = 8.
-#if ! defined(cnBitsAtDl1) && ! defined(cnBitsAtBottom)
-#define cnBitsAtBottom  8
-#endif // ! defined(cnBitsAtDl1) && ! defined(cnBitsAtBottom)
+// Choose the number of bits in the least significant digit of the key.
+// Default is cnBitsAtDL1 = 8.  We count digits up from there.
+#if ! defined(cnBitsAtDl1)
+#define cnBitsAtDl1  8
+#endif // ! defined(cnBitsAtDl1)
 
 // Choose max list lengths.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
@@ -269,26 +275,26 @@ typedef Word_t Bucket_t;
 #endif // defined(EMBEDDED_KEYS_PARALLEL)
 #endif // ! defined(cnListPopCntMax8)
 
-// Default cnListPopCntMaxDl1 is 7 for cnBitsAtBottom = 8.
+// Default cnListPopCntMaxDl1 is 7 for cnBitsAtDl1 = 8.
 // Default cnListPopCntMaxDl1 is embedded keys only.
 #if ! defined(cnListPopCntMaxDl1)
-  #  if (cnBitsAtBottom == 7)
+  #  if (cnBitsAtDl1 == 7)
       #define cnListPopCntMaxDl1  0x08
-  #elif (cnBitsAtBottom == 8)
+  #elif (cnBitsAtDl1 == 8)
       #define cnListPopCntMaxDl1  0x07
-  #elif (cnBitsAtBottom == 9)
+  #elif (cnBitsAtDl1 == 9)
       #define cnListPopCntMaxDl1  0x06
-  #elif (cnBitsAtBottom <= 11)
+  #elif (cnBitsAtDl1 <= 11)
       #define cnListPopCntMaxDl1  0x05
-  #elif (cnBitsAtBottom <= 16)
+  #elif (cnBitsAtDl1 <= 16)
       #define cnListPopCntMaxDl1  0x04
-  #elif (cnBitsAtBottom <= 19)
+  #elif (cnBitsAtDl1 <= 19)
       #define cnListPopCntMaxDl1  0x03
-  #elif (cnBitsAtBottom <= 29)
+  #elif (cnBitsAtDl1 <= 29)
       #define cnListPopCntMaxDl1  0x02
   #else
       #define cnListPopCntMaxDl1  0x01
-  #endif // cnBitsAtBottom
+  #endif // cnBitsAtDl1
 #endif // ! defined(cnListPopCntMaxDl1)
 
 // cwListPopCntMax is mostly used as a boolean that indicates whether
@@ -307,15 +313,9 @@ typedef Word_t Bucket_t;
                MAX(cnListPopCntMax8, 8))))
 #endif // ! defined(cwListPopCntMax)
 
-#if defined(cnBitsAtDl1)
-#define cnBitsAtBottom (cnBitsAtDl1)
-#else // defined(cnBitsAtDl1)
-#define cnBitsAtDl1  (cnBitsAtBottom)
-#endif // defined(cnBitsAtDl1)
-
 #define cnBitsLeftAtDl1     (cnBitsAtDl1)
 
-// Bits in the digit next to the bottom -- not bits-left.
+// Bits in the second least significant digit of the key.  Not bits left.
 #if ! defined(cnBitsAtDl2)
 #define cnBitsAtDl2 \
     (((cnBitsLeftAtDl1) + (cnBitsPerDigit) <= (cnBitsPerWord)) \
@@ -433,16 +433,16 @@ enum {
     #define nBL_from_nDL_NAT(_nDL)  (cnBitsPerDigit * (_nDL))
 #elif ((cnBitsAtDl3 == cnBitsPerDigit) && (cnBitsAtDl2 == cnBitsPerDigit))
     #define nBL_from_nDL_NAT(_nDL) \
-        ( (_nDL) == 1 ? cnBitsAtDl1 \
+        ( (_nDL) == 1 ? cnBitsLeftAtDl1 \
         : cnBitsLeftAtDl1 + ((_nDL) - 1) * cnBitsPerDigit )
 #elif (cnBitsAtDl3 == cnBitsPerDigit)
     #define nBL_from_nDL_NAT(_nDL) \
-        ( (_nDL) == 1 ? cnBitsAtBottom \
+        ( (_nDL) == 1 ? cnBitsLeftAtDl1 \
         : (_nDL) == 2 ? cnBitsLeftAtDl2 \
         : cnBitsLeftAtDl2 + ((_nDL) - 2) * cnBitsPerDigit )
 #else // (cnBitsAtDl3 == cnBitsPerDigit) && ...
     #define nBL_from_nDL_NAT(_nDL) \
-        ( (_nDL) == 1 ? cnBitsAtBottom \
+        ( (_nDL) == 1 ? cnBitsLeftAtDl1 \
         : (_nDL) == 2 ? cnBitsLeftAtDl2 \
         : (_nDL) == 3 ? cnBitsLeftAtDl3 \
         : cnBitsLeftAtDl3 + ((_nDL) - 3) * cnBitsPerDigit )
@@ -498,7 +498,7 @@ enum {
     #define nBitsIndexSz_from_nDL(_nDL)  (nBitsIndexSz_from_nDL_NAX(_nDL))
 #else // (cnBitsAtDl1 == cnBitsPerDigit)
     #define nBitsIndexSz_from_nDL(_nDL) \
-        ( ((_nDL) <= 1) ? cnBitsAtDl1 : nBitsIndexSz_from_nDL_NAX(_nDL) )
+        ( ((_nDL) <= 1) ? cnBitsLeftAtDl1 : nBitsIndexSz_from_nDL_NAX(_nDL) )
 #endif // (cnBitsAtDl1 == cnBitsPerDigit)
 
 // nBL_from_nDL(_nDL)
@@ -514,7 +514,7 @@ enum {
 #else // (cnBitsAtDl1 == cnBitsPerDigit)
   // Do we need this to be valid for _nDL < 1?
   #define nBitsIndexSz_from_nDL(_nDL) \
-    ( ((_nDL) <= 1) ? cnBitsAtBottom \
+    ( ((_nDL) <= 1) ? cnBitsAtDl1 \
     : ((_nDL) < cnDigitsPerWord) ? nBitsIndexSz_from_nDL_NAX(_nDL) \
     : cnBitsIndexSzAtTop )
 #endif // (cnBitsAtDl1 == cnBitsPerDigit)
@@ -721,7 +721,7 @@ enum {
 // It means we can't use the low bits of sw_wPrefixPop for pop.  So we
 // define POP_WORD_IN_SW and use a separate word.
 // We assume the value we put into the low bits will will fit in the number
-// of bits used for the pop count at DL=1, i.e. cnBitsAtBottom.  Or maybe
+// of bits used for the pop count at nDL == 1.  Or maybe
 // it doesn't matter since we always create an embedded bitmap when
 // nBL <= cnLogBitsPerWord.
 #define POP_WORD_IN_SW
@@ -745,17 +745,17 @@ enum {
 
 // Why do we need nType to be able to represent nDL == 1?
 // We have to test for nDL == 1 before looping back to the switch statement
-// that checks nType if cnBitsAtBottom == cnLogBitsPerWord because there is
+// that checks nType if cnBitsAtDl1 == cnLogBitsPerWord because there is
 // no room for a type field when all the bits are used for an embedded bitmap.
-// But if cnBitsAtBottom > cnLogBitsPerWord we don't want to waste the
+// But if cnBitsAtDl1 > cnLogBitsPerWord we don't want to waste the
 // conditional branch.
-#if (cnBitsAtBottom > cnLogBitsPerWord)
+#if (cnBitsAtDl1 > cnLogBitsPerWord)
   #define tp_to_nDL(_tp)   ((_tp)  - T_SW_BASE + 1)
   #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 1)
-#else // (cnBitsAtBottom > cnLogBitsPerWord)
+#else // (cnBitsAtDl1 > cnLogBitsPerWord)
   #define tp_to_nDL(_tp)   ((_tp)  - T_SW_BASE + 2)
   #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 2)
-#endif // (cnBitsAtBottom > cnLogBitsPerWord)
+#endif // (cnBitsAtDl1 > cnLogBitsPerWord)
 
 #define     wr_nDL(_wr)        (tp_to_nDL(wr_nType(_wr)))
 #define set_wr_nDL(_wr, _nDL)  (set_wr_nType((_wr), nDL_to_tp(_nDL)))
@@ -779,7 +779,7 @@ enum {
 // It means we can't use the low bits of sw_wPrefixPop for pop.  So we
 // define POP_WORD_IN_SW and use a separate word.
 // We assume the value we put into the low bits will will fit in the number
-// of bits used for the pop count in the switch at the bottom so we have
+// of bits used for the pop count in the switch so we have
 // to be careful when choosing the level of the lowest level switch and
 // the number of digits above it.
 #define POP_WORD_IN_SW
