@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.447 2014/12/03 16:30:41 mike Exp mike $
+// @(#) $Id: bli.c,v 1.449 2014/12/03 18:15:40 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2668,8 +2668,6 @@ Initialize(void)
     printf("# cnBitsInD2 %d\n", cnBitsInD2);
     printf("# cnBitsInD3 %d\n", cnBitsInD3);
     printf("# cnBitsPerDigit %d\n", cnBitsPerDigit);
-    printf("# cnDlAtBitmap %d\n", cnDlAtBitmap);
-    printf("# cnBlAtBitmap %d\n", cnBlAtBitmap);
     printf("# cnListPopCntMax8  %d\n", cnListPopCntMax8);
     printf("# cnListPopCntMax16 %d\n", cnListPopCntMax16);
     printf("# cnListPopCntMax32 %d\n", cnListPopCntMax32);

@@ -553,25 +553,6 @@ enum {
 #define nDL_to_nBL_NAT(_nDL)          (nBL_from_nDL_NAT(_nDL))
 #define nDL_to_nBitsIndexSzNAT(_nDL)  (nDL_to_nBitsIndexSz(_nDL))
 
-// Default is cnDlAtBitmap = 1 (or max value yielding an embedded bitmap).
-#if ! defined(cnDlAtBitmap)
-  #if (cnBitsInD1 >= cnLogBitsPerWord)
-    #define cnDlAtBitmap  1
-  #elif (nBL_from_nDL(nDL_from_nBL(cnLogBitsPerWord)) == cnLogBitsPerWord)
-    #define cnDlAtBitmap  nDL_from_nBL(cnLogBitsPerWord)
-  #else // (nBL_from_nDL(nDL_from_nBL(cnLogBitsPerWord)) == cnLogBitsPerWord)
-    #define cnDlAtBitmap  (nDL_from_nBL(cnLogBitsPerWord) - 1)
-  #endif // (cnBitsInD1 >= cnLogBitsPerWord)
-#else // ! defined(cnDlAtBitmap)
-  #if (nBL_from_nDL(cnDlAtBitmap + 1) <= cnLogBitsPerWord) 
-    // The code can handle this just fine.  I just want to warn that
-    // cnDlAtBitmap doesn't make sense.  It will be ignored.
-    #error Bitmap would be created before cnDlAtBitmap.
-  #endif // (nBL_from_nDL(cnDlAtBitmap + 1) <= cnLogBitsPerWord) 
-#endif // ! defined(cnDlAtBitmap)
-
-#define cnBlAtBitmap  nBL_from_nDL(cnDlAtBitmap)
-
 #if defined RAMMETRICS
   #define METRICS(x)  (x)
 #else // defined RAMMETRICS
