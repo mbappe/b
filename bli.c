@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.453 2014/12/04 13:47:40 mike Exp mike $
+// @(#) $Id: bli.c,v 1.454 2014/12/04 20:25:37 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1656,12 +1656,7 @@ notEmpty:;
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // first test is done at compile time and might make the rest go away
-#if defined(BIG_EMBEDDED_BITMAP)
-        if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nDL == 1))
-#else // defined(BIG_EMBEDDED_BITMAP)
-        if ((cnBitsInD1 <= cnLogBitsPerWord) && (nDL == 1))
-#endif // defined(BIG_EMBEDDED_BITMAP)
-        {
+        if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nDL == 1)) {
             goto embeddedBitmap;
         }
 #if defined(LOOKUP) && (cnBitsInD1 > cnLogBitsPerWord)
@@ -1896,12 +1891,7 @@ notEmptyBm:;
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // first test is done at compile time and might make the rest go away
-#if defined(BIG_EMBEDDED_BITMAP)
-        if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nDL == 1))
-#else // defined(BIG_EMBEDDED_BITMAP)
-        if ((cnBitsInD1 <= cnLogBitsPerWord) && (nDL == 1))
-#endif // defined(BIG_EMBEDDED_BITMAP)
-        {
+        if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nDL == 1)) {
             goto embeddedBitmap;
         }
 #if defined(LOOKUP) && (cnBitsInD1 > cnLogBitsPerWord)
@@ -2109,12 +2099,7 @@ embeddedBitmap:
 #endif // defined(REMOVE)
 
 #if ! defined(LOOKUP) && defined(PP_IN_LINK)
-#if defined(BIG_EMBEDDED_BITMAP)
-        if (EXP(cnBitsInD1) > sizeof(Link_t) * 8)
-#else // defined(BIG_EMBEDDED_BITMAP)
-        if (cnBitsInD1 > cnLogBitsPerWord)
-#endif // defined(BIG_EMBEDDED_BITMAP)
-        {
+        if (EXP(cnBitsInD1) > sizeof(Link_t) * 8) {
             wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
             set_PWR_wPopCnt(pwRoot, NULL, nDL, wPopCnt + nIncr);
         }
@@ -2169,10 +2154,8 @@ embeddedBitmap:
             int bBitIsSet
                 = (cnBitsInD1 <= cnLogBitsPerWord)
                     ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
-#if defined(BIG_EMBEDDED_BITMAP)
                 : (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
                     ? BitIsSet(pwRoot, wKey & MSK(cnBitsInD1))
-#endif // defined(BIG_EMBEDDED_BITMAP)
                 : BitIsSet(wr_pwr(wRoot), wKey & MSK(cnBitsInD1));
             if (bBitIsSet)
             {

@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.382 2014/12/04 20:25:37 mike Exp mike $
+// @(#) $Id: b.c,v 1.383 2014/12/04 20:55:51 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1093,24 +1093,15 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
         printf(" wr "OWx, wRoot);
     }
 
-#if defined(BIG_EMBEDDED_BITMAP)
     if (((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nDL == 1))
         || (nType == T_BITMAP))
-#else // defined(BIG_EMBEDDED_BITMAP)
-    if (((cnBitsInD1 <= cnLogBitsPerWord) && (nDL == 1))
-        || (nType == T_BITMAP))
-#endif // defined(BIG_EMBEDDED_BITMAP)
     {
 #if defined(PP_IN_LINK)
         if (bDump)
         {
             assert(nBLArg != cnBitsPerWord);
  
-#if defined(BIG_EMBEDDED_BITMAP)
             if (EXP(cnBitsInD1) > sizeof(Link_t) * 8)
-#else // defined(BIG_EMBEDDED_BITMAP)
-            if (cnBitsInD1 > cnLogBitsPerWord)
-#endif // defined(BIG_EMBEDDED_BITMAP)
             {
                 printf(" wr_wPopCnt %3"_fw"u",
                        PWR_wPopCnt(pwRoot, NULL, nDL));
@@ -1123,11 +1114,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
         // If the bitmap is not embedded, then we have more work to do.
         // The test can be done at compile time and will make one the
         // other clauses go away.
-#if defined(BIG_EMBEDDED_BITMAP)
         if (EXP(cnBitsInD1) > sizeof(Link_t) * 8)
-#else // defined(BIG_EMBEDDED_BITMAP)
-        if (cnBitsInD1 > cnLogBitsPerWord)
-#endif // defined(BIG_EMBEDDED_BITMAP)
         {
             if ( ! bDump )
             {
@@ -1145,17 +1132,19 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
         else
         {
             if (bDump) {
-#if defined(BIG_EMBEDDED_BITMAP)
-                printf(" nWords %4"_fw"d", EXP(nBL - cnLogBitsPerWord));
-                for (Word_t ww = 0; (ww < EXP(nBL - cnLogBitsPerWord)); ww++)
-                {
-                    if ((ww % 8) == 0) { printf("\n"); }
-                    printf(" "Owx,
-                        ((Word_t *)STRUCT_OF(pwRoot, Link_t, ln_wRoot))[ww]);
+                if (cnBitsInD1 > cnLogBitsPerWord) {
+                    printf(" nWords %4"_fw"d", EXP(nBL - cnLogBitsPerWord));
+                    for (Word_t ww = 0;
+                         (ww < EXP(nBL - cnLogBitsPerWord)); ww++)
+                    {
+                        if ((ww % 8) == 0) { printf("\n"); }
+                        printf(" "Owx,
+                               ((Word_t *)
+                                   STRUCT_OF(pwRoot, Link_t, ln_wRoot))[ww]);
+                    }
+                } else {
+                    printf(" wr "OWx, wRoot);
                 }
-#else // defined(BIG_EMBEDDED_BITMAP)
-                printf(" wr "OWx, wRoot);
-#endif // defined(BIG_EMBEDDED_BITMAP)
             }
         }
 
@@ -1219,7 +1208,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
                 for (unsigned nn = 1; nn <= wPopCnt; nn++) {
                     printf(" %08"_fw"x",
                         (wRoot >> (cnBitsPerWord - (nn * nBL)))
-                            & (EXP(nBL) - 1));
+                            & MSK(nBL));
                 }
                 printf("\n");
             } else
@@ -1853,12 +1842,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     // nType may be invalid if wRoot is an embedded bitmap.
     // The first test can be done at compile time and might make the
     // InsertAtDl1 go away.
-#if defined(BIG_EMBEDDED_BITMAP)
-    if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nDL == 1))
-#else // defined(BIG_EMBEDDED_BITMAP)
-    if ((cnBitsInD1 <= cnLogBitsPerWord) && (nDL == 1))
-#endif // defined(BIG_EMBEDDED_BITMAP)
-    {
+    if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nDL == 1)) {
         return InsertAtDl1(pwRoot, wKey, nDL, nBL, wRoot);
     }
 
@@ -2286,11 +2270,7 @@ newSwitch:
                     nDL = 2;
                 }
             }
-#if defined(BIG_EMBEDDED_BITMAP)
             assert(EXP(nDL_to_nBL(nDL)) > sizeof(Link_t) * 8);
-#else // defined(BIG_EMBEDDED_BITMAP)
-            assert(nDL_to_nBL(nDL) > cnLogBitsPerWord);
-#endif // defined(BIG_EMBEDDED_BITMAP)
 
 #if ! defined(DEPTH_IN_SW)
 #if defined(TYPE_IS_RELATIVE)
@@ -2311,11 +2291,7 @@ newSwitch:
             // assert(nDL > 1);
 #endif // defined(SKIP_LINKS)
 
-#if defined(BIG_EMBEDDED_BITMAP)
             if ((EXP(cnBitsInD1) > sizeof(Link_t) * 8) && (nDL == 1))
-#else // defined(BIG_EMBEDDED_BITMAP)
-            if ((cnBitsInD1 > cnLogBitsPerWord) && (nDL == 1))
-#endif // defined(BIG_EMBEDDED_BITMAP)
             {
 #if defined(SKIP_LINKS)
                 assert(nDLOld == 1); // Handled above, right?
@@ -2916,41 +2892,19 @@ InsertAtDl1(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 {
     (void)nDL; (void)nBL; (void)wRoot;
 
-    // The test is compile time and will get rid of one of the clauses.
-    if (cnBitsInD1 <= cnLogBitsPerWord)
-    {
-        assert(nBL <= cnLogBitsPerWord);
-        assert( ! BitIsSetInWord(wRoot, wKey & (EXP(nBL) - 1)) );
+    assert(EXP(nBL) <= sizeof(Link_t) * 8);
+    assert( ! BitIsSet(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL)));
 
-        DBGI(printf("SetBitInWord(*pwRoot "OWx" wKey "OWx")\n",
-                    *pwRoot, wKey & (EXP(nBL) - 1)));
+    DBGI(printf("SetBit(pwRoot "OWx" wKey "OWx")\n",
+                    (Word_t)pwRoot, wKey & MSK(nBL)));
 
-        SetBitInWord(*pwRoot, wKey & (EXP(nBL) - 1));
-    }
-#if defined(BIG_EMBEDDED_BITMAP)
-    else
-    {
-        assert(EXP(nBL) <= sizeof(Link_t) * 8);
-        assert( ! BitIsSet(STRUCT_OF(pwRoot, Link_t, ln_wRoot),
-                           wKey & (EXP(nBL) - 1)) );
-
-        DBGI(printf("SetBit(pwRoot "OWx" wKey "OWx")\n",
-                    (Word_t)pwRoot, wKey & (EXP(nBL) - 1)));
-
-        SetBit(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & (EXP(nBL) - 1));
-    }
-#endif // defined(BIG_EMBEDDED_BITMAP)
+    SetBit(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL));
 
 #if defined(PP_IN_LINK)
 
     // What about no_unnecessary_prefix?
     // And is this ever necessary since we don't support skip to bitmap?
-  #if defined(BIG_EMBEDDED_BITMAP)
-    if (EXP(cnBitsInD1) > sizeof(Link_t) * 8)
-  #else // defined(BIG_EMBEDDED_BITMAP)
-    if (cnBitsInD1 > cnLogBitsPerWord)
-  #endif // defined(BIG_EMBEDDED_BITMAP)
-    {
+    if (EXP(cnBitsInD1) > sizeof(Link_t) * 8) {
         set_PWR_wPrefix(pwRoot, NULL, nDL, wKey);
     }
 
@@ -2970,12 +2924,12 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
         assert(pwr != NULL);
 
-        assert( ! BitIsSet(pwr, wKey & (EXP(nBL) - 1)) );
+        assert( ! BitIsSet(pwr, wKey & MSK(nBL)) );
 
         DBGI(printf("SetBit(pwr "OWx" wKey "OWx") pwRoot %p\n",
-                    (Word_t)pwr, wKey & (EXP(nBL) - 1), (void *)pwRoot));
+                    (Word_t)pwr, wKey & MSK(nBL), (void *)pwRoot));
 
-        SetBit(pwr, wKey & (EXP(nBL) - 1));
+        SetBit(pwr, wKey & MSK(nBL));
 
 #if defined(PP_IN_LINK)
 
@@ -3005,17 +2959,9 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
 // Could we be more specific in this ifdef, e.g. cnListPopCntMax16?
 #if (cwListPopCntMax != 0)
-  #if defined(BIG_EMBEDDED_BITMAP)
     if ((EXP(nBL) <= sizeof(Link_t) * 8) || (nType == T_BITMAP))
-  #else // defined(BIG_EMBEDDED_BITMAP)
-    if ((nBL <= cnLogBitsPerWord) || (nType == T_BITMAP))
-  #endif // defined(BIG_EMBEDDED_BITMAP)
 #else // (cwListPopCntMax != 0)
-  #if defined(BIG_EMBEDDED_BITMAP)
     assert((EXP(nBL) <= sizeof(Link_t) * 8) || (nType == T_BITMAP));
-  #else // defined(BIG_EMBEDDED_BITMAP)
-    assert((nBL <= cnLogBitsPerWord) || (nType == T_BITMAP));
-  #endif // defined(BIG_EMBEDDED_BITMAP)
 #endif // (cwListPopCntMax != 0)
     {
         return RemoveBitmap(pwRoot, wKey, nDL, nBL, wRoot);
@@ -3220,26 +3166,9 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 {
     (void)nDL;
 
-    if (cnBitsInD1 <= cnLogBitsPerWord)
-    {
-        ClrBitInWord(wRoot, wKey & MSK(nBL));
-
-        // What if link has more than just ln_wRoot due
-        // to BM_IN_LINK and/or PP_IN_LINK?
-        // What if population just went to 0?
-        // Should we clear the rest of the link?
-        // Or can we rely on bCleanup phase in Remove to do it if necessary?
-
-        *pwRoot = wRoot;
-    }
-  #if defined(BIG_EMBEDDED_BITMAP)
-    else if (EXP(nBL) <= sizeof(Link_t) * 8)
-    {
+    if (EXP(nBL) <= sizeof(Link_t) * 8) {
         ClrBit(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL));
-    }
-  #endif // defined(BIG_EMBEDDED_BITMAP)
-    else
-    {
+    } else {
         Word_t *pwr = wr_pwr(wRoot);
 
         ClrBit(pwr, wKey & MSK(nBL));
