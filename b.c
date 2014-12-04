@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.380 2014/12/03 18:15:40 mike Exp mike $
+// @(#) $Id: b.c,v 1.381 2014/12/04 14:32:49 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -463,9 +463,7 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType)
 #endif // (cwListPopCntMax != 0)
 
 // We don't need NewBitmap unless cnBitsLeftAtD1 > LOG(sizeof(Link_t) * 8).
-// But I don't know how to get sizeof into an ifdef.
-#if (cnBitsLeftAtDl1 > cnLogBitsPerWord)
-
+// Hopefully, the compiler will figure it out and not emit it.
 static Word_t *
 NewBitmap(Word_t *pwRoot, unsigned nBL)
 {
@@ -489,8 +487,6 @@ NewBitmap(Word_t *pwRoot, unsigned nBL)
 
     return pwBitmap;
 }
-
-#endif // (cnBitsLeftAtDl1 > cnLogBitsPerWord)
 
 static Word_t
 OldBitmap(Word_t *pwRoot, Word_t *pwr, unsigned nBL)
@@ -1110,14 +1106,23 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
         {
             assert(nBLArg != cnBitsPerWord);
  
-            printf(" wr_wPopCnt %3"_fw"u",
-                   PWR_wPopCnt(pwRoot, NULL, nDL));
-            printf(" wr_wPrefix "OWx,
-                   PWR_wPrefix(pwRoot, NULL, nDL));
+#if defined(BIG_EMBEDDED_BITMAP)
+            if (EXP(cnBitsInD1) > sizeof(Link_t) * 8)
+#else // defined(BIG_EMBEDDED_BITMAP)
+            if (cnBitsInD1 > cnLogBitsPerWord)
+#endif // defined(BIG_EMBEDDED_BITMAP)
+            {
+                printf(" wr_wPopCnt %3"_fw"u",
+                       PWR_wPopCnt(pwRoot, NULL, nDL));
+                printf(" wr_wPrefix "OWx,
+                       PWR_wPrefix(pwRoot, NULL, nDL));
+            }
         }
 #endif // defined(PP_IN_LINK)
 
         // If the bitmap is not embedded, then we have more work to do.
+        // The test can be done at compile time and will make one the
+        // other clauses go away.
 #if defined(BIG_EMBEDDED_BITMAP)
         if (EXP(cnBitsInD1) > sizeof(Link_t) * 8)
 #else // defined(BIG_EMBEDDED_BITMAP)
@@ -1763,8 +1768,8 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, unsigned nKeys, uint8_t cKey)
 #endif // (cwListPopCntMax != 0)
 
 Status_t
-InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL,
-               unsigned nBL, Word_t wRoot);
+InsertAtDl1(Word_t *pwRoot, Word_t wKey, unsigned nDL,
+            unsigned nBL, Word_t wRoot);
 
 Status_t
 InsertAtBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
@@ -1844,13 +1849,18 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     assert(0); // EMBED_KEYS requires USE_T_ONE
 #endif // defined(EMBED_KEYS) && ! defined(USE_T_ONE)
 
-#if (cnBitsInD1 <= cnLogBitsPerWord) || defined(NO_LIST_AT_DL1)
     // Check to see if we're at the bottom before checking nType since
     // nType may be invalid if wRoot is an embedded bitmap.
-    if (nBL <= cnLogBitsPerWord) {
-        return InsertAtBottom(pwRoot, wKey, nDL, nBL, wRoot);
+    // The first test can be done at compile time and might make the
+    // InsertAtDl1 go away.
+#if defined(BIG_EMBEDDED_BITMAP)
+    if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nDL == 1))
+#else // defined(BIG_EMBEDDED_BITMAP)
+    if ((cnBitsInD1 <= cnLogBitsPerWord) && (nDL == 1))
+#endif // defined(BIG_EMBEDDED_BITMAP)
+    {
+        return InsertAtDl1(pwRoot, wKey, nDL, nBL, wRoot);
     }
-#endif // (cnBitsInD1 <= cnLogBitsPerWord) || defined(NO_LIST_AT_DL1)
 
     unsigned nType = wr_nType(wRoot); (void)nType; // silence gcc
 
@@ -2276,11 +2286,11 @@ newSwitch:
                     nDL = 2;
                 }
             }
-#if (cnBitsInD1 < cnLogBitsPerWord)
-            while (nDL_to_nBL(nDL) <= cnLogBitsPerWord) {
-                ++nDL;
-            }
-#endif // (cnBitsInD1 < cnLogBitsPerWord)
+#if defined(BIG_EMBEDDED_BITMAP)
+            assert(EXP(nDL_to_nBL(nDL)) > sizeof(Link_t) * 8);
+#else // defined(BIG_EMBEDDED_BITMAP)
+            assert(nDL_to_nBL(nDL) > cnLogBitsPerWord);
+#endif // defined(BIG_EMBEDDED_BITMAP)
 
 #if ! defined(DEPTH_IN_SW)
 #if defined(TYPE_IS_RELATIVE)
@@ -2301,15 +2311,21 @@ newSwitch:
             // assert(nDL > 1);
 #endif // defined(SKIP_LINKS)
 
-#if (cnBitsLeftAtDl1 > cnLogBitsPerWord)
-#if defined(SKIP_LINKS)
-            // no skip link to bitmap
-            if (nDL == 1) {
-                if (nDLOld > 2) { nDL = 2; }
-            }
-#endif // defined(SKIP_LINKS)
-            if (nDL == 1)
+#if defined(BIG_EMBEDDED_BITMAP)
+            if ((EXP(cnBitsInD1) > sizeof(Link_t) * 8) && (nDL == 1))
+#else // defined(BIG_EMBEDDED_BITMAP)
+            if ((cnBitsInD1 > cnLogBitsPerWord) && (nDL == 1))
+#endif // defined(BIG_EMBEDDED_BITMAP)
             {
+#if defined(SKIP_LINKS)
+                assert(nDLOld == 1); // Handled above, right?
+#if 0
+                // no skip link to bitmap
+                if (nDL == 1) {
+                    if (nDLOld > 2) { nDL = 2; }
+                }
+#endif
+#endif // defined(SKIP_LINKS)
                 assert(nDLOld == nDL);
                 NewBitmap(pwRoot, cnBitsInD1);
 #if defined(PP_IN_LINK)
@@ -2317,7 +2333,6 @@ newSwitch:
 #endif // defined(PP_IN_LINK)
             }
             else
-#endif // (cnBitsLeftAtDl1 > cnLogBitsPerWord)
             {
                 // NewSwitch overwrites *pwRoot which is a problem for
                 // T_ONE with embedded keys.
@@ -2895,56 +2910,55 @@ DeflateExternalList(Word_t *pwRoot,
 #endif // defined(EMBED_KEYS)
 #endif // (cwListPopCntMax != 0)
 
-// "Bottom" here means nDL == 1 (if cnBitsInD1 >= cnLogBitsPerWord),
-// or nBL <= cnLogBitsPerWord (if cnBitsInD1 <= cnLogBitsPerWord).
-// It's possible that we will fill up a list at the bottom before
 Status_t
-InsertAtBottom(Word_t *pwRoot, Word_t wKey, unsigned nDL,
-               unsigned nBL, Word_t wRoot)
+InsertAtDl1(Word_t *pwRoot, Word_t wKey, unsigned nDL,
+            unsigned nBL, Word_t wRoot)
 {
-        (void)nDL; (void)nBL; (void)wRoot;
+    (void)nDL; (void)nBL; (void)wRoot;
 
-#if (cnBitsInD1 <= cnLogBitsPerWord)
-
+#if defined(BIG_EMBEDDED_BITMAP)
+    // The test is compile time and will get rid of one of the clauses.
+    if (cnBitsInD1 <= cnLogBitsPerWord)
+#endif // defined(BIG_EMBEDDED_BITMAP)
+    {
         assert(nBL <= cnLogBitsPerWord);
-
         assert( ! BitIsSetInWord(wRoot, wKey & (EXP(nBL) - 1)) );
 
         DBGI(printf("SetBitInWord(*pwRoot "OWx" wKey "OWx")\n",
                     *pwRoot, wKey & (EXP(nBL) - 1)));
 
         SetBitInWord(*pwRoot, wKey & (EXP(nBL) - 1));
+    }
+#if defined(BIG_EMBEDDED_BITMAP)
+    else
+    {
+        assert(EXP(nBL) <= sizeof(Link_t) * 8);
+        assert( ! BitIsSet(STRUCT_OF(pwRoot, Link_t, ln_wRoot),
+                           wKey & (EXP(nBL) - 1)) );
 
-#else // (cnBitsInD1 <= cnLogBitsPerWord)
+        DBGI(printf("SetBit(pwRoot "OWx" wKey "OWx")\n",
+                    (Word_t)pwRoot, wKey & (EXP(nBL) - 1)));
 
-        assert(nDL == 1);
-        assert(nBL == cnBitsInD1);
-
-        Word_t *pwr = wr_pwr(wRoot);
-
-        if (pwr == NULL)
-        {
-            pwr = NewBitmap(pwRoot, cnBitsInD1);
-        }
-
-        assert( ! BitIsSet(pwr, wKey & (EXP(cnBitsInD1) - 1)) );
-
-        DBGI(printf("SetBit(pwr "OWx" wKey "OWx") pwRoot %p\n",
-                    (Word_t)pwr,
-                    wKey & (EXP(cnBitsInD1) - 1), (void *)pwRoot));
-
-        SetBit(pwr, wKey & (EXP(cnBitsInD1) - 1));
-
-#endif // (cnBitsInD1 <= cnLogBitsPerWord)
+        SetBit(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & (EXP(nBL) - 1));
+    }
+#endif // defined(BIG_EMBEDDED_BITMAP)
 
 #if defined(PP_IN_LINK)
 
-        // What about no_unnecessary_prefix?
+    // What about no_unnecessary_prefix?
+    // And is this ever necessary since we don't support skip to bitmap?
+  #if defined(BIG_EMBEDDED_BITMAP)
+    if (EXP(cnBitsInD1) > sizeof(Link_t) * 8)
+  #else // defined(BIG_EMBEDDED_BITMAP)
+    if (cnBitsInD1 > cnLogBitsPerWord)
+  #endif // defined(BIG_EMBEDDED_BITMAP)
+    {
         set_PWR_wPrefix(pwRoot, NULL, nDL, wKey);
+    }
 
 #endif // defined(PP_IN_LINK)
 
-        return Success;
+    return Success;
 }
 
 // InsertAtBitmap is for a bitmap that is not at the bottom.

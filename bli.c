@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.451 2014/12/03 23:09:50 mike Exp $
+// @(#) $Id: bli.c,v 1.453 2014/12/04 13:47:40 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2109,8 +2109,15 @@ embeddedBitmap:
 #endif // defined(REMOVE)
 
 #if ! defined(LOOKUP) && defined(PP_IN_LINK)
-        wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
-        set_PWR_wPopCnt(pwRoot, NULL, nDL, wPopCnt + nIncr);
+#if defined(BIG_EMBEDDED_BITMAP)
+        if (EXP(cnBitsInD1) > sizeof(Link_t) * 8)
+#else // defined(BIG_EMBEDDED_BITMAP)
+        if (cnBitsInD1 > cnLogBitsPerWord)
+#endif // defined(BIG_EMBEDDED_BITMAP)
+        {
+            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
+            set_PWR_wPopCnt(pwRoot, NULL, nDL, wPopCnt + nIncr);
+        }
 #endif // !defined(LOOKUP) && defined(PP_IN_LINK)
 
 #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
@@ -2162,8 +2169,10 @@ embeddedBitmap:
             int bBitIsSet
                 = (cnBitsInD1 <= cnLogBitsPerWord)
                     ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
-                /* : (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
-                    ? BitIsSet(pwRoot, wKey & MSK(cnBitsInD1)) */
+#if defined(BIG_EMBEDDED_BITMAP)
+                : (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
+                    ? BitIsSet(pwRoot, wKey & MSK(cnBitsInD1))
+#endif // defined(BIG_EMBEDDED_BITMAP)
                 : BitIsSet(wr_pwr(wRoot), wKey & MSK(cnBitsInD1));
             if (bBitIsSet)
             {
@@ -2668,6 +2677,7 @@ Initialize(void)
     printf("# cnBitsInD2 %d\n", cnBitsInD2);
     printf("# cnBitsInD3 %d\n", cnBitsInD3);
     printf("# cnBitsPerDigit %d\n", cnBitsPerDigit);
+    printf("# cnDigitsPerWord %d\n", cnDigitsPerWord);
     printf("# cnListPopCntMax8  %d\n", cnListPopCntMax8);
     printf("# cnListPopCntMax16 %d\n", cnListPopCntMax16);
     printf("# cnListPopCntMax32 %d\n", cnListPopCntMax32);
