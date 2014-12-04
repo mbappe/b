@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.379 2014/12/03 03:15:08 mike Exp mike $
+// @(#) $Id: b.c,v 1.380 2014/12/03 18:15:40 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1097,11 +1097,13 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
         printf(" wr "OWx, wRoot);
     }
 
-#if (cnBitsInD1 <= cnLogBitsPerWord)
-    if ((nBL <= cnLogBitsPerWord) || (nType == T_BITMAP))
-#else // (cnBitsInD1 <= cnLogBitsPerWord)
-    if (nType == T_BITMAP)
-#endif // (cnBitsInD1 <= cnLogBitsPerWord)
+#if defined(BIG_EMBEDDED_BITMAP)
+    if (((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nDL == 1))
+        || (nType == T_BITMAP))
+#else // defined(BIG_EMBEDDED_BITMAP)
+    if (((cnBitsInD1 <= cnLogBitsPerWord) && (nDL == 1))
+        || (nType == T_BITMAP))
+#endif // defined(BIG_EMBEDDED_BITMAP)
     {
 #if defined(PP_IN_LINK)
         if (bDump)
@@ -1116,26 +1118,41 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #endif // defined(PP_IN_LINK)
 
         // If the bitmap is not embedded, then we have more work to do.
-#if (cnBitsInD1 > cnLogBitsPerWord)
-
-        if ( ! bDump )
+#if defined(BIG_EMBEDDED_BITMAP)
+        if (EXP(cnBitsInD1) > sizeof(Link_t) * 8)
+#else // defined(BIG_EMBEDDED_BITMAP)
+        if (cnBitsInD1 > cnLogBitsPerWord)
+#endif // defined(BIG_EMBEDDED_BITMAP)
         {
-            return OldBitmap(pwRoot, pwr, nBL);
-        }
-
-        printf(" nWords %4"_fw"d", EXP(nBL - cnLogBitsPerWord));
-        for (Word_t ww = 0; (ww < EXP(nBL - cnLogBitsPerWord)); ww++) {
-            if ((ww % 8) == 0) {
-                printf("\n");
+            if ( ! bDump )
+            {
+                return OldBitmap(pwRoot, pwr, nBL);
             }
-            printf(" "Owx, pwr[ww]);
+
+            printf(" nWords %4"_fw"d", EXP(nBL - cnLogBitsPerWord));
+            for (Word_t ww = 0; (ww < EXP(nBL - cnLogBitsPerWord)); ww++) {
+                if ((ww % 8) == 0) {
+                    printf("\n");
+                }
+                printf(" "Owx, pwr[ww]);
+            }
         }
-
-#else // (cnBitsInD1 > cnLogBitsPerWord)
-
-        if (bDump) printf(" wr "OWx, wRoot);
-
-#endif // (cnBitsInD1 > cnLogBitsPerWord)
+        else
+        {
+            if (bDump) {
+#if defined(BIG_EMBEDDED_BITMAP)
+                printf(" nWords %4"_fw"d", EXP(nBL - cnLogBitsPerWord));
+                for (Word_t ww = 0; (ww < EXP(nBL - cnLogBitsPerWord)); ww++)
+                {
+                    if ((ww % 8) == 0) { printf("\n"); }
+                    printf(" "Owx,
+                        ((Word_t *)STRUCT_OF(pwRoot, Link_t, ln_wRoot))[ww]);
+                }
+#else // defined(BIG_EMBEDDED_BITMAP)
+                printf(" wr "OWx, wRoot);
+#endif // defined(BIG_EMBEDDED_BITMAP)
+            }
+        }
 
         if (bDump)
         {
