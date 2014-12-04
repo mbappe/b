@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.381 2014/12/04 14:32:49 mike Exp mike $
+// @(#) $Id: b.c,v 1.382 2014/12/04 20:25:37 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2916,10 +2916,8 @@ InsertAtDl1(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 {
     (void)nDL; (void)nBL; (void)wRoot;
 
-#if defined(BIG_EMBEDDED_BITMAP)
     // The test is compile time and will get rid of one of the clauses.
     if (cnBitsInD1 <= cnLogBitsPerWord)
-#endif // defined(BIG_EMBEDDED_BITMAP)
     {
         assert(nBL <= cnLogBitsPerWord);
         assert( ! BitIsSetInWord(wRoot, wKey & (EXP(nBL) - 1)) );
@@ -3007,17 +3005,17 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
 // Could we be more specific in this ifdef, e.g. cnListPopCntMax16?
 #if (cwListPopCntMax != 0)
-#if (cnBitsInD1 <= cnLogBitsPerWord)
+  #if defined(BIG_EMBEDDED_BITMAP)
+    if ((EXP(nBL) <= sizeof(Link_t) * 8) || (nType == T_BITMAP))
+  #else // defined(BIG_EMBEDDED_BITMAP)
     if ((nBL <= cnLogBitsPerWord) || (nType == T_BITMAP))
-#else // (cnBitsInD1 <= cnLogBitsPerWord)
-    if (nType == T_BITMAP)
-#endif // (cnBitsInD1 <= cnLogBitsPerWord)
+  #endif // defined(BIG_EMBEDDED_BITMAP)
 #else // (cwListPopCntMax != 0)
-#if (cnBitsInD1 <= cnLogBitsPerWord)
+  #if defined(BIG_EMBEDDED_BITMAP)
+    assert((EXP(nBL) <= sizeof(Link_t) * 8) || (nType == T_BITMAP));
+  #else // defined(BIG_EMBEDDED_BITMAP)
     assert((nBL <= cnLogBitsPerWord) || (nType == T_BITMAP));
-#else // (cnBitsInD1 <= cnLogBitsPerWord)
-    assert(nType == T_BITMAP);
-#endif // (cnBitsInD1 <= cnLogBitsPerWord)
+  #endif // defined(BIG_EMBEDDED_BITMAP)
 #endif // (cwListPopCntMax != 0)
     {
         return RemoveBitmap(pwRoot, wKey, nDL, nBL, wRoot);
@@ -3222,8 +3220,7 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 {
     (void)nDL;
 
-#if (cnBitsInD1 <= cnLogBitsPerWord)
-    if (nBL <= cnLogBitsPerWord)
+    if (cnBitsInD1 <= cnLogBitsPerWord)
     {
         ClrBitInWord(wRoot, wKey & MSK(nBL));
 
@@ -3235,8 +3232,13 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 
         *pwRoot = wRoot;
     }
+  #if defined(BIG_EMBEDDED_BITMAP)
+    else if (EXP(nBL) <= sizeof(Link_t) * 8)
+    {
+        ClrBit(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL));
+    }
+  #endif // defined(BIG_EMBEDDED_BITMAP)
     else
-#endif // (cnBitsInD1 <= cnLogBitsPerWord)
     {
         Word_t *pwr = wr_pwr(wRoot);
 
