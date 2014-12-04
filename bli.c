@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.450 2014/12/03 18:46:38 mike Exp mike $
+// @(#) $Id: bli.c,v 1.451 2014/12/03 23:09:50 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -489,6 +489,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 #define HAS_KEY_128_SETUP(_wKey, _nBL, _xLsbs, _xMsbs, _xKeys) \
 { \
     Word_t wMask = MSK(_nBL); /* (1 << nBL) - 1 */ \
+    printf("wMask        %016lx\n", wMask); \
     _wKey &= wMask; \
     Word_t wLsbs = (Word_t)-1 / wMask; \
     _xLsbs = _mm_set1_epi64((__m64)wLsbs); \
@@ -498,7 +499,21 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     _xKeys = _mm_set1_epi64((__m64)wKeys); \
 }
 
-#if defined(LOOKUP) && defined(PARALLEL_128)
+#define HAS_KEY_128_SETUP_2(_wKey, _nBL, _xLsbs, _xMsbs, _xKeys) \
+{ \
+    Word_t wMask = MSK(_nBL); /* (1 << nBL) - 1 */ \
+    _wKey &= wMask; \
+    __m128i xKeyMask = _mm_set_epi64((__m64)(Word_t)0, (__m64)wMask); \
+    __m128i xMinusOne = _mm_set1_epi8(0xff); \
+    _xLsbs = xMinusOne / xKeyMask; \
+    __m128i xShift = _mm_set_epi64((__m64)(Word_t)0, \
+                                   (__m64)(Word_t)((_nBL) - 1)); \
+    _xMsbs = _xLsbs << xShift; \
+    __m128i xKey = _mm_set_epi64((__m64)(Word_t)0, (__m64)(_wKey)); \
+    _xKeys = xKey * xLsbs; /* replicate key; put in every slot */ \
+}
+
+#if ( defined(LOOKUP) && defined(PARALLEL_128) ) || defined(INSERT)
 static Word_t // bool
 HasKey128Tail(__m128i *pxBucket,
     __m128i xLsbs,
@@ -511,7 +526,7 @@ HasKey128Tail(__m128i *pxBucket,
     __m128i xZero = _mm_setzero_si128();
     return ! _mm_testc_si128(xZero, xMagic);
 }
-#endif // defined(LOOKUP) && defined(PARALLEL_128)
+#endif // ( defined(LOOKUP) && defined(PARALLEL_128) ) || defined(INSERT)
 
 // Split search with a parallel search of the bucket at the split point.
 // A bucket is a Word_t or an __m128i.  Or whatever else we decide to pass
@@ -772,8 +787,74 @@ WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
 Word_t // bool
 HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 {
+    printf("\n");
+    Word_t wKey2 = wKey;
+    printf("wKey2        %016lx\n", wKey2);
     __m128i xLsbs, xMsbs, xKeys;
     HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys); 
+    printf("xLsbs[0]     %016lx\n", (Word_t)_mm_extract_epi64(xLsbs, 0));
+    printf("xLsbs[1]     %016lx\n", (Word_t)_mm_extract_epi64(xLsbs, 1));
+    printf("xMsbs[0]     %016lx\n", (Word_t)_mm_extract_epi64(xMsbs, 0));
+    printf("xMsbs[1]     %016lx\n", (Word_t)_mm_extract_epi64(xMsbs, 1));
+    printf("xKeys[0]     %016lx\n", (Word_t)_mm_extract_epi64(xKeys, 0));
+    printf("xKeys[1]     %016lx\n", (Word_t)_mm_extract_epi64(xKeys, 1));
+#if defined(DEBUG)
+{
+    //Word_t wMask = MSK(nBL); /* (1 << nBL) - 1 */
+    Word_t wMask = 0x3ff; /* (1 << nBL) - 1 */
+    printf("wMask        %016lx\n", wMask);
+    wKey2 &= wMask;
+    printf("wKey2        %016lx\n", wKey2);
+    __m128i xKeyMask = _mm_set_epi64((__m64)(Word_t)0, (__m64)wMask);
+    //__m128i xKeyMask = _mm_set1_epi64((__m64)(Word_t)4);
+    //__m128i xKeyMask = _mm_set1_epi64((__m64)wMask);
+    __m128i xMinusOne = _mm_set1_epi8(0xff);
+    printf("xKeyMask[0]  %016lx\n", (Word_t)_mm_extract_epi64(xKeyMask, 0));
+    printf("xKeyMask[1]  %016lx\n", (Word_t)_mm_extract_epi64(xKeyMask, 1));
+    printf("xMinusOne[0] %016lx\n", (Word_t)_mm_extract_epi64(xMinusOne, 0));
+    printf("xMinusOne[1] %016lx\n", (Word_t)_mm_extract_epi64(xMinusOne, 1));
+    __m128i xLsbs2 = xMinusOne / xKeyMask;
+    printf("xLsbs2[0]    %016lx\n", (Word_t)_mm_extract_epi64(xLsbs2, 0));
+    printf("xLsbs2[1]    %016lx\n", (Word_t)_mm_extract_epi64(xLsbs2, 1));
+#if 0
+    __m128i xShift = _mm_set_epi64((__m64)(Word_t)0,
+                                   (__m64)(Word_t)((_nBL) - 1));
+    _xMsbs = _xLsbs << xShift;
+    __m128i xKey = _mm_set_epi64((__m64)(Word_t)0, (__m64)(_wKey));
+    _xKeys = xKey * xLsbs; /* replicate key; put in every slot */
+#endif
+}
+#if 0
+    //__m128i xLsbs2, xMsbs2, xKeys2;
+    //HAS_KEY_128_SETUP_2(wKey, nBL, xLsbs2, xMsbs2, xKeys2); 
+    //__m128i xDiff = xLsbs2 - xLsbs;
+    __m128i xDiff = _mm_set1_epi64((__m64)(Word_t)0);
+    Word_t x0 = _mm_extract_epi64(xDiff, 0);
+    Word_t x1 = _mm_extract_epi64(xDiff, 1);
+    printf("x0 %lx x1 %lx\n", x0, x1);
+#if 0
+    if ((_mm_extract_epi64(xDiff, 0) != 0)
+            || (_mm_extract_epi64(xDiff, 1) != 0))
+    {
+        assert(0);
+    }
+#endif
+#if 0
+    xDiff = xMsbs2 - xMsbs;
+    if ((_mm_extract_epi64(xDiff, 0) != 0)
+            || (_mm_extract_epi64(xDiff, 1) != 0))
+    {
+        assert(0);
+    }
+    xDiff = xKeys2 - xKeys;
+    if ((_mm_extract_epi64(xDiff, 0) != 0)
+            || (_mm_extract_epi64(xDiff, 1) != 0))
+    {
+        assert(0);
+    }
+#endif
+#endif
+#endif // defined(DEBUG)
     return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
 }
 
@@ -2702,6 +2783,13 @@ Initialize(void)
     printf("# NO PP_IN_LINK\n");
 #endif // defined(PP_IN_LINK)
     printf("\n");
+
+    Word_t wKey = 0x123456789abcdef0;
+    int nBL = 8;
+    __m128i xLsbs, xMsbs, xKeys;
+    HAS_KEY_128_SETUP_2(wKey, nBL, xLsbs, xMsbs, xKeys); 
+    __m128i *pxBucket = malloc(16);
+    HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
 
     bInitialized= 1;
 }
