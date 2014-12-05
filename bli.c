@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.460 2014/12/05 14:25:49 mike Exp mike $
+// @(#) $Id: bli.c,v 1.461 2014/12/05 15:09:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1151,6 +1151,8 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL)
       #if ! defined(PP_IN_LINK)
       #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
         nPopCnt = 16; // Sixteen fit so why do less?
+      #else // defined(PARALLEL_128)
+        nPopCnt = ls_cPopCnt(pwr);
       #endif // defined(PARALLEL_128)
       #endif // ! defined(PP_IN_LINK)
         nPos = SearchList8(ls_pcKeysNAT(pwr), wKey, nBL, nPopCnt);
