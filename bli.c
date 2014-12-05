@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.464 2014/12/05 16:06:44 mike Exp mike $
+// @(#) $Id: bli.c,v 1.465 2014/12/05 16:23:26 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -801,7 +801,7 @@ HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, int nPopCnt)
+SearchList8(uint8_t *pcKeys, Word_t wKey, int nBL, int nPopCnt)
 {
     (void)nBL;
 #if defined(LIST_END_MARKERS)
