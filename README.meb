@@ -7,6 +7,41 @@ CP140405 is Checkpoint April 5, 2014.
 The most recent checkpoint should be the latest and greatest somewhat
 functional code.
 
+12/4/14:
+
+
+T_DU_SWITCH - Doubled-up switch.  A compressed switch such that each link
+supports the keys for 2, 4, 8 or 16 links in the uncompressed switch.  We
+can embed keys and hang lists from T_DU_SWITCH because the bits that are
+not decoded by the link selection are still present in the keys in the list.
+But what happens when we want to hang a switch?  I think it becomes
+equivalent to a skip link.  The skipped bits must be stored in the skip
+link prefix.  And when we want to hang more than one switch from a single
+doubled-up link we have to uncompress the switch with the doubled-up link.
+
+Doug and I talked, yesterday, about the lazy conversion of a bucket list to
+a bitmap.  Each bucket has a type field indicating key size.  Once the list
+is doubled to be big enough for bitmaps the bits that would be where the type
+field is are stored in another array of 3-bit elements at the end of the
+main bucket array.
+
+
+12/3/14:
+
+An external bitmap is fed by one parallel searchable bucket.
+Today, a parallel searchable bucket is 16 bytes.
+17  8-bit keys feeds a  256-bit,  32-byte,  8-word32,  4-word64 external bitmap.
+15  9-bit keys feeds a  512-bit,  64-byte, 16-word32,  8-word64 external bitmap.
+13 10-bit keys feeds a 1024-bit, 128-byte, 32-word32, 16-word64 external bitmap.
+Can I use two buckets that are in the same cache line if I avoid needing
+a pop count, e.g. T_TWO?
+
+A parallel searchable bucket is fed by one embedded list.
+7  8-bit keys.
+6  9-bit keys.
+5 10-bit keys.
+A switch containing embedded lists is compressed by doubling-up and/or bitmap.
+
 12/2/14:
 
 How about a special skip link that presumes the skipped digits are zeros?

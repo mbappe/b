@@ -966,7 +966,7 @@ enum {
 
 #endif // defined(PP_IN_LINK)
 
-// For PP_IN_LINK ls_pxKeys macros are only valid not at top or for
+// For PP_IN_LINK ls_pxKeysNAT macros are only valid not at top or for
 // T_ONE - not T_LIST - at top.
 #if ( defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL) ) \
     || ( defined(ALIGN_LISTS) && ! defined(PSPLIT_PARALLEL) )
