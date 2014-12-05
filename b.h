@@ -152,7 +152,11 @@
 
 // Do integer division, but round up instead of down.
 #define DIV_UP(_idend, _isor)  (((_idend) + (_isor) - 1) / (_isor))
-#define ALIGN_UP(_x, _a)  (DIV_UP((_x), (_a)) * (_a))
+// Do integer division, but round up instead of down.
+// Pass in the log of the power of 2 divisor.
+#define DIV_UP_X(_idend, _log)  (((_idend) + (1 << (_log)) - 1) >> (_log))
+// ALIGN_UP assumes _isor is a power of 2.
+#define ALIGN_UP(_idend, _isor)  (((_idend) + (_isor) - 1) & ~((_isor) - 1))
 
 #if defined(_WIN64)
 #define WORD_ONE  1ULL
@@ -981,6 +985,10 @@ enum {
 #endif // defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)
 
 #if defined(COMPRESSED_LISTS)
+
+#define ls_psKeysNAT_UA(_ls) \
+    (&((ListLeaf_t *)(_ls))->ll_asKeys[N_LIST_HDR_KEYS])
+
   #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 // What if we want 128-byte alignment and one-word parallel search?
 // Ifdefs don't allow it at the moment.
@@ -991,9 +999,7 @@ enum {
         & ~(sizeof(Bucket_t) - 1)))
 
 #define ls_psKeysNAT(_ls) \
-   ((uint16_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_asKeys[N_LIST_HDR_KEYS] \
-            + sizeof(Bucket_t) - 1) \
-        & ~(sizeof(Bucket_t) - 1)))
+    ((uint16_t *)ALIGN_UP((Word_t)ls_psKeysNAT_UA(_ls), sizeof(Bucket_t)))
 
       #if (cnBitsPerWord > 32)
 #define ls_piKeysNAT(_ls) \
@@ -1006,7 +1012,7 @@ enum {
 
 #define ls_pcKeysNAT(_ls) (&((ListLeaf_t *)(_ls))->ll_acKeys[N_LIST_HDR_KEYS])
 
-#define ls_psKeysNAT(_ls) (&((ListLeaf_t *)(_ls))->ll_asKeys[N_LIST_HDR_KEYS])
+#define ls_psKeysNAT(_ls)  ls_psKeysNAT_UA(_ls)
 
           #if (cnBitsPerWord > 32)
 #define ls_piKeysNAT(_ls) (&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS])
@@ -1032,11 +1038,9 @@ enum {
         & ~(sizeof(Bucket_t) - 1)))
 
 #define ls_psKeys(_ls, _nBL) \
-    ((uint16_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_asKeys \
-                [N_LIST_HDR_KEYS \
-                    + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))] \
-            + sizeof(Bucket_t) - 1) \
-        & ~(sizeof(Bucket_t) - 1)))
+    ((uint16_t *)ALIGN_UP((Word_t)(ls_psKeysNAT_UA(_ls) \
+            + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))), \
+        sizeof(Bucket_t)))
 
           #if (cnBitsPerWord > 32)
 
