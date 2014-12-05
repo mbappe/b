@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.467 2014/12/05 16:48:09 mike Exp mike $
+// @(#) $Id: bli.c,v 1.468 2014/12/05 16:54:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -935,9 +935,17 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nDL, int nBL)
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
+SearchList32(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nDL, int nBL)
 {
-    (void)nBL;
+    (void)nBL; (void)pwRoot; (void)nDL;
+
+    uint32_t *piKeys = ls_piKeysNAT(pwr);
+  #if defined(PP_IN_LINK)
+    int nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
+  #else // defined(PP_IN_LINK)
+    int nPopCnt = ls_sPopCnt(pwr);
+  #endif // defined(PP_IN_LINK)
+
 #if defined(LIST_END_MARKERS)
     assert(piKeys[-1] == 0);
 #if defined(PSPLIT_PARALLEL)
@@ -1194,12 +1202,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot, int nDL)
       #endif // (cnBitsInD1 <= 16)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {
-          #if defined(PP_IN_LINK)
-        nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
-          #else // defined(PP_IN_LINK)
-        nPopCnt = ls_sPopCnt(pwr);
-          #endif // defined(PP_IN_LINK)
-        nPos = SearchList32(ls_piKeysNAT(pwr), wKey, nBL, nPopCnt);
+        nPos = SearchList32(pwRoot, pwr, wKey, nDL, nBL);
     } else
       #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
