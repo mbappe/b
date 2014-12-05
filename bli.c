@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.454 2014/12/04 20:25:37 mike Exp mike $
+// @(#) $Id: bli.c,v 1.455 2014/12/04 21:17:03 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2155,7 +2155,8 @@ embeddedBitmap:
                 = (cnBitsInD1 <= cnLogBitsPerWord)
                     ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
                 : (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
-                    ? BitIsSet(pwRoot, wKey & MSK(cnBitsInD1))
+                    ? BitIsSet(STRUCT_OF(pwRoot, Link_t, ln_wRoot),
+                               wKey & MSK(cnBitsInD1))
                 : BitIsSet(wr_pwr(wRoot), wKey & MSK(cnBitsInD1));
             if (bBitIsSet)
             {

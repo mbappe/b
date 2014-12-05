@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.383 2014/12/04 20:55:51 mike Exp mike $
+// @(#) $Id: b.c,v 1.384 2014/12/04 21:17:03 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1403,9 +1403,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
                             + wPrefixPopMask(nDL - wr_nDS(*pwRootLn));
 #else // defined(TYPE_IS_RELATIVE)
                     wPopCnt += 1
-                        + (nTypeLn == T_SWITCH)
+                        + ((nTypeLn == T_SWITCH)
                             ? wPrefixPopMask(nDL)
-                            : wPrefixPopMask(wr_nDL(*pwRootLn));
+                            : wPrefixPopMask(wr_nDL(*pwRootLn)));
 #endif // defined(TYPE_IS_RELATIVE)
 #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                     wPopCnt += wPrefixPopMask(cnDigitsPerWord - 1) + 1;
@@ -3301,17 +3301,23 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
       #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
           #if defined(TYPE_IS_RELATIVE)
+  #if defined(RETYPE_FULL_BM_SW)
         assert((wr_nDS(wRoot) == 0)
-  #if defined(RETYPE_FULL_BM_SW)
             || (nType == T_FULL_BM_SW)
-  #endif // defined(RETYPE_FULL_BM_SW)
             || (nType == T_BM_SW));
+  #else // defined(RETYPE_FULL_BM_SW)
+        assert((wr_nDS(wRoot) == 0)
+            || (nType == T_BM_SW));
+  #endif // defined(RETYPE_FULL_BM_SW)
           #else // defined(TYPE_IS_RELATIVE)
-        assert((nType == T_SWITCH)
   #if defined(RETYPE_FULL_BM_SW)
+        assert((nType == T_SWITCH)
             || (nType == T_FULL_BM_SW)
-  #endif // defined(RETYPE_FULL_BM_SW)
             || (nType == T_BM_SW));
+  #else // defined(RETYPE_FULL_BM_SW)
+        assert((nType == T_SWITCH)
+            || (nType == T_BM_SW));
+  #endif // defined(RETYPE_FULL_BM_SW)
           #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
