@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.385 2014/12/05 01:35:10 mike Exp mike $
+// @(#) $Id: b.c,v 1.386 2014/12/05 02:42:57 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -282,7 +282,7 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 #if defined(USE_T_ONE)
         if (wPopCnt != 1)
 #endif // defined(USE_T_ONE)
-        { ls_pcKeys(pwList)[-1] = 0; }
+        { ls_pcKeysNAT(pwList)[-1] = 0; }
 #endif // defined(LIST_END_MARKERS)
         METRICS(j__AllocWordsJLL1 += nWords); // JUDYA
         METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
@@ -291,7 +291,7 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 #if defined(USE_T_ONE)
         if (wPopCnt != 1)
 #endif // defined(USE_T_ONE)
-        { ls_psKeys(pwList)[-1] = 0; }
+        { ls_psKeysNAT(pwList)[-1] = 0; }
 #endif // defined(LIST_END_MARKERS)
         METRICS(j__AllocWordsJLL2 += nWords); // JUDYA
         METRICS(j__AllocWordsJL16 += nWords); // JUDYB
@@ -301,7 +301,7 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 #if defined(USE_T_ONE)
         if (wPopCnt != 1)
 #endif // defined(USE_T_ONE)
-        { ls_piKeys(pwList)[-1] = 0; }
+        { ls_piKeysNAT(pwList)[-1] = 0; }
 #endif // defined(LIST_END_MARKERS)
         METRICS(j__AllocWordsJLL4 += nWords); // JUDYA
         METRICS(j__AllocWordsJL32 += nWords); // JUDYB
@@ -317,9 +317,9 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 #if defined(PP_IN_LINK) && (cnDummiesInList == 0)
         // ls_pwKeys is for T_LIST not at top (it incorporates dummies
         // and markers, but not pop count)
-        { ls_pwKeys(pwList)[-1 + (nBL == cnBitsPerWord)] = 0; }
+        { ls_pwKeysNAT(pwList)[-1 + (nBL == cnBitsPerWord)] = 0; }
 #else // defined(PP_IN_LINK) && (cnDummiesInList == 0)
-        { ls_pwKeys(pwList)[-1] = 0; }
+        { ls_pwKeysNAT(pwList)[-1] = 0; }
 #endif // defined(PP_IN_LINK) && (cnDummiesInList == 0)
 #endif // defined(LIST_END_MARKERS)
         METRICS(j__AllocWordsJLLW += nWords); // JUDYA and JUDYB
@@ -1238,7 +1238,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
                 return OldList(pwr, wPopCnt, nDL, nType);
             }
 
-            Word_t *pwKeys = ls_pwKeys(pwr);
+            Word_t *pwKeys = ls_pwKeysNAT(pwr);
 
 #if defined(PP_IN_LINK)
             if (nBLArg == cnBitsPerWord)
@@ -1267,12 +1267,12 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #endif // defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
                 if (nBL <= 8) {
-                    printf(" %02x", ls_pcKeys(pwr)[xx]);
+                    printf(" %02x", ls_pcKeysNAT(pwr)[xx]);
                 } else if (nBL <= 16) {
-                    printf(" %04x", ls_psKeys(pwr)[xx]);
+                    printf(" %04x", ls_psKeysNAT(pwr)[xx]);
 #if (cnBitsPerWord > 32)
                 } else if (nBL <= 32) {
-                    printf(" %08x", ls_piKeys(pwr)[xx]);
+                    printf(" %08x", ls_piKeysNAT(pwr)[xx]);
 #endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
@@ -1931,21 +1931,21 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #if defined(PP_IN_LINK)
                 if (nDL != cnDigitsPerWord) {
                     wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL) - 1;
-                    pwKeys = ls_pwKeys(pwr); // list of keys in old List
+                    pwKeys = ls_pwKeysNAT(pwr); // list of keys in old List
                 } else {
                     wPopCnt = ls_wPopCnt(pwr, nBL);
                     pwKeys = ls_pwKeysX(pwr, cnBitsPerWord);
                 }
 #else // defined(PP_IN_LINK)
                 wPopCnt = ls_wPopCnt(pwr, nBL);
-                pwKeys = ls_pwKeys(pwr); // list of keys in old List
+                pwKeys = ls_pwKeysNAT(pwr); // list of keys in old List
 #endif // defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
-                piKeys = ls_piKeys(pwr);
+                piKeys = ls_piKeysNAT(pwr);
 #endif // (cnBitsPerWord > 32)
-                psKeys = ls_psKeys(pwr);
-                pcKeys = ls_pcKeys(pwr);
+                psKeys = ls_psKeysNAT(pwr);
+                pcKeys = ls_pcKeysNAT(pwr);
 #endif // defined(COMPRESSED_LISTS)
             }
             // prefix is already set
@@ -2055,14 +2055,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
             {
 #if defined(COMPRESSED_LISTS)
                 if (nBL <= 8) {
-                    CopyWithInsertChar(ls_pcKeys(pwList),
+                    CopyWithInsertChar(ls_pcKeysNAT(pwList),
                         pcKeys, wPopCnt, (unsigned char)wKey);
                 } else if (nBL <= 16) {
-                    CopyWithInsertShort(ls_psKeys(pwList),
+                    CopyWithInsertShort(ls_psKeysNAT(pwList),
                         psKeys, wPopCnt, (unsigned short)wKey);
 #if (cnBitsPerWord > 32)
                 } else if (nBL <= 32) {
-                    CopyWithInsertInt(ls_piKeys(pwList),
+                    CopyWithInsertInt(ls_piKeysNAT(pwList),
                         piKeys, wPopCnt, (unsigned int)wKey);
 #endif // (cnBitsPerWord > 32)
                 } else
@@ -2076,12 +2076,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
             {
 #if defined(COMPRESSED_LISTS)
                 if (nBL <= 8) {
-                    COPY(ls_pcKeys(pwList), pcKeys, wPopCnt);
+                    COPY(ls_pcKeysNAT(pwList), pcKeys, wPopCnt);
                 } else if (nBL <= 16) {
-                    COPY(ls_psKeys(pwList), psKeys, wPopCnt);
+                    COPY(ls_psKeysNAT(pwList), psKeys, wPopCnt);
 #if (cnBitsPerWord > 32)
                 } else if (nBL <= 32) {
-                    COPY(ls_piKeys(pwList), piKeys, wPopCnt);
+                    COPY(ls_piKeysNAT(pwList), piKeys, wPopCnt);
 #endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
@@ -2094,12 +2094,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 // shared code for (SORT && wPopCnt == 0) and ! SORT
 #if defined(COMPRESSED_LISTS)
                 if (nBL <= 8) {
-                    ls_pcKeys(pwList)[wPopCnt] = wKey;
+                    ls_pcKeysNAT(pwList)[wPopCnt] = wKey;
                 } else if (nBL <= 16) {
-                    ls_psKeys(pwList)[wPopCnt] = wKey;
+                    ls_psKeysNAT(pwList)[wPopCnt] = wKey;
 #if (cnBitsPerWord > 32)
                 } else if (nBL <= 32) {
-                    { ls_piKeys(pwList)[wPopCnt] = wKey; }
+                    { ls_piKeysNAT(pwList)[wPopCnt] = wKey; }
 #endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
@@ -2722,14 +2722,14 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
     Word_t wBLM = MSK(nBL); // Bits left mask.
 #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
-        pcKeys = ls_pcKeys(pwList);
+        pcKeys = ls_pcKeysNAT(pwList);
         for (unsigned nn = 1; nn <= nPopCnt; nn++) {
             pcKeys[nn-1] = (uint8_t)((wKey & ~wBLM)
                 | ((wRoot >> (cnBitsPerWord - (nn * nBL))) & wBLM));
         }
     } else
     if (nBL <= 16) {
-        psKeys = ls_psKeys(pwList);
+        psKeys = ls_psKeysNAT(pwList);
         for (unsigned nn = 1; nn <= nPopCnt; nn++) {
             psKeys[nn-1] = (uint16_t)((wKey & ~wBLM)
                 | ((wRoot >> (cnBitsPerWord - (nn * nBL))) & wBLM));
@@ -2737,7 +2737,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
     } else
 #if (cnBitsPerWord > 32)
     if (nBL <= 32) {
-        piKeys = ls_piKeys(pwList);
+        piKeys = ls_piKeysNAT(pwList);
         for (unsigned nn = 1; nn <= nPopCnt; nn++) {
             piKeys[nn-1] = (uint32_t)((wKey & ~wBLM)
                 | ((wRoot >> (cnBitsPerWord - (nn * nBL))) & wBLM));
@@ -2749,7 +2749,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
 #if defined(COMPRESSED_LISTS)
         assert(nPopCnt == 1);
 #endif // defined(COMPRESSED_LISTS)
-        pwKeys = ls_pwKeys(pwList);
+        pwKeys = ls_pwKeysNAT(pwList);
 #if defined(PP_IN_LINK)
         assert(nBL != cnBitsPerWord);
 #endif // defined(PP_IN_LINK)
@@ -2801,7 +2801,7 @@ DeflateExternalList(Word_t *pwRoot,
         Word_t wBLM = MSK(nBL);
 #if defined(COMPRESSED_LISTS)
         if (nBL <= 8) {
-            pcKeys = ls_pcKeys(pwr);
+            pcKeys = ls_pcKeysNAT(pwr);
             unsigned nn = 1;
             for (; nn <= nPopCnt; nn++) {
                wRoot |= (pcKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
@@ -2814,7 +2814,7 @@ DeflateExternalList(Word_t *pwRoot,
 #endif // defined(PAD_T_ONE)
         } else
         if (nBL <= 16) {
-            psKeys = ls_psKeys(pwr);
+            psKeys = ls_psKeysNAT(pwr);
             unsigned nn = 1;
             for (; nn <= nPopCnt; nn++) {
                wRoot |= (psKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
@@ -2828,7 +2828,7 @@ DeflateExternalList(Word_t *pwRoot,
         } else
 #if (cnBitsPerWord > 32)
         if (nBL <= 32) {
-            piKeys = ls_piKeys(pwr);
+            piKeys = ls_piKeysNAT(pwr);
             unsigned nn = 1;
             for (; nn <= wr_nPopCnt(wRoot, nBL); nn++) {
                wRoot |= (piKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
@@ -2848,9 +2848,9 @@ DeflateExternalList(Word_t *pwRoot,
             assert(nBL != cnBitsPerWord);
 #if defined(COMPRESSED_LISTS)
             assert(nPopCnt == 1);
-            wRoot |= (ls_pwKeys(pwr)[0] & wBLM) << (cnBitsPerWord - nBL);
+            wRoot |= (ls_pwKeysNAT(pwr)[0] & wBLM) << (cnBitsPerWord - nBL);
 #else // defined(COMPRESSED_LISTS)
-            Word_t *pwKeys = ls_pwKeys(pwr);
+            Word_t *pwKeys = ls_pwKeysNAT(pwr);
             unsigned nn = 1;
             for (; nn <= wr_nPopCnt(wRoot, nBL); nn++) {
                wRoot |= (pwKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
@@ -3015,15 +3015,15 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     }
 //#endif // ! defined(USE_T_ONE)
 
-    Word_t *pwKeys = ls_pwKeys(pwr);
+    Word_t *pwKeys = ls_pwKeysNAT(pwr);
 
     unsigned nIndex;
     for (nIndex = 0;
 #if defined(COMPRESSED_LISTS)
-        (nBL <=  8) ? (ls_pcKeys(pwr)[nIndex] != (uint8_t) wKey) :
-        (nBL <= 16) ? (ls_psKeys(pwr)[nIndex] != (uint16_t)wKey) :
+        (nBL <=  8) ? (ls_pcKeysNAT(pwr)[nIndex] != (uint8_t) wKey) :
+        (nBL <= 16) ? (ls_psKeysNAT(pwr)[nIndex] != (uint16_t)wKey) :
 #if (cnBitsPerWord > 32)
-        (nBL <= 32) ? (ls_piKeys(pwr)[nIndex] != (uint32_t)wKey) :
+        (nBL <= 32) ? (ls_piKeysNAT(pwr)[nIndex] != (uint32_t)wKey) :
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
         (pwKeys[nIndex] != wKey); nIndex++) { }
@@ -3060,62 +3060,62 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #endif // defined(LIST_END_MARKERS) || defined(PSPLIT_PARALLEL)
 #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
-        MOVE(&ls_pcKeys(pwList)[nIndex],
-             &ls_pcKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+        MOVE(&ls_pcKeysNAT(pwList)[nIndex],
+             &ls_pcKeysNAT(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
 #if defined(PSPLIT_PARALLEL)
         // need to pad the list to a word boundary with a key that exists
         // so parallel search won't return a false positive
 #if defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&ls_pcKeys(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
+        while ((Word_t)&ls_pcKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
 #else // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&ls_pcKeys(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
+        while ((Word_t)&ls_pcKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
 #endif // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
         {
-            ls_pcKeys(pwr)[nKeys] = ls_pcKeys(pwr)[nKeys-1];
+            ls_pcKeysNAT(pwr)[nKeys] = ls_pcKeysNAT(pwr)[nKeys-1];
             ++nKeys;
         }
 #endif // defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
-        ls_pcKeys(pwList)[nKeys] = -1;
+        ls_pcKeysNAT(pwList)[nKeys] = -1;
 #endif // defined(LIST_END_MARKERS)
     } else if (nBL <= 16) {
-        MOVE(&ls_psKeys(pwList)[nIndex],
-             &ls_psKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+        MOVE(&ls_psKeysNAT(pwList)[nIndex],
+             &ls_psKeysNAT(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
 #if defined(PSPLIT_PARALLEL)
         // need to pad the list to a word boundary with a key that exists
         // so parallel search won't return a false positive
 #if defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&ls_psKeys(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
+        while ((Word_t)&ls_psKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
 #else // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&ls_psKeys(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
+        while ((Word_t)&ls_psKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
 #endif // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
         {
-            ls_psKeys(pwr)[nKeys] = ls_psKeys(pwr)[nKeys-1];
+            ls_psKeysNAT(pwr)[nKeys] = ls_psKeysNAT(pwr)[nKeys-1];
             ++nKeys;
         }
 #endif // defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
-        ls_psKeys(pwList)[nKeys] = -1;
+        ls_psKeysNAT(pwList)[nKeys] = -1;
 #endif // defined(LIST_END_MARKERS)
 #if (cnBitsPerWord > 32)
     } else if (nBL <= 32) {
-        MOVE(&ls_piKeys(pwList)[nIndex],
-             &ls_piKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+        MOVE(&ls_piKeysNAT(pwList)[nIndex],
+             &ls_piKeysNAT(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
 #if defined(PSPLIT_PARALLEL)
         // need to pad the list to a word boundary with a key that exists
         // so parallel search won't return a false positive
 #if defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&ls_piKeys(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
+        while ((Word_t)&ls_piKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
 #else // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&ls_piKeys(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
+        while ((Word_t)&ls_piKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
 #endif // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
         {
-            ls_piKeys(pwr)[nKeys] = ls_piKeys(pwr)[nKeys-1];
+            ls_piKeysNAT(pwr)[nKeys] = ls_piKeysNAT(pwr)[nKeys-1];
             ++nKeys;
         }
 #endif // defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
-        ls_piKeys(pwList)[nKeys] = -1;
+        ls_piKeysNAT(pwList)[nKeys] = -1;
 #endif // defined(LIST_END_MARKERS)
 #endif // (cnBitsPerWord > 32)
     } else
@@ -3126,10 +3126,10 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         assert(0);
 #endif // defined(PP_IN_LINK) && (cnDummiesInList == 0)
 #endif // defined(LIST_END_MARKERS)
-        MOVE(&ls_pwKeys(pwList)[nIndex], &pwKeys[nIndex + 1],
+        MOVE(&ls_pwKeysNAT(pwList)[nIndex], &pwKeys[nIndex + 1],
              wPopCnt - nIndex - 1);
 #if defined(LIST_END_MARKERS)
-        ls_pwKeys(pwList)[nKeys] = -1;
+        ls_pwKeysNAT(pwList)[nKeys] = -1;
 #endif // defined(LIST_END_MARKERS)
     }
 

@@ -373,7 +373,7 @@ enum {
     T_BITMAP,
 
     // All of the type values below T_SWITCH are assumed to not be switches.
-    // All of the type values at T_SWITCH and above are assumed to be switches.
+    // All type values at T_SWITCH and above are assumed to be switches.
     T_SWITCH, // Basic (i.e. uncompressed), close (i.e. no-skip) switch.
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     T_BM_SW,
@@ -970,14 +970,14 @@ enum {
 // T_ONE - not T_LIST - at top.
 #if ( defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL) ) \
     || ( defined(ALIGN_LISTS) && ! defined(PSPLIT_PARALLEL) )
-#define ls_pwKeys(_ls) \
+#define ls_pwKeysNAT(_ls) \
     ((Word_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS] \
             + sizeof(Bucket_t) - 1) \
         & ~(sizeof(Bucket_t) - 1)))
 #else // defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)
   // Ignore ALIGN_LISTS for (nBL >= cnBitsPerWord) unless PSPLIT_SEARCH_WORD
   // && PSPLIT_PARALLEL in order to improve memory usage at the top.
-#define ls_pwKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS])
+#define ls_pwKeysNAT(_ls) (&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS])
 #endif // defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)
 
 #if defined(COMPRESSED_LISTS)
@@ -985,31 +985,31 @@ enum {
 // What if we want 128-byte alignment and one-word parallel search?
 // Ifdefs don't allow it at the moment.
 
-#define ls_pcKeys(_ls) \
+#define ls_pcKeysNAT(_ls) \
     ((uint8_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_acKeys[N_LIST_HDR_KEYS] \
             + sizeof(Bucket_t) - 1) \
         & ~(sizeof(Bucket_t) - 1)))
 
-#define ls_psKeys(_ls) \
-    ((uint16_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_asKeys[N_LIST_HDR_KEYS] \
+#define ls_psKeysNAT(_ls) \
+   ((uint16_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_asKeys[N_LIST_HDR_KEYS] \
             + sizeof(Bucket_t) - 1) \
         & ~(sizeof(Bucket_t) - 1)))
 
       #if (cnBitsPerWord > 32)
-#define ls_piKeys(_ls) \
-    ((uint32_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS] \
+#define ls_piKeysNAT(_ls) \
+   ((uint32_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS] \
             + sizeof(Bucket_t) - 1) \
         & ~(sizeof(Bucket_t) - 1)))
       #endif // (cnBitsPerWord > 32)
 
   #else // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 
-#define ls_pcKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_acKeys[N_LIST_HDR_KEYS])
+#define ls_pcKeysNAT(_ls) (&((ListLeaf_t *)(_ls))->ll_acKeys[N_LIST_HDR_KEYS])
 
-#define ls_psKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_asKeys[N_LIST_HDR_KEYS])
+#define ls_psKeysNAT(_ls) (&((ListLeaf_t *)(_ls))->ll_asKeys[N_LIST_HDR_KEYS])
 
           #if (cnBitsPerWord > 32)
-#define ls_piKeys(_ls)  (&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS])
+#define ls_piKeysNAT(_ls) (&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS])
           #endif // (cnBitsPerWord > 32)
 
   #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
@@ -1069,20 +1069,20 @@ enum {
   #else // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 
 #define ls_pwKeysX(_ls, _nBL) \
-    (ls_pwKeys(_ls) + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0)))
+   (ls_pwKeysNAT(_ls) + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0)))
 
       #if defined(COMPRESSED_LISTS)
 
 #define ls_pcKeysX(_ls, _nBL) \
-    (ls_pcKeys(_ls) + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0)))
+   (ls_pcKeysNAT(_ls) + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0)))
 
 #define ls_psKeysX(_ls, _nBL) \
-    (ls_psKeys(_ls) + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0)))
+   (ls_psKeysNAT(_ls) + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0)))
 
           #if (cnBitsPerWord > 32)
 
 #define ls_piKeysX(_ls, _nBL) \
-    (ls_piKeys(_ls) + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0)))
+   (ls_piKeysNAT(_ls) + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0)))
 
           #endif // (cnBitsPerWord > 32)
 
@@ -1090,10 +1090,10 @@ enum {
   #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 #else // defined(PP_IN_LINK)
 
-#define ls_pwKeysX(_ls, _nBL)  ls_pwKeys(_ls)
-#define ls_piKeysX(_ls, _nBL)  ls_piKeys(_ls)
-#define ls_psKeysX(_ls, _nBL)  ls_psKeys(_ls)
-#define ls_pcKeysX(_ls, _nBL)  ls_pcKeys(_ls)
+#define ls_pwKeysX(_ls, _nBL)  ls_pwKeysNAT(_ls)
+#define ls_piKeysX(_ls, _nBL)  ls_piKeysNAT(_ls)
+#define ls_psKeysX(_ls, _nBL)  ls_psKeysNAT(_ls)
+#define ls_pcKeysX(_ls, _nBL)  ls_pcKeysNAT(_ls)
 
 #endif // defined(PP_IN_LINK)
 
