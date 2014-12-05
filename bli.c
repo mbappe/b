@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.459 2014/12/05 03:15:31 mike Exp mike $
+// @(#) $Id: bli.c,v 1.460 2014/12/05 14:25:49 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1131,12 +1131,20 @@ Word_t cnMagic[] = {
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
+#if defined(PP_IN_LINK)
+SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot, int nDL)
+#else // defined(PP_IN_LINK)
+SearchList(Word_t *pwr, Word_t wKey, unsigned nBL)
+#endif // defined(PP_IN_LINK)
 {
     DBGL(printf("SearchList\n"));
 
+    int nPopCnt;
     int nPos;
 
+  #if defined(PP_IN_LINK)
+     nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
+  #endif // defined(PP_IN_LINK)
   #if defined(COMPRESSED_LISTS)
       #if (cnBitsInD1 <= 8)
     if (nBL <= 8) {
@@ -1928,15 +1936,6 @@ notEmptyBm:;
         if (bCleanup) { return Success; } // cleanup is complete
   #endif // defined(REMOVE)
 
-// Why can't we move this pop count increment so we do it only on success?
-  #if defined(PP_IN_LINK)
-        // What about defined(RECURSIVE)?
-        assert(nDL != cnDigitsPerWord); // handled in wrapper
-        // If nDL != cnDigitsPerWord then we're not at the top.
-        // And pwRoot is initialized despite what gcc might think.
-        //wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
-  #endif // defined(PP_IN_LINK)
-
       #if defined(PP_IN_LINK)
           // Adjust wPopCnt to actual list size for undo case.
           // There must be a better way to do this.
@@ -1946,8 +1945,6 @@ notEmptyBm:;
           #if defined(REMOVE)
         if (nIncr == 1) { return Failure; }
           #endif // defined(REMOVE)
-      #else // defined(PP_IN_LINK)
-        // we'll get wPopCnt in SearchList if we need it
       #endif // defined(PP_IN_LINK)
 
         // Search the list.  wPopCnt is the number of keys in the list.
@@ -2010,32 +2007,35 @@ notEmptyBm:;
             assert(ll_nDL(wRoot) == nDL);
       #endif // defined(DL_IN_LL)
 
-      #if defined(PP_IN_LINK)
-            assert(nDL != cnDigitsPerWord); // handled in wrapper
-            // pwRoot is initialized despite what gcc might think.
-            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
-      #endif // defined(PP_IN_LINK)
       // LOOKUP_NO_LIST_SEARCH is for analysis only.  We have retrieved the
       // pop count and prefix but we have not dereferenced the list itself.
       #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
+          #if defined(PP_IN_LINK)
             if (SearchList(pwr, wKey,
 #if defined(COMPRESSED_LISTS)
                            nBL,
 #else // defined(COMPRESSED_LISTS)
                            cnBitsPerWord,
 #endif // defined(COMPRESSED_LISTS)
-#if defined(PP_IN_LINK)
-                           wPopCnt
-#else // defined(PP_IN_LINK)
-                           0 // bogus value for wPopCnt; we overwrite later
-#endif // defined(PP_IN_LINK)
+                           pwRoot, nDL
                            )
                 >= 0)
+          #else // defined(PP_IN_LINK)
+            if (SearchList(pwr, wKey,
+#if defined(COMPRESSED_LISTS)
+                           nBL
+#else // defined(COMPRESSED_LISTS)
+                           cnBitsPerWord
+#endif // defined(COMPRESSED_LISTS)
+                           )
+                >= 0)
+          #endif // defined(PP_IN_LINK)
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
           #if defined(REMOVE)
               #if defined(PP_IN_LINK)
-                set_PWR_wPopCnt(pwRoot, NULL, nDL, wPopCnt - 1);
+                set_PWR_wPopCnt(pwRoot, NULL, nDL,
+                                PWR_wPopCnt(pwRoot, NULL, nDL) - 1);
               #endif // defined(PP_IN_LINK)
                 RemoveGuts(pwRoot, wKey, nDL, wRoot); goto cleanup;
           #endif // defined(REMOVE)
@@ -2060,7 +2060,14 @@ notEmptyBm:;
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && ...
 
       #if defined(PP_IN_LINK) && defined(INSERT)
-        set_PWR_wPopCnt(pwRoot, NULL, nDL, wPopCnt + 1);
+        assert(nDL != cnDigitsPerWord); // handled in wrapper
+        // pwRoot is initialized despite what gcc might think.
+        // Would be nice to be able to get the current pop count from
+        // SearchList because chances are it will have read it.
+        // But it is more important to avoid getting it when not necessary
+        // during lookup.
+        set_PWR_wPopCnt(pwRoot, NULL, nDL,
+                        PWR_wPopCnt(pwRoot, NULL, nDL) + 1);
       #endif // defined(PP_IN_LINK) && defined(INSERT)
 
         break;
