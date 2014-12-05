@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.463 2014/12/05 16:01:15 mike Exp mike $
+// @(#) $Id: bli.c,v 1.464 2014/12/05 16:06:44 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1139,9 +1139,9 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot, int nDL)
     int nPos;
 
   #if defined(PP_IN_LINK)
-     nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
+    nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
   #else // defined(PP_IN_LINK)
-     (void)pwRoot; (void)nDL;
+    (void)pwRoot; (void)nDL;
   #endif // defined(PP_IN_LINK)
   #if defined(COMPRESSED_LISTS)
       #if (cnBitsInD1 <= 8)
@@ -2012,11 +2012,11 @@ notEmptyBm:;
       // pop count and prefix but we have not dereferenced the list itself.
       #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
             if (SearchList(pwr, wKey,
-#if defined(COMPRESSED_LISTS)
+          #if defined(COMPRESSED_LISTS)
                            nBL,
-#else // defined(COMPRESSED_LISTS)
+          #else // defined(COMPRESSED_LISTS)
                            cnBitsPerWord,
-#endif // defined(COMPRESSED_LISTS)
+          #endif // defined(COMPRESSED_LISTS)
           #if defined(PP_IN_LINK)
                            pwRoot,
           #else // defined(PP_IN_LINK)
