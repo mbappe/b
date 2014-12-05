@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.455 2014/12/04 21:17:03 mike Exp mike $
+// @(#) $Id: bli.c,v 1.456 2014/12/05 01:33:45 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1145,7 +1145,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
         nPopCnt = 16; // Sixteen fit so why do less?
       #endif // defined(PARALLEL_128)
       #endif // ! defined(PP_IN_LINK)
-        nPos = SearchList8(pwr_pcKeys(pwr), wKey, nBL, nPopCnt);
+        nPos = SearchList8(ls_pcKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsInD1 <= 8)
       #if (cnBitsInD1 <= 16)
@@ -1172,7 +1172,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
         nPopCnt = ls_sPopCnt(pwr);
       #endif // defined(PARALLEL_128)
       #endif // ! defined(PP_IN_LINK)
-        nPos = SearchList16(pwr_psKeys(pwr), wKey, nBL, nPopCnt);
+        nPos = SearchList16(ls_psKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsInD1 <= 16)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
@@ -1180,7 +1180,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
           #if ! defined(PP_IN_LINK)
         nPopCnt = ls_sPopCnt(pwr);
           #endif // ! defined(PP_IN_LINK)
-        nPos = SearchList32(pwr_piKeys(pwr), wKey, nBL, nPopCnt);
+        nPos = SearchList32(ls_piKeys(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
@@ -1188,7 +1188,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, unsigned nPopCnt)
   #if ! defined(PP_IN_LINK)
         nPopCnt = ls_sPopCnt(pwr);
   #endif // ! defined(PP_IN_LINK)
-        nPos = SearchListWord(pwr_pwKeys(pwr), wKey, nBL, nPopCnt);
+        nPos = SearchListWord(ls_pwKeys(pwr), wKey, nBL, nPopCnt);
     }
 
   #if defined(LOOKUP)

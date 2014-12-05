@@ -1097,17 +1097,6 @@ enum {
 
 #endif // defined(PP_IN_LINK)
 
-// these are just aliases
-#define     pwr_pwKeys(_pwr)     (ls_pwKeys(_pwr))
-#if defined(COMPRESSED_LISTS)
-#define     pwr_pcKeys(_pwr)     (ls_pcKeys(_pwr))
-#define     pwr_psKeys(_pwr)     (ls_psKeys(_pwr))
-#if (cnBitsPerWord > 32)
-#define     pwr_piKeys(_pwr)     (ls_piKeys(_pwr))
-#endif // (cnBitsPerWord > 32)
-#endif // defined(COMPRESSED_LISTS)
-#define     pwr_pwKeys(_pwr)     (ls_pwKeys(_pwr))
-
 // Bitmap macros.
 // Accessing a bitmap by byte can be more expensive than
 // accessing it by word.

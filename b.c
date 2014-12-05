@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.384 2014/12/04 21:17:03 mike Exp mike $
+// @(#) $Id: b.c,v 1.385 2014/12/05 01:35:10 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1238,7 +1238,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
                 return OldList(pwr, wPopCnt, nDL, nType);
             }
 
-            Word_t *pwKeys = pwr_pwKeys(pwr);
+            Word_t *pwKeys = ls_pwKeys(pwr);
 
 #if defined(PP_IN_LINK)
             if (nBLArg == cnBitsPerWord)
@@ -3015,15 +3015,15 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     }
 //#endif // ! defined(USE_T_ONE)
 
-    Word_t *pwKeys = pwr_pwKeys(pwr);
+    Word_t *pwKeys = ls_pwKeys(pwr);
 
     unsigned nIndex;
     for (nIndex = 0;
 #if defined(COMPRESSED_LISTS)
-        (nBL <=  8) ? (pwr_pcKeys(pwr)[nIndex] != (uint8_t) wKey) :
-        (nBL <= 16) ? (pwr_psKeys(pwr)[nIndex] != (uint16_t)wKey) :
+        (nBL <=  8) ? (ls_pcKeys(pwr)[nIndex] != (uint8_t) wKey) :
+        (nBL <= 16) ? (ls_psKeys(pwr)[nIndex] != (uint16_t)wKey) :
 #if (cnBitsPerWord > 32)
-        (nBL <= 32) ? (pwr_piKeys(pwr)[nIndex] != (uint32_t)wKey) :
+        (nBL <= 32) ? (ls_piKeys(pwr)[nIndex] != (uint32_t)wKey) :
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
         (pwKeys[nIndex] != wKey); nIndex++) { }
@@ -3060,62 +3060,62 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 #endif // defined(LIST_END_MARKERS) || defined(PSPLIT_PARALLEL)
 #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
-        MOVE(&pwr_pcKeys(pwList)[nIndex],
-             &pwr_pcKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+        MOVE(&ls_pcKeys(pwList)[nIndex],
+             &ls_pcKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
 #if defined(PSPLIT_PARALLEL)
         // need to pad the list to a word boundary with a key that exists
         // so parallel search won't return a false positive
 #if defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&pwr_pcKeys(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
+        while ((Word_t)&ls_pcKeys(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
 #else // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&pwr_pcKeys(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
+        while ((Word_t)&ls_pcKeys(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
 #endif // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
         {
-            pwr_pcKeys(pwr)[nKeys] = pwr_pcKeys(pwr)[nKeys-1];
+            ls_pcKeys(pwr)[nKeys] = ls_pcKeys(pwr)[nKeys-1];
             ++nKeys;
         }
 #endif // defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
-        pwr_pcKeys(pwList)[nKeys] = -1;
+        ls_pcKeys(pwList)[nKeys] = -1;
 #endif // defined(LIST_END_MARKERS)
     } else if (nBL <= 16) {
-        MOVE(&pwr_psKeys(pwList)[nIndex],
-             &pwr_psKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+        MOVE(&ls_psKeys(pwList)[nIndex],
+             &ls_psKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
 #if defined(PSPLIT_PARALLEL)
         // need to pad the list to a word boundary with a key that exists
         // so parallel search won't return a false positive
 #if defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&pwr_psKeys(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
+        while ((Word_t)&ls_psKeys(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
 #else // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&pwr_psKeys(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
+        while ((Word_t)&ls_psKeys(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
 #endif // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
         {
-            pwr_psKeys(pwr)[nKeys] = pwr_psKeys(pwr)[nKeys-1];
+            ls_psKeys(pwr)[nKeys] = ls_psKeys(pwr)[nKeys-1];
             ++nKeys;
         }
 #endif // defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
-        pwr_psKeys(pwList)[nKeys] = -1;
+        ls_psKeys(pwList)[nKeys] = -1;
 #endif // defined(LIST_END_MARKERS)
 #if (cnBitsPerWord > 32)
     } else if (nBL <= 32) {
-        MOVE(&pwr_piKeys(pwList)[nIndex],
-             &pwr_piKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
+        MOVE(&ls_piKeys(pwList)[nIndex],
+             &ls_piKeys(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
 #if defined(PSPLIT_PARALLEL)
         // need to pad the list to a word boundary with a key that exists
         // so parallel search won't return a false positive
 #if defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&pwr_piKeys(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
+        while ((Word_t)&ls_piKeys(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
 #else // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&pwr_piKeys(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
+        while ((Word_t)&ls_piKeys(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
 #endif // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
         {
-            pwr_piKeys(pwr)[nKeys] = pwr_piKeys(pwr)[nKeys-1];
+            ls_piKeys(pwr)[nKeys] = ls_piKeys(pwr)[nKeys-1];
             ++nKeys;
         }
 #endif // defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
-        pwr_piKeys(pwList)[nKeys] = -1;
+        ls_piKeys(pwList)[nKeys] = -1;
 #endif // defined(LIST_END_MARKERS)
 #endif // (cnBitsPerWord > 32)
     } else
@@ -3126,10 +3126,10 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         assert(0);
 #endif // defined(PP_IN_LINK) && (cnDummiesInList == 0)
 #endif // defined(LIST_END_MARKERS)
-        MOVE(&pwr_pwKeys(pwList)[nIndex], &pwKeys[nIndex + 1],
+        MOVE(&ls_pwKeys(pwList)[nIndex], &pwKeys[nIndex + 1],
              wPopCnt - nIndex - 1);
 #if defined(LIST_END_MARKERS)
-        pwr_pwKeys(pwList)[nKeys] = -1;
+        ls_pwKeys(pwList)[nKeys] = -1;
 #endif // defined(LIST_END_MARKERS)
     }
 
