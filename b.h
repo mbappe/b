@@ -712,12 +712,12 @@ enum {
 // DEPTH_IN_SW directs us to use the low bits of sw_wPrefixPop for absolute
 // depth instead of encoding it into the type field directly.
 // It means we can't use the low bits of sw_wPrefixPop for pop.  So we
-// define POP_WORD_IN_SW and use a separate word.
+// define POP_WORD and use a separate word.
 // We assume the value we put into the low bits will will fit in the number
 // of bits used for the pop count at nDL == 1.  Or maybe
 // it doesn't matter since we always create an embedded bitmap when
 // nBL <= cnLogBitsPerWord.
-#define POP_WORD_IN_SW
+#define POP_WORD
 
 // As it stands we always get the absolute type from sw_wPrefixPop if
 // DEPTH_IN_SW.  We could enhance it to use one type value to indicate
@@ -770,12 +770,12 @@ enum {
 // We use T_SW_BASE to indicate no skip.  And T_SW_BASE + 1 to indicate that
 // a non-zero skip count is in sw_wPrefixPop.
 // It means we can't use the low bits of sw_wPrefixPop for pop.  So we
-// define POP_WORD_IN_SW and use a separate word.
+// define POP_WORD and use a separate word.
 // We assume the value we put into the low bits will will fit in the number
 // of bits used for the pop count in the switch so we have
 // to be careful when choosing the level of the lowest level switch and
 // the number of digits above it.
-#define POP_WORD_IN_SW
+#define POP_WORD
 
 // wr_nDS_NZ is for the Lookup performance path.  It avoids a test that
 // is required in wr_nDS.  NZ is for not-zero.
@@ -863,7 +863,7 @@ enum {
         = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixPopMask(_nDL)) \
             | ((_key) & ~wPrefixPopMask(_nDL))))
 
-#if defined(POP_WORD_IN_SW)
+#if defined(POP_WORD)
 
 #define PWR_wPopWord(_pwRoot, _pwr)  ((_pwr)->sw_wPopWord)
 
@@ -875,7 +875,7 @@ enum {
         = ((PWR_wPopWord((_pwRoot), (_pwr)) & ~wPrefixPopMask(_nDL)) \
             | ((_cnt) & wPrefixPopMask(_nDL))))
 
-#else // defined(POP_WORD_IN_SW)
+#else // defined(POP_WORD)
 
 #define PWR_wPopCnt(_pwRoot, _pwr, _nDL) \
     (w_wPopCnt(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nDL)))
@@ -885,7 +885,7 @@ enum {
         = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMask(_nDL)) \
             | ((_cnt) & wPrefixPopMask(_nDL))))
 
-#endif // defined(POP_WORD_IN_SW)
+#endif // defined(POP_WORD)
 
 #define set_w_wPrefixNotAtTop(_w, _nDL, _key) \
     ((_w) = (((_w) & wPrefixPopMaskNotAtTop(_nDL)) \
@@ -1190,6 +1190,11 @@ typedef struct {
 
 #define N_WORDS_SWITCH_BM  DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
 
+// Default is -UPOP_WORD_IN_LINK.
+// It doesn't matter unless POP_WORD is defined.
+// POP_WORD is defined automatically if DEPTH_IN_SW is defined.
+// I wonder if PP_IN_LINK should cause POP_WORD_IN_LINK to be defined.
+
 //
 // When trying to make ! PP_IN_LINK use the same amount of memory as
 // PP_IN_LINK:
@@ -1197,16 +1202,19 @@ typedef struct {
 //   -DPP_IN_LINK -DDUMMY_POP_CNT_IN_LIST
 //
 typedef struct {
-    Word_t ln_wRoot;
-#if defined(BM_IN_LINK)
-    Word_t ln_awBm[N_WORDS_SWITCH_BM];
-#endif // defined(BM_IN_LINK)
 #if defined(PP_IN_LINK)
     Word_t ln_wPrefixPop;
 #endif // defined(PP_IN_LINK)
+#if defined(POP_WORD) && defined(POP_WORD_IN_LINK)
+    Word_t sw_wPopWord;
+#endif // defined(POP_WORD) && defined(POP_WORD_IN_LINK)
+#if defined(BM_IN_LINK)
+    Word_t ln_awBm[N_WORDS_SWITCH_BM];
+#endif // defined(BM_IN_LINK)
 #if (cnDummiesInLink != 0)
     Word_t ln_awDummies[cnDummiesInLink];
 #endif // (cnDummiesInLink != 0)
+    Word_t ln_wRoot;
 } Link_t;
 
 // Uncompressed, basic switch.
@@ -1221,9 +1229,9 @@ typedef struct {
 #if !defined(PP_IN_LINK)
     Word_t sw_wPrefixPop;
 #endif // !defined(PP_IN_LINK)
-#if defined(POP_WORD_IN_SW)
+#if defined(POP_WORD) && ! defined(POP_WORD_IN_LINK)
     Word_t sw_wPopWord;
-#endif // defined(POP_WORD_IN_SW)
+#endif // defined(POP_WORD) && ! defined(POP_WORD_IN_LINK)
 #if (cnDummiesInSwitch != 0)
     Word_t sw_awDummies[cnDummiesInSwitch];
 #endif // (cnDummiesInSwitch != 0)
@@ -1239,9 +1247,9 @@ typedef struct {
 #if !defined(PP_IN_LINK)
     Word_t sw_wPrefixPop;
 #endif // !defined(PP_IN_LINK)
-#if defined(POP_WORD_IN_SW)
+#if defined(POP_WORD) && ! defined(POP_WORD_IN_LINK)
     Word_t sw_wPopWord;
-#endif // defined(POP_WORD_IN_SW)
+#endif // defined(POP_WORD) && ! defined(POP_WORD_IN_LINK)
 #if (cnDummiesInSwitch != 0)
     Word_t sw_awDummies[cnDummiesInSwitch];
 #endif // (cnDummiesInSwitch != 0)
