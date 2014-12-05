@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.458 2014/12/05 03:10:01 mike Exp mike $
+// @(#) $Id: bli.c,v 1.459 2014/12/05 03:15:31 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1924,45 +1924,27 @@ notEmptyBm:;
         DBGX(printf("List nDL %d\n", nDL));
         DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMask(nDL)));
 
-  #if defined(LOOKUP) && defined(ONE_DEREF_AT_LIST)
-
-        if (*pwr != 0) { return  KeyFound; }
-
-  #else // defined(LOOKUP) && defined(ONE_DEREF_AT_LIST)
-
   #if defined(REMOVE)
         if (bCleanup) { return Success; } // cleanup is complete
   #endif // defined(REMOVE)
 
+// Why can't we move this pop count increment so we do it only on success?
   #if defined(PP_IN_LINK)
         // What about defined(RECURSIVE)?
         assert(nDL != cnDigitsPerWord); // handled in wrapper
         // If nDL != cnDigitsPerWord then we're not at the top.
         // And pwRoot is initialized despite what gcc might think.
-        wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
-      #if ! defined(LOOKUP)
-        DBGX(printf("wPopCnt in link (before incr) %zd\n", (size_t)wPopCnt));
-        set_PWR_wPopCnt(pwRoot, NULL, nDL, wPopCnt + nIncr);
-        DBGX(printf("wPopCnt in link (after incr) %zd\n",
-                    (size_t)PWR_wPopCnt(pwRoot, NULL, nDL)));
-      #endif // ! defined(LOOKUP)
+        //wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
   #endif // defined(PP_IN_LINK)
-
-  #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
-
-        // This short-circuit is for analysis only.
-        return KeyFound;
-
-  #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
       #if defined(PP_IN_LINK)
           // Adjust wPopCnt to actual list size for undo case.
           // There must be a better way to do this.
           #if defined(INSERT)
-        if (nIncr == -1) { --wPopCnt; }
+        if (nIncr == -1) { return Failure; }
           #endif // defined(INSERT)
           #if defined(REMOVE)
-        if (nIncr == 1) { ++wPopCnt; }
+        if (nIncr == 1) { return Failure; }
           #endif // defined(REMOVE)
       #else // defined(PP_IN_LINK)
         // we'll get wPopCnt in SearchList if we need it
@@ -2028,6 +2010,11 @@ notEmptyBm:;
             assert(ll_nDL(wRoot) == nDL);
       #endif // defined(DL_IN_LL)
 
+      #if defined(PP_IN_LINK)
+            assert(nDL != cnDigitsPerWord); // handled in wrapper
+            // pwRoot is initialized despite what gcc might think.
+            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
+      #endif // defined(PP_IN_LINK)
       // LOOKUP_NO_LIST_SEARCH is for analysis only.  We have retrieved the
       // pop count and prefix but we have not dereferenced the list itself.
       #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
@@ -2047,6 +2034,9 @@ notEmptyBm:;
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
           #if defined(REMOVE)
+              #if defined(PP_IN_LINK)
+                set_PWR_wPopCnt(pwRoot, NULL, nDL, wPopCnt - 1);
+              #endif // defined(PP_IN_LINK)
                 RemoveGuts(pwRoot, wKey, nDL, wRoot); goto cleanup;
           #endif // defined(REMOVE)
           #if defined(INSERT) && ! defined(RECURSIVE)
@@ -2069,9 +2059,9 @@ notEmptyBm:;
         }
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && ...
 
-  #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
-
-  #endif // defined(LOOKUP) && defined(ONE_DEREF_AT_LIST)
+      #if defined(PP_IN_LINK) && defined(INSERT)
+        set_PWR_wPopCnt(pwRoot, NULL, nDL, wPopCnt + 1);
+      #endif // defined(PP_IN_LINK) && defined(INSERT)
 
         break;
 
