@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.461 2014/12/05 15:09:46 mike Exp mike $
+// @(#) $Id: bli.c,v 1.462 2014/12/05 15:56:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -11,14 +11,14 @@ Word_t HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 
 #if defined(PARALLEL_128)
 
-#define BUCKET_EMBEDDED_KEYS_PARALLEL(_pxBucket, _wKey, _nBL) \
+#define BUCKET_HAS_KEY(_pxBucket, _wKey, _nBL) \
     ((sizeof(*(_pxBucket)) == sizeof(Word_t)) \
         ? WordHasKey((void *)(_pxBucket), (_wKey), (_nBL)) \
         : HasKey128((void *)(_pxBucket), (_wKey), (_nBL)))
 
 #else // defined(PARALLEL_128)
 
-#define BUCKET_EMBEDDED_KEYS_PARALLEL(_pxBucket, _wKey, _nBL) \
+#define BUCKET_HAS_KEY(_pxBucket, _wKey, _nBL) \
     WordHasKey((_pxBucket), (_wKey), (_nBL))
 
 #endif // defined(PARALLEL_128)
@@ -346,7 +346,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     _b_t *px = (_b_t *)&(_pxKeys)[_nPos]; \
     /* number of last key in starting _b_t */ \
     (_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1; \
-    while ( ! BUCKET_EMBEDDED_KEYS_PARALLEL(px, (_xKey), sizeof(_xKey) * 8) ) { \
+    while ( ! BUCKET_HAS_KEY(px, (_xKey), sizeof(_xKey) * 8) ) { \
         /* check the last key in the _b_t to see if we've gone too far */ \
         if ((_xKey) < (_pxKeys)[_nPos]) { (_nPos) ^= -1; break; } \
         ++px; (_nPos) += sizeof(_b_t) / sizeof(_xKey); \
@@ -369,7 +369,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     Word_t wEnd = (Word_t)&(_pxKeys)[_nPos]; \
     (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
     assert((((_nPos) * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
-    while ( ! BUCKET_EMBEDDED_KEYS_PARALLEL(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
+    while ( ! BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
         /* check the first key in the _b_t to see if we've gone too far */ \
         if ((_pxKeys)[_nPos] < (_xKey)) { (_nPos) ^= -1; break; } \
         --nxPos; (_nPos) -= sizeof(_b_t) / sizeof(_xKey); \
@@ -386,7 +386,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
     do { \
         if ((_xKey) >= (_pxKeys)[_nPos]) { \
-            if (!BUCKET_EMBEDDED_KEYS_PARALLEL(&px[nxPos], (_xKey), sizeof(_xKey) * 8)) { \
+            if (!BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8)) { \
                 (_nPos = -1); \
             } \
             break; \
@@ -398,7 +398,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     _b_t *px = (_b_t *)(_pxKeys); \
     int nxPos = ((_nPos) + (_nPopCnt) - 1) * sizeof(_xKey) / sizeof(_b_t); \
     (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
-    while ( ! BUCKET_EMBEDDED_KEYS_PARALLEL(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
+    while ( ! BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
         /* check the first key in the _b_t to see if we've gone too far */ \
         if (((_xKey) > (_pxKeys)[_nPos]) || (nxPos-- == 0)) { \
             (_nPos) = -1; break; \
@@ -425,7 +425,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     int nxPos = (_nPos) * sizeof(_xKey) / sizeof(_b_t); \
     /* number of first key in starting _b_t */ \
     (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
-    while ( ! BUCKET_EMBEDDED_KEYS_PARALLEL(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
+    while ( ! BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
         /* check to see if we've reached the beginning of the list */ \
         if (nxPos <= 0) { (_nPos) ^= -1; break; } \
         --nxPos; (_nPos) -= sizeof(_b_t) / sizeof(_xKey); \
@@ -538,7 +538,7 @@ HasKey128Tail(__m128i *pxBucket,
     assert(((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
     /*__m128i xLsbs, xMsbs, xKeys;*/ \
     /*HAS_KEY_128_SETUP((_xKey), sizeof(_x_t) * 8, xLsbs, xMsbs, xKeys);*/ \
-    if (BUCKET_EMBEDDED_KEYS_PARALLEL(&px[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
+    if (BUCKET_HAS_KEY(&px[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
         (_nPos) = 0; /* key exists, but we don't know the exact position */ \
     } \
     else \
@@ -570,7 +570,7 @@ HasKey128Tail(__m128i *pxBucket,
             } \
         } \
         assert(((_nPos) < 0) \
-            || BUCKET_EMBEDDED_KEYS_PARALLEL((_b_t *) \
+            || BUCKET_HAS_KEY((_b_t *) \
                                   ((Word_t)&(_pxKeys)[_nPos] \
                                       & ~MSK(LOG(sizeof(_b_t)))), \
                               (_xKey), sizeof(_x_t) * 8)); \
@@ -582,10 +582,10 @@ HasKey128Tail(__m128i *pxBucket,
                     || (~(_nPos) \
                         < (int)((_nPopCnt + sizeof(_b_t) - 1) \
                             & ~MSK(sizeof(_b_t))))); \
-            for (unsigned ii = 0; ii < (_nPopCnt); \
+            for (int ii = 0; ii < (_nPopCnt); \
                  ii += sizeof(_b_t) / sizeof(_xKey)) \
             { \
-                assert( ! BUCKET_EMBEDDED_KEYS_PARALLEL((_b_t *)&(_pxKeys)[ii], \
+                assert( ! BUCKET_HAS_KEY((_b_t *)&(_pxKeys)[ii], \
                           (_xKey), sizeof(_x_t) * 8) ); \
             } \
         } \
@@ -607,7 +607,7 @@ again:
     nSplit &= ~MSK(sizeof(Bucket_t)); // first key in bucket
     nSplit += nPos; // make relative to psKeys
 
-    if (BUCKET_EMBEDDED_KEYS_PARALLEL((Bucket_t *)&psKeys[nSplit], sKey, sizeof(sKey) * 8)) {
+    if (BUCKET_HAS_KEY((Bucket_t *)&psKeys[nSplit], sKey, sizeof(sKey) * 8)) {
         return 0; // key exists, but we don't know the exact position
     }
 
@@ -801,7 +801,7 @@ HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
+SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 {
     (void)nBL;
 #if defined(LIST_END_MARKERS)
@@ -846,7 +846,7 @@ SearchList8(uint8_t *pcKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
+SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 {
     (void)nBL;
 #if defined(LIST_END_MARKERS)
@@ -894,7 +894,7 @@ SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
+SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 {
     (void)nBL;
 #if defined(LIST_END_MARKERS)
@@ -971,7 +971,7 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, unsigned nPopCnt)
+SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 {
     (void)nBL;
 #if defined(LIST_END_MARKERS)
@@ -1488,7 +1488,7 @@ again:
         Word_t wSubKey = wKey & MSK(nBL);
         int nBucketIndex = wSubKey >> (cnBitsInD1 + 1);
 
-        if (BUCKET_EMBEDDED_KEYS_PARALLEL(&pwr[nBucketIndex], wSubKey, nBL))
+        if (BUCKET_HAS_KEY(&pwr[nBucketIndex], wSubKey, nBL))
         {
       #if defined(REMOVE)
             RemoveGuts(pwRoot, wKey, nDL, wRoot);
