@@ -904,6 +904,16 @@ enum {
 #define     PWR_pwBm(_pwRoot, _pwr)  (((BmSwitch_t *)(_pwr))->sw_awBm)
 #endif // defined(BM_IN_LINK)
 
+// Use ls_sPopCnt in the performance path when we know the keys are bigger
+// than one byte.
+#define     ls_sPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_asKeys[0])
+#define set_ls_sPopCnt(_ls, _cnt)  (ls_sPopCnt(_ls) = (_cnt))
+
+// Use ls_cPopCnt in the performance path when we know the keys are one byte.
+// PopCnt fits in a single key slot.
+#define     ls_cPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_acKeys[0])
+#define set_ls_cPopCnt(_ls, _cnt)  (ls_cPopCnt(_ls) = (_cnt))
+
 #if defined(PP_IN_LINK)
 
 // For PP_IN_LINK ls_wPopCnt macros are only valid at top, i.e.
@@ -944,16 +954,6 @@ enum {
 #define set_ls_wPopCnt(_ls, _nBL, _cnt) \
   (((_nBL) > 8) ? set_ls_sPopCnt((_ls), (_cnt)) \
                 : set_ls_cPopCnt((_ls), (_cnt)))
-
-// Use ls_sPopCnt in the performance path when we know the keys are bigger
-// than one byte.
-#define     ls_sPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_asKeys[0])
-#define set_ls_sPopCnt(_ls, _cnt)  (ls_sPopCnt(_ls) = (_cnt))
-
-// Use ls_cPopCnt in the performance path when we know the keys are one byte.
-// PopCnt fits in a single key slot.
-#define     ls_cPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_acKeys[0])
-#define set_ls_cPopCnt(_ls, _cnt)  (ls_cPopCnt(_ls) = (_cnt))
 
 // Index of first key within leaf (for all cases).
 // Or is it the number of key slots needed for header info after
