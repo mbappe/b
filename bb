@@ -21,6 +21,10 @@ fi
 
 # TIME=time
 
+if [ "$1" = -Q ]
+then
+  B="b.bb -1l"
+else
 # B="b.bb -1l"
 # B="b.bb -1lm"
 # B="b.bb -1"
@@ -29,6 +33,7 @@ fi
 # B="b.bb -1gi"
 # B="b.bb -1dgi"
   B="b.bb -1dgim"
+fi
 
 # -x does wait for context switch; useful for timing with small pops
 # -l skips small-pop del/ins loop
