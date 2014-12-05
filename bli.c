@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.465 2014/12/05 16:23:26 mike Exp mike $
+// @(#) $Id: bli.c,v 1.466 2014/12/05 16:24:11 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -801,9 +801,22 @@ HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchList8(uint8_t *pcKeys, Word_t wKey, int nBL, int nPopCnt)
+SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nDL, int nBL)
 {
-    (void)nBL;
+    (void)nBL; (void)pwRoot; (void)nDL;
+
+    uint8_t *pcKeys = ls_pcKeysNAT(pwr);
+  #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
+    assert(ls_cPopCnt(pwr) <= 16);
+    int nPopCnt = 16; // Sixteen fit so why do less?
+  #else // defined(PARALLEL_128)
+  #if defined(PP_IN_LINK)
+    int nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
+  #else // defined(PP_IN_LINK)
+    int nPopCnt = ls_cPopCnt(pwr);
+  #endif // defined(PP_IN_LINK)
+  #endif // defined(PARALLEL_128)
+
 #if defined(LIST_END_MARKERS)
     assert(pcKeys[-1] == 0);
 #if defined(PSPLIT_PARALLEL)
@@ -1133,33 +1146,24 @@ Word_t cnMagic[] = {
 static int
 SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot, int nDL)
 {
+    (void)pwRoot; (void)nDL;
+
     DBGL(printf("SearchList\n"));
 
     int nPopCnt;
     int nPos;
 
-  #if defined(PP_IN_LINK)
-    nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
-  #else // defined(PP_IN_LINK)
-    (void)pwRoot; (void)nDL;
-  #endif // defined(PP_IN_LINK)
   #if defined(COMPRESSED_LISTS)
       #if (cnBitsInD1 <= 8)
     if (nBL <= 8) {
-      #if ! defined(PP_IN_LINK)
-      #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
-        assert(ls_cPopCnt(pwr) <= 16);
-        nPopCnt = 16; // Sixteen fit so why do less?
-      #else // defined(PARALLEL_128)
-        nPopCnt = ls_cPopCnt(pwr);
-      #endif // defined(PARALLEL_128)
-      #endif // ! defined(PP_IN_LINK)
-        nPos = SearchList8(ls_pcKeysNAT(pwr), wKey, nBL, nPopCnt);
+        nPos = SearchList8(pwRoot, pwr, wKey, nDL, nBL);
     } else
       #endif // (cnBitsInD1 <= 8)
       #if (cnBitsInD1 <= 16)
     if (nBL <= 16) {
-      #if ! defined(PP_IN_LINK) // nPopCnt is not valid yet
+      #if defined(PP_IN_LINK)
+        nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
+      #else // defined(PP_IN_LINK)
       #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
           #if (cnListPopCntMax16 <= 8)
         nPopCnt = 8; // Eight fit so why do less?
@@ -1180,21 +1184,25 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot, int nDL)
       #else // defined(PARALLEL_128)
         nPopCnt = ls_sPopCnt(pwr);
       #endif // defined(PARALLEL_128)
-      #endif // ! defined(PP_IN_LINK)
+      #endif // defined(PP_IN_LINK)
         nPos = SearchList16(ls_psKeysNAT(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsInD1 <= 16)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {
-          #if ! defined(PP_IN_LINK)
+          #if defined(PP_IN_LINK)
+        nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
+          #else // defined(PP_IN_LINK)
         nPopCnt = ls_sPopCnt(pwr);
-          #endif // ! defined(PP_IN_LINK)
+          #endif // defined(PP_IN_LINK)
         nPos = SearchList32(ls_piKeysNAT(pwr), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     {
-  #if ! defined(PP_IN_LINK)
+  #if defined(PP_IN_LINK)
+        nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
+  #else // defined(PP_IN_LINK)
         nPopCnt = ls_sPopCnt(pwr);
   #endif // ! defined(PP_IN_LINK)
         nPos = SearchListWord(ls_pwKeysNAT(pwr), wKey, nBL, nPopCnt);
