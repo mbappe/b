@@ -970,52 +970,61 @@ enum {
 
 #endif // defined(PP_IN_LINK)
 
+#define ls_pwKeysNAT_UA(_ls) \
+    (&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS])
+
 // For PP_IN_LINK ls_pxKeysNAT macros are only valid not at top or for
 // T_ONE - not T_LIST - at top.
 #if ( defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL) ) \
     || ( defined(ALIGN_LISTS) && ! defined(PSPLIT_PARALLEL) )
-#define ls_pwKeysNAT(_ls) \
-    ((Word_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS] \
-            + sizeof(Bucket_t) - 1) \
-        & ~(sizeof(Bucket_t) - 1)))
+
+  #define ls_pwKeysNAT(_ls) \
+      ((Word_t *)ALIGN_UP((Word_t)ls_pwKeysNAT_UA(_ls), sizeof(Bucket_t)))
+
 #else // defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)
+
   // Ignore ALIGN_LISTS for (nBL >= cnBitsPerWord) unless PSPLIT_SEARCH_WORD
   // && PSPLIT_PARALLEL in order to improve memory usage at the top.
-#define ls_pwKeysNAT(_ls) (&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS])
+  #define ls_pwKeysNAT(_ls)  ls_pwKeysNAT_UA(_ls)
+
 #endif // defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)
 
 #if defined(COMPRESSED_LISTS)
 
+#define ls_pcKeysNAT_UA(_ls) \
+    (&((ListLeaf_t *)(_ls))->ll_acKeys[N_LIST_HDR_KEYS])
+
 #define ls_psKeysNAT_UA(_ls) \
     (&((ListLeaf_t *)(_ls))->ll_asKeys[N_LIST_HDR_KEYS])
+
+  #if (cnBitsPerWord > 32)
+#define ls_piKeysNAT_UA(_ls) \
+    (&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS])
+  #endif // (cnBitsPerWord > 32)
 
   #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 // What if we want 128-byte alignment and one-word parallel search?
 // Ifdefs don't allow it at the moment.
 
 #define ls_pcKeysNAT(_ls) \
-    ((uint8_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_acKeys[N_LIST_HDR_KEYS] \
-            + sizeof(Bucket_t) - 1) \
-        & ~(sizeof(Bucket_t) - 1)))
+    ((uint8_t *)ALIGN_UP((Word_t)ls_pcKeysNAT_UA(_ls), sizeof(Bucket_t)))
 
 #define ls_psKeysNAT(_ls) \
     ((uint16_t *)ALIGN_UP((Word_t)ls_psKeysNAT_UA(_ls), sizeof(Bucket_t)))
 
       #if (cnBitsPerWord > 32)
 #define ls_piKeysNAT(_ls) \
-   ((uint32_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS] \
-            + sizeof(Bucket_t) - 1) \
-        & ~(sizeof(Bucket_t) - 1)))
+    ((uint32_t *)ALIGN_UP((Word_t)ls_piKeysNAT_UA(_ls), sizeof(Bucket_t)))
       #endif // (cnBitsPerWord > 32)
 
   #else // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 
-#define ls_pcKeysNAT(_ls) (&((ListLeaf_t *)(_ls))->ll_acKeys[N_LIST_HDR_KEYS])
+#define ls_pcKeysNAT(_ls)  ls_pcKeysNAT_UA(_ls)
 
 #define ls_psKeysNAT(_ls)  ls_psKeysNAT_UA(_ls)
 
           #if (cnBitsPerWord > 32)
-#define ls_piKeysNAT(_ls) (&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS])
+#define ls_piKeysNAT(_ls)  ls_piKeysNAT_UA(_ls)
           #endif // (cnBitsPerWord > 32)
 
   #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
@@ -1027,29 +1036,26 @@ enum {
 // ls_piKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
 // ls_pwKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
 #if defined(PP_IN_LINK)
+
+// Do we need to add a key slot for population count at the top?
+#define POP_SLOT(_nBL)  (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))
+
   #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
       #if defined(COMPRESSED_LISTS)
 
 #define ls_pcKeys(_ls, _nBL) \
-    ((uint8_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_acKeys \
-                [N_LIST_HDR_KEYS \
-                    + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))] \
-            + sizeof(Bucket_t) - 1) \
-        & ~(sizeof(Bucket_t) - 1)))
+    ((uint8_t *)ALIGN_UP((Word_t)(ls_pcKeysNAT_UA(_ls) + POP_SLOT(_nBL), \
+                         sizeof(Bucket_t))))
 
 #define ls_psKeys(_ls, _nBL) \
-    ((uint16_t *)ALIGN_UP((Word_t)(ls_psKeysNAT_UA(_ls) \
-            + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))), \
-        sizeof(Bucket_t)))
+    ((uint16_t *)ALIGN_UP((Word_t)(ls_psKeysNAT_UA(_ls) + POP_SLOT(_nBL),  \
+                          sizeof(Bucket_t))))
 
           #if (cnBitsPerWord > 32)
 
 #define ls_piKeys(_ls, _nBL) \
-    ((uint32_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_aiKeys \
-                [N_LIST_HDR_KEYS \
-                    + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))] \
-            + sizeof(Bucket_t) - 1) \
-        & ~(sizeof(Bucket_t) - 1)))
+    ((uint32_t *)ALIGN_UP((Word_t)(ls_piKeysNAT_UA(_ls) + POP_SLOT(_nBL), \
+                          sizeof(Bucket_t))))
 
           #endif // (cnBitsPerWord > 32)
 
@@ -1057,36 +1063,30 @@ enum {
 
       #if (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)) \
           || ( defined(ALIGN_LISTS) && ! defined(PSPLIT_PARALLEL) )
+
 #define ls_pwKeys(_ls, _nBL) \
-    ((Word_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_awKeys \
-                [N_LIST_HDR_KEYS \
-                    + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))] \
-            + sizeof(Bucket_t) - 1) \
-        & ~(sizeof(Bucket_t) - 1)))
+    ((Word_t *)ALIGN_UP((Word_t)(ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL), \
+                        sizeof(Bucket_t))))
+
       #else // (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)) ...
-#define ls_pwKeys(_ls, _nBL) \
-    (&((ListLeaf_t *)(_ls))->ll_awKeys \
-                [N_LIST_HDR_KEYS \
-                    + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))])
+
+#define ls_pwKeys(_ls, _nBL)  (ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL))
+
       #endif // (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)) ...
 
   #else // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 
-#define ls_pwKeys(_ls, _nBL) \
-   (ls_pwKeysNAT(_ls) + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0)))
+#define ls_pwKeys(_ls, _nBL)  (ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL))
 
       #if defined(COMPRESSED_LISTS)
 
-#define ls_pcKeys(_ls, _nBL) \
-   (ls_pcKeysNAT(_ls) + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0)))
+#define ls_pcKeys(_ls, _nBL)  (ls_pcKeysNAT_UA(_ls) + POP_SLOT(_nBL))
 
-#define ls_psKeys(_ls, _nBL) \
-   (ls_psKeysNAT(_ls) + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0)))
+#define ls_psKeys(_ls, _nBL)  (ls_psKeysNAT_UA(_ls) + POP_SLOT(_nBL))
 
           #if (cnBitsPerWord > 32)
 
-#define ls_piKeys(_ls, _nBL) \
-   (ls_piKeysNAT(_ls) + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0)))
+#define ls_piKeys(_ls, _nBL)  (ls_piKeysNAT_UA(_ls) + POP_SLOT(_nBL))
 
           #endif // (cnBitsPerWord > 32)
 
