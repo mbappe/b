@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.457 2014/12/05 02:42:57 mike Exp mike $
+// @(#) $Id: bli.c,v 1.458 2014/12/05 03:10:01 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2544,7 +2544,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
         // ls_wPopCount is valid only at the top for PP_IN_LINK
         // the first word in the list is used for pop count at the top
-        return (SearchListWord(ls_pwKeysX(pwr, cnBitsPerWord),
+        return (SearchListWord(ls_pwKeys(pwr, cnBitsPerWord),
                                wKey, cnBitsPerWord,
                            ls_wPopCnt(pwr, cnBitsPerWord))
                        >= 0)
@@ -2773,7 +2773,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             else
             {
                 Word_t *pwListNew = NewList(wPopCnt + 1, cnDigitsPerWord);
-                Word_t *pwKeysNew = ls_pwKeysX(pwListNew, cnBitsPerWord);
+                Word_t *pwKeysNew = ls_pwKeys(pwListNew, cnBitsPerWord);
                 set_wr(wRoot, pwListNew, T_LIST);
                 Word_t *pwKeys;
       #if defined(USE_T_ONE)
@@ -2781,7 +2781,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                     pwKeys = pwr;
                 } else
       #endif // defined(USE_T_ONE)
-                { pwKeys = ls_pwKeysX(pwr, cnBitsPerWord); }
+                { pwKeys = ls_pwKeys(pwr, cnBitsPerWord); }
 
  // Isn't this chunk of code already in InsertGuts?
                 unsigned nn;
@@ -2915,10 +2915,10 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
       #endif // defined(USE_T_ONE)
                 {
                     set_wr(wRoot, pwListNew, T_LIST);
-                    pwKeysNew = ls_pwKeysX(pwListNew, cnBitsPerWord);
+                    pwKeysNew = ls_pwKeys(pwListNew, cnBitsPerWord);
                 }
 
-                Word_t *pwKeys = ls_pwKeysX(pwr, cnBitsPerWord);
+                Word_t *pwKeys = ls_pwKeys(pwr, cnBitsPerWord);
 
  // Isn't this chunk of code already in RemoveGuts?
                 unsigned nn;

@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.386 2014/12/05 02:42:57 mike Exp mike $
+// @(#) $Id: b.c,v 1.387 2014/12/05 03:10:01 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -187,17 +187,17 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
     int nBytes, nBytesKeySz;
 #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
-        nBytes = (int)ls_pcKeysX(0, nBL); nBytesKeySz = 1;
+        nBytes = (int)ls_pcKeys(0, nBL); nBytesKeySz = 1;
     } else if (nBL <= 16) {
-        nBytes = (int)ls_psKeysX(0, nBL); nBytesKeySz = 2;
+        nBytes = (int)ls_psKeys(0, nBL); nBytesKeySz = 2;
     } else
   #if (cnBitsPerWord > 32)
     if (nBL <= 32) {
-        nBytes = (int)ls_piKeysX(0, nBL); nBytesKeySz = 4;
+        nBytes = (int)ls_piKeys(0, nBL); nBytesKeySz = 4;
     } else
   #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-    { nBytes = (int)ls_pwKeysX(0, nBL); nBytesKeySz = 8; }
+    { nBytes = (int)ls_pwKeys(0, nBL); nBytesKeySz = 8; }
 
     nBytes += wPopCntArg * nBytesKeySz; // add list of real keys
 #if defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)
@@ -1934,7 +1934,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                     pwKeys = ls_pwKeysNAT(pwr); // list of keys in old List
                 } else {
                     wPopCnt = ls_wPopCnt(pwr, nBL);
-                    pwKeys = ls_pwKeysX(pwr, cnBitsPerWord);
+                    pwKeys = ls_pwKeys(pwr, cnBitsPerWord);
                 }
 #else // defined(PP_IN_LINK)
                 wPopCnt = ls_wPopCnt(pwr, nBL);
@@ -2068,7 +2068,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 } else
 #endif // defined(COMPRESSED_LISTS)
                 {
-                    CopyWithInsertWord(ls_pwKeysX(pwList, nBL),
+                    CopyWithInsertWord(ls_pwKeys(pwList, nBL),
                                        pwKeys, wPopCnt, wKey);
                 }
             } else
@@ -2086,7 +2086,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 } else
 #endif // defined(COMPRESSED_LISTS)
                 {
-                    COPY(ls_pwKeysX(pwList, nBL), pwKeys, wPopCnt);
+                    COPY(ls_pwKeys(pwList, nBL), pwKeys, wPopCnt);
                 }
             }
 #endif // defined(SORT_LISTS)
@@ -2104,7 +2104,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 } else
 #endif // defined(COMPRESSED_LISTS)
                 {
-                    ls_pwKeysX(pwList, nBL)[wPopCnt] = wKey;
+                    ls_pwKeys(pwList, nBL)[wPopCnt] = wKey;
                 }
             }
 
@@ -2870,7 +2870,7 @@ DeflateExternalList(Word_t *pwRoot,
         assert(nPopCntMax == 0);
         Word_t *pwList = NewList(1, nBL_to_nDL(nBL));
         set_wr(wRoot, pwList, T_ONE); // external T_ONE list
-        Word_t *pwKeys = ls_pwKeysX(pwr, nBL);
+        Word_t *pwKeys = ls_pwKeys(pwr, nBL);
         *pwList = pwKeys[0];
     }
 

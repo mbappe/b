@@ -1015,23 +1015,23 @@ enum {
   #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 #endif // defined(COMPRESSED_LISTS)
 
-// ls_pxKeysX(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
-// ls_pcKeysX(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
-// ls_psKeysX(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
-// ls_piKeysX(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
-// ls_pwKeysX(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
+// ls_pxKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
+// ls_pcKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
+// ls_psKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
+// ls_piKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
+// ls_pwKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
 #if defined(PP_IN_LINK)
   #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
       #if defined(COMPRESSED_LISTS)
 
-#define ls_pcKeysX(_ls, _nBL) \
+#define ls_pcKeys(_ls, _nBL) \
     ((uint8_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_acKeys \
                 [N_LIST_HDR_KEYS \
                     + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))] \
             + sizeof(Bucket_t) - 1) \
         & ~(sizeof(Bucket_t) - 1)))
 
-#define ls_psKeysX(_ls, _nBL) \
+#define ls_psKeys(_ls, _nBL) \
     ((uint16_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_asKeys \
                 [N_LIST_HDR_KEYS \
                     + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))] \
@@ -1040,7 +1040,7 @@ enum {
 
           #if (cnBitsPerWord > 32)
 
-#define ls_piKeysX(_ls, _nBL) \
+#define ls_piKeys(_ls, _nBL) \
     ((uint32_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_aiKeys \
                 [N_LIST_HDR_KEYS \
                     + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))] \
@@ -1053,14 +1053,14 @@ enum {
 
       #if (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)) \
           || ( defined(ALIGN_LISTS) && ! defined(PSPLIT_PARALLEL) )
-#define ls_pwKeysX(_ls, _nBL) \
+#define ls_pwKeys(_ls, _nBL) \
     ((Word_t *)(((Word_t)&((ListLeaf_t *)(_ls))->ll_awKeys \
                 [N_LIST_HDR_KEYS \
                     + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))] \
             + sizeof(Bucket_t) - 1) \
         & ~(sizeof(Bucket_t) - 1)))
       #else // (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)) ...
-#define ls_pwKeysX(_ls, _nBL) \
+#define ls_pwKeys(_ls, _nBL) \
     (&((ListLeaf_t *)(_ls))->ll_awKeys \
                 [N_LIST_HDR_KEYS \
                     + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))])
@@ -1068,20 +1068,20 @@ enum {
 
   #else // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 
-#define ls_pwKeysX(_ls, _nBL) \
+#define ls_pwKeys(_ls, _nBL) \
    (ls_pwKeysNAT(_ls) + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0)))
 
       #if defined(COMPRESSED_LISTS)
 
-#define ls_pcKeysX(_ls, _nBL) \
+#define ls_pcKeys(_ls, _nBL) \
    (ls_pcKeysNAT(_ls) + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0)))
 
-#define ls_psKeysX(_ls, _nBL) \
+#define ls_psKeys(_ls, _nBL) \
    (ls_psKeysNAT(_ls) + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0)))
 
           #if (cnBitsPerWord > 32)
 
-#define ls_piKeysX(_ls, _nBL) \
+#define ls_piKeys(_ls, _nBL) \
    (ls_piKeysNAT(_ls) + (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0)))
 
           #endif // (cnBitsPerWord > 32)
@@ -1090,10 +1090,10 @@ enum {
   #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 #else // defined(PP_IN_LINK)
 
-#define ls_pwKeysX(_ls, _nBL)  ls_pwKeysNAT(_ls)
-#define ls_piKeysX(_ls, _nBL)  ls_piKeysNAT(_ls)
-#define ls_psKeysX(_ls, _nBL)  ls_psKeysNAT(_ls)
-#define ls_pcKeysX(_ls, _nBL)  ls_pcKeysNAT(_ls)
+#define ls_pwKeys(_ls, _nBL)  ls_pwKeysNAT(_ls)
+#define ls_piKeys(_ls, _nBL)  ls_piKeysNAT(_ls)
+#define ls_psKeys(_ls, _nBL)  ls_psKeysNAT(_ls)
+#define ls_pcKeys(_ls, _nBL)  ls_pcKeysNAT(_ls)
 
 #endif // defined(PP_IN_LINK)
 
