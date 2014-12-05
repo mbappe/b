@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.466 2014/12/05 16:24:11 mike Exp mike $
+// @(#) $Id: bli.c,v 1.467 2014/12/05 16:48:09 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -859,8 +859,36 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nDL, int nBL)
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchList16(uint16_t *psKeys, Word_t wKey, unsigned nBL, int nPopCnt)
+SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nDL, int nBL)
 {
+    (void)nBL; (void)pwRoot; (void)nDL;
+
+    uint16_t *psKeys = ls_psKeysNAT(pwr);
+  #if defined(PP_IN_LINK)
+    int nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
+  #else // defined(PP_IN_LINK)
+  #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
+      #if (cnListPopCntMax16 <= 8)
+    int nPopCnt = 8; // Eight fit so why do less?
+    assert((cnListPopCntMaxDl1 <= 8) || (cnBitsInD1 <= 8));
+      #elif (cnBitsInD1 > 8) // nDL == 1 is handled here
+          #if (cnListPopCntMaxDl1 <= 8) // list fits in one __m128i
+              #if (cnBitsLeftAtDl2 <= 16) // need to test nDL
+    int nPopCnt = (nBL == cnBitsInD1) ? 8 : ls_sPopCnt(pwr);
+              #else // (cnBitsLeftAtDl2 <= 16)
+    int nPopCnt = 8; // Eight fit so why do less?
+              #endif // (cnBitsLeftAtDl2 <= 16)
+          #else // (cnListPopCntMaxDl1 <= 8)
+    int nPopCnt = ls_sPopCnt(pwr);
+          #endif // (cnListPopCntMaxDl1 <= 8)
+      #else // (cnListPopCntMax16 <= 8)
+    int nPopCnt = ls_sPopCnt(pwr);
+      #endif // (cnListPopCntMax16 <= 8)
+  #else // defined(PARALLEL_128)
+    int nPopCnt = ls_sPopCnt(pwr);
+  #endif // defined(PARALLEL_128)
+  #endif // defined(PP_IN_LINK)
+
     (void)nBL;
 #if defined(LIST_END_MARKERS)
     assert(psKeys[-1] == 0);
@@ -1161,31 +1189,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot, int nDL)
       #endif // (cnBitsInD1 <= 8)
       #if (cnBitsInD1 <= 16)
     if (nBL <= 16) {
-      #if defined(PP_IN_LINK)
-        nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
-      #else // defined(PP_IN_LINK)
-      #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
-          #if (cnListPopCntMax16 <= 8)
-        nPopCnt = 8; // Eight fit so why do less?
-        assert((cnListPopCntMaxDl1 <= 8) || (cnBitsInD1 <= 8));
-          #elif (cnBitsInD1 > 8) // nDL == 1 is handled here
-              #if (cnListPopCntMaxDl1 <= 8) // list fits in one __m128i
-                  #if (cnBitsLeftAtDl2 <= 16) // need to test nDL
-        nPopCnt = (nBL == cnBitsInD1) ? 8 : ls_sPopCnt(pwr);
-                  #else // (cnBitsLeftAtDl2 <= 16)
-        nPopCnt = 8; // Eight fit so why do less?
-                  #endif // (cnBitsLeftAtDl2 <= 16)
-              #else // (cnListPopCntMaxDl1 <= 8)
-        nPopCnt = ls_sPopCnt(pwr);
-              #endif // (cnListPopCntMaxDl1 <= 8)
-          #else // (cnListPopCntMax16 <= 8)
-        nPopCnt = ls_sPopCnt(pwr);
-          #endif // (cnListPopCntMax16 <= 8)
-      #else // defined(PARALLEL_128)
-        nPopCnt = ls_sPopCnt(pwr);
-      #endif // defined(PARALLEL_128)
-      #endif // defined(PP_IN_LINK)
-        nPos = SearchList16(ls_psKeysNAT(pwr), wKey, nBL, nPopCnt);
+        nPos = SearchList16(pwRoot, pwr, wKey, nDL, nBL);
     } else
       #endif // (cnBitsInD1 <= 16)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
