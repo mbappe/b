@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.468 2014/12/05 16:54:13 mike Exp $
+// @(#) $Id: bli.c,v 1.470 2014/12/05 18:33:33 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -744,11 +744,52 @@ WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
 
 #if defined(LOOKUP)
 
+// There are a lot of ways we can represent a bucket.
+// Which way will be fastest?
+// Should we require that the keys in the list be sorted?  Why?
+// Is has-key faster if we fill empty slots with a present key?
+// What about offset?  Assumes key is present.
+// What about has-key-and-offset?  No offset returned if key is not present.
+// What about offset-of-missing-key?  Assumes key is not present.
+// What about has-key-or-offset-of-missing-key?  No off ret if key is present.
+// What about has-key-and-offset-or-offset-of-missing-key?
+//
+// If keys are sorted and key[n+1] < key[n] && k[n+1] != 0, then bucket is
+// illegal and we could use that to mean the bucket is empty.  It only
+// requires that buckets can always hold more than one key,
+// i.e. key_size <= word_size / 2.
+// The second half of the test isn't necessary if we fill empty slots
+// with the biggest present key.
+//
+// fill empty slots with 0
+// fill empty slots with smallest key
+// fill empty slots with largest key
+// fill empty slots with -1
+//
+// sort with most-significant non-empty slot having the smallest key
+// sort with least-significant slot having the smallest key
+// don't sort; couldn't possibly help search
+//
+// empty slots are on most-significant end
+// empty slots are on least-significant end
+// empty slots are anywhere; can't imagine this helping search
+//
+// remainder bits are at the most-significant end
+// remainder bits are at the least-significant end
+//
+// The value(s) we can use to represent an empty bucket depend
+// on the choices made for the others.
+
 // Do a parallel search of a word for a key that is smaller than a word.
 // WordHasKey expects the keys to be packed towards the most significant bits,
 // and it assumes all slots in the word have valid keys, i.e. the would-be
 // empty slots have been padded with copies of some key/keys that is/are
 // present.
+// Key observations about HasKey:
+// HasKey creates a magic number with the high bit set in the key slots
+// that match the target key.  It also sets the high bit in the key slot
+// to the left of any other slot with its high bit set if the key in that
+// slot is one less than the target key.
 Word_t // bool
 WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
 {
@@ -769,6 +810,11 @@ WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
 
 #if defined(PARALLEL_128)
 
+// Key observations about HasKey:
+// HasKey creates a magic number with the high bit set in the key slots
+// that match the target key.  It also sets the high bit in the key slot
+// to the left of any other slot with its high bit set if the key in that
+// slot is one less than the target key.
 Word_t // bool
 HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 {
