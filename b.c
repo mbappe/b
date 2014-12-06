@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.387 2014/12/05 03:10:01 mike Exp mike $
+// @(#) $Id: b.c,v 1.388 2014/12/05 03:15:31 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -184,20 +184,23 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 
     if (wPopCntArg == 0) { return 0; }
 
-    int nBytes, nBytesKeySz;
+    int nBytesKeySz =
 #if defined(COMPRESSED_LISTS)
-    if (nBL <= 8) {
-        nBytes = (int)ls_pcKeys(0, nBL); nBytesKeySz = 1;
-    } else if (nBL <= 16) {
-        nBytes = (int)ls_psKeys(0, nBL); nBytesKeySz = 2;
-    } else
+        (nBL <=  8) ? 1 : (nBL <= 16) ? 2 :
   #if (cnBitsPerWord > 32)
-    if (nBL <= 32) {
-        nBytes = (int)ls_piKeys(0, nBL); nBytesKeySz = 4;
-    } else
+        (nBL <= 32) ? 4 :
   #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-    { nBytes = (int)ls_pwKeys(0, nBL); nBytesKeySz = 8; }
+        sizeof(Word_t);
+
+    int nBytes = (N_LIST_HDR_KEYS + POP_SLOT(nBL)) * nBytesKeySz;
+#if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
+  #if ! defined(PSPLIT_SEARCH_WORD) \
+      && ! ( defined(ALIGN_LISTS) && ! defined(PSPLIT_PARALLEL) )
+    if (nBytesKeySz < (int)sizeof(Word_t))
+  #endif // ! defined(PSPLIT_SEARCH_WORD) && ...
+    { nBytes = ALIGN_UP(nBytes, sizeof(Bucket_t)); }
+#endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 
     nBytes += wPopCntArg * nBytesKeySz; // add list of real keys
 #if defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)

@@ -1094,6 +1094,8 @@ enum {
   #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 #else // defined(PP_IN_LINK)
 
+#define POP_SLOT(_nBL)  (0)
+
 #define ls_pwKeys(_ls, _nBL)  ls_pwKeysNAT(_ls)
 #define ls_piKeys(_ls, _nBL)  ls_piKeysNAT(_ls)
 #define ls_psKeys(_ls, _nBL)  ls_psKeysNAT(_ls)
