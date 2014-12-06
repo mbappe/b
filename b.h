@@ -1165,19 +1165,15 @@ typedef struct {
 #endif // (cnDummiesInList != 0)
     union {
 #if defined(COMPRESSED_LISTS) || ! defined(PP_IN_LINK)
-        //uint8_t  ll_acKeys[N_LIST_HDR_KEYS+1];
-        uint8_t  ll_acKeys[sizeof(Word_t) * 2 + 1];
+        uint16_t ll_asKeys[1];
 #endif // defined(COMPRESSED_LISTS) || ! defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
-        //uint16_t ll_asKeys[N_LIST_HDR_KEYS+1];
-        uint16_t ll_asKeys[sizeof(Word_t) + 1];
-#if (cnBitsPerWord > 32)
-        //uint32_t ll_aiKeys[N_LIST_HDR_KEYS+1];
-        uint32_t ll_aiKeys[sizeof(Word_t) / 2 + 1];
-#endif // (cnBitsPerWord > 32)
+        uint8_t  ll_acKeys[1];
+  #if (cnBitsPerWord > 32)
+        uint32_t ll_aiKeys[1];
+  #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-        //Word_t   ll_awKeys[N_LIST_HDR_KEYS+1];
-        Word_t   ll_awKeys[3];
+        Word_t   ll_awKeys[1];
     };
 } ListLeaf_t;
 
