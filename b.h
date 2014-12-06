@@ -1037,25 +1037,25 @@ enum {
 // ls_pwKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
 #if defined(PP_IN_LINK)
 
-// Do we need to add a key slot for population count at the top?
+// POP_SLOT tells ListWords if we need a slot in the leaf for a pop count.
 #define POP_SLOT(_nBL)  (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))
 
   #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
       #if defined(COMPRESSED_LISTS)
 
 #define ls_pcKeys(_ls, _nBL) \
-    ((uint8_t *)ALIGN_UP((Word_t)(ls_pcKeysNAT_UA(_ls) + POP_SLOT(_nBL), \
-                         sizeof(Bucket_t))))
+    ((uint8_t *)ALIGN_UP((Word_t)(ls_pcKeysNAT_UA(_ls) + POP_SLOT(_nBL)), \
+                         sizeof(Bucket_t)))
 
 #define ls_psKeys(_ls, _nBL) \
-    ((uint16_t *)ALIGN_UP((Word_t)(ls_psKeysNAT_UA(_ls) + POP_SLOT(_nBL),  \
-                          sizeof(Bucket_t))))
+    ((uint16_t *)ALIGN_UP((Word_t)(ls_psKeysNAT_UA(_ls) + POP_SLOT(_nBL)),  \
+                          sizeof(Bucket_t)))
 
           #if (cnBitsPerWord > 32)
 
 #define ls_piKeys(_ls, _nBL) \
-    ((uint32_t *)ALIGN_UP((Word_t)(ls_piKeysNAT_UA(_ls) + POP_SLOT(_nBL), \
-                          sizeof(Bucket_t))))
+    ((uint32_t *)ALIGN_UP((Word_t)(ls_piKeysNAT_UA(_ls) + POP_SLOT(_nBL)), \
+                          sizeof(Bucket_t)))
 
           #endif // (cnBitsPerWord > 32)
 
@@ -1065,8 +1065,8 @@ enum {
           || ( defined(ALIGN_LISTS) && ! defined(PSPLIT_PARALLEL) )
 
 #define ls_pwKeys(_ls, _nBL) \
-    ((Word_t *)ALIGN_UP((Word_t)(ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL), \
-                        sizeof(Bucket_t))))
+    ((Word_t *)ALIGN_UP((Word_t)(ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL)), \
+                        sizeof(Bucket_t)))
 
       #else // (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)) ...
 
@@ -1094,7 +1094,10 @@ enum {
   #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 #else // defined(PP_IN_LINK)
 
-#define POP_SLOT(_nBL)  (0)
+// POP_SLOT tells ListWords if we need a slot in the leaf for a pop count.
+// N_HDR_KEYS incorporates this for ! PP_IN_LINK so don't add it again
+// for ls_pxKeys.
+#define POP_SLOT(_nBL)  (1)
 
 #define ls_pwKeys(_ls, _nBL)  ls_pwKeysNAT(_ls)
 #define ls_piKeys(_ls, _nBL)  ls_piKeysNAT(_ls)
