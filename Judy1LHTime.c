@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.23 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.24 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -405,13 +405,18 @@ JudyMalloc(Word_t Words)
 #else // ! SELFALIGNED
 
 #ifdef  GUARDBAND
-    Bytes += sizeof(Word_t);    // one word
+#if ! defined(cnGuardWords)
+#define cnGuardWords 1
+#endif // ! defined(cnGuardWords)
+    Bytes += cnGuardWords * sizeof(Word_t);
 #endif  // GUARDBAND
 
     Addr = (Word_t)malloc(Bytes);
 
 #ifdef  GUARDBAND
-    *((Word_t *)Addr + ((Bytes/sizeof(Word_t)) - 1)) = ~Addr;
+    for (int jj = 0; jj < cnGuardWords; jj++) { 
+        *((Word_t *)Addr + Bytes/sizeof(Word_t) - cnGuardWords + jj) = ~Addr;
+    }
 #endif  // GUARDBAND
 
 #endif // ! SELFALIGNED
@@ -463,6 +468,24 @@ JudyMalloc(Word_t Words)
 //
 // Note: Judy knows amount of memory being freed, though not needed by free()
 
+
+#ifdef  GUARDBAND
+void
+JudyCheckGuardband(void *PWord, Word_t Words)
+{
+    for (int jj = 0; jj < cnGuardWords; jj++) { 
+        Word_t *p = ((((Word_t *)PWord) + Words + jj));
+        Word_t GuardWord = *p;
+        if (~GuardWord != (Word_t)PWord)
+        {
+            printf("\nOops GuardWord %p = 0x%lx ~ 0x%lx != PWord = 0x%lx\n",
+                (void *)p, GuardWord, ~GuardWord, (Word_t)PWord);
+            assert(0);
+        }
+    }
+}
+#endif  // GUARDBAND
+
 void
 JudyFree(void *PWord, Word_t Words)
 {
@@ -476,17 +499,7 @@ JudyFree(void *PWord, Word_t Words)
     }
 
 #ifdef  GUARDBAND
-    {
-        Word_t GuardWord;
-
-        GuardWord = *((((Word_t *)PWord) + Words));
-
-        if (~GuardWord != (Word_t)PWord)
-        {
-            printf("Oops GuardWord = 0x%lx != PWord = 0x%lx\n", GuardWord, (Word_t)PWord);
-            assert(0);
-        }
-    }
+    JudyCheckGuardband(PWord, Words);
 #endif  // GUARDBAND
 
     free(PWord);
