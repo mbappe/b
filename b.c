@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.388 2014/12/05 03:15:31 mike Exp mike $
+// @(#) $Id: b.c,v 1.389 2014/12/06 03:42:25 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -7,6 +7,10 @@
 #if defined(PARALLEL_128)
 #include <immintrin.h> // __m128i
 #endif // defined(PARALLEL_128)
+
+#define nBytesKeySz(_nBL) \
+     (((_nBL) <=  8) ? 1 : ((_nBL) <= 16) ? 2 \
+    : ((_nBL) <= 32) ? 4 : sizeof(Word_t))
 
 #if defined(RAMMETRICS)
 Word_t j__AllocWordsJBB;  // JUDYA         Branch Bitmap
@@ -193,6 +197,7 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 #endif // defined(COMPRESSED_LISTS)
         sizeof(Word_t);
 
+#if defined(OLD_LISTS)
     int nBytes = (N_LIST_HDR_KEYS + POP_SLOT(nBL)) * nBytesKeySz;
 #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
   #if ! defined(PSPLIT_SEARCH_WORD) \
@@ -221,6 +226,10 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
     nBytes += nBytesKeySz;
 #endif // defined(LIST_END_MARKERS)
     return DIV_UP(nBytes, sizeof(Word_t)) | 1;
+#else // defined(OLD_LISTS)
+    return ls_nSlotsInList(wPopCntArg, nBL, nBytesKeySz)
+                 * nBytesKeySz / sizeof(Word_t);
+#endif // defined(OLD_LISTS)
 }
 
 // How many words needed for leaf?  Use T_ONE instead of T_LIST if possible.
@@ -357,6 +366,10 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
         pwList = (Word_t *)MyMalloc(nWords);
     }
 
+#if ! defined(OLD_LISTS)
+    pwList += nWords - 1;
+#endif // ! defined(OLD_LISTS)
+
 #if defined(PP_IN_LINK)
     if (nBL >= cnBitsPerWord)
 #endif // defined(PP_IN_LINK)
@@ -448,6 +461,11 @@ OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType)
     {
         METRICS(j__AllocWordsJLLW -= nWords); // JUDYA and JUDYB
     }
+
+#if ! defined(OLD_LISTS)
+    // Could be T_ONE?
+    if (nType == T_LIST) { pwList -= nWords - 1; }
+#endif // ! defined(OLD_LISTS)
 
 #if defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
     // this is overkill since we don't care if lists are aligned;
@@ -1241,8 +1259,6 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
                 return OldList(pwr, wPopCnt, nDL, nType);
             }
 
-            Word_t *pwKeys = ls_pwKeysNAT(pwr);
-
 #if defined(PP_IN_LINK)
             if (nBLArg == cnBitsPerWord)
             {
@@ -1279,7 +1295,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
-                { printf(" "Owx, pwKeys[xx]); }
+                { printf(" "Owx, ls_pwKeysNAT(pwr)[xx]); }
             }
             printf("\n");
         }
@@ -1933,6 +1949,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
             {
 #if defined(PP_IN_LINK)
                 if (nDL != cnDigitsPerWord) {
+// Why are we subracting one here?
+// Is it because Insert bumps pop count before calling InsertGuts?
+// How is this handled with InflateEmbeddedList?
+// ln_wPrefixPop is not affected by InflateEmbeddedList?
                     wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL) - 1;
                     pwKeys = ls_pwKeysNAT(pwr); // list of keys in old List
                 } else {
@@ -2273,7 +2293,7 @@ newSwitch:
                     nDL = 2;
                 }
             }
-            assert(EXP(nDL_to_nBL(nDL)) > sizeof(Link_t) * 8);
+            assert(nDL_to_nBL(nDL) > LOG(sizeof(Link_t) * 8));
 
 #if ! defined(DEPTH_IN_SW)
 #if defined(TYPE_IS_RELATIVE)
@@ -2962,9 +2982,9 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
 // Could we be more specific in this ifdef, e.g. cnListPopCntMax16?
 #if (cwListPopCntMax != 0)
-    if ((EXP(nBL) <= sizeof(Link_t) * 8) || (nType == T_BITMAP))
+    if ((nBL <= LOG(sizeof(Link_t) * 8)) || (nType == T_BITMAP))
 #else // (cwListPopCntMax != 0)
-    assert((EXP(nBL) <= sizeof(Link_t) * 8) || (nType == T_BITMAP));
+    assert((nBL <= LOG(sizeof(Link_t) * 8)) || (nType == T_BITMAP));
 #endif // (cwListPopCntMax != 0)
     {
         return RemoveBitmap(pwRoot, wKey, nDL, nBL, wRoot);
@@ -3043,7 +3063,22 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         // Because the beginning will be the same.
         // Except for the the pop count.
 
-        COPY(pwList, pwr, ListWordsTypeList(wPopCnt - 1, nBL));
+        switch (nBytesKeySz(nBL)) {
+        case sizeof(Word_t):
+             COPY(ls_pwKeysNAT(pwList), ls_pwKeysNAT(pwr), wPopCnt - 1);
+             break;
+#if (cnBitsPerWord > 32)
+        case 4:
+             COPY(ls_piKeysNAT(pwList), ls_piKeysNAT(pwr), wPopCnt - 1);
+             break;
+#endif // (cnBitsPerWord > 32)
+        case 2:
+             COPY(ls_psKeysNAT(pwList), ls_psKeysNAT(pwr), wPopCnt - 1);
+             break;
+        case 1:
+             COPY(ls_psKeysNAT(pwList), ls_psKeysNAT(pwr), wPopCnt - 1);
+             break;
+        }
 
         set_wr(wRoot, pwList, T_LIST);
     }
