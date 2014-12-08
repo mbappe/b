@@ -1,12 +1,8 @@
 
-// @(#) $Id: b.c,v 1.389 2014/12/06 03:42:25 mike Exp $
+// @(#) $Id: b.c,v 1.390 2014/12/07 22:04:52 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
-
-#if defined(PARALLEL_128)
-#include <immintrin.h> // __m128i
-#endif // defined(PARALLEL_128)
 
 #define nBytesKeySz(_nBL) \
      (((_nBL) <=  8) ? 1 : ((_nBL) <= 16) ? 2 \

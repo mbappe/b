@@ -212,7 +212,6 @@
 #define PSPLIT_EARLY_OUT
 #endif // ! defined(NO_PSPLIT_EARLY_OUT)
 
-#if defined(ALIGN_LISTS)
 #if defined(PARALLEL_128)
 #include <immintrin.h> // __m128i
 typedef __m128i Bucket_t;
@@ -221,7 +220,6 @@ typedef __m128i Bucket_t;
 typedef Word_t Bucket_t;
 #define cnLogBytesPerBucket  cnLogBytesPerWord
 #endif // defined(PARALLEL_128)
-#endif // defined(ALIGN_LISTS)
 
 // Bits-per-digit.
 #if 0
