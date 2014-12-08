@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.471 2014/12/06 00:45:30 mike Exp $
+// @(#) $Id: bli.c,v 1.472 2014/12/08 03:09:04 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -851,17 +851,17 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nDL, int nBL)
 {
     (void)nBL; (void)pwRoot; (void)nDL;
 
-    uint8_t *pcKeys = ls_pcKeysNAT(pwr);
   #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
     assert(ls_cPopCnt(pwr) <= 16);
     int nPopCnt = 16; // Sixteen fit so why do less?
   #else // defined(PARALLEL_128)
-  #if defined(PP_IN_LINK)
+      #if defined(PP_IN_LINK)
     int nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
-  #else // defined(PP_IN_LINK)
+      #else // defined(PP_IN_LINK)
     int nPopCnt = ls_cPopCnt(pwr);
-  #endif // defined(PP_IN_LINK)
+      #endif // defined(PP_IN_LINK)
   #endif // defined(PARALLEL_128)
+    uint8_t *pcKeys = ls_pcKeysNATX(pwr, nPopCnt);
 
 #if defined(LIST_END_MARKERS)
     assert(pcKeys[-1] == 0);
@@ -909,7 +909,6 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nDL, int nBL)
 {
     (void)nBL; (void)pwRoot; (void)nDL;
 
-    uint16_t *psKeys = ls_psKeysNAT(pwr);
   #if defined(PP_IN_LINK)
     int nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
   #else // defined(PP_IN_LINK)
@@ -934,6 +933,7 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nDL, int nBL)
     int nPopCnt = ls_sPopCnt(pwr);
   #endif // defined(PARALLEL_128)
   #endif // defined(PP_IN_LINK)
+    uint16_t *psKeys = ls_psKeysNATX(pwr, nPopCnt);
 
     (void)nBL;
 #if defined(LIST_END_MARKERS)
@@ -1247,7 +1247,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
           #else // defined(PP_IN_LINK)
         nPopCnt = ls_sPopCnt(pwr);
           #endif // defined(PP_IN_LINK)
-        nPos = SearchList32(ls_piKeysNAT(pwr), wKey, nBL, nPopCnt);
+        nPos = SearchList32(ls_piKeysNATX(pwr, nPopCnt), wKey, nBL, nPopCnt);
     } else
       #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
@@ -1257,7 +1257,8 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
   #else // defined(PP_IN_LINK)
         nPopCnt = ls_sPopCnt(pwr);
   #endif // ! defined(PP_IN_LINK)
-        nPos = SearchListWord(ls_pwKeysNAT(pwr), wKey, nBL, nPopCnt);
+        nPos = SearchListWord(ls_pwKeysNATX(pwr, nPopCnt),
+                              wKey, nBL, nPopCnt);
     }
 
   #if defined(LOOKUP)
@@ -2071,14 +2072,7 @@ notEmptyBm:;
       // LOOKUP_NO_LIST_SEARCH is for analysis only.  We have retrieved the
       // pop count and prefix but we have not dereferenced the list itself.
       #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
-            if (SearchList(pwr, wKey, nBL,
-          #if defined(PP_IN_LINK)
-                           pwRoot
-          #else // defined(PP_IN_LINK)
-                           NULL
-          #endif // defined(PP_IN_LINK)
-                           )
-                >= 0)
+            if (SearchList(pwr, wKey, nBL, pwRoot) >= 0)
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
           #if defined(REMOVE)

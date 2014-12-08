@@ -1205,23 +1205,45 @@ enum {
     ((uint8_t *)((Word_t *)(_pwr) + 1) \
         - ls_nSlotsInList(ls_cPopCnt(_pwr), (_nBL), sizeof(uint8_t)))
 
+#define ls_pcKeysX(_pwr, _nBL, _nPopCnt) \
+    ((uint8_t *)((Word_t *)(_pwr) + 1) \
+        - ls_nSlotsInList((_nPopCnt), (_nBL), sizeof(uint8_t)))
+
 #define ls_psKeys(_pwr, _nBL) \
     ((uint16_t *)((Word_t *)(_pwr) + 1) \
         - ls_nSlotsInList(ls_sPopCnt(_pwr), (_nBL), sizeof(uint16_t)))
 
+#define ls_psKeysX(_pwr, _nBL, _nPopCnt) \
+    ((uint16_t *)((Word_t *)(_pwr) + 1) \
+        - ls_nSlotsInList((_nPopCnt), (_nBL), sizeof(uint16_t)))
+
 #define ls_piKeys(_pwr, _nBL) \
     ((uint32_t *)((Word_t *)(_pwr) + 1) \
         - ls_nSlotsInList(ls_sPopCnt(_pwr), (_nBL), sizeof(uint32_t)))
+
+#define ls_piKeysX(_pwr, _nBL, _nPopCnt) \
+    ((uint32_t *)((Word_t *)(_pwr) + 1) \
+        - ls_nSlotsInList((_nPopCnt), (_nBL), sizeof(uint32_t)))
 
 #define ls_pwKeys(_pwr, _nBL) \
     (assert((_nBL) > (int)sizeof(Word_t)/2), \
         (Word_t *)((Word_t *)(_pwr) + 1) \
             - ls_nSlotsInList(ls_sPopCnt(_pwr), (_nBL), sizeof(Word_t)))
 
+#define ls_pwKeysX(_pwr, _nBL, _nPopCnt) \
+    (assert((_nBL) > (int)sizeof(Word_t)/2), \
+        (Word_t *)((Word_t *)(_pwr) + 1) \
+            - ls_nSlotsInList((_nPopCnt), (_nBL), sizeof(Word_t)))
+
 #define ls_pcKeysNAT(_pwr)  (ls_pcKeys((_pwr), 0))
+#define ls_pcKeysNATX(_pwr, _nPopCnt)  (ls_pcKeysX((_pwr), 0, (_nPopCnt)))
 #define ls_psKeysNAT(_pwr)  (ls_psKeys((_pwr), 0))
+#define ls_psKeysNATX(_pwr, _nPopCnt)  (ls_psKeysX((_pwr), 0, (_nPopCnt)))
 #define ls_piKeysNAT(_pwr)  (ls_piKeys((_pwr), 0))
+#define ls_piKeysNATX(_pwr, _nPopCnt)  (ls_piKeysX((_pwr), 0, (_nPopCnt)))
 #define ls_pwKeysNAT(_pwr)  (ls_pwKeys((_pwr), cnBitsPerWord-1))
+#define ls_pwKeysNATX(_pwr, _nPopCnt) \
+    (ls_pwKeysX((_pwr), cnBitsPerWord-1, (_nPopCnt)))
 
 #endif // defined(OLD_LISTS)
 
