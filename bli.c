@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.470 2014/12/05 18:33:33 mike Exp $
+// @(#) $Id: bli.c,v 1.471 2014/12/06 00:45:30 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1218,8 +1218,10 @@ Word_t cnMagic[] = {
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot, int nDL)
+SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 {
+    int nDL = nBL_to_nDL(nBL);
+
     (void)pwRoot; (void)nDL;
 
     DBGL(printf("SearchList\n"));
@@ -2069,18 +2071,12 @@ notEmptyBm:;
       // LOOKUP_NO_LIST_SEARCH is for analysis only.  We have retrieved the
       // pop count and prefix but we have not dereferenced the list itself.
       #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
-            if (SearchList(pwr, wKey,
-          #if defined(COMPRESSED_LISTS)
-                           nBL,
-          #else // defined(COMPRESSED_LISTS)
-                           cnBitsPerWord,
-          #endif // defined(COMPRESSED_LISTS)
+            if (SearchList(pwr, wKey, nBL,
           #if defined(PP_IN_LINK)
-                           pwRoot,
+                           pwRoot
           #else // defined(PP_IN_LINK)
-                           NULL,
+                           NULL
           #endif // defined(PP_IN_LINK)
-                           nDL
                            )
                 >= 0)
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
