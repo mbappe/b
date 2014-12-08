@@ -1,10 +1,11 @@
 
-// @(#) $Id: bli.c,v 1.472 2014/12/08 03:09:04 mike Exp mike $
+// @(#) $Id: bli.c,v 1.473 2014/12/08 05:20:57 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
 //#include <smmintrin.h>
 #include <immintrin.h> // __m128i
+
 
 Word_t WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL);
 Word_t HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL);
