@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.475 2014/12/10 02:36:18 mike Exp mike $
+// @(#) $Id: bli.c,v 1.476 2014/12/10 02:44:57 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2325,11 +2325,11 @@ embeddedBitmap:
           #if defined(DL_SPECIFIC_T_ONE)
 
         if (nDL == 1) {
-            if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL_NAT(nDL))) {
+            if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL_NAT(1))) {
                 goto foundIt;
             }
         } else if (nDL == 2) {
-            if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL_NAX(nDL))) {
+            if (EmbeddedListHasKey(wRoot, wKey, nDL_to_nBL_NAX(2))) {
                 goto foundIt;
             }
         } else
