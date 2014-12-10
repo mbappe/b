@@ -1,8 +1,4 @@
 
-// @(#) $Id: b.h,v 1.277 2014/12/08 15:49:50 mike Exp mike $
-// @(#) $Source: /Users/mike/b/RCS/b.h,v $
-
-
 #if ( ! defined(_B_H_INCLUDED) )
 #define _B_H_INCLUDED
 
@@ -1185,6 +1181,11 @@ enum {
 #define ls_pcKeys(_ls, _nBL)  ls_pcKeysNAT(_ls)
 
 #endif // defined(PP_IN_LINK)
+
+#define ls_pcKeysNATX(_pwr, _nPopCnt)  ls_pcKeysNAT(_pwr)
+#define ls_psKeysNATX(_pwr, _nPopCnt)  ls_psKeysNAT(_pwr)
+#define ls_piKeysNATX(_pwr, _nPopCnt)  ls_piKeysNAT(_pwr)
+#define ls_pwKeysNATX(_pwr, _nPopCnt)  ls_pwKeysNAT(_pwr)
 
 #else  // defined(OLD_LISTS)
 
