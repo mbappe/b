@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.476 2014/12/10 02:44:57 mike Exp mike $
+// @(#) $Id: bli.c,v 1.477 2014/12/10 16:56:20 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -870,7 +870,7 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nDL, int nBL)
 #if defined(PSPLIT_SEARCH_8)
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 8) {
-        PSPLIT_SEARCH(uint8_t, nBL, pcKeys, nPopCnt, cKey, nPos);
+        PSPLIT_SEARCH(uint8_t, 8, pcKeys, nPopCnt, cKey, nPos);
     } else
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
@@ -944,7 +944,7 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nDL, int nBL)
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 16) {
         //nPos = PSplitSearch16(nBL, psKeys, nPopCnt, sKey, nPos);
-        PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
+        PSPLIT_SEARCH(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
     } else
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
@@ -991,9 +991,9 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 #if defined(PSPLIT_SEARCH_32)
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 32) {
-        PSPLIT_SEARCH(uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
+        PSPLIT_SEARCH(uint32_t, 32, piKeys, nPopCnt, iKey, nPos);
     } else if (nBL == 24) {
-        PSPLIT_SEARCH(uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
+        PSPLIT_SEARCH(uint32_t, 24, piKeys, nPopCnt, iKey, nPos);
     } else
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
@@ -1069,15 +1069,15 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
     if (nBL <= (cnBitsPerWord - 8)) {
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
         if (nBL == 32) {
-            PSPLIT_SEARCH(Word_t, nBL, pwKeys, nPopCnt, wKey, nPos);
+            PSPLIT_SEARCH(Word_t, 32, pwKeys, nPopCnt, wKey, nPos);
         } else
 #if (cnBitsPerWord > 32)
         if (nBL == 40) {
-            PSPLIT_SEARCH(Word_t, nBL, pwKeys, nPopCnt, wKey, nPos);
+            PSPLIT_SEARCH(Word_t, 40, pwKeys, nPopCnt, wKey, nPos);
         } else
 #else // (cnBitsPerWord > 32)
         if (nBL == 24) {
-            PSPLIT_SEARCH(Word_t, nBL, pwKeys, nPopCnt, wKey, nPos);
+            PSPLIT_SEARCH(Word_t, 24, pwKeys, nPopCnt, wKey, nPos);
         } else
 #endif // (cnBitsPerWord > 32)
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
