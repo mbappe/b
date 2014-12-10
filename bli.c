@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.474 2014/12/08 06:18:20 mike Exp mike $
+// @(#) $Id: bli.c,v 1.475 2014/12/10 02:36:18 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -483,33 +483,6 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 #endif // defined(PSPLIT_HYBRID)
 
-#define HAS_KEY_128_SETUP(_wKey, _nBL, _xLsbs, _xMsbs, _xKeys) \
-{ \
-    Word_t wMask = MSK(_nBL); /* (1 << nBL) - 1 */ \
-    _wKey &= wMask; \
-    Word_t wLsbs = (Word_t)-1 / wMask; \
-    _xLsbs = _mm_set1_epi64((__m64)wLsbs); \
-    Word_t wMsbs = wLsbs << (nBL - 1); /* msb in each key slot */ \
-    _xMsbs = _mm_set1_epi64((__m64)wMsbs); \
-    Word_t wKeys = wKey * wLsbs; /* replicate key; put in every slot */ \
-    _xKeys = _mm_set1_epi64((__m64)wKeys); \
-}
-
-#if defined(PARALLEL_128)
-static Word_t // bool
-HasKey128Tail(__m128i *pxBucket,
-    __m128i xLsbs,
-    __m128i xMsbs,
-    __m128i xKeys)
-{
-    __m128i xBucket = *pxBucket;
-    __m128i xXor = xKeys ^ xBucket;
-    __m128i xMagic = (xXor - xLsbs) & ~xXor & xMsbs;
-    __m128i xZero = _mm_setzero_si128();
-    return ! _mm_testc_si128(xZero, xMagic);
-}
-#endif // defined(PARALLEL_128)
-
 // Split search with a parallel search of the bucket at the split point.
 // A bucket is a Word_t or an __m128i.  Or whatever else we decide to pass
 // into _b_t in the future.
@@ -803,7 +776,34 @@ WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
     return wMagic; // bXorHasZero = (wMagic != 0);
 }
 
+#endif // defined(USE_WORD_ARRAY_EMBEDDED_KEYS_PARALLEL)
+
 #if defined(PARALLEL_128)
+
+#define HAS_KEY_128_SETUP(_wKey, _nBL, _xLsbs, _xMsbs, _xKeys) \
+{ \
+    Word_t wMask = MSK(_nBL); /* (1 << nBL) - 1 */ \
+    _wKey &= wMask; \
+    Word_t wLsbs = (Word_t)-1 / wMask; \
+    _xLsbs = _mm_set1_epi64((__m64)wLsbs); \
+    Word_t wMsbs = wLsbs << (nBL - 1); /* msb in each key slot */ \
+    _xMsbs = _mm_set1_epi64((__m64)wMsbs); \
+    Word_t wKeys = wKey * wLsbs; /* replicate key; put in every slot */ \
+    _xKeys = _mm_set1_epi64((__m64)wKeys); \
+}
+
+static Word_t // bool
+HasKey128Tail(__m128i *pxBucket,
+    __m128i xLsbs,
+    __m128i xMsbs,
+    __m128i xKeys)
+{
+    __m128i xBucket = *pxBucket;
+    __m128i xXor = xKeys ^ xBucket;
+    __m128i xMagic = (xXor - xLsbs) & ~xXor & xMsbs;
+    __m128i xZero = _mm_setzero_si128();
+    return ! _mm_testc_si128(xZero, xMagic);
+}
 
 // Key observations about HasKey:
 // HasKey creates a magic number with the high bit set in the key slots
@@ -820,7 +820,6 @@ HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 
 #endif // defined(PARALLEL_128)
 
-#endif // defined(USE_WORD_ARRAY_EMBEDDED_KEYS_PARALLEL)
 #endif // defined(COMPRESSED_LISTS)
 
 #endif // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
