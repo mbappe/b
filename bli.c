@@ -1,14 +1,10 @@
 
-// @(#) $Id: bli.c,v 1.473 2014/12/08 05:20:57 mike Exp mike $
+// @(#) $Id: bli.c,v 1.474 2014/12/08 06:18:20 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
 //#include <smmintrin.h>
 #include <immintrin.h> // __m128i
-
-
-Word_t WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL);
-Word_t HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL);
 
 #if defined(PARALLEL_128)
 
@@ -499,7 +495,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     _xKeys = _mm_set1_epi64((__m64)wKeys); \
 }
 
-#if defined(LOOKUP) && defined(PARALLEL_128)
+#if defined(PARALLEL_128)
 static Word_t // bool
 HasKey128Tail(__m128i *pxBucket,
     __m128i xLsbs,
@@ -512,7 +508,7 @@ HasKey128Tail(__m128i *pxBucket,
     __m128i xZero = _mm_setzero_si128();
     return ! _mm_testc_si128(xZero, xMagic);
 }
-#endif // defined(LOOKUP) && defined(PARALLEL_128)
+#endif // defined(PARALLEL_128)
 
 // Split search with a parallel search of the bucket at the split point.
 // A bucket is a Word_t or an __m128i.  Or whatever else we decide to pass
@@ -743,8 +739,6 @@ WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
 
 #else // defined(USE_WORD_ARRAY_EMBEDDED_KEYS_PARALLEL)
 
-#if defined(LOOKUP)
-
 // There are a lot of ways we can represent a bucket.
 // Which way will be fastest?
 // Should we require that the keys in the list be sorted?  Why?
@@ -791,7 +785,7 @@ WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
 // that match the target key.  It also sets the high bit in the key slot
 // to the left of any other slot with its high bit set if the key in that
 // slot is one less than the target key.
-Word_t // bool
+static Word_t // bool
 WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
 {
     // It helps Lookup performance to eliminate the need to know nPopCnt.
@@ -816,7 +810,7 @@ WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
 // that match the target key.  It also sets the high bit in the key slot
 // to the left of any other slot with its high bit set if the key in that
 // slot is one less than the target key.
-Word_t // bool
+static Word_t // bool
 HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 {
     __m128i xLsbs, xMsbs, xKeys;
@@ -825,8 +819,6 @@ HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 }
 
 #endif // defined(PARALLEL_128)
-
-#endif // defined(LOOKUP)
 
 #endif // defined(USE_WORD_ARRAY_EMBEDDED_KEYS_PARALLEL)
 #endif // defined(COMPRESSED_LISTS)
