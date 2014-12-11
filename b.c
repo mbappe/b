@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.393 2014/12/11 12:11:46 mike Exp mike $
+// @(#) $Id: b.c,v 1.394 2014/12/11 16:22:11 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2452,7 +2452,7 @@ newSwitch:
   #if defined(TYPE_IS_RELATIVE)
         unsigned nDLR = nDL - wr_nDS(wRoot);
   #else // defined(TYPE_IS_RELATIVE)
-        unsigned nDLR = (nType == T_SWITCH) ? nDL : wr_nDL(wRoot);
+        unsigned nDLR = (nType < T_SW_BASE) ? nDL : wr_nDL(wRoot);
   #endif // defined(TYPE_IS_RELATIVE)
         if ( 0 || (nType == T_BM_SW)
   #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
@@ -2518,7 +2518,7 @@ newSwitch:
 #if defined(TYPE_IS_RELATIVE)
             nDLRoot = nDL - wr_nDS(wRoot);
 #else // defined(TYPE_IS_RELATIVE)
-            nDLRoot = (nType == T_SWITCH) ? nDL : wr_nDL(wRoot);
+            nDLRoot = wr_nDL(wRoot);
 #endif // defined(TYPE_IS_RELATIVE)
 
             // Can't have a prefix mismatch if there is no skip.
@@ -3498,7 +3498,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
               #if defined(TYPE_IS_RELATIVE)
             cnDigitsPerWord - wr_nDS(wRoot)
               #else // defined(TYPE_IS_RELATIVE)
-            (nType == T_SWITCH) ? cnDigitsPerWord : wr_nDL(wRoot)
+            (nType < T_SW_BASE) ? cnDigitsPerWord : wr_nDL(wRoot)
               #endif // defined(TYPE_IS_RELATIVE)
             ;
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
@@ -3518,7 +3518,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
           #if defined(TYPE_IS_RELATIVE)
             cnDigitsPerWord - wr_nDS(wRoot)
           #else // defined(TYPE_IS_RELATIVE)
-            (nType == T_SWITCH) ? cnDigitsPerWord : wr_nDL(wRoot)
+            (nType < T_SW_BASE) ? cnDigitsPerWord : wr_nDL(wRoot)
           #endif // defined(TYPE_IS_RELATIVE)
             ;
         wPopCnt =
