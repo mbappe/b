@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.479 2014/12/10 17:57:19 mike Exp mike $
+// @(#) $Id: bli.c,v 1.480 2014/12/11 02:25:16 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1739,7 +1739,7 @@ notEmpty:;
 
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
-  #if defined(RETYPE_FULL_BM_SW)
+  #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
 
     case T_FULL_BM_SW:
       #if defined(EXTRA_TYPES)
@@ -1747,21 +1747,22 @@ notEmpty:;
       #endif // defined(EXTRA_TYPES)
     {
       #if defined(LOOKUP)
-          #if ! defined(BM_IN_NON_BM_SW)
         pwr = (Word_t *)&((BmSwitch_t *)pwr)->sw_wPrefixPop;
-          #endif // ! defined(BM_IN_NON_BM_SW)
         goto t_switch;
       #endif // defined(LOOKUP)
+        goto t_bm_sw;
 
     } // end of case T_FULL_BM_SW
 
-  #endif // defined(RETYPE_FULL_BM_SW)
+  #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
 
     case T_BM_SW:
   #if defined(EXTRA_TYPES)
     case T_BM_SW | EXP(cnBitsMallocMask): // no skip switch
   #endif // defined(EXTRA_TYPES)
     {
+    goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
+t_bm_sw:
 
   #if defined(BM_SW_FOR_REAL) \
       || ( ! defined(LOOKUP) \

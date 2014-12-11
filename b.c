@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.391 2014/12/08 01:32:24 mike Exp mike $
+// @(#) $Id: b.c,v 1.392 2014/12/11 02:25:16 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -967,7 +967,14 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDL)
             // uncompressed switch first.
             // I wonder if there is a clever way to reuse the space
             // used by the bitmaps here.
+            // I wonder about converting to a skip link here if we're
+            // configured with no skip link to bm switch.
+#if defined(BM_IN_NON_BM_SW)
+            // Conserve precious type values if possible.
+            set_wr_nType(*pwRoot, T_SWITCH);
+#else // defined(BM_IN_NON_BM_SW)
             set_wr_nType(*pwRoot, T_FULL_BM_SW);
+#endif // defined(BM_IN_NON_BM_SW)
         } else
 #endif // defined(RETYPE_FULL_BM_SW)
         {
@@ -1033,11 +1040,11 @@ OldSwitch(Word_t *pwRoot, unsigned nDL,
     if (wr_nType(*pwRoot) == T_BM_SW) {
         METRICS(j__AllocWordsJBB  -= wWords); // JUDYA
     } else
-#if defined(RETYPE_FULL_BM_SW)
+#if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
     if (wr_nType(*pwRoot) == T_FULL_BM_SW) {
         METRICS(j__AllocWordsJBU  -= wWords); // JUDYA
     } else
-#endif // defined(RETYPE_FULL_BM_SW)
+#endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     if ((cnBitsInD1 <= cnLogBitsPerWord)
         && (nDL_to_nBL(nDL) - nBitsIndexSz <= cnBitsInD1))
@@ -1309,14 +1316,14 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     int bBmSw = 0;
     if ( 0 || (nType == T_BM_SW)
-  #if defined(RETYPE_FULL_BM_SW)
+  #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
            || (nType == T_FULL_BM_SW)
-  #endif // defined(RETYPE_FULL_BM_SW)
+  #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
   #if defined(EXTRA_TYPES)
            || (nType == T_BM_SW + EXP(cnBitsMallocMask))
-      #if defined(RETYPE_FULL_BM_SW)
+      #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
            || (nType == T_FULL_BM_SW + EXP(cnBitsMallocMask))
-      #endif // defined(RETYPE_FULL_BM_SW)
+      #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
   #endif // defined(EXTRA_TYPES)
         )
     {
@@ -2439,14 +2446,14 @@ newSwitch:
         unsigned nDLR = (nType == T_SWITCH) ? nDL : wr_nDL(wRoot);
   #endif // defined(TYPE_IS_RELATIVE)
         if ( 0 || (nType == T_BM_SW)
-  #if defined(RETYPE_FULL_BM_SW)
+  #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
                || (nType == T_FULL_BM_SW)
-  #endif // defined(RETYPE_FULL_BM_SW)
+  #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
   #if defined(EXTRA_TYPES)
                || (nType == T_BM_SW + EXP(cnBitsMallocMask))
-      #if defined(RETYPE_FULL_BM_SW)
+      #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
                || (nType == T_FULL_BM_SW + EXP(cnBitsMallocMask))
-      #endif // defined(RETYPE_FULL_BM_SW)
+      #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
   #endif // defined(EXTRA_TYPES)
             )
         {
@@ -3317,14 +3324,14 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
         int bBmSw = 0;
         if ( 0 || (nType == T_BM_SW)
-  #if defined(RETYPE_FULL_BM_SW)
+  #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
                || (nType == T_FULL_BM_SW)
-  #endif // defined(RETYPE_FULL_BM_SW)
+  #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
   #if defined(EXTRA_TYPES)
                || (nType == T_BM_SW + EXP(cnBitsMallocMask))
-      #if defined(RETYPE_FULL_BM_SW)
+      #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
                || (nType == T_FULL_BM_SW + EXP(cnBitsMallocMask))
-      #endif // defined(RETYPE_FULL_BM_SW)
+      #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
   #endif // defined(EXTRA_TYPES)
             )
         {
@@ -3337,23 +3344,23 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
       #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
           #if defined(TYPE_IS_RELATIVE)
-  #if defined(RETYPE_FULL_BM_SW)
+  #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
         assert((wr_nDS(wRoot) == 0)
             || (nType == T_FULL_BM_SW)
             || (nType == T_BM_SW));
-  #else // defined(RETYPE_FULL_BM_SW)
+  #else // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
         assert((wr_nDS(wRoot) == 0)
             || (nType == T_BM_SW));
-  #endif // defined(RETYPE_FULL_BM_SW)
+  #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
           #else // defined(TYPE_IS_RELATIVE)
-  #if defined(RETYPE_FULL_BM_SW)
+  #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
         assert((nType == T_SWITCH)
             || (nType == T_FULL_BM_SW)
             || (nType == T_BM_SW));
-  #else // defined(RETYPE_FULL_BM_SW)
+  #else // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
         assert((nType == T_SWITCH)
             || (nType == T_BM_SW));
-  #endif // defined(RETYPE_FULL_BM_SW)
+  #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
           #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
