@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.480 2014/12/11 02:25:16 mike Exp mike $
+// @(#) $Id: bli.c,v 1.481 2014/12/11 12:11:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1348,6 +1348,8 @@ if (nPopCnt != wr_nPopCnt(wRoot, nBL)) {
 #endif // (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(EMBEDDED_KEYS_PARALLEL)
 #endif // ! defined(LOOKUP_NO_LIST_DEREF)
 
+#if defined(SKIP_LINKS)
+
 static int
 PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t wKey, unsigned nDL,
                unsigned *pnDLR,
@@ -1366,23 +1368,14 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t wKey, unsigned nDL,
     unsigned nDLR;
     int bPrefixMismatch; (void)bPrefixMismatch;
 
-#if defined(SKIP_LINKS)
+    assert(nType >= T_SW_BASE);
   #if defined(TYPE_IS_RELATIVE)
-        assert(nType >= T_SW_BASE);
-        nDLR = nDL - wr_nDS(wRoot);
+    nDLR = nDL - wr_nDS(wRoot);
   #else // defined(TYPE_IS_RELATIVE)
-        assert(nType >= T_SW_BASE);
-        nDLR = wr_nDL(wRoot);
+    nDLR = wr_nDL(wRoot);
   #endif // defined(TYPE_IS_RELATIVE)
-        assert(nDLR < nDL); // reserved
-#else // defined(SKIP_LINKS)
-        nDLR = nDL; // prev
-#endif // defined(SKIP_LINKS)
+    assert(nDLR < nDL); // reserved
 
-#if defined(SKIP_LINKS)
-  #if defined(TYPE_IS_RELATIVE)
-        assert(nDLR < nDL);
-  #endif // defined(TYPE_IS_RELATIVE)
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #if defined(SAVE_PREFIX)
         // Save info needed for prefix check at leaf.
@@ -1400,17 +1393,10 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t wKey, unsigned nDL,
       #endif // defined(SAVE_PREFIX)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
         // Record that there were prefix bits that were not checked.
-          #if defined(TYPE_IS_RELATIVE)
         *pbNeedPrefixCheck |= 1;
-          #else // defined(TYPE_IS_RELATIVE)
-        *pbNeedPrefixCheck |= (nDLR < nDL);
-          #endif // defined(TYPE_IS_RELATIVE)
       #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
   #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         bPrefixMismatch = (1
-      #if ! defined(TYPE_IS_RELATIVE)
-            && (nDLR < nDL)
-      #endif // ! defined(TYPE_IS_RELATIVE)
             && (LOG(1 | (PWR_wPrefixNAT(pwRoot,
                                         (Switch_t *)pwr, nDLR) ^ wKey))
                     >= nDL_to_nBL_NAT(nDLR)));
@@ -1424,12 +1410,13 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t wKey, unsigned nDL,
         }
       #endif // ! defined(LOOKUP) || ! defined(SAVE_PREFIX_TEST_RESULT)
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-#endif // defined(SKIP_LINKS)
 
     *pnDLR = nDLR;
 
     return 0; // no prefix mismatch
 }
+
+#endif // defined(SKIP_LINKS)
 
 #if defined(LOOKUP)
 static Status_t
@@ -1556,7 +1543,7 @@ again:
 
 #if defined(SKIP_LINKS)
 
-    default: // skip link (if -DSKIP_LINKS && -DTYPE_IS_RELATIVE)
+    default: // skip link
     {
         // pwr points to a switch
 
