@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.481 2014/12/11 12:11:46 mike Exp mike $
+// @(#) $Id: bli.c,v 1.482 2014/12/11 13:28:59 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -902,7 +902,7 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nDL, int nBL)
     (void)nBL; (void)pwRoot; (void)nDL;
 
   #if defined(PP_IN_LINK)
-    int nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
+    int nPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL);
   #else // defined(PP_IN_LINK)
   #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
       #if (cnListPopCntMax16 <= 8)
@@ -1233,7 +1233,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot, int nDL)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {
           #if defined(PP_IN_LINK)
-        nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
+        nPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL);
           #else // defined(PP_IN_LINK)
         nPopCnt = ls_xPopCnt(pwr, 32);
           #endif // defined(PP_IN_LINK)
@@ -1243,7 +1243,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot, int nDL)
   #endif // defined(COMPRESSED_LISTS)
     {
   #if defined(PP_IN_LINK)
-        nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
+        nPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL);
   #else // defined(PP_IN_LINK)
         nPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
   #endif // ! defined(PP_IN_LINK)
@@ -1571,13 +1571,17 @@ again:
 
 #endif // defined(SKIP_LINKS)
 
-    case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
-#if defined(EXTRA_TYPES)
-    case T_SWITCH | EXP(cnBitsMallocMask): // close switch w/o bm
-#endif // defined(EXTRA_TYPES)
+#if ! defined(TYPE_IS_ABSOLUTE)
     case T_SW_BASE: // no-skip (aka close) switch (vs. distant switch)
 #if defined(EXTRA_TYPES)
     case T_SW_BASE | EXP(cnBitsMallocMask): // no skip switch
+#endif // defined(EXTRA_TYPES)
+         goto t_switch;
+#endif // ! defined(TYPE_IS_ABSOLUTE)
+
+    case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
+#if defined(EXTRA_TYPES)
+    case T_SWITCH | EXP(cnBitsMallocMask): // close switch w/o bm
 #endif // defined(EXTRA_TYPES)
     {
     goto t_switch; // silence cc in case other the gotos are ifdef'd out
@@ -1606,6 +1610,7 @@ t_switch:
       #if defined(REMOVE)
             if (bCleanup)
             {
+assert(0); // Just checking; uh oh; do we need better testing?
                 DBGX(printf("Cleanup\n"));
 
                 for (Word_t ww = 0; ww < EXP(cnBitsIndexSzAtTop); ww++)
@@ -1625,7 +1630,7 @@ t_switch:
               #if defined(TYPE_IS_RELATIVE)
                                        nDL - wr_nDS(*pwRootLn)
               #else // defined(TYPE_IS_RELATIVE)
-                                       (wr_nType(*pwRootLn) == T_SWITCH
+                                       (wr_nType(*pwRootLn) < T_SW_BASE
                                            ? nDL : wr_nDL(*pwRootLn))
               #endif // defined(TYPE_IS_RELATIVE)
                                    : nDL;
@@ -1635,7 +1640,7 @@ t_switch:
                                 ));
                     if (((*pwRootLn != 0) && (ww != wIndex))
                             || (
-                                PWR_wPopCnt(pwRootLn, NULL, nDLX)
+                                PWR_wPopCnt(pwRootLn, (Switch_t *)NULL, nDLX)
                                     != 0)
                         )
                     {
@@ -1665,6 +1670,7 @@ notEmpty:;
   #if defined(REMOVE)
             if (bCleanup)
             {
+//assert(0); // Just checking.
                 if (wPopCnt == 0)
                 {
                     FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDLUp),
@@ -1830,8 +1836,8 @@ t_bm_sw:
       #if defined(REMOVE)
             if (bCleanup)
             {
+assert(0); // Just checking; uh oh; do we need better testing?
                 DBGX(printf("Cleanup\n"));
-
           #if ! defined(BM_IN_LINK)
                 Word_t xx = 0;
           #endif // ! defined(BM_IN_LINK)
@@ -1858,7 +1864,8 @@ t_bm_sw:
               #if defined(TYPE_IS_RELATIVE)
                                        nDL - wr_nDS(*pwRootLn)
               #else // defined(TYPE_IS_RELATIVE)
-                                       wr_nDL(*pwRootLn)
+                                       (wr_nType(*pwRootLn) < T_SW_BASE
+                                           ? nDL : wr_nDL(*pwRootLn))
               #endif // defined(TYPE_IS_RELATIVE)
                                    : nDL;
                     DBGX(printf("wr_nDLX %d", nDLX));
@@ -1867,7 +1874,7 @@ t_bm_sw:
                                 ));
                     if (((*pwRootLn != 0) && (ww != wIndex))
                             || (
-                                PWR_wPopCnt(pwRootLn, NULL, nDLX)
+                                PWR_wPopCnt(pwRootLn, (Switch_t *)NULL, nDLX)
                                     != 0)
                         )
                     {
@@ -1897,6 +1904,7 @@ notEmptyBm:;
   #if defined(REMOVE)
             if (bCleanup)
             {
+//assert(0); // Just checking; uh oh; do we need better testing?
                 if (wPopCnt == 0)
                 {
                     FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDLUp),
@@ -1973,7 +1981,10 @@ notEmptyBm:;
         DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMask(nDL)));
 
   #if defined(REMOVE)
-        if (bCleanup) { return Success; } // cleanup is complete
+        if (bCleanup) {
+//assert(0); // Just checking; uh oh; do we need better testing?
+            return Success;
+        } // cleanup is complete
   #endif // defined(REMOVE)
 
       #if defined(PP_IN_LINK)
@@ -2055,8 +2066,9 @@ notEmptyBm:;
             {
           #if defined(REMOVE)
               #if defined(PP_IN_LINK)
-                set_PWR_wPopCnt(pwRoot, NULL, nDL,
-                                PWR_wPopCnt(pwRoot, NULL, nDL) - 1);
+                set_PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL,
+                                PWR_wPopCnt(pwRoot,
+                                            (Switch_t *)NULL, nDL) - 1);
               #endif // defined(PP_IN_LINK)
                 RemoveGuts(pwRoot, wKey, nDL, wRoot); goto cleanup;
           #endif // defined(REMOVE)
@@ -2087,8 +2099,8 @@ notEmptyBm:;
         // SearchList because chances are it will have read it.
         // But it is more important to avoid getting it when not necessary
         // during lookup.
-        set_PWR_wPopCnt(pwRoot, NULL, nDL,
-                        PWR_wPopCnt(pwRoot, NULL, nDL) + 1);
+        set_PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL,
+                        PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) + 1);
       #endif // defined(PP_IN_LINK) && defined(INSERT)
 
         break;
@@ -2113,13 +2125,16 @@ embeddedBitmap:
         assert(nDL == 1);
 
 #if defined(REMOVE)
-        if (bCleanup) { return KeyFound; } // cleanup is complete
+        if (bCleanup) {
+//assert(0); // Just checking; uh oh; do we need better testing?
+            return KeyFound;
+        } // cleanup is complete
 #endif // defined(REMOVE)
 
 #if ! defined(LOOKUP) && defined(PP_IN_LINK)
         if (EXP(cnBitsInD1) > sizeof(Link_t) * 8) {
-            wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
-            set_PWR_wPopCnt(pwRoot, NULL, nDL, wPopCnt + nIncr);
+            wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL);
+            set_PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL, wPopCnt + nIncr);
         }
 #endif // !defined(LOOKUP) && defined(PP_IN_LINK)
 
@@ -2219,15 +2234,18 @@ embeddedBitmap:
         assert(nDL_to_nBL_NAT(nDL)
             <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
   #if defined(REMOVE)
-        if (bCleanup) { return Success; } // cleanup is complete
+        if (bCleanup) {
+//assert(0); // Just checking; uh oh; do we need better testing?
+            return Success;
+        } // cleanup is complete
   #endif // defined(REMOVE)
 
   #if ! defined(LOOKUP) && defined(PP_IN_LINK)
         if (nDL != cnDigitsPerWord)
         {
             // Adjust pop count in the link on the way in.
-            set_PWR_wPopCnt(pwRoot, NULL, nDL,
-                PWR_wPopCnt(pwRoot, NULL, nDL) + nIncr);
+            set_PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL,
+                PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) + nIncr);
         }
   #endif // ! defined(LOOKUP) && defined(PP_IN_LINK)
 
@@ -2398,15 +2416,18 @@ foundIt:
             > cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
 
   #if defined(REMOVE)
-        if (bCleanup) { return Success; } // cleanup is complete
+        if (bCleanup) {
+//assert(0); // Just checking; uh oh; do we need better testing?
+            return Success;
+        } // cleanup is complete
   #endif // defined(REMOVE)
 
   #if ! defined(LOOKUP) && defined(PP_IN_LINK)
         if (nDL != cnDigitsPerWord)
         {
             // Adjust pop count in the link on the way in.
-            set_PWR_wPopCnt(pwRoot, NULL, nDL,
-                PWR_wPopCnt(pwRoot, NULL, nDL) + nIncr);
+            set_PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL,
+                PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) + nIncr);
         }
   #endif // ! defined(LOOKUP) && defined(PP_IN_LINK)
 
@@ -2451,7 +2472,9 @@ foundIt:
   #if defined(PP_IN_LINK)
       #if defined(REMOVE)
         // Can we combine bCleanup context with nType in switch variable?
-        if ( ! bCleanup )
+        if ( bCleanup ) {
+assert(0); // Just checking; uh oh; do we need better testing?
+        } else
       #endif // defined(REMOVE)
         {
       #if ! defined(LOOKUP)
@@ -2460,12 +2483,13 @@ foundIt:
             {
                 // If nDL != cnDigitsPerWord then we're not at top.
                 // And pwRoot is initialized despite what gcc might think.
-                if (PWR_wPopCnt(pwRoot, NULL, nDL) != 0) {
+                if (PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) != 0) {
                     printf("\nhuh wPopCnt %d nIncr %d\n",
-                          (int)PWR_wPopCnt(pwRoot, NULL, nDL), nIncr);
+                          (int)PWR_wPopCnt(pwRoot,
+                                           (Switch_t *)NULL, nDL), nIncr);
                 }
-                assert(PWR_wPopCnt(pwRoot, NULL, nDL) == 0);
-                set_PWR_wPopCnt(pwRoot, NULL, nDL, nIncr);
+                assert(PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) == 0);
+                set_PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL, nIncr);
             }
       #endif // ! defined(LOOKUP)
         }
