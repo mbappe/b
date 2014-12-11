@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.394 2014/12/11 16:22:11 mike Exp mike $
+// @(#) $Id: b.c,v 1.395 2014/12/11 16:39:01 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1187,10 +1187,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(TYPE_IS_RELATIVE)
-    assert((nType < T_SW_BASE)
-        || (nDL - wr_nDS(wRoot) >= nBL_to_nDL(cnBitsInD1)));
+    assert((nType <= T_SW_BASE) || (nDL - wr_nDS(wRoot) < nBL_to_nDL(nBL)));
+    assert((nType < T_SW_BASE) || (nDL - wr_nDS(wRoot) >= 1));
 #else // defined(TYPE_IS_RELATIVE)
-    assert((nType < T_SW_BASE) || (wr_nDL(wRoot) <= nBL_to_nDL(nBL)));
+    assert((nType < T_SW_BASE) || (wr_nDL(wRoot) < nBL_to_nDL(nBL)));
+    assert((nType < T_SW_BASE) || (wr_nDL(wRoot) >= 1));
 #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
@@ -1337,7 +1338,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     {
 #if defined(TYPE_IS_RELATIVE)
-        nDL = nDL - wr_nDS(wRoot);
+        if (nType > T_SW_BASE) {
+            nDL = nDL - wr_nDS(wRoot);
+        }
 #else // defined(TYPE_IS_RELATIVE)
         if (nType >= T_SW_BASE) {
             nDL = wr_nDL(wRoot);
