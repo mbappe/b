@@ -799,11 +799,11 @@ enum {
 // that we have to go to sw_wPrefixPop and use any other values that we
 // have available to represent some key skip counts.
 #define wr_nDS(_wr) \
-    (assert(wr_nType(_wr) == (T_SW_BASE + 1)), \
+    (assert(wr_nType(_wr) == T_SW_BASE), \
         w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1))
 
 #define set_wr_nDS(_wr, _nDS) \
-    (set_wr_nType((_wr), T_SW_BASE + 1), \
+    (set_wr_nType((_wr), T_SW_BASE), \
         /* put real skip cnt in the PP pop field but use DL=1 for mask */ \
         (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
             = ((PWR_wPrefixPop(NULL, \
