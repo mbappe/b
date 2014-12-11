@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.392 2014/12/11 02:25:16 mike Exp mike $
+// @(#) $Id: b.c,v 1.393 2014/12/11 12:11:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -636,6 +636,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     {
         set_wr_pwr(*pwRoot, pwr);
+#if defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
+        assert((nDLUp < cnDigitsPerWord) || (nDL == nDLUp));
+#endif // defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
 #if defined(TYPE_IS_RELATIVE)
         set_wr_nDS(*pwRoot, nDLUp - nDL);
 #else // defined(TYPE_IS_RELATIVE)
@@ -1130,9 +1133,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
             if (EXP(cnBitsInD1) > sizeof(Link_t) * 8)
             {
                 printf(" wr_wPopCnt %3"_fw"u",
-                       PWR_wPopCnt(pwRoot, NULL, nDL));
+                       PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL));
                 printf(" wr_wPrefix "OWx,
-                       PWR_wPrefix(pwRoot, NULL, nDL));
+                       PWR_wPrefix(pwRoot, (Switch_t *)NULL, nDL));
             }
         }
 #endif // defined(PP_IN_LINK)
@@ -1251,7 +1254,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #if defined(PP_IN_LINK)
             if (nDL != cnDigitsPerWord)
             {
-                wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
+                wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL);
             }
             else
 #endif // defined(PP_IN_LINK)
@@ -1401,15 +1404,17 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
                                       nDL - wr_nDS(*pwRootLn));
 #else // defined(TYPE_IS_RELATIVE)
                         = (nTypeLn == T_SWITCH)
-                            ? PWR_wPopCnt(pwRootLn, NULL, nDL)
-                            : PWR_wPopCnt(pwRootLn, NULL, wr_nDL(*pwRootLn));
+                            ? PWR_wPopCnt(pwRootLn, (Switch_t *)NULL, nDL)
+                            : PWR_wPopCnt(pwRootLn,
+                                          (Switch_t *)NULL, wr_nDL(*pwRootLn));
 #endif // defined(TYPE_IS_RELATIVE)
                 }
                 else
 #endif // defined(SKIP_LINKS)
                 {
                     wPopCntLn
-                        = PWR_wPopCnt(pwRootLn, NULL, cnDigitsPerWord - 1);
+                        = PWR_wPopCnt(pwRootLn,
+                                      (Switch_t *)NULL, cnDigitsPerWord - 1);
                 }
 
                 wPopCnt += wPopCntLn;
@@ -1937,7 +1942,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 // pop count in link should have been bumped by now
                 // if we're not at the top
                 assert((nDL == cnDigitsPerWord)
-                    || (PWR_wPopCnt(pwRoot, NULL, nDL) == wPopCnt + 1));
+                    || (PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)
+                        == wPopCnt + 1));
   #endif // defined(PP_IN_LINK)
                 pwKeys = pwr;
                 // can we really not just do pxKeys = pwr?
@@ -1958,7 +1964,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 // Is it because Insert bumps pop count before calling InsertGuts?
 // How is this handled with InflateEmbeddedList?
 // ln_wPrefixPop is not affected by InflateEmbeddedList?
-                    wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL) - 1;
+                    wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) - 1;
                     pwKeys = ls_pwKeysNAT(pwr); // list of keys in old List
                 } else {
                     wPopCnt = ls_xPopCnt(pwr, nBL);
@@ -2060,7 +2066,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 pwList = NewListTypeList(wPopCnt + 1, nBL);
 #if defined(PP_IN_LINK)
                 assert((nDL == cnDigitsPerWord)
-                    || (PWR_wPopCnt(pwRoot, NULL, nDL)
+                    || (PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)
                             == wPopCnt + 1));
 #endif // defined(PP_IN_LINK)
             }
@@ -2070,7 +2076,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
 #if defined(PP_IN_LINK)
                 assert(nDL != cnDigitsPerWord);
-                assert(PWR_wPopCnt(pwRoot, NULL, nDL) == wPopCnt + 1);
+                assert(PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)
+                       == wPopCnt + 1);
 #else // defined(PP_IN_LINK)
                 set_ls_xPopCnt(pwList, nBL, wPopCnt + 1);
 #endif // defined(PP_IN_LINK)
@@ -2168,6 +2175,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     || (cnListPopCntMax16 == 0)
             if (wPopCnt == 0) {
                 // Can't dereference list if there isn't one.
+#if ! defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 // Go directly to bitmap.  Going to bitmap is a two-step
                 // process.  First create the switch above the bitmap.
                 // Can't skip directly to bitmap since bitmap has no
@@ -2175,6 +2183,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 if (nDLOld >= 2) {
                     nDL = 2; // first step
                 }
+#endif // ! defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 goto newSwitch;
             }
 #endif // (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) || ...
@@ -2333,7 +2342,7 @@ newSwitch:
                 assert(nDLOld == nDL);
                 NewBitmap(pwRoot, cnBitsInD1);
 #if defined(PP_IN_LINK)
-                set_PWR_wPopCnt(pwRoot, NULL, /* nDL */ 1, 0);
+                set_PWR_wPopCnt(pwRoot, (Switch_t *)NULL, /* nDL */ 1, 0);
 #endif // defined(PP_IN_LINK)
             }
             else
@@ -2692,10 +2701,10 @@ newSwitch:
                     bBmSwNew
                         ? &pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_wRoot :
                           &pwr_pLinks((  Switch_t *)pwSw)[nIndex].ln_wRoot,
-                    NULL, nDLRoot, wPopCnt);
+                    (Switch_t *)NULL, nDLRoot, wPopCnt);
 #else // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
             set_PWR_wPopCnt(&pwr_pLinks((  Switch_t *)pwSw)[nIndex].ln_wRoot,
-                    NULL, nDLRoot, wPopCnt);
+                    (Switch_t *)NULL, nDLRoot, wPopCnt);
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 #else // defined(PP_IN_LINK)
 #if defined(NO_UNNECESSARY_PREFIX)
@@ -3025,7 +3034,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
 #if defined(PP_IN_LINK)
     if (nDL != cnDigitsPerWord) {
-        wPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL) + 1;
+        wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) + 1;
     } else
 #endif // defined(PP_IN_LINK)
     {
@@ -3223,15 +3232,15 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL,
         for (Word_t ww = 0; ww < EXP(nBL - cnLogBitsPerWord); ww++) {
             wPopCnt += __builtin_popcountll(pwr[ww]);
         }
-        if (wPopCnt != PWR_wPopCnt(pwRoot, NULL, nDL)) {
+        if (wPopCnt != PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)) {
             printf("\nwPopCnt "OWx" PWR_wPopCnt "OWx"\n",
-                   wPopCnt, PWR_wPopCnt(pwRoot, NULL, nDL));
+                   wPopCnt, PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL));
             HexDump("Bitmap", pwr, EXP(nBL - cnLogBitsPerWord));
         }
-        assert(wPopCnt == PWR_wPopCnt(pwRoot, NULL, nDL));
+        assert(wPopCnt == PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL));
 #endif // defined(DEBUG)
 
-        if (PWR_wPopCnt(pwRoot, NULL, nDL) != 0) {
+        if (PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) != 0) {
             return Success; // bitmap is not empty
         }
 
@@ -3403,18 +3412,17 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
                         = PWR_wPopCnt(pwRootLn, NULL,
                                   cnDigitsPerWord - 1 - wr_nDS(*pwRootLn));
           #else // defined(TYPE_IS_RELATIVE)
-                        = PWR_wPopCnt(pwRootLn,
-                                      NULL, 
+                        = PWR_wPopCnt(pwRootLn, (Switch_t *)NULL, 
                                       (nTypeLn == T_SWITCH)
                                           ? cnDigitsPerWord - 1
-                                          : wr_nDL(wRoot));
+                                          : wr_nDL(*pwRootLn));
           #endif // defined(TYPE_IS_RELATIVE)
                 }
                 else
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                 {
-                    wPopCntLn = PWR_wPopCnt(pwRootLn,
-                                            NULL, cnDigitsPerWord - 1);
+                    wPopCntLn = PWR_wPopCnt(pwRootLn, (Switch_t *)NULL,
+                                            cnDigitsPerWord - 1);
                 }
 
       #if defined(DEBUG_INSERT)
@@ -3490,7 +3498,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
               #if defined(TYPE_IS_RELATIVE)
             cnDigitsPerWord - wr_nDS(wRoot)
               #else // defined(TYPE_IS_RELATIVE)
-            (nType == T_SWITCH) ? cnDigitsPerWord : wr_nDL(*pwRoot)
+            (nType == T_SWITCH) ? cnDigitsPerWord : wr_nDL(wRoot)
               #endif // defined(TYPE_IS_RELATIVE)
             ;
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
