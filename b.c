@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.396 2014/12/11 17:43:28 mike Exp mike $
+// @(#) $Id: b.c,v 1.397 2014/12/11 18:05:54 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -641,7 +641,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 #endif // defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
 #if defined(TYPE_IS_RELATIVE)
         if (nDL == nDLUp) {
-            set_wr_nType(*pwRoot, T_SW_BASE);
+            set_wr_nType(*pwRoot, T_SWITCH);
         } else {
             set_wr_nDS(*pwRoot, nDLUp - nDL);
         }
