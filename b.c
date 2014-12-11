@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.395 2014/12/11 16:39:01 mike Exp mike $
+// @(#) $Id: b.c,v 1.396 2014/12/11 17:43:28 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -640,7 +640,11 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
         assert((nDLUp < cnDigitsPerWord) || (nDL == nDLUp));
 #endif // defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
 #if defined(TYPE_IS_RELATIVE)
-        set_wr_nDS(*pwRoot, nDLUp - nDL);
+        if (nDL == nDLUp) {
+            set_wr_nType(*pwRoot, T_SW_BASE);
+        } else {
+            set_wr_nDS(*pwRoot, nDLUp - nDL);
+        }
 #else // defined(TYPE_IS_RELATIVE)
         if (nDL == nDLUp) {
             set_wr_nType(*pwRoot, T_SWITCH);
@@ -1188,7 +1192,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(TYPE_IS_RELATIVE)
     assert((nType <= T_SW_BASE) || (nDL - wr_nDS(wRoot) < nBL_to_nDL(nBL)));
-    assert((nType < T_SW_BASE) || (nDL - wr_nDS(wRoot) >= 1));
+    assert((nType <= T_SW_BASE) || (nDL - wr_nDS(wRoot) >= 1));
 #else // defined(TYPE_IS_RELATIVE)
     assert((nType < T_SW_BASE) || (wr_nDL(wRoot) < nBL_to_nDL(nBL)));
     assert((nType < T_SW_BASE) || (wr_nDL(wRoot) >= 1));
@@ -2658,10 +2662,14 @@ newSwitch:
             // it is not skipping as many digits now.
             DBGI(printf("nDL %d nDLR %d nDLU %d\n",
                    nDL, nDLRoot, nDLUp));
-            set_wr_nDS(wRoot, nDL - nDLRoot - 1);
+            if (nDL - nDLRoot - 1 == 0) {
+                set_wr_nType(wRoot, T_SWITCH);
+            } else {
+                set_wr_nDS(wRoot, nDL - nDLRoot - 1);
+            }
 #else // defined(TYPE_IS_RELATIVE)
             if (nDL - nDLRoot - 1 == 0) {
-               set_wr_nType(wRoot, T_SWITCH);
+                set_wr_nType(wRoot, T_SWITCH);
             }
 #endif // defined(TYPE_IS_RELATIVE)
             // Copy wRoot from old link (after being updated) to new link.
@@ -3519,7 +3527,8 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
       #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         int nDL =
           #if defined(TYPE_IS_RELATIVE)
-            cnDigitsPerWord - wr_nDS(wRoot)
+            (nType <= T_SW_BASE)
+                ? cnDigitsPerWord : cnDigitsPerWord - wr_nDS(wRoot)
           #else // defined(TYPE_IS_RELATIVE)
             (nType < T_SW_BASE) ? cnDigitsPerWord : wr_nDL(wRoot)
           #endif // defined(TYPE_IS_RELATIVE)
