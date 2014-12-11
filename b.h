@@ -764,8 +764,11 @@ enum {
   #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 2)
 #endif // (cnBitsInD1 > cnLogBitsPerWord)
 
-#define     wr_nDL(_wr)        (tp_to_nDL(wr_nType(_wr)))
-#define set_wr_nDL(_wr, _nDL)  (set_wr_nType((_wr), nDL_to_tp(_nDL)))
+#define     wr_nDL(_wr) \
+    (assert(wr_nType(_wr) >= T_SW_BASE), tp_to_nDL(wr_nType(_wr)))
+#define set_wr_nDL(_wr, _nDL) \
+    (assert(nDL_to_tp(_nDL) >= T_SW_BASE), \
+        set_wr_nType((_wr), nDL_to_tp(_nDL)))
 
 #endif // defined(DEPTH_IN_SW)
 
@@ -791,18 +794,13 @@ enum {
 // the number of digits above it.
 #define POP_WORD
 
-// wr_nDS_NZ is for the Lookup performance path.  It avoids a test that
-// is required in wr_nDS.  NZ is for not-zero.
-#define wr_nDS_NZ(_wr) \
-    (assert(tp_to_nDS(wr_nType(_wr)) != 0), \
-      w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1))
-
 // As it stands we always get the skip count from sw_wPrefixPop if
 // DEPTH_IN_SW.  We could enhance it to use one type value to indicate
 // that we have to go to sw_wPrefixPop and use any other values that we
 // have available to represent some key skip counts.
 #define wr_nDS(_wr) \
-    ((tp_to_nDS(wr_nType(_wr)) == 0) ? 0 : wr_nDS_NZ(_wr))
+    (assert(wr_nType(_wr) == (T_SW_BASE + 1)), \
+        w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1))
 
 #define set_wr_nDS(_wr, _nDS) \
     (set_wr_nType((_wr), nDS_to_tp((_nDS) != 0)), \
@@ -814,8 +812,11 @@ enum {
 
 #else // defined(DEPTH_IN_SW)
 
-#define     wr_nDS(_wr)        (tp_to_nDS(wr_nType(_wr)))
-#define set_wr_nDS(_wr, _nDS)  (set_wr_nType((_wr), nDS_to_tp(_nDS)))
+#define     wr_nDS(_wr) \
+    (assert(wr_nType(_wr) > T_SW_BASE), tp_to_nDS(wr_nType(_wr)))
+#define set_wr_nDS(_wr, _nDS) \
+    (assert(nDS_to_tp(_nDS) > T_SW_BASE), \
+        set_wr_nType((_wr), nDS_to_tp(_nDS)))
 
 #endif // defined(DEPTH_IN_SW)
 
