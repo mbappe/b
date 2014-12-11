@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.482 2014/12/11 13:28:59 mike Exp mike $
+// @(#) $Id: bli.c,v 1.483 2014/12/11 17:02:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1368,7 +1368,6 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t wKey, unsigned nDL,
     unsigned nDLR;
     int bPrefixMismatch; (void)bPrefixMismatch;
 
-    assert(nType >= T_SW_BASE);
   #if defined(TYPE_IS_RELATIVE)
     nDLR = nDL - wr_nDS(wRoot);
   #else // defined(TYPE_IS_RELATIVE)
