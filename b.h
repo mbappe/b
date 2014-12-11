@@ -34,6 +34,7 @@
 #define BM_SW_FOR_REAL
 #endif // ! defined(NO_BM_SW_FOR_REAL)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+// Default is -URETYPE_FULL_BM_SW and -UBM_IN_NON_BM_SW.
 
 // Default is -DDL_SPECIFIC_T_ONE.
 #if ! defined(NO_DL_SPECIFIC_T_ONE)
@@ -385,14 +386,14 @@ enum {
     /*T_OTHER,*/
     T_BITMAP,
 
-    // All of the type values below T_SWITCH are assumed to not be switches.
-    // All type values at T_SWITCH and above are assumed to be switches.
+    // All of the type values less than T_SWITCH are not switches.
+    // All type values at T_SWITCH and greater are switches.
     T_SWITCH, // Basic (i.e. uncompressed), close (i.e. no-skip) switch.
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     T_BM_SW,
-#if defined(RETYPE_FULL_BM_SW)
+#if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
     T_FULL_BM_SW, // BM_SW with all bits set.
-#endif // defined(RETYPE_FULL_BM_SW)
+#endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 
     // T_SW_BASE has to have the biggest value in this enum.
