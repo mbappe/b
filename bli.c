@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.478 2014/12/10 17:36:36 mike Exp mike $
+// @(#) $Id: bli.c,v 1.479 2014/12/10 17:57:19 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -844,13 +844,13 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nDL, int nBL)
     (void)nBL; (void)pwRoot; (void)nDL;
 
   #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
-    assert(ls_cPopCnt(pwr) <= 16);
+    assert(ls_xPopCnt(pwr, 8) <= 16);
     int nPopCnt = 16; // Sixteen fit so why do less?
   #else // defined(PARALLEL_128)
       #if defined(PP_IN_LINK)
     int nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
       #else // defined(PP_IN_LINK)
-    int nPopCnt = ls_cPopCnt(pwr);
+    int nPopCnt = ls_xPopCnt(pwr, 8);
       #endif // defined(PP_IN_LINK)
   #endif // defined(PARALLEL_128)
     uint8_t *pcKeys = ls_pcKeysNATX(pwr, nPopCnt);
@@ -911,18 +911,18 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nDL, int nBL)
       #elif (cnBitsInD1 > 8) // nDL == 1 is handled here
           #if (cnListPopCntMaxDl1 <= 8) // list fits in one __m128i
               #if (cnBitsLeftAtDl2 <= 16) // need to test nDL
-    int nPopCnt = (nBL == cnBitsInD1) ? 8 : ls_sPopCnt(pwr);
+    int nPopCnt = (nBL == cnBitsInD1) ? 8 : ls_xPopCnt(pwr, 16);
               #else // (cnBitsLeftAtDl2 <= 16)
     int nPopCnt = 8; // Eight fit so why do less?
               #endif // (cnBitsLeftAtDl2 <= 16)
           #else // (cnListPopCntMaxDl1 <= 8)
-    int nPopCnt = ls_sPopCnt(pwr);
+    int nPopCnt = ls_xPopCnt(pwr, 16);
           #endif // (cnListPopCntMaxDl1 <= 8)
       #else // (cnListPopCntMax16 <= 8)
-    int nPopCnt = ls_sPopCnt(pwr);
+    int nPopCnt = ls_xPopCnt(pwr, 16);
       #endif // (cnListPopCntMax16 <= 8)
   #else // defined(PARALLEL_128)
-    int nPopCnt = ls_sPopCnt(pwr);
+    int nPopCnt = ls_xPopCnt(pwr, 16);
   #endif // defined(PARALLEL_128)
   #endif // defined(PP_IN_LINK)
     uint16_t *psKeys = ls_psKeysNATX(pwr, nPopCnt);
@@ -1235,7 +1235,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot, int nDL)
           #if defined(PP_IN_LINK)
         nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
           #else // defined(PP_IN_LINK)
-        nPopCnt = ls_sPopCnt(pwr);
+        nPopCnt = ls_xPopCnt(pwr, 32);
           #endif // defined(PP_IN_LINK)
         nPos = SearchList32(ls_piKeysNATX(pwr, nPopCnt), wKey, nBL, nPopCnt);
     } else
@@ -1245,7 +1245,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot, int nDL)
   #if defined(PP_IN_LINK)
         nPopCnt = PWR_wPopCnt(pwRoot, NULL, nDL);
   #else // defined(PP_IN_LINK)
-        nPopCnt = ls_sPopCnt(pwr);
+        nPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
   #endif // ! defined(PP_IN_LINK)
         nPos = SearchListWord(ls_pwKeysNATX(pwr, nPopCnt),
                               wKey, nBL, nPopCnt);
@@ -2576,7 +2576,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
         // the first word in the list is used for pop count at the top
         return (SearchListWord(ls_pwKeys(pwr, cnBitsPerWord),
                                wKey, cnBitsPerWord,
-                           ls_wPopCnt(pwr, cnBitsPerWord))
+                           ls_xPopCnt(pwr, cnBitsPerWord))
                        >= 0)
                    ? Success : Failure;
     }
@@ -2789,7 +2789,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             } else
       #endif // defined(USE_T_ONE)
             {
-                wPopCnt = ls_wPopCnt(pwr, cnBitsPerWord);
+                wPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
             }
 
 #if (cnBitsPerWord == 64)
@@ -2931,7 +2931,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
         else
         {
             Word_t *pwr = wr_tp_pwr(wRoot, nType);
-            Word_t wPopCnt = ls_wPopCnt(pwr, cnBitsPerWord);
+            Word_t wPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
             Word_t *pwListNew;
             if (wPopCnt != 1)
             {

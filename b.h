@@ -40,6 +40,14 @@
 #define DL_SPECIFIC_T_ONE
 #endif // ! defined(NO_DL_SPECIFIC_T_ONE)
 
+// Default is bm sw uncompress words per key: cnBmSwNum / cnBmSwDenom == 3 / 2.
+#if ! defined(cnBmSwNum)
+#define cnBmSwNum  2
+#endif // ! defined(cnBmSwNum)
+#if ! defined(cnBmSwDenom)
+#define cnBmSwDenom  3
+#endif // ! defined(cnBmDenom)
+
 // Default is -DBL_SPECIFIC_PSPLIT_SEARCH.
 #if ! defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
 #define BL_SPECIFIC_PSPLIT_SEARCH
@@ -1007,23 +1015,23 @@ enum {
 
 #if defined(PP_IN_LINK)
 
-// For PP_IN_LINK ls_wPopCnt macros are only valid at top, i.e.
+// For PP_IN_LINK ls_xPopCnt macros are only valid at top, i.e.
 // nDL == cnDigitsPerWord, and only for T_LIST - not for T_ONE.
 #if (cnDummiesInList == 0)
 
-#define     ls_wPopCnt(_ls, _nBL) \
+#define     ls_xPopCnt(_ls, _nBL) \
     (assert((_nBL) == cnBitsPerWord), ((ListLeaf_t *)(_ls))->ll_awKeys[0])
-#define set_ls_wPopCnt(_ls, _nBL, _cnt) \
+#define set_ls_xPopCnt(_ls, _nBL, _cnt) \
     (assert((_nBL) == cnBitsPerWord), \
         ((ListLeaf_t *)(_ls))->ll_awKeys[0] = (_cnt))
 
 #else // (cnDummiesInList == 0)
 
 // Use the last dummy for pop count if we have at least one dummy.
-#define     ls_wPopCnt(_ls, _nBL) \
+#define     ls_xPopCnt(_ls, _nBL) \
     (assert((_nBL) == cnBitsPerWord), \
         ((ListLeaf_t *)(_ls))->ll_awDummies[cnDummiesInList - 1])
-#define set_ls_wPopCnt(_ls, _nBL, _cnt) \
+#define set_ls_xPopCnt(_ls, _nBL, _cnt) \
     (assert((_nBL) == cnBitsPerWord), \
         ((ListLeaf_t *)(_ls))->ll_awDummies[cnDummiesInList - 1] = (_cnt))
 
@@ -1039,10 +1047,10 @@ enum {
 
 #else // defined(PP_IN_LINK)
 
-#define     ls_wPopCnt(_ls, _nBL) \
+#define     ls_xPopCnt(_ls, _nBL) \
   (((_nBL) > 8) ? ls_sPopCnt(_ls) : ls_cPopCnt(_ls))
 
-#define set_ls_wPopCnt(_ls, _nBL, _cnt) \
+#define set_ls_xPopCnt(_ls, _nBL, _cnt) \
   (((_nBL) > 8) ? set_ls_sPopCnt((_ls), (_cnt)) \
                 : set_ls_cPopCnt((_ls), (_cnt)))
 
@@ -1195,23 +1203,14 @@ enum {
 // pwr aka ls points to the highest malloc-aligned address in the
 // list buffer.  We have to use an aligned address because we use the low
 // bits of the pointer as a type field.
-// Pop count is in last key-size slot in the word pointed to by pwr.
-// We guarantee one key-size slot for the pop count.
-#define ls_cPopCnt(_pwr)  (((uint8_t  *)((Word_t *)(_pwr) + 1))[-1])
-#define ls_sPopCnt(_pwr)  (((uint16_t *)((Word_t *)(_pwr) + 1))[-1])
-#define ls_psPopCnt(_pwr)  (&ls_sPopCnt(_pwr))
-#define ls_wPopCnt(_pwr, _nBL) \
-    (((_nBL) <= 8) ? ls_cPopCnt(_pwr) : ls_sPopCnt(_pwr))
-
-#define set_ls_cPopCnt(_pwr, _cnt)  (ls_cPopCnt(_pwr) = (_cnt))
-#define set_ls_sPopCnt(_pwr, _cnt)  (ls_sPopCnt(_pwr) = (_cnt))
-#define set_ls_wPopCnt(_pwr, _nBL, _cnt) \
-    (((_nBL) > 8) ? set_ls_sPopCnt((_pwr), (_cnt)) \
-                  : set_ls_cPopCnt((_pwr), (_cnt)))
+// Pop count is in last pop-size slot in the word pointed to by pwr.
+// Other code assumes pop count is not bigger than a single key in the list.
+#define ls_xPopCnt(_pwr, _nBL)  (((uint8_t  *)((Word_t *)(_pwr) + 1))[-1])
+#define set_ls_xPopCnt(_pwr, _nBL, _cnt)  (ls_xPopCnt((_pwr), (_nBL)) = (_cnt))
 
 #define ls_pcKeys(_pwr, _nBL) \
     ((uint8_t *)((Word_t *)(_pwr) + 1) \
-        - ls_nSlotsInList(ls_cPopCnt(_pwr), (_nBL), sizeof(uint8_t)))
+        - ls_nSlotsInList(ls_xPopCnt((_pwr), (_nBL)), (_nBL), sizeof(uint8_t)))
 
 #define ls_pcKeysX(_pwr, _nBL, _nPopCnt) \
     ((uint8_t *)((Word_t *)(_pwr) + 1) \
@@ -1219,7 +1218,8 @@ enum {
 
 #define ls_psKeys(_pwr, _nBL) \
     ((uint16_t *)((Word_t *)(_pwr) + 1) \
-        - ls_nSlotsInList(ls_sPopCnt(_pwr), (_nBL), sizeof(uint16_t)))
+        - ls_nSlotsInList(ls_xPopCnt((_pwr), \
+                          (_nBL)), (_nBL), sizeof(uint16_t)))
 
 #define ls_psKeysX(_pwr, _nBL, _nPopCnt) \
     ((uint16_t *)((Word_t *)(_pwr) + 1) \
@@ -1227,7 +1227,8 @@ enum {
 
 #define ls_piKeys(_pwr, _nBL) \
     ((uint32_t *)((Word_t *)(_pwr) + 1) \
-        - ls_nSlotsInList(ls_sPopCnt(_pwr), (_nBL), sizeof(uint32_t)))
+        - ls_nSlotsInList(ls_xPopCnt((_pwr), (_nBL)), \
+                          (_nBL), sizeof(uint32_t)))
 
 #define ls_piKeysX(_pwr, _nBL, _nPopCnt) \
     ((uint32_t *)((Word_t *)(_pwr) + 1) \
@@ -1236,7 +1237,8 @@ enum {
 #define ls_pwKeys(_pwr, _nBL) \
     (assert((_nBL) > (int)sizeof(Word_t)/2), \
         (Word_t *)((Word_t *)(_pwr) + 1) \
-            - ls_nSlotsInList(ls_sPopCnt(_pwr), (_nBL), sizeof(Word_t)))
+            - ls_nSlotsInList(ls_xPopCnt((_pwr), \
+                              (_nBL)), (_nBL), sizeof(Word_t)))
 
 #define ls_pwKeysX(_pwr, _nBL, _nPopCnt) \
     (assert((_nBL) > (int)sizeof(Word_t)/2), \
