@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.397 2014/12/11 18:05:54 mike Exp mike $
+// @(#) $Id: b.c,v 1.398 2014/12/11 18:11:19 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1191,8 +1191,8 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(TYPE_IS_RELATIVE)
-    assert((nType <= T_SW_BASE) || (nDL - wr_nDS(wRoot) < nBL_to_nDL(nBL)));
-    assert((nType <= T_SW_BASE) || (nDL - wr_nDS(wRoot) >= 1));
+    assert((nType < T_SW_BASE) || (nDL - wr_nDS(wRoot) < nBL_to_nDL(nBL)));
+    assert((nType < T_SW_BASE) || (nDL - wr_nDS(wRoot) >= 1));
 #else // defined(TYPE_IS_RELATIVE)
     assert((nType < T_SW_BASE) || (wr_nDL(wRoot) < nBL_to_nDL(nBL)));
     assert((nType < T_SW_BASE) || (wr_nDL(wRoot) >= 1));
@@ -1342,7 +1342,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     {
 #if defined(TYPE_IS_RELATIVE)
-        if (nType > T_SW_BASE) {
+        if (nType >= T_SW_BASE) {
             nDL = nDL - wr_nDS(wRoot);
         }
 #else // defined(TYPE_IS_RELATIVE)
@@ -1407,10 +1407,12 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
                 {
                     wPopCntLn
 #if defined(TYPE_IS_RELATIVE)
-                        = PWR_wPopCnt(pwRootLn, NULL,
-                                      nDL - wr_nDS(*pwRootLn));
+                        = (nTypeLn < T_SW_BASE)
+                            ? PWR_wPopCnt(pwRootLn, (Switch_t *)NULL, nDL)
+                            : PWR_wPopCnt(pwRootLn, (Switch_t *)NULL,
+                                          nDL - wr_nDS(*pwRootLn));
 #else // defined(TYPE_IS_RELATIVE)
-                        = (nTypeLn == T_SWITCH)
+                        = (nTypeLn < T_SW_BASE)
                             ? PWR_wPopCnt(pwRootLn, (Switch_t *)NULL, nDL)
                             : PWR_wPopCnt(pwRootLn,
                                           (Switch_t *)NULL, wr_nDL(*pwRootLn));
@@ -1436,10 +1438,12 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(TYPE_IS_RELATIVE)
                     wPopCnt += 1
-                            + wPrefixPopMask(nDL - wr_nDS(*pwRootLn));
+                        + ((nTypeLn < T_SW_BASE)
+                            ? wPrefixPopMask(nDL)
+                            : wPrefixPopMask(nDL - wr_nDS(*pwRootLn)));
 #else // defined(TYPE_IS_RELATIVE)
                     wPopCnt += 1
-                        + ((nTypeLn == T_SWITCH)
+                        + ((nTypeLn < T_SW_BASE)
                             ? wPrefixPopMask(nDL)
                             : wPrefixPopMask(wr_nDL(*pwRootLn)));
 #endif // defined(TYPE_IS_RELATIVE)
@@ -2457,7 +2461,7 @@ newSwitch:
     {
 #if defined(BM_SW_FOR_REAL)
   #if defined(TYPE_IS_RELATIVE)
-        unsigned nDLR = nDL - wr_nDS(wRoot);
+        unsigned nDLR = (nType < T_SW_BASE) ? nDL : nDL - wr_nDS(wRoot);
   #else // defined(TYPE_IS_RELATIVE)
         unsigned nDLR = (nType < T_SW_BASE) ? nDL : wr_nDL(wRoot);
   #endif // defined(TYPE_IS_RELATIVE)
@@ -3391,7 +3395,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
         {
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
       #if ! defined(BM_IN_LINK)
-            if ( ! bBmSw || BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
+            if ( ! bBmSw || BitIsSet(PWR_pwBm(NULL, pwr), nn))
       #endif // ! defined(BM_IN_LINK)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
             {
@@ -3420,11 +3424,14 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
                 {
                     wPopCntLn
           #if defined(TYPE_IS_RELATIVE)
-                        = PWR_wPopCnt(pwRootLn, NULL,
-                                  cnDigitsPerWord - 1 - wr_nDS(*pwRootLn));
+                        = PWR_wPopCnt(pwRootLn, (Switch_t *)wr_pwr(*pwRootLn),
+                            (nTypeLn < T_SW_BASE)
+                                ? cnDigitsPerWord - 1
+                                : cnDigitsPerWord - 1 - wr_nDS(*pwRootLn));
+
           #else // defined(TYPE_IS_RELATIVE)
                         = PWR_wPopCnt(pwRootLn, (Switch_t *)NULL, 
-                                      (nTypeLn == T_SWITCH)
+                                      (nTypeLn < T_SW_BASE)
                                           ? cnDigitsPerWord - 1
                                           : wr_nDL(*pwRootLn));
           #endif // defined(TYPE_IS_RELATIVE)
@@ -3443,9 +3450,11 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
           #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
                     unsigned nDL
               #if defined(TYPE_IS_RELATIVE)
-                        = cnDigitsPerWord - 1 - wr_nDS(*pwRootLn);
+                        = (nTypeLn < T_SW_BASE)
+                            ? cnDigitsPerWord - 1
+                            : cnDigitsPerWord - 1 - wr_nDS(*pwRootLn);
               #else // defined(TYPE_IS_RELATIVE)
-                        = (nTypeLn == T_SWITCH)
+                        = (nTypeLn < T_SW_BASE)
                             ? cnDigitsPerWord - 1 : wr_nDL(*pwRootLn);
               #endif // defined(TYPE_IS_RELATIVE)
                     printf(" mask "OWx" %"_fw"d",
@@ -3473,9 +3482,11 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
                     assert(tp_bIsSwitch(nTypeLn));
                     int nDL =
           #if defined(TYPE_IS_RELATIVE)
-                        cnDigitsPerWord - 1 - wr_nDS(*pwRootLn)
+                        (nTypeLn < T_SW_BASE)
+                            ? cnDigitsPerWord - 1
+                            : cnDigitsPerWord - 1 - wr_nDS(*pwRootLn)
           #else // defined(TYPE_IS_RELATIVE)
-                        (nTypeLn == T_SWITCH)
+                        (nTypeLn < T_SW_BASE)
                             ? cnDigitsPerWord - 1 : wr_nDL(*pwRootLn)
           #endif // defined(TYPE_IS_RELATIVE)
                         ;
@@ -3507,7 +3518,8 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
           #if ! defined(NDEBUG)
         int nDL =
               #if defined(TYPE_IS_RELATIVE)
-            cnDigitsPerWord - wr_nDS(wRoot)
+            (nType < T_SW_BASE)
+                ? cnDigitsPerWord : cnDigitsPerWord - wr_nDS(wRoot)
               #else // defined(TYPE_IS_RELATIVE)
             (nType < T_SW_BASE) ? cnDigitsPerWord : wr_nDL(wRoot)
               #endif // defined(TYPE_IS_RELATIVE)
@@ -3527,7 +3539,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
       #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         int nDL =
           #if defined(TYPE_IS_RELATIVE)
-            (nType <= T_SW_BASE)
+            (nType < T_SW_BASE)
                 ? cnDigitsPerWord : cnDigitsPerWord - wr_nDS(wRoot)
           #else // defined(TYPE_IS_RELATIVE)
             (nType < T_SW_BASE) ? cnDigitsPerWord : wr_nDL(wRoot)
