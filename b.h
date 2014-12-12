@@ -866,6 +866,11 @@ enum {
 // to distinguish the top level list from other word size lists and treat
 // them differently.
 #define OLD_LISTS
+#if defined(DEPTH_IN_SW)
+// Relocating the pop out of PP requires quite a few code changes.
+// It would be nice for depth, prefix and pop to share the same word.
+#error Sorry, no PP_IN_LINK + DEPTH_IN_SW.
+#endif // defined(DEPTH_IN_SW)
 #else // defined(PP_IN_LINK)
 #define PWR_wPrefixPop(_pwRoot, _pwr)  ((_pwr)->sw_wPrefixPop)
 #endif // defined(PP_IN_LINK)
@@ -967,10 +972,12 @@ enum {
 #endif // defined(LIST_END_MARKERS)
 
 #if defined(PP_IN_LINK)
-  // POP_SLOT tells ListWords if we need a slot in the leaf for a pop count.
+  // POP_SLOT tells ListWords if we need a slot in the leaf for a pop count
+  // that is not included in N_LIST_HDR_KEYS.
   #define POP_SLOT(_nBL)  (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))
 #else // defined(PP_IN_LINK)
-  // POP_SLOT tells ListWords if we need a slot in the leaf for a pop count.
+  // POP_SLOT tells ListWords if we need a slot in the leaf for a pop count
+  // that is not included in N_LIST_HDR_KEYS.
   // N_HDR_KEYS incorporates this for ! PP_IN_LINK so don't add it again
   // for ls_pxKeys.
   #define POP_SLOT(_nBL)  (1)
