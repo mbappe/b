@@ -866,11 +866,11 @@ enum {
 // to distinguish the top level list from other word size lists and treat
 // them differently.
 #define OLD_LISTS
-#if defined(DEPTH_IN_SW)
+#if defined(DEPTH_IN_SW) || defined(POP_WORD)
 // Relocating the pop out of PP requires quite a few code changes.
 // It would be nice for depth, prefix and pop to share the same word.
-#error Sorry, no PP_IN_LINK + DEPTH_IN_SW.
-#endif // defined(DEPTH_IN_SW)
+#error Sorry, no PP_IN_LINK && (DEPTH_IN_SW || POP_WORD). 
+#endif // defined(DEPTH_IN_SW) || defined(POP_WORD)
 #else // defined(PP_IN_LINK)
 #define PWR_wPrefixPop(_pwRoot, _pwr)  ((_pwr)->sw_wPrefixPop)
 #endif // defined(PP_IN_LINK)
