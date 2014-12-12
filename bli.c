@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.483 2014/12/11 17:02:08 mike Exp mike $
+// @(#) $Id: bli.c,v 1.484 2014/12/11 17:42:16 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1570,14 +1570,6 @@ again:
 
 #endif // defined(SKIP_LINKS)
 
-#if ! defined(TYPE_IS_ABSOLUTE)
-    case T_SW_BASE: // no-skip (aka close) switch (vs. distant switch)
-#if defined(EXTRA_TYPES)
-    case T_SW_BASE | EXP(cnBitsMallocMask): // no skip switch
-#endif // defined(EXTRA_TYPES)
-         goto t_switch;
-#endif // ! defined(TYPE_IS_ABSOLUTE)
-
     case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
 #if defined(EXTRA_TYPES)
     case T_SWITCH | EXP(cnBitsMallocMask): // close switch w/o bm
@@ -1609,7 +1601,7 @@ t_switch:
       #if defined(REMOVE)
             if (bCleanup)
             {
-assert(0); // Just checking; uh oh; do we need better testing?
+//assert(0); // Just checking; uh oh; do we need better testing?
                 DBGX(printf("Cleanup\n"));
 
                 for (Word_t ww = 0; ww < EXP(cnBitsIndexSzAtTop); ww++)
@@ -1627,7 +1619,8 @@ assert(0); // Just checking; uh oh; do we need better testing?
                     // Or can we just use nDL?
                     int nDLX = wr_bIsSwitch(*pwRootLn) ?
               #if defined(TYPE_IS_RELATIVE)
-                                       nDL - wr_nDS(*pwRootLn)
+                                       (wr_nType(*pwRootLn) < T_SW_BASE
+                                           ? nDL : nDL - wr_nDS(*pwRootLn))
               #else // defined(TYPE_IS_RELATIVE)
                                        (wr_nType(*pwRootLn) < T_SW_BASE
                                            ? nDL : wr_nDL(*pwRootLn))
@@ -1635,7 +1628,7 @@ assert(0); // Just checking; uh oh; do we need better testing?
                                    : nDL;
                     DBGX(printf("wr_nDLX %d", nDLX));
                     DBGX(printf(" PWR_wPopCnt %"_fw"d\n",
-                                PWR_wPopCnt(pwRootLn, NULL, nDLX)
+                                PWR_wPopCnt(pwRootLn, (Switch_t *)NULL, nDLX)
                                 ));
                     if (((*pwRootLn != 0) && (ww != wIndex))
                             || (
@@ -1861,7 +1854,8 @@ assert(0); // Just checking; uh oh; do we need better testing?
                     // Or can we just use nDL?
                     int nDLX = wr_bIsSwitch(*pwRootLn) ?
               #if defined(TYPE_IS_RELATIVE)
-                                       nDL - wr_nDS(*pwRootLn)
+                                       (wr_nType(*pwRootLn) < T_SW_BASE
+                                           ? nDL : nDL - wr_nDS(*pwRootLn)
               #else // defined(TYPE_IS_RELATIVE)
                                        (wr_nType(*pwRootLn) < T_SW_BASE
                                            ? nDL : wr_nDL(*pwRootLn))
@@ -2472,7 +2466,7 @@ foundIt:
       #if defined(REMOVE)
         // Can we combine bCleanup context with nType in switch variable?
         if ( bCleanup ) {
-assert(0); // Just checking; uh oh; do we need better testing?
+//assert(0); // Just checking; uh oh; do we need better testing?
         } else
       #endif // defined(REMOVE)
         {
