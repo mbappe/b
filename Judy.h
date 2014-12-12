@@ -19,7 +19,7 @@
 // Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // _________________
 
-// @(#) $Revision: 1.2 $ $Source: /Users/mike/Documents/judy/b/RCS/Judy.h,v $
+// @(#) $Revision: 1.3 $ $Source: /Users/mike/b/RCS/Judy.h,v $
 //
 // HEADER FILE FOR EXPORTED FEATURES IN JUDY LIBRARY, libJudy.*
 //
@@ -294,6 +294,9 @@ extern const char *JudyLMallocSizes;
 // ****************************************************************************
 // JUDY memory interface to malloc() FUNCTIONS:
 
+#if defined(GUARDBAND)
+void JudyCheckGuardband(void *PWord, Word_t Words);
+#endif // defined(GUARDBAND)
 extern Word_t JudyMalloc(Word_t);               // words reqd => words allocd.
 extern Word_t JudyMallocVirtual(Word_t);        // words reqd => words allocd.
 extern void   JudyFree(Pvoid_t, Word_t);        // free, size in words.
