@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.398 2014/12/11 18:11:19 mike Exp mike $
+// @(#) $Id: b.c,v 1.399 2014/12/12 13:08:43 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -3366,27 +3366,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
   #if defined(PP_IN_LINK)
         // no skip links at root for PP_IN_LINK -- no place for prefix
       #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-          #if defined(TYPE_IS_RELATIVE)
-  #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
-        assert((wr_nDS(wRoot) == 0)
-            || (nType == T_FULL_BM_SW)
-            || (nType == T_BM_SW));
-  #else // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
-        assert((wr_nDS(wRoot) == 0)
-            || (nType == T_BM_SW));
-  #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
-          #else // defined(TYPE_IS_RELATIVE)
-  #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
-        assert((nType == T_SWITCH)
-            || (nType == T_FULL_BM_SW)
-            || (nType == T_BM_SW));
-  #else // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
-        assert((nType == T_SWITCH)
-            || (nType == T_BM_SW));
-  #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
-          #endif // defined(TYPE_IS_RELATIVE)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+        assert(nType < T_SW_BASE);
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         // add up the pops in the links
         Word_t xx = 0; (void)xx;

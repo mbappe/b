@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.484 2014/12/11 17:42:16 mike Exp mike $
+// @(#) $Id: bli.c,v 1.485 2014/12/12 13:16:41 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1828,7 +1828,7 @@ t_bm_sw:
       #if defined(REMOVE)
             if (bCleanup)
             {
-assert(0); // Just checking; uh oh; do we need better testing?
+//assert(0); // Just checking; uh oh; do we need better testing?
                 DBGX(printf("Cleanup\n"));
           #if ! defined(BM_IN_LINK)
                 Word_t xx = 0;
@@ -1855,7 +1855,7 @@ assert(0); // Just checking; uh oh; do we need better testing?
                     int nDLX = wr_bIsSwitch(*pwRootLn) ?
               #if defined(TYPE_IS_RELATIVE)
                                        (wr_nType(*pwRootLn) < T_SW_BASE
-                                           ? nDL : nDL - wr_nDS(*pwRootLn)
+                                           ? nDL : nDL - wr_nDS(*pwRootLn))
               #else // defined(TYPE_IS_RELATIVE)
                                        (wr_nType(*pwRootLn) < T_SW_BASE
                                            ? nDL : wr_nDL(*pwRootLn))

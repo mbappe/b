@@ -399,11 +399,7 @@ enum {
     // T_SW_BASE has to have the biggest value in this enum.
     // All of the values above it have a meaning relative to T_SW_BASE.
 #if defined(DEPTH_IN_SW)
-#if defined(TYPE_IS_RELATIVE)
-    T_SW_BASE = cnMallocMask - 1, // cnMallocMask means skip link
-#else // defined(TYPE_IS_RELATIVE)
     T_SW_BASE = cnMallocMask, // must find level in the switch
-#endif // defined(TYPE_IS_RELATIVE)
 #else // defined(DEPTH_IN_SW)
     T_SW_BASE, // level is determined by (nType - T_SW_BASE)
 #endif // defined(DEPTH_IN_SW)
