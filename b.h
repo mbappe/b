@@ -23,12 +23,15 @@
 #endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 
 // Default is -UBM_IN_LINK.
-// Default is -UUSE_BM_SW, -UBM_SW_AT_DL2.
 // USE_BM_SW means always use bm sw when creating a switch with no skip.
 // BM_SW_AT_DL2 means always use bm sw at dl2, i.e. do not skip to dl2.
 // Default is -DBM_SW_FOR_REAL iff -DUSE_BM_SW or -DBM_SW_AT_DL2.
 // Would be nice to be able to specify no exernal list (or one bucket only)
 // at dl2 if BM_SW_AT_DL2.
+// Default is -DUSE_BM_SW, -UBM_SW_AT_DL2.
+#if ! defined(NO_USE_BM_SW)
+#define USE_BM_SW
+#endif // ! defined(NO_USE_BM_SW)
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 #if ! defined(NO_BM_SW_FOR_REAL)
 #define BM_SW_FOR_REAL
@@ -276,9 +279,13 @@ typedef Word_t Bucket_t;
 #define cnListPopCntMax32  0xf0
 #endif // ! defined(cnListPopCntMax32)
 
-// Default is cnListPopCntMax16 = 0x70.
+// Default is cnListPopCntMax16 = 0x70 or 0x40.
 #if ! defined(cnListPopCntMax16)
+#if defined(USE_BM_SW)
+#define cnListPopCntMax16  0x40
+#else // defined(USE_BM_SW)
 #define cnListPopCntMax16  0x70
+#endif // defined(USE_BM_SW)
 #endif // ! defined(cnListPopCntMax16)
 
 // An 8-bit bitmap uses only 32-bytes plus malloc overhead.
