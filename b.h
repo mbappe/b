@@ -34,19 +34,25 @@
 #define BM_SW_FOR_REAL
 #endif // ! defined(NO_BM_SW_FOR_REAL)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-// Default is -URETYPE_FULL_BM_SW and -UBM_IN_NON_BM_SW.
+// Default is -DRETYPE_FULL_BM_SW and -DBM_IN_NON_BM_SW.
+#if ! defined(NO_RETYPE_FULL_BM_SW)
+#define RETYPE_FULL_BM_SW
+#endif // ! defined(NO_RETYPE_FULL_BM_SW)
+#if defined(RETYPE_FULL_BM_SW)
+#define BM_IN_NON_BM_SW
+#endif // defined(RETYPE_FULL_BM_SW)
 
 // Default is -DDL_SPECIFIC_T_ONE.
 #if ! defined(NO_DL_SPECIFIC_T_ONE)
 #define DL_SPECIFIC_T_ONE
 #endif // ! defined(NO_DL_SPECIFIC_T_ONE)
 
-// Default is bm sw uncompress words per key: cnBmSwNum / cnBmSwDenom == 3 / 2.
+// Default is bm sw uncompress words per key = cnBmSwNum / cnBmSwDenom == 1 / 2.
 #if ! defined(cnBmSwNum)
-#define cnBmSwNum  2
+#define cnBmSwNum  1
 #endif // ! defined(cnBmSwNum)
 #if ! defined(cnBmSwDenom)
-#define cnBmSwDenom  3
+#define cnBmSwDenom  2
 #endif // ! defined(cnBmDenom)
 
 // Default is -DBL_SPECIFIC_PSPLIT_SEARCH.
