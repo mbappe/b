@@ -30,19 +30,22 @@
 // at dl2 if BM_SW_AT_DL2.
 // Default is -DUSE_BM_SW, -UBM_SW_AT_DL2.
 #if ! defined(NO_USE_BM_SW)
-#define USE_BM_SW
+  #define USE_BM_SW
 #endif // ! defined(NO_USE_BM_SW)
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-#if ! defined(NO_BM_SW_FOR_REAL)
-#define BM_SW_FOR_REAL
-#endif // ! defined(NO_BM_SW_FOR_REAL)
+  #if ! defined(NO_BM_SW_FOR_REAL)
+      #define BM_SW_FOR_REAL
+  #endif // ! defined(NO_BM_SW_FOR_REAL)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-// Default is -DRETYPE_FULL_BM_SW and -DBM_IN_NON_BM_SW.
+
+// Default is -DRETYPE_FULL_BM_SW.
 #if ! defined(NO_RETYPE_FULL_BM_SW)
-#define RETYPE_FULL_BM_SW
+  #define RETYPE_FULL_BM_SW
 #endif // ! defined(NO_RETYPE_FULL_BM_SW)
+
+// Default is -DBM_IN_NON_BM_SW.
 #if defined(RETYPE_FULL_BM_SW)
-#define BM_IN_NON_BM_SW
+  #define BM_IN_NON_BM_SW
 #endif // defined(RETYPE_FULL_BM_SW)
 
 // Default is -DDL_SPECIFIC_T_ONE.
