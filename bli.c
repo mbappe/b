@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.487 2014/12/13 15:58:29 mike Exp mike $
+// @(#) $Id: bli.c,v 1.488 2014/12/13 21:02:44 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1759,6 +1759,9 @@ t_bm_sw:
             // greater than or equal to the actual value and won't cause
             // a crash.
             & (EXP(nDL_to_nBitsIndexSzNAX(nDLR)) - 1));
+
+        DBGX(printf("T_BM_SW nDLR %d pLinks %p wIndex %d 0x%x\n", nDLR,
+             (void *)pwr_pLinks((Switch_t *)pwr), (int)wIndex, (int)wIndex));
 
   #if defined(BM_IN_LINK)
         // We avoid ambiguity by disallowing calls to Insert/Remove with

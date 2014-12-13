@@ -44,9 +44,9 @@
 #endif // ! defined(NO_RETYPE_FULL_BM_SW)
 
 // Default is -DBM_IN_NON_BM_SW.
-#if defined(RETYPE_FULL_BM_SW)
+#if ! defined(NO_BM_IN_NON_BM_SW) && defined(RETYPE_FULL_BM_SW)
   #define BM_IN_NON_BM_SW
-#endif // defined(RETYPE_FULL_BM_SW)
+#endif // ! defined(NO_BM_IN_NON_BM_SW) && defined(RETYPE_FULL_BM_SW)
 
 // Default is -DDL_SPECIFIC_T_ONE.
 #if ! defined(NO_DL_SPECIFIC_T_ONE)
@@ -399,6 +399,10 @@ typedef Word_t Bucket_t;
 #if ! defined(NO_SKIP_TO_BM_SW)
   #define SKIP_TO_BM_SW
 #endif // ! defined(NO_SKIP_TO_BM_SW)
+
+#if defined(SKIP_TO_BM_SW) && ! defined(BM_IN_NON_BM_SW)
+  #error Sorry, SKIP_TO_BM_SW requires BM_IN_NON_BM_SW.
+#endif // defined(SKIP_TO_BM_SW) && ! defined(BM_IN_NON_BM_SW)
 
 #if defined(SKIP_TO_BM_SW) && !(defined(USE_BM_SW) || defined(BM_SW_AT_DL2))
   #error Sorry, no SKIP_TO_BM_SW without USE_BM_SW.
@@ -1428,6 +1432,9 @@ typedef struct {
     Link_t sw_aLinks[1]; // variable size
 } Switch_t;
 
+#if defined(SKIP_TO_BM_SW)
+    typedef Switch_t BmSwitch_t;
+#else // defined(SKIP_TO_BM_SW)
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 // Bitmap switch.
 typedef struct {
@@ -1446,6 +1453,7 @@ typedef struct {
     Link_t sw_aLinks[1]; // variable size
 } BmSwitch_t;
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(SKIP_TO_BM_SW)
 
 Status_t Insert(Word_t *pwRoot, Word_t wKey, unsigned nBL);
 Status_t Remove(Word_t *pwRoot, Word_t wKey, unsigned nBL);
