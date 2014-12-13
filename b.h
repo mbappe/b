@@ -275,18 +275,22 @@ typedef Word_t Bucket_t;
 #define cnListPopCntMax64  0xec
 #endif // ! defined(cnListPopCntMax64)
 
-// Default is cnListPopCntMax32 = 0xf0.
+// Default is cnListPopCntMax32 = 0xf0 or 0x30.
 #if ! defined(cnListPopCntMax32)
-#define cnListPopCntMax32  0xf0
+  #if defined(USE_BM_SW)
+      #define cnListPopCntMax32  0x30
+  #else // defined(USE_BM_SW)
+      #define cnListPopCntMax32  0xf0
+  #endif  // defined(USE_BM_SW)
 #endif // ! defined(cnListPopCntMax32)
 
 // Default is cnListPopCntMax16 = 0x70 or 0x40.
 #if ! defined(cnListPopCntMax16)
-#if defined(USE_BM_SW)
-#define cnListPopCntMax16  0x40
-#else // defined(USE_BM_SW)
-#define cnListPopCntMax16  0x70
-#endif // defined(USE_BM_SW)
+  #if defined(USE_BM_SW)
+      #define cnListPopCntMax16  0x40
+  #else // defined(USE_BM_SW)
+      #define cnListPopCntMax16  0x70
+  #endif // defined(USE_BM_SW)
 #endif // ! defined(cnListPopCntMax16)
 
 // An 8-bit bitmap uses only 32-bytes plus malloc overhead.
