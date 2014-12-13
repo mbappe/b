@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.486 2014/12/12 13:35:13 mike Exp mike $
+// @(#) $Id: bli.c,v 1.487 2014/12/13 15:58:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1510,35 +1510,6 @@ again:
     switch (nType)
 #endif // defined(EXTRA_TYPES)
     {
-#if 0
-    case T_OTHER: // Direct-access leaf; half size of uncompressed bitmap.
-#if defined(EXTRA_TYPES)
-    case T_OTHER | EXP(cnBitsMallocMask):
-#endif // defined(EXTRA_TYPES)
-    {
-        assert(0);
-  #if defined(REMOVE)
-        if (bCleanup) { return Success; } // cleanup is complete
-  #endif // defined(REMOVE)
-
-        Word_t wSubKey = wKey & MSK(nBL);
-        int nBucketIndex = wSubKey >> (cnBitsInD1 + 1);
-
-        if (BUCKET_HAS_KEY(&pwr[nBucketIndex], wSubKey, nBL))
-        {
-      #if defined(REMOVE)
-            RemoveGuts(pwRoot, wKey, nDL, wRoot);
-            goto cleanup; // free memory or reconfigure tree if necessary
-      #endif // defined(REMOVE)
-      #if defined(INSERT) && !defined(RECURSIVE)
-            if (nIncr > 0) { goto undo; } // undo counting
-      #endif // defined(INSERT) && !defined(RECURSIVE)
-            return KeyFound;
-        }
-
-        break;
-    }
-#endif // 0
 
 #if defined(SKIP_LINKS)
 
@@ -1608,6 +1579,9 @@ t_switch:
             // greater than or equal to the actual value and won't cause
             // a crash.
             & (EXP(nDL_to_nBitsIndexSzNAX(nDLR)) - 1));
+
+        DBGX(printf("T_SWITCH nDLR %d pLinks %p wIndex %d 0x%x\n", nDLR,
+             (void *)pwr_pLinks((Switch_t *)pwr), (int)wIndex, (int)wIndex));
 
 #if !defined(LOOKUP)
   #if defined(PP_IN_LINK)
@@ -1708,6 +1682,10 @@ notEmpty:;
 #endif // !defined(LOOKUP)
 
         pwRoot = &pwr_pLinks((Switch_t *)pwr)[wIndex].ln_wRoot;
+
+        goto switchTail;
+switchTail:
+
 #if ! defined(LOOKUP) || (cnBitsInD1 <= cnLogBitsPerWord)
         wRoot = *pwRoot;
 #endif // ! defined(LOOKUP) || (cnBitsInD1 <= cnLogBitsPerWord)
@@ -1724,9 +1702,8 @@ notEmpty:;
 #if defined(LOOKUP) && (cnBitsInD1 > cnLogBitsPerWord)
         wRoot = *pwRoot;
 #endif // defined(LOOKUP) && (cnBitsInD1 > cnLogBitsPerWord)
-        DBGX(printf("Next pLinks %p wIndex %d 0x%x\n",
-            (void *)pwr_pLinks((Switch_t *)pwr), (int)wIndex, (int)wIndex));
-        DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
+        DBGX(printf("Next pwRoot %p wRoot "OWx" nDL %d\n",
+                    (void *)pwRoot, wRoot, nDL));
 
         // Advance nDLR to the bottom of this switch now just in case
         // we have a non-skip link to a switch.  We could do it later.
@@ -1947,34 +1924,8 @@ notEmptyBm:;
 #endif // !defined(LOOKUP)
 
         pwRoot = &pwr_pLinks((BmSwitch_t *)pwr)[wIndex].ln_wRoot;
-#if ! defined(LOOKUP) || (cnBitsInD1 <= cnLogBitsPerWord)
-        wRoot = *pwRoot;
-#endif // ! defined(LOOKUP) || (cnBitsInD1 <= cnLogBitsPerWord)
-#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-        // We may need to check the prefix of the switch we just visited in
-        // the next iteration of the loop if we've reached a leaf so we
-        // preserve the value of pwr.
-        pwrPrev = pwr;
-#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-        // first test is done at compile time and might make the rest go away
-        if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nDL == 1)) {
-            goto embeddedBitmap;
-        }
-#if defined(LOOKUP) && (cnBitsInD1 > cnLogBitsPerWord)
-        wRoot = *pwRoot;
-#endif // defined(LOOKUP) && (cnBitsInD1 > cnLogBitsPerWord)
-        DBGX(printf("Next pLinks %p wIndex %d\n",
-            (void *)pwr_pLinks((BmSwitch_t *)pwr), (int)wIndex));
-        DBGX(printf("pwRoot %p wRoot "OWx"\n", (void *)pwRoot, wRoot));
 
-        // Advance nDLR to the bottom of this switch now just in case
-        // we have a non-skip link to a switch.  We could do it later.
-        nDLR = nDL;
-#if defined(LOOKUP) || !defined(RECURSIVE)
-        goto again;
-#else // defined(LOOKUP) || !defined(RECURSIVE)
-        return InsertRemove(pwRoot, wKey, nDL);
-#endif // defined(LOOKUP) || !defined(RECURSIVE)
+        goto switchTail;
 
     } // end of case T_BM_SW
 
