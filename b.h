@@ -771,12 +771,10 @@ enum {
           w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1))
 
   #define set_wr_nDL(_wr, _nDL) \
-      (assert(wr_nType(_wr) >= T_SKIP_TO_SWITCH), \
-          set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
-             PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
-                 = ((PWR_wPrefixPop(NULL, \
-                          (Switch_t *)wr_pwr(_wr)) & ~wPrefixPopMask(1)) \
-                      | (_nDL)))
+      (set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
+         PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
+             = ((PWR_wPrefixPop(NULL, \
+                  (Switch_t *)wr_pwr(_wr)) & ~wPrefixPopMask(1)) | (_nDL)))
 
 #else // defined(DEPTH_IN_SW)
 
@@ -834,13 +832,11 @@ enum {
           w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1))
 
   #define set_wr_nDS(_wr, _nDS) \
-      (assert(wr_nType(_wr) >= T_SKIP_TO_SWITCH), \
-          set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
-             /* put skip cnt in the PP pop field but use DL=1 for mask */ \
-             (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
-                   = ((PWR_wPrefixPop(NULL, \
-                           (Switch_t *)wr_pwr(_wr)) & ~wPrefixPopMask(1)) \
-                        | (_nDS))))
+      (set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
+         /* put skip cnt in the PP pop field but use DL=1 for mask */ \
+         (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
+               = ((PWR_wPrefixPop(NULL, \
+                   (Switch_t *)wr_pwr(_wr)) & ~wPrefixPopMask(1)) | (_nDS))))
 
 #else // defined(DEPTH_IN_SW)
 
