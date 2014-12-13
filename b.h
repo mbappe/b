@@ -50,12 +50,13 @@
 #define DL_SPECIFIC_T_ONE
 #endif // ! defined(NO_DL_SPECIFIC_T_ONE)
 
-// Default is bm sw uncompress words per key = cnBmSwNum / cnBmSwDenom == 1 / 2.
+// Default uncompress bm sw threshold is cnBmSwNum / cnBmSwDenom words per key.
+// Default (cnBmSwNum, cnBmSwDenom) is (100, 100).
 #if ! defined(cnBmSwNum)
-#define cnBmSwNum  1
+#define cnBmSwNum  100
 #endif // ! defined(cnBmSwNum)
 #if ! defined(cnBmSwDenom)
-#define cnBmSwDenom  2
+#define cnBmSwDenom  100
 #endif // ! defined(cnBmDenom)
 
 // Default is -DBL_SPECIFIC_PSPLIT_SEARCH.
@@ -383,21 +384,39 @@ typedef Word_t Bucket_t;
 // Default is -UT_ONE_MASK and -UT_ONE_CALC_POP.
 // See EmbeddedListHasKey.
 
-// Default is -DTYPE_IS_RELATIVE.  Use -DTYPE_IS_ABSOLUTE to change it.
-#if ! defined(TYPE_IS_ABSOLUTE)
-#define TYPE_IS_RELATIVE
-#endif // ! defined(TYPE_IS_ABSOLUTE)
+// Default is DEPTH_IN_SW.  Should be called DEPTH_IN_PREFIX_WORD.
+#if ! defined(NO_DEPTH_IN_SW)
+  #define DEPTH_IN_SW
+#endif // ! defined(NO_DEPTH_IN_SW)
+// Default is SKIP_TO_BM_SW.
+#if ! defined(NO_SKIP_TO_BM_SW)
+  #define SKIP_TO_BM_SW
+#endif // ! defined(NO_SKIP_TO_BM_SW)
+
+#if defined(SKIP_TO_BM_SW) && !(defined(USE_BM_SW) || defined(BM_SW_AT_DL2))
+  #error Sorry, no SKIP_TO_BM_SW without USE_BM_SW.
+#endif // defined(SKIP_TO_BM_SW)&&!(defined(USE_BM_SW)||defined(BM_SW_AT_DL2))
+
+#if defined(SKIP_TO_BM_SW) && (defined(USE_BM_SW) || defined(BM_SW_AT_DL2))
+  #if ! defined(DEPTH_IN_SW)
+      #error Sorry, no SKIP_TO_BM_SW without DEPTH_IN_SW.
+  #endif // ! defined(DEPTH_IN_SW)
+#endif // defined(SKIP_TO_BM_SW)&&(defined(USE_BM_SW)||defined(BM_SW_AT_DL2))
+
+// Default is -DTYPE_IS_ABSOLUTE.  Use -DTYPE_IS_RELATIVE to change it.
+#if ! defined(TYPE_IS_RELATIVE)
+#define TYPE_IS_ABSOLUTE
+#endif // ! defined(TYPE_IS_RELATIVE)
 
 // Values for nType.
 enum {
-    T_NULL,
+    T_NULL, // no keys below
 #if defined(USE_T_ONE)
-    T_ONE,
+    T_ONE, // one-key external list when key is too big to be embedded
 #endif // defined(USE_T_ONE)
-    T_EMBEDDED_KEYS,
-    T_LIST,
-    /*T_OTHER,*/
-    T_BITMAP,
+    T_EMBEDDED_KEYS, // keys are embedded in the link
+    T_LIST, // external list of keys
+    T_BITMAP, // external bitmap leaf
 
     // All of the type values less than T_SWITCH are not switches.
     // All type values at T_SWITCH and greater are switches.
@@ -408,15 +427,16 @@ enum {
     T_FULL_BM_SW, // BM_SW with all bits set.
 #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-
-    // T_SW_BASE has to have the biggest value in this enum.
-    // All of the values above it have a meaning relative to T_SW_BASE.
-#if defined(DEPTH_IN_SW)
-    T_SW_BASE = cnMallocMask, // must find level in the switch
-#else // defined(DEPTH_IN_SW)
-    T_SW_BASE, // level is determined by (nType - T_SW_BASE)
-#endif // defined(DEPTH_IN_SW)
+    // T_SKIP_TO_SWITCH has to have the biggest value in this enum
+    // if not DEPTH_IN_SW.  All of the bigger values have a meaning relative
+    // to T_SKIP_TO_SWITCH.
+    T_SKIP_TO_SWITCH, // depth/level is determined by (nType - T_SW_BASE)
+#if defined(DEPTH_IN_SW) && (defined(USE_BM_SW) || defined(BM_SW_AT_DL2))
+    T_SKIP_TO_BM_SW,
+#endif // defined(DEPTH_IN_SW) && (defined(USE_BM_SW)||defined(BM_SW_AT_DL2))
 };
+
+#define T_SW_BASE  T_SKIP_TO_SWITCH // compatibility with old code
 
 // Define and optimize nBitsIndexSz_from_nDL, nBL_from_nDL, nBL_from_nDL,
 // et. al. based on ifdef parameters.
@@ -746,16 +766,17 @@ enum {
 // DEPTH_IN_SW.  We could enhance it to use one type value to indicate
 // that we have to go to sw_wPrefixPop and use any other values that we
 // have available to represent some key absolute depths.
-#define     wr_nDL(_wr) \
-    (assert(wr_nType(_wr) == T_SW_BASE), \
-        w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1))
+  #define     wr_nDL(_wr) \
+      (assert(wr_nType(_wr) >= T_SKIP_TO_SWITCH), \
+          w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1))
 
-#define set_wr_nDL(_wr, _nDL) \
-    (set_wr_nType((_wr), T_SW_BASE), \
-        PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
-            = ((PWR_wPrefixPop(NULL, \
-                    (Switch_t *)wr_pwr(_wr)) & ~wPrefixPopMask(1)) \
-                | (_nDL)))
+  #define set_wr_nDL(_wr, _nDL) \
+      (assert(wr_nType(_wr) >= T_SKIP_TO_SWITCH), \
+          set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
+             PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
+                 = ((PWR_wPrefixPop(NULL, \
+                          (Switch_t *)wr_pwr(_wr)) & ~wPrefixPopMask(1)) \
+                      | (_nDL)))
 
 #else // defined(DEPTH_IN_SW)
 
@@ -773,11 +794,12 @@ enum {
   #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 2)
 #endif // (cnBitsInD1 > cnLogBitsPerWord)
 
-#define     wr_nDL(_wr) \
-    (assert(wr_nType(_wr) >= T_SW_BASE), tp_to_nDL(wr_nType(_wr)))
-#define set_wr_nDL(_wr, _nDL) \
-    (assert(nDL_to_tp(_nDL) >= T_SW_BASE), \
-        set_wr_nType((_wr), nDL_to_tp(_nDL)))
+  #define     wr_nDL(_wr) \
+      (assert(wr_nType(_wr) >= T_SKIP_TO_SWITCH), tp_to_nDL(wr_nType(_wr)))
+
+  #define set_wr_nDL(_wr, _nDL) \
+      (assert(nDL_to_tp(_nDL) >= T_SKIP_TO_SWITCH), \
+          set_wr_nType((_wr), nDL_to_tp(_nDL)))
 
 #endif // defined(DEPTH_IN_SW)
 
@@ -803,29 +825,31 @@ enum {
 // the number of digits above it.
 #define POP_WORD
 
-// As it stands we always get the skip count from sw_wPrefixPop if
-// DEPTH_IN_SW.  We could enhance it to use one type value to indicate
-// that we have to go to sw_wPrefixPop and use any other values that we
-// have available to represent some key skip counts.
-#define wr_nDS(_wr) \
-    (assert(wr_nType(_wr) == T_SW_BASE), \
-        w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1))
+  // As it stands we always get the skip count from sw_wPrefixPop if
+  // DEPTH_IN_SW.  We could enhance it to use one type value to indicate
+  // that we have to go to sw_wPrefixPop and use any other values that we
+  // have available to represent some key skip counts.
+  #define wr_nDS(_wr) \
+      (assert(wr_nType(_wr) >= T_SKIP_TO_SWITCH), \
+          w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1))
 
-#define set_wr_nDS(_wr, _nDS) \
-    (set_wr_nType((_wr), T_SW_BASE), \
-        /* put real skip cnt in the PP pop field but use DL=1 for mask */ \
-        (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
-            = ((PWR_wPrefixPop(NULL, \
-                    (Switch_t *)wr_pwr(_wr)) & ~wPrefixPopMask(1)) \
-                | (_nDS))))
+  #define set_wr_nDS(_wr, _nDS) \
+      (assert(wr_nType(_wr) >= T_SKIP_TO_SWITCH), \
+          set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
+             /* put skip cnt in the PP pop field but use DL=1 for mask */ \
+             (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
+                   = ((PWR_wPrefixPop(NULL, \
+                           (Switch_t *)wr_pwr(_wr)) & ~wPrefixPopMask(1)) \
+                        | (_nDS))))
 
 #else // defined(DEPTH_IN_SW)
 
-#define     wr_nDS(_wr) \
-    (assert(wr_nType(_wr) > T_SW_BASE), tp_to_nDS(wr_nType(_wr)))
-#define set_wr_nDS(_wr, _nDS) \
-    (assert(nDS_to_tp(_nDS) > T_SW_BASE), \
-        set_wr_nType((_wr), nDS_to_tp(_nDS)))
+  #define     wr_nDS(_wr) \
+      (assert(wr_nType(_wr) >= T_SKIP_TO_SWITCH), tp_to_nDS(wr_nType(_wr)))
+
+  #define set_wr_nDS(_wr, _nDS) \
+      (assert(nDS_to_tp(_nDS) >= T_SKIP_TO_SWITCH), \
+          set_wr_nType((_wr), nDS_to_tp(_nDS)))
 
 #endif // defined(DEPTH_IN_SW)
 
