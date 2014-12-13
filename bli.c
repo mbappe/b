@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.485 2014/12/12 13:16:41 mike Exp mike $
+// @(#) $Id: bli.c,v 1.486 2014/12/12 13:35:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1358,12 +1358,12 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t wKey, unsigned nDL,
                unsigned *pnDLRPrefix,
                int *pbNeedPrefixCheck)
 {
-    (void)pwRoot; (void)wKey; (void)pnDLR;
+    (void)pwRoot; (void)wKey; (void)nDL; (void)pnDLR;
     (void)ppwRootPrefix; (void)ppwrPrefix; (void)pnDLRPrefix;
     (void)pbNeedPrefixCheck;
 
     unsigned nType = wr_nType(wRoot);
-    assert(nType >= T_SW_BASE);
+    assert(nType >= T_SKIP_TO_SWITCH);
     Word_t *pwr = wr_tp_pwr(wRoot, nType); (void)pwr;
     unsigned nDLR;
     int bPrefixMismatch; (void)bPrefixMismatch;
@@ -1569,6 +1569,23 @@ again:
     } // end of default case
 
 #endif // defined(SKIP_LINKS)
+
+#if defined(SKIP_TO_BM_SW)
+
+    case T_SKIP_TO_BM_SW:
+    {
+        if (PrefixMismatch(pwRoot, wRoot, wKey, nDL,
+                           &nDLR, &pwRootPrefix,
+                           &pwrPrefix, &nDLRPrefix, &bNeedPrefixCheck))
+        {
+            break;
+        }
+
+        goto t_bm_sw;
+
+    } // end of T_SKIP_TO_BM_SW case
+
+#endif // defined(SKIP_TO_BM_SW)
 
     case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
 #if defined(EXTRA_TYPES)
