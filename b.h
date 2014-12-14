@@ -787,24 +787,32 @@ enum {
 // It means we can't use the low bits of sw_wPrefixPop for pop.  So we
 // define POP_WORD and use a separate word.
 // We assume the value we put into the low bits will will fit in the number
-// of bits used for the pop count at nDL == 1.  Or maybe
+// of bits used for the pop count at nDL == 2.  Or maybe
 // it doesn't matter since we always create an embedded bitmap when
-// nBL <= cnLogBitsPerWord.
+// EXP(nBL) <= sizeof(Link_t) * 8.
 #define POP_WORD
 
 // As it stands we always get the absolute type from sw_wPrefixPop if
-// DEPTH_IN_SW.  We could enhance it to use one type value to indicate
+// DEPTH_IN_SW.  We assume the macro is used only when it is known that
+// we have a skip link.  We could enhance it to use one type value to indicate
 // that we have to go to sw_wPrefixPop and use any other values that we
 // have available to represent some key absolute depths.
-  #define     wr_nDL(_wr) \
-      (assert(tp_bIsSkip(wr_nType(_wr))), \
-          w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1))
+// But why?  There is no real performance win since we have to look at the
+// prefix word anyway.
+// Should we enhance wr_nDL to take pwRoot and wRoot and nDL?
+  #define PWR_nDLR(_pwRoot, _wRoot, _nDLUp) \
+      (assert(tp_bIsSkip(wr_nType(_wRoot))), \
+          w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wRoot)), 2))
+
+  #define wr_nDL(_wr)  PWR_nDLR(NULL, _wr, -1)
 
   #define set_wr_nDL(_wr, _nDL) \
-      (set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
-         PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
-             = ((PWR_wPrefixPop(NULL, \
-                  (Switch_t *)wr_pwr(_wr)) & ~wPrefixPopMask(1)) | (_nDL)))
+      (assert((_nDL) >= 2), \
+          set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
+          (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
+              = ((PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
+                      & ~wPrefixPopMask(2)) \
+                  | (_nDL))))
 
 #else // defined(DEPTH_IN_SW)
 
@@ -868,17 +876,19 @@ enum {
   // As it stands we always get the skip count from sw_wPrefixPop if
   // DEPTH_IN_SW.  We could enhance it to use one type value to indicate
   // that we have to go to sw_wPrefixPop and use any other values that we
-  // have available to represent some key skip counts.
+  // have available to represent some key skip counts.  But why?
   #define wr_nDS(_wr) \
       (assert(tp_bIsSkip(wr_nType(_wr))), \
-          w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1))
+          w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), /*nDL*/ 1))
 
   #define set_wr_nDS(_wr, _nDS) \
-      (set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
-         /* put skip cnt in the PP pop field but use DL=1 for mask */ \
-         (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
-               = ((PWR_wPrefixPop(NULL, \
-                   (Switch_t *)wr_pwr(_wr)) & ~wPrefixPopMask(1)) | (_nDS))))
+      (assert((_nDL) >= 2), \
+          set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
+          /* put skip cnt in the PP pop field but use DL=1 for mask */ \
+          (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
+              = ((PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
+                      & ~wPrefixPopMask(/* nDL */ 2)) \
+                  | (_nDS))))
 
 #else // defined(DEPTH_IN_SW)
 
