@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.400 2014/12/12 13:35:13 mike Exp mike $
+// @(#) $Id: b.c,v 1.401 2014/12/14 01:37:01 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2522,13 +2522,14 @@ newSwitch:
 #if defined(SKIP_LINKS) || defined(BM_SW_FOR_REAL)
     else
     {
-#if defined(BM_SW_FOR_REAL)
   #if defined(TYPE_IS_RELATIVE)
         unsigned nDLR = (nType < T_SW_BASE) ? nDL : nDL - wr_nDS(wRoot);
   #else // defined(TYPE_IS_RELATIVE)
         unsigned nDLR = (nType < T_SW_BASE) ? nDL : wr_nDL(wRoot);
   #endif // defined(TYPE_IS_RELATIVE)
-  #if defined(SKIP_LINKS)
+        (void)nDLR; // silence the compiler
+  #if defined(BM_SW_FOR_REAL)
+      #if defined(SKIP_LINKS)
         Word_t wPrefix;
         // Test to see if this is a missing link case.
         // If not, then it is a prefix mismatch case.
@@ -2543,7 +2544,7 @@ newSwitch:
             || ((wPrefix = PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDLR))
                 == w_wPrefixNotAtTop(wKey, nDLR)))
         // If nDS != 0 then we're not at the top or PP_IN_LINK is not defined.
-  #endif // defined(SKIP_LINKS)
+      #endif // defined(SKIP_LINKS)
         {
             // Missing link.
 #if defined(EXTRA_TYPES)
