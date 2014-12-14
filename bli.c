@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.488 2014/12/13 21:02:44 mike Exp mike $
+// @(#) $Id: bli.c,v 1.489 2014/12/13 21:58:28 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1363,7 +1363,7 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t wKey, unsigned nDL,
     (void)pbNeedPrefixCheck;
 
     unsigned nType = wr_nType(wRoot);
-    assert(nType >= T_SKIP_TO_SWITCH);
+    assert(tp_bIsSkip(nType));
     Word_t *pwr = wr_tp_pwr(wRoot, nType); (void)pwr;
     unsigned nDLR;
     int bPrefixMismatch; (void)bPrefixMismatch;
@@ -1610,10 +1610,10 @@ t_switch:
                     // Or can we just use nDL?
                     int nDLX = wr_bIsSwitch(*pwRootLn) ?
               #if defined(TYPE_IS_RELATIVE)
-                                       (wr_nType(*pwRootLn) < T_SW_BASE
+                                       ( ! tp_bIsSkip(wr_nType(*pwRootLn) )
                                            ? nDL : nDL - wr_nDS(*pwRootLn))
               #else // defined(TYPE_IS_RELATIVE)
-                                       (wr_nType(*pwRootLn) < T_SW_BASE
+                                       ( ! tp_bIsSkip(wr_nType(*pwRootLn) )
                                            ? nDL : wr_nDL(*pwRootLn))
               #endif // defined(TYPE_IS_RELATIVE)
                                    : nDL;
@@ -1851,10 +1851,10 @@ t_bm_sw:
                     // Or can we just use nDL?
                     int nDLX = wr_bIsSwitch(*pwRootLn) ?
               #if defined(TYPE_IS_RELATIVE)
-                                       (wr_nType(*pwRootLn) < T_SW_BASE
+                                       ( ! tp_bIsSkip(wr_nType(*pwRootLn)
                                            ? nDL : nDL - wr_nDS(*pwRootLn))
               #else // defined(TYPE_IS_RELATIVE)
-                                       (wr_nType(*pwRootLn) < T_SW_BASE
+                                       ( ! tp_bIsSkip(wr_nType(*pwRootLn)
                                            ? nDL : wr_nDL(*pwRootLn))
               #endif // defined(TYPE_IS_RELATIVE)
                                    : nDL;

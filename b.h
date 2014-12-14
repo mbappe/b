@@ -425,6 +425,13 @@ typedef Word_t Bucket_t;
 #define TYPE_IS_ABSOLUTE
 #endif // ! defined(TYPE_IS_RELATIVE)
 
+#define T_SWITCH_BIT         0x08
+#define T_SKIP_BIT           0x04
+#define T_BM_SW_BIT          0x02
+#define T_SW_OTHER_BIT       0x01
+
+#define T_FULL_BM_SW_BIT  T_SW_OTHER_BIT
+
 // Values for nType.
 enum {
     T_NULL, // no keys below
@@ -437,19 +444,25 @@ enum {
 
     // All of the type values less than T_SWITCH are not switches.
     // All type values at T_SWITCH and greater are switches.
-    T_SWITCH, // Basic (i.e. uncompressed), close (i.e. no-skip) switch.
+    T_SWITCH = T_SWITCH_BIT, // Uncompressed, close (i.e. no-skip) switch.
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-    T_BM_SW,
+    T_BM_SW = T_SWITCH_BIT | T_BM_SW_BIT,
 #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-    T_FULL_BM_SW, // BM_SW with all bits set.
+    // All link bits set, i.e. all links present.
+    T_FULL_BM_SW = T_SWITCH_BIT | T_BM_SW_BIT | T_FULL_BM_SW_BIT,
 #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     // T_SKIP_TO_SWITCH has to have the biggest value in this enum
     // if not DEPTH_IN_SW.  All of the bigger values have a meaning relative
     // to T_SKIP_TO_SWITCH.
-    T_SKIP_TO_SWITCH, // depth/level is determined by (nType - T_SW_BASE)
+    // Depth/level is determined by (nType - T_SKIP_TO_SWITCH).
+    T_SKIP_TO_SWITCH = T_SWITCH_BIT | T_SKIP_BIT,
 #if defined(DEPTH_IN_SW) && (defined(USE_BM_SW) || defined(BM_SW_AT_DL2))
-    T_SKIP_TO_BM_SW,
+    T_SKIP_TO_BM_SW = T_SWITCH_BIT | T_SKIP_BIT | T_BM_SW_BIT,
+#if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+    T_SKIP_TO_FULL_BM_SW
+        = T_SWITCH_BIT | T_SKIP_BIT | T_BM_SW_BIT | T_FULL_BM_SW_BIT,
+#endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
 #endif // defined(DEPTH_IN_SW) && (defined(USE_BM_SW)||defined(BM_SW_AT_DL2))
 };
 
@@ -873,6 +886,8 @@ enum {
 #else // defined(EXTRA_TYPES)
 #define     tp_bIsSwitch(_tp)          ((_tp) >= T_SWITCH)
 #endif // defined(EXTRA_TYPES)
+#define     tp_bIsSkip(_tp)            ((_tp) & T_SKIP_BIT)
+#define     tp_bIsBmSw(_tp)            ((_tp) & T_BM_SW_BIT)
 
 #define     wr_bIsSwitch(_wr)          (tp_bIsSwitch(wr_nType(_wr)))
 
