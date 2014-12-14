@@ -270,15 +270,25 @@ typedef Word_t Bucket_t;
 #define cnBitsInD1  8
 #endif // ! defined(cnBitsInD1)
 
+// Default is SKIP_TO_BM_SW.
+#if ! defined(NO_SKIP_TO_BM_SW)
+  #define SKIP_TO_BM_SW
+#endif // ! defined(NO_SKIP_TO_BM_SW)
+
 // Choose max list lengths.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
 
-// Default is cnListPopCntMax64 = 0xec.
+// Default is cnListPopCntMax64 is 0xec or 0x40.
 #if ! defined(cnListPopCntMax64)
-#define cnListPopCntMax64  0xec
+  #if defined(SKIP_TO_BM_SW) && ! defined(PP_IN_LINK) \
+                             && ! defined(NO_SKIP_AT_TOP)
+      #define cnListPopCntMax64  0x40
+  #else // defined(SKIP_TO_BM_SW) && ! defined(PP_IN_LINK) && ...
+      #define cnListPopCntMax64  0xec
+  #endif // defined(SKIP_TO_BM_SW) && ! defined(PP_IN_LINK) && ...
 #endif // ! defined(cnListPopCntMax64)
 
-// Default is cnListPopCntMax32 = 0xf0 or 0x30.
+// Default is cnListPopCntMax32 is 0xf0 or 0x30.
 #if ! defined(cnListPopCntMax32)
   #if defined(USE_BM_SW)
       #define cnListPopCntMax32  0x30
@@ -287,7 +297,7 @@ typedef Word_t Bucket_t;
   #endif  // defined(USE_BM_SW)
 #endif // ! defined(cnListPopCntMax32)
 
-// Default is cnListPopCntMax16 = 0x70 or 0x40.
+// Default is cnListPopCntMax16 is 0x70 or 0x40.
 #if ! defined(cnListPopCntMax16)
   #if defined(USE_BM_SW)
       #define cnListPopCntMax16  0x40
@@ -395,10 +405,6 @@ typedef Word_t Bucket_t;
 #if ! defined(NO_DEPTH_IN_SW)
   #define DEPTH_IN_SW
 #endif // ! defined(NO_DEPTH_IN_SW)
-// Default is SKIP_TO_BM_SW.
-#if ! defined(NO_SKIP_TO_BM_SW)
-  #define SKIP_TO_BM_SW
-#endif // ! defined(NO_SKIP_TO_BM_SW)
 
 #if defined(SKIP_TO_BM_SW) && ! defined(BM_IN_NON_BM_SW)
   #error Sorry, SKIP_TO_BM_SW requires BM_IN_NON_BM_SW.
