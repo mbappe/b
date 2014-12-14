@@ -797,7 +797,7 @@ enum {
 // that we have to go to sw_wPrefixPop and use any other values that we
 // have available to represent some key absolute depths.
   #define     wr_nDL(_wr) \
-      (assert(wr_nType(_wr) >= T_SKIP_TO_SWITCH), \
+      (assert(tp_bIsSkip(wr_nType(_wr))), \
           w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1))
 
   #define set_wr_nDL(_wr, _nDL) \
@@ -835,7 +835,7 @@ enum {
   #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 2)
 
   #define     wr_nDL(_wr) \
-      (assert(wr_nType(_wr) >= T_SKIP_TO_SWITCH), tp_to_nDL(wr_nType(_wr)))
+      (assert(tp_bIsSkip(wr_nType(_wr))), tp_to_nDL(wr_nType(_wr)))
 
   #define set_wr_nDL(_wr, _nDL) \
       (assert(nDL_to_tp(_nDL) >= T_SKIP_TO_SWITCH), \
@@ -870,7 +870,7 @@ enum {
   // that we have to go to sw_wPrefixPop and use any other values that we
   // have available to represent some key skip counts.
   #define wr_nDS(_wr) \
-      (assert(wr_nType(_wr) >= T_SKIP_TO_SWITCH), \
+      (assert(tp_bIsSkip(wr_nType(_wr))), \
           w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 1))
 
   #define set_wr_nDS(_wr, _nDS) \
@@ -883,7 +883,7 @@ enum {
 #else // defined(DEPTH_IN_SW)
 
   #define     wr_nDS(_wr) \
-      (assert(wr_nType(_wr) >= T_SKIP_TO_SWITCH), tp_to_nDS(wr_nType(_wr)))
+      (assert(tp_bIsSkip(wr_nType(_wr))), tp_to_nDS(wr_nType(_wr)))
 
   #define set_wr_nDS(_wr, _nDS) \
       (assert(nDS_to_tp(_nDS) >= T_SKIP_TO_SWITCH), \
