@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.24 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.25 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -478,7 +478,8 @@ JudyCheckGuardband(void *PWord, Word_t Words)
         Word_t GuardWord = *p;
         if (~GuardWord != (Word_t)PWord)
         {
-            printf("\nOops GuardWord %p = 0x%lx ~ 0x%lx != PWord = 0x%lx\n",
+            printf("\nOops GuardWord at %p = 0x%lx = (~0x%lx)"
+                   " != PWord = 0x%lx\n",
                 (void *)p, GuardWord, ~GuardWord, (Word_t)PWord);
             assert(0);
         }

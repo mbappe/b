@@ -104,7 +104,8 @@ endif
 # -O4 does not imply -Ofast.  I wonder if -Ofast and -O4 can go together.
 # OFLAGS = -g -O0
 # OFLAGS = -g -O1
-  OFLAGS = -g -O2
+# OFLAGS = -g -O2
+  OFLAGS =    -O2
 # OFLAGS = -g -O3
 # OFLAGS = -g -O4
 # OFLAGS = -g -Os
