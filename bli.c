@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.489 2014/12/13 21:58:28 mike Exp mike $
+// @(#) $Id: bli.c,v 1.490 2014/12/14 05:52:22 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2632,11 +2632,14 @@ Initialize(void)
     assert(EXP(cnBitsLeftAtDl2) > sizeof(Link_t) * 8);
 #if ! defined(DEPTH_IN_SW)
 #if ! defined(TYPE_IS_RELATIVE)
-    if ( ! (nDL_to_tp(cnDigitsPerWord) <= cnMallocMask) ) {
+    // We could be a lot more creative here w.r.t. mapping our scarce type
+    // values to absolute depths.  But why?  We have to look at the prefix
+    // in a different word anyway.  See comments at tp_to_nDL in b.h.
+    if ( ! (nDL_to_tp(cnDigitsPerWord - 1) <= cnMallocMask) ) {
         printf("\n");
-        printf("nDL_to_tp(%d) 0x%x\n",
+        printf("nDL_to_tp(cnDigitsPerWord   %2d) 0x%02x\n",
                cnDigitsPerWord, nDL_to_tp(cnDigitsPerWord));
-        printf("tp_to_nDL(%d) %d\n",
+        printf("tp_to_nDL(cnMallocMask    0x%02x)   %2d\n",
                (int)cnMallocMask, (int)tp_to_nDL(cnMallocMask));
     }
     assert(nDL_to_tp(cnDigitsPerWord) <= cnMallocMask);

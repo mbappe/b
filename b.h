@@ -808,19 +808,31 @@ enum {
 
 #else // defined(DEPTH_IN_SW)
 
-// Why do we need nType to be able to represent nDL == 1?
+// What is the minimum value of nDL we need nType to represent?
+// We don't use tp_to_nDL for non-skip links and we don't support skip
+// directly to bitmap so the smallest nDL we need is nDL == 2.  Also,
 // We have to test for nDL == 1 before looping back to the switch statement
-// that checks nType if cnBitsInD1 == cnLogBitsPerWord because there is
-// no room for a type field when all the bits are used for an embedded bitmap.
-// But if cnBitsInD1 > cnLogBitsPerWord we don't want to waste the
-// conditional branch.
-#if (cnBitsInD1 > cnLogBitsPerWord)
-  #define tp_to_nDL(_tp)   ((_tp)  - T_SW_BASE + 1)
-  #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 1)
-#else // (cnBitsInD1 > cnLogBitsPerWord)
+// that checks nType if EXP(cnBitsInD1) <= sizeof(Link_t) * 8 because there
+// is no room for a type field when all the bits are used for an embedded
+// bitmap.  But the nDL we use for this test is one less than the nDL of
+// the containing switch which can't be lower than nDL == 2.
+// If EXP(cnBitsInD1) > sizeof(Link_t) * 8 we don't want to
+// waste the conditional branch so we rely on T_BITMAP but we still have to
+// support skipping to a switch at nDL == 2.
+// It wouldn't be hard to avoid the conditional branch in a case
+// where EXP(cnBitsInD1) < sizeof(Link_t) * 8.
+// There would be an extra word in the link and we could push the bitmap to
+// the end of the link and use the regular type field.  But that has not
+// been coded yet.  And it is probably not worth even the small effort.
+// We could also just coopt the type field from the embedded
+// bitmap and relocate the bitmap bits.  But I don't think that would save us
+// any conditional branches.
+// We could be more creative w.r.t. mapping our scarce type values to nDL
+// values.  E.g. start at the top instead of the bottom, count by twos,
+// lookup table, ...  But why?  We're going to use DEPTH_IN_SW.  This code
+// is an anachronism.
   #define tp_to_nDL(_tp)   ((_tp)  - T_SW_BASE + 2)
   #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 2)
-#endif // (cnBitsInD1 > cnLogBitsPerWord)
 
   #define     wr_nDL(_wr) \
       (assert(wr_nType(_wr) >= T_SKIP_TO_SWITCH), tp_to_nDL(wr_nType(_wr)))
@@ -837,8 +849,8 @@ enum {
 // Why?  Because the type field in wRoot does not contain this information
 // for DEPTH_IN_SW so code that uses these macros may need to be ifdef'd
 // to do something like what is done in wr_nDS anyway.
-#define tp_to_nDS(_tp)   ((_tp)  - T_SW_BASE)
-#define nDS_to_tp(_nDS)  ((_nDS) + T_SW_BASE)
+#define tp_to_nDS(_tp)   ((_tp)  - T_SW_BASE + 1)
+#define nDS_to_tp(_nDS)  ((_nDS) + T_SW_BASE - 1)
 
 #if defined(DEPTH_IN_SW)
 // DEPTH_IN_SW directs us to use the low bits of sw_wPrefixPop for skip count
