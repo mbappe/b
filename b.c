@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.401 2014/12/14 01:37:01 mike Exp mike $
+// @(#) $Id: b.c,v 1.402 2014/12/14 02:42:53 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -138,10 +138,14 @@ Word_t wWordsAllocated; // number of words allocated but not freed
 Word_t wMallocs; // number of unfreed mallocs
 Word_t wEvenMallocs; // number of unfreed mallocs of an even number of words
 
+#if ! defined(cnMallocExtraWords)
+#define cnMallocExtraWords  8
+#endif // ! defined(cnMallocExtraWords)
+
 static Word_t
 MyMalloc(Word_t wWords)
 {
-    Word_t ww = JudyMalloc(wWords);
+    Word_t ww = JudyMalloc(wWords + cnMallocExtraWords);
     DBGM(printf("\nM: "OWx" %"_fw"d words\n", ww, wWords));
     assert(ww != 0);
     assert((ww & cnMallocMask) == 0);
@@ -156,7 +160,7 @@ MyFree(Word_t *pw, Word_t wWords)
     if ( ! (wWords & 1) ) { --wEvenMallocs; }
     --wMallocs; wWordsAllocated -= wWords;
     DBGM(printf("F: "OWx" %"_fw"d words\n", (Word_t)pw, wWords));
-    JudyFree(pw, wWords);
+    JudyFree(pw, wWords + cnMallocExtraWords);
 }
 
 #if (cwListPopCntMax != 0)
@@ -635,7 +639,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
     if (bBmSw) {
   #if defined(SKIP_TO_BM_SW)
         if (nDL != nDLUp) {
-printf("\nCreating T_SKIP_TO_BM_SW!\n");
+            DBGI(printf("\nCreating T_SKIP_TO_BM_SW!\n"));
             set_wr_pwr(*pwRoot, pwr);
   #if defined(TYPE_IS_RELATIVE)
             set_wr_nDS(*pwRoot, nDLUp - nDL); // set nDS
@@ -810,7 +814,7 @@ printf("\nCreating T_SKIP_TO_BM_SW!\n");
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 #if defined(BM_SW_FOR_REAL)
 static void
-NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDLR)
+NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
 {
     Word_t wRoot = *pwRoot;
     Word_t *pwr = wr_pwr(wRoot);
@@ -878,6 +882,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDLR)
 #else
     // Threshold for converting bm sw into uncompressed switch.
     // Words-per-Key Numerator / Words-per-Key Denominator.
+    // Shouldn't we be checking to see if conversion is appropriate on
+    // insert even if/when we're not adding a new link?
     if (wPopCntTotal * cnBmSwNum / cnBmSwDenom
         >= (wWordsAllocated /* + wMallocs + wEvenMallocs */ + nWordsNull))
 #endif
@@ -886,21 +892,17 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDLR)
         if ( ! (EXP(nDLR) & sDigitsReportedMask) )
         {
             sDigitsReportedMask |= EXP(nDLR);
-            printf("# Converting nKeys %ld nLinks %ld nDLR %d",
-                   wPopCntKeys, wPopCnt, nDLR);
-            printf(" wPopCntTotal %ld wWordsAllocated %ld",
-               wPopCntTotal, wWordsAllocated);
-            printf(" wMallocs %ld wEvenMallocs %ld nWordsNull %d\n",
-               wMallocs, wEvenMallocs, nWordsNull);
+            DBGI(printf("# Converting nKeys %ld nLinks %ld nDLR %d",
+                   wPopCntKeys, wPopCnt, nDLR));
+            DBGI(printf(" wPopCntTotal %ld wWordsAllocated %ld",
+               wPopCntTotal, wWordsAllocated));
+            DBGI(printf(" wMallocs %ld wEvenMallocs %ld nWordsNull %d\n",
+               wMallocs, wEvenMallocs, nWordsNull));
         }
 #endif // defined(DEBUG_INSERT)
 
-        // We don't currently support skip links to bitmap switches.
-        // As such, nDLRUp always equals nDLR.  But we should be
-        // supporting skip links to bitmap switches so we'll have
-        // to do something different when that happens.
         Word_t *pwrNew = NewSwitch(pwRoot, wKey,
-                                   nDLR, /* bBmSw */ 0, nDLR, wPopCntKeys);
+                                   nDLR, /* bBmSw */ 0, nDLUp, wPopCntKeys);
         unsigned mm = 0;
         for (unsigned nn = 0; nn < EXP(nBitsIndexSz); nn++) {
             if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn)) {
@@ -986,7 +988,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDLR)
 
         // Update the type field in *pwRoot if necessary.
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-#if defined(RETYPE_FULL_BM_SW)
+  #if defined(RETYPE_FULL_BM_SW)
         if (wPopCnt == EXP(nBitsIndexSz) - 1) {
             // Bitmap switch is fully populated.
             // Let's change the type so Lookup is faster.
@@ -996,14 +998,21 @@ NewLink(Word_t *pwRoot, Word_t wKey, unsigned nDLR)
             // used by the bitmaps here.
             // I wonder about converting to a skip link here if we're
             // configured with no skip link to bm switch.
-#if defined(BM_IN_NON_BM_SW)
+      #if defined(SKIP_TO_BM_SW)
+            //assert(BM_IN_NON_BM_SW);
+            set_wr_nType(*pwRoot,
+                         (wr_nType(wRoot) == T_SKIP_TO_BM_SW)
+                             ? T_SKIP_TO_SWITCH : T_SWITCH);
+      #else // defined(SKIP_TO_BM_SW)
+          #if defined(BM_IN_NON_BM_SW)
             // Conserve precious type values if possible.
             set_wr_nType(*pwRoot, T_SWITCH);
-#else // defined(BM_IN_NON_BM_SW)
+          #else // defined(BM_IN_NON_BM_SW)
             set_wr_nType(*pwRoot, T_FULL_BM_SW);
-#endif // defined(BM_IN_NON_BM_SW)
+          #endif // defined(BM_IN_NON_BM_SW)
+      #endif // defined(SKIP_TO_BM_SW)
         } else
-#endif // defined(RETYPE_FULL_BM_SW)
+  #endif // defined(RETYPE_FULL_BM_SW)
         {
             int nType = wr_nType(wRoot);
             set_wr_nType(*pwRoot, nType);
@@ -1383,7 +1392,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
   #endif // defined(EXTRA_TYPES)
             )
         {
-printf("Skip to bmsw nDL %d\n", nDL);
+            //printf("Skip to bmsw nDL %d\n", nDL);
       #if defined(TYPE_IS_RELATIVE)
             nDL = nDL - wr_nDS(wRoot);
       #else // defined(TYPE_IS_RELATIVE)
@@ -2429,11 +2438,7 @@ newSwitch:
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
   #if defined(USE_BM_SW)
       #if defined(SKIP_TO_BM_SW)
-#if 0
                           /* bBmSw */ 1,
-#else // 0
-                          /* bBmSw */ nDL == nDLOld,
-#endif // 0
       #else // defined(SKIP_TO_BM_SW)
                           /* bBmSw */ nDL == nDLOld,
       #endif // defined(SKIP_TO_BM_SW)
@@ -2562,7 +2567,7 @@ newSwitch:
                         PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDLR),
                         w_wPrefix(wKey, nDLR), nDLR));
 #endif // defined(SKIP_LINKS)
-            NewLink(pwRoot, wKey, nDLR);
+            NewLink(pwRoot, wKey, nDLR, /* nDLUp */ nDL);
             Insert(pwRoot, wKey, nDL);
         }
 #endif // defined(BM_SW_FOR_REAL)
@@ -2615,11 +2620,7 @@ newSwitch:
   // set bBmSwNew
   #if defined(USE_BM_SW)
       #if defined(SKIP_TO_BM_SW)
-#if 0
             int bBmSwNew = 1; // new switch type
-#else // 0
-            int bBmSwNew = (nDL == nDLUp); // new switch type
-#endif // 0
       #else // defined(SKIP_TO_BM_SW)
             int bBmSwNew = (nDL == nDLUp); // new switch type
       #endif // defined(SKIP_TO_BM_SW)
