@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.402 2014/12/14 02:42:53 mike Exp mike $
+// @(#) $Id: b.c,v 1.403 2014/12/14 04:09:38 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -139,7 +139,7 @@ Word_t wMallocs; // number of unfreed mallocs
 Word_t wEvenMallocs; // number of unfreed mallocs of an even number of words
 
 #if ! defined(cnMallocExtraWords)
-#define cnMallocExtraWords  8
+#define cnMallocExtraWords  0
 #endif // ! defined(cnMallocExtraWords)
 
 static Word_t
