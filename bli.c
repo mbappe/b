@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.490 2014/12/14 05:52:22 mike Exp mike $
+// @(#) $Id: bli.c,v 1.491 2014/12/14 14:56:56 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1504,11 +1504,11 @@ again:
 
     unsigned nType = wr_nType(wRoot);
     Word_t *pwr = wr_tp_pwr(wRoot, nType);
-#if defined(EXTRA_TYPES)
+  #if defined(EXTRA_TYPES)
     switch (wRoot & MSK(cnBitsMallocMask + 1))
-#else // defined(EXTRA_TYPES)
+  #else // defined(EXTRA_TYPES)
     switch (nType)
-#endif // defined(EXTRA_TYPES)
+  #endif // defined(EXTRA_TYPES)
     {
 
 #if defined(SKIP_LINKS)
@@ -1539,8 +1539,6 @@ again:
 
     } // end of default case
 
-#endif // defined(SKIP_LINKS)
-
 #if defined(SKIP_TO_BM_SW)
 
     case T_SKIP_TO_BM_SW:
@@ -1557,6 +1555,8 @@ again:
     } // end of T_SKIP_TO_BM_SW case
 
 #endif // defined(SKIP_TO_BM_SW)
+
+#endif // defined(SKIP_LINKS)
 
     case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
 #if defined(EXTRA_TYPES)
@@ -1686,9 +1686,7 @@ notEmpty:;
         goto switchTail;
 switchTail:
 
-#if ! defined(LOOKUP) || (cnBitsInD1 <= cnLogBitsPerWord)
         wRoot = *pwRoot;
-#endif // ! defined(LOOKUP) || (cnBitsInD1 <= cnLogBitsPerWord)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We may need to check the prefix of the switch we just visited in
         // the next iteration of the loop if we've reached a leaf so we
@@ -1699,9 +1697,6 @@ switchTail:
         if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nDL == 1)) {
             goto embeddedBitmap;
         }
-#if defined(LOOKUP) && (cnBitsInD1 > cnLogBitsPerWord)
-        wRoot = *pwRoot;
-#endif // defined(LOOKUP) && (cnBitsInD1 > cnLogBitsPerWord)
         DBGX(printf("Next pwRoot %p wRoot "OWx" nDL %d\n",
                     (void *)pwRoot, wRoot, nDL));
 
