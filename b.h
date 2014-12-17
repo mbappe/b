@@ -800,11 +800,9 @@ enum {
 // But why?  There is no real performance win since we have to look at the
 // prefix word anyway.
 // Should we enhance wr_nDL to take pwRoot and wRoot and nDL?
-  #define PWR_nDLR(_pwRoot, _wRoot, _nDLUp) \
-      (assert(tp_bIsSkip(wr_nType(_wRoot))), \
-          w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wRoot)), 2))
-
-  #define wr_nDL(_wr)  PWR_nDLR(NULL, _wr, -1)
+  #define wr_nDL(_wr) \
+      (assert(tp_bIsSkip(wr_nType(_wr))), \
+          w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 2))
 
   #define set_wr_nDL(_wr, _nDL) \
       (assert((_nDL) >= 2), \
