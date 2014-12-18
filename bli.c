@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.492 2014/12/17 04:14:03 mike Exp mike $
+// @(#) $Id: bli.c,v 1.493 2014/12/18 14:48:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1464,9 +1464,9 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 #endif // !defined(RECURSIVE)
     unsigned nDLR;
     Word_t wPopCnt; (void)wPopCnt;
-#if defined(REMOVE)
+#if ! defined(LOOKUP)
     int bCleanup = 0;
-#endif // defined(REMOVE)
+#endif // ! defined(LOOKUP)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrPrev = pwrPrev; // suppress "uninitialized" compiler warning
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -1565,6 +1565,9 @@ again:
     {
     goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:
+  #if defined(INSERT)
+        if (bCleanup) { return Success; }
+  #endif // defined(INSERT)
 #if ( ! defined(LOOKUP) && defined(PP_IN_LINK) || defined(REMOVE) )
         nDLUp = nDL;
 #endif // ( ! defined(LOOKUP) && defined(PP_IN_LINK) || defined(REMOVE) )
@@ -1737,6 +1740,9 @@ switchTail:
     {
     goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
 t_bm_sw:
+  #if defined(INSERT)
+        if (bCleanup) { return Success; }
+  #endif // defined(INSERT)
 
   #if defined(BM_SW_FOR_REAL) \
       || ( ! defined(LOOKUP) \
@@ -1939,12 +1945,12 @@ notEmptyBm:;
         DBGX(printf("List nDL %d\n", nDL));
         DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMask(nDL)));
 
-  #if defined(REMOVE)
+  #if ! defined(LOOKUP)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
             return Success;
         } // cleanup is complete
-  #endif // defined(REMOVE)
+  #endif // ! defined(LOOKUP)
 
       #if defined(PP_IN_LINK)
           // Adjust wPopCnt to actual list size for undo case.
@@ -2083,12 +2089,12 @@ embeddedBitmap:
         // bitmaps at nDL != 1.
         assert(nDL == 1);
 
-#if defined(REMOVE)
+  #if ! defined(LOOKUP)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
-            return KeyFound;
+            return Success;
         } // cleanup is complete
-#endif // defined(REMOVE)
+  #endif // ! defined(LOOKUP)
 
 #if ! defined(LOOKUP) && defined(PP_IN_LINK)
         if (EXP(cnBitsInD1) > sizeof(Link_t) * 8) {
@@ -2191,12 +2197,12 @@ embeddedBitmap:
     {
         assert(nDL_to_nBL_NAT(nDL)
             <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
-  #if defined(REMOVE)
+  #if ! defined(LOOKUP)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
             return Success;
         } // cleanup is complete
-  #endif // defined(REMOVE)
+  #endif // ! defined(LOOKUP)
 
   #if ! defined(LOOKUP) && defined(PP_IN_LINK)
         if (nDL != cnDigitsPerWord)
@@ -2372,12 +2378,12 @@ foundIt:
         assert(nDL_to_nBL(nDL)
             > cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
 
-  #if defined(REMOVE)
+  #if ! defined(LOOKUP)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
             return Success;
         } // cleanup is complete
-  #endif // defined(REMOVE)
+  #endif // ! defined(LOOKUP)
 
   #if ! defined(LOOKUP) && defined(PP_IN_LINK)
         if (nDL != cnDigitsPerWord)
@@ -2422,33 +2428,29 @@ foundIt:
     {
         assert(wRoot == 0);
 
+      #if ! defined(LOOKUP)
+        if ( bCleanup ) { return Success; }
+      #endif // ! defined(LOOKUP)
+
   // Adjust wPopCnt in link to leaf for PP_IN_LINK.
   // wPopCnt in link to switch is adjusted elsewhere, i.e. in the same place
   // as wPopCnt in switch is adjusted for pp-in-switch.
   #if defined(PP_IN_LINK)
-      #if defined(REMOVE)
-        // Can we combine bCleanup context with nType in switch variable?
-        if ( bCleanup ) {
-//assert(0); // Just checking; uh oh; do we need better testing?
-        } else
-      #endif // defined(REMOVE)
-        {
       #if ! defined(LOOKUP)
-            // What about defined(RECURSIVE)?
-            if (nDL != cnDigitsPerWord)
-            {
-                // If nDL != cnDigitsPerWord then we're not at top.
-                // And pwRoot is initialized despite what gcc might think.
-                if (PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) != 0) {
-                    printf("\nhuh wPopCnt %d nIncr %d\n",
-                          (int)PWR_wPopCnt(pwRoot,
-                                           (Switch_t *)NULL, nDL), nIncr);
-                }
-                assert(PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) == 0);
-                set_PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL, nIncr);
+        // What about defined(RECURSIVE)?
+        if (nDL != cnDigitsPerWord)
+        {
+            // If nDL != cnDigitsPerWord then we're not at top.
+            // And pwRoot is initialized despite what gcc might think.
+            if (PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) != 0) {
+                printf("\nhuh wPopCnt %d nIncr %d\n",
+                      (int)PWR_wPopCnt(pwRoot,
+                                       (Switch_t *)NULL, nDL), nIncr);
             }
-      #endif // ! defined(LOOKUP)
+            assert(PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) == 0);
+            set_PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL, nIncr);
         }
+      #endif // ! defined(LOOKUP)
   #endif // defined(PP_IN_LINK)
 
         break;
@@ -2471,7 +2473,7 @@ notFound:
     // InsertGuts is called with a pwRoot and nDL indicates the
     // bits that were not decoded in identifying pwRoot.  nDL
     // does not include any skip indicated in the type field of *pwRoot.
-    return InsertGuts(pwRoot, wKey, nDL, wRoot);
+    InsertGuts(pwRoot, wKey, nDL, wRoot); goto cleanup;
 undo:
 #endif // defined(INSERT)
 #if defined(REMOVE) && !defined(RECURSIVE)
@@ -2479,30 +2481,30 @@ undo:
 #endif // defined(REMOVE) && !defined(RECURSIVE)
 #if !defined(LOOKUP) && !defined(RECURSIVE)
     {
-  #if defined(REMOVE)
-        if (bCleanup) { return KeyFound; } // nothing to clean up
-        printf("\n# Not bCleanup -- Remove failure wRoot "OWx"!\n", wRoot);
-  #endif // defined(REMOVE)
         // Undo the counting we did on the way in.
         nIncr *= -1;
-  #if defined(REMOVE)
+  #if ! defined(LOOKUP)
 restart:
-  #endif // defined(REMOVE)
+  #endif // ! defined(LOOKUP)
         pwRoot = pwRootOrig;
         nDL = nDLOrig;
         goto top;
     }
   #endif // !defined(LOOKUP) && !defined(RECURSIVE)
     return Failure;
-  #if defined(REMOVE)
+  #if ! defined(LOOKUP)
+      #if defined(REMOVE)
 removeGutsAndCleanup:
     RemoveGuts(pwRoot, wKey, nDL, wRoot);
+      #else // defined(REMOVE)
+cleanup:
+      #endif // defined(REMOVE)
     bCleanup = 1; // ?? nIncr == 0 ??
     DBGX(printf("Cleanup pwRO "OWx" nDLO %d\n",
                 (Word_t)pwRootOrig, nDLOrig));
-    DBGR(Dump(pwRootOrig, /* wPrefix */ (Word_t)0, nDL_to_nBL(nDLOrig)));
+    DBGX(Dump(pwRootOrig, /* wPrefix */ (Word_t)0, nDL_to_nBL(nDLOrig)));
     goto restart;
-  #endif // defined(REMOVE)
+  #endif // ! defined(LOOKUP)
 }
 
 #undef RECURSIVE
