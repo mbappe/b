@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.491 2014/12/14 14:56:56 mike Exp mike $
+// @(#) $Id: bli.c,v 1.492 2014/12/17 04:14:03 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2029,7 +2029,7 @@ notEmptyBm:;
                                 PWR_wPopCnt(pwRoot,
                                             (Switch_t *)NULL, nDL) - 1);
               #endif // defined(PP_IN_LINK)
-                RemoveGuts(pwRoot, wKey, nDL, wRoot); goto cleanup;
+                goto removeGutsAndCleanup;
           #endif // defined(REMOVE)
           #if defined(INSERT) && ! defined(RECURSIVE)
                 if (nIncr > 0) { goto undo; } // undo counting
@@ -2153,8 +2153,7 @@ embeddedBitmap:
             if (bBitIsSet)
             {
       #if defined(REMOVE)
-                RemoveGuts(pwRoot, wKey, nDL, wRoot);
-                goto cleanup;
+                goto removeGutsAndCleanup;
       #endif // defined(REMOVE)
       #if defined(INSERT) && !defined(RECURSIVE)
                 if (nIncr > 0)
@@ -2349,8 +2348,7 @@ embeddedBitmap:
 foundIt:
 
       #if defined(REMOVE)
-        RemoveGuts(pwRoot, wKey, nDL, wRoot);
-        goto cleanup; // free memory or reconfigure tree if necessary
+        goto removeGutsAndCleanup;
       #endif // defined(REMOVE)
       #if defined(INSERT) && !defined(RECURSIVE)
         if (nIncr > 0) { goto undo; } // undo counting
@@ -2401,8 +2399,7 @@ foundIt:
         if (*pwr == wKey)
         {
       #if defined(REMOVE)
-            RemoveGuts(pwRoot, wKey, nDL, wRoot);
-            goto cleanup; // free memory or reconfigure tree if necessary
+            goto removeGutsAndCleanup;
       #endif // defined(REMOVE)
       #if defined(INSERT) && !defined(RECURSIVE)
             if (nIncr > 0) { goto undo; } // undo counting
@@ -2498,7 +2495,8 @@ restart:
   #endif // !defined(LOOKUP) && !defined(RECURSIVE)
     return Failure;
   #if defined(REMOVE)
-cleanup:
+removeGutsAndCleanup:
+    RemoveGuts(pwRoot, wKey, nDL, wRoot);
     bCleanup = 1; // ?? nIncr == 0 ??
     DBGX(printf("Cleanup pwRO "OWx" nDLO %d\n",
                 (Word_t)pwRootOrig, nDLOrig));
