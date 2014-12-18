@@ -401,7 +401,7 @@ typedef Word_t Bucket_t;
 // Default is -UT_ONE_MASK and -UT_ONE_CALC_POP.
 // See EmbeddedListHasKey.
 
-// Default is DEPTH_IN_SW.  Should be called DEPTH_IN_PREFIX_WORD.
+// Default is -DDEPTH_IN_SW.  Should be called LEVEL_IN_PREFIX_WORD.
 #if ! defined(NO_DEPTH_IN_SW)
   #define DEPTH_IN_SW
 #endif // ! defined(NO_DEPTH_IN_SW)
