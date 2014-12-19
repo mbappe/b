@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.493 2014/12/18 14:48:29 mike Exp mike $
+// @(#) $Id: bli.c,v 1.494 2014/12/18 16:26:58 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1514,6 +1514,7 @@ again:
 #if defined(SKIP_LINKS)
 
     default: // skip link
+    // case T_SKIP_TO_SWITCH:
     {
         // pwr points to a switch
 
