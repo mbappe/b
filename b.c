@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.404 2014/12/14 04:45:26 mike Exp mike $
+// @(#) $Id: b.c,v 1.405 2014/12/14 05:52:22 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1502,12 +1502,12 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 #if defined(TYPE_IS_RELATIVE)
                     wPopCnt += 1
-                        + ( ! tp_bIsSkip(nTypeLnE)
+                        + ( ! tp_bIsSkip(nTypeLn)
                             ? wPrefixPopMask(nDL)
                             : wPrefixPopMask(nDL - wr_nDS(*pwRootLn)));
 #else // defined(TYPE_IS_RELATIVE)
                     wPopCnt += 1
-                        + ( ! tp_bIsSkip(nTypeLnE)
+                        + ( ! tp_bIsSkip(nTypeLn)
                             ? wPrefixPopMask(nDL)
                             : wPrefixPopMask(wr_nDL(*pwRootLn)));
 #endif // defined(TYPE_IS_RELATIVE)

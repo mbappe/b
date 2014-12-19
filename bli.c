@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.494 2014/12/18 16:26:58 mike Exp mike $
+// @(#) $Id: bli.c,v 1.495 2014/12/19 04:37:21 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1854,10 +1854,10 @@ t_bm_sw:
                     int nDLX = wr_bIsSwitch(*pwRootLn) ?
               #if defined(TYPE_IS_RELATIVE)
                                        ( ! tp_bIsSkip(wr_nType(*pwRootLn)
-                                           ? nDL : nDL - wr_nDS(*pwRootLn))
+                                           ? nDL : nDL - wr_nDS(*pwRootLn)) )
               #else // defined(TYPE_IS_RELATIVE)
                                        ( ! tp_bIsSkip(wr_nType(*pwRootLn)
-                                           ? nDL : wr_nDL(*pwRootLn))
+                                           ? nDL : wr_nDL(*pwRootLn)) )
               #endif // defined(TYPE_IS_RELATIVE)
                                    : nDL;
                     DBGX(printf("wr_nDLX %d", nDLX));
