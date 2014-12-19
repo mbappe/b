@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.495 2014/12/19 04:37:21 mike Exp mike $
+// @(#) $Id: bli.c,v 1.495 2014/12/19 04:37:21 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1853,11 +1853,11 @@ t_bm_sw:
                     // Or can we just use nDL?
                     int nDLX = wr_bIsSwitch(*pwRootLn) ?
               #if defined(TYPE_IS_RELATIVE)
-                                       ( ! tp_bIsSkip(wr_nType(*pwRootLn)
-                                           ? nDL : nDL - wr_nDS(*pwRootLn)) )
+                                       ( ! tp_bIsSkip(wr_nType(*pwRootLn))
+                                           ? nDL : nDL - wr_nDS(*pwRootLn) )
               #else // defined(TYPE_IS_RELATIVE)
-                                       ( ! tp_bIsSkip(wr_nType(*pwRootLn)
-                                           ? nDL : wr_nDL(*pwRootLn)) )
+                                       ( ! tp_bIsSkip(wr_nType(*pwRootLn))
+                                           ? nDL : wr_nDL(*pwRootLn) )
               #endif // defined(TYPE_IS_RELATIVE)
                                    : nDL;
                     DBGX(printf("wr_nDLX %d", nDLX));
