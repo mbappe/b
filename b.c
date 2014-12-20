@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.405 2014/12/14 05:52:22 mike Exp mike $
+// @(#) $Id: b.c,v 1.406 2014/12/19 04:46:44 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -146,8 +146,26 @@ static Word_t
 MyMalloc(Word_t wWords)
 {
     Word_t ww = JudyMalloc(wWords + cnMallocExtraWords);
-    DBGM(printf("\nM: "OWx" %"_fw"d words\n", ww, wWords));
+    DBGM(printf("\nM: %p %"_fw"d words *%p "OWx" %"_fw"d\n",
+                (void *)ww, wWords, (void *)&((Word_t *)ww)[-1],
+                ((Word_t *)ww)[-1], ((Word_t *)ww)[-1]));
+#if defined(DEBUG_MALLOC)
+    if ((((((Word_t *)ww)[-1] >> 4) << 1) != ALIGN_UP(wWords, 2))
+        && (((((Word_t *)ww)[-1] >> 4) << 1) != ALIGN_UP(wWords, 2) + 2)
+        && (((((Word_t *)ww)[-1] >> 4) << 1) != ALIGN_UP(wWords, 2) + 4))
+    {
+        printf("ALIGN_UP(%ld, 2) %ld\n", wWords, ALIGN_UP(wWords, 2));
+        printf("blah %ld\n", ((((Word_t *)ww)[-1] >> 4) << 1));
+        printf("M: %p %"_fw"d words *%p "OWx" %"_fw"d %"_fw"d\n",
+               (void *)ww, wWords, (void *)&((Word_t *)ww)[-1],
+               ((Word_t *)ww)[-1], ((Word_t *)ww)[-1],
+               ((((Word_t *)ww)[-1] >> 4) << 1));
+        assert(0);
+    }
+#endif // defined(DEBUG_MALLOC)
+    assert((((Word_t *)ww)[-1] & 0x0f) == 3);
     assert(ww != 0);
+    assert((ww & 0xffff000000000000UL) == 0);
     assert((ww & cnMallocMask) == 0);
     ++wMallocs; wWordsAllocated += wWords;
     if ( ! (wWords & 1) ) { ++wEvenMallocs; }
