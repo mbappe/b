@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.25 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.26 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -4461,6 +4461,20 @@ TestJudyDel(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                     printf("--- Key = 0x%lx", TstKey);
                     FAILURE("Judy1Unset ret Rcode != 1", Rc);
                 }
+
+                // Try to delete the just deleted key to make sure it fails.
+#ifdef SKIPMACRO
+                Rc = Judy1Unset(J1, TstKey, PJE0);
+#else
+                J1U(Rc, *J1, TstKey);
+#endif // SKIPMACRO
+
+                if (Rc != 0)
+                {
+                    printf("--- Key = 0x%lx", TstKey);
+                    FAILURE("Judy1Unset ret Rcode != 0", Rc);
+                }
+
 
                 if (gFlag)
                 {
