@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.495 2014/12/19 04:37:21 mike Exp $
+// @(#) $Id: bli.c,v 1.497 2014/12/19 05:44:52 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2443,13 +2443,8 @@ foundIt:
         {
             // If nDL != cnDigitsPerWord then we're not at top.
             // And pwRoot is initialized despite what gcc might think.
-            if (PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) != 0) {
-                printf("\nhuh wPopCnt %d nIncr %d\n",
-                      (int)PWR_wPopCnt(pwRoot,
-                                       (Switch_t *)NULL, nDL), nIncr);
-            }
-            assert(PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) == 0);
-            set_PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL, nIncr);
+            set_PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL,
+                PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) + nIncr);
         }
       #endif // ! defined(LOOKUP)
   #endif // defined(PP_IN_LINK)
