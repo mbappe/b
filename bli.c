@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.497 2014/12/19 05:44:52 mike Exp mike $
+// @(#) $Id: bli.c,v 1.498 2014/12/20 13:36:28 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1564,7 +1564,7 @@ again:
     case T_SWITCH | EXP(cnBitsMallocMask): // close switch w/o bm
 #endif // defined(EXTRA_TYPES)
     {
-    goto t_switch; // silence cc in case other the gotos are ifdef'd out
+        goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:
   #if defined(INSERT)
         if (bCleanup) { return Success; }
@@ -1739,7 +1739,7 @@ switchTail:
     case T_BM_SW | EXP(cnBitsMallocMask): // no skip switch
   #endif // defined(EXTRA_TYPES)
     {
-    goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
+        goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
 t_bm_sw:
   #if defined(INSERT)
         if (bCleanup) { return Success; }
