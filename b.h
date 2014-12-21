@@ -435,11 +435,11 @@ typedef Word_t Bucket_t;
 // Values for nType.
 enum {
     T_NULL, // no keys below
+    T_LIST, // external list of keys
 #if defined(USE_T_ONE)
     T_ONE, // one-key external list when key is too big to be embedded
 #endif // defined(USE_T_ONE)
     T_EMBEDDED_KEYS, // keys are embedded in the link
-    T_LIST, // external list of keys
     T_BITMAP, // external bitmap leaf
 
     // All of the type values less than T_SWITCH are not switches.
