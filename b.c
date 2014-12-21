@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.406 2014/12/19 04:46:44 mike Exp $
+// @(#) $Id: b.c,v 1.407 2014/12/20 03:33:51 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2168,12 +2168,16 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 pwList = pwr;
 
 #if defined(PP_IN_LINK)
+  #if defined(SEPARATE_T_NULL)
                 assert(nDL != cnDigitsPerWord);
-                assert(PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)
-                       == wPopCnt + 1);
-#else // defined(PP_IN_LINK)
-                set_ls_xPopCnt(pwList, nBL, wPopCnt + 1);
+  #else // defined(SEPARATE_T_NULL)
+                if (nDL != cnDigitsPerWord) {
+                    assert(PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)
+                           == wPopCnt + 1);
+                } else
+  #endif // defined(SEPARATE_T_NULL)
 #endif // defined(PP_IN_LINK)
+                { set_ls_xPopCnt(pwList, nBL, wPopCnt + 1); }
             }
 
             set_wr(wRoot, pwList, T_LIST);
@@ -2988,9 +2992,9 @@ DeflateExternalList(Word_t *pwRoot,
             assert(nBL != cnBitsPerWord);
 #if defined(COMPRESSED_LISTS)
             assert(nPopCnt == 1);
-            wRoot |= (ls_pwKeysNAT(pwr)[0] & wBLM) << (cnBitsPerWord - nBL);
+            wRoot |= (ls_pwKeys(pwr, nBL)[0] & wBLM) << (cnBitsPerWord - nBL);
 #else // defined(COMPRESSED_LISTS)
-            Word_t *pwKeys = ls_pwKeysNAT(pwr);
+            Word_t *pwKeys = ls_pwKeys(pwr, nBL);
             unsigned nn = 1;
             for (; nn <= wr_nPopCnt(wRoot, nBL); nn++) {
                wRoot |= (pwKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
@@ -3155,7 +3159,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     }
 //#endif // ! defined(USE_T_ONE)
 
-    Word_t *pwKeys = ls_pwKeysNAT(pwr);
+    Word_t *pwKeys = ls_pwKeys(pwr, nBL);
 
     unsigned nIndex;
     for (nIndex = 0;
@@ -3182,7 +3186,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 
         switch (nBytesKeySz(nBL)) {
         case sizeof(Word_t):
-             COPY(ls_pwKeysNAT(pwList), ls_pwKeysNAT(pwr), wPopCnt - 1);
+             COPY(ls_pwKeys(pwList, nBL), ls_pwKeys(pwr, nBL), wPopCnt - 1);
              break;
 #if (cnBitsPerWord > 32)
         case 4:
@@ -3205,10 +3209,9 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
     }
 
 #if defined(PP_IN_LINK)
-    assert(nDL != cnDigitsPerWord); // T_LIST at top is handled by Judy1Unset?
-#else // defined(PP_IN_LINK)
-    set_ls_xPopCnt(pwList, nBL, wPopCnt - 1);
+    if (nDL == cnDigitsPerWord)
 #endif // defined(PP_IN_LINK)
+    { set_ls_xPopCnt(pwList, nBL, wPopCnt - 1); }
 
 #if defined(LIST_END_MARKERS) || defined(PSPLIT_PARALLEL)
         unsigned nKeys = wPopCnt - 1; (void)nKeys;
@@ -3281,10 +3284,10 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
         assert(0);
 #endif // defined(PP_IN_LINK) && (cnDummiesInList == 0)
 #endif // defined(LIST_END_MARKERS)
-        MOVE(&ls_pwKeysNAT(pwList)[nIndex], &pwKeys[nIndex + 1],
+        MOVE(&ls_pwKeys(pwList, nBL)[nIndex], &pwKeys[nIndex + 1],
              wPopCnt - nIndex - 1);
 #if defined(LIST_END_MARKERS)
-        ls_pwKeysNAT(pwList)[nKeys] = -1;
+        ls_pwKeys(pwList, nBL)[nKeys] = -1;
 #endif // defined(LIST_END_MARKERS)
     }
 
@@ -3425,7 +3428,9 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             wPopCnt = 1; // Always a full word to top; never embedded.
         } else
       #endif // defined(USE_T_ONE)
-        {
+        if (pwr == NULL) {
+            wPopCnt = 0;
+        } else {
             // ls_wPopCnt is valid at top for PP_IN_LINK if ! USE_T_ONE
             wPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
         }
