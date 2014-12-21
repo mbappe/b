@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.500 2014/12/21 12:47:49 mike Exp mike $
+// @(#) $Id: bli.c,v 1.501 2014/12/21 14:34:38 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2967,7 +2967,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
             }
             else
             {
-                set_wr(wRoot, NULL, T_NULL);
+                wRoot = 0; // set_wr(wRoot, NULL, 0)
             }
             OldList(pwr, wPopCnt, cnDigitsPerWord, nType);
             *pwRoot = wRoot;
