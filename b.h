@@ -15,7 +15,7 @@
 #define SKIP_LINKS
 #endif // ! defined(NO_SKIP_LINKS)
 
-// Default is -USEARCH_FROM_J1T.
+// Default is -USEARCH_FROM_WRAPPER.
 
 #if defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 #undef  SKIP_PREFIX_CHECK

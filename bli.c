@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.499 2014/12/20 13:41:46 mike Exp mike $
+// @(#) $Id: bli.c,v 1.500 2014/12/21 12:47:49 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1246,13 +1246,23 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot, int nDL)
       #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     {
-  #if defined(PP_IN_LINK)
+  #if defined(SEARCH_FROM_WRAPPER)
+      #if defined(PP_IN_LINK)
         nPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL);
-  #else // defined(PP_IN_LINK)
+      #else // defined(PP_IN_LINK)
         nPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
-  #endif // ! defined(PP_IN_LINK)
+      #endif // ! defined(PP_IN_LINK)
         nPos = SearchListWord(ls_pwKeysNATX(pwr, nPopCnt),
                               wKey, nBL, nPopCnt);
+  #else // defined(SEARCH_FROM_WRAPPER)
+      #if defined(PP_IN_LINK)
+        if (nDL != cnDigitsPerWord) {
+            nPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL);
+        } else
+      #endif // ! defined(PP_IN_LINK)
+        { nPopCnt = ls_xPopCnt(pwr, cnBitsPerWord); }
+        nPos = SearchListWord(ls_pwKeys(pwr, nBL), wKey, nBL, nPopCnt);
+  #endif // defined(SEARCH_FROM_WRAPPER)
     }
 
   #if defined(LOOKUP)
@@ -2543,16 +2553,16 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 #if (cnDigitsPerWord > 1)
 
   #if (cwListPopCntMax != 0)
-      #if defined(PP_IN_LINK) || defined(SEARCH_FROM_J1T)
-    // Handle a top level T_LIST leaf here because for PP_IN_LINK a T_LIST
-    // leaf at the top has a pop count field and T_LIST leaves not at the
-    // top do not.
-    // I wanted to avoid making the mainline T_LIST leaf handling code have
-    // to know or test if it is at the top.
+      #if defined(SEARCH_FROM_WRAPPER)
+    // Handle a top level T_LIST leaf here.
+    // For PP_IN_LINK a T_LIST leaf at the top has a pop count field and
+    // T_LIST leaves not at the top do not.
+    // And, for PP_IN_LINK there is no Link_t at the top -- only wRoot.
+    // SEARCH_FROM_WRAPPER allows us avoid making the mainline T_LIST leaf
+    // handling code have to know or test if it is at the top.
     // Do not assume the list is sorted here -- so this code doesn't have to
     // be ifdef'd.
-    // Use SEARCH_FROM_J1T to force the search of a top level T_LIST leaf
-    // from here if not PP_IN_LINK.  It's a bit faster, 1-2 ns out of
+    // SEARCH_FROM_WRAPPER is a bit faster, 1-2 ns out of
     // 2-16 ns, if all we have is a T_LIST leaf, but there is a very small,
     // sub-nanosecond, cost for all other cases.
     unsigned nType = wr_nType((Word_t)pcvRoot);
@@ -2568,7 +2578,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
                        >= 0)
                    ? Success : Failure;
     }
-      #endif // defined(PP_IN_LINK) || defined(SEARCH_FROM_J1T)
+      #endif // defined(SEARCH_FROM_WRAPPER)
   #endif // (cwListPopCntMax != 0)
 
     return Lookup((Word_t)pcvRoot, wKey);
@@ -2743,7 +2753,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         Initialize();
     }
 
-  #if (cwListPopCntMax != 0) && defined(PP_IN_LINK)
+  #if (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER)
     // Handle the top level list leaf before calling Insert.  Why?
     // To simplify Insert for PP_IN_LINK.  Does it still apply?
     // Do not assume the list is sorted.
@@ -2823,7 +2833,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         }
     }
     else
-  #endif // (cwListPopCntMax != 0) && defined(PP_IN_LINK)
+  #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER)
     {
         status = Insert(pwRoot, wKey, cnDigitsPerWord);
     }
@@ -2908,7 +2918,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     DBGR(printf("\n\n# Judy1Unset ppvRoot %p wKey "OWx"\n",
                 (void *)ppvRoot, wKey));
 
-  #if (cwListPopCntMax != 0) && defined(PP_IN_LINK)
+  #if (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER)
     // Handle the top level list leaf.
     // Do not assume the list is sorted, but maintain the current order so
     // we don't have to bother with ifdefs in this code.
@@ -2965,7 +2975,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
         }
     }
     else
-  #endif // (cwListPopCntMax != 0) && defined(PP_IN_LINK)
+  #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER)
     {
         status = Remove(pwRoot, wKey, cnDigitsPerWord);
     }
