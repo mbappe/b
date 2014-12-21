@@ -258,12 +258,15 @@ dlmalloc.o: dlmalloc.c
 ifeq ($(SMALL_PAGES), 1)
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
 else
+ifeq ($(SBRK), 1)
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) \
+		-Dmalloc_getpagesize=0x200000 -c $^
+else
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -Dmalloc_getpagesize=0x200000 \
 		-DDEFAULT_MMAP_THRESHOLD=0x200000 \
 		-DDEFAULT_GRANULARITY=0X200000 -DHAVE_MORECORE=0 \
 		-Dmmap=Judy_mmap -Dsbrk=Judy_sbrk -Dmunmap=Judy_munmap -c $^
-#	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) \
-#		-Dmalloc_getpagesize=0x200000 -c $^
+endif
 endif
 
 ############################
