@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.498 2014/12/20 13:36:28 mike Exp mike $
+// @(#) $Id: bli.c,v 1.499 2014/12/20 13:41:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1052,6 +1052,8 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 static int
 SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 {
+    DBGI(printf("SLW pwKeys %p wKey "OWx" nBL %d nPopCnt %d\n",
+                (void *)pwKeys, wKey, nBL, nPopCnt));
     (void)nBL;
 #if defined(LIST_END_MARKERS)
     assert(pwKeys[-1] == 0);
@@ -1110,6 +1112,7 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
     while (nPopCnt >= cnBinarySearchThresholdWord)
     {
         nSplit = nPopCnt / 2;
+        DBGI(printf("SLW nSplit %d\n", nSplit));
         if (pwKeys[nSplit] <= wKey) {
             pwKeys = &pwKeys[nSplit];
             nPopCnt -= nSplit;
@@ -1129,6 +1132,7 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
     SEARCHF(Word_t, pwKeysOrig, nPopCnt, wKey, nPos);
   #endif // defined(BACKWARD_SEARCH_WORD)
 #endif // defined(PSPLIT_SEARCH_WORD)
+    DBGX(printf("SLW: return pwKeysOrig %p nPos %d\n", (void *)pwKeysOrig, nPos));
     return nPos;
 }
 
@@ -1943,7 +1947,12 @@ notEmptyBm:;
     case T_LIST | EXP(cnBitsMallocMask):
 #endif // defined(EXTRA_TYPES)
     {
-        DBGX(printf("List nDL %d\n", nDL));
+        goto t_list;
+t_list:
+        DBGX(printf("T_LIST nDL %d\n", nDL));
+  #if ! defined(LOOKUP)
+        DBGX(printf("T_LIST bCleanup %d nIncr %d\n", bCleanup, nIncr));
+  #endif // ! defined(LOOKUP)
         DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMask(nDL)));
 
   #if ! defined(LOOKUP)
@@ -1954,8 +1963,6 @@ notEmptyBm:;
   #endif // ! defined(LOOKUP)
 
       #if defined(PP_IN_LINK)
-          // Adjust wPopCnt to actual list size for undo case.
-          // There must be a better way to do this.
           #if defined(INSERT)
         if (nIncr == -1) { return Failure; }
           #endif // defined(INSERT)
@@ -2030,8 +2037,14 @@ notEmptyBm:;
             if (SearchList(pwr, wKey, nBL, pwRoot, nDL) >= 0)
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
+                DBGI(printf("found key\n"));
           #if defined(REMOVE)
               #if defined(PP_IN_LINK)
+                // Adjust wPopCnt in link to leaf for PP_IN_LINK.
+                // wPopCnt in link to switch is adjusted elsewhere,
+                // i.e. in the same place as wPopCnt in switch is
+                // adjusted for pp-in-switch.
+                assert(nIncr == -1);
                 set_PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL,
                                 PWR_wPopCnt(pwRoot,
                                             (Switch_t *)NULL, nDL) - 1);
@@ -2059,12 +2072,20 @@ notEmptyBm:;
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && ...
 
       #if defined(PP_IN_LINK) && defined(INSERT)
-        assert(nDL != cnDigitsPerWord); // handled in wrapper
+        // Adjust wPopCnt in link to leaf for PP_IN_LINK.
+        // wPopCnt in link to switch is adjusted elsewhere,
+        // i.e. in the same place as wPopCnt in switch is
+        // adjusted for pp-in-switch.
         // pwRoot is initialized despite what gcc might think.
         // Would be nice to be able to get the current pop count from
         // SearchList because chances are it will have read it.
         // But it is more important to avoid getting it when not necessary
         // during lookup.
+        assert((nDL == cnDigitsPerWord) // there is no link with pop count
+            || (pwr != NULL) // non-NULL implies non-zero pop count
+            || (PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) == 0));
+        assert(nIncr == 1);
+        DBGI(printf("did not find key\n"));
         set_PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL,
                         PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) + 1);
       #endif // defined(PP_IN_LINK) && defined(INSERT)
@@ -2475,7 +2496,7 @@ undo:
 #if defined(REMOVE) && !defined(RECURSIVE)
     if (nIncr < 0)
 #endif // defined(REMOVE) && !defined(RECURSIVE)
-#if !defined(LOOKUP) && !defined(RECURSIVE)
+  #if !defined(LOOKUP) && !defined(RECURSIVE)
     {
         // Undo the counting we did on the way in.
         nIncr *= -1;
@@ -2878,6 +2899,8 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 int
 Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 {
+    Word_t *pwRoot = (Word_t *)ppvRoot;
+
 #if (cnDigitsPerWord > 1)
 
     int status;
@@ -2889,7 +2912,6 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     // Handle the top level list leaf.
     // Do not assume the list is sorted, but maintain the current order so
     // we don't have to bother with ifdefs in this code.
-    Word_t *pwRoot = (Word_t *)ppvRoot;
     Word_t wRoot = *pwRoot;
     unsigned nType = wr_nType(wRoot);
     if (nType == T_LIST)
@@ -2945,7 +2967,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     else
   #endif // (cwListPopCntMax != 0) && defined(PP_IN_LINK)
     {
-        status = Remove((Word_t *)ppvRoot, wKey, cnDigitsPerWord);
+        status = Remove(pwRoot, wKey, cnDigitsPerWord);
     }
 
     if (status == Success) { wPopCntTotal--; }
@@ -2967,14 +2989,11 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     // one big Bitmap
 
-    Word_t wRoot;
+    Word_t wRoot = *pwRoot;
     Word_t wByteNum, wByteMask;
     char c;
 
-    if ((wRoot = (Word_t)*ppvRoot) == 0)
-    {
-        return Failure; // not present
-    }
+    if (wRoot == 0) { return Failure; }
 
     wByteNum = BitmapByteNum(wKey);
     wByteMask = BitmapByteMask(wKey);     
