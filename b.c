@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.407 2014/12/20 03:33:51 mike Exp mike $
+// @(#) $Id: b.c,v 1.409 2014/12/21 04:17:35 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2168,14 +2168,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
                 pwList = pwr;
 
 #if defined(PP_IN_LINK)
-  #if defined(SEPARATE_T_NULL)
-                assert(nDL != cnDigitsPerWord);
-  #else // defined(SEPARATE_T_NULL)
                 if (nDL != cnDigitsPerWord) {
                     assert(PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)
                            == wPopCnt + 1);
                 } else
-  #endif // defined(SEPARATE_T_NULL)
 #endif // defined(PP_IN_LINK)
                 { set_ls_xPopCnt(pwList, nBL, wPopCnt + 1); }
             }
