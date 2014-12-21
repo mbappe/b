@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.501 2014/12/21 14:34:38 mike Exp mike $
+// @(#) $Id: bli.c,v 1.497 2014/12/19 05:44:52 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2044,7 +2044,11 @@ t_list:
       // LOOKUP_NO_LIST_SEARCH is for analysis only.  We have retrieved the
       // pop count and prefix but we have not dereferenced the list itself.
       #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
-            if (SearchList(pwr, wKey, nBL, pwRoot, nDL) >= 0)
+            if (1
+#if ! defined(SEPARATE_T_NULL)
+                && (pwr != NULL)
+#endif // ! defined(SEPARATE_T_NULL)
+                && (SearchList(pwr, wKey, nBL, pwRoot, nDL) >= 0))
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
                 DBGI(printf("found key\n"));
@@ -2453,6 +2457,8 @@ foundIt:
 
 #endif // defined(USE_T_ONE)
 
+#if defined(SEPARATE_T_NULL)
+
     case T_NULL:
 #if defined(EXTRA_TYPES)
     case T_NULL | EXP(cnBitsMallocMask):
@@ -2483,6 +2489,8 @@ foundIt:
         break;
 
     } // end of case T_NULL
+
+#endif // defined(SEPARATE_T_NULL)
 
     } // end of switch
 
@@ -2572,11 +2580,15 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
         // ls_wPopCount is valid only at the top for PP_IN_LINK
         // the first word in the list is used for pop count at the top
-        return (SearchListWord(ls_pwKeys(pwr, cnBitsPerWord),
-                               wKey, cnBitsPerWord,
-                           ls_xPopCnt(pwr, cnBitsPerWord))
-                       >= 0)
-                   ? Success : Failure;
+        return (1
+#if ! defined(SEPARATE_T_NULL)
+                && (pwr != NULL)
+#endif // ! defined(SEPARATE_T_NULL)
+                && (SearchListWord(ls_pwKeys(pwr, cnBitsPerWord),
+                                   wKey, cnBitsPerWord,
+                                   ls_xPopCnt(pwr, cnBitsPerWord))
+                    >= 0))
+            ? Success : Failure;
     }
       #endif // defined(SEARCH_FROM_WRAPPER)
   #endif // (cwListPopCntMax != 0)
@@ -2762,7 +2774,11 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     Word_t wRoot = *pwRoot;
     unsigned nType = wr_nType(wRoot);
 
-    if ((T_LIST == nType)
+    if (((T_LIST == nType)
+#if ! defined(SEPARATE_T_NULL)
+            && (wr_tp_pwr(wRoot, nType) != NULL)
+#endif // ! defined(SEPARATE_T_NULL)
+            && 1)
       #if defined(USE_T_ONE)
         || (nType == T_ONE)
       #else // defined(USE_T_ONE)

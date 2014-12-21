@@ -434,7 +434,9 @@ typedef Word_t Bucket_t;
 
 // Values for nType.
 enum {
+#if defined(SEPARATE_T_NULL)
     T_NULL, // no keys below
+#endif // defined(SEPARATE_T_NULL)
     T_LIST, // external list of keys
 #if defined(USE_T_ONE)
     T_ONE, // one-key external list when key is too big to be embedded
