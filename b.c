@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.409 2014/12/21 04:24:07 mike Exp mike $
+// @(#) $Id: b.c,v 1.410 2014/12/22 03:36:35 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1935,6 +1935,7 @@ InsertCleanup(int nDL, Word_t *pwRoot, Word_t wRoot)
         if (((1 << LOG(wPopCnt)) == wPopCnt)
             && (wPopCnt > awReported[nDL]))
         {
+                // This printf is invisible to jbgraph.
                 printf("# IC: nDL %d nType 0x%0x wPopCnt %ld\n",
                        nDL, nType, wPopCnt);
                 awReported[nDL] = wPopCnt;
@@ -3109,6 +3110,27 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 Status_t
 RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL,
              unsigned nBL, Word_t wRoot);
+
+void
+RemoveCleanup(int nDL, Word_t *pwRoot, Word_t wRoot)
+{
+    (void)nDL; (void)pwRoot; (void)wRoot;
+    int nType = wr_nType(wRoot);
+    Word_t *pwr = wr_tp_pwr(wRoot, nType); (void)pwr;
+    Word_t wPopCnt;
+    static Word_t awReported[cnDigitsPerWord+1]; (void)awReported;
+    if (tp_bIsSwitch(nType)) {
+        wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDL);
+        if (((1 << LOG(wPopCnt)) == wPopCnt)
+            && (wPopCnt > awReported[nDL]))
+        {
+                // This printf messes up the output for jbgraph.
+                printf("\n# RC: nDL %d nType 0x%0x wPopCnt %ld\n",
+                       nDL, nType, wPopCnt);
+                awReported[nDL] = wPopCnt;
+        }
+    }
+}
 
 Status_t
 RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)

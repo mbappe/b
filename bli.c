@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.503 2014/12/21 16:00:14 mike Exp mike $
+// @(#) $Id: bli.c,v 1.504 2014/12/22 03:36:35 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1612,7 +1612,7 @@ t_switch:
       #if defined(REMOVE)
             if (bCleanup)
             {
-//assert(0); // Just checking; uh oh; do we need better testing?
+                RemoveCleanup(nDLUp, pwRoot, wRoot);
                 DBGX(printf("Cleanup\n"));
 
                 for (Word_t ww = 0; ww < EXP(cnBitsIndexSzAtTop); ww++)
@@ -1673,7 +1673,7 @@ notEmpty:;
   #if defined(REMOVE)
             if (bCleanup)
             {
-//assert(0); // Just checking.
+                RemoveCleanup(nDLUp, pwRoot, wRoot);
                 if (wPopCnt == 0)
                 {
                     FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDLUp),
@@ -1841,21 +1841,15 @@ t_bm_sw:
       #if defined(REMOVE)
             if (bCleanup)
             {
-//assert(0); // Just checking; uh oh; do we need better testing?
+                RemoveCleanup(nDLUp, pwRoot, wRoot);
                 DBGX(printf("Cleanup\n"));
           #if ! defined(BM_IN_LINK)
                 Word_t xx = 0;
           #endif // ! defined(BM_IN_LINK)
                 for (Word_t ww = 0; ww < EXP(cnBitsIndexSzAtTop); ww++)
                 {
-          #if !defined(BM_IN_LINK)
-                    Word_t *pwRootLn
-                                = &pwr_pLinks((BmSwitch_t *)pwr)[xx].ln_wRoot;
-                    xx++;
-          #else // ! defined(BM_IN_LINK)
                     Word_t *pwRootLn
                                 = &pwr_pLinks((BmSwitch_t *)pwr)[ww].ln_wRoot;
-          #endif // ! defined(BM_IN_LINK)
 // looking at the next pwRoot seems like something that should be deferred
 // but if we defer, then we won't have the previous pwRoot, but if this
 // only happens at the top, then the previous pwRoot will be pwRootOrig?
@@ -1910,7 +1904,7 @@ notEmptyBm:;
   #if defined(REMOVE)
             if (bCleanup)
             {
-//assert(0); // Just checking; uh oh; do we need better testing?
+                RemoveCleanup(nDLUp, pwRoot, wRoot);
                 if (wPopCnt == 0)
                 {
                     FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDLUp),

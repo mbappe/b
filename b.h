@@ -1501,13 +1501,11 @@ typedef struct {
 Status_t Insert(Word_t *pwRoot, Word_t wKey, unsigned nBL);
 Status_t Remove(Word_t *pwRoot, Word_t wKey, unsigned nBL);
 
-Status_t InsertGuts(Word_t *pwRoot,
-                    Word_t wKey, unsigned nDL, Word_t wRoot);
+Status_t InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
+Status_t RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
 
 void InsertCleanup(int nDL, Word_t *pwRoot, Word_t wRoot);
-
-Status_t RemoveGuts(Word_t *pwRoot,
-                    Word_t wKey, unsigned nDL, Word_t wRoot);
+void RemoveCleanup(int nDL, Word_t *pwRoot, Word_t wRoot);
 
 Word_t FreeArrayGuts(Word_t *pwRoot,
                      Word_t wPrefix, unsigned nBL, int bDump);
