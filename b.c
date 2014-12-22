@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.410 2014/12/22 03:36:35 mike Exp mike $
+// @(#) $Id: b.c,v 1.411 2014/12/22 04:19:25 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -3112,22 +3112,74 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL,
              unsigned nBL, Word_t wRoot);
 
 void
-RemoveCleanup(int nDL, Word_t *pwRoot, Word_t wRoot)
+RemoveCleanup(Word_t wKey, int nDL, Word_t *pwRoot, Word_t wRoot)
 {
-    (void)nDL; (void)pwRoot; (void)wRoot;
+    (void)wKey; (void)nDL; (void)pwRoot; (void)wRoot;
+
     int nType = wr_nType(wRoot);
     Word_t *pwr = wr_tp_pwr(wRoot, nType); (void)pwr;
-    Word_t wPopCnt;
-    static Word_t awReported[cnDigitsPerWord+1]; (void)awReported;
-    if (tp_bIsSwitch(nType)) {
-        wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDL);
-        if (((1 << LOG(wPopCnt)) == wPopCnt)
-            && (wPopCnt > awReported[nDL]))
+
+  #if defined(PP_IN_LINK)
+    if (nDL == cnDigitsPerWord) {
+        // We don't keep a total pop count for the whole array for
+        // PP_IN_LINK.  So we have to accumulate the pop counts of
+        // all of the links in the top switch to figure out if we
+        // can free the array.  Yuck.
+        // Don't we use zero to mean full pop?  How do we know if
+        // zero means zero?  Since we just finished a remove we
+        // know we can't be at full pop.  This is also why we can't
+        // allow an empty node to persist after the remove that
+        // made it empty.
+        Word_t wIndex = wKey >> (cnBitsPerWord - cnBitsIndexSzAtTop);
+        for (Word_t ww = 0; ww < EXP(cnBitsIndexSzAtTop); ww++)
         {
-                // This printf messes up the output for jbgraph.
-                printf("\n# RC: nDL %d nType 0x%0x wPopCnt %ld\n",
-                       nDL, nType, wPopCnt);
-                awReported[nDL] = wPopCnt;
+            Word_t *pwRootLn
+                = &(tp_bIsBmSw(nType) ? pwr_pLinks((BmSwitch_t *)pwr)
+                                      : pwr_pLinks((  Switch_t *)pwr))
+                    [ww].ln_wRoot;
+
+            int nDLX = wr_bIsSwitch(*pwRootLn)
+                            && tp_bIsSkip(wr_nType(*pwRootLn)) ?
+      #if defined(TYPE_IS_RELATIVE)
+                         nDL - wr_nDS(*pwRootLn)
+      #else // defined(TYPE_IS_RELATIVE)
+                         wr_nDL(*pwRootLn)
+      #endif // defined(TYPE_IS_RELATIVE)
+                      : nDL;
+
+            --nDLX;
+            DBGR(printf("wr_nDLX %d", nDLX));
+            DBGR(printf(" PWR_wPopCnt %"_fw"d\n",
+                        PWR_wPopCnt(pwRootLn, NULL, nDLX)));
+            if (((*pwRootLn != 0) && (ww != wIndex))
+                    || (PWR_wPopCnt(pwRootLn, (Switch_t *)NULL, nDLX) != 0))
+            {
+                DBGR(printf("Not empty ww %zd wIndex %zd\n",
+                     (size_t)ww, (size_t)wIndex));
+                return; // may need cleanup lower; caller checks *pwRoot
+            }
+        }
+        // whole array pop is zero
+        FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDL), /* bDump */ 0);
+        // caller checks *pwRoot == NULL to see if cleanup is done
+    } else
+  #endif // defined(PP_IN_LINK)
+    {
+        int nDLR = tp_bIsSkip(nType) ?
+  #if defined(TYPE_IS_RELATIVE)
+                     nDL - wr_nDS(wRoot)
+  #else // defined(TYPE_IS_RELATIVE)
+                     wr_nDL(wRoot)
+  #endif // defined(TYPE_IS_RELATIVE)
+                 : nDL;
+
+        Word_t wPopCnt
+                = tp_bIsBmSw(nType)
+                    ? PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDLR)
+                    : PWR_wPopCnt(pwRoot, (  Switch_t *)pwr, nDLR);
+
+        if (wPopCnt == 0) {
+            FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDL), /* bDump */ 0);
         }
     }
 }

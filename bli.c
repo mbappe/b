@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.504 2014/12/22 03:36:35 mike Exp mike $
+// @(#) $Id: bli.c,v 1.505 2014/12/22 04:19:25 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1599,105 +1599,19 @@ t_switch:
              (void *)pwr_pLinks((Switch_t *)pwr), (int)wIndex, (int)wIndex));
 
 #if !defined(LOOKUP)
-  #if defined(INSERT)
         if (bCleanup) {
+  #if defined(INSERT)
             InsertCleanup(nDLUp, pwRoot, wRoot);
-        } else
+  #else // defined(INSERT)
+            RemoveCleanup(wKey, nDLUp, pwRoot, wRoot);
+            if (*pwRoot == 0) { return KeyFound; }
   #endif // defined(INSERT)
-  #if defined(PP_IN_LINK)
-// What if nDL was cnDigitsPerWord before it was updated?
-// Don't we have to walk the switch in that case too?
-        if (nDLUp == cnDigitsPerWord)
-        {
-      #if defined(REMOVE)
-            if (bCleanup)
-            {
-                RemoveCleanup(nDLUp, pwRoot, wRoot);
-                DBGX(printf("Cleanup\n"));
-
-                for (Word_t ww = 0; ww < EXP(cnBitsIndexSzAtTop); ww++)
-                {
-                    Word_t *pwRootLn
-                                = &pwr_pLinks((Switch_t *)pwr)[ww].ln_wRoot;
-// looking at the next pwRoot seems like something that should be deferred
-// but if we defer, then we won't have the previous pwRoot, but if this
-// only happens at the top, then the previous pwRoot will be pwRootOrig?
-
-// What if ln_wRoot is a list?
-// nDL cannot be obtained from ln_wRoot.
-// We must use nDL in that case.
-                    // Do we really need a new variable here?
-                    // Or can we just use nDL?
-                    int nDLX = wr_bIsSwitch(*pwRootLn) ?
-              #if defined(TYPE_IS_RELATIVE)
-                                       ( ! tp_bIsSkip(wr_nType(*pwRootLn) )
-                                           ? nDL : nDL - wr_nDS(*pwRootLn))
-              #else // defined(TYPE_IS_RELATIVE)
-                                       ( ! tp_bIsSkip(wr_nType(*pwRootLn) )
-                                           ? nDL : wr_nDL(*pwRootLn))
-              #endif // defined(TYPE_IS_RELATIVE)
-                                   : nDL;
-                    DBGX(printf("wr_nDLX %d", nDLX));
-                    DBGX(printf(" PWR_wPopCnt %"_fw"d\n",
-                                PWR_wPopCnt(pwRootLn, (Switch_t *)NULL, nDLX)
-                                ));
-                    if (((*pwRootLn != 0) && (ww != wIndex))
-                            || (
-                                PWR_wPopCnt(pwRootLn, (Switch_t *)NULL, nDLX)
-                                    != 0)
-                        )
-                    {
-                        DBGX(printf("Not empty ww %zd wIndex %zd\n",
-                             (size_t)ww, (size_t)wIndex));
-                        goto notEmpty; // switch pop is not zero
-                    }
-                }
-                // switch pop is zero
-                FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDLUp),
-                    /* bDump */ 0);
-          #if defined(PP_IN_LINK)
-                assert(PWR_wPrefix(pwRoot, NULL, nDLUp) == 0);
-          #endif // defined(PP_IN_LINK)
-
-                *pwRoot = 0;
-                return KeyFound;
-notEmpty:;
-            }
-      #endif // defined(REMOVE)
-        }
-        else
-  #endif // defined(PP_IN_LINK)
-        {
+        } else {
             // Increment or decrement population count on the way in.
             wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDLR);
-  #if defined(REMOVE)
-            if (bCleanup)
-            {
-                RemoveCleanup(nDLUp, pwRoot, wRoot);
-                if (wPopCnt == 0)
-                {
-                    FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDLUp),
-                        /* bDump */ 0);
-      #if defined(PP_IN_LINK)
-                if (PWR_wPrefix(pwRoot, NULL, nDLR) != 0)
-                {
-                    DBGR(printf("wPrefixPop "OWx"\n",
-                                PWR_wPrefixPop(pwRoot, NULL)));
-                }
-                assert(PWR_wPrefix(pwRoot, NULL, nDLR) == 0);
-      #endif // defined(PP_IN_LINK)
-                    *pwRoot = 0;
-                    return KeyFound;
-                }
-            }
-            else
-  #endif // defined(REMOVE)
-            {
-                set_PWR_wPopCnt(pwRoot, (Switch_t *)pwr,
-                                nDLR, wPopCnt + nIncr);
-                DBGX(printf("wPopCnt %zd\n",
-                     (size_t)PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDLR)));
-            }
+            set_PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDLR, wPopCnt + nIncr);
+            DBGX(printf("wPopCnt %zd\n",
+                        (size_t)PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDLR)));
         }
 #endif // !defined(LOOKUP)
 
@@ -1828,111 +1742,19 @@ t_bm_sw:
         }
 
 #if !defined(LOOKUP)
-  #if defined(INSERT)
         if (bCleanup) {
+  #if defined(INSERT)
             InsertCleanup(nDLUp, pwRoot, wRoot);
-        } else
+  #else // defined(INSERT)
+            RemoveCleanup(wKey, nDLUp, pwRoot, wRoot);
+            if (*pwRoot == 0) { return KeyFound; }
   #endif // defined(INSERT)
-  #if defined(PP_IN_LINK)
-// What if nDL was cnDigitsPerWord before it was updated?
-// Don't we have to walk the switch in that case too?
-        if (nDLUp == cnDigitsPerWord)
-        {
-      #if defined(REMOVE)
-            if (bCleanup)
-            {
-                RemoveCleanup(nDLUp, pwRoot, wRoot);
-                DBGX(printf("Cleanup\n"));
-          #if ! defined(BM_IN_LINK)
-                Word_t xx = 0;
-          #endif // ! defined(BM_IN_LINK)
-                for (Word_t ww = 0; ww < EXP(cnBitsIndexSzAtTop); ww++)
-                {
-                    Word_t *pwRootLn
-                                = &pwr_pLinks((BmSwitch_t *)pwr)[ww].ln_wRoot;
-// looking at the next pwRoot seems like something that should be deferred
-// but if we defer, then we won't have the previous pwRoot, but if this
-// only happens at the top, then the previous pwRoot will be pwRootOrig?
-
-// What if ln_wRoot is a list?
-// nDL cannot be obtained from ln_wRoot.
-// We must use nDL in that case.
-                    // Do we really need a new variable here?
-                    // Or can we just use nDL?
-                    int nDLX = wr_bIsSwitch(*pwRootLn) ?
-              #if defined(TYPE_IS_RELATIVE)
-                                       ( ! tp_bIsSkip(wr_nType(*pwRootLn))
-                                           ? nDL : nDL - wr_nDS(*pwRootLn) )
-              #else // defined(TYPE_IS_RELATIVE)
-                                       ( ! tp_bIsSkip(wr_nType(*pwRootLn))
-                                           ? nDL : wr_nDL(*pwRootLn) )
-              #endif // defined(TYPE_IS_RELATIVE)
-                                   : nDL;
-                    DBGX(printf("wr_nDLX %d", nDLX));
-                    DBGX(printf(" PWR_wPopCnt %"_fw"d\n",
-                                PWR_wPopCnt(pwRootLn, NULL, nDLX)
-                                ));
-                    if (((*pwRootLn != 0) && (ww != wIndex))
-                            || (
-                                PWR_wPopCnt(pwRootLn, (Switch_t *)NULL, nDLX)
-                                    != 0)
-                        )
-                    {
-                        DBGX(printf("Not empty ww %zd wIndex %zd\n",
-                             (size_t)ww, (size_t)wIndex));
-                        goto notEmptyBm; // switch pop is not zero
-                    }
-                }
-                // switch pop is zero
-                FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDLUp),
-                    /* bDump */ 0);
-          #if defined(PP_IN_LINK)
-                assert(PWR_wPrefix(pwRoot, NULL, nDLUp) == 0);
-          #endif // defined(PP_IN_LINK)
-
-                *pwRoot = 0;
-                return KeyFound;
-notEmptyBm:;
-            }
-      #endif // defined(REMOVE)
-        }
-        else
-  #endif // defined(PP_IN_LINK)
-        {
+        } else {
             // Increment or decrement population count on the way in.
             wPopCnt = PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDLR);
-  #if defined(REMOVE)
-            if (bCleanup)
-            {
-                RemoveCleanup(nDLUp, pwRoot, wRoot);
-                if (wPopCnt == 0)
-                {
-                    FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDLUp),
-                        /* bDump */ 0);
-      #if defined(PP_IN_LINK)
-          #if defined(BM_IN_LINK)
-                assert(PWR_wPrefix(pwRoot, NULL, nDLUp) == 0);
-          #else // defined(BM_IN_LINK)
-                if (PWR_wPrefix(pwRoot, NULL, nDLR) != 0)
-                {
-                    DBGR(printf("wPrefixPop "OWx"\n",
-                                PWR_wPrefixPop(pwRoot, NULL)));
-                }
-                assert(PWR_wPrefix(pwRoot, NULL, nDLR) == 0);
-          #endif // defined(BM_IN_LINK)
-      #endif // defined(PP_IN_LINK)
-                    *pwRoot = 0;
-                    return KeyFound;
-                }
-            }
-            else
-  #endif // defined(REMOVE)
-            {
-                set_PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr,
-                                nDLR, wPopCnt + nIncr);
-                DBGX(printf("wPopCnt %zd\n",
-                     (size_t)PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDLR)));
-            }
+            set_PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDLR, wPopCnt + nIncr);
+            DBGX(printf("wPopCnt %zd\n",
+                (size_t)PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDLR)));
         }
 #endif // !defined(LOOKUP)
 

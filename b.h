@@ -375,7 +375,7 @@ typedef Word_t Bucket_t;
 #define cnBitsLeftAtDl3     (cnBitsLeftAtDl2 + cnBitsInD3)
 
 #define cnBitsIndexSzAtTop \
-    ((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit)
+    (cnBitsPerWord - nBL_from_nDL(cnDigitsPerWord - 1))
 
 // cnDigitsPerWord makes assumptions about anDL_to_nBitsIndexSz[] and
 // anDL_to_nBL[].  Yuck.
@@ -1505,7 +1505,7 @@ Status_t InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
 Status_t RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
 
 void InsertCleanup(int nDL, Word_t *pwRoot, Word_t wRoot);
-void RemoveCleanup(int nDL, Word_t *pwRoot, Word_t wRoot);
+void RemoveCleanup(Word_t wKey, int nDL, Word_t *pwRoot, Word_t wRoot);
 
 Word_t FreeArrayGuts(Word_t *pwRoot,
                      Word_t wPrefix, unsigned nBL, int bDump);
