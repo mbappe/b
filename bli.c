@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.497 2014/12/19 05:44:52 mike Exp mike $
+// @(#) $Id: bli.c,v 1.503 2014/12/21 16:00:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1439,7 +1439,7 @@ Status_t
 InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 #endif // defined(LOOKUP)
 {
-    unsigned nDLUp; (void)nDLUp; // silence gcc
+    int nDLUp; (void)nDLUp; // silence gcc
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
     unsigned nBL; (void)nBL;
 #if defined(LOOKUP)
@@ -1580,12 +1580,9 @@ again:
     {
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:
-  #if defined(INSERT)
-        if (bCleanup) { return Success; }
-  #endif // defined(INSERT)
-#if ( ! defined(LOOKUP) && defined(PP_IN_LINK) || defined(REMOVE) )
+#if ! defined(LOOKUP)
         nDLUp = nDL;
-#endif // ( ! defined(LOOKUP) && defined(PP_IN_LINK) || defined(REMOVE) )
+#endif // ! defined(LOOKUP)
         // nDLR is digits left including this switch but not skipped digits
         nDL = nDLR - 1; // digits left below this switch
         nBL = nDL_to_nBL_NAT(nDL); // Probably near the top.
@@ -1602,6 +1599,11 @@ t_switch:
              (void *)pwr_pLinks((Switch_t *)pwr), (int)wIndex, (int)wIndex));
 
 #if !defined(LOOKUP)
+  #if defined(INSERT)
+        if (bCleanup) {
+            InsertCleanup(nDLUp, pwRoot, wRoot);
+        } else
+  #endif // defined(INSERT)
   #if defined(PP_IN_LINK)
 // What if nDL was cnDigitsPerWord before it was updated?
 // Don't we have to walk the switch in that case too?
@@ -1755,16 +1757,9 @@ switchTail:
     {
         goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
 t_bm_sw:
-  #if defined(INSERT)
-        if (bCleanup) { return Success; }
-  #endif // defined(INSERT)
-
-  #if defined(BM_SW_FOR_REAL) \
-      || ( ! defined(LOOKUP) \
-          && (defined(PP_IN_LINK) || defined(BM_IN_LINK)) \
-              || (defined(REMOVE) && ! defined(BM_IN_LINK)) )
+  #if defined(BM_SW_FOR_REAL) || ! defined(LOOKUP)
         nDLUp = nDL;
-  #endif // defined(BM_SW_FOR_REAL) ...
+  #endif // defined(BM_SW_FOR_REAL) || ! defined(LOOKUP)
         nDL = nDLR - 1;
         nBL = nDL_to_nBL_NAT(nDL); // Probably near the top.
 
@@ -1833,6 +1828,11 @@ t_bm_sw:
         }
 
 #if !defined(LOOKUP)
+  #if defined(INSERT)
+        if (bCleanup) {
+            InsertCleanup(nDLUp, pwRoot, wRoot);
+        } else
+  #endif // defined(INSERT)
   #if defined(PP_IN_LINK)
 // What if nDL was cnDigitsPerWord before it was updated?
 // Don't we have to walk the switch in that case too?

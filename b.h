@@ -1504,6 +1504,8 @@ Status_t Remove(Word_t *pwRoot, Word_t wKey, unsigned nBL);
 Status_t InsertGuts(Word_t *pwRoot,
                     Word_t wKey, unsigned nDL, Word_t wRoot);
 
+void InsertCleanup(int nDL, Word_t *pwRoot, Word_t wRoot);
+
 Status_t RemoveGuts(Word_t *pwRoot,
                     Word_t wKey, unsigned nDL, Word_t wRoot);
 

@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.409 2014/12/21 04:17:35 mike Exp mike $
+// @(#) $Id: b.c,v 1.409 2014/12/21 04:24:07 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1917,6 +1917,28 @@ HexDump(char *str, Word_t *pw, unsigned nWords)
     printf("\n%s (pw %p nWords %d):\n", str, (void *)pw, nWords);
     for (unsigned ii = 0; ii < nWords; ii++) {
         printf(OWx"\n", pw[ii]);
+    }
+}
+
+// Adjust the tree if necessary following Insert.
+// nDL does not include any skip in *pwRoot/wRoot.
+void
+InsertCleanup(int nDL, Word_t *pwRoot, Word_t wRoot)
+{
+    (void)nDL; (void)pwRoot; (void)wRoot;
+    int nType = wr_nType(wRoot);
+    Word_t *pwr = wr_tp_pwr(wRoot, nType); (void)pwr;
+    Word_t wPopCnt;
+    static Word_t awReported[cnDigitsPerWord+1]; (void)awReported;
+    if (tp_bIsSwitch(nType)) {
+        wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDL);
+        if (((1 << LOG(wPopCnt)) == wPopCnt)
+            && (wPopCnt > awReported[nDL]))
+        {
+                printf("# IC: nDL %d nType 0x%0x wPopCnt %ld\n",
+                       nDL, nType, wPopCnt);
+                awReported[nDL] = wPopCnt;
+        }
     }
 }
 
