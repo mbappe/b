@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.412 2014/12/22 05:59:50 mike Exp mike $
+// @(#) $Id: b.c,v 1.413 2014/12/23 02:51:10 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -912,8 +912,9 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
     // Words-per-Key Numerator / Words-per-Key Denominator.
     // Shouldn't we be checking to see if conversion is appropriate on
     // insert even if/when we're not adding a new link?
-    if (wPopCntTotal * cnBmSwNum / cnBmSwDenom
-        >= (wWordsAllocated /* + wMallocs + wEvenMallocs */ + nWordsNull))
+    if ((wPopCntTotal * cnBmSwNum / cnBmSwDenom
+            >= (wWordsAllocated /* + wMallocs + wEvenMallocs */ + nWordsNull))
+        && (wPopCnt * 3 > EXP(nBitsIndexSz)))
 #endif
     {
 #if defined(DEBUG_INSERT)
@@ -1950,9 +1951,9 @@ void
 InsertCleanup(Word_t wKey, int nDL, Word_t *pwRoot, Word_t wRoot)
 {
 
-// Default cnNonBmLeafPopCntMax is 1536.
+// Default cnNonBmLeafPopCntMax is 1280.  Keep W/K <= 1.
 #if ! defined(cnNonBmLeafPopCntMax)
-  #define cnNonBmLeafPopCntMax  1536
+  #define cnNonBmLeafPopCntMax  1280
 #endif // ! defined(cnNonBmLeafPopCntMax)
 
     (void)wKey; (void)nDL; (void)pwRoot; (void)wRoot;
