@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.505 2014/12/22 04:19:25 mike Exp mike $
+// @(#) $Id: bli.c,v 1.506 2014/12/22 05:59:50 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1460,7 +1460,6 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 #else // defined(LOOKUP)
     Word_t wRoot;
   #if !defined(RECURSIVE)
-    unsigned nDLOrig = nDL;
           #if defined(INSERT)
     int nIncr = 1;
           #else // defined(INSERT)
@@ -1486,6 +1485,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     int bPrefixMismatch = 0; (void)bPrefixMismatch;
 
+    unsigned nDLOrig = nDL; (void)nDLOrig;
     Word_t *pwRootPrefix = NULL; (void)pwRootPrefix;
     Word_t *pwrPrefix = NULL; (void)pwrPrefix;
     unsigned nDLRPrefix = 0; (void)nDLRPrefix;
@@ -1601,11 +1601,11 @@ t_switch:
 #if !defined(LOOKUP)
         if (bCleanup) {
   #if defined(INSERT)
-            InsertCleanup(nDLUp, pwRoot, wRoot);
+            InsertCleanup(wKey, nDLUp, pwRoot, wRoot);
   #else // defined(INSERT)
             RemoveCleanup(wKey, nDLUp, pwRoot, wRoot);
-            if (*pwRoot == 0) { return KeyFound; }
   #endif // defined(INSERT)
+            if (*pwRoot != wRoot) { goto restart; }
         } else {
             // Increment or decrement population count on the way in.
             wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDLR);
@@ -1744,11 +1744,11 @@ t_bm_sw:
 #if !defined(LOOKUP)
         if (bCleanup) {
   #if defined(INSERT)
-            InsertCleanup(nDLUp, pwRoot, wRoot);
+            InsertCleanup(wKey, nDLUp, pwRoot, wRoot);
   #else // defined(INSERT)
             RemoveCleanup(wKey, nDLUp, pwRoot, wRoot);
-            if (*pwRoot == 0) { return KeyFound; }
   #endif // defined(INSERT)
+            if (*pwRoot != wRoot) { goto restart; }
         } else {
             // Increment or decrement population count on the way in.
             wPopCnt = PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDLR);
@@ -1932,15 +1932,6 @@ t_list:
 #endif // defined(EXTRA_TYPES)
     {
 embeddedBitmap:
-        // This case assumes we are at nDL == 1.
-        // There is an assertion in Initialize that should blow before
-        // we get here.
-        // It is more efficient this way and there is no reason to do
-        // otherwise just yet.
-        // We might want to use a different case if we ever do support
-        // bitmaps at nDL != 1.
-        assert(nDL == 1);
-
   #if ! defined(LOOKUP)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
@@ -2001,13 +1992,14 @@ embeddedBitmap:
               #endif // defined(PP_IN_LINK)
             return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
+            int nBL = nDL_to_nBL_NAT(nDL);
             int bBitIsSet
-                = (cnBitsInD1 <= cnLogBitsPerWord)
-                    ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
-                : (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
+                = (nBL <= cnLogBitsPerWord)
+                    ? BitIsSetInWord(wRoot, wKey & MSK(nBL))
+                : (EXP(nBL) <= sizeof(Link_t) * 8)
                     ? BitIsSet(STRUCT_OF(pwRoot, Link_t, ln_wRoot),
-                               wKey & MSK(cnBitsInD1))
-                : BitIsSet(wr_pwr(wRoot), wKey & MSK(cnBitsInD1));
+                               wKey & MSK(nBL))
+                : BitIsSet(wr_pwr(wRoot), wKey & MSK(nBL));
             if (bBitIsSet)
             {
       #if defined(REMOVE)

@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.411 2014/12/22 04:19:25 mike Exp mike $
+// @(#) $Id: b.c,v 1.412 2014/12/22 05:59:50 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -510,7 +510,12 @@ NewBitmap(Word_t *pwRoot, unsigned nBL)
 
     Word_t *pwBitmap = (Word_t *)MyMalloc(wWords);
 
-    METRICS(j__AllocWordsJLB1 += wWords); // JUDYA
+    if (nBL == nDL_to_nBL(2)) {
+        // Use Branch Bitmap column for 2-digit bitmap.
+        METRICS(j__AllocWordsJBB += wWords); // JUDYA
+    } else {
+        METRICS(j__AllocWordsJLB1 += wWords); // JUDYA
+    }
     METRICS(j__AllocWordsJL12 += wWords); // JUDYB -- overloaded
 
     DBGM(printf("NewBitmap nBL %u nBits "OWx
@@ -534,7 +539,12 @@ OldBitmap(Word_t *pwRoot, Word_t *pwr, unsigned nBL)
 
     MyFree(pwr, wWords);
 
-    METRICS(j__AllocWordsJLB1 -= wWords); // JUDYA
+    if (nBL == nDL_to_nBL(2)) {
+        // Use Branch Bitmap column for 2-digit bitmap.
+        METRICS(j__AllocWordsJBB -= wWords); // JUDYA
+    } else {
+        METRICS(j__AllocWordsJLB1 -= wWords); // JUDYA
+    }
     METRICS(j__AllocWordsJL12 -= wWords); // JUDYB -- overloaded
 
     *pwRoot = 0; // Do we need to clear the rest of the link, e.g. PP_IN_LINK?
@@ -1915,31 +1925,96 @@ void
 HexDump(char *str, Word_t *pw, unsigned nWords)
 {
     printf("\n%s (pw %p nWords %d):\n", str, (void *)pw, nWords);
-    for (unsigned ii = 0; ii < nWords; ii++) {
-        printf(OWx"\n", pw[ii]);
+    if (nWords % 8 == 0) {
+        for (unsigned ii = 0; ii < nWords; ii += 8) {
+            printf(" %016lx %016lx %016lx %016lx",
+                   pw[ii], pw[ii+1], pw[ii+2], pw[ii+3]);
+            printf(" %016lx %016lx %016lx %016lx\n",
+                   pw[ii+4], pw[ii+5], pw[ii+6], pw[ii+7]);
+        }
+    } else if (nWords % 4 == 0) {
+        for (unsigned ii = 0; ii < nWords; ii += 4) {
+            printf(" "OWx" "OWx" "OWx" "OWx"\n",
+                   pw[ii], pw[ii+1], pw[ii+2], pw[ii+3]);
+        }
+    } else {
+        for (unsigned ii = 0; ii < nWords; ii++) {
+            printf(OWx"\n", pw[ii]);
+        }
     }
 }
 
 // Adjust the tree if necessary following Insert.
 // nDL does not include any skip in *pwRoot/wRoot.
 void
-InsertCleanup(int nDL, Word_t *pwRoot, Word_t wRoot)
+InsertCleanup(Word_t wKey, int nDL, Word_t *pwRoot, Word_t wRoot)
 {
-    (void)nDL; (void)pwRoot; (void)wRoot;
+
+// Default cnNonBmLeafPopCntMax is 1536.
+#if ! defined(cnNonBmLeafPopCntMax)
+  #define cnNonBmLeafPopCntMax  1536
+#endif // ! defined(cnNonBmLeafPopCntMax)
+
+    (void)wKey; (void)nDL; (void)pwRoot; (void)wRoot;
     int nType = wr_nType(wRoot);
     Word_t *pwr = wr_tp_pwr(wRoot, nType); (void)pwr;
     Word_t wPopCnt;
-    static Word_t awReported[cnDigitsPerWord+1]; (void)awReported;
-    if (tp_bIsSwitch(nType)) {
-        wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDL);
-        if (((1 << LOG(wPopCnt)) == wPopCnt)
-            && (wPopCnt > awReported[nDL]))
+    if ((nDL == 2)
+        && tp_bIsSwitch(nType)
+        && ! tp_bIsBmSw(nType)
+        && ((wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDL))
+                >= cnNonBmLeafPopCntMax))
+    {
+        DBGI(printf("\n# IC: Creating a bitmap at DL2.\n"));
+
+        // Allocate a new bitmap.
+        Word_t *pwBitmap = NewBitmap(pwRoot, nDL_to_nBL(nDL));
+
+        for (Word_t ww = 0; ww < EXP(cnBitsInD2); ww++)
         {
-                // This printf is invisible to jbgraph.
-                printf("# IC: nDL %d nType 0x%0x wPopCnt %ld\n",
-                       nDL, nType, wPopCnt);
-                awReported[nDL] = wPopCnt;
+            Word_t *pwRootLn = &pwr_pLinks((Switch_t *)pwr)[ww].ln_wRoot;
+            Word_t wRootLn = *pwRootLn;
+            int nTypeLn = wr_nType(wRootLn);
+            Word_t *pwrLn = wr_tp_pwr(wRootLn, nTypeLn);
+            Word_t wBLM = MSK(cnBitsInD1); // Bits left mask.
+
+            if (nTypeLn == T_EMBEDDED_KEYS) {
+                int nPopCntLn = wr_nPopCnt(wRootLn, cnBitsInD1);
+                for (int nn = 1; nn <= nPopCntLn; nn++) {
+                    SetBit(&pwBitmap[ww * EXP(cnBitsInD1 - cnLogBitsPerWord)],
+                           ((wRootLn >> (cnBitsPerWord - (nn * cnBitsInD1)))
+                               & wBLM));
+                }
+            } else if (nTypeLn == T_BITMAP) {
+                memcpy(&pwBitmap[ww * EXP(cnBitsInD1 - cnLogBitsPerWord)],
+                       pwrLn, EXP(cnBitsInD1 - 3));
+                OldBitmap(pwRootLn, pwrLn, cnBitsInD1);
+            } else if (wRootLn != 0) {
+                assert(nTypeLn == T_LIST);
+                assert(cnBitsInD1 <= 8);
+                uint8_t *pcKeysLn = ls_pcKeysNAT(pwrLn);
+#if defined(PP_IN_LINK)
+                int nPopCntLn
+                      = PWR_wPopCnt(pwRootLn, (Switch_t *)pwrLn, cnBitsInD1);
+#else // defined(PP_IN_LINK)
+                int nPopCntLn = ls_xPopCnt(pwrLn, cnBitsInD1);
+#endif // defined(PP_IN_LINK)
+                for (int nn = 0; nn < nPopCntLn; nn++) {
+                    SetBit(&pwBitmap[ww * EXP(cnBitsInD1 - cnLogBitsPerWord)],
+                           (pcKeysLn[nn] & wBLM));
+                }
+            }
         }
+#if defined(DEBUG)
+        int count = 0;
+        for (int jj = 0;
+                 jj < (int)EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord);
+                 jj++)
+        {
+            count += __builtin_popcountll(pwBitmap[jj]);
+        }
+        assert(count == (int)wPopCnt);
+#endif // defined(DEBUG)
     }
 }
 
