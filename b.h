@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.309.1.2 2014/12/24 15:02:00 mike Exp $
+// @(#) $Id: b.h,v 1.312 2014/12/24 15:08:32 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -431,7 +431,9 @@ typedef Word_t Bucket_t;
 
 #define T_SWITCH_BIT         0x08
 #define T_SKIP_BIT           0x04
+#if defined(USE_BM_SW)
 #define T_BM_SW_BIT          0x02
+#endif // defined(USE_BM_SW)
 #define T_SW_OTHER_BIT       0x01
 
 #define T_FULL_BM_SW_BIT  T_SW_OTHER_BIT
@@ -1509,7 +1511,9 @@ Status_t InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
 Status_t RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
 
 void InsertCleanup(Word_t wKey, int nDL, Word_t *pwRoot, Word_t wRoot);
-void RemoveCleanup(Word_t wKey, int nDL, Word_t *pwRoot, Word_t wRoot);
+
+void RemoveCleanup(Word_t wKey, int nDL, int nDLR,
+                   Word_t *pwRoot, Word_t wRoot);
 
 Word_t FreeArrayGuts(Word_t *pwRoot,
                      Word_t wPrefix, unsigned nBL, int bDump);

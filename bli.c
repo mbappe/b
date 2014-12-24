@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.508 2014/12/24 00:21:53 mike Exp mike $
+// @(#) $Id: bli.c,v 1.509 2014/12/24 14:28:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1603,7 +1603,7 @@ t_switch:
   #if defined(INSERT)
             InsertCleanup(wKey, nDLUp, pwRoot, wRoot);
   #else // defined(INSERT)
-            RemoveCleanup(wKey, nDLUp, pwRoot, wRoot);
+            RemoveCleanup(wKey, nDLUp, nDLR, pwRoot, wRoot);
   #endif // defined(INSERT)
             if (*pwRoot != wRoot) { goto restart; }
         } else {
@@ -1746,7 +1746,7 @@ t_bm_sw:
   #if defined(INSERT)
             InsertCleanup(wKey, nDLUp, pwRoot, wRoot);
   #else // defined(INSERT)
-            RemoveCleanup(wKey, nDLUp, pwRoot, wRoot);
+            RemoveCleanup(wKey, nDLUp, nDLR, pwRoot, wRoot);
   #endif // defined(INSERT)
             if (*pwRoot != wRoot) { goto restart; }
         } else {

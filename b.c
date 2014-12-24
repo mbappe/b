@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.413 2014/12/23 02:51:10 mike Exp mike $
+// @(#) $Id: b.c,v 1.414 2014/12/23 04:02:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1962,7 +1962,9 @@ InsertCleanup(Word_t wKey, int nDL, Word_t *pwRoot, Word_t wRoot)
     Word_t wPopCnt;
     if ((nDL == 2)
         && tp_bIsSwitch(nType)
+#if defined(USE_BM_SW)
         && ! tp_bIsBmSw(nType)
+#endif // defined(USE_BM_SW)
         && ((wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDL))
                 >= cnNonBmLeafPopCntMax))
     {
@@ -3188,9 +3190,9 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL,
              unsigned nBL, Word_t wRoot);
 
 void
-RemoveCleanup(Word_t wKey, int nDL, Word_t *pwRoot, Word_t wRoot)
+RemoveCleanup(Word_t wKey, int nDL, int nDLR, Word_t *pwRoot, Word_t wRoot)
 {
-    (void)wKey; (void)nDL; (void)pwRoot; (void)wRoot;
+    (void)wKey; (void)nDL; (void)nDLR; (void)pwRoot; (void)wRoot;
 
     int nType = wr_nType(wRoot);
     Word_t *pwr = wr_tp_pwr(wRoot, nType); (void)pwr;
@@ -3241,18 +3243,11 @@ RemoveCleanup(Word_t wKey, int nDL, Word_t *pwRoot, Word_t wRoot)
     } else
   #endif // defined(PP_IN_LINK)
     {
-        int nDLR = tp_bIsSkip(nType) ?
-  #if defined(TYPE_IS_RELATIVE)
-                     nDL - wr_nDS(wRoot)
-  #else // defined(TYPE_IS_RELATIVE)
-                     wr_nDL(wRoot)
-  #endif // defined(TYPE_IS_RELATIVE)
-                 : nDL;
-
-        Word_t wPopCnt
-                = tp_bIsBmSw(nType)
-                    ? PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDLR)
-                    : PWR_wPopCnt(pwRoot, (  Switch_t *)pwr, nDLR);
+        Word_t wPopCnt =
+#if defined(USE_BM_SW)
+            tp_bIsBmSw(nType) ? PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDLR) :
+#endif // defined(USE_BM_SW)
+                                PWR_wPopCnt(pwRoot, (  Switch_t *)pwr, nDLR);
 
         if (wPopCnt == 0) {
             FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDL), /* bDump */ 0);
