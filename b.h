@@ -272,7 +272,9 @@ typedef Word_t Bucket_t;
 
 // Default is SKIP_TO_BM_SW.
 #if ! defined(NO_SKIP_TO_BM_SW)
-  #define SKIP_TO_BM_SW
+  #if defined(USE_BM_SW)
+      #define SKIP_TO_BM_SW
+  #endif // defined(USE_BM_SW)
 #endif // ! defined(NO_SKIP_TO_BM_SW)
 
 // Choose max list lengths.
@@ -1477,7 +1479,7 @@ typedef struct {
 #if defined(SKIP_TO_BM_SW)
     typedef Switch_t BmSwitch_t;
 #else // defined(SKIP_TO_BM_SW)
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+//#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 // Bitmap switch.
 typedef struct {
 #if ! defined(BM_IN_LINK)
@@ -1494,7 +1496,7 @@ typedef struct {
 #endif // (cnDummiesInSwitch != 0)
     Link_t sw_aLinks[1]; // variable size
 } BmSwitch_t;
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+//#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 #endif // defined(SKIP_TO_BM_SW)
 
 Status_t Insert(Word_t *pwRoot, Word_t wKey, unsigned nBL);

@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.507 2014/12/23 02:51:10 mike Exp mike $
+// @(#) $Id: bli.c,v 1.508 2014/12/24 00:21:53 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1994,11 +1994,11 @@ embeddedBitmap:
   #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
             int nBL = nDL_to_nBL_NAT(nDL);
             int bBitIsSet
-                = (nBL <= cnLogBitsPerWord)
-                    ? BitIsSetInWord(wRoot, wKey & MSK(nBL))
-                : (EXP(nBL) <= sizeof(Link_t) * 8)
+                = (cnBitsInD1 <= cnLogBitsPerWord)
+                    ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
+                : (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
                     ? BitIsSet(STRUCT_OF(pwRoot, Link_t, ln_wRoot),
-                               wKey & MSK(nBL))
+                               wKey & MSK(cnBitsInD1))
                 : BitIsSet(wr_pwr(wRoot), wKey & MSK(nBL));
             if (bBitIsSet)
             {
