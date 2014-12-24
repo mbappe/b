@@ -1,4 +1,7 @@
 
+// @(#) $Id: b.h,v 1.309.1.2 2014/12/24 15:02:00 mike Exp $
+// @(#) $Source: /Users/mike/b/RCS/b.h,v $
+
 #if ( ! defined(_B_H_INCLUDED) )
 #define _B_H_INCLUDED
 
