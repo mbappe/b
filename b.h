@@ -278,7 +278,7 @@ typedef Word_t Bucket_t;
 // Choose max list lengths.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
 
-// Default is cnListPopCntMax64 is 0xec or 0x40.
+// Default is cnListPopCntMax64 is 0x40 (0xec if NO_SKIP_TO_BM_SW or NO_SKIP_AT_TOP).
 #if ! defined(cnListPopCntMax64)
   #if defined(SKIP_TO_BM_SW) && ! defined(PP_IN_LINK) \
                              && ! defined(NO_SKIP_AT_TOP)
@@ -288,7 +288,7 @@ typedef Word_t Bucket_t;
   #endif // defined(SKIP_TO_BM_SW) && ! defined(PP_IN_LINK) && ...
 #endif // ! defined(cnListPopCntMax64)
 
-// Default is cnListPopCntMax32 is 0xf0 or 0x30.
+// Default is cnListPopCntMax32 is 0x30 (0xf0 if NO_USE_BM_SW).
 #if ! defined(cnListPopCntMax32)
   #if defined(USE_BM_SW)
       #define cnListPopCntMax32  0x30
@@ -297,7 +297,7 @@ typedef Word_t Bucket_t;
   #endif  // defined(USE_BM_SW)
 #endif // ! defined(cnListPopCntMax32)
 
-// Default is cnListPopCntMax16 is 0x70 or 0x40.
+// Default is cnListPopCntMax16 is 0x40 (0x70 if NO_USE_BM_SW).
 #if ! defined(cnListPopCntMax16)
   #if defined(USE_BM_SW)
       #define cnListPopCntMax16  0x40
@@ -308,7 +308,7 @@ typedef Word_t Bucket_t;
 
 // An 8-bit bitmap uses only 32-bytes plus malloc overhead.
 // It makes no sense to have a list that uses as much.
-// Default is cnListPopCntMax8  = ??.
+// Default cnListPopCntMax8 is 0x10 (0x17 if NO_EMBEDDED_KEYS_PARALLEL).
 #if ! defined(cnListPopCntMax8)
 #if defined(EMBEDDED_KEYS_PARALLEL)
 #define cnListPopCntMax8   0x10
@@ -317,8 +317,7 @@ typedef Word_t Bucket_t;
 #endif // defined(EMBEDDED_KEYS_PARALLEL)
 #endif // ! defined(cnListPopCntMax8)
 
-// Default cnListPopCntMaxDl1 is 7 for cnBitsInD1 = 8.
-// Default cnListPopCntMaxDl1 is embedded keys only.
+// Default cnListPopCntMaxDl1 is 7 for cnBitsInD1 = 8 (embedded keys only).
 #if ! defined(cnListPopCntMaxDl1)
   #  if (cnBitsInD1 == 7)
       #define cnListPopCntMaxDl1  0x08
