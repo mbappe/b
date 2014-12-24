@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.506 2014/12/22 05:59:50 mike Exp mike $
+// @(#) $Id: bli.c,v 1.507 2014/12/23 02:51:10 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2040,7 +2040,7 @@ embeddedBitmap:
 #endif // defined(EXTRA_TYPES)
     {
         assert(nDL_to_nBL_NAT(nDL)
-            <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
+            <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nDL_to_nBL(nDL)));
   #if ! defined(LOOKUP)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
