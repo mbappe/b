@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.414 2014/12/23 04:02:13 mike Exp mike $
+// @(#) $Id: b.c,v 1.415 2014/12/24 17:24:06 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1948,8 +1948,9 @@ HexDump(char *str, Word_t *pw, unsigned nWords)
 // Adjust the tree if necessary following Insert.
 // nDL does not include any skip in *pwRoot/wRoot.
 void
-InsertCleanup(Word_t wKey, int nDL, Word_t *pwRoot, Word_t wRoot)
+InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
 {
+    int nDL = nBL_to_nDL(nBL);
 
 // Default cnNonBmLeafPopCntMax is 1280.  Keep W/K <= 1.
 #if ! defined(cnNonBmLeafPopCntMax)
@@ -3190,8 +3191,11 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL,
              unsigned nBL, Word_t wRoot);
 
 void
-RemoveCleanup(Word_t wKey, int nDL, int nDLR, Word_t *pwRoot, Word_t wRoot)
+RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
 {
+    (void)nBL; (void)nBLR;
+    int nDL = nBL_to_nDL(nBL);
+    int nDLR = nBL_to_nDL(nBLR);
     (void)wKey; (void)nDL; (void)nDLR; (void)pwRoot; (void)wRoot;
 
     int nType = wr_nType(wRoot);
@@ -3211,10 +3215,12 @@ RemoveCleanup(Word_t wKey, int nDL, int nDLR, Word_t *pwRoot, Word_t wRoot)
         Word_t wIndex = wKey >> (cnBitsPerWord - cnBitsIndexSzAtTop);
         for (Word_t ww = 0; ww < EXP(cnBitsIndexSzAtTop); ww++)
         {
-            Word_t *pwRootLn
-                = &(tp_bIsBmSw(nType) ? pwr_pLinks((BmSwitch_t *)pwr)
-                                      : pwr_pLinks((  Switch_t *)pwr))
-                    [ww].ln_wRoot;
+            Word_t *pwRootLn = &((
+#if defined(USE_BM_SW)
+                tp_bIsBmSw(nType) ? pwr_pLinks((BmSwitch_t *)pwr) :
+#endif // defined(USE_BM_SW)
+                                      pwr_pLinks((  Switch_t *)pwr))
+                    [ww].ln_wRoot);
 
             int nDLX = wr_bIsSwitch(*pwRootLn)
                             && tp_bIsSkip(wr_nType(*pwRootLn)) ?

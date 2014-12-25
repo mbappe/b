@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.312 2014/12/24 15:08:32 mike Exp mike $
+// @(#) $Id: b.h,v 1.313 2014/12/24 17:24:06 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -482,6 +482,7 @@ enum {
 // nBitsIndexSz_from_nDL_NAX(_nDL)
 #if ((cnBitsInD3 == cnBitsPerDigit) && (cnBitsInD2 == cnBitsPerDigit))
   #define nBitsIndexSz_from_nDL_NAX(_nDL)  (cnBitsPerDigit)
+  #define nBitsIndexSz_from_nBL_NAX(_nBL)  (cnBitsPerDigit)
 #elif (cnBitsInD3 == cnBitsPerDigit)
   #define nBitsIndexSz_from_nDL_NAX(_nDL) \
     (((_nDL) == 2) ? cnBitsInD2 : cnBitsPerDigit)
@@ -630,6 +631,7 @@ enum {
 #endif // ! defined(BPD_TABLE)
 
 #define nDL_to_nBL_NAX(_nDL)          (nBL_from_nDL_NAX(_nDL))
+#define nBL_to_nBitsIndexSzNAX(_nBL)  (nBitsIndexSz_from_nBL_NAX(_nBL))
 #define nDL_to_nBitsIndexSzNAX(_nDL)  (nBitsIndexSz_from_nDL_NAX(_nDL))
 #define nDL_to_nBL_NAT(_nDL)          (nBL_from_nDL_NAT(_nDL))
 #define nDL_to_nBitsIndexSzNAT(_nDL)  (nDL_to_nBitsIndexSz(_nDL))
@@ -921,16 +923,22 @@ enum {
 
 // methods for Switch (and aliases)
 
-#define wPrefixPopMaskNotAtTop(_nDL) \
-    (EXP(nDL_to_nBL_NAT(_nDL)) - (Word_t)1)
+#define wPrefixPopMaskNotAtTop(_nDL)    (MSK(nDL_to_nBL_NAT(_nDL)))
+#define wPrefixPopMaskNotAtTopBL(_nBL)  (MSK(_nBL))
 
 #define wPrefixPopMask(_nDL) \
     (((_nDL) == cnDigitsPerWord) ? (Word_t)-1 : wPrefixPopMaskNotAtTop(_nDL))
 
-#define w_wPrefix(_w, _nDL)  ((_w) & ~wPrefixPopMask(_nDL))
-#define w_wPopCnt(_w, _nDL)  ((_w) &  wPrefixPopMask(_nDL))
+#define wPrefixPopMaskBL(_nBL)  (MSK(_nBL))
+
+#define w_wPrefix(  _w, _nDL)  ((_w) & ~wPrefixPopMask  (_nDL))
+#define w_wPrefixBL(_w, _nBL)  ((_w) & ~wPrefixPopMaskBL(_nBL))
+#define w_wPopCnt(  _w, _nDL)  ((_w) &  wPrefixPopMask  (_nDL))
+#define w_wPopCntBL(_w, _nBL)  ((_w) &  wPrefixPopMaskBL(_nBL))
+
 
 #define w_wPrefixNotAtTop(_w, _nDL)  ((_w) & ~wPrefixPopMaskNotAtTop(_nDL))
+#define w_wPrefixNotAtTopBL(_w, _nBL)  ((_w) & ~wPrefixPopMaskNotAtTopBL(_nBL))
 #define w_wPopCntNotAtTop(_w, _nDL)  ((_w) &  wPrefixPopMaskNotAtTop(_nDL))
 
 // It is a bit of a bummer that the macros for extracting fields that might
@@ -970,6 +978,9 @@ enum {
 #define PWR_wPrefixNAT(_pwRoot, _pwr, _nDL) \
     (w_wPrefixNotAtTop(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nDL)))
 
+#define PWR_wPrefixNATBL(_pwRoot, _pwr, _nBL) \
+    (w_wPrefixNotAtTopBL(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nBL)))
+
 #define set_w_wPrefix(_w, _nDL, _key) \
     ((_w) = (((_w) & wPrefixPopMask(_nDL)) \
             | ((_key) & ~wPrefixPopMask(_nDL))))
@@ -990,20 +1001,36 @@ enum {
 #define PWR_wPopCnt(_pwRoot, _pwr, _nDL) \
     (w_wPopCnt(PWR_wPopWord((_pwRoot), (_pwr)), (_nDL)))
 
+#define PWR_wPopCntBL(_pwRoot, _pwr, _nBL) \
+    (w_wPopCntBL(PWR_wPopWord((_pwRoot), (_pwr)), (_nBL)))
+
 #define set_PWR_wPopCnt(_pwRoot, _pwr, _nDL, _cnt) \
     (PWR_wPopWord((_pwRoot), (_pwr)) \
         = ((PWR_wPopWord((_pwRoot), (_pwr)) & ~wPrefixPopMask(_nDL)) \
             | ((_cnt) & wPrefixPopMask(_nDL))))
+
+#define set_PWR_wPopCntBL(_pwRoot, _pwr, _nBL, _cnt) \
+    (PWR_wPopWord((_pwRoot), (_pwr)) \
+        = ((PWR_wPopWord((_pwRoot), (_pwr)) & ~wPrefixPopMaskBL(_nBL)) \
+            | ((_cnt) & wPrefixPopMaskBL(_nBL))))
 
 #else // defined(POP_WORD)
 
 #define PWR_wPopCnt(_pwRoot, _pwr, _nDL) \
     (w_wPopCnt(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nDL)))
 
+#define PWR_wPopCntBL(_pwRoot, _pwr, _nBL) \
+    (w_wPopCntBL(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nBL)))
+
 #define set_PWR_wPopCnt(_pwRoot, _pwr, _nDL, _cnt) \
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
         = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMask(_nDL)) \
             | ((_cnt) & wPrefixPopMask(_nDL))))
+
+#define set_PWR_wPopCntBL(_pwRoot, _pwr, _nBL, _cnt) \
+    (PWR_wPrefixPop((_pwRoot), (_pwr)) \
+        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMaskBL(_nBL)) \
+            | ((_cnt) & wPrefixPopMaskBL(_nBL))))
 
 #endif // defined(POP_WORD)
 
