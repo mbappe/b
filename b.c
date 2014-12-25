@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.415 2014/12/24 17:24:06 mike Exp mike $
+// @(#) $Id: b.c,v 1.416 2014/12/25 19:57:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2037,10 +2037,9 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
 // When do we uncompress switches?
 // When do we coalesce switches?
 Status_t
-InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
+InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 {
-    (void)nDL;
-    unsigned nBL = nDL_to_nBL(nDL); (void)nBL;
+    int nDL = nBL_to_nDL(nBL);
     DBGI(printf("InsertGuts pwRoot %p wKey "OWx" nDL %d wRoot "OWx"\n",
                (void *)pwRoot, wKey, nDL, wRoot));
 
@@ -2215,7 +2214,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 //  - bitmap switch -- depth, prefix, pop, capacity, bitmap, links
 //  - list switch -- depth, prefix, pop, capacity, (key, link) pairs
 
-        unsigned nDLOld = nDL;
+        int nDLOld = nDL;
 
 #if defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
         // It makes no sense to impose a pop limit that is less than what
@@ -2502,7 +2501,7 @@ newSwitch:
                     nDL = 2;
                 }
             }
-            assert(nDL_to_nBL(nDL) > LOG(sizeof(Link_t) * 8));
+            assert(nDL_to_nBL(nDL) > (int)LOG(sizeof(Link_t) * 8));
 
 #if ! defined(DEPTH_IN_SW)
 #if defined(TYPE_IS_RELATIVE)
@@ -2589,13 +2588,13 @@ newSwitch:
                 for (w = 0; w < wPopCnt; w++)
                 {
                     Insert(pwRoot, pcKeys[w] | (wKey & ~(Word_t)0xff),
-                           nDLOld);
+                           nBLOld);
                 }
             } else if (nBLOld <= 16) {
                 for (w = 0; w < wPopCnt; w++)
                 {
                     Insert(pwRoot, psKeys[w] | (wKey & ~(Word_t)0xffff),
-                           nDLOld);
+                           nBLOld);
                 }
 #if (cnBitsPerWord > 32)
             } else if (nBLOld <= 32) {
@@ -2603,7 +2602,7 @@ newSwitch:
                 {
                     Insert(pwRoot,
                            piKeys[w] | (wKey & ~(Word_t)0xffffffff),
-                           nDLOld);
+                           nBLOld);
                     if (nDL == nDLOld) {
                     DBGI(printf(
                          "\n# InsertGuts After Insert(wKey 0x%x) Dump\n",
@@ -2619,7 +2618,7 @@ newSwitch:
             {
                 for (w = 0; w < wPopCnt; w++)
                 {
-                    Insert(pwRoot, pwKeys[w], nDLOld);
+                    Insert(pwRoot, pwKeys[w], nBLOld);
 
                     if (nDL == nDLOld) {
                     DBGI(printf(
@@ -2636,7 +2635,7 @@ newSwitch:
                 DBGI(printf("Just Before InsertGuts calls final Insert"));
                 DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
             }
-            Insert(pwRoot, wKey, nDLOld);
+            Insert(pwRoot, wKey, nBLOld);
 
 #if (cwListPopCntMax != 0)
             // Hmm.  Should this be nDLOld?
@@ -2648,9 +2647,9 @@ newSwitch:
     else
     {
   #if defined(TYPE_IS_RELATIVE)
-        unsigned nDLR = ! tp_bIsSkip(nType) ? nDL : nDL - wr_nDS(wRoot);
+        int nDLR = ! tp_bIsSkip(nType) ? nDL : nDL - wr_nDS(wRoot);
   #else // defined(TYPE_IS_RELATIVE)
-        unsigned nDLR = ! tp_bIsSkip(nType) ? nDL : wr_nDL(wRoot);
+        int nDLR = ! tp_bIsSkip(nType) ? nDL : wr_nDL(wRoot);
   #endif // defined(TYPE_IS_RELATIVE)
         (void)nDLR; // silence the compiler
   #if defined(BM_SW_FOR_REAL)
@@ -2688,7 +2687,7 @@ newSwitch:
                         w_wPrefix(wKey, nDLR), nDLR));
 #endif // defined(SKIP_LINKS)
             NewLink(pwRoot, wKey, nDLR, /* nDLUp */ nDL);
-            Insert(pwRoot, wKey, nDL);
+            Insert(pwRoot, wKey, nDL_to_nBL(nDL));
         }
 #endif // defined(BM_SW_FOR_REAL)
 #if defined(SKIP_LINKS) && defined(BM_SW_FOR_REAL)
@@ -2705,7 +2704,7 @@ newSwitch:
             // Can't have a prefix mismatch if there is no skip.
             assert(nDLR < nDL);
 
-            unsigned nDLUp = nDL;
+            int nDLUp = nDL;
 
             // Have to save old prefix before inserting the new switch because
             // NewSwitch copies to *pwRoot.
@@ -2921,7 +2920,7 @@ newSwitch:
                         " for prefix mismatch.\n"));
             DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
-            Insert(pwRoot, wKey, nDLUp);
+            Insert(pwRoot, wKey, nDL_to_nBL(nDLUp));
         }
 #endif // defined(SKIP_LINKS)
     }
@@ -3262,17 +3261,17 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
 }
 
 Status_t
-RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
+RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 {
     unsigned nType = wr_nType(wRoot); (void)nType;
     Word_t *pwr = wr_pwr(wRoot); (void)pwr;
-    unsigned nBL = nDL_to_nBL(nDL); (void)nBL;
+    int nDL = nBL_to_nDL(nBL); (void)nDL;
 
     DBGR(printf("RemoveGuts\n"));
 
 // Could we be more specific in this ifdef, e.g. cnListPopCntMax16?
 #if (cwListPopCntMax != 0)
-    if ((nBL <= LOG(sizeof(Link_t) * 8)) || (nType == T_BITMAP))
+    if ((nBL <= (int)LOG(sizeof(Link_t) * 8)) || (nType == T_BITMAP))
 #else // (cwListPopCntMax != 0)
     assert((nBL <= LOG(sizeof(Link_t) * 8)) || (nType == T_BITMAP));
 #endif // (cwListPopCntMax != 0)

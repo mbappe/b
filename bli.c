@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.513 2014/12/25 20:40:45 mike Exp mike $
+// @(#) $Id: bli.c,v 1.514 2014/12/25 23:13:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1436,7 +1436,7 @@ static Status_t
 Lookup(Word_t wRoot, Word_t wKey)
 #else // defined(LOOKUP)
 Status_t
-InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
+InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #endif // defined(LOOKUP)
 {
     int nBLUp; (void)nBLUp; // silence gcc
@@ -1457,7 +1457,6 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
           #endif // defined(PP_IN_LINK)
   #endif // defined(BM_IN_LINK)
 #else // defined(LOOKUP)
-    int nBL = nDL_to_nBL(nDL);
     Word_t wRoot;
   #if !defined(RECURSIVE)
           #if defined(INSERT)
@@ -1639,7 +1638,7 @@ switchTail:
         goto again;
         // nType = wr_nType(wRoot); *pwr = wr_tp_pwr(wRoot, nType); switch
 #else // defined(LOOKUP) || !defined(RECURSIVE)
-        return InsertRemove(pwRoot, wKey, nBL_to_nDL(nBL));
+        return InsertRemove(pwRoot, wKey, nBL);
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
     } // end of case T_SWITCH
@@ -2306,15 +2305,15 @@ notFound:
 #if defined(INSERT)
   #if defined(BM_IN_LINK)
     // If InsertGuts calls Insert, then it is always with the same
-    // pwRoot and nDL that Insert passed to InsertGuts.
+    // pwRoot and nBL that Insert passed to InsertGuts.
       #if !defined(RECURSIVE)
     assert((nBL != cnBitsPerWord) || (pwRoot == pwRootOrig));
       #endif // !defined(RECURSIVE)
   #endif // defined(BM_IN_LINK)
-    // InsertGuts is called with a pwRoot and nDL indicates the
-    // bits that were not decoded in identifying pwRoot.  nDL
+    // InsertGuts is called with a pwRoot and nBL indicates the
+    // bits that were not decoded in identifying pwRoot.  nBL
     // does not include any skip indicated in the type field of *pwRoot.
-    InsertGuts(pwRoot, wKey, nBL_to_nDL(nBL), wRoot); goto cleanup;
+    InsertGuts(pwRoot, wKey, nBL, wRoot); goto cleanup;
 undo:
 #endif // defined(INSERT)
 #if defined(REMOVE) && !defined(RECURSIVE)
@@ -2336,7 +2335,7 @@ restart:
   #if ! defined(LOOKUP)
       #if defined(REMOVE)
 removeGutsAndCleanup:
-    RemoveGuts(pwRoot, wKey, nBL_to_nDL(nBL), wRoot);
+    RemoveGuts(pwRoot, wKey, nBL, wRoot);
       #else // defined(REMOVE)
 cleanup:
       #endif // defined(REMOVE)
@@ -2657,7 +2656,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     else
   #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER)
     {
-        status = Insert(pwRoot, wKey, cnDigitsPerWord);
+        status = Insert(pwRoot, wKey, cnBitsPerWord);
     }
 
     if (status == Success) {
@@ -2799,7 +2798,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     else
   #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER)
     {
-        status = Remove(pwRoot, wKey, cnDigitsPerWord);
+        status = Remove(pwRoot, wKey, cnBitsPerWord);
     }
 
     if (status == Success) { wPopCntTotal--; }

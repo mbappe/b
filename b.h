@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.313 2014/12/24 17:24:06 mike Exp mike $
+// @(#) $Id: b.h,v 1.314 2014/12/25 19:57:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -1531,11 +1531,11 @@ typedef struct {
 //#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
 #endif // defined(SKIP_TO_BM_SW)
 
-Status_t Insert(Word_t *pwRoot, Word_t wKey, unsigned nBL);
-Status_t Remove(Word_t *pwRoot, Word_t wKey, unsigned nBL);
+Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBL);
+Status_t Remove(Word_t *pwRoot, Word_t wKey, int nBL);
 
-Status_t InsertGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
-Status_t RemoveGuts(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
+Status_t InsertGuts(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
+Status_t RemoveGuts(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
 
 void InsertCleanup(Word_t wKey, int nDL, Word_t *pwRoot, Word_t wRoot);
 
