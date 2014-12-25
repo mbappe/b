@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.512 2014/12/25 20:36:34 mike Exp mike $
+// @(#) $Id: bli.c,v 1.513 2014/12/25 20:40:45 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1967,15 +1967,15 @@ embeddedBitmap:
             // if not PP_IN_LINK.  If PP_IN_LINK, then we are using the
             // current pwRoot to find the prefix.
             // nBL is different for the two cases.
-            || (LOG(1
+            || ((int)LOG(1
                 | (PWR_wPrefixNATBL(pwRoot, (Switch_t *)pwrPrev, cnBitsInD1)
                             ^ wKey))
                 // The +1 is necessary because the pwrPrev
                 // prefix does not contain any less significant bits.
               #if defined(PP_IN_LINK)
-                    < cnBitsInD1
+                    < nBL
               #else // defined(PP_IN_LINK)
-                    < cnBitsInD2
+                    < nDL_to_nBL_NAX(nBL_to_nDL(nBL) + 1)
               #endif // defined(PP_IN_LINK)
                 )
           #endif // defined(SAVE_PREFIX)
