@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.511 2014/12/25 19:57:46 mike Exp mike $
+// @(#) $Id: bli.c,v 1.512 2014/12/25 20:36:34 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1816,7 +1816,7 @@ t_list:
         // loop.
         // Would like to combine the source code for this prefix
         // check and the one done in the bitmap section if possible.
-        nDL = nBL_to_nDL(nBL);
+        int nDL = nBL_to_nDL(nBL); (void)nDL;
         if ( 0
               #if (cnBitsPerWord > 32)
             || (nBL > 32) // leaf has whole key
@@ -1838,8 +1838,9 @@ t_list:
                             ^ wKey))
                 < nDL_to_nBL_NAB(nDLRPrefix))
               #else // defined(SAVE_PREFIX)
-            || (LOG(1 | (PWR_wPrefixNATBL(pwRoot, (Switch_t *)pwrPrev, nBL)
-                    ^ wKey))
+            || ((int)LOG(1
+                    | (PWR_wPrefixNATBL(pwRoot, (Switch_t *)pwrPrev, nBL)
+                        ^ wKey))
                 < (nBL
                   #if ! defined(PP_IN_LINK)
                     // prefix in parent switch doesn't contain last digit
