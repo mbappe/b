@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.510 2014/12/24 17:24:06 mike Exp mike $
+// @(#) $Id: bli.c,v 1.511 2014/12/25 19:57:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1442,7 +1442,6 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
     int nBLUp; (void)nBLUp; // silence gcc
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
 #if defined(LOOKUP)
-    unsigned nDL = cnDigitsPerWord;
     int nBL = cnBitsPerWord;
     Word_t *pwRoot;
   #if defined(BM_IN_LINK)
@@ -1473,7 +1472,6 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, unsigned nDL)
     Word_t *pwRootOrig = pwRoot; (void)pwRootOrig;
   #endif // !defined(LOOKUP) || defined(BM_IN_LINK)
 #endif // !defined(RECURSIVE)
-    unsigned nDLR;
     int nBLR;
     Word_t wPopCnt; (void)wPopCnt;
 #if ! defined(LOOKUP)
@@ -1497,7 +1495,6 @@ top:
   #endif // !defined(RECURSIVE)
     wRoot = *pwRoot;
 #endif // !defined(LOOKUP)
-    nDLR = nDL;
     nBLR = nBL;
 
 #if defined(LOOKUP) || !defined(RECURSIVE)
@@ -1508,13 +1505,12 @@ again:
     assert(nBLR == nBL);
 #endif // defined(SKIP_LINKS)
 #if ( ! defined(LOOKUP) )
-    assert(nDL >= 1); // valid for LOOKUP too
+    assert(nBL >= cnBitsInD1); // valid for LOOKUP too
     DBGX(printf("# pwRoot %p ", (void *)pwRoot));
 #else // ( ! defined(LOOKUP) )
     SMETRICS(j__TreeDepth++);
 #endif // ( ! defined(LOOKUP) )
-    DBGX(printf("# wRoot "OWx" wKey "OWx" nDL %d\n",
-            wRoot, wKey, nDL));
+    DBGX(printf("# wRoot "OWx" wKey "OWx" nBL %d\n", wRoot, wKey, nBL));
 
     unsigned nType = wr_nType(wRoot);
     Word_t *pwr = wr_tp_pwr(wRoot, nType);
@@ -1725,7 +1721,6 @@ t_bm_sw:
   #if defined(BM_SW_FOR_REAL)
                 DBGX(printf("missing link\n"));
                 nBL = nBLUp; // back up for InsertGuts
-                nDL = nBL_to_nDL(nBL);
                 goto notFound;
   #else // defined(BM_SW_FOR_REAL)
                 assert(0); // only for now
@@ -1779,12 +1774,11 @@ t_bm_sw:
     {
         goto t_list;
 t_list:
-        nDL = nBL_to_nDL(nBL);
-        DBGX(printf("T_LIST nDL %d\n", nDL));
+        DBGX(printf("T_LIST nBL %d\n", nBL));
   #if ! defined(LOOKUP)
         DBGX(printf("T_LIST bCleanup %d nIncr %d\n", bCleanup, nIncr));
   #endif // ! defined(LOOKUP)
-        DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMask(nDL)));
+        DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMaskBL(nBL)));
 
   #if ! defined(LOOKUP)
         if (bCleanup) {
@@ -1806,13 +1800,12 @@ t_list:
 
       #if defined(COMPRESSED_LISTS)
           #if !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
-        // nDL is relative to the bottom of the switch
+        // nBL is relative to the bottom of the switch
         // containing the pointer to the leaf.
         // Can we use NAT here since bNeedPrefixCheck will never
         // be true if we are at the top?
         // If the top digit is smaller than the rest, then NAT will
         // return nBL > cnBitsPerWord which works out perfectly.
-        unsigned nBL = nDL_to_nBL_NAT(nDL);
           #endif // !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
           #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We don't support skip links directly to leaves -- yet.
@@ -1823,6 +1816,7 @@ t_list:
         // loop.
         // Would like to combine the source code for this prefix
         // check and the one done in the bitmap section if possible.
+        nDL = nBL_to_nDL(nBL);
         if ( 0
               #if (cnBitsPerWord > 32)
             || (nBL > 32) // leaf has whole key
@@ -1844,7 +1838,7 @@ t_list:
                             ^ wKey))
                 < nDL_to_nBL_NAB(nDLRPrefix))
               #else // defined(SAVE_PREFIX)
-            || (LOG(1 | (PWR_wPrefixNAT(pwRoot, (Switch_t *)pwrPrev, nDL)
+            || (LOG(1 | (PWR_wPrefixNATBL(pwRoot, (Switch_t *)pwrPrev, nBL)
                     ^ wKey))
                 < (nBL
                   #if ! defined(PP_IN_LINK)
@@ -1901,8 +1895,8 @@ t_list:
           && defined(COMPRESSED_LISTS)
         else
         {
-            DBGX(printf("Mismatch at list wPrefix "OWx" nDL %d\n",
-                 PWR_wPrefixNAT(pwRoot, pwrPrev, nDL), nDL));
+            DBGX(printf("Mismatch at list wPrefix "OWx" nBL %d\n",
+                 PWR_wPrefixNAT(pwRoot, pwrPrev, nDL), nBL));
         }
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && ...
 
@@ -1916,13 +1910,13 @@ t_list:
         // SearchList because chances are it will have read it.
         // But it is more important to avoid getting it when not necessary
         // during lookup.
-        assert((nDL == cnDigitsPerWord) // there is no link with pop count
+        assert((nBL == cnBitsPerWord) // there is no link with pop count
             || (pwr != NULL) // non-NULL implies non-zero pop count
-            || (PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) == 0));
+            || (PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL) == 0));
         assert(nIncr == 1);
         DBGI(printf("did not find key\n"));
-        set_PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL,
-                        PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) + 1);
+        set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL,
+                        PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL) + 1);
       #endif // defined(PP_IN_LINK) && defined(INSERT)
 
         break;
@@ -1957,7 +1951,6 @@ embeddedBitmap:
 
   #if defined(SKIP_LINKS)
       #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-        nDL = nBL_to_nDL(nBL);
         // We have to do the prefix check here.
         if ( 0
           #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
