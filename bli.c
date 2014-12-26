@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.516 2014/12/26 00:20:09 mike Exp mike $
+// @(#) $Id: bli.c,v 1.517 2014/12/26 00:24:07 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1378,15 +1378,12 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
     (void)pbNeedPrefixCheck;
 
     int nBLR;
-    unsigned nDLR;
     int bPrefixMismatch; (void)bPrefixMismatch;
 
   #if defined(TYPE_IS_RELATIVE)
-    nDLR = nBL_to_nDL(nBL) - wr_nDS(wRoot);
-    nBLR = nDL_to_nBL_NAT(nDLR); // perf: nDL * cnBitsPerDigit
+    nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(wRoot));
   #else // defined(TYPE_IS_RELATIVE)
     nBLR = wr_nBL(wRoot);
-    nDLR = nBL_to_nDL(nBLR);
   #endif // defined(TYPE_IS_RELATIVE)
     assert(nBLR < nBL); // reserved
 
@@ -1816,7 +1813,6 @@ t_list:
         // loop.
         // Would like to combine the source code for this prefix
         // check and the one done in the bitmap section if possible.
-        int nDL = nBL_to_nDL(nBL); (void)nDL;
         if ( 0
               #if (cnBitsPerWord > 32)
             || (nBL > 32) // leaf has whole key
@@ -1845,7 +1841,7 @@ t_list:
                   #if ! defined(PP_IN_LINK)
                     // prefix in parent switch doesn't contain last digit
                     // for ! defined(PP_IN_LINK) case
-                    + nDL_to_nBitsIndexSzNAX(nDL + 1)
+                    + nDL_to_nBitsIndexSzNAX(nBL_to_nDL(nBL) + 1)
                   #endif // ! defined(PP_IN_LINK)
                 ))
               #endif // defined(SAVE_PREFIX)
@@ -1853,9 +1849,6 @@ t_list:
           #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #endif // defined(COMPRESSED_LISTS)
         {
-      #if defined(DL_IN_LL)
-            assert(ll_nDL(wRoot) == nDL);
-      #endif // defined(DL_IN_LL)
 
       // LOOKUP_NO_LIST_SEARCH is for analysis only.  We have retrieved the
       // pop count and prefix but we have not dereferenced the list itself.
@@ -1875,9 +1868,9 @@ t_list:
                 // i.e. in the same place as wPopCnt in switch is
                 // adjusted for pp-in-switch.
                 assert(nIncr == -1);
-                set_PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL,
-                                PWR_wPopCnt(pwRoot,
-                                            (Switch_t *)NULL, nDL) - 1);
+                set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL,
+                                  PWR_wPopCntBL(pwRoot,
+                                                (Switch_t *)NULL, nBL) - 1);
               #endif // defined(PP_IN_LINK)
                 goto removeGutsAndCleanup;
           #endif // defined(REMOVE)
@@ -1897,7 +1890,7 @@ t_list:
         else
         {
             DBGX(printf("Mismatch at list wPrefix "OWx" nBL %d\n",
-                 PWR_wPrefixNAT(pwRoot, pwrPrev, nDL), nBL));
+                 PWR_wPrefixNATBL(pwRoot, pwrPrev, nBL), nBL));
         }
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && ...
 
@@ -2475,14 +2468,13 @@ Initialize(void)
     // We could be a lot more creative here w.r.t. mapping our scarce type
     // values to absolute depths.  But why?  We have to look at the prefix
     // in a different word anyway.  See comments at tp_to_nDL in b.h.
-    if ( ! (nDL_to_tp(cnDigitsPerWord - 1) <= cnMallocMask) ) {
+    if (nDL_to_tp(cnDigitsPerWord - 1) > cnMallocMask) {
         printf("\n");
         printf("nDL_to_tp(cnDigitsPerWord   %2d) 0x%02x\n",
                cnDigitsPerWord, nDL_to_tp(cnDigitsPerWord));
         printf("tp_to_nDL(cnMallocMask    0x%02x)   %2d\n",
                (int)cnMallocMask, (int)tp_to_nDL(cnMallocMask));
     }
-    assert(nDL_to_tp(cnDigitsPerWord) <= cnMallocMask);
 #endif // ! defined(TYPE_IS_RELATIVE)
 #endif // ! defined(DEPTH_IN_SW)
 
