@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.314 2014/12/25 19:57:46 mike Exp mike $
+// @(#) $Id: b.h,v 1.315 2014/12/25 23:53:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -810,17 +810,22 @@ enum {
 // But why?  There is no real performance win since we have to look at the
 // prefix word anyway.
 // Should we enhance wr_nDL to take pwRoot and wRoot and nDL?
-  #define wr_nDL(_wr) \
+  #define wr_nBL(_wr) \
       (assert(tp_bIsSkip(wr_nType(_wr))), \
-          w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), 2))
+          w_wPopCntBL(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), \
+                      cnBitsLeftAtDl2))
 
-  #define set_wr_nDL(_wr, _nDL) \
-      (assert((_nDL) >= 2), \
+  #define wr_nDL(_wr)  nBL_to_nDL(wr_nBL(_wr))
+
+  #define set_wr_nBL(_wr, _nBL) \
+      (assert((_nBL) >= cnBitsLeftAtDl2), \
           set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
           (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
               = ((PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
-                      & ~wPrefixPopMask(2)) \
-                  | (_nDL))))
+                      & ~wPrefixPopMaskBL(cnBitsLeftAtDl2)) \
+                  | (_nBL))))
+
+  #define set_wr_nDL(_wr, _nDL)  set_wr_nBL((_wr), nDL_to_nBL(_nDL))
 
 #else // defined(DEPTH_IN_SW)
 
@@ -853,9 +858,14 @@ enum {
   #define     wr_nDL(_wr) \
       (assert(tp_bIsSkip(wr_nType(_wr))), tp_to_nDL(wr_nType(_wr)))
 
+  #define     wr_nBL(_wr)  nDL_to_nBL(tp_to_nDL(wr_nType(_wr)))
+
   #define set_wr_nDL(_wr, _nDL) \
       (assert(nDL_to_tp(_nDL) >= T_SKIP_TO_SWITCH), \
           set_wr_nType((_wr), nDL_to_tp(_nDL)))
+
+  #define set_wr_nBL(_wr, _nBL) \
+      set_wr_nDL((_wr), nBL_to_nDL(_nBL))
 
 #endif // defined(DEPTH_IN_SW)
 
