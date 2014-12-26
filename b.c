@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.418 2014/12/26 18:29:37 mike Exp mike $
+// @(#) $Id: b.c,v 1.419 2014/12/26 19:32:47 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1067,6 +1067,9 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
   #if defined(TYPE_IS_RELATIVE)
                 assert(wr_nDS(*pwRoot) == wr_nDS(wRoot));
   #else // defined(TYPE_IS_RELATIVE)
+      #if defined(LEVEL_IN_WROOT_HIGH_BITS)
+                set_wr_nBL(*pwRoot, nBL);
+      #endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
                 assert(wr_nDL(*pwRoot) == wr_nDL(wRoot));
   #endif // defined(TYPE_IS_RELATIVE)
             }
@@ -2526,7 +2529,7 @@ newSwitch:
             // How do we handle this for ! defined(TYPE_IS_RELATIVE)?
             // We can't unless defined(DEPTH_IN_SW).  So we have an
             // assertion in Initialize().
-            if (nDS_to_tp(nDLOld - nDL) > cnMallocMask) {
+            if (nDS_to_tp(nDLOld - nDL) > (int)cnMallocMask) {
                 nDL = nDLOld - tp_to_nDS(cnMallocMask);
             }
 #endif // defined(TYPE_IS_RELATIVE)
@@ -3213,7 +3216,7 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
     int nDLR = nBL_to_nDL(nBLR);
     (void)wKey; (void)nDL; (void)nDLR; (void)pwRoot; (void)wRoot;
 
-    int nType = wr_nType(wRoot);
+    int nType = wr_nType(wRoot); (void)nType;
     Word_t *pwr = wr_tp_pwr(wRoot, nType); (void)pwr;
 
   #if defined(PP_IN_LINK)
@@ -3244,9 +3247,9 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
       #else // defined(TYPE_IS_RELATIVE)
                          wr_nDL(*pwRootLn)
       #endif // defined(TYPE_IS_RELATIVE)
-                      : nDL;
+                      : nDL - 1;
 
-            --nDLX;
+            //--nDLX;
             DBGR(printf("wr_nDLX %d", nDLX));
             DBGR(printf(" PWR_wPopCnt %"_fw"d\n",
                         PWR_wPopCnt(pwRootLn, NULL, nDLX)));

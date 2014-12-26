@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.318 2014/12/26 17:59:41 mike Exp mike $
+// @(#) $Id: b.h,v 1.319 2014/12/26 19:32:47 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -280,9 +280,11 @@ typedef Word_t Bucket_t;
 
 // Default is SKIP_TO_BM_SW.
 #if ! defined(NO_SKIP_TO_BM_SW)
-  #if defined(USE_BM_SW) && defined(DEPTH_IN_SW)
-      #define SKIP_TO_BM_SW
-  #endif // defined(USE_BM_SW) // && defined(DEPTH_IN_SW)
+  #if defined(USE_BM_SW)
+      #if defined(DEPTH_IN_SW) || defined(LEVEL_IN_WROOT_HIGH_BITS)
+          #define SKIP_TO_BM_SW
+      #endif // defined(DEPTH_IN_SW) || defined(LEVEL_IN_WROOT_HIGH_BITS)
+  #endif // defined(USE_BM_SW)
 #endif // ! defined(NO_SKIP_TO_BM_SW)
 
 // Choose max list lengths.
@@ -419,9 +421,9 @@ typedef Word_t Bucket_t;
 #endif // defined(SKIP_TO_BM_SW)&&!(defined(USE_BM_SW)||defined(BM_SW_AT_DL2))
 
 #if defined(SKIP_TO_BM_SW) && (defined(USE_BM_SW) || defined(BM_SW_AT_DL2))
-  #if ! defined(DEPTH_IN_SW)
-      #error Sorry, no SKIP_TO_BM_SW without DEPTH_IN_SW.
-  #endif // ! defined(DEPTH_IN_SW)
+  #if ! defined(DEPTH_IN_SW) && ! defined(LEVEL_IN_WROOT_HIGH_BITS)
+      #error Sorry, no SKIP_TO_BM_SW without DEPTH_IN_SW or LEVEL_IN_WROOT...
+  #endif // ! defined(DEPTH_IN_SW) && ! defined(LEVEL_IN_WROOT_HIGH_BITS)
 #endif // defined(SKIP_TO_BM_SW)&&(defined(USE_BM_SW)||defined(BM_SW_AT_DL2))
 
 // Default is -DTYPE_IS_ABSOLUTE.  Use -DTYPE_IS_RELATIVE to change it.
@@ -465,13 +467,13 @@ enum {
     // to T_SKIP_TO_SWITCH.
     // Depth/level is determined by (nType - T_SKIP_TO_SWITCH).
     T_SKIP_TO_SWITCH = T_SWITCH_BIT | T_SKIP_BIT,
-#if defined(DEPTH_IN_SW) && (defined(USE_BM_SW) || defined(BM_SW_AT_DL2))
+#if defined(SKIP_TO_BM_SW)
     T_SKIP_TO_BM_SW = T_SWITCH_BIT | T_SKIP_BIT | T_BM_SW_BIT,
 #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
     T_SKIP_TO_FULL_BM_SW
         = T_SWITCH_BIT | T_SKIP_BIT | T_BM_SW_BIT | T_FULL_BM_SW_BIT,
 #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-#endif // defined(DEPTH_IN_SW) && (defined(USE_BM_SW)||defined(BM_SW_AT_DL2))
+#endif // defined(SKIP_TO_BM_SW)
 };
 
 #define T_SW_BASE  T_SKIP_TO_SWITCH // compatibility with old code
@@ -933,10 +935,11 @@ enum {
   // have available to represent some key skip counts.  But why?
   #define wr_nDS(_wr) \
       (assert(tp_bIsSkip(wr_nType(_wr))), \
+          assert(w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), /*nDL*/ 1) > 1), \
           w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), /*nDL*/ 1))
 
   #define set_wr_nDS(_wr, _nDS) \
-      (assert((_nDL) >= 2), \
+      (assert((_nDS) >= 2), \
           set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
           /* put skip cnt in the PP pop field but use DL=1 for mask */ \
           (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
@@ -947,7 +950,8 @@ enum {
 #else // defined(DEPTH_IN_SW)
 
   #define     wr_nDS(_wr) \
-      (assert(tp_bIsSkip(wr_nType(_wr))), tp_to_nDS(wr_nType(_wr)))
+      (assert(tp_bIsSkip(wr_nType(_wr))), \
+          assert(tp_to_nDS(wr_nType(_wr)) > 1), tp_to_nDS(wr_nType(_wr)))
 
   #define set_wr_nDS(_wr, _nDS) \
       (assert(nDS_to_tp(_nDS) >= T_SKIP_TO_SWITCH), \
@@ -982,7 +986,6 @@ enum {
 #define w_wPrefixBL(_w, _nBL)  ((_w) & ~wPrefixPopMaskBL(_nBL))
 #define w_wPopCnt(  _w, _nDL)  ((_w) &  wPrefixPopMask  (_nDL))
 #define w_wPopCntBL(_w, _nBL)  ((_w) &  wPrefixPopMaskBL(_nBL))
-
 
 #define w_wPrefixNotAtTop(_w, _nDL)  ((_w) & ~wPrefixPopMaskNotAtTop(_nDL))
 #define w_wPrefixNotAtTopBL(_w, _nBL)  ((_w) & ~wPrefixPopMaskNotAtTopBL(_nBL))
