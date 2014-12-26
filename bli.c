@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.517 2014/12/26 00:24:07 mike Exp mike $
+// @(#) $Id: bli.c,v 1.518 2014/12/26 00:37:44 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1377,13 +1377,10 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
     (void)ppwRootPrefix; (void)ppwrPrefix; (void)pnBLRPrefix;
     (void)pbNeedPrefixCheck;
 
-    int nBLR;
-    int bPrefixMismatch; (void)bPrefixMismatch;
-
   #if defined(TYPE_IS_RELATIVE)
-    nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(wRoot));
+    int nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(wRoot));
   #else // defined(TYPE_IS_RELATIVE)
-    nBLR = wr_nBL(wRoot);
+    int nBLR = wr_nBL(wRoot);
   #endif // defined(TYPE_IS_RELATIVE)
     assert(nBLR < nBL); // reserved
 
@@ -1407,11 +1404,11 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
         *pbNeedPrefixCheck |= 1;
       #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
   #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-        bPrefixMismatch = (1
+      #if ! defined(LOOKUP) || ! defined(SAVE_PREFIX_TEST_RESULT)
+        int bPrefixMismatch = (1
             && ((int)LOG(1 | (PWR_wPrefixNATBL(pwRoot,
                                           (Switch_t *)pwr, nBLR) ^ wKey))
                     >= nBLR));
-      #if ! defined(LOOKUP) || ! defined(SAVE_PREFIX_TEST_RESULT)
         if (bPrefixMismatch)
         {
             DBGX(printf("Mismatch wPrefix "Owx"\n",
@@ -1477,8 +1474,6 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrPrev = pwrPrev; // suppress "uninitialized" compiler warning
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-    int bPrefixMismatch = 0; (void)bPrefixMismatch;
-
     int nBLOrig = nBL; (void)nBLOrig;
     Word_t *pwRootPrefix = NULL; (void)pwRootPrefix;
     Word_t *pwrPrefix = NULL; (void)pwrPrefix;
@@ -1877,12 +1872,7 @@ t_list:
           #if defined(INSERT) && ! defined(RECURSIVE)
                 if (nIncr > 0) { goto undo; } // undo counting
           #endif // defined(INSERT) && ! defined(RECURSIVE)
-          #if defined(LOOKUP) && defined(SAVE_PREFIX_TEST_RESULT)
-                if ( ! bPrefixMismatch )
-          #endif // defined(INSERT) && defined(SAVE_PREFIX_TEST_RESULT)
-                {
-                    return KeyFound;
-                }
+                return KeyFound;
             }
         }
       #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) \
