@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.315 2014/12/25 23:53:08 mike Exp mike $
+// @(#) $Id: b.h,v 1.316 2014/12/26 00:12:17 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -283,7 +283,7 @@ typedef Word_t Bucket_t;
 // Choose max list lengths.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
 
-// Default is cnListPopCntMax64 is 0x40 (0xec if NO_SKIP_TO_BM_SW or NO_SKIP_AT_TOP).
+// Default is cnListPopCntMax64 is 0x40 (0xec if NO_SKIP TO_BM_SW or AT_TOP).
 #if ! defined(cnListPopCntMax64)
   #if defined(SKIP_TO_BM_SW) && ! defined(PP_IN_LINK) \
                              && ! defined(NO_SKIP_AT_TOP)
@@ -939,7 +939,8 @@ enum {
 #define wPrefixPopMask(_nDL) \
     (((_nDL) == cnDigitsPerWord) ? (Word_t)-1 : wPrefixPopMaskNotAtTop(_nDL))
 
-#define wPrefixPopMaskBL(_nBL)  (MSK(_nBL))
+#define wPrefixPopMaskBL(_nBL) \
+    (((_nBL) == cnBitsPerWord) ? (Word_t)-1 : wPrefixPopMaskNotAtTopBL(_nBL))
 
 #define w_wPrefix(  _w, _nDL)  ((_w) & ~wPrefixPopMask  (_nDL))
 #define w_wPrefixBL(_w, _nBL)  ((_w) & ~wPrefixPopMaskBL(_nBL))
