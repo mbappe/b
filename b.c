@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.417 2014/12/25 23:53:08 mike Exp mike $
+// @(#) $Id: b.c,v 1.418 2014/12/26 18:29:37 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -188,6 +188,9 @@ MyFree(Word_t *pw, Word_t wWords)
     // make sure it is ok for us to use some of the bits in the word
     assert((pw[-1] >> 16) == ((pw[-1] & MSK(16)) >> 4));
     DBG(pw[-1] &= MSK(16));
+#if defined(LEVEL_IN_WROOT_HIGH_BITS)
+    pw[-1] &= MSK(16);
+#endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
     assert((((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2))
         || (((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 2)
         || (((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 4));
@@ -538,7 +541,7 @@ NewBitmap(Word_t *pwRoot, unsigned nBL)
 
     memset((void *)pwBitmap, 0, wWords * sizeof(Word_t));
 
-    Word_t wRoot; set_wr(wRoot, pwBitmap, T_BITMAP);
+    Word_t wRoot = 0; set_wr(wRoot, pwBitmap, T_BITMAP);
 
     *pwRoot = wRoot;
 
@@ -3123,7 +3126,7 @@ DeflateExternalList(Word_t *pwRoot,
         assert(nPopCnt == 1);
         assert(nPopCntMax == 0);
         Word_t *pwList = NewList(1, nBL_to_nDL(nBL));
-        set_wr(wRoot, pwList, T_ONE); // external T_ONE list
+        wRoot = 0; set_wr(wRoot, pwList, T_ONE); // external T_ONE list
         Word_t *pwKeys = ls_pwKeys(pwr, nBL);
         *pwList = pwKeys[0];
     }

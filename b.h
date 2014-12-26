@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.317 2014/12/26 16:36:18 mike Exp mike $
+// @(#) $Id: b.h,v 1.318 2014/12/26 17:59:41 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -273,10 +273,10 @@ typedef Word_t Bucket_t;
 #define cnBitsInD1  8
 #endif // ! defined(cnBitsInD1)
 
-// Default is -DDEPTH_IN_SW.  Should be called LEVEL_IN_PREFIX_WORD.
-#if ! defined(NO_DEPTH_IN_SW)
+// Default is -DDEPTH_IN_SW unless -DLEVEL_IN_WROOT_HIGH_BITS.
+#if ! defined(LEVEL_IN_WROOT_HIGH_BITS) && ! defined(NO_DEPTH_IN_SW)
   #define DEPTH_IN_SW
-#endif // ! defined(NO_DEPTH_IN_SW)
+#endif // ! defined(LEVEL_IN_WROOT_HIGH_BITS) && ! defined(NO_DEPTH_IN_SW)
 
 // Default is SKIP_TO_BM_SW.
 #if ! defined(NO_SKIP_TO_BM_SW)
@@ -740,17 +740,37 @@ enum {
 // Set the nType field in wRoot.
 #define set_wr_nType(_wr, _type)  ((_wr) = ((_wr) & ~cnMallocMask) | (_type))
 
-// Extract the pwRoot field from wRoot given the value of the type field.
-#define     wr_tp_pwr(_wr, _tp)          ((Word_t *)((_wr) ^ (_tp)))
-// Extract the pwRoot field from wRoot.
-#define     wr_pwr(_wr)                  ((Word_t *)((_wr) & ~cnMallocMask))
+#if defined(LEVEL_IN_WROOT_HIGH_BITS)
 
-// Set the pwRoot field in wRoot.
-#define set_wr_pwr(_wr, _pwr) \
-                ((_wr) = ((_wr) & cnMallocMask) | (Word_t)(_pwr))
+  #define wr_pwr(_wr) \
+          ((Word_t *)((_wr) & ~((0xffUL << 56) | cnMallocMask)))
 
-// Set the pwRoot and nType fields in wRoot.
-#define set_wr(_wr, _pwr, _type)  ((_wr) = (Word_t)(_pwr) | (_type))
+  #define wr_tp_pwr(_wr, _tp)  wr_pwr(_wr)
+
+  // Set the pwRoot field in wRoot.
+  #define set_wr_pwr(_wr, _pwr) \
+          ((_wr) = ((_wr) & ((0xffUL << 56) | cnMallocMask)) | (Word_t)(_pwr))
+
+  // Set the pwRoot and nType fields in wRoot.
+  #define set_wr(_wr, _pwr, _type) \
+          ((_wr) = ((_wr) & (0xffUL << 56)) | (Word_t)(_pwr) | (_type))
+
+#else // defined(LEVEL_IN_WROOT_HIGH_BITS)
+
+  // Extract the pwRoot field from wRoot.
+  #define wr_pwr(_wr)  ((Word_t *)((_wr) & ~cnMallocMask))
+
+  // Extract the pwRoot field from wRoot given the value of the type field.
+  #define wr_tp_pwr(_wr, _tp)  ((Word_t *)((_wr) ^ (_tp)))
+
+  // Set the pwRoot field in wRoot.
+  #define set_wr_pwr(_wr, _pwr) \
+          ((_wr) = ((_wr) & cnMallocMask) | (Word_t)(_pwr))
+
+  // Set the pwRoot and nType fields in wRoot.
+  #define set_wr(_wr, _pwr, _type)  ((_wr) = (Word_t)(_pwr) | (_type))
+
+#endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
 
 #if defined(USE_T_ONE)
 
@@ -790,6 +810,20 @@ enum {
 #endif // defined(USE_T_ONE)
 
 #if defined(TYPE_IS_ABSOLUTE)
+
+#if defined(LEVEL_IN_WROOT_HIGH_BITS)
+
+  #define wr_nBL(_wr)  (assert(tp_bIsSkip(wr_nType(_wr))), (_wr) >> 56)
+
+  #define wr_nDL(_wr)  nBL_to_nDL(wr_nBL(_wr))
+
+  #define set_wr_nBL(_wr, _nBL) \
+          (set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
+           ((_wr) = ((_wr) & ~(0xffUL << 56) | (Word_t)(_nBL) << 56)))
+
+  #define set_wr_nDL(_wr, _nDL)  set_wr_nBL((_wr), nDL_to_nBL(_nDL))
+
+#else // defined(LEVEL_IN_WROOT_HIGH_BITS)
 
 #if defined(DEPTH_IN_SW)
 // DEPTH_IN_SW directs us to use the low bits of sw_wPrefixPop for absolute
@@ -868,6 +902,8 @@ enum {
       set_wr_nDL((_wr), nBL_to_nDL(_nBL))
 
 #endif // defined(DEPTH_IN_SW)
+
+#endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
 
 #else // defined(TYPE_IS_ABSOLUTE)
 

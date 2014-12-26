@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.518 2014/12/26 00:37:44 mike Exp mike $
+// @(#) $Id: bli.c,v 1.519 2014/12/26 01:08:07 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2453,6 +2453,7 @@ Initialize(void)
         printf("Try increasing cnBitsInD1 or decreasing sizeof(Link_t).\n");
     }
     assert(EXP(cnBitsLeftAtDl2) > sizeof(Link_t) * 8);
+#if ! defined(LEVEL_IN_WROOT_HIGH_BITS)
 #if ! defined(DEPTH_IN_SW)
 #if ! defined(TYPE_IS_RELATIVE)
     // We could be a lot more creative here w.r.t. mapping our scarce type
@@ -2467,6 +2468,7 @@ Initialize(void)
     }
 #endif // ! defined(TYPE_IS_RELATIVE)
 #endif // ! defined(DEPTH_IN_SW)
+#endif // ! defined(LEVEL_IN_WROOT_HIGH_BITS)
 
 #if defined(BPD_TABLE_RUNTIME_INIT)
     for (unsigned nDL = 0;
