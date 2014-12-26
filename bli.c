@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.515 2014/12/25 23:53:08 mike Exp mike $
+// @(#) $Id: bli.c,v 1.516 2014/12/26 00:20:09 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1370,11 +1370,11 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
                int *pnBLR,
                Word_t **ppwRootPrefix,
                Word_t **ppwrPrefix,
-               unsigned *pnDLRPrefix,
+               int *pnBLRPrefix,
                int *pbNeedPrefixCheck)
 {
     (void)pwRoot; (void)pwr; (void)wKey; (void)nBL; (void)pnBLR;
-    (void)ppwRootPrefix; (void)ppwrPrefix; (void)pnDLRPrefix;
+    (void)ppwRootPrefix; (void)ppwrPrefix; (void)pnBLRPrefix;
     (void)pbNeedPrefixCheck;
 
     int nBLR;
@@ -1403,7 +1403,7 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
           #else // defined(PP_IN_LINK)
         *ppwrPrefix = pwr;
           #endif // defined(PP_IN_LINK)
-        *pnDLRPrefix = nDLR;
+        *pnBLRPrefix = nBLR;
       #endif // defined(SAVE_PREFIX)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
         // Record that there were prefix bits that were not checked.
@@ -1418,8 +1418,8 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
         if (bPrefixMismatch)
         {
             DBGX(printf("Mismatch wPrefix "Owx"\n",
-                        PWR_wPrefixNAT(pwRoot, (Switch_t *)pwr, nDLR)));
-            // Caller doesn't need/get an updated *pnDLR in this case.
+                        PWR_wPrefixNATBL(pwRoot, (Switch_t *)pwr, nBLR)));
+            // Caller doesn't need/get an updated *pnBLR in this case.
             return 1; // prefix mismatch
         }
       #endif // ! defined(LOOKUP) || ! defined(SAVE_PREFIX_TEST_RESULT)
@@ -1485,7 +1485,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     int nBLOrig = nBL; (void)nBLOrig;
     Word_t *pwRootPrefix = NULL; (void)pwRootPrefix;
     Word_t *pwrPrefix = NULL; (void)pwrPrefix;
-    unsigned nDLRPrefix = 0; (void)nDLRPrefix;
+    int nBLRPrefix = 0; (void)nBLRPrefix;
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
@@ -1530,7 +1530,7 @@ again:
 
         if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL,
                            &nBLR, &pwRootPrefix,
-                           &pwrPrefix, &nDLRPrefix, &bNeedPrefixCheck))
+                           &pwrPrefix, &nBLRPrefix, &bNeedPrefixCheck))
         {
             break;
         }
@@ -1556,7 +1556,7 @@ again:
     {
         if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL,
                            &nBLR, &pwRootPrefix,
-                           &pwrPrefix, &nDLRPrefix, &bNeedPrefixCheck))
+                           &pwrPrefix, &nBLRPrefix, &bNeedPrefixCheck))
         {
             break;
         }
@@ -1833,10 +1833,10 @@ t_list:
             // If we need a prefix check, then we're not at the top.
             // And pwRoot is initialized despite what gcc might think.
               #if defined(SAVE_PREFIX)
-            || (LOG(1 | (PWR_wPrefixNAT(pwRootPrefix,
-                                        (Switch_t *)pwrPrefix, nDLRPrefix)
+            || (LOG(1 | (PWR_wPrefixNATBL(pwRootPrefix,
+                                        (Switch_t *)pwrPrefix, nBLRPrefix)
                             ^ wKey))
-                < nDL_to_nBL_NAB(nDLRPrefix))
+                < nBLRPrefix)
               #else // defined(SAVE_PREFIX)
             || ((int)LOG(1
                     | (PWR_wPrefixNATBL(pwRoot, (Switch_t *)pwrPrev, nBL)
@@ -1958,9 +1958,9 @@ embeddedBitmap:
             || ! bNeedPrefixCheck
           #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
           #if defined(SAVE_PREFIX)
-            || (LOG(1 | (PWR_wPrefixNAT(pwRootPrefix, pwrPrefix, nDLRPrefix)
+            || (LOG(1 | (PWR_wPrefixNATBL(pwRootPrefix, pwrPrefix, nBLRPrefix)
                     ^ wKey))
-                < nDL_to_nBL_NAX(nDLRPrefix))
+                < nBLRPrefix)
           #else // defined(SAVE_PREFIX)
             // Notice that we're using pwr which was extracted from the
             // previous wRoot -- not the current wRoot -- to find the prefix,
