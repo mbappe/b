@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.416 2014/12/25 19:57:46 mike Exp mike $
+// @(#) $Id: b.c,v 1.417 2014/12/25 23:53:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -163,6 +163,12 @@ MyMalloc(Word_t wWords)
         assert(0);
     }
 #endif // defined(DEBUG_MALLOC)
+    assert((((((Word_t *)ww)[-1] >> 4) << 1) == ALIGN_UP(wWords, 2))
+        || (((((Word_t *)ww)[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 2)
+        || (((((Word_t *)ww)[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 4));
+    // save ww[-1] to make sure we can use some of the bits in the word
+    DBG(((Word_t *)ww)[-1] |= (((Word_t *)ww)[-1] >> 4) << 16);
+    // The following does not always hold on free.
     assert((((Word_t *)ww)[-1] & 0x0f) == 3);
     assert(ww != 0);
     assert((ww & 0xffff000000000000UL) == 0);
@@ -177,7 +183,14 @@ MyFree(Word_t *pw, Word_t wWords)
 {
     if ( ! (wWords & 1) ) { --wEvenMallocs; }
     --wMallocs; wWordsAllocated -= wWords;
-    DBGM(printf("F: "OWx" %"_fw"d words\n", (Word_t)pw, wWords));
+    DBGM(printf("F: "OWx" %"_fw"d words pw[-1] %p\n",
+                (Word_t)pw, wWords, (void *)pw[-1]));
+    // make sure it is ok for us to use some of the bits in the word
+    assert((pw[-1] >> 16) == ((pw[-1] & MSK(16)) >> 4));
+    DBG(pw[-1] &= MSK(16));
+    assert((((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2))
+        || (((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 2)
+        || (((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 4));
     JudyFree(pw, wWords + cnMallocExtraWords);
 }
 
