@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.316 2014/12/26 00:12:17 mike Exp mike $
+// @(#) $Id: b.h,v 1.317 2014/12/26 16:36:18 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -273,11 +273,16 @@ typedef Word_t Bucket_t;
 #define cnBitsInD1  8
 #endif // ! defined(cnBitsInD1)
 
+// Default is -DDEPTH_IN_SW.  Should be called LEVEL_IN_PREFIX_WORD.
+#if ! defined(NO_DEPTH_IN_SW)
+  #define DEPTH_IN_SW
+#endif // ! defined(NO_DEPTH_IN_SW)
+
 // Default is SKIP_TO_BM_SW.
 #if ! defined(NO_SKIP_TO_BM_SW)
-  #if defined(USE_BM_SW)
+  #if defined(USE_BM_SW) && defined(DEPTH_IN_SW)
       #define SKIP_TO_BM_SW
-  #endif // defined(USE_BM_SW)
+  #endif // defined(USE_BM_SW) // && defined(DEPTH_IN_SW)
 #endif // ! defined(NO_SKIP_TO_BM_SW)
 
 // Choose max list lengths.
@@ -404,11 +409,6 @@ typedef Word_t Bucket_t;
 
 // Default is -UT_ONE_MASK and -UT_ONE_CALC_POP.
 // See EmbeddedListHasKey.
-
-// Default is -DDEPTH_IN_SW.  Should be called LEVEL_IN_PREFIX_WORD.
-#if ! defined(NO_DEPTH_IN_SW)
-  #define DEPTH_IN_SW
-#endif // ! defined(NO_DEPTH_IN_SW)
 
 #if defined(SKIP_TO_BM_SW) && ! defined(BM_IN_NON_BM_SW)
   #error Sorry, SKIP_TO_BM_SW requires BM_IN_NON_BM_SW.
@@ -973,7 +973,9 @@ enum {
 // We can worry about aligned word size lists later.  It should be easy
 // to distinguish the top level list from other word size lists and treat
 // them differently.
-#define OLD_LISTS
+  #if ! defined(OLD_LISTS)
+      #define OLD_LISTS
+  #endif // ! defined(OLD_LISTS)
 #if defined(DEPTH_IN_SW) || defined(POP_WORD)
 // Relocating the pop out of PP requires quite a few code changes.
 // It would be nice for depth, prefix and pop to share the same word.
