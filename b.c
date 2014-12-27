@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.420 2014/12/26 22:16:30 mike Exp mike $
+// @(#) $Id: b.c,v 1.421 2014/12/27 16:48:35 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2622,12 +2622,7 @@ newSwitch:
             }
 
 #if defined(COMPRESSED_LISTS)
-#if defined(SKIP_LINKS)
-            unsigned nBLOld = nDL_to_nBL(nDLOld);
-#else // defined(SKIP_LINKS)
-// Revisit the use of "Old" here.
-            unsigned nBLOld = nDL_to_nBL(nDL);
-#endif // defined(SKIP_LINKS)
+            int nBLOld = nDL_to_nBL(nDLOld);
             if (nBLOld <= 8) {
                 for (w = 0; w < wPopCnt; w++)
                 {
