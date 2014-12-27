@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.319 2014/12/26 19:32:47 mike Exp mike $
+// @(#) $Id: b.h,v 1.320 2014/12/26 22:16:30 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -45,11 +45,6 @@
 #if ! defined(NO_RETYPE_FULL_BM_SW)
   #define RETYPE_FULL_BM_SW
 #endif // ! defined(NO_RETYPE_FULL_BM_SW)
-
-// Default is -DBM_IN_NON_BM_SW.
-#if ! defined(NO_BM_IN_NON_BM_SW) && defined(RETYPE_FULL_BM_SW)
-  #define BM_IN_NON_BM_SW
-#endif // ! defined(NO_BM_IN_NON_BM_SW) && defined(RETYPE_FULL_BM_SW)
 
 // Default is -DDL_SPECIFIC_T_ONE.
 #if ! defined(NO_DL_SPECIFIC_T_ONE)
@@ -290,7 +285,7 @@ typedef Word_t Bucket_t;
 // Choose max list lengths.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
 
-// Default is cnListPopCntMax64 is 0x40 (0xec if NO_SKIP TO_BM_SW or AT_TOP).
+// Default is cnListPopCntMax64 is 0x40 (0xec if NO_SKIP_[TO_BM_SW|AT_TOP]).
 #if ! defined(cnListPopCntMax64)
   #if defined(SKIP_TO_BM_SW) && ! defined(PP_IN_LINK) \
                              && ! defined(NO_SKIP_AT_TOP)
@@ -411,6 +406,13 @@ typedef Word_t Bucket_t;
 
 // Default is -UT_ONE_MASK and -UT_ONE_CALC_POP.
 // See EmbeddedListHasKey.
+
+// Default is -DBM_IN_NON_BM_SW if [RETYPE_FULL|SKIP_TO]_BM_SW.
+#if ! defined(NO_BM_IN_NON_BM_SW)
+  #if defined(RETYPE_FULL_BM_SW) || defined(SKIP_TO_BM_SW)
+      #define BM_IN_NON_BM_SW
+  #endif // defined(RETYPE_FULL_BM_SW) || defined(SKIP_TO_BM_SW)
+#endif // ! defined(NO_BM_IN_NON_BM_SW) && defined(RETYPE_FULL_BM_SW)
 
 #if defined(SKIP_TO_BM_SW) && ! defined(BM_IN_NON_BM_SW)
   #error Sorry, SKIP_TO_BM_SW requires BM_IN_NON_BM_SW.
@@ -577,6 +579,7 @@ enum {
 // nBitsIndexSz_from_nDL(_nDL)
 #if (cnBitsInD1 == cnBitsPerDigit)
     #define nBitsIndexSz_from_nDL(_nDL)  (nBitsIndexSz_from_nDL_NAX(_nDL))
+    #define nBitsIndexSz_from_nBL(_nBL)  (nBitsIndexSz_from_nBL_NAX(_nBL))
 #else // (cnBitsInD1 == cnBitsPerDigit)
     #define nBitsIndexSz_from_nDL(_nDL) \
         ( ((_nDL) <= 1) ? cnBitsLeftAtDl1 : nBitsIndexSz_from_nDL_NAX(_nDL) )
@@ -622,11 +625,14 @@ enum {
   #define nDL_to_nBL(_nDL)           (anDL_to_nBL[_nDL])
   #define nBL_to_nDL(_nBL)           (anBL_to_nDL[_nBL])
 
+  #define nBL_to_nBitsIndexSz(_nBL)  nDL_to_nBitsIndexSz(nBL_to_nDL(_nBL))
+
 #endif // defined(BPD_TABLE)
 
 #if ! defined(BPD_TABLE)
 
   #define nDL_to_nBitsIndexSz(_nDL)  (nBitsIndexSz_from_nDL(_nDL))
+  #define nBL_to_nBitsIndexSz(_nBL)  (nBitsIndexSz_from_nBL(_nBL))
   #define nDL_to_nBL(_nDL)           (nBL_from_nDL(_nDL))
   #define nBL_to_nDL(_nBL)           (nDL_from_nBL(_nBL))
 
@@ -807,7 +813,7 @@ enum {
 
 #define set_wr_nPopCnt(_wr, _nBL, _nPopCnt) \
     ((_wr) &= ~(MSK(nBL_to_nBitsPopCntSz(_nBL)) << cnBitsMallocMask), \
-        (_wr) |= ((_nPopCnt) - 1) << cnBitsMallocMask)
+     (_wr) |= ((_nPopCnt) - 1) << cnBitsMallocMask)
 
 #endif // defined(USE_T_ONE)
 
@@ -848,18 +854,18 @@ enum {
 // Should we enhance wr_nDL to take pwRoot and wRoot and nDL?
   #define wr_nBL(_wr) \
       (assert(tp_bIsSkip(wr_nType(_wr))), \
-          w_wPopCntBL(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), \
-                      cnBitsLeftAtDl2))
+       w_wPopCntBL(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), \
+                   cnBitsLeftAtDl2))
 
   #define wr_nDL(_wr)  nBL_to_nDL(wr_nBL(_wr))
 
   #define set_wr_nBL(_wr, _nBL) \
       (assert((_nBL) >= cnBitsLeftAtDl2), \
-          set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
-          (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
-              = ((PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
-                      & ~wPrefixPopMaskBL(cnBitsLeftAtDl2)) \
-                  | (_nBL))))
+       set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
+       (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
+           = ((PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
+                   & ~wPrefixPopMaskBL(cnBitsLeftAtDl2)) \
+               | (_nBL))))
 
   #define set_wr_nDL(_wr, _nDL)  set_wr_nBL((_wr), nDL_to_nBL(_nDL))
 
@@ -891,14 +897,14 @@ enum {
   #define tp_to_nDL(_tp)   ((_tp)  - T_SW_BASE + 2)
   #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 2)
 
-  #define     wr_nDL(_wr) \
+  #define wr_nDL(_wr) \
       (assert(tp_bIsSkip(wr_nType(_wr))), tp_to_nDL(wr_nType(_wr)))
 
-  #define     wr_nBL(_wr)  nDL_to_nBL(tp_to_nDL(wr_nType(_wr)))
+  #define wr_nBL(_wr)  nDL_to_nBL(tp_to_nDL(wr_nType(_wr)))
 
   #define set_wr_nDL(_wr, _nDL) \
       (assert(nDL_to_tp(_nDL) >= T_SKIP_TO_SWITCH), \
-          set_wr_nType((_wr), nDL_to_tp(_nDL)))
+       set_wr_nType((_wr), nDL_to_tp(_nDL)))
 
   #define set_wr_nBL(_wr, _nBL) \
       set_wr_nDL((_wr), nBL_to_nDL(_nBL))
@@ -908,6 +914,20 @@ enum {
 #endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
 
 #else // defined(TYPE_IS_ABSOLUTE)
+
+#if defined(LEVEL_IN_WROOT_HIGH_BITS)
+
+  #define wr_nBS(_wr)  (assert(tp_bIsSkip(wr_nType(_wr))), (_wr) >> 56)
+
+  #define wr_nDS(_wr)  nBL_to_nDL(wr_nBL(_wr))
+
+  #define set_wr_nBS(_wr, _nBS) \
+          (set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
+           ((_wr) = ((_wr) & ~(0xffUL << 56) | (Word_t)(_nBS) << 56)))
+
+  #define set_wr_nDS(_wr, _nDS)  set_wr_nBS((_wr), nDL_to_nBL(_nDS))
+
+#else // defined(LEVEL_IN_WROOT_HIGH_BITS)
 
 // These two macros should be used sparingly outside of wr_nDS and set_wr_nDS.
 // Why?  Because the type field in wRoot does not contain this information
@@ -935,29 +955,34 @@ enum {
   // have available to represent some key skip counts.  But why?
   #define wr_nDS(_wr) \
       (assert(tp_bIsSkip(wr_nType(_wr))), \
-          assert(w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), /*nDL*/ 1) > 1), \
-          w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), /*nDL*/ 1))
+       assert(w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), \
+                        /*nDL*/ 1) \
+                      > 1), \
+       w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), /*nDL*/ 1))
 
   #define set_wr_nDS(_wr, _nDS) \
       (assert((_nDS) >= 2), \
-          set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
-          /* put skip cnt in the PP pop field but use DL=1 for mask */ \
-          (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
-              = ((PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
-                      & ~wPrefixPopMask(/* nDL */ 2)) \
-                  | (_nDS))))
+       set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
+       /* put skip cnt in the PP pop field but use DL=1 for mask */ \
+       (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
+           = ((PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
+                   & ~wPrefixPopMask(/* nDL */ 2)) \
+               | (_nDS))))
 
 #else // defined(DEPTH_IN_SW)
 
-  #define     wr_nDS(_wr) \
+  #define wr_nDS(_wr) \
       (assert(tp_bIsSkip(wr_nType(_wr))), \
-          assert(tp_to_nDS(wr_nType(_wr)) > 1), tp_to_nDS(wr_nType(_wr)))
+       assert(tp_to_nDS(wr_nType(_wr)) > 1), \
+       tp_to_nDS(wr_nType(_wr)))
 
   #define set_wr_nDS(_wr, _nDS) \
       (assert(nDS_to_tp(_nDS) >= T_SKIP_TO_SWITCH), \
-          set_wr_nType((_wr), nDS_to_tp(_nDS)))
+       set_wr_nType((_wr), nDS_to_tp(_nDS)))
 
 #endif // defined(DEPTH_IN_SW)
+
+#endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
 
 #endif // defined(TYPE_IS_ABSOLUTE)
 
