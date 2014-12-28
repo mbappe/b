@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.520 2014/12/26 19:32:47 mike Exp mike $
+// @(#) $Id: bli.c,v 1.521 2014/12/26 22:14:47 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1364,18 +1364,51 @@ if (nPopCnt != wr_nPopCnt(wRoot, nBL)) {
 
 #if defined(SKIP_LINKS)
 
+// SKIP_PREFIX_CHECK applies to LOOKUP only and indicates that we are going
+// to defer completing any prefix check until we reach the leaf.
+// If SKIP_PREFIX_CHECK is not defined, then we do a prefix check immediately
+// when we encounter any skip link and return lookup failure immediately if
+// there is a prefix mismatch.
+//
+// ALWAYS_CHECK_PREFIX_AT_LEAF is relevant only if SKIP_PREFIX_CHECK.  It
+// means we don't bother keeping track of whether or not any skip link was
+// encountered along the way to the leaf and we always do a whole prefix
+// check at the leaf.
+// If ALWAYS_CHECK_PREFIX_AT_LEAF is not defined, then we keep keep track
+// of whether or not a skip link was encountered on the way down and do
+// a prefix check at the leaf if and only if a skip link was encounted.
+//
+// SAVE_PREFIX is relevant only if SKIP_PREFIX_CHECK.  It means we save a
+// pointer to the lowest skip link encountered on the way down and we get
+// the prefix from that location once we get to the leaf for doing the
+// prefix mismatch check.
+// SAVE_PREFIX_TEST_RESULT means we do a prefix check at every skip link
+// encountered, but we don't act on the result by failing the lookup on
+// mismatch until we reach the leaf.
+// If neither SAVE_PREFIX nor SAVE_PREFIX_TEST_RESULT is defined we
+// get the whole prefix from the lowest switch and use that for the
+// prefix check at the leaf.
 static int
 PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
                int nBL,
-               int *pnBLR,
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+  #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+               int *pbNeedPrefixCheck,
+  #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+  #if defined(SAVE_PREFIX)
+      #if defined(PP_IN_LINK)
                Word_t **ppwRootPrefix,
+      #else // defined(PP_IN_LINK)
                Word_t **ppwrPrefix,
-               int *pnBLRPrefix,
-               int *pbNeedPrefixCheck)
+      #endif // defined(PP_IN_LINK)
+              int *pnBLRPrefix,
+  #elif defined(SAVE_PREFIX_TEST_RESULT)
+               int *pbPrefixMismatch,
+  #endif // defined(SAVE_PREFIX)
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+               int *pnBLR)
 {
     (void)pwRoot; (void)pwr; (void)wKey; (void)nBL; (void)pnBLR;
-    (void)ppwRootPrefix; (void)ppwrPrefix; (void)pnBLRPrefix;
-    (void)pbNeedPrefixCheck;
 
   #if defined(TYPE_IS_RELATIVE)
     int nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(wRoot));
@@ -1383,6 +1416,24 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
     int nBLR = wr_nBL(wRoot);
   #endif // defined(TYPE_IS_RELATIVE)
     assert(nBLR < nBL); // reserved
+
+  #if ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK) \
+            || defined(SAVE_PREFIX_TEST_RESULT)
+        int bPrefixMismatch;
+          #if defined(PP_IN_LINK)
+        if (nBL == cnBitsPerWord) {
+            // prefix is 0
+            bPrefixMismatch = (wKey >= EXP(nBLR));
+        } else
+          #endif // defined(PP_IN_LINK)
+        {
+            bPrefixMismatch
+                = ((int)LOG(1
+                        | (PWR_wPrefixNATBL(pwRoot,
+                                            (Switch_t *)pwr, nBLR) ^ wKey))
+                    >= nBLR);
+        }
+  #endif // ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK) || ...
 
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #if defined(SAVE_PREFIX)
@@ -1393,22 +1444,23 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
         // Maybe it's faster to use a word that is shared by all
         // than one that is shared by fewer.
           #if defined(PP_IN_LINK)
-        *ppwRootPrefix = pwRoot;
+// If PP_IN_LINK and nBL == cnBitsPerWord there is no link.
+// Saving pwRoot for the purpose of looking at the prefix in the link
+// later makes no sense.  Use *ppwRootPrefix == NULL to indicate
+// that the prefix is 0.
+        *ppwRootPrefix = (nBL != cnBitsPerWord) ? pwRoot : NULL;
           #else // defined(PP_IN_LINK)
         *ppwrPrefix = pwr;
           #endif // defined(PP_IN_LINK)
         *pnBLRPrefix = nBLR;
+      #elif defined(SAVE_PREFIX_TEST_RESULT)
+        *pbPrefixMismatch = bPrefixMismatch;
       #endif // defined(SAVE_PREFIX)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
         // Record that there were prefix bits that were not checked.
         *pbNeedPrefixCheck |= 1;
       #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
   #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-      #if ! defined(LOOKUP) || ! defined(SAVE_PREFIX_TEST_RESULT)
-        int bPrefixMismatch = (1
-            && ((int)LOG(1 | (PWR_wPrefixNATBL(pwRoot,
-                                          (Switch_t *)pwr, nBLR) ^ wKey))
-                    >= nBLR));
         if (bPrefixMismatch)
         {
             DBGX(printf("Mismatch wPrefix "Owx"\n",
@@ -1416,7 +1468,6 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
             // Caller doesn't need/get an updated *pnBLR in this case.
             return 1; // prefix mismatch
         }
-      #endif // ! defined(LOOKUP) || ! defined(SAVE_PREFIX_TEST_RESULT)
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 
     *pnBLR = nBLR;
@@ -1436,6 +1487,9 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 {
     int nBLUp; (void)nBLUp; // silence gcc
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
+#if defined(SAVE_PREFIX_TEST_RESULT)
+    int bPrefixMismatch = 0; (void)bPrefixMismatch;
+#endif // defined(SAVE_PREFIX_TEST_RESULT)
 #if defined(LOOKUP)
     int nBL = cnBitsPerWord;
     Word_t *pwRoot;
@@ -1521,8 +1575,22 @@ again:
         // pwr points to a switch
 
         if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL,
-                           &nBLR, &pwRootPrefix,
-                           &pwrPrefix, &nBLRPrefix, &bNeedPrefixCheck))
+  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+                           &bNeedPrefixCheck,
+      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+      #if defined(SAVE_PREFIX)
+          #if defined(PP_IN_LINK)
+                           &pwRootPrefix,
+          #else // defined(PP_IN_LINK)
+                           &pwrPrefix,
+          #endif // defined(PP_IN_LINK)
+                           &nBLRPrefix,
+      #elif defined(SAVE_PREFIX_TEST_RESULT)
+                           &bPrefixMismatch,
+      #endif // defined(SAVE_PREFIX)
+  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+                           &nBLR))
         {
             break;
         }
@@ -1547,8 +1615,22 @@ again:
     case T_SKIP_TO_BM_SW:
     {
         if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL,
-                           &nBLR, &pwRootPrefix,
-                           &pwrPrefix, &nBLRPrefix, &bNeedPrefixCheck))
+  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+                           &bNeedPrefixCheck,
+      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+      #if defined(SAVE_PREFIX)
+          #if defined(PP_IN_LINK)
+                           &pwRootPrefix,
+          #else // defined(PP_IN_LINK)
+                           &pwrPrefix,
+          #endif // defined(PP_IN_LINK)
+                           &nBLRPrefix,
+      #elif defined(SAVE_PREFIX_TEST_RESULT)
+                           &bPrefixMismatch,
+      #endif // defined(SAVE_PREFIX)
+  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+                           &nBLR))
         {
             break;
         }
@@ -1823,12 +1905,22 @@ t_list:
               #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
             // If we need a prefix check, then we're not at the top.
             // And pwRoot is initialized despite what gcc might think.
-              #if defined(SAVE_PREFIX)
-            || (LOG(1 | (PWR_wPrefixNATBL(pwRootPrefix,
-                                        (Switch_t *)pwrPrefix, nBLRPrefix)
+              #if defined(SAVE_PREFIX_TEST_RESULT)
+            || ( ! bPrefixMismatch )
+              #elif defined(SAVE_PREFIX)
+                  #if defined(PP_IN_LINK)
+            || ((pwRootPrefix == NULL) && (wKey < EXP(nBLRPrefix)))
+                  #endif // defined(PP_IN_LINK)
+            || (1
+                  #if defined(PP_IN_LINK)
+                && (pwRootPrefix != NULL)
+                  #endif // defined(PP_IN_LINK)
+                && ((int)LOG(1
+                        | (PWR_wPrefixNATBL(pwRootPrefix,
+                                            (Switch_t *)pwrPrefix, nBLRPrefix)
                             ^ wKey))
-                < nBLRPrefix)
-              #else // defined(SAVE_PREFIX)
+                    < nBLRPrefix))
+              #else // defined(SAVE_PREFIX_TEST_REUSLT)
             || ((int)LOG(1
                     | (PWR_wPrefixNATBL(pwRoot, (Switch_t *)pwrPrev, nBL)
                         ^ wKey))
@@ -1839,7 +1931,7 @@ t_list:
                     + nDL_to_nBitsIndexSzNAX(nBL_to_nDL(nBL) + 1)
                   #endif // ! defined(PP_IN_LINK)
                 ))
-              #endif // defined(SAVE_PREFIX)
+              #endif // defined(SAVE_PREFIX_TEST_RESULT)
             )
           #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #endif // defined(COMPRESSED_LISTS)
@@ -1941,9 +2033,18 @@ embeddedBitmap:
             || ! bNeedPrefixCheck
           #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
           #if defined(SAVE_PREFIX)
-            || (LOG(1 | (PWR_wPrefixNATBL(pwRootPrefix, pwrPrefix, nBLRPrefix)
-                    ^ wKey))
-                < nBLRPrefix)
+              #if defined(PP_IN_LINK)
+            || ((pwRootPrefix == NULL) && (wKey < EXP(nBLRPrefix)))
+              #endif // defined(PP_IN_LINK)
+            || (1
+              #if defined(PP_IN_LINK)
+                && (pwRootPrefix != NULL)
+              #endif // defined(PP_IN_LINK)
+                && ((int)LOG(1
+                        | (PWR_wPrefixNATBL(pwRootPrefix,
+                                            (Switch_t *)pwrPrefix, nBLRPrefix)
+                            ^ wKey))
+                    < nBLRPrefix))
           #else // defined(SAVE_PREFIX)
             // Notice that we're using pwr which was extracted from the
             // previous wRoot -- not the current wRoot -- to find the prefix,
