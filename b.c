@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.421 2014/12/27 16:48:35 mike Exp mike $
+// @(#) $Id: b.c,v 1.422 2014/12/27 20:06:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1078,14 +1078,10 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
 #if defined(SKIP_TO_BM_SW)
             if (nType == T_SKIP_TO_BM_SW) {
   #if defined(TYPE_IS_RELATIVE)
-      #if defined(LEVEL_IN_WROOT_HIGH_BITS)
                 set_wr_nBS(*pwRoot, wr_nBS(wRoot));
-      #endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
                 assert(wr_nBS(*pwRoot) == wr_nBS(wRoot));
   #else // defined(TYPE_IS_RELATIVE)
-      #if defined(LEVEL_IN_WROOT_HIGH_BITS)
                 set_wr_nBL(*pwRoot, nBLR);
-      #endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
                 assert(wr_nBL(*pwRoot) == wr_nBL(wRoot));
   #endif // defined(TYPE_IS_RELATIVE)
             }
