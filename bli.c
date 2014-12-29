@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.521 2014/12/26 22:14:47 mike Exp mike $
+// @(#) $Id: bli.c,v 1.522 2014/12/28 20:54:51 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1112,7 +1112,7 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
     while (nPopCnt >= cnBinarySearchThresholdWord)
     {
         nSplit = nPopCnt / 2;
-        DBGI(printf("SLW nSplit %d\n", nSplit));
+        //DBGI(printf("SLW nSplit %d\n", nSplit));
         if (pwKeys[nSplit] <= wKey) {
             pwKeys = &pwKeys[nSplit];
             nPopCnt -= nSplit;
@@ -1947,7 +1947,6 @@ t_list:
                 && (SearchList(pwr, wKey, nBL, pwRoot) >= 0))
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
-                DBGI(printf("found key\n"));
           #if defined(REMOVE)
               #if defined(PP_IN_LINK)
                 // Adjust wPopCnt in link to leaf for PP_IN_LINK.
