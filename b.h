@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.320 2014/12/26 22:16:30 mike Exp mike $
+// @(#) $Id: b.h,v 1.321 2014/12/27 16:48:35 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -287,12 +287,11 @@ typedef Word_t Bucket_t;
 
 // Default is cnListPopCntMax64 is 0x40 (0xec if NO_SKIP_[TO_BM_SW|AT_TOP]).
 #if ! defined(cnListPopCntMax64)
-  #if defined(SKIP_TO_BM_SW) && ! defined(PP_IN_LINK) \
-                             && ! defined(NO_SKIP_AT_TOP)
+  #if defined(SKIP_TO_BM_SW) && ! defined(NO_SKIP_AT_TOP)
       #define cnListPopCntMax64  0x40
-  #else // defined(SKIP_TO_BM_SW) && ! defined(PP_IN_LINK) && ...
+  #else // defined(SKIP_TO_BM_SW) && ! defined(NO_SKIP_AT_TOP)
       #define cnListPopCntMax64  0xec
-  #endif // defined(SKIP_TO_BM_SW) && ! defined(PP_IN_LINK) && ...
+  #endif // defined(SKIP_TO_BM_SW) && ! defined(NO_SKIP_AT_TOP)
 #endif // ! defined(cnListPopCntMax64)
 
 // Default is cnListPopCntMax32 is 0x30 (0xf0 if NO_USE_BM_SW).
