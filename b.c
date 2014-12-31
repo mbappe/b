@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.425 2014/12/31 11:46:29 mike Exp $
+// @(#) $Id: b.c,v 1.427 2014/12/31 19:21:03 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2601,11 +2601,13 @@ newSwitch:
                 assert(0);
             }
 #else // defined(TYPE_IS_RELATIVE)
+            if (nDLOld - nDL > 1) {
             if (nDL_to_tp(nDL) > (int)cnMallocMask) {
                 printf("# Can't encode absolute level for skip nDL %d.\n",
                        nDL);
                 nDL = nDLOld - 1;
                 assert(0);
+            }
             }
 #endif // defined(TYPE_IS_RELATIVE)
             nBL = nDL_to_nBL(nDL);
@@ -2885,11 +2887,11 @@ newSwitch:
             DBGI(printf("IG: nDL %d nDLUp %d\n", nDL, nDLUp));
 #if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
             pwSw = NewSwitch(pwRoot, wPrefix, nDL, bBmSwNew, nDLUp, wPopCnt);
-            DBGI(HexDump("After NewSwitch",
-                         pwSw, bBmSwNew ? 3 : (EXP(cnBitsPerDigit) + 1)));
+            //DBGI(HexDump("After NewSwitch",
+                         //pwSw, bBmSwNew ? 3 : (EXP(cnBitsPerDigit) + 1)));
 #else // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
             pwSw = NewSwitch(pwRoot, wPrefix, nDL, nDLUp, wPopCnt);
-            DBGI(HexDump("After NewSwitch", pwSw, EXP(cnBitsPerDigit) + 1));
+            //DBGI(HexDump("After NewSwitch", pwSw, EXP(cnBitsPerDigit) + 1));
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
             DBGI(printf("Just after InsertGuts calls NewSwitch"
                         " for prefix mismatch.\n"));
@@ -3793,6 +3795,10 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
                                           ? wr_nDL(*pwRootLn)
                                           : nDL - 1);
           #endif // defined(TYPE_IS_RELATIVE)
+                    if (wPopCnt + wPopCntLn > wPopCntTotal) {
+                        printf("wPopCnt %ld wPopCntLn %ld wPopCntTotal %ld\n",
+                               wPopCnt, wPopCntLn, wPopCntTotal);
+                    }
                     assert(wPopCnt + wPopCntLn <= wPopCntTotal);
                 }
                 else
