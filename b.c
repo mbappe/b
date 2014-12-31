@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.424 2014/12/29 21:09:11 mike Exp mike $
+// @(#) $Id: b.c,v 1.425 2014/12/31 11:46:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -704,9 +704,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
     {
         set_wr_pwr(*pwRoot, pwr);
-#if defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
+#if defined(NO_SKIP_AT_TOP)
         assert((nDLUp < cnDigitsPerWord) || (nDL == nDLUp));
-#endif // defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
+#endif // defined(NO_SKIP_AT_TOP)
 #if defined(TYPE_IS_RELATIVE)
         if (nDL == nDLUp) {
             set_wr_nType(*pwRoot, T_SWITCH);
@@ -1070,10 +1070,10 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
         } else
   #endif // defined(RETYPE_FULL_BM_SW)
         {
+#if defined(SKIP_TO_BM_SW)
             int nType = wr_nType(wRoot);
             // set_wr_nType(*pwRoot, nType);
             // depth is preserved because the beginning of the switch is copied
-#if defined(SKIP_TO_BM_SW)
             if (nType == T_SKIP_TO_BM_SW) {
   #if defined(TYPE_IS_RELATIVE)
       #if defined(LEVEL_IN_WROOT_HIGH_BITS)
@@ -2571,7 +2571,7 @@ newSwitch:
                 assert(0);
             }
 #else // defined(TYPE_IS_RELATIVE)
-            if (nDL_to_tp(nDL) <= cnMallocMask) {
+            if (nDL_to_tp(nDL) > (int)cnMallocMask) {
                 printf("# Oops.  Can't encode absolute level for skip.\n");
                 nDL = nDLOld - 1;
                 assert(0);
