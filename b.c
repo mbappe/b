@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.422 2014/12/27 20:06:13 mike Exp mike $
+// @(#) $Id: b.c,v 1.424 2014/12/29 21:09:11 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -696,9 +696,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
             // Set_wr_nDS and set_wr_nDL overwrite
             // the type field.  So we have to set
             // T_SKIP_TO_BM_SW after that.
-            assert(wr_nDL(*pwRoot) == nDL);
             set_wr(*pwRoot, pwr, T_SKIP_TO_BM_SW); // set type
-            assert(wr_nDL(*pwRoot) == nDL);
         } else
   #endif // defined(SKIP_TO_BM_SW)
         { set_wr(*pwRoot, pwr, T_BM_SW); }
@@ -1078,8 +1076,13 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
 #if defined(SKIP_TO_BM_SW)
             if (nType == T_SKIP_TO_BM_SW) {
   #if defined(TYPE_IS_RELATIVE)
+      #if defined(LEVEL_IN_WROOT_HIGH_BITS)
                 set_wr_nBS(*pwRoot, wr_nBS(wRoot));
                 assert(wr_nBS(*pwRoot) == wr_nBS(wRoot));
+      #else // defined(LEVEL_IN_WROOT_HIGH_BITS)
+                set_wr_nDS(*pwRoot, wr_nDS(wRoot));
+                assert(wr_nDS(*pwRoot) == wr_nDS(wRoot));
+      #endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
   #else // defined(TYPE_IS_RELATIVE)
                 set_wr_nBL(*pwRoot, nBLR);
                 assert(wr_nBL(*pwRoot) == wr_nBL(wRoot));
@@ -1292,13 +1295,16 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     }
 
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-#if defined(TYPE_IS_RELATIVE)
-    assert( ! tp_bIsSkip(nType) || (nBL - wr_nBS(wRoot) < nBL));
-    assert( ! tp_bIsSkip(nType) || (nBL - wr_nBS(wRoot) >= nDL_to_nBL(1)));
-#else // defined(TYPE_IS_RELATIVE)
+  #if defined(TYPE_IS_RELATIVE)
+      #if defined(LEVEL_IN_WROOT_HIGH_BITS)
+    assert( ! tp_bIsSkip(nType) || (wr_nBS(wRoot) > 1));
+      #else // defined(LEVEL_IN_WROOT_HIGH_BITS)
+    assert( ! tp_bIsSkip(nType) || (wr_nDS(wRoot) > 1));
+      #endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
+  #else // defined(TYPE_IS_RELATIVE)
     assert( ! tp_bIsSkip(nType) || (wr_nBL(wRoot) < nBL));
     assert( ! tp_bIsSkip(nType) || (wr_nBL(wRoot) >= nDL_to_nBL(1)));
-#endif // defined(TYPE_IS_RELATIVE)
+  #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
 #if (cwListPopCntMax != 0)
