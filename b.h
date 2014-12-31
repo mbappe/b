@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.321 2014/12/27 16:48:35 mike Exp mike $
+// @(#) $Id: b.h,v 1.322 2014/12/29 21:06:27 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -918,13 +918,9 @@ enum {
 
   #define wr_nBS(_wr)  (assert(tp_bIsSkip(wr_nType(_wr))), (_wr) >> 56)
 
-  #define wr_nDS(_wr)  nBL_to_nDL(wr_nBL(_wr))
-
   #define set_wr_nBS(_wr, _nBS) \
           (set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
            ((_wr) = ((_wr) & ~(0xffUL << 56) | (Word_t)(_nBS) << 56)))
-
-  #define set_wr_nDS(_wr, _nDS)  set_wr_nBS((_wr), nDL_to_nBL(_nDS))
 
 #else // defined(LEVEL_IN_WROOT_HIGH_BITS)
 
