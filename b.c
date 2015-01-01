@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.427 2014/12/31 19:21:03 mike Exp mike $
+// @(#) $Id: b.c,v 1.428 2014/12/31 20:33:24 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -3910,6 +3910,9 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             printf("bBmSw %d\n", bBmSw);
         }
 #endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+        if (wPopCnt - 1 > wPrefixPopMask(nDL)) {
+            printf("wPopCnt %ld nDL %d\n", wPopCnt, nDL);
+        }
         assert(wPopCnt - 1 <= wPrefixPopMask(nDL));
           #endif // ! defined(NDEBUG)
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
