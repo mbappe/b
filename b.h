@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.322 2014/12/29 21:06:27 mike Exp mike $
+// @(#) $Id: b.h,v 1.323 2014/12/31 11:45:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -217,6 +217,12 @@
 #define cnLogBitsPerWord  (cnLogBytesPerWord + cnLogBitsPerByte)
 #define cnBitsMallocMask  (cnLogBytesPerWord + 1)
 #define cnMallocMask  MSK(cnBitsMallocMask)
+#if (cnBitsPerWord == 64)
+#define cnBitsVirtAddr  48
+#else // (cnBitsPerWord == 64)
+#define cnBitsVirtAddr  32
+#endif // (cnBitsPerWord == 64)
+#define cnVirtAddrMask  MSK(cnBitsVirtAddr)
 
 // Default is -DPSPLIT_PARALLEL which forces -DALIGN_LISTS -DALIGN_LIST_ENDS.
 #if ! defined(NO_PSPLIT_PARALLEL)
@@ -743,41 +749,40 @@ enum {
 // Data structure constants and macros.
 
 // Extract nType from wRoot.
-#define     wr_nType(_wr)         ((_wr) & cnMallocMask)
+inline unsigned wr_nType(Word_t wRoot) { return wRoot & cnMallocMask; }
+
+// Backward compatibility.
+#define wr_tp_pwr(_wr, _tp)  wr_pwr(_wr)
+
+// Extract pwRoot (aka pwr) from wRoot.
+inline Word_t* wr_pwr(Word_t wRoot) {
+    return (Word_t *)(wRoot & cnVirtAddrMask & ~cnMallocMask);
+}
+
+// Set nType in *pwRoot.
+inline void set_pwr_nType(Word_t *pwRoot, int nType) {
+    *pwRoot = (*pwRoot & ~cnMallocMask) | nType;
+}
+
+// Set pwRoot (aka pwr) in *pwRoot.
+inline void set_pwr_pwr(Word_t *pwRoot, Word_t *pwr) {
+    *pwRoot = (*pwRoot & (~cnVirtAddrMask | cnMallocMask)) | (Word_t)pwr;
+}
+
+inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
+    *pwRoot = (*pwRoot & ~cnVirtAddrMask) | (Word_t)pwr | nType;
+}
+
 // Set the nType field in wRoot.
 #define set_wr_nType(_wr, _type)  ((_wr) = ((_wr) & ~cnMallocMask) | (_type))
 
-#if defined(LEVEL_IN_WROOT_HIGH_BITS)
+// Set the pwRoot field in wRoot.
+#define set_wr_pwr(_wr, _pwr) \
+        ((_wr) = ((_wr) & (~cnVirtAddrMask | cnMallocMask)) | (Word_t)(_pwr))
 
-  #define wr_pwr(_wr) \
-          ((Word_t *)((_wr) & ~((0xffUL << 56) | cnMallocMask)))
-
-  #define wr_tp_pwr(_wr, _tp)  wr_pwr(_wr)
-
-  // Set the pwRoot field in wRoot.
-  #define set_wr_pwr(_wr, _pwr) \
-          ((_wr) = ((_wr) & ((0xffUL << 56) | cnMallocMask)) | (Word_t)(_pwr))
-
-  // Set the pwRoot and nType fields in wRoot.
-  #define set_wr(_wr, _pwr, _type) \
-          ((_wr) = ((_wr) & (0xffUL << 56)) | (Word_t)(_pwr) | (_type))
-
-#else // defined(LEVEL_IN_WROOT_HIGH_BITS)
-
-  // Extract the pwRoot field from wRoot.
-  #define wr_pwr(_wr)  ((Word_t *)((_wr) & ~cnMallocMask))
-
-  // Extract the pwRoot field from wRoot given the value of the type field.
-  #define wr_tp_pwr(_wr, _tp)  ((Word_t *)((_wr) ^ (_tp)))
-
-  // Set the pwRoot field in wRoot.
-  #define set_wr_pwr(_wr, _pwr) \
-          ((_wr) = ((_wr) & cnMallocMask) | (Word_t)(_pwr))
-
-  // Set the pwRoot and nType fields in wRoot.
-  #define set_wr(_wr, _pwr, _type)  ((_wr) = (Word_t)(_pwr) | (_type))
-
-#endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
+// Set the pwRoot and nType fields in wRoot.
+#define set_wr(_wr, _pwr, _type) \
+        ((_wr) = ((_wr) & ~cnVirtAddrMask) | (Word_t)(_pwr) | (_type))
 
 #if defined(USE_T_ONE)
 
