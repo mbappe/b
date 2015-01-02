@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.327 2015/01/02 18:38:34 mike Exp mike $
+// @(#) $Id: b.h,v 1.328 2015/01/02 18:53:49 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -962,11 +962,11 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
       (assert(tp_bIsSkip(wr_nType(_wr))), \
        assert(w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), \
                         /*nDL*/ 1) \
-                      > 1), \
+                      >= 1), \
        w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), /*nDL*/ 1))
 
   #define set_wr_nDS(_wr, _nDS) \
-      (assert((_nDS) >= 2), \
+      (assert((_nDS) >= 1), \
        set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
        /* put skip cnt in the PP pop field but use DL=1 for mask */ \
        (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
@@ -978,7 +978,7 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
   #define wr_nDS(_wr) \
       (assert(tp_bIsSkip(wr_nType(_wr))), \
-       assert(tp_to_nDS(wr_nType(_wr)) > 1), \
+       assert(tp_to_nDS(wr_nType(_wr)) >= 1), \
        tp_to_nDS(wr_nType(_wr)))
 
   #define set_wr_nDS(_wr, _nDS) \
