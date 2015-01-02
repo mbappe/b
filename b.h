@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.326 2015/01/02 02:30:30 mike Exp mike $
+// @(#) $Id: b.h,v 1.327 2015/01/02 18:38:34 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -996,9 +996,9 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 #else // defined(EXTRA_TYPES)
 #define     tp_bIsSwitch(_tp)          ((_tp) >= T_SWITCH)
 #endif // defined(EXTRA_TYPES)
-#define     tp_bIsSkip(_tp)            ((_tp) & T_SKIP_BIT)
+#define     tp_bIsSkip(_tp)            (((_tp) & T_SKIP_BIT) != 0)
 #if defined(SKIP_TO_BM_SW)
-#define     tp_bIsBmSw(_tp)            ((_tp) & T_BM_SW_BIT)
+#define     tp_bIsBmSw(_tp)            (((_tp) & T_BM_SW_BIT) != 0)
 #else // defined(SKIP_TO_BM_SW)
 #define     tp_bIsBmSw(_tp)            (((_tp) & T_BM_SW_BIT) && ! ((_tp) & T_SKIP_BIT))
 #endif // defined(SKIP_TO_BM_SW)
