@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.523 2014/12/29 21:01:51 mike Exp $
+// @(#) $Id: bli.c,v 1.524 2014/12/31 18:46:39 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2615,11 +2615,41 @@ Initialize(void)
     printf("# cnListPopCntMaxDl3 n/a\n");
 #endif // defined(cnListPopCntMaxDl3)
 
+#if defined(LEVEL_IN_WROOT_HIGH_BITS)
+    printf("# LEVEL_IN_WROOT_HIGH_BITS\n");
+#else // defined(LEVEL_IN_WROOT_HIGH_BITS)
+    printf("# NO LEVEL_IN_WROOT_HIGH_BITS\n");
+#endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
+
+#if defined(DEPTH_IN_SW)
+    printf("# DEPTH_IN_SW\n");
+#else // defined(DEPTH_IN_SW)
+    printf("# NO DEPTH_IN_SW\n");
+#endif // defined(DEPTH_IN_SW)
+
+#if defined(TYPE_IS_RELATIVE)
+    printf("# TYPE_IS_RELATIVE\n");
+#else // defined(TYPE_IS_RELATIVE)
+    printf("# TYPE_IS_ABSOLUTE\n");
+#endif // defined(TYPE_IS_RELATIVE)
+
 #if defined(USE_BM_SW)
     printf("# USE_BM_SW\n");
 #else // defined(USE_BM_SW)
     printf("# NO USE_BM_SW\n");
 #endif // defined(USE_BM_SW)
+
+#if defined(SKIP_TO_BM_SW)
+    printf("# SKIP_TO_BM_SW\n");
+#else // defined(SKIP_TO_BM_SW)
+    printf("# NO SKIP_TO_BM_SW\n");
+#endif // defined(SKIP_TO_BM_SW)
+
+#if defined(BM_IN_NON_BM_SW)
+    printf("# BM_IN_NON_BM_SW\n");
+#else // defined(BM_IN_NON_BM_SW)
+    printf("# NO BM_IN_NON_BM_SW\n");
+#endif // defined(BM_IN_NON_BM_SW)
 
 #if defined(BM_IN_LINK)
     printf("# BM_IN_LINK\n");
@@ -2632,6 +2662,7 @@ Initialize(void)
 #else // defined(PP_IN_LINK)
     printf("# NO PP_IN_LINK\n");
 #endif // defined(PP_IN_LINK)
+
     printf("\n");
 
     bInitialized= 1;
