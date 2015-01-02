@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.324 2015/01/01 23:00:59 mike Exp mike $
+// @(#) $Id: b.h,v 1.325 2015/01/02 02:26:17 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -55,7 +55,7 @@
 // Never uncompress with less than 33% of links present.
 // Otherwise we can overshoot the wpk target.
 #if ! defined(cnBmSwLinksPercent)
-#define cnBmSwWpkPercent  33
+#define cnBmSwLinksPercent  33
 #endif // ! defined(cnBmSwLinksPercent)
 
 // Default uncompress bm sw threshold is 1 word per key (cnBmSwWpkPercent).
@@ -926,11 +926,11 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
 #if defined(LEVEL_IN_WROOT_HIGH_BITS)
 
-  #define wr_nBS(_wr)  (assert(tp_bIsSkip(wr_nType(_wr))), (_wr) >> 56)
+  #define wr_nDS(_wr)  (assert(tp_bIsSkip(wr_nType(_wr))), (_wr) >> 56)
 
-  #define set_wr_nBS(_wr, _nBS) \
+  #define set_wr_nDS(_wr, _nDS) \
           (set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
-           ((_wr) = ((_wr) & ~(0xffUL << 56) | (Word_t)(_nBS) << 56)))
+           ((_wr) = ((_wr) & ~(0xffUL << 56) | (Word_t)(_nDS) << 56)))
 
 #else // defined(LEVEL_IN_WROOT_HIGH_BITS)
 
