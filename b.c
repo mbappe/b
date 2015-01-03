@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.432 2015/01/03 12:51:45 mike Exp mike $
+// @(#) $Id: b.c,v 1.433 2015/01/03 14:04:32 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1094,8 +1094,8 @@ printf("%p\n", (void *)&pwr_pLinks((BmSwitch_t *)pwr)[mm]);
             set_wr_nType(*pwRoot, nType);
   #endif // ! defined(LEVEL_IN_WROOT_HIGH_BITS)
             // depth is preserved because the beginning of the switch is copied
-  #if defined(SKIP_TO_BM_SW)
-      #if defined(LEVEL_IN_WROOT_HIGH_BITS)
+  #if defined(LEVEL_IN_WROOT_HIGH_BITS)
+      #if defined(SKIP_TO_BM_SW)
             if (nType == T_SKIP_TO_BM_SW) {
           #if defined(TYPE_IS_RELATIVE)
                 set_wr_nDS(*pwRoot, wr_nDS(wRoot));
@@ -1105,9 +1105,9 @@ printf("%p\n", (void *)&pwr_pLinks((BmSwitch_t *)pwr)[mm]);
                 assert(wr_nBL(*pwRoot) == wr_nBL(wRoot));
           #endif // defined(TYPE_IS_RELATIVE)
             }
+      #endif // defined(SKIP_TO_BM_SW)
+  #endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
             set_wr_nType(*pwRoot, nType);
-      #endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
-  #endif // defined(SKIP_TO_BM_SW)
 
         }
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -2971,9 +2971,9 @@ newSwitch:
       #endif // defined(BM_IN_LINK)
   #else // defined(SKIP_TO_BM_SW)
       #if defined(BM_IN_LINK)
-            int bBmSwNew = ((nDLUp != cnDigitsPerWord) && (nDL == nDLOld));
+            int bBmSwNew = ((nDLUp != cnDigitsPerWord) && (nDL == nDLUp));
       #else // defined(BM_IN_LINK)
-            int bBmSwNew = (nDL == nDLOld);
+            int bBmSwNew = (nDL == nDLUp);
       #endif // defined(BM_IN_LINK)
   #endif // defined(SKIP_TO_BM_SW)
 
