@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.527 2015/01/03 02:55:39 mike Exp mike $
+// @(#) $Id: bli.c,v 1.528 2015/01/03 12:51:45 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2938,11 +2938,11 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
   #endif // defined(DEBUG_REMOVE)
 
   #if defined(DEBUG)
-    if (Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) != wPopCntTotal) {
-        printf("\nJudy1Count %ld wPopCntTotal %ld\n",
-               Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL), wPopCntTotal);
+    Word_t wCount = Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL);
+    if (wCount != wPopCntTotal) {
+        printf("\nJudy1Count %ld wPopCntTotal %ld\n", wCount, wPopCntTotal);
     }
-    assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
+    assert(wCount == wPopCntTotal);
   #endif // defined(DEBUG)
 
     return status;
