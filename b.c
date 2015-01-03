@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.437 2015/01/03 20:31:25 mike Exp mike $
+// @(#) $Id: b.c,v 1.438 2015/01/03 20:46:34 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1200,18 +1200,40 @@ OldSwitch(Word_t *pwRoot, unsigned nDL,
 }
 
 static int
-NextDLR(Word_t *pwRoot, int nDLR)
+GetDLR(Word_t *pwRoot, int nDL)
 {
     return
   #if defined(SKIP_LINKS)
         (tp_bIsSwitch(wr_nType(*pwRoot)) && tp_bIsSkip(wr_nType(*pwRoot)))
       #if defined(TYPE_IS_RELATIVE)
-            ? nDLR - 1 - wr_nDS(*pwRoot) :
+            ? nDL - wr_nDS(*pwRoot) :
       #else // defined(TYPE_IS_RELATIVE)
             ? wr_nDL(*pwRoot) :
       #endif // defined(TYPE_IS_RELATIVE)
   #endif // defined(SKIP_LINKS)
-              nDLR - 1 ;
+              nDL ;
+}
+
+static Word_t
+GetPopCnt(Word_t *pwRoot, int nDL)
+{
+    int nDLR = GetDLR(pwRoot, nDL);
+
+    Word_t wPopCnt =
+      #if defined(USE_BM_SW)
+        tp_bIsBmSw(wr_nType(*pwRoot))
+            ? PWR_wPopCnt(pwRoot, (BmSwitch_t *)wr_pwr(*pwRoot), nDLR) :
+      #endif // defined(USE_BM_SW)
+              PWR_wPopCnt(pwRoot, (  Switch_t *)wr_pwr(*pwRoot), nDLR) ;
+
+    // We use wRoot != 0 to disambiguate PWR_wPopCnt == 0.
+    // Hence we cannot allow Remove to leave
+    // wRoot != 0 unless the actual pop count is not zero.
+    if ((wPopCnt == 0) && (*pwRoot != 0)) {
+         wPopCnt += wPrefixPopMask(nDLR) + 1 ; // ? full pop at top ?
+    }
+
+    return wPopCnt;
 }
 
 #if defined(PP_IN_LINK)
@@ -1226,38 +1248,29 @@ Sum(Word_t *pwRoot, int nBLUp)
 {
     assert(tp_bIsSwitch(wr_nType(*pwRoot)));
 
-#if defined(USE_BM_SW)
-    int bBmSw = tp_bIsBmSw(wr_nType(*pwRoot));
-  #if defined(BM_IN_LINK)
-    assert( ! bBmSw || (nBLUp != cnBitsPerWord) ); // no link around pwRoot
-  #endif // defined(BM_IN_LINK)
-#endif // defined(USE_BM_SW)
+#if defined(USE_BM_SW) && defined(BM_IN_LINK)
+    assert( ! tp_bIsBmSw(wr_nType(*pwRoot)) || (nBLUp != cnBitsPerWord) );
+#endif // defined(USE_BM_SW) && defined(BM_IN_LINK)
 
-    int nDL = NextDLR(pwRoot, nBL_to_nDL(nBLUp) + 1);
+    int nDL = GetDLR(pwRoot, nBL_to_nDL(nBLUp));
 
     Link_t *pLinks =
 #if defined(USE_BM_SW)
-                     bBmSw ? pwr_pLinks((BmSwitch_t *)wr_pwr(*pwRoot)) :
+        tp_bIsBmSw(wr_nType(*pwRoot))
+            ? pwr_pLinks((BmSwitch_t *)wr_pwr(*pwRoot)) :
 #endif // defined(USE_BM_SW)
-                             pwr_pLinks((  Switch_t *)wr_pwr(*pwRoot)) ;
+              pwr_pLinks((  Switch_t *)wr_pwr(*pwRoot)) ;
 
     Word_t wPopCnt = 0;
     Word_t xx = 0;
     for (int nn = 0; nn < (int)EXP(nDL_to_nBitsIndexSz(nDL)); nn++)
     {
 #if defined(USE_BM_SW)
-        if ( ! bBmSw || BitIsSet(PWR_pwBm(pwRoot, wr_pwr(*pwRoot)), nn))
+        if ( ! tp_bIsBmSw(wr_nType(*pwRoot))
+                    || BitIsSet(PWR_pwBm(pwRoot, wr_pwr(*pwRoot)), nn) )
 #endif // defined(USE_BM_SW)
         {
-            Word_t *pwRootLn = &pLinks[xx++].ln_wRoot;
-            int nDLLn = NextDLR(pwRootLn, nDL);
-            Word_t wPopCntLn = PWR_wPopCnt(pwRootLn, NULL, nDLLn);
-
-            // We use wRoot != 0 to disambiguate PWR_wPopCnt == 0.
-            // Hence we cannot allow Remove to leave
-            // wRoot != 0 unless the actual pop count is not zero.
-            wPopCnt += ((wPopCntLn == 0) && (*pwRootLn != 0))
-                         ? wPrefixPopMask(nDLLn) + 1 : wPopCntLn ;
+            wPopCnt += GetPopCnt(&pLinks[xx++].ln_wRoot, nDL - 1);
         }
     }
 
@@ -3713,20 +3726,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
   #if defined(PP_IN_LINK)
         wPopCnt = Sum(&wRoot, cnBitsPerWord);
   #else // defined(PP_IN_LINK)
-        int nDL = NextDLR(&wRoot, cnDigitsPerWord + 1);
-
-        wPopCnt =
-      #if defined(USE_BM_SW)
-            tp_bIsBmSw(nType) ? PWR_wPopCnt(&wRoot, (BmSwitch_t *)pwr, nDL) :
-      #endif // defined(USE_BM_SW)
-                                PWR_wPopCnt(&wRoot, (  Switch_t *)pwr, nDL) ;
-
-        // We use wRoot != 0 to disambiguate PWR_wPopCnt == 0.
-        // Hence we cannot allow Remove to leave
-        // wRoot != 0 unless the actual pop count is not zero.
-        if ((wPopCnt == 0) && (wRoot != 0)) {
-             wPopCnt += wPrefixPopMask(nDL) + 1 ; // ? full pop at top ?
-        }
+        wPopCnt = GetPopCnt(&wRoot, cnDigitsPerWord);
   #endif // defined(PP_IN_LINK)
     }
 
