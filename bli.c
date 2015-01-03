@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.526 2015/01/02 02:35:14 mike Exp mike $
+// @(#) $Id: bli.c,v 1.527 2015/01/03 02:55:39 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1718,7 +1718,7 @@ switchTail:
 
     } // end of case T_SWITCH
 
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
 
   #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
 
@@ -1839,7 +1839,7 @@ t_bm_sw:
 
     } // end of case T_BM_SW
 
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 
 #if (cwListPopCntMax != 0)
 

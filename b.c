@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.424.4.1 2015/01/03 02:12:26 mike Exp mike $
+// @(#) $Id: b.c,v 1.431 2015/01/03 02:16:37 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -585,28 +585,28 @@ OldBitmap(Word_t *pwRoot, Word_t *pwr, unsigned nBL)
 // bitmap leaf instead of a switch.
 static Word_t *
 NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
           int bBmSw,
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
           unsigned nDLUp, Word_t wPopCnt)
 {
     assert((sizeof(Switch_t) % sizeof(Word_t)) == 0);
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
     assert((sizeof(BmSwitch_t) % sizeof(Word_t)) == 0);
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 
     unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDL);
     Word_t wIndexCnt = EXP(nBitsIndexSz);
 
 #if ! defined(NDEBUG)
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
     if (bBmSw)
 #if defined(BM_IN_LINK)
     { Link_t ln; assert(wIndexCnt <= sizeof(ln.ln_awBm) * cnBitsPerByte); }
 #else // defined(BM_IN_LINK)
     { BmSwitch_t sw; assert(wIndexCnt <= sizeof(sw.sw_awBm) * cnBitsPerByte); }
 #endif // defined(BM_IN_LINK)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 #endif // ! defined(NDEBUG)
 
     Word_t wLinks = wIndexCnt;
@@ -624,9 +624,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 #endif // defined(BM_SW_FOR_REAL)
 
     Word_t wWords =
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
         bBmSw ? sizeof(BmSwitch_t) :
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
             sizeof(Switch_t);
 
     // sizeof([Bm]Switch_t) includes one link; add the others
@@ -635,11 +635,11 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 
     Word_t *pwr = (Word_t *)MyMalloc(wWords);
 
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
     if (bBmSw) {
         memset(pwr_pLinks((BmSwitch_t *)pwr), 0, wLinks * sizeof(Link_t));
     } else
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
     {
         memset(pwr_pLinks((Switch_t *)pwr), 0, wLinks * sizeof(Link_t));
     }
@@ -655,23 +655,23 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
         // bits in the bitmap?
         METRICS(j__AllocWordsJLB1 += wWords); // JUDYA
     } else
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
     if (bBmSw) {
         METRICS(j__AllocWordsJBB  += wWords); // JUDYA
     } else
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
     {
         METRICS(j__AllocWordsJBU  += wWords); // JUDYA
     }
 #endif // defined(RAMMETRICS)
 
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
     DBGM(printf("NewSwitch(pwRoot %p wKey "OWx
                 " nDL %d bBmSw %d nDLU %d wPopCnt %ld)"
                 " pwr %p\n",
                 (void *)pwRoot, wKey,
                 nDL, bBmSw, nDLUp, (long)wPopCnt, (void *)pwr));
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
     DBGI(printf("\nNewSwitch nDL %d nBL %d nDLU %d\n",
                 nDL, nDL_to_nBL(nDL), nDLUp));
 #if 0
@@ -682,7 +682,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
     }
 #endif
 
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
     if (bBmSw) {
   #if defined(SKIP_TO_BM_SW)
         if (nDL != nDLUp) {
@@ -701,7 +701,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
   #endif // defined(SKIP_TO_BM_SW)
         { set_wr(*pwRoot, pwr, T_BM_SW); }
     } else
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
     {
         set_wr_pwr(*pwRoot, pwr);
 #if defined(NO_SKIP_AT_TOP)
@@ -722,7 +722,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 #endif // defined(TYPE_IS_RELATIVE)
     }
 
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
     if (bBmSw)
     {
 #if defined(BM_IN_LINK)
@@ -759,7 +759,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 #endif // defined(BM_SW_FOR_REAL)
         }
     }
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 
 #if defined(PP_IN_LINK)
     if (nDLUp < cnDigitsPerWord)
@@ -809,41 +809,41 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
         else
 #endif // defined(NO_UNNECESSARY_PREFIX)
         {
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
             if (bBmSw) {
                 set_PWR_wPrefix(pwRoot, (BmSwitch_t *)pwr, nDL, wKey);
             } else
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
             {
                 set_PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDL, wKey);
             }
         }
 #else // defined(SKIP_LINKS)
         // Why do we bother with this?  Should we make it debug only?
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
         if (bBmSw) {
             set_PWR_wPrefix(pwRoot, (BmSwitch_t *)pwr, nDL, 0);
         } else
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
         {
             set_PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDL, 0);
         }
 #endif // defined(SKIP_LINKS)
 
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
         if (bBmSw) {
             set_PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDL, wPopCnt);
         } else
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
         {
             set_PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDL, wPopCnt);
         }
 
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
         DBGM(printf("NewSwitch PWR_wPrefixPop "OWx"\n",
             bBmSw ? PWR_wPrefixPop(pwRoot, (BmSwitch_t *)pwr)
                   : PWR_wPrefixPop(pwRoot, (Switch_t *)pwr)));
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
     }
 
     //DBGI(printf("After NewSwitch"));
@@ -856,7 +856,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, unsigned nDL,
     (void)nDLUp; // nDLUp is not used for all ifdef combos
 }
 
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
 #if defined(BM_SW_FOR_REAL)
 static void
 NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
@@ -1119,20 +1119,20 @@ printf("%p\n", (void *)&pwr_pLinks((BmSwitch_t *)pwr)[mm]);
     //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 }
 #endif // defined(BM_SW_FOR_REAL)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 
 static Word_t
 OldSwitch(Word_t *pwRoot, unsigned nDL,
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
           int bBmSw,
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
           unsigned nDLUp)
 {
     Word_t *pwr = wr_pwr(*pwRoot);
 
     Word_t wLinks = EXP(nDL_to_nBitsIndexSz(nDL));
 
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
 #if defined(BM_SW_FOR_REAL)
     if (bBmSw)
     {
@@ -1153,20 +1153,20 @@ OldSwitch(Word_t *pwRoot, unsigned nDL,
         }
     }
 #endif // defined(BM_SW_FOR_REAL)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
     Word_t wWords = bBmSw ? sizeof(BmSwitch_t) : sizeof(Switch_t);
-#else // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#else // defined(USE_BM_SW)
     Word_t wWords =  sizeof(Switch_t);
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
     // sizeof([Bm]Switch_t) includes one link; add the others
     wWords += (wLinks - 1) * sizeof(Link_t);
     wWords /= sizeof(Word_t);
 
 #if defined(RAMMETRICS)
     unsigned nBitsIndexSz = nDL_to_nBitsIndexSz(nDL);
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
     if (wr_nType(*pwRoot) == T_BM_SW) {
         METRICS(j__AllocWordsJBB  -= wWords); // JUDYA
     } else
@@ -1175,7 +1175,7 @@ OldSwitch(Word_t *pwRoot, unsigned nDL,
         METRICS(j__AllocWordsJBU  -= wWords); // JUDYA
     } else
 #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
     if ((cnBitsInD1 <= cnLogBitsPerWord)
         && (nDL_to_nBL(nDL) - nBitsIndexSz <= cnBitsInD1))
     {
@@ -1186,10 +1186,10 @@ OldSwitch(Word_t *pwRoot, unsigned nDL,
     }
 #endif // defined(RAMMETRICS)
 
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
     DBGR(printf("\nOldSwitch nDL %d bBmSw %d nDLU %d wWords %"_fw"d "OWx"\n",
          nDL, bBmSw, nDLUp, wWords, wWords));
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 
     MyFree(pwr, wWords);
 
@@ -1212,35 +1212,35 @@ Sum(Word_t *pwRoot, int nBL)
     Word_t *pwr = wr_pwr(wRoot);
     int nDL = nBL_to_nDL(nBL);
     // Add 'em up.
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
     int bBmSw = tp_bIsBmSw(wr_nType(wRoot));
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
     Word_t xx = 0; (void)xx;
     Word_t wPopCnt = 0;
     for (int nn = 0; nn < (int)EXP(nDL_to_nBitsIndexSz(nDL)); nn++)
     {
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
 #if ! defined(BM_IN_LINK)
         if ( ! bBmSw || BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
 #endif // ! defined(BM_IN_LINK)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
         {
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
             Word_t *pwRootLn
                         = bBmSw
                             ? &pwr_pLinks((BmSwitch_t *)pwr)[nn].ln_wRoot
                             : &pwr_pLinks((  Switch_t *)pwr)[nn].ln_wRoot;
-#else // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#else // defined(USE_BM_SW)
             Word_t *pwRootLn = &pwr_pLinks((Switch_t *)pwr)[nn].ln_wRoot;
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
+#if defined(USE_BM_SW)
 #if ! defined(BM_IN_LINK)
             if (bBmSw) {
                 pwRootLn = &pwr_pLinks((BmSwitch_t *)pwr)[xx].ln_wRoot;
                 xx++;
             }
 #endif // ! defined(BM_IN_LINK)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 
 // *pwRootLn may not be a pointer to a switch
 // It may be a pointer to a list leaf.
@@ -1550,7 +1550,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 
     unsigned nDLPrev = nDL;
 
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
     int bBmSw = 0;
     // We could use independent bits in the type field to identify switches
     // with bms and skip links to simplify this if.
@@ -1590,7 +1590,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
   #endif // defined(SKIP_TO_BM_SW)
     }
     else
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     {
 #if defined(TYPE_IS_RELATIVE)
@@ -1608,7 +1608,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     nBL = nDL_to_nBL(nDL);
 
     nBitsIndexSz = nDL_to_nBitsIndexSz(nDL);
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
     if (bBmSw != tp_bIsBmSw(nType)) { printf("nType 0x%x bBmSw %d\n", nType, bBmSw); }
    
     assert(bBmSw == tp_bIsBmSw(nType));
@@ -1616,9 +1616,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     assert(bBmSw == tp_bIsBmSw(wr_nType(*pwRoot)));
     pLinks = bBmSw ? pwr_pLinks((BmSwitch_t *)pwr)
                    : pwr_pLinks((Switch_t *)pwr);
-#else // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#else // defined(USE_BM_SW)
     pLinks = pwr_pLinks((Switch_t *)pwr);
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 
     if (bDump)
     {
@@ -1630,28 +1630,28 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
             Word_t wPopCnt = 0;
             for (unsigned nn = 0; nn < EXP(cnBitsIndexSzAtTop); nn++)
             {
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
 #if ! defined(BM_IN_LINK)
         if ( ! bBmSw || BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
 #endif // ! defined(BM_IN_LINK)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
         {
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
                 Word_t *pwRootLn
                             = bBmSw
                                 ? &pwr_pLinks((BmSwitch_t *)pwr)[nn].ln_wRoot
                                 : &pwr_pLinks((  Switch_t *)pwr)[nn].ln_wRoot;
-#else // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#else // defined(USE_BM_SW)
                 Word_t *pwRootLn = &pwr_pLinks((Switch_t *)pwr)[nn].ln_wRoot;
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
+#if defined(USE_BM_SW)
 #if ! defined(BM_IN_LINK)
                 if (bBmSw) {
                     pwRootLn = &pwr_pLinks((BmSwitch_t *)pwr)[xx].ln_wRoot;
                     xx++;
                 }
 #endif // ! defined(BM_IN_LINK)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 
 // *pwRootLn may not be a pointer to a switch
 // It may be a pointer to a list leaf.
@@ -1723,19 +1723,19 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #endif // defined(PP_IN_LINK)
         {
             printf(" wr_wPopCnt %3"_fw"u",
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
                    bBmSw ? PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDL) :
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
                          PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDL));
             printf(" wr_wPrefix "OWx,
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
                    bBmSw ? PWR_wPrefix(pwRoot, (BmSwitch_t *)pwr, nDL) :
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
                          PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDL));
         }
 
         printf(" wr_nDL %2d", nDL);
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
         // should enhance this to check for zeros in suffix and to print
         // dots for suffix.
         //printf(" wKeyPopMask "OWx, wPrefixPopMask(nDL));
@@ -1760,7 +1760,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
             }
         }
         }
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
         printf("\n");
     }
 
@@ -1771,16 +1771,16 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     if (nDLPrev > nDL)
     {
         wPrefix =
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
             bBmSw ? PWR_wPrefix(pwRoot, (BmSwitch_t *)pwr, nDL) :
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
                 PWR_wPrefix(pwRoot, (  Switch_t *)pwr, nDL);
     }
 
     Word_t xx = 0;
     for (Word_t nn = 0; nn < EXP(nBitsIndexSz); nn++)
     {
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
 #if defined(BM_IN_LINK)
         if ( ! bBmSw
             || ((nBLArg == cnBitsPerWord)
@@ -1788,7 +1788,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 #else // defined(BM_IN_LINK)
         if ( ! bBmSw || BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
 #endif // defined(BM_IN_LINK)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
         {
             if (pLinks[xx].ln_wRoot != 0)
             {
@@ -1807,9 +1807,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     // OldSwitch looks at BM.
 
     wBytes += OldSwitch(pwRootArg, nDL,
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
                         bBmSw,
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
                         nDLPrev);
 
     DBGR(printf("memset(%p, 0, %zd)\n",
@@ -2756,30 +2756,18 @@ newSwitch:
                 // NewSwitch overwrites *pwRoot which is a problem for
                 // T_ONE with embedded keys.
 
-#if defined(BM_SW_AT_DL2)
-                // We want a bm switch at dl2, but we don't currently support
-                // skipping to a bm switch.
-                if ((nDL == 2) && (nDLOld != nDL)) {
-                    assert(nDLOld >= 3);
-                    nDL = 3;
-                    nBL = nDL_to_nBL(nDL);
-                }
-#endif // defined(BM_SW_AT_DL2)
-
                 NewSwitch(pwRoot, wKey, nDL,
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
   #if defined(USE_BM_SW)
       #if defined(SKIP_TO_BM_SW)
                           /* bBmSw */ 1,
       #else // defined(SKIP_TO_BM_SW)
                           /* bBmSw */ nDL == nDLOld,
       #endif // defined(SKIP_TO_BM_SW)
-  #elif defined(BM_SW_AT_DL2)
-                          /* bBmSw */ (nDL == 2),
-  #else // defined(BM_SW_AT_DL2)
+  #else // defined(USE_BM_SW))
                           /* bBmSw */ 0,
   #endif // defined(USE_BM_SW)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
                           nDLOld, /* wPopCnt */ 0);
 
                 if (nDL == nDLOld) {
@@ -2963,7 +2951,7 @@ newSwitch:
             // nIndex is the logical index in new switch.
             // It may not be the same as the index in the old switch.
 
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
   // set bBmSwNew
   #if defined(USE_BM_SW)
       #if defined(SKIP_TO_BM_SW)
@@ -2980,10 +2968,10 @@ newSwitch:
   #elif defined(BM_IN_LINK)
             int bBmSwOld = 0; // no skip link to bm switch
   #endif // defined(SKIP_TO_BM_SW)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 
 #if defined(BM_IN_LINK)
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
             Link_t ln;
             Word_t wIndexCnt = EXP(nDL_to_nBitsIndexSzNAT(nDLR));
             if (bBmSwOld)
@@ -3001,26 +2989,26 @@ newSwitch:
 #endif // ! defined(BM_SW_FOR_REAL)
             }
             }
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 #endif // defined(BM_IN_LINK)
 
             Word_t *pwSw;
             // initialize prefix/pop for new switch
             // Make sure to pass the right key for BM_SW_FOR_REAL.
             DBGI(printf("IG: nDL %d nDLUp %d\n", nDL, nDLUp));
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
             pwSw = NewSwitch(pwRoot, wPrefix, nDL, bBmSwNew, nDLUp, wPopCnt);
             DBGI(HexDump("After NewSwitch",
                          pwSw, bBmSwNew ? 3 : (EXP(cnBitsPerDigit) + 1)));
-#else // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#else // defined(USE_BM_SW)
             pwSw = NewSwitch(pwRoot, wPrefix, nDL, nDLUp, wPopCnt);
             DBGI(HexDump("After NewSwitch", pwSw, EXP(cnBitsPerDigit) + 1));
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
             DBGI(printf("Just after InsertGuts calls NewSwitch"
                         " for prefix mismatch.\n"));
             DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
             if (bBmSwNew)
             {
 #if defined(BM_SW_FOR_REAL)
@@ -3065,7 +3053,7 @@ newSwitch:
             }
 #endif // defined(BM_IN_LINK)
 
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 
 #if defined(TYPE_IS_RELATIVE)
             // Update type field in wRoot that points to old switch since
@@ -3094,11 +3082,11 @@ newSwitch:
             }
 #endif // defined(TYPE_IS_RELATIVE)
             // Copy wRoot from old link (after being updated) to new link.
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
             if (bBmSwNew) {
                 pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_wRoot = wRoot;
             } else
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
             {
                 pwr_pLinks((  Switch_t *)pwSw)[nIndex].ln_wRoot = wRoot;
             }
@@ -3115,29 +3103,29 @@ newSwitch:
             else
 #endif // defined(NO_UNNECESSARY_PREFIX)
             {
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
                 set_PWR_wPrefix(
                     bBmSwNew
                         ? &pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_wRoot :
                           &pwr_pLinks((  Switch_t *)pwSw)[nIndex].ln_wRoot,
                     NULL, nDLR, wPrefix);
-#else // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#else // defined(USE_BM_SW)
                 set_PWR_wPrefix(
                     &pwr_pLinks((Switch_t *)pwSw)[nIndex].ln_wRoot,
                     NULL, nDLR, wPrefix);
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
             }
 
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
             set_PWR_wPopCnt(
                     bBmSwNew
                         ? &pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_wRoot :
                           &pwr_pLinks((  Switch_t *)pwSw)[nIndex].ln_wRoot,
                     (Switch_t *)NULL, nDLR, wPopCnt);
-#else // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#else // defined(USE_BM_SW)
             set_PWR_wPopCnt(&pwr_pLinks((  Switch_t *)pwSw)[nIndex].ln_wRoot,
                     (Switch_t *)NULL, nDLR, wPopCnt);
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 #else // defined(PP_IN_LINK)
 #if defined(NO_UNNECESSARY_PREFIX)
            // We could go to the trouble of zeroing the no-longer necessary
@@ -3834,9 +3822,9 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
     else // ! tp_bIsSwitch(nType)
   #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     { // tp_bIsSwitch(nType)
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
         int bBmSw = tp_bIsBmSw(nType);
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 
   #if defined(PP_IN_LINK)
       #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -3854,25 +3842,25 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
         wPopCnt = 0;
         for (int nn = 0; nn < (int)EXP(cnBitsIndexSzAtTop); nn++)
         {
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
       #if ! defined(BM_IN_LINK)
             if ( ! bBmSw || BitIsSet(PWR_pwBm(NULL, pwr), nn))
       #endif // ! defined(BM_IN_LINK)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
             {
                 Word_t *pwRootLn =
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
                          bBmSw ? &pwr_pLinks((BmSwitch_t *)pwr)[nn].ln_wRoot :
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
                                  &pwr_pLinks((  Switch_t *)pwr)[nn].ln_wRoot;
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
       #if ! defined(BM_IN_LINK)
                 if (bBmSw) {
                     pwRootLn = &pwr_pLinks((BmSwitch_t *)pwr)[xx].ln_wRoot;
                     xx++;
                 }
       #endif // ! defined(BM_IN_LINK)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 
                 // *pwRootLn may not be a pointer to a switch
                 // It may be a pointer to a list leaf.
@@ -3989,11 +3977,11 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
               #else // defined(TYPE_IS_RELATIVE)
                 wr_nDL(wRoot);
               #endif // defined(TYPE_IS_RELATIVE)
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
         if (bBmSw) {
             nDL = cnDigitsPerWord;
         }
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
         assert((wPopCnt <= wPrefixPopMask(nDL) + 1)
             || (nDL == cnDigitsPerWord));
           #endif // ! defined(NDEBUG)
@@ -4008,9 +3996,9 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
                 wr_nDL(wRoot);
           #endif // defined(TYPE_IS_RELATIVE)
         wPopCnt =
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
             bBmSw ? PWR_wPopCnt(NULL, (BmSwitch_t *)pwr, nDL) :
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
                     PWR_wPopCnt(NULL, (  Switch_t *)pwr, nDL);
         if (wPopCnt == 0) {
             wPopCnt = wPrefixPopMask(nDL) + 1;

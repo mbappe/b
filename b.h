@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.329 2015/01/02 20:20:48 mike Exp mike $
+// @(#) $Id: b.h,v 1.330 2015/01/03 01:31:04 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -27,19 +27,16 @@
 
 // Default is -UBM_IN_LINK.
 // USE_BM_SW means always use bm sw when creating a switch with no skip.
-// BM_SW_AT_DL2 means always use bm sw at dl2, i.e. do not skip to dl2.
-// Default is -DBM_SW_FOR_REAL iff -DUSE_BM_SW or -DBM_SW_AT_DL2.
-// Would be nice to be able to specify no exernal list (or one bucket only)
-// at dl2 if BM_SW_AT_DL2.
-// Default is -DUSE_BM_SW, -UBM_SW_AT_DL2.
+// Default is -DBM_SW_FOR_REAL iff -DUSE_BM_SW.
+// Default is -DUSE_BM_SW.
 #if ! defined(NO_USE_BM_SW)
   #define USE_BM_SW
 #endif // ! defined(NO_USE_BM_SW)
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
   #if ! defined(NO_BM_SW_FOR_REAL)
       #define BM_SW_FOR_REAL
   #endif // ! defined(NO_BM_SW_FOR_REAL)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 
 // Default is -DRETYPE_FULL_BM_SW.
 #if ! defined(NO_RETYPE_FULL_BM_SW)
@@ -428,15 +425,15 @@ typedef Word_t Bucket_t;
   #error Sorry, SKIP_TO_BM_SW requires BM_IN_NON_BM_SW.
 #endif // defined(SKIP_TO_BM_SW) && ! defined(BM_IN_NON_BM_SW)
 
-#if defined(SKIP_TO_BM_SW) && !(defined(USE_BM_SW) || defined(BM_SW_AT_DL2))
+#if defined(SKIP_TO_BM_SW) && ! defined(USE_BM_SW)
   #error Sorry, no SKIP_TO_BM_SW without USE_BM_SW.
-#endif // defined(SKIP_TO_BM_SW)&&!(defined(USE_BM_SW)||defined(BM_SW_AT_DL2))
+#endif // defined(SKIP_TO_BM_SW) && ! defined(USE_BM_SW)
 
-#if defined(SKIP_TO_BM_SW) && (defined(USE_BM_SW) || defined(BM_SW_AT_DL2))
+#if defined(SKIP_TO_BM_SW) && defined(USE_BM_SW)
   #if ! defined(DEPTH_IN_SW) && ! defined(LEVEL_IN_WROOT_HIGH_BITS)
       #error Sorry, no SKIP_TO_BM_SW without DEPTH_IN_SW or LEVEL_IN_WROOT...
   #endif // ! defined(DEPTH_IN_SW) && ! defined(LEVEL_IN_WROOT_HIGH_BITS)
-#endif // defined(SKIP_TO_BM_SW)&&(defined(USE_BM_SW)||defined(BM_SW_AT_DL2))
+#endif // defined(SKIP_TO_BM_SW) && defined(USE_BM_SW)
 
 // Default is -DTYPE_IS_ABSOLUTE.  Use -DTYPE_IS_RELATIVE to change it.
 #if ! defined(TYPE_IS_RELATIVE)
@@ -467,13 +464,13 @@ enum {
     // All of the type values less than T_SWITCH are not switches.
     // All type values at T_SWITCH and greater are switches.
     T_SWITCH = T_SWITCH_BIT, // Uncompressed, close (i.e. no-skip) switch.
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
     T_BM_SW = T_SWITCH_BIT | T_BM_SW_BIT,
 #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
     // All link bits set, i.e. all links present.
     T_FULL_BM_SW = T_SWITCH_BIT | T_BM_SW_BIT | T_FULL_BM_SW_BIT,
 #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
     // T_SKIP_TO_SWITCH has to have the biggest value in this enum
     // if not DEPTH_IN_SW.  All of the bigger values have a meaning relative
     // to T_SKIP_TO_SWITCH.
@@ -1575,13 +1572,13 @@ typedef struct {
 
 // Uncompressed, basic switch.
 typedef struct {
-#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#if defined(USE_BM_SW)
 #if defined(BM_IN_NON_BM_SW)
 #if ! defined(BM_IN_LINK)
     Word_t sw_awBm[N_WORDS_SWITCH_BM];
 #endif // ! defined(BM_IN_LINK)
 #endif // defined(BM_IN_NON_BM_SW)
-#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+#endif // defined(USE_BM_SW)
 #if !defined(PP_IN_LINK)
     Word_t sw_wPrefixPop;
 #endif // !defined(PP_IN_LINK)
@@ -1597,7 +1594,7 @@ typedef struct {
 #if defined(SKIP_TO_BM_SW)
     typedef Switch_t BmSwitch_t;
 #else // defined(SKIP_TO_BM_SW)
-//#if defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+//#if defined(USE_BM_SW)
 // Bitmap switch.
 typedef struct {
 #if ! defined(BM_IN_LINK)
@@ -1614,7 +1611,7 @@ typedef struct {
 #endif // (cnDummiesInSwitch != 0)
     Link_t sw_aLinks[1]; // variable size
 } BmSwitch_t;
-//#endif // defined(USE_BM_SW) || defined(BM_SW_AT_DL2)
+//#endif // defined(USE_BM_SW)
 #endif // defined(SKIP_TO_BM_SW)
 
 Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBL);
