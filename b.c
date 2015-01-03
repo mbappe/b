@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.433 2015/01/03 14:04:32 mike Exp mike $
+// @(#) $Id: b.c,v 1.434 2015/01/03 15:12:45 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1202,18 +1202,31 @@ OldSwitch(Word_t *pwRoot, unsigned nDL,
 #if defined(PP_IN_LINK)
 
 // Sum up the pop count.
-// It assumes *pwRoot is a non-skip link to a switch.
+// It assumes *pwRoot is in a link to a switch.
 static Word_t
-Sum(Word_t *pwRoot, int nBL)
+Sum(Word_t *pwRoot, int nBLUp)
 {
     Word_t wRoot = *pwRoot;
+    int nType = wr_nType(wRoot); (void)nType;
     assert( tp_bIsSwitch(wr_nType(wRoot)) );
-    assert( ! tp_bIsSkip(wr_nType(wRoot)) );
+
+    int nBL;
+#if defined(SKIP_LINKS)
+    if (tp_bIsSkip(nType)) {
+  #if defined(TYPE_IS_RELATIVE)
+        nBL = nDL_to_nBL(nBL_to_nDL(nBLUp) - wr_nDS(wRoot));
+  #else // defined(TYPE_IS_RELATIVE)
+        nBL = wr_nBL(wRoot);
+  #endif // defined(TYPE_IS_RELATIVE)
+    } else
+#endif // defined(SKIP_LINKS)
+    { nBL = nBLUp; }
+
     Word_t *pwr = wr_pwr(wRoot);
     int nDL = nBL_to_nDL(nBL);
     // Add 'em up.
 #if defined(USE_BM_SW)
-    int bBmSw = tp_bIsBmSw(wr_nType(wRoot));
+    int bBmSw = tp_bIsBmSw(nType);
 #endif // defined(USE_BM_SW)
     Word_t xx = 0; (void)xx;
     Word_t wPopCnt = 0;
@@ -1717,7 +1730,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
             printf(" sm_wPopCnt %3"_fw"u", wPopCnt);
             printf(" wr_wPrefix        N/A");
 
-            assert(Sum(pwRoot, nBL) == wPopCnt);
+            assert(Sum(pwRoot, nBLArg) == wPopCnt);
         }
         else
 #endif // defined(PP_IN_LINK)
