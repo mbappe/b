@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.331 2015/01/03 12:51:45 mike Exp mike $
+// @(#) $Id: b.h,v 1.332 2015/01/03 22:22:10 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -753,13 +753,13 @@ enum {
 // Extract nType from wRoot.
 inline unsigned wr_nType(Word_t wRoot) { return wRoot & cnMallocMask; }
 
-// Backward compatibility.
-#define wr_tp_pwr(_wr, _tp)  wr_pwr(_wr)
-
 // Extract pwRoot (aka pwr) from wRoot.
 inline Word_t* wr_pwr(Word_t wRoot) {
     return (Word_t *)(wRoot & cnVirtAddrMask & ~cnMallocMask);
 }
+
+// Backward compatibility.
+#define wr_tp_pwr(_wr, _tp)  wr_pwr(_wr)
 
 // Set nType in *pwRoot.
 inline void set_pwr_nType(Word_t *pwRoot, int nType) {
