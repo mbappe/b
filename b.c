@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.434 2015/01/03 15:12:45 mike Exp mike $
+// @(#) $Id: b.c,v 1.435 2015/01/03 15:37:24 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -3997,24 +3997,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
                 }
             }
         }
-      #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-          #if ! defined(NDEBUG)
-        assert(tp_bIsSwitch(nType));
-        nDL = ! tp_bIsSkip(nType) ? cnDigitsPerWord :
-              #if defined(TYPE_IS_RELATIVE)
-                cnDigitsPerWord - wr_nDS(wRoot);
-              #else // defined(TYPE_IS_RELATIVE)
-                wr_nDL(wRoot);
-              #endif // defined(TYPE_IS_RELATIVE)
-#if defined(USE_BM_SW)
-        if (bBmSw) {
-            nDL = cnDigitsPerWord;
-        }
-#endif // defined(USE_BM_SW)
-        assert((wPopCnt <= wPrefixPopMask(nDL) + 1)
-            || (nDL == cnDigitsPerWord));
-          #endif // ! defined(NDEBUG)
-      #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+        assert(Sum(&wRoot, cnBitsPerWord) == wPopCnt);
   #else // defined(PP_IN_LINK)
       #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         assert(tp_bIsSwitch(nType));
@@ -4025,15 +4008,16 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
                 wr_nDL(wRoot);
           #endif // defined(TYPE_IS_RELATIVE)
         wPopCnt =
-#if defined(USE_BM_SW)
+          #if defined(USE_BM_SW)
             bBmSw ? PWR_wPopCnt(NULL, (BmSwitch_t *)pwr, nDL) :
-#endif // defined(USE_BM_SW)
+          #endif // defined(USE_BM_SW)
                     PWR_wPopCnt(NULL, (  Switch_t *)pwr, nDL);
         if (wPopCnt == 0) {
             wPopCnt = wPrefixPopMask(nDL) + 1;
         }
       #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         wPopCnt = PWR_wPopCnt(NULL, pwr, cnDigitsPerWord);
+        // zero with proper error code means full pop
       #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
   #endif // defined(PP_IN_LINK)
     }
