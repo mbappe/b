@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.436 2015/01/03 18:40:58 mike Exp mike $
+// @(#) $Id: b.c,v 1.437 2015/01/03 20:31:25 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1199,8 +1199,6 @@ OldSwitch(Word_t *pwRoot, unsigned nDL,
     (void)nDLUp; // silence compiler
 }
 
-#if defined(PP_IN_LINK)
-
 static int
 NextDLR(Word_t *pwRoot, int nDLR)
 {
@@ -1215,6 +1213,8 @@ NextDLR(Word_t *pwRoot, int nDLR)
   #endif // defined(SKIP_LINKS)
               nDLR - 1 ;
 }
+
+#if defined(PP_IN_LINK)
 
 // Sum up the pop count.
 // It assumes *pwRoot is in a link to a switch.
@@ -3713,30 +3713,20 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
   #if defined(PP_IN_LINK)
         wPopCnt = Sum(&wRoot, cnBitsPerWord);
   #else // defined(PP_IN_LINK)
-      #if defined(USE_BM_SW)
-        int bBmSw = tp_bIsBmSw(nType);
-      #endif // defined(USE_BM_SW)
+        int nDL = NextDLR(&wRoot, cnDigitsPerWord + 1);
 
-      #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-        assert(tp_bIsSwitch(nType));
-        int nDL = ! tp_bIsSkip(nType) ? cnDigitsPerWord :
-          #if defined(TYPE_IS_RELATIVE)
-                cnDigitsPerWord - wr_nDS(wRoot);
-          #else // defined(TYPE_IS_RELATIVE)
-                wr_nDL(wRoot);
-          #endif // defined(TYPE_IS_RELATIVE)
         wPopCnt =
-          #if defined(USE_BM_SW)
-            bBmSw ? PWR_wPopCnt(NULL, (BmSwitch_t *)pwr, nDL) :
-          #endif // defined(USE_BM_SW)
-                    PWR_wPopCnt(NULL, (  Switch_t *)pwr, nDL);
-        if (wPopCnt == 0) {
-            wPopCnt = wPrefixPopMask(nDL) + 1;
+      #if defined(USE_BM_SW)
+            tp_bIsBmSw(nType) ? PWR_wPopCnt(&wRoot, (BmSwitch_t *)pwr, nDL) :
+      #endif // defined(USE_BM_SW)
+                                PWR_wPopCnt(&wRoot, (  Switch_t *)pwr, nDL) ;
+
+        // We use wRoot != 0 to disambiguate PWR_wPopCnt == 0.
+        // Hence we cannot allow Remove to leave
+        // wRoot != 0 unless the actual pop count is not zero.
+        if ((wPopCnt == 0) && (wRoot != 0)) {
+             wPopCnt += wPrefixPopMask(nDL) + 1 ; // ? full pop at top ?
         }
-      #else // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-        wPopCnt = PWR_wPopCnt(NULL, pwr, cnDigitsPerWord);
-        // zero with proper error code means full pop
-      #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
   #endif // defined(PP_IN_LINK)
     }
 
