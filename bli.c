@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.525 2015/01/02 02:26:17 mike Exp mike $
+// @(#) $Id: bli.c,v 1.526 2015/01/02 02:35:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1761,6 +1761,8 @@ t_bm_sw:
              (void *)pwr_pLinks((Switch_t *)pwr), (int)wIndex, (int)wIndex));
 
   #if defined(BM_IN_LINK)
+        // Have not coded for skip link at top here and elsewhere.
+        assert( ! tp_bIsSkip(nType) || (nBLUp != cnBitsPerWord) );
         // We avoid ambiguity by disallowing calls to Insert/Remove with
         // nBL == cnBitsPerWord and pwRoot not at the top.
         // We need to know if there is a link surrounding *pwRoot.
@@ -2588,6 +2590,15 @@ Initialize(void)
         anBL_to_nDL[nBL] = nDL_from_nBL(nBL);
     }
 #endif // defined(BPD_TABLE_RUNTIME_INIT)
+
+#if defined(BM_IN_LINK)
+    printf("# BM_IN_LINK is buggy.\n");
+    printf("# With two-digit bitmap leaf conversion.\n");
+    printf("# With bmsw to uncompressed conversion.\n");
+    printf("# With retype full bmsw if BM_IN_NON_BM_SW.\n");
+    printf("# With skip at top?\n");
+    printf("# With PP_IN_LINK unless NO_SKIP_AT_TOP?\n");
+#endif // defined(BM_IN_LINK)
 
     printf("\n");
     printf("# cnBitsInD1 %d\n", cnBitsInD1);
