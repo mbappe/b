@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.328 2015/01/02 18:53:49 mike Exp mike $
+// @(#) $Id: b.h,v 1.329 2015/01/02 20:20:48 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -1623,9 +1623,9 @@ Status_t Remove(Word_t *pwRoot, Word_t wKey, int nBL);
 Status_t InsertGuts(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
 Status_t RemoveGuts(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
 
-void InsertCleanup(Word_t wKey, int nDL, Word_t *pwRoot, Word_t wRoot);
+void InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot);
 
-void RemoveCleanup(Word_t wKey, int nDL, int nDLR,
+void RemoveCleanup(Word_t wKey, int nBL, int nBLR,
                    Word_t *pwRoot, Word_t wRoot);
 
 Word_t FreeArrayGuts(Word_t *pwRoot,
