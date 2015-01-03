@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.431 2015/01/03 02:16:37 mike Exp mike $
+// @(#) $Id: b.c,v 1.432 2015/01/03 12:51:45 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2180,7 +2180,9 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
                            (pcKeysLn[nn] & wBLM));
                 }
             } else {
-                printf("ww %ld wRootLn %p\n", ww, (void *)wRootLn);
+                // I guess remove can result in a NULL *pwRootLn in a bitmap
+                // switch since we don't clean them up at the time.
+                DBGI(printf("Null link in bm switch ww %ld.\n", ww));
             }
         }
 #if defined(DEBUG)
@@ -2753,20 +2755,27 @@ newSwitch:
             }
             else
             {
-                // NewSwitch overwrites *pwRoot which is a problem for
-                // T_ONE with embedded keys.
+                // NewSwitch overwrites *pwRoot which would be a problem for
+                // embedded keys.
+                assert(wr_nType(*pwRoot) != T_EMBEDDED_KEYS);
 
                 NewSwitch(pwRoot, wKey, nDL,
 #if defined(USE_BM_SW)
-  #if defined(USE_BM_SW)
-      #if defined(SKIP_TO_BM_SW)
+  #if defined(SKIP_TO_BM_SW)
+      #if defined(BM_IN_LINK)
+                          /* bBmSw */ nDLOld != cnDigitsPerWord,
+      #else // defined(BM_IN_LINK)
                           /* bBmSw */ 1,
-      #else // defined(SKIP_TO_BM_SW)
+      #endif // defined(BM_IN_LINK)
+  #else // defined(SKIP_TO_BM_SW)
+      #if defined(BM_IN_LINK)
+                          (nDLOld != cnDigitsPerWord) && (nDL == nDLOld),
+      #else // defined(BM_IN_LINK)
                           /* bBmSw */ nDL == nDLOld,
-      #endif // defined(SKIP_TO_BM_SW)
-  #else // defined(USE_BM_SW))
+      #endif // defined(BM_IN_LINK)
+  #endif // defined(SKIP_TO_BM_SW)
+#else // defined(USE_BM_SW))
                           /* bBmSw */ 0,
-  #endif // defined(USE_BM_SW)
 #endif // defined(USE_BM_SW)
                           nDLOld, /* wPopCnt */ 0);
 
@@ -2952,22 +2961,29 @@ newSwitch:
             // It may not be the same as the index in the old switch.
 
 #if defined(USE_BM_SW)
-  // set bBmSwNew
-  #if defined(USE_BM_SW)
-      #if defined(SKIP_TO_BM_SW)
-            int bBmSwNew = 1; // new switch type
-      #else // defined(SKIP_TO_BM_SW)
-            int bBmSwNew = (nDL == nDLUp); // new switch type
-      #endif // defined(SKIP_TO_BM_SW)
-  #else // defined(USE_BM_SW)
-            int bBmSwNew = 0; // new switch type
-  #endif // defined(USE_BM_SW)
-  // set bBmSwOld
+
+            // set bBmSwNew
   #if defined(SKIP_TO_BM_SW)
-            int bBmSwOld = (nType == T_SKIP_TO_BM_SW);
+      #if defined(BM_IN_LINK)
+            int bBmSwNew = (nDLUp != cnDigitsPerWord);
+      #else // defined(BM_IN_LINK)
+            int bBmSwNew = 1;
+      #endif // defined(BM_IN_LINK)
+  #else // defined(SKIP_TO_BM_SW)
+      #if defined(BM_IN_LINK)
+            int bBmSwNew = ((nDLUp != cnDigitsPerWord) && (nDL == nDLOld));
+      #else // defined(BM_IN_LINK)
+            int bBmSwNew = (nDL == nDLOld);
+      #endif // defined(BM_IN_LINK)
+  #endif // defined(SKIP_TO_BM_SW)
+
+            // set bBmSwOld
+  #if defined(SKIP_TO_BM_SW)
+            int bBmSwOld = tp_bIsBmSw(nType);
   #elif defined(BM_IN_LINK)
             int bBmSwOld = 0; // no skip link to bm switch
   #endif // defined(SKIP_TO_BM_SW)
+
 #endif // defined(USE_BM_SW)
 
 #if defined(BM_IN_LINK)
