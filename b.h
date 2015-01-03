@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.330 2015/01/03 01:31:04 mike Exp mike $
+// @(#) $Id: b.h,v 1.331 2015/01/03 12:51:45 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -827,13 +827,13 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
 #if defined(LEVEL_IN_WROOT_HIGH_BITS)
 
-  #define wr_nBL(_wr)  (assert(tp_bIsSkip(wr_nType(_wr))), (_wr) >> 56)
+  #define wr_nBL(_wr)  (assert(tp_bIsSkip(wr_nType(_wr))), (_wr) >> 58)
 
   #define wr_nDL(_wr)  nBL_to_nDL(wr_nBL(_wr))
 
   #define set_wr_nBL(_wr, _nBL) \
           (set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
-           ((_wr) = ((_wr) & ~(0xffUL << 56) | (Word_t)(_nBL) << 56)))
+           ((_wr) = ((_wr) & MSK(58) | (Word_t)(_nBL) << 58)))
 
   #define set_wr_nDL(_wr, _nDL)  set_wr_nBL((_wr), nDL_to_nBL(_nDL))
 
@@ -923,11 +923,11 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
 #if defined(LEVEL_IN_WROOT_HIGH_BITS)
 
-  #define wr_nDS(_wr)  (assert(tp_bIsSkip(wr_nType(_wr))), (_wr) >> 56)
+  #define wr_nDS(_wr)  (assert(tp_bIsSkip(wr_nType(_wr))), (_wr) >> 58)
 
   #define set_wr_nDS(_wr, _nDS) \
           (set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
-           ((_wr) = ((_wr) & ~(0xffUL << 56) | (Word_t)(_nDS) << 56)))
+           ((_wr) = ((_wr) & MSK(58) | (Word_t)(_nDS) << 58)))
 
 #else // defined(LEVEL_IN_WROOT_HIGH_BITS)
 
