@@ -1077,6 +1077,11 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
         = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixPopMask(_nDL)) \
             | ((_key) & ~wPrefixPopMask(_nDL))))
 
+#define set_PWR_wPrefixBL(_pwRoot, _pwr, _nBL, _key) \
+    (PWR_wPrefixPop((_pwRoot), (_pwr)) \
+        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixPopMaskBL(_nBL)) \
+            | ((_key) & ~wPrefixPopMaskBL(_nBL))))
+
 #if defined(POP_WORD)
 
 #define PWR_wPopWord(_pwRoot, _pwr)  ((_pwr)->sw_wPopWord)
