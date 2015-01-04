@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.529 2015/01/03 21:19:15 mike Exp mike $
+// @(#) $Id: bli.c,v 1.530 2015/01/04 02:09:36 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2747,7 +2747,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             if (wPopCnt == cnListPopCntMax32)
 #endif // (cnBitsPerWord == 64)
             {
-                status = InsertGuts(pwRoot, wKey, cnDigitsPerWord, wRoot);
+                status = InsertGuts(pwRoot, wKey, cnBitsPerWord, wRoot);
             }
             else
             {
