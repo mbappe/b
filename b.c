@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.440 2015/01/04 02:09:36 mike Exp mike $
+// @(#) $Id: b.c,v 1.441 2015/01/04 19:39:51 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1209,6 +1209,8 @@ OldSwitch(Word_t *pwRoot, unsigned nDL,
 static int
 GetDLR(Word_t *pwRoot, int nDL)
 {
+    (void)pwRoot;
+
     return
   #if defined(SKIP_LINKS)
         (tp_bIsSwitch(wr_nType(*pwRoot)) && tp_bIsSkip(wr_nType(*pwRoot)))
@@ -2667,8 +2669,6 @@ newSwitch:
                           /* bBmSw */ nDL == nDLOld,
       #endif // defined(BM_IN_LINK)
   #endif // defined(SKIP_TO_BM_SW)
-#else // defined(USE_BM_SW))
-                          /* bBmSw */ 0,
 #endif // defined(USE_BM_SW)
                           nDLOld, /* wPopCnt */ 0);
 
