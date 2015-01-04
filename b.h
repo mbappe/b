@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.332 2015/01/03 22:22:10 mike Exp mike $
+// @(#) $Id: b.h,v 1.333 2015/01/03 22:46:07 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -1208,6 +1208,25 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
                  2 * sizeof(Word_t) / (_nBytesKeySz)) \
          - sizeof(Word_t) / (_nBytesKeySz) ) \
 )
+
+// Pop count in wRoot high bits.
+#if defined(POP_IN_WR_HB)
+
+  #define PWR_xListPopCnt(_pwRoot, _nBL) \
+      ((int)((*(_pwRoot) >> cnBitsVirtAddr) & 0x3ff))
+
+  #define set_PWR_xListPopCnt(_pwRoot, _nBL, _cnt) \
+      (*(_pwRoot) = *(_pwRoot) & ~(0x3ffUL << cnBitsVirtAddr) \
+                               | ((Word_t)(_cnt) << cnBitsVirtAddr))
+
+#else // defined(POP_IN_WR_HB)
+
+  #define PWR_xListPopCnt(_pwRoot, _nBL) \
+       ls_xPopCnt(wr_pwr(*(_pwRoot)), (_nBL))
+
+  #define set_PWR_xListPopCnt(_pwRoot, _nBL, _cnt)
+
+#endif // defined(POP_IN_WR_HB)
 
 #if defined(OLD_LISTS)
 

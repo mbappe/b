@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.438 2015/01/03 20:46:34 mike Exp mike $
+// @(#) $Id: b.c,v 1.439 2015/01/03 21:15:44 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -191,9 +191,16 @@ MyFree(Word_t *pw, Word_t wWords)
 #if defined(LEVEL_IN_WROOT_HIGH_BITS)
     pw[-1] &= MSK(16);
 #endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
+    if (!((((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2))
+        || (((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 2)
+        || (((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 4))) {
+        printf("wWords %lx pw[-1] %lx\n", wWords, pw[-1] >> 3);
+    }
+#if 0
     assert((((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2))
         || (((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 2)
         || (((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 4));
+#endif
     JudyFree(pw, wWords + cnMallocExtraWords);
 }
 
@@ -2333,6 +2340,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
                     || (PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)
                             == wPopCnt + 1));
 #endif // defined(PP_IN_LINK)
+                set_wr(wRoot, pwList, T_LIST);
             }
             else
             {
@@ -2347,7 +2355,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
                 { set_ls_xPopCnt(pwList, nBL, wPopCnt + 1); }
             }
 
-            set_wr(wRoot, pwList, T_LIST);
+            set_PWR_xListPopCnt(&wRoot, nBL, wPopCnt + 1);
 
             if (wPopCnt != 0)
 #if defined(SORT_LISTS)
@@ -3118,6 +3126,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
     }
 
     set_wr(wRoot, pwList, T_LIST);
+    set_PWR_xListPopCnt(&wRoot, nBL, nPopCnt);
     *pwRoot = wRoot;
 
     return wRoot;
@@ -3228,6 +3237,7 @@ DeflateExternalList(Word_t *pwRoot,
         assert(nPopCntMax == 0);
         Word_t *pwList = NewList(1, nBL_to_nDL(nBL));
         wRoot = 0; set_wr(wRoot, pwList, T_ONE); // external T_ONE list
+        set_PWR_xListPopCnt(&wRoot, nBL, 1);
         Word_t *pwKeys = ls_pwKeys(pwr, nBL);
         *pwList = pwKeys[0];
     }
@@ -3493,6 +3503,8 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
         pwList = pwr;
     }
 
+    set_PWR_xListPopCnt(&wRoot, nBL, wPopCnt - 1);
+
 #if defined(PP_IN_LINK)
     if (nDL == cnDigitsPerWord)
 #endif // defined(PP_IN_LINK)
@@ -3579,8 +3591,9 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
     if (pwList != pwr)
     {
         OldList(pwr, wPopCnt, nDL, nType);
-        *pwRoot = wRoot;
     }
+
+    *pwRoot = wRoot;
 
 #if defined(EMBED_KEYS)
     // Embed the list if it fits.

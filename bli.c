@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.528 2015/01/03 12:51:45 mike Exp $
+// @(#) $Id: bli.c,v 1.529 2015/01/03 21:19:15 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -850,7 +850,7 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
       #if defined(PP_IN_LINK)
     int nPopCnt = PWR_wPopCntBL(pwRoot, NULL, nBL);
       #else // defined(PP_IN_LINK)
-    int nPopCnt = ls_xPopCnt(pwr, 8);
+    int nPopCnt = PWR_xListPopCnt(pwRoot, 8);
       #endif // defined(PP_IN_LINK)
   #endif // defined(PARALLEL_128)
     uint8_t *pcKeys = ls_pcKeysNATX(pwr, nPopCnt);
@@ -904,26 +904,26 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
   #if defined(PP_IN_LINK)
     int nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
   #else // defined(PP_IN_LINK)
-  #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
-      #if (cnListPopCntMax16 <= 8)
+      #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
+          #if (cnListPopCntMax16 <= 8)
     int nPopCnt = 8; // Eight fit so why do less?
     assert((cnListPopCntMaxDl1 <= 8) || (cnBitsInD1 <= 8));
-      #elif (cnBitsInD1 > 8) // nDL == 1 is handled here
-          #if (cnListPopCntMaxDl1 <= 8) // list fits in one __m128i
-              #if (cnBitsLeftAtDl2 <= 16) // need to test nDL
-    int nPopCnt = (nBL == cnBitsInD1) ? 8 : ls_xPopCnt(pwr, 16);
-              #else // (cnBitsLeftAtDl2 <= 16)
+          #elif (cnBitsInD1 > 8) // nDL == 1 is handled here
+              #if (cnListPopCntMaxDl1 <= 8) // list fits in one __m128i
+                  #if (cnBitsLeftAtDl2 <= 16) // need to test nDL
+    int nPopCnt = (nBL == cnBitsInD1) ? 8 : PWR_xListPopCnt(pwRoot, 16);
+                  #else // (cnBitsLeftAtDl2 <= 16)
     int nPopCnt = 8; // Eight fit so why do less?
-              #endif // (cnBitsLeftAtDl2 <= 16)
-          #else // (cnListPopCntMaxDl1 <= 8)
-    int nPopCnt = ls_xPopCnt(pwr, 16);
-          #endif // (cnListPopCntMaxDl1 <= 8)
-      #else // (cnListPopCntMax16 <= 8)
-    int nPopCnt = ls_xPopCnt(pwr, 16);
-      #endif // (cnListPopCntMax16 <= 8)
-  #else // defined(PARALLEL_128)
-    int nPopCnt = ls_xPopCnt(pwr, 16);
-  #endif // defined(PARALLEL_128)
+                  #endif // (cnBitsLeftAtDl2 <= 16)
+              #else // (cnListPopCntMaxDl1 <= 8)
+    int nPopCnt = PWR_xListPopCnt(pwRoot, 16);
+              #endif // (cnListPopCntMaxDl1 <= 8)
+          #else // (cnListPopCntMax16 <= 8)
+    int nPopCnt = PWR_xListPopCnt(pwRoot, 16);
+          #endif // (cnListPopCntMax16 <= 8)
+      #else // defined(PARALLEL_128)
+    int nPopCnt = PWR_xListPopCnt(pwRoot, 16);
+      #endif // defined(PARALLEL_128)
   #endif // defined(PP_IN_LINK)
     uint16_t *psKeys = ls_psKeysNATX(pwr, nPopCnt);
 
@@ -1239,7 +1239,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
           #if defined(PP_IN_LINK)
         nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
           #else // defined(PP_IN_LINK)
-        nPopCnt = ls_xPopCnt(pwr, 32);
+        nPopCnt = PWR_xListPopCnt(pwRoot, 32);
           #endif // defined(PP_IN_LINK)
         nPos = SearchList32(ls_piKeysNATX(pwr, nPopCnt), wKey, nBL, nPopCnt);
     } else
@@ -1250,7 +1250,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
       #if defined(PP_IN_LINK)
         nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
       #else // defined(PP_IN_LINK)
-        nPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
+        nPopCnt = PWR_xListPopCnt(pwRoot, cnBitsPerWord);
       #endif // ! defined(PP_IN_LINK)
         nPos = SearchListWord(ls_pwKeysNATX(pwr, nPopCnt),
                               wKey, nBL, nPopCnt);
