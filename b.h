@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.333 2015/01/03 22:46:07 mike Exp mike $
+// @(#) $Id: b.h,v 1.334 2015/01/04 02:09:36 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -989,18 +989,18 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 #endif // defined(TYPE_IS_ABSOLUTE)
 
 #if defined(EXTRA_TYPES)
-#define     tp_bIsSwitch(_tp)          (((_tp) & cnMallocMask) >= T_SWITCH)
+  #define tp_bIsSwitch(_tp)  (((_tp) & cnMallocMask) >= T_SWITCH)
 #else // defined(EXTRA_TYPES)
-#define     tp_bIsSwitch(_tp)          ((_tp) >= T_SWITCH)
+  #define tp_bIsSwitch(_tp)  ((_tp) >= T_SWITCH)
 #endif // defined(EXTRA_TYPES)
-#define     tp_bIsSkip(_tp)            (((_tp) & T_SKIP_BIT) != 0)
+  #define tp_bIsSkip(_tp)  (((_tp) & T_SKIP_BIT) != 0)
 #if defined(SKIP_TO_BM_SW)
-#define     tp_bIsBmSw(_tp)            (((_tp) & T_BM_SW_BIT) != 0)
+  #define tp_bIsBmSw(_tp)  (((_tp) & T_BM_SW_BIT) != 0)
 #else // defined(SKIP_TO_BM_SW)
-#define     tp_bIsBmSw(_tp)            (((_tp) & T_BM_SW_BIT) && ! ((_tp) & T_SKIP_BIT))
+  #define tp_bIsBmSw(_tp)  (((_tp) & T_BM_SW_BIT) && ! ((_tp) & T_SKIP_BIT))
 #endif // defined(SKIP_TO_BM_SW)
 
-#define     wr_bIsSwitch(_wr)          (tp_bIsSwitch(wr_nType(_wr)))
+#define wr_bIsSwitch(_wr)  (tp_bIsSwitch(wr_nType(_wr)))
 
 // methods for Switch (and aliases)
 
@@ -1613,7 +1613,6 @@ typedef struct {
 #if defined(SKIP_TO_BM_SW)
     typedef Switch_t BmSwitch_t;
 #else // defined(SKIP_TO_BM_SW)
-//#if defined(USE_BM_SW)
 // Bitmap switch.
 typedef struct {
 #if ! defined(BM_IN_LINK)
@@ -1630,7 +1629,6 @@ typedef struct {
 #endif // (cnDummiesInSwitch != 0)
     Link_t sw_aLinks[1]; // variable size
 } BmSwitch_t;
-//#endif // defined(USE_BM_SW)
 #endif // defined(SKIP_TO_BM_SW)
 
 Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBL);

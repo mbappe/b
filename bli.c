@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.531 2015/01/04 15:11:53 mike Exp mike $
+// @(#) $Id: bli.c,v 1.532 2015/01/04 15:20:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1559,7 +1559,7 @@ again:;
     DBGX(printf("# wRoot "OWx" wKey "OWx" nBL %d\n", wRoot, wKey, nBL));
 
     unsigned nType = wr_nType(wRoot);
-    Word_t *pwr = wr_tp_pwr(wRoot, nType);
+    Word_t *pwr = wr_pwr(wRoot);
   #if defined(EXTRA_TYPES)
     switch (wRoot & MSK(cnBitsMallocMask + 1))
   #else // defined(EXTRA_TYPES)
@@ -1650,12 +1650,14 @@ again:;
     {
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:;
-#if ! defined(LOOKUP)
-        nBLUp = nBL;
-#endif // ! defined(LOOKUP)
+        // nBL is bits left below the link picked from the previous switch
+        // nBL is not reduced by any skip indicated in that link
+        // nBLR is nBL reduced by any skip indicated in that link
         // nBLR is bits left at the top of this switch
-        // nBL is bits left below this sw (not including skip bits)
-        nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBL);
+#if ! defined(LOOKUP)
+        nBLUp = nBL; // save nBL before updating for use in this case only
+#endif // ! defined(LOOKUP)
+        nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBLR);
 
         Word_t wIndex = ((wKey >> nBL)
             // It is ok to use NAX here even though we might be at top because
@@ -1681,9 +1683,8 @@ t_switch:;
             // Increment or decrement population count on the way in.
             wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
             set_PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR, wPopCnt + nIncr);
-            DBGX(printf("wPopCnt %zd\n",
-                        (size_t)PWR_wPopCntBL(pwRoot,
-                                              (Switch_t *)pwr, nBLR)));
+            DBGX(printf("wPopCnt "OWx"\n",
+                        PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR)));
         }
 #endif // !defined(LOOKUP)
 
@@ -1706,12 +1707,9 @@ switchTail:;
         DBGX(printf("Next pwRoot %p wRoot "OWx" nBL %d\n",
                     (void *)pwRoot, wRoot, nBL));
 
-        // Advance nBLR to the bottom of this switch now just in case
-        // we have a non-skip link to a switch.  We could do it later.
-        nBLR -= nBL_to_nBitsIndexSzNAX(nBLR);
+        nBLR = nBL; // Advance nBLR to the bottom of this switch now.
 #if defined(LOOKUP) || !defined(RECURSIVE)
-        goto again;
-        // nType = wr_nType(wRoot); *pwr = wr_tp_pwr(wRoot, nType); switch
+        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
 #else // defined(LOOKUP) || !defined(RECURSIVE)
         return InsertRemove(pwRoot, wKey, nBL);
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
@@ -2469,7 +2467,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     unsigned nType = wr_nType((Word_t)pcvRoot);
     if (nType == T_LIST)
     {
-        Word_t *pwr = wr_tp_pwr((Word_t)pcvRoot, nType);
+        Word_t *pwr = wr_pwr((Word_t)pcvRoot);
 
         // ls_wPopCount is valid only at the top for PP_IN_LINK
         // the first word in the list is used for pop count at the top
@@ -2710,7 +2708,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     if (((T_LIST == nType)
 #if ! defined(SEPARATE_T_NULL)
-            && (wr_tp_pwr(wRoot, nType) != NULL)
+            && (wr_pwr(wRoot) != NULL)
 #endif // ! defined(SEPARATE_T_NULL)
             && 1)
       #if defined(USE_T_ONE)
@@ -2726,7 +2724,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         }
         else
         {
-            Word_t *pwr = wr_tp_pwr(wRoot, nType);
+            Word_t *pwr = wr_pwr(wRoot);
             Word_t wPopCnt;
 
       #if defined(USE_T_ONE)
@@ -2882,7 +2880,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
         }
         else
         {
-            Word_t *pwr = wr_tp_pwr(wRoot, nType);
+            Word_t *pwr = wr_pwr(wRoot);
             Word_t wPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
             Word_t *pwListNew;
             if (wPopCnt != 1)
