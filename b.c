@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.442 2015/01/04 19:48:20 mike Exp mike $
+// @(#) $Id: b.c,v 1.442 2015/01/04 19:48:20 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -691,7 +691,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
   #if defined(TYPE_IS_RELATIVE)
             set_wr_nDS(*pwRoot, nBL_to_nDL(nBLUp) - nBL_to_nDL(nBL));
   #else // defined(TYPE_IS_RELATIVE)
-            set_wr_nBL(*pwRoot, nBL);
+            set_wr_nBL(*pwRoot, nBL); // set nBL
   #endif // defined(TYPE_IS_RELATIVE)
             // set_wr_nDS and set_wr_nBL overwrite
             // the type field.  So we have to set
@@ -848,8 +848,8 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
     return pwr;
 
     (void)wKey; // fix "unused parameter" compiler warning
-    (void)nBL; // nDL is not used for all ifdef combos
-    (void)nBLUp; // nDLUp is not used for all ifdef combos
+    (void)nBL; // nBL is not used for all ifdef combos
+    (void)nBLUp; // nBLUp is not used for all ifdef combos
 }
 
 #if defined(USE_BM_SW)
@@ -950,7 +950,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
         HexDump("Before NewSwitch", pwr, 200);
 #endif
         Word_t *pwrNew
-            = NewSwitch(pwRoot, wKey, nBLR, /*bBmSw*/ 0, nBLUp, wPopCntKeys); 
+            = NewSwitch(pwRoot, wKey, nBLR, /*bBmSw*/ 0, nBLUp, wPopCntKeys);
 #if 0
         printf("B PWR_pwBm %p *PWR_pwBm %p\n",
                (void *)PWR_pwBm(pwRoot, pwr), (void *)*PWR_pwBm(pwRoot, pwr));
@@ -2106,10 +2106,10 @@ Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 {
     int nDL = nBL_to_nDL(nBL);
-    DBGI(printf("InsertGuts pwRoot %p wKey "OWx" nDL %d wRoot "OWx"\n",
-               (void *)pwRoot, wKey, nDL, wRoot));
+    DBGI(printf("InsertGuts pwRoot %p wKey "OWx" nBL %d wRoot "OWx"\n",
+               (void *)pwRoot, wKey, nBL, wRoot));
 
-    assert(nDL >= 1);
+    assert(nBL >= cnBitsInD1);
 
 #if defined(USE_T_ONE)
 #if defined(COMPRESSED_LISTS)
@@ -2131,7 +2131,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
     // nType may be invalid if wRoot is an embedded bitmap.
     // The first test can be done at compile time and might make the
     // InsertAtDl1 go away.
-    if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nDL == 1)) {
+    if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nBL == cnBitsInD1)) {
         return InsertAtDl1(pwRoot, wKey, nDL, nBL, wRoot);
     }
 
@@ -2654,7 +2654,7 @@ newSwitch:
       #if defined(BM_IN_LINK)
                           (nBLOld != cnBitsPerWord) && (nBL == nBLOld),
       #else // defined(BM_IN_LINK)
-                          /* bBmSw */ nDL == nDLOld,
+                          /* bBmSw */ nBL == nBLOld,
       #endif // defined(BM_IN_LINK)
   #endif // defined(SKIP_TO_BM_SW)
 #endif // defined(USE_BM_SW)
@@ -2809,12 +2809,13 @@ newSwitch:
 #endif // defined(PP_IN_LINK)
             { wPrefix = PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDLR); }
 
-            // Figure new nDL for old parent link.
+            // Figure new nBL for old parent link.
             nDL = nBL_to_nDL(LOG(1 | (wPrefix ^ wKey)) + 1);
+            nBL = nDL_to_nBL(nDL);
             // nDL includes the highest order digit that is different.
 
             assert(nDL > nDLR);
-            assert(nDL <= nDLUp);
+            assert(nBL <= nBLUp);
 
             Word_t wPopCnt;
 #if defined(PP_IN_LINK)
