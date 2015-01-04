@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.530 2015/01/04 02:09:36 mike Exp mike $
+// @(#) $Id: bli.c,v 1.531 2015/01/04 15:11:53 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -567,7 +567,7 @@ static int
 PSplitSearch16(int nBL,
                uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 {
-again:
+again:;
     assert(nPopCnt > 0);
     assert(nPos >= 0); assert((nPos & ~MSK(sizeof(Bucket_t))) == 0);
 
@@ -1537,14 +1537,14 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 
 #if !defined(LOOKUP)
   #if !defined(RECURSIVE)
-top:
+top:;
   #endif // !defined(RECURSIVE)
     wRoot = *pwRoot;
 #endif // !defined(LOOKUP)
     nBLR = nBL;
 
 #if defined(LOOKUP) || !defined(RECURSIVE)
-again:
+again:;
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
 #if defined(SKIP_LINKS)
@@ -1649,7 +1649,7 @@ again:
 #endif // defined(EXTRA_TYPES)
     {
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
-t_switch:
+t_switch:;
 #if ! defined(LOOKUP)
         nBLUp = nBL;
 #endif // ! defined(LOOKUP)
@@ -1690,7 +1690,7 @@ t_switch:
         pwRoot = &pwr_pLinks((Switch_t *)pwr)[wIndex].ln_wRoot;
 
         goto switchTail;
-switchTail:
+switchTail:;
 
         wRoot = *pwRoot;
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -1743,7 +1743,7 @@ switchTail:
   #endif // defined(EXTRA_TYPES)
     {
         goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
-t_bm_sw:
+t_bm_sw:;
   #if defined(BM_SW_FOR_REAL) || ! defined(LOOKUP)
         nBLUp = nBL;
   #endif // defined(BM_SW_FOR_REAL) || ! defined(LOOKUP)
@@ -1849,7 +1849,7 @@ t_bm_sw:
 #endif // defined(EXTRA_TYPES)
     {
         goto t_list;
-t_list:
+t_list:;
         DBGX(printf("T_LIST nBL %d\n", nBL));
   #if ! defined(LOOKUP)
         DBGX(printf("T_LIST bCleanup %d nIncr %d\n", bCleanup, nIncr));
@@ -2007,7 +2007,7 @@ t_list:
     case T_BITMAP | EXP(cnBitsMallocMask):
 #endif // defined(EXTRA_TYPES)
     {
-embeddedBitmap:
+embeddedBitmap:;
   #if ! defined(LOOKUP)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
@@ -2124,6 +2124,8 @@ embeddedBitmap:
     case T_EMBEDDED_KEYS | EXP(cnBitsMallocMask):
 #endif // defined(EXTRA_TYPES)
     {
+        goto embedded_keys; // suppress compiler unused-label warnings
+embedded_keys:; // the semi-colon allows for a declaration next; go figure
         assert(nBL
             <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
   #if ! defined(LOOKUP)
@@ -2278,7 +2280,7 @@ embeddedBitmap:
 
         break;
 
-foundIt:
+foundIt:;
 
       #if defined(REMOVE)
         goto removeGutsAndCleanup;
@@ -2386,7 +2388,7 @@ foundIt:
     } // end of switch
 
 #if defined(BM_SW_FOR_REAL)
-notFound:
+notFound:;
 #endif // defined(BM_SW_FOR_REAL)
 #if defined(INSERT)
   #if defined(BM_IN_LINK)
@@ -2400,7 +2402,7 @@ notFound:
     // bits that were not decoded in identifying pwRoot.  nBL
     // does not include any skip indicated in the type field of *pwRoot.
     InsertGuts(pwRoot, wKey, nBL, wRoot); goto cleanup;
-undo:
+undo:;
 #endif // defined(INSERT)
 #if defined(REMOVE) && !defined(RECURSIVE)
     if (nIncr < 0)
@@ -2410,7 +2412,7 @@ undo:
         // Undo the counting we did on the way in.
         nIncr *= -1;
   #if ! defined(LOOKUP)
-restart:
+restart:;
   #endif // ! defined(LOOKUP)
         pwRoot = pwRootOrig;
         nBL = nBLOrig;
@@ -2420,10 +2422,10 @@ restart:
     return Failure;
   #if ! defined(LOOKUP)
       #if defined(REMOVE)
-removeGutsAndCleanup:
+removeGutsAndCleanup:;
     RemoveGuts(pwRoot, wKey, nBL, wRoot);
       #else // defined(REMOVE)
-cleanup:
+cleanup:;
       #endif // defined(REMOVE)
     bCleanup = 1; // ?? nIncr == 0 ??
     DBGX(printf("Cleanup pwRO "OWx" nBLO %d\n",
