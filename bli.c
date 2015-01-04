@@ -2555,7 +2555,7 @@ Initialize(void)
         printf("Try increasing cnBitsInD1 or decreasing sizeof(Link_t).\n");
     }
     assert(EXP(cnBitsLeftAtDl2) > sizeof(Link_t) * 8);
-#if ! defined(LEVEL_IN_WROOT_HIGH_BITS)
+#if ! defined(LVL_IN_WR_HB)
 #if ! defined(DEPTH_IN_SW)
 #if ! defined(TYPE_IS_RELATIVE)
     // We could be a lot more creative here w.r.t. mapping our scarce type
@@ -2570,7 +2570,7 @@ Initialize(void)
     }
 #endif // ! defined(TYPE_IS_RELATIVE)
 #endif // ! defined(DEPTH_IN_SW)
-#endif // ! defined(LEVEL_IN_WROOT_HIGH_BITS)
+#endif // ! defined(LVL_IN_WR_HB)
 
 #if defined(BPD_TABLE_RUNTIME_INIT)
     for (unsigned nDL = 0;
@@ -2622,11 +2622,11 @@ Initialize(void)
     printf("# cnListPopCntMaxDl3 n/a\n");
 #endif // defined(cnListPopCntMaxDl3)
 
-#if defined(LEVEL_IN_WROOT_HIGH_BITS)
-    printf("# LEVEL_IN_WROOT_HIGH_BITS\n");
-#else // defined(LEVEL_IN_WROOT_HIGH_BITS)
-    printf("# NO LEVEL_IN_WROOT_HIGH_BITS\n");
-#endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
+#if defined(LVL_IN_WR_HB)
+    printf("# LVL_IN_WR_HB\n");
+#else // defined(LVL_IN_WR_HB)
+    printf("# NO LVL_IN_WR_HB\n");
+#endif // defined(LVL_IN_WR_HB)
 
 #if defined(DEPTH_IN_SW)
     printf("# DEPTH_IN_SW\n");

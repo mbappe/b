@@ -276,17 +276,17 @@ typedef Word_t Bucket_t;
 #define cnBitsInD1  8
 #endif // ! defined(cnBitsInD1)
 
-// Default is -DDEPTH_IN_SW unless -DLEVEL_IN_WROOT_HIGH_BITS.
-#if ! defined(LEVEL_IN_WROOT_HIGH_BITS) && ! defined(NO_DEPTH_IN_SW)
-  #define DEPTH_IN_SW
-#endif // ! defined(LEVEL_IN_WROOT_HIGH_BITS) && ! defined(NO_DEPTH_IN_SW)
+// Default is -DLVL_IN_WR_HB unless -DDEPTH_IN_SW.
+#if ! defined(DEPTH_IN_SW) && ! defined(NO_LVL_IN_WR_HB)
+  #define LVL_IN_WR_HB
+#endif // ! defined(DEPTH_IN_SW) && ! defined(NO_LVL_IN_WR_HB)
 
 // Default is SKIP_TO_BM_SW.
 #if ! defined(NO_SKIP_TO_BM_SW)
   #if defined(USE_BM_SW)
-      #if defined(DEPTH_IN_SW) || defined(LEVEL_IN_WROOT_HIGH_BITS)
+      #if defined(DEPTH_IN_SW) || defined(LVL_IN_WR_HB)
           #define SKIP_TO_BM_SW
-      #endif // defined(DEPTH_IN_SW) || defined(LEVEL_IN_WROOT_HIGH_BITS)
+      #endif // defined(DEPTH_IN_SW) || defined(LVL_IN_WR_HB)
   #endif // defined(USE_BM_SW)
 #endif // ! defined(NO_SKIP_TO_BM_SW)
 
@@ -430,9 +430,9 @@ typedef Word_t Bucket_t;
 #endif // defined(SKIP_TO_BM_SW) && ! defined(USE_BM_SW)
 
 #if defined(SKIP_TO_BM_SW) && defined(USE_BM_SW)
-  #if ! defined(DEPTH_IN_SW) && ! defined(LEVEL_IN_WROOT_HIGH_BITS)
+  #if ! defined(DEPTH_IN_SW) && ! defined(LVL_IN_WR_HB)
       #error Sorry, no SKIP_TO_BM_SW without DEPTH_IN_SW or LEVEL_IN_WROOT...
-  #endif // ! defined(DEPTH_IN_SW) && ! defined(LEVEL_IN_WROOT_HIGH_BITS)
+  #endif // ! defined(DEPTH_IN_SW) && ! defined(LVL_IN_WR_HB)
 #endif // defined(SKIP_TO_BM_SW) && defined(USE_BM_SW)
 
 // Default is -DTYPE_IS_ABSOLUTE.  Use -DTYPE_IS_RELATIVE to change it.
@@ -825,7 +825,7 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
 #if defined(TYPE_IS_ABSOLUTE)
 
-#if defined(LEVEL_IN_WROOT_HIGH_BITS)
+#if defined(LVL_IN_WR_HB)
 
   #define wr_nBL(_wr)  (assert(tp_bIsSkip(wr_nType(_wr))), (_wr) >> 58)
 
@@ -837,7 +837,7 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
   #define set_wr_nDL(_wr, _nDL)  set_wr_nBL((_wr), nDL_to_nBL(_nDL))
 
-#else // defined(LEVEL_IN_WROOT_HIGH_BITS)
+#else // defined(LVL_IN_WR_HB)
 
 #if defined(DEPTH_IN_SW)
 // DEPTH_IN_SW directs us to use the low bits of sw_wPrefixPop for absolute
@@ -917,11 +917,11 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
 #endif // defined(DEPTH_IN_SW)
 
-#endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
+#endif // defined(LVL_IN_WR_HB)
 
 #else // defined(TYPE_IS_ABSOLUTE)
 
-#if defined(LEVEL_IN_WROOT_HIGH_BITS)
+#if defined(LVL_IN_WR_HB)
 
   #define wr_nDS(_wr)  (assert(tp_bIsSkip(wr_nType(_wr))), (_wr) >> 58)
 
@@ -929,7 +929,7 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
           (set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
            ((_wr) = ((_wr) & MSK(58) | (Word_t)(_nDS) << 58)))
 
-#else // defined(LEVEL_IN_WROOT_HIGH_BITS)
+#else // defined(LVL_IN_WR_HB)
 
 // These two macros should be used sparingly outside of wr_nDS and set_wr_nDS.
 // Why?  Because the type field in wRoot does not contain this information
@@ -984,7 +984,7 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
 #endif // defined(DEPTH_IN_SW)
 
-#endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
+#endif // defined(LVL_IN_WR_HB)
 
 #endif // defined(TYPE_IS_ABSOLUTE)
 
@@ -1208,6 +1208,11 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
                  2 * sizeof(Word_t) / (_nBytesKeySz)) \
          - sizeof(Word_t) / (_nBytesKeySz) ) \
 )
+
+// Default is -DPOP_IN_WR_HB.
+#if ! defined(NO_POP_IN_WR_HB)
+#define POP_IN_WR_HB
+#endif // ! defined(NO_POP_IN_WR_HB)
 
 // Pop count in wRoot high bits.
 #if defined(POP_IN_WR_HB)

@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.439 2015/01/03 21:15:44 mike Exp mike $
+// @(#) $Id: b.c,v 1.440 2015/01/04 02:09:36 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -188,9 +188,9 @@ MyFree(Word_t *pw, Word_t wWords)
     // make sure it is ok for us to use some of the bits in the word
     assert((pw[-1] >> 16) == ((pw[-1] & MSK(16)) >> 4));
     DBG(pw[-1] &= MSK(16));
-#if defined(LEVEL_IN_WROOT_HIGH_BITS)
+#if defined(LVL_IN_WR_HB)
     pw[-1] &= MSK(16);
-#endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
+#endif // defined(LVL_IN_WR_HB)
     if (!((((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2))
         || (((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 2)
         || (((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 4))) {
@@ -549,7 +549,7 @@ NewBitmap(Word_t *pwRoot, unsigned nBL)
     memset((void *)pwBitmap, 0, wWords * sizeof(Word_t));
 
     // Init wRoot before calling set_wr because set_wr may try to preserve
-    // the high bits, e.g. if LEVEL_IN_WROOT_HIGH_BITS, so we want them to
+    // the high bits, e.g. if LVL_IN_WR_HB, so we want them to
     // be initialized.
     Word_t wRoot = 0; set_wr(wRoot, pwBitmap, T_BITMAP);
 
@@ -1073,7 +1073,7 @@ printf("%p\n", (void *)&pwr_pLinks((BmSwitch_t *)pwr)[mm]);
             // configured with no skip link to bm switch.
       #if defined(SKIP_TO_BM_SW)
             //assert(BM_IN_NON_BM_SW);
-          #if defined(LEVEL_IN_WROOT_HIGH_BITS)
+          #if defined(LVL_IN_WR_HB)
             if (tp_bIsSkip(wr_nType(wRoot))) {
               #if defined(TYPE_IS_RELATIVE)
                 set_wr_nDS(*pwRoot, wr_nDS(wRoot));
@@ -1081,7 +1081,7 @@ printf("%p\n", (void *)&pwr_pLinks((BmSwitch_t *)pwr)[mm]);
                 set_wr_nBL(*pwRoot, nBLR);
               #endif // defined(TYPE_IS_RELATIVE)
             }
-          #endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
+          #endif // defined(LVL_IN_WR_HB)
             set_wr_nType(*pwRoot,
                          (wr_nType(wRoot) == T_SKIP_TO_BM_SW)
                              ? T_SKIP_TO_SWITCH : T_SWITCH);
@@ -1097,11 +1097,11 @@ printf("%p\n", (void *)&pwr_pLinks((BmSwitch_t *)pwr)[mm]);
   #endif // defined(RETYPE_FULL_BM_SW)
         {
             int nType = wr_nType(wRoot);
-  #if ! defined(LEVEL_IN_WROOT_HIGH_BITS)
+  #if ! defined(LVL_IN_WR_HB)
             set_wr_nType(*pwRoot, nType);
-  #endif // ! defined(LEVEL_IN_WROOT_HIGH_BITS)
+  #endif // ! defined(LVL_IN_WR_HB)
             // depth is preserved because the beginning of the switch is copied
-  #if defined(LEVEL_IN_WROOT_HIGH_BITS)
+  #if defined(LVL_IN_WR_HB)
       #if defined(SKIP_TO_BM_SW)
             if (nType == T_SKIP_TO_BM_SW) {
           #if defined(TYPE_IS_RELATIVE)
@@ -1113,7 +1113,7 @@ printf("%p\n", (void *)&pwr_pLinks((BmSwitch_t *)pwr)[mm]);
           #endif // defined(TYPE_IS_RELATIVE)
             }
       #endif // defined(SKIP_TO_BM_SW)
-  #endif // defined(LEVEL_IN_WROOT_HIGH_BITS)
+  #endif // defined(LVL_IN_WR_HB)
             set_wr_nType(*pwRoot, nType);
 
         }
@@ -2597,7 +2597,7 @@ newSwitch:
                 }
             }
 #endif // defined(PP_IN_LINK)
-#if ! defined(DEPTH_IN_SW) && ! defined(LEVEL_IN_WROOT_HIGH_BITS)
+#if ! defined(DEPTH_IN_SW) && ! defined(LVL_IN_WR_HB)
 // Depth is in type.
             if (nDL != nDLOld) {
 #if defined(TYPE_IS_RELATIVE)
@@ -2621,7 +2621,7 @@ newSwitch:
 #endif // defined(TYPE_IS_RELATIVE)
             }
             nBL = nDL_to_nBL(nDL);
-#endif // ! defined(DEPTH_IN_SW) && ! defined(LEVEL_IN_WROOT_HIGH_BITS)
+#endif // ! defined(DEPTH_IN_SW) && ! defined(LVL_IN_WR_HB)
 #else // defined(SKIP_LINKS)
             // I'm don't remember why this assertion was here.
             // But it blows and the code seems to do ok with it
