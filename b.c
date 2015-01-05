@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.442 2015/01/04 19:48:20 mike Exp $
+// @(#) $Id: b.c,v 1.444 2015/01/04 21:39:22 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -950,7 +950,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
         HexDump("Before NewSwitch", pwr, 200);
 #endif
         Word_t *pwrNew
-            = NewSwitch(pwRoot, wKey, nBLR, /*bBmSw*/ 0, nBLUp, wPopCntKeys);
+            = NewSwitch(pwRoot, wKey, nBLR,
+                        /*bBmSw*/ 0, nBLUp, wPopCntKeys);
 #if 0
         printf("B PWR_pwBm %p *PWR_pwBm %p\n",
                (void *)PWR_pwBm(pwRoot, pwr), (void *)*PWR_pwBm(pwRoot, pwr));
@@ -2047,7 +2048,9 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
                 memcpy(&pwBitmap[ww * EXP(cnBitsInD1 - cnLogBitsPerWord)],
                        pwrLn, EXP(cnBitsInD1 - 3));
                 OldBitmap(pwRootLn, pwrLn, cnBitsInD1);
-            } else if (wRootLn != 0) {
+            }
+#if (cwListPopCntMax != 0)
+            else if (wRootLn != 0) {
                 assert(nTypeLn == T_LIST);
                 assert(cnBitsInD1 <= 8);
                 uint8_t *pcKeysLn = ls_pcKeysNAT(pwrLn);
@@ -2061,7 +2064,9 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
                     SetBit(&pwBitmap[ww * EXP(cnBitsInD1 - cnLogBitsPerWord)],
                            (pcKeysLn[nn] & wBLM));
                 }
-            } else {
+            }
+#endif // (cwListPopCntMax != 0)
+            else {
                 // I guess remove can result in a NULL *pwRootLn in a bitmap
                 // switch since we don't clean them up at the time.
                 DBGI(printf("Null link in bm switch ww %ld.\n", ww));
@@ -2283,16 +2288,17 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
         int nDLOld = nDL;
         int nBLOld = nBL; (void)nBLOld;
 
-#if defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
+#if (cwListPopCntMax != 0) // true if we are using lists; embedded or external
+
+  #if defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
         // It makes no sense to impose a pop limit that is less than what
         // will fit as embedded keys.  If we want to be able to do that for
         // running experiments, then we can use POP_CNT_MAX_IS_KING.
         int nEmbeddedListPopCntMax
             = (cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL))
                 / nBL;
-#endif // defined(EMBED_KEYS)
+  #endif // defined(EMBED_KEYS)
 
-#if (cwListPopCntMax != 0) // true if we are using lists; embedded or external
         if (0
 #if defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
             || (wPopCnt < (Word_t)nEmbeddedListPopCntMax)
@@ -2895,14 +2901,12 @@ newSwitch:
             // initialize prefix/pop for new switch
             // Make sure to pass the right key for BM_SW_FOR_REAL.
             DBGI(printf("IG: nDL %d nDLUp %d\n", nDL, nDLUp));
+            pwSw = NewSwitch(pwRoot, wPrefix, nBL,
 #if defined(USE_BM_SW)
-            pwSw = NewSwitch(pwRoot, wPrefix, nBL, bBmSwNew, nBLUp, wPopCnt);
-            DBGI(HexDump("After NewSwitch",
-                         pwSw, bBmSwNew ? 3 : (EXP(cnBitsPerDigit) + 1)));
-#else // defined(USE_BM_SW)
-            pwSw = NewSwitch(pwRoot, wPrefix, nBL, nBLUp, wPopCnt);
-            DBGI(HexDump("After NewSwitch", pwSw, EXP(cnBitsPerDigit) + 1));
+                             bBmSwNew,
 #endif // defined(USE_BM_SW)
+                             nBLUp, wPopCnt);
+            DBGI(HexDump("After NewSwitch", pwSw, EXP(cnBitsPerDigit) + 1));
             DBGI(printf("Just after InsertGuts calls NewSwitch"
                         " for prefix mismatch.\n"));
             DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
@@ -3390,7 +3394,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 #if (cwListPopCntMax != 0)
     if ((nBL <= (int)LOG(sizeof(Link_t) * 8)) || (nType == T_BITMAP))
 #else // (cwListPopCntMax != 0)
-    assert((nBL <= LOG(sizeof(Link_t) * 8)) || (nType == T_BITMAP));
+    assert((nBL <= (int)LOG(sizeof(Link_t) * 8)) || (nType == T_BITMAP));
 #endif // (cwListPopCntMax != 0)
     {
         return RemoveBitmap(pwRoot, wKey, nDL, nBL, wRoot);
