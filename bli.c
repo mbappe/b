@@ -1279,7 +1279,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 #endif // (cwListPopCntMax != 0)
 
 #if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
-#if (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(EMBEDDED_KEYS_PARALLEL)
+#if defined(EMBED_KEYS) && defined(EMBEDDED_KEYS_PARALLEL)
 
 // Do a parallel search of a list embedded in a link given the key size.
 // EmbeddedListHasKey expects the keys to be packed towards the most
@@ -1359,7 +1359,7 @@ if (nPopCnt != wr_nPopCnt(wRoot, nBL)) {
     return bXorHasZero;
 }
 
-#endif // (cwListPopCntMax != 0) && defined(EMBED_KEYS) && defined(EMBEDDED_KEYS_PARALLEL)
+#endif // defined(EMBED_KEYS) && defined(EMBEDDED_KEYS_PARALLEL)
 #endif // ! defined(LOOKUP_NO_LIST_DEREF)
 
 #if defined(SKIP_LINKS)
@@ -1569,8 +1569,8 @@ again:;
 
 #if defined(SKIP_LINKS)
 
-    default: // skip link
-    // case T_SKIP_TO_SWITCH:
+    default: // printf("unknown type %d\n", nType); assert(0); exit(0);
+    // case T_SKIP_TO_SWITCH: // skip link to uncompressed switch
     {
         // pwr points to a switch
 
@@ -2348,7 +2348,7 @@ foundIt:;
 
 #endif // defined(USE_T_ONE)
 
-#if defined(SEPARATE_T_NULL)
+#if defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
 
     case T_NULL:
 #if defined(EXTRA_TYPES)
@@ -2381,7 +2381,7 @@ foundIt:;
 
     } // end of case T_NULL
 
-#endif // defined(SEPARATE_T_NULL)
+#endif // defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
 
     } // end of switch
 
