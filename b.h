@@ -365,7 +365,7 @@ typedef Word_t Bucket_t;
    MAX(cnListPopCntMax64, \
        MAX(cnListPopCntMax32, \
            MAX(cnListPopCntMax16, \
-               MAX(cnListPopCntMax8, 8))))
+               MAX(cnListPopCntMax8, 0))))
 #endif // ! defined(cwListPopCntMax)
 
 #define cnBitsLeftAtDl1     (cnBitsInD1)
@@ -451,10 +451,12 @@ typedef Word_t Bucket_t;
 
 // Values for nType.
 enum {
-#if defined(SEPARATE_T_NULL)
+#if defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
     T_NULL, // no keys below
-#endif // defined(SEPARATE_T_NULL)
+#endif // defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
+#if (cwListPopCntMax != 0)
     T_LIST, // external list of keys
+#endif // (cwListPopCntMax != 0)
 #if defined(USE_T_ONE)
     T_ONE, // one-key external list when key is too big to be embedded
 #endif // defined(USE_T_ONE)
