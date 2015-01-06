@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.445 2015/01/05 14:08:54 mike Exp mike $
+// @(#) $Id: b.c,v 1.446 2015/01/06 11:52:26 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2083,6 +2083,52 @@ if (pwBitmap[jj] != 0) {
     }
 }
 
+#if (cwListPopCntMax != 0)
+
+// Insert each key from pwRootOld into pwRoot.  Then free pwRootOld.
+// wKey contains the common prefix.
+static void
+InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
+{
+    Word_t wRootOld = *pwRootOld;
+    if (wRootOld == 0) { return; }
+    int nType = wr_nType(wRootOld);
+    assert(nType == T_LIST); // What about T_ONE?
+    Word_t *pwrOld = wr_pwr(wRootOld);
+    int nPopCnt = PWR_xListPopCnt(pwRootOld, nBLOld);
+    
+#if defined(COMPRESSED_LISTS)
+    if (nBLOld <= (int)sizeof(uint8_t) * 8) {
+        uint8_t *pcKeys = ls_pcKeysNAT(pwrOld);
+        for (int nn = 0; nn < nPopCnt; nn++) {
+            Insert(pwRoot, pcKeys[nn] | (wKey & ~MSK(8)), nBL);
+        }
+    } else if (nBLOld <= (int)sizeof(uint16_t) * 8) {
+        uint16_t *psKeys = ls_psKeysNAT(pwrOld);
+        for (int nn = 0; nn < nPopCnt; nn++) {
+            Insert(pwRoot, psKeys[nn] | (wKey & ~MSK(16)), nBL);
+        }
+#if (cnBitsPerWord > 32)
+    } else if (nBLOld <= (int)sizeof(uint32_t) * 8) {
+        uint32_t *piKeys = ls_piKeysNAT(pwrOld);
+        for (int nn = 0; nn < nPopCnt; nn++) {
+            Insert(pwRoot, piKeys[nn] | (wKey & ~MSK(32)), nBL);
+        }
+#endif // (cnBitsPerWord > 32)
+    } else
+#endif // defined(COMPRESSED_LISTS)
+    {
+        Word_t *pwKeys = ls_pwKeysNAT(pwrOld);
+        for (int nn = 0; nn < nPopCnt; nn++) {
+            Insert(pwRoot, pwKeys[nn], nBL);
+        }
+    }
+
+    if (nPopCnt != 0) { OldList(pwrOld, nPopCnt, nBLOld, nType); }
+}
+
+#endif // (cwListPopCntMax != 0)
+
 // InsertGuts
 // This function is called from the iterative Insert function once Insert has
 // determined that the key from an insert request is not present.
@@ -2423,8 +2469,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
         else
 #endif // (cwListPopCntMax != 0)
         {
-            Word_t w;
-
             // List is full; insert a switch or create a bitmap.
             DBGI(printf("List is full.\n"));
 #if defined(SKIP_LINKS)
@@ -2664,65 +2708,9 @@ newSwitch:
                 }
             }
 
-#if defined(COMPRESSED_LISTS)
-            int nBLOld = nDL_to_nBL(nDLOld);
-            if (nBLOld <= 8) {
-                for (w = 0; w < wPopCnt; w++)
-                {
-                    Insert(pwRoot, pcKeys[w] | (wKey & ~(Word_t)0xff),
-                           nBLOld);
-                }
-            } else if (nBLOld <= 16) {
-                for (w = 0; w < wPopCnt; w++)
-                {
-                    Insert(pwRoot, psKeys[w] | (wKey & ~(Word_t)0xffff),
-                           nBLOld);
-                }
-#if (cnBitsPerWord > 32)
-            } else if (nBLOld <= 32) {
-                for (w = 0; w < wPopCnt; w++)
-                {
-                    Insert(pwRoot,
-                           piKeys[w] | (wKey & ~(Word_t)0xffffffff),
-                           nBLOld);
-                    if (nDL == nDLOld) {
-                    DBGI(printf(
-                         "\n# InsertGuts After Insert(wKey 0x%x) Dump\n",
-                         piKeys[w]));
-                    DBGI(Dump(pwRootLast,
-                              /* wPrefix */ (Word_t)0, cnBitsPerWord));
-                    DBGI(printf("\n"));
-                    }
-                }
-#endif // (cnBitsPerWord > 32)
-            } else
-#endif // defined(COMPRESSED_LISTS)
-            {
-                for (w = 0; w < wPopCnt; w++)
-                {
-                    Insert(pwRoot, pwKeys[w], nBLOld);
+            InsertAll(&wRoot, nBLOld, wKey, pwRoot, nBLOld);
 
-                    if (nDL == nDLOld) {
-                    DBGI(printf(
-                         "\n# InsertGuts After Insert(wKey "OWx") Dump\n",
-                         pwKeys[w]));
-                    DBGI(Dump(pwRootLast,
-                              /* wPrefix */ (Word_t)0, cnBitsPerWord));
-                    DBGI(printf("\n"));
-                    }
-                }
-            }
-
-            if (nDL == nDLOld) {
-                DBGI(printf("Just Before InsertGuts calls final Insert"));
-                DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
-            }
-            Insert(pwRoot, wKey, nBLOld);
-
-#if (cwListPopCntMax != 0)
-            // Hmm.  Should this be nDLOld?
-            if (wPopCnt != 0) { OldList(pwr, wPopCnt, nBLOld, nType); }
-#endif // (cwListPopCntMax != 0)
+            Insert(pwRoot, wKey, nBLOld); // put in InsertAll?
         }
     }
 #if defined(SKIP_LINKS) || defined(BM_SW_FOR_REAL)
