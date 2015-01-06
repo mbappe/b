@@ -463,15 +463,6 @@ typedef Word_t Bucket_t;
 
 #define T_FULL_BM_SW_BIT  T_SW_OTHER_BIT
 
-#if defined(USE_XX_SW)
-  #undef  CODE_XX_SW
-  #define CODE_XX_SW
-#endif // defined(USE_XX_SW)
-
-#if defined(CODE_XX_SW)
-#define T_XX_SW_BIT       T_SW_OTHER_BIT
-#endif // defined(CODE_XX_SW)
-
 // Values for nType.
 enum {
 #if defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
@@ -489,9 +480,6 @@ enum {
     // All of the type values less than T_SWITCH are not switches.
     // All type values at T_SWITCH and greater are switches.
     T_SWITCH = T_SWITCH_BIT, // Uncompressed, close (i.e. no-skip) switch.
-#if defined(CODE_XX_SW)
-    T_XX_SW = T_SWITCH_BIT | T_XX_SW_BIT,
-#endif // defined(CODE_XX_SW)
 #if defined(USE_BM_SW)
     T_BM_SW = T_SWITCH_BIT | T_BM_SW_BIT,
 #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
@@ -851,33 +839,11 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
 #endif // defined(USE_T_ONE)
 
-#if defined(CODE_XX_SW)
-
-// Get the width of the narrow branch in bits.
-inline int
-pwr_nBW(Word_t *pwr)
-{
-    // Might we want to get the width before the type is set?
-    assert(wr_nType(*pwr) == T_XX_SW);
-    return ((*pwr) >> 55) & 7;
-}
-
-// Set the width of the narrow branch in bits.
-inline void
-set_pwr_nBW(Word_t *pwr, int nBW)
-{
-    // We might want to set the width before the type.
-    assert(wr_nType(*pwr) == T_XX_SW);
-    *pwr = (*pwr & (~MSK(58) | MSK(55))) | ((Word_t)nBW << 55);
-}
-
-#endif // defined(CODE_XX_SW)
-
 #if defined(TYPE_IS_ABSOLUTE)
 
 #if defined(LVL_IN_WR_HB)
 
-  #define wr_nBL(_wr)  (assert(tp_bIsSkip(wr_nType(_wr))), (_wr) >> 58)
+  #define wr_nBL(_wr)  (assert(tp_bIsSkip(wr_nType(_wr))), (int)((_wr) >> 58))
 
   #define wr_nDL(_wr)  nBL_to_nDL(wr_nBL(_wr))
 
@@ -1110,6 +1076,9 @@ set_pwr_nBW(Word_t *pwr, int nBW)
 
 #define PWR_wPrefix(_pwRoot, _pwr, _nDL) \
     (w_wPrefix(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nDL)))
+
+#define PWR_wPrefixBL(_pwRoot, _pwr, _nBL) \
+    (w_wPrefixBL(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nBL)))
 
 #define PWR_wPrefixNAT(_pwRoot, _pwr, _nDL) \
     (w_wPrefixNotAtTop(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nDL)))
@@ -1702,7 +1671,7 @@ void RemoveCleanup(Word_t wKey, int nBL, int nBLR,
                    Word_t *pwRoot, Word_t wRoot);
 
 Word_t FreeArrayGuts(Word_t *pwRoot,
-                     Word_t wPrefix, unsigned nBL, int bDump);
+                     Word_t wPrefix, int nBL, int bDump);
 
 #if defined(DEBUG)
 extern int bHitDebugThreshold;
@@ -1713,7 +1682,7 @@ Word_t *NewList(int nPopCnt, int nBL);
 int OldList(Word_t *pwList, int nPopCnt, int nBL, int nType);
 
 #if defined(DEBUG)
-void Dump(Word_t *pwRoot, Word_t wPrefix, unsigned nBL);
+void Dump(Word_t *pwRoot, Word_t wPrefix, int nBL);
 #endif // defined(DEBUG)
 
 #else // (cnDigitsPerWord != 1)
