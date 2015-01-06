@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.446 2015/01/06 11:52:26 mike Exp mike $
+// @(#) $Id: b.c,v 1.444 2015/01/04 21:39:22 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -285,8 +285,9 @@ ListWordsExternal(Word_t wPopCnt, unsigned nBL)
     return ListWordsTypeList(wPopCnt, nBL);
 }
 
-// How many words needed for leaf?  Use T_ONE instead of T_LIST if possible.
-// Use embedded T_ONE instead of external T_ONE if possible.
+// How many words are needed for the specified list leaf?
+// Use T_ONE instead of T_LIST if possible.
+// Use embedded keys instead of T_ONE if possible.
 int
 ListWords(int nPopCnt, int nBL)
 {
@@ -1268,22 +1269,20 @@ Sum(Word_t *pwRoot, int nBLUp)
 #endif // defined(PP_IN_LINK)
 
 Word_t
-FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
+FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
 {
     Word_t *pwRootArg = pwRoot;
 #if defined(BM_IN_LINK) || defined(PP_IN_LINK)
-    unsigned nBLArg = nBL;
+    int nBLArg = nBL;
 #endif // defined(BM_IN_LINK) || defined(PP_IN_LINK)
     Word_t wRoot = *pwRoot;
-    unsigned nType = wr_nType(wRoot); (void)nType; // silence gcc
+    int nType = wr_nType(wRoot); (void)nType; // silence gcc
     Word_t *pwr = wr_tp_pwr(wRoot, nType);
-    unsigned nDL = nBL_to_nDL(nBL);
-    unsigned nBitsIndexSz;
+    int nBitsIndexSz;
     Link_t *pLinks;
     Word_t wBytes = 0;
 
     assert(nBL >= cnBitsInD1);
-    assert(nDL >= 1);
 
     if ( ! bDump )
     {
@@ -1317,7 +1316,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
         printf(" wr "OWx, wRoot);
     }
 
-    if (((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nDL == 1))
+    if (((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nBL == cnBitsInD1))
         || (nType == T_BITMAP))
     {
 #if defined(PP_IN_LINK)
@@ -1328,9 +1327,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
             if (EXP(cnBitsInD1) > sizeof(Link_t) * 8)
             {
                 printf(" wr_wPopCnt %3"_fw"u",
-                       PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL));
+                       PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL));
                 printf(" wr_wPrefix "OWx,
-                       PWR_wPrefix(pwRoot, (Switch_t *)NULL, nDL));
+                       PWR_wPrefixBL(pwRoot, (Switch_t *)NULL, nBL));
             }
         }
 #endif // defined(PP_IN_LINK)
@@ -1385,7 +1384,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     assert( ! tp_bIsSkip(nType) || (wr_nDS(wRoot) >= 1) );
   #else // defined(TYPE_IS_RELATIVE)
     assert( ! tp_bIsSkip(nType) || (wr_nBL(wRoot) < nBL) );
-    assert( ! tp_bIsSkip(nType) || (wr_nBL(wRoot) >= nDL_to_nBL(1)) );
+    assert( ! tp_bIsSkip(nType) || (wr_nBL(wRoot) >= cnBitsInD1) );
   #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
@@ -1423,7 +1422,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
                 printf(" wr_wPrefix        N/A");
             } else {
                 printf(" wr_wPrefix "OWx,
-                       PWR_wPrefix(pwRoot, NULL, nDL));
+                       PWR_wPrefixBL(pwRoot, NULL, nBL));
             }
 #endif // defined(PP_IN_LINK)
 
@@ -1447,9 +1446,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
             assert(nType == T_LIST);
 
 #if defined(PP_IN_LINK)
-            if (nDL != cnDigitsPerWord)
+            if (nBL != cnBitsPerWord)
             {
-                wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL);
+                wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
             }
             else
 #endif // defined(PP_IN_LINK)
@@ -1472,7 +1471,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
             {
                 printf(" wr_wPopCnt %3"_fw"u", wPopCnt);
                 printf(" wr_wPrefix "OWx,
-                       PWR_wPrefix(pwRoot, NULL, nDL));
+                       PWR_wPrefixBL(pwRoot, NULL, nBL));
             }
 #endif // defined(PP_IN_LINK)
 
@@ -1509,77 +1508,29 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 
     // Switch
 
-    unsigned nDLPrev = nDL;
+    int nBLPrev = nBL;
 
 #if defined(USE_BM_SW)
-    int bBmSw = 0;
-    // We could use independent bits in the type field to identify switches
-    // with bms and skip links to simplify this if.
-    if ( 0 || (nType == T_BM_SW)
-  #if defined(SKIP_TO_BM_SW)
-           || (nType == T_SKIP_TO_BM_SW)
+    int bBmSw = tp_bIsBmSw(nType);
+  #if ! defined(SKIP_TO_BM_SW)
+    if ( ! bBmSw )
   #endif // defined(SKIP_TO_BM_SW)
-  #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
-           || (nType == T_FULL_BM_SW)
-  #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
-  #if defined(EXTRA_TYPES)
-           || (nType == T_BM_SW + EXP(cnBitsMallocMask))
-      #if defined(SKIP_TO_BM_SW)
-           || (nType == T_SKIP_TO_BM_SW + EXP(cnBitsMallocMask))
-      #endif // defined(SKIP_TO_BM_SW)
-      #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
-           || (nType == T_FULL_BM_SW + EXP(cnBitsMallocMask))
-      #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
-  #endif // defined(EXTRA_TYPES)
-        )
-    {
-        bBmSw = 1;
-  #if defined(SKIP_TO_BM_SW)
-        if ( 0 || (nType == T_SKIP_TO_BM_SW)
-  #if defined(EXTRA_TYPES)
-               || (nType == T_SKIP_TO_BM_SW + EXP(cnBitsMallocMask))
-  #endif // defined(EXTRA_TYPES)
-            )
-        {
-            //printf("Skip to bmsw nDL %d\n", nDL);
-      #if defined(TYPE_IS_RELATIVE)
-            nDL = nDL - wr_nDS(wRoot);
-      #else // defined(TYPE_IS_RELATIVE)
-            nDL = wr_nDL(wRoot);
-      #endif // defined(TYPE_IS_RELATIVE)
-        }
-  #endif // defined(SKIP_TO_BM_SW)
-    }
-    else
 #endif // defined(USE_BM_SW)
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+#if defined(SKIP_LINKS)
     {
-#if defined(TYPE_IS_RELATIVE)
         if (tp_bIsSkip(nType)) {
-            nDL = nDL - wr_nDS(wRoot);
+            nBL = nDL_to_nBL(GetDLR(pwRoot, nBL_to_nDL(nBL)));
         }
-#else // defined(TYPE_IS_RELATIVE)
-        if (tp_bIsSkip(nType)) {
-            nDL = wr_nDL(wRoot);
-        }
-#endif // defined(TYPE_IS_RELATIVE)
     }
-#endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+#endif // defined(SKIP_LINKS)
 
-    nBL = nDL_to_nBL(nDL);
+    nBitsIndexSz = nBL_to_nBitsIndexSz(nBL);
 
-    nBitsIndexSz = nDL_to_nBitsIndexSz(nDL);
+    pLinks = 
 #if defined(USE_BM_SW)
-    if (bBmSw != tp_bIsBmSw(nType)) { printf("nType 0x%x bBmSw %d\n", nType, bBmSw); }
-   
-    assert(bBmSw == tp_bIsBmSw(nType));
-    assert(bBmSw == tp_bIsBmSw(wr_nType(wRoot)));
-    assert(bBmSw == tp_bIsBmSw(wr_nType(*pwRoot)));
-    pLinks = bBmSw ? pwr_pLinks((BmSwitch_t *)pwr)
-                   : pwr_pLinks((Switch_t *)pwr);
-#else // defined(USE_BM_SW)
-    pLinks = pwr_pLinks((Switch_t *)pwr);
+             bBmSw ? pwr_pLinks((BmSwitch_t *)pwr) :
 #endif // defined(USE_BM_SW)
+                     pwr_pLinks((  Switch_t *)pwr) ;
 
     if (bDump)
     {
@@ -1597,57 +1548,56 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
         {
             printf(" wr_wPopCnt %3"_fw"u",
 #if defined(USE_BM_SW)
-                   bBmSw ? PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDL) :
+                   bBmSw ? PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBL) :
 #endif // defined(USE_BM_SW)
-                         PWR_wPopCnt(pwRoot, (Switch_t *)pwr, nDL));
+                           PWR_wPopCntBL(pwRoot, (  Switch_t *)pwr, nBL) );
             printf(" wr_wPrefix "OWx,
 #if defined(USE_BM_SW)
-                   bBmSw ? PWR_wPrefix(pwRoot, (BmSwitch_t *)pwr, nDL) :
+                   bBmSw ? PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBL) :
 #endif // defined(USE_BM_SW)
-                         PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDL));
+                           PWR_wPrefixBL(pwRoot, (  Switch_t *)pwr, nBL) );
         }
 
-        printf(" wr_nDL %2d", nDL);
+        printf(" wr_nBL %2d", nBL);
 #if defined(USE_BM_SW)
         // should enhance this to check for zeros in suffix and to print
         // dots for suffix.
         //printf(" wKeyPopMask "OWx, wPrefixPopMask(nDL));
         //printf(" pLinks "OWx, (Word_t)pLinks);
-        if (bBmSw)
-        {
+        if (bBmSw) {
 #if defined(BM_IN_LINK)
-        if (nBLArg != cnBitsPerWord)
+            if (nBLArg != cnBitsPerWord)
 #endif // defined(BM_IN_LINK)
-        {
-            printf(" Bm");
-            // Bitmaps are an integral number of words.
-            for (unsigned nn = 0;
-                 nn < DIV_UP(EXP(nDL_to_nBitsIndexSz(nDL)),
-                             cnBitsPerWord);
-                 nn ++)
             {
-                if ((nn % 8) == 0) {
-                    printf("\n");
+                printf(" Bm");
+                // Bitmaps are an integral number of words.
+                for (int nn = 0;
+                     nn < DIV_UP((int)EXP(nDL_to_nBitsIndexSz(nDL)),
+                                 cnBitsPerWord);
+                     nn ++)
+                {
+                    if ((nn % 8) == 0) {
+                        printf("\n");
+                    }
+                    printf(" "Owx, PWR_pwBm(pwRoot, pwr)[nn]);
                 }
-                printf(" "Owx, PWR_pwBm(pwRoot, pwr)[nn]);
             }
-        }
         }
 #endif // defined(USE_BM_SW)
         printf("\n");
     }
 
-    nBL = nDL_to_nBL(nDL - 1);
-    nBitsIndexSz = nDL_to_nBitsIndexSz(nDL);
+    nBitsIndexSz = nBL_to_nBitsIndexSz(nBL);
+    nBL -= nBitsIndexSz;
 
     // skip link has extra prefix bits
-    if (nDLPrev > nDL)
+    if (nBLPrev > nBL)
     {
         wPrefix =
 #if defined(USE_BM_SW)
-            bBmSw ? PWR_wPrefix(pwRoot, (BmSwitch_t *)pwr, nDL) :
+            bBmSw ? PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBL) :
 #endif // defined(USE_BM_SW)
-                PWR_wPrefix(pwRoot, (  Switch_t *)pwr, nDL);
+                    PWR_wPrefixBL(pwRoot, (  Switch_t *)pwr, nBL) ;
     }
 
     Word_t xx = 0;
@@ -1655,12 +1605,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     {
 #if defined(USE_BM_SW)
 #if defined(BM_IN_LINK)
-        if ( ! bBmSw
-            || ((nBLArg == cnBitsPerWord)
-                || BitIsSet(PWR_pwBm(pwRoot, pwr), nn)))
-#else // defined(BM_IN_LINK)
-        if ( ! bBmSw || BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
+        assert(nBLArg != cnBitsPerWord);
 #endif // defined(BM_IN_LINK)
+        if ( ! bBmSw || BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
 #endif // defined(USE_BM_SW)
         {
             if (pLinks[xx].ln_wRoot != 0)
@@ -1679,21 +1626,19 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
     // Someone has to clear PP and BM if PP_IN_LINK and BM_IN_LINK.
     // OldSwitch looks at BM.
 
-    wBytes += OldSwitch(pwRootArg, nDL,
+    wBytes += OldSwitch(pwRootArg, nBL_to_nDL(nBL),
 #if defined(USE_BM_SW)
                         bBmSw,
 #endif // defined(USE_BM_SW)
-                        nDLPrev);
+                        nBL_to_nDL(nBLPrev));
 
     DBGR(printf("memset(%p, 0, %zd)\n",
          (void *)STRUCT_OF(pwRootArg, Link_t, ln_wRoot), sizeof(Link_t)));
 
 #if defined(PP_IN_LINK) || defined(BM_IN_LINK)
-    if (nBLArg == cnBitsPerWord)
-    {
+    if (nBLArg == cnBitsPerWord) {
         *pwRootArg = 0;
-    }
-    else
+    } else
 #endif // defined(PP_IN_LINK) || defined(BM_IN_LINK)
     {
         memset(STRUCT_OF(pwRootArg, Link_t, ln_wRoot), 0, sizeof(Link_t));
@@ -1704,7 +1649,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 
 #if defined(DEBUG)
 void
-Dump(Word_t *pwRoot, Word_t wPrefix, unsigned nBL)
+Dump(Word_t *pwRoot, Word_t wPrefix, int nBL)
 {
     if (bHitDebugThreshold) {
         printf("\nDump\n");
@@ -2093,6 +2038,7 @@ InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
     Word_t wRootOld = *pwRootOld;
     if (wRootOld == 0) { return; }
     int nType = wr_nType(wRootOld);
+    if (nType != T_LIST) { printf("nType %d\n", nType); }
     assert(nType == T_LIST); // What about T_ONE?
     Word_t *pwrOld = wr_pwr(wRootOld);
     int nPopCnt = PWR_xListPopCnt(pwRootOld, nBLOld);
@@ -2670,7 +2616,7 @@ newSwitch:
                 }
 #endif
 #endif // defined(SKIP_LINKS)
-                assert(nDLOld == nDL);
+                assert(nBLOld == nBL);
                 NewBitmap(pwRoot, cnBitsInD1);
 #if defined(PP_IN_LINK)
                 set_PWR_wPopCnt(pwRoot, (Switch_t *)NULL, /* nDL */ 1, 0);
@@ -2681,6 +2627,15 @@ newSwitch:
                 // NewSwitch overwrites *pwRoot which would be a problem for
                 // embedded keys.
                 assert(wr_nType(*pwRoot) != T_EMBEDDED_KEYS);
+
+#if defined(DEBUG)
+                if (nBL > nBLOld) {
+                    printf("IG: pwRoot %p wKey "OWx" nBL %d wRoot "OWx"\n",
+                               (void *)pwRoot, wKey, nBL, wRoot);
+                    printf("nBLOld %d\n", nBLOld);
+                }
+#endif // defined(DEBUG)
+                assert(nBL <= nBLOld);
 
                 NewSwitch(pwRoot, wKey, nBL,
 #if defined(USE_BM_SW)
@@ -2708,9 +2663,19 @@ newSwitch:
                 }
             }
 
+            // Now we need to move the keys from the old subtree to the new
+            // subtree.
+
+            // NewSwitch changed *pwRoot.
+            // But wRoot, nType, pwr, nBL and nBLOld still all apply
+            // to the tree whose keys must be reinserted.
             InsertAll(&wRoot, nBLOld, wKey, pwRoot, nBLOld);
 
-            Insert(pwRoot, wKey, nBLOld); // put in InsertAll?
+            if (nBL == nBLOld) {
+                DBGI(printf("Just Before InsertGuts calls final Insert"));
+                DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+            }
+            Insert(pwRoot, wKey, nBLOld);
         }
     }
 #if defined(SKIP_LINKS) || defined(BM_SW_FOR_REAL)
@@ -2879,12 +2844,13 @@ newSwitch:
             // initialize prefix/pop for new switch
             // Make sure to pass the right key for BM_SW_FOR_REAL.
             DBGI(printf("IG: nDL %d nDLUp %d\n", nDL, nDLUp));
+            assert(nBL <= nBLUp);
             pwSw = NewSwitch(pwRoot, wPrefix, nBL,
 #if defined(USE_BM_SW)
                              bBmSwNew,
 #endif // defined(USE_BM_SW)
                              nBLUp, wPopCnt);
-            DBGI(HexDump("After NewSwitch", pwSw, EXP(cnBitsPerDigit) + 1));
+            //DBGI(HexDump("After NewSwitch", pwSw, EXP(cnBitsPerDigit) + 1));
             DBGI(printf("Just after InsertGuts calls NewSwitch"
                         " for prefix mismatch.\n"));
             DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
@@ -3394,7 +3360,6 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 #if defined(USE_T_ONE)
     if ((nType == T_ONE) || (nType == T_EMBEDDED_KEYS)) {
         assert(nBL > cnBitsPerWord - cnBitsMallocMask);
-        //OldList(pwr, /* wPopCnt */ 1, nDL, T_ONE);
         OldList(pwr, /* wPopCnt */ 1, nBL, T_EMBEDDED_KEYS);
         *pwRoot = 0; // Do we need to clear the rest of the link also?
         return Success;
