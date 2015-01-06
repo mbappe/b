@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.338 2015/01/05 14:05:28 mike Exp mike $
+// @(#) $Id: b.h,v 1.334 2015/01/04 02:09:36 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -463,6 +463,15 @@ typedef Word_t Bucket_t;
 
 #define T_FULL_BM_SW_BIT  T_SW_OTHER_BIT
 
+#if defined(USE_XX_SW)
+  #undef  CODE_XX_SW
+  #define CODE_XX_SW
+#endif // defined(USE_XX_SW)
+
+#if defined(CODE_XX_SW)
+#define T_XX_SW_BIT       T_SW_OTHER_BIT
+#endif // defined(CODE_XX_SW)
+
 // Values for nType.
 enum {
 #if defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
@@ -480,6 +489,9 @@ enum {
     // All of the type values less than T_SWITCH are not switches.
     // All type values at T_SWITCH and greater are switches.
     T_SWITCH = T_SWITCH_BIT, // Uncompressed, close (i.e. no-skip) switch.
+#if defined(CODE_XX_SW)
+    T_XX_SW = T_SWITCH_BIT | T_XX_SW_BIT,
+#endif // defined(CODE_XX_SW)
 #if defined(USE_BM_SW)
     T_BM_SW = T_SWITCH_BIT | T_BM_SW_BIT,
 #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
@@ -839,6 +851,28 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
 #endif // defined(USE_T_ONE)
 
+#if defined(CODE_XX_SW)
+
+// Get the width of the narrow branch in bits.
+inline int
+pwr_nBW(Word_t *pwr)
+{
+    // Might we want to get the width before the type is set?
+    assert(wr_nType(*pwr) == T_XX_SW);
+    return ((*pwr) >> 55) & 7;
+}
+
+// Set the width of the narrow branch in bits.
+inline void
+set_pwr_nBW(Word_t *pwr, int nBW)
+{
+    // We might want to set the width before the type.
+    assert(wr_nType(*pwr) == T_XX_SW);
+    *pwr = (*pwr & (~MSK(58) | MSK(55))) | ((Word_t)nBW << 55);
+}
+
+#endif // defined(CODE_XX_SW)
+
 #if defined(TYPE_IS_ABSOLUTE)
 
 #if defined(LVL_IN_WR_HB)
@@ -1015,6 +1049,9 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 #else // defined(SKIP_TO_BM_SW)
   #define tp_bIsBmSw(_tp)  (((_tp) & T_BM_SW_BIT) && ! ((_tp) & T_SKIP_BIT))
 #endif // defined(SKIP_TO_BM_SW)
+#if defined(CODE_XX_SW)
+  #define tp_bIsXxSw(_tp)  (!((_tp) & T_BM_SW_BIT) && ((_tp) & T_XX_SW_BIT))
+#endif // defined(CODE_XX_SW)
 
 #define wr_bIsSwitch(_wr)  (tp_bIsSwitch(wr_nType(_wr)))
 
@@ -1238,7 +1275,7 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
   #define set_PWR_xListPopCnt(_pwRoot, _nBL, _cnt) \
       (assert((_cnt) <= 0x7f), \
-      *(_pwRoot) = *(_pwRoot) & ~(0x7fUL << cnBitsVirtAddr) \
+       *(_pwRoot) = *(_pwRoot) & ~(0x7fUL << cnBitsVirtAddr) \
                                | ((Word_t)(_cnt) << cnBitsVirtAddr))
 
 #else // defined(POP_IN_WR_HB)
@@ -1671,9 +1708,9 @@ Word_t FreeArrayGuts(Word_t *pwRoot,
 extern int bHitDebugThreshold;
 #endif // defined(DEBUG)
 
-unsigned ListWords(Word_t wPopCnt, unsigned nDL);
-Word_t *NewList(Word_t wPopCnt, unsigned nDL);
-Word_t OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType);
+int ListWords(int nPopCnt, int nBL);
+Word_t *NewList(int nPopCnt, int nBL);
+int OldList(Word_t *pwList, int nPopCnt, int nBL, int nType);
 
 #if defined(DEBUG)
 void Dump(Word_t *pwRoot, Word_t wPrefix, unsigned nBL);
