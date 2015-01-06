@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.444 2015/01/04 21:39:22 mike Exp mike $
+// @(#) $Id: b.c,v 1.445 2015/01/05 14:08:54 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -287,25 +287,23 @@ ListWordsExternal(Word_t wPopCnt, unsigned nBL)
 
 // How many words needed for leaf?  Use T_ONE instead of T_LIST if possible.
 // Use embedded T_ONE instead of external T_ONE if possible.
-unsigned
-ListWords(Word_t wPopCnt, unsigned nDL)
+int
+ListWords(int nPopCnt, int nBL)
 {
-    unsigned nBL = nDL_to_nBL(nDL);
-
 #if defined(EMBED_KEYS)
     // We need space for the keys, the pop count and the type.
     // What about PP_IN_LINK?  Do we need space for pop count if not at top?
     // What difference would it make?
     // One more embedded 30, 20, 15, 12 and 10-bit key?  Assuming we don't use
     // the extra word in the link for embedded values?
-    if (wPopCnt * nBL
+    if (nPopCnt * nBL
             <= (cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL)))
     {
         return 0; // Embed the keys, if any, in wRoot.
     }
 #endif // defined(EMBED_KEYS)
 
-    return ListWordsExternal(wPopCnt, nBL);
+    return ListWordsExternal(nPopCnt, nBL);
 }
 
 #if 0
@@ -450,41 +448,33 @@ NewListExternal(Word_t wPopCnt, unsigned nBL)
 // Return NULL if no memory is allocated, i.e. wPopCnt == 0 or
 // embedded list is possible.
 Word_t *
-NewList(Word_t wPopCnt, unsigned nDL)
+NewList(int nPopCnt, int nBL)
 {
-    unsigned nBL = nDL_to_nBL(nDL); (void)nBL;
-
 #if defined(EMBED_KEYS)
     // We need space for the keys, the pop count and the type.
     // What about PP_IN_LINK?  See ListWords for more comments.
-    if (wPopCnt * nBL + nBL_to_nBitsPopCntSz(nBL) + cnBitsMallocMask
+    if (nPopCnt * nBL + nBL_to_nBitsPopCntSz(nBL) + cnBitsMallocMask
             <= cnBitsPerWord)
     {
         return NULL;
     }
 #endif // defined(EMBED_KEYS)
 
-    return NewListExternal(wPopCnt, nBL);
+    return NewListExternal(nPopCnt, nBL);
 }
 
-Word_t
-OldList(Word_t *pwList, Word_t wPopCnt, unsigned nDL, unsigned nType)
+int
+OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
 {
-    unsigned nBL = nDL_to_nBL(nDL);
-    unsigned nWords = ((nType == T_LIST) ? ListWordsTypeList(wPopCnt, nBL)
-                                         : ListWords(wPopCnt, nDL));
+    int nWords = ((nType == T_LIST) ? ListWordsTypeList(nPopCnt, nBL)
+                                    : ListWords(nPopCnt, nBL));
 
-    DBGM(printf("Old pwList %p wLen %d nBL %d wPopCnt "OWx" nType %d\n",
-        (void *)pwList, nWords, nDL_to_nBL(nDL), (Word_t)wPopCnt, nType));
+    DBGM(printf("Old pwList %p wLen %d nBL %d nPopCnt %d nType %d\n",
+        (void *)pwList, nWords, nBL, nPopCnt, nType));
 
     if (nWords == 0) { return 0; }
 
-#if defined(DL_IN_LL)
-    assert(nDL == ll_nDL(pwList));
-#endif // defined(DL_IN_LL)
-
 #if defined(COMPRESSED_LISTS)
-
     if (nBL <= 8) {
         METRICS(j__AllocWordsJLL1 -= nWords); // JUDYA
         METRICS(j__AllocWordsJL12 -= nWords); // JUDYB -- overloaded
@@ -1422,7 +1412,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
             {
                 // This OldList is a no-op and will return zero if
                 // the key(s) is(are) embedded.
-                return OldList(pwr, /* wPopCnt */ 1, nDL, nType);
+                return OldList(pwr, /* wPopCnt */ 1, nBL, nType);
             }
 
             printf(" tp_wPopCnt %3d", (int)wPopCnt);
@@ -1469,7 +1459,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, unsigned nBL, int bDump)
 
             if (!bDump)
             {
-                return OldList(pwr, wPopCnt, nDL, nType);
+                return OldList(pwr, wPopCnt, nBL, nType);
             }
 
 #if defined(PP_IN_LINK)
@@ -2415,7 +2405,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 
             if ((wPopCnt != 0) && (pwr != pwList))
             {
-                OldList(pwr, wPopCnt, nDL, nType);
+                OldList(pwr, wPopCnt, nBL, nType);
             }
 
 #if defined(EMBED_KEYS)
@@ -2731,7 +2721,7 @@ newSwitch:
 
 #if (cwListPopCntMax != 0)
             // Hmm.  Should this be nDLOld?
-            if (wPopCnt != 0) { OldList(pwr, wPopCnt, nDLOld, nType); }
+            if (wPopCnt != 0) { OldList(pwr, wPopCnt, nBLOld, nType); }
 #endif // (cwListPopCntMax != 0)
         }
     }
@@ -3229,14 +3219,14 @@ DeflateExternalList(Word_t *pwRoot,
     {
         assert(nPopCnt == 1);
         assert(nPopCntMax == 0);
-        Word_t *pwList = NewList(1, nBL_to_nDL(nBL));
+        Word_t *pwList = NewList(1, nBL);
         wRoot = 0; set_wr(wRoot, pwList, T_ONE); // external T_ONE list
         set_PWR_xListPopCnt(&wRoot, nBL, 1);
         Word_t *pwKeys = ls_pwKeys(pwr, nBL);
         *pwList = pwKeys[0];
     }
 
-    OldList(pwr, nPopCnt, nBL_to_nDL(nBL), T_LIST);
+    OldList(pwr, nPopCnt, nBL, T_LIST);
 
     *pwRoot = wRoot;
 
@@ -3417,7 +3407,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
     if ((nType == T_ONE) || (nType == T_EMBEDDED_KEYS)) {
         assert(nBL > cnBitsPerWord - cnBitsMallocMask);
         //OldList(pwr, /* wPopCnt */ 1, nDL, T_ONE);
-        OldList(pwr, /* wPopCnt */ 1, nDL, T_EMBEDDED_KEYS);
+        OldList(pwr, /* wPopCnt */ 1, nBL, T_EMBEDDED_KEYS);
         *pwRoot = 0; // Do we need to clear the rest of the link also?
         return Success;
     }
@@ -3440,7 +3430,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 // Why was this #if defined(USE_T_ONE) ever here?
 //#if ! defined(USE_T_ONE)
     if (wPopCnt == 1) {
-        OldList(pwr, wPopCnt, nDL, nType);
+        OldList(pwr, wPopCnt, nBL, nType);
         *pwRoot = 0;
         // Do we need to clear the rest of the link also?
         // See bCleanup in Lookup/Remove for the rest.
@@ -3584,7 +3574,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 
     if (pwList != pwr)
     {
-        OldList(pwr, wPopCnt, nDL, nType);
+        OldList(pwr, wPopCnt, nBL, nType);
     }
 
     *pwRoot = wRoot;

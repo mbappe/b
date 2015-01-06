@@ -2773,7 +2773,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 pwKeysNew[wPopCnt + 1] = -1;
       #endif // defined(LIST_END_MARKERS)
 
-                OldList(pwr, wPopCnt, cnDigitsPerWord, nType);
+                OldList(pwr, wPopCnt, cnBitsPerWord, nType);
                 *pwRoot = wRoot;
 
                 status = Success;
@@ -2917,7 +2917,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
             {
                 wRoot = 0; // set_wr(wRoot, NULL, 0)
             }
-            OldList(pwr, wPopCnt, cnDigitsPerWord, nType);
+            OldList(pwr, wPopCnt, cnBitsPerWord, nType);
             *pwRoot = wRoot;
             status = Success;
         }
