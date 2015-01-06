@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.334 2015/01/04 02:09:36 mike Exp mike $
+// @(#) $Id: b.h,v 1.338 2015/01/05 14:05:28 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -224,7 +224,7 @@
 #else // (cnBitsPerWord == 64)
 #define cnBitsVirtAddr  32
 #endif // (cnBitsPerWord == 64)
-#define cnVirtAddrMask  MSK(cnBitsVirtAddr)
+#define cwVirtAddrMask  MSK(cnBitsVirtAddr)
 
 // Default is -DPSPLIT_PARALLEL which forces -DALIGN_LISTS -DALIGN_LIST_ENDS.
 #if ! defined(NO_PSPLIT_PARALLEL)
@@ -290,6 +290,12 @@ typedef Word_t Bucket_t;
   #endif // defined(USE_BM_SW)
 #endif // ! defined(NO_SKIP_TO_BM_SW)
 
+// Default is -DPOP_IN_WR_HB.
+#if ! defined(NO_POP_IN_WR_HB)
+  #undef  POP_IN_WR_HB
+  #define POP_IN_WR_HB
+#endif // ! defined(NO_POP_IN_WR_HB)
+
 // Choose max list lengths.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
 
@@ -298,7 +304,11 @@ typedef Word_t Bucket_t;
   #if defined(SKIP_TO_BM_SW) && ! defined(NO_SKIP_AT_TOP)
       #define cnListPopCntMax64  0x40
   #else // defined(SKIP_TO_BM_SW) && ! defined(NO_SKIP_AT_TOP)
-      #define cnListPopCntMax64  0xec
+      #if defined(POP_IN_WR_HB)
+          #define cnListPopCntMax64  0x7c // field size is limited
+      #else // defined(POP_IN_WR_HB)
+          #define cnListPopCntMax64  0xec
+      #endif // defined(POP_IN_WR_HB)
   #endif // defined(SKIP_TO_BM_SW) && ! defined(NO_SKIP_AT_TOP)
 #endif // ! defined(cnListPopCntMax64)
 
@@ -307,7 +317,11 @@ typedef Word_t Bucket_t;
   #if defined(USE_BM_SW)
       #define cnListPopCntMax32  0x30
   #else // defined(USE_BM_SW)
-      #define cnListPopCntMax32  0xf0
+      #if defined(POP_IN_WR_HB)
+          #define cnListPopCntMax32  0x7c // field size is limited
+      #else // defined(POP_IN_WR_HB)
+          #define cnListPopCntMax32  0xf0
+      #endif // defined(POP_IN_WR_HB)
   #endif  // defined(USE_BM_SW)
 #endif // ! defined(cnListPopCntMax32)
 
@@ -757,7 +771,7 @@ inline unsigned wr_nType(Word_t wRoot) { return wRoot & cnMallocMask; }
 
 // Extract pwRoot (aka pwr) from wRoot.
 inline Word_t* wr_pwr(Word_t wRoot) {
-    return (Word_t *)(wRoot & cnVirtAddrMask & ~cnMallocMask);
+    return (Word_t *)(wRoot & cwVirtAddrMask & ~cnMallocMask);
 }
 
 // Backward compatibility.
@@ -770,11 +784,11 @@ inline void set_pwr_nType(Word_t *pwRoot, int nType) {
 
 // Set pwRoot (aka pwr) in *pwRoot.
 inline void set_pwr_pwr(Word_t *pwRoot, Word_t *pwr) {
-    *pwRoot = (*pwRoot & (~cnVirtAddrMask | cnMallocMask)) | (Word_t)pwr;
+    *pwRoot = (*pwRoot & (~cwVirtAddrMask | cnMallocMask)) | (Word_t)pwr;
 }
 
 inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
-    *pwRoot = (*pwRoot & ~cnVirtAddrMask) | (Word_t)pwr | nType;
+    *pwRoot = (*pwRoot & ~cwVirtAddrMask) | (Word_t)pwr | nType;
 }
 
 // Set the nType field in wRoot.
@@ -782,11 +796,11 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
 // Set the pwRoot field in wRoot.
 #define set_wr_pwr(_wr, _pwr) \
-        ((_wr) = ((_wr) & (~cnVirtAddrMask | cnMallocMask)) | (Word_t)(_pwr))
+        ((_wr) = ((_wr) & (~cwVirtAddrMask | cnMallocMask)) | (Word_t)(_pwr))
 
 // Set the pwRoot and nType fields in wRoot.
 #define set_wr(_wr, _pwr, _type) \
-        ((_wr) = ((_wr) & ~cnVirtAddrMask) | (Word_t)(_pwr) | (_type))
+        ((_wr) = ((_wr) & ~cwVirtAddrMask) | (Word_t)(_pwr) | (_type))
 
 #if defined(USE_T_ONE)
 
@@ -1216,19 +1230,15 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
          - sizeof(Word_t) / (_nBytesKeySz) ) \
 )
 
-// Default is -DPOP_IN_WR_HB.
-#if ! defined(NO_POP_IN_WR_HB)
-#define POP_IN_WR_HB
-#endif // ! defined(NO_POP_IN_WR_HB)
-
 // Pop count in wRoot high bits.
 #if defined(POP_IN_WR_HB)
 
   #define PWR_xListPopCnt(_pwRoot, _nBL) \
-      ((int)((*(_pwRoot) >> cnBitsVirtAddr) & 0x3ff))
+      ((int)((*(_pwRoot) >> cnBitsVirtAddr) & 0x7f))
 
   #define set_PWR_xListPopCnt(_pwRoot, _nBL, _cnt) \
-      (*(_pwRoot) = *(_pwRoot) & ~(0x3ffUL << cnBitsVirtAddr) \
+      (assert((_cnt) <= 0x7f), \
+      *(_pwRoot) = *(_pwRoot) & ~(0x7fUL << cnBitsVirtAddr) \
                                | ((Word_t)(_cnt) << cnBitsVirtAddr))
 
 #else // defined(POP_IN_WR_HB)
