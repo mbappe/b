@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.451 2015/01/07 15:08:36 mike Exp mike $
+// @(#) $Id: b.c,v 1.452 2015/01/07 18:30:27 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2469,7 +2469,10 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
   #if defined(NO_SKIP_AT_TOP)
                     if (nBLOld != cnBitsPerWord)
   #endif // defined(NO_SKIP_AT_TOP)
-                    { nDL = 2; }
+                    {
+                        nBL = cnBitsLeftAtDl2;
+                        nDL = 2;
+                    }
                 }
                 goto newSwitch;
             }
