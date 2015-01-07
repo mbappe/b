@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.449 2015/01/07 14:15:59 mike Exp mike $
+// @(#) $Id: b.c,v 1.450 2015/01/07 14:55:04 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1906,28 +1906,28 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, unsigned nKeys, uint8_t cKey)
 #endif // (cwListPopCntMax != 0)
 
 Status_t
-InsertAtDl1(Word_t *pwRoot, Word_t wKey, unsigned nDL,
-            unsigned nBL, Word_t wRoot);
+InsertAtDl1(Word_t *pwRoot, Word_t wKey, int nDL,
+            int nBL, Word_t wRoot);
 
 Status_t
-InsertAtBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot);
+InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
 
 #if (cwListPopCntMax != 0)
 
 #if defined(EMBED_KEYS)
 
 Word_t
-InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot);
+InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot);
 
 Word_t
 DeflateExternalList(Word_t *pwRoot,
-                    unsigned nPopCnt, unsigned nBL, Word_t *pwr);
+                    int nPopCnt, int nBL, Word_t *pwr);
 
 #endif // defined(EMBED_KEYS)
 
 // Max list length as a function of nBL.
 // Array is indexed by LOG(nBL-1).
-const unsigned anListPopCntMax[] = {
+const int anListPopCntMax[] = {
                     0, //  1 < nBL <=  2
                     0, //  2 < nBL <=  4
     cnListPopCntMax8 , //  4 < nBL <=  8
@@ -2328,7 +2328,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 #if defined(cnListPopCntMaxDl3)
                 && (nDL != 3)
 #endif // defined(cnListPopCntMaxDl3)
-                && (wPopCnt < anListPopCntMax[LOG(nBL - 1)])))
+                && ((int)wPopCnt < anListPopCntMax[LOG(nBL - 1)])))
         {
             Word_t *pwList;
 
@@ -3028,7 +3028,7 @@ newSwitch:
 // This function never creates a T_ONE.
 // It assumes the input is an embedded list and not and external T_ONE.
 Word_t
-InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
+InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 {
     DBGI(printf(
          "InflateEmbeddedList pwRoot %p wKey "OWx" nBL %d wRoot "OWx"\n",
@@ -3045,7 +3045,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
     uint8_t  *pcKeys;
 #endif // defined(COMPRESSED_LISTS)
 
-    unsigned nPopCnt = wr_nPopCnt(wRoot, nBL);
+    int nPopCnt = wr_nPopCnt(wRoot, nBL);
 
     assert(nBL * nPopCnt
         <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
@@ -3056,14 +3056,14 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
 #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
         pcKeys = ls_pcKeysNAT(pwList);
-        for (unsigned nn = 1; nn <= nPopCnt; nn++) {
+        for (int nn = 1; nn <= nPopCnt; nn++) {
             pcKeys[nn-1] = (uint8_t)((wKey & ~wBLM)
                 | ((wRoot >> (cnBitsPerWord - (nn * nBL))) & wBLM));
         }
     } else
     if (nBL <= 16) {
         psKeys = ls_psKeysNAT(pwList);
-        for (unsigned nn = 1; nn <= nPopCnt; nn++) {
+        for (int nn = 1; nn <= nPopCnt; nn++) {
             psKeys[nn-1] = (uint16_t)((wKey & ~wBLM)
                 | ((wRoot >> (cnBitsPerWord - (nn * nBL))) & wBLM));
         }
@@ -3071,7 +3071,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
 #if (cnBitsPerWord > 32)
     if (nBL <= 32) {
         piKeys = ls_piKeysNAT(pwList);
-        for (unsigned nn = 1; nn <= nPopCnt; nn++) {
+        for (int nn = 1; nn <= nPopCnt; nn++) {
             piKeys[nn-1] = (uint32_t)((wKey & ~wBLM)
                 | ((wRoot >> (cnBitsPerWord - (nn * nBL))) & wBLM));
         }
@@ -3086,7 +3086,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
 #if defined(PP_IN_LINK)
         assert(nBL != cnBitsPerWord);
 #endif // defined(PP_IN_LINK)
-        for (unsigned nn = 1; nn <= nPopCnt; nn++) {
+        for (int nn = 1; nn <= nPopCnt; nn++) {
             pwKeys[nn-1] = (wKey & ~wBLM)
                 | ((wRoot >> (cnBitsPerWord - (nn * nBL))) & wBLM);
         }
@@ -3104,9 +3104,9 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, unsigned nBL, Word_t wRoot)
 // The function assumes it is possible.
 Word_t
 DeflateExternalList(Word_t *pwRoot,
-                    unsigned nPopCnt, unsigned nBL, Word_t *pwr)
+                    int nPopCnt, int nBL, Word_t *pwr)
 {
-    unsigned nPopCntMax
+    int nPopCntMax
       = (cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL)) / nBL;
 
     DBGI(printf("DeflateExternalList pwRoot %p nPopCnt %d nBL %d pwr %p\n",
@@ -3136,7 +3136,7 @@ DeflateExternalList(Word_t *pwRoot,
 #if defined(COMPRESSED_LISTS)
         if (nBL <= 8) {
             pcKeys = ls_pcKeysNAT(pwr);
-            unsigned nn = 1;
+            int nn = 1;
             for (; nn <= nPopCnt; nn++) {
                wRoot |= (pcKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
             }
@@ -3149,7 +3149,7 @@ DeflateExternalList(Word_t *pwRoot,
         } else
         if (nBL <= 16) {
             psKeys = ls_psKeysNAT(pwr);
-            unsigned nn = 1;
+            int nn = 1;
             for (; nn <= nPopCnt; nn++) {
                wRoot |= (psKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
             }
@@ -3163,8 +3163,8 @@ DeflateExternalList(Word_t *pwRoot,
 #if (cnBitsPerWord > 32)
         if (nBL <= 32) {
             piKeys = ls_piKeysNAT(pwr);
-            unsigned nn = 1;
-            for (; nn <= wr_nPopCnt(wRoot, nBL); nn++) {
+            int nn = 1;
+            for (; nn <= (int)wr_nPopCnt(wRoot, nBL); nn++) {
                wRoot |= (piKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
             }
 #if defined(PAD_T_ONE)
@@ -3185,7 +3185,7 @@ DeflateExternalList(Word_t *pwRoot,
             wRoot |= (ls_pwKeys(pwr, nBL)[0] & wBLM) << (cnBitsPerWord - nBL);
 #else // defined(COMPRESSED_LISTS)
             Word_t *pwKeys = ls_pwKeys(pwr, nBL);
-            unsigned nn = 1;
+            int nn = 1;
             for (; nn <= wr_nPopCnt(wRoot, nBL); nn++) {
                wRoot |= (pwKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
             }
@@ -3222,8 +3222,8 @@ DeflateExternalList(Word_t *pwRoot,
 #endif // (cwListPopCntMax != 0)
 
 Status_t
-InsertAtDl1(Word_t *pwRoot, Word_t wKey, unsigned nDL,
-            unsigned nBL, Word_t wRoot)
+InsertAtDl1(Word_t *pwRoot, Word_t wKey, int nDL,
+            int nBL, Word_t wRoot)
 {
     (void)nDL; (void)nBL; (void)wRoot;
 
@@ -3250,10 +3250,10 @@ InsertAtDl1(Word_t *pwRoot, Word_t wKey, unsigned nDL,
 
 // InsertAtBitmap is for a bitmap that is not at the bottom.
 Status_t
-InsertAtBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
+InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
 {
         (void)pwRoot;
-        unsigned nBL = nDL_to_nBL(nDL);
+        int nBL = nDL_to_nBL(nDL);
 
         Word_t *pwr = wr_pwr(wRoot);
 
@@ -3280,8 +3280,8 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL, Word_t wRoot)
 }
 
 Status_t
-RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL,
-             unsigned nBL, Word_t wRoot);
+RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
+             int nBL, Word_t wRoot);
 
 void
 RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
@@ -3583,8 +3583,8 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 // Clear the bit for wKey in the bitmap.
 // And free the bitmap if it is empty and not embedded.
 Status_t
-RemoveBitmap(Word_t *pwRoot, Word_t wKey, unsigned nDL,
-             unsigned nBL, Word_t wRoot)
+RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
+             int nBL, Word_t wRoot)
 {
     (void)nDL;
 
