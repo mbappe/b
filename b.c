@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.444 2015/01/04 21:39:22 mike Exp mike $
+// @(#) $Id: b.c,v 1.454 2015/01/07 23:30:28 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2833,13 +2833,16 @@ newSwitch:
                 //printf("Calling InsertAll for all links nBW %d\n", nBW);
                 //printf("# Old tree:\n");
                 //DBG(Dump(&wRoot, wKey & ~MSK(nBLOld), nBLOld));
-                for (int nIndex = 0; nIndex < (int)EXP(nBW - 4); nIndex++) {
+                for (int nIndex = 0;
+                         nIndex < (int)EXP(pwr_nBW(&wRoot));
+                         nIndex++)
+                {
                     //printf("# New tree before IA nIndex %d:\n", nIndex);
                     //DBG(Dump(pwRoot, wKey, nBLOld));
                     InsertAll(&pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot,
-                              nBLOld - 4,
+                              nBLOld - pwr_nBW(&wRoot),
                               (wKey & ~MSK(nBLOld))
-                                  | (nIndex << (nBLOld - 4)),
+                                  | (nIndex << (nBLOld - pwr_nBW(&wRoot))),
                               pwRoot, nBLOld);
                 }
                 //printf("# New tree after InsertAll done looping:\n");
