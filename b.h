@@ -463,6 +463,15 @@ typedef Word_t Bucket_t;
 
 #define T_FULL_BM_SW_BIT  T_SW_OTHER_BIT
 
+#if defined(USE_XX_SW)
+  #undef  CODE_XX_SW
+  #define CODE_XX_SW
+#endif // defined(USE_XX_SW)
+
+#if defined(CODE_XX_SW)
+#define T_XX_SW_BIT       T_SW_OTHER_BIT
+#endif // defined(CODE_XX_SW)
+
 // Values for nType.
 enum {
 #if defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
@@ -480,6 +489,9 @@ enum {
     // All of the type values less than T_SWITCH are not switches.
     // All type values at T_SWITCH and greater are switches.
     T_SWITCH = T_SWITCH_BIT, // Uncompressed, close (i.e. no-skip) switch.
+#if defined(CODE_XX_SW)
+    T_XX_SW = T_SWITCH_BIT | T_XX_SW_BIT,
+#endif // defined(CODE_XX_SW)
 #if defined(USE_BM_SW)
     T_BM_SW = T_SWITCH_BIT | T_BM_SW_BIT,
 #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
@@ -838,6 +850,28 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
      (_wr) |= ((_nPopCnt) - 1) << cnBitsMallocMask)
 
 #endif // defined(USE_T_ONE)
+
+#if defined(CODE_XX_SW)
+
+// Get the width of the narrow branch in bits.
+inline int
+pwr_nBW(Word_t *pwr)
+{
+    // Might we want to get the width before the type is set?
+    assert(wr_nType(*pwr) == T_XX_SW);
+    return ((*pwr) >> 55) & 7;
+}
+
+// Set the width of the narrow branch in bits.
+inline void
+set_pwr_nBW(Word_t *pwr, int nBW)
+{
+    // We might want to set the width before the type.
+    assert(wr_nType(*pwr) == T_XX_SW);
+    *pwr = (*pwr & (~MSK(58) | MSK(55))) | ((Word_t)nBW << 55);
+}
+
+#endif // defined(CODE_XX_SW)
 
 #if defined(TYPE_IS_ABSOLUTE)
 
@@ -1662,7 +1696,12 @@ typedef struct {
 Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBL);
 Status_t Remove(Word_t *pwRoot, Word_t wKey, int nBL);
 
-Status_t InsertGuts(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
+Status_t InsertGuts(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot
+#if defined(CODE_XX_SW)
+                    , Word_t *pwRootPrev
+#endif // defined(CODE_XX_SW)
+                    );
+
 Status_t RemoveGuts(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
 
 void InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot);

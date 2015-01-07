@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.536 2015/01/06 11:49:50 mike Exp mike $
+// @(#) $Id: bli.c,v 1.532 2015/01/04 15:20:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1485,6 +1485,9 @@ Status_t
 InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #endif // defined(LOOKUP)
 {
+#if defined(CODE_XX_SW)
+    Word_t *pwRootPrev = NULL;
+#endif // defined(CODE_XX_SW)
     int nBLUp; (void)nBLUp; // silence gcc
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
 #if defined(SAVE_PREFIX_TEST_RESULT)
@@ -1715,6 +1718,64 @@ switchTail:;
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
     } // end of case T_SWITCH
+
+#if defined(CODE_XX_SW)
+
+    case T_XX_SW: // no-skip (aka close) switch (vs. distant switch) w/o bm
+#if defined(EXTRA_TYPES)
+    case T_XX_SW | EXP(cnBitsMallocMask): // close switch w/o bm
+#endif // defined(EXTRA_TYPES)
+    {
+        // nBL is bits left below the link picked from the previous switch
+        // nBL is not reduced by any skip indicated in that link
+        // nBLR is nBL reduced by any skip indicated in that link
+        // nBLR is bits left at the top of this switch
+
+        int nBitsIndexSzX = pwr_nBW(pwRoot);
+        int nBLX = nBLR - nBitsIndexSzX;
+        Word_t wIndex = (wKey >> nBLX) & MSK(nBitsIndexSzX);
+
+        DBGX(printf("T_XX_SW nBLR %d pLinks %p wIndex %d 0x%x\n", nBLR,
+             (void *)pwr_pLinks((Switch_t *)pwr), (int)wIndex, (int)wIndex));
+
+#if ! defined(LOOKUP)
+        if (bCleanup) {
+#if 0
+  #if defined(INSERT)
+            InsertCleanup(wKey, nBLUp, pwRoot, wRoot);
+  #else // defined(INSERT)
+            RemoveCleanup(wKey, nBLUp, nBLR, pwRoot, wRoot);
+  #endif // defined(INSERT)
+#endif
+        } else {
+            // Increment or decrement population count on the way in.
+            wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
+            DBGX(printf("nBLR %d wPopCnt before "OWx"\n",
+                        nBLR, PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR)));
+            set_PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR, wPopCnt + nIncr);
+            DBGX(printf("nBLR %d wPopCnt after "OWx"\n",
+                        nBLR, PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR)));
+        }
+#endif // ! defined(LOOKUP)
+
+        pwRootPrev = pwRoot;
+        pwRoot = &pwr_pLinks((Switch_t *)pwr)[wIndex].ln_wRoot;
+
+        wRoot = *pwRoot;
+
+        // Do not update nBL or nBLR.
+        // We're just substituting this link for the previous one.
+        // To get more space for embedded keys.
+
+        // The only thing we do at "again" before switching on nType
+        // is extract nType and pwr from wRoot.
+        // We don't do any updating of nBL or nBLR.
+        nBL = nBLR = nBLX;
+        goto again;
+
+    } // end of case T_XX_SW
+
+#endif // defined(CODE_XX_SW)
 
 #if defined(USE_BM_SW)
 
@@ -2399,7 +2460,11 @@ notFound:;
     // InsertGuts is called with a pwRoot and nBL indicates the
     // bits that were not decoded in identifying pwRoot.  nBL
     // does not include any skip indicated in the type field of *pwRoot.
-    InsertGuts(pwRoot, wKey, nBL, wRoot);
+    InsertGuts(pwRoot, wKey, nBL, wRoot
+#if defined(CODE_XX_SW)
+               , pwRootPrev
+#endif // defined(CODE_XX_SW)
+               );
     goto cleanup;
 undo:;
 #endif // defined(INSERT)

@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.452 2015/01/07 18:30:27 mike Exp mike $
+// @(#) $Id: b.c,v 1.444 2015/01/04 21:39:22 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -605,6 +605,9 @@ OldBitmap(Word_t *pwRoot, Word_t *pwr, unsigned nBL)
 // bitmap leaf instead of a switch.
 static Word_t *
 NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
+#if defined(CODE_XX_SW)
+          int nBitsIndexSzX,
+#endif // defined(CODE_XX_SW)
 #if defined(USE_BM_SW)
           int bBmSw,
 #endif // defined(USE_BM_SW)
@@ -615,7 +618,11 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
     assert((sizeof(BmSwitch_t) % sizeof(Word_t)) == 0);
 #endif // defined(USE_BM_SW)
 
+#if defined(CODE_XX_SW)
+    int nBitsIndexSz = nBitsIndexSzX;
+#else // defined(CODE_XX_SW)
     int nBitsIndexSz = nBL_to_nBitsIndexSz(nBL);
+#endif // defined(CODE_XX_SW)
     Word_t wIndexCnt = EXP(nBitsIndexSz);
 
 #if ! defined(NDEBUG)
@@ -964,6 +971,9 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
 #endif
         Word_t *pwrNew
             = NewSwitch(pwRoot, wKey, nBLR,
+#if defined(CODE_XX_SW)
+                        nBL_to_nBitsIndexSz(nBLR),
+#endif // defined(CODE_XX_SW)
                         /*bBmSw*/ 0, nBLUp, wPopCntKeys);
 #if 0
         printf("B PWR_pwBm %p *PWR_pwBm %p\n",
@@ -1553,7 +1563,12 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
     }
 #endif // defined(SKIP_LINKS)
 
-    nBitsIndexSz = nBL_to_nBitsIndexSz(nBL);
+#if defined(CODE_XX_SW)
+    if (nType == T_XX_SW) {
+        nBitsIndexSz = pwr_nBW(pwRoot);
+    } else
+#endif // defined(CODE_XX_SW)
+    { nBitsIndexSz = nBL_to_nBitsIndexSz(nBL); }
 
     pLinks = 
 #if defined(USE_BM_SW)
@@ -1616,7 +1631,12 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
         printf("\n");
     }
 
-    nBitsIndexSz = nBL_to_nBitsIndexSz(nBL);
+#if defined(CODE_XX_SW)
+    if (nType == T_XX_SW) {
+        nBitsIndexSz = pwr_nBW(pwRoot);
+    } else
+#endif // defined(CODE_XX_SW)
+    { nBitsIndexSz = nBL_to_nBitsIndexSz(nBL); }
     nBL -= nBitsIndexSz;
 
     // skip link has extra prefix bits
@@ -2067,39 +2087,63 @@ InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
     Word_t wRootOld = *pwRootOld;
     if (wRootOld == 0) { return; }
     int nType = wr_nType(wRootOld);
-    if (nType != T_LIST) {
-        printf("nType %d wRootOld "OWx" pwRootOld %p\n",
-               nType, wRootOld, (void *)pwRootOld);
-        DBG(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
+    int nPopCnt;
+#if defined(CODE_XX_SW)
+    if (nType == T_EMBEDDED_KEYS) {
+        // How inefficient can we be?
+        DBGI(printf("IA: Calling IEL nBLOld %d wKey "OWx" nBL %d\n",
+                    nBLOld, wKey, nBL));
+        wRootOld = InflateEmbeddedList(pwRootOld, wKey, nBLOld, wRootOld);
+        DBGI(printf("After IEL\n"));
+        DBGI(Dump(&wRootOld, wKey & ~MSK(nBLOld), nBLOld));
+        assert(*pwRootOld == wRootOld); // Inflate installs the new wRoot.
+        nType = wr_nType(wRootOld); // changed by IEL
+        assert(nType == T_LIST);
     }
-    assert(nType == T_LIST); // What about T_ONE?
+#endif // defined(CODE_XX_SW)
+
     Word_t *pwrOld = wr_pwr(wRootOld);
-    int nPopCnt = PWR_xListPopCnt(pwRootOld, nBLOld);
-    
-#if defined(COMPRESSED_LISTS)
-    if (nBLOld <= (int)sizeof(uint8_t) * 8) {
-        uint8_t *pcKeys = ls_pcKeysNAT(pwrOld);
-        for (int nn = 0; nn < nPopCnt; nn++) {
-            Insert(pwRoot, pcKeys[nn] | (wKey & ~MSK(8)), nBL);
-        }
-    } else if (nBLOld <= (int)sizeof(uint16_t) * 8) {
-        uint16_t *psKeys = ls_psKeysNAT(pwrOld);
-        for (int nn = 0; nn < nPopCnt; nn++) {
-            Insert(pwRoot, psKeys[nn] | (wKey & ~MSK(16)), nBL);
-        }
-#if (cnBitsPerWord > 32)
-    } else if (nBLOld <= (int)sizeof(uint32_t) * 8) {
-        uint32_t *piKeys = ls_piKeysNAT(pwrOld);
-        for (int nn = 0; nn < nPopCnt; nn++) {
-            Insert(pwRoot, piKeys[nn] | (wKey & ~MSK(32)), nBL);
-        }
-#endif // (cnBitsPerWord > 32)
+
+#if defined(CODE_XX_SW)
+    if (nType == T_ONE) {
+        nPopCnt = 1;
+        Insert(pwRoot, *pwrOld, nBL);
     } else
-#endif // defined(COMPRESSED_LISTS)
+#endif // defined(CODE_XX_SW)
     {
-        Word_t *pwKeys = ls_pwKeysNAT(pwrOld);
-        for (int nn = 0; nn < nPopCnt; nn++) {
-            Insert(pwRoot, pwKeys[nn], nBL);
+        if (nType != T_LIST) {
+            printf("nType %d wRootOld "OWx" pwRootOld %p\n",
+                   nType, wRootOld, (void *)pwRootOld);
+            DBG(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
+        }
+        assert(nType == T_LIST); // What about T_ONE?
+        nPopCnt = PWR_xListPopCnt(pwRootOld, nBLOld);
+        
+#if defined(COMPRESSED_LISTS)
+        if (nBLOld <= (int)sizeof(uint8_t) * 8) {
+            uint8_t *pcKeys = ls_pcKeysNAT(pwrOld);
+            for (int nn = 0; nn < nPopCnt; nn++) {
+                Insert(pwRoot, pcKeys[nn] | (wKey & ~MSK(8)), nBL);
+            }
+        } else if (nBLOld <= (int)sizeof(uint16_t) * 8) {
+            uint16_t *psKeys = ls_psKeysNAT(pwrOld);
+            for (int nn = 0; nn < nPopCnt; nn++) {
+                Insert(pwRoot, psKeys[nn] | (wKey & ~MSK(16)), nBL);
+            }
+#if (cnBitsPerWord > 32)
+        } else if (nBLOld <= (int)sizeof(uint32_t) * 8) {
+            uint32_t *piKeys = ls_piKeysNAT(pwrOld);
+            for (int nn = 0; nn < nPopCnt; nn++) {
+                Insert(pwRoot, piKeys[nn] | (wKey & ~MSK(32)), nBL);
+            }
+#endif // (cnBitsPerWord > 32)
+        } else
+#endif // defined(COMPRESSED_LISTS)
+        {
+            Word_t *pwKeys = ls_pwKeysNAT(pwrOld);
+            for (int nn = 0; nn < nPopCnt; nn++) {
+                Insert(pwRoot, pwKeys[nn], nBL);
+            }
         }
     }
 
@@ -2123,12 +2167,20 @@ InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
 // When do we uncompress switches?
 // When do we coalesce switches?
 Status_t
-InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
+InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
+#if defined(CODE_XX_SW)
+           , Word_t *pwRootPrev
+#endif // defined(CODE_XX_SW)
+           )
 {
+#if defined(CODE_XX_SW)
+    (void)pwRootPrev;
+    int nBW; (void)nBW;
+#endif // defined(CODE_XX_SW)
     int nDL = nBL_to_nDL(nBL);
     assert(nDL_to_nBL(nDL) >= nBL);
     DBGI(printf("InsertGuts pwRoot %p wKey "OWx" nBL %d wRoot "OWx"\n",
-               (void *)pwRoot, wKey, nBL, wRoot));
+                (void *)pwRoot, wKey, nBL, wRoot));
 
     assert(nBL >= cnBitsInD1);
 
@@ -2480,6 +2532,16 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 #endif // (cwListPopCntMax != 0)
 #endif // defined(SKIP_LINKS)
 
+#if defined(CODE_XX_SW)
+            // If we are already at dl2, then there
+            // is no need to check for a common prefix
+            // since we can't skip anyway.  And the
+            // skip code causes problems for T_XX_SW.
+            if (nBL <= cnBitsLeftAtDl2) {
+                goto newSwitch;
+            }
+#endif // defined(CODE_XX_SW)
+
 #if defined(NO_SKIP_AT_TOP)
             if (nDL < cnDigitsPerWord)
 #endif // defined(NO_SKIP_AT_TOP)
@@ -2583,12 +2645,17 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 #endif // (cwListPopCntMax != 0)
             }
             nBL = nDL_to_nBL(nDL);
-#if (cwListPopCntMax != 0)
-#if    (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) \
-    || (cnListPopCntMax16 == 0)
+#if defined(CODE_XX_SW)
+            if (nBL > nBLOld) { nBL = nBLOld; }
+            assert(nBL <= nBLOld);
+#endif // defined(CODE_XX_SW)
+
+#if ((cwListPopCntMax != 0) \
+          && (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) \
+                                      || (cnListPopCntMax16 == 0)) \
+      || defined(CODE_XX_SW)
 newSwitch:
-#endif // (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) || ...
-#endif // (cwListPopCntMax != 0)
+#endif // ((cwListPopCntMax != 0) && ... ) || ...
 
             // We don't create a switch below nDL == 2.
             // Nor do we create a switch at or below nBL == cnLogBitsPerWord.
@@ -2657,7 +2724,6 @@ newSwitch:
                             nDL, nBL, nDLOld, nBLOld));
                 }
   #endif // defined(DEBUG)
-
                 assert(nDLOld == 1); // Handled above, right?
 #if 0
                 // no skip link to bitmap
@@ -2678,17 +2744,52 @@ newSwitch:
                 // embedded keys.
                 assert(wr_nType(*pwRoot) != T_EMBEDDED_KEYS);
 
+#if defined(CODE_XX_SW)
+                if (nBL != nDL_to_nBL(nBL_to_nDL(nBL))) {
+                    //printf("\n# Blow up nBL %d!\n", nBL);
+                }
+
+                nBW = nBL_to_nBitsIndexSz(nBL);
+  #if defined(USE_XX_SW)
+                if ((nBL == 16) && (nBL == nBLOld)) {
+                    //DBG(printf("# Creating T_XX_SW wKey "OWx"\n", wKey));
+                    nBW = 4;
+                } else if (nBL != nDL_to_nBL(nBL_to_nDL(nBL))) {
+                    // parent is T_XX_SW; back up and replace it
+                    assert(wr_nType(*pwRootPrev) == T_XX_SW);
+                    nType = T_XX_SW;
+                    nBL = 16; nBLOld = 16;
+                    nDL = nBL_to_nDL(nBL);
+                    assert(nDLOld == 2);
+                    pwRoot = pwRootPrev;
+                    wRoot = *pwRoot;
+                    pwr = wr_pwr(wRoot);
+                    nBW = nBL_to_nBitsIndexSz(nBL);
+                    DBGI(printf("# Expanding T_XX_SW nBW %d\n", nBW));
+                    DBGI(Dump(pwRootLast,
+                              /* wPrefix */ (Word_t)0, cnBitsPerWord));
+                }
+  #endif // defined(USE_XX_SW)
+#endif // defined(CODE_XX_SW)
+
 #if defined(DEBUG)
                 if (nBL > nBLOld) {
                     printf("IG: pwRoot %p wKey "OWx" nBL %d wRoot "OWx"\n",
-                               (void *)pwRoot, wKey, nBL, wRoot);
+                           (void *)pwRoot, wKey, nBL, wRoot);
                     printf("nBLOld %d\n", nBLOld);
                 }
 #endif // defined(DEBUG)
                 assert(nBL <= nBLOld);
 
                 NewSwitch(pwRoot, wKey, nBL,
+#if defined(CODE_XX_SW)
+                          nBW,
+#endif // defined(CODE_XX_SW)
 #if defined(USE_BM_SW)
+  #if defined(USE_XX_SW)
+                          (nBW != nBL_to_nBitsIndexSz(nBL) || (nBL == 16))
+                              ? 0 :
+  #endif // defined(USE_XX_SW)
   #if defined(SKIP_TO_BM_SW)
       #if defined(BM_IN_LINK)
                           /* bBmSw */ nBLOld != cnBitsPerWord,
@@ -2705,6 +2806,13 @@ newSwitch:
 #endif // defined(USE_BM_SW)
                           nBLOld, /* wPopCnt */ 0);
 
+#if defined(CODE_XX_SW)
+               if (nBW != nBL_to_nBitsIndexSz(nBL)) {
+                   set_wr_nType(*pwRoot, T_XX_SW);
+                   set_pwr_nBW(pwRoot, nBW);
+               }
+#endif // defined(CODE_XX_SW)
+
                 if (nBL == nBLOld) {
                     DBGI(printf("\n# InsertGuts After NewSwitch Dump\n"));
                     DBGI(Dump(pwRootLast,
@@ -2719,7 +2827,34 @@ newSwitch:
             // NewSwitch changed *pwRoot.
             // But wRoot, nType, pwr, nBL and nBLOld still all apply
             // to the tree whose keys must be reinserted.
-            InsertAll(&wRoot, nBLOld, wKey, pwRoot, nBLOld);
+#if defined(USE_XX_SW)
+            if (pwRoot == pwRootPrev) {
+                // nBW is for the new tree.
+                //printf("Calling InsertAll for all links nBW %d\n", nBW);
+                //printf("# Old tree:\n");
+                //DBG(Dump(&wRoot, wKey & ~MSK(nBLOld), nBLOld));
+                for (int nIndex = 0; nIndex < (int)EXP(nBW - 4); nIndex++) {
+                    //printf("# New tree before IA nIndex %d:\n", nIndex);
+                    //DBG(Dump(pwRoot, wKey, nBLOld));
+                    InsertAll(&pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot,
+                              nBLOld - 4,
+                              (wKey & ~MSK(nBLOld))
+                                  | (nIndex << (nBLOld - 4)),
+                              pwRoot, nBLOld);
+                }
+                //printf("# New tree after InsertAll done looping:\n");
+                //DBG(Dump(pwRoot, wKey, nBLOld));
+
+#if defined(CODE_XX_SW)
+                if (nBW != nBL_to_nBitsIndexSz(nBLOld)) {
+                    printf("wKey "OWx"\n", wKey);
+                }
+#endif // defined(CODE_XX_SW)
+            } else
+#endif // defined(USE_XX_SW)
+            {
+                InsertAll(&wRoot, nBLOld, wKey, pwRoot, nBLOld);
+            }
 
             if (nBL == nBLOld) {
                 DBGI(printf("Just Before InsertGuts calls final Insert"));
@@ -2896,6 +3031,9 @@ newSwitch:
             DBGI(printf("IG: nDL %d nDLUp %d\n", nDL, nDLUp));
             assert(nBL <= nBLUp);
             pwSw = NewSwitch(pwRoot, wPrefix, nBL,
+#if defined(CODE_XX_SW)
+                             nBL_to_nBitsIndexSz(nBL),
+#endif // defined(CODE_XX_SW)
 #if defined(USE_BM_SW)
                              bBmSwNew,
 #endif // defined(USE_BM_SW)
