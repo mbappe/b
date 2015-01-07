@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.454 2015/01/07 23:30:28 mike Exp mike $
+// @(#) $Id: b.c,v 1.455 2015/01/07 23:45:34 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2753,7 +2753,7 @@ newSwitch:
   #if defined(USE_XX_SW)
                 if ((nBL == 16) && (nBL == nBLOld)) {
                     //DBG(printf("# Creating T_XX_SW wKey "OWx"\n", wKey));
-                    nBW = 4;
+                    nBW = 1;
                 } else if (nBL != nDL_to_nBL(nBL_to_nDL(nBL))) {
                     // parent is T_XX_SW; back up and replace it
                     assert(wr_nType(*pwRootPrev) == T_XX_SW);
@@ -2764,7 +2764,7 @@ newSwitch:
                     pwRoot = pwRootPrev;
                     wRoot = *pwRoot;
                     pwr = wr_pwr(wRoot);
-                    nBW = nBL_to_nBitsIndexSz(nBL);
+                    nBW = pwr_nBW(&wRoot) + 1;
                     DBGI(printf("# Expanding T_XX_SW nBW %d\n", nBW));
                     DBGI(Dump(pwRootLast,
                               /* wPrefix */ (Word_t)0, cnBitsPerWord));
@@ -2847,12 +2847,6 @@ newSwitch:
                 }
                 //printf("# New tree after InsertAll done looping:\n");
                 //DBG(Dump(pwRoot, wKey, nBLOld));
-
-#if defined(CODE_XX_SW)
-                if (nBW != nBL_to_nBitsIndexSz(nBLOld)) {
-                    printf("wKey "OWx"\n", wKey);
-                }
-#endif // defined(CODE_XX_SW)
             } else
 #endif // defined(USE_XX_SW)
             {
