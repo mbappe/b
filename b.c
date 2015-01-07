@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.444 2015/01/04 21:39:22 mike Exp mike $
+// @(#) $Id: b.c,v 1.448 2015/01/06 19:52:59 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -142,6 +142,15 @@ Word_t wEvenMallocs; // number of unfreed mallocs of an even number of words
 #define cnMallocExtraWords  0
 #endif // ! defined(cnMallocExtraWords)
 
+#if defined(GUARDBAND)
+  #if ! defined(cnGuardWords)
+      #define cnGuardWords 1
+  #endif // ! defined(cnGuardWords)
+#else // defined(GUARDBAND)
+  #undef  cnGuardWords
+  #define cnGuardWords 0
+#endif // defined(cnGuardWords)
+
 static Word_t
 MyMalloc(Word_t wWords)
 {
@@ -150,22 +159,28 @@ MyMalloc(Word_t wWords)
                 (void *)ww, wWords, (void *)&((Word_t *)ww)[-1],
                 ((Word_t *)ww)[-1], ((Word_t *)ww)[-1]));
 #if defined(DEBUG_MALLOC)
-    if ((((((Word_t *)ww)[-1] >> 4) << 1) != ALIGN_UP(wWords, 2))
-        && (((((Word_t *)ww)[-1] >> 4) << 1) != ALIGN_UP(wWords, 2) + 2)
-        && (((((Word_t *)ww)[-1] >> 4) << 1) != ALIGN_UP(wWords, 2) + 4))
+    if ((((((Word_t *)ww)[-1] >> 4) << 1)
+            != ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
+        && (((((Word_t *)ww)[-1] >> 4) << 1)
+            != ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 2)
+        && (((((Word_t *)ww)[-1] >> 4) << 1)
+            != ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 4))
     {
-        printf("ALIGN_UP(%ld, 2) %ld\n", wWords, ALIGN_UP(wWords, 2));
-        printf("blah %ld\n", ((((Word_t *)ww)[-1] >> 4) << 1));
-        printf("M: %p %"_fw"d words *%p "OWx" %"_fw"d %"_fw"d\n",
-               (void *)ww, wWords, (void *)&((Word_t *)ww)[-1],
+        printf("M: Oops ww %p wWords + cnMallocExtraWords + cnGuardWords"
+               " %"_fw"d &ww[-1] %p ww[-1] "OWx" ww[-1] %"_fw"d"
+               " ((ww[-1] >> 4) << 1) %"_fw"d\n",
+               (void *)ww, wWords + cnMallocExtraWords + cnGuardWords,
+               (void *)&((Word_t *)ww)[-1],
                ((Word_t *)ww)[-1], ((Word_t *)ww)[-1],
                ((((Word_t *)ww)[-1] >> 4) << 1));
-        assert(0);
     }
 #endif // defined(DEBUG_MALLOC)
-    assert((((((Word_t *)ww)[-1] >> 4) << 1) == ALIGN_UP(wWords, 2))
-        || (((((Word_t *)ww)[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 2)
-        || (((((Word_t *)ww)[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 4));
+    assert((((((Word_t *)ww)[-1] >> 4) << 1)
+            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
+        || (((((Word_t *)ww)[-1] >> 4) << 1)
+            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 2)
+        || (((((Word_t *)ww)[-1] >> 4) << 1)
+            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 4));
     // save ww[-1] to make sure we can use some of the bits in the word
     DBG(((Word_t *)ww)[-1] |= (((Word_t *)ww)[-1] >> 4) << 16);
     // The following does not always hold on free.
@@ -191,16 +206,23 @@ MyFree(Word_t *pw, Word_t wWords)
 #if defined(LVL_IN_WR_HB)
     pw[-1] &= MSK(16);
 #endif // defined(LVL_IN_WR_HB)
-    if (!((((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2))
-        || (((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 2)
-        || (((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 4))) {
-        printf("wWords %lx pw[-1] %lx\n", wWords, pw[-1] >> 3);
+    if (!((((pw[-1] >> 4) << 1)
+            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
+        || (((pw[-1] >> 4) << 1)
+            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 2)
+        || (((pw[-1] >> 4) << 1)
+            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 4)))
+    {
+        printf("F: Oops wWords + cnMallocExtraWords + cnGuardWords 0x%lx"
+               " pw[-1] >> 3 0x%lx\n",
+               wWords + cnMallocExtraWords + cnGuardWords, pw[-1] >> 3);
     }
-#if 0
-    assert((((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2))
-        || (((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 2)
-        || (((pw[-1] >> 4) << 1) == ALIGN_UP(wWords, 2) + 4));
-#endif
+    assert((((pw[-1] >> 4) << 1)
+            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
+        || (((pw[-1] >> 4) << 1)
+            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 2)
+        || (((pw[-1] >> 4) << 1)
+            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 4));
     JudyFree(pw, wWords + cnMallocExtraWords);
 }
 
