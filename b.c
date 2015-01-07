@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.450 2015/01/07 14:55:04 mike Exp mike $
+// @(#) $Id: b.c,v 1.451 2015/01/07 15:08:36 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2067,7 +2067,11 @@ InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
     Word_t wRootOld = *pwRootOld;
     if (wRootOld == 0) { return; }
     int nType = wr_nType(wRootOld);
-    if (nType != T_LIST) { printf("nType %d\n", nType); }
+    if (nType != T_LIST) {
+        printf("nType %d wRootOld "OWx" pwRootOld %p\n",
+               nType, wRootOld, (void *)pwRootOld);
+        DBG(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
+    }
     assert(nType == T_LIST); // What about T_ONE?
     Word_t *pwrOld = wr_pwr(wRootOld);
     int nPopCnt = PWR_xListPopCnt(pwRootOld, nBLOld);
@@ -2122,6 +2126,7 @@ Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 {
     int nDL = nBL_to_nDL(nBL);
+    assert(nDL_to_nBL(nDL) >= nBL);
     DBGI(printf("InsertGuts pwRoot %p wKey "OWx" nBL %d wRoot "OWx"\n",
                (void *)pwRoot, wKey, nBL, wRoot));
 
@@ -2296,7 +2301,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 //  - bitmap switch -- depth, prefix, pop, capacity, bitmap, links
 //  - list switch -- depth, prefix, pop, capacity, (key, link) pairs
 
-        int nDLOld = nDL;
+        int nDLOld = nDL; (void)nDLOld;
         int nBLOld = nBL; (void)nBLOld;
 
 #if (cwListPopCntMax != 0) // true if we are using lists; embedded or external
@@ -2450,11 +2455,16 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 #if (cwListPopCntMax != 0)
 #if    (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) \
     || (cnListPopCntMax16 == 0)
+            // Figure out the length of the common prefix of
+            // the keys that are in the list and the key that
+            // we are inserting.
             if (wPopCnt == 0) {
-                // Can't dereference list if there isn't one.
-                // Go directly to dl2.
-                // Can't skip directly to dl1 since neither bitmap nor
-                // list leaf have a prefix.
+                // If max list length is zero there are
+                // no keys in the list.   We need to jump over
+                // dereferencing of the list and skip as far
+                // down as possible, i.e. go directly to dl2.
+                // We can't skip directly to dl1 since neither
+                // bitmap nor list leaf have a prefix.
                 if (nDLOld >= 2) {
   #if defined(NO_SKIP_AT_TOP)
                     if (nBLOld != cnBitsPerWord)
@@ -2578,17 +2588,17 @@ newSwitch:
 #endif // (cwListPopCntMax != 0)
 
             // We don't create a switch below nDL == 2.
-            // Nor do we create a switch below nBL == cnLogBitsPerWord.
+            // Nor do we create a switch at or below nBL == cnLogBitsPerWord.
+            // The latter is enforced by disallowing
+            // cnBitsAtDl2 <= cnLogBitsPerWord no later than Initialize time.
             // Nor do we support a skip link directly to a bitmap -- yet.
-            if (nDL < 2)
-            {
-                DBGI(printf("InsertGuts nDL %d nBL %d", nDL, nBL));
-                if (nDLOld >= 2) {
-                    nDL = 2;
-                    nBL = nDL_to_nBL(nDL);
-                }
+            if ((nBL < cnBitsLeftAtDl2) && (nBLOld >= cnBitsLeftAtDl2)) {
+                DBGI(printf("InsertGuts nDL %d nBL %d nDLOld %d nBLOld %d\n",
+                           nDL, nBL, nDLOld, nBLOld));
+                nBL = cnBitsLeftAtDl2;
+                nDL = 2;
             }
-            assert(nDL_to_nBL(nDL) > (int)LOG(sizeof(Link_t) * 8));
+            assert(nBL > (int)LOG(sizeof(Link_t) * 8));
 
 #if defined(PP_IN_LINK)
             // PP_IN_LINK can only support skip from top for wPrefix == 0.
@@ -2614,6 +2624,7 @@ newSwitch:
                 if (nDS_to_tp(nDLOld - nDL) > (int)cnMallocMask) {
                     DBGI(printf("# Oops.  Trimming nDS to cnMallocMask\n"));
                     nDL = nDLOld - tp_to_nDS(cnMallocMask);
+                    nBL = nDL_to_nBL(nDL);
                     //assert(0);
                 }
 #else // defined(TYPE_IS_RELATIVE)
@@ -2621,22 +2632,29 @@ newSwitch:
                     printf("# Oops. Can't encode absolute level for skip.\n");
                     printf("nDL %d nDLOld %d\n", nDL, nDLOld);
                     nDL = nDLOld - 1;
+                    nBL = nDL_to_nBL(nDL);
                     assert(0);
                 }
 #endif // defined(TYPE_IS_RELATIVE)
             }
-            nBL = nDL_to_nBL(nDL);
 #endif // ! defined(DEPTH_IN_SW) && ! defined(LVL_IN_WR_HB)
 #else // defined(SKIP_LINKS)
-            // I'm don't remember why this assertion was here.
+            // I don't remember why this assertion was here.
             // But it blows and the code seems to do ok with it
             // commented out.
             // assert(nDL > 1);
 #endif // defined(SKIP_LINKS)
 
-            if ((EXP(cnBitsInD1) > sizeof(Link_t) * 8) && (nDL == 1))
-            {
+            if ((EXP(cnBitsInD1) > sizeof(Link_t) * 8) && (nDL == 1)) {
 #if defined(SKIP_LINKS)
+  #if defined(DEBUG)
+                if (nDLOld != 1) {
+                    DBG(printf(
+                            "IG: nDL %d nBL %d nDLOld %d nBLOld %d\n",
+                            nDL, nBL, nDLOld, nBLOld));
+                }
+  #endif // defined(DEBUG)
+
                 assert(nDLOld == 1); // Handled above, right?
 #if 0
                 // no skip link to bitmap
@@ -3047,6 +3065,14 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 
     int nPopCnt = wr_nPopCnt(wRoot, nBL);
 
+#if defined(DEBUG)
+    if (nBL * nPopCnt
+        > cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL))
+    {
+        printf("nPopCnt %d nBitsPopCntSz %d\n",
+               nPopCnt, nBL_to_nBitsPopCntSz(nBL));
+    }
+#endif // defined(DEBUG)
     assert(nBL * nPopCnt
         <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
 

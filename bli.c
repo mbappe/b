@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.532 2015/01/04 15:20:29 mike Exp mike $
+// @(#) $Id: bli.c,v 1.536 2015/01/06 11:49:50 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2399,7 +2399,8 @@ notFound:;
     // InsertGuts is called with a pwRoot and nBL indicates the
     // bits that were not decoded in identifying pwRoot.  nBL
     // does not include any skip indicated in the type field of *pwRoot.
-    InsertGuts(pwRoot, wKey, nBL, wRoot); goto cleanup;
+    InsertGuts(pwRoot, wKey, nBL, wRoot);
+    goto cleanup;
 undo:;
 #endif // defined(INSERT)
 #if defined(REMOVE) && !defined(RECURSIVE)
