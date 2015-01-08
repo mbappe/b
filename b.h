@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.334 2015/01/04 02:09:36 mike Exp mike $
+// @(#) $Id: b.h,v 1.342 2015/01/07 23:30:28 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -37,6 +37,11 @@
       #define BM_SW_FOR_REAL
   #endif // ! defined(NO_BM_SW_FOR_REAL)
 #endif // defined(USE_BM_SW)
+
+// Default cnBW is 5.  cnBW is the minimum width of a narrow switch.
+#if ! defined(cnBW)
+#define cnBW  5
+#endif // ! defined(cnBW)
 
 // Default is -DRETYPE_FULL_BM_SW.
 #if ! defined(NO_RETYPE_FULL_BM_SW)
@@ -779,10 +784,10 @@ enum {
 // Data structure constants and macros.
 
 // Extract nType from wRoot.
-inline unsigned wr_nType(Word_t wRoot) { return wRoot & cnMallocMask; }
+static inline unsigned wr_nType(Word_t wRoot) { return wRoot & cnMallocMask; }
 
 // Extract pwRoot (aka pwr) from wRoot.
-inline Word_t* wr_pwr(Word_t wRoot) {
+static inline Word_t* wr_pwr(Word_t wRoot) {
     return (Word_t *)(wRoot & cwVirtAddrMask & ~cnMallocMask);
 }
 
@@ -790,16 +795,16 @@ inline Word_t* wr_pwr(Word_t wRoot) {
 #define wr_tp_pwr(_wr, _tp)  wr_pwr(_wr)
 
 // Set nType in *pwRoot.
-inline void set_pwr_nType(Word_t *pwRoot, int nType) {
+static inline void set_pwr_nType(Word_t *pwRoot, int nType) {
     *pwRoot = (*pwRoot & ~cnMallocMask) | nType;
 }
 
 // Set pwRoot (aka pwr) in *pwRoot.
-inline void set_pwr_pwr(Word_t *pwRoot, Word_t *pwr) {
+static inline void set_pwr_pwr(Word_t *pwRoot, Word_t *pwr) {
     *pwRoot = (*pwRoot & (~cwVirtAddrMask | cnMallocMask)) | (Word_t)pwr;
 }
 
-inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
+static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
     *pwRoot = (*pwRoot & ~cwVirtAddrMask) | (Word_t)pwr | nType;
 }
 
@@ -854,7 +859,7 @@ inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 #if defined(CODE_XX_SW)
 
 // Get the width of the narrow branch in bits.
-inline int
+static inline int
 pwr_nBW(Word_t *pwr)
 {
     // Might we want to get the width before the type is set?
@@ -863,7 +868,7 @@ pwr_nBW(Word_t *pwr)
 }
 
 // Set the width of the narrow branch in bits.
-inline void
+static inline void
 set_pwr_nBW(Word_t *pwr, int nBW)
 {
     // We might want to set the width before the type.
@@ -883,7 +888,7 @@ set_pwr_nBW(Word_t *pwr, int nBW)
 
   #define set_wr_nBL(_wr, _nBL) \
           (set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
-           ((_wr) = ((_wr) & MSK(58) | (Word_t)(_nBL) << 58)))
+           ((_wr) = (((_wr) & MSK(58)) | (Word_t)(_nBL) << 58)))
 
   #define set_wr_nDL(_wr, _nDL)  set_wr_nBL((_wr), nDL_to_nBL(_nDL))
 
@@ -1278,7 +1283,7 @@ set_pwr_nBW(Word_t *pwr, int nBW)
 
   #define set_PWR_xListPopCnt(_pwRoot, _nBL, _cnt) \
       (assert((_cnt) <= 0x7f), \
-       *(_pwRoot) = *(_pwRoot) & ~(0x7fUL << cnBitsVirtAddr) \
+       *(_pwRoot) = (*(_pwRoot) & ~(0x7fUL << cnBitsVirtAddr)) \
                                | ((Word_t)(_cnt) << cnBitsVirtAddr))
 
 #else // defined(POP_IN_WR_HB)
