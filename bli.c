@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.532 2015/01/04 15:20:29 mike Exp mike $
+// @(#) $Id: bli.c,v 1.538 2015/01/07 23:30:28 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -905,7 +905,9 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     int nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
   #else // defined(PP_IN_LINK)
       #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
+          #if ! defined(cnListPopCntMaxDl2) || (cnListPopCntMaxDl2 <= 8)
           #if (cnListPopCntMax16 <= 8)
+    assert(PWR_xListPopCnt(pwRoot, nBL) <= 8);
     int nPopCnt = 8; // Eight fit so why do less?
     assert((cnListPopCntMaxDl1 <= 8) || (cnBitsInD1 <= 8));
           #elif (cnBitsInD1 > 8) // nDL == 1 is handled here
@@ -921,6 +923,9 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
           #else // (cnListPopCntMax16 <= 8)
     int nPopCnt = PWR_xListPopCnt(pwRoot, 16);
           #endif // (cnListPopCntMax16 <= 8)
+          #else // ! defined(cnListPopCntMaxDl2) || (cnListPopCntMaxDl2 <= 8)
+    int nPopCnt = PWR_xListPopCnt(pwRoot, 16);
+          #endif // ! defined(cnListPopCntMaxDl2) || (cnListPopCntMaxDl2 <= 8)
       #else // defined(PARALLEL_128)
     int nPopCnt = PWR_xListPopCnt(pwRoot, 16);
       #endif // defined(PARALLEL_128)
@@ -1477,6 +1482,17 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
 
 #endif // defined(SKIP_LINKS)
 
+#if defined(LOOKUP) && ! defined(GENERAL)
+
+static int
+EmbeddedListPopCntMax(int nBL)
+{
+    return
+        (cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL)) / nBL;
+}
+
+#endif // defined(LOOKUP) && ! defined(GENERAL)
+
 #if defined(LOOKUP)
 static Status_t
 Lookup(Word_t wRoot, Word_t wKey)
@@ -1485,9 +1501,6 @@ Status_t
 InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #endif // defined(LOOKUP)
 {
-#if defined(CODE_XX_SW)
-    Word_t *pwRootPrev = NULL;
-#endif // defined(CODE_XX_SW)
     int nBLUp; (void)nBLUp; // silence gcc
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
 #if defined(SAVE_PREFIX_TEST_RESULT)
@@ -1495,7 +1508,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
 #if defined(LOOKUP)
     int nBL = cnBitsPerWord;
-    Word_t *pwRoot;
+    Word_t *pwRoot = pwRoot; // silence gcc
   #if defined(BM_IN_LINK)
     pwRoot = NULL; // used for top detection
   #else // defined(BM_IN_LINK)
@@ -1509,6 +1522,9 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
           #endif // defined(PP_IN_LINK)
   #endif // defined(BM_IN_LINK)
 #else // defined(LOOKUP)
+  #if defined(CODE_XX_SW)
+    Word_t *pwRootPrev = NULL; (void)pwRootPrev;
+  #endif // defined(CODE_XX_SW)
     Word_t wRoot;
   #if !defined(RECURSIVE)
           #if defined(INSERT)
@@ -1731,21 +1747,28 @@ switchTail:;
         // nBLR is nBL reduced by any skip indicated in that link
         // nBLR is bits left at the top of this switch
 
-        int nBitsIndexSzX = pwr_nBW(pwRoot);
-        int nBLX = nBLR - nBitsIndexSzX;
-        Word_t wIndex = (wKey >> nBLX) & MSK(nBitsIndexSzX);
+#if defined(LOOKUP) && ! defined(GENERAL)
 
-        DBGX(printf("T_XX_SW nBLR %d pLinks %p wIndex %d 0x%x\n", nBLR,
-             (void *)pwr_pLinks((Switch_t *)pwr), (int)wIndex, (int)wIndex));
+        const int cnBL = 16 - cnBW;
+        const int cnIndex = (wKey >> cnBL) & MSK(cnBW);
+        pwRoot = &pwr_pLinks((Switch_t *)pwr)[cnIndex].ln_wRoot;
+        if ((wRoot = *pwRoot) == 0) { return Failure; }
+        // the first test is done at compile time
+        return ((cnListPopCntMax16 > EmbeddedListPopCntMax(cnBL))
+                        && (wr_nType(wRoot) == T_LIST))
+            ? (SearchList16(pwRoot, wr_pwr(wRoot), wKey, cnBL) >= 0)
+            : EmbeddedListHasKey(wRoot, wKey, cnBL);
 
-#if ! defined(LOOKUP)
+#else // defined(LOOKUP) && ! defined(GENERAL)
+
+  #if ! defined(LOOKUP)
         if (bCleanup) {
 #if 0
-  #if defined(INSERT)
+      #if defined(INSERT)
             InsertCleanup(wKey, nBLUp, pwRoot, wRoot);
-  #else // defined(INSERT)
+      #else // defined(INSERT)
             RemoveCleanup(wKey, nBLUp, nBLR, pwRoot, wRoot);
-  #endif // defined(INSERT)
+      #endif // defined(INSERT)
 #endif
         } else {
             // Increment or decrement population count on the way in.
@@ -1756,22 +1779,28 @@ switchTail:;
             DBGX(printf("nBLR %d wPopCnt after "OWx"\n",
                         nBLR, PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR)));
         }
-#endif // ! defined(LOOKUP)
+      #if defined(INSERT)
+        pwRootPrev = pwRoot; // save pwRoot for T_XX_SW for InsertGuts
+      #endif // defined(INSERT)
+  #endif // ! defined(LOOKUP)
 
-        pwRootPrev = pwRoot;
+        int nBitsIndexSzX = pwr_nBW(pwRoot);
+        Word_t wIndex = (wKey >> (nBLR - nBitsIndexSzX)) & MSK(nBitsIndexSzX);
+
+        DBGX(printf("T_XX_SW nBLR %d pLinks %p wIndex %d\n", nBLR,
+             (void *)pwr_pLinks((Switch_t *)pwr), (int)wIndex));
+
+
         pwRoot = &pwr_pLinks((Switch_t *)pwr)[wIndex].ln_wRoot;
-
         wRoot = *pwRoot;
-
-        // Do not update nBL or nBLR.
-        // We're just substituting this link for the previous one.
-        // To get more space for embedded keys.
 
         // The only thing we do at "again" before switching on nType
         // is extract nType and pwr from wRoot.
         // We don't do any updating of nBL or nBLR.
-        nBL = nBLR = nBLX;
+        nBLR = (nBL -= nBitsIndexSzX);
         goto again;
+
+#endif // defined(LOOKUP) && ! defined(GENERAL)
 
     } // end of case T_XX_SW
 
