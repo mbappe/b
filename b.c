@@ -2373,14 +2373,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
 #endif // defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
             || ((nDL == 1) && (wPopCnt < cnListPopCntMaxDl1))
 #if defined(cnListPopCntMaxDl2)
-            || ((nDL == 2) && (wPopCnt < cnListPopCntMaxDl2))
+            || ((nBL == cnBitsLeftAtDl2) && (wPopCnt < cnListPopCntMaxDl2))
 #endif // defined(cnListPopCntMaxDl2)
 #if defined(cnListPopCntMaxDl3)
             || ((nDL == 3) && (wPopCnt < cnListPopCntMaxDl3))
 #endif // defined(cnListPopCntMaxDl3)
             || ((nDL != 1)
 #if defined(cnListPopCntMaxDl2)
-                && (nDL != 2)
+                && (nBL != cnBitsLeftAtDl2)
 #endif // defined(cnListPopCntMaxDl2)
 #if defined(cnListPopCntMaxDl3)
                 && (nDL != 3)
@@ -2753,7 +2753,7 @@ newSwitch:
   #if defined(USE_XX_SW)
                 if ((nBL == 16) && (nBL == nBLOld)) {
                     //DBG(printf("# Creating T_XX_SW wKey "OWx"\n", wKey));
-                    nBW = 3;
+                    nBW = cnBW;
                 } else if (nBL != nDL_to_nBL(nBL_to_nDL(nBL))) {
                     // parent is T_XX_SW; back up and replace it
                     assert(wr_nType(*pwRootPrev) == T_XX_SW);
@@ -2764,7 +2764,6 @@ newSwitch:
                     pwRoot = pwRootPrev;
                     wRoot = *pwRoot;
                     pwr = wr_pwr(wRoot);
-                    nBW = pwr_nBW(&wRoot) + 3;
                     if (nBW > nBL_to_nBitsIndexSz(nBL)) {
                         nBW = nBL_to_nBitsIndexSz(nBL);
                     }
