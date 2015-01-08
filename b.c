@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.455 2015/01/07 23:45:34 mike Exp mike $
+// @(#) $Id: b.c,v 1.456 2015/01/07 23:58:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2753,7 +2753,7 @@ newSwitch:
   #if defined(USE_XX_SW)
                 if ((nBL == 16) && (nBL == nBLOld)) {
                     //DBG(printf("# Creating T_XX_SW wKey "OWx"\n", wKey));
-                    nBW = 1;
+                    nBW = 3;
                 } else if (nBL != nDL_to_nBL(nBL_to_nDL(nBL))) {
                     // parent is T_XX_SW; back up and replace it
                     assert(wr_nType(*pwRootPrev) == T_XX_SW);
@@ -2764,7 +2764,10 @@ newSwitch:
                     pwRoot = pwRootPrev;
                     wRoot = *pwRoot;
                     pwr = wr_pwr(wRoot);
-                    nBW = pwr_nBW(&wRoot) + 1;
+                    nBW = pwr_nBW(&wRoot) + 3;
+                    if (nBW > nBL_to_nBitsIndexSz(nBL)) {
+                        nBW = nBL_to_nBitsIndexSz(nBL);
+                    }
                     DBGI(printf("# Expanding T_XX_SW nBW %d\n", nBW));
                     DBGI(Dump(pwRootLast,
                               /* wPrefix */ (Word_t)0, cnBitsPerWord));
