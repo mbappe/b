@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.539 2015/01/08 22:34:01 mike Exp mike $
+// @(#) $Id: bli.c,v 1.541 2015/01/09 15:18:35 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1415,6 +1415,11 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
 {
     (void)pwRoot; (void)pwr; (void)wKey; (void)nBL; (void)pnBLR;
 
+#if defined(USE_BM_SW) && ! defined(PP_IN_LINK)
+    assert(&((BmSwitch_t *)NULL)->sw_wPrefixPop
+        == &((  Switch_t *)NULL)->sw_wPrefixPop);
+#endif // defined(USE_BM_SW) && ! defined(PP_IN_LINK)
+
   #if defined(TYPE_IS_RELATIVE)
     int nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(wRoot));
   #else // defined(TYPE_IS_RELATIVE)
@@ -2346,6 +2351,20 @@ embedded_keys:; // the semi-colon allows for a declaration next; go figure
             goto break2;
         case cnBitsLeftAtDl2:
             if (EmbeddedListHasKey(wRoot, wKey, cnBitsLeftAtDl2)) {
+                goto foundIt;
+            }
+        case nBL_from_nDL(3):
+            if (EmbeddedListHasKey(wRoot, wKey, nBL_from_nDL(3))) {
+                goto foundIt;
+            }
+            goto break2;
+        case nBL_from_nDL(4):
+            if (EmbeddedListHasKey(wRoot, wKey, nBL_from_nDL(4))) {
+                goto foundIt;
+            }
+            goto break2;
+        case nBL_from_nDL(5):
+            if (EmbeddedListHasKey(wRoot, wKey, nBL_from_nDL(5))) {
                 goto foundIt;
             }
             goto break2;
