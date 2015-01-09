@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.458 2015/01/08 22:30:51 mike Exp mike $
+// @(#) $Id: b.c,v 1.459 2015/01/09 15:17:23 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -613,6 +613,13 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(USE_BM_SW)
           int nBLUp, Word_t wPopCnt)
 {
+#if defined(CODE_XX_SW)
+    if ((nBitsIndexSzX != nBL_to_nBitsIndexSz(nBL))
+        /*&& (nBitsIndexSzX != cnBW)*/)
+    {
+        DBGI(printf("# NewSwitch(nBitsIndexSzX %d)\n", nBitsIndexSzX));
+    }
+#endif // defined(CODE_XX_SW)
     assert((sizeof(Switch_t) % sizeof(Word_t)) == 0);
 #if defined(USE_BM_SW)
     assert((sizeof(BmSwitch_t) % sizeof(Word_t)) == 0);
@@ -2358,13 +2365,15 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
 
 #if (cwListPopCntMax != 0) // true if we are using lists; embedded or external
 
-  #if defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
+  #if defined(EMBED_KEYS)
+      #if ! defined(POP_CNT_MAX_IS_KING) || defined(CODE_XX_SW)
         // It makes no sense to impose a pop limit that is less than what
         // will fit as embedded keys.  If we want to be able to do that for
         // running experiments, then we can use POP_CNT_MAX_IS_KING.
         int nEmbeddedListPopCntMax
             = (cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL))
                 / nBL;
+      #endif // ! defined(POP_CNT_MAX_IS_KING) || defined(CODE_XX_SW)
   #endif // defined(EMBED_KEYS)
 
         if (0
@@ -2387,6 +2396,19 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
 #endif // defined(cnListPopCntMaxDl3)
                 && ((int)wPopCnt < anListPopCntMax[LOG(nBL - 1)])))
         {
+#if defined(CODE_XX_SW)
+            // This block is a performance/efficiency optimization.
+            // It is not necessary for correct operation.
+            if (nBL != nDL_to_nBL(nBL_to_nDL(nBL))) {
+                if ((int)wPopCnt >= nEmbeddedListPopCntMax) {
+                    // PWR_wPopCnt(pwRootPrev, wr_pwr(*pwRootPrev));
+                    if ((wWordsAllocated * 100 / wPopCntTotal) < 100) {
+                        goto doubleIt;
+                    }
+                }
+            }
+#endif // defined(CODE_XX_SW)
+
             Word_t *pwList;
 
             // Allocate memory for a new list if necessary.
@@ -2756,9 +2778,11 @@ newSwitch:
                 nBW = nBL_to_nBitsIndexSz(nBL);
   #if defined(USE_XX_SW)
                 if ((nBL == 16) && (nBL == nBLOld)) {
-                    //DBG(printf("# Creating T_XX_SW wKey "OWx"\n", wKey));
+                    DBGI(printf("# Creating T_XX_SW wKey "OWx"\n", wKey));
                     nBW = cnBW;
                 } else if (nBL != nDL_to_nBL(nBL_to_nDL(nBL))) {
+                    goto doubleIt;
+doubleIt:;
                     // parent is T_XX_SW; back up and replace it
                     assert(wr_nType(*pwRootPrev) == T_XX_SW);
                     nType = T_XX_SW;
@@ -2768,10 +2792,11 @@ newSwitch:
                     pwRoot = pwRootPrev;
                     wRoot = *pwRoot;
                     pwr = wr_pwr(wRoot);
+                    nBW = pwr_nBW(&wRoot) + 1;
                     if (nBW > nBL_to_nBitsIndexSz(nBL)) {
                         nBW = nBL_to_nBitsIndexSz(nBL);
                     }
-                    DBGI(printf("# Expanding T_XX_SW nBW %d\n", nBW));
+                    DBGI(printf("# Doubling T_XX_SW nBW %d\n", nBW));
                     DBGI(Dump(pwRootLast,
                               /* wPrefix */ (Word_t)0, cnBitsPerWord));
                 }
