@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.343 2015/01/08 22:29:55 mike Exp mike $
+// @(#) $Id: b.h,v 1.344 2015/01/09 15:15:56 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -1658,13 +1658,6 @@ typedef struct {
 
 // Uncompressed, basic switch.
 typedef struct {
-#if defined(USE_BM_SW)
-#if defined(BM_IN_NON_BM_SW)
-#if ! defined(BM_IN_LINK)
-    Word_t sw_awBm[N_WORDS_SWITCH_BM];
-#endif // ! defined(BM_IN_LINK)
-#endif // defined(BM_IN_NON_BM_SW)
-#endif // defined(USE_BM_SW)
 #if !defined(PP_IN_LINK)
     Word_t sw_wPrefixPop;
 #endif // !defined(PP_IN_LINK)
@@ -1674,6 +1667,11 @@ typedef struct {
 #if (cnDummiesInSwitch != 0)
     Word_t sw_awDummies[cnDummiesInSwitch];
 #endif // (cnDummiesInSwitch != 0)
+#if defined(USE_BM_SW) && defined(BM_IN_NON_BM_SW)
+  #if ! defined(BM_IN_LINK)
+    Word_t sw_awBm[N_WORDS_SWITCH_BM];
+  #endif // ! defined(BM_IN_LINK)
+#endif // defined(USE_BM_SW) && defined(BM_IN_NON_BM_SW)
     Link_t sw_aLinks[1]; // variable size
 } Switch_t;
 
@@ -1682,9 +1680,6 @@ typedef struct {
 #else // defined(SKIP_TO_BM_SW)
 // Bitmap switch.
 typedef struct {
-#if ! defined(BM_IN_LINK)
-    Word_t sw_awBm[N_WORDS_SWITCH_BM];
-#endif // ! defined(BM_IN_LINK)
 #if !defined(PP_IN_LINK)
     Word_t sw_wPrefixPop;
 #endif // !defined(PP_IN_LINK)
@@ -1694,6 +1689,9 @@ typedef struct {
 #if (cnDummiesInSwitch != 0)
     Word_t sw_awDummies[cnDummiesInSwitch];
 #endif // (cnDummiesInSwitch != 0)
+#if ! defined(BM_IN_LINK)
+    Word_t sw_awBm[N_WORDS_SWITCH_BM];
+#endif // ! defined(BM_IN_LINK)
     Link_t sw_aLinks[1]; // variable size
 } BmSwitch_t;
 #endif // defined(SKIP_TO_BM_SW)
