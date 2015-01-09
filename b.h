@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.344 2015/01/09 15:15:56 mike Exp mike $
+// @(#) $Id: b.h,v 1.346 2015/01/09 20:09:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -54,6 +54,13 @@
   #if ! defined(cnBW)
       #define cnBW  5
   #endif // ! defined(cnBW)
+#endif // defined(CODE_XX_SW)
+
+// Default cnBWIncr is 1 if CODE_XX_SW.
+#if defined(CODE_XX_SW)
+  #if ! defined(cnBWIncr)
+      #define cnBWIncr  1
+  #endif // ! defined(cnBWIncr)
 #endif // defined(CODE_XX_SW)
 
 // Default is XX_SHORTCUT if USE_XX_SW.
@@ -519,6 +526,9 @@ enum {
     T_SWITCH = T_SWITCH_BIT, // Uncompressed, close (i.e. no-skip) switch.
 #if defined(CODE_XX_SW)
     T_XX_SW = T_SWITCH_BIT | T_XX_SW_BIT,
+  #if defined(SKIP_TO_XX_SW) // doesn't work yet
+    T_SKIP_TO_XX_SW = T_SWITCH_BIT | T_SKIP_BIT | T_XX_SW_BIT,
+  #endif // defined(SKIP_TO_XX_SW) // doesn't work yet
 #endif // defined(CODE_XX_SW)
 #if defined(USE_BM_SW)
     T_BM_SW = T_SWITCH_BIT | T_BM_SW_BIT,
@@ -879,6 +889,23 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
 #endif // defined(USE_T_ONE)
 
+#if defined(EXTRA_TYPES)
+  #define tp_bIsSwitch(_tp)  (((_tp) & cnMallocMask) >= T_SWITCH)
+#else // defined(EXTRA_TYPES)
+  #define tp_bIsSwitch(_tp)  ((_tp) >= T_SWITCH)
+#endif // defined(EXTRA_TYPES)
+  #define tp_bIsSkip(_tp)  (((_tp) & T_SKIP_BIT) != 0)
+#if defined(SKIP_TO_BM_SW)
+  #define tp_bIsBmSw(_tp)  (((_tp) & T_BM_SW_BIT) != 0)
+#else // defined(SKIP_TO_BM_SW)
+  #define tp_bIsBmSw(_tp)  (((_tp) & T_BM_SW_BIT) && ! ((_tp) & T_SKIP_BIT))
+#endif // defined(SKIP_TO_BM_SW)
+#if defined(CODE_XX_SW)
+  #define tp_bIsXxSw(_tp)  (!((_tp) & T_BM_SW_BIT) && ((_tp) & T_XX_SW_BIT))
+#endif // defined(CODE_XX_SW)
+
+#define wr_bIsSwitch(_wr)  (tp_bIsSwitch(wr_nType(_wr)))
+
 #if defined(CODE_XX_SW)
 
 // Get the width of the narrow branch in bits.
@@ -886,8 +913,8 @@ static inline int
 pwr_nBW(Word_t *pwr)
 {
     // Might we want to get the width before the type is set?
-    assert(wr_nType(*pwr) == T_XX_SW);
-    return ((*pwr) >> 55) & 7;
+    assert(tp_bIsXxSw(wr_nType(*pwr)));
+    return (((*pwr) >> 55) & 7) + cnBW;
 }
 
 // Set the width of the narrow branch in bits.
@@ -895,8 +922,8 @@ static inline void
 set_pwr_nBW(Word_t *pwr, int nBW)
 {
     // We might want to set the width before the type.
-    assert(wr_nType(*pwr) == T_XX_SW);
-    *pwr = (*pwr & (~MSK(58) | MSK(55))) | ((Word_t)nBW << 55);
+    assert(tp_bIsXxSw(wr_nType(*pwr)));
+    *pwr = (*pwr & (~MSK(58) | MSK(55))) | ((Word_t)(nBW - cnBW) << 55);
 }
 
 #endif // defined(CODE_XX_SW)
@@ -1065,23 +1092,6 @@ set_pwr_nBW(Word_t *pwr, int nBW)
 #endif // defined(LVL_IN_WR_HB)
 
 #endif // defined(TYPE_IS_ABSOLUTE)
-
-#if defined(EXTRA_TYPES)
-  #define tp_bIsSwitch(_tp)  (((_tp) & cnMallocMask) >= T_SWITCH)
-#else // defined(EXTRA_TYPES)
-  #define tp_bIsSwitch(_tp)  ((_tp) >= T_SWITCH)
-#endif // defined(EXTRA_TYPES)
-  #define tp_bIsSkip(_tp)  (((_tp) & T_SKIP_BIT) != 0)
-#if defined(SKIP_TO_BM_SW)
-  #define tp_bIsBmSw(_tp)  (((_tp) & T_BM_SW_BIT) != 0)
-#else // defined(SKIP_TO_BM_SW)
-  #define tp_bIsBmSw(_tp)  (((_tp) & T_BM_SW_BIT) && ! ((_tp) & T_SKIP_BIT))
-#endif // defined(SKIP_TO_BM_SW)
-#if defined(CODE_XX_SW)
-  #define tp_bIsXxSw(_tp)  (!((_tp) & T_BM_SW_BIT) && ((_tp) & T_XX_SW_BIT))
-#endif // defined(CODE_XX_SW)
-
-#define wr_bIsSwitch(_wr)  (tp_bIsSwitch(wr_nType(_wr)))
 
 // methods for Switch (and aliases)
 

@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.459 2015/01/09 15:17:23 mike Exp mike $
+// @(#) $Id: b.c,v 1.460 2015/01/09 19:39:56 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2777,8 +2777,18 @@ newSwitch:
 
                 nBW = nBL_to_nBitsIndexSz(nBL);
   #if defined(USE_XX_SW)
-                if ((nBL == 16) && (nBL == nBLOld)) {
+                if ((nBL == 16)
+      #if ! defined(SKIP_TO_XX_SW)
+                    && (nBL == nBLOld)
+      #endif // ! defined(SKIP_TO_XX_SW)
+                    )
+                {
                     DBGI(printf("# Creating T_XX_SW wKey "OWx"\n", wKey));
+      #if defined(SKIP_TO_XX_SW)
+                    if (nBLOld != nBL) {
+                        DBG(printf("Skip to T_XX_SW nBLOld %d\n", nBLOld));
+                    }
+      #endif // defined(SKIP_TO_XX_SW)
                     nBW = cnBW;
                 } else if (nBL != nDL_to_nBL(nBL_to_nDL(nBL))) {
                     goto doubleIt;
@@ -2792,11 +2802,11 @@ doubleIt:;
                     pwRoot = pwRootPrev;
                     wRoot = *pwRoot;
                     pwr = wr_pwr(wRoot);
-                    nBW = pwr_nBW(&wRoot) + 1;
+                    nBW = pwr_nBW(&wRoot) + cnBWIncr;
                     if (nBW > nBL_to_nBitsIndexSz(nBL)) {
                         nBW = nBL_to_nBitsIndexSz(nBL);
                     }
-                    DBGI(printf("# Doubling T_XX_SW nBW %d\n", nBW));
+                    DBGI(printf("# Doubling T_XX_SW to nBW %d\n", nBW));
                     DBGI(Dump(pwRootLast,
                               /* wPrefix */ (Word_t)0, cnBitsPerWord));
                 }
@@ -2818,7 +2828,7 @@ doubleIt:;
 #endif // defined(CODE_XX_SW)
 #if defined(USE_BM_SW)
   #if defined(USE_XX_SW)
-                          (nBW != nBL_to_nBitsIndexSz(nBL) || (nBL == 16))
+                          (nBW != nBL_to_nBitsIndexSz(nBL) || (nBL <= 16))
                               ? 0 :
   #endif // defined(USE_XX_SW)
   #if defined(SKIP_TO_BM_SW)
@@ -2839,7 +2849,18 @@ doubleIt:;
 
 #if defined(CODE_XX_SW)
                if (nBW != nBL_to_nBitsIndexSz(nBL)) {
-                   set_wr_nType(*pwRoot, T_XX_SW);
+  #if defined(SKIP_TO_XX_SW)
+                   if (nBL != nBLOld) {
+                       assert(nBL == nDL_to_nBL(nBL_to_nDL(nBL)));
+                       assert(nDL_to_nBL(GetDLR(pwRoot, nBL_to_nDL(nBLOld)))
+                           == nBL);
+                       set_wr_nType(*pwRoot, T_SKIP_TO_XX_SW);
+                       assert(nDL_to_nBL(GetDLR(pwRoot, nBL_to_nDL(nBLOld)))
+                           == nBL);
+                   } else
+  #endif // defined(SKIP_TO_XX_SW)
+                   { set_wr_nType(*pwRoot, T_XX_SW); }
+
                    set_pwr_nBW(pwRoot, nBW);
                }
 #endif // defined(CODE_XX_SW)

@@ -1669,6 +1669,37 @@ again:;
 
 #endif // defined(SKIP_TO_BM_SW)
 
+#if defined(SKIP_TO_XX_SW) // Doesn't work yet.
+
+    case T_SKIP_TO_XX_SW:
+    {
+        if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL,
+  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+                           &bNeedPrefixCheck,
+      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+      #if defined(SAVE_PREFIX)
+          #if defined(PP_IN_LINK)
+                           &pwRootPrefix,
+          #else // defined(PP_IN_LINK)
+                           &pwrPrefix,
+          #endif // defined(PP_IN_LINK)
+                           &nBLRPrefix,
+      #elif defined(SAVE_PREFIX_TEST_RESULT)
+                           &bPrefixMismatch,
+      #endif // defined(SAVE_PREFIX)
+  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+                           &nBLR))
+        {
+            break;
+        }
+
+        goto t_xx_sw;
+
+    } // end of T_SKIP_TO_BM_SW case
+
+#endif // defined(SKIP_TO_XX_SW)
+
 #endif // defined(SKIP_LINKS)
 
     case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
@@ -1751,6 +1782,8 @@ switchTail:;
     case T_XX_SW | EXP(cnBitsMallocMask): // close switch w/o bm
 #endif // defined(EXTRA_TYPES)
     {
+        goto t_xx_sw;
+t_xx_sw:;
         // nBL is bits left below the link picked from the previous switch
         // nBL is not reduced by any skip indicated in that link
         // nBLR is nBL reduced by any skip indicated in that link
@@ -2368,7 +2401,9 @@ embedded_keys:; // the semi-colon allows for a declaration next; go figure
                 goto foundIt;
             }
             goto break2;
-        default: assert(0); // fall through works; but we don't mean it
+        default:
+            printf("Embedded list unhandled nBL %d.\n", nBL);
+            assert(0); // fall through works; but we don't mean it
         }
             
           #endif // defined(DL_SPECIFIC_T_ONE)
