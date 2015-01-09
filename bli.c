@@ -1482,6 +1482,7 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
 
 #endif // defined(SKIP_LINKS)
 
+#if 0
 #if defined(CODE_XX_SW)
   #if defined(LOOKUP) && ! defined(GENERAL)
 
@@ -1494,6 +1495,7 @@ EmbeddedListPopCntMax(int nBL)
 
   #endif // defined(LOOKUP) && ! defined(GENERAL)
 #endif // defined(CODE_XX_SW)
+#endif
 
 #if defined(LOOKUP)
 static Status_t
@@ -1749,19 +1751,9 @@ switchTail:;
         // nBLR is nBL reduced by any skip indicated in that link
         // nBLR is bits left at the top of this switch
 
-#if defined(LOOKUP) && ! defined(GENERAL)
-
-        const int cnBL = 16 - cnBW;
-        const int cnIndex = (wKey >> cnBL) & MSK(cnBW);
-        pwRoot = &pwr_pLinks((Switch_t *)pwr)[cnIndex].ln_wRoot;
-        if ((wRoot = *pwRoot) == 0) { return Failure; }
-        // the first test is done at compile time
-        return ((cnListPopCntMax16 > EmbeddedListPopCntMax(cnBL))
-                        && (wr_nType(wRoot) == T_LIST))
-            ? (SearchList16(pwRoot, wr_pwr(wRoot), wKey, cnBL) >= 0)
-            : EmbeddedListHasKey(wRoot, wKey, cnBL);
-
-#else // defined(LOOKUP) && ! defined(GENERAL)
+        int nBW = pwr_nBW(pwRoot);
+        nBL = nBLR - nBW;
+        int nIndex = (wKey >> nBL) & MSK(nBW);
 
   #if ! defined(LOOKUP)
         if (bCleanup) {
@@ -1786,23 +1778,37 @@ switchTail:;
       #endif // defined(INSERT)
   #endif // ! defined(LOOKUP)
 
-        int nBitsIndexSzX = pwr_nBW(pwRoot);
-        Word_t wIndex = (wKey >> (nBLR - nBitsIndexSzX)) & MSK(nBitsIndexSzX);
-
-        DBGX(printf("T_XX_SW nBLR %d pLinks %p wIndex %d\n", nBLR,
-             (void *)pwr_pLinks((Switch_t *)pwr), (int)wIndex));
-
-
-        pwRoot = &pwr_pLinks((Switch_t *)pwr)[wIndex].ln_wRoot;
+        pwRoot = &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot;
         wRoot = *pwRoot;
+
+#if defined(LOOKUP) && defined(XX_SHORTCUT)
+
+        if (wRoot == 0) { return Failure; }
+        // Would be nice if we didn't need external lists.
+        if (wr_nType(wRoot) == T_LIST) {
+            return (SearchList16(pwRoot, wr_pwr(wRoot), wKey, nBL) >= 0);
+        }
+        assert(wr_nType(wRoot) == T_EMBEDDED_KEYS);
+        switch (nBL) {
+        case  9: return EmbeddedListHasKey(wRoot, wKey,  9);
+        case 10: return EmbeddedListHasKey(wRoot, wKey, 10);
+        case 11: return EmbeddedListHasKey(wRoot, wKey, 11);
+        case 12: return EmbeddedListHasKey(wRoot, wKey, 12);
+        case 13: return EmbeddedListHasKey(wRoot, wKey, 13);
+        case 14: return EmbeddedListHasKey(wRoot, wKey, 14);
+        case 15: return EmbeddedListHasKey(wRoot, wKey, 15);
+        }
+        assert(0);
+
+#else // defined(LOOKUP) && defined(XX_SHORTCUT)
 
         // The only thing we do at "again" before switching on nType
         // is extract nType and pwr from wRoot.
         // We don't do any updating of nBL or nBLR.
-        nBLR = (nBL -= nBitsIndexSzX);
+        nBLR = nBL;
         goto again;
 
-#endif // defined(LOOKUP) && ! defined(GENERAL)
+#endif // defined(LOOKUP) && defined(XX_SHORTCUT)
 
     } // end of case T_XX_SW
 
@@ -2313,16 +2319,39 @@ embedded_keys:; // the semi-colon allows for a declaration next; go figure
 
           #if defined(DL_SPECIFIC_T_ONE)
 
-        if (nBL == cnBitsInD1) {
-            if (EmbeddedListHasKey(wRoot, wKey, cnBitsInD1)) {
-                goto foundIt;
-            }
-        } else if (nBL == cnBitsLeftAtDl2) {
+        switch (nBL) {
+        case cnBitsInD1:
+            if (EmbeddedListHasKey(wRoot, wKey, cnBitsInD1)) { goto foundIt; }
+            goto break2;
+        case 9:
+            if (EmbeddedListHasKey(wRoot, wKey, 9)) { goto foundIt; }
+            goto break2;
+        case 10:
+            if (EmbeddedListHasKey(wRoot, wKey, 10)) { goto foundIt; }
+            goto break2;
+        case 11:
+            if (EmbeddedListHasKey(wRoot, wKey, 11)) { goto foundIt; }
+            goto break2;
+        case 12:
+            if (EmbeddedListHasKey(wRoot, wKey, 12)) { goto foundIt; }
+            goto break2;
+        case 13:
+            if (EmbeddedListHasKey(wRoot, wKey, 13)) { goto foundIt; }
+            goto break2;
+        case 14:
+            if (EmbeddedListHasKey(wRoot, wKey, 14)) { goto foundIt; }
+            goto break2;
+        case 15:
+            if (EmbeddedListHasKey(wRoot, wKey, 15)) { goto foundIt; }
+            goto break2;
+        case cnBitsLeftAtDl2:
             if (EmbeddedListHasKey(wRoot, wKey, cnBitsLeftAtDl2)) {
                 goto foundIt;
             }
-        } else
-
+            goto break2;
+        default: assert(0); // fall through works; but we don't mean it
+        }
+            
           #endif // defined(DL_SPECIFIC_T_ONE)
 
         if (EmbeddedListHasKey(wRoot, wKey, nBL)) {
@@ -2368,6 +2397,7 @@ embedded_keys:; // the semi-colon allows for a declaration next; go figure
 
       #endif // defined(EMBEDDED_KEYS_PARALLEL)
 
+break2:
         break;
 
 foundIt:;
