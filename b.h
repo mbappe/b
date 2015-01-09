@@ -38,10 +38,38 @@
   #endif // ! defined(NO_BM_SW_FOR_REAL)
 #endif // defined(USE_BM_SW)
 
-// Default cnBW is 5.  cnBW is the minimum width of a narrow switch.
-#if ! defined(cnBW)
-#define cnBW  5
-#endif // ! defined(cnBW)
+// Default is USE_XX_SW.
+#if ! defined(NO_USE_XX_SW)
+  #define USE_XX_SW
+#endif // ! defined(NO_USE_XX_SW)
+
+#if defined(USE_XX_SW)
+  #undef  CODE_XX_SW
+  #define CODE_XX_SW
+#endif // defined(USE_XX_SW)
+
+// Default cnBW is 5 if CODE_XX_SW.
+// cnBW is the minimum width of a narrow switch.
+#if defined(CODE_XX_SW)
+  #if ! defined(cnBW)
+      #define cnBW  5
+  #endif // ! defined(cnBW)
+#endif // defined(CODE_XX_SW)
+
+// Default is XX_SHORTCUT if USE_XX_SW.
+// Default cnListPopCntMaxDl2 is 32 if USE_XX_SW.
+// Default cnListPopCntMax16 is 16 if USE_XX_SW.
+#if defined(USE_XX_SW)
+  #if ! defined(NO_XX_SHORTCUT)
+      #define XX_SHORTCUT
+  #endif // defined(NO_XX_SHORTCUT)
+  #if ! defined(cnListPopCntMaxDl2)
+      #define cnListPopCntMaxDl2 32 
+  #endif // ! defined(cnListPopCntMaxDl2)
+  #if ! defined(cnListPopCntMax16)
+      #define cnListPopCntMax16 16
+  #endif // ! defined(cnListPopCntMax16)
+#endif // defined(USE_XX_SW)
 
 // Default is -DRETYPE_FULL_BM_SW.
 #if ! defined(NO_RETYPE_FULL_BM_SW)
@@ -467,11 +495,6 @@ typedef Word_t Bucket_t;
 #define T_SW_OTHER_BIT       0x01
 
 #define T_FULL_BM_SW_BIT  T_SW_OTHER_BIT
-
-#if defined(USE_XX_SW)
-  #undef  CODE_XX_SW
-  #define CODE_XX_SW
-#endif // defined(USE_XX_SW)
 
 #if defined(CODE_XX_SW)
 #define T_XX_SW_BIT       T_SW_OTHER_BIT
