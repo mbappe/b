@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.342 2015/01/07 23:30:28 mike Exp mike $
+// @(#) $Id: b.h,v 1.343 2015/01/08 22:29:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -1258,9 +1258,9 @@ set_pwr_nBW(Word_t *pwr, int nBW)
                      + 2 * cbListEndMarkers \
                      + (_wPopCnt) \
                      + POP_SLOT(_nBL) \
-                     + sizeof(Word_t) / (_nBytesKeySz),  \
+                     + sizeof(Word_t) / (_nBytesKeySz), \
                  2 * sizeof(Word_t) / (_nBytesKeySz)) \
-             - sizeof(Word_t)/(_nBytesKeySz) ) \
+             - sizeof(Word_t) / (_nBytesKeySz) ) \
     : ( ALIGN_UP(ALIGN_UP(cnDummiesInList * sizeof(Word_t) / (_nBytesKeySz), \
                           sizeof(Bucket_t) / (_nBytesKeySz)) \
                      + 2 * sizeof(Bucket_t) \

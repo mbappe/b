@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.456 2015/01/07 23:58:08 mike Exp mike $
+// @(#) $Id: b.c,v 1.458 2015/01/08 22:30:51 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2746,7 +2746,11 @@ newSwitch:
 
 #if defined(CODE_XX_SW)
                 if (nBL != nDL_to_nBL(nBL_to_nDL(nBL))) {
-                    //printf("\n# Blow up nBL %d!\n", nBL);
+                    DBGI(printf("\n# Blow up nBL %d wPopCnt %ld\n",
+                                nBL,
+                                PWR_wPopCntBL(NULL,
+                                              (Switch_t *)wr_pwr(*pwRootPrev),
+                                              16)));
                 }
 
                 nBW = nBL_to_nBitsIndexSz(nBL);
