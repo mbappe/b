@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.538 2015/01/07 23:30:28 mike Exp mike $
+// @(#) $Id: bli.c,v 1.539 2015/01/08 22:34:01 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1482,7 +1482,8 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
 
 #endif // defined(SKIP_LINKS)
 
-#if defined(LOOKUP) && ! defined(GENERAL)
+#if defined(CODE_XX_SW)
+  #if defined(LOOKUP) && ! defined(GENERAL)
 
 static int
 EmbeddedListPopCntMax(int nBL)
@@ -1491,7 +1492,8 @@ EmbeddedListPopCntMax(int nBL)
         (cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL)) / nBL;
 }
 
-#endif // defined(LOOKUP) && ! defined(GENERAL)
+  #endif // defined(LOOKUP) && ! defined(GENERAL)
+#endif // defined(CODE_XX_SW)
 
 #if defined(LOOKUP)
 static Status_t
@@ -2315,8 +2317,8 @@ embedded_keys:; // the semi-colon allows for a declaration next; go figure
             if (EmbeddedListHasKey(wRoot, wKey, cnBitsInD1)) {
                 goto foundIt;
             }
-        } else if (nBL == cnBitsInD2) {
-            if (EmbeddedListHasKey(wRoot, wKey, cnBitsInD2)) {
+        } else if (nBL == cnBitsLeftAtDl2) {
+            if (EmbeddedListHasKey(wRoot, wKey, cnBitsLeftAtDl2)) {
                 goto foundIt;
             }
         } else
