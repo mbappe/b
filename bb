@@ -61,6 +61,7 @@ do
         CMD="${TIME} $B"
     fi
 
+    echo $CMD $DFLAG $BFLAG $NOPT
     if ! $CMD $DFLAG $BFLAG $NOPT
     then
         set +x # turn echo off
