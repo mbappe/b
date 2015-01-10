@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.346 2015/01/09 20:09:55 mike Exp mike $
+// @(#) $Id: b.h,v 1.347 2015/01/09 21:54:21 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -378,32 +378,40 @@ typedef Word_t Bucket_t;
 // It makes no sense to have a list that uses as much.
 // Default cnListPopCntMax8 is 0x10 (0x17 if NO_EMBEDDED_KEYS_PARALLEL).
 #if ! defined(cnListPopCntMax8)
-#if defined(EMBEDDED_KEYS_PARALLEL)
-#define cnListPopCntMax8   0x10
-#else // defined(EMBEDDED_KEYS_PARALLEL)
-#define cnListPopCntMax8   0x17
-#endif // defined(EMBEDDED_KEYS_PARALLEL)
+  #if defined(USE_XX_SW)
+      #define cnListPopCntMax8  0x10
+  #else // defined(USE_XX_SW)
+    #if defined(EMBEDDED_KEYS_PARALLEL)
+      #define cnListPopCntMax8   0x10
+    #else // defined(EMBEDDED_KEYS_PARALLEL)
+      #define cnListPopCntMax8   0x17
+    #endif // defined(EMBEDDED_KEYS_PARALLEL)
+  #endif // defined(USE_XX_SW)
 #endif // ! defined(cnListPopCntMax8)
 
 // Default cnListPopCntMaxDl1 is 7 for cnBitsInD1 = 8 (embedded keys only).
 #if ! defined(cnListPopCntMaxDl1)
-  #  if (cnBitsInD1 == 7)
+  #if defined(USE_XX_SW)
+      #define cnListPopCntMaxDl1  0x10
+  #else // defined(USE_XX_SW)
+    #  if (cnBitsInD1 == 7)
       #define cnListPopCntMaxDl1  0x08
-  #elif (cnBitsInD1 == 8)
+    #elif (cnBitsInD1 == 8)
       #define cnListPopCntMaxDl1  0x07
-  #elif (cnBitsInD1 == 9)
+    #elif (cnBitsInD1 == 9)
       #define cnListPopCntMaxDl1  0x06
-  #elif (cnBitsInD1 <= 11)
+    #elif (cnBitsInD1 <= 11)
       #define cnListPopCntMaxDl1  0x05
-  #elif (cnBitsInD1 <= 16)
+    #elif (cnBitsInD1 <= 16)
       #define cnListPopCntMaxDl1  0x04
-  #elif (cnBitsInD1 <= 19)
+    #elif (cnBitsInD1 <= 19)
       #define cnListPopCntMaxDl1  0x03
-  #elif (cnBitsInD1 <= 29)
+    #elif (cnBitsInD1 <= 29)
       #define cnListPopCntMaxDl1  0x02
-  #else
+    #else
       #define cnListPopCntMaxDl1  0x01
-  #endif // cnBitsInD1
+    #endif // cnBitsInD1
+  #endif // defined(USE_XX_SW)
 #endif // ! defined(cnListPopCntMaxDl1)
 
 // cwListPopCntMax is mostly used as a boolean that indicates whether

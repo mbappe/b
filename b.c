@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.461 2015/01/09 21:54:21 mike Exp mike $
+// @(#) $Id: b.c,v 1.462 2015/01/10 23:27:26 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2012,7 +2012,11 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
 
 // Default cnNonBmLeafPopCntMax is 1280.  Keep W/K <= 1.
 #if ! defined(cnNonBmLeafPopCntMax)
-  #define cnNonBmLeafPopCntMax  1280
+  #if defined(USE_XX_SW)
+    #define cnNonBmLeafPopCntMax  2560
+  #else // defined(USE_XX_SW)
+    #define cnNonBmLeafPopCntMax  1280
+  #endif // defined(USE_XX_SW)
 #endif // ! defined(cnNonBmLeafPopCntMax)
 
     (void)wKey; (void)nDL; (void)pwRoot; (void)wRoot;
