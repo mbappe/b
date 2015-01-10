@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.541 2015/01/09 15:18:35 mike Exp mike $
+// @(#) $Id: bli.c,v 1.543 2015/01/09 21:54:21 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1579,7 +1579,9 @@ again:;
     assert(nBLR == nBL);
 #endif // defined(SKIP_LINKS)
 #if ( ! defined(LOOKUP) )
+  #if ! defined(USE_XX_SW)
     assert(nBL >= cnBitsInD1); // valid for LOOKUP too
+  #endif // ! defined(USE_XX_SW)
     DBGX(printf("# pwRoot %p ", (void *)pwRoot));
 #else // ( ! defined(LOOKUP) )
     SMETRICS(j__TreeDepth++);
@@ -1759,9 +1761,12 @@ switchTail:;
         // preserve the value of pwr.
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-        // first test is done at compile time and might make the rest go away
-        if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nBL == cnBitsInD1)) {
-            goto embeddedBitmap;
+#if ! defined(USE_XX_SW)
+        // this test is done at compile time and might make the rest go away
+        if (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
+#endif // ! defined(USE_XX_SW)
+        if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
+            goto t_bitmap;
         }
         DBGX(printf("Next pwRoot %p wRoot "OWx" nBL %d\n",
                     (void *)pwRoot, wRoot, nBL));
@@ -1789,19 +1794,14 @@ t_xx_sw:;
         // nBLR is nBL reduced by any skip indicated in that link
         // nBLR is bits left at the top of this switch
 
-        int nBW = pwr_nBW(pwRoot);
-        nBL = nBLR - nBW;
-        int nIndex = (wKey >> nBL) & MSK(nBW);
-
   #if ! defined(LOOKUP)
         if (bCleanup) {
-#if 0
       #if defined(INSERT)
-            InsertCleanup(wKey, nBLUp, pwRoot, wRoot);
+            InsertCleanup(wKey, nBL, pwRoot, wRoot);
       #else // defined(INSERT)
-            RemoveCleanup(wKey, nBLUp, nBLR, pwRoot, wRoot);
+            RemoveCleanup(wKey, nBL, nBLR, pwRoot, wRoot);
       #endif // defined(INSERT)
-#endif
+            if (*pwRoot != wRoot) { goto restart; }
         } else {
             // Increment or decrement population count on the way in.
             wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
@@ -1816,27 +1816,46 @@ t_xx_sw:;
       #endif // defined(INSERT)
   #endif // ! defined(LOOKUP)
 
+        int nBW = pwr_nBW(pwRoot);
+        nBL = nBLR - nBW;
+        int nIndex = (wKey >> nBL) & MSK(nBW);
         pwRoot = &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot;
         wRoot = *pwRoot;
 
 #if defined(LOOKUP) && defined(XX_SHORTCUT)
 
+        if (EXP(nBL) <= sizeof(Link_t) * 8) { goto t_bitmap; }
+        nType = wr_nType(wRoot);
+        if (nType == T_EMBEDDED_KEYS) {
+            switch (nBL) {
+  #if (cnLogBitsPerWord <= 5)
+            case  6: return EmbeddedListHasKey(wRoot, wKey,  6);
+  #endif // (cnLogBitsPerWord <= 5)
+            case  7: return EmbeddedListHasKey(wRoot, wKey,  7);
+            case  8: return EmbeddedListHasKey(wRoot, wKey,  8);
+            case  9: return EmbeddedListHasKey(wRoot, wKey,  9);
+            case 10: return EmbeddedListHasKey(wRoot, wKey, 10);
+            case 11: return EmbeddedListHasKey(wRoot, wKey, 11);
+            case 12: return EmbeddedListHasKey(wRoot, wKey, 12);
+            case 13: return EmbeddedListHasKey(wRoot, wKey, 13);
+            case 14: return EmbeddedListHasKey(wRoot, wKey, 14);
+            case 15: return EmbeddedListHasKey(wRoot, wKey, 15);
+            }
+        }
         if (wRoot == 0) { return Failure; }
-        // Would be nice if we didn't need external lists.
-        if (wr_nType(wRoot) == T_LIST) {
-            return (SearchList16(pwRoot, wr_pwr(wRoot), wKey, nBL) >= 0);
+        if (nType == T_LIST) {
+            return (((nBL <= 8)
+                        ? SearchList8( pwRoot, wr_pwr(wRoot), wKey, nBL)
+                        : SearchList16(pwRoot, wr_pwr(wRoot), wKey, nBL))
+                >= 0);
         }
-        assert(wr_nType(wRoot) == T_EMBEDDED_KEYS);
-        switch (nBL) {
-        case  9: return EmbeddedListHasKey(wRoot, wKey,  9);
-        case 10: return EmbeddedListHasKey(wRoot, wKey, 10);
-        case 11: return EmbeddedListHasKey(wRoot, wKey, 11);
-        case 12: return EmbeddedListHasKey(wRoot, wKey, 12);
-        case 13: return EmbeddedListHasKey(wRoot, wKey, 13);
-        case 14: return EmbeddedListHasKey(wRoot, wKey, 14);
-        case 15: return EmbeddedListHasKey(wRoot, wKey, 15);
+#if defined(DEBUG)
+        if (nType != T_BITMAP) {
+            printf("nType %d\n", nType);
         }
-        assert(0);
+#endif // defined(DEBUG)
+        assert(nType == T_BITMAP);
+        goto t_bitmap;
 
 #else // defined(LOOKUP) && defined(XX_SHORTCUT)
 
@@ -2141,7 +2160,8 @@ t_list:;
     case T_BITMAP | EXP(cnBitsMallocMask):
 #endif // defined(EXTRA_TYPES)
     {
-embeddedBitmap:;
+        goto t_bitmap;
+t_bitmap:;
   #if ! defined(LOOKUP)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
@@ -2358,8 +2378,16 @@ embedded_keys:; // the semi-colon allows for a declaration next; go figure
           #if defined(DL_SPECIFIC_T_ONE)
 
         switch (nBL) {
-        case cnBitsInD1:
-            if (EmbeddedListHasKey(wRoot, wKey, cnBitsInD1)) { goto foundIt; }
+  #if (cnLogBitsPerWord <= 5)
+        case 6:
+            if (EmbeddedListHasKey(wRoot, wKey, 6)) { goto foundIt; }
+            goto break2;
+  #endif // (cnLogBitsPerWord <= 5)
+        case 7:
+            if (EmbeddedListHasKey(wRoot, wKey, 7)) { goto foundIt; }
+            goto break2;
+        case 8:
+            if (EmbeddedListHasKey(wRoot, wKey, 8)) { goto foundIt; }
             goto break2;
         case 9:
             if (EmbeddedListHasKey(wRoot, wKey, 9)) { goto foundIt; }
