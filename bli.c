@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.543 2015/01/09 21:54:21 mike Exp mike $
+// @(#) $Id: bli.c,v 1.544 2015/01/10 15:41:06 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1343,19 +1343,7 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 #if ! defined(PAD_T_ONE) && defined(T_ONE_MASK)
     // If we're filling empty slots with zero, then we have to mask off
     // the empty slots so we don't get a false positive if/when wKey == 0.
-#if defined(T_ONE_CALC_POP)
-    Word_t ww = wRoot & ~MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL));
-    ww |= (Word_t)1 << (cnBitsPerWord - 1);
-    unsigned nPopCnt = ((cnBitsPerWord - __builtin_ffsll(ww)) / nBL) + 1;
-#if 0
-if (nPopCnt != wr_nPopCnt(wRoot, nBL)) {
-    printf("nPopCnt %d wr %ld\n", nPopCnt, wr_nPopCnt(wRoot, nBL));
-    printf("wRoot %lx ww %lx nBL %d\n", wRoot, ww, nBL);
-}
-#endif
-#else // defined(T_ONE_CALC_POP)
     unsigned nPopCnt = wr_nPopCnt(wRoot, nBL); // number of keys present
-#endif // defined(T_ONE_CALC_POP)
     unsigned nBitsOfKeys = nPopCnt * nBL;
     wXor |= (Word_t)-1 >> nBitsOfKeys; // type and empty slots
 #endif // ! defined(PAD_T_ONE) && defined(T_ONE_MASK)
@@ -1415,10 +1403,10 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
 {
     (void)pwRoot; (void)pwr; (void)wKey; (void)nBL; (void)pnBLR;
 
-#if defined(USE_BM_SW) && ! defined(PP_IN_LINK)
+#if defined(CODE_BM_SW) && ! defined(PP_IN_LINK)
     assert(&((BmSwitch_t *)NULL)->sw_wPrefixPop
         == &((  Switch_t *)NULL)->sw_wPrefixPop);
-#endif // defined(USE_BM_SW) && ! defined(PP_IN_LINK)
+#endif // defined(CODE_BM_SW) && ! defined(PP_IN_LINK)
 
   #if defined(TYPE_IS_RELATIVE)
     int nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(wRoot));
@@ -1871,7 +1859,7 @@ t_xx_sw:;
 
 #endif // defined(CODE_XX_SW)
 
-#if defined(USE_BM_SW)
+#if defined(CODE_BM_SW)
 
   #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
 
@@ -1992,7 +1980,7 @@ t_bm_sw:;
 
     } // end of case T_BM_SW
 
-#endif // defined(USE_BM_SW)
+#endif // defined(CODE_BM_SW)
 
 #if (cwListPopCntMax != 0)
 
@@ -2854,6 +2842,12 @@ Initialize(void)
 #else // defined(USE_BM_SW)
     printf("# NO USE_BM_SW\n");
 #endif // defined(USE_BM_SW)
+
+#if defined(CODE_BM_SW)
+    printf("# CODE_BM_SW\n");
+#else // defined(CODE_BM_SW)
+    printf("# NO CODE_BM_SW\n");
+#endif // defined(CODE_BM_SW)
 
 #if defined(SKIP_TO_BM_SW)
     printf("# SKIP_TO_BM_SW\n");
