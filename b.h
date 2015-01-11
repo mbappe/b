@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.347 2015/01/09 21:54:21 mike Exp mike $
+// @(#) $Id: b.h,v 1.348 2015/01/10 23:36:05 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -909,7 +909,11 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
   #define tp_bIsBmSw(_tp)  (((_tp) & T_BM_SW_BIT) && ! ((_tp) & T_SKIP_BIT))
 #endif // defined(SKIP_TO_BM_SW)
 #if defined(CODE_XX_SW)
-  #define tp_bIsXxSw(_tp)  (!((_tp) & T_BM_SW_BIT) && ((_tp) & T_XX_SW_BIT))
+  #if defined(USE_BM_SW)
+    #define tp_bIsXxSw(_tp)  (!((_tp) & T_BM_SW_BIT) && ((_tp) & T_XX_SW_BIT))
+  #else // defined(USE_BM_SW)
+    #define tp_bIsXxSw(_tp)  ((_tp) & T_XX_SW_BIT)
+  #endif // defined(USE_BM_SW)
 #endif // defined(CODE_XX_SW)
 
 #define wr_bIsSwitch(_wr)  (tp_bIsSwitch(wr_nType(_wr)))
