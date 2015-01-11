@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.348 2015/01/10 23:36:05 mike Exp mike $
+// @(#) $Id: b.h,v 1.350 2015/01/11 16:00:47 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -33,6 +33,7 @@
   #define USE_BM_SW
 #endif // ! defined(NO_USE_BM_SW)
 #if defined(USE_BM_SW)
+  #define CODE_BM_SW
   #if ! defined(NO_BM_SW_FOR_REAL)
       #define BM_SW_FOR_REAL
   #endif // ! defined(NO_BM_SW_FOR_REAL)
@@ -473,9 +474,6 @@ typedef Word_t Bucket_t;
 #define USE_T_ONE
 #endif // defined(EMBED_KEYS)
 
-// Default is -UT_ONE_MASK and -UT_ONE_CALC_POP.
-// See EmbeddedListHasKey.
-
 // Default is -DBM_IN_NON_BM_SW if [RETYPE_FULL|SKIP_TO]_BM_SW.
 #if ! defined(NO_BM_IN_NON_BM_SW)
   #if defined(RETYPE_FULL_BM_SW) || defined(SKIP_TO_BM_SW)
@@ -504,9 +502,9 @@ typedef Word_t Bucket_t;
 
 #define T_SWITCH_BIT         0x08
 #define T_SKIP_BIT           0x04
-#if defined(USE_BM_SW)
+#if defined(CODE_BM_SW)
 #define T_BM_SW_BIT          0x02
-#endif // defined(USE_BM_SW)
+#endif // defined(CODE_BM_SW)
 #define T_SW_OTHER_BIT       0x01
 
 #define T_FULL_BM_SW_BIT  T_SW_OTHER_BIT
@@ -538,13 +536,13 @@ enum {
     T_SKIP_TO_XX_SW = T_SWITCH_BIT | T_SKIP_BIT | T_XX_SW_BIT,
   #endif // defined(SKIP_TO_XX_SW) // doesn't work yet
 #endif // defined(CODE_XX_SW)
-#if defined(USE_BM_SW)
+#if defined(CODE_BM_SW)
     T_BM_SW = T_SWITCH_BIT | T_BM_SW_BIT,
 #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
     // All link bits set, i.e. all links present.
     T_FULL_BM_SW = T_SWITCH_BIT | T_BM_SW_BIT | T_FULL_BM_SW_BIT,
 #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-#endif // defined(USE_BM_SW)
+#endif // defined(CODE_BM_SW)
     // T_SKIP_TO_SWITCH has to have the biggest value in this enum
     // if not DEPTH_IN_SW.  All of the bigger values have a meaning relative
     // to T_SKIP_TO_SWITCH.
@@ -862,6 +860,31 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
 #if defined(USE_T_ONE)
 
+  // Default is -UT_ONE_MASK.
+  // See EmbeddedListHasKey.
+
+  // Default is -UNO_T_ONE_CALC_POP.
+  #if ! defined(NO_T_ONE_CALC_POP)
+
+#define T_ONE_CALC_POP
+
+#define nBL_to_nBitsPopCntSz(_nBL)  0
+
+static inline int
+wr_nPopCnt(Word_t wRoot, int nBL)
+{
+    (void)nBL;
+    Word_t wKeys = wRoot & ~MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL));
+    wKeys |= EXP(cnBitsPerWord - 1);
+    int ffs = __builtin_ffsll(wKeys);
+    int nPopCnt = ((cnBitsPerWord - ffs) / nBL) + 1;
+    return nPopCnt;
+}
+
+#define set_wr_nPopCnt(_wr, _nBL, _nPopCnt)
+
+  #else // ! defined(NO_T_ONE_CALC_POP)
+
 // Default is -DEMBEDDED_LIST_FIXED_POP.
 // Fixed-size pop count field to make code simpler.
 // We only give up one 29-bit slot in 64-bit and one 14-bit slot in 32-bit.
@@ -894,6 +917,8 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 #define set_wr_nPopCnt(_wr, _nBL, _nPopCnt) \
     ((_wr) &= ~(MSK(nBL_to_nBitsPopCntSz(_nBL)) << cnBitsMallocMask), \
      (_wr) |= ((_nPopCnt) - 1) << cnBitsMallocMask)
+
+  #endif // ! defined(NO_T_ONE_CALC_POP)
 
 #endif // defined(USE_T_ONE)
 
