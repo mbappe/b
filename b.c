@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.462 2015/01/10 23:27:26 mike Exp mike $
+// @(#) $Id: b.c,v 1.463 2015/01/10 23:36:11 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -3446,7 +3446,7 @@ DeflateExternalList(Word_t *pwRoot,
         if (nBL <= 32) {
             piKeys = ls_piKeysNAT(pwr);
             int nn = 1;
-            for (; nn <= (int)wr_nPopCnt(wRoot, nBL); nn++) {
+            for (; nn <= nPopCnt; nn++) {
                wRoot |= (piKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
             }
 #if defined(PAD_T_ONE)
@@ -3468,7 +3468,7 @@ DeflateExternalList(Word_t *pwRoot,
 #else // defined(COMPRESSED_LISTS)
             Word_t *pwKeys = ls_pwKeys(pwr, nBL);
             int nn = 1;
-            for (; nn <= wr_nPopCnt(wRoot, nBL); nn++) {
+            for (; nn <= nPopCnt; nn++) {
                wRoot |= (pwKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
             }
 #if defined(PAD_T_ONE)
