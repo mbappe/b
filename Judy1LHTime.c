@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.26 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.27 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -1694,7 +1694,8 @@ main(int argc, char *argv[])
 
     PStartSeed->Seeds[0] = StartSequent;
     {
-        MaxNumb = (RandomBit * 2) - 1;
+        MaxNumb = (RandomBit * 2);
+        if (SValue == 0) { MaxNumb -= 1; }
         if (nElms > MaxNumb)
         {
             printf("# Trim Max number of Elements -n%lu due to max -B%lu bit Keys",
