@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.465 2015/01/11 16:18:11 mike Exp mike $
+// @(#) $Id: b.c,v 1.466 2015/01/12 00:04:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -201,6 +201,12 @@ MyFree(Word_t *pw, Word_t wWords)
     DBGM(printf("F: "OWx" %"_fw"d words pw[-1] %p\n",
                 (Word_t)pw, wWords, (void *)pw[-1]));
     // make sure it is ok for us to use some of the bits in the word
+#if defined(DEBUG)
+    if ((pw[-1] >> 16) != ((pw[-1] & MSK(16)) >> 4)) {
+        printf("pw %p pw[0] "OWx"\n", pw, pw[0]);
+        printf("wWords %ld pw[-1] "OWx"\n", wWords, pw[-1]);
+    }
+#endif // defined(DEBUG)
     assert((pw[-1] >> 16) == ((pw[-1] & MSK(16)) >> 4));
     DBG(pw[-1] &= MSK(16));
 #if defined(LVL_IN_WR_HB)
@@ -319,9 +325,7 @@ ListWords(int nPopCnt, int nBL)
     // What difference would it make?
     // One more embedded 30, 20, 15, 12 and 10-bit key?  Assuming we don't use
     // the extra word in the link for embedded values?
-    if (nPopCnt * nBL
-            <= (cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL)))
-    {
+    if (nPopCnt <= EmbeddedListPopCntMax(nBL)) {
         return 0; // Embed the keys, if any, in wRoot.
     }
 #endif // defined(EMBED_KEYS)
@@ -491,6 +495,7 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
 {
     int nWords = ((nType == T_LIST) ? ListWordsTypeList(nPopCnt, nBL)
                                     : ListWords(nPopCnt, nBL));
+    assert((nType != T_EMBEDDED_KEYS) || (nWords == 0));
 
     DBGM(printf("Old pwList %p wLen %d nBL %d nPopCnt %d nType %d\n",
         (void *)pwList, nWords, nBL, nPopCnt, nType));
@@ -679,6 +684,13 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(CODE_BM_SW)
     {
         memset(pwr_pLinks((Switch_t *)pwr), 0, wLinks * sizeof(Link_t));
+#if defined(NO_TYPE_IN_XX_SW)
+        if (nBL <= nDL_to_nBL(2)) {
+            for (int nn = 0; nn < (int)wLinks; ++nn) {
+                pwr_pLinks((Switch_t *)pwr)[nn].ln_wRoot = ZERO_POP_MAGIC;
+            }
+        }
+#endif // defined(NO_TYPE_IN_XX_SW)
     }
 
 #if defined(RAMMETRICS)
@@ -2141,7 +2153,6 @@ InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
         wRootOld = InflateEmbeddedList(pwRootOld, wKey, nBLOld, wRootOld);
         DBGI(printf("After IEL\n"));
         DBGI(Dump(&wRootOld, wKey & ~MSK(nBLOld), nBLOld));
-        assert(*pwRootOld == wRootOld); // Inflate installs the new wRoot.
         nType = wr_nType(wRootOld); // changed by IEL
         assert(nType == T_LIST);
     }
@@ -2162,7 +2173,7 @@ InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
             DBG(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
         }
         assert(nType == T_LIST); // What about T_ONE?
-        nPopCnt = PWR_xListPopCnt(pwRootOld, nBLOld);
+        nPopCnt = PWR_xListPopCnt(&wRootOld, nBLOld);
         
 #if defined(COMPRESSED_LISTS)
         if (nBLOld <= (int)sizeof(uint8_t) * 8) {
@@ -2261,6 +2272,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
         return InsertAtBitmap(pwRoot, wKey, nDL, wRoot);
     }
 
+    // Can the following be moved into the if ! switch block?
 #if (cwListPopCntMax != 0)
 #if defined(EMBED_KEYS)
     // Change an embedded list into an external list to make things
@@ -2321,6 +2333,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
   #if defined(PP_IN_LINK)
                 // pop count in link should have been bumped by now
                 // if we're not at the top
+                // IEL does not affect it.
                 assert((nDL == cnDigitsPerWord)
                     || (PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)
                         == wPopCnt + 1));
@@ -2410,9 +2423,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
         // It makes no sense to impose a pop limit that is less than what
         // will fit as embedded keys.  If we want to be able to do that for
         // running experiments, then we can use POP_CNT_MAX_IS_KING.
-        int nEmbeddedListPopCntMax
-            = (cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL))
-                / nBL;
+        int nEmbeddedListPopCntMax = EmbeddedListPopCntMax(nBL);
       #endif // ! defined(POP_CNT_MAX_IS_KING) || defined(CODE_XX_SW)
   #endif // defined(EMBED_KEYS)
 
@@ -2540,12 +2551,16 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
                 }
             }
 
-            *pwRoot = wRoot; // install new
-
             if ((wPopCnt != 0) && (pwr != pwList))
             {
                 OldList(pwr, wPopCnt, nBL, nType);
             }
+
+            // It's a bit ugly that we are installing this T_LIST for
+            // if NO_TYPE_IN_XX_SW.  But we know that DEL is going to
+            // fix it.  We could give deflate &wRoot, then install the new
+            // wRoot ourselves (if DEL returned it).
+            *pwRoot = wRoot; // install new
 
 #if defined(EMBED_KEYS)
             // Embed the list if it fits.
@@ -2553,6 +2568,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
             if (((int)wPopCnt < EmbeddedListPopCntMax(nBL)) || (wPopCnt == 0))
             {
                 DeflateExternalList(pwRoot, wPopCnt + 1, nBL, pwList);
+                assert((wr_nType(*pwRoot) == T_EMBEDDED_KEYS)
+                    || ((wr_nType(*pwRoot) == T_ONE) && (wPopCnt == 0)));
             }
 #endif // defined(EMBED_KEYS)
         }
@@ -2802,7 +2819,7 @@ newSwitch:
             {
                 // NewSwitch overwrites *pwRoot which would be a problem for
                 // embedded keys.
-                assert(wr_nType(*pwRoot) != T_EMBEDDED_KEYS);
+                // Unless we've inflated them out.  Which we have.
 
 #if defined(CODE_XX_SW)
                 if (nBL != nDL_to_nBL(nBL_to_nDL(nBL))) {
@@ -2832,6 +2849,20 @@ newSwitch:
                     goto doubleIt;
 doubleIt:;
                     assert(nBL < nDL_to_nBL(2));
+// Hmm.  *pwRoot has not been updated with the inflated list.
+// What should we do?  Call OldList or install the inflated list?
+// I think we are going to just inflate it again if we don't just leave it.
+// So let's try installing it.
+#if defined(NO_TYPE_IN_XX_SW)
+                    assert(wr_nType(wRoot) == T_LIST);
+                    OldList(pwr, wPopCnt, nBL, T_LIST);
+#else // defined(NO_TYPE_IN_XX_SW)
+                    assert(wr_nType(*pwRoot) != T_ONE);
+                    if (wr_nType(*pwRoot) == T_EMBEDDED_KEYS) {
+                        assert(wr_nType(wRoot) == T_LIST);
+                        *pwRoot = wRoot;
+                    }
+#endif // defined(NO_TYPE_IN_XX_SW)
                     pwRoot = pwRootPrev;
                     wRoot = *pwRoot;
                     nType = wr_nType(wRoot);
@@ -2982,6 +3013,7 @@ insertAll:
 #if defined(SKIP_LINKS) || defined(BM_SW_FOR_REAL)
     else
     {
+        assert(wr_nType(*pwRoot) != T_EMBEDDED_KEYS);
   #if defined(TYPE_IS_RELATIVE)
         int nDLR = ! tp_bIsSkip(nType) ? nDL : nDL - wr_nDS(wRoot);
   #else // defined(TYPE_IS_RELATIVE)
@@ -3309,11 +3341,20 @@ insertAll:
 Word_t
 InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 {
+    (void)pwRoot;
     DBGI(printf(
          "InflateEmbeddedList pwRoot %p wKey "OWx" nBL %d wRoot "OWx"\n",
          (void *)pwRoot, wKey, nBL, wRoot));
 
     assert(wr_nType(wRoot) == T_EMBEDDED_KEYS);
+
+#if defined(NO_TYPE_IN_XX_SW)
+    if (nBL <= nDL_to_nBL(2)) {
+        if (wRoot == POP_ZERO_MAGIC) {
+            return wRoot = 0; // T_NULL or T_LIST
+        }
+    }
+#endif // defined(NO_TYPE_IN_XX_SW)
 
     Word_t *pwKeys;
 #if defined(COMPRESSED_LISTS)
@@ -3379,7 +3420,6 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 
     set_wr(wRoot, pwList, T_LIST);
     set_PWR_xListPopCnt(&wRoot, nBL, nPopCnt);
-    *pwRoot = wRoot;
 
     return wRoot;
 }
@@ -3392,6 +3432,8 @@ DeflateExternalList(Word_t *pwRoot,
                     int nPopCnt, int nBL, Word_t *pwr)
 {
     int nPopCntMax = EmbeddedListPopCntMax(nBL);
+
+    assert(wr_nType(*pwRoot) == T_LIST);
 
     DBGI(printf("DeflateExternalList pwRoot %p nPopCnt %d nBL %d pwr %p\n",
                (void *)pwRoot, nPopCnt, nBL, (void *)pwr));
@@ -3413,8 +3455,10 @@ DeflateExternalList(Word_t *pwRoot,
         uint8_t  *pcKeys;
 #endif // defined(COMPRESSED_LISTS)
 
+#if ! defined(NO_TYPE_IN_XX_SW)
         set_wr_nType(wRoot, T_EMBEDDED_KEYS);
-        set_wr_nPopCnt(wRoot, nBL, nPopCnt);
+        set_wr_nPopCnt(wRoot, nBL, nPopCnt); // no-op for NO_TYPE_IN_XX_SW
+#endif // ! defined(NO_TYPE_IN_XX_SW)
 
         Word_t wBLM = MSK(nBL);
 #if defined(COMPRESSED_LISTS)
@@ -3661,9 +3705,11 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 
 #if defined(EMBED_KEYS)
     if (((nType == T_ONE) || (nType == T_EMBEDDED_KEYS))
+// Why is nBL_to_nBitsPopCntSz irrelevant here?
         && (nBL <= cnBitsPerWord - cnBitsMallocMask))
     {
         wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot);
+        //*pwRoot = wRoot;
         nType = T_LIST;
         pwr = wr_pwr(wRoot);
         assert(wr_nType(wRoot) == nType);
@@ -3672,8 +3718,12 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 
 #if defined(USE_T_ONE)
     if ((nType == T_ONE) || (nType == T_EMBEDDED_KEYS)) {
+// When do we get here?  Removing last key?  Yes.
+        //assert(0);
+// Why is nBL_to_nBitsPopCntSz irrelevant here?
         assert(nBL > cnBitsPerWord - cnBitsMallocMask);
-        OldList(pwr, /* wPopCnt */ 1, nBL, T_EMBEDDED_KEYS);
+        assert(nType == T_ONE);
+        OldList(pwr, /* wPopCnt */ 1, nBL, nType);
         *pwRoot = 0; // Do we need to clear the rest of the link also?
         return Success;
     }
