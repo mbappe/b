@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.350 2015/01/11 16:03:32 mike Exp mike $
+// @(#) $Id: b.h,v 1.351 2015/01/12 00:04:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -885,6 +885,9 @@ wr_nPopCnt(Word_t wRoot, int nBL)
 {
     (void)nBL;
     assert((wRoot != ZERO_POP_MAGIC) || (nBL >= 28));
+#if ! defined(PAD_T_ONE)
+    //if ((wRoot == ZERO_POP_MAGIC) && (nBL < 28)) { return 0; }
+#endif // ! defined(PAD_T_ONE)
     Word_t wKeys = wRoot & ~MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL));
     wKeys |= EXP(cnBitsPerWord - 1);
     int ffs = __builtin_ffsll(wKeys);
