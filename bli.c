@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.547 2015/01/12 04:50:27 mike Exp mike $
+// @(#) $Id: bli.c,v 1.548 2015/01/12 05:23:35 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1887,6 +1887,7 @@ t_xx_sw:;
       #endif // defined(EXTRA_TYPES)
     {
       #if defined(LOOKUP)
+// Skip over sw_awBm.  The rest of BmSwitch_t must be same as Switch_t.
         pwr = (Word_t *)&((BmSwitch_t *)pwr)->sw_wPrefixPop;
         goto t_switch;
       #endif // defined(LOOKUP)
