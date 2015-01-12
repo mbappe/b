@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.544 2015/01/10 15:41:06 mike Exp mike $
+// @(#) $Id: bli.c,v 1.545 2015/01/11 16:19:54 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1810,11 +1810,13 @@ t_xx_sw:;
         pwRoot = &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot;
         wRoot = *pwRoot;
 
+        assert(EXP(nBL) > sizeof(Link_t) * 8);
+
 #if defined(LOOKUP) && defined(XX_SHORTCUT)
 
-        if (EXP(nBL) <= sizeof(Link_t) * 8) { goto t_bitmap; }
         nType = wr_nType(wRoot);
-        if (nType == T_EMBEDDED_KEYS) {
+        if (nType == T_EMBEDDED_KEYS)
+        {
             switch (nBL) {
   #if (cnLogBitsPerWord <= 5)
             case  6: return EmbeddedListHasKey(wRoot, wKey,  6);
@@ -2853,6 +2855,12 @@ Initialize(void)
     printf("# SKIP_TO_BM_SW\n");
 #else // defined(SKIP_TO_BM_SW)
     printf("# NO SKIP_TO_BM_SW\n");
+#endif // defined(SKIP_TO_BM_SW)
+
+#if defined(RETYPE_FULL_BM_SW)
+    printf("# RETYPE_FULL_BM_SW\n");
+#else // defined(RETYPE_FULL_BM_SW)
+    printf("# NO RETYPE_FULL_BM_SW\n");
 #endif // defined(SKIP_TO_BM_SW)
 
 #if defined(BM_IN_NON_BM_SW)

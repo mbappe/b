@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.350 2015/01/11 16:00:47 mike Exp mike $
+// @(#) $Id: b.h,v 1.350 2015/01/11 16:03:32 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -25,13 +25,14 @@
 #define SKIP_PREFIX_CHECK
 #endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 
-// Default is -UBM_IN_LINK.
-// USE_BM_SW means always use bm sw when creating a switch with no skip.
-// Default is -DBM_SW_FOR_REAL iff -DUSE_BM_SW.
 // Default is -DUSE_BM_SW.
 #if ! defined(NO_USE_BM_SW)
   #define USE_BM_SW
 #endif // ! defined(NO_USE_BM_SW)
+
+// USE_BM_SW means always use a bm sw when creating a switch with no skip.
+// Default is -DBM_SW_FOR_REAL iff -DUSE_BM_SW.
+// Default is -UBM_IN_LINK.
 #if defined(USE_BM_SW)
   #define CODE_BM_SW
   #if ! defined(NO_BM_SW_FOR_REAL)
@@ -49,11 +50,11 @@
   #define CODE_XX_SW
 #endif // defined(USE_XX_SW)
 
-// Default cnBW is 5 if CODE_XX_SW.
+// Default cnBW is 2 if CODE_XX_SW.
 // cnBW is the minimum width of a narrow switch.
 #if defined(CODE_XX_SW)
   #if ! defined(cnBW)
-      #define cnBW  5
+      #define cnBW  2
   #endif // ! defined(cnBW)
 #endif // defined(CODE_XX_SW)
 
@@ -65,24 +66,29 @@
 #endif // defined(CODE_XX_SW)
 
 // Default is XX_SHORTCUT if USE_XX_SW.
-// Default cnListPopCntMaxDl2 is 32 if USE_XX_SW.
-// Default cnListPopCntMax16 is 16 if USE_XX_SW.
+// Default cnListPopCntMaxDl2 is 0 if USE_XX_SW.
+// Default cnListPopCntMax16  is 0 if USE_XX_SW.
+// Default cnListPopCntMaxDl1 is 0 if USE_XX_SW.
+// Default cnListPopCntMax8   is 0 if USE_XX_SW.
 #if defined(USE_XX_SW)
   #if ! defined(NO_XX_SHORTCUT)
       #define XX_SHORTCUT
   #endif // defined(NO_XX_SHORTCUT)
   #if ! defined(cnListPopCntMaxDl2)
-      #define cnListPopCntMaxDl2 32 
+      #define cnListPopCntMaxDl2 0
   #endif // ! defined(cnListPopCntMaxDl2)
   #if ! defined(cnListPopCntMax16)
-      #define cnListPopCntMax16 16
+      #define cnListPopCntMax16 0
   #endif // ! defined(cnListPopCntMax16)
+  #if ! defined(cnListPopCntMaxDl1)
+      #define cnListPopCntMaxDl1 0
+  #endif // ! defined(cnListPopCntMaxDl1)
+  #if ! defined(cnListPopCntMax8)
+      #define cnListPopCntMax8 0 
+  #endif // ! defined(cnListPopCntMax8)
 #endif // defined(USE_XX_SW)
 
-// Default is -DRETYPE_FULL_BM_SW.
-#if ! defined(NO_RETYPE_FULL_BM_SW)
-  #define RETYPE_FULL_BM_SW
-#endif // ! defined(NO_RETYPE_FULL_BM_SW)
+// Default is -URETYPE_FULL_BM_SW.
 
 // Default is -DDL_SPECIFIC_T_ONE.
 #if ! defined(NO_DL_SPECIFIC_T_ONE)
@@ -117,8 +123,6 @@
 #if ! defined(NO_PARALLEL_128)
 #define PARALLEL_128
 #endif // ! defined(NO_PARALLEL_128)
-
-// Default is -UPAD_T_ONE.
 
 // Default is -DSORT_LISTS.
 #if ! defined(NO_SORT_LISTS)
@@ -312,9 +316,9 @@ typedef Word_t Bucket_t;
 #endif // 0
 
 // Choose the number of bits in the least significant digit of the key.
-// Default is cnBitsInD1 = 8.  We count digits up from there.
+// Default cnBitsInD1 is cnBitsPerDigit.  We count digits up from there.
 #if ! defined(cnBitsInD1)
-#define cnBitsInD1  8
+#define cnBitsInD1  cnBitsPerDigit
 #endif // ! defined(cnBitsInD1)
 
 // Default is -DLVL_IN_WR_HB unless -DDEPTH_IN_SW.
@@ -322,7 +326,7 @@ typedef Word_t Bucket_t;
   #define LVL_IN_WR_HB
 #endif // ! defined(DEPTH_IN_SW) && ! defined(NO_LVL_IN_WR_HB)
 
-// Default is SKIP_TO_BM_SW.
+// Default is SKIP_TO_BM_SW if USE_BM_SW and (DEPTH_IN_SW or LVL_IN_WR_HB).
 #if ! defined(NO_SKIP_TO_BM_SW)
   #if defined(USE_BM_SW)
       #if defined(DEPTH_IN_SW) || defined(LVL_IN_WR_HB)
@@ -474,16 +478,10 @@ typedef Word_t Bucket_t;
 #define USE_T_ONE
 #endif // defined(EMBED_KEYS)
 
-// Default is -DBM_IN_NON_BM_SW if [RETYPE_FULL|SKIP_TO]_BM_SW.
-#if ! defined(NO_BM_IN_NON_BM_SW)
-  #if defined(RETYPE_FULL_BM_SW) || defined(SKIP_TO_BM_SW)
-      #define BM_IN_NON_BM_SW
-  #endif // defined(RETYPE_FULL_BM_SW) || defined(SKIP_TO_BM_SW)
-#endif // ! defined(NO_BM_IN_NON_BM_SW) && defined(RETYPE_FULL_BM_SW)
-
-#if defined(SKIP_TO_BM_SW) && ! defined(BM_IN_NON_BM_SW)
-  #error Sorry, SKIP_TO_BM_SW requires BM_IN_NON_BM_SW.
-#endif // defined(SKIP_TO_BM_SW) && ! defined(BM_IN_NON_BM_SW)
+// Default is -UBM_IN_NON_BM_SW unless RETYPE_FULL_BM_SW
+#if defined(USE_BM_SW) && defined(RETYPE_FULL_BM_SW)
+  #define BM_IN_NON_BM_SW
+#endif // defined(USE_BM_SW) && defined(RETYPE_FULL_BM_SW)
 
 #if defined(SKIP_TO_BM_SW) && ! defined(USE_BM_SW)
   #error Sorry, no SKIP_TO_BM_SW without USE_BM_SW.
@@ -858,15 +856,27 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 #define set_wr(_wr, _pwr, _type) \
         ((_wr) = ((_wr) & ~cwVirtAddrMask) | (Word_t)(_pwr) | (_type))
 
-#if defined(USE_T_ONE)
-
-  // Default is -UT_ONE_MASK.
-  // See EmbeddedListHasKey.
-
-  // Default is -UNO_T_ONE_CALC_POP.
-  #if ! defined(NO_T_ONE_CALC_POP)
-
+// Default is -DT_ONE_CALC_POP.
+#if ! defined(NO_T_ONE_CALC_POP)
 #define T_ONE_CALC_POP
+#endif // ! defined(NO_T_ONE_CALC_POP)
+
+// Default is -UPAD_T_ONE.
+#if defined(PAD_T_ONE) && defined(T_ONE_CALC_POP)
+#error Sorry, no PAD_T_ONE and T_ONE_CALC_POP.
+#endif // defined(PAD_T_ONE) && defined(T_ONE_CALC_POP)
+
+// Default is -UT_ONE_MASK.
+// See EmbeddedListHasKey.
+
+// An invalid value for wRoot if wRoot holds two or more embedded keys.
+#define ZERO_POP_MAGIC  (~MSK(cnBitsMallocMask) + T_EMBEDDED_KEYS)
+// The first key is big and the second key is zero.
+// So the keys are not sorted and this is invalid.
+//#define ZERO_POP_MAGIC  ((MSK(7) << (cnBitsPerWord - 7)) + T_EMBEDDED_KEYS)
+
+#if defined(USE_T_ONE)
+  #if defined(T_ONE_CALC_POP)
 
 #define nBL_to_nBitsPopCntSz(_nBL)  0
 
@@ -874,6 +884,7 @@ static inline int
 wr_nPopCnt(Word_t wRoot, int nBL)
 {
     (void)nBL;
+    assert((wRoot != ZERO_POP_MAGIC) || (nBL >= 28));
     Word_t wKeys = wRoot & ~MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL));
     wKeys |= EXP(cnBitsPerWord - 1);
     int ffs = __builtin_ffsll(wKeys);
@@ -883,7 +894,7 @@ wr_nPopCnt(Word_t wRoot, int nBL)
 
 #define set_wr_nPopCnt(_wr, _nBL, _nPopCnt)
 
-  #else // ! defined(NO_T_ONE_CALC_POP)
+  #else // defined(T_ONE_CALC_POP)
 
 // Default is -DEMBEDDED_LIST_FIXED_POP.
 // Fixed-size pop count field to make code simpler.
@@ -918,9 +929,16 @@ wr_nPopCnt(Word_t wRoot, int nBL)
     ((_wr) &= ~(MSK(nBL_to_nBitsPopCntSz(_nBL)) << cnBitsMallocMask), \
      (_wr) |= ((_nPopCnt) - 1) << cnBitsMallocMask)
 
-  #endif // ! defined(NO_T_ONE_CALC_POP)
-
+  #endif // defined(T_ONE_CALC_POP)
 #endif // defined(USE_T_ONE)
+
+static inline int
+EmbeddedListPopCntMax(int nBL)
+{
+    int nBitsForKeys = cnBitsPerWord;
+    { nBitsForKeys -= (cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL)); }
+    return nBitsForKeys / nBL;
+}
 
 #if defined(EXTRA_TYPES)
   #define tp_bIsSwitch(_tp)  (((_tp) & cnMallocMask) >= T_SWITCH)
@@ -1745,10 +1763,10 @@ typedef struct {
     Link_t sw_aLinks[1]; // variable size
 } Switch_t;
 
-#if defined(SKIP_TO_BM_SW)
-    typedef Switch_t BmSwitch_t;
-#else // defined(SKIP_TO_BM_SW)
 // Bitmap switch.
+#if defined(BM_IN_NON_BM_SW)
+    typedef Switch_t BmSwitch_t;
+#else // defined(BM_IN_NON_BM_SW)
 typedef struct {
 #if !defined(PP_IN_LINK)
     Word_t sw_wPrefixPop;
@@ -1764,7 +1782,7 @@ typedef struct {
 #endif // ! defined(BM_IN_LINK)
     Link_t sw_aLinks[1]; // variable size
 } BmSwitch_t;
-#endif // defined(SKIP_TO_BM_SW)
+#endif // defined(BM_IN_NON_BM_SW)
 
 Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBL);
 Status_t Remove(Word_t *pwRoot, Word_t wKey, int nBL);

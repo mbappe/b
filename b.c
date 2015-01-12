@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.464 2015/01/11 16:05:00 mike Exp mike $
+// @(#) $Id: b.c,v 1.465 2015/01/11 16:18:11 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2550,10 +2550,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
 #if defined(EMBED_KEYS)
             // Embed the list if it fits.
             assert(wr_nType(wRoot) == T_LIST);
-            if ((nBL * (wPopCnt + 1)
-                    <= cnBitsPerWord - cnBitsMallocMask
-                        - nBL_to_nBitsPopCntSz(nBL))
-                || (wPopCnt == 0))
+            if (((int)wPopCnt < EmbeddedListPopCntMax(nBL)) || (wPopCnt == 0))
             {
                 DeflateExternalList(pwRoot, wPopCnt + 1, nBL, pwList);
             }
@@ -3330,15 +3327,13 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
     int nPopCnt = wr_nPopCnt(wRoot, nBL);
 
 #if defined(DEBUG)
-    if (nBL * nPopCnt
-        > cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL))
+    if (nPopCnt > EmbeddedListPopCntMax(nBL))
     {
         printf("nPopCnt %d nBitsPopCntSz %d\n",
                nPopCnt, nBL_to_nBitsPopCntSz(nBL));
     }
 #endif // defined(DEBUG)
-    assert(nBL * nPopCnt
-        <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
+    assert(nPopCnt <= EmbeddedListPopCntMax(nBL));
 
     Word_t *pwList = NewListTypeList(nPopCnt, nBL);
 
@@ -3396,8 +3391,7 @@ Word_t
 DeflateExternalList(Word_t *pwRoot,
                     int nPopCnt, int nBL, Word_t *pwr)
 {
-    int nPopCntMax
-      = (cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL)) / nBL;
+    int nPopCntMax = EmbeddedListPopCntMax(nBL);
 
     DBGI(printf("DeflateExternalList pwRoot %p nPopCnt %d nBL %d pwr %p\n",
                (void *)pwRoot, nPopCnt, nBL, (void *)pwr));
@@ -3855,9 +3849,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
     // Embed the list if it fits.
     assert(wr_nType(wRoot) == T_LIST);
     assert(nType == T_LIST);
-    if ((nBL * (wPopCnt - 1)
-            <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL))
-        || (wPopCnt == 2))
+    if (((int)wPopCnt <= EmbeddedListPopCntMax(nBL)) || (wPopCnt == 2))
     {
         DeflateExternalList(pwRoot, wPopCnt - 1, nBL, pwList);
     }
