@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.466 2015/01/12 00:04:46 mike Exp mike $
+// @(#) $Id: b.c,v 1.467 2015/01/12 05:10:57 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2119,8 +2119,9 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
         for (int jj = 0; jj < (int)EXP(nBL - cnLogBitsPerWord); jj++)
         {
             if (pwBitmap[jj] != 0) {
-                printf("jj %d pwBitmap[jj] 0x%016lx popcount %d\n",
-                       jj, pwBitmap[jj], __builtin_popcountll(pwBitmap[jj]));
+                DBGI(printf("jj %d pwBitmap[jj] 0x%016lx popcount %d\n",
+                            jj, pwBitmap[jj],
+                            __builtin_popcountll(pwBitmap[jj])));
             }
             count += __builtin_popcountll(pwBitmap[jj]);
         }
@@ -2837,8 +2838,8 @@ newSwitch:
       #endif // ! defined(SKIP_TO_XX_SW)
                     )
                 {
-                    DBG(printf("# Creating T_XX_SW wKey "OWx" nBL %d\n",
-                               wKey, nBL));
+                    DBGI(printf("# Creating T_XX_SW wKey "OWx" nBL %d\n",
+                                wKey, nBL));
       #if defined(SKIP_TO_XX_SW)
                     if (nBLOld != nBL) {
                         DBG(printf("Skip to T_XX_SW nBLOld %d\n", nBLOld));
@@ -2882,11 +2883,11 @@ doubleIt:;
                         nDLOld = nDL;
                     }
                     nBW = pwr_nBW(&wRoot);
-                    DBG(printf("# Double nBL %d from nBW %d.\n", nBL, nBW));
+                    DBGI(printf("# Double nBL %d from nBW %d.\n", nBL, nBW));
                     assert(nBL > (int)LOG(sizeof(Link_t) * 8));
                     nBW += cnBWIncr;
                     if (nBL - nBW <= (int)LOG(sizeof(Link_t) * 8)) {
-                        DBG(printf("# IG: NewBitmap nBL %d.\n", nBL));
+                        DBGI(printf("# IG: NewBitmap nBL %d.\n", nBL));
                         NewBitmap(pwRoot, nBL);
 #if defined(PP_IN_LINK)
                         set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL, 0);
@@ -2952,8 +2953,8 @@ doubleIt:;
   #endif // defined(SKIP_TO_XX_SW)
                    {
                        if (nBW >= 7) {
-                           DBG(printf("# Setting T_XX_SW nBW %d nBL %d.\n",
-                                      nBW, nBL));
+                           DBGI(printf("# Setting T_XX_SW nBW %d nBL %d.\n",
+                                       nBW, nBL));
                        }
                        set_wr_nType(*pwRoot, T_XX_SW);
                    }
