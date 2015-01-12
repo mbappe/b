@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.546 2015/01/12 00:04:46 mike Exp mike $
+// @(#) $Id: bli.c,v 1.547 2015/01/12 04:50:27 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1814,13 +1814,15 @@ t_xx_sw:;
 
 #if defined(LOOKUP) && defined(XX_SHORTCUT)
 
-  #if (cnListPopCntMaxDl2 <= 2) && (cnListPopCntMax16 <= 2) \
+  #if defined(NO_TYPE_IN_XX_SW)
+        if (wRoot == ZERO_POP_MAGIC) { return Failure; }
+  #elif (cnListPopCntMaxDl2 <= 2) && (cnListPopCntMax16 <= 2) \
    && (cnListPopCntMaxDl1 <= 2) && (cnListPopCntMax8  <= 2)
         if (wRoot == 0) { return Failure; }
   #else // cnListPopCntMax ...
         nType = wr_nType(wRoot);
         if (nType == T_EMBEDDED_KEYS)
-  #endif // cnListPopCntMax ...
+  #endif // defined(NO_TYPE_IN_XX_SW)
         {
             switch (nBL) {
   #if (cnLogBitsPerWord <= 5)
@@ -1837,8 +1839,9 @@ t_xx_sw:;
             case 15: return EmbeddedListHasKey(wRoot, wKey, 15);
             }
         }
-  #if ! ((cnListPopCntMaxDl2 <= 2) && (cnListPopCntMax16 <= 2) \
-      && (cnListPopCntMaxDl1 <= 2) && (cnListPopCntMax8  <= 2))
+  #if ! defined(NO_TYPE_IN_XX_SW)
+      #if ! ((cnListPopCntMaxDl2 <= 2) && (cnListPopCntMax16 <= 2) \
+          && (cnListPopCntMaxDl1 <= 2) && (cnListPopCntMax8  <= 2))
         if (wRoot == 0) { return Failure; }
         if (nType == T_LIST) {
             return (((nBL <= 8)
@@ -1846,22 +1849,27 @@ t_xx_sw:;
                         : SearchList16(pwRoot, wr_pwr(wRoot), wKey, nBL))
                 >= 0);
         }
-      #if defined(DEBUG)
+          #if defined(DEBUG)
         if (nType != T_BITMAP) {
             printf("nType %d\n", nType);
         }
-      #endif // defined(DEBUG)
+          #endif // defined(DEBUG)
         assert(nType == T_BITMAP);
         goto t_bitmap;
-  #endif // cnListPopCntMax ...
+      #endif // cnListPopCntMax ...
+  #endif // ! defined(NO_TYPE_IN_XX_SW)
 
 #else // defined(LOOKUP) && defined(XX_SHORTCUT)
 
+  #if defined(NO_TYPE_IN_XX_SW)
+        goto t_embedded_keys;
+  #else // defined(NO_TYPE_IN_XX_SW)
         // The only thing we do at "again" before switching on nType
         // is extract nType and pwr from wRoot.
         // We don't do any updating of nBL or nBLR.
         nBLR = nBL;
         goto again;
+  #endif // defined(NO_TYPE_IN_XX_SW)
 
 #endif // defined(LOOKUP) && defined(XX_SHORTCUT)
 
@@ -2278,8 +2286,7 @@ t_bitmap:;
     {
         goto embedded_keys; // suppress compiler unused-label warnings
 embedded_keys:; // the semi-colon allows for a declaration next; go figure
-        assert(nBL
-            <= cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
+        assert(EmbeddedListPopCntMax(nBL) != 0);
   #if ! defined(LOOKUP)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
