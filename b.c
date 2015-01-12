@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.467 2015/01/12 05:10:57 mike Exp mike $
+// @(#) $Id: b.c,v 1.468 2015/01/12 05:23:05 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -696,9 +696,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #if defined(RAMMETRICS)
     // Is a branch with embedded bitmaps a branch?
     // Or is it a bitmap?  Let's use bitmap since we get more info that way.
-    if ((cnBitsInD1 <= cnLogBitsPerWord)
-        && (nBL - nBitsIndexSz <= cnBitsInD1))
-    {
+    if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
         // Embedded bitmaps.
         // What if we have bits in the links that are not used as
         // bits in the bitmap?
@@ -709,9 +707,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
         METRICS(j__AllocWordsJBB  += wWords); // JUDYA
     } else
 #endif // defined(CODE_BM_SW)
-    {
-        METRICS(j__AllocWordsJBU  += wWords); // JUDYA
-    }
+    { METRICS(j__AllocWordsJBU  += wWords); } // JUDYA
 #endif // defined(RAMMETRICS)
 
 #if defined(CODE_BM_SW)
@@ -896,6 +892,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 
 #if defined(CODE_BM_SW)
 #if defined(BM_SW_FOR_REAL)
+static Word_t OldSwitch(Word_t *pwRoot, int nBL, int bBmSw, int nBLUp);
 static void
 NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
 {
@@ -933,14 +930,6 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
          = (sizeof(BmSwitch_t) + (wPopCnt - 1) * sizeof(Link_t))
             / sizeof(Word_t);
     DBGI(printf("link count %"_fw"d nWordsOld %d\n", wPopCnt, nWordsOld));
-    if ((cnBitsInD1 <= cnLogBitsPerWord)
-        && (nBLR - nBitsIndexSz <= cnBitsInD1))
-    {
-        METRICS(j__AllocWordsJLB1 -= nWordsOld); // JUDYA
-    } else {
-        METRICS(j__AllocWordsJBB  -= nWordsOld); // JUDYA
-    }
-
     // What rule should we use to decide when to uncompress a bitmap switch?
 
     // 5/8 is close to the golden ratio
@@ -1021,6 +1010,9 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
 #endif
         // NewSwitch installs a proper wRoot at *pwRoot.
     } else {
+        // We replicate a bunch of newswitch here since
+        // newswitch can create only empty bm sw.
+
         // Allocate memory for a new switch with one more link than the
         // old one.
         unsigned nWordsNew = nWordsOld + sizeof(Link_t) / sizeof(Word_t);
@@ -1068,9 +1060,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
         DBGI(printf("PWR_wPopCnt %"_fw"d\n",
              PWR_wPopCntBL(pwRoot, (BmSwitch_t *)*pwRoot, nBLR)));
 
-        if ((cnBitsInD1 <= cnLogBitsPerWord)
-            && (nBLR - nBitsIndexSz <= cnBitsInD1))
-        {
+        if (nBLR <= (int)LOG(sizeof(Link_t) * 8)) {
             METRICS(j__AllocWordsJLB1 += nWordsNew); // JUDYA
         } else
 #if defined(RETYPE_FULL_BM_SW)
@@ -1156,7 +1146,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     }
 
-    MyFree(pwr, nWordsOld);
+    OldSwitch(&wRoot, nBLR, /* bBmSw */ 1, nBLUp);
 
     //DBGI(printf("After NewLink"));
     //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
@@ -1210,31 +1200,28 @@ OldSwitch(Word_t *pwRoot, int nBL,
 #if defined(CODE_BM_SW)
     Word_t wWords = bBmSw ? sizeof(BmSwitch_t) : sizeof(Switch_t);
 #else // defined(CODE_BM_SW)
-    Word_t wWords =  sizeof(Switch_t);
+    Word_t wWords = sizeof(Switch_t);
 #endif // defined(CODE_BM_SW)
     // sizeof([Bm]Switch_t) includes one link; add the others
     wWords += (wLinks - 1) * sizeof(Link_t);
     wWords /= sizeof(Word_t);
 
 #if defined(RAMMETRICS)
-#if defined(CODE_BM_SW)
-    if (wr_nType(*pwRoot) == T_BM_SW) {
-        METRICS(j__AllocWordsJBB  -= wWords); // JUDYA
-    } else
-#if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
-    if (wr_nType(*pwRoot) == T_FULL_BM_SW) {
-        METRICS(j__AllocWordsJBU  -= wWords); // JUDYA
-    } else
-#endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
-#endif // defined(CODE_BM_SW)
-    if ((cnBitsInD1 <= cnLogBitsPerWord)
-        && (nBL - nBitsIndexSz <= cnBitsInD1))
-    {
+    if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
         // Embedded bitmaps.
         METRICS(j__AllocWordsJLB1 -= wWords); // JUDYA
-    } else {
-        METRICS(j__AllocWordsJBU  -= wWords); // JUDYA
-    }
+    } else
+#if defined(CODE_BM_SW)
+    if (tp_bIsBmSw(wr_nType(*pwRoot))
+  #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
+        && (wr_nType(*pwRoot) != T_FULL_BM_SW)
+  #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
+        ) 
+    {
+        METRICS(j__AllocWordsJBB  -= wWords); // JUDYA
+    } else
+#endif // defined(CODE_BM_SW)
+    { METRICS(j__AllocWordsJBU  -= wWords); } // JUDYA
 #endif // defined(RAMMETRICS)
 
 #if defined(CODE_BM_SW)
