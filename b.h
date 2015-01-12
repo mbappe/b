@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.351 2015/01/12 00:04:46 mike Exp mike $
+// @(#) $Id: b.h,v 1.352 2015/01/12 04:51:03 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -39,6 +39,13 @@
       #define BM_SW_FOR_REAL
   #endif // ! defined(NO_BM_SW_FOR_REAL)
 #endif // defined(USE_BM_SW)
+
+// Default is -URETYPE_FULL_BM_SW.
+// Default is -UBM_IN_NON_BM_SW.
+// There is no need.  It will be converted sooner.
+// Retype without BM_IN_NON_BM_SW requires the
+// guts of BmSwitch_t to look just like Switch_t
+// starting just after sw_awBm.
 
 // Default is USE_XX_SW.
 #if ! defined(NO_USE_XX_SW)
@@ -87,8 +94,6 @@
       #define cnListPopCntMax8 0 
   #endif // ! defined(cnListPopCntMax8)
 #endif // defined(USE_XX_SW)
-
-// Default is -URETYPE_FULL_BM_SW.
 
 // Default is -DDL_SPECIFIC_T_ONE.
 #if ! defined(NO_DL_SPECIFIC_T_ONE)
@@ -477,11 +482,6 @@ typedef Word_t Bucket_t;
 #undef  USE_T_ONE
 #define USE_T_ONE
 #endif // defined(EMBED_KEYS)
-
-// Default is -UBM_IN_NON_BM_SW unless RETYPE_FULL_BM_SW
-#if defined(USE_BM_SW) && defined(RETYPE_FULL_BM_SW)
-  #define BM_IN_NON_BM_SW
-#endif // defined(USE_BM_SW) && defined(RETYPE_FULL_BM_SW)
 
 #if defined(SKIP_TO_BM_SW) && ! defined(USE_BM_SW)
   #error Sorry, no SKIP_TO_BM_SW without USE_BM_SW.
@@ -1749,6 +1749,9 @@ typedef struct {
 
 // Uncompressed, basic switch.
 typedef struct {
+  #if ! defined(BM_IN_LINK)
+    Word_t sw_awBm[N_WORDS_SWITCH_BM];
+  #endif // ! defined(BM_IN_LINK)
 #if !defined(PP_IN_LINK)
     Word_t sw_wPrefixPop;
 #endif // !defined(PP_IN_LINK)
@@ -1759,9 +1762,6 @@ typedef struct {
     Word_t sw_awDummies[cnDummiesInSwitch];
 #endif // (cnDummiesInSwitch != 0)
 #if defined(USE_BM_SW) && defined(BM_IN_NON_BM_SW)
-  #if ! defined(BM_IN_LINK)
-    Word_t sw_awBm[N_WORDS_SWITCH_BM];
-  #endif // ! defined(BM_IN_LINK)
 #endif // defined(USE_BM_SW) && defined(BM_IN_NON_BM_SW)
     Link_t sw_aLinks[1]; // variable size
 } Switch_t;
@@ -1771,6 +1771,9 @@ typedef struct {
     typedef Switch_t BmSwitch_t;
 #else // defined(BM_IN_NON_BM_SW)
 typedef struct {
+#if ! defined(BM_IN_LINK)
+    Word_t sw_awBm[N_WORDS_SWITCH_BM];
+#endif // ! defined(BM_IN_LINK)
 #if !defined(PP_IN_LINK)
     Word_t sw_wPrefixPop;
 #endif // !defined(PP_IN_LINK)
@@ -1780,9 +1783,6 @@ typedef struct {
 #if (cnDummiesInSwitch != 0)
     Word_t sw_awDummies[cnDummiesInSwitch];
 #endif // (cnDummiesInSwitch != 0)
-#if ! defined(BM_IN_LINK)
-    Word_t sw_awBm[N_WORDS_SWITCH_BM];
-#endif // ! defined(BM_IN_LINK)
     Link_t sw_aLinks[1]; // variable size
 } BmSwitch_t;
 #endif // defined(BM_IN_NON_BM_SW)
