@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.353 2015/01/12 05:53:21 mike Exp mike $
+// @(#) $Id: b.h,v 1.354 2015/01/13 05:05:53 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -869,11 +869,26 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // Default is -UT_ONE_MASK.
 // See EmbeddedListHasKey.
 
-// An invalid value for wRoot if wRoot holds two or more embedded keys.
-#define ZERO_POP_MAGIC  (~MSK(cnBitsMallocMask) + T_EMBEDDED_KEYS)
-// The first key is big and the second key is zero.
-// So the keys are not sorted and this is invalid.
-//#define ZERO_POP_MAGIC  ((MSK(7) << (cnBitsPerWord - 7)) + T_EMBEDDED_KEYS)
+// We need some way to represent an empty list when we have no type field.
+// We use ZERO_POP_MAGIC which would otherwise be an invalid value for wRoot
+// if nBL is small enough that wRoot can hold two or more embedded keys.
+// But, just for fun, it does double duty.  We gave it a valid type value so
+// we can use it in that case as well for performance experiments or if it
+// is ever convenient to do so.
+// Our normal embedded list with a type field and a 3-bit pop count where
+// pop-field=0 means pop=1 cannot represent an empty list.
+// In that case we represent an empty list with wRoot == 0.
+// With (EXP(63) + EXP(cnBitsMallocMask) + T_EMBEDDED_KEYS)
+// The first key is bigger than the second so the list is not sorted and
+// the padding is not valid for zero or last key padding (if sorting with
+// low keys in most significant bits).
+// What about sorting in the other order (JudyL)?
+// What if nBL so big wRoot can't hold more than one key?
+// What about lists with a pop count field?
+// (EXP(63) + EXP(cnBitsMallocMask) + T_EMBEDDED_KEYS) has an invalid pop
+// count if pop-field=0 means pop=1.
+// Enough talk for now.  We'll come back to these other cases.
+#define ZERO_POP_MAGIC  (EXP(63) + EXP(cnBitsMallocMask) + T_EMBEDDED_KEYS)
 
 #if defined(USE_T_ONE)
   #if defined(T_ONE_CALC_POP)
@@ -1746,45 +1761,56 @@ typedef struct {
     Word_t ln_wRoot;
 } Link_t;
 
+#if defined(BM_IN_LINK)
+    #define SW_BM
+#else // defined(BM_IN_LINK)
+    #define SW_BM  Word_t sw_awBm[N_WORDS_SWITCH_BM];
+#endif // defined(BM_IN_LINK)
+
+#if defined(PP_IN_LINK)
+    #define SW_PREFIX_POP
+#else // defined(PP_IN_LINK)
+    #define SW_PREFIX_POP  Word_t sw_wPrefixPop;
+#endif // defined(PP_IN_LINK)
+
+#if defined(POP_WORD) && ! defined(POP_WORD_IN_LINK)
+    #define SW_POP_WORD  Word_t sw_wPopWord;
+#else // defined(POP_WORD) && ! defined(POP_WORD_IN_LINK)
+    #define SW_POP_WORD
+#endif // defined(POP_WORD) && ! defined(POP_WORD_IN_LINK)
+
+#if (cnDummiesInSwitch != 0)
+    #define SW_DUMMIES  Word_t sw_awDummies[cnDummiesInSwitch];
+#else // (cnDummiesInSwitch != 0)
+    #define SW_DUMMIES
+#endif // (cnDummiesInSwitch != 0)
+
+#define SWITCH_COMMON \
+    SW_PREFIX_POP \
+    SW_POP_WORD \
+    SW_DUMMIES
+
 // Uncompressed, basic switch.
 typedef struct {
-  #if ! defined(BM_IN_LINK)
-    Word_t sw_awBm[N_WORDS_SWITCH_BM];
-  #endif // ! defined(BM_IN_LINK)
-#if !defined(PP_IN_LINK)
-    Word_t sw_wPrefixPop;
-#endif // !defined(PP_IN_LINK)
-#if defined(POP_WORD) && ! defined(POP_WORD_IN_LINK)
-    Word_t sw_wPopWord;
-#endif // defined(POP_WORD) && ! defined(POP_WORD_IN_LINK)
-#if (cnDummiesInSwitch != 0)
-    Word_t sw_awDummies[cnDummiesInSwitch];
-#endif // (cnDummiesInSwitch != 0)
+    SWITCH_COMMON
 #if defined(USE_BM_SW) && defined(BM_IN_NON_BM_SW)
+    SW_BM
 #endif // defined(USE_BM_SW) && defined(BM_IN_NON_BM_SW)
     Link_t sw_aLinks[1]; // variable size
 } Switch_t;
 
 // Bitmap switch.
-#if defined(BM_IN_NON_BM_SW)
-    typedef Switch_t BmSwitch_t;
-#else // defined(BM_IN_NON_BM_SW)
 typedef struct {
-#if ! defined(BM_IN_LINK)
-    Word_t sw_awBm[N_WORDS_SWITCH_BM];
-#endif // ! defined(BM_IN_LINK)
-#if !defined(PP_IN_LINK)
-    Word_t sw_wPrefixPop;
-#endif // !defined(PP_IN_LINK)
-#if defined(POP_WORD) && ! defined(POP_WORD_IN_LINK)
-    Word_t sw_wPopWord;
-#endif // defined(POP_WORD) && ! defined(POP_WORD_IN_LINK)
-#if (cnDummiesInSwitch != 0)
-    Word_t sw_awDummies[cnDummiesInSwitch];
-#endif // (cnDummiesInSwitch != 0)
+    SWITCH_COMMON
+    // sw_awBm must be first and the remainder of BmSwitch_t must be the same
+    // as all of Switch_t for RETYPE_FULL_BM_SW without BM_IN_NON_BM_SW.
+    // But this doesn't make it easy for us to handle SKIP_TO_BM_SW which
+    // requires at least that sw_wPrefixPop have the same offset in both
+    // BmSwitch_t and Switch_t.  SKIP_TO_BM_SW wins for the moment since
+    // RETYPE_FULL_BM_SW isn't very important.
+    SW_BM
     Link_t sw_aLinks[1]; // variable size
 } BmSwitch_t;
-#endif // defined(BM_IN_NON_BM_SW)
 
 Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBL);
 Status_t Remove(Word_t *pwRoot, Word_t wKey, int nBL);
