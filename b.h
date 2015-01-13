@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.354 2015/01/13 05:05:53 mike Exp mike $
+// @(#) $Id: b.h,v 1.355 2015/01/13 16:50:06 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -902,7 +902,11 @@ wr_nPopCnt(Word_t wRoot, int nBL)
 #if ! defined(PAD_T_ONE)
     if ((wRoot == ZERO_POP_MAGIC) && (nBL < 28)) { return 0; }
 #endif // ! defined(PAD_T_ONE)
-    Word_t wKeys = wRoot & ~MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL));
+    Word_t wKeys = wRoot;
+#if defined(NO_TYPE_IN_XX_SW)
+    if (nBL >= nDL_to_nBL(2))
+#endif // defined(NO_TYPE_IN_XX_SW)
+    { wKeys &= ~MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL)); }
     wKeys |= EXP(cnBitsPerWord - 1);
     int ffs = __builtin_ffsll(wKeys);
     int nPopCnt = ((cnBitsPerWord - ffs) / nBL) + 1;
@@ -953,6 +957,9 @@ static inline int
 EmbeddedListPopCntMax(int nBL)
 {
     int nBitsForKeys = cnBitsPerWord;
+#if defined(NO_TYPE_IN_XX_SW)
+    if (nBL >= nDL_to_nBL(2))
+#endif // defined(NO_TYPE_IN_XX_SW)
     { nBitsForKeys -= (cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL)); }
     return nBitsForKeys / nBL;
 }
