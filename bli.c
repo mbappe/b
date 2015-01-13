@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.548 2015/01/12 05:23:35 mike Exp mike $
+// @(#) $Id: bli.c,v 1.549 2015/01/12 05:53:54 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1861,6 +1861,7 @@ t_xx_sw:;
 
 #else // defined(LOOKUP) && defined(XX_SHORTCUT)
 
+        assert(nBL < nDL_to_nBL(2));
   #if defined(NO_TYPE_IN_XX_SW)
         goto t_embedded_keys;
   #else // defined(NO_TYPE_IN_XX_SW)
@@ -2285,8 +2286,8 @@ t_bitmap:;
     case T_EMBEDDED_KEYS | EXP(cnBitsMallocMask):
 #endif // defined(EXTRA_TYPES)
     {
-        goto embedded_keys; // suppress compiler unused-label warnings
-embedded_keys:; // the semi-colon allows for a declaration next; go figure
+        goto t_embedded_keys; // suppress compiler unused-label warnings
+t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         assert(EmbeddedListPopCntMax(nBL) != 0);
   #if ! defined(LOOKUP)
         if (bCleanup) {
@@ -2309,6 +2310,10 @@ embedded_keys:; // the semi-colon allows for a declaration next; go figure
       #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
         return wRoot ? Success : Failure;
       #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
+
+  #if defined(NO_TYPE_IN_XX_SW)
+        if ((nBL < nDL_to_nBL(2)) && (wRoot == ZERO_POP_MAGIC)) { break; }
+  #endif // defined(NO_TYPE_IN_XX_SW)
 
         //
         // How many keys will fit?  And how many bits do we need for pop
@@ -2819,6 +2824,11 @@ Initialize(void)
     printf("# With skip at top?\n");
     printf("# With PP_IN_LINK unless NO_SKIP_AT_TOP?\n");
 #endif // defined(BM_IN_LINK)
+
+    for (int nBL = nDL_to_nBL(2); nBL > cnLogBitsPerWord; --nBL) {
+        printf("EmbeddedListPopCntMax(%d) %d\n", nBL,
+                EmbeddedListPopCntMax(nBL));
+    }
 
     printf("\n");
     printf("# cnBitsInD1 %d\n", cnBitsInD1);
