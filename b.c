@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.468 2015/01/12 05:23:05 mike Exp mike $
+// @(#) $Id: b.c,v 1.469 2015/01/12 07:16:57 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -493,9 +493,17 @@ NewList(int nPopCnt, int nBL)
 int
 OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
 {
+#if defined(NO_TYPE_IN_XX_SW)
+    // How is OldList supposed to know whether it was called with an inflated
+    // list that has a type and needs to be freed or an embedded list with no
+    // type that does not need to be freed?
+    // Wait.  The caller passes the type separate from pwList.  Lucky.
+#endif // defined(NO_TYPE_IN_XX_SW)
+    if (nType == T_EMBEDDED_KEYS) { DBGR(printf("OL: 0.\n")); return 0; }
+
+    assert(((nType == T_ONE) && (nPopCnt == 1)) || (nType == T_LIST));
     int nWords = ((nType == T_LIST) ? ListWordsTypeList(nPopCnt, nBL)
                                     : ListWords(nPopCnt, nBL));
-    assert((nType != T_EMBEDDED_KEYS) || (nWords == 0));
 
     DBGM(printf("Old pwList %p wLen %d nBL %d nPopCnt %d nType %d\n",
         (void *)pwList, nWords, nBL, nPopCnt, nType));
@@ -686,9 +694,11 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
         memset(pwr_pLinks((Switch_t *)pwr), 0, wLinks * sizeof(Link_t));
 #if defined(NO_TYPE_IN_XX_SW)
         if (nBL <= nDL_to_nBL(2)) {
+            DBGR(printf("NS: Init ln_wRoots.\n"));
             for (int nn = 0; nn < (int)wLinks; ++nn) {
                 pwr_pLinks((Switch_t *)pwr)[nn].ln_wRoot = ZERO_POP_MAGIC;
             }
+            DBGR(printf("NS: Done init ln_wRoots.\n"));
         }
 #endif // defined(NO_TYPE_IN_XX_SW)
     }
@@ -1327,8 +1337,10 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
     int nBLArg = nBL;
 #endif // defined(BM_IN_LINK) || defined(PP_IN_LINK)
     Word_t wRoot = *pwRoot;
+    // nType is not valid for NO_TYPE_IN_XX_SW if nBL >= nDL_to_nBL(2)
     int nType = wr_nType(wRoot); (void)nType; // silence gcc
-    Word_t *pwr = wr_tp_pwr(wRoot, nType);
+    // pwr is not valid for NO_TYPE_IN_XX_SW if nBL >= nDL_to_nBL(2)
+    Word_t *pwr = wr_pwr(wRoot);
     int nBitsIndexSz;
     Link_t *pLinks;
     Word_t wBytes = 0;
@@ -1343,6 +1355,24 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
              (Word_t)pwRoot, wPrefix, nBL, bDump));
         DBGR(printf("wRoot "OWx"\n", wRoot));
     }
+
+#if defined(NO_TYPE_IN_XX_SW)
+    if (nBL < nDL_to_nBL(2)) {
+        if (wRoot == ZERO_POP_MAGIC) {
+            //DBG(printf("FAG: ZERO_POP_MAGIC.\n"));
+            return 0;
+        }
+        //DBG(printf("FAG: goto embeddedKeys.\n"));
+        if (bDump) {
+            printf(" wPrefix "OWx, wPrefix);
+            printf(" nBL %2d", nBL);
+            printf(" pwRoot "OWx, (Word_t)pwRoot);
+            printf(" wr "OWx, wRoot);
+            goto embeddedKeys;
+        }
+        return 0;
+    }
+#endif // defined(NO_TYPE_IN_XX_SW)
 
     if (wRoot == 0)
     {
@@ -1459,16 +1489,18 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
         if ((nType == T_ONE) || (nType == T_EMBEDDED_KEYS))
         {
 #if defined(EMBED_KEYS)
-            if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
+            if (EmbeddedListPopCntMax(nBL) != 0) {
+                goto embeddedKeys;
+embeddedKeys:;
                 wPopCnt = wr_nPopCnt(wRoot, nBL);
             } else
 #endif // defined(EMBED_KEYS)
-            {
-                wPopCnt = 1;
-            }
+            { wPopCnt = 1; }
 
-            if (!bDump)
-            {
+            if (!bDump) {
+#if defined(NO_TYPE_IN_XX_SW)
+                assert(nBL >= nDL_to_nBL(2));
+#endif // defined(NO_TYPE_IN_XX_SW)
                 // This OldList is a no-op and will return zero if
                 // the key(s) is(are) embedded.
                 return OldList(pwr, /* wPopCnt */ 1, nBL, nType);
@@ -1487,7 +1519,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
 #endif // defined(PP_IN_LINK)
 
 #if defined(EMBED_KEYS)
-            if (nBL <= cnBitsPerWord - cnBitsMallocMask) {
+            if (EmbeddedListPopCntMax(nBL) != 0) {
                 for (unsigned nn = 1; nn <= wPopCnt; nn++) {
                     printf(" %08"_fw"x",
                         (wRoot >> (cnBitsPerWord - (nn * nBL)))
@@ -1658,7 +1690,6 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
     } else
 #endif // defined(CODE_XX_SW)
     { nBitsIndexSz = nBL_to_nBitsIndexSz(nBL); }
-    nBL -= nBitsIndexSz;
 
     // skip link has extra prefix bits
     if (nBLPrev > nBL)
@@ -1669,6 +1700,8 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
 #endif // defined(CODE_BM_SW)
                     PWR_wPrefixBL(pwRoot, (  Switch_t *)pwr, nBL) ;
     }
+
+    nBL -= nBitsIndexSz;
 
     Word_t xx = 0;
     for (Word_t nn = 0; nn < EXP(nBitsIndexSz); nn++)
@@ -2004,6 +2037,8 @@ HexDump(char *str, Word_t *pw, unsigned nWords)
 
 // Adjust the tree if necessary following Insert.
 // nDL does not include any skip in *pwRoot/wRoot.
+static void InsertAll(Word_t *pwRootOld,
+                      int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL);
 void
 InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
 {
@@ -2020,7 +2055,7 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
 
     (void)wKey; (void)nDL; (void)pwRoot; (void)wRoot;
     int nType = wr_nType(wRoot);
-    Word_t *pwr = wr_tp_pwr(wRoot, nType); (void)pwr;
+    Word_t *pwr = wr_pwr(wRoot); (void)pwr;
     Word_t wPopCnt;
     if ((nBL == nDL_to_nBL(2))
         && tp_bIsSwitch(nType)
@@ -2039,8 +2074,12 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
         // Allocate a new bitmap.
         Word_t *pwBitmap = NewBitmap(pwRoot, nBL);
 
+        // Why are we not using InsertAll here to insert the keys?
+        // It doesn't handle switches yet.
+
         int nBW;
 #if defined(USE_XX_SW)
+        assert(tp_bIsXxSw(nType));
         if (tp_bIsXxSw(nType)) { nBW = pwr_nBW(&wRoot); } else
 #endif // defined(USE_XX_SW)
         {
@@ -2048,17 +2087,24 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
             nBW = nBL_to_nBitsIndexSz(nBL);
         }
 
+        int nBLLn = nBL - nBW;
+        Word_t wBLM = MSK(nBLLn); // Bits left mask.
+
         for (Word_t ww = 0; ww < EXP(nBW); ww++)
         {
             Word_t *pwRootLn = &pwr_pLinks((Switch_t *)pwr)[ww].ln_wRoot;
             Word_t wRootLn = *pwRootLn;
+#if defined(NO_TYPE_IN_XX_SW)
+            if (nBLLn < nDL_to_nBL(2)) {
+                goto embeddedKeys;
+            }
+#endif // defined(NO_TYPE_IN_XX_SW)
             int nTypeLn = wr_nType(wRootLn);
             Word_t *pwrLn = wr_tp_pwr(wRootLn, nTypeLn);
 
-            int nBLLn = nBL - nBW;
-            Word_t wBLM = MSK(nBLLn); // Bits left mask.
-
             if (nTypeLn == T_EMBEDDED_KEYS) {
+                goto embeddedKeys;
+embeddedKeys:;
                 int nPopCntLn = wr_nPopCnt(wRootLn, nBLLn);
                 for (int nn = 1; nn <= nPopCntLn; nn++) {
                     SetBit(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
@@ -2101,6 +2147,7 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
                 DBGI(printf("Null link in bm switch ww %ld.\n", ww));
             }
         }
+
 #if defined(DEBUG)
         int count = 0;
         for (int jj = 0; jj < (int)EXP(nBL - cnLogBitsPerWord); jj++)
@@ -2130,17 +2177,28 @@ static void
 InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
 {
     Word_t wRootOld = *pwRootOld;
+#if defined(NO_TYPE_IN_XX_SW)
+    if (nBLOld < nDL_to_nBL(2)) {
+        if (wRootOld == ZERO_POP_MAGIC) {
+            return;
+        }
+        goto embeddedKeys;
+    }
+#endif // defined(NO_TYPE_IN_XX_SW)
     if (wRootOld == 0) { return; }
     int nType = wr_nType(wRootOld);
     int nPopCnt;
 #if defined(CODE_XX_SW)
     if (nType == T_EMBEDDED_KEYS) {
+        goto embeddedKeys;
+embeddedKeys:;
         // How inefficient can we be?
         DBGI(printf("IA: Calling IEL nBLOld %d wKey "OWx" nBL %d\n",
                     nBLOld, wKey, nBL));
         wRootOld = InflateEmbeddedList(pwRootOld, wKey, nBLOld, wRootOld);
         DBGI(printf("After IEL\n"));
-        DBGI(Dump(&wRootOld, wKey & ~MSK(nBLOld), nBLOld));
+// If (nBLOld < nDL_to_nBL) Dump is going to think wRootOld is embeddded keys.
+        //DBGI(Dump(&wRootOld, wKey & ~MSK(nBLOld), nBLOld));
         nType = wr_nType(wRootOld); // changed by IEL
         assert(nType == T_LIST);
     }
@@ -2158,7 +2216,7 @@ InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
         if (nType != T_LIST) {
             printf("nType %d wRootOld "OWx" pwRootOld %p\n",
                    nType, wRootOld, (void *)pwRootOld);
-            DBG(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
+            DBGR(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
         }
         assert(nType == T_LIST); // What about T_ONE?
         nPopCnt = PWR_xListPopCnt(&wRootOld, nBLOld);
@@ -2191,6 +2249,10 @@ InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
         }
     }
 
+#if defined(NO_TYPE_IN_XX_SW)
+    // OldList uses nType even if (nBL < nDL_to_nBL(2)) implies an
+    // embedded list.
+#endif // defined(NO_TYPE_IN_XX_SW)
     if (nPopCnt != 0) { OldList(pwrOld, nPopCnt, nBLOld, nType); }
 }
 
@@ -2246,6 +2308,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
     assert(0); // EMBED_KEYS requires USE_T_ONE
 #endif // defined(EMBED_KEYS) && ! defined(USE_T_ONE)
 
+#if defined(NO_TYPE_IN_XX_SW)
+    if (pwRootPrev != NULL) {
+        DBGR(printf("IG: goto embeddedKeys.\n"));
+        assert(wr_nType(*pwRootPrev) == T_XX_SW);
+        goto embeddedKeys;
+    }
+#endif // defined(NO_TYPE_IN_XX_SW)
+
     // Check to see if we're at the bottom before checking nType since
     // nType may be invalid if wRoot is an embedded bitmap.
     // The first test can be done at compile time and might make the
@@ -2267,6 +2337,8 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
     // easier for Insert.  We'll change it back later if it makes sense.
     // We used to use T_ONE for a single embedded key.  But not anymore.
     if (nType == T_EMBEDDED_KEYS) {
+        goto embeddedKeys;
+embeddedKeys:;
         wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot);
         // BUG: The list may not be sorted at this point.  Does it matter?
         // Update: I'm not sure why I wrote that the list may not be sorted
@@ -2414,6 +2486,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
         int nEmbeddedListPopCntMax = EmbeddedListPopCntMax(nBL);
       #endif // ! defined(POP_CNT_MAX_IS_KING) || defined(CODE_XX_SW)
   #endif // defined(EMBED_KEYS)
+  #if defined(NO_TYPE_IN_XX_SW)
+        if ((nBL < nDL_to_nBL(2))
+            && (wPopCnt == (Word_t)nEmbeddedListPopCntMax))
+        {
+            DBGR(printf("IG: goto doubleIt.\n"));
+            goto doubleIt;
+        }
+  #endif // defined(NO_TYPE_IN_XX_SW)
 
         if (0
 #if defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
@@ -2556,8 +2636,22 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
             if (((int)wPopCnt < EmbeddedListPopCntMax(nBL)) || (wPopCnt == 0))
             {
                 DeflateExternalList(pwRoot, wPopCnt + 1, nBL, pwList);
+#if defined(NO_TYPE_IN_XX_SW)
+                if (!((nBL < nDL_to_nBL(2))
+                    || (wr_nType(*pwRoot) == T_EMBEDDED_KEYS)
+                    || ((wr_nType(*pwRoot) == T_ONE) && (wPopCnt == 0))))
+                {
+                    printf("nBL %d wPopCnt %ld nType %d\n",
+                           nBL, wPopCnt, wr_nType(*pwRoot));
+                }
+                assert((nBL < nDL_to_nBL(2))
+                    || (wr_nType(*pwRoot) == T_EMBEDDED_KEYS)
+                    || ((wr_nType(*pwRoot) == T_ONE) && (wPopCnt == 0)));
+#else // defined(NO_TYPE_IN_XX_SW)
                 assert((wr_nType(*pwRoot) == T_EMBEDDED_KEYS)
                     || ((wr_nType(*pwRoot) == T_ONE) && (wPopCnt == 0)));
+#endif // defined(NO_TYPE_IN_XX_SW)
+                DBGR(printf("IG: after DEL *pwRoot "OWx"\n", *pwRoot));
             }
 #endif // defined(EMBED_KEYS)
         }
@@ -2829,7 +2923,7 @@ newSwitch:
                                 wKey, nBL));
       #if defined(SKIP_TO_XX_SW)
                     if (nBLOld != nBL) {
-                        DBG(printf("Skip to T_XX_SW nBLOld %d\n", nBLOld));
+                        DBGR(printf("Skip to T_XX_SW nBLOld %d\n", nBLOld));
                     }
       #endif // defined(SKIP_TO_XX_SW)
                     nBW = cnBW;
@@ -2842,8 +2936,9 @@ doubleIt:;
 // I think we are going to just inflate it again if we don't just leave it.
 // So let's try installing it.
 #if defined(NO_TYPE_IN_XX_SW)
+                    DBGR(printf("IG: free inflated list.\n"));
                     assert(wr_nType(wRoot) == T_LIST);
-                    OldList(pwr, wPopCnt, nBL, T_LIST);
+                    OldList(wr_pwr(wRoot), wPopCnt, nBL, T_LIST);
 #else // defined(NO_TYPE_IN_XX_SW)
                     assert(wr_nType(*pwRoot) != T_ONE);
                     if (wr_nType(*pwRoot) == T_EMBEDDED_KEYS) {
@@ -3334,14 +3429,15 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
          "InflateEmbeddedList pwRoot %p wKey "OWx" nBL %d wRoot "OWx"\n",
          (void *)pwRoot, wKey, nBL, wRoot));
 
-    assert(wr_nType(wRoot) == T_EMBEDDED_KEYS);
-
 #if defined(NO_TYPE_IN_XX_SW)
-    if (nBL <= nDL_to_nBL(2)) {
-        if (wRoot == POP_ZERO_MAGIC) {
+    if (nBL < nDL_to_nBL(2)) {
+        if (wRoot == ZERO_POP_MAGIC) {
+            DBGR(printf("IEL: ZERO_POP_MAGIC.\n"));
             return wRoot = 0; // T_NULL or T_LIST
         }
     }
+#else // defined(NO_TYPE_IN_XX_SW)
+    assert(wr_nType(wRoot) == T_EMBEDDED_KEYS);
 #endif // defined(NO_TYPE_IN_XX_SW)
 
     Word_t *pwKeys;
@@ -3377,9 +3473,11 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
     } else
     if (nBL <= 16) {
         psKeys = ls_psKeysNAT(pwList);
+DBGR(printf("IEL: psKeys %p\n", (void *)psKeys));
         for (int nn = 1; nn <= nPopCnt; nn++) {
             psKeys[nn-1] = (uint16_t)((wKey & ~wBLM)
                 | ((wRoot >> (cnBitsPerWord - (nn * nBL))) & wBLM));
+DBGR(printf("IEL: psKeys[%d] 0x%04x\n", nn-1, psKeys[nn-1]));
         }
     } else
 #if (cnBitsPerWord > 32)
@@ -3443,18 +3541,26 @@ DeflateExternalList(Word_t *pwRoot,
         uint8_t  *pcKeys;
 #endif // defined(COMPRESSED_LISTS)
 
-#if ! defined(NO_TYPE_IN_XX_SW)
-        set_wr_nType(wRoot, T_EMBEDDED_KEYS);
-        set_wr_nPopCnt(wRoot, nBL, nPopCnt); // no-op for NO_TYPE_IN_XX_SW
-#endif // ! defined(NO_TYPE_IN_XX_SW)
+#if defined(NO_TYPE_IN_XX_SW)
+        if (nBL >= nDL_to_nBL(2))
+#endif // defined(NO_TYPE_IN_XX_SW)
+        {
+            set_wr_nType(wRoot, T_EMBEDDED_KEYS);
+            set_wr_nPopCnt(wRoot, nBL, nPopCnt); // no-op if NO_TYPE_IN_XX_SW
+        }
+#if defined(NO_TYPE_IN_XX_SW)
+        else { DBGR(printf("DEL: skip setting of type.\n")); }
+#endif // defined(NO_TYPE_IN_XX_SW)
 
         Word_t wBLM = MSK(nBL);
 #if defined(COMPRESSED_LISTS)
         if (nBL <= 8) {
             pcKeys = ls_pcKeysNAT(pwr);
+DBGR(printf("DEL: pcKeys %p\n", (void *)pcKeys));
             int nn = 1;
             for (; nn <= nPopCnt; nn++) {
                wRoot |= (pcKeys[nn-1] & wBLM) << (cnBitsPerWord - (nn * nBL));
+DBGR(printf("DEL: pcKeys[%d] 0x%04x\n", nn-1, pcKeys[nn-1]));
             }
 #if defined(PAD_T_ONE)
             while (nn <= nPopCntMax) {
@@ -3673,11 +3779,19 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
 Status_t
 RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 {
+    // nType is not valid for NO_TYPE_IN_XX_SW and nBL < nDL_to_nBL(2)
     unsigned nType = wr_nType(wRoot); (void)nType;
+    // pwr is not valid for NO_TYPE_IN_XX_SW and nBL < nDL_to_nBL(2)
     Word_t *pwr = wr_pwr(wRoot); (void)pwr;
     int nDL = nBL_to_nDL(nBL); (void)nDL;
 
     DBGR(printf("RemoveGuts\n"));
+
+#if defined(NO_TYPE_IN_XX_SW)
+    if (nBL < nDL_to_nBL(2)) {
+        goto embeddedKeys;
+    }
+#endif // defined(NO_TYPE_IN_XX_SW)
 
 // Could we be more specific in this ifdef, e.g. cnListPopCntMax16?
 #if (cwListPopCntMax != 0)
@@ -3696,6 +3810,8 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 // Why is nBL_to_nBitsPopCntSz irrelevant here?
         && (nBL <= cnBitsPerWord - cnBitsMallocMask))
     {
+        goto embeddedKeys;
+embeddedKeys:;
         wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot);
         //*pwRoot = wRoot;
         nType = T_LIST;
@@ -3735,7 +3851,10 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 //#if ! defined(USE_T_ONE)
     if (wPopCnt == 1) {
         OldList(pwr, wPopCnt, nBL, nType);
-        *pwRoot = 0;
+#if defined(NO_TYPE_IN_XX_SW)
+        if (nBL < nDL_to_nBL(2)) { *pwRoot = ZERO_POP_MAGIC; } else
+#endif // defined(NO_TYPE_IN_XX_SW)
+        { *pwRoot = 0; }
         // Do we need to clear the rest of the link also?
         // See bCleanup in Lookup/Remove for the rest.
         return Success;
