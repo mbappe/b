@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.549 2015/01/12 05:53:54 mike Exp mike $
+// @(#) $Id: bli.c,v 1.550 2015/01/13 05:04:43 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1318,6 +1318,11 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 static int // bool
 EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 {
+#if defined(USE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
+    if ((nBL < nDL_to_nBL(2)) && (wRoot == ZERO_POP_MAGIC)) { return 0; }
+#else // defined(USE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
+    assert(wRoot != 0); // I wonder if there is opportunity here.
+#endif // defined(USE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
 #if defined(EMBEDDED_LIST_FIXED_POP)
     // Reminder about losing a slot with fixed-size pop field.
     assert((cnBitsPerWord != 32) || (nBL != 14));
@@ -1336,7 +1341,10 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     Word_t wKeys = wKey * wLsbs; // replicate key; put in every slot
     Word_t wXor = wKeys ^ wRoot; // get zero in slot with matching key
 #if defined(PAD_T_ONE) || ! defined(T_ONE_MASK)
-    wXor |= MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL)); // pop and type
+#if defined(NO_TYPE_IN_XX_SW)
+    if (nBL >= nDL_to_nBL(2))
+#endif // defined(NO_TYPE_IN_XX_SW)
+    { wXor |= MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL)); }
 #endif // defined(PAD_T_ONE) || ! defined(T_ONE_MASK)
 // Looks like ! PAD_T_ONE, T_ONE_MASK (and ! EMBEDDED_LIST_FIXED_POP) is a
 // bad combination.
@@ -1384,6 +1392,9 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 static int
 PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
                int nBL,
+#if defined(CODE_BM_SW)
+               int bBmSw,
+#endif // defined(CODE_BM_SW)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
   #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
                int *pbNeedPrefixCheck,
@@ -1403,17 +1414,18 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
 {
     (void)pwRoot; (void)pwr; (void)wKey; (void)nBL; (void)pnBLR;
 
-#if defined(CODE_BM_SW) && ! defined(PP_IN_LINK)
-    assert(&((BmSwitch_t *)NULL)->sw_wPrefixPop
-        == &((  Switch_t *)NULL)->sw_wPrefixPop);
-#endif // defined(CODE_BM_SW) && ! defined(PP_IN_LINK)
-
   #if defined(TYPE_IS_RELATIVE)
     int nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(wRoot));
   #else // defined(TYPE_IS_RELATIVE)
     int nBLR = wr_nBL(wRoot);
   #endif // defined(TYPE_IS_RELATIVE)
     assert(nBLR < nBL); // reserved
+
+    Word_t wPrefix =
+#if defined(CODE_BM_SW)
+        bBmSw ? PWR_wPrefixNATBL(pwRoot, (BmSwitch_t *)pwr, nBLR) :
+#endif // defined(CODE_BM_SW)
+                  PWR_wPrefixNATBL(pwRoot, (  Switch_t *)pwr, nBLR) ;
 
   #if ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK) \
             || defined(SAVE_PREFIX_TEST_RESULT)
@@ -1425,11 +1437,7 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
         } else
           #endif // defined(PP_IN_LINK)
         {
-            bPrefixMismatch
-                = ((int)LOG(1
-                        | (PWR_wPrefixNATBL(pwRoot,
-                                            (Switch_t *)pwr, nBLR) ^ wKey))
-                    >= nBLR);
+            bPrefixMismatch = ((int)LOG(1 | (wPrefix ^ wKey)) >= nBLR);
         }
   #endif // ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK) || ...
 
@@ -1461,8 +1469,7 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
   #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         if (bPrefixMismatch)
         {
-            DBGX(printf("Mismatch wPrefix "Owx"\n",
-                        PWR_wPrefixNATBL(pwRoot, (Switch_t *)pwr, nBLR)));
+            DBGX(printf("Mismatch wPrefix "Owx"\n", wPrefix));
             // Caller doesn't need/get an updated *pnBLR in this case.
             return 1; // prefix mismatch
         }
@@ -1593,6 +1600,9 @@ again:;
         // pwr points to a switch
 
         if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL,
+#if defined(CODE_BM_SW)
+                           /* bBmSw */ 0,
+#endif // defined(CODE_BM_SW)
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
                            &bNeedPrefixCheck,
@@ -1632,7 +1642,7 @@ again:;
 
     case T_SKIP_TO_BM_SW:
     {
-        if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL,
+        if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL, /* bBmSw */ 1,
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
                            &bNeedPrefixCheck,
@@ -1814,15 +1824,15 @@ t_xx_sw:;
 
 #if defined(LOOKUP) && defined(XX_SHORTCUT)
 
-  #if defined(NO_TYPE_IN_XX_SW)
-        if (wRoot == ZERO_POP_MAGIC) { return Failure; }
-  #elif (cnListPopCntMaxDl2 <= 2) && (cnListPopCntMax16 <= 2) \
-   && (cnListPopCntMaxDl1 <= 2) && (cnListPopCntMax8  <= 2)
+  #if ! defined(NO_TYPE_IN_XX_SW)
+      #if (cnListPopCntMaxDl2 <= 2) && (cnListPopCntMax16 <= 2) \
+       && (cnListPopCntMaxDl1 <= 2) && (cnListPopCntMax8  <= 2)
         if (wRoot == 0) { return Failure; }
-  #else // cnListPopCntMax ...
+      #else // cnListPopCntMax ...
         nType = wr_nType(wRoot);
         if (nType == T_EMBEDDED_KEYS)
-  #endif // defined(NO_TYPE_IN_XX_SW)
+      #endif // cnListPopCntMax ...
+  #endif // ! defined(NO_TYPE_IN_XX_SW)
         {
             switch (nBL) {
   #if (cnLogBitsPerWord <= 5)
@@ -1861,7 +1871,7 @@ t_xx_sw:;
 
 #else // defined(LOOKUP) && defined(XX_SHORTCUT)
 
-        assert(nBL < nDL_to_nBL(2));
+        assert(nBL < nDL_to_nBL(2)); // this is the XX_SW boundary
   #if defined(NO_TYPE_IN_XX_SW)
         goto t_embedded_keys;
   #else // defined(NO_TYPE_IN_XX_SW)
@@ -2310,10 +2320,6 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
       #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
         return wRoot ? Success : Failure;
       #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
-
-  #if defined(NO_TYPE_IN_XX_SW)
-        if ((nBL < nDL_to_nBL(2)) && (wRoot == ZERO_POP_MAGIC)) { break; }
-  #endif // defined(NO_TYPE_IN_XX_SW)
 
         //
         // How many keys will fit?  And how many bits do we need for pop
