@@ -557,8 +557,8 @@ enum {
 
 #define T_SW_BASE  T_SKIP_TO_SWITCH // compatibility with old code
 
-// Define and optimize nBitsIndexSz_from_nDL, nBL_from_nDL, nBL_from_nDL,
-// et. al. based on ifdef parameters.
+// Define and optimize nBitsIndexSz_from_nDL, nBitsIndexSz_from_nBL,
+// nBL_from_nDL, nBL_from_nDL, et. al. based on ifdef parameters.
 
 // nBitsIndexSz_from_nDL_NAX(_nDL)
 #if ((cnBitsInD3 == cnBitsPerDigit) && (cnBitsInD2 == cnBitsPerDigit))
@@ -567,10 +567,16 @@ enum {
 #elif (cnBitsInD3 == cnBitsPerDigit)
   #define nBitsIndexSz_from_nDL_NAX(_nDL) \
     (((_nDL) == 2) ? cnBitsInD2 : cnBitsPerDigit)
+  #define nBitsIndexSz_from_nBL_NAX(_nBL) \
+    (((_nBL) == cnBitsLeftAtDl2) ? cnBitsInD2 : cnBitsPerDigit)
 #else // ((cnBitsInD3 == cnBitsPerDigit) && (cnBitsInD2 == cnBitsPerDigit))
   #define nBitsIndexSz_from_nDL_NAX(_nDL) \
     ( ((_nDL) == 2) ? cnBitsInD2 \
     : ((_nDL) == 3) ? cnBitsInD3 \
+    : cnBitsPerDigit )
+  #define nBitsIndexSz_from_nBL_NAX(_nBL) \
+    ( ((_nBL) == cnBitsLeftAtDl2) ? cnBitsInD2 \
+    : ((_nBL) == cnBitsLeftAtDl3) ? cnBitsInD3 \
     : cnBitsPerDigit )
 #endif // ((cnBitsInD3 == cnBitsPerDigit) && (cnBitsInD2 == cnBitsPerDigit))
 
@@ -660,6 +666,9 @@ enum {
 #else // (cnBitsInD1 == cnBitsPerDigit)
     #define nBitsIndexSz_from_nDL(_nDL) \
         ( ((_nDL) <= 1) ? cnBitsLeftAtDl1 : nBitsIndexSz_from_nDL_NAX(_nDL) )
+    #define nBitsIndexSz_from_nBL(_nBL) \
+        ( ((_nBL) <= cnBitsInD1) ? cnBitsLeftAtDl1 \
+                                 : nBitsIndexSz_from_nDL_NAX(_nDL) )
 #endif // (cnBitsInD1 == cnBitsPerDigit)
 
 // nBL_from_nDL(_nDL)
@@ -672,11 +681,18 @@ enum {
   #define nBitsIndexSz_from_nDL(_nDL) \
     ( ((_nDL) < cnDigitsPerWord) ? nBitsIndexSz_from_nDL_NAX(_nDL) \
     : cnBitsIndexSzAtTop )
+  #define nBitsIndexSz_from_nBL(_nBL) \
+    ( ((_nBL) < cnBitsPerWord) ? nBitsIndexSz_from_nBL_NAX(_nBL) \
+    : cnBitsIndexSzAtTop )
 #else // (cnBitsInD1 == cnBitsPerDigit)
   // Do we need this to be valid for _nDL < 1?
   #define nBitsIndexSz_from_nDL(_nDL) \
     ( ((_nDL) <= 1) ? cnBitsInD1 \
     : ((_nDL) < cnDigitsPerWord) ? nBitsIndexSz_from_nDL_NAX(_nDL) \
+    : cnBitsIndexSzAtTop )
+  #define nBitsIndexSz_from_nBL(_nBL) \
+    ( ((_nBL) <= cnBitsInD1) ? cnBitsInD1 \
+    : ((_nBL) < cnDigitsPerWord) ? nBitsIndexSz_from_nBL_NAX(_nBL) \
     : cnBitsIndexSzAtTop )
 #endif // (cnBitsInD1 == cnBitsPerDigit)
 
