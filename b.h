@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.355 2015/01/13 16:50:06 mike Exp mike $
+// @(#) $Id: b.h,v 1.357 2015/01/14 03:32:18 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -692,7 +692,7 @@ enum {
     : cnBitsIndexSzAtTop )
   #define nBitsIndexSz_from_nBL(_nBL) \
     ( ((_nBL) <= cnBitsInD1) ? cnBitsInD1 \
-    : ((_nBL) < cnDigitsPerWord) ? nBitsIndexSz_from_nBL_NAX(_nBL) \
+    : ((_nBL) < cnBitsPerWord) ? nBitsIndexSz_from_nBL_NAX(_nBL) \
     : cnBitsIndexSzAtTop )
 #endif // (cnBitsInD1 == cnBitsPerDigit)
 
