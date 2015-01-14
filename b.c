@@ -158,6 +158,8 @@ MyMalloc(Word_t wWords)
     DBGM(printf("\nM: %p %"_fw"d words *%p "OWx" %"_fw"d\n",
                 (void *)ww, wWords, (void *)&((Word_t *)ww)[-1],
                 ((Word_t *)ww)[-1], ((Word_t *)ww)[-1]));
+    // Validate our assumptions about dlmalloc as we prepare to use
+    // some of the otherwise wasted bits.
 #if defined(DEBUG_MALLOC)
     if ((((((Word_t *)ww)[-1] >> 4) << 1)
             != ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
@@ -181,8 +183,11 @@ MyMalloc(Word_t wWords)
             == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 2)
         || (((((Word_t *)ww)[-1] >> 4) << 1)
             == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 4));
-    // save ww[-1] to make sure we can use some of the bits in the word
+    // Save ww[-1] to make sure we can use some of the bits in the word.
+    // We are saving enough to handle mallocs up to nearly 1MB.
     DBG(((Word_t *)ww)[-1] |= (((Word_t *)ww)[-1] >> 4) << 16);
+    assert((((Word_t *)ww)[-1] >> 16)
+       == ((((Word_t *)ww)[-1] & MSK(16)) >> 4));
     // The following does not always hold on free.
     assert((((Word_t *)ww)[-1] & 0x0f) == 3);
     assert(ww != 0);
@@ -208,10 +213,7 @@ MyFree(Word_t *pw, Word_t wWords)
     }
 #endif // defined(DEBUG)
     assert((pw[-1] >> 16) == ((pw[-1] & MSK(16)) >> 4));
-    DBG(pw[-1] &= MSK(16));
-#if defined(LVL_IN_WR_HB)
-    pw[-1] &= MSK(16);
-#endif // defined(LVL_IN_WR_HB)
+    DBG(pw[-1] &= MSK(16)); // restore the value expected by dlmalloc
     if (!((((pw[-1] >> 4) << 1)
             == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
         || (((pw[-1] >> 4) << 1)
@@ -219,8 +221,8 @@ MyFree(Word_t *pw, Word_t wWords)
         || (((pw[-1] >> 4) << 1)
             == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 4)))
     {
-        printf("F: Oops wWords + cnMallocExtraWords + cnGuardWords 0x%lx"
-               " pw[-1] >> 3 0x%lx\n",
+        printf("F: Oops (wWords + cnMallocExtraWords + cnGuardWords) 0x%lx"
+               " (pw[-1] >> 3) 0x%lx\n",
                wWords + cnMallocExtraWords + cnGuardWords, pw[-1] >> 3);
     }
     assert((((pw[-1] >> 4) << 1)
@@ -1234,10 +1236,8 @@ OldSwitch(Word_t *pwRoot, int nBL,
     { METRICS(j__AllocWordsJBU  -= wWords); } // JUDYA
 #endif // defined(RAMMETRICS)
 
-#if defined(CODE_BM_SW)
-    DBGR(printf("\nOldSwitch nBL %d bBmSw %d nBLU %d wWords %"_fw"d "OWx"\n",
-         nBL, bBmSw, nBLUp, wWords, wWords));
-#endif // defined(CODE_BM_SW)
+    DBGR(printf("\nOldSwitch nBL %d nBLU %d wWords %"_fw"d "OWx"\n",
+         nBL, nBLUp, wWords, wWords));
 
     MyFree(pwr, wWords);
 
@@ -1729,11 +1729,11 @@ embeddedKeys:;
     // Someone has to clear PP and BM if PP_IN_LINK and BM_IN_LINK.
     // OldSwitch looks at BM.
 
-    wBytes += OldSwitch(pwRootArg, nBL,
+    wBytes += OldSwitch(pwRootArg, nBL + nBitsIndexSz,
 #if defined(CODE_BM_SW)
                         bBmSw,
 #endif // defined(CODE_BM_SW)
-                        nBL_to_nDL(nBLPrev));
+                        nBLPrev);
 
     DBGR(printf("memset(%p, 0, %zd)\n",
          (void *)STRUCT_OF(pwRootArg, Link_t, ln_wRoot), sizeof(Link_t)));
