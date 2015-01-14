@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.551 2015/01/13 17:55:33 mike Exp mike $
+// @(#) $Id: bli.c,v 1.552 2015/01/14 03:10:28 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -904,6 +904,7 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
   #if defined(PP_IN_LINK)
     int nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
   #else // defined(PP_IN_LINK)
+      #if (cnBitsLeftAtDl2 <= 16)
       #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
           #if ! defined(cnListPopCntMaxDl2) || (cnListPopCntMaxDl2 <= 8)
           #if (cnListPopCntMax16 <= 8)
@@ -929,6 +930,9 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
       #else // defined(PARALLEL_128)
     int nPopCnt = PWR_xListPopCnt(pwRoot, 16);
       #endif // defined(PARALLEL_128)
+      #else // (cnBitsLeftAtDl2 <= 16)
+    int nPopCnt = PWR_xListPopCnt(pwRoot, 16);
+      #endif // (cnBitsLeftAtDl2 <= 16)
   #endif // defined(PP_IN_LINK)
     uint16_t *psKeys = ls_psKeysNATX(pwr, nPopCnt);
 
@@ -1847,6 +1851,30 @@ t_xx_sw:;
             case 13: return EmbeddedListHasKey(wRoot, wKey, 13);
             case 14: return EmbeddedListHasKey(wRoot, wKey, 14);
             case 15: return EmbeddedListHasKey(wRoot, wKey, 15);
+      #if (cnBitsLeftAtDl2 > 16)
+            case 16: return EmbeddedListHasKey(wRoot, wKey, 16);
+      #endif // (cnBitsLeftAtDl2 > 16)
+      #if (cnBitsLeftAtDl2 > 17)
+            case 17: return EmbeddedListHasKey(wRoot, wKey, 17);
+      #endif // (cnBitsLeftAtDl2 > 17)
+      #if (cnBitsLeftAtDl2 > 18)
+            case 18: return EmbeddedListHasKey(wRoot, wKey, 18);
+      #endif // (cnBitsLeftAtDl2 > 18)
+      #if (cnBitsLeftAtDl2 > 19)
+            case 19: return EmbeddedListHasKey(wRoot, wKey, 19);
+      #endif // (cnBitsLeftAtDl2 > 19)
+      #if (cnBitsLeftAtDl2 > 20)
+            case 20: return EmbeddedListHasKey(wRoot, wKey, 20);
+      #endif // (cnBitsLeftAtDl2 > 20)
+      #if (cnBitsLeftAtDl2 > 21)
+            case 21: return EmbeddedListHasKey(wRoot, wKey, 21);
+      #endif // (cnBitsLeftAtDl2 > 21)
+      #if (cnBitsLeftAtDl2 > 22)
+            case 22: return EmbeddedListHasKey(wRoot, wKey, 22);
+      #endif // (cnBitsLeftAtDl2 > 22)
+      #if (cnBitsLeftAtDl2 > 23)
+            case 23: return EmbeddedListHasKey(wRoot, wKey, 23);
+      #endif // (cnBitsLeftAtDl2 > 23)
             }
         }
   #if ! defined(NO_TYPE_IN_XX_SW)
@@ -2394,6 +2422,16 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 
           #if defined(DL_SPECIFIC_T_ONE)
 
+#define DO_CASE_DLX(_nDL) \
+    (nBL_from_nDL(_nDL) >= 16) && ((_nDL) < cnDigitsPerWord)
+
+#define CASE_DLX(_nDL) \
+        case nBL_from_nDL(_nDL): \
+            if (EmbeddedListHasKey(wRoot, wKey, nBL_from_nDL(_nDL))) { \
+                goto foundIt; \
+            } \
+            goto break2 \
+
         switch (nBL) {
   #if (cnLogBitsPerWord <= 5)
         case 6:
@@ -2427,26 +2465,96 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         case 15:
             if (EmbeddedListHasKey(wRoot, wKey, 15)) { goto foundIt; }
             goto break2;
+#if (cnBitsLeftAtDl2 > 16)
+        case 16:
+            if (EmbeddedListHasKey(wRoot, wKey, 16)) { goto foundIt; }
+            goto break2;
+#endif // (cnBitsLeftAtDl2 > 16)
+#if (cnBitsLeftAtDl2 > 17)
+        case 17:
+            if (EmbeddedListHasKey(wRoot, wKey, 17)) { goto foundIt; }
+            goto break2;
+#endif // (cnBitsLeftAtDl2 > 17)
+#if (cnBitsLeftAtDl2 > 18)
+        case 18:
+            if (EmbeddedListHasKey(wRoot, wKey, 18)) { goto foundIt; }
+            goto break2;
+#endif // (cnBitsLeftAtDl2 > 18)
+#if (cnBitsLeftAtDl2 > 19)
+        case 19:
+            if (EmbeddedListHasKey(wRoot, wKey, 19)) { goto foundIt; }
+            goto break2;
+#endif // (cnBitsLeftAtDl2 > 19)
+#if (cnBitsLeftAtDl2 > 20)
+        case 20:
+            if (EmbeddedListHasKey(wRoot, wKey, 20)) { goto foundIt; }
+            goto break2;
+#endif // (cnBitsLeftAtDl2 > 20)
+#if (cnBitsLeftAtDl2 > 21)
+        case 21:
+            if (EmbeddedListHasKey(wRoot, wKey, 21)) { goto foundIt; }
+            goto break2;
+#endif // (cnBitsLeftAtDl2 > 21)
+#if (cnBitsLeftAtDl2 > 22)
+        case 22:
+            if (EmbeddedListHasKey(wRoot, wKey, 22)) { goto foundIt; }
+            goto break2;
+#endif // (cnBitsLeftAtDl2 > 22)
+#if (cnBitsLeftAtDl2 > 23)
+        case 23:
+            if (EmbeddedListHasKey(wRoot, wKey, 23)) { goto foundIt; }
+            goto break2;
+#endif // (cnBitsLeftAtDl2 > 23)
+#if (cnBitsLeftAtDl2 >= 16) && (cnDigitsPerWord > 2)
         case cnBitsLeftAtDl2:
             if (EmbeddedListHasKey(wRoot, wKey, cnBitsLeftAtDl2)) {
                 goto foundIt;
             }
             goto break2;
+#endif // (cnBitsLeftAtDl2 > 16) && (cnDigitsPerWord > 2)
+#if (cnBitsLeftAtDl3 >= 16) && (cnDigitsPerWord > 3)
         case nBL_from_nDL(3):
             if (EmbeddedListHasKey(wRoot, wKey, nBL_from_nDL(3))) {
                 goto foundIt;
             }
             goto break2;
-        case nBL_from_nDL(4):
-            if (EmbeddedListHasKey(wRoot, wKey, nBL_from_nDL(4))) {
-                goto foundIt;
-            }
-            goto break2;
-        case nBL_from_nDL(5):
-            if (EmbeddedListHasKey(wRoot, wKey, nBL_from_nDL(5))) {
-                goto foundIt;
-            }
-            goto break2;
+#endif // (cnBitsLeftAtDl3 >= 16) && (cnDigitsPerWord > 3)
+#if DO_CASE_DLX(4)
+        CASE_DLX(4);
+#endif // DO_CASE_DLX(..)
+#if DO_CASE_DLX(5)
+        CASE_DLX(5);
+#endif // DO_CASE_DLX(..)
+#if DO_CASE_DLX(6)
+        CASE_DLX(6);
+#endif // DO_CASE_DLX(..)
+#if DO_CASE_DLX(7)
+        CASE_DLX(7);
+#endif // DO_CASE_DLX(..)
+#if DO_CASE_DLX(8)
+        CASE_DLX(8);
+#endif // DO_CASE_DLX(..)
+#if DO_CASE_DLX(9)
+        CASE_DLX(9);
+#endif // DO_CASE_DLX(..)
+#if DO_CASE_DLX(10)
+        CASE_DLX(10);
+#endif // DO_CASE_DLX(..)
+#if DO_CASE_DLX(11)
+        CASE_DLX(11);
+#endif // DO_CASE_DLX(..)
+#if DO_CASE_DLX(12)
+        CASE_DLX(12);
+#endif // DO_CASE_DLX(..)
+#if DO_CASE_DLX(13)
+        CASE_DLX(13);
+#endif // DO_CASE_DLX(..)
+#if DO_CASE_DLX(14)
+        CASE_DLX(14);
+#endif // DO_CASE_DLX(..)
+#if DO_CASE_DLX(15)
+        CASE_DLX(15);
+#endif // DO_CASE_DLX(..)
         default:
             printf("Embedded list unhandled nBL %d.\n", nBL);
             assert(0); // fall through works; but we don't mean it
@@ -2803,6 +2911,9 @@ Initialize(void)
         printf("wr_nType(ZERO_POP_MAGIC) != T_EMBEDDED_KEYS\n");
         exit(1);
     }
+
+    // Make sure pwr_nBW field is big enough.
+    assert((cnBitsLeftAtDl2 - cnBW - (cnLogBitsPerWord + 1)) <= 7);
 
 #if defined(BPD_TABLE_RUNTIME_INIT)
     for (unsigned nDL = 0;
