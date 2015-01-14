@@ -1194,7 +1194,7 @@ OldSwitch(Word_t *pwRoot, int nBL,
             // How many links are there in the old switch?
             wLinks = 0;
             for (int nn = 0;
-                     nn < (int)DIV_UP(EXP(nDL_to_nBitsIndexSz(nDL)),
+                     nn < (int)DIV_UP(EXP(nBL_to_nBitsIndexSz(nBL)),
                                   cnBitsPerWord);
                      nn++)
             {
@@ -1669,7 +1669,7 @@ embeddedKeys:;
                 printf(" Bm");
                 // Bitmaps are an integral number of words.
                 for (int nn = 0;
-                     nn < DIV_UP((int)EXP(nDL_to_nBitsIndexSz(nDL)),
+                     nn < DIV_UP((int)EXP(nBL_to_nBitsIndexSz(nBL)),
                                  cnBitsPerWord);
                      nn ++)
                 {
