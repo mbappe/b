@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.550 2015/01/13 05:04:43 mike Exp mike $
+// @(#) $Id: bli.c,v 1.551 2015/01/13 17:55:33 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2431,6 +2431,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
             if (EmbeddedListHasKey(wRoot, wKey, cnBitsLeftAtDl2)) {
                 goto foundIt;
             }
+            goto break2;
         case nBL_from_nDL(3):
             if (EmbeddedListHasKey(wRoot, wKey, nBL_from_nDL(3))) {
                 goto foundIt;
