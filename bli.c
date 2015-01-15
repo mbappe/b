@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.553 2015/01/14 20:35:26 mike Exp mike $
+// @(#) $Id: bli.c,v 1.554 2015/01/15 15:39:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1909,6 +1909,8 @@ t_xx_sw:;
 
         assert(nBL < nDL_to_nBL(2)); // this is the XX_SW boundary
   #if defined(NO_TYPE_IN_XX_SW)
+        // ZERO_POP_MAGIC is handled in wr_nPopCnt in t_embedded_keys.
+        // Blow-ups are handled in t_embedded_keys.
         goto t_embedded_keys;
   #else // defined(NO_TYPE_IN_XX_SW)
         // The only thing we do at "again" before switching on nType
@@ -2367,24 +2369,57 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
             goto break2
 
         switch (nBL) {
-        default:
-      #if defined(DEBUG)
-        assert(0);
-      #endif // defined(DEBUG)
-      #if defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
-        CASE_BLX(16); CASE_BLX(6); CASE_BLX(7);
-      #elif (cnLogBitsPerWord == 5)
-        CASE_BLX(6); CASE_BLX(7); CASE_BLX(16);
-      #else // (cnLogBitsPerWord == 5)
-        CASE_BLX(7); CASE_BLX(6); CASE_BLX(16);
-      #endif // defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
+      #if ! defined(XX_SHORTCUT) || defined(XX_SHORTCUT_GOTO)
+          #if (cnLogBitsPerWord == 5)
+        default: assert(0); // fall to perf case if not DEBUG
+          #endif // (cnLogBitsPerWord == 5)
+      #endif // ! defined(XX_SHORTCUT) || defined(XX_SHORTCUT_GOTO)
+        CASE_BLX( 6);
         CASE_BLX( 0); CASE_BLX( 1); CASE_BLX( 2); CASE_BLX( 3); CASE_BLX( 4);
-        CASE_BLX( 5); CASE_BLX( 8); CASE_BLX( 9); CASE_BLX(10); CASE_BLX(11);
+        CASE_BLX( 5); CASE_BLX(10); CASE_BLX(11);
         CASE_BLX(12); CASE_BLX(13); CASE_BLX(14); CASE_BLX(15);
-        CASE_BLX(17); CASE_BLX(18); CASE_BLX(19); CASE_BLX(20); CASE_BLX(21);
+        CASE_BLX(17); CASE_BLX(18); CASE_BLX(19); CASE_BLX(20);
         CASE_BLX(22); CASE_BLX(23); CASE_BLX(24); CASE_BLX(25); CASE_BLX(26);
-        CASE_BLX(27); CASE_BLX(28); CASE_BLX(29); CASE_BLX(30); CASE_BLX(31);
-        CASE_BLX(32); CASE_BLX(33); CASE_BLX(34); CASE_BLX(35); CASE_BLX(36);
+        CASE_BLX(27); CASE_BLX(28); CASE_BLX(29); CASE_BLX(30);
+        CASE_BLX(33); CASE_BLX(34); CASE_BLX(35); CASE_BLX(36);
+
+// For key sizes which can completely fill wRoot with no left-over bits.
+#define CASE_0_BLX(_nBL) \
+        case (_nBL): \
+            if ((wRoot & (EXP(63) + EXP(31) + 1)) == (EXP(63) + 1)) { \
+                printf("\nhere\n"); \
+                goto t_list; \
+            } \
+            if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
+            goto break2
+
+      #if defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
+        default: assert(0); // fall to perf case if not DEBUG
+      #endif // defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
+      #if defined(NO_TYPE_IN_XX_SW)
+        CASE_0_BLX(16); CASE_0_BLX(32); CASE_0_BLX(8);
+      #else // defined(NO_TYPE_IN_XX_SW)
+        CASE_BLX(16); CASE_BLX(32); CASE_BLX(8);
+      #endif // defined(NO_TYPE_IN_XX_SW)
+
+// For key sizes which always have at least one bit but not enough for a
+// full-blown type value.
+#define CASE_1_BLX(_nBL) \
+        case (_nBL): \
+            if (wRoot & 1) { goto t_list; } \
+            if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
+            goto break2
+
+      #if ! defined(XX_SHORTCUT) || defined(XX_SHORTCUT_GOTO)
+          #if (cnLogBitsPerWord == 6)
+        default: assert(0); // fall to perf case if not DEBUG
+          #endif // (cnLogBitsPerWord == 6)
+      #endif // ! defined(XX_SHORTCUT) || defined(XX_SHORTCUT_GOTO)
+      #if defined(NO_TYPE_IN_XX_SW)
+        CASE_1_BLX(7); CASE_1_BLX(9); CASE_1_BLX(21); CASE_1_BLX(31);
+      #else // defined(NO_TYPE_IN_XX_SW)
+        CASE_BLX(7); CASE_BLX(9); CASE_BLX(21); CASE_BLX(31);
+      #endif // defined(NO_TYPE_IN_XX_SW)
         }
             
           #endif // defined(DL_SPECIFIC_T_ONE)
