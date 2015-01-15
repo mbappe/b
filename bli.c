@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.552 2015/01/14 03:10:28 mike Exp $
+// @(#) $Id: bli.c,v 1.553 2015/01/14 20:35:26 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1838,44 +1838,52 @@ t_xx_sw:;
       #endif // cnListPopCntMax ...
   #endif // ! defined(NO_TYPE_IN_XX_SW)
         {
+  #if defined(XX_SHORTCUT_GOTO)
+            goto t_embedded_keys;
+  #else // defined(XX_SHORTCUT_GOTO)
+
+#define XX_CASE(_nBL) \
+            case (_nBL): return EmbeddedListHasKey(wRoot, wKey, (_nBL))
+
             switch (nBL) {
-  #if (cnLogBitsPerWord <= 5)
-            case  6: return EmbeddedListHasKey(wRoot, wKey,  6);
-  #endif // (cnLogBitsPerWord <= 5)
-            case  7: return EmbeddedListHasKey(wRoot, wKey,  7);
-            case  8: return EmbeddedListHasKey(wRoot, wKey,  8);
-            case  9: return EmbeddedListHasKey(wRoot, wKey,  9);
-            case 10: return EmbeddedListHasKey(wRoot, wKey, 10);
-            case 11: return EmbeddedListHasKey(wRoot, wKey, 11);
-            case 12: return EmbeddedListHasKey(wRoot, wKey, 12);
-            case 13: return EmbeddedListHasKey(wRoot, wKey, 13);
-            case 14: return EmbeddedListHasKey(wRoot, wKey, 14);
-            case 15: return EmbeddedListHasKey(wRoot, wKey, 15);
+            default:
+  #if defined(DEBUG)
+            assert(0);
+  #endif // defined(DEBUG)
+  #if (cnLogBitsPerWord == 5)
+            XX_CASE(6); XX_CASE(7);
+  #else // (cnLogBitsPerWord == 5)
+            XX_CASE(7); XX_CASE(6);
+  #endif // (cnLogBitsPerWord == 5)
+            XX_CASE( 0); XX_CASE( 1); XX_CASE( 2); XX_CASE( 3); XX_CASE( 4);
+            XX_CASE( 5); XX_CASE( 8); XX_CASE( 9); XX_CASE(10); XX_CASE(11);
+            XX_CASE(12); XX_CASE(13); XX_CASE(14); XX_CASE(15);
       #if (cnBitsLeftAtDl2 > 16)
-            case 16: return EmbeddedListHasKey(wRoot, wKey, 16);
+            XX_CASE(16);
       #endif // (cnBitsLeftAtDl2 > 16)
       #if (cnBitsLeftAtDl2 > 17)
-            case 17: return EmbeddedListHasKey(wRoot, wKey, 17);
+            XX_CASE(17);
       #endif // (cnBitsLeftAtDl2 > 17)
       #if (cnBitsLeftAtDl2 > 18)
-            case 18: return EmbeddedListHasKey(wRoot, wKey, 18);
+            XX_CASE(18);
       #endif // (cnBitsLeftAtDl2 > 18)
       #if (cnBitsLeftAtDl2 > 19)
-            case 19: return EmbeddedListHasKey(wRoot, wKey, 19);
+            XX_CASE(19);
       #endif // (cnBitsLeftAtDl2 > 19)
       #if (cnBitsLeftAtDl2 > 20)
-            case 20: return EmbeddedListHasKey(wRoot, wKey, 20);
+            XX_CASE(20);
       #endif // (cnBitsLeftAtDl2 > 20)
       #if (cnBitsLeftAtDl2 > 21)
-            case 21: return EmbeddedListHasKey(wRoot, wKey, 21);
+            XX_CASE(21);
       #endif // (cnBitsLeftAtDl2 > 21)
       #if (cnBitsLeftAtDl2 > 22)
-            case 22: return EmbeddedListHasKey(wRoot, wKey, 22);
+            XX_CASE(22);
       #endif // (cnBitsLeftAtDl2 > 22)
       #if (cnBitsLeftAtDl2 > 23)
-            case 23: return EmbeddedListHasKey(wRoot, wKey, 23);
+            XX_CASE(23);
       #endif // (cnBitsLeftAtDl2 > 23)
             }
+  #endif // defined(XX_SHORTCUT_GOTO)
         }
   #if ! defined(NO_TYPE_IN_XX_SW)
       #if ! ((cnListPopCntMaxDl2 <= 2) && (cnListPopCntMax16 <= 2) \
@@ -2349,222 +2357,39 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         return wRoot ? Success : Failure;
       #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 
-        //
-        // How many keys will fit?  And how many bits do we need for pop
-        // count in each case.  Need space for the keys plus type plus
-        // pop count.
-        //
-        //  - (cnBitsPerWord - cnBitsPerType - cnBitsPerPopCnt) / nBL
-        //
-        //      1 x 60-bit key                      (0 to 0-bit pop cnt)
-        //      1 x 59-bit key                      (0 or 1-bit pop cnt)
-        //      1 x 58-bit key                      (0 to 2-bit pop cnt)
-        //      1 x 57-bit key                      (0 to 3-bit pop cnt)
-        //      1 x 56-bit key  ... 1 x 30-bit key  (0 to 4-bit pop cnt)
-        //      2 x 29-bit keys                     (1 to 2-bit pop cnt)
-        //      2 x 28-bit keys ... 2 x 20-bit keys (1 to 4-bit pop cnt)
-        //      3 x 19-bit keys                     (2 or 3-bit pop cnt)
-        //      3 x 18-bit keys ... 3 x 15-bit keys (2 to 6-bit pop cnt)
-        //      4 x 14-bit keys ... 4 x 12-bit keys (2 to 8-bit pop cnt)
-        //      5 x 11-bit keys ... 5 x 10-bit keys (3 to 5-bit pop cnt)
-        //      6 x  9-bit keys                     (3 to 6-bit pop cnt)
-        //      7 x  8-bit keys                     (3 or 4-bit pop cnt)
-        //      8 x  7-bit keys                     (3 or 4-bit pop cnt)
-        //     64 x  6-bit keys in embedded bitmap
-        //
-        // Does LOG(X / nBL) work?
-        //
-        //                  ... LOG(119/60) = 0
-        //      LOG(119/59) ... LOG(119/30) = 1
-        //      LOG(119/29) ... LOG(119/15) = 2
-        //      LOG(119/14) ... LOG(119/ 8) = 3
-        //      LOG(119/ 7) ... LOG(119/ 4) = 4
-        //
-        //      LOG( 64/64) ... LOG( 64/33) = 0
-        //      LOG( 64/32) ... LOG( 64/17) = 1 (19 needs at least 2)
-        //
-        //      LOG( 76/64) ... LOG( 76/39) = 0
-        //      LOG( 76/38) ... LOG( 76/20) = 1
-        //      LOG( 76/19) ... LOG( 76/10) = 2 (11 needs at least 3)
-        //
-        //      LOG( 88/64) ... LOG( 88/45) = 0
-        //      LOG( 88/44) ... LOG( 88/23) = 1
-        //      LOG( 88/22) ... LOG( 88/12) = 2
-        //      LOG( 88/11) ... LOG( 88/ 6) = 3
-        //      LOG( 88/ 5) ... LOG( 88/ 3) = 4
-        //      LOG( 88/ 2) ... LOG( 88/ 2) = 5
-        //
-        // Looks like anything from 88 - 119 will work.
-        //
-        //      1 x 29-bit key                      (0 to 0-bit pop cnt)
-        //      1 x 28-bit key  ... 1 x 15-bit key  (0 or 1-bit pop cnt)
-        //      2 x 14-bit keys                     (1 to 1-bit pop cnt)
-        //      2 x 13-bit keys                     (1 to 3-bit pop cnt)
-        //      2 x 12-bit keys ... 2 x 10-bit keys (1 to 5-bit pop cnt)
-        //      3 x  9-bit keys                     (2 to 2-bit pop cnt)
-        //      3 x  8-bit keys ... 3 x  7-bit keys (2 to 5-bit pop cnt)
-        //      4 x  6-bit keys                     (2 to 5-bit pop cnt)
-        //     32 x  5-bit keys in embedded bimtap
-        //
-        //                  ... LOG( 36/19) = 0
-        //      LOG( 36/18) ... LOG( 36/10) = 1
-        //      LOG( 36/ 9) ... LOG( 36/ 5) = 2
-        //      LOG( 36/ 4) ... LOG( 36/ 3) = 3
-        //      LOG( 36/ 2) ... LOG( 36/ 2) = 4
-        //
-        //                  ... LOG( 36/19) = 0
-        //      LOG( 44/22) ... LOG( 36/12) = 1
-        //      LOG( 44/11) ... LOG( 36/ 6) = 2
-        //      LOG( 44/ 5) ... LOG( 36/ 3) = 3
-        //      LOG( 44/ 2) ... LOG( 36/ 2) = 4
-        //
       #if defined(EMBEDDED_KEYS_PARALLEL)
 
           #if defined(DL_SPECIFIC_T_ONE)
 
-#define DO_CASE_DLX(_nDL) \
-    (nBL_from_nDL(_nDL) >= 16) && ((_nDL) < cnDigitsPerWord)
-
-#define CASE_DLX(_nDL) \
-        case nBL_from_nDL(_nDL): \
-            if (EmbeddedListHasKey(wRoot, wKey, nBL_from_nDL(_nDL))) { \
-                goto foundIt; \
-            } \
-            goto break2 \
+#define CASE_BLX(_nBL) \
+        case (_nBL): \
+            if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
+            goto break2
 
         switch (nBL) {
-  #if (cnLogBitsPerWord <= 5)
-        case 6:
-            if (EmbeddedListHasKey(wRoot, wKey, 6)) { goto foundIt; }
-            goto break2;
-  #endif // (cnLogBitsPerWord <= 5)
-        case 7:
-            if (EmbeddedListHasKey(wRoot, wKey, 7)) { goto foundIt; }
-            goto break2;
-        case 8:
-            if (EmbeddedListHasKey(wRoot, wKey, 8)) { goto foundIt; }
-            goto break2;
-        case 9:
-            if (EmbeddedListHasKey(wRoot, wKey, 9)) { goto foundIt; }
-            goto break2;
-        case 10:
-            if (EmbeddedListHasKey(wRoot, wKey, 10)) { goto foundIt; }
-            goto break2;
-        case 11:
-            if (EmbeddedListHasKey(wRoot, wKey, 11)) { goto foundIt; }
-            goto break2;
-        case 12:
-            if (EmbeddedListHasKey(wRoot, wKey, 12)) { goto foundIt; }
-            goto break2;
-        case 13:
-            if (EmbeddedListHasKey(wRoot, wKey, 13)) { goto foundIt; }
-            goto break2;
-        case 14:
-            if (EmbeddedListHasKey(wRoot, wKey, 14)) { goto foundIt; }
-            goto break2;
-        case 15:
-            if (EmbeddedListHasKey(wRoot, wKey, 15)) { goto foundIt; }
-            goto break2;
-#if (cnBitsLeftAtDl2 > 16)
-        case 16:
-            if (EmbeddedListHasKey(wRoot, wKey, 16)) { goto foundIt; }
-            goto break2;
-#endif // (cnBitsLeftAtDl2 > 16)
-#if (cnBitsLeftAtDl2 > 17)
-        case 17:
-            if (EmbeddedListHasKey(wRoot, wKey, 17)) { goto foundIt; }
-            goto break2;
-#endif // (cnBitsLeftAtDl2 > 17)
-#if (cnBitsLeftAtDl2 > 18)
-        case 18:
-            if (EmbeddedListHasKey(wRoot, wKey, 18)) { goto foundIt; }
-            goto break2;
-#endif // (cnBitsLeftAtDl2 > 18)
-#if (cnBitsLeftAtDl2 > 19)
-        case 19:
-            if (EmbeddedListHasKey(wRoot, wKey, 19)) { goto foundIt; }
-            goto break2;
-#endif // (cnBitsLeftAtDl2 > 19)
-#if (cnBitsLeftAtDl2 > 20)
-        case 20:
-            if (EmbeddedListHasKey(wRoot, wKey, 20)) { goto foundIt; }
-            goto break2;
-#endif // (cnBitsLeftAtDl2 > 20)
-#if (cnBitsLeftAtDl2 > 21)
-        case 21:
-            if (EmbeddedListHasKey(wRoot, wKey, 21)) { goto foundIt; }
-            goto break2;
-#endif // (cnBitsLeftAtDl2 > 21)
-#if (cnBitsLeftAtDl2 > 22)
-        case 22:
-            if (EmbeddedListHasKey(wRoot, wKey, 22)) { goto foundIt; }
-            goto break2;
-#endif // (cnBitsLeftAtDl2 > 22)
-#if (cnBitsLeftAtDl2 > 23)
-        case 23:
-            if (EmbeddedListHasKey(wRoot, wKey, 23)) { goto foundIt; }
-            goto break2;
-#endif // (cnBitsLeftAtDl2 > 23)
-#if (cnBitsLeftAtDl2 >= 16) && (cnDigitsPerWord > 2)
-        case cnBitsLeftAtDl2:
-            if (EmbeddedListHasKey(wRoot, wKey, cnBitsLeftAtDl2)) {
-                goto foundIt;
-            }
-            goto break2;
-#endif // (cnBitsLeftAtDl2 > 16) && (cnDigitsPerWord > 2)
-#if (cnBitsLeftAtDl3 >= 16) && (cnDigitsPerWord > 3)
-        case nBL_from_nDL(3):
-            if (EmbeddedListHasKey(wRoot, wKey, nBL_from_nDL(3))) {
-                goto foundIt;
-            }
-            goto break2;
-#endif // (cnBitsLeftAtDl3 >= 16) && (cnDigitsPerWord > 3)
-#if DO_CASE_DLX(4)
-        CASE_DLX(4);
-#endif // DO_CASE_DLX(..)
-#if DO_CASE_DLX(5)
-        CASE_DLX(5);
-#endif // DO_CASE_DLX(..)
-#if DO_CASE_DLX(6)
-        CASE_DLX(6);
-#endif // DO_CASE_DLX(..)
-#if DO_CASE_DLX(7)
-        CASE_DLX(7);
-#endif // DO_CASE_DLX(..)
-#if DO_CASE_DLX(8)
-        CASE_DLX(8);
-#endif // DO_CASE_DLX(..)
-#if DO_CASE_DLX(9)
-        CASE_DLX(9);
-#endif // DO_CASE_DLX(..)
-#if DO_CASE_DLX(10)
-        CASE_DLX(10);
-#endif // DO_CASE_DLX(..)
-#if DO_CASE_DLX(11)
-        CASE_DLX(11);
-#endif // DO_CASE_DLX(..)
-#if DO_CASE_DLX(12)
-        CASE_DLX(12);
-#endif // DO_CASE_DLX(..)
-#if DO_CASE_DLX(13)
-        CASE_DLX(13);
-#endif // DO_CASE_DLX(..)
-#if DO_CASE_DLX(14)
-        CASE_DLX(14);
-#endif // DO_CASE_DLX(..)
-#if DO_CASE_DLX(15)
-        CASE_DLX(15);
-#endif // DO_CASE_DLX(..)
         default:
-            printf("Embedded list unhandled nBL %d.\n", nBL);
-            assert(0); // fall through works; but we don't mean it
+      #if defined(DEBUG)
+        assert(0);
+      #endif // defined(DEBUG)
+      #if defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
+        CASE_BLX(16); CASE_BLX(6); CASE_BLX(7);
+      #elif (cnLogBitsPerWord == 5)
+        CASE_BLX(6); CASE_BLX(7); CASE_BLX(16);
+      #else // (cnLogBitsPerWord == 5)
+        CASE_BLX(7); CASE_BLX(6); CASE_BLX(16);
+      #endif // defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
+        CASE_BLX( 0); CASE_BLX( 1); CASE_BLX( 2); CASE_BLX( 3); CASE_BLX( 4);
+        CASE_BLX( 5); CASE_BLX( 8); CASE_BLX( 9); CASE_BLX(10); CASE_BLX(11);
+        CASE_BLX(12); CASE_BLX(13); CASE_BLX(14); CASE_BLX(15);
+        CASE_BLX(17); CASE_BLX(18); CASE_BLX(19); CASE_BLX(20); CASE_BLX(21);
+        CASE_BLX(22); CASE_BLX(23); CASE_BLX(24); CASE_BLX(25); CASE_BLX(26);
+        CASE_BLX(27); CASE_BLX(28); CASE_BLX(29); CASE_BLX(30); CASE_BLX(31);
+        CASE_BLX(32); CASE_BLX(33); CASE_BLX(34); CASE_BLX(35); CASE_BLX(36);
         }
             
           #endif // defined(DL_SPECIFIC_T_ONE)
 
-        if (EmbeddedListHasKey(wRoot, wKey, nBL)) {
-            goto foundIt;
-        }
+        if (EmbeddedListHasKey(wRoot, wKey, nBL)) { goto foundIt; }
 
       #else // defined(EMBEDDED_KEYS_PARALLEL)
 
