@@ -1017,9 +1017,10 @@ EmbeddedListPopCntMax(int nBL)
 
 #if defined(CODE_XX_SW)
 
-#define cnLsbLvl  cnBitsVirtAddr
 #define cnBitsLvl  6
-#define cnLsbListPopCntXorXxSwWidth  (cnLsbLvl + cnBitsLvl)
+#define cnLsbLvl  (cnBitsPerWord - cnBitsLvl)
+
+#define cnLsbListPopCntXorXxSwWidth  cnBitsVirtAddr
 #define cnLsbXxSwWidth  cnLsbListPopCntXorXxSwWidth
 #define cnBitsXxSwWidth   4
 #define cnLsbListPopCnt  cnLsbListPopCntXorXxSwWidth
