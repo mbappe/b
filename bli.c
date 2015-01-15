@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.554 2015/01/15 15:39:55 mike Exp mike $
+// @(#) $Id: bli.c,v 1.555 2015/01/15 20:24:40 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2384,14 +2384,17 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         CASE_BLX(33); CASE_BLX(34); CASE_BLX(35); CASE_BLX(36);
 
 // For key sizes which can completely fill wRoot with no left-over bits.
+      #if defined(NO_TYPE_IN_XX_SW) && defined(ALLOW_BLOW_OUTS)
 #define CASE_0_BLX(_nBL) \
         case (_nBL): \
             if ((wRoot & (EXP(63) + EXP(31) + 1)) == (EXP(63) + 1)) { \
-                printf("\nhere\n"); \
-                goto t_list; \
+                goto t_list; /* blow-out */ \
             } \
             if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
             goto break2
+      #else // defined(NO_TYPE_IN_XX_SW) && defined(ALLOW_BLOW_OUTS)
+#define CASE_0_BLX(_nBL)  CASE_BLX(_nBL)
+      #endif // defined(NO_TYPE_IN_XX_SW) && defined(ALLOW_BLOW_OUTS)
 
       #if defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
         default: assert(0); // fall to perf case if not DEBUG
@@ -2402,13 +2405,17 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         CASE_BLX(16); CASE_BLX(32); CASE_BLX(8);
       #endif // defined(NO_TYPE_IN_XX_SW)
 
+      #if defined(NO_TYPE_IN_XX_SW) && defined(ALLOW_BLOW_OUTS)
 // For key sizes which always have at least one bit but not enough for a
 // full-blown type value.
 #define CASE_1_BLX(_nBL) \
         case (_nBL): \
-            if (wRoot & 1) { goto t_list; } \
+            if (wRoot & 1) { goto t_list; /* blow-out */ } \
             if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
             goto break2
+      #else // defined(NO_TYPE_IN_XX_SW) && defined(ALLOW_BLOW_OUTS)
+#define CASE_1_BLX(_nBL)  CASE_BLX(_nBL)
+      #endif // defined(NO_TYPE_IN_XX_SW) && defined(ALLOW_BLOW_OUTS)
 
       #if ! defined(XX_SHORTCUT) || defined(XX_SHORTCUT_GOTO)
           #if (cnLogBitsPerWord == 6)
