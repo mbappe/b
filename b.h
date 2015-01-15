@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.357 2015/01/14 03:32:18 mike Exp mike $
+// @(#) $Id: b.h,v 1.358 2015/01/14 20:30:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -275,6 +275,20 @@
 #define cnBitsVirtAddr  32
 #endif // (cnBitsPerWord == 64)
 #define cwVirtAddrMask  MSK(cnBitsVirtAddr)
+
+// Bits are numbered 0-63 with 0 being the least significant.
+static inline Word_t
+GetBitField(Word_t ww, int nLsb, int nBits)
+{
+    return ww << (cnBitsPerWord - (nLsb + nBits)) >> (cnBitsPerWord - nBits);
+}
+
+static inline void
+SetBitField(Word_t *pw, int nLsb, int nBits, Word_t wVal)
+{
+    *pw &= ~(MSK(nBits) << nLsb); // clear the field
+    *pw |=  (wVal       << nLsb); // set the field
+}
 
 // Default is -DPSPLIT_PARALLEL which forces -DALIGN_LISTS -DALIGN_LIST_ENDS.
 #if ! defined(NO_PSPLIT_PARALLEL)
@@ -1003,13 +1017,21 @@ EmbeddedListPopCntMax(int nBL)
 
 #if defined(CODE_XX_SW)
 
+#define cnLsbLvl  cnBitsVirtAddr
+#define cnBitsLvl  6
+#define cnLsbListPopCntXorXxSwWidth  (cnLsbLvl + cnBitsLvl)
+#define cnLsbXxSwWidth  cnLsbListPopCntXorXxSwWidth
+#define cnBitsXxSwWidth   4
+#define cnLsbListPopCnt  cnLsbListPopCntXorXxSwWidth
+#define cnBitsListPopCnt  7
+
 // Get the width of the narrow branch in bits.
 static inline int
 pwr_nBW(Word_t *pwr)
 {
     // Might we want to get the width before the type is set?
     assert(tp_bIsXxSw(wr_nType(*pwr)));
-    return (((*pwr) >> 55) & 7) + cnBW;
+    return GetBitField(*pwr, cnLsbXxSwWidth, cnBitsXxSwWidth) + cnBW;
 }
 
 // Set the width of the narrow branch in bits.
@@ -1018,7 +1040,8 @@ set_pwr_nBW(Word_t *pwr, int nBW)
 {
     // We might want to set the width before the type.
     assert(tp_bIsXxSw(wr_nType(*pwr)));
-    *pwr = (*pwr & (~MSK(58) | MSK(55))) | ((Word_t)(nBW - cnBW) << 55);
+    assert(nBW - cnBW <= (int)MSK(cnBitsXxSwWidth));
+    SetBitField(pwr, cnLsbXxSwWidth, cnBitsXxSwWidth, nBW - cnBW);
 }
 
 #endif // defined(CODE_XX_SW)
@@ -1027,13 +1050,16 @@ set_pwr_nBW(Word_t *pwr, int nBW)
 
 #if defined(LVL_IN_WR_HB)
 
-  #define wr_nBL(_wr)  (assert(tp_bIsSkip(wr_nType(_wr))), (int)((_wr) >> 58))
+  #define wr_nBL(_wr) \
+      (assert(tp_bIsSwitch(wr_nType(_wr)) && tp_bIsSkip(wr_nType(_wr))), \
+          (int)GetBitField((_wr), cnLsbLvl, cnBitsLvl))
 
   #define wr_nDL(_wr)  nBL_to_nDL(wr_nBL(_wr))
 
   #define set_wr_nBL(_wr, _nBL) \
-          (set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
-           ((_wr) = (((_wr) & MSK(58)) | (Word_t)(_nBL) << 58)))
+      (assert((_nBL) <= (int)MSK(cnBitsLvl)), \
+          set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
+          SetBitField(&(_wr), cnLsbLvl, cnBitsLvl, (_nBL)))
 
   #define set_wr_nDL(_wr, _nDL)  set_wr_nBL((_wr), nDL_to_nBL(_nDL))
 
@@ -1407,12 +1433,11 @@ set_pwr_nBW(Word_t *pwr, int nBW)
 #if defined(POP_IN_WR_HB)
 
   #define PWR_xListPopCnt(_pwRoot, _nBL) \
-      ((int)((*(_pwRoot) >> cnBitsVirtAddr) & 0x7f))
+      ((int)GetBitField(*(_pwRoot), cnLsbListPopCnt, cnBitsListPopCnt))
 
   #define set_PWR_xListPopCnt(_pwRoot, _nBL, _cnt) \
-      (assert((_cnt) <= 0x7f), \
-       *(_pwRoot) = (*(_pwRoot) & ~(0x7fUL << cnBitsVirtAddr)) \
-                               | ((Word_t)(_cnt) << cnBitsVirtAddr))
+      (assert((_cnt) <= (int)MSK(cnBitsListPopCnt)), \
+          SetBitField((_pwRoot), cnLsbListPopCnt, cnBitsListPopCnt, (_cnt)))
 
 #else // defined(POP_IN_WR_HB)
 
