@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.469 2015/01/12 07:16:57 mike Exp mike $
+// @(#) $Id: b.c,v 1.472 2015/01/14 20:31:43 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -252,7 +252,7 @@ MyFree(Word_t *pw, Word_t wWords)
 // - followed by replicas of last key to align end of list: PSPLIT_PARALLEL
 // - followed by padding to an odd word boundary for malloc optimization
 // - followed by a marker key -1
-static unsigned
+static int
 ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 {
     (void)nBL;
@@ -466,6 +466,7 @@ NewListExternal(Word_t wPopCnt, unsigned nBL)
     }
 #endif // defined(USE_T_ONE)
 
+    assert(wPopCnt != 0);
     return NewListTypeList(wPopCnt, nBL);
 }
 
@@ -2499,9 +2500,9 @@ embeddedKeys:;
 #if defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
             || (wPopCnt < (Word_t)nEmbeddedListPopCntMax)
 #endif // defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
-            || ((nBL == cnBitsInD1) && (wPopCnt < cnListPopCntMaxDl1))
+            || ((nBL == cnBitsInD1) && ((int)wPopCnt < (int)cnListPopCntMaxDl1))
 #if defined(cnListPopCntMaxDl2)
-            || ((nBL == cnBitsLeftAtDl2) && (wPopCnt < cnListPopCntMaxDl2))
+            || ((nBL == cnBitsLeftAtDl2) && ((int)wPopCnt < (int)cnListPopCntMaxDl2))
 #endif // defined(cnListPopCntMaxDl2)
 #if defined(cnListPopCntMaxDl3)
             || ((nBL == cnBitsLeftAtDl3) && (wPopCnt < cnListPopCntMaxDl3))
@@ -2538,6 +2539,7 @@ embeddedKeys:;
                 // Allocate a new list and init pop count if pop count is
                 // in the list.  Also init the beginning of the list marker
                 // if LIST_END_MARKERS.
+                assert(wPopCnt + 1 != 0);
                 pwList = NewListTypeList(wPopCnt + 1, nBL);
 #if defined(PP_IN_LINK)
                 assert((nDL == cnDigitsPerWord)
@@ -3460,6 +3462,10 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 #endif // defined(DEBUG)
     assert(nPopCnt <= EmbeddedListPopCntMax(nBL));
 
+    if (nPopCnt == 0) {
+        printf("wRoot "OWx" nBL %d\n", wRoot, nBL);
+    }
+    assert(nPopCnt != 0);
     Word_t *pwList = NewListTypeList(nPopCnt, nBL);
 
     Word_t wBLM = MSK(nBL); // Bits left mask.
@@ -3881,6 +3887,7 @@ embeddedKeys:;
         != ListWordsTypeList(wPopCnt, nBL))
     {
         // Malloc a new, smaller list.
+        assert(wPopCnt - 1 != 0);
         pwList = NewListTypeList(wPopCnt - 1, nBL);
         // Why are we copying the old list to the new one?
         // Because the beginning will be the same.
