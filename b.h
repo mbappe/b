@@ -25,10 +25,7 @@
 #define SKIP_PREFIX_CHECK
 #endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 
-// Default is -DUSE_BM_SW.
-#if ! defined(NO_USE_BM_SW)
-  #define USE_BM_SW
-#endif // ! defined(NO_USE_BM_SW)
+// Default is -UUSE_BM_SW.
 
 // USE_BM_SW means always use a bm sw when creating a switch with no skip.
 // Default is -DBM_SW_FOR_REAL iff -DUSE_BM_SW.
@@ -73,27 +70,33 @@
 #endif // defined(CODE_XX_SW)
 
 // Default is XX_SHORTCUT if USE_XX_SW.
-// Default cnListPopCntMaxDl2 is 0 if USE_XX_SW.
-// Default cnListPopCntMax16  is 0 if USE_XX_SW.
-// Default cnListPopCntMaxDl1 is 0 if USE_XX_SW.
-// Default cnListPopCntMax8   is 0 if USE_XX_SW.
+// Default cnListPopCntMaxDl2 is 64 if USE_XX_SW.
+// Default cnListPopCntMax16  is 64 if USE_XX_SW.
+// Default cnListPopCntMaxDl1 is 16 if USE_XX_SW.
+// Default cnListPopCntMax8   is 16 if USE_XX_SW.
 #if defined(USE_XX_SW)
   #if ! defined(NO_XX_SHORTCUT)
       #define XX_SHORTCUT
   #endif // defined(NO_XX_SHORTCUT)
   #if ! defined(cnListPopCntMaxDl2)
-      #define cnListPopCntMaxDl2 0
+      #define cnListPopCntMaxDl2  64
   #endif // ! defined(cnListPopCntMaxDl2)
   #if ! defined(cnListPopCntMax16)
-      #define cnListPopCntMax16 0
+      #define cnListPopCntMax16  64
   #endif // ! defined(cnListPopCntMax16)
   #if ! defined(cnListPopCntMaxDl1)
-      #define cnListPopCntMaxDl1 0
+      #define cnListPopCntMaxDl1  16
   #endif // ! defined(cnListPopCntMaxDl1)
   #if ! defined(cnListPopCntMax8)
-      #define cnListPopCntMax8 0 
+      #define cnListPopCntMax8  16
   #endif // ! defined(cnListPopCntMax8)
 #endif // defined(USE_XX_SW)
+// Default is XX_SHORTCUT_GOTO if XX_SHORTCUT
+#if defined(XX_SHORTCUT)
+  #if ! defined(NO_XX_SHORTCUT_GOTO)
+      #define XX_SHORTCUT_GOTO
+  #endif // ! defined(NO_XX_SHORTCUT_GOTO)
+#endif // defined(XX_SHORTCUT)
 
 // Default is -DDL_SPECIFIC_T_ONE.
 #if ! defined(NO_DL_SPECIFIC_T_ONE)
