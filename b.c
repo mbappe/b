@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.472 2015/01/14 20:31:43 mike Exp mike $
+// @(#) $Id: b.c,v 1.473 2015/01/15 16:16:27 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -160,36 +160,42 @@ MyMalloc(Word_t wWords)
                 ((Word_t *)ww)[-1], ((Word_t *)ww)[-1]));
     // Validate our assumptions about dlmalloc as we prepare to use
     // some of the otherwise wasted bits.
-#if defined(DEBUG_MALLOC)
-    if ((((((Word_t *)ww)[-1] >> 4) << 1)
-            != ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
-        && (((((Word_t *)ww)[-1] >> 4) << 1)
-            != ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 2)
-        && (((((Word_t *)ww)[-1] >> 4) << 1)
-            != ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 4))
-    {
-        printf("M: Oops ww %p wWords + cnMallocExtraWords + cnGuardWords"
-               " %"_fw"d &ww[-1] %p ww[-1] "OWx" ww[-1] %"_fw"d"
-               " ((ww[-1] >> 4) << 1) %"_fw"d\n",
-               (void *)ww, wWords + cnMallocExtraWords + cnGuardWords,
-               (void *)&((Word_t *)ww)[-1],
-               ((Word_t *)ww)[-1], ((Word_t *)ww)[-1],
-               ((((Word_t *)ww)[-1] >> 4) << 1));
+    if (wWords < EXP(16)) {
+#if defined(DEBUG)
+        if ((((((Word_t *)ww)[-1] >> 4) << 1)
+                != ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
+            && (((((Word_t *)ww)[-1] >> 4) << 1) - 2
+                != ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
+            && (((((Word_t *)ww)[-1] >> 4) << 1) - 4
+                != ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2)))
+        {
+            printf("\nM: Oops ww %p (wWords + cnMallocExtraWords"
+                   " + cnGuardWords)"
+                   " %"_fw"d 0x%lx &ww[-1] %p ww[-1] "OWx" ww[-1] %"_fw"d"
+                   " ((ww[-1] >> 4) << 1) %"_fw"d 0x%lx\n\n",
+                   (void *)ww,
+                   wWords + cnMallocExtraWords + cnGuardWords,
+                   wWords + cnMallocExtraWords + cnGuardWords,
+                   (void *)&((Word_t *)ww)[-1],
+                   ((Word_t *)ww)[-1], ((Word_t *)ww)[-1],
+                   ((((Word_t *)ww)[-1] >> 4) << 1),
+                   ((((Word_t *)ww)[-1] >> 4) << 1));
+        }
+#endif // defined(DEBUG)
+        assert((((((Word_t *)ww)[-1] >> 4) << 1)
+                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
+            || (((((Word_t *)ww)[-1] >> 4) << 1) - 2
+                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
+            || (((((Word_t *)ww)[-1] >> 4) << 1) - 4
+                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2)));
+        // Save ww[-1] to make sure we can use some of the bits in the word.
+        // We are saving enough to handle mallocs up to nearly 1MB.
+        DBG(((Word_t *)ww)[-1] |= (((Word_t *)ww)[-1] >> 4) << 32);
+        assert((((Word_t *)ww)[-1] >> 32)
+           == ((((Word_t *)ww)[-1] & MSK(32)) >> 4));
+        // The following does not always hold on free.
+        assert((((Word_t *)ww)[-1] & 0x0f) == 3);
     }
-#endif // defined(DEBUG_MALLOC)
-    assert((((((Word_t *)ww)[-1] >> 4) << 1)
-            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
-        || (((((Word_t *)ww)[-1] >> 4) << 1)
-            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 2)
-        || (((((Word_t *)ww)[-1] >> 4) << 1)
-            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 4));
-    // Save ww[-1] to make sure we can use some of the bits in the word.
-    // We are saving enough to handle mallocs up to nearly 1MB.
-    DBG(((Word_t *)ww)[-1] |= (((Word_t *)ww)[-1] >> 4) << 16);
-    assert((((Word_t *)ww)[-1] >> 16)
-       == ((((Word_t *)ww)[-1] & MSK(16)) >> 4));
-    // The following does not always hold on free.
-    assert((((Word_t *)ww)[-1] & 0x0f) == 3);
     assert(ww != 0);
     assert((ww & 0xffff000000000000UL) == 0);
     assert((ww & cnMallocMask) == 0);
@@ -206,31 +212,33 @@ MyFree(Word_t *pw, Word_t wWords)
     DBGM(printf("F: "OWx" %"_fw"d words pw[-1] %p\n",
                 (Word_t)pw, wWords, (void *)pw[-1]));
     // make sure it is ok for us to use some of the bits in the word
+    if (wWords < EXP(16)) {
 #if defined(DEBUG)
-    if ((pw[-1] >> 16) != ((pw[-1] & MSK(16)) >> 4)) {
-        printf("pw %p pw[0] "OWx"\n", pw, pw[0]);
-        printf("wWords %ld pw[-1] "OWx"\n", wWords, pw[-1]);
-    }
+        if ((pw[-1] >> 32) != ((pw[-1] & MSK(32)) >> 4)) {
+            printf("pw %p pw[0] "OWx"\n", pw, pw[0]);
+            printf("wWords %ld pw[-1] "OWx"\n", wWords, pw[-1]);
+        }
 #endif // defined(DEBUG)
-    assert((pw[-1] >> 16) == ((pw[-1] & MSK(16)) >> 4));
-    DBG(pw[-1] &= MSK(16)); // restore the value expected by dlmalloc
-    if (!((((pw[-1] >> 4) << 1)
-            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
-        || (((pw[-1] >> 4) << 1)
-            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 2)
-        || (((pw[-1] >> 4) << 1)
-            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 4)))
-    {
-        printf("F: Oops (wWords + cnMallocExtraWords + cnGuardWords) 0x%lx"
-               " (pw[-1] >> 3) 0x%lx\n",
-               wWords + cnMallocExtraWords + cnGuardWords, pw[-1] >> 3);
+        assert((pw[-1] >> 32) == ((pw[-1] & MSK(32)) >> 4));
+        DBG(pw[-1] &= MSK(32)); // restore the value expected by dlmalloc
+        if (!((((pw[-1] >> 4) << 1)
+                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
+            || (((pw[-1] >> 4) << 1) - 2
+                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
+            || (((pw[-1] >> 4) << 1) - 4
+                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))))
+        {
+            printf("F: Oops (wWords + cnMallocExtraWords + cnGuardWords) 0x%lx"
+                   " (pw[-1] >> 3) 0x%lx\n",
+                   wWords + cnMallocExtraWords + cnGuardWords, pw[-1] >> 3);
+        }
+        assert((((pw[-1] >> 4) << 1)
+                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
+            || (((pw[-1] >> 4) << 1) - 2
+                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
+            || (((pw[-1] >> 4) << 1) - 4
+                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2)));
     }
-    assert((((pw[-1] >> 4) << 1)
-            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
-        || (((pw[-1] >> 4) << 1)
-            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 2)
-        || (((pw[-1] >> 4) << 1)
-            == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2) + 4));
     JudyFree(pw, wWords + cnMallocExtraWords);
 }
 
@@ -2132,12 +2140,18 @@ embeddedKeys:;
                         SetBit(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
                                (pcKeysLn[nn] & wBLM));
                     }
-                } else {
-                    assert(nBLLn <= 16);
+                } else if (nBLLn <= 16) {
                     uint16_t *psKeysLn = ls_psKeysNAT(pwrLn);
                     for (int nn = 0; nn < nPopCntLn; nn++) {
                         SetBit(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
                                (psKeysLn[nn] & wBLM));
+                    }
+                } else {
+                    assert(nBLLn <= 32);
+                    uint32_t *piKeysLn = ls_piKeysNAT(pwrLn);
+                    for (int nn = 0; nn < nPopCntLn; nn++) {
+                        SetBit(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
+                               (piKeysLn[nn] & wBLM));
                     }
                 }
             }
@@ -2500,9 +2514,11 @@ embeddedKeys:;
 #if defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
             || (wPopCnt < (Word_t)nEmbeddedListPopCntMax)
 #endif // defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
-            || ((nBL == cnBitsInD1) && ((int)wPopCnt < (int)cnListPopCntMaxDl1))
+            || ((nBL == cnBitsInD1)
+                && ((int)wPopCnt < (int)cnListPopCntMaxDl1))
 #if defined(cnListPopCntMaxDl2)
-            || ((nBL == cnBitsLeftAtDl2) && ((int)wPopCnt < (int)cnListPopCntMaxDl2))
+            || ((nBL == cnBitsLeftAtDl2)
+                && ((int)wPopCnt < (int)cnListPopCntMaxDl2))
 #endif // defined(cnListPopCntMaxDl2)
 #if defined(cnListPopCntMaxDl3)
             || ((nBL == cnBitsLeftAtDl3) && (wPopCnt < cnListPopCntMaxDl3))
@@ -2519,9 +2535,16 @@ embeddedKeys:;
 #if defined(CODE_XX_SW)
             // This block is a performance/efficiency optimization.
             // It is not necessary for "correct" behavior.
+            if (nBL == nDL_to_nBL(2)) {
+                if ((int)wPopCnt >= nEmbeddedListPopCntMax) {
+                    if ((wWordsAllocated * 100 / wPopCntTotal) < 150) {
+                        goto newSwitch;
+                    }
+                }
+            }
             if (nBL < nDL_to_nBL(2)) {
                 if ((int)wPopCnt >= nEmbeddedListPopCntMax) {
-                    if ((wWordsAllocated * 100 / wPopCntTotal) < 100) {
+                    if ((wWordsAllocated * 100 / wPopCntTotal) < 150) {
                         goto doubleIt;
                     }
                 }

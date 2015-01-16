@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.358 2015/01/14 20:30:14 mike Exp mike $
+// @(#) $Id: b.h,v 1.360 2015/01/15 14:52:33 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -1019,12 +1019,10 @@ EmbeddedListPopCntMax(int nBL)
 
 #define cnBitsLvl  6
 #define cnLsbLvl  (cnBitsPerWord - cnBitsLvl)
-
-#define cnLsbListPopCntXorXxSwWidth  cnBitsVirtAddr
-#define cnLsbXxSwWidth  cnLsbListPopCntXorXxSwWidth
-#define cnBitsXxSwWidth   4
-#define cnLsbListPopCnt  cnLsbListPopCntXorXxSwWidth
-#define cnBitsListPopCnt  7
+#define cnBitsXxSwWidth   6
+#define cnLsbXxSwWidth  (cnBitsPerWord - cnBitsXxSwWidth)
+#define cnBitsListPopCnt  10
+#define cnLsbListPopCnt (cnBitsPerWord - cnBitsListPopCnt)
 
 // Get the width of the narrow branch in bits.
 static inline int

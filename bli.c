@@ -844,6 +844,14 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     (void)nBL; (void)pwRoot;
 
   #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
+      #if defined(DEBUG)
+    // By simply setting nPopCnt = 16 here we are assuming, while not
+    // ensuring, that pop count never exceeds 16 here.
+    // We do it because reading the pop count is so much slower.
+    if (ls_xPopCnt(pwr, 8) > 16) {
+        printf("\nnBL %d ls_xPopCnt(pwr, 8) %d\n", nBL, ls_xPopCnt(pwr, 8));
+    }
+      #endif // defined(DEBUG)
     assert(ls_xPopCnt(pwr, 8) <= 16);
     int nPopCnt = 16; // Sixteen fit so why do less?
   #else // defined(PARALLEL_128)
@@ -1240,11 +1248,13 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
       #endif // (cnBitsInD1 <= 8)
       #if (cnBitsInD1 <= 16)
     if (nBL <= 16) {
+        assert(nBL > 8);
         nPos = SearchList16(pwRoot, pwr, wKey, nBL);
     } else
       #endif // (cnBitsInD1 <= 16)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {
+        assert(nBL > 16);
           #if defined(PP_IN_LINK)
         nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
           #else // defined(PP_IN_LINK)
@@ -1603,28 +1613,61 @@ again:;
     {
         // pwr points to a switch
 
-        if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL,
+        // Looks to me like PrefixMismatch has no performance issues with
+        // not all digits being the same size.  It doesn't care.
+        // But it does use nBL a couple of times.  Maybe it would help to
+        // have bl tests here and call with a constant.  Possibly more
+        // interestingly it does compare nBL to cnBitsPerWord.
+        if (nBL == cnBitsPerWord) {
+            if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, cnBitsPerWord,
 #if defined(CODE_BM_SW)
-                           /* bBmSw */ 0,
+                               /* bBmSw */ 0,
 #endif // defined(CODE_BM_SW)
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-                           &bNeedPrefixCheck,
-      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-      #if defined(SAVE_PREFIX)
-          #if defined(PP_IN_LINK)
-                           &pwRootPrefix,
-          #else // defined(PP_IN_LINK)
-                           &pwrPrefix,
-          #endif // defined(PP_IN_LINK)
-                           &nBLRPrefix,
-      #elif defined(SAVE_PREFIX_TEST_RESULT)
-                           &bPrefixMismatch,
-      #endif // defined(SAVE_PREFIX)
+          #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+                               &bNeedPrefixCheck,
+          #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+          #if defined(SAVE_PREFIX)
+              #if defined(PP_IN_LINK)
+                               &pwRootPrefix,
+              #else // defined(PP_IN_LINK)
+                               &pwrPrefix,
+              #endif // defined(PP_IN_LINK)
+                               &nBLRPrefix,
+          #elif defined(SAVE_PREFIX_TEST_RESULT)
+                               &bPrefixMismatch,
+          #endif // defined(SAVE_PREFIX)
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-                           &nBLR))
-        {
-            break;
+                               &nBLR))
+            {
+                break;
+            }
+        } else {
+            // This is rare.  If we ever care, we could improve performance
+            // by adding PrefixMismatchNAT.
+            if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL,
+#if defined(CODE_BM_SW)
+                               /* bBmSw */ 0,
+#endif // defined(CODE_BM_SW)
+  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+          #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+                               &bNeedPrefixCheck,
+          #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+          #if defined(SAVE_PREFIX)
+              #if defined(PP_IN_LINK)
+                               &pwRootPrefix,
+              #else // defined(PP_IN_LINK)
+                               &pwrPrefix,
+              #endif // defined(PP_IN_LINK)
+                               &nBLRPrefix,
+          #elif defined(SAVE_PREFIX_TEST_RESULT)
+                               &bPrefixMismatch,
+          #endif // defined(SAVE_PREFIX)
+  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+                               &nBLR))
+            {
+                break;
+            }
         }
 
         // Logically, if we could arrange the source code accordingly,
@@ -1646,25 +1689,51 @@ again:;
 
     case T_SKIP_TO_BM_SW:
     {
-        if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL, /* bBmSw */ 1,
+        if (nBL == cnBitsPerWord) {
+            if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, cnBitsPerWord,
+                               /* bBmSw */ 1,
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-                           &bNeedPrefixCheck,
-      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-      #if defined(SAVE_PREFIX)
-          #if defined(PP_IN_LINK)
-                           &pwRootPrefix,
-          #else // defined(PP_IN_LINK)
-                           &pwrPrefix,
-          #endif // defined(PP_IN_LINK)
-                           &nBLRPrefix,
-      #elif defined(SAVE_PREFIX_TEST_RESULT)
-                           &bPrefixMismatch,
-      #endif // defined(SAVE_PREFIX)
+          #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+                               &bNeedPrefixCheck,
+          #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+          #if defined(SAVE_PREFIX)
+              #if defined(PP_IN_LINK)
+                               &pwRootPrefix,
+              #else // defined(PP_IN_LINK)
+                               &pwrPrefix,
+              #endif // defined(PP_IN_LINK)
+                               &nBLRPrefix,
+          #elif defined(SAVE_PREFIX_TEST_RESULT)
+                               &bPrefixMismatch,
+          #endif // defined(SAVE_PREFIX)
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-                           &nBLR))
-        {
-            break;
+                               &nBLR))
+            {
+                break;
+            }
+        } else {
+            // This is rare.  If we ever care, we could improve performance
+            // by adding PrefixMismatchNAT.
+            if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL, /* bBmSw */ 1,
+  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+          #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+                               &bNeedPrefixCheck,
+          #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+          #if defined(SAVE_PREFIX)
+              #if defined(PP_IN_LINK)
+                               &pwRootPrefix,
+              #else // defined(PP_IN_LINK)
+                               &pwrPrefix,
+              #endif // defined(PP_IN_LINK)
+                               &nBLRPrefix,
+          #elif defined(SAVE_PREFIX_TEST_RESULT)
+                               &bPrefixMismatch,
+          #endif // defined(SAVE_PREFIX)
+  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+                               &nBLR))
+            {
+                break;
+            }
         }
 
         goto t_bm_sw;
@@ -1720,6 +1789,12 @@ t_switch:;
 #if ! defined(LOOKUP)
         nBLUp = nBL; // save nBL before updating for use in this case only
 #endif // ! defined(LOOKUP)
+        // This assertion is a reminder that the NAX in the line below and
+        // possibly later in this case are cheating.
+        // The NAX assumes our test program doesn't generate any keys
+        // that have bits set in the top digit.
+        // It's really only legitimate to use NAB.
+        assert(nBLR != cnBitsPerWord);
         nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBLR);
 
         Word_t wIndex = ((wKey >> nBL)
@@ -1763,13 +1838,16 @@ switchTail:;
         // preserve the value of pwr.
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-#if ! defined(USE_XX_SW)
+#if defined(USE_XX_SW)
+        assert(nBL > (int)LOG(sizeof(Link_t) * 8));
+#else // defined(USE_XX_SW)
         // this test is done at compile time and might make the rest go away
         if (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
-#endif // ! defined(USE_XX_SW)
-        if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
+            && (nBL <= (int)LOG(sizeof(Link_t) * 8))
+        {
             goto t_bitmap;
         }
+#endif // defined(USE_XX_SW)
         DBGX(printf("Next pwRoot %p wRoot "OWx" nBL %d\n",
                     (void *)pwRoot, wRoot, nBL));
 
@@ -1956,6 +2034,12 @@ t_bm_sw:;
   #if defined(BM_SW_FOR_REAL) || ! defined(LOOKUP)
         nBLUp = nBL;
   #endif // defined(BM_SW_FOR_REAL) || ! defined(LOOKUP)
+        // This assertion is a reminder that the NAX in the line below and
+        // possibly later in this case are cheating.
+        // The NAX assumes our test program doesn't generate any keys
+        // that have bits set in the top digit.
+        // It's really only legitimate to use NAB.
+        assert(nBLR != cnBitsPerWord);
         nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBL);
 
         Word_t wIndex = ((wKey >> nBL)
@@ -2288,6 +2372,14 @@ t_bitmap:;
               #endif // defined(PP_IN_LINK)
             return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
+      #if defined(USE_XX_SW)
+            // We assume we never blow-out into a bitmap.
+            // But we don't really enforce it.
+            assert(nBL == cnBitsLeftAtDl2);
+            int bBitIsSet = BitIsSet(wr_pwr(wRoot),
+                                     wKey & MSK(cnBitsLeftAtDl2));
+      #else // defined(USE_XX_SW)
+            // Might be able to speed this up with bl-specific code.
             int bBitIsSet
                 = (cnBitsInD1 <= cnLogBitsPerWord)
                     ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
@@ -2295,6 +2387,7 @@ t_bitmap:;
                     ? BitIsSet(STRUCT_OF(pwRoot, Link_t, ln_wRoot),
                                wKey & MSK(cnBitsInD1))
                 : BitIsSet(wr_pwr(wRoot), wKey & MSK(nBL));
+      #endif // defined(USE_XX_SW)
             if (bBitIsSet)
             {
       #if defined(REMOVE)
@@ -2388,7 +2481,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 #define CASE_0_BLX(_nBL) \
         case (_nBL): \
             if ((wRoot & (EXP(63) + EXP(31) + 1)) == (EXP(63) + 1)) { \
-                goto t_list; /* blow-out */ \
+                goto t_list; \
             } \
             if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
             goto break2
@@ -2410,7 +2503,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 // full-blown type value.
 #define CASE_1_BLX(_nBL) \
         case (_nBL): \
-            if (wRoot & 1) { goto t_list; /* blow-out */ } \
+            if (wRoot & 1) { goto t_list; } \
             if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
             goto break2
       #else // defined(NO_TYPE_IN_XX_SW) && defined(ALLOW_BLOW_OUTS)
@@ -2780,7 +2873,8 @@ Initialize(void)
     }
 
     // Make sure pwr_nBW field is big enough.
-    assert((cnBitsLeftAtDl2 - cnBW - (cnLogBitsPerWord + 1)) <= 7);
+    assert((cnBitsLeftAtDl2 - cnBW - (cnLogBitsPerWord + 1))
+        <= MSK(cnBitsXxSwWidth));
 
 #if defined(BPD_TABLE_RUNTIME_INIT)
     for (unsigned nDL = 0;
