@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.362 2015/01/16 18:51:39 mike Exp mike $
+// @(#) $Id: b.h,v 1.363 2015/01/17 14:57:25 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -940,9 +940,11 @@ static inline int
 wr_nPopCnt(Word_t wRoot, int nBL)
 {
     (void)nBL;
-#if ! defined(PAD_T_ONE)
-    if ((wRoot == ZERO_POP_MAGIC) && (nBL < 28)) { return 0; }
-#endif // ! defined(PAD_T_ONE)
+#if defined(NO_TYPE_IN_XX_SW)
+    if (nBL < nDL_to_nBL(2)) {
+        if (wRoot == ZERO_POP_MAGIC) { return 0; }
+    }
+#endif // defined(NO_TYPE_IN_XX_SW)
     Word_t wKeys = wRoot;
 #if defined(NO_TYPE_IN_XX_SW)
     if (nBL >= nDL_to_nBL(2))
