@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.360 2015/01/15 14:52:33 mike Exp mike $
+// @(#) $Id: b.h,v 1.362 2015/01/16 18:51:39 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -69,26 +69,34 @@
   #endif // ! defined(cnBWIncr)
 #endif // defined(CODE_XX_SW)
 
+// Default is NO_TYPE_IN_XX_SW if USE_XX_SW.
+#if defined(USE_XX_SW)
+  #if ! defined(TYPE_IN_XX_SW)
+      #define NO_TYPE_IN_XX_SW
+  #endif // defined(TYPE_IN_XX)
+#endif // defined(USE_XX_SW)
+
+
 // Default is XX_SHORTCUT if USE_XX_SW.
-// Default cnListPopCntMaxDl2 is 64 if USE_XX_SW.
-// Default cnListPopCntMax16  is 64 if USE_XX_SW.
-// Default cnListPopCntMaxDl1 is 16 if USE_XX_SW.
-// Default cnListPopCntMax8   is 16 if USE_XX_SW.
+// Default cnListPopCntMaxDl2 is 0 if USE_XX_SW.
+// Default cnListPopCntMax16  is 0 if USE_XX_SW.
+// Default cnListPopCntMaxDl1 is 0 if USE_XX_SW.
+// Default cnListPopCntMax8   is 0 if USE_XX_SW.
 #if defined(USE_XX_SW)
   #if ! defined(NO_XX_SHORTCUT)
       #define XX_SHORTCUT
   #endif // defined(NO_XX_SHORTCUT)
   #if ! defined(cnListPopCntMaxDl2)
-      #define cnListPopCntMaxDl2  64
+      #define cnListPopCntMaxDl2  0
   #endif // ! defined(cnListPopCntMaxDl2)
   #if ! defined(cnListPopCntMax16)
-      #define cnListPopCntMax16  64
+      #define cnListPopCntMax16  0
   #endif // ! defined(cnListPopCntMax16)
   #if ! defined(cnListPopCntMaxDl1)
-      #define cnListPopCntMaxDl1  16
+      #define cnListPopCntMaxDl1  0
   #endif // ! defined(cnListPopCntMaxDl1)
   #if ! defined(cnListPopCntMax8)
-      #define cnListPopCntMax8  16
+      #define cnListPopCntMax8  0
   #endif // ! defined(cnListPopCntMax8)
 #endif // defined(USE_XX_SW)
 // Default is XX_SHORTCUT_GOTO if XX_SHORTCUT

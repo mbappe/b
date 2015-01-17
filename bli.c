@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.555 2015/01/15 20:24:40 mike Exp mike $
+// @(#) $Id: bli.c,v 1.557 2015/01/16 18:13:57 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -828,7 +828,19 @@ HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 #if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
 #if ! defined(LOOKUP_NO_LIST_SEARCH) || ! defined(LOOKUP)
 
-#if defined(COMPRESSED_LISTS) && (cnBitsInD1 <= 8)
+#if defined(COMPRESSED_LISTS)
+
+  #if defined(COMPRESSED_LISTS)
+      #if ! defined(USE_XX_SW) || ! defined(NO_TYPE_IN_XX_SW)
+                  // smallest key size is one bigger than
+                  // whatever size yields a bitmap that will
+                  // fit in a link.
+          #if ( ! defined(USE_XX_SW) \
+                  && (cnBitsInD1 <= 8) && (cnListPopCntMaxDl1 > 7)) \
+              || (defined(USE_XX_SW) \
+                  /* && (LOG(sizeof(Link_t)) <= 4) */ \
+                  && ((cnListPopCntMax8 > 7) \
+                      || ((cnBitsInD1 <= 8) && (cnListPopCntMaxDl1 > 7))))
 
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
@@ -892,9 +904,16 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     return nPos;
 }
 
-#endif // defined(COMPRESSED_LISTS) && (cnBitsInD1 <= 8)
+          #endif
+      #endif
+  #endif
 
-#if defined(COMPRESSED_LISTS) && (cnBitsInD1 <= 16)
+#endif // defined(COMPRESSED_LISTS)
+
+#if defined(COMPRESSED_LISTS)
+
+      #if (cnBitsInD1 <= 16)
+          #if (cnListPopCntMaxDl2 > 3) || (cnListPopCntMax16 > 3)
 
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
@@ -976,7 +995,10 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     return nPos;
 }
 
-#endif // defined(COMPRESSED_LISTS) && (cnBitsInD1 <= 16)
+          #endif // (cnListPopCntMaxDl2 > 3) || (cnListPopCntMax16 > 3)
+      #endif // (cnBitsInD1 <= 16)
+
+#endif // defined(COMPRESSED_LISTS)
 
 #if defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) \
     && (cnBitsInD1 <= 32)
@@ -1241,16 +1263,28 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
     int nPos;
 
   #if defined(COMPRESSED_LISTS)
-      #if (cnBitsInD1 <= 8)
+      #if ! defined(USE_XX_SW) || ! defined(NO_TYPE_IN_XX_SW)
+                  // smallest key size is one bigger than
+                  // whatever size yields a bitmap that will
+                  // fit in a link.
+          #if ( ! defined(USE_XX_SW) \
+                  && (cnBitsInD1 <= 8) && (cnListPopCntMaxDl1 > 7)) \
+              || (defined(USE_XX_SW) \
+                  /* && (LOG(sizeof(Link_t)) <= 4) */ \
+                  && ((cnListPopCntMax8 > 7) \
+                      || ((cnBitsInD1 <= 8) && (cnListPopCntMaxDl1 > 7))))
     if (nBL <= 8) {
         nPos = SearchList8(pwRoot, pwr, wKey, nBL);
     } else
-      #endif // (cnBitsInD1 <= 8)
+          #endif // ...
+      #endif // ! defined(USE_XX_SW) || ! defined(NO_TYPE_IN_XX_SW)
       #if (cnBitsInD1 <= 16)
+          #if (cnListPopCntMaxDl2 > 3) || (cnListPopCntMax16 > 3)
     if (nBL <= 16) {
         assert(nBL > 8);
         nPos = SearchList16(pwRoot, pwr, wKey, nBL);
     } else
+         #endif // cnListPopCntMaxDl2 ...
       #endif // (cnBitsInD1 <= 16)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {
@@ -2905,7 +2939,7 @@ Initialize(void)
 #endif // defined(BM_IN_LINK)
 
     for (int nBL = nDL_to_nBL(2); nBL > cnLogBitsPerWord; --nBL) {
-        printf("EmbeddedListPopCntMax(%d) %d\n", nBL,
+        printf("# EmbeddedListPopCntMax(%d) %d\n", nBL,
                 EmbeddedListPopCntMax(nBL));
     }
 
@@ -2990,6 +3024,36 @@ Initialize(void)
 #else // defined(PP_IN_LINK)
     printf("# NO PP_IN_LINK\n");
 #endif // defined(PP_IN_LINK)
+
+#if defined(CODE_XX_SW)
+    printf("# CODE_XX_SW\n");
+#else // defined(CODE_XX_SW)
+    printf("# NO CODE_XX_SW\n");
+#endif // defined(CODE_XX_SW)
+
+#if defined(USE_XX_SW)
+    printf("# USE_XX_SW\n");
+#else // defined(USE_XX_SW)
+    printf("# NO USE_XX_SW\n");
+#endif // defined(USE_XX_SW)
+
+#if defined(XX_SHORTCUT)
+    printf("# XX_SHORTCUT\n");
+#else // defined(XX_SHORTCUT)
+    printf("# NO XX_SHORTCUT\n");
+#endif // defined(XX_SHORTCUT)
+
+#if defined(XX_SHORTCUT_GOTO)
+    printf("# XX_SHORTCUT_GOTO\n");
+#else // defined(XX_SHORTCUT_GOTO)
+    printf("# NO XX_SHORTCUT_GOTO\n");
+#endif // defined(XX_SHORTCUT_GOTO)
+
+#if defined(NO_TYPE_IN_XX_SW)
+    printf("# NO_TYPE_IN_XX_SW\n");
+#else // defined(NO_TYPE_IN_XX_SW)
+    printf("# NO NO_TYPE_IN_XX_SW\n");
+#endif // defined(NO_TYPE_IN_XX_SW)
 
     printf("\n");
 
