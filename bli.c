@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.557 2015/01/16 18:13:57 mike Exp mike $
+// @(#) $Id: bli.c,v 1.558 2015/01/17 14:57:25 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1367,7 +1367,7 @@ static int // bool
 EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 {
 #if defined(USE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
-    if ((nBL < nDL_to_nBL(2)) && (wRoot == ZERO_POP_MAGIC)) { return 0; }
+    assert((wRoot != ZERO_POP_MAGIC) || (nBL >= nDL_to_nBL(2)));
 #else // defined(USE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
     assert(wRoot != 0); // I wonder if there is opportunity here.
 #endif // defined(USE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
@@ -1829,7 +1829,8 @@ t_switch:;
         // that have bits set in the top digit.
         // It's really only legitimate to use NAB.
         assert(nBLR != cnBitsPerWord);
-        nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBLR);
+        //nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBLR);
+        nBL = nBLR - nBW_from_nBL_NAB3(nBLR);
 
         Word_t wIndex = ((wKey >> nBL)
             // It is ok to use NAX here even though we might be at top because
@@ -2021,7 +2022,7 @@ t_xx_sw:;
 
         assert(nBL < nDL_to_nBL(2)); // this is the XX_SW boundary
   #if defined(NO_TYPE_IN_XX_SW)
-        // ZERO_POP_MAGIC is handled in wr_nPopCnt in t_embedded_keys.
+        // ZERO_POP_MAGIC is handled in t_embedded_keys.
         // Blow-ups are handled in t_embedded_keys.
         goto t_embedded_keys;
   #else // defined(NO_TYPE_IN_XX_SW)
@@ -2074,7 +2075,8 @@ t_bm_sw:;
         // that have bits set in the top digit.
         // It's really only legitimate to use NAB.
         assert(nBLR != cnBitsPerWord);
-        nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBL);
+        //nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBL);
+        nBL = nBLR - nBW_from_nBL_NAB3(nBLR);
 
         Word_t wIndex = ((wKey >> nBL)
             // It is ok to use NAX here even though we might be at top because
@@ -2490,18 +2492,83 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 
           #if defined(DL_SPECIFIC_T_ONE)
 
+#if defined(NO_TYPE_IN_XX_SW)
+
+#define CASE_BLX(_nBL) \
+        case (_nBL): \
+            if ((_nBL) < nDL_to_nBL(2)) { \
+                if (wRoot == ZERO_POP_MAGIC) { goto break2; } \
+            } \
+            if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
+            goto break2
+
+#if defined(HANDLE_BLOW_OUTS)
+// We haven't written the insert code to create blow-outs for
+// NO_TYPE_IN_XX_SW yet.
+#define HANDLE_BLOW_OUT { nType = T_LIST; pwr = wr_pwr(wRoot); goto t_list; }
+#else // defined(HANDLE_BLOW_OUTS)
+#define HANDLE_BLOW_OUT
+#endif // defined(HANDLE_BLOW_OUTS)
+
+#define BASE_MASK  (EXP(cnBitsPerWord - 1) + cnMallocMask)
+// For key sizes which can completely fill wRoot with no left-over bits.
+#define CASE_0_BLX(_nBL) \
+        case (_nBL): \
+            if ((_nBL) < nDL_to_nBL(2)) { \
+                if (wRoot == ZERO_POP_MAGIC) { goto break2; } \
+                if ((wRoot & (BASE_MASK + EXP(cnBitsPerWord - (_nBL) - 1))) \
+                    == ZERO_POP_MAGIC) \
+                { \
+                    /* this is where we would handle blow-outs */ \
+                    assert(wr_pwr(wRoot) != 0); \
+                    assert(0); /* shouldn't see this yet */ \
+                    HANDLE_BLOW_OUT; \
+                } \
+            } \
+            if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
+            goto break2
+
+// For key sizes which always have at least one bit but not enough for a
+// full-blown type value.
+#define CASE_1_BLX(_nBL) \
+        case (_nBL): \
+            if ((_nBL) < nDL_to_nBL(2)) { \
+                if (wRoot == ZERO_POP_MAGIC) { goto break2; } \
+                if (wRoot & 1) { \
+                    /* this is where we would handle blow-outs */ \
+                    assert(wr_pwr(wRoot) != 0); \
+                    assert(0); /* shouldn't see this yet */ \
+                    HANDLE_BLOW_OUT; \
+                } \
+            } \
+            if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
+            goto break2
+
+#else // defined(NO_TYPE_IN_XX_SW)
+
 #define CASE_BLX(_nBL) \
         case (_nBL): \
             if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
             goto break2
 
+#define CASE_0_BLX(_nBL)  CASE_BLX(_nBL)
+#define CASE_1_BLX(_nBL)  CASE_BLX(_nBL)
+
+#endif // defined(NO_TYPE_IN_XX_SW)
+
         switch (nBL) {
-      #if ! defined(XX_SHORTCUT) || defined(XX_SHORTCUT_GOTO)
-          #if (cnLogBitsPerWord == 5)
         default: assert(0); // fall to perf case if not DEBUG
+      #if defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
+        CASE_0_BLX(16); CASE_BLX( 6); CASE_1_BLX(7);
+      #else // defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
+          #if (cnLogBitsPerWord == 5)
+        CASE_BLX( 6); CASE_1_BLX(7);
+          #else // (cnLogBitsPerWord == 5)
+        CASE_1_BLX(7); CASE_BLX( 6);
           #endif // (cnLogBitsPerWord == 5)
-      #endif // ! defined(XX_SHORTCUT) || defined(XX_SHORTCUT_GOTO)
-        CASE_BLX( 6);
+        CASE_0_BLX(16);
+      #endif // defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
+
         CASE_BLX( 0); CASE_BLX( 1); CASE_BLX( 2); CASE_BLX( 3); CASE_BLX( 4);
         CASE_BLX( 5); CASE_BLX(10); CASE_BLX(11);
         CASE_BLX(12); CASE_BLX(13); CASE_BLX(14); CASE_BLX(15);
@@ -2510,50 +2577,8 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         CASE_BLX(27); CASE_BLX(28); CASE_BLX(29); CASE_BLX(30);
         CASE_BLX(33); CASE_BLX(34); CASE_BLX(35); CASE_BLX(36);
 
-// For key sizes which can completely fill wRoot with no left-over bits.
-      #if defined(NO_TYPE_IN_XX_SW) && defined(ALLOW_BLOW_OUTS)
-#define CASE_0_BLX(_nBL) \
-        case (_nBL): \
-            if ((wRoot & (EXP(63) + EXP(31) + 1)) == (EXP(63) + 1)) { \
-                goto t_list; \
-            } \
-            if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
-            goto break2
-      #else // defined(NO_TYPE_IN_XX_SW) && defined(ALLOW_BLOW_OUTS)
-#define CASE_0_BLX(_nBL)  CASE_BLX(_nBL)
-      #endif // defined(NO_TYPE_IN_XX_SW) && defined(ALLOW_BLOW_OUTS)
-
-      #if defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
-        default: assert(0); // fall to perf case if not DEBUG
-      #endif // defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
-      #if defined(NO_TYPE_IN_XX_SW)
-        CASE_0_BLX(16); CASE_0_BLX(32); CASE_0_BLX(8);
-      #else // defined(NO_TYPE_IN_XX_SW)
-        CASE_BLX(16); CASE_BLX(32); CASE_BLX(8);
-      #endif // defined(NO_TYPE_IN_XX_SW)
-
-      #if defined(NO_TYPE_IN_XX_SW) && defined(ALLOW_BLOW_OUTS)
-// For key sizes which always have at least one bit but not enough for a
-// full-blown type value.
-#define CASE_1_BLX(_nBL) \
-        case (_nBL): \
-            if (wRoot & 1) { goto t_list; } \
-            if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
-            goto break2
-      #else // defined(NO_TYPE_IN_XX_SW) && defined(ALLOW_BLOW_OUTS)
-#define CASE_1_BLX(_nBL)  CASE_BLX(_nBL)
-      #endif // defined(NO_TYPE_IN_XX_SW) && defined(ALLOW_BLOW_OUTS)
-
-      #if ! defined(XX_SHORTCUT) || defined(XX_SHORTCUT_GOTO)
-          #if (cnLogBitsPerWord == 6)
-        default: assert(0); // fall to perf case if not DEBUG
-          #endif // (cnLogBitsPerWord == 6)
-      #endif // ! defined(XX_SHORTCUT) || defined(XX_SHORTCUT_GOTO)
-      #if defined(NO_TYPE_IN_XX_SW)
-        CASE_1_BLX(7); CASE_1_BLX(9); CASE_1_BLX(21); CASE_1_BLX(31);
-      #else // defined(NO_TYPE_IN_XX_SW)
-        CASE_BLX(7); CASE_BLX(9); CASE_BLX(21); CASE_BLX(31);
-      #endif // defined(NO_TYPE_IN_XX_SW)
+        CASE_0_BLX( 8); CASE_0_BLX(32);
+        CASE_1_BLX( 9); CASE_1_BLX(21); CASE_1_BLX(31);
         }
             
           #endif // defined(DL_SPECIFIC_T_ONE)

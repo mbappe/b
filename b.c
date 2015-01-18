@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.473 2015/01/15 16:16:27 mike Exp mike $
+// @(#) $Id: b.c,v 1.474 2015/01/16 18:13:57 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -704,10 +704,17 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
     {
         memset(pwr_pLinks((Switch_t *)pwr), 0, wLinks * sizeof(Link_t));
 #if defined(NO_TYPE_IN_XX_SW)
+        // The links in a switch at nDL_to_nBL(2) have nBL < nDL_to_nBL(2).
+        // Hence the '=' in the '<=' here.
         if (nBL <= nDL_to_nBL(2)) {
             DBGR(printf("NS: Init ln_wRoots.\n"));
             for (int nn = 0; nn < (int)wLinks; ++nn) {
-                pwr_pLinks((Switch_t *)pwr)[nn].ln_wRoot = ZERO_POP_MAGIC;
+                if ((nBL - nBitsIndexSz) == 8) {
+                    pwr_pLinks((Switch_t *)pwr)[nn].ln_wRoot
+                        = EXP(63) + T_EMBEDDED_KEYS;
+                } else {
+                    pwr_pLinks((Switch_t *)pwr)[nn].ln_wRoot = ZERO_POP_MAGIC;
+                }
             }
             DBGR(printf("NS: Done init ln_wRoots.\n"));
         }
@@ -1367,10 +1374,16 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
 
 #if defined(NO_TYPE_IN_XX_SW)
     if (nBL < nDL_to_nBL(2)) {
-        if (wRoot == ZERO_POP_MAGIC) {
-            //DBG(printf("FAG: ZERO_POP_MAGIC.\n"));
-            return 0;
+        if (nBL == 8) {
+            if ((wRoot & ((0x808UL << 52) + cnMallocMask))
+                == (EXP(63) + T_EMBEDDED_KEYS))
+            {
+                return 0;
+            }
+        } else {
+            if (wRoot == ZERO_POP_MAGIC) { return 0; }
         }
+
         //DBG(printf("FAG: goto embeddedKeys.\n"));
         if (bDump) {
             printf(" wPrefix "OWx, wPrefix);
@@ -2194,8 +2207,14 @@ InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
     Word_t wRootOld = *pwRootOld;
 #if defined(NO_TYPE_IN_XX_SW)
     if (nBLOld < nDL_to_nBL(2)) {
-        if (wRootOld == ZERO_POP_MAGIC) {
-            return;
+        if (nBLOld == 8) {
+            if ((wRootOld & ((0x808UL << 52) + cnMallocMask))
+                == (EXP(63) + T_EMBEDDED_KEYS))
+            {
+                return;
+            }
+        } else {
+            if (wRootOld == ZERO_POP_MAGIC) { return; }
         }
         goto embeddedKeys;
     }
@@ -2505,7 +2524,8 @@ embeddedKeys:;
         if ((nBL < nDL_to_nBL(2))
             && (wPopCnt == (Word_t)nEmbeddedListPopCntMax))
         {
-            DBGR(printf("IG: goto doubleIt.\n"));
+            DBGR(printf("IG: goto doubleIt nBL %d cnt %d max %d.\n",
+                        nBL, (int)wPopCnt, nEmbeddedListPopCntMax));
             goto doubleIt;
         }
   #endif // defined(NO_TYPE_IN_XX_SW)
@@ -2533,18 +2553,29 @@ embeddedKeys:;
                 && ((int)wPopCnt < anListPopCntMax[LOG(nBL - 1)])))
         {
 #if defined(CODE_XX_SW)
+#if ! defined(cnXxSwWpkPercent)
+#define cnXxSwWpkPercent  150
+#endif // ! defined(cnXxSwWpkPercent)
             // This block is a performance/efficiency optimization.
             // It is not necessary for "correct" behavior.
+            // It is only relevant if ifdefs allow for a blow-out.
+            // This is possible if ! defined(NO_TYPE_IN_XX_SW).
+            // We haven't written the blow-up creation code for
+            // NO_TYPE_IN_XX_SW yet.
             if (nBL == nDL_to_nBL(2)) {
                 if ((int)wPopCnt >= nEmbeddedListPopCntMax) {
-                    if ((wWordsAllocated * 100 / wPopCntTotal) < 150) {
+                    if ((wWordsAllocated * 100 / wPopCntTotal)
+                            < cnXxSwWpkPercent)
+                    {
                         goto newSwitch;
                     }
                 }
             }
             if (nBL < nDL_to_nBL(2)) {
                 if ((int)wPopCnt >= nEmbeddedListPopCntMax) {
-                    if ((wWordsAllocated * 100 / wPopCntTotal) < 150) {
+                    if ((wWordsAllocated * 100 / wPopCntTotal)
+                            < cnXxSwWpkPercent)
+                    {
                         goto doubleIt;
                     }
                 }
@@ -3456,9 +3487,14 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 
 #if defined(NO_TYPE_IN_XX_SW)
     if (nBL < nDL_to_nBL(2)) {
-        if (wRoot == ZERO_POP_MAGIC) {
-            DBGR(printf("IEL: ZERO_POP_MAGIC.\n"));
-            return wRoot = 0; // T_NULL or T_LIST
+        if (nBL == 8) {
+            if ((wRoot & ((0x808UL << 52) + cnMallocMask))
+                == (EXP(63) + T_EMBEDDED_KEYS))
+            {
+                return 0;
+            }
+        } else {
+            if (wRoot == ZERO_POP_MAGIC) { return 0; }
         }
     }
 #else // defined(NO_TYPE_IN_XX_SW)
@@ -3479,8 +3515,9 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 #if defined(DEBUG)
     if (nPopCnt > EmbeddedListPopCntMax(nBL))
     {
-        printf("nPopCnt %d nBitsPopCntSz %d\n",
-               nPopCnt, nBL_to_nBitsPopCntSz(nBL));
+        printf("wRoot "OWx" nBL %d nPopCnt %d Max %d nBitsPopCntSz %d\n",
+               wRoot, nBL, nPopCnt, EmbeddedListPopCntMax(nBL),
+               nBL_to_nBitsPopCntSz(nBL));
     }
 #endif // defined(DEBUG)
     assert(nPopCnt <= EmbeddedListPopCntMax(nBL));
@@ -3571,15 +3608,16 @@ DeflateExternalList(Word_t *pwRoot,
 #endif // defined(COMPRESSED_LISTS)
 
 #if defined(NO_TYPE_IN_XX_SW)
-        if (nBL >= nDL_to_nBL(2))
+        if (nBL < nDL_to_nBL(2)) {
+            assert(nPopCnt != 0);
+        } else
 #endif // defined(NO_TYPE_IN_XX_SW)
         {
+            assert(nPopCnt != 0);
             set_wr_nType(wRoot, T_EMBEDDED_KEYS);
             set_wr_nPopCnt(wRoot, nBL, nPopCnt); // no-op if NO_TYPE_IN_XX_SW
         }
-#if defined(NO_TYPE_IN_XX_SW)
-        else { DBGR(printf("DEL: skip setting of type.\n")); }
-#endif // defined(NO_TYPE_IN_XX_SW)
+        assert(nPopCnt != 0);
 
         Word_t wBLM = MSK(nBL);
 #if defined(COMPRESSED_LISTS)
@@ -3661,6 +3699,9 @@ DBGR(printf("DEL: pcKeys[%d] 0x%04x\n", nn-1, pcKeys[nn-1]));
     }
 
     OldList(pwr, nPopCnt, nBL, T_LIST);
+
+    goto done;
+done:;
 
     *pwRoot = wRoot;
 
@@ -3881,7 +3922,13 @@ embeddedKeys:;
     if (wPopCnt == 1) {
         OldList(pwr, wPopCnt, nBL, nType);
 #if defined(NO_TYPE_IN_XX_SW)
-        if (nBL < nDL_to_nBL(2)) { *pwRoot = ZERO_POP_MAGIC; } else
+        if (nBL < nDL_to_nBL(2)) {
+            if (nBL == 8) {
+                *pwRoot = EXP(63) + T_EMBEDDED_KEYS;
+            } else {
+                *pwRoot = ZERO_POP_MAGIC;
+            }
+        } else
 #endif // defined(NO_TYPE_IN_XX_SW)
         { *pwRoot = 0; }
         // Do we need to clear the rest of the link also?

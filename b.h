@@ -727,6 +727,13 @@ enum {
 
 #endif // (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
 
+#if (cnBitsIndexSzAtTop == cnBitsPerDigit)
+  #define nBW_from_nBL_NAB3(_nBL)  (cnBitsPerDigit)
+#else // (cnBitsIndexSzAtTop == cnBitsPerDigit)
+  #define nBW_from_nBL_NAB3(_nBL) \
+    (((_nBL) >= cnBitsPerWord) ? cnBitsIndexSzAtTop : (cnBitsPerDigit))
+#endif // (cnBitsIndexSzAtTop == cnBitsPerDigit)
+
 // Default is -UBPD_TABLE.  This causes the table to exist and allows
 // us to reference it in cases when we think it will be faster.
 // Doing a table lookup is slower than doing a calculation, but it
@@ -929,7 +936,7 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // (EXP(63) + EXP(cnBitsMallocMask) + T_EMBEDDED_KEYS) has an invalid pop
 // count if pop-field=0 means pop=1.
 // Enough talk for now.  We'll come back to these other cases.
-#define ZERO_POP_MAGIC  (EXP(63) + EXP(cnBitsMallocMask) + T_EMBEDDED_KEYS)
+#define ZERO_POP_MAGIC  (EXP(cnBitsPerWord - 1) + T_EMBEDDED_KEYS)
 
 #if defined(USE_T_ONE)
   #if defined(T_ONE_CALC_POP)
