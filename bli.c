@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.558 2015/01/17 14:57:25 mike Exp mike $
+// @(#) $Id: bli.c,v 1.559 2015/01/18 05:16:12 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -855,6 +855,7 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 {
     (void)nBL; (void)pwRoot;
 
+    assert(nBL <= 8);
   #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
       #if defined(DEBUG)
     // By simply setting nPopCnt = 16 here we are assuming, while not
@@ -928,6 +929,8 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 {
     (void)nBL; (void)pwRoot;
 
+    assert(nBL >   8);
+    assert(nBL <= 16);
   #if defined(PP_IN_LINK)
     int nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
   #else // defined(PP_IN_LINK)
@@ -1015,6 +1018,8 @@ static int
 SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 {
     (void)nBL;
+    assert(nBL >  16);
+    assert(nBL <= 32);
 #if defined(LIST_END_MARKERS)
     assert(piKeys[-1] == 0);
 #if defined(PSPLIT_PARALLEL)
@@ -1820,6 +1825,10 @@ t_switch:;
         // nBL is not reduced by any skip indicated in that link
         // nBLR is nBL reduced by any skip indicated in that link
         // nBLR is bits left at the top of this switch
+
+        DBGX(printf("T_SWITCH nBLUp %d nBLR %d pLinks %p\n",
+                    nBL, nBLR, (void *)pwr_pLinks((Switch_t *)pwr)));
+
 #if ! defined(LOOKUP)
         nBLUp = nBL; // save nBL before updating for use in this case only
 #endif // ! defined(LOOKUP)
@@ -1829,8 +1838,8 @@ t_switch:;
         // that have bits set in the top digit.
         // It's really only legitimate to use NAB.
         assert(nBLR != cnBitsPerWord);
-        //nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBLR);
-        nBL = nBLR - nBW_from_nBL_NAB3(nBLR);
+        nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBLR);
+        //nBL = nBLR - nBW_from_nBL_NAB3(nBLR);
 
         Word_t wIndex = ((wKey >> nBL)
             // It is ok to use NAX here even though we might be at top because
@@ -1841,8 +1850,7 @@ t_switch:;
             // perf: EXP(cnBitsPerDigit) - 1
             & (MSK(nBL_to_nBitsIndexSzNAX(nBLR))));
 
-        DBGX(printf("T_SWITCH nBLR %d pLinks %p wIndex %d 0x%x\n", nBLR,
-             (void *)pwr_pLinks((Switch_t *)pwr), (int)wIndex, (int)wIndex));
+        DBGX(printf("T_SWITCH wIndex %d 0x%x\n", (int)wIndex, (int)wIndex));
 
 #if !defined(LOOKUP)
         if (bCleanup) {
@@ -1877,12 +1885,13 @@ switchTail:;
         assert(nBL > (int)LOG(sizeof(Link_t) * 8));
 #else // defined(USE_XX_SW)
         // this test is done at compile time and might make the rest go away
-        if (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
-            && (nBL <= (int)LOG(sizeof(Link_t) * 8))
+        if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
+            && (nBL <= (int)LOG(sizeof(Link_t) * 8)))
         {
             goto t_bitmap;
         }
 #endif // defined(USE_XX_SW)
+
         DBGX(printf("Next pwRoot %p wRoot "OWx" nBL %d\n",
                     (void *)pwRoot, wRoot, nBL));
 
@@ -1909,6 +1918,9 @@ t_xx_sw:;
         // nBLR is nBL reduced by any skip indicated in that link
         // nBLR is bits left at the top of this switch
 
+        DBGX(printf("T_XX_SW nBLUp %d nBLR %d pLinks %p\n",
+                    nBL, nBLR, (void *)pwr_pLinks((Switch_t *)pwr)));
+
   #if ! defined(LOOKUP)
         if (bCleanup) {
       #if defined(INSERT)
@@ -1934,16 +1946,28 @@ t_xx_sw:;
         int nBW = pwr_nBW(pwRoot);
         nBL = nBLR - nBW;
         int nIndex = (wKey >> nBL) & MSK(nBW);
+
+        DBGX(printf("T_XX_SW nBW %d nIndex %d 0x%x\n",
+                    nBW, nIndex, nIndex));
+
         pwRoot = &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot;
         wRoot = *pwRoot;
 
+        DBGX(printf("T_XX_SW pwRoot %p wRoot "OWx" nBL %d\n",
+                    (void *)pwRoot, wRoot, nBL));
+
         assert(EXP(nBL) > sizeof(Link_t) * 8);
+
+#define BASE_MASK  (EXP(cnBitsPerWord - 1) + cnMallocMask)
 
 #if defined(LOOKUP) && defined(XX_SHORTCUT)
 
   #if ! defined(NO_TYPE_IN_XX_SW)
       #if (cnListPopCntMaxDl2 <= 2) && (cnListPopCntMax16 <= 2) \
-       && (cnListPopCntMaxDl1 <= 2) && (cnListPopCntMax8  <= 2)
+       && (cnListPopCntMaxDl1 <= 2) && (cnListPopCntMax8  <= 6)
+        // There is a type field, but we use only two values.
+        // Check for one of them here.
+        // The ifdef is a hack that makes assumptions that aren't obvious.
         if (wRoot == 0) { return Failure; }
       #else // cnListPopCntMax ...
         nType = wr_nType(wRoot);
@@ -1952,11 +1976,25 @@ t_xx_sw:;
   #endif // ! defined(NO_TYPE_IN_XX_SW)
         {
   #if defined(XX_SHORTCUT_GOTO)
+            DBGX(printf("goto t_embedded_keys\n"));
             goto t_embedded_keys;
   #else // defined(XX_SHORTCUT_GOTO)
 
-#define XX_CASE(_nBL) \
-            case (_nBL): return EmbeddedListHasKey(wRoot, wKey, (_nBL))
+#if defined(NO_TYPE_IN_XX_SW)
+  #define XX_CASE(_nBL) \
+            case (_nBL): \
+                if (wRoot == ZERO_POP_MAGIC) { return Failure; } \
+                /* what about blow-outs? */ \
+                assert((wRoot & (BASE_MASK + EXP(cnBitsPerWord-(_nBL)-1))) \
+                    != ZERO_POP_MAGIC); \
+                assert( ! (wRoot & 1) || ((_nBL) == 8) || ((_nBL) == 16) ); \
+                return EmbeddedListHasKey(wRoot, wKey, (_nBL))
+#else // defined(NO_TYPE_IN_XX_SW)
+  #define XX_CASE(_nBL) \
+            case (_nBL): \
+                assert(wRoot != 0); \
+                return EmbeddedListHasKey(wRoot, wKey, (_nBL))
+#endif // defined(NO_TYPE_IN_XX_SW)
 
             switch (nBL) {
             default:
@@ -2000,13 +2038,33 @@ t_xx_sw:;
         }
   #if ! defined(NO_TYPE_IN_XX_SW)
       #if ! ((cnListPopCntMaxDl2 <= 2) && (cnListPopCntMax16 <= 2) \
-          && (cnListPopCntMaxDl1 <= 2) && (cnListPopCntMax8  <= 2))
+          && (cnListPopCntMaxDl1 <= 2) && (cnListPopCntMax8  <= 6))
         if (wRoot == 0) { return Failure; }
         if (nType == T_LIST) {
-            return (((nBL <= 8)
-                        ? SearchList8( pwRoot, wr_pwr(wRoot), wKey, nBL)
-                        : SearchList16(pwRoot, wr_pwr(wRoot), wKey, nBL))
-                >= 0);
+  #if defined(XX_SHORTCUT_GOTO)
+            pwr = wr_pwr(wRoot);
+            goto t_list;
+  #else // defined(XX_SHORTCUT_GOTO)
+            int nPopCnt;
+            return ((
+      #if ! (                             (cnListPopCntMax16 <= 2) \
+          && (cnListPopCntMaxDl1 <= 2) && (cnListPopCntMax8  <= 6))
+                (nBL <= 8) ? SearchList8 (pwRoot, wr_pwr(wRoot), wKey, nBL) :
+      #endif // cnListPopCntMax ...
+      #if (cnBitsLeftAtDl2 > 16)
+                (nBL > 16) ? (nPopCnt =
+        #if defined(PP_IN_LINK)
+                                        PWR_wPopCntBL(pwRoot, NULL, nBL)
+        #else // defined(PP_IN_LINK)
+                                        PWR_xListPopCnt(pwRoot, 32)
+        #endif // defined(PP_IN_LINK)
+                              ),
+                        SearchList32(ls_piKeysNATX(wr_pwr(wRoot), nPopCnt),
+                                      wKey, nBL, nPopCnt) :
+      #endif // (cnBitsLeftAtDl2 > 16)
+                        SearchList16(pwRoot, wr_pwr(wRoot), wKey, nBL))
+                    >= 0);
+  #endif // defined(XX_SHORTCUT_GOTO)
         }
           #if defined(DEBUG)
         if (nType != T_BITMAP) {
@@ -2014,6 +2072,7 @@ t_xx_sw:;
         }
           #endif // defined(DEBUG)
         assert(nType == T_BITMAP);
+        pwr = wr_pwr(wRoot);
         goto t_bitmap;
       #endif // cnListPopCntMax ...
   #endif // ! defined(NO_TYPE_IN_XX_SW)
@@ -2412,17 +2471,27 @@ t_bitmap:;
             // We assume we never blow-out into a bitmap.
             // But we don't really enforce it.
             assert(nBL == cnBitsLeftAtDl2);
+            assert(pwr == wr_pwr(wRoot));
             int bBitIsSet = BitIsSet(wr_pwr(wRoot),
                                      wKey & MSK(cnBitsLeftAtDl2));
       #else // defined(USE_XX_SW)
             // Might be able to speed this up with bl-specific code.
+            // It looks like this code is assuming nBL == cnBitsInD1.
+            // I'm not sure why this is ok now that we're installing a
+            // bitmap at dl2.
+            // I guess it is only assuming nBL == cnBitsInD1 if
+            // EXP(cnBitsInD1) <= sizeof(Link_t) * 8.
+            assert((nBL == cnBitsInD1)
+                || (EXP(cnBitsInD1) > sizeof(Link_t) * 8));
             int bBitIsSet
                 = (cnBitsInD1 <= cnLogBitsPerWord)
                     ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
                 : (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
                     ? BitIsSet(STRUCT_OF(pwRoot, Link_t, ln_wRoot),
                                wKey & MSK(cnBitsInD1))
-                : BitIsSet(wr_pwr(wRoot), wKey & MSK(nBL));
+                // Isn't pwr == wr_pwr(wRoot)
+                // : BitIsSet(wr_pwr(wRoot), wKey & MSK(nBL));
+                : BitIsSet(pwr, wKey & MSK(nBL));
       #endif // defined(USE_XX_SW)
             if (bBitIsSet)
             {
@@ -2492,6 +2561,8 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 
           #if defined(DL_SPECIFIC_T_ONE)
 
+        DBGX(printf("EMBEDDED_KEYS\n")); 
+
 #if defined(NO_TYPE_IN_XX_SW)
 
 #define CASE_BLX(_nBL) \
@@ -2510,7 +2581,6 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 #define HANDLE_BLOW_OUT
 #endif // defined(HANDLE_BLOW_OUTS)
 
-#define BASE_MASK  (EXP(cnBitsPerWord - 1) + cnMallocMask)
 // For key sizes which can completely fill wRoot with no left-over bits.
 #define CASE_0_BLX(_nBL) \
         case (_nBL): \
@@ -2548,6 +2618,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 
 #define CASE_BLX(_nBL) \
         case (_nBL): \
+            DBGI(printf("CASE_BLX(%d) wRoot "OWx"\n", (_nBL), wRoot)); \
             if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
             goto break2
 
