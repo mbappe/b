@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.476 2015/01/19 02:00:14 mike Exp mike $
+// @(#) $Id: b.c,v 1.478 2015/01/19 16:14:21 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2382,11 +2382,12 @@ embeddedKeys:;
         // Update: I'm not sure why I wrote that the list may not be sorted
         // at this point.  I can't think of why it would not be sorted.
         nType = wr_nType(wRoot);
+        DBGI(printf("wRoot "OWx" nType %d\n", wRoot, nType));
     }
 #endif // defined(EMBED_KEYS)
 #endif // (cwListPopCntMax != 0)
 
-    Word_t *pwr = wr_tp_pwr(wRoot, nType);
+    Word_t *pwr = wr_pwr(wRoot);
 
 // This first clause handles wRoot == 0 by treating it like a list leaf
 // with zero population (and no allocated memory).
@@ -2591,9 +2592,16 @@ embeddedKeys:;
             // Allocate memory for a new list if necessary.
             // Init or update pop count if necessary.
             if ((pwr == NULL)
-                || (ListWordsExternal(wPopCnt + 1, nBL)
-                        != ListWordsExternal(wPopCnt, nBL)))
+                // Inflate uses LWTL, but we don't call Inflate for T_ONE.
+                || (nType == T_ONE)
+                || (ListWordsTypeList(wPopCnt + 1, nBL)
+                        != ListWordsTypeList(wPopCnt, nBL)))
             {
+                DBGI(printf("pwr %p wPopCnt %ld nBL %d\n", pwr, wPopCnt, nBL));
+                DBGI(printf("nType %d\n", nType));
+                DBGI(printf("LWE %d LWE %d\n",
+                            ListWordsExternal(wPopCnt + 1, nBL),
+                            ListWordsExternal(wPopCnt    , nBL)));
                 // Allocate a new list and init pop count if pop count is
                 // in the list.  Also init the beginning of the list marker
                 // if LIST_END_MARKERS.
