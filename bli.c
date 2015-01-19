@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.559 2015/01/18 05:16:12 mike Exp mike $
+// @(#) $Id: bli.c,v 1.560 2015/01/18 20:17:41 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -856,24 +856,20 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     (void)nBL; (void)pwRoot;
 
     assert(nBL <= 8);
-  #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
-      #if defined(DEBUG)
+   // sizeof(__m128i) == 16 bytes
+  #if defined(PARALLEL_128) && (cnListPopCntMax8 <= 8)
     // By simply setting nPopCnt = 16 here we are assuming, while not
     // ensuring, that pop count never exceeds 16 here.
     // We do it because reading the pop count is so much slower.
-    if (ls_xPopCnt(pwr, 8) > 16) {
-        printf("\nnBL %d ls_xPopCnt(pwr, 8) %d\n", nBL, ls_xPopCnt(pwr, 8));
-    }
-      #endif // defined(DEBUG)
     assert(ls_xPopCnt(pwr, 8) <= 16);
     int nPopCnt = 16; // Sixteen fit so why do less?
-  #else // defined(PARALLEL_128)
+  #else // defined(PARALLEL_128) && (cnListPopCntMax8 <= 8)
       #if defined(PP_IN_LINK)
     int nPopCnt = PWR_wPopCntBL(pwRoot, NULL, nBL);
       #else // defined(PP_IN_LINK)
     int nPopCnt = PWR_xListPopCnt(pwRoot, 8);
       #endif // defined(PP_IN_LINK)
-  #endif // defined(PARALLEL_128)
+  #endif // defined(PARALLEL_128) && (cnListPopCntMax8 <= 8)
     uint8_t *pcKeys = ls_pcKeysNATX(pwr, nPopCnt);
 
 #if defined(LIST_END_MARKERS)
