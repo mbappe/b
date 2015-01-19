@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.474 2015/01/16 18:13:57 mike Exp mike $
+// @(#) $Id: b.c,v 1.475 2015/01/18 05:16:12 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2068,11 +2068,7 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
 
 // Default cnNonBmLeafPopCntMax is 1280.  Keep W/K <= 1.
 #if ! defined(cnNonBmLeafPopCntMax)
-  #if defined(USE_XX_SW)
-    #define cnNonBmLeafPopCntMax  2560
-  #else // defined(USE_XX_SW)
-    #define cnNonBmLeafPopCntMax  1280
-  #endif // defined(USE_XX_SW)
+    #define cnNonBmLeafPopCntMax  0
 #endif // ! defined(cnNonBmLeafPopCntMax)
 
     (void)wKey; (void)nDL; (void)pwRoot; (void)wRoot;
@@ -2084,8 +2080,10 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
 #if defined(CODE_BM_SW)
         && ! tp_bIsBmSw(nType)
 #endif // defined(CODE_BM_SW)
-        && ((wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBL))
-                >= cnNonBmLeafPopCntMax))
+        && (((wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBL))
+                >= (EXP(nBL) * 5 / cnBitsPerWord / 4))
+            || ((cnNonBmLeafPopCntMax != 0)
+                && (wPopCnt > cnNonBmLeafPopCntMax))))
     {
         DBGI(printf("Converting BM leaf.\n"));
         //Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord);
@@ -2094,6 +2092,9 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
         DBGI(printf("\n# IC: Creating a bitmap at nBL %d.\n", nBL));
 
         // Allocate a new bitmap.
+        DBG(printf("# IC: NewBitmap nBL %d wPopCnt %ld"
+                       " wWordsAllocated %ld wPopCntTotal %ld.\n",
+                   nBL, wPopCnt, wWordsAllocated, wPopCntTotal));
         Word_t *pwBitmap = NewBitmap(pwRoot, nBL);
 
         // Why are we not using InsertAll here to insert the keys?
@@ -2984,6 +2985,9 @@ newSwitch:
       #endif // defined(SKIP_TO_XX_SW)
                     nBW = cnBW;
                 } else if (pwRootPrev != NULL) {
+// Shouldn't we think about some other option here?
+// What about a small bitmap?
+// Or another switch?
                     goto doubleIt;
 doubleIt:;
                     assert(nBL < nDL_to_nBL(2));
@@ -3025,6 +3029,15 @@ doubleIt:;
                     assert(nBL > (int)LOG(sizeof(Link_t) * 8));
                     nBW += cnBWIncr;
                     if (nBL - nBW <= (int)LOG(sizeof(Link_t) * 8)) {
+// Doubling here would use at least as much memory as a big bitmap.
+// Are we here because the list is full?
+// Is it possible we are here because our words/key is good?
+                        DBG(printf("# IG: NewBitmap nBL %d"
+                                       " wWordsAllocated %ld"
+                                       " wPopCntTotal %ld.\n",
+                                   nBL, wWordsAllocated, wPopCntTotal));
+                        DBG(printf("# IG: NewBitmap wPopCnt %ld.\n",
+                                   wPopCnt));
                         DBGI(printf("# IG: NewBitmap nBL %d.\n", nBL));
                         NewBitmap(pwRoot, nBL);
 #if defined(PP_IN_LINK)
