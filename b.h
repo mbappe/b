@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.367 2015/01/19 01:58:37 mike Exp mike $
+// @(#) $Id: b.h,v 1.368 2015/01/19 03:06:45 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -54,11 +54,11 @@
   #define CODE_XX_SW
 #endif // defined(USE_XX_SW)
 
-// Default cnBW is 2 if CODE_XX_SW.
+// Default cnBW is 1 if CODE_XX_SW.
 // cnBW is the minimum width of a narrow switch.
 #if defined(CODE_XX_SW)
   #if ! defined(cnBW)
-      #define cnBW  2
+      #define cnBW  1
   #endif // ! defined(cnBW)
 #endif // defined(CODE_XX_SW)
 
