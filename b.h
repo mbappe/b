@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.366 2015/01/18 20:16:51 mike Exp mike $
+// @(#) $Id: b.h,v 1.367 2015/01/19 01:58:37 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -1671,14 +1671,29 @@ set_pwr_nBW(Word_t *pwr, int nBW)
 // bits of the pointer as a type field.
 // Pop count is in last pop-size slot in the word pointed to by pwr.
 // Other code assumes pop count is not bigger than a single key in the list.
-#define ls_xPopCnt(_pwr, _nBL) \
-    (((_nBL) > 8) ? (((uint16_t *)((Word_t *)(_pwr) + 1))[-1]) \
-                  : (((uint8_t  *)((Word_t *)(_pwr) + 1))[-1]))
+static inline int
+ls_xPopCnt(void *pwr, int nBL)
+{
+    (void)nBL;
+    int nPopCnt = (nBL > 8)
+        ? (uint8_t)(((uint16_t *)((Word_t *)pwr + 1))[-1])
+        :          (((uint8_t  *)((Word_t *)pwr + 1))[-1]);
+    //printf("    ls_xPopCnt pwr %p nBL %2d nPopCnt %3d\n", pwr, nBL, nPopCnt);
+    return nPopCnt;
+    //return ((uint8_t *)((Word_t *)pwr + 1))[-1];
+}
 
-#define set_ls_xPopCnt(_pwr, _nBL, _cnt) \
-    (((_nBL) > 8) \
-        ?           (((uint16_t *)((Word_t *)(_pwr) + 1))[-1] = (_cnt)) \
-        : (uint16_t)(((uint8_t  *)((Word_t *)(_pwr) + 1))[-1] = (_cnt)))
+static inline void
+set_ls_xPopCnt(void *pwr, int nBL, int nPopCnt)
+{
+    (void)nBL;
+    //printf("set_ls_xPopCnt pwr %p nBL %2d nPopCnt %3d\n", pwr, nBL, nPopCnt);
+    if (nBL > 8) {
+        ((uint16_t *)((Word_t *)pwr + 1))[-1] = nPopCnt;
+    } else {
+        ((uint8_t  *)((Word_t *)pwr + 1))[-1] = nPopCnt;
+    }
+}
 
 #define ls_pcKeys(_pwr, _nBL) \
     ((uint8_t *)((Word_t *)(_pwr) + 1) \
@@ -1717,12 +1732,12 @@ set_pwr_nBW(Word_t *pwr, int nBW)
         (Word_t *)((Word_t *)(_pwr) + 1) \
             - ls_nSlotsInList((_nPopCnt), (_nBL), sizeof(Word_t)))
 
-#define ls_pcKeysNAT(_pwr)  (ls_pcKeys((_pwr), 0))
-#define ls_pcKeysNATX(_pwr, _nPopCnt)  (ls_pcKeysX((_pwr), 0, (_nPopCnt)))
-#define ls_psKeysNAT(_pwr)  (ls_psKeys((_pwr), 0))
-#define ls_psKeysNATX(_pwr, _nPopCnt)  (ls_psKeysX((_pwr), 0, (_nPopCnt)))
-#define ls_piKeysNAT(_pwr)  (ls_piKeys((_pwr), 0))
-#define ls_piKeysNATX(_pwr, _nPopCnt)  (ls_piKeysX((_pwr), 0, (_nPopCnt)))
+#define ls_pcKeysNAT(_pwr)  (ls_pcKeys((_pwr), 8))
+#define ls_pcKeysNATX(_pwr, _nPopCnt)  (ls_pcKeysX((_pwr), 8, (_nPopCnt)))
+#define ls_psKeysNAT(_pwr)  (ls_psKeys((_pwr), 16))
+#define ls_psKeysNATX(_pwr, _nPopCnt)  (ls_psKeysX((_pwr), 16, (_nPopCnt)))
+#define ls_piKeysNAT(_pwr)  (ls_piKeys((_pwr), 32))
+#define ls_piKeysNATX(_pwr, _nPopCnt)  (ls_piKeysX((_pwr), 32, (_nPopCnt)))
 #define ls_pwKeysNAT(_pwr)  (ls_pwKeys((_pwr), cnBitsPerWord-1))
 #define ls_pwKeysNATX(_pwr, _nPopCnt) \
     (ls_pwKeysX((_pwr), cnBitsPerWord-1, (_nPopCnt)))
