@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.475 2015/01/18 05:16:12 mike Exp mike $
+// @(#) $Id: b.c,v 1.476 2015/01/19 02:00:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -3032,12 +3032,12 @@ doubleIt:;
 // Doubling here would use at least as much memory as a big bitmap.
 // Are we here because the list is full?
 // Is it possible we are here because our words/key is good?
-                        DBG(printf("# IG: NewBitmap nBL %d"
-                                       " wWordsAllocated %ld"
-                                       " wPopCntTotal %ld.\n",
-                                   nBL, wWordsAllocated, wPopCntTotal));
-                        DBG(printf("# IG: NewBitmap wPopCnt %ld.\n",
-                                   wPopCnt));
+                        DBGI(printf("# IG: NewBitmap nBL %d"
+                                        " wWordsAllocated %ld"
+                                        " wPopCntTotal %ld.\n",
+                                    nBL, wWordsAllocated, wPopCntTotal));
+                        DBGI(printf("# IG: NewBitmap wPopCnt %ld.\n",
+                                    wPopCnt));
                         DBGI(printf("# IG: NewBitmap nBL %d.\n", nBL));
                         NewBitmap(pwRoot, nBL);
 #if defined(PP_IN_LINK)
