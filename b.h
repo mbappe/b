@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.365 2015/01/18 05:16:12 mike Exp mike $
+// @(#) $Id: b.h,v 1.366 2015/01/18 20:16:51 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -1671,8 +1671,14 @@ set_pwr_nBW(Word_t *pwr, int nBW)
 // bits of the pointer as a type field.
 // Pop count is in last pop-size slot in the word pointed to by pwr.
 // Other code assumes pop count is not bigger than a single key in the list.
-#define ls_xPopCnt(_pwr, _nBL)  (((uint8_t  *)((Word_t *)(_pwr) + 1))[-1])
-#define set_ls_xPopCnt(_pwr, _nBL, _cnt)  (ls_xPopCnt((_pwr), (_nBL)) = (_cnt))
+#define ls_xPopCnt(_pwr, _nBL) \
+    (((_nBL) > 8) ? (((uint16_t *)((Word_t *)(_pwr) + 1))[-1]) \
+                  : (((uint8_t  *)((Word_t *)(_pwr) + 1))[-1]))
+
+#define set_ls_xPopCnt(_pwr, _nBL, _cnt) \
+    (((_nBL) > 8) \
+        ?           (((uint16_t *)((Word_t *)(_pwr) + 1))[-1] = (_cnt)) \
+        : (uint16_t)(((uint8_t  *)((Word_t *)(_pwr) + 1))[-1] = (_cnt)))
 
 #define ls_pcKeys(_pwr, _nBL) \
     ((uint8_t *)((Word_t *)(_pwr) + 1) \
