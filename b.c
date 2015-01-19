@@ -2177,6 +2177,9 @@ embeddedKeys:;
             }
         }
 
+        assert( ! tp_bIsSkip(nType) ); // How do we ensure this?
+        OldSwitch(&wRoot, nBL, /* nBLUp */ nBL);
+
 #if defined(DEBUG)
         int count = 0;
         for (int jj = 0; jj < (int)EXP(nBL - cnLogBitsPerWord); jj++)
@@ -3032,12 +3035,12 @@ doubleIt:;
 // Doubling here would use at least as much memory as a big bitmap.
 // Are we here because the list is full?
 // Is it possible we are here because our words/key is good?
-                        DBGI(printf("# IG: NewBitmap nBL %d"
-                                        " wWordsAllocated %ld"
-                                        " wPopCntTotal %ld.\n",
-                                    nBL, wWordsAllocated, wPopCntTotal));
-                        DBGI(printf("# IG: NewBitmap wPopCnt %ld.\n",
-                                    wPopCnt));
+                        DBG(printf("# IG: NewBitmap nBL %d"
+                                       " wWordsAllocated %ld"
+                                       " wPopCntTotal %ld.\n",
+                                   nBL, wWordsAllocated, wPopCntTotal));
+                        DBG(printf("# IG: NewBitmap wPopCnt %ld.\n",
+                                   wPopCnt));
                         DBGI(printf("# IG: NewBitmap nBL %d.\n", nBL));
                         NewBitmap(pwRoot, nBL);
 #if defined(PP_IN_LINK)
@@ -3147,18 +3150,22 @@ insertAll:
                                   | (nIndex << (nBLOld - pwr_nBW(&wRoot))),
                               pwRoot, nBLOld);
                 }
+
+                assert(nBLOld == nDL_to_nBL(2));
+                OldSwitch(&wRoot, /* nBL */ nBLOld, /* nBLUp */ nBLOld);
+
                 //printf("# New tree after InsertAll done looping:\n");
                 //DBG(Dump(pwRoot, wKey, nBLOld));
+
             } else
 #endif // defined(USE_XX_SW)
-            {
-                InsertAll(&wRoot, nBLOld, wKey, pwRoot, nBLOld);
-            }
+            { InsertAll(&wRoot, nBLOld, wKey, pwRoot, nBLOld); }
 
             if (nBL == nBLOld) {
                 DBGI(printf("Just Before InsertGuts calls final Insert"));
                 DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
             }
+
             Insert(pwRoot, wKey, nBLOld);
         }
     }
@@ -4173,8 +4180,34 @@ Judy1FreeArray(PPvoid_t PPArray, P_JE)
     DBGR(printf("Judy1FreeArray\n"));
 
 #if (cnDigitsPerWord != 1)
-    return FreeArrayGuts((Word_t *)PPArray,
-        /* wPrefix */ 0, cnBitsPerWord, /* bDump */ 0);
+
+  #if defined(DEBUG)
+    Word_t wMallocsBefore = wMallocs;
+    Word_t wEvenMallocsBefore = wEvenMallocs;
+    Word_t wWordsAllocatedBefore = wWordsAllocated;
+  #endif // defined(DEBUG)
+
+    Word_t wBytes = FreeArrayGuts((Word_t *)PPArray, /* wPrefix */ 0,
+                                   cnBitsPerWord, /* bDump */ 0);
+
+    // Should enhance FreeArrayGuts to adjust wPopCntTotal for another
+    // sanity check.  But it does not do this now.
+    DBG(printf("# wPopCntTotal %ld\n", wPopCntTotal));
+    DBG(printf("# wWordsAllocatedBefore %ld\n", wWordsAllocatedBefore));
+    DBG(printf("# wMallocsBefore %ld\n", wMallocsBefore));
+    DBG(printf("# wEvenMallocsBefore %ld\n", wEvenMallocsBefore));
+    DBG(printf("# wWordsAllocated %ld\n", wWordsAllocated));
+    DBG(printf("# wMallocs %ld\n", wMallocs));
+    DBG(printf("# wEvenMallocs %ld\n", wEvenMallocs));
+    DBG(printf("\n"));
+    assert((wWordsAllocatedBefore - wWordsAllocated)
+               == (wBytes / sizeof(Word_t)));
+    assert(wWordsAllocated == 0);
+    assert(wMallocs == 0);
+    assert(wEvenMallocs == 0);
+
+    return wBytes;
+
 #else // (cnDigitsPerWord != 1)
     JudyFree(*PPArray, EXP(cnBitsPerWord - cnLogBitsPerWord));
     return EXP(cnBitsPerWord - cnLogBitsPerByte);
