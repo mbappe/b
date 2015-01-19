@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.478 2015/01/19 16:14:21 mike Exp mike $
+// @(#) $Id: b.c,v 1.479 2015/01/19 17:11:15 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2075,13 +2075,17 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
     int nType = wr_nType(wRoot);
     Word_t *pwr = wr_pwr(wRoot); (void)pwr;
     Word_t wPopCnt;
+// Default cnBmWpkPercent is 80, create bm at 80% wpk.
+#if ! defined(cnBmWpkPercent)
+#define cnBmWpkPercent  80
+#endif // ! defined(cnBmWpkPercent)
     if ((nBL == nDL_to_nBL(2))
         && tp_bIsSwitch(nType)
 #if defined(CODE_BM_SW)
         && ! tp_bIsBmSw(nType)
 #endif // defined(CODE_BM_SW)
         && (((wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBL))
-                >= (EXP(nBL) * 5 / cnBitsPerWord / 4))
+                >= (EXP(nBL) * 100 / cnBitsPerWord / cnBmWpkPercent))
             || ((cnNonBmLeafPopCntMax != 0)
                 && (wPopCnt > cnNonBmLeafPopCntMax))))
     {
@@ -2090,15 +2094,6 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
         assert( ! tp_bIsSkip(nType) );
         //printf("wRoot %p wPopCnt %ld\n", (void *)wRoot, wPopCnt);
         DBGI(printf("\n# IC: Creating a bitmap at nBL %d.\n", nBL));
-
-        // Allocate a new bitmap.
-        DBG(printf("# IC: NewBitmap nBL %d wPopCnt %ld"
-                       " wWordsAllocated %ld wPopCntTotal %ld.\n",
-                   nBL, wPopCnt, wWordsAllocated, wPopCntTotal));
-        Word_t *pwBitmap = NewBitmap(pwRoot, nBL);
-
-        // Why are we not using InsertAll here to insert the keys?
-        // It doesn't handle switches yet.
 
         int nBW;
 #if defined(USE_XX_SW)
@@ -2109,6 +2104,15 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
             assert(nBL == nDL_to_nBL(nBL_to_nDL(nBL)));
             nBW = nBL_to_nBitsIndexSz(nBL);
         }
+
+        // Allocate a new bitmap.
+        DBG(printf("# IC: NewBitmap nBL %d nBW %d wPopCnt %ld"
+                       " wWordsAllocated %ld wPopCntTotal %ld.\n",
+                   nBL, nBW, wPopCnt, wWordsAllocated, wPopCntTotal));
+        Word_t *pwBitmap = NewBitmap(pwRoot, nBL);
+
+        // Why are we not using InsertAll here to insert the keys?
+        // It doesn't handle switches yet.
 
         int nBLLn = nBL - nBW;
         Word_t wBLM = MSK(nBLLn); // Bits left mask.
