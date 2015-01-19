@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.368 2015/01/19 03:06:45 mike Exp mike $
+// @(#) $Id: b.h,v 1.369 2015/01/19 16:13:10 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -946,15 +946,11 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 static inline int
 wr_nPopCnt(Word_t wRoot, int nBL)
 {
-    (void)nBL;
+    Word_t wKeys = wRoot;
 #if defined(NO_TYPE_IN_XX_SW)
     if (nBL < nDL_to_nBL(2)) {
         if (wRoot == ZERO_POP_MAGIC) { return 0; }
-    }
-#endif // defined(NO_TYPE_IN_XX_SW)
-    Word_t wKeys = wRoot;
-#if defined(NO_TYPE_IN_XX_SW)
-    if (nBL >= nDL_to_nBL(2))
+    } else
 #endif // defined(NO_TYPE_IN_XX_SW)
     { wKeys &= ~MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL)); }
     wKeys |= EXP(cnBitsPerWord - 1);
