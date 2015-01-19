@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.560 2015/01/18 20:17:41 mike Exp mike $
+// @(#) $Id: bli.c,v 1.561 2015/01/19 01:59:12 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -3021,7 +3021,9 @@ Initialize(void)
     }
 #endif // defined(BPD_TABLE_RUNTIME_INIT)
 
+
 #if defined(BM_IN_LINK)
+    printf("\n");
     printf("# BM_IN_LINK is buggy.\n");
     printf("# With two-digit bitmap leaf conversion.\n");
     printf("# With bmsw to uncompressed conversion.\n");
@@ -3030,6 +3032,7 @@ Initialize(void)
     printf("# With PP_IN_LINK unless NO_SKIP_AT_TOP?\n");
 #endif // defined(BM_IN_LINK)
 
+    printf("\n");
     for (int nBL = nDL_to_nBL(2); nBL > cnLogBitsPerWord; --nBL) {
         printf("# EmbeddedListPopCntMax(%d) %d\n", nBL,
                 EmbeddedListPopCntMax(nBL));
@@ -3056,6 +3059,12 @@ Initialize(void)
 #else // defined(cnListPopCntMaxDl3)
     printf("# cnListPopCntMaxDl3 n/a\n");
 #endif // defined(cnListPopCntMaxDl3)
+
+#if defined(DEBUG)
+    printf("# DEBUG\n");
+#else // defined(DEBUG)
+    printf("# NO DEBUG\n");
+#endif // defined(DEBUG)
 
 #if defined(LVL_IN_WR_HB)
     printf("# LVL_IN_WR_HB\n");
