@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.561 2015/01/19 01:59:12 mike Exp mike $
+// @(#) $Id: bli.c,v 1.562 2015/01/19 16:13:35 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1531,21 +1531,6 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
 
 #endif // defined(SKIP_LINKS)
 
-#if 0
-#if defined(CODE_XX_SW)
-  #if defined(LOOKUP) && ! defined(GENERAL)
-
-static int
-EmbeddedListPopCntMax(int nBL)
-{
-    return
-        (cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL)) / nBL;
-}
-
-  #endif // defined(LOOKUP) && ! defined(GENERAL)
-#endif // defined(CODE_XX_SW)
-#endif
-
 #if defined(LOOKUP)
 static Status_t
 Lookup(Word_t wRoot, Word_t wKey)
@@ -3021,45 +3006,6 @@ Initialize(void)
     }
 #endif // defined(BPD_TABLE_RUNTIME_INIT)
 
-
-#if defined(BM_IN_LINK)
-    printf("\n");
-    printf("# BM_IN_LINK is buggy.\n");
-    printf("# With two-digit bitmap leaf conversion.\n");
-    printf("# With bmsw to uncompressed conversion.\n");
-    printf("# With retype full bmsw if BM_IN_NON_BM_SW.\n");
-    printf("# With skip at top?\n");
-    printf("# With PP_IN_LINK unless NO_SKIP_AT_TOP?\n");
-#endif // defined(BM_IN_LINK)
-
-    printf("\n");
-    for (int nBL = nDL_to_nBL(2); nBL > cnLogBitsPerWord; --nBL) {
-        printf("# EmbeddedListPopCntMax(%d) %d\n", nBL,
-                EmbeddedListPopCntMax(nBL));
-    }
-
-    printf("\n");
-    printf("# cnBitsInD1 %d\n", cnBitsInD1);
-    printf("# cnBitsInD2 %d\n", cnBitsInD2);
-    printf("# cnBitsInD3 %d\n", cnBitsInD3);
-    printf("# cnBitsPerDigit %d\n", cnBitsPerDigit);
-    printf("# cnDigitsPerWord %d\n", cnDigitsPerWord);
-    printf("# cnListPopCntMax8  %d\n", cnListPopCntMax8);
-    printf("# cnListPopCntMax16 %d\n", cnListPopCntMax16);
-    printf("# cnListPopCntMax32 %d\n", cnListPopCntMax32);
-    printf("# cnListPopCntMax64 %d\n", cnListPopCntMax64);
-    printf("# cnListPopCntMaxDl1 %d\n", cnListPopCntMaxDl1);
-#if defined(cnListPopCntMaxDl2)
-    printf("# cnListPopCntMaxDl2 %d\n", cnListPopCntMaxDl2);
-#else // defined(cnListPopCntMaxDl2)
-    printf("# cnListPopCntMaxDl2 n/a\n");
-#endif // defined(cnListPopCntMaxDl2)
-#if defined(cnListPopCntMaxDl3)
-    printf("# cnListPopCntMaxDl3 %d\n", cnListPopCntMaxDl3);
-#else // defined(cnListPopCntMaxDl3)
-    printf("# cnListPopCntMaxDl3 n/a\n");
-#endif // defined(cnListPopCntMaxDl3)
-
 #if defined(DEBUG)
     printf("# DEBUG\n");
 #else // defined(DEBUG)
@@ -3155,6 +3101,44 @@ Initialize(void)
 #else // defined(NO_TYPE_IN_XX_SW)
     printf("# NO NO_TYPE_IN_XX_SW\n");
 #endif // defined(NO_TYPE_IN_XX_SW)
+
+#if defined(BM_IN_LINK)
+    printf("\n");
+    printf("# BM_IN_LINK is buggy.\n");
+    printf("# With two-digit bitmap leaf conversion.\n");
+    printf("# With bmsw to uncompressed conversion.\n");
+    printf("# With retype full bmsw if BM_IN_NON_BM_SW.\n");
+    printf("# With skip at top?\n");
+    printf("# With PP_IN_LINK unless NO_SKIP_AT_TOP?\n");
+#endif // defined(BM_IN_LINK)
+
+    printf("\n");
+    printf("# cnBitsInD1 %d\n", cnBitsInD1);
+    printf("# cnBitsInD2 %d\n", cnBitsInD2);
+    printf("# cnBitsInD3 %d\n", cnBitsInD3);
+    printf("# cnBitsPerDigit %d\n", cnBitsPerDigit);
+    printf("# cnDigitsPerWord %d\n", cnDigitsPerWord);
+    printf("# cnListPopCntMax8  %d\n", cnListPopCntMax8);
+    printf("# cnListPopCntMax16 %d\n", cnListPopCntMax16);
+    printf("# cnListPopCntMax32 %d\n", cnListPopCntMax32);
+    printf("# cnListPopCntMax64 %d\n", cnListPopCntMax64);
+    printf("# cnListPopCntMaxDl1 %d\n", cnListPopCntMaxDl1);
+#if defined(cnListPopCntMaxDl2)
+    printf("# cnListPopCntMaxDl2 %d\n", cnListPopCntMaxDl2);
+#else // defined(cnListPopCntMaxDl2)
+    printf("# cnListPopCntMaxDl2 n/a\n");
+#endif // defined(cnListPopCntMaxDl2)
+#if defined(cnListPopCntMaxDl3)
+    printf("# cnListPopCntMaxDl3 %d\n", cnListPopCntMaxDl3);
+#else // defined(cnListPopCntMaxDl3)
+    printf("# cnListPopCntMaxDl3 n/a\n");
+#endif // defined(cnListPopCntMaxDl3)
+
+    printf("\n");
+    for (int nBL = nDL_to_nBL(2); nBL > cnLogBitsPerWord; --nBL) {
+        printf("# EmbeddedListPopCntMax(%d) %d\n", nBL,
+                EmbeddedListPopCntMax(nBL));
+    }
 
     printf("\n");
 
