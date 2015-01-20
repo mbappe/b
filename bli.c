@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.562 2015/01/19 16:13:35 mike Exp mike $
+// @(#) $Id: bli.c,v 1.563 2015/01/19 17:12:11 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1944,16 +1944,15 @@ t_xx_sw:;
 #if defined(LOOKUP) && defined(XX_SHORTCUT)
 
   #if ! defined(NO_TYPE_IN_XX_SW)
-      #if (cnListPopCntMaxDl2 <= 2) && (cnListPopCntMax16 <= 2) \
-       && (cnListPopCntMaxDl1 <= 2) && (cnListPopCntMax8  <= 6)
+      #if ! defined(HANDLE_BLOWOUTS)
         // There is a type field, but we use only two values.
         // Check for one of them here.
         // The ifdef is a hack that makes assumptions that aren't obvious.
         if (wRoot == 0) { return Failure; }
-      #else // cnListPopCntMax ...
+      #else // ! defined(HANDLE_BLOWOUTS)
         nType = wr_nType(wRoot);
         if (nType == T_EMBEDDED_KEYS)
-      #endif // cnListPopCntMax ...
+      #endif // ! defined(HANDLE_BLOWOUTS)
   #endif // ! defined(NO_TYPE_IN_XX_SW)
         {
   #if defined(XX_SHORTCUT_GOTO)
@@ -1961,8 +1960,8 @@ t_xx_sw:;
             goto t_embedded_keys;
   #else // defined(XX_SHORTCUT_GOTO)
 
-#if defined(NO_TYPE_IN_XX_SW)
-  #define XX_CASE(_nBL) \
+      #if defined(NO_TYPE_IN_XX_SW)
+        #define XX_CASE(_nBL) \
             case (_nBL): \
                 if (wRoot == ZERO_POP_MAGIC) { return Failure; } \
                 /* what about blow-outs? */ \
@@ -1970,23 +1969,20 @@ t_xx_sw:;
                     != ZERO_POP_MAGIC); \
                 assert( ! (wRoot & 1) || ((_nBL) == 8) || ((_nBL) == 16) ); \
                 return EmbeddedListHasKey(wRoot, wKey, (_nBL))
-#else // defined(NO_TYPE_IN_XX_SW)
-  #define XX_CASE(_nBL) \
+      #else // defined(NO_TYPE_IN_XX_SW)
+        #define XX_CASE(_nBL) \
             case (_nBL): \
                 assert(wRoot != 0); \
                 return EmbeddedListHasKey(wRoot, wKey, (_nBL))
-#endif // defined(NO_TYPE_IN_XX_SW)
+      #endif // defined(NO_TYPE_IN_XX_SW)
 
             switch (nBL) {
-            default:
-  #if defined(DEBUG)
-            assert(0);
-  #endif // defined(DEBUG)
-  #if (cnLogBitsPerWord == 5)
+            default: assert(0);
+      #if (cnLogBitsPerWord == 5)
             XX_CASE(6); XX_CASE(7);
-  #else // (cnLogBitsPerWord == 5)
+      #else // (cnLogBitsPerWord == 5)
             XX_CASE(7); XX_CASE(6);
-  #endif // (cnLogBitsPerWord == 5)
+      #endif // (cnLogBitsPerWord == 5)
             XX_CASE( 0); XX_CASE( 1); XX_CASE( 2); XX_CASE( 3); XX_CASE( 4);
             XX_CASE( 5); XX_CASE( 8); XX_CASE( 9); XX_CASE(10); XX_CASE(11);
             XX_CASE(12); XX_CASE(13); XX_CASE(14); XX_CASE(15);
@@ -2018,8 +2014,7 @@ t_xx_sw:;
   #endif // defined(XX_SHORTCUT_GOTO)
         }
   #if ! defined(NO_TYPE_IN_XX_SW)
-      #if ! ((cnListPopCntMaxDl2 <= 2) && (cnListPopCntMax16 <= 2) \
-          && (cnListPopCntMaxDl1 <= 2) && (cnListPopCntMax8  <= 6))
+      #if defined(HANDLE_BLOWOUTS)
         if (wRoot == 0) { return Failure; }
         if (nType == T_LIST) {
   #if defined(XX_SHORTCUT_GOTO)
@@ -2028,34 +2023,45 @@ t_xx_sw:;
   #else // defined(XX_SHORTCUT_GOTO)
             int nPopCnt;
             return ((
-      #if ! (                             (cnListPopCntMax16 <= 2) \
-          && (cnListPopCntMaxDl1 <= 2) && (cnListPopCntMax8  <= 6))
+              #if (cnListPopCntMax8 >= cnBytesPerWord) \
+                      || ((cnBitsInD1 <= 8) \
+                          && (cnListPopCntMaxDl1 >= cnBytesPerWord)) \
+                      || ((cnBitsLeftAtDl2 <= 8) \
+                          && (cnListPopCntMaxDl2 >= cnBytesPerWord)) \
+                      || ((cnBitsLeftAtDl3 <= 8) \
+                          && (cnListPopCntMaxDl3 >= cnBytesPerWord))
                 (nBL <= 8) ? SearchList8 (pwRoot, wr_pwr(wRoot), wKey, nBL) :
-      #endif // cnListPopCntMax ...
-      #if (cnBitsLeftAtDl2 > 16)
+              #endif // cnListPopCntMax8 ...
+              #if (cnListPopCntMax16 >= cnBytesPerWord / 2) \
+                      || ((cnBitsLeftAtDl1 > 8) && (cnBitsLeftAtDl1 <= 16)\
+                          && (cnListPopCntMaxDl1 >= cnBytesPerWord / 2)) \
+                      || ((cnBitsLeftAtDl2 > 8) && (cnBitsLeftAtDl2 <= 16) \
+                          && (cnListPopCntMaxDl2 >= cnBytesPerWord / 2)) \
+                      || ((cnBitsLeftAtDl3 > 8) && (cnBitsLeftAtDl3 <= 16) \
+                          && (cnListPopCntMaxDl3 >= cnBytesPerWord / 2))
                 (nBL > 16) ? (nPopCnt =
-        #if defined(PP_IN_LINK)
+                  #if defined(PP_IN_LINK)
                                         PWR_wPopCntBL(pwRoot, NULL, nBL)
-        #else // defined(PP_IN_LINK)
+                  #else // defined(PP_IN_LINK)
                                         PWR_xListPopCnt(pwRoot, 32)
-        #endif // defined(PP_IN_LINK)
+                  #endif // defined(PP_IN_LINK)
                               ),
                         SearchList32(ls_piKeysNATX(wr_pwr(wRoot), nPopCnt),
                                       wKey, nBL, nPopCnt) :
-      #endif // (cnBitsLeftAtDl2 > 16)
+              #endif // (cnListPopCntMax16 >= cnBytesPerWord / 2)
                         SearchList16(pwRoot, wr_pwr(wRoot), wKey, nBL))
                     >= 0);
   #endif // defined(XX_SHORTCUT_GOTO)
         }
-          #if defined(DEBUG)
+      #if defined(DEBUG)
         if (nType != T_BITMAP) {
             printf("nType %d\n", nType);
         }
-          #endif // defined(DEBUG)
+      #endif // defined(DEBUG)
         assert(nType == T_BITMAP);
         pwr = wr_pwr(wRoot);
         goto t_bitmap;
-      #endif // cnListPopCntMax ...
+      #endif // defined(HANDLE_BLOWOUTS)
   #endif // ! defined(NO_TYPE_IN_XX_SW)
 
 #else // defined(LOOKUP) && defined(XX_SHORTCUT)
@@ -2554,13 +2560,13 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
             if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
             goto break2
 
-#if defined(HANDLE_BLOW_OUTS)
+#if defined(HANDLE_BLOWOUTS)
 // We haven't written the insert code to create blow-outs for
 // NO_TYPE_IN_XX_SW yet.
-#define HANDLE_BLOW_OUT { nType = T_LIST; pwr = wr_pwr(wRoot); goto t_list; }
-#else // defined(HANDLE_BLOW_OUTS)
-#define HANDLE_BLOW_OUT
-#endif // defined(HANDLE_BLOW_OUTS)
+#define HANDLE_BLOWOUT { nType = T_LIST; pwr = wr_pwr(wRoot); goto t_list; }
+#else // defined(HANDLE_BLOWOUTS)
+#define HANDLE_BLOWOUT
+#endif // defined(HANDLE_BLOWOUTS)
 
 // For key sizes which can completely fill wRoot with no left-over bits.
 #define CASE_0_BLX(_nBL) \
@@ -2573,7 +2579,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
                     /* this is where we would handle blow-outs */ \
                     assert(wr_pwr(wRoot) != 0); \
                     assert(0); /* shouldn't see this yet */ \
-                    HANDLE_BLOW_OUT; \
+                    HANDLE_BLOWOUT; \
                 } \
             } \
             if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
@@ -2589,7 +2595,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
                     /* this is where we would handle blow-outs */ \
                     assert(wr_pwr(wRoot) != 0); \
                     assert(0); /* shouldn't see this yet */ \
-                    HANDLE_BLOW_OUT; \
+                    HANDLE_BLOWOUT; \
                 } \
             } \
             if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
@@ -2978,10 +2984,9 @@ Initialize(void)
 #endif // ! defined(DEPTH_IN_SW)
 #endif // ! defined(LVL_IN_WR_HB)
 
-    if (wr_nType(ZERO_POP_MAGIC) != T_EMBEDDED_KEYS) {
-        printf("wr_nType(ZERO_POP_MAGIC) != T_EMBEDDED_KEYS\n");
-        exit(1);
-    }
+  #if defined(NO_TYPE_IN_XX_SW)
+    assert (wr_nType(ZERO_POP_MAGIC) == T_EMBEDDED_KEYS);
+  #endif // defined(NO_TYPE_IN_XX_SW)
 
     // Make sure pwr_nBW field is big enough.
     assert((cnBitsLeftAtDl2 - cnBW - (cnLogBitsPerWord + 1))
