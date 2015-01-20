@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.369 2015/01/19 16:13:10 mike Exp mike $
+// @(#) $Id: b.h,v 1.370 2015/01/19 20:59:10 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -918,23 +918,26 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // See EmbeddedListHasKey.
 
 // We need some way to represent an empty list when we have no type field.
+// Zero is no good because it is a valid wRoot for nBL == 8 representing
+// a list with a single key and that key being zero.
 // We use ZERO_POP_MAGIC which would otherwise be an invalid value for wRoot
-// if nBL is small enough that wRoot can hold two or more embedded keys.
-// But, just for fun, it does double duty.  We gave it a valid type value so
-// we can use it in that case as well for performance experiments or if it
-// is ever convenient to do so.
-// Our normal embedded list with a type field and a 3-bit pop count where
-// pop-field=0 means pop=1 cannot represent an empty list.
-// In that case we represent an empty list with wRoot == 0.
-// With (EXP(63) + EXP(cnBitsMallocMask) + T_EMBEDDED_KEYS)
-// The first key is bigger than the second so the list is not sorted and
-// the padding is not valid for zero or last key padding (if sorting with
-// low keys in most significant bits).
-// What about sorting in the other order (JudyL)?
-// What if nBL so big wRoot can't hold more than one key?
-// What about lists with a pop count field?
-// (EXP(63) + EXP(cnBitsMallocMask) + T_EMBEDDED_KEYS) has an invalid pop
-// count if pop-field=0 means pop=1.
+// if nBL is less than or equal to cnBitsPerWord - cnBitsMallocMask.
+// We make sure at least one bit is set in cnMallocMask which is either an
+// invalid zero-fill bit (making the value invalid all by itself) or it
+// indicates that the list is full.  With the high bit in wRoot set and
+// all of the bits between the high bit and the type field bits clear
+// means the first key is bigger than the second so the list is not sorted
+// hence the value is invalid.
+// We gave ZERO_POP_MAGIC type value of T_EMBEDDED_KEYS just because we
+// could and we thought it might come in handy.
+// Our old embedded list with a type field and a 3-bit pop count where
+// pop-field=0 means pop=1 cannot represent an empty list using only the
+// pop count.  In that case we could represent an empty list for nBL small
+// enough that two keys will fit with
+// (EXP(63) + EXP(cnBitsMallocMask) + T_EMBEDDED_KEYS).
+// I don't know if that code works anymore.
+// Is it possible that we are going to want to sort the list in the other
+// order for JudyL?
 // Enough talk for now.  We'll come back to these other cases.
 #define ZERO_POP_MAGIC  (EXP(cnBitsPerWord - 1) + T_EMBEDDED_KEYS)
 
@@ -952,7 +955,21 @@ wr_nPopCnt(Word_t wRoot, int nBL)
         if (wRoot == ZERO_POP_MAGIC) { return 0; }
     } else
 #endif // defined(NO_TYPE_IN_XX_SW)
-    { wKeys &= ~MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL)); }
+    {
+        // The code below assumes the pop count is not zero.
+        // Why do we know the link is non-empty here but not for the
+        // NO_TYPE_IN_XX_SW with (nBL >= nDL_to_nBL(2)) case above?
+        // Because, in this case, the type field exists and tells the
+        // caller the link is not empty and the caller does not call us.
+        // Unfortunately, ZERO_POP_MAGIC is a valid value when there is a
+        // real type value so we can't use it in that case.  I think we
+        // could devise a magic number that would work in both cases (see
+        // above) but I think it might make it just a little trickier to
+        // handle blowouts without having a type field and there is no big
+        // motivator to make it work in both cases at this point.
+        assert(wr_nType(wRoot) == T_EMBEDDED_KEYS);
+        wKeys &= ~MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL));
+    }
     wKeys |= EXP(cnBitsPerWord - 1);
     int ffs = __builtin_ffsll(wKeys);
     int nPopCnt = ((cnBitsPerWord - ffs) / nBL) + 1;
