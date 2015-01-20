@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.479 2015/01/19 17:11:15 mike Exp mike $
+// @(#) $Id: b.c,v 1.480 2015/01/19 20:56:21 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -770,6 +770,10 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(CODE_BM_SW)
     {
         set_wr_pwr(*pwRoot, pwr);
+#if defined(CODE_XX_SW)
+        set_pwr_nBL(pwRoot, nBL);
+        set_pwr_nBW(pwRoot, nBitsIndexSz);
+#endif // defined(CODE_XX_SW)
 #if defined(NO_SKIP_AT_TOP)
         assert((nBLUp < cnBitsPerWord) || (nBL == nBLUp));
 #endif // defined(NO_SKIP_AT_TOP)
@@ -783,7 +787,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
         if (nBL == nBLUp) {
             set_wr_nType(*pwRoot, T_SWITCH);
         } else {
-            set_wr_nBL(*pwRoot, nBL);
+            set_wr_nBL(*pwRoot, nBL); // also sets nType == SKIP_TO_SWITCH
         }
 #endif // defined(TYPE_IS_RELATIVE)
     }
@@ -3124,8 +3128,6 @@ doubleIt:;
                        }
                        set_wr_nType(*pwRoot, T_XX_SW);
                    }
-
-                   set_pwr_nBW(pwRoot, nBW);
                }
 #endif // defined(CODE_XX_SW)
 
