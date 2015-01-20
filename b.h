@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.370 2015/01/19 20:59:10 mike Exp mike $
+// @(#) $Id: b.h,v 1.371 2015/01/20 01:26:11 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -1048,32 +1048,52 @@ EmbeddedListPopCntMax(int nBL)
 
 #define wr_bIsSwitch(_wr)  (tp_bIsSwitch(wr_nType(_wr)))
 
-#define cnBitsLvl  6
+// Bit fields in the upper bits of of wRoot.
+// Lvl is the level of the node pointed to.
+// Can we use lvl to id skip instead of a bit in the type field?
+// XxSwWidth is the width of the switch.
+// ListPopCnt is the number of keys in the list.
+#define cnBitsLvl  7
 #define cnLsbLvl  (cnBitsPerWord - cnBitsLvl)
 #define cnBitsXxSwWidth   6
-#define cnLsbXxSwWidth  (cnBitsPerWord - cnBitsXxSwWidth)
-#define cnBitsListPopCnt  10
-#define cnLsbListPopCnt (cnBitsPerWord - cnBitsListPopCnt)
+#define cnLsbXxSwWidth  cnBitsVirtAddr
+#define cnBitsListPopCnt  9
+#define cnLsbListPopCnt cnBitsVirtAddr
 
 #if defined(CODE_XX_SW)
 
-// Get the width of the narrow branch in bits.
+// Get the width of the branch in bits.
 static inline int
-pwr_nBW(Word_t *pwr)
+pwr_nBW(Word_t *pwRoot)
 {
-    // Might we want to get the width before the type is set?
-    assert(tp_bIsXxSw(wr_nType(*pwr)));
-    return GetBitField(*pwr, cnLsbXxSwWidth, cnBitsXxSwWidth) + cnBW;
+    int nBW = GetBitField(*pwRoot, cnLsbXxSwWidth, cnBitsXxSwWidth);
+    assert(nBW <= (int)MSK(cnBitsXxSwWidth));
+    return nBW;
 }
 
-// Set the width of the narrow branch in bits.
+// Set the width of the branch in bits.
 static inline void
-set_pwr_nBW(Word_t *pwr, int nBW)
+set_pwr_nBW(Word_t *pwRoot, int nBW)
 {
-    // We might want to set the width before the type.
-    assert(tp_bIsXxSw(wr_nType(*pwr)));
-    assert(nBW - cnBW <= (int)MSK(cnBitsXxSwWidth));
-    SetBitField(pwr, cnLsbXxSwWidth, cnBitsXxSwWidth, nBW - cnBW);
+    assert(nBW <= (int)MSK(cnBitsXxSwWidth));
+    SetBitField(pwRoot, cnLsbXxSwWidth, cnBitsXxSwWidth, nBW);
+}
+
+// Get the level of the branch in bits.
+static inline int
+pwr_nBL(Word_t *pwRoot)
+{
+    int nBL = GetBitField(*pwRoot, cnLsbLvl, cnBitsLvl);
+    assert(nBL <= (int)MSK(cnBitsLvl));
+    return nBL;
+}
+
+// Set the level of the branch in bits.
+static inline void
+set_pwr_nBL(Word_t *pwRoot, int nBL)
+{
+    assert(nBL <= (int)MSK(cnBitsLvl));
+    SetBitField(pwRoot, cnLsbLvl, cnBitsLvl, nBL);
 }
 
 #endif // defined(CODE_XX_SW)
