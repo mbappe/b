@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.563 2015/01/19 17:12:11 mike Exp mike $
+// @(#) $Id: bli.c,v 1.564 2015/01/20 01:26:41 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1640,23 +1640,23 @@ again:;
         // interestingly it does compare nBL to cnBitsPerWord.
         if (nBL == cnBitsPerWord) {
             if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, cnBitsPerWord,
-#if defined(CODE_BM_SW)
+  #if defined(CODE_BM_SW)
                                /* bBmSw */ 0,
-#endif // defined(CODE_BM_SW)
+  #endif // defined(CODE_BM_SW)
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-          #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
                                &bNeedPrefixCheck,
-          #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-          #if defined(SAVE_PREFIX)
-              #if defined(PP_IN_LINK)
+      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+      #if defined(SAVE_PREFIX)
+          #if defined(PP_IN_LINK)
                                &pwRootPrefix,
-              #else // defined(PP_IN_LINK)
+          #else // defined(PP_IN_LINK)
                                &pwrPrefix,
-              #endif // defined(PP_IN_LINK)
+          #endif // defined(PP_IN_LINK)
                                &nBLRPrefix,
-          #elif defined(SAVE_PREFIX_TEST_RESULT)
+      #elif defined(SAVE_PREFIX_TEST_RESULT)
                                &bPrefixMismatch,
-          #endif // defined(SAVE_PREFIX)
+      #endif // defined(SAVE_PREFIX)
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
                                &nBLR))
             {
@@ -1666,23 +1666,23 @@ again:;
             // This is rare.  If we ever care, we could improve performance
             // by adding PrefixMismatchNAT.
             if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL,
-#if defined(CODE_BM_SW)
+  #if defined(CODE_BM_SW)
                                /* bBmSw */ 0,
-#endif // defined(CODE_BM_SW)
+  #endif // defined(CODE_BM_SW)
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-          #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
                                &bNeedPrefixCheck,
-          #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-          #if defined(SAVE_PREFIX)
-              #if defined(PP_IN_LINK)
+      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+      #if defined(SAVE_PREFIX)
+          #if defined(PP_IN_LINK)
                                &pwRootPrefix,
-              #else // defined(PP_IN_LINK)
+          #else // defined(PP_IN_LINK)
                                &pwrPrefix,
-              #endif // defined(PP_IN_LINK)
+          #endif // defined(PP_IN_LINK)
                                &nBLRPrefix,
-          #elif defined(SAVE_PREFIX_TEST_RESULT)
+      #elif defined(SAVE_PREFIX_TEST_RESULT)
                                &bPrefixMismatch,
-          #endif // defined(SAVE_PREFIX)
+      #endif // defined(SAVE_PREFIX)
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
                                &nBLR))
             {
@@ -1713,19 +1713,19 @@ again:;
             if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, cnBitsPerWord,
                                /* bBmSw */ 1,
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-          #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
                                &bNeedPrefixCheck,
-          #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-          #if defined(SAVE_PREFIX)
-              #if defined(PP_IN_LINK)
+      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+      #if defined(SAVE_PREFIX)
+          #if defined(PP_IN_LINK)
                                &pwRootPrefix,
-              #else // defined(PP_IN_LINK)
+          #else // defined(PP_IN_LINK)
                                &pwrPrefix,
-              #endif // defined(PP_IN_LINK)
+          #endif // defined(PP_IN_LINK)
                                &nBLRPrefix,
-          #elif defined(SAVE_PREFIX_TEST_RESULT)
+      #elif defined(SAVE_PREFIX_TEST_RESULT)
                                &bPrefixMismatch,
-          #endif // defined(SAVE_PREFIX)
+      #endif // defined(SAVE_PREFIX)
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
                                &nBLR))
             {
@@ -1736,19 +1736,19 @@ again:;
             // by adding PrefixMismatchNAT.
             if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL, /* bBmSw */ 1,
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-          #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
                                &bNeedPrefixCheck,
-          #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-          #if defined(SAVE_PREFIX)
-              #if defined(PP_IN_LINK)
+      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+      #if defined(SAVE_PREFIX)
+          #if defined(PP_IN_LINK)
                                &pwRootPrefix,
-              #else // defined(PP_IN_LINK)
+          #else // defined(PP_IN_LINK)
                                &pwrPrefix,
-              #endif // defined(PP_IN_LINK)
+          #endif // defined(PP_IN_LINK)
                                &nBLRPrefix,
-          #elif defined(SAVE_PREFIX_TEST_RESULT)
+      #elif defined(SAVE_PREFIX_TEST_RESULT)
                                &bPrefixMismatch,
-          #endif // defined(SAVE_PREFIX)
+      #endif // defined(SAVE_PREFIX)
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
                                &nBLR))
             {
@@ -1764,27 +1764,65 @@ again:;
 
 #if defined(SKIP_TO_XX_SW) // Doesn't work yet.
 
-    case T_SKIP_TO_XX_SW:
+    case T_SKIP_TO_XX_SWITCH: // skip link to narrow/wide switch
     {
-        if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL,
+        // pwr points to a switch
+
+        // Looks to me like PrefixMismatch has no performance issues with
+        // not all digits being the same size.  It doesn't care.
+        // But it does use nBL a couple of times.  Maybe it would help to
+        // have bl tests here and call with a constant.  Possibly more
+        // interestingly it does compare nBL to cnBitsPerWord.
+        if (nBL == cnBitsPerWord) {
+            if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, cnBitsPerWord,
+  #if defined(CODE_BM_SW)
+                               /* bBmSw */ 0,
+  #endif // defined(CODE_BM_SW)
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-                           &bNeedPrefixCheck,
+                               &bNeedPrefixCheck,
       #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
       #if defined(SAVE_PREFIX)
           #if defined(PP_IN_LINK)
-                           &pwRootPrefix,
+                               &pwRootPrefix,
           #else // defined(PP_IN_LINK)
-                           &pwrPrefix,
+                               &pwrPrefix,
           #endif // defined(PP_IN_LINK)
-                           &nBLRPrefix,
+                               &nBLRPrefix,
       #elif defined(SAVE_PREFIX_TEST_RESULT)
-                           &bPrefixMismatch,
+                               &bPrefixMismatch,
       #endif // defined(SAVE_PREFIX)
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-                           &nBLR))
-        {
-            break;
+                               &nBLR))
+            {
+                break;
+            }
+        } else {
+            // This is rare.  If we ever care, we could improve performance
+            // by adding PrefixMismatchNAT.
+            if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL,
+  #if defined(CODE_BM_SW)
+                               /* bBmSw */ 0,
+  #endif // defined(CODE_BM_SW)
+  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+                               &bNeedPrefixCheck,
+      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+      #if defined(SAVE_PREFIX)
+          #if defined(PP_IN_LINK)
+                               &pwRootPrefix,
+          #else // defined(PP_IN_LINK)
+                               &pwrPrefix,
+          #endif // defined(PP_IN_LINK)
+                               &nBLRPrefix,
+      #elif defined(SAVE_PREFIX_TEST_RESULT)
+                               &bPrefixMismatch,
+      #endif // defined(SAVE_PREFIX)
+  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+                               &nBLR))
+            {
+                break;
+            }
         }
 
         goto t_xx_sw;
@@ -1807,20 +1845,41 @@ t_switch:;
         // nBLR is nBL reduced by any skip indicated in that link
         // nBLR is bits left at the top of this switch
 
-        DBGX(printf("T_SWITCH nBLUp %d nBLR %d pLinks %p\n",
+        DBGX(printf("T_SWITCH nBL %d nBLR %d pLinks %p\n",
                     nBL, nBLR, (void *)pwr_pLinks((Switch_t *)pwr)));
 
-#if ! defined(LOOKUP)
-        nBLUp = nBL; // save nBL before updating for use in this case only
-#endif // ! defined(LOOKUP)
+  #if ! defined(LOOKUP)
+        if (bCleanup) {
+      #if defined(INSERT)
+            InsertCleanup(wKey, nBL, pwRoot, wRoot);
+      #else // defined(INSERT)
+            RemoveCleanup(wKey, nBL, nBLR, pwRoot, wRoot);
+      #endif // defined(INSERT)
+            if (*pwRoot != wRoot) { goto restart; }
+        } else {
+            // Increment or decrement population count on the way in.
+            wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
+            DBGX(printf("nBLR %d wPopCnt before "OWx"\n",
+                        nBLR, PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR)));
+            set_PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR, wPopCnt + nIncr);
+            DBGX(printf("nBLR %d wPopCnt after "OWx"\n",
+                        nBLR, PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR)));
+        }
+      #if defined(INSERT)
+        //pwRootPrev = pwRoot; // save pwRoot for T_XX_SW for InsertGuts
+      #endif // defined(INSERT)
+  #endif // ! defined(LOOKUP)
+
+        assert(pwr_nBL(&wRoot) == nBLR);
         // This assertion is a reminder that the NAX in the line below and
         // possibly later in this case are cheating.
         // The NAX assumes our test program doesn't generate any keys
         // that have bits set in the top digit.
-        // It's really only legitimate to use NAB.
+        // It's really only legitimate to use NAB3.
         assert(nBLR != cnBitsPerWord);
         nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBLR);
         //nBL = nBLR - nBW_from_nBL_NAB3(nBLR);
+        assert(pwr_nBW(&wRoot) == (nBLR - nBL));
 
         Word_t wIndex = ((wKey >> nBL)
             // It is ok to use NAX here even though we might be at top because
@@ -1832,23 +1891,6 @@ t_switch:;
             & (MSK(nBL_to_nBitsIndexSzNAX(nBLR))));
 
         DBGX(printf("T_SWITCH wIndex %d 0x%x\n", (int)wIndex, (int)wIndex));
-
-#if !defined(LOOKUP)
-        if (bCleanup) {
-  #if defined(INSERT)
-            InsertCleanup(wKey, nBLUp, pwRoot, wRoot);
-  #else // defined(INSERT)
-            RemoveCleanup(wKey, nBLUp, nBLR, pwRoot, wRoot);
-  #endif // defined(INSERT)
-            if (*pwRoot != wRoot) { goto restart; }
-        } else {
-            // Increment or decrement population count on the way in.
-            wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
-            set_PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR, wPopCnt + nIncr);
-            DBGX(printf("wPopCnt "OWx"\n",
-                        PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR)));
-        }
-#endif // !defined(LOOKUP)
 
         pwRoot = &pwr_pLinks((Switch_t *)pwr)[wIndex].ln_wRoot;
 
@@ -1862,18 +1904,17 @@ switchTail:;
         // preserve the value of pwr.
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-#if defined(USE_XX_SW)
-        assert(nBL > (int)LOG(sizeof(Link_t) * 8));
-#else // defined(USE_XX_SW)
-        // this test is done at compile time and might make the rest go away
-        if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
+        assert(EXP(nBL) > (sizeof(Link_t) * 8));
+        // The first test is done at compile time and will make the rest
+        // go away.  Initialize warns if cnBitsInD1 is too small relative
+        // to sizeof(Link_t).  We've left the code here for reference only.
+        if ((EXP(cnBitsInD1) <= (sizeof(Link_t) * 8))
             && (nBL <= (int)LOG(sizeof(Link_t) * 8)))
         {
             goto t_bitmap;
         }
-#endif // defined(USE_XX_SW)
 
-        DBGX(printf("Next pwRoot %p wRoot "OWx" nBL %d\n",
+        DBGX(printf("switchTail: pwRoot %p wRoot "OWx" nBL %d\n",
                     (void *)pwRoot, wRoot, nBL));
 
         nBLR = nBL; // Advance nBLR to the bottom of this switch now.
@@ -1924,6 +1965,7 @@ t_xx_sw:;
       #endif // defined(INSERT)
   #endif // ! defined(LOOKUP)
 
+        assert(pwr_nBL(&wRoot) == nBLR);
         int nBW = pwr_nBW(pwRoot);
         nBL = nBLR - nBW;
         int nIndex = (wKey >> nBL) & MSK(nBW);
@@ -1932,12 +1974,18 @@ t_xx_sw:;
                     nBW, nIndex, nIndex));
 
         pwRoot = &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot;
+
         wRoot = *pwRoot;
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+        // We may need to check the prefix of the switch we just visited in
+        // the next iteration of the loop if we've reached a leaf so we
+        // preserve the value of pwr.
+        pwrPrev = pwr;
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+        assert(EXP(nBL) > (sizeof(Link_t) * 8));
 
         DBGX(printf("T_XX_SW pwRoot %p wRoot "OWx" nBL %d\n",
                     (void *)pwRoot, wRoot, nBL));
-
-        assert(EXP(nBL) > sizeof(Link_t) * 8);
 
 #define BASE_MASK  (EXP(cnBitsPerWord - 1) + cnMallocMask)
 
@@ -2076,7 +2124,11 @@ t_xx_sw:;
         // is extract nType and pwr from wRoot.
         // We don't do any updating of nBL or nBLR.
         nBLR = nBL;
-        goto again;
+      #if defined(LOOKUP) || !defined(RECURSIVE)
+        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
+      #else // defined(LOOKUP) || !defined(RECURSIVE)
+        return InsertRemove(pwRoot, wKey, nBL);
+      #endif // defined(LOOKUP) || !defined(RECURSIVE)
   #endif // defined(NO_TYPE_IN_XX_SW)
 
 #endif // defined(LOOKUP) && defined(XX_SHORTCUT)
@@ -2959,12 +3011,23 @@ Initialize(void)
 #if defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
     assert(0);
 #endif // defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
+    // Why would we want to be able to fit a whole digit's worth of
+    // keys into a Link_t as an embedded bitmap?
+    // A real bitmap encompassing the whole switch would use no more
+    // space and it would be faster.  Does JudyL change the situation?
+    if (EXP(cnBitsInD1) <= sizeof(Link_t) * 8) {
+        printf("Warning: (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)"
+               " makes no sense.\n");
+        printf("Try increasing cnBitsInD1 or decreasing sizeof(Link_t).\n");
+    }
+    assert(EXP(cnBitsInD1) > sizeof(Link_t) * 8);
     // Why would we want to be able to fit more than one digits' worth of
     // keys into a Link_t as an embedded bitmap?
     if (EXP(cnBitsLeftAtDl2) <= sizeof(Link_t) * 8) {
         printf("Warning: (EXP(cnBitsLeftAtDl2) <= sizeof(Link_t) * 8)"
                " makes no sense.\n");
         printf("Try increasing cnBitsInD1 or decreasing sizeof(Link_t).\n");
+        printf("Or try increasing cnBitsPerDigit.\n");
     }
     assert(EXP(cnBitsLeftAtDl2) > sizeof(Link_t) * 8);
 #if ! defined(LVL_IN_WR_HB)
