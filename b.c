@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.480 2015/01/19 20:56:21 mike Exp mike $
+// @(#) $Id: b.c,v 1.481 2015/01/20 18:23:53 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2110,9 +2110,9 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
         }
 
         // Allocate a new bitmap.
-        DBG(printf("# IC: NewBitmap nBL %d nBW %d wPopCnt %ld"
-                       " wWordsAllocated %ld wPopCntTotal %ld.\n",
-                   nBL, nBW, wPopCnt, wWordsAllocated, wPopCntTotal));
+        DBGI(printf("# IC: NewBitmap nBL %d nBW %d wPopCnt %ld"
+                    " wWordsAllocated %ld wPopCntTotal %ld.\n",
+                    nBL, nBW, wPopCnt, wWordsAllocated, wPopCntTotal));
         Word_t *pwBitmap = NewBitmap(pwRoot, nBL);
 
         // Why are we not using InsertAll here to insert the keys?
@@ -2989,7 +2989,7 @@ newSwitch:
                 }
 
   #if defined(USE_XX_SW)
-                if ((nBL == nDL_to_nBL(2)) // Use XX_SW at DL2.
+                if (1 && (nBL == nDL_to_nBL(2)) // Use XX_SW at DL2.
       #if ! defined(SKIP_TO_XX_SW)
                     && (nBL == nBLOld)
       #endif // ! defined(SKIP_TO_XX_SW)
@@ -3035,8 +3035,8 @@ doubleIt:;
                     nBL = nDL_to_nBL(nDL);
       #if defined(SKIP_TO_XX_SW)
                     if (tp_bIsSkip(nType)) {
-                        nDLOld = GetDLR();
-                        nBLOld = nDL_to_nBL(nDL);
+                        nBLOld = cnBitsPerWord;
+                        nDLOld = nBL_to_nDL(nBLOld);
                     } else
       #endif // defined(SKIP_TO_XX_SW)
                     {
@@ -3051,12 +3051,12 @@ doubleIt:;
 // Doubling here would use at least as much memory as a big bitmap.
 // Are we here because the list is full?
 // Is it possible we are here because our words/key is good?
-                        DBG(printf("# IG: NewBitmap nBL %d"
-                                       " wWordsAllocated %ld"
-                                       " wPopCntTotal %ld.\n",
-                                   nBL, wWordsAllocated, wPopCntTotal));
-                        DBG(printf("# IG: NewBitmap wPopCnt %ld.\n",
-                                   wPopCnt));
+                        DBGI(printf("# IG: NewBitmap nBL %d"
+                                    " wWordsAllocated %ld"
+                                    " wPopCntTotal %ld.\n",
+                                    nBL, wWordsAllocated, wPopCntTotal));
+                        DBGI(printf("# IG: NewBitmap wPopCnt %ld.\n",
+                                    wPopCnt));
                         DBGI(printf("# IG: NewBitmap nBL %d.\n", nBL));
                         NewBitmap(pwRoot, nBL);
 #if defined(PP_IN_LINK)

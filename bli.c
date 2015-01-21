@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.564 2015/01/20 01:26:41 mike Exp mike $
+// @(#) $Id: bli.c,v 1.565 2015/01/20 18:21:56 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1764,7 +1764,7 @@ again:;
 
 #if defined(SKIP_TO_XX_SW) // Doesn't work yet.
 
-    case T_SKIP_TO_XX_SWITCH: // skip link to narrow/wide switch
+    case T_SKIP_TO_XX_SW: // skip link to narrow/wide switch
     {
         // pwr points to a switch
 
@@ -1965,8 +1965,13 @@ t_xx_sw:;
       #endif // defined(INSERT)
   #endif // ! defined(LOOKUP)
 
+  #if defined(DEBUG)
+        if (pwr_nBL(&wRoot) != nBLR) {
+            printf("T_XX_SW: pwr_nBL %d nBLR %d\n", pwr_nBL(&wRoot), nBLR);
+        }
+  #endif // defined(DEBUG)
         assert(pwr_nBL(&wRoot) == nBLR);
-        int nBW = pwr_nBW(pwRoot);
+        int nBW = pwr_nBW(&wRoot);
         nBL = nBLR - nBW;
         int nIndex = (wKey >> nBL) & MSK(nBW);
 
@@ -2429,6 +2434,9 @@ t_list:;
 
 #endif // (cwListPopCntMax != 0)
 
+#if defined(SKIP_TO_BITMAP)
+    case T_SKIP_TO_BITMAP: nBL = pwr_nBL(&wRoot);
+#endif // defined(SKIP_TO_BITMAP)
     case T_BITMAP:
 #if defined(EXTRA_TYPES)
     case T_BITMAP | EXP(cnBitsMallocMask):
@@ -2509,6 +2517,9 @@ t_bitmap:;
       #if defined(USE_XX_SW)
             // We assume we never blow-out into a bitmap.
             // But we don't really enforce it.
+          #if defined(DEBUG)
+            if (nBL != cnBitsLeftAtDl2) { printf("nBL %d\n", nBL); }
+          #endif // defined(DEBUG)
             assert(nBL == cnBitsLeftAtDl2);
             assert(pwr == wr_pwr(wRoot));
             int bBitIsSet = BitIsSet(wr_pwr(wRoot),
@@ -2667,7 +2678,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 #endif // defined(NO_TYPE_IN_XX_SW)
 
         switch (nBL) {
-        default: assert(0); // fall to perf case if not DEBUG
+        default: DBG(printf("nBL %d\n", nBL)); assert(0);
       #if defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
         CASE_0_BLX(16); CASE_BLX( 6); CASE_1_BLX(7);
       #else // defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
@@ -3074,6 +3085,7 @@ Initialize(void)
     }
 #endif // defined(BPD_TABLE_RUNTIME_INIT)
 
+    printf("\n");
 #if defined(DEBUG)
     printf("# DEBUG\n");
 #else // defined(DEBUG)

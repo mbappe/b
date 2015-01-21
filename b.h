@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.371 2015/01/20 01:26:11 mike Exp mike $
+// @(#) $Id: b.h,v 1.372 2015/01/20 18:24:44 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -549,6 +549,9 @@ enum {
 #endif // defined(USE_T_ONE)
     T_EMBEDDED_KEYS, // keys are embedded in the link
     T_BITMAP, // external bitmap leaf
+#if defined(SKIP_TO_BITMAP)
+    T_SKIP_TO_BITMAP, // external bitmap leaf
+#endif // defined(SKIP_TO_BITMAP)
 
     // All of the type values less than T_SWITCH are not switches.
     // All type values at T_SWITCH and greater are switches.
@@ -1096,15 +1099,46 @@ set_pwr_nBL(Word_t *pwRoot, int nBL)
     SetBitField(pwRoot, cnLsbLvl, cnBitsLvl, nBL);
 }
 
+static inline Word_t
+pw_wPrefix(Word_t *pw, int nBL)
+{
+    return GetBitField(*pw, /* lsb */ nBL, /* nBits */ cnBitsPerWord - nBL);
+}
+
+static inline void
+set_pw_wPrefix(Word_t *pw, int nBL, Word_t wKey)
+{
+    SetBitField(pw, /* lsb */ nBL, /* nBits */ cnBitsPerWord - nBL, wKey);
+}
+
+static inline Word_t
+pw_wPopCnt(Word_t *pw, int nBL)
+{
+    return GetBitField(*pw, /* lsb */ 0, /* nBits */ nBL) + 1;
+}
+
+static inline void
+set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
+{
+    SetBitField(pw, /* lsb */ 0, /* nBits */ nBL, wPopCnt - 1);
+}
+
 #endif // defined(CODE_XX_SW)
 
 #if defined(TYPE_IS_ABSOLUTE)
 
 #if defined(LVL_IN_WR_HB)
 
-  #define wr_nBL(_wr) \
-      (assert(tp_bIsSwitch(wr_nType(_wr)) && tp_bIsSkip(wr_nType(_wr))), \
-          (int)GetBitField((_wr), cnLsbLvl, cnBitsLvl))
+  #if defined(SKIP_TO_BITMAP)
+    #define wr_nBL(_wr) \
+        (assert((tp_bIsSwitch(wr_nType(_wr)) && tp_bIsSkip(wr_nType(_wr))) \
+                || (wr_nType(_wr) == T_SKIP_TO_BITMAP)), \
+            (int)GetBitField((_wr), cnLsbLvl, cnBitsLvl))
+  #else // defined(SKIP_TO_BITMAP)
+    #define wr_nBL(_wr) \
+        (assert(tp_bIsSwitch(wr_nType(_wr)) && tp_bIsSkip(wr_nType(_wr))), \
+            (int)GetBitField((_wr), cnLsbLvl, cnBitsLvl))
+  #endif // defined(SKIP_TO_BITMAP)
 
   #define wr_nDL(_wr)  nBL_to_nDL(wr_nBL(_wr))
 
