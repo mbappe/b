@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.567 2015/01/21 05:22:19 mike Exp mike $
+// @(#) $Id: bli.c,v 1.568 2015/01/21 15:30:23 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1870,7 +1870,9 @@ t_switch:;
       #endif // defined(INSERT)
   #endif // ! defined(LOOKUP)
 
+  #if defined(SKIP_TO_XX_SW)
         assert(pwr_nBL(&wRoot) == nBLR);
+  #endif // defined(SKIP_TO_XX_SW)
         // This assertion is a reminder that the NAX in the line below and
         // possibly later in this case are cheating.
         // The NAX assumes our test program doesn't generate any keys
@@ -1879,7 +1881,9 @@ t_switch:;
         assert(nBLR != cnBitsPerWord);
         nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBLR);
         //nBL = nBLR - nBW_from_nBL_NAB3(nBLR);
+  #if defined(SKIP_TO_XX_SW)
         assert(pwr_nBW(&wRoot) == (nBLR - nBL));
+  #endif // defined(SKIP_TO_XX_SW)
 
         Word_t wIndex = ((wKey >> nBL)
             // It is ok to use NAX here even though we might be at top because
@@ -1965,13 +1969,19 @@ t_xx_sw:;
       #endif // defined(INSERT)
   #endif // ! defined(LOOKUP)
 
-  #if defined(DEBUG)
+  #if defined(SKIP_TO_XX_SW)
+      #if defined(DEBUG)
         if (pwr_nBL(&wRoot) != nBLR) {
             printf("T_XX_SW: pwr_nBL %d nBLR %d\n", pwr_nBL(&wRoot), nBLR);
         }
-  #endif // defined(DEBUG)
+      #endif // defined(DEBUG)
         assert(pwr_nBL(&wRoot) == nBLR);
+  #endif // defined(SKIP_TO_XX_SW)
+  #if defined(SKIP_TO_XX_SW)
         int nBW = pwr_nBW(&wRoot);
+  #else // defined(SKIP_TO_XX_SW)
+        int nBW = pwr_nBW(pwRoot); // faster???
+  #endif // defined(SKIP_TO_XX_SW)
         nBL = nBLR - nBW;
         int nIndex = (wKey >> nBL) & MSK(nBW);
 
@@ -2704,7 +2714,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         CASE_BLX(22); CASE_BLX(23); CASE_BLX(24); CASE_BLX(25); CASE_BLX(26);
         CASE_BLX(27); CASE_BLX(28); CASE_BLX(29); CASE_BLX(30);
         CASE_BLX(33); CASE_BLX(34); CASE_BLX(35); CASE_BLX(36);
-        CASE_BLX(37); CASE_BLX(38); CASE_BLX(39); CASE_BLX(40);
+        //CASE_BLX(37); CASE_BLX(38); CASE_BLX(39); CASE_BLX(40);
 
         CASE_0_BLX( 8); CASE_0_BLX(32);
         CASE_1_BLX( 9); CASE_1_BLX(21); CASE_1_BLX(31);
