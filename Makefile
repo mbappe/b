@@ -197,7 +197,7 @@ default: clean b
 all: clean $(EXES) $(ASMS) $(CPPS) b.tjz rcs.tjz
 
 clean:
-	rm -f $(EXES) *.tar $(OBJS) $(ASMS) $(CPPS)
+	rm -f $(EXES) *.tjz $(OBJS) $(ASMS) $(CPPS)
 	rm -rf $(SYMS)
 
 t:	$(T_SRCS) $(T_OBJS)
@@ -209,7 +209,8 @@ b:	$(OBJS)
 b.tjz:	$(FILES)
 	tar cjf $@ $(FILES)
 
-rcs.tjz:
+#rcs.tjz: RCS/b.h,v RCS/bli.c,v RCS/b.c,v RCS/Judy1LHTime.c,v RCS/Makefile
+rcs.tjz: RCS/*,v
 	tar cjf $@ RCS
 
 
