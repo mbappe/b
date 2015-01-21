@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.568 2015/01/21 15:30:23 mike Exp mike $
+// @(#) $Id: bli.c,v 1.569 2015/01/21 20:07:00 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2634,6 +2634,12 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 
 #define CASE_BLX(_nBL) \
         case (_nBL): \
+            if ((_nBL) >= cnBitsPerWord / 2) { \
+                if (wRoot == wKey << (cnBitsPerWord - (_nBL))) { \
+                    goto foundIt; \
+                } \
+                goto break2; \
+            } \
             if ((_nBL) < nDL_to_nBL(2)) { \
                 if (wRoot == ZERO_POP_MAGIC) { goto break2; } \
             } \
@@ -2685,6 +2691,12 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 
 #define CASE_BLX(_nBL) \
         case (_nBL): \
+            if ((_nBL) >= (cnBitsPerWord - cnBitsMallocMask) / 2) { \
+                if (wRoot == wKey << (cnBitsPerWord - (_nBL))) { \
+                    goto foundIt; \
+                } \
+                goto break2; \
+            } \
             DBGI(printf("CASE_BLX(%d) wRoot "OWx"\n", (_nBL), wRoot)); \
             if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
             goto break2
@@ -2714,7 +2726,13 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         CASE_BLX(22); CASE_BLX(23); CASE_BLX(24); CASE_BLX(25); CASE_BLX(26);
         CASE_BLX(27); CASE_BLX(28); CASE_BLX(29); CASE_BLX(30);
         CASE_BLX(33); CASE_BLX(34); CASE_BLX(35); CASE_BLX(36);
-        //CASE_BLX(37); CASE_BLX(38); CASE_BLX(39); CASE_BLX(40);
+        CASE_BLX(37); CASE_BLX(38); CASE_BLX(39);
+
+        CASE_BLX(40); CASE_BLX(41); CASE_BLX(42); CASE_BLX(43); CASE_BLX(44);
+        CASE_BLX(45); CASE_BLX(46); CASE_BLX(47); CASE_BLX(48); CASE_BLX(49);
+        CASE_BLX(50); CASE_BLX(51); CASE_BLX(52); CASE_BLX(53); CASE_BLX(54);
+        CASE_BLX(55); CASE_BLX(56); CASE_BLX(57); CASE_BLX(58); CASE_BLX(59);
+        CASE_BLX(60); CASE_BLX(61); CASE_BLX(62); CASE_BLX(63); CASE_BLX(64);
 
         CASE_0_BLX( 8); CASE_0_BLX(32);
         CASE_1_BLX( 9); CASE_1_BLX(21); CASE_1_BLX(31);
