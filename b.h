@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.375 2015/01/21 15:04:49 mike Exp $
+// @(#) $Id: b.h,v 1.377 2015/01/21 20:07:00 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -289,13 +289,13 @@
 
 // Bits are numbered 0-63 with 0 being the least significant.
 static inline Word_t
-GetBitField(Word_t ww, int nLsb, int nBits)
+GetBitField(Word_t ww, int nBits, int nLsb)
 {
     return ww << (cnBitsPerWord - (nLsb + nBits)) >> (cnBitsPerWord - nBits);
 }
 
 static inline void
-SetBitField(Word_t *pw, int nLsb, int nBits, Word_t wVal)
+SetBitField(Word_t *pw, int nBits, int nLsb, Word_t wVal)
 {
     *pw &= ~(MSK(nBits) << nLsb); // clear the field
     *pw |=  (wVal       << nLsb); // set the field
@@ -1088,7 +1088,7 @@ EmbeddedListPopCntMax(int nBL)
 static inline int
 pwr_nBW(Word_t *pwRoot)
 {
-    int nBW = GetBitField(*pwRoot, cnLsbXxSwWidth, cnBitsXxSwWidth);
+    int nBW = GetBitField(*pwRoot, cnBitsXxSwWidth, cnLsbXxSwWidth);
     assert(nBW <= (int)MSK(cnBitsXxSwWidth));
     return nBW;
 }
@@ -1098,14 +1098,14 @@ static inline void
 set_pwr_nBW(Word_t *pwRoot, int nBW)
 {
     assert(nBW <= (int)MSK(cnBitsXxSwWidth));
-    SetBitField(pwRoot, cnLsbXxSwWidth, cnBitsXxSwWidth, nBW);
+    SetBitField(pwRoot, cnBitsXxSwWidth, cnLsbXxSwWidth, nBW);
 }
 
 // Get the level of the branch in bits.
 static inline int
 pwr_nBL(Word_t *pwRoot)
 {
-    int nBL = GetBitField(*pwRoot, cnLsbLvl, cnBitsLvl);
+    int nBL = GetBitField(*pwRoot, cnBitsLvl, cnLsbLvl);
     assert(nBL <= (int)MSK(cnBitsLvl));
     return nBL;
 }
@@ -1115,31 +1115,31 @@ static inline void
 set_pwr_nBL(Word_t *pwRoot, int nBL)
 {
     assert(nBL <= (int)MSK(cnBitsLvl));
-    SetBitField(pwRoot, cnLsbLvl, cnBitsLvl, nBL);
+    SetBitField(pwRoot, cnBitsLvl, cnLsbLvl, nBL);
 }
 
 static inline Word_t
 pw_wPrefix(Word_t *pw, int nBL)
 {
-    return GetBitField(*pw, /* lsb */ nBL, /* nBits */ cnBitsPerWord - nBL);
+    return GetBitField(*pw, /* nBits */ cnBitsPerWord - nBL, /* lsb */ nBL);
 }
 
 static inline void
 set_pw_wPrefix(Word_t *pw, int nBL, Word_t wKey)
 {
-    SetBitField(pw, /* lsb */ nBL, /* nBits */ cnBitsPerWord - nBL, wKey);
+    SetBitField(pw, /* nBits */ cnBitsPerWord - nBL, /* lsb */ nBL, wKey);
 }
 
 static inline Word_t
 pw_wPopCnt(Word_t *pw, int nBL)
 {
-    return GetBitField(*pw, /* lsb */ 0, /* nBits */ nBL) + 1;
+    return GetBitField(*pw, /* nBits */ nBL, /* lsb */ 0) + 1;
 }
 
 static inline void
 set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 {
-    SetBitField(pw, /* lsb */ 0, /* nBits */ nBL, wPopCnt - 1);
+    SetBitField(pw, /* nBits */ nBL, /* lsb */ 0, wPopCnt - 1);
 }
 
 #endif // defined(CODE_XX_SW)
@@ -1152,11 +1152,11 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
     #define wr_nBL(_wr) \
         (assert((tp_bIsSwitch(wr_nType(_wr)) && tp_bIsSkip(wr_nType(_wr))) \
                 || (wr_nType(_wr) == T_SKIP_TO_BITMAP)), \
-            (int)GetBitField((_wr), cnLsbLvl, cnBitsLvl))
+            (int)GetBitField((_wr), cnBitsLvl, cnLsbLvl))
   #else // defined(SKIP_TO_BITMAP)
     #define wr_nBL(_wr) \
         (assert(tp_bIsSwitch(wr_nType(_wr)) && tp_bIsSkip(wr_nType(_wr))), \
-            (int)GetBitField((_wr), cnLsbLvl, cnBitsLvl))
+            (int)GetBitField((_wr), cnBitsLvl, cnLsbLvl))
   #endif // defined(SKIP_TO_BITMAP)
 
   #define wr_nDL(_wr)  nBL_to_nDL(wr_nBL(_wr))
@@ -1164,7 +1164,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
   #define set_wr_nBL(_wr, _nBL) \
       (assert((_nBL) <= (int)MSK(cnBitsLvl)), \
           set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
-          SetBitField(&(_wr), cnLsbLvl, cnBitsLvl, (_nBL)))
+          SetBitField(&(_wr), cnBitsLvl, cnLsbLvl, (_nBL)))
 
   #define set_wr_nDL(_wr, _nDL)  set_wr_nBL((_wr), nDL_to_nBL(_nDL))
 
@@ -1538,11 +1538,11 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #if defined(POP_IN_WR_HB)
 
   #define PWR_xListPopCnt(_pwRoot, _nBL) \
-      ((int)GetBitField(*(_pwRoot), cnLsbListPopCnt, cnBitsListPopCnt))
+      ((int)GetBitField(*(_pwRoot), cnBitsListPopCnt, cnLsbListPopCnt))
 
   #define set_PWR_xListPopCnt(_pwRoot, _nBL, _cnt) \
       (assert((_cnt) <= (int)MSK(cnBitsListPopCnt)), \
-          SetBitField((_pwRoot), cnLsbListPopCnt, cnBitsListPopCnt, (_cnt)))
+          SetBitField((_pwRoot), cnBitsListPopCnt, cnLsbListPopCnt, (_cnt)))
 
 #else // defined(POP_IN_WR_HB)
 
