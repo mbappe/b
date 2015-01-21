@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.374 2015/01/21 05:22:19 mike Exp mike $
+// @(#) $Id: b.h,v 1.374 2015/01/21 05:22:19 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -1066,21 +1066,12 @@ EmbeddedListPopCntMax(int nBL)
 // Can we use lvl to id skip instead of a bit in the type field?
 // XxSwWidth is the width of the switch.
 // ListPopCnt is the number of keys in the list.
-// A field at the end is faster to extract than a field in the middle.
 #define cnBitsLvl  7
 #define cnLsbLvl  (cnBitsPerWord - cnBitsLvl)
 #define cnBitsXxSwWidth   6
-#if defined(SKIP_TO_XX_SW)
 #define cnLsbXxSwWidth  cnBitsVirtAddr
-#else // defined(SKIP_TO_XX_SW)
-#define cnLsbXxSwWidth  (cnBitsPerWord - cnBitsXxSwWidth)
-#endif // defined(SKIP_TO_XX_SW)
 #define cnBitsListPopCnt  9
-#if defined(SKIP_TO_LIST)
-#define cnLsbListPopCnt  cnBitsVirtAddr
-#else // defined(SKIP_TO_LIST)
-#define cnLsbListPopCnt  (cnBitsPerWord - cnBitsListPopCnt)
-#endif // defined(SKIP_TO_LIST)
+#define cnLsbListPopCnt cnBitsVirtAddr
 
 #if defined(CODE_XX_SW)
 
