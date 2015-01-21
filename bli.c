@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.565 2015/01/20 18:21:56 mike Exp mike $
+// @(#) $Id: bli.c,v 1.566 2015/01/21 02:08:15 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2010,6 +2010,7 @@ t_xx_sw:;
         {
   #if defined(XX_SHORTCUT_GOTO)
             DBGX(printf("goto t_embedded_keys\n"));
+        assert(EmbeddedListPopCntMax(nBL) != 0);
             goto t_embedded_keys;
   #else // defined(XX_SHORTCUT_GOTO)
 
@@ -2123,6 +2124,7 @@ t_xx_sw:;
   #if defined(NO_TYPE_IN_XX_SW)
         // ZERO_POP_MAGIC is handled in t_embedded_keys.
         // Blow-ups are handled in t_embedded_keys.
+        assert(EmbeddedListPopCntMax(nBL) != 0);
         goto t_embedded_keys;
   #else // defined(NO_TYPE_IN_XX_SW)
         // The only thing we do at "again" before switching on nType
@@ -2570,6 +2572,11 @@ t_bitmap:;
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
   #endif // defined(SKIP_LINKS)
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
+
+#if defined(INSERT) && defined(SKIP_TO_BITMAP)
+        // I guess we're getting away with leaving nBL
+        // as the post-skip value.  Go figure.
+#endif // defined(INSERT) && defined(SKIP_TO_BITMAP)
 
         break;
 

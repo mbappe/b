@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.481 2015/01/20 18:23:53 mike Exp mike $
+// @(#) $Id: b.c,v 1.482 2015/01/21 02:08:15 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -564,9 +564,10 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
 // We don't need NewBitmap unless cnBitsLeftAtD1 > LOG(sizeof(Link_t) * 8).
 // Hopefully, the compiler will figure it out and not emit it.
 static Word_t *
-NewBitmap(Word_t *pwRoot, unsigned nBL)
+NewBitmap(Word_t *pwRoot, int nBL, int nBLUp, Word_t wKey)
 {
-    Word_t wWords = EXP(nBL - cnLogBitsPerWord);
+    (void)nBLUp; (void)wKey;
+    Word_t wWords = EXP(nBL - cnLogBitsPerWord) + 1;
 
     Word_t *pwBitmap = (Word_t *)MyMalloc(wWords);
 
@@ -578,7 +579,7 @@ NewBitmap(Word_t *pwRoot, unsigned nBL)
     }
     METRICS(j__AllocWordsJL12 += wWords); // JUDYB -- overloaded
 
-    DBGM(printf("NewBitmap nBL %u nBits "OWx
+    DBGM(printf("NewBitmap nBL %d nBits "OWx
       " nBytes "OWx" wWords "OWx" pwBitmap "OWx"\n",
         nBL, EXP(nBL), EXP(nBL - cnLogBitsPerByte), wWords,
         (Word_t)pwBitmap));
@@ -590,15 +591,33 @@ NewBitmap(Word_t *pwRoot, unsigned nBL)
     // be initialized.
     Word_t wRoot = 0; set_wr(wRoot, pwBitmap, T_BITMAP);
 
+#if defined(SKIP_TO_BITMAP)
+  #if defined(TYPE_IS_RELATIVE)
+    assert(0); // not yet
+  #else // defined(TYPE_IS_RELATIVE)
+    set_pwr_nBL(&wRoot, nBL);
+    set_pw_wPrefix(pwBitmap + EXP(nBL - cnLogBitsPerWord), nBL, wKey);
+    if (nBLUp != nBL) {
+        set_wr_nType(wRoot, T_SKIP_TO_BITMAP);
+    }
+  #endif // defined(TYPE_IS_RELATIVE)
+#else // defined(SKIP_TO_BITMAP)
+    assert(nBLUp == nBL);
+#endif // defined(SKIP_TO_BITMAP)
+    set_pw_wPopCnt(pwBitmap + EXP(nBL - cnLogBitsPerWord), nBL, 0);
+
     *pwRoot = wRoot;
 
     return pwBitmap;
 }
 
 static Word_t
-OldBitmap(Word_t *pwRoot, Word_t *pwr, unsigned nBL)
+OldBitmap(Word_t *pwRoot, Word_t *pwr, int nBL)
 {
-    Word_t wWords = EXP(nBL - cnLogBitsPerWord);
+#if defined(SKIP_TO_BITMAP)
+    nBL = pwr_nBL(pwRoot);
+#endif // defined(SKIP_TO_BITMAP)
+    Word_t wWords = EXP(nBL - cnLogBitsPerWord) + 1;
 
     MyFree(pwr, wWords);
 
@@ -777,19 +796,26 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #if defined(NO_SKIP_AT_TOP)
         assert((nBLUp < cnBitsPerWord) || (nBL == nBLUp));
 #endif // defined(NO_SKIP_AT_TOP)
-#if defined(TYPE_IS_RELATIVE)
         if (nBL == nBLUp) {
-            set_wr_nType(*pwRoot, T_SWITCH);
+  #if defined(USE_XX_SW)
+            if (nBL <= nDL_to_nBL(2)) {
+                set_wr_nType(*pwRoot, T_XX_SW);
+            } else
+  #endif // defined(USE_XX_SW)
+            { set_wr_nType(*pwRoot, T_SWITCH); }
         } else {
+  #if defined(TYPE_IS_RELATIVE)
+            // set_wr_nDS sets nType to T_SKIP_TO_SWITCH.
             set_wr_nDS(*pwRoot, nBL_to_nDL(nBLUp) - nBL_to_nDL(nBL));
+  #else // defined(TYPE_IS_RELATIVE)
+            set_wr_nBL(*pwRoot, nBL); // also sets nType == T_SKIP_TO_SWITCH
+  #endif // defined(USE_XX_SW) && defined(SKIP_TO_XX_SW)
+  #if defined(USE_XX_SW) && defined(SKIP_TO_XX_SW)
+            if (nBL <= nDL_to_nBL(2)) {
+                set_wr_nType(*pwRoot, T_SKIP_TO_XX_SW);
+            }
+  #endif // defined(USE_XX_SW) && defined(SKIP_TO_XX_SW)
         }
-#else // defined(TYPE_IS_RELATIVE)
-        if (nBL == nBLUp) {
-            set_wr_nType(*pwRoot, T_SWITCH);
-        } else {
-            set_wr_nBL(*pwRoot, nBL); // also sets nType == SKIP_TO_SWITCH
-        }
-#endif // defined(TYPE_IS_RELATIVE)
     }
 
 #if defined(CODE_BM_SW)
@@ -1197,7 +1223,7 @@ OldSwitch(Word_t *pwRoot, int nBL,
 
     int nBitsIndexSz;
 #if defined(USE_XX_SW)
-    if (wr_nType(*pwRoot) == T_XX_SW) {
+    if (tp_bIsXxSw(wr_nType(*pwRoot))) {
         nBitsIndexSz = pwr_nBW(pwRoot);
     } else
 #endif // defined(USE_XX_SW)
@@ -1274,7 +1300,11 @@ GetDLR(Word_t *pwRoot, int nDL)
 
     return
   #if defined(SKIP_LINKS)
-        (tp_bIsSwitch(wr_nType(*pwRoot)) && tp_bIsSkip(wr_nType(*pwRoot)))
+        ((tp_bIsSwitch(wr_nType(*pwRoot)) && tp_bIsSkip(wr_nType(*pwRoot)))
+      #if defined(SKIP_TO_BITMAP)
+            || (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP)
+      #endif // defined(SKIP_TO_BITMAP)
+            || 0)
       #if defined(TYPE_IS_RELATIVE)
             ? nDL - wr_nDS(*pwRoot) :
       #else // defined(TYPE_IS_RELATIVE)
@@ -1288,6 +1318,13 @@ static Word_t
 GetPopCnt(Word_t *pwRoot, int nDL)
 {
     int nDLR = GetDLR(pwRoot, nDL);
+
+#if defined(SKIP_TO_BITMAP)
+    if (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP) {
+        int nBL = wr_nBL(*pwRoot);
+        return pw_wPopCnt(wr_pwr(*pwRoot) + EXP(nBL - cnLogBitsPerWord), nBL);
+    }
+#endif // defined(SKIP_TO_BITMAP)
 
     Word_t wPopCnt =
       #if defined(CODE_BM_SW)
@@ -1424,6 +1461,13 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
         printf(" pwRoot "OWx, (Word_t)pwRoot);
         printf(" wr "OWx, wRoot);
     }
+
+#if defined(SKIP_TO_BITMAP)
+    if (nType == T_SKIP_TO_BITMAP) {
+        if (bDump) { printf("\n"); return 0; }
+        return OldBitmap(pwRoot, pwr, nBL);
+    }
+#endif // defined(SKIP_TO_BITMAP)
 
     if ((nType == T_BITMAP)
         || (1
@@ -1643,7 +1687,7 @@ embeddedKeys:;
 #endif // defined(SKIP_LINKS)
 
 #if defined(CODE_XX_SW)
-    if (nType == T_XX_SW) {
+    if (tp_bIsXxSw(nType)) {
         nBitsIndexSz = pwr_nBW(pwRoot);
     } else
 #endif // defined(CODE_XX_SW)
@@ -1709,13 +1753,6 @@ embeddedKeys:;
 #endif // defined(CODE_BM_SW)
         printf("\n");
     }
-
-#if defined(CODE_XX_SW)
-    if (nType == T_XX_SW) {
-        nBitsIndexSz = pwr_nBW(pwRoot);
-    } else
-#endif // defined(CODE_XX_SW)
-    { nBitsIndexSz = nBL_to_nBitsIndexSz(nBL); }
 
     // skip link has extra prefix bits
     if (nBLPrev > nBL)
@@ -2085,6 +2122,7 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
 #endif // ! defined(cnBmWpkPercent)
     if ((nBL == nDL_to_nBL(2))
         && tp_bIsSwitch(nType)
+        && ! tp_bIsSkip(nType)
 #if defined(CODE_BM_SW)
         && ! tp_bIsBmSw(nType)
 #endif // defined(CODE_BM_SW)
@@ -2113,7 +2151,8 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
         DBGI(printf("# IC: NewBitmap nBL %d nBW %d wPopCnt %ld"
                     " wWordsAllocated %ld wPopCntTotal %ld.\n",
                     nBL, nBW, wPopCnt, wWordsAllocated, wPopCntTotal));
-        Word_t *pwBitmap = NewBitmap(pwRoot, nBL);
+        Word_t *pwBitmap = NewBitmap(pwRoot, nBL, nBL, wKey);
+        set_pw_wPopCnt(pwBitmap + EXP(nBL - cnLogBitsPerWord), nBL, wPopCnt);
 
         // Why are we not using InsertAll here to insert the keys?
         // It doesn't handle switches yet.
@@ -2357,7 +2396,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
 #if defined(NO_TYPE_IN_XX_SW)
     if (pwRootPrev != NULL) {
         DBGR(printf("IG: goto embeddedKeys.\n"));
-        assert(wr_nType(*pwRootPrev) == T_XX_SW);
+        assert(tp_bIsXxSw(wr_nType(*pwRootPrev)));
         goto embeddedKeys;
     }
 #endif // defined(NO_TYPE_IN_XX_SW)
@@ -2372,7 +2411,12 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
 
     unsigned nType = wr_nType(wRoot); (void)nType; // silence gcc
 
-    if (nType == T_BITMAP) {
+    if ((nType == T_BITMAP)
+#if defined(SKIP_TO_BITMAP)
+        || (nType == T_SKIP_TO_BITMAP)
+#endif // defined(SKIP_TO_BITMAP)
+        || 0)
+    {
         return InsertAtBitmap(pwRoot, wKey, nDL, wRoot);
     }
 
@@ -2899,7 +2943,7 @@ newSwitch:
             // The latter is enforced by disallowing
             // cnBitsAtDl2 <= cnLogBitsPerWord no later than Initialize time.
             // Nor do we support a skip link directly to a bitmap -- yet.
-#if defined(USE_XX_SW)
+#if defined(USE_XX_SW) && ! defined(SKIP_TO_XX_SW)
             // We don't skip to a switch below DL3.  Because we don't support
             // skip to T_XX_SW yet and T_XX_SW is critically important at
             // DL2 and below.
@@ -2909,14 +2953,14 @@ newSwitch:
                 nBL = cnBitsLeftAtDl3;
                 nDL = 3;
             }
-#else // defined(USE_XX_SW)
+#else // defined(USE_XX_SW) && ! defined(SKIP_TO_XX_SW)
             if ((nBL < cnBitsLeftAtDl2) && (nBLOld >= cnBitsLeftAtDl2)) {
                 DBGI(printf("InsertGuts nDL %d nBL %d nDLOld %d nBLOld %d\n",
                            nDL, nBL, nDLOld, nBLOld));
                 nBL = cnBitsLeftAtDl2;
                 nDL = 2;
             }
-#endif // defined(USE_XX_SW)
+#endif // defined(USE_XX_SW) && ! defined(SKIP_TO_XX_SW)
             assert(nBL > (int)LOG(sizeof(Link_t) * 8));
 
 #if defined(PP_IN_LINK)
@@ -2967,7 +3011,7 @@ newSwitch:
 #if ! defined(USE_XX_SW)
             if ((EXP(cnBitsInD1) > sizeof(Link_t) * 8) && (nDL == 1)) {
                 assert(nBLOld == nBL);
-                NewBitmap(pwRoot, nBL);
+                NewBitmap(pwRoot, nBL, nBLOld, wKey);
 #if defined(PP_IN_LINK)
                 set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL, 0);
 #endif // defined(PP_IN_LINK)
@@ -2991,7 +3035,7 @@ newSwitch:
   #if defined(USE_XX_SW)
                 if (1 && (nBL == nDL_to_nBL(2)) // Use XX_SW at DL2.
       #if ! defined(SKIP_TO_XX_SW)
-                    && (nBL == nBLOld)
+                      && (nBL == nBLOld)
       #endif // ! defined(SKIP_TO_XX_SW)
                     )
                 {
@@ -3035,7 +3079,8 @@ doubleIt:;
                     nBL = nDL_to_nBL(nDL);
       #if defined(SKIP_TO_XX_SW)
                     if (tp_bIsSkip(nType)) {
-                        nBLOld = cnBitsPerWord;
+                        nBLOld = cnBitsPerWord; // Only for skip detection?
+                        assert(nBLOld > nBL);
                         nDLOld = nBL_to_nDL(nBLOld);
                     } else
       #endif // defined(SKIP_TO_XX_SW)
@@ -3052,13 +3097,14 @@ doubleIt:;
 // Are we here because the list is full?
 // Is it possible we are here because our words/key is good?
                         DBGI(printf("# IG: NewBitmap nBL %d"
+                                    " nBLOld %d"
                                     " wWordsAllocated %ld"
                                     " wPopCntTotal %ld.\n",
-                                    nBL, wWordsAllocated, wPopCntTotal));
+                                    nBL, nBLOld, wWordsAllocated, wPopCntTotal));
                         DBGI(printf("# IG: NewBitmap wPopCnt %ld.\n",
                                     wPopCnt));
                         DBGI(printf("# IG: NewBitmap nBL %d.\n", nBL));
-                        NewBitmap(pwRoot, nBL);
+                        NewBitmap(pwRoot, nBL, nBLOld, wKey);
 #if defined(PP_IN_LINK)
                         set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL, 0);
 #endif // defined(PP_IN_LINK)
@@ -3117,6 +3163,7 @@ doubleIt:;
                        assert(nDL_to_nBL(GetDLR(pwRoot, nBL_to_nDL(nBLOld)))
                            == nBL);
                        set_wr_nType(*pwRoot, T_SKIP_TO_XX_SW);
+                       assert(tp_bIsXxSw(wr_nType(*pwRoot)));
                        assert(nDL_to_nBL(GetDLR(pwRoot, nBL_to_nDL(nBLOld)))
                            == nBL);
                    } else
@@ -3147,11 +3194,12 @@ doubleIt:;
             // to the tree whose keys must be reinserted.
 #if defined(USE_XX_SW)
             if (pwRoot == pwRootPrev) {
-insertAll:
+insertAll:;
                 // nBW is for the new tree.
                 //printf("Calling InsertAll for all links nBW %d\n", nBW);
                 //printf("# Old tree:\n");
                 //DBG(Dump(&wRoot, wKey & ~MSK(nBLOld), nBLOld));
+                int nBLR = nBL - pwr_nBW(&wRoot);
                 for (int nIndex = 0;
                          nIndex < (int)EXP(pwr_nBW(&wRoot));
                          nIndex++)
@@ -3159,14 +3207,19 @@ insertAll:
                     //printf("# New tree before IA nIndex %d:\n", nIndex);
                     //DBG(Dump(pwRoot, wKey, nBLOld));
                     InsertAll(&pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot,
-                              nBLOld - pwr_nBW(&wRoot),
-                              (wKey & ~MSK(nBLOld))
-                                  | (nIndex << (nBLOld - pwr_nBW(&wRoot))),
-                              pwRoot, nBLOld);
+                              nBLR,
+                              (wKey & ~MSK(nBL)) | (nIndex << nBLR),
+                              pwRoot,
+// How are we going to get nBLOld from pwRootPrev?
+// Do we need it?  We need it for the call back into Insert.
+                              nBLOld);
                 }
 
-                assert(nBLOld == nDL_to_nBL(2));
-                OldSwitch(&wRoot, /* nBL */ nBLOld, /* nBLUp */ nBLOld);
+#if ! defined(SKIP_TO_XX_SW)
+                assert(nBL == nDL_to_nBL(2));
+                assert(nBLOld == nBL);
+#endif // ! defined(SKIP_TO_XX_SW)
+                OldSwitch(&wRoot, /* nBL */ nBL, /* nBLUp */ nBLOld);
 
                 //printf("# New tree after InsertAll done looping:\n");
                 //DBG(Dump(pwRoot, wKey, nBLOld));
@@ -3781,6 +3834,15 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
         (void)pwRoot;
         int nBL = nDL_to_nBL(nDL);
 
+#if defined(SKIP_TO_BITMAP)
+        if (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP) {
+            // Strangely, we seem to be getting away with letting
+            // Insert leave nBL including the skipped bits.
+            assert(nBL == pwr_nBL(pwRoot));
+            //nBL = pwr_nBL(pwRoot);
+        }
+#endif // defined(SKIP_TO_BITMAP)
+
         Word_t *pwr = wr_pwr(wRoot);
 
         assert(pwr != NULL);
@@ -3791,6 +3853,9 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
                     (Word_t)pwr, wKey & MSK(nBL), (void *)pwRoot));
 
         SetBit(pwr, wKey & MSK(nBL));
+
+        set_pw_wPopCnt(pwr + EXP(nBL - cnLogBitsPerWord), nBL,
+            pw_wPopCnt(pwr + EXP(nBL - cnLogBitsPerWord), nBL) + 1);
 
 #if defined(PP_IN_LINK)
 
@@ -3899,9 +3964,17 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 
 // Could we be more specific in this ifdef, e.g. cnListPopCntMax16?
 #if (cwListPopCntMax != 0)
-    if ((nBL <= (int)LOG(sizeof(Link_t) * 8)) || (nType == T_BITMAP))
+    if ((nBL <= (int)LOG(sizeof(Link_t) * 8))
+  #if defined(SKIP_TO_BITMAP)
+        || (nType == T_SKIP_TO_BITMAP)
+  #endif // defined(SKIP_TO_BITMAP)
+        || (nType == T_BITMAP))
 #else // (cwListPopCntMax != 0)
-    assert((nBL <= (int)LOG(sizeof(Link_t) * 8)) || (nType == T_BITMAP));
+    assert((nBL <= (int)LOG(sizeof(Link_t) * 8))
+  #if defined(SKIP_TO_BITMAP)
+        || (nType == T_SKIP_TO_BITMAP)
+  #endif // defined(SKIP_TO_BITMAP)
+        || (nType == T_BITMAP));
 #endif // (cwListPopCntMax != 0)
     {
         return RemoveBitmap(pwRoot, wKey, nDL, nBL, wRoot);
@@ -4141,9 +4214,18 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
     if (EXP(nBL) <= sizeof(Link_t) * 8) {
         ClrBit(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL));
     } else {
+  #if defined(SKIP_TO_BITMAP)
+        if (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP) {
+            nBL = pwr_nBL(pwRoot);
+            nDL = nBL_to_nDL(nBL);
+        }
+  #endif // defined(SKIP_TO_BITMAP)
         Word_t *pwr = wr_pwr(wRoot);
 
         ClrBit(pwr, wKey & MSK(nBL));
+
+        set_pw_wPopCnt(pwr + EXP(nBL - cnLogBitsPerWord), nBL,
+            pw_wPopCnt(pwr + EXP(nBL - cnLogBitsPerWord), nBL) - 1);
 
 #if defined(PP_IN_LINK)
 
@@ -4270,7 +4352,12 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
       #endif // defined(USE_T_ONE)
         if (pwr == NULL) {
             wPopCnt = 0;
+#if defined(SKIP_TO_BITMAP)
+        } else if (nType == T_SKIP_TO_BITMAP) {
+            wPopCnt = GetPopCnt(&wRoot, cnDigitsPerWord);
+#endif // defined(SKIP_TO_BITMAP)
         } else {
+            assert(nType == T_LIST);
             // ls_wPopCnt is valid at top for PP_IN_LINK if ! USE_T_ONE
             wPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
         }
