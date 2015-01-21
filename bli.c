@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.566 2015/01/21 02:08:15 mike Exp mike $
+// @(#) $Id: bli.c,v 1.567 2015/01/21 05:22:19 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1827,7 +1827,7 @@ again:;
 
         goto t_xx_sw;
 
-    } // end of T_SKIP_TO_BM_SW case
+    } // end of T_SKIP_TO_XX_SW case
 
 #endif // defined(SKIP_TO_XX_SW)
 
@@ -2437,7 +2437,7 @@ t_list:;
 #endif // (cwListPopCntMax != 0)
 
 #if defined(SKIP_TO_BITMAP)
-    case T_SKIP_TO_BITMAP: nBL = pwr_nBL(&wRoot);
+    case T_SKIP_TO_BITMAP: nBL = pwr_nBL(&wRoot); goto t_bitmap;
 #endif // defined(SKIP_TO_BITMAP)
     case T_BITMAP:
 #if defined(EXTRA_TYPES)
@@ -2704,6 +2704,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         CASE_BLX(22); CASE_BLX(23); CASE_BLX(24); CASE_BLX(25); CASE_BLX(26);
         CASE_BLX(27); CASE_BLX(28); CASE_BLX(29); CASE_BLX(30);
         CASE_BLX(33); CASE_BLX(34); CASE_BLX(35); CASE_BLX(36);
+        CASE_BLX(37); CASE_BLX(38); CASE_BLX(39); CASE_BLX(40);
 
         CASE_0_BLX( 8); CASE_0_BLX(32);
         CASE_1_BLX( 9); CASE_1_BLX(21); CASE_1_BLX(31);
