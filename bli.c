@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.569 2015/01/21 20:07:00 mike Exp $
+// @(#) $Id: bli.c,v 1.571 2015/01/21 21:43:26 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1878,7 +1878,7 @@ t_switch:;
         // The NAX assumes our test program doesn't generate any keys
         // that have bits set in the top digit.
         // It's really only legitimate to use NAB3.
-        assert(nBLR != cnBitsPerWord);
+        assert(nBL_to_nBitsIndexSzNAX(nBLR) == nBL_to_nBitsIndexSz(nBLR));
         nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBLR);
         //nBL = nBLR - nBW_from_nBL_NAB3(nBLR);
   #if defined(SKIP_TO_XX_SW)
@@ -2714,7 +2714,13 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         CASE_BLX(22); CASE_BLX(23); CASE_BLX(24); CASE_BLX(25); CASE_BLX(26);
         CASE_BLX(27); CASE_BLX(28); CASE_BLX(29); CASE_BLX(30);
         CASE_BLX(33); CASE_BLX(34); CASE_BLX(35); CASE_BLX(36);
-        //CASE_BLX(37); CASE_BLX(38); CASE_BLX(39); CASE_BLX(40);
+        CASE_BLX(37); CASE_BLX(38); CASE_BLX(39);
+
+        CASE_BLX(40); CASE_BLX(41); CASE_BLX(42); CASE_BLX(43); CASE_BLX(44);
+        CASE_BLX(45); CASE_BLX(46); CASE_BLX(47); CASE_BLX(48); CASE_BLX(49);
+        CASE_BLX(50); CASE_BLX(51); CASE_BLX(52); CASE_BLX(53); CASE_BLX(54);
+        CASE_BLX(55); CASE_BLX(56); CASE_BLX(57); CASE_BLX(58); CASE_BLX(59);
+        CASE_BLX(60); CASE_BLX(61); CASE_BLX(62); CASE_BLX(63); CASE_BLX(64);
 
         CASE_0_BLX( 8); CASE_0_BLX(32);
         CASE_1_BLX( 9); CASE_1_BLX(21); CASE_1_BLX(31);
