@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.573 2015/01/22 14:56:44 mike Exp mike $
+// @(#) $Id: bli.c,v 1.574 2015/01/22 15:36:26 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1648,11 +1648,13 @@ again:;
 #endif // ( ! defined(LOOKUP) )
     DBGX(printf("# wRoot "OWx" wKey "OWx" nBL %d\n", wRoot, wKey, nBL));
 
-#if ! defined(LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)
+#if ! defined(LOOKUP) /* don't care about performance */ \
+      || (defined(USE_PWROOT_FOR_LOOKUP) \
+              && (defined(PWROOT_ARG_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)))
     int nType = Get_nType(pwRoot);
-#else // ! defined(LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)
+#else // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's initialized
     int nType = Get_nType(&wRoot);
-#endif // ! defined(LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)
+#endif // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's initialized
     goto again2;
 again2:;
     Word_t *pwr = wr_pwr(wRoot);
@@ -2050,11 +2052,12 @@ t_xx_sw:;
         // The ifdef is a hack that makes assumptions that aren't obvious.
         if (wRoot == 0) { return Failure; }
       #else // ! defined(HANDLE_BLOWOUTS)
-          #if defined(PWROOT_AT_TOP_FOR_LOOKUP)
+          #if defined(USE_PWROOT_FOR_LOOKUP) \
+                  && (defined(PWROOT_ARG_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP))
         nType = Get_nType(pwRoot);
-          #else // defined(PWROOT_AT_TOP_FOR_LOOKUP)
+          #else // defined(USE_PWROOT_FOR_LOOKUP) && we know pwroot is initialized
         nType = Get_nType(&wRoot);
-          #endif // defined(PWROOT_AT_TOP_FOR_LOOKUP)
+          #endif // defined(USE_PWROOT_FOR_LOOKUP) && we know pwroot is initialized
         if (nType == T_EMBEDDED_KEYS)
       #endif // ! defined(HANDLE_BLOWOUTS)
   #endif // ! defined(NO_TYPE_IN_XX_SW)
