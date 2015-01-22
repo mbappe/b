@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.574 2015/01/22 15:36:26 mike Exp mike $
+// @(#) $Id: bli.c,v 1.575 2015/01/22 15:56:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -461,7 +461,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
         (_nPos) = ~((_nPos) + (_nPopCnt)); \
     } else { \
         PSSEARCHF(_b_t, (_xKey), (_pxKeys), (_nPopCnt), (_nPos)); \
-/*PSPLIT_SEARCH_RANGE(_xKey, _pxKeys, _nPopCnt, _xKeySplit, xKeyEnd, _nPos)*/ \
+/*PSPLIT_SEARCH_RANGE(_xKey, _pxKeys, _nPopCnt, _xKeySplit, xKeyEnd, _nPos)*/\
     } \
 }
 
@@ -1172,7 +1172,8 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
     SEARCHF(Word_t, pwKeysOrig, nPopCnt, wKey, nPos);
   #endif // defined(BACKWARD_SEARCH_WORD)
 #endif // defined(PSPLIT_SEARCH_WORD)
-    DBGX(printf("SLW: return pwKeysOrig %p nPos %d\n", (void *)pwKeysOrig, nPos));
+    DBGX(printf("SLW: return pwKeysOrig %p nPos %d\n",
+                (void *)pwKeysOrig, nPos));
     return nPos;
 }
 
@@ -1535,12 +1536,13 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
 // nBL == 0 means cnBitsPerWord? (would make it less general).
 // Or nBL == BLBits(pwRoot) + 1?  Or use cnLogBitsPerWord bits for nBL field?
 // pwRoot is a pointer to the root of a subtree.
-// nBS is number of bits to skip (bits that are common for all present keys below).
+// nBS is number of bits to skip (common bits for all present keys below).
 // nBW is number of bits decoded by the switch pointed to.
 // nBW == 0 means all bits left, i.e. nBL - nBS; keys or list or bitmap.
 // nBW != 0 means switch at nBL - nBS decoding nBW bits.
-// If nBL - nBS <= cnBitsPerWord / 2, then use magic to extract type for nBL that don't
-// have room for type.  Magic only works if Word_t can hold more than one key.
+// If nBL - nBS <= cnBitsPerWord / 2, then use magic to extract type for nBL
+// that don't have room for type.  Magic only works if Word_t can hold more
+// than one key.
 // If P, e.g. nBL - nBL <= some threshold, then sw has two-word links/buckets.
 // What should P be?
 static inline int
@@ -1650,11 +1652,12 @@ again:;
 
 #if ! defined(LOOKUP) /* don't care about performance */ \
       || (defined(USE_PWROOT_FOR_LOOKUP) \
-              && (defined(PWROOT_ARG_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)))
+              && (defined(PWROOT_ARG_FOR_LOOKUP) \
+                  || defined(PWROOT_AT_TOP_FOR_LOOKUP)))
     int nType = Get_nType(pwRoot);
-#else // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's initialized
+#else // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's ok
     int nType = Get_nType(&wRoot);
-#endif // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's initialized
+#endif // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's ok
     goto again2;
 again2:;
     Word_t *pwr = wr_pwr(wRoot);
@@ -2016,11 +2019,14 @@ t_xx_sw:;
       #endif // defined(DEBUG)
         assert(pwr_nBL(&wRoot) == nBLR);
   #endif // defined(SKIP_TO_XX_SW)
-  #if defined(SKIP_TO_XX_SW)
-        int nBW = pwr_nBW(&wRoot);
-  #else // defined(SKIP_TO_XX_SW)
-        int nBW = pwr_nBW(pwRoot); // faster???
-  #endif // defined(SKIP_TO_XX_SW)
+  #if ! defined(LOOKUP) /* don't care about performance */ \
+      || (defined(USE_PWROOT_FOR_LOOKUP) \
+              && (defined(PWROOT_ARG_FOR_LOOKUP) \
+                      || defined(PWROOT_AT_TOP_FOR_LOOKUP)))
+        int nBW = Get_nBW(pwRoot);
+  #else // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's ok
+        int nBW = Get_nBW(&wRoot);
+  #endif // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's ok
         nBL = nBLR - nBW;
         int nIndex = (wKey >> nBL) & MSK(nBW);
 
@@ -2053,11 +2059,12 @@ t_xx_sw:;
         if (wRoot == 0) { return Failure; }
       #else // ! defined(HANDLE_BLOWOUTS)
           #if defined(USE_PWROOT_FOR_LOOKUP) \
-                  && (defined(PWROOT_ARG_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP))
+                  && (defined(PWROOT_ARG_FOR_LOOKUP) \
+                          || defined(PWROOT_AT_TOP_FOR_LOOKUP))
         nType = Get_nType(pwRoot);
-          #else // defined(USE_PWROOT_FOR_LOOKUP) && we know pwroot is initialized
+          #else // defined(USE_PWROOT_FOR_LOOKUP) && it's ok
         nType = Get_nType(&wRoot);
-          #endif // defined(USE_PWROOT_FOR_LOOKUP) && we know pwroot is initialized
+          #endif // defined(USE_PWROOT_FOR_LOOKUP) && it's ok
         if (nType == T_EMBEDDED_KEYS)
       #endif // ! defined(HANDLE_BLOWOUTS)
   #endif // ! defined(NO_TYPE_IN_XX_SW)
@@ -3138,7 +3145,7 @@ Initialize(void)
     assert (wr_nType(ZERO_POP_MAGIC) == T_EMBEDDED_KEYS);
   #endif // defined(NO_TYPE_IN_XX_SW)
 
-    // Make sure pwr_nBW field is big enough.
+    // Make sure nBW field is big enough.
     assert((cnBitsLeftAtDl2 - cnBW - (cnLogBitsPerWord + 1))
         <= MSK(cnBitsXxSwWidth));
 
