@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.571 2015/01/21 21:43:26 mike Exp mike $
+// @(#) $Id: bli.c,v 1.572 2015/01/22 00:49:04 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1531,6 +1531,25 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
 
 #endif // defined(SKIP_LINKS)
 
+// nBL is bits left after finding pwRoot (not after decoding *pwRoot).
+// nBL == 0 means cnBitsPerWord? (would make it less general).
+// Or nBL == BLBits(pwRoot) + 1?  Or use cnLogBitsPerWord bits for nBL field?
+// pwRoot is a pointer to the root of a subtree.
+// nBS is number of bits to skip (bits that are common for all present keys below).
+// nBW is number of bits decoded by the switch pointed to.
+// nBW == 0 means all bits left, i.e. nBL - nBS; keys or list or bitmap.
+// nBW != 0 means switch at nBL - nBS decoding nBW bits.
+// If nBL - nBS <= cnBitsPerWord / 2, then use magic to extract type for nBL that don't
+// have room for type.  Magic only works if Word_t can hold more than one key.
+// If P, e.g. nBL - nBL <= some threshold, then sw has two-word links/buckets.
+// What should P be?
+static inline int
+CaseGuts(int nBL, Word_t *pwRoot, int nBS, int nBW, int nType)
+{
+    (void)nBL; (void)pwRoot; (void)nBS; (void)nBW; (void)nType;
+    return 0;
+}
+
 #if defined(LOOKUP)
 static Status_t
 Lookup(Word_t wRoot, Word_t wKey)
@@ -1546,18 +1565,19 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
 #if defined(LOOKUP)
     int nBL = cnBitsPerWord;
-    Word_t *pwRoot = pwRoot; // silence gcc
   #if defined(BM_IN_LINK)
-    pwRoot = NULL; // used for top detection
+    Word_t *pwRoot = NULL; // used for top detection
   #else // defined(BM_IN_LINK)
-          #if defined(PP_IN_LINK)
+      #if defined(PWROOT_AT_TOP_FOR_LOOKUP)
+    Word_t *pwRoot = &wRoot;
+      #else // defined(PWROOT_AT_TOP_FOR_LOOKUP)
     // Silence unwarranted gcc used before initialized warning.
     // pwRoot is only uninitialized on the first time through the loop.
     // And we only use it if nBL != cnBitsPerWord
     // or if bNeedPrefixCheck is true.
     // And both of those imply it's not the first time through the loop.
-    pwRoot = NULL;
-          #endif // defined(PP_IN_LINK)
+    Word_t *pwRoot = pwRoot;
+      #endif // defined(PWROOT_AT_TOP_FOR_LOOKUP)
   #endif // defined(BM_IN_LINK)
 #else // defined(LOOKUP)
   #if defined(CODE_XX_SW)
@@ -1617,7 +1637,13 @@ again:;
 #endif // ( ! defined(LOOKUP) )
     DBGX(printf("# wRoot "OWx" wKey "OWx" nBL %d\n", wRoot, wKey, nBL));
 
-    unsigned nType = wr_nType(wRoot);
+#if ! defined(LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)
+    int nType = Get_nType(pwRoot);
+#else // ! defined(LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)
+    int nType = Get_nType(&wRoot);
+#endif // ! defined(LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)
+    goto again2;
+again2:;
     Word_t *pwr = wr_pwr(wRoot);
   #if defined(EXTRA_TYPES)
     switch (wRoot & MSK(cnBitsMallocMask + 1))
@@ -2078,8 +2104,9 @@ t_xx_sw:;
   #endif // defined(XX_SHORTCUT_GOTO)
         }
   #if ! defined(NO_TYPE_IN_XX_SW)
-      #if defined(HANDLE_BLOWOUTS)
         if (wRoot == 0) { return Failure; }
+        nBLR = nBL; goto again2;
+      #if defined(HANDLE_BLOWOUTS)
         if (nType == T_LIST) {
   #if defined(XX_SHORTCUT_GOTO)
             pwr = wr_pwr(wRoot);
