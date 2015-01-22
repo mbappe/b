@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.377 2015/01/21 20:07:00 mike Exp mike $
+// @(#) $Id: b.h,v 1.378 2015/01/21 21:44:32 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -548,9 +548,9 @@ typedef Word_t Bucket_t;
 
 // Values for nType.
 enum {
-#if defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
+#if defined(SEPARATE_T_NULL)
     T_NULL, // no keys below
-#endif // defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
+#endif // defined(SEPARATE_T_NULL)
 #if (cwListPopCntMax != 0)
     T_LIST, // external list of keys
 #endif // (cwListPopCntMax != 0)
@@ -881,16 +881,15 @@ enum {
 
 // Data structure constants and macros.
 
-// Extract nType from wRoot.
-static inline unsigned wr_nType(Word_t wRoot) { return wRoot & cnMallocMask; }
+// Extract nType from *pwRoot.
+static inline int wr_nType(Word_t wRoot) { return wRoot & cnMallocMask; }
+static inline int Get_nType(Word_t* pwRoot) { return wr_nType(*pwRoot); }
 
-// Extract pwRoot (aka pwr) from wRoot.
+// Extract pwr, i.e. the next pwRoot, from *pwRoot.
 static inline Word_t* wr_pwr(Word_t wRoot) {
-    return (Word_t *)(wRoot & cwVirtAddrMask & ~cnMallocMask);
+    return (Word_t*)(wRoot & cwVirtAddrMask & ~cnMallocMask);
 }
-
-// Backward compatibility.
-#define wr_tp_pwr(_wr, _tp)  wr_pwr(_wr)
+static inline Word_t* Get_pwr(Word_t* pwRoot) { return wr_pwr(*pwRoot); }
 
 // Set nType in *pwRoot.
 static inline void set_pwr_nType(Word_t *pwRoot, int nType) {
