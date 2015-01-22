@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.483 2015/01/21 05:22:19 mike Exp mike $
+// @(#) $Id: b.c,v 1.484 2015/01/22 14:54:57 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -3949,7 +3949,7 @@ Status_t
 RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 {
     // nType is not valid for NO_TYPE_IN_XX_SW and nBL < nDL_to_nBL(2)
-    unsigned nType = wr_nType(wRoot); (void)nType;
+    int nType = wr_nType(wRoot); (void)nType;
     // pwr is not valid for NO_TYPE_IN_XX_SW and nBL < nDL_to_nBL(2)
     Word_t *pwr = wr_pwr(wRoot); (void)pwr;
     int nDL = nBL_to_nDL(nBL); (void)nDL;
