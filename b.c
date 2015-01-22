@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.482 2015/01/21 02:08:15 mike Exp $
+// @(#) $Id: b.c,v 1.483 2015/01/21 05:22:19 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2170,7 +2170,7 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
             }
 #endif // defined(NO_TYPE_IN_XX_SW)
             int nTypeLn = wr_nType(wRootLn);
-            Word_t *pwrLn = wr_tp_pwr(wRootLn, nTypeLn);
+            Word_t *pwrLn = wr_pwr(wRootLn);
 
             if (nTypeLn == T_EMBEDDED_KEYS) {
                 goto embeddedKeys;
@@ -3883,7 +3883,7 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
     (void)wKey; (void)nDL; (void)nDLR; (void)pwRoot; (void)wRoot;
 
     int nType = wr_nType(wRoot); (void)nType;
-    Word_t *pwr = wr_tp_pwr(wRoot, nType); (void)pwr;
+    Word_t *pwr = wr_pwr(wRoot); (void)pwr;
 
   #if defined(PP_IN_LINK)
     if (nDL == cnDigitsPerWord) {
@@ -4339,7 +4339,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 
     Word_t wRoot = (Word_t)PArray;
     unsigned nType = wr_nType(wRoot);
-    Word_t *pwr = wr_tp_pwr(wRoot, nType);
+    Word_t *pwr = wr_pwr(wRoot);
     Word_t wPopCnt;
 
   #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
