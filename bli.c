@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.575 2015/01/22 15:56:14 mike Exp mike $
+// @(#) $Id: bli.c,v 1.576 2015/01/22 16:35:26 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1440,7 +1440,7 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 // get the whole prefix from the lowest switch and use that for the
 // prefix check at the leaf.
 static int
-PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
+PrefixMismatch(Word_t *pwRoot, Word_t *pwr, Word_t wKey,
                int nBL,
 #if defined(CODE_BM_SW)
                int bBmSw,
@@ -1465,9 +1465,9 @@ PrefixMismatch(Word_t *pwRoot, Word_t wRoot, Word_t *pwr, Word_t wKey,
     (void)pwRoot; (void)pwr; (void)wKey; (void)nBL; (void)pnBLR;
 
   #if defined(TYPE_IS_RELATIVE)
-    int nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(wRoot));
+    int nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRoot));
   #else // defined(TYPE_IS_RELATIVE)
-    int nBLR = wr_nBL(wRoot);
+    int nBLR = wr_nBL(*pwRoot);
   #endif // defined(TYPE_IS_RELATIVE)
     assert(nBLR < nBL); // reserved
 
@@ -1549,7 +1549,35 @@ static inline int
 CaseGuts(int nBL, Word_t *pwRoot, int nBS, int nBW, int nType)
 {
     (void)nBL; (void)pwRoot; (void)nBS; (void)nBW; (void)nType;
-    return 0;
+#if 0
+    if (tp_bIsSkip(nType)) {
+        if (PrefixMismatch(pwRoot, pwr, wKey, nBL,
+  #if defined(CODE_BM_SW)
+                           /* bBmSw */ 0,
+  #endif // defined(CODE_BM_SW)
+  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+                           &bNeedPrefixCheck,
+      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+      #if defined(SAVE_PREFIX)
+          #if defined(PP_IN_LINK)
+                           &pwRootPrefix,
+          #else // defined(PP_IN_LINK)
+                           &pwrPrefix,
+          #endif // defined(PP_IN_LINK)
+                           &nBLRPrefix,
+      #elif defined(SAVE_PREFIX_TEST_RESULT)
+                           &bPrefixMismatch,
+      #endif // defined(SAVE_PREFIX)
+  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+                           &nBLR))
+        {
+            return 0;
+        }
+    }
+#endif
+
+    return 1;
 }
 
 #if defined(LOOKUP)
@@ -1681,7 +1709,7 @@ again2:;
         // have bl tests here and call with a constant.  Possibly more
         // interestingly it does compare nBL to cnBitsPerWord.
         if (nBL == cnBitsPerWord) {
-            if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, cnBitsPerWord,
+            if (PrefixMismatch(pwRoot, pwr, wKey, cnBitsPerWord,
   #if defined(CODE_BM_SW)
                                /* bBmSw */ 0,
   #endif // defined(CODE_BM_SW)
@@ -1707,7 +1735,7 @@ again2:;
         } else {
             // This is rare.  If we ever care, we could improve performance
             // by adding PrefixMismatchNAT.
-            if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL,
+            if (PrefixMismatch(pwRoot, pwr, wKey, nBL,
   #if defined(CODE_BM_SW)
                                /* bBmSw */ 0,
   #endif // defined(CODE_BM_SW)
@@ -1752,7 +1780,7 @@ again2:;
     case T_SKIP_TO_BM_SW:
     {
         if (nBL == cnBitsPerWord) {
-            if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, cnBitsPerWord,
+            if (PrefixMismatch(pwRoot, pwr, wKey, cnBitsPerWord,
                                /* bBmSw */ 1,
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
@@ -1776,7 +1804,7 @@ again2:;
         } else {
             // This is rare.  If we ever care, we could improve performance
             // by adding PrefixMismatchNAT.
-            if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL, /* bBmSw */ 1,
+            if (PrefixMismatch(pwRoot, pwr, wKey, nBL, /* bBmSw */ 1,
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
                                &bNeedPrefixCheck,
@@ -1816,7 +1844,7 @@ again2:;
         // have bl tests here and call with a constant.  Possibly more
         // interestingly it does compare nBL to cnBitsPerWord.
         if (nBL == cnBitsPerWord) {
-            if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, cnBitsPerWord,
+            if (PrefixMismatch(pwRoot, pwr, wKey, cnBitsPerWord,
   #if defined(CODE_BM_SW)
                                /* bBmSw */ 0,
   #endif // defined(CODE_BM_SW)
@@ -1842,7 +1870,7 @@ again2:;
         } else {
             // This is rare.  If we ever care, we could improve performance
             // by adding PrefixMismatchNAT.
-            if (PrefixMismatch(pwRoot, wRoot, pwr, wKey, nBL,
+            if (PrefixMismatch(pwRoot, pwr, wKey, nBL,
   #if defined(CODE_BM_SW)
                                /* bBmSw */ 0,
   #endif // defined(CODE_BM_SW)
