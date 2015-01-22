@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.572 2015/01/22 00:49:04 mike Exp mike $
+// @(#) $Id: bli.c,v 1.573 2015/01/22 14:56:44 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1552,7 +1552,14 @@ CaseGuts(int nBL, Word_t *pwRoot, int nBS, int nBW, int nType)
 
 #if defined(LOOKUP)
 static Status_t
-Lookup(Word_t wRoot, Word_t wKey)
+Lookup(
+      #if defined(PWROOT_ARG_FOR_LOOKUP)
+       Word_t* pwRoot,
+      #else // defined(PWROOT_ARG_FOR_LOOKUP)
+       Word_t wRoot,
+      #endif // defined(PWROOT_ARG_FOR_LOOKUP)
+       Word_t wKey
+       )
 #else // defined(LOOKUP)
 Status_t
 InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
@@ -1565,20 +1572,24 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
 #if defined(LOOKUP)
     int nBL = cnBitsPerWord;
-  #if defined(BM_IN_LINK)
+  #if defined(PWROOT_ARG_FOR_LOOKUP)
+    Word_t wRoot = *pwRoot;
+  #else // defined(PWROOT_ARG_FOR_LOOKUP)
+      #if defined(BM_IN_LINK)
     Word_t *pwRoot = NULL; // used for top detection
-  #else // defined(BM_IN_LINK)
-      #if defined(PWROOT_AT_TOP_FOR_LOOKUP)
+      #else // defined(BM_IN_LINK)
+          #if defined(PWROOT_AT_TOP_FOR_LOOKUP)
     Word_t *pwRoot = &wRoot;
-      #else // defined(PWROOT_AT_TOP_FOR_LOOKUP)
+          #else // defined(PWROOT_AT_TOP_FOR_LOOKUP)
     // Silence unwarranted gcc used before initialized warning.
     // pwRoot is only uninitialized on the first time through the loop.
     // And we only use it if nBL != cnBitsPerWord
     // or if bNeedPrefixCheck is true.
     // And both of those imply it's not the first time through the loop.
     Word_t *pwRoot = pwRoot;
-      #endif // defined(PWROOT_AT_TOP_FOR_LOOKUP)
-  #endif // defined(BM_IN_LINK)
+          #endif // defined(PWROOT_AT_TOP_FOR_LOOKUP)
+      #endif // defined(BM_IN_LINK)
+  #endif // defined(PWROOT_ARG_FOR_LOOKUP)
 #else // defined(LOOKUP)
   #if defined(CODE_XX_SW)
     Word_t *pwRootPrev = NULL; (void)pwRootPrev;
@@ -2039,7 +2050,11 @@ t_xx_sw:;
         // The ifdef is a hack that makes assumptions that aren't obvious.
         if (wRoot == 0) { return Failure; }
       #else // ! defined(HANDLE_BLOWOUTS)
-        nType = wr_nType(wRoot);
+          #if defined(PWROOT_AT_TOP_FOR_LOOKUP)
+        nType = Get_nType(pwRoot);
+          #else // defined(PWROOT_AT_TOP_FOR_LOOKUP)
+        nType = Get_nType(&wRoot);
+          #endif // defined(PWROOT_AT_TOP_FOR_LOOKUP)
         if (nType == T_EMBEDDED_KEYS)
       #endif // ! defined(HANDLE_BLOWOUTS)
   #endif // ! defined(NO_TYPE_IN_XX_SW)
@@ -2990,7 +3005,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     // SEARCH_FROM_WRAPPER is a bit faster, 1-2 ns out of
     // 2-16 ns, if all we have is a T_LIST leaf, but there is a very small,
     // sub-nanosecond, cost for all other cases.
-    unsigned nType = wr_nType((Word_t)pcvRoot);
+    int nType = Get_nType(&(Word_t)pcvRoot);
     if (nType == T_LIST)
     {
         Word_t *pwr = wr_pwr((Word_t)pcvRoot);
@@ -3010,7 +3025,14 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
       #endif // defined(SEARCH_FROM_WRAPPER)
   #endif // (cwListPopCntMax != 0)
 
-    return Lookup((Word_t)pcvRoot, wKey);
+    return Lookup(
+  #if defined(PWROOT_ARG_FOR_LOOKUP)
+                  (Word_t*)&pcvRoot,
+  #else // defined(PWROOT_ARG_FOR_LOOKUP)
+                  (Word_t)pcvRoot,
+  #endif // defined(PWROOT_ARG_FOR_LOOKUP)
+                  wKey
+                  );
 
 #else // (cnDigitsPerWord > 1)
 
