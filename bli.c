@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.576 2015/01/22 16:35:26 mike Exp mike $
+// @(#) $Id: bli.c,v 1.577 2015/01/22 19:22:02 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1504,6 +1504,7 @@ PrefixMismatch(Word_t *pwRoot, Word_t *pwr, Word_t wKey,
 // Saving pwRoot for the purpose of looking at the prefix in the link
 // later makes no sense.  Use *ppwRootPrefix == NULL to indicate
 // that the prefix is 0.
+// Does this work if the caller passes in &wRoot rather than pwRoot?
         *ppwRootPrefix = (nBL != cnBitsPerWord) ? pwRoot : NULL;
           #else // defined(PP_IN_LINK)
         *ppwrPrefix = pwr;
@@ -1709,7 +1710,7 @@ again2:;
         // have bl tests here and call with a constant.  Possibly more
         // interestingly it does compare nBL to cnBitsPerWord.
         if (nBL == cnBitsPerWord) {
-            if (PrefixMismatch(pwRoot, pwr, wKey, cnBitsPerWord,
+            if (PrefixMismatch(&wRoot, pwr, wKey, cnBitsPerWord,
   #if defined(CODE_BM_SW)
                                /* bBmSw */ 0,
   #endif // defined(CODE_BM_SW)
@@ -1735,7 +1736,7 @@ again2:;
         } else {
             // This is rare.  If we ever care, we could improve performance
             // by adding PrefixMismatchNAT.
-            if (PrefixMismatch(pwRoot, pwr, wKey, nBL,
+            if (PrefixMismatch(&wRoot, pwr, wKey, nBL,
   #if defined(CODE_BM_SW)
                                /* bBmSw */ 0,
   #endif // defined(CODE_BM_SW)
@@ -1780,7 +1781,7 @@ again2:;
     case T_SKIP_TO_BM_SW:
     {
         if (nBL == cnBitsPerWord) {
-            if (PrefixMismatch(pwRoot, pwr, wKey, cnBitsPerWord,
+            if (PrefixMismatch(&wRoot, pwr, wKey, cnBitsPerWord,
                                /* bBmSw */ 1,
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
@@ -1804,7 +1805,7 @@ again2:;
         } else {
             // This is rare.  If we ever care, we could improve performance
             // by adding PrefixMismatchNAT.
-            if (PrefixMismatch(pwRoot, pwr, wKey, nBL, /* bBmSw */ 1,
+            if (PrefixMismatch(&wRoot, pwr, wKey, nBL, /* bBmSw */ 1,
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
                                &bNeedPrefixCheck,
@@ -1844,7 +1845,7 @@ again2:;
         // have bl tests here and call with a constant.  Possibly more
         // interestingly it does compare nBL to cnBitsPerWord.
         if (nBL == cnBitsPerWord) {
-            if (PrefixMismatch(pwRoot, pwr, wKey, cnBitsPerWord,
+            if (PrefixMismatch(&wRoot, pwr, wKey, cnBitsPerWord,
   #if defined(CODE_BM_SW)
                                /* bBmSw */ 0,
   #endif // defined(CODE_BM_SW)
@@ -1870,7 +1871,7 @@ again2:;
         } else {
             // This is rare.  If we ever care, we could improve performance
             // by adding PrefixMismatchNAT.
-            if (PrefixMismatch(pwRoot, pwr, wKey, nBL,
+            if (PrefixMismatch(&wRoot, pwr, wKey, nBL,
   #if defined(CODE_BM_SW)
                                /* bBmSw */ 0,
   #endif // defined(CODE_BM_SW)
