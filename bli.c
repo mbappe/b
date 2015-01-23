@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.577 2015/01/22 19:22:02 mike Exp mike $
+// @(#) $Id: bli.c,v 1.578 2015/01/23 01:07:50 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2096,6 +2096,10 @@ t_xx_sw:;
           #endif // defined(USE_PWROOT_FOR_LOOKUP) && it's ok
         if (nType == T_EMBEDDED_KEYS)
       #endif // ! defined(HANDLE_BLOWOUTS)
+  #else // ! defined(NO_TYPE_IN_XX_SW)
+      #if defined(ZERO_CHECK_BEFORE_EMBEDDED_KEYS)
+        if (wRoot == ZERO_POP_MAGIC) { return Failure; }
+      #endif // defined(ZERO_CHECK_BEFORE_EMBEDDED_KEYS)
   #endif // ! defined(NO_TYPE_IN_XX_SW)
         {
   #if defined(XX_SHORTCUT_GOTO)
@@ -2218,15 +2222,19 @@ t_xx_sw:;
         assert(EmbeddedListPopCntMax(nBL) != 0);
         goto t_embedded_keys;
   #else // defined(NO_TYPE_IN_XX_SW)
+      #if defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
+        goto t_embedded_keys;
+      #else // defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
         // The only thing we do at "again" before switching on nType
         // is extract nType and pwr from wRoot.
         // We don't do any updating of nBL or nBLR.
         nBLR = nBL;
-      #if defined(LOOKUP) || !defined(RECURSIVE)
+          #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
-      #else // defined(LOOKUP) || !defined(RECURSIVE)
+          #else // defined(LOOKUP) || !defined(RECURSIVE)
         return InsertRemove(pwRoot, wKey, nBL);
-      #endif // defined(LOOKUP) || !defined(RECURSIVE)
+          #endif // defined(LOOKUP) || !defined(RECURSIVE)
+      #endif // defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
   #endif // defined(NO_TYPE_IN_XX_SW)
 
 #endif // defined(LOOKUP) && defined(XX_SHORTCUT)
@@ -2711,16 +2719,6 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 
         DBGX(printf("EMBEDDED_KEYS\n")); 
 
-#if defined(NO_TYPE_IN_XX_SW)
-
-#define CASE_BLX(_nBL) \
-        case (_nBL): \
-            if ((_nBL) < nDL_to_nBL(2)) { \
-                if (wRoot == ZERO_POP_MAGIC) { goto break2; } \
-            } \
-            if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
-            goto break2
-
 #if defined(HANDLE_BLOWOUTS)
 // We haven't written the insert code to create blow-outs for
 // NO_TYPE_IN_XX_SW yet.
@@ -2729,11 +2727,31 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 #define HANDLE_BLOWOUT
 #endif // defined(HANDLE_BLOWOUTS)
 
+#if defined(NO_TYPE_IN_XX_SW)
+
+#if defined(LOOKUP) && defined(XX_SHORTCUT) \
+      && defined(ZERO_CHECK_BEFORE_EMBEDDED_KEYS)
+    #define ZERO_CHECK
+#else // defined(LOOKUP) && defined(XX_SHORTCUT) && ...
+    #define ZERO_CHECK  if (wRoot == ZERO_POP_MAGIC) { goto break2; }
+#endif // defined(LOOKUP) && defined(XX_SHORTCUT) && ...
+
+#define CASE_BLX(_nBL) \
+        case (_nBL): \
+            if ((_nBL) < nDL_to_nBL(2)) { \
+                ZERO_CHECK; \
+                if ((nType = wr_nType(wRoot)) != 0) { \
+                    HANDLE_BLOWOUT; \
+                } \
+            } \
+            if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
+            goto break2
+
 // For key sizes which can completely fill wRoot with no left-over bits.
 #define CASE_0_BLX(_nBL) \
         case (_nBL): \
             if ((_nBL) < nDL_to_nBL(2)) { \
-                if (wRoot == ZERO_POP_MAGIC) { goto break2; } \
+                ZERO_CHECK; \
                 if ((wRoot & (BASE_MASK + EXP(cnBitsPerWord - (_nBL) - 1))) \
                     == ZERO_POP_MAGIC) \
                 { \
@@ -2751,7 +2769,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 #define CASE_1_BLX(_nBL) \
         case (_nBL): \
             if ((_nBL) < nDL_to_nBL(2)) { \
-                if (wRoot == ZERO_POP_MAGIC) { goto break2; } \
+                ZERO_CHECK; \
                 if (wRoot & 1) { \
                     /* this is where we would handle blow-outs */ \
                     assert(wr_pwr(wRoot) != 0); \
@@ -2764,11 +2782,28 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 
 #else // defined(NO_TYPE_IN_XX_SW)
 
+#if defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
+
+    #define CASE_BLX(_nBL) \
+        case (_nBL): \
+            if ((_nBL) < nDL_to_nBL(2)) { \
+                if (wRoot == 0) { goto break2; } \
+                if ((nType = wr_nType(wRoot)) != T_EMBEDDED_KEYS) { \
+                    HANDLE_BLOWOUT; \
+                } \
+            } \
+            if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
+            goto break2
+
+#else // defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
+
 #define CASE_BLX(_nBL) \
         case (_nBL): \
             DBGI(printf("CASE_BLX(%d) wRoot "OWx"\n", (_nBL), wRoot)); \
             if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
             goto break2
+
+#endif // defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
 
 #define CASE_0_BLX(_nBL)  CASE_BLX(_nBL)
 #define CASE_1_BLX(_nBL)  CASE_BLX(_nBL)
