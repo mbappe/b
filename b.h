@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.379 2015/01/22 14:55:21 mike Exp mike $
+// @(#) $Id: b.h,v 1.380 2015/01/22 16:34:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -952,6 +952,12 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // order for JudyL?
 // Enough talk for now.  We'll come back to these other cases.
 #define ZERO_POP_MAGIC  (EXP(cnBitsPerWord - 1) + T_EMBEDDED_KEYS)
+
+#if defined(NO_TYPE_IN_XX_SW) // && defined(HANDLE_BLOWOUTS)
+    // Identify blowouts using (wRoot & BLOWOUT_MASK(nBL) == ZERO_POP_MAGIC).
+    #define BLOWOUT_MASK(_nBL) \
+        (((EXP(_nBL) + 1) << (cnBitsPerWord - (_nBL) - 1)) + cnMallocMask)
+#endif // defined(NO_TYPE_IN_XX_SW) && defined(HANDLE_BLOWOUTS)
 
 #if defined(USE_T_ONE)
   #if defined(T_ONE_CALC_POP)
