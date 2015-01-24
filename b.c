@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.485 2015/01/22 15:36:05 mike Exp mike $
+// @(#) $Id: b.c,v 1.486 2015/01/23 05:47:58 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1410,14 +1410,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
 
 #if defined(NO_TYPE_IN_XX_SW)
     if (nBL < nDL_to_nBL(2)) {
-        if (nBL == 8) {
-            if ((wRoot & ((0x808UL << 52) + cnMallocMask)) == ZERO_POP_MAGIC)
-            {
-                return 0;
-            }
-        } else {
-            if (wRoot == ZERO_POP_MAGIC) { return 0; }
-        }
+        if ((wRoot & BLOWOUT_MASK(nBL)) == ZERO_POP_MAGIC) { return 0; }
 
         //DBG(printf("FAG: goto embeddedKeys.\n"));
         if (bDump) {
@@ -2252,15 +2245,7 @@ InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
     Word_t wRootOld = *pwRootOld;
 #if defined(NO_TYPE_IN_XX_SW)
     if (nBLOld < nDL_to_nBL(2)) {
-        if (nBLOld == 8) {
-            if ((wRootOld & ((0x808UL << 52) + cnMallocMask))
-                == ZERO_POP_MAGIC)
-            {
-                return;
-            }
-        } else {
-            if (wRootOld == ZERO_POP_MAGIC) { return; }
-        }
+        if ((wRootOld & BLOWOUT_MASK(nBLOld)) == ZERO_POP_MAGIC) { return; }
         goto embeddedKeys;
     }
 #endif // defined(NO_TYPE_IN_XX_SW)
@@ -3568,14 +3553,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 
 #if defined(NO_TYPE_IN_XX_SW)
     if (nBL < nDL_to_nBL(2)) {
-        if (nBL == 8) {
-            if ((wRoot & ((0x808UL << 52) + cnMallocMask)) == ZERO_POP_MAGIC)
-            {
-                return 0;
-            }
-        } else {
-            if (wRoot == ZERO_POP_MAGIC) { return 0; }
-        }
+        if ((wRoot & BLOWOUT_MASK(nBL)) == ZERO_POP_MAGIC) { return 0; }
     }
 #else // defined(NO_TYPE_IN_XX_SW)
     assert(wr_nType(wRoot) == T_EMBEDDED_KEYS);
