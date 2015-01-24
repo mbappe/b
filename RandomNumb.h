@@ -14,10 +14,10 @@
 // List of "magic" feedback points for Random number generator
 static Word_t MagicList[] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,       // 0..9
-    0x27f,                              // 10 All from 10..36 are Good 
-    0x27f,                              // 11   37,39,40,41,43 + fail as noted
-    0x27f,                              // 12   so -- may be sensitive to 
-    0x27f,                              // 13   starting Seed.
+    0x27f,                              // 10 All from 10..36 are Good (Gd)
+    0x27f,                              // 11 37,39,40,41,43 + fail as noted
+    0x27f,                              // 12 so -- may be sensitive to 
+    0x27f,                              // 13 starting Seed.
     0x27f,                              // 14
     0x27f,                              // 15
     0x1e71,                             // 16
@@ -37,38 +37,38 @@ static Word_t MagicList[] = {
     0xc4fb,                             // 30
     0xc4fb,                             // 31
     0x13aab,                            // 32 
-    0x14e73,                            // 33  
-    0x145d7,                            // 34  
-    0x145f9,                            // 35  
-    0x151ed,                            // 36 
-    0x151ed,                            // 37 Bad    45094060053   (0xa7fd0c015)
-    0x151ed,                            // 38 Good  274877906943  (0x3fffffffff)
-    0x151ed,                            // 39 Bad   549751488513  (0x7fffbe0001)
-    0x151ed,                            // 40 Bad   157053914551  (0x2491248db7)
-    0x146c3,                            // 41 Bad  1924145348601 (0x1bffffffff9)
-    0x146c3,                            // 42 Good 4398046511103 (0x3ffffffffff)
-    0x146c3,                            // 43 Bad  6597069766653 (0x5fffffffffd) 
-    0x146c3,                            // 44 following tested to 35 billion
-    0x146c3,                            // 45  
-    0x146c3,                            // 46  
-    0x146c3,                            // 47  
-    0x146c3,                            // 48  
-    0x146c3,                            // 49  
-    0x146c3,                            // 50  
-    0x146c3,                            // 51  
-    0x146c3,                            // 52  
-    0x146c3,                            // 53  
-    0x146c3,                            // 54  
-    0x146c3,                            // 55  
-    0x146c3,                            // 56  
-    0x146c3,                            // 57  
-    0x146c3,                            // 58  
-    0x146c3,                            // 59  
-    0x146c3,                            // 60  
-    0x146c3,                            // 61  
-    0x146c3,                            // 62  
-    0x146c3,                            // 63  
-    0x146c3                             // 64  
+    0x14e73UL,                          // 33  
+    0x145d7UL,                          // 34  
+    0x145f9UL,                          // 35  
+    0x151edUL,                          // 36 
+    (Word_t)0x1F00000001UL,                     // 37 Good  137438953471  (0x1fffffffff) 
+    0x151edUL,                          // 38 Good  274877906943  (0x3fffffffff)
+    0x151edUL,                          // 39 Good  549755813887  (0x7fffffffff) 
+    0x151edUL,                          // 40 Bad   157053914551  (0x2491248db7)
+    0x146c3UL,                          // 41 Bad  1924145348601 (0x1bffffffff9)
+    0x146c3UL,                          // 42 Good 4398046511103 (0x3ffffffffff)
+    0x146c3UL,                          // 43 Bad  6597069766653 (0x5fffffffffd) 
+    0x146c3UL,                          // 44 following tested to 35 billion
+    0x146c3UL,                          // 45  
+    0x146c3UL,                          // 46  
+    0x146c3UL,                          // 47  
+    0x146c3UL,                          // 48  
+    0x146c3UL,                          // 49  
+    0x146c3UL,                          // 50  
+    0x146c3UL,                          // 51  
+    0x146c3UL,                          // 52  
+    0x146c3UL,                          // 53  
+    0x146c3UL,                          // 54  
+    0x146c3UL,                          // 55  
+    0x146c3UL,                          // 56  
+    0x146c3UL,                          // 57  
+    0x146c3UL,                          // 58  
+    0x146c3UL,                          // 59  
+    0x146c3UL,                          // 60  
+    0x146c3UL,                          // 61  
+    0x146c3UL,                          // 62  
+    0x146c3UL,                          // 63  
+    0x146c3UL                           // 64  
 };
 
 // Allow up to 8 generators sums to run
