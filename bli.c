@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.578 2015/01/23 01:07:50 mike Exp mike $
+// @(#) $Id: bli.c,v 1.579 2015/01/23 06:00:33 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1471,59 +1471,63 @@ PrefixMismatch(Word_t *pwRoot, Word_t *pwr, Word_t wKey,
   #endif // defined(TYPE_IS_RELATIVE)
     assert(nBLR < nBL); // reserved
 
+  #if ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK) \
+            || defined(SAVE_PREFIX_TEST_RESULT)
+
     Word_t wPrefix =
 #if defined(CODE_BM_SW)
         bBmSw ? PWR_wPrefixNATBL(pwRoot, (BmSwitch_t *)pwr, nBLR) :
 #endif // defined(CODE_BM_SW)
                   PWR_wPrefixNATBL(pwRoot, (  Switch_t *)pwr, nBLR) ;
 
-  #if ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK) \
-            || defined(SAVE_PREFIX_TEST_RESULT)
-        int bPrefixMismatch;
+    int bPrefixMismatch;
           #if defined(PP_IN_LINK)
-        if (nBL == cnBitsPerWord) {
-            // prefix is 0
-            bPrefixMismatch = (wKey >= EXP(nBLR));
-        } else
+    if (nBL == cnBitsPerWord) {
+        // prefix is 0
+        bPrefixMismatch = (wKey >= EXP(nBLR));
+    } else
           #endif // defined(PP_IN_LINK)
-        {
-            bPrefixMismatch = ((int)LOG(1 | (wPrefix ^ wKey)) >= nBLR);
-        }
+    {
+        bPrefixMismatch = ((int)LOG(1 | (wPrefix ^ wKey)) >= nBLR);
+    }
   #endif // ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK) || ...
 
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #if defined(SAVE_PREFIX)
-        // Save info needed for prefix check at leaf.
-        // Does this obviate the need for requiring a branch above the
-        // bitmap as a place holder for the prefix check at the leaf?
-        // It just might.
-        // Maybe it's faster to use a word that is shared by all
-        // than one that is shared by fewer.
+    // Save info needed for prefix check at leaf.
+    // Does this obviate the need for requiring a branch above the
+    // bitmap as a place holder for the prefix check at the leaf?
+    // It just might.
+    // Maybe it's faster to use a word that is shared by all
+    // than one that is shared by fewer.
+    // Only one of pwRoot or pwr is needed by PWR_wPrefix.  If PP_IN_LINK,
+    // then it uses pwRoot.  If not, then it uses pwr.
           #if defined(PP_IN_LINK)
-// If PP_IN_LINK and nBL == cnBitsPerWord there is no link.
-// Saving pwRoot for the purpose of looking at the prefix in the link
-// later makes no sense.  Use *ppwRootPrefix == NULL to indicate
-// that the prefix is 0.
-// Does this work if the caller passes in &wRoot rather than pwRoot?
-        *ppwRootPrefix = (nBL != cnBitsPerWord) ? pwRoot : NULL;
+    // If PP_IN_LINK and nBL == cnBitsPerWord there is no link.
+    // Saving pwRoot for the purpose of looking at the prefix in the link
+    // later makes no sense.  Use *ppwRootPrefix == NULL to indicate
+    // that the prefix is 0.
+    // Does this work if the caller passes in &wRoot rather than pwRoot?
+    // I don't think it does.
+    *ppwRootPrefix = (nBL != cnBitsPerWord) ? pwRoot : NULL;
           #else // defined(PP_IN_LINK)
-        *ppwrPrefix = pwr;
+    *ppwrPrefix = pwr;
           #endif // defined(PP_IN_LINK)
-        *pnBLRPrefix = nBLR;
+    *pnBLRPrefix = nBLR; // nBLR at which saved prefix applies
       #elif defined(SAVE_PREFIX_TEST_RESULT)
-        *pbPrefixMismatch = bPrefixMismatch;
+    *pbPrefixMismatch = bPrefixMismatch;
       #endif // defined(SAVE_PREFIX)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
         // Record that there were prefix bits that were not checked.
-        *pbNeedPrefixCheck |= 1;
+    *pbNeedPrefixCheck |= 1;
       #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
   #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-        if (bPrefixMismatch)
-        {
-            DBGX(printf("Mismatch wPrefix "Owx"\n", wPrefix));
-            // Caller doesn't need/get an updated *pnBLR in this case.
-            return 1; // prefix mismatch
-        }
+    if (bPrefixMismatch)
+    {
+        DBGX(printf("Mismatch wPrefix "Owx"\n", wPrefix));
+        // Caller doesn't need/get an updated *pnBLR in this case.
+        return 1; // prefix mismatch
+    }
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 
     *pnBLR = nBLR;
@@ -1532,6 +1536,79 @@ PrefixMismatch(Word_t *pwRoot, Word_t *pwr, Word_t wKey,
 }
 
 #endif // defined(SKIP_LINKS)
+
+#if defined(CODE_BM_SW)
+    #define IS_BM_SW_ARG(_nType)  tp_bIsBmSw(_nType),
+#else // defined(CODE_BM_SW)
+    #define IS_BM_SW_ARG(_nType)
+#endif // defined(CODE_BM_SW)
+
+#if defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+    #define P_B_NEED_PREFIX_CHECK_ARG
+#else // defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+    #define P_B_NEED_PREFIX_CHECK_ARG  &bNeedPrefixCheck,
+#endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+
+#if defined(PP_IN_LINK)
+    #define P_PWR_PREFIX_ARG  &pwRootPrefix,
+#else // defined(PP_IN_LINK)
+    #define P_PWR_PREFIX_ARG  &pwrPrefix,
+#endif // defined(PP_IN_LINK)
+
+#if defined(SAVE_PREFIX)
+    #define SAVE_PREFIX_ARGS \
+        P_PWR_PREFIX_ARG \
+        &nBLRPrefix,
+#elif defined(SAVE_PREFIX_TEST_RESULT)
+    #define SAVE_PREFIX_ARGS  &bPrefixMismatch,
+#else // defined(SAVE_PREFIX_TEST_RESULT)
+    #define SAVE_PREFIX_ARGS
+#endif // defined(SAVE_PREFIX)
+
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+    #define LOOKUP_SKIP_PREFIX_CHECK_ARGS \
+        P_B_NEED_PREFIX_CHECK_ARG \
+        SAVE_PREFIX_ARGS
+#else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+    #define LOOKUP_SKIP_PREFIX_CHECK_ARGS
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+
+// PrefixMismatch requires a real pwRoot (as opposed to &wRoot) when it
+// may need to save that value for later dereference by Lookup at the leaf.
+#if (defined(PP_IN_LINK) \
+                && ! defined(NO_SKIP_AT_TOP) \
+                && defined(LOOKUP) \
+                && defined(SKIP_PREFIX_CHECK) \
+                && defined(SAVE_PREFIX))
+
+  #if ! defined(PWROOT_ARG_FOR_LOOKUP) && ! defined(PWROOT_AT_TOP_FOR_LOOKUP)
+      #error PWROOT_[ARG|AT_TOP]_FOR_LOOKUP is required for PP_IN_LINK ...
+  #endif // ! defined(PWROOT_ARG_FOR_LOOKUP) && ! PWROOT_AT_TOP_FOR_LOOKUP
+
+    #define PWROOT_ARG  pwRoot,
+
+#else // defined(PP_IN_LINK) && ...
+
+  #if (defined(PWROOT_ARG_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)) \
+          && defined(USE_PWROOT_FOR_LOOKUP)
+
+    #define PWROOT_ARG  pwRoot,
+
+  #else // defined(USE_PWROOT_FOR_LOOKUP)
+
+    #define PWROOT_ARG  &wRoot,
+
+  #endif // defined(USE_PWROOT_FOR_LOOKUP)
+
+#endif // defined(PP_IN_LINK) && ...
+
+#define PREFIX_MISMATCH(_nBL, _nType) \
+    (tp_bIsSkip(_nType) \
+        ? PrefixMismatch(PWROOT_ARG \
+                         pwr, wKey, (_nBL), IS_BM_SW_ARG(_nType) \
+                         LOOKUP_SKIP_PREFIX_CHECK_ARGS \
+                         &nBLR) \
+        : 0)
 
 // nBL is bits left after finding pwRoot (not after decoding *pwRoot).
 // nBL == 0 means cnBitsPerWord? (would make it less general).
@@ -1547,36 +1624,9 @@ PrefixMismatch(Word_t *pwRoot, Word_t *pwr, Word_t wKey,
 // If P, e.g. nBL - nBL <= some threshold, then sw has two-word links/buckets.
 // What should P be?
 static inline int
-CaseGuts(int nBL, Word_t *pwRoot, int nBS, int nBW, int nType)
+CaseGuts(int nBL, Word_t *pwRoot, int nBS, int nBW, int nType, Word_t *pwr)
 {
-    (void)nBL; (void)pwRoot; (void)nBS; (void)nBW; (void)nType;
-#if 0
-    if (tp_bIsSkip(nType)) {
-        if (PrefixMismatch(pwRoot, pwr, wKey, nBL,
-  #if defined(CODE_BM_SW)
-                           /* bBmSw */ 0,
-  #endif // defined(CODE_BM_SW)
-  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-                           &bNeedPrefixCheck,
-      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-      #if defined(SAVE_PREFIX)
-          #if defined(PP_IN_LINK)
-                           &pwRootPrefix,
-          #else // defined(PP_IN_LINK)
-                           &pwrPrefix,
-          #endif // defined(PP_IN_LINK)
-                           &nBLRPrefix,
-      #elif defined(SAVE_PREFIX_TEST_RESULT)
-                           &bPrefixMismatch,
-      #endif // defined(SAVE_PREFIX)
-  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-                           &nBLR))
-        {
-            return 0;
-        }
-    }
-#endif
+    (void)nBL; (void)pwRoot; (void)nBS; (void)nBW; (void)nType; (void)pwr;
 
     return 1;
 }
@@ -1690,6 +1740,8 @@ again:;
     goto again2;
 again2:;
     Word_t *pwr = wr_pwr(wRoot);
+    goto again3;
+again3:;
   #if defined(EXTRA_TYPES)
     switch (wRoot & MSK(cnBitsMallocMask + 1))
   #else // defined(EXTRA_TYPES)
@@ -1709,57 +1761,7 @@ again2:;
         // But it does use nBL a couple of times.  Maybe it would help to
         // have bl tests here and call with a constant.  Possibly more
         // interestingly it does compare nBL to cnBitsPerWord.
-        if (nBL == cnBitsPerWord) {
-            if (PrefixMismatch(&wRoot, pwr, wKey, cnBitsPerWord,
-  #if defined(CODE_BM_SW)
-                               /* bBmSw */ 0,
-  #endif // defined(CODE_BM_SW)
-  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-                               &bNeedPrefixCheck,
-      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-      #if defined(SAVE_PREFIX)
-          #if defined(PP_IN_LINK)
-                               &pwRootPrefix,
-          #else // defined(PP_IN_LINK)
-                               &pwrPrefix,
-          #endif // defined(PP_IN_LINK)
-                               &nBLRPrefix,
-      #elif defined(SAVE_PREFIX_TEST_RESULT)
-                               &bPrefixMismatch,
-      #endif // defined(SAVE_PREFIX)
-  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-                               &nBLR))
-            {
-                break;
-            }
-        } else {
-            // This is rare.  If we ever care, we could improve performance
-            // by adding PrefixMismatchNAT.
-            if (PrefixMismatch(&wRoot, pwr, wKey, nBL,
-  #if defined(CODE_BM_SW)
-                               /* bBmSw */ 0,
-  #endif // defined(CODE_BM_SW)
-  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-                               &bNeedPrefixCheck,
-      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-      #if defined(SAVE_PREFIX)
-          #if defined(PP_IN_LINK)
-                               &pwRootPrefix,
-          #else // defined(PP_IN_LINK)
-                               &pwrPrefix,
-          #endif // defined(PP_IN_LINK)
-                               &nBLRPrefix,
-      #elif defined(SAVE_PREFIX_TEST_RESULT)
-                               &bPrefixMismatch,
-      #endif // defined(SAVE_PREFIX)
-  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-                               &nBLR))
-            {
-                break;
-            }
-        }
+        if (PREFIX_MISMATCH(nBL, nType)) { break; }
 
         // Logically, if we could arrange the source code accordingly,
         // we could just fall through to T_SWITCH.
@@ -1780,54 +1782,8 @@ again2:;
 
     case T_SKIP_TO_BM_SW:
     {
-        if (nBL == cnBitsPerWord) {
-            if (PrefixMismatch(&wRoot, pwr, wKey, cnBitsPerWord,
-                               /* bBmSw */ 1,
-  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-                               &bNeedPrefixCheck,
-      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-      #if defined(SAVE_PREFIX)
-          #if defined(PP_IN_LINK)
-                               &pwRootPrefix,
-          #else // defined(PP_IN_LINK)
-                               &pwrPrefix,
-          #endif // defined(PP_IN_LINK)
-                               &nBLRPrefix,
-      #elif defined(SAVE_PREFIX_TEST_RESULT)
-                               &bPrefixMismatch,
-      #endif // defined(SAVE_PREFIX)
-  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-                               &nBLR))
-            {
-                break;
-            }
-        } else {
-            // This is rare.  If we ever care, we could improve performance
-            // by adding PrefixMismatchNAT.
-            if (PrefixMismatch(&wRoot, pwr, wKey, nBL, /* bBmSw */ 1,
-  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-                               &bNeedPrefixCheck,
-      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-      #if defined(SAVE_PREFIX)
-          #if defined(PP_IN_LINK)
-                               &pwRootPrefix,
-          #else // defined(PP_IN_LINK)
-                               &pwrPrefix,
-          #endif // defined(PP_IN_LINK)
-                               &nBLRPrefix,
-      #elif defined(SAVE_PREFIX_TEST_RESULT)
-                               &bPrefixMismatch,
-      #endif // defined(SAVE_PREFIX)
-  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-                               &nBLR))
-            {
-                break;
-            }
-        }
-
-        goto t_bm_sw;
+        // pwr points to a switch
+        if (PREFIX_MISMATCH(nBL, nType)) { break; } goto t_bm_sw;
 
     } // end of T_SKIP_TO_BM_SW case
 
@@ -1838,65 +1794,12 @@ again2:;
     case T_SKIP_TO_XX_SW: // skip link to narrow/wide switch
     {
         // pwr points to a switch
-
         // Looks to me like PrefixMismatch has no performance issues with
         // not all digits being the same size.  It doesn't care.
         // But it does use nBL a couple of times.  Maybe it would help to
         // have bl tests here and call with a constant.  Possibly more
         // interestingly it does compare nBL to cnBitsPerWord.
-        if (nBL == cnBitsPerWord) {
-            if (PrefixMismatch(&wRoot, pwr, wKey, cnBitsPerWord,
-  #if defined(CODE_BM_SW)
-                               /* bBmSw */ 0,
-  #endif // defined(CODE_BM_SW)
-  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-                               &bNeedPrefixCheck,
-      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-      #if defined(SAVE_PREFIX)
-          #if defined(PP_IN_LINK)
-                               &pwRootPrefix,
-          #else // defined(PP_IN_LINK)
-                               &pwrPrefix,
-          #endif // defined(PP_IN_LINK)
-                               &nBLRPrefix,
-      #elif defined(SAVE_PREFIX_TEST_RESULT)
-                               &bPrefixMismatch,
-      #endif // defined(SAVE_PREFIX)
-  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-                               &nBLR))
-            {
-                break;
-            }
-        } else {
-            // This is rare.  If we ever care, we could improve performance
-            // by adding PrefixMismatchNAT.
-            if (PrefixMismatch(&wRoot, pwr, wKey, nBL,
-  #if defined(CODE_BM_SW)
-                               /* bBmSw */ 0,
-  #endif // defined(CODE_BM_SW)
-  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-      #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-                               &bNeedPrefixCheck,
-      #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-      #if defined(SAVE_PREFIX)
-          #if defined(PP_IN_LINK)
-                               &pwRootPrefix,
-          #else // defined(PP_IN_LINK)
-                               &pwrPrefix,
-          #endif // defined(PP_IN_LINK)
-                               &nBLRPrefix,
-      #elif defined(SAVE_PREFIX_TEST_RESULT)
-                               &bPrefixMismatch,
-      #endif // defined(SAVE_PREFIX)
-  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-                               &nBLR))
-            {
-                break;
-            }
-        }
-
-        goto t_xx_sw;
+        if (PREFIX_MISMATCH(nBL, nType)) { break; } goto t_xx_sw;
 
     } // end of T_SKIP_TO_XX_SW case
 
@@ -2063,7 +1966,6 @@ t_xx_sw:;
                     nBW, nIndex, nIndex));
 
         pwRoot = &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot;
-
         wRoot = *pwRoot;
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We may need to check the prefix of the switch we just visited in
@@ -2076,168 +1978,37 @@ t_xx_sw:;
         DBGX(printf("T_XX_SW pwRoot %p wRoot "OWx" nBL %d\n",
                     (void *)pwRoot, wRoot, nBL));
 
-#define BASE_MASK  (EXP(cnBitsPerWord - 1) + cnMallocMask)
-
-#if defined(LOOKUP) && defined(XX_SHORTCUT)
-
-  #if ! defined(NO_TYPE_IN_XX_SW)
-      #if ! defined(HANDLE_BLOWOUTS)
-        // There is a type field, but we use only two values.
-        // Check for one of them here.
-        // The ifdef is a hack that makes assumptions that aren't obvious.
-        if (wRoot == 0) { return Failure; }
-      #else // ! defined(HANDLE_BLOWOUTS)
-          #if defined(USE_PWROOT_FOR_LOOKUP) \
-                  && (defined(PWROOT_ARG_FOR_LOOKUP) \
-                          || defined(PWROOT_AT_TOP_FOR_LOOKUP))
-        nType = Get_nType(pwRoot);
-          #else // defined(USE_PWROOT_FOR_LOOKUP) && it's ok
-        nType = Get_nType(&wRoot);
-          #endif // defined(USE_PWROOT_FOR_LOOKUP) && it's ok
-        if (nType == T_EMBEDDED_KEYS)
-      #endif // ! defined(HANDLE_BLOWOUTS)
-  #else // ! defined(NO_TYPE_IN_XX_SW)
-      #if defined(ZERO_CHECK_BEFORE_EMBEDDED_KEYS)
-        if (wRoot == ZERO_POP_MAGIC) { return Failure; }
-      #endif // defined(ZERO_CHECK_BEFORE_EMBEDDED_KEYS)
-  #endif // ! defined(NO_TYPE_IN_XX_SW)
-        {
-  #if defined(XX_SHORTCUT_GOTO)
-            DBGX(printf("goto t_embedded_keys\n"));
-        assert(EmbeddedListPopCntMax(nBL) != 0);
-            goto t_embedded_keys;
-  #else // defined(XX_SHORTCUT_GOTO)
-
-      #if defined(NO_TYPE_IN_XX_SW)
-        #define XX_CASE(_nBL) \
-            case (_nBL): \
-                if (wRoot == ZERO_POP_MAGIC) { return Failure; } \
-                /* what about blow-outs? */ \
-                assert((wRoot & (BASE_MASK + EXP(cnBitsPerWord-(_nBL)-1))) \
-                    != ZERO_POP_MAGIC); \
-                assert( ! (wRoot & 1) || ((_nBL) == 8) || ((_nBL) == 16) ); \
-                return EmbeddedListHasKey(wRoot, wKey, (_nBL))
-      #else // defined(NO_TYPE_IN_XX_SW)
-        #define XX_CASE(_nBL) \
-            case (_nBL): \
-                assert(wRoot != 0); \
-                return EmbeddedListHasKey(wRoot, wKey, (_nBL))
-      #endif // defined(NO_TYPE_IN_XX_SW)
-
-            switch (nBL) {
-            default: assert(0);
-      #if (cnLogBitsPerWord == 5)
-            XX_CASE(6); XX_CASE(7);
-      #else // (cnLogBitsPerWord == 5)
-            XX_CASE(7); XX_CASE(6);
-      #endif // (cnLogBitsPerWord == 5)
-            XX_CASE( 0); XX_CASE( 1); XX_CASE( 2); XX_CASE( 3); XX_CASE( 4);
-            XX_CASE( 5); XX_CASE( 8); XX_CASE( 9); XX_CASE(10); XX_CASE(11);
-            XX_CASE(12); XX_CASE(13); XX_CASE(14); XX_CASE(15);
-      #if (cnBitsLeftAtDl2 > 16)
-            XX_CASE(16);
-      #endif // (cnBitsLeftAtDl2 > 16)
-      #if (cnBitsLeftAtDl2 > 17)
-            XX_CASE(17);
-      #endif // (cnBitsLeftAtDl2 > 17)
-      #if (cnBitsLeftAtDl2 > 18)
-            XX_CASE(18);
-      #endif // (cnBitsLeftAtDl2 > 18)
-      #if (cnBitsLeftAtDl2 > 19)
-            XX_CASE(19);
-      #endif // (cnBitsLeftAtDl2 > 19)
-      #if (cnBitsLeftAtDl2 > 20)
-            XX_CASE(20);
-      #endif // (cnBitsLeftAtDl2 > 20)
-      #if (cnBitsLeftAtDl2 > 21)
-            XX_CASE(21);
-      #endif // (cnBitsLeftAtDl2 > 21)
-      #if (cnBitsLeftAtDl2 > 22)
-            XX_CASE(22);
-      #endif // (cnBitsLeftAtDl2 > 22)
-      #if (cnBitsLeftAtDl2 > 23)
-            XX_CASE(23);
-      #endif // (cnBitsLeftAtDl2 > 23)
-            }
-  #endif // defined(XX_SHORTCUT_GOTO)
-        }
-  #if ! defined(NO_TYPE_IN_XX_SW)
-        if (wRoot == 0) { return Failure; }
-        nBLR = nBL; goto again2;
-      #if defined(HANDLE_BLOWOUTS)
-        if (nType == T_LIST) {
-  #if defined(XX_SHORTCUT_GOTO)
-            pwr = wr_pwr(wRoot);
-            goto t_list;
-  #else // defined(XX_SHORTCUT_GOTO)
-            int nPopCnt;
-            return ((
-              #if (cnListPopCntMax8 >= cnBytesPerWord) \
-                      || ((cnBitsInD1 <= 8) \
-                          && (cnListPopCntMaxDl1 >= cnBytesPerWord)) \
-                      || ((cnBitsLeftAtDl2 <= 8) \
-                          && (cnListPopCntMaxDl2 >= cnBytesPerWord)) \
-                      || ((cnBitsLeftAtDl3 <= 8) \
-                          && (cnListPopCntMaxDl3 >= cnBytesPerWord))
-                (nBL <= 8) ? SearchList8 (pwRoot, wr_pwr(wRoot), wKey, nBL) :
-              #endif // cnListPopCntMax8 ...
-              #if (cnListPopCntMax16 >= cnBytesPerWord / 2) \
-                      || ((cnBitsLeftAtDl1 > 8) && (cnBitsLeftAtDl1 <= 16)\
-                          && (cnListPopCntMaxDl1 >= cnBytesPerWord / 2)) \
-                      || ((cnBitsLeftAtDl2 > 8) && (cnBitsLeftAtDl2 <= 16) \
-                          && (cnListPopCntMaxDl2 >= cnBytesPerWord / 2)) \
-                      || ((cnBitsLeftAtDl3 > 8) && (cnBitsLeftAtDl3 <= 16) \
-                          && (cnListPopCntMaxDl3 >= cnBytesPerWord / 2))
-                (nBL > 16) ? (nPopCnt =
-                  #if defined(PP_IN_LINK)
-                                        PWR_wPopCntBL(pwRoot, NULL, nBL)
-                  #else // defined(PP_IN_LINK)
-                                        PWR_xListPopCnt(pwRoot, 32)
-                  #endif // defined(PP_IN_LINK)
-                              ),
-                        SearchList32(ls_piKeysNATX(wr_pwr(wRoot), nPopCnt),
-                                      wKey, nBL, nPopCnt) :
-              #endif // (cnListPopCntMax16 >= cnBytesPerWord / 2)
-                        SearchList16(pwRoot, wr_pwr(wRoot), wKey, nBL))
-                    >= 0);
-  #endif // defined(XX_SHORTCUT_GOTO)
-        }
-      #if defined(DEBUG)
-        if (nType != T_BITMAP) {
-            printf("nType %d\n", nType);
-        }
-      #endif // defined(DEBUG)
-        assert(nType == T_BITMAP);
-        pwr = wr_pwr(wRoot);
-        goto t_bitmap;
-      #endif // defined(HANDLE_BLOWOUTS)
-  #endif // ! defined(NO_TYPE_IN_XX_SW)
-
-#else // defined(LOOKUP) && defined(XX_SHORTCUT)
-
         assert(nBL < nDL_to_nBL(2)); // this is the XX_SW boundary
-  #if defined(NO_TYPE_IN_XX_SW)
-        // ZERO_POP_MAGIC is handled in t_embedded_keys.
+
+  #if defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
+      #if defined(NO_TYPE_IN_XX_SW)
+        // ZERO_POP_MAGIC is valid only if a word can hold at least two keys.
+        assert(EmbeddedListPopCntMax(nBL) >= 2);
+        if (wRoot == ZERO_POP_MAGIC)
+      #else // defined(NO_TYPE_IN_XX_SW)
+        if (wRoot == 0)
+      #endif // defined(NO_TYPE_IN_XX_SW)
+        { return Failure; }
+  #else // defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
+        // Zero pop check is done in t_embedded_keys.
+        // I don't know why yet, but it measures faster to defer
+        // the zero check until then.
+  #endif // defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
+  #if defined(NO_TYPE_IN_XX_SW) \
+           || (defined(LOOKUP) && defined(HANDLE_DL2_IN_EMBEDDED_KEYS))
         // Blow-ups are handled in t_embedded_keys.
-        assert(EmbeddedListPopCntMax(nBL) != 0);
         goto t_embedded_keys;
-  #else // defined(NO_TYPE_IN_XX_SW)
-      #if defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
-        goto t_embedded_keys;
-      #else // defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
+  #else // defined(NO_TYPE_IN_XX_SW) || handle dl2 in t_embedded_keys
         // The only thing we do at "again" before switching on nType
         // is extract nType and pwr from wRoot.
         // We don't do any updating of nBL or nBLR.
         nBLR = nBL;
-          #if defined(LOOKUP) || !defined(RECURSIVE)
+      #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
-          #else // defined(LOOKUP) || !defined(RECURSIVE)
+      #else // defined(LOOKUP) || !defined(RECURSIVE)
         return InsertRemove(pwRoot, wKey, nBL);
-          #endif // defined(LOOKUP) || !defined(RECURSIVE)
-      #endif // defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
-  #endif // defined(NO_TYPE_IN_XX_SW)
-
-#endif // defined(LOOKUP) && defined(XX_SHORTCUT)
+      #endif // defined(LOOKUP) || !defined(RECURSIVE)
+  #endif // defined(NO_TYPE_IN_XX_SW) || handle dl2 in t_embedded_keys
 
     } // end of case T_XX_SW
 
@@ -2713,139 +2484,68 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         return wRoot ? Success : Failure;
       #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 
-      #if defined(EMBEDDED_KEYS_PARALLEL)
-
-          #if defined(DL_SPECIFIC_T_ONE)
-
         DBGX(printf("EMBEDDED_KEYS\n")); 
 
+      #if defined(EMBEDDED_KEYS_PARALLEL)
+
 #if defined(HANDLE_BLOWOUTS)
-// We haven't written the insert code to create blow-outs for
-// NO_TYPE_IN_XX_SW yet.
-#define HANDLE_BLOWOUT { nType = T_LIST; pwr = wr_pwr(wRoot); goto t_list; }
+    // We haven't written the insert code to create blow-outs for
+    // NO_TYPE_IN_XX_SW yet.
+  #if defined(NO_TYPE_IN_XX_SW)
+    #define BLOWOUT_CHECK(_nBL) \
+         ((wRoot & BLOWOUT_MASK(_nBL)) == ZERO_POP_MAGIC)
+  #else // defined(NO_TYPE_IN_XX_SW)
+    #define BLOWOUT_CHECK(_nBL)  (wr_nType(wRoot) != T_EMBEDDED_KEYS)
+  #endif // defined(NO_TYPE_IN_XX_SW)
 #else // defined(HANDLE_BLOWOUTS)
-#define HANDLE_BLOWOUT
+    #define BLOWOUT_CHECK(_nBL) (0)
 #endif // defined(HANDLE_BLOWOUTS)
 
-#if defined(NO_TYPE_IN_XX_SW)
-
-#if defined(LOOKUP) && defined(XX_SHORTCUT) \
-      && defined(ZERO_CHECK_BEFORE_EMBEDDED_KEYS)
-    #define ZERO_CHECK
-#else // defined(LOOKUP) && defined(XX_SHORTCUT) && ...
-    #define ZERO_CHECK  if (wRoot == ZERO_POP_MAGIC) { goto break2; }
+#if defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
+    #define ZERO_CHECK  (0)
+#else // defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
+  #if defined(NO_TYPE_IN_XX_SW)
+    #define ZERO_CHECK  (wRoot == ZERO_POP_MAGIC)
+  #else // defined(NO_TYPE_IN_XX_SW)
+    #define ZERO_CHECK  (wRoot == 0)
+  #endif // defined(NO_TYPE_IN_XX_SW)
 #endif // defined(LOOKUP) && defined(XX_SHORTCUT) && ...
 
-#define CASE_BLX(_nBL) \
-        case (_nBL): \
-            if ((_nBL) < nDL_to_nBL(2)) { \
-                ZERO_CHECK; \
-                if ((nType = wr_nType(wRoot)) != 0) { \
-                    HANDLE_BLOWOUT; \
-                } \
-            } \
-            if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
-            goto break2
-
-// For key sizes which can completely fill wRoot with no left-over bits.
-#define CASE_0_BLX(_nBL) \
-        case (_nBL): \
-            if ((_nBL) < nDL_to_nBL(2)) { \
-                ZERO_CHECK; \
-                if ((wRoot & (BASE_MASK + EXP(cnBitsPerWord - (_nBL) - 1))) \
-                    == ZERO_POP_MAGIC) \
-                { \
-                    /* this is where we would handle blow-outs */ \
-                    assert(wr_pwr(wRoot) != 0); \
-                    assert(0); /* shouldn't see this yet */ \
-                    HANDLE_BLOWOUT; \
-                } \
-            } \
-            if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
-            goto break2
-
-// For key sizes which always have at least one bit but not enough for a
-// full-blown type value.
-#define CASE_1_BLX(_nBL) \
-        case (_nBL): \
-            if ((_nBL) < nDL_to_nBL(2)) { \
-                ZERO_CHECK; \
-                if (wRoot & 1) { \
-                    /* this is where we would handle blow-outs */ \
-                    assert(wr_pwr(wRoot) != 0); \
-                    assert(0); /* shouldn't see this yet */ \
-                    HANDLE_BLOWOUT; \
-                } \
-            } \
-            if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
-            goto break2
-
-#else // defined(NO_TYPE_IN_XX_SW)
-
-#if defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
-
-    #define CASE_BLX(_nBL) \
-        case (_nBL): \
-            if ((_nBL) < nDL_to_nBL(2)) { \
-                if (wRoot == 0) { goto break2; } \
-                if ((nType = wr_nType(wRoot)) != T_EMBEDDED_KEYS) { \
-                    HANDLE_BLOWOUT; \
-                } \
-            } \
-            if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
-            goto break2
-
-#else // defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
+#if defined(NO_TYPE_IN_XX_SW) || defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
+    #define HANDLE_DL2(_nBL) \
+        if ((_nBL) < nDL_to_nBL(2)) { \
+            if (ZERO_CHECK) { goto break2; } \
+            if (BLOWOUT_CHECK(_nBL)) { goto again; } \
+        }
+#else // defined(NO_TYPE_IN_XX_SW) || defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
+    #define HANDLE_DL2(_nBL)
+#endif // defined(NO_TYPE_IN_XX_SW) || defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
 
 #define CASE_BLX(_nBL) \
         case (_nBL): \
-            DBGI(printf("CASE_BLX(%d) wRoot "OWx"\n", (_nBL), wRoot)); \
+            HANDLE_DL2(_nBL); \
             if (EmbeddedListHasKey(wRoot, wKey, (_nBL))) { goto foundIt; } \
             goto break2
-
-#endif // defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
-
-#define CASE_0_BLX(_nBL)  CASE_BLX(_nBL)
-#define CASE_1_BLX(_nBL)  CASE_BLX(_nBL)
-
-#endif // defined(NO_TYPE_IN_XX_SW)
 
         switch (nBL) {
-        default: DBG(printf("nBL %d\n", nBL)); assert(0);
-      #if defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
-        CASE_0_BLX(16); CASE_BLX( 6); CASE_1_BLX(7);
-      #else // defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
-          #if (cnLogBitsPerWord == 5)
-        CASE_BLX( 6); CASE_1_BLX(7);
-          #else // (cnLogBitsPerWord == 5)
-        CASE_1_BLX(7); CASE_BLX( 6);
-          #endif // (cnLogBitsPerWord == 5)
-        CASE_0_BLX(16);
-      #endif // defined(XX_SHORTCUT) && ! defined(XX_SHORTCUT_GOTO)
-
         CASE_BLX( 0); CASE_BLX( 1); CASE_BLX( 2); CASE_BLX( 3); CASE_BLX( 4);
-        CASE_BLX( 5); CASE_BLX(10); CASE_BLX(11);
-        CASE_BLX(12); CASE_BLX(13); CASE_BLX(14); CASE_BLX(15);
-        CASE_BLX(17); CASE_BLX(18); CASE_BLX(19); CASE_BLX(20);
-        CASE_BLX(22); CASE_BLX(23); CASE_BLX(24); CASE_BLX(25); CASE_BLX(26);
-        CASE_BLX(27); CASE_BLX(28); CASE_BLX(29); CASE_BLX(30);
-        CASE_BLX(33); CASE_BLX(34); CASE_BLX(35); CASE_BLX(36);
-        CASE_BLX(37); CASE_BLX(38); CASE_BLX(39);
-
+        CASE_BLX( 5); CASE_BLX( 6); CASE_BLX( 7); CASE_BLX( 8); CASE_BLX( 9);
+        CASE_BLX(10); CASE_BLX(11); CASE_BLX(12); CASE_BLX(13); CASE_BLX(14);
+        CASE_BLX(15);
+        default: DBG(printf("nBL %d\n", nBL)); assert(0);
+                      CASE_BLX(16);
+                                    CASE_BLX(17); CASE_BLX(18); CASE_BLX(19);
+        CASE_BLX(20); CASE_BLX(21); CASE_BLX(22); CASE_BLX(23); CASE_BLX(24);
+        CASE_BLX(25); CASE_BLX(26); CASE_BLX(27); CASE_BLX(28); CASE_BLX(29);
+        CASE_BLX(30); CASE_BLX(31); CASE_BLX(32); CASE_BLX(33); CASE_BLX(34);
+        CASE_BLX(35); CASE_BLX(36); CASE_BLX(37); CASE_BLX(38); CASE_BLX(39);
         CASE_BLX(40); CASE_BLX(41); CASE_BLX(42); CASE_BLX(43); CASE_BLX(44);
         CASE_BLX(45); CASE_BLX(46); CASE_BLX(47); CASE_BLX(48); CASE_BLX(49);
         CASE_BLX(50); CASE_BLX(51); CASE_BLX(52); CASE_BLX(53); CASE_BLX(54);
         CASE_BLX(55); CASE_BLX(56); CASE_BLX(57); CASE_BLX(58); CASE_BLX(59);
         CASE_BLX(60); CASE_BLX(61); CASE_BLX(62); CASE_BLX(63); CASE_BLX(64);
-
-        CASE_0_BLX( 8); CASE_0_BLX(32);
-        CASE_1_BLX( 9); CASE_1_BLX(21); CASE_1_BLX(31);
         }
             
-          #endif // defined(DL_SPECIFIC_T_ONE)
-
-        if (EmbeddedListHasKey(wRoot, wKey, nBL)) { goto foundIt; }
-
       #else // defined(EMBEDDED_KEYS_PARALLEL)
 
         // I wonder if PAD_T_ONE and not needing to know the pop count
