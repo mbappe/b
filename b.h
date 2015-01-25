@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.380 2015/01/22 16:34:14 mike Exp mike $
+// @(#) $Id: b.h,v 1.381 2015/01/23 18:06:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -298,7 +298,7 @@ static inline void
 SetBits(Word_t *pw, int nBits, int nLsb, Word_t wVal)
 {
     *pw &= ~(MSK(nBits) << nLsb); // clear the field
-    *pw |=  (wVal       << nLsb); // set the field
+    *pw |= (wVal & MSK(nBits)) << nLsb; // set the field
 }
 
 // Default is -DPSPLIT_PARALLEL which forces -DALIGN_LISTS -DALIGN_LIST_ENDS.
@@ -885,6 +885,21 @@ enum {
 static inline int wr_nType(Word_t wRoot) { return wRoot & cnMallocMask; }
 static inline int Get_nType(Word_t* pwRoot) { return wr_nType(*pwRoot); }
 
+#define set_wr_nType(_wr, _type)  ((_wr) = ((_wr) & ~cnMallocMask) | (_type))
+// Set  nType in *pwRoot.
+static inline void
+Set_nType(Word_t* pwRoot, int nType)
+{
+    set_wr_nType(*pwRoot, nType);
+}
+
+// Change the type field in *pwRoot from a skip a non-skip.
+static inline void
+Clr_bIsSkip(Word_t* pwRoot)
+{
+    Set_nType(pwRoot, Get_nType(pwRoot) & ~T_SKIP_BIT);
+}
+
 // Extract pwr, i.e. the next pwRoot, from *pwRoot.
 static inline Word_t* wr_pwr(Word_t wRoot) {
     return (Word_t*)(wRoot & cwVirtAddrMask & ~cnMallocMask);
@@ -904,9 +919,6 @@ static inline void set_pwr_pwr(Word_t *pwRoot, Word_t *pwr) {
 static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
     *pwRoot = (*pwRoot & ~cwVirtAddrMask) | (Word_t)pwr | nType;
 }
-
-// Set the nType field in wRoot.
-#define set_wr_nType(_wr, _type)  ((_wr) = ((_wr) & ~cnMallocMask) | (_type))
 
 // Set the pwRoot field in wRoot.
 #define set_wr_pwr(_wr, _pwr) \
@@ -1072,7 +1084,7 @@ EmbeddedListPopCntMax(int nBL)
 // XxSwWidth is the width of the switch.
 // ListPopCnt is the number of keys in the list.
 // A field at the end is faster to extract than a field in the middle.
-#define cnBitsLvl  7
+#define cnBitsLvl  8 // 8 is easier to read in debug output than 7
 #define cnLsbLvl  (cnBitsPerWord - cnBitsLvl)
 #define cnBitsXxSwWidth   6
 #if defined(SKIP_TO_XX_SW)
@@ -1080,7 +1092,7 @@ EmbeddedListPopCntMax(int nBL)
 #else // defined(SKIP_TO_XX_SW)
 #define cnLsbXxSwWidth  (cnBitsPerWord - cnBitsXxSwWidth)
 #endif // defined(SKIP_TO_XX_SW)
-#define cnBitsListPopCnt  9
+#define cnBitsListPopCnt  8
 #if defined(SKIP_TO_LIST)
 #define cnLsbListPopCnt  cnBitsVirtAddr
 #else // defined(SKIP_TO_LIST)
@@ -1110,6 +1122,8 @@ Set_nBW(Word_t *pwRoot, int nBW)
 
 #define set_pwr_nBW(_pwRoot, _nBW)  Set_nBW((_pwRoot), (_nBW))
 
+#if ! defined(TYPE_IS_RELATIVE)
+
 // Get the level of the branch in bits.
 static inline int
 pwr_nBL(Word_t *pwRoot)
@@ -1126,6 +1140,8 @@ set_pwr_nBL(Word_t *pwRoot, int nBL)
     assert(nBL <= (int)MSK(cnBitsLvl));
     SetBits(pwRoot, cnBitsLvl, cnLsbLvl, nBL);
 }
+
+#endif // ! defined(TYPE_IS_RELATIVE)
 
 static inline Word_t
 pw_wPrefix(Word_t *pw, int nBL)
