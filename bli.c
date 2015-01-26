@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.579 2015/01/23 06:00:33 mike Exp mike $
+// @(#) $Id: bli.c,v 1.580 2015/01/24 15:08:38 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1474,11 +1474,19 @@ PrefixMismatch(Word_t *pwRoot, Word_t *pwr, Word_t wKey,
   #if ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK) \
             || defined(SAVE_PREFIX_TEST_RESULT)
 
-    Word_t wPrefix =
-#if defined(CODE_BM_SW)
-        bBmSw ? PWR_wPrefixNATBL(pwRoot, (BmSwitch_t *)pwr, nBLR) :
-#endif // defined(CODE_BM_SW)
-                  PWR_wPrefixNATBL(pwRoot, (  Switch_t *)pwr, nBLR) ;
+    Word_t wPrefix;
+#if defined(SKIP_TO_BITMAP) && ! defined(PP_IN_LINK)
+    if (Get_nType(pwRoot) == T_SKIP_TO_BITMAP) {
+        wPrefix = w_wPrefixBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
+    } else
+#endif // defined(SKIP_TO_BITMAP) && ! defined(PP_IN_LINK)
+    {
+        wPrefix =
+      #if defined(CODE_BM_SW)
+            bBmSw ? PWR_wPrefixNATBL(pwRoot, (BmSwitch_t *)pwr, nBLR) :
+      #endif // defined(CODE_BM_SW)
+                      PWR_wPrefixNATBL(pwRoot, (  Switch_t *)pwr, nBLR) ;
+    }
 
     int bPrefixMismatch;
           #if defined(PP_IN_LINK)
@@ -1524,7 +1532,8 @@ PrefixMismatch(Word_t *pwRoot, Word_t *pwr, Word_t wKey,
   #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     if (bPrefixMismatch)
     {
-        DBGX(printf("Mismatch wPrefix "Owx"\n", wPrefix));
+        DBGX(printf("Mismatch wPrefix "Owx" nBL %d nBLR %d\n",
+                    wPrefix, nBL, nBLR));
         // Caller doesn't need/get an updated *pnBLR in this case.
         return 1; // prefix mismatch
     }
@@ -1845,7 +1854,13 @@ t_switch:;
   #endif // ! defined(LOOKUP)
 
   #if defined(SKIP_TO_XX_SW)
-        assert(pwr_nBL(&wRoot) == nBLR);
+      #if defined(TYPE_IS_RELATIVE)
+        assert( ! tp_bIsSkip(wRoot)
+            || (wr_nDS(wRoot) == nBL_to_nDL(nBL) - nBL_to_nDL(nBLR)) );
+      #else // defined(TYPE_IS_RELATIVE)
+        assert((pwr_nBL(&wRoot) == nBLR)
+            /* || ! tp_bIsSkip(wRoot) */ || 0);
+      #endif // defined(TYPE_IS_RELATIVE)
   #endif // defined(SKIP_TO_XX_SW)
         // This assertion is a reminder that the NAX in the line below and
         // possibly later in this case are cheating.
@@ -1944,12 +1959,17 @@ t_xx_sw:;
   #endif // ! defined(LOOKUP)
 
   #if defined(SKIP_TO_XX_SW)
-      #if defined(DEBUG)
+      #if defined(TYPE_IS_RELATIVE)
+        assert( ! tp_bIsSkip(wRoot)
+            || (wr_nDS(wRoot) == nBL_to_nDL(nBL) - nBL_to_nDL(nBLR)) );
+      #else // defined(TYPE_IS_RELATIVE)
+          #if defined(DEBUG)
         if (pwr_nBL(&wRoot) != nBLR) {
             printf("T_XX_SW: pwr_nBL %d nBLR %d\n", pwr_nBL(&wRoot), nBLR);
         }
-      #endif // defined(DEBUG)
+          #endif // defined(DEBUG)
         assert(pwr_nBL(&wRoot) == nBLR);
+      #endif // defined(TYPE_IS_RELATIVE)
   #endif // defined(SKIP_TO_XX_SW)
   #if ! defined(LOOKUP) /* don't care about performance */ \
       || (defined(USE_PWROOT_FOR_LOOKUP) \
@@ -2276,6 +2296,7 @@ t_list:;
           && defined(COMPRESSED_LISTS)
         else
         {
+            // Shouldn't this be using the previous nBL for pwrPrev?
             DBGX(printf("Mismatch at list wPrefix "OWx" nBL %d\n",
                  PWR_wPrefixNATBL(pwRoot, pwrPrev, nBL), nBL));
         }
@@ -2307,7 +2328,9 @@ t_list:;
 #endif // (cwListPopCntMax != 0)
 
 #if defined(SKIP_TO_BITMAP)
-    case T_SKIP_TO_BITMAP: nBL = pwr_nBL(&wRoot); goto t_bitmap;
+    case T_SKIP_TO_BITMAP:
+        // PREFIX_MISMATCH updates nBLR only if there is a match.
+        if (PREFIX_MISMATCH(nBL, nType)) { break; } goto t_bitmap;
 #endif // defined(SKIP_TO_BITMAP)
     case T_BITMAP:
 #if defined(EXTRA_TYPES)
@@ -2325,8 +2348,9 @@ t_bitmap:;
 
 #if ! defined(LOOKUP) && defined(PP_IN_LINK)
         if (EXP(cnBitsInD1) > sizeof(Link_t) * 8) {
-            wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
-            set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL, wPopCnt + nIncr);
+            wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR);
+            set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR,
+                              wPopCnt + nIncr);
         }
 #endif // !defined(LOOKUP) && defined(PP_IN_LINK)
 
@@ -2368,7 +2392,7 @@ t_bitmap:;
               #if defined(PP_IN_LINK)
                     < nBL
               #else // defined(PP_IN_LINK)
-                    < nDL_to_nBL_NAX(nBL_to_nDL(nBL) + 1)
+                    < nDL_to_nBL_NAX(nBL_to_nDL(nBLR) + 1)
               #endif // defined(PP_IN_LINK)
                 )
           #endif // defined(SAVE_PREFIX)
@@ -2390,9 +2414,9 @@ t_bitmap:;
             // We assume we never blow-out into a bitmap.
             // But we don't really enforce it.
           #if defined(DEBUG)
-            if (nBL != cnBitsLeftAtDl2) { printf("nBL %d\n", nBL); }
+            if (nBLR != cnBitsLeftAtDl2) { printf("nBLR %d\n", nBLR); }
           #endif // defined(DEBUG)
-            assert(nBL == cnBitsLeftAtDl2);
+            assert(nBLR == cnBitsLeftAtDl2);
             assert(pwr == wr_pwr(wRoot));
             int bBitIsSet = BitIsSet(wr_pwr(wRoot),
                                      wKey & MSK(cnBitsLeftAtDl2));
@@ -2403,7 +2427,7 @@ t_bitmap:;
             // bitmap at dl2.
             // I guess it is only assuming nBL == cnBitsInD1 if
             // EXP(cnBitsInD1) <= sizeof(Link_t) * 8.
-            assert((nBL == cnBitsInD1)
+            assert((nBLR == cnBitsInD1)
                 || (EXP(cnBitsInD1) > sizeof(Link_t) * 8));
             int bBitIsSet
                 = (cnBitsInD1 <= cnLogBitsPerWord)
@@ -2413,7 +2437,7 @@ t_bitmap:;
                                wKey & MSK(cnBitsInD1))
                 // Isn't pwr == wr_pwr(wRoot)
                 // : BitIsSet(wr_pwr(wRoot), wKey & MSK(nBL));
-                : BitIsSet(pwr, wKey & MSK(nBL));
+                : BitIsSet(pwr, wKey & MSK(nBLR));
       #endif // defined(USE_XX_SW)
             if (bBitIsSet)
             {
@@ -2436,8 +2460,12 @@ t_bitmap:;
       #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         else
         {
-            DBGX(printf("Mismatch at bitmap wPrefix "OWx"\n",
-                        PWR_wPrefixNATBL(pwRoot, pwrPrev, nBL)));
+            // Shouldn't this be using the previous nBL for the pwrPrev case?
+          #if defined(SKIP_TO_BITMAP)
+            // But now that we have prefix in the bitmap can't we use that?
+          #endif // defined(SKIP_TO_BITMAP)
+            DBGX(printf("Mismatch at bitmap wPrefix "OWx" nBLR %d nBL %d\n",
+                        PWR_wPrefixNATBL(pwRoot, pwrPrev, nBLR), nBLR, nBL));
         }
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
   #endif // defined(SKIP_LINKS)
@@ -2509,7 +2537,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
   #else // defined(NO_TYPE_IN_XX_SW)
     #define ZERO_CHECK  (wRoot == 0)
   #endif // defined(NO_TYPE_IN_XX_SW)
-#endif // defined(LOOKUP) && defined(XX_SHORTCUT) && ...
+#endif // defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
 
 #if defined(NO_TYPE_IN_XX_SW) || defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
     #define HANDLE_DL2(_nBL) \
@@ -2933,101 +2961,132 @@ Initialize(void)
 #endif // defined(BPD_TABLE_RUNTIME_INIT)
 
     printf("\n");
-#if defined(DEBUG)
-    printf("# DEBUG\n");
-#else // defined(DEBUG)
-    printf("# NO DEBUG\n");
-#endif // defined(DEBUG)
+
+#if defined(SKIP_TO_XX_SW)
+    printf("#    SKIP_TO_XX_SW\n");
+#else // defined(SKIP_TO_XX_SW)
+    printf("# NO SKIP_TO_XX_SW\n");
+#endif // defined(SKIP_TO_XX_SW)
+
+#if defined(ZERO_POP_CHECK_BEFORE_GOTO)
+    printf("#    ZERO_POP_CHECK_BEFORE_GOTO\n");
+#else // defined(ZERO_POP_CHECK_BEFORE_GOTO)
+    printf("# NO ZERO_POP_CHECK_BEFORE_GOTO\n");
+#endif // defined(ZERO_POP_CHECK_BEFORE_GOTO)
+
+#if defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
+    printf("#    HANDLE_DL2_IN_EMBEDDED_KEYS\n");
+#else // defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
+    printf("# NO HANDLE_DL2_IN_EMBEDDED_KEYS\n");
+#endif // defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
+
+#if defined(HANDLE_BLOWOUTS)
+    printf("#    HANDLE_BLOWOUTS\n");
+#else // defined(HANDLE_BLOWOUTS)
+    printf("# NO HANDLE_BLOWOUTS\n");
+#endif // defined(HANDLE_BLOWOUTS)
+
+#if defined(NO_TYPE_IN_XX_SW)
+    printf("#    NO_TYPE_IN_XX_SW\n");
+#else // defined(NO_TYPE_IN_XX_SW)
+    printf("# NO NO_TYPE_IN_XX_SW\n");
+#endif // defined(NO_TYPE_IN_XX_SW)
+
+#if defined(USE_XX_SW)
+    printf("#    USE_XX_SW\n");
+#else // defined(USE_XX_SW)
+    printf("# NO USE_XX_SW\n");
+#endif // defined(USE_XX_SW)
+
+#if defined(CODE_XX_SW)
+    printf("#    CODE_XX_SW\n");
+#else // defined(CODE_XX_SW)
+    printf("# NO CODE_XX_SW\n");
+#endif // defined(CODE_XX_SW)
+
+#if defined(PWROOT_ARG_FOR_LOOKUP)
+    printf("#    PWROOT_ARG_FOR_LOOKUP\n");
+#else // defined(PWROOT_ARG_FOR_LOOKUP)
+    printf("# NO PWROOT_ARG_FOR_LOOKUP\n");
+#endif // defined(PWROOT_ARG_FOR_LOOKUP)
+
+#if defined(USE_PWROOT_AT_TOP_LOOKUP)
+    printf("#    USE_PWROOT_AT_TOP_LOOKUP\n");
+#else // defined(USE_PWROOT_AT_TOP_LOOKUP)
+    printf("# NO USE_PWROOT_AT_TOP_LOOKUP\n");
+#endif // defined(USE_PWROOT_AT_TOP_LOOKUP)
+
+#if defined(USE_PWROOT_FOR_LOOKUP)
+    printf("#    USE_PWROOT_FOR_LOOKUP\n");
+#else // defined(USE_PWROOT_FOR_LOOKUP)
+    printf("# NO USE_PWROOT_FOR_LOOKUP\n");
+#endif // defined(USE_PWROOT_FOR_LOOKUP)
 
 #if defined(LVL_IN_WR_HB)
-    printf("# LVL_IN_WR_HB\n");
+    printf("#    LVL_IN_WR_HB\n");
 #else // defined(LVL_IN_WR_HB)
     printf("# NO LVL_IN_WR_HB\n");
 #endif // defined(LVL_IN_WR_HB)
 
 #if defined(DEPTH_IN_SW)
-    printf("# DEPTH_IN_SW\n");
+    printf("#    DEPTH_IN_SW\n");
 #else // defined(DEPTH_IN_SW)
     printf("# NO DEPTH_IN_SW\n");
 #endif // defined(DEPTH_IN_SW)
 
 #if defined(TYPE_IS_RELATIVE)
-    printf("# TYPE_IS_RELATIVE\n");
+    printf("#    TYPE_IS_RELATIVE\n");
 #else // defined(TYPE_IS_RELATIVE)
-    printf("# TYPE_IS_ABSOLUTE\n");
+    printf("# NO TYPE_IS_RELATIVE\n");
 #endif // defined(TYPE_IS_RELATIVE)
 
 #if defined(USE_BM_SW)
-    printf("# USE_BM_SW\n");
+    printf("#    USE_BM_SW\n");
 #else // defined(USE_BM_SW)
     printf("# NO USE_BM_SW\n");
 #endif // defined(USE_BM_SW)
 
 #if defined(CODE_BM_SW)
-    printf("# CODE_BM_SW\n");
+    printf("#    CODE_BM_SW\n");
 #else // defined(CODE_BM_SW)
     printf("# NO CODE_BM_SW\n");
 #endif // defined(CODE_BM_SW)
 
 #if defined(SKIP_TO_BM_SW)
-    printf("# SKIP_TO_BM_SW\n");
+    printf("#    SKIP_TO_BM_SW\n");
 #else // defined(SKIP_TO_BM_SW)
     printf("# NO SKIP_TO_BM_SW\n");
 #endif // defined(SKIP_TO_BM_SW)
 
 #if defined(RETYPE_FULL_BM_SW)
-    printf("# RETYPE_FULL_BM_SW\n");
+    printf("#    RETYPE_FULL_BM_SW\n");
 #else // defined(RETYPE_FULL_BM_SW)
     printf("# NO RETYPE_FULL_BM_SW\n");
 #endif // defined(SKIP_TO_BM_SW)
 
 #if defined(BM_IN_NON_BM_SW)
-    printf("# BM_IN_NON_BM_SW\n");
+    printf("#    BM_IN_NON_BM_SW\n");
 #else // defined(BM_IN_NON_BM_SW)
     printf("# NO BM_IN_NON_BM_SW\n");
 #endif // defined(BM_IN_NON_BM_SW)
 
 #if defined(BM_IN_LINK)
-    printf("# BM_IN_LINK\n");
+    printf("#    BM_IN_LINK\n");
 #else // defined(BM_IN_LINK)
     printf("# NO BM_IN_LINK\n");
 #endif // defined(BM_IN_LINK)
 
 #if defined(PP_IN_LINK)
-    printf("# PP_IN_LINK\n");
+    printf("#    PP_IN_LINK\n");
 #else // defined(PP_IN_LINK)
     printf("# NO PP_IN_LINK\n");
 #endif // defined(PP_IN_LINK)
 
-#if defined(CODE_XX_SW)
-    printf("# CODE_XX_SW\n");
-#else // defined(CODE_XX_SW)
-    printf("# NO CODE_XX_SW\n");
-#endif // defined(CODE_XX_SW)
-
-#if defined(USE_XX_SW)
-    printf("# USE_XX_SW\n");
-#else // defined(USE_XX_SW)
-    printf("# NO USE_XX_SW\n");
-#endif // defined(USE_XX_SW)
-
-#if defined(XX_SHORTCUT)
-    printf("# XX_SHORTCUT\n");
-#else // defined(XX_SHORTCUT)
-    printf("# NO XX_SHORTCUT\n");
-#endif // defined(XX_SHORTCUT)
-
-#if defined(XX_SHORTCUT_GOTO)
-    printf("# XX_SHORTCUT_GOTO\n");
-#else // defined(XX_SHORTCUT_GOTO)
-    printf("# NO XX_SHORTCUT_GOTO\n");
-#endif // defined(XX_SHORTCUT_GOTO)
-
-#if defined(NO_TYPE_IN_XX_SW)
-    printf("# NO_TYPE_IN_XX_SW\n");
-#else // defined(NO_TYPE_IN_XX_SW)
-    printf("# NO NO_TYPE_IN_XX_SW\n");
-#endif // defined(NO_TYPE_IN_XX_SW)
+#if defined(DEBUG)
+    printf("#    DEBUG\n");
+#else // defined(DEBUG)
+    printf("# NO DEBUG\n");
+#endif // defined(DEBUG)
 
 #if defined(BM_IN_LINK)
     printf("\n");
@@ -3043,12 +3102,15 @@ Initialize(void)
     printf("# cnBitsInD1 %d\n", cnBitsInD1);
     printf("# cnBitsInD2 %d\n", cnBitsInD2);
     printf("# cnBitsInD3 %d\n", cnBitsInD3);
+    printf("\n");
     printf("# cnBitsPerDigit %d\n", cnBitsPerDigit);
     printf("# cnDigitsPerWord %d\n", cnDigitsPerWord);
+    printf("\n");
     printf("# cnListPopCntMax8  %d\n", cnListPopCntMax8);
     printf("# cnListPopCntMax16 %d\n", cnListPopCntMax16);
     printf("# cnListPopCntMax32 %d\n", cnListPopCntMax32);
     printf("# cnListPopCntMax64 %d\n", cnListPopCntMax64);
+    printf("\n");
     printf("# cnListPopCntMaxDl1 %d\n", cnListPopCntMaxDl1);
 #if defined(cnListPopCntMaxDl2)
     printf("# cnListPopCntMaxDl2 %d\n", cnListPopCntMaxDl2);
