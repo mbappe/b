@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.580 2015/01/24 15:08:38 mike Exp mike $
+// @(#) $Id: bli.c,v 1.581 2015/01/26 20:49:42 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2932,6 +2932,14 @@ Initialize(void)
 #endif // ! defined(TYPE_IS_RELATIVE)
 #endif // ! defined(DEPTH_IN_SW)
 #endif // ! defined(LVL_IN_WR_HB)
+
+#if defined(SEPARATE_T_NULL)
+    assert(((T_SKIP_BIT | T_SWITCH_BIT) & T_NULL) == 0);
+#endif // defined(SEPARATE_T_NULL)
+    assert(((T_SKIP_BIT | T_SWITCH_BIT) & T_LIST) == 0);
+    assert(((T_SKIP_BIT | T_SWITCH_BIT) & T_ONE) == 0);
+    assert(((T_SKIP_BIT | T_SWITCH_BIT) & T_EMBEDDED_KEYS) == 0);
+    assert(((T_SKIP_BIT | T_SWITCH_BIT) & T_BITMAP) == 0);
 
   #if defined(NO_TYPE_IN_XX_SW)
     assert (wr_nType(ZERO_POP_MAGIC) == T_EMBEDDED_KEYS);
