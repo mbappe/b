@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.381 2015/01/23 18:06:13 mike Exp mike $
+// @(#) $Id: b.h,v 1.382 2015/01/25 17:13:43 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -560,7 +560,7 @@ enum {
     T_EMBEDDED_KEYS, // keys are embedded in the link
     T_BITMAP, // external bitmap leaf
 #if defined(SKIP_TO_BITMAP)
-    T_SKIP_TO_BITMAP, // external bitmap leaf
+    T_SKIP_TO_BITMAP = T_SKIP_BIT | T_BITMAP, // external bitmap leaf
 #endif // defined(SKIP_TO_BITMAP)
 
     // All of the type values less than T_SWITCH are not switches.
@@ -1413,9 +1413,17 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
     ((_w) = (((_w) & wPrefixPopMask(_nDL)) \
             | ((_key) & ~wPrefixPopMask(_nDL))))
 
+#define set_w_wPrefixBL(_w, _nBL, _key) \
+    ((_w) = (((_w) & wPrefixPopMaskBL(_nBL)) \
+            | ((_key) & ~wPrefixPopMaskBL(_nBL))))
+
 #define set_w_wPopCnt(_w, _nDL, _cnt) \
     ((_w) = (((_w) & ~wPrefixPopMask(_nDL)) \
             | ((_cnt) & wPrefixPopMask(_nDL))))
+
+#define set_w_wPopCntBL(_w, _nBL, _cnt) \
+    ((_w) = (((_w) & ~wPrefixPopMaskBL(_nBL)) \
+            | ((_cnt) & wPrefixPopMaskBL(_nBL))))
 
 #define set_PWR_wPrefix(_pwRoot, _pwr, _nDL, _key) \
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
