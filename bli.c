@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.581 2015/01/26 20:49:42 mike Exp mike $
+// @(#) $Id: bli.c,v 1.582 2015/01/26 22:52:59 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2999,6 +2999,24 @@ Initialize(void)
 #else // defined(NO_TYPE_IN_XX_SW)
     printf("# NO NO_TYPE_IN_XX_SW\n");
 #endif // defined(NO_TYPE_IN_XX_SW)
+
+#if defined(PAD_T_ONE)
+    printf("#    PAD_T_ONE\n");
+#else // defined(PAD_T_ONE)
+    printf("# NO PAD_T_ONE\n");
+#endif // defined(PAD_T_ONE)
+
+#if defined(T_ONE_MASK)
+    printf("#    T_ONE_MASK\n");
+#else // defined(T_ONE_MASK)
+    printf("# NO T_ONE_MASK\n");
+#endif // defined(T_ONE_MASK)
+
+#if defined(EMBEDDED_LIST_FIXED_POP)
+    printf("#    EMBEDDED_LIST_FIXED_POP\n");
+#else // defined(EMBEDDED_LIST_FIXED_POP)
+    printf("# NO EMBEDDED_LIST_FIXED_POP\n");
+#endif // defined(EMBEDDED_LIST_FIXED_POP)
 
 #if defined(USE_XX_SW)
     printf("#    USE_XX_SW\n");
