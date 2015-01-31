@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.582 2015/01/26 22:52:59 mike Exp mike $
+// @(#) $Id: bli.c,v 1.583 2015/01/31 15:08:25 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2945,9 +2945,11 @@ Initialize(void)
     assert (wr_nType(ZERO_POP_MAGIC) == T_EMBEDDED_KEYS);
   #endif // defined(NO_TYPE_IN_XX_SW)
 
+  #if defined(CODE_XX_SW)
     // Make sure nBW field is big enough.
     assert((cnBitsLeftAtDl2 - cnBW - (cnLogBitsPerWord + 1))
         <= MSK(cnBitsXxSwWidth));
+  #endif // defined(CODE_XX_SW)
 
 #if defined(BPD_TABLE_RUNTIME_INIT)
     for (unsigned nDL = 0;
@@ -2999,6 +3001,12 @@ Initialize(void)
 #else // defined(NO_TYPE_IN_XX_SW)
     printf("# NO NO_TYPE_IN_XX_SW\n");
 #endif // defined(NO_TYPE_IN_XX_SW)
+
+#if defined(T_ONE_CALC_POP)
+    printf("#    T_ONE_CALC_POP\n");
+#else // defined(T_ONE_CALC_POP)
+    printf("# NO T_ONE_CALC_POP\n");
+#endif // defined(T_ONE_CALC_POP)
 
 #if defined(PAD_T_ONE)
     printf("#    PAD_T_ONE\n");
