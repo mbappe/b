@@ -1,3 +1,91 @@
+
+Run make to build b.
+Run bb to test it.  bb -q is less rigorous and bb -Q is even less rigorous.
+Run b -1l as the least rigorous test of all.
+b -? give some help.
+Look for symbolic names in the RCS files with "rcs -h b.h".
+CP140405 is Checkpoint April 5, 2014.
+The most recent checkpoint should be the latest and greatest somewhat
+functional code.
+
+Run "forx make" to see if the builds work.  It will run for days (maybe not).
+Run "forx bb" to see if the code works.  It will run for days (maybe not).
+Run "forx bb -q" for a less vigorous test.  It will run for days (maybe not).
+Forx has not been kept up to date with ifdefs since long ago.  Maybe 4/4/14.
+
+rcs.tjz contains a copy of the RCS files in case the originals can't be found.
+
+1/20/15:
+
+Observation: 1: Reading switch width from low end of high bits of wRoot in
+             T_SWITCH rather than using a constant changes get time at
+             bitmap to 29.6 ns from 25.4 ns.
+             Wow.  How much of the cost is due to the width being in the
+             low end of the high bits and requiring an extra mask?
+Observation: 2: Reading switch width from high end of high bits of wRoot in
+             T_SWITCH rather than using a constant changes get time at
+             bitmap to 27.8 ns from 25.4 ns.
+             Wow.  The extra mask is expensive.
+             Note that we had to move the level field to the low end of
+             the high bits in this case.
+             What if neither field is at the high end?
+Observation: 3: If neither field is at the high end get time is 28.2 ns.
+             4: What if we swap the order?  28.2 ns.
+             5: Aligned 8-bit both? 27.9
+             6: Aligned 8-bit nBW; 7-bit nBL (both in middle)? 28.0
+             7: Aligned 8-bit nBL; 6-bit nBW (both in middle)? 28.7
+             8: Aligned 8-bit nBW in middle; 7-bit nBL on end? 27.9
+             9: Aligned 8-bit nBL in middle; 6-bit nBW on end? 27.7
+             What if we use 8 bits for nType?
+Take away: Reading width from high bits costs about 2.5 ns at the bitmap
+           and about 3.5 ns in the immediates at 4.5 GHz. It's in the
+           1.25 ns to 2.0 ns range at the very highest switch (in the cache).
+           Maybe it is not a waste to use the type field switch to tell us
+           if we need to check.  I'm guessing the same will hold for skipping.
+            
+
+1/19/15:
+
+Doubling is amazingly effective.
+Why is TYPE_IN_XX_SW so much faster than NO_TYPE_IN_XX_SW?
+- EmbeddedListHasKey has an additional |= constant?
+- XX_SHORTCUT:
+  - blowouts allowed:
+    - extracts nType from wRoot and tests (nType == T_EMBEDDED_KEYS), then
+      (wRoot == 0), then (nType == T_LIST), then assumes bitmap
+      - vs test (wRoot & f(nBL) == ZERO_POP_MAGIC) in each case
+    - XX_SHORTCUT_GOTO
+      - pwr = wr_pwr(wRoot) for each nType (except T_EMBEDDED_KEYS) and goto
+        - vs hmm; goto t_embedded_keys and handle it there?
+    - NO_XX_SHORTCUT_GOTO
+      - switch(nBL) case EmbeddedListHasKey,
+        or (if nBL) SearchList8|16|32,
+        or wr_pwr(wRoot) goto t_bitmap 
+        - vs switch(nBL) case EmbeddedListHasKey
+
+  - no blowouts allowed (cnListPopCntMaxBlah are too small for blowouts for
+    TYPE_IN_XX_SW, or HANDLE_BLOW_OUTS for NO_TYPE_IN_XX_SW) Why not use
+    HANDLE_BLOW_OUTS for both?
+    - tests (wRoot == 0) before switch(nBL) (Why not do this in each case?)
+    - vs test (wRoot == ZERO_POP_MAGIC) in each case (Why not do this
+      before the switch(nBL)?)
+- NO_XX_SHORTCUT:
+  - nBLR = nBL; goto again;
+    nType = wr_nType(wRoot); pwr = wr_pwr(wRoot); switch(nType)
+    vs goto t_embedded_keys (blowouts are handled in t_embedded_keys)
+
+1/11/15:
+
+Doubling works.
+Build from the bottom up.  Take advantage of common prefix to help avoid
+unnecessary blow-ups.  Skip to "odd" width switches.  Snap to fixed digits.
+
+Short lists are faster at the top of the tree as well as being faster at
+the bottom.
+
+================
+
+
 Run "forx make" to see if the builds work.  It will run for days (maybe not).
 Run "forx bb" to see if the code works.  It will run for days (maybe not).
 Run "forx bb -q" for a less vigorous test.  It will run for days (maybe not).
