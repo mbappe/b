@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.382 2015/01/25 17:13:43 mike Exp mike $
+// @(#) $Id: b.h,v 1.383 2015/01/26 18:52:13 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -929,11 +929,19 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
         ((_wr) = ((_wr) & ~cwVirtAddrMask) | (Word_t)(_pwr) | (_type))
 
 // Default is -DT_ONE_CALC_POP.
+// T_ONE_CALC_POP means we don't use any bits in a wRoot/link/bucket to
+// hold the pop count.  We calculate the pop count based on the contents
+// of the key suffix slots.
 #if ! defined(NO_T_ONE_CALC_POP)
 #define T_ONE_CALC_POP
 #endif // ! defined(NO_T_ONE_CALC_POP)
 
 // Default is -UPAD_T_ONE.
+// PAD_T_ONE means unused key suffix slots in a T_EMBEDDED_KEYS
+// wRoot/link/bucket are filled with a copy of the smallest key suffix in
+// the list. This is independent of the order in which the key suffixes are
+// sorted.
+// If PAD_T_ONE is not defined, then the empty slots are filled with zero.
 #if defined(PAD_T_ONE) && defined(T_ONE_CALC_POP)
 #error Sorry, no PAD_T_ONE and T_ONE_CALC_POP.
 #endif // defined(PAD_T_ONE) && defined(T_ONE_CALC_POP)
@@ -941,6 +949,7 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // Default is -UT_ONE_MASK.
 // See EmbeddedListHasKey.
 
+#if defined(NO_TYPE_IN_XX_SW)
 // We need some way to represent an empty list when we have no type field.
 // Zero is no good because it is a valid wRoot for nBL == 8 representing
 // a list with a single key and that key being zero.
@@ -963,7 +972,12 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // Is it possible that we are going to want to sort the list in the other
 // order for JudyL?
 // Enough talk for now.  We'll come back to these other cases.
+#if defined(REVERSE_SORT_EMBEDDED_KEYS)
+#define ZERO_POP_MAGIC  1
+#else // defined(REVERSE_SORT_EMBEDDED_KEYS)
 #define ZERO_POP_MAGIC  (EXP(cnBitsPerWord - 1) + T_EMBEDDED_KEYS)
+#endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
+#endif // defined(NO_TYPE_IN_XX_SW)
 
 #if defined(NO_TYPE_IN_XX_SW) // && defined(HANDLE_BLOWOUTS)
     // Identify blowouts using (wRoot & BLOWOUT_MASK(nBL) == ZERO_POP_MAGIC).
@@ -1037,23 +1051,27 @@ wr_nPopCnt(Word_t wRoot, int nBL)
 // For embedded keys the pop cnt bits are just above the type field.
 // A value of zero means a pop cnt of one. 
 #define     wr_nPopCnt(_wr, _nBL) \
-    ((((_wr) >> cnBitsMallocMask) & MSK(nBL_to_nBitsPopCntSz(_nBL))) + 1)
+  ((((_wr) >> nBL_to_nBitsType(_nBL)) & MSK(nBL_to_nBitsPopCntSz(_nBL))) + 1)
 
 #define set_wr_nPopCnt(_wr, _nBL, _nPopCnt) \
-    ((_wr) &= ~(MSK(nBL_to_nBitsPopCntSz(_nBL)) << cnBitsMallocMask), \
-     (_wr) |= ((_nPopCnt) - 1) << cnBitsMallocMask)
+    ((_wr) &= ~(MSK(nBL_to_nBitsPopCntSz(_nBL)) << nBL_to_nBitsType(_nBL)), \
+     (_wr) |= ((_nPopCnt) - 1) << nBL_to_nBitsType(_nBL))
 
   #endif // defined(T_ONE_CALC_POP)
 #endif // defined(USE_T_ONE)
+
+#if defined(CODE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
+    #define nBL_to_nBitsType(_nBL) \
+        (((_nBL) < nDL_to_nBL(2)) ? 0 : cnMallocMask)
+#else // defined(CODE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
+    #define nBL_to_nBitsType(_nBL)  cnMallocMask
+#endif // defined(CODE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
 
 static inline int
 EmbeddedListPopCntMax(int nBL)
 {
     int nBitsForKeys = cnBitsPerWord;
-#if defined(NO_TYPE_IN_XX_SW)
-    if (nBL >= nDL_to_nBL(2))
-#endif // defined(NO_TYPE_IN_XX_SW)
-    { nBitsForKeys -= (cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL)); }
+    nBitsForKeys -= nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL);
     return nBitsForKeys / nBL;
 }
 

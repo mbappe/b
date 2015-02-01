@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.583 2015/01/31 15:08:25 mike Exp mike $
+// @(#) $Id: bli.c,v 1.584 2015/01/31 17:01:21 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1385,24 +1385,28 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     // here so we don't have to worry about a false positive later.
     // We still have to mask off the type and pop count bits from wXor later
     // but that is a constant.
+  #if defined(REVERSE_SORT_EMBEDDED_KEYS)
+    int nPopCnt = wr_nPopCnt(wRoot, nBL); // number of keys present
+    if (wKey == 0) {
+        return (((wRoot >> (cnBitsPerWord - nPopCnt * nBL)) & MSK(nBL)) == 0);
+    }
+  #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
     if (wKey == 0) { return ((wRoot >> (cnBitsPerWord - nBL)) == 0); }
+  #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
 #endif // ! defined(PAD_T_ONE) && ! defined(T_ONE_MASK)
     Word_t wLsbs = (Word_t)-1 / wMask;
     Word_t wKeys = wKey * wLsbs; // replicate key; put in every slot
     Word_t wXor = wKeys ^ wRoot; // get zero in slot with matching key
 #if defined(PAD_T_ONE) || ! defined(T_ONE_MASK)
-#if defined(NO_TYPE_IN_XX_SW)
-    if (nBL >= nDL_to_nBL(2))
-#endif // defined(NO_TYPE_IN_XX_SW)
-    { wXor |= MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL)); }
+    wXor |= MSK(nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL));
 #endif // defined(PAD_T_ONE) || ! defined(T_ONE_MASK)
 // Looks like ! PAD_T_ONE, T_ONE_MASK (and ! EMBEDDED_LIST_FIXED_POP) is a
 // bad combination.
 #if ! defined(PAD_T_ONE) && defined(T_ONE_MASK)
     // If we're filling empty slots with zero, then we have to mask off
     // the empty slots so we don't get a false positive if/when wKey == 0.
-    unsigned nPopCnt = wr_nPopCnt(wRoot, nBL); // number of keys present
-    unsigned nBitsOfKeys = nPopCnt * nBL;
+    int nPopCnt = wr_nPopCnt(wRoot, nBL); // number of keys present
+    int nBitsOfKeys = nPopCnt * nBL;
     wXor |= (Word_t)-1 >> nBitsOfKeys; // type and empty slots
 #endif // ! defined(PAD_T_ONE) && defined(T_ONE_MASK)
     Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
@@ -2744,6 +2748,7 @@ notFound:;
                );
     goto cleanup;
 undo:;
+    DBGX(printf("undo\n"));
 #endif // defined(INSERT)
 #if defined(REMOVE) && !defined(RECURSIVE)
     if (nIncr < 0)
@@ -2942,7 +2947,10 @@ Initialize(void)
     assert(((T_SKIP_BIT | T_SWITCH_BIT) & T_BITMAP) == 0);
 
   #if defined(NO_TYPE_IN_XX_SW)
+      #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
+    // Not sure if/why this matters.
     assert (wr_nType(ZERO_POP_MAGIC) == T_EMBEDDED_KEYS);
+      #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
   #endif // defined(NO_TYPE_IN_XX_SW)
 
   #if defined(CODE_XX_SW)
@@ -3073,6 +3081,12 @@ Initialize(void)
 #else // defined(TYPE_IS_RELATIVE)
     printf("# NO TYPE_IS_RELATIVE\n");
 #endif // defined(TYPE_IS_RELATIVE)
+
+#if defined(SKIP_TO_LIST)
+    printf("#    SKIP_TO_LIST\n");
+#else // defined(SKIP_TO_LIST)
+    printf("# NO SKIP_TO_LIST\n");
+#endif // defined(SKIP_TO_LIST)
 
 #if defined(USE_BM_SW)
     printf("#    USE_BM_SW\n");
