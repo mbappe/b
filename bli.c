@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.584 2015/01/31 17:01:21 mike Exp mike $
+// @(#) $Id: bli.c,v 1.585 2015/02/01 21:29:12 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1373,11 +1373,6 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 #else // defined(USE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
     assert(wRoot != 0); // I wonder if there is opportunity here.
 #endif // defined(USE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
-#if defined(EMBEDDED_LIST_FIXED_POP)
-    // Reminder about losing a slot with fixed-size pop field.
-    assert((cnBitsPerWord != 32) || (nBL != 14));
-    assert((cnBitsPerWord != 64) || (nBL != 29));
-#endif // defined(EMBEDDED_LIST_FIXED_POP)
     Word_t wMask = MSK(nBL); // (1 << nBL) - 1
     wKey &= wMask; // discard already-decoded bits
 #if ! defined(PAD_T_ONE) && ! defined(T_ONE_MASK)
@@ -1385,14 +1380,15 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     // here so we don't have to worry about a false positive later.
     // We still have to mask off the type and pop count bits from wXor later
     // but that is a constant.
-  #if defined(REVERSE_SORT_EMBEDDED_KEYS)
-    int nPopCnt = wr_nPopCnt(wRoot, nBL); // number of keys present
     if (wKey == 0) {
-        return (((wRoot >> (cnBitsPerWord - nPopCnt * nBL)) & MSK(nBL)) == 0);
-    }
+  #if defined(REVERSE_SORT_EMBEDDED_KEYS)
+        int nPopCnt = wr_nPopCnt(wRoot, nBL);
+        return
+            (((wRoot >> (cnBitsPerWord - nPopCnt * nBL)) & MSK(nBL)) == 0);
   #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
-    if (wKey == 0) { return ((wRoot >> (cnBitsPerWord - nBL)) == 0); }
+        return ((wRoot >> (cnBitsPerWord - nBL)) == 0);
   #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
+    }
 #endif // ! defined(PAD_T_ONE) && ! defined(T_ONE_MASK)
     Word_t wLsbs = (Word_t)-1 / wMask;
     Word_t wKeys = wKey * wLsbs; // replicate key; put in every slot
