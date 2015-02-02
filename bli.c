@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.588 2015/02/02 06:07:58 mike Exp mike $
+// @(#) $Id: bli.c,v 1.589 2015/02/02 06:32:18 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1381,15 +1381,29 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     // We still have to mask off the type and pop count bits from wXor later
     // but that is a constant.
   #if defined(REVERSE_SORT_EMBEDDED_KEYS)
+      #if defined(FILL_WITH_ONES)
+    if (wKey == MSK(nBL)) {
+          #if defined(PACK_KEYS_RIGHT)
+        int nPopCntMax = EmbeddedListPopCntMax(nBL);
+        int nPopCnt = wr_nPopCnt(wRoot, nBL);
+        int nSlot = nPopCntMax - nPopCnt + 1;
+          #else // defined(PACK_KEYS_RIGHT)
+        int nSlot = 1;
+          #endif // defined(PACK_KEYS_RIGHT)
+        return (((wRoot >> (cnBitsPerWord - nSlot * nBL)) & MSK(nBL))
+                    == MSK(nBL));
+    }
+      #else // defined(FILL_WITH_ONES)
     if (wKey == 0) {
-      #if defined(PACK_KEYS_RIGHT)
+          #if defined(PACK_KEYS_RIGHT)
         int nSlot = EmbeddedListPopCntMax(nBL);
-      #else // defined(PACK_KEYS_RIGHT)
+          #else // defined(PACK_KEYS_RIGHT)
         int nSlot = wr_nPopCnt(wRoot, nBL);
-      #endif // defined(PACK_KEYS_RIGHT)
+          #endif // defined(PACK_KEYS_RIGHT)
         return
             (((wRoot >> (cnBitsPerWord - nSlot * nBL)) & MSK(nBL)) == 0);
     }
+      #endif // defined(FILL_WITH_ONES)
   #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
     if (wKey == 0) { return ((wRoot >> (cnBitsPerWord - nBL)) == 0); }
   #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)

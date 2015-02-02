@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.491 2015/02/02 05:57:09 mike Exp mike $
+// @(#) $Id: b.c,v 1.492 2015/02/02 06:32:18 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -4013,6 +4013,9 @@ DeflateExternalList(Word_t *pwRoot,
     if (nPopCnt <= nPopCntMax)
     {
         wRoot = 0;
+#if defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(FILL_WITH_ONES)
+        --wRoot;
+#endif // defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(FILL_WITH_ONES)
 
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
