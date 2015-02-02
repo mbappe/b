@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.489 2015/02/01 21:29:12 mike Exp mike $
+// @(#) $Id: b.c,v 1.490 2015/02/02 02:11:49 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2344,22 +2344,23 @@ embeddedKeys:;
         assert(nType == T_LIST); // What about T_ONE?
         nPopCnt = PWR_xListPopCnt(&wRootOld, nBLOld);
         
+        int status;
 #if defined(COMPRESSED_LISTS)
         if (nBLOld <= (int)sizeof(uint8_t) * 8) {
             uint8_t *pcKeys = ls_pcKeysNAT(pwrOld);
             for (int nn = 0; nn < nPopCnt; nn++) {
-                Insert(pwRoot, pcKeys[nn] | (wKey & ~MSK(8)), nBL);
+                status = Insert(pwRoot, pcKeys[nn] | (wKey & ~MSK(8)), nBL);
             }
         } else if (nBLOld <= (int)sizeof(uint16_t) * 8) {
             uint16_t *psKeys = ls_psKeysNAT(pwrOld);
             for (int nn = 0; nn < nPopCnt; nn++) {
-                Insert(pwRoot, psKeys[nn] | (wKey & ~MSK(16)), nBL);
+                status = Insert(pwRoot, psKeys[nn] | (wKey & ~MSK(16)), nBL);
             }
 #if (cnBitsPerWord > 32)
         } else if (nBLOld <= (int)sizeof(uint32_t) * 8) {
             uint32_t *piKeys = ls_piKeysNAT(pwrOld);
             for (int nn = 0; nn < nPopCnt; nn++) {
-                Insert(pwRoot, piKeys[nn] | (wKey & ~MSK(32)), nBL);
+                status = Insert(pwRoot, piKeys[nn] | (wKey & ~MSK(32)), nBL);
             }
 #endif // (cnBitsPerWord > 32)
         } else
@@ -2367,9 +2368,10 @@ embeddedKeys:;
         {
             Word_t *pwKeys = ls_pwKeysNAT(pwrOld);
             for (int nn = 0; nn < nPopCnt; nn++) {
-                Insert(pwRoot, pwKeys[nn], nBL);
+                status = Insert(pwRoot, pwKeys[nn], nBL);
             }
         }
+        assert(status == 1);
     }
 
 #if defined(NO_TYPE_IN_XX_SW)
