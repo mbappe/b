@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.585 2015/02/01 21:29:12 mike Exp mike $
+// @(#) $Id: bli.c,v 1.587 2015/02/02 02:11:49 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1380,15 +1380,15 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     // here so we don't have to worry about a false positive later.
     // We still have to mask off the type and pop count bits from wXor later
     // but that is a constant.
-    if (wKey == 0) {
   #if defined(REVERSE_SORT_EMBEDDED_KEYS)
+    if (wKey == 0) {
         int nPopCntMax = EmbeddedListPopCntMax(nBL);
         return
             (((wRoot >> (cnBitsPerWord - nPopCntMax * nBL)) & MSK(nBL)) == 0);
-  #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
-        return ((wRoot >> (cnBitsPerWord - nBL)) == 0);
-  #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
     }
+  #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
+    if (wKey == 0) { return ((wRoot >> (cnBitsPerWord - nBL)) == 0); }
+  #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
 #endif // ! defined(PAD_T_ONE) && ! defined(T_ONE_MASK)
     Word_t wLsbs = (Word_t)-1 / wMask;
     Word_t wKeys = wKey * wLsbs; // replicate key; put in every slot
