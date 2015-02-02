@@ -15,6 +15,10 @@ Forx has not been kept up to date with ifdefs since long ago.  Maybe 4/4/14.
 
 rcs.tjz contains a copy of the RCS files in case the originals can't be found.
 
+2/1/15:
+
+What is the best way to arrange embedded keys?  See testrepKey.c.
+
 1/20/15:
 
 Observation: 1: Reading switch width from low end of high bits of wRoot in
