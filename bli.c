@@ -1382,9 +1382,9 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     // but that is a constant.
     if (wKey == 0) {
   #if defined(REVERSE_SORT_EMBEDDED_KEYS)
-        int nPopCnt = wr_nPopCnt(wRoot, nBL);
+        int nPopCntMax = EmbeddedListPopCntMax(nBL);
         return
-            (((wRoot >> (cnBitsPerWord - nPopCnt * nBL)) & MSK(nBL)) == 0);
+            (((wRoot >> (cnBitsPerWord - nPopCntMax * nBL)) & MSK(nBL)) == 0);
   #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
         return ((wRoot >> (cnBitsPerWord - nBL)) == 0);
   #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)

@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.488 2015/01/26 22:52:38 mike Exp mike $
+// @(#) $Id: b.c,v 1.489 2015/02/01 21:29:12 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1592,6 +1592,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
 
         if ((nType == T_ONE) || (nType == T_EMBEDDED_KEYS))
         {
+            int nPopCntMax = EmbeddedListPopCntMax(nBL); (void)nPopCntMax;
 #if defined(EMBED_KEYS)
             if (EmbeddedListPopCntMax(nBL) != 0) {
                 goto embeddedKeys;
@@ -1624,9 +1625,13 @@ embeddedKeys:;
 
 #if defined(EMBED_KEYS)
             if (EmbeddedListPopCntMax(nBL) != 0) {
-                for (unsigned nn = 1; nn <= wPopCnt; nn++) {
+                for (unsigned nn = 0; nn < wPopCnt; nn++) {
                     printf(" %08"_fw"x",
-                        (wRoot >> (cnBitsPerWord - (nn * nBL)))
+#if defined(REVERSE_SORT_EMBEDDED_KEYS)
+                        (wRoot >> (cnBitsPerWord - ((nn + nPopCntMax - wPopCnt + 1) * nBL)))
+#else // defined(REVERSE_SORT_EMBEDDED_KEYS)
+                        (wRoot >> (cnBitsPerWord - ((nn + 1) * nBL)))
+#endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
                             & MSK(nBL));
                 }
                 printf("\n");
@@ -3930,7 +3935,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 
     for (int nn = 0; nn < nPopCnt; nn++) {
 #if defined(REVERSE_SORT_EMBEDDED_KEYS)
-        int nSlot = (nPopCnt - nn);
+        int nSlot = (nPopCntMax - nn);
 #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
         int nSlot = (nn + 1);
 #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
@@ -4019,8 +4024,6 @@ DeflateExternalList(Word_t *pwRoot,
         set_wr_nPopCnt(wRoot, nBL, nPopCnt); // no-op if NO_TYPE_IN_XX_SW
 //printf("nBL %d nPopCnt %d wRoot "OWx"\n", nBL, nPopCnt, wRoot);
 
-        Word_t wBLM = MSK(nBL);
-
         for (int nn = 0;
 #if defined(PAD_T_ONE)
                  nn < nPopCntMax;
@@ -4030,7 +4033,7 @@ DeflateExternalList(Word_t *pwRoot,
                  nn++)
         {
 #if defined(REVERSE_SORT_EMBEDDED_KEYS)
-            int nSlot = (nPopCnt - nn);
+            int nSlot = (nPopCntMax - nn);
 #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
             int nSlot = (nn + 1);
 #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
@@ -4041,19 +4044,19 @@ DeflateExternalList(Word_t *pwRoot,
                 // Isn't this contrary to some assumptions in the code?
                 // Hmm.  I think we changed it to the smallest key so
                 // we could calculate offset of found key using magic.
-                wRoot |= (pcKeys[(nn < nPopCnt) ? nn : 0] & wBLM)
-                                << (cnBitsPerWord - (nSlot * nBL));
+                SetBits(&wRoot, nBL, cnBitsPerWord - (nSlot * nBL),
+                        pcKeys[(nn < nPopCnt) ? nn : 0]);
             } else
             if (nBL <= 16) {
                 psKeys = ls_psKeysNAT(pwr);
-                wRoot |= (psKeys[(nn < nPopCnt) ? nn : 0] & wBLM)
-                                << (cnBitsPerWord - (nSlot * nBL));
+                SetBits(&wRoot, nBL, cnBitsPerWord - (nSlot * nBL),
+                        psKeys[(nn < nPopCnt) ? nn : 0]);
             } else
 #if (cnBitsPerWord > 32)
             if (nBL <= 32) {
                 piKeys = ls_piKeysNAT(pwr);
-                wRoot |= (piKeys[(nn < nPopCnt) ? nn : 0] & wBLM)
-                                << (cnBitsPerWord - (nSlot * nBL));
+                SetBits(&wRoot, nBL, cnBitsPerWord - (nSlot * nBL),
+                        piKeys[(nn < nPopCnt) ? nn : 0]);
             } else
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
@@ -4062,8 +4065,8 @@ DeflateExternalList(Word_t *pwRoot,
                 // for PP_IN_LINK here since we will not be at the top.
                 assert(nBL != cnBitsPerWord);
                 Word_t *pwKeys = ls_pwKeys(pwr, nBL);
-                wRoot |= (pwKeys[(nn < nPopCnt) ? nn : 0] & wBLM)
-                                << (cnBitsPerWord - (nSlot * nBL));
+                SetBits(&wRoot, nBL, cnBitsPerWord - (nSlot * nBL),
+                        pwKeys[(nn < nPopCnt) ? nn : 0]);
             }
         }
     }
