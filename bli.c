@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.587 2015/02/02 02:11:49 mike Exp mike $
+// @(#) $Id: bli.c,v 1.588 2015/02/02 06:07:58 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1382,9 +1382,13 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     // but that is a constant.
   #if defined(REVERSE_SORT_EMBEDDED_KEYS)
     if (wKey == 0) {
-        int nPopCntMax = EmbeddedListPopCntMax(nBL);
+      #if defined(PACK_KEYS_RIGHT)
+        int nSlot = EmbeddedListPopCntMax(nBL);
+      #else // defined(PACK_KEYS_RIGHT)
+        int nSlot = wr_nPopCnt(wRoot, nBL);
+      #endif // defined(PACK_KEYS_RIGHT)
         return
-            (((wRoot >> (cnBitsPerWord - nPopCntMax * nBL)) & MSK(nBL)) == 0);
+            (((wRoot >> (cnBitsPerWord - nSlot * nBL)) & MSK(nBL)) == 0);
     }
   #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
     if (wKey == 0) { return ((wRoot >> (cnBitsPerWord - nBL)) == 0); }

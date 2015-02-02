@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.490 2015/02/02 02:11:49 mike Exp mike $
+// @(#) $Id: b.c,v 1.491 2015/02/02 05:57:09 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1627,11 +1627,11 @@ embeddedKeys:;
             if (EmbeddedListPopCntMax(nBL) != 0) {
                 for (unsigned nn = 0; nn < wPopCnt; nn++) {
                     printf(" %08"_fw"x",
-#if defined(REVERSE_SORT_EMBEDDED_KEYS)
+#if defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(PACK_KEYS_RIGHT)
                         (wRoot >> (cnBitsPerWord - ((nn + nPopCntMax - wPopCnt + 1) * nBL)))
-#else // defined(REVERSE_SORT_EMBEDDED_KEYS)
+#else // defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(PACK_KEYS_RIGHT)
                         (wRoot >> (cnBitsPerWord - ((nn + 1) * nBL)))
-#endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
+#endif // defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(PACK_KEYS_RIGHT)
                             & MSK(nBL));
                 }
                 printf("\n");
@@ -3937,7 +3937,11 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 
     for (int nn = 0; nn < nPopCnt; nn++) {
 #if defined(REVERSE_SORT_EMBEDDED_KEYS)
+  #if defined(PACK_KEYS_RIGHT)
         int nSlot = (nPopCntMax - nn);
+  #else // defined(PACK_KEYS_RIGHT)
+        int nSlot = (nPopCnt - nn);
+  #endif // defined(PACK_KEYS_RIGHT)
 #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
         int nSlot = (nn + 1);
 #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
@@ -4035,7 +4039,11 @@ DeflateExternalList(Word_t *pwRoot,
                  nn++)
         {
 #if defined(REVERSE_SORT_EMBEDDED_KEYS)
+  #if defined(PACK_KEYS_RIGHT)
             int nSlot = (nPopCntMax - nn);
+  #else // defined(PACK_KEYS_RIGHT)
+            int nSlot = (nPopCnt - nn);
+  #endif // defined(PACK_KEYS_RIGHT)
 #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
             int nSlot = (nn + 1);
 #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
