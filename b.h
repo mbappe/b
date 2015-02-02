@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.383 2015/01/26 18:52:13 mike Exp mike $
+// @(#) $Id: b.h,v 1.384 2015/02/01 21:29:12 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -985,10 +985,20 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
         (((EXP(_nBL) + 1) << (cnBitsPerWord - (_nBL) - 1)) + cnMallocMask)
 #endif // defined(NO_TYPE_IN_XX_SW) && defined(HANDLE_BLOWOUTS)
 
+#if defined(CODE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
+    #define nBL_to_nBitsType(_nBL) \
+        (((_nBL) < nDL_to_nBL(2)) ? 0 : cnBitsMallocMask)
+#else // defined(CODE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
+    #define nBL_to_nBitsType(_nBL)  cnBitsMallocMask
+#endif // defined(CODE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
+
 #if defined(USE_T_ONE)
   #if defined(T_ONE_CALC_POP)
 
 #define nBL_to_nBitsPopCntSz(_nBL)  0
+
+#if defined(REVERSE_SORT_EMBEDDED_KEYS)
+#else // defined(REVERSE_SORT_EMBEDDED_KEYS)
 
 static inline int
 wr_nPopCnt(Word_t wRoot, int nBL)
@@ -1012,7 +1022,7 @@ wr_nPopCnt(Word_t wRoot, int nBL)
         // handle blowouts without having a type field and there is no big
         // motivator to make it work in both cases at this point.
         assert(wr_nType(wRoot) == T_EMBEDDED_KEYS);
-        wKeys &= ~MSK(cnBitsMallocMask + nBL_to_nBitsPopCntSz(nBL));
+        wKeys &= ~MSK(nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL));
     }
     wKeys |= EXP(cnBitsPerWord - 1);
     int ffs = __builtin_ffsll(wKeys);
@@ -1021,6 +1031,8 @@ wr_nPopCnt(Word_t wRoot, int nBL)
 }
 
 #define set_wr_nPopCnt(_wr, _nBL, _nPopCnt)
+
+#endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
 
   #else // defined(T_ONE_CALC_POP)
 
@@ -1054,18 +1066,11 @@ wr_nPopCnt(Word_t wRoot, int nBL)
   ((((_wr) >> nBL_to_nBitsType(_nBL)) & MSK(nBL_to_nBitsPopCntSz(_nBL))) + 1)
 
 #define set_wr_nPopCnt(_wr, _nBL, _nPopCnt) \
-    ((_wr) &= ~(MSK(nBL_to_nBitsPopCntSz(_nBL)) << nBL_to_nBitsType(_nBL)), \
-     (_wr) |= ((_nPopCnt) - 1) << nBL_to_nBitsType(_nBL))
+    SetBits(&(_wr), nBL_to_nBitsPopCntSz(_nBL), nBL_to_nBitsType(_nBL), \
+            (_nPopCnt) - 1)
 
   #endif // defined(T_ONE_CALC_POP)
 #endif // defined(USE_T_ONE)
-
-#if defined(CODE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
-    #define nBL_to_nBitsType(_nBL) \
-        (((_nBL) < nDL_to_nBL(2)) ? 0 : cnMallocMask)
-#else // defined(CODE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
-    #define nBL_to_nBitsType(_nBL)  cnMallocMask
-#endif // defined(CODE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
 
 static inline int
 EmbeddedListPopCntMax(int nBL)
