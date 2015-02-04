@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.492 2015/02/02 06:32:18 mike Exp mike $
+// @(#) $Id: b.c,v 1.493 2015/02/02 06:46:40 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1864,6 +1864,43 @@ Dump(Word_t *pwRoot, Word_t wPrefix, int nBL)
 }
 #endif // defined(DEBUG)
 
+#if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
+  #if ! defined(PACK_KEYS_RIGHT)
+      //#if ! defined(FILL_WITH_ONES)
+static void
+InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
+{
+    int nPopCntMax = EmbeddedListPopCntMax(nBL); (void)nPopCntMax;
+    int nPopCnt = wr_nPopCnt(*pwRoot, nBL);
+    assert(nPopCnt < nPopCntMax);
+    DBGI(printf("\nInsert: wRoot "OWx" nBL %d wKey "OWx" nPopCnt %d Max %d\n",
+                *pwRoot, nBL, wKey, nPopCnt, nPopCntMax));
+    // find the slot
+    wKey &= MSK(nBL);
+    int nSlot = 0;
+    for (; nSlot < nPopCnt; ++nSlot) {
+        if (GetBits(*pwRoot, nBL, cnBitsPerWord - (nSlot + 1) * nBL) > wKey) {
+            break;
+        }
+    }
+    DBGI(printf("Insert: wKey "OWx" nSlot %d", wKey, nSlot));
+    if (nSlot < nPopCnt) {
+        Word_t wLowBits
+            = GetBits(*pwRoot, (nPopCnt - nSlot) * nBL,
+                      cnBitsPerWord - (nPopCnt * nBL));
+        DBGI(printf(" wLowBits "OWx, wLowBits));
+        SetBits(pwRoot, (nPopCnt - nSlot) * nBL, 
+                cnBitsPerWord - ((nPopCnt + 1) * nBL), wLowBits);
+    }
+    SetBits(pwRoot, nBL, cnBitsPerWord - (nSlot + 1) * nBL, wKey); 
+    set_wr_nPopCnt(*pwRoot, nBL, nPopCnt + 1);
+    DBGI(printf(" wRoot "OWx" nPopCnt %d\n",
+                *pwRoot, wr_nPopCnt(*pwRoot, nBL)));
+}
+      //#endif // ! defined(FILL_WITH_ONES)
+  #endif // ! defined(PACK_KEYS_RIGHT)
+#endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
+
 #if (cwListPopCntMax != 0)
 
 #if defined(SORT_LISTS)
@@ -2736,6 +2773,17 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
     if (nType == T_EMBEDDED_KEYS) {
         goto embeddedKeys;
 embeddedKeys:;
+
+          #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
+            #if ! defined(PACK_KEYS_RIGHT)
+                //#if ! defined(FILL_WITH_ONES)
+        if (wr_nPopCnt(*pwRoot, nBL) < EmbeddedListPopCntMax(nBL)) {
+            InsertEmbedded(pwRoot, nBL, wKey); return Success;
+        }
+                //#endif // ! defined(FILL_WITH_ONES)
+            #endif // ! defined(PACK_KEYS_RIGHT)
+          #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
+
         wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot);
         // BUG: The list may not be sorted at this point.  Does it matter?
         // Update: I'm not sure why I wrote that the list may not be sorted
@@ -3917,7 +3965,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 
     int nPopCnt = wr_nPopCnt(wRoot, nBL);
     DBGI(printf("IEL: nPopCnt %d\n", nPopCnt));
-    int nPopCntMax = EmbeddedListPopCntMax(nBL);
+    int nPopCntMax = EmbeddedListPopCntMax(nBL); (void)nPopCntMax;
 #if defined(DEBUG)
     if (nPopCnt > EmbeddedListPopCntMax(nBL))
     {
