@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.384 2015/02/01 21:29:12 mike Exp mike $
+// @(#) $Id: b.h,v 1.385 2015/02/02 01:41:06 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -936,15 +936,20 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 #define T_ONE_CALC_POP
 #endif // ! defined(NO_T_ONE_CALC_POP)
 
-// Default is -UPAD_T_ONE.
-// PAD_T_ONE means unused key suffix slots in a T_EMBEDDED_KEYS
+// Default is -UFILL_W_KEY.
+// FILL_W_KEY means unused key suffix slots in a T_EMBEDDED_KEYS
 // wRoot/link/bucket are filled with a copy of the smallest key suffix in
 // the list. This is independent of the order in which the key suffixes are
 // sorted.
-// If PAD_T_ONE is not defined, then the empty slots are filled with zero.
-#if defined(PAD_T_ONE) && defined(T_ONE_CALC_POP)
-#error Sorry, no PAD_T_ONE and T_ONE_CALC_POP.
-#endif // defined(PAD_T_ONE) && defined(T_ONE_CALC_POP)
+// If FILL_W_KEY is not defined, then the empty slots are filled with zero
+// or -1 depending on FILL_WITH_ONES.
+#if defined(FILL_W_KEY) && defined(T_ONE_CALC_POP)
+#error Sorry, no FILL_W_KEY and T_ONE_CALC_POP.
+#endif // defined(FILL_W_KEY) && defined(T_ONE_CALC_POP)
+
+#if defined(FILL_W_KEY) && defined(FILL_WITH_ONES)
+#error Sorry, no FILL_W_KEY and FILL_WITH_ONES.
+#endif // defined(FILL_W_KEY) && defined(FILL_WITH_ONES)
 
 // Default is -UT_ONE_MASK.
 // See EmbeddedListHasKey.

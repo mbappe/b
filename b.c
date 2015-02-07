@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.493 2015/02/02 06:46:40 mike Exp mike $
+// @(#) $Id: b.c,v 1.494 2015/02/04 01:09:25 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -4082,11 +4082,11 @@ DeflateExternalList(Word_t *pwRoot,
 //printf("nBL %d nPopCnt %d wRoot "OWx"\n", nBL, nPopCnt, wRoot);
 
         for (int nn = 0;
-#if defined(PAD_T_ONE)
+#if defined(FILL_W_KEY)
                  nn < nPopCntMax;
-#else // defined(PAD_T_ONE)
+#else // defined(FILL_W_KEY)
                  nn < nPopCnt;
-#endif // defined(PAD_T_ONE)
+#endif // defined(FILL_W_KEY)
                  nn++)
         {
 #if defined(REVERSE_SORT_EMBEDDED_KEYS)

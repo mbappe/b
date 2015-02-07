@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.589 2015/02/02 06:32:18 mike Exp mike $
+// @(#) $Id: bli.c,v 1.590 2015/02/02 06:46:40 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1336,16 +1336,17 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 #if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
 #if defined(EMBED_KEYS) && defined(EMBEDDED_KEYS_PARALLEL)
 
-// Do a parallel search of a list embedded in a link given the key size.
-// EmbeddedListHasKey expects the keys to be packed towards the most
-// significant bits.
-// The cnBitsMallocMask least-significant bits of the word are used for a
-// type field and the next least-significant nBL_to_nBitsPopCntSz(nBL) bits
+// Do a parallel search of a list embedded in wRoot given the key size.
+// The least-significant nBL_to_nBitsType(nBL) bits of the word are used for
+// a type field and the next least-significant nBL_to_nBitsPopCntSz(nBL) bits
 // of the word are used for a population count.
+// EmbeddedListHasKey expects the keys to be packed towards the most
+// significant bits unless PACK_KEYS_RIGHT in which case they are packed
+// towards the least significant bits leaving room for the type and pop count.
 // It helps Lookup performance to eliminate the need to know nPopCnt.
-// So, if PAD_T_ONE, we replicate the last key in the list into the unused
-// slots at insert time to make sure the unused slots don't cause a false
-// bXorHasZero.
+// So, if FILL_W_KEY, we replicate the smallest key in the list into the
+// unused slots at insert time to make sure the unused slots don't cause a
+// false bXorHasZero.
 // But how do we make sure the type and pop count bits don't
 // cause a false bXorHasZero due to a slot that can't really be used?
 // Or'ing MSK(nBL_to_nBitsPopCntSz(nBL) + cnBitsMallocMask)
@@ -1368,18 +1369,13 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 static int // bool
 EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 {
-#if defined(USE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
-    assert((wRoot != ZERO_POP_MAGIC) || (nBL >= nDL_to_nBL(2)));
-#else // defined(USE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
-    assert(wRoot != 0); // I wonder if there is opportunity here.
-#endif // defined(USE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
+    assert((wRoot != ZERO_POP_MAGIC) || (nBL_to_nBitsType(nBL) != 0));
     Word_t wMask = MSK(nBL); // (1 << nBL) - 1
-    wKey &= wMask; // discard already-decoded bits
-#if ! defined(PAD_T_ONE) && ! defined(T_ONE_MASK)
-    // If we're filling empty slots with zero, then check for wKey == 0
+    wKey &= wMask; // Discard already-decoded bits.  Have caller do it?
+#if ! defined(FILL_W_KEY) && ! defined(T_ONE_MASK)
+    // If we're filling empty slots with 0 or -1, then check for wKey == fill
     // here so we don't have to worry about a false positive later.
-    // We still have to mask off the type and pop count bits from wXor later
-    // but that is a constant.
+    // We still have to mask off the type and pop count bits from wXor later.
   #if defined(REVERSE_SORT_EMBEDDED_KEYS)
       #if defined(FILL_WITH_ONES)
     if (wKey == MSK(nBL)) {
@@ -1407,22 +1403,22 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
   #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
     if (wKey == 0) { return ((wRoot >> (cnBitsPerWord - nBL)) == 0); }
   #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
-#endif // ! defined(PAD_T_ONE) && ! defined(T_ONE_MASK)
+#endif // ! defined(FILL_W_KEY) && ! defined(T_ONE_MASK)
     Word_t wLsbs = (Word_t)-1 / wMask;
     Word_t wKeys = wKey * wLsbs; // replicate key; put in every slot
     Word_t wXor = wKeys ^ wRoot; // get zero in slot with matching key
-#if defined(PAD_T_ONE) || ! defined(T_ONE_MASK)
+#if defined(FILL_W_KEY) || ! defined(T_ONE_MASK)
     wXor |= MSK(nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL));
-#endif // defined(PAD_T_ONE) || ! defined(T_ONE_MASK)
-// Looks like ! PAD_T_ONE, T_ONE_MASK (and ! EMBEDDED_LIST_FIXED_POP) is a
+#endif // defined(FILL_W_KEY) || ! defined(T_ONE_MASK)
+// Looks like ! FILL_W_KEY, T_ONE_MASK (and ! EMBEDDED_LIST_FIXED_POP) is a
 // bad combination.
-#if ! defined(PAD_T_ONE) && defined(T_ONE_MASK)
+#if ! defined(FILL_W_KEY) && defined(T_ONE_MASK)
     // If we're filling empty slots with zero, then we have to mask off
     // the empty slots so we don't get a false positive if/when wKey == 0.
     int nPopCnt = wr_nPopCnt(wRoot, nBL); // number of keys present
     int nBitsOfKeys = nPopCnt * nBL;
     wXor |= (Word_t)-1 >> nBitsOfKeys; // type and empty slots
-#endif // ! defined(PAD_T_ONE) && defined(T_ONE_MASK)
+#endif // ! defined(FILL_W_KEY) && defined(T_ONE_MASK)
     Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
     int bXorHasZero = (((wXor - wLsbs) & ~wXor & wMsbs) != 0); // magic
     return bXorHasZero;
@@ -2594,7 +2590,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
             
       #else // defined(EMBEDDED_KEYS_PARALLEL)
 
-        // I wonder if PAD_T_ONE and not needing to know the pop count
+        // I wonder if FILL_W_KEY and not needing to know the pop count
         // would help this code like it does EMBEDDED_KEYS_PARALLEL.
         unsigned nPopCnt = wr_nPopCnt(wRoot, nBL);
 
@@ -3030,11 +3026,11 @@ Initialize(void)
     printf("# NO T_ONE_CALC_POP\n");
 #endif // defined(T_ONE_CALC_POP)
 
-#if defined(PAD_T_ONE)
-    printf("#    PAD_T_ONE\n");
-#else // defined(PAD_T_ONE)
-    printf("# NO PAD_T_ONE\n");
-#endif // defined(PAD_T_ONE)
+#if defined(FILL_W_KEY)
+    printf("#    FILL_W_KEY\n");
+#else // defined(FILL_W_KEY)
+    printf("# NO FILL_W_KEY\n");
+#endif // defined(FILL_W_KEY)
 
 #if defined(T_ONE_MASK)
     printf("#    T_ONE_MASK\n");
