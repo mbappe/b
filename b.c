@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.494 2015/02/04 01:09:25 mike Exp mike $
+// @(#) $Id: b.c,v 1.495 2015/02/07 16:53:30 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1875,6 +1875,10 @@ InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
     assert(nPopCnt < nPopCntMax);
     DBGI(printf("\nInsert: wRoot "OWx" nBL %d wKey "OWx" nPopCnt %d Max %d\n",
                 *pwRoot, nBL, wKey, nPopCnt, nPopCntMax));
+#if defined(NO_TYPE_IN_XX_SW)
+    // clear out ZERO_POP_MAGIC
+    if ((nPopCnt == 0) && (nBL < nDL_to_nBL(2))) { *pwRoot = 0; }
+#endif // defined(NO_TYPE_IN_XX_SW)
     // find the slot
     wKey &= MSK(nBL);
     int nSlot = 0;
