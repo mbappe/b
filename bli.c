@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.590 2015/02/02 06:46:40 mike Exp mike $
+// @(#) $Id: bli.c,v 1.591 2015/02/07 16:53:30 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1372,10 +1372,12 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     assert((wRoot != ZERO_POP_MAGIC) || (nBL_to_nBitsType(nBL) != 0));
     Word_t wMask = MSK(nBL); // (1 << nBL) - 1
     wKey &= wMask; // Discard already-decoded bits.  Have caller do it?
-#if ! defined(FILL_W_KEY) && ! defined(T_ONE_MASK)
-    // If we're filling empty slots with 0 or -1, then check for wKey == fill
+#if ! defined(FILL_W_KEY) && ! defined(MASK_EMPTIES)
+    // If we're filling empty slots with 0 or -1, and we're not masking off
+    // the empty slots later, then check for wKey == fill
     // here so we don't have to worry about a false positive later.
-    // We still have to mask off the type and pop count bits from wXor later.
+    // We still have to mask off the type and pop count bits from wXor later
+    // even if we're not masking off the empty slots.
   #if defined(REVERSE_SORT_EMBEDDED_KEYS)
       #if defined(FILL_WITH_ONES)
     if (wKey == MSK(nBL)) {
@@ -1403,22 +1405,22 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
   #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
     if (wKey == 0) { return ((wRoot >> (cnBitsPerWord - nBL)) == 0); }
   #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
-#endif // ! defined(FILL_W_KEY) && ! defined(T_ONE_MASK)
+#endif // ! defined(FILL_W_KEY) && ! defined(MASK_EMPTIES)
     Word_t wLsbs = (Word_t)-1 / wMask;
     Word_t wKeys = wKey * wLsbs; // replicate key; put in every slot
     Word_t wXor = wKeys ^ wRoot; // get zero in slot with matching key
-#if defined(FILL_W_KEY) || ! defined(T_ONE_MASK)
+#if defined(FILL_W_KEY) || ! defined(MASK_EMPTIES)
     wXor |= MSK(nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL));
-#endif // defined(FILL_W_KEY) || ! defined(T_ONE_MASK)
-// Looks like ! FILL_W_KEY, T_ONE_MASK (and ! EMBEDDED_LIST_FIXED_POP) is a
+#endif // defined(FILL_W_KEY) || ! defined(MASK_EMPTIES)
+// Looks like ! FILL_W_KEY, MASK_EMPTIES (and ! EMBEDDED_LIST_FIXED_POP) is a
 // bad combination.
-#if ! defined(FILL_W_KEY) && defined(T_ONE_MASK)
+#if ! defined(FILL_W_KEY) && defined(MASK_EMPTIES)
     // If we're filling empty slots with zero, then we have to mask off
     // the empty slots so we don't get a false positive if/when wKey == 0.
     int nPopCnt = wr_nPopCnt(wRoot, nBL); // number of keys present
     int nBitsOfKeys = nPopCnt * nBL;
     wXor |= (Word_t)-1 >> nBitsOfKeys; // type and empty slots
-#endif // ! defined(FILL_W_KEY) && defined(T_ONE_MASK)
+#endif // ! defined(FILL_W_KEY) && defined(MASK_EMPTIES)
     Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
     int bXorHasZero = (((wXor - wLsbs) & ~wXor & wMsbs) != 0); // magic
     return bXorHasZero;
@@ -3032,11 +3034,11 @@ Initialize(void)
     printf("# NO FILL_W_KEY\n");
 #endif // defined(FILL_W_KEY)
 
-#if defined(T_ONE_MASK)
-    printf("#    T_ONE_MASK\n");
-#else // defined(T_ONE_MASK)
-    printf("# NO T_ONE_MASK\n");
-#endif // defined(T_ONE_MASK)
+#if defined(MASK_EMPTIES)
+    printf("#    MASK_EMPTIES\n");
+#else // defined(MASK_EMPTIES)
+    printf("# NO MASK_EMPTIES\n");
+#endif // defined(MASK_EMPTIES)
 
 #if defined(EMBEDDED_LIST_FIXED_POP)
     printf("#    EMBEDDED_LIST_FIXED_POP\n");

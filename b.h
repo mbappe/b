@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.385 2015/02/02 01:41:06 mike Exp mike $
+// @(#) $Id: b.h,v 1.386 2015/02/07 16:53:30 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -951,7 +951,7 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 #error Sorry, no FILL_W_KEY and FILL_WITH_ONES.
 #endif // defined(FILL_W_KEY) && defined(FILL_WITH_ONES)
 
-// Default is -UT_ONE_MASK.
+// Default is -UMASK_EMPTIES.
 // See EmbeddedListHasKey.
 
 #if defined(NO_TYPE_IN_XX_SW)
