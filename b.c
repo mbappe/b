@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.497 2015/02/07 20:26:00 mike Exp mike $
+// @(#) $Id: b.c,v 1.498 2015/02/07 21:01:58 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -617,16 +617,36 @@ NewBitmap(Word_t *pwRoot, int nBL, int nBLUp, Word_t wKey)
     return pwBitmap;
 }
 
+static int
+GetBLR(Word_t *pwRoot, int nBL)
+{
+    (void)pwRoot;
+
+#if defined(TYPE_IS_RELATIVE)
+    assert(nDL_to_nBL(nBL_to_nDL(nBL)) == nBL);
+#endif // defined(TYPE_IS_RELATIVE)
+
+    return
+  #if defined(SKIP_LINKS)
+        ((tp_bIsSwitch(wr_nType(*pwRoot)) && tp_bIsSkip(wr_nType(*pwRoot)))
+      #if defined(SKIP_TO_BITMAP)
+            || (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP)
+      #endif // defined(SKIP_TO_BITMAP)
+            || 0)
+      #if defined(TYPE_IS_RELATIVE)
+            ? nDL_to_nBL(nBL_to_nDL(nBL) - wr_nDS(*pwRoot)) :
+      #else // defined(TYPE_IS_RELATIVE)
+            ? wr_nBL(*pwRoot) :
+      #endif // defined(TYPE_IS_RELATIVE)
+  #endif // defined(SKIP_LINKS)
+              nBL ;
+}
+
 static Word_t
 OldBitmap(Word_t *pwRoot, Word_t *pwr, int nBL)
 {
-#if defined(SKIP_TO_BITMAP)
-  #if defined(TYPE_IS_RELATIVE)
-    nBL = nDL_to_nBL(nBL_to_nDL(nBL) - wr_nDS(*pwRoot));
-  #else // defined(TYPE_IS_RELATIVE)
-    nBL = pwr_nBL(pwRoot);
-  #endif // defined(TYPE_IS_RELATIVE)
-#endif // defined(SKIP_TO_BITMAP)
+    nBL = GetBLR(pwRoot, nBL);
+
     Word_t wWords = EXP(nBL - cnLogBitsPerWord) + 1;
 
     MyFree(pwr, wWords);
@@ -1302,31 +1322,6 @@ OldSwitch(Word_t *pwRoot, int nBL,
 
     (void)nBL; // silence compiler
     (void)nBLUp; // silence compiler
-}
-
-static int
-GetBLR(Word_t *pwRoot, int nBL)
-{
-    (void)pwRoot;
-
-#if defined(TYPE_IS_RELATIVE)
-    assert(nDL_to_nBL(nBL_to_nDL(nBL)) == nBL);
-#endif // defined(TYPE_IS_RELATIVE)
-
-    return
-  #if defined(SKIP_LINKS)
-        ((tp_bIsSwitch(wr_nType(*pwRoot)) && tp_bIsSkip(wr_nType(*pwRoot)))
-      #if defined(SKIP_TO_BITMAP)
-            || (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP)
-      #endif // defined(SKIP_TO_BITMAP)
-            || 0)
-      #if defined(TYPE_IS_RELATIVE)
-            ? nDL_to_nBL(nBL_to_nDL(nBL) - wr_nDS(*pwRoot)) :
-      #else // defined(TYPE_IS_RELATIVE)
-            ? wr_nBL(*pwRoot) :
-      #endif // defined(TYPE_IS_RELATIVE)
-  #endif // defined(SKIP_LINKS)
-              nBL ;
 }
 
 static Word_t
