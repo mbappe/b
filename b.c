@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.495 2015/02/07 16:53:30 mike Exp mike $
+// @(#) $Id: b.c,v 1.496 2015/02/07 17:40:46 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2430,7 +2430,7 @@ static void
 PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
 {
     Word_t wRoot = *pwRoot;
-    Word_t *pwr = Get_pwr(pwRoot);
+    Word_t *pwr = Get_pwr(pwRoot); (void)pwr;
     int nDLUp = nBL_to_nDL(nBLUp);
     int nDLR = nBL_to_nDL(nBLR);
 
@@ -2460,7 +2460,7 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
 
     Word_t wPopCnt;
 #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
-    if (nBLUp == cnBtsPerWord) { wPopCnt = wPopCntTotal; /* hack */ } else
+    if (nBLUp == cnBitsPerWord) { wPopCnt = wPopCntTotal; /* hack */ } else
 #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
     {
 #if defined(SKIP_TO_BITMAP) && ! defined(PP_IN_LINK)
@@ -4199,7 +4199,7 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
     if (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP) {
         int nDLR = GetDLR(pwRoot, nDL);
         int nBLR = nDL_to_nBL(nDLR);
-        Word_t *pwr = Get_pwr(pwRoot);
+        Word_t *pwr = Get_pwr(pwRoot); (void)pwr;
 
         Word_t wPrefix;
 #if defined(PP_IN_LINK)

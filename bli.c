@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.592 2015/02/07 17:01:38 mike Exp mike $
+// @(#) $Id: bli.c,v 1.593 2015/02/07 17:25:00 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1369,7 +1369,13 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 static int // bool
 EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 {
-    assert((wRoot != ZERO_POP_MAGIC) || (nBL_to_nBitsType(nBL) != 0));
+#if defined(NO_TYPE_IN_XX_SW)
+    assert((wRoot != ZERO_POP_MAGIC)
+        || ((nBL_to_nBitsType(nBL) != 0) && (wRoot != 0)));
+#else // defined(NO_TYPE_IN_XX_SW)
+    assert(nBL_to_nBitsType(nBL) != 0);
+    assert(wRoot != 0);
+#endif // defined(NO_TYPE_IN_XX_SW)
     Word_t wMask = MSK(nBL); // (1 << nBL) - 1
     wKey &= wMask; // Discard already-decoded bits.  Have caller do it?
 #if ! defined(FILL_W_KEY) && ! defined(MASK_EMPTIES)
