@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.496 2015/02/07 17:40:46 mike Exp mike $
+// @(#) $Id: b.c,v 1.497 2015/02/07 20:26:00 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1305,9 +1305,13 @@ OldSwitch(Word_t *pwRoot, int nBL,
 }
 
 static int
-GetDLR(Word_t *pwRoot, int nDL)
+GetBLR(Word_t *pwRoot, int nBL)
 {
     (void)pwRoot;
+
+#if defined(TYPE_IS_RELATIVE)
+    assert(nDL_to_nBL(nBL_to_nDL(nBL)) == nBL);
+#endif // defined(TYPE_IS_RELATIVE)
 
     return
   #if defined(SKIP_LINKS)
@@ -1317,18 +1321,19 @@ GetDLR(Word_t *pwRoot, int nDL)
       #endif // defined(SKIP_TO_BITMAP)
             || 0)
       #if defined(TYPE_IS_RELATIVE)
-            ? nDL - wr_nDS(*pwRoot) :
+            ? nDL_to_nBL(nBL_to_nDL(nBL) - wr_nDS(*pwRoot)) :
       #else // defined(TYPE_IS_RELATIVE)
-            ? wr_nDL(*pwRoot) :
+            ? wr_nBL(*pwRoot) :
       #endif // defined(TYPE_IS_RELATIVE)
   #endif // defined(SKIP_LINKS)
-              nDL ;
+              nBL ;
 }
 
 static Word_t
 GetPopCnt(Word_t *pwRoot, int nDL)
 {
-    int nDLR = GetDLR(pwRoot, nDL);
+    int nBLR = GetBLR(pwRoot, nDL_to_nBL(nDL));
+    int nDLR = nBL_to_nDL(nBLR);
     Word_t wPopCnt;
 
 #if defined(SKIP_TO_BITMAP)
@@ -1384,7 +1389,7 @@ Sum(Word_t *pwRoot, int nBLUp)
     assert( ! tp_bIsBmSw(wr_nType(*pwRoot)) || (nBLUp != cnBitsPerWord) );
 #endif // defined(CODE_BM_SW) && defined(BM_IN_LINK)
 
-    int nDL = GetDLR(pwRoot, nBL_to_nDL(nBLUp));
+    int nBL = GetBLR(pwRoot, nBLUp);
 
     Link_t *pLinks =
 #if defined(CODE_BM_SW)
@@ -1395,7 +1400,7 @@ Sum(Word_t *pwRoot, int nBLUp)
 
     Word_t wPopCnt = 0;
     Word_t xx = 0;
-    for (int nn = 0; nn < (int)EXP(nDL_to_nBitsIndexSz(nDL)); nn++)
+    for (int nn = 0; nn < (int)EXP(nBL_to_nBitsIndexSz(nBL)); nn++)
     {
 #if defined(CODE_BM_SW)
         if ( ! tp_bIsBmSw(wr_nType(*pwRoot))
@@ -1490,7 +1495,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
         if (bDump) {
             int nBLR = nBL;
             if (tp_bIsSkip(nType)) {
-                nBLR = nDL_to_nBL(GetDLR(pwRoot, nBL_to_nDL(nBL)));
+                nBLR = GetBLR(pwRoot, nBL);
             }
             printf(" wPrefixPop "OWx, *(pwr + EXP(nBLR - cnLogBitsPerWord)));
             printf(" w_wPopCnt %ld",
@@ -1720,7 +1725,7 @@ embeddedKeys:;
 #if defined(SKIP_LINKS)
     {
         if (tp_bIsSkip(nType)) {
-            nBL = nDL_to_nBL(GetDLR(pwRoot, nBL_to_nDL(nBL)));
+            nBL = GetBLR(pwRoot, nBL);
         }
     }
 #endif // defined(SKIP_LINKS)
@@ -3523,12 +3528,10 @@ doubleIt:;
   #if defined(SKIP_TO_XX_SW)
                    if (nBL != nBLOld) {
                        assert(nBL == nDL_to_nBL(nBL_to_nDL(nBL)));
-                       assert(nDL_to_nBL(GetDLR(pwRoot, nBL_to_nDL(nBLOld)))
-                           == nBL);
+                       assert(GetBLR(pwRoot, nBLOld) == nBL);
                        set_wr_nType(*pwRoot, T_SKIP_TO_XX_SW);
                        assert(tp_bIsXxSw(wr_nType(*pwRoot)));
-                       assert(nDL_to_nBL(GetDLR(pwRoot, nBL_to_nDL(nBLOld)))
-                           == nBL);
+                       assert(GetBLR(pwRoot, nBLOld) == nBL);
                    } else
   #endif // defined(SKIP_TO_XX_SW)
                    {
@@ -4197,8 +4200,8 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
 
 #if defined(SKIP_TO_BITMAP)
     if (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP) {
-        int nDLR = GetDLR(pwRoot, nDL);
-        int nBLR = nDL_to_nBL(nDLR);
+        int nBLR = GetBLR(pwRoot, nBL);
+        int nDLR = nBL_to_nDL(nBLR);
         Word_t *pwr = Get_pwr(pwRoot); (void)pwr;
 
         Word_t wPrefix;
