@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.591 2015/02/07 16:53:30 mike Exp mike $
+// @(#) $Id: bli.c,v 1.592 2015/02/07 17:01:38 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1409,18 +1409,22 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     Word_t wLsbs = (Word_t)-1 / wMask;
     Word_t wKeys = wKey * wLsbs; // replicate key; put in every slot
     Word_t wXor = wKeys ^ wRoot; // get zero in slot with matching key
-#if defined(FILL_W_KEY) || ! defined(MASK_EMPTIES)
-    wXor |= MSK(nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL));
-#endif // defined(FILL_W_KEY) || ! defined(MASK_EMPTIES)
-// Looks like ! FILL_W_KEY, MASK_EMPTIES (and ! EMBEDDED_LIST_FIXED_POP) is a
-// bad combination.
-#if ! defined(FILL_W_KEY) && defined(MASK_EMPTIES)
-    // If we're filling empty slots with zero, then we have to mask off
-    // the empty slots so we don't get a false positive if/when wKey == 0.
+#if defined(MASK_EMPTIES)
+  // If we're filling empty slots with 0 or -1, then we have to mask off the
+  // empty slots so we don't get a false positive if/when wKey == 0 or -1.
+  #if defined(FILL_W_KEY)
+      // When would FILL_W_KEY and MASK_EMPTIES make sense?
+      // Why bother filling with key if we're going to mask them?
+      #error MASK_EMPTIES and FILL_W_KEY makes no sense.
+  #endif // defined(FILL_W_KEY)
+    // Looks like MASK_EMPTIES and ! EMBEDDED_LIST_FIXED_POP may be an
+    // especially bad combination.
     int nPopCnt = wr_nPopCnt(wRoot, nBL); // number of keys present
     int nBitsOfKeys = nPopCnt * nBL;
     wXor |= (Word_t)-1 >> nBitsOfKeys; // type and empty slots
-#endif // ! defined(FILL_W_KEY) && defined(MASK_EMPTIES)
+#else // defined(MASK_EMPTIES)
+    wXor |= MSK(nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL));
+#endif // defined(MASK_EMPTIES)
     Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
     int bXorHasZero = (((wXor - wLsbs) & ~wXor & wMsbs) != 0); // magic
     return bXorHasZero;
