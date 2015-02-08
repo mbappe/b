@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.498 2015/02/07 21:01:58 mike Exp $
+// @(#) $Id: b.c,v 1.499 2015/02/07 23:01:55 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -209,7 +209,7 @@ MyFree(Word_t *pw, Word_t wWords)
 {
     if ( ! (wWords & 1) ) { --wEvenMallocs; }
     --wMallocs; wWordsAllocated -= wWords;
-    DBGM(printf("F: "OWx" %"_fw"d words pw[-1] %p\n",
+    DBGM(printf("F: "OWx" words %"_fw"d pw[-1] %p\n",
                 (Word_t)pw, wWords, (void *)pw[-1]));
     // make sure it is ok for us to use some of the bits in the word
     if (wWords < EXP(16)) {
@@ -1402,7 +1402,7 @@ Sum(Word_t *pwRoot, int nBLUp)
                     || BitIsSet(PWR_pwBm(pwRoot, wr_pwr(*pwRoot)), nn) )
 #endif // defined(CODE_BM_SW)
         {
-            wPopCnt += GetPopCnt(&pLinks[xx++].ln_wRoot, nDL - 1);
+            wPopCnt += GetPopCnt(&pLinks[xx++].ln_wRoot, nBL_to_nDL(nBL) - 1);
         }
     }
 
@@ -2407,7 +2407,7 @@ embeddedKeys:;
         } else
 #endif // defined(COMPRESSED_LISTS)
         {
-            Word_t *pwKeys = ls_pwKeysNAT(pwrOld);
+            Word_t *pwKeys = ls_pwKeys(pwrOld, nBL);
             for (int nn = 0; nn < nPopCnt; nn++) {
                 status = Insert(pwRoot, pwKeys[nn], nBL);
             }
@@ -4596,46 +4596,46 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
     if (EXP(nBL) <= sizeof(Link_t) * 8) {
         ClrBit(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL));
     } else {
+        int nBLR = nBL;
   #if defined(SKIP_TO_BITMAP)
         if (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP) {
       #if defined(TYPE_IS_RELATIVE)
-            nBL = nDL_to_nBL(nDL - wr_nDS(*pwRoot));
+            nBLR = nDL_to_nBL(nDL - wr_nDS(*pwRoot));
       #else // defined(TYPE_IS_RELATIVE)
-            nBL = pwr_nBL(pwRoot);
+            nBLR = pwr_nBL(pwRoot);
       #endif // defined(TYPE_IS_RELATIVE)
-            nDL = nBL_to_nDL(nBL);
         }
   #endif // defined(SKIP_TO_BITMAP)
         Word_t *pwr = wr_pwr(wRoot);
 
-        ClrBit(pwr, wKey & MSK(nBL));
+        ClrBit(pwr, wKey & MSK(nBLR));
 
-        set_w_wPopCntBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL,
-            w_wPopCntBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL) - 1);
+        set_w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR,
+            w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR) - 1);
 
 #if defined(PP_IN_LINK)
 
 #if defined(DEBUG)
         Word_t wPopCnt = 0;
-        for (Word_t ww = 0; ww < EXP(nBL - cnLogBitsPerWord); ww++) {
+        for (Word_t ww = 0; ww < EXP(nBLR - cnLogBitsPerWord); ww++) {
             wPopCnt += __builtin_popcountll(pwr[ww]);
         }
-        if (wPopCnt != PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)) {
+        if (wPopCnt != PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR)) {
             printf("\nwPopCnt "OWx" PWR_wPopCnt "OWx"\n",
-                   wPopCnt, PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL));
-            HexDump("Bitmap", pwr, EXP(nBL - cnLogBitsPerWord));
+                   wPopCnt, PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR));
+            HexDump("Bitmap", pwr, EXP(nBLR - cnLogBitsPerWord));
         }
-        assert(wPopCnt == PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL));
+        assert(wPopCnt == PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR));
 #endif // defined(DEBUG)
 
-        if (PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) != 0) {
+        if (PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR) != 0) {
             return Success; // bitmap is not empty
         }
 
 #else // defined(PP_IN_LINK)
 
         // Free the bitmap if it is empty.
-        for (Word_t ww = 0; ww < EXP(nBL - cnLogBitsPerWord); ww++) {
+        for (Word_t ww = 0; ww < EXP(nBLR - cnLogBitsPerWord); ww++) {
             if (__builtin_popcountll(pwr[ww])) {
                 return Success; // bitmap is not empty
             }
