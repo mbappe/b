@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.593 2015/02/07 17:25:00 mike Exp mike $
+// @(#) $Id: bli.c,v 1.594 2015/02/07 20:26:00 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1558,8 +1558,8 @@ PrefixMismatch(Word_t *pwRoot, Word_t *pwr, Word_t wKey,
   #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     if (bPrefixMismatch)
     {
-        DBGX(printf("Mismatch wPrefix "Owx" nBL %d nBLR %d\n",
-                    wPrefix, nBL, nBLR));
+        DBGX(printf("Mismatch wPrefix "Owx" nBL %d nBLR %d pwRoot %p\n",
+                    wPrefix, nBL, nBLR, (void *)pwRoot));
         // Caller doesn't need/get an updated *pnBLR in this case.
         return 1; // prefix mismatch
     }
@@ -1610,11 +1610,7 @@ PrefixMismatch(Word_t *pwRoot, Word_t *pwr, Word_t wKey,
 
 // PrefixMismatch requires a real pwRoot (as opposed to &wRoot) when it
 // may need to save that value for later dereference by Lookup at the leaf.
-#if (defined(PP_IN_LINK) \
-                && ! defined(NO_SKIP_AT_TOP) \
-                && defined(LOOKUP) \
-                && defined(SKIP_PREFIX_CHECK) \
-                && defined(SAVE_PREFIX))
+#if defined(PP_IN_LINK)
 
   #if ! defined(PWROOT_ARG_FOR_LOOKUP) && ! defined(PWROOT_AT_TOP_FOR_LOOKUP)
       #error PWROOT_[ARG|AT_TOP]_FOR_LOOKUP is required for PP_IN_LINK ...
@@ -1622,7 +1618,7 @@ PrefixMismatch(Word_t *pwRoot, Word_t *pwr, Word_t wKey,
 
     #define PWROOT_ARG  pwRoot,
 
-#else // defined(PP_IN_LINK) && ...
+#else // defined(PP_IN_LINK)
 
   #if (defined(PWROOT_ARG_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)) \
           && defined(USE_PWROOT_FOR_LOOKUP)
@@ -1635,7 +1631,7 @@ PrefixMismatch(Word_t *pwRoot, Word_t *pwr, Word_t wKey,
 
   #endif // defined(USE_PWROOT_FOR_LOOKUP)
 
-#endif // defined(PP_IN_LINK) && ...
+#endif // defined(PP_IN_LINK)
 
 #define PREFIX_MISMATCH(_nBL, _nType) \
     (tp_bIsSkip(_nType) \
@@ -1709,6 +1705,9 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #else // defined(LOOKUP)
   #if defined(CODE_XX_SW)
     Word_t *pwRootPrev = NULL; (void)pwRootPrev;
+      #if defined(SKIP_TO_XX_SW)
+    int nBLPrev = 0; (void)nBLPrev;
+      #endif // defined(SKIP_TO_XX_SW)
   #endif // defined(CODE_XX_SW)
     Word_t wRoot;
   #if !defined(RECURSIVE)
@@ -1981,6 +1980,9 @@ t_xx_sw:;
         }
       #if defined(INSERT)
         pwRootPrev = pwRoot; // save pwRoot for T_XX_SW for InsertGuts
+          #if defined(SKIP_TO_XX_SW)
+        nBLPrev = nBL;
+          #endif // defined(SKIP_TO_XX_SW)
       #endif // defined(INSERT)
   #endif // ! defined(LOOKUP)
 
@@ -2764,9 +2766,12 @@ notFound:;
     // bits that were not decoded in identifying pwRoot.  nBL
     // does not include any skip indicated in the type field of *pwRoot.
     InsertGuts(pwRoot, wKey, nBL, wRoot
-#if defined(CODE_XX_SW)
+  #if defined(CODE_XX_SW)
                , pwRootPrev
-#endif // defined(CODE_XX_SW)
+      #if defined(SKIP_TO_XX_SW)
+               , nBLPrev
+      #endif // defined(SKIP_TO_XX_SW)
+  #endif // defined(CODE_XX_SW)
                );
     goto cleanup;
 undo:;
@@ -2798,7 +2803,11 @@ cleanup:;
     bCleanup = 1; // ?? nIncr == 0 ??
     DBGX(printf("Cleanup pwRO "OWx" nBLO %d\n",
                 (Word_t)pwRootOrig, nBLOrig));
-    DBGX(Dump(pwRootOrig, /* wPrefix */ (Word_t)0, nBLOrig));
+    // Tree may not be valid yet.
+    // It may still have a non-NULL pointer to a switch that has
+    // been emptied.
+    // Dump may blow an assertion.
+    // DBGX(Dump(pwRootOrig, /* wPrefix */ (Word_t)0, nBLOrig));
     goto restart;
   #endif // ! defined(LOOKUP)
 }
@@ -3276,7 +3285,13 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             if (wPopCnt == cnListPopCntMax32)
 #endif // (cnBitsPerWord == 64)
             {
-                status = InsertGuts(pwRoot, wKey, cnBitsPerWord, wRoot);
+                status = InsertGuts(pwRoot, wKey, cnBitsPerWord, wRoot
+#if defined(CODE_XX_SW)
+                                  , NULL
+  #if defined(SKIP_TO_XX_SW)
+                                  , 0
+  #endif // defined(SKIP_TO_XX_SW)
+#endif // defined(CODE_XX_SW)
             }
             else
             {

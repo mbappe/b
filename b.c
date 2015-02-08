@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.499 2015/02/07 23:01:55 mike Exp mike $
+// @(#) $Id: b.c,v 1.500 2015/02/08 00:55:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -622,7 +622,15 @@ GetBLR(Word_t *pwRoot, int nBL)
 {
     (void)pwRoot;
 
+#if defined(NO_TYPE_IN_XX_SW)
+    if (nBL < nDL_to_nBL(2)) { return nBL; }
+#endif // defined(NO_TYPE_IN_XX_SW)
+
 #if defined(TYPE_IS_RELATIVE)
+    // TYPE_IS_RELATIVE is a little behind the times. We can't skip by bits.
+    // We can only skip by digits.  To keep it simple, we're also checking to
+    // make sure we start from a digit boundary so we'll notice if/when we
+    // need to revisit.
     assert(nDL_to_nBL(nBL_to_nDL(nBL)) == nBL);
 #endif // defined(TYPE_IS_RELATIVE)
 
@@ -630,9 +638,9 @@ GetBLR(Word_t *pwRoot, int nBL)
   #if defined(SKIP_LINKS)
         ((tp_bIsSwitch(wr_nType(*pwRoot)) && tp_bIsSkip(wr_nType(*pwRoot)))
       #if defined(SKIP_TO_BITMAP)
-            || (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP)
+                || (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP)
       #endif // defined(SKIP_TO_BITMAP)
-            || 0)
+                || 0)
       #if defined(TYPE_IS_RELATIVE)
             ? nDL_to_nBL(nBL_to_nDL(nBL) - wr_nDS(*pwRoot)) :
       #else // defined(TYPE_IS_RELATIVE)
@@ -645,19 +653,29 @@ GetBLR(Word_t *pwRoot, int nBL)
 static Word_t
 OldBitmap(Word_t *pwRoot, Word_t *pwr, int nBL)
 {
-    nBL = GetBLR(pwRoot, nBL);
+    int nBLR = GetBLR(pwRoot, nBL);
 
-    Word_t wWords = EXP(nBL - cnLogBitsPerWord) + 1;
+    Word_t wWords = EXP(nBLR - cnLogBitsPerWord) + 1;
 
     MyFree(pwr, wWords);
 
-    if (nBL == nDL_to_nBL(2)) {
+    if (nBLR == nDL_to_nBL(2)) {
         // Use Branch Bitmap column for 2-digit bitmap.
         METRICS(j__AllocWordsJBB -= wWords); // JUDYA
     } else {
         METRICS(j__AllocWordsJLB1 -= wWords); // JUDYA
     }
     METRICS(j__AllocWordsJL12 -= wWords); // JUDYB -- overloaded
+
+#if defined(PP_IN_LINK) && defined(SKIP_TO_BITMAP)
+    if ((nBL != cnBitsPerWord)
+        && (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP))
+    {
+        // We have to zero some higher bits so cleanup knows what to do.
+        //printf("here pwRoot %p nBL %d\n", (void *)pwRoot, nBL);
+        set_PWR_wPopCntBL(pwRoot, NULL, nBL, 0);
+    }
+#endif // defined(PP_IN_LINK) && defined(SKIP_TO_BITMAP)
 
     *pwRoot = 0; // Do we need to clear the rest of the link, e.g. PP_IN_LINK?
 
@@ -686,6 +704,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(CODE_BM_SW)
           int nBLUp, Word_t wPopCnt)
 {
+    DBGI(printf(
+             "NewSwitch: pwRoot %p wKey "OWx" nBL %d nBLUp %d wPopCnt %ld.\n",
+             (void *)pwRoot, wKey, nBL, nBLUp, wPopCnt));
 #if defined(CODE_XX_SW)
     if ((nBitsIndexSzX != nBL_to_nBitsIndexSz(nBL))
         /*&& (nBitsIndexSzX != cnBW)*/)
@@ -756,11 +777,11 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
         // The links in a switch at nDL_to_nBL(2) have nBL < nDL_to_nBL(2).
         // Hence the '=' in the '<=' here.
         if (nBL <= nDL_to_nBL(2)) {
-            DBGR(printf("NS: Init ln_wRoots.\n"));
+            DBGI(printf("NS: Init ln_wRoots.\n"));
             for (int nn = 0; nn < (int)wLinks; ++nn) {
                 pwr_pLinks((Switch_t *)pwr)[nn].ln_wRoot = ZERO_POP_MAGIC;
             }
-            DBGR(printf("NS: Done init ln_wRoots.\n"));
+            DBGI(printf("NS: Done init ln_wRoots.\n"));
         }
 #endif // defined(NO_TYPE_IN_XX_SW)
     }
@@ -939,6 +960,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(CODE_BM_SW)
             {
                 set_PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL, wKey);
+DBGI(printf("NS: set prefix "OWx" pwRoot %p\n", PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL), (void *)pwRoot));
             }
         }
 #else // defined(SKIP_LINKS)
@@ -971,6 +993,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 
     //DBGI(printf("After NewSwitch"));
     //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+DBGI(printf("NS: prefix "OWx"\n", PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL)));
 
     return pwr;
 
@@ -1324,45 +1347,64 @@ OldSwitch(Word_t *pwRoot, int nBL,
     (void)nBLUp; // silence compiler
 }
 
+// Get the pop count of the tree/subtree represented by (*pwRoot, nBL).
 static Word_t
-GetPopCnt(Word_t *pwRoot, int nDL)
+GetPopCnt(Word_t *pwRoot, int nBL)
 {
-    int nBLR = GetBLR(pwRoot, nDL_to_nBL(nDL));
-    int nDLR = nBL_to_nDL(nBLR);
-    Word_t wPopCnt;
+    int nBLR = GetBLR(pwRoot, nBL); // handles skip -- or not
 
-#if defined(SKIP_TO_BITMAP)
-    if (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP) {
-#if defined(TYPE_IS_RELATIVE)
-        int nBL = nDL_to_nBL(nDLR); // nDL_to_nBL(nDL - wr_nDS(*pwRoot));
-#else // defined(TYPE_IS_RELATIVE)
-        int nBL = wr_nBL(*pwRoot);
-#endif // defined(TYPE_IS_RELATIVE)
-#if 0
-        printf("\nhere nBL %d\n", nBL);
-        printf("wPrefixPop "OWx"\n",
-               *(wr_pwr(*pwRoot) + EXP(nBL - cnLogBitsPerWord)));
-#endif // 0
-        wPopCnt = w_wPopCntBL(*(wr_pwr(*pwRoot) + EXP(nBL - cnLogBitsPerWord)), nBL);
-        if (wPopCnt == 0) {
-            wPopCnt += wPrefixPopMask(nDLR) + 1 ; // ? full pop at top ?
+#if defined(NO_TYPE_IN_XX_SW)
+    if (nBLR < nDL_to_nBL(2)) { return wr_nPopCnt(*pwRoot, nBL); }
+#endif // defined(NO_TYPE_IN_XX_SW)
+
+#if defined(PP_IN_LINK)
+    if (nBL == cnBitsPerWord)
+#endif // ! defined(PP_IN_LINK)
+    {
+        // PWR_wPopCntBL handles only switches if ! PP_IN_LINK.
+        // Would be nice to fix it.
+        // But we have to handle the other types at the top anyway.
+        if (*pwRoot == 0) { return 0; }
+        int nType = wr_nType(*pwRoot);
+        if (nType == T_EMBEDDED_KEYS) { return wr_nPopCnt(*pwRoot, nBL); }
+        if (nType == T_ONE) { return 1; }
+        if (nType == T_LIST) { return ls_xPopCnt(wr_pwr(*pwRoot), nBL); }
+        if ((nType == T_BITMAP)
+  #if defined(SKIP_TO_BITMAP)
+            || (nType == T_SKIP_TO_BITMAP)
+  #endif // defined(SKIP_TO_BITMAP)
+            || 0)
+        {
+            Word_t wPP = *(wr_pwr(*pwRoot) + EXP(nBLR - cnLogBitsPerWord));
+            Word_t wPopCnt = w_wPopCntBL(wPP, nBLR);
+            return (wPopCnt == 0) ? EXP(nBLR) : wPopCnt ;
         }
-        return wPopCnt;
+        assert(tp_bIsSwitch(nType));
     }
-#endif // defined(SKIP_TO_BITMAP)
 
-    wPopCnt =
+    Word_t wPopCnt =
       #if defined(CODE_BM_SW)
         tp_bIsBmSw(wr_nType(*pwRoot))
-            ? PWR_wPopCnt(pwRoot, (BmSwitch_t *)wr_pwr(*pwRoot), nDLR) :
+            ? PWR_wPopCntBL(pwRoot, (BmSwitch_t *)wr_pwr(*pwRoot), nBLR) :
       #endif // defined(CODE_BM_SW)
-              PWR_wPopCnt(pwRoot, (  Switch_t *)wr_pwr(*pwRoot), nDLR) ;
+              PWR_wPopCntBL(pwRoot, (  Switch_t *)wr_pwr(*pwRoot), nBLR) ;
 
     // We use wRoot != 0 to disambiguate PWR_wPopCnt == 0.
     // Hence we cannot allow Remove to leave
     // wRoot != 0 unless the actual pop count is not zero.
     if ((wPopCnt == 0) && (*pwRoot != 0)) {
-         wPopCnt += wPrefixPopMask(nDLR) + 1 ; // ? full pop at top ?
+#if defined(SKIP_TO_BITMAP)
+         if (!((wr_nType(*pwRoot) == T_BITMAP)
+                || (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP)))
+         {
+             printf("GPC: *pwRoot "OWx"\n", *pwRoot);
+         }
+         assert((wr_nType(*pwRoot) == T_BITMAP)
+                || (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP));
+#else // defined(SKIP_TO_BITMAP)
+         assert(wr_nType(*pwRoot) == T_BITMAP);
+#endif // defined(SKIP_TO_BITMAP)
+         return EXP(nBLR);
     }
 
     return wPopCnt;
@@ -1393,16 +1435,24 @@ Sum(Word_t *pwRoot, int nBLUp)
 #endif // defined(CODE_BM_SW)
               pwr_pLinks((  Switch_t *)wr_pwr(*pwRoot)) ;
 
+    int nBitsIndexSz;
+#if defined(CODE_XX_SW)
+    if (tp_bIsXxSw(wr_nType(*pwRoot))) {
+        nBitsIndexSz = pwr_nBW(pwRoot);
+    } else
+#endif // defined(CODE_XX_SW)
+    { nBitsIndexSz = nBL_to_nBitsIndexSz(nBL); }
+
     Word_t wPopCnt = 0;
     Word_t xx = 0;
-    for (int nn = 0; nn < (int)EXP(nBL_to_nBitsIndexSz(nBL)); nn++)
+    for (int nn = 0; nn < (int)EXP(nBitsIndexSz); nn++)
     {
 #if defined(CODE_BM_SW)
         if ( ! tp_bIsBmSw(wr_nType(*pwRoot))
                     || BitIsSet(PWR_pwBm(pwRoot, wr_pwr(*pwRoot)), nn) )
 #endif // defined(CODE_BM_SW)
         {
-            wPopCnt += GetPopCnt(&pLinks[xx++].ln_wRoot, nBL_to_nDL(nBL) - 1);
+            wPopCnt += GetPopCnt(&pLinks[xx++].ln_wRoot, nBL - nBitsIndexSz);
         }
     }
 
@@ -2448,13 +2498,17 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
         wPrefix = w_wPrefixBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
     } else
 #endif // defined(SKIP_TO_BITMAP) && ! defined(PP_IN_LINK)
-    { wPrefix = PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBLR); }
+    {
+        //printf("pwRoot %p\n", (void *)pwRoot);
+        wPrefix = PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBLR);
+    }
 
     // Figure nBL for the new switch.
     int nDL = nBL_to_nDL(LOG(1 | (wPrefix ^ wKey)) + 1);
     int nBL = nDL_to_nBL(nDL);
     // nDL includes the highest order digit that is different.
 
+    if (nDL <= nDLR) { printf("nDL %d nDLR %d\n", nDL, nDLR); }
     assert(nDL > nDLR);
     assert(nBL <= nBLUp);
 
@@ -2709,11 +2763,17 @@ Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
 #if defined(CODE_XX_SW)
            , Word_t *pwRootPrev
+  #if defined(SKIP_TO_XX_SW)
+           , int nBLPrev
+  #endif // defined(SKIP_TO_XX_SW)
 #endif // defined(CODE_XX_SW)
            )
 {
 #if defined(CODE_XX_SW)
     (void)pwRootPrev;
+  #if defined(SKIP_TO_XX_SW)
+    (void)nBLPrev;
+  #endif // defined(SKIP_TO_XX_SW)
     int nBW; (void)nBW;
 #endif // defined(CODE_XX_SW)
     int nDL = nBL_to_nDL(nBL);
@@ -3175,6 +3235,7 @@ embeddedKeys:;
             // since we can't skip anyway.  And the
             // skip code causes problems for T_XX_SW.
             if (nBL <= cnBitsLeftAtDl2) {
+                DBGI(printf("goto newSwitch\n"));
                 goto newSwitch;
             }
 #endif // defined(CODE_XX_SW)
@@ -3283,7 +3344,7 @@ embeddedKeys:;
             }
             nBL = nDL_to_nBL(nDL);
 #if defined(CODE_XX_SW)
-            if (nBL > nBLOld) { nBL = nBLOld; }
+            if (nBL > nBLOld) { nBL = nBLOld; } // blowout
             assert(nBL <= nBLOld);
 #endif // defined(CODE_XX_SW)
 
@@ -3384,12 +3445,9 @@ newSwitch:
                 // Unless we've inflated them out.  Which we have.
 
 #if defined(CODE_XX_SW)
-                if (nBL != nDL_to_nBL(nBL_to_nDL(nBL))) {
-                    DBGI(printf("\n# Blow up nBL %d wPopCnt %ld\n",
-                                nBL,
-                                PWR_wPopCntBL(NULL,
-                                              (Switch_t *)wr_pwr(*pwRootPrev),
-                                              16)));
+                if (nBL < nDL_to_nBL(2)) {
+                    DBGI(printf("\n# Blow up nBL %d nPopCnt %d\n",
+                                nBL, wr_nPopCnt(*pwRoot, nBL)));
                 }
 
   #if defined(USE_XX_SW)
@@ -3439,7 +3497,7 @@ doubleIt:;
                     nBL = nDL_to_nBL(nDL);
       #if defined(SKIP_TO_XX_SW)
                     if (tp_bIsSkip(nType)) {
-                        nBLOld = cnBitsPerWord; // Only for skip detection?
+                        nBLOld = nBLPrev;
                         assert(nBLOld > nBL);
                         nDLOld = nBL_to_nDL(nBLOld);
                     } else
@@ -4265,6 +4323,7 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
 void
 RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
 {
+DBGR(printf("RC: pwRoot %p wRoot "OWx" nBL %d nBLR %d\n", (void *)pwRoot, wRoot, nBL, nBLR));
     (void)nBL; (void)nBLR;
     int nDL = nBL_to_nDL(nBL);
     int nDLR = nBL_to_nDL(nBLR);
@@ -4284,8 +4343,19 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
         // know we can't be at full pop.  This is also why we can't
         // allow an empty node to persist after the remove that
         // made it empty.
-        Word_t wIndex = wKey >> (cnBitsPerWord - cnBitsIndexSzAtTop);
-        for (Word_t ww = 0; ww < EXP(cnBitsIndexSzAtTop); ww++)
+
+// We're not handling skip and xx_sw properly here.
+
+        int nBitsIndexSz;
+      #if defined(CODE_XX_SW)
+        if (tp_bIsXxSw(nType)) {
+            nBitsIndexSz = pwr_nBW(pwRoot);
+        } else
+      #endif // defined(CODE_XX_SW)
+        { nBitsIndexSz = nBL_to_nBitsIndexSz(nBL); }
+
+        Word_t wIndex = (wKey >> (nBLR - nBitsIndexSz)) & MSK(nBitsIndexSz);
+        for (Word_t ww = 0; ww < EXP(nBitsIndexSz); ww++)
         {
             Word_t *pwRootLn = &((
 #if defined(CODE_BM_SW)
@@ -4294,29 +4364,37 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
                                       pwr_pLinks((  Switch_t *)pwr))
                     [ww].ln_wRoot);
 
-            int nDLX = wr_bIsSwitch(*pwRootLn)
+      #if defined(TYPE_IS_RELATIVE)
+            // TYPE_IS_RELATIVE is behind the times.
+            assert(nBL == nDL_to_nBL(nBL_to_nDL(nBL)));
+      #endif // defined(TYPE_IS_RELATIVE)
+            int nBLX = wr_bIsSwitch(*pwRootLn)
                             && tp_bIsSkip(wr_nType(*pwRootLn)) ?
       #if defined(TYPE_IS_RELATIVE)
-                         nDL - wr_nDS(*pwRootLn)
+                         nDL_to_nBL(nDLR - wr_nDS(*pwRootLn))
       #else // defined(TYPE_IS_RELATIVE)
-                         wr_nDL(*pwRootLn)
+                         wr_nBL(*pwRootLn)
       #endif // defined(TYPE_IS_RELATIVE)
-                      : nDL - 1;
+                      : nDL_to_nBL(nDLR - 1);
 
             //--nDLX;
-            DBGR(printf("wr_nDLX %d", nDLX));
-            DBGR(printf(" PWR_wPopCnt %"_fw"d\n",
-                        PWR_wPopCnt(pwRootLn, NULL, nDLX)));
             if (((*pwRootLn != 0) && (ww != wIndex))
-                    || (PWR_wPopCnt(pwRootLn, (Switch_t *)NULL, nDLX) != 0))
+                    || (PWR_wPopCntBL(pwRootLn, (Switch_t *)NULL, nBLX) != 0))
             {
-                DBGR(printf("Not empty ww %zd wIndex %zd\n",
-                     (size_t)ww, (size_t)wIndex));
+                DBGR(printf("wr_nBLX %d", nBLX));
+                DBGR(printf(" PWR_wPopCntBL %"_fw"d "OWx"\n",
+                            PWR_wPopCntBL(pwRootLn, NULL, nBLX),
+                            PWR_wPopCntBL(pwRootLn, NULL, nBLX)));
+                DBGR(printf(" PWR_wPrefixPop %"_fw"d "OWx"\n",
+                            PWR_wPrefixPop(pwRootLn, NULL),
+                            PWR_wPrefixPop(pwRootLn, NULL)));
+                DBGR(printf("Not empty ww %zd wIndex %zd *pwRootLn "OWx"\n",
+                     (size_t)ww, (size_t)wIndex, *pwRootLn));
                 return; // may need cleanup lower; caller checks *pwRoot
             }
         }
         // whole array pop is zero
-        FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDL), /* bDump */ 0);
+        FreeArrayGuts(pwRoot, wKey, nBL, /* bDump */ 0);
         // caller checks *pwRoot == NULL to see if cleanup is done
     } else
   #endif // defined(PP_IN_LINK)
@@ -4342,7 +4420,8 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
     Word_t *pwr = wr_pwr(wRoot); (void)pwr;
     int nDL = nBL_to_nDL(nBL); (void)nDL;
 
-    DBGR(printf("RemoveGuts\n"));
+    DBGR(printf("RemoveGuts(pwRoot %p wKey "OWx" nBL %d wRoot "OWx")\n",
+                (void *)pwRoot, wKey, nBL, wRoot));
 
 #if defined(NO_TYPE_IN_XX_SW)
     if (nBL < nDL_to_nBL(2)) {
@@ -4394,6 +4473,13 @@ embeddedKeys:;
         assert(nType == T_ONE);
         OldList(pwr, /* wPopCnt */ 1, nBL, nType);
         *pwRoot = 0; // Do we need to clear the rest of the link also?
+  #if defined(NO_TYPE_IN_XX_SW)
+        // BUG? Where do we set *pwRoot = ZERO_POP_MAGIC?
+        assert(nBL >= nDL_to_nBL(2));
+  #endif // defined(NO_TYPE_IN_XX_SW)
+        // If we just emptied the parent switch, then aren't we in an
+        // invalid state with a non-NULL pointer to a switch with zero pop?
+        // Are we expecting cleanup to check if the switch is empty now?
         return Success;
     }
 #endif // defined(USE_T_ONE)
@@ -4415,6 +4501,7 @@ embeddedKeys:;
 // Why was this #if defined(USE_T_ONE) ever here?
 //#if ! defined(USE_T_ONE)
     if (wPopCnt == 1) {
+        assert( ! tp_bIsSwitch(nType) );
         OldList(pwr, wPopCnt, nBL, nType);
 #if defined(NO_TYPE_IN_XX_SW)
         if (nBL < nDL_to_nBL(2)) { *pwRoot = ZERO_POP_MAGIC; } else
@@ -4740,7 +4827,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             wPopCnt = 0;
 #if defined(SKIP_TO_BITMAP)
         } else if (nType == T_SKIP_TO_BITMAP) {
-            wPopCnt = GetPopCnt(&wRoot, cnDigitsPerWord);
+            wPopCnt = GetPopCnt(&wRoot, cnBitsPerWord);
 #endif // defined(SKIP_TO_BITMAP)
         } else {
             assert(nType == T_LIST);
@@ -4754,7 +4841,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
   #if defined(PP_IN_LINK)
         wPopCnt = Sum(&wRoot, cnBitsPerWord);
   #else // defined(PP_IN_LINK)
-        wPopCnt = GetPopCnt(&wRoot, cnDigitsPerWord);
+        wPopCnt = GetPopCnt(&wRoot, cnBitsPerWord);
   #endif // defined(PP_IN_LINK)
     }
 

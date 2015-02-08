@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.386 2015/02/07 16:53:30 mike Exp mike $
+// @(#) $Id: b.h,v 1.387 2015/02/07 17:01:38 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -2053,6 +2053,9 @@ Status_t Remove(Word_t *pwRoot, Word_t wKey, int nBL);
 Status_t InsertGuts(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot
 #if defined(CODE_XX_SW)
                     , Word_t *pwRootPrev
+  #if defined(SKIP_TO_XX_SW)
+                    , int nBLPrev
+  #endif // defined(SKIP_TO_XX_SW)
 #endif // defined(CODE_XX_SW)
                     );
 
