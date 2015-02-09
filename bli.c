@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.594 2015/02/07 20:26:00 mike Exp $
+// @(#) $Id: bli.c,v 1.595 2015/02/08 19:54:26 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2089,9 +2089,9 @@ t_xx_sw:;
     {
         goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
 t_bm_sw:;
-  #if defined(BM_SW_FOR_REAL) || ! defined(LOOKUP)
+  #if defined(BM_SW_FOR_REAL) || ! defined(LOOKUP) || defined(DEBUG)
         nBLUp = nBL;
-  #endif // defined(BM_SW_FOR_REAL) || ! defined(LOOKUP)
+  #endif // defined(BM_SW_FOR_REAL) || ! defined(LOOKUP) || defined(DEBUG)
         // This assertion is a reminder that the NAX in the line below and
         // possibly later in this case are cheating.
         // The NAX assumes our test program doesn't generate any keys

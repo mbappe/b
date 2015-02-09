@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.500 2015/02/08 00:55:29 mike Exp mike $
+// @(#) $Id: b.c,v 1.501 2015/02/08 19:54:26 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1860,7 +1860,7 @@ embeddedKeys:;
     {
 #if defined(CODE_BM_SW)
 #if defined(BM_IN_LINK)
-        assert(nBLArg != cnBitsPerWord);
+        assert( ! bBmSw || (nBLArg != cnBitsPerWord));
 #endif // defined(BM_IN_LINK)
         if ( ! bBmSw || BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
 #endif // defined(CODE_BM_SW)
