@@ -24,16 +24,26 @@ fi
 if [ "$1" = -Q ]
 then
   B="b.bb -1l"
+elif [ "$1" = -a ]
+then
+  B="b.bb -1dgiIm"
 else
 # B="b.bb -1l"
 # B="b.bb -1lm"
 # B="b.bb -1"
-# B="b.bb -1ld"
+# B="b.bb -1m"
 # B="b.bb -1d"
+# B="b.bb -1dm"
+# The difference between -i and -g is not worth much testing time.
+# Maybe -I has better ROI than either?
+B="b.bb -1d"
 # B="b.bb -1gi"
+# B="b.bb -1gim"
+# B="b.bb -1gi"
+# B="b.bb -1gim"
 # B="b.bb -1dgi"
 # B="b.bb -1dgim"
-  B="b.bb -1dgiIm"
+# B="b.bb -1dgiIm"
 fi
 
 # -x does wait for context switch; useful for timing with small pops
