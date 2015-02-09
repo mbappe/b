@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.503 2015/02/09 02:09:29 mike Exp mike $
+// @(#) $Id: b.c,v 1.504 2015/02/09 14:54:49 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -4706,37 +4706,23 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
         set_w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR,
             w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR) - 1);
 
-#if defined(PP_IN_LINK)
-
 #if defined(DEBUG_COUNT)
         Word_t wPopCnt = 0;
         for (Word_t ww = 0; ww < EXP(nBLR - cnLogBitsPerWord); ww++) {
             wPopCnt += __builtin_popcountll(pwr[ww]);
         }
-        if (wPopCnt != PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR)) {
-            printf("\nwPopCnt "OWx" PWR_wPopCnt "OWx"\n",
-                   wPopCnt, PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR));
-            HexDump("Bitmap", pwr, EXP(nBLR - cnLogBitsPerWord));
-        }
-        assert(wPopCnt == PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR));
+        assert(wPopCnt == w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR));
 #endif // defined(DEBUG_COUNT)
 
-        if (PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR) != 0) {
-            return Success; // bitmap is not empty
-        }
-
-#else // defined(PP_IN_LINK)
-
-        // Free the bitmap if it is empty.
-        for (Word_t ww = 0; ww < EXP(nBLR - cnLogBitsPerWord); ww++) {
-            if (__builtin_popcountll(pwr[ww])) {
-                return Success; // bitmap is not empty
-            }
-        }
-
+#if defined(PP_IN_LINK)
+        assert(PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR)
+            == w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR));
 #endif // defined(PP_IN_LINK)
 
-        OldBitmap(pwRoot, pwr, nBL);
+        // Free the bitmap if it is empty.
+        if (w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR) == 0) {
+            OldBitmap(pwRoot, pwr, nBL);
+        }
     }
 
     return Success;
