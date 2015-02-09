@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.501 2015/02/08 19:54:26 mike Exp mike $
+// @(#) $Id: b.c,v 1.502 2015/02/09 01:23:36 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1004,7 +1004,9 @@ DBGI(printf("NS: prefix "OWx"\n", PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL)));
 
 #if defined(CODE_BM_SW)
 #if defined(BM_SW_FOR_REAL)
-static Word_t OldSwitch(Word_t *pwRoot, int nBL, int bBmSw, int nBLUp);
+static Word_t
+OldSwitch(Word_t *pwRoot, int nBL, int bBmSw, int nLinks, int nBLUp);
+
 static void
 NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
 {
@@ -1030,22 +1032,22 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
                 wKey, nBLR, nBitsIndexSz, wIndex));
 
     // How many links are there in the old switch?
-    Word_t wPopCnt = 0;
+    int nLinkCnt = 0;
     for (unsigned nn = 0; nn < DIV_UP(EXP(nBitsIndexSz), cnBitsPerWord); nn++)
     {
-        wPopCnt += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
+        nLinkCnt += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
     }
     // Now we know how many links were in the old switch.
 
     // sizeof(BmSwitch_t) includes one link; add the others
     unsigned nWordsOld
-         = (sizeof(BmSwitch_t) + (wPopCnt - 1) * sizeof(Link_t))
+         = (sizeof(BmSwitch_t) + (nLinkCnt - 1) * sizeof(Link_t))
             / sizeof(Word_t);
-    DBGI(printf("link count %"_fw"d nWordsOld %d\n", wPopCnt, nWordsOld));
+    DBGI(printf("nLinkCnt %d nWordsOld %d\n", nLinkCnt, nWordsOld));
     // What rule should we use to decide when to uncompress a bitmap switch?
 
     // 5/8 is close to the golden ratio
-    // if (wPopCnt >= EXP(nBitsIndexSz) * 5 / 8)
+    // if (nLinkCnt >= EXP(nBitsIndexSz) * 5 / 8)
 
     // Does this include the key were inserting now?  I think it does.
     Word_t wPopCntKeys = PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
@@ -1070,15 +1072,15 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
     // insert even if/when we're not adding a new link?
     if ((wPopCntTotal * cnBmSwWpkPercent / 100
             >= (wWordsAllocated /* + wMallocs + wEvenMallocs */ + nWordsNull))
-        && (wPopCnt > EXP(nBitsIndexSz) * cnBmSwLinksPercent / 100))
+        && (nLinkCnt > (int)EXP(nBitsIndexSz) * cnBmSwLinksPercent / 100))
 #endif
     {
 #if defined(DEBUG_INSERT)
         if ( ! (EXP(nBLR) & sBitsReportedMask) )
         {
             sBitsReportedMask |= EXP(nBLR);
-            DBGI(printf("# Converting nKeys %ld nLinks %ld nBLR %d",
-                   wPopCntKeys, wPopCnt, nBLR));
+            DBGI(printf("# Converting nKeys %ld nLinks %d nBLR %d",
+                   wPopCntKeys, nLinkCnt, nBLR));
             DBGI(printf(" wPopCntTotal %ld wWordsAllocated %ld",
                wPopCntTotal, wWordsAllocated));
             DBGI(printf(" wMallocs %ld wEvenMallocs %ld nWordsNull %d\n",
@@ -1162,7 +1164,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
              PWR_wPopCntBL(pwRoot, (BmSwitch_t *)*pwRoot, nBLR)));
         memcpy(&pwr_pLinks((BmSwitch_t *)*pwRoot)[wIndex + 1],
                &pwr_pLinks((BmSwitch_t *)pwr)[wIndex],
-            (wPopCnt - wIndex) * sizeof(Link_t));
+            (nLinkCnt - wIndex) * sizeof(Link_t));
 
         DBGI(printf("PWR_wPopCnt B %"_fw"d\n",
              PWR_wPopCntBL(pwRoot, (BmSwitch_t *)*pwRoot, nBLR)));
@@ -1176,13 +1178,13 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
             METRICS(j__AllocWordsJLB1 += nWordsNew); // JUDYA
         } else
 #if defined(RETYPE_FULL_BM_SW)
-        if (wPopCnt == EXP(nBitsIndexSz) - 1) {
+        if (nLinkCnt == EXP(nBitsIndexSz) - 1) {
   #if defined(DEBUG_INSERT)
             if ( ! (EXP(nBLR) & sBitsReportedMask) )
             {
                 sBitsReportedMask |= EXP(nBLR);
                 printf("# Retyping full BM_SW nKeys %ld nLinks %ld nBLR %d",
-                       wPopCntKeys, wPopCnt, nBLR);
+                       wPopCntKeys, nLinkCnt, nBLR);
                 printf(" wPopCntTotal %ld wWordsAllocated %ld",
                        wPopCntTotal, wWordsAllocated);
                 printf(" wMallocs %ld wEvenMallocs %ld nWordsNull %d\n",
@@ -1199,7 +1201,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
         // Update the type field in *pwRoot if necessary.
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
   #if defined(RETYPE_FULL_BM_SW)
-        if (wPopCnt == EXP(nBitsIndexSz) - 1) {
+        if (nLinkCnt == EXP(nBitsIndexSz) - 1) {
             // Bitmap switch is fully populated.
             // Let's change the type so Lookup is faster.
             // Hopefully we never get here because we convert to a true
@@ -1258,7 +1260,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
     }
 
-    OldSwitch(&wRoot, nBLR, /* bBmSw */ 1, nBLUp);
+    // &wRoot won't cut it for BM_IN_LINK.
+    OldSwitch(&wRoot, nBLR, /* bBmSw */ 1, nLinkCnt, nBLUp);
 
     //DBGI(printf("After NewLink"));
     //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
@@ -1270,6 +1273,7 @@ static Word_t
 OldSwitch(Word_t *pwRoot, int nBL,
 #if defined(CODE_BM_SW)
           int bBmSw,
+          int nLinks, // 0 means calculate
 #endif // defined(CODE_BM_SW)
           int nBLUp)
 {
@@ -1289,21 +1293,25 @@ OldSwitch(Word_t *pwRoot, int nBL,
 #if defined(BM_SW_FOR_REAL)
     if (bBmSw)
     {
+        if (nLinks == 0) {
   #if defined(BM_IN_LINK)
-        if (nBLUp != cnBitsPerWord)
+            if (nBLUp != cnBitsPerWord)
   #endif // defined(BM_IN_LINK)
-        {
-            // How many links are there in the old switch?
-            wLinks = 0;
-            for (int nn = 0;
-                     nn < (int)DIV_UP(EXP(nBL_to_nBitsIndexSz(nBL)),
-                                  cnBitsPerWord);
-                     nn++)
             {
-                wLinks += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
+                // How many links are there in the old switch?
+                wLinks = 0;
+                for (int nn = 0;
+                         nn < (int)DIV_UP(EXP(nBL_to_nBitsIndexSz(nBL)),
+                                          cnBitsPerWord);
+                         nn++)
+                {
+                    wLinks += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
+                }
+                assert(wLinks <= EXP(nBL_to_nBitsIndexSz(nBL)));
+                // Now we know how many links were in the old switch.
             }
-            assert(wLinks <= EXP(nBL_to_nBitsIndexSz(nBL)));
-            // Now we know how many links were in the old switch.
+        } else {
+            wLinks = nLinks;
         }
     }
 #endif // defined(BM_SW_FOR_REAL)
@@ -1883,7 +1891,7 @@ embeddedKeys:;
 
     wBytes += OldSwitch(pwRootArg, nBL + nBitsIndexSz,
 #if defined(CODE_BM_SW)
-                        bBmSw,
+                        bBmSw, /* nLinks */ 0,
 #endif // defined(CODE_BM_SW)
                         nBLPrev);
 
@@ -2357,7 +2365,7 @@ embeddedKeys:;
         assert( ! tp_bIsSkip(nType) ); // How do we ensure this?
         OldSwitch(&wRoot, nBL,
 #if defined(CODE_BM_SW)
-                  /* bBmSw */ 0,
+                  /* bBmSw */ 0, /* nLinks */ 0,
 #endif // defined(CODE_BM_SW)
                   /* nBLUp */ nBL);
 
@@ -3640,7 +3648,7 @@ insertAll:;
 #endif // ! defined(SKIP_TO_XX_SW)
                 OldSwitch(&wRoot, /* nBL */ nBL,
 #if defined(CODE_BM_SW)
-                          /* bBmSw */ 0,
+                          /* bBmSw */ 0, /* nLinks */ 0,
 #endif // defined(CODE_BM_SW)
                           /* nBLUp */ nBLOld);
 
