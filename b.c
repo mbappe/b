@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.502 2015/02/09 01:23:36 mike Exp mike $
+// @(#) $Id: b.c,v 1.503 2015/02/09 02:09:29 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -4352,8 +4352,6 @@ DBGR(printf("RC: pwRoot %p wRoot "OWx" nBL %d nBLR %d\n", (void *)pwRoot, wRoot,
         // allow an empty node to persist after the remove that
         // made it empty.
 
-// We're not handling skip and xx_sw properly here.
-
         int nBitsIndexSz;
       #if defined(CODE_XX_SW)
         if (tp_bIsXxSw(nType)) {
@@ -4710,7 +4708,7 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
 
 #if defined(PP_IN_LINK)
 
-#if defined(DEBUG)
+#if defined(DEBUG_COUNT)
         Word_t wPopCnt = 0;
         for (Word_t ww = 0; ww < EXP(nBLR - cnLogBitsPerWord); ww++) {
             wPopCnt += __builtin_popcountll(pwr[ww]);
@@ -4721,7 +4719,7 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
             HexDump("Bitmap", pwr, EXP(nBLR - cnLogBitsPerWord));
         }
         assert(wPopCnt == PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR));
-#endif // defined(DEBUG)
+#endif // defined(DEBUG_COUNT)
 
         if (PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR) != 0) {
             return Success; // bitmap is not empty

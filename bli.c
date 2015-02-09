@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.595 2015/02/08 19:54:26 mike Exp mike $
+// @(#) $Id: bli.c,v 1.596 2015/02/09 01:23:50 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -3347,9 +3347,10 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     DBGI(Dump((Word_t *)ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord));
     DBGI(printf("\n"));
 
-  #if defined(DEBUG)
+  #if defined(DEBUG_COUNT) || ! defined(PP_IN_LINK)
+    // Judy1Count really slows down testing for PP_IN_LINK.
     assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
-  #endif // defined(DEBUG)
+  #endif // defined(DEBUG_COUNT) || ! defined(PP_IN_LINK)
 
     return status;
 
@@ -3482,11 +3483,14 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
   #endif // defined(DEBUG_REMOVE)
 
   #if defined(DEBUG)
+      #if defined(DEBUG_COUNT) || ! defined(PP_IN_LINK)
+    // Judy1Count really slows down testing for PP_IN_LINK.
     Word_t wCount = Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL);
     if (wCount != wPopCntTotal) {
         printf("\nJudy1Count %ld wPopCntTotal %ld\n", wCount, wPopCntTotal);
     }
     assert(wCount == wPopCntTotal);
+      #endif // defined(DEBUG_COUNT) || ! defined(PP_IN_LINK)
   #endif // defined(DEBUG)
 
     return status;

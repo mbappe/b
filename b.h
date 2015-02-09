@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.388 2015/02/08 19:54:26 mike Exp mike $
+// @(#) $Id: b.h,v 1.389 2015/02/09 01:23:23 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -69,13 +69,7 @@
   #endif // ! defined(cnBWIncr)
 #endif // defined(CODE_XX_SW)
 
-// Default is NO_TYPE_IN_XX_SW if USE_XX_SW.
-#if defined(USE_XX_SW)
-  #if ! defined(TYPE_IN_XX_SW)
-      #define NO_TYPE_IN_XX_SW
-  #endif // defined(TYPE_IN_XX)
-#endif // defined(USE_XX_SW)
-
+// Default is -UNO_TYPE_IN_XX_SW.
 
 // Default is XX_SHORTCUT if USE_XX_SW.
 // Default cnListPopCntMaxDl2 is 0 if USE_XX_SW.
@@ -177,11 +171,13 @@
     #undef   DEBUG_INSERT
     #undef   DEBUG_REMOVE
     #undef   DEBUG_MALLOC
+    #undef   DEBUG_COUNT
 
     #define  DEBUG
     #define  DEBUG_INSERT
     #define  DEBUG_REMOVE
     #define  DEBUG_MALLOC
+    #define  DEBUG_COUNT
 
 #else // defined(DEBUG_ALL)
 
@@ -356,10 +352,10 @@ typedef Word_t Bucket_t;
   #define LVL_IN_WR_HB
 #endif // ! defined(DEPTH_IN_SW) && ! defined(NO_LVL_IN_WR_HB)
 
-// Default is -USKIP_TO_XX_SW.
-//#if ! defined(NO_SKIP_TO_XX_SW)
-//#define SKIP_TO_XX_SW
-//#endif // ! defined(NO_SKIP_TO_XX_SW)
+// Default is -DSKIP_TO_XX_SW.
+#if ! defined(NO_SKIP_TO_XX_SW)
+#define SKIP_TO_XX_SW
+#endif // ! defined(NO_SKIP_TO_XX_SW)
 
 // Default is -DSKIP_TO_BITMAP if -DSKIP_TO_XX_SW.
 #if defined(SKIP_TO_XX_SW)
