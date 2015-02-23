@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.596 2015/02/09 01:23:50 mike Exp mike $
+// @(#) $Id: bli.c,v 1.597 2015/02/09 14:54:49 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -2026,8 +2026,6 @@ t_xx_sw:;
         DBGX(printf("T_XX_SW pwRoot %p wRoot "OWx" nBL %d\n",
                     (void *)pwRoot, wRoot, nBL));
 
-        assert(nBL < nDL_to_nBL(2)); // this is the XX_SW boundary
-
   #if defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
       #if defined(NO_TYPE_IN_XX_SW)
         // ZERO_POP_MAGIC is valid only if a word can hold at least two keys.
@@ -3203,9 +3201,15 @@ Initialize(void)
 #endif // defined(cnListPopCntMaxDl3)
 
     printf("\n");
-    for (int nBL = nDL_to_nBL(2); nBL > cnLogBitsPerWord; --nBL) {
-        printf("# EmbeddedListPopCntMax(%d) %d\n", nBL,
-                EmbeddedListPopCntMax(nBL));
+    int nPopCntMaxPrev = -1;
+    for (int nBL = cnBitsPerWord; nBL > 0; --nBL) {
+        int nPopCntMax;
+        nPopCntMax = EmbeddedListPopCntMax(nBL);
+        //if (nPopCntMax != nPopCntMaxPrev)
+        {
+            printf("# EmbeddedListPopCntMax(%2d)  %2d\n", nBL, nPopCntMax);
+            nPopCntMaxPrev = nPopCntMax;
+        }
     }
 
     printf("\n");

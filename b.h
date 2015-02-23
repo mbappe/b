@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.389 2015/02/09 01:23:23 mike Exp mike $
+// @(#) $Id: b.h,v 1.390 2015/02/09 14:54:49 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -1064,7 +1064,7 @@ wr_nPopCnt(Word_t wRoot, int nBL)
 // For embedded keys the pop cnt bits are just above the type field.
 // A value of zero means a pop cnt of one. 
 #define     wr_nPopCnt(_wr, _nBL) \
-  ((((_wr) >> nBL_to_nBitsType(_nBL)) & MSK(nBL_to_nBitsPopCntSz(_nBL))) + 1)
+  ((int)((((_wr) >> nBL_to_nBitsType(_nBL)) & MSK(nBL_to_nBitsPopCntSz(_nBL))) + 1))
 
 #define set_wr_nPopCnt(_wr, _nBL, _nPopCnt) \
     SetBits(&(_wr), nBL_to_nBitsPopCntSz(_nBL), nBL_to_nBitsType(_nBL), \
