@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.598 2015/02/23 15:35:54 mike Exp mike $
+// @(#) $Id: bli.c,v 1.599 2016/06/24 20:38:58 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1688,6 +1688,8 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     Word_t wRoot = *pwRoot;
   #else // defined(PWROOT_ARG_FOR_LOOKUP)
       #if defined(BM_IN_LINK)
+    // Is it a problem that we appear to be ignoring PWROOT_AT_TOP_FOR_LOOKUP
+    // here? Should we be ensuring that it is not defined?
     Word_t *pwRoot = NULL; // used for top detection
       #else // defined(BM_IN_LINK)
           #if defined(PWROOT_AT_TOP_FOR_LOOKUP)
