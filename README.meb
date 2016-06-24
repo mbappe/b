@@ -4,16 +4,24 @@ Run bb to test it.  bb -q is less rigorous and bb -Q is even less rigorous.
 Run b -1l as the least rigorous test of all.
 b -? give some help.
 Look for symbolic names in the RCS files with "rcs -h b.h".
-CP140405 is Checkpoint April 5, 2014.
+For example, CP140405 is Checkpoint April 5, 2014.
 The most recent checkpoint should be the latest and greatest somewhat
-functional code.
+functional code. Really?
 
 Run "forx make" to see if the builds work.  It will run for days (maybe not).
 Run "forx bb" to see if the code works.  It will run for days (maybe not).
-Run "forx bb -q" for a less vigorous test.  It will run for days (maybe not).
+Run "forx bb -q" for a less rigorous test.  It will run for days (maybe not).
 Forx has not been kept up to date with ifdefs since long ago.  Maybe 4/4/14.
 
 rcs.tjz contains a copy of the RCS files in case the originals can't be found.
+
+6/22/16:
+
+Graphing results on Mac:
+- Mac: ssh -X asus; depends on XQuartz on Mac
+- Asus: jbgraph -c5 *.plot
+- Mac: l, g, crop by two-finger-tap on one corner tap on other
+- "Failed to initialize X widgets." means <cntl-d> and restart ssh -X.
 
 2/1/15:
 
