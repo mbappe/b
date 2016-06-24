@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.597 2015/02/09 14:54:49 mike Exp mike $
+// @(#) $Id: bli.c,v 1.598 2015/02/23 15:35:54 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -3081,11 +3081,11 @@ Initialize(void)
     printf("# NO PWROOT_ARG_FOR_LOOKUP\n");
 #endif // defined(PWROOT_ARG_FOR_LOOKUP)
 
-#if defined(USE_PWROOT_AT_TOP_LOOKUP)
-    printf("#    USE_PWROOT_AT_TOP_LOOKUP\n");
-#else // defined(USE_PWROOT_AT_TOP_LOOKUP)
-    printf("# NO USE_PWROOT_AT_TOP_LOOKUP\n");
-#endif // defined(USE_PWROOT_AT_TOP_LOOKUP)
+#if defined(PWROOT_AT_TOP_FOR_LOOKUP)
+    printf("#    PWROOT_AT_TOP_FOR_LOOKUP\n");
+#else // defined(PWROOT_AT_TOP_FOR_LOOKUP)
+    printf("# NO PWROOT_AT_TOP_FOR_LOOKUP\n");
+#endif // defined(PWROOT_AT_TOP_FOR_LOOKUP)
 
 #if defined(USE_PWROOT_FOR_LOOKUP)
     printf("#    USE_PWROOT_FOR_LOOKUP\n");
