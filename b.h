@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.390 2015/02/09 14:54:49 mike Exp mike $
+// @(#) $Id: b.h,v 1.391 2015/02/23 15:35:54 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -46,6 +46,7 @@
 
 // Default is USE_XX_SW.
 #if ! defined(NO_USE_XX_SW)
+  #undef USE_XX_SW
   #define USE_XX_SW
 #endif // ! defined(NO_USE_XX_SW)
 
@@ -78,6 +79,7 @@
 // Default cnListPopCntMax8   is 0 if USE_XX_SW.
 #if defined(USE_XX_SW)
   #if ! defined(NO_XX_SHORTCUT)
+      #undef XX_SHORTCUT
       #define XX_SHORTCUT
   #endif // defined(NO_XX_SHORTCUT)
   #if ! defined(cnListPopCntMaxDl2)
@@ -96,12 +98,14 @@
 // Default is XX_SHORTCUT_GOTO if XX_SHORTCUT
 #if defined(XX_SHORTCUT)
   #if ! defined(NO_XX_SHORTCUT_GOTO)
+      #undef XX_SHORTCUT_GOTO
       #define XX_SHORTCUT_GOTO
   #endif // ! defined(NO_XX_SHORTCUT_GOTO)
 #endif // defined(XX_SHORTCUT)
 
 // Default is -DDL_SPECIFIC_T_ONE.
 #if ! defined(NO_DL_SPECIFIC_T_ONE)
+#undef DL_SPECIFIC_T_ONE
 #define DL_SPECIFIC_T_ONE
 #endif // ! defined(NO_DL_SPECIFIC_T_ONE)
 
@@ -121,16 +125,19 @@
 
 // Default is -DBL_SPECIFIC_PSPLIT_SEARCH.
 #if ! defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
+#undef BL_SPECIFIC_PSPLIT_SEARCH
 #define BL_SPECIFIC_PSPLIT_SEARCH
 #endif // ! defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
 
 // Default is -DEMBEDDED_KEYS_PARALLEL.
 #if ! defined(NO_EMBEDDED_KEYS_PARALLEL)
+#undef EMBEDDED_KEYS_PARALLEL
 #define EMBEDDED_KEYS_PARALLEL
 #endif // ! defined(NO_EMBEDDED_KEYS_PARALLEL)
 
 // Default is -DPARALLEL_128.
 #if ! defined(NO_PARALLEL_128)
+#undef PARALLEL_128
 #define PARALLEL_128
 #endif // ! defined(NO_PARALLEL_128)
 
@@ -304,7 +311,9 @@ SetBits(Word_t *pw, int nBits, int nLsb, Word_t wVal)
 #endif // ! defined(NO_PSPLIT_PARALLEL)
 
 #if defined(PSPLIT_PARALLEL)
+#undef ALIGN_LISTS
 #define ALIGN_LISTS
+#undef ALIGN_LIST_ENDS
 #define ALIGN_LIST_ENDS
 #endif // defined(PSPLIT_PARALLEL)
 
@@ -349,16 +358,19 @@ typedef Word_t Bucket_t;
 
 // Default is -DLVL_IN_WR_HB unless -DDEPTH_IN_SW.
 #if ! defined(DEPTH_IN_SW) && ! defined(NO_LVL_IN_WR_HB)
+  #undef LVL_IN_WR_HB
   #define LVL_IN_WR_HB
 #endif // ! defined(DEPTH_IN_SW) && ! defined(NO_LVL_IN_WR_HB)
 
 // Default is -DSKIP_TO_XX_SW.
 #if ! defined(NO_SKIP_TO_XX_SW)
+#undef SKIP_TO_XX_SW
 #define SKIP_TO_XX_SW
 #endif // ! defined(NO_SKIP_TO_XX_SW)
 
 // Default is -DSKIP_TO_BITMAP if -DSKIP_TO_XX_SW.
 #if defined(SKIP_TO_XX_SW)
+#undef SKIP_TO_BITMAP
 #define SKIP_TO_BITMAP
 #endif // ! defined(SKIP_TO_XX_SW)
 
@@ -526,6 +538,7 @@ typedef Word_t Bucket_t;
 
 // Default is -DTYPE_IS_ABSOLUTE.  Use -DTYPE_IS_RELATIVE to change it.
 #if ! defined(TYPE_IS_RELATIVE)
+#undef TYPE_IS_ABSOLUTE
 #define TYPE_IS_ABSOLUTE
 #endif // ! defined(TYPE_IS_RELATIVE)
 
@@ -929,6 +942,7 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // hold the pop count.  We calculate the pop count based on the contents
 // of the key suffix slots.
 #if ! defined(NO_T_ONE_CALC_POP)
+#undef T_ONE_CALC_POP
 #define T_ONE_CALC_POP
 #endif // ! defined(NO_T_ONE_CALC_POP)
 
