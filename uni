@@ -1,4 +1,13 @@
 unifdef \
+-DcnBitsInD1=8 \
+-DcnListPopCntMaxDl1=0 \
+-DcnListPopCntMax8=0 \
+-DcnBitsLeftAtDl2=16 \
+-DcnListPopCntMaxDl2=0 \
+-DcnListPopCntMax16=0 \
+-DcnDigitsPerWord=8 \
+-DcnBitsPerWord=64 \
+-DcwListPopCntMax=124 \
 -DALIGN_LISTS \
 -DALIGN_LIST_ENDS \
 -DBINARY_SEARCH_WORD \
@@ -108,6 +117,7 @@ unifdef \
 -USKIP_TO_BM_SW \
 -USKIP_TO_LIST \
 -USPLIT_SEARCH_BINARY \
+-UTBD \
 -UTRY_MEMCHR \
 -UTYPE_IS_RELATIVE \
 -UUSE_BM_SW \
