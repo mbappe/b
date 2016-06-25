@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.600 2016/06/24 20:45:48 mike Exp mike $
+// @(#) $Id: bli.c,v 1.601 2016/06/24 22:50:07 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 //#include <emmintrin.h>
@@ -1721,9 +1721,11 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
   #endif // !defined(RECURSIVE)
 #endif // defined(LOOKUP)
 #if !defined(RECURSIVE)
-  #if !defined(LOOKUP) || defined(BM_IN_LINK)
+  #if !defined(LOOKUP)
     Word_t *pwRootOrig = pwRoot; (void)pwRootOrig;
-  #endif // !defined(LOOKUP) || defined(BM_IN_LINK)
+  #elif defined(BM_IN_LINK)
+    Word_t *pwRootOrig = pwRoot; (void)pwRootOrig;
+  #endif // !defined(LOOKUP)
 #endif // !defined(RECURSIVE)
     int nBLR;
     Word_t wPopCnt; (void)wPopCnt;
@@ -2499,10 +2501,12 @@ t_bitmap:;
   #endif // defined(SKIP_LINKS)
 #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
 
-#if defined(INSERT) && defined(SKIP_TO_BITMAP)
+#if defined(INSERT)
+  #if defined(SKIP_TO_BITMAP)
         // I guess we're getting away with leaving nBL
         // as the post-skip value.  Go figure.
-#endif // defined(INSERT) && defined(SKIP_TO_BITMAP)
+  #endif // defined(SKIP_TO_BITMAP)
+#endif // defined(INSERT)
 
         break;
 
@@ -2649,9 +2653,11 @@ foundIt:;
       #if defined(REMOVE)
         goto removeGutsAndCleanup;
       #endif // defined(REMOVE)
-      #if defined(INSERT) && !defined(RECURSIVE)
+      #if defined(INSERT)
+          #if !defined(RECURSIVE)
         if (nIncr > 0) { goto undo; } // undo counting
-      #endif // defined(INSERT) && !defined(RECURSIVE)
+          #endif // !defined(RECURSIVE)
+      #endif // defined(INSERT)
 
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
@@ -3574,6 +3580,132 @@ Initialize(void)
 #else // defined(DEBUG_COUNT)
     printf("# NO DEBUG_COUNT\n");
 #endif // defined(DEBUG_COUNT)
+
+#if defined(NO_SKIP_AT_TOP)
+    printf("#    NO_SKIP_AT_TOP\n");
+#else // defined(NO_SKIP_AT_TOP)
+    printf("# NO NO_SKIP_AT_TOP\n");
+#endif // defined(NO_SKIP_AT_TOP)
+
+#if defined(NO_USE_XX_SW)
+    printf("#    NO_USE_XX_SW\n");
+#else // defined(NO_USE_XX_SW)
+    printf("# NO NO_USE_XX_SW\n");
+#endif // defined(NO_USE_XX_SW)
+
+#if defined(NO_XX_SHORTCUT)
+    printf("#    NO_XX_SHORTCUT\n");
+#else // defined(NO_XX_SHORTCUT)
+    printf("# NO NO_XX_SHORTCUT\n");
+#endif // defined(NO_XX_SHORTCUT)
+
+#if defined(NO_XX_SHORTCUT_GOTO)
+    printf("#    NO_XX_SHORTCUT_GOTO\n");
+#else // defined(NO_XX_SHORTCUT_GOTO)
+    printf("# NO NO_XX_SHORTCUT_GOTO\n");
+#endif // defined(NO_XX_SHORTCUT_GOTO)
+
+#if defined(NO_DL_SPECIFIC_T_ONE)
+    printf("#    NO_DL_SPECIFIC_T_ONE\n");
+#else // defined(NO_DL_SPECIFIC_T_ONE)
+    printf("# NO NO_DL_SPECIFIC_T_ONE\n");
+#endif // defined(NO_DL_SPECIFIC_T_ONE)
+
+#if defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
+    printf("#    NO_BL_SPECIFIC_PSPLIT_SEARCH\n");
+#else // defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
+    printf("# NO NO_BL_SPECIFIC_PSPLIT_SEARCH\n");
+#endif // defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
+
+#if defined(NO_EMBEDDED_KEYS_PARALLEL)
+    printf("#    NO_EMBEDDED_KEYS_PARALLEL\n");
+#else // defined(NO_EMBEDDED_KEYS_PARALLEL)
+    printf("# NO NO_EMBEDDED_KEYS_PARALLEL\n");
+#endif // defined(NO_EMBEDDED_KEYS_PARALLEL)
+
+#if defined(NO_PARALLEL_128)
+    printf("#    NO_PARALLEL_128\n");
+#else // defined(NO_PARALLEL_128)
+    printf("# NO NO_PARALLEL_128\n");
+#endif // defined(NO_PARALLEL_128)
+
+#if defined(NO_SORT_LISTS)
+    printf("#    NO_SORT_LISTS\n");
+#else // defined(NO_SORT_LISTS)
+    printf("# NO NO_SORT_LISTS\n");
+#endif // defined(NO_SORT_LISTS)
+
+#if defined(NO_PSPLIT_PARALLEL)
+    printf("#    NO_PSPLIT_PARALLEL\n");
+#else // defined(NO_PSPLIT_PARALLEL)
+    printf("# NO NO_PSPLIT_PARALLEL\n");
+#endif // defined(NO_PSPLIT_PARALLEL)
+
+#if defined(NO_PSPLIT_EARLY_OUT)
+    printf("#    NO_PSPLIT_EARLY_OUT\n");
+#else // defined(NO_PSPLIT_EARLY_OUT)
+    printf("# NO NO_PSPLIT_EARLY_OUT\n");
+#endif // defined(NO_PSPLIT_EARLY_OUT)
+
+#if defined(NO_LVL_IN_WR_HB)
+    printf("#    NO_LVL_IN_WR_HB\n");
+#else // defined(NO_LVL_IN_WR_HB)
+    printf("# NO NO_LVL_IN_WR_HB\n");
+#endif // defined(NO_LVL_IN_WR_HB)
+
+#if defined(NO_SKIP_TO_XX_SW)
+    printf("#    NO_SKIP_TO_XX_SW\n");
+#else // defined(NO_SKIP_TO_XX_SW)
+    printf("# NO NO_SKIP_TO_XX_SW\n");
+#endif // defined(NO_SKIP_TO_XX_SW)
+
+#if defined(NO_SKIP_TO_BM_SW)
+    printf("#    NO_SKIP_TO_BM_SW\n");
+#else // defined(NO_SKIP_TO_BM_SW)
+    printf("# NO NO_SKIP_TO_BM_SW\n");
+#endif // defined(NO_SKIP_TO_BM_SW)
+
+#if defined(NO_POP_IN_WR_HB)
+    printf("#    NO_POP_IN_WR_HB\n");
+#else // defined(NO_POP_IN_WR_HB)
+    printf("# NO NO_POP_IN_WR_HB\n");
+#endif // defined(NO_POP_IN_WR_HB)
+
+#if defined(NO_EMBED_KEYS)
+    printf("#    NO_EMBED_KEYS\n");
+#else // defined(NO_EMBED_KEYS)
+    printf("# NO NO_EMBED_KEYS\n");
+#endif // defined(NO_EMBED_KEYS)
+
+#if defined(NO_T_ONE_CALC_POP)
+    printf("#    NO_T_ONE_CALC_POP\n");
+#else // defined(NO_T_ONE_CALC_POP)
+    printf("# NO NO_T_ONE_CALC_POP\n");
+#endif // defined(NO_T_ONE_CALC_POP)
+
+#if defined(NO_PSPLIT_SEARCH_8)
+    printf("#    NO_PSPLIT_SEARCH_8\n");
+#else // defined(NO_PSPLIT_SEARCH_8)
+    printf("# NO NO_PSPLIT_SEARCH_8\n");
+#endif // defined(NO_PSPLIT_SEARCH_8)
+
+#if defined(NO_PSPLIT_SEARCH_16)
+    printf("#    NO_PSPLIT_SEARCH_16\n");
+#else // defined(NO_PSPLIT_SEARCH_16)
+    printf("# NO NO_PSPLIT_SEARCH_16\n");
+#endif // defined(NO_PSPLIT_SEARCH_16)
+
+#if defined(NO_PSPLIT_SEARCH_32)
+    printf("#    NO_PSPLIT_SEARCH_32\n");
+#else // defined(NO_PSPLIT_SEARCH_32)
+    printf("# NO NO_PSPLIT_SEARCH_32\n");
+#endif // defined(NO_PSPLIT_SEARCH_32)
+
+#if defined(NO_BINARY_SEARCH_WORD)
+    printf("#    NO_BINARY_SEARCH_WORD\n");
+#else // defined(NO_BINARY_SEARCH_WORD)
+    printf("# NO NO_BINARY_SEARCH_WORD\n");
+#endif // defined(NO_BINARY_SEARCH_WORD)
 
 #if defined(BM_IN_LINK)
     printf("\n");
