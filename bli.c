@@ -1,6 +1,11 @@
 
-// @(#) $Id: bli.c,v 1.601 2016/06/24 22:50:07 mike Exp mike $
+// @(#) $Id: bli.c,v 1.603 2016/06/26 15:54:40 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
+
+// This file is #included in other .c files three times.
+// Once with #define LOOKUP, #undef INSERT and #undef REMOVE.
+// Once with #undef LOOKUP, #define INSERT and #undef REMOVE.
+// Once with #undef LOOKUP, #undef INSERT and #define REMOVE.
 
 //#include <emmintrin.h>
 //#include <smmintrin.h>
@@ -24,16 +29,12 @@
 #include <wchar.h>
 #endif // defined(TRY_MEMCHR)
 
-// This file is #included in other .c files three times.
-// Once with #define LOOKUP, #undef INSERT and #undef REMOVE.
-// Once with #undef LOOKUP, #define INSERT and #undef REMOVE.
-// Once with #undef LOOKUP, #undef INSERT and #define REMOVE.
-
-// One big bitmap is implemented completely in Judy1Test, Judy1Set
-// and Judy1Unset.  There is no need for Lookup, Insert and Remove.
-#if (cnDigitsPerWord > 1)
+#if (cnDigitsPerWord <= 1)
 //#if (cnBitsPerDigit < cnBitsPerWord)
 //#if (cnBitsInD1 < cnBitsPerWord)
+// One big bitmap is implemented completely in Judy1Test, Judy1Set
+// and Judy1Unset.  There is no need for Lookup, Insert and Remove.
+#else // (cnDigitsPerWord <= 1)
 
 #if defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (Success)
@@ -278,7 +279,7 @@
 #endif // defined(SPLIT_SEARCH_BINARY)
 
 
-#if 0
+#if JUNK
 pop <= 2 ^ (bpw - nbl + nn)
 ceil(log(pop)) <= bpw - nbl + nn
 LOG(pop * 2 - 1) <= bpw - nbl + nn
@@ -286,7 +287,7 @@ nn >= LOG(pop * 2 - 1) - bpw + nbl
 nn  = LOG(pop * 2 - 1) - bpw + nbl
 #endif
 
-#if 0
+#if JUNK
 
 #define SPLIT(_nPopCnt, _xKeyMin, _xKeyMax, _xKey, _nSplit) \
 { \
@@ -300,7 +301,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 #endif
 
-#if 0
+#if JUNK
 
 #define SPLIT(_nn, _xKeyMin, _xKeyMax, _xKey, _nSplit) \
 { \
@@ -374,7 +375,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     } \
 }
 
-#if 0
+#if JUNK
 // Amazingly, the variant above was the best performing in my tests.
 #define PSSEARCHB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
@@ -562,7 +563,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     } \
 }
 
-#if 0
+#if JUNK
 static int
 PSplitSearch16(int nBL,
                uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
@@ -655,7 +656,7 @@ again:;
 
 #if defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
-#if 0
+#if JUNK
 static Status_t
 TwoWordsHaveKey(Word_t *pw, Word_t wKey, unsigned nBL)
 {
@@ -1177,7 +1178,7 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
     return nPos;
 }
 
-#if 0
+#if JUNK
 #define MAGIC1(_nBL)  MAXUINT / ((1 << (_nBL)) - 1)
 #define MAGIC1(_nBL)  (cnMagic[_nBL])
 #define MAGIC2(_nBL)  (MAGIC1(_nBL) << ((_nBL) - 1))
@@ -2316,9 +2317,11 @@ t_list:;
               #endif // defined(PP_IN_LINK)
                 goto removeGutsAndCleanup;
           #endif // defined(REMOVE)
-          #if defined(INSERT) && ! defined(RECURSIVE)
+          #if defined(INSERT)
+              #if ! defined(RECURSIVE)
                 if (nIncr > 0) { goto undo; } // undo counting
-          #endif // defined(INSERT) && ! defined(RECURSIVE)
+              #endif // ! defined(RECURSIVE)
+          #endif // defined(INSERT)
                 return KeyFound;
             }
         }
@@ -2474,13 +2477,15 @@ t_bitmap:;
       #if defined(REMOVE)
                 goto removeGutsAndCleanup;
       #endif // defined(REMOVE)
-      #if defined(INSERT) && !defined(RECURSIVE)
+      #if defined(INSERT)
+          #if !defined(RECURSIVE)
                 if (nIncr > 0)
                 {
                     DBGX(printf("Bit is set!\n"));
                     goto undo; // undo counting 
                 }
-      #endif // defined(INSERT) && !defined(RECURSIVE)
+          #endif // !defined(RECURSIVE)
+      #endif // defined(INSERT)
                 return KeyFound;
             }
             DBGX(printf("Bit is not set.\n"));
@@ -2801,7 +2806,7 @@ restart:;
         goto top;
     }
       #endif // !defined(RECURSIVE)
-  #endif // !defined(LOOKUP) && !defined(RECURSIVE)
+  #endif // !defined(LOOKUP)
     return Failure;
   #if ! defined(LOOKUP)
       #if defined(REMOVE)
@@ -2829,9 +2834,7 @@ cleanup:;
 #undef strLookupOrInsertOrRemove
 #undef KeyFound
 
-//#endif // (cnBitsInD1 < cnBitsPerWord)
-//#endif // (cnBitsPerDigit < cnBitsPerWord)
-#endif // (cnDigitsPerWord > 1)
+#endif // (cnDigitsPerWord <= 1)
 
 #if defined(LOOKUP)
 
