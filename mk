@@ -1,4 +1,5 @@
 DEFINES='\
+-DcnBmWpkPercent=80 \
 -DcnBinarySearchThresholdWord=16 \
 -DcnBW=1 \
 -DcnBWIncr=1 \
