@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.506 2016/06/26 19:26:54 mike Exp mike $
+// @(#) $Id: b.c,v 1.507 2016/06/26 19:34:56 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1924,7 +1924,6 @@ Dump(Word_t *pwRoot, Word_t wPrefix, int nBL)
 
 #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
   #if ! defined(PACK_KEYS_RIGHT)
-      //#if ! defined(FILL_WITH_ONES)
 static void
 InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
 {
@@ -1959,7 +1958,6 @@ InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
     DBGI(printf(" wRoot "OWx" nPopCnt %d\n",
                 *pwRoot, wr_nPopCnt(*pwRoot, nBL)));
 }
-      //#endif // ! defined(FILL_WITH_ONES)
   #endif // ! defined(PACK_KEYS_RIGHT)
 #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
 
@@ -2849,11 +2847,9 @@ embeddedKeys:;
 
           #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
             #if ! defined(PACK_KEYS_RIGHT)
-                //#if ! defined(FILL_WITH_ONES)
         if (wr_nPopCnt(*pwRoot, nBL) < EmbeddedListPopCntMax(nBL)) {
             InsertEmbedded(pwRoot, nBL, wKey); return Success;
         }
-                //#endif // ! defined(FILL_WITH_ONES)
             #endif // ! defined(PACK_KEYS_RIGHT)
           #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
 
