@@ -2706,9 +2706,11 @@ foundIt:;
       #if defined(REMOVE)
             goto removeGutsAndCleanup;
       #endif // defined(REMOVE)
-      #if defined(INSERT) && !defined(RECURSIVE)
+      #if defined(INSERT)
+          #if !defined(RECURSIVE)
             if (nIncr > 0) { goto undo; } // undo counting
-      #endif // defined(INSERT) && !defined(RECURSIVE)
+          #endif // !defined(RECURSIVE)
+      #endif // defined(INSERT)
             return KeyFound;
         }
 
@@ -2783,20 +2785,22 @@ notFound:;
 undo:;
     DBGX(printf("undo\n"));
 #endif // defined(INSERT)
-#if defined(REMOVE) && !defined(RECURSIVE)
+#if defined(REMOVE)
+  #if !defined(RECURSIVE)
     if (nIncr < 0)
-#endif // defined(REMOVE) && !defined(RECURSIVE)
-  #if !defined(LOOKUP) && !defined(RECURSIVE)
+  #endif // !defined(RECURSIVE)
+#endif // defined(REMOVE)
+  #if !defined(LOOKUP)
+      #if !defined(RECURSIVE)
     {
         // Undo the counting we did on the way in.
         nIncr *= -1;
-  #if ! defined(LOOKUP)
 restart:;
-  #endif // ! defined(LOOKUP)
         pwRoot = pwRootOrig;
         nBL = nBLOrig;
         goto top;
     }
+      #endif // !defined(RECURSIVE)
   #endif // !defined(LOOKUP) && !defined(RECURSIVE)
     return Failure;
   #if ! defined(LOOKUP)
