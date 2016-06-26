@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.507 2016/06/26 19:34:56 mike Exp mike $
+// @(#) $Id: b.c,v 1.508 2016/06/26 19:43:17 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -3036,6 +3036,7 @@ embeddedKeys:;
         {
 #if defined(CODE_XX_SW)
 #if ! defined(cnXxSwWpkPercent)
+#undef cnXxSwWpkPercent
 #define cnXxSwWpkPercent  150
 #endif // ! defined(cnXxSwWpkPercent)
             // This block is a performance/efficiency optimization.

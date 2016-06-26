@@ -1,4 +1,5 @@
 unifdef \
+-DcnXxSwWpkPercent=150 \
 -DcnBmWpkPercent=80 \
 -DcnBinarySearchThresholdWord=16 \
 -DcnBW=1 \
@@ -107,6 +108,7 @@ unifdef \
 -UONE_DEREF_AT_LIST \
 -UPACK_KEYS_RIGHT \
 -UPLACE_LISTS \
+-UPOP_CNT_MAX_IS_KING \
 -UPOP_WORD \
 -UPOP_WORD_IN_LINK \
 -UPP_IN_LINK \
