@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.505 2015/02/09 15:12:41 mike Exp mike $
+// @(#) $Id: b.c,v 1.506 2016/06/26 19:26:54 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2256,6 +2256,7 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
     Word_t wPopCnt;
 // Default cnBmWpkPercent is 80, create bm at 80% wpk.
 #if ! defined(cnBmWpkPercent)
+#undef cnBmWpkPercent
 #define cnBmWpkPercent  80
 #endif // ! defined(cnBmWpkPercent)
     if ((nBL == nDL_to_nBL(2))
