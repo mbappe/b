@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.603 2016/06/26 15:54:40 mike Exp mike $
+// @(#) $Id: bli.c,v 1.604 2016/06/26 16:37:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -831,17 +831,15 @@ HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 
 #if defined(COMPRESSED_LISTS)
 
-  #if defined(COMPRESSED_LISTS)
+  #if (cnBitsInD1 <= 8)
       #if ! defined(USE_XX_SW) || ! defined(NO_TYPE_IN_XX_SW)
-                  // smallest key size is one bigger than
-                  // whatever size yields a bitmap that will
-                  // fit in a link.
-          #if ( ! defined(USE_XX_SW) \
-                  && (cnBitsInD1 <= 8) && (cnListPopCntMaxDl1 > 7)) \
+              // smallest key size is one bit bigger than
+              // whatever size yields a bitmap that will
+              // fit in a link.
+          #if ( ! defined(USE_XX_SW) && (cnListPopCntMaxDl1 > 7)) \
               || (defined(USE_XX_SW) \
                   /* && (LOG(sizeof(Link_t)) <= 4) */ \
-                  && ((cnListPopCntMax8 > 7) \
-                      || ((cnBitsInD1 <= 8) && (cnListPopCntMaxDl1 > 7))))
+                  && ((cnListPopCntMax8 > 7) || (cnListPopCntMaxDl1 > 7)))
 
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
@@ -1266,21 +1264,21 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
     int nPos;
 
   #if defined(COMPRESSED_LISTS)
-      #if ! defined(USE_XX_SW) || ! defined(NO_TYPE_IN_XX_SW)
-                  // smallest key size is one bigger than
-                  // whatever size yields a bitmap that will
-                  // fit in a link.
-          #if ( ! defined(USE_XX_SW) \
-                  && (cnBitsInD1 <= 8) && (cnListPopCntMaxDl1 > 7)) \
-              || (defined(USE_XX_SW) \
-                  /* && (LOG(sizeof(Link_t)) <= 4) */ \
-                  && ((cnListPopCntMax8 > 7) \
-                      || ((cnBitsInD1 <= 8) && (cnListPopCntMaxDl1 > 7))))
+      #if (cnBitsInD1 <= 8)
+          #if ! defined(USE_XX_SW) || ! defined(NO_TYPE_IN_XX_SW)
+                      // smallest key size is one bit bigger than
+                      // whatever size yields a bitmap that will
+                      // fit in a link.
+              #if ( ! defined(USE_XX_SW) && (cnListPopCntMaxDl1 > 7)) \
+                  || (defined(USE_XX_SW) \
+                      /* && (LOG(sizeof(Link_t)) <= 4) */ \
+                      && ((cnListPopCntMax8 > 7) || (cnListPopCntMaxDl1 > 7)))
     if (nBL <= 8) {
         nPos = SearchList8(pwRoot, pwr, wKey, nBL);
     } else
-          #endif // ...
-      #endif // ! defined(USE_XX_SW) || ! defined(NO_TYPE_IN_XX_SW)
+              #endif // ...
+          #endif // ! defined(USE_XX_SW) || ! defined(NO_TYPE_IN_XX_SW)
+      #endif
       #if (cnBitsInD1 <= 16)
           #if (cnListPopCntMaxDl2 > 3) || (cnListPopCntMax16 > 3)
     if (nBL <= 16) {
