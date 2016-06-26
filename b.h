@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.391 2015/02/23 15:35:54 mike Exp mike $
+// @(#) $Id: b.h,v 1.392 2016/06/24 22:49:47 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -25,17 +25,15 @@
 #define SKIP_PREFIX_CHECK
 #endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 
+#if defined(USE_BM_SW)
 // Default is -UUSE_BM_SW.
-
 // USE_BM_SW means always use a bm sw when creating a switch with no skip.
 // Default is -DBM_SW_FOR_REAL iff -DUSE_BM_SW.
 // Default is -UBM_IN_LINK.
-#if defined(USE_BM_SW)
   #define CODE_BM_SW
   #if ! defined(NO_BM_SW_FOR_REAL)
       #define BM_SW_FOR_REAL
   #endif // ! defined(NO_BM_SW_FOR_REAL)
-#endif // defined(USE_BM_SW)
 
 // Default is -URETYPE_FULL_BM_SW.
 // Default is -UBM_IN_NON_BM_SW.
@@ -43,6 +41,22 @@
 // Retype without BM_IN_NON_BM_SW requires the
 // guts of BmSwitch_t to look just like Switch_t
 // starting just after sw_awBm.
+
+  #if ! defined(cnBmSwLinksPercent)
+      // Default uncompress bm sw threshold is 33% full (cnBmSwLinksPercent).
+      // Never uncompress with less than 33% of links present.
+      // Otherwise we can overshoot the wpk target.
+      #define cnBmSwLinksPercent  33
+  #endif // ! defined(cnBmSwLinksPercent)
+
+  #if ! defined(cnBmSwWpkPercent)
+      // Default uncompress bm sw threshold is 1 word/key (cnBmSwWpkPercent).
+      // If the switch satisfies cnBmSwLinksPercent, then uncompress if and
+      // only if the words-per-key target is met.
+      #define cnBmSwWpkPercent  100
+  #endif // ! defined(cnBmSwWpkPercent)
+
+#endif // defined(USE_BM_SW)
 
 // Default is USE_XX_SW.
 #if ! defined(NO_USE_XX_SW)
@@ -108,20 +122,6 @@
 #undef DL_SPECIFIC_T_ONE
 #define DL_SPECIFIC_T_ONE
 #endif // ! defined(NO_DL_SPECIFIC_T_ONE)
-
-// Default uncompress bm sw threshold is 33% full (cnBmSwLinksPercent).
-// Never uncompress with less than 33% of links present.
-// Otherwise we can overshoot the wpk target.
-#if ! defined(cnBmSwLinksPercent)
-#define cnBmSwLinksPercent  33
-#endif // ! defined(cnBmSwLinksPercent)
-
-// Default uncompress bm sw threshold is 1 word per key (cnBmSwWpkPercent).
-// If the switch satisfies cnBmSwLinksPercent, then uncompress if and only
-// if the words-per-key target is met.
-#if ! defined(cnBmSwWpkPercent)
-#define cnBmSwWpkPercent  100
-#endif // ! defined(cnBmSwWpkPercent)
 
 // Default is -DBL_SPECIFIC_PSPLIT_SEARCH.
 #if ! defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)

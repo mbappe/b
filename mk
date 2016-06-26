@@ -1,4 +1,7 @@
 DEFINES='\
+-DcnBinarySearchThresholdWord=16 \
+-DcnBW=1 \
+-DcnBWIncr=1 \
 -DcnBitsInD1=8 \
 -DcnListPopCntMaxDl1=0 \
 -DcnListPopCntMax8=0 \

@@ -1,4 +1,7 @@
 unifdef \
+-DcnBinarySearchThresholdWord=16 \
+-DcnBW=1 \
+-DcnBWIncr=1 \
 -DcnBitsInD1=8 \
 -DcnListPopCntMaxDl1=0 \
 -DcnListPopCntMax8=0 \
@@ -87,6 +90,7 @@ unifdef \
 -UNO_PSPLIT_SEARCH_8 \
 -UNO_SKIP_AT_TOP \
 -UNO_SKIP_AT_TOP \
+-UNO_SKIP_LINKS \
 -UNO_SKIP_TO_BM_SW \
 -UNO_SKIP_TO_XX_SW \
 -UNO_SORT_LISTS \
