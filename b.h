@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.392 2016/06/24 22:49:47 mike Exp mike $
+// @(#) $Id: b.h,v 1.393 2016/06/26 17:36:09 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -333,7 +333,7 @@ typedef Word_t Bucket_t;
 #endif // defined(PARALLEL_128)
 
 // Bits-per-digit.
-#if 0
+#if JUNK
 // If default is cnBitsPerDigit = cnLogBitsPerWord.
 #if ! defined(cnBitsPerDigit)
     #define cnBitsPerDigit cnLogBitsPerWord
@@ -348,7 +348,7 @@ typedef Word_t Bucket_t;
 #if ! defined(cnBitsPerDigit)
     #define cnBitsPerDigit 8
 #endif // ! defined(cnBitsPerDigit)
-#endif // 0
+#endif // JUNK
 
 // Choose the number of bits in the least significant digit of the key.
 // Default cnBitsInD1 is cnBitsPerDigit.  We count digits up from there.

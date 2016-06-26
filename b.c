@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.504 2015/02/09 14:54:49 mike Exp mike $
+// @(#) $Id: b.c,v 1.505 2015/02/09 15:12:41 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -24,7 +24,7 @@ Word_t j__AllocWordsJL32; //        JUDYB  Leaf 32-bit Decode/Key
 
 // From Judy1LHTime.c for convenience.
 
-#if 0
+#if JUNK
 
 #ifdef JUDYA
 Word_t j__AllocWordsJBL;  // Branch Linear
@@ -41,7 +41,7 @@ Word_t j__AllocWordsJBU16; // Branch Uncompressed 16-bit Decode
 Word_t j__AllocWordsJV12;  // Value Area 12-bit Decode
 #endif // JUDYB   
 
-#endif // 0
+#endif // JUNK
 
 #if defined(BPD_TABLE)
 
@@ -343,7 +343,7 @@ ListWords(int nPopCnt, int nBL)
     return ListWordsExternal(nPopCnt, nBL);
 }
 
-#if 0
+#if JUNK
 #define PSPLIT(_nWords, _nBL, _xKeyMin, _KeyMax, _xKey) \
     (_xKey - xKeyMin) * _nWords + _nWords / 2 / (_xKeyMax - _xKeyMin);
 
@@ -1063,7 +1063,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
     static Word_t sBitsReportedMask = 0;
     (void)sBitsReportedMask;
 #endif // defined(DEBUG_INSERT)
-#if 0
+#if JUNK
     if (0)
 #else
     // Threshold for converting bm sw into uncompressed switch.
@@ -1088,7 +1088,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
         }
 #endif // defined(DEBUG_INSERT)
 
-#if 0
+#if JUNK
         printf("A PWR_pwBm %p *PWR_pwBm %p\n",
                (void *)PWR_pwBm(pwRoot, pwr), (void *)*PWR_pwBm(pwRoot, pwr));
         Dump(pwRootLast, 0, cnBitsPerWord);
@@ -1100,7 +1100,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
                         nBL_to_nBitsIndexSz(nBLR),
 #endif // defined(CODE_XX_SW)
                         /*bBmSw*/ 0, nBLUp, wPopCntKeys);
-#if 0
+#if JUNK
         printf("B PWR_pwBm %p *PWR_pwBm %p\n",
                (void *)PWR_pwBm(pwRoot, pwr), (void *)*PWR_pwBm(pwRoot, pwr));
 #endif
@@ -1110,14 +1110,14 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
                 pwr_pLinks((Switch_t *)pwrNew)[nn]
                     = pwr_pLinks((BmSwitch_t *)pwr)[mm];
                 ++mm;
-#if 0
+#if JUNK
         printf("nn %d ln_wRoot %p\n",
                nn, (void *)pwr_pLinks((Switch_t *)pwrNew)[nn].ln_wRoot);
         printf("%p\n", (void *)&pwr_pLinks((BmSwitch_t *)pwr)[mm]);
 #endif
             }
         }
-#if 0
+#if JUNK
         printf("C PWR_pwBm %p *PWR_pwBm %p\n",
                (void *)PWR_pwBm(pwRoot, pwr), (void *)*PWR_pwBm(pwRoot, pwr));
         DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
