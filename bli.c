@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.604 2016/06/26 16:37:08 mike Exp mike $
+// @(#) $Id: bli.c,v 1.605 2016/06/26 17:00:32 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -3759,9 +3759,11 @@ Initialize(void)
     printf("# cnBW %d\n", cnBW);
     printf("# cnBWIncr %d\n", cnBWIncr);
 
+#if defined(USE_BM_SW)
     printf("\n");
     printf("# cnBmSwLinksPercent %d\n", cnBmSwLinksPercent);
     printf("# cnBmSwWpkPercent %d\n", cnBmSwWpkPercent);
+#endif // defined(USE_BM_SW)
 
     printf("\n");
     printf("# cnBinarySearchThresholdWord %d\n", cnBinarySearchThresholdWord);
