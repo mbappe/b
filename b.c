@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.509 2016/06/26 19:47:09 mike Exp mike $
+// @(#) $Id: b.c,v 1.510 2016/06/28 00:56:52 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -215,7 +215,7 @@ MyFree(Word_t *pw, Word_t wWords)
     if (wWords < EXP(16)) {
 #if defined(DEBUG)
         if ((pw[-1] >> 32) != ((pw[-1] & MSK(32)) >> 4)) {
-            printf("pw %p pw[0] "OWx"\n", pw, pw[0]);
+            printf("pw %p pw[0] "OWx"\n", (void*)pw, pw[0]);
             printf("wWords %ld pw[-1] "OWx"\n", wWords, pw[-1]);
         }
 #endif // defined(DEBUG)
@@ -1971,7 +1971,7 @@ static void
 CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, unsigned nKeys, Word_t wKey)
 {
     DBGI(printf("\nCopyWithInsertWord(pTgt %p pSrc %p nKeys %d wKey "OWx")\n",
-                pTgt, pSrc, nKeys, wKey));
+                (void *)pTgt, (void *)pSrc, nKeys, wKey));
 #if (cwListPopCntMax != 0)
     Word_t aw[cwListPopCntMax]; // buffer for move if pSrc == pTgt
 #else // (cwListPopCntMax != 0)
@@ -2017,7 +2017,7 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, unsigned nKeys,
                   uint32_t iKey)
 {
     DBGI(printf("\nCopyWithInsertInt(pTgt %p pSrc %p nKeys %d iKey 0x%x)\n",
-                pTgt, pSrc, nKeys, iKey));
+                (void *)pTgt, (void *)pSrc, nKeys, iKey));
 #if (cwListPopCntMax != 0)
     unsigned int ai[cwListPopCntMax]; // buffer for move if pSrc == pTgt
 #else // (cwListPopCntMax != 0)
@@ -3075,7 +3075,8 @@ embeddedKeys:;
                 || (ListWordsTypeList(wPopCnt + 1, nBL)
                         != ListWordsTypeList(wPopCnt, nBL)))
             {
-                DBGI(printf("pwr %p wPopCnt %ld nBL %d\n", pwr, wPopCnt, nBL));
+                DBGI(printf("pwr %p wPopCnt %ld nBL %d\n",
+                            (void *)pwr, wPopCnt, nBL));
                 DBGI(printf("nType %d\n", nType));
                 DBGI(printf("LWE %d LWE %d\n",
                             ListWordsExternal(wPopCnt + 1, nBL),
