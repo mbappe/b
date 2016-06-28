@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.510 2016/06/28 00:56:52 mike Exp mike $
+// @(#) $Id: b.c,v 1.511 2016/06/28 16:24:53 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -3218,7 +3218,7 @@ embeddedKeys:;
             // How should we decide a list is full?
             // Is a fixed max length at each depth the best way or should it depend
             // on the speed of the actual path to the list?
-            DBGI(printf("List is full.\n"));
+            DBGI(printf("List is full nBL %d.\n", nBL));
 #if defined(SKIP_LINKS)
 #if (cwListPopCntMax != 0)
 #if    (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) \
@@ -3373,6 +3373,8 @@ embeddedKeys:;
       || defined(CODE_XX_SW)
 newSwitch:
 #endif // ((cwListPopCntMax != 0) && ... ) || ...
+            DBGI(printf("InsertGuts newSwitch 0 nDL %d nBL %d nDLOld %d nBLOld %d\n",
+                        nDL, nBL, nDLOld, nBLOld));
 
             // Apply constraints that cause us to create the new switch
             // at a higher level than would be required if only the common
@@ -3388,19 +3390,17 @@ newSwitch:
             // skip to T_XX_SW yet and T_XX_SW is critically important at
             // DL2 and below.
             if ((nBL < cnBitsLeftAtDl3) && (nBLOld >= cnBitsLeftAtDl3)) {
-                DBGI(printf("InsertGuts nDL %d nBL %d nDLOld %d nBLOld %d\n",
-                           nDL, nBL, nDLOld, nBLOld));
                 nBL = cnBitsLeftAtDl3;
                 nDL = 3;
             }
 #else // defined(USE_XX_SW) && ! defined(SKIP_TO_XX_SW)
             if ((nBL < cnBitsLeftAtDl2) && (nBLOld >= cnBitsLeftAtDl2)) {
-                DBGI(printf("InsertGuts nDL %d nBL %d nDLOld %d nBLOld %d\n",
-                           nDL, nBL, nDLOld, nBLOld));
                 nBL = cnBitsLeftAtDl2;
                 nDL = 2;
             }
 #endif // defined(USE_XX_SW) && ! defined(SKIP_TO_XX_SW)
+            DBGI(printf("InsertGuts newSwitch 1 nDL %d nBL %d nDLOld %d nBLOld %d\n",
+                        nDL, nBL, nDLOld, nBLOld));
             assert(nBL > (int)LOG(sizeof(Link_t) * 8));
 
 #if defined(PP_IN_LINK)
