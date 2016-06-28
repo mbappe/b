@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.508 2016/06/26 19:43:17 mike Exp mike $
+// @(#) $Id: b.c,v 1.509 2016/06/26 19:47:09 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -3204,7 +3204,19 @@ embeddedKeys:;
         else
 #endif // (cwListPopCntMax != 0)
         {
-            // List is full; insert a switch or create a bitmap.
+            // List is full. What do we do now?
+            // - Partition the keys between two or more links?
+            //   - Widen the switch with the link to the list?
+            //   - Create and insert a new switch below the link to the list? 
+            // - Replace the list with a bitmap?
+            // - Speed up the full path to this list somehow so its okay to increase
+            //   the length of this list?
+            //   - Uncompress an existing compressed switch?
+            //   - Merge switches?
+            //   - Replace a compressed switch with a faster variant? Possible?
+            // How should we decide a list is full?
+            // Is a fixed max length at each depth the best way or should it depend
+            // on the speed of the actual path to the list?
             DBGI(printf("List is full.\n"));
 #if defined(SKIP_LINKS)
 #if (cwListPopCntMax != 0)
