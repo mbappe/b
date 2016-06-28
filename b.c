@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.512 2016/06/28 19:58:53 mike Exp mike $
+// @(#) $Id: b.c,v 1.513 2016/06/28 20:49:07 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1684,7 +1684,8 @@ embeddedKeys:;
 #if defined(EMBED_KEYS)
             if (EmbeddedListPopCntMax(nBL) != 0) {
                 for (unsigned nn = 0; nn < wPopCnt; nn++) {
-                    printf(" %08"_fw"x",
+                    //char fmt[5]; sprintf(fmt, " %%0%d"_fw"x", (int)LOG((nBL<<1)-1));
+                    printf(" %"_fw"x",
 #if defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(PACK_KEYS_RIGHT)
                         (wRoot >> (cnBitsPerWord - ((nn + nPopCntMax - wPopCnt + 1) * nBL)))
 #else // defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(PACK_KEYS_RIGHT)
@@ -3471,7 +3472,12 @@ newSwitch:
 #if defined(CODE_XX_SW)
                 if (nBL < nDL_to_nBL(2)) {
                     DBGI(printf("\n# Blow up nBL %d nPopCnt %d\n",
-                                nBL, wr_nPopCnt(*pwRoot, nBL)));
+                                nBL,
+                                // How do I get pop count here?
+                                // wr_nPopCnt(*pwRoot, nBL)*/
+                                // ls_xPopCnt(wr_pwr(*pwRoot), nBL)
+                                (int)wPopCnt
+                                ));
                 }
 
   #if defined(USE_XX_SW)
