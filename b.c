@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.511 2016/06/28 16:24:53 mike Exp mike $
+// @(#) $Id: b.c,v 1.512 2016/06/28 19:58:53 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -1823,6 +1823,11 @@ embeddedKeys:;
         }
 
         printf(" wr_nBL %2d", nBL);
+#if defined(CODE_XX_SW)
+        if (tp_bIsXxSw(nType)) {
+            printf(" wr_nBW %2d", nBitsIndexSz);
+        }
+#endif // defined(CODE_XX_SW)
 #if defined(CODE_BM_SW)
         // should enhance this to check for zeros in suffix and to print
         // dots for suffix.
