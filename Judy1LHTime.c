@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.5 $ $Source: /home/doug/judy-1.0.5_PSplit_goto_newLeaf3_U2_1K_1_L765_4th/test/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.30 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -2025,6 +2025,9 @@ main(int argc, char *argv[])
     printf("# random() = %4.2f nSec per/call\n", DeltanSecW/1000000);
     printf("#\n");
     
+    // Let Mike's code print out some initialization junk.
+    Judy1FreeArray(&J1, PJE0);
+
 // ============================================================
 // PRINT COLUMNS HEADER TO PERFORMANCE TIMERS
 // ============================================================
@@ -2038,9 +2041,6 @@ main(int argc, char *argv[])
     InsertSeed = StartSeed;             // for JudyIns
     BitmapSeed = StartSeed;             // for bitmaps
     LastPPop = 100.0;
-
-    // Let Mike's code print out some initialization junk.
-    Judy1FreeArray(&J1, PJE0);
 
     for (Pop1 = grp = 0; grp < Groups; grp++)
     {
