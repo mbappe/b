@@ -167,18 +167,18 @@ FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c t.c stubs.c Makefile
 FILES_FROM_ME += bb forx
 FILES_FROM_ME += README.meb
 FILES_FROM_ME += rcs.tjz
-# I periodically make changes to the files provided by Doug.
-FILES_FROM_DOUG_OR_DOUG = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c jbgraph
-FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_OR_DOUG)
+# I periodically make changes to the files provided by Doug B.
+FILES_FROM_DOUG_B_OR_DOUG_LEE = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c jbgraph JudyMalloc.c
+FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEE)
 
 EXES = t b
-OBJS = Judy1LHTime.o bl.o bi.o br.o b.o stubs.o dlmalloc.o
-ASMS = Judy1LHTime.s bl.s bi.s br.s b.s stubs.s dlmalloc.s t.s
-CPPS = Judy1LHTime.i bl.i bi.i br.i b.i stubs.i dlmalloc.i t.i
+OBJS = Judy1LHTime.o bl.o bi.o br.o b.o stubs.o JudyMalloc.o
+ASMS = Judy1LHTime.s bl.s bi.s br.s b.s stubs.s JudyMalloc.s t.s
+CPPS = Judy1LHTime.i bl.i bi.i br.i b.i stubs.i JudyMalloc.i t.i
 SYMS = t.dSYM bxc.dSYM
 
 T_SRCS = t.c
-T_OBJS = stubs.o dlmalloc.o
+T_OBJS = stubs.o JudyMalloc.o
 
 ##################################
 #
@@ -235,39 +235,8 @@ Judy1LHTime.o: Judy1LHTime.c
 stubs.o: stubs.c
 	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
 
-# Suppress warnings.  sbrk is deprecated.
-# Direct dlmalloc to use sbrk.
-#  -DHAVE_MORECORE=1 (default)
-# Direct dlmalloc to use 2MB sbrks.
-#  -Dmalloc_getpagesize=0x200000
-# Direct dlmalloc not to use sbrk.
-#  -DHAVE_MORECORE=0
-# Direct dlmalloc to use 2MB allocations with mmap.
-#  -DDEFAULT_MMAP_THRESHOLD=0x200000 -DDEFAULT_GRANULARITY=0X200000
-#
-# Doug's observations for linux kernel 3.14:
-#  - can request aligned buf from kernel with <huge-page> flag to mmap
-#  - but the number of successful such requests are subject to a kernel
-#    parameter which can be set via /proc, but the parameter has an upper
-#    limit of about 75% of system ram (?possibly affected by amount of
-#    swap space?)
-#  - without <huge-page> flag mmap will provide more than 75% of system
-#    ram in huge pages
-#
-dlmalloc.o: dlmalloc.c
-ifeq ($(SMALL_PAGES), 1)
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
-else
-ifeq ($(SBRK), 1)
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) \
-		-Dmalloc_getpagesize=0x200000 -c $^
-else
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -Dmalloc_getpagesize=0x200000 \
-		-DDEFAULT_MMAP_THRESHOLD=0x200000 \
-		-DDEFAULT_GRANULARITY=0X200000 -DHAVE_MORECORE=0 \
-		-Dmmap=Judy_mmap -Dsbrk=Judy_sbrk -Dmunmap=Judy_munmap -c $^
-endif
-endif
+JudyMalloc.o: JudyMalloc.c
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -DRAMMETRICS -c $^
 
 ############################
 #
@@ -291,7 +260,7 @@ stubs.s: stubs.c
 	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
 
 # Suppress warnings.  sbrk is deprecated.
-dlmalloc.s: dlmalloc.c
+JudyMalloc.s: JudyMalloc.c
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
 
 ############################
@@ -332,6 +301,6 @@ t.i: t.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
-dlmalloc.i: dlmalloc.c
+JudyMalloc.i: JudyMalloc.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
