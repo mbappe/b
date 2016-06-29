@@ -2039,6 +2039,9 @@ main(int argc, char *argv[])
     BitmapSeed = StartSeed;             // for bitmaps
     LastPPop = 100.0;
 
+    // Let Mike's code print out some initialization junk.
+    Judy1FreeArray(&J1, PJE0);
+
     for (Pop1 = grp = 0; grp < Groups; grp++)
     {
         Word_t    Delta;
