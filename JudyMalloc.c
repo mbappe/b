@@ -151,6 +151,7 @@ pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 {
     char *buf;
     Word_t remain, fronttrim;
+    (void)addr;
 
     assert(addr == 0);
 
@@ -207,6 +208,8 @@ pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 // JUDY INCLUDE FILES
 //#include "Judy.h"
 
+Word_t j__AllocWordsTOT;
+
 // ****************************************************************************
 // J U D Y   M A L L O C
 //
@@ -218,6 +221,14 @@ Word_t JudyMalloc(
 {
 	Word_t Addr;
 
+        if (Words < 4) {
+            j__AllocWordsTOT += 4;
+        } else {
+            j__AllocWordsTOT += Words + 1;
+            if ( (Words & 1) == 0 ) {
+                j__AllocWordsTOT += 1;
+            }
+        }
 	Addr = (Word_t) dlmalloc(Words * sizeof(Word_t));
 	return(Addr);
 
@@ -232,6 +243,14 @@ void JudyFree(
 	Word_t Words)
 {
 	(void) Words;
+        if (Words < 4) {
+            j__AllocWordsTOT -= 4;
+        } else {
+            j__AllocWordsTOT -= Words + 1;
+            if ( (Words & 1) == 0 ) {
+                j__AllocWordsTOT -= 1;
+            }
+        }
 	dlfree(PWord);
 
 } // JudyFree()
