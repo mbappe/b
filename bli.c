@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.605 2016/06/26 17:00:32 mike Exp mike $
+// @(#) $Id: bli.c,v 1.606 2016/06/26 17:43:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -3769,14 +3769,14 @@ Initialize(void)
     printf("# cnBinarySearchThresholdWord %d\n", cnBinarySearchThresholdWord);
 
     printf("\n");
-    int nPopCntMaxPrev = -1;
+    //int nPopCntMaxPrev = -1;
     for (int nBL = cnBitsPerWord; nBL > 0; --nBL) {
         int nPopCntMax;
         nPopCntMax = EmbeddedListPopCntMax(nBL);
         //if (nPopCntMax != nPopCntMaxPrev)
         {
             printf("# EmbeddedListPopCntMax(%2d)  %2d\n", nBL, nPopCntMax);
-            nPopCntMaxPrev = nPopCntMax;
+            //nPopCntMaxPrev = nPopCntMax;
         }
     }
 

@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.513 2016/06/28 20:49:07 mike Exp mike $
+// @(#) $Id: b.c,v 1.514 2016/06/28 23:23:08 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2476,6 +2476,7 @@ embeddedKeys:;
             }
         }
         assert(status == 1);
+        (void)status;
     }
 
 #if defined(NO_TYPE_IN_XX_SW)
