@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.27 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.5 $ $Source: /home/doug/judy-1.0.5_PSplit_goto_newLeaf3_U2_1K_1_L765_4th/test/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -7,25 +7,18 @@
 //   email - dougbaskins .at. yahoo.com -or- dougbaskins .at. gmail.com
 // =======================================================================
 
-#if (! (defined(JUDYA) || defined(JUDYB)))
-// #error "-DJUDYA or -DJUDYB MUST be specified."
-#define JUDYA   1
-#endif
 
-#if (defined(JUDYA) && defined(JUDYB))
-#error  "Only one of -DJUDYA or -DJUDYB may be specified."
-#endif
 
-#include <unistd.h>                     // sbrk()
+#include <unistd.h>                     // getopt()
+#include <getopt.h>                     // getopt_long()
 #include <stdlib.h>                     // exit(), malloc(), random()
 #include <stdio.h>                      // printf(), setbuf()
 #include <math.h>                       // pow()
 #include <time.h>                       // clock_gettime()
 #include <sys/utsname.h>                // uname()
 #include <errno.h>                      // errnoerrno
-#include <string.h>                     // strtok_r
-#include <strings.h>                    // bzero
-#include <getopt.h>
+#include <string.h>                     // strtok_r()
+#include <strings.h>                    // bzero()
 
 // Turn off assert(0) by default
 #ifndef DEBUG
@@ -41,9 +34,9 @@
 #define WARMUPCPU  10000000             // calls to random() to warmup CPU
 
 #if defined(__LP64__)
-#define        cLg2WS          3       // log2(sizeof(Word_t) - 64 bit
+#define        cLg2WS          3        // log2(sizeof(Word_t) - 64 bit
 #else // defined(__LP64__)
-#define        cLg2WS          2       // log2(sizeof(Word_t) - 32 bit
+#define        cLg2WS          2        // log2(sizeof(Word_t) - 32 bit
 #endif // defined(__LP64__)
 
 // =======================================================================
@@ -90,11 +83,13 @@
 //  For figuring out how much different structures contribute.   Must be 
 //  turned on in source compile of Judy with -DRAMMETRICS
 
-Word_t    j__SearchCompares;            // number times LGet/1Test called
+Word_t    j__MissCompares;            // number times LGet/1Test called
 Word_t    j__SearchPopulation;          // Population of Searched object
-Word_t    j__TreeDepth;                 // number time Branch_U called
+Word_t    j__DirectHits;                // Number of direct hits -- no search
+Word_t    j__SearchGets;                // Number of object calls
+//Word_t    j__TreeDepth;                 // number time Branch_U called
 
-#ifdef  JUDYA
+Word_t    j__AllocWordsTOT;
 Word_t    j__AllocWordsJBB;
 Word_t    j__AllocWordsJBU;
 Word_t    j__AllocWordsJBL;
@@ -107,23 +102,11 @@ Word_t    j__AllocWordsJLL4;
 Word_t    j__AllocWordsJLL5;
 Word_t    j__AllocWordsJLL6;
 Word_t    j__AllocWordsJLL7;
-#endif  // JUDYA  
 
-#ifdef  JUDYB
-Word_t    j__AllocWordsJBU4;
-Word_t    j__AllocWordsJBU8;
-Word_t    j__AllocWordsJBU16;
-Word_t    j__AllocWordsJV12;
-Word_t    j__AllocWordsJL12;
-Word_t    j__AllocWordsJL16;
-Word_t    j__AllocWordsJL32;
-#endif  // JUDYB   
 
 Word_t    j__AllocWordsJLLW;
 
-#ifdef  JUDYA
 Word_t    j__AllocWordsJV;
-#endif  // JUDYA 
 
 // This 64 Bit define may NOT work on all compilers
 
@@ -152,14 +135,14 @@ struct timespec TVBeg__, TVEnd__;
 // CLOCK_PROCESS_CPUTIME_ID
 #define STARTTm                                                         \
 {                                                                       \
-    clock_gettime(CLOCK_MONOTONIC, &TVBeg__);                           \
+    clock_gettime(CLOCK_MONOTONIC_RAW, &TVBeg__);                       \
 /*  asm volatile("" ::: "memory");   */                                 \
 }
 
 #define ENDTm(D) 							\
 { 									\
 /*    asm volatile("" ::: "memory");        */                          \
-    clock_gettime(CLOCK_MONOTONIC, &TVEnd__);   	                \
+    clock_gettime(CLOCK_MONOTONIC_RAW, &TVEnd__);   	                \
                                                                         \
     (D) = (double)(TVEnd__.tv_sec - TVBeg__.tv_sec) * 1E9 +             \
          ((double)(TVEnd__.tv_nsec - TVBeg__.tv_nsec));                 \
@@ -194,149 +177,27 @@ WaitForContextSwitch(Word_t Loops)
     }
 }
 
-//=======================================================================
-// J U D Y   D L M A L L O C interface for huge pages linux 3.13+ kernel
-//=======================================================================
-
-Word_t    MFlag = 0;                    // Print memory allocation on stderr
-
-void *Judy_sbrk (intptr_t);
-
-void *
-Judy_sbrk (intptr_t __delta)
-{
-    void *buf;
-
-    buf = sbrk(__delta);
-
-    if (MFlag)
-        fprintf(stderr, "%d = Judy_sbrk(0x%lx)\n", buf, (Word_t)__delta);
-
-    return(buf);
-}
-
-#include <sys/mman.h>
-
-int Judy_munmap(void *, size_t);
-
-int 
-Judy_munmap(void *addr, size_t length)
-{
-    int ret;
-
-    ret =  munmap(addr, length);
-
-    if (MFlag)
-    {
-        fprintf(stderr, "%d = Judy_munmap(0x%lx, 0x%lx)\n",
-                ret, (Word_t)addr, (Word_t)length);
-    }
-
-    return(ret);
-}
-
-/* The maximum possible size_t value has all bits set */
-#define MAX_SIZE_T      (~(size_t)0)
-#define MFAIL           ((void*)(MAX_SIZE_T))
-
-#define MMAP_PROT       (PROT_READ|PROT_WRITE)
-#define MMAP_FLAGS      (MAP_PRIVATE|MAP_ANONYMOUS)
-#define MIN(x,y)        ((x) < (y) ? (x) : (y))
-
-void * Judy_mmap(void *, size_t, int, int, int, off_t);
-
-//
-// 2Mb align buffers >= 2Mb, addr must == NULL
-
-void *
-Judy_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
-{
-    char *buf;
-    Word_t remain, fronttrim;
-
-    if (addr)
-    {
-        printf("\nOops addr = 0x%lx must be zero\n", (Word_t)addr);
-        exit(1);
-    }
-    buf = mmap(NULL, length, prot, flags, fd, offset);
-
-    if (MFlag)
-    {
-        fprintf(stderr, "0x%lx = Judy_mmap(0x%lx)\n",
-                (Word_t)buf, (Word_t)length);
-    }
-
-    if (buf == MFAIL)
-        return(buf);
-
-//  early out if buffer not 2MB
-    if (length != (Word_t)0x200000)
-        return(buf);
-
-    remain = (Word_t)buf % (Word_t)0x200000;
-
-    if (remain)            // if not aligned to 2MB
-    {
-//      free the mis-aligned buffer
-        Judy_munmap(buf, length);          
-
-//      Allocate again big enough to insure getting a buffer big enough that
-//      can be trimmed to  2MB alignment.
-        buf = mmap(NULL, length + (Word_t)0x200000, prot, flags, fd, offset);
-
-        if (MFlag)
-            fprintf(stderr, "0x%lx = Judy_mmap(0x%lx)\n", (long)buf, (long)length + (Word_t)0x200000);
-
-        if (buf == MFAIL)
-            return(buf);
-
-//      Now trim off mis-alignment bytes in beginning of buf
-        fronttrim = (long)0x200000 - remain;
-
-// fprintf(stderr, "fronttrim = 0x%lx, new buf = 0x%lx\n", fronttrim, (Word_t)buf + fronttrim);
-
-        Judy_munmap(buf, fronttrim);          
-        buf += fronttrim;                       // produce aligned buffer
-
-// fprintf(stderr, "remain = 0x%lx\n", remain);
-
-        Judy_munmap(buf + (Word_t)length, remain);          
-    }
-    return(buf);
-}
-
-// =======================================================================
-// J U D Y   M A L L O C
-// =======================================================================
-//
-// Allocate RAM.  This is the single location in Judy code that calls
-// malloc(3C).  Note:  JRS accounting occurs at a higher level.
-
-enum
-{
-    JudyMal1,
-    JudyMalL,
-    JudyMalHS,
-    MalOther
-} MalFlag;
+Word_t    j__MFlag;                    // Print memory allocation on stderr
+Word_t    j__TotalBytesAllocated;
 
 static Word_t MalFreeCnt = 0;
-
-Word_t    TotMalOvdWords = 0;
-Word_t    TotJudy1MemUsed = 0;
-Word_t    TotJudyLMemUsed = 0;
-Word_t    TotJudyHSMemUsed = 0;
-Word_t    TotOtherMemUsed = 0;
 
 #ifdef SELFALIGNED
 // Did not think very hard on this one.  I am sure their is a much
 // faster way to do it. (dlb)
 
 static int
-j__log2(uint32_t num)
+j__log2(Word_t num)
 {
     int       __lb = 0;
+
+#ifdef __LP64__
+    if (num >= ((Word_t)1 << 32))
+    {
+        num >>= 32;
+        __lb += 32;
+    }
+#endif  // __LP64__
 
     if (num >= (1 << 16))
     {
@@ -378,6 +239,7 @@ j__roundup2(Word_t Size)
 
 #endif // SELFALIGNED
 
+#ifdef internal_JudyMalloc
 // This routine replaces the one in libJudy.a so we can get a
 // measure of the memory used and counts of malloc().
 // It assumes that a dlmalloc() style of memory allocation is used.
@@ -387,7 +249,6 @@ JudyMalloc(Word_t Words)
 {
     size_t    Bytes;
     Word_t    Addr;
-    Word_t    MalOvd;
     Bytes = Words * sizeof(Word_t);
 
 
@@ -405,18 +266,13 @@ JudyMalloc(Word_t Words)
 #else // ! SELFALIGNED
 
 #ifdef  GUARDBAND
-#if ! defined(cnGuardWords)
-#define cnGuardWords 1
-#endif // ! defined(cnGuardWords)
-    Bytes += cnGuardWords * sizeof(Word_t);
+    Bytes += sizeof(Word_t);    // one word
 #endif  // GUARDBAND
 
     Addr = (Word_t)malloc(Bytes);
 
 #ifdef  GUARDBAND
-    for (int jj = 0; jj < cnGuardWords; jj++) { 
-        *((Word_t *)Addr + Bytes/sizeof(Word_t) - cnGuardWords + jj) = ~Addr;
-    }
+    *((Word_t *)Addr + ((Bytes/sizeof(Word_t)) - 1)) = ~Addr;
 #endif  // GUARDBAND
 
 #endif // ! SELFALIGNED
@@ -428,69 +284,18 @@ JudyMalloc(Word_t Words)
         exit(1);
     }
     if (Addr)
-    {
         MalFreeCnt++;                   // keep track of total malloc() + free()
-
-//      Calculate RAM overhead of (dl)malloc() (used in Linux)
-//      Odd sized (Word_t) mallocs have 1 word overhead while
-//      Even sized mallocs have a 2 word overhead.
-//
-        if (Words & 1)
-            MalOvd = 1;
-        else
-            MalOvd = 2;
-
-// printf("# JudyMalloc %d(%d) words\n", (int)Words, (int)MalOvd);
-
-        TotMalOvdWords += MalOvd;
-
-        switch (MalFlag)
-        {
-        case JudyMal1:
-            TotJudy1MemUsed += Words;
-            break;
-        case JudyMalL:
-            TotJudyLMemUsed += Words;
-            break;
-        case JudyMalHS:
-            TotJudyHSMemUsed += Words;
-            break;
-    case MalOther:
-            TotOtherMemUsed += Words;
-            break;
-        }
-    }
     return (Addr);
 }                                       // JudyMalloc()
 
 // ****************************************************************************
 // J U D Y   F R E E
 //
-// Note: Judy knows amount of memory being freed, though not needed by free()
-
-
-#ifdef  GUARDBAND
-void
-JudyCheckGuardband(void *PWord, Word_t Words)
-{
-    for (int jj = 0; jj < cnGuardWords; jj++) { 
-        Word_t *p = ((((Word_t *)PWord) + Words + jj));
-        Word_t GuardWord = *p;
-        if (~GuardWord != (Word_t)PWord)
-        {
-            printf("\nOops GuardWord at %p = 0x%lx = (~0x%lx)"
-                   " != PWord = 0x%lx\n",
-                (void *)p, GuardWord, ~GuardWord, (Word_t)PWord);
-            assert(0);
-        }
-    }
-}
-#endif  // GUARDBAND
+// Note: Judy knows amount of memory being released, though not needed by free()
 
 void
 JudyFree(void *PWord, Word_t Words)
 {
-    Word_t    MalOvd;
 
     if (Words == 0)
     {
@@ -500,38 +305,22 @@ JudyFree(void *PWord, Word_t Words)
     }
 
 #ifdef  GUARDBAND
-    JudyCheckGuardband(PWord, Words);
+    {
+        Word_t GuardWord;
+
+        GuardWord = *((((Word_t *)PWord) + Words));
+
+        if (~GuardWord != (Word_t)PWord)
+        {
+            printf("Oops GuardWord = 0x%lx != PWord = 0x%lx\n", GuardWord, (Word_t)PWord);
+            assert(0);
+        }
+    }
 #endif  // GUARDBAND
 
     free(PWord);
 
     MalFreeCnt++;                       // keep track of total malloc() + free()
-
-//  Calculate RAM overhead of (dl)malloc
-    if (Words & 1)
-        MalOvd = 1;
-    else
-        MalOvd = 2;
-
-// printf("# JudyFree %d(%d) words\n", (int)Words, (int)MalOvd);
-
-    TotMalOvdWords -= MalOvd;
-
-    switch (MalFlag)
-    {
-    case JudyMal1:
-        TotJudy1MemUsed -= Words;
-        break;
-    case JudyMalL:
-        TotJudyLMemUsed -= Words;
-        break;
-    case JudyMalHS:
-        TotJudyHSMemUsed -= Words;
-        break;
-    case MalOther:
-        TotOtherMemUsed -= Words;
-        break;
-    }
 }                                       // JudyFree()
 
 // ****************************************************************************
@@ -557,6 +346,7 @@ JudyFreeVirtual(void *PWord, Word_t Words)
 {
     JudyFree(PWord, Words);
 }                                       // JudyFreeVirtual()
+#endif  // internal JudyMalloc
 
 
 // =======================================================================
@@ -829,7 +619,8 @@ Word_t    tFlag = 0;                    // for general new testing
 Word_t    Tit = 1;                      // to measure with calling Judy
 Word_t    VFlag = 1;                    // To verify Value Area contains good Data
 Word_t    fFlag = 0;
-Word_t    Warmup = WARMUPCPU;           // default calls to random() to warm up CPU
+Word_t    KFlag = 0;                    // do a __sync_synchronize() in GetNextKey()
+Word_t    Warmup = 2000000000;          // nSec to warm up CPU
 Word_t    PreStack = 0;                 // to test for TLB collisions with stack
 
 Word_t    Offset = 0;                   // Added to Key
@@ -882,9 +673,8 @@ GetNextKey(PSeed_t PSeed)
 {
     Word_t    Key = 0xc1fc;
 
-#if defined(SYNC_SYNCHRONIZE)
-    __sync_synchronize();
-#endif // defined(SYNC_SYNCHRONIZE)
+    if (KFlag)
+            __sync_synchronize();  /* really slow */ 
 
     if (FValue)
         Key = FileKeys[PSeed->Order++];
@@ -998,31 +788,27 @@ PrintHeader(void)
         printf("  Heap: Words/Key");
     if (yFlag)
         printf("  Heap: Words/Key");
-    if (J1Flag)
-        printf(" 1heap/K");
-    if (JLFlag || JRFlag)
-        printf(" Lheap/K");
-    if (JHFlag)
-        printf(" HSheap/K");
+
+    if ((J1Flag + JLFlag + JHFlag) == 1)    // only if 1 Heap
+    {
+        if (J1Flag)
+            printf(" 1heap/K");
+        if (JLFlag || JRFlag)
+            printf(" Lheap/K");
+        if (JHFlag)
+            printf(" HSheap/K");
+    }
 
     if (mFlag && (bFlag == 0) && (yFlag == 0))
     {
 
-#ifdef  JUDYA
         printf(" JBB/K");
         printf(" JBU/K");
         printf(" JBL/K");
-#endif  // JUDYA  
 
-#ifdef  JUDYB
-        printf("  B4/K");
-        printf("  B8/K");
-        printf(" B16/K");
-#endif  // JUDYB   
 
         printf(" LWd/K");
 
-#ifdef  JUDYA
         printf("  L7/K");
         printf("  L6/K");
         printf("  L5/K");
@@ -1032,20 +818,13 @@ PrintHeader(void)
         printf("  L1/K");
         printf("  B1/K");
         printf("  JV/K");
-#endif  // JUDYA  
 
-#ifdef  JUDYB
-        printf(" L32/K");
-        printf(" L16/K");
-        printf(" L12/K");
-        printf(" V12/K");
-#endif  // JUDYB   
+        printf(" MisCmp");
+        printf(" %%DiHt");
 
-        printf(" #Cmprs");
-        printf(" %%Cmps");
-
-        printf(" TrDep");
-        printf(" MalOv/K");
+//        printf(" TrDep");
+        printf(" AvPop");
+        printf(" %%MalEff");
 
         if (J1Flag)
             printf(" MF1/K");
@@ -1064,7 +843,7 @@ Usage(int argc, char **argv)
 
     printf
         ("\n<<< Program to do performance measurements on Judy Arrays >>>\n\n");
-    printf("%s -n# -P# -S# -B# -T# -G# -s# -X# -1LHbIcCvdtDl\n\n", argv[0]);
+    printf("%s -n# -P# -S# -B# -T# -G# -s# -X# -1LHbIcCvdtDlMK\n\n", argv[0]);
     printf("Where: (default value is shown as [#])\n");
     printf("-n <#>  Max number of Keys used in JudyLGet/1Test [10000000]\n");
     printf("-P <#>  Measurement points per decade (1..1000) [50]\n");
@@ -1095,23 +874,24 @@ Usage(int argc, char **argv)
     printf("-C      Include timing of JudyCount tests\n");
     printf("-v      Include timing of Judy First/Last/Next/Prev tests\n");
     printf("-d      Include timing of Del/Unset\n");
-    printf("-p      Print number set used for testing (Diag) - takes presedence\n");
+    printf("-p      Print number set used for testing (Diag only) - takes presedence\n");
     printf
         ("-V      Turn OFF JudyLGet() verification tests (saving a cache-hit on 'Value')\n");
     printf
         ("-x      Turn ON 'waiting for context switch' flag -- smoother plots??\n");
     printf
-        ("-t      Print measured 'overhead' (nS) subtracted out (Number Generator, etc)\n");
+        ("-t      Print measured 'overhead' (nS) that was subtracted out (Number Generator, etc)\n");
     printf
         ("-D      'Mirror' Numbers from Generator (as in binary viewed with a mirror)\n");
     printf
-        ("-l      Do not smooth data with loops on same Keys (JudyGet/Test)\n");
+        ("-l      Do not smooth data with iteration at low (<100) populations (I.E do not JudyLDel/Judy1Unset)\n");
     printf
         ("-T <#>  Number of Keys to average JudyGet/Test times, 0 == MAX [1000000]\n");
     printf("-s <#>  Starting number in Number Generator [0x%lx]\n", StartSequent);
     printf("-g      Do a Get/Test right after every Ins/Set/Del/Unset (Diag only - adds to times)\n");
     printf("-i      Do a Ins/Set right after every Ins/Set (Diag only - adds to times)\n");
-    printf("-M      Print on stderr Judy_sbk, Judy_mmap, Judy_unmap calls (Diag only)\n");
+    printf("-M      Print on stderr Judy_mmap() and Judy_unmap() calls (Diag only)\n");
+    printf("-K      do a __sync_synchronize() in GetNextKey() (is mfence instruction in X86)\n"); 
 
     printf("\n");
 
@@ -1284,12 +1064,13 @@ main(int argc, char *argv[])
     Word_t    grp;
     Word_t    Pop1;
     Word_t    Meas;
-    double    TreeDepth = 0;
+//    double    TreeDepth = 0;
     Word_t    LittleOffset = 0;
     Word_t    BigOffset = 0;
 
-    double    SearchCompares = 0;
-    double    SearchPopulation = 0;          // Population of Searched object
+//    double    SearchPopulation = 0;     // Population of Searched object
+    double    DirectHits = 0;           // Number of direct hits
+    double    SearchGets = 0;           // Number of object calls
 
 //    long      MaxNumb;
     Word_t    MaxNumb;
@@ -1356,7 +1137,7 @@ main(int argc, char *argv[])
     while (1)
     {
         c = getopt_long(argc, argv,
-                   "a:n:S:T:P:s:B:G:X:W:o:O:F:b:dDcC1LHvIltmpxVfgiyRM", longopts, NULL);
+                   "a:n:S:T:P:s:B:G:X:W:o:O:F:b:dDcC1LHvIltmpxVfgiyRMK", longopts, NULL);
         if (c == -1)
             break;
 
@@ -1411,6 +1192,7 @@ main(int argc, char *argv[])
 
         case 'W':                      // Warm up CPU number of random() calls
             Warmup = oa2w(optarg, NULL, 0, c);
+            printf("\n\n-------------Warmup %lu\n", Warmup);
             break;
 
         case 'o': // Add <#> to generated keys, aka --LittleOffset=<#>.
@@ -1620,8 +1402,12 @@ main(int argc, char *argv[])
             JRFlag = 1;
             break;
 
-        case 'M':                      // print Judy_mmap, Judy_unmap, Judy_sbrk etc.
-            MFlag = 1;
+        case 'M':                      // print Judy_mmap, Judy_unmap etc.
+            j__MFlag = 1;
+            break;
+
+        case 'K':                      // do a __sync_synchronize() in GetNextKey()
+            KFlag = 1;
             break;
 
         default:
@@ -1694,8 +1480,7 @@ main(int argc, char *argv[])
 
     PStartSeed->Seeds[0] = StartSequent;
     {
-        MaxNumb = (RandomBit * 2);
-        if (SValue == 0) { MaxNumb -= 1; }
+        MaxNumb = (RandomBit * 2) - 1;
         if (nElms > MaxNumb)
         {
             printf("# Trim Max number of Elements -n%lu due to max -B%lu bit Keys",
@@ -1747,7 +1532,7 @@ main(int argc, char *argv[])
 
 //            printf(""OWx"\n", PrintKey);
 
-            printf("0x"Owx"\n", PrintKey);
+            printf("0x"Owx", %2d\n", PrintKey, (int)log2((double)(PrintKey)) + 1);
 
 #ifdef __LP64__
 //            printf("0x%016lx\n", PrintKey);
@@ -1802,8 +1587,10 @@ main(int argc, char *argv[])
         printf("x");
     if (!VFlag)
         printf("V");
-    if (MFlag)
+    if (j__MFlag)
         printf("M");
+    if (KFlag)
+        printf("K");
 
 //  print more options - default, adjusted or otherwise
     printf(" -n%lu -T%lu -P%lu -X%d", nElms, TValues, PtsPdec, XScale);
@@ -1961,7 +1748,7 @@ main(int argc, char *argv[])
     Col = 1;
     printf("# COLHEAD %2d Population of the Array\n", Col++);
     printf("# COLHEAD %2d Delta Inserts to the Array\n", Col++);
-    printf("# COLHEAD %2d Number of Measurments done by Get/Test\n", Col++);
+    printf("# COLHEAD %2d Number of Measurments done by JudyLGet/Judy1Test\n", Col++);
 
     if (tFlag)
         printf
@@ -2078,7 +1865,6 @@ main(int argc, char *argv[])
     if (mFlag)
     {
 
-#ifdef  JUDYA
         printf("# COLHEAD %2d JBB - Bitmap node Branch Words/Key\n", Col++);
         printf("# COLHEAD %2d JBU - 256 node Branch Words/Key\n", Col++);
         printf("# COLHEAD %2d JBL - Linear node Branch Words/Key\n", Col++);
@@ -2092,24 +1878,14 @@ main(int argc, char *argv[])
         printf("# COLHEAD %2d L1  - Leaf 1 Byte Key/Key\n", Col++);
         printf("# COLHEAD %2d B1  - Bitmap Leaf 1 Bit Key/Key\n", Col++);
         printf("# COLHEAD %2d VA  - Value area Words/Key\n", Col++);
-#endif  // JUDYA  
 
-#ifdef  JUDYB
-        printf("# COLHEAD %2d B4     - 16 node Branch Words/Key\n", Col++);
-        printf("# COLHEAD %2d B8     - 256 node Branch Words/Key\n", Col++);
-        printf("# COLHEAD %2d B16    - 65536 node Branch Words/Key\n", Col++);
-        printf("# COLHEAD %2d LW     - Leaf Word_t Key/Key\n", Col++);
-        printf("# COLHEAD %2d L32    - Leaf 32 bit Key/Key\n", Col++);
-        printf("# COLHEAD %2d L16    - Leaf 16 bit Key/Key\n", Col++);
-        printf("# COLHEAD %2d L12    - Leaf 4096 bit Key/Key\n", Col++);
-        printf("# COLHEAD %2d V12    - Value area Words/Key\n", Col++);
-#endif  // JUDYB   
 
-        printf("# COLHEAD %2d #Cmprs - Average number missed Compares Per Leaf Search\n", Col++);
-        printf("# COLHEAD %2d %%Cmps - Average %% of maximum Leaf Search\n", Col++);
+        printf("# COLHEAD %2d MisCmp - Average number missed Compares Per Leaf Search\n", Col++);
+        printf("# COLHEAD %2d %%DiHt - %% of Direct Hits per Leaf Search\n", Col++);
 
-        printf("# COLHEAD %2d TrDep  - Tree depth with LGet/1Test searches\n", Col++);
-        printf("# COLHEAD %2d MalOvd/K - Judy malloc'ed words per Key\n", Col++);
+//        printf("# COLHEAD %2d TrDep  - Tree depth with LGet/1Test searches\n", Col++);
+        printf("# COLHEAD %2d AvPop  - Average Current Leaf Population\n", Col++);
+        printf("# COLHEAD %2d %%MalEff - %% RAM malloc()ed vs mmap()ed from Kernel\n", Col++);
 
         if (J1Flag)
             printf
@@ -2141,8 +1917,6 @@ main(int argc, char *argv[])
              BValue);
         printf("#     fixed sized Bitmap of %lu bytes.\n", (Word_t)1 << (BValue - 3));
         printf("# ========================================================\n");
-
-        MalFlag = MalOther;
 
 //      Allocate a Bitmap
         Words = (Word_t)1 << (BValue - (3 + cLg2WS));
@@ -2190,8 +1964,6 @@ main(int argc, char *argv[])
         printf("#     fixed sized Bytemap of %lu bytes.\n", (Word_t)1 << BValue);
         printf("# ========================================================\n");
 
-        MalFlag = MalOther;
-
 //      Allocate a Bytemap
 
         Words = (Word_t)1 << (BValue - cLg2WS);
@@ -2228,20 +2000,31 @@ main(int argc, char *argv[])
 // Warm up the cpu
 // ============================================================
 
-//  Try to fool compiler and really execute random() WARMUPCPU times
+//  Try to fool compiler and really execute random()
     STARTTm;
-    for (MaxNumb = ii = 0; ii < Warmup; ii++)
+    do {
+        for (MaxNumb = ii = 0; ii < 1000000; ii++)
+            MaxNumb = random();
+
+        if (MaxNumb == 0)       // will never happen, but compiler does not know
+            printf("\n");
+
+        ENDTm(DeltanSecW);      // get accumlated elapsed time
+    } while (DeltanSecW < Warmup);       // until 2 seconds elapsed
+
+//  Now measure the execute time for 1M calls to random().
+    STARTTm;
+    for (MaxNumb = ii = 0; ii < 1000000; ii++)
         MaxNumb = random();
+    ENDTm(DeltanSecW);      // get elapsed time
 
-    ENDTm(DeltanSecW);
+    if (MaxNumb == 0)       // will never happen, but compiler does not know
+            printf("\n");
 
-    if (MaxNumb == 0)           // never happpen?, but compiler does not know
-        printf("\n");
-
-    printf("# Warm up CPU (-W %lu) =  %3.1f mSec, random() = %4.2f nSec per/call\n", 
-            Warmup, DeltanSecW/1E6, DeltanSecW/Warmup);
+//  If this number is not consistant, then a longer warmup period is required
+    printf("# random() = %4.2f nSec per/call\n", DeltanSecW/1000000);
     printf("#\n");
-
+    
 // ============================================================
 // PRINT COLUMNS HEADER TO PERFORMANCE TIMERS
 // ============================================================
@@ -2282,6 +2065,8 @@ main(int argc, char *argv[])
             LastPPop *= 10.0;
             PrintHeader();
         }
+
+        printf("%11lu %10lu %10lu", Pop1, Delta, Meas);
 
 #if defined(SWAP)
         if (J1Flag)
@@ -2332,14 +2117,11 @@ main(int argc, char *argv[])
             Tit = 1;                    // include Judy
             WaitForContextSwitch(Delta);
             TestJudyIns(&J1, &JL, &JH, &InsertSeed, Delta);
-            double J1S1 = DeltanSec1; // save for printing later
-            double J1S0 = DeltaGen1; // save for printing later
-
             if (J1Flag)
             {
                 if (tFlag)
                     PRINT6_1f(DeltaGen1);
-                //DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
+                DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
             }
             if (JLFlag)
             {
@@ -2379,17 +2161,15 @@ main(int argc, char *argv[])
             WaitForContextSwitch(Meas);
             TestJudyGet(J1, JL, JH, &BeginSeed, Meas);
 
-            TreeDepth        = j__TreeDepth;
-
-            SearchCompares   = j__SearchCompares;
-            SearchPopulation = j__SearchPopulation;
+//            TreeDepth        = j__TreeDepth;
+//            SearchPopulation = j__SearchPopulation;
+            DirectHits      = j__DirectHits;           // Number of direct hits
+            SearchGets       = j__SearchGets;           // Number of object calls
 
             if (J1Flag)
             {
                 if (tFlag)
                     PRINT6_1f(DeltaGen1);
-printf("%11lu %10lu %10lu", Pop1, Delta, Meas);
-DONTPRINTLESSTHANZERO(J1S1, J1S0);
                 DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
             }
             if (JLFlag)
@@ -2440,10 +2220,11 @@ DONTPRINTLESSTHANZERO(J1S1, J1S0);
             WaitForContextSwitch(Meas);
             TestJudyLGet(JL, &BeginSeed, Meas);
 
-            TreeDepth        = j__TreeDepth;
+//            TreeDepth        = j__TreeDepth;
 
-            SearchCompares   = j__SearchCompares;
-            SearchPopulation = j__SearchPopulation;
+//            SearchPopulation = j__SearchPopulation;
+            DirectHits       = j__DirectHits;           // Number of direct hits
+            SearchGets       = j__SearchGets;           // Number of object calls
 
             if (tFlag)
                 PRINT6_1f(DeltaGenL);
@@ -2694,43 +2475,36 @@ DONTPRINTLESSTHANZERO(J1S1, J1S0);
             TestJudyIns(&J1, &JL, &JH, &BeginSeed, Meas);
         }
 
-        if (J1Flag)
-            PRINT7_3f((double)TotJudy1MemUsed / (double)Pop1);
-
-        if (JLFlag || JRFlag)
-            PRINT7_3f((double)TotJudyLMemUsed / (double)Pop1);
-
-        if (JHFlag)
-            PRINT7_3f((double)TotJudyHSMemUsed / (double)Pop1);
+        if ((J1Flag + JLFlag + JHFlag) == 1)            // only 1 Heap
+            PRINT7_3f((double)j__AllocWordsTOT / (double)Pop1);
 
         if (mFlag && (bFlag == 0) && (yFlag == 0))
         {
-            double AveSrcCmp, PercentLeafSearched;
+//            double AveSrcCmp, PercentLeafSearched;
+            double PercentLeafWithDirectHits;
             
 //          Calc average compares done in Leaf for this measurement interval
-            AveSrcCmp = SearchCompares / (double)Meas;
+//            AveSrcCmp = SearchCompares / (double)Meas;
+//            AveSrcCmp = DirectHits / SearchGets;
 
 //          Calc average percent of Leaf searched
-            if (SearchPopulation == 0)
-                PercentLeafSearched = 0.0;
+//            if (SearchPopulation == 0)
+//                PercentLeafWithDirectHits = 0.0;
+//            else
+//                PercentLeafWithDirectHits = SearchCompares / SearchPopulation * 100.0;
+//
+            if (SearchGets == 0)
+                PercentLeafWithDirectHits = 0.0;
             else
-                PercentLeafSearched = SearchCompares / SearchPopulation * 100.0;
+                PercentLeafWithDirectHits = DirectHits / SearchGets * 100.0;
 
-#ifdef  JUDYA
-            PRINT5_2f((double)j__AllocWordsJBB   / (double)Pop1);       // 16 node branch
+            PRINT5_2f((double)j__AllocWordsJBB   / (double)Pop1);       // 256 node branch
             PRINT5_2f((double)j__AllocWordsJBU   / (double)Pop1);       // 256 node branch
-            PRINT5_2f((double)j__AllocWordsJBL   / (double)Pop1);       // 16384 node branch
-#endif  // JUDYA  
+            PRINT5_2f((double)j__AllocWordsJBL   / (double)Pop1);       // xx node branch
 
-#ifdef  JUDYB
-            PRINT5_2f((double)j__AllocWordsJBU4  / (double)Pop1);       // 16 node branch
-            PRINT5_2f((double)j__AllocWordsJBU8  / (double)Pop1);       // 256 node branch
-            PRINT5_2f((double)j__AllocWordsJBU16 / (double)Pop1);       // 16384 node branch
-#endif  // JUDYB   
 
             PRINT5_2f((double)j__AllocWordsJLLW  / (double)Pop1);       // 32[64] Key
 
-#ifdef  JUDYA
             PRINT5_2f((double)j__AllocWordsJLL7  / (double)Pop1);       // 32 bit Key
             PRINT5_2f((double)j__AllocWordsJLL6  / (double)Pop1);       // 16 bit Key
             PRINT5_2f((double)j__AllocWordsJLL5  / (double)Pop1);       // 16 bit Key
@@ -2740,30 +2514,36 @@ DONTPRINTLESSTHANZERO(J1S1, J1S0);
             PRINT5_2f((double)j__AllocWordsJLL1  / (double)Pop1);       // 12 bit Key
             PRINT5_2f((double)j__AllocWordsJLB1  / (double)Pop1);       // 12 bit Key
             PRINT5_2f((double)j__AllocWordsJV    / (double)Pop1);       // Values for 12 bit
-#endif  // JUDYA  
 
-#ifdef  JUDYB
-            PRINT5_2f((double)j__AllocWordsJL32  / (double)Pop1);       // 32 bit Key
-            PRINT5_2f((double)j__AllocWordsJL16  / (double)Pop1);       // 16 bit Key
-            PRINT5_2f((double)j__AllocWordsJL12  / (double)Pop1);       // 12 bit Key
-            PRINT5_2f((double)j__AllocWordsJV12  / (double)Pop1);       // Values for 12 bit
-#endif  // JUDYB   
+
+// SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSss
+
 
 //          print average number of failed compares done in leaf search
-            printf(" %6.1f", AveSrcCmp);
+//            printf(" %6.1f", AveSrcCmp);
+            printf(" %6.1f", j__MissCompares / (double)Meas);
 
 //          print average percent of Leaf searched (with compares)
-            printf(" %5.1f", PercentLeafSearched);
+            printf(" %5.1f", PercentLeafWithDirectHits);
 
 //          print average number of Branches traversed per lookup
-            printf(" %5.1f", TreeDepth / (double)Meas);
+//            printf(" %5.1f", TreeDepth / (double)Meas);
+//
+            if (j__SearchGets == 0)
+                printf(" %5.1f", 0.0);
+            else
+                printf(" %5.1f", (double)j__SearchPopulation / (double)j__SearchGets);
 
 //          reset for next measurement
-            j__SearchPopulation = j__TreeDepth = j__SearchCompares = 0;
+//            j__SearchPopulation = j__TreeDepth = j__MissCompares = j__DirectHits = j__SearchGets = 0;
+            j__SearchPopulation = j__MissCompares = j__DirectHits = j__SearchGets = 0;
 
-//          print the number of words used in malloc overhead per Key
-            PRINT5_2f((double)TotMalOvdWords / (double)Pop1);
 
+// SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSss
+
+
+//          Print the percent efficiency of dlmalloc
+            PRINT7_3f(j__AllocWordsTOT / (double)(j__TotalBytesAllocated / sizeof(Word_t)));
             if (J1Flag)
                 PRINT5_2f((double)DeltaMalFre1);
             if (JLFlag || JRFlag)
@@ -2773,7 +2553,7 @@ DONTPRINTLESSTHANZERO(J1S1, J1S0);
         }
         if (yFlag || bFlag)
         {
-            printf(" %14.2f", (double)TotOtherMemUsed / (double)Pop1);
+            printf(" %14.2f", ((double)j__TotalBytesAllocated / sizeof(Word_t)) / (double)Pop1);
         }
         printf("\n");
         if (fFlag)
@@ -2813,7 +2593,7 @@ DONTPRINTLESSTHANZERO(J1S1, J1S0);
         DeltanSec1 /= (double)Count1;
 
         printf
-            ("# Judy1FreeArray:  %lu, %0.3f Words/Key, %lu Bytes, %0.2f nSec/Key\n",
+            ("# Judy1FreeArray:  %lu, %0.3f Words/Key, %lu Bytes released, %0.3f nSec/Key\n",
              Count1, (double)(Bytes / sizeof(Word_t)) / (double)Count1, Bytes,
              DeltanSec1);
     }
@@ -2826,7 +2606,7 @@ DONTPRINTLESSTHANZERO(J1S1, J1S0);
 
         DeltanSecL /= (double)CountL;
         printf
-            ("# JudyLFreeArray:  %lu, %0.3f Words/Key, %lu Bytes, %0.2f nSec/Key\n",
+            ("# JudyLFreeArray:  %lu, %0.3f Words/Key, %lu Bytes released, %0.3f nSec/Key\n",
              CountL, (double)(Bytes / sizeof(Word_t)) / (double)CountL, Bytes,
              DeltanSecL);
     }
@@ -2846,7 +2626,7 @@ DONTPRINTLESSTHANZERO(J1S1, J1S0);
 
         DeltanSecHS /= (double)nElms;   // no Counts yet
         printf
-            ("# JudyHSFreeArray: %lu, %0.3f Words/Key, %0.2f nSec/Key\n",
+            ("# JudyHSFreeArray: %lu, %0.3f Words/Key, %0.3f nSec/Key\n",
              nElms, (double)(Bytes / sizeof(Word_t)) / (double)nElms,
              DeltanSecHS);
     }
@@ -2954,7 +2734,6 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
 
     if (J1Flag)
     {
-        MalFlag = JudyMal1;
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
@@ -3044,7 +2823,6 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
 
     if (JLFlag)
     {
-        MalFlag = JudyMalL;
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
@@ -3114,7 +2892,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                             }
                             if (PValueNew != PValue)
                             {
-                                printf("\n#Caution: PValueNew = 0x%lx, PValueold = 0x%lx changed\n", (Word_t)PValueNew, (Word_t)PValue);
+                                printf("\n#Line = %d, Caution: PValueNew = 0x%lx, PValueold = 0x%lx changed\n", __LINE__, (Word_t)PValueNew, (Word_t)PValue);
 //                                printf("- ValueNew = 0x%lx, Valueold = 0x%lx\n", *PValueNew, *PValue);
 //                                FAILURE("Second JudyLIns failed with wrong PValue after Insert", TstKey);
                             }
@@ -3170,7 +2948,6 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
 
     if (JHFlag)
     {
-        MalFlag = JudyMalHS;
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
@@ -3252,6 +3029,7 @@ TestJudyLIns(void **JL, PSeed_t PSeed, Word_t Elements)
     Word_t    StartMallocs;
 
     DeltanSecL = 0.0;
+    PValue = (PWord_t)NULL;
 
     WorkingSeed = *PSeed;
 
@@ -3263,7 +3041,6 @@ TestJudyLIns(void **JL, PSeed_t PSeed, Word_t Elements)
     }
 
 //  JudyLIns timings
-    MalFlag = JudyMalL;
     for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
     {
         WorkingSeed = *PSeed;
@@ -3353,7 +3130,6 @@ TestJudyDup(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
 
     if (J1Flag)
     {
-        MalFlag = JudyMal1;
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
@@ -3390,7 +3166,6 @@ TestJudyDup(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
 
     if (JLFlag)
     {
-        MalFlag = JudyMalL;
         for (DminTime = 1e40, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
@@ -3435,7 +3210,6 @@ TestJudyDup(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
 
     if (JHFlag)
     {
-        MalFlag = JudyMalHS;
         for (DminTime = 1e40, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
@@ -3513,13 +3287,13 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
 
     if (J1Flag)
     {
-        MalFlag = JudyMal1;
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
 
 //          reset for next measurement
-            j__SearchPopulation = j__TreeDepth = j__SearchCompares = 0;
+//            j__SearchPopulation = j__TreeDepth = j__MissCompares = j__DirectHits = j__SearchGets = 0;
+            j__SearchPopulation = j__MissCompares = j__DirectHits = j__SearchGets = 0;
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
@@ -3568,13 +3342,13 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
 
     if (JLFlag)
     {
-        MalFlag = JudyMalL;
         for (DminTime = 1e40, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
 
 //          reset for next measurement
-            j__SearchPopulation = j__TreeDepth = j__SearchCompares = 0;
+//            j__SearchPopulation = j__TreeDepth = j__MissCompares = j__DirectHits = j__SearchGets = 0;
+            j__SearchPopulation = j__MissCompares = j__DirectHits = j__SearchGets = 0;
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
@@ -3625,12 +3399,12 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
 
     if (JHFlag)
     {
-        MalFlag = JudyMalHS;
         for (DminTime = 1e40, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
 
-            j__SearchPopulation = j__TreeDepth = j__SearchCompares = 0;
+//            j__SearchPopulation = j__TreeDepth = j__MissCompares = j__DirectHits = j__SearchGets = 0;
+            j__SearchPopulation = j__MissCompares = j__DirectHits = j__SearchGets = 0;
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
@@ -3696,7 +3470,8 @@ TestJudyLGet(void *JL, PSeed_t PSeed, Word_t Elements)
         WorkingSeed = *PSeed;
 
 //      reset for next measurement
-        j__SearchPopulation = j__TreeDepth = j__SearchCompares = 0;
+//        j__SearchPopulation = j__TreeDepth = j__MissCompares = j__DirectHits = j__SearchGets = 0;
+            j__SearchPopulation = j__MissCompares = j__DirectHits = j__SearchGets = 0;
 
         TstKey = GetNextKey(&WorkingSeed);      // Get 1st Key
         STARTTm;
@@ -3743,7 +3518,6 @@ TestJudy1Copy(void *J1, Word_t Elements)
     if (lFlag)
         Loops = 1;
 
-    MalFlag = JudyMal1;
     for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
     {
         Word_t    NextKey;
@@ -4442,7 +4216,6 @@ TestJudyDel(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
     {
         WorkingSeed = *PSeed;
 
-        MalFlag = JudyMal1;
         STARTTm;
         for (elm = 0; elm < Elements; elm++)
         {
@@ -4462,20 +4235,6 @@ TestJudyDel(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                     printf("--- Key = 0x%lx", TstKey);
                     FAILURE("Judy1Unset ret Rcode != 1", Rc);
                 }
-
-                // Try to delete the just deleted key to make sure it fails.
-#ifdef SKIPMACRO
-                Rc = Judy1Unset(J1, TstKey, PJE0);
-#else
-                J1U(Rc, *J1, TstKey);
-#endif // SKIPMACRO
-
-                if (Rc != 0)
-                {
-                    printf("--- Key = 0x%lx", TstKey);
-                    FAILURE("Judy1Unset ret Rcode != 0", Rc);
-                }
-
 
                 if (gFlag)
                 {
@@ -4499,7 +4258,6 @@ TestJudyDel(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
 
 // reset PSeed to beginning of Inserts
 //
-        MalFlag = JudyMalL;
         STARTTm;
         for (elm = 0; elm < Elements; elm++)
         {
@@ -4543,7 +4301,6 @@ TestJudyDel(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
 
 // reset PSeed to beginning of Inserts
 //
-        MalFlag = JudyMalHS;
         STARTTm;
         for (elm = 0; elm < Elements; elm++)
         {
@@ -4589,23 +4346,19 @@ TestByteTest(PSeed_t PSeed, Word_t Elements)
         WorkingSeed = *PSeed;
 
         STARTTm;
+
         for (elm = 0; elm < Elements; elm++)
         {
             TstKey = GetNextKey(&WorkingSeed);
 
             if (Tit)
             {
-//    __sync_synchronize();  /* really slow */ 
                 if (By[TstKey] == 0)
                 {
                     printf("\nByteGet -- missing bit, Key = 0x%lx",
                            TstKey);
                     FAILURE("ByteGet Word = ", elm);
                 }
-            }
-//            else
-            {
-//    __sync_synchronize();  /* really slow */ 
             }
         }
         ENDTm(DeltanSecBy);
