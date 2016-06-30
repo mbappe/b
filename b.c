@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.514 2016/06/28 23:23:08 mike Exp mike $
+// @(#) $Id: b.c,v 1.516 2016/06/29 17:45:27 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -3224,7 +3224,7 @@ embeddedKeys:;
             //   - Replace a compressed switch with a faster variant? Possible?
             // How should we decide a list is full?
             // Is a fixed max length at each depth the best way or should it depend
-            // on the speed of the actual path to the list?
+            // on attributes of the actual path to the list?
             DBGI(printf("List is full nBL %d.\n", nBL));
 #if defined(SKIP_LINKS)
 #if (cwListPopCntMax != 0)
