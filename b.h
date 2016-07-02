@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.393 2016/06/26 17:36:09 mike Exp mike $
+// @(#) $Id: b.h,v 1.394 2016/06/26 19:26:54 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -362,11 +362,13 @@ typedef Word_t Bucket_t;
   #define LVL_IN_WR_HB
 #endif // ! defined(DEPTH_IN_SW) && ! defined(NO_LVL_IN_WR_HB)
 
+#if defined(CODE_XX_SW)
 // Default is -DSKIP_TO_XX_SW.
 #if ! defined(NO_SKIP_TO_XX_SW)
 #undef SKIP_TO_XX_SW
 #define SKIP_TO_XX_SW
 #endif // ! defined(NO_SKIP_TO_XX_SW)
+#endif // defined(CODE_XX_SW)
 
 // Default is -DSKIP_TO_BITMAP if -DSKIP_TO_XX_SW.
 #if defined(SKIP_TO_XX_SW)
