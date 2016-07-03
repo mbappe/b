@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.516 2016/06/29 17:45:27 mike Exp mike $
+// @(#) $Id: b.c,v 1.517 2016/06/30 17:26:00 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -5576,9 +5576,11 @@ Initialize(void)
     printf("# cnNonBmLeafPopCntMax n/a\n");
 #endif // defined(cnNonBmLeafPopCntMax)
 
+#if defined(CODE_XX_SW)
     printf("\n");
     printf("# cnBW %d\n", cnBW);
     printf("# cnBWIncr %d\n", cnBWIncr);
+#endif // defined(CODE_XX_SW)
 
 #if defined(USE_BM_SW)
     printf("\n");
