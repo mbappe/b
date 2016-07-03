@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.517 2016/06/30 17:26:00 mike Exp mike $
+// @(#) $Id: b.c,v 1.519 2016/07/03 21:15:36 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2247,8 +2247,13 @@ static void InsertAll(Word_t *pwRootOld,
 
 // Default cnBmWpkPercent is 80, create bm at 80% wpk.
 #if ! defined(cnBmWpkPercent)
+#if (cnBitsInD1 == 8)
 #undef cnBmWpkPercent
 #define cnBmWpkPercent  80
+#else
+#undef cnBmWpkPercent
+#define cnBmWpkPercent  0
+#endif // (cnBitsInD1 == 8)
 #endif // ! defined(cnBmWpkPercent)
 
 void
