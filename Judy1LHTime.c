@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.30 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.31 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -2026,7 +2026,8 @@ main(int argc, char *argv[])
     printf("#\n");
     
     // Let Mike's code print out some initialization junk.
-    Judy1FreeArray(&J1, PJE0);
+    // Judy1FreeArray normally requires a non-NULL pointer.
+    Judy1FreeArray(NULL, PJE0);
 
 // ============================================================
 // PRINT COLUMNS HEADER TO PERFORMANCE TIMERS
