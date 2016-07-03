@@ -2244,9 +2244,18 @@ HexDump(char *str, Word_t *pw, unsigned nWords)
 // nDL does not include any skip in *pwRoot/wRoot.
 static void InsertAll(Word_t *pwRootOld,
                       int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL);
+
+// Default cnBmWpkPercent is 80, create bm at 80% wpk.
+#if ! defined(cnBmWpkPercent)
+#undef cnBmWpkPercent
+#define cnBmWpkPercent  80
+#endif // ! defined(cnBmWpkPercent)
+
 void
 InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
 {
+    (void)wKey; (void)nBL, (void)pwRoot; (void)wRoot;
+#if (cnBmWpkPercent != 0) // conversion to big bitmap enabled
     int nDL = nBL_to_nDL(nBL);
 
 // Default cnNonBmLeafPopCntMax is 1280.  Keep W/K <= 1.
@@ -2254,15 +2263,10 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
     #define cnNonBmLeafPopCntMax  0
 #endif // ! defined(cnNonBmLeafPopCntMax)
 
-    (void)wKey; (void)nDL; (void)pwRoot; (void)wRoot;
+    (void)nDL;
     int nType = wr_nType(wRoot);
     Word_t *pwr = wr_pwr(wRoot); (void)pwr;
     Word_t wPopCnt;
-// Default cnBmWpkPercent is 80, create bm at 80% wpk.
-#if ! defined(cnBmWpkPercent)
-#undef cnBmWpkPercent
-#define cnBmWpkPercent  80
-#endif // ! defined(cnBmWpkPercent)
     if ((nBL == nDL_to_nBL(2))
         && tp_bIsSwitch(nType)
         && ! tp_bIsSkip(nType)
@@ -2393,6 +2397,7 @@ embeddedKeys:;
         assert(count == (int)wPopCnt);
 #endif // defined(DEBUG)
     }
+#endif // (cnBmWpkPercent != 0)
 }
 
 #if (cwListPopCntMax != 0)
@@ -4756,8 +4761,6 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
 // ***************************************************************************
 // JUDY1 FUNCTIONS:
 
-static int bInitialized;
-
 static void
 Initialize(void)
 {
@@ -5614,8 +5617,6 @@ Initialize(void)
 #endif // defined(cnMallocExtraWords)
 
     printf("\n");
-
-    bInitialized = 1;
 }
 
 Word_t
@@ -5625,7 +5626,10 @@ Judy1FreeArray(PPvoid_t PPArray, P_JE)
 
     DBGR(printf("Judy1FreeArray\n"));
 
-    if ((*PPArray == NULL) && ! bInitialized ) {
+    // A real user shouldn't pass NULL to Judy1FreeArray.
+    // Judy1LHTime uses NULL to give us an opportunity to print
+    // configuration info into the log file before we start testing.
+    if (PPArray == NULL) {
         Initialize();
     }
 
