@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.520 2016/07/03 21:45:42 mike Exp mike $
+// @(#) $Id: b.c,v 1.521 2016/07/04 12:08:45 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -4771,6 +4771,13 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
 static void
 Initialize(void)
 {
+    // There may be an issue with dlmalloc and greater than 2MB (size of huge
+    // page) requests. Dlmalloc may mmap something other than an integral
+    // multiple of 2MB. Since our bitmaps contain an extra word at the end
+    // we need to be careful about bitmaps that 2MB plus one word and bigger. 
+    assert((cnBitsInDl2 < 24)
+        || ((cn2dBmWpkPercent == 0) && (cnBitsInD1 < 24)));
+
     // Search assumes lists are sorted if LIST_END_MARKERS is defined.
 #if defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
     assert(0);
