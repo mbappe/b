@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.519 2016/07/03 21:15:36 mike Exp mike $
+// @(#) $Id: b.c,v 1.520 2016/07/03 21:45:42 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2245,22 +2245,24 @@ HexDump(char *str, Word_t *pw, unsigned nWords)
 static void InsertAll(Word_t *pwRootOld,
                       int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL);
 
-// Default cnBmWpkPercent is 80, create bm at 80% wpk.
-#if ! defined(cnBmWpkPercent)
-#if (cnBitsInD1 == 8)
-#undef cnBmWpkPercent
-#define cnBmWpkPercent  80
+// Default cn2dBmWpkPercent is 80, create 2-digit bm at 80% wpk.
+#if ! defined(cn2dBmWpkPercent)
+#undef cn2dBmWpkPercent
+#define cn2dBmWpkPercent  80
 #else
-#undef cnBmWpkPercent
-#define cnBmWpkPercent  0
-#endif // (cnBitsInD1 == 8)
-#endif // ! defined(cnBmWpkPercent)
+#undef cn2dBmWpkPercent
+#define cn2dBmWpkPercent  0
+#endif // ! defined(cn2dBmWpkPercent)
 
+// Looks like the main/sole purpose of InsertCleanup at this point is to
+// replace a 2-digit switch and whatever is hanging off of it with a
+// a 2-digit bitmap once the population supports it as defined by
+// cn2dBmWpkPercent.
 void
 InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
 {
     (void)wKey; (void)nBL, (void)pwRoot; (void)wRoot;
-#if (cnBmWpkPercent != 0) // conversion to big bitmap enabled
+#if (cn2dBmWpkPercent != 0) // conversion to big bitmap enabled
     int nDL = nBL_to_nDL(nBL);
 
 // Default cnNonBmLeafPopCntMax is 1280.  Keep W/K <= 1.
@@ -2279,7 +2281,7 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
         && ! tp_bIsBmSw(nType)
 #endif // defined(CODE_BM_SW)
         && (((wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBL))
-                >= (EXP(nBL) * 100 / cnBitsPerWord / cnBmWpkPercent))
+                >= (EXP(nBL) * 100 / cnBitsPerWord / cn2dBmWpkPercent))
             || ((cnNonBmLeafPopCntMax != 0)
                 && (wPopCnt > cnNonBmLeafPopCntMax))))
     {
@@ -2402,7 +2404,7 @@ embeddedKeys:;
         assert(count == (int)wPopCnt);
 #endif // defined(DEBUG)
     }
-#endif // (cnBmWpkPercent != 0)
+#endif // (cn2dBmWpkPercent != 0)
 }
 
 #if (cwListPopCntMax != 0)
