@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.521 2016/07/04 12:08:45 mike Exp mike $
+// @(#) $Id: b.c,v 1.522 2016/07/04 12:38:30 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -4775,7 +4775,7 @@ Initialize(void)
     // page) requests. Dlmalloc may mmap something other than an integral
     // multiple of 2MB. Since our bitmaps contain an extra word at the end
     // we need to be careful about bitmaps that 2MB plus one word and bigger. 
-    assert((cnBitsInDl2 < 24)
+    assert((cnBitsLeftAtDl2 < 24)
         || ((cn2dBmWpkPercent == 0) && (cnBitsInD1 < 24)));
 
     // Search assumes lists are sorted if LIST_END_MARKERS is defined.
@@ -5643,9 +5643,7 @@ Judy1FreeArray(PPvoid_t PPArray, P_JE)
     // A real user shouldn't pass NULL to Judy1FreeArray.
     // Judy1LHTime uses NULL to give us an opportunity to print
     // configuration info into the log file before we start testing.
-    if (PPArray == NULL) {
-        Initialize();
-    }
+    if (PPArray == NULL) { Initialize(); return 0; }
 
 #if (cnDigitsPerWord != 1)
 
