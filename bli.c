@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.608 2016/06/29 17:45:27 mike Exp mike $
+// @(#) $Id: bli.c,v 1.609 2016/07/05 12:35:12 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1867,8 +1867,8 @@ t_switch:;
           #endif // (cn2dBmWpkPercent != 0)
       #else // defined(INSERT)
             RemoveCleanup(wKey, nBL, nBLR, pwRoot, wRoot);
-            if (*pwRoot != wRoot) { goto restart; }
       #endif // defined(INSERT)
+            if (*pwRoot != wRoot) { goto restart; }
         } else {
             // Increment or decrement population count on the way in.
             wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
@@ -1974,8 +1974,8 @@ t_xx_sw:;
           #endif // (cn2dBmWpkPercent != 0)
       #else // defined(INSERT)
             RemoveCleanup(wKey, nBL, nBLR, pwRoot, wRoot);
-            if (*pwRoot != wRoot) { goto restart; }
       #endif // defined(INSERT)
+            if (*pwRoot != wRoot) { goto restart; }
         } else {
             // Increment or decrement population count on the way in.
             wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
@@ -2180,8 +2180,8 @@ t_bm_sw:;
           #endif // (cn2dBmWpkPercent != 0)
   #else // defined(INSERT)
             RemoveCleanup(wKey, nBLUp, nBLR, pwRoot, wRoot);
-            if (*pwRoot != wRoot) { goto restart; }
   #endif // defined(INSERT)
+            if (*pwRoot != wRoot) { goto restart; }
         } else {
             // Increment or decrement population count on the way in.
             wPopCnt = PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
@@ -2515,7 +2515,6 @@ t_bitmap:;
         // I guess we're getting away with leaving nBL
         // as the post-skip value.  Go figure.
   #endif // defined(SKIP_TO_BITMAP)
-        return InsertAtBitmap(pwRoot, wKey, nBL_to_nDL(nBL), wRoot);
 #endif // defined(INSERT)
 
         break;
