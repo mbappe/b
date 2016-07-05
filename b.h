@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.394 2016/06/26 19:26:54 mike Exp mike $
+// @(#) $Id: b.h,v 1.395 2016/07/02 23:56:58 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -24,6 +24,15 @@
 #undef  SKIP_PREFIX_CHECK
 #define SKIP_PREFIX_CHECK
 #endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
+
+// Default cn2dBmWpkPercent is 80, create 2-digit bm at 80% wpk.
+#if ! defined(cn2dBmWpkPercent)
+#undef cn2dBmWpkPercent
+#define cn2dBmWpkPercent  80
+#else
+#undef cn2dBmWpkPercent
+#define cn2dBmWpkPercent  0
+#endif // ! defined(cn2dBmWpkPercent)
 
 #if defined(USE_BM_SW)
 // Default is -UUSE_BM_SW.
@@ -2077,6 +2086,8 @@ void InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot);
 
 void RemoveCleanup(Word_t wKey, int nBL, int nBLR,
                    Word_t *pwRoot, Word_t wRoot);
+
+Status_t InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
 
 Word_t FreeArrayGuts(Word_t *pwRoot,
                      Word_t wPrefix, int nBL, int bDump);

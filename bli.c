@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.606 2016/06/26 17:43:14 mike Exp mike $
+// @(#) $Id: bli.c,v 1.608 2016/06/29 17:45:27 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1862,11 +1862,13 @@ t_switch:;
   #if ! defined(LOOKUP)
         if (bCleanup) {
       #if defined(INSERT)
+          #if (cn2dBmWpkPercent != 0)
             InsertCleanup(wKey, nBL, pwRoot, wRoot);
+          #endif // (cn2dBmWpkPercent != 0)
       #else // defined(INSERT)
             RemoveCleanup(wKey, nBL, nBLR, pwRoot, wRoot);
-      #endif // defined(INSERT)
             if (*pwRoot != wRoot) { goto restart; }
+      #endif // defined(INSERT)
         } else {
             // Increment or decrement population count on the way in.
             wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
@@ -1967,11 +1969,13 @@ t_xx_sw:;
   #if ! defined(LOOKUP)
         if (bCleanup) {
       #if defined(INSERT)
+          #if (cn2dBmWpkPercent != 0)
             InsertCleanup(wKey, nBL, pwRoot, wRoot);
+          #endif // (cn2dBmWpkPercent != 0)
       #else // defined(INSERT)
             RemoveCleanup(wKey, nBL, nBLR, pwRoot, wRoot);
-      #endif // defined(INSERT)
             if (*pwRoot != wRoot) { goto restart; }
+      #endif // defined(INSERT)
         } else {
             // Increment or decrement population count on the way in.
             wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
@@ -2171,11 +2175,13 @@ t_bm_sw:;
 #if !defined(LOOKUP)
         if (bCleanup) {
   #if defined(INSERT)
+          #if (cn2dBmWpkPercent != 0)
             InsertCleanup(wKey, nBLUp, pwRoot, wRoot);
+          #endif // (cn2dBmWpkPercent != 0)
   #else // defined(INSERT)
             RemoveCleanup(wKey, nBLUp, nBLR, pwRoot, wRoot);
-  #endif // defined(INSERT)
             if (*pwRoot != wRoot) { goto restart; }
+  #endif // defined(INSERT)
         } else {
             // Increment or decrement population count on the way in.
             wPopCnt = PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
@@ -2509,6 +2515,7 @@ t_bitmap:;
         // I guess we're getting away with leaving nBL
         // as the post-skip value.  Go figure.
   #endif // defined(SKIP_TO_BITMAP)
+        return InsertAtBitmap(pwRoot, wKey, nBL_to_nDL(nBL), wRoot);
 #endif // defined(INSERT)
 
         break;

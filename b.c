@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.522 2016/07/04 12:38:30 mike Exp mike $
+// @(#) $Id: b.c,v 1.523 2016/07/04 13:00:17 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2244,15 +2244,6 @@ HexDump(char *str, Word_t *pw, unsigned nWords)
 // nDL does not include any skip in *pwRoot/wRoot.
 static void InsertAll(Word_t *pwRootOld,
                       int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL);
-
-// Default cn2dBmWpkPercent is 80, create 2-digit bm at 80% wpk.
-#if ! defined(cn2dBmWpkPercent)
-#undef cn2dBmWpkPercent
-#define cn2dBmWpkPercent  80
-#else
-#undef cn2dBmWpkPercent
-#define cn2dBmWpkPercent  0
-#endif // ! defined(cn2dBmWpkPercent)
 
 // Looks like the main/sole purpose of InsertCleanup at this point is to
 // replace a 2-digit switch and whatever is hanging off of it with a
