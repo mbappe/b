@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.395 2016/07/02 23:56:58 mike Exp $
+// @(#) $Id: b.h,v 1.396 2016/07/05 12:35:12 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -2087,7 +2087,7 @@ void InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot);
 void RemoveCleanup(Word_t wKey, int nBL, int nBLR,
                    Word_t *pwRoot, Word_t wRoot);
 
-Status_t InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
+Status_t InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot);
 
 Word_t FreeArrayGuts(Word_t *pwRoot,
                      Word_t wPrefix, int nBL, int bDump);

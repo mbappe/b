@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.610 2016/07/05 19:02:43 mike Exp mike $
+// @(#) $Id: bli.c,v 1.611 2016/07/06 03:35:14 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -2518,28 +2518,13 @@ t_bitmap:;
 #endif // defined(INSERT)
 
 #if defined(INSERT)
-        // We could just 'break' here. That is what we used to do.
-        // Now we inline some code to help speed up insert.
-        // Check to see if wRoot is an embedded bitmap.
-        // The first test can be done at compile time and might make the
-        // 'then' code go away.
-        if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nBL == cnBitsInD1)) {
-            // InsertAtDl1
-            SetBit(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL));
-        } else {
-            // InsertAtBitmap
-            SetBit(pwr, wKey & MSK(nBL));
-            set_w_wPopCntBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL,
-                w_wPopCntBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL) + 1);
-        }
-  #if defined(PP_IN_LINK)
-        // Shouldn't we do this when we create the switch with the link
-        // that points to this bitmap rather than on every insert into
-        // the bitmap?
-        set_PWR_wPrefix(pwRoot, NULL, nBL_to_nDL(nBL), wKey);
-  #endif // defined(PP_IN_LINK)
+        // We removed the code that was in InsertGuts to handle bitmaps.
+        // So we can no longer just 'break' here like we used to do.
+        InsertAtBitmap(pwRoot, wKey, nBL, wRoot);
   #if (cn2dBmWpkPercent != 0)
-        goto cleanup;
+        if (nBL == cnBitsInD1) {
+            goto cleanup;
+        }
   #else // (cn2dBmWpkPercent != 0)
         return Success;
   #endif // (cn2dBmWpkPercent != 0)
