@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.609 2016/07/05 12:35:12 mike Exp mike $
+// @(#) $Id: bli.c,v 1.610 2016/07/05 19:02:43 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -2517,7 +2517,35 @@ t_bitmap:;
   #endif // defined(SKIP_TO_BITMAP)
 #endif // defined(INSERT)
 
+#if defined(INSERT)
+        // We could just 'break' here. That is what we used to do.
+        // Now we inline some code to help speed up insert.
+        // Check to see if wRoot is an embedded bitmap.
+        // The first test can be done at compile time and might make the
+        // 'then' code go away.
+        if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nBL == cnBitsInD1)) {
+            // InsertAtDl1
+            SetBit(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL));
+        } else {
+            // InsertAtBitmap
+            SetBit(pwr, wKey & MSK(nBL));
+            set_w_wPopCntBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL,
+                w_wPopCntBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL) + 1);
+        }
+  #if defined(PP_IN_LINK)
+        // Shouldn't we do this when we create the switch with the link
+        // that points to this bitmap rather than on every insert into
+        // the bitmap?
+        set_PWR_wPrefix(pwRoot, NULL, nBL_to_nDL(nBL), wKey);
+  #endif // defined(PP_IN_LINK)
+  #if (cn2dBmWpkPercent != 0)
+        goto cleanup;
+  #else // (cn2dBmWpkPercent != 0)
+        return Success;
+  #endif // (cn2dBmWpkPercent != 0)
+#else // defined(INSERT)
         break;
+#endif // defined(INSERT)
 
     } // end of case T_BITMAP
 
