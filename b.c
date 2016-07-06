@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.523 2016/07/04 13:00:17 mike Exp mike $
+// @(#) $Id: b.c,v 1.524 2016/07/05 12:35:12 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2826,6 +2826,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
     }
 #endif // defined(NO_TYPE_IN_XX_SW)
 
+#if defined(JUNK)
     // Check to see if we're at the bottom before checking nType since
     // nType may be invalid if wRoot is an embedded bitmap.
     // The first test can be done at compile time and might make the
@@ -2833,9 +2834,11 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
     if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nBL == cnBitsInD1)) {
         return InsertAtDl1(pwRoot, wKey, nDL, nBL, wRoot);
     }
+#endif // defined(JUNK)
 
     unsigned nType = wr_nType(wRoot); (void)nType; // silence gcc
 
+#if defined(JUNK)
     if ((nType == T_BITMAP)
 #if defined(SKIP_TO_BITMAP)
         || (nType == T_SKIP_TO_BITMAP)
@@ -2844,6 +2847,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
     {
         return InsertAtBitmap(pwRoot, wKey, nDL, wRoot);
     }
+#endif // defined(JUNK)
 
     // Can the following be moved into the if ! switch block?
 #if (cwListPopCntMax != 0)
@@ -4269,9 +4273,12 @@ InsertAtDl1(Word_t *pwRoot, Word_t wKey, int nDL,
 
     // What about no_unnecessary_prefix?
     // And is this ever necessary since we don't support skip to bitmap?
+    assert(EXP(cnBitsInD1) <= sizeof(Link_t) * 8);
+#if defined(JUNK)
     if (EXP(cnBitsInD1) > sizeof(Link_t) * 8) {
         set_PWR_wPrefix(pwRoot, NULL, nDL, wKey);
     }
+#endif // defined(JUNK)
 
 #endif // defined(PP_IN_LINK)
 
@@ -4312,6 +4319,7 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
   #endif // defined(PP_IN_LINK)
         { bPrefixMismatch = ((int)LOG(1 | (wPrefix ^ wKey)) >= nBLR); }
 
+        assert( ! bPrefixMismatch );
         if (bPrefixMismatch) {
             PrefixMismatch(pwRoot, nBL, wKey, nBLR);
             return Success;
@@ -4342,7 +4350,6 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
     // that points to this bitmap rather than on every insert into
     // the bitmap?
 
-    // What about no_unnecessary_prefix?
     set_PWR_wPrefix(pwRoot, NULL, nDL, wKey);
 
 #endif // defined(PP_IN_LINK)
