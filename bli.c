@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.611 2016/07/06 03:35:14 mike Exp mike $
+// @(#) $Id: bli.c,v 1.612 2016/07/06 13:57:52 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -2525,9 +2525,8 @@ t_bitmap:;
         if (nBL == cnBitsInD1) {
             goto cleanup;
         }
-  #else // (cn2dBmWpkPercent != 0)
-        return Success;
   #endif // (cn2dBmWpkPercent != 0)
+        return Success;
 #else // defined(INSERT)
         break;
 #endif // defined(INSERT)
