@@ -1863,7 +1863,9 @@ t_switch:;
         if (bCleanup) {
       #if defined(INSERT)
           #if (cn2dBmWpkPercent != 0)
-            InsertCleanup(wKey, nBL, pwRoot, wRoot);
+            if (nBLR <= cnBitsLeftAtDl2) {
+                InsertCleanup(wKey, nBL, pwRoot, wRoot);
+            }
           #endif // (cn2dBmWpkPercent != 0)
       #else // defined(INSERT)
             RemoveCleanup(wKey, nBL, nBLR, pwRoot, wRoot);
@@ -1970,6 +1972,7 @@ t_xx_sw:;
         if (bCleanup) {
       #if defined(INSERT)
           #if (cn2dBmWpkPercent != 0)
+            assert(nBL <= cnBitsLeftAtDl2);
             InsertCleanup(wKey, nBL, pwRoot, wRoot);
           #endif // (cn2dBmWpkPercent != 0)
       #else // defined(INSERT)
@@ -2176,7 +2179,9 @@ t_bm_sw:;
         if (bCleanup) {
   #if defined(INSERT)
           #if (cn2dBmWpkPercent != 0)
-            InsertCleanup(wKey, nBLUp, pwRoot, wRoot);
+            if (nBLR <= cnBitsLeftAtDl2) {
+                InsertCleanup(wKey, nBLUp, pwRoot, wRoot);
+            }
           #endif // (cn2dBmWpkPercent != 0)
   #else // defined(INSERT)
             RemoveCleanup(wKey, nBLUp, nBLR, pwRoot, wRoot);
@@ -2802,7 +2807,8 @@ notFound:;
       #endif // defined(SKIP_TO_XX_SW)
   #endif // defined(CODE_XX_SW)
                );
-    goto cleanup;
+    // Skip cleanup. Rely on T_BITMAP for that.
+    return Success;
 undo:;
     DBGX(printf("undo\n"));
 #endif // defined(INSERT)
@@ -2829,8 +2835,13 @@ restart:;
 removeGutsAndCleanup:;
     RemoveGuts(pwRoot, wKey, nBL, wRoot);
       #else // defined(REMOVE)
+          #if (cn2dBmWpkPercent != 0)
 cleanup:;
+          #endif // (cn2dBmWpkPercent != 0)
       #endif // defined(REMOVE)
+    // Walk the tree again to see if we need to make any adjustments.
+    // For insert our new pop may justify a bigger bitmap.
+    // For remove we may need to pull back.
     bCleanup = 1; // ?? nIncr == 0 ??
     DBGX(printf("Cleanup pwRO "OWx" nBLO %d\n",
                 (Word_t)pwRootOrig, nBLOrig));
