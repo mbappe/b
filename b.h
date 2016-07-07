@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.396 2016/07/05 12:35:12 mike Exp mike $
+// @(#) $Id: b.h,v 1.397 2016/07/06 13:57:52 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -441,6 +441,8 @@ typedef Word_t Bucket_t;
 // An 8-bit bitmap uses only 32-bytes plus malloc overhead.
 // It makes no sense to have a list that uses as much.
 // Default cnListPopCntMax8 is 0x10 (0x17 if NO_EMBEDDED_KEYS_PARALLEL).
+// I don't remember why the default value for cnListPopCntMax8 is
+// dependent on NO_EMBEDDED_KEYS_PARALLEL.
 #if ! defined(cnListPopCntMax8)
   #if defined(USE_XX_SW)
       #define cnListPopCntMax8  0x10
