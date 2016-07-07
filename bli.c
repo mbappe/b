@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.614 2016/07/06 15:36:16 mike Exp mike $
+// @(#) $Id: bli.c,v 1.615 2016/07/07 01:42:04 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1333,7 +1333,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 #endif // (cwListPopCntMax != 0)
 
 #if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
-#if defined(EMBED_KEYS) && defined(EMBEDDED_KEYS_PARALLEL)
+#if defined(EMBED_KEYS) && defined(EMBEDDED_KEYS_PARALLEL) && defined(LOOKUP)
 
 // Do a parallel search of a list embedded in wRoot given the key size.
 // The least-significant nBL_to_nBitsType(nBL) bits of the word are used for
@@ -1435,7 +1435,7 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     return bXorHasZero;
 }
 
-#endif // defined(EMBED_KEYS) && defined(EMBEDDED_KEYS_PARALLEL)
+#endif // defined(EMBED_KEYS) && defined(EMBEDDED_KEYS_PARALLEL) && defined(LOOKUP)
 #endif // ! defined(LOOKUP_NO_LIST_DEREF)
 
 #if defined(SKIP_LINKS)
@@ -2578,7 +2578,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 
         DBGX(printf("EMBEDDED_KEYS\n")); 
 
-      #if defined(EMBEDDED_KEYS_PARALLEL)
+      #if defined(EMBEDDED_KEYS_PARALLEL) && defined(LOOKUP)
 
 #if defined(HANDLE_BLOWOUTS)
     // We haven't written the insert code to create blow-outs for
@@ -2638,7 +2638,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         CASE_BLX(60); CASE_BLX(61); CASE_BLX(62); CASE_BLX(63); CASE_BLX(64);
         }
             
-      #else // defined(EMBEDDED_KEYS_PARALLEL)
+      #else // defined(EMBEDDED_KEYS_PARALLEL) && defined(LOOKUP)
 
         // I wonder if FILL_W_KEY and not needing to know the pop count
         // would help this code like it does EMBEDDED_KEYS_PARALLEL.
@@ -2675,7 +2675,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
             if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
         }
 
-      #endif // defined(EMBEDDED_KEYS_PARALLEL)
+      #endif // defined(EMBEDDED_KEYS_PARALLEL) && defined(LOOKUP)
 
         goto break2;
 break2:
