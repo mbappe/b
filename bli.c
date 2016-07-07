@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.612 2016/07/06 13:57:52 mike Exp mike $
+// @(#) $Id: bli.c,v 1.614 2016/07/06 15:36:16 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1972,7 +1972,7 @@ t_xx_sw:;
         if (bCleanup) {
       #if defined(INSERT)
           #if (cn2dBmWpkPercent != 0)
-            assert(nBL <= cnBitsLeftAtDl2);
+            assert(nBLR <= cnBitsLeftAtDl2);
             InsertCleanup(wKey, nBL, pwRoot, wRoot);
           #endif // (cn2dBmWpkPercent != 0)
       #else // defined(INSERT)
@@ -2527,7 +2527,13 @@ t_bitmap:;
         // So we can no longer just 'break' here like we used to do.
         InsertAtBitmap(pwRoot, wKey, nBL, wRoot);
   #if (cn2dBmWpkPercent != 0)
-        if (nBL == cnBitsInD1) {
+        if ((nBLR == cnBitsInD1)
+            && (nBL == nBLR)
+            //&& (PWR_wPopCntBL(pwRootPrev, (Switch_t *)wr_pwr(*pwRootPrev), cnBitsLeftAtDl2)
+            //    >= (EXP(cnBitsLeftAtDl2) * 100 / cnBitsPerWord / cn2dBmWpkPercent))
+            && (wPopCnt >= (EXP(cnBitsLeftAtDl2) * 100 / cnBitsPerWord / cn2dBmWpkPercent))
+            )
+        {
             goto cleanup;
         }
   #endif // (cn2dBmWpkPercent != 0)
@@ -2671,6 +2677,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 
       #endif // defined(EMBEDDED_KEYS_PARALLEL)
 
+        goto break2;
 break2:
         break;
 
