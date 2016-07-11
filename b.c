@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.525 2016/07/06 03:55:49 mike Exp mike $
+// @(#) $Id: b.c,v 1.526 2016/07/06 13:57:52 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -4899,11 +4899,41 @@ Initialize(void)
     printf("# NO PSPLIT_SEARCH_32\n");
 #endif // defined(PSPLIT_SEARCH_32)
 
-#if defined(EMBEDDED_KEYS_PARALLEL)
-    printf("#    EMBEDDED_KEYS_PARALLEL\n");
-#else // defined(EMBEDDED_KEYS_PARALLEL)
-    printf("# NO EMBEDDED_KEYS_PARALLEL\n");
-#endif // defined(EMBEDDED_KEYS_PARALLEL)
+#if defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP)
+    printf("#    EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP\n");
+#else // defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP)
+    printf("# NO EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP\n");
+#endif // defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP)
+
+#if defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT)
+    printf("#    EMBEDDED_KEYS_PARALLEL_FOR_INSERT\n");
+#else // defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT)
+    printf("# NO EMBEDDED_KEYS_PARALLEL_FOR_INSERT\n");
+#endif // defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT)
+
+#if defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP)
+    printf("#    EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP\n");
+#else // defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP)
+    printf("# NO EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP\n");
+#endif // defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP)
+
+#if defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_INSERT)
+    printf("#    EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_INSERT\n");
+#else // defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_INSERT)
+    printf("# NO EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_INSERT\n");
+#endif // defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_INSERT)
+
+#if defined(EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP)
+    printf("#    EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP\n");
+#else // defined(EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP)
+    printf("# NO EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP\n");
+#endif // defined(EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP)
+
+#if defined(EMBEDDED_KEYS_UNROLLED_FOR_INSERT)
+    printf("#    EMBEDDED_KEYS_UNROLLED_FOR_INSERT\n");
+#else // defined(EMBEDDED_KEYS_UNROLLED_FOR_INSERT)
+    printf("# NO EMBEDDED_KEYS_UNROLLED_FOR_INSERT\n");
+#endif // defined(EMBEDDED_KEYS_UNROLLED_FOR_INSERT)
 
 #if defined(PSPLIT_PARALLEL)
     printf("#    PSPLIT_PARALLEL\n");
@@ -5366,12 +5396,6 @@ Initialize(void)
 #else // defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
     printf("# NO NO_BL_SPECIFIC_PSPLIT_SEARCH\n");
 #endif // defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
-
-#if defined(NO_EMBEDDED_KEYS_PARALLEL)
-    printf("#    NO_EMBEDDED_KEYS_PARALLEL\n");
-#else // defined(NO_EMBEDDED_KEYS_PARALLEL)
-    printf("# NO NO_EMBEDDED_KEYS_PARALLEL\n");
-#endif // defined(NO_EMBEDDED_KEYS_PARALLEL)
 
 #if defined(NO_PARALLEL_128)
     printf("#    NO_PARALLEL_128\n");
