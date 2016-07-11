@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.397 2016/07/06 13:57:52 mike Exp mike $
+// @(#) $Id: b.h,v 1.398 2016/07/07 01:58:00 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -138,11 +138,21 @@
 #define BL_SPECIFIC_PSPLIT_SEARCH
 #endif // ! defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
 
-// Default is -DEMBEDDED_KEYS_PARALLEL.
-#if ! defined(NO_EMBEDDED_KEYS_PARALLEL)
-#undef EMBEDDED_KEYS_PARALLEL
-#define EMBEDDED_KEYS_PARALLEL
-#endif // ! defined(NO_EMBEDDED_KEYS_PARALLEL)
+// Default is -DEMBEDDED_KEYS_PARALLEL_FOR_LOOKUP.
+// It applies to Insert AND Remove.
+#if ! defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP) \
+  && ! defined(EMBEDDED_KEYS_UNROLLED_FOR_LOOKUP)
+#undef EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP
+#define EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP
+#endif
+
+// Default is -DEMBEDDED_KEYS_PARALLEL_FOR_INSERT.
+// It applies to Insert AND Remove.
+#if ! defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_INSERT) \
+  && ! defined(EMBEDDED_KEYS_UNROLLED_FOR_INSERT)
+#undef EMBEDDED_KEYS_PARALLEL_FOR_INSERT
+#define EMBEDDED_KEYS_PARALLEL_FOR_INSERT
+#endif
 
 // Default is -DPARALLEL_128.
 #if ! defined(NO_PARALLEL_128)
@@ -440,19 +450,8 @@ typedef Word_t Bucket_t;
 
 // An 8-bit bitmap uses only 32-bytes plus malloc overhead.
 // It makes no sense to have a list that uses as much.
-// Default cnListPopCntMax8 is 0x10 (0x17 if NO_EMBEDDED_KEYS_PARALLEL).
-// I don't remember why the default value for cnListPopCntMax8 is
-// dependent on NO_EMBEDDED_KEYS_PARALLEL.
 #if ! defined(cnListPopCntMax8)
-  #if defined(USE_XX_SW)
-      #define cnListPopCntMax8  0x10
-  #else // defined(USE_XX_SW)
-    #if defined(EMBEDDED_KEYS_PARALLEL)
-      #define cnListPopCntMax8   0x10
-    #else // defined(EMBEDDED_KEYS_PARALLEL)
-      #define cnListPopCntMax8   0x17
-    #endif // defined(EMBEDDED_KEYS_PARALLEL)
-  #endif // defined(USE_XX_SW)
+  #define cnListPopCntMax8  0x10
 #endif // ! defined(cnListPopCntMax8)
 
 // Default cnListPopCntMaxDl1 is 7 for cnBitsInD1 = 8 (embedded keys only).
