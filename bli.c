@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.615 2016/07/07 01:42:04 mike Exp mike $
+// @(#) $Id: bli.c,v 1.618 2016/07/11 14:26:10 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -314,6 +314,45 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 #endif
 
+#define PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
+{ \
+    int nSplit; SPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
+    if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) \
+    { \
+        (_nPos) += nSplit; \
+    } \
+    else if ((_pxKeys)[nSplit] < (_xKey)) \
+    { \
+        if (nSplit == (_nPopCnt) - 1) \
+        { \
+            (_nPos) = ~((_nPos) + (_nPopCnt)); \
+        } \
+        else if (TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)) \
+        { \
+            (_nPos) += ((_pxKeys)[(_nPopCnt) - 1] == (_x_t)-1) \
+                        ? (_nPopCnt) - 1 : ~(_nPopCnt); \
+        } \
+        else \
+        { \
+            (_nPos) = nSplit + 1; \
+            SEARCHF(_x_t, (_pxKeys), (_nPopCnt) - nSplit - 1, \
+                    (_xKey), (_nPos)); \
+        } \
+    } \
+    else /* here if (_xKey) < (_pxKeys)[nSplit] (and possibly if equal) */ \
+    { \
+        if (TEST_AND_KEY_IS_ZERO(_x_t, _pxKeys, _nPopCnt, _xKey)) \
+        { \
+            if ((_pxKeys)[0] != 0) { (_nPos) ^= -1; } \
+        } \
+        else \
+        { \
+            assert((_nPos) == 0); \
+            SEARCHB(_x_t, (_pxKeys), nSplit + 1, (_xKey), (_nPos)); \
+        } \
+    } \
+}
+
 #if defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
 // Little endian:
@@ -614,43 +653,7 @@ again:;
 #else // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-{ \
-    int nSplit; SPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
-    if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) \
-    { \
-        (_nPos) += nSplit; \
-    } \
-    else if ((_pxKeys)[nSplit] < (_xKey)) \
-    { \
-        if (nSplit == (_nPopCnt) - 1) \
-        { \
-            (_nPos) = ~((_nPos) + (_nPopCnt)); \
-        } \
-        else if (TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)) \
-        { \
-            (_nPos) += ((_pxKeys)[(_nPopCnt) - 1] == (_x_t)-1) \
-                        ? (_nPopCnt) - 1 : ~(_nPopCnt); \
-        } \
-        else \
-        { \
-            (_nPos) = nSplit + 1; \
-            SEARCHF(_x_t, (_pxKeys), (_nPopCnt) - nSplit - 1, \
-                    (_xKey), (_nPos)); \
-        } \
-    } \
-    else /* here if (_xKey) < (_pxKeys)[nSplit] (and possibly if equal) */ \
-    { \
-        if (TEST_AND_KEY_IS_ZERO(_x_t, _pxKeys, _nPopCnt, _xKey)) \
-        { \
-            if ((_pxKeys)[0] != 0) { (_nPos) ^= -1; } \
-        } \
-        else \
-        { \
-            assert((_nPos) == 0); \
-            SEARCHB(_x_t, (_pxKeys), nSplit + 1, (_xKey), (_nPos)); \
-        } \
-    } \
-}
+    PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
 
 #endif // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
@@ -855,7 +858,7 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     (void)nBL; (void)pwRoot;
 
     assert(nBL <= 8);
-   // sizeof(__m128i) == 16 bytes
+    // sizeof(__m128i) == 16 bytes
   #if defined(PARALLEL_128) && (cnListPopCntMax8 <= 8)
     // By simply setting nPopCnt = 16 here we are assuming, while not
     // ensuring, that pop count never exceeds 16 here.
@@ -1333,7 +1336,9 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 #endif // (cwListPopCntMax != 0)
 
 #if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
-#if defined(EMBED_KEYS) && defined(EMBEDDED_KEYS_PARALLEL) && defined(LOOKUP)
+#if defined(EMBED_KEYS) \
+      && (   (defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)) \
+          || (defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP)))
 
 // Do a parallel search of a list embedded in wRoot given the key size.
 // The least-significant nBL_to_nBitsType(nBL) bits of the word are used for
@@ -1435,7 +1440,7 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     return bXorHasZero;
 }
 
-#endif // defined(EMBED_KEYS) && defined(EMBEDDED_KEYS_PARALLEL) && defined(LOOKUP)
+#endif // defined(EMBED_KEYS) ...
 #endif // ! defined(LOOKUP_NO_LIST_DEREF)
 
 #if defined(SKIP_LINKS)
@@ -2578,7 +2583,8 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 
         DBGX(printf("EMBEDDED_KEYS\n")); 
 
-      #if defined(EMBEDDED_KEYS_PARALLEL) && defined(LOOKUP)
+      #if    (defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)) \
+          || (defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP))
 
 #if defined(HANDLE_BLOWOUTS)
     // We haven't written the insert code to create blow-outs for
@@ -2637,12 +2643,38 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         CASE_BLX(55); CASE_BLX(56); CASE_BLX(57); CASE_BLX(58); CASE_BLX(59);
         CASE_BLX(60); CASE_BLX(61); CASE_BLX(62); CASE_BLX(63); CASE_BLX(64);
         }
+break2:
             
-      #else // defined(EMBEDDED_KEYS_PARALLEL) && defined(LOOKUP)
+      #endif // (defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) ... )
 
-        // I wonder if FILL_W_KEY and not needing to know the pop count
-        // would help this code like it does EMBEDDED_KEYS_PARALLEL.
-        unsigned nPopCnt = wr_nPopCnt(wRoot, nBL);
+      #if (!defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)) \
+          || (!defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP))
+
+        int nPopCnt = wr_nPopCnt(wRoot, nBL);
+
+          #if (defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP) \
+                  && defined(LOOKUP)) \
+              || (defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_INSERT) \
+                  && !defined(LOOKUP))
+
+        // PSPLIT_SEARCH_BY_KEY expects smallest key in xKeys[0] and
+        // largest key in xKeys[nPopCnt-1].
+              #if 0
+        int nPos = 0;
+        if (nBL == 8) {
+           PSPLIT_SEARCH_BY_KEY(uint8_t, 8, &wRoot, nPopCnt, wKey, nPos);
+        } else if (nBL == 16) {
+           PSPLIT_SEARCH_BY_KEY(uint16_t, 16, &wRoot, nPopCnt, wKey, nPos);
+        } else if (nBL == 32) {
+           PSPLIT_SEARCH_BY_KEY(uint32_t, 32, &wRoot, nPopCnt, wKey, nPos);
+        } else {
+            goto unrolled;
+        }
+        if (nPos >= 0) { goto foundIt; }
+        break;
+unrolled:;
+              #endif
+          #endif // (defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP) ... )
 
         Word_t wKeyRoot;
 
@@ -2675,10 +2707,8 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
             if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
         }
 
-      #endif // defined(EMBEDDED_KEYS_PARALLEL) && defined(LOOKUP)
+      #endif // (!defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) ... )
 
-        goto break2;
-break2:
         break;
 
 foundIt:;
