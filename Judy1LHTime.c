@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.31 $ $Source: /Users/mike/b/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.9 $ $Source: /home/doug/judy-1.0.5_PSplit_goto_newLeaf3_U2_1K_1_L765_4th/test/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -45,9 +45,9 @@
 //
 // Compile examples: 
 //
-//   cc -O -g Judy1LHTime.c -lm -lrt -lJudy -o Judy1LHTime 
+//   cc -m64 -O -g Judy1LHTime.c -lm -lrt -lJudy -o Judy1LHTime 
 //           -or-
-//   cc -m32 -O3 -Wall -I../src Judy1LHTime.c -lm -lrt ../src/libJudy32.a -o Judy1LHTime32
+//   cc -m64 -O2 -Wall -I../src Judy1LHTime.c -lm -lrt ../src/libJudy64.a -o Judy1LHTime64
 
 // =======================================================================
 //   A little help with printf("0x%016x...  vs printf(0x%08x...
@@ -107,6 +107,10 @@ Word_t    j__AllocWordsJLL7;
 Word_t    j__AllocWordsJLLW;
 
 Word_t    j__AllocWordsJV;
+
+Word_t    j__MFlag;                     // Print memory allocation on stderr
+Word_t    j__TotalBytesAllocated;       //
+Word_t    j__MalFreeCnt;                // JudyMalloc() + Judyfree() count
 
 // This 64 Bit define may NOT work on all compilers
 
@@ -177,176 +181,6 @@ WaitForContextSwitch(Word_t Loops)
     }
 }
 
-Word_t    j__MFlag;                    // Print memory allocation on stderr
-Word_t    j__TotalBytesAllocated;
-
-static Word_t MalFreeCnt = 0;
-
-#ifdef SELFALIGNED
-// Did not think very hard on this one.  I am sure their is a much
-// faster way to do it. (dlb)
-
-static int
-j__log2(Word_t num)
-{
-    int       __lb = 0;
-
-#ifdef __LP64__
-    if (num >= ((Word_t)1 << 32))
-    {
-        num >>= 32;
-        __lb += 32;
-    }
-#endif  // __LP64__
-
-    if (num >= (1 << 16))
-    {
-        num >>= 16;
-        __lb += 16;
-    }
-    if (num >= (1 << 8))
-    {
-        num >>= 8;
-        __lb += 8;
-    }
-    if (num >= (1 << 4))
-    {
-        num >>= 4;
-        __lb += 4;
-    }
-    if (num >= (1 << 2))
-    {
-        num >>= 2;
-        __lb += 2;
-    }
-    if (num >= (1 << 1))
-    {
-        __lb += 1;
-    }
-    return (__lb);
-}
-
-static Word_t
-j__roundup2(Word_t Size)
-{
-    Word_t ret;
-
-    ret = j__log2(Size);
-    if ((Size & -Size) != Size) ret++;
-
-    return((Word_t)1 << ret);
-}
-
-#endif // SELFALIGNED
-
-#ifdef internal_JudyMalloc
-// This routine replaces the one in libJudy.a so we can get a
-// measure of the memory used and counts of malloc().
-// It assumes that a dlmalloc() style of memory allocation is used.
-
-Word_t
-JudyMalloc(Word_t Words)
-{
-    size_t    Bytes;
-    Word_t    Addr;
-    Bytes = Words * sizeof(Word_t);
-
-
-#ifdef SELFALIGNED
-    {
-        int ret;
-
-        ret = posix_memalign((void **)(&Addr), j__roundup2(Bytes), Bytes);
-        if (ret)
-        {
-            printf("posix_memalign() failure code = %d\n", ret);
-            exit(1);
-        }
-    }
-#else // ! SELFALIGNED
-
-#ifdef  GUARDBAND
-    Bytes += sizeof(Word_t);    // one word
-#endif  // GUARDBAND
-
-    Addr = (Word_t)malloc(Bytes);
-
-#ifdef  GUARDBAND
-    *((Word_t *)Addr + ((Bytes/sizeof(Word_t)) - 1)) = ~Addr;
-#endif  // GUARDBAND
-
-#endif // ! SELFALIGNED
-
-//  Verify that all mallocs are 2 word aligned
-    if (Addr & ((sizeof(Word_t) * 2) - 1))
-    {
-        printf("\nmalloc() Addr not 2 word aligned = 0x%lx\n", Addr);
-        exit(1);
-    }
-    if (Addr)
-        MalFreeCnt++;                   // keep track of total malloc() + free()
-    return (Addr);
-}                                       // JudyMalloc()
-
-// ****************************************************************************
-// J U D Y   F R E E
-//
-// Note: Judy knows amount of memory being released, though not needed by free()
-
-void
-JudyFree(void *PWord, Word_t Words)
-{
-
-    if (Words == 0)
-    {
-        fprintf(stderr, "--- OOps JudyFree called with 0 words\n");
-        printf("--- OOps JudyFree called with 0 words\n");
-        exit(1);
-    }
-
-#ifdef  GUARDBAND
-    {
-        Word_t GuardWord;
-
-        GuardWord = *((((Word_t *)PWord) + Words));
-
-        if (~GuardWord != (Word_t)PWord)
-        {
-            printf("Oops GuardWord = 0x%lx != PWord = 0x%lx\n", GuardWord, (Word_t)PWord);
-            assert(0);
-        }
-    }
-#endif  // GUARDBAND
-
-    free(PWord);
-
-    MalFreeCnt++;                       // keep track of total malloc() + free()
-}                                       // JudyFree()
-
-// ****************************************************************************
-// J U D Y   M A L L O C
-//
-// Higher-level "wrapper" for allocating objects that need not be in RAM,
-// although at this time they are in fact only in RAM.  Later we hope that some
-// entire subtrees (at a JRS or branch) can be "virtual", so their allocations
-// and frees should go through this level.
-
-Word_t
-JudyMallocVirtual(Word_t Words)
-{
-    return (JudyMalloc(Words));
-
-}                                       // JudyMallocVirtual()
-
-// ****************************************************************************
-// J U D Y   F R E E
-
-void
-JudyFreeVirtual(void *PWord, Word_t Words)
-{
-    JudyFree(PWord, Words);
-}                                       // JudyFreeVirtual()
-#endif  // internal JudyMalloc
 
 
 // =======================================================================
@@ -605,7 +439,7 @@ Word_t    IFlag = 0;                    // time duplicate inserts/sets
 Word_t    bFlag = 0;                    // Time REAL bitmap of (2^-B #) in size
 PWord_t   B1 = NULL;                    // BitMap
 #define cMaxColon ((int)sizeof(Word_t) * 2)  // Maximum -b suboption paramters
-int       Parm[cMaxColon + 1] = { 0 };  // suboption parameters to -b#:#:# ...
+int       bParm[cMaxColon + 1] = { 0 }; // suboption parameters to -b#:#:# ...
 Word_t    yFlag = 0;                    // Time REAL Bytemap of (2^-B #) in size
 uint8_t  *By;                           // ByteMap
 
@@ -620,6 +454,7 @@ Word_t    Tit = 1;                      // to measure with calling Judy
 Word_t    VFlag = 1;                    // To verify Value Area contains good Data
 Word_t    fFlag = 0;
 Word_t    KFlag = 0;                    // do a __sync_synchronize() in GetNextKey()
+Word_t    hFlag = 0;                    // add "holes" into the insert code
 Word_t    Warmup = 2000000000;          // nSec to warm up CPU
 Word_t    PreStack = 0;                 // to test for TLB collisions with stack
 
@@ -640,6 +475,8 @@ Word_t    PtsPdec = 50;                 // 4.71% spacing - default
 //
 Word_t    RandomBit;                    // MSB (Most-Significant-Bit) in data
 Word_t    BValue = 32;                  // bigger generates unrealistic data
+double    Bpercent = 100.0;             // default
+Word_t    ExpanseM1 = ~(Word_t)0;       // ExpanseM1 - 1 for number generator
 Word_t    GValue = 0;                   // 0 = flat spectrum random numbers
 //Word_t    GValue = 1;                 // 1 = pyramid spectrum random numbers
 //Word_t    GValue = 2;                 // 2 = Gaussian random numbers
@@ -660,7 +497,8 @@ Word_t    DFlag = 0;                    // bit reverse (mirror) the data stream
 
 // Stuff for Sequential number generation
 //
-Word_t    StartSequent = 0xc1fc;        // default beginning sequential numbers
+//Word_t    StartSequent = 0xc1fc;        // default beginning sequential numbers
+Word_t    StartSequent = 0x2563;          // default beginning sequential numbers
 
 // Global to store the current Value return from PSeed.
 //
@@ -679,7 +517,12 @@ GetNextKey(PSeed_t PSeed)
     if (FValue)
         Key = FileKeys[PSeed->Order++];
     else
-        Key = RandomNumb(PSeed, SValue);
+    {
+        do
+        {
+            Key = RandomNumb(PSeed, SValue);
+        } while (Key > ExpanseM1);         // throw away of high keys
+    }
    
     if (DFlag)
     {
@@ -819,7 +662,7 @@ PrintHeader(void)
         printf("  B1/K");
         printf("  JV/K");
 
-        printf(" MisCmp");
+        printf(" MsCmp");
         printf(" %%DiHt");
 
 //        printf(" TrDep");
@@ -841,57 +684,48 @@ Usage(int argc, char **argv)
 {
     (void) argc;
 
-    printf
-        ("\n<<< Program to do performance measurements on Judy Arrays >>>\n\n");
-    printf("%s -n# -P# -S# -B# -T# -G# -s# -X# -1LHbIcCvdtDlMK\n\n", argv[0]);
-    printf("Where: (default value is shown as [#])\n");
-    printf("-n <#>  Max number of Keys used in JudyLGet/1Test [10000000]\n");
-    printf("-P <#>  Measurement points per decade (1..1000) [50]\n");
-    printf("-S <#>  Number Generator skip amount, 0 == Random [0]\n");
-    printf
-        ("-B <#>  Significant bits output (15..%d) in random Number Generator [32]\n",
-         (int)sizeof(Word_t) * 8);
-    printf ("-G <#>  Type (0..4) of random numbers 0==flat spectrum, 1..4==Gaussian [0]\n");
-    printf ("-X <#>  Scale the numbers produced by '-m' flag (for plotting) [%d]\n", XScale);
+    printf("\n<<< Program to do performance measurements (and Diagnostics) on Judy Arrays >>>\n\n");
+    printf("%s -n# -P# -S# -B# -T# -G# -1LH -bIcCvdtDlMK... -F <filename>\n\n", argv[0]);
+    printf("   Where: # is a number, default is shown as [#]\n\n");
+    printf("-X #  Scale numbers produced by '-m' flag (for plotting) [%d]\n", XScale);
+    printf("-m #  Output measurements when libJudy is compiled with -DRAMMETRICS -DSEARCHMETRICS\n");
+    printf("-n #  Number of Keys (Population) used in Measurement [10000000]\n");
+    printf("-P #  Measurement points per decade (1..1000) [50] (231 = ~1%%, 46 = ~5%% delta Population)\n");
+    printf("-S #  Key Generator skip amount, 0 = Random [0]\n");
+    printf("-B #  Significant bits output (16..64) in Random Key Generator [32]\n");
+    printf("-B #:#  Second # is percent expanse is limited [100]\n");
+    printf("-G #  Type (0..4) of random numbers 0 = flat spectrum, 1..4 = Gaussian [0]\n");
+    printf("-l    Do not smooth data with iteration at low (<100) populations (Del/Unset not called)\n");
+    printf("-F <filename>  Ascii file of Keys, zeros ignored -- must be last option!!!\n");
+//    printf("-b #:#:# ... 1st number required [1] where each number is next level of tree\n");
+    printf("-b    Time a BITMAP array  (-B # specifies size == 2^#) [-B32]\n");
+    printf("-y    Time a BYTEMAP array (-B # specifies size == 2^#) [-B32]\n");
+    printf("-1    Time Judy1\n");
+    printf("-L    Time JudyL\n");
+    printf("-R    Time JudyL using *PValue as next TstKey\n");
+    printf("-H    Time JudyHS\n");
+    printf("-I    Time DUPLICATE (already in array) JudyIns/Set times\n");
+    printf("-c    Time copying a Judy1 Array\n");
+    printf("-C    Include timing of Judy[1L]Count tests\n");
+    printf("-v    Include timing of Judy[1L]First/Last/Next/Prev tests\n");
+    printf("-d    Include timing of JudyLDel/Judy1Unset\n");
+    printf("-V    Turn OFF JudyLGet() verification tests (saving a cache-hit on 'Value')\n");
+    printf("-x    Turn ON 'waiting for context switch' flag -- smoother plots??\n");
+    printf("-t    Print measured 'overhead' (nS) that was subtracted out (Key Generator, etc)\n");
+    printf("-D    'Mirror' Keys from Generator (as in binary viewed with a mirror)\n");
+    printf("-T #  Number of Keys to measure JudyGet/Test times, 0 == MAX [1000000]\n");
 
-    printf ("-o <#>   Key += (#) for Diag only\n");
-    printf ("--Offset=<#>   Key += (#) for Diag only\n");
-
-    printf ("-O <#>   Key += (# << (-B #)) for Diag only\n");
-    printf ("--BigOffset=<#>   Key += (# << (-B #)) for Diag only\n");
-
-    printf
-        ("-F <filename>  Ascii file of Keys, zeros ignored -- must be last option!!!\n");
-    printf
-        ("-b <#> :#:# ... 1st number required [1] where each number is the next level of tree\n");
-    printf("-1      Time Judy1\n");
-    printf("-L      Time JudyL\n");
-    printf("-R      Time JudyL using *PValue as next TstKey\n");
-    printf("-H      Time JudyHS\n");
-    printf("-y      Time a REAL BYTEMAP (-B # sets size == 2^<#>) [-B32]\n");
-    printf("-I      Time DUPLICATE (already in array) JudyIns/Set times\n");
-    printf("-c      Time copying a Judy1 Array\n");
-    printf("-C      Include timing of JudyCount tests\n");
-    printf("-v      Include timing of Judy First/Last/Next/Prev tests\n");
-    printf("-d      Include timing of Del/Unset\n");
-    printf("-p      Print number set used for testing (Diag only) - takes presedence\n");
-    printf
-        ("-V      Turn OFF JudyLGet() verification tests (saving a cache-hit on 'Value')\n");
-    printf
-        ("-x      Turn ON 'waiting for context switch' flag -- smoother plots??\n");
-    printf
-        ("-t      Print measured 'overhead' (nS) that was subtracted out (Number Generator, etc)\n");
-    printf
-        ("-D      'Mirror' Numbers from Generator (as in binary viewed with a mirror)\n");
-    printf
-        ("-l      Do not smooth data with iteration at low (<100) populations (I.E do not JudyLDel/Judy1Unset)\n");
-    printf
-        ("-T <#>  Number of Keys to average JudyGet/Test times, 0 == MAX [1000000]\n");
-    printf("-s <#>  Starting number in Number Generator [0x%lx]\n", StartSequent);
-    printf("-g      Do a Get/Test right after every Ins/Set/Del/Unset (Diag only - adds to times)\n");
-    printf("-i      Do a Ins/Set right after every Ins/Set (Diag only - adds to times)\n");
-    printf("-M      Print on stderr Judy_mmap() and Judy_unmap() calls (Diag only)\n");
-    printf("-K      do a __sync_synchronize() in GetNextKey() (is mfence instruction in X86)\n"); 
+    printf("\n   The following are primarly used for diagnosis and debugging\n");
+    printf("-K    do a __sync_synchronize() in GetNextKey() (is mfence instruction in X86)\n"); 
+    printf("-h    Skip JudyLIns/Judy1Set every 32 numbers from Key Generator [0], (but not in Get/Test)\n");
+    printf("-s #  Starting number in Key Generator [0x%lx]\n", StartSequent);
+    printf("-o #, --Offset #     Key += #  additional add to Key\n");
+    printf("-O #, --BigOffset #  Key += (# << (-B #))  additional add to Key above MSb (high) bits\n");
+    printf("-p     Print number set used for testing  - takes presedence over other options\n");
+    printf("-g     Do a JudyLGet/Judy1Test after every Ins/Set/Del/Unset (adds to times)\n");
+    printf("-i     Do a JudyLIns/Judy1Set after every Ins/Set (adds to times)\n");
+    printf("-M     Print on stderr Judy_mmap() and Judy_unmap() calls to kernel\n");
+    printf("-h     Put 'Key holes' in the Insert path 1 and L options only\n");
 
     printf("\n");
 
@@ -900,23 +734,10 @@ Usage(int argc, char **argv)
 #undef __FUNCTI0N__
 #define __FUNCTI0N__ "main"
 
-// Defining SWAP causes the program to use J1S/J1T with the -b option
-// instead of BitmapSet/BitmapGet.
-// It also causes the program to use BitmapSet/BitmapGet with the -1 option
-// instead of using J1S/J1T.
-// Hence it is called SWAP.  We are swapping the places where J1S/JIT
-// and BitmapSet/BitmapGet calls are made.
-// The purpose was to be able to measure the differences induced by the
-// infrastructure around the calls.
-
 static int
 BitmapGet(PWord_t B1, Word_t TstKey)
 {
     Word_t        offset;
-#if defined(SISTER_READ)
-    unsigned      n;
-    unsigned      nSisters = 0;
-#endif // defined(SISTER_READ)
 #if defined(BITMAP_BY_BYTE)
     unsigned char *p = (unsigned char *)B1;
 #else // defined(BITMAP_BY_BYTE)
@@ -943,14 +764,6 @@ BitmapGet(PWord_t B1, Word_t TstKey)
     bitnum = TstKey % (sizeof(*p) * 8);
 
     bSet = ((p[offset] & ((Word_t)1 << bitnum)) != 0);
-#if defined(SISTER_READ)
-    // What about even sister and odd sister and same page sister?
-    for (unsigned n = 1; n <= nSisters; n++)
-    {
-        offset += 64 / sizeof(*p);
-        bSet += p[offset];
-    }
-#endif // defined(SISTER_READ)
 
     return bSet;
 
@@ -962,9 +775,9 @@ BitmapGet(PWord_t B1, Word_t TstKey)
 static int
 BitmapSet(PWord_t B1, Word_t TstKey)
 {
-    int       offset;
-    int       bitnum;
+    Word_t    offset;
     Word_t    bitmap;
+    int       bitnum;
 
     offset = TstKey / (sizeof(Word_t) * 8);
     bitnum = TstKey % (sizeof(Word_t) * 8);
@@ -1028,7 +841,7 @@ static struct option longopts[] = {
     // Long option "--LittleOffset=<#>" is equivalent to short option "-o<#>".
     { "Offset",    required_argument, NULL,      'o' },
 
-    // Long option "--BigOffset=<#>" is equivalent to short option '-o<#>".
+    // Long option "--BigOffset=<#>" is equivalent to short option '-O<#>".
     { "BigOffset",       required_argument, NULL,      'O' },
 
     // Last struct option in array must be filled with zeros.
@@ -1072,7 +885,6 @@ main(int argc, char *argv[])
     double    DirectHits = 0;           // Number of direct hits
     double    SearchGets = 0;           // Number of object calls
 
-//    long      MaxNumb;
     Word_t    MaxNumb;
     int       Col;
     int       c;
@@ -1137,7 +949,7 @@ main(int argc, char *argv[])
     while (1)
     {
         c = getopt_long(argc, argv,
-                   "a:n:S:T:P:s:B:G:X:W:o:O:F:b:dDcC1LHvIltmpxVfgiyRMK", longopts, NULL);
+                   "a:n:S:T:P:s:B:G:X:W:o:O:F:b:dDcC1LHvIltmpxVfgiyRMKh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -1170,14 +982,39 @@ main(int argc, char *argv[])
             break;
 
         case 'B':                      // expanse of data points (random only)
-            BValue = oa2w(optarg, NULL, 0, c);
+        {
+            char *str, *tok;
+            char *saveptr = NULL;
+
+//            printf("optarg[0] = %c\n", optarg[0]);
+
+//          parse the sub parameters of the -b option
+            str = optarg; 
+            tok = strtok_r(str, ":", &saveptr); 
+//            if (tok == NULL) cant happen, caught by getopt
+            str = NULL;
+
+            BValue = oa2w(tok, NULL, 0, c);
+
             if ((BValue > sizeof(Word_t) * 8) || (BValue < 15))
             {
                 ErrorFlag++;
                 printf("\nError --- Illegal number of random bits of %lu !!!\n", BValue);
+                break;
+            }
+            tok = strtok_r(str, ":", &saveptr); 
+            if (tok == NULL)
+                break;
+
+            Bpercent = atof(tok);
+
+            if (Bpercent < 50.0 || Bpercent > 100.0)
+            {
+                ErrorFlag++;
+                printf("\nError --- Percent = %4.2f must be 50%% to 100%% !!!\n", Bpercent);
             }
             break;
-
+        }
         case 'G':                      // Gaussian Random numbers
             GValue = oa2w(optarg, NULL, 0, c);  // 0..4 -- check by RandomInit()
             break;
@@ -1227,21 +1064,21 @@ main(int argc, char *argv[])
 //          parse the sub parameters of the -b option
             for (str = optarg; (tok = strtok_r(str, ":", &saveptr)); str = NULL)
             {
-                Parm[ii] = atoi(tok);
-                sum += Parm[ii];
+                bParm[ii] = atoi(tok);
+                sum += bParm[ii];
 
 //              Limit maximum of decode in branches
                 if (sum > cMaxSum)
                 {
                     for (jj = 0; jj < ii; jj++)
-                        printf("\nError: option -b%d:", Parm[jj]);
+                        printf("\nError: option -b%d:", bParm[jj]);
 
                     printf("\nError: Maximum sum of subparamters is %d\n", cMaxSum);
                     break;
                 }
-                if (Parm[ii] > 16)
+                if (bParm[ii] > 16)
                 {
-                    printf("\nError: Maximum Value of :%d is 16\n", Parm[jj]);
+                    printf("\nError: Maximum Value of :%d is 16\n", bParm[jj]);
                     ErrorFlag++;
                     break;
                 }
@@ -1249,7 +1086,7 @@ main(int argc, char *argv[])
                 if (ii == cMaxColon)
                 {
                     for (jj = 0; jj < ii; jj++)
-                        printf("\nError: option -b%d:", Parm[jj]);
+                        printf("\nError: option -b%d:", bParm[jj]);
 
                     printf(" - has a maximum of %d subprameters\n", cMaxColon);
                     ErrorFlag++;
@@ -1258,12 +1095,17 @@ main(int argc, char *argv[])
             }
             if (sum == 0)
             {
-                printf("Error: -b option needs at least one number -b 0..%d\n", (int)BValue - cLg2WS);
+                printf("Error: -b option needs at least one number -b 1..%d\n", (int)BValue - cLg2WS);
                 ErrorFlag++;
             }
 
             }
             bFlag = 1;
+            break;
+        }
+        case 'h':                      // Skip # Keys (holes) in the Insert Code
+        {
+            hFlag = 1;
             break;
         }
         case 'F':                      // Read Keys from file
@@ -1432,7 +1274,7 @@ main(int argc, char *argv[])
 //  build the Random Number Generator starting seeds
     PStartSeed = RandomInit(BValue, GValue);
 
-//  BValue already check to be <= 64 or <=32 and >=15
+//  BValue already check to be <= 64 or <=32 and >=16
     if (BigOffset)
     {
         Word_t bigoffset = BigOffset;
@@ -1460,6 +1302,14 @@ main(int argc, char *argv[])
     RandomBit = (Word_t)1 << (BValue - 1);
     MaxNumb = (RandomBit * 2) - 1;
 
+    if (Bpercent != 100.0)
+    {
+        MaxNumb *= ((Bpercent) / 100.0);  // Trim random number generator by Bpercent
+        if (MaxNumb == 0) MaxNumb = (Word_t)-1; // just in case 99.99999999999999% == 100.0%
+    }
+
+    ExpanseM1 = MaxNumb;
+
 //  Check if starting number is too big
     if (StartSequent > MaxNumb)
     {
@@ -1480,13 +1330,16 @@ main(int argc, char *argv[])
 
     PStartSeed->Seeds[0] = StartSequent;
     {
-        MaxNumb = (RandomBit * 2) - 1;
         if (nElms > MaxNumb)
         {
+            nElms = MaxNumb;
+
+#ifdef notnecessary
             printf("# Trim Max number of Elements -n%lu due to max -B%lu bit Keys",
                    MaxNumb, BValue);
             fprintf(stderr, "# Trim Max number of Elements -n%lu due to max -B%lu bit Keys",
                    MaxNumb, BValue);
+#endif  // notnecessary
 
             if (Offset)
             {
@@ -1496,9 +1349,8 @@ main(int argc, char *argv[])
             printf("\n");
             fprintf(stderr, "\n");
 
-            nElms = MaxNumb;
         }
-        if (GValue != 0)
+        if (GValue != 0) // This needs work and review!!!!!
         {
             if (nElms > (MaxNumb >> 1))
             {
@@ -1506,6 +1358,7 @@ main(int argc, char *argv[])
                     ("# Trim Max number of Elements -n%lu to -n%lu due to -G%lu spectrum of Keys\n",
                      MaxNumb, MaxNumb >> 1, GValue);
                 nElms = MaxNumb >> 1;
+                ExpanseM1 = nElms;
             }
         }
     }
@@ -1532,7 +1385,7 @@ main(int argc, char *argv[])
 
 //            printf(""OWx"\n", PrintKey);
 
-            printf("0x"Owx", %2d\n", PrintKey, (int)log2((double)(PrintKey)) + 1);
+            printf("0x"Owx", %2d %lu\n", PrintKey, (int)log2((double)(PrintKey)) + 1, PrintKey);
 
 #ifdef __LP64__
 //            printf("0x%016lx\n", PrintKey);
@@ -1546,10 +1399,15 @@ main(int argc, char *argv[])
         exit(0);
     }
 
+//  print Title for plotting -- command + run arguments
+    printf("# TITLE %s -B%lu", argv[0], BValue);
 
-//  print Title for plotting -- command + run arguements
-    printf("# TITLE %s -", argv[0]);
-    if (bFlag && (Parm[0] == 0))
+    if (Bpercent != 100.0)
+        printf(":%.2f", Bpercent);
+
+    printf(" -G%lu -", GValue);
+
+    if (bFlag && (bParm[0] == 0))
         printf("b");
     if (J1Flag)
         printf("1");
@@ -1594,20 +1452,18 @@ main(int argc, char *argv[])
 
 //  print more options - default, adjusted or otherwise
     printf(" -n%lu -T%lu -P%lu -X%d", nElms, TValues, PtsPdec, XScale);
-    if (bFlag && (Parm[0] != 0))
+    if (bFlag && (bParm[0] != 0))
     {
         int ii;
         printf(" -b");
-        for (ii = 0; Parm[ii]; ii++)
+        for (ii = 0; bParm[ii]; ii++)
         {
             if (ii) printf(":");
-            printf("%d", Parm[ii]);
+            printf("%d", bParm[ii]);
         }
     }
     if (SValue)
         printf(" -S%lu -s%lu", SValue, StartSequent);
-    else                                // some flavor of random Keys
-        printf(" -B%lu -G%lu", BValue, GValue);
 
     if (FValue)
         printf(" -F %s", keyfile);
@@ -1658,6 +1514,9 @@ main(int argc, char *argv[])
             exit(1);
         }
     }
+
+    if (Bpercent != 100.0)
+        printf("# ExpanseM1 of Random Number generator was trimed to 0x%lx (%lu)\n", ExpanseM1, ExpanseM1);
 
 //  uname(2) strings describing the machine
     {
@@ -1880,12 +1739,12 @@ main(int argc, char *argv[])
         printf("# COLHEAD %2d VA  - Value area Words/Key\n", Col++);
 
 
-        printf("# COLHEAD %2d MisCmp - Average number missed Compares Per Leaf Search\n", Col++);
+        printf("# COLHEAD %2d MsCmp  - Average number missed Compares Per Leaf Search\n", Col++);
         printf("# COLHEAD %2d %%DiHt - %% of Direct Hits per Leaf Search\n", Col++);
 
 //        printf("# COLHEAD %2d TrDep  - Tree depth with LGet/1Test searches\n", Col++);
         printf("# COLHEAD %2d AvPop  - Average Current Leaf Population\n", Col++);
-        printf("# COLHEAD %2d %%MalEff - %% RAM malloc()ed vs mmap()ed from Kernel\n", Col++);
+        printf("# COLHEAD %2d %%MalEff - %% RAM JudyMalloc()ed vs mmap()ed from Kernel\n", Col++);
 
         if (J1Flag)
             printf
@@ -1909,40 +1768,35 @@ main(int argc, char *argv[])
 
     if (bFlag)
     {
-        Word_t Words;
+        Bytes = (ExpanseM1 + sizeof(Word_t)) / sizeof(Word_t);
 
         printf("# ========================================================\n");
-        printf
-            ("#     WARNING '-b' option with '-B%lu' option will malloc() a\n",
-             BValue);
-        printf("#     fixed sized Bitmap of %lu bytes.\n", (Word_t)1 << (BValue - 3));
+        printf("#     WARNING '-b#' option with '-B%lu...' option will malloc() a\n", BValue);
+        printf("#     fixed sized Bytemap of %lu Bytes.\n", Bytes);
+        printf("#  Measurements are WORTHLESS unless malloc() returns 2MiB aligned pointer\n");
         printf("# ========================================================\n");
-
-//      Allocate a Bitmap
-        Words = (Word_t)1 << (BValue - (3 + cLg2WS));
-        Bytes = Words * sizeof(Word_t);
 
         if (fFlag)
             fflush(NULL);                   // assure data gets to file in case malloc fail
 
-        B1 = (PWord_t)JudyMalloc(Bytes / sizeof(Word_t));
+//      Allocate a Bitmap
+        B1 = (PWord_t)malloc(Bytes);
         if (B1 == (PWord_t)NULL)
         {
             FAILURE("malloc failure, Bytes =", Bytes);
         }
+        printf("# B1 = 0x%lx = malloc(%lu)\n", (Word_t)B1, Bytes);
 //      clear 1/2 bitmap and bring into RAM
         STARTTm;
-//        for (ii = 0; ii < Words; ii++)
-//            ((Word_t *)B1)[ii] = 0;
         bzero((void *)B1, (size_t)Bytes / 2);
         ENDTm(DeltanSecW);
-        printf("# bzero() Bitmap at %5.2f Bytes per NanoSecond\n", (double)(Bytes / 2) / DeltanSecW);
+        printf("# bzero() (1st half) Bitmap at %5.2f Bytes per NanoSecond\n", (double)(Bytes / 2) / DeltanSecW);
 
 //      copy 1st half to 2nd half
         STARTTm;
         memcpy((void *)((uint8_t *)B1 + (size_t)Bytes / 2), (void *)B1, (size_t)Bytes / 2);
         ENDTm(DeltanSecW);
-        printf("# memcpy() Bitmap at %5.2f Bytes per NanoSecond\n", (double)(Bytes / 2) / DeltanSecW);
+        printf("# memcpy() (to 2nd half) Bitmap at %5.2f Bytes per NanoSecond\n", (double)(Bytes / 2) / DeltanSecW);
 
         if (fFlag)
             fflush(NULL);                   // assure data gets to file in case malloc fail
@@ -1950,47 +1804,33 @@ main(int argc, char *argv[])
 
     if (yFlag)
     {
-        Word_t    Words;
-
-        if ((sizeof(Word_t) == 4) && (BValue == 32))
-        {
-            FAILURE("Must be Less than -B32 on 32 Bit machines =", BValue);
-        }
+        Bytes = ExpanseM1 + 1;
 
         printf("# ========================================================\n");
-        printf
-            ("#     WARNING '-y' option with '-B%lu' option will malloc() a\n",
-             BValue);
-        printf("#     fixed sized Bytemap of %lu bytes.\n", (Word_t)1 << BValue);
+        printf("#     WARNING '-y' option with '-B%lu...' option will malloc() a\n", BValue);
+        printf("#     fixed sized Bytemap of %lu Bytes.\n", Bytes);
+        printf("#  Measurements are WORTHLESS unless malloc() returns 2MiB aligned pointer\n");
         printf("# ========================================================\n");
 
 //      Allocate a Bytemap
 
-        Words = (Word_t)1 << (BValue - cLg2WS);
-        Bytes = Words * sizeof(Word_t);
-
-        printf("# Attempting to malloc(%lu) Words (%lu Bytes)\n", Words, Bytes);
-
-        By = (uint8_t *)JudyMalloc(Words);
+        By = (uint8_t *)malloc(Bytes);
         if (By == (uint8_t *)NULL)
         {
             FAILURE("malloc failure, Bytes =", Bytes);
         }
+        printf("# By = 0x%lx = malloc(%lu)\n", (Word_t)By, Bytes);
 //      clear 1/2 bitmap and bring into RAM
         STARTTm;
-//        for (ii = 0; ii < Words; ii++)
-//            ((Word_t *)By)[ii] = 0;
         bzero((void *)By, (size_t)Bytes / 2);
         ENDTm(DeltanSecW);
-        printf("# Zero Bytemap at %5.2f Bytes per NanoSecond\n", (double)(Bytes / 2) / DeltanSecW);
+        printf("# Zero Bytemap (1st half) at %5.2f Bytes per NanoSecond\n", (double)(Bytes / 2) / DeltanSecW);
 
 //      copy 1st half to 2nd half
         STARTTm;
-//        for (ii = 0; ii < Words; ii++)
-//            ((Word_t *)By)[ii] = 0;
         memcpy((void *)((uint8_t *)By + (size_t)Bytes / 2), (void *)By, (size_t)Bytes / 2);
         ENDTm(DeltanSecW);
-        printf("# memcpy Bytemap at %5.2f Bytes per NanoSecond\n", (double)(Bytes / 2) / DeltanSecW);
+        printf("# memcpy Bytemap (to 2nd half) at %5.2f Bytes per NanoSecond\n", (double)(Bytes / 2) / DeltanSecW);
 
         if (fFlag)
             fflush(NULL);                   // assure data gets to file in case malloc fail
@@ -2000,17 +1840,17 @@ main(int argc, char *argv[])
 // Warm up the cpu
 // ============================================================
 
-//  Try to fool compiler and really execute random()
+//  Try to fool compiler and ACTUALLY execute random()
     STARTTm;
     do {
         for (MaxNumb = ii = 0; ii < 1000000; ii++)
             MaxNumb = random();
 
-        if (MaxNumb == 0)       // will never happen, but compiler does not know
-            printf("\n");
+        if (MaxNumb == 0)       // will never happen, but compiler does not know that
+            printf("!! Bug in random()\n");
 
         ENDTm(DeltanSecW);      // get accumlated elapsed time
-    } while (DeltanSecW < Warmup);       // until 2 seconds elapsed
+    } while (DeltanSecW < Warmup);       // until ~2 seconds elapsed
 
 //  Now measure the execute time for 1M calls to random().
     STARTTm;
@@ -2025,9 +1865,16 @@ main(int argc, char *argv[])
     printf("# random() = %4.2f nSec per/call\n", DeltanSecW/1000000);
     printf("#\n");
     
-    // Let Mike's code print out some initialization junk.
-    // Judy1FreeArray normally requires a non-NULL pointer.
-    Judy1FreeArray(NULL, PJE0);
+// ============================================================
+// PRINT INITIALIZE COMMENTS IN YOUR VERSION OF JUDY FOR INFO
+// ============================================================
+
+    if (J1Flag)         // put initialize comments in
+        Bytes = Judy1FreeArray(NULL, PJE0);
+    if (JLFlag)
+        Bytes = JudyLFreeArray(NULL, PJE0);
+    if (JHFlag)
+        Bytes = JudyHSFreeArray(NULL, PJE0);
 
 // ============================================================
 // PRINT COLUMNS HEADER TO PERFORMANCE TIMERS
@@ -2072,11 +1919,9 @@ main(int argc, char *argv[])
 
         printf("%11lu %10lu %10lu", Pop1, Delta, Meas);
 
-#if defined(SWAP)
-        if (J1Flag)
-#else // defined(SWAP)
+#ifdef NEVER
+        I don't think this code is ever executed (dlb)
         if (bFlag)
-#endif // defined(SWAP)
         {
 //          Allocate a Bitmap, if not already done so
             if (B1 == NULL)
@@ -2086,9 +1931,6 @@ main(int argc, char *argv[])
 
                 // add one cache line for sister cache line read
                 BMsize = (1UL << (BValue - 3));
-#if defined(SISTER_READ)
-                BMsize += 0x1000000 + 0x1000000;
-#endif // defined(SISTER_READ)
                 if (posix_memalign((void **)&B1, 4096, BMsize) == 0)
                 {
                     FAILURE("malloc failure, Bytes =", BMsize);
@@ -2096,14 +1938,9 @@ main(int argc, char *argv[])
 //              clear the bitmap and bring into RAM
                 for (ii = 0; ii < (BMsize / sizeof(Word_t)); ii++)
                     B1[ii] = 0;
-#if defined(SISTER_READ)
-                B1 += 0x1000000 / sizeof(Word_t);
-#endif // defined(SISTER_READ)
-#if defined(SWAP)
-                J1 = B1;
-#endif // defined(SWAP)
             }
         }
+#endif  // NEVER
 
         if (J1Flag || JLFlag || JHFlag)
         {
@@ -2525,7 +2362,8 @@ main(int argc, char *argv[])
 
 //          print average number of failed compares done in leaf search
 //            printf(" %6.1f", AveSrcCmp);
-            printf(" %6.1f", j__MissCompares / (double)Meas);
+//            printf(" %6.1f", j__MissCompares / (double)Meas);
+            PRINT5_2f(j__MissCompares / (double)Meas);
 
 //          print average percent of Leaf searched (with compares)
             printf(" %5.1f", PercentLeafWithDirectHits);
@@ -2756,57 +2594,67 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                 }
             }
 
-            StartMallocs = MalFreeCnt;
+            StartMallocs = j__MalFreeCnt;
             WorkingSeed = *PSeed;
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
             {
                 TstKey = GetNextKey(&WorkingSeed);
-                if (Tit)
+
+//              Skip Judy1Set 
+                if (hFlag && ((TstKey & 0x3F) == 13))
                 {
-#if defined(SWAP)
-                    Rc = BitmapSet(*J1, TstKey);
-#else // defined(SWAP)
-                    J1S(Rc, *J1, TstKey);
-#endif // defined(SWAP)
-                    if (Rc == 0)
+                    if (Tit)
                     {
-                        if (GValue)
-                        {
-                            Judy1Dups++;
-                        }
-                        else
-                        {
-                            printf("\nTstKey = 0x%lx\n", TstKey);
-                            FAILURE("Judy1Set failed - DUP Key at elm", elm);
-                        }
-                    }
-                    if (iFlag)
-                    {
-                        J1S(Rc, *J1, TstKey);
-                        if (Rc != 0)
-                        {
-                            printf
-                            ("\n--- Judy1Set Rc = %d after Judy1Set, Key = 0x%lx, elm = %lu",
-                             Rc, TstKey, elm);
-                            FAILURE("Judy1Test failed at", elm);
-                        }
-                    }
-                    if (gFlag)
-                    {
-                        Rc = Judy1Test(*J1, TstKey, PJE0);
-                        if (Rc != 1)
-                        {
-                            printf
-                            ("\n--- Judy1Test Rc = %d after Judy1Set, Key = 0x%lx, elm = %lu",
-                             Rc, TstKey, elm);
-                            FAILURE("Judy1Test failed at", elm);
-                        }
+
+//         printf("\nSkip Set at Key = 0x%lx, elm %lu\n", TstKey, elm);
+
+//                      Nothing to do, skip the Insert
                     }
                 }
+                else
+                {
+                    if (Tit)
+                    {
+
+                        J1S(Rc, *J1, TstKey);
+                        if (Rc == 0)
+                        {
+                            if (GValue)
+                            {
+                                Judy1Dups++;
+                            }
+                            else
+                            {
+                                printf("\nTstKey = 0x%lx\n", TstKey);
+                                FAILURE("Judy1Set failed - DUP Key at elm", elm);
+                            }
+                        }
+                        if (iFlag)
+                        {
+                            J1S(Rc, *J1, TstKey);
+                            if (Rc != 0)
+                            {
+                                printf("\n--- Judy1Set Rc = %d after Judy1Set, Key = 0x%lx, elm = %lu",
+                                     Rc, TstKey, elm);
+                                FAILURE("Judy1Test failed at", elm);
+                            }
+                        }
+                        if (gFlag)
+                        {
+                            Rc = Judy1Test(*J1, TstKey, PJE0);
+                            if (Rc != 1)
+                            {
+                                printf("\n--- Judy1Test Rc = %d after Judy1Set, Key = 0x%lx, elm = %lu",
+                                     Rc, TstKey, elm);
+                                FAILURE("Judy1Test failed at", elm);
+                            }
+                        }
+                    } // 
+                } 
             }
             ENDTm(DeltanSec1);
-            DeltaMalFre1 = (double)(MalFreeCnt - StartMallocs) / Elements;
+            DeltaMalFre1 = (double)(j__MalFreeCnt - StartMallocs) / Elements;
 
             if (DminTime > DeltanSec1)
             {
@@ -2845,7 +2693,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                 }
             }
 
-            StartMallocs = MalFreeCnt;
+            StartMallocs = j__MalFreeCnt;
             WorkingSeed = *PSeed;
 
             STARTTm;
@@ -2853,86 +2701,98 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
             {
                 TstKey = GetNextKey(&WorkingSeed);
 
-                if (Tit)
+//              Skip JudyLIns 
+                if (hFlag && ((TstKey & 0x3F) == 13))
                 {
+                    if (Tit)
+                    {
+//         printf("\nSkip Set at Key = 0x%lx, elm %lu\n", TstKey, elm);
+//                      Nothing to do, skip the Insert
+                    }
+                }
+                else
+                {
+                    if (Tit)
+                    {
 
 #ifdef SKIPMACRO
-                    PValue = (PWord_t)JudyLIns(JL, TstKey, PJE0);
+                        PValue = (PWord_t)JudyLIns(JL, TstKey, PJE0);
 #else
-                    JLI(PValue, *JL, TstKey);
+                        JLI(PValue, *JL, TstKey);
 #endif // SKIPMACRO
-                    if (PValue == (PWord_t)NULL)
-                    {
-                        FAILURE("JudyLIns failed - NULL PValue", TstKey);
-                    }
-                    if (*PValue == TstKey)
-                    {
-                        if (GValue)
+                        if (PValue == (PWord_t)NULL)
                         {
-                            JudyLDups++;
+                                FAILURE("JudyLIns failed - NULL PValue", TstKey);
                         }
-                        else
+                        if (*PValue == TstKey)
                         {
-                            if (TstKey)
+                            if (GValue)
                             {
-                                printf("TstKey = 0x%lx", TstKey);
-                                FAILURE("JudyLIns failed - DUP Key =", TstKey);
-                            }
-                        }
-                    }
-                    if (VFlag)
-                    {
-                        *PValue = TstKey;     // save Key in Value
-
-                        if (iFlag)
-                        {
-                            PWord_t   PValueNew;
-
-                            PValueNew = (PWord_t)JudyLIns(JL, TstKey, PJE0);
-                            if (PValueNew == NULL)
-                            {
-                                printf("\nTstKey = 0x%lx\n", TstKey);
-                                FAILURE("JudyLIns failed with NULL after Insert", TstKey);
-                            }
-                            if (PValueNew != PValue)
-                            {
-                                printf("\n#Line = %d, Caution: PValueNew = 0x%lx, PValueold = 0x%lx changed\n", __LINE__, (Word_t)PValueNew, (Word_t)PValue);
-//                                printf("- ValueNew = 0x%lx, Valueold = 0x%lx\n", *PValueNew, *PValue);
-//                                FAILURE("Second JudyLIns failed with wrong PValue after Insert", TstKey);
-                            }
-                            if (*PValueNew != TstKey)
-                            {
-                                printf("\n*PValueNew = 0x%lx\n", *PValueNew);
-                                printf("TstKey = 0x%lx = %ld\n", TstKey, TstKey);
-                                FAILURE("Second JudyLIns failed with wrong *PValue after Insert", TstKey);
-                            }
-                        }
-                        if (gFlag)
-                        {
-                            PWord_t   PValueNew;
-
-                            PValueNew = (PWord_t)JudyLGet(*JL, TstKey, PJE0);
-                            if (PValueNew == NULL)
-                            {
-                                printf("\n--- TstKey = 0x%lx", TstKey);
-                                FAILURE("JudyLGet failed after Insert", TstKey);
+                                JudyLDups++;
                             }
                             else
                             {
-                                if (*PValueNew != TstKey)
+                                if (TstKey)
                                 {
-                                    printf("\n--- *PValueNew = 0x%lx\n", *PValueNew);
-                                    printf("--- TstKey = 0x%lx = %ld", TstKey, TstKey);
-                                    FAILURE("JudyLGet failed after Insert", TstKey);
+                                    printf("TstKey = 0x%lx", TstKey);
+                                    FAILURE("JudyLIns failed - DUP Key =", TstKey);
                                 }
                             }
                         }
-                    }
-                }
+                        if (VFlag)
+                        {
+                            *PValue = TstKey;     // save Key in Value
+
+                            if (iFlag)
+                            {
+                                PWord_t   PValueNew;
+
+                                PValueNew = (PWord_t)JudyLIns(JL, TstKey, PJE0);
+                                if (PValueNew == NULL)
+                                {
+                                    printf("\nTstKey = 0x%lx\n", TstKey);
+                                    FAILURE("JudyLIns failed with NULL after Insert", TstKey);
+                                }
+                                if (PValueNew != PValue)
+                                {
+                                    printf("\n#Line = %d, Caution: PValueNew = 0x%lx, PValueold = 0x%lx changed\n", __LINE__, (Word_t)PValueNew, (Word_t)PValue);
+//                                    printf("- ValueNew = 0x%lx, Valueold = 0x%lx\n", *PValueNew, *PValue);
+//                                    FAILURE("Second JudyLIns failed with wrong PValue after Insert", TstKey);
+                                }
+                                if (*PValueNew != TstKey)
+                                {
+                                    printf("\n*PValueNew = 0x%lx\n", *PValueNew);
+                                    printf("TstKey = 0x%lx = %ld\n", TstKey, TstKey);
+                                    FAILURE("Second JudyLIns failed with wrong *PValue after Insert", TstKey);
+                                }
+                            }
+                            if (gFlag)
+                            {
+                                PWord_t   PValueNew;
+
+                                PValueNew = (PWord_t)JudyLGet(*JL, TstKey, PJE0);
+                                if (PValueNew == NULL)
+                                {
+                                    printf("\n--- TstKey = 0x%lx", TstKey);
+                                    FAILURE("JudyLGet failed after Insert", TstKey);
+                                }
+                                else
+                                {
+                                    if (*PValueNew != TstKey)
+                                    {
+                                        printf("\n--- *PValueNew = 0x%lx\n", *PValueNew);
+                                        printf("--- TstKey = 0x%lx = %ld", TstKey, TstKey);
+                                        FAILURE("JudyLGet failed after Insert", TstKey);
+                                    }
+                                }
+                            }
+                        }
+                    } 
+                } // 
             }
             ENDTm(DeltanSecL);
             DeltanSecL /= Elements;
-            DeltaMalFreL = (double)(MalFreeCnt - StartMallocs) / Elements;
+            DeltaMalFreL = (double)(j__MalFreeCnt - StartMallocs) / Elements;
 
             if (DminTime > DeltanSecL)
             {
@@ -2965,7 +2825,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                 }
             }
 
-            StartMallocs = MalFreeCnt;
+            StartMallocs = j__MalFreeCnt;
             WorkingSeed = *PSeed;
 
             STARTTm;
@@ -2995,7 +2855,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
             }
             ENDTm(DeltanSecHS);
             DeltanSecHS /= Elements;
-            DeltaMalFreHS = (double)(MalFreeCnt - StartMallocs) / Elements;
+            DeltaMalFreHS = (double)(j__MalFreeCnt - StartMallocs) / Elements;
 
             if (DminTime > DeltanSecHS)
             {
@@ -3057,7 +2917,7 @@ TestJudyLIns(void **JL, PSeed_t PSeed, Word_t Elements)
             }
         }
 
-        StartMallocs = MalFreeCnt;
+        StartMallocs = j__MalFreeCnt;
         WorkingSeed = *PSeed;           // restore after Del
 
         STARTTm;                        // start timer
@@ -3094,7 +2954,7 @@ TestJudyLIns(void **JL, PSeed_t PSeed, Word_t Elements)
         ENDTm(DeltanSecL);
 
         DeltanSecL /= Elements;
-        DeltaMalFreL = (double)(MalFreeCnt - StartMallocs) / Elements;
+        DeltaMalFreL = (double)(j__MalFreeCnt - StartMallocs) / Elements;
 
         if (DminTime > DeltanSecL)
         {
@@ -3304,24 +3164,42 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
             {
                 TstKey = GetNextKey(&WorkingSeed);
 
-                if (Tit)
+//              Holes in the Set Code ?
+                if (hFlag && ((TstKey & 0x3F) == 13))
                 {
-#if defined(SWAP)
-                    Rc = BitmapGet(J1, TstKey);
-#else // defined(SWAP)
-#ifdef SKIPMACRO
-                    Rc = Judy1Test(J1, TstKey, PJE0);
-#else
-                    J1T(Rc, J1, TstKey);
-#endif // SKIPMACRO
-#endif // defined(SWAP)
-
-                    if (Rc != 1)
+                    if (Tit)
                     {
-                        printf
-                            ("\n--- Judy1Test wrong Rc = %d, Key = 0x%lx, elm = %lu",
-                             Rc, TstKey, elm);
-                        FAILURE("Judy1Test Rc != 1", Rc);
+
+#ifdef SKIPMACRO
+                        Rc = Judy1Test(J1, TstKey, PJE0);
+#else
+                        J1T(Rc, J1, TstKey);
+#endif // SKIPMACRO
+
+                        if (Rc != 0)
+                        {
+                            printf("\n--- Judy1Test wrong Rc = %d, Key = 0x%lx, elm = %lu",
+                                 Rc, TstKey, elm);
+                            FAILURE("Judy1Test Rc != 0", Rc);
+                        }
+                    }
+                }
+                else
+                {
+                    if (Tit)
+                    {
+#ifdef SKIPMACRO
+                        Rc = Judy1Test(J1, TstKey, PJE0);
+#else
+                        J1T(Rc, J1, TstKey);
+#endif // SKIPMACRO
+
+                        if (Rc != 1)
+                        {
+                            printf("\n--- Judy1Test wrong Rc = %d, Key = 0x%lx, elm = %lu",
+                                 Rc, TstKey, elm);
+                            FAILURE("Judy1Test Rc != 1", Rc);
+                        }
                     }
                 }
             }
@@ -3359,26 +3237,48 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
             {
                 TstKey = GetNextKey(&WorkingSeed);
 
-                if (Tit)
+//              Holes in the Insert Code ?
+                if (hFlag && ((TstKey & 0x3F) == 13))
                 {
+                    if (Tit)
+                    {
 
 #ifdef SKIPMACRO
-                    PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
+                        PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
 #else
-                    JLG(PValue, JL, TstKey);
+                        JLG(PValue, JL, TstKey);
 #endif // SKIPMACRO
 
-                    if (PValue == (Word_t *)NULL)
-                    {
-                        printf("\n--- JudyGet Key = 0x%lx", TstKey);
-                        FAILURE("JudyLGet ret PValue = NULL", 0L);
+                        if (PValue != (Word_t *)NULL)
+                        {
+                            printf("\n--- JudyGet Key = 0x%lx", TstKey);
+                            FAILURE("JudyLGet ret PValue != NULL -- Key inserted???", 0L);
+                        }
                     }
-                    else if (VFlag && (*PValue != TstKey))
+                }
+                else
+                {
+                    if (Tit)
                     {
-                        printf
-                            ("--- JudyLGet returned Value=0x%lx, should be=0x%lx",
-                             *PValue, TstKey);
-                        FAILURE("JudyLGet ret wrong Value at", elm);
+
+#ifdef SKIPMACRO
+                        PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
+#else
+                        JLG(PValue, JL, TstKey);
+#endif // SKIPMACRO
+
+                        if (PValue == (Word_t *)NULL)
+                        {
+                            printf("\n--- JudyGet Key = 0x%lx", TstKey);
+                            FAILURE("JudyLGet ret PValue = NULL", 0L);
+                        }
+                        else if (VFlag && (*PValue != TstKey))
+                        {
+                            printf
+                                ("--- JudyLGet returned Value=0x%lx, should be=0x%lx",
+                                 *PValue, TstKey);
+                            FAILURE("JudyLGet ret wrong Value at", elm);
+                        }
                     }
                 }
             }
@@ -4441,11 +4341,7 @@ TestBitmapSet(PWord_t *pB1, PSeed_t PSeed, Word_t Elements)
 
         if (Tit)
         {
-#if defined(SWAP)
-            if (Judy1Set((PPvoid_t)pB1, TstKey, PJE0) == 0)
-#else // defined(SWAP)
             if (BitmapSet(*pB1, TstKey) == 0)
-#endif // defined(SWAP)
             {
                 if (GValue)
                 {
@@ -4497,11 +4393,7 @@ TestBitmapTest(PWord_t B1, PSeed_t PSeed, Word_t Elements)
 
             if (Tit)
             {
-#if defined(SWAP)
-                if (Judy1Test(B1, TstKey, PJE0) == 0)
-#else // defined(SWAP)
                 if (BitmapGet(B1, TstKey) == 0)
-#endif // defined(SWAP)
                 {
                     printf("\nBitMapGet -- missing bit, Key = 0x%lx",
                            TstKey);

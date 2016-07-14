@@ -11,50 +11,10 @@
 // ********************************************************************** //
 //                    JUDY - Memory Allocater                             //
 //                              -by-					  //
-//		         Douglas L. Baskins				  //
+//		            Doug Baskins				  //
 //                     dougbaskins -at- yahoo.com                         //
 //									  //
 // ********************************************************************** //
-
-//=======================================================================
-// J U D Y  /  D L M A L L O C interface for huge pages Ubuntu 3.13+ kernel
-//=======================================================================
-
-// -DLIBCMALLOC if you want to use libc malloc()
-#ifdef  LIBCMALLOC
-
-// JUDY INCLUDE FILES
-#include "Judy.h"
-
-// ****************************************************************************
-// J U D Y   M A L L O C
-//
-// Allocate RAM.  This is the single location in Judy code that calls
-// malloc(3C).  Note:  JPM accounting occurs at a higher level.
-
-Word_t JudyMalloc(
-	Word_t Words)
-{
-	Word_t Addr;
-
-	Addr = (Word_t) malloc(Words * sizeof(Word_t));
-	return(Addr);
-
-} // JudyMalloc()
-
-
-// ****************************************************************************
-// J U D Y   F R E E
-
-void JudyFree(
-	void * PWord,
-	Word_t Words)
-{
-	(void) Words;
-	free(PWord);
-
-} // JudyFree()
-
 
 // ****************************************************************************
 // J U D Y   M A L L O C
@@ -63,30 +23,31 @@ void JudyFree(
 // although at this time they are in fact only in RAM.  Later we hope that some
 // entire subtrees (at a JPM or branch) can be "virtual", so their allocations
 // and frees should go through this level.
-
-Word_t JudyMallocVirtual(
-	Word_t Words)
-{
-	return(JudyMalloc(Words));
-
-} // JudyMallocVirtual()
-
-
 // ****************************************************************************
-// J U D Y   F R E E
 
-void JudyFreeVirtual(
-	void * PWord,
-	Word_t Words)
-{
-        JudyFree(PWord, Words);
-
-} // JudyFreeVirtual()
-
-#else   // LIBCMALLOC
-
-#include <sys/mman.h>
+// JUDY INCLUDE FILES
 #include "Judy.h"
+
+// Global in case anyone wants to know (kind of kludgy, but only for testing)
+
+#ifdef  RAMMETRICS
+Word_t    j__AllocWordsTOT;             // Best guess of words used by (dl)malloc()
+Word_t    j__MalFreeCnt;                // keep track of total malloc() + free()
+Word_t    j__MFlag;                     // Print memory allocation on stderr
+Word_t    j__TotalBytesAllocated;       // from kernel from dlmalloc
+#endif  // RAMMETRICS
+
+// Use -DLIBCMALLOC if you want to use the libc malloc() instead of this
+// internal memory allocator.  (This one is much faster on some OS).
+
+#ifndef  LIBCMALLOC
+
+// only use the libc malloc of defined
+#include <sys/mman.h>
+
+//=======================================================================
+// J U D Y  /  D L M A L L O C interface for huge pages Ubuntu 3.13+ kernel
+//=======================================================================
 
 // Define the Huge TLB size (2MB) for Intel Haswell
 #ifndef HUGETLBSZ       
@@ -109,22 +70,17 @@ static int pre_munmap(void *, size_t);
 #define HAVE_MORECORE 0
 #define HAVE_MMAP 1
 
-#define mmap            pre_mmap 
-#define munmap          pre_munmap
+#define mmap            pre_mmap        // re-define for dlmalloc
+#define munmap          pre_munmap      // re-define for dlmalloc
 
 #include "dlmalloc.c"   // Version 2.8.6 Wed Aug 29 06:57:58 2012  Doug Lea
 
-#undef mmap             // undo it
-#define mmap            mmap 
-#undef munmap           // undo it
-#define munmap          munmap
+#undef mmap             
+#define mmap            mmap    // restore it for rest of routine
+#undef munmap           
+#define munmap          munmap  // restore it for rest of routine
 
-#ifdef  RAMMETRICS
-Word_t    j__MFlag = 0;                    // Print memory allocation on stderr
-Word_t    j__TotalBytesAllocated = 0;
-#endif  // RAMMETRICS
-
-// This code is not necessary except if MFlag is set
+// This code is not necessary except if j__MFlag is set
 static int 
 pre_munmap(void *addr, size_t length)
 {
@@ -134,6 +90,7 @@ pre_munmap(void *addr, size_t length)
 
 #ifdef  RAMMETRICS
     j__TotalBytesAllocated -= length;
+
     if (j__MFlag)
         fprintf(stderr, "%d = munmap(0x%lx, 0x%lx(%ld)\n", ret, (Word_t)addr, (Word_t)length, (Word_t)length);
 #endif  // RAMMETRICS
@@ -159,6 +116,7 @@ pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 
 #ifdef  RAMMETRICS
     j__TotalBytesAllocated += length;
+
     if (j__MFlag)
         fprintf(stderr, "0x%lx = mmap(0x%lx)[%ld]\n", (Word_t)buf, \
                 (Word_t)length, (Word_t)length);
@@ -169,7 +127,13 @@ pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 
 //  early out if buffer not 2MB
     if (length != HUGETLBSZ)
-        return(buf);
+    {
+////        return(buf);
+        fprintf(stderr, "\n\n0x%lx = mmap(0x%lx)[%ld]\n", (Word_t)buf, \
+                                (Word_t)length, (Word_t)length);
+        fprintf(stderr, "!! Sorry, JudyMalloc is not ready for larger than 2Mib allocations\n");
+        exit(-1);
+    }
 
     remain = (Word_t)buf % HUGETLBSZ;
 
@@ -184,6 +148,7 @@ pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 
 #ifdef  RAMMETRICS
         j__TotalBytesAllocated += (long)length + HUGETLBSZ;
+
         if (j__MFlag)
             fprintf(stderr, "0x%lx = mmap(0x%lx)[%ld]\n", (long)buf, \
                     (long)length + HUGETLBSZ, (long)length + HUGETLBSZ);
@@ -204,11 +169,8 @@ pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
     }
     return(buf);
 }
+#endif	// ! LIBCMALLOC
 
-// JUDY INCLUDE FILES
-//#include "Judy.h"
-
-Word_t j__AllocWordsTOT;
 
 // ****************************************************************************
 // J U D Y   M A L L O C
@@ -220,16 +182,53 @@ Word_t JudyMalloc(
 	Word_t Words)
 {
 	Word_t Addr;
+        size_t Bytes;
 
-        if (Words < 4) {
+        Bytes = Words * sizeof(Word_t);
+
+#ifdef  RAMMETRICS
+        if (Words < 4) 
+        {
             j__AllocWordsTOT += 4;
-        } else {
+        } 
+        else 
+        {
             j__AllocWordsTOT += Words + 1;
-            if ( (Words & 1) == 0 ) {
-                j__AllocWordsTOT += 1;
+
+            if ( (Words & 1) == 0 )     // even?
+            {
+                j__AllocWordsTOT += 1;  // one more
             }
         }
-	Addr = (Word_t) dlmalloc(Words * sizeof(Word_t));
+#endif  // RAMMETRICS
+
+#ifdef  GUARDBAND
+        Bytes += sizeof(Word_t);    // one word
+#endif  // GUARDBAND
+
+#ifdef  LIBCMALLOC
+	Addr = (Word_t) malloc(Bytes);
+#else	// ! system libc
+	Addr = (Word_t) dlmalloc(Bytes);
+#endif	// ! LIBCMALLOC
+
+#ifdef  GUARDBAND
+        *((Word_t *)Addr + ((Bytes/sizeof(Word_t)) - 1)) = ~Addr;
+
+//      Verify that all mallocs are 2 word aligned
+        if (Addr & ((sizeof(Word_t) * 2) - 1))
+        {
+            fprintf(stderr, "\nmalloc() Addr not 2 word aligned = 0x%lx\n", Addr);
+            printf("\nmalloc() Addr not 2 word aligned = 0x%lx\n", Addr);
+            exit(-1);
+        }
+#endif  // GUARDBAND
+
+#ifdef  RAMMETRICS
+        if (Addr)
+            j__MalFreeCnt++;            // keep track of total malloc() + free()
+#endif  // RAMMETRICS
+
 	return(Addr);
 
 } // JudyMalloc()
@@ -242,27 +241,57 @@ void JudyFree(
 	void * PWord,
 	Word_t Words)
 {
-	(void) Words;
-        if (Words < 4) {
+
+#ifdef  RAMMETRICS
+        if (Words < 4) 
+        {
             j__AllocWordsTOT -= 4;
-        } else {
+        } 
+        else 
+        {
             j__AllocWordsTOT -= Words + 1;
-            if ( (Words & 1) == 0 ) {
-                j__AllocWordsTOT -= 1;
+
+            if ( (Words & 1) == 0 )     // even?
+            {
+                j__AllocWordsTOT -= 1;  // one more
             }
         }
+        j__MalFreeCnt++;        // keep track of total malloc() + free()
+#else
+	(void) Words;
+#endif  // ! RAMMETRICS
+
+#ifdef  GUARDBAND
+    if (Words == 0)
+    {
+        fprintf(stderr, "--- OOps JudyFree called with 0 words\n");
+        printf("--- OOps JudyFree called with 0 words\n");
+        exit(-1);
+    }
+    {
+        Word_t GuardWord;
+
+        GuardWord = *((((Word_t *)PWord) + Words));
+
+        if (~GuardWord != (Word_t)PWord)
+        {
+            printf("\n\nOops GuardWord = 0x%lx != PWord = 0x%lx\n", 
+                    GuardWord, (Word_t)PWord);
+            exit(-1);
+        }
+    }
+#endif  // GUARDBAND
+
+#ifdef  LIBCMALLOC
+	free(PWord);
+#else	// ! system lib
 	dlfree(PWord);
+#endif	// Judy malloc
+
 
 } // JudyFree()
 
 
-// ****************************************************************************
-// J U D Y   M A L L O C
-//
-// Higher-level "wrapper" for allocating objects that need not be in RAM,
-// although at this time they are in fact only in RAM.  Later we hope that some
-// entire subtrees (at a JPM or branch) can be "virtual", so their allocations
-// and frees should go through this level.
 
 Word_t JudyMallocVirtual(
 	Word_t Words)
@@ -282,5 +311,3 @@ void JudyFreeVirtual(
         JudyFree(PWord, Words);
 
 } // JudyFreeVirtual()
-
-#endif  // LIBCMALLOC
