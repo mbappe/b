@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.617 2016/07/11 17:44:47 mike Exp mike $
+// @(#) $Id: bli.c,v 1.618 2016/07/15 22:57:11 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -10,24 +10,6 @@
 //#include <emmintrin.h>
 //#include <smmintrin.h>
 #include <immintrin.h> // __m128i
-
-#if defined(PARALLEL_128)
-
-#define BUCKET_HAS_KEY(_pxBucket, _wKey, _nBL) \
-    ((sizeof(*(_pxBucket)) == sizeof(Word_t)) \
-        ? WordHasKey((void *)(_pxBucket), (_wKey), (_nBL)) \
-        : HasKey128((void *)(_pxBucket), (_wKey), (_nBL)))
-
-#else // defined(PARALLEL_128)
-
-#define BUCKET_HAS_KEY(_pxBucket, _wKey, _nBL) \
-    WordHasKey((_pxBucket), (_wKey), (_nBL))
-
-#endif // defined(PARALLEL_128)
-
-#if defined(TRY_MEMCHR)
-#include <wchar.h>
-#endif // defined(TRY_MEMCHR)
 
 #if (cnDigitsPerWord <= 1)
 //#if (cnBitsPerDigit < cnBitsPerWord)
@@ -58,6 +40,24 @@
 #define RECURSIVE
 #endif // defined(RECURSIVE_INSERT)
 #endif // defined(LOOKUP) || defined(REMOVE)
+
+#if defined(PARALLEL_128)
+
+#define BUCKET_HAS_KEY(_pxBucket, _wKey, _nBL) \
+    ((sizeof(*(_pxBucket)) == sizeof(Word_t)) \
+        ? WordHasKey((void *)(_pxBucket), (_wKey), (_nBL)) \
+        : HasKey128((void *)(_pxBucket), (_wKey), (_nBL)))
+
+#else // defined(PARALLEL_128)
+
+#define BUCKET_HAS_KEY(_pxBucket, _wKey, _nBL) \
+    WordHasKey((_pxBucket), (_wKey), (_nBL))
+
+#endif // defined(PARALLEL_128)
+
+#if defined(TRY_MEMCHR)
+#include <wchar.h>
+#endif // defined(TRY_MEMCHR)
 
 #if (cwListPopCntMax != 0)
 
@@ -1751,7 +1751,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     Word_t *pwRootPrefix = NULL; (void)pwRootPrefix;
     Word_t *pwrPrefix = NULL; (void)pwrPrefix;
     int nBLRPrefix = 0; (void)nBLRPrefix;
-    int nPos;
+    int nPos = nPos; // suppress "uninitialized" compiler warning
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
