@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.618 2016/07/11 14:26:10 mike Exp mike $
+// @(#) $Id: bli.c,v 1.617 2016/07/11 17:44:47 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -278,7 +278,6 @@
 
 #endif // defined(SPLIT_SEARCH_BINARY)
 
-
 #if JUNK
 pop <= 2 ^ (bpw - nbl + nn)
 ceil(log(pop)) <= bpw - nbl + nn
@@ -352,6 +351,15 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
         } \
     } \
 }
+
+#if defined(INSERT)
+int
+PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
+{
+    PSPLIT_SEARCH_BY_KEY(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+    return nPos;
+}
+#endif // defined(INSERT)
 
 #if defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
@@ -933,7 +941,8 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     int nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
   #else // defined(PP_IN_LINK)
       #if (cnBitsLeftAtDl2 <= 16)
-      #if defined(PARALLEL_128) // sizeof(__m128i) == 16 bytes
+      #if defined(PARALLEL_128) && !defined(INSERT)
+          // sizeof(__m128i) == 16 bytes
           #if ! defined(cnListPopCntMaxDl2) || (cnListPopCntMaxDl2 <= 8)
           #if (cnListPopCntMax16 <= 8)
     assert(PWR_xListPopCnt(pwRoot, nBL) <= 8);
@@ -967,7 +976,7 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     (void)nBL;
 #if defined(LIST_END_MARKERS)
     assert(psKeys[-1] == 0);
-#if defined(PSPLIT_PARALLEL)
+#if defined(PSPLIT_PARALLEL) && !defined(INSERT)
     assert(*(uint16_t *)(((Word_t)&psKeys[nPopCnt] + sizeof(Bucket_t) - 1)
             & ~(sizeof(Bucket_t) - 1))
         == (uint16_t)-1);
@@ -977,10 +986,9 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 #endif // defined(LIST_END_MARKERS)
     uint16_t sKey = (uint16_t)wKey;
     int nPos = 0;
-#if defined(PSPLIT_SEARCH_16)
+#if defined(PSPLIT_SEARCH_16) && !defined(INSERT)
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 16) {
-        //nPos = PSplitSearch16(nBL, psKeys, nPopCnt, sKey, nPos);
         PSPLIT_SEARCH(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
     } else
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
@@ -1261,7 +1269,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 {
     (void)pwRoot;
 
-    DBGL(printf("SearchList\n"));
+    DBGL(printf("SearchList wKey "Owx" nBL %d\n", wKey, nBL));
 
     int nPopCnt;
     int nPos;
@@ -1743,6 +1751,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     Word_t *pwRootPrefix = NULL; (void)pwRootPrefix;
     Word_t *pwrPrefix = NULL; (void)pwrPrefix;
     int nBLRPrefix = 0; (void)nBLRPrefix;
+    int nPos;
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
@@ -2315,7 +2324,7 @@ t_list:;
 #if ! defined(SEPARATE_T_NULL)
                 && (pwr != NULL)
 #endif // ! defined(SEPARATE_T_NULL)
-                && (SearchList(pwr, wKey, nBL, pwRoot) >= 0))
+                && ((nPos = SearchList(pwr, wKey, nBL, pwRoot)) >= 0))
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
           #if defined(REMOVE)
@@ -2338,6 +2347,7 @@ t_list:;
           #endif // defined(INSERT)
                 return KeyFound;
             }
+            nPos ^= -1;
         }
       #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) \
           && defined(COMPRESSED_LISTS)
@@ -2836,7 +2846,7 @@ notFound:;
     // InsertGuts is called with a pwRoot and nBL indicates the
     // bits that were not decoded in identifying pwRoot.  nBL
     // does not include any skip indicated in the type field of *pwRoot.
-    InsertGuts(pwRoot, wKey, nBL, wRoot
+    InsertGuts(pwRoot, wKey, nBL, wRoot, nPos
   #if defined(CODE_XX_SW)
                , pwRootPrev
       #if defined(SKIP_TO_XX_SW)

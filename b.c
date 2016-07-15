@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.526 2016/07/06 13:57:52 mike Exp mike $
+// @(#) $Id: b.c,v 1.527 2016/07/11 10:22:05 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2075,26 +2075,33 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, unsigned nKeys,
 }
 #endif // (cnBitsPerWord > 32)
 
+#if defined(JUNK)
 static void
-CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc, unsigned nKeys,
-                    uint16_t sKey)
+HexDump16(char *str, uint16_t *pus, int n)
+{
+    printf("%s:", str);
+    for (int i = 0; i < n; i++) {
+        printf(" %04x", pus[i]); 
+    }
+    printf("\n");
+}
+#endif // defined(JUNK)
+
+static void
+CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc, int nKeys,
+                    uint16_t sKey, int nPos)
 {
 #if (cwListPopCntMax != 0)
     unsigned short as[cwListPopCntMax]; // buffer for move if pSrc == pTgt
 #else // (cwListPopCntMax != 0)
     unsigned short as[1]; // buffer for move if pSrc == pTgt
 #endif // (cwListPopCntMax != 0)
-    unsigned n;
+    int n;
 
-    // find the insertion point
-    for (n = 0; n < nKeys; n++)
-    {
-        if (pSrc[n] >= sKey)
-        {
-            assert(pSrc[n] != sKey);
-            break;
-        }
-    }
+    if (nPos == -1) { // inflated embedded list
+        // find the insertion point
+        n = ~PsplitSearchByKey16(pSrc, nKeys, sKey, 0);
+    } else { n = nPos; }
 
     if (pTgt != pSrc)
     {
@@ -2773,7 +2780,7 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
 // When do we uncompress switches?
 // When do we coalesce switches?
 Status_t
-InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
+InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot, int nPos
 #if defined(CODE_XX_SW)
            , Word_t *pwRootPrev
   #if defined(SKIP_TO_XX_SW)
@@ -2854,6 +2861,8 @@ embeddedKeys:;
           #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
 
         wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot);
+        nPos = -1; // Tell copy that we have no nPos.
+
         // BUG: The list may not be sorted at this point.  Does it matter?
         // Update: I'm not sure why I wrote that the list may not be sorted
         // at this point.  I can't think of why it would not be sorted.
@@ -3117,7 +3126,7 @@ embeddedKeys:;
                         pcKeys, wPopCnt, (unsigned char)wKey);
                 } else if (nBL <= 16) {
                     CopyWithInsertShort(ls_psKeysNAT(pwList),
-                        psKeys, wPopCnt, (unsigned short)wKey);
+                        psKeys, wPopCnt, (unsigned short)wKey, nPos);
 #if (cnBitsPerWord > 32)
                 } else if (nBL <= 32) {
                     CopyWithInsertInt(ls_piKeysNAT(pwList),

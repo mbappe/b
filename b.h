@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.h,v 1.398 2016/07/07 01:58:00 mike Exp mike $
+// @(#) $Id: b.h,v 1.399 2016/07/11 10:18:50 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/b.h,v $
 
 #if ( ! defined(_B_H_INCLUDED) )
@@ -2073,6 +2073,7 @@ Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBL);
 Status_t Remove(Word_t *pwRoot, Word_t wKey, int nBL);
 
 Status_t InsertGuts(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot
+                    , int nPos
 #if defined(CODE_XX_SW)
                     , Word_t *pwRootPrev
   #if defined(SKIP_TO_XX_SW)
@@ -2080,6 +2081,8 @@ Status_t InsertGuts(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot
   #endif // defined(SKIP_TO_XX_SW)
 #endif // defined(CODE_XX_SW)
                     );
+
+int PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos);
 
 Status_t RemoveGuts(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
 
