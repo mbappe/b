@@ -93,6 +93,7 @@ endif
   WFLAGS += -Wmissing-prototypes
 # gcc gives false positives without -Wno-maybe-uninitialized.
 # clang doesn't even try. So clang doesn't support the option.
+  WFLAGS += -Wno-unused-function
 ifeq "$(CC)" "gcc"
   WFLAGS += -Wno-maybe-uninitialized
 endif
