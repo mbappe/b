@@ -6,9 +6,8 @@
 // generate any code.  Why?  
 // So we have __pRemove to work around it.
 
-#include "b.h"
-
 #define REMOVE
+#include "b.h"
 #include "bli.c"
 #undef REMOVE
 

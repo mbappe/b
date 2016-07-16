@@ -6,9 +6,8 @@
 // generate any code.  Why?  
 // So we have __pLookup to work around it.
 
-#include "b.h"
-
 #define LOOKUP
+#include "b.h"
 #include "bli.c"
 #undef LOOKUP
 

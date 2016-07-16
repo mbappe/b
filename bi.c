@@ -6,9 +6,8 @@
 // generate any code.  Why?  
 // So we have __pInsert to work around it.
 
-#include "b.h"
-
 #define INSERT
+#include "b.h"
 #include "bli.c"
 #undef INSERT
 
