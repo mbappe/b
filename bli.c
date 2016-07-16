@@ -1,5 +1,5 @@
 
-// @(#) $Id: bli.c,v 1.619 2016/07/15 23:30:07 mike Exp mike $
+// @(#) $Id: bli.c,v 1.620 2016/07/16 00:32:52 mike Exp mike $
 // @(#) $Source: /Users/mike/b/RCS/bli.c,v $
 
 // This file is #included in other .c files three times.
@@ -1105,15 +1105,32 @@ t_bitmap:;
 #endif // defined(INSERT)
 
 #if defined(INSERT)
+  #if 0
         // We removed the code that was in InsertGuts to handle bitmaps.
         // So we can no longer just 'break' here like we used to do.
-        InsertAtBitmap(pwRoot, wKey, nBL, wRoot);
+        // We also removed the code to do cleanup after the call to InsertGuts.
+        InsertAtBitmap(pwRoot, wKey, nBL_to_nDL(nBL), wRoot);
+  #else
+        InsertGuts(pwRoot, wKey, nBL, wRoot, nPos
+      #if defined(CODE_XX_SW)
+                   , pwRootPrev
+        #if defined(SKIP_TO_XX_SW)
+                   , nBLPrev
+        #endif // defined(SKIP_TO_XX_SW)
+      #endif // defined(CODE_XX_SW)
+                   );
+  #endif
   #if (cn2dBmWpkPercent != 0)
         if ((nBLR == cnBitsInD1)
             && (nBL == nBLR)
-            //&& (PWR_wPopCntBL(pwRootPrev, (Switch_t *)wr_pwr(*pwRootPrev), cnBitsLeftAtDl2)
-            //    >= (EXP(cnBitsLeftAtDl2) * 100 / cnBitsPerWord / cn2dBmWpkPercent))
-            && (wPopCnt >= (EXP(cnBitsLeftAtDl2) * 100 / cnBitsPerWord / cn2dBmWpkPercent))
+  #if 0
+            && (PWR_wPopCntBL(pwRootPrev, (Switch_t *)wr_pwr(*pwRootPrev),
+                              cnBitsLeftAtDl2)
+                >= (EXP(cnBitsLeftAtDl2) * 100 / cnBitsPerWord
+                       / cn2dBmWpkPercent))
+  #endif
+            && (wPopCnt >= (EXP(cnBitsLeftAtDl2) * 100 / cnBitsPerWord
+                    / cn2dBmWpkPercent))
             )
         {
             goto cleanup;

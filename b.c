@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.527 2016/07/11 10:22:05 mike Exp mike $
+// @(#) $Id: b.c,v 1.528 2016/07/15 22:57:11 mike Exp $
 // @(#) $Source: /Users/mike/b/RCS/b.c,v $
 
 #include "b.h"
@@ -2192,7 +2192,11 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, unsigned nKeys, uint8_t cKey)
 #endif // (cwListPopCntMax != 0)
 
 Status_t
-InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot);
+InsertAtDl1(Word_t *pwRoot, Word_t wKey, int nDL,
+            int nBL, Word_t wRoot);
+
+Status_t
+InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
 
 #if (cwListPopCntMax != 0)
 
@@ -2829,18 +2833,24 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot, int nPos
     }
 #endif // defined(NO_TYPE_IN_XX_SW)
 
-    // Assert that we're not at an embedded bitmap before checking nType
-    // since nType may be invalid if wRoot is an embedded bitmap.
+    // Check to see if we're at the bottom before checking nType since
+    // nType may be invalid if wRoot is an embedded bitmap.
     // The first test can be done at compile time and might make the
-    // assertion code go away altogether.
-    assert((EXP(cnBitsInD1) > sizeof(Link_t) * 8) || (nBL > cnBitsInD1));
+    // InsertAtDl1 go away.
+    if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nBL == cnBitsInD1)) {
+        return InsertAtDl1(pwRoot, wKey, nDL, nBL, wRoot);
+    }
 
     unsigned nType = wr_nType(wRoot); (void)nType; // silence gcc
 
-    assert(nType != T_BITMAP);
+    if ((nType == T_BITMAP)
 #if defined(SKIP_TO_BITMAP)
-    assert(nType != T_SKIP_TO_BITMAP);
+        || (nType == T_SKIP_TO_BITMAP)
 #endif // defined(SKIP_TO_BITMAP)
+        || 0)
+    {
+        return InsertAtBitmap(pwRoot, wKey, nDL, wRoot);
+    }
 
     // Can the following be moved into the if ! switch block?
 #if (cwListPopCntMax != 0)
@@ -4251,26 +4261,100 @@ done:;
 #endif // (cwListPopCntMax != 0)
 
 Status_t
-InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
+InsertAtDl1(Word_t *pwRoot, Word_t wKey, int nDL,
+            int nBL, Word_t wRoot)
 {
-    // Check to see if wRoot is an embedded bitmap.
-    // The first test can be done at compile time and might make the
-    // second test and the 'then' code go away.
-    if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nBL == cnBitsInD1)) {
-        SetBit(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL));
-    } else {
-        Word_t *pwr = wr_pwr(wRoot);
-        SetBit(pwr, wKey & MSK(nBL));
-        set_w_wPopCntBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL,
-            w_wPopCntBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL) + 1);
+    (void)nDL; (void)nBL; (void)wRoot;
+
+    assert(EXP(nBL) <= sizeof(Link_t) * 8);
+    assert( ! BitIsSet(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL)));
+
+    DBGI(printf("SetBit(pwRoot "OWx" wKey "OWx")\n",
+                    (Word_t)pwRoot, wKey & MSK(nBL)));
+
+    SetBit(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL));
+
+#if defined(PP_IN_LINK)
+
+    // What about no_unnecessary_prefix?
+    // And is this ever necessary since we don't support skip to bitmap?
+    if (EXP(cnBitsInD1) > sizeof(Link_t) * 8) {
+        set_PWR_wPrefix(pwRoot, NULL, nDL, wKey);
     }
 
+#endif // defined(PP_IN_LINK)
+
+    return Success;
+}
+
+// InsertAtBitmap is for a bitmap that is not at the bottom.
+Status_t
+InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
+{
+    (void)pwRoot;
+    int nBL = nDL_to_nBL(nDL);
+
+#if defined(SKIP_TO_BITMAP)
+    if (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP) {
+        int nBLR = GetBLR(pwRoot, nBL);
+        int nDLR = nBL_to_nDL(nBLR);
+        Word_t *pwr = Get_pwr(pwRoot); (void)pwr;
+
+        Word_t wPrefix;
+#if defined(PP_IN_LINK)
+        if (nBL == cnBitsPerWord) { wPrefix = 0; /* limitation */ } else
+#endif // defined(PP_IN_LINK)
+#if defined(SKIP_TO_BITMAP) && ! defined(PP_IN_LINK)
+        if (Get_nType(pwRoot) == T_SKIP_TO_BITMAP) {
+            wPrefix = w_wPrefixBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)),
+                                 nBLR);
+        } else
+#endif // defined(SKIP_TO_BITMAP) && ! defined(PP_IN_LINK)
+        { wPrefix = PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBLR); }
+
+        int bPrefixMismatch;
   #if defined(PP_IN_LINK)
+        if (nBL == cnBitsPerWord) {
+            // prefix is 0
+            bPrefixMismatch = (wKey >= EXP(nBLR));
+        } else
+  #endif // defined(PP_IN_LINK)
+        { bPrefixMismatch = ((int)LOG(1 | (wPrefix ^ wKey)) >= nBLR); }
+
+        if (bPrefixMismatch) {
+            PrefixMismatch(pwRoot, nBL, wKey, nBLR);
+            return Success;
+        }
+
+        nBL = nBLR;
+        nDL = nDLR;
+    }
+#endif // defined(SKIP_TO_BITMAP)
+
+    Word_t *pwr = wr_pwr(wRoot);
+
+    assert(pwr != NULL);
+
+    assert( ! BitIsSet(pwr, wKey & MSK(nBL)) );
+
+    DBGI(printf("SetBit(pwr "OWx" wKey "OWx") pwRoot %p\n",
+                (Word_t)pwr, wKey & MSK(nBL), (void *)pwRoot));
+
+    SetBit(pwr, wKey & MSK(nBL));
+
+    set_w_wPopCntBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL,
+        w_wPopCntBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL) + 1);
+
+#if defined(PP_IN_LINK)
+
     // Shouldn't we do this when we create the switch with the link
     // that points to this bitmap rather than on every insert into
     // the bitmap?
-    set_PWR_wPrefix(pwRoot, NULL, nBL_to_nDL(nBL), wKey);
-  #endif // defined(PP_IN_LINK)
+
+    // What about no_unnecessary_prefix?
+    set_PWR_wPrefix(pwRoot, NULL, nDL, wKey);
+
+#endif // defined(PP_IN_LINK)
 
     return Success;
 }
@@ -5532,6 +5616,7 @@ Initialize(void)
 #else // defined(cnNonBmLeafPopCntMax)
     printf("# cnNonBmLeafPopCntMax n/a\n");
 #endif // defined(cnNonBmLeafPopCntMax)
+    printf("# cn2dBmWpkPercent %d\n", cn2dBmWpkPercent);
 
 #if defined(CODE_XX_SW)
     printf("\n");
