@@ -6,7 +6,7 @@
 // ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
 // FITNESS FOR A PARTICULAR PURPOSE.
 
-// @(#) $Revision: 1.6 $ $Source: /home/doug/judy-1.0.5_PSplit_goto_newLeaf3/src/JudyCommon/RCS/JudyMalloc.c,v $
+// @(#) $Revision: 1.8 $ $Source: /home/doug/judy-1.0.5_PSplit_goto_newLeaf3_U2_1K_1_L765_5th/src/JudyCommon/RCS/JudyMalloc.c,v $
 //
 // ********************************************************************** //
 //                    JUDY - Memory Allocater                             //
@@ -203,6 +203,12 @@ Word_t JudyMalloc(
 #endif  // RAMMETRICS
 
 #ifdef  GUARDBAND
+        if (Bytes == 0)
+        {
+            fprintf(stderr, "\nOops -- JudyMalloc(0) -- not legal for Judy");
+            printf("\nOops -- JudyMalloc(0) -- not legal for Judy");
+            exit(-1);
+        }
         Bytes += sizeof(Word_t);    // one word
 #endif  // GUARDBAND
 
