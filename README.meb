@@ -20,6 +20,8 @@ rcs.tjz contains a copy of the RCS files in case the originals can't be found.
 Graphing results on Mac:
 - 'sudo apt-get install gnuplot-x11'
 - Mac: ssh -X asus; depends on XQuartz on Mac
+- Add "ForwardX11Timeout 596h" to /etc/ssh_config to fix timeout.
+- Or use ssh -Y instead of ssh -X?
 - Asus: jbgraph -c5 *.plot
 - Mac: l, g, crop by two-finger-tap on one corner tap on other
 - "Failed to initialize X widgets." means <cntl-d> and restart ssh -X.
