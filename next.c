@@ -9,16 +9,29 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-unsigned long next(void);
+unsigned long next(unsigned long current);
 
 unsigned long
-next(void)
+next(unsigned long current)
 {
-    static unsigned long phase = 0;
-    //static unsigned long low = 113;
-    static unsigned long low = 0;
-    static unsigned long hi = -1UL;
-    static unsigned long level = 8;
+    static int bStarted = 0;
+    static unsigned long first;
+    static unsigned long phase;
+    static unsigned long low;
+    static unsigned long hi;
+    static unsigned long level;
+
+    if (bStarted == 0) {
+        bStarted = 1;
+        first = current;
+    }
+
+    if (current == first) {
+        phase = 0;
+        low = 0;
+        hi = -1UL;
+        level = 8;
+    }
 
     switch (phase) {
     case 0: goto phase0;
@@ -107,6 +120,7 @@ phase3:;
 int
 main()
 {
-    for (;;) { printf("0x%016lx\n", next()); }
+    unsigned long current = 0;
+    for (;;) { printf("0x%016lx\n", current = next(current)); }
 }
 
