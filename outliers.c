@@ -58,6 +58,17 @@
 //   area pointer is used as value area)
 
 // Key differences for enhanced, unreleased Judy:
+// Leaf and Bitmap Branch components allocation steps (in words):
+// Judy1 allocations: 3, 5, 7, 9, 11, 15, 23, 33, 47, 65, 95, 129
+// Leaf2 max pop for JudyL is 52 keys.
+// Leaf3 max pop for JudyL is 47 keys.
+// Leaf4 max pop for JudyL is 43 keys.
+// Leaf5 max pop for JudyL is 38 keys.
+// Judy1 allocations: 1, 3, 5, 9, 15, 25, 41, 67, 109, 177
+// Leaf2 max pop for Judy1 is 100 keys. 25 words.
+// Leaf3 max pop for Judy1 is  66 keys. 25 words.
+// Leaf4 max pop for Judy1 is  50 keys. 25 words.
+// Leaf5 max pop for Judy1 is  40 keys. 40 words. 1 word per key.
 // Reduced number of JPs required to 86 for uncompress of a Bitmap Branch.
 // Reduced population delta to 150 required between uncompresses.
 // Reduced maximum Leaf 1 pop for JudyL to 12 keys / 14 words; 1.5 words of

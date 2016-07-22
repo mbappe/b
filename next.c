@@ -132,7 +132,7 @@ restartMachine:
     {
         //printf("pMachine->low 0x%0lx\n", pMachine->low);
         pMachine->hi = 0;
-        while (pMachine->hi < 1<<20/*2*/) {
+        while (pMachine->hi < 1<<23/*2*/) {
             //printf("pMachine->hi 0x%0lx\n", pMachine->hi);
             pMachine->prev = (pMachine->hi << 40) + pMachine->low;
             // Judy1LHTime can't handle zero.
@@ -173,7 +173,7 @@ phase0:;
     //printf("Immediates in Bitmap-Branches:\n");
     pMachine->phase = 1;
     pMachine->hi = 0;
-    while (pMachine->hi < 1<<20/*2*/) {
+    while (pMachine->hi < 1<<23/*2*/) {
         pMachine->level = 16;
         while (pMachine->level < 40/*32*/) {
             pMachine->low = 1;
