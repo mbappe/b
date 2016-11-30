@@ -3097,8 +3097,10 @@ embeddedKeys:;
                 DBGI(printf("pwr %p wPopCnt %ld nBL %d\n",
                             (void *)pwr, wPopCnt, nBL));
                 DBGI(printf("nType %d\n", nType));
-                DBGI(printf("LWE %d LWE %d\n",
+                DBGI(printf("LWE(pop %d) %d LWE(pop %d) %d\n",
+                            (int)wPopCnt + 1,
                             ListWordsExternal(wPopCnt + 1, nBL),
+                            (int)wPopCnt,
                             ListWordsExternal(wPopCnt    , nBL)));
                 // Allocate a new list and init pop count if pop count is
                 // in the list.  Also init the beginning of the list marker
@@ -3214,6 +3216,14 @@ embeddedKeys:;
                     || (wr_nType(*pwRoot) == T_EMBEDDED_KEYS)
                     || ((wr_nType(*pwRoot) == T_ONE) && (wPopCnt == 0)));
 #else // defined(NO_TYPE_IN_XX_SW)
+  #if defined(DEBUG)
+                if ( ! ((wr_nType(*pwRoot) == T_EMBEDDED_KEYS)
+                        || ((wr_nType(*pwRoot) == T_ONE) && (wPopCnt == 0))) )
+                {
+                    printf("\nnType 0x%x wPopCnt "OWx"\n",
+                           wr_nType(*pwRoot), wPopCnt);
+                }
+  #endif // defined(DEBUG)
                 assert((wr_nType(*pwRoot) == T_EMBEDDED_KEYS)
                     || ((wr_nType(*pwRoot) == T_ONE) && (wPopCnt == 0)));
 #endif // defined(NO_TYPE_IN_XX_SW)
@@ -4155,7 +4165,10 @@ DeflateExternalList(Word_t *pwRoot,
 
     DBGI(printf("DeflateExternalList pwRoot %p nPopCnt %d nBL %d pwr %p\n",
                (void *)pwRoot, nPopCnt, nBL, (void *)pwr));
+#if defined(DEBUG_INSERT)
     //HexDump("External List", pwr, nPopCnt + 1);
+    Dump(pwRoot, 0, nBL);
+#endif // defined(DEBUG_INSERT)
 
     assert((nPopCnt <= nPopCntMax) || (nPopCnt == 1));
 
@@ -4192,11 +4205,15 @@ DeflateExternalList(Word_t *pwRoot,
 #endif // defined(FILL_W_KEY)
                  nn++)
         {
+            // Slots are numbered from msb to lsb starting at 1.
 #if defined(REVERSE_SORT_EMBEDDED_KEYS)
   #if defined(PACK_KEYS_RIGHT)
             int nSlot = (nPopCntMax - nn);
   #else // defined(PACK_KEYS_RIGHT)
             int nSlot = (nPopCnt - nn);
+      #if defined(FILL_W_KEY)
+          #error Sorry, REVERSE_SORT && FILL_W_KEY && ! PACK_KEYS_RIGHT.
+      #endif // defined(FILL_W_KEY)
   #endif // defined(PACK_KEYS_RIGHT)
 #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
             int nSlot = (nn + 1);
@@ -4209,11 +4226,21 @@ DeflateExternalList(Word_t *pwRoot,
                 // Hmm.  I think we changed it to the smallest key so
                 // we could calculate offset of found key using magic.
                 SetBits(&wRoot, nBL, cnBitsPerWord - (nSlot * nBL),
-                        pcKeys[(nn < nPopCnt) ? nn : 0]);
+                        pcKeys[(nn < nPopCnt) ? nn :
+  #if defined(FILL_W_BIG_KEY)
+                                nPopCnt - 1
+  #else // defined(FILL_W_BIG_KEY)
+                                0
+  #endif // defined(FILL_W_BIG_KEY)
+                            ]);
             } else
             if (nBL <= 16) {
                 psKeys = ls_psKeysNAT(pwr);
-                SetBits(&wRoot, nBL, cnBitsPerWord - (nSlot * nBL),
+  #if defined(DEBUG_INSERT)
+                printf("nn %d nSlot %d psKeys[?] 0x%x\n", nn, nSlot,
+                        psKeys[(nn < nPopCnt) ? nn : 0]);
+  #endif // defined(DEBUG_INSERT)
+                SetBits(&wRoot, nBL, /* lsb */ cnBitsPerWord - (nSlot * nBL),
                         psKeys[(nn < nPopCnt) ? nn : 0]);
             } else
 #if (cnBitsPerWord > 32)
@@ -5195,6 +5222,18 @@ Initialize(void)
 #else // defined(FILL_W_KEY)
     printf("# NO FILL_W_KEY\n");
 #endif // defined(FILL_W_KEY)
+
+#if defined(FILL_W_BIG_KEY)
+    printf("#    FILL_W_BIG_KEY\n");
+#else // defined(FILL_W_BIG_KEY)
+    printf("# NO FILL_W_BIG_KEY\n");
+#endif // defined(FILL_W_BIG_KEY)
+
+#if defined(FILL_WITH_ONES)
+    printf("#    FILL_WITH_ONES\n");
+#else // defined(FILL_WITH_ONES)
+    printf("# NO FILL_WITH_ONES\n");
+#endif // defined(FILL_WITH_ONES)
 
 #if defined(MASK_EMPTIES)
     printf("#    MASK_EMPTIES\n");
