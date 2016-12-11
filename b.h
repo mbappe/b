@@ -528,6 +528,7 @@ typedef Word_t Bucket_t;
 #endif // (cnBitsInD3 != cnBitsPerDigit)
 
 // Default is -DEMBED_KEYS which implies -DUSE_T_ONE.
+// Why does -DEMBED_KEYS have to imply -DUSE_T_ONE?
 #if ! defined(NO_EMBED_KEYS)
 #undef  EMBED_KEYS
 #define EMBED_KEYS
