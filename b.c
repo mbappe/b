@@ -151,51 +151,78 @@ Word_t wEvenMallocs; // number of unfreed mallocs of an even number of words
   #define cnGuardWords 0
 #endif // defined(cnGuardWords)
 
+// Can we use some of the bits in the word at the address immediately
+// preceeding the address returned by malloc?
+//
+// Can we assume it's safe to modify any bits that never change while we
+// own a buffer? No. We need more info than that.
+// It might be ok with dlmalloc, but, in theory, knowing only that the bits
+// don't change while we own a buffer is not sufficient to guarantee that
+// we can modify them safely.
+//
+// It looks like dlmalloc may do a read-modify-write of the word
+// while we own the buffer.
+// Do we have any synchronization with dlmalloc?
+// If not, then it makes things quite difficult even if we know which
+// bit or bits dlmalloc might modify in this way.
+// Can we assume that because we doesn't allow concurrent array-
+// changing operations (and we only use malloc during array-changing
+// operations) that we are safe w.r.t. read-modify-write by dlmalloc
+// and by us? I think we can -- if there is only one array.
+// But if there are multiple threads and multiple arrays sharing a single
+// heap then we could have a problem. Solving it might be as simple as
+// acquiring a mutex around each read-modify-write and around each call to
+// malloc and free.
 static Word_t
 MyMalloc(Word_t wWords)
 {
     Word_t ww = JudyMalloc(wWords + cnMallocExtraWords);
+#if defined(DEBUG)
     DBGM(printf("\nM: %p %"_fw"d words *%p "OWx" %"_fw"d\n",
                 (void *)ww, wWords, (void *)&((Word_t *)ww)[-1],
                 ((Word_t *)ww)[-1], ((Word_t *)ww)[-1]));
     // Validate our assumptions about dlmalloc as we prepare to use
-    // some of the otherwise wasted bits.
+    // some of the otherwise wasted bits in ww[-1].
+    assert(  ((Word_t *)ww)[-1] & 1 ); // doesn't always hold on free
+    assert(  ((Word_t *)ww)[-1] & 2 );
+    assert(!(((Word_t *)ww)[-1] & 4)); assert(!(((Word_t *)ww)[-1] & 8));
     if (wWords < EXP(16)) {
-#if defined(DEBUG)
-        if ((((((Word_t *)ww)[-1] >> 4) << 1)
-                != ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
-            && (((((Word_t *)ww)[-1] >> 4) << 1) - 2
-                != ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
-            && (((((Word_t *)ww)[-1] >> 4) << 1) - 4
-                != ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2)))
+        // Look at the contents of the word at the address immediately
+        // preceding the address returned by malloc.
+        // Assert that it contains an even number of words that is zero to
+        // five words bigger than the number requested.
+        // wExtras is the number of extra two-word units.
+        Word_t wExtras
+            = ((((((Word_t *)ww)[-1] >> 3) | 1)
+                        - (wWords + cnMallocExtraWords + cnGuardWords))
+                    >> 1)
+                -1;
+        if ((wExtras > 2)
+            || (ALIGN_UP(wWords + cnMallocExtraWords
+                                + cnGuardWords + (wExtras << 1), 2)
+                != ((((Word_t *)ww)[-1] >> 4) << 1)))
         {
-            printf("\nM: Oops ww %p (wWords + cnMallocExtraWords"
+            printf("\n\nM: Oops ww %p (wWords + cnMallocExtraWords"
                    " + cnGuardWords)"
-                   " %"_fw"d 0x%lx &ww[-1] %p ww[-1] "OWx" ww[-1] %"_fw"d"
-                   " ((ww[-1] >> 4) << 1) %"_fw"d 0x%lx\n\n",
+                   " 0x%lx &ww[-1] %p ww[-1] "OWx
+                   " ((ww[-1] >> 4) << 1) 0x%lx\n\n",
                    (void *)ww,
                    wWords + cnMallocExtraWords + cnGuardWords,
-                   wWords + cnMallocExtraWords + cnGuardWords,
                    (void *)&((Word_t *)ww)[-1],
-                   ((Word_t *)ww)[-1], ((Word_t *)ww)[-1],
-                   ((((Word_t *)ww)[-1] >> 4) << 1),
+                   ((Word_t *)ww)[-1],
                    ((((Word_t *)ww)[-1] >> 4) << 1));
+            printf("\nM: wExtras 0x"OWx"\n\n",
+                   wExtras);
+            assert(0);
         }
-#endif // defined(DEBUG)
-        assert((((((Word_t *)ww)[-1] >> 4) << 1)
-                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
-            || (((((Word_t *)ww)[-1] >> 4) << 1) - 2
-                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
-            || (((((Word_t *)ww)[-1] >> 4) << 1) - 4
-                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2)));
-        // Save ww[-1] to make sure we can use some of the bits in the word.
-        // We are saving enough to handle mallocs up to nearly 1MB.
-        DBG(((Word_t *)ww)[-1] |= (((Word_t *)ww)[-1] >> 4) << 32);
-        assert((((Word_t *)ww)[-1] >> 32)
-           == ((((Word_t *)ww)[-1] & MSK(32)) >> 4));
-        // The following does not always hold on free.
-        assert((((Word_t *)ww)[-1] & 0x0f) == 3);
+        // Save the bits of ww[-1] that we need at free time to make sure
+        // none of the bits we want to use are changed by malloc while we
+        // own the buffer.
+        DBG(((Word_t *)ww)[-1] &= 3);
+        DBG(((Word_t *)ww)[-1] |= wExtras << 2);
+        DBG(((Word_t *)ww)[-1] |= MSK(4) << 4);
     }
+#endif // defined(DEBUG)
     assert(ww != 0);
     assert((ww & 0xffff000000000000UL) == 0);
     assert((ww & cnMallocMask) == 0);
@@ -207,38 +234,32 @@ MyMalloc(Word_t wWords)
 static void
 MyFree(Word_t *pw, Word_t wWords)
 {
-    if ( ! (wWords & 1) ) { --wEvenMallocs; }
-    --wMallocs; wWordsAllocated -= wWords;
+#if defined(DEBUG)
     DBGM(printf("F: "OWx" words %"_fw"d pw[-1] %p\n",
                 (Word_t)pw, wWords, (void *)pw[-1]));
     // make sure it is ok for us to use some of the bits in the word
     if (wWords < EXP(16)) {
-#if defined(DEBUG)
-        if ((pw[-1] >> 32) != ((pw[-1] & MSK(32)) >> 4)) {
-            printf("pw %p pw[0] "OWx"\n", (void*)pw, pw[0]);
-            printf("wWords %ld pw[-1] "OWx"\n", wWords, pw[-1]);
-        }
-#endif // defined(DEBUG)
-        assert((pw[-1] >> 32) == ((pw[-1] & MSK(32)) >> 4));
-        DBG(pw[-1] &= MSK(32)); // restore the value expected by dlmalloc
-        if (!((((pw[-1] >> 4) << 1)
-                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
-            || (((pw[-1] >> 4) << 1) - 2
-                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
-            || (((pw[-1] >> 4) << 1) - 4
-                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))))
+        // Restore the value expected by dlmalloc.
+        Word_t wExtras = (pw[-1] >> 2) & 3;
+        DBG(pw[-1] &= 3);
+        DBG(pw[-1] |= (ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2)
+                                + (wExtras << 1)) << 3);
+        if (wExtras > 2)
         {
             printf("F: Oops (wWords + cnMallocExtraWords + cnGuardWords) 0x%lx"
-                   " (pw[-1] >> 3) 0x%lx\n",
-                   wWords + cnMallocExtraWords + cnGuardWords, pw[-1] >> 3);
+                   " pw[-1] 0x%lx\n",
+                   wWords + cnMallocExtraWords + cnGuardWords, pw[-1]);
+            assert(0);
         }
-        assert((((pw[-1] >> 4) << 1)
-                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
-            || (((pw[-1] >> 4) << 1) - 2
-                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2))
-            || (((pw[-1] >> 4) << 1) - 4
-                == ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2)));
     }
+    if (((pw[-1] & cnMallocMask) != 3) && ((pw[-1] & cnMallocMask) != 2))
+    {
+        printf("ww[-1] & cnMallocMask: "OWx"\n", pw[-1] & cnMallocMask);
+        assert(0);
+    }
+#endif // defined(DEBUG)
+    if ( ! (wWords & 1) ) { --wEvenMallocs; }
+    --wMallocs; wWordsAllocated -= wWords;
     JudyFree(pw, wWords + cnMallocExtraWords);
 }
 
@@ -4792,9 +4813,6 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
 
 #endif // (cnDigitsPerWord != 1)
 
-// ***************************************************************************
-// JUDY1 FUNCTIONS:
-
 static void
 Initialize(void)
 {
@@ -5696,6 +5714,9 @@ Initialize(void)
 
     printf("\n");
 }
+
+// ***************************************************************************
+// JUDY1 FUNCTIONS:
 
 Word_t
 Judy1FreeArray(PPvoid_t PPArray, P_JE)
