@@ -220,6 +220,7 @@ MyMalloc(Word_t wWords)
         // own the buffer.
         DBG(((Word_t *)ww)[-1] &= 3);
         DBG(((Word_t *)ww)[-1] |= wExtras << 2);
+        // Set the bits to illustrate that we can use them.
         DBG(((Word_t *)ww)[-1] |= MSK(4) << 4);
     }
 #endif // defined(DEBUG)
