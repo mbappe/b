@@ -4749,7 +4749,7 @@ embeddedKeys:;
     // Embed the list if it fits.
     assert(wr_nType(wRoot) == T_LIST);
     assert(nType == T_LIST);
-    if (((int)wPopCnt <= EmbeddedListPopCntMax(nBL)) || (wPopCnt == 2))
+    if (((int)wPopCnt <= EmbeddedListPopCntMax(nBL) + 1) || (wPopCnt == 2))
     {
         DeflateExternalList(pwRoot, wPopCnt - 1, nBL, pwList);
     }
