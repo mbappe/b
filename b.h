@@ -527,17 +527,11 @@ typedef Word_t Bucket_t;
     (DIV_UP(cnBitsPerWord - cnBitsInD1 - cnBitsInD2, cnBitsPerDigit) + 2)
 #endif // (cnBitsInD3 != cnBitsPerDigit)
 
-// Default is -DEMBED_KEYS which implies -DUSE_T_ONE.
-// Why does -DEMBED_KEYS have to imply -DUSE_T_ONE?
+// Default is -DEMBED_KEYS.
 #if ! defined(NO_EMBED_KEYS)
 #undef  EMBED_KEYS
 #define EMBED_KEYS
 #endif // ! defined(NO_EMBED_KEYS)
-
-#if defined(EMBED_KEYS)
-#undef  USE_T_ONE
-#define USE_T_ONE
-#endif // defined(EMBED_KEYS)
 
 #if defined(SKIP_TO_BM_SW) && ! defined(USE_BM_SW)
   #error Sorry, no SKIP_TO_BM_SW without USE_BM_SW.
@@ -579,7 +573,9 @@ enum {
 #if defined(USE_T_ONE)
     T_ONE, // one-key external list when key is too big to be embedded
 #endif // defined(USE_T_ONE)
+#if defined(EMBED_KEYS)
     T_EMBEDDED_KEYS, // keys are embedded in the link
+#endif // defined(EMBED_KEYS)
     T_BITMAP, // external bitmap leaf
 #if defined(SKIP_TO_BITMAP)
     T_SKIP_TO_BITMAP = T_SKIP_BIT | T_BITMAP, // external bitmap leaf
@@ -1020,7 +1016,7 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
     #define nBL_to_nBitsType(_nBL)  cnBitsMallocMask
 #endif // defined(CODE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
 
-#if defined(USE_T_ONE)
+#if defined(EMBED_KEYS)
   #if defined(T_ONE_CALC_POP)
 
 #define nBL_to_nBitsPopCntSz(_nBL)  0
@@ -1098,7 +1094,6 @@ wr_nPopCnt(Word_t wRoot, int nBL)
             (_nPopCnt) - 1)
 
   #endif // defined(T_ONE_CALC_POP)
-#endif // defined(USE_T_ONE)
 
 static inline int
 EmbeddedListPopCntMax(int nBL)
@@ -1107,6 +1102,8 @@ EmbeddedListPopCntMax(int nBL)
     nBitsForKeys -= nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL);
     return nBitsForKeys / nBL;
 }
+
+#endif // defined(EMBED_KEYS)
 
 #if defined(EXTRA_TYPES)
   #define tp_bIsSwitch(_tp)  (((_tp) & cnMallocMask) >= T_SWITCH)
@@ -2993,14 +2990,8 @@ HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 #if defined(COMPRESSED_LISTS)
 
   #if (cnBitsInD1 <= 8)
-      #if ! defined(USE_XX_SW) || ! defined(NO_TYPE_IN_XX_SW)
-              // smallest key size is one bit bigger than
-              // whatever size yields a bitmap that will
-              // fit in a link.
-          #if ( ! defined(USE_XX_SW) && (cnListPopCntMaxDl1 > 7)) \
-              || (defined(USE_XX_SW) \
-                  /* && (LOG(sizeof(Link_t)) <= 4) */ \
-                  && ((cnListPopCntMax8 > 7) || (cnListPopCntMaxDl1 > 7)))
+      #if ! defined(EMBED_KEYS) \
+                  || (cnListPopCntMax8 > 7) || (cnListPopCntMaxDl1 > 7)
 
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
@@ -3017,19 +3008,21 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 
     assert(nBL <= 8);
     // sizeof(__m128i) == 16 bytes
-  #if defined(PARALLEL_128) && (cnListPopCntMax8 <= 8)
+  #if defined(PSPLIT_SEARCH_8) && defined(PSPLIT_PARALLEL) \
+      && defined(PARALLEL_128) && (cnListPopCntMax8 <= 8)
     // By simply setting nPopCnt = 16 here we are assuming, while not
     // ensuring, that pop count never exceeds 16 here.
     // We do it because reading the pop count is so much slower.
     assert(ls_xPopCnt(pwr, 8) <= 16);
-    int nPopCnt = 16; // Sixteen fit so why do less?
-  #else // defined(PARALLEL_128) && (cnListPopCntMax8 <= 8)
+    int nPopCnt = ls_xPopCnt(pwr, 8);
+    //int nPopCnt = 16; // Sixteen fit so why do less?
+  #else // defined(PSPLIT_SEARCH_8) && ...
       #if defined(PP_IN_LINK)
     int nPopCnt = PWR_wPopCntBL(pwRoot, NULL, nBL);
       #else // defined(PP_IN_LINK)
     int nPopCnt = PWR_xListPopCnt(pwRoot, 8);
       #endif // defined(PP_IN_LINK)
-  #endif // defined(PARALLEL_128) && (cnListPopCntMax8 <= 8)
+  #endif // defined(PSPLIT_SEARCH8) && ...
     uint8_t *pcKeys = ls_pcKeysNATX(pwr, nPopCnt);
 
 #if defined(LIST_END_MARKERS)
@@ -3061,16 +3054,16 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     return nPos;
 }
 
-          #endif
-      #endif
-  #endif
+      #endif // ! defined(EMBED_KEYS)
+  #endif // (cnBitsInD1 <= 8)
 
 #endif // defined(COMPRESSED_LISTS)
 
 #if defined(COMPRESSED_LISTS)
 
       #if (cnBitsInD1 <= 16)
-          #if (cnListPopCntMaxDl2 > 3) || (cnListPopCntMax16 > 3)
+          #if ! defined(EMBED_KEYS) \
+              || (cnListPopCntMaxDl2 > 3) || (cnListPopCntMax16 > 3)
 
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
@@ -3090,8 +3083,10 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
   #if defined(PP_IN_LINK)
     int nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
   #else // defined(PP_IN_LINK)
+#if 0
       #if (cnBitsLeftAtDl2 <= 16)
-      #if defined(PARALLEL_128) && !defined(INSERT)
+      #if /* defined(PSPLIT_SEARCH_16) && */ defined(PSPLIT_PARALLEL) \
+              && defined(PARALLEL_128) && !defined(INSERT)
           // sizeof(__m128i) == 16 bytes
           #if ! defined(cnListPopCntMaxDl2) || (cnListPopCntMaxDl2 <= 8)
           #if (cnListPopCntMax16 <= 8)
@@ -3114,12 +3109,15 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
           #else // ! defined(cnListPopCntMaxDl2) || (cnListPopCntMaxDl2 <= 8)
     int nPopCnt = PWR_xListPopCnt(pwRoot, 16);
           #endif // ! defined(cnListPopCntMaxDl2) || (cnListPopCntMaxDl2 <= 8)
-      #else // defined(PARALLEL_128)
+      #else // defined(PSPLIT_SEARCH_16) && defined(PSPLIT_PARALLEL) && ...
     int nPopCnt = PWR_xListPopCnt(pwRoot, 16);
-      #endif // defined(PARALLEL_128)
+      #endif // defined(PSPLIT_SEARCH_16) && defined(PSPLIT_PARALLEL) && ...
       #else // (cnBitsLeftAtDl2 <= 16)
     int nPopCnt = PWR_xListPopCnt(pwRoot, 16);
       #endif // (cnBitsLeftAtDl2 <= 16)
+#else
+    int nPopCnt = PWR_xListPopCnt(pwRoot, 16);
+#endif
   #endif // defined(PP_IN_LINK)
     uint16_t *psKeys = ls_psKeysNATX(pwr, nPopCnt);
 
@@ -3154,7 +3152,7 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     return nPos;
 }
 
-          #endif // (cnListPopCntMaxDl2 > 3) || (cnListPopCntMax16 > 3)
+          #endif // ! defined(EMBED_KEYS) || ...
       #endif // (cnBitsInD1 <= 16)
 
 #endif // defined(COMPRESSED_LISTS)
@@ -3426,27 +3424,26 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 
   #if defined(COMPRESSED_LISTS)
       #if (cnBitsInD1 <= 8)
-          #if ! defined(USE_XX_SW) || ! defined(NO_TYPE_IN_XX_SW)
-                      // smallest key size is one bit bigger than
-                      // whatever size yields a bitmap that will
-                      // fit in a link.
-              #if ( ! defined(USE_XX_SW) && (cnListPopCntMaxDl1 > 7)) \
-                  || (defined(USE_XX_SW) \
-                      /* && (LOG(sizeof(Link_t)) <= 4) */ \
-                      && ((cnListPopCntMax8 > 7) || (cnListPopCntMaxDl1 > 7)))
+          // smallest key size is one bit bigger than
+          // whatever size yields a bitmap that will
+          // fit in a link.
+          #if ! defined(EMBED_KEYS) \
+                      /* EmbeddedListPopCntMax8 */ \
+                      /* (LOG(sizeof(Link_t)) <= 4) */ \
+                      || (cnListPopCntMax8 > 7) || (cnListPopCntMaxDl1 > 7)
     if (nBL <= 8) {
         nPos = SearchList8(pwRoot, pwr, wKey, nBL);
     } else
-              #endif // ...
-          #endif // ! defined(USE_XX_SW) || ! defined(NO_TYPE_IN_XX_SW)
+          #endif // ! defined(EMBED_KEYS)
       #endif
       #if (cnBitsInD1 <= 16)
-          #if (cnListPopCntMaxDl2 > 3) || (cnListPopCntMax16 > 3)
+          #if ! defined(EMBED_KEYS) \
+              || (cnListPopCntMaxDl2 > 3) || (cnListPopCntMax16 > 3)
     if (nBL <= 16) {
         assert(nBL > 8);
         nPos = SearchList16(pwRoot, pwr, wKey, nBL);
     } else
-         #endif // cnListPopCntMaxDl2 ...
+         #endif // ! defined(EMBED_KEYS) || ...
       #endif // (cnBitsInD1 <= 16)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {

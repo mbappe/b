@@ -1331,8 +1331,12 @@ foundIt:;
     case T_ONE | EXP(cnBitsMallocMask):
 #endif // defined(EXTRA_TYPES)
     {
+#if defined(EMBED_KEYS)
         assert(nBL
             > cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
+#else // defined(EMBED_KEYS)
+        assert(nBL > cnBitsPerWord - cnBitsMallocMask);
+#endif // defined(EMBED_KEYS)
 
   #if ! defined(LOOKUP)
         if (bCleanup) {
