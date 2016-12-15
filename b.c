@@ -2420,6 +2420,8 @@ embeddedKeys:;
                                (piKeysLn[nn] & wBLM));
                     }
                 }
+                assert(nPopCntLn != 0);
+                OldList(pwrLn, nPopCntLn, nBLLn, T_LIST);
             }
 #endif // (cwListPopCntMax != 0)
             else {
