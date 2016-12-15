@@ -1684,11 +1684,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
   #else // defined(USE_T_ONE)
             0
   #endif // defined(USE_T_ONE)
-  #if defined(T_EMBEDDED_KEYS)
+  #if defined(EMBED_KEYS)
                 || (nType == T_EMBEDDED_KEYS)
-  #else // defined(T_EMBEDDED_KEYS)
+  #else // defined(EMBED_KEYS)
                 || 0
-  #endif // defined(T_EMBEDDED_KEYS)
+  #endif // defined(EMBED_KEYS)
             )
         {
 #if defined(EMBED_KEYS)
@@ -1744,7 +1744,12 @@ embeddedKeys:;
         else
 #endif // defined(EMBED_KEYS) || defined(USE_T_ONE)
         {
+#if defined(DEBUG)
+            if (nType != T_LIST) {
+                printf("nType %d\n", nType);
+            }
             assert(nType == T_LIST);
+#endif // defined(DEBUG)
 
 #if defined(PP_IN_LINK)
             if (nBL != cnBitsPerWord)
@@ -2420,6 +2425,8 @@ embeddedKeys:;
                                (piKeysLn[nn] & wBLM));
                     }
                 }
+                assert(nPopCntLn != 0);
+                OldList(pwrLn, nPopCntLn, nBLLn, T_LIST);
             }
 #endif // (cwListPopCntMax != 0)
             else {
