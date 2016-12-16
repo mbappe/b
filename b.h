@@ -574,7 +574,7 @@ enum {
     T_ONE, // one-key external list when key is too big to be embedded
 #endif // defined(USE_T_ONE)
 #if defined(EMBED_KEYS)
-    T_EMBEDDED_KEYS, // keys are embedded in the link
+    T_EMBEDDED_KEYS = 2, // keys are embedded in the link
 #endif // defined(EMBED_KEYS)
     T_BITMAP, // external bitmap leaf
 #if defined(SKIP_TO_BITMAP)
