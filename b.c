@@ -183,46 +183,23 @@ MyMalloc(Word_t wWords)
                 ((Word_t *)ww)[-1], ((Word_t *)ww)[-1]));
     // Validate our assumptions about dlmalloc as we prepare to use
     // some of the otherwise wasted bits in ww[-1].
-    assert(  ((Word_t *)ww)[-1] & 1 ); // doesn't always hold on free
-    assert(  ((Word_t *)ww)[-1] & 2 );
-    assert(!(((Word_t *)ww)[-1] & 4)); assert(!(((Word_t *)ww)[-1] & 8));
-    if (wWords < EXP(16)) {
-        // Look at the contents of the word at the address immediately
-        // preceding the address returned by malloc.
-        // Assert that it contains an even number of words that is zero to
-        // five words bigger than the number requested.
-        // wExtras is the number of extra two-word units.
-        Word_t wExtras
-            = ((((((Word_t *)ww)[-1] >> 3) | 1)
-                        - (wWords + cnMallocExtraWords + cnGuardWords))
-                    >> 1)
-                -1;
-        if ((wExtras > 2)
-            || (ALIGN_UP(wWords + cnMallocExtraWords
-                                + cnGuardWords + (wExtras << 1), 2)
-                != ((((Word_t *)ww)[-1] >> 4) << 1)))
-        {
-            printf("\n\nM: Oops ww %p (wWords + cnMallocExtraWords"
-                   " + cnGuardWords)"
-                   " 0x%lx &ww[-1] %p ww[-1] "OWx
-                   " ((ww[-1] >> 4) << 1) 0x%lx\n\n",
-                   (void *)ww,
-                   wWords + cnMallocExtraWords + cnGuardWords,
-                   (void *)&((Word_t *)ww)[-1],
-                   ((Word_t *)ww)[-1],
-                   ((((Word_t *)ww)[-1] >> 4) << 1));
-            printf("\nM: wExtras 0x"OWx"\n\n",
-                   wExtras);
-            assert(0);
-        }
-        // Save the bits of ww[-1] that we need at free time to make sure
-        // none of the bits we want to use are changed by malloc while we
-        // own the buffer.
-        DBG(((Word_t *)ww)[-1] &= 3);
-        DBG(((Word_t *)ww)[-1] |= wExtras << 2);
-        // Set the bits to illustrate that we can use them.
-        DBG(((Word_t *)ww)[-1] |= MSK(4) << 4);
-    }
+    // Our assumption is that the word contains the number of bytes
+    // actually allocated plus the least significant two bits set.
+    // And that the number of bytes allocated is an even number of
+    // words no greater than five words more than the number requested.
+    Word_t wWordPairsAllocated = (((Word_t *)ww)[-1] >> (cnLogBytesPerWord + 1));
+    assert(((Word_t *)ww)[-1] & 1); // doesn't always hold on free
+    assert(((Word_t *)ww)[-1] == ((wWordPairsAllocated << (cnLogBytesPerWord + 1)) | 3));
+    Word_t wWordPairsRequested = (wWords + cnMallocExtraWords + cnGuardWords + 1) >> 1;
+    // wExtras is the number of extra two-word units.
+    Word_t wExtraWordPairs = wWordPairsAllocated - wWordPairsRequested;
+    // Save the bits of ww[-1] that we need at free time to make sure
+    // none of the bits we want to use are changed by malloc while we
+    // own the buffer.
+    DBG(((Word_t *)ww)[-1] &= ~0xc);
+    DBG(((Word_t *)ww)[-1] |= wExtraWordPairs << 2);
+    // Twiddle the bits to illustrate that we can use them.
+    DBG(((Word_t *)ww)[-1] ^= (Word_t)-1 << 4);
 #endif // defined(DEBUG)
     assert(ww != 0);
     assert((ww & 0xffff000000000000UL) == 0);
@@ -239,19 +216,17 @@ MyFree(Word_t *pw, Word_t wWords)
     DBGM(printf("F: "OWx" words %"_fw"d pw[-1] %p\n",
                 (Word_t)pw, wWords, (void *)pw[-1]));
     // make sure it is ok for us to use some of the bits in the word
-    if (wWords < EXP(16)) {
-        // Restore the value expected by dlmalloc.
-        Word_t wExtras = (pw[-1] >> 2) & 3;
-        DBG(pw[-1] &= 3);
-        DBG(pw[-1] |= (ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2)
-                                + (wExtras << 1)) << 3);
-        if (wExtras > 2)
-        {
-            printf("F: Oops (wWords + cnMallocExtraWords + cnGuardWords) 0x%lx"
-                   " pw[-1] 0x%lx\n",
-                   wWords + cnMallocExtraWords + cnGuardWords, pw[-1]);
-            assert(0);
-        }
+    // Restore the value expected by dlmalloc.
+    Word_t wExtraWordPairs = (pw[-1] >> 2) & 3;
+    DBG(pw[-1] &= 3);
+    DBG(pw[-1] |= (ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2)
+                            + (wExtraWordPairs << 1)) << 3);
+    if (wExtraWordPairs > 2)
+    {
+        printf("F: Oops (wWords + cnMallocExtraWords + cnGuardWords) 0x%lx"
+               " pw[-1] 0x%lx\n",
+               wWords + cnMallocExtraWords + cnGuardWords, pw[-1]);
+        assert(0);
     }
     if (((pw[-1] & cnMallocMask) != 3) && ((pw[-1] & cnMallocMask) != 2))
     {
