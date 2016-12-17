@@ -2169,25 +2169,25 @@ extern const unsigned anBL_to_nDL[];
 
 #if defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (Success)
-#if defined(LOOKUP)
+  #if defined(LOOKUP)
 #define strLookupOrInsertOrRemove  "Lookup"
 #define DBGX  DBGL
-#else // defined(REMOVE)
+  #else // defined(REMOVE)
 #define strLookupOrInsertOrRemove  "Remove"
 #define DBGX  DBGR
 #define InsertRemove  Remove
-#if defined(RECURSIVE_REMOVE)
+      #if defined(RECURSIVE_REMOVE)
 #define RECURSIVE
-#endif // defined(RECURSIVE_REMOVE)
-#endif // defined(REMOVE)
+      #endif // defined(RECURSIVE_REMOVE)
+  #endif // defined(REMOVE)
 #else // defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (Failure)
 #define strLookupOrInsertOrRemove  "Insert"
 #define DBGX  DBGI
 #define InsertRemove  Insert
-#if defined(RECURSIVE_INSERT)
+  #if defined(RECURSIVE_INSERT)
 #define RECURSIVE
-#endif // defined(RECURSIVE_INSERT)
+  #endif // defined(RECURSIVE_INSERT)
 #endif // defined(LOOKUP) || defined(REMOVE)
 
 #if defined(PARALLEL_128)
