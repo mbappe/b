@@ -177,7 +177,6 @@ static Word_t
 MyMalloc(Word_t wWords)
 {
     Word_t ww = JudyMalloc(wWords + cnMallocExtraWords);
-#if defined(DEBUG)
     DBGM(printf("\nM: %p %"_fw"d words *%p "OWx" %"_fw"d\n",
                 (void *)ww, wWords, (void *)&((Word_t *)ww)[-1],
                 ((Word_t *)ww)[-1], ((Word_t *)ww)[-1]));
@@ -196,11 +195,10 @@ MyMalloc(Word_t wWords)
     // Save the bits of ww[-1] that we need at free time to make sure
     // none of the bits we want to use are changed by malloc while we
     // own the buffer.
-    DBG(((Word_t *)ww)[-1] &= ~0xc);
-    DBG(((Word_t *)ww)[-1] |= wExtraWordPairs << 2);
+    ((Word_t *)ww)[-1] &= ~0xc;
+    ((Word_t *)ww)[-1] |= wExtraWordPairs << 2;
     // Twiddle the bits to illustrate that we can use them.
-    DBG(((Word_t *)ww)[-1] ^= (Word_t)-1 << 4);
-#endif // defined(DEBUG)
+    ((Word_t *)ww)[-1] ^= (Word_t)-1 << 4;
     assert(ww != 0);
     assert((ww & 0xffff000000000000UL) == 0);
     assert((ww & cnMallocMask) == 0);
@@ -212,28 +210,16 @@ MyMalloc(Word_t wWords)
 static void
 MyFree(Word_t *pw, Word_t wWords)
 {
-#if defined(DEBUG)
     DBGM(printf("F: "OWx" words %"_fw"d pw[-1] %p\n",
                 (Word_t)pw, wWords, (void *)pw[-1]));
     // make sure it is ok for us to use some of the bits in the word
     // Restore the value expected by dlmalloc.
     Word_t wExtraWordPairs = (pw[-1] >> 2) & 3;
-    DBG(pw[-1] &= 3);
-    DBG(pw[-1] |= (ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2)
-                            + (wExtraWordPairs << 1)) << 3);
-    if (wExtraWordPairs > 2)
-    {
-        printf("F: Oops (wWords + cnMallocExtraWords + cnGuardWords) 0x%lx"
-               " pw[-1] 0x%lx\n",
-               wWords + cnMallocExtraWords + cnGuardWords, pw[-1]);
-        assert(0);
-    }
-    if (((pw[-1] & cnMallocMask) != 3) && ((pw[-1] & cnMallocMask) != 2))
-    {
-        printf("ww[-1] & cnMallocMask: "OWx"\n", pw[-1] & cnMallocMask);
-        assert(0);
-    }
-#endif // defined(DEBUG)
+    pw[-1] &= 3;
+    pw[-1] |= (ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2)
+                            + (wExtraWordPairs << 1)) << 3;
+    assert(wExtraWordPairs <= 2);
+    assert(pw[-1] & 2);
     if ( ! (wWords & 1) ) { --wEvenMallocs; }
     --wMallocs; wWordsAllocated -= wWords;
     JudyFree(pw, wWords + cnMallocExtraWords);
