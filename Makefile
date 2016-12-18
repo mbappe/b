@@ -167,20 +167,21 @@ CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
 
 DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 
-LIBS = -lm
-
 FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c t.c stubs.c Makefile
 FILES_FROM_ME += bb forx
 FILES_FROM_ME += README.meb
-FILES_FROM_ME += rcs.tjz
 # I periodically make changes to the files provided by Doug B.
-FILES_FROM_DOUG_B_OR_DOUG_LEE = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c jbgraph JudyMalloc.c
-FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEE)
+FILES_FROM_DOUG_B_OR_DOUG_LEA = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c jbgraph JudyMalloc.c
+FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEA)
 
-EXES = t b
-OBJS = Judy1LHTime.o bl.o bi.o br.o b.o stubs.o JudyMalloc.o
-ASMS = Judy1LHTime.s bl.s bi.s br.s b.s stubs.s JudyMalloc.s t.s
-CPPS = Judy1LHTime.i bl.i bi.i br.i b.i stubs.i JudyMalloc.i t.i
+EXES = b # t
+LIBS = libJudy.a libJudy.so
+LIB_SRCS = bl.c bi.c br.c b.c stubs.c JudyMalloc.c
+LIB_OBJS = bl.o bi.o br.o b.o stubs.o JudyMalloc.o
+OBJS = Judy1LHTime.o $(LIB_OBJS)
+ASMS = Judy1LHTime.s bl.s bi.s br.s b.s stubs.s JudyMalloc.s # t.s
+CPPS = Judy1LHTime.i bl.i bi.i br.i b.i stubs.i JudyMalloc.i # t.i
+# Debug symbols file created if "strip debug symbols" is specified.
 SYMS = t.dSYM bxc.dSYM
 
 T_SRCS = t.c
@@ -200,24 +201,29 @@ T_OBJS = stubs.o JudyMalloc.o
 
 default: clean b
 
-all: clean $(EXES) $(ASMS) $(CPPS) b.tjz rcs.tjz
+all: clean $(EXES) $(LIBS) $(ASMS) $(CPPS) b.tjz
 
 clean:
-	rm -f $(EXES) rcs.tjz $(OBJS) $(ASMS) $(CPPS)
+	rm -f $(EXES) $(LIBS) $(OBJS) $(ASMS) $(CPPS) b.tjz
 	rm -rf $(SYMS)
 
 t:	$(T_SRCS) $(T_OBJS)
-	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
+	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 
 b:	$(OBJS)
-	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LIBS)
+	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 
 b.tjz:	$(FILES)
 	tar cjf $@ $(FILES)
 
-rcs.tjz: RCS/*,v
-	tar cjf $@ RCS
+libJudy.a: $(LIB_OBJS)
+	ar -r $@ $(LIB_OBJS)
 
+# Build libJudy.so directly from sources rather than from
+# objects so this Makefile doesn't have to deal with the complexity
+# of -fPIC objects and non -fPIC objecs with the same names.
+libJudy.so:
+	$(CC) $(CFLAGS) $(DEFINES) -w -shared -o $@ $(LIB_SRCS)
 
 ############################
 #
