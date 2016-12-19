@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.9 $ $Source: /home/doug/judy-1.0.5_PSplit_goto_newLeaf3_U2_1K_1_L765_4th/test/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.1 $ $Source: /Users/mike/Judy/b/Judy1LHTime.c.doug,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -437,6 +437,7 @@ Word_t    CFlag = 0;                    // time Counting
 Word_t    cFlag = 0;                    // time Copy of Judy1 array
 Word_t    IFlag = 0;                    // time duplicate inserts/sets
 Word_t    bFlag = 0;                    // Time REAL bitmap of (2^-B #) in size
+
 PWord_t   B1 = NULL;                    // BitMap
 #define cMaxColon ((int)sizeof(Word_t) * 2)  // Maximum -b suboption paramters
 int       bParm[cMaxColon + 1] = { 0 }; // suboption parameters to -b#:#:# ...
@@ -688,7 +689,7 @@ Usage(int argc, char **argv)
     printf("%s -n# -P# -S# -B# -T# -G# -1LH -bIcCvdtDlMK... -F <filename>\n\n", argv[0]);
     printf("   Where: # is a number, default is shown as [#]\n\n");
     printf("-X #  Scale numbers produced by '-m' flag (for plotting) [%d]\n", XScale);
-    printf("-m #  Output measurements when libJudy is compiled with -DRAMMETRICS -DSEARCHMETRICS\n");
+    printf("-m #  Output measurements when libJudy is compiled with -DRAMMETRICS &| -DSEARCHMETRICS\n");
     printf("-n #  Number of Keys (Population) used in Measurement [10000000]\n");
     printf("-P #  Measurement points per decade (1..1000) [50] (231 = ~1%%, 46 = ~5%% delta Population)\n");
     printf("-S #  Key Generator skip amount, 0 = Random [0]\n");
@@ -885,7 +886,7 @@ main(int argc, char *argv[])
     double    DirectHits = 0;           // Number of direct hits
     double    SearchGets = 0;           // Number of object calls
 
-    Word_t    MaxNumb;
+    Word_t    MaxNumb = pow(2.0, BValue) * (Bpercent / 100) - 1;
     int       Col;
     int       c;
     Word_t    ii;                       // temp iterator
@@ -949,7 +950,7 @@ main(int argc, char *argv[])
     while (1)
     {
         c = getopt_long(argc, argv,
-                   "a:n:S:T:P:s:B:G:X:W:o:O:F:b:dDcC1LHvIltmpxVfgiyRMKh", longopts, NULL);
+                   "a:n:S:T:P:s:B:G:X:W:o:O:F:b:N:dDcC1LHvIltmpxVfgiyRMKh", longopts, NULL);
         if (c == -1)
             break;
 
@@ -958,12 +959,22 @@ main(int argc, char *argv[])
         case 'a':                      // Max population of arrays
             PreStack = oa2w(optarg, NULL, 0, c);   // Size of PreStack
             break;
+
         case 'n':                      // Max population of arrays
             nElms = oa2w(optarg, NULL, 0, c);   // Size of Linear Array
             if (nElms == 0)
                 FAILURE("Error --- No tests: -n", nElms);
             break;
 
+        case 'N':       // Max population of arrays and Keys for Random numbers
+        {
+            MaxNumb = oa2w(optarg, NULL, 0, c);
+            if (MaxNumb == 0)
+                FAILURE("Error --- No tests: -N", MaxNumb);
+            BValue =log2(MaxNumb) + 1;
+            Bpercent = (MaxNumb + 1) / pow(2.0, BValue) * 100;
+            break;
+        }
         case 'S':                      // Step Size, 0 == Random
         {
             SValue = oa2w(optarg, NULL, 0, c);
@@ -1003,16 +1014,25 @@ main(int argc, char *argv[])
                 break;
             }
             tok = strtok_r(str, ":", &saveptr); 
-            if (tok == NULL)
+            if (tok == NULL) {
+                Bpercent = 100.0;
+                // Don't want to calculate MaxNumb later based on a Bpercent
+                // that was derived from -N.
+                MaxNumb = pow(2.0, BValue) - 1;
                 break;
+            }
 
             Bpercent = atof(tok);
+            printf("Bpercent %.22g\n", Bpercent);
 
-            if (Bpercent < 50.0 || Bpercent > 100.0)
+            if (Bpercent <= 50.0 || Bpercent >= 100.0)
             {
                 ErrorFlag++;
-                printf("\nError --- Percent = %4.2f must be 50%% to 100%% !!!\n", Bpercent);
+                printf("\nError --- Percent = %4.2f must be greater than 50 and less than 100 !!!\n", Bpercent);
             }
+            // Don't want to calculate MaxNumb later based on a Bpercent
+            // that was derived from -N.
+            MaxNumb = pow(2.0, BValue) * (Bpercent / 100) - 1;
             break;
         }
         case 'G':                      // Gaussian Random numbers
@@ -1029,7 +1049,7 @@ main(int argc, char *argv[])
 
         case 'W':                      // Warm up CPU number of random() calls
             Warmup = oa2w(optarg, NULL, 0, c);
-            printf("\n\n-------------Warmup %lu\n", Warmup);
+            printf("\n#-------------Warmup %lu\n", Warmup);
             break;
 
         case 'o': // Add <#> to generated keys, aka --LittleOffset=<#>.
@@ -1113,6 +1133,7 @@ main(int argc, char *argv[])
             FILE *Pfile;
             char Buffer[BUFSIZ];
             Word_t  KeyValue;
+            Word_t  One100M;            // 100 million
 
             keyfile = optarg;
             errno  = 0;
@@ -1124,14 +1145,23 @@ main(int argc, char *argv[])
                 ErrorFlag++;
                 exit(1);
             }
-            fprintf(stderr, "\n# Reading \"%s\" Key file.", keyfile);
+            fprintf(stderr, "\n# Reading \"%s\" Key file ", keyfile);
+            One100M = 0;
             while (fgets(Buffer, BUFSIZ, Pfile) != (char *)NULL)
             {
-                if ((FValue % 1000000) == 0) fprintf(stderr, ".");
+                if ((FValue % 1000000) == 0) 
                 {
-                    if (strtoul(Buffer, NULL, 0) != 0) 
-                        FValue++;
+                    if ((FValue % 100000000) == 0)
+                    {
+                        fprintf(stderr, "%lu", One100M++);
+                    }
+                    else
+                    {
+                        fprintf(stderr, ".");
+                    }
                 }
+                if (strtoul(Buffer, NULL, 0) != 0) 
+                    FValue++;
             }
             fprintf(stderr, "\n# Number of Keys = %lu\n", FValue);
             if ((FileKeys = (PWord_t)malloc(FValue * sizeof(Word_t))) == 0)
@@ -1146,7 +1176,7 @@ main(int argc, char *argv[])
                 ErrorFlag++;
                 exit(1);
             }
-            fprintf(stderr, "# Re-Reading Key file.");
+            fprintf(stderr, "# Re-Reading Key file ");
             FValue = 0;
             while (fgets(Buffer, BUFSIZ, Pfile) != (char *)NULL)
             {
@@ -1300,13 +1330,6 @@ main(int argc, char *argv[])
 
 //  Set MSB number of Random bits in LFSR
     RandomBit = (Word_t)1 << (BValue - 1);
-    MaxNumb = (RandomBit * 2) - 1;
-
-    if (Bpercent != 100.0)
-    {
-        MaxNumb *= ((Bpercent) / 100.0);  // Trim random number generator by Bpercent
-        if (MaxNumb == 0) MaxNumb = (Word_t)-1; // just in case 99.99999999999999% == 100.0%
-    }
 
     ExpanseM1 = MaxNumb;
 
@@ -1400,14 +1423,24 @@ main(int argc, char *argv[])
     }
 
 //  print Title for plotting -- command + run arguments
-    printf("# TITLE %s -B%lu", argv[0], BValue);
+    printf("# TITLE %s", argv[0]);
 
-    if (Bpercent != 100.0)
-        printf(":%.2f", Bpercent);
+//    if (Bpercent != 100.0)
+//        printf(":%.6f", Bpercent);
+
+    if (Bpercent == 100.0)
+    {
+         printf(" -B%lu", BValue); 
+
+    } else
+    {
+         printf(" -N%lu[0x%lx]", MaxNumb, MaxNumb);
+         printf(" -B%lu:%.22g", BValue, Bpercent);
+    }
 
     printf(" -G%lu -", GValue);
 
-    if (bFlag && (bParm[0] == 0))
+    if (bFlag)
         printf("b");
     if (J1Flag)
         printf("1");
@@ -1533,6 +1566,12 @@ main(int argc, char *argv[])
     else if (sizeof(Word_t) == 4)
         printf("# %s 32 Bit version\n", argv[0]);
 
+//    Debug
+    printf("# MaxNumb = %lu\n", MaxNumb); // must not do 
+    printf("# BValue = %lu\n", BValue);
+    printf("# Bpercent = %20.18f\n", Bpercent);
+
+
     printf("# XLABEL Array Population\n");
     printf("# YLABEL Nano-Seconds -or- Words per %d Key(s)\n", XScale);
 
@@ -1562,7 +1601,8 @@ main(int argc, char *argv[])
         }
 
 //      Get memory for measurements saveing measurements
-        Pms = (Pms_t) calloc(Groups, sizeof(ms_t));
+        Pms = (Pms_t) malloc(Groups * sizeof(ms_t));
+//        bzero((void *)Pms,  Groups * sizeof(ms_t));
 
 //      Calculate number of Keys for each measurement point
         prevIsum = 0;
@@ -1772,7 +1812,7 @@ main(int argc, char *argv[])
 
         printf("# ========================================================\n");
         printf("#     WARNING '-b#' option with '-B%lu...' option will malloc() a\n", BValue);
-        printf("#     fixed sized Bytemap of %lu Bytes.\n", Bytes);
+        printf("#     fixed sized bitmap of %lu Bytes.\n", Bytes);
         printf("#  Measurements are WORTHLESS unless malloc() returns 2MiB aligned pointer\n");
         printf("# ========================================================\n");
 
@@ -1920,7 +1960,7 @@ main(int argc, char *argv[])
         printf("%11lu %10lu %10lu", Pop1, Delta, Meas);
 
 #ifdef NEVER
-        I don't think this code is ever executed (dlb)
+        I dont think this code is ever executed (dlb)
         if (bFlag)
         {
 //          Allocate a Bitmap, if not already done so
@@ -2362,8 +2402,10 @@ main(int argc, char *argv[])
 
 //          print average number of failed compares done in leaf search
 //            printf(" %6.1f", AveSrcCmp);
-//            printf(" %6.1f", j__MissCompares / (double)Meas);
-            PRINT5_2f(j__MissCompares / (double)Meas);
+//            PRINT5_2f(j__MissCompares / (double)Meas);
+            printf(" %5.1f", (double)j__MissCompares / (double)Meas);
+
+//printf("\nj__MissCompares = %lu, Meas = %lu\n", j__MissCompares, Meas);
 
 //          print average percent of Leaf searched (with compares)
             printf(" %5.1f", PercentLeafWithDirectHits);
@@ -2650,7 +2692,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                                 FAILURE("Judy1Test failed at", elm);
                             }
                         }
-                    } // 
+                    }
                 } 
             }
             ENDTm(DeltanSec1);
@@ -2724,26 +2766,23 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                         {
                                 FAILURE("JudyLIns failed - NULL PValue", TstKey);
                         }
-                        if (*PValue == TstKey)
+                        if (*PValue != 0)               // Oops, Insert made error
                         {
-                            if (GValue)
+                            if (GValue && (*PValue == TstKey))
                             {
                                 JudyLDups++;
                             }
                             else
                             {
-                                if (TstKey)
-                                {
-                                    printf("TstKey = 0x%lx", TstKey);
-                                    FAILURE("JudyLIns failed - DUP Key =", TstKey);
-                                }
+                                printf("\nTstKey = 0x%lx, *PValue = 0x%lx\n", TstKey, *PValue);
+                                FAILURE("JudyLIns returned wrong *PValue after Insert", TstKey);
                             }
                         }
                         if (VFlag)
                         {
                             *PValue = TstKey;     // save Key in Value
 
-                            if (iFlag)
+                            if (iFlag)  // mainly for debug
                             {
                                 PWord_t   PValueNew;
 
@@ -2766,7 +2805,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                                     FAILURE("Second JudyLIns failed with wrong *PValue after Insert", TstKey);
                                 }
                             }
-                            if (gFlag)
+                            if (gFlag)  // mainly for debug
                             {
                                 PWord_t   PValueNew;
 
@@ -2788,7 +2827,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                             }
                         }
                     } 
-                } // 
+                }
             }
             ENDTm(DeltanSecL);
             DeltanSecL /= Elements;
