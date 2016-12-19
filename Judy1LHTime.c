@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.1 $ $Source: /Users/mike/Judy/b/Judy1LHTime.c.doug,v $
+// @(#) $Revision: 1.14 $ $Source: /home/doug/JudyL64A/test/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -1009,9 +1009,7 @@ main(int argc, char *argv[])
 
             if ((BValue > sizeof(Word_t) * 8) || (BValue < 15))
             {
-                ErrorFlag++;
-                printf("\nError --- Illegal number of random bits of %lu !!!\n", BValue);
-                break;
+                FAILURE("\n -B  is out of range, I.E. -B", BValue);
             }
             tok = strtok_r(str, ":", &saveptr); 
             if (tok == NULL) {
@@ -1023,7 +1021,6 @@ main(int argc, char *argv[])
             }
 
             Bpercent = atof(tok);
-            printf("Bpercent %.22g\n", Bpercent);
 
             if (Bpercent <= 50.0 || Bpercent >= 100.0)
             {
