@@ -167,39 +167,45 @@ CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
 
 DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 
-FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c t.c stubs.c Makefile
+FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c bc.c t.c stubs1.c stubsL.c stubsHS.c Makefile
 FILES_FROM_ME += bb forx
 FILES_FROM_ME += README.meb
 # I periodically make changes to the files provided by Doug B.
 FILES_FROM_DOUG_B_OR_DOUG_LEA = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c jbgraph JudyMalloc.c
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEA)
 
-EXES = b # t
-LIBS = libJudy.a libJudy.so
-LIB_SRCS = bl.c bi.c br.c b.c stubs.c JudyMalloc.c
-LIB_OBJS = bl.o bi.o br.o b.o stubs.o JudyMalloc.o
-OBJS = Judy1LHTime.o $(LIB_OBJS)
-ASMS = Judy1LHTime.s bl.s bi.s br.s b.s stubs.s JudyMalloc.s # t.s
-CPPS = Judy1LHTime.i bl.i bi.i br.i b.i stubs.i JudyMalloc.i # t.i
+EXES = b check # t
+LIBS = libb.a libb.so
+LIB_SRCS = bl.c bi.c br.c bc.c b.c stubs1.c stubsL.c stubsHS.c JudyMalloc.c
+LIB_OBJS = bl.o bi.o br.o bc.o b.o stubs1.o JudyMalloc.o
+OBJS = Judy1LHTime.o $(LIB_OBJS) stubsL.o stubsHS.o
+ASMS = Judy1LHTime.s bl.s bi.s br.s bc.s b.s stubs1.s stubsL.s stubsHS.s JudyMalloc.s # t.s
+CPPS = Judy1LHTime.i bl.i bi.i br.i bc.i b.i stubs1.i stubsL.i stubsHS.i JudyMalloc.i # t.i
 # Debug symbols file created if "strip debug symbols" is specified.
 SYMS = t.dSYM bxc.dSYM
 
 T_SRCS = t.c
-T_OBJS = stubs.o JudyMalloc.o
+T_OBJS = stubs1.o stubsL.o stubsHS.o JudyMalloc.o
 
 ##################################
 #
-# Start "all" with "clean" for two reasons:
+# Start "default" and "all" with "clean" for these reasons:
 #
 # 1. This Makefile does not distinguish 64-bit from 32-bit objects.  When
 #    switching from one to the other it is necessary to rebuild everything.
 # 2. I couldn't figure out how to add the .h file dependencies without
 #    breaking the .c.o rule -- I tried creating a separate rule but that
 #    didn't work.
+# 3. To ensure that all objects are built with the same/compatible
+#    "DEFINES=..." on the command line.
 #
 ##################################
 
-default: clean b
+default: safe
+
+fast: b
+
+safe: clean b check
 
 all: clean $(EXES) $(LIBS) $(ASMS) $(CPPS) b.tjz
 
@@ -213,16 +219,19 @@ t:	$(T_SRCS) $(T_OBJS)
 b:	$(OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 
+check:	Judy1LHCheck.c libb.a stubs1.o libJudy.a
+	$(CC) $(CFLAGS) $(DEFINES) -w -o $@ $^
+
 b.tjz:	$(FILES)
 	tar cjf $@ $(FILES)
 
-libJudy.a: $(LIB_OBJS)
+libb.a: $(LIB_OBJS)
 	ar -r $@ $(LIB_OBJS)
 
-# Build libJudy.so directly from sources rather than from
+# Build libb.so directly from sources rather than from
 # objects so this Makefile doesn't have to deal with the complexity
 # of -fPIC objects and non -fPIC objecs with the same names.
-libJudy.so:
+libb.so:
 	$(CC) $(CFLAGS) $(DEFINES) -w -shared -o $@ $(LIB_SRCS)
 
 ############################
@@ -244,7 +253,13 @@ Judy1LHTime.o: Judy1LHTime.c
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
 
 # Suppress warnings.  Unused parameters.
-stubs.o: stubs.c
+stubs1.o: stubs1.c
+	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
+
+stubsL.o: stubsL.c
+	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
+
+stubsHS.o: stubsHS.c
 	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
 
 JudyMalloc.o: JudyMalloc.c
@@ -268,7 +283,13 @@ Judy1LHTime.s: Judy1LHTime.c
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
 
 # Suppress warnings.  Unused parameters.
-stubs.s: stubs.c
+stubs1.s: stubs1.c
+	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
+
+stubsL.s: stubsL.c
+	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
+
+stubsHS.s: stubsHS.c
 	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
 
 # Suppress warnings.  sbrk is deprecated.
@@ -297,11 +318,23 @@ br.i: br.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
+bc.i: bc.c
+	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
+
+# The .c.i rule doesn't work for some reason.  Later.
 b.i: b.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
-stubs.i: stubs.c
+stubs1.i: stubs1.c
+	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
+
+# The .c.i rule doesn't work for some reason.  Later.
+stubsL.i: stubsL.c
+	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
+
+# The .c.i rule doesn't work for some reason.  Later.
+stubsHS.i: stubsHS.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.

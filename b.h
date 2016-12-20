@@ -188,8 +188,8 @@
 #define JUDYA
 #endif // ! defined(JUDYA) && ! defined(JUDYB)
 
-// Default is -DNDEBUG -UDEBUG_ALL -UDEBUG.
-// Default is -UDEBUG_INSERT -UDEBUG_REMOVE -UDEBUG_LOOKUP -UDEBUG_MALLOC.
+// Default is -DNDEBUG -UDEBUG_ALL -UDEBUG
+// -UDEBUG_INSERT -UDEBUG_REMOVE -UDEBUG_LOOKUP -UDEBUG_MALLOC -UDEBUG_COUNT.
 #if defined(DEBUG_ALL)
 
     #undef  NDEBUG
@@ -208,7 +208,8 @@
 #else // defined(DEBUG_ALL)
 
   #if defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) \
-          || defined(DEBUG_REMOVE) || defined(DEBUG_MALLOC)
+          || defined(DEBUG_REMOVE) || defined(DEBUG_MALLOC) \
+          || defined(DEBUG_COUNT)
 
     #undef  NDEBUG
     #undef   DEBUG
@@ -852,6 +853,16 @@ enum {
 #else // defined(DEBUG_REMOVE)
 #define DBGR(x)
 #endif // defined(DEBUG_REMOVE)
+
+#if defined(DEBUG_COUNT)
+  #if (cwDebugThreshold != 0)
+    #define DBGC(x)  if (bHitDebugThreshold) (x)
+  #else // (cwDebugThreshold != 0)
+    #define DBGC(x)  (x)
+  #endif // (cwDebugThreshold != 0)
+#else // defined(DEBUG_COUNT)
+  #define DBGC(x)
+#endif // defined(DEBUG_COUNT)
 
 #if defined(DEBUG_MALLOC)
 #if (cwDebugThreshold != 0)
@@ -2069,6 +2080,7 @@ typedef struct {
 
 Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBL);
 Status_t Remove(Word_t *pwRoot, Word_t wKey, int nBL);
+Word_t Count(Word_t *pwRoot, Word_t wKey, int nBL);
 
 Status_t InsertGuts(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot
                     , int nPos
@@ -2182,12 +2194,18 @@ extern const unsigned anBL_to_nDL[];
   #endif // defined(REMOVE)
 #else // defined(LOOKUP) || defined(REMOVE)
 #define KeyFound  (Failure)
+  #if defined(INSERT)
 #define strLookupOrInsertOrRemove  "Insert"
 #define DBGX  DBGI
 #define InsertRemove  Insert
-  #if defined(RECURSIVE_INSERT)
+      #if defined(RECURSIVE_INSERT)
 #define RECURSIVE
-  #endif // defined(RECURSIVE_INSERT)
+      #endif // defined(RECURSIVE_INSERT)
+  #else // defined(INSERT)
+#define strLookupOrInsertOrRemove  "Count"
+#define DBGX  DBGC
+#define InsertRemove  Count
+  #endif // defined(INSERT)
 #endif // defined(LOOKUP) || defined(REMOVE)
 
 #if defined(PARALLEL_128)
@@ -3192,10 +3210,12 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
         PSPLIT_SEARCH(uint32_t, 32, piKeys, nPopCnt, iKey, nPos);
     } else if (nBL == 24) {
         PSPLIT_SEARCH(uint32_t, 24, piKeys, nPopCnt, iKey, nPos);
+printf("SearchList32 24 nPos %d\n", nPos);
     } else
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
         PSPLIT_SEARCH(uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
+printf("SearchList32 nPos %d\n", nPos);
     }
 #elif defined(BACKWARD_SEARCH_32)
     SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
@@ -3482,6 +3502,33 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
   #endif // defined(LOOKUP)
 
     return nPos;
+}
+
+// Figure out if the key is in the sorted list.
+// Return any non-negative number if the key is in the list.
+// Return any negative number if the key is not in the list.
+static int
+ListHasKey(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
+{
+    return SearchList(pwr, wKey, nBL, pwRoot) >= 0;
+}
+
+// Locate the key in the sorted list.
+// Return the position of the key in the list.
+// Return any negative number if the key is not in the list.
+static int
+LocateKey(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
+{
+    return SearchList(pwr, wKey, nBL, pwRoot);
+}
+
+// Locate the slot in the sorted list where the key should be.
+// Return the position of the slot in the list.
+// Return any negative number if the key is already in the slot.
+static int
+LocateHole(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
+{
+    return ~SearchList(pwr, wKey, nBL, pwRoot);
 }
 
 #endif // ! defined(LOOKUP_NO_LIST_SEARCH) || ! defined(LOOKUP)

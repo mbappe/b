@@ -1538,6 +1538,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
     if (nType == T_SKIP_TO_BITMAP) {
         if (bDump) {
             int nBLR = nBL;
+            assert(tp_bIsSkip(nType));
             if (tp_bIsSkip(nType)) {
                 nBLR = GetBLR(pwRoot, nBL);
             }
@@ -1545,6 +1546,14 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
             printf(" w_wPopCnt %ld",
                    w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR));
             printf(" skip to bitmap\n");
+            printf(" nWords %4"_fw"d", EXP(nBLR - cnLogBitsPerWord));
+            for (Word_t ww = 0; (ww < EXP(nBLR - cnLogBitsPerWord)); ww++) {
+                if ((ww % 8) == 0) {
+                    printf("\n");
+                }
+                printf(" "Owx, pwr[ww]);
+            }
+            printf("\n");
             return 0;
         }
 
@@ -4186,6 +4195,9 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
             pcKeys = ls_pcKeysNAT(pwList);
             pcKeys[nn] = (uint8_t)((wKey & ~wBLM)
                        | ((wRoot >> (cnBitsPerWord - (nSlot * nBL))) & wBLM));
+  #if defined(DEBUG_REMOVE)
+//            printf("nn %d nSlot %d pcKeys[?] 0x%x\n", nn, nSlot, pcKeys[nn]);
+  #endif // defined(DEBUG_REMOVE)
         } else
         if (nBL <= 16) {
             psKeys = ls_psKeysNAT(pwList);
@@ -4312,6 +4324,10 @@ DeflateExternalList(Word_t *pwRoot,
                                 0
   #endif // defined(FILL_W_BIG_KEY)
                             ]);
+  #if defined(DEBUG_REMOVE)
+                printf("nn %d nSlot %d pcKeys[?] 0x%x\n", nn, nSlot,
+                        pcKeys[(nn < nPopCnt) ? nn : 0]);
+  #endif // defined(DEBUG_REMOVE)
             } else
             if (nBL <= 16) {
                 psKeys = ls_psKeysNAT(pwr);
@@ -5883,60 +5899,81 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
     }
 
     Word_t wRoot = (Word_t)PArray;
-    unsigned nType = wr_nType(wRoot);
-    Word_t *pwr = wr_pwr(wRoot);
-    Word_t wPopCnt;
+    // Count returns the number of keys before the specified key.
+    // It does not include the specified key.
+    Word_t wCount0 = (wKey0 == 0) ? 0 : Count(&wRoot, wKey0, cnBitsPerWord);
+    DBGC(printf("Count wKey0 "OWx" Count0 %"_fw"d\n", wKey0, wCount0));
+    Word_t wCount1 = Count(&wRoot, wKey1, cnBitsPerWord);
+    DBGC(printf("Count wKey1 "OWx" Count1 %"_fw"d\n", wKey1, wCount1));
+    Word_t wCount = wCount1 - wCount0;
+    wCount += Judy1Test(PArray, wKey1, NULL);
+
+    if ((wKey0 == 0) && (wKey1 == (Word_t)-1))
+    {
+        unsigned nType = wr_nType(wRoot);
+        Word_t *pwr = wr_pwr(wRoot);
+        Word_t wPopCnt;
 
   #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-    if ( ! tp_bIsSwitch(nType) )
-    {
+        if ( ! tp_bIsSwitch(nType) )
+        {
       #if defined(EMBED_KEYS) || defined(USE_T_ONE)
-        if (0
+            if (0
           #if defined(EMBED_KEYS)
-                || (nType == T_EMBEDDED_KEYS)
+                    || (nType == T_EMBEDDED_KEYS)
           #endif // defined(EMBED_KEYS)
           #if defined(USE_T_ONE)
-                || (nType == T_ONE)
+                    || (nType == T_ONE)
           #endif // defined(USE_T_ONE)
-            )
-        {
-            wPopCnt = 1; // Always a full word to top; never embedded.
-        } else
+                )
+            {
+                wPopCnt = 1; // Always a full word to top; never embedded.
+            } else
       #endif // defined(EMBED_KEYS) || defined(USE_T_ONE)
-        if (pwr == NULL) {
-            wPopCnt = 0;
-#if defined(SKIP_TO_BITMAP)
-        } else if (nType == T_SKIP_TO_BITMAP) {
-            wPopCnt = GetPopCnt(&wRoot, cnBitsPerWord);
-#endif // defined(SKIP_TO_BITMAP)
-        } else {
-            assert(nType == T_LIST);
-            // ls_wPopCnt is valid at top for PP_IN_LINK if ! USE_T_ONE
-            wPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
+            if (pwr == NULL) {
+                wPopCnt = 0;
+      #if defined(SKIP_TO_BITMAP)
+            } else if (nType == T_SKIP_TO_BITMAP) {
+                wPopCnt = GetPopCnt(&wRoot, cnBitsPerWord);
+      #endif // defined(SKIP_TO_BITMAP)
+            } else {
+                assert(nType == T_LIST);
+                // ls_wPopCnt is valid at top for PP_IN_LINK if ! USE_T_ONE
+                wPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
+            }
         }
-    }
-    else // ! tp_bIsSwitch(nType)
+        else // ! tp_bIsSwitch(nType)
   #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-    { // tp_bIsSwitch(nType)
+        { // tp_bIsSwitch(nType)
   #if defined(PP_IN_LINK)
-        wPopCnt = Sum(&wRoot, cnBitsPerWord);
+            wPopCnt = Sum(&wRoot, cnBitsPerWord);
   #else // defined(PP_IN_LINK)
-        wPopCnt = GetPopCnt(&wRoot, cnBitsPerWord);
+            wPopCnt = GetPopCnt(&wRoot, cnBitsPerWord);
   #endif // defined(PP_IN_LINK)
-    }
+        }
 
   #if defined(DEBUG)
-    if (wPopCnt != wPopCntTotal)
-    {
-        printf("\nAssertion error debug:\n");
-        printf("\nwPopCnt %"_fw"d wPopCntTotal %"_fw"d\n",
-               wPopCnt, wPopCntTotal);
-        Dump(pwRootLast, 0, cnBitsPerWord);
-    }
-    assert(wPopCnt == wPopCntTotal);
-  #endif // defined(DEBUG)
+        if (wPopCnt != wPopCntTotal)
+        {
+            printf("\nAssertion error debug:\n");
+            printf("\nwPopCnt %"_fw"d wPopCntTotal %"_fw"d\n",
+                   wPopCnt, wPopCntTotal);
+            Dump(pwRootLast, 0, cnBitsPerWord);
+        }
+        assert(wPopCnt == wPopCntTotal);
 
-    return wPopCnt;
+        if (wPopCnt != wCount)
+        {
+            printf("\nAssertion error debug:\n");
+            printf("\nwPopCnt %"_fw"d wCount %"_fw"d\n",
+                   wPopCnt, wCount);
+            Dump(pwRootLast, 0, cnBitsPerWord);
+        }
+        assert(wPopCnt == wCount);
+  #endif // defined(DEBUG)
+    }
+
+    return wCount;
 
 #else // (cnDigitsPerWord != 1)
 

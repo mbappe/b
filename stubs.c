@@ -1,44 +1,46 @@
 
 #include "Judy.h"
 
+#if 0
 int Judy1SetArray(PPvoid_t PPArray,
     Word_t Count, const Word_t * const PIndex, P_JE)
 {
     // suppress "unused" compiler warnings
     (void)PPArray; (void) Count; (void)PIndex;(void)PJError;
-    printf("n/a\n"); exit(1);
+    printf("Judy1SetArray n/a\n"); exit(1);
 }
+#endif
 
 int Judy1ByCount(Pcvoid_t PArray, Word_t Count, Word_t * PIndex, P_JE)
-{ printf("n/a\n"); exit(1); }
+{ printf("Judy1ByCount n/a\n"); exit(1); }
 
-Word_t Judy1MemUsed(Pcvoid_t PArray) { printf("n/a\n"); exit(5); }
+Word_t Judy1MemUsed(Pcvoid_t PArray) { printf("Judy1MemUsed n/a\n"); exit(5); }
 
-Word_t Judy1MemActive(Pcvoid_t PArray) { printf("n/a\n"); exit(6); }
+Word_t Judy1MemActive(Pcvoid_t PArray) { printf("Judy1MemActive n/a\n"); exit(6); }
 
 int Judy1First(Pcvoid_t PArray, Word_t * PIndex, P_JE)
-{ printf("n/a\n"); exit(7); }
+{ printf("Judy1First n/a\n"); exit(7); }
 
 int Judy1Next(Pcvoid_t PArray, Word_t * PIndex, P_JE)
-{ printf("n/a\n"); exit(8); }
+{ printf("Judy1Next n/a\n"); exit(8); }
 
 int Judy1Last(Pcvoid_t PArray, Word_t * PIndex, P_JE)
-{ printf("n/a\n"); exit(9); }
+{ printf("Judy1Last n/a\n"); exit(9); }
 
 int Judy1Prev(Pcvoid_t PArray, Word_t * PIndex, P_JE)
-{ printf("n/a\n"); exit(10); }
+{ printf("Judy1Prev n/a\n"); exit(10); }
 
 int Judy1FirstEmpty(Pcvoid_t PArray, Word_t * PIndex, P_JE)
-{ printf("n/a\n"); exit(11); }
+{ printf("Judy1FirstEmpty n/a\n"); exit(11); }
 
 int Judy1NextEmpty(Pcvoid_t PArray, Word_t * PIndex, P_JE)
-{ printf("n/a\n"); exit(12); }
+{ printf("Judy1NextEmpty n/a\n"); exit(12); }
 
 int Judy1LastEmpty(Pcvoid_t PArray, Word_t * PIndex, P_JE)
-{ printf("n/a\n"); exit(13); }
+{ printf("Judy1LastEmpty n/a\n"); exit(13); }
 
 int Judy1PrevEmpty(Pcvoid_t PArray, Word_t * PIndex, P_JE)
-{ printf("n/a\n"); exit(14); }
+{ printf("Judy1PrevEmpty n/a\n"); exit(14); }
 
 // ****************************************************************************
 // JUDYL FUNCTIONS:
@@ -47,7 +49,7 @@ PPvoid_t JudyLGet(Pcvoid_t PArray, Word_t Index, P_JE)
 { printf("n/a\n"); exit(1); }
 
 PPvoid_t JudyLIns(PPvoid_t PPArray, Word_t Index, P_JE)
-{ printf("n/a\n"); exit(1); }
+{ printf("JudyLIns n/a\n"); exit(1); }
 
 int JudyLDel(PPvoid_t PPArray, Word_t Index, P_JE)
 { printf("n/a\n"); exit(1); }
