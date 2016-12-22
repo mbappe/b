@@ -429,10 +429,10 @@ main(int argc, char *argv[])
 
 //	    Print the number of bytes used per Index
 	    J1C(Count1, J1, 0, ~0);
- 	    //printf(" %6.3f", (double)Judy1MemUsed(J1) / (double)Count1);
- 	    printf(" %6.3f", Count1 / 1000.00);
+	    //printf(" %6.3f", (double)Judy1MemUsed(J1) / (double)Count1);
+	    printf(" %6.3f", Count1 / 1000.00);
 	    JLC(CountL, JL, 0, ~0);
- 	    printf(" %6.3f", (double)JudyLMemUsed(JL) / (double)CountL);
+	    printf(" %6.3f", (double)JudyLMemUsed(JL) / (double)CountL);
 	}
 	printf("\n");
 
@@ -735,8 +735,8 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
             FAILURE("JLC at", elm);
         }
 
-        //J1N(Rcode, J1, TstIndex);
-        { Word_t *PValue; JLN(PValue, JL, TstIndex); Rcode = (PValue != NULL); }
+	//J1N(Rcode, J1, TstIndex);
+	{ Word_t *PValue; JLN(PValue, JL, TstIndex); Rcode = (PValue != NULL); }
     }
     return(0);
 }
@@ -771,7 +771,7 @@ Word_t TestJudyNext(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
 
 	JLN(PValue, JL, JLindex);	// Get next one
 	//J1N(Rcode, J1, J1index);	// Get next one
-        { Rcode = (PValue != NULL); J1index = JLindex; }
+	{ Rcode = (PValue != NULL); J1index = JLindex; }
     }
 
     if (PValue != NULL)
@@ -813,7 +813,7 @@ TestJudyPrev(void *J1, void *JL, Word_t HighIndex, Word_t Elements)
 
 	JLP(PValue, JL, JLindex);	// Get previous one
 	//J1P(Rcode, J1, J1index);	// Get previous one
-        { Rcode = (PValue != NULL); J1index = JLindex; }
+	{ Rcode = (PValue != NULL); J1index = JLindex; }
     }
     if (PValue != NULL)
         FAILURE("JudyLPrev PValue != NULL", PValue);
@@ -851,7 +851,7 @@ TestJudyNextEmpty(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
 
 //      Find next Empty Index, J1index is modified by J1NE
 	//J1NE(Rcode1, J1, J1index);	// Rcode = Judy1NextEmpty(J1, &J1index, PJE0)
-        { Rcode1 = RcodeL; J1index = JLindex; }
+	{ Rcode1 = RcodeL; J1index = JLindex; }
 	if ((Rcode1 != 1) || (RcodeL != 1))
         {
             printf("RcodeL = %d, Rcode1 = %d, Index1 = 0x%lx, IndexL = 0x%lx\n",
@@ -915,7 +915,7 @@ TestJudyPrevEmpty(void *J1, void *JL, Word_t HighIndex, Word_t Elements)
 
 //      Find next Empty Index, JLindex is modified by JLPE
 	JLPE(RcodeL, JL, JLindex);	// RcodeL = JudyLPrevEmpty(JL, &JLindex, PJE0)
-        { Rcode1 = RcodeL; J1index = JLindex; }
+	{ Rcode1 = RcodeL; J1index = JLindex; }
 	if ((RcodeL != 1) || (Rcode1 != 1))
         {
             printf("RcodeL = %d, Rcode1 = %d, Index1 = 0x%lx, IndexL = 0x%lx\n",
