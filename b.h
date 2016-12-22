@@ -3210,12 +3210,12 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
         PSPLIT_SEARCH(uint32_t, 32, piKeys, nPopCnt, iKey, nPos);
     } else if (nBL == 24) {
         PSPLIT_SEARCH(uint32_t, 24, piKeys, nPopCnt, iKey, nPos);
-printf("SearchList32 24 nPos %d\n", nPos);
+        DBGX(printf("SearchList32 24 nPos %d\n", nPos));
     } else
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
         PSPLIT_SEARCH(uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
-printf("SearchList32 nPos %d\n", nPos);
+        DBGX(printf("SearchList32 nPos %d\n", nPos));
     }
 #elif defined(BACKWARD_SEARCH_32)
     SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
