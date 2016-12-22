@@ -1016,7 +1016,7 @@ main(int argc, char *argv[])
                 Bpercent = 100.0;
                 // Don't want to calculate MaxNumb later based on a Bpercent
                 // that was derived from -N.
-                MaxNumb = pow(2.0, BValue) - 1;
+                MaxNumb = pow(2.0, BValue); --MaxNumb;
                 break;
             }
 
@@ -1029,7 +1029,7 @@ main(int argc, char *argv[])
             }
             // Don't want to calculate MaxNumb later based on a Bpercent
             // that was derived from -N.
-            MaxNumb = pow(2.0, BValue) * (Bpercent / 100) - 1;
+            MaxNumb = pow(2.0, BValue) * (Bpercent / 100); --MaxNumb;
             break;
         }
         case 'G':                      // Gaussian Random numbers
