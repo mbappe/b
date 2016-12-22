@@ -1,14 +1,14 @@
 
 ###########################
 #
-# Makefile for b.  Code for learning about Judy and possible improvements.
+# Makefile for b. Code for learning about Judy and possible improvements.
 #
 ###########################
 
 # Run the following command to build b:
-#   cnBitsPerWord=<32|64> DEFINES="..." make
+#   [CC=<cc|clang|gcc|icc>] [cnBitsPerWord=<32|64>] [DEFINES="..."] make
 # Run the following command to build everything:
-#   cnBitsPerWord=<32|64> DEFINES="..." make all
+#   [CC=<cc|clang|gcc|icc>] [cnBitsPerWord=<32|64>] [DEFINES="..."] make all
 
 # The default build is 64-bits.
 # Use "cnBitsPerWord=32 make" to get a 32-bit build.
@@ -16,33 +16,9 @@ ifeq "$(cnBitsPerWord)" ""
 cnBitsPerWord = 64
 endif
 
-# B_DEFINES += -DcnBitsPerDigit=8
-# B_DEFINES += -DcnBitsAtBottom=16
-# B_DEFINES += -DcwListPopCntMax=$(cnBitsPerWord)
-# B_DEFINES += -DSKIP_LINKS -DSKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX
-# B_DEFINES += -DCOMPRESSED_LISTS
-# B_DEFINES += -DSORT_LISTS
-# B_DEFINES += -UBM_SWITCH -UBM_SWITCH_FOR_REAL -UBM_IN_LINK
-# B_DEFINES += -UPP_IN_LINK
-# B_DEFINES += -UDL_IN_LL
-# B_DEFINES += -DRAMMETRICS
-# B_DEFINES += -USEARCHMETRICS
-# LOOKUP_NO_BITMAP_SEARCH means return just before the list is searched, i.e.
-# after dereferencing the the first word of the list leaf.
-# What if prefix/popcnt are in the link?
-# LOOKUP_NO_BITMAP_DEREF means return before prefix/popcnt is retrieved, i.e.
-# before dereferencing the the first word of the list leaf.
-# B_DEFINES += -DLOOKUP_NO_LIST_DEREF -DLOOKUP_NO_LIST_SEARCH
-# LOOKUP_NO_BITMAP_SEARCH means return before the bit is retrieved.
-# LOOKUP_NO_BITMAP_DEREF means return before the prefix is retrieved, i.e.
-# before dereferencing the the first word of the bitmap leaf if it
-# contains prefix/popcnt.
-# B_DEFINES += -DLOOKUP_NO_BITMAP_DEREF -DLOOKUP_NO_BITMAP_SEARCH
-# B_DEFINES += -URECURSIVE_INSERT -URECURSIVE_REMOVE
-# B_DEFINES += -DcnBitsPerWord=$(cnBitsPerWord)
-# B_DEFINES += -DDEBUG_INSERT -DDEBUG_LOOKUP -DDEBUG_MALLOC -DDEBUG_REMOVE
-# B_DEFINES += -UDEBUG_ALL
-
+# The default compiler is clang.
+# Use "CC=gcc make" to use gcc.
+# CC=cc means clang. CC=ccc means clang.
 ifeq "$(CC)" "cc"
   CC = clang
 endif
@@ -50,6 +26,8 @@ ifeq "$(CC)" "ccc"
   CC = clang
 endif
 # CC = cc
+# CC = clang
+# CC = ccc
 # CC = gcc
 # CC = icc
 
@@ -86,14 +64,14 @@ endif
 
 # Leave off -Wmissing-prototypes because I don't like providing prototypes
 # that have no value at all, i.e. when the function definition appears
-# before any use of the function.  Nevermind.  Looks like "static" addresses
-# the missing prototype just as well as a prototype does.  Yes!
+# before any use of the function. Nevermind. Looks like "static" addresses
+# the missing prototype just as well as a prototype does. Yes!
   WFLAGS += -Wall -Werror
   WFLAGS += -pedantic -Wstrict-prototypes -W
   WFLAGS += -Wmissing-prototypes
+  WFLAGS += -Wno-unused-function
 # gcc gives false positives without -Wno-maybe-uninitialized.
 # clang doesn't even try. So clang doesn't support the option.
-  WFLAGS += -Wno-unused-function
 ifeq "$(CC)" "gcc"
   WFLAGS += -Wno-maybe-uninitialized
 endif
@@ -122,15 +100,12 @@ CFLAGS = $(STDFLAG) $(MFLAGS) $(WFLAGS) $(OFLAGS) -I.
 CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
 
 # Obsolete ifdefs used to figure out where overhead was coming from that
-CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
-
-# Obsolete ifdefs used to figure out where overhead was coming from that
-# was making Time -b get times faster than Time -1 get times for libjudy
+# was making Time -b get times faster than Time -1 get times for libb
 # configured to allocate one big bitmap.
 # Bitmap[Set|Get] don't have P_JE.  Judy1[Set|Test] do have P_JE.
 # These ifdefs were used to level the field.
 # TIME_DEFINES += -DBITMAP_P_JE -DNO_P_JE
-# EXTERN_JUDY1 puts Judy1[Test|Set] in judy1.c via judy1x.c.
+# EXTERN_JUDY1 used to put Judy1[Test|Set] in judy1.c via judy1x.c.
 # INTERN_JUDY1 used to put Judy1[Test|Set] in Judy1LHTime.c via judy1x.c.
 # But Doug doesn't want judy1.c or judy1x.c.
 # Neither puts Judy1[Test|Set] in bl.c via bli.c via judy1x.c.
@@ -147,6 +122,7 @@ CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
 # assertions only.
 # It does not log anything unless something wrong is detected.
 # DEBUG is used by Judy1LHTime.c to turn off NDEBUG.
+# No NDEBUG is used by assert.h to enable assertions.
 # TIME_DEFINES += -UDEBUG -DNDEBUG
 
 # Debug/Check/Instrument:
@@ -161,30 +137,32 @@ CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
 #
 # _POSIX_C_SOURCE=199309L gives CLOCK_MONOTONIC on GNU/Linux even though
 # -std=c11 and -std=c99 don't.
-#
-# TIME_DEFINES += -DJUDYA
 # TIME_DEFINES += -D_POSIX_C_SOURCE=199309L
+# JUDYA specifies JUDYA-style instrumentation variables.
+# TIME_DEFINES += -DJUDYA
 
 DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 
-FILES_FROM_ME = b.h b.c bli.c bl.c bi.c br.c bc.c t.c stubs1.c stubsL.c stubsHS.c Makefile
+FILES_FROM_ME  = b.h b.c bli.c bl.c bi.c br.c bc.c t.c
+FILES_FROM_ME += stubs1.c stubsL.c stubsHS.c Makefile
 FILES_FROM_ME += bb forx
 FILES_FROM_ME += README.meb
 # I periodically make changes to the files provided by Doug B.
-FILES_FROM_DOUG_B_OR_DOUG_LEA = Judy.h RandomNumb.h Judy1LHTime.c dlmalloc.c jbgraph JudyMalloc.c
+FILES_FROM_DOUG_B_OR_DOUG_LEA  = Judy.h RandomNumb.h dlmalloc.c JudyMalloc.c
+FILES_FROM_DOUG_B_OR_DOUG_LEA += Judy1LHCheck.c Judy1LHTime.c jbgraph
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEA)
 
 EXES = b check # t
-LIBS = libb.a libb.so
-LIB_SRCS = bl.c bi.c br.c bc.c b.c stubs1.c stubsL.c stubsHS.c JudyMalloc.c
-LIB_OBJS = bl.o bi.o br.o bc.o b.o stubs1.o JudyMalloc.o
-OBJS = Judy1LHTime.o $(LIB_OBJS) stubsL.o stubsHS.o
-ASMS = Judy1LHTime.s bl.s bi.s br.s bc.s b.s stubs1.s stubsL.s stubsHS.s JudyMalloc.s # t.s
-CPPS = Judy1LHTime.i bl.i bi.i br.i bc.i b.i stubs1.i stubsL.i stubsHS.i JudyMalloc.i # t.i
-# Debug symbols file created if "strip debug symbols" is specified.
-SYMS = t.dSYM bxc.dSYM
+LIBS = libb1.a libb1.so libb.a libb.so
+LIB1_OBJS = bl.o bi.o br.o bc.o b.o stubs1.o JudyMalloc.o
+LIB1_SRCS = bl.c bi.c br.c bc.c b.c stubs1.c JudyMalloc.c
+LIB_OBJS = $(LIB1_OBJS) stubsL.o stubsHS.o
+LIB_SRCS = $(LIB1_SRCS) stubsL.c stubsHS.c
+ASMS  = bl.s bi.s br.s bc.s b.s
+ASMS += stubs1.s stubsL.s stubsHS.s JudyMalloc.s # t.s
+CPPS  = bl.i bi.i br.i bc.i b.i 
+CPPS += stubs1.i stubsL.i stubsHS.i JudyMalloc.i # t.i
 
-T_SRCS = t.c
 T_OBJS = stubs1.o stubsL.o stubsHS.o JudyMalloc.o
 
 ##################################
@@ -201,38 +179,41 @@ T_OBJS = stubs1.o stubsL.o stubsHS.o JudyMalloc.o
 #
 ##################################
 
-default: safe
-
-fast: b
-
-safe: clean b check
+default: clean b check
 
 all: clean $(EXES) $(LIBS) $(ASMS) $(CPPS) b.tjz
 
 clean:
-	rm -f $(EXES) $(LIBS) $(OBJS) $(ASMS) $(CPPS) b.tjz
-	rm -rf $(SYMS)
+	rm -f $(EXES) $(LIBS) $(LIB_OBJS) $(ASMS) $(CPPS) b.tjz
 
-t:	$(T_SRCS) $(T_OBJS)
+t:	t.c $(T_OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 
-b:	$(OBJS)
-	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
+b:	Judy1LHTime.c libb.a
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -o $@ $^ -lm
 
-check:	Judy1LHCheck.c libb.a stubs1.o libJudy.a
-	$(CC) $(CFLAGS) $(DEFINES) -w -o $@ $^
+check:	Judy1LHCheck.c libb1.a
+	# Set LIBRARY_PATH environment variable to find libJudy.a.
+	# Need -lm on Ubuntu. Appears to be unnecessary on macOS.
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -o $@ $^ -lJudy -lm
 
 b.tjz:	$(FILES)
-	tar cjf $@ $(FILES)
+	tar cjf $@ $^
 
 libb.a: $(LIB_OBJS)
 	ar -r $@ $(LIB_OBJS)
+
+libb1.a: $(LIB1_OBJS)
+	ar -r $@ $(LIB1_OBJS)
 
 # Build libb.so directly from sources rather than from
 # objects so this Makefile doesn't have to deal with the complexity
 # of -fPIC objects and non -fPIC objecs with the same names.
 libb.so:
-	$(CC) $(CFLAGS) $(DEFINES) -w -shared -o $@ $(LIB_SRCS)
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -shared -o $@ $(LIB_SRCS)
+
+libb1.so:
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -shared -o $@ $(LIB1_SRCS)
 
 ############################
 #
@@ -248,19 +229,14 @@ libb.so:
 .c.o:
 	$(CC) $(CFLAGS) $(DEFINES) -c $^
 
-# Suppress warnings.
-Judy1LHTime.o: Judy1LHTime.c
+stubs1.o: stubs1.c
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
 
-# Suppress warnings.  Unused parameters.
-stubs1.o: stubs1.c
-	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
-
 stubsL.o: stubsL.c
-	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
 
 stubsHS.o: stubsHS.c
-	$(CC) $(CFLAGS) $(DEFINES) -w -c $^
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
 
 JudyMalloc.o: JudyMalloc.c
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -DRAMMETRICS -c $^
@@ -274,7 +250,7 @@ JudyMalloc.o: JudyMalloc.c
 .c.s:
 	$(CC) $(CFLAGS) $(DEFINES) -S $^
 
-# Suppress warnings.  Transitive warnings.  t.c just includes other files.
+# Suppress warnings. Transitive warnings. t.c just includes other files.
 t.s: t.c
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
 
@@ -284,13 +260,13 @@ Judy1LHTime.s: Judy1LHTime.c
 
 # Suppress warnings.  Unused parameters.
 stubs1.s: stubs1.c
-	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
 
 stubsL.s: stubsL.c
-	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
 
 stubsHS.s: stubsHS.c
-	$(CC) $(CFLAGS) $(DEFINES) -w -S $^
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
 
 # Suppress warnings.  sbrk is deprecated.
 JudyMalloc.s: JudyMalloc.c
