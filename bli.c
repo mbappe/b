@@ -558,16 +558,19 @@ again3:;
     {
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:;
-        // nBL is bits left below the link picked from the previous switch
+        // nBL is bits left after picking the link from the previous switch
         // nBL is not reduced by any skip indicated in that link
         // nBLR is nBL reduced by any skip indicated in that link
         // nBLR is bits left at the top of this switch
 
-        DBGX(printf("T_SWITCH nBL %d nBLR %d pLinks %p\n",
-                    nBL, nBLR, (void *)pwr_pLinks((Switch_t *)pwr)));
+        DBGX(printf("T_SWITCH nBL %d nBLR %d wPopCnt %"_fw"d pLinks %p\n",
+                    nBL, nBLR, PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR),
+                    (void *)pwr_pLinks((Switch_t *)pwr)));
 
   #if defined(INSERT) || defined(REMOVE)
-        if (bCleanup) {
+        // Cleanup is for adjusting tree after successful insert or remove.
+        // It is not for undoing counts after unsuccessful insert or remove.
+        if (unlikely(bCleanup)) {
       #if defined(INSERT)
           #if (cn2dBmWpkPercent != 0)
             if (nBLR <= cnBitsLeftAtDl2) {
@@ -581,11 +584,7 @@ t_switch:;
         } else {
             // Increment or decrement population count on the way in.
             wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
-            DBGX(printf("nBLR %d wPopCnt before "OWx"\n",
-                        nBLR, PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR)));
             set_PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR, wPopCnt + nIncr);
-            DBGX(printf("nBLR %d wPopCnt after "OWx"\n",
-                        nBLR, PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR)));
         }
       #if defined(INSERT)
         //pwRootPrev = pwRoot; // save pwRoot for T_XX_SW for InsertGuts
@@ -597,35 +596,29 @@ t_switch:;
         assert( ! tp_bIsSkip(wRoot)
             || (wr_nDS(wRoot) == nBL_to_nDL(nBL) - nBL_to_nDL(nBLR)) );
       #else // defined(TYPE_IS_RELATIVE)
-        assert((pwr_nBL(&wRoot) == nBLR)
-            /* || ! tp_bIsSkip(wRoot) */ || 0);
+        assert((pwr_nBL(&wRoot) == nBLR) /* || ! tp_bIsSkip(wRoot) */ || 0);
       #endif // defined(TYPE_IS_RELATIVE)
   #endif // defined(SKIP_TO_XX_SW)
-        // This assertion is a reminder that the NAX in the line below and
-        // possibly later in this case are cheating.
-        // The NAX assumes our test program doesn't generate any keys
-        // that have bits set in the top digit.
-        // It's really only legitimate to use NAB3.
-        assert(nBL_to_nBitsIndexSzNAX(nBLR) == nBL_to_nBitsIndexSz(nBLR));
-        nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBLR);
-        //nBL = nBLR - nBW_from_nBL_NAB3(nBLR);
+
+        //int nBitsIndexSz = nBL_to_nBitsIndexSzNAX(nBLR);
+        int nBitsIndexSz = nBL_to_nBitsIndexSzNAB(nBLR);
+        nBL = nBLR - nBitsIndexSz;
+
   #if defined(SKIP_TO_XX_SW)
-        assert(pwr_nBW(&wRoot) == (nBLR - nBL));
+        // Hmm. Are we sure nBL_to_nBitsIndexSzNAB is faster than pwr_nBw?
+        assert(pwr_nBW(&wRoot) == nBitsIndexSz);
   #endif // defined(SKIP_TO_XX_SW)
 
-        Word_t wIndex = ((wKey >> nBL)
-            // It is ok to use NAX here even though we might be at top because
-            // we don't care if it returns an index size that is too big.
-            // Of course, this assumes that NAX will yield nBitsIndexSz
-            // greater than or equal to the actual value and won't cause
-            // a crash.
-            // perf: EXP(cnBitsPerDigit) - 1
-            & (MSK(nBL_to_nBitsIndexSzNAX(nBLR))));
+        // Is it possible that MSK(nBLR - nBL) would be faster here in some
+        // cases, e.g. BitsInD2 != BitsPerDigit and BitsInD3 != BitsPerDigit?
+        // We're banking on the compilier noticing that nB
+        Word_t wIndex = (wKey >> nBL) & MSK(nBitsIndexSz);
 
         DBGX(printf("T_SWITCH wIndex %d 0x%x\n", (int)wIndex, (int)wIndex));
 
 #if defined(COUNT)
-        wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL, wIndex, 1<<nBL_to_nBitsIndexSzNAX(nBLR));
+        wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL, wIndex,
+                          1 << nBitsIndexSz);
         DBGC(printf("T_SWITCH wPopCnt %"_fw"d\n", wPopCnt));
         wPopCntSum += wPopCnt;
 #endif // defined(COUNT)
@@ -642,15 +635,22 @@ switchTail:;
         // preserve the value of pwr.
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+        // Is there any reason to have
+        // EXP(cnBitsInD1) <= (sizeof(Link_t) * 8)? What about lazy conversion
+        // of embedded keys at nBL > sizeof(Link_t) * 8 to
+        // nBL == sizeof(Link_t) * 8?
+        // Initialize warns if cnBitsInD1 is too small relative
+        // to sizeof(Link_t).
         assert(EXP(nBL) > (sizeof(Link_t) * 8));
+        // We've left some code here, in the comment, for reference only.
         // The first test is done at compile time and will make the rest
-        // go away.  Initialize warns if cnBitsInD1 is too small relative
-        // to sizeof(Link_t).  We've left the code here for reference only.
-        if ((EXP(cnBitsInD1) <= (sizeof(Link_t) * 8))
-            && (nBL <= (int)LOG(sizeof(Link_t) * 8)))
-        {
-            goto t_bitmap;
-        }
+        // go away.
+        //
+        // if ((EXP(cnBitsInD1) <= (sizeof(Link_t) * 8))
+        //     && (nBL <= (int)LOG(sizeof(Link_t) * 8)))
+        // {
+        //     goto t_bitmap;
+        // }
 
         DBGX(printf("switchTail: pwRoot %p wRoot "OWx" nBL %d\n",
                     (void *)pwRoot, wRoot, nBL));
@@ -674,6 +674,13 @@ switchTail:;
         goto t_xx_sw;
 t_xx_sw:;
         // nBL is bits left below the link picked from the previous switch
+        // nBL is not reduced by any skip indicated in that link
+        // nBLR is nBL reduced by any skip indicated in that link
+        // nBLR is bits left at the top of this switch
+
+        // nBLR is nBL reduced by any skip indicated in that link
+        // nBLR is bits left at the top of this switch
+
         // nBL is not reduced by any skip indicated in that link
         // nBLR is nBL reduced by any skip indicated in that link
         // nBLR is bits left at the top of this switch

@@ -5,6 +5,11 @@
 #if ( ! defined(_B_H_INCLUDED) )
 #define _B_H_INCLUDED
 
+#if ! defined(likely)
+#define   likely(_b) (__builtin_expect((_b), 1))
+#define unlikely(_b) (__builtin_expect((_b), 0))
+#endif // ! defined(likely)
+
 // Default is -DSKIP_LINKS -USKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX.
 // Default is -USAVE_PREFIX -USAVE_PREFIX_TEST_RESULT
 // Default is -UALWAYS_CHECK_PREFIX_AT_LEAF.
@@ -691,20 +696,20 @@ enum {
     // Rounding up is free since we already have to add a constant before
     // (or after) dividing.
     #define nDL_from_nBL(_nBL) \
-        ( ((_nBL) <= cnBitsInD1 ) ? 1 \
+        ( ((_nBL) <= cnBitsInD1) ? 1 \
         : 1 + DIV_UP((_nBL) - cnBitsLeftAtDl1, cnBitsPerDigit) )
   #elif (cnBitsInD3 == cnBitsPerDigit)
     // Rounding up is free since we already have to add a constant before
     // (or after) dividing.
     #define nDL_from_nBL(_nBL) \
-        ( ((_nBL) <= cnBitsLeftAtDl1 ) ? 1 \
+        ( ((_nBL) <= cnBitsLeftAtDl1) ? 1 \
         : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
         : 2 + DIV_UP((_nBL) - cnBitsLeftAtDl2, cnBitsPerDigit) )
   #else // (cnBitsInD2 == cnBitsPerDigit) && ...
     // Rounding up is free since we already have to add a constant before
     // (or after) dividing.
     #define nDL_from_nBL(_nBL) \
-        ( ((_nBL) <= cnBitsLeftAtDl1 ) ? 1 \
+        ( ((_nBL) <= cnBitsLeftAtDl1) ? 1 \
         : ((_nBL) <= cnBitsLeftAtDl2) ? 2 \
         : ((_nBL) <= cnBitsLeftAtDl3) ? 3 \
         : 3 + DIV_UP((_nBL) - cnBitsLeftAtDl3, cnBitsPerDigit) )
@@ -714,7 +719,15 @@ enum {
 
 #endif // (cnBitsInD1 == cnBitsPerDigit) && ...
 
+#define nBitsIndexSz_from_nBL_NAB(_nBL) \
+    ( (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) != 0) \
+        && ((_nBL) == cnBitsPerWord) ? cnBitsIndexSzAtTop \
+    : ((cnBitsInD2 != cnBitsPerDigit) && ((_nBL) <= 2)) ? cnBitsInD2 \
+    : ((cnBitsInD3 != cnBitsPerDigit) && ((_nBL) <= 3)) ? cnBitsInD3 \
+    : cnBitsPerDigit )
+
 #if (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
+// cnBitsIndexSzAtTop == cnBitsPerDigit
 
 // nBitsIndexSz_from_nDL(_nDL)
 #if (cnBitsInD1 == cnBitsPerDigit)
@@ -732,30 +745,31 @@ enum {
 #define nBL_from_nDL(_nDL)  (nBL_from_nDL_NAT(_nDL))
 
 #else // (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
+// cnBitsIndexSzAtTop != cnBitsPerDigit
 
-// nBitsIndexSz_from_nDL(_nDL)
-#if (cnBitsInD1 == cnBitsPerDigit)
-  #define nBitsIndexSz_from_nDL(_nDL) \
-    ( ((_nDL) < cnDigitsPerWord) ? nBitsIndexSz_from_nDL_NAX(_nDL) \
-    : cnBitsIndexSzAtTop )
-  #define nBitsIndexSz_from_nBL(_nBL) \
-    ( ((_nBL) < cnBitsPerWord) ? nBitsIndexSz_from_nBL_NAX(_nBL) \
-    : cnBitsIndexSzAtTop )
-#else // (cnBitsInD1 == cnBitsPerDigit)
-  // Do we need this to be valid for _nDL < 1?
-  #define nBitsIndexSz_from_nDL(_nDL) \
-    ( ((_nDL) <= 1) ? cnBitsInD1 \
-    : ((_nDL) < cnDigitsPerWord) ? nBitsIndexSz_from_nDL_NAX(_nDL) \
-    : cnBitsIndexSzAtTop )
-  #define nBitsIndexSz_from_nBL(_nBL) \
-    ( ((_nBL) <= cnBitsInD1) ? cnBitsInD1 \
-    : ((_nBL) < cnBitsPerWord) ? nBitsIndexSz_from_nBL_NAX(_nBL) \
-    : cnBitsIndexSzAtTop )
-#endif // (cnBitsInD1 == cnBitsPerDigit)
+  // nBitsIndexSz_from_nDL(_nDL)
+  #if (cnBitsInD1 == cnBitsPerDigit)
+    #define nBitsIndexSz_from_nDL(_nDL) \
+        ( ((_nDL) < cnDigitsPerWord) ? nBitsIndexSz_from_nDL_NAX(_nDL) \
+        : cnBitsIndexSzAtTop )
+    #define nBitsIndexSz_from_nBL(_nBL) \
+        ( ((_nBL) < cnBitsPerWord) ? nBitsIndexSz_from_nBL_NAX(_nBL) \
+        : cnBitsIndexSzAtTop )
+  #else // (cnBitsInD1 == cnBitsPerDigit)
+    // Do we need this to be valid for _nDL < 1?
+    #define nBitsIndexSz_from_nDL(_nDL) \
+        ( ((_nDL) <= 1) ? cnBitsInD1 \
+        : ((_nDL) < cnDigitsPerWord) ? nBitsIndexSz_from_nDL_NAX(_nDL) \
+        : cnBitsIndexSzAtTop )
+    #define nBitsIndexSz_from_nBL(_nBL) \
+        ( ((_nBL) <= cnBitsInD1) ? cnBitsInD1 \
+        : ((_nBL) < cnBitsPerWord) ? nBitsIndexSz_from_nBL_NAX(_nBL) \
+        : cnBitsIndexSzAtTop )
+  #endif // (cnBitsInD1 == cnBitsPerDigit)
 
-// nBL_from_nDL(_nDL)
-#define nBL_from_nDL(_nDL) \
-    ( (_nDL) < cnDigitsPerWord ? nBL_from_nDL_NAT(_nDL) : cnBitsPerWord )
+    // nBL_from_nDL(_nDL)
+    #define nBL_from_nDL(_nDL) \
+        ( (_nDL) < cnDigitsPerWord ? nBL_from_nDL_NAT(_nDL) : cnBitsPerWord )
 
 #endif // (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
 
@@ -797,6 +811,7 @@ enum {
 
 #define nDL_to_nBL_NAX(_nDL)          (nBL_from_nDL_NAX(_nDL))
 #define nBL_to_nBitsIndexSzNAX(_nBL)  (nBitsIndexSz_from_nBL_NAX(_nBL))
+#define nBL_to_nBitsIndexSzNAB(_nBL)  (nBitsIndexSz_from_nBL_NAB(_nBL))
 #define nDL_to_nBitsIndexSzNAX(_nDL)  (nBitsIndexSz_from_nDL_NAX(_nDL))
 #define nDL_to_nBL_NAT(_nDL)          (nBL_from_nDL_NAT(_nDL))
 #define nDL_to_nBitsIndexSzNAT(_nDL)  (nDL_to_nBitsIndexSz(_nDL))
