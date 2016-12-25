@@ -673,20 +673,14 @@ switchTail:;
     {
         goto t_xx_sw;
 t_xx_sw:;
-        // nBL is bits left below the link picked from the previous switch
+        // nBL is bits left after picking the link from the previous switch
         // nBL is not reduced by any skip indicated in that link
         // nBLR is nBL reduced by any skip indicated in that link
         // nBLR is bits left at the top of this switch
 
-        // nBLR is nBL reduced by any skip indicated in that link
-        // nBLR is bits left at the top of this switch
-
-        // nBL is not reduced by any skip indicated in that link
-        // nBLR is nBL reduced by any skip indicated in that link
-        // nBLR is bits left at the top of this switch
-
-        DBGX(printf("T_XX_SW nBLUp %d nBLR %d pLinks %p\n",
-                    nBL, nBLR, (void *)pwr_pLinks((Switch_t *)pwr)));
+        DBGX(printf("T_XX_SW nBL %d nBLR %d wPopCnt %"_fw"d pLinks %p\n",
+                    nBL, nBLR, PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR),
+                    (void *)pwr_pLinks((Switch_t *)pwr)));
 
   #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
@@ -702,11 +696,7 @@ t_xx_sw:;
         } else {
             // Increment or decrement population count on the way in.
             wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
-            DBGX(printf("nBLR %d wPopCnt before "OWx"\n",
-                        nBLR, PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR)));
             set_PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR, wPopCnt + nIncr);
-            DBGX(printf("nBLR %d wPopCnt after "OWx"\n",
-                        nBLR, PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR)));
         }
       #if defined(INSERT)
         pwRootPrev = pwRoot; // save pwRoot for T_XX_SW for InsertGuts
@@ -743,13 +733,13 @@ t_xx_sw:;
         DBGX(printf("T_XX_SW nBW %d nIndex %d 0x%x\n",
                     nBW, nIndex, nIndex));
 
-        pwRoot = &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot;
-
 #if defined(COUNT)
         wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL, nIndex, 1<<nBW);
         DBGC(printf("T_XX_SW wPopCnt %"_fw"d\n", wPopCnt));
         wPopCntSum += wPopCnt;
 #endif // defined(COUNT)
+
+        pwRoot = &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot;
 
         wRoot = *pwRoot;
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
