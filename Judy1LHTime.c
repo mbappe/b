@@ -437,6 +437,7 @@ Word_t    CFlag = 0;                    // time Counting
 Word_t    cFlag = 0;                    // time Copy of Judy1 array
 Word_t    IFlag = 0;                    // time duplicate inserts/sets
 Word_t    bFlag = 0;                    // Time REAL bitmap of (2^-B #) in size
+Word_t    Warmup = 2000;                // milliseconds to warm up CPU
 
 PWord_t   B1 = NULL;                    // BitMap
 #define cMaxColon ((int)sizeof(Word_t) * 2)  // Maximum -b suboption paramters
@@ -456,7 +457,6 @@ Word_t    VFlag = 1;                    // To verify Value Area contains good Da
 Word_t    fFlag = 0;
 Word_t    KFlag = 0;                    // do a __sync_synchronize() in GetNextKey()
 Word_t    hFlag = 0;                    // add "holes" into the insert code
-Word_t    Warmup = 2000000000;          // nSec to warm up CPU
 Word_t    PreStack = 0;                 // to test for TLB collisions with stack
 
 Word_t    Offset = 0;                   // Added to Key
@@ -727,6 +727,7 @@ Usage(int argc, char **argv)
     printf("-i     Do a JudyLIns/Judy1Set after every Ins/Set (adds to times)\n");
     printf("-M     Print on stderr Judy_mmap() and Judy_unmap() calls to kernel\n");
     printf("-h     Put 'Key holes' in the Insert path 1 and L options only\n");
+    printf("-W #   Specify the 'CPU Warmup' time in milliseconds [%lu]\n", Warmup);
 
     printf("\n");
 
@@ -886,7 +887,7 @@ main(int argc, char *argv[])
     double    DirectHits = 0;           // Number of direct hits
     double    SearchGets = 0;           // Number of object calls
 
-    Word_t    MaxNumb = pow(2.0, BValue) * (Bpercent / 100) - 1;
+    Word_t    MaxNumb;
     int       Col;
     int       c;
     Word_t    ii;                       // temp iterator
@@ -898,6 +899,9 @@ main(int argc, char *argv[])
     double    Dmax = 0.0;
     double    Davg = 0.0;
 #endif // LATER
+
+    MaxNumb = pow(2.0, BValue) * Bpercent / 100;
+    MaxNumb--;
 
     setbuf(stdout, NULL);               // unbuffer output
 
@@ -971,8 +975,10 @@ main(int argc, char *argv[])
             MaxNumb = oa2w(optarg, NULL, 0, c);
             if (MaxNumb == 0)
                 FAILURE("Error --- No tests: -N", MaxNumb);
-            BValue = sizeof(Word_t) * 8 - __builtin_clzll(MaxNumb);
+
+            BValue = (sizeof(Word_t) * 8) - __builtin_clzl(MaxNumb);
             Bpercent = (MaxNumb/2.0 + 0.5) / pow(2.0, BValue - 1) * 100;
+
             break;
         }
         case 'S':                      // Step Size, 0 == Random
@@ -1016,7 +1022,8 @@ main(int argc, char *argv[])
                 Bpercent = 100.0;
                 // Don't want to calculate MaxNumb later based on a Bpercent
                 // that was derived from -N.
-                MaxNumb = pow(2.0, BValue); --MaxNumb;
+                MaxNumb = pow(2.0, BValue);
+                MaxNumb--;
                 break;
             }
 
@@ -1029,7 +1036,8 @@ main(int argc, char *argv[])
             }
             // Don't want to calculate MaxNumb later based on a Bpercent
             // that was derived from -N.
-            MaxNumb = pow(2.0, BValue) * (Bpercent / 100); --MaxNumb;
+            MaxNumb = pow(2.0, BValue) * Bpercent / 100;
+            MaxNumb--;
             break;
         }
         case 'G':                      // Gaussian Random numbers
@@ -1043,10 +1051,11 @@ main(int argc, char *argv[])
                 ErrorFlag++;
                 printf("\nError --- option -X%d must be greater than 0 !!!\n", XScale);
             }
+            break;
 
         case 'W':                      // Warm up CPU number of random() calls
             Warmup = oa2w(optarg, NULL, 0, c);
-            printf("\n#-------------Warmup %lu\n", Warmup);
+            
             break;
 
         case 'o': // Add <#> to generated keys, aka --LittleOffset=<#>.
@@ -1420,10 +1429,9 @@ main(int argc, char *argv[])
     }
 
 //  print Title for plotting -- command + run arguments
-    printf("# TITLE %s", argv[0]);
+//
 
-//    if (Bpercent != 100.0)
-//        printf(":%.6f", Bpercent);
+    printf("# TITLE %s -W%lu", argv[0], Warmup);
 
     if (Bpercent == 100.0)
     {
@@ -1431,8 +1439,7 @@ main(int argc, char *argv[])
 
     } else
     {
-         printf(" -N%lu[0x%lx]", MaxNumb, MaxNumb);
-         printf(" -B%lu:%.22g", BValue, Bpercent);
+         printf(" -N0x%lx", MaxNumb);
     }
 
     printf(" -G%lu -", GValue);
@@ -1564,7 +1571,7 @@ main(int argc, char *argv[])
         printf("# %s 32 Bit version\n", argv[0]);
 
 //    Debug
-    printf("# MaxNumb = %lu = 0x%lx\n", MaxNumb, MaxNumb);
+    printf("# MaxNumb = %lu[0x%lx]\n", MaxNumb, MaxNumb); // must not do 
     printf("# BValue = %lu\n", BValue);
     printf("# Bpercent = %20.18f\n", Bpercent);
 
@@ -1887,7 +1894,7 @@ main(int argc, char *argv[])
             printf("!! Bug in random()\n");
 
         ENDTm(DeltanSecW);      // get accumlated elapsed time
-    } while (DeltanSecW < Warmup);       // until ~2 seconds elapsed
+    } while (DeltanSecW < (Warmup * 1000000));
 
 //  Now measure the execute time for 1M calls to random().
     STARTTm;
