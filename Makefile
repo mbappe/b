@@ -192,9 +192,9 @@ t:	t.c $(T_OBJS)
 b:	Judy1LHTime.c libb.a
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -o $@ $^ -lm
 
+# Set LIBRARY_PATH environment variable to find libJudy.a.
+# Need -lm on Ubuntu. Appears to be unnecessary on macOS.
 check:	Judy1LHCheck.c libb1.a
-	# Set LIBRARY_PATH environment variable to find libJudy.a.
-	# Need -lm on Ubuntu. Appears to be unnecessary on macOS.
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -o $@ $^ -lJudy -lm
 
 b.tjz:	$(FILES)

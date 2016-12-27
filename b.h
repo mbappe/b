@@ -2729,6 +2729,8 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 // a special case for neither is known.
 #define SPLIT_SEARCH_GUTS(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
+    /* printf("SSG(nBL %d pxKeys %p nPopCnt %d xKey 0x%x nPos %d\n", */ \
+        /* _nBL, (void *)_pxKeys, _nPopCnt, _xKey, _nPos); */ \
     _b_t *px = (_b_t *)(_pxKeys); \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
     unsigned nSplit; SPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
@@ -2831,11 +2833,21 @@ again:;
 #endif
 
 #if defined(PARALLEL_128)
+      #if defined(COUNT)
+#define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
+    PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
+      #else // defined(COUNT)
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
     SPLIT_SEARCH_GUTS(__m128i, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) 
+      #endif // defined(COUNT)
 #else // defined(PARALLEL_128)
+      #if defined(COUNT)
+#define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
+    PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
+      #else // defined(COUNT)
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
     SPLIT_SEARCH_GUTS(Word_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) 
+      #endif // defined(COUNT)
 #endif // defined(PARALLEL_128)
 
 #else // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
@@ -3225,7 +3237,6 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
         PSPLIT_SEARCH(uint32_t, 32, piKeys, nPopCnt, iKey, nPos);
     } else if (nBL == 24) {
         PSPLIT_SEARCH(uint32_t, 24, piKeys, nPopCnt, iKey, nPos);
-        DBGX(printf("SearchList32 24 nPos %d\n", nPos));
     } else
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {

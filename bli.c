@@ -172,8 +172,7 @@ PrefixMismatch(Word_t *pwRoot, Word_t *pwr, Word_t wKey,
         *pnBLR = nBLR; // ? do this unconditionally at top ?
         DBGC(printf("PM: wKey "OWx" wPrefix "OWx" nBLR %d\n",
                     wKey, wPrefix, nBLR));
-        return (wKey >> nBLR) - (wPrefix >> nBLR);
-        //return (wKey - wPrefix) >> nBLR; // positive means key is big
+        return (wKey - wPrefix) >> nBLR; // positive means key is big
       #else // defined(COUNT)
         bPrefixMismatch = ((int)LOG(1 | (wPrefix ^ wKey)) >= nBLR);
       #endif // defined(COUNT)
@@ -461,14 +460,16 @@ again3:;
     // case T_SKIP_TO_SWITCH: // skip link to uncompressed switch
     {
         // pwr points to a switch
+        DBGX(printf("SKIP_TO_SW\n"));
 
         // Looks to me like PrefixMismatch has no performance issues with
         // not all digits being the same size.  It doesn't care.
         // But it does use nBL a couple of times.  Maybe it would help to
         // have bl tests here and call with a constant.  Possibly more
         // interestingly it does compare nBL to cnBitsPerWord.
-        DBGX(printf("SKIP_TO_SW\n"));
-        // PREFIX_MISMATCH may not update nBLR if there is no match.
+
+        // PREFIX_MISMATCH doesn't update nBLR if there is no match
+        // unless defined(COUNT).
         intptr_t nPrefixMismatch = PREFIX_MISMATCH(nBL, nType);
         if (nPrefixMismatch != 0) {
   #if defined(COUNT)
@@ -503,14 +504,22 @@ again3:;
 
     case T_SKIP_TO_BM_SW:
     {
-        // pwr points to a switch
-        if (PREFIX_MISMATCH(nBL, nType)) {
+        // pwr points to a bitmap switch
+        DBGX(printf("SKIP_TO_BM_SW\n"));
+
+        // PREFIX_MISMATCH doesn't update nBLR if there is no match
+        // unless defined(COUNT).
+        intptr_t nPrefixMismatch = PREFIX_MISMATCH(nBL, nType);
+        if (nPrefixMismatch != 0) {
   #if defined(COUNT)
-            DBGC(printf("COUNT PREFIX_MISMATCH\n"));
-            if (wKey & EXP(cnBitsPerWord - 1)) {
+            DBGC(printf("SKIP_TO_BM_SW: COUNT PM %"_fw"d\n",
+                        nPrefixMismatch));
+            // If key is bigger than prefix we have to count the keys here.
+            // Othwerwise we don't.
+            if (nPrefixMismatch > 0) {
                 Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
-                DBGC(printf("wPopCnt %"_fw"d\n", wPopCnt));
-                wPopCntSum += wPopCnt;
+                DBGC(printf("SKIP_TO_BM_SW: PM wPopCnt %"_fw"d\n", wPopCnt));
+                wPopCntSum += wPopCnt; // fall through to return wPopCntSum
             }
   #endif // defined(COUNT)
             break;
@@ -525,20 +534,28 @@ again3:;
 
     case T_SKIP_TO_XX_SW: // skip link to narrow/wide switch
     {
-        // pwr points to a switch
+        // pwr points to a variable-width aka doubling switch
+        DBGX(printf("SKIP_TO_XX_SW\n"));
+
         // Looks to me like PrefixMismatch has no performance issues with
         // not all digits being the same size.  It doesn't care.
         // But it does use nBL a couple of times.  Maybe it would help to
         // have bl tests here and call with a constant.  Possibly more
         // interestingly it does compare nBL to cnBitsPerWord.
 
-        if (PREFIX_MISMATCH(nBL, nType)) {
+        // PREFIX_MISMATCH doesn't update nBLR if there is no match
+        // unless defined(COUNT).
+        intptr_t nPrefixMismatch = PREFIX_MISMATCH(nBL, nType);
+        if (nPrefixMismatch != 0) {
   #if defined(COUNT)
-            DBGC(printf("COUNT PREFIX_MISMATCH\n"));
-            if (wKey & EXP(cnBitsPerWord - 1)) {
+            DBGC(printf("SKIP_TO_BM_SW: COUNT PM %"_fw"d\n",
+                        nPrefixMismatch));
+            // If key is bigger than prefix we have to count the keys here.
+            // Othwerwise we don't.
+            if (nPrefixMismatch > 0) {
                 Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
-                DBGC(printf("wPopCnt %"_fw"d\n", wPopCnt));
-                wPopCntSum += wPopCnt;
+                DBGC(printf("SKIP_TO_BM_SW: PM wPopCnt %"_fw"d\n", wPopCnt));
+                wPopCntSum += wPopCnt; // fall through to return wPopCntSum
             }
   #endif // defined(COUNT)
             break;
@@ -1938,7 +1955,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         status = Insert(pwRoot, wKey, cnBitsPerWord);
 
   #if defined(DEBUG_COUNT)
-    printf("Judy1Count wKey "OWx" "OWx"\n",
+    printf("Count wKey "OWx" "OWx"\n",
            wKey, Count(pwRoot, wKey, cnBitsPerWord));
   #endif // defined(DEBUG_COUNT)
     }
