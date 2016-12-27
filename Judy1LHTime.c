@@ -971,8 +971,8 @@ main(int argc, char *argv[])
             MaxNumb = oa2w(optarg, NULL, 0, c);
             if (MaxNumb == 0)
                 FAILURE("Error --- No tests: -N", MaxNumb);
-            BValue =log2(MaxNumb) + 1;
-            Bpercent = (MaxNumb + 1) / pow(2.0, BValue) * 100;
+            BValue = sizeof(Word_t) * 8 - __builtin_clzll(MaxNumb);
+            Bpercent = (MaxNumb/2.0 + 0.5) / pow(2.0, BValue - 1) * 100;
             break;
         }
         case 'S':                      // Step Size, 0 == Random
@@ -1564,7 +1564,7 @@ main(int argc, char *argv[])
         printf("# %s 32 Bit version\n", argv[0]);
 
 //    Debug
-    printf("# MaxNumb = %lu\n", MaxNumb); // must not do 
+    printf("# MaxNumb = %lu = 0x%lx\n", MaxNumb, MaxNumb);
     printf("# BValue = %lu\n", BValue);
     printf("# Bpercent = %20.18f\n", Bpercent);
 
