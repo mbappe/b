@@ -434,10 +434,6 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
         set_ls_xPopCnt(pwList, nBL, wPopCnt);
     }
 
-#if defined(DL_IN_LL)
-    set_ll_nDL(pwList, nBL_to_nDL(nBL));
-#endif // defined(DL_IN_LL)
-
     NewListCommon(pwList, wPopCnt, nBL, nWords);
 
     return pwList;
