@@ -5818,9 +5818,9 @@ Initialize(void)
     printf("# cnMallocExtraWords n/a\n");
 #endif // defined(cnMallocExtraWords)
 
-    printf("cnBitsIndexSzAtTop %d\n", cnBitsIndexSzAtTop);
+    printf("\n# cnBitsIndexSzAtTop %d\n", cnBitsIndexSzAtTop);
     for (int dd = 1; dd <= cnDigitsPerWord; dd++) {
-        printf("nDL_to_nBitsIndexSz(%d) %d\n", dd, nDL_to_nBitsIndexSz(dd));
+        printf("# nDL_to_nBitsIndexSz(%d) %d\n", dd, nDL_to_nBitsIndexSz(dd));
     }
 
     printf("\n");
