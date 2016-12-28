@@ -310,10 +310,14 @@
 #define cnMallocMask  MSK(cnBitsMallocMask)
 #if (cnBitsPerWord == 64)
 #define cnBitsVirtAddr  48
-#else // (cnBitsPerWord == 64)
-#define cnBitsVirtAddr  32
-#endif // (cnBitsPerWord == 64)
 #define cwVirtAddrMask  MSK(cnBitsVirtAddr)
+#else // (cnBitsPerWord == 64)
+#if cnBitsPerWord != 32
+#error Invalid cnBitsPerWord
+#endif // cnBitsPerWord != 32
+#define cnBitsVirtAddr  32
+#define cwVirtAddrMask  ((Word_t)-1)
+#endif // (cnBitsPerWord == 64)
 
 // Bits are numbered 0-63 with 0 being the least significant.
 static inline Word_t
@@ -2979,16 +2983,24 @@ WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
 
 #if defined(PARALLEL_128)
 
+  #if cnBitsPerWord == 64
+#define MM_SET1_EPW(_ww) \
+    _mm_set1_epi64((__m64)_ww)
+  #else // cnBitsPerWord == 64
+#define MM_SET1_EPW(_ww) \
+    _mm_set1_epi32(_ww)
+  #endif // cnBitsPerWord == 64
+
 #define HAS_KEY_128_SETUP(_wKey, _nBL, _xLsbs, _xMsbs, _xKeys) \
 { \
     Word_t wMask = MSK(_nBL); /* (1 << nBL) - 1 */ \
     _wKey &= wMask; \
     Word_t wLsbs = (Word_t)-1 / wMask; \
-    _xLsbs = _mm_set1_epi64((__m64)wLsbs); \
+    _xLsbs = MM_SET1_EPW(wLsbs); \
     Word_t wMsbs = wLsbs << (nBL - 1); /* msb in each key slot */ \
-    _xMsbs = _mm_set1_epi64((__m64)wMsbs); \
+    _xMsbs = MM_SET1_EPW(wMsbs); \
     Word_t wKeys = wKey * wLsbs; /* replicate key; put in every slot */ \
-    _xKeys = _mm_set1_epi64((__m64)wKeys); \
+    _xKeys = MM_SET1_EPW(wKeys); \
 }
 
 static Word_t // bool
