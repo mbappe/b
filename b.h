@@ -1022,11 +1022,11 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // Is it possible that we are going to want to sort the list in the other
 // order for JudyL?
 // Enough talk for now.  We'll come back to these other cases.
-#if defined(REVERSE_SORT_EMBEDDED_KEYS)
+  #if defined(REVERSE_SORT_EMBEDDED_KEYS)
 #define ZERO_POP_MAGIC  1
-#else // defined(REVERSE_SORT_EMBEDDED_KEYS)
+  #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
 #define ZERO_POP_MAGIC  (EXP(cnBitsPerWord - 1) + T_EMBEDDED_KEYS)
-#endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
+  #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
 #endif // defined(NO_TYPE_IN_XX_SW)
 
 #if defined(NO_TYPE_IN_XX_SW) // && defined(HANDLE_BLOWOUTS)
@@ -1047,18 +1047,18 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
 #define nBL_to_nBitsPopCntSz(_nBL)  0
 
-#if defined(REVERSE_SORT_EMBEDDED_KEYS)
-#else // defined(REVERSE_SORT_EMBEDDED_KEYS)
+      #if defined(REVERSE_SORT_EMBEDDED_KEYS)
+      #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
 
 static inline int
 wr_nPopCnt(Word_t wRoot, int nBL)
 {
     Word_t wKeys = wRoot;
-#if defined(NO_TYPE_IN_XX_SW)
+          #if defined(NO_TYPE_IN_XX_SW)
     if (nBL < nDL_to_nBL(2)) {
         if (wRoot == ZERO_POP_MAGIC) { return 0; }
     } else
-#endif // defined(NO_TYPE_IN_XX_SW)
+          #endif // defined(NO_TYPE_IN_XX_SW)
     {
         // The code below assumes the pop count is not zero.
         // Why do we know the link is non-empty here but not for the
@@ -1082,36 +1082,36 @@ wr_nPopCnt(Word_t wRoot, int nBL)
 
 #define set_wr_nPopCnt(_wr, _nBL, _nPopCnt)
 
-#endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
+      #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
 
   #else // defined(T_ONE_CALC_POP)
 
 // Default is -DEMBEDDED_LIST_FIXED_POP.
 // Fixed-size pop count field to make code simpler.
 // We only give up one 29-bit slot in 64-bit and one 14-bit slot in 32-bit.
-#if ! defined(NO_EMBEDDED_LIST_FIXED_POP)
+      #if ! defined(NO_EMBEDDED_LIST_FIXED_POP)
 #undef  EMBEDDED_LIST_FIXED_POP
 #define EMBEDDED_LIST_FIXED_POP
-#endif // ! defined(NO_EMBEDDED_LIST_FIXED_POP)
-#if (cnBitsPerWord == 64)
-#if defined(EMBEDDED_LIST_FIXED_POP)
+      #endif // ! defined(NO_EMBEDDED_LIST_FIXED_POP)
+      #if (cnBitsPerWord == 64)
+          #if defined(EMBEDDED_LIST_FIXED_POP)
 #define nBL_to_nBitsPopCntSz(_nBL)  3
-#else // defined(EMBEDDED_LIST_FIXED_POP)
+          #else // defined(EMBEDDED_LIST_FIXED_POP)
 #define nBL_to_nBitsPopCntSz(_nBL)  LOG(88 / (_nBL))
-#endif // defined(EMBEDDED_LIST_FIXED_POP)
-#elif (cnBitsPerWord == 32)
-#if defined(EMBEDDED_LIST_FIXED_POP)
+          #endif // defined(EMBEDDED_LIST_FIXED_POP)
+      #elif (cnBitsPerWord == 32)
+          #if defined(EMBEDDED_LIST_FIXED_POP)
 #define nBL_to_nBitsPopCntSz(_nBL)  2
-#else // defined(EMBEDDED_LIST_FIXED_POP)
+          #else // defined(EMBEDDED_LIST_FIXED_POP)
 #define nBL_to_nBitsPopCntSz(_nBL)  LOG(44 / (_nBL))
-#endif // defined(EMBEDDED_LIST_FIXED_POP)
-#else
+          #endif // defined(EMBEDDED_LIST_FIXED_POP)
+      #else
 #error "Invalid cnBitsPerWord."
-#endif
+      #endif
 
 // wr_nPopCnt(_wr, _nBL) gets the pop count for a list of embedded keys.
 // For embedded keys the pop cnt bits are just above the type field.
-// A value of zero means a pop cnt of one. 
+// A value of zero means a pop cnt of one.
 #define     wr_nPopCnt(_wr, _nBL) \
   ((int)((((_wr) >> nBL_to_nBitsType(_nBL)) & MSK(nBL_to_nBitsPopCntSz(_nBL))) + 1))
 
@@ -1802,62 +1802,62 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
     ((uint16_t *)ALIGN_UP((Word_t)(ls_psKeysNAT_UA(_ls) + POP_SLOT(_nBL)),  \
                           sizeof(Bucket_t)))
 
-          #if (cnBitsPerWord > 32)
+              #if (cnBitsPerWord > 32)
 
 #define ls_piKeys(_ls, _nBL) \
     ((uint32_t *)ALIGN_UP((Word_t)(ls_piKeysNAT_UA(_ls) + POP_SLOT(_nBL)), \
                           sizeof(Bucket_t)))
 
-          #endif // (cnBitsPerWord > 32)
+              #endif // (cnBitsPerWord > 32)
 
-      #endif // defined(COMPRESSED_LISTS)
+          #endif // defined(COMPRESSED_LISTS)
 
-      #if (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)) \
-          || ( defined(ALIGN_LISTS) && ! defined(PSPLIT_PARALLEL) )
+          #if (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)) \
+              || ( defined(ALIGN_LISTS) && ! defined(PSPLIT_PARALLEL) )
 
 #define ls_pwKeys(_ls, _nBL) \
     ((Word_t *)ALIGN_UP((Word_t)(ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL)), \
                         sizeof(Bucket_t)))
 
-      #else // (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)) ...
+          #else // (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL))..
 
 #define ls_pwKeys(_ls, _nBL)  (ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL))
 
-      #endif // (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)) ...
+          #endif // (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)).
 
-  #else // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
+      #else // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 
 #define ls_pwKeys(_ls, _nBL)  (ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL))
 
-      #if defined(COMPRESSED_LISTS)
+          #if defined(COMPRESSED_LISTS)
 
 #define ls_pcKeys(_ls, _nBL)  (ls_pcKeysNAT_UA(_ls) + POP_SLOT(_nBL))
 
 #define ls_psKeys(_ls, _nBL)  (ls_psKeysNAT_UA(_ls) + POP_SLOT(_nBL))
 
-          #if (cnBitsPerWord > 32)
+              #if (cnBitsPerWord > 32)
 
 #define ls_piKeys(_ls, _nBL)  (ls_piKeysNAT_UA(_ls) + POP_SLOT(_nBL))
 
-          #endif // (cnBitsPerWord > 32)
+              #endif // (cnBitsPerWord > 32)
 
-      #endif // defined(COMPRESSED_LISTS)
-  #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
-#else // defined(PP_IN_LINK)
+          #endif // defined(COMPRESSED_LISTS)
+      #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
+  #else // defined(PP_IN_LINK)
 
 #define ls_pwKeys(_ls, _nBL)  ls_pwKeysNAT(_ls)
 #define ls_piKeys(_ls, _nBL)  ls_piKeysNAT(_ls)
 #define ls_psKeys(_ls, _nBL)  ls_psKeysNAT(_ls)
 #define ls_pcKeys(_ls, _nBL)  ls_pcKeysNAT(_ls)
 
-#endif // defined(PP_IN_LINK)
+  #endif // defined(PP_IN_LINK)
 
 #define ls_pcKeysNATX(_pwr, _nPopCnt)  ls_pcKeysNAT(_pwr)
 #define ls_psKeysNATX(_pwr, _nPopCnt)  ls_psKeysNAT(_pwr)
 #define ls_piKeysNATX(_pwr, _nPopCnt)  ls_piKeysNAT(_pwr)
 #define ls_pwKeysNATX(_pwr, _nPopCnt)  ls_pwKeysNAT(_pwr)
 
-#else  // defined(OLD_LISTS)
+#else // defined(OLD_LISTS)
 
 // pwr aka ls points to the highest malloc-aligned address in the
 // list buffer.  We have to use an aligned address because we use the low
@@ -1899,7 +1899,7 @@ set_ls_xPopCnt(void *pwr, int nBL, int nPopCnt)
 #define ls_psKeys(_pwr, _nBL) \
     ((uint16_t *)((Word_t *)(_pwr) + 1) \
         - ls_nSlotsInList(ls_xPopCnt((_pwr), \
-                          (_nBL)), (_nBL), sizeof(uint16_t)))
+    (_nBL)), (_nBL), sizeof(uint16_t)))
 
 #define ls_psKeysX(_pwr, _nBL, _nPopCnt) \
     ((uint16_t *)((Word_t *)(_pwr) + 1) \
@@ -3668,4 +3668,5 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 #endif // (cnDigitsPerWord > 1)
 
 #endif // ( ! defined(_B_H_INCLUDED) )
+
 
