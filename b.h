@@ -1602,16 +1602,19 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #define cbListEndMarkers 0
 #endif // defined(LIST_END_MARKERS)
 
+// POP_SLOT tells ListWords if we need a slot in the leaf for a pop count
+// that is not included in N_LIST_HDR_KEYS, i.e. a slot that occurs after
+// ll_a[csik]Keys[N_LIST_HDR_KEYS].
 #if defined(PP_IN_LINK)
-  // POP_SLOT tells ListWords if we need a slot in the leaf for a pop count
-  // that is not included in N_LIST_HDR_KEYS.
-  #define POP_SLOT(_nBL)  (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))
+    #define POP_SLOT(_nBL) \
+        (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))
 #else // defined(PP_IN_LINK)
-  // POP_SLOT tells ListWords if we need a slot in the leaf for a pop count
-  // that is not included in N_LIST_HDR_KEYS.
-  // N_HDR_KEYS incorporates this for ! PP_IN_LINK so don't add it again
-  // for ls_pxKeys.
-  #define POP_SLOT(_nBL)  (1)
+  #if defined(OLD_LISTS)
+    // N_HDR_KEYS incorporates this for ! PP_IN_LINK so don't add it again.
+    #define POP_SLOT(_nBL)  (0)
+  #else // defined(OLD_LISTS)
+    #define POP_SLOT(_nBL)  (1)
+  #endif // defined(OLD_LISTS)
 #endif // defined(PP_IN_LINK)
 
 #define ls_nSlotsInList(_wPopCnt, _nBL, _nBytesKeySz) \
@@ -1674,9 +1677,9 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
 #if defined(PP_IN_LINK)
 
-// For PP_IN_LINK ls_xPopCnt macros are only valid at top, i.e.
-// nDL == cnDigitsPerWord, and only for T_LIST - not for T_ONE.
-#if (cnDummiesInList == 0)
+  // For PP_IN_LINK ls_xPopCnt macros are only valid at top, i.e.
+  // nDL == cnDigitsPerWord, and only for T_LIST - not for T_ONE.
+  #if (cnDummiesInList == 0)
 
 #define     ls_xPopCnt(_ls, _nBL) \
     (assert((_nBL) == cnBitsPerWord), ((ListLeaf_t *)(_ls))->ll_awKeys[0])
@@ -1684,7 +1687,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
     (assert((_nBL) == cnBitsPerWord), \
         ((ListLeaf_t *)(_ls))->ll_awKeys[0] = (_cnt))
 
-#else // (cnDummiesInList == 0)
+  #else // (cnDummiesInList == 0)
 
 // Use the last dummy for pop count if we have at least one dummy.
 #define     ls_xPopCnt(_ls, _nBL) \
@@ -1694,15 +1697,15 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
     (assert((_nBL) == cnBitsPerWord), \
         ((ListLeaf_t *)(_ls))->ll_awDummies[cnDummiesInList - 1] = (_cnt))
 
-#endif // (cnDummiesInList == 0)
+  #endif // (cnDummiesInList == 0)
 
-// Number of key slots needed for header info after cnDummiesInList
-// (for nDL != cnDigitsPerWord).
-#if defined(LIST_END_MARKERS)
+  // Number of key slots needed for header info after cnDummiesInList
+  // (for nBL != cnBitsPerWord).
+  #if defined(LIST_END_MARKERS)
 #define N_LIST_HDR_KEYS  1
-#else // defined(LIST_END_MARKERS)
+  #else // defined(LIST_END_MARKERS)
 #define N_LIST_HDR_KEYS  0
-#endif // defined(LIST_END_MARKERS)
+  #endif // defined(LIST_END_MARKERS)
 
 #else // defined(PP_IN_LINK)
 
@@ -1713,14 +1716,12 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
   (((_nBL) > 8) ? set_ls_sPopCnt((_ls), (_cnt)) \
                 : set_ls_cPopCnt((_ls), (_cnt)))
 
-// Index of first key within leaf (for all cases).
-// Or is it the number of key slots needed for header info after
-// cnDummiesInList?
-#if defined(LIST_END_MARKERS)
+  // Number of key slots needed for header info after cnDummiesInList.
+  #if defined(LIST_END_MARKERS)
 #define N_LIST_HDR_KEYS  2
-#else // defined(LIST_END_MARKERS)
+  #else // defined(LIST_END_MARKERS)
 #define N_LIST_HDR_KEYS  1
-#endif // defined(LIST_END_MARKERS)
+  #endif // defined(LIST_END_MARKERS)
 
 #endif // defined(PP_IN_LINK)
 
