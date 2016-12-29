@@ -2020,12 +2020,6 @@ typedef struct {
 // POP_WORD is defined automatically if DEPTH_IN_SW is defined.
 // I wonder if PP_IN_LINK should cause POP_WORD_IN_LINK to be defined.
 
-//
-// When trying to make ! PP_IN_LINK use the same amount of memory as
-// PP_IN_LINK:
-//   -UPP_IN_LINK -DcnDummiesInLink=1 -DNO_SKIP_AT_TOP
-//   -DPP_IN_LINK -DDUMMY_POP_CNT_IN_LIST
-//
 typedef struct {
 #if defined(PP_IN_LINK)
     Word_t ln_wPrefixPop;

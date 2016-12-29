@@ -234,8 +234,6 @@ MyFree(Word_t *pw, Word_t wWords)
 // - some dummy words at the beginning: cnDummiesInList
 // - followed by a pop count: ! PP_IN_LINK or (list hangs from root word
 //   and cnDummiesInList == 0)
-// - or followed by a dummy pop count: PP_IN_LINK and DUMMY_POP_CNT_IN_LIST
-//   and list doesn't hang from root word
 //   - PP_IN_LINK root pop count goes in a dummy word: cnDummiesInList
 // - followed by a marker key 0 at pxKeys[-1]
 // - followed by some padding to align beginning of list: PSPLIT_PARALLEL
