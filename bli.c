@@ -1756,18 +1756,18 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
   #if (cwListPopCntMax != 0)
       #if defined(SEARCH_FROM_WRAPPER)
-    // Handle a top level T_LIST leaf here.
-    // For PP_IN_LINK a T_LIST leaf at the top has a pop count field and
-    // T_LIST leaves not at the top do not.
-    // And, for PP_IN_LINK there is no Link_t at the top -- only wRoot.
-    // SEARCH_FROM_WRAPPER allows us avoid making the mainline T_LIST leaf
-    // handling code have to know or test if it is at the top.
-    // Do not assume the list is sorted here -- so this code doesn't have to
-    // be ifdef'd.
-    // SEARCH_FROM_WRAPPER is a bit faster, 1-2 ns out of
-    // 2-16 ns, if all we have is a T_LIST leaf, but there is a very small,
-    // sub-nanosecond, cost for all other cases.
-    int nType = Get_nType(&(Word_t)pcvRoot);
+    // Handle a top level T_LIST leaf here -- without calling Lookup.
+    // For PP_IN_LINK a T_LIST leaf at the top has a pop count field in
+    // the list, but T_LIST leaves that are not at the top do not. And,
+    // for PP_IN_LINK there is no complete Link_t at the top -- only wRoot.
+    // SEARCH_FROM_WRAPPER allows us avoid making the mainline PP_IN_LINK
+    // T_LIST leaf handling code have to know or test if it is at the top.
+    // The list search function we use here can't assume the list is sorted
+    // if we're not sorting lists on insert.
+    // Is T_LIST the only node type that is different at the top for
+    // PP_IN_LINK? Doesn't the incomplete Link_t complicate Lookup for
+    // the other node types?
+    int nType = Get_nType((Word_t *)&pcvRoot);
     if (nType == T_LIST)
     {
         Word_t *pwr = wr_pwr((Word_t)pcvRoot);
@@ -1807,7 +1807,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
         return Failure;
     }
 
-  #if defined(BITMAP_BY_BYTE)
+  #if defined(BITMAP_BY_BYTE) // vs. bitmap by word
 
     Word_t wByteNum = BitmapByteNum(wKey);
     Word_t wByteMask = BitmapByteMask(wKey);     
@@ -1822,6 +1822,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
       #endif // defined(LOOKUP_NO_BITMAP_DEREF)
 
   #else // defined(BITMAP_BY_BYTE)
+    // bitmap by word
 
     Word_t wWordNum = BitmapWordNum(wKey);
     Word_t wWordMask = BitmapWordMask(wKey);     
@@ -1866,7 +1867,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
   #endif // defined(DEBUG)
 
-  #if (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER)
+  #if (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_I)
     // Handle the top level list leaf before calling Insert.  Why?
     // To simplify Insert for PP_IN_LINK.  Does it still apply?
     // Do not assume the list is sorted.
@@ -1882,9 +1883,10 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             && 1)
       #if defined(USE_T_ONE)
         || (nType == T_ONE)
-      #else // defined(USE_T_ONE)
-        || (nType == T_NULL)
       #endif // defined(USE_T_ONE)
+      #if defined(SEPARATE_T_NULL)
+        || (nType == T_NULL)
+      #endif // defined(SEPARATE_T_NULL)
         )
     {
         if (Judy1Test((Pcvoid_t)wRoot, wKey, PJError) == Success)
@@ -1900,12 +1902,13 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             if (nType == T_ONE) {
                 wPopCnt = 1;
             } else
-      #else // defined(USE_T_ONE)
+      #endif // defined(USE_T_ONE)
+      #if defined(SEPARATE_T_NULL)
             if (nType == T_NULL) {
                 assert(pwr == NULL);
                 wPopCnt = 0;
             } else
-      #endif // defined(USE_T_ONE)
+      #endif // defined(SEPARATE_T_NULL)
             {
                 wPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
             }
@@ -1916,12 +1919,13 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             if (wPopCnt == cnListPopCntMax32)
 #endif // (cnBitsPerWord == 64)
             {
-                status = InsertGuts(pwRoot, wKey, cnBitsPerWord, wRoot
+                status = InsertGuts(pwRoot, wKey, cnBitsPerWord, wRoot, -1
 #if defined(CODE_XX_SW)
                                   , NULL
   #if defined(SKIP_TO_XX_SW)
                                   , 0
   #endif // defined(SKIP_TO_XX_SW)
+                                    );
 #endif // defined(CODE_XX_SW)
             }
             else
@@ -1956,14 +1960,9 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         }
     }
     else
-  #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER)
+  #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_I)
     {
         status = Insert(pwRoot, wKey, cnBitsPerWord);
-
-  #if defined(DEBUG_COUNT)
-    printf("Count wKey "OWx" "OWx"\n",
-           wKey, Count(pwRoot, wKey, cnBitsPerWord));
-  #endif // defined(DEBUG_COUNT)
     }
 
     if (status == Success) {
@@ -2047,7 +2046,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     DBGR(printf("\n\n# Judy1Unset ppvRoot %p wKey "OWx"\n",
                 (void *)ppvRoot, wKey));
 
-  #if (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER)
+  #if (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_R)
     // Handle the top level list leaf.
     // Do not assume the list is sorted, but maintain the current order so
     // we don't have to bother with ifdefs in this code.
@@ -2104,7 +2103,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
         }
     }
     else
-  #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER)
+  #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_R)
     {
         status = Remove(pwRoot, wKey, cnBitsPerWord);
     }
@@ -2118,16 +2117,10 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     DBGR(printf("\n"));
   #endif // defined(DEBUG_REMOVE)
 
-  #if defined(DEBUG)
-      #if defined(DEBUG_COUNT) || ! defined(PP_IN_LINK)
+  #if defined(DEBUG_COUNT) || ! defined(PP_IN_LINK)
     // Judy1Count really slows down testing for PP_IN_LINK.
-    Word_t wCount = Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL);
-    if (wCount != wPopCntTotal) {
-        printf("\nJudy1Count %ld wPopCntTotal %ld\n", wCount, wPopCntTotal);
-    }
-    //assert(wCount == wPopCntTotal);
-      #endif // defined(DEBUG_COUNT) || ! defined(PP_IN_LINK)
-  #endif // defined(DEBUG)
+    assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
+  #endif // defined(DEBUG_COUNT) || ! defined(PP_IN_LINK)
 
     return status;
 
