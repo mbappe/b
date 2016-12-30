@@ -58,7 +58,9 @@ CountSw(Word_t *pwRoot, int nBLR, Switch_t *pwr, int nBL, Word_t wIndex, int nLi
             if (pwrLoop != NULL)
       #endif // ! defined(SEPARATE_T_NULL)
             {
-                wPopCntLoop = ls_xPopCnt(pwrLoop, nBL);
+                //wPopCntLoop = ls_xPopCnt(pwrLoop, nBL);
+                wPopCntLoop = PWR_xListPopCnt(pwRootLoop, nBL);
+                //assert(ls_xPopCnt(pwrLoop, nBL) == wPopCntLoop);
                 DBGC(printf("ww %"_fw"d T_LIST pwr %p wPopCnt %"_fw"d\n",
                             ww, (void *)pwr, wPopCntLoop));
                 wPopCnt += wPopCntLoop;
@@ -355,16 +357,17 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     // here? Should we be ensuring that it is not defined?
     Word_t *pwRoot = NULL; // used for top detection
       #else // defined(BM_IN_LINK)
-          #if defined(PWROOT_AT_TOP_FOR_LOOKUP)
+          #if defined(PWROOT_AT_TOP_FOR_LOOKUP) \
+              || defined(POP_IN_WR_HB) && ! defined(SEARCH_FROM_WRAPPER)
     Word_t *pwRoot = &wRoot;
-          #else // defined(PWROOT_AT_TOP_FOR_LOOKUP)
+          #else // defined(PWROOT_AT_TOP_FOR_LOOKUP) || ...
     // Silence unwarranted gcc used before initialized warning.
     // pwRoot is only uninitialized on the first time through the loop.
     // And we only use it if nBL != cnBitsPerWord
     // or if bNeedPrefixCheck is true.
     // And both of those imply it's not the first time through the loop.
     Word_t *pwRoot = pwRoot;
-          #endif // defined(PWROOT_AT_TOP_FOR_LOOKUP)
+          #endif // defined(PWROOT_AT_TOP_FOR_LOOKUP) || ...
       #endif // defined(BM_IN_LINK)
   #endif // defined(PWROOT_ARG_FOR_LOOKUP)
 #else // defined(LOOKUP)

@@ -420,6 +420,11 @@ typedef Word_t Bucket_t;
   #define POP_IN_WR_HB
 #endif // ! defined(NO_POP_IN_WR_HB)
 
+#if defined(POP_IN_WR_HB)
+  #undef  OLD_LISTS
+  #define OLD_LISTS
+#endif // defined(POP_IN_WR_HB)
+
 // Choose max list lengths.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
 
@@ -1713,18 +1718,26 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
 #else // defined(PP_IN_LINK)
 
+  #if ! defined(POP_IN_WR_HB)
 #define     ls_xPopCnt(_ls, _nBL) \
-  (((_nBL) > 8) ? ls_sPopCnt(_ls) : ls_cPopCnt(_ls))
+    (((_nBL) > 8) ? ls_sPopCnt(_ls) : ls_cPopCnt(_ls))
+  #endif // ! defined(POP_IN_WR_HB)
 
+  #if ! defined(POP_IN_WR_HB)
 #define set_ls_xPopCnt(_ls, _nBL, _cnt) \
-  (((_nBL) > 8) ? set_ls_sPopCnt((_ls), (_cnt)) \
-                : set_ls_cPopCnt((_ls), (_cnt)))
+    (((_nBL) > 8) ? set_ls_sPopCnt((_ls), (_cnt)) \
+                  : set_ls_cPopCnt((_ls), (_cnt)))
+  #endif // ! defined(POP_IN_WR_HB)
 
   // Number of key slots needed for header info after cnDummiesInList.
   #if defined(LIST_END_MARKERS)
 #define N_LIST_HDR_KEYS  2
   #else // defined(LIST_END_MARKERS)
+      #if defined(POP_IN_WR_HB)
+#define N_LIST_HDR_KEYS  0
+      #else // defined(POP_IN_WR_HB)
 #define N_LIST_HDR_KEYS  1
+      #endif // defined(POP_IN_WR_HB)
   #endif // defined(LIST_END_MARKERS)
 
 #endif // defined(PP_IN_LINK)
@@ -3525,7 +3538,8 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
             nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
         } else
       #endif // ! defined(PP_IN_LINK)
-        { nPopCnt = ls_xPopCnt(pwr, cnBitsPerWord); }
+        //{ nPopCnt = ls_xPopCnt(pwr, cnBitsPerWord); }
+        { nPopCnt = PWR_xListPopCnt(pwRoot, cnBitsPerWord); }
         nPos = SearchListWord(ls_pwKeys(pwr, nBL), wKey, nBL, nPopCnt);
   #endif // defined(SEARCH_FROM_WRAPPER)
     }
