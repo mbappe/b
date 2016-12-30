@@ -43,12 +43,14 @@ CountSw(Word_t *pwRoot, int nBLR, Switch_t *pwr, int nBL, Word_t wIndex, int nLi
         int nTypeLoop = Get_nType(pwRootLoop);
         if (tp_bIsSwitch(nTypeLoop)) {
             wPopCntLoop = PWR_wPopCntBL(pwRootLoop, (Switch_t *)pwrLoop, nBL);
-            DBGC(printf("ww %"_fw"d bIsSwitch pwr %p wPopCnt %"_fw"d\n", ww, (void *)pwrLoop, wPopCntLoop));
+            DBGC(printf("ww %"_fw"d bIsSwitch pwr %p wPopCnt %"_fw"d\n",
+                        ww, (void *)pwrLoop, wPopCntLoop));
             wPopCnt += wPopCntLoop;
         } else switch (nTypeLoop) {
         case T_EMBEDDED_KEYS:
             wPopCntLoop = wr_nPopCnt(*pwRootLoop, nBL);
-            DBGC(printf("ww %"_fw"d T_EMBED_KEYS wRoot "Owx" wPopCnt %"_fw"d\n", ww, *pwRootLoop, wPopCntLoop));
+            DBGC(printf("ww %"_fw"d T_EMBED_KEYS wRoot "Owx" wPopCnt %"_fw
+                        "d\n", ww, *pwRootLoop, wPopCntLoop));
             wPopCnt += wPopCntLoop;
             break;
         case T_LIST:
@@ -57,17 +59,21 @@ CountSw(Word_t *pwRoot, int nBLR, Switch_t *pwr, int nBL, Word_t wIndex, int nLi
       #endif // ! defined(SEPARATE_T_NULL)
             {
                 wPopCntLoop = ls_xPopCnt(pwrLoop, nBL);
-                DBGC(printf("ww %"_fw"d T_LIST pwr %p wPopCnt %"_fw"d\n", ww, (void *)pwr, wPopCntLoop));
+                DBGC(printf("ww %"_fw"d T_LIST pwr %p wPopCnt %"_fw"d\n",
+                            ww, (void *)pwr, wPopCntLoop));
                 wPopCnt += wPopCntLoop;
             }
             break;
         case T_BITMAP:
-            wPopCntLoop = w_wPopCntBL(*(pwrLoop + EXP(nBL - cnLogBitsPerWord)), nBL);
-            DBGC(printf("ww %"_fw"d T_BITMAp pwr %p wPopCnt %"_fw"d\n", ww, (void *)pwr, wPopCntLoop));
+            wPopCntLoop = w_wPopCntBL(*(pwrLoop + EXP(nBL - cnLogBitsPerWord)),
+                                      nBL);
+            DBGC(printf("ww %"_fw"d T_BITMAp pwr %p wPopCnt %"_fw"d\n",
+                        ww, (void *)pwr, wPopCntLoop));
             wPopCnt += wPopCntLoop;
             break;
         default:
-            printf("\nww %"_fw"d *pwRootLoop "Owx" nTypeLoop %d\n", ww, *pwRootLoop, nTypeLoop);
+            printf("\nww %"_fw"d *pwRootLoop "Owx" nTypeLoop %d\n",
+                   ww, *pwRootLoop, nTypeLoop);
             assert(0);
         }
     }
