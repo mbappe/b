@@ -1757,6 +1757,8 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 {
 #if (cnDigitsPerWord > 1)
 
+    Word_t wRoot = (Word_t)pcvRoot;
+
   #if (cwListPopCntMax != 0)
       #if defined(SEARCH_FROM_WRAPPER)
     // Handle a top level T_LIST leaf here -- without calling Lookup.
@@ -1770,7 +1772,6 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     // Is T_LIST the only node type that is different at the top for
     // PP_IN_LINK? Doesn't the incomplete Link_t complicate Lookup for
     // the other node types?
-    Word_t wRoot = (Word_t)pcvRoot;
     int nType = Get_nType(&wRoot);
     if (nType == T_LIST)
     {
