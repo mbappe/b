@@ -1770,10 +1770,11 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     // Is T_LIST the only node type that is different at the top for
     // PP_IN_LINK? Doesn't the incomplete Link_t complicate Lookup for
     // the other node types?
-    int nType = Get_nType((Word_t *)&pcvRoot);
+    Word_t wRoot = (Word_t)pcvRoot;
+    int nType = Get_nType(&wRoot);
     if (nType == T_LIST)
     {
-        Word_t *pwr = wr_pwr((Word_t)pcvRoot);
+        Word_t *pwr = wr_pwr(wRoot);
 
         // ls_wPopCount is valid only at the top for PP_IN_LINK
         // the first word in the list is used for pop count at the top
@@ -1783,7 +1784,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 #endif // ! defined(SEPARATE_T_NULL)
                 && (SearchListWord(ls_pwKeys(pwr, cnBitsPerWord),
                                    wKey, cnBitsPerWord,
-                                   ls_xPopCnt(pwr, cnBitsPerWord))
+                                   PWR_xListPopCnt(&wRoot, cnBitsPerWord))
                     >= 0))
             ? Success : Failure;
     }
@@ -1792,9 +1793,9 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
     return Lookup(
   #if defined(PWROOT_ARG_FOR_LOOKUP)
-                  (Word_t*)&pcvRoot,
+                  &wRoot,
   #else // defined(PWROOT_ARG_FOR_LOOKUP)
-                  (Word_t)pcvRoot,
+                  wRoot,
   #endif // defined(PWROOT_ARG_FOR_LOOKUP)
                   wKey
                   );
