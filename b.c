@@ -3185,7 +3185,7 @@ embeddedKeys:;
                 }
             }
 
-            set_PWR_xListPopCnt(&wRoot, pwr, nBL, wPopCnt + 1);
+            set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt + 1);
 
             if (wPopCnt != 0)
 #if defined(SORT_LISTS)

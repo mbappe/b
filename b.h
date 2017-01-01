@@ -1665,9 +1665,10 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #else // defined(POP_IN_WR_HB)
 
   #define PWR_xListPopCnt(_pwRoot, _pwr, _nBL) \
-       ls_xPopCnt(wr_pwr(*(_pwRoot)), (_nBL))
+        ls_xPopCnt((_pwr), (_nBL))
 
-  #define set_PWR_xListPopCnt(_pwRoot, _pwr, _nBL, _cnt)
+  #define set_PWR_xListPopCnt(_pwRoot, _pwr, _nBL, _cnt) \
+    set_ls_xPopCnt((_pwr), (_nBL), (_cnt))
 
 #endif // defined(POP_IN_WR_HB)
 
