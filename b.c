@@ -1361,7 +1361,9 @@ GetPopCnt(Word_t *pwRoot, int nBL)
 #if defined(USE_T_ONE)
         if (nType == T_ONE) { return 1; }
 #endif // defined(USE_T_ONE)
-        if (nType == T_LIST) { return ls_xPopCnt(wr_pwr(*pwRoot), nBL); }
+        if (nType == T_LIST) {
+            return PWR_xListPopCnt(pwRoot, wr_pwr(*pwRoot), nBL);
+        }
         if ((nType == T_BITMAP)
   #if defined(SKIP_TO_BITMAP)
             || (nType == T_SKIP_TO_BITMAP)
@@ -1723,7 +1725,7 @@ embeddedKeys:;
             else
 #endif // defined(PP_IN_LINK)
             {
-                wPopCnt = ls_xPopCnt(pwr, nBL);
+                wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL);
             }
 
             if (!bDump)
@@ -2367,7 +2369,7 @@ embeddedKeys:;
                 int nPopCntLn
                       = PWR_wPopCnt(pwRootLn, (Switch_t *)pwrLn, nBLLn);
 #else // defined(PP_IN_LINK)
-                int nPopCntLn = ls_xPopCnt(pwrLn, nBLLn);
+                int nPopCntLn = PWR_xListPopCnt(pwRootLn, pwrLn, nBLLn);
 #endif // defined(PP_IN_LINK)
                 if (nBLLn <= 8) {
                     uint8_t *pcKeysLn = ls_pcKeysNAT(pwrLn);
@@ -2983,11 +2985,13 @@ embeddedKeys:;
                     wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) - 1;
                     pwKeys = ls_pwKeysNAT(pwr); // list of keys in old List
                 } else {
-                    wPopCnt = ls_xPopCnt(pwr, nBL);
+                    // wRoot may be newer than *pwRoot
+                    wPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBL);
                     pwKeys = ls_pwKeys(pwr, cnBitsPerWord);
                 }
 #else // defined(PP_IN_LINK)
-                wPopCnt = ls_xPopCnt(pwr, nBL);
+                // wRoot may be newer than *pwRoot
+                wPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBL);
                 pwKeys = ls_pwKeysNAT(pwr); // list of keys in old List
 #endif // defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
@@ -4659,7 +4663,8 @@ embeddedKeys:;
     } else
 #endif // defined(PP_IN_LINK)
     {
-        wPopCnt = ls_xPopCnt(pwr, nBL);
+        // wRoot may be newer than *pwRoot
+        wPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBL);
     }
 
 // Why was this #if defined(USE_T_ONE) ever here?
@@ -5938,7 +5943,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             } else {
                 assert(nType == T_LIST);
                 // ls_wPopCnt is valid at top for PP_IN_LINK if ! USE_T_ONE
-                wPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
+                wPopCnt = PWR_xListPopCnt(&wRoot, pwr, cnBitsPerWord);
             }
         }
         else // ! tp_bIsSwitch(nType)

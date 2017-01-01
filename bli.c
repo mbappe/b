@@ -58,7 +58,7 @@ CountSw(Word_t *pwRoot, int nBLR, Switch_t *pwr, int nBL, Word_t wIndex, int nLi
             if (pwrLoop != NULL)
       #endif // ! defined(SEPARATE_T_NULL)
             {
-                wPopCntLoop = ls_xPopCnt(pwrLoop, nBL);
+                wPopCntLoop = PWR_xListPopCnt(pwRootLoop, pwrLoop, nBL);
                 DBGC(printf("ww %"_fw"d T_LIST pwr %p wPopCnt %"_fw"d\n",
                             ww, (void *)pwr, wPopCntLoop));
                 wPopCnt += wPopCntLoop;
@@ -1059,9 +1059,9 @@ t_list:;
                 && (pwr != NULL)
         #endif // ! defined(SEPARATE_T_NULL)
         #if defined(LOOKUP)
-                && ListHasKey(pwr, wKey, nBL, pwRoot)
+                && ListHasKey(pwr, wKey, nBL, &wRoot)
         #else // defined(LOOKUP)
-                && ((nPos = SearchList(pwr, wKey, nBL, pwRoot)) >= 0)
+                && ((nPos = SearchList(pwr, wKey, nBL, &wRoot)) >= 0)
         #endif // defined(LOOKUP)
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
@@ -1780,7 +1780,8 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 #endif // ! defined(SEPARATE_T_NULL)
                 && (SearchListWord(ls_pwKeys(pwr, cnBitsPerWord),
                                    wKey, cnBitsPerWord,
-                                   ls_xPopCnt(pwr, cnBitsPerWord))
+                                   PWR_xListPopCnt((Word_t *)&pcvRoot,
+                                                   pwr, cnBitsPerWord))
                     >= 0))
             ? Success : Failure;
     }
@@ -1910,7 +1911,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             } else
       #endif // defined(SEPARATE_T_NULL)
             {
-                wPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
+                wPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord);
             }
 
 #if (cnBitsPerWord == 64)
@@ -2061,7 +2062,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
         else
         {
             Word_t *pwr = wr_pwr(wRoot);
-            Word_t wPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
+            Word_t wPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord);
             Word_t *pwListNew;
             if (wPopCnt != 1)
             {

@@ -420,6 +420,10 @@ typedef Word_t Bucket_t;
   #define POP_IN_WR_HB
 #endif // ! defined(NO_POP_IN_WR_HB)
 
+#if defined(POP_IN_WR_HB) && ! defined(OLD_LISTS)
+  #error Must have OLD_LISTS with POP_IN_WR_HB.
+#endif // defined(POP_IN_WR_HB)
+
 // Choose max list lengths.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
 
@@ -1714,8 +1718,10 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
 #else // defined(PP_IN_LINK)
 
-#define     ls_xPopCnt(_ls, _nBL) \
-  (((_nBL) > 8) ? ls_sPopCnt(_ls) : ls_cPopCnt(_ls))
+  #if ! defined(POP_IN_WR_HB)
+    #define     ls_xPopCnt(_ls, _nBL) \
+        (((_nBL) > 8) ? ls_sPopCnt(_ls) : ls_cPopCnt(_ls))
+  #endif // ! defined(POP_IN_WR_HB)
 
 #define set_ls_xPopCnt(_ls, _nBL, _cnt) \
   (((_nBL) > 8) ? set_ls_sPopCnt((_ls), (_cnt)) \
@@ -3526,7 +3532,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
             nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
         } else
       #endif // ! defined(PP_IN_LINK)
-        { nPopCnt = ls_xPopCnt(pwr, cnBitsPerWord); }
+        { nPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord); }
         nPos = SearchListWord(ls_pwKeys(pwr, nBL), wKey, nBL, nPopCnt);
   #endif // defined(SEARCH_FROM_WRAPPER)
     }
