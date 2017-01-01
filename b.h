@@ -420,9 +420,8 @@ typedef Word_t Bucket_t;
   #define POP_IN_WR_HB
 #endif // ! defined(NO_POP_IN_WR_HB)
 
-#if defined(POP_IN_WR_HB)
-  #undef  OLD_LISTS
-  #define OLD_LISTS
+#if defined(POP_IN_WR_HB) && ! defined(OLD_LISTS)
+  #error Must have OLD_LISTS with POP_IN_WR_HB.
 #endif // defined(POP_IN_WR_HB)
 
 // Choose max list lengths.
