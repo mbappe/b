@@ -59,7 +59,7 @@ CountSw(Word_t *pwRoot, int nBLR, Switch_t *pwr, int nBL, Word_t wIndex, int nLi
       #endif // ! defined(SEPARATE_T_NULL)
             {
                 //wPopCntLoop = ls_xPopCnt(pwrLoop, nBL);
-                wPopCntLoop = PWR_xListPopCnt(pwRootLoop, nBL);
+                wPopCntLoop = PWR_xListPopCnt(pwRootLoop, pwrLoop, nBL);
                 //assert(ls_xPopCnt(pwrLoop, nBL) == wPopCntLoop);
                 DBGC(printf("ww %"_fw"d T_LIST pwr %p wPopCnt %"_fw"d\n",
                             ww, (void *)pwr, wPopCntLoop));
@@ -1785,7 +1785,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 #endif // ! defined(SEPARATE_T_NULL)
                 && (SearchListWord(ls_pwKeys(pwr, cnBitsPerWord),
                                    wKey, cnBitsPerWord,
-                                   PWR_xListPopCnt(&wRoot, cnBitsPerWord))
+                                   PWR_xListPopCnt(&wRoot, pwr, cnBitsPerWord))
                     >= 0))
             ? Success : Failure;
     }
@@ -1915,7 +1915,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             } else
       #endif // defined(SEPARATE_T_NULL)
             {
-                wPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
+                wPopCnt = PWR_xListPopCnt(&wRoot, pwr, cnBitsPerWord);
             }
 
 #if (cnBitsPerWord == 64)
@@ -2066,7 +2066,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
         else
         {
             Word_t *pwr = wr_pwr(wRoot);
-            Word_t wPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
+            Word_t wPopCnt = PWR_xListPopCnt(&wRoot, pwr, cnBitsPerWord);
             Word_t *pwListNew;
             if (wPopCnt != 1)
             {

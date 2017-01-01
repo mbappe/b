@@ -432,7 +432,7 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
 #endif // defined(PP_IN_LINK)
     {
 #if ! defined(POP_IN_WR_HB)
-        set_ls_xPopCnt(pwList, nBL, wPopCnt);
+        //set_ls_xPopCnt(pwList, nBL, wPopCnt);
 #endif // ! defined(POP_IN_WR_HB)
     }
 
@@ -1365,7 +1365,7 @@ GetPopCnt(Word_t *pwRoot, int nBL)
 #endif // defined(USE_T_ONE)
         //if (nType == T_LIST) { return ls_xPopCnt(wr_pwr(*pwRoot), nBL); }
         if (nType == T_LIST) {
-             int nPopCnt = PWR_xListPopCnt(pwRoot, nBL);
+             int nPopCnt = PWR_xListPopCnt(pwRoot, wr_pwr(*pwRoot), nBL);
              //assert(ls_xPopCnt(wr_pwr(*pwRoot), nBL) == nPopCnt);
              return nPopCnt;
         }
@@ -1731,7 +1731,7 @@ embeddedKeys:;
 #endif // defined(PP_IN_LINK)
             {
                 //wPopCnt = ls_xPopCnt(pwr, nBL);
-                wPopCnt = PWR_xListPopCnt(pwRoot, nBL);
+                wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL);
                 //assert(ls_xPopCnt(pwr, nBL) == wPopCnt);
             }
 
@@ -2378,7 +2378,7 @@ embeddedKeys:;
                       = PWR_wPopCnt(pwRootLn, (Switch_t *)pwrLn, nBLLn);
 #else // defined(PP_IN_LINK)
                 //int nPopCntLn = ls_xPopCnt(pwrLn, nBLLn);
-                int nPopCntLn = PWR_xListPopCnt(pwRootLn, nBLLn);
+                int nPopCntLn = PWR_xListPopCnt(pwRootLn, pwrLn, nBLLn);
                 //assert(ls_xPopCnt(pwrLn, nBLLn) == nPopCntLn);
 #endif // defined(PP_IN_LINK)
                 if (nBLLn <= 8) {
@@ -2494,7 +2494,7 @@ embeddedKeys:;
             DBGR(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
         }
         assert(nType == T_LIST); // What about T_ONE?
-        nPopCnt = PWR_xListPopCnt(&wRootOld, nBLOld);
+        nPopCnt = PWR_xListPopCnt(&wRootOld, pwrOld, nBLOld);
         
         int status;
 #if defined(COMPRESSED_LISTS)
@@ -2998,13 +2998,13 @@ embeddedKeys:;
                     wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) - 1;
                     pwKeys = ls_pwKeysNAT(pwr); // list of keys in old List
                 } else {
-                    wPopCnt = ls_xPopCnt(pwr, nBL);
+                    wPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBL);
                     pwKeys = ls_pwKeys(pwr, cnBitsPerWord);
                 }
 #else // defined(PP_IN_LINK)
                 //wPopCnt = ls_xPopCnt(pwr, nBL);
                 // wRoot may be newer than *pwRoot
-                wPopCnt = PWR_xListPopCnt(&wRoot, nBL);
+                wPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBL);
                 //assert(ls_xPopCnt(pwr, nBL) == wPopCnt);
                 pwKeys = ls_pwKeysNAT(pwr); // list of keys in old List
 #endif // defined(PP_IN_LINK)
@@ -3180,12 +3180,12 @@ embeddedKeys:;
 #endif // defined(PP_IN_LINK)
                 {
 #if ! defined(POP_IN_WR_HB)
-                    set_ls_xPopCnt(pwList, nBL, wPopCnt + 1);
+                    //set_ls_xPopCnt(pwList, nBL, wPopCnt + 1);
 #endif // ! defined(POP_IN_WR_HB)
                 }
             }
 
-            set_PWR_xListPopCnt(&wRoot, nBL, wPopCnt + 1);
+            set_PWR_xListPopCnt(&wRoot, pwr, nBL, wPopCnt + 1);
 
             if (wPopCnt != 0)
 #if defined(SORT_LISTS)
@@ -4247,7 +4247,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 
     // Could this be problematic if wRoot is not the only word in the link?
     // We're not replacing pwRoot->ln_wRoot but what about the surroundings?
-    set_PWR_xListPopCnt(&wRoot, nBL, nPopCnt);
+    set_PWR_xListPopCnt(&wRoot, pwList, nBL, nPopCnt);
 
     return wRoot;
 }
@@ -4684,7 +4684,7 @@ embeddedKeys:;
     {
         //wPopCnt = ls_xPopCnt(pwr, nBL);
         // wRoot may be newer than *pwRoot
-        wPopCnt = PWR_xListPopCnt(&wRoot, nBL);
+        wPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBL);
         //assert(ls_xPopCnt(pwr, nBL) == wPopCnt);
     }
 
@@ -4753,14 +4753,14 @@ embeddedKeys:;
         pwList = pwr;
     }
 
-    set_PWR_xListPopCnt(&wRoot, nBL, wPopCnt - 1);
+    set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt - 1);
 
 #if defined(PP_IN_LINK)
     if (nDL == cnDigitsPerWord)
 #endif // defined(PP_IN_LINK)
     {
 #if ! defined(POP_IN_WR_HB)
-        set_ls_xPopCnt(pwList, nBL, wPopCnt - 1);
+        //set_ls_xPopCnt(pwList, nBL, wPopCnt - 1);
 #endif // ! defined(POP_IN_WR_HB)
     }
 
@@ -5969,9 +5969,8 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
                 assert(nType == T_LIST);
                 // ls_wPopCnt is valid at top for PP_IN_LINK if ! USE_T_ONE
                 //wPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
-                wPopCnt = PWR_xListPopCnt(&wRoot, cnBitsPerWord);
-                DBGC(printf("wPopCnt %d ls_xPopCnt %d\n",
-                            (int)wPopCnt, ls_xPopCnt(pwr, cnBitsPerWord)));
+                wPopCnt = PWR_xListPopCnt(&wRoot, pwr, cnBitsPerWord);
+                DBGC(printf("wPopCnt %d\n", (int)wPopCnt));
                 //assert(ls_xPopCnt(pwr, cnBitsPerWord) == wPopCnt);
             }
         }

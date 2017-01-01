@@ -1656,10 +1656,10 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 // Pop count in wRoot high bits.
 #if defined(POP_IN_WR_HB)
 
-  #define PWR_xListPopCnt(_pwRoot, _nBL) \
+  #define PWR_xListPopCnt(_pwRoot, _pwr, _nBL) \
       ((int)GetBits(*(_pwRoot), cnBitsListPopCnt, cnLsbListPopCnt))
 
-  #define set_PWR_xListPopCnt(_pwRoot, _nBL, _cnt) \
+  #define set_PWR_xListPopCnt(_pwRoot, _pwr, _nBL, _cnt) \
       (assert((_cnt) <= (int)MSK(cnBitsListPopCnt)), \
           SetBits((_pwRoot), cnBitsListPopCnt, cnLsbListPopCnt, (_cnt)))
 
@@ -3078,8 +3078,8 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     // By simply setting nPopCnt = 16 here we are assuming, while not
     // ensuring, that pop count never exceeds 16 here.
     // We do it because reading the pop count is so much slower.
-    assert(ls_xPopCnt(pwr, 8) <= 16);
-    int nPopCnt = ls_xPopCnt(pwr, 8);
+    assert(PWR_xListPopCnt(pwRoot, pwr, 8) <= 16);
+    int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 8);
     //int nPopCnt = 16; // Sixteen fit so why do less?
   #else // defined(PSPLIT_SEARCH_8) && ...
       #if defined(PP_IN_LINK)
@@ -3517,7 +3517,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
           #if defined(PP_IN_LINK)
         nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
           #else // defined(PP_IN_LINK)
-        nPopCnt = PWR_xListPopCnt(pwRoot, 32);
+        nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 32);
           #endif // defined(PP_IN_LINK)
         nPos = SearchList32(ls_piKeysNATX(pwr, nPopCnt), wKey, nBL, nPopCnt);
     } else
@@ -3528,7 +3528,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
       #if defined(PP_IN_LINK)
         nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
       #else // defined(PP_IN_LINK)
-        nPopCnt = PWR_xListPopCnt(pwRoot, cnBitsPerWord);
+        nPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord);
       #endif // ! defined(PP_IN_LINK)
         nPos = SearchListWord(ls_pwKeysNATX(pwr, nPopCnt),
                               wKey, nBL, nPopCnt);
@@ -3539,7 +3539,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
         } else
       #endif // ! defined(PP_IN_LINK)
         //{ nPopCnt = ls_xPopCnt(pwr, cnBitsPerWord); }
-        { nPopCnt = PWR_xListPopCnt(pwRoot, cnBitsPerWord); }
+        { nPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord); }
         nPos = SearchListWord(ls_pwKeys(pwr, nBL), wKey, nBL, nPopCnt);
   #endif // defined(SEARCH_FROM_WRAPPER)
     }
