@@ -2482,7 +2482,7 @@ embeddedKeys:;
             DBGR(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
         }
         assert(nType == T_LIST); // What about T_ONE?
-        nPopCnt = PWR_xListPopCnt(&wRootOld, nBLOld);
+        nPopCnt = PWR_xListPopCnt(&wRootOld, pwrOld, nBLOld);
         
         int status;
 #if defined(COMPRESSED_LISTS)
@@ -3163,7 +3163,7 @@ embeddedKeys:;
                 { set_ls_xPopCnt(pwList, nBL, wPopCnt + 1); }
             }
 
-            set_PWR_xListPopCnt(&wRoot, nBL, wPopCnt + 1);
+            set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt + 1);
 
             if (wPopCnt != 0)
 #if defined(SORT_LISTS)
@@ -4224,7 +4224,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 
     // Could this be problematic if wRoot is not the only word in the link?
     // We're not replacing pwRoot->ln_wRoot but what about the surroundings?
-    set_PWR_xListPopCnt(&wRoot, nBL, nPopCnt);
+    set_PWR_xListPopCnt(&wRoot, pwList, nBL, nPopCnt);
 
     return wRoot;
 }
@@ -4727,7 +4727,7 @@ embeddedKeys:;
         pwList = pwr;
     }
 
-    set_PWR_xListPopCnt(&wRoot, nBL, wPopCnt - 1);
+    set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt - 1);
 
 #if defined(PP_IN_LINK)
     if (nDL == cnDigitsPerWord)
