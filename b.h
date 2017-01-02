@@ -1664,11 +1664,10 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
 #else // defined(POP_IN_WR_HB)
 
-  #define PWR_xListPopCnt(_pwRoot, _pwr, _nBL) \
-        ls_xPopCnt((_pwr), (_nBL))
+  #define PWR_xListPopCnt(_pwRoot, _pwr, _nBL)  ls_xPopCnt((_pwr), (_nBL))
 
   #define set_PWR_xListPopCnt(_pwRoot, _pwr, _nBL, _cnt) \
-    set_ls_xPopCnt((_pwr), (_nBL), (_cnt))
+      set_ls_xPopCnt((_pwr), (_nBL), (_cnt))
 
 #endif // defined(POP_IN_WR_HB)
 
@@ -1719,8 +1718,8 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #else // defined(PP_IN_LINK)
 
   #if ! defined(POP_IN_WR_HB)
-#define     ls_xPopCnt(_ls, _nBL) \
-    (((_nBL) > 8) ? ls_sPopCnt(_ls) : ls_cPopCnt(_ls))
+    #define     ls_xPopCnt(_ls, _nBL) \
+        (((_nBL) > 8) ? ls_sPopCnt(_ls) : ls_cPopCnt(_ls))
   #endif // ! defined(POP_IN_WR_HB)
 
   #if ! defined(POP_IN_WR_HB)
@@ -1924,9 +1923,12 @@ set_ls_xPopCnt(void *pwr, int nBL, int nPopCnt)
         - ls_nSlotsInList((_nPopCnt), (_nBL), sizeof(uint16_t)))
 
 #define ls_piKeys(_pwr, _nBL) \
-    ((uint32_t *)((Word_t *)(_pwr) + 1) \
-        - ls_nSlotsInList(ls_xPopCnt((_pwr), (_nBL)), \
-                          (_nBL), sizeof(uint32_t)))
+    ( /*printf("ls_xPopCnt %d\n", (int)ls_xPopCnt((_pwr), (_nBL))),*/ \
+      /*printf("ls_nSlotsInList %d\n",*/ \
+             /*(int)ls_nSlotsInList(ls_xPopCnt((_pwr), (_nBL)), (_nBL), sizeof(uint32_t))),*/ \
+      ((uint32_t *)((Word_t *)(_pwr) + 1) \
+          - ls_nSlotsInList(ls_xPopCnt((_pwr), (_nBL)), \
+                            (_nBL), sizeof(uint32_t))))
 
 #define ls_piKeysX(_pwr, _nBL, _nPopCnt) \
     ((uint32_t *)((Word_t *)(_pwr) + 1) \
@@ -3085,7 +3087,7 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
       #if defined(PP_IN_LINK)
     int nPopCnt = PWR_wPopCntBL(pwRoot, NULL, nBL);
       #else // defined(PP_IN_LINK)
-    int nPopCnt = PWR_xListPopCnt(pwRoot, 8);
+    int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 8);
       #endif // defined(PP_IN_LINK)
   #endif // defined(PSPLIT_SEARCH8) && ...
     uint8_t *pcKeys = ls_pcKeysNATX(pwr, nPopCnt);
@@ -3181,7 +3183,7 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     int nPopCnt = PWR_xListPopCnt(pwRoot, 16);
       #endif // (cnBitsLeftAtDl2 <= 16)
 #else
-    int nPopCnt = PWR_xListPopCnt(pwRoot, 16);
+    int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 16);
 #endif
   #endif // defined(PP_IN_LINK)
     uint16_t *psKeys = ls_psKeysNATX(pwr, nPopCnt);
@@ -3538,7 +3540,6 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
             nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
         } else
       #endif // ! defined(PP_IN_LINK)
-        //{ nPopCnt = ls_xPopCnt(pwr, cnBitsPerWord); }
         { nPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord); }
         nPos = SearchListWord(ls_pwKeys(pwr, nBL), wKey, nBL, nPopCnt);
   #endif // defined(SEARCH_FROM_WRAPPER)

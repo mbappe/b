@@ -396,7 +396,7 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 
     // Should we be setting wPrefix here for PP_IN_LINK?
 
-    DBGM(printf("NewList pwList %p wPopCnt "OWx" nBL %d nWords %d\n",
+    DBGM(printf("NewListCommon pwList %p wPopCnt "OWx" nBL %d nWords %d\n",
         (void *)pwList, wPopCnt, nBL, nWords));
 }
 
@@ -426,15 +426,6 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
 #if ! defined(OLD_LISTS)
     pwList += nWords - 1;
 #endif // ! defined(OLD_LISTS)
-
-#if defined(PP_IN_LINK)
-    if (nBL >= cnBitsPerWord)
-#endif // defined(PP_IN_LINK)
-    {
-#if ! defined(POP_IN_WR_HB)
-        //set_ls_xPopCnt(pwList, nBL, wPopCnt);
-#endif // ! defined(POP_IN_WR_HB)
-    }
 
     NewListCommon(pwList, wPopCnt, nBL, nWords);
 
@@ -1363,11 +1354,8 @@ GetPopCnt(Word_t *pwRoot, int nBL)
 #if defined(USE_T_ONE)
         if (nType == T_ONE) { return 1; }
 #endif // defined(USE_T_ONE)
-        //if (nType == T_LIST) { return ls_xPopCnt(wr_pwr(*pwRoot), nBL); }
         if (nType == T_LIST) {
-             int nPopCnt = PWR_xListPopCnt(pwRoot, wr_pwr(*pwRoot), nBL);
-             //assert(ls_xPopCnt(wr_pwr(*pwRoot), nBL) == nPopCnt);
-             return nPopCnt;
+            return PWR_xListPopCnt(pwRoot, wr_pwr(*pwRoot), nBL);
         }
         if ((nType == T_BITMAP)
   #if defined(SKIP_TO_BITMAP)
@@ -1730,9 +1718,7 @@ embeddedKeys:;
             else
 #endif // defined(PP_IN_LINK)
             {
-                //wPopCnt = ls_xPopCnt(pwr, nBL);
                 wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL);
-                //assert(ls_xPopCnt(pwr, nBL) == wPopCnt);
             }
 
             if (!bDump)
@@ -2377,9 +2363,7 @@ embeddedKeys:;
                 int nPopCntLn
                       = PWR_wPopCnt(pwRootLn, (Switch_t *)pwrLn, nBLLn);
 #else // defined(PP_IN_LINK)
-                //int nPopCntLn = ls_xPopCnt(pwrLn, nBLLn);
                 int nPopCntLn = PWR_xListPopCnt(pwRootLn, pwrLn, nBLLn);
-                //assert(ls_xPopCnt(pwrLn, nBLLn) == nPopCntLn);
 #endif // defined(PP_IN_LINK)
                 if (nBLLn <= 8) {
                     uint8_t *pcKeysLn = ls_pcKeysNAT(pwrLn);
@@ -2998,14 +2982,13 @@ embeddedKeys:;
                     wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) - 1;
                     pwKeys = ls_pwKeysNAT(pwr); // list of keys in old List
                 } else {
+                    // wRoot may be newer than *pwRoot
                     wPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBL);
                     pwKeys = ls_pwKeys(pwr, cnBitsPerWord);
                 }
 #else // defined(PP_IN_LINK)
-                //wPopCnt = ls_xPopCnt(pwr, nBL);
                 // wRoot may be newer than *pwRoot
                 wPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBL);
-                //assert(ls_xPopCnt(pwr, nBL) == wPopCnt);
                 pwKeys = ls_pwKeysNAT(pwr); // list of keys in old List
 #endif // defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
@@ -3176,13 +3159,8 @@ embeddedKeys:;
                 if (nDL != cnDigitsPerWord) {
                     assert(PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)
                            == wPopCnt + 1);
-                } else
-#endif // defined(PP_IN_LINK)
-                {
-#if ! defined(POP_IN_WR_HB)
-                    //set_ls_xPopCnt(pwList, nBL, wPopCnt + 1);
-#endif // ! defined(POP_IN_WR_HB)
                 }
+#endif // defined(PP_IN_LINK)
             }
 
             set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt + 1);
@@ -4193,6 +4171,9 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
     }
     assert(nPopCnt != 0);
     Word_t *pwList = NewListTypeList(nPopCnt, nBL);
+    Word_t wRootNew = 0;
+    set_wr(wRootNew, pwList, T_LIST);
+    set_PWR_xListPopCnt(&wRootNew, pwList, nBL, nPopCnt);
 
     Word_t wBLM = MSK(nBL); // Bits left mask.
 
@@ -4225,6 +4206,10 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
             piKeys = ls_piKeysNAT(pwList);
             piKeys[nn] = (uint32_t)((wKey & ~wBLM)
                        | ((wRoot >> (cnBitsPerWord - (nSlot * nBL))) & wBLM));
+            if (nBL == 24) {
+                /*printf("pwList %p piKeys %p piKeys[%d] %x\n",
+                       (void *)pwList, (void *)piKeys, nn, piKeys[nn]);*/
+            }
         } else
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
@@ -4241,15 +4226,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
         }
     }
 
-    wRoot = 0;
-    set_wr(wRoot, pwList, T_LIST);
-    DBGI(printf("IEL: nPopCnt %d\n", nPopCnt));
-
-    // Could this be problematic if wRoot is not the only word in the link?
-    // We're not replacing pwRoot->ln_wRoot but what about the surroundings?
-    set_PWR_xListPopCnt(&wRoot, pwList, nBL, nPopCnt);
-
-    return wRoot;
+    return wRootNew;
 }
 
 // Replace an external T_LIST leaf with a wRoot with embedded keys or
@@ -4682,10 +4659,8 @@ embeddedKeys:;
     } else
 #endif // defined(PP_IN_LINK)
     {
-        //wPopCnt = ls_xPopCnt(pwr, nBL);
         // wRoot may be newer than *pwRoot
         wPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBL);
-        //assert(ls_xPopCnt(pwr, nBL) == wPopCnt);
     }
 
 // Why was this #if defined(USE_T_ONE) ever here?
@@ -4725,10 +4700,11 @@ embeddedKeys:;
         // Malloc a new, smaller list.
         assert(wPopCnt - 1 != 0);
         pwList = NewListTypeList(wPopCnt - 1, nBL);
+        set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt - 1);
+
         // Why are we copying the old list to the new one?
         // Because the beginning will be the same.
         // Except for the the pop count.
-
         switch (nBytesKeySz(nBL)) {
         case sizeof(Word_t):
              COPY(ls_pwKeys(pwList, nBL), ls_pwKeys(pwr, nBL), wPopCnt - 1);
@@ -4751,17 +4727,7 @@ embeddedKeys:;
     else
     {
         pwList = pwr;
-    }
-
-    set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt - 1);
-
-#if defined(PP_IN_LINK)
-    if (nDL == cnDigitsPerWord)
-#endif // defined(PP_IN_LINK)
-    {
-#if ! defined(POP_IN_WR_HB)
-        //set_ls_xPopCnt(pwList, nBL, wPopCnt - 1);
-#endif // ! defined(POP_IN_WR_HB)
+        set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt - 1);
     }
 
 #if defined(LIST_END_MARKERS) || defined(PSPLIT_PARALLEL)
@@ -5968,10 +5934,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
             } else {
                 assert(nType == T_LIST);
                 // ls_wPopCnt is valid at top for PP_IN_LINK if ! USE_T_ONE
-                //wPopCnt = ls_xPopCnt(pwr, cnBitsPerWord);
                 wPopCnt = PWR_xListPopCnt(&wRoot, pwr, cnBitsPerWord);
-                DBGC(printf("wPopCnt %d\n", (int)wPopCnt));
-                //assert(ls_xPopCnt(pwr, cnBitsPerWord) == wPopCnt);
             }
         }
         else // ! tp_bIsSwitch(nType)
