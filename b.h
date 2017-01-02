@@ -414,6 +414,12 @@ typedef Word_t Bucket_t;
   #endif // defined(USE_BM_SW)
 #endif // ! defined(NO_SKIP_TO_BM_SW)
 
+// Default is -DOLD_LISTS.
+#if ! defined(NO_OLD_LISTS)
+  #undef  OLD_LISTS
+  #define OLD_LISTS
+#endif // ! defined(NO_OLD_LISTS)
+
 // Default is -DPOP_IN_WR_HB.
 #if ! defined(NO_POP_IN_WR_HB)
   #undef  POP_IN_WR_HB

@@ -5485,6 +5485,12 @@ Initialize(void)
     printf("# NO SKIP_TO_BM_SW\n");
 #endif // defined(SKIP_TO_BM_SW)
 
+#if defined(NO_OLD_LISTS)
+    printf("#    NO_OLD_LISTS\n");
+#else // defined(NO_OLD_LISTS)
+    printf("# NO NO_OLD_LISTS\n");
+#endif // defined(NO_OLD_LISTS)
+
 #if defined(NO_SKIP_AT_TOP)
     printf("#    NO_SKIP_AT_TOP\n");
 #else // defined(NO_SKIP_AT_TOP)
