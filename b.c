@@ -2793,8 +2793,10 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
 
 // InsertGuts
 // This function is called from the iterative Insert function once Insert has
-// determined that the key from an insert request is not present.
-// It is provided with a starting pwRoot for the insert.
+// determined that the key from an insert request is not present in the array.
+// It is provided with a starting point (pwRoot, wRoot, nBL) for the insert
+// and some additional information (nPos, pwRootPrev, nBLPrev) that may be
+// necessary or helpful in some cases.
 // InsertGuts does whatever is necessary to insert the key into the array
 // and returns back to Insert.
 // InsertGuts is where the main runtime policy decisions are made.
@@ -2802,8 +2804,11 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
 // the decisions made here.
 // Do we create a list as high as possible or as low as possible?
 // When do we create a new switch instead of adding to a list?
+// At what level do we create a new switch?
+// What type of switch do we create?
 // When do we create a bitmap?
-// When do we uncompress switches?
+// When do we uncompress a switch?
+// When do we double a switch?
 // When do we coalesce switches?
 Status_t
 InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot, int nPos
@@ -2831,27 +2836,14 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot, int nPos
     assert(nBL >= cnBitsInD1);
 #endif // ! defined(USE_XX_SW)
 
-#if defined(USE_T_ONE)
-#if defined(COMPRESSED_LISTS)
-    uint8_t  cKey;
-    uint16_t sKey;
-#if (cnBitsPerWord > 32)
-    uint32_t iKey;
-#endif // (cnBitsPerWord > 32)
-#endif // defined(COMPRESSED_LISTS)
-#endif // defined(USE_T_ONE)
-
-    // Would be nice to validate sanity of ifdefs here.  Or somewhere.
-    // assert(cnBitsInD1 >= cnLogBitsPerWord);
-#if defined(EMBED_KEYS) && ! defined(USE_T_ONE)
-    //assert(0); // EMBED_KEYS requires USE_T_ONE
-#endif // defined(EMBED_KEYS) && ! defined(USE_T_ONE)
+    // Handle cases where wRoot has no type field before looking at
+    // the type field in wRoot.
 
 #if defined(NO_TYPE_IN_XX_SW)
-    if (pwRootPrev != NULL) {
+    if (pwRootPrev != NULL) { // non-NULL only for XX_SW
         DBGR(printf("IG: goto embeddedKeys.\n"));
         assert(tp_bIsXxSw(wr_nType(*pwRootPrev)));
-        goto embeddedKeys;
+        goto embeddedKeys; // no type field is handled by embeddedKeys
     }
 #endif // defined(NO_TYPE_IN_XX_SW)
 
@@ -2876,16 +2868,16 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot, int nPos
 
     // Can the following be moved into the if ! switch block?
 #if (cwListPopCntMax != 0)
-#if defined(EMBED_KEYS)
+  #if defined(EMBED_KEYS)
     // Change an embedded list into an external list to make things
     // easier for Insert.  We'll change it back later if it makes sense.
-    // We used to use T_ONE for a single embedded key.  But not anymore.
     if (nType == T_EMBEDDED_KEYS) {
         goto embeddedKeys;
 embeddedKeys:;
 
           #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
             #if ! defined(PACK_KEYS_RIGHT)
+        // This is a performance shortcut that is not necessary.
         if (wr_nPopCnt(*pwRoot, nBL) < EmbeddedListPopCntMax(nBL)) {
             InsertEmbedded(pwRoot, nBL, wKey); return Success;
         }
@@ -2905,7 +2897,7 @@ embeddedKeys:;
                     wRoot, nType, // ls_xPopCnt(wr_pwr(wRoot), nBL),
                     PWR_xListPopCnt(&wRoot, nBL)));
     }
-#endif // defined(EMBED_KEYS)
+  #endif // defined(EMBED_KEYS)
 #endif // (cwListPopCntMax != 0)
 
     Word_t *pwr = wr_pwr(wRoot);
@@ -2913,27 +2905,26 @@ embeddedKeys:;
 // This first clause handles wRoot == 0 by treating it like a list leaf
 // with zero population (and no allocated memory).
 // But why is it ok to skip the test for a switch if ! defined(SKIP_LINKS)
-// and !defined(BM_SW_FOR_REAL)?
-// InsertGuts is called with a wRoot
+// and !defined(BM_SW_FOR_REAL)? Because InsertGuts is called with a wRoot
 // that points to a switch only for prefix mismatch or missing link cases.
 #if defined(SKIP_LINKS) 
     if (!tp_bIsSwitch(nType))
 #else // defined(SKIP_LINKS)
-#if defined(BM_SW_FOR_REAL)
-#if (cwListPopCntMax != 0)
+  #if defined(BM_SW_FOR_REAL)
+      #if (cwListPopCntMax != 0)
     if (!tp_bIsSwitch(nType))
-#else // (cwListPopCntMax == 0)
+      #else // (cwListPopCntMax == 0)
     if (pwr == NULL)
-#endif // (cwListPopCntMax == 0)
-#endif // defined(BM_SW_FOR_REAL)
+      #endif // (cwListPopCntMax == 0)
+  #endif // defined(BM_SW_FOR_REAL)
 #endif // defined(SKIP_LINKS)
     {
         Word_t wPopCnt;
         Word_t *pwKeys;
 #if defined(COMPRESSED_LISTS)
-#if (cnBitsPerWord > 32)
+  #if (cnBitsPerWord > 32)
         unsigned int *piKeys;
-#endif // (cnBitsPerWord > 32)
+  #endif // (cnBitsPerWord > 32)
         unsigned short *psKeys;
         unsigned char *pcKeys;
 #endif // defined(COMPRESSED_LISTS)
@@ -2963,11 +2954,11 @@ embeddedKeys:;
                 pwKeys = pwr;
                 // can we really not just do pxKeys = pwr?
 #if defined(COMPRESSED_LISTS)
-#if (cnBitsPerWord > 32)
-                iKey = (uint32_t)*pwr; piKeys = &iKey;
-#endif // (cnBitsPerWord > 32)
-                sKey = (uint16_t)*pwr; psKeys = &sKey;
-                cKey = (uint8_t)*pwr; pcKeys = &cKey;
+  #if (cnBitsPerWord > 32)
+                piKeys = (uint32_t *)pwr;
+  #endif // (cnBitsPerWord > 32)
+                psKeys = (uint16_t *)pwr;
+                pcKeys = (uint8_t *)pwr;
 #endif // defined(COMPRESSED_LISTS)
             }
             else
