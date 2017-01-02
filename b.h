@@ -1664,11 +1664,10 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
 #else // defined(POP_IN_WR_HB)
 
-  #define PWR_xListPopCnt(_pwRoot, _pwr, _nBL) \
-        ls_xPopCnt(wr_pwr(*(_pwRoot)), (_nBL))
+  #define PWR_xListPopCnt(_pwRoot, _pwr, _nBL)  ls_xPopCnt((_pwr), (_nBL))
 
   #define set_PWR_xListPopCnt(_pwRoot, _pwr, _nBL, _cnt) \
-    set_ls_xPopCnt(wr_pwr(*(_pwRoot)), (_nBL), (_cnt))
+      set_ls_xPopCnt((_pwr), (_nBL), (_cnt))
 
 #endif // defined(POP_IN_WR_HB)
 
@@ -1918,9 +1917,12 @@ set_ls_xPopCnt(void *pwr, int nBL, int nPopCnt)
         - ls_nSlotsInList((_nPopCnt), (_nBL), sizeof(uint16_t)))
 
 #define ls_piKeys(_pwr, _nBL) \
-    ((uint32_t *)((Word_t *)(_pwr) + 1) \
-        - ls_nSlotsInList(ls_xPopCnt((_pwr), (_nBL)), \
-                          (_nBL), sizeof(uint32_t)))
+    ( /*printf("ls_xPopCnt %d\n", (int)ls_xPopCnt((_pwr), (_nBL))),*/ \
+      /*printf("ls_nSlotsInList %d\n",*/ \
+             /*(int)ls_nSlotsInList(ls_xPopCnt((_pwr), (_nBL)), (_nBL), sizeof(uint32_t))),*/ \
+      ((uint32_t *)((Word_t *)(_pwr) + 1) \
+          - ls_nSlotsInList(ls_xPopCnt((_pwr), (_nBL)), \
+                            (_nBL), sizeof(uint32_t))))
 
 #define ls_piKeysX(_pwr, _nBL, _nPopCnt) \
     ((uint32_t *)((Word_t *)(_pwr) + 1) \

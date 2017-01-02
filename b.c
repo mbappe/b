@@ -396,7 +396,7 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 
     // Should we be setting wPrefix here for PP_IN_LINK?
 
-    DBGM(printf("NewList pwList %p wPopCnt "OWx" nBL %d nWords %d\n",
+    DBGM(printf("NewListCommon pwList %p wPopCnt "OWx" nBL %d nWords %d\n",
         (void *)pwList, wPopCnt, nBL, nWords));
 }
 
@@ -431,7 +431,9 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
     if (nBL >= cnBitsPerWord)
 #endif // defined(PP_IN_LINK)
     {
-        set_ls_xPopCnt(pwList, nBL, wPopCnt);
+#if ! defined(OLD_LISTS)
+        set_PWR_xListPopCnt(na, pwList, nBL, wPopCnt);
+#endif // ! defined(OLD_LISTS)
     }
 
     NewListCommon(pwList, wPopCnt, nBL, nWords);
@@ -3162,9 +3164,8 @@ embeddedKeys:;
                 if (nDL != cnDigitsPerWord) {
                     assert(PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)
                            == wPopCnt + 1);
-                } else
+                }
 #endif // defined(PP_IN_LINK)
-                { set_ls_xPopCnt(pwList, nBL, wPopCnt + 1); }
             }
 
             set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt + 1);
@@ -4175,6 +4176,11 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
     }
     assert(nPopCnt != 0);
     Word_t *pwList = NewListTypeList(nPopCnt, nBL);
+#if ! defined(OLD_LISTS)
+    // ls_piKeysNAT depends on pop count in list
+    // for ! defined(OLD_LISTS)
+    //set_PWR_xListPopCnt(na, pwList, nBL, nPopCnt);
+#endif // ! defined(OLD_LISTS)
 
     Word_t wBLM = MSK(nBL); // Bits left mask.
 
@@ -4207,6 +4213,10 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
             piKeys = ls_piKeysNAT(pwList);
             piKeys[nn] = (uint32_t)((wKey & ~wBLM)
                        | ((wRoot >> (cnBitsPerWord - (nSlot * nBL))) & wBLM));
+            if (nBL == 24) {
+                /*printf("pwList %p piKeys %p piKeys[%d] %x\n",
+                       (void *)pwList, (void *)piKeys, nn, piKeys[nn]);*/
+            }
         } else
 #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
@@ -4226,9 +4236,11 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
     wRoot = 0;
     set_wr(wRoot, pwList, T_LIST);
 
+#if defined(OLD_LISTS)
     // Could this be problematic if wRoot is not the only word in the link?
     // We're not replacing pwRoot->ln_wRoot but what about the surroundings?
     set_PWR_xListPopCnt(&wRoot, pwList, nBL, nPopCnt);
+#endif // defined(OLD_LISTS)
 
     return wRoot;
 }
@@ -4733,11 +4745,6 @@ embeddedKeys:;
     }
 
     set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt - 1);
-
-#if defined(PP_IN_LINK)
-    if (nDL == cnDigitsPerWord)
-#endif // defined(PP_IN_LINK)
-    { set_ls_xPopCnt(pwList, nBL, wPopCnt - 1); }
 
 #if defined(LIST_END_MARKERS) || defined(PSPLIT_PARALLEL)
         unsigned nKeys = wPopCnt - 1; (void)nKeys;
