@@ -427,15 +427,6 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
     pwList += nWords - 1;
 #endif // ! defined(OLD_LISTS)
 
-#if defined(PP_IN_LINK)
-    if (nBL >= cnBitsPerWord)
-#endif // defined(PP_IN_LINK)
-    {
-#if ! defined(OLD_LISTS)
-        set_PWR_xListPopCnt(na, pwList, nBL, wPopCnt);
-#endif // ! defined(OLD_LISTS)
-    }
-
     NewListCommon(pwList, wPopCnt, nBL, nWords);
 
     return pwList;
@@ -4176,11 +4167,9 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
     }
     assert(nPopCnt != 0);
     Word_t *pwList = NewListTypeList(nPopCnt, nBL);
-#if ! defined(OLD_LISTS)
-    // ls_piKeysNAT depends on pop count in list
-    // for ! defined(OLD_LISTS)
-    //set_PWR_xListPopCnt(na, pwList, nBL, nPopCnt);
-#endif // ! defined(OLD_LISTS)
+    Word_t wRootNew = 0;
+    set_wr(wRootNew, pwList, T_LIST);
+    set_PWR_xListPopCnt(&wRootNew, pwList, nBL, nPopCnt);
 
     Word_t wBLM = MSK(nBL); // Bits left mask.
 
@@ -4233,16 +4222,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
         }
     }
 
-    wRoot = 0;
-    set_wr(wRoot, pwList, T_LIST);
-
-#if defined(OLD_LISTS)
-    // Could this be problematic if wRoot is not the only word in the link?
-    // We're not replacing pwRoot->ln_wRoot but what about the surroundings?
-    set_PWR_xListPopCnt(&wRoot, pwList, nBL, nPopCnt);
-#endif // defined(OLD_LISTS)
-
-    return wRoot;
+    return wRootNew;
 }
 
 // Replace an external T_LIST leaf with a wRoot with embedded keys or
@@ -4716,10 +4696,11 @@ embeddedKeys:;
         // Malloc a new, smaller list.
         assert(wPopCnt - 1 != 0);
         pwList = NewListTypeList(wPopCnt - 1, nBL);
+        set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt - 1);
+
         // Why are we copying the old list to the new one?
         // Because the beginning will be the same.
         // Except for the the pop count.
-
         switch (nBytesKeySz(nBL)) {
         case sizeof(Word_t):
              COPY(ls_pwKeys(pwList, nBL), ls_pwKeys(pwr, nBL), wPopCnt - 1);
@@ -4742,9 +4723,9 @@ embeddedKeys:;
     else
     {
         pwList = pwr;
+        set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt - 1);
     }
 
-    set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt - 1);
 
 #if defined(LIST_END_MARKERS) || defined(PSPLIT_PARALLEL)
         unsigned nKeys = wPopCnt - 1; (void)nKeys;
