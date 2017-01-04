@@ -154,13 +154,13 @@ FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEA)
 
 EXES = b check # t
 LIBS = libb1.a libb1.so libb.a libb.so
-LIB1_OBJS = bl.o bi.o br.o bc.o b.o stubs1.o JudyMalloc.o
-LIB1_SRCS = bl.c bi.c br.c bc.c b.c stubs1.c JudyMalloc.c
+LIB1_OBJS = b.o bl.o bi.o br.o bc.o stubs1.o JudyMalloc.o
+LIB1_SRCS = b.c bl.c bi.c br.c bc.c stubs1.c JudyMalloc.c
 LIB_OBJS = $(LIB1_OBJS) stubsL.o stubsHS.o
 LIB_SRCS = $(LIB1_SRCS) stubsL.c stubsHS.c
-ASMS  = bl.s bi.s br.s bc.s b.s
+ASMS  = b.s bl.s bi.s br.s bc.s
 ASMS += stubs1.s stubsL.s stubsHS.s JudyMalloc.s # t.s
-CPPS  = bl.i bi.i br.i bc.i b.i 
+CPPS  = b.i bl.i bi.i br.i bc.i
 CPPS += stubs1.i stubsL.i stubsHS.i JudyMalloc.i # t.i
 
 T_OBJS = stubs1.o stubsL.o stubsHS.o JudyMalloc.o
