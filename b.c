@@ -1377,6 +1377,7 @@ GetPopCnt(Word_t *pwRoot, int nBL)
       #endif // defined(CODE_BM_SW)
               PWR_wPopCntBL(pwRoot, (  Switch_t *)wr_pwr(*pwRoot), nBLR) ;
 
+    // PWR_wPopCnt will be zero if the subtree is full or empty.
     // We use wRoot != 0 to disambiguate PWR_wPopCnt == 0.
     // Hence we cannot allow Remove to leave
     // wRoot != 0 unless the actual pop count is not zero.
@@ -2432,6 +2433,9 @@ embeddedKeys:;
 static void
 InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
 {
+    DBGI(printf("InsertAll(pwRootOld %p nBLOld %d wKey "OWx
+                    " pwRoot %p nBL %d\n",
+                (void *)pwRootOld, nBLOld, wKey, (void *)pwRoot, nBL));
     Word_t wRootOld = *pwRootOld;
 #if defined(NO_TYPE_IN_XX_SW)
     if (nBLOld < nDL_to_nBL(2)) {
@@ -2478,7 +2482,16 @@ embeddedKeys:;
             DBGR(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
         }
         assert(nType == T_LIST); // What about T_ONE?
-        nPopCnt = PWR_xListPopCnt(&wRootOld, pwrOld, nBLOld);
+#if defined(PP_IN_LINK)
+        if (nBL < cnBitsPerWord) {
+            // Adjust the count to compensate for pre-increment during insert.
+            nPopCnt = PWR_wPopCntBL(pwRootOld, NULL, nBLOld) - 1;
+        } else
+#endif // defined(PP_IN_LINK)
+        {
+            // wRootOld might be newer than *pwRootOld
+            nPopCnt = PWR_xListPopCnt(&wRootOld, pwrOld, nBLOld);
+        }
         
         int status;
 #if defined(COMPRESSED_LISTS)
@@ -2831,6 +2844,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot, int nPos
     assert(nDL_to_nBL(nDL) >= nBL);
     DBGI(printf("InsertGuts pwRoot %p wKey "OWx" nBL %d wRoot "OWx"\n",
                 (void *)pwRoot, wKey, nBL, wRoot));
+    Link_t link; (void)link;
 
 #if ! defined(USE_XX_SW)
     assert(nBL >= cnBitsInD1);
@@ -2885,6 +2899,8 @@ embeddedKeys:;
           #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
 
         wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot);
+        // Is there any reason to delay the install of wRoot?
+        *pwRoot = wRoot;
         nPos = -1; // Tell copy that we have no nPos.
 
         // BUG: The list may not be sorted at this point.  Does it matter?
@@ -2892,10 +2908,12 @@ embeddedKeys:;
         // at this point.  I can't think of why it would not be sorted.
         // Is it related to SEARCH_FROM_WRAPPER?
         nType = wr_nType(wRoot);
+      #if ! defined(PP_IN_LINK)
         DBGI(printf("IG: wRoot "OWx" nType %d" // " ls_xPopCnt %d"
                     " PWR_xListPopCnt %d\n",
                     wRoot, nType, // ls_xPopCnt(wr_pwr(wRoot), nBL),
-                    PWR_xListPopCnt(&wRoot, nBL)));
+                    (int)PWR_xListPopCnt(&wRoot, wr_pwr(wRoot), nBL)));
+      #endif // ! defined(PP_IN_LINK)
     }
   #endif // defined(EMBED_KEYS)
 #endif // (cwListPopCntMax != 0)
@@ -2919,14 +2937,14 @@ embeddedKeys:;
   #endif // defined(BM_SW_FOR_REAL)
 #endif // defined(SKIP_LINKS)
     {
-        Word_t wPopCnt;
-        Word_t *pwKeys;
+        Word_t wPopCnt = 0;
+        Word_t *pwKeys = NULL;
 #if defined(COMPRESSED_LISTS)
   #if (cnBitsPerWord > 32)
-        unsigned int *piKeys;
+        unsigned int *piKeys = NULL;
   #endif // (cnBitsPerWord > 32)
-        unsigned short *psKeys;
-        unsigned char *pcKeys;
+        unsigned short *psKeys = NULL;
+        unsigned char *pcKeys = NULL;
 #endif // defined(COMPRESSED_LISTS)
 
         DBGI(printf("InsertGuts List\n"));
@@ -2965,47 +2983,33 @@ embeddedKeys:;
 #endif // defined(USE_T_ONE)
             {
 #if defined(PP_IN_LINK)
-                if (nDL != cnDigitsPerWord) {
-// Why are we subracting one here?
-// Is it because Insert bumps pop count before calling InsertGuts?
-// How is this handled with InflateEmbeddedList?
-// ln_wPrefixPop is not affected by InflateEmbeddedList?
-                    wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) - 1;
-                    pwKeys = ls_pwKeysNAT(pwr); // list of keys in old List
-                } else {
-                    // wRoot may be newer than *pwRoot
-                    wPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBL);
-                    pwKeys = ls_pwKeys(pwr, cnBitsPerWord);
-                }
-#else // defined(PP_IN_LINK)
-                // wRoot may be newer than *pwRoot
-                wPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBL);
-                pwKeys = ls_pwKeysNAT(pwr); // list of keys in old List
+                // this test is no good unless we disallow skip from top
+                if (nBL != cnBitsPerWord) {
+                    // Get pop from ln_wPrefixPop.
+                    // Why are we subracting one here? Is it because Insert
+                    // bumps pop count before calling InsertGuts?
+                    // How is this handled with InflateEmbeddedList?
+                    // ln_wPrefixPop is not affected by InflateEmbeddedList?
+                    // Can't we make PWR_xListPopCnt handle this case?
+                    wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL) - 1;
+                } else
 #endif // defined(PP_IN_LINK)
+                {
+                    wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL);
+                }
+                pwKeys = ls_pwKeys(pwr, nBL); // list of keys in old List
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
-                piKeys = ls_piKeysNAT(pwr);
+                piKeys = ls_piKeys(pwr, nBL);
 #endif // (cnBitsPerWord > 32)
-                psKeys = ls_psKeysNAT(pwr);
-                pcKeys = ls_pcKeysNAT(pwr);
+                psKeys = ls_psKeys(pwr, nBL);
+                pcKeys = ls_pcKeys(pwr, nBL);
 #endif // defined(COMPRESSED_LISTS)
             }
             // prefix is already set
         }
         else
         {
-            wPopCnt = 0;
-            // make compiler happy about uninitialized variable
-            // it doesn't recognize that (wPopCnt == 0) ==> pwKeys will not
-            // be examined
-            pwKeys = NULL;
-#if defined(COMPRESSED_LISTS)
-#if (cnBitsPerWord > 32)
-            piKeys = NULL;
-#endif // (cnBitsPerWord > 32)
-            psKeys = NULL;
-            pcKeys = NULL;
-#endif // defined(COMPRESSED_LISTS)
 #if defined(PP_IN_LINK)
             if (nDL != cnDigitsPerWord)
             {
@@ -3154,7 +3158,12 @@ embeddedKeys:;
 #endif // defined(PP_IN_LINK)
             }
 
-            set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt + 1);
+#if defined(PP_IN_LINK)
+            if (nBL >= cnBitsPerWord)
+#endif // defined(PP_IN_LINK)
+            {
+                set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt + 1);
+            }
 
             if (wPopCnt != 0)
 #if defined(SORT_LISTS)
@@ -3543,6 +3552,12 @@ newSwitch:
 #if ! defined(USE_XX_SW)
             if ((EXP(cnBitsInD1) > sizeof(Link_t) * 8) && (nDL == 1)) {
                 assert(nBLOld == nBL);
+#if defined(PP_IN_LINK)
+                // NewBitmap changes *pwRoot and we change the Link_t
+                // containing it on return from NewBitmap.
+                // We need to preserve the Link_t for subsequent InsertAll.
+                link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+#endif // defined(PP_IN_LINK)
                 NewBitmap(pwRoot, nBL, nBLOld, wKey);
 #if defined(PP_IN_LINK)
                 set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL, 0);
@@ -3667,6 +3682,11 @@ doubleIt:;
 #endif // defined(DEBUG)
                 assert(nBL <= nBLOld);
 
+#if defined(PP_IN_LINK)
+                // NewSwitch changes *pwRoot and the Link_t containing it.
+                // We need to preserve the Link_t for subsequent InsertAll.
+                link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+#endif // defined(PP_IN_LINK)
                 NewSwitch(pwRoot, wKey, nBL,
 #if defined(CODE_XX_SW)
                           nBW,
@@ -3769,7 +3789,19 @@ insertAll:;
 
             } else
 #endif // defined(USE_XX_SW)
-            { InsertAll(&wRoot, nBLOld, wKey, pwRoot, nBLOld); }
+            {
+#if defined(PP_IN_LINK)
+                // InsertAll may look in the link containing wRoot for
+                // pop count. That's why we preserved the contents of
+                // the link before overwriting it above.
+                if (nBLOld < cnBitsPerWord) {
+                    InsertAll(&link.ln_wRoot, nBLOld, wKey, pwRoot, nBLOld);
+                } else
+#endif // defined(PP_IN_LINK)
+                {
+                    InsertAll(&wRoot, nBLOld, wKey, pwRoot, nBLOld);
+                }
+            }
 
             if (nBL == nBLOld) {
                 DBGI(printf("Just Before InsertGuts calls final Insert"));
@@ -4161,10 +4193,19 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
         printf("IEL: wRoot "OWx" nBL %d\n", wRoot, nBL);
     }
     assert(nPopCnt != 0);
+    // Why not allocate a big enough list to hold the new key that we're about
+    // to insert? Maybe we already do for most cases but why not make sure by
+    // adding one to the nPopCnt argument here? Would it make some things more
+    // complicated later?
     Word_t *pwList = NewListTypeList(nPopCnt, nBL);
     Word_t wRootNew = 0;
     set_wr(wRootNew, pwList, T_LIST);
-    set_PWR_xListPopCnt(&wRootNew, pwList, nBL, nPopCnt);
+#if defined(PP_IN_LINK)
+    if (nBL >= cnBitsPerWord)
+#endif // defined(PP_IN_LINK)
+    {
+        set_PWR_xListPopCnt(&wRootNew, pwList, nBL, nPopCnt);
+    }
 
     Word_t wBLM = MSK(nBL); // Bits left mask.
 
@@ -4217,7 +4258,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
         }
     }
 
-    return wRootNew;
+    return wRootNew; // wRootNew is not installed; *pwRoot is intact
 }
 
 // Replace an external T_LIST leaf with a wRoot with embedded keys or
@@ -4613,7 +4654,10 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
         goto embeddedKeys;
 embeddedKeys:;
         wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot);
-        //*pwRoot = wRoot;
+        *pwRoot = wRoot;
+        // Is there any reason to preserve *pwRoot?
+        // Is it a problem to have an external list that could
+        // be embedded?
         nType = T_LIST;
         pwr = wr_pwr(wRoot);
         assert(wr_nType(wRoot) == nType);
@@ -4645,13 +4689,14 @@ embeddedKeys:;
     Word_t wPopCnt;
 
 #if defined(PP_IN_LINK)
-    if (nDL != cnDigitsPerWord) {
+    // this test only works if we disallow skip links from the top
+    // for PP_IN_LINK.
+    if (nBL < cnBitsPerWord) {
         wPopCnt = PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL) + 1;
     } else
 #endif // defined(PP_IN_LINK)
     {
-        // wRoot may be newer than *pwRoot
-        wPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBL);
+        wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL);
     }
 
 // Why was this #if defined(USE_T_ONE) ever here?
@@ -4691,8 +4736,20 @@ embeddedKeys:;
         // Malloc a new, smaller list.
         assert(wPopCnt - 1 != 0);
         pwList = NewListTypeList(wPopCnt - 1, nBL);
-        set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt - 1);
+    }
+    else
+    {
+        pwList = pwr;
+    }
 
+#if defined(PP_IN_LINK)
+    if (nBL >= cnBitsPerWord)
+#endif // defined(PP_IN_LINK)
+    {
+        set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt - 1);
+    }
+
+    if (pwList != pwr) {
         // Why are we copying the old list to the new one?
         // Because the beginning will be the same.
         // Except for the the pop count.
@@ -4714,11 +4771,6 @@ embeddedKeys:;
         }
 
         set_wr(wRoot, pwList, T_LIST);
-    }
-    else
-    {
-        pwList = pwr;
-        set_PWR_xListPopCnt(&wRoot, pwList, nBL, wPopCnt - 1);
     }
 
 #if defined(LIST_END_MARKERS) || defined(PSPLIT_PARALLEL)
@@ -5019,6 +5071,12 @@ Initialize(void)
 #else // defined(SORT_LISTS)
     printf("# NO SORT_LISTS\n");
 #endif // defined(SORT_LISTS)
+
+#if defined(_ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL)
+    printf("#    _ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL\n");
+#else // defined(_ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL)
+    printf("# NO _ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL\n");
+#endif // defined(_ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL)
 
 #if defined(ALIGN_LISTS)
     printf("#    ALIGN_LISTS\n");

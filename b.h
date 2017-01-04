@@ -238,12 +238,12 @@
 // To do:
 //
 // - Constraints: cache size; goal is only one cache miss per get;
-//   only leaf level can be out of cache; 
+//   only leaf level can be out of cache;
 //   memory usage must be no more than two words per key;
 //   if list leaf must be larger than cache line size, then might as
 //   well add a branch
 // - 3MB/4B/link ~ 750,000 links at full pop ~ 375,000 Bitmaps ~ 18-19 bits
-//   decoded by switches; 13-14 bits per Bitmap. 
+//   decoded by switches; 13-14 bits per Bitmap.
 // - What about tlb entries?
 // - log(xor) for prefix check
 // - nDLRoot - nDL == -1 means double the size
@@ -339,6 +339,17 @@ SetBits(Word_t *pw, int nBits, int nLsb, Word_t wVal)
 #define PSPLIT_PARALLEL
 #endif // ! defined(NO_PSPLIT_PARALLEL)
 
+// We'd like to ignore ALIGN_LISTS for lists of word-size keys
+// if PSPLIT_SEARCH_WORD is not defined and the only reason
+// ALIGN_LISTS is defined is that PSPLIT_PARALLEL is defined.
+// We use _ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL to
+// indicate that ALIGN_LISTS was defined independent of
+// PSPLIT_PARALLEL and should not be so ignored.
+#if defined(ALIGN_LISTS)
+#define _ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL
+#endif // defined(ALIGN_LISTS)
+
+// Define ALIGN_LISTS if PSPLIT_PARALLEL is defined.
 #if defined(PSPLIT_PARALLEL)
 #undef ALIGN_LISTS
 #define ALIGN_LISTS
@@ -393,10 +404,10 @@ typedef Word_t Bucket_t;
 
 #if defined(CODE_XX_SW)
 // Default is -DSKIP_TO_XX_SW.
-#if ! defined(NO_SKIP_TO_XX_SW)
+#if ! defined(NO_SKIP_TO_XX_SW) && defined(SKIP_LINKS)
 #undef SKIP_TO_XX_SW
 #define SKIP_TO_XX_SW
-#endif // ! defined(NO_SKIP_TO_XX_SW)
+#endif // ! defined(NO_SKIP_TO_XX_SW) && defined(SKIP_LINKS)
 #endif // defined(CODE_XX_SW)
 
 // Default is -DSKIP_TO_BITMAP if -DSKIP_TO_XX_SW.
@@ -406,13 +417,13 @@ typedef Word_t Bucket_t;
 #endif // ! defined(SKIP_TO_XX_SW)
 
 // Default is SKIP_TO_BM_SW if USE_BM_SW and (DEPTH_IN_SW or LVL_IN_WR_HB).
-#if ! defined(NO_SKIP_TO_BM_SW)
+#if ! defined(NO_SKIP_TO_BM_SW) && defined(SKIP_LINKS)
   #if defined(USE_BM_SW)
       #if defined(DEPTH_IN_SW) || defined(LVL_IN_WR_HB)
           #define SKIP_TO_BM_SW
       #endif // defined(DEPTH_IN_SW) || defined(LVL_IN_WR_HB)
   #endif // defined(USE_BM_SW)
-#endif // ! defined(NO_SKIP_TO_BM_SW)
+#endif // ! defined(NO_SKIP_TO_BM_SW) && defined(SKIP_LINKS)
 
 // Default is -DOLD_LISTS.
 #if ! defined(NO_OLD_LISTS)
@@ -691,7 +702,7 @@ enum {
 #endif // (cnBitsInD3 == cnBitsPerDigit) && ...
 
 // nDL_from_nBL(_nBL)
-// nDL_from_nBL_NIB(_nBL) _nBL must be an integral number of digits 
+// nDL_from_nBL_NIB(_nBL) _nBL must be an integral number of digits
 #if ( (cnBitsInD1 == cnBitsPerDigit) && (cnBitsInD2 == cnBitsPerDigit) \
                                       && (cnBitsInD3 == cnBitsPerDigit) )
 
@@ -1479,7 +1490,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #if defined(DEPTH_IN_SW) || defined(POP_WORD)
 // Relocating the pop out of PP requires quite a few code changes.
 // It would be nice for depth, prefix and pop to share the same word.
-#error Sorry, no PP_IN_LINK && (DEPTH_IN_SW || POP_WORD). 
+#error Sorry, no PP_IN_LINK && (DEPTH_IN_SW || POP_WORD).
 #endif // defined(DEPTH_IN_SW) || defined(POP_WORD)
 #else // defined(PP_IN_LINK)
 #define PWR_wPrefixPop(_pwRoot, _pwr)  ((_pwr)->sw_wPrefixPop)
@@ -1604,6 +1615,12 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #define cbAlignLists 0
 #endif // defined(ALIGN_LISTS)
 
+#if defined(_ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL)
+#define cbAlignListsIOPP 1
+#else // defined(_ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL)
+#define cbAlignListsIOPP 0
+#endif // defined(_ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL)
+
 #if defined(ALIGN_LIST_ENDS)
 #define cbAlignListEnds 1
 #else // defined(ALIGN_LIST_ENDS)
@@ -1619,7 +1636,14 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 // POP_SLOT tells ListWords if we need a slot in the leaf for a pop count
 // that is not included in N_LIST_HDR_KEYS, i.e. a slot that occurs after
 // ll_a[csik]Keys[N_LIST_HDR_KEYS].
+// There is a problem if POP_SLOT is at the beginning of the list and
+// we're aligning lists as with PP_IN_LINK and a list at the top with
+// PSPLIT_PARALLEL at top. Our code doesn't account for aligning the
+// list again after the pop slot.
 #if defined(PP_IN_LINK)
+    // Be careful: _nBL here is BEFORE any skip is applied
+    // Do we allow skip from top for PP_IN_LINK? Looks like we allow
+    // skip if prefix is zero. It means we'd need a pop slot.
     #define POP_SLOT(_nBL) \
         (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))
 #else // defined(PP_IN_LINK)
@@ -1631,11 +1655,49 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
   #endif // defined(OLD_LISTS)
 #endif // defined(PP_IN_LINK)
 
+// align non-word iff align
+// align word iff (psword && psp) || aligniopp
+// (1)        align     if !word iff (                         align    )
+// (2)        align     if  word iff ( ( psword and  psp) or   aligniopp)
+// (1a)       align     if !word and (                         align    )
+// (2a)       align     if  word and ( ( psword and  psp) or   aligniopp)
+// (1b) don't align     if !word and (                        !align    )
+// (2b) don't align     if  word and (!( psword and  psp) and !aligniopp)
+// (3)  !align => !psp && !aligniopp
+// (4)  from (2b) and (3): don't align if word and !align
+// (5)  from (1b) and (4): don't align if !align
+// (6)  don't align     if  word and ( (!psword or  !psp) and !aligniopp)
+#define ALIGN_LIST(_nBytesKeySz) \
+    ( cbAlignLists \
+        && (((_nBytesKeySz) != sizeof(Word_t)) \
+            || (cbPsplitSearchWord && cbPsplitParallel) \
+            ||  cbAlignListsIOPP) )
+
+// cbAlignListEnds is consulted only if ALIGN_LIST is true.
+// We don't support cbAlignListEnds without cbAlignLists.
+// We don't support ALIGN_LIST_ENDS without ALIGN_LISTS.
+#define ALIGN_LIST_END(_nBytesKeySz) \
+    ( assert(cbAlignLists || !cbAlignListEnds), \
+      (ALIGN_LIST(_nBytesKeySz) && cbAlignListEnds) )
+
+// We want an odd number of words (for malloc efficiency) that will
+// hold our list (add one, align to two, then subtract one).
+// 1 => 1, 1.1 => 3, 3 => 3
+// If aligning, align end of dummies on bucket boundary,
+// and allocate a whole bucket to each list-end-marker, if any,
+// and if aligning end align end of keys on bucket boundary,
+// else simply make room for the keys.
+// Add a slot for POP_SLOT -- hmm -- if aligning end, pop-slot
+// at end for new list will be after the last bucket containing
+// a key or list-end-marker.
+// Then do the same trick to align to an odd word boundary
+// What if POP_SLOT is for PP_IN_LINK at top and goes at the
+// beginning of the list? Wouldn't it need a whole bucket of
+// it's own? It seems like we might have a problem with
+// PP_IN_LINK and ALIGN_LISTS.
 #define ls_nSlotsInList(_wPopCnt, _nBL, _nBytesKeySz) \
 ( \
-    ( ! cbAlignLists \
-        || (cbPsplitParallel \
-            && ! cbPsplitSearchWord && ((_nBytesKeySz) == sizeof(Word_t)))) \
+    ( ! ALIGN_LIST(_nBytesKeySz) \
     ? ( assert(cbAlignLists == cbAlignListEnds), \
         ALIGN_UP(cnDummiesInList * sizeof(Word_t) / (_nBytesKeySz) \
                      + 2 * cbListEndMarkers \
@@ -1661,19 +1723,19 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 // Pop count in wRoot high bits.
 #if defined(POP_IN_WR_HB)
 
-  #define PWR_xListPopCnt(_pwRoot, _pwr, _nBL) \
-      ((int)GetBits(*(_pwRoot), cnBitsListPopCnt, cnLsbListPopCnt))
+#define PWR_xListPopCnt(_pwRoot, _pwr, _nBL) \
+    ((int)GetBits(*(_pwRoot), cnBitsListPopCnt, cnLsbListPopCnt))
 
-  #define set_PWR_xListPopCnt(_pwRoot, _pwr, _nBL, _cnt) \
-      (assert((_cnt) <= (int)MSK(cnBitsListPopCnt)), \
-          SetBits((_pwRoot), cnBitsListPopCnt, cnLsbListPopCnt, (_cnt)))
+#define set_PWR_xListPopCnt(_pwRoot, _pwr, _nBL, _cnt) \
+    ( assert((_cnt) <= (int)MSK(cnBitsListPopCnt)), \
+      SetBits((_pwRoot), cnBitsListPopCnt, cnLsbListPopCnt, (_cnt)) )
 
 #else // defined(POP_IN_WR_HB)
 
-  #define PWR_xListPopCnt(_pwRoot, _pwr, _nBL)  ls_xPopCnt((_pwr), (_nBL))
+#define PWR_xListPopCnt(_pwRoot, _pwr, _nBL)  ls_xPopCnt((_pwr), (_nBL))
 
-  #define set_PWR_xListPopCnt(_pwRoot, _pwr, _nBL, _cnt) \
-      set_ls_xPopCnt((_pwr), (_nBL), (_cnt))
+#define set_PWR_xListPopCnt(_pwRoot, _pwr, _nBL, _cnt) \
+    set_ls_xPopCnt((_pwr), (_nBL), (_cnt))
 
 #endif // defined(POP_IN_WR_HB)
 
@@ -1689,11 +1751,11 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #define     ls_cPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_acKeys[0])
 #define set_ls_cPopCnt(_ls, _cnt)  (ls_cPopCnt(_ls) = (_cnt))
 
-#if defined(PP_IN_LINK)
+  #if defined(PP_IN_LINK)
 
   // For PP_IN_LINK ls_xPopCnt macros are only valid at top, i.e.
   // nDL == cnDigitsPerWord, and only for T_LIST - not for T_ONE.
-  #if (cnDummiesInList == 0)
+      #if (cnDummiesInList == 0)
 
 #define     ls_xPopCnt(_ls, _nBL) \
     (assert((_nBL) == cnBitsPerWord), ((ListLeaf_t *)(_ls))->ll_awKeys[0])
@@ -1701,7 +1763,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
     (assert((_nBL) == cnBitsPerWord), \
         ((ListLeaf_t *)(_ls))->ll_awKeys[0] = (_cnt))
 
-  #else // (cnDummiesInList == 0)
+      #else // (cnDummiesInList == 0)
 
 // Use the last dummy for pop count if we have at least one dummy.
 #define     ls_xPopCnt(_ls, _nBL) \
@@ -1711,62 +1773,69 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
     (assert((_nBL) == cnBitsPerWord), \
         ((ListLeaf_t *)(_ls))->ll_awDummies[cnDummiesInList - 1] = (_cnt))
 
-  #endif // (cnDummiesInList == 0)
+      #endif // (cnDummiesInList == 0)
 
-  // Number of key slots needed for header info after cnDummiesInList
-  // (for nBL != cnBitsPerWord).
-  #if defined(LIST_END_MARKERS)
+      // Number of key slots needed for header info after cnDummiesInList
+      // (for nBL != cnBitsPerWord).
+      #if defined(LIST_END_MARKERS)
 #define N_LIST_HDR_KEYS  1
-  #else // defined(LIST_END_MARKERS)
+      #else // defined(LIST_END_MARKERS)
 #define N_LIST_HDR_KEYS  0
-  #endif // defined(LIST_END_MARKERS)
+      #endif // defined(LIST_END_MARKERS)
 
-#else // defined(PP_IN_LINK)
+  #else // defined(PP_IN_LINK)
 
-  #if ! defined(POP_IN_WR_HB)
+      #if ! defined(POP_IN_WR_HB)
     #define     ls_xPopCnt(_ls, _nBL) \
         (((_nBL) > 8) ? ls_sPopCnt(_ls) : ls_cPopCnt(_ls))
-  #endif // ! defined(POP_IN_WR_HB)
+      #endif // ! defined(POP_IN_WR_HB)
 
-  #if ! defined(POP_IN_WR_HB)
+      #if ! defined(POP_IN_WR_HB)
 #define set_ls_xPopCnt(_ls, _nBL, _cnt) \
     (((_nBL) > 8) ? set_ls_sPopCnt((_ls), (_cnt)) \
                   : set_ls_cPopCnt((_ls), (_cnt)))
-  #endif // ! defined(POP_IN_WR_HB)
+      #endif // ! defined(POP_IN_WR_HB)
 
-  // Number of key slots needed for header info after cnDummiesInList.
-  #if defined(LIST_END_MARKERS)
-#define N_LIST_HDR_KEYS  2
-  #else // defined(LIST_END_MARKERS)
-      #if defined(POP_IN_WR_HB)
-#define N_LIST_HDR_KEYS  0
-      #else // defined(POP_IN_WR_HB)
+      // Number of key slots needed for header info after cnDummiesInList.
+      #if defined(LIST_END_MARKERS)
+          #if defined(POP_IN_WR_HB)
 #define N_LIST_HDR_KEYS  1
-      #endif // defined(POP_IN_WR_HB)
-  #endif // defined(LIST_END_MARKERS)
+          #else // defined(POP_IN_WR_HB)
+#define N_LIST_HDR_KEYS  2 // one slot needed for pop
+          #endif // defined(POP_IN_WR_HB)
+      #else // defined(LIST_END_MARKERS)
+          #if defined(POP_IN_WR_HB)
+#define N_LIST_HDR_KEYS  0
+          #else // defined(POP_IN_WR_HB)
+#define N_LIST_HDR_KEYS  1  // one slot needed for pop
+          #endif // defined(POP_IN_WR_HB)
+      #endif // defined(LIST_END_MARKERS)
 
-#endif // defined(PP_IN_LINK)
+  #endif // defined(PP_IN_LINK)
 
+// NAT is relevant only for PP_IN_LINK where POP_SLOT depends on
+// whether we are at the top or not.
 #define ls_pwKeysNAT_UA(_ls) \
     (&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS])
 
-// For PP_IN_LINK ls_pxKeysNAT macros are only valid not at top or for
-// T_ONE - not T_LIST - at top.
-#if ( defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL) ) \
-    || ( defined(ALIGN_LISTS) && ! defined(PSPLIT_PARALLEL) )
+  // Align lists of word-size keys only if PSPLIT_SEARCH_WORD and
+  // PSPLIT_PARALLEL are defined or ALIGN_LISTS was defined independent
+  // of PSPLIT_PARALLEL. In other words, don't align lists of word-size
+  // keys if ALIGN_LISTS is defined only because PSPLIT_PARALLEL is
+  // defined unless PSPLIT_SEARCH_WORD is also defined.
+  #if ( defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL) ) \
+      || defined(_ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL)
 
-  #define ls_pwKeysNAT(_ls) \
-      ((Word_t *)ALIGN_UP((Word_t)ls_pwKeysNAT_UA(_ls), sizeof(Bucket_t)))
+#define ls_pwKeysNAT(_ls) \
+    ((Word_t *)ALIGN_UP((Word_t)ls_pwKeysNAT_UA(_ls), sizeof(Bucket_t)))
 
-#else // defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)
+  #else // ( defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL) ) || ...
 
-  // Ignore ALIGN_LISTS for (nBL >= cnBitsPerWord) unless PSPLIT_SEARCH_WORD
-  // && PSPLIT_PARALLEL in order to improve memory usage at the top.
-  #define ls_pwKeysNAT(_ls)  ls_pwKeysNAT_UA(_ls)
+#define ls_pwKeysNAT(_ls)  ls_pwKeysNAT_UA(_ls)
 
-#endif // defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)
+  #endif // ( defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL) ) || ...
 
-#if defined(COMPRESSED_LISTS)
+  #if defined(COMPRESSED_LISTS)
 
 #define ls_pcKeysNAT_UA(_ls) \
     (&((ListLeaf_t *)(_ls))->ll_acKeys[N_LIST_HDR_KEYS])
@@ -1774,12 +1843,12 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #define ls_psKeysNAT_UA(_ls) \
     (&((ListLeaf_t *)(_ls))->ll_asKeys[N_LIST_HDR_KEYS])
 
-  #if (cnBitsPerWord > 32)
+      #if (cnBitsPerWord > 32)
 #define ls_piKeysNAT_UA(_ls) \
     (&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS])
-  #endif // (cnBitsPerWord > 32)
+      #endif // (cnBitsPerWord > 32)
 
-  #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
+      #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 // What if we want 128-byte alignment and one-word parallel search?
 // Ifdefs don't allow it at the moment.
 
@@ -1789,12 +1858,12 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #define ls_psKeysNAT(_ls) \
     ((uint16_t *)ALIGN_UP((Word_t)ls_psKeysNAT_UA(_ls), sizeof(Bucket_t)))
 
-      #if (cnBitsPerWord > 32)
+          #if (cnBitsPerWord > 32)
 #define ls_piKeysNAT(_ls) \
     ((uint32_t *)ALIGN_UP((Word_t)ls_piKeysNAT_UA(_ls), sizeof(Bucket_t)))
-      #endif // (cnBitsPerWord > 32)
+          #endif // (cnBitsPerWord > 32)
 
-  #else // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
+      #else // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 
 #define ls_pcKeysNAT(_ls)  ls_pcKeysNAT_UA(_ls)
 
@@ -1804,18 +1873,18 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #define ls_piKeysNAT(_ls)  ls_piKeysNAT_UA(_ls)
           #endif // (cnBitsPerWord > 32)
 
-  #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
-#endif // defined(COMPRESSED_LISTS)
+      #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
+  #endif // defined(COMPRESSED_LISTS)
 
-// ls_pxKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
-// ls_pcKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
-// ls_psKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
-// ls_piKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
-// ls_pwKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
-#if defined(PP_IN_LINK)
+  // ls_pxKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
+  // ls_pcKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
+  // ls_psKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
+  // ls_piKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
+  // ls_pwKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
+  #if defined(PP_IN_LINK)
 
-  #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
-      #if defined(COMPRESSED_LISTS)
+      #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
+          #if defined(COMPRESSED_LISTS)
 
 #define ls_pcKeys(_ls, _nBL) \
     ((uint8_t *)ALIGN_UP((Word_t)(ls_pcKeysNAT_UA(_ls) + POP_SLOT(_nBL)), \
@@ -2656,7 +2725,7 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 #else // defined(PSPLIT_EARLY_OUT)
 
 // Can't have a non-PSPLIT_EARLY_OUT version of PSSEARCHF because because
-// we don't know where the end of the list is. 
+// we don't know where the end of the list is.
 // #define PSSEARCHF(_b_t, _pxKeys, _xKey, _nPos, _xKeySplit, _xKeyEnd)
 
 // Simple backward linear parallel search of a list that assumes the list
@@ -2740,7 +2809,7 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 // What parameters must we pass?
 // We have to pass the following information:
 // - First key/bucket of the sub-list to search: _pxKeys.
-// - Number of keys/buckets in the sub-list to search: _nPopCnt. 
+// - Number of keys/buckets in the sub-list to search: _nPopCnt.
 // - What is the offset within the full list of the sub-list to search: _nPos.
 // We'd also like to be able to pass information about the key at the
 // beginning and/or end of the list if we already know either or both of them.
@@ -2858,7 +2927,7 @@ again:;
     PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
       #else // defined(COUNT)
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-    SPLIT_SEARCH_GUTS(__m128i, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) 
+    SPLIT_SEARCH_GUTS(__m128i, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
       #endif // defined(COUNT)
 #else // defined(PARALLEL_128)
       #if defined(COUNT)
@@ -2866,7 +2935,7 @@ again:;
     PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
       #else // defined(COUNT)
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-    SPLIT_SEARCH_GUTS(Word_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) 
+    SPLIT_SEARCH_GUTS(Word_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
       #endif // defined(COUNT)
 #endif // defined(PARALLEL_128)
 
@@ -3046,7 +3115,7 @@ static Word_t // bool
 HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 {
     __m128i xLsbs, xMsbs, xKeys;
-    HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys); 
+    HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys);
     return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
 }
 
@@ -3532,7 +3601,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
       #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     {
-  #if defined(SEARCH_FROM_WRAPPER)
+  #if defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
       #if defined(PP_IN_LINK)
         nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
       #else // defined(PP_IN_LINK)
@@ -3540,15 +3609,16 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
       #endif // ! defined(PP_IN_LINK)
         nPos = SearchListWord(ls_pwKeysNATX(pwr, nPopCnt),
                               wKey, nBL, nPopCnt);
-  #else // defined(SEARCH_FROM_WRAPPER)
+  #else // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
       #if defined(PP_IN_LINK)
         if (nBL != cnBitsPerWord) {
             nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
         } else
       #endif // ! defined(PP_IN_LINK)
         { nPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord); }
+        //printf("pwRoot %p pwr %p\n", (void *)pwRoot, (void *)pwr);
         nPos = SearchListWord(ls_pwKeys(pwr, nBL), wKey, nBL, nPopCnt);
-  #endif // defined(SEARCH_FROM_WRAPPER)
+  #endif // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
     }
 
   #if defined(LOOKUP)

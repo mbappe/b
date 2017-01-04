@@ -31,7 +31,12 @@ CountSw(Word_t *pwRoot, int nBLR, Switch_t *pwr, int nBL, Word_t wIndex, int nLi
     DBGC(printf("\nCountSw nBL %d wIndex "Owx"\n", nBL, wIndex));
     Word_t wPopCnt = 0;
     Word_t ww, wwLimit;
-    if (wIndex <= (unsigned)nLinks / 2) {
+    if ((wIndex <= (unsigned)nLinks / 2)
+#if defined(PP_IN_LINK)
+            || (nBLR >= cnBitsPerWord)
+#endif // defined(PP_IN_LINK)
+        )
+    {
         ww = 0; wwLimit = wIndex;
     } else {
         ww = wIndex; wwLimit = nLinks;
@@ -58,7 +63,14 @@ CountSw(Word_t *pwRoot, int nBLR, Switch_t *pwr, int nBL, Word_t wIndex, int nLi
             if (pwrLoop != NULL)
       #endif // ! defined(SEPARATE_T_NULL)
             {
-                wPopCntLoop = PWR_xListPopCnt(pwRootLoop, pwrLoop, nBL);
+      #if defined(PP_IN_LINK)
+                if (nBL < cnBitsPerWord) {
+                    wPopCntLoop = PWR_wPopCntBL(pwRootLoop, NULL, nBL);
+                } else
+      #endif // defined(PP_IN_LINK)
+                {
+                    wPopCntLoop = PWR_xListPopCnt(pwRootLoop, pwrLoop, nBL);
+                }
                 DBGC(printf("ww %"_fw"d T_LIST pwr %p wPopCnt %"_fw"d\n",
                             ww, (void *)pwr, wPopCntLoop));
                 wPopCnt += wPopCntLoop;
@@ -1062,7 +1074,7 @@ t_list:;
         #if defined(LOOKUP)
                 && ListHasKey(pwr, wKey, nBL, &wRoot)
         #else // defined(LOOKUP)
-                && ((nPos = SearchList(pwr, wKey, nBL, &wRoot)) >= 0)
+                && ((nPos = SearchList(pwr, wKey, nBL, pwRoot)) >= 0)
         #endif // defined(LOOKUP)
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
@@ -1377,21 +1389,23 @@ t_bitmap:;
         goto t_embedded_keys; // suppress compiler unused-label warnings
 t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         assert(EmbeddedListPopCntMax(nBL) != 0);
-  #if ! defined(LOOKUP)
+  #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
             return Success;
         } // cleanup is complete
-  #endif // ! defined(LOOKUP)
+  #endif // defined(INSERT) || defined(REMOVE)
 
-  #if ! defined(LOOKUP) && defined(PP_IN_LINK)
+  #if defined(PP_IN_LINK)
+      #if defined(INSERT) || defined(REMOVE)
         if (nBL != cnBitsPerWord)
         {
             // Adjust pop count in the link on the way in.
             set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL,
                 PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL) + nIncr);
         }
-  #endif // ! defined(LOOKUP) && defined(PP_IN_LINK)
+      #endif // defined(INSERT) || defined(REMOVE)
+  #endif // defined(PP_IN_LINK)
 
   #if defined(COUNT)
         {
