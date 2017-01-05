@@ -1077,7 +1077,7 @@ t_list:;
                 && (pwr != NULL)
         #endif // ! defined(SEPARATE_T_NULL)
         #if defined(LOOKUP)
-                && ListHasKey(pwr, wKey, nBL, &wRoot)
+                && ListHasKey(pwr, wKey, nBL, pwRoot)
         #else // defined(LOOKUP)
                 && ((nPos = SearchList(pwr, wKey, nBL, pwRoot)) >= 0)
         #endif // defined(LOOKUP)
