@@ -1,12 +1,74 @@
 #!/bin/sh
 
-let b=10
-while [ $b -le 64 ]
+function report {
+    echo
+    echo Successes: $SUCCESSES
+    echo Failures: $FAILURES
+    echo
+}
+
+trap "echo; report; exit 2" SIGHUP SIGINT SIGTERM
+
+if [ -x Judy1LHCheck ]
+then
+    CHECK=Judy1LHCheck
+else
+    CHECK=check
+fi
+
+let SUCCESSES=0
+let FAILURES=0
+let B=10
+
+while [ $B -le 64 ]
 do
-    echo check -B$b
-    check -B$b > /dev/null
-    #echo check -B$b -D
-    #check -B$b -D > /dev/null
-    let b=$b+1
+    CMD="$CHECK -B$B"
+    echo $CMD
+    if $CMD > /dev/null
+    then
+        let SUCCESSES=$SUCCESSES+1
+    else
+        let FAILURES=$FAILURES+1
+    fi
+
+    CMD="$CHECK -B$B -S1 > /dev/null"
+    echo $CMD
+    if $CMD > /dev/null
+    then
+        let SUCCESSES=$SUCCESSES+1
+    else
+        let FAILURES=$FAILURES+1
+    fi
+
+    CMD="$CHECK -B$B -S1 -D > /dev/null"
+    echo $CMD
+    if $CMD > /dev/null
+    then
+        let SUCCESSES=$SUCCESSES+1
+    else
+        let FAILURES=$FAILURES+1
+    fi
+
+    # Looks like "Judy1LHCheck -D" is broken
+    # for -B10 through -B47.
+    if [ $B -ge 48 ]
+    then
+        CMD="$CHECK -B$B -D > /dev/null"
+        echo $CMD
+        if $CMD > /dev/null
+        then
+            let SUCCESSES=$SUCCESSES+1
+        else
+            let FAILURES=$FAILURES+1
+        fi
+    fi
+
+    let B=$B+1
 done
 
+report
+
+if [ $FAILURES -ne 0 ]
+then
+    exit 1
+fi
