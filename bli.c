@@ -48,12 +48,16 @@ CountSw(Word_t *pwRoot, int nBLR, Switch_t *pwr, int nBL, Word_t wIndex, int nLi
         int nTypeLoop = Get_nType(pwRootLoop);
         if (tp_bIsSwitch(nTypeLoop)) {
             wPopCntLoop = PWR_wPopCntBL(pwRootLoop, (Switch_t *)pwrLoop, nBL);
+            if (wPopCntLoop == 0) {
+                wPopCntLoop = EXP(nBL);
+            }
             DBGC(printf("ww %"_fw"d bIsSwitch pwr %p wPopCnt %"_fw"d\n",
                         ww, (void *)pwrLoop, wPopCntLoop));
             wPopCnt += wPopCntLoop;
         } else switch (nTypeLoop) {
         case T_EMBEDDED_KEYS:
             wPopCntLoop = wr_nPopCnt(*pwRootLoop, nBL);
+            assert(wPopCntLoop != 0);
             DBGC(printf("ww %"_fw"d T_EMBED_KEYS wRoot "Owx" wPopCnt %"_fw
                         "d\n", ww, *pwRootLoop, wPopCntLoop));
             wPopCnt += wPopCntLoop;
@@ -71,6 +75,7 @@ CountSw(Word_t *pwRoot, int nBLR, Switch_t *pwr, int nBL, Word_t wIndex, int nLi
                 {
                     wPopCntLoop = PWR_xListPopCnt(pwRootLoop, pwrLoop, nBL);
                 }
+                assert(wPopCntLoop != 0);
                 DBGC(printf("ww %"_fw"d T_LIST pwr %p wPopCnt %"_fw"d\n",
                             ww, (void *)pwr, wPopCntLoop));
                 wPopCnt += wPopCntLoop;
@@ -79,6 +84,9 @@ CountSw(Word_t *pwRoot, int nBLR, Switch_t *pwr, int nBL, Word_t wIndex, int nLi
         case T_BITMAP:
             wPopCntLoop = w_wPopCntBL(*(pwrLoop + EXP(nBL - cnLogBitsPerWord)),
                                       nBL);
+            if (wPopCntLoop == 0) {
+                wPopCntLoop = EXP(nBL);
+            }
             DBGC(printf("ww %"_fw"d T_BITMAp pwr %p wPopCnt %"_fw"d\n",
                         ww, (void *)pwr, wPopCntLoop));
             wPopCnt += wPopCntLoop;
@@ -90,7 +98,11 @@ CountSw(Word_t *pwRoot, int nBLR, Switch_t *pwr, int nBL, Word_t wIndex, int nLi
         }
     }
     if (ww == (unsigned)nLinks) {
-        wPopCnt = PWR_wPopCntBL(pwRoot, pwr, nBLR) - wPopCnt;
+        Word_t wPopCntSw = PWR_wPopCntBL(pwRoot, pwr, nBLR);
+        if (wPopCntSw == 0) {
+            wPopCntSw = EXP(nBLR);
+        }
+        wPopCnt = wPopCntSw - wPopCnt;
   #if defined(INSERT)
         // We're piggybacking on Insert for the time being and
         // PWR_wPopCntBL has already been incremented so we

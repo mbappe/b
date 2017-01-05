@@ -1533,8 +1533,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
                 nBLR = GetBLR(pwRoot, nBL);
             }
             printf(" wPrefixPop "OWx, *(pwr + EXP(nBLR - cnLogBitsPerWord)));
-            printf(" w_wPopCnt %ld",
-                   w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR));
+            Word_t wPopCnt = w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
+            if (wPopCnt == 0) {
+                wPopCnt = EXP(nBLR);
+            }
+            printf(" w_wPopCnt %ld", wPopCnt);
             printf(" skip to bitmap\n");
             printf(" nWords %4"_fw"d", EXP(nBLR - cnLogBitsPerWord));
             for (Word_t ww = 0; (ww < EXP(nBLR - cnLogBitsPerWord)); ww++) {
@@ -1568,8 +1571,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
  
             if (EXP(cnBitsInD1) > sizeof(Link_t) * 8)
             {
+                Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
                 printf(" wr_wPopCnt %3"_fw"u",
-                       PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL));
+                       wPopCnt != 0 ? wPopCnt : EXP(nBL));
                 printf(" wr_wPrefix "OWx,
                        PWR_wPrefixBL(pwRoot, (Switch_t *)NULL, nBL));
             }
@@ -1657,9 +1661,10 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
                 goto embeddedKeys;
 embeddedKeys:;
                 wPopCnt = wr_nPopCnt(wRoot, nBL);
+                assert(wPopCnt != 0);
             } else
 #endif // defined(EMBED_KEYS)
-            { wPopCnt = 1; }
+            { /* assert(nType == T_ONE); */ wPopCnt = 1; }
 
             if (!bDump) {
 #if defined(NO_TYPE_IN_XX_SW)
@@ -1721,6 +1726,7 @@ embeddedKeys:;
             {
                 wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL);
             }
+            assert(wPopCnt != 0);
 
             if (!bDump)
             {
@@ -1810,6 +1816,7 @@ embeddedKeys:;
         {
             // Add 'em up.
             Word_t wPopCnt = Sum(pwRoot, cnBitsPerWord);
+            assert(wPopCnt != 0);
 
             printf(" sm_wPopCnt %3"_fw"u", wPopCnt);
             printf(" wr_wPrefix        N/A");
@@ -1817,11 +1824,13 @@ embeddedKeys:;
         else
 #endif // defined(PP_IN_LINK)
         {
-            printf(" wr_wPopCnt %3"_fw"u",
+            Word_t wPopCnt = 
 #if defined(CODE_BM_SW)
                    bBmSw ? PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBL) :
 #endif // defined(CODE_BM_SW)
-                           PWR_wPopCntBL(pwRoot, (  Switch_t *)pwr, nBL) );
+                           PWR_wPopCntBL(pwRoot, (  Switch_t *)pwr, nBL)  ;
+            assert(wPopCnt != 0);
+            printf(" wr_wPopCnt %3"_fw"u", wPopCnt);
             printf(" wr_wPrefix "OWx,
 #if defined(CODE_BM_SW)
                    bBmSw ? PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBL) :
