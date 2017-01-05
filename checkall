@@ -1,0 +1,10 @@
+#!/bin/sh
+
+let b=10
+while [ $b -le 64 ]
+do
+    echo check -B$b
+    check -B$b > /dev/null
+    let b=$b+1
+done
+
