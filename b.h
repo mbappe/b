@@ -3253,7 +3253,7 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
   #if defined(PP_IN_LINK)
     int nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
   #else // defined(PP_IN_LINK)
-#if 0
+      #if 0
       #if (cnBitsLeftAtDl2 <= 16)
       #if /* defined(PSPLIT_SEARCH_16) && */ defined(PSPLIT_PARALLEL) \
               && defined(PARALLEL_128) && !defined(INSERT)
@@ -3285,40 +3285,41 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
       #else // (cnBitsLeftAtDl2 <= 16)
     int nPopCnt = PWR_xListPopCnt(pwRoot, 16);
       #endif // (cnBitsLeftAtDl2 <= 16)
-#else
+      #else
     int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 16);
-#endif
+      #endif
   #endif // defined(PP_IN_LINK)
     uint16_t *psKeys = ls_psKeysNATX(pwr, nPopCnt);
+    DBGL(printf("SearchList16 nPopCnt %d psKeys %p\n", nPopCnt, (void *)psKeys));
 
     (void)nBL;
-#if defined(LIST_END_MARKERS)
+  #if defined(LIST_END_MARKERS)
     assert(psKeys[-1] == 0);
-#if defined(PSPLIT_PARALLEL) && !defined(INSERT)
+      #if defined(PSPLIT_PARALLEL) && !defined(INSERT)
     assert(*(uint16_t *)(((Word_t)&psKeys[nPopCnt] + sizeof(Bucket_t) - 1)
             & ~(sizeof(Bucket_t) - 1))
         == (uint16_t)-1);
-#else // defined(PSPLIT_PARALLEL)
+      #else // defined(PSPLIT_PARALLEL)
     assert(psKeys[nPopCnt] == (uint16_t)-1);
-#endif // defined(PSPLIT_PARALLEL)
-#endif // defined(LIST_END_MARKERS)
+      #endif // defined(PSPLIT_PARALLEL)
+  #endif // defined(LIST_END_MARKERS)
     uint16_t sKey = (uint16_t)wKey;
     int nPos = 0;
-#if defined(PSPLIT_SEARCH_16) && !defined(INSERT)
-#if defined(BL_SPECIFIC_PSPLIT_SEARCH)
+  #if defined(PSPLIT_SEARCH_16) && !defined(INSERT)
+      #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 16) {
         PSPLIT_SEARCH(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
     } else
-#endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
+      #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
         //nPos = PSplitSearch16(nBL, psKeys, nPopCnt, sKey, nPos);
         PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     }
-#elif defined(BACKWARD_SEARCH_16)
+  #elif defined(BACKWARD_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;
-#else // here for forward linear search with end check
+  #else // here for forward linear search with end check
     SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;
-#endif // ...
+  #endif // ...
     return nPos;
 }
 
@@ -3588,7 +3589,8 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 {
     (void)pwRoot;
 
-    DBGL(printf("SearchList wKey "Owx" nBL %d\n", wKey, nBL));
+    DBGL(printf("SearchList pwRoot %p wRoot "OWx" wKey "Owx" nBL %d\n",
+                (void *)pwRoot, *pwRoot, wKey, nBL));
 
     int nPopCnt;
     int nPos;
