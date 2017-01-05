@@ -1524,6 +1524,19 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
     ((_w) = (((_w) & ~wPrefixPopMaskBL(_nBL)) \
             | ((_cnt) & wPrefixPopMaskBL(_nBL))))
 
+#if defined(PP_IN_LINK)
+#define set_PWR_wPrefix(_pwRoot, _pwr, _nDL, _key) \
+  (assert((_nDL) < cnDigitsPerWord), \
+    (PWR_wPrefixPop((_pwRoot), (_pwr)) \
+        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixPopMask(_nDL)) \
+            | ((_key) & ~wPrefixPopMask(_nDL)))))
+
+#define set_PWR_wPrefixBL(_pwRoot, _pwr, _nBL, _key) \
+  (assert((_nBL) < cnBitsPerWord), \
+    (PWR_wPrefixPop((_pwRoot), (_pwr)) \
+        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixPopMaskBL(_nBL)) \
+            | ((_key) & ~wPrefixPopMaskBL(_nBL)))))
+#else // defined(PP_IN_LINK)
 #define set_PWR_wPrefix(_pwRoot, _pwr, _nDL, _key) \
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
         = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixPopMask(_nDL)) \
@@ -1533,6 +1546,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
         = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixPopMaskBL(_nBL)) \
             | ((_key) & ~wPrefixPopMaskBL(_nBL))))
+#endif // defined(PP_IN_LINK)
 
 #if defined(POP_WORD)
 
@@ -1562,6 +1576,19 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #define PWR_wPopCntBL(_pwRoot, _pwr, _nBL) \
     (w_wPopCntBL(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nBL)))
 
+#if defined(PP_IN_LINK)
+#define set_PWR_wPopCnt(_pwRoot, _pwr, _nDL, _cnt) \
+  (assert((_nDL) < cnDigitsPerWord), \
+    (PWR_wPrefixPop((_pwRoot), (_pwr)) \
+        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMask(_nDL)) \
+            | ((_cnt) & wPrefixPopMask(_nDL)))))
+
+#define set_PWR_wPopCntBL(_pwRoot, _pwr, _nBL, _cnt) \
+  (assert((_nBL) < cnBitsPerWord), \
+    (PWR_wPrefixPop((_pwRoot), (_pwr)) \
+        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMaskBL(_nBL)) \
+            | ((_cnt) & wPrefixPopMaskBL(_nBL)))))
+#else // defined(PP_IN_LINK)
 #define set_PWR_wPopCnt(_pwRoot, _pwr, _nDL, _cnt) \
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
         = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMask(_nDL)) \
@@ -1571,6 +1598,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
         = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMaskBL(_nBL)) \
             | ((_cnt) & wPrefixPopMaskBL(_nBL))))
+#endif // defined(PP_IN_LINK)
 
 #endif // defined(POP_WORD)
 

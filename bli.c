@@ -618,9 +618,14 @@ t_switch:;
       #endif // defined(INSERT)
             if (*pwRoot != wRoot) { goto restart; }
         } else {
-            // Increment or decrement population count on the way in.
-            wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
-            set_PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR, wPopCnt + nIncr);
+      #if defined(PP_IN_LINK)
+            if (nBL < cnBitsPerWord)
+      #endif // defined(PP_IN_LINK)
+            {
+                // Increment or decrement population count on the way in.
+                wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
+                set_PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR, wPopCnt + nIncr);
+            }
         }
       #if defined(INSERT)
         //pwRootPrev = pwRoot; // save pwRoot for T_XX_SW for InsertGuts
@@ -1086,9 +1091,10 @@ t_list:;
                 // i.e. in the same place as wPopCnt in switch is
                 // adjusted for pp-in-switch.
                 assert(nIncr == -1);
-                set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL,
-                                  PWR_wPopCntBL(pwRoot,
-                                                (Switch_t *)NULL, nBL) - 1);
+                if (nBL < cnBitsPerWord) {
+                    set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL,
+                        PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL) - 1);
+                }
               #endif // defined(PP_IN_LINK)
                 goto removeGutsAndCleanup;
           #endif // defined(REMOVE)
@@ -1140,8 +1146,11 @@ t_list:;
             || (PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL) == 0));
         assert(nIncr == 1);
         DBGI(printf("did not find key\n"));
-        set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL,
-                        PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL) + 1);
+        if (nBL < cnBitsPerWord) {
+            set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL,
+                              PWR_wPopCntBL(pwRoot,
+                                            (Switch_t *)NULL, nBL) + 1);
+        }
       #endif // defined(PP_IN_LINK) && defined(INSERT)
 
         break;
@@ -1878,6 +1887,12 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     DBGI(printf("\n\n# Judy1Set ppvRoot %p wKey "OWx"\n",
                 (void *)ppvRoot, wKey));
 
+  #if defined(PP_IN_LINK)
+      #if defined(DEBUG)
+    Word_t wPrefixPop = PWR_wPrefixPop(ppvRoot, NULL);
+      #endif // defined(DEBUG)
+  #endif // defined(PP_IN_LINK)
+
   #if defined(DEBUG)
 
     pwRootLast = pwRoot;
@@ -2003,6 +2018,10 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     // Judy1Count really slows down testing for PP_IN_LINK.
     assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
   #endif // defined(DEBUG_COUNT) || ! defined(PP_IN_LINK)
+
+  #if defined(PP_IN_LINK)
+    assert(PWR_wPrefixPop(ppvRoot, NULL) == wPrefixPop);
+  #endif // defined(PP_IN_LINK)
 
     return status;
 
