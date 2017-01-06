@@ -19,13 +19,16 @@
 // and Judy1Unset.  There is no need for Lookup, Insert and Remove.
 #else // (cnDigitsPerWord <= 1)
 
-// COUNT is a work-in-progress.
-// We're in the process of implementing Judy1Count.
-// First we have to be able to find the number of keys
-// that precede the specified key.
 #if defined(COUNT)
+// Count the number of keys in the subtrees rooted by links that
+// precede the specified link in this switch.
 static Word_t
-CountSw(Word_t *pwRoot, int nBLR, Switch_t *pwr, int nBL, Word_t wIndex, int nLinks)
+CountSw(Word_t *pwRoot,
+        int nBLR, // nBL at top of switch
+        Switch_t *pwr,
+        int nBL, // nBL at bottom of switch
+        Word_t wIndex, // offset of relevant link in switch
+        int nLinks)
 {
     (void)pwRoot; (void)nBLR; (void)nLinks;
     DBGC(printf("\nCountSw nBL %d wIndex "Owx"\n", nBL, wIndex));
@@ -33,6 +36,12 @@ CountSw(Word_t *pwRoot, int nBLR, Switch_t *pwr, int nBL, Word_t wIndex, int nLi
     Word_t ww, wwLimit;
     if ((wIndex <= (unsigned)nLinks / 2)
 #if defined(PP_IN_LINK)
+  #if ! defined(NO_SKIP_AT_TOP)
+#error PP_IN_LINK requires NO_SKIP_AT_TOP
+  #endif // ! defined(NO_SKIP_AT_TOP)
+            // The following test is insufficient if we allow
+            // skip at top because there is no whole link with
+            // a population at the top for subtracting from.
             || (nBLR >= cnBitsPerWord)
 #endif // defined(PP_IN_LINK)
         )
@@ -142,7 +151,9 @@ CountSw(Word_t *pwRoot, int nBLR, Switch_t *pwr, int nBL, Word_t wIndex, int nLi
 // get the whole prefix from the lowest switch and use that for the
 // prefix check at the leaf.
 static intptr_t
-PrefixMismatch(Word_t *pwRoot, Word_t *pwr, Word_t wKey,
+PrefixMismatch(Word_t *pwRoot,
+               Word_t *pwr,
+               Word_t wKey,
                int nBL,
 #if defined(CODE_BM_SW)
                int bBmSw,
@@ -204,6 +215,7 @@ PrefixMismatch(Word_t *pwRoot, Word_t *pwr, Word_t wKey,
                     wKey, wPrefix, nBLR));
         return (wKey - wPrefix) >> nBLR; // positive means key is big
       #else // defined(COUNT)
+        //bPrefixMismatch = !!((wKey - wPrefix) >> nBLR);
         bPrefixMismatch = ((int)LOG(1 | (wPrefix ^ wKey)) >= nBLR);
       #endif // defined(COUNT)
     }
@@ -317,12 +329,11 @@ PrefixMismatch(Word_t *pwRoot, Word_t *pwr, Word_t wKey,
 #endif // defined(PP_IN_LINK)
 
 #define PREFIX_MISMATCH(_nBL, _nType) \
-    (tp_bIsSkip(_nType) \
-        ? PrefixMismatch(PWROOT_ARG \
-                         pwr, wKey, (_nBL), IS_BM_SW_ARG(_nType) \
-                         LOOKUP_SKIP_PREFIX_CHECK_ARGS \
-                         &nBLR) \
-        : 0)
+    ( assert(tp_bIsSkip(_nType)), \
+      PrefixMismatch(PWROOT_ARG \
+                     pwr, wKey, (_nBL), IS_BM_SW_ARG(_nType) \
+                     LOOKUP_SKIP_PREFIX_CHECK_ARGS \
+                     &nBLR) )
 
 // nBL is bits left after finding pwRoot (not after decoding *pwRoot).
 // nBL == 0 means cnBitsPerWord? (would make it less general).
@@ -491,17 +502,18 @@ again3:;
     // case T_SKIP_TO_SWITCH: // skip link to uncompressed switch
     {
         // pwr points to a switch
+        assert(nType == T_SKIP_TO_SWITCH);
         DBGX(printf("SKIP_TO_SW\n"));
 
         // Looks to me like PrefixMismatch has no performance issues with
         // not all digits being the same size.  It doesn't care.
         // But it does use nBL a couple of times.  Maybe it would help to
         // have bl tests here and call with a constant.  Possibly more
-        // interestingly it does compare nBL to cnBitsPerWord.
+        // interestingly it does compare nBL to cnBitsPerWord for PP_IN_LINK.
 
         // PREFIX_MISMATCH doesn't update nBLR if there is no match
         // unless defined(COUNT).
-        intptr_t nPrefixMismatch = PREFIX_MISMATCH(nBL, nType);
+        intptr_t nPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_SWITCH);
         if (nPrefixMismatch != 0) {
   #if defined(COUNT)
             DBGC(printf("SKIP_TO_SW: COUNT PM %"_fw"d\n", nPrefixMismatch));
@@ -540,7 +552,7 @@ again3:;
 
         // PREFIX_MISMATCH doesn't update nBLR if there is no match
         // unless defined(COUNT).
-        intptr_t nPrefixMismatch = PREFIX_MISMATCH(nBL, nType);
+        intptr_t nPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_BM_SW);
         if (nPrefixMismatch != 0) {
   #if defined(COUNT)
             DBGC(printf("SKIP_TO_BM_SW: COUNT PM %"_fw"d\n",
@@ -576,7 +588,7 @@ again3:;
 
         // PREFIX_MISMATCH doesn't update nBLR if there is no match
         // unless defined(COUNT).
-        intptr_t nPrefixMismatch = PREFIX_MISMATCH(nBL, nType);
+        intptr_t nPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_XX_SW);
         if (nPrefixMismatch != 0) {
   #if defined(COUNT)
             DBGC(printf("SKIP_TO_BM_SW: COUNT PM %"_fw"d\n",
@@ -1175,7 +1187,7 @@ t_list:;
     case T_SKIP_TO_BITMAP:
         DBGX(printf("T_SKIP_TO_BITMAP\n"));
         // PREFIX_MISMATCH may update nBLR only if there is a match.
-        intptr_t nPrefixMismatch = PREFIX_MISMATCH(nBL, nType);
+        intptr_t nPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_BITMAP);
         if (nPrefixMismatch != 0) {
   #if defined(COUNT)
             DBGC(printf("T_SKIP_TO_BITMAP: COUNT PREFIX_MISMATCH %"_fw"d\n", nPrefixMismatch));
