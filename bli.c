@@ -150,7 +150,7 @@ CountSw(Word_t *pwRoot,
 // If neither SAVE_PREFIX nor SAVE_PREFIX_TEST_RESULT is defined we
 // get the whole prefix from the lowest switch and use that for the
 // prefix check at the leaf.
-static intptr_t
+static Word_t
 PrefixMismatch(Word_t *pwRoot,
                Word_t *pwr,
                Word_t wKey,
@@ -170,7 +170,7 @@ PrefixMismatch(Word_t *pwRoot,
       #endif // defined(PP_IN_LINK)
               int *pnBLRPrefix,
   #elif defined(SAVE_PREFIX_TEST_RESULT)
-               int *pbPrefixMismatch,
+               Word_t *pwPrefixMismatch,
   #endif // defined(SAVE_PREFIX)
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
                int *pnBLR)
@@ -201,11 +201,11 @@ PrefixMismatch(Word_t *pwRoot,
                       PWR_wPrefixNATBL(pwRoot, (  Switch_t *)pwr, nBLR) ;
     }
 
-    int bPrefixMismatch;
+    Word_t wPrefixMismatch;
           #if defined(PP_IN_LINK)
     if (nBL == cnBitsPerWord) {
         // prefix is 0
-        bPrefixMismatch = (wKey >= EXP(nBLR));
+        wPrefixMismatch = (wKey >= EXP(nBLR));
     } else
           #endif // defined(PP_IN_LINK)
     {
@@ -215,8 +215,8 @@ PrefixMismatch(Word_t *pwRoot,
                     wKey, wPrefix, nBLR));
         return (wKey - wPrefix) >> nBLR; // positive means key is big
       #else // defined(COUNT)
-        //bPrefixMismatch = !!((wKey - wPrefix) >> nBLR);
-        bPrefixMismatch = ((int)LOG(1 | (wPrefix ^ wKey)) >= nBLR);
+        wPrefixMismatch = (wKey - wPrefix) >> nBLR;
+        //wPrefixMismatch = ((int)LOG(1 | (wPrefix ^ wKey)) >= nBLR);
       #endif // defined(COUNT)
     }
   #endif // ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK) || ...
@@ -244,14 +244,14 @@ PrefixMismatch(Word_t *pwRoot,
           #endif // defined(PP_IN_LINK)
     *pnBLRPrefix = nBLR; // nBLR at which saved prefix applies
       #elif defined(SAVE_PREFIX_TEST_RESULT)
-    *pbPrefixMismatch = bPrefixMismatch;
+    *pwPrefixMismatch = wPrefixMismatch;
       #endif // defined(SAVE_PREFIX)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
         // Record that there were prefix bits that were not checked.
     *pbNeedPrefixCheck |= 1;
       #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
   #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-    if (bPrefixMismatch)
+    if (wPrefixMismatch)
     {
         DBGX(printf("Mismatch wPrefix "Owx" nBL %d nBLR %d pwRoot %p\n",
                     wPrefix, nBL, nBLR, (void *)pwRoot));
@@ -290,7 +290,7 @@ PrefixMismatch(Word_t *pwRoot,
         P_PWR_PREFIX_ARG \
         &nBLRPrefix,
 #elif defined(SAVE_PREFIX_TEST_RESULT)
-    #define SAVE_PREFIX_ARGS  &bPrefixMismatch,
+    #define SAVE_PREFIX_ARGS  &wPrefixMismatch,
 #else // defined(SAVE_PREFIX_TEST_RESULT)
     #define SAVE_PREFIX_ARGS
 #endif // defined(SAVE_PREFIX)
@@ -378,7 +378,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     int nBLUp; (void)nBLUp; // silence gcc
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
 #if defined(SAVE_PREFIX_TEST_RESULT)
-    int bPrefixMismatch = 0; (void)bPrefixMismatch;
+    Word_t wPrefixMismatch = 0; (void)wPrefixMismatch;
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
 #if defined(LOOKUP)
     int nBL = cnBitsPerWord;
@@ -513,13 +513,13 @@ again3:;
 
         // PREFIX_MISMATCH doesn't update nBLR if there is no match
         // unless defined(COUNT).
-        intptr_t nPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_SWITCH);
-        if (nPrefixMismatch != 0) {
+        Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_SWITCH);
+        if (wPrefixMismatch != 0) {
   #if defined(COUNT)
-            DBGC(printf("SKIP_TO_SW: COUNT PM %"_fw"d\n", nPrefixMismatch));
+            DBGC(printf("SKIP_TO_SW: COUNT PM %"_fw"d\n", wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
-            if (nPrefixMismatch > 0) {
+            if (wPrefixMismatch > 0) {
                 Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
                 DBGC(printf("SKIP_TO_SW: PM wPopCnt %"_fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
@@ -552,14 +552,14 @@ again3:;
 
         // PREFIX_MISMATCH doesn't update nBLR if there is no match
         // unless defined(COUNT).
-        intptr_t nPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_BM_SW);
-        if (nPrefixMismatch != 0) {
+        Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_BM_SW);
+        if (wPrefixMismatch != 0) {
   #if defined(COUNT)
             DBGC(printf("SKIP_TO_BM_SW: COUNT PM %"_fw"d\n",
-                        nPrefixMismatch));
+                        wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
-            if (nPrefixMismatch > 0) {
+            if (wPrefixMismatch > 0) {
                 Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
                 DBGC(printf("SKIP_TO_BM_SW: PM wPopCnt %"_fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
@@ -588,14 +588,14 @@ again3:;
 
         // PREFIX_MISMATCH doesn't update nBLR if there is no match
         // unless defined(COUNT).
-        intptr_t nPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_XX_SW);
-        if (nPrefixMismatch != 0) {
+        Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_XX_SW);
+        if (wPrefixMismatch != 0) {
   #if defined(COUNT)
             DBGC(printf("SKIP_TO_BM_SW: COUNT PM %"_fw"d\n",
-                        nPrefixMismatch));
+                        wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
-            if (nPrefixMismatch > 0) {
+            if (wPrefixMismatch > 0) {
                 Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
                 DBGC(printf("SKIP_TO_BM_SW: PM wPopCnt %"_fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
@@ -1062,7 +1062,7 @@ t_list:;
             // If we need a prefix check, then we're not at the top.
             // And pwRoot is initialized despite what gcc might think.
               #if defined(SAVE_PREFIX_TEST_RESULT)
-            || ( ! bPrefixMismatch )
+            || (wPrefixMismatch != 0)
               #elif defined(SAVE_PREFIX)
                   #if defined(PP_IN_LINK)
             || ((pwRootPrefix == NULL) && (wKey < EXP(nBLRPrefix)))
@@ -1187,13 +1187,13 @@ t_list:;
     case T_SKIP_TO_BITMAP:
         DBGX(printf("T_SKIP_TO_BITMAP\n"));
         // PREFIX_MISMATCH may update nBLR only if there is a match.
-        intptr_t nPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_BITMAP);
-        if (nPrefixMismatch != 0) {
+        Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_BITMAP);
+        if (wPrefixMismatch != 0) {
   #if defined(COUNT)
-            DBGC(printf("T_SKIP_TO_BITMAP: COUNT PREFIX_MISMATCH %"_fw"d\n", nPrefixMismatch));
+            DBGC(printf("T_SKIP_TO_BITMAP: COUNT PREFIX_MISMATCH %"_fw"d\n", wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
-            if (nPrefixMismatch > 0) {
+            if (wPrefixMismatch > 0) {
                 Word_t wPopCnt = w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
                 DBGC(printf("T_SKIP_TO_BITMAP: PREFIX_MISMATCH wPopCnt %"_fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
