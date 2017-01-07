@@ -193,7 +193,8 @@
 #endif // ! defined(JUDYA) && ! defined(JUDYB)
 
 // Default is -DNDEBUG -UDEBUG_ALL -UDEBUG
-// -UDEBUG_INSERT -UDEBUG_REMOVE -UDEBUG_LOOKUP -UDEBUG_MALLOC -UDEBUG_COUNT.
+// -UDEBUG_INSERT -UDEBUG_REMOVE -UDEBUG_LOOKUP -UDEBUG_MALLOC
+// -UDEBUG_COUNT -UDEBUG_NEXT
 #if defined(DEBUG_ALL)
 
     #undef  NDEBUG
@@ -208,12 +209,13 @@
     #define  DEBUG_REMOVE
     #define  DEBUG_MALLOC
     #define  DEBUG_COUNT
+    #define  DEBUG_NEXT
 
 #else // defined(DEBUG_ALL)
 
   #if defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) \
           || defined(DEBUG_REMOVE) || defined(DEBUG_MALLOC) \
-          || defined(DEBUG_COUNT)
+          || defined(DEBUG_COUNT) || defined(DEBUG_NEXT)
 
     #undef  NDEBUG
     #undef   DEBUG
@@ -902,6 +904,16 @@ enum {
 #else // defined(DEBUG_COUNT)
   #define DBGC(x)
 #endif // defined(DEBUG_COUNT)
+
+#if defined(DEBUG_NEXT)
+  #if (cwDebugThreshold != 0)
+    #define DBGN(x)  if (bHitDebugThreshold) (x)
+  #else // (cwDebugThreshold != 0)
+    #define DBGN(x)  (x)
+  #endif // (cwDebugThreshold != 0)
+#else // defined(DEBUG_NEXT)
+  #define DBGN(x)
+#endif // defined(DEBUG_NEXT)
 
 #if defined(DEBUG_MALLOC)
 #if (cwDebugThreshold != 0)
@@ -2212,6 +2224,7 @@ typedef struct {
 Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBL);
 Status_t Remove(Word_t *pwRoot, Word_t wKey, int nBL);
 Word_t Count(Word_t *pwRoot, Word_t wKey, int nBL);
+Word_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
 
 Status_t InsertGuts(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot
                     , int nPos
@@ -2332,10 +2345,14 @@ extern const unsigned anBL_to_nDL[];
       #if defined(RECURSIVE_INSERT)
 #define RECURSIVE
       #endif // defined(RECURSIVE_INSERT)
-  #else // defined(INSERT)
+  #elif defined(COUNT) // defined(INSERT)
 #define strLookupOrInsertOrRemove  "Count"
 #define DBGX  DBGC
 #define InsertRemove  Count
+  #else // defined(INSERT) elif defined(COUNT)
+#define strLookupOrInsertOrRemove  "Next"
+#define DBGX  DBGN
+#define InsertRemove  Next
   #endif // defined(INSERT)
 #endif // defined(LOOKUP) || defined(REMOVE)
 
