@@ -40,7 +40,6 @@
 #endif // ! defined(cn2dBmWpkPercent)
 
 #if defined(USE_BM_SW)
-// Default is -UUSE_BM_SW.
 // USE_BM_SW means always use a bm sw when creating a switch with no skip.
 // Default is -DBM_SW_FOR_REAL iff -DUSE_BM_SW.
 // Default is -UBM_IN_LINK.
