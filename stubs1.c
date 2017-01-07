@@ -14,9 +14,6 @@ Word_t Judy1MemActive(Pcvoid_t PArray) { printf("Judy1MemActive n/a\n"); exit(6)
 int Judy1First(Pcvoid_t PArray, Word_t * PIndex, P_JE)
 { printf("Judy1First n/a\n"); exit(7); }
 
-int Judy1Next(Pcvoid_t PArray, Word_t * PIndex, P_JE)
-{ printf("Judy1Next n/a\n"); exit(8); }
-
 int Judy1Last(Pcvoid_t PArray, Word_t * PIndex, P_JE)
 { printf("Judy1Last n/a\n"); exit(9); }
 

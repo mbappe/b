@@ -354,11 +354,11 @@ Lookup(
        Word_t wKey
        )
 #else // defined(LOOKUP)
-  #if defined(COUNT) || defined(NEXT)
+  #if defined(COUNT)
 Word_t
-  #else // defined(COUNT) || defined(NEXT)
+  #else // defined(COUNT)
 Status_t
-  #endif // defined(COUNT) || defined(NEXT)
+  #endif // defined(COUNT)
 InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #endif // defined(LOOKUP)
 {

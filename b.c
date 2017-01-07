@@ -6034,3 +6034,38 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
 #endif // (cnDigitsPerWord != 1)
 }
 
+// Find the next bigger key in the array than *pwKey.
+// Put the resulting key in *pwKey on return.
+// Return Success if a key is found.
+// Return Failure if there is no key bigger than *pwKey in the array.
+extern int
+Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
+{
+    (void)PJError;
+    Word_t wRoot = (Word_t)PArray;
+    Word_t wCount0 = Count(&wRoot, *pwKey, cnBitsPerWord);
+    if (Judy1Test(PArray, *pwKey, NULL) == Success) {
+        ++wCount0;
+    }
+    if (Count(&wRoot, (Word_t)-1, cnBitsPerWord) <= wCount0) {
+        return Failure;
+    }
+    Word_t wKeyMax = (Word_t)-1;
+    Word_t wKeyMin = *pwKey + 1; 
+again:;
+    Word_t wKeySplit = wKeyMin + (wKeyMax - wKeyMin) / 2;
+    Word_t wCountSplit = Count(&wRoot, wKeySplit, cnBitsPerWord);
+    assert(wCountSplit >= wCount0);
+    if (wCountSplit > wCount0) {
+        assert(wKeySplit != wKeyMax);
+        wKeyMax = wKeySplit;
+    } else {
+        if (wKeySplit == wKeyMin) {
+            *pwKey = wKeyMin;
+            return Success;
+        }
+        wKeyMin = wKeySplit;
+    }
+    goto again;
+}
+

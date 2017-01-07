@@ -737,8 +737,8 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
             FAILURE("JLC at", elm);
         }
 
-	//J1N(Rcode, J1, TstIndex);
-	{ Word_t *PValue; JLN(PValue, JL, TstIndex); Rcode = (PValue != NULL); }
+	J1N(Rcode, J1, TstIndex);
+	//{ Word_t *PValue; JLN(PValue, JL, TstIndex); Rcode = (PValue != NULL); }
     }
     return(0);
 }
@@ -757,8 +757,8 @@ Word_t TestJudyNext(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
     J1index = JLindex = LowIndex;
 
     JLF(PValue, JL, JLindex);
-    //J1N(Rcode, J1, J1index);      // Get next one
-    { Rcode = (PValue != NULL); J1index = JLindex; }
+    J1N(Rcode, J1, J1index);      // Get next one
+    //{ Rcode = (PValue != NULL); J1index = JLindex; }
 
     for (elm = 0; elm < Elements; elm++)
     {
@@ -772,8 +772,8 @@ Word_t TestJudyNext(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
         JPindex = J1index;              // save the last found index
 
 	JLN(PValue, JL, JLindex);	// Get next one
-	//J1N(Rcode, J1, J1index);	// Get next one
-	{ Rcode = (PValue != NULL); J1index = JLindex; }
+	J1N(Rcode, J1, J1index);	// Get next one
+	//{ Rcode = (PValue != NULL); J1index = JLindex; }
     }
 
     if (PValue != NULL)

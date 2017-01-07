@@ -2224,7 +2224,7 @@ typedef struct {
 Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBL);
 Status_t Remove(Word_t *pwRoot, Word_t wKey, int nBL);
 Word_t Count(Word_t *pwRoot, Word_t wKey, int nBL);
-Word_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
+Status_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
 
 Status_t InsertGuts(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot
                     , int nPos
