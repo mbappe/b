@@ -24,9 +24,9 @@
 // precede the specified link in this switch.
 static Word_t
 CountSw(Word_t *pwRoot,
-        int nBLR, // nBL at top of switch
+        int nBLR, // bits left at top of switch
         Switch_t *pwr,
-        int nBL, // nBL at bottom of switch
+        int nBL, // bits left at bottom of switch
         Word_t wIndex, // offset of relevant link in switch
         int nLinks)
 {
@@ -34,21 +34,21 @@ CountSw(Word_t *pwRoot,
     DBGC(printf("\nCountSw nBL %d wIndex "Owx"\n", nBL, wIndex));
     Word_t wPopCnt = 0;
     Word_t ww, wwLimit;
-    if ((wIndex <= (unsigned)nLinks / 2)
-#if defined(PP_IN_LINK)
-  #if ! defined(NO_SKIP_AT_TOP)
-#error PP_IN_LINK requires NO_SKIP_AT_TOP
-  #endif // ! defined(NO_SKIP_AT_TOP)
+#if ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
+    if ((wIndex > (unsigned)nLinks / 2)
+  #if defined(PP_IN_LINK)
             // The following test is insufficient if we allow
             // skip at top because there is no whole link with
             // a population at the top for subtracting from.
-            || (nBLR >= cnBitsPerWord)
-#endif // defined(PP_IN_LINK)
+            && (nBLR < cnBitsPerWord)
+  #endif // defined(PP_IN_LINK)
         )
     {
-        ww = 0; wwLimit = wIndex;
-    } else {
         ww = wIndex; wwLimit = nLinks;
+    } else
+#endif // ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
+    {
+        ww = 0; wwLimit = wIndex;
     }
     for (; ww < wwLimit; ++ww) {
         Word_t *pwRootLoop = &pwr_pLinks((Switch_t *)pwr)[ww].ln_wRoot;
@@ -106,6 +106,7 @@ CountSw(Word_t *pwRoot,
             assert(0);
         }
     }
+#if ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
     if (ww == (unsigned)nLinks) {
         Word_t wPopCntSw = PWR_wPopCntBL(pwRoot, pwr, nBLR);
         if (wPopCntSw == 0) {
@@ -119,6 +120,7 @@ CountSw(Word_t *pwRoot,
         --wPopCnt;
   #endif // defined(INSERT)
     }
+#endif // ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
     DBGC(printf("\nCountSw wPopCnt %"_fw"d\n", wPopCnt));
     return wPopCnt;
 }
@@ -504,7 +506,20 @@ again3:;
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
             if (wPrefixMismatch > 0) {
-                Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
+                Word_t wPopCnt;
+      #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
+                if (nBL >= cnBitsPerWord) {
+                    //int nBitsIndexSz = nBL_to_nBitsIndexSzNAX(nBLR);
+                    int nBitsIndexSz = nBL_to_nBitsIndexSzNAB(nBLR);
+                    // Abuse CountSw into counting whole switch.
+                    wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr,
+                          nBLR - nBitsIndexSz,
+                          EXP(nBitsIndexSz), EXP(nBitsIndexSz));
+                } else
+      #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
+                {
+                    wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
+                }
                 DBGC(printf("SKIP_TO_SW: PM wPopCnt %"_fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
             }
@@ -543,7 +558,19 @@ again3:;
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
             if (wPrefixMismatch > 0) {
-                Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
+                Word_t wPopCnt;
+      #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
+          #error Not ready yet
+                if (nBL >= cnBitsPerWord) {
+                    int nBW = Get_nBW(pwRoot);
+                    // Abuse CountSw into counting whole switch.
+                    wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr,
+                          nBLR - nBW, EXP(nBW), EXP(nBW));
+                } else
+      #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
+                {
+                    wPopCnt = PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
+                }
                 DBGC(printf("SKIP_TO_BM_SW: PM wPopCnt %"_fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
             }
@@ -573,13 +600,28 @@ again3:;
         Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_XX_SW);
         if (wPrefixMismatch != 0) {
   #if defined(COUNT)
-            DBGC(printf("SKIP_TO_BM_SW: COUNT PM %"_fw"d\n",
+            DBGC(printf("SKIP_TO_XX_SW: COUNT PM %"_fw"d\n",
                         wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
             if (wPrefixMismatch > 0) {
-                Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
-                DBGC(printf("SKIP_TO_BM_SW: PM wPopCnt %"_fw"d\n", wPopCnt));
+                Word_t wPopCnt;
+      #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
+          #error Not ready yet
+                if (nBL >= cnBitsPerWord) {
+                    int nBitsIndexSz = nBL_to_nBitsIndexSz(nBLR);
+        int nBitsIndexSz = nBL_to_nBitsIndexSzNAB(nBLR);
+                    //int nLinks = ??? __builtin_popcount
+                    // Abuse CountSw into counting whole switch.
+                    wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr,
+                          nBLR - nBitsIndexSz,
+                          nLinks, nLinks);
+                } else
+      #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
+                {
+                    wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
+                }
+                DBGC(printf("SKIP_TO_XX_SW: PM wPopCnt %"_fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
             }
   #endif // defined(COUNT)
