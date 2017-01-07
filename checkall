@@ -30,19 +30,19 @@ while [ $B -le 64 ]
 do
     # Looks like "Judy1LHCheck -D" fails
     # for -B10 through -B47.
-    if [ "$D_ARG" == '-D' -a $B -lt 48 ]
+    if [ "$D_ARG" != '-D' -o "$d_arg" != '' -o "$S_ARG" != '' -o $B -ge 48 ]
     then
-        continue
-    fi
-    CMD="$CHECK -B$B $S_ARG $D_ARG $d_ARG"
-    echo $CMD
-    if $CMD > /dev/null
-    then
-        let SUCCESSES=$SUCCESSES+1
-    else
-        let FAILURES=$FAILURES+1
+        CMD="$CHECK -B$B $S_ARG $D_ARG $d_ARG"
+        echo $CMD
+        if $CMD > /dev/null
+        then
+            let SUCCESSES=$SUCCESSES+1
+        else
+            let FAILURES=$FAILURES+1
+        fi
     fi
     let B=$B+7
+    #let B=$B+3
 done
 let B=$B-54
 done
