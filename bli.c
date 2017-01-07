@@ -175,52 +175,47 @@ PrefixMismatch(Word_t *pwRoot,
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
                int *pnBLR)
 {
-    (void)pwRoot; (void)pwr; (void)wKey; (void)nBL; (void)pnBLR;
+    (void)pwr; (void)wKey; (void)nBL; (void)pnBLR;
 
+    Word_t wPrefixMismatch;
   #if defined(TYPE_IS_RELATIVE)
     int nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRoot));
   #else // defined(TYPE_IS_RELATIVE)
     int nBLR = wr_nBL(*pwRoot);
   #endif // defined(TYPE_IS_RELATIVE)
     assert(nBLR < nBL); // reserved
+    *pnBLR = nBLR;
 
   #if ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK) \
-            || defined(SAVE_PREFIX_TEST_RESULT)
-
-    Word_t wPrefix;
-      #if defined(SKIP_TO_BITMAP) && ! defined(PP_IN_LINK)
-    if (Get_nType(pwRoot) == T_SKIP_TO_BITMAP) {
-        wPrefix = w_wPrefixBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
-    } else
-      #endif // defined(SKIP_TO_BITMAP) && ! defined(PP_IN_LINK)
-    {
-        wPrefix =
-      #if defined(CODE_BM_SW)
-            bBmSw ? PWR_wPrefixNATBL(pwRoot, (BmSwitch_t *)pwr, nBLR) :
-      #endif // defined(CODE_BM_SW)
-                      PWR_wPrefixNATBL(pwRoot, (  Switch_t *)pwr, nBLR) ;
-    }
-
-    Word_t wPrefixMismatch;
+        || defined(SAVE_PREFIX_TEST_RESULT)
+    Word_t wPrefix =
+        0 ? 0
+      #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
+        : (nBL == cnBitsPerWord) ? 0
+      #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
+      #if defined(SKIP_TO_BITMAP)
           #if defined(PP_IN_LINK)
-    if (nBL == cnBitsPerWord) {
-        // prefix is 0
-        wPrefixMismatch = (wKey >= EXP(nBLR));
-    } else
+#error SKIP_TO_BITMAP and PP_IN_LINK is not coded yet
+          #else // defined(PP_IN_LINK)
+        : (Get_nType(pwRoot) == T_SKIP_TO_BITMAP)
+            ?  w_wPrefixBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR)
           #endif // defined(PP_IN_LINK)
-    {
-      #if defined(COUNT)
-        *pnBLR = nBLR; // ? do this unconditionally at top ?
-        DBGC(printf("PM: wKey "OWx" wPrefix "OWx" nBLR %d\n",
-                    wKey, wPrefix, nBLR));
-        return (wKey - wPrefix) >> nBLR; // positive means key is big
-      #else // defined(COUNT)
-        wPrefixMismatch = (wKey - wPrefix) >> nBLR;
-        //wPrefixMismatch = ((int)LOG(1 | (wPrefix ^ wKey)) >= nBLR);
-      #endif // defined(COUNT)
-    }
-  #endif // ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK) || ...
+      #endif // defined(SKIP_TO_BITMAP)
+      #if defined(CODE_BM_SW)
+        : bBmSw ? PWR_wPrefixNATBL(pwRoot, (BmSwitch_t *)pwr, nBLR)
+      #endif // defined(CODE_BM_SW)
+        :         PWR_wPrefixNATBL(pwRoot, (  Switch_t *)pwr, nBLR);
 
+    wPrefixMismatch = (wKey - wPrefix) >> nBLR; // positive means key is big
+
+    if (wPrefixMismatch != 0) {
+        DBGX(printf("PM: wKey "OWx" wPrefix "Owx" nBL %d nBLR %d pwRoot %p\n",
+                    wKey, wPrefix, nBL, nBLR, (void *)pwRoot));
+    }
+      #if ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK)
+    return wPrefixMismatch;
+      #endif // ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK)
+  #endif // ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK) || ...
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #if defined(SAVE_PREFIX)
     // Save info needed for prefix check at leaf.
@@ -247,22 +242,11 @@ PrefixMismatch(Word_t *pwRoot,
     *pwPrefixMismatch = wPrefixMismatch;
       #endif // defined(SAVE_PREFIX)
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-        // Record that there were prefix bits that were not checked.
+    // Record that there were prefix bits that were not checked.
     *pbNeedPrefixCheck |= 1;
       #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
-  #else // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-    if (wPrefixMismatch)
-    {
-        DBGX(printf("Mismatch wPrefix "Owx" nBL %d nBLR %d pwRoot %p\n",
-                    wPrefix, nBL, nBLR, (void *)pwRoot));
-        // Caller doesn't need/get an updated *pnBLR in this case.
-        return 1; // prefix mismatch
-    }
+    return 0;
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-
-    *pnBLR = nBLR;
-
-    return 0; // no prefix mismatch
 }
 
 #endif // defined(SKIP_LINKS)
@@ -328,6 +312,7 @@ PrefixMismatch(Word_t *pwRoot,
 
 #endif // defined(PP_IN_LINK)
 
+// PREFIX_MISMATCH updates nBLR.
 #define PREFIX_MISMATCH(_nBL, _nType) \
     ( assert(tp_bIsSkip(_nType)), \
       PrefixMismatch(PWROOT_ARG \
@@ -511,8 +496,7 @@ again3:;
         // have bl tests here and call with a constant.  Possibly more
         // interestingly it does compare nBL to cnBitsPerWord for PP_IN_LINK.
 
-        // PREFIX_MISMATCH doesn't update nBLR if there is no match
-        // unless defined(COUNT).
+        // PREFIX_MISMATCH updates nBLR.
         Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_SWITCH);
         if (wPrefixMismatch != 0) {
   #if defined(COUNT)
@@ -550,8 +534,7 @@ again3:;
         // pwr points to a bitmap switch
         DBGX(printf("SKIP_TO_BM_SW\n"));
 
-        // PREFIX_MISMATCH doesn't update nBLR if there is no match
-        // unless defined(COUNT).
+        // PREFIX_MISMATCH updates nBLR.
         Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_BM_SW);
         if (wPrefixMismatch != 0) {
   #if defined(COUNT)
@@ -586,8 +569,7 @@ again3:;
         // have bl tests here and call with a constant.  Possibly more
         // interestingly it does compare nBL to cnBitsPerWord.
 
-        // PREFIX_MISMATCH doesn't update nBLR if there is no match
-        // unless defined(COUNT).
+        // PREFIX_MISMATCH updates nBLR.
         Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_XX_SW);
         if (wPrefixMismatch != 0) {
   #if defined(COUNT)
@@ -1186,7 +1168,7 @@ t_list:;
 #if defined(SKIP_TO_BITMAP)
     case T_SKIP_TO_BITMAP:
         DBGX(printf("T_SKIP_TO_BITMAP\n"));
-        // PREFIX_MISMATCH may update nBLR only if there is a match.
+        // PREFIX_MISMATCH updates nBLR.
         Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_BITMAP);
         if (wPrefixMismatch != 0) {
   #if defined(COUNT)
