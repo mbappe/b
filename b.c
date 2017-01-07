@@ -1382,17 +1382,6 @@ GetPopCnt(Word_t *pwRoot, int nBL)
     // Hence we cannot allow Remove to leave
     // wRoot != 0 unless the actual pop count is not zero.
     if ((wPopCnt == 0) && (*pwRoot != 0)) {
-#if defined(SKIP_TO_BITMAP)
-         if (!((wr_nType(*pwRoot) == T_BITMAP)
-                || (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP)))
-         {
-             printf("GPC: *pwRoot "OWx"\n", *pwRoot);
-         }
-         assert((wr_nType(*pwRoot) == T_BITMAP)
-                || (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP));
-#else // defined(SKIP_TO_BITMAP)
-         assert(wr_nType(*pwRoot) == T_BITMAP);
-#endif // defined(SKIP_TO_BITMAP)
          return EXP(nBLR);
     }
 
@@ -1829,7 +1818,10 @@ embeddedKeys:;
                    bBmSw ? PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBL) :
 #endif // defined(CODE_BM_SW)
                            PWR_wPopCntBL(pwRoot, (  Switch_t *)pwr, nBL)  ;
-            assert(wPopCnt != 0);
+            if (wPopCnt == 0) {
+                // Full-pop or in-transition sub-tree.
+                // wPopCnt = EXP(nBL);
+            }
             printf(" wr_wPopCnt %3"_fw"u", wPopCnt);
             printf(" wr_wPrefix "OWx,
 #if defined(CODE_BM_SW)
