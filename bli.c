@@ -1820,6 +1820,11 @@ cleanup:;
 
 #if defined(LOOKUP)
 
+// 'const void * PArray' is not the same as 'void * const PArray'.
+// But 'typedef const void * Pcvoid_t' is the same as
+//     'typedef void * const Pcvoid_t'.
+// 'Pcvoid_t PArray' is the same as 'const void * PArray'.
+// *pcvRoot cannot be modified.
 int // Status_t
 Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 {
@@ -1922,6 +1927,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
 #if defined(INSERT)
 
+// 'typedef void ** PPvoid_t'
 int // Status_t
 Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 {
