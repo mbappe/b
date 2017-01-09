@@ -6123,29 +6123,17 @@ NextGuts(Word_t *pwRoot, Word_t *pwKey, int nBL)
   #endif // defined(SKIP_LINKS)
     case T_SWITCH:;
         int nBits = nBL_to_nBitsIndexSz(nBL); // bits decoded by switch
-        Word_t wIndex = *pwKey << (cnBitsPerWord - nBL) >> (cnBitsPerWord - nBits);
-        DBGN(printf("T_SWITCH: wIndex 0x%02x nBL %d *pwKey %p\n", (int)wIndex, nBL, (void *)*pwKey));
-        Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
-        if (NextGuts(&pLn->ln_wRoot, pwKey, nBL - nBits) == Success) {
-            return Success;
-        }
-        DBGN(printf("T_SWITCH: NextGuts failed\n"));
+        wPrefix = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
+        Word_t wIndex = (*pwKey >> (nBL - nBits)) & MSK(nBits);
+        DBGN(printf("T_SWITCH: wIndex 0x%02x nBL %d *pwKey %p\n",
+                    (int)wIndex, nBL, (void *)*pwKey));
         for (;;) {
-            if (++wIndex >= EXP(nBits)) {
-                return 0; // Failure
+            Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
+            if (NextGuts(&pLn->ln_wRoot, pwKey, nBL - nBits) == Success) {
+                return Success;
             }
-            // clear the index and suffix
-            *pwKey = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
-            // set the index
-            *pwKey |= wIndex << (nBL - nBits);
-            DBGN(printf("T_SWITCH: wIndex 0x%02x *pwKey %p\n", (int)wIndex, (void *)*pwKey));
-            pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
-            //if (First(*pwKey, &pLn->ln_wRoot, nBL - nBits) == Success)
-            //if (Judy1First((Pcvoid_t)pLn->ln_wRoot, pwKey, NULL) == 1 /* Success */)
-            if (NextGuts(&pLn->ln_wRoot, pwKey, nBL - nBits) == Success)
-            {
-                return 1; // Success
-            }
+            if (++wIndex >= EXP(nBits)) { return Failure; }
+            *pwKey = wPrefix + (wIndex << (nBL - nBits));
         }
     default:
         fprintf(stderr, "J1N: type %x not handled yet.\n", wr_nType(wRoot));
