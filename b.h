@@ -2248,6 +2248,11 @@ Status_t InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot);
 Word_t FreeArrayGuts(Word_t *pwRoot,
                      Word_t wPrefix, int nBL, int bDump);
 
+#if defined(EMBED_KEYS)
+Word_t InflateEmbeddedList(Word_t *pwRoot,
+                           Word_t wKey, int nBL, Word_t wRoot);
+#endif // defined(EMBED_KEYS)
+
 #if defined(DEBUG)
 extern int bHitDebugThreshold;
 #endif // defined(DEBUG)
@@ -3207,6 +3212,7 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     int nPopCnt = PWR_wPopCntBL(pwRoot, NULL, nBL);
       #else // defined(PP_IN_LINK)
     int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 8);
+    Dump(pwRoot, 0, nBL);
       #endif // defined(PP_IN_LINK)
   #endif // defined(PSPLIT_SEARCH8) && ...
     uint8_t *pcKeys = ls_pcKeysNATX(pwr, nPopCnt);
@@ -3742,8 +3748,8 @@ LocateHole(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 // 2-bits of pop for 32-bit costs one 14-bit key slot.
 // If we're not using those key sizes, then there is no cost.
 // What if we have no valid-key fill?  And no pop field?
-static int // bool
-EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
+static Word_t
+EmbeddedListMagic(Word_t wRoot, Word_t wKey, unsigned nBL)
 {
 #if defined(NO_TYPE_IN_XX_SW)
     assert((wRoot != ZERO_POP_MAGIC)
@@ -3808,8 +3814,22 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
     wXor |= MSK(nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL));
 #endif // defined(MASK_EMPTIES)
     Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
-    int bXorHasZero = (((wXor - wLsbs) & ~wXor & wMsbs) != 0); // magic
-    return bXorHasZero;
+    return (wXor - wLsbs) & ~wXor & wMsbs; // wMagic
+}
+
+static int // bool
+EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
+{
+    return EmbeddedListMagic(wRoot, wKey, nBL) != 0;
+}
+
+static int
+SearchListEmbedded(Word_t wRoot, Word_t wKey, unsigned nBL)
+{
+    Word_t wRootNew = InflateEmbeddedList(NULL, wKey, nBL, wRoot);
+    int nPos = SearchList(wr_pwr(wRootNew), wKey, nBL, &wRootNew);
+    OldList(wr_pwr(wRootNew), wr_nPopCnt(wRoot, nBL), nBL, T_LIST);
+    return nPos;
 }
 
 #endif // defined(EMBED_KEYS) ...
@@ -3818,5 +3838,4 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 #endif // (cnDigitsPerWord > 1)
 
 #endif // ( ! defined(_B_H_INCLUDED) )
-
 

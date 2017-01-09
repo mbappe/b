@@ -2220,9 +2220,6 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
 #if defined(EMBED_KEYS)
 
 Word_t
-InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot);
-
-Word_t
 DeflateExternalList(Word_t *pwRoot,
                     int nPopCnt, int nBL, Word_t *pwr);
 
@@ -6093,11 +6090,11 @@ NextGuts(Word_t *pwRoot, Word_t *pwKey, int nBL)
         return Success;
   #if defined(EMBED_KEYS)
     case T_EMBEDDED_KEYS:
-        nPos = SearchEmbeddedKeys(*pwKey);
+        nPos = SearchListEmbedded(wRoot, *pwKey, nBL);
         if (nPos < 0) { nPos ^= -1; }
-        if (nPos == wPopCnt) { return 0; /* Failure */ }
-        *pwKey = (*pwKey & ~MSK(nBL)) | GetBits(wRoot, nBL, cnBitsPerWord - nPos * nBL);
-        return 1; // Success
+        if (nPos == wr_nPopCnt(wRoot, nBL)) { return Failure; }
+        *pwKey = (*pwKey & ~MSK(nBL)) | GetBits(wRoot, nBL, cnBitsPerWord - ++nPos * nBL);
+        return Success;
   #endif // defined(EMBED_KEYS)
     case T_BITMAP:;
         DBGN(printf("FirstGuts: T_BITMAP\n"));
@@ -6151,6 +6148,7 @@ int
 Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
     (void)PJError;
+    DBGN(printf("J1N: *pwKey "OWx"\n", *pwKey));
     if ((pwKey != NULL) && (++*pwKey == 0)) { return 0; /* NOT_FOUND */ }
     return Judy1First(PArray, pwKey, PJError);
 }
@@ -6164,9 +6162,12 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 int
 Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
+    DBGN(printf("J1F: *pwKey "OWx"\n", *pwKey));
     if (pwKey == NULL) {
         PJError->je_Errno = JU_ERRNO_NULLPINDEX;
         return -1; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
-    return NextGuts((Word_t *)&PArray, pwKey, cnBitsPerWord) == Success;
+    Status_t status = NextGuts((Word_t *)&PArray, pwKey, cnBitsPerWord);
+    DBGN(printf("J1F: status %d *pwKey "OWx"\n", status, *pwKey));
+    return status == Success;
 }
