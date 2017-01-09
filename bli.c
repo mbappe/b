@@ -19,7 +19,7 @@
 // and Judy1Unset.  There is no need for Lookup, Insert and Remove.
 #else // (cnDigitsPerWord <= 1)
 
-#if defined(COUNT)
+  #if defined(COUNT)
 // Count the number of keys in the subtrees rooted by links that
 // precede the specified link in this switch.
 static Word_t
@@ -34,19 +34,19 @@ CountSw(Word_t *pwRoot,
     DBGC(printf("\nCountSw nBL %d wIndex "Owx"\n", nBL, wIndex));
     Word_t wPopCnt = 0;
     Word_t ww, wwLimit;
-#if ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
+      #if ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
     if ((wIndex > (unsigned)nLinks / 2)
-  #if defined(PP_IN_LINK)
+          #if defined(PP_IN_LINK)
             // The following test is insufficient if we allow
             // skip at top because there is no whole link with
             // a population at the top for subtracting from.
             && (nBLR < cnBitsPerWord)
-  #endif // defined(PP_IN_LINK)
+          #endif // defined(PP_IN_LINK)
         )
     {
         ww = wIndex; wwLimit = nLinks;
     } else
-#endif // ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
+      #endif // ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
     {
         ww = 0; wwLimit = wIndex;
     }
@@ -64,6 +64,7 @@ CountSw(Word_t *pwRoot,
                         ww, (void *)pwrLoop, wPopCntLoop));
             wPopCnt += wPopCntLoop;
         } else switch (nTypeLoop) {
+      #if defined(EMBED_KEYS)
         case T_EMBEDDED_KEYS:
             wPopCntLoop = wr_nPopCnt(*pwRootLoop, nBL);
             assert(wPopCntLoop != 0);
@@ -71,6 +72,7 @@ CountSw(Word_t *pwRoot,
                         "d\n", ww, *pwRootLoop, wPopCntLoop));
             wPopCnt += wPopCntLoop;
             break;
+      #endif // defined(EMBED_KEYS)
         case T_LIST:
       #if ! defined(SEPARATE_T_NULL)
             if (pwrLoop != NULL)
@@ -106,25 +108,25 @@ CountSw(Word_t *pwRoot,
             assert(0);
         }
     }
-#if ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
+      #if ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
     if (ww == (unsigned)nLinks) {
         Word_t wPopCntSw = PWR_wPopCntBL(pwRoot, pwr, nBLR);
         if (wPopCntSw == 0) {
             wPopCntSw = EXP(nBLR);
         }
         wPopCnt = wPopCntSw - wPopCnt;
-  #if defined(INSERT)
+          #if defined(INSERT)
         // We're piggybacking on Insert for the time being and
         // PWR_wPopCntBL has already been incremented so we
         // subtract it out here.
         --wPopCnt;
-  #endif // defined(INSERT)
+          #endif // defined(INSERT)
     }
-#endif // ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
+      #endif // ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
     DBGC(printf("\nCountSw wPopCnt %"_fw"d\n", wPopCnt));
     return wPopCnt;
 }
-#endif // defined(COUNT)
+  #endif // defined(COUNT)
 
 #if defined(SKIP_LINKS)
 
@@ -416,9 +418,9 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #endif // !defined(RECURSIVE)
     int nBLR;
     Word_t wPopCnt; (void)wPopCnt;
-#if ! defined(LOOKUP)
+#if defined(INSERT) || defined(REMOVE)
     int bCleanup = 0;
-#endif // ! defined(LOOKUP)
+#endif // defined(INSERT) || defined(REMOVE)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrPrev = pwrPrev; // suppress "uninitialized" compiler warning
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -1025,17 +1027,14 @@ t_bm_sw:;
         goto t_list;
 t_list:;
         DBGX(printf("T_LIST nBL %d\n", nBL));
-  #if defined(INSERT) || defined(REMOVE)
-        DBGX(printf("T_LIST bCleanup %d nIncr %d\n", bCleanup, nIncr));
-  #endif // defined(INSERT) || defined(REMOVE)
         DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMaskBL(nBL)));
 
-  #if ! defined(LOOKUP)
+  #if defined(INSERT) || defined(REMOVE)
+        DBGX(printf("T_LIST bCleanup %d nIncr %d\n", bCleanup, nIncr));
         if (bCleanup) {
-//assert(0); // Just checking; uh oh; do we need better testing?
             return Success;
         } // cleanup is complete
-  #endif // ! defined(LOOKUP)
+  #endif // defined(INSERT) || defined(REMOVE)
 
       #if defined(PP_IN_LINK)
           #if defined(INSERT)
@@ -1132,6 +1131,11 @@ t_list:;
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
+          #if defined(INSERT)
+              #if ! defined(RECURSIVE)
+                if (nIncr > 0) { goto undo; } // undo counting
+              #endif // ! defined(RECURSIVE)
+          #endif // defined(INSERT)
           #if defined(REMOVE)
               #if defined(PP_IN_LINK)
                 // Adjust wPopCnt in link to leaf for PP_IN_LINK.
@@ -1146,23 +1150,18 @@ t_list:;
               #endif // defined(PP_IN_LINK)
                 goto removeGutsAndCleanup;
           #endif // defined(REMOVE)
-          #if defined(INSERT)
-              #if ! defined(RECURSIVE)
-                if (nIncr > 0) { goto undo; } // undo counting
-              #endif // ! defined(RECURSIVE)
-          #endif // defined(INSERT)
-          #if ! defined(COUNT)
+          #if defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
                 return KeyFound;
-          #endif // ! defined(COUNT)
+          #endif // defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
             }
           #if defined(COUNT)
             else
           #endif // defined(COUNT)
-          #if ! defined(LOOKUP)
+          #if defined(INSERT) || defined(REMOVE) || defined(COUNT)
             {
                 nPos ^= -1;
             }
-          #endif // ! defined(LOOKUP)
+          #endif // defined(INSERT) || defined(REMOVE) || defined(COUNT)
         }
       #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) \
           && defined(COMPRESSED_LISTS)
