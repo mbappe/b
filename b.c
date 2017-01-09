@@ -5923,30 +5923,51 @@ Judy1FreeArray(PPvoid_t PPArray, P_JE)
 }
 
 // Return the number of keys that are present from wKey0 through wKey1.
-// Include wKey0 and wKey1 if they are present.
+// Include wKey0 and wKey1 in the count if they are present.
+// Return zero for full pop and identify this case by:
+// (wKey0 == 0) && (wKey1 == -1) && (PArray != NULL).
+//
+// 'typedef const void * Pcvoid_t' aka 'typedef void * const Pcvoid_t'
+// Pcvoid_t is a pointer to a constant.
+// The value of *PArray cannot be changed.
 Word_t
-Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, P_JE)
+Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
 {
     DBGR(printf("Judy1Count\n"));
 
 #if (cnDigitsPerWord != 1)
 
-    // Return C_JERR if the array is empty or wKey0 > wKey1.
+    // There is really no need for us to disambiguate since the caller
+    // can do it just fine without our help.
+    // The interesting case is when we return zero for full pop.
+    // But the caller can identify this case by:
+    // (wKey0 == 0) && (wKey1 == -1) && (PArray != NULL).
+    // This is no more onerous than the Judy way of checking
+    // pJError->je_Errno.
+    // If we supported exceptions there might be an argument for us
+    // making the distinction.
+
+    // Return 0 if the array is empty or wKey0 > wKey1.
+    // JudyCommon/JudyCount.c defines C_JERR for this case.
+    // The 'C_' is an abbreviation for count.
     if ((PArray == (Pvoid_t)NULL) || (wKey0 > wKey1))
     {
-        if (PJError != NULL)
+        if (pJError != NULL)
         {
-            JU_ERRNO(PJError) = JU_ERRNO_NONE; // zero pop
-            JU_ERRID(PJError) = __LINE__;
+            pJError->je_Errno = JU_ERRNO_NONE; // zero pop
+            pJError->je_ErrID = __LINE__;
         }
 
         return 0; // C_JERR
     }
 
-    if (PJError != NULL)
+    // Set je_Errno just in case the array is full and we return 0?
+    // So we always set je_Errno to something? Unlike Unix which
+    // sets errno only in the case of an error?
+    if (pJError != NULL)
     {
-        JU_ERRNO(PJError) = JU_ERRNO_FULL; // full pop
-        JU_ERRID(PJError) = __LINE__;
+        pJError->je_Errno = JU_ERRNO_FULL; // full pop
+        pJError->je_ErrID = __LINE__;
     }
 
     Word_t wRoot = (Word_t)PArray;
@@ -6072,10 +6093,10 @@ NextGuts(Word_t *pwRoot, Word_t *pwKey, int nBL)
         return Success;
   #if defined(EMBED_KEYS)
     case T_EMBEDDED_KEYS:
-        nPos = SearchEmbeddedKeys(pwKey+1);
+        nPos = SearchEmbeddedKeys(*pwKey);
         if (nPos < 0) { nPos ^= -1; }
         if (nPos == wPopCnt) { return 0; /* Failure */ }
-        *pwKey = ((*pwKey+1) & ~MSK(nBL)) | GetBits(wRoot, nBL, cnBitsPerWord - nPos * nBL);
+        *pwKey = (*pwKey & ~MSK(nBL)) | GetBits(wRoot, nBL, cnBitsPerWord - nPos * nBL);
         return 1; // Success
   #endif // defined(EMBED_KEYS)
     case T_BITMAP:;
@@ -6098,10 +6119,7 @@ NextGuts(Word_t *pwRoot, Word_t *pwKey, int nBL)
     case T_SKIP_TO_SWITCH:
         nBL = wr_nBL(wRoot);
         Word_t wPrefix = PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL);
-        if (wPrefix != (*pwKey & ~MSK(nBL))) {
-            printf("nBL %d wPrefix "OWx" *pwKey "OWx"\n", nBL, wPrefix, *pwKey);
-            assert(0);
-        }
+        *pwKey = wPrefix | (*pwKey & MSK(nBL));
   #endif // defined(SKIP_LINKS)
     case T_SWITCH:;
         int nBits = nBL_to_nBitsIndexSz(nBL); // bits decoded by switch
@@ -6139,13 +6157,14 @@ NextGuts(Word_t *pwRoot, Word_t *pwKey, int nBL)
 // Put the resulting key in *pwKey on return.
 // Return 1 if a key is found.
 // Return 0 if there is no key bigger than *pwKey in the array.
-// *pwKey is undefined if 0 is returned.
+// Return -1 if pwKey is NULL.
+// *pwKey is undefined if anything other than 1 is returned.
 int
 Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
     (void)PJError;
-    if (++(*pwKey) == (Word_t)0) { return 0; /* Failure */ }
-    return NextGuts((Word_t *)&PArray, pwKey, cnBitsPerWord) == Success;
+    if ((pwKey != NULL) && (++*pwKey == 0)) { return 0; /* NOT_FOUND */ }
+    return Judy1First(PArray, pwKey, PJError);
 }
 
 // If *pwKey is in the array then return 1 and leave *pwKey unchanged.
@@ -6157,6 +6176,9 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 int
 Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
-    (void)PJError;
+    if (pwKey == NULL) {
+        PJError->je_Errno = JU_ERRNO_NULLPINDEX;
+        return -1; // JERRI (for Judy1) or PPJERR (for JudyL)
+    }
     return NextGuts((Word_t *)&PArray, pwKey, cnBitsPerWord) == Success;
 }
