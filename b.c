@@ -6059,7 +6059,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
 // Return 0 if no key is found.
 // *pwKey is undefined if 0 is returned.
 static Status_t
-NextGuts(Word_t *pwRoot, Word_t *pwKey, int nBL)
+NextGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bLast)
 {
     DBGN(printf("NextGuts(pwRoot %p *pwKey %p nBL %d wRoot %p\n",
                 (void *)pwRoot, (void *)*pwKey, nBL, (void *)*pwRoot));
@@ -6069,8 +6069,16 @@ NextGuts(Word_t *pwRoot, Word_t *pwKey, int nBL)
     case T_LIST:
         if (pwr == NULL) { return Failure; }
         int nPos = SearchList(pwr, *pwKey, nBL, pwRoot);
-        if (nPos < 0) { nPos ^= -1; }
-        if (nPos == PWR_xListPopCnt(pwRoot, pwr, nBL)) { return Failure; }
+        if (nPos < 0) {
+            nPos ^= -1;
+            if (bLast) {
+                if (nPos-- == 0) { return Failure; }
+            } else {
+                if (nPos == PWR_xListPopCnt(pwRoot, pwr, nBL)) {
+                    return Failure;
+                }
+            }
+        }
         // clear the suffix
         *pwKey = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
   #if defined(COMPRESSED_LISTS)
@@ -6091,26 +6099,51 @@ NextGuts(Word_t *pwRoot, Word_t *pwKey, int nBL)
   #if defined(EMBED_KEYS)
     case T_EMBEDDED_KEYS:
         nPos = SearchListEmbedded(wRoot, *pwKey, nBL);
-        if (nPos < 0) { nPos ^= -1; }
-        if (nPos == wr_nPopCnt(wRoot, nBL)) { return Failure; }
+        if (nPos < 0) {
+            nPos ^= -1;
+            if (bLast) {
+                if (nPos-- == 0) { return Failure; }
+            } else {
+                if (nPos == wr_nPopCnt(wRoot, nBL)) { return Failure; }
+            }
+        }
         *pwKey = (*pwKey & ~MSK(nBL)) | GetBits(wRoot, nBL, cnBitsPerWord - ++nPos * nBL);
         return Success;
   #endif // defined(EMBED_KEYS)
     case T_BITMAP:;
-        DBGN(printf("FirstGuts: T_BITMAP\n"));
-        int nWord = (*pwKey & MSK(nBL)) >> cnLogBitsPerWord;
+        int nWordNum = (*pwKey & MSK(nBL)) >> cnLogBitsPerWord;
         int nBitNum = *pwKey & MSK(cnLogBitsPerWord);
-        Word_t wBm = pwr[nWord] & ~MSK(nBitNum);
-        for (;;) {
-            if (wBm != 0) {
-                nBitNum = __builtin_ctzll(wBm);
-                *pwKey = (*pwKey & ~MSK(nBL)) | (nWord << cnLogBitsPerWord) | nBitNum;
-                return Success;
+        if (bLast) {
+            Word_t wBm = pwr[nWordNum];
+            if (nBitNum < cnBitsPerWord - 1) {
+                wBm &= MSK(nBitNum + 1);
             }
-            if (++nWord >= (int)EXP(nBL - cnLogBitsPerWord)) {
-                return Failure;
+            for (;;) {
+                if (wBm != 0) {
+                    nBitNum = 63 - __builtin_clzll(wBm);
+                    *pwKey = (*pwKey & ~MSK(nBL))
+                           | (nWordNum << cnLogBitsPerWord) | nBitNum;
+                    return Success;
+                }
+                if (nWordNum-- <= 0) {
+                    return Failure;
+                }
+                wBm = pwr[nWordNum];
             }
-            wBm = pwr[nWord];
+        } else {
+            Word_t wBm = pwr[nWordNum] & ~MSK(nBitNum);
+            for (;;) {
+                if (wBm != 0) {
+                    nBitNum = __builtin_ctzll(wBm);
+                    *pwKey = (*pwKey & ~MSK(nBL))
+                           | (nWordNum << cnLogBitsPerWord) | nBitNum;
+                    return Success;
+                }
+                if (++nWordNum >= (int)EXP(nBL - cnLogBitsPerWord)) {
+                    return Failure;
+                }
+                wBm = pwr[nWordNum];
+            }
         }
   #if defined(SKIP_LINKS)
     case T_SKIP_TO_SWITCH:
@@ -6122,20 +6155,45 @@ NextGuts(Word_t *pwRoot, Word_t *pwKey, int nBL)
         int nBits = nBL_to_nBitsIndexSz(nBL); // bits decoded by switch
         wPrefix = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
         Word_t wIndex = (*pwKey >> (nBL - nBits)) & MSK(nBits);
-        DBGN(printf("T_SWITCH: wIndex 0x%02x nBL %d *pwKey %p\n",
-                    (int)wIndex, nBL, (void *)*pwKey));
         for (;;) {
             Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
-            if (NextGuts(&pLn->ln_wRoot, pwKey, nBL - nBits) == Success) {
+            if (NextGuts(&pLn->ln_wRoot, pwKey, nBL - nBits, bLast)
+                    == Success) {
                 return Success;
             }
-            if (++wIndex >= EXP(nBits)) { return Failure; }
-            *pwKey = wPrefix + (wIndex << (nBL - nBits));
+            if (bLast) {
+                if (wIndex-- <= 0) { return Failure; }
+                *pwKey = MSK(nBL - nBits);
+            } else {
+                if (++wIndex >= EXP(nBits)) { return Failure; }
+                *pwKey = 0;
+            }
+            *pwKey |= wPrefix + (wIndex << (nBL - nBits));
         }
     default:
-        fprintf(stderr, "J1N: type %x not handled yet.\n", wr_nType(wRoot));
+        assert(0); // not handled yet
         exit(1);
     }
+}
+
+// If *pwKey is in the array then return 1 and leave *pwKey unchanged.
+// Otherwise find the next bigger key in the array than *pwKey.
+// Put the resulting key in *pwKey on return.
+// Return 1 if a key is found.
+// Return 0 if no key is found.
+// *pwKey is undefined if anything other than 1 is returned.
+int
+Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
+{
+    DBGN(printf("J1F: *pwKey "OWx"\n", *pwKey));
+    if (pwKey == NULL) {
+        PJError->je_Errno = JU_ERRNO_NULLPINDEX;
+        return -1; // JERRI (for Judy1) or PPJERR (for JudyL)
+    }
+    Status_t status = NextGuts((Word_t *)&PArray,
+                               pwKey, cnBitsPerWord, /* bLast */ 0);
+    DBGN(printf("J1F: status %d *pwKey "OWx"\n", status, *pwKey));
+    return status == Success;
 }
 
 // Find the next bigger key in the array than *pwKey.
@@ -6154,20 +6212,37 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 }
 
 // If *pwKey is in the array then return 1 and leave *pwKey unchanged.
-// Otherwise find the next bigger key in the array than *pwKey.
+// Otherwise find the next smaller key in the array than *pwKey.
 // Put the resulting key in *pwKey on return.
 // Return 1 if a key is found.
 // Return 0 if no key is found.
-// *pwKey is undefined if 0 is returned.
+// *pwKey is undefined if anything other than 1 is returned.
 int
-Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
+Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
-    DBGN(printf("J1F: *pwKey "OWx"\n", *pwKey));
+    DBGN(printf("J1L: *pwKey "OWx"\n", *pwKey));
     if (pwKey == NULL) {
         PJError->je_Errno = JU_ERRNO_NULLPINDEX;
         return -1; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
-    Status_t status = NextGuts((Word_t *)&PArray, pwKey, cnBitsPerWord);
-    DBGN(printf("J1F: status %d *pwKey "OWx"\n", status, *pwKey));
+    Status_t status = NextGuts((Word_t *)&PArray,
+                               pwKey, cnBitsPerWord, /* bLast */ 1);
+    DBGN(printf("J1L: status %d *pwKey "OWx"\n", status, *pwKey));
     return status == Success;
 }
+
+// Find the next smaller key in the array than *pwKey.
+// Put the resulting key in *pwKey on return.
+// Return 1 if a key is found.
+// Return 0 if there is no key bigger than *pwKey in the array.
+// Return -1 if pwKey is NULL.
+// *pwKey is undefined if anything other than 1 is returned.
+int
+Judy1Prev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
+{
+    (void)PJError;
+    DBGN(printf("J1P: *pwKey "OWx"\n", *pwKey));
+    if ((pwKey != NULL) && ((*pwKey)-- == 0)) { return 0; /* NOT_FOUND */ }
+    return Judy1Last(PArray, pwKey, PJError);
+}
+

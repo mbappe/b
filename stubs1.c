@@ -11,12 +11,6 @@ Word_t Judy1MemUsed(Pcvoid_t PArray) { printf("Judy1MemUsed n/a\n"); exit(5); }
 
 Word_t Judy1MemActive(Pcvoid_t PArray) { printf("Judy1MemActive n/a\n"); exit(6); }
 
-int Judy1Last(Pcvoid_t PArray, Word_t * PIndex, P_JE)
-{ printf("Judy1Last n/a\n"); exit(9); }
-
-int Judy1Prev(Pcvoid_t PArray, Word_t * PIndex, P_JE)
-{ printf("Judy1Prev n/a\n"); exit(10); }
-
 int Judy1FirstEmpty(Pcvoid_t PArray, Word_t * PIndex, P_JE)
 { printf("Judy1FirstEmpty n/a\n"); exit(11); }
 
