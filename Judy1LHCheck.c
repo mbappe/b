@@ -7,6 +7,7 @@
 #include <unistd.h>		// getopt()
 #include <math.h>               // pow()
 #include <stdio.h>		// printf()
+#include <assert.h>             // assert()
 
 #include <Judy.h>
 
@@ -698,6 +699,7 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
     int Rcode;
 
     TstIndex = LowIndex;
+    Word_t JLTstIndex = TstIndex; // use to validate J1N
     for (elm = 0; elm < Elements; elm++)
     {
 	J1C(Count1, J1, LowIndex, TstIndex);
@@ -738,7 +740,20 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
         }
 
 	J1N(Rcode, J1, TstIndex);
-	//{ Word_t *PValue; JLN(PValue, JL, TstIndex); Rcode = (PValue != NULL); }
+	// Validate J1N with JLN.
+	{
+	    Word_t *PValue;
+	    JLN(PValue, JL, JLTstIndex);
+	    int JLRcode = (PValue != NULL);
+	    if ((Rcode != JLRcode)
+		    || ((Rcode == 1) && (TstIndex != JLTstIndex))) {
+		printf("Rcode %d PValue %p TstIndex %p JLTstIndex %p\n",
+		       Rcode, PValue, (void *)TstIndex, (void *)JLTstIndex);
+		FAILURE("J1N issue at", elm);
+	    }
+	    assert(Rcode == JLRcode);
+	    assert((Rcode != 1) || (TstIndex == JLTstIndex));
+	}
     }
     return(0);
 }
@@ -757,7 +772,7 @@ Word_t TestJudyNext(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
     J1index = JLindex = LowIndex;
 
     JLF(PValue, JL, JLindex);
-    J1N(Rcode, J1, J1index);      // Get next one
+    J1F(Rcode, J1, J1index);
     //{ Rcode = (PValue != NULL); J1index = JLindex; }
 
     for (elm = 0; elm < Elements; elm++)
@@ -801,26 +816,30 @@ TestJudyPrev(void *J1, void *JL, Word_t HighIndex, Word_t Elements)
     J1index = JLindex = HighIndex;
 
     JLL(PValue, JL, JLindex);
-    //J1L(Rcode, J1, J1index);
-    { Rcode = (PValue != NULL); J1index = JLindex; }
+    J1L(Rcode, J1, J1index);
+    //{ Rcode = (PValue != NULL); J1index = JLindex; }
 
     for (elm = 0; elm < Elements; elm++)
     {
 	if (PValue == NULL)
 	    FAILURE("JudyLPrev ret NULL PValue at", elm);
-	if (Rcode != 1)
+	if (Rcode != 1) {
+	    printf("JLP JLindex %p J1P J1index %p\n", JLindex, J1index);
 	    FAILURE("Judy1Prev Rcode != 1 =", Rcode);
+	}
 	if (JLindex != J1index)
 	    FAILURE("JudyLPrev & Judy1Prev ret different PIndex at", elm);
 
 	JLP(PValue, JL, JLindex);	// Get previous one
-	//J1P(Rcode, J1, J1index);	// Get previous one
-	{ Rcode = (PValue != NULL); J1index = JLindex; }
+	J1P(Rcode, J1, J1index);	// Get previous one
+	//{ Rcode = (PValue != NULL); J1index = JLindex; }
     }
     if (PValue != NULL)
         FAILURE("JudyLPrev PValue != NULL", PValue);
-    if (Rcode != 0)
-        FAILURE("Judy1Prev Rcode != 1 =", Rcode);
+    if (Rcode != 0) {
+        printf("JLP JLindex %p J1P J1index %p\n", JLindex, J1index);
+        FAILURE("Judy1Prev Rcode != 0 =", Rcode);
+    }
 //  perhaps a check should be done here -- if I knew what to expect.
     return(0);
 }
