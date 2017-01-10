@@ -6246,3 +6246,17 @@ Judy1Prev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     return Judy1Last(PArray, pwKey, PJError);
 }
 
+Word_t
+Judy1MemUsed(Pcvoid_t PArray) {
+    (void)PArray;
+    return 0;
+}
+
+Word_t
+Judy1MemActive(Pcvoid_t PArray) {
+    (void)PArray;
+    return 0;
+}
+
+const char *Judy1MallocSizes = "not applicable";
+
