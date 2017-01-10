@@ -437,8 +437,7 @@ main(int argc, char *argv[])
 
 //	    Print the number of bytes used per Index
 	    J1C(Count1, J1, 0, ~0);
-	    //printf(" %6.3f", (double)Judy1MemUsed(J1) / (double)Count1);
-	    printf(" %6.3f", Count1 / 1000.00);
+	    printf(" %6.3f", (double)Judy1MemUsed(J1) / (double)Count1);
 	    JLC(CountL, JL, 0, ~0);
 	    printf(" %6.3f", (double)JudyLMemUsed(JL) / (double)CountL);
 	}
