@@ -359,7 +359,7 @@ main(int argc, char *argv[])
 	}
     }				// Groups = number of sizes
 
-    Judy1FreeArray(NULL, PJERR); // Initialize Judy1 library
+    Judy1FreeArray(NULL, NULL); // Initialize Judy1 library
 
 //////////////////////////////////////////////////////////////
 // BEGIN TESTS AT EACH GROUP SIZE
