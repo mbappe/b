@@ -870,8 +870,8 @@ TestJudyNextEmpty(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
 	JLNE(RcodeL, JL, JLindex);	// Rcode = JudyLNextEmpty(JL, &JLindex, PJE0)
 
 //      Find next Empty Index, J1index is modified by J1NE
-	//J1NE(Rcode1, J1, J1index);	// Rcode = Judy1NextEmpty(J1, &J1index, PJE0)
-	{ Rcode1 = RcodeL; J1index = JLindex; }
+	J1NE(Rcode1, J1, J1index);	// Rcode = Judy1NextEmpty(J1, &J1index, PJE0)
+	//{ Rcode1 = RcodeL; J1index = JLindex; }
 	if ((Rcode1 != 1) || (RcodeL != 1))
         {
             printf("RcodeL = %d, Rcode1 = %d, Index1 = 0x%lx, IndexL = 0x%lx\n",
@@ -879,8 +879,10 @@ TestJudyNextEmpty(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
 	    FAILURE("Judy1NextEmpty Rcode != 1 =", Rcode1);
         }
 
-	if (J1index != JLindex)
+	if (J1index != JLindex) {
+            printf("J1index %p JLindex %p\n", J1index, JLindex);
 	    FAILURE("JLNE != J1NE returned index at", elm);
+        }
 #ifdef SKIPMACRO
 	Rcode1 = Judy1Test(J1, J1index);
 #else
@@ -931,11 +933,11 @@ TestJudyPrevEmpty(void *J1, void *JL, Word_t HighIndex, Word_t Elements)
 
 	if (pFlag) { printf("JPE: %8lu\t0x%lx\n", elm, JPIndex); }
 
-	//J1PE(Rcode1, J1, J1index);	// Rcode = Judy1PrevEmpty(J1, &J1index, PJE0)
+	J1PE(Rcode1, J1, J1index);	// Rcode = Judy1PrevEmpty(J1, &J1index, PJE0)
 
 //      Find next Empty Index, JLindex is modified by JLPE
 	JLPE(RcodeL, JL, JLindex);	// RcodeL = JudyLPrevEmpty(JL, &JLindex, PJE0)
-	{ Rcode1 = RcodeL; J1index = JLindex; }
+	//{ Rcode1 = RcodeL; J1index = JLindex; }
 	if ((RcodeL != 1) || (Rcode1 != 1))
         {
             printf("RcodeL = %d, Rcode1 = %d, Index1 = 0x%lx, IndexL = 0x%lx\n",
