@@ -279,9 +279,6 @@
 #define WORD_ONE  1UL
 #endif // defined(_WIN64)
 
-#define EXP(_x)  (WORD_ONE << (_x))
-#define MSK(_x)  (EXP(_x) - 1)
-
 // Count leading zeros.
 // __builtin_clzll is undefined for zero which allows the compiler to use bsr.
 // Actual x86 clz instruction is defined for zero.
@@ -319,6 +316,9 @@
 #define cnBitsVirtAddr  32
 #define cwVirtAddrMask  ((Word_t)-1)
 #endif // (cnBitsPerWord == 64)
+
+#define EXP(_x)  (assert((_x) <= cnBitsPerWord), WORD_ONE << (_x))
+#define MSK(_x)  (EXP(_x) - 1)
 
 // Bits are numbered 0-63 with 0 being the least significant.
 static inline Word_t
@@ -2147,7 +2147,7 @@ typedef struct {
     };
 } ListLeaf_t;
 
-#define N_WORDS_SWITCH_BM  DIV_UP(EXP(cnBitsPerDigit), cnBitsPerWord)
+#define N_WORDS_SWITCH_BM  DIV_UP((WORD_ONE << cnBitsPerDigit), cnBitsPerWord)
 
 // Default is -UPOP_WORD_IN_LINK.
 // It doesn't matter unless POP_WORD is defined.
