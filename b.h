@@ -3212,7 +3212,6 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     int nPopCnt = PWR_wPopCntBL(pwRoot, NULL, nBL);
       #else // defined(PP_IN_LINK)
     int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 8);
-    Dump(pwRoot, 0, nBL);
       #endif // defined(PP_IN_LINK)
   #endif // defined(PSPLIT_SEARCH8) && ...
     uint8_t *pcKeys = ls_pcKeysNATX(pwr, nPopCnt);
