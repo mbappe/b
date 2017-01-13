@@ -882,14 +882,18 @@ TestJudyNextEmpty(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
         Rcode1 = Judy1Next(J1, &J1index, PJE0);
         PValue = JudyLNext(JL, &JLindex, PJE0);
 
-        if (Rcode1 != (PValue != 0))
-            FAILURE("Judy1Next != JudyLNext return code at", elm);
-         
-        if (Rcode1 != 0)
+        if ((Rcode1 != 1) && (PValue == NULL))
             break;
 
-        if (J1index != JLindex)
+        if ((Rcode1 != 1) || (PValue == NULL)) {
+            printf("Rcode1 = %d, PValue = %p\n", Rcode1, PValue);
+            FAILURE("Judy1Next != JudyLNext return code at", elm);
+        }
+
+        if (J1index != JLindex) {
+            printf("Index1 = 0x%lx, IndexL = 0x%lx\n", J1index, JLindex);
             FAILURE("Judy1Next != JudyLNext returned index at", elm);
+        }
     }
     return(0);
 }
@@ -960,14 +964,18 @@ TestJudyPrevEmpty(void *J1, void *JL, Word_t HighIndex, Word_t Elements)
         Rcode1 = Judy1Prev(J1, &J1index, PJE0);
         PValue = JudyLPrev(JL, &JLindex, PJE0);
 
-        if (Rcode1 != (PValue != 0))
-            FAILURE("Judy1Prev != JudyLPrev return code at", elm);
- 
-        if (Rcode1 != 0)
+        if ((Rcode1 != 1) && (PValue == NULL))
             break;
 
-        if (J1index != JLindex)
+        if ((Rcode1 != 1) || (PValue == NULL)) {
+            printf("Rcode1 = %d, PValue = %p\n", Rcode1, PValue);
+            FAILURE("Judy1Prev != JudyLPrev return code at", elm);
+        }
+
+        if (J1index != JLindex) {
+            printf("Index1 = 0x%lx, IndexL = 0x%lx\n", J1index, JLindex);
             FAILURE("Judy1Prev != JudyLPrev returned index at", elm);
+        }
     }
     return(0);
 }
