@@ -28,18 +28,13 @@ for S_ARG in '' -S1
 do
 while [ $B -le 64 ]
 do
-    # Looks like "Judy1LHCheck -D" fails
-    # for -B10 through -B47.
-    if [ "$D_ARG" != '-D' -o "$d_arg" != '' -o "$S_ARG" != '' -o $B -ge 48 ]
+    CMD="$CHECK -n1000000 -B$B $S_ARG $D_ARG $d_ARG"
+    echo $CMD
+    if $CMD > /dev/null
     then
-        CMD="$CHECK -B$B $S_ARG $D_ARG $d_ARG"
-        echo $CMD
-        if $CMD > /dev/null
-        then
-            let SUCCESSES=$SUCCESSES+1
-        else
-            let FAILURES=$FAILURES+1
-        fi
+        let SUCCESSES=$SUCCESSES+1
+    else
+        let FAILURES=$FAILURES+1
     fi
     let B=$B+7
     #let B=$B+3
