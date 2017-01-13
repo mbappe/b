@@ -28,7 +28,7 @@ for S_ARG in '' -S1
 do
 while [ $B -le 64 ]
 do
-    CMD="$CHECK -n1000000 -B$B $S_ARG $D_ARG $d_ARG"
+    CMD="$CHECK -B$B $S_ARG $D_ARG $d_ARG"
     echo $CMD
     if $CMD > /dev/null
     then
