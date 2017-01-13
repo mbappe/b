@@ -363,6 +363,8 @@ main(int argc, char *argv[])
         }
     }                           // Groups = number of sizes
 
+    Judy1FreeArray(NULL, NULL);
+
 //////////////////////////////////////////////////////////////
 // BEGIN TESTS AT EACH GROUP SIZE
 //////////////////////////////////////////////////////////////
