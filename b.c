@@ -1539,6 +1539,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
             return 0;
         }
 
+        assert(nBL != cnBitsPerWord); // wPopCntTotal, zeroLink
         return OldBitmap(pwRoot, pwr, nBL);
     }
 #endif // defined(SKIP_TO_BITMAP)
@@ -1576,6 +1577,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
         {
             if ( ! bDump )
             {
+                assert(nBL != cnBitsPerWord); // wPopCntTotal, zeroLink
                 return OldBitmap(pwRoot, pwr, nBL);
             }
 
@@ -1611,6 +1613,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
             printf("\n");
         }
 
+        assert(nBL != cnBitsPerWord); // wPopCntTotal, zeroLink
         return 0;
     }
 
@@ -1661,6 +1664,7 @@ embeddedKeys:;
 #endif // defined(NO_TYPE_IN_XX_SW)
                 // This OldList is a no-op and will return zero if
                 // the key(s) is(are) embedded.
+                assert(nBL != cnBitsPerWord); // wPopCntTotal, zeroLink
                 return OldList(pwr, /* wPopCnt */ 1, nBL, nType);
             }
 
@@ -1719,7 +1723,9 @@ embeddedKeys:;
 
             if (!bDump)
             {
-                return OldList(pwr, wPopCnt, nBL, nType);
+                wBytes = OldList(pwr, wPopCnt, nBL, nType);
+                assert(wr_pwr(*pwRootArg) == pwr);
+                goto zeroLink;
             }
 
 #if defined(PP_IN_LINK)
@@ -1763,6 +1769,10 @@ embeddedKeys:;
             printf("\n");
         }
 
+        if (!bDump) {
+            if (nBL != cnBitsPerWord) { printf("FAG: nType %d\n", nType); }
+            assert(nBL != cnBitsPerWord);
+        }
         return 0;
     }
 #endif // (cwListPopCntMax != 0)
@@ -1907,6 +1917,8 @@ embeddedKeys:;
                         bBmSw, /* nLinks */ 0,
 #endif // defined(CODE_BM_SW)
                         nBLPrev);
+
+zeroLink:
 
     DBGR(printf("memset(%p, 0, %zd)\n",
          (void *)STRUCT_OF(pwRootArg, Link_t, ln_wRoot), sizeof(Link_t)));
@@ -5891,8 +5903,6 @@ Judy1FreeArray(PPvoid_t PPArray, P_JE)
     Word_t wBytes = FreeArrayGuts((Word_t *)PPArray, /* wPrefix */ 0,
                                    cnBitsPerWord, /* bDump */ 0);
 
-    // Should enhance FreeArrayGuts to adjust wPopCntTotal for another
-    // sanity check.  But it does not do this now.
     DBG(printf("# wPopCntTotal %ld\n", wPopCntTotal));
     DBG(printf("# wWordsAllocatedBefore %ld\n", wWordsAllocatedBefore));
     DBG(printf("# wMallocsBefore %ld\n", wMallocsBefore));
@@ -5906,6 +5916,10 @@ Judy1FreeArray(PPvoid_t PPArray, P_JE)
     assert(wWordsAllocated == 0);
     assert(wMallocs == 0);
     assert(wEvenMallocs == 0);
+
+    // Should have FreeArrayGuts adjust wPopCntTotal this as it goes.
+    assert(Judy1Count(*PPArray, 0, (Word_t)-1, NULL) == 0);
+    wPopCntTotal = 0;
 
     return wBytes;
 
@@ -6058,8 +6072,9 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
 static Status_t
 NextGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
 {
-    DBGN(printf("NextGuts(pwRoot %p *pwKey %p nBL %d wRoot %p\n",
-                (void *)pwRoot, (void *)*pwKey, nBL, (void *)*pwRoot));
+    DBGN(printf("NextGuts(pwRoot %p *pwKey %p nBL %d wRoot %p pwr %p\n",
+                (void *)pwRoot,
+                (void *)*pwKey, nBL, (void *)wRoot, (void *)pwr));
     Word_t wRoot = *pwRoot;
     Word_t *pwr = wr_pwr(wRoot);
     switch (wr_nType(wRoot)) {
@@ -6146,7 +6161,21 @@ NextGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
     case T_SKIP_TO_SWITCH:
         nBL = wr_nBL(wRoot);
         Word_t wPrefix = PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL);
-        *pwKey = wPrefix | (*pwKey & MSK(nBL));
+        if (wPrefix > (*pwKey & ~MSK(nBL))) {
+            if (bPrev) {
+                return Failure;
+            } else {
+                *pwKey = wPrefix;
+            }
+        } else if (wPrefix < (*pwKey & ~MSK(nBL))) {
+            if (bPrev) {
+                *pwKey = wPrefix | MSK(nBL);
+            } else {
+                return Failure;
+            }
+        } else {
+            assert(*pwKey == (wPrefix | (*pwKey & MSK(nBL))));
+        }
   #endif // defined(SKIP_LINKS)
     case T_SWITCH:;
         int nBits = nBL_to_nBitsIndexSz(nBL); // bits decoded by switch
@@ -6254,10 +6283,11 @@ Judy1Prev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 static Status_t
 NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
 {
-    DBGN(printf("NextGuts(pwRoot %p *pwKey %p nBL %d wRoot %p\n",
-                (void *)pwRoot, (void *)*pwKey, nBL, (void *)*pwRoot));
     Word_t wRoot = *pwRoot;
     Word_t *pwr = wr_pwr(wRoot);
+    DBGN(printf("NextEmptyGuts(pwRoot %p *pwKey %p nBL %d wRoot %p pwr %p\n",
+                (void *)pwRoot,
+                (void *)*pwKey, nBL, (void *)wRoot, (void *)pwr));
     switch (wr_nType(wRoot)) {
     case T_LIST:;
         int nPos;
@@ -6271,11 +6301,18 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
         *pwKey = (nBL == cnBitsPerWord) ? 0 : (*pwKey & ~MSK(nBL));
         int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL);
         int nIncr = bPrev ? -1 : 1;
-        while (wKeyLoop += nIncr, (nPos += nIncr) <= nPopCnt)
+        for (;;)
         {
+            wKeyLoop += nIncr;
+            nPos += nIncr;
+            if (bPrev) {
+                if (nPos < 0) { break; }
+            } else {
+                if (nPos >= nPopCnt) { break; }
+            }
   #if defined(COMPRESSED_LISTS)
             if (nBL <= 8) {
-                if ((ls_pcKeys(pwr, nBL)[nPos] & MSK(nBL)) == +wKeyLoop) {
+                if ((ls_pcKeys(pwr, nBL)[nPos] & MSK(nBL)) == wKeyLoop) {
                     continue;
                 }
             } else if (nBL <= 16) {
@@ -6294,16 +6331,15 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
                 Word_t ww = ls_pwKeys(pwr, nBL)[nPos];
                 if (nBL != cnBitsPerWord) { ww &= MSK(nBL); }
                 if (ww == wKeyLoop) {
-                    DBGN(printf("wKeyLoop %p ww %p\n", (void *)wKeyLoop, (void *)ww));
                     continue;
                 }
             }
             *pwKey |= wKeyLoop;
             return Success;
         }
-        if (((nBL == cnBitsPerWord) && (wKeyLoop != (Word_t)-1))
-                || ((nBL != cnBitsPerWord) && (wKeyLoop != MSK(nBL)))) {
-            *pwKey |= (wKeyLoop += nIncr);
+        if (((nBL == cnBitsPerWord) && (wKeyLoop != 0))
+                || ((nBL != cnBitsPerWord) && (wKeyLoop != EXP(nBL)))) {
+            *pwKey |= wKeyLoop;
             return Success;
         }
         return Failure;
@@ -6317,9 +6353,7 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
             wKeyLast |= MSK(nBL);
             nIncr = 1;
         }
-DBGN(printf("NEG: T_EMBEDDED_KEYS: nBL %d *pwKey %p wKeyLast %p\n", nBL, (void *)*pwKey, (void *)wKeyLast));
         while ((nPos = SearchList(wr_pwr(wRootNew), *pwKey, nBL, &wRootNew)) >= 0) {
-DBGN(printf("*pwKeys %p nPos %d\n", (void *)*pwKey, nPos));
             if (*pwKey == wKeyLast) {
                 OldList(wr_pwr(wRootNew), wr_nPopCnt(wRoot, nBL), nBL, T_LIST);
                 return Failure;
@@ -6350,6 +6384,7 @@ DBGN(printf("*pwKeys %p nPos %d\n", (void *)*pwKey, nPos));
                 wBm = ~pwr[nWordNum];
             }
         } else {
+            // invert bits so empty looks full then keep high bits
             Word_t wBm = ~pwr[nWordNum] & ~MSK(nBitNum);
             for (;;) {
                 if (wBm != 0) {
@@ -6368,7 +6403,10 @@ DBGN(printf("*pwKeys %p nPos %d\n", (void *)*pwKey, nPos));
     case T_SKIP_TO_SWITCH:
         nBL = wr_nBL(wRoot);
         Word_t wPrefix = PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL);
-        *pwKey = wPrefix | (*pwKey & MSK(nBL));
+        if (wPrefix != (*pwKey & ~MSK(nBL))) {
+            return Success;
+        }
+        assert(*pwKey == (wPrefix | (*pwKey & MSK(nBL))));
   #endif // defined(SKIP_LINKS)
     case T_SWITCH:;
         int nBits = nBL_to_nBitsIndexSz(nBL); // bits decoded by switch
