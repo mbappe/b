@@ -2071,6 +2071,11 @@ set_ls_xPopCnt(void *pwr, int nBL, int nPopCnt)
 
 #endif // defined(OLD_LISTS)
 
+#define ls_pwKey(_ls, _nBL, _ii)  (ls_pwKeys(_ls, _nBL)[_ii])
+#define ls_piKey(_ls, _nBL, _ii)  (ls_piKeys(_ls, _nBL)[_ii])
+#define ls_psKey(_ls, _nBL, _ii)  (ls_psKeys(_ls, _nBL)[_ii])
+#define ls_pcKey(_ls, _nBL, _ii)  (ls_pcKeys(_ls, _nBL)[_ii])
+
 // Bitmap macros.
 // Accessing a bitmap by byte can be more expensive than
 // accessing it by word.
@@ -3833,6 +3838,21 @@ SearchListEmbedded(Word_t wRoot, Word_t wKey, unsigned nBL)
 
 #endif // defined(EMBED_KEYS) ...
 #endif // ! defined(LOOKUP_NO_LIST_DEREF)
+
+#if defined(COMPRESSED_LISTS)
+static Word_t
+ls_pxKey(Word_t *pwr, int nBL, int ii)
+{
+    if (nBL <=  8) { return ls_pcKey(pwr, nBL, ii); }
+    if (nBL <= 16) { return ls_psKey(pwr, nBL, ii); }
+  #if cnBitsPerWord != 32
+    if (nBL <= 32) { return ls_piKey(pwr, nBL, ii); }
+  #endif // cnBitsPerWord != 32
+    return ls_pwKey(pwr, nBL, ii);
+}
+#else // defined(COMPRESSED_LISTS)
+#define ls_pxKey(_ls, _nBL, _ii)  (ls_pwKeys((_ls), (_nBL))[_ii])
+#endif // defined(COMPRESSED_LISTS)
 
 #endif // (cnDigitsPerWord > 1)
 
