@@ -37,13 +37,13 @@ Word_t j__AllocWordsJLL5; // Leaf Linear 5-Byte/Digit
 Word_t j__AllocWordsJLL6; // Leaf Linear 6-Byte/Digit
 Word_t j__AllocWordsJLL7; // Leaf Linear 7-Byte/Digit
 Word_t j__AllocWordsJV;   // Value Area
-#endif // JUDYA  
+#endif // JUDYA
 
 #ifdef JUDYB
 Word_t j__AllocWordsJBU8;  // Branch Uncompressed 8-bit Decode
 Word_t j__AllocWordsJBU16; // Branch Uncompressed 16-bit Decode
 Word_t j__AllocWordsJV12;  // Value Area 12-bit Decode
-#endif // JUDYB   
+#endif // JUDYB
 
 #endif // JUNK
 
@@ -1314,7 +1314,7 @@ OldSwitch(Word_t *pwRoot, int nBL,
   #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
         && (wr_nType(*pwRoot) != T_FULL_BM_SW)
   #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
-        ) 
+        )
     {
         METRICS(j__AllocWordsJBB  -= wWords); // JUDYA
     } else
@@ -1562,7 +1562,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
         if (bDump)
         {
             assert(nBLArg != cnBitsPerWord);
- 
+
             if (EXP(cnBitsInD1) > sizeof(Link_t) * 8)
             {
                 Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
@@ -1806,7 +1806,7 @@ embeddedKeys:;
 #endif // defined(CODE_XX_SW)
     { nBitsIndexSz = nBL_to_nBitsIndexSz(nBL); }
 
-    pLinks = 
+    pLinks =
 #if defined(CODE_BM_SW)
              bBmSw ? pwr_pLinks((BmSwitch_t *)pwr) :
 #endif // defined(CODE_BM_SW)
@@ -1827,7 +1827,7 @@ embeddedKeys:;
         else
 #endif // defined(PP_IN_LINK)
         {
-            Word_t wPopCnt = 
+            Word_t wPopCnt =
 #if defined(CODE_BM_SW)
                    bBmSw ? PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBL) :
 #endif // defined(CODE_BM_SW)
@@ -1981,10 +1981,10 @@ InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
             = GetBits(*pwRoot, (nPopCnt - nSlot) * nBL,
                       cnBitsPerWord - (nPopCnt * nBL));
         DBGI(printf(" wLowBits "OWx, wLowBits));
-        SetBits(pwRoot, (nPopCnt - nSlot) * nBL, 
+        SetBits(pwRoot, (nPopCnt - nSlot) * nBL,
                 cnBitsPerWord - ((nPopCnt + 1) * nBL), wLowBits);
     }
-    SetBits(pwRoot, nBL, cnBitsPerWord - (nSlot + 1) * nBL, wKey); 
+    SetBits(pwRoot, nBL, cnBitsPerWord - (nSlot + 1) * nBL, wKey);
     set_wr_nPopCnt(*pwRoot, nBL, nPopCnt + 1);
     DBGI(printf(" wRoot "OWx" nPopCnt %d\n",
                 *pwRoot, wr_nPopCnt(*pwRoot, nBL)));
@@ -2107,7 +2107,7 @@ HexDump16(char *str, uint16_t *pus, int n)
 {
     printf("%s:", str);
     for (int i = 0; i < n; i++) {
-        printf(" %04x", pus[i]); 
+        printf(" %04x", pus[i]);
     }
     printf("\n");
 }
@@ -2506,7 +2506,7 @@ embeddedKeys:;
             // wRootOld might be newer than *pwRootOld
             nPopCnt = PWR_xListPopCnt(&wRootOld, pwrOld, nBLOld);
         }
-        
+
         int status;
 #if defined(COMPRESSED_LISTS)
         if (nBLOld <= (int)sizeof(uint8_t) * 8) {
@@ -2808,7 +2808,7 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
 #else // defined(PP_IN_LINK)
 #if defined(NO_UNNECESSARY_PREFIX)
    // We could go to the trouble of zeroing the no-longer necessary
-   // prefix in the old switch. 
+   // prefix in the old switch.
 #endif // defined(NO_UNNECESSARY_PREFIX)
 #endif // defined(PP_IN_LINK)
     DBGI(printf("Just before InsertGuts calls Insert"
@@ -2939,7 +2939,7 @@ embeddedKeys:;
 // But why is it ok to skip the test for a switch if ! defined(SKIP_LINKS)
 // and !defined(BM_SW_FOR_REAL)? Because InsertGuts is called with a wRoot
 // that points to a switch only for prefix mismatch or missing link cases.
-#if defined(SKIP_LINKS) 
+#if defined(SKIP_LINKS)
     if (!tp_bIsSwitch(nType))
 #else // defined(SKIP_LINKS)
   #if defined(BM_SW_FOR_REAL)
@@ -3320,7 +3320,7 @@ copyWithInsert16:
             // List is full. What do we do now?
             // - Partition the keys between two or more links?
             //   - Widen the switch with the link to the list?
-            //   - Create and insert a new switch below the link to the list? 
+            //   - Create and insert a new switch below the link to the list?
             // - Replace the list with a bitmap?
             // - Speed up the full path to this list somehow so its okay to increase
             //   the length of this list?
@@ -3397,7 +3397,7 @@ copyWithInsert16:
                     wMax = piKeys[wPopCnt - 1];
                     wSuffix = wKey & 0xffffffff;
 #endif // (cnBitsPerWord > 32)
-                } else 
+                } else
 #endif // defined(COMPRESSED_LISTS)
                 { wMin = pwKeys[0]; wMax = pwKeys[wPopCnt - 1]; }
 #else // defined(SORT_LISTS)
@@ -3427,7 +3427,7 @@ copyWithInsert16:
                         if (piKeys[w] < wMin) wMin = piKeys[w];
                         if (piKeys[w] > wMax) wMax = piKeys[w];
 #endif // (cnBitsPerWord > 32)
-                    } else 
+                    } else
 #endif // defined(COMPRESSED_LISTS)
                     {
                         if (pwKeys[w] < wMin) wMin = pwKeys[w];
@@ -4140,7 +4140,7 @@ insertAll:;
 #else // defined(PP_IN_LINK)
 #if defined(NO_UNNECESSARY_PREFIX)
            // We could go to the trouble of zeroing the no-longer necessary
-           // prefix in the old switch. 
+           // prefix in the old switch.
 #endif // defined(NO_UNNECESSARY_PREFIX)
 #endif // defined(PP_IN_LINK)
             DBGI(printf("Just before InsertGuts calls Insert"
@@ -4947,7 +4947,7 @@ Initialize(void)
     // There may be an issue with dlmalloc and greater than 2MB (size of huge
     // page) requests. Dlmalloc may mmap something other than an integral
     // multiple of 2MB. Since our bitmaps contain an extra word at the end
-    // we need to be careful about bitmaps that 2MB plus one word and bigger. 
+    // we need to be careful about bitmaps that 2MB plus one word and bigger.
     assert((cnBitsLeftAtDl2 < 24)
         || ((cn2dBmWpkPercent == 0) && (cnBitsInD1 < 24)));
 
