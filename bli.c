@@ -504,7 +504,7 @@ again3:;
         Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_SWITCH);
         if (wPrefixMismatch != 0) {
   #if defined(COUNT)
-            DBGC(printf("SKIP_TO_SW: COUNT PM %"_fw"d\n", wPrefixMismatch));
+            DBGC(printf("SKIP_TO_SW: COUNT PM "OWx"\n", wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
             if (wPrefixMismatch > 0) {
@@ -521,6 +521,9 @@ again3:;
       #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 {
                     wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
+                    if (wPopCnt == 0) {
+                        wPopCnt = EXP(nBLR);
+                    }
                 }
                 DBGC(printf("SKIP_TO_SW: PM wPopCnt %"_fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
