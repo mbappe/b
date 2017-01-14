@@ -4,6 +4,10 @@
 
 #include "b.h"
 
+// Check and/or Time depend on Judy1MallocSizes but this version
+// of Judy does not use it.
+const char *Judy1MallocSizes = "Judy1MallocSizes = 3, 5, 7, ...";
+
 #define nBytesKeySz(_nBL) \
      (((_nBL) <=  8) ? 1 : ((_nBL) <= 16) ? 2 \
     : ((_nBL) <= 32) ? 4 : sizeof(Word_t))
@@ -5881,7 +5885,7 @@ Initialize(void)
 // JUDY1 FUNCTIONS:
 
 Word_t
-Judy1FreeArray(PPvoid_t PPArray, P_JE)
+Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 {
     (void)PJError; // suppress "unused parameter" compiler warnings
 
@@ -6072,11 +6076,11 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
 static Status_t
 NextGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
 {
+    Word_t wRoot = *pwRoot;
+    Word_t *pwr = wr_pwr(wRoot);
     DBGN(printf("NextGuts(pwRoot %p *pwKey %p nBL %d wRoot %p pwr %p\n",
                 (void *)pwRoot,
                 (void *)*pwKey, nBL, (void *)wRoot, (void *)pwr));
-    Word_t wRoot = *pwRoot;
-    Word_t *pwr = wr_pwr(wRoot);
     switch (wr_nType(wRoot)) {
     case T_LIST:
         if (pwr == NULL) { return Failure; }
@@ -6209,17 +6213,28 @@ NextGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
 // Return 0 if no key is found.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
+// But we go to the trouble of preserving *pwKey on error.
 int
 Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
-    DBGN(printf("J1F: *pwKey "OWx"\n", *pwKey));
+    DBGN(printf("J1F: pwKey %p\n", (void *)pwKey));
     if (pwKey == NULL) {
-        PJError->je_Errno = JU_ERRNO_NULLPINDEX;
-        return -1; // JERRI (for Judy1) or PPJERR (for JudyL)
+        int ret = -1;
+        if (PJError != NULL) {
+            PJError->je_Errno = JU_ERRNO_NULLPINDEX;
+            DBGN(printf("J1F: je_Errno %d\n", PJError->je_Errno));
+        }
+        DBGN(printf("J1F: ret %d\n", ret));
+        return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
+    DBGN(printf("J1F: *pwKey "OWx"\n", *pwKey));
+    Word_t wKey = *pwKey;
     Status_t status = NextGuts((Word_t *)&PArray,
-                               pwKey, cnBitsPerWord, /* bPrev */ 0);
-    DBGN(printf("J1F: status %d *pwKey "OWx"\n", status, *pwKey));
+                               &wKey, cnBitsPerWord, /* bPrev */ 0);
+    if (status == Success) {
+        *pwKey = wKey;
+        DBGN(printf("J1F: *pwKey "OWx"\n", *pwKey));
+    }
     return status == Success;
 }
 
@@ -6229,12 +6244,21 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 // Return 0 if no key is found.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
+// But we go to the trouble of preserving *pwKey on error.
 int
 Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
-    DBGN(printf("J1N: *pwKey "OWx"\n", *pwKey));
-    if ((pwKey != NULL) && (++*pwKey == 0)) { return 0; /* NOT_FOUND */ }
-    return Judy1First(PArray, pwKey, PJError);
+    DBGN(printf("J1N: pwKey %p\n", (void *)pwKey));
+    int ret = 0; // NOT_FOUND
+    Word_t *pwKeyLocal = pwKey;
+    if ((pwKeyLocal == NULL) || (++(*pwKeyLocal) != 0)) {
+        ret = Judy1First(PArray, pwKeyLocal, PJError);
+        if (ret == 1) {
+            *pwKey = *pwKeyLocal;
+        }
+    }
+    DBGN(printf("J1N: ret %d\n", ret));
+    return ret;
 }
 
 // If *pwKey is in the array then return 1 and leave *pwKey unchanged.
@@ -6244,17 +6268,28 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 // Return 0 if no key is found.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
+// But we go to the trouble of preserving *pwKey on error.
 int
 Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
-    DBGN(printf("J1L: *pwKey "OWx"\n", *pwKey));
+    DBGN(printf("J1L: pwKey %p\n", (void *)pwKey));
     if (pwKey == NULL) {
-        PJError->je_Errno = JU_ERRNO_NULLPINDEX;
-        return -1; // JERRI (for Judy1) or PPJERR (for JudyL)
+        int ret = -1;
+        if (PJError != NULL) {
+            PJError->je_Errno = JU_ERRNO_NULLPINDEX;
+            DBGN(printf("J1L: je_Errno %d\n", PJError->je_Errno));
+        }
+        DBGN(printf("J1L: ret %d\n", ret));
+        return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
+    DBGN(printf("J1L: *pwKey "OWx"\n", *pwKey));
+    Word_t wKey = *pwKey;
     Status_t status = NextGuts((Word_t *)&PArray,
-                               pwKey, cnBitsPerWord, /* bPrev */ 1);
-    DBGN(printf("J1L: status %d *pwKey "OWx"\n", status, *pwKey));
+                               &wKey, cnBitsPerWord, /* bPrev */ 1);
+    if (status == Success) {
+        *pwKey = wKey;
+        DBGN(printf("J1L: *pwKey "OWx"\n", *pwKey));
+    }
     return status == Success;
 }
 
@@ -6264,12 +6299,21 @@ Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 // Return 0 if no key is found.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
+// But we go to the trouble of preserving *pwKey on error.
 int
 Judy1Prev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
-    DBGN(printf("J1P: *pwKey "OWx"\n", *pwKey));
-    if ((pwKey != NULL) && ((*pwKey)-- == 0)) { return 0; /* NOT_FOUND */ }
-    return Judy1Last(PArray, pwKey, PJError);
+    DBGN(printf("J1P: pwKey %p\n", (void *)pwKey));
+    int ret = 0; // NOT_FOUND
+    Word_t *pwKeyLocal = pwKey;
+    if ((pwKeyLocal == NULL) || ((*pwKeyLocal)-- != 0)) {
+        ret = Judy1Last(PArray, pwKeyLocal, PJError);
+        if (ret == 1) {
+            *pwKey = *pwKeyLocal;
+        }
+    }
+    DBGN(printf("J1P: ret %d\n", ret));
+    return ret;
 }
 
 // If *pwKey is not in the array then return Success and leave *pwKey
@@ -6440,17 +6484,28 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
 // Return 0 if no key is found.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
+// But we go to the trouble of preserving *pwKey on error.
 int
 Judy1FirstEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
-    DBGN(printf("J1FE: *pwKey "OWx"\n", *pwKey));
+    DBGN(printf("J1FE: pwKey %p\n", (void *)pwKey));
     if (pwKey == NULL) {
-        PJError->je_Errno = JU_ERRNO_NULLPINDEX;
-        return -1; // JERRI (for Judy1) or PPJERR (for JudyL)
+        int ret = -1;
+        if (PJError != NULL) {
+            PJError->je_Errno = JU_ERRNO_NULLPINDEX;
+            DBGN(printf("J1FE: je_Errno %d\n", PJError->je_Errno));
+        }
+        DBGN(printf("J1FE: ret %d\n", ret));
+        return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
+    DBGN(printf("J1FE: *pwKey "OWx"\n", *pwKey));
+    Word_t wKey = *pwKey;
     Status_t status = NextEmptyGuts((Word_t *)&PArray,
-                                    pwKey, cnBitsPerWord, /* bPrev */ 0);
-    DBGN(printf("J1FE: status %d *pwKey "OWx"\n", status, *pwKey));
+                                    &wKey, cnBitsPerWord, /* bPrev */ 0);
+    if (status == Success) {
+        *pwKey = wKey;
+        DBGN(printf("J1FE: *pwKey "OWx"\n", *pwKey));
+    }
     return status == Success;
 }
 
@@ -6460,12 +6515,21 @@ Judy1FirstEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 // Return 0 if no key is found.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
+// But we go to the trouble of preserving *pwKey on error.
 int
 Judy1NextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
-    DBGN(printf("J1NE: *pwKey "OWx"\n", *pwKey));
-    if ((pwKey != NULL) && (++*pwKey == 0)) { return 0; /* NOT_FOUND */ }
-    return Judy1FirstEmpty(PArray, pwKey, PJError);
+    DBGN(printf("J1NE: pwKey %p\n", (void *)pwKey));
+    int ret = 0; // NOT_FOUND
+    Word_t *pwKeyLocal = pwKey;
+    if ((pwKeyLocal == NULL) || (++(*pwKeyLocal) != 0)) {
+        ret = Judy1FirstEmpty(PArray, pwKeyLocal, PJError);
+        if (ret == 1) {
+            *pwKey = *pwKeyLocal;
+        }
+    }
+    DBGN(printf("J1NE: ret %d\n", ret));
+    return ret;
 }
 
 // If *pwKey is in the array then return 1 and leave *pwKey unchanged.
@@ -6475,17 +6539,28 @@ Judy1NextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 // Return 0 if no key is found.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
+// But we go to the trouble of preserving *pwKey on error.
 int
 Judy1LastEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
-    DBGN(printf("J1LE: *pwKey "OWx"\n", *pwKey));
+    DBGN(printf("J1LE: pwKey %p\n", (void *)pwKey));
     if (pwKey == NULL) {
-        PJError->je_Errno = JU_ERRNO_NULLPINDEX;
-        return -1; // JERRI (for Judy1) or PPJERR (for JudyL)
+        int ret = -1;
+        if (PJError != NULL) {
+            PJError->je_Errno = JU_ERRNO_NULLPINDEX;
+            DBGN(printf("J1LE: je_Errno %d\n", PJError->je_Errno));
+        }
+        DBGN(printf("J1LE: ret %d\n", ret));
+        return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
+    DBGN(printf("J1LE: *pwKey "OWx"\n", *pwKey));
+    Word_t wKey = *pwKey;
     Status_t status = NextEmptyGuts((Word_t *)&PArray,
-                                    pwKey, cnBitsPerWord, /* bPrev */ 1);
-    DBGN(printf("J1LE: status %d *pwKey "OWx"\n", status, *pwKey));
+                                     &wKey, cnBitsPerWord, /* bPrev */ 1);
+    if (status == Success) {
+        *pwKey = wKey;
+        DBGN(printf("J1LE: *pwKey "OWx"\n", *pwKey));
+    }
     return status == Success;
 }
 
@@ -6495,25 +6570,34 @@ Judy1LastEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 // Return 0 if no key is found.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
+// But we go to the trouble of preserving *pwKey on error.
 int
 Judy1PrevEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
-    DBGN(printf("J1PE: *pwKey "OWx"\n", *pwKey));
-    if ((pwKey != NULL) && ((*pwKey)-- == 0)) { return 0; /* NOT_FOUND */ }
-    return Judy1LastEmpty(PArray, pwKey, PJError);
+    DBGN(printf("J1PE: pwKey %p\n", (void *)pwKey));
+    int ret = 0; // NOT_FOUND
+    Word_t *pwKeyLocal = pwKey;
+    if ((pwKeyLocal == NULL) || ((*pwKeyLocal)-- != 0)) {
+        ret = Judy1LastEmpty(PArray, pwKeyLocal, PJError);
+        if (ret == 1) {
+            *pwKey = *pwKeyLocal;
+        }
+    }
+    DBGN(printf("J1PE: ret %d\n", ret));
+    return ret;
 }
 
 Word_t
-Judy1MemUsed(Pcvoid_t PArray) {
+Judy1MemUsed(Pcvoid_t PArray)
+{
     (void)PArray;
     return 0;
 }
 
 Word_t
-Judy1MemActive(Pcvoid_t PArray) {
+Judy1MemActive(Pcvoid_t PArray)
+{
     (void)PArray;
     return 0;
 }
-
-const char *Judy1MallocSizes = "not applicable";
 
