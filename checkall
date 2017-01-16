@@ -36,7 +36,7 @@ do
     else
         let FAILURES=$FAILURES+1
     fi
-    let B=$B+7
+    let B=$B+1
     #let B=$B+3
 done
 let B=$B-54
