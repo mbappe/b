@@ -6092,6 +6092,7 @@ static Word_t
 NextGuts(Word_t wRoot, int nBL,
          Word_t *pwKey, Word_t wSkip, int bPrev, int bEmpty)
 {
+#define A(_zero) assert(_zero)
     (void)bEmpty;
     Word_t *pwr = wr_pwr(wRoot);
     DBGN(printf("NextGuts(wRoot "OWx" nBL %d *pwKey "OWx
@@ -6101,166 +6102,264 @@ NextGuts(Word_t wRoot, int nBL,
     switch (nType) {
     case T_LIST: {
         DBGN(printf("T_LIST\n"));
-        if (pwr == NULL) { return wSkip + 1; } // What if wSkip is zero?
+        //A(0);
+        if (pwr == NULL) {
+            //A(0); // startup
+            return wSkip + 1;
+        }
+        //A(0);
         int nPos = SearchList(pwr, *pwKey, nBL, &wRoot);
         if (bPrev) {
+            //A(0);
             if (nPos < 0) {
+                //A(0);
                 nPos ^= -1;
-                if (nPos == 0) { return wSkip + 1; }
+                if (nPos == 0) { /*A(0);*/ return wSkip + 1; }
+                //A(0);
                 --nPos;
             }
+            //A(0);
             if ((Word_t)nPos < wSkip) {
-                if ((nBL == cnBitsPerWord) || ((*pwKey & MSK(nBL)) == MSK(nBL))) {
-                    return wSkip - nPos;
-                }
-                assert(0); // not handled yet
+                A(0); // UNTESTED - No tests do wSkip > 0 with bPrev.
+                return wSkip - nPos;
             }
+            //A(0);
             *pwKey = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
             *pwKey |= ls_pxKey(pwr, nBL, nPos - wSkip);
         } else {
-            if (nPos < 0) { nPos ^= -1; }
+            //A(0);
+            if (nPos < 0) { /*A(0);*/ nPos ^= -1; }
+            //A(0);
             int nPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBL);
             if (nPos + wSkip >= (Word_t)nPopCnt) {
+                //A(0);
                 return nPos + wSkip - ((Word_t)nPopCnt - 1);
             }
+            //A(0);
             *pwKey = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
             *pwKey |= ls_pxKey(pwr, nBL, nPos + wSkip);
         }
+        //A(0);
         return 0;
     } case T_EMBEDDED_KEYS: {
-        DBG(printf("T_EMBEDDED_KEYS: *pwKey "OWx" wSkip %lu\n", *pwKey, wSkip));
-        //Word_t wKey = (*pwKey | GetBits(wRoot, nBL, cnBitsPerWord - (wSkip + 1) * nBL));
+        DBGN(printf("T_EMBEDDED_KEYS: *pwKey "OWx" wSkip %lu\n", *pwKey, wSkip));
+        //A(0); // check -B10 -D
         assert(nBL != cnBitsPerWord);
         int nPos = SearchListEmbedded(wRoot, *pwKey, nBL);
         if (bPrev) {
+            //A(0); // check -B10 -D
             if (nPos < 0) {
+                //A(0); // check -B10 -D
                 nPos ^= -1;
-                if (nPos == 0) { return wSkip + 1; }
+                if (nPos == 0) {
+                    //A(0); // check -B10 -D
+                    return wSkip + 1;
+                }
+                //A(0); // check -B10 -D
                 --nPos;
             }
+            //A(0); // check -B10 -D
             if ((Word_t)nPos < wSkip) {
-                if ((*pwKey & MSK(nBL)) == MSK(nBL)) { return wSkip - nPos; }
-                assert(0); // not handled yet
+                A(0); // UNTESTED - No tests do wSkip > 0 with bPrev.
+                return wSkip - nPos;
             }
+            //A(0); // check -B10 -D
             *pwKey &= ~MSK(nBL);
             *pwKey |= GetBits(wRoot, nBL,
                               cnBitsPerWord - (nPos - wSkip + 1) * nBL);
         } else {
-            if (nPos < 0) { nPos ^= -1; }
+            //A(0); // check -B10 -D
+            if (nPos < 0) { /*A(0);*/ nPos ^= -1; }
+            //A(0); // check -B10 -D
             int nPopCnt = wr_nPopCnt(wRoot, nBL);
             if (nPos + wSkip >= (Word_t)nPopCnt) {
+                //A(0); // check -B10 -D
                 return nPos + wSkip - ((Word_t)nPopCnt - 1);
             }
+            //A(0); // check -B10 -D
             *pwKey &= ~MSK(nBL);
             *pwKey |= GetBits(wRoot, nBL,
                               cnBitsPerWord - (nPos + wSkip + 1) * nBL);
-            //assert(*pwKey == wKey);
         }
+        //A(0); // check -B10 -D
         return 0;
     } case T_BITMAP: {
         DBGN(printf("T_BITMAP *pwKey "OWx" wSkip %"_fw"u\n", *pwKey, wSkip));
         assert(nBL != cnBitsPerWord);
         int nWordNum = (*pwKey & MSK(nBL)) >> cnLogBitsPerWord;
         int nBitNum = *pwKey & MSK(cnLogBitsPerWord);
-//printf("nWordNum %d nBitNum %d\n", nWordNum, nBitNum);
         if (bPrev) {
+            //A(0);
             Word_t wBm = pwr[nWordNum];
             if (nBitNum < cnBitsPerWord - 1) {
+                //A(0);
                 wBm &= MSK(nBitNum + 1);
             }
+            //A(0);
             for (;;) {
+                //A(0);
                 int nPopCnt = __builtin_popcountll(wBm);
-                if ((Word_t)nPopCnt > wSkip) { break; }
+                if ((Word_t)nPopCnt > wSkip) { /*A(0);*/ break; }
+                //A(0);
                 wSkip -= nPopCnt;
-                if (--nWordNum < 0) { return wSkip + 1; }
+                if (--nWordNum < 0) { /*A(0);*/ return wSkip + 1; }
+                //A(0);
                 wBm = pwr[nWordNum];
             }
+            //A(0);
             while (wSkip--) {
-               assert(0); // not handled yet
+               A(0); // UNTESTED - No tests do wSkip > 0 with bPrev.
                // ask doug how to find nth set msb
             }
+            //A(0);
             nBitNum = 63 - __builtin_clzll(wBm);
         } else {
+            //A(0);
             Word_t wBm = pwr[nWordNum] & ~MSK(nBitNum);
             for (;;) {
-//printf("wBm "OWx"\n", wBm);
+                //A(0);
                 int nPopCnt = __builtin_popcountll(wBm);
-//printf("nPopCnt %d\n", nPopCnt);
-                if ((Word_t)nPopCnt > wSkip) { break; }
+                if ((Word_t)nPopCnt > wSkip) { /*A(0);*/ break; }
+                //A(0);
                 wSkip -= nPopCnt;
                 if (++nWordNum >= (int)EXP(nBL - cnLogBitsPerWord)) {
-//printf("T_BITMAP: returning %d\n", (int)(wSkip + 1));
+                    //A(0);
                     return wSkip + 1;
                 }
+                //A(0);
                 wBm = pwr[nWordNum];
             }
-//printf("wSkip %lu wBm "OWx"\n", wSkip, wBm);
+            //A(0);
             while (wSkip--) {
+                //A(0); // startup
                 Word_t wLsb = wBm & -wBm; // least bit
                 wBm ^= wLsb; // have cleared one bit
-//printf("wSkip %lu wBm "OWx"\n", wSkip, wBm);
             }
+            //A(0);
             nBitNum = __builtin_ctzll(wBm);
         }
+        //A(0);
         *pwKey &= ~MSK(nBL);
         *pwKey |= (nWordNum << cnLogBitsPerWord) + nBitNum;
         return 0;
   #if defined(SKIP_LINKS)
     } case T_SKIP_TO_SWITCH: {
         DBGN(printf("T_SKIP_TO_SW\n"));
+        //A(0);
         nBL = wr_nBL(wRoot);
         Word_t wPrefix = PWR_wPrefixBL(&wRoot, (Switch_t *)pwr, nBL);
         if (wPrefix > (*pwKey & ~MSK(nBL))) {
+            //A(0); // check -B16 -S1
             if (bPrev) {
-                assert(0);
+                A(0); // UNTESTED - Our test skip links have wPrefix == 0?
+                return wSkip + 1;
             } else {
+                //A(0); -B16 -S1
                 *pwKey = wPrefix;
             }
+            //A(0); // check -B16 -S1
         } else if (wPrefix < (*pwKey & ~MSK(nBL))) {
+            //A(0);
             if (bPrev) {
+                //A(0);
                 *pwKey = wPrefix | MSK(nBL);
             } else {
+                //A(0); // check -B16
                 return wSkip + 1;
             }
+            //A(0);
         } else {
+            //A(0);
             assert(*pwKey == (wPrefix | (*pwKey & MSK(nBL))));
         }
+        //A(0);
   #endif // defined(SKIP_LINKS)
     } case T_SWITCH: {
+        //A(0);
         DBGN(printf("T_SW wSkip %lu\n", wSkip));
-        //Word_t wPrefix = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
         int nBits = nBL_to_nBitsIndexSz(nBL); // bits decoded by switch
         Word_t wIndex = (*pwKey >> (nBL-nBits)) & MSK(nBits);
-        for (; wIndex < EXP(nBits); wIndex++) {
-            Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
-            Word_t wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
-            if (wPopCnt != 0) {
-                DBGN(printf("T_SW: wIndex 0x%lx pLn->ln_wRoot "OWx"\n",
-                            wIndex, pLn->ln_wRoot));
-                DBGN(printf("T_SW: wPopCnt %ld\n", wPopCnt));
-                if (wPopCnt > wSkip) {
-                    Word_t wCount;
-                    if ((wCount = NextGuts(pLn->ln_wRoot, nBL - nBits, pwKey,
-                                          wSkip, bPrev, bEmpty)) == 0) {
-                        return 0;
+        if (bPrev) {
+            //A(0);
+            for (; wIndex != (Word_t)-1; wIndex--) {
+                //A(0);
+                Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
+                Word_t wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
+                if (wPopCnt != 0) {
+                    //A(0);
+                    DBGN(printf("T_SW: wIndex 0x%lx pLn->ln_wRoot "OWx"\n",
+                                wIndex, pLn->ln_wRoot));
+                    DBGN(printf("T_SW: wPopCnt %ld\n", wPopCnt));
+                    if (wPopCnt > wSkip) {
+                        //A(0);
+                        Word_t wCount;
+                        if ((wCount = NextGuts(pLn->ln_wRoot, nBL - nBits, pwKey,
+                                              wSkip, bPrev, bEmpty)) == 0) {
+                            //A(0);
+                            return 0;
+                        }
+                        //A(0);
+                        wSkip = wCount - 1;
+                        printf("nBL %d nBits %d *pwKey "OWx"\n", nBL, nBits, *pwKey);
+                    } else {
+                        A(0); // UNTESTED - No tests do wSkip > 0 with bPrev.
+                        wSkip -= wPopCnt;
                     }
-                    wSkip = wCount - 1;
-                    printf("nBL %d nBits %d *pwKey "OWx"\n", nBL, nBits, *pwKey);
-                } else {
-                    wSkip -= wPopCnt;
+                    //A(0);
+                    DBGN(printf("T_SW: wSkip %ld\n", wSkip));
                 }
-                DBGN(printf("T_SW: wSkip %ld\n", wSkip));
+                //A(0);
+                *pwKey |= MSK(nBL - nBits);
+                *pwKey -= EXP(nBL - nBits);
             }
-            *pwKey &= ~MSK(nBL - nBits);
-            *pwKey += EXP(nBL - nBits);
+            //A(0);
+            *pwKey += EXP(nBL);
+            DBGN(printf("T_SW: Failure\n"));
+            return wSkip + 1;
+        } else {
+            //A(0);
+            for (; wIndex < EXP(nBits); wIndex++) {
+                //A(0);
+                Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
+                Word_t wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
+                if (wPopCnt != 0) {
+                    //A(0);
+                    DBGN(printf("T_SW: wIndex 0x%lx pLn->ln_wRoot "OWx"\n",
+                                wIndex, pLn->ln_wRoot));
+                    DBGN(printf("T_SW: wPopCnt %ld\n", wPopCnt));
+                    if (wPopCnt > wSkip) {
+                        //A(0);
+                        Word_t wCount;
+                        if ((wCount = NextGuts(pLn->ln_wRoot, nBL - nBits, pwKey,
+                                              wSkip, bPrev, bEmpty)) == 0) {
+                            //A(0);
+                            return 0;
+                        }
+                        //A(0);
+                        wSkip = wCount - 1;
+                        printf("nBL %d nBits %d *pwKey "OWx"\n", nBL, nBits, *pwKey);
+                    } else {
+                        //A(0); // startup
+                        wSkip -= wPopCnt;
+                    }
+                    //A(0);
+                    DBGN(printf("T_SW: wSkip %ld\n", wSkip));
+                }
+                //A(0);
+                *pwKey &= ~MSK(nBL - nBits);
+                *pwKey += EXP(nBL - nBits);
+            }
+            //A(0);
+            *pwKey -= EXP(nBL);
+            DBGN(printf("T_SW: Failure\n"));
+            return wSkip + 1;
         }
-        *pwKey -= EXP(nBL);
-        DBGN(printf("T_SW: Failure\n"));
-        return wSkip + 1;
+        assert(0); // not expected to get here
     }
+    assert(0); // not expected to get here
     }
     DBG(printf("J1BC: Unhandled type %d\n", wr_nType(wRoot)));
-    assert(0);
+    assert(0); // not expected to get here
 }
 
 // Return the wCount'th key in the array.
@@ -6292,133 +6391,6 @@ Judy1ByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
         DBGN(printf("J1BC: *pwKey "OWx"\n", *pwKey));
     }
     return wCount == 0;
-}
-
-// If *pwKey is in the array then return Success and leave *pwKey unchanged.
-// Otherwise find the next bigger (or smaller if bPrev) key than *pwKey
-// which is in the array.
-// Put the resulting key in *pwKey on return.
-// Return 1 if a key is found.
-// Return 0 if no key is found.
-// *pwKey is undefined if 0 is returned.
-static Status_t
-NextGutsOld(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
-{
-    Word_t wRoot = *pwRoot;
-    Word_t *pwr = wr_pwr(wRoot);
-    DBGN(printf("NextGutsOld(pwRoot %p *pwKey %p nBL %d) wRoot %p pwr %p\n",
-                (void *)pwRoot,
-                (void *)*pwKey, nBL, (void *)wRoot, (void *)pwr));
-    switch (wr_nType(wRoot)) {
-    case T_LIST:
-        if (pwr == NULL) { return Failure; }
-        int nPos = SearchList(pwr, *pwKey, nBL, pwRoot);
-        if (nPos < 0) {
-            nPos ^= -1;
-            if (bPrev) {
-                if (nPos-- == 0) { return Failure; }
-            } else {
-                if (nPos == PWR_xListPopCnt(pwRoot, pwr, nBL)) {
-                    return Failure;
-                }
-            }
-        }
-        // clear the suffix
-        *pwKey = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
-        *pwKey |= ls_pxKey(pwr, nBL, nPos);
-        return Success;
-  #if defined(EMBED_KEYS)
-    case T_EMBEDDED_KEYS:
-        nPos = SearchListEmbedded(wRoot, *pwKey, nBL);
-        if (nPos < 0) {
-            nPos ^= -1;
-            if (bPrev) {
-                if (nPos-- == 0) { return Failure; }
-            } else {
-                if (nPos == wr_nPopCnt(wRoot, nBL)) { return Failure; }
-            }
-        }
-        *pwKey = (*pwKey & ~MSK(nBL)) | GetBits(wRoot, nBL, cnBitsPerWord - ++nPos * nBL);
-        return Success;
-  #endif // defined(EMBED_KEYS)
-    case T_BITMAP:;
-        int nWordNum = (*pwKey & MSK(nBL)) >> cnLogBitsPerWord;
-        int nBitNum = *pwKey & MSK(cnLogBitsPerWord);
-        if (bPrev) {
-            Word_t wBm = pwr[nWordNum];
-            if (nBitNum < cnBitsPerWord - 1) {
-                wBm &= MSK(nBitNum + 1);
-            }
-            for (;;) {
-                if (wBm != 0) {
-                    nBitNum = 63 - __builtin_clzll(wBm);
-                    *pwKey = (*pwKey & ~MSK(nBL))
-                           | (nWordNum << cnLogBitsPerWord) | nBitNum;
-                    return Success;
-                }
-                if (nWordNum-- <= 0) {
-                    return Failure;
-                }
-                wBm = pwr[nWordNum];
-            }
-        } else {
-            Word_t wBm = pwr[nWordNum] & ~MSK(nBitNum);
-            for (;;) {
-                if (wBm != 0) {
-                    nBitNum = __builtin_ctzll(wBm);
-                    *pwKey = (*pwKey & ~MSK(nBL))
-                           | (nWordNum << cnLogBitsPerWord) | nBitNum;
-                    return Success;
-                }
-                if (++nWordNum >= (int)EXP(nBL - cnLogBitsPerWord)) {
-                    return Failure;
-                }
-                wBm = pwr[nWordNum];
-            }
-        }
-  #if defined(SKIP_LINKS)
-    case T_SKIP_TO_SWITCH:
-        nBL = wr_nBL(wRoot);
-        Word_t wPrefix = PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL);
-        if (wPrefix > (*pwKey & ~MSK(nBL))) {
-            if (bPrev) {
-                return Failure;
-            } else {
-                *pwKey = wPrefix;
-            }
-        } else if (wPrefix < (*pwKey & ~MSK(nBL))) {
-            if (bPrev) {
-                *pwKey = wPrefix | MSK(nBL);
-            } else {
-                return Failure;
-            }
-        } else {
-            assert(*pwKey == (wPrefix | (*pwKey & MSK(nBL))));
-        }
-  #endif // defined(SKIP_LINKS)
-    case T_SWITCH:;
-        int nBits = nBL_to_nBitsIndexSz(nBL); // bits decoded by switch
-        wPrefix = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
-        Word_t wIndex = (*pwKey >> (nBL - nBits)) & MSK(nBits);
-        for (;;) {
-            Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
-            if (NextGutsOld(&pLn->ln_wRoot, pwKey, nBL - nBits, bPrev)
-                    == Success) {
-                return Success;
-            }
-            if (bPrev) {
-                if (wIndex-- <= 0) { return Failure; }
-                *pwKey = MSK(nBL - nBits);
-            } else {
-                if (++wIndex >= EXP(nBits)) { return Failure; }
-                *pwKey = 0;
-            }
-            *pwKey |= wPrefix + (wIndex << (nBL - nBits));
-        }
-    default:
-        assert(0); // not handled yet
-        exit(1);
-    }
 }
 
 // If *pwKey is in the array then return 1 and leave *pwKey unchanged.
@@ -6485,7 +6457,6 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 int
 Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
-    DBGN(printf("J1L: pwKey %p\n", (void *)pwKey));
     if (pwKey == NULL) {
         int ret = -1;
         if (PJError != NULL) {
@@ -6497,13 +6468,14 @@ Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     }
     DBGN(printf("J1L: *pwKey "OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
-    Status_t status = NextGutsOld((Word_t *)&PArray,
-                                  &wKey, cnBitsPerWord, /* bPrev */ 1);
-    if (status == Success) {
+    Word_t wCount = NextGuts((Word_t)PArray, cnBitsPerWord, &wKey,
+                             /* wCount */ 0, /* bPrev */ 1, /* bEmpty */ 0);
+    if (wCount == 0) {
         *pwKey = wKey;
-        DBGN(printf("J1L: *pwKey "OWx"\n", *pwKey));
+        DBGN(printf("J1L done: *pwKey "OWx"\n", *pwKey));
     }
-    return status == Success;
+    DBGN(printf("J1L: returning %d\n", wCount == 0));
+    return wCount == 0;
 }
 
 // Find the next smaller key than *pwKey which is in the array.
@@ -6516,7 +6488,6 @@ Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 int
 Judy1Prev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
-    DBGN(printf("J1P: pwKey %p\n", (void *)pwKey));
     int ret = 0; // NOT_FOUND
     Word_t *pwKeyLocal = pwKey;
     if ((pwKeyLocal == NULL) || ((*pwKeyLocal)-- != 0)) {
@@ -6525,7 +6496,6 @@ Judy1Prev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
             *pwKey = *pwKeyLocal;
         }
     }
-    DBGN(printf("J1P: ret %d\n", ret));
     return ret;
 }
 
