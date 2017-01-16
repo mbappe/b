@@ -6487,6 +6487,15 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
         }
         Word_t wKeyLoop = *pwKey;
         wKeyLoop = (nBL == cnBitsPerWord) ? wKeyLoop : (wKeyLoop & MSK(nBL));
+        if (bPrev) {
+            if (nPos == 0) {
+                if (wKeyLoop == 0) { // suffix
+                    return Failure;
+                }
+                --(*pwKey);
+                return Success;
+            }
+        }
         // save prefix for return
         *pwKey = (nBL == cnBitsPerWord) ? 0 : (*pwKey & ~MSK(nBL));
         int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL);
