@@ -3285,8 +3285,10 @@ copyWithInsert16:
                 DeflateExternalList(pwRoot, wPopCnt + 1, nBL, pwList);
 #if defined(NO_TYPE_IN_XX_SW)
                 if (!((nBL < nDL_to_nBL(2))
-                    || (wr_nType(*pwRoot) == T_EMBEDDED_KEYS)
-                    || ((wr_nType(*pwRoot) == T_ONE) && (wPopCnt == 0))))
+      #if defined(USE_T_ONE)
+                    || ((wr_nType(*pwRoot) == T_ONE) && (wPopCnt == 0))
+      #endif // defined(USE_T_ONE)
+                    || (wr_nType(*pwRoot) == T_EMBEDDED_KEYS)))
                 {
                     printf("nBL %d wPopCnt %ld nType %d\n",
                            nBL, wPopCnt, wr_nType(*pwRoot));
