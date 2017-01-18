@@ -88,8 +88,8 @@ endif
 # -O4 does not imply -Ofast.  I wonder if -Ofast and -O4 can go together.
 # OFLAGS = -g -O0
 # OFLAGS = -g -O1
-# OFLAGS = -g -O2
-  OFLAGS =    -O2
+  OFLAGS = -g -O2
+# OFLAGS =    -O2
 # OFLAGS = -g -O3
 # OFLAGS = -g -O4
 # OFLAGS = -g -Os
@@ -196,6 +196,9 @@ b:	Judy1LHTime.c libb.a
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
 check:	Judy1LHCheck.c libb1.a
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -o $@ $^ -lJudy -lm
+#check:	Judy1LHCheck.c
+#	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -o $@ \
+#		$^ $(LIB1_OBJS) /usr/local/lib/libJudy.a -lm
 
 b.tjz:	$(FILES)
 	tar cjf $@ $^
