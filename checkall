@@ -21,11 +21,11 @@ let FAILURES=0
 
 for B in {10..64}
 do
-    for d_ARG in '' -d
+    for d_ARG in '' # -d
     do
-    for D_ARG in '' -D
+    for D_ARG in '' # -D
     do
-    for S_ARG in '' -S1
+    for S_ARG in '' -S1 -DS1
     do
         CMD="$CHECK -B$B $S_ARG $D_ARG $d_ARG"
         echo $CMD

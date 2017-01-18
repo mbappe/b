@@ -6146,45 +6146,45 @@ NextGuts(Word_t wRoot, int nBL,
         return 0;
     } case T_EMBEDDED_KEYS: {
         DBGN(printf("T_EMBEDDED_KEYS: *pwKey "OWx" wSkip %lu\n", *pwKey, wSkip));
-        //A(0); // check -B10 -D
+        //A(0); // check -B10 -DS1
         assert(nBL != cnBitsPerWord);
         int nPos = SearchListEmbedded(wRoot, *pwKey, nBL);
         if (bPrev) {
-            //A(0); // check -B10 -D
+            //A(0); // check -B10 -DS1
             if (nPos < 0) {
-                //A(0); // check -B10 -D
+                //A(0); // check -B10 -DS1
                 nPos ^= -1;
                 if (nPos == 0) {
-                    //A(0); // check -B10 -D
+                    //A(0); // check -B10 -DS1
                     return wSkip + 1;
                 }
-                //A(0); // check -B10 -D
+                //A(0); // check -B10 -DS1
                 --nPos;
             }
-            //A(0); // check -B10 -D
+            //A(0); // check -B10 -DS1
             if ((Word_t)nPos < wSkip) {
                 A(0); // UNTESTED - No tests do wSkip > 0 with bPrev.
                 return wSkip - nPos;
             }
-            //A(0); // check -B10 -D
+            //A(0); // check -B10 -DS1
             *pwKey &= ~MSK(nBL);
             *pwKey |= GetBits(wRoot, nBL,
                               cnBitsPerWord - (nPos - wSkip + 1) * nBL);
         } else {
-            //A(0); // check -B10 -D
+            //A(0); // check -B10 -DS1
             if (nPos < 0) { /*A(0);*/ nPos ^= -1; }
-            //A(0); // check -B10 -D
+            //A(0); // check -B10 -DS1
             int nPopCnt = wr_nPopCnt(wRoot, nBL);
             if (nPos + wSkip >= (Word_t)nPopCnt) {
-                //A(0); // check -B10 -D
+                //A(0); // check -B10 -DS1
                 return nPos + wSkip - ((Word_t)nPopCnt - 1);
             }
-            //A(0); // check -B10 -D
+            //A(0); // check -B10 -DS1
             *pwKey &= ~MSK(nBL);
             *pwKey |= GetBits(wRoot, nBL,
                               cnBitsPerWord - (nPos + wSkip + 1) * nBL);
         }
-        //A(0); // check -B10 -D
+        //A(0); // check -B10 -DS1
         return 0;
     }
   #if defined(SKIP_TO_BITMAP)
