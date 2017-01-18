@@ -3280,20 +3280,12 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 #if defined(PSPLIT_SEARCH_8)
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 8) {
-        PSPLIT_SEARCH(uint8_t, 8, pcKeys, nPopCnt, cKey, nPos);
+        PSPLIT_SEARCH_BY_KEY(uint8_t, 8, pcKeys, nPopCnt, cKey, nPos);
     } else
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
-        PSPLIT_SEARCH(uint8_t, nBL, pcKeys, nPopCnt, cKey, nPos);
+        PSPLIT_SEARCH_BY_KEY(uint8_t, nBL, pcKeys, nPopCnt, cKey, nPos);
     }
-#if 1
-    int nPosPsplit = nPos;
-    nPos = 0;
-    SEARCHF(uint8_t, pcKeys, nPopCnt, cKey, nPos); (void)nBL;
-    if (nPos != nPosPsplit) {
-        printf("SearchList8: nPosPsplit %d nPos %d\n", nPosPsplit, nPos);
-    }
-#endif
 #elif defined(BACKWARD_SEARCH_8)
     SEARCHB(uint8_t, pcKeys, nPopCnt, cKey, nPos); (void)nBL;
 #else // here for forward linear search with end check
@@ -3483,23 +3475,15 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 #if defined(PSPLIT_SEARCH_32)
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 32) {
-        PSPLIT_SEARCH(uint32_t, 32, piKeys, nPopCnt, iKey, nPos);
+        PSPLIT_SEARCH_BY_KEY(uint32_t, 32, piKeys, nPopCnt, iKey, nPos);
     } else if (nBL == 24) {
-        PSPLIT_SEARCH(uint32_t, 24, piKeys, nPopCnt, iKey, nPos);
+        PSPLIT_SEARCH_BY_KEY(uint32_t, 24, piKeys, nPopCnt, iKey, nPos);
     } else
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
-        PSPLIT_SEARCH(uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
+        PSPLIT_SEARCH_BY_KEY(uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
         DBGX(printf("SearchList32 nPos %d\n", nPos));
     }
-#if 1
-    int nPosPsplit = nPos;
-    nPos = 0;
-    SEARCHF(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
-    if (nPos != nPosPsplit) {
-        printf("SearchList32: nPosPsplit %d nPos %d\n", nPosPsplit, nPos);
-    }
-#endif
 #elif defined(BACKWARD_SEARCH_32)
     SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
 #else // here for forward linear search with end check
