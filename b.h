@@ -97,6 +97,16 @@
   #endif // ! defined(cnBWIncr)
 #endif // defined(CODE_XX_SW)
 
+// Notes on cnListPopCntMax<blah>:
+// If nBL == cnListPopCntMaxDl<x>, then cnListPopCntMaxDl<x> governs maximum
+// external list size, where nBL == cnBitsLeftAtDl<x>.
+// If nBL != cnBitsLeftAtDl<x> for any <x>, then maximum
+// external list size is governed by cnListPopCntMax8, cnListPopCntMax16,
+// cnListPopCntMax32 or cnListPopCntMax64.
+// EmbeddedListPopCntMax(nBL) governs maximum embedded list size unless
+// defined(POP_CNT_MAX_IS_KING) in which case the rules above for maximum
+// external list size also govern the maximum embedded list size.
+
 // Default is -UNO_TYPE_IN_XX_SW.
 
 // Default is XX_SHORTCUT if USE_XX_SW.
@@ -2368,10 +2378,13 @@ extern const unsigned anBL_to_nDL[];
 
 #if defined(PARALLEL_128)
 
+// The assertion is here because the macro used to test the size of the
+// bucket and use WordHasKey if not equal to the size of __m128i.
+// I replaced the test with an assertion because I couldn't remember
+// why we were doing the test.
 #define BUCKET_HAS_KEY(_pxBucket, _wKey, _nBL) \
-    ((sizeof(*(_pxBucket)) == sizeof(Word_t)) \
-        ? WordHasKey((void *)(_pxBucket), (_wKey), (_nBL)) \
-        : HasKey128((void *)(_pxBucket), (_wKey), (_nBL)))
+    (assert(sizeof(*(_pxBucket)) == sizeof(__m128i)), \
+        HasKey128((void *)(_pxBucket), (_wKey), (_nBL)))
 
 #else // defined(PARALLEL_128)
 
@@ -2546,6 +2559,8 @@ extern const unsigned anBL_to_nDL[];
 
 #endif // defined(LIST_END_MARKERS)
 
+#if 0
+
 // Pick a bucket position directly rather than picking a key position first
 // then deriving the bucket position from the key position.
 // PSPLIT_NN picks a key position.
@@ -2558,6 +2573,16 @@ extern const unsigned anBL_to_nDL[];
                     / sizeof(Word_t)) \
                 >> 9); \
 }
+
+#endif // 0
+
+#if defined(SPLIT_SEARCH_BINARY)
+
+#define PSPLIT(_nPopCnt, _nBL, _xKey, _nSplit)  ((_nSplit) = (_nPopCnt) >> 1)
+
+#else // defined(SPLIT_SEARCH_BINARY)
+
+#if 0
 
 // One old method:
 // nSplit = (((_xKey) & MSK(_nBL)) * (_nPopCnt) + (_nPopCnt) / 2) >> (_nBL);
@@ -2592,14 +2617,16 @@ extern const unsigned anBL_to_nDL[];
                   LOG((((_nPopCnt) << 1) - 1)) - cnBitsPerWord + (_nBL), \
                   (_nSplit))
 
-#if defined(SPLIT_SEARCH_BINARY)
+#else
 
-  #define SPLIT(_nPopCnt, _nBL, _xKey, _nSplit)  ((_nSplit) = (_nPopCnt) >> 1)
+#define PSPLIT(_nPopCnt, _nBL, _xKey, _nSplit) \
+{ \
+    /* make sure we don't overflow */ \
+    assert((_nBL) + LOG(_nPopCnt) + 1 <= cnBitsPerWord); \
+    (_nSplit) = ((Word_t)((_xKey) & MSK(_nBL)) * (_nPopCnt) / EXP(_nBL)); \
+}
 
-#else // defined(SPLIT_SEARCH_BINARY)
-
-  #define SPLIT(_nPopCnt, _nBL, _xKey, _nSplit) \
-      PSPLIT(_nPopCnt, _nBL, _xKey, _nSplit)
+#endif
 
 #endif // defined(SPLIT_SEARCH_BINARY)
 
@@ -2613,7 +2640,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 #if JUNK
 
-#define SPLIT(_nPopCnt, _xKeyMin, _xKeyMax, _xKey, _nSplit) \
+#define PSPLIT(_nPopCnt, _xKeyMin, _xKeyMax, _xKey, _nSplit) \
 { \
     unsigned nBL = LOG(((_xKeyMin) ^ (_xKeyMax)) | 1) + 1; \
     (_nSplit) = ((((((Word_t)(_xKey) << (cnBitsPerWord - (nBL))) \
@@ -2627,7 +2654,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 #if JUNK
 
-#define SPLIT(_nn, _xKeyMin, _xKeyMax, _xKey, _nSplit) \
+#define PSPLIT(_nn, _xKeyMin, _xKeyMax, _xKey, _nSplit) \
 { \
     (_nSplit) \
         = ((((Word_t)(_xKey) - (_xKeyMin)) * (_nn) + (_nn) / 2) \
@@ -2640,7 +2667,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 #define PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    int nSplit; SPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
+    int nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
     if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) \
     { \
         (_nPos) += nSplit; \
@@ -2699,55 +2726,57 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 // | big              small|
 // |fe:dc|ba:98|76:54|32:10|
 
-// Simple linear parallel search of a list that assumes the list contains a
-// key that is greater than or equal to the key we're searching for.
-// Key size is some power of two bytes.
-// It also assumes the last key in the last _b_t is equal to the largest
-// key in the list even if it is beyond the population.
+  #if defined(PSPLIT_EARLY_OUT)
+
+// Has-key forward scan of a sub-list.
+// With a check and early-out if we've gone past the key we want.
+// It assumes _pxKeys and _nPos are bucket-size aligned.
+// It assumes the last bucket is padded with keys that are in the list.
+// It might be performance preferable if the last key in the last bucket is
+// equal to the largest key in the list, even if it is just padding.
+// sizeof(_xKey) is used to determine the size of the keys in the list.
 // _nPopCnt is relative to _nPos
-#define PSSEARCHF(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
+#define HASKEYF(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
     assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
     assert((((_nPos) * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
-    /* starting _b_t */ \
-    Word_t wEnd = (Word_t)&(_pxKeys)[_nPos + _nPopCnt]; \
+    /* first address beyond address of last bucket to search */ \
+    _b_t *pxEnd = (_b_t *)&(_pxKeys)[_nPos + _nPopCnt]; \
+    /* address of first bucket to search */ \
     _b_t *px = (_b_t *)&(_pxKeys)[_nPos]; \
-    /* number of last key in starting _b_t */ \
+    /* number of last key first bucket to search */ \
     (_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1; \
     while ( ! BUCKET_HAS_KEY(px, (_xKey), sizeof(_xKey) * 8) ) { \
         /* check the last key in the _b_t to see if we've gone too far */ \
         if ((_xKey) < (_pxKeys)[_nPos]) { (_nPos) ^= -1; break; } \
         ++px; (_nPos) += sizeof(_b_t) / sizeof(_xKey); \
-        if ((Word_t)px >= wEnd) { (_nPos) ^= -1; break; } \
+        if (px >= pxEnd) { (_nPos) ^= -1; break; } \
     } \
 }
 
-#if defined(PSPLIT_EARLY_OUT)
-
-// Simple backward linear parallel search of a list that assumes the list
-// contains a key that is less than or equal to the key we're searching for.
-// Key size is some power of two bytes.
-#define PSSEARCHB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
+// Has-key backward scan of a sub-list.
+#define HASKEYB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
     assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
     _b_t *px = (_b_t *)(_pxKeys); \
-    /* starting _b_t */ \
+    /* bucket number of first bucket to search */ \
     int nxPos = ((_nPos) + (_nPopCnt) - 1) * sizeof(_xKey) / sizeof(_b_t); \
-    /* number of first key in starting _b_t */ \
-    Word_t wEnd = (Word_t)&(_pxKeys)[_nPos]; \
+    /* address of last bucket to search */ \
+    _b_t *pxEnd = (_b_t *)&(_pxKeys)[_nPos]; \
+    /* number of first key in first bucket to search */ \
     (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
     assert((((_nPos) * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
     while ( ! BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
         /* check the first key in the _b_t to see if we've gone too far */ \
         if ((_pxKeys)[_nPos] < (_xKey)) { (_nPos) ^= -1; break; } \
         --nxPos; (_nPos) -= sizeof(_b_t) / sizeof(_xKey); \
-        if ((Word_t)&px[nxPos] < wEnd) { (_nPos) = -1; break; } \
+        if (&px[nxPos] < pxEnd) { (_nPos) = -1; break; } \
     } \
 }
 
-#if JUNK
+      #if JUNK
 // Amazingly, the variant above was the best performing in my tests.
-#define PSSEARCHB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
+#define HASKEYB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
     _b_t *px = (_b_t *)(_pxKeys); \
     int nxPos = ((_nPos) + (_nPopCnt) - 1) * sizeof(_xKey) / sizeof(_b_t); \
@@ -2761,7 +2790,7 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
         } \
     } while (((_nPos) -= sizeof(_b_t) / sizeof(_xKey)), (nxPos-- >= 0)); \
 }
-#define PSSEARCHB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
+#define HASKEYB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
     _b_t *px = (_b_t *)(_pxKeys); \
     int nxPos = ((_nPos) + (_nPopCnt) - 1) * sizeof(_xKey) / sizeof(_b_t); \
@@ -2774,24 +2803,38 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
         (_nPos) -= sizeof(_b_t) / sizeof(_xKey); \
     } \
 }
-#endif // 0
+      #endif // JUNK
 
-#else // defined(PSPLIT_EARLY_OUT)
+  #else // defined(PSPLIT_EARLY_OUT)
 
-// Can't have a non-PSPLIT_EARLY_OUT version of PSSEARCHF because because
-// we don't know where the end of the list is.
-// #define PSSEARCHF(_b_t, _pxKeys, _xKey, _nPos, _xKeySplit, _xKeyEnd)
+// Has-key forward scan of a whole sub-list.
+// Without a check and early-out if we've gone past the key we want.
+#define HASKEYF(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
+{ \
+    assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
+    assert((((_nPos) * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
+    /* first address beyond address of last bucket to search */ \
+    _b_t *pxEnd = (_b_t *)&(_pxKeys)[_nPos + _nPopCnt]; \
+    /* address of first bucket to search */ \
+    _b_t *px = (_b_t *)&(_pxKeys)[_nPos]; \
+    /* number of last key first bucket to search */ \
+    (_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1; \
+    while ( ! BUCKET_HAS_KEY(px, (_xKey), sizeof(_xKey) * 8) ) { \
+        /* check to see if we've reached the end of the list */ \
+        if (++px >= pxEnd) { (_nPos) ^= -1; break; } \
+        (_nPos) += sizeof(_b_t) / sizeof(_xKey); \
+    } \
+}
 
-// Simple backward linear parallel search of a list that assumes the list
-// contains a key that is less than or equal to the key we're searching for.
-// Key size is some power of two bytes.
-#define PSSEARCHB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
+// Has-key backward scan of a whole sub-list.
+// Without a check and early-out if we've gone past the key we want.
+#define HASKEYB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
     _b_t *px = (_b_t *)(_pxKeys); \
-    /* starting _b_t */ \
+    /* bucket number of first bucket to search */ \
     int nxPos = (_nPos) * sizeof(_xKey) / sizeof(_b_t); \
-    /* number of first key in starting _b_t */ \
+    /* number of first key in first bucket to search */ \
     (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
     while ( ! BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
         /* check to see if we've reached the beginning of the list */ \
@@ -2800,9 +2843,9 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
     } \
 }
 
-#endif // defined(PSPLIT_EARLY_OUT)
+  #endif // defined(PSPLIT_EARLY_OUT)
 
-#if defined(PSPLIT_HYBRID)
+  #if defined(PSPLIT_HYBRID)
 
 // Linear parallel search of list (for any size key and with end check).
 #define PSEARCHF(_b_t, _x_t, \
@@ -2818,7 +2861,7 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
     SEARCHB(_x_t, _pxKeys, _nPopCnt, _xKey, _nPos) \
 }
 
-#else // defined(PSPLIT_HYBRID)
+  #else // defined(PSPLIT_HYBRID)
 
 // Linear parallel search of list (for any size key and with end check).
 #define PSEARCHF(_b_t, _x_t, \
@@ -2831,7 +2874,7 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
     if (xKeyEnd < (_xKey)) { \
         (_nPos) = ~((_nPos) + (_nPopCnt)); \
     } else { \
-        PSSEARCHF(_b_t, (_xKey), (_pxKeys), (_nPopCnt), (_nPos)); \
+        HASKEYF(_b_t, (_xKey), (_pxKeys), (_nPopCnt), (_nPos)); \
 /*PSPLIT_SEARCH_RANGE(_xKey, _pxKeys, _nPopCnt, _xKeySplit, xKeyEnd, _nPos)*/\
     } \
 }
@@ -2848,11 +2891,11 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
         (_nPos) ^= -1; \
     } else { \
         /*(_nPos) += (_nPopCnt) - 1;*/ \
-        PSSEARCHB(_b_t, (_xKey), (_pxKeys), (_nPopCnt), (_nPos)); \
+        HASKEYB(_b_t, (_xKey), (_pxKeys), (_nPopCnt), (_nPos)); \
     } \
 }
 
-#endif // defined(PSPLIT_HYBRID)
+  #endif // defined(PSPLIT_HYBRID)
 
 // Split search with a parallel search of the bucket at the split point.
 // A bucket is a Word_t or an __m128i.  Or whatever else we decide to pass
@@ -2870,13 +2913,17 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 // Can we use 0 and -1 for cases where we don't know them?  It might be
 // more efficient to have separate macros for all cases.  Or maybe just
 // a special case for neither is known.
-#define SPLIT_SEARCH_GUTS(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
+//
+// _b_t specifies the size of buckets in the list, e.g. Word_t, __m128i.
+// _x_t specifies the size of the keys in the list, e.g. uint8_t, uint16_t.
+// _nBL specifies the range of keys, i.e. the size of the expanse.
+#define PSPLIT_HASKEY_GUTS(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     /* printf("SSG(nBL %d pxKeys %p nPopCnt %d xKey 0x%x nPos %d\n", */ \
         /* _nBL, (void *)_pxKeys, _nPopCnt, _xKey, _nPos); */ \
     _b_t *px = (_b_t *)(_pxKeys); \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
-    unsigned nSplit; SPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
+    unsigned nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
     unsigned nSplitP = nSplit * sizeof(_x_t) / sizeof(_b_t); \
     assert(((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
     /*__m128i xLsbs, xMsbs, xKeys;*/ \
@@ -2888,28 +2935,28 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
     { \
         nSplit = nSplitP * sizeof(_b_t) / sizeof(_x_t); \
         _x_t xKeySplit = (_pxKeys)[nSplit]; \
-/* now we know the value of a key in the middle */ \
+        /* now we know the value of a key in the middle */ \
         if ((_xKey) > xKeySplit) \
         { \
             if (nSplitP == ((_nPopCnt) - 1) * sizeof(_x_t) / sizeof(_b_t)) { \
                 /* we searched the last bucket and the key is not there */ \
                 (_nPos) = -1; /* we don't know where to insert */ \
             } else { \
-                /* search the tail of the list */ \
+                /* parallel search the tail of the list */ \
                 /* ++nSplitP; */ \
                 (_nPos) = (int)nSplit + sizeof(_b_t) / sizeof(_x_t); \
-                PSSEARCHF(_b_t, (_xKey), \
+                HASKEYF(_b_t, (_xKey), \
                           (_pxKeys), (_nPopCnt) - (_nPos), (_nPos)); \
             } \
         } \
         else \
         { \
-            /* search the head of the list */ \
             if (nSplitP == 0) { \
                 /* we searched the first bucket and the key is not there */ \
-                (_nPos) = -1; /* we don't know where to insert */ \
+                (_nPos) = -1; /* this is where to insert */ \
             } else { \
-                PSSEARCHB(_b_t, (_xKey), (_pxKeys), nSplit, (_nPos)); \
+                /* parallel search the head of the list */ \
+                HASKEYB(_b_t, (_xKey), (_pxKeys), nSplit, (_nPos)); \
             } \
         } \
         assert(((_nPos) < 0) \
@@ -2935,7 +2982,7 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
     } \
 }
 
-#if JUNK
+  #if JUNK
 static int
 PSplitSearch16(int nBL,
                uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
@@ -2944,7 +2991,7 @@ again:;
     assert(nPopCnt > 0);
     assert(nPos >= 0); assert((nPos & ~MSK(sizeof(Bucket_t))) == 0);
 
-    int nSplit; SPLIT(nPopCnt - nPos, nBL, sKey, nSplit);
+    int nSplit; PSPLIT(nPopCnt - nPos, nBL, sKey, nSplit);
     // nSplit is a portion of (nPopCnt - nPos)
     assert(nSplit >= 0); assert(nSplit < (nPopCnt - nPos));
     nSplit &= ~MSK(sizeof(Bucket_t)); // first key in bucket
@@ -2973,25 +3020,25 @@ again:;
     nPopCnt = nSplit;
     goto again;
 }
-#endif
+  #endif // JUNK
 
-#if defined(PARALLEL_128)
+  #if defined(PARALLEL_128)
       #if defined(COUNT)
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
     PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
       #else // defined(COUNT)
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-    SPLIT_SEARCH_GUTS(__m128i, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
+    PSPLIT_HASKEY_GUTS(__m128i, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
       #endif // defined(COUNT)
-#else // defined(PARALLEL_128)
+  #else // defined(PARALLEL_128)
       #if defined(COUNT)
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
     PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
       #else // defined(COUNT)
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-    SPLIT_SEARCH_GUTS(Word_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
+    PSPLIT_HASKEY_GUTS(Word_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
       #endif // defined(COUNT)
-#endif // defined(PARALLEL_128)
+  #endif // defined(PARALLEL_128)
 
 #else // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
@@ -3184,10 +3231,7 @@ HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 #if ! defined(LOOKUP_NO_LIST_SEARCH) || ! defined(LOOKUP)
 
 #if defined(COMPRESSED_LISTS)
-
   #if (cnBitsInD1 <= 8)
-      #if ! defined(EMBED_KEYS) \
-                  || (cnListPopCntMax8 > 7) || (cnListPopCntMaxDl1 > 7)
 
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
@@ -3242,6 +3286,14 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     {
         PSPLIT_SEARCH(uint8_t, nBL, pcKeys, nPopCnt, cKey, nPos);
     }
+#if 1
+    int nPosPsplit = nPos;
+    nPos = 0;
+    SEARCHF(uint8_t, pcKeys, nPopCnt, cKey, nPos); (void)nBL;
+    if (nPos != nPosPsplit) {
+        printf("SearchList8: nPosPsplit %d nPos %d\n", nPosPsplit, nPos);
+    }
+#endif
 #elif defined(BACKWARD_SEARCH_8)
     SEARCHB(uint8_t, pcKeys, nPopCnt, cKey, nPos); (void)nBL;
 #else // here for forward linear search with end check
@@ -3250,17 +3302,17 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     return nPos;
 }
 
-      #endif // ! defined(EMBED_KEYS)
-  #endif // (cnBitsInD1 <= 8)
+static int
+ListHasKey8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
+{
+    return SearchList8(pwRoot, pwr, wKey, nBL) >= 0;
+}
 
+  #endif // (cnBitsInD1 <= 8)
 #endif // defined(COMPRESSED_LISTS)
 
 #if defined(COMPRESSED_LISTS)
-
-      #if (cnBitsInD1 <= 16)
-          #if ! defined(EMBED_KEYS) \
-              || (cnListPopCntMaxDl2 > 3) || (cnListPopCntMax16 > 3)
-
+  #if (cnBitsInD1 <= 16)
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
 // If it does not exist, then return the one's complement of the index where
@@ -3334,12 +3386,12 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
   #if defined(PSPLIT_SEARCH_16) && !defined(INSERT)
       #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 16) {
-        PSPLIT_SEARCH(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+        PSPLIT_SEARCH_BY_KEY(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
     } else
       #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
         //nPos = PSplitSearch16(nBL, psKeys, nPopCnt, sKey, nPos);
-        PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
+        PSPLIT_SEARCH_BY_KEY(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     }
   #elif defined(BACKWARD_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;
@@ -3349,9 +3401,54 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     return nPos;
 }
 
-          #endif // ! defined(EMBED_KEYS) || ...
-      #endif // (cnBitsInD1 <= 16)
+static int
+ListHasKey16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
+{
+    (void)nBL; (void)pwRoot;
 
+    assert(nBL >   8);
+    assert(nBL <= 16);
+  #if defined(PP_IN_LINK)
+    int nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
+  #else // defined(PP_IN_LINK)
+    int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 16);
+  #endif // defined(PP_IN_LINK)
+    uint16_t *psKeys = ls_psKeysNATX(pwr, nPopCnt);
+    DBGL(printf("SearchList16 nPopCnt %d psKeys %p\n", nPopCnt, (void *)psKeys));
+
+    (void)nBL;
+  #if defined(LIST_END_MARKERS)
+    assert(psKeys[-1] == 0);
+      #if defined(PSPLIT_PARALLEL) && !defined(INSERT)
+    assert(*(uint16_t *)(((Word_t)&psKeys[nPopCnt] + sizeof(Bucket_t) - 1)
+            & ~(sizeof(Bucket_t) - 1))
+        == (uint16_t)-1);
+      #else // defined(PSPLIT_PARALLEL)
+    assert(psKeys[nPopCnt] == (uint16_t)-1);
+      #endif // defined(PSPLIT_PARALLEL)
+  #endif // defined(LIST_END_MARKERS)
+    uint16_t sKey = (uint16_t)wKey;
+    int nPos = 0;
+  #if defined(PSPLIT_SEARCH_16) && !defined(INSERT)
+      #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
+    if (nBL == 16) {
+        PSPLIT_HASKEY_GUTS(__m128i,
+                           uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+    } else
+      #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
+    {
+        PSPLIT_HASKEY_GUTS(__m128i,
+                           uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
+    }
+  #elif defined(BACKWARD_SEARCH_16)
+    SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;
+  #else // here for forward linear search with end check
+    SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;
+  #endif // ...
+    return nPos >= 0;
+}
+
+  #endif // (cnBitsInD1 <= 16)
 #endif // defined(COMPRESSED_LISTS)
 
 #if defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) \
@@ -3395,12 +3492,26 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
         PSPLIT_SEARCH(uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
         DBGX(printf("SearchList32 nPos %d\n", nPos));
     }
+#if 1
+    int nPosPsplit = nPos;
+    nPos = 0;
+    SEARCHF(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
+    if (nPos != nPosPsplit) {
+        printf("SearchList32: nPosPsplit %d nPos %d\n", nPosPsplit, nPos);
+    }
+#endif
 #elif defined(BACKWARD_SEARCH_32)
     SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
 #else // here for forward linear search with end check
     SEARCHF(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
 #endif // ...
     return nPos;
+}
+
+static int
+ListHasKey32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
+{
+    return SearchList32(piKeys, wKey, nBL, nPopCnt) >= 0;
 }
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) && ...
@@ -3533,6 +3644,12 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
     return nPos;
 }
 
+static int
+ListHasKeyWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
+{
+    return SearchListWord(pwKeys, wKey, nBL, nPopCnt) >= 0;
+}
+
 #if JUNK
 #define MAGIC1(_nBL)  MAXUINT / ((1 << (_nBL)) - 1)
 #define MAGIC1(_nBL)  (cnMagic[_nBL])
@@ -3623,27 +3740,18 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 
   #if defined(COMPRESSED_LISTS)
       #if (cnBitsInD1 <= 8)
-          // smallest key size is one bit bigger than
-          // whatever size yields a bitmap that will
-          // fit in a link.
-          #if ! defined(EMBED_KEYS) \
-                      /* EmbeddedListPopCntMax8 */ \
-                      /* (LOG(sizeof(Link_t)) <= 4) */ \
-                      || (cnListPopCntMax8 > 7) || (cnListPopCntMaxDl1 > 7)
+      // There is no need for a key size that is equal to or smaller than
+      // whatever size yields a bitmap that will fit in a link.
     if (nBL <= 8) {
         nPos = SearchList8(pwRoot, pwr, wKey, nBL);
     } else
-          #endif // ! defined(EMBED_KEYS)
-      #endif
+      #endif // defined(cnBitsInD1 <= 8)
       #if (cnBitsInD1 <= 16)
-          #if ! defined(EMBED_KEYS) \
-              || (cnListPopCntMaxDl2 > 3) || (cnListPopCntMax16 > 3)
     if (nBL <= 16) {
         assert(nBL > 8);
         nPos = SearchList16(pwRoot, pwr, wKey, nBL);
     } else
-         #endif // ! defined(EMBED_KEYS) || ...
-      #endif // (cnBitsInD1 <= 16)
+      #endif // defined(cnBitsInD1 <= 16)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
     if (nBL <= 32) {
         assert(nBL > 16);
@@ -3690,7 +3798,67 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 static int
 ListHasKey(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 {
-    return SearchList(pwr, wKey, nBL, pwRoot) >= 0;
+    (void)pwRoot;
+
+    DBGL(printf("ListHasKey pwRoot %p wRoot "OWx" wKey "Owx" nBL %d\n",
+                (void *)pwRoot, *pwRoot, wKey, nBL));
+
+    int nPopCnt;
+    int bHasKey;
+
+  #if defined(COMPRESSED_LISTS)
+      #if (cnBitsInD1 <= 8)
+      // There is no need for a key size that is equal to or smaller than
+      // whatever size yields a bitmap that will fit in a link.
+    if (nBL <= 8) {
+        bHasKey = ListHasKey8(pwRoot, pwr, wKey, nBL);
+    } else
+      #endif // defined(cnBitsInD1 <= 8)
+      #if (cnBitsInD1 <= 16)
+    if (nBL <= 16) {
+        assert(nBL > 8);
+        bHasKey = ListHasKey16(pwRoot, pwr, wKey, nBL);
+    } else
+      #endif // defined(cnBitsInD1 <= 16)
+      #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
+    if (nBL <= 32) {
+        assert(nBL > 16);
+          #if defined(PP_IN_LINK)
+        nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
+          #else // defined(PP_IN_LINK)
+        nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 32);
+          #endif // defined(PP_IN_LINK)
+        bHasKey = ListHasKey32(ls_piKeysNATX(pwr, nPopCnt), wKey, nBL,
+                               nPopCnt);
+    } else
+      #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
+  #endif // defined(COMPRESSED_LISTS)
+    {
+  #if defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
+      #if defined(PP_IN_LINK)
+        nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
+      #else // defined(PP_IN_LINK)
+        nPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord);
+      #endif // ! defined(PP_IN_LINK)
+        bHasKey = ListHasKeyWord(ls_pwKeysNATX(pwr, nPopCnt),
+                                 wKey, nBL, nPopCnt);
+  #else // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
+      #if defined(PP_IN_LINK)
+        if (nBL != cnBitsPerWord) {
+            nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
+        } else
+      #endif // ! defined(PP_IN_LINK)
+        { nPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord); }
+        //printf("pwRoot %p pwr %p\n", (void *)pwRoot, (void *)pwr);
+        bHasKey = ListHasKeyWord(ls_pwKeys(pwr, nBL), wKey, nBL, nPopCnt);
+  #endif // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
+    }
+
+  #if defined(LOOKUP)
+    SMETRICS(j__SearchPopulation += nPopCnt);
+  #endif // defined(LOOKUP)
+
+    return bHasKey;
 }
 
 // Locate the key in the sorted list.
