@@ -6512,6 +6512,7 @@ NextGuts(Word_t wRoot, int nBL,
     }
     DBG(printf("J1BC: Unhandled type %d\n", wr_nType(wRoot)));
     assert(0); // not expected to get here
+    return -1; // address compiler complaint
 }
 
 // Return the wCount'th key in the array.
