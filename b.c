@@ -6003,7 +6003,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
     {
         unsigned nType = wr_nType(wRoot);
         Word_t *pwr = wr_pwr(wRoot);
-        Word_t wPopCnt;
+        Word_t wPopCnt; (void)wPopCnt;
 
   #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
         if ( ! tp_bIsSwitch(nType) )
