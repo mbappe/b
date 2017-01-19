@@ -72,9 +72,10 @@ endif
   WFLAGS += -Wno-unused-function
 # gcc gives false positives without -Wno-maybe-uninitialized.
 # clang doesn't even try. So clang doesn't support the option.
-ifeq "$(CC)" "gcc"
-  WFLAGS += -Wno-maybe-uninitialized
-endif
+# macOS version of gcc doesn't support it either.
+#ifeq "$(CC)" "gcc"
+#  WFLAGS += -Wno-maybe-uninitialized
+#endif
 
 # -O0 no optimization
 # -O1 between -O2 and -O0
