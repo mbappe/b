@@ -1979,6 +1979,9 @@ InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
         }
     }
     DBGI(printf("Insert: wKey "OWx" nSlot %d", wKey, nSlot));
+#if defined(FILL_W_BIG_KEY)
+#error
+#endif // defined(FILL_W_BIG_KEY)
     if (nSlot < nPopCnt) {
         Word_t wLowBits
             = GetBits(*pwRoot, (nPopCnt - nSlot) * nBL,
@@ -6150,7 +6153,7 @@ NextGuts(Word_t wRoot, int nBL,
         DBGN(printf("T_EMBEDDED_KEYS: *pwKey "OWx" wSkip %lu\n", *pwKey, wSkip));
         //A(0); // check -B10 -DS1
         assert(nBL != cnBitsPerWord);
-        int nPos = SearchListEmbedded(wRoot, *pwKey, nBL);
+        int nPos = SearchEmbeddedX(&wRoot, *pwKey, nBL);
         if (bPrev) {
             //A(0); // check -B10 -DS1
             if (nPos < 0) {

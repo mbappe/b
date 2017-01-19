@@ -3170,6 +3170,44 @@ WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
     return wMagic; // bXorHasZero = (wMagic != 0);
 }
 
+#if 0
+// LocateKeyInWord is a work-in-progress.
+// The rest of the code doesn't really set up embedded lists that are
+// conducive to this operation yet.
+static int
+LocateKeyInWord(Word_t *pw, Word_t wKey, unsigned nBL)
+{
+    Word_t wMagic = WordHasKey(pw, wKey, nBL);
+    if (wMagic) {
+        unsigned nBits = wr_nPopCnt(*pw, nBL) * nBL;
+        assert(nBits != cnBitsPerWord);
+        wMagic &= (MSK(nBits) << (cnBitsPerWord - nBits));
+        wMagic &= -wMagic;
+printf("*pw "OWx" wKey "OWx" nBL %d wMagic "OWx"\n", *pw, wKey, nBL, wMagic);
+        return __builtin_clzll(wMagic) / nBL;
+    } else {
+        return ~0;
+    }
+}
+#endif
+
+// Find key or hole and return it's position.
+static int
+SearchEmbeddedX(Word_t *pw, Word_t wKey, unsigned nBL)
+{
+    int ii;
+    for (ii = 0; ii < wr_nPopCnt(*pw, nBL); ii++) {
+        Word_t wSuffixLoop
+               = GetBits(*pw, /* nBits */ nBL,
+                         /* nLsb */ cnBitsPerWord - (nBL * (ii + 1)));
+        if ((wKey & MSK(nBL)) <= wSuffixLoop) {
+            if ((wKey & MSK(nBL)) == wSuffixLoop) { return ii; }
+            break;
+        }
+    }
+    return ~ii;
+}
+
 #endif // defined(USE_WORD_ARRAY_EMBEDDED_KEYS_PARALLEL)
 
 #if defined(PARALLEL_128)
@@ -3977,15 +4015,6 @@ static int // bool
 EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
 {
     return EmbeddedListMagic(wRoot, wKey, nBL) != 0;
-}
-
-static int
-SearchListEmbedded(Word_t wRoot, Word_t wKey, unsigned nBL)
-{
-    Word_t wRootNew = InflateEmbeddedList(NULL, wKey, nBL, wRoot);
-    int nPos = SearchList(wr_pwr(wRootNew), wKey, nBL, &wRootNew);
-    OldList(wr_pwr(wRootNew), wr_nPopCnt(wRoot, nBL), nBL, T_LIST);
-    return nPos;
 }
 
 #endif // defined(EMBED_KEYS) ...
