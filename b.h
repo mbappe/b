@@ -2582,7 +2582,7 @@ extern const unsigned anBL_to_nDL[];
 
 #else // defined(SPLIT_SEARCH_BINARY)
 
-#if 0
+  #if defined(OLD_PSPLIT)
 
 // One old method:
 // nSplit = (((_xKey) & MSK(_nBL)) * (_nPopCnt) + (_nPopCnt) / 2) >> (_nBL);
@@ -2617,7 +2617,7 @@ extern const unsigned anBL_to_nDL[];
                   LOG((((_nPopCnt) << 1) - 1)) - cnBitsPerWord + (_nBL), \
                   (_nSplit))
 
-#else
+  #else // defined(OLD_PSPLIT)
 
 #define PSPLIT(_nPopCnt, _nBL, _xKey, _nPsplit) \
 { \
@@ -2626,7 +2626,7 @@ extern const unsigned anBL_to_nDL[];
     (_nPsplit) = ((Word_t)((_xKey) & MSK(_nBL)) * (_nPopCnt) / EXP(_nBL)); \
 }
 
-#endif
+  #endif // defined(OLD_PSPLIT)
 
 #endif // defined(SPLIT_SEARCH_BINARY)
 
@@ -2919,7 +2919,23 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 
   #endif // defined(PSPLIT_HYBRID)
 
-  #if defined(OLD_PSPLIT_HASKEY_GUTS)
+  #if defined(SIMPLE_PSPLIT_HASKEY_GUTS)
+
+#define PSPLIT_HASKEY_GUTS(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
+{ \
+    unsigned nPsplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nPsplit); \
+    nPsplit &= ~MSK(sizeof(_b_t)/sizeof(_x_t)); \
+    _x_t xKeyPsplit = (_pxKeys)[nPsplit]; \
+    if (xKeyPsplit <= (_xKey)) { \
+        (_nPos) += nPsplit; (_nPopCnt) -= nPsplit; \
+        HASKEYF(_b_t, (_xKey), (_pxKeys), (_nPopCnt), (_nPos)); \
+    } else if (nPsplit == 0) { (_nPos) = ~0; } else { \
+        HASKEYB(_b_t, (_xKey), (_pxKeys), nPsplit, (_nPos)); \
+    } \
+}
+
+  #else // defined(SIMPLE_PSPLIT_HASKEY_GUTS)
+
 // Split search with a parallel search of the bucket at the split point.
 // A bucket is a Word_t or an __m128i.  Or whatever else we decide to pass
 // into _b_t in the future.
@@ -2942,7 +2958,7 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 // _nBL specifies the range of keys, i.e. the size of the expanse.
 #define PSPLIT_HASKEY_GUTS(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    /* printf("SSG(nBL %d pxKeys %p nPopCnt %d xKey 0x%x nPos %d\n", */ \
+    /* printf("PSPHK(nBL %d pxKeys %p nPopCnt %d xKey 0x%x nPos %d\n", */ \
         /* _nBL, (void *)_pxKeys, _nPopCnt, _xKey, _nPos); */ \
     _b_t *px = (_b_t *)(_pxKeys); \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
@@ -3004,47 +3020,8 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
         } \
     } \
 }
-  #else // defined(OLD_PSPLIT_HASKEY_GUTS)
 
-#define PSPLIT_HASKEY_GUTS(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-{ \
-    /* printf("PSHKG(nBL %d pxKeys %p nPopCnt %d xKey 0x%x nPos %d\n", */ \
-        /* _nBL, (void *)_pxKeys, _nPopCnt, _xKey, _nPos); */ \
-    assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
-    assert((_nPos) == 0); \
-    assert(((_xKey) & ~MSK(sizeof(_x_t) * 8)) == 0); \
-    unsigned nPsplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nPsplit); \
-    nPsplit &= ~MSK(sizeof(_b_t)/sizeof(_x_t)); \
-    _x_t xKeyPsplit = (_pxKeys)[nPsplit]; \
-    if (likely(xKeyPsplit <= (_xKey))) { \
-        (_nPos) += nPsplit; (_nPopCnt) -= nPsplit; \
-        HASKEYF(_b_t, (_xKey), (_pxKeys), (_nPopCnt), (_nPos)); \
-    } else if (unlikely(nPsplit == 0)) { (_nPos) = ~0; } else { \
-        HASKEYB(_b_t, (_xKey), (_pxKeys), nPsplit, (_nPos)); \
-        /* HASKEYB((_b_t *)(_pxKeys), (_xKey), nPsplit * sizeof(_xKey) / sizeof(_b_t), (_nPos)); */ \
-    } \
-    assert(((_nPos) < 0) \
-        || BUCKET_HAS_KEY((_b_t *) \
-                              ((Word_t)&(_pxKeys)[_nPos] \
-                                  & ~MSK(LOG(sizeof(_b_t)))), \
-                          (_xKey), sizeof(_x_t) * 8)); \
-    /* everything below is just assertions */ \
-    if ((_nPos) < 0) { \
-        /* assert(~(_nPos) <= (int)(_nPopCnt)); not true */ \
-        assert((~(_nPos) == (int)(_nPopCnt)) \
-                || (~(_nPos == 0)) \
-                || (~(_nPos) \
-                    < (int)((_nPopCnt + sizeof(_b_t) - 1) \
-                        & ~MSK(sizeof(_b_t))))); \
-        for (int ii = 0; ii < (_nPopCnt); \
-             ii += sizeof(_b_t) / sizeof(_xKey)) \
-        { \
-            assert( ! BUCKET_HAS_KEY((_b_t *)&(_pxKeys)[ii], \
-                      (_xKey), sizeof(_x_t) * 8) ); \
-        } \
-    } \
-}
-  #endif // defined(OLD_PSPLIT_HASKEY_GUTS)
+  #endif // defined(SIMPLE_PSPLIT_HASKEY_GUTS)
 
   #if JUNK
 static int
