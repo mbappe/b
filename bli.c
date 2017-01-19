@@ -1131,8 +1131,11 @@ t_list:;
                 // an enormous performance impact. &wRoot is 30ns while
                 // pwRoot is 40ns. It does not happen with all versions of
                 // code.  &wRoot would be a bug for PP_IN_LINK.
-                //    && ListHasKey(pwr, wKey, nBL, &wRoot)
+            #if defined(PP_IN_LINK)
                 && ListHasKey(pwr, wKey, nBL, pwRoot)
+            #else // defined(PP_IN_LINK)
+                && ListHasKey(pwr, wKey, nBL, &wRoot)
+            #endif // defined(PP_IN_LINK)
         #else // defined(LOOKUP)
                 && ((nPos = SearchList(pwr, wKey, nBL, pwRoot)) >= 0)
         #endif // defined(LOOKUP)
