@@ -417,7 +417,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
   #endif // !defined(LOOKUP)
 #endif // !defined(RECURSIVE)
     int nBLR;
-    Word_t wPopCnt; (void)wPopCnt;
+    Word_t wPopCnt = wPopCnt; // suppress compiler warnings
 #if defined(INSERT) || defined(REMOVE)
     int bCleanup = 0;
 #endif // defined(INSERT) || defined(REMOVE)
