@@ -1127,6 +1127,11 @@ t_list:;
                 && (pwr != NULL)
         #endif // ! defined(SEPARATE_T_NULL)
         #if defined(LOOKUP)
+                // I have seen the use of &wRoot instead of pwRoot here have
+                // an enormous performance impact. &wRoot is 30ns while
+                // pwRoot is 40ns. It does not happen with all versions of
+                // code.  &wRoot would be a bug for PP_IN_LINK.
+                //    && ListHasKey(pwr, wKey, nBL, &wRoot)
                 && ListHasKey(pwr, wKey, nBL, pwRoot)
         #else // defined(LOOKUP)
                 && ((nPos = SearchList(pwr, wKey, nBL, pwRoot)) >= 0)
