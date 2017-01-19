@@ -1429,6 +1429,7 @@ t_bitmap:;
                 >= (EXP(cnBitsLeftAtDl2) * 100 / cnBitsPerWord
                        / cn2dBmWpkPercent))
   #endif
+            // Can we count on a previously initialized wPopCnt here?
             && (wPopCnt >= (EXP(cnBitsLeftAtDl2) * 100 / cnBitsPerWord
                     / cn2dBmWpkPercent))
             )
