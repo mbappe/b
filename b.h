@@ -3574,7 +3574,41 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 static int
 ListHasKey32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 {
-    return SearchList32(piKeys, wKey, nBL, nPopCnt) >= 0;
+    (void)nBL;
+    assert(nBL >  16);
+    assert(nBL <= 32);
+#if defined(LIST_END_MARKERS)
+    assert(piKeys[-1] == 0);
+#if defined(PSPLIT_PARALLEL)
+    assert(*(uint32_t *)(((Word_t)&piKeys[nPopCnt] + sizeof(Bucket_t) - 1)
+            & ~(sizeof(Bucket_t) - 1))
+        == (uint32_t)-1);
+#else // defined(PSPLIT_PARALLEL)
+    assert(piKeys[nPopCnt] == (uint32_t)-1);
+#endif // ! defined(PSPLIT_PARALLEL)
+#endif // defined(LIST_END_MARKERS)
+    uint32_t iKey = (uint32_t)wKey;
+    int nPos = 0;
+#if defined(PSPLIT_SEARCH_32)
+#if defined(BL_SPECIFIC_PSPLIT_SEARCH)
+    if (nBL == 32) {
+        PSPLIT_HASKEY_GUTS(__m128i,
+                           uint32_t, 32, piKeys, nPopCnt, iKey, nPos);
+    } else if (nBL == 24) {
+        PSPLIT_HASKEY_GUTS(__m128i,
+                           uint32_t, 24, piKeys, nPopCnt, iKey, nPos);
+    } else
+#endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
+    {
+        PSPLIT_HASKEY_GUTS(__m128i,
+                           uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
+    }
+#elif defined(BACKWARD_SEARCH_32)
+    SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
+#else // here for forward linear search with end check
+    SEARCHF(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
+#endif // ...
+    return nPos >= 0;
 }
 
 #endif // defined(COMPRESSED_LISTS) && (cnBitsPerWord > 32) && ...
