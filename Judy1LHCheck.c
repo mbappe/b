@@ -710,8 +710,8 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
 
         if (Count1 != (elm + 1))
         {
-            J1C(CountL, J1, 0, -1);
-            printf("J1C(%lu, J1, 0, -1)\n", CountL);
+            J1C(Count1, J1, 0, -1);
+            printf("J1C(%lu, J1, 0, -1)\n", Count1);
 
             JLC(CountL, JL, 0, -1);
             printf("JLC(%lu, JL, 0, -1)\n", CountL);
