@@ -289,10 +289,13 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
     // How should we handle LIST_END_MARKERS for parallel searches?
     nBytes += nBytesKeySz;
 #endif // defined(LIST_END_MARKERS)
-    return DIV_UP(nBytes, sizeof(Word_t)) | 1;
+    // Round up to an odd number of words and a minimum of three words.
+    // Malloc wastes a word if an even number of words is requested.
+    // Malloc never allocates less than three words.
+    return MAX(DIV_UP(nBytes, sizeof(Word_t)) | 1, 3);
 #else // defined(OLD_LISTS)
-    return ls_nSlotsInList(wPopCntArg, nBL, nBytesKeySz)
-                 * nBytesKeySz / sizeof(Word_t);
+    return MAX(ls_nSlotsInList(wPopCntArg, nBL, nBytesKeySz)
+                 * nBytesKeySz / sizeof(Word_t) | 1, 3);
 #endif // defined(OLD_LISTS)
 }
 
@@ -5870,6 +5873,26 @@ Initialize(void)
         }
     }
 #endif // defined(EMBED_KEYS)
+
+    // How big are T_LIST leaves.
+    for (int nBL = cnBitsPerWord; nBL >= 8; nBL >>= 1) {
+        printf("\n");
+        int nWords = 0; int nWordsPrev = 0;
+        //for (int nPopCnt = 1; nPopCnt <= cnBitsPerWord * 5 / nBL; nPopCnt++)
+        for (int nPopCnt = 1; nWords < 7; nPopCnt++)
+        {
+            if ((nWords = ListWordsTypeList(nPopCnt, nBL)) != nWordsPrev) {
+                if (nPopCnt > 2) {
+                    printf("# ListWordsTypeList(nBL %2d, nPopCnt %3d) %d\n",
+                           nBL, nPopCnt - 1,
+                           ListWordsTypeList(nPopCnt - 1, nBL));
+                }
+                printf("# ListWordsTypeList(nBL %2d, nPopCnt %3d) %d\n",
+                       nBL, nPopCnt, nWords);
+                nWordsPrev = nWords;
+            }
+        }
+    }
 
     printf("\n");
     printf("# cnDummiesInList %d\n", cnDummiesInList);
