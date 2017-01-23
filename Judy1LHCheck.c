@@ -619,7 +619,7 @@ TestJudyGet(void *J1, void *JL, void *JH, Word_t Seed, Word_t Elements)
         if (pFlag) { printf("Judy1Test: elm=%8lu\t%p\n", elm, (void *)TstIndex); }
 
         if (Rcode != 1)
-            FAILURE("Judy1Test Rcode != 1", Rcode);
+            FAILURE("Judy1Test Rcode != 1 =", Rcode);
 
 #ifdef SKIPMACRO
         PValue = (PWord_t)JudyLGet(JL, TstIndex);
