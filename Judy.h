@@ -404,7 +404,7 @@ extern void   JudyFreeVirtual(Pvoid_t, Word_t); // free, size in words.
         { (Rc) = Func(PArray, Index, PJE0); }
 
 #define J_1P(PV,PArray,Index,Func,FuncName) \
-        { (PV) = (Pvoid_t) Func(PArray, Index, PJE0); }
+        { (PV) = (PWord_t) Func(PArray, Index, PJE0); }
 
 #define J_2I(Rc,PArray,Index,Arg2,Func,FuncName) \
         { (Rc) = Func(PArray, Index, Arg2, PJE0); }
@@ -413,7 +413,7 @@ extern void   JudyFreeVirtual(Pvoid_t, Word_t); // free, size in words.
         { (Rc) = Func(PArray, Index1, Index2, PJE0); }
 
 #define J_2P(PV,PArray,Index,Arg2,Func,FuncName) \
-        { (PV) = (Pvoid_t) Func(PArray, Index, Arg2, PJE0); }
+        { (PV) = (PWord_t) Func(PArray, Index, Arg2, PJE0); }
 
 // Variations for Judy*Set/InsArray functions:
 
@@ -462,7 +462,7 @@ extern void   JudyFreeVirtual(Pvoid_t, Word_t); // free, size in words.
 #define J_1P(Rc,PArray,Index,Func,FuncName)                             \
         {                                                               \
             JError_t J_Error;                                           \
-            if (((Rc) = (Pvoid_t) Func(PArray, Index, &J_Error)) == PJERR) \
+            if (((Rc) = (PWord_t) Func(PArray, Index, &J_Error)) == PJERR) \
                 J_E(FuncName, &J_Error);                                \
         }
 
@@ -493,7 +493,7 @@ extern void   JudyFreeVirtual(Pvoid_t, Word_t); // free, size in words.
 #define J_2P(PV,PArray,Index,Arg2,Func,FuncName)                        \
         {                                                               \
             JError_t J_Error;                                           \
-            if (((PV) = (Pvoid_t) Func(PArray, Index, Arg2, &J_Error))  \
+            if (((PV) = (PWord_t) Func(PArray, Index, Arg2, &J_Error))  \
                 == PJERR) J_E(FuncName, &J_Error);                      \
         }
 
@@ -555,7 +555,7 @@ extern void   JudyFreeVirtual(Pvoid_t, Word_t); // free, size in words.
         (Rc) = Judy1MemUsed(PArray)
 
 #define JLG(PV,PArray,Index)                                            \
-    (PV) = (Pvoid_t)JudyLGet((Pvoid_t)PArray, Index, PJE0)
+    (PV) = (PWord_t)JudyLGet((Pvoid_t)PArray, Index, PJE0)
 
 #define JLI( PV,    PArray,   Index)                                    \
         J_1P(PV, (&(PArray)), Index,  JudyLIns,   "JudyLIns")
@@ -596,7 +596,7 @@ extern void   JudyFreeVirtual(Pvoid_t, Word_t); // free, size in words.
 #define JHSI(PV,    PArray,   PIndex,   Count)                          \
         J_2P(PV, (&(PArray)), PIndex,   Count, JudyHSIns, "JudyHSIns")
 #define JHSG(PV,    PArray,   PIndex,   Count)                          \
-        (PV) = (Pvoid_t) JudyHSGet(PArray, PIndex, Count)
+        (PV) = (PWord_t) JudyHSGet(PArray, PIndex, Count)
 #define JHSD(Rc,    PArray,   PIndex,   Count)                          \
         J_2I(Rc, (&(PArray)), PIndex, Count, JudyHSDel, "JudyHSDel")
 #define JHSFA(Rc,    PArray)                                            \

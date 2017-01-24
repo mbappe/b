@@ -153,7 +153,7 @@ FILES_FROM_DOUG_B_OR_DOUG_LEA  = Judy.h RandomNumb.h dlmalloc.c JudyMalloc.c
 FILES_FROM_DOUG_B_OR_DOUG_LEA += Judy1LHCheck.c Judy1LHTime.c jbgraph
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEA)
 
-EXES = b check # t
+EXES = b check mapcheck maptime # t
 LIBS = libb1.a libb1.so libb.a libb.so
 LIB1_OBJS = b.o bl.o bi.o br.o bc.o bn.o JudyMalloc.o
 LIB1_SRCS = b.c bl.c bi.c br.c bc.c bn.c JudyMalloc.c
@@ -180,7 +180,7 @@ T_OBJS = stubsL.o stubsHS.o JudyMalloc.o
 #
 ##################################
 
-default: clean b check
+default: clean $(EXES)
 
 all: clean $(EXES) $(LIBS) $(ASMS) $(CPPS) b.tjz
 
@@ -197,9 +197,12 @@ b:	Judy1LHTime.c libb.a
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
 check:	Judy1LHCheck.c libb1.a
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -o $@ $^ -lJudy -lm
-#check:	Judy1LHCheck.c
-#	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -o $@ \
-#		$^ $(LIB1_OBJS) /usr/local/lib/libJudy.a -lm
+
+mapcheck:	Judy1LHCheck.c libb1.a
+	c++ -std=c++14 -I. -x c++ Judy1LHCheck.c -o $@ -L. -lb1 -lJudy -lm
+
+maptime:	Judy1LHTime.c libb1.a
+	c++ -std=c++14 -I. -x c++ Judy1LHTime.c -o $@ -L. -lb1 -lJudy -lm
 
 b.tjz:	$(FILES)
 	tar cjf $@ $^

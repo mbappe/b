@@ -1414,7 +1414,7 @@ main(int argc, char *argv[])
 
 //            printf(""OWx"\n", PrintKey);
 
-            printf("0x"Owx", %2d %lu\n", PrintKey, (int)log2((double)(PrintKey)) + 1, PrintKey);
+            printf("0x" Owx", %2d %lu\n", PrintKey, (int)log2((double)(PrintKey)) + 1, PrintKey);
 
 #ifdef __LP64__
 //            printf("0x%016lx\n", PrintKey);

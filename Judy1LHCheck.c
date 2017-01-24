@@ -511,7 +511,7 @@ TestJudyIns(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
             FAILURE("Judy1Set failed - DUP Index, population =", TotalPop);
 
 #ifdef SKIPMACRO
-        Rcode = Judy1Test(*J1, TstIndex);
+        Rcode = Judy1Test(*J1, TstIndex, NULL);
 #else
         J1T(Rcode, *J1, TstIndex);
 #endif // SKIPMACRO
@@ -882,7 +882,7 @@ TestJudyNextEmpty(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
 
 //      find next Index (Key) in array
         Rcode1 = Judy1Next(J1, &J1index, PJE0);
-        PValue = JudyLNext(JL, &JLindex, PJE0);
+        PValue = (Word_t *)JudyLNext(JL, &JLindex, PJE0);
 
         if ((Rcode1 != 1) && (PValue == NULL))
             break;
@@ -964,7 +964,7 @@ TestJudyPrevEmpty(void *J1, void *JL, Word_t HighIndex, Word_t Elements)
 
 //      find next Index (Key) in array
         Rcode1 = Judy1Prev(J1, &J1index, PJE0);
-        PValue = JudyLPrev(JL, &JLindex, PJE0);
+        PValue = (Word_t *)JudyLPrev(JL, &JLindex, PJE0);
 
         if ((Rcode1 != 1) && (PValue == NULL))
             break;
