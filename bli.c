@@ -1952,6 +1952,10 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     DBGI(printf("\n\n# Judy1Set ppvRoot %p wKey "OWx"\n",
                 (void *)ppvRoot, wKey));
 
+    if (Judy1Test((Pcvoid_t)*pwRoot, wKey, NULL) == Success) {
+        return Failure;
+    }
+
   #if defined(PP_IN_LINK)
       #if defined(DEBUG)
     Word_t wPrefixPop = PWR_wPrefixPop(ppvRoot, NULL);
@@ -2146,6 +2150,10 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     DBGR(printf("\n\n# Judy1Unset ppvRoot %p wKey "OWx"\n",
                 (void *)ppvRoot, wKey));
+
+    if (Judy1Test((Pcvoid_t)*pwRoot, wKey, NULL) != Success) {
+        return Failure;
+    }
 
   #if (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_R)
     // Handle the top level list leaf.
