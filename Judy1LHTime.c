@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.14 $ $Source: /home/doug/JudyL64A/test/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.15 $ $Source: /home/doug/JudyL64A/test/RCS/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by- 
 //   Author Douglas L. Baskins, Aug 2003.
@@ -16,6 +16,7 @@
 #include <math.h>                       // pow()
 #include <time.h>                       // clock_gettime()
 #include <sys/utsname.h>                // uname()
+#include <sys/mman.h>                   // mmap()
 #include <errno.h>                      // errnoerrno
 #include <string.h>                     // strtok_r()
 #include <strings.h>                    // bzero()
@@ -76,6 +77,11 @@
 #define wx "%lx"
 
 #endif // defined(_WIN64)
+
+// damn apple or posix
+#ifndef MAP_ANONYMOUS
+#define  MAP_ANONYMOUS MAP_ANON
+#endif  // ! MAP_ANONYMOUS
 
 //=======================================================================
 //             R A M   M E T R I C S  
@@ -1824,12 +1830,25 @@ main(int argc, char *argv[])
             fflush(NULL);                   // assure data gets to file in case malloc fail
 
 //      Allocate a Bitmap
+
+#ifdef  USE_MALLOC
         B1 = (PWord_t)malloc(Bytes);
         if (B1 == (PWord_t)NULL)
         {
             FAILURE("malloc failure, Bytes =", Bytes);
         }
         printf("# B1 = 0x%lx = malloc(%lu)\n", (Word_t)B1, Bytes);
+#else   // ! USE_MALLOC
+
+        JudyMalloc((Word_t)10);       
+        B1 = (PWord_t)mmap(NULL, Bytes, (PROT_READ|PROT_WRITE), (MAP_PRIVATE|MAP_ANONYMOUS), -1, 0);
+        if (B1 == (PWord_t)NULL)
+        {
+            FAILURE("mmap failure, Bytes =", Bytes);
+        }
+        printf("# B1 = 0x%lx = mmap(%lu,...)\n", (Word_t)B1, Bytes);
+#endif // ! USE_MALLOC
+
 //      clear 1/2 bitmap and bring into RAM
         STARTTm;
         bzero((void *)B1, (size_t)Bytes / 2);
@@ -1857,13 +1876,28 @@ main(int argc, char *argv[])
         printf("# ========================================================\n");
 
 //      Allocate a Bytemap
+//      Make sure next mmap is 2Mib aligned (for Huge page TLBs)
 
+#ifdef  USE_MALLOC
         By = (uint8_t *)malloc(Bytes);
         if (By == (uint8_t *)NULL)
         {
             FAILURE("malloc failure, Bytes =", Bytes);
         }
         printf("# By = 0x%lx = malloc(%lu)\n", (Word_t)By, Bytes);
+
+#else   // ! USE_MALLOC
+
+        JudyMalloc((Word_t)1000);       
+        By = (uint8_t *)mmap(NULL, Bytes, (PROT_READ|PROT_WRITE), (MAP_PRIVATE|MAP_ANONYMOUS), -1, 0);
+        if (By == (uint8_t *)NULL)
+        {
+            FAILURE("mmap failure, Bytes =", Bytes);
+        }
+        printf("# By = 0x%lx = mmap(%lu,...)\n", (Word_t)By, Bytes);
+#endif // ! USE_MALLOC
+
+
 //      clear 1/2 bitmap and bring into RAM
         STARTTm;
         bzero((void *)By, (size_t)Bytes / 2);
@@ -2760,7 +2794,12 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                 {
                     if (Tit)
                     {
-
+                        if (TstKey == (Word_t)0)
+                        {
+                            PValue = (PWord_t)JudyLGet(*JL, (Word_t)0, PJE0);
+                            if (PValue != NULL)
+                                FAILURE("JudyLIns failed - Duplicate *PValue =", *PValue);
+                        }
 #ifdef SKIPMACRO
                         PValue = (PWord_t)JudyLIns(JL, TstKey, PJE0);
 #else
@@ -2880,8 +2919,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                 {
 
 #ifdef SKIPMACRO
-                    PValue =
-                        (PWord_t)JudyHSIns(JH, &TstKey, sizeof(Word_t), PJE0);
+                    PValue = (PWord_t)JudyHSIns(JH, &TstKey, sizeof(Word_t), PJE0);
 #else
                     JHSI(PValue, *JH, &TstKey, sizeof(Word_t));
 #endif // SKIPMACRO
