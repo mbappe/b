@@ -199,10 +199,10 @@ check:	Judy1LHCheck.c libb1.a
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -o $@ $^ -lJudy -lm
 
 mapcheck:	Judy1LHCheck.c libb1.a
-	c++ -std=c++14 -I. -x c++ Judy1LHCheck.c -o $@ -L. -lb1 -lJudy -lm
+	c++ -std=c++14 $(MFLAGS) -I. -x c++ Judy1LHCheck.c -o $@ -L. -lb1 -lJudy -lm
 
 maptime:	Judy1LHTime.c libb1.a
-	c++ -std=c++14 -I. -x c++ Judy1LHTime.c -o $@ -L. -lb1 -lJudy -lm
+	c++ -std=c++14 $(MFLAGS) -I. -x c++ Judy1LHTime.c -o $@ -L. -lb1 -lJudy -lm
 
 b.tjz:	$(FILES)
 	tar cjf $@ $^
