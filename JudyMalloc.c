@@ -6,7 +6,7 @@
 // ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
 // FITNESS FOR A PARTICULAR PURPOSE.
 
-// @(#) $Revision: 1.8 $ $Source: /home/doug/judy-1.0.5_PSplit_goto_newLeaf3_U2_1K_1_L765_5th/src/JudyCommon/RCS/JudyMalloc.c,v $
+// @(#) $Revision: 1.12 $ $Source: /home/doug/JudyL64A/src/JudyCommon/RCS/JudyMalloc.c,v $
 //
 // ********************************************************************** //
 //                    JUDY - Memory Allocater                             //
@@ -28,6 +28,10 @@
 // JUDY INCLUDE FILES
 #include "Judy.h"
 
+#ifdef  TRACEJM
+#define RAMMETRICS 1
+#endif  // TRACEJM
+
 // Global in case anyone wants to know (kind of kludgy, but only for testing)
 
 #ifdef  RAMMETRICS
@@ -48,8 +52,18 @@ Word_t    j__TotalBytesAllocated;       // from kernel from dlmalloc
 //=======================================================================
 // J U D Y  /  D L M A L L O C interface for huge pages Ubuntu 3.13+ kernel
 //=======================================================================
+//
+#define PRINTMMAP(BUF, LENGTH)                                          \
+   fprintf(stderr,                                                      \
+        "%p:buf = mmap(addr:0x0, length:%p, prot:0x%x, flags:0x%x, fd:%d)\n", \
+                (void *)(BUF), (void *)(LENGTH), prot, flags, fd)
+   
+#define PRINTMUMAP(BUF, LENGTH)                                         \
+   fprintf(stderr,                                                      \
+        "%d = munmap(buf:%p, length:%p[%ld])\n",                        \
+                ret, (void *)(BUF), (void *)(LENGTH), (Word_t)(LENGTH));
 
-// Define the Huge TLB size (2MB) for Intel Haswell
+// Define the Huge TLB size (2MiB) for Intel Haswell+
 #ifndef HUGETLBSZ       
 #define HUGETLBSZ       ((Word_t)0x200000)
 #endif  // HUGETLBSZ
@@ -57,7 +71,7 @@ Word_t    j__TotalBytesAllocated;       // from kernel from dlmalloc
 static void * pre_mmap(void *, size_t, int, int, int, off_t);
 static int pre_munmap(void *, size_t);
 
-// Stuff to modify dlmalloc to use 2MB pages
+// Stuff to modify dlmalloc to use 2MiB pages
 #define DLMALLOC_EXPORT static
 #define dlmalloc_usable_size static dlmalloc_usable_size
 #define USE_DL_PREFIX  
@@ -82,17 +96,17 @@ static int pre_munmap(void *, size_t);
 
 // This code is not necessary except if j__MFlag is set
 static int 
-pre_munmap(void *addr, size_t length)
+pre_munmap(void *buf, size_t length)
 {
     int ret;
 
-    ret =  munmap(addr, length);
+    ret =  munmap(buf, length);
 
 #ifdef  RAMMETRICS
     j__TotalBytesAllocated -= length;
 
     if (j__MFlag)
-        fprintf(stderr, "%d = munmap(0x%lx, 0x%lx(%ld)\n", ret, (Word_t)addr, (Word_t)length, (Word_t)length);
+        PRINTMUMAP(buf, length);
 #endif  // RAMMETRICS
 
     return(ret);
@@ -100,75 +114,102 @@ pre_munmap(void *addr, size_t length)
 
 // ********************************************************************
 // All this nonsence is because of a flaw in the Linux/Ubuntu Kernel.
-// Any mmap equal or larger than 2MB should be "HUGE TLB aligned" (dlb)
+// Any mmap equal or larger than 2MiB should be "HUGE TLB aligned" (dlb)
 // ********************************************************************
 
 static void *
 pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 {
     char *buf;
-    Word_t remain, fronttrim;
-    (void)addr;
+    int   ret;
 
-    assert(addr == 0);
+    (void) addr;        // in case DEBUG is not defined
+    (void) ret;         // in case RAMMETRICS is not defined
 
-    buf = mmap(NULL, length, prot, flags, fd, offset);
-
-#ifdef  RAMMETRICS
-    j__TotalBytesAllocated += length;
-
-    if (j__MFlag)
-        fprintf(stderr, "0x%lx = mmap(0x%lx)[%ld]\n", (Word_t)buf, \
-                (Word_t)length, (Word_t)length);
-#endif  // RAMMETRICS
-
-    if (buf == MFAIL)
-        return(buf);
+    assert(addr == NULL);
 
 //  early out if buffer not 2MB
     if (length != HUGETLBSZ)
     {
 ////        return(buf);
-        fprintf(stderr, "\n\n0x%lx = mmap(0x%lx)[%ld]\n", (Word_t)buf, \
-                                (Word_t)length, (Word_t)length);
-        fprintf(stderr, "!! Sorry, JudyMalloc is not ready for larger than 2Mib allocations\n");
+        fprintf(stderr, "\nSorry, JudyMalloc() is not ready for %ld allocations\n", (Word_t)length);
         exit(-1);
     }
 
-    remain = (Word_t)buf % HUGETLBSZ;
-
-    if (remain)            // if not aligned to 2MB
-    {
-//      free the mis-aligned buffer
-        pre_munmap(buf, length);          
-
-//      Allocate again big enough to insure getting a buffer big enough that
-//      can be trimmed to  2MB alignment.
-        buf = mmap(NULL, length + HUGETLBSZ, prot, flags, fd, offset);
+//  Map a normal self-aligned 2Mib buffer for dlmalloc pagesize
+    buf = (char *)mmap(NULL, length, prot, flags, fd, offset);
 
 #ifdef  RAMMETRICS
-        j__TotalBytesAllocated += (long)length + HUGETLBSZ;
-
-        if (j__MFlag)
-            fprintf(stderr, "0x%lx = mmap(0x%lx)[%ld]\n", (long)buf, \
-                    (long)length + HUGETLBSZ, (long)length + HUGETLBSZ);
+    if (j__MFlag)
+    {
+        fprintf(stderr, "\n");
+        PRINTMMAP(buf, length);
+    }
 #endif  // RAMMETRICS
 
-        if (buf == MFAIL)
+    if (buf == MFAIL)           // out of memory(RAM)
+        return(buf);
+
+//  if we get a mis-aligned buffer, change it to aligned
+    if (((Word_t)buf % HUGETLBSZ) != 0) // if not aligned to 2MB
+    {
+        Word_t remain;
+
+//      free the mis-aligned buffer
+        ret = munmap(buf, length);          
+
+#ifdef  RAMMETRICS
+        if (j__MFlag)
+            PRINTMUMAP(buf, length);
+#endif  // RAMMETRICS
+
+//      Allocate again big enough (4Mib) to insure getting a buffer big enough that
+//      can be trimmed to  2MB alignment.
+        buf = (char *)mmap(NULL, length + HUGETLBSZ, prot, flags, fd, offset);
+
+#ifdef  RAMMETRICS
+        if (j__MFlag)
+            PRINTMMAP(buf, length + HUGETLBSZ);
+#endif  // RAMMETRICS
+
+        if (buf == MFAIL)               // sorry out of RAM
             return(buf);
 
-//      Now trim off mis-alignment bytes in beginning of buf
-        fronttrim = (long)HUGETLBSZ - remain;
+        remain = (Word_t)buf % HUGETLBSZ;
+        if (remain)
+        {
+            ret = munmap(buf, HUGETLBSZ - remain);          
 
-// fprintf(stderr, "fronttrim = 0x%lx, new buf = 0x%lx\n", fronttrim, (Word_t)buf + fronttrim);
+#ifdef  RAMMETRICS
+            if (j__MFlag)
+                PRINTMUMAP(buf, HUGETLBSZ - remain);
+#endif  // RAMMETRICS
 
-        pre_munmap(buf, fronttrim);          
-        buf += fronttrim;                       // produce aligned buffer
+        }
+//      calc where memory is at end of buffer
+        buf += HUGETLBSZ - remain;
 
-        pre_munmap(buf + (Word_t)length, remain);          
+//      and free it too.
+        ret = munmap(buf + length, remain);
+
+#ifdef  RAMMETRICS
+        if (j__MFlag)
+        {
+            PRINTMUMAP(buf + length, remain);
+            fprintf(stderr, "%p == buf\n", (void *)buf);
+        }
+#endif  // RAMMETRICS
+
     }
+//  DONE, have self-aligned buffer to return to dlmalloc
+
+#ifdef  RAMMETRICS
+    j__TotalBytesAllocated += length;
+#endif  // RAMMETRICS
+
     return(buf);
 }
+
 #endif	// ! LIBCMALLOC
 
 
@@ -202,6 +243,7 @@ Word_t JudyMalloc(
         }
 #endif  // RAMMETRICS
 
+//  Note: This define is only for DEBUGGING
 #ifdef  GUARDBAND
         if (Bytes == 0)
         {
@@ -209,6 +251,7 @@ Word_t JudyMalloc(
             printf("\nOops -- JudyMalloc(0) -- not legal for Judy");
             exit(-1);
         }
+//      Add one word to the size of malloc
         Bytes += sizeof(Word_t);    // one word
 #endif  // GUARDBAND
 
@@ -218,14 +261,19 @@ Word_t JudyMalloc(
 	Addr = (Word_t) dlmalloc(Bytes);
 #endif	// ! LIBCMALLOC
 
+#ifdef  TRACEJM
+        printf("%p = JudyMalloc(%lu)\n", (void *)Addr, Bytes / sizeof(Word_t));
+#endif  // TRACEJM
+
 #ifdef  GUARDBAND
+//      Put the ~Addr in that extra word
         *((Word_t *)Addr + ((Bytes/sizeof(Word_t)) - 1)) = ~Addr;
 
 //      Verify that all mallocs are 2 word aligned
         if (Addr & ((sizeof(Word_t) * 2) - 1))
         {
-            fprintf(stderr, "\nmalloc() Addr not 2 word aligned = 0x%lx\n", Addr);
-            printf("\nmalloc() Addr not 2 word aligned = 0x%lx\n", Addr);
+            fprintf(stderr, "\nmalloc() Addr not 2 word aligned = %p\n", Addr);
+            printf("\nmalloc() Addr not 2 word aligned = %p\n", Addr);
             exit(-1);
         }
 #endif  // GUARDBAND
@@ -249,23 +297,27 @@ void JudyFree(
 {
 
 #ifdef  RAMMETRICS
-        if (Words < 4) 
+        if (Words < 4) // Minimum size that malloc/dlmalloc allocates
         {
             j__AllocWordsTOT -= 4;
         } 
         else 
         {
-            j__AllocWordsTOT -= Words + 1;
+            j__AllocWordsTOT -= Words + 1;      // dl/malloc usual overhead
 
-            if ( (Words & 1) == 0 )     // even?
+            if ( (Words & 1) == 0 )             // even?
             {
-                j__AllocWordsTOT -= 1;  // one more
+                j__AllocWordsTOT -= 1;          // one more
             }
         }
         j__MalFreeCnt++;        // keep track of total malloc() + free()
 #else
+
+#ifndef  GUARDBAND
 	(void) Words;
-#endif  // ! RAMMETRICS
+#endif  // GUARDBAND
+
+#endif  // RAMMETRICS
 
 #ifdef  GUARDBAND
     if (Words == 0)
@@ -277,21 +329,26 @@ void JudyFree(
     {
         Word_t GuardWord;
 
+//      Verify that the Word_t past the end is same as ~PWord freed
         GuardWord = *((((Word_t *)PWord) + Words));
 
         if (~GuardWord != (Word_t)PWord)
         {
-            printf("\n\nOops GuardWord = 0x%lx != PWord = 0x%lx\n", 
+            printf("\n\nOops GuardWord = %p != PWord = %p\n", 
                     GuardWord, (Word_t)PWord);
             exit(-1);
         }
     }
 #endif  // GUARDBAND
 
+#ifdef  TRACEJM
+        printf("%p   JudyFree(%lu)\n", (void *)PWord, Words);
+#endif  // TRACEJM
+
 #ifdef  LIBCMALLOC
-	free(PWord);
+	free((void *) PWord);
 #else	// ! system lib
-	dlfree(PWord);
+	dlfree((void *) PWord);
 #endif	// Judy malloc
 
 
