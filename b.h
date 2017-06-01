@@ -1766,7 +1766,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
                      + POP_SLOT(_nBL) \
                      + sizeof(Word_t) / (_nBytesKeySz), \
                  2 * sizeof(Word_t) / (_nBytesKeySz)) \
-         - sizeof(Word_t) / (_nBytesKeySz) ) \
+         - sizeof(Word_t) / (_nBytesKeySz) ) ) \
 )
 
 // Pop count in wRoot high bits.
@@ -3232,6 +3232,7 @@ printf("*pw "OWx" wKey "OWx" nBL %d wMagic "OWx"\n", *pw, wKey, nBL, wMagic);
 }
 #endif
 
+#if defined(EMBED_KEYS)
 // Find key or hole and return it's position.
 static int
 SearchEmbeddedX(Word_t *pw, Word_t wKey, unsigned nBL)
@@ -3248,6 +3249,7 @@ SearchEmbeddedX(Word_t *pw, Word_t wKey, unsigned nBL)
     }
     return ~ii;
 }
+#endif // defined(EMBED_KEYS)
 
 #endif // defined(USE_WORD_ARRAY_EMBEDDED_KEYS_PARALLEL)
 

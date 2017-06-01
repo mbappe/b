@@ -1631,7 +1631,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
   #if defined(TYPE_IS_RELATIVE)
     assert( ! tp_bIsSkip(nType) || (wr_nDS(wRoot) >= 1) );
   #else // defined(TYPE_IS_RELATIVE)
-    assert( ! tp_bIsSkip(nType) || (wr_nBL(wRoot) < nBL) );
+    assert( ! tp_bIsSkip(nType) || ((int)wr_nBL(wRoot) < nBL) );
     assert( ! tp_bIsSkip(nType) || (wr_nBL(wRoot) >= cnBitsInD1) );
   #endif // defined(TYPE_IS_RELATIVE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
@@ -6177,7 +6177,9 @@ NextGuts(Word_t wRoot, int nBL,
         }
         //A(0);
         return 0;
-    } case T_EMBEDDED_KEYS: {
+    }
+  #if defined(EMBED_KEYS)
+    case T_EMBEDDED_KEYS: {
         DBGN(printf("T_EMBEDDED_KEYS: *pwKey "OWx" wSkip %lu\n", *pwKey, wSkip));
         //A(0); // check -B10 -DS1
         assert(nBL != cnBitsPerWord);
@@ -6220,6 +6222,7 @@ NextGuts(Word_t wRoot, int nBL,
         //A(0); // check -B10 -DS1
         return 0;
     }
+  #endif // defined(EMBED_KEYS)
   #if defined(SKIP_TO_BITMAP)
     case T_SKIP_TO_BITMAP: {
         DBGN(printf("T_SKIP_TO_BITMAP\n"));
