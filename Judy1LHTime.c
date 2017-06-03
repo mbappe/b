@@ -2800,11 +2800,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                             if (PValue != NULL)
                                 FAILURE("JudyLIns failed - Duplicate *PValue =", *PValue);
                         }
-#ifdef SKIPMACRO
                         PValue = (PWord_t)JudyLIns(JL, TstKey, PJE0);
-#else
-                        JLI(PValue, *JL, TstKey);
-#endif // SKIPMACRO
                         if (PValue == (PWord_t)NULL)
                         {
                                 FAILURE("JudyLIns failed - NULL PValue", TstKey);
@@ -2917,13 +2913,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
 
                 if (Tit)
                 {
-
-#ifdef SKIPMACRO
                     PValue = (PWord_t)JudyHSIns(JH, &TstKey, sizeof(Word_t), PJE0);
-#else
-                    JHSI(PValue, *JH, &TstKey, sizeof(Word_t));
-#endif // SKIPMACRO
-
                     if (*PValue == TstKey)
                     {
                         if (GValue)
@@ -3121,13 +3111,7 @@ TestJudyDup(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                 TstKey = GetNextKey(&WorkingSeed);
                 if (Tit)
                 {
-
-#ifdef SKIPMACRO
                     PValue = (PWord_t)JudyLIns(JL, TstKey, PJE0);
-#else
-                    JLI(PValue, *JL, TstKey);
-#endif // SKIPMACRO
-
                     if (PValue == (Word_t *)NULL)
                         FAILURE("JudyLIns ret PValue = NULL", 0L);
                     if (VFlag && (*PValue != TstKey))
@@ -3165,14 +3149,8 @@ TestJudyDup(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                 TstKey = GetNextKey(&WorkingSeed);
                 if (Tit)
                 {
-
-#ifdef SKIPMACRO
                     PValue =
                         (PWord_t)JudyHSIns(JH, &TstKey, sizeof(Word_t), PJE0);
-#else
-                    JHSI(PValue, *JH, &TstKey, sizeof(Word_t));
-#endif // SKIPMACRO
-
                     if (PValue == (Word_t *)NULL)
                         FAILURE("JudyHSGet ret PValue = NULL", 0L);
                     if (*PValue != TstKey)
@@ -3323,13 +3301,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
                 {
                     if (Tit)
                     {
-
-#ifdef SKIPMACRO
                         PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
-#else
-                        JLG(PValue, JL, TstKey);
-#endif // SKIPMACRO
-
                         if (PValue != (Word_t *)NULL)
                         {
                             printf("\n--- JudyGet Key = 0x%lx", TstKey);
@@ -3341,13 +3313,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
                 {
                     if (Tit)
                     {
-
-#ifdef SKIPMACRO
                         PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
-#else
-                        JLG(PValue, JL, TstKey);
-#endif // SKIPMACRO
-
                         if (PValue == (Word_t *)NULL)
                         {
                             printf("\n--- JudyGet Key = 0x%lx", TstKey);
@@ -3398,13 +3364,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
 
                 if (Tit)
                 {
-
-#ifdef SKIPMACRO
                     PValue = (PWord_t)JudyHSGet(JH, &TstKey, sizeof(Word_t));
-#else
-                    JHSG(PValue, JH, &TstKey, sizeof(Word_t));
-#endif // SKIPMACRO
-
                     if (PValue == (Word_t *)NULL)
                         FAILURE("JudyHSGet ret PValue = NULL", 0L);
                     if (VFlag && (*PValue != TstKey))
@@ -3649,11 +3609,7 @@ TestJudyCount(void *J1, void *JL, Word_t Elements)
         {
             TstKey = 0;
 
-#ifdef SKIPMACRO
             PValue = (PWord_t)JudyLFirst(JL, &TstKey, PJE0);
-#else
-            JLF(PValue, JL, TstKey);  // return first Key
-#endif // SKIPMACRO
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
@@ -3674,12 +3630,7 @@ TestJudyCount(void *J1, void *JL, Word_t Elements)
                     }
                 }
 
-#ifdef SKIPMACRO
                 PValue = (PWord_t)JudyLNext(JL, &TstKey, PJE0);
-#else
-                JLN(PValue, JL, TstKey);
-#endif // SKIPMACRO
-
                 if (VFlag && PValue && (*PValue != TstKey))
                 {
                     printf("\nPValue=0x%lx, *PValue=0x%lx, TstKey=0x%lx\n",
@@ -3789,11 +3740,7 @@ TestJudyNext(void *J1, void *JL, Word_t Elements)
 
             STARTTm;
 
-#ifdef SKIPMACRO
             PValue = (PWord_t)JudyLFirst(JL, &JLKey, PJE0);
-#else
-            JLF(PValue, JL, JLKey);
-#endif // SKIPMACRO
 
             for (elm = 0; elm < Elements; elm++)
             {
@@ -3810,13 +3757,7 @@ TestJudyNext(void *J1, void *JL, Word_t Elements)
                     FAILURE("JudyLNext ret bad *PValue at", elm);
                 }
                 Prev = JLKey;
-
-#ifdef SKIPMACRO
                 PValue = (PWord_t)JudyLNext(JL, &JLKey, PJE0);
-#else
-                JLN(PValue, JL, JLKey);       // Get next one
-#endif // SKIPMACRO
-
                 if (JLKey == Prev)
                 {
                     printf("OOPs, JLN did not advance 0x%lx\n", Prev);
@@ -3930,11 +3871,7 @@ TestJudyPrev(void *J1, void *JL, Word_t HighKey, Word_t Elements)
 
             STARTTm;
 
-#ifdef SKIPMACRO
             PValue = (PWord_t)JudyLLast(JL, &JLKey, PJE0);
-#else
-            JLL(PValue, JL, JLKey);
-#endif // SKIPMACRO
 
             for (elm = 0; elm < Elements; elm++)
             {
@@ -3946,12 +3883,7 @@ TestJudyPrev(void *J1, void *JL, Word_t HighKey, Word_t Elements)
                 if (VFlag && (*PValue != JLKey))
                     FAILURE("JudyLPrev ret bad *PValue at", elm);
 
-#ifdef SKIPMACRO
                 PValue = (PWord_t)JudyLPrev(JL, &JLKey, PJE0);
-#else
-                JLP(PValue, JL, JLKey);       // Get previous one
-#endif // SKIPMACRO
-
             }
             ENDTm(DeltanSecL);
 

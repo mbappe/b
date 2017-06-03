@@ -523,7 +523,7 @@ TestJudyIns(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
             FAILURE("Judy1Set failed - Index missing, population =", TotalPop);
 
 //      JudyL
-        JLI(PValue, *JL, TstIndex);
+        PValue = (PWord_t)JudyLIns(JL, TstIndex, NULL);
         if (PValue == PJERR)
             FAILURE("JudyLIns failed at", elm);
         if (*PValue == TstIndex)
@@ -532,15 +532,11 @@ TestJudyIns(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
 //      Save Index in Value
         *PValue = TstIndex;
 
-#ifdef SKIPMACRO
-        PValue1 = (PWord_t)JudyLGet(*JL, TstIndex);
-#else
-        JLG(PValue1, *JL, TstIndex);
-#endif // SKIPMACRO
+        PValue1 = (PWord_t)JudyLGet(*JL, TstIndex, NULL);
         if (PValue != PValue1)
             FAILURE("JudyLGet failed - Index missing, population =", TotalPop);
 
-        JLI(PValue1, *JL, TstIndex);
+        PValue1 = (PWord_t)JudyLIns(JL, TstIndex, NULL);
         if (PValue != PValue1)
         {
             if (*PValue1 != TstIndex)
@@ -553,7 +549,7 @@ TestJudyIns(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
             }
         }
 //      JudyHS
-        JHSI(PValue, *JH, (void *)(&TstIndex), sizeof(Word_t));
+        PValue = (PWord_t)JudyHSIns(JH, (void *)(&TstIndex), sizeof(Word_t), NULL);
         if (PValue == PJERR)
             FAILURE("JudyHSIns failed at", elm);
         if (*PValue == TstIndex)
@@ -562,11 +558,11 @@ TestJudyIns(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
 //      Save Index in Value
         *PValue = TstIndex;
 
-        JHSG(PValue1, *JH, (void *)(&TstIndex), sizeof(Word_t));
+        PValue1 = (PWord_t)JudyHSGet(*JH, (void *)(&TstIndex), sizeof(Word_t));
         if (PValue != PValue1)
             FAILURE("JudyHSGet failed - Index missing, population =", TotalPop);
 
-        JHSI(PValue1, *JH, (void *)(&TstIndex), sizeof(Word_t));
+        PValue1 = (PWord_t)JudyHSIns(JH, (void *)(&TstIndex), sizeof(Word_t), NULL);
         if (PValue != PValue1)
         {
             if (*PValue1 != TstIndex)
@@ -621,17 +617,13 @@ TestJudyGet(void *J1, void *JL, void *JH, Word_t Seed, Word_t Elements)
         if (Rcode != 1)
             FAILURE("Judy1Test Rcode != 1 =", Rcode);
 
-#ifdef SKIPMACRO
-        PValue = (PWord_t)JudyLGet(JL, TstIndex);
-#else
-        JLG(PValue, JL, TstIndex);
-#endif // SKIPMACRO
+        PValue = (PWord_t)JudyLGet(JL, TstIndex, NULL);
         if (PValue == (Word_t *) NULL)
             FAILURE("JudyLGet ret PValue = NULL", 0L);
         if (*PValue != TstIndex)
             FAILURE("JudyLGet ret wrong Value at", elm);
 
-        JHSG(PValue, JH, (void *)(&TstIndex), sizeof(Word_t));
+        PValue = (PWord_t)JudyHSGet(JH, (void *)(&TstIndex), sizeof(Word_t));
         if (PValue == (Word_t *) NULL)
             FAILURE("JudyHSGet ret PValue = NULL", 0L);
         if (*PValue != TstIndex)
@@ -670,13 +662,13 @@ TestJudyDup(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
         if (Rcode != 0)
             FAILURE("Judy1Set Rcode != 0", Rcode);
 
-        JLI(PValue, *JL, TstIndex);
+        PValue = (PWord_t)JudyLIns(JL, TstIndex, NULL);
         if (PValue == (Word_t *) NULL)
             FAILURE("JudyLIns ret PValue = NULL", 0L);
         if (*PValue != TstIndex)
             FAILURE("JudyLIns ret wrong Value at", elm);
 
-        JHSI(PValue, *JH, &TstIndex, sizeof(Word_t));
+        PValue = (PWord_t)JudyHSIns(JH, &TstIndex, sizeof(Word_t), NULL);
         if (PValue == (Word_t *) NULL)
             FAILURE("JudyHSIns ret PValue = NULL", 0L);
         if (*PValue != TstIndex)
@@ -751,7 +743,7 @@ Word_t TestJudyNext(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
 //  Get an Index low enough for Elements
     J1index = JLindex = LowIndex;
 
-    JLF(PValue, JL, JLindex);
+    PValue = (PWord_t)JudyLFirst(JL, &JLindex, NULL);
     J1F(Rcode, J1, J1index);
 
     for (elm = 0; elm < Elements; elm++)
@@ -765,7 +757,7 @@ Word_t TestJudyNext(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
 
         JPindex = J1index;              // save the last found index
 
-        JLN(PValue, JL, JLindex);       // Get next one
+        PValue = (PWord_t)JudyLNext(JL, &JLindex, NULL); // Get next one
         J1N(Rcode, J1, J1index);        // Get next one
     }
 
@@ -793,7 +785,7 @@ TestJudyPrev(void *J1, void *JL, Word_t HighIndex, Word_t Elements)
 //  Get an Index high enough for Elements
     J1index = JLindex = HighIndex;
 
-    JLL(PValue, JL, JLindex);
+    PValue = (PWord_t)JudyLLast(JL, &JLindex, NULL);
     J1L(Rcode, J1, J1index);
 
     for (elm = 0; elm < Elements; elm++)
@@ -805,7 +797,7 @@ TestJudyPrev(void *J1, void *JL, Word_t HighIndex, Word_t Elements)
         if (JLindex != J1index)
             FAILURE("JudyLPrev & Judy1Prev ret different PIndex at", elm);
 
-        JLP(PValue, JL, JLindex);       // Get previous one
+        PValue = (PWord_t)JudyLPrev(JL, &JLindex, NULL); // Get previous one
         J1P(Rcode, J1, J1index);        // Get previous one
     }
     if (PValue != NULL)
@@ -855,8 +847,8 @@ TestJudyNextEmpty(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
         if (J1index != JLindex)
             FAILURE("JLNE != J1NE returned index at", elm);
 
-        if (pFlag) 
-        { 
+        if (pFlag)
+        {
             Word_t SeqKeys = JLindex - PrevKey;
 
             if (SeqKeys > 1)
@@ -872,11 +864,7 @@ TestJudyNextEmpty(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
         if (Rcode1 != 0)
             FAILURE("J1NE returned non-empty Index =", J1index);
 
-#ifdef SKIPMACRO
-        PValue = (PWord_t)JudyLGet(JL, JLindex);
-#else
-        JLG(PValue, JL, JLindex);
-#endif // SKIPMACRO
+        PValue = (PWord_t)JudyLGet(JL, JLindex, NULL);
         if (PValue != (Word_t *) NULL)
             FAILURE("JLNE returned non-empty Index =", JLindex);
 
@@ -936,8 +924,8 @@ TestJudyPrevEmpty(void *J1, void *JL, Word_t HighIndex, Word_t Elements)
         if (J1index != JLindex)
             FAILURE("JLPE != J1PE returned index at", elm);
 
-        if (pFlag) 
-        { 
+        if (pFlag)
+        {
             Word_t SeqKeys = PrevKey - JLindex;
 
             if (SeqKeys > 1)
@@ -953,11 +941,7 @@ TestJudyPrevEmpty(void *J1, void *JL, Word_t HighIndex, Word_t Elements)
         if (Rcode1 != 0)
             FAILURE("J1PE returned non-empty Index =", J1index);
 
-#ifdef SKIPMACRO
-        PValue = (PWord_t)JudyLGet(JL, JLindex);
-#else
-        JLG(PValue, JL, JLindex);
-#endif // SKIPMACRO
+        PValue = (PWord_t)JudyLGet(JL, JLindex, NULL);
 
         if (PValue != (Word_t *) NULL)
             FAILURE("JLPE returned non-empty Index =", JLindex);
