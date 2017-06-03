@@ -19,7 +19,7 @@
 // Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // _________________
 
-// @(#) $Revision: 1.3 $ $Source: /Users/mike/b/RCS/Judy.h,v $
+// @(#) $Revision: 4.52 $ $Source: /judy/src/Judy.h $
 //
 // HEADER FILE FOR EXPORTED FEATURES IN JUDY LIBRARY, libJudy.*
 //
@@ -91,7 +91,7 @@ typedef void ** PPvoid_t;
 
 #ifndef _WORD_T
 #define _WORD_T
-typedef unsigned long    Word_t, * PWord_t;  // expect 32-bit or 64-bit words.
+typedef uintptr_t Word_t, * PWord_t;  // expect 32-bit or 64-bit words.
 #endif
 
 #ifndef NULL
@@ -294,9 +294,6 @@ extern const char *JudyLMallocSizes;
 // ****************************************************************************
 // JUDY memory interface to malloc() FUNCTIONS:
 
-#if defined(GUARDBAND)
-void JudyCheckGuardband(void *PWord, Word_t Words);
-#endif // defined(GUARDBAND)
 extern Word_t JudyMalloc(Word_t);               // words reqd => words allocd.
 extern Word_t JudyMallocVirtual(Word_t);        // words reqd => words allocd.
 extern void   JudyFree(Pvoid_t, Word_t);        // free, size in words.
@@ -404,7 +401,7 @@ extern void   JudyFreeVirtual(Pvoid_t, Word_t); // free, size in words.
         { (Rc) = Func(PArray, Index, PJE0); }
 
 #define J_1P(PV,PArray,Index,Func,FuncName) \
-        { (PV) = (PWord_t) Func(PArray, Index, PJE0); }
+        { (PV) = (Pvoid_t) Func(PArray, Index, PJE0); }
 
 #define J_2I(Rc,PArray,Index,Arg2,Func,FuncName) \
         { (Rc) = Func(PArray, Index, Arg2, PJE0); }
@@ -413,7 +410,7 @@ extern void   JudyFreeVirtual(Pvoid_t, Word_t); // free, size in words.
         { (Rc) = Func(PArray, Index1, Index2, PJE0); }
 
 #define J_2P(PV,PArray,Index,Arg2,Func,FuncName) \
-        { (PV) = (PWord_t) Func(PArray, Index, Arg2, PJE0); }
+        { (PV) = (Pvoid_t) Func(PArray, Index, Arg2, PJE0); }
 
 // Variations for Judy*Set/InsArray functions:
 
@@ -462,7 +459,7 @@ extern void   JudyFreeVirtual(Pvoid_t, Word_t); // free, size in words.
 #define J_1P(Rc,PArray,Index,Func,FuncName)                             \
         {                                                               \
             JError_t J_Error;                                           \
-            if (((Rc) = (PWord_t) Func(PArray, Index, &J_Error)) == PJERR) \
+            if (((Rc) = (Pvoid_t) Func(PArray, Index, &J_Error)) == PJERR) \
                 J_E(FuncName, &J_Error);                                \
         }
 
@@ -493,7 +490,7 @@ extern void   JudyFreeVirtual(Pvoid_t, Word_t); // free, size in words.
 #define J_2P(PV,PArray,Index,Arg2,Func,FuncName)                        \
         {                                                               \
             JError_t J_Error;                                           \
-            if (((PV) = (PWord_t) Func(PArray, Index, Arg2, &J_Error))  \
+            if (((PV) = (Pvoid_t) Func(PArray, Index, Arg2, &J_Error))  \
                 == PJERR) J_E(FuncName, &J_Error);                      \
         }
 
@@ -555,7 +552,7 @@ extern void   JudyFreeVirtual(Pvoid_t, Word_t); // free, size in words.
         (Rc) = Judy1MemUsed(PArray)
 
 #define JLG(PV,PArray,Index)                                            \
-    (PV) = (PWord_t)JudyLGet((Pvoid_t)PArray, Index, PJE0)
+    (PV) = (Pvoid_t)JudyLGet((Pvoid_t)PArray, Index, PJE0)
 
 #define JLI( PV,    PArray,   Index)                                    \
         J_1P(PV, (&(PArray)), Index,  JudyLIns,   "JudyLIns")
@@ -596,7 +593,7 @@ extern void   JudyFreeVirtual(Pvoid_t, Word_t); // free, size in words.
 #define JHSI(PV,    PArray,   PIndex,   Count)                          \
         J_2P(PV, (&(PArray)), PIndex,   Count, JudyHSIns, "JudyHSIns")
 #define JHSG(PV,    PArray,   PIndex,   Count)                          \
-        (PV) = (PWord_t) JudyHSGet(PArray, PIndex, Count)
+        (PV) = (Pvoid_t) JudyHSGet(PArray, PIndex, Count)
 #define JHSD(Rc,    PArray,   PIndex,   Count)                          \
         J_2I(Rc, (&(PArray)), PIndex, Count, JudyHSDel, "JudyHSDel")
 #define JHSFA(Rc,    PArray)                                            \
