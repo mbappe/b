@@ -2370,7 +2370,7 @@ extern const unsigned anBL_to_nDL[];
 // why we were doing the test.
 #define BUCKET_HAS_KEY(_pxBucket, _wKey, _nBL) \
     (assert(sizeof(*(_pxBucket)) == sizeof(__m128i)), \
-        HasKey128((void *)(_pxBucket), (_wKey), (_nBL)))
+        HasKey128((__m128i *)(_pxBucket), (_wKey), (_nBL)))
 
 #else // defined(PARALLEL_128)
 
@@ -3210,7 +3210,7 @@ LocateKeyInWord(Word_t *pw, Word_t wKey, unsigned nBL)
         assert(nBits != cnBitsPerWord);
         wMagic &= (MSK(nBits) << (cnBitsPerWord - nBits));
         wMagic &= -wMagic;
-printf("*pw "OWx" wKey "OWx" nBL %d wMagic "OWx"\n", *pw, wKey, nBL, wMagic);
+printf("*pw " OWx" wKey " Owx" nBL %d wMagic "OWx"\n", *pw, wKey, nBL, wMagic);
         return __builtin_clzll(wMagic) / nBL;
     } else {
         return ~0;
@@ -3644,7 +3644,7 @@ ListHasKey32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 static int
 SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 {
-    DBGI(printf("SLW pwKeys %p wKey "OWx" nBL %d nPopCnt %d\n",
+    DBGI(printf("SLW pwKeys %p wKey " OWx" nBL %d nPopCnt %d\n",
                 (void *)pwKeys, wKey, nBL, nPopCnt));
     (void)nBL;
 #if defined(LIST_END_MARKERS)
@@ -3817,7 +3817,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 {
     (void)pwRoot;
 
-    DBGL(printf("SearchList pwRoot %p wRoot "OWx" wKey "Owx" nBL %d\n",
+    DBGL(printf("SearchList pwRoot %p wRoot " OWx" wKey " Owx" nBL %d\n",
                 (void *)pwRoot, *pwRoot, wKey, nBL));
 
     int nPopCnt;
@@ -3885,7 +3885,7 @@ ListHasKey(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 {
     (void)pwRoot;
 
-    DBGL(printf("ListHasKey pwRoot %p wRoot "OWx" wKey "Owx" nBL %d\n",
+    DBGL(printf("ListHasKey pwRoot %p wRoot " OWx" wKey " Owx" nBL %d\n",
                 (void *)pwRoot, *pwRoot, wKey, nBL));
 
     int nPopCnt;

@@ -181,7 +181,7 @@ static Word_t
 MyMalloc(Word_t wWords)
 {
     Word_t ww = JudyMalloc(wWords + cnMallocExtraWords);
-    DBGM(printf("\nM: %p %"_fw"d words *%p "OWx" %"_fw"d\n",
+    DBGM(printf("\nM: %p %" _fw"d words *%p " OWx" %" _fw"d\n",
                 (void *)ww, wWords, (void *)&((Word_t *)ww)[-1],
                 ((Word_t *)ww)[-1], ((Word_t *)ww)[-1]));
     // Validate our assumptions about dlmalloc as we prepare to use
@@ -214,7 +214,7 @@ MyMalloc(Word_t wWords)
 static void
 MyFree(Word_t *pw, Word_t wWords)
 {
-    DBGM(printf("F: "OWx" words %"_fw"d pw[-1] %p\n",
+    DBGM(printf("F: " OWx" words %" _fw"d pw[-1] %p\n",
                 (Word_t)pw, wWords, (void *)pw[-1]));
     // make sure it is ok for us to use some of the bits in the word
     // Restore the value expected by dlmalloc.
@@ -403,7 +403,7 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 
     // Should we be setting wPrefix here for PP_IN_LINK?
 
-    DBGM(printf("NewListCommon pwList %p wPopCnt "OWx" nBL %d nWords %d\n",
+    DBGM(printf("NewListCommon pwList %p wPopCnt " OWx" nBL %d nWords %d\n",
         (void *)pwList, wPopCnt, nBL, nWords));
 }
 
@@ -560,8 +560,8 @@ NewBitmap(Word_t *pwRoot, int nBL, int nBLUp, Word_t wKey)
     }
     METRICS(j__AllocWordsJL12 += wWords); // JUDYB -- overloaded
 
-    DBGM(printf("NewBitmap nBL %d nBits "OWx
-      " nBytes "OWx" wWords "OWx" pwBitmap "OWx"\n",
+    DBGM(printf("NewBitmap nBL %d nBits " OWx
+      " nBytes " OWx" wWords " OWx" pwBitmap " OWx"\n",
         nBL, EXP(nBL), EXP(nBL - cnLogBitsPerByte), wWords,
         (Word_t)pwBitmap));
 
@@ -580,18 +580,18 @@ NewBitmap(Word_t *pwRoot, int nBL, int nBLUp, Word_t wKey)
     set_pwr_nBL(&wRoot, nBL);
   #endif // defined(TYPE_IS_RELATIVE)
     if (nBLUp != nBL) {
-//printf("\nNewBitmap: wKey "OWx" pwBitmap %p nBL %d &wPrefixPop %p wPrefixPop (before) "OWx"\n", wKey, (void *)pwBitmap, nBL, (void *)(pwBitmap + EXP(nBL - cnLogBitsPerWord)), *(pwBitmap + EXP(nBL - cnLogBitsPerWord)));
+//printf("\nNewBitmap: wKey " OWx" pwBitmap %p nBL %d &wPrefixPop %p wPrefixPop (before) " OWx"\n", wKey, (void *)pwBitmap, nBL, (void *)(pwBitmap + EXP(nBL - cnLogBitsPerWord)), *(pwBitmap + EXP(nBL - cnLogBitsPerWord)));
     }
     set_w_wPrefixBL(*(pwBitmap + EXP(nBL - cnLogBitsPerWord)), nBL, wKey);
     if (nBLUp != nBL) {
-//printf("After set_w_wPrefixBL: wPrefixPop "OWx"\n", *(pwBitmap + EXP(nBL - cnLogBitsPerWord)));
+//printf("After set_w_wPrefixBL: wPrefixPop " OWx"\n", *(pwBitmap + EXP(nBL - cnLogBitsPerWord)));
         set_wr_nType(wRoot, T_SKIP_TO_BITMAP);
     }
 #else // defined(SKIP_TO_BITMAP)
     assert(nBLUp == nBL);
 #endif // defined(SKIP_TO_BITMAP)
     set_w_wPopCntBL(*(pwBitmap + EXP(nBL - cnLogBitsPerWord)), nBL, 0);
-//printf("After set_w_wPopCntBL: wPrefixPop "OWx"\n", *(pwBitmap + EXP(nBL - cnLogBitsPerWord)));
+//printf("After set_w_wPopCntBL: wPrefixPop " OWx"\n", *(pwBitmap + EXP(nBL - cnLogBitsPerWord)));
 
     *pwRoot = wRoot;
 
@@ -686,7 +686,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
           int nBLUp, Word_t wPopCnt)
 {
     DBGI(printf(
-             "NewSwitch: pwRoot %p wKey "OWx" nBL %d nBLUp %d wPopCnt %"_fw"d.\n",
+             "NewSwitch: pwRoot %p wKey " OWx" nBL %d nBLUp %d wPopCnt %" _fw"d.\n",
              (void *)pwRoot, wKey, nBL, nBLUp, wPopCnt));
 #if defined(CODE_XX_SW)
     if ((nBitsIndexSzX != nBL_to_nBitsIndexSz(nBL))
@@ -785,7 +785,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(RAMMETRICS)
 
 #if defined(CODE_BM_SW)
-    DBGM(printf("NewSwitch(pwRoot %p wKey "OWx
+    DBGM(printf("NewSwitch(pwRoot %p wKey " OWx
                 " nBL %d bBmSw %d nBLU %d wPopCnt %ld)"
                 " pwr %p\n",
                 (void *)pwRoot, wKey,
@@ -926,7 +926,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
             && 1)
         {
             DBGI(printf(
-              "Not installing prefix left nBL %d nBLUp %d wKey "OWx"\n",
+              "Not installing prefix left nBL %d nBLUp %d wKey " OWx"\n",
                 nBL, nBLUp, wKey));
 
             set_PWR_wPrefixBL(pwRoot, pwr, nBL, 0);
@@ -941,7 +941,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(CODE_BM_SW)
             {
                 set_PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL, wKey);
-DBGI(printf("NS: set prefix "OWx" pwRoot %p\n", PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL), (void *)pwRoot));
+DBGI(printf("NS: set prefix " OWx" pwRoot %p\n", PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL), (void *)pwRoot));
             }
         }
 #else // defined(SKIP_LINKS)
@@ -966,7 +966,7 @@ DBGI(printf("NS: set prefix "OWx" pwRoot %p\n", PWR_wPrefixBL(pwRoot, (Switch_t 
         }
 
 #if defined(CODE_BM_SW)
-        DBGM(printf("NewSwitch PWR_wPrefixPop "OWx"\n",
+        DBGM(printf("NewSwitch PWR_wPrefixPop " OWx"\n",
             bBmSw ? PWR_wPrefixPop(pwRoot, (BmSwitch_t *)pwr)
                   : PWR_wPrefixPop(pwRoot, (Switch_t *)pwr)));
 #endif // defined(CODE_BM_SW)
@@ -974,7 +974,7 @@ DBGI(printf("NS: set prefix "OWx" pwRoot %p\n", PWR_wPrefixBL(pwRoot, (Switch_t 
 
     //DBGI(printf("After NewSwitch"));
     //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
-DBGI(printf("NS: prefix "OWx"\n", PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL)));
+DBGI(printf("NS: prefix " OWx"\n", PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL)));
 
     return pwr;
 
@@ -996,9 +996,9 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
     int nBLR = nDL_to_nBL(nDLR);
     int nBLUp = nDL_to_nBL(nDLUp);
 
-    DBGI(printf("NewLink(pwRoot %p wKey "OWx" nBLR %d)\n",
+    DBGI(printf("NewLink(pwRoot %p wKey " OWx" nBLR %d)\n",
         (void *)pwRoot, wKey, nBLR));
-    DBGI(printf("PWR_wPopCnt %"_fw"d\n",
+    DBGI(printf("PWR_wPopCnt %" _fw"d\n",
          PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR)));
 
 #if defined(BM_IN_LINK)
@@ -1009,7 +1009,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
     unsigned nBitsIndexSz = nBL_to_nBitsIndexSz(nBLR);
     Word_t wIndex
         = ((wKey >> (nBLR - nBitsIndexSz)) & (EXP(nBitsIndexSz) - 1));
-    DBGI(printf("wKey "OWx" nBLR %d nBitsIndexSz %d wIndex (virtual) "OWx"\n",
+    DBGI(printf("wKey " OWx" nBLR %d nBitsIndexSz %d wIndex (virtual) " OWx"\n",
                 wKey, nBLR, nBitsIndexSz, wIndex));
 
     // How many links are there in the old switch?
@@ -1112,7 +1112,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
         // old one.
         unsigned nWordsNew = nWordsOld + sizeof(Link_t) / sizeof(Word_t);
         *pwRoot = MyMalloc(nWordsNew);
-        DBGI(printf("After malloc *pwRoot "OWx"\n", *pwRoot));
+        DBGI(printf("After malloc *pwRoot " OWx"\n", *pwRoot));
 
         // Where does the new link go?
         unsigned nBmOffset = wIndex >> cnLogBitsPerWord;
@@ -1128,12 +1128,12 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
         }
         wIndex += __builtin_popcountll(wBm & wBmMask);
         // Now we know where the new link goes.
-        DBGI(printf("wIndex (physical) "OWx"\n", wIndex));
+        DBGI(printf("wIndex (physical) " OWx"\n", wIndex));
 
         // Copy the old switch to the new switch and insert the new link.
         memcpy(wr_pwr(*pwRoot), pwr,
             sizeof(BmSwitch_t) + (wIndex - 1) * sizeof(Link_t));
-        DBGI(printf("PWR_wPopCnt %"_fw"d\n",
+        DBGI(printf("PWR_wPopCnt %" _fw"d\n",
              PWR_wPopCntBL(pwRoot, (BmSwitch_t *)*pwRoot, nBLR)));
         // Initialize the new link.
         DBGI(printf("pLinks %p\n",
@@ -1141,18 +1141,18 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
         DBGI(printf("memset %p\n",
                     (void *)&pwr_pLinks((BmSwitch_t *)*pwRoot)[wIndex]));
         memset(&pwr_pLinks((BmSwitch_t *)*pwRoot)[wIndex], 0, sizeof(Link_t));
-        DBGI(printf("PWR_wPopCnt A %"_fw"d\n",
+        DBGI(printf("PWR_wPopCnt A %" _fw"d\n",
              PWR_wPopCntBL(pwRoot, (BmSwitch_t *)*pwRoot, nBLR)));
         memcpy(&pwr_pLinks((BmSwitch_t *)*pwRoot)[wIndex + 1],
                &pwr_pLinks((BmSwitch_t *)pwr)[wIndex],
             (nLinkCnt - wIndex) * sizeof(Link_t));
 
-        DBGI(printf("PWR_wPopCnt B %"_fw"d\n",
+        DBGI(printf("PWR_wPopCnt B %" _fw"d\n",
              PWR_wPopCntBL(pwRoot, (BmSwitch_t *)*pwRoot, nBLR)));
         // Set the bit in the bitmap indicating that the new link exists.
         SetBit(PWR_pwBm(pwRoot, *pwRoot),
             ((wKey >> (nBLR - nBitsIndexSz)) & (EXP(nBitsIndexSz) - 1)));
-        DBGI(printf("PWR_wPopCnt %"_fw"d\n",
+        DBGI(printf("PWR_wPopCnt %" _fw"d\n",
              PWR_wPopCntBL(pwRoot, (BmSwitch_t *)*pwRoot, nBLR)));
 
         if (nBLR <= (int)LOG(sizeof(Link_t) * 8)) {
@@ -1325,7 +1325,7 @@ OldSwitch(Word_t *pwRoot, int nBL,
     { METRICS(j__AllocWordsJBU  -= wWords); } // JUDYA
 #endif // defined(RAMMETRICS)
 
-    DBGR(printf("\nOldSwitch nBL %d nBLU %d wWords %"_fw"d "OWx"\n",
+    DBGR(printf("\nOldSwitch nBL %d nBLU %d wWords %" _fw"d " OWx"\n",
          nBL, nBLUp, wWords, wWords));
 
     MyFree(pwr, wWords);
@@ -1468,9 +1468,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
 
     if ( ! bDump )
     {
-        DBGR(printf("FreeArrayGuts pwR "OWx" wPrefix "OWx" nBL %d bDump %d\n",
+        DBGR(printf("FreeArrayGuts pwR " OWx" wPrefix " OWx" nBL %d bDump %d\n",
              (Word_t)pwRoot, wPrefix, nBL, bDump));
-        DBGR(printf("wRoot "OWx"\n", wRoot));
+        DBGR(printf("wRoot " OWx"\n", wRoot));
     }
 
 #if defined(NO_TYPE_IN_XX_SW)
@@ -1485,10 +1485,10 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
 
         //DBG(printf("FAG: goto embeddedKeys.\n"));
         if (bDump) {
-            printf(" wPrefix "OWx, wPrefix);
+            printf(" wPrefix " OWx, wPrefix);
             printf(" nBL %2d", nBL);
-            printf(" pwRoot "OWx, (Word_t)pwRoot);
-            printf(" wr "OWx, wRoot);
+            printf(" pwRoot " OWx, (Word_t)pwRoot);
+            printf(" wr " OWx, wRoot);
             goto embeddedKeys;
         }
         return 0;
@@ -1500,10 +1500,10 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
 #if defined(BM_SW_FOR_REAL)
         if (bDump)
         {
-            printf(" wPrefix "OWx, wPrefix);
+            printf(" wPrefix " OWx, wPrefix);
             printf(" nBL %2d", nBL);
-            printf(" pwRoot "OWx, (Word_t)pwRoot);
-            printf(" wr "OWx, wRoot);
+            printf(" pwRoot " OWx, (Word_t)pwRoot);
+            printf(" wr " OWx, wRoot);
             printf("\n");
         }
 #endif // defined(BM_SW_FOR_REAL)
@@ -1514,10 +1514,10 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
     {
         // should enhance this to check for zeros in suffix and to print
         // dots for suffix.
-        printf(" wPrefix "OWx, wPrefix);
+        printf(" wPrefix " OWx, wPrefix);
         printf(" nBL %2d", nBL);
-        printf(" pwRoot "OWx, (Word_t)pwRoot);
-        printf(" wr "OWx, wRoot);
+        printf(" pwRoot " OWx, (Word_t)pwRoot);
+        printf(" wr " OWx, wRoot);
     }
 
 #if defined(SKIP_TO_BITMAP)
@@ -1528,19 +1528,19 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
             if (tp_bIsSkip(nType)) {
                 nBLR = GetBLR(pwRoot, nBL);
             }
-            printf(" wPrefixPop "OWx, *(pwr + EXP(nBLR - cnLogBitsPerWord)));
+            printf(" wPrefixPop " OWx, *(pwr + EXP(nBLR - cnLogBitsPerWord)));
             Word_t wPopCnt = w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
             if (wPopCnt == 0) {
                 wPopCnt = EXP(nBLR);
             }
-            printf(" w_wPopCnt %"_fw"d", wPopCnt);
+            printf(" w_wPopCnt %" _fw"d", wPopCnt);
             printf(" skip to bitmap\n");
-            printf(" nWords %4"_fw"d", EXP(nBLR - cnLogBitsPerWord));
+            printf(" nWords %4" _fw"d", EXP(nBLR - cnLogBitsPerWord));
             for (Word_t ww = 0; (ww < EXP(nBLR - cnLogBitsPerWord)); ww++) {
                 if ((ww % 8) == 0) {
                     printf("\n");
                 }
-                printf(" "Owx, pwr[ww]);
+                printf(" " OWx, pwr[ww]);
             }
             printf("\n");
             return 0;
@@ -1572,9 +1572,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
             if (EXP(cnBitsInD1) > sizeof(Link_t) * 8)
             {
                 Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
-                printf(" wr_wPopCnt %3"_fw"u",
+                printf(" wr_wPopCnt %3" _fw"u",
                        wPopCnt != 0 ? wPopCnt : EXP(nBL));
-                printf(" wr_wPrefix "OWx,
+                printf(" wr_wPrefix " OWx,
                        PWR_wPrefixBL(pwRoot, (Switch_t *)NULL, nBL));
             }
         }
@@ -1591,29 +1591,29 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
                 return OldBitmap(pwRoot, pwr, nBL);
             }
 
-            printf(" nWords %4"_fw"d", EXP(nBL - cnLogBitsPerWord));
+            printf(" nWords %4" _fw"d", EXP(nBL - cnLogBitsPerWord));
             for (Word_t ww = 0; (ww < EXP(nBL - cnLogBitsPerWord)); ww++) {
                 if ((ww % 8) == 0) {
                     printf("\n");
                 }
-                printf(" "Owx, pwr[ww]);
+                printf(" " OWx, pwr[ww]);
             }
         }
         else
         {
             if (bDump) {
                 if (cnBitsInD1 > cnLogBitsPerWord) {
-                    printf(" nWords %4"_fw"d", EXP(nBL - cnLogBitsPerWord));
+                    printf(" nWords %4" _fw"d", EXP(nBL - cnLogBitsPerWord));
                     for (Word_t ww = 0;
                          (ww < EXP(nBL - cnLogBitsPerWord)); ww++)
                     {
                         if ((ww % 8) == 0) { printf("\n"); }
-                        printf(" "Owx,
+                        printf(" " OWx,
                                ((Word_t *)
                                    STRUCT_OF(pwRoot, Link_t, ln_wRoot))[ww]);
                     }
                 } else {
-                    printf(" wr "OWx, wRoot);
+                    printf(" wr " OWx, wRoot);
                 }
             }
         }
@@ -1685,7 +1685,7 @@ embeddedKeys:;
             if (nBLArg == cnBitsPerWord) {
                 printf(" wr_wPrefix        N/A");
             } else {
-                printf(" wr_wPrefix "OWx,
+                printf(" wr_wPrefix " OWx,
                        PWR_wPrefixBL(pwRoot, NULL, nBL));
             }
 #endif // defined(PP_IN_LINK)
@@ -1693,8 +1693,8 @@ embeddedKeys:;
 #if defined(EMBED_KEYS)
             if (EmbeddedListPopCntMax(nBL) != 0) {
                 for (unsigned nn = 0; nn < wPopCnt; nn++) {
-                    //char fmt[5]; sprintf(fmt, " %%0%d"_fw"x", (int)LOG((nBL<<1)-1));
-                    printf(" %"_fw"x",
+                    //char fmt[5]; sprintf(fmt, " %%0%d" _fw"x", (int)LOG((nBL<<1)-1));
+                    printf(" %" _fw"x",
 #if defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(PACK_KEYS_RIGHT)
                         (wRoot >> (cnBitsPerWord - ((nn + nPopCntMax - wPopCnt + 1) * nBL)))
 #else // defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(PACK_KEYS_RIGHT)
@@ -1706,7 +1706,7 @@ embeddedKeys:;
             } else
 #endif // defined(EMBED_KEYS)
             {
-                printf(" "Owx"\n", *pwr);
+                printf(" " OWx"\n", *pwr);
             }
         }
         else
@@ -1741,13 +1741,13 @@ embeddedKeys:;
 #if defined(PP_IN_LINK)
             if (nBLArg == cnBitsPerWord)
             {
-                printf(" ls_wPopCnt %3"_fw"u", wPopCnt);
+                printf(" ls_wPopCnt %3" _fw"u", wPopCnt);
                 printf(" wr_wPrefix        N/A");
             }
             else
             {
-                printf(" wr_wPopCnt %3"_fw"u", wPopCnt);
-                printf(" wr_wPrefix "OWx,
+                printf(" wr_wPopCnt %3" _fw"u", wPopCnt);
+                printf(" wr_wPrefix " OWx,
                        PWR_wPrefixBL(pwRoot, NULL, nBL));
             }
 #endif // defined(PP_IN_LINK)
@@ -1774,7 +1774,7 @@ embeddedKeys:;
 #endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
-                { printf(" "Owx, ls_pwKeysNAT(pwr)[xx]); }
+                { printf(" " OWx, ls_pwKeysNAT(pwr)[xx]); }
             }
             printf("\n");
         }
@@ -1827,7 +1827,7 @@ embeddedKeys:;
             Word_t wPopCnt = Sum(pwRoot, cnBitsPerWord);
             assert(wPopCnt != 0);
 
-            printf(" sm_wPopCnt %3"_fw"u", wPopCnt);
+            printf(" sm_wPopCnt %3" _fw"u", wPopCnt);
             printf(" wr_wPrefix        N/A");
         }
         else
@@ -1842,8 +1842,8 @@ embeddedKeys:;
                 // Full-pop or in-transition sub-tree.
                 // wPopCnt = EXP(nBL);
             }
-            printf(" wr_wPopCnt %3"_fw"u", wPopCnt);
-            printf(" wr_wPrefix "OWx,
+            printf(" wr_wPopCnt %3" _fw"u", wPopCnt);
+            printf(" wr_wPrefix " OWx,
 #if defined(CODE_BM_SW)
                    bBmSw ? PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBL) :
 #endif // defined(CODE_BM_SW)
@@ -1859,8 +1859,8 @@ embeddedKeys:;
 #if defined(CODE_BM_SW)
         // should enhance this to check for zeros in suffix and to print
         // dots for suffix.
-        //printf(" wKeyPopMask "OWx, wPrefixPopMask(nDL));
-        //printf(" pLinks "OWx, (Word_t)pLinks);
+        //printf(" wKeyPopMask " OWx, wPrefixPopMask(nDL));
+        //printf(" pLinks " OWx, (Word_t)pLinks);
         if (bBmSw) {
 #if defined(BM_IN_LINK)
             if (nBLArg != cnBitsPerWord)
@@ -1876,7 +1876,7 @@ embeddedKeys:;
                     if ((nn % 8) == 0) {
                         printf("\n");
                     }
-                    printf(" "Owx, PWR_pwBm(pwRoot, pwr)[nn]);
+                    printf(" " OWx, PWR_pwBm(pwRoot, pwr)[nn]);
                 }
             }
         }
@@ -1908,7 +1908,7 @@ embeddedKeys:;
         {
             if (pLinks[xx].ln_wRoot != 0)
             {
-                //printf("nn %"_fw"x\n", nn);
+                //printf("nn %" _fw"x\n", nn);
                 wBytes += FreeArrayGuts(&pLinks[xx].ln_wRoot,
                         wPrefix | (nn << nBL), nBL, bDump);
             }
@@ -1966,7 +1966,7 @@ InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
     int nPopCntMax = EmbeddedListPopCntMax(nBL); (void)nPopCntMax;
     int nPopCnt = wr_nPopCnt(*pwRoot, nBL);
     assert(nPopCnt < nPopCntMax);
-    DBGI(printf("\nInsertEmbedded: wRoot "OWx" nBL %d wKey "OWx
+    DBGI(printf("\nInsertEmbedded: wRoot " OWx" nBL %d wKey " OWx
                 " nPopCnt %d Max %d\n",
                 *pwRoot, nBL, wKey, nPopCnt, nPopCntMax));
 #if defined(NO_TYPE_IN_XX_SW)
@@ -1981,7 +1981,7 @@ InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
             break;
         }
     }
-    DBGI(printf("Insert: wKey "OWx" nSlot %d", wKey, nSlot));
+    DBGI(printf("Insert: wKey " OWx" nSlot %d", wKey, nSlot));
 #if defined(FILL_W_BIG_KEY)
 #error
 #endif // defined(FILL_W_BIG_KEY)
@@ -1989,13 +1989,13 @@ InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
         Word_t wLowBits
             = GetBits(*pwRoot, (nPopCnt - nSlot) * nBL,
                       cnBitsPerWord - (nPopCnt * nBL));
-        DBGI(printf(" wLowBits "OWx, wLowBits));
+        DBGI(printf(" wLowBits " OWx, wLowBits));
         SetBits(pwRoot, (nPopCnt - nSlot) * nBL,
                 cnBitsPerWord - ((nPopCnt + 1) * nBL), wLowBits);
     }
     SetBits(pwRoot, nBL, cnBitsPerWord - (nSlot + 1) * nBL, wKey);
     set_wr_nPopCnt(*pwRoot, nBL, nPopCnt + 1);
-    DBGI(printf(" wRoot "OWx" nPopCnt %d\n",
+    DBGI(printf(" wRoot " OWx" nPopCnt %d\n",
                 *pwRoot, wr_nPopCnt(*pwRoot, nBL)));
 }
   #endif // ! defined(PACK_KEYS_RIGHT)
@@ -2011,7 +2011,7 @@ InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
 static void
 CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, unsigned nKeys, Word_t wKey)
 {
-    DBGI(printf("\nCopyWithInsertWord(pTgt %p pSrc %p nKeys %d wKey "OWx")\n",
+    DBGI(printf("\nCopyWithInsertWord(pTgt %p pSrc %p nKeys %d wKey " OWx")\n",
                 (void *)pTgt, (void *)pSrc, nKeys, wKey));
 #if (cwListPopCntMax != 0)
     Word_t aw[cwListPopCntMax]; // buffer for move if pSrc == pTgt
@@ -2269,14 +2269,14 @@ HexDump(char *str, Word_t *pw, unsigned nWords)
     printf("\n%s (pw %p nWords %d):\n", str, (void *)pw, nWords);
     if (nWords % 8 == 0) {
         for (unsigned ii = 0; ii < nWords; ii += 8) {
-            printf(" "Owx" "Owx" "Owx" "Owx,
+            printf(" " OWx" " OWx" " OWx" " OWx,
                    pw[ii], pw[ii+1], pw[ii+2], pw[ii+3]);
-            printf(" "Owx" "Owx" "Owx" "Owx"\n",
+            printf(" " OWx" " OWx" " OWx" " OWx"\n",
                    pw[ii+4], pw[ii+5], pw[ii+6], pw[ii+7]);
         }
     } else if (nWords % 4 == 0) {
         for (unsigned ii = 0; ii < nWords; ii += 4) {
-            printf(" "OWx" "OWx" "OWx" "OWx"\n",
+            printf(" " OWx" " OWx" " OWx" " OWx"\n",
                    pw[ii], pw[ii+1], pw[ii+2], pw[ii+3]);
         }
     } else {
@@ -2456,7 +2456,7 @@ embeddedKeys:;
 static void
 InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
 {
-    DBGI(printf("InsertAll(pwRootOld %p nBLOld %d wKey "OWx
+    DBGI(printf("InsertAll(pwRootOld %p nBLOld %d wKey " OWx
                     " pwRoot %p nBL %d\n",
                 (void *)pwRootOld, nBLOld, wKey, (void *)pwRoot, nBL));
     Word_t wRootOld = *pwRootOld;
@@ -2478,7 +2478,7 @@ InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
         goto embeddedKeys;
 embeddedKeys:;
         // How inefficient can we be?
-        DBGI(printf("IA: Calling IEL nBLOld %d wKey "OWx" nBL %d\n",
+        DBGI(printf("IA: Calling IEL nBLOld %d wKey " OWx" nBL %d\n",
                     nBLOld, wKey, nBL));
         wRootOld = InflateEmbeddedList(pwRootOld, wKey, nBLOld, wRootOld);
         DBGI(printf("After IEL\n"));
@@ -2500,7 +2500,7 @@ embeddedKeys:;
 #endif // defined(USE_T_ONE)
     {
         if (nType != T_LIST) {
-            printf("nType %d wRootOld "OWx" pwRootOld %p\n",
+            printf("nType %d wRootOld " OWx" pwRootOld %p\n",
                    nType, wRootOld, (void *)pwRootOld);
             DBGR(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
         }
@@ -2865,7 +2865,7 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot, int nPos
 #endif // defined(CODE_XX_SW)
     int nDL = nBL_to_nDL(nBL);
     assert(nDL_to_nBL(nDL) >= nBL);
-    DBGI(printf("InsertGuts pwRoot %p wKey "OWx" nBL %d wRoot "OWx"\n",
+    DBGI(printf("InsertGuts pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
                 (void *)pwRoot, wKey, nBL, wRoot));
     Link_t link; (void)link;
 
@@ -2932,7 +2932,7 @@ embeddedKeys:;
         // Is it related to SEARCH_FROM_WRAPPER?
         nType = wr_nType(wRoot);
       #if ! defined(PP_IN_LINK)
-        DBGI(printf("IG: wRoot "OWx" nType %d" // " ls_xPopCnt %d"
+        DBGI(printf("IG: wRoot " OWx" nType %d" // " ls_xPopCnt %d"
                     " PWR_xListPopCnt %d\n",
                     wRoot, nType, // ls_xPopCnt(wr_pwr(wRoot), nBL),
                     (int)PWR_xListPopCnt(&wRoot, wr_pwr(wRoot), nBL)));
@@ -3149,7 +3149,7 @@ embeddedKeys:;
                 || (ListWordsTypeList(wPopCnt + 1, nBL)
                         != ListWordsTypeList(wPopCnt, nBL)))
             {
-                DBGI(printf("pwr %p wPopCnt %"_fw"d nBL %d\n",
+                DBGI(printf("pwr %p wPopCnt %" _fw"d nBL %d\n",
                             (void *)pwr, wPopCnt, nBL));
                 DBGI(printf("nType %d\n", nType));
                 DBGI(printf("LWE(pop %d) %d LWE(pop %d) %d\n",
@@ -3315,7 +3315,7 @@ copyWithInsert16:
       #endif // defined(USE_T_ONE)
                     ) )
                 {
-                    printf("\nnType 0x%x wPopCnt "OWx"\n",
+                    printf("\nnType 0x%x wPopCnt " OWx"\n",
                            wr_nType(*pwRoot), wPopCnt);
                 }
   #endif // defined(DEBUG)
@@ -3326,7 +3326,7 @@ copyWithInsert16:
                 assert(wr_nType(*pwRoot) == T_EMBEDDED_KEYS);
   #endif // defined(USE_T_ONE)
 #endif // defined(NO_TYPE_IN_XX_SW)
-                DBGR(printf("IG: after DEL *pwRoot "OWx"\n", *pwRoot));
+                DBGR(printf("IG: after DEL *pwRoot " OWx"\n", *pwRoot));
             }
 #endif // defined(EMBED_KEYS)
         }
@@ -3451,7 +3451,7 @@ copyWithInsert16:
                     }
                 }
 #endif // defined(SORT_LISTS)
-                DBGI(printf("wMin "OWx" wMax "OWx"\n", wMin, wMax));
+                DBGI(printf("wMin " OWx" wMax " OWx"\n", wMin, wMax));
 
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
@@ -3618,7 +3618,7 @@ newSwitch:
       #endif // ! defined(SKIP_TO_XX_SW)
                     )
                 {
-                    DBGI(printf("# Creating T_XX_SW wKey "OWx" nBL %d\n",
+                    DBGI(printf("# Creating T_XX_SW wKey " OWx" nBL %d\n",
                                 wKey, nBL));
       #if defined(SKIP_TO_XX_SW)
                     if (nBLOld != nBL) {
@@ -3681,10 +3681,10 @@ doubleIt:;
 // Is it possible we are here because our words/key is good?
                         DBGI(printf("# IG: NewBitmap nBL %d"
                                     " nBLOld %d"
-                                    " wWordsAllocated %"_fw"d"
-                                    " wPopCntTotal %"_fw"d.\n",
+                                    " wWordsAllocated %" _fw"d"
+                                    " wPopCntTotal %" _fw"d.\n",
                                     nBL, nBLOld, wWordsAllocated, wPopCntTotal));
-                        DBGI(printf("# IG: NewBitmap wPopCnt %"_fw"d.\n",
+                        DBGI(printf("# IG: NewBitmap wPopCnt %" _fw"d.\n",
                                     wPopCnt));
                         DBGI(printf("# IG: NewBitmap nBL %d.\n", nBL));
                         NewBitmap(pwRoot, nBL, nBLOld, wKey);
@@ -3705,7 +3705,7 @@ doubleIt:;
 
 #if defined(DEBUG)
                 if (nBL > nBLOld) {
-                    printf("IG: pwRoot %p wKey "OWx" nBL %d wRoot "OWx"\n",
+                    printf("IG: pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
                            (void *)pwRoot, wKey, nBL, wRoot);
                     printf("nBLOld %d\n", nBLOld);
                 }
@@ -3891,7 +3891,7 @@ insertAll:;
   #endif // defined(SKIP_TO_BM_SW)
 #endif // defined(EXTRA_TYPES)
 #if defined(SKIP_LINKS)
-            DBGI(printf("wPrefix "OWx" w_wPrefix "OWx" nDLR %d\n",
+            DBGI(printf("wPrefix " OWx" w_wPrefix " OWx" nDLR %d\n",
                         PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDLR),
                         w_wPrefix(wKey, nDLR), nDLR));
 #endif // defined(SKIP_LINKS)
@@ -4184,7 +4184,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 {
     (void)pwRoot;
     DBGI(printf(
-         "InflateEmbeddedList pwRoot %p wKey "OWx" nBL %d wRoot "OWx"\n",
+         "InflateEmbeddedList pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
          (void *)pwRoot, wKey, nBL, wRoot));
 
 #if defined(NO_TYPE_IN_XX_SW)
@@ -4213,14 +4213,14 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 #if defined(DEBUG)
     if (nPopCnt > EmbeddedListPopCntMax(nBL))
     {
-        printf("IEL: wRoot "OWx" nBL %d nPopCnt %d Max %d nBitsPopCntSz %d\n",
+        printf("IEL: wRoot " OWx" nBL %d nPopCnt %d Max %d nBitsPopCntSz %d\n",
                wRoot, nBL, nPopCnt, nPopCntMax, nBL_to_nBitsPopCntSz(nBL));
     }
 #endif // defined(DEBUG)
     assert(nPopCnt <= nPopCntMax);
 
     if (nPopCnt == 0) {
-        printf("IEL: wRoot "OWx" nBL %d\n", wRoot, nBL);
+        printf("IEL: wRoot " OWx" nBL %d\n", wRoot, nBL);
     }
     assert(nPopCnt != 0);
     // Why not allocate a big enough list to hold the new key that we're about
@@ -4342,7 +4342,7 @@ DeflateExternalList(Word_t *pwRoot,
 #endif // defined(NO_TYPE_IN_XX_SW)
         { set_wr_nType(wRoot, T_EMBEDDED_KEYS); }
         set_wr_nPopCnt(wRoot, nBL, nPopCnt); // no-op if NO_TYPE_IN_XX_SW
-//printf("nBL %d nPopCnt %d wRoot "OWx"\n", nBL, nPopCnt, wRoot);
+//printf("nBL %d nPopCnt %d wRoot " OWx"\n", nBL, nPopCnt, wRoot);
 
         for (int nn = 0;
 #if defined(FILL_W_KEY)
@@ -4428,7 +4428,7 @@ done:;
 
     *pwRoot = wRoot;
 
-    DBGI(printf("DEL wRoot "OWx"\n", wRoot));
+    DBGI(printf("DEL wRoot " OWx"\n", wRoot));
 
     return wRoot;
 }
@@ -4445,7 +4445,7 @@ InsertAtDl1(Word_t *pwRoot, Word_t wKey, int nDL,
     assert(EXP(nBL) <= sizeof(Link_t) * 8);
     assert( ! BitIsSet(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL)));
 
-    DBGI(printf("SetBit(pwRoot "OWx" wKey "OWx")\n",
+    DBGI(printf("SetBit(pwRoot " OWx" wKey " OWx")\n",
                     (Word_t)pwRoot, wKey & MSK(nBL)));
 
     SetBit(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL));
@@ -4513,7 +4513,7 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
 
     assert( ! BitIsSet(pwr, wKey & MSK(nBL)) );
 
-    DBGI(printf("SetBit(pwr "OWx" wKey "OWx") pwRoot %p\n",
+    DBGI(printf("SetBit(pwr " OWx" wKey " OWx") pwRoot %p\n",
                 (Word_t)pwr, wKey & MSK(nBL), (void *)pwRoot));
 
     SetBit(pwr, wKey & MSK(nBL));
@@ -4542,7 +4542,7 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
 void
 RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
 {
-DBGR(printf("RC: pwRoot %p wRoot "OWx" nBL %d nBLR %d\n", (void *)pwRoot, wRoot, nBL, nBLR));
+DBGR(printf("RC: pwRoot %p wRoot " OWx" nBL %d nBLR %d\n", (void *)pwRoot, wRoot, nBL, nBLR));
     (void)nBL; (void)nBLR;
     int nDL = nBL_to_nDL(nBL);
     int nDLR = nBL_to_nDL(nBLR);
@@ -4599,13 +4599,13 @@ DBGR(printf("RC: pwRoot %p wRoot "OWx" nBL %d nBLR %d\n", (void *)pwRoot, wRoot,
                     || (PWR_wPopCntBL(pwRootLn, (Switch_t *)NULL, nBLX) != 0))
             {
                 DBGR(printf("wr_nBLX %d", nBLX));
-                DBGR(printf(" PWR_wPopCntBL %"_fw"d "OWx"\n",
+                DBGR(printf(" PWR_wPopCntBL %" _fw"d " OWx"\n",
                             PWR_wPopCntBL(pwRootLn, NULL, nBLX),
                             PWR_wPopCntBL(pwRootLn, NULL, nBLX)));
-                DBGR(printf(" PWR_wPrefixPop %"_fw"d "OWx"\n",
+                DBGR(printf(" PWR_wPrefixPop %" _fw"d " OWx"\n",
                             PWR_wPrefixPop(pwRootLn, NULL),
                             PWR_wPrefixPop(pwRootLn, NULL)));
-                DBGR(printf("Not empty ww %zd wIndex %zd *pwRootLn "OWx"\n",
+                DBGR(printf("Not empty ww %zd wIndex %zd *pwRootLn " OWx"\n",
                      (size_t)ww, (size_t)wIndex, *pwRootLn));
                 return; // may need cleanup lower; caller checks *pwRoot
             }
@@ -4637,7 +4637,7 @@ RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
     Word_t *pwr = wr_pwr(wRoot); (void)pwr;
     int nDL = nBL_to_nDL(nBL); (void)nDL;
 
-    DBGR(printf("RemoveGuts(pwRoot %p wKey "OWx" nBL %d wRoot "OWx")\n",
+    DBGR(printf("RemoveGuts(pwRoot %p wKey " OWx" nBL %d wRoot " OWx")\n",
                 (void *)pwRoot, wKey, nBL, wRoot));
 
 #if defined(NO_TYPE_IN_XX_SW)
@@ -5943,13 +5943,13 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
     Word_t wBytes = FreeArrayGuts((Word_t *)PPArray, /* wPrefix */ 0,
                                    cnBitsPerWord, /* bDump */ 0);
 
-    DBG(printf("# wPopCntTotal %"_fw"d\n", wPopCntTotal));
-    DBG(printf("# wWordsAllocatedBefore %"_fw"d\n", wWordsAllocatedBefore));
-    DBG(printf("# wMallocsBefore %"_fw"d\n", wMallocsBefore));
-    DBG(printf("# wEvenMallocsBefore %"_fw"d\n", wEvenMallocsBefore));
-    DBG(printf("# wWordsAllocated %"_fw"d\n", wWordsAllocated));
-    DBG(printf("# wMallocs %"_fw"d\n", wMallocs));
-    DBG(printf("# wEvenMallocs %"_fw"d\n", wEvenMallocs));
+    DBG(printf("# wPopCntTotal %" _fw"d\n", wPopCntTotal));
+    DBG(printf("# wWordsAllocatedBefore %" _fw"d\n", wWordsAllocatedBefore));
+    DBG(printf("# wMallocsBefore %" _fw"d\n", wMallocsBefore));
+    DBG(printf("# wEvenMallocsBefore %" _fw"d\n", wEvenMallocsBefore));
+    DBG(printf("# wWordsAllocated %" _fw"d\n", wWordsAllocated));
+    DBG(printf("# wMallocs %" _fw"d\n", wMallocs));
+    DBG(printf("# wEvenMallocs %" _fw"d\n", wEvenMallocs));
     DBG(printf("\n"));
     assert((wWordsAllocatedBefore - wWordsAllocated)
                == (wBytes / sizeof(Word_t)));
@@ -6021,9 +6021,9 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
     // Count returns the number of keys before the specified key.
     // It does not include the specified key.
     Word_t wCount0 = (wKey0 == 0) ? 0 : Count(&wRoot, wKey0, cnBitsPerWord);
-    DBGC(printf("Count wKey0 "OWx" Count0 %"_fw"d\n", wKey0, wCount0));
+    DBGC(printf("Count wKey0 " OWx" Count0 %" _fw"d\n", wKey0, wCount0));
     Word_t wCount1 = Count(&wRoot, wKey1, cnBitsPerWord);
-    DBGC(printf("Count wKey1 "OWx" Count1 %"_fw"d\n", wKey1, wCount1));
+    DBGC(printf("Count wKey1 " OWx" Count1 %" _fw"d\n", wKey1, wCount1));
     Word_t wCount = wCount1 - wCount0;
     wCount += Judy1Test(PArray, wKey1, NULL);
 
@@ -6075,7 +6075,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
         if (wPopCnt != wPopCntTotal)
         {
             printf("\nAssertion error debug:\n");
-            printf("\nwPopCnt %"_fw"d wPopCntTotal %"_fw"d\n",
+            printf("\nwPopCnt %" _fw"d wPopCntTotal %" _fw"d\n",
                    wPopCnt, wPopCntTotal);
             Dump(pwRootLast, 0, cnBitsPerWord);
         }
@@ -6084,7 +6084,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
         if (wPopCnt != wCount)
         {
             printf("\nAssertion error debug:\n");
-            printf("\nwPopCnt %"_fw"d wCount %"_fw"d\n",
+            printf("\nwPopCnt %" _fw"d wCount %" _fw"d\n",
                    wPopCnt, wCount);
             Dump(pwRootLast, 0, cnBitsPerWord);
         }
@@ -6131,8 +6131,8 @@ NextGuts(Word_t wRoot, int nBL,
 #define A(_zero) assert(_zero)
     (void)bEmpty;
     Word_t *pwr = wr_pwr(wRoot);
-    DBGN(printf("NextGuts(wRoot "OWx" nBL %d *pwKey "OWx
-                " wSkip %"_fw"d bPrev %d bEmpty %d) pwr %p\n",
+    DBGN(printf("NextGuts(wRoot " OWx" nBL %d *pwKey " OWx
+                " wSkip %" _fw"d bPrev %d bEmpty %d) pwr %p\n",
                 wRoot, nBL, *pwKey, wSkip, bPrev, bEmpty, (void *)pwr));
     int nType = wr_nType(wRoot);
     switch (nType) {
@@ -6180,7 +6180,7 @@ NextGuts(Word_t wRoot, int nBL,
     }
   #if defined(EMBED_KEYS)
     case T_EMBEDDED_KEYS: {
-        DBGN(printf("T_EMBEDDED_KEYS: *pwKey "OWx" wSkip %"_fw"u\n",
+        DBGN(printf("T_EMBEDDED_KEYS: *pwKey " OWx" wSkip %" _fw"u\n",
                     *pwKey, wSkip));
         //A(0); // check -B10 -DS1
         assert(nBL != cnBitsPerWord);
@@ -6258,7 +6258,7 @@ NextGuts(Word_t wRoot, int nBL,
     }
   #endif // defined(SKIP_TO_BITMAP)
     case T_BITMAP: {
-        DBGN(printf("T_BITMAP *pwKey "OWx" wSkip %"_fw"u\n", *pwKey, wSkip));
+        DBGN(printf("T_BITMAP *pwKey " OWx" wSkip %" _fw"u\n", *pwKey, wSkip));
         assert(nBL != cnBitsPerWord);
         int nWordNum = (*pwKey & MSK(nBL)) >> cnLogBitsPerWord;
         int nBitNum = *pwKey & MSK(cnLogBitsPerWord);
@@ -6352,7 +6352,7 @@ NextGuts(Word_t wRoot, int nBL,
   #endif // defined(SKIP_LINKS)
     case T_SWITCH: {
         //A(0);
-        DBGN(printf("T_SW wSkip %"_fw"u\n", wSkip));
+        DBGN(printf("T_SW wSkip %" _fw"u\n", wSkip));
         int nBits = nBL_to_nBitsIndexSz(nBL); // bits decoded by switch
         Word_t wIndex = (*pwKey >> (nBL-nBits)) & MSK(nBits);
         if (bPrev) {
@@ -6363,9 +6363,9 @@ NextGuts(Word_t wRoot, int nBL,
                 Word_t wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
                 if (wPopCnt != 0) {
                     //A(0);
-                    DBGN(printf("T_SW: wIndex 0x%"_fw"x pLn->ln_wRoot "OWx"\n",
+                    DBGN(printf("T_SW: wIndex 0x%" _fw"x pLn->ln_wRoot " OWx"\n",
                                 wIndex, pLn->ln_wRoot));
-                    DBGN(printf("T_SW: wPopCnt %"_fw"d\n", wPopCnt));
+                    DBGN(printf("T_SW: wPopCnt %" _fw"d\n", wPopCnt));
                     if (wPopCnt > wSkip) {
                         //A(0);
                         Word_t wCount;
@@ -6381,7 +6381,7 @@ NextGuts(Word_t wRoot, int nBL,
                         wSkip -= wPopCnt;
                     }
                     //A(0);
-                    DBGN(printf("T_SW: wSkip %"_fw"d\n", wSkip));
+                    DBGN(printf("T_SW: wSkip %" _fw"d\n", wSkip));
                 }
                 //A(0);
                 *pwKey |= MSK(nBL - nBits);
@@ -6399,9 +6399,9 @@ NextGuts(Word_t wRoot, int nBL,
                 Word_t wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
                 if (wPopCnt != 0) {
                     //A(0);
-                    DBGN(printf("T_SW: wIndex 0x%"_fw"x pLn->ln_wRoot "OWx"\n",
+                    DBGN(printf("T_SW: wIndex 0x%" _fw"x pLn->ln_wRoot " OWx"\n",
                                 wIndex, pLn->ln_wRoot));
-                    DBGN(printf("T_SW: wPopCnt %"_fw"d\n", wPopCnt));
+                    DBGN(printf("T_SW: wPopCnt %" _fw"d\n", wPopCnt));
                     if (wPopCnt > wSkip) {
                         //A(0);
                         Word_t wCount;
@@ -6417,7 +6417,7 @@ NextGuts(Word_t wRoot, int nBL,
                         wSkip -= wPopCnt;
                     }
                     //A(0);
-                    DBGN(printf("T_SW: wSkip %"_fw"d\n", wSkip));
+                    DBGN(printf("T_SW: wSkip %" _fw"d\n", wSkip));
                 }
                 //A(0);
                 *pwKey &= ~MSK(nBL - nBits);
@@ -6466,7 +6466,7 @@ NextGuts(Word_t wRoot, int nBL,
   #if defined(USE_XX_SW)
     case T_XX_SW: {
         //A(0);
-        DBGN(printf("T_SW wSkip %"_fw"u\n", wSkip));
+        DBGN(printf("T_SW wSkip %" _fw"u\n", wSkip));
         int nBits = pwr_nBW(&wRoot); // bits decoded by switch
         Word_t wIndex = (*pwKey >> (nBL-nBits)) & MSK(nBits);
         if (bPrev) {
@@ -6477,9 +6477,9 @@ NextGuts(Word_t wRoot, int nBL,
                 Word_t wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
                 if (wPopCnt != 0) {
                     //A(0);
-                    DBGN(printf("T_SW: wIndex "OWx" pLn->ln_wRoot "OWx"\n",
+                    DBGN(printf("T_SW: wIndex " OWx" pLn->ln_wRoot " OWx"\n",
                                 wIndex, pLn->ln_wRoot));
-                    DBGN(printf("T_SW: wPopCnt %"_fw"d\n", wPopCnt));
+                    DBGN(printf("T_SW: wPopCnt %" _fw"d\n", wPopCnt));
                     if (wPopCnt > wSkip) {
                         //A(0);
                         Word_t wCount;
@@ -6495,7 +6495,7 @@ NextGuts(Word_t wRoot, int nBL,
                         wSkip -= wPopCnt;
                     }
                     //A(0);
-                    DBGN(printf("T_SW: wSkip %"_fw"d\n", wSkip));
+                    DBGN(printf("T_SW: wSkip %" _fw"d\n", wSkip));
                 }
                 //A(0);
                 *pwKey |= MSK(nBL - nBits);
@@ -6513,9 +6513,9 @@ NextGuts(Word_t wRoot, int nBL,
                 Word_t wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
                 if (wPopCnt != 0) {
                     //A(0);
-                    DBGN(printf("T_SW: wIndex 0x%"_fw"x pLn->ln_wRoot "OWx"\n",
+                    DBGN(printf("T_SW: wIndex 0x%" _fw"x pLn->ln_wRoot " OWx"\n",
                                 wIndex, pLn->ln_wRoot));
-                    DBGN(printf("T_SW: wPopCnt %"_fw"d\n", wPopCnt));
+                    DBGN(printf("T_SW: wPopCnt %" _fw"d\n", wPopCnt));
                     if (wPopCnt > wSkip) {
                         //A(0);
                         Word_t wCount;
@@ -6531,7 +6531,7 @@ NextGuts(Word_t wRoot, int nBL,
                         wSkip -= wPopCnt;
                     }
                     //A(0);
-                    DBGN(printf("T_SW: wSkip %"_fw"d\n", wSkip));
+                    DBGN(printf("T_SW: wSkip %" _fw"d\n", wSkip));
                 }
                 //A(0);
                 *pwKey &= ~MSK(nBL - nBits);
@@ -6569,7 +6569,7 @@ Judy1ByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
         return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
     *pwKey = 0;
-    DBGN(printf("J1BC: wCount %"_fw"d *pwKey "OWx"\n", wCount, *pwKey));
+    DBGN(printf("J1BC: wCount %" _fw"d *pwKey " OWx"\n", wCount, *pwKey));
     Word_t wKey = *pwKey;
     // The Judy1 man page specifies that wCount == 0 is reserved for
     // specifying the last key in a fully populated array.
@@ -6578,7 +6578,7 @@ Judy1ByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
                       wCount, /* bPrev */ 0, /* bEmpty */ 0);
     if (wCount == 0) {
         *pwKey = wKey;
-        DBGN(printf("J1BC: *pwKey "OWx"\n", *pwKey));
+        DBGN(printf("J1BC: *pwKey " OWx"\n", *pwKey));
     }
     return wCount == 0;
 }
@@ -6603,13 +6603,13 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         DBGN(printf("J1F: ret %d\n", ret));
         return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
-    DBGN(printf("J1F: *pwKey "OWx"\n", *pwKey));
+    DBGN(printf("J1F: *pwKey " OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
     Word_t wCount = NextGuts((Word_t)PArray, cnBitsPerWord, &wKey,
                              /* wCount */ 0, /* bPrev */ 0, /* bEmpty */ 0);
     if (wCount == 0) {
         *pwKey = wKey;
-        DBGN(printf("J1F: *pwKey "OWx"\n", *pwKey));
+        DBGN(printf("J1F: *pwKey " OWx"\n", *pwKey));
     }
     DBGN(printf("J1F: returning %d\n", wCount == 0));
     return wCount == 0;
@@ -6656,13 +6656,13 @@ Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         DBGN(printf("J1L: ret %d\n", ret));
         return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
-    DBGN(printf("J1L: *pwKey "OWx"\n", *pwKey));
+    DBGN(printf("J1L: *pwKey " OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
     Word_t wCount = NextGuts((Word_t)PArray, cnBitsPerWord, &wKey,
                              /* wCount */ 0, /* bPrev */ 1, /* bEmpty */ 0);
     if (wCount == 0) {
         *pwKey = wKey;
-        DBGN(printf("J1L done: *pwKey "OWx"\n", *pwKey));
+        DBGN(printf("J1L done: *pwKey " OWx"\n", *pwKey));
     }
     DBGN(printf("J1L: returning %d\n", wCount == 0));
     return wCount == 0;
@@ -6877,10 +6877,9 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
         }
     }
   #endif // defined(USE_XX_SW)
-    default:
-        assert(0); // not handled yet
-        exit(1);
     }
+    assert(0); // not handled yet
+    exit(1);
 }
 
 // If *pwKey is not in the array then return 1 and leave *pwKey unchanged.
@@ -6904,13 +6903,13 @@ Judy1FirstEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         DBGN(printf("J1FE: ret %d\n", ret));
         return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
-    DBGN(printf("J1FE: *pwKey "OWx"\n", *pwKey));
+    DBGN(printf("J1FE: *pwKey " OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
     Status_t status = NextEmptyGuts((Word_t *)&PArray,
                                     &wKey, cnBitsPerWord, /* bPrev */ 0);
     if (status == Success) {
         *pwKey = wKey;
-        DBGN(printf("J1FE: *pwKey "OWx"\n", *pwKey));
+        DBGN(printf("J1FE: *pwKey " OWx"\n", *pwKey));
     }
     return status == Success;
 }
@@ -6959,13 +6958,13 @@ Judy1LastEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         DBGN(printf("J1LE: ret %d\n", ret));
         return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
-    DBGN(printf("J1LE: *pwKey "OWx"\n", *pwKey));
+    DBGN(printf("J1LE: *pwKey " OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
     Status_t status = NextEmptyGuts((Word_t *)&PArray,
                                      &wKey, cnBitsPerWord, /* bPrev */ 1);
     if (status == Success) {
         *pwKey = wKey;
-        DBGN(printf("J1LE: *pwKey "OWx"\n", *pwKey));
+        DBGN(printf("J1LE: *pwKey " OWx"\n", *pwKey));
     }
     return status == Success;
 }
