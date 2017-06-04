@@ -283,12 +283,6 @@
 // ALIGN_UP assumes _isor is a power of 2.
 #define ALIGN_UP(_idend, _isor)  (((_idend) + (_isor) - 1) & ~((_isor) - 1))
 
-#if defined(_WIN64)
-#define WORD_ONE  1ULL
-#else // defined(_WIN64)
-#define WORD_ONE  1UL
-#endif // defined(_WIN64)
-
 // Count leading zeros.
 // __builtin_clzll is undefined for zero which allows the compiler to use bsr.
 // Actual x86 clz instruction is defined for zero.
@@ -327,7 +321,7 @@
 #define cwVirtAddrMask  ((Word_t)-1)
 #endif // (cnBitsPerWord == 64)
 
-#define EXP(_x)  (assert((_x) <= cnBitsPerWord), WORD_ONE << (_x))
+#define EXP(_x)  (assert((_x) <= cnBitsPerWord), (Word_t)1 << (_x))
 #define MSK(_x)  (EXP(_x) - 1)
 
 // Bits are numbered 0-63 with 0 being the least significant.
@@ -935,26 +929,18 @@ enum {
 #define DBGM(x)
 #endif // defined(DEBUG_MALLOC)
 
+// Shorthand
 #if !defined(Owx)
-#if defined(_WIN64)
-#define Owx   "%016llx"
-#define OWx "0x%016llx"
-#else // defined(_WIN64)
-#if defined(__LP64__)
-#define Owx   "%016lx"
-#define OWx "0x%016lx"
-#else // defined(__LP64__)
-#define Owx   "%08lx"
-#define OWx "0x%08lx"
-#endif // defined(__LP64__)
-#endif // defined(_WIN64)
+#if defined(__LP64__) || defined(_WIN64)
+#define Owx   "%016" PRIxPTR
+#define OWx   "0x%016" PRIxPTR
+#else // defined(__LP64__) || defined(_WIN64)
+#define Owx   "%08" PRIxPTR
+#define OWx   "0x%08" PRIxPTR
+#endif // defined(__LP64__) || defined(_WIN64)
+#define _fw  __PRIPTR_PREFIX // _fw -- format word
 #endif // !defined(Owx)
 
-#if defined(_WIN64)
-#define _fw  "ll"
-#else // defined(_WIN64)
-#define _fw  "l"
-#endif // defined(_WIN64)
 
 #define OFFSET_OF(_type, _field) ((size_t)&((_type *)NULL)->_field)
 #define STRUCT_OF(_p, _type, _field) \
@@ -2162,7 +2148,7 @@ typedef struct {
     };
 } ListLeaf_t;
 
-#define N_WORDS_SWITCH_BM  DIV_UP((WORD_ONE << cnBitsPerDigit), cnBitsPerWord)
+#define N_WORDS_SWITCH_BM  DIV_UP(((Word_t)1 << cnBitsPerDigit), cnBitsPerWord)
 
 // Default is -UPOP_WORD_IN_LINK.
 // It doesn't matter unless POP_WORD is defined.
