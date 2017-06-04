@@ -1,8 +1,7 @@
-// ********************************************************************
-// RANDOM NUMBER GENERATOR Code
-// ********************************************************************
+// @(#) $Revision: 1.1 $ $Source: /home/doug/judy-1.0.5_dlmalloc/test/RCS/RandomNumb.h,v $
+/* RANDOM NUMBER GENERATOR Code                                         */
 
-// requires #include <Judy.h>
+#include <Judy.h>
 
 // =======================================================================
 // These are LFSF feedback taps for bitwidths of 10..64 sized numbers.
@@ -36,12 +35,15 @@ static Word_t MagicList[] = {
     0x11ca3,                            // 29
     0xc4fb,                             // 30
     0xc4fb,                             // 31
-    0x13aab,                            // 32 
+    0x13aab                             // 32 
+
+#ifdef __LP64__
+    ,
     0x14e73UL,                          // 33  
     0x145d7UL,                          // 34  
     0x145f9UL,                          // 35  
     0x151edUL,                          // 36 
-    (Word_t)0x1F00000001UL,                     // 37 Good  137438953471  (0x1fffffffff) 
+    0x1F00000001,                       // 37 Good  137438953471  (0x1fffffffff) 
     0x151edUL,                          // 38 Good  274877906943  (0x3fffffffff)
     0x151edUL,                          // 39 Good  549755813887  (0x7fffffffff) 
     0x151edUL,                          // 40 Bad   157053914551  (0x2491248db7)
@@ -69,6 +71,8 @@ static Word_t MagicList[] = {
     0x146c3UL,                          // 62  
     0x146c3UL,                          // 63  
     0x146c3UL                           // 64  
+#endif  // __LP64__
+
 };
 
 // Allow up to 8 generators sums to run
