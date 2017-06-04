@@ -132,7 +132,7 @@ pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
     if (length != HUGETLBSZ)
     {
 ////        return(buf);
-        fprintf(stderr, "\nSorry, JudyMalloc() is not ready for %ld allocations\n", (Word_t)length);
+        fprintf(stderr, "\nSorry, JudyMalloc() is not ready for %zd allocations\n", length);
         exit(-1);
     }
 
