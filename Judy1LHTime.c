@@ -54,30 +54,6 @@
 //   A little help with printf("0x%016x...  vs printf(0x%08x...
 // =======================================================================
 
-#if defined(_WIN64)
-
-#define Owx   "%016llx"
-#define OWx "0x%016llx"
-#define wx "%llx"
-
-#else // defined(_WIN64)
-
-#if defined(__LP64__)
-
-#define Owx   "%016lx"
-#define OWx "0x%016lx"
-
-#else // defined(__LP64__)
-
-#define Owx   "%08lx"
-#define OWx "0x%08lx"
-
-#endif // defined(__LP64__)
-
-#define wx "%lx"
-
-#endif // defined(_WIN64)
-
 // damn apple or posix
 #ifndef MAP_ANONYMOUS
 #define  MAP_ANONYMOUS MAP_ANON
@@ -1418,9 +1394,9 @@ main(int argc, char *argv[])
 // 1          RightShift = __builtin_popcountll(PrintKey ^ (PrevPrintKey >> 1));
 // 1          PrevPrintKey = PrintKey;
 
-//            printf(""OWx"\n", PrintKey);
+//            printf("%" PRIxPTR"\n", PrintKey);
 
-            printf("0x" Owx", %2d %lu\n", PrintKey, (int)log2((double)(PrintKey)) + 1, PrintKey);
+            printf("0x%" PRIxPTR", %2d %lu\n", PrintKey, (int)log2((double)(PrintKey)) + 1, PrintKey);
 
 #ifdef __LP64__
 //            printf("0x%016lx\n", PrintKey);
