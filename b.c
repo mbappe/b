@@ -2518,7 +2518,7 @@ embeddedKeys:;
             nPopCnt = PWR_xListPopCnt(&wRootOld, pwrOld, nBLOld);
         }
 
-        int status;
+        int status = 0; // for debug
 #if defined(COMPRESSED_LISTS)
         if (nBLOld <= (int)sizeof(uint8_t) * 8) {
             uint8_t *pcKeys = ls_pcKeysNAT(pwrOld);
