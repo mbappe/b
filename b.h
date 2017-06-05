@@ -938,7 +938,11 @@ enum {
 #define Owx   "%08" PRIxPTR
 #define OWx   "0x%08" PRIxPTR
 #endif // defined(__LP64__) || defined(_WIN64)
+#if defined(__PRIPTR_PREFIX)
 #define _fw  __PRIPTR_PREFIX // _fw -- format word
+#else // defined(__PRIPTR_PREFIX)
+#define _fw  "l" // _fw -- format word
+#endif // defined(__PRIPTR_PREFIX)
 #endif // !defined(Owx)
 
 
