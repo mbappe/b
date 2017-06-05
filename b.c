@@ -1789,6 +1789,8 @@ embeddedKeys:;
 
     // Switch
 
+    { // make C++ happy
+
     int nBLPrev = nBL;
 
 #if defined(CODE_BM_SW)
@@ -1896,8 +1898,7 @@ embeddedKeys:;
 
     nBL -= nBitsIndexSz;
 
-    Word_t xx = 0;
-    for (Word_t nn = 0; nn < EXP(nBitsIndexSz); nn++)
+    for (Word_t ww = 0, nn = 0; nn < EXP(nBitsIndexSz); nn++)
     {
 #if defined(CODE_BM_SW)
 #if defined(BM_IN_LINK)
@@ -1906,14 +1907,14 @@ embeddedKeys:;
         if ( ! bBmSw || BitIsSet(PWR_pwBm(pwRoot, pwr), nn))
 #endif // defined(CODE_BM_SW)
         {
-            if (pLinks[xx].ln_wRoot != 0)
+            if (pLinks[ww].ln_wRoot != 0)
             {
                 //printf("nn %" _fw"x\n", nn);
-                wBytes += FreeArrayGuts(&pLinks[xx].ln_wRoot,
+                wBytes += FreeArrayGuts(&pLinks[ww].ln_wRoot,
                         wPrefix | (nn << nBL), nBL, bDump);
             }
 
-            xx++;
+            ww++;
         }
     }
 
@@ -1927,6 +1928,7 @@ embeddedKeys:;
                         bBmSw, /* nLinks */ 0,
 #endif // defined(CODE_BM_SW)
                         nBLPrev);
+    }
 
 zeroLink:
 
@@ -6706,8 +6708,9 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
                 " wRoot %p pwr %p\n",
                 (void *)pwRoot, (void *)*pwKey, nBL, bPrev,
                 (void *)wRoot, (void *)pwr));
+    int nIncr;
     switch (wr_nType(wRoot)) {
-    case T_LIST:;
+    case T_LIST:; {
         int nPos;
         if ((pwr == NULL)
                 || ((nPos = SearchList(pwr, *pwKey, nBL, pwRoot)) < 0)) {
@@ -6727,7 +6730,7 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
         // save prefix for return
         *pwKey = (nBL == cnBitsPerWord) ? 0 : (*pwKey & ~MSK(nBL));
         int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL);
-        int nIncr = bPrev ? -1 : 1;
+        nIncr = bPrev ? -1 : 1;
         for (;;)
         {
             wKeyLoop += nIncr;
@@ -6749,8 +6752,9 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
             return Success;
         }
         return Failure;
+    }
   #if defined(EMBED_KEYS)
-    case T_EMBEDDED_KEYS:;
+    case T_EMBEDDED_KEYS:; {
         Word_t wRootNew = InflateEmbeddedList(NULL, *pwKey, nBL, wRoot);
         Word_t wKeyLast = *pwKey & ~MSK(nBL); // prefix
         if (bPrev) {
@@ -6759,7 +6763,7 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
             wKeyLast |= MSK(nBL);
             nIncr = 1;
         }
-        while ((nPos = SearchList(wr_pwr(wRootNew), *pwKey, nBL, &wRootNew)) >= 0) {
+        while (SearchList(wr_pwr(wRootNew), *pwKey, nBL, &wRootNew) >= 0) {
             if (*pwKey == wKeyLast) {
                 OldList(wr_pwr(wRootNew), wr_nPopCnt(wRoot, nBL), nBL, T_LIST);
                 return Failure;
@@ -6768,6 +6772,7 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
         }
         OldList(wr_pwr(wRootNew), wr_nPopCnt(wRoot, nBL), nBL, T_LIST);
         return Success;
+    }
   #endif // defined(EMBED_KEYS)
   #if defined(SKIP_TO_BITMAP)
     case T_SKIP_TO_BITMAP: {
@@ -6779,7 +6784,7 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
         assert(*pwKey == (wPrefix | (*pwKey & MSK(nBL))));
     }
   #endif // defined(SKIP_TO_BITMAP)
-    case T_BITMAP:;
+    case T_BITMAP:; {
         int nWordNum = (*pwKey & MSK(nBL)) >> cnLogBitsPerWord;
         int nBitNum = *pwKey & MSK(cnLogBitsPerWord);
         if (bPrev) {
@@ -6815,6 +6820,7 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
                 wBm = ~pwr[nWordNum];
             }
         }
+    }
   #if defined(SKIP_LINKS)
     case T_SKIP_TO_SWITCH: {
         nBL = wr_nBL(wRoot);

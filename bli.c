@@ -31,7 +31,7 @@ CountSw(Word_t *pwRoot,
         int nLinks)
 {
     (void)pwRoot; (void)nBLR; (void)nLinks;
-    DBGC(printf("\nCountSw nBL %d wIndex "Owx"\n", nBL, wIndex));
+    DBGC(printf("\nCountSw nBL %d wIndex " OWx"\n", nBL, wIndex));
     Word_t wPopCnt = 0;
     Word_t ww, wwLimit;
       #if ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
@@ -60,7 +60,7 @@ CountSw(Word_t *pwRoot,
             if (wPopCntLoop == 0) {
                 wPopCntLoop = EXP(nBL);
             }
-            DBGC(printf("ww %"_fw"d bIsSwitch pwr %p wPopCnt %"_fw"d\n",
+            DBGC(printf("ww %" _fw"d bIsSwitch pwr %p wPopCnt %" _fw"d\n",
                         ww, (void *)pwrLoop, wPopCntLoop));
             wPopCnt += wPopCntLoop;
         } else switch (nTypeLoop) {
@@ -68,7 +68,7 @@ CountSw(Word_t *pwRoot,
         case T_EMBEDDED_KEYS:
             wPopCntLoop = wr_nPopCnt(*pwRootLoop, nBL);
             assert(wPopCntLoop != 0);
-            DBGC(printf("ww %"_fw"d T_EMBED_KEYS wRoot "Owx" wPopCnt %"_fw
+            DBGC(printf("ww %" _fw"d T_EMBED_KEYS wRoot " OWx" wPopCnt %" _fw
                         "d\n", ww, *pwRootLoop, wPopCntLoop));
             wPopCnt += wPopCntLoop;
             break;
@@ -87,7 +87,7 @@ CountSw(Word_t *pwRoot,
                     wPopCntLoop = PWR_xListPopCnt(pwRootLoop, pwrLoop, nBL);
                 }
                 assert(wPopCntLoop != 0);
-                DBGC(printf("ww %"_fw"d T_LIST pwr %p wPopCnt %"_fw"d\n",
+                DBGC(printf("ww %" _fw"d T_LIST pwr %p wPopCnt %" _fw"d\n",
                             ww, (void *)pwr, wPopCntLoop));
                 wPopCnt += wPopCntLoop;
             }
@@ -98,12 +98,12 @@ CountSw(Word_t *pwRoot,
             if (wPopCntLoop == 0) {
                 wPopCntLoop = EXP(nBL);
             }
-            DBGC(printf("ww %"_fw"d T_BITMAp pwr %p wPopCnt %"_fw"d\n",
+            DBGC(printf("ww %" _fw"d T_BITMAp pwr %p wPopCnt %" _fw"d\n",
                         ww, (void *)pwr, wPopCntLoop));
             wPopCnt += wPopCntLoop;
             break;
         default:
-            printf("\nww %"_fw"d *pwRootLoop "Owx" nTypeLoop %d\n",
+            printf("\nww %" _fw"d *pwRootLoop " OWx" nTypeLoop %d\n",
                    ww, *pwRootLoop, nTypeLoop);
             assert(0);
         }
@@ -123,7 +123,7 @@ CountSw(Word_t *pwRoot,
           #endif // defined(INSERT)
     }
       #endif // ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
-    DBGC(printf("\nCountSw wPopCnt %"_fw"d\n", wPopCnt));
+    DBGC(printf("\nCountSw wPopCnt %" _fw"d\n", wPopCnt));
     return wPopCnt;
 }
   #endif // defined(COUNT)
@@ -213,7 +213,7 @@ PrefixMismatch(Word_t *pwRoot,
     wPrefixMismatch = (wKey - wPrefix) >> nBLR; // positive means key is big
 
     if (wPrefixMismatch != 0) {
-        DBGX(printf("PM: wKey "OWx" wPrefix "Owx" nBL %d nBLR %d pwRoot %p\n",
+        DBGX(printf("PM: wKey " OWx" wPrefix " OWx" nBL %d nBLR %d pwRoot %p\n",
                     wKey, wPrefix, nBL, nBLR, (void *)pwRoot));
     }
       #if ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK)
@@ -417,7 +417,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
   #endif // !defined(LOOKUP)
 #endif // !defined(RECURSIVE)
     int nBLR;
-    Word_t wPopCnt = wPopCnt; // suppress compiler warnings
+    Word_t wPopCnt; (void)wPopCnt;
 #if defined(INSERT) || defined(REMOVE)
     int bCleanup = 0;
 #endif // defined(INSERT) || defined(REMOVE)
@@ -429,7 +429,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     Word_t *pwrPrefix = NULL; (void)pwrPrefix;
     int nBLRPrefix = 0; (void)nBLRPrefix;
 #if ! defined(LOOKUP)
-    int nPos = nPos; // suppress "uninitialized" compiler warning
+    int nPos = -1;
 #endif // ! defined(LOOKUP)
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
@@ -463,7 +463,7 @@ again:;
 #else // ( ! defined(LOOKUP) )
     SMETRICS(j__TreeDepth++);
 #endif // ( ! defined(LOOKUP) )
-    DBGX(printf("# wRoot "OWx" wKey "OWx" nBL %d\n", wRoot, wKey, nBL));
+    DBGX(printf("# wRoot " OWx" wKey " OWx" nBL %d\n", wRoot, wKey, nBL));
 
 #if ! defined(LOOKUP) /* don't care about performance */ \
       || (defined(USE_PWROOT_FOR_LOOKUP) \
@@ -504,7 +504,7 @@ again3:;
         Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_SWITCH);
         if (wPrefixMismatch != 0) {
   #if defined(COUNT)
-            DBGC(printf("SKIP_TO_SW: COUNT PM "OWx"\n", wPrefixMismatch));
+            DBGC(printf("SKIP_TO_SW: COUNT PM " OWx"\n", wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
             if (wPrefixMismatch > 0) {
@@ -525,7 +525,7 @@ again3:;
                         wPopCnt = EXP(nBLR);
                     }
                 }
-                DBGC(printf("SKIP_TO_SW: PM wPopCnt %"_fw"d\n", wPopCnt));
+                DBGC(printf("SKIP_TO_SW: PM wPopCnt %" _fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
             }
   #endif // defined(COUNT)
@@ -558,7 +558,7 @@ again3:;
         Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_BM_SW);
         if (wPrefixMismatch != 0) {
   #if defined(COUNT)
-            DBGC(printf("SKIP_TO_BM_SW: COUNT PM %"_fw"d\n",
+            DBGC(printf("SKIP_TO_BM_SW: COUNT PM %" _fw"d\n",
                         wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
@@ -576,7 +576,7 @@ again3:;
                 {
                     wPopCnt = PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
                 }
-                DBGC(printf("SKIP_TO_BM_SW: PM wPopCnt %"_fw"d\n", wPopCnt));
+                DBGC(printf("SKIP_TO_BM_SW: PM wPopCnt %" _fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
             }
   #endif // defined(COUNT)
@@ -605,7 +605,7 @@ again3:;
         Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_XX_SW);
         if (wPrefixMismatch != 0) {
   #if defined(COUNT)
-            DBGC(printf("SKIP_TO_XX_SW: COUNT PM %"_fw"d\n",
+            DBGC(printf("SKIP_TO_XX_SW: COUNT PM %" _fw"d\n",
                         wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
@@ -626,7 +626,7 @@ again3:;
                 {
                     wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
                 }
-                DBGC(printf("SKIP_TO_XX_SW: PM wPopCnt %"_fw"d\n", wPopCnt));
+                DBGC(printf("SKIP_TO_XX_SW: PM wPopCnt %" _fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
             }
   #endif // defined(COUNT)
@@ -652,7 +652,7 @@ t_switch:;
         // nBLR is nBL reduced by any skip indicated in that link
         // nBLR is bits left at the top of this switch
 
-        DBGX(printf("T_SWITCH nBL %d nBLR %d wPopCnt %"_fw"d pLinks %p\n",
+        DBGX(printf("T_SWITCH nBL %d nBLR %d wPopCnt %" _fw"d pLinks %p\n",
                     nBL, nBLR, PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR),
                     (void *)pwr_pLinks((Switch_t *)pwr)));
 
@@ -677,7 +677,8 @@ t_switch:;
             {
                 // Increment or decrement population count on the way in.
                 wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
-                set_PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR, wPopCnt + nIncr);
+                set_PWR_wPopCntBL(pwRoot,
+                                  (Switch_t *)pwr, nBLR, wPopCnt + nIncr);
             }
         }
       #if defined(INSERT)
@@ -713,7 +714,7 @@ t_switch:;
 #if defined(COUNT)
         wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL, wIndex,
                           1 << nBitsIndexSz);
-        DBGC(printf("T_SWITCH wPopCnt %"_fw"d\n", wPopCnt));
+        DBGC(printf("T_SWITCH wPopCnt %" _fw"d\n", wPopCnt));
         wPopCntSum += wPopCnt;
 #endif // defined(COUNT)
 
@@ -746,7 +747,7 @@ switchTail:;
         //     goto t_bitmap;
         // }
 
-        DBGX(printf("switchTail: pwRoot %p wRoot "OWx" nBL %d\n",
+        DBGX(printf("switchTail: pwRoot %p wRoot " OWx" nBL %d\n",
                     (void *)pwRoot, wRoot, nBL));
 
         nBLR = nBL; // Advance nBLR to the bottom of this switch now.
@@ -772,7 +773,7 @@ t_xx_sw:;
         // nBLR is nBL reduced by any skip indicated in that link
         // nBLR is bits left at the top of this switch
 
-        DBGX(printf("T_XX_SW nBL %d nBLR %d wPopCnt %"_fw"d pLinks %p\n",
+        DBGX(printf("T_XX_SW nBL %d nBLR %d wPopCnt %" _fw"d pLinks %p\n",
                     nBL, nBLR, PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR),
                     (void *)pwr_pLinks((Switch_t *)pwr)));
 
@@ -829,7 +830,7 @@ t_xx_sw:;
 
 #if defined(COUNT)
         wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL, nIndex, 1<<nBW);
-        DBGC(printf("T_XX_SW wPopCnt %"_fw"d\n", wPopCnt));
+        DBGC(printf("T_XX_SW wPopCnt %" _fw"d\n", wPopCnt));
         wPopCntSum += wPopCnt;
 #endif // defined(COUNT)
 
@@ -844,7 +845,7 @@ t_xx_sw:;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         assert(EXP(nBL) > (sizeof(Link_t) * 8));
 
-        DBGX(printf("T_XX_SW pwRoot %p wRoot "OWx" nBL %d\n",
+        DBGX(printf("T_XX_SW pwRoot %p wRoot " OWx" nBL %d\n",
                     (void *)pwRoot, wRoot, nBL));
 
   #if defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
@@ -1030,7 +1031,7 @@ t_bm_sw:;
         goto t_list;
 t_list:;
         DBGX(printf("T_LIST nBL %d\n", nBL));
-        DBGX(printf("wKeyPopMask "OWx"\n", wPrefixPopMaskBL(nBL)));
+        DBGX(printf("wKeyPopMask " OWx"\n", wPrefixPopMaskBL(nBL)));
 
   #if defined(INSERT) || defined(REMOVE)
         DBGX(printf("T_LIST bCleanup %d nIncr %d\n", bCleanup, nIncr));
@@ -1179,7 +1180,7 @@ t_list:;
         else
         {
             // Shouldn't this be using the previous nBL for pwrPrev?
-            DBGX(printf("Mismatch at list wPrefix "OWx" nBL %d\n",
+            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
                  PWR_wPrefixNATBL(pwRoot, pwrPrev, nBL), nBL));
         }
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && ...
@@ -1218,24 +1219,28 @@ t_list:;
 #endif // (cwListPopCntMax != 0)
 
 #if defined(SKIP_TO_BITMAP)
-    case T_SKIP_TO_BITMAP:
+    case T_SKIP_TO_BITMAP: {
         DBGX(printf("T_SKIP_TO_BITMAP\n"));
         // PREFIX_MISMATCH updates nBLR.
         Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_BITMAP);
         if (wPrefixMismatch != 0) {
   #if defined(COUNT)
-            DBGC(printf("T_SKIP_TO_BITMAP: COUNT PREFIX_MISMATCH %"_fw"d\n", wPrefixMismatch));
+            DBGC(printf("T_SKIP_TO_BITMAP: COUNT PREFIX_MISMATCH %" _fw"d\n",
+                        wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
             if (wPrefixMismatch > 0) {
-                Word_t wPopCnt = w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
-                DBGC(printf("T_SKIP_TO_BITMAP: PREFIX_MISMATCH wPopCnt %"_fw"d\n", wPopCnt));
+                Word_t wPopCnt
+                    = w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
+                DBGC(printf("T_SKIP_TO_BITMAP: PREFIX_MISMATCH wPopCnt %" _fw
+                                "d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
             }
   #endif // defined(COUNT)
             break;
         }
         goto t_bitmap;
+    }
 #endif // defined(SKIP_TO_BITMAP)
     case T_BITMAP:
 #if defined(EXTRA_TYPES)
@@ -1317,8 +1322,8 @@ t_bitmap:;
             Word_t wBmMask = wBit - 1;
             //Word_t wBmMask = (wBit | wBit - 1);
             wCount += __builtin_popcountll(pwr[nn] & wBmMask);
-            DBGC(printf("T_BITMAP: nWordOffset 0x%x wBit "OWx" wBmMask "OWx
-                        " wCount %"_fw"d wPopCntSum + wCount %"_fw"d\n",
+            DBGC(printf("T_BITMAP: nWordOffset 0x%x wBit " OWx" wBmMask " OWx
+                        " wCount %" _fw"d wPopCntSum + wCount %" _fw"d\n",
                         nWordOffset, wBit, wBmMask, wCount,
                         wPopCntSum + wCount));
             return wPopCntSum + wCount;
@@ -1390,7 +1395,7 @@ t_bitmap:;
           #if defined(SKIP_TO_BITMAP)
             // But now that we have prefix in the bitmap can't we use that?
           #endif // defined(SKIP_TO_BITMAP)
-            DBGX(printf("Mismatch at bitmap wPrefix "OWx" nBLR %d nBL %d\n",
+            DBGX(printf("Mismatch at bitmap wPrefix " OWx" nBLR %d nBL %d\n",
                         PWR_wPrefixNATBL(pwRoot, pwrPrev, nBLR), nBLR, nBL));
           #if defined(COUNT)
             return wPopCntSum;
@@ -1414,7 +1419,7 @@ t_bitmap:;
         // We also removed the code to do cleanup after the call to InsertGuts.
         InsertAtBitmap(pwRoot, wKey, nBL_to_nDL(nBL), wRoot);
   #else
-        InsertGuts(pwRoot, wKey, nBL, wRoot, nPos
+        InsertGuts(pwRoot, wKey, nBL, wRoot, -1
       #if defined(CODE_XX_SW)
                    , pwRootPrev
         #if defined(SKIP_TO_XX_SW)
@@ -1489,7 +1494,8 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
                     break;
                 }
             }
-            DBGC(printf("EK: wPopCntSum(before) %"_fw"d nn %d\n", wPopCntSum, nn));
+            DBGC(printf("EK: wPopCntSum(before) %" _fw"d nn %d\n", wPopCntSum,
+                        nn));
             return wPopCntSum + nn;
         }
   #endif // defined(COUNT)
@@ -1810,7 +1816,7 @@ cleanup:;
     // For insert our new pop may justify a bigger bitmap.
     // For remove we may need to pull back.
     bCleanup = 1; // ?? nIncr == 0 ??
-    DBGX(printf("Cleanup pwRO "OWx" nBLO %d\n",
+    DBGX(printf("Cleanup pwRO " OWx" nBLO %d\n",
                 (Word_t)pwRootOrig, nBLOrig));
     // Tree may not be valid yet.
     // It may still have a non-NULL pointer to a switch that has
@@ -1902,7 +1908,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     Word_t wByteNum = BitmapByteNum(wKey);
     Word_t wByteMask = BitmapByteMask(wKey);     
 
-    DBGL(printf("Judy1Test num "OWx" mask "OWx"\n", wByteNum, wByteMask));
+    DBGL(printf("Judy1Test num " OWx" mask " OWx"\n", wByteNum, wByteMask));
     DBGL(printf("val %x\n", (int)(((char *)pcvRoot)[wByteNum] & wByteMask)));
 
       #if defined(LOOKUP_NO_BITMAP_DEREF)
@@ -1917,7 +1923,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     Word_t wWordNum = BitmapWordNum(wKey);
     Word_t wWordMask = BitmapWordMask(wKey);     
 
-    DBGL(printf("Judy1Test num "OWx" mask "OWx"\n", wWordNum, wWordMask));
+    DBGL(printf("Judy1Test num " OWx" mask " OWx"\n", wWordNum, wWordMask));
     DBGL(printf("val %x\n",
         (int)(((Word_t *)pcvRoot)[wWordNum] & wWordMask)));
 
@@ -1949,7 +1955,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     int status;
 
-    DBGI(printf("\n\n# Judy1Set ppvRoot %p wKey "OWx"\n",
+    DBGI(printf("\n\n# Judy1Set ppvRoot %p wKey " OWx"\n",
                 (void *)ppvRoot, wKey));
 
     if (Judy1Test((Pcvoid_t)*pwRoot, wKey, NULL) == Success) {
@@ -2079,7 +2085,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #endif // defined(DEBUG)
     }
 
-    DBGI(printf("\n# After Insert(wKey "OWx") Dump\n", wKey));
+    DBGI(printf("\n# After Insert(wKey " OWx") Dump\n", wKey));
     DBGI(Dump((Word_t *)ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord));
     DBGI(printf("\n"));
 
@@ -2102,7 +2108,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     Word_t wByteNum, wByteMask;
     char c;
 
-    DBGI(printf("\nJudy1Set(ppvRoot %p wKey "OWx") wRoot "OWx"\n",
+    DBGI(printf("\nJudy1Set(ppvRoot %p wKey " OWx") wRoot " OWx"\n",
         (void *)ppvRoot, wKey, wRoot));
 
     if (wRoot == 0)
@@ -2111,7 +2117,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         assert(wRoot != 0);
         assert((wRoot & cnMallocMask) == 0);
 
-        DBGI(printf("Malloc wRoot "OWx"\n", wRoot));
+        DBGI(printf("Malloc wRoot " OWx"\n", wRoot));
 
         *ppvRoot = (PPvoid_t)wRoot;
     }
@@ -2119,7 +2125,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     wByteNum = BitmapByteNum(wKey);
     wByteMask = BitmapByteMask(wKey);     
 
-    DBGI(printf("Judy1Set num "OWx" mask "OWx"\n", wByteNum, wByteMask));
+    DBGI(printf("Judy1Set num " OWx" mask " OWx"\n", wByteNum, wByteMask));
 
     if ((c = ((char *)wRoot)[wByteNum]) & wByteMask)
     {
@@ -2148,7 +2154,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
     int status;
 
-    DBGR(printf("\n\n# Judy1Unset ppvRoot %p wKey "OWx"\n",
+    DBGR(printf("\n\n# Judy1Unset ppvRoot %p wKey " OWx"\n",
                 (void *)ppvRoot, wKey));
 
     if (Judy1Test((Pcvoid_t)*pwRoot, wKey, NULL) != Success) {
@@ -2220,7 +2226,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     if (status == Success) { wPopCntTotal--; }
 
   #if defined(DEBUG_REMOVE)
-    DBGR(printf("\n# After Remove(wKey "OWx") %s Dump\n", wKey,
+    DBGR(printf("\n# After Remove(wKey " OWx") %s Dump\n", wKey,
             status == Success ? "Success" : "Failure"));
     DBGR(Dump((Word_t *)ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord));
     DBGR(printf("\n"));
