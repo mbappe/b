@@ -5,10 +5,18 @@
 #
 ###########################
 
-# Run the following command to build b:
+# Run the following to build b:
+#   make clean
 #   [CC=<cc|clang|gcc|icc>] [cnBitsPerWord=<32|64>] [DEFINES="..."] make
 # Run the following command to build everything:
+#   make clean
 #   [CC=<cc|clang|gcc|icc>] [cnBitsPerWord=<32|64>] [DEFINES="..."] make all
+# examples:
+#   make clean all
+#   CC=c++ CSTDFLAG=-std=c++14 make
+
+# I recommend the make clean first because there are so many dependencies
+# that are not discovered by make, e.g. changes in environment variables.
 
 # The default build is 64-bits.
 # Use "cnBitsPerWord=32 make" to get a 32-bit build.
@@ -16,20 +24,22 @@ ifeq "$(cnBitsPerWord)" ""
 cnBitsPerWord = 64
 endif
 
-# The default compiler is clang.
-# Use "CC=gcc make" to use gcc.
-# CC=cc means clang. CC=ccc means clang.
-ifeq "$(CC)" "cc"
-  CC = clang
+# There are questions about how macOS handles libraries.
+# It looks like macOS Sierra (10.12) may not honor the LIBRARY_PATH
+# environment variable if exported by .profile but will honor it if set on
+# the command line.
+# It looks like macOS doesn't like having a 32-bit library called libJudy
+# in one directory and a 64-bit called libJudy in another directory and
+# both directories in the library search path because ld will abort if/when
+# it encounters the library with the wrong architecture first.
+# It looks like macOS uses its own 'libtool' to create a single dynamic library
+# that holds both 32-bit and 64-bit objects.
+# We are not that sophisticated yet.
+ifeq "$(cnBitsPerWord)" "32"
+  LDFLAGS = -L/usr/local/lib32
+else
+  LDFLAGS = -L/usr/local/lib
 endif
-ifeq "$(CC)" "ccc"
-  CC = clang
-endif
-# CC = cc
-# CC = clang
-# CC = ccc
-# CC = gcc
-# CC = icc
 
 ##
 # -std=gnu11 and -std=gnu99 give CLOCK_MONOTONIC which is not available with
@@ -38,13 +48,21 @@ endif
 # -std=c11 gives anonymous unions with no complaints.
 # -std=gnu99 gives a warning for anonymous unions.
 ##
-# STDFLAG =
-  STDFLAG = -std=gnu11
-# STDFLAG = -std=c11
-# STDFLAG = -std=gnu99
-# STDFLAG = -std=c99
-# STDFLAG = -std=c90
-# STDFLAG = -std=c89
+ifeq "$(CSTDFLAG)" ""
+# CSTDFLAG =
+  CSTDFLAG = -std=gnu11
+# CSTDFLAG = -std=c11
+# CSTDFLAG = -std=gnu99
+# CSTDFLAG = -std=c99
+# CSTDFLAG = -std=c90
+# CSTDFLAG = -std=c89
+endif
+
+ifeq "$(CXXSTDFLAG)" ""
+  CXXSTDFLAG = -std=c++14
+# c++a11 doesn't allow 0ULL.
+# CXXSTDFLAG = -std=c++11
+endif
 
   MFLAGS += -m$(cnBitsPerWord)
 # MFLAGS += -mmmx
@@ -66,10 +84,16 @@ endif
 # that have no value at all, i.e. when the function definition appears
 # before any use of the function. Nevermind. Looks like "static" addresses
 # the missing prototype just as well as a prototype does. Yes!
-  WFLAGS += -Wall -Werror
-  WFLAGS += -pedantic -Wstrict-prototypes -W
-  WFLAGS += -Wmissing-prototypes
+  WFLAGS += -Wall
+  WFLAGS += -Wextra
+  WFLAGS += -Wpedantic
   WFLAGS += -Wno-unused-function
+  WFLAGS += -Wno-deprecated
+  WFLAGS += -Werror
+# WFLAGS_C_ONLY += -Wstrict-prototypes
+# WFLAGS_C_ONLY += -Wmissing-prototypes
+  CWFLAGS += $(WFLAGS)
+  CWFLAGS += $(WFLAGS_C_ONLY)
 # gcc gives false positives without -Wno-maybe-uninitialized.
 # clang doesn't even try. So clang doesn't support the option.
 # macOS version of gcc doesn't support it either.
@@ -97,8 +121,9 @@ endif
 # OFLAGS = -g -Oz
 # OFLAGS = -g -Ofast
 
-CFLAGS = $(STDFLAG) $(MFLAGS) $(WFLAGS) $(OFLAGS) -I.
-CFLAGS_NO_WFLAGS = $(STDFLAG) $(MFLAGS) -w $(OFLAGS) -I.
+CFLAGS =           $(CSTDFLAG)   $(MFLAGS) $(CWFLAGS)   $(OFLAGS) -I.
+CFLAGS_NO_WFLAGS = $(CSTDFLAG)   $(MFLAGS) -w           $(OFLAGS) -I.
+CXXFLAGS =         $(CXXSTDFLAG) $(MFLAGS) $(CXXWFLAGS) $(OFLAGS) -I.
 
 # Obsolete ifdefs used to figure out where overhead was coming from that
 # was making Time -b get times faster than Time -1 get times for libb
@@ -153,7 +178,8 @@ FILES_FROM_DOUG_B_OR_DOUG_LEA  = Judy.h RandomNumb.h dlmalloc.c JudyMalloc.c
 FILES_FROM_DOUG_B_OR_DOUG_LEA += Judy1LHCheck.c Judy1LHTime.c jbgraph
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEA)
 
-EXES = b check mapcheck maptime # t
+EXES = Judy1LHTime Judy1LHCheck c++time c++check # t
+EXE_LINKS = b btime bcheck
 LIBS = libb1.a libb1.so libb.a libb.so
 LIB1_OBJS = b.o bl.o bi.o br.o bc.o bn.o JudyMalloc.o
 LIB1_SRCS = b.c bl.c bi.c br.c bc.c bn.c JudyMalloc.c
@@ -180,32 +206,43 @@ T_OBJS = stubsL.o stubsHS.o JudyMalloc.o
 #
 ##################################
 
-default: clean $(EXES)
+default: $(EXES)
 
-all: clean $(EXES) $(LIBS) $(ASMS) $(CPPS) b.tjz
+all: $(EXES) $(LIBS) $(ASMS) $(CPPS)
 
 clean:
-	rm -f $(EXES) $(LIBS) $(LIB_OBJS) $(ASMS) $(CPPS) b.tjz
+	rm -f $(EXES) $(EXE_LINKS) $(LIBS) $(LIB_OBJS) $(ASMS) $(CPPS)
 
-t:	t.c $(T_OBJS)
+t: t.c $(T_OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 
-b:	Judy1LHTime.c libb.a
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -o $@ $^ -lm
+Judy1LHTime: Judy1LHTime.c libb.a
+	$(CC) $(CFLAGS) -Wno-format -Wno-format-pedantic $(DEFINES) \
+		-o $@ $^ -lm
+
+c++time: Judy1LHTime.c libb.a
+	$(CXX) $(CXXFLAGS) -Wno-format -Wno-format-pedantic $(DEFINES) \
+		-x c++ Judy1LHTime.c -x none libb.a -o $@ -lm
+
+b:
+	ln -s Judy1LHTime b
+
+btime:
+	ln -s Judy1LHTime btime
 
 # Set LIBRARY_PATH environment variable to find libJudy.a.
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
-check:	Judy1LHCheck.c libb1.a
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -o $@ $^ -lJudy -lm
+Judy1LHCheck: Judy1LHCheck.c libb1.a
+	$(CC) $(CFLAGS) -Wno-sign-compare -Wno-format -Wno-format-pedantic \
+		$(DEFINES) -o $@ $^ $(LDFLAGS) -lJudy -lm
 
-mapcheck:	Judy1LHCheck.c libb1.a
-	c++ -std=c++14 $(MFLAGS) -I. -x c++ Judy1LHCheck.c -o $@ -L. -lb1 -lJudy -lm
+c++check: Judy1LHCheck.c libb1.a
+	$(CXX) $(CXXFLAGS) -Wno-sign-compare -Wno-format -Wno-format-pedantic \
+		$(DEFINES) -x c++ Judy1LHCheck.c \
+		-x none libb1.a -o $@ $(LDFLAGS) -lJudy -lm
 
-maptime:	Judy1LHTime.c libb1.a
-	c++ -std=c++14 $(MFLAGS) -I. -x c++ Judy1LHTime.c -o $@ -L. -lb1 -lJudy -lm
-
-b.tjz:	$(FILES)
-	tar cjf $@ $^
+bcheck:
+	ln -s Judy1LHCheck bcheck
 
 libb.a: $(LIB_OBJS)
 	ar -r $@ $(LIB_OBJS)
@@ -217,10 +254,10 @@ libb1.a: $(LIB1_OBJS)
 # objects so this Makefile doesn't have to deal with the complexity
 # of -fPIC objects and non -fPIC objecs with the same names.
 libb.so:
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -shared -o $@ $(LIB_SRCS)
+	$(CC) $(CFLAGS_NO_WFLAGS) -fPIC $(DEFINES) -shared -o $@ $(LIB_SRCS)
 
 libb1.so:
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -shared -o $@ $(LIB1_SRCS)
+	$(CC) $(CFLAGS_NO_WFLAGS) -fPIC $(DEFINES) -shared -o $@ $(LIB1_SRCS)
 
 ############################
 #
@@ -243,6 +280,8 @@ stubsHS.o: stubsHS.c
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
 
 JudyMalloc.o: JudyMalloc.c
+	# RAMMETRICS is defined in b.h for other source files
+	# This should probably be changed at some point.
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -DRAMMETRICS -c $^
 
 ############################
@@ -270,7 +309,7 @@ stubsHS.s: stubsHS.c
 
 # Suppress warnings.  sbrk is deprecated.
 JudyMalloc.s: JudyMalloc.c
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -DRAMMETRICS -S $^
 
 ############################
 #
@@ -323,5 +362,6 @@ t.i: t.c
 
 # The .c.i rule doesn't work for some reason.  Later.
 JudyMalloc.i: JudyMalloc.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(DEFINES) -DRAMMETRICS -E $^ \
+		| indent -i4 | expand > $@
 
