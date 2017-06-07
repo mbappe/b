@@ -1559,6 +1559,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
 #if ! defined(USE_XX_SW)
             && (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
 #endif // ! defined(USE_XX_SW)
+            && (nBL < cnBitsPerWord)
             && (EXP(nBL) <= sizeof(Link_t) * 8)))
     {
 #if ! defined(USE_XX_SW)
