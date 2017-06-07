@@ -179,7 +179,7 @@ FILES_FROM_DOUG_B_OR_DOUG_LEA += Judy1LHCheck.c Judy1LHTime.c jbgraph
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEA)
 
 EXES = Judy1LHTime Judy1LHCheck c++time c++check # t
-EXE_LINKS = b btime bcheck
+LINKS = b btime bcheck
 LIBS = libb1.a libb1.so libb.a libb.so
 LIB1_OBJS = b.o bl.o bi.o br.o bc.o bn.o JudyMalloc.o
 LIB1_SRCS = b.c bl.c bi.c br.c bc.c bn.c JudyMalloc.c
@@ -206,12 +206,12 @@ T_OBJS = stubsL.o stubsHS.o JudyMalloc.o
 #
 ##################################
 
-default: $(EXES)
+default: $(EXES) $(LINKS)
 
-all: $(EXES) $(LIBS) $(ASMS) $(CPPS)
+all: $(EXES) $(LINKS) $(LIBS) $(ASMS) $(CPPS)
 
 clean:
-	rm -f $(EXES) $(EXE_LINKS) $(LIBS) $(LIB_OBJS) $(ASMS) $(CPPS)
+	rm -f $(EXES) $(LINKS) $(LIBS) $(LIB_OBJS) $(ASMS) $(CPPS)
 
 t: t.c $(T_OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
