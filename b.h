@@ -71,11 +71,11 @@
 
 #endif // defined(USE_BM_SW)
 
-// Default is USE_XX_SW.
-#if ! defined(NO_USE_XX_SW)
+// Default is USE_XX_SW unless 32-bit.
+#if ! defined(NO_USE_XX_SW) && (cnBitsPerWord > 32)
   #undef USE_XX_SW
   #define USE_XX_SW
-#endif // ! defined(NO_USE_XX_SW)
+#endif // ! defined(NO_USE_XX_SW) && (cnBitsPerWord > 32)
 
 #if defined(USE_XX_SW)
   #undef  CODE_XX_SW
@@ -308,7 +308,9 @@
 #endif // (cnBitsPerWord == 64)
 
 #define cnLogBitsPerWord  (cnLogBytesPerWord + cnLogBitsPerByte)
+#if ! defined(cnBitsMallocMask)
 #define cnBitsMallocMask  (cnLogBytesPerWord + 1)
+#endif // ! defined(cnBitsMallocMask)
 #define cnMallocMask  MSK(cnBitsMallocMask)
 #if (cnBitsPerWord == 64)
 #define cnBitsVirtAddr  48
@@ -401,11 +403,12 @@ typedef Word_t Bucket_t;
 #define cnBitsInD1  cnBitsPerDigit
 #endif // ! defined(cnBitsInD1)
 
-// Default is -DLVL_IN_WR_HB unless -DDEPTH_IN_SW.
-#if ! defined(DEPTH_IN_SW) && ! defined(NO_LVL_IN_WR_HB)
+// Default is -DLVL_IN_WR_HB unless -DDEPTH_IN_SW or -DNO_LEVEL_IN_WR_HB
+// or cnBitsPerWord == 32.
+#if ! defined(DEPTH_IN_SW) && ! defined(NO_LVL_IN_WR_HB) && (cnBitsPerWord > 32)
   #undef LVL_IN_WR_HB
   #define LVL_IN_WR_HB
-#endif // ! defined(DEPTH_IN_SW) && ! defined(NO_LVL_IN_WR_HB)
+#endif // ! defined(DEPTH_IN_SW) && ! defined(NO_LVL_IN_WR_HB) && ...
 
 #if defined(CODE_XX_SW)
 // Default is -DSKIP_TO_XX_SW.
@@ -437,10 +440,10 @@ typedef Word_t Bucket_t;
 #endif // ! defined(NO_OLD_LISTS)
 
 // Default is -DPOP_IN_WR_HB.
-#if ! defined(NO_POP_IN_WR_HB)
+#if ! defined(NO_POP_IN_WR_HB) && (cnBitsPerWord != 32)
   #undef  POP_IN_WR_HB
   #define POP_IN_WR_HB
-#endif // ! defined(NO_POP_IN_WR_HB)
+#endif // ! defined(NO_POP_IN_WR_HB) && (cnBitsPerWord != 32)
 
 #if defined(POP_IN_WR_HB) && ! defined(OLD_LISTS)
   #error Must have OLD_LISTS with POP_IN_WR_HB.
@@ -575,7 +578,7 @@ typedef Word_t Bucket_t;
 
 #if defined(SKIP_TO_BM_SW) && defined(USE_BM_SW)
   #if ! defined(DEPTH_IN_SW) && ! defined(LVL_IN_WR_HB)
-      #error Sorry, no SKIP_TO_BM_SW without DEPTH_IN_SW or LEVEL_IN_WROOT...
+      #error Sorry, no SKIP_TO_BM_SW without DEPTH_IN_SW or NO_LVL_IN_WR_HB.
   #endif // ! defined(DEPTH_IN_SW) && ! defined(LVL_IN_WR_HB)
 #endif // defined(SKIP_TO_BM_SW) && defined(USE_BM_SW)
 
@@ -628,23 +631,25 @@ enum {
 #endif // defined(CODE_XX_SW)
 #if defined(CODE_BM_SW)
     T_BM_SW = T_SWITCH_BIT | T_BM_SW_BIT,
-#if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+  #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
     // All link bits set, i.e. all links present.
     T_FULL_BM_SW = T_SWITCH_BIT | T_BM_SW_BIT | T_FULL_BM_SW_BIT,
-#endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+  #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
 #endif // defined(CODE_BM_SW)
+#if defined(SKIP_LINKS)
     // T_SKIP_TO_SWITCH has to have the biggest value in this enum
     // if not DEPTH_IN_SW.  All of the bigger values have a meaning relative
     // to T_SKIP_TO_SWITCH.
     // Depth/level is determined by (nType - T_SKIP_TO_SWITCH).
     T_SKIP_TO_SWITCH = T_SWITCH_BIT | T_SKIP_BIT,
-#if defined(SKIP_TO_BM_SW)
+  #if defined(SKIP_TO_BM_SW)
     T_SKIP_TO_BM_SW = T_SWITCH_BIT | T_SKIP_BIT | T_BM_SW_BIT,
-#if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+      #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
     T_SKIP_TO_FULL_BM_SW
         = T_SWITCH_BIT | T_SKIP_BIT | T_BM_SW_BIT | T_FULL_BM_SW_BIT,
-#endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-#endif // defined(SKIP_TO_BM_SW)
+      #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+  #endif // defined(SKIP_TO_BM_SW)
+#endif // defined(SKIP_LINKS)
 };
 
 #define T_SW_BASE  T_SKIP_TO_SWITCH // compatibility with old code

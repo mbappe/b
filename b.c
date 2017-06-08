@@ -107,6 +107,18 @@ const unsigned anBL_to_nDL[] = {
 
 #endif // defined(BPD_TABLE)
 
+#if defined(JUNK)
+static void
+HexDump16(char *str, uint16_t *pus, int n)
+{
+    printf("%s:", str);
+    for (int i = 0; i < n; i++) {
+        printf(" %04x", pus[i]);
+    }
+    printf("\n");
+}
+#endif // defined(JUNK)
+
 // Proposal for more generic names for the metrics.
 //
 // LB1 -- one-digit leaf bitmap
@@ -203,6 +215,9 @@ MyMalloc(Word_t wWords)
     ((Word_t *)ww)[-1] |= wExtraWordPairs << 2;
     // Twiddle the bits to illustrate that we can use them.
     ((Word_t *)ww)[-1] ^= (Word_t)-1 << 4;
+    DBGM(printf("req %" _fw"d alloc %" _fw"d extra %" _fw"d\n",
+                wWordPairsRequested, wWordPairsAllocated, wExtraWordPairs));
+    DBGM(printf("ww[-1] " OWx"\n", ((Word_t *)ww)[-1]));
     assert(ww != 0);
     assert((ww & 0xffff000000000000UL) == 0);
     assert((ww & cnMallocMask) == 0);
@@ -221,8 +236,9 @@ MyFree(Word_t *pw, Word_t wWords)
     Word_t wExtraWordPairs = (pw[-1] >> 2) & 3;
     pw[-1] &= 3;
     pw[-1] |= (ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2)
-                            + (wExtraWordPairs << 1)) << 3;
+                            + (wExtraWordPairs << 1)) << cnLogBytesPerWord;
     assert(wExtraWordPairs <= 2);
+    DBGM(printf("pw[-1] " OWx"\n", pw[-1]));
     assert(pw[-1] & 2);
     if ( ! (wWords & 1) ) { --wEvenMallocs; }
     --wMallocs; wWordsAllocated -= wWords;
@@ -829,14 +845,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #if defined(NO_SKIP_AT_TOP)
         assert((nBLUp < cnBitsPerWord) || (nBL == nBLUp));
 #endif // defined(NO_SKIP_AT_TOP)
-        if (nBL == nBLUp) {
-  #if defined(USE_XX_SW)
-            if (nBL <= nDL_to_nBL(2)) {
-                set_wr_nType(*pwRoot, T_XX_SW);
-            } else
-  #endif // defined(USE_XX_SW)
-            { set_wr_nType(*pwRoot, T_SWITCH); }
-        } else {
+        assert(nBL <= nBLUp);
+#if defined(SKIP_LINKS)
+        if (nBL < nBLUp) {
   #if defined(TYPE_IS_RELATIVE)
             // set_wr_nDS sets nType to T_SKIP_TO_SWITCH.
             set_wr_nDS(*pwRoot, nBL_to_nDL(nBLUp) - nBL_to_nDL(nBL));
@@ -848,6 +859,15 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
                 set_wr_nType(*pwRoot, T_SKIP_TO_XX_SW);
             }
   #endif // defined(USE_XX_SW) && defined(SKIP_TO_XX_SW)
+        } else
+#endif // defined(SKIP_LINKS)
+        {
+  #if defined(USE_XX_SW)
+            if (nBL <= nDL_to_nBL(2)) {
+                set_wr_nType(*pwRoot, T_XX_SW);
+            } else
+  #endif // defined(USE_XX_SW)
+            { set_wr_nType(*pwRoot, T_SWITCH); }
         }
     }
 
@@ -1628,7 +1648,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
         return 0;
     }
 
-#if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+#if defined(SKIP_LINKS) // || (cwListPopCntMax != 0)
   #if defined(TYPE_IS_RELATIVE)
     assert( ! tp_bIsSkip(nType) || (wr_nDS(wRoot) >= 1) );
   #else // defined(TYPE_IS_RELATIVE)
@@ -2112,18 +2132,6 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, unsigned nKeys,
 #endif // defined(LIST_END_MARKERS)
 }
 #endif // (cnBitsPerWord > 32)
-
-#if defined(JUNK)
-static void
-HexDump16(char *str, uint16_t *pus, int n)
-{
-    printf("%s:", str);
-    for (int i = 0; i < n; i++) {
-        printf(" %04x", pus[i]);
-    }
-    printf("\n");
-}
-#endif // defined(JUNK)
 
 static void
 CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc, int nKeys,
@@ -5008,6 +5016,7 @@ Initialize(void)
         printf("Or try increasing cnBitsPerDigit.\n");
     }
     assert(EXP(cnBitsLeftAtDl2) > sizeof(Link_t) * 8);
+#if defined(SKIP_LINKS)
 #if ! defined(LVL_IN_WR_HB)
 #if ! defined(DEPTH_IN_SW)
 #if ! defined(TYPE_IS_RELATIVE)
@@ -5024,6 +5033,7 @@ Initialize(void)
 #endif // ! defined(TYPE_IS_RELATIVE)
 #endif // ! defined(DEPTH_IN_SW)
 #endif // ! defined(LVL_IN_WR_HB)
+#endif // defined(SKIP_LINKS)
 
 #if defined(SEPARATE_T_NULL)
     assert(((T_SKIP_BIT | T_SWITCH_BIT) & T_NULL) == 0);
@@ -5689,12 +5699,6 @@ Initialize(void)
     printf("# NO DEBUG_COUNT\n");
 #endif // defined(DEBUG_COUNT)
 
-#if defined(NO_SKIP_AT_TOP)
-    printf("#    NO_SKIP_AT_TOP\n");
-#else // defined(NO_SKIP_AT_TOP)
-    printf("# NO NO_SKIP_AT_TOP\n");
-#endif // defined(NO_SKIP_AT_TOP)
-
 #if defined(NO_USE_XX_SW)
     printf("#    NO_USE_XX_SW\n");
 #else // defined(NO_USE_XX_SW)
@@ -5870,14 +5874,16 @@ Initialize(void)
 
 #if defined(EMBED_KEYS)
     printf("\n");
-    //int nPopCntMaxPrev = -1;
+    int nPopCntMaxPrev = -1;
     for (int nBL = cnBitsPerWord; nBL > 0; --nBL) {
-        int nPopCntMax;
-        nPopCntMax = EmbeddedListPopCntMax(nBL);
-        //if (nPopCntMax != nPopCntMaxPrev)
-        {
+        int nPopCntMax = EmbeddedListPopCntMax(nBL);
+        if (nPopCntMax != nPopCntMaxPrev) {
+            if (nPopCntMaxPrev != -1) {
+                printf("# EmbeddedListPopCntMax(%2d)  %2d\n",
+                       nBL-1, nPopCntMaxPrev);
+            }
             printf("# EmbeddedListPopCntMax(%2d)  %2d\n", nBL, nPopCntMax);
-            //nPopCntMaxPrev = nPopCntMax;
+            nPopCntMaxPrev = nPopCntMax;
         }
     }
 #endif // defined(EMBED_KEYS)
@@ -5885,17 +5891,16 @@ Initialize(void)
     // How big are T_LIST leaves.
     for (int nBL = cnBitsPerWord; nBL >= 8; nBL >>= 1) {
         printf("\n");
-        int nWords = 0; int nWordsPrev = 0;
-        //for (int nPopCnt = 1; nPopCnt <= cnBitsPerWord * 5 / nBL; nPopCnt++)
-        for (int nPopCnt = 1; nWords < 7; nPopCnt++)
-        {
+        int nWordsPrev = 0, nBoundaries = 0, nWords;
+        for (int nPopCnt = 1; nBoundaries <= 3; nPopCnt++) {
             if ((nWords = ListWordsTypeList(nPopCnt, nBL)) != nWordsPrev) {
-                if (nPopCnt > 2) {
-                    printf("# ListWordsTypeList(nBL %2d, nPopCnt %3d) %d\n",
+                ++nBoundaries;
+                if (nWordsPrev != 0) {
+                    printf("# ListWordsTypeList(nBL %2d, nPopCnt %3d) %3d\n",
                            nBL, nPopCnt - 1,
                            ListWordsTypeList(nPopCnt - 1, nBL));
                 }
-                printf("# ListWordsTypeList(nBL %2d, nPopCnt %3d) %d\n",
+                printf("# ListWordsTypeList(nBL %2d, nPopCnt %3d) %3d\n",
                        nBL, nPopCnt, nWords);
                 nWordsPrev = nWords;
             }
@@ -5916,6 +5921,50 @@ Initialize(void)
     for (int dd = 1; dd <= cnDigitsPerWord; dd++) {
         printf("# nDL_to_nBitsIndexSz(%d) %d\n", dd, nDL_to_nBitsIndexSz(dd));
     }
+
+    printf("\n");
+
+    // Print the type values.
+
+    printf("# Link types:\n");
+#if defined(SEPARATE_T_NULL)
+    printf("# T_NULL %d\n", T_NULL);
+#endif // defined(SEPARATE_T_NULL)
+#if (cwListPopCntMax != 0)
+    printf("# T_LIST %d\n", T_LIST);
+#endif // (cwListPopCntMax != 0)
+#if defined(USE_T_ONE)
+    printf("# T_ONE %d\n", T_ONE);
+#endif // defined(USE_T_ONE)
+#if defined(EMBED_KEYS)
+    printf("# T_EMBEDDED_KEYS %d\n", T_EMBEDDED_KEYS);
+#endif // defined(EMBED_KEYS)
+    printf("# T_BITMAP %d\n", T_BITMAP);
+#if defined(SKIP_TO_BITMAP)
+    printf("# T_SKIP_TO_BITMAP %d\n", T_SKIP_TO_BITMAP);
+#endif // defined(SKIP_TO_BITMAP)
+    printf("# T_SWITCH %d\n", T_SWITCH);
+#if defined(CODE_XX_SW)
+    printf("# T_XX_SW %d\n", T_XX_SW);
+  #if defined(SKIP_TO_XX_SW) // doesn't work yet
+    printf("# T_SKIP_TO_XX_SW %d\n", T_SKIP_TO_XX_SW);
+  #endif // defined(SKIP_TO_XX_SW) // doesn't work yet
+#endif // defined(CODE_XX_SW)
+#if defined(CODE_BM_SW)
+    printf("# T_BM_SW %d\n", T_BM_SW);
+  #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+    printf("# T_FULL_BM_SW %d\n", T_FULL_BM_SW);
+  #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+#endif // defined(CODE_BM_SW)
+#if defined(SKIP_LINKS)
+    printf("# T_SKIP_TO_SWITCH %d\n", T_SKIP_TO_SWITCH);
+  #if defined(SKIP_TO_BM_SW)
+    printf("# T_SKIP_TO_BM_SW %d\n", T_SKIP_TO_BM_SW);
+      #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+    printf("# T_SKIP_TO_FULL_BM_SW %d\n", T_SKIP_TO_FULL_BM_SW);
+      #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+  #endif // defined(SKIP_TO_BM_SW)
+#endif // defined(SKIP_LINKS)
 
     printf("\n");
 }
