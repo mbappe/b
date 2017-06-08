@@ -490,6 +490,7 @@ again3:;
     default: // printf("unknown type %d\n", nType); assert(0); exit(0);
     // case T_SKIP_TO_SWITCH: // skip link to uncompressed switch
     {
+        DBGX((nType != T_SKIP_TO_SWITCH) ? printf("nType: %d\n", nType) : 0);
         // pwr points to a switch
         assert(nType == T_SKIP_TO_SWITCH);
         DBGX(printf("SKIP_TO_SW\n"));
