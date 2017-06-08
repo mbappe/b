@@ -101,6 +101,7 @@ endif
 #  WFLAGS += -Wno-maybe-uninitialized
 #endif
 
+ifeq "$(OFLAGS)" ""
 # -O0 no optimization
 # -O1 between -O2 and -O0
 # -O2 moderate optimization enabling most optimizations
@@ -120,6 +121,7 @@ endif
 # OFLAGS = -g -Os
 # OFLAGS = -g -Oz
 # OFLAGS = -g -Ofast
+endif # OFLAGS
 
 CFLAGS =           $(CSTDFLAG)   $(MFLAGS) $(CWFLAGS)   $(OFLAGS) -I.
 CFLAGS_NO_WFLAGS = $(CSTDFLAG)   $(MFLAGS) -w           $(OFLAGS) -I.
