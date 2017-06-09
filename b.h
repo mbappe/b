@@ -501,7 +501,11 @@ typedef Word_t Bucket_t;
     #  if (cnBitsInD1 == 7)
       #define cnListPopCntMaxDl1  0x08
     #elif (cnBitsInD1 == 8)
+        #if (cnBitsPerWord == 64)
       #define cnListPopCntMaxDl1  0x07
+        #else // (cnBitsPerWord == 64)
+      #define cnListPopCntMaxDl1  0x03
+        #endif // (cnBitsPerWord == 64)
     #elif (cnBitsInD1 == 9)
       #define cnListPopCntMaxDl1  0x06
     #elif (cnBitsInD1 <= 11)
