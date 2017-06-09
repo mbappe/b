@@ -40,13 +40,9 @@
 #endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 
 // Default cn2dBmWpkPercent is 80, create 2-digit bm at 80% wpk.
-#if ! defined(cn2dBmWpkPercent) && (cnBitsPerWord > 32)
-#undef cn2dBmWpkPercent
+#if ! defined(cn2dBmWpkPercent)
 #define cn2dBmWpkPercent  80
-#else
-#undef cn2dBmWpkPercent
-#define cn2dBmWpkPercent  0
-#endif // ! defined(cn2dBmWpkPercent) && (cnBitsPerWord > 32)
+#endif // ! defined(cn2dBmWpkPercent)
 
 #if defined(USE_BM_SW)
 // USE_BM_SW means always use a bm sw when creating a switch with no skip.

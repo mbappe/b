@@ -2366,13 +2366,22 @@ embeddedKeys:;
                         SetBit(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
                                (pcKeysLn[nn] & wBLM));
                     }
-                } else if (nBLLn <= 16) {
+                } else
+#if (cnBitsPerWord == 64)
+                if (nBLLn <= 16)
+#endif // (cnBitsPerWord == 64)
+                {
+#if (cnBitsPerWord == 32)
+                    assert(nBLLn <= 16);
+#endif // (cnBitsPerWord == 32)
                     uint16_t *psKeysLn = ls_psKeysNAT(pwrLn);
                     for (int nn = 0; nn < nPopCntLn; nn++) {
                         SetBit(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
                                (psKeysLn[nn] & wBLM));
                     }
-                } else {
+                }
+#if (cnBitsPerWord == 64)
+                else {
                     assert(nBLLn <= 32);
                     uint32_t *piKeysLn = ls_piKeysNAT(pwrLn);
                     for (int nn = 0; nn < nPopCntLn; nn++) {
@@ -2380,6 +2389,7 @@ embeddedKeys:;
                                (piKeysLn[nn] & wBLM));
                     }
                 }
+#endif // (cnBitsPerWord == 64)
                 assert(nPopCntLn != 0);
                 OldList(pwrLn, nPopCntLn, nBLLn, T_LIST);
             }
