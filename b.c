@@ -2036,37 +2036,25 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, unsigned nKeys, Word_t wKey)
 {
     DBGI(printf("\nCopyWithInsertWord(pTgt %p pSrc %p nKeys %d wKey " OWx")\n",
                 (void *)pTgt, (void *)pSrc, nKeys, wKey));
-#if (cwListPopCntMax != 0)
-    Word_t aw[cwListPopCntMax]; // buffer for move if pSrc == pTgt
-#else // (cwListPopCntMax != 0)
-    Word_t aw[1]; // buffer for move if pSrc == pTgt
-#endif // (cwListPopCntMax != 0)
     unsigned n;
 
     // find the insertion point
-    for (n = 0; n < nKeys; n++)
-    {
-        if (pSrc[n] >= wKey)
-        {
+    for (n = 0; n < nKeys; n++) {
+        if (pSrc[n] >= wKey) {
             //if (pSrc[n] == wKey) Dump(pwRootLast, 0, cnBitsPerWord);
             assert(pSrc[n] != wKey);
             break;
         }
     }
 
-    if (pTgt != pSrc)
-    {
+    if (pTgt != pSrc) {
         COPY(pTgt, pSrc, n); // copy the head
-    }
-    else
-    {
-        COPY(&aw[n], &pSrc[n], nKeys - n); // save the tail
-        pSrc = aw;
+        COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // save the tail
+    } else {
+        MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
     }
 
     pTgt[n] = wKey; // insert the key
-
-    COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
 
 #if defined(LIST_END_MARKERS)
     pTgt[nKeys+1] = -1;
@@ -2082,36 +2070,24 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, unsigned nKeys,
 {
     DBGI(printf("\nCopyWithInsertInt(pTgt %p pSrc %p nKeys %d iKey 0x%x)\n",
                 (void *)pTgt, (void *)pSrc, nKeys, iKey));
-#if (cwListPopCntMax != 0)
-    unsigned int ai[cwListPopCntMax]; // buffer for move if pSrc == pTgt
-#else // (cwListPopCntMax != 0)
-    unsigned int ai[1]; // buffer for move if pSrc == pTgt
-#endif // (cwListPopCntMax != 0)
     unsigned n;
 
     // find the insertion point
-    for (n = 0; n < nKeys; n++)
-    {
-        if (pSrc[n] >= iKey)
-        {
+    for (n = 0; n < nKeys; n++) {
+        if (pSrc[n] >= iKey) {
             assert(pSrc[n] != iKey);
             break;
         }
     }
 
-    if (pTgt != pSrc)
-    {
+    if (pTgt != pSrc) {
         COPY(pTgt, pSrc, n); // copy the head
-    }
-    else
-    {
-        COPY(&ai[n], &pSrc[n], nKeys - n); // save the tail
-        pSrc = ai;
+        COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
+    } else {
+        MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
     }
 
     pTgt[n] = iKey; // insert the key
-
-    COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
 
 #if defined(PSPLIT_PARALLEL)
     // pad to a word boundary with the last key in the list so
@@ -2137,11 +2113,6 @@ static void
 CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc, int nKeys,
                     uint16_t sKey, int nPos)
 {
-#if (cwListPopCntMax != 0)
-    unsigned short as[cwListPopCntMax]; // buffer for move if pSrc == pTgt
-#else // (cwListPopCntMax != 0)
-    unsigned short as[1]; // buffer for move if pSrc == pTgt
-#endif // (cwListPopCntMax != 0)
     int n;
 
     if ((nPos == -1) // inflated embedded list
@@ -2156,19 +2127,14 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc, int nKeys,
         n = ~PsplitSearchByKey16(pSrc, nKeys, sKey, 0);
     } else { n = nPos; }
 
-    if (pTgt != pSrc)
-    {
+    if (pTgt != pSrc) {
         COPY(pTgt, pSrc, n); // copy the head
-    }
-    else
-    {
-        COPY(&as[n], &pSrc[n], nKeys - n); // save the tail
-        pSrc = as;
+        COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
+    } else {
+        MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
     }
 
     pTgt[n] = sKey; // insert the key
-
-    COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
 
 #if defined(PSPLIT_PARALLEL)
     // pad to a word boundary with a key that exists in the list so
@@ -2191,36 +2157,26 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc, int nKeys,
 static void
 CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, unsigned nKeys, uint8_t cKey)
 {
-#if (cwListPopCntMax != 0)
-    unsigned char ac[cwListPopCntMax]; // buffer for move if pSrc == pTgt
-#else // (cwListPopCntMax != 0)
-    unsigned char ac[1]; // buffer for move if pSrc == pTgt
-#endif // (cwListPopCntMax != 0)
     unsigned n;
 
     // find the insertion point
-    for (n = 0; n < nKeys; n++)
-    {
-        if (pSrc[n] >= cKey)
-        {
+    for (n = 0; n < nKeys; n++) {
+        if (pSrc[n] >= cKey) {
             assert(pSrc[n] != cKey);
             break;
         }
     }
 
-    if (pTgt != pSrc)
-    {
+    if (pTgt != pSrc) {
         COPY(pTgt, pSrc, n); // copy the head
+        COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
     }
     else
     {
-        COPY(&ac[n], &pSrc[n], nKeys - n); // save the tail
-        pSrc = ac;
+        MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
     }
 
     pTgt[n] = cKey; // insert the key
-
-    COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
 
 #if defined(PSPLIT_PARALLEL)
     // pad to a word boundary with a key that exists in the list so
