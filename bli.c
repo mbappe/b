@@ -417,7 +417,11 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
   #endif // !defined(LOOKUP)
 #endif // !defined(RECURSIVE)
     int nBLR;
+#if defined(INSERT) && (cn2dBmWpkPercent != 0)
+    Word_t wPopCnt = 0;
+#else // defined(INSERT) && (cn2dBmWpkPercent != 0)
     Word_t wPopCnt; (void)wPopCnt;
+#endif // defined(INSERT) && (cn2dBmWpkPercent != 0)
 #if defined(INSERT) || defined(REMOVE)
     int bCleanup = 0;
 #endif // defined(INSERT) || defined(REMOVE)
