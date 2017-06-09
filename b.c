@@ -5840,7 +5840,7 @@ Initialize(void)
         if (nPopCntMax != nPopCntMaxPrev) {
             if (nPopCntMaxPrev != -1) {
                 printf("# EmbeddedListPopCntMax(%2d)  %2d\n",
-                       nBL-1, nPopCntMaxPrev);
+                       nBL+1, nPopCntMaxPrev);
             }
             printf("# EmbeddedListPopCntMax(%2d)  %2d\n", nBL, nPopCntMax);
             nPopCntMaxPrev = nPopCntMax;
