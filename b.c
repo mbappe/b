@@ -2280,7 +2280,9 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
     Word_t wPopCnt;
     if ((nBL == nDL_to_nBL(2))
         && tp_bIsSwitch(nType)
+#if defined(SKIP_LINKS)
         && ! tp_bIsSkip(nType)
+#endif // defined(SKIP_LINKS)
 #if defined(CODE_BM_SW)
         && ! tp_bIsBmSw(nType)
 #endif // defined(CODE_BM_SW)
@@ -2291,7 +2293,9 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
     {
         DBGI(printf("Converting BM leaf.\n"));
         //Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord);
+#if defined(SKIP_LINKS)
         assert( ! tp_bIsSkip(nType) );
+#endif // defined(SKIP_LINKS)
         //printf("wRoot %p wPopCnt %ld\n", (void *)wRoot, wPopCnt);
         DBGI(printf("\n# IC: Creating a bitmap at nBL %d.\n", nBL));
 
@@ -2387,7 +2391,9 @@ embeddedKeys:;
             }
         }
 
+#if defined(SKIP_LINKS)
         assert( ! tp_bIsSkip(nType) ); // How do we ensure this?
+#endif // defined(SKIP_LINKS)
         OldSwitch(&wRoot, nBL,
 #if defined(CODE_BM_SW)
                   /* bBmSw */ 0, /* nLinks */ 0,
@@ -2715,9 +2721,12 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
     // it is not skipping as many digits now.
     DBGI(printf("nDL %d nDLR %d nDLU %d\n",
            nDL, nDLR, nDLUp));
+  #if defined(SKIP_LINKS)
     if (nDL - nDLR - 1 == 0) {
         Clr_bIsSkip(&wRoot); // Change type to the non-skip variant.
-    } else {
+    } else
+  #endif // defined(SKIP_LINKS)
+    {
 // set_wr_nDS should preserve the type instead of overwriting it?
         set_wr_nDS(wRoot, nDL - nDLR - 1); // type = T_SKIP_TO_SWITCH
   #if defined(SKIP_TO_BM_SW)
@@ -2728,9 +2737,11 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
   #endif // defined(CODE_XX_SW) && defined(SKIP_TO_XX_SW)
     }
 #else // defined(TYPE_IS_RELATIVE)
+  #if defined(SKIP_LINKS)
     if (nDL - nDLR - 1 == 0) {
         Clr_bIsSkip(&wRoot); // Change type to the non-skip variant.
     }
+  #endif // defined(SKIP_LINKS)
 #endif // defined(TYPE_IS_RELATIVE)
     // Copy wRoot from old link (after being updated) to new link.
 #if defined(CODE_BM_SW)
@@ -4934,8 +4945,13 @@ Initialize(void)
     assert((cnBitsLeftAtDl2 < 24)
         || ((cn2dBmWpkPercent == 0) && (cnBitsInD1 < 24)));
 
-    // We don't support NO_EMBED_KEYS with cnListPopCntMax<X> == 0.
+#if defined(NO_TYPE_IN_XX_SW)
+  #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
+    assert(T_EMBEDDED_KEYS != 0); // see b.h
+  #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
+#endif // defined(NO_TYPE_IN_XX_SW)
 #if ! defined(EMBED_KEYS)
+    // We don't support NO_EMBED_KEYS with cnListPopCntMax<X> == 0.
     assert(cnListPopCntMaxDl1 != 0);
   #if defined(cnListPopCntMaxDl2)
     assert(cnListPopCntMaxDl2 != 0);
@@ -4990,18 +5006,6 @@ Initialize(void)
 #endif // ! defined(DEPTH_IN_SW)
 #endif // ! defined(LVL_IN_WR_HB)
 #endif // defined(SKIP_LINKS)
-
-#if defined(SEPARATE_T_NULL)
-    assert(((T_SKIP_BIT | T_SWITCH_BIT) & T_NULL) == 0);
-#endif // defined(SEPARATE_T_NULL)
-    assert(((T_SKIP_BIT | T_SWITCH_BIT) & T_LIST) == 0);
-#if defined(USE_T_ONE)
-    assert(((T_SKIP_BIT | T_SWITCH_BIT) & T_ONE) == 0);
-#endif // defined(USE_T_ONE)
-#if defined(EMBED_KEYS)
-    assert(((T_SKIP_BIT | T_SWITCH_BIT) & T_EMBEDDED_KEYS) == 0);
-#endif // defined(EMBED_KEYS)
-    assert(((T_SKIP_BIT | T_SWITCH_BIT) & T_BITMAP) == 0);
 
   #if defined(NO_TYPE_IN_XX_SW)
       #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
@@ -5882,44 +5886,44 @@ Initialize(void)
 
     // Print the type values.
 
-    printf("# Link types:\n");
+    printf("# Link types:\n\n");
 #if defined(SEPARATE_T_NULL)
-    printf("# T_NULL %d\n", T_NULL);
+    printf("# 0x%x %-20s\n", T_NULL, "T_NULL");
 #endif // defined(SEPARATE_T_NULL)
 #if (cwListPopCntMax != 0)
-    printf("# T_LIST %d\n", T_LIST);
+    printf("# 0x%x %-20s\n", T_LIST, "T_LIST");
 #endif // (cwListPopCntMax != 0)
-#if defined(USE_T_ONE)
-    printf("# T_ONE %d\n", T_ONE);
-#endif // defined(USE_T_ONE)
-#if defined(EMBED_KEYS)
-    printf("# T_EMBEDDED_KEYS %d\n", T_EMBEDDED_KEYS);
-#endif // defined(EMBED_KEYS)
-    printf("# T_BITMAP %d\n", T_BITMAP);
+    printf("# 0x%x %-20s\n", T_BITMAP, "T_BITMAP");
 #if defined(SKIP_TO_BITMAP)
-    printf("# T_SKIP_TO_BITMAP %d\n", T_SKIP_TO_BITMAP);
+    printf("# 0x%x %-20s\n", T_SKIP_TO_BITMAP, "T_SKIP_TO_BITMAP");
 #endif // defined(SKIP_TO_BITMAP)
-    printf("# T_SWITCH %d\n", T_SWITCH);
-#if defined(CODE_XX_SW)
-    printf("# T_XX_SW %d\n", T_XX_SW);
-  #if defined(SKIP_TO_XX_SW) // doesn't work yet
-    printf("# T_SKIP_TO_XX_SW %d\n", T_SKIP_TO_XX_SW);
-  #endif // defined(SKIP_TO_XX_SW) // doesn't work yet
-#endif // defined(CODE_XX_SW)
+#if defined(EMBED_KEYS)
+    printf("# 0x%x %-20s\n", T_EMBEDDED_KEYS, "T_EMBEDDED_KEYS");
+#endif // defined(EMBED_KEYS)
 #if defined(CODE_BM_SW)
-    printf("# T_BM_SW %d\n", T_BM_SW);
-  #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-    printf("# T_FULL_BM_SW %d\n", T_FULL_BM_SW);
-  #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+    printf("# 0x%x %-20s\n", T_BM_SW, "T_BM_SW");
 #endif // defined(CODE_BM_SW)
+#if defined(SKIP_TO_BM_SW)
+    printf("# 0x%x %-20s\n", T_SKIP_TO_BM_SW, "T_SKIP_TO_BM_SW");
+#endif // defined(SKIP_TO_BM_SW)
+#if defined(CODE_XX_SW)
+    printf("# 0x%x %-20s\n", T_XX_SW, "T_XX_SW");
+#endif // defined(CODE_XX_SW)
+#if defined(SKIP_TO_XX_SW) // doesn't work yet
+    printf("# 0x%x %-20s\n", T_SKIP_TO_XX_SW, "T_SKIP_TO_XX_SW");
+#endif // defined(SKIP_TO_XX_SW) // doesn't work yet
+#if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+    printf("# 0x%x %-20s\n", T_FULL_BM_SW, "T_FULL_BM_SW");
+#endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+#if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+    printf("# 0x%x %-20s\n", T_SKIP_TO_FULL_BM_SW, "T_SKIP_TO_FULL_BM_SW");
+#endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+#if defined(USE_T_ONE)
+    printf("# 0x%x %-20s\n", T_ONE, "T_ONE");
+#endif // defined(USE_T_ONE)
+    printf("# 0x%x %-20s\n", T_SWITCH, "T_SWITCH");
 #if defined(SKIP_LINKS)
-    printf("# T_SKIP_TO_SWITCH %d\n", T_SKIP_TO_SWITCH);
-  #if defined(SKIP_TO_BM_SW)
-    printf("# T_SKIP_TO_BM_SW %d\n", T_SKIP_TO_BM_SW);
-      #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-    printf("# T_SKIP_TO_FULL_BM_SW %d\n", T_SKIP_TO_FULL_BM_SW);
-      #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-  #endif // defined(SKIP_TO_BM_SW)
+    printf("# 0x%x %-20s\n", T_SKIP_TO_SWITCH, "T_SKIP_TO_SWITCH");
 #endif // defined(SKIP_LINKS)
 
     printf("\n");

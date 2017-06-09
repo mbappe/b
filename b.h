@@ -5,6 +5,15 @@
 #if ( ! defined(_B_H_INCLUDED) )
 #define _B_H_INCLUDED
 
+// Default is cnBitsPerWord = 64.
+#if !defined(cnBitsPerWord)
+#if defined(__LP64__) || defined(_WIN64)
+#define cnBitsPerWord  64
+#else // defined(__LP64__) || defined(_WIN64)
+#define cnBitsPerWord  32
+#endif // defined(__LP64__) || defined(_WIN64)
+#endif // !defined(cnBitsPerWord)
+
 #if ! defined(likely)
 #define   likely(_b) (__builtin_expect((_b), 1))
 #define unlikely(_b) (__builtin_expect((_b), 0))
@@ -291,15 +300,6 @@
 
 #define cnLogBitsPerByte  3
 #define cnBitsPerByte  (EXP(cnLogBitsPerByte))
-
-// Default is cnBitsPerWord = 64.
-#if !defined(cnBitsPerWord)
-#if defined(__LP64__) || defined(_WIN64)
-#define cnBitsPerWord  64
-#else // defined(__LP64__) || defined(_WIN64)
-#define cnBitsPerWord  32
-#endif // defined(__LP64__) || defined(_WIN64)
-#endif // !defined(cnBitsPerWord)
 
 #if (cnBitsPerWord == 64)
 #define cnLogBytesPerWord  3
@@ -588,71 +588,56 @@ typedef Word_t Bucket_t;
 #define TYPE_IS_ABSOLUTE
 #endif // ! defined(TYPE_IS_RELATIVE)
 
-#define T_SWITCH_BIT         0x08
-#define T_SKIP_BIT           0x04
-#if defined(CODE_BM_SW)
-#define T_BM_SW_BIT          0x02
-#endif // defined(CODE_BM_SW)
-#define T_SW_OTHER_BIT       0x01
-
-#define T_FULL_BM_SW_BIT  T_SW_OTHER_BIT
-
-#if defined(CODE_XX_SW)
-#define T_XX_SW_BIT       T_SW_OTHER_BIT
-#endif // defined(CODE_XX_SW)
-
 // Values for nType.
 enum {
+    // Put T_NULL and T_LIST at beginning of enum so one of them gets
+    // type == 0 if either exists. For no reason other than a dump with
+    // a NULL will have a somewhat intuitive meaning.
 #if defined(SEPARATE_T_NULL)
     T_NULL, // no keys below
 #endif // defined(SEPARATE_T_NULL)
 #if (cwListPopCntMax != 0)
     T_LIST, // external list of keys
 #endif // (cwListPopCntMax != 0)
+    // T_BITMAP may not be needed if it is implied by the level/depth.
+    T_BITMAP, // external (not embedded) bitmap leaf
+#if defined(SKIP_TO_BITMAP)
+    T_SKIP_TO_BITMAP, // skip to external bitmap leaf
+#endif // defined(SKIP_TO_BITMAP)
+#if defined(EMBED_KEYS)
+    T_EMBEDDED_KEYS, // keys are embedded in the link
+#endif // defined(EMBED_KEYS)
+#if defined(CODE_BM_SW)
+    T_BM_SW,
+#endif // defined(CODE_BM_SW)
+#if defined(SKIP_TO_BM_SW)
+    T_SKIP_TO_BM_SW,
+#endif // defined(SKIP_TO_BM_SW)
+#if defined(CODE_XX_SW)
+    T_XX_SW,
+#endif // defined(CODE_XX_SW)
+#if defined(SKIP_TO_XX_SW) // doesn't work yet
+    T_SKIP_TO_XX_SW,
+#endif // defined(SKIP_TO_XX_SW) // doesn't work yet
+#if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+    // All link bits set, i.e. all links present.
+    T_FULL_BM_SW,
+#endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+#if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+    T_SKIP_TO_FULL_BM_SW,
+#endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
 #if defined(USE_T_ONE)
     T_ONE, // one-key external list when key is too big to be embedded
 #endif // defined(USE_T_ONE)
-#if defined(EMBED_KEYS)
-    T_EMBEDDED_KEYS = 2, // keys are embedded in the link
-#endif // defined(EMBED_KEYS)
-    T_BITMAP, // external bitmap leaf
-#if defined(SKIP_TO_BITMAP)
-    T_SKIP_TO_BITMAP = T_SKIP_BIT | T_BITMAP, // external bitmap leaf
-#endif // defined(SKIP_TO_BITMAP)
-
-    // All of the type values less than T_SWITCH are not switches.
-    // All type values at T_SWITCH and greater are switches.
-    T_SWITCH = T_SWITCH_BIT, // Uncompressed, close (i.e. no-skip) switch.
-#if defined(CODE_XX_SW)
-    T_XX_SW = T_SWITCH_BIT | T_XX_SW_BIT,
-  #if defined(SKIP_TO_XX_SW) // doesn't work yet
-    T_SKIP_TO_XX_SW = T_SWITCH_BIT | T_SKIP_BIT | T_XX_SW_BIT,
-  #endif // defined(SKIP_TO_XX_SW) // doesn't work yet
-#endif // defined(CODE_XX_SW)
-#if defined(CODE_BM_SW)
-    T_BM_SW = T_SWITCH_BIT | T_BM_SW_BIT,
-  #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-    // All link bits set, i.e. all links present.
-    T_FULL_BM_SW = T_SWITCH_BIT | T_BM_SW_BIT | T_FULL_BM_SW_BIT,
-  #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-#endif // defined(CODE_BM_SW)
+    T_SWITCH, // Uncompressed, close (i.e. no-skip) switch.
 #if defined(SKIP_LINKS)
     // T_SKIP_TO_SWITCH has to have the biggest value in this enum
-    // if not DEPTH_IN_SW.  All of the bigger values have a meaning relative
-    // to T_SKIP_TO_SWITCH.
+    // if not LVL_IN_WR_HB and not DEPTH_IN_SW.  All of the bigger
+    // values have a meaning relative to T_SKIP_TO_SWITCH.
     // Depth/level is determined by (nType - T_SKIP_TO_SWITCH).
-    T_SKIP_TO_SWITCH = T_SWITCH_BIT | T_SKIP_BIT,
-  #if defined(SKIP_TO_BM_SW)
-    T_SKIP_TO_BM_SW = T_SWITCH_BIT | T_SKIP_BIT | T_BM_SW_BIT,
-      #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-    T_SKIP_TO_FULL_BM_SW
-        = T_SWITCH_BIT | T_SKIP_BIT | T_BM_SW_BIT | T_FULL_BM_SW_BIT,
-      #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-  #endif // defined(SKIP_TO_BM_SW)
+    T_SKIP_TO_SWITCH
 #endif // defined(SKIP_LINKS)
 };
-
-#define T_SW_BASE  T_SKIP_TO_SWITCH // compatibility with old code
 
 // Define and optimize nBitsIndexSz_from_nDL, nBitsIndexSz_from_nBL,
 // nBL_from_nDL, nBL_from_nDL, et. al. based on ifdef parameters.
@@ -971,6 +956,7 @@ static inline int wr_nType(Word_t wRoot) { return wRoot & cnMallocMask; }
 static inline int Get_nType(Word_t* pwRoot) { return wr_nType(*pwRoot); }
 
 #define set_wr_nType(_wr, _type)  ((_wr) = ((_wr) & ~cnMallocMask) | (_type))
+
 // Set  nType in *pwRoot.
 static inline void
 Set_nType(Word_t* pwRoot, int nType)
@@ -978,12 +964,29 @@ Set_nType(Word_t* pwRoot, int nType)
     set_wr_nType(*pwRoot, nType);
 }
 
+#if defined(SKIP_LINKS)
 // Change the type field in *pwRoot from a skip a non-skip.
 static inline void
 Clr_bIsSkip(Word_t* pwRoot)
 {
-    Set_nType(pwRoot, Get_nType(pwRoot) & ~T_SKIP_BIT);
+    int nType = wr_nType(*pwRoot);
+  #if ! defined(LVL_IN_WR_HB) && ! defined(DEPTH_IN_SW)
+    if (nType >= T_SKIP_TO_SWITCH) { Set_nType(pwRoot, T_SWITCH); return; }
+  #endif // ! defined(LVL_IN_WR_HB) && ! defined(DEPTH_IN_SW)
+    switch (nType) {
+  #if defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
+    case T_SKIP_TO_SWITCH: Set_nType(pwRoot, T_SWITCH); break;
+  #endif // defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
+  #if defined(SKIP_TO_BM_SW)
+    case T_SKIP_TO_BM_SW: Set_nType(pwRoot, T_BM_SW); break;
+  #endif // defined(SKIP_TO_BM_SW)
+  #if defined(SKIP_TO_XX_SW)
+    case T_SKIP_TO_XX_SW: Set_nType(pwRoot, T_XX_SW); break;
+  #endif // defined(SKIP_TO_XX_SW)
+    default: assert(0);
+    }
 }
+#endif // defined(SKIP_LINKS)
 
 // Extract pwr, i.e. the next pwRoot, from *pwRoot.
 static inline Word_t* wr_pwr(Word_t wRoot) {
@@ -1053,7 +1056,8 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // means the first key is bigger than the second so the list is not sorted
 // hence the value is invalid.
 // We gave ZERO_POP_MAGIC type value of T_EMBEDDED_KEYS just because we
-// could and we thought it might come in handy.
+// could and we thought it might come in handy. It assumes T_EMBEDDED_KEYS
+// is not zero.
 // Our old embedded list with a type field and a 3-bit pop count where
 // pop-field=0 means pop=1 cannot represent an empty list using only the
 // pop count.  In that case we could represent an empty list for nBL small
@@ -1172,26 +1176,83 @@ EmbeddedListPopCntMax(int nBL)
 
 #endif // defined(EMBED_KEYS)
 
-#if defined(EXTRA_TYPES)
-  #define tp_bIsSwitch(_tp)  (((_tp) & cnMallocMask) >= T_SWITCH)
-#else // defined(EXTRA_TYPES)
-  #define tp_bIsSwitch(_tp)  ((_tp) >= T_SWITCH)
-#endif // defined(EXTRA_TYPES)
-  #define tp_bIsSkip(_tp)  (((_tp) & T_SKIP_BIT) != 0)
+static inline int
+tp_bIsSwitch(int nType)
+{
+#if ! defined(LVL_IN_WR_HB) && ! defined(DEPTH_IN_SW)
+  #if defined(SKIP_LINKS)
+    if (nType >= T_SKIP_TO_SWITCH) { return 1;}
+  #endif // defined(SKIP_LINKS)
+#endif // ! defined(LVL_IN_WR_HB) && ! defined(DEPTH_IN_SW)
+    switch (nType) {
+    case T_SWITCH:
+#if defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
+  #if defined(SKIP_LINKS)
+    case T_SKIP_TO_SWITCH:
+  #endif // defined(SKIP_LINKS)
+#endif // defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
+#if defined(CODE_BM_SW)
+    case T_BM_SW:
+#endif // defined(CODE_BM_SW)
 #if defined(SKIP_TO_BM_SW)
-  #define tp_bIsBmSw(_tp)  (((_tp) & T_BM_SW_BIT) != 0)
-#else // defined(SKIP_TO_BM_SW)
-  #define tp_bIsBmSw(_tp)  (((_tp) & T_BM_SW_BIT) && ! ((_tp) & T_SKIP_BIT))
+    case T_SKIP_TO_BM_SW:
 #endif // defined(SKIP_TO_BM_SW)
 #if defined(CODE_XX_SW)
-  #if defined(USE_BM_SW)
-    #define tp_bIsXxSw(_tp)  (!((_tp) & T_BM_SW_BIT) && ((_tp) & T_XX_SW_BIT))
-  #else // defined(USE_BM_SW)
-    #define tp_bIsXxSw(_tp)  ((_tp) & T_XX_SW_BIT)
-  #endif // defined(USE_BM_SW)
+    case T_XX_SW:
 #endif // defined(CODE_XX_SW)
+#if defined(SKIP_TO_XX_SW)
+    case T_SKIP_TO_XX_SW:
+#endif // defined(SKIP_TO_XX_SW)
+        return 1;
+    }
+    return 0;
+}
 
 #define wr_bIsSwitch(_wr)  (tp_bIsSwitch(wr_nType(_wr)))
+
+#if defined(CODE_BM_SW)
+    // Is (_tp) a bitmap switch or skip to one?
+  #if defined(SKIP_TO_BM_SW)
+    #define tp_bIsBmSw(_tp)  (((_tp) == T_BM_SW) || ((_tp) == T_SKIP_TO_BM_SW))
+  #else // defined(SKIP_TO_BM_SW)
+    #define tp_bIsBmSw(_tp)  ((_tp) == T_BM_SW)
+  #endif // defined(SKIP_TO_BM_SW)
+#endif // defined(CODE_BM_SW)
+
+#if defined(CODE_XX_SW)
+    // Is (_tp) a doubling switch or skip to one?
+  #if defined(SKIP_TO_XX_SW)
+    #define tp_bIsXxSw(_tp)  (((_tp) == T_XX_SW) || ((_tp) == T_SKIP_TO_XX_SW))
+  #else // defined(SKIP_TO_XX_SW)
+    #define tp_bIsXxSw(_tp)  ((_tp) == T_XX_SW)
+  #endif // defined(SKIP_TO_XX_SW)
+#endif // defined(CODE_XX_SW)
+
+#if defined(SKIP_LINKS)
+static inline int
+tp_bIsSkip(int tp)
+{
+#if ! defined(LVL_IN_WR_HB) && ! defined(DEPTH_IN_SW)
+    if (tp >= T_SKIP_TO_SWITCH) { return 1;}
+#endif // ! defined(LVL_IN_WR_HB) && ! defined(DEPTH_IN_SW)
+    switch (tp) {
+#if defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
+    case T_SKIP_TO_SWITCH:
+#endif // defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
+#if defined(SKIP_TO_BM_SW)
+    case T_SKIP_TO_BM_SW:
+#endif // defined(SKIP_TO_BM_SW)
+#if defined(SKIP_TO_XX_SW)
+    case T_SKIP_TO_XX_SW:
+#endif // defined(SKIP_TO_XX_SW)
+#if defined(SKIP_TO_BITMAP)
+    case T_SKIP_TO_BITMAP:
+#endif // defined(SKIP_TO_BITMAP)
+        return 1;
+    }
+    return 0;
+}
+#endif // defined(SKIP_LINKS)
 
 // Bit fields in the upper bits of of wRoot.
 // Lvl is the level of the node pointed to.
@@ -1371,8 +1432,8 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 // values.  E.g. start at the top instead of the bottom, count by twos,
 // lookup table, ...  But why?  We're going to use DEPTH_IN_SW.  This code
 // is an anachronism.
-  #define tp_to_nDL(_tp)   ((_tp)  - T_SW_BASE + 2)
-  #define nDL_to_tp(_nDL)  ((_nDL) + T_SW_BASE - 2)
+  #define tp_to_nDL(_tp)   ((_tp)  - T_SKIP_TO_SWITCH + 2)
+  #define nDL_to_tp(_nDL)  ((_nDL) + T_SKIP_TO_SWITCH - 2)
 
   #define wr_nDL(_wr) \
       (assert(tp_bIsSkip(wr_nType(_wr))), tp_to_nDL(wr_nType(_wr)))
@@ -1406,8 +1467,8 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 // Why?  Because the type field in wRoot does not contain this information
 // for DEPTH_IN_SW so code that uses these macros may need to be ifdef'd
 // to do something like what is done in wr_nDS anyway.
-#define tp_to_nDS(_tp)   ((_tp)  - T_SW_BASE + 1)
-#define nDS_to_tp(_nDS)  ((_nDS) + T_SW_BASE - 1)
+#define tp_to_nDS(_tp)   ((_tp)  - T_SKIP_TO_SWITCH + 1)
+#define nDS_to_tp(_nDS)  ((_nDS) + T_SKIP_TO_SWITCH - 1)
 
 #if defined(DEPTH_IN_SW)
 // DEPTH_IN_SW directs us to use the low bits of sw_wPrefixPop for skip count
