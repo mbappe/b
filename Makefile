@@ -17,6 +17,7 @@
 
 # I recommend the make clean first because there are so many dependencies
 # that are not discovered by make, e.g. changes in environment variables.
+# Also, I didn't bother adding the header file dependencies.
 
 # The default build is 64-bits.
 # Use "cnBitsPerWord=32 make" to get a 32-bit build.
