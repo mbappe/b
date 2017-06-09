@@ -227,11 +227,11 @@ c++time: Judy1LHTime.c libb.a
 	$(CXX) $(CXXFLAGS) -Wno-format -Wno-format-pedantic $(DEFINES) \
 		-x c++ Judy1LHTime.c -x none libb.a -o $@ -lm
 
-b:
-	ln -s Judy1LHTime b
+b: Judy1LHTime
+	ln -sf Judy1LHTime b
 
-btime:
-	ln -s Judy1LHTime btime
+btime: Judy1LHTime
+	ln -sf Judy1LHTime btime
 
 # Set LIBRARY_PATH environment variable to find libJudy.a.
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
@@ -244,8 +244,8 @@ c++check: Judy1LHCheck.c libb1.a
 		$(DEFINES) -x c++ Judy1LHCheck.c \
 		-x none libb1.a -o $@ $(LDFLAGS) -lJudy -lm
 
-bcheck:
-	ln -s Judy1LHCheck bcheck
+bcheck: Judy1LHCheck
+	ln -sf Judy1LHCheck bcheck
 
 libb.a: $(LIB_OBJS)
 	ar -r $@ $(LIB_OBJS)
