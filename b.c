@@ -2287,7 +2287,7 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
         && ! tp_bIsBmSw(nType)
 #endif // defined(CODE_BM_SW)
         && (((wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBL))
-                >= (EXP(nBL) * 100 / cnBitsPerWord / cn2dBmWpkPercent))
+                >= (EXP(nBL - cnLogBitsPerWord) * cn2dBmWpkPercent / 100))
             || ((cnNonBmLeafPopCntMax != 0)
                 && (wPopCnt > cnNonBmLeafPopCntMax))))
     {
