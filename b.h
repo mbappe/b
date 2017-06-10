@@ -39,9 +39,13 @@
 #define SKIP_PREFIX_CHECK
 #endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 
-// Default cn2dBmWpkPercent is 80, create 2-digit bm at 80% wpk.
+// Default cn2dBmWpkPercent; create 2-digit bm at cn2dBmWpkPercent  wpk.
 #if ! defined(cn2dBmWpkPercent)
+  #if (cnBitsPerWord == 32)
+#define cn2dBmWpkPercent  60
+  #else // (cnBitsPerWord == 32)
 #define cn2dBmWpkPercent  80
+  #endif // (cnBitsPerWord == 32)
 #endif // ! defined(cn2dBmWpkPercent)
 
 #if defined(USE_BM_SW)
