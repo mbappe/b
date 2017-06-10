@@ -2225,7 +2225,9 @@ const int anListPopCntMax[] = {
     cnListPopCntMax8 , //  4 < nBL <=  8
     cnListPopCntMax16, //  8 < nBL <= 16
     cnListPopCntMax32, // 16 < nBL <= 32
+  #if (cnBitsPerWord >= 64)
     cnListPopCntMax64, // 32 < nBL <= 64
+  #endif // (cnBitsPerWord >= 64)
     };
 
 #endif // (cwListPopCntMax != 0)
@@ -2310,8 +2312,8 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
         }
 
         // Allocate a new bitmap.
-        DBGI(printf("# IC: NewBitmap nBL %d nBW %d wPopCnt %ld"
-                    " wWordsAllocated %ld wPopCntTotal %ld.\n",
+        DBGI(printf("# IC: NewBitmap nBL %d nBW %d wPopCnt %" _fw"d"
+                    " wWordsAllocated %" _fw"d wPopCntTotal %" _fw"d.\n",
                     nBL, nBW, wPopCnt, wWordsAllocated, wPopCntTotal));
         Word_t *pwBitmap = NewBitmap(pwRoot, nBL, nBL, wKey);
         set_w_wPopCntBL(*(pwBitmap + EXP(nBL - cnLogBitsPerWord)), nBL, wPopCnt);
@@ -2397,7 +2399,7 @@ embeddedKeys:;
             else {
                 // I guess remove can result in a NULL *pwRootLn in a bitmap
                 // switch since we don't clean them up at the time.
-                DBGI(printf("Null link in bm switch ww %ld.\n", ww));
+                DBGI(printf("Null link in bm switch ww %" _fw"d.\n", ww));
             }
         }
 
@@ -2415,14 +2417,14 @@ embeddedKeys:;
         for (int jj = 0; jj < (int)EXP(nBL - cnLogBitsPerWord); jj++)
         {
             if (pwBitmap[jj] != 0) {
-                DBGI(printf("jj %d pwBitmap[jj] 0x%016lx popcount %d\n",
+                DBGI(printf("jj %d pwBitmap[jj] " OWx" popcount %d\n",
                             jj, pwBitmap[jj],
                             __builtin_popcountll(pwBitmap[jj])));
             }
             count += __builtin_popcountll(pwBitmap[jj]);
         }
         if (count != (int)wPopCnt) {
-            printf("count %d wPopCnt %ld\n", count, wPopCnt);
+            printf("count %d wPopCnt %" _fw"d\n", count, wPopCnt);
                     Dump(pwRootLast,
                               /* wPrefix */ (Word_t)0, cnBitsPerWord);
         }
@@ -5805,7 +5807,9 @@ Initialize(void)
     printf("# cnListPopCntMax8  %d\n", cnListPopCntMax8);
     printf("# cnListPopCntMax16 %d\n", cnListPopCntMax16);
     printf("# cnListPopCntMax32 %d\n", cnListPopCntMax32);
+#if defined(cnListPopCntMax64)
     printf("# cnListPopCntMax64 %d\n", cnListPopCntMax64);
+#endif // defined(cnListPopCntMax64)
     printf("\n");
     printf("# cnListPopCntMaxDl1 %d\n", cnListPopCntMaxDl1);
 #if defined(cnListPopCntMaxDl2)
