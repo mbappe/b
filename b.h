@@ -452,18 +452,20 @@ typedef Word_t Bucket_t;
 // Choose max list lengths.
 // Mind sizeof(ll_nPopCnt) and the maximum value it implies.
 
-// Default is cnListPopCntMax64 is 0x40 (0xec if NO_SKIP_[TO_BM_SW|AT_TOP]).
-#if ! defined(cnListPopCntMax64)
-  #if defined(SKIP_TO_BM_SW) && ! defined(NO_SKIP_AT_TOP)
-      #define cnListPopCntMax64  0x40
-  #else // defined(SKIP_TO_BM_SW) && ! defined(NO_SKIP_AT_TOP)
-      #if defined(POP_IN_WR_HB)
-          #define cnListPopCntMax64  0x7c // field size is limited
-      #else // defined(POP_IN_WR_HB)
-          #define cnListPopCntMax64  0xec
-      #endif // defined(POP_IN_WR_HB)
-  #endif // defined(SKIP_TO_BM_SW) && ! defined(NO_SKIP_AT_TOP)
-#endif // ! defined(cnListPopCntMax64)
+#if (cnBitsPerWord >= 64)
+  // Default is cnListPopCntMax64 is 0x40 (0xec if NO_SKIP_[TO_BM_SW|AT_TOP]).
+  #if ! defined(cnListPopCntMax64)
+      #if defined(SKIP_TO_BM_SW) && ! defined(NO_SKIP_AT_TOP)
+    #define cnListPopCntMax64  0x40
+      #else // defined(SKIP_TO_BM_SW) && ! defined(NO_SKIP_AT_TOP)
+          #if defined(POP_IN_WR_HB)
+    #define cnListPopCntMax64  0x7c // field size is limited
+          #else // defined(POP_IN_WR_HB)
+    #define cnListPopCntMax64  0xec
+          #endif // defined(POP_IN_WR_HB)
+      #endif // defined(SKIP_TO_BM_SW) && ! defined(NO_SKIP_AT_TOP)
+  #endif // ! defined(cnListPopCntMax64)
+#endif // (cnBitsPerWord >= 64)
 
 // Default is cnListPopCntMax32 is 0x30 (0xf0 if NO_USE_BM_SW).
 #if ! defined(cnListPopCntMax32)
@@ -531,11 +533,18 @@ typedef Word_t Bucket_t;
 // bits of type info in the link).  Hence the 8 in the expression below.
 #if ! defined(cwListPopCntMax)
 #define MAX(_x, _y)  ((_x) > (_y) ? (_x) : (_y))
+  #if (cnBitsPerWord >= 64)
 #define cwListPopCntMax \
    MAX(cnListPopCntMax64, \
        MAX(cnListPopCntMax32, \
            MAX(cnListPopCntMax16, \
                MAX(cnListPopCntMax8, 0))))
+  #else // (cnBitsPerWord >= 64)
+#define cwListPopCntMax \
+       MAX(cnListPopCntMax32, \
+           MAX(cnListPopCntMax16, \
+               MAX(cnListPopCntMax8, 0)))
+  #endif // (cnBitsPerWord >= 64)
 #endif // ! defined(cwListPopCntMax)
 
 #define cnBitsLeftAtDl1     (cnBitsInD1)
@@ -1285,8 +1294,13 @@ tp_bIsSkip(int tp)
 static inline int
 Get_nBW(Word_t *pwRoot)
 {
+  #if (cnBitsPerWord >= 64)
     int nBW = GetBits(*pwRoot, cnBitsXxSwWidth, cnLsbXxSwWidth);
     assert(nBW <= (int)MSK(cnBitsXxSwWidth));
+  #else // (cnBitsPerWord >= 64)
+    (void)pwRoot;
+    int nBW = cnBitsPerDigit / 2;
+  #endif // (cnBitsPerWord >= 64)
     return nBW;
 }
 
@@ -1296,8 +1310,12 @@ Get_nBW(Word_t *pwRoot)
 static inline void
 Set_nBW(Word_t *pwRoot, int nBW)
 {
+  #if (cnBitsPerWord >= 64)
     assert(nBW <= (int)MSK(cnBitsXxSwWidth));
     SetBits(pwRoot, cnBitsXxSwWidth, cnLsbXxSwWidth, nBW);
+  #else // (cnBitsPerWord >= 64)
+    (void)pwRoot; (void)nBW;
+  #endif // (cnBitsPerWord >= 64)
 }
 
 #define set_pwr_nBW(_pwRoot, _nBW)  Set_nBW((_pwRoot), (_nBW))
