@@ -42,6 +42,15 @@ else
   LDFLAGS = -L/usr/local/lib
 endif
 
+# Potentially interesting gcc options:
+# -fverbose-asm
+# -fpic vs. -fPIC
+# -frecord-gcc-switches
+# -grecord-gcc-switches
+# -fpack-struct[=n]
+# -fvisibility=[default|internal|hidden|protected]
+# -Wfatal-errors
+
 ##
 # -std=gnu11 and -std=gnu99 give CLOCK_MONOTONIC which is not available with
 # -std=c11 or -std=c99.
