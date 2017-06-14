@@ -21,9 +21,8 @@
 
 # The default build is 64-bits.
 # Use "cnBitsPerWord=32 make" to get a 32-bit build.
-ifeq "$(cnBitsPerWord)" ""
-cnBitsPerWord = 64
-endif
+# I wonder if it works on a 32-bit system.
+cnBitsPerWord ?= 64
 
 # There are questions about how macOS handles libraries.
 # It looks like macOS Sierra (10.12) may not honor the LIBRARY_PATH
@@ -100,6 +99,7 @@ endif
   WFLAGS += -Wno-unused-function
   WFLAGS += -Wno-deprecated
   WFLAGS += -Werror
+  WFLAGS += -Wfatal-errors
 # WFLAGS_C_ONLY += -Wstrict-prototypes
 # WFLAGS_C_ONLY += -Wmissing-prototypes
   CWFLAGS += $(WFLAGS)
