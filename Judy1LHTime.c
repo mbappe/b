@@ -995,7 +995,7 @@ main(int argc, char *argv[])
 
             BValue = oa2w(tok, NULL, 0, c);
 
-            if ((BValue > sizeof(Word_t) * 8) || (BValue < 15))
+            if ((BValue > sizeof(Word_t) * 8) || (BValue < 10))
             {
                 FAILURE("\n -B  is out of range, I.E. -B", BValue);
             }
@@ -1011,15 +1011,17 @@ main(int argc, char *argv[])
 
             Bpercent = atof(tok);
 
-            if (Bpercent <= 50.0 || Bpercent >= 100.0)
+            if (Bpercent < 50.0 || Bpercent > 100.0)
             {
                 ErrorFlag++;
-                printf("\nError --- Percent = %4.2f must be greater than 50 and less than 100 !!!\n", Bpercent);
+                printf("\nError --- Percent = %4.2f must be between 50 and 100 inclusive!!!\n", Bpercent);
             }
             // Don't want to calculate MaxNumb later based on a Bpercent
             // that was derived from -N.
             MaxNumb = pow(2.0, BValue) * Bpercent / 100;
             MaxNumb--;
+            if (Bpercent == 50.0) { ++MaxNumb; }
+            if (Bpercent == 100.0) { --MaxNumb; }
             break;
         }
         case 'G':                      // Gaussian Random numbers
@@ -1325,7 +1327,8 @@ main(int argc, char *argv[])
     if (StartSequent > MaxNumb)
     {
         printf("\nArgument in '-s %lu' option is greater than %lu\n", StartSequent, MaxNumb);
-        ErrorFlag++;
+        StartSequent = MaxNumb;
+        //ErrorFlag++;
     }
     if (StartSequent == 0 && (SValue == 0))
     {
