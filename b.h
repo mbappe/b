@@ -91,6 +91,10 @@
   #define CODE_XX_SW
 #endif // defined(USE_XX_SW)
 
+#if defined(USE_XX_SW) && defined(ALLOW_EMBEDDED_BITMAP)
+  #error Sorry, no ALLOW_EMBEDDED_BITMAP with USE_XX_SW yet.
+#endif // defined(USE_XX_SW) && defined(ALLOW_EMBEDDED_BITMAP)
+
 // Default cnBW is 1 if CODE_XX_SW.
 // cnBW is the minimum width of a narrow switch.
 #if defined(CODE_XX_SW)
@@ -2444,6 +2448,8 @@ extern const unsigned anBL_to_nDL[];
 #define RECURSIVE
       #endif // defined(RECURSIVE_INSERT)
   #elif defined(COUNT) // defined(INSERT)
+// Count returns the number of keys present in the array up to but
+// excluding the key that is passed as a parameter.
 #define strLookupOrInsertOrRemove  "Count"
 #define DBGX  DBGC
 #define InsertRemove  Count

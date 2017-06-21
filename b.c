@@ -167,6 +167,11 @@ Word_t wEvenMallocs; // number of unfreed mallocs of an even number of words
   #define cnGuardWords 0
 #endif // defined(cnGuardWords)
 
+#if defined(RAMMETRICS)
+    extern Word_t j__AllocWordsTOT;
+    extern Word_t j__TotalBytesAllocated; // mmap
+#endif // defined(RAMMETRICS)
+
 // Can we use some of the bits in the word at the address immediately
 // preceeding the address returned by malloc?
 //
@@ -196,6 +201,7 @@ MyMalloc(Word_t wWords)
     DBGM(printf("\nM: %p %" _fw"d words *%p " OWx" %" _fw"d\n",
                 (void *)ww, wWords, (void *)&((Word_t *)ww)[-1],
                 ((Word_t *)ww)[-1], ((Word_t *)ww)[-1]));
+
     // Validate our assumptions about dlmalloc as we prepare to use
     // some of the otherwise wasted bits in ww[-1].
     // Our assumption is that the word contains the number of bytes
@@ -229,7 +235,7 @@ MyMalloc(Word_t wWords)
 static void
 MyFree(Word_t *pw, Word_t wWords)
 {
-    DBGM(printf("F: " OWx" words %" _fw"d pw[-1] %p\n",
+    DBGM(printf("\nF: " OWx" words %" _fw"d pw[-1] %p\n",
                 (Word_t)pw, wWords, (void *)pw[-1]));
     // make sure it is ok for us to use some of the bits in the word
     // Restore the value expected by dlmalloc.
@@ -701,9 +707,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(CODE_BM_SW)
           int nBLUp, Word_t wPopCnt)
 {
-    DBGI(printf(
-             "NewSwitch: pwRoot %p wKey " OWx" nBL %d nBLUp %d wPopCnt %" _fw"d.\n",
-             (void *)pwRoot, wKey, nBL, nBLUp, wPopCnt));
+    DBGI(printf("NewSwitch: pwRoot %p wKey " OWx" nBL %d nBLUp %d"
+         " wPopCnt %" _fw"d.\n", (void *)pwRoot, wKey, nBL, nBLUp, wPopCnt));
+
 #if defined(CODE_XX_SW)
     if ((nBitsIndexSzX != nBL_to_nBitsIndexSz(nBL))
         /*&& (nBitsIndexSzX != cnBW)*/)
@@ -722,6 +728,17 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
     int nBitsIndexSz = nBL_to_nBitsIndexSz(nBL);
 #endif // defined(CODE_XX_SW)
     Word_t wIndexCnt = EXP(nBitsIndexSz);
+
+#if ! defined(ALLOW_EMBEDDED_BITMAP)
+    // Should we check here to see if the new switch would be equivalant to a
+    // bitmap leaf and create a bitmap leaf instead?
+  #if defined(CODE_BM_SW)
+    assert(bBmSw
+        || (nBL - nBitsIndexSz > (int)LOG(sizeof(Link_t) * 8)));
+  #else // defined(CODE_BM_SW)
+    assert(nBL - nBitsIndexSz > (int)LOG(sizeof(Link_t) * 8));
+  #endif // defined(CODE_BM_SW)
+#endif // ! defined(ALLOW_EMBEDDED_BITMAP)
 
 #if ! defined(NDEBUG)
 #if defined(CODE_BM_SW)
@@ -2264,12 +2281,17 @@ static void InsertAll(Word_t *pwRootOld,
 // replace a 2-digit switch and whatever is hanging off of it with a
 // a 2-digit bitmap once the population supports it as defined by
 // cn2dBmWpkPercent.
+// nBL describes the level of the root word passed in. It has not been
+// advanced by any skip in the containing link.
 void
 InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
 {
     (void)wKey; (void)nBL, (void)pwRoot; (void)wRoot;
 #if (cn2dBmWpkPercent != 0) // conversion to big bitmap enabled
     int nDL = nBL_to_nDL(nBL);
+
+    // Can't disable this one by ALLOW_EMBEDDED_BITMAP.
+    assert(cnBitsInD1 > LOG(sizeof(Link_t) * 8)); // else doesn't work yet
 
 // Default cnNonBmLeafPopCntMax is 1280.  Keep W/K <= 1.
 #if ! defined(cnNonBmLeafPopCntMax)
@@ -2355,7 +2377,10 @@ embeddedKeys:;
             }
 #if (cwListPopCntMax != 0)
             else if (wRootLn != 0) {
+#if defined(DEBUG)
+                if (nTypeLn != T_LIST) { printf("nTypeLn %d\n", nTypeLn); }
                 assert(nTypeLn == T_LIST);
+#endif // defined(DEBUG)
 #if defined(PP_IN_LINK)
                 int nPopCntLn
                       = PWR_wPopCnt(pwRootLn, (Switch_t *)pwrLn, nBLLn);
@@ -3405,7 +3430,10 @@ copyWithInsert16:
 #endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
-                { wMin = pwKeys[0]; wMax = pwKeys[wPopCnt - 1]; }
+// Why do I get a wSufix may be uninitialized warning only with DEBUG_INSERT?
+// Compiler doesn't know wSuffix is only used if nBL <= cnBitsPerWord.
+// Why is it different for DEBUG_INSERT?
+                { wMin = pwKeys[0]; wMax = pwKeys[wPopCnt - 1]; wSuffix = wKey; }
 #else // defined(SORT_LISTS)
                 // walk the list to find max and min
                 wMin = (Word_t)-1;
@@ -4981,25 +5009,40 @@ Initialize(void)
 #if defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
     assert(0);
 #endif // defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
-    // Why would we want to be able to fit a whole digit's worth of
-    // keys into a Link_t as an embedded bitmap?
-    // A real bitmap encompassing the whole switch would use no more
-    // space and it would be faster.  Does JudyL change the situation?
-    if (EXP(cnBitsInD1) <= sizeof(Link_t) * 8) {
-        printf("Warning: (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)"
-               " makes no sense.\n");
-        printf("Try increasing cnBitsInD1 or decreasing sizeof(Link_t).\n");
-    }
-    assert(EXP(cnBitsInD1) > sizeof(Link_t) * 8);
+
     // Why would we want to be able to fit more than one digits' worth of
     // keys into a Link_t as an embedded bitmap?
+    // An uncompressed switch of such links would be bigger than the
+    // corresponding bitmap and it would be slower.
+    // But a compressed switch might provide some value?
+    // And a skip link to such a bitmap might provide some value?
+    // And, unlike a link that is completely filled with an embedded
+    // bitmap, there would be room for a type field.
+    // For experimentation?
     if (EXP(cnBitsLeftAtDl2) <= sizeof(Link_t) * 8) {
-        printf("Warning: (EXP(cnBitsLeftAtDl2) <= sizeof(Link_t) * 8)"
+        printf("# Warning: (EXP(cnBitsLeftAtDl2) <= sizeof(Link_t) * 8)"
                " makes no sense.\n");
-        printf("Try increasing cnBitsInD1 or decreasing sizeof(Link_t).\n");
-        printf("Or try increasing cnBitsPerDigit.\n");
+        printf("# Maybe increase cnBitsInD[12] or decrease sizeof(Link_t).\n");
+        printf("# Or increase cnBitsPerDigit.\n");
     }
+    // Why would we want to be able to fit a whole digit's worth of
+    // keys into a Link_t as an embedded bitmap?
+    // A real bitmap encompassing a whole uncompressed switch of such bitmaps
+    // would use no more memory and it would be faster.
+    // But a compressed switch might provide some value?
+    // And a skip link to such a bitmap might provide some value?
+    // For experimentation?
+    // Does JudyL change the situation?
+    else if (EXP(cnBitsInD1) <= sizeof(Link_t) * 8) {
+        printf("# Warning: (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)"
+               " makes no sense.\n");
+        printf("# Mabye increase cnBitsInD1 or decrease sizeof(Link_t).\n");
+    }
+#if ! defined(ALLOW_EMBEDDED_BITMAP)
+    assert(EXP(cnBitsInD1) > sizeof(Link_t) * 8);
+#endif // ! defined(ALLOW_EMBEDDED_BITMAP)
     assert(EXP(cnBitsLeftAtDl2) > sizeof(Link_t) * 8);
+
 #if defined(SKIP_LINKS)
 #if ! defined(LVL_IN_WR_HB)
 #if ! defined(DEPTH_IN_SW)
@@ -5964,28 +6007,62 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
     Word_t wMallocsBefore = wMallocs;
     Word_t wEvenMallocsBefore = wEvenMallocs;
     Word_t wWordsAllocatedBefore = wWordsAllocated;
+      #if defined(RAMMETRICS)
+    Word_t j__AllocWordsTOTBefore = j__AllocWordsTOT;
+    Word_t j__TotalBytesAllocatedBefore = j__TotalBytesAllocated;
+      #endif // defined(RAMMETRICS)
   #endif // defined(DEBUG)
 
     Word_t wBytes = FreeArrayGuts((Word_t *)PPArray, /* wPrefix */ 0,
                                    cnBitsPerWord, /* bDump */ 0);
 
-    DBG(printf("# wPopCntTotal %" _fw"d\n", wPopCntTotal));
-    DBG(printf("# wWordsAllocatedBefore %" _fw"d\n", wWordsAllocatedBefore));
-    DBG(printf("# wMallocsBefore %" _fw"d\n", wMallocsBefore));
-    DBG(printf("# wEvenMallocsBefore %" _fw"d\n", wEvenMallocsBefore));
-    DBG(printf("# wWordsAllocated %" _fw"d\n", wWordsAllocated));
-    DBG(printf("# wMallocs %" _fw"d\n", wMallocs));
-    DBG(printf("# wEvenMallocs %" _fw"d\n", wEvenMallocs));
+    DBG(printf("# wPopCntTotal %" _fw"u\n", wPopCntTotal));
+    DBG(printf("# Judy1FreeArray wBytes %" _fw"u\n", wBytes));
+    DBG(printf("# wWordsAllocatedBefore %" _fw"u\n", wWordsAllocatedBefore));
+#if defined(RAMMETRICS)
+    DBG(printf("# j__AllocWordsTOTBefore %" _fw"u\n", j__AllocWordsTOTBefore));
+    DBG(printf("# j__TotalBytesAllocatedBefore 0x%" _fw"x\n",
+               j__TotalBytesAllocatedBefore));
+    DBG(printf("# Total MiB Before 0x%" _fw"x rem 0x%"_fw"x\n",
+               j__TotalBytesAllocatedBefore / (1024 * 1024),
+               j__TotalBytesAllocatedBefore % (1024 * 1024)));
+#endif // defined(RAMMETRICS)
+    DBG(printf("# wMallocsBefore %" _fw"u\n", wMallocsBefore));
+    DBG(printf("# wEvenMallocsBefore %" _fw"u\n", wEvenMallocsBefore));
+
+    DBG(printf("# wWordsAllocated %" _fw"u\n", wWordsAllocated));
+#if defined(RAMMETRICS)
+    DBG(printf("# j__AllocWordsTOT %" _fw"u\n", j__AllocWordsTOT));
+    DBG(printf("# j__TotalBytesAllocated 0x%" _fw"x\n",
+               j__TotalBytesAllocated));
+    DBG(printf("# Total MiB 0x%" _fw"x rem 0x%"_fw"x\n",
+               j__TotalBytesAllocated / (1024 * 1024),
+               j__TotalBytesAllocated % (1024 * 1024)));
+#endif // defined(RAMMETRICS)
+    DBG(printf("# wMallocs %" _fw"u\n", wMallocs));
+    DBG(printf("# wEvenMallocs %" _fw"u\n", wEvenMallocs));
     DBG(printf("\n"));
     assert((wWordsAllocatedBefore - wWordsAllocated)
                == (wBytes / sizeof(Word_t)));
+    // Assuming wWordsAllocated is zero is presumptuous.
+    // What if the application has more than one Judy1 array?
     assert(wWordsAllocated == 0);
+#if defined(RAMMETRICS)
+    // Assuming j__AllocWordsTOT is zero is presumptuous.
+    // What if the application has more than one Judy1 or JudyL array, e.g.
+    // Judy1LHTime with -1L or Judy1LHCheck?
+    assert(j__AllocWordsTOT == 0);
+    // Dlmalloc doesn't necessarily unmap everything even if we free it.
+    //assert(j__TotalBytesAllocated == 0);
+#endif // defined(RAMMETRICS)
+    // Assuming wMallocs and wEvenMallocs are zero is presumptuous.
+    // What if the application has more than one Judy1 array?
     assert(wMallocs == 0);
     assert(wEvenMallocs == 0);
 
     // Should have FreeArrayGuts adjust wPopCntTotal this as it goes.
     assert(Judy1Count(*PPArray, 0, (Word_t)-1, NULL) == 0);
-    wPopCntTotal = 0;
+    wPopCntTotal = 0; // What if there is more than one Judy1 array?
 
     return wBytes;
 
@@ -6101,18 +6178,22 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
         if (wPopCnt != wPopCntTotal)
         {
             printf("\nAssertion error debug:\n");
-            printf("\nwPopCnt %" _fw"d wPopCntTotal %" _fw"d\n",
+            printf("\nwPopCnt %" _fw"u wPopCntTotal %" _fw"u\n",
                    wPopCnt, wPopCntTotal);
-            Dump(pwRootLast, 0, cnBitsPerWord);
+            if (wPopCntTotal < 0x1000) {
+                Dump(pwRootLast, 0, cnBitsPerWord);
+            }
         }
         assert(wPopCnt == wPopCntTotal);
 
         if (wPopCnt != wCount)
         {
             printf("\nAssertion error debug:\n");
-            printf("\nwPopCnt %" _fw"d wCount %" _fw"d\n",
+            printf("\nwPopCnt %" _fw"u wCount %" _fw"u\n",
                    wPopCnt, wCount);
-            Dump(pwRootLast, 0, cnBitsPerWord);
+            if (wPopCntTotal < 0x1000) {
+                Dump(pwRootLast, 0, cnBitsPerWord);
+            }
         }
         assert(wPopCnt == wCount);
   #endif // defined(DEBUG)

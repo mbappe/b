@@ -20,7 +20,7 @@
 #else // (cnDigitsPerWord <= 1)
 
   #if defined(COUNT)
-// Count the number of keys in the subtrees rooted by links that
+// Return the number of keys in the subtrees rooted by links that
 // precede the specified link in this switch.
 static Word_t
 CountSw(Word_t *pwRoot,
@@ -31,7 +31,8 @@ CountSw(Word_t *pwRoot,
         int nLinks)
 {
     (void)pwRoot; (void)nBLR; (void)nLinks;
-    DBGC(printf("\nCountSw nBL %d wIndex " OWx"\n", nBL, wIndex));
+    DBGC(printf("\nCountSw nBL %d nBLR %d wIndex " OWx"\n",
+                nBL, nBLR, wIndex));
     Word_t wPopCnt = 0;
     Word_t ww, wwLimit;
       #if ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
@@ -50,62 +51,93 @@ CountSw(Word_t *pwRoot,
     {
         ww = 0; wwLimit = wIndex;
     }
+    DBGC(printf("ww " OWx" wwLimit " OWx"\n", ww, wwLimit));
     for (; ww < wwLimit; ++ww) {
         Word_t *pwRootLoop = &pwr_pLinks((Switch_t *)pwr)[ww].ln_wRoot;
-        Word_t *pwrLoop = wr_pwr(*pwRootLoop);
         Word_t wPopCntLoop;
-        int nTypeLoop = Get_nType(pwRootLoop);
-        if (tp_bIsSwitch(nTypeLoop)) {
-            wPopCntLoop = PWR_wPopCntBL(pwRootLoop, (Switch_t *)pwrLoop, nBL);
-            if (wPopCntLoop == 0) {
-                wPopCntLoop = EXP(nBL);
-            }
-            DBGC(printf("ww %" _fw"d bIsSwitch pwr %p wPopCnt %" _fw"d\n",
-                        ww, (void *)pwrLoop, wPopCntLoop));
+        DBGC(printf("ww " OWx" pwRootLoop %p\n", ww, (void *)pwRootLoop));
+      #if defined(ALLOW_EMBEDDED_BITMAP)
+        if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
+            assert(nBL <= cnLogBitsPerWord); // for now
+            wPopCntLoop = __builtin_popcountll(*pwRootLoop & MSK(EXP(nBL)));
             wPopCnt += wPopCntLoop;
-        } else switch (nTypeLoop) {
-      #if defined(EMBED_KEYS)
-        case T_EMBEDDED_KEYS:
-            wPopCntLoop = wr_nPopCnt(*pwRootLoop, nBL);
-            assert(wPopCntLoop != 0);
-            DBGC(printf("ww %" _fw"d T_EMBED_KEYS wRoot " OWx" wPopCnt %" _fw
-                        "d\n", ww, *pwRootLoop, wPopCntLoop));
-            wPopCnt += wPopCntLoop;
-            break;
-      #endif // defined(EMBED_KEYS)
-        case T_LIST:
-      #if ! defined(SEPARATE_T_NULL)
-            if (pwrLoop != NULL)
-      #endif // ! defined(SEPARATE_T_NULL)
-            {
-      #if defined(PP_IN_LINK)
-                if (nBL < cnBitsPerWord) {
-                    wPopCntLoop = PWR_wPopCntBL(pwRootLoop, NULL, nBL);
-                } else
-      #endif // defined(PP_IN_LINK)
-                {
-                    wPopCntLoop = PWR_xListPopCnt(pwRootLoop, pwrLoop, nBL);
+            DBGC(printf("*pwRootLoop " OWx"\n", *pwRootLoop));
+            DBGC(printf("embedded bitmap wPopCntLoop " OWx" wPopCnt " OWx"\n",
+                        wPopCntLoop, wPopCnt));
+        } else
+      #else // defined(ALLOW_EMBEDDED_BITMAP)
+        assert(nBL > (int)LOG(sizeof(Link_t) * 8));
+      #endif // defined(ALLOW_EMBEDDED_BITMAP)
+        {
+            Word_t *pwrLoop = wr_pwr(*pwRootLoop);
+            int nTypeLoop = Get_nType(pwRootLoop);
+            DBGC(printf("pwrLoop %p nTypeLoop %d\n",
+                        (void *)pwrLoop, nTypeLoop));
+            if (tp_bIsSwitch(nTypeLoop)) {
+                wPopCntLoop = PWR_wPopCntBL(pwRootLoop,
+                                            (Switch_t *)pwrLoop, nBL);
+                if (wPopCntLoop == 0) {
+                    wPopCntLoop = EXP(nBL);
                 }
+                DBGC(printf("ww %" _fw"d bIsSwitch pwr %p wPopCnt %" _fw"d\n",
+                            ww, (void *)pwrLoop, wPopCntLoop));
+                wPopCnt += wPopCntLoop;
+                DBGC(printf("switch wPopCntLoop " OWx" wPopCnt " OWx"\n",
+                            wPopCntLoop, wPopCnt));
+            } else switch (nTypeLoop) {
+          #if defined(EMBED_KEYS)
+            case T_EMBEDDED_KEYS:
+                wPopCntLoop = wr_nPopCnt(*pwRootLoop, nBL);
                 assert(wPopCntLoop != 0);
-                DBGC(printf("ww %" _fw"d T_LIST pwr %p wPopCnt %" _fw"d\n",
+                DBGC(printf("ww %" _fw"d T_EMBED_KEYS wRoot " OWx
+                            " wPopCnt %" _fw"d\n",
+                            ww, *pwRootLoop, wPopCntLoop));
+                wPopCnt += wPopCntLoop;
+                DBGC(printf("embedded keys wPopCntLoop " OWx
+                            " wPopCnt " OWx"\n", wPopCntLoop, wPopCnt));
+                break;
+          #endif // defined(EMBED_KEYS)
+            case T_LIST:
+                wPopCntLoop = 0;
+          #if ! defined(SEPARATE_T_NULL)
+                if (pwrLoop != NULL)
+          #endif // ! defined(SEPARATE_T_NULL)
+                {
+          #if defined(PP_IN_LINK)
+                    if (nBL < cnBitsPerWord) {
+                        wPopCntLoop = PWR_wPopCntBL(pwRootLoop, NULL, nBL);
+                    } else
+          #endif // defined(PP_IN_LINK)
+                    {
+                        wPopCntLoop = PWR_xListPopCnt(pwRootLoop,
+                                                      pwrLoop, nBL);
+                    }
+                    assert(wPopCntLoop != 0);
+                    DBGC(printf("ww %" _fw"d T_LIST pwr %p wPopCnt %" _fw"d\n",
+                                ww, (void *)pwr, wPopCntLoop));
+                    wPopCnt += wPopCntLoop;
+                }
+                DBGC(printf("list wPopCntLoop " OWx" wPopCnt " OWx"\n",
+                     wPopCntLoop, wPopCnt));
+                break;
+            case T_BITMAP:
+                wPopCntLoop
+                    = w_wPopCntBL(*(pwrLoop + EXP(nBL - cnLogBitsPerWord)),
+                                  nBL);
+                if (wPopCntLoop == 0) {
+                    wPopCntLoop = EXP(nBL);
+                }
+                DBGC(printf("ww %" _fw"d T_BITMAp pwr %p wPopCnt %" _fw"d\n",
                             ww, (void *)pwr, wPopCntLoop));
                 wPopCnt += wPopCntLoop;
+                DBGC(printf("bitmap wPopCntLoop " OWx" wPopCnt " OWx"\n",
+                            wPopCntLoop, wPopCnt));
+                break;
+            default:
+                printf("\nww %" _fw"d *pwRootLoop " OWx" nTypeLoop %d\n",
+                       ww, *pwRootLoop, nTypeLoop);
+                assert(0);
             }
-            break;
-        case T_BITMAP:
-            wPopCntLoop = w_wPopCntBL(*(pwrLoop + EXP(nBL - cnLogBitsPerWord)),
-                                      nBL);
-            if (wPopCntLoop == 0) {
-                wPopCntLoop = EXP(nBL);
-            }
-            DBGC(printf("ww %" _fw"d T_BITMAp pwr %p wPopCnt %" _fw"d\n",
-                        ww, (void *)pwr, wPopCntLoop));
-            wPopCnt += wPopCntLoop;
-            break;
-        default:
-            printf("\nww %" _fw"d *pwRootLoop " OWx" nTypeLoop %d\n",
-                   ww, *pwRootLoop, nTypeLoop);
-            assert(0);
         }
     }
       #if ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
@@ -121,9 +153,10 @@ CountSw(Word_t *pwRoot,
         // subtract it out here.
         --wPopCnt;
           #endif // defined(INSERT)
+        DBGC(printf("wPopCntSw " OWx" wPopCnt " OWx"\n", wPopCntSw, wPopCnt));
     }
       #endif // ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
-    DBGC(printf("\nCountSw wPopCnt %" _fw"d\n", wPopCnt));
+    DBGC(printf("\nCountSw wPopCnt %" _fw"u\n", wPopCnt));
     return wPopCnt;
 }
   #endif // defined(COUNT)
@@ -494,9 +527,11 @@ again3:;
     default: // printf("unknown type %d\n", nType); assert(0); exit(0);
     // case T_SKIP_TO_SWITCH: // skip link to uncompressed switch
     {
-        DBGX((nType != T_SKIP_TO_SWITCH) ? printf("nType: %d\n", nType) : 0);
         // pwr points to a switch
+#if defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
+        DBG((nType != T_SKIP_TO_SWITCH) ? printf("nType: %d\n", nType) : 0);
         assert(nType == T_SKIP_TO_SWITCH);
+#endif // ! defined(LVL_IN_WR_HB) && ! defined(DEPTH_IN_SW)
         DBGX(printf("SKIP_TO_SW\n"));
 
         // Looks to me like PrefixMismatch has no performance issues with
@@ -532,6 +567,8 @@ again3:;
                 }
                 DBGC(printf("SKIP_TO_SW: PM wPopCnt %" _fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
+                DBGC(printf("sksw wPopCnt " OWx" wPopCntSum " OWx"\n",
+                            wPopCnt, wPopCntSum));
             }
   #endif // defined(COUNT)
             break;
@@ -583,6 +620,8 @@ again3:;
                 }
                 DBGC(printf("SKIP_TO_BM_SW: PM wPopCnt %" _fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
+                DBGC(printf("skbmsw wPopCnt " OWx" wPopCntSum " OWx"\n",
+                            wPopCnt, wPopCntSum));
             }
   #endif // defined(COUNT)
             break;
@@ -633,6 +672,8 @@ again3:;
                 }
                 DBGC(printf("SKIP_TO_XX_SW: PM wPopCnt %" _fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
+                DBGC(printf("skxxsw wPopCnt " OWx" wPopCntSum " OWx"\n",
+                            wPopCnt, wPopCntSum));
             }
   #endif // defined(COUNT)
             break;
@@ -643,6 +684,8 @@ again3:;
 
 #endif // defined(SKIP_TO_XX_SW)
 
+#else // defined(SKIP_LINKS)
+    default: printf("unknown type %d\n", nType); assert(0); exit(0);
 #endif // defined(SKIP_LINKS)
 
     case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
@@ -721,6 +764,8 @@ t_switch:;
                           1 << nBitsIndexSz);
         DBGC(printf("T_SWITCH wPopCnt %" _fw"d\n", wPopCnt));
         wPopCntSum += wPopCnt;
+        DBGC(printf("sw wPopCnt " OWx" wPopCntSum " OWx"\n",
+                    wPopCnt, wPopCntSum));
 #endif // defined(COUNT)
 
         pwRoot = &pwr_pLinks((Switch_t *)pwr)[wIndex].ln_wRoot;
@@ -729,12 +774,33 @@ t_switch:;
 switchTail:;
 
         wRoot = *pwRoot;
+        DBGX(printf("switchTail: pwRoot %p wRoot " OWx" nBL %d\n",
+                    (void *)pwRoot, wRoot, nBL));
+
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We may need to check the prefix of the switch we just visited in
         // the next iteration of the loop if we've reached a leaf so we
         // preserve the value of pwr.
         pwrPrev = pwr;
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+        nBLR = nBL; // Advance nBLR to the bottom of this switch now.
+#if defined(ALLOW_EMBEDDED_BITMAP)
+        // The first test below is done at compile time and will make the rest
+        // of the code block go away if it is not needed.
+        if ((EXP(cnBitsInD1) <= (sizeof(Link_t) * 8))
+            && (nBL <= (int)LOG(sizeof(Link_t) * 8)))
+        {
+            // if nBL == LOG(sizeof(Link_t) * 8) there is no room for a
+            // type field containing T_BITMAP so we goto t_bitmap directly.
+            // What happens when it's time to make a 2-digit bitmap?
+            // What happens when nBL < LOG(sizeof(Link_t) * 8)?
+            // Would NewSwitch just allocate way more memory than we need?
+            // Can we skip to one of these sub link size bitmaps?
+            // What happens when it's time to make a 2-digit bitmap?
+            // Should we back up nBLR and nBL and goto t_bitmap that way?
+            goto t_bitmap;
+        }
+#else // defined(ALLOW_EMBEDDED_BITMAP)
         // Is there any reason to have
         // EXP(cnBitsInD1) <= (sizeof(Link_t) * 8)? What about lazy conversion
         // of embedded keys at nBL > sizeof(Link_t) * 8 to
@@ -742,20 +808,7 @@ switchTail:;
         // Initialize warns if cnBitsInD1 is too small relative
         // to sizeof(Link_t).
         assert(EXP(nBL) > (sizeof(Link_t) * 8));
-        // We've left some code here, in the comment, for reference only.
-        // The first test is done at compile time and will make the rest
-        // go away.
-        //
-        // if ((EXP(cnBitsInD1) <= (sizeof(Link_t) * 8))
-        //     && (nBL <= (int)LOG(sizeof(Link_t) * 8)))
-        // {
-        //     goto t_bitmap;
-        // }
-
-        DBGX(printf("switchTail: pwRoot %p wRoot " OWx" nBL %d\n",
-                    (void *)pwRoot, wRoot, nBL));
-
-        nBLR = nBL; // Advance nBLR to the bottom of this switch now.
+#endif // defined(ALLOW_EMBEDDED_BITMAP)
 #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
 #else // defined(LOOKUP) || !defined(RECURSIVE)
@@ -837,6 +890,8 @@ t_xx_sw:;
         wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL, nIndex, 1<<nBW);
         DBGC(printf("T_XX_SW wPopCnt %" _fw"d\n", wPopCnt));
         wPopCntSum += wPopCnt;
+        DBGC(printf("xxsw wPopCnt " OWx" wPopCntSum " OWx"\n",
+                    wPopCnt, wPopCntSum));
 #endif // defined(COUNT)
 
         pwRoot = &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot;
@@ -1015,7 +1070,11 @@ t_bm_sw:;
 #endif // defined(INSERT) || defined(REMOVE)
 
 #if defined(COUNT)
-        wPopCntSum += CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL, wIndex, MAXUINT);
+        wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL, wIndex, MAXUINT);
+        wPopCntSum += wPopCnt;
+        DBGC(printf("bmsw wPopCnt " OWx" wPopCntSum " OWx"\n",
+                    wPopCnt, wPopCntSum));
+}
 #endif // defined(COUNT)
 
         pwRoot = &pwr_pLinks((BmSwitch_t *)pwr)[wIndex].ln_wRoot;
@@ -1192,7 +1251,9 @@ t_list:;
 
       #if defined(COUNT)
         DBGC(printf("T_LIST: nPos %d\n", nPos));
-        return wPopCntSum + nPos;
+        wPopCntSum += nPos;
+        DBGC(printf("list nPos 0x%x wPopCntSum " OWx"\n", nPos, wPopCntSum));
+        return wPopCntSum;
       #endif // defined(COUNT)
 
       #if defined(PP_IN_LINK) && defined(INSERT)
@@ -1240,6 +1301,8 @@ t_list:;
                 DBGC(printf("T_SKIP_TO_BITMAP: PREFIX_MISMATCH wPopCnt %" _fw
                                 "d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
+                DBGC(printf("skbm wPopCnt " OWx" wPopCntSum " OWx"\n",
+                            wPopCnt, wPopCntSum));
             }
   #endif // defined(COUNT)
             break;
@@ -1317,21 +1380,41 @@ t_bitmap:;
         {
   #if defined(COUNT)
             // Count bits.
-            Word_t wCount = 0;
-            unsigned nWordOffset = (wKey & MSK(nBLR)) >> cnLogBitsPerWord;
-            unsigned nn;
-            for (nn = 0; nn < nWordOffset; nn++) {
-                wCount += __builtin_popcountll(pwr[nn]);
+            Word_t wCount;
+      #if defined(ALLOW_EMBEDDED_BITMAP)
+            if ((cnBitsInD1 <= LOG(sizeof(Link_t) * 8))
+                && (nBLR == cnBitsInD1))
+            {
+                //assert(nBL == nBLR); // skip to sub-link-size bm
+                assert(cnBitsInD1 <= cnLogBitsPerWord); // for now
+                Word_t wBit = EXP(wKey & MSK(nBL));
+                Word_t wBmMask = wBit - 1;
+                wCount = __builtin_popcountll(wRoot & wBmMask);
+            } else
+      #else // defined(ALLOW_EMBEDDED_BITMAP)
+            assert(cnBitsInD1 > LOG(sizeof(Link_t) * 8));
+      #endif // defined(ALLOW_EMBEDDED_BITMAP)
+            {
+                wCount = 0;
+                unsigned nWordOffset = (wKey & MSK(nBLR)) >> cnLogBitsPerWord;
+                unsigned nn;
+                for (nn = 0; nn < nWordOffset; nn++) {
+                    wCount += __builtin_popcountll(pwr[nn]);
+                }
+                Word_t wBit = ((Word_t)1 << (wKey & (cnBitsPerWord - 1)));
+                Word_t wBmMask = wBit - 1;
+                //Word_t wBmMask = (wBit | wBit - 1);
+                wCount += __builtin_popcountll(pwr[nn] & wBmMask);
+                DBGC(printf("T_BITMAP: nWordOffset 0x%x wBit " OWx
+                            " wBmMask " OWx
+                            " wCount %" _fw"d wPopCntSum + wCount %" _fw"d\n",
+                            nWordOffset, wBit, wBmMask, wCount,
+                            wPopCntSum + wCount));
             }
-            Word_t wBit = ((Word_t)1 << (wKey & (cnBitsPerWord - 1)));
-            Word_t wBmMask = wBit - 1;
-            //Word_t wBmMask = (wBit | wBit - 1);
-            wCount += __builtin_popcountll(pwr[nn] & wBmMask);
-            DBGC(printf("T_BITMAP: nWordOffset 0x%x wBit " OWx" wBmMask " OWx
-                        " wCount %" _fw"d wPopCntSum + wCount %" _fw"d\n",
-                        nWordOffset, wBit, wBmMask, wCount,
-                        wPopCntSum + wCount));
-            return wPopCntSum + wCount;
+            wPopCntSum += wCount;
+            DBGC(printf("bm nBLR %d wPopCnt " OWx" wPopCntSum " OWx"\n",
+                        nBLR, wPopCnt, wPopCntSum));
+            return wPopCntSum;
   #else // defined(COUNT)
   #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
             // BUG?: Is pwrPrev valid here, i.e. does it mean what this code
@@ -1355,21 +1438,13 @@ t_bitmap:;
                                      wKey & MSK(cnBitsLeftAtDl2));
       #else // defined(USE_XX_SW)
             // Might be able to speed this up with bl-specific code.
-            // It looks like this code is assuming nBL == cnBitsInD1.
-            // I'm not sure why this is ok now that we're installing a
-            // bitmap at dl2.
-            // I guess it is only assuming nBL == cnBitsInD1 if
-            // EXP(cnBitsInD1) <= sizeof(Link_t) * 8.
-            assert((nBLR == cnBitsInD1)
-                || (EXP(cnBitsInD1) > sizeof(Link_t) * 8));
             int bBitIsSet
-                = (cnBitsInD1 <= cnLogBitsPerWord)
-                    ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
-                : (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
-                    ? BitIsSet(STRUCT_OF(pwRoot, Link_t, ln_wRoot),
+                = (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
+                        && (nBLR == cnBitsInD1)
+                    ? (cnBitsInD1 <= cnLogBitsPerWord)
+                            ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
+                    : BitIsSet(STRUCT_OF(pwRoot, Link_t, ln_wRoot),
                                wKey & MSK(cnBitsInD1))
-                // Isn't pwr == wr_pwr(wRoot)
-                // : BitIsSet(wr_pwr(wRoot), wKey & MSK(nBL));
                 : BitIsSet(pwr, wKey & MSK(nBLR));
       #endif // defined(USE_XX_SW)
             if (bBitIsSet)
@@ -1403,6 +1478,7 @@ t_bitmap:;
             DBGX(printf("Mismatch at bitmap wPrefix " OWx" nBLR %d nBL %d\n",
                         PWR_wPrefixNATBL(pwRoot, pwrPrev, nBLR), nBLR, nBL));
           #if defined(COUNT)
+            DBGC(printf("bm wPopCntSum " OWx"\n", wPopCntSum));
             return wPopCntSum;
           #endif // defined(COUNT)
         }
@@ -1422,8 +1498,11 @@ t_bitmap:;
         // We removed the code that was in InsertGuts to handle bitmaps.
         // So we can no longer just 'break' here like we used to do.
         // We also removed the code to do cleanup after the call to InsertGuts.
+        // Should we be using nBLR here?
         InsertAtBitmap(pwRoot, wKey, nBL_to_nDL(nBL), wRoot);
   #else
+// We call InsertGuts here rather than breaking out of the switch to call
+// it later because we may have to goto cleanup after?
         InsertGuts(pwRoot, wKey, nBL, wRoot, -1
       #if defined(CODE_XX_SW)
                    , pwRootPrev
@@ -1434,8 +1513,9 @@ t_bitmap:;
                    );
   #endif
   #if (cn2dBmWpkPercent != 0)
-        if ((nBLR == cnBitsInD1)
-            && (nBL == nBLR)
+        if ((EXP(cnBitsInD1) > sizeof(Link_t) * 8) // else doesn't work yet
+            && (nBLR == cnBitsInD1) // ???
+            && (nBL == nBLR) // no skip; why do we care?
   #if 0
             && (PWR_wPopCntBL(pwRootPrev, (Switch_t *)wr_pwr(*pwRootPrev),
                               cnBitsLeftAtDl2)
@@ -1501,7 +1581,9 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
             }
             DBGC(printf("EK: wPopCntSum(before) %" _fw"d nn %d\n", wPopCntSum,
                         nn));
-            return wPopCntSum + nn;
+            wPopCntSum += nn;
+            DBGC(printf("ek nn %d wPopCntSum " OWx"\n", nn, wPopCntSum));
+            return wPopCntSum;
         }
   #endif // defined(COUNT)
 
@@ -1682,6 +1764,7 @@ foundIt:;
   #endif // ! defined(LOOKUP)
 
   #if defined(COUNT)
+        DBGC(printf("to wPopCntSum " OWx"\n", wPopCntSum));
         return wPopCntSum;
   #endif // defined(COUNT)
 
@@ -1764,6 +1847,7 @@ foundIt:;
 notFound:; // why don't we just "break;" above?
 #endif // defined(BM_SW_FOR_REAL)
 #if defined(COUNT)
+    DBGC(printf("done wPopCntSum " OWx"\n", wPopCntSum));
     return wPopCntSum;
 #endif // defined(COUNT)
 #if defined(INSERT)
