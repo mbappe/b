@@ -170,9 +170,9 @@ WaitForContextSwitch(Word_t Loops)
 // =======================================================================
 #define FAILURE(STR, UL)                                                \
 {                                                                       \
-printf(        "\n--- Error: %s %lu, file='%s', 'function='%s', line %d\n", \
+printf(        "\n--- Error: %s %" PRIuPTR", file='%s', 'function='%s', line %d\n", \
         STR, (Word_t)(UL), __FILE__, __FUNCTI0N__, __LINE__);           \
-fprintf(stderr,"\n--- Error: %s %lu, file='%s', 'function='%s', line %d\n", \
+fprintf(stderr,"\n--- Error: %s %" PRIuPTR", file='%s', 'function='%s', line %d\n", \
         STR, (Word_t)(UL), __FILE__, __FUNCTI0N__, __LINE__);           \
         exit(1);                                                        \
 }
@@ -504,6 +504,11 @@ GetNextKey(PSeed_t PSeed)
         do
         {
             Key = RandomNumb(PSeed, SValue);
+            if ((sizeof(Word_t) * 8) != BValue)
+            {
+                 assert((Key < (1 << BValue)) || SValue);
+                 Key %= (Word_t)1 << BValue;
+            }
         } while (Key > ExpanseM1);         // throw away of high keys
     }
    
@@ -518,9 +523,6 @@ GetNextKey(PSeed_t PSeed)
     }
     else
     {
-        if ((sizeof(Word_t) * 8) != BValue)
-            Key %= (Word_t)1 << BValue;
-        
         return (Key + Offset);         // add in Offset;
     }
 }
@@ -701,7 +703,7 @@ Usage(int argc, char **argv)
     printf("\n   The following are primarly used for diagnosis and debugging\n");
     printf("-K    do a __sync_synchronize() in GetNextKey() (is mfence instruction in X86)\n"); 
     printf("-h    Skip JudyLIns/Judy1Set every 32 numbers from Key Generator [0], (but not in Get/Test)\n");
-    printf("-s #  Starting number in Key Generator [0x%lx]\n", StartSequent);
+    printf("-s #  Starting number in Key Generator [0x%" PRIxPTR"]\n", StartSequent);
     printf("-o #, --Offset #     Key += #  additional add to Key\n");
     printf("-O #, --BigOffset #  Key += (# << (-B #))  additional add to Key above MSb (high) bits\n");
     printf("-p     Print number set used for testing  - takes presedence over other options\n");
@@ -709,7 +711,7 @@ Usage(int argc, char **argv)
     printf("-i     Do a JudyLIns/Judy1Set after every Ins/Set (adds to times)\n");
     printf("-M     Print on stderr Judy_mmap() and Judy_unmap() calls to kernel\n");
     printf("-h     Put 'Key holes' in the Insert path 1 and L options only\n");
-    printf("-W #   Specify the 'CPU Warmup' time in milliseconds [%lu]\n", Warmup);
+    printf("-W #   Specify the 'CPU Warmup' time in milliseconds [%" PRIuPTR"]\n", Warmup);
 
     printf("\n");
 
@@ -923,7 +925,7 @@ main(int argc, char *argv[])
     }
     printf("Dmin = %10.0f, Dmax = %10.0f, Davg = %10.0f\n", Dmin, Dmax,
            Davg / 10000000.0);
-    printf("Count of over 1uS = %lu\n", CountL);
+    printf("Count of over 1uS = %" PRIuPTR"\n", CountL);
 
     exit(1);
 #endif // LATER
@@ -1011,17 +1013,15 @@ main(int argc, char *argv[])
 
             Bpercent = atof(tok);
 
-            if (Bpercent < 50.0 || Bpercent > 100.0)
+            if (Bpercent <= 50.0 || Bpercent >= 100.0)
             {
                 ErrorFlag++;
-                printf("\nError --- Percent = %4.2f must be between 50 and 100 inclusive!!!\n", Bpercent);
+                printf("\nError --- Percent = %4.2f must be greater than 50 and less than 100 !!!\n", Bpercent);
             }
             // Don't want to calculate MaxNumb later based on a Bpercent
             // that was derived from -N.
             MaxNumb = pow(2.0, BValue) * Bpercent / 100;
             MaxNumb--;
-            if (Bpercent == 50.0) { ++MaxNumb; }
-            if (Bpercent == 100.0) { --MaxNumb; }
             break;
         }
         case 'G':                      // Gaussian Random numbers
@@ -1143,7 +1143,7 @@ main(int argc, char *argv[])
                 {
                     if ((FValue % 100000000) == 0)
                     {
-                        fprintf(stderr, "%lu", One100M++);
+                        fprintf(stderr, "%" PRIuPTR"", One100M++);
                     }
                     else
                     {
@@ -1153,7 +1153,7 @@ main(int argc, char *argv[])
                 if (strtoul(Buffer, NULL, 0) != 0) 
                     FValue++;
             }
-            fprintf(stderr, "\n# Number of Keys = %lu\n", FValue);
+            fprintf(stderr, "\n# Number of Keys = %" PRIuPTR"\n", FValue);
             if ((FileKeys = (PWord_t)malloc(FValue * sizeof(Word_t))) == 0)
             {
                 FAILURE("malloc failure, Bytes =", FValue * sizeof(Word_t));
@@ -1306,15 +1306,15 @@ main(int argc, char *argv[])
 
         if (BigOffset == 0)
         {
-            printf("\n# Warning -- '-O 0x%lx' ignored, because '-B %lu' option too big\n", bigoffset, BValue);
-            fprintf(stderr, "\n# Warning -- '-O 0x%lx' ignored, because '-B %lu' option too big\n", bigoffset, BValue);
+            printf("\n# Warning -- '-O 0x%" PRIxPTR"' ignored, because '-B %" PRIuPTR"' option too big\n", bigoffset, BValue);
+            fprintf(stderr, "\n# Warning -- '-O 0x%" PRIxPTR"' ignored, because '-B %" PRIuPTR"' option too big\n", bigoffset, BValue);
         }
     }
     Offset = BigOffset + LittleOffset;  // why not?
 
     if (PStartSeed == (PSeed_t) NULL)
     {
-        printf("\nIllegal Number in -G%lu !!!\n", GValue);
+        printf("\nIllegal Number in -G%" PRIuPTR" !!!\n", GValue);
         ErrorFlag++;
     }
 
@@ -1326,7 +1326,7 @@ main(int argc, char *argv[])
 //  Check if starting number is too big
     if (StartSequent > MaxNumb)
     {
-        printf("\nArgument in '-s %lu' option is greater than %lu\n", StartSequent, MaxNumb);
+        printf("\nArgument in '-s %" PRIuPTR"' option is greater than %" PRIuPTR"\n", StartSequent, MaxNumb);
         StartSequent = MaxNumb;
         //ErrorFlag++;
     }
@@ -1349,16 +1349,16 @@ main(int argc, char *argv[])
             nElms = MaxNumb;
 
 #ifdef notnecessary
-            printf("# Trim Max number of Elements -n%lu due to max -B%lu bit Keys",
+            printf("# Trim Max number of Elements -n%" PRIuPTR" due to max -B%" PRIuPTR" bit Keys",
                    MaxNumb, BValue);
-            fprintf(stderr, "# Trim Max number of Elements -n%lu due to max -B%lu bit Keys",
+            fprintf(stderr, "# Trim Max number of Elements -n%" PRIuPTR" due to max -B%" PRIuPTR" bit Keys",
                    MaxNumb, BValue);
 #endif  // notnecessary
 
             if (Offset)
             {
-                printf(", add %ld (0x%lx) to Key values", Offset, Offset);
-                fprintf(stderr,", add %ld (0x%lx) to Key values", Offset, Offset);
+                printf(", add %" PRIdPTR" (0x%" PRIxPTR") to Key values", Offset, Offset);
+                fprintf(stderr,", add %" PRIdPTR" (0x%" PRIxPTR") to Key values", Offset, Offset);
             }
             printf("\n");
             fprintf(stderr, "\n");
@@ -1369,7 +1369,7 @@ main(int argc, char *argv[])
             if (nElms > (MaxNumb >> 1))
             {
                 printf
-                    ("# Trim Max number of Elements -n%lu to -n%lu due to -G%lu spectrum of Keys\n",
+                    ("# Trim Max number of Elements -n%" PRIuPTR" to -n%" PRIuPTR" due to -G%" PRIuPTR" spectrum of Keys\n",
                      MaxNumb, MaxNumb >> 1, GValue);
                 nElms = MaxNumb >> 1;
                 ExpanseM1 = nElms;
@@ -1399,14 +1399,14 @@ main(int argc, char *argv[])
 
 //            printf("%" PRIxPTR"\n", PrintKey);
 
-            printf("0x%" PRIxPTR", %2d %lu\n", PrintKey, (int)log2((double)(PrintKey)) + 1, PrintKey);
+            printf("0x%" PRIxPTR", %2d %" PRIuPTR"\n", PrintKey, (int)log2((double)(PrintKey)) + 1, PrintKey);
 
 #ifdef __LP64__
 //            printf("0x%016lx\n", PrintKey);
-// 1          printf("0x%016lx %lu %lu, %4lu, %4lu\n", PrintKey, ii, BValue, LeftShift, RightShift);
+// 1          printf("0x%016lx %" PRIuPTR" %" PRIuPTR", %4lu, %4lu\n", PrintKey, ii, BValue, LeftShift, RightShift);
 #else   // ! __LP64__
  //           printf("0x%08lx\n", PrintKey);
-// 1          printf("0x%08lx %lu %lu, %4lu, %4lu\n", PrintKey, ii, BValue, LeftShift, RightShift);
+// 1          printf("0x%08lx %" PRIuPTR" %" PRIuPTR", %4lu, %4lu\n", PrintKey, ii, BValue, LeftShift, RightShift);
 #endif  // ! __LP64__
 
         }
@@ -1416,18 +1416,18 @@ main(int argc, char *argv[])
 //  print Title for plotting -- command + run arguments
 //
 
-    printf("# TITLE %s -W%lu", argv[0], Warmup);
+    printf("# TITLE %s -W%" PRIuPTR"", argv[0], Warmup);
 
     if (Bpercent == 100.0)
     {
-         printf(" -B%lu", BValue); 
+         printf(" -B%" PRIuPTR"", BValue); 
 
     } else
     {
-         printf(" -N0x%lx", MaxNumb);
+         printf(" -N0x%" PRIxPTR"", MaxNumb);
     }
 
-    printf(" -G%lu -", GValue);
+    printf(" -G%" PRIuPTR" -", GValue);
 
     if (bFlag)
         printf("b");
@@ -1473,7 +1473,7 @@ main(int argc, char *argv[])
         printf("K");
 
 //  print more options - default, adjusted or otherwise
-    printf(" -n%lu -T%lu -P%lu -X%d", nElms, TValues, PtsPdec, XScale);
+    printf(" -n%" PRIuPTR" -T%" PRIuPTR" -P%" PRIuPTR" -X%d", nElms, TValues, PtsPdec, XScale);
     if (bFlag && (bParm[0] != 0))
     {
         int ii;
@@ -1485,13 +1485,13 @@ main(int argc, char *argv[])
         }
     }
     if (SValue)
-        printf(" -S%lu -s%lu", SValue, StartSequent);
+        printf(" -S%" PRIuPTR" -s%" PRIuPTR"", SValue, StartSequent);
 
     if (FValue)
         printf(" -F %s", keyfile);
 
     if (Offset) 
-        printf(" -o 0x%lx", Offset);
+        printf(" -o 0x%" PRIxPTR"", Offset);
 
     printf("\n");
 
@@ -1538,7 +1538,7 @@ main(int argc, char *argv[])
     }
 
     if (Bpercent != 100.0)
-        printf("# ExpanseM1 of Random Number generator was trimed to 0x%lx (%lu)\n", ExpanseM1, ExpanseM1);
+        printf("# ExpanseM1 of Random Number generator was trimed to 0x%" PRIxPTR" (%" PRIuPTR")\n", ExpanseM1, ExpanseM1);
 
 //  uname(2) strings describing the machine
     {
@@ -1556,8 +1556,8 @@ main(int argc, char *argv[])
         printf("# %s 32 Bit version\n", argv[0]);
 
 //    Debug
-    printf("# MaxNumb = %lu[0x%lx]\n", MaxNumb, MaxNumb); // must not do 
-    printf("# BValue = %lu\n", BValue);
+    printf("# MaxNumb = %" PRIuPTR"[0x%" PRIxPTR"]\n", MaxNumb, MaxNumb); // must not do 
+    printf("# BValue = %" PRIuPTR"\n", BValue);
     printf("# Bpercent = %20.18f\n", Bpercent);
 
 
@@ -1800,8 +1800,8 @@ main(int argc, char *argv[])
         Bytes = (ExpanseM1 + sizeof(Word_t)) / sizeof(Word_t);
 
         printf("# ========================================================\n");
-        printf("#     WARNING '-b#' option with '-B%lu...' option will malloc() a\n", BValue);
-        printf("#     fixed sized bitmap of %lu Bytes.\n", Bytes);
+        printf("#     WARNING '-b#' option with '-B%" PRIuPTR"...' option will malloc() a\n", BValue);
+        printf("#     fixed sized bitmap of %" PRIuPTR" Bytes.\n", Bytes);
         printf("#  Measurements are WORTHLESS unless malloc() returns 2MiB aligned pointer\n");
         printf("# ========================================================\n");
 
@@ -1816,16 +1816,16 @@ main(int argc, char *argv[])
         {
             FAILURE("malloc failure, Bytes =", Bytes);
         }
-        printf("# B1 = 0x%lx = malloc(%lu)\n", (Word_t)B1, Bytes);
+        printf("# B1 = 0x%" PRIxPTR" = malloc(%" PRIuPTR")\n", (Word_t)B1, Bytes);
 #else   // ! USE_MALLOC
 
-        JudyMalloc((Word_t)10);       
+        JudyMalloc((Word_t)10); // get large page aligned
         B1 = (PWord_t)mmap(NULL, Bytes, (PROT_READ|PROT_WRITE), (MAP_PRIVATE|MAP_ANONYMOUS), -1, 0);
         if (B1 == (PWord_t)NULL)
         {
             FAILURE("mmap failure, Bytes =", Bytes);
         }
-        printf("# B1 = 0x%lx = mmap(%lu,...)\n", (Word_t)B1, Bytes);
+        printf("# B1 = 0x%" PRIxPTR" = mmap(%" PRIuPTR",...)\n", (Word_t)B1, Bytes);
 #endif // ! USE_MALLOC
 
 //      clear 1/2 bitmap and bring into RAM
@@ -1849,8 +1849,8 @@ main(int argc, char *argv[])
         Bytes = ExpanseM1 + 1;
 
         printf("# ========================================================\n");
-        printf("#     WARNING '-y' option with '-B%lu...' option will malloc() a\n", BValue);
-        printf("#     fixed sized Bytemap of %lu Bytes.\n", Bytes);
+        printf("#     WARNING '-y' option with '-B%" PRIuPTR"...' option will malloc() a\n", BValue);
+        printf("#     fixed sized Bytemap of %" PRIuPTR" Bytes.\n", Bytes);
         printf("#  Measurements are WORTHLESS unless malloc() returns 2MiB aligned pointer\n");
         printf("# ========================================================\n");
 
@@ -1863,7 +1863,7 @@ main(int argc, char *argv[])
         {
             FAILURE("malloc failure, Bytes =", Bytes);
         }
-        printf("# By = 0x%lx = malloc(%lu)\n", (Word_t)By, Bytes);
+        printf("# By = 0x%" PRIxPTR" = malloc(%" PRIuPTR")\n", (Word_t)By, Bytes);
 
 #else   // ! USE_MALLOC
 
@@ -1873,7 +1873,7 @@ main(int argc, char *argv[])
         {
             FAILURE("mmap failure, Bytes =", Bytes);
         }
-        printf("# By = 0x%lx = mmap(%lu,...)\n", (Word_t)By, Bytes);
+        printf("# By = 0x%" PRIxPTR" = mmap(%" PRIuPTR",...)\n", (Word_t)By, Bytes);
 #endif // ! USE_MALLOC
 
 
@@ -1974,7 +1974,7 @@ main(int argc, char *argv[])
             PrintHeader();
         }
 
-        printf("%11lu %10lu %10lu", Pop1, Delta, Meas);
+        printf("%11" PRIuPTR" %10" PRIuPTR" %10" PRIuPTR, Pop1, Delta, Meas);
 
 #ifdef NEVER
         I dont think this code is ever executed (dlb)
@@ -2422,7 +2422,7 @@ main(int argc, char *argv[])
 //            PRINT5_2f(j__MissCompares / (double)Meas);
             printf(" %5.1f", (double)j__MissCompares / (double)Meas);
 
-//printf("\nj__MissCompares = %lu, Meas = %lu\n", j__MissCompares, Meas);
+//printf("\nj__MissCompares = %" PRIuPTR", Meas = %" PRIuPTR"\n", j__MissCompares, Meas);
 
 //          print average percent of Leaf searched (with compares)
             printf(" %5.1f", PercentLeafWithDirectHits);
@@ -2494,7 +2494,7 @@ main(int argc, char *argv[])
         DeltanSec1 /= (double)Count1;
 
         printf
-            ("# Judy1FreeArray:  %lu, %0.3f Words/Key, %lu Bytes released, %0.3f nSec/Key\n",
+            ("# Judy1FreeArray:  %" PRIuPTR", %0.3f Words/Key, %" PRIuPTR" Bytes released, %0.3f nSec/Key\n",
              Count1, (double)(Bytes / sizeof(Word_t)) / (double)Count1, Bytes,
              DeltanSec1);
     }
@@ -2507,7 +2507,7 @@ main(int argc, char *argv[])
 
         DeltanSecL /= (double)CountL;
         printf
-            ("# JudyLFreeArray:  %lu, %0.3f Words/Key, %lu Bytes released, %0.3f nSec/Key\n",
+            ("# JudyLFreeArray:  %" PRIuPTR", %0.3f Words/Key, %" PRIuPTR" Bytes released, %0.3f nSec/Key\n",
              CountL, (double)(Bytes / sizeof(Word_t)) / (double)CountL, Bytes,
              DeltanSecL);
     }
@@ -2527,13 +2527,13 @@ main(int argc, char *argv[])
 
         DeltanSecHS /= (double)nElms;   // no Counts yet
         printf
-            ("# JudyHSFreeArray: %lu, %0.3f Words/Key, %0.3f nSec/Key\n",
+            ("# JudyHSFreeArray: %" PRIuPTR", %0.3f Words/Key, %0.3f nSec/Key\n",
              nElms, (double)(Bytes / sizeof(Word_t)) / (double)nElms,
              DeltanSecHS);
     }
 
 //    if (bFlag && GValue)
-//         printf("\n# %lu Duplicate Keys were found with -G%lu\n", BitmapDups, GValue);
+//         printf("\n# %" PRIuPTR" Duplicate Keys were found with -G%" PRIuPTR"\n", BitmapDups, GValue);
 
     exit(0);
 }
@@ -2666,7 +2666,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                     if (Tit)
                     {
 
-//         printf("\nSkip Set at Key = 0x%lx, elm %lu\n", TstKey, elm);
+//         printf("\nSkip Set at Key = 0x%" PRIxPTR", elm %" PRIuPTR"\n", TstKey, elm);
 
 //                      Nothing to do, skip the Insert
                     }
@@ -2685,7 +2685,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                             }
                             else
                             {
-                                printf("\nTstKey = 0x%lx\n", TstKey);
+                                printf("\nTstKey = 0x%" PRIxPTR"\n", TstKey);
                                 FAILURE("Judy1Set failed - DUP Key at elm", elm);
                             }
                         }
@@ -2694,7 +2694,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                             J1S(Rc, *J1, TstKey);
                             if (Rc != 0)
                             {
-                                printf("\n--- Judy1Set Rc = %d after Judy1Set, Key = 0x%lx, elm = %lu",
+                                printf("\n--- Judy1Set Rc = %d after Judy1Set, Key = 0x%" PRIxPTR", elm = %" PRIuPTR"",
                                      Rc, TstKey, elm);
                                 FAILURE("Judy1Test failed at", elm);
                             }
@@ -2704,7 +2704,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                             Rc = Judy1Test(*J1, TstKey, PJE0);
                             if (Rc != 1)
                             {
-                                printf("\n--- Judy1Test Rc = %d after Judy1Set, Key = 0x%lx, elm = %lu",
+                                printf("\n--- Judy1Test Rc = %d after Judy1Set, Key = 0x%" PRIxPTR", elm = %" PRIuPTR"",
                                      Rc, TstKey, elm);
                                 FAILURE("Judy1Test failed at", elm);
                             }
@@ -2765,7 +2765,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                 {
                     if (Tit)
                     {
-//         printf("\nSkip Set at Key = 0x%lx, elm %lu\n", TstKey, elm);
+//         printf("\nSkip Set at Key = 0x%" PRIxPTR", elm %" PRIuPTR"\n", TstKey, elm);
 //                      Nothing to do, skip the Insert
                     }
                 }
@@ -2792,7 +2792,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                             }
                             else
                             {
-                                printf("\nTstKey = 0x%lx, *PValue = 0x%lx\n", TstKey, *PValue);
+                                printf("\nTstKey = 0x%" PRIxPTR", *PValue = 0x%" PRIxPTR"\n", TstKey, *PValue);
                                 FAILURE("JudyLIns returned wrong *PValue after Insert", TstKey);
                             }
                         }
@@ -2807,19 +2807,19 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                                 PValueNew = (PWord_t)JudyLIns(JL, TstKey, PJE0);
                                 if (PValueNew == NULL)
                                 {
-                                    printf("\nTstKey = 0x%lx\n", TstKey);
+                                    printf("\nTstKey = 0x%" PRIxPTR"\n", TstKey);
                                     FAILURE("JudyLIns failed with NULL after Insert", TstKey);
                                 }
                                 if (PValueNew != PValue)
                                 {
-                                    printf("\n#Line = %d, Caution: PValueNew = 0x%lx, PValueold = 0x%lx changed\n", __LINE__, (Word_t)PValueNew, (Word_t)PValue);
-//                                    printf("- ValueNew = 0x%lx, Valueold = 0x%lx\n", *PValueNew, *PValue);
+                                    printf("\n#Line = %d, Caution: PValueNew = 0x%" PRIxPTR", PValueold = 0x%" PRIxPTR" changed\n", __LINE__, (Word_t)PValueNew, (Word_t)PValue);
+//                                    printf("- ValueNew = 0x%" PRIxPTR", Valueold = 0x%" PRIxPTR"\n", *PValueNew, *PValue);
 //                                    FAILURE("Second JudyLIns failed with wrong PValue after Insert", TstKey);
                                 }
                                 if (*PValueNew != TstKey)
                                 {
-                                    printf("\n*PValueNew = 0x%lx\n", *PValueNew);
-                                    printf("TstKey = 0x%lx = %ld\n", TstKey, TstKey);
+                                    printf("\n*PValueNew = 0x%" PRIxPTR"\n", *PValueNew);
+                                    printf("TstKey = 0x%" PRIxPTR" = %" PRIdPTR"\n", TstKey, TstKey);
                                     FAILURE("Second JudyLIns failed with wrong *PValue after Insert", TstKey);
                                 }
                             }
@@ -2830,15 +2830,15 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                                 PValueNew = (PWord_t)JudyLGet(*JL, TstKey, PJE0);
                                 if (PValueNew == NULL)
                                 {
-                                    printf("\n--- TstKey = 0x%lx", TstKey);
+                                    printf("\n--- TstKey = 0x%" PRIxPTR"", TstKey);
                                     FAILURE("JudyLGet failed after Insert", TstKey);
                                 }
                                 else
                                 {
                                     if (*PValueNew != TstKey)
                                     {
-                                        printf("\n--- *PValueNew = 0x%lx\n", *PValueNew);
-                                        printf("--- TstKey = 0x%lx = %ld", TstKey, TstKey);
+                                        printf("\n--- *PValueNew = 0x%" PRIxPTR"\n", *PValueNew);
+                                        printf("--- TstKey = 0x%" PRIxPTR" = %" PRIdPTR"", TstKey, TstKey);
                                         FAILURE("JudyLGet failed after Insert", TstKey);
                                     }
                                 }
@@ -3216,7 +3216,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
 
                         if (Rc != 0)
                         {
-                            printf("\n--- Judy1Test wrong Rc = %d, Key = 0x%lx, elm = %lu",
+                            printf("\n--- Judy1Test wrong Rc = %d, Key = 0x%" PRIxPTR", elm = %" PRIuPTR"",
                                  Rc, TstKey, elm);
                             FAILURE("Judy1Test Rc != 0", Rc);
                         }
@@ -3234,7 +3234,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
 
                         if (Rc != 1)
                         {
-                            printf("\n--- Judy1Test wrong Rc = %d, Key = 0x%lx, elm = %lu",
+                            printf("\n--- Judy1Test wrong Rc = %d, Key = 0x%" PRIxPTR", elm = %" PRIuPTR"",
                                  Rc, TstKey, elm);
                             FAILURE("Judy1Test Rc != 1", Rc);
                         }
@@ -3283,7 +3283,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
                         PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
                         if (PValue != (Word_t *)NULL)
                         {
-                            printf("\n--- JudyGet Key = 0x%lx", TstKey);
+                            printf("\n--- JudyGet Key = 0x%" PRIxPTR"", TstKey);
                             FAILURE("JudyLGet ret PValue != NULL -- Key inserted???", 0L);
                         }
                     }
@@ -3295,13 +3295,13 @@ TestJudyGet(void *J1, void *JL, void *JH, PSeed_t PSeed, Word_t Elements)
                         PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
                         if (PValue == (Word_t *)NULL)
                         {
-                            printf("\n--- JudyGet Key = 0x%lx", TstKey);
+                            printf("\n--- JudyGet Key = 0x%" PRIxPTR"", TstKey);
                             FAILURE("JudyLGet ret PValue = NULL", 0L);
                         }
                         else if (VFlag && (*PValue != TstKey))
                         {
                             printf
-                                ("--- JudyLGet returned Value=0x%lx, should be=0x%lx",
+                                ("--- JudyLGet returned Value=0x%" PRIxPTR", should be=0x%" PRIxPTR"",
                                  *PValue, TstKey);
                             FAILURE("JudyLGet ret wrong Value at", elm);
                         }
@@ -3548,7 +3548,7 @@ TestJudyCount(void *J1, void *JL, Word_t Elements)
 
                     if (Count1 != (elm + 1))
                     {
-                        printf("Count1 = %lu, elm +1 = %lu\n", Count1, elm + 1);
+                        printf("Count1 = %" PRIuPTR", elm +1 = %" PRIuPTR"\n", Count1, elm + 1);
                         FAILURE("J1C at", elm);
                     }
                 }
@@ -3604,7 +3604,7 @@ TestJudyCount(void *J1, void *JL, Word_t Elements)
 
                     if (CountL != (elm + 1))
                     {
-                        printf("CountL = %lu, elm +1 = %lu\n", CountL, elm + 1);
+                        printf("CountL = %" PRIuPTR", elm +1 = %" PRIuPTR"\n", CountL, elm + 1);
                         FAILURE("JLC at", elm);
                     }
                 }
@@ -3612,7 +3612,7 @@ TestJudyCount(void *J1, void *JL, Word_t Elements)
                 PValue = (PWord_t)JudyLNext(JL, &TstKey, PJE0);
                 if (VFlag && PValue && (*PValue != TstKey))
                 {
-                    printf("\nPValue=0x%lx, *PValue=0x%lx, TstKey=0x%lx\n",
+                    printf("\nPValue=0x%" PRIxPTR", *PValue=0x%" PRIxPTR", TstKey=0x%" PRIxPTR"\n",
                            (Word_t)PValue, *PValue, TstKey);
                     FAILURE("JudyLNext ret bad *PValue at", elm);
                 }
@@ -3675,7 +3675,7 @@ TestJudyNext(void *J1, void *JL, Word_t Elements)
             {
                 if (Rc != 1)
                 {
-                    printf("\nElements = %lu, elm = %lu\n", Elements, elm);
+                    printf("\nElements = %" PRIuPTR", elm = %" PRIuPTR"\n", Elements, elm);
                     FAILURE("Judy1Next Rc != 1 =", Rc);
                 }
 
@@ -3726,12 +3726,12 @@ TestJudyNext(void *J1, void *JL, Word_t Elements)
                 Word_t    Prev;
                 if (PValue == NULL)
                 {
-                    printf("\nElements = %lu, elm = %lu\n", Elements, elm);
+                    printf("\nElements = %" PRIuPTR", elm = %" PRIuPTR"\n", Elements, elm);
                     FAILURE("JudyLNext ret NULL PValue at", elm);
                 }
                 if (VFlag && (*PValue != JLKey))
                 {
-                    printf("\n*PValue=0x%lx, JLKey=0x%lx\n", *PValue,
+                    printf("\n*PValue=0x%" PRIxPTR", JLKey=0x%" PRIxPTR"\n", *PValue,
                            JLKey);
                     FAILURE("JudyLNext ret bad *PValue at", elm);
                 }
@@ -3739,7 +3739,7 @@ TestJudyNext(void *J1, void *JL, Word_t Elements)
                 PValue = (PWord_t)JudyLNext(JL, &JLKey, PJE0);
                 if (JLKey == Prev)
                 {
-                    printf("OOPs, JLN did not advance 0x%lx\n", Prev);
+                    printf("OOPs, JLN did not advance 0x%" PRIxPTR"\n", Prev);
                     FAILURE("JudyLNext ret did not advance", Prev);
                 }
             }
@@ -3856,7 +3856,7 @@ TestJudyPrev(void *J1, void *JL, Word_t HighKey, Word_t Elements)
             {
                 if (PValue == NULL)
                 {
-                    printf("\nElements = %lu, elm = %lu\n", Elements, elm);
+                    printf("\nElements = %" PRIuPTR", elm = %" PRIuPTR"\n", Elements, elm);
                     FAILURE("JudyLPrev ret NULL PValue at", elm);
                 }
                 if (VFlag && (*PValue != JLKey))
@@ -4128,7 +4128,7 @@ TestJudyDel(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
 
                 if (Rc != 1)
                 {
-                    printf("--- Key = 0x%lx", TstKey);
+                    printf("--- Key = 0x%" PRIxPTR"", TstKey);
                     FAILURE("Judy1Unset ret Rcode != 1", Rc);
                 }
 
@@ -4138,7 +4138,7 @@ TestJudyDel(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
 
                     if (Rc)
                     {
-                        printf("\n--- Judy1Test success after Judy1Unset, Key = 0x%lx", TstKey);
+                        printf("\n--- Judy1Test success after Judy1Unset, Key = 0x%" PRIxPTR"", TstKey);
                         FAILURE("Judy1Test success after Judy1Unset", TstKey);
                     }
                 }
@@ -4170,7 +4170,7 @@ TestJudyDel(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
 
                 if (Rc != 1)
                 {
-                    printf("\n--- Key = 0x%lx", TstKey);
+                    printf("\n--- Key = 0x%" PRIxPTR"", TstKey);
                     FAILURE("JudyLDel ret Rcode != 1", Rc);
                 }
 
@@ -4181,7 +4181,7 @@ TestJudyDel(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                     PValueNew = (PWord_t)JudyLGet(*JL, TstKey, PJE0);
                     if (PValueNew != NULL)
                     {
-                        printf("\n--- JudyLGet success after JudyLDel, Key = 0x%lx, Value = 0x%lx", TstKey, *PValueNew);
+                        printf("\n--- JudyLGet success after JudyLDel, Key = 0x%" PRIxPTR", Value = 0x%" PRIxPTR"", TstKey, *PValueNew);
                         FAILURE("JudyLGet success after JudyLDel", TstKey);
                     }
                 }
@@ -4251,7 +4251,7 @@ TestByteTest(PSeed_t PSeed, Word_t Elements)
             {
                 if (By[TstKey] == 0)
                 {
-                    printf("\nByteGet -- missing bit, Key = 0x%lx",
+                    printf("\nByteGet -- missing bit, Key = 0x%" PRIxPTR"",
                            TstKey);
                     FAILURE("ByteGet Word = ", elm);
                 }
@@ -4297,7 +4297,7 @@ TestByteSet(PSeed_t PSeed, Word_t Elements)
                 }
                 else
                 {
-                    printf("\nByteSet -- Set bit, Key = 0x%lx", TstKey);
+                    printf("\nByteSet -- Set bit, Key = 0x%" PRIxPTR"", TstKey);
                     FAILURE("ByteSet Word = ", elm);
                 }
             }
@@ -4341,7 +4341,7 @@ TestBitmapSet(PWord_t *pB1, PSeed_t PSeed, Word_t Elements)
                 }
                 else
                 {
-                    printf("\nBitMapSet -- Set bit, Key = 0x%lx", TstKey);
+                    printf("\nBitMapSet -- Set bit, Key = 0x%" PRIxPTR"", TstKey);
                     FAILURE("BitMapSet Word = ", elm);
                 }
             }
@@ -4387,7 +4387,7 @@ TestBitmapTest(PWord_t B1, PSeed_t PSeed, Word_t Elements)
             {
                 if (BitmapGet(B1, TstKey) == 0)
                 {
-                    printf("\nBitMapGet -- missing bit, Key = 0x%lx",
+                    printf("\nBitMapGet -- missing bit, Key = 0x%" PRIxPTR"",
                            TstKey);
                     FAILURE("BitMapGet Word = ", elm);
                 }
