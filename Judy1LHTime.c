@@ -506,7 +506,7 @@ GetNextKey(PSeed_t PSeed)
             Key = RandomNumb(PSeed, SValue);
             if ((sizeof(Word_t) * 8) != BValue)
             {
-                 assert((Key < (1 << BValue)) || SValue);
+                 assert((Key < ((Word_t)1 << BValue)) || SValue);
                  Key %= (Word_t)1 << BValue;
             }
         } while (Key > ExpanseM1);         // throw away of high keys
