@@ -3161,8 +3161,8 @@ embeddedKeys:;
                 DBGI(printf("pwr %p wPopCnt %" _fw"d nBL %d\n",
                             (void *)pwr, wPopCnt, nBL));
                 DBGI(printf("nType %d\n", nType));
-                DBGI(printf("LWE(pop %d) %d LWE(pop %d) %d\n",
-                            (int)wPopCnt + 1,
+                DBGI(printf("nBL %d LWE(pop %d) %d LWE(pop %d) %d\n",
+                            nBL, (int)wPopCnt + 1,
                             ListWordsExternal(wPopCnt + 1, nBL),
                             (int)wPopCnt,
                             ListWordsExternal(wPopCnt    , nBL)));
@@ -5107,6 +5107,12 @@ Initialize(void)
 #else // defined(TYPE_IS_ABSOLUTE)
     printf("# NO TYPE_IS_ABSOLUTE\n");
 #endif // defined(TYPE_IS_ABSOLUTE)
+
+#if defined(ALLOW_EMBEDDED_BITMAP)
+    printf("#    ALLOW_EMBEDDED_BITMAP\n");
+#else // defined(ALLOW_EMBEDDED_BITMAP)
+    printf("# NO ALLOW_EMBEDDED_BITMAP\n");
+#endif // defined(ALLOW_EMBEDDED_BITMAP)
 
 #if defined(COMPRESSED_LISTS)
     printf("#    COMPRESSED_LISTS\n");
