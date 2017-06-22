@@ -91,10 +91,6 @@
   #define CODE_XX_SW
 #endif // defined(USE_XX_SW)
 
-#if defined(USE_XX_SW) && defined(ALLOW_EMBEDDED_BITMAP)
-  #error Sorry, no ALLOW_EMBEDDED_BITMAP with USE_XX_SW yet.
-#endif // defined(USE_XX_SW) && defined(ALLOW_EMBEDDED_BITMAP)
-
 // Default cnBW is 1 if CODE_XX_SW.
 // cnBW is the minimum width of a narrow switch.
 #if defined(CODE_XX_SW)

@@ -1591,13 +1591,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
     }
 #endif // defined(SKIP_TO_BITMAP)
 
-    if ((nType == T_BITMAP)
-        || (1
-#if ! defined(USE_XX_SW)
-            && (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
-#endif // ! defined(USE_XX_SW)
-            && (nBL < cnBitsPerWord)
-            && (EXP(nBL) <= sizeof(Link_t) * 8)))
+    if ((nType == T_BITMAP) || (EXP(nBL) <= sizeof(Link_t) * 8))
     {
 #if ! defined(USE_XX_SW)
         assert((nType == T_BITMAP) || (nBL == cnBitsInD1));
@@ -1621,7 +1615,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
         // If the bitmap is not embedded, then we have more work to do.
         // The test can be done at compile time and will make one the
         // other clauses go away.
-        if (EXP(cnBitsInD1) > sizeof(Link_t) * 8)
+        if (EXP(nBL) > sizeof(Link_t) * 8)
         {
             if ( ! bDump )
             {
