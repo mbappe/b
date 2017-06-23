@@ -1324,7 +1324,7 @@ main(int argc, char *argv[])
     if (bSplayKeyBitsFlag && (BValue > (sizeof(Word_t) * 8 / 2)))
     {
         printf("\nError --- '-B%d' must be less than or equal to %d\n",
-               BValue, sizeof(Word_t) * 8 / 2);
+               (int)BValue, (int)sizeof(Word_t) * 8 / 2);
         ErrorFlag++;
     }
 

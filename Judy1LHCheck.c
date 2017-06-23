@@ -879,7 +879,7 @@ TestJudyNextEmpty(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
             break;
 
         if ((Rcode1 != 1) || (PValue == NULL)) {
-            printf("Rcode1 = %d, PValue = %p\n", Rcode1, PValue);
+            printf("Rcode1 = %d, PValue = %p\n", Rcode1, (void *)PValue);
             FAILURE("Judy1Next != JudyLNext return code at", elm);
         }
 
@@ -957,7 +957,7 @@ TestJudyPrevEmpty(void *J1, void *JL, Word_t HighIndex, Word_t Elements)
             break;
 
         if ((Rcode1 != 1) || (PValue == NULL)) {
-            printf("Rcode1 = %d, PValue = %p\n", Rcode1, PValue);
+            printf("Rcode1 = %d, PValue = %p\n", Rcode1, (void *)PValue);
             FAILURE("Judy1Prev != JudyLPrev return code at", elm);
         }
 
