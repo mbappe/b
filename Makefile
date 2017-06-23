@@ -229,11 +229,13 @@ t: t.c $(T_OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 
 Judy1LHTime: Judy1LHTime.c libb.a
-	$(CC) $(CFLAGS) -Wno-format -Wno-format-pedantic $(DEFINES) \
+	#$(CC) $(CFLAGS) -Wno-format -Wno-format-pedantic $(DEFINES) \
+	$(CC) $(CFLAGS) $(DEFINES) \
 		-o $@ $^ -lm
 
 c++time: Judy1LHTime.c libb.a
-	$(CXX) $(CXXFLAGS) -Wno-format -Wno-format-pedantic $(DEFINES) \
+	#$(CXX) $(CXXFLAGS) -Wno-format -Wno-format-pedantic $(DEFINES) \
+	$(CXX) $(CXXFLAGS) $(DEFINES) \
 		-x c++ Judy1LHTime.c -x none libb.a -o $@ -lm
 
 b: Judy1LHTime
@@ -245,11 +247,13 @@ btime: Judy1LHTime
 # Set LIBRARY_PATH environment variable to find libJudy.a.
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
 Judy1LHCheck: Judy1LHCheck.c libb1.a
-	$(CC) $(CFLAGS) -Wno-sign-compare -Wno-format -Wno-format-pedantic \
+	#$(CC) $(CFLAGS) -Wno-sign-compare -Wno-format -Wno-format-pedantic \
+	$(CC) $(CFLAGS) -Wno-sign-compare \
 		$(DEFINES) -o $@ $^ $(LDFLAGS) -lJudy -lm
 
 c++check: Judy1LHCheck.c libb1.a
-	$(CXX) $(CXXFLAGS) -Wno-sign-compare -Wno-format -Wno-format-pedantic \
+	#$(CXX) $(CXXFLAGS) -Wno-sign-compare -Wno-format -Wno-format-pedantic \
+	$(CXX) $(CXXFLAGS) \
 		$(DEFINES) -x c++ Judy1LHCheck.c \
 		-x none libb1.a -o $@ $(LDFLAGS) -lJudy -lm
 
