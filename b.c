@@ -36,6 +36,9 @@ Word_t j__AllocWordsJLL4; // 4 bytes/key list leaf
 #endif // defined(RAMMETRICS)
 
 Word_t wPopCntTotal;
+#if defined(DEBUG)
+Word_t *pwRootLast; // allow dumping of tree when root is not known
+#endif // defined(DEBUG)
 
 #if defined(BPD_TABLE)
 

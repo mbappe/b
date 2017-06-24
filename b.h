@@ -2350,7 +2350,7 @@ void Dump(Word_t *pwRoot, Word_t wPrefix, int nBL);
 #endif // (cnDigitsPerWord != 1)
 
 #if defined(DEBUG)
-Word_t *pwRootLast; // allow dumping of tree when root is not known
+extern Word_t *pwRootLast; // allow dumping of tree when root is not known
 #endif // defined(DEBUG)
 
 extern Word_t wPopCntTotal;
