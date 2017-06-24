@@ -179,6 +179,12 @@ CXXFLAGS =         $(CXXSTDFLAG) $(MFLAGS) $(CXXWFLAGS) $(OFLAGS) -I.
 # JUDYA specifies JUDYA-style instrumentation variables.
 # TIME_DEFINES += -DJUDYA
 
+# Default is -DRAMMETRICS.
+# Use NO_RAMMETRICS=<anything> to get -URAMMETRICS.
+ifeq "$(NO_RAMMETRICS)" ""
+    JUDY_DEFINES += -DRAMMETRICS
+endif
+
 DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 
 FILES_FROM_ME  = b.h b.c bli.c bl.c bi.c br.c bc.c bn.c t.c
@@ -296,9 +302,7 @@ stubsHS.o: stubsHS.c
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
 
 JudyMalloc.o: JudyMalloc.c
-	# RAMMETRICS is defined in b.h for other source files
-	# This should probably be changed at some point.
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -DRAMMETRICS -c $^
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
 
 ############################
 #
@@ -325,7 +329,7 @@ stubsHS.s: stubsHS.c
 
 # Suppress warnings.  sbrk is deprecated.
 JudyMalloc.s: JudyMalloc.c
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -DRAMMETRICS -S $^
+	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
 
 ############################
 #
@@ -378,6 +382,6 @@ t.i: t.c
 
 # The .c.i rule doesn't work for some reason.  Later.
 JudyMalloc.i: JudyMalloc.c
-	$(CC) $(CFLAGS) $(DEFINES) -DRAMMETRICS -E $^ \
+	$(CC) $(CFLAGS) $(DEFINES) -E $^ \
 		| indent -i4 | expand > $@
 

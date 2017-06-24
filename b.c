@@ -13,39 +13,29 @@ const char *Judy1MallocSizes = "Judy1MallocSizes = 3, 5, 7, ...";
     : ((_nBL) <= 32) ? 4 : sizeof(Word_t))
 
 #if defined(RAMMETRICS)
-Word_t j__AllocWordsJBB;  // JUDYA         Branch Bitmap
-Word_t j__AllocWordsJBU;  // JUDYA         Branch Uncompressed
-Word_t j__AllocWordsJLB1; // JUDYA         Leaf Bitmap 1-Byte/Digit
-Word_t j__AllocWordsJLL1; // JUDYA         Leaf Linear 1-Byte/Digit
-Word_t j__AllocWordsJLL2; // JUDYA         Leaf Linear 2-Byte/Digit
-Word_t j__AllocWordsJLL4; // JUDYA         Leaf Linear 4-Byte/Digit
-Word_t j__AllocWordsJLLW; // JUDYA  JUDYB  Leaf Linear Word
-Word_t j__AllocWordsJBU4; //        JUDYB  Branch Uncompressed 4-bit Digit
-Word_t j__AllocWordsJL12; //        JUDYB  Leaf 12-bit Decode/Key
-Word_t j__AllocWordsJL16; //        JUDYB  Leaf 16-bit Decode/Key
-Word_t j__AllocWordsJL32; //        JUDYB  Leaf 32-bit Decode/Key
+
+Word_t j__AllocWordsTOT;
+Word_t j__TotalBytesAllocated; // mmap
+
+Word_t j__AllocWordsJLLW; // 1 word/key list leaf
+//Word_t j__AllocWordsJBL;  // linear branch
+Word_t j__AllocWordsJBB;  // bitmap branch
+Word_t j__AllocWordsJBU;  // uncompressed branch
+Word_t j__AllocWordsJLB1; // bitmap leaf
+Word_t j__AllocWordsJLL1; // 1 byte/key list leaf
+Word_t j__AllocWordsJLL2; // 2 bytes/key list leaf
+//Word_t j__AllocWordsJLL3; // 3 bytes/key list leaf
+//Word_t j__AllocWordsJV;   // value area
+  #if cnBitsPerWord > 32
+Word_t j__AllocWordsJLL4; // 4 bytes/key list leaf
+//Word_t j__AllocWordsJLL5; // 5 bytes/key list leaf
+//Word_t j__AllocWordsJLL6; // 6 bytes/key list leaf
+//Word_t j__AllocWordsJLL7; // 7 bytes/key list leaf
+  #endif // cnBitsPerWord > 32)
+
 #endif // defined(RAMMETRICS)
 
-// From Judy1LHTime.c for convenience.
-
-#if JUNK
-
-#ifdef JUDYA
-Word_t j__AllocWordsJBL;  // Branch Linear
-Word_t j__AllocWordsJLL3; // Leaf Linear 3-Byte/Digit
-Word_t j__AllocWordsJLL5; // Leaf Linear 5-Byte/Digit
-Word_t j__AllocWordsJLL6; // Leaf Linear 6-Byte/Digit
-Word_t j__AllocWordsJLL7; // Leaf Linear 7-Byte/Digit
-Word_t j__AllocWordsJV;   // Value Area
-#endif // JUDYA
-
-#ifdef JUDYB
-Word_t j__AllocWordsJBU8;  // Branch Uncompressed 8-bit Decode
-Word_t j__AllocWordsJBU16; // Branch Uncompressed 16-bit Decode
-Word_t j__AllocWordsJV12;  // Value Area 12-bit Decode
-#endif // JUDYB
-
-#endif // JUNK
+Word_t wPopCntTotal;
 
 #if defined(BPD_TABLE)
 
@@ -166,11 +156,6 @@ Word_t wEvenMallocs; // number of unfreed mallocs of an even number of words
   #undef  cnGuardWords
   #define cnGuardWords 0
 #endif // defined(cnGuardWords)
-
-#if defined(RAMMETRICS)
-    extern Word_t j__AllocWordsTOT;
-    extern Word_t j__TotalBytesAllocated; // mmap
-#endif // defined(RAMMETRICS)
 
 // Can we use some of the bits in the word at the address immediately
 // preceeding the address returned by malloc?
@@ -382,8 +367,7 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 #endif // defined(USE_T_ONE)
         { ls_pcKeysNAT(pwList)[-1] = 0; }
 #endif // defined(LIST_END_MARKERS)
-        METRICS(j__AllocWordsJLL1 += nWords); // JUDYA
-        METRICS(j__AllocWordsJL12 += nWords); // JUDYB -- overloaded
+        METRICS(j__AllocWordsJLL1 += nWords); // 1 byte/key list leaf
     } else if (nBL <= 16) {
 #if defined(LIST_END_MARKERS)
 #if defined(USE_T_ONE)
@@ -391,8 +375,7 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 #endif // defined(USE_T_ONE)
         { ls_psKeysNAT(pwList)[-1] = 0; }
 #endif // defined(LIST_END_MARKERS)
-        METRICS(j__AllocWordsJLL2 += nWords); // JUDYA
-        METRICS(j__AllocWordsJL16 += nWords); // JUDYB
+        METRICS(j__AllocWordsJLL2 += nWords); // 2 bytes/key list leaf
 #if (cnBitsPerWord > 32)
     } else if (nBL <= 32) {
 #if defined(LIST_END_MARKERS)
@@ -401,8 +384,7 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 #endif // defined(USE_T_ONE)
         { ls_piKeysNAT(pwList)[-1] = 0; }
 #endif // defined(LIST_END_MARKERS)
-        METRICS(j__AllocWordsJLL4 += nWords); // JUDYA
-        METRICS(j__AllocWordsJL32 += nWords); // JUDYB
+        METRICS(j__AllocWordsJLL4 += nWords); // 4 bytes/key list leaf
 #endif // (cnBitsPerWord > 32)
     }
     else
@@ -420,7 +402,7 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
         { ls_pwKeysNAT(pwList)[-1] = 0; }
 #endif // defined(PP_IN_LINK) && (cnDummiesInList == 0)
 #endif // defined(LIST_END_MARKERS)
-        METRICS(j__AllocWordsJLLW += nWords); // JUDYA and JUDYB
+        METRICS(j__AllocWordsJLLW += nWords); // 1 word/key list leaf
     }
 
     // Should we be setting wPrefix here for PP_IN_LINK?
@@ -526,21 +508,18 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
 
 #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
-        METRICS(j__AllocWordsJLL1 -= nWords); // JUDYA
-        METRICS(j__AllocWordsJL12 -= nWords); // JUDYB -- overloaded
+        METRICS(j__AllocWordsJLL1 -= nWords); // 1 byte/key list leaf
     } else if (nBL <= 16) {
-        METRICS(j__AllocWordsJLL2 -= nWords); // JUDYA
-        METRICS(j__AllocWordsJL16 -= nWords); // JUDYB
+        METRICS(j__AllocWordsJLL2 -= nWords); // 2 bytes/key list leaf
 #if (cnBitsPerWord > 32)
     } else if (nBL <= 32) {
-        METRICS(j__AllocWordsJLL4 -= nWords); // JUDYA
-        METRICS(j__AllocWordsJL32 -= nWords); // JUDYB
+        METRICS(j__AllocWordsJLL4 -= nWords); // 4 bytes/key list leaf
 #endif // (cnBitsPerWord > 32)
     }
     else
 #endif // defined(COMPRESSED_LISTS)
     {
-        METRICS(j__AllocWordsJLLW -= nWords); // JUDYA and JUDYB
+        METRICS(j__AllocWordsJLLW -= nWords); // 1 word/key list leaf
     }
 
 #if ! defined(OLD_LISTS)
@@ -576,11 +555,10 @@ NewBitmap(Word_t *pwRoot, int nBL, int nBLUp, Word_t wKey)
 
     if (nBL == nDL_to_nBL(2)) {
         // Use Branch Bitmap column for 2-digit bitmap.
-        METRICS(j__AllocWordsJBB += wWords); // JUDYA
+        METRICS(j__AllocWordsJBB += wWords); // bitmap branch
     } else {
-        METRICS(j__AllocWordsJLB1 += wWords); // JUDYA
+        METRICS(j__AllocWordsJLB1 += wWords); // bitmap leaf
     }
-    METRICS(j__AllocWordsJL12 += wWords); // JUDYB -- overloaded
 
     DBGM(printf("NewBitmap nBL %d nBits " OWx
       " nBytes " OWx" wWords " OWx" pwBitmap " OWx"\n",
@@ -664,11 +642,10 @@ OldBitmap(Word_t *pwRoot, Word_t *pwr, int nBL)
 
     if (nBLR == nDL_to_nBL(2)) {
         // Use Branch Bitmap column for 2-digit bitmap.
-        METRICS(j__AllocWordsJBB -= wWords); // JUDYA
+        METRICS(j__AllocWordsJBB -= wWords); // bitmap branch
     } else {
-        METRICS(j__AllocWordsJLB1 -= wWords); // JUDYA
+        METRICS(j__AllocWordsJLB1 -= wWords); // bitmap leaf
     }
-    METRICS(j__AllocWordsJL12 -= wWords); // JUDYB -- overloaded
 
 #if defined(PP_IN_LINK) && defined(SKIP_TO_BITMAP)
     if ((nBL != cnBitsPerWord)
@@ -694,7 +671,7 @@ OldBitmap(Word_t *pwRoot, Word_t *pwr, int nBL)
 // Need to know nDLUp to know if we need a skip link (and to figure nDS
 // if TYPE_IS_RELATIVE).
 // Install wRoot at pwRoot.  Need to know nDL.
-// Account for the memory (for both JUDYA and JUDYB columns in Judy1LHTime).
+// Account for the memory in Judy1LHTime.
 // Need to know if we are at the bottom so we can count the memory as a
 // bitmap leaf instead of a switch.
 static Word_t *
@@ -800,22 +777,21 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(NO_TYPE_IN_XX_SW)
     }
 
-#if defined(RAMMETRICS)
     // Is a branch with embedded bitmaps a branch?
     // Or is it a bitmap?  Let's use bitmap since we get more info that way.
+    // No need for ifdef RAMMETRICS. Code will go away if not.
     if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
         // Embedded bitmaps.
         // What if we have bits in the links that are not used as
         // bits in the bitmap?
-        METRICS(j__AllocWordsJLB1 += wWords); // JUDYA
+        METRICS(j__AllocWordsJLB1 += wWords); // bitmap leaf
     } else
 #if defined(CODE_BM_SW)
     if (bBmSw) {
-        METRICS(j__AllocWordsJBB  += wWords); // JUDYA
+        METRICS(j__AllocWordsJBB  += wWords); // bitmap branch
     } else
 #endif // defined(CODE_BM_SW)
-    { METRICS(j__AllocWordsJBU  += wWords); } // JUDYA
-#endif // defined(RAMMETRICS)
+    { METRICS(j__AllocWordsJBU  += wWords); } // uncompressed branch
 
 #if defined(CODE_BM_SW)
     DBGM(printf("NewSwitch(pwRoot %p wKey " OWx
@@ -1193,7 +1169,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
              PWR_wPopCntBL(pwRoot, (BmSwitch_t *)*pwRoot, nBLR)));
 
         if (nBLR <= (int)LOG(sizeof(Link_t) * 8)) {
-            METRICS(j__AllocWordsJLB1 += nWordsNew); // JUDYA
+            METRICS(j__AllocWordsJLB1 += nWordsNew); // bitmap leaf
         } else
 #if defined(RETYPE_FULL_BM_SW)
         if (nLinkCnt == EXP(nBitsIndexSz) - 1) {
@@ -1209,11 +1185,11 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
                        wMallocs, wEvenMallocs, nWordsNull);
             }
   #endif // defined(DEBUG_INSERT)
-            METRICS(j__AllocWordsJBU  += nWordsNew); // JUDYA
+            METRICS(j__AllocWordsJBU  += nWordsNew); // uncompressed branch
         } else
 #endif // defined(RETYPE_FULL_BM_SW)
         {
-            METRICS(j__AllocWordsJBB  += nWordsNew); // JUDYA
+            METRICS(j__AllocWordsJBB  += nWordsNew); // bitmap branch
         }
 
         // Update the type field in *pwRoot if necessary.
@@ -1344,10 +1320,10 @@ OldSwitch(Word_t *pwRoot, int nBL,
     wWords += (wLinks - 1) * sizeof(Link_t);
     wWords /= sizeof(Word_t);
 
-#if defined(RAMMETRICS)
+    // No need for ifdef RAMMETRICS. Code will go away if not.
     if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
         // Embedded bitmaps.
-        METRICS(j__AllocWordsJLB1 -= wWords); // JUDYA
+        METRICS(j__AllocWordsJLB1 -= wWords); // bitmap leaf
     } else
 #if defined(CODE_BM_SW)
     if (tp_bIsBmSw(wr_nType(*pwRoot))
@@ -1356,11 +1332,10 @@ OldSwitch(Word_t *pwRoot, int nBL,
   #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
         )
     {
-        METRICS(j__AllocWordsJBB  -= wWords); // JUDYA
+        METRICS(j__AllocWordsJBB  -= wWords); // bitmap branch
     } else
 #endif // defined(CODE_BM_SW)
-    { METRICS(j__AllocWordsJBU  -= wWords); } // JUDYA
-#endif // defined(RAMMETRICS)
+    { METRICS(j__AllocWordsJBU  -= wWords); } // uncompressed branch
 
     DBGR(printf("\nOldSwitch nBL %d nBLU %d wWords %" _fw"d " OWx"\n",
          nBL, nBLUp, wWords, wWords));
@@ -1784,7 +1759,7 @@ embeddedKeys:;
             }
 #endif // defined(PP_IN_LINK)
 
-            printf(" ls_wPopCnt %3llu", (unsigned long long)wPopCnt);
+            printf(" ls_wPopCnt %3" _fw"u", wPopCnt);
 
             for (unsigned nn = 0;
                 //(nn < wPopCnt) && (nn < 8);
@@ -5300,12 +5275,6 @@ Initialize(void)
     printf("# NO RAMMETRICS\n");
 #endif // defined(RAMMETRICS)
 
-#if defined(JUDYA)
-    printf("#    JUDYA\n");
-#else // defined(JUDYA)
-    printf("# NO JUDYA\n");
-#endif // defined(JUDYA)
-
 #if defined(NDEBUG)
     printf("#    NDEBUG\n");
 #else // defined(NDEBUG)
@@ -5497,12 +5466,6 @@ Initialize(void)
 #else // defined(SEARCHMETRICS)
     printf("# NO SEARCHMETRICS\n");
 #endif // defined(SEARCHMETRICS)
-
-#if defined(JUDYB)
-    printf("#    JUDYB\n");
-#else // defined(JUDYB)
-    printf("# NO JUDYB\n");
-#endif // defined(JUDYB)
 
 #if defined(PWROOT_ARG_FOR_LOOKUP)
     printf("#    PWROOT_ARG_FOR_LOOKUP\n");
@@ -6023,7 +5986,7 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
     DBG(printf("# j__AllocWordsTOTBefore %" _fw"u\n", j__AllocWordsTOTBefore));
     DBG(printf("# j__TotalBytesAllocatedBefore 0x%" _fw"x\n",
                j__TotalBytesAllocatedBefore));
-    DBG(printf("# Total MiB Before 0x%" _fw"x rem 0x%"_fw"x\n",
+    DBG(printf("# Total MiB Before 0x%" _fw"x rem 0x%" _fw"x\n",
                j__TotalBytesAllocatedBefore / (1024 * 1024),
                j__TotalBytesAllocatedBefore % (1024 * 1024)));
 #endif // defined(RAMMETRICS)
@@ -6035,7 +5998,7 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
     DBG(printf("# j__AllocWordsTOT %" _fw"u\n", j__AllocWordsTOT));
     DBG(printf("# j__TotalBytesAllocated 0x%" _fw"x\n",
                j__TotalBytesAllocated));
-    DBG(printf("# Total MiB 0x%" _fw"x rem 0x%"_fw"x\n",
+    DBG(printf("# Total MiB 0x%" _fw"x rem 0x%" _fw"x\n",
                j__TotalBytesAllocated / (1024 * 1024),
                j__TotalBytesAllocated % (1024 * 1024)));
 #endif // defined(RAMMETRICS)

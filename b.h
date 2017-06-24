@@ -201,16 +201,6 @@
 
 // Default is -UPLACE_LISTS.
 
-// Default is -DRAMMETRICS.
-#if ! defined(RAMMETRICS) && ! defined(NO_RAMMETRICS)
-#define RAMMETRICS
-#endif // ! defined(RAMMETRICS) && ! defined(RAMMETRICS)
-
-// Default is -DJUDYA -UJUDYB.
-#if ! defined(JUDYA) && ! defined(JUDYB)
-#define JUDYA
-#endif // ! defined(JUDYA) && ! defined(JUDYB)
-
 // Default is -DNDEBUG -UDEBUG_ALL -UDEBUG
 // -UDEBUG_INSERT -UDEBUG_REMOVE -UDEBUG_LOOKUP -UDEBUG_MALLOC
 // -UDEBUG_COUNT -UDEBUG_NEXT
@@ -849,18 +839,17 @@ enum {
 #define nDL_to_nBL_NAT(_nDL)          (nBL_from_nDL_NAT(_nDL))
 #define nDL_to_nBitsIndexSzNAT(_nDL)  (nDL_to_nBitsIndexSz(_nDL))
 
-#if defined RAMMETRICS
+#if defined(RAMMETRICS)
   #define METRICS(x)  (x)
-#else // defined RAMMETRICS
+#else // defined(RAMMETRICS)
   #define METRICS(x)
-#endif // defined RAMMETRICS
+#endif // defined(RAMMETRICS)
 
-// Default is -USEARCHMETRICS.
-#if defined SEARCHMETRICS
+#if defined(SEARCHMETRICS)
   #define SMETRICS(x)  (x)
-#else // defined SEARCHMETRICS
+#else // defined(SEARCHMETRICS)
   #define SMETRICS(x)
-#endif // defined SEARCHMETRICS
+#endif // defined(SEARCHMETRICS)
 
 #if defined(DEBUG)
   #define DBG(x)  (x)
@@ -2358,16 +2347,13 @@ int OldList(Word_t *pwList, int nPopCnt, int nBL, int nType);
 void Dump(Word_t *pwRoot, Word_t wPrefix, int nBL);
 #endif // defined(DEBUG)
 
-#else // (cnDigitsPerWord != 1)
-Word_t wPopCntTotal;
 #endif // (cnDigitsPerWord != 1)
 
 #if defined(DEBUG)
 Word_t *pwRootLast; // allow dumping of tree when root is not known
 #endif // defined(DEBUG)
-#if (cnDigitsPerWord != 1)
-Word_t wPopCntTotal;
-#endif // (cnDigitsPerWord != 1)
+
+extern Word_t wPopCntTotal;
 
 // Default is -DPSPLIT_SEARCH_8
 // This depends on uniform distribution / flat spectrum data.
