@@ -91,7 +91,7 @@ typedef void ** PPvoid_t;
 
 #ifndef _WORD_T
 #define _WORD_T
-typedef uintptr_t Word_t, * PWord_t;  // expect 32-bit or 64-bit words.
+typedef size_t Word_t, * PWord_t;  // expect 32-bit or 64-bit words.
 #endif
 
 #ifndef NULL
@@ -294,10 +294,12 @@ extern const char *JudyLMallocSizes;
 // ****************************************************************************
 // JUDY memory interface to malloc() FUNCTIONS:
 
-extern Word_t JudyMalloc(Word_t);               // words reqd => words allocd.
-extern Word_t JudyMallocVirtual(Word_t);        // words reqd => words allocd.
-extern void   JudyFree(Pvoid_t, Word_t);        // free, size in words.
-extern void   JudyFreeVirtual(Pvoid_t, Word_t); // free, size in words.
+typedef size_t RawP_t; // printable pointer with other stuff crammed in it
+
+extern RawP_t JudyMalloc(int);                  // words reqd => words allocd.
+extern RawP_t JudyMallocVirtual(int);           // words reqd => words allocd.
+extern void   JudyFree(RawP_t, int);            // free, size in words.
+extern void   JudyFreeVirtual(RawP_t, int);     // free, size in words.
 
 #define JLAP_INVALID    0x1     /* flag to mark pointer "not a Judy array" */
 

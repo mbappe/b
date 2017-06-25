@@ -236,7 +236,7 @@ MyFree(Word_t *pw, Word_t wWords)
     assert(pw[-1] & 2);
     if ( ! (wWords & 1) ) { --wEvenMallocs; }
     --wMallocs; wWordsAllocated -= wWords;
-    JudyFree(pw, wWords + cnMallocExtraWords);
+    JudyFree((RawP_t)pw, wWords + cnMallocExtraWords);
 }
 
 #if (cwListPopCntMax != 0)
@@ -6033,7 +6033,7 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
     return wBytes;
 
 #else // (cnDigitsPerWord != 1)
-    JudyFree(*PPArray, EXP(cnBitsPerWord - cnLogBitsPerWord));
+    JudyFree((RawP_t)*PPArray, EXP(cnBitsPerWord - cnLogBitsPerWord));
     return EXP(cnBitsPerWord - cnLogBitsPerByte);
 #endif // (cnDigitsPerWord != 1)
 }

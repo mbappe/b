@@ -58,8 +58,8 @@ Word_t    j__TotalBytesAllocated;       // from kernel from dlmalloc
    
 #define PRINTMUMAP(BUF, LENGTH)                                         \
    fprintf(stderr,                                                      \
-        "%d = munmap(buf:%p, length:%p[%ld])\n",                        \
-                ret, (void *)(BUF), (void *)(LENGTH), (Word_t)(LENGTH));
+        "%d = munmap(buf:%p, length:%p[%d])\n",                         \
+                ret, (void *)(BUF), (void *)(LENGTH), (int)(LENGTH));
 
 // Define the Huge TLB size (2MiB) for Intel Haswell+
 #ifndef HUGETLBSZ       
@@ -67,7 +67,7 @@ Word_t    j__TotalBytesAllocated;       // from kernel from dlmalloc
 #endif  // HUGETLBSZ
 
 static void * pre_mmap(void *, size_t, int, int, int, off_t);
-static int pre_munmap(void *, size_t);
+static int    pre_munmap(void *, size_t);
 
 // Stuff to modify dlmalloc to use 2MiB pages
 #define DLMALLOC_EXPORT static
@@ -115,7 +115,7 @@ pre_munmap(void *buf, size_t length)
 // Any mmap equal or larger than 2MiB should be "HUGE TLB aligned" (dlb)
 // ********************************************************************
 
-static void *
+static void * 
 pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 {
     char *buf;
@@ -130,7 +130,7 @@ pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
     if (length != HUGETLBSZ)
     {
 ////        return(buf);
-        fprintf(stderr, "\nSorry, JudyMalloc() is not ready for %zd allocations\n", length);
+        fprintf(stderr, "\nSorry, JudyMalloc() is not ready for %d allocations\n", (int)length);
         exit(-1);
     }
 
@@ -217,13 +217,13 @@ pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 // Allocate RAM.  This is the single location in Judy code that calls
 // malloc(3C).  Note:  JPM accounting occurs at a higher level.
 
-Word_t JudyMalloc(
-	Word_t Words)
+RawP_t JudyMalloc(
+	int Words)
 {
-	Word_t Addr;
+	size_t Addr;
         size_t Bytes;
 
-        Bytes = Words * sizeof(Word_t);
+        Bytes = Words * sizeof(size_t);
 
 //  Note: This define is only for DEBUGGING
 #ifdef  GUARDBAND
@@ -248,12 +248,12 @@ Word_t JudyMalloc(
 #endif  // RAMMETRICS
 
 #ifdef  TRACEJM
-        printf("%p = JudyMalloc(%lu)\n", (void *)Addr, Bytes / sizeof(Word_t));
+        printf("%p = JudyMalloc(%u)\n", (void *)Addr, (int)Bytes / sizeof(Word_t));
 #endif  // TRACEJM
 
 #ifdef  GUARDBAND
 //      Put the ~Addr in that extra word
-        *((Word_t *)Addr + ((Bytes/sizeof(Word_t))) - 1) = ~Addr;
+        *((Word_t *)Addr + ((Bytes/sizeof(Word_t)) - 1)) = ~Addr;
 
 //      Verify that all mallocs are 2 word aligned
         if (Addr & ((sizeof(Word_t) * 2) - 1))
@@ -278,19 +278,14 @@ Word_t JudyMalloc(
 // J U D Y   F R E E
 
 void JudyFree(
-	void * PWord,
-	Word_t Words)
+	RawP_t PWord,
+	int    Words)
 {
+	(void) Words;
 
 #ifdef  RAMMETRICS
         j__AllocWordsTOT -= (((Word_t *)PWord)[-1] & ~3) / sizeof(Word_t);
         j__MalFreeCnt++;        // keep track of total malloc() + free()
-#else
-
-#ifndef  GUARDBAND
-	(void) Words;
-#endif  // GUARDBAND
-
 #endif  // RAMMETRICS
 
 #ifdef  GUARDBAND
@@ -304,7 +299,7 @@ void JudyFree(
         Word_t GuardWord;
 
 //      Verify that the Word_t past the end is same as ~PWord freed
-        GuardWord = *(((Word_t *)PWord) + Words);
+        GuardWord = *((((Word_t *)PWord) + Words));
 
         if (~GuardWord != (Word_t)PWord)
         {
@@ -316,7 +311,7 @@ void JudyFree(
 #endif  // GUARDBAND
 
 #ifdef  TRACEJM
-        printf("%p   JudyFree(%lu)\n", (void *)PWord, Words);
+        printf("%p   JudyFree(%u)\n", (void *)PWord, (int)Words);
 #endif  // TRACEJM
 
 #ifdef  LIBCMALLOC
@@ -330,8 +325,8 @@ void JudyFree(
 
 
 
-Word_t JudyMallocVirtual(
-	Word_t Words)
+RawP_t JudyMallocVirtual(
+	int Words)
 {
 	return(JudyMalloc(Words));
 
@@ -342,8 +337,8 @@ Word_t JudyMallocVirtual(
 // J U D Y   F R E E
 
 void JudyFreeVirtual(
-	void * PWord,
-	Word_t Words)
+	RawP_t PWord,
+	int    Words)
 {
         JudyFree(PWord, Words);
 
