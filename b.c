@@ -15,6 +15,8 @@ const char *Judy1MallocSizes = "Judy1MallocSizes = 3, 5, 7, ...";
 #if defined(RAMMETRICS)
 
 Word_t j__AllocWordsTOT;
+Word_t j__ExtraWordsTOT;
+Word_t j__ExtraWordsCnt;
 Word_t j__TotalBytesAllocated; // mmap
 
 Word_t j__AllocWordsJLLW; // 1 word/key list leaf
@@ -5975,6 +5977,8 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
     Word_t wWordsAllocatedBefore = wWordsAllocated;
       #if defined(RAMMETRICS)
     Word_t j__AllocWordsTOTBefore = j__AllocWordsTOT;
+    Word_t j__ExtraWordsTOTBefore = j__ExtraWordsTOT;
+    Word_t j__ExtraWordsCntBefore = j__ExtraWordsCnt;
     Word_t j__TotalBytesAllocatedBefore = j__TotalBytesAllocated;
       #endif // defined(RAMMETRICS)
   #endif // defined(DEBUG)
@@ -5982,23 +5986,44 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
     Word_t wBytes = FreeArrayGuts((Word_t *)PPArray, /* wPrefix */ 0,
                                    cnBitsPerWord, /* bDump */ 0);
 
-    DBG(printf("# wPopCntTotal %" _fw"u\n", wPopCntTotal));
-    DBG(printf("# Judy1FreeArray wBytes %" _fw"u\n", wBytes));
-    DBG(printf("# wWordsAllocatedBefore %" _fw"u\n", wWordsAllocatedBefore));
+    DBG(printf("# wPopCntTotal %" _fw"u 0x%" _fw"x\n",
+               wPopCntTotal, wPopCntTotal));
+    DBG(printf("# Judy1FreeArray wBytes %" _fw"u words %" _fw"u\n",
+               wBytes, wBytes/sizeof(Word_t)));
+    DBG(printf("# Judy1FreeArray wBytes 0x%" _fw"x words 0x%" _fw"x\n",
+               wBytes, wBytes/sizeof(Word_t)));
+    DBG(printf("# wWordsAllocatedBefore %" _fw"u 0x%" _fw"x\n",
+               wWordsAllocatedBefore, wWordsAllocatedBefore));
 #if defined(RAMMETRICS)
-    DBG(printf("# j__AllocWordsTOTBefore %" _fw"u\n", j__AllocWordsTOTBefore));
-    DBG(printf("# j__TotalBytesAllocatedBefore 0x%" _fw"x\n",
-               j__TotalBytesAllocatedBefore));
+    DBG(printf("# j__AllocWordsTOTBefore %" _fw"u 0x%" _fw"x\n",
+               j__AllocWordsTOTBefore, j__AllocWordsTOTBefore));
+    DBG(printf("# j__ExtraWordsTOTBefore %" _fw"u 0x%" _fw"x\n",
+               j__ExtraWordsTOTBefore, j__ExtraWordsTOTBefore));
+    DBG(printf("# j__ExtraWordsCntBefore %" _fw"u 0x%" _fw"x\n",
+               j__ExtraWordsCntBefore, j__ExtraWordsCntBefore));
+    DBG(printf("# j__TotalBytesAllocatedBefore %" _fw"u words %" _fw"u\n",
+               j__TotalBytesAllocatedBefore,
+               j__TotalBytesAllocatedBefore/sizeof(Word_t)));
+    DBG(printf("# j__TotalBytesAllocatedBefore 0x%" _fw"x words 0x%" _fw"x\n",
+               j__TotalBytesAllocatedBefore,
+               j__TotalBytesAllocatedBefore/sizeof(Word_t)));
+    DBG(printf("# Total MiB Before %" _fw"u rem %" _fw"u\n",
+               j__TotalBytesAllocatedBefore / (1024 * 1024),
+               j__TotalBytesAllocatedBefore % (1024 * 1024)));
     DBG(printf("# Total MiB Before 0x%" _fw"x rem 0x%" _fw"x\n",
                j__TotalBytesAllocatedBefore / (1024 * 1024),
                j__TotalBytesAllocatedBefore % (1024 * 1024)));
 #endif // defined(RAMMETRICS)
-    DBG(printf("# wMallocsBefore %" _fw"u\n", wMallocsBefore));
-    DBG(printf("# wEvenMallocsBefore %" _fw"u\n", wEvenMallocsBefore));
+    DBG(printf("# wMallocsBefore %" _fw"u 0x%" _fw"x\n",
+               wMallocsBefore, wMallocsBefore));
+    DBG(printf("# wEvenMallocsBefore %" _fw"u 0x%" _fw"x\n",
+               wEvenMallocsBefore, wEvenMallocsBefore));
 
+    DBG(printf("After Judy1FreeArray:\n"));
     DBG(printf("# wWordsAllocated %" _fw"u\n", wWordsAllocated));
 #if defined(RAMMETRICS)
     DBG(printf("# j__AllocWordsTOT %" _fw"u\n", j__AllocWordsTOT));
+    DBG(printf("# j__ExtraWordsTOT %" _fw"u\n", j__ExtraWordsTOT));
     DBG(printf("# j__TotalBytesAllocated 0x%" _fw"x\n",
                j__TotalBytesAllocated));
     DBG(printf("# Total MiB 0x%" _fw"x rem 0x%" _fw"x\n",
@@ -6018,6 +6043,7 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
     // What if the application has more than one Judy1 or JudyL array, e.g.
     // Judy1LHTime with -1L or Judy1LHCheck?
     assert(j__AllocWordsTOT == 0);
+    assert(j__ExtraWordsTOT == 0);
     // Dlmalloc doesn't necessarily unmap everything even if we free it.
     //assert(j__TotalBytesAllocated == 0);
 #endif // defined(RAMMETRICS)
