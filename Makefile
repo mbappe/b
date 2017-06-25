@@ -110,6 +110,9 @@ endif
 #ifeq "$(CC)" "gcc"
 #  WFLAGS += -Wno-maybe-uninitialized
 #endif
+# gcc has -Wold-style-declaration clang doesn't
+# clang and gcc both have -Wunknown-warning-option
+# WFLAGS += -Wno-unknown-warning-option
 
 ifeq "$(OFLAGS)" ""
 # -O0 no optimization
@@ -199,10 +202,10 @@ FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEA)
 EXES = Judy1LHTime Judy1LHCheck c++time c++check # t
 LINKS = b btime bcheck
 LIBS = libb1.a libb1.so libb.a libb.so
-LIB1_OBJS = b.o bl.o bi.o br.o bc.o bn.o JudyMalloc.o
-LIB1_SRCS = b.c bl.c bi.c br.c bc.c bn.c JudyMalloc.c
-LIB_OBJS = $(LIB1_OBJS) stubsL.o stubsHS.o
-LIB_SRCS = $(LIB1_SRCS) stubsL.c stubsHS.c
+LIBB1_OBJS = b.o bl.o bi.o br.o bc.o bn.o JudyMalloc.o
+LIBB1_SRCS = b.c bl.c bi.c br.c bc.c bn.c
+LIBB_OBJS = $(LIBB1_OBJS) stubsL.o stubsHS.o
+LIBB_SRCS = $(LIBB1_SRCS) stubsL.c stubsHS.c
 ASMS  = b.s bl.s bi.s br.s bc.s bn.s
 ASMS += stubsL.s stubsHS.s JudyMalloc.s # t.s
 CPPS  = b.i bl.i bi.i br.i bc.i bn.i
@@ -229,20 +232,17 @@ default: $(EXES) $(LINKS)
 all: $(EXES) $(LINKS) $(LIBS) $(ASMS) $(CPPS)
 
 clean:
-	rm -f $(EXES) $(LINKS) $(LIBS) $(LIB_OBJS) $(ASMS) $(CPPS)
+	rm -f $(EXES) $(LINKS) $(LIBS) $(LIBB_OBJS) $(ASMS) $(CPPS)
 
 t: t.c $(T_OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 
 Judy1LHTime: Judy1LHTime.c libb.a
-	#$(CC) $(CFLAGS) -Wno-format -Wno-format-pedantic $(DEFINES) \
-	$(CC) $(CFLAGS) $(DEFINES) \
-		-o $@ $^ -lm
+	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 
 c++time: Judy1LHTime.c libb.a
-	#$(CXX) $(CXXFLAGS) -Wno-format -Wno-format-pedantic $(DEFINES) \
 	$(CXX) $(CXXFLAGS) $(DEFINES) \
-		-x c++ Judy1LHTime.c -x none libb.a -o $@ -lm
+ -x c++ Judy1LHTime.c -x none libb.a -o $@ -lm
 
 b: Judy1LHTime
 	ln -sf Judy1LHTime b
@@ -253,33 +253,34 @@ btime: Judy1LHTime
 # Set LIBRARY_PATH environment variable to find libJudy.a.
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
 Judy1LHCheck: Judy1LHCheck.c libb1.a
-	#$(CC) $(CFLAGS) -Wno-sign-compare -Wno-format -Wno-format-pedantic \
 	$(CC) $(CFLAGS) -Wno-sign-compare \
-		$(DEFINES) -o $@ $^ $(LDFLAGS) -lJudy -lm
+ $(DEFINES) -o $@ $^ $(LDFLAGS) -lJudy -lm
 
 c++check: Judy1LHCheck.c libb1.a
-	#$(CXX) $(CXXFLAGS) -Wno-sign-compare -Wno-format -Wno-format-pedantic \
-	$(CXX) $(CXXFLAGS) \
-		$(DEFINES) -x c++ Judy1LHCheck.c \
-		-x none libb1.a -o $@ $(LDFLAGS) -lJudy -lm
+	$(CXX) $(CXXFLAGS) $(DEFINES) -x c++ Judy1LHCheck.c \
+ -x none libb1.a -o $@ $(LDFLAGS) -lJudy -lm
 
 bcheck: Judy1LHCheck
 	ln -sf Judy1LHCheck bcheck
 
-libb.a: $(LIB_OBJS)
-	ar -r $@ $(LIB_OBJS)
+libb.a: $(LIBB_OBJS)
+	ar -r $@ $^
 
-libb1.a: $(LIB1_OBJS)
-	ar -r $@ $(LIB1_OBJS)
+libb1.a: $(LIBB1_OBJS)
+	ar -r $@ $^
 
 # Build libb.so directly from sources rather than from
 # objects so this Makefile doesn't have to deal with the complexity
 # of -fPIC objects and non -fPIC objecs with the same names.
-libb.so:
-	$(CC) $(CFLAGS_NO_WFLAGS) -fPIC $(DEFINES) -shared -o $@ $(LIB_SRCS)
+libb.so: $(LIBB_SRCS) JudyMalloc.so
+	$(CC) $(CFLAGS_NO_WFLAGS) -fPIC $(DEFINES) -shared -o $@ $^
 
-libb1.so:
-	$(CC) $(CFLAGS_NO_WFLAGS) -fPIC $(DEFINES) -shared -o $@ $(LIB1_SRCS)
+libb1.so: $(LIBB1_SRCS) JudyMalloc.so
+	$(CC) $(CFLAGS) -fPIC $(DEFINES) -shared -o $@ $^
+
+JudyMalloc.so: JudyMalloc.c
+	$(CC) $(CFLAGS) -Wno-old-style-declaration \
+ -Wno-unknown-warning-option -fPIC $(DEFINES) -shared -o $@ $^
 
 ############################
 #
@@ -302,7 +303,8 @@ stubsHS.o: stubsHS.c
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
 
 JudyMalloc.o: JudyMalloc.c
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
+	$(CC) $(CFLAGS) -Wno-old-style-declaration \
+ -Wno-unknown-warning-option $(DEFINES) -c $^
 
 ############################
 #
@@ -315,11 +317,11 @@ JudyMalloc.o: JudyMalloc.c
 
 # Suppress warnings. Transitive warnings. t.c just includes other files.
 t.s: t.c
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
+	$(CC) $(CFLAGS) $(DEFINES) -S $^
 
 # Suppress warnings.
 Judy1LHTime.s: Judy1LHTime.c
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
+	$(CC) $(CFLAGS) $(DEFINES) -S $^
 
 stubsL.s: stubsL.c
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
@@ -329,7 +331,8 @@ stubsHS.s: stubsHS.c
 
 # Suppress warnings.  sbrk is deprecated.
 JudyMalloc.s: JudyMalloc.c
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
+	$(CC) $(CFLAGS) -Wno-old-style-declaration \
+ -Wno-unknown-warning-option $(DEFINES) -S $^
 
 ############################
 #
@@ -382,6 +385,5 @@ t.i: t.c
 
 # The .c.i rule doesn't work for some reason.  Later.
 JudyMalloc.i: JudyMalloc.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $^ \
-		| indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
