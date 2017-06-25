@@ -1880,7 +1880,8 @@ embeddedKeys:;
             if (nBLArg != cnBitsPerWord)
 #endif // defined(BM_IN_LINK)
             {
-                printf(" Bm");
+                printf(" pwBm " OWx" pLinks " OWx" Bm",
+                       (Word_t)PWR_pwBm(pwRoot, pwr), (Word_t)pLinks);
                 // Bitmaps are an integral number of words.
                 for (int nn = 0;
                      nn < DIV_UP((int)EXP(nBL_to_nBitsIndexSz(nBL)),

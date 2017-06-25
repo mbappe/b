@@ -26,13 +26,15 @@ static Word_t
 CountSw(Word_t *pwRoot,
         int nBLR, // bits left at top of switch
         Switch_t *pwr,
-        int nBL, // bits left at bottom of switch
-        Word_t wIndex, // offset of relevant link in switch
+        int nBL, // bits left after selection of link in switch
+        Word_t wIndex, // index of relevant link in switch
         int nLinks)
 {
+    //DBGC(Dump(pwRootLast, 0, cnBitsPerWord));
     (void)pwRoot; (void)nBLR; (void)nLinks;
-    DBGC(printf("\nCountSw nBL %d nBLR %d wIndex " OWx"\n",
-                nBL, nBLR, wIndex));
+    int nType = Get_nType(pwRoot);
+    DBGC(printf("\nCountSw nType %d nBL %d nBLR %d wIndex " OWx"\n",
+                nType, nBL, nBLR, wIndex));
     Word_t wPopCnt = 0;
     Word_t ww, wwLimit;
       #if ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
@@ -53,7 +55,12 @@ CountSw(Word_t *pwRoot,
     }
     DBGC(printf("ww " OWx" wwLimit " OWx"\n", ww, wwLimit));
     for (; ww < wwLimit; ++ww) {
-        Word_t *pwRootLoop = &pwr_pLinks((Switch_t *)pwr)[ww].ln_wRoot;
+        Link_t *pLinks =
+#if defined(CODE_BM_SW)
+             tp_bIsBmSw(nType) ? pwr_pLinks((BmSwitch_t *)pwr) :
+#endif // defined(CODE_BM_SW)
+                                 pwr_pLinks((  Switch_t *)pwr) ;
+        Word_t *pwRootLoop = &pLinks[ww].ln_wRoot;
         Word_t wPopCntLoop;
         DBGC(printf("ww " OWx" pwRootLoop %p\n", ww, (void *)pwRootLoop));
       #if defined(ALLOW_EMBEDDED_BITMAP)
@@ -136,6 +143,9 @@ CountSw(Word_t *pwRoot,
             default:
                 printf("\nww %" _fw"d *pwRootLoop " OWx" nTypeLoop %d\n",
                        ww, *pwRootLoop, nTypeLoop);
+                if (wPopCntTotal < 0x1000) {
+                    DBGC(Dump(pwRootLast, 0, cnBitsPerWord));
+                }
                 assert(0);
             }
         }
@@ -967,6 +977,7 @@ t_xx_sw:;
     case T_BM_SW | EXP(cnBitsMallocMask): // no skip switch
   #endif // defined(EXTRA_TYPES)
     {
+        Word_t wBm, wBit;
         goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
 t_bm_sw:;
   #if defined(BM_SW_FOR_REAL) || ! defined(LOOKUP) || defined(DEBUG)
@@ -977,7 +988,7 @@ t_bm_sw:;
         // The NAX assumes our test program doesn't generate any keys
         // that have bits set in the top digit.
         // It's really only legitimate to use NAB.
-        assert(nBLR != cnBitsPerWord);
+        //assert(nBLR != cnBitsPerWord);
         //nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBL);
         nBL = nBLR - nBW_from_nBL_NAB3(nBLR);
 
@@ -990,7 +1001,7 @@ t_bm_sw:;
             & (MSK(nBL_to_nBitsIndexSzNAX(nBLR))));
 
         DBGX(printf("T_BM_SW nBLR %d pLinks %p wIndex %d 0x%x\n", nBLR,
-             (void *)pwr_pLinks((Switch_t *)pwr), (int)wIndex, (int)wIndex));
+             (void *)pwr_pLinks((BmSwitch_t *)pwr), (int)wIndex, (int)wIndex));
 
   #if defined(BM_IN_LINK)
         // Have not coded for skip link at top here and elsewhere.
@@ -1021,30 +1032,32 @@ t_bm_sw:;
   #else // (cnBitsPerDigit > cnLogBitsPerWord)
             unsigned nBmOffset = 0;
   #endif // (cnBitsPerDigit > cnLogBitsPerWord)
-           Word_t wBm = PWR_pwBm(pwRoot, pwr)[nBmOffset];
-           Word_t wBit = ((Word_t)1 << (wIndex & (cnBitsPerWord - 1)));
-           // Test to see if link exists before figuring out where it is.
-           if ( ! (wBm & wBit) )
-           {
-  #if defined(BM_SW_FOR_REAL)
-                DBGX(printf("missing link\n"));
-                nBL = nBLUp; // back up for InsertGuts
-                goto notFound; // why can't we just "break;"?
-  #else // defined(BM_SW_FOR_REAL)
-                assert(0); // only for now
-  #endif // defined(BM_SW_FOR_REAL)
-            }
-            Word_t wBmMask = wBit - 1;
-            wIndex = 0;
-  #if (cnBitsPerDigit > cnLogBitsPerWord)
-            for (unsigned nn = 0; nn < nBmOffset; nn++)
+            wBm = PWR_pwBm(pwRoot, pwr)[nBmOffset];
+            wBit = ((Word_t)1 << (wIndex & (cnBitsPerWord - 1)));
+  #if ! defined(COUNT)
+            // Test to see if link exists before figuring out where it is.
+            if ( ! (wBm & wBit) )
             {
-                wIndex += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
-            }
+      #if defined(BM_SW_FOR_REAL)
+                 DBGX(printf("missing link\n"));
+                 nBL = nBLUp; // back up for InsertGuts
+                 goto notFound; // why can't we just "break;"?
+      #else // defined(BM_SW_FOR_REAL)
+                 assert(0); // only for now
+      #endif // defined(BM_SW_FOR_REAL)
+             }
+  #endif // ! defined(COUNT)
+             Word_t wBmMask = wBit - 1;
+             wIndex = 0;
+  #if (cnBitsPerDigit > cnLogBitsPerWord)
+             for (unsigned nn = 0; nn < nBmOffset; nn++)
+             {
+                 wIndex += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
+             }
   #endif // (cnBitsPerDigit > cnLogBitsPerWord)
-            DBGX(printf("\npwRoot %p PWR_pwBm %p\n",
-                        (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
-            wIndex += __builtin_popcountll(wBm & wBmMask);
+             DBGX(printf("\npwRoot %p PWR_pwBm %p\n",
+                         (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
+             wIndex += __builtin_popcountll(wBm & wBmMask);
         }
 
 #if defined(INSERT) || defined(REMOVE)
@@ -1070,11 +1083,13 @@ t_bm_sw:;
 #endif // defined(INSERT) || defined(REMOVE)
 
 #if defined(COUNT)
-        wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL, wIndex, MAXUINT);
+        // Use nLinks = INT_MAX to force CountSw to start from beginning.
+        // I'm not sure why it's necessary or helpful.
+        wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL, wIndex, INT_MAX);
         wPopCntSum += wPopCnt;
         DBGC(printf("bmsw wPopCnt " OWx" wPopCntSum " OWx"\n",
                     wPopCnt, wPopCntSum));
-}
+        if ( ! (wBm & wBit) ) { return wPopCntSum; }
 #endif // defined(COUNT)
 
         pwRoot = &pwr_pLinks((BmSwitch_t *)pwr)[wIndex].ln_wRoot;
@@ -1457,7 +1472,7 @@ t_bitmap:;
                 if (nIncr > 0)
                 {
                     DBGX(printf("Bit is set!\n"));
-                    goto undo; // undo counting 
+                    goto undo; // undo counting
                 }
           #endif // !defined(RECURSIVE)
       #endif // defined(INSERT)
@@ -1593,7 +1608,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         return wRoot ? Success : Failure;
       #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
 
-        DBGX(printf("EMBEDDED_KEYS\n")); 
+        DBGX(printf("EMBEDDED_KEYS\n"));
 
       #if    (defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)) \
           || (defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP))
@@ -1656,7 +1671,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         CASE_BLX(60); CASE_BLX(61); CASE_BLX(62); CASE_BLX(63); CASE_BLX(64);
         }
 break2:
-            
+
       #endif // (defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) ... )
 
       #if (!defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)) \
@@ -1843,9 +1858,9 @@ foundIt:;
 
     } // end of switch
 
-#if defined(BM_SW_FOR_REAL)
+#if defined(BM_SW_FOR_REAL) && ! defined(COUNT)
 notFound:; // why don't we just "break;" above?
-#endif // defined(BM_SW_FOR_REAL)
+#endif // defined(BM_SW_FOR_REAL) && ! defined(COUNT)
 #if defined(COUNT)
     DBGC(printf("done wPopCntSum " OWx"\n", wPopCntSum));
     return wPopCntSum;
@@ -1995,7 +2010,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
   #if defined(BITMAP_BY_BYTE) // vs. bitmap by word
 
     Word_t wByteNum = BitmapByteNum(wKey);
-    Word_t wByteMask = BitmapByteMask(wKey);     
+    Word_t wByteMask = BitmapByteMask(wKey);
 
     DBGL(printf("Judy1Test num " OWx" mask " OWx"\n", wByteNum, wByteMask));
     DBGL(printf("val %x\n", (int)(((char *)pcvRoot)[wByteNum] & wByteMask)));
@@ -2010,7 +2025,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     // bitmap by word
 
     Word_t wWordNum = BitmapWordNum(wKey);
-    Word_t wWordMask = BitmapWordMask(wKey);     
+    Word_t wWordMask = BitmapWordMask(wKey);
 
     DBGL(printf("Judy1Test num " OWx" mask " OWx"\n", wWordNum, wWordMask));
     DBGL(printf("val %x\n",
@@ -2212,7 +2227,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     }
 
     wByteNum = BitmapByteNum(wKey);
-    wByteMask = BitmapByteMask(wKey);     
+    wByteMask = BitmapByteMask(wKey);
 
     DBGI(printf("Judy1Set num " OWx" mask " OWx"\n", wByteNum, wByteMask));
 
@@ -2339,7 +2354,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     if (wRoot == 0) { return Failure; }
 
     wByteNum = BitmapByteNum(wKey);
-    wByteMask = BitmapByteMask(wKey);     
+    wByteMask = BitmapByteMask(wKey);
 
     if ( ! ((c = ((char *)wRoot)[wByteNum]) & wByteMask) )
     {
