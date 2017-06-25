@@ -977,7 +977,7 @@ t_xx_sw:;
     case T_BM_SW | EXP(cnBitsMallocMask): // no skip switch
   #endif // defined(EXTRA_TYPES)
     {
-        Word_t wBm, wBit;
+        Word_t wBit;
         goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
 t_bm_sw:;
   #if defined(BM_SW_FOR_REAL) || ! defined(LOOKUP) || defined(DEBUG)
@@ -1026,38 +1026,23 @@ t_bm_sw:;
             ) )
   #endif // defined(BM_IN_LINK)
         {
-  // Is this ifdef necessary?  Or will the compiler figure it out?
-  #if (cnBitsPerDigit > cnLogBitsPerWord)
-            unsigned nBmOffset = wIndex >> cnLogBitsPerWord;
-  #else // (cnBitsPerDigit > cnLogBitsPerWord)
-            unsigned nBmOffset = 0;
-  #endif // (cnBitsPerDigit > cnLogBitsPerWord)
-            wBm = PWR_pwBm(pwRoot, pwr)[nBmOffset];
-            wBit = ((Word_t)1 << (wIndex & (cnBitsPerWord - 1)));
+            BmSwIndex(pwRoot, wIndex, NULL, &wBit);
   #if ! defined(COUNT)
             // Test to see if link exists before figuring out where it is.
-            if ( ! (wBm & wBit) )
+            if ( ! wBit )
             {
       #if defined(BM_SW_FOR_REAL)
-                 DBGX(printf("missing link\n"));
-                 nBL = nBLUp; // back up for InsertGuts
-                 goto notFound; // why can't we just "break;"?
+                DBGX(printf("missing link\n"));
+                nBL = nBLUp; // back up for InsertGuts
+                goto notFound; // why can't we just "break;"?
       #else // defined(BM_SW_FOR_REAL)
-                 assert(0); // only for now
+                assert(0); // only for now
       #endif // defined(BM_SW_FOR_REAL)
-             }
+            }
   #endif // ! defined(COUNT)
-             Word_t wBmMask = wBit - 1;
-             wIndex = 0;
-  #if (cnBitsPerDigit > cnLogBitsPerWord)
-             for (unsigned nn = 0; nn < nBmOffset; nn++)
-             {
-                 wIndex += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]);
-             }
-  #endif // (cnBitsPerDigit > cnLogBitsPerWord)
-             DBGX(printf("\npwRoot %p PWR_pwBm %p\n",
-                         (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
-             wIndex += __builtin_popcountll(wBm & wBmMask);
+            BmSwIndex(pwRoot, wIndex, &wIndex, NULL);
+            DBGX(printf("\npwRoot %p PWR_pwBm %p\n",
+                        (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
         }
 
 #if defined(INSERT) || defined(REMOVE)
@@ -1089,7 +1074,7 @@ t_bm_sw:;
         wPopCntSum += wPopCnt;
         DBGC(printf("bmsw wPopCnt " OWx" wPopCntSum " OWx"\n",
                     wPopCnt, wPopCntSum));
-        if ( ! (wBm & wBit) ) { return wPopCntSum; }
+        if ( ! wBit ) { return wPopCntSum; }
 #endif // defined(COUNT)
 
         pwRoot = &pwr_pLinks((BmSwitch_t *)pwr)[wIndex].ln_wRoot;
