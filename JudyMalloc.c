@@ -34,6 +34,9 @@
 
 #ifdef  RAMMETRICS
 Word_t    j__AllocWordsTOT;             // words in buffers given by malloc
+Word_t    j__ExtraWordsTOT;             // extra words above previous estimate
+                                        // of one or two or three
+Word_t    j__ExtraWordsCnt;             // how many buffers have extra words
 Word_t    j__MalFreeCnt;                // keep track of total malloc() + free()
 Word_t    j__MFlag;                     // Print memory allocation on stderr
 Word_t    j__TotalBytesAllocated;       // from kernel from dlmalloc
@@ -243,8 +246,17 @@ RawP_t JudyMalloc(
 	Addr = (Word_t) dlmalloc(Bytes);
 #endif	// ! LIBCMALLOC
 #ifdef  RAMMETRICS
-        // get # bytes in malloc buffer from preamble
-        j__AllocWordsTOT += (((Word_t *)Addr)[-1] & ~3) / sizeof(Word_t);
+        if (Addr)
+        {
+            // get # bytes in malloc buffer from preamble
+            size_t zAllocWords = (((Word_t *)Addr)[-1] & ~3) / sizeof(Word_t);
+            size_t zMinWords = (Words + 2) & ~1;
+            if (zMinWords < 4) { zMinWords = 4; }
+            j__AllocWordsTOT += zAllocWords;
+            j__ExtraWordsTOT += zAllocWords - zMinWords;
+            if (zAllocWords != zMinWords)
+                j__ExtraWordsCnt++;
+        }
 #endif  // RAMMETRICS
 
 #ifdef  TRACEJM
@@ -284,7 +296,15 @@ void JudyFree(
 	(void) Words;
 
 #ifdef  RAMMETRICS
-        j__AllocWordsTOT -= (((Word_t *)PWord)[-1] & ~3) / sizeof(Word_t);
+        // get # bytes in malloc buffer from preamble
+        size_t zAllocWords = (((Word_t *)PWord)[-1] & ~3) / sizeof(Word_t);
+        size_t zMinWords = (Words + 2) & ~1;
+        if (zMinWords < 4) { zMinWords = 4; }
+        j__AllocWordsTOT -= zAllocWords;
+        j__ExtraWordsTOT -= zAllocWords - zMinWords;
+        if (zAllocWords != zMinWords)
+            j__ExtraWordsCnt--;
+
         j__MalFreeCnt++;        // keep track of total malloc() + free()
 #endif  // RAMMETRICS
 
