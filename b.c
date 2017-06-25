@@ -1971,6 +1971,15 @@ Dump(Word_t *pwRoot, Word_t wPrefix, int nBL)
 }
 #endif // defined(DEBUG)
 
+void
+Judy1Dump(Word_t wRoot, int nBL, Word_t wPrefix)
+{
+#if defined(DEBUG)
+    assert(nBL == cnBitsPerWord); // for now
+    Dump(&wRoot, wPrefix, nBL);
+#endif // defined(DEBUG)
+}
+
 #if defined(EMBED_KEYS)
 #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
   #if ! defined(PACK_KEYS_RIGHT)

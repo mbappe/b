@@ -1,6 +1,6 @@
 // @(#) $Revision: 1.3 $ $Source: /home/doug/JudyL64A/test/RCS/Judy1LHCheck.c,v $
 //      This program tests the accuracy of a Judy1 with a JudyL Array.
-//                      -by- 
+//                      -by-
 //      Douglas L. Baskins (8/2001)  doug@sourcejudy.com
 
 #include <stdlib.h>             // calloc()
@@ -54,7 +54,7 @@ TestJudyNextEmpty(void *J1, void *JL, Word_t LowIndex, Word_t Elements);
 int
 TestJudyPrevEmpty(void *J1, void *JL, Word_t HighIndex, Word_t Elements);
 
-Word_t MagicList[] = 
+Word_t MagicList[] =
 {
     0,0,0,0,0,0,0,0,0,0, // 0..9
     0x27f,      // 10
@@ -71,7 +71,7 @@ Word_t MagicList[] =
     0xc4fb,     // 21
     0xc4fb,     // 22
     0xc4fb,     // 23
-    0x13aab,    // 24 
+    0x13aab,    // 24
     0x11ca3,    // 25
     0x11ca3,    // 26
     0x11ca3,    // 27
@@ -79,39 +79,39 @@ Word_t MagicList[] =
     0x11ca3,    // 29
     0xc4fb,     // 30
     0xc4fb,     // 31
-    0x13aab,    // 32 
-    0x14e73,    // 33  
-    0x145d7,    // 34  
+    0x13aab,    // 32
+    0x14e73,    // 33
+    0x145d7,    // 34
     0x145f9,    // 35  following tested with Seed=0xc1fc to 35Gig numbers
-    0x151ed,    // 36 .. 41 
-    0x151ed,    // 37  
-    0x151ed,    // 38  
+    0x151ed,    // 36 .. 41
+    0x151ed,    // 37
+    0x151ed,    // 38
     0x151ed,    // 39  fails at 549751488512 (549Gig)
-    0x151ed,    // 40  
-    0x146c3,    // 41 .. 64 
-    0x146c3,    // 42  
-    0x146c3,    // 43  
-    0x146c3,    // 44  
-    0x146c3,    // 45  
-    0x146c3,    // 46  
-    0x146c3,    // 47  
-    0x146c3,    // 48  
-    0x146c3,    // 49  
-    0x146c3,    // 50  
-    0x146c3,    // 51  
-    0x146c3,    // 52  
-    0x146c3,    // 53  
-    0x146c3,    // 54  
-    0x146c3,    // 55  
-    0x146c3,    // 56  
-    0x146c3,    // 57  
-    0x146c3,    // 58  
-    0x146c3,    // 59  
-    0x146c3,    // 60  
-    0x146c3,    // 61  
-    0x146c3,    // 62  
-    0x146c3,    // 63  
-    0x146c3     // 64  
+    0x151ed,    // 40
+    0x146c3,    // 41 .. 64
+    0x146c3,    // 42
+    0x146c3,    // 43
+    0x146c3,    // 44
+    0x146c3,    // 45
+    0x146c3,    // 46
+    0x146c3,    // 47
+    0x146c3,    // 48
+    0x146c3,    // 49
+    0x146c3,    // 50
+    0x146c3,    // 51
+    0x146c3,    // 52
+    0x146c3,    // 53
+    0x146c3,    // 54
+    0x146c3,    // 55
+    0x146c3,    // 56
+    0x146c3,    // 57
+    0x146c3,    // 58
+    0x146c3,    // 59
+    0x146c3,    // 60
+    0x146c3,    // 61
+    0x146c3,    // 62
+    0x146c3,    // 63
+    0x146c3     // 64
 };
 
 // Routine to "mirror" the input data word
@@ -241,7 +241,7 @@ main(int argc, char *argv[])
             SkipN = strtoul(optarg, NULL, 0);
             break;
 
-        case 'P':               // 
+        case 'P':               //
             PtsPdec = strtoul(optarg, NULL, 0);
             break;
 
@@ -695,40 +695,43 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
     TstIndex = LowIndex;
     for (elm = 0; elm < Elements; elm++)
     {
-
         J1C(Count1, J1, LowIndex, TstIndex);
-
-        if (pFlag) { printf("JudyLCount: Count=%" PRIuPTR" Low=%p High=%p\n", Count1, (void *)LowIndex, (void *)TstIndex); }
-
         if (Count1 == JERR)
             FAILURE("Judy1Count ret JERR", Count1);
 
-        if (Count1 != (elm + 1))
-        {
-            J1C(Count1, J1, 0, -1);
-            printf("J1C(%" PRIuPTR", J1, 0, -1)\n", Count1);
-
-            JLC(CountL, JL, 0, -1);
-            printf("JLC(%" PRIuPTR", JL, 0, -1)\n", CountL);
-
-            printf("LowIndex = 0x%" PRIxPTR", TstIndex = 0x%" PRIxPTR", diff = %" PRIuPTR"\n", LowIndex,
-                   TstIndex, TstIndex - LowIndex);
-            JLC(CountL, JL, LowIndex, TstIndex);
-            printf("CountL = %" PRIuPTR", Count1 = %" PRIuPTR", should be: elm + 1 = %" PRIuPTR"\n", CountL, Count1, elm + 1);
-            FAILURE("J1C at", elm);
+        if (pFlag) {
+            printf("Judy1Count: Count=%" PRIuPTR" Low=%p High=%p\n",
+                   Count1, (void *)LowIndex, (void *)TstIndex);
         }
 
         JLC(CountL, JL, LowIndex, TstIndex);
         if (CountL == JERR)
             FAILURE("JudyLCount ret JERR", CountL);
 
-        if (CountL != (elm + 1)) 
-        {
-            printf("CountL = %" PRIuPTR", elm +1 = %" PRIuPTR"\n", CountL, elm + 1);
-            FAILURE("JLC at", elm);
+        if (pFlag) {
+            printf("JudyLCount: Count=%" PRIuPTR" Low=%p High=%p\n",
+                   CountL, (void *)LowIndex, (void *)TstIndex);
         }
 
-        J1N(Rcode, J1, TstIndex);
+        if ((Count1 != (elm + 1)) || (CountL != (elm + 1)))
+        {
+            printf("Count1 = %" PRIuPTR", CountL = %" PRIuPTR
+                   ", should be: elm + 1 = %" PRIuPTR"\n",
+                   Count1, CountL, elm + 1);
+            if (Count1 != (elm + 1)) {
+                Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
+            }
+            FAILURE("Count at", elm);
+        }
+
+        Word_t TstIndex1 = TstIndex;
+        J1N(Rcode, J1, TstIndex1);
+        JudyLNext(JL, &TstIndex, NULL);
+        if (TstIndex != TstIndex1) {
+            printf("Next TstIndex = %zd != TstIndex1 = %zd\n",
+                   TstIndex, TstIndex1);
+            FAILURE("Count at", elm);
+        }
     }
     return(0);
 }
