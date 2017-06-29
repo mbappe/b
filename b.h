@@ -4178,21 +4178,21 @@ ls_pxKey(Word_t *pwr, int nBL, int ii)
 #define ls_pxKey(_ls, _nBL, _ii)  (ls_pwKeys((_ls), (_nBL))[_ii])
 #endif // defined(COMPRESSED_LISTS)
 
-// Determine if the requested index is present.
 // Get bitmap switch link index/offset from (virtual) index extracted from key.
 // If the index is not present then return the index at which it would be.
 static inline void
-BmSwIndex(Word_t *pwRoot, Word_t wIndex, Word_t *pwBmSwIndex, Word_t *pwBmSwBit)
+BmSwIndex(Word_t *pwRoot, Word_t wIndex,
+          Word_t *pwBmSwIndex, Word_t *pwBmSwBit)
 {
     Word_t *pwBmWords = PWR_pwBm(pwRoot, wr_pwr(*pwRoot));
     // The bitmap may have more than one word.
-    // nBmWordOffset is the offset of the word which contains the bit we want.
-    unsigned nBmWordOffset = wIndex >> cnLogBitsPerWord;
-    Word_t wBmWord = pwBmWords[nBmWordOffset]; // word we want
+    // nBmWordNum is the number of the word which contains the bit we want.
+    int nBmWordNum = wIndex >> cnLogBitsPerWord;
+    Word_t wBmWord = pwBmWords[nBmWordNum]; // word we want
     Word_t wBmBit = ((Word_t)1 << (wIndex & (cnBitsPerWord - 1)));
     if (pwBmSwIndex != NULL) {
         *pwBmSwIndex = 0;
-        for (unsigned nn = 0; nn < nBmWordOffset; nn++) {
+        for (int nn = 0; nn < nBmWordNum; nn++) {
             *pwBmSwIndex += __builtin_popcountll(pwBmWords[nn]);
         }
         *pwBmSwIndex += __builtin_popcountll(wBmWord & (wBmBit - 1));
