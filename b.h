@@ -985,7 +985,12 @@ Clr_bIsSkip(Word_t* pwRoot)
   #if defined(SKIP_TO_XX_SW)
     case T_SKIP_TO_XX_SW: Set_nType(pwRoot, T_XX_SW); break;
   #endif // defined(SKIP_TO_XX_SW)
-    default: assert(0);
+  #if defined(SKIP_TO_BITMAP)
+    case T_SKIP_TO_BITMAP: Set_nType(pwRoot, T_BITMAP); break;
+  #endif // defined(SKIP_TO_BITMAP)
+    default:
+        DBG(printf("\nnType %d\n", nType));
+        assert(0);
     }
 }
 #endif // defined(SKIP_LINKS)
