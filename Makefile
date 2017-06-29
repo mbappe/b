@@ -237,8 +237,10 @@ clean:
 t: t.c $(T_OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 
-Judy1LHTime: Judy1LHTime.c libb.a
-	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
+#Judy1LHTime: Judy1LHTime.c libb.a
+#	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
+Judy1LHTime: Judy1LHTime.c libb1.a
+	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LDFLAGS) -lJudy -lm
 
 c++time: Judy1LHTime.c libb.a
 	$(CXX) $(CXXFLAGS) $(DEFINES) \
