@@ -7,6 +7,7 @@
 #include <unistd.h>             // getopt()
 #include <math.h>               // pow()
 #include <stdio.h>              // printf()
+#include <assert.h>
 
 #include <Judy.h>
 
@@ -565,7 +566,12 @@ TestJudyIns(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
         if (PValue == PJERR)
             FAILURE("JudyHSIns failed at", elm);
         if (*PValue == TstIndex)
-            FAILURE("JudyHSIns failed - DUP Index, population =", TotalPop);
+        {
+            if (TstIndex != 0)
+            {
+                FAILURE("JudyHSIns failed - DUP Index, population =", TotalPop);
+            }
+        }
 
 //      Save Index in Value
         *PValue = TstIndex;
@@ -934,13 +940,26 @@ TestJudyPrevEmpty(void *J1, void *JL, Word_t HighIndex, Word_t Elements)
         if (pFlag) { printf("JudyPrevEmpty: %8" PRIuPTR"\t%p\n", elm, (void *)J1index); }
 
 //      Find Previous Empty Index, JLindex/J1index is modified by J[1L]PE
+        assert(JLindex == J1index);
         J1PE(Rcode1, J1, J1index);      // Rcode = Judy1PrevEmpty(J1, &J1index, PJE0)
         JLPE(RcodeL, JL, JLindex);      // RcodeL = JudyLPrevEmpty(JL, &JLindex, PJE0)
         if ((RcodeL != 1) || (Rcode1 != 1))
         {
-            printf("RcodeL = %d, Rcode1 = %d, Index1 = 0x%" PRIxPTR", IndexL = 0x%" PRIxPTR"\n",
-                    RcodeL, Rcode1, J1index, JLindex);
-            FAILURE("Judy[1L]PrevEmpty Rcode* != 1 =", RcodeL);
+            if (PrevKey != 0)
+            {
+                printf("RcodeL %d Rcode1 %d Index1 0x%zx IndexL 0x%zx J*PE(0x%zx)\n",
+                        RcodeL, Rcode1, J1index, JLindex, PrevKey);
+                Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
+                FAILURE("Judy[1L]PrevEmpty Rcode* != 1 =", RcodeL);
+            }
+            if ((RcodeL != 0) || (Rcode1 != 0))
+            {
+                printf("RcodeL %d Rcode1 %d Index1 0x%zx IndexL 0x%zx J*PE(0x%zx)\n",
+                        RcodeL, Rcode1, J1index, JLindex, PrevKey);
+                Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
+                FAILURE("Judy[1L]PrevEmpty Rcode* != 0 =", RcodeL);
+            }
+            break;
         }
         if (J1index != JLindex)
             FAILURE("JLPE != J1PE returned index at", elm);
