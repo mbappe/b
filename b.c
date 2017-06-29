@@ -6599,25 +6599,17 @@ NextGuts(Word_t wRoot, int nBL,
         //A(0); // check -B17
         DBGN(printf("T_BM_SW wSkip %" _fw"u\n", wSkip));
         int nBits = nBL_to_nBitsIndexSz(nBL); // bits decoded by switch
-        DBGN(printf("T_BM_SW nBits %d\n", nBits));
         Word_t *pwBmWords = PWR_pwBm(&wRoot, pwr);
-        DBGN(printf("T_BM_SW pwBmWords %p\n", (void *)pwBmWords));
         int nLinks = 0;
         for (int nn = 0;
              nn < (int)DIV_UP(EXP(nBits), cnBitsPerWord); nn++) {
             nLinks += __builtin_popcountll(pwBmWords[nn]);
         }
-        DBGN(printf("T_BM_SW nLinks %d\n", nLinks));
         Link_t *pLinks = pwr_pLinks((BmSwitch_t *)pwr);
-        DBGN(printf("T_BM_SW pLinks %p\n", (void *)pLinks));
         Word_t wIndex = (*pwKey >> (nBL-nBits)) & MSK(nBits);
-        DBGN(printf("T_BM_SW wIndex 0x%" _fw"x\n", wIndex));
         int nBmWordNum = wIndex >> cnLogBitsPerWord;
-        DBGN(printf("T_BM_SW nBmWordNum %d\n", nBmWordNum));
         int nBmBitNum = wIndex & (cnBitsPerWord - 1);
-        DBGN(printf("T_BM_SW nBmBitNum %d\n", nBmBitNum));
         Word_t wBmWord = pwBmWords[nBmWordNum];
-        DBGN(printf("T_BM_SW wBmWord 0x%016" _fw"x\n", wBmWord));
 
         // find starting link
         Word_t wBmSwIndex, wBmSwBit;
