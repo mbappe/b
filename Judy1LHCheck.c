@@ -114,6 +114,8 @@ Word_t MagicList[] =
     0x146c3     // 64
 };
 
+Word_t BValue    = sizeof(Word_t) * 8;
+
 // Routine to "mirror" the input data word
 static Word_t
 Swizzle(Word_t word)
@@ -142,6 +144,8 @@ Swizzle(Word_t word)
     word = ((word & 0x55555555) << 1) | ((word & 0xaaaaaaaa) >> 1);
 #endif // __LP64__
 
+    word = word >> ((sizeof(Word_t) * 8) - BValue);
+
     return(word);
 }
 
@@ -158,7 +162,6 @@ Word_t TotalDel = 0;
 
 // Stuff for LFSR (pseudo random number generator)
 Word_t RandomBit = (Word_t)~0 / 2 + 1;
-Word_t BValue    = sizeof(Word_t) * 8;
 Word_t Magic;
 Word_t StartSeed = 0xc1fc;      // default beginning number
 Word_t FirstSeed;
@@ -530,7 +533,13 @@ TestJudyIns(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
         if (PValue == PJERR)
             FAILURE("JudyLIns failed at", elm);
         if (*PValue == TstIndex)
-            FAILURE("JudyLIns failed - DUP Index, population =", TotalPop);
+        {
+            if (TstIndex != 0)
+            {
+                printf("TstIndex %zu 0x%zx\n", TstIndex, TstIndex);
+                FAILURE("JudyLIns failed - DUP Index, population =", TotalPop);
+            }
+        }
 
 //      Save Index in Value
         *PValue = TstIndex;
@@ -759,7 +768,10 @@ Word_t TestJudyNext(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
         if (Rcode != 1)
             FAILURE("Judy1Next Rcode != 1 =", Rcode);
         if (JLindex != J1index)
+        {
+            printf("JudyLNext = %zx Judy1Next = %zx\n", JLindex, J1index);
             FAILURE("JudyLNext & Judy1Next ret different PIndex at", elm);
+        }
 
         JPindex = J1index;              // save the last found index
 
@@ -799,9 +811,12 @@ TestJudyPrev(void *J1, void *JL, Word_t HighIndex, Word_t Elements)
         if (PValue == NULL)
             FAILURE("JudyLPrev ret NULL PValue at", elm);
         if (Rcode != 1)
-            FAILURE("Judy1Prev Rcode != 1 =", Rcode);
+            FAILURE("Judy1Prev Rcode != 1 at", elm);
         if (JLindex != J1index)
+        {
+            printf("JLindex %zx J1index %zx\n", JLindex, J1index);
             FAILURE("JudyLPrev & Judy1Prev ret different PIndex at", elm);
+        }
 
         PValue = (PWord_t)JudyLPrev(JL, &JLindex, NULL); // Get previous one
         J1P(Rcode, J1, J1index);        // Get previous one
