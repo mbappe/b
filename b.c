@@ -6431,8 +6431,14 @@ NextGuts(Word_t wRoot, int nBL,
         return 0;
     }
   #if defined(SKIP_LINKS)
-    case T_SKIP_TO_SWITCH: {
-        DBGN(printf("T_SKIP_TO_SW\n"));
+    default: {
+    /* case T_SKIP_TO_SWITCH */
+#if defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
+        DBG((nType != T_SKIP_TO_SWITCH)
+            ? printf("NextGuts: Unhandled nType: %d\n", nType) : 0);
+        assert(nType == T_SKIP_TO_SWITCH);
+#endif // ! defined(LVL_IN_WR_HB) && ! defined(DEPTH_IN_SW)
+        DBGN(printf("SKIP_TO_SW\n"));
         //A(0);
         nBL = wr_nBL(wRoot);
         Word_t wPrefix = PWR_wPrefixBL(&wRoot, (Switch_t *)pwr, nBL);
@@ -6621,10 +6627,6 @@ NextGuts(Word_t wRoot, int nBL,
 
         if (bPrev) {
             //A(0); // check -B17
-            if (*pwKey == 0xffbfffffffffffff) {
-                //Dump(pwRootLast, 0, cnBitsPerWord);
-            }
-            //Dump(pwRootLast, 0, cnBitsPerWord);
             wBmWord &= MSK(nBmBitNum); // mask off high bits
             DBGN(printf("T_BM_SW masked wBmWord 0x%016" _fw"x\n", wBmWord));
 
@@ -6739,9 +6741,6 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
             if (*pwKey == 0x1f986) {
                 //Dump(pwRootLast, 0, cnBitsPerWord);
             }
-        if (*pwKey == 0x0023000000000001) {
-            //Dump(pwRootLast, 0, cnBitsPerWord);
-        }
             wBmWord &= ~MSK(nBmBitNum); // mask off low bits
             DBGN(printf("T_BM_SW masked wBmWord 0x%016" _fw"x\n", wBmWord));
             Link_t *pLn = &pLinks[wBmSwIndex];
@@ -6958,7 +6957,6 @@ BmSwGetNextIndex:
   #endif // defined(USE_XX_SW)
     assert(0); // not expected to get here
     }
-    DBG(printf("J1BC: Unhandled type %d\n", wr_nType(wRoot)));
     assert(0); // not expected to get here
     return -1; // address compiler complaint
 }
@@ -7230,7 +7228,14 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
         }
     }
   #if defined(SKIP_LINKS)
-    case T_SKIP_TO_SWITCH: {
+    default: {
+    /* case T_SKIP_TO_SWITCH */
+      #if defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
+        int nType = wr_nType(wRoot); (void)nType;
+        DBG((nType != T_SKIP_TO_SWITCH)
+            ? printf("NextGuts: Unhandled nType: %d\n", nType) : 0);
+        assert(nType == T_SKIP_TO_SWITCH);
+      #endif // ! defined(LVL_IN_WR_HB) && ! defined(DEPTH_IN_SW)
         nBL = wr_nBL(wRoot);
         Word_t wPrefix = PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL);
         if (wPrefix != (*pwKey & ~MSK(nBL))) {
@@ -7272,6 +7277,7 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
   #if defined(USE_BM_SW)
     case T_BM_SW: {
         //A(0); // check -B17
+        //Word_t wKey = *pwKey;
         int nBits = nBL_to_nBitsIndexSz(nBL); // bits decoded by switch
         Link_t *pLinks = pwr_pLinks((BmSwitch_t *)pwr);
         Word_t wPrefix = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
@@ -7298,6 +7304,8 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
                 //A(0); // check -B17 -S1
                 if (wIndex-- <= 0) {
                     //A(0); // check -B17 -S1
+                    //printf("wKey %zx\n", wKey);
+                    //*pwKey = wKey;
                     return Failure;
                 }
                 //A(0); // check -B17 -S1
@@ -7306,6 +7314,7 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
                 //A(0); // check -B17 -S1
                 if (++wIndex >= EXP(nBits)) {
                     //A(0); // check -B17 (with SKIP_TO_BM_SW)
+                    //*pwKey = wKey;
                     return Failure;
                 }
                 //A(0); // check -B17 -S1
@@ -7376,11 +7385,11 @@ Judy1FirstEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
     DBGN(printf("J1FE: *pwKey " OWx"\n", *pwKey));
-    Word_t wKey = *pwKey;
+    Word_t wKeyLocal = *pwKey;
     Status_t status = NextEmptyGuts((Word_t *)&PArray,
-                                    &wKey, cnBitsPerWord, /* bPrev */ 0);
+                                    &wKeyLocal, cnBitsPerWord, /* bPrev */ 0);
     if (status == Success) {
-        *pwKey = wKey;
+        *pwKey = wKeyLocal;
         DBGN(printf("J1FE: *pwKey " OWx"\n", *pwKey));
     }
     return status == Success;
@@ -7397,12 +7406,15 @@ int
 Judy1NextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
     DBGN(printf("J1NE: pwKey %p\n", (void *)pwKey));
-    int ret = 0; // NOT_FOUND
-    Word_t *pwKeyLocal = pwKey;
-    if ((pwKeyLocal == NULL) || (++(*pwKeyLocal) != 0)) {
-        ret = Judy1FirstEmpty(PArray, pwKeyLocal, PJError);
-        if (ret == 1) {
-            *pwKey = *pwKeyLocal;
+    if (pwKey == NULL) {
+        return Judy1FirstEmpty(PArray, pwKey, PJError);
+    }
+    DBGN(printf("J1NE: *pwKey %zx\n", *pwKey));
+    Word_t wKeyLocal = *pwKey;
+    int ret = 0;
+    if (++wKeyLocal != 0) {
+        if ((ret = Judy1FirstEmpty(PArray, &wKeyLocal, PJError)) == 1) {
+            *pwKey = wKeyLocal;
         }
     }
     DBGN(printf("J1NE: ret %d\n", ret));
@@ -7431,11 +7443,11 @@ Judy1LastEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
     DBGN(printf("J1LE: *pwKey " OWx"\n", *pwKey));
-    Word_t wKey = *pwKey;
+    Word_t wKeyLocal = *pwKey;
     Status_t status = NextEmptyGuts((Word_t *)&PArray,
-                                     &wKey, cnBitsPerWord, /* bPrev */ 1);
+                                     &wKeyLocal, cnBitsPerWord, /* bPrev */ 1);
     if (status == Success) {
-        *pwKey = wKey;
+        *pwKey = wKeyLocal;
         DBGN(printf("J1LE: *pwKey " OWx"\n", *pwKey));
     }
     return status == Success;
@@ -7447,17 +7459,21 @@ Judy1LastEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 // Return 0 if no key is found.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
-// But we go to the trouble of preserving *pwKey on error.
+// But we go to the trouble of preserving *pwKey on error so we
+// compare with JudyA.
 int
 Judy1PrevEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
     DBGN(printf("J1PE: pwKey %p\n", (void *)pwKey));
-    int ret = 0; // NOT_FOUND
-    Word_t *pwKeyLocal = pwKey;
-    if ((pwKeyLocal == NULL) || ((*pwKeyLocal)-- != 0)) {
-        ret = Judy1LastEmpty(PArray, pwKeyLocal, PJError);
-        if (ret == 1) {
-            *pwKey = *pwKeyLocal;
+    if (pwKey == NULL) {
+        return Judy1LastEmpty(PArray, pwKey, PJError);
+    }
+    DBGN(printf("J1PE: *pwKey %zx\n", *pwKey));
+    Word_t wKeyLocal = *pwKey;
+    int ret = 0;
+    if (wKeyLocal-- != 0) {
+        if ((ret = Judy1LastEmpty(PArray, &wKeyLocal, PJError)) == 1) {
+            *pwKey = wKeyLocal;
         }
     }
     DBGN(printf("J1PE: ret %d\n", ret));
