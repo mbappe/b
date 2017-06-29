@@ -32,7 +32,7 @@ CountSw(Word_t *pwRoot,
 {
     //DBGC(Dump(pwRootLast, 0, cnBitsPerWord));
     (void)pwRoot; (void)nBLR; (void)nLinks;
-    int nType = Get_nType(pwRoot);
+    int nType = Get_nType(pwRoot); (void)nType;
     DBGC(printf("\nCountSw nType %d nBL %d nBLR %d wIndex " OWx"\n",
                 nType, nBL, nBLR, wIndex));
     Word_t wPopCnt = 0;
@@ -992,13 +992,14 @@ t_bm_sw:;
         //nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBL);
         nBL = nBLR - nBW_from_nBL_NAB3(nBLR);
 
+        int nBitsIndexSz = nBL_to_nBitsIndexSzNAX(nBLR);
         Word_t wIndex = ((wKey >> nBL)
             // It is ok to use NAX here even though we might be at top because
             // we don't care if it returns an index size that is too big.
             // Of course, this assumes that NAX will yield nBitsIndexSz
             // greater than or equal to the actual value and won't cause
             // a crash.
-            & (MSK(nBL_to_nBitsIndexSzNAX(nBLR))));
+            & (MSK(nBitsIndexSz)));
 
         DBGX(printf("T_BM_SW nBLR %d pLinks %p wIndex %d 0x%x\n", nBLR,
              (void *)pwr_pLinks((BmSwitch_t *)pwr), (int)wIndex, (int)wIndex));
@@ -1026,7 +1027,7 @@ t_bm_sw:;
             ) )
   #endif // defined(BM_IN_LINK)
         {
-            BmSwIndex(pwRoot, wIndex, NULL, &wBit);
+            BmSwIndex(pwRoot, wIndex, /* pwBmSwIndex */ NULL, &wBit);
   #if ! defined(COUNT)
             // Test to see if link exists before figuring out where it is.
             if ( ! wBit )
@@ -1040,7 +1041,7 @@ t_bm_sw:;
       #endif // defined(BM_SW_FOR_REAL)
             }
   #endif // ! defined(COUNT)
-            BmSwIndex(pwRoot, wIndex, &wIndex, NULL);
+            BmSwIndex(pwRoot, wIndex, &wIndex, /* pbBmSwBit */ NULL);
             DBGX(printf("\npwRoot %p PWR_pwBm %p\n",
                         (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
         }
