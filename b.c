@@ -176,7 +176,7 @@ Word_t wEvenMallocs; // number of unfreed mallocs of an even number of words
 // Do we have any synchronization with dlmalloc?
 // If not, then it makes things quite difficult even if we know which
 // bit or bits dlmalloc might modify in this way.
-// Can we assume that because we doesn't allow concurrent array-
+// Can we assume that because we don't allow concurrent array-
 // changing operations (and we only use malloc during array-changing
 // operations) that we are safe w.r.t. read-modify-write by dlmalloc
 // and by us? I think we can -- if there is only one array.
@@ -199,11 +199,14 @@ MyMalloc(Word_t wWords)
     // And that the number of bytes allocated is an even number of
     // words no greater than five words more than the number requested.
     Word_t wWordPairsAllocated = (((Word_t *)ww)[-1] >> (cnLogBytesPerWord + 1));
-    assert(((Word_t *)ww)[-1] & 1); // doesn't always hold on free
     assert(((Word_t *)ww)[-1] == ((wWordPairsAllocated << (cnLogBytesPerWord + 1)) | 3));
     Word_t wWordPairsRequested = (wWords + cnMallocExtraWords + cnGuardWords + 1) >> 1;
-    // wExtras is the number of extra two-word units.
+    // wExtras is the number of extra two-word units over and above the
+    // minimum amount that could be allocated by malloc which is one additional word
+    // for odd-number-of-word requests and two additional words for even-number-of-word
+    // requests.
     Word_t wExtraWordPairs = wWordPairsAllocated - wWordPairsRequested;
+    assert(wExtraWordPairs <= 2);
     // Save the bits of ww[-1] that we need at free time to make sure
     // none of the bits we want to use are changed by malloc while we
     // own the buffer.
@@ -230,6 +233,7 @@ MyFree(Word_t *pw, Word_t wWords)
     // make sure it is ok for us to use some of the bits in the word
     // Restore the value expected by dlmalloc.
     Word_t wExtraWordPairs = (pw[-1] >> 2) & 3;
+    assert(!((pw)[-1] & 2));
     pw[-1] &= 3;
     pw[-1] |= (ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2)
                             + (wExtraWordPairs << 1)) << cnLogBytesPerWord;
@@ -4973,6 +4977,10 @@ Initialize(void)
     assert((cnBitsLeftAtDl2 < 24)
         || ((cn2dBmWpkPercent == 0) && (cnBitsInD1 < 24)));
 
+#if defined(CODE_BM_SW)
+    //assert(STRUCT_OF(0, BmSwitch_t, sw_wPrefixPop) == STRUCT_OF(0, Switch_t, sw_wPrefixPop));
+    assert(&((BmSwitch_t *)0)->sw_wPrefixPop == &((Switch_t *)0)->sw_wPrefixPop);
+#endif // defined(CODE_BM_SW)
 #if defined(NO_TYPE_IN_XX_SW)
   #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
     assert(T_EMBEDDED_KEYS != 0); // see b.h
