@@ -223,8 +223,11 @@ PrefixMismatch(Word_t *pwRoot,
                int *pnBLR)
 {
     (void)pwr; (void)wKey; (void)nBL; (void)pnBLR;
+  #if defined(CODE_BM_SW)
+    (void)bBmSw;
+  #endif // defined(CODE_BM_SW)
 
-    Word_t wPrefixMismatch;
+    Word_t wPrefixMismatch; (void)wPrefixMismatch;
   #if defined(TYPE_IS_RELATIVE)
     int nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRoot));
   #else // defined(TYPE_IS_RELATIVE)
@@ -288,6 +291,7 @@ PrefixMismatch(Word_t *pwRoot,
       #elif defined(SAVE_PREFIX_TEST_RESULT)
     *pwPrefixMismatch = wPrefixMismatch;
       #endif // defined(SAVE_PREFIX)
+    //*pwPrefixMismatch = wPrefixMismatch; ???
       #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
     // Record that there were prefix bits that were not checked.
     *pbNeedPrefixCheck |= 1;
@@ -534,14 +538,71 @@ again3:;
 
 #if defined(SKIP_LINKS)
 
-    default: // printf("unknown type %d\n", nType); assert(0); exit(0);
-    // case T_SKIP_TO_SWITCH: // skip link to uncompressed switch
+  #if defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
+      // At most one of DEFAULT_SKIP_TO_SW, DEFAULT_SWITCH,
+      // DEFAULT_LIST and DEFAULT_BITMAP may be defined and
+      // only if DEBUG is not defined.
+      #if defined(DEBUG)
+          #if defined(DEFAULT_SKIP_TO_SW)
+          #error DEFAULT_SKIP_TO_SW with DEBUG
+          #endif // defined(DEFAULT_SKIP_TO_SW)
+          #if defined(DEFAULT_SWITCH)
+          #error DEFAULT_SWITCH with DEBUG
+          #endif // defined(DEFAULT_SWITCH)
+          #if defined(DEFAULT_LIST)
+          #error DEFAULT_LIST with DEBUG
+          #endif // defined(DEFAULT_LIST)
+          #if defined(DEFAULT_BITMAP)
+          #error DEFAULT_BITMAP with DEBUG
+          #endif // defined(DEFAULT_BITMAP)
+    default: printf("unknown type %d\n", nType); assert(0); exit(0);
+      #endif // defined(DEBUG)
+      #if ! defined(DEBUG) && defined(DEFAULT_SKIP_TO_SW)
+          #if defined(DEFAULT_SWITCH)
+          #error DEFAULT_SWITCH with DEFAULT_SKIP_TO_SW
+          #endif // defined(DEFAULT_SWITCH)
+          #if defined(DEFAULT_BITMAP)
+          #error DEFAULT_BITMAP with DEFAULT_SKIP_TO_SW
+          #endif // defined(DEFAULT_BITMAP)
+          #if defined(DEFAULT_LIST)
+          #error DEFAULT_LIST with DEFAULT_SKIP_TO_SW
+          #endif // defined(DEFAULT_LIST)
+    default:
+      #else // ! defined(DEBUG) && defined(DEFAULT_SKIP_TO_SW)
+    case T_SKIP_TO_SWITCH: // skip link to uncompressed switch
+      #endif // ! defined(DEBUG) && defined(DEFAULT_SKIP_TO_SW)
+  #else // defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
+          #if defined(DEFAULT_SKIP_TO_SW)
+          #error DEFAULT_SKIP_TO_SW with level in type
+          #endif // defined(DEFAULT_SKIP_TO_SW)
+          #if defined(DEFAULT_SWITCH)
+          #error DEFAULT_SWITCH with level in type
+          #endif // defined(DEFAULT_SWITCH)
+          #if defined(DEFAULT_BITMAP)
+          #error DEFAULT_BITMAP with level in type
+          #endif // defined(DEFAULT_BITMAP)
+          #if defined(DEFAULT_LIST)
+          #error DEFAULT_LIST with level in type
+          #endif // defined(DEFAULT_LIST)
+    // Use 'default' for skip to switch for (!LVL_IN_WR_HB && !DEPTH_IN_SW),
+    // e.g. 32-bit, because depth = type - T_SKIP_TO_SWITCH. Multiple type
+    // values all represent T_SKIP_TO_SWITCH.
+    default:
+  #endif // defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
     {
+        // Skip to switch.
         // pwr points to a switch
-#if defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
+  #if defined(NO_PREFIX_CHECK)
+      #if defined(TYPE_IS_RELATIVE)
+        nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRoot));
+      #else // defined(TYPE_IS_RELATIVE)
+        nBLR = wr_nBL(*pwRoot);
+      #endif // defined(TYPE_IS_RELATIVE)
+  #else // defined(NO_PREFIX_CHECK)
+      #if defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
         DBG((nType != T_SKIP_TO_SWITCH) ? printf("nType: %d\n", nType) : 0);
         assert(nType == T_SKIP_TO_SWITCH);
-#endif // ! defined(LVL_IN_WR_HB) && ! defined(DEPTH_IN_SW)
+      #endif // ! defined(LVL_IN_WR_HB) && ! defined(DEPTH_IN_SW)
         DBGX(printf("SKIP_TO_SW\n"));
 
         // Looks to me like PrefixMismatch has no performance issues with
@@ -553,13 +614,13 @@ again3:;
         // PREFIX_MISMATCH updates nBLR.
         Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_SWITCH);
         if (wPrefixMismatch != 0) {
-  #if defined(COUNT)
+      #if defined(COUNT)
             DBGC(printf("SKIP_TO_SW: COUNT PM " OWx"\n", wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
             if (wPrefixMismatch > 0) {
                 Word_t wPopCnt;
-      #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
+          #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 if (nBL >= cnBitsPerWord) {
                     //int nBitsIndexSz = nBL_to_nBitsIndexSzNAX(nBLR);
                     int nBitsIndexSz = nBL_to_nBitsIndexSzNAB(nBLR);
@@ -568,7 +629,7 @@ again3:;
                           nBLR - nBitsIndexSz,
                           EXP(nBitsIndexSz), EXP(nBitsIndexSz));
                 } else
-      #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
+          #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 {
                     wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
                     if (wPopCnt == 0) {
@@ -580,9 +641,10 @@ again3:;
                 DBGC(printf("sksw wPopCnt " OWx" wPopCntSum " OWx"\n",
                             wPopCnt, wPopCntSum));
             }
-  #endif // defined(COUNT)
+      #endif // defined(COUNT)
             break;
         }
+  #endif // defined(NO_PREFIX_CHECK)
 
         // Logically, if we could arrange the source code accordingly,
         // we could just fall through to T_SWITCH.
@@ -698,7 +760,20 @@ again3:;
     default: printf("unknown type %d\n", nType); assert(0); exit(0);
 #endif // defined(SKIP_LINKS)
 
+#if ! defined(DEBUG) && defined(DEFAULT_SWITCH)
+      #if defined(DEFAULT_SKIP_TO_SW)
+      #error DEFAULT_SKIP_TO_SW with DEFAULT_SWITCH
+      #endif // defined(DEFAULT_SKIP_TO_SW)
+      #if defined(DEFAULT_BITMAP)
+      #error DEFAULT_BITMAP with DEFAULT_SWITCH
+      #endif // defined(DEFAULT_BITMAP)
+      #if defined(DEFAULT_LIST)
+      #error DEFAULT_LIST with DEFAULT_SWITCH
+      #endif // defined(DEFAULT_LIST)
+    default:
+#else // ! defined(DEBUG) && defined(DEFAULT_SWITCH)
     case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
+#endif // ! defined(DEBUG) && defined(DEFAULT_SWITCH)
 #if defined(EXTRA_TYPES)
     case T_SWITCH | EXP(cnBitsMallocMask): // close switch w/o bm
 #endif // defined(EXTRA_TYPES)
@@ -1088,7 +1163,20 @@ t_bm_sw:;
 
 #if (cwListPopCntMax != 0)
 
+#if ! defined(DEBUG) && defined(DEFAULT_LIST)
+      #if defined(DEFAULT_SKIP_TO_SW)
+      #error DEFAULT_SKIP_TO_SW with DEFAULT_LIST
+      #endif // defined(DEFAULT_SKIP_TO_SW)
+      #if defined(DEFAULT_BITMAP)
+      #error DEFAULT_BITMAP with DEFAULT_LIST
+      #endif // defined(DEFAULT_BITMAP)
+      #if defined(DEFAULT_SWITCH)
+      #error DEFAULT_SWITCH with DEFAULT_LIST
+      #endif // defined(DEFAULT_SWITCH)
+    default:
+#else // ! defined(DEBUG) && defined(DEFAULT_LIST)
     case T_LIST:
+#endif // ! defined(DEBUG) && defined(DEFAULT_LIST)
 #if defined(EXTRA_TYPES)
     case T_LIST | EXP(cnBitsMallocMask):
 #endif // defined(EXTRA_TYPES)
@@ -1311,7 +1399,20 @@ t_list:;
         goto t_bitmap;
     }
 #endif // defined(SKIP_TO_BITMAP)
+#if ! defined(DEBUG) && defined(DEFAULT_BITMAP)
+      #if defined(DEFAULT_SKIP_TO_SW)
+      #error DEFAULT_SKIP_TO_SW with DEFAULT_BITMAP
+      #endif // defined(DEFAULT_SKIP_TO_SW)
+      #if defined(DEFAULT_LIST)
+      #error DEFAULT_BITMAP with DEFAULT_BITMAP
+      #endif // defined(DEFAULT_LIST)
+      #if defined(DEFAULT_SWITCH)
+      #error DEFAULT_SWITCH with DEFAULT_BITMAP
+      #endif // defined(DEFAULT_SWITCH)
+    default:
+#else // ! defined(DEBUG) && defined(DEFAULT_BITMAP)
     case T_BITMAP:
+#endif // ! defined(DEBUG) && defined(DEFAULT_BITMAP)
 #if defined(EXTRA_TYPES)
     case T_BITMAP | EXP(cnBitsMallocMask):
 #endif // defined(EXTRA_TYPES)
