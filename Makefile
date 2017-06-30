@@ -48,7 +48,8 @@ endif
 # -grecord-gcc-switches
 # -fpack-struct[=n]
 # -fvisibility=[default|internal|hidden|protected]
-# -Wfatal-errors
+# -fatal-errors
+# -language-extension-token
 
 ##
 # -std=gnu11 and -std=gnu99 give CLOCK_MONOTONIC which is not available with
