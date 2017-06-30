@@ -1586,7 +1586,9 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #error Sorry, no PP_IN_LINK && (DEPTH_IN_SW || POP_WORD).
 #endif // defined(DEPTH_IN_SW) || defined(POP_WORD)
 #else // defined(PP_IN_LINK)
-#define PWR_wPrefixPop(_pwRoot, _pwr)  ((_pwr)->sw_wPrefixPop)
+// This cast assumes sw_wPrefixPop is the same for all types of switch.
+// There should be assertions in Initialize validating the assumption.
+#define PWR_wPrefixPop(_pwRoot, _pwr)  (((Switch_t *)(_pwr))->sw_wPrefixPop)
 #endif // defined(PP_IN_LINK)
 
 #define PWR_wPrefix(_pwRoot, _pwr, _nDL) \
