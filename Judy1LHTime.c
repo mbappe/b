@@ -443,6 +443,7 @@ Word_t    PreStack = 0;                 // to test for TLB collisions with stack
 
 Word_t    Offset = 0;                   // Added to Key
 Word_t    bSplayKeyBitsFlag = 0;        // Splay key bits.
+Word_t    wSplayMask = 0xaaaaaaaaaaaaaaaa;
 
 Word_t    TValues = 1000000;            // Maximum numb retrieve timing tests
 Word_t    nElms = 10000000;             // Default population of arrays
@@ -520,8 +521,14 @@ GetNextKey(PSeed_t PSeed)
             printf("Numb %016" PRIxPTR" Key ", Key);
         }
         Word_t wSplayedKey = 0;
-        for (unsigned uu = 0; uu < BValue; uu++) {
-            wSplayedKey |= ((Key & (1 << uu)) << (uu + 1));
+        int nKeyBitNum = 0;
+        for (int nSplayBitNum = 0;
+             nSplayBitNum < (int)sizeof(Word_t) * 8; ++nSplayBitNum)
+        {
+            if (wSplayMask & (1 << nSplayBitNum)) {
+                wSplayedKey |= (Key & (1 << nKeyBitNum)) << (nSplayBitNum - nKeyBitNum);
+                ++nKeyBitNum;
+            }
         }
         Key = wSplayedKey;
         // Key might be bigger than 1 << BValue -- by design.
@@ -695,7 +702,7 @@ Usage(int argc, char **argv)
     printf("-S #  Key Generator skip amount, 0 = Random [0]\n");
     printf("-B #  Significant bits output (16..64) in Random Key Generator [32]\n");
     printf("-B #:#  Second # is percent expanse is limited [100]\n");
-    printf("-E,--splay-key-bits    Splay key bits\n");
+    printf("-E,--splay-key-bits [splay-mask]    Splay key bits\n");
     printf("-G #  Type (0..4) of random numbers 0 = flat spectrum, 1..4 = Gaussian [0]\n");
     printf("-l    Do not smooth data with iteration at low (<100) populations (Del/Unset not called)\n");
     printf("-F <filename>  Ascii file of Keys, zeros ignored -- must be last option!!!\n");
@@ -977,6 +984,9 @@ main(int argc, char *argv[])
         {
         case 'E':
             bSplayKeyBitsFlag = 1;
+            if (optarg != NULL) {
+                wSplayMask = oa2w(optarg, NULL, 0, c);
+            }
             break;
         case 'a':                      // Max population of arrays
             PreStack = oa2w(optarg, NULL, 0, c);   // Size of PreStack
@@ -1330,10 +1340,15 @@ main(int argc, char *argv[])
 
     if (bSplayKeyBitsFlag && (BValue > (sizeof(Word_t) * 8 / 2)))
     {
-        printf("\nError --- '-B%d' must be less than or equal to %d\n",
-               (int)BValue, (int)sizeof(Word_t) * 8 / 2);
-        ErrorFlag++;
+        if (__builtin_popcountll(wSplayMask) < BValue)
+        {
+            printf("\nError --- '-B%d' must be less than or equal to"
+                   " the number of bits set in <splay-mask> 0x%zx.\n",
+                    (int)BValue, wSplayMask);
+            ErrorFlag++;
+        }
     }
+
 
 //  build the Random Number Generator starting seeds
     PStartSeed = RandomInit(BValue, GValue);
@@ -1465,11 +1480,15 @@ main(int argc, char *argv[])
 
     if (Bpercent == 100.0)
     {
-         printf(" -B%" PRIuPTR"", BValue); 
+         printf(" -B%" PRIuPTR, BValue); 
 
     } else
     {
-         printf(" -N0x%" PRIxPTR"", MaxNumb);
+         printf(" -N0x%" PRIxPTR, MaxNumb);
+    }
+
+    if (bSplayKeyBitsFlag) {
+        printf(" -E0x%" PRIxPTR, wSplayMask);
     }
 
     printf(" -G%" PRIuPTR" -", GValue);
@@ -1488,8 +1507,6 @@ main(int argc, char *argv[])
         printf("H");
     if (tFlag)
         printf("t");
-    if (bSplayKeyBitsFlag)
-        printf("E");
     if (DFlag)
         printf("D");
     if (dFlag)
