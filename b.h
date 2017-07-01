@@ -3038,8 +3038,9 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
     unsigned nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
     unsigned nSplitP = nSplit * sizeof(_x_t) / sizeof(_b_t); \
     assert(((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
-    /*__m128i xLsbs, xMsbs, xKeys;*/ \
-    /*HAS_KEY_128_SETUP((_xKey), sizeof(_x_t) * 8, xLsbs, xMsbs, xKeys);*/ \
+    /*__m128i xLsbs, xMsbs, xKeys, xZero;*/ \
+    /*HAS_KEY_128_SETUP*/ \
+    /*((_xKey), sizeof(_x_t) * 8, xLsbs, xMsbs, xKeys, xZero);*/ \
     if (BUCKET_HAS_KEY(&px[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
         (_nPos) = 0; /* key exists, but we don't know the exact position */ \
     } \
@@ -3336,7 +3337,7 @@ SearchEmbeddedX(Word_t *pw, Word_t wKey, unsigned nBL)
     _mm_set1_epi32(_ww)
   #endif // cnBitsPerWord == 64
 
-#define HAS_KEY_128_SETUP(_wKey, _nBL, _xLsbs, _xMsbs, _xKeys) \
+#define HAS_KEY_128_SETUP(_wKey, _nBL, _xLsbs, _xMsbs, _xKeys, _xZero) \
 { \
     Word_t wMask = MSK(_nBL); /* (1 << nBL) - 1 */ \
     _wKey &= wMask; \
@@ -3346,18 +3347,19 @@ SearchEmbeddedX(Word_t *pw, Word_t wKey, unsigned nBL)
     _xMsbs = MM_SET1_EPW(wMsbs); \
     Word_t wKeys = wKey * wLsbs; /* replicate key; put in every slot */ \
     _xKeys = MM_SET1_EPW(wKeys); \
+    _xZero = _mm_setzero_si128(); \
 }
 
 static Word_t // bool
 HasKey128Tail(__m128i *pxBucket,
     __m128i xLsbs,
     __m128i xMsbs,
-    __m128i xKeys)
+    __m128i xKeys,
+    __m128i xZero)
 {
     __m128i xBucket = *pxBucket;
     __m128i xXor = xKeys ^ xBucket;
     __m128i xMagic = (xXor - xLsbs) & ~xXor & xMsbs;
-    __m128i xZero = _mm_setzero_si128();
     return ! _mm_testc_si128(xZero, xMagic);
 }
 
@@ -3369,9 +3371,9 @@ HasKey128Tail(__m128i *pxBucket,
 static Word_t // bool
 HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL)
 {
-    __m128i xLsbs, xMsbs, xKeys;
-    HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys);
-    return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
+    __m128i xLsbs, xMsbs, xKeys, xZero;
+    HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys, xZero);
+    return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys, xZero);
 }
 
 #endif // defined(PARALLEL_128)
