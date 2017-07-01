@@ -5069,7 +5069,7 @@ Initialize(void)
   #if defined(CODE_XX_SW)
     // Make sure nBW field is big enough.
     assert((cnBitsLeftAtDl2 - cnBW - (cnLogBitsPerWord + 1))
-        <= MSK(cnBitsXxSwWidth));
+        <= (int)MSK(cnBitsXxSwWidth));
   #endif // defined(CODE_XX_SW)
 
 #if defined(BPD_TABLE_RUNTIME_INIT)
