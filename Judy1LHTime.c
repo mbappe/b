@@ -443,7 +443,7 @@ Word_t    PreStack = 0;                 // to test for TLB collisions with stack
 
 Word_t    Offset = 0;                   // Added to Key
 Word_t    bSplayKeyBitsFlag = 0;        // Splay key bits.
-Word_t    wSplayMask = 0xaaaaaaaaaaaaaaaa;
+Word_t    wSplayMask = 0xfe929292929292ab; // Yikes! Only -B30.
 
 Word_t    TValues = 1000000;            // Maximum numb retrieve timing tests
 Word_t    nElms = 10000000;             // Default population of arrays
@@ -525,8 +525,8 @@ GetNextKey(PSeed_t PSeed)
         for (int nSplayBitNum = 0;
              nSplayBitNum < (int)sizeof(Word_t) * 8; ++nSplayBitNum)
         {
-            if (wSplayMask & (1 << nSplayBitNum)) {
-                wSplayedKey |= (Key & (1 << nKeyBitNum)) << (nSplayBitNum - nKeyBitNum);
+            if (wSplayMask & ((Word_t)1 << nSplayBitNum)) {
+                wSplayedKey |= (Key & ((Word_t)1 << nKeyBitNum)) << (nSplayBitNum - nKeyBitNum);
                 ++nKeyBitNum;
             }
         }
@@ -1338,17 +1338,22 @@ main(int argc, char *argv[])
         fprintf(stderr, "\n# Warning -- '-V' ignored, because '-R' is set\n");
     }
 
-    if (bSplayKeyBitsFlag && (BValue > (sizeof(Word_t) * 8 / 2)))
+    if (bSplayKeyBitsFlag)
     {
-        if (__builtin_popcountll(wSplayMask) < BValue)
-        {
-            printf("\nError --- '-B%d' must be less than or equal to"
-                   " the number of bits set in <splay-mask> 0x%zx.\n",
-                    (int)BValue, wSplayMask);
+        if (wSplayMask == 0) {
+            printf("\nError --- <splay-mask> cannot be zero.\n");
             ErrorFlag++;
         }
+        int nBitsSet = __builtin_popcountll(wSplayMask);
+        if (nBitsSet < (int)BValue)
+        {
+            BValue = nBitsSet; 
+            MaxNumb = ((Word_t)2 << (BValue - 1)) - 1;
+            printf("\n# Warning -- trimming '-B' value to %d;"
+                   " the number of bits set in <splay-mask> 0x%zx.\n",
+                   (int)BValue, wSplayMask);
+        }
     }
-
 
 //  build the Random Number Generator starting seeds
     PStartSeed = RandomInit(BValue, GValue);
