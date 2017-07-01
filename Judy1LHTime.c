@@ -531,8 +531,9 @@ GetNextKey(PSeed_t PSeed)
     {
         Word_t SwizzledKey;
 
-//      move the mirror bits into the least bits determined -B#
-        SwizzledKey = Swizzle(Key) >> ((sizeof(Word_t) * 8) - BValue);
+//      move the mirror bits into the least bits determined -B# and -E
+        SwizzledKey = Swizzle(Key)
+            >> ((sizeof(Word_t) * 8) - (BValue << bSplayKeyBitsFlag));
 
         return (SwizzledKey + Offset);
     }
@@ -1475,6 +1476,8 @@ main(int argc, char *argv[])
 
     if (bFlag)
         printf("b");
+    if (yFlag)
+        printf("y");
     if (J1Flag)
         printf("1");
     if (JLFlag)
