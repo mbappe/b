@@ -233,7 +233,7 @@ MyFree(Word_t *pw, Word_t wWords)
     // make sure it is ok for us to use some of the bits in the word
     // Restore the value expected by dlmalloc.
     Word_t wExtraWordPairs = (pw[-1] >> 2) & 3;
-    assert(!((pw)[-1] & 2));
+    assert((pw)[-1] & 2);
     pw[-1] &= 3;
     pw[-1] |= (ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2)
                             + (wExtraWordPairs << 1)) << cnLogBytesPerWord;
@@ -1575,7 +1575,8 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
     }
 #endif // defined(SKIP_TO_BITMAP)
 
-    if ((nType == T_BITMAP) || (EXP(nBL) <= sizeof(Link_t) * 8))
+    if ((nType == T_BITMAP)
+        || ((nBL < cnBitsPerWord) && (EXP(nBL) <= sizeof(Link_t) * 8)))
     {
 #if ! defined(USE_XX_SW)
         assert((nType == T_BITMAP) || (nBL == cnBitsInD1));
