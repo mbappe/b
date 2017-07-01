@@ -1485,6 +1485,8 @@ main(int argc, char *argv[])
         printf("H");
     if (tFlag)
         printf("t");
+    if (bSplayKeyBitsFlag)
+        printf("E");
     if (DFlag)
         printf("D");
     if (dFlag)
