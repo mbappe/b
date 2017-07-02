@@ -228,11 +228,11 @@ PrefixMismatch(Word_t *pwRoot,
   #endif // defined(CODE_BM_SW)
 
     Word_t wPrefixMismatch; (void)wPrefixMismatch;
-  #if defined(TYPE_IS_RELATIVE)
+  #if defined(LVL_IS_RELATIVE)
     int nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRoot));
-  #else // defined(TYPE_IS_RELATIVE)
+  #else // defined(LVL_IS_RELATIVE)
     int nBLR = wr_nBL(*pwRoot);
-  #endif // defined(TYPE_IS_RELATIVE)
+  #endif // defined(LVL_IS_RELATIVE)
     assert(nBLR < nBL); // reserved
     *pnBLR = nBLR;
 
@@ -538,7 +538,7 @@ again3:;
 
 #if defined(SKIP_LINKS)
 
-  #if defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
+  #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
       // At most one of DEFAULT_SKIP_TO_SW, DEFAULT_SWITCH,
       // DEFAULT_LIST and DEFAULT_BITMAP may be defined and
       // only if DEBUG is not defined.
@@ -571,7 +571,7 @@ again3:;
       #else // ! defined(DEBUG) && defined(DEFAULT_SKIP_TO_SW)
     case T_SKIP_TO_SWITCH: // skip link to uncompressed switch
       #endif // ! defined(DEBUG) && defined(DEFAULT_SKIP_TO_SW)
-  #else // defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
+  #else // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
           #if defined(DEFAULT_SKIP_TO_SW)
           #error DEFAULT_SKIP_TO_SW with level in type
           #endif // defined(DEFAULT_SKIP_TO_SW)
@@ -584,25 +584,25 @@ again3:;
           #if defined(DEFAULT_LIST)
           #error DEFAULT_LIST with level in type
           #endif // defined(DEFAULT_LIST)
-    // Use 'default' for skip to switch for (!LVL_IN_WR_HB && !DEPTH_IN_SW),
+    // Use 'default' for skip to switch for (!LVL_IN_WR_HB && !LVL_IN_SW),
     // e.g. 32-bit, because depth = type - T_SKIP_TO_SWITCH. Multiple type
     // values all represent T_SKIP_TO_SWITCH.
     default:
-  #endif // defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
+  #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
     {
         // Skip to switch.
         // pwr points to a switch
   #if defined(NO_PREFIX_CHECK)
-      #if defined(TYPE_IS_RELATIVE)
+      #if defined(LVL_IS_RELATIVE)
         nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRoot));
-      #else // defined(TYPE_IS_RELATIVE)
+      #else // defined(LVL_IS_RELATIVE)
         nBLR = wr_nBL(*pwRoot);
-      #endif // defined(TYPE_IS_RELATIVE)
+      #endif // defined(LVL_IS_RELATIVE)
   #else // defined(NO_PREFIX_CHECK)
-      #if defined(LVL_IN_WR_HB) || defined(DEPTH_IN_SW)
+      #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
         DBG((nType != T_SKIP_TO_SWITCH) ? printf("nType: %d\n", nType) : 0);
         assert(nType == T_SKIP_TO_SWITCH);
-      #endif // ! defined(LVL_IN_WR_HB) && ! defined(DEPTH_IN_SW)
+      #endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
         DBGX(printf("SKIP_TO_SW\n"));
 
         // Looks to me like PrefixMismatch has no performance issues with
@@ -820,12 +820,12 @@ t_switch:;
   #endif // defined(INSERT) || defined(REMOVE)
 
   #if defined(SKIP_TO_XX_SW)
-      #if defined(TYPE_IS_RELATIVE)
+      #if defined(LVL_IS_RELATIVE)
         assert( ! tp_bIsSkip(wRoot)
             || (wr_nDS(wRoot) == nBL_to_nDL(nBL) - nBL_to_nDL(nBLR)) );
-      #else // defined(TYPE_IS_RELATIVE)
+      #else // defined(LVL_IS_RELATIVE)
         assert((pwr_nBL(&wRoot) == nBLR) /* || ! tp_bIsSkip(wRoot) */ || 0);
-      #endif // defined(TYPE_IS_RELATIVE)
+      #endif // defined(LVL_IS_RELATIVE)
   #endif // defined(SKIP_TO_XX_SW)
 
         //int nBitsIndexSz = nBL_to_nBitsIndexSzNAX(nBLR);
@@ -945,17 +945,17 @@ t_xx_sw:;
   #endif // defined(INSERT) || defined(REMOVE)
 
   #if defined(SKIP_TO_XX_SW)
-      #if defined(TYPE_IS_RELATIVE)
+      #if defined(LVL_IS_RELATIVE)
         assert( ! tp_bIsSkip(wRoot)
             || (wr_nDS(wRoot) == nBL_to_nDL(nBL) - nBL_to_nDL(nBLR)) );
-      #else // defined(TYPE_IS_RELATIVE)
+      #else // defined(LVL_IS_RELATIVE)
           #if defined(DEBUG)
         if (pwr_nBL(&wRoot) != nBLR) {
             printf("T_XX_SW: pwr_nBL %d nBLR %d\n", pwr_nBL(&wRoot), nBLR);
         }
           #endif // defined(DEBUG)
         assert(pwr_nBL(&wRoot) == nBLR);
-      #endif // defined(TYPE_IS_RELATIVE)
+      #endif // defined(LVL_IS_RELATIVE)
   #endif // defined(SKIP_TO_XX_SW)
   #if ! defined(LOOKUP) /* don't care about performance */ \
       || (defined(USE_PWROOT_FOR_LOOKUP) \
