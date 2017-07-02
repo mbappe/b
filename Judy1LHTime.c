@@ -443,7 +443,7 @@ Word_t    PreStack = 0;                 // to test for TLB collisions with stack
 
 Word_t    Offset = 0;                   // Added to Key
 Word_t    bSplayKeyBitsFlag = 0;        // Splay key bits.
-Word_t    wSplayMask = 0xfe929292929292ab; // Yikes! Only -B30.
+Word_t    wSplayMask = (Word_t)-1;
 
 Word_t    TValues = 1000000;            // Maximum numb retrieve timing tests
 Word_t    nElms = 10000000;             // Default population of arrays
@@ -869,6 +869,10 @@ main(int argc, char *argv[])
     void     *JL = NULL;                // JudyL
     void     *JH = NULL;                // JudyHS
 
+    if (sizeof(Word_t) == 8) {
+        wSplayMask
+            = (((((0xefef << 16) | 0xee80) << 16) | 0x8080) << 16) | 0xaaaa;
+    }
 
 #ifdef DEADCODE                         // see TimeNumberGen()
     void     *TestRan = NULL;           // Test Random generator
