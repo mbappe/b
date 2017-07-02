@@ -1844,70 +1844,6 @@ foundIt:;
 
 #endif // defined(EMBED_KEYS)
 
-#if defined(USE_T_ONE)
-
-    case T_ONE:
-#if defined(EXTRA_TYPES)
-    case T_ONE | EXP(cnBitsMallocMask):
-#endif // defined(EXTRA_TYPES)
-    {
-#if defined(EMBED_KEYS)
-        assert(nBL
-            > cnBitsPerWord - cnBitsMallocMask - nBL_to_nBitsPopCntSz(nBL));
-#else // defined(EMBED_KEYS)
-        assert(nBL > cnBitsPerWord - cnBitsMallocMask);
-#endif // defined(EMBED_KEYS)
-
-  #if ! defined(LOOKUP)
-        if (bCleanup) {
-//assert(0); // Just checking; uh oh; do we need better testing?
-            return Success;
-        } // cleanup is complete
-  #endif // ! defined(LOOKUP)
-
-  #if defined(COUNT)
-        DBGC(printf("to wPopCntSum " OWx"\n", wPopCntSum));
-        return wPopCntSum;
-  #endif // defined(COUNT)
-
-  #if ! defined(LOOKUP) && defined(PP_IN_LINK)
-        if (nBL != cnBitsPerWord)
-        {
-            // Adjust pop count in the link on the way in.
-            set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL,
-                PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL) + nIncr);
-        }
-  #endif // ! defined(LOOKUP) && defined(PP_IN_LINK)
-
-  #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
-        return KeyFound;
-  #else // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
-
-      #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
-        return wRoot ? Success : Failure;
-      #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
-
-        if (*pwr == wKey)
-        {
-      #if defined(REMOVE)
-            goto removeGutsAndCleanup;
-      #endif // defined(REMOVE)
-      #if defined(INSERT)
-          #if !defined(RECURSIVE)
-            if (nIncr > 0) { goto undo; } // undo counting
-          #endif // !defined(RECURSIVE)
-      #endif // defined(INSERT)
-            return KeyFound;
-        }
-
-  #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
-
-        break;
-
-    } // end of case T_ONE
-
-#endif // defined(USE_T_ONE)
-
 #if defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
 
     case T_NULL:
@@ -2179,9 +2115,6 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             && (wr_pwr(wRoot) != NULL)
 #endif // ! defined(SEPARATE_T_NULL)
             && 1)
-      #if defined(USE_T_ONE)
-        || (nType == T_ONE)
-      #endif // defined(USE_T_ONE)
       #if defined(SEPARATE_T_NULL)
         || (nType == T_NULL)
       #endif // defined(SEPARATE_T_NULL)
@@ -2196,11 +2129,6 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             Word_t *pwr = wr_pwr(wRoot);
             Word_t wPopCnt;
 
-      #if defined(USE_T_ONE)
-            if (nType == T_ONE) {
-                wPopCnt = 1;
-            } else
-      #endif // defined(USE_T_ONE)
       #if defined(SEPARATE_T_NULL)
             if (nType == T_NULL) {
                 assert(pwr == NULL);
@@ -2232,12 +2160,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 Word_t *pwKeysNew = ls_pwKeys(pwListNew, cnBitsPerWord);
                 set_wr(wRoot, pwListNew, T_LIST);
                 Word_t *pwKeys;
-      #if defined(USE_T_ONE)
-                if (nType == T_ONE) {
-                    pwKeys = pwr;
-                } else
-      #endif // defined(USE_T_ONE)
-                { pwKeys = ls_pwKeys(pwr, cnBitsPerWord); }
+                pwKeys = ls_pwKeys(pwr, cnBitsPerWord);
 
  // Isn't this chunk of code already in InsertGuts?
                 unsigned nn;
@@ -2373,16 +2296,8 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
             {
                 pwListNew = NewList(wPopCnt - 1, cnDigitsPerWord);
                 Word_t *pwKeysNew;
-      #if defined(USE_T_ONE)
-                if (wPopCnt == 2) {
-                    set_wr(wRoot, pwListNew, T_ONE);
-                    pwKeysNew = pwListNew;
-                } else
-      #endif // defined(USE_T_ONE)
-                {
-                    set_wr(wRoot, pwListNew, T_LIST);
-                    pwKeysNew = ls_pwKeys(pwListNew, cnBitsPerWord);
-                }
+                set_wr(wRoot, pwListNew, T_LIST);
+                pwKeysNew = ls_pwKeys(pwListNew, cnBitsPerWord);
 
                 Word_t *pwKeys = ls_pwKeys(pwr, cnBitsPerWord);
 
@@ -2392,11 +2307,8 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
                 COPY(pwKeysNew, pwKeys, nn);
                 COPY(&pwKeysNew[nn], &pwKeys[nn + 1], wPopCnt - nn - 1);
       #if defined(LIST_END_MARKERS)
-          #if defined(USE_T_ONE)
-                if (wPopCnt != 2)
-          #endif // defined(USE_T_ONE)
                 // pwKeysNew incorporates top pop count and markers
-                { pwKeysNew[wPopCnt - 1] = -1; }
+                pwKeysNew[wPopCnt - 1] = -1;
       #endif // defined(LIST_END_MARKERS)
             }
             else

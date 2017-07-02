@@ -623,9 +623,6 @@ enum {
 #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
     T_SKIP_TO_FULL_BM_SW,
 #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-#if defined(USE_T_ONE)
-    T_ONE, // one-key external list when key is too big to be embedded
-#endif // defined(USE_T_ONE)
     T_SWITCH, // Uncompressed, close (i.e. no-skip) switch.
 #if defined(SKIP_LINKS)
     // T_SKIP_TO_SWITCH has to have the biggest value in this enum
@@ -1871,7 +1868,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
   #if defined(PP_IN_LINK)
 
   // For PP_IN_LINK ls_xPopCnt macros are only valid at top, i.e.
-  // nDL == cnDigitsPerWord, and only for T_LIST - not for T_ONE.
+  // nDL == cnDigitsPerWord, and only for T_LIST.
       #if (cnDummiesInList == 0)
 
 #define     ls_xPopCnt(_ls, _nBL) \
