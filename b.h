@@ -1014,14 +1014,14 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 #define set_wr(_wr, _pwr, _type) \
         ((_wr) = ((_wr) & ~cwVirtAddrMask) | (Word_t)(_pwr) | (_type))
 
-// Default is -DT_ONE_CALC_POP.
-// T_ONE_CALC_POP means we don't use any bits in a wRoot/link/bucket to
+// Default is -DEK_CALC_POP.
+// EK_CALC_POP means we don't use any bits in a wRoot/link/bucket to
 // hold the pop count.  We calculate the pop count based on the contents
 // of the key suffix slots.
-#if ! defined(NO_T_ONE_CALC_POP)
-#undef T_ONE_CALC_POP
-#define T_ONE_CALC_POP
-#endif // ! defined(NO_T_ONE_CALC_POP)
+#if ! defined(NO_EK_CALC_POP)
+#undef EK_CALC_POP
+#define EK_CALC_POP
+#endif // ! defined(NO_EK_CALC_POP)
 
 // Default is -UFILL_W_KEY.
 // FILL_W_KEY means unused key suffix slots in a T_EMBEDDED_KEYS
@@ -1030,9 +1030,9 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // sorted.
 // If FILL_W_KEY is not defined, then the empty slots are filled with zero
 // or -1 depending on FILL_WITH_ONES.
-#if defined(FILL_W_KEY) && defined(T_ONE_CALC_POP)
-#error Sorry, no FILL_W_KEY and T_ONE_CALC_POP.
-#endif // defined(FILL_W_KEY) && defined(T_ONE_CALC_POP)
+#if defined(FILL_W_KEY) && defined(EK_CALC_POP)
+#error Sorry, no FILL_W_KEY and EK_CALC_POP.
+#endif // defined(FILL_W_KEY) && defined(EK_CALC_POP)
 
 #if defined(FILL_W_KEY) && defined(FILL_WITH_ONES)
 #error Sorry, no FILL_W_KEY and FILL_WITH_ONES.
@@ -1086,7 +1086,7 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 #endif // defined(CODE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
 
 #if defined(EMBED_KEYS)
-  #if defined(T_ONE_CALC_POP)
+  #if defined(EK_CALC_POP)
 
 #define nBL_to_nBitsPopCntSz(_nBL)  0
 
@@ -1127,7 +1127,7 @@ wr_nPopCnt(Word_t wRoot, int nBL)
 
       #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
 
-  #else // defined(T_ONE_CALC_POP)
+  #else // defined(EK_CALC_POP)
 
 // Default is -DEMBEDDED_LIST_FIXED_POP.
 // Fixed-size pop count field to make code simpler.
@@ -1162,7 +1162,7 @@ wr_nPopCnt(Word_t wRoot, int nBL)
     SetBits(&(_wr), nBL_to_nBitsPopCntSz(_nBL), nBL_to_nBitsType(_nBL), \
             (_nPopCnt) - 1)
 
-  #endif // defined(T_ONE_CALC_POP)
+  #endif // defined(EK_CALC_POP)
 
 static inline int
 EmbeddedListPopCntMax(int nBL)

@@ -4193,9 +4193,9 @@ Word_t
 DeflateExternalList(Word_t *pwRoot,
                     int nPopCnt, int nBL, Word_t *pwr)
 {
-#if defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(T_ONE_CALC_POP)
+#if defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(EK_CALC_POP)
     assert(0); // not yet
-#endif // defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(T_ONE_CALC_POP)
+#endif // defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(EK_CALC_POP)
     int nPopCntMax = EmbeddedListPopCntMax(nBL); (void)nPopCntMax;
 //printf("DEL: nBL %d nPopCntMax %d\n", nBL, nPopCntMax);
 
@@ -5028,11 +5028,11 @@ Initialize(void)
     printf("# NO EMBED_KEYS\n");
 #endif // defined(EMBED_KEYS)
 
-#if defined(T_ONE_CALC_POP)
-    printf("#    T_ONE_CALC_POP\n");
-#else // defined(T_ONE_CALC_POP)
-    printf("# NO T_ONE_CALC_POP\n");
-#endif // defined(T_ONE_CALC_POP)
+#if defined(EK_CALC_POP)
+    printf("#    EK_CALC_POP\n");
+#else // defined(EK_CALC_POP)
+    printf("# NO EK_CALC_POP\n");
+#endif // defined(EK_CALC_POP)
 
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     printf("#    BL_SPECIFIC_PSPLIT_SEARCH\n");
@@ -5604,11 +5604,11 @@ Initialize(void)
     printf("# NO NO_EMBED_KEYS\n");
 #endif // defined(NO_EMBED_KEYS)
 
-#if defined(NO_T_ONE_CALC_POP)
-    printf("#    NO_T_ONE_CALC_POP\n");
-#else // defined(NO_T_ONE_CALC_POP)
-    printf("# NO NO_T_ONE_CALC_POP\n");
-#endif // defined(NO_T_ONE_CALC_POP)
+#if defined(NO_EK_CALC_POP)
+    printf("#    NO_EK_CALC_POP\n");
+#else // defined(NO_EK_CALC_POP)
+    printf("# NO NO_EK_CALC_POP\n");
+#endif // defined(NO_EK_CALC_POP)
 
 #if defined(NO_PSPLIT_SEARCH_8)
     printf("#    NO_PSPLIT_SEARCH_8\n");
