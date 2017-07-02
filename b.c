@@ -5207,12 +5207,6 @@ Initialize(void)
     printf("# NO T_ONE_CALC_POP\n");
 #endif // defined(T_ONE_CALC_POP)
 
-#if defined(DL_SPECIFIC_T_ONE)
-    printf("#    DL_SPECIFIC_T_ONE\n");
-#else // defined(DL_SPECIFIC_T_ONE)
-    printf("# NO DL_SPECIFIC_T_ONE\n");
-#endif // defined(DL_SPECIFIC_T_ONE)
-
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     printf("#    BL_SPECIFIC_PSPLIT_SEARCH\n");
 #else // defined(BL_SPECIFIC_PSPLIT_SEARCH)
@@ -5722,12 +5716,6 @@ Initialize(void)
 #else // defined(NO_XX_SHORTCUT_GOTO)
     printf("# NO NO_XX_SHORTCUT_GOTO\n");
 #endif // defined(NO_XX_SHORTCUT_GOTO)
-
-#if defined(NO_DL_SPECIFIC_T_ONE)
-    printf("#    NO_DL_SPECIFIC_T_ONE\n");
-#else // defined(NO_DL_SPECIFIC_T_ONE)
-    printf("# NO NO_DL_SPECIFIC_T_ONE\n");
-#endif // defined(NO_DL_SPECIFIC_T_ONE)
 
 #if defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
     printf("#    NO_BL_SPECIFIC_PSPLIT_SEARCH\n");

@@ -149,12 +149,6 @@
   #endif // ! defined(NO_XX_SHORTCUT_GOTO)
 #endif // defined(XX_SHORTCUT)
 
-// Default is -DDL_SPECIFIC_T_ONE.
-#if ! defined(NO_DL_SPECIFIC_T_ONE)
-#undef DL_SPECIFIC_T_ONE
-#define DL_SPECIFIC_T_ONE
-#endif // ! defined(NO_DL_SPECIFIC_T_ONE)
-
 // Default is -DBL_SPECIFIC_PSPLIT_SEARCH.
 #if ! defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
 #undef BL_SPECIFIC_PSPLIT_SEARCH
