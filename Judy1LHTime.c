@@ -443,7 +443,7 @@ Word_t    PreStack = 0;                 // to test for TLB collisions with stack
 
 Word_t    Offset = 0;                   // Added to Key
 Word_t    bSplayKeyBitsFlag = 0;        // Splay key bits.
-Word_t    wSplayMask = 0xfe929292929292ab; // Yikes! Only -B30.
+Word_t    wSplayMask = 0xffaaaaff;      // Revisit in main for 64-bit init.
 
 Word_t    TValues = 1000000;            // Maximum numb retrieve timing tests
 Word_t    nElms = 10000000;             // Default population of arrays
@@ -869,6 +869,14 @@ main(int argc, char *argv[])
     void     *JL = NULL;                // JudyL
     void     *JH = NULL;                // JudyHS
 
+    // wSplayMask = 0xeeeeef808080aaaa or 0xaaaaaaaaaaaaaaaa;
+    // Is there a better way to initialize wSplayMask to a 64-bit value
+    // on a 64-bit system that won't cause compiler complaints on a 32-bit
+    // system?
+    if (sizeof(Word_t) == 8) {
+        wSplayMask
+            = (((((0xeeee << 16) | 0xee80) << 16) | 0x4020) << 16) | 0xaaff;
+    }
 
 #ifdef DEADCODE                         // see TimeNumberGen()
     void     *TestRan = NULL;           // Test Random generator
@@ -1347,7 +1355,7 @@ main(int argc, char *argv[])
         int nBitsSet = __builtin_popcountll(wSplayMask);
         if (nBitsSet < (int)BValue)
         {
-            BValue = nBitsSet; 
+            BValue = nBitsSet;
             MaxNumb = ((Word_t)2 << (BValue - 1)) - 1;
             printf("\n# Warning -- trimming '-B' value to %d;"
                    " the number of bits set in <splay-mask> 0x%zx.\n",
