@@ -443,7 +443,7 @@ Word_t    PreStack = 0;                 // to test for TLB collisions with stack
 
 Word_t    Offset = 0;                   // Added to Key
 Word_t    bSplayKeyBitsFlag = 0;        // Splay key bits.
-Word_t    wSplayMask = (Word_t)-1;
+Word_t    wSplayMask = 0xffaaaaff;      // Revisit in main for 64-bit init.
 
 Word_t    TValues = 1000000;            // Maximum numb retrieve timing tests
 Word_t    nElms = 10000000;             // Default population of arrays
@@ -869,9 +869,13 @@ main(int argc, char *argv[])
     void     *JL = NULL;                // JudyL
     void     *JH = NULL;                // JudyHS
 
+    // wSplayMask = 0xeeeeef808080aaaa or 0xaaaaaaaaaaaaaaaa;
+    // Is there a better way to initialize wSplayMask to a 64-bit value
+    // on a 64-bit system that won't cause compiler complaints on a 32-bit
+    // system?
     if (sizeof(Word_t) == 8) {
         wSplayMask
-            = (((((0xefef << 16) | 0xee80) << 16) | 0x8080) << 16) | 0xaaaa;
+            = (((((0xeeee << 16) | 0xee80) << 16) | 0x4020) << 16) | 0xaaff;
     }
 
 #ifdef DEADCODE                         // see TimeNumberGen()
@@ -1342,6 +1346,13 @@ main(int argc, char *argv[])
         fprintf(stderr, "\n# Warning -- '-V' ignored, because '-R' is set\n");
     }
 
+    if (hFlag && vFlag)
+    {
+        printf("\nError --- '-v' and '-h' are incompatible\n");
+        fprintf(stderr, "\nError --- '-v' and '-h' are incompatible\n");
+        ErrorFlag++;
+    }
+
     if (bSplayKeyBitsFlag)
     {
         if (wSplayMask == 0) {
@@ -1351,7 +1362,7 @@ main(int argc, char *argv[])
         int nBitsSet = __builtin_popcountll(wSplayMask);
         if (nBitsSet < (int)BValue)
         {
-            BValue = nBitsSet; 
+            BValue = nBitsSet;
             MaxNumb = ((Word_t)2 << (BValue - 1)) - 1;
             printf("\n# Warning -- trimming '-B' value to %d;"
                    " the number of bits set in <splay-mask> 0x%zx.\n",
@@ -4192,29 +4203,50 @@ TestJudyDel(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
         {
             TstKey = GetNextKey(&WorkingSeed);
 
-            if (Tit)
+//          Holes in the tree ?
+            if (hFlag && ((TstKey & 0x3F) == 13))
             {
-
+                if (Tit)
+                {
 #ifdef SKIPMACRO
-                Rc = Judy1Unset(J1, TstKey, PJE0);
+                    Rc = Judy1Unset(J1, TstKey, PJE0);
 #else
-                J1U(Rc, *J1, TstKey);
+                    J1U(Rc, *J1, TstKey);
 #endif // SKIPMACRO
 
-                if (Rc != 1)
-                {
-                    printf("--- Key = 0x%" PRIxPTR"", TstKey);
-                    FAILURE("Judy1Unset ret Rcode != 1", Rc);
-                }
-
-                if (gFlag)
-                {
-                    Rc = Judy1Test(*J1, TstKey, PJE0);
-
-                    if (Rc)
+                    if (Rc != 0)
                     {
-                        printf("\n--- Judy1Test success after Judy1Unset, Key = 0x%" PRIxPTR"", TstKey);
-                        FAILURE("Judy1Test success after Judy1Unset", TstKey);
+                        printf("--- Key = 0x%" PRIxPTR"", TstKey);
+                        FAILURE("Judy1Unset ret Rcode != 0", Rc);
+                    }
+                }
+            }
+            else
+            {
+                if (Tit)
+                {
+
+#ifdef SKIPMACRO
+                    Rc = Judy1Unset(J1, TstKey, PJE0);
+#else
+                    J1U(Rc, *J1, TstKey);
+#endif // SKIPMACRO
+
+                    if (Rc != 1)
+                    {
+                        printf("--- Key = 0x%" PRIxPTR"", TstKey);
+                        FAILURE("Judy1Unset ret Rcode != 1", Rc);
+                    }
+
+                    if (gFlag)
+                    {
+                        Rc = Judy1Test(*J1, TstKey, PJE0);
+
+                        if (Rc)
+                        {
+                            printf("\n--- Judy1Test success after Judy1Unset, Key = 0x%" PRIxPTR"", TstKey);
+                            FAILURE("Judy1Test success after Judy1Unset", TstKey);
+                        }
                     }
                 }
             }
@@ -4234,30 +4266,51 @@ TestJudyDel(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
         {
             TstKey = GetNextKey(&WorkingSeed);
 
-            if (Tit)
+//          Holes in the tree ?
+            if (hFlag && ((TstKey & 0x3F) == 13))
             {
-
+                if (Tit)
+                {
 #ifdef SKIPMACRO
-                Rc = JudyLDel(JL, TstKey, PJE0);
+                    Rc = JudyLDel(JL, TstKey, PJE0);
 #else
-                JLD(Rc, *JL, TstKey);
+                    JLD(Rc, *JL, TstKey);
 #endif // SKIPMACRO
 
-                if (Rc != 1)
-                {
-                    printf("\n--- Key = 0x%" PRIxPTR"", TstKey);
-                    FAILURE("JudyLDel ret Rcode != 1", Rc);
-                }
-
-                if (gFlag)
-                {
-                    PWord_t   PValueNew;
-
-                    PValueNew = (PWord_t)JudyLGet(*JL, TstKey, PJE0);
-                    if (PValueNew != NULL)
+                    if (Rc != 0)
                     {
-                        printf("\n--- JudyLGet success after JudyLDel, Key = 0x%" PRIxPTR", Value = 0x%" PRIxPTR"", TstKey, *PValueNew);
-                        FAILURE("JudyLGet success after JudyLDel", TstKey);
+                        printf("\n--- Key = 0x%" PRIxPTR"", TstKey);
+                        FAILURE("JudyLDel ret Rcode != 0", Rc);
+                    }
+                }
+            }
+            else
+            {
+                if (Tit)
+                {
+
+#ifdef SKIPMACRO
+                    Rc = JudyLDel(JL, TstKey, PJE0);
+#else
+                    JLD(Rc, *JL, TstKey);
+#endif // SKIPMACRO
+
+                    if (Rc != 1)
+                    {
+                        printf("\n--- Key = 0x%" PRIxPTR"", TstKey);
+                        FAILURE("JudyLDel ret Rcode != 1", Rc);
+                    }
+
+                    if (gFlag)
+                    {
+                        PWord_t   PValueNew;
+
+                        PValueNew = (PWord_t)JudyLGet(*JL, TstKey, PJE0);
+                        if (PValueNew != NULL)
+                        {
+                            printf("\n--- JudyLGet success after JudyLDel, Key = 0x%" PRIxPTR", Value = 0x%" PRIxPTR"", TstKey, *PValueNew);
+                            FAILURE("JudyLGet success after JudyLDel", TstKey);
+                        }
                     }
                 }
             }
