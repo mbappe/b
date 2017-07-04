@@ -19,6 +19,8 @@
 #define unlikely(_b) (__builtin_expect((_b), 0))
 #endif // ! defined(likely)
 
+// NO_SKIP_LINKS means no skip links of any kind.
+// SKIP_LINKS allows the type-specific SKIP_TO_<BLAH> to be defined.
 // Default is -DSKIP_LINKS -USKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX.
 // Default is -USAVE_PREFIX -USAVE_PREFIX_TEST_RESULT
 // Default is -UALWAYS_CHECK_PREFIX_AT_LEAF.
@@ -402,11 +404,11 @@ typedef Word_t Bucket_t;
 #endif // ! defined(NO_SKIP_TO_XX_SW) && defined(SKIP_LINKS)
 #endif // defined(CODE_XX_SW)
 
-// Default is -DSKIP_TO_BITMAP if -DSKIP_TO_XX_SW.
-#if defined(SKIP_TO_XX_SW)
+// Default is -DSKIP_TO_BITMAP.
+#if ! defined(NO_SKIP_TO_BITMAP) && defined(SKIP_LINKS)
 #undef SKIP_TO_BITMAP
 #define SKIP_TO_BITMAP
-#endif // ! defined(SKIP_TO_XX_SW)
+#endif // ! defined(NO_SKIP_TO_BITMAP) && defined(SKIP_LINKS)
 
 // Default is SKIP_TO_BM_SW if USE_BM_SW and (LVL_IN_SW or LVL_IN_WR_HB).
 #if ! defined(NO_SKIP_TO_BM_SW) && defined(SKIP_LINKS)
@@ -957,11 +959,12 @@ Set_nType(Word_t* pwRoot, int nType)
     set_wr_nType(*pwRoot, nType);
 }
 
-#if defined(SKIP_LINKS)
 // Change the type field in *pwRoot from a skip a non-skip.
 static inline void
 Clr_bIsSkip(Word_t* pwRoot)
 {
+    (void)pwRoot;
+#if defined(SKIP_LINKS)
     int nType = wr_nType(*pwRoot);
   #if ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
     if (nType >= T_SKIP_TO_SWITCH) { Set_nType(pwRoot, T_SWITCH); return; }
@@ -983,8 +986,8 @@ Clr_bIsSkip(Word_t* pwRoot)
         DBG(printf("\nnType %d\n", nType));
         assert(0);
     }
-}
 #endif // defined(SKIP_LINKS)
+}
 
 // Extract pwr, i.e. the next pwRoot, from *pwRoot.
 static inline Word_t* wr_pwr(Word_t wRoot) {
@@ -1226,31 +1229,32 @@ tp_bIsSwitch(int nType)
   #endif // defined(SKIP_TO_XX_SW)
 #endif // defined(CODE_XX_SW)
 
-#if defined(SKIP_LINKS)
 static inline int
-tp_bIsSkip(int tp)
+tp_bIsSkip(int nType)
 {
-#if ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
-    if (tp >= T_SKIP_TO_SWITCH) { return 1;}
-#endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
-    switch (tp) {
-#if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+    (void)nType;
+#if defined(SKIP_LINKS)
+  #if ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
+    if (nType >= T_SKIP_TO_SWITCH) { return 1;}
+  #endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
+    switch (nType) {
+  #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
     case T_SKIP_TO_SWITCH:
-#endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
-#if defined(SKIP_TO_BM_SW)
+  #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+  #if defined(SKIP_TO_BM_SW)
     case T_SKIP_TO_BM_SW:
-#endif // defined(SKIP_TO_BM_SW)
-#if defined(SKIP_TO_XX_SW)
+  #endif // defined(SKIP_TO_BM_SW)
+  #if defined(SKIP_TO_XX_SW)
     case T_SKIP_TO_XX_SW:
-#endif // defined(SKIP_TO_XX_SW)
-#if defined(SKIP_TO_BITMAP)
+  #endif // defined(SKIP_TO_XX_SW)
+  #if defined(SKIP_TO_BITMAP)
     case T_SKIP_TO_BITMAP:
-#endif // defined(SKIP_TO_BITMAP)
+  #endif // defined(SKIP_TO_BITMAP)
         return 1;
     }
+#endif // defined(SKIP_LINKS)
     return 0;
 }
-#endif // defined(SKIP_LINKS)
 
 // Bit fields in the upper bits of of wRoot.
 // Lvl is the level of the node pointed to.
@@ -2686,6 +2690,8 @@ extern const unsigned anBL_to_nDL[];
 #define PSPLIT(_nPopCnt, _nBL, _xKey, _nPsplit) \
 { \
     /* make sure we don't overflow */ \
+    DBG( (((_nBL) + LOG(_nPopCnt) + 1 > cnBitsPerWord) \
+        ? printf("_nPopCnt %d\n", _nPopCnt) : 0) );   \
     assert((_nBL) + LOG(_nPopCnt) + 1 <= cnBitsPerWord); \
     (_nPsplit) = ((Word_t)((_xKey) & MSK(_nBL)) * (_nPopCnt) / EXP(_nBL)); \
 }
