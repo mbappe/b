@@ -45,15 +45,17 @@ Word_t TestJudyGet(void *J1, void *JL, void *JH, Word_t Seed, Word_t Elements);
 
 int TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements);
 
+#if ! defined(NO_TEST_NEXT)
+
 Word_t TestJudyNext(void *J1, void *JL, Word_t LowIndex, Word_t Elements);
 
 int TestJudyPrev(void *J1, void *JL, Word_t HighIndex, Word_t Elements);
 
-int
-TestJudyNextEmpty(void *J1, void *JL, Word_t LowIndex, Word_t Elements);
+int TestJudyNextEmpty(void *J1, void *JL, Word_t LowIndex, Word_t Elements);
 
-int
-TestJudyPrevEmpty(void *J1, void *JL, Word_t HighIndex, Word_t Elements);
+int TestJudyPrevEmpty(void *J1, void *JL, Word_t HighIndex, Word_t Elements);
+
+#endif // ! defined(NO_TEST_NEXT)
 
 Word_t MagicList[] =
 {
@@ -205,11 +207,14 @@ GetNextIndex(Word_t Index)
 #undef __FUNCTI0N__
 #define __FUNCTI0N__ "main"
 
+
 int
 main(int argc, char *argv[])
 {
 //  Names of Judy Arrays
-    void *J1 = NULL;            // Judy1
+    //void *J1 = NULL;            // Judy1
+    struct { void *pv0, *pv1; } sj1 = { 0 };
+#define J1 (sj1.pv1)
     void *JL = NULL;            // JudyL
     void *JH = NULL;            // JudyHS
 
@@ -396,7 +401,7 @@ main(int argc, char *argv[])
 
     for (grp = 0; grp < Groups; grp++)
     {
-        Word_t LowIndex, HighIndex;
+        Word_t LowIndex;
         Word_t Delta;
         Word_t NewSeed;
 
@@ -416,6 +421,8 @@ main(int argc, char *argv[])
         {
             TestJudyCount(J1, JL, LowIndex, Delta);
         }
+#if ! defined(NO_TEST_NEXT)
+        Word_t HighIndex;
 //      Test JLN, J1N
         HighIndex = TestJudyNext(J1, JL, (Word_t)0, TotalPop);
 
@@ -427,6 +434,7 @@ main(int argc, char *argv[])
 
 //      Test JLPE, J1PE
         TestJudyPrevEmpty(J1, JL, HighIndex, Delta);
+#endif // ! defined(NO_TEST_NEXT)
 
 //      Test JLD, J1U
         if (dFlag)
@@ -482,6 +490,7 @@ main(int argc, char *argv[])
     }
     printf("Passed Judy1, JudyL, JudyHS tests for %" PRIuPTR" numbers with <= %" PRIdPTR" bits\n", nElms, BValue);
     exit(0);
+#undef J1
 }
 
 #undef __FUNCTI0N__
@@ -705,7 +714,6 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
     Word_t elm;
     Word_t Count1, CountL;
     Word_t TstIndex = LowIndex;
-    int Rcode;
 
     TstIndex = LowIndex;
     for (elm = 0; elm < Elements; elm++)
@@ -739,14 +747,17 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
             FAILURE("Count at", elm);
         }
 
-        Word_t TstIndex1 = TstIndex;
-        J1N(Rcode, J1, TstIndex1);
+        Word_t TstIndex1 = TstIndex; (void)TstIndex1;
         JudyLNext(JL, &TstIndex, NULL);
+#if ! defined(NO_TEST_NEXT)
+        int Rcode;
+        J1N(Rcode, J1, TstIndex1);
         if (TstIndex != TstIndex1) {
             printf("Next TstIndex = %zd != TstIndex1 = %zd\n",
                    TstIndex, TstIndex1);
             FAILURE("Count at", elm);
         }
+#endif // ! defined(NO_TEST_NEXT)
     }
     return(0);
 }

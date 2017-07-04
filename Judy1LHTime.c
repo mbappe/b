@@ -865,7 +865,9 @@ int
 main(int argc, char *argv[])
 {
 //  Names of Judy Arrays
-    void     *J1 = NULL;                // Judy1
+    //void     *J1 = NULL;                // Judy1
+    struct { void *pv0, *pv1; } sj1 = { 0 };
+#define J1 (sj1.pv1)
     void     *JL = NULL;                // JudyL
     void     *JH = NULL;                // JudyHS
 
@@ -2622,6 +2624,7 @@ main(int argc, char *argv[])
 //         printf("\n# %" PRIuPTR" Duplicate Keys were found with -G%" PRIuPTR"\n", BitmapDups, GValue);
 
     exit(0);
+#undef J1
 }
 
 #ifdef DEADCODE
