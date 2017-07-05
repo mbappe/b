@@ -5316,11 +5316,11 @@ Initialize(void)
     printf("# NO SEARCHMETRICS\n");
 #endif // defined(SEARCHMETRICS)
 
-#if defined(PWROOT_ARG_FOR_LOOKUP)
-    printf("#    PWROOT_ARG_FOR_LOOKUP\n");
-#else // defined(PWROOT_ARG_FOR_LOOKUP)
-    printf("# NO PWROOT_ARG_FOR_LOOKUP\n");
-#endif // defined(PWROOT_ARG_FOR_LOOKUP)
+#if defined(PWROOT_PARAMETER_FOR_LOOKUP)
+    printf("#    PWROOT_PARAMETER_FOR_LOOKUP\n");
+#else // defined(PWROOT_PARAMETER_FOR_LOOKUP)
+    printf("# NO PWROOT_PARAMETER_FOR_LOOKUP\n");
+#endif // defined(PWROOT_PARAMETER_FOR_LOOKUP)
 
 #if defined(PWROOT_AT_TOP_FOR_LOOKUP)
     printf("#    PWROOT_AT_TOP_FOR_LOOKUP\n");

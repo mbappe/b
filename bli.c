@@ -342,15 +342,15 @@ PrefixMismatch(Word_t *pwRoot,
 // may need to save that value for later dereference by Lookup at the leaf.
 #if defined(PP_IN_LINK)
 
-  #if ! defined(PWROOT_ARG_FOR_LOOKUP) && ! defined(PWROOT_AT_TOP_FOR_LOOKUP)
+  #if ! defined(PWROOT_PARAMETER_FOR_LOOKUP) && ! defined(PWROOT_AT_TOP_FOR_LOOKUP)
       #error PWROOT_[ARG|AT_TOP]_FOR_LOOKUP is required for PP_IN_LINK ...
-  #endif // ! defined(PWROOT_ARG_FOR_LOOKUP) && ! PWROOT_AT_TOP_FOR_LOOKUP
+  #endif // ! defined(PWROOT_PARAMETER_FOR_LOOKUP) && ! PWROOT_AT_TOP_FOR_LOOKUP
 
     #define PWROOT_ARG  pwRoot,
 
 #else // defined(PP_IN_LINK)
 
-  #if (defined(PWROOT_ARG_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)) \
+  #if (defined(PWROOT_PARAMETER_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)) \
           && defined(USE_PWROOT_FOR_LOOKUP)
 
     #define PWROOT_ARG  pwRoot,
@@ -395,11 +395,11 @@ CaseGuts(int nBL, Word_t *pwRoot, int nBS, int nBW, int nType, Word_t *pwr)
 #if defined(LOOKUP)
 static Status_t
 Lookup(
-      #if defined(PWROOT_ARG_FOR_LOOKUP)
+      #if defined(PWROOT_PARAMETER_FOR_LOOKUP)
        Word_t* pwRoot,
-      #else // defined(PWROOT_ARG_FOR_LOOKUP)
+      #else // defined(PWROOT_PARAMETER_FOR_LOOKUP)
        Word_t wRoot,
-      #endif // defined(PWROOT_ARG_FOR_LOOKUP)
+      #endif // defined(PWROOT_PARAMETER_FOR_LOOKUP)
        Word_t wKey
        )
 #else // defined(LOOKUP)
@@ -418,9 +418,9 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
 #if defined(LOOKUP)
     int nBL = cnBitsPerWord;
-  #if defined(PWROOT_ARG_FOR_LOOKUP)
+  #if defined(PWROOT_PARAMETER_FOR_LOOKUP)
     Word_t wRoot = *pwRoot;
-  #else // defined(PWROOT_ARG_FOR_LOOKUP)
+  #else // defined(PWROOT_PARAMETER_FOR_LOOKUP)
       #if defined(BM_IN_LINK)
     // Is it a problem that we appear to be ignoring PWROOT_AT_TOP_FOR_LOOKUP
     // here? Should we be ensuring that it is not defined?
@@ -438,7 +438,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     Word_t *pwRoot = pwRoot;
           #endif // defined(PWROOT_AT_TOP_FOR_LOOKUP) || ...
       #endif // defined(BM_IN_LINK)
-  #endif // defined(PWROOT_ARG_FOR_LOOKUP)
+  #endif // defined(PWROOT_PARAMETER_FOR_LOOKUP)
 #else // defined(LOOKUP)
   #if defined(CODE_XX_SW)
     Word_t *pwRootPrev = NULL; (void)pwRootPrev;
@@ -518,7 +518,7 @@ again:;
 
 #if ! defined(LOOKUP) /* don't care about performance */ \
       || (defined(USE_PWROOT_FOR_LOOKUP) \
-              && (defined(PWROOT_ARG_FOR_LOOKUP) \
+              && (defined(PWROOT_PARAMETER_FOR_LOOKUP) \
                   || defined(PWROOT_AT_TOP_FOR_LOOKUP)))
     int nType = Get_nType(pwRoot);
 #else // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's ok
@@ -959,7 +959,7 @@ t_xx_sw:;
   #endif // defined(SKIP_TO_XX_SW)
   #if ! defined(LOOKUP) /* don't care about performance */ \
       || (defined(USE_PWROOT_FOR_LOOKUP) \
-              && (defined(PWROOT_ARG_FOR_LOOKUP) \
+              && (defined(PWROOT_PARAMETER_FOR_LOOKUP) \
                       || defined(PWROOT_AT_TOP_FOR_LOOKUP)))
         int nBW = Get_nBW(pwRoot);
   #else // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's ok
@@ -2011,11 +2011,11 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
   #endif // (cwListPopCntMax != 0)
 
     return Lookup(
-  #if defined(PWROOT_ARG_FOR_LOOKUP)
+  #if defined(PWROOT_PARAMETER_FOR_LOOKUP)
                   &wRoot,
-  #else // defined(PWROOT_ARG_FOR_LOOKUP)
+  #else // defined(PWROOT_PARAMETER_FOR_LOOKUP)
                   wRoot,
-  #endif // defined(PWROOT_ARG_FOR_LOOKUP)
+  #endif // defined(PWROOT_PARAMETER_FOR_LOOKUP)
                   wKey
                   );
 
