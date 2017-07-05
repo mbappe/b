@@ -4896,10 +4896,20 @@ Initialize(void)
 #endif // ! defined(ALLOW_EMBEDDED_BITMAP)
     assert(EXP(cnBitsLeftAtDl2) > sizeof(Link_t) * 8);
 
+// SAVE_PREFIX should be called SAVE_PREFIX_PTR?
+#if defined(SAVE_PREFIX)
+  #if ! defined(SKIP_PREFIX_CHECK)
+    // SKIP_PREFIX_CHECK should be called SKIP_OR_DEFER_PREFIX_CHECK?
+    // Maybe SKIP_OR_DEFER should't exist?
+    // Maybe it should be SAVE (implies DEFER) or SKIP?
+    #error SAVE_PREFIX without SKIP_PREFIX_CHECK
+  #endif // ! defined(SKIP_PREFIX_CHECK)
+#endif // defined(SAVE_PREFIX)
+
 #if defined(SKIP_LINKS)
-#if ! defined(LVL_IN_WR_HB)
-#if ! defined(LVL_IN_SW)
-#if ! defined(LVL_IS_RELATIVE)
+  #if ! defined(LVL_IN_WR_HB)
+      #if ! defined(LVL_IN_SW)
+          #if ! defined(LVL_IS_RELATIVE)
     // We could be a lot more creative here w.r.t. mapping our scarce type
     // values to absolute depths.  But why?  We have to look at the prefix
     // in a different word anyway.  See comments at tp_to_nDL in b.h.
@@ -4910,10 +4920,27 @@ Initialize(void)
         printf("tp_to_nDL(cnMallocMask    0x%02x)   %2d\n",
                (int)cnMallocMask, (int)tp_to_nDL(cnMallocMask));
     }
-#endif // ! defined(LVL_IS_RELATIVE)
-#endif // ! defined(LVL_IN_SW)
-#endif // ! defined(LVL_IN_WR_HB)
+          #endif // ! defined(LVL_IS_RELATIVE)
+      #endif // ! defined(LVL_IN_SW)
+  #endif // ! defined(LVL_IN_WR_HB)
+#else // defined(SKIP_LINKS)
+  #if defined(SKIP_TO_BITMAP)
+      #error SKIP_TO_BITMAP without SKIP_LINKS
+  #endif // defined(SKIP_TO_BITMAP)
+  #if defined(SKIP_TO_LIST)
+      #error SKIP_TO_LIST without SKIP_LINKS
+  #endif // defined(SKIP_TO_LIST)
+  #if defined(SKIP_TO_SWITCH)
+      #error SKIP_TO_SWITCH without SKIP_LINKS
+  #endif // defined(SKIP_TO_SWITCH)
+  #if defined(SKIP_TO_BM_SW)
+      #error SKIP_TO_BM_SW without SKIP_LINKS
+  #endif // defined(SKIP_TO_BM_SW)
+  #if defined(SKIP_TO_XX_SW)
+      #error SKIP_TO_XX_SW without SKIP_LINKS
+  #endif // defined(SKIP_TO_XX_SW)
 #endif // defined(SKIP_LINKS)
+
 
   #if defined(NO_TYPE_IN_XX_SW)
       #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
