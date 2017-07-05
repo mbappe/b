@@ -1309,27 +1309,6 @@ Set_nBW(Word_t *pwRoot, int nBW)
 
 #define set_pwr_nBW(_pwRoot, _nBW)  Set_nBW((_pwRoot), (_nBW))
 
-#if ! defined(LVL_IS_RELATIVE)
-
-// Get the level of the branch in bits.
-static inline int
-pwr_nBL(Word_t *pwRoot)
-{
-    int nBL = GetBits(*pwRoot, cnBitsLvl, cnLsbLvl);
-    assert(nBL <= (int)MSK(cnBitsLvl));
-    return nBL;
-}
-
-// Set the level of the branch in bits.
-static inline void
-set_pwr_nBL(Word_t *pwRoot, int nBL)
-{
-    assert(nBL <= (int)MSK(cnBitsLvl));
-    SetBits(pwRoot, cnBitsLvl, cnLsbLvl, nBL);
-}
-
-#endif // ! defined(LVL_IS_RELATIVE)
-
 static inline Word_t
 pw_wPrefix(Word_t *pw, int nBL)
 {
@@ -1355,6 +1334,27 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 }
 
 #endif // defined(CODE_XX_SW)
+
+#if ! defined(LVL_IS_RELATIVE)
+
+// Get the level of the branch in bits.
+static inline int
+pwr_nBL(Word_t *pwRoot)
+{
+    int nBL = GetBits(*pwRoot, cnBitsLvl, cnLsbLvl);
+    assert(nBL <= (int)MSK(cnBitsLvl));
+    return nBL;
+}
+
+// Set the level of the branch in bits.
+static inline void
+set_pwr_nBL(Word_t *pwRoot, int nBL)
+{
+    assert(nBL <= (int)MSK(cnBitsLvl));
+    SetBits(pwRoot, cnBitsLvl, cnLsbLvl, nBL);
+}
+
+#endif // ! defined(LVL_IS_RELATIVE)
 
 #if defined(LVL_IS_ABSOLUTE)
 
