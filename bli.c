@@ -516,10 +516,7 @@ again:;
 #endif // ( ! defined(LOOKUP) )
     DBGX(printf("# wRoot " OWx" wKey " OWx" nBL %d\n", wRoot, wKey, nBL));
 
-#if ! defined(LOOKUP) /* don't care about performance */ \
-      || (defined(USE_PWROOT_FOR_LOOKUP) \
-              && (defined(PWROOT_PARAMETER_FOR_LOOKUP) \
-                  || defined(PWROOT_AT_TOP_FOR_LOOKUP)))
+#if ! defined(LOOKUP) || (defined(USE_PWROOT_FOR_LOOKUP) && (defined(PWROOT_PARAMETER_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)))
     int nType = Get_nType(pwRoot);
 #else // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's ok
     int nType = Get_nType(&wRoot);
@@ -957,10 +954,7 @@ t_xx_sw:;
         assert(pwr_nBL(&wRoot) == nBLR);
       #endif // defined(LVL_IS_RELATIVE)
   #endif // defined(SKIP_TO_XX_SW)
-  #if ! defined(LOOKUP) /* don't care about performance */ \
-      || (defined(USE_PWROOT_FOR_LOOKUP) \
-              && (defined(PWROOT_PARAMETER_FOR_LOOKUP) \
-                      || defined(PWROOT_AT_TOP_FOR_LOOKUP)))
+  #if ! defined(LOOKUP) || (defined(USE_PWROOT_FOR_LOOKUP) && (defined(PWROOT_PARAMETER_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)))
         int nBW = Get_nBW(pwRoot);
   #else // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's ok
         int nBW = Get_nBW(&wRoot);
