@@ -1792,9 +1792,19 @@ embeddedKeys:;
         {
             // Add 'em up.
             Word_t wPopCnt = Sum(pwRoot, cnBitsPerWord);
-            assert(wPopCnt != 0);
 
-            printf(" sm_wPopCnt %3" _fw"u", wPopCnt);
+            // Is wPopCnt == 0 ambiguous here?
+            // If Dump is called in the middle of an insert,
+            // after a new switch is created, and before any
+            // keys are inserted into it we could have a
+            // legitimate zero population.
+            // But couldn't it also mean full pop?
+            if ((wPopCnt == 0) && (pLinks[0].ln_wRoot != 0)) {
+                printf(" sm_wPopCnt full");
+            } else {
+                printf(" sm_wPopCnt %3" _fw"u", wPopCnt);
+            }
+
             printf(" wr_wPrefix        N/A");
         }
         else
@@ -2449,8 +2459,8 @@ embeddedKeys:;
         DBGR(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
     }
     assert(nType == T_LIST);
-#if defined(PP_IN_LINK)
-    if (nBL < cnBitsPerWord) {
+#if defined(PP_IN_LINK) // ? what about POP_IN_WR_HB ?
+    if (nBLOld < cnBitsPerWord) {
         // Adjust the count to compensate for pre-increment during insert.
         nPopCnt = PWR_wPopCntBL(pwRootOld, NULL, nBLOld) - 1;
     } else
@@ -2956,10 +2966,10 @@ embeddedKeys:;
         else
         {
 #if defined(PP_IN_LINK)
-            if (nDL != cnDigitsPerWord)
+            if (nBL != cnBitsPerWord)
             {
                 // What about no_unnecessary_prefix?
-                set_PWR_wPrefix(pwRoot, NULL, nDL, wKey);
+                set_PWR_wPrefixBL(pwRoot, pwr, nBL, wKey);
             }
 #endif // defined(PP_IN_LINK)
         }
@@ -3584,6 +3594,9 @@ doubleIt:;
                         DBGI(printf("# IG: NewBitmap wPopCnt %" _fw"d.\n",
                                     wPopCnt));
                         DBGI(printf("# IG: NewBitmap nBL %d.\n", nBL));
+#if ! defined(SKIP_TO_BITMAP)
+                        assert(nBL == nBLOld);
+#endif // ! defined(SKIP_TO_BITMAP)
                         NewBitmap(pwRoot, nBL, nBLOld, wKey);
 #if defined(PP_IN_LINK)
                         set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL, 0);
@@ -3612,7 +3625,10 @@ doubleIt:;
 #if defined(PP_IN_LINK)
                 // NewSwitch changes *pwRoot and the Link_t containing it.
                 // We need to preserve the Link_t for subsequent InsertAll.
-                link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+                // We don't have a whole link at the top.
+                if (nBLOld < cnBitsPerWord) {
+                    link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+                }
 #endif // defined(PP_IN_LINK)
                 NewSwitch(pwRoot, wKey, nBL,
 #if defined(CODE_XX_SW)
@@ -3726,6 +3742,7 @@ insertAll:;
                 } else
 #endif // defined(PP_IN_LINK)
                 {
+                    // *pwRoot now points to a switch
                     InsertAll(&wRoot, nBLOld, wKey, pwRoot, nBLOld);
                 }
             }
@@ -4395,6 +4412,7 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
 
     SetBit(pwr, wKey & MSK(nBL));
 
+    // population is in the word following the bitmap
     set_w_wPopCntBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL,
         w_wPopCntBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL) + 1);
 
@@ -4811,10 +4829,9 @@ Initialize(void)
     assert((cnBitsLeftAtDl2 < 24)
         || ((cn2dBmWpkPercent == 0) && (cnBitsInD1 < 24)));
 
-#if defined(CODE_BM_SW)
-    //assert(STRUCT_OF(0, BmSwitch_t, sw_wPrefixPop) == STRUCT_OF(0, Switch_t, sw_wPrefixPop));
+#if defined(CODE_BM_SW) && ! defined(PP_IN_LINK)
     assert(&((BmSwitch_t *)0)->sw_wPrefixPop == &((Switch_t *)0)->sw_wPrefixPop);
-#endif // defined(CODE_BM_SW)
+#endif // defined(CODE_BM_SW) && ! defined(PP_IN_LINK)
 #if defined(NO_TYPE_IN_XX_SW)
   #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
     assert(T_EMBEDDED_KEYS != 0); // see b.h
@@ -4832,13 +4849,19 @@ Initialize(void)
     assert(cnListPopCntMax8   != 0);
     assert(cnListPopCntMax16  != 0);
     assert(cnListPopCntMax32  != 0);
+  #if cnBitsPerWord > 32
     assert(cnListPopCntMax64  != 0);
+  #endif // cnBitsPerWord > 32
 #endif // ! defined(EMBED_KEYS)
 
     // Search assumes lists are sorted if LIST_END_MARKERS is defined.
 #if defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
     assert(0);
 #endif // defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
+
+#if ! defined(SKIP_TO_BITMAP) && defined(SKIP_TO_XX_SW)
+    #error SKIP_TO_XX_SW without SKIP_TO_BITMAP
+#endif // ! defined(SKIP_TO_BITMAP) && defined(SKIP_TO_XX_SW)
 
     // Why would we want to be able to fit more than one digits' worth of
     // keys into a Link_t as an embedded bitmap?
