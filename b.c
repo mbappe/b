@@ -3601,7 +3601,7 @@ doubleIt:;
 #if defined(PP_IN_LINK)
                         set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL, 0);
 #endif // defined(PP_IN_LINK)
-                        DBGI(printf("After NewBitmap; before insertAll.\n"));
+                        DBGI(printf("# After NewBitmap; before insertAll.\n"));
                         DBGI(Dump(pwRootLast,
                               /* wPrefix */ (Word_t)0, cnBitsPerWord));
                         goto insertAll;
@@ -4775,7 +4775,8 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
 {
     (void)nDL;
 
-    if (EXP(nBL) <= sizeof(Link_t) * 8) {
+    // EXP(nBL) is risky because nBL could be cnBitsPerWord
+    if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
         ClrBit(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL));
     } else {
         int nBLR = nBL;
