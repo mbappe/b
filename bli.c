@@ -236,8 +236,7 @@ PrefixMismatch(Word_t *pwRoot,
     assert(nBLR < nBL); // reserved
     *pnBLR = nBLR;
 
-  #if ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK) \
-        || defined(SAVE_PREFIX_TEST_RESULT)
+  #if ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK) || defined(SAVE_PREFIX_TEST_RESULT)
     Word_t wPrefix =
         0 ? 0
       #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
@@ -350,8 +349,7 @@ PrefixMismatch(Word_t *pwRoot,
 
 #else // defined(PP_IN_LINK)
 
-  #if (defined(PWROOT_PARAMETER_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)) \
-          && defined(USE_PWROOT_FOR_LOOKUP)
+  #if (defined(PWROOT_PARAMETER_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)) && defined(USE_PWROOT_FOR_LOOKUP)
 
     #define PWROOT_ARG  pwRoot,
 
@@ -426,8 +424,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     // here? Should we be ensuring that it is not defined?
     Word_t *pwRoot = NULL; // used for top detection
       #else // defined(BM_IN_LINK)
-          #if defined(PWROOT_AT_TOP_FOR_LOOKUP) \
-              || defined(POP_IN_WR_HB) && ! defined(SEARCH_FROM_WRAPPER)
+          #if defined(PWROOT_AT_TOP_FOR_LOOKUP) || defined(POP_IN_WR_HB) && ! defined(SEARCH_FROM_WRAPPER)
     Word_t *pwRoot = &wRoot;
           #else // defined(PWROOT_AT_TOP_FOR_LOOKUP) || ...
     // Silence unwarranted gcc used before initialized warning.
@@ -838,6 +835,10 @@ t_switch:;
         // cases, e.g. BitsInD2 != BitsPerDigit and BitsInD3 != BitsPerDigit?
         // We're banking on the compilier noticing that nB
         Word_t wIndex = (wKey >> nBL) & MSK(nBitsIndexSz);
+        // Word_t wIndex = ((uint8_t *)&wKey)[(cnBitsPerWord - nBL) >> 3];
+        // Word_t wIndex = ((uint8_t *)&wKey)[cnDigitsPerWord - nDL];
+        // Word_t wIndex = ((uint8_t *)&wSwappedKey)[nDL];
+        // Word_t wIndex = *(uint8_t *)&wSwappedAndShiftedKey;
 
         DBGX(printf("T_SWITCH wIndex %d 0x%x\n", (int)wIndex, (int)wIndex));
 
@@ -1001,8 +1002,7 @@ t_xx_sw:;
         // I don't know why yet, but it measures faster to defer
         // the zero check until then.
   #endif // defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
-  #if defined(NO_TYPE_IN_XX_SW) \
-           || (defined(LOOKUP) && defined(HANDLE_DL2_IN_EMBEDDED_KEYS))
+  #if defined(NO_TYPE_IN_XX_SW) || (defined(LOOKUP) && defined(HANDLE_DL2_IN_EMBEDDED_KEYS))
         // Blow-ups are handled in t_embedded_keys.
         goto t_embedded_keys;
   #else // defined(NO_TYPE_IN_XX_SW) || handle dl2 in t_embedded_keys
@@ -1322,8 +1322,7 @@ t_list:;
             }
           #endif // defined(INSERT) || defined(REMOVE) || defined(COUNT)
         }
-      #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) \
-          && defined(COMPRESSED_LISTS)
+      #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
         else
         {
             // Shouldn't this be using the previous nBL for pwrPrev?
@@ -1691,8 +1690,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 
         DBGX(printf("EMBEDDED_KEYS\n"));
 
-      #if    (defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)) \
-          || (defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP))
+      #if    (defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)) || (defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP))
 
 #if defined(HANDLE_BLOWOUTS)
     // We haven't written the insert code to create blow-outs for
@@ -1755,15 +1753,11 @@ break2:
 
       #endif // (defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) ... )
 
-      #if (!defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)) \
-          || (!defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP))
+      #if (!defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)) || (!defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP))
 
         int nPopCnt = wr_nPopCnt(wRoot, nBL);
 
-          #if (defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP) \
-                  && defined(LOOKUP)) \
-              || (defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_INSERT) \
-                  && !defined(LOOKUP))
+          #if (defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP) && defined(LOOKUP)) || (defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_INSERT) && !defined(LOOKUP))
 
         // PSPLIT_SEARCH_BY_KEY expects smallest key in xKeys[0] and
         // largest key in xKeys[nPopCnt-1].

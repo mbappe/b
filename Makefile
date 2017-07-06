@@ -305,6 +305,7 @@ stubsL.o: stubsL.c
 stubsHS.o: stubsHS.c
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
 
+# Default MALLOC_ALIGNMENT is 2 * sizeof(void *), except possibly on OSX.
 JudyMalloc.o: JudyMalloc.c
 	$(CC) $(CFLAGS) -Wno-old-style-declaration \
  -Wno-unknown-warning-option $(DEFINES) -c $^
