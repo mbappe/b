@@ -414,6 +414,7 @@ typedef Word_t Bucket_t;
 #if ! defined(NO_SKIP_TO_BM_SW) && defined(SKIP_LINKS)
   #if defined(USE_BM_SW)
       #if defined(LVL_IN_SW) || defined(LVL_IN_WR_HB)
+          #undef SKIP_TO_BM_SW
           #define SKIP_TO_BM_SW
       #endif // defined(LVL_IN_SW) || defined(LVL_IN_WR_HB)
   #endif // defined(USE_BM_SW)
