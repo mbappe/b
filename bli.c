@@ -80,9 +80,16 @@ CountSw(Word_t *pwRoot,
             int nTypeLoop = Get_nType(pwRootLoop);
             DBGC(printf("pwrLoop %p nTypeLoop %d\n",
                         (void *)pwrLoop, nTypeLoop));
+          #if defined(SKIP_TO_BITMAP)
+            int nBLRLoop = nBL; // reset nBLRLoop
+          #endif // defined(SKIP_TO_BITMAP)
             if (tp_bIsSwitch(nTypeLoop)) {
                 wPopCntLoop = PWR_wPopCntBL(pwRootLoop,
                                             (Switch_t *)pwrLoop, nBL);
+      #if defined(CODE_BM_SW)
+                assert(PWR_wPopCntBL(pwRootLoop, (BmSwitch_t *)pwrLoop, nBL)
+                       == wPopCntLoop);
+      #endif // defined(CODE_BM_SW)
                 if (wPopCntLoop == 0) {
                     wPopCntLoop = EXP(nBL);
                 }
@@ -127,12 +134,26 @@ CountSw(Word_t *pwRoot,
                 DBGC(printf("list wPopCntLoop " OWx" wPopCnt " OWx"\n",
                      wPopCntLoop, wPopCnt));
                 break;
+          #if defined(SKIP_TO_BITMAP)
+            case T_SKIP_TO_BITMAP:
+                // Advance nBLR so we know where to find the pop count word.
+              #if defined(LVL_IS_RELATIVE)
+                nBLRLoop = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRootLoop));
+              #else // defined(LVL_IS_RELATIVE)
+                nBLRLoop = wr_nBL(*pwRootLoop);
+              #endif // defined(LVL_IS_RELATIVE)
+              #if defined(PP_IN_LINK)
+                // From where should we get pop count for PP_IN_LINK?
+                // It exists in the bitmap but also in the link.
+                // But there is no link at the top. KISS.
+              #endif // defined(PP_IN_LINK)
+          #endif // defined(SKIP_TO_BITMAP)
             case T_BITMAP:
                 wPopCntLoop
-                    = w_wPopCntBL(*(pwrLoop + EXP(nBL - cnLogBitsPerWord)),
-                                  nBL);
+                    = w_wPopCntBL(*(pwrLoop + EXP(nBLRLoop - cnLogBitsPerWord)),
+                                  nBLRLoop);
                 if (wPopCntLoop == 0) {
-                    wPopCntLoop = EXP(nBL);
+                    wPopCntLoop = EXP(nBLRLoop);
                 }
                 DBGC(printf("ww %" _fw"d T_BITMAp pwr %p wPopCnt %" _fw"d\n",
                             ww, (void *)pwr, wPopCntLoop));
@@ -353,11 +374,11 @@ PrefixMismatch(Word_t *pwRoot,
 
     #define PWROOT_ARG  pwRoot,
 
-  #else // defined(USE_PWROOT_FOR_LOOKUP)
+  #else // ... && defined(USE_PWROOT_FOR_LOOKUP)
 
     #define PWROOT_ARG  &wRoot,
 
-  #endif // defined(USE_PWROOT_FOR_LOOKUP)
+  #endif // ... && defined(USE_PWROOT_FOR_LOOKUP)
 
 #endif // defined(PP_IN_LINK)
 
