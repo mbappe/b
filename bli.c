@@ -80,18 +80,24 @@ CountSw(Word_t *pwRoot,
             int nTypeLoop = Get_nType(pwRootLoop);
             DBGC(printf("pwrLoop %p nTypeLoop %d\n",
                         (void *)pwrLoop, nTypeLoop));
-          #if defined(SKIP_TO_BITMAP)
             int nBLRLoop = nBL; // reset nBLRLoop
-          #endif // defined(SKIP_TO_BITMAP)
             if (tp_bIsSwitch(nTypeLoop)) {
+                if (tp_bIsSkip(nTypeLoop)) {
+                    // Advance nBLR so we know the expanse of the switch.
+          #if defined(LVL_IS_RELATIVE)
+                    nBLRLoop = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRootLoop));
+          #else // defined(LVL_IS_RELATIVE)
+                    nBLRLoop = wr_nBL(*pwRootLoop);
+          #endif // defined(LVL_IS_RELATIVE)
+                }
                 wPopCntLoop = PWR_wPopCntBL(pwRootLoop,
-                                            (Switch_t *)pwrLoop, nBL);
+                                            (Switch_t *)pwrLoop, nBLRLoop);
       #if defined(CODE_BM_SW)
-                assert(PWR_wPopCntBL(pwRootLoop, (BmSwitch_t *)pwrLoop, nBL)
+                assert(PWR_wPopCntBL(pwRootLoop, (BmSwitch_t *)pwrLoop, nBLRLoop)
                        == wPopCntLoop);
       #endif // defined(CODE_BM_SW)
                 if (wPopCntLoop == 0) {
-                    wPopCntLoop = EXP(nBL);
+                    wPopCntLoop = EXP(nBLRLoop);
                 }
                 DBGC(printf("ww %" _fw"d bIsSwitch pwr %p wPopCnt %" _fw"d\n",
                             ww, (void *)pwrLoop, wPopCntLoop));
