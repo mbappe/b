@@ -81,15 +81,14 @@ CountSw(Word_t *pwRoot,
             DBGC(printf("pwrLoop %p nTypeLoop %d\n",
                         (void *)pwrLoop, nTypeLoop));
             int nBLRLoop = nBL; // reset nBLRLoop
-            if (tp_bIsSwitch(nTypeLoop)) {
-                if (tp_bIsSkip(nTypeLoop)) {
-                    // Advance nBLR so we know the expanse of the switch.
+            if (tp_bIsSkip(nTypeLoop)) {
           #if defined(LVL_IS_RELATIVE)
-                    nBLRLoop = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRootLoop));
+                nBLRLoop = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRootLoop));
           #else // defined(LVL_IS_RELATIVE)
-                    nBLRLoop = wr_nBL(*pwRootLoop);
+                nBLRLoop = wr_nBL(*pwRootLoop);
           #endif // defined(LVL_IS_RELATIVE)
-                }
+            }
+            if (tp_bIsSwitch(nTypeLoop)) {
                 wPopCntLoop = PWR_wPopCntBL(pwRootLoop,
                                             (Switch_t *)pwrLoop, nBLRLoop);
       #if defined(CODE_BM_SW)
@@ -142,12 +141,6 @@ CountSw(Word_t *pwRoot,
                 break;
           #if defined(SKIP_TO_BITMAP)
             case T_SKIP_TO_BITMAP:
-                // Advance nBLR so we know where to find the pop count word.
-              #if defined(LVL_IS_RELATIVE)
-                nBLRLoop = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRootLoop));
-              #else // defined(LVL_IS_RELATIVE)
-                nBLRLoop = wr_nBL(*pwRootLoop);
-              #endif // defined(LVL_IS_RELATIVE)
               #if defined(PP_IN_LINK)
                 // From where should we get pop count for PP_IN_LINK?
                 // It exists in the bitmap but also in the link.
