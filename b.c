@@ -5961,7 +5961,8 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 Word_t
 Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
 {
-    DBGR(printf("Judy1Count\n"));
+    DBGC(printf("Judy1Count\n"));
+    //DBGC(Dump(pwRootLast, 0, cnBitsPerWord));
 
 #if (cnDigitsPerWord != 1)
 
