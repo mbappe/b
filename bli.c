@@ -124,12 +124,13 @@ CountSw(Word_t *pwRoot,
                 {
           #if defined(PP_IN_LINK)
                     if (nBL < cnBitsPerWord) {
-                        wPopCntLoop = PWR_wPopCntBL(pwRootLoop, NULL, nBL);
+                        wPopCntLoop = PWR_wPopCntBL(pwRootLoop,
+                                                    NULL, nBLRLoop);
                     } else
           #endif // defined(PP_IN_LINK)
                     {
                         wPopCntLoop = PWR_xListPopCnt(pwRootLoop,
-                                                      pwrLoop, nBL);
+                                                      pwrLoop, nBLRLoop);
                     }
                     assert(wPopCntLoop != 0);
                     DBGC(printf("ww %" _fw"d T_LIST pwr %p wPopCnt %" _fw"d\n",
@@ -1177,6 +1178,41 @@ t_bm_sw:;
 
 #if (cwListPopCntMax != 0)
 
+  #if defined(SKIP_TO_LIST)
+    case T_SKIP_TO_LIST: {
+        DBGX(printf("T_SKIP_TO_LIST\n"));
+        // PREFIX_MISMATCH updates nBLR.
+        Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_LIST);
+        if (wPrefixMismatch != 0) {
+  #if defined(COUNT)
+            DBGC(printf("T_SKIP_TO_LIST: COUNT PREFIX_MISMATCH %" _fw"d\n",
+                        wPrefixMismatch));
+            // If key is bigger than prefix we have to count the keys here.
+            // Othwerwise we don't.
+            if (wPrefixMismatch > 0) {
+                Word_t wPopCnt;
+#if defined(PP_IN_LINK)
+                if (nBL != cnBitsPerWord) {
+                    wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR);
+                } else
+#endif // defined(PP_IN_LINK)
+                {
+                    wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBLR);
+                }
+                assert(wPopCnt != 0);
+                DBGC(printf("T_SKIP_TO_LIST: PREFIX_MISMATCH wPopCnt %" _fw
+                                "d\n", wPopCnt));
+                wPopCntSum += wPopCnt; // break below to return wPopCntSum
+                DBGC(printf("skls wPopCnt " OWx" wPopCntSum " OWx"\n",
+                            wPopCnt, wPopCntSum));
+            }
+  #endif // defined(COUNT)
+            break;
+        }
+        goto t_list;
+    }
+  #endif // defined(SKIP_TO_LIST)
+
 #if ! defined(DEBUG) && defined(DEFAULT_LIST)
       #if defined(DEFAULT_SKIP_TO_SW)
       #error DEFAULT_SKIP_TO_SW with DEFAULT_LIST
@@ -1197,8 +1233,8 @@ t_bm_sw:;
     {
         goto t_list;
 t_list:;
-        DBGX(printf("T_LIST nBL %d\n", nBL));
-        DBGX(printf("wKeyPopMask " OWx"\n", wPrefixPopMaskBL(nBL)));
+        DBGX(printf("T_LIST nBL %d nBLR %d\n", nBL, nBLR));
+        DBGX(printf("wKeyPopMask " OWx"\n", wPrefixPopMaskBL(nBLR)));
 
   #if defined(INSERT) || defined(REMOVE)
         DBGX(printf("T_LIST bCleanup %d nIncr %d\n", bCleanup, nIncr));
@@ -1232,8 +1268,11 @@ t_list:;
         // return nBL > cnBitsPerWord which works out perfectly.
           #endif // !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
           #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+              #if defined(SKIP_TO_LIST)
         // We don't support skip links directly to leaves -- yet.
         // Even with defined(PP_IN_LINK).
+        #error SKIP_TO_LIST with SKIP_PREFIX_CHECK
+              #endif // defined(SKIP_TO_LIST)
         // It is sufficient to check the prefix at the switch just
         // above the leaf.
         // pwrPrev is left from the previous iteration of the goto again
@@ -1300,12 +1339,12 @@ t_list:;
                 // pwRoot is 40ns. It does not happen with all versions of
                 // code.  &wRoot would be a bug for PP_IN_LINK.
             #if defined(PP_IN_LINK) || defined(PWROOT_FOR_HASKEY)
-                && ListHasKey(pwr, wKey, nBL, pwRoot)
+                && ListHasKey(pwr, wKey, nBLR, pwRoot)
             #else // defined(PP_IN_LINK) || defined(PWROOT_FOR_HASKEY)
-                && ListHasKey(pwr, wKey, nBL, &wRoot)
+                && ListHasKey(pwr, wKey, nBLR, &wRoot)
             #endif // defined(PP_IN_LINK) || defined(PWROOT_FOR_HASKEY)
         #else // defined(LOOKUP)
-                && ((nPos = SearchList(pwr, wKey, nBL, pwRoot)) >= 0)
+                && ((nPos = SearchList(pwr, wKey, nBLR, pwRoot)) >= 0)
         #endif // defined(LOOKUP)
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
@@ -1323,8 +1362,8 @@ t_list:;
                 // adjusted for pp-in-switch.
                 assert(nIncr == -1);
                 if (nBL < cnBitsPerWord) {
-                    set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL,
-                        PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL) - 1);
+                    set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR,
+                        PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR) - 1);
                 }
               #endif // defined(PP_IN_LINK)
                 goto removeGutsAndCleanup;
@@ -1370,13 +1409,13 @@ t_list:;
         // during lookup.
         assert((nBL == cnBitsPerWord) // there is no link with pop count
             || (pwr != NULL) // non-NULL implies non-zero pop count
-            || (PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL) == 0));
+            || (PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR) == 0));
         assert(nIncr == 1);
         DBGI(printf("did not find key\n"));
         if (nBL < cnBitsPerWord) {
-            set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL,
+            set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR,
                               PWR_wPopCntBL(pwRoot,
-                                            (Switch_t *)NULL, nBL) + 1);
+                                            (Switch_t *)NULL, nBLR) + 1);
         }
       #endif // defined(PP_IN_LINK) && defined(INSERT)
 

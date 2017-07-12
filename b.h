@@ -598,6 +598,9 @@ enum {
 #endif // defined(SEPARATE_T_NULL)
 #if (cwListPopCntMax != 0)
     T_LIST, // external list of keys
+  #if defined(SKIP_TO_LIST)
+    T_SKIP_TO_LIST, // skip to external list of keys
+  #endif // defined(SKIP_TO_LIST)
 #endif // (cwListPopCntMax != 0)
     // T_BITMAP may not be needed if it is implied by the level/depth.
     T_BITMAP, // external (not embedded) bitmap leaf

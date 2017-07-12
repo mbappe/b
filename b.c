@@ -2974,18 +2974,19 @@ embeddedKeys:;
 #endif // defined(PP_IN_LINK)
         }
 
-// We don't support skip links to lists or bitmaps yet.  And don't have
-// any criteria yet for converting from a list to a switch other than the
-// list is full.  So we just add to an existing list or create a new one
-// here.  But this is where we might make a decision to use a skip link
+// We don't support skip links to lists yet.
+// And we don't have any criteria yet for converting from a list to a switch
+// other than the list is full.
+// So we just add to an existing list or create a new one here.
+// But this is where we might make a decision to use a skip link
 // to a list or a bitmap or convert a list to a switch or convert the
 // other way or create a bitmap switch or ...
 // We need a new type field the destination of a link with type zero.
 //
-//  - bitmap leaf -- depth, prefix and pop (depth implies width), bits
-//  - list leaf -- depth, prefix, pop, capacity, key size, keys
-//  - bitmap switch -- depth, prefix, pop, capacity, bitmap, links
-//  - list switch -- depth, prefix, pop, capacity, (key, link) pairs
+//  - bitmap leaf -- level (width), prefix and pop, bits
+//  - list leaf -- level (key size), prefix, pop (capacity), keys
+//  - bitmap switch -- level, prefix, pop, width, bitmap, links
+//  - list switch -- level, prefix, pop, width, link indexes, links
 
         int nDLOld = nDL; (void)nDLOld;
         int nBLOld = nBL; (void)nBLOld;
