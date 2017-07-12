@@ -85,7 +85,7 @@ CountSw(Word_t *pwRoot,
           #if defined(LVL_IS_RELATIVE)
                 nBLRLoop = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRootLoop));
           #else // defined(LVL_IS_RELATIVE)
-                nBLRLoop = wr_nBL(*pwRootLoop);
+                nBLRLoop = Get_nBL(pwRootLoop);
           #endif // defined(LVL_IS_RELATIVE)
             }
             if (tp_bIsSwitch(nTypeLoop)) {
@@ -252,7 +252,7 @@ PrefixMismatch(Word_t *pwRoot,
   #if defined(LVL_IS_RELATIVE)
     int nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRoot));
   #else // defined(LVL_IS_RELATIVE)
-    int nBLR = wr_nBL(*pwRoot);
+    int nBLR = Get_nBL(pwRoot);
   #endif // defined(LVL_IS_RELATIVE)
     assert(nBLR < nBL); // reserved
     *pnBLR = nBLR;
@@ -611,7 +611,7 @@ again3:;
       #if defined(LVL_IS_RELATIVE)
         nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRoot));
       #else // defined(LVL_IS_RELATIVE)
-        nBLR = wr_nBL(*pwRoot);
+        nBLR = Get_nBL(pwRoot);
       #endif // defined(LVL_IS_RELATIVE)
   #else // defined(NO_PREFIX_CHECK)
       #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
