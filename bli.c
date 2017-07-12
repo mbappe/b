@@ -839,7 +839,7 @@ t_switch:;
         assert( ! tp_bIsSkip(wRoot)
             || (wr_nDS(wRoot) == nBL_to_nDL(nBL) - nBL_to_nDL(nBLR)) );
       #else // defined(LVL_IS_RELATIVE)
-        assert((pwr_nBL(&wRoot) == nBLR) /* || ! tp_bIsSkip(wRoot) */ || 0);
+        assert((Get_nBL(&wRoot) == nBLR) /* || ! tp_bIsSkip(wRoot) */ || 0);
       #endif // defined(LVL_IS_RELATIVE)
   #endif // defined(SKIP_TO_XX_SW)
 
@@ -969,11 +969,11 @@ t_xx_sw:;
             || (wr_nDS(wRoot) == nBL_to_nDL(nBL) - nBL_to_nDL(nBLR)) );
       #else // defined(LVL_IS_RELATIVE)
           #if defined(DEBUG)
-        if (pwr_nBL(&wRoot) != nBLR) {
-            printf("T_XX_SW: pwr_nBL %d nBLR %d\n", pwr_nBL(&wRoot), nBLR);
+        if (Get_nBL(&wRoot) != nBLR) {
+            printf("T_XX_SW: Get_nBL %d nBLR %d\n", Get_nBL(&wRoot), nBLR);
         }
           #endif // defined(DEBUG)
-        assert(pwr_nBL(&wRoot) == nBLR);
+        assert(Get_nBL(&wRoot) == nBLR);
       #endif // defined(LVL_IS_RELATIVE)
   #endif // defined(SKIP_TO_XX_SW)
   #if ! defined(LOOKUP) || (defined(USE_PWROOT_FOR_LOOKUP) && (defined(PWROOT_PARAMETER_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)))

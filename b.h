@@ -1343,16 +1343,11 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
 // Get the level of the branch in bits.
 static inline int
-pwr_nBL(Word_t *pwRoot)
-{
-    int nBL = GetBits(*pwRoot, cnBitsLvl, cnLsbLvl);
-    assert(nBL <= (int)MSK(cnBitsLvl));
-    return nBL;
-}
+Get_nBL(Word_t *pwRoot) { return GetBits(*pwRoot, cnBitsLvl, cnLsbLvl); }
 
 // Set the level of the branch in bits.
 static inline void
-set_pwr_nBL(Word_t *pwRoot, int nBL)
+Set_nBL(Word_t *pwRoot, int nBL)
 {
     assert(nBL <= (int)MSK(cnBitsLvl));
     SetBits(pwRoot, cnBitsLvl, cnLsbLvl, nBL);

@@ -555,7 +555,7 @@ NewBitmap(Word_t *pwRoot, int nBL, int nBLUp, Word_t wKey)
     set_wr_nDS(wRoot, nBL_to_nDL(nBLUp) - nBL_to_nDL(nBL));
     Set_nType(&wRoot, T_BITMAP);
   #else // defined(LVL_IS_RELATIVE)
-    set_pwr_nBL(&wRoot, nBL);
+    Set_nBL(&wRoot, nBL);
   #endif // defined(LVL_IS_RELATIVE)
     if (nBLUp != nBL) {
 //printf("\nNewBitmap: wKey " OWx" pwBitmap %p nBL %d &wPrefixPop %p wPrefixPop (before) " OWx"\n", wKey, (void *)pwBitmap, nBL, (void *)(pwBitmap + EXP(nBL - cnLogBitsPerWord)), *(pwBitmap + EXP(nBL - cnLogBitsPerWord)));
@@ -808,7 +808,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
       #if defined(LVL_IS_RELATIVE)
         set_wr_nDS(*pwRoot, nBL_to_nDL(nBLUp) - nBL_to_nDL(nBL));
       #else // defined(LVL_IS_RELATIVE)
-        set_pwr_nBL(pwRoot, nBL);
+        Set_nBL(pwRoot, nBL);
       #endif // defined(LVL_IS_RELATIVE)
   #endif // defined(SKIP_TO_XX_SW)
         set_pwr_nBW(pwRoot, nBitsIndexSz);
@@ -4786,7 +4786,7 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
       #if defined(LVL_IS_RELATIVE)
             nBLR = nDL_to_nBL(nDL - wr_nDS(*pwRoot));
       #else // defined(LVL_IS_RELATIVE)
-            nBLR = pwr_nBL(pwRoot);
+            nBLR = Get_nBL(pwRoot);
       #endif // defined(LVL_IS_RELATIVE)
         }
   #endif // defined(SKIP_TO_BITMAP)
