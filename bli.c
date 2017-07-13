@@ -82,11 +82,7 @@ CountSw(Word_t *pwRoot,
                         (void *)pwrLoop, nTypeLoop));
             int nBLRLoop = nBL; // reset nBLRLoop
             if (tp_bIsSkip(nTypeLoop)) {
-          #if defined(LVL_IS_RELATIVE)
-                nBLRLoop = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRootLoop));
-          #else // defined(LVL_IS_RELATIVE)
                 nBLRLoop = Get_nBL(pwRootLoop);
-          #endif // defined(LVL_IS_RELATIVE)
             }
             if (tp_bIsSwitch(nTypeLoop)) {
                 wPopCntLoop = PWR_wPopCntBL(pwRootLoop,
@@ -249,11 +245,7 @@ PrefixMismatch(Word_t *pwRoot,
   #endif // defined(CODE_BM_SW)
 
     Word_t wPrefixMismatch; (void)wPrefixMismatch;
-  #if defined(LVL_IS_RELATIVE)
-    int nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRoot));
-  #else // defined(LVL_IS_RELATIVE)
     int nBLR = Get_nBL(pwRoot);
-  #endif // defined(LVL_IS_RELATIVE)
     assert(nBLR < nBL); // reserved
     *pnBLR = nBLR;
 
@@ -608,11 +600,7 @@ again3:;
         // Skip to switch.
         // pwr points to a switch
   #if defined(NO_PREFIX_CHECK)
-      #if defined(LVL_IS_RELATIVE)
-        nBLR = nDL_to_nBL_NAT(nBL_to_nDL(nBL) - wr_nDS(*pwRoot));
-      #else // defined(LVL_IS_RELATIVE)
         nBLR = Get_nBL(pwRoot);
-      #endif // defined(LVL_IS_RELATIVE)
   #else // defined(NO_PREFIX_CHECK)
       #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
         DBG((nType != T_SKIP_TO_SWITCH) ? printf("nType: %d\n", nType) : 0);
@@ -835,12 +823,7 @@ t_switch:;
   #endif // defined(INSERT) || defined(REMOVE)
 
   #if defined(SKIP_TO_XX_SW)
-      #if defined(LVL_IS_RELATIVE)
-        assert( ! tp_bIsSkip(wRoot)
-            || (wr_nDS(wRoot) == nBL_to_nDL(nBL) - nBL_to_nDL(nBLR)) );
-      #else // defined(LVL_IS_RELATIVE)
         assert((Get_nBL(&wRoot) == nBLR) /* || ! tp_bIsSkip(wRoot) */ || 0);
-      #endif // defined(LVL_IS_RELATIVE)
   #endif // defined(SKIP_TO_XX_SW)
 
         //int nBitsIndexSz = nBL_to_nBitsIndexSzNAX(nBLR);
@@ -964,17 +947,12 @@ t_xx_sw:;
   #endif // defined(INSERT) || defined(REMOVE)
 
   #if defined(SKIP_TO_XX_SW)
-      #if defined(LVL_IS_RELATIVE)
-        assert( ! tp_bIsSkip(wRoot)
-            || (wr_nDS(wRoot) == nBL_to_nDL(nBL) - nBL_to_nDL(nBLR)) );
-      #else // defined(LVL_IS_RELATIVE)
           #if defined(DEBUG)
         if (Get_nBL(&wRoot) != nBLR) {
             printf("T_XX_SW: Get_nBL %d nBLR %d\n", Get_nBL(&wRoot), nBLR);
         }
           #endif // defined(DEBUG)
         assert(Get_nBL(&wRoot) == nBLR);
-      #endif // defined(LVL_IS_RELATIVE)
   #endif // defined(SKIP_TO_XX_SW)
   #if ! defined(LOOKUP) || (defined(USE_PWROOT_FOR_LOOKUP) && (defined(PWROOT_PARAMETER_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)))
         int nBW = Get_nBW(pwRoot);

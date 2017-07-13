@@ -551,12 +551,7 @@ NewBitmap(Word_t *pwRoot, int nBL, int nBLUp, Word_t wKey)
     Word_t wRoot = 0; set_wr(wRoot, pwBitmap, T_BITMAP);
 
 #if defined(SKIP_TO_BITMAP)
-  #if defined(LVL_IS_RELATIVE)
-    set_wr_nDS(wRoot, nBL_to_nDL(nBLUp) - nBL_to_nDL(nBL));
-    Set_nType(&wRoot, T_BITMAP);
-  #else // defined(LVL_IS_RELATIVE)
     Set_nBL(&wRoot, nBL);
-  #endif // defined(LVL_IS_RELATIVE)
     if (nBLUp != nBL) {
 //printf("\nNewBitmap: wKey " OWx" pwBitmap %p nBL %d &wPrefixPop %p wPrefixPop (before) " OWx"\n", wKey, (void *)pwBitmap, nBL, (void *)(pwBitmap + EXP(nBL - cnLogBitsPerWord)), *(pwBitmap + EXP(nBL - cnLogBitsPerWord)));
     }
@@ -585,13 +580,6 @@ GetBLR(Word_t *pwRoot, int nBL)
     if (nBL < nDL_to_nBL(2)) { return nBL; }
 #endif // defined(NO_TYPE_IN_XX_SW)
 
-#if defined(LVL_IS_RELATIVE)
-    // LVL_IS_RELATIVE is a little behind the times. We can't skip by bits.
-    // We can only skip by digits.  To keep it simple, we're also checking to
-    // make sure we start from a digit boundary so we'll notice if/when we
-    // need to revisit.
-    assert(nDL_to_nBL(nBL_to_nDL(nBL)) == nBL);
-#endif // defined(LVL_IS_RELATIVE)
 
     return
   #if defined(SKIP_LINKS)
@@ -600,11 +588,7 @@ GetBLR(Word_t *pwRoot, int nBL)
                 || (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP)
       #endif // defined(SKIP_TO_BITMAP)
                 || 0)
-      #if defined(LVL_IS_RELATIVE)
-            ? nDL_to_nBL(nBL_to_nDL(nBL) - wr_nDS(*pwRoot)) :
-      #else // defined(LVL_IS_RELATIVE)
             ? wr_nBL(*pwRoot) :
-      #endif // defined(LVL_IS_RELATIVE)
   #endif // defined(SKIP_LINKS)
               nBL ;
 }
@@ -646,8 +630,7 @@ OldBitmap(Word_t *pwRoot, Word_t *pwr, int nBL)
 // PP_IN_LINK to figure out if the prefix field exists.
 // Initialize its bitmap if there is one.  Need to know nDLUp for
 // BM_IN_LINK to figure out if the bitmap field exists.
-// Need to know nDLUp to know if we need a skip link (and to figure nDS
-// if LVL_IS_RELATIVE).
+// Need to know nDLUp to know if we need a skip link.
 // Install wRoot at pwRoot.  Need to know nDL.
 // Account for the memory in Judy1LHTime.
 // Need to know if we are at the bottom so we can count the memory as a
@@ -787,11 +770,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
         if (nBL != nBLUp) {
             DBGI(printf("\nCreating T_SKIP_TO_BM_SW!\n"));
             set_wr_pwr(*pwRoot, pwr);
-  #if defined(LVL_IS_RELATIVE)
-            set_wr_nDS(*pwRoot, nBL_to_nDL(nBLUp) - nBL_to_nDL(nBL));
-  #else // defined(LVL_IS_RELATIVE)
             set_wr_nBL(*pwRoot, nBL); // set nBL
-  #endif // defined(LVL_IS_RELATIVE)
             // set_wr_nDS and set_wr_nBL overwrite
             // the type field.  So we have to set
             // T_SKIP_TO_BM_SW after that.
@@ -805,11 +784,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
         set_wr_pwr(*pwRoot, pwr);
 #if defined(CODE_XX_SW)
   #if defined(SKIP_TO_XX_SW)
-      #if defined(LVL_IS_RELATIVE)
-        set_wr_nDS(*pwRoot, nBL_to_nDL(nBLUp) - nBL_to_nDL(nBL));
-      #else // defined(LVL_IS_RELATIVE)
         Set_nBL(pwRoot, nBL);
-      #endif // defined(LVL_IS_RELATIVE)
   #endif // defined(SKIP_TO_XX_SW)
         set_pwr_nBW(pwRoot, nBitsIndexSz);
 #endif // defined(CODE_XX_SW)
@@ -819,12 +794,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
         assert(nBL <= nBLUp);
 #if defined(SKIP_LINKS)
         if (nBL < nBLUp) {
-  #if defined(LVL_IS_RELATIVE)
-            // set_wr_nDS sets nType to T_SKIP_TO_SWITCH.
-            set_wr_nDS(*pwRoot, nBL_to_nDL(nBLUp) - nBL_to_nDL(nBL));
-  #else // defined(LVL_IS_RELATIVE)
             set_wr_nBL(*pwRoot, nBL); // also sets nType == T_SKIP_TO_SWITCH
-  #endif // defined(USE_XX_SW) && defined(SKIP_TO_XX_SW)
   #if defined(USE_XX_SW) && defined(SKIP_TO_XX_SW)
             if (nBL <= nDL_to_nBL(2)) {
                 set_wr_nType(*pwRoot, T_SKIP_TO_XX_SW);
@@ -1186,11 +1156,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
             //assert(BM_IN_NON_BM_SW);
           #if defined(LVL_IN_WR_HB)
             if (tp_bIsSkip(wr_nType(wRoot))) {
-              #if defined(LVL_IS_RELATIVE)
-                set_wr_nDS(*pwRoot, wr_nDS(wRoot));
-              #else // defined(LVL_IS_RELATIVE)
                 set_wr_nBL(*pwRoot, nBLR);
-              #endif // defined(LVL_IS_RELATIVE)
             }
           #endif // defined(LVL_IN_WR_HB)
             set_wr_nType(*pwRoot,
@@ -1216,13 +1182,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
   #if defined(LVL_IN_WR_HB)
       #if defined(SKIP_TO_BM_SW)
             if (nType == T_SKIP_TO_BM_SW) {
-          #if defined(LVL_IS_RELATIVE)
-                set_wr_nDS(*pwRoot, wr_nDS(wRoot));
-                assert(wr_nDS(*pwRoot) == wr_nDS(wRoot));
-          #else // defined(LVL_IS_RELATIVE)
                 set_wr_nBL(*pwRoot, nBLR);
                 assert(wr_nBL(*pwRoot) == wr_nBL(wRoot));
-          #endif // defined(LVL_IS_RELATIVE)
             }
       #endif // defined(SKIP_TO_BM_SW)
   #endif // defined(LVL_IN_WR_HB)
@@ -1611,12 +1572,8 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
     }
 
 #if defined(SKIP_LINKS) // || (cwListPopCntMax != 0)
-  #if defined(LVL_IS_RELATIVE)
-    assert( ! tp_bIsSkip(nType) || (wr_nDS(wRoot) >= 1) );
-  #else // defined(LVL_IS_RELATIVE)
     assert( ! tp_bIsSkip(nType) || ((int)wr_nBL(wRoot) < nBL) );
     assert( ! tp_bIsSkip(nType) || (wr_nBL(wRoot) >= cnBitsInD1) );
-  #endif // defined(LVL_IS_RELATIVE)
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
 #if (cwListPopCntMax != 0)
@@ -2696,33 +2653,11 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
 
     // Initialize the link in the new switch that points to the
     // old *pwRoot.
-#if defined(LVL_IS_RELATIVE)
-    // Update type field in wRoot that points to old switch since
-    // it is not skipping as many digits now.
-    DBGI(printf("nDL %d nDLR %d nDLU %d\n",
-           nDL, nDLR, nDLUp));
-  #if defined(SKIP_LINKS)
-    if (nDL - nDLR - 1 == 0) {
-        Clr_bIsSkip(&wRoot); // Change type to the non-skip variant.
-    } else
-  #endif // defined(SKIP_LINKS)
-    {
-// set_wr_nDS should preserve the type instead of overwriting it?
-        set_wr_nDS(wRoot, nDL - nDLR - 1); // type = T_SKIP_TO_SWITCH
-  #if defined(SKIP_TO_BM_SW)
-        if (bBmSwOld) { set_wr_nType(wRoot, T_SKIP_TO_BM_SW); }
-  #endif // defined(SKIP_TO_BM_SW)
-  #if defined(CODE_XX_SW) && defined(SKIP_TO_XX_SW)
-        if (tp_bIsXxSw(wr_nType(wRoot))) { Set_nType(&wRoot, T_SKIP_TO_XX_SW); }
-  #endif // defined(CODE_XX_SW) && defined(SKIP_TO_XX_SW)
-    }
-#else // defined(LVL_IS_RELATIVE)
   #if defined(SKIP_LINKS)
     if (nDL - nDLR - 1 == 0) {
         Clr_bIsSkip(&wRoot); // Change type to the non-skip variant.
     }
   #endif // defined(SKIP_LINKS)
-#endif // defined(LVL_IS_RELATIVE)
     // Copy wRoot from old link (after being updated) to new link.
 #if defined(CODE_BM_SW)
     if (bBmSwNew) {
@@ -3460,19 +3395,6 @@ newSwitch:
 #if ! defined(LVL_IN_SW) && ! defined(LVL_IN_WR_HB)
 // Depth is in type.
             if (nDL != nDLOld) {
-#if defined(LVL_IS_RELATIVE)
-                // cnMallocMask is the largest nType value
-                // if we're storing it in wRoot.
-                // How do we handle this for ! defined(LVL_IS_RELATIVE)?
-                // We can't unless defined(LVL_IN_SW).  So we have an
-                // assertion in Initialize().
-                if (nDS_to_tp(nDLOld - nDL) > (int)cnMallocMask) {
-                    DBGI(printf("# Oops.  Trimming nDS to cnMallocMask\n"));
-                    nDL = nDLOld - tp_to_nDS(cnMallocMask);
-                    nBL = nDL_to_nBL(nDL);
-                    //assert(0);
-                }
-#else // defined(LVL_IS_RELATIVE)
                 if (nDL_to_tp(nDL) > (int)cnMallocMask) {
                     printf("# Oops. Can't encode absolute level for skip.\n");
                     printf("nDL %d nDLOld %d\n", nDL, nDLOld);
@@ -3480,7 +3402,6 @@ newSwitch:
                     nBL = nDL_to_nBL(nDL);
                     assert(0);
                 }
-#endif // defined(LVL_IS_RELATIVE)
             }
 #endif // ! defined(LVL_IN_SW) && ! defined(LVL_IN_WR_HB)
 #else // defined(SKIP_LINKS)
@@ -3762,11 +3683,7 @@ insertAll:;
   #if defined(EMBED_KEYS)
         assert(wr_nType(*pwRoot) != T_EMBEDDED_KEYS);
   #endif // defined(EMBED_KEYS)
-  #if defined(LVL_IS_RELATIVE)
-        int nDLR = ! tp_bIsSkip(nType) ? nDL : nDL - wr_nDS(wRoot);
-  #else // defined(LVL_IS_RELATIVE)
         int nDLR = ! tp_bIsSkip(nType) ? nDL : wr_nDL(wRoot);
-  #endif // defined(LVL_IS_RELATIVE)
         (void)nDLR; // silence the compiler
   #if defined(BM_SW_FOR_REAL)
       #if defined(SKIP_LINKS)
@@ -3997,28 +3914,9 @@ insertAll:;
 
             // Initialize the link in the new switch that points to the
             // old switch.
-#if defined(LVL_IS_RELATIVE)
-            // Update type field in wRoot that points to old switch since
-            // it is not skipping as many digits now.
-            DBGI(printf("nDL %d nDLR %d nDLU %d\n",
-                   nDL, nDLR, nDLUp));
-            if (nDL - nDLR - 1 == 0) {
-                Clr_bIsSkip(&wRoot); // Change type to the non-skip variant.
-            } else {
-// set_wr_nDS should preserve the type instead of overwriting it?
-                set_wr_nDS(wRoot, nDL - nDLR - 1); // type = T_SKIP_TO_SWITCH
-  #if defined(SKIP_TO_BM_SW)
-                if (bBmSwOld) { set_wr_nType(wRoot, T_SKIP_TO_BM_SW); }
-  #endif // defined(SKIP_TO_BM_SW)
-  #if defined(CODE_XX_SW) && defined(SKIP_TO_XX_SW)
-                if (tp_bIsXxSw(nType)) { Set_nType(&wRoot, T_SKIP_TO_XX_SW); }
-  #endif // defined(CODE_XX_SW) && defined(SKIP_TO_XX_SW)
-            }
-#else // defined(LVL_IS_RELATIVE)
             if (nDL - nDLR - 1 == 0) {
                 Clr_bIsSkip(&wRoot); // Change type to the non-skip variant.
             }
-#endif // defined(LVL_IS_RELATIVE)
             // Copy wRoot from old link (after being updated) to new link.
 #if defined(CODE_BM_SW)
             if (bBmSwNew) {
@@ -4477,17 +4375,9 @@ DBGR(printf("RC: pwRoot %p wRoot " OWx" nBL %d nBLR %d\n", (void *)pwRoot, wRoot
                                       pwr_pLinks((  Switch_t *)pwr))
                     [ww].ln_wRoot);
 
-      #if defined(LVL_IS_RELATIVE)
-            // LVL_IS_RELATIVE is behind the times.
-            assert(nBL == nDL_to_nBL(nBL_to_nDL(nBL)));
-      #endif // defined(LVL_IS_RELATIVE)
             int nBLX = wr_bIsSwitch(*pwRootLn)
                             && tp_bIsSkip(wr_nType(*pwRootLn)) ?
-      #if defined(LVL_IS_RELATIVE)
-                         nDL_to_nBL(nDLR - wr_nDS(*pwRootLn))
-      #else // defined(LVL_IS_RELATIVE)
                          wr_nBL(*pwRootLn)
-      #endif // defined(LVL_IS_RELATIVE)
                       : nDL_to_nBL(nDLR - 1);
 
             //--nDLX;
@@ -4783,11 +4673,7 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
         int nBLR = nBL;
   #if defined(SKIP_TO_BITMAP)
         if (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP) {
-      #if defined(LVL_IS_RELATIVE)
-            nBLR = nDL_to_nBL(nDL - wr_nDS(*pwRoot));
-      #else // defined(LVL_IS_RELATIVE)
             nBLR = Get_nBL(pwRoot);
-      #endif // defined(LVL_IS_RELATIVE)
         }
   #endif // defined(SKIP_TO_BITMAP)
         Word_t *pwr = wr_pwr(wRoot);
@@ -4911,7 +4797,6 @@ Initialize(void)
 #if defined(SKIP_LINKS)
   #if ! defined(LVL_IN_WR_HB)
       #if ! defined(LVL_IN_SW)
-          #if ! defined(LVL_IS_RELATIVE)
     // We could be a lot more creative here w.r.t. mapping our scarce type
     // values to absolute depths.  But why?  We have to look at the prefix
     // in a different word anyway.  See comments at tp_to_nDL in b.h.
@@ -4922,7 +4807,6 @@ Initialize(void)
         printf("tp_to_nDL(cnMallocMask    0x%02x)   %2d\n",
                (int)cnMallocMask, (int)tp_to_nDL(cnMallocMask));
     }
-          #endif // ! defined(LVL_IS_RELATIVE)
       #endif // ! defined(LVL_IN_SW)
   #endif // ! defined(LVL_IN_WR_HB)
 #else // defined(SKIP_LINKS)
@@ -4989,12 +4873,6 @@ Initialize(void)
 #else // defined(LVL_IN_WR_HB)
     printf("# NO LVL_IN_WR_HB\n");
 #endif // defined(LVL_IN_WR_HB)
-
-#if defined(LVL_IS_ABSOLUTE)
-    printf("#    LVL_IS_ABSOLUTE\n");
-#else // defined(LVL_IS_ABSOLUTE)
-    printf("# NO LVL_IS_ABSOLUTE\n");
-#endif // defined(LVL_IS_ABSOLUTE)
 
 #if defined(ALLOW_EMBEDDED_BITMAP)
     printf("#    ALLOW_EMBEDDED_BITMAP\n");
@@ -5391,12 +5269,6 @@ Initialize(void)
 #else // defined(LVL_IN_SW)
     printf("# NO LVL_IN_SW\n");
 #endif // defined(LVL_IN_SW)
-
-#if defined(LVL_IS_RELATIVE)
-    printf("#    LVL_IS_RELATIVE\n");
-#else // defined(LVL_IS_RELATIVE)
-    printf("# NO LVL_IS_RELATIVE\n");
-#endif // defined(LVL_IS_RELATIVE)
 
 #if defined(SEPARATE_T_NULL)
     printf("#    SEPARATE_T_NULL\n");

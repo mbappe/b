@@ -582,12 +582,6 @@ typedef Word_t Bucket_t;
   #endif // ! defined(LVL_IN_SW) && ! defined(LVL_IN_WR_HB)
 #endif // defined(SKIP_TO_BM_SW) && defined(USE_BM_SW)
 
-// Default is -DLVL_IS_ABSOLUTE.  Use -DLVL_IS_RELATIVE to change it.
-#if ! defined(LVL_IS_RELATIVE)
-#undef LVL_IS_ABSOLUTE
-#define LVL_IS_ABSOLUTE
-#endif // ! defined(LVL_IS_RELATIVE)
-
 // Values for nType.
 enum {
     // Put T_NULL and T_LIST at beginning of enum so one of them gets
@@ -1339,7 +1333,6 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
 #endif // defined(CODE_XX_SW)
 
-#if ! defined(LVL_IS_RELATIVE)
 
 // Get the level of the branch in bits.
 static inline int
@@ -1353,9 +1346,7 @@ Set_nBL(Word_t *pwRoot, int nBL)
     SetBits(pwRoot, cnBitsLvl, cnLsbLvl, nBL);
 }
 
-#endif // ! defined(LVL_IS_RELATIVE)
 
-#if defined(LVL_IS_ABSOLUTE)
 
 #if defined(LVL_IN_WR_HB)
 
@@ -1461,74 +1452,6 @@ Set_nBL(Word_t *pwRoot, int nBL)
 
 #endif // defined(LVL_IN_WR_HB)
 
-#else // defined(LVL_IS_ABSOLUTE)
-
-#if defined(LVL_IN_WR_HB)
-
-  #define wr_nDS(_wr)  (assert(tp_bIsSkip(wr_nType(_wr))), (_wr) >> 58)
-
-  #define set_wr_nDS(_wr, _nDS) \
-          (set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
-           ((_wr) = ((_wr) & MSK(58) | (Word_t)(_nDS) << 58)))
-
-#else // defined(LVL_IN_WR_HB)
-
-// These two macros should be used sparingly outside of wr_nDS and set_wr_nDS.
-// Why?  Because the type field in wRoot does not contain this information
-// for LVL_IN_SW so code that uses these macros may need to be ifdef'd
-// to do something like what is done in wr_nDS anyway.
-#define tp_to_nDS(_tp)   ((_tp)  - T_SKIP_TO_SWITCH + 1)
-#define nDS_to_tp(_nDS)  ((_nDS) + T_SKIP_TO_SWITCH - 1)
-
-#if defined(LVL_IN_SW)
-// LVL_IN_SW directs us to use the low bits of sw_wPrefixPop for skip count
-// for skip links instead of encoding skip count into the type field directly.
-// We use T_SW_BASE to indicate no skip.  And T_SW_BASE + 1 to indicate that
-// a non-zero skip count is in sw_wPrefixPop.
-// It means we can't use the low bits of sw_wPrefixPop for pop.  So we
-// define POP_WORD and use a separate word.
-// We assume the value we put into the low bits will will fit in the number
-// of bits used for the pop count in the switch so we have
-// to be careful when choosing the level of the lowest level switch and
-// the number of digits above it.
-#define POP_WORD
-
-  // As it stands we always get the skip count from sw_wPrefixPop if
-  // LVL_IN_SW.  We could enhance it to use one type value to indicate
-  // that we have to go to sw_wPrefixPop and use any other values that we
-  // have available to represent some key skip counts.  But why?
-  #define wr_nDS(_wr) \
-      (assert(tp_bIsSkip(wr_nType(_wr))), \
-       assert(w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), \
-                        /*nDL*/ 1) \
-                      >= 1), \
-       w_wPopCnt(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), /*nDL*/ 1))
-
-  #define set_wr_nDS(_wr, _nDS) \
-      (assert((_nDS) >= 1), \
-       set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
-       /* put skip cnt in the PP pop field but use DL=1 for mask */ \
-       (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
-           = ((PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
-                   & ~wPrefixPopMask(/* nDL */ 2)) \
-               | (_nDS))))
-
-#else // defined(LVL_IN_SW)
-
-  #define wr_nDS(_wr) \
-      (assert(tp_bIsSkip(wr_nType(_wr))), \
-       assert(tp_to_nDS(wr_nType(_wr)) >= 1), \
-       tp_to_nDS(wr_nType(_wr)))
-
-  #define set_wr_nDS(_wr, _nDS) \
-      (assert(nDS_to_tp(_nDS) >= T_SKIP_TO_SWITCH), \
-       set_wr_nType((_wr), nDS_to_tp(_nDS)))
-
-#endif // defined(LVL_IN_SW)
-
-#endif // defined(LVL_IN_WR_HB)
-
-#endif // defined(LVL_IS_ABSOLUTE)
 
 // methods for Switch (and aliases)
 
