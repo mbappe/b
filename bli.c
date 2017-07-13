@@ -82,7 +82,7 @@ CountSw(Word_t *pwRoot,
                         (void *)pwrLoop, nTypeLoop));
             int nBLRLoop = nBL; // reset nBLRLoop
             if (tp_bIsSkip(nTypeLoop)) {
-                nBLRLoop = Get_nBL(pwRootLoop);
+                nBLRLoop = Get_nBLR(pwRootLoop);
             }
             if (tp_bIsSwitch(nTypeLoop)) {
                 wPopCntLoop = PWR_wPopCntBL(pwRootLoop,
@@ -245,7 +245,7 @@ PrefixMismatch(Word_t *pwRoot,
   #endif // defined(CODE_BM_SW)
 
     Word_t wPrefixMismatch; (void)wPrefixMismatch;
-    int nBLR = Get_nBL(pwRoot);
+    int nBLR = Get_nBLR(pwRoot);
     assert(nBLR < nBL); // reserved
     *pnBLR = nBLR;
 
@@ -600,7 +600,7 @@ again3:;
         // Skip to switch.
         // pwr points to a switch
   #if defined(NO_PREFIX_CHECK)
-        nBLR = Get_nBL(pwRoot);
+        nBLR = Get_nBLR(pwRoot);
   #else // defined(NO_PREFIX_CHECK)
       #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
         DBG((nType != T_SKIP_TO_SWITCH) ? printf("nType: %d\n", nType) : 0);
@@ -823,7 +823,7 @@ t_switch:;
   #endif // defined(INSERT) || defined(REMOVE)
 
   #if defined(SKIP_TO_XX_SW)
-        assert((Get_nBL(&wRoot) == nBLR) /* || ! tp_bIsSkip(wRoot) */ || 0);
+        assert((Get_nBLR(&wRoot) == nBLR) /* || ! tp_bIsSkip(wRoot) */ || 0);
   #endif // defined(SKIP_TO_XX_SW)
 
         //int nBitsIndexSz = nBL_to_nBitsIndexSzNAX(nBLR);
@@ -948,11 +948,11 @@ t_xx_sw:;
 
   #if defined(SKIP_TO_XX_SW)
           #if defined(DEBUG)
-        if (Get_nBL(&wRoot) != nBLR) {
-            printf("T_XX_SW: Get_nBL %d nBLR %d\n", Get_nBL(&wRoot), nBLR);
+        if (Get_nBLR(&wRoot) != nBLR) {
+            printf("T_XX_SW: Get_nBLR %d nBLR %d\n", Get_nBLR(&wRoot), nBLR);
         }
           #endif // defined(DEBUG)
-        assert(Get_nBL(&wRoot) == nBLR);
+        assert(Get_nBLR(&wRoot) == nBLR);
   #endif // defined(SKIP_TO_XX_SW)
   #if ! defined(LOOKUP) || (defined(USE_PWROOT_FOR_LOOKUP) && (defined(PWROOT_PARAMETER_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)))
         int nBW = Get_nBW(pwRoot);

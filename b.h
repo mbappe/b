@@ -1334,19 +1334,25 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #endif // defined(CODE_XX_SW)
 
 
-// Get the level of the branch in bits.
+// Get the level of the object in number of bits left to decode.
+// This is valid only when *pwRoot is a skip link.
 static inline int
-Get_nBL(Word_t *pwRoot) { return GetBits(*pwRoot, cnBitsLvl, cnLsbLvl); }
-
-// Set the level of the branch in bits.
-static inline void
-Set_nBL(Word_t *pwRoot, int nBL)
+Get_nBLR(Word_t *pwRoot)
 {
-    assert(nBL <= (int)MSK(cnBitsLvl));
-    SetBits(pwRoot, cnBitsLvl, cnLsbLvl, nBL);
+    int nBLR;
+    assert(tp_bIsSkip(wr_nType(*pwRoot)));
+    nBLR = GetBits(*pwRoot, cnBitsLvl, cnLsbLvl);
+    return nBLR;
 }
 
-
+// Set the level of the object in number of bits left to decode.
+// Use this only when *pwRoot is a skip link.
+static inline void
+Set_nBLR(Word_t *pwRoot, int nBLR)
+{
+    assert(nBLR <= (int)MSK(cnBitsLvl));
+    SetBits(pwRoot, cnBitsLvl, cnLsbLvl, nBLR);
+}
 
 #if defined(LVL_IN_WR_HB)
 
