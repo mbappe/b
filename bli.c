@@ -823,7 +823,7 @@ t_switch:;
   #endif // defined(INSERT) || defined(REMOVE)
 
   #if defined(SKIP_TO_XX_SW)
-        assert(( ! tp_bIsSkip(wRoot) ) || (Get_nBLR(&wRoot) == nBLR));
+        assert(( ! tp_bIsSkip(wr_nType(wRoot)) ) || (Get_nBLR(&wRoot) == nBLR));
   #endif // defined(SKIP_TO_XX_SW)
 
         //int nBitsIndexSz = nBL_to_nBitsIndexSzNAX(nBLR);
@@ -948,11 +948,11 @@ t_xx_sw:;
 
   #if defined(SKIP_TO_XX_SW)
           #if defined(DEBUG)
-        if (Get_nBLR(&wRoot) != nBLR) {
+        if ( tp_bIsSkip(wr_nType(wRoot)) && (Get_nBLR(&wRoot) != nBLR) ) {
             printf("T_XX_SW: Get_nBLR %d nBLR %d\n", Get_nBLR(&wRoot), nBLR);
         }
           #endif // defined(DEBUG)
-        assert(Get_nBLR(&wRoot) == nBLR);
+        assert( ! tp_bIsSkip(wr_nType(wRoot)) || (Get_nBLR(&wRoot) == nBLR) );
   #endif // defined(SKIP_TO_XX_SW)
   #if ! defined(LOOKUP) || (defined(USE_PWROOT_FOR_LOOKUP) && (defined(PWROOT_PARAMETER_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)))
         int nBW = Get_nBW(pwRoot);
