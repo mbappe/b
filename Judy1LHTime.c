@@ -1510,7 +1510,7 @@ main(int argc, char *argv[])
     }
 
     if (bSplayKeyBitsFlag) {
-        printf(" -E0x%" PRIxPTR, wSplayMask);
+        printf(" --splay-key-bits=0x%" PRIxPTR, wSplayMask);
     }
 
     printf(" -G%" PRIuPTR" -", GValue);
