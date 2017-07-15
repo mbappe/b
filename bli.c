@@ -823,7 +823,7 @@ t_switch:;
   #endif // defined(INSERT) || defined(REMOVE)
 
   #if defined(SKIP_TO_XX_SW)
-        assert((Get_nBLR(&wRoot) == nBLR) /* || ! tp_bIsSkip(wRoot) */ || 0);
+        assert(( ! tp_bIsSkip(wRoot) ) || (Get_nBLR(&wRoot) == nBLR));
   #endif // defined(SKIP_TO_XX_SW)
 
         //int nBitsIndexSz = nBL_to_nBitsIndexSzNAX(nBLR);
