@@ -660,11 +660,11 @@ PrintHeader(void)
 
         printf(" LWd/K");
 
-        printf("  L7/K");
+        printf(" REQ/K"); // words requested per key
         printf("  L6/K");
         printf("  L5/K");
         printf("  L4/K");
-        printf("  L3/K");
+        printf("  B2/K"); // big bitmap leaf words per key
         printf("  L2/K");
         printf("  L1/K");
         printf("  B1/K");
@@ -1845,16 +1845,15 @@ main(int argc, char *argv[])
         printf("# COLHEAD %2d JBU - 256 node Branch Words/Key\n", Col++);
         printf("# COLHEAD %2d JBL - Linear node Branch Words/Key\n", Col++);
         printf("# COLHEAD %2d LW  - Leaf Word_t Key/Key\n", Col++);
-        printf("# COLHEAD %2d L7  - Leaf 7 Byte Key/Key\n", Col++);
+        printf("# COLHEAD %2d REQ - Words requested/Key\n", Col++);
         printf("# COLHEAD %2d L6  - Leaf 6 Byte Key/Key\n", Col++);
         printf("# COLHEAD %2d L5  - Leaf 5 Byte Key/Key\n", Col++);
         printf("# COLHEAD %2d L4  - Leaf 4 Byte Key/Key\n", Col++);
-        printf("# COLHEAD %2d L3  - Leaf 3 Byte Key/Key\n", Col++);
+        printf("# COLHEAD %2d B2  - Big bitmap leaf/Key\n", Col++);
         printf("# COLHEAD %2d L2  - Leaf 2 Byte Key/Key\n", Col++);
         printf("# COLHEAD %2d L1  - Leaf 1 Byte Key/Key\n", Col++);
         printf("# COLHEAD %2d B1  - Bitmap Leaf 1 Bit Key/Key\n", Col++);
         printf("# COLHEAD %2d VA  - Value area Words/Key\n", Col++);
-
 
         printf("# COLHEAD %2d MsCmp  - Average number missed Compares Per Leaf Search\n", Col++);
         printf("# COLHEAD %2d %%DiHt - %% of Direct Hits per Leaf Search\n", Col++);

@@ -26,14 +26,12 @@ Word_t j__AllocWordsJBU;  // uncompressed branch
 Word_t j__AllocWordsJLB1; // bitmap leaf
 Word_t j__AllocWordsJLL1; // 1 byte/key list leaf
 Word_t j__AllocWordsJLL2; // 2 bytes/key list leaf
-//Word_t j__AllocWordsJLL3; // 3 bytes/key list leaf
+Word_t j__AllocWordsJLL3; // B2 big bitmap leaf
 //Word_t j__AllocWordsJV;   // value area
-  #if cnBitsPerWord > 32
 Word_t j__AllocWordsJLL4; // 4 bytes/key list leaf
 //Word_t j__AllocWordsJLL5; // 5 bytes/key list leaf
 //Word_t j__AllocWordsJLL6; // 6 bytes/key list leaf
-//Word_t j__AllocWordsJLL7; // 7 bytes/key list leaf
-  #endif // cnBitsPerWord > 32)
+Word_t j__AllocWordsJLL7; // words requested
 
 #endif // defined(RAMMETRICS)
 
@@ -188,39 +186,64 @@ static Word_t
 MyMalloc(Word_t wWords)
 {
     Word_t ww = JudyMalloc(wWords + cnMallocExtraWords);
-    DBGM(printf("\nM: %p %" _fw"d words *%p " OWx" %" _fw"d\n",
-                (void *)ww, wWords, (void *)&((Word_t *)ww)[-1],
-                ((Word_t *)ww)[-1], ((Word_t *)ww)[-1]));
+    DBGM(printf("\nM(%zd): %p *%p 0x%zx\n",
+                wWords, (void *)ww, (void *)&((Word_t *)ww)[-1],
+                ((Word_t *)ww)[-1]));
 
     // Validate our assumptions about dlmalloc as we prepare to use
     // some of the otherwise wasted bits in ww[-1].
     // Our assumption is that the word contains the number of bytes
     // actually allocated plus the least significant two bits set.
-    // And that the number of bytes allocated is an even number of
-    // words no greater than five words more than the number requested.
-    Word_t wWordPairsAllocated = (((Word_t *)ww)[-1] >> (cnLogBytesPerWord + 1));
-    assert(((Word_t *)ww)[-1] == ((wWordPairsAllocated << (cnLogBytesPerWord + 1)) | 3));
-    Word_t wWordPairsRequested = (wWords + cnMallocExtraWords + cnGuardWords + 1) >> 1;
-    // wExtras is the number of extra two-word units over and above the
-    // minimum amount that could be allocated by malloc which is one additional word
-    // for odd-number-of-word requests and two additional words for even-number-of-word
-    // requests.
-    Word_t wExtraWordPairs = wWordPairsAllocated - wWordPairsRequested;
-    assert(wExtraWordPairs <= 2);
-    // Save the bits of ww[-1] that we need at free time to make sure
+    // And that the number of bytes allocated is a multiple of
+    // EXP(cnBitsMallocMask) no greater than one unit more than the number
+    // required.
+    size_t zUnitsAllocated = ((size_t *)ww)[-1] >> cnBitsMallocMask;
+#define cnBitsUsed 2 // low bits used by malloc for bookkeeping
+    assert(((Word_t *)ww)[-1]
+        == ((zUnitsAllocated << cnBitsMallocMask) | MSK(cnBitsUsed)));
+    // Calculate the minimum number of units required to satisfy the request
+    // assuming dlmalloc must allocate at least one word for itself.
+    size_t zUnitsRequired
+        = ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords + 1,
+                   EXP(cnBitsMallocMask - cnLogBytesPerWord))
+            >> (cnBitsMallocMask - cnLogBytesPerWord);
+#if defined(RAMMETRICS)
+    j__AllocWordsJLL7 += wWords; // words requested
+#endif // defined(RAMMETRICS)
+
+// We don't have a good characterization for cnExtraUnitsMax.
+// cnExtraUnitsMax values are based on our observations.
+// Are our observations limited by our own malloc request behavior?
+#if (cnBitsMallocMask == 3) && (cnBitsPerWord == 32)
+  #define cnExtraUnitsMax 1 // 3
+#elif (cnBitsMallocMask == 4) && (cnBitsPerWord == 64)
+  #define cnExtraUnitsMax 2 // 2
+#else
+  #define cnExtraUnitsMax 0
+#endif // cnBitsMallocMask && cnBitsPerWord
+
+#define cnExtraUnitsBits 2 // number of bits used for saving alloc size
+    assert(cnExtraUnitsMax <= (int)MSK(cnExtraUnitsBits));
+
+    // zExtraUnits is the number of extra EXP(cnBitsMallocMask)-byte units over
+    // and above the minimum amount that could be allocated by malloc.
+    size_t zExtraUnits = zUnitsAllocated - zUnitsRequired;
+    assert(zExtraUnits <= cnExtraUnitsMax);
+    // Save the bits of ww[-1] that we need at free time and make sure
     // none of the bits we want to use are changed by malloc while we
     // own the buffer.
-    ((Word_t *)ww)[-1] &= ~0xc;
-    ((Word_t *)ww)[-1] |= wExtraWordPairs << 2;
+    ((Word_t *)ww)[-1] &= ~(MSK(cnExtraUnitsBits) << cnBitsUsed);
+    ((Word_t *)ww)[-1] |= zExtraUnits << cnBitsUsed;
     // Twiddle the bits to illustrate that we can use them.
-    ((Word_t *)ww)[-1] ^= (Word_t)-1 << 4;
-    DBGM(printf("req %" _fw"d alloc %" _fw"d extra %" _fw"d\n",
-                wWordPairsRequested, wWordPairsAllocated, wExtraWordPairs));
-    DBGM(printf("ww[-1] " OWx"\n", ((Word_t *)ww)[-1]));
+    ((Word_t *)ww)[-1] ^= (Word_t)-1 << (cnExtraUnitsBits + cnBitsUsed);
+    DBGM(printf("required %zd alloc %zd extra %zd\n",
+                zUnitsRequired, zUnitsAllocated, zExtraUnits));
+    DBGM(printf("ww[-1] 0x%zx\n", ((Word_t *)ww)[-1]));
     assert(ww != 0);
     assert((ww & 0xffff000000000000UL) == 0);
     assert((ww & cnMallocMask) == 0);
     ++wMallocs; wWordsAllocated += wWords;
+    // ? should we keep track of sub-optimal-size requests ?
     if ( ! (wWords & 1) ) { ++wEvenMallocs; }
     return ww;
 }
@@ -228,20 +251,24 @@ MyMalloc(Word_t wWords)
 static void
 MyFree(Word_t *pw, Word_t wWords)
 {
-    DBGM(printf("\nF: " OWx" words %" _fw"d pw[-1] %p\n",
-                (Word_t)pw, wWords, (void *)pw[-1]));
+    DBGM(printf("\nF(pw %p, wWords %zd): pw[-1] 0x%zx\n",
+                (void *)pw, wWords, pw[-1]));
+    size_t zUnitsRequired
+        = ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords + 1,
+                   EXP(cnBitsMallocMask - cnLogBytesPerWord))
+            >> (cnBitsMallocMask - cnLogBytesPerWord);
     // make sure it is ok for us to use some of the bits in the word
     // Restore the value expected by dlmalloc.
-    Word_t wExtraWordPairs = (pw[-1] >> 2) & 3;
-    assert((pw)[-1] & 2);
-    pw[-1] &= 3;
-    pw[-1] |= (ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords, 2)
-                            + (wExtraWordPairs << 1)) << cnLogBytesPerWord;
-    assert(wExtraWordPairs <= 2);
-    DBGM(printf("pw[-1] " OWx"\n", pw[-1]));
-    assert(pw[-1] & 2);
+    size_t zExtraUnits = (pw[-1] >> cnBitsUsed) & MSK(cnExtraUnitsBits);
+    assert((pw)[-1] & 2); // lock down what we think we know
+    pw[-1] &= MSK(cnBitsUsed);
+    pw[-1] |= (zUnitsRequired + zExtraUnits) << cnBitsMallocMask;
+    DBGM(printf("pw[-1] 0x%zd\n", pw[-1]));
     if ( ! (wWords & 1) ) { --wEvenMallocs; }
     --wMallocs; wWordsAllocated -= wWords;
+#if defined(RAMMETRICS)
+    j__AllocWordsJLL7 -= wWords; // words requested
+#endif // defined(RAMMETRICS)
     JudyFree((RawP_t)pw, wWords + cnMallocExtraWords);
 }
 
@@ -305,10 +332,14 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
     // How should we handle LIST_END_MARKERS for parallel searches?
     nBytes += nBytesKeySz;
 #endif // defined(LIST_END_MARKERS)
+#if ! defined(ALIGN_LIST_ENDS)
     // Round up to an odd number of words and a minimum of three words.
     // Malloc wastes a word if an even number of words is requested.
     // Malloc never allocates less than three words.
     return MAX(DIV_UP(nBytes, sizeof(Word_t)) | 1, 3);
+#else // ! defined(ALIGN_LIST_ENDS)
+    return nBytes / sizeof(Word_t);
+#endif // ! defined(ALIGN_LIST_ENDS)
 #else // defined(OLD_LISTS)
     return MAX(ls_nSlotsInList(wPopCntArg, nBL, nBytesKeySz)
                  * nBytesKeySz / sizeof(Word_t) | 1, 3);
@@ -532,8 +563,8 @@ NewBitmap(Word_t *pwRoot, int nBL, int nBLUp, Word_t wKey)
     Word_t *pwBitmap = (Word_t *)MyMalloc(wWords);
 
     if (nBL == nDL_to_nBL(2)) {
-        // Use Branch Bitmap column for 2-digit bitmap.
-        METRICS(j__AllocWordsJBB += wWords); // bitmap branch
+        // Use LL3 column for B2 big bitmap leaf.
+        METRICS(j__AllocWordsJLL3 += wWords);
     } else {
         METRICS(j__AllocWordsJLB1 += wWords); // bitmap leaf
     }
@@ -603,8 +634,8 @@ OldBitmap(Word_t *pwRoot, Word_t *pwr, int nBL)
     MyFree(pwr, wWords);
 
     if (nBLR == nDL_to_nBL(2)) {
-        // Use Branch Bitmap column for 2-digit bitmap.
-        METRICS(j__AllocWordsJBB -= wWords); // bitmap branch
+        // Use LL3 column for B2 big bitmap leaf.
+        METRICS(j__AllocWordsJLL3 -= wWords); // B2 big bitmap leaf
     } else {
         METRICS(j__AllocWordsJLB1 -= wWords); // bitmap leaf
     }
@@ -745,14 +776,14 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
         // Embedded bitmaps.
         // What if we have bits in the links that are not used as
         // bits in the bitmap?
-        METRICS(j__AllocWordsJLB1 += wWords); // bitmap leaf
+        METRICS(j__AllocWordsJLL3 += wWords); // B2 big bitmap leaf
     } else
 #if defined(CODE_BM_SW)
     if (bBmSw) {
-        METRICS(j__AllocWordsJBB  += wWords); // bitmap branch
+        METRICS(j__AllocWordsJBB += wWords); // bitmap branch
     } else
 #endif // defined(CODE_BM_SW)
-    { METRICS(j__AllocWordsJBU  += wWords); } // uncompressed branch
+    { METRICS(j__AllocWordsJBU += wWords); } // uncompressed branch
 
 #if defined(CODE_BM_SW)
     DBGM(printf("NewSwitch(pwRoot %p wKey " OWx
@@ -1262,7 +1293,7 @@ OldSwitch(Word_t *pwRoot, int nBL,
     // No need for ifdef RAMMETRICS. Code will go away if not.
     if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
         // Embedded bitmaps.
-        METRICS(j__AllocWordsJLB1 -= wWords); // bitmap leaf
+        METRICS(j__AllocWordsJLL3 -= wWords); // B2 big bitmap leaf
     } else
 #if defined(CODE_BM_SW)
     if (tp_bIsBmSw(wr_nType(*pwRoot))
@@ -5568,6 +5599,8 @@ Initialize(void)
     printf("# With PP_IN_LINK unless NO_SKIP_AT_TOP?\n");
 #endif // defined(BM_IN_LINK)
 
+    printf("\n");
+    printf("# cnBitsMallocMask %d\n", cnBitsMallocMask);
     printf("\n");
     printf("# cnBitsInD1 %d\n", cnBitsInD1);
     printf("# cnBitsInD2 %d\n", cnBitsInD2);
