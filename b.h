@@ -294,9 +294,26 @@
 #endif // (cnBitsPerWord == 64)
 
 #define cnLogBitsPerWord  (cnLogBytesPerWord + cnLogBitsPerByte)
-#if ! defined(cnBitsMallocMask)
-#define cnBitsMallocMask  (cnLogBytesPerWord + 1)
-#endif // ! defined(cnBitsMallocMask)
+
+// dlmalloc.c uses MALLOC_ALIGNMENT.
+// Default MALLOC_ALIGNMENT is 2 * sizeof(void *).
+// We have to set cnBitsMallocMask to be consitent with MALLOC_ALIGNMENT.
+#if defined(MALLOC_ALIGNMENT)
+  #if (MALLOC_ALIGNMENT == 4)
+    #define cnBitsMallocMask 2
+  #elif (MALLOC_ALIGNMENT == 8)
+    #define cnBitsMallocMask 3
+  #elif (MALLOC_ALIGNMENT == 16)
+    #define cnBitsMallocMask 4
+  #elif (MALLOC_ALIGNMENT == 32)
+    #define cnBitsMallocMask 5
+  #else // MALLOC_ALIGNMENT
+    #error Unsupported MALLOC_ALIGNMENT
+  #endif // MALLOC_ALIGNMENT
+#else // defined(MALLOC_ALIGNMENT)
+    #define cnBitsMallocMask (cnLogBytesPerWord + 1)
+#endif // defined(MALLOC_ALIGNMENT)
+
 #define cnMallocMask  MSK(cnBitsMallocMask)
 #if (cnBitsPerWord == 64)
 #define cnBitsVirtAddr  48
