@@ -33,13 +33,14 @@
 // Global in case anyone wants to know (kind of kludgy, but only for testing)
 
 #ifdef  RAMMETRICS
-Word_t    j__AllocWordsTOT;             // words in buffers given by malloc
+Word_t    j__RequestedWordsTOT;       // words requested by Judy via JudyMalloc
+Word_t    j__AllocWordsTOT;     // words given by JudyMalloc including overhead
 Word_t    j__ExtraWordsTOT;             // extra words above previous estimate
                                         // of one or two or three
 Word_t    j__ExtraWordsCnt;             // how many buffers have extra words
 Word_t    j__MalFreeCnt;                // keep track of total malloc() + free()
 Word_t    j__MFlag;                     // Print memory allocation on stderr
-Word_t    j__TotalBytesAllocated;       // from kernel from dlmalloc
+Word_t    j__TotalBytesAllocated;       // mmapped by dlmalloc
 #endif  // RAMMETRICS
 
 // Use -DLIBCMALLOC if you want to use the libc malloc() instead of this
@@ -248,6 +249,7 @@ RawP_t JudyMalloc(
 #ifdef  RAMMETRICS
         if (Addr)
         {
+            j__RequestedWordsTOT += Words;
             // get # bytes in malloc buffer from preamble
             size_t zAllocWords = (((Word_t *)Addr)[-1] & ~3) / sizeof(Word_t);
             size_t zMinWords = (Words + 2) & ~1;
@@ -306,6 +308,7 @@ void JudyFree(
             j__ExtraWordsCnt--;
 
         j__MalFreeCnt++;        // keep track of total malloc() + free()
+        j__RequestedWordsTOT -= Words;
 #endif  // RAMMETRICS
 
 #ifdef  GUARDBAND
