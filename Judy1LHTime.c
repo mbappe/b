@@ -875,7 +875,7 @@ main(int argc, char *argv[])
     // Its pretty easy to introduce a bug in Mikey's code that clobbers the
     // word so his code depends on this word staying zero so it can verify
     // that the word is not getting clobbered by a bug.
-    struct { void *pv0, *pv1; } sj1 = { 0 };
+    struct { void *pv0, *pv1; } sj1 = { 0, 0 };
 #define J1 (sj1.pv1)
 #else // DEBUG
     void     *J1 = NULL;                // Judy1
@@ -889,7 +889,7 @@ main(int argc, char *argv[])
     // system?
     if (sizeof(Word_t) == 8) {
         wSplayMask
-            = (((((0xeeee << 16) | 0xee80) << 16) | 0x4020) << 16) | 0xaaff;
+            = (((((0xeeeeU << 16) | 0xee80) << 16) | 0x4020) << 16) | 0xaaff;
     }
 
 #ifdef DEADCODE                         // see TimeNumberGen()
