@@ -445,11 +445,16 @@ typedef Word_t Bucket_t;
   #define OLD_LISTS
 #endif // ! defined(NO_OLD_LISTS)
 
-// Default is -DPOP_IN_WR_HB.
+// Default is -DPOP_IN_WR_HB. List pop count in wRoot high bits.
 #if ! defined(NO_POP_IN_WR_HB) && (cnBitsPerWord != 32)
   #undef  POP_IN_WR_HB
   #define POP_IN_WR_HB
 #endif // ! defined(NO_POP_IN_WR_HB) && (cnBitsPerWord != 32)
+
+#if ! defined(POP_IN_WR_HB)
+  #undef LIST_POP_IN_PREAMBLE
+  #define LIST_POP_IN_PREAMBLE
+#endif // ! defined(POP_IN_WR_HB)
 
 #if defined(POP_IN_WR_HB) && ! defined(OLD_LISTS)
   #error Must have OLD_LISTS with POP_IN_WR_HB.
@@ -1791,25 +1796,6 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
          - sizeof(Word_t) / (_nBytesKeySz) ) ) \
 )
 
-// Pop count in wRoot high bits.
-#if defined(POP_IN_WR_HB)
-
-#define PWR_xListPopCnt(_pwRoot, _pwr, _nBL) \
-    ((int)GetBits(*(_pwRoot), cnBitsListPopCnt, cnLsbListPopCnt))
-
-#define set_PWR_xListPopCnt(_pwRoot, _pwr, _nBL, _cnt) \
-    ( assert((_cnt) <= (int)MSK(cnBitsListPopCnt)), \
-      SetBits((_pwRoot), cnBitsListPopCnt, cnLsbListPopCnt, (_cnt)) )
-
-#else // defined(POP_IN_WR_HB)
-
-#define PWR_xListPopCnt(_pwRoot, _pwr, _nBL)  ls_xPopCnt((_pwr), (_nBL))
-
-#define set_PWR_xListPopCnt(_pwRoot, _pwr, _nBL, _cnt) \
-    set_ls_xPopCnt((_pwr), (_nBL), (_cnt))
-
-#endif // defined(POP_IN_WR_HB)
-
 #if defined(OLD_LISTS)
 
 // Use ls_sPopCnt in the performance path when we know the keys are bigger
@@ -2257,6 +2243,47 @@ typedef struct {
     SW_BM
     Link_t sw_aLinks[1]; // variable size
 } BmSwitch_t;
+
+#define cnBitsPreListPopCnt cnBitsListPopCnt
+#define cnLsbPreListPopCnt (cnBitsPerWord - cnBitsListPopCnt)
+
+static inline int
+Get_xListPopCnt(Word_t *pwRoot, int nBL)
+{
+    (void)nBL;
+#if defined(POP_IN_WR_HB) // 64-bit default
+    int nPopCnt = GetBits(*pwRoot, cnBitsListPopCnt, cnLsbListPopCnt);
+#elif defined(LIST_POP_IN_PREAMBLE) // 32-bit default
+    int nPopCnt = GetBits(wr_pwr(*pwRoot)[-1],
+                          cnBitsPreListPopCnt, cnLsbPreListPopCnt);
+#else // POP_IN_WR_HB ...
+    int nPopCnt = ls_xPopCnt(wr_pwr(*pwRoot), nBL);
+#endif // POP_IN_WR_HB ...
+    return nPopCnt;
+}
+
+static inline void
+Set_xListPopCnt(Word_t *pwRoot, int nBL, int nPopCnt)
+{
+    (void)nBL;
+#if defined(POP_IN_WR_HB) // 64-bit default
+    assert(nPopCnt <= (int)MSK(cnBitsListPopCnt));
+    SetBits(pwRoot, cnBitsListPopCnt, cnLsbListPopCnt, nPopCnt);
+#elif defined(LIST_POP_IN_PREAMBLE) // 32-bit default
+    assert(nPopCnt <= (int)MSK(cnBitsPreListPopCnt));
+    Word_t *pwr = wr_pwr(*pwRoot);
+    SetBits(&pwr[-1], cnBitsPreListPopCnt, cnLsbPreListPopCnt, nPopCnt);
+#else // POP_IN_WR_HB ...
+    set_ls_xPopCnt(wr_pwr(*pwRoot), nBL, nPopCnt);
+#endif // POP_IN_WR_HB ...
+}
+
+#define     PWR_xListPopCnt(_pwRoot, _pwr, _nBL) \
+    (assert(wr_pwr(*(_pwRoot)) == (_pwr)), Get_xListPopCnt((_pwRoot), (_nBL)))
+
+#define set_PWR_xListPopCnt(_pwRoot, _pwr, _nBL, _cnt) \
+    (assert(wr_pwr(*(_pwRoot)) == (_pwr)), \
+    Set_xListPopCnt((_pwRoot), (_nBL), (_cnt)))
 
 Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBL);
 Status_t Remove(Word_t *pwRoot, Word_t wKey, int nBL);
@@ -3528,12 +3555,12 @@ ListHasKey16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
   #if defined(PSPLIT_SEARCH_16) && !defined(INSERT)
       #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 16) {
-        PSPLIT_HASKEY_GUTS(__m128i,
+        PSPLIT_HASKEY_GUTS(Bucket_t,
                            uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
     } else
       #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
-        PSPLIT_HASKEY_GUTS(__m128i,
+        PSPLIT_HASKEY_GUTS(Bucket_t,
                            uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     }
   #elif defined(BACKWARD_SEARCH_16)
@@ -3880,7 +3907,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
           #if defined(PP_IN_LINK)
         nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
           #else // defined(PP_IN_LINK)
-        nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 32);
+        nPopCnt = Get_xListPopCnt(pwRoot, 32);
           #endif // defined(PP_IN_LINK)
         nPos = SearchList32(ls_piKeysNATX(pwr, nPopCnt), wKey, nBL, nPopCnt);
     } else
@@ -3891,7 +3918,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
       #if defined(PP_IN_LINK)
         nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
       #else // defined(PP_IN_LINK)
-        nPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord);
+        nPopCnt = Get_xListPopCnt(pwRoot, cnBitsPerWord);
       #endif // ! defined(PP_IN_LINK)
         nPos = SearchListWord(ls_pwKeysNATX(pwr, nPopCnt),
                               wKey, nBL, nPopCnt);
@@ -3901,7 +3928,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
             nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
         } else
       #endif // ! defined(PP_IN_LINK)
-        { nPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord); }
+        { nPopCnt = Get_xListPopCnt(pwRoot, cnBitsPerWord); }
         //printf("pwRoot %p pwr %p\n", (void *)pwRoot, (void *)pwr);
         nPos = SearchListWord(ls_pwKeys(pwr, nBL), wKey, nBL, nPopCnt);
   #endif // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
