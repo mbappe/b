@@ -870,9 +870,16 @@ int
 main(int argc, char *argv[])
 {
 //  Names of Judy Arrays
-    //void     *J1 = NULL;                // Judy1
+#ifdef DEBUG
+    // Make sure the word before J1's root word is zero and is not changed.
+    // Its pretty easy to introduce a bug in Mikey's code that clobbers the
+    // word so his code depends on this word staying zero so it can verify
+    // that the word is not getting clobbered by a bug.
     struct { void *pv0, *pv1; } sj1 = { 0 };
 #define J1 (sj1.pv1)
+#else // DEBUG
+    void     *J1 = NULL;                // Judy1
+#endif // DEBUG
     void     *JL = NULL;                // JudyL
     void     *JH = NULL;                // JudyHS
 
