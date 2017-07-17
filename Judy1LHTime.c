@@ -539,8 +539,13 @@ GetNextKey(PSeed_t PSeed)
         Word_t SwizzledKey;
 
 //      move the mirror bits into the least bits determined -B# and -E
-        SwizzledKey = Swizzle(Key)
-            >> ((sizeof(Word_t) * 8) - (BValue << bSplayKeyBitsFlag));
+        SwizzledKey = Swizzle(Key);
+        if (bSplayKeyBitsFlag) {
+#define LOG(_x) ((Word_t)63 - __builtin_clzll(_x))
+            SwizzledKey >>= (sizeof(Word_t) * 8) - LOG(wSplayMask) - 1;
+        } else {
+            SwizzledKey >>= (sizeof(Word_t) * 8) - BValue;
+        }
 
         return (SwizzledKey + Offset);
     }
@@ -2774,6 +2779,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                             else
                             {
                                 printf("\nTstKey = 0x%" PRIxPTR"\n", TstKey);
+                                Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
                                 FAILURE("Judy1Set failed - DUP Key at elm", elm);
                             }
                         }
@@ -4009,14 +4015,16 @@ TestJudyNextEmpty(void *J1, void *JL, PSeed_t PSeed, Word_t Elements)
                 J1Key = GetNextKey(&WorkingSeed);
                 if (Tit)
                 {
+                    Word_t J1KeyBefore = J1Key;
 #ifdef SKIPMACRO
                     Rc = Judy1NextEmpty(J1, &J1Key, PJE0);
 #else
                     J1NE(Rc, J1, J1Key);
 #endif // SKIPMACRO
-
-                    if (Rc != 1)
-                        FAILURE("Judy1NextEmpty Rcode != 1 =", Rc);
+                    if (Rc != 1) {
+                        Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
+                        FAILURE("Judy1NextEmpty Rcode != 1 Key", J1KeyBefore);
+                    }
                 }
             }
             ENDTm(DeltanSec1);
@@ -4049,14 +4057,14 @@ TestJudyNextEmpty(void *J1, void *JL, PSeed_t PSeed, Word_t Elements)
                 JLKey = GetNextKey(&WorkingSeed);
                 if (Tit)
                 {
+                    Word_t JLKeyBefore = JLKey;
 #ifdef SKIPMACRO
                     Rc = JudyLNextEmpty(JL, &JLKey, PJE0);
 #else
                     JLNE(Rc, JL, JLKey);
 #endif // SKIPMACRO
-
                     if (Rc != 1)
-                        FAILURE("JudyLNextEmpty Rcode != 1 =", Rc);
+                        FAILURE("JudyLNextEmpty Rcode != 1 Key", JLKeyBefore);
                 }
             }
             ENDTm(DeltanSecL);
@@ -4112,16 +4120,19 @@ TestJudyPrevEmpty(void *J1, void *JL, PSeed_t PSeed, Word_t Elements)
                 J1Key = GetNextKey(&WorkingSeed);
                 if (Tit)
                 {
+                    Word_t J1KeyBefore = J1Key;
 #ifdef SKIPMACRO
                     Rc = Judy1PrevEmpty(J1, &J1Key, PJE0);
 #else
                     J1PE(Rc, J1, J1Key);
 #endif // SKIPMACRO
-
-                    if (Rc != 1)
-                        FAILURE("Judy1PrevEmpty Rc != 1 =", Rc);
+                    if (Rc != 1) {
+                        Word_t wCount = Judy1Count(J1, 0, J1KeyBefore, PJE0);
+                        if (wCount < J1KeyBefore + 1) {
+                            FAILURE("Judy1PrevEmpty Rc != 1 Key", J1KeyBefore);
+                        }
+                    }
                 }
-
             }
             ENDTm(DeltanSec1);
 
@@ -4153,14 +4164,18 @@ TestJudyPrevEmpty(void *J1, void *JL, PSeed_t PSeed, Word_t Elements)
                 JLKey = GetNextKey(&WorkingSeed);
                 if (Tit)
                 {
+                    Word_t JLKeyBefore = JLKey;
 #ifdef SKIPMACRO
                     Rc = JudyLPrevEmpty(JL, &JLKey, PJE0);
 #else
                     JLPE(Rc, JL, JLKey);
 #endif // SKIPMACRO
-
-                    if (Rc != 1)
-                        FAILURE("JudyLPrevEmpty Rcode != 1 =", Rc);
+                    if (Rc != 1) {
+                        Word_t wCount = JudyLCount(JL, 0, JLKeyBefore, PJE0);
+                        if (wCount < JLKeyBefore + 1) {
+                            FAILURE("JudyLPrevEmpty Rc != 1 Key", JLKeyBefore);
+                        }
+                    }
                 }
             }
             ENDTm(DeltanSecL);
