@@ -2066,11 +2066,7 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, unsigned nKeys,
     // pad to a word boundary with the last key in the list so
     // parallel search won't give a false positive and the last key
     // in the last word is the maximum key in the list
-#if defined(PARALLEL_128) // requires ALIGN_LIST_ENDS
-    while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(__m128i)))) != 0)
-#else // defined(PARALLEL_128)
-    while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(Word_t)))) != 0)
-#endif // defined(PARALLEL_128)
+    while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(Bucket_t)))) != 0)
     {
         pTgt[nKeys+1] = pTgt[nKeys]; // or pTgt[0] or iKey
         ++nKeys;
@@ -2112,11 +2108,7 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc, int nKeys,
 #if defined(PSPLIT_PARALLEL)
     // pad to a word boundary with a key that exists in the list so
     // parallel search won't give a false positive
-#if defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-    while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(__m128i)))) != 0)
-#else // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-    while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(Word_t)))) != 0)
-#endif // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
+    while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(Bucket_t)))) != 0)
     {
         pTgt[nKeys+1] = pTgt[nKeys]; // or pTgt[0] or sKey
         ++nKeys;
@@ -2154,12 +2146,7 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, unsigned nKeys, uint8_t cKey)
 #if defined(PSPLIT_PARALLEL)
     // pad to a word boundary with a key that exists in the list so
     // parallel search won't give a false positive
-#if defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-    while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(__m128i)))) != 0)
-#else // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-    while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(Word_t)))) != 0)
-#endif // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-    {
+    while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(Bucket_t)))) != 0) {
         pTgt[nKeys+1] = pTgt[nKeys]; // or pTgt[0] or cKey
         ++nKeys;
     }
@@ -4615,11 +4602,7 @@ embeddedKeys:;
 #if defined(PSPLIT_PARALLEL)
         // need to pad the list to a word boundary with a key that exists
         // so parallel search won't return a false positive
-#if defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&ls_pcKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
-#else // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&ls_pcKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
-#endif // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
+        while ((Word_t)&ls_pcKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(Bucket_t))))
         {
             ls_pcKeysNAT(pwr)[nKeys] = ls_pcKeysNAT(pwr)[nKeys-1];
             ++nKeys;
@@ -4634,11 +4617,7 @@ embeddedKeys:;
 #if defined(PSPLIT_PARALLEL)
         // need to pad the list to a word boundary with a key that exists
         // so parallel search won't return a false positive
-#if defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&ls_psKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
-#else // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&ls_psKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
-#endif // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
+        while ((Word_t)&ls_psKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(Bucket_t))))
         {
             ls_psKeysNAT(pwr)[nKeys] = ls_psKeysNAT(pwr)[nKeys-1];
             ++nKeys;
@@ -4654,11 +4633,7 @@ embeddedKeys:;
 #if defined(PSPLIT_PARALLEL)
         // need to pad the list to a word boundary with a key that exists
         // so parallel search won't return a false positive
-#if defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&ls_piKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
-#else // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
-        while ((Word_t)&ls_piKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(Word_t))))
-#endif // defined(ALIGN_LIST_ENDS) && defined(PARALLEL_128)
+        while ((Word_t)&ls_piKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(Bucket_t))))
         {
             ls_piKeysNAT(pwr)[nKeys] = ls_piKeysNAT(pwr)[nKeys-1];
             ++nKeys;
@@ -5095,6 +5070,12 @@ Initialize(void)
 #else // defined(PARALLEL_128)
     printf("# No PARALLEL_128\n");
 #endif // defined(PARALLEL_128)
+
+#if defined(PARALLEL_64)
+    printf("#    PARALLEL_64\n");
+#else // defined(PARALLEL_64)
+    printf("# No PARALLEL_64\n");
+#endif // defined(PARALLEL_64)
 
 #if defined(PSPLIT_EARLY_OUT)
     printf("#    PSPLIT_EARLY_OUT\n");

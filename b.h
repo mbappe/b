@@ -174,10 +174,10 @@
 #endif
 
 // Default is -DPARALLEL_128.
-#if ! defined(NO_PARALLEL_128)
+#if ! defined(NO_PARALLEL_128) && ! defined(PARALLEL_64)
 #undef PARALLEL_128
 #define PARALLEL_128
-#endif // ! defined(NO_PARALLEL_128)
+#endif // ! defined(NO_PARALLEL_128) && ! defined(PARALLEL_64)
 
 // Default is -DSORT_LISTS.
 #if ! defined(NO_SORT_LISTS)
@@ -377,6 +377,9 @@ SetBits(Word_t *pw, int nBits, int nLsb, Word_t wVal)
 #include <immintrin.h> // __m128i
 typedef __m128i Bucket_t;
 #define cnLogBytesPerBucket  4
+#elif defined(PARALLEL_64) // defined(PARALLEL_128)
+typedef uint64_t Bucket_t;
+#define cnLogBytesPerBucket  3
 #else // defined(PARALLEL_128)
 typedef Word_t Bucket_t;
 #define cnLogBytesPerBucket  cnLogBytesPerWord
@@ -2434,6 +2437,11 @@ extern const unsigned anBL_to_nDL[];
     (assert(sizeof(*(_pxBucket)) == sizeof(__m128i)), \
         HasKey128((__m128i *)(_pxBucket), (_wKey), (_nBL)))
 
+#elif defined(PARALLEL_64) // defined(PARALLEL_128)
+
+#define BUCKET_HAS_KEY(_pxBucket, _wKey, _nBL) \
+    HasKey64((_pxBucket), (_wKey), (_nBL))
+
 #else // defined(PARALLEL_128)
 
 #define BUCKET_HAS_KEY(_pxBucket, _wKey, _nBL) \
@@ -3113,23 +3121,13 @@ again:;
 }
   #endif // JUNK
 
-  #if defined(PARALLEL_128)
-      #if defined(COUNT)
+  #if defined(COUNT)
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
     PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
-      #else // defined(COUNT)
+  #else // defined(COUNT)
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-    PSPLIT_HASKEY_GUTS(__m128i, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
-      #endif // defined(COUNT)
-  #else // defined(PARALLEL_128)
-      #if defined(COUNT)
-#define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-    PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
-      #else // defined(COUNT)
-#define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-    PSPLIT_HASKEY_GUTS(Word_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
-      #endif // defined(COUNT)
-  #endif // defined(PARALLEL_128)
+    PSPLIT_HASKEY_GUTS(Bucket_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
+  #endif // defined(COUNT)
 
 #else // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
@@ -3142,7 +3140,7 @@ again:;
 
 #if JUNK
 static Status_t
-TwoWordsHaveKey(Word_t *pw, Word_t wKey, unsigned nBL)
+TwoWordsHaveKey(Word_t *pw, Word_t wKey, int nBL)
 {
     Word_t wLsbs = (Word_t)-1 / (EXP(nBL) - 1); // lsb in each key
     Word_t wReplicatedKey = (wKey & MSK(nBL)) * wLsbs;
@@ -3165,7 +3163,7 @@ TwoWordsHaveKey(Word_t *pw, Word_t wKey, unsigned nBL)
 // is/are present.
 // It also assumes that keys do not cross word boundaries.
 static Status_t
-WordArrayHasKey(Word_t *pw, unsigned nWords, Word_t wKey, unsigned nBL)
+WordArrayHasKey(Word_t *pw, unsigned nWords, Word_t wKey, int nBL)
 {
     Word_t wMask = MSK(nBL); // (1 << nBL) - 1
     Word_t wLsbs = (Word_t)-1 / wMask; // lsb in each key slot
@@ -3186,7 +3184,7 @@ WordArrayHasKey(Word_t *pw, unsigned nWords, Word_t wKey, unsigned nBL)
 // empty slots have been padded with copies of some key/keys that is/are
 // present.
 static Status_t
-WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
+WordHasKey(Word_t *pw, Word_t wKey, int nBL)
 {
     // It helps Lookup performance to eliminate the need to know nPopCnt.
     // So we replicate the first key in the list into the unused slots
@@ -3243,8 +3241,8 @@ WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
 // that match the target key.  It also sets the high bit in the key slot
 // to the left of any other slot with its high bit set if the key in that
 // slot is one less than the target key.
-static Word_t // bool
-WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
+static Word_t
+WordHasKey(Word_t *pw, Word_t wKey, int nBL)
 {
     // It helps Lookup performance to eliminate the need to know nPopCnt.
     // So we replicate the first key in the list into the unused slots
@@ -3266,7 +3264,7 @@ WordHasKey(Word_t *pw, Word_t wKey, unsigned nBL)
 // The rest of the code doesn't really set up embedded lists that are
 // conducive to this operation yet.
 static int
-LocateKeyInWord(Word_t *pw, Word_t wKey, unsigned nBL)
+LocateKeyInWord(Word_t *pw, Word_t wKey, int nBL)
 {
     Word_t wMagic = WordHasKey(pw, wKey, nBL);
     if (wMagic) {
@@ -3285,7 +3283,7 @@ printf("*pw " OWx" wKey " Owx" nBL %d wMagic "OWx"\n", *pw, wKey, nBL, wMagic);
 #if defined(EMBED_KEYS)
 // Find key or hole and return it's position.
 static int
-SearchEmbeddedX(Word_t *pw, Word_t wKey, unsigned nBL)
+SearchEmbeddedX(Word_t *pw, Word_t wKey, int nBL)
 {
     int ii;
     for (ii = 0; ii < wr_nPopCnt(*pw, nBL); ii++) {
@@ -3344,11 +3342,31 @@ HasKey128Tail(__m128i *pxBucket,
 // to the left of any other slot with its high bit set if the key in that
 // slot is one less than the target key.
 static Word_t // bool
-HasKey128(__m128i *pxBucket, Word_t wKey, unsigned nBL)
+HasKey128(__m128i *pxBucket, Word_t wKey, int nBL)
 {
     __m128i xLsbs, xMsbs, xKeys;
     HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys);
     return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
+}
+
+#elif defined(PARALLEL_64) // defined(PARALLEL_128)
+
+static uint64_t
+HasKey64(uint64_t *px, Word_t wKey, int nBL)
+{
+    // It helps Lookup performance to eliminate the need to know nPopCnt.
+    // So we replicate the first key in the list into the unused slots
+    // at insert time to make sure the unused slots don't cause a false
+    // bXorHasZero.
+    uint64_t xx = *px;
+    uint64_t xMask = MSK(nBL); // (1 << nBL) - 1
+    wKey &= xMask; // get rid of already-decoded bits
+    uint64_t xLsbs = (uint64_t)-1 / xMask; // lsb in each key slot
+    uint64_t xKeys = wKey * xLsbs; // replicate key; put in every slot
+    uint64_t xMsbs = xLsbs << (nBL - 1); // msb in each key slot
+    uint64_t xXor = xKeys ^ xx; // get zero in slot with matching key
+    uint64_t xMagic = (xXor - xLsbs) & ~xXor & xMsbs;
+    return xMagic; // bXorHasZero = (xMagic != 0);
 }
 
 #endif // defined(PARALLEL_128)
@@ -3644,15 +3662,15 @@ ListHasKey32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 #if defined(PSPLIT_SEARCH_32)
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 32) {
-        PSPLIT_HASKEY_GUTS(__m128i,
+        PSPLIT_HASKEY_GUTS(Bucket_t,
                            uint32_t, 32, piKeys, nPopCnt, iKey, nPos);
     } else if (nBL == 24) {
-        PSPLIT_HASKEY_GUTS(__m128i,
+        PSPLIT_HASKEY_GUTS(Bucket_t,
                            uint32_t, 24, piKeys, nPopCnt, iKey, nPos);
     } else
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
-        PSPLIT_HASKEY_GUTS(__m128i,
+        PSPLIT_HASKEY_GUTS(Bucket_t,
                            uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
     }
 #elif defined(BACKWARD_SEARCH_32)
@@ -4070,7 +4088,7 @@ LocateHole(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 // If we're not using those key sizes, then there is no cost.
 // What if we have no valid-key fill?  And no pop field?
 static Word_t
-EmbeddedListMagic(Word_t wRoot, Word_t wKey, unsigned nBL)
+EmbeddedListMagic(Word_t wRoot, Word_t wKey, int nBL)
 {
 #if defined(NO_TYPE_IN_XX_SW)
     assert((wRoot != ZERO_POP_MAGIC)
@@ -4139,7 +4157,7 @@ EmbeddedListMagic(Word_t wRoot, Word_t wKey, unsigned nBL)
 }
 
 static int // bool
-EmbeddedListHasKey(Word_t wRoot, Word_t wKey, unsigned nBL)
+EmbeddedListHasKey(Word_t wRoot, Word_t wKey, int nBL)
 {
     return EmbeddedListMagic(wRoot, wKey, nBL) != 0;
 }
