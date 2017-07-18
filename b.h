@@ -173,11 +173,19 @@
 #define EMBEDDED_KEYS_PARALLEL_FOR_INSERT
 #endif
 
+// Default is -DPSPLIT_PARALLEL which forces -DALIGN_LISTS -DALIGN_LIST_ENDS.
+#if ! defined(NO_PSPLIT_PARALLEL)
+#undef  PSPLIT_PARALLEL
+#define PSPLIT_PARALLEL
+#endif // ! defined(NO_PSPLIT_PARALLEL)
+
 // Default is -DPARALLEL_128.
+#if defined(PSPLIT_PARALLEL)
 #if ! defined(NO_PARALLEL_128) && ! defined(PARALLEL_64)
 #undef PARALLEL_128
 #define PARALLEL_128
 #endif // ! defined(NO_PARALLEL_128) && ! defined(PARALLEL_64)
+#endif // defined(PSPLIT_PARALLEL)
 
 // Default is -DSORT_LISTS.
 #if ! defined(NO_SORT_LISTS)
@@ -342,12 +350,6 @@ SetBits(Word_t *pw, int nBits, int nLsb, Word_t wVal)
     *pw &= ~(MSK(nBits) << nLsb); // clear the field
     *pw |= (wVal & MSK(nBits)) << nLsb; // set the field
 }
-
-// Default is -DPSPLIT_PARALLEL which forces -DALIGN_LISTS -DALIGN_LIST_ENDS.
-#if ! defined(NO_PSPLIT_PARALLEL)
-#undef  PSPLIT_PARALLEL
-#define PSPLIT_PARALLEL
-#endif // ! defined(NO_PSPLIT_PARALLEL)
 
 // We'd like to ignore ALIGN_LISTS for lists of word-size keys
 // if PSPLIT_SEARCH_WORD is not defined and the only reason

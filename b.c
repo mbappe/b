@@ -4740,19 +4740,12 @@ Initialize(void)
     assert((cnBitsLeftAtDl2 < 24)
         || ((cn2dBmWpkPercent == 0) && (cnBitsInD1 < 24)));
 
-#if defined(PSPLIT_PARALLEL)
+#if defined(PSPLIT_PARALLEL) && ! defined(NO_PSPLIT_SEARCH)
     // If ListWordsTypeList can't assume an aligned malloc then it must
     // add enough wasted words so an unaligned malloc will work.
     // Adding wasted words is not coded yet.
-#if defined(PSPLIT_SEARCH_WORD) || defined(PSPLIT_SEARCH_32)
     assert(cnBitsMallocMask >= cnLogBytesPerBucket);
-#endif // defined(PSPLIT_SEARCH_WORD) || defined(PSPLIT_SEARCH_32)
-#if defined(PSPLIT_SEARCH_16) || defined(PSPLIT_SEARCH_8)
-    // Replica of previous assert because #if ... || ... || ... makes for
-    // a very long line or a line break that makes unifdef unhappy.
-    assert(cnBitsMallocMask >= cnLogBytesPerBucket);
-#endif // defined(PSPLIT_SEARCH_16) || defined(PSPLIT_SEARCH_8)
-#endif // defined(PSPLIT_PARALLEL)
+#endif // defined(PSPLIT_PARALLEL) && ! defined(NO_PSPLIT_SEARCH)
 
 #if defined(CODE_BM_SW) && ! defined(PP_IN_LINK)
     assert(&((BmSwitch_t *)0)->sw_wPrefixPop == &((Switch_t *)0)->sw_wPrefixPop);
