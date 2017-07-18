@@ -373,8 +373,8 @@ SetBits(Word_t *pw, int nBits, int nLsb, Word_t wVal)
 #define PSPLIT_EARLY_OUT
 #endif // ! defined(NO_PSPLIT_EARLY_OUT)
 
-#if defined(PARALLEL_128)
 #include <immintrin.h> // __m128i
+#if defined(PARALLEL_128)
 typedef __m128i Bucket_t;
 #define cnLogBytesPerBucket  4
 #elif defined(PARALLEL_64) // defined(PARALLEL_128)
@@ -2429,23 +2429,15 @@ extern const unsigned anBL_to_nDL[];
 
 #if defined(PARALLEL_128)
 
-// The assertion is here because the macro used to test the size of the
-// bucket and use WordHasKey if not equal to the size of __m128i.
-// I replaced the test with an assertion because I couldn't remember
-// why we were doing the test.
-#define BUCKET_HAS_KEY(_pxBucket, _wKey, _nBL) \
-    (assert(sizeof(*(_pxBucket)) == sizeof(__m128i)), \
-        HasKey128((__m128i *)(_pxBucket), (_wKey), (_nBL)))
+#define BUCKET_HAS_KEY HasKey128
 
 #elif defined(PARALLEL_64) // defined(PARALLEL_128)
 
-#define BUCKET_HAS_KEY(_pxBucket, _wKey, _nBL) \
-    HasKey64((_pxBucket), (_wKey), (_nBL))
+#define BUCKET_HAS_KEY HasKey64
 
 #else // defined(PARALLEL_128)
 
-#define BUCKET_HAS_KEY(_pxBucket, _wKey, _nBL) \
-    WordHasKey((_pxBucket), (_wKey), (_nBL))
+#define BUCKET_HAS_KEY WordHasKey
 
 #endif // defined(PARALLEL_128)
 
@@ -3301,8 +3293,6 @@ SearchEmbeddedX(Word_t *pw, Word_t wKey, int nBL)
 
 #endif // defined(USE_WORD_ARRAY_EMBEDDED_KEYS_PARALLEL)
 
-#if defined(PARALLEL_128)
-
   #if cnBitsPerWord == 64
 #define MM_SET1_EPW(_ww) \
     _mm_set1_epi64((__m64)_ww)
@@ -3349,8 +3339,6 @@ HasKey128(__m128i *pxBucket, Word_t wKey, int nBL)
     return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
 }
 
-#elif defined(PARALLEL_64) // defined(PARALLEL_128)
-
 static uint64_t
 HasKey64(uint64_t *px, Word_t wKey, int nBL)
 {
@@ -3368,8 +3356,6 @@ HasKey64(uint64_t *px, Word_t wKey, int nBL)
     uint64_t xMagic = (xXor - xLsbs) & ~xXor & xMsbs;
     return xMagic; // bXorHasZero = (xMagic != 0);
 }
-
-#endif // defined(PARALLEL_128)
 
 #endif // defined(COMPRESSED_LISTS)
 
