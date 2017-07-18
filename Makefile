@@ -96,7 +96,8 @@ endif
 # the missing prototype just as well as a prototype does. Yes!
   WFLAGS += -Wall
   WFLAGS += -Wextra
-  WFLAGS += -Wpedantic
+# -Wpedantic doesn't like the gcc extension &&<label> even with -std=gnu11
+# WFLAGS += -Wpedantic
   WFLAGS += -Wno-unused-function
   WFLAGS += -Wno-deprecated
   WFLAGS += -Werror

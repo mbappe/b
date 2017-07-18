@@ -643,9 +643,9 @@ enum {
 #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
     // All link bits set, i.e. all links present.
     T_FULL_BM_SW,
-#endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-#if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+  #if defined(SKIP_TO_BM_SW)
     T_SKIP_TO_FULL_BM_SW,
+  #endif // defined(SKIP_TO_BM_SW)
 #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
     T_SWITCH, // Uncompressed, close (i.e. no-skip) switch.
 #if defined(SKIP_LINKS)

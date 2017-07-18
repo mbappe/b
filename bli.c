@@ -531,6 +531,86 @@ again:;
 #else // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's ok
     int nType = Get_nType(&wRoot);
 #endif // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's ok
+
+  #if defined(JUMP_TABLE)
+    static void *pvJumpTable[] = {
+      #if defined(SEPARATE_T_NULL)
+        &&t_null,
+      #endif // defined(SEPARATE_T_NULL)
+      #if (cwListPopCntMax != 0)
+        &&t_list,
+          #if defined(SKIP_TO_LIST)
+        &&t_skip_to_list,
+          #endif // defined(SKIP_TO_LIST)
+      #endif // (cwListPopCntMax != 0)
+        &&t_bitmap,
+      #if defined(SKIP_TO_BITMAP)
+        &&t_skip_to_bitmap,
+      #endif // defined(SKIP_TO_BITMAP)
+      #if defined(EMBED_KEYS)
+        &&t_embedded_keys,
+      #endif // defined(EMBED_KEYS)
+      #if defined(CODE_BM_SW)
+        &&t_bm_sw,
+      #endif // defined(CODE_BM_SW)
+      #if defined(SKIP_TO_BM_SW)
+        &&t_skip_to_bm_sw,
+      #endif // defined(SKIP_TO_BM_SW)
+      #if defined(CODE_XX_SW)
+        &&t_xx_sw,
+      #endif // defined(CODE_XX_SW)
+      #if defined(SKIP_TO_XX_SW)
+        &&t_skip_to_xx_sw,
+      #endif // defined(SKIP_TO_XX_SW)
+      #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+        &&t_full_bm_sw,
+          #if defined(SKIP_TO_BM_SW)
+        &&t_skip_to_full_bm_sw,
+          #endif // defined(SKIP_TO_BM_SW)
+      #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+        &&t_switch,
+      #if defined(SKIP_LINKS)
+        &&t_skip_to_switch,
+          #if (T_SKIP_TO_SWITCH <= 14)
+        &&t_skip_to_switch,
+          #endif // (T_SKIP_TO_SWITCH <= 14)
+          #if (T_SKIP_TO_SWITCH <= 13)
+        &&t_skip_to_switch,
+          #endif // (T_SKIP_TO_SWITCH <= 13)
+          #if (T_SKIP_TO_SWITCH <= 12)
+        &&t_skip_to_switch,
+          #endif // (T_SKIP_TO_SWITCH <= 12)
+          #if (T_SKIP_TO_SWITCH <= 11)
+        &&t_skip_to_switch,
+          #endif // (T_SKIP_TO_SWITCH <= 11)
+          #if (T_SKIP_TO_SWITCH <= 10)
+        &&t_skip_to_switch,
+          #endif // (T_SKIP_TO_SWITCH <= 10)
+          #if (T_SKIP_TO_SWITCH <= 9)
+        &&t_skip_to_switch,
+          #endif // (T_SKIP_TO_SWITCH <= 9)
+          #if (T_SKIP_TO_SWITCH <= 8)
+        &&t_skip_to_switch,
+          #endif // (T_SKIP_TO_SWITCH <= 8)
+          #if (T_SKIP_TO_SWITCH <= 7)
+        &&t_skip_to_switch,
+          #endif // (T_SKIP_TO_SWITCH <= 7)
+          #if (T_SKIP_TO_SWITCH <= 6)
+        &&t_skip_to_switch,
+          #endif // (T_SKIP_TO_SWITCH <= 6)
+          #if (T_SKIP_TO_SWITCH <= 5)
+        &&t_skip_to_switch,
+          #endif // (T_SKIP_TO_SWITCH <= 5)
+          #if (T_SKIP_TO_SWITCH <= 4)
+        &&t_skip_to_switch,
+          #endif // (T_SKIP_TO_SWITCH <= 4)
+          #if (T_SKIP_TO_SWITCH <= 3)
+        &&t_skip_to_switch,
+          #endif // (T_SKIP_TO_SWITCH <= 3)
+      #endif // defined(SKIP_LINKS)
+    };
+  #endif // defined(JUMP_TABLE)
+
     goto again2;
 again2:;
     Word_t *pwr = wr_pwr(wRoot);
@@ -539,6 +619,9 @@ again3:;
   #if defined(EXTRA_TYPES)
     switch (wRoot & MSK(cnBitsMallocMask + 1))
   #else // defined(EXTRA_TYPES)
+      #if defined(JUMP_TABLE)
+    goto *pvJumpTable[nType];
+      #endif // defined(JUMP_TABLE)
     switch (nType)
   #endif // defined(EXTRA_TYPES)
     {
@@ -576,6 +659,44 @@ again3:;
           #endif // defined(DEFAULT_LIST)
     default:
       #else // ! defined(DEBUG) && defined(DEFAULT_SKIP_TO_SW)
+
+          #if (T_SKIP_TO_SWITCH <= 14)
+    case T_SKIP_TO_SWITCH+1:
+          #endif // (T_SKIP_TO_SWITCH <= 14)
+          #if (T_SKIP_TO_SWITCH <= 13)
+    case T_SKIP_TO_SWITCH+2:
+          #endif // (T_SKIP_TO_SWITCH <= 13)
+          #if (T_SKIP_TO_SWITCH <= 12)
+    case T_SKIP_TO_SWITCH+3:
+          #endif // (T_SKIP_TO_SWITCH <= 12)
+          #if (T_SKIP_TO_SWITCH <= 11)
+    case T_SKIP_TO_SWITCH+4:
+          #endif // (T_SKIP_TO_SWITCH <= 11)
+          #if (T_SKIP_TO_SWITCH <= 10)
+    case T_SKIP_TO_SWITCH+5:
+          #endif // (T_SKIP_TO_SWITCH <= 10)
+          #if (T_SKIP_TO_SWITCH <= 9)
+    case T_SKIP_TO_SWITCH+6:
+          #endif // (T_SKIP_TO_SWITCH <= 9)
+          #if (T_SKIP_TO_SWITCH <= 8)
+    case T_SKIP_TO_SWITCH+7:
+          #endif // (T_SKIP_TO_SWITCH <= 8)
+          #if (T_SKIP_TO_SWITCH <= 7)
+    case T_SKIP_TO_SWITCH+8:
+          #endif // (T_SKIP_TO_SWITCH <= 7)
+          #if (T_SKIP_TO_SWITCH <= 6)
+    case T_SKIP_TO_SWITCH+9:
+          #endif // (T_SKIP_TO_SWITCH <= 6)
+          #if (T_SKIP_TO_SWITCH <= 5)
+    case T_SKIP_TO_SWITCH+10:
+          #endif // (T_SKIP_TO_SWITCH <= 5)
+          #if (T_SKIP_TO_SWITCH <= 4)
+    case T_SKIP_TO_SWITCH+11:
+          #endif // (T_SKIP_TO_SWITCH <= 4)
+          #if (T_SKIP_TO_SWITCH <= 3)
+    case T_SKIP_TO_SWITCH+12:
+          #endif // (T_SKIP_TO_SWITCH <= 3)
+
     case T_SKIP_TO_SWITCH: // skip link to uncompressed switch
       #endif // ! defined(DEBUG) && defined(DEFAULT_SKIP_TO_SW)
   #else // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
@@ -597,6 +718,8 @@ again3:;
     default:
   #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
     {
+        goto t_skip_to_switch; // silence cc in case there are no other uses
+t_skip_to_switch:
         // Skip to switch.
         // pwr points to a switch
   #if defined(NO_PREFIX_CHECK)
@@ -668,6 +791,8 @@ again3:;
 
     case T_SKIP_TO_BM_SW:
     {
+        goto t_skip_to_bm_sw; // silence cc in case there are no other uses
+t_skip_to_bm_sw:
         // pwr points to a bitmap switch
         DBGX(printf("SKIP_TO_BM_SW\n"));
 
@@ -711,6 +836,8 @@ again3:;
 
     case T_SKIP_TO_XX_SW: // skip link to narrow/wide switch
     {
+        goto t_skip_to_xx_sw; // silence cc in case there are no other uses
+t_skip_to_xx_sw:
         // pwr points to a variable-width aka doubling switch
         DBGX(printf("SKIP_TO_XX_SW\n"));
 
@@ -1029,6 +1156,8 @@ t_xx_sw:;
     case T_FULL_BM_SW | EXP(cnBitsMallocMask): // no skip switch
       #endif // defined(EXTRA_TYPES)
     {
+        goto t_full_bm_sw; // silence cc in case there are no other uses
+t_full_bm_sw:
       #if defined(LOOKUP)
 // Skip over sw_awBm.  The rest of BmSwitch_t must be same as Switch_t.
         pwr = (Word_t *)&((BmSwitch_t *)pwr)->sw_wPrefixPop;
@@ -1405,6 +1534,8 @@ t_list:;
 
 #if defined(SKIP_TO_BITMAP)
     case T_SKIP_TO_BITMAP: {
+        goto t_skip_to_bitmap;
+t_skip_to_bitmap:;
         DBGX(printf("T_SKIP_TO_BITMAP\n"));
         // PREFIX_MISMATCH updates nBLR.
         Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_BITMAP);

@@ -5156,6 +5156,12 @@ Initialize(void)
     printf("# No OLD_LISTS\n");
 #endif // defined(OLD_LISTS)
 
+#if defined(JUMP_TABLE)
+    printf("#    JUMP_TABLE\n");
+#else // defined(JUMP_TABLE)
+    printf("# No JUMP_TABLE\n");
+#endif // defined(JUMP_TABLE)
+
 #if defined(BACKWARD_SEARCH_WORD)
     printf("#    BACKWARD_SEARCH_WORD\n");
 #else // defined(BACKWARD_SEARCH_WORD)
