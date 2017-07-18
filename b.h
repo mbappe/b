@@ -1864,11 +1864,11 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 #define N_LIST_HDR_KEYS  2 // one slot needed for pop
           #endif // defined(POP_IN_WR_HB)
       #else // defined(LIST_END_MARKERS)
-          #if defined(POP_IN_WR_HB)
+          #if defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
 #define N_LIST_HDR_KEYS  0
-          #else // defined(POP_IN_WR_HB)
+          #else // defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
 #define N_LIST_HDR_KEYS  1  // one slot needed for pop
-          #endif // defined(POP_IN_WR_HB)
+          #endif // defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
       #endif // defined(LIST_END_MARKERS)
 
   #endif // defined(PP_IN_LINK)
@@ -2969,7 +2969,7 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 
   #endif // defined(PSPLIT_HYBRID)
 
-  #if defined(SIMPLE_PSPLIT_HASKEY_GUTS)
+  #if defined(SIMPLE_PSPLIT_HASKEY_GUTS) // slow
 
 #define PSPLIT_HASKEY_GUTS(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
@@ -3272,25 +3272,6 @@ printf("*pw " OWx" wKey " Owx" nBL %d wMagic "OWx"\n", *pw, wKey, nBL, wMagic);
 }
 #endif
 
-#if defined(EMBED_KEYS)
-// Find key or hole and return it's position.
-static int
-SearchEmbeddedX(Word_t *pw, Word_t wKey, int nBL)
-{
-    int ii;
-    for (ii = 0; ii < wr_nPopCnt(*pw, nBL); ii++) {
-        Word_t wSuffixLoop
-               = GetBits(*pw, /* nBits */ nBL,
-                         /* nLsb */ cnBitsPerWord - (nBL * (ii + 1)));
-        if ((wKey & MSK(nBL)) <= wSuffixLoop) {
-            if ((wKey & MSK(nBL)) == wSuffixLoop) { return ii; }
-            break;
-        }
-    }
-    return ~ii;
-}
-#endif // defined(EMBED_KEYS)
-
 #endif // defined(USE_WORD_ARRAY_EMBEDDED_KEYS_PARALLEL)
 
   #if cnBitsPerWord == 64
@@ -3360,6 +3341,25 @@ HasKey64(uint64_t *px, Word_t wKey, int nBL)
 #endif // defined(COMPRESSED_LISTS)
 
 #endif // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
+
+#if defined(EMBED_KEYS)
+// Find key or hole and return it's position.
+static int
+SearchEmbeddedX(Word_t *pw, Word_t wKey, int nBL)
+{
+    int ii;
+    for (ii = 0; ii < wr_nPopCnt(*pw, nBL); ii++) {
+        Word_t wSuffixLoop
+               = GetBits(*pw, /* nBits */ nBL,
+                         /* nLsb */ cnBitsPerWord - (nBL * (ii + 1)));
+        if ((wKey & MSK(nBL)) <= wSuffixLoop) {
+            if ((wKey & MSK(nBL)) == wSuffixLoop) { return ii; }
+            break;
+        }
+    }
+    return ~ii;
+}
+#endif // defined(EMBED_KEYS)
 
 #if ! defined(ONE_DEREF_AT_LIST) || ! defined(LOOKUP)
 #if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
@@ -3559,13 +3559,11 @@ ListHasKey16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
   #if defined(PSPLIT_SEARCH_16) && !defined(INSERT)
       #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 16) {
-        PSPLIT_HASKEY_GUTS(Bucket_t,
-                           uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+        PSPLIT_SEARCH(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
     } else
       #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
-        PSPLIT_HASKEY_GUTS(Bucket_t,
-                           uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
+        PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     }
   #elif defined(BACKWARD_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;

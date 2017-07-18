@@ -215,7 +215,7 @@ MyMalloc(Word_t wWords)
 // cnExtraUnitsMax values are based on our observations.
 // Are our observations limited by our own malloc request behavior?
 #if (cnBitsMallocMask == 3) && (cnBitsPerWord == 32)
-  #define cnExtraUnitsMax 1 // 3
+  #define cnExtraUnitsMax 2 // 3
 #elif (cnBitsMallocMask == 4) && (cnBitsPerWord == 64)
   #define cnExtraUnitsMax 2 // 2
 #else
@@ -333,7 +333,7 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
   #if ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LIST_ENDS)
     if (nBytesKeySz < (int)sizeof(Word_t))
   #endif // ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LIST_ENDS)
-    { nBytes = DIV_UP(nBytes, sizeof(Bucket_t)) * sizeof(Bucket_t); }
+    { nBytes = ALIGN_UP(nBytes, sizeof(Bucket_t)); }
 #endif // defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)
 
 #if defined(LIST_END_MARKERS)
@@ -353,8 +353,8 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 #if defined(LIST_REQ_MIN_WORDS)
     return DIV_UP(nBytes, sizeof(Word_t));
 #else // defined(LIST_REQ_MIN_WORDS)
-    return (DIV_UP(nBytes + sizeof(Word_t), EXP(cnBitsMallocMask))
-               << (cnBitsMallocMask - cnLogBytesPerWord)) - 1;
+    return (ALIGN_UP(nBytes + sizeof(Word_t), EXP(cnBitsMallocMask))
+               >> cnLogBytesPerWord) - 1;
 #endif // defined(LIST_REQ_MIN_WORDS)
 
 #else // defined(OLD_LISTS)
@@ -4739,6 +4739,20 @@ Initialize(void)
     // we need to be careful about bitmaps that 2MB plus one word and bigger.
     assert((cnBitsLeftAtDl2 < 24)
         || ((cn2dBmWpkPercent == 0) && (cnBitsInD1 < 24)));
+
+#if defined(PSPLIT_PARALLEL)
+    // If ListWordsTypeList can't assume an aligned malloc then it must
+    // add enough wasted words so an unaligned malloc will work.
+    // Adding wasted words is not coded yet.
+#if defined(PSPLIT_SEARCH_WORD) || defined(PSPLIT_SEARCH_32)
+    assert(cnBitsMallocMask >= cnLogBytesPerBucket);
+#endif // defined(PSPLIT_SEARCH_WORD) || defined(PSPLIT_SEARCH_32)
+#if defined(PSPLIT_SEARCH_16) || defined(PSPLIT_SEARCH_8)
+    // Replica of previous assert because #if ... || ... || ... makes for
+    // a very long line or a line break that makes unifdef unhappy.
+    assert(cnBitsMallocMask >= cnLogBytesPerBucket);
+#endif // defined(PSPLIT_SEARCH_16) || defined(PSPLIT_SEARCH_8)
+#endif // defined(PSPLIT_PARALLEL)
 
 #if defined(CODE_BM_SW) && ! defined(PP_IN_LINK)
     assert(&((BmSwitch_t *)0)->sw_wPrefixPop == &((Switch_t *)0)->sw_wPrefixPop);
