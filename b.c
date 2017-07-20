@@ -264,10 +264,15 @@ MyFree(Word_t *pw, Word_t wWords)
             >> (cnBitsMallocMask - cnLogBytesPerWord);
     // Restore the value expected by dlmalloc.
     size_t zExtraUnits = (pw[-1] >> cnBitsUsed) & MSK(cnExtraUnitsBits);
+#if defined(DEBUG_MALLOC)
+    size_t zUnitsAllocated = zUnitsRequired + zExtraUnits;
+#endif // defined(DEBUG_MALLOC)
+    DBGM(printf("required %zd alloc %zd extra %zd\n",
+                zUnitsRequired, zUnitsRequired+zExtraUnits, zExtraUnits));
     assert((pw)[-1] & 2); // lock down what we think we know
     pw[-1] &= MSK(cnBitsUsed); // clear high bits
     pw[-1] |= (zUnitsRequired + zExtraUnits) << cnBitsMallocMask;
-    DBGM(printf("pw[-1] 0x%zd\n", pw[-1]));
+    DBGM(printf("pw[-1] 0x%zx\n", pw[-1]));
     if ( ! (wWords & 1) ) { --wEvenMallocs; }
     --wMallocs; wWordsAllocated -= wWords;
 #if defined(RAMMETRICS)
@@ -316,15 +321,26 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 #if defined(OLD_LISTS)
 
     // Why am I not seeing cnDummiesInList here?
-    int nBytes = (N_LIST_HDR_KEYS + POP_SLOT(nBL)) * nBytesKeySz;
+
+    int nBytesHdr = (N_LIST_HDR_KEYS + POP_SLOT(nBL)) * nBytesKeySz;
 #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
   #if ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LISTS)
     if (nBytesKeySz < (int)sizeof(Word_t))
   #endif // ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LISTS)
-    { nBytes = ALIGN_UP(nBytes, sizeof(Bucket_t)); }
+    {
+        if ((cnMallocMask + 1) < sizeof(Bucket_t)) {
+            // We don't know what address we are going to get from malloc.
+            // We have to allocate enough memory to ensure that we will be able
+            // to align the beginning of the array of real keys.
+            nBytesHdr += sizeof(Bucket_t) - (cnMallocMask + 1);
+            nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(Bucket_t) - (cnMallocMask + 1));
+        } else {
+            nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(Bucket_t));
+        }
+    }
 #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 
-    nBytes += wPopCntArg * nBytesKeySz; // add list of real keys
+    int nBytesKeys = wPopCntArg * nBytesKeySz; // add list of real keys
 
 #if defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)
     // Pad array of keys so the end is aligned.
@@ -333,28 +349,29 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
   #if ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LIST_ENDS)
     if (nBytesKeySz < (int)sizeof(Word_t))
   #endif // ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LIST_ENDS)
-    { nBytes = ALIGN_UP(nBytes, sizeof(Bucket_t)); }
-#endif // defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)
+    { nBytesKeys = ALIGN_UP(nBytesKeys, sizeof(Bucket_t)); }
 
-#if defined(LIST_END_MARKERS)
+#else // defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)
+
+  #if defined(LIST_END_MARKERS)
     // Make room for -1 at the end to help make search faster.
     // The marker at the beginning is accounted for in N_LIST_HDR_KEYS.
     // How should we handle LIST_END_MARKERS for parallel searches?
-    nBytes += nBytesKeySz;
-#endif // defined(LIST_END_MARKERS)
+    nBytesKeys += nBytesKeySz;
+  #endif // defined(LIST_END_MARKERS)
 
-    // Malloc always allocates an integral number of MALLOC_ALIGNMENT-size
-    // units with the second word aligned and uses the first word for itself.
-    // Malloc never allocates less than four words.
-    // We'd like to round up our request if it will give us extra usable
-    // key slots and not increase the amount of memory allocated by malloc.
-    // How do we figure this out?
+#endif // defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)
+
+    int nBytes = nBytesHdr + nBytesKeys;
 
 #if defined(LIST_REQ_MIN_WORDS)
     return DIV_UP(nBytes, sizeof(Word_t));
 #else // defined(LIST_REQ_MIN_WORDS)
-    return (ALIGN_UP(nBytes + sizeof(Word_t), EXP(cnBitsMallocMask))
-               >> cnLogBytesPerWord) - 1;
+    // Malloc always allocates an integral number of MALLOC_ALIGNMENT-size
+    // units with the second word aligned and uses the first word for itself.
+    // Malloc never allocates less than four words.
+    nBytes += sizeof(Word_t); // add a word for malloc
+    return MAX(4, ALIGN_UP(nBytes, cnMallocMask + 1) >> cnLogBytesPerWord) - 1;
 #endif // defined(LIST_REQ_MIN_WORDS)
 
 #else // defined(OLD_LISTS)
@@ -4754,10 +4771,6 @@ Initialize(void)
         || ((cn2dBmWpkPercent == 0) && (cnBitsInD1 < 24)));
 
 #if defined(PSPLIT_PARALLEL) && ! defined(NO_PSPLIT_SEARCH)
-    // If ListWordsTypeList can't assume an aligned malloc then it must
-    // add enough wasted words so an unaligned malloc will work.
-    // Adding wasted words is not coded yet.
-    assert(cnBitsMallocMask >= cnLogBytesPerBucket);
   #if defined(UA_PARALLEL_128)
     assert(EXP(cnBitsMallocMask) >= sizeof(__m128i));
   #endif // defined(UA_PARALLEL_128)
@@ -5648,6 +5661,7 @@ Initialize(void)
     printf("# No MALLOC_ALIGNMENT\n");
 #endif // defined(MALLOC_ALIGNMENT)
     printf("# cnBitsMallocMask %d\n", cnBitsMallocMask);
+    printf("# sizeof(Bucket_t) %zd\n", sizeof(Bucket_t));
     printf("\n");
     printf("# cnBitsInD1 %d\n", cnBitsInD1);
     printf("# cnBitsInD2 %d\n", cnBitsInD2);

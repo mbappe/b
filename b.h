@@ -471,8 +471,10 @@ typedef Word_t Bucket_t;
 #endif // ! defined(NO_POP_IN_WR_HB) && (cnBitsPerWord != 32)
 
 #if ! defined(POP_IN_WR_HB)
-  #undef LIST_POP_IN_PREAMBLE
-  #define LIST_POP_IN_PREAMBLE
+  #if ! defined(NO_LIST_POP_IN_PREAMBLE)
+    #undef LIST_POP_IN_PREAMBLE
+    #define LIST_POP_IN_PREAMBLE
+  #endif // ! defined(NO_LIST_POP_IN_PREAMBLE)
 #endif // ! defined(POP_IN_WR_HB)
 
 #if defined(POP_IN_WR_HB) && ! defined(OLD_LISTS)
