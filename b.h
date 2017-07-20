@@ -14,6 +14,27 @@
 #endif // defined(__LP64__) || defined(_WIN64)
 #endif // !defined(cnBitsPerWord)
 
+// dlmalloc.c uses MALLOC_ALIGNMENT.
+// Default MALLOC_ALIGNMENT is 2 * sizeof(void *).
+// We have to set cnBitsMallocMask to be consitent with MALLOC_ALIGNMENT.
+#if defined(MALLOC_ALIGNMENT)
+  #if (MALLOC_ALIGNMENT == 4)
+    #define cnBitsMallocMask 2
+  #elif (MALLOC_ALIGNMENT == 8)
+    #define cnBitsMallocMask 3
+  #elif (MALLOC_ALIGNMENT == 16)
+    #define cnBitsMallocMask 4
+  #elif (MALLOC_ALIGNMENT == 32)
+    #define cnBitsMallocMask 5
+  #else // MALLOC_ALIGNMENT
+    #error Unsupported MALLOC_ALIGNMENT
+  #endif // MALLOC_ALIGNMENT
+#else // defined(MALLOC_ALIGNMENT)
+    #define cnBitsMallocMask (cnLogBytesPerWord + 1)
+#endif // defined(MALLOC_ALIGNMENT)
+
+#define cnMallocMask  MSK(cnBitsMallocMask)
+
 #if ! defined(likely)
 #define   likely(_b) (__builtin_expect((_b), 1))
 #define unlikely(_b) (__builtin_expect((_b), 0))
@@ -179,6 +200,19 @@
 #define PSPLIT_PARALLEL
 #endif // ! defined(NO_PSPLIT_PARALLEL)
 
+// Unaligned parallel 128.
+// Ifdefs are getting ugly.
+// Use UA_PARALLEL_128 to undef PARALLEL_128 so
+// sizeof(Bucket_t) == sizeof(Word_t) and we don't align list
+// ends to 128 bits.
+#if defined(UA_PARALLEL_128)
+  #if (cnBitsPerWord != 32)
+    #error UA_PARALLEL_128 is for (cnBitsPerWord == 32) only
+  #endif // (cnBitsPerWord != 32)
+#undef NO_PARALLEL_128
+#define NO_PARALLEL_128
+#endif // defined(UA_PARALLEL_128)
+
 // Default is -DPARALLEL_128.
 #if defined(PSPLIT_PARALLEL)
 #if ! defined(NO_PARALLEL_128) && ! defined(PARALLEL_64)
@@ -303,26 +337,6 @@
 
 #define cnLogBitsPerWord  (cnLogBytesPerWord + cnLogBitsPerByte)
 
-// dlmalloc.c uses MALLOC_ALIGNMENT.
-// Default MALLOC_ALIGNMENT is 2 * sizeof(void *).
-// We have to set cnBitsMallocMask to be consitent with MALLOC_ALIGNMENT.
-#if defined(MALLOC_ALIGNMENT)
-  #if (MALLOC_ALIGNMENT == 4)
-    #define cnBitsMallocMask 2
-  #elif (MALLOC_ALIGNMENT == 8)
-    #define cnBitsMallocMask 3
-  #elif (MALLOC_ALIGNMENT == 16)
-    #define cnBitsMallocMask 4
-  #elif (MALLOC_ALIGNMENT == 32)
-    #define cnBitsMallocMask 5
-  #else // MALLOC_ALIGNMENT
-    #error Unsupported MALLOC_ALIGNMENT
-  #endif // MALLOC_ALIGNMENT
-#else // defined(MALLOC_ALIGNMENT)
-    #define cnBitsMallocMask (cnLogBytesPerWord + 1)
-#endif // defined(MALLOC_ALIGNMENT)
-
-#define cnMallocMask  MSK(cnBitsMallocMask)
 #if (cnBitsPerWord == 64)
 #define cnBitsVirtAddr  48
 #define cwVirtAddrMask  MSK(cnBitsVirtAddr)
@@ -2796,7 +2810,7 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
     _b_t *pxEnd = (_b_t *)&(_pxKeys)[_nPos + _nPopCnt]; \
     /* address of first bucket to search */ \
     _b_t *px = (_b_t *)&(_pxKeys)[_nPos]; \
-    /* number of last key first bucket to search */ \
+    /* number of last key in first bucket to search */ \
     (_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1; \
     while ( ! BUCKET_HAS_KEY(px, (_xKey), sizeof(_xKey) * 8) ) { \
         /* check the last key in the _b_t to see if we've gone too far */ \
@@ -2878,6 +2892,53 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
     } \
 }
       #endif // JUNK
+
+// Do 128-bit parallel has-key independent of sizeof(Bucket_t).
+#define HASKEYF_128(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
+{ \
+    int nPopCntHere = (_nPopCnt); \
+    /* printf("HKF _pxKeys %p _nPopCnt %d nPopCnt %d _nPos %d\n", (void *)(_pxKeys), (_nPopCnt), nPopCnt, (_nPos)); */ \
+    assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
+    assert((((_nPos) * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
+    /* first address beyond address of last bucket to search */ \
+    _b_t *pxEnd = (_b_t *)&(_pxKeys)[(_nPos) + nPopCntHere]; \
+    /* address of first bucket to search */ \
+    _b_t *px = (_b_t *)&(_pxKeys)[_nPos]; \
+    /* number of last key in first bucket to search */ \
+    (_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1; \
+    int bHasKey; \
+    while ( ! (bHasKey = HasKey128(px, (_xKey), sizeof(_xKey) * 8)) ) { \
+        /* check the last key in the _b_t to see if we've gone too far */ \
+        if ((_xKey) < (_pxKeys)[_nPos]) { (_nPos) ^= -1; break; } \
+        ++px; (_nPos) += sizeof(_b_t) / sizeof(_xKey); \
+        if (px >= pxEnd) { (_nPos) ^= -1; break; } \
+    } \
+    /* printf("a px %p _pxKeys %p _nPopCnt %d nPopCnt %d _nPos %d\n", (void *)px, (void *)(_pxKeys), (_nPopCnt), nPopCnt, (_nPos)); */ \
+    if (bHasKey \
+        && ((px - (_b_t *)&(_pxKeys)[(_nPos)-sizeof(_b_t)/sizeof(_xKey)+1]) == (int)((nPopCntHere - 1) * sizeof(_xKey) / sizeof(__m128i))) /* last bucket */ \
+        && ((nPopCntHere - 1) * sizeof(_xKey) / sizeof(Word_t) % 4 != 3) /* incomplete bucket */ \
+        && ! HasKey96(px, (_xKey), sizeof(_xKey) * 8)) /* key in garbage word */ \
+    { \
+        (_nPos) ^= -1; \
+    } \
+}
+
+// Do 128-bit parallel has-key independent of sizeof(Bucket_t).
+#define HASKEYB_128(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
+{ \
+    assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
+    _b_t *px = (_b_t *)(_pxKeys); \
+    /* bucket number of first bucket to search */ \
+    int nxPos = ((_nPopCnt) - 1) * sizeof(_xKey) / sizeof(_b_t); \
+    /* number of first key in first bucket to search */ \
+    (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
+    while ( ! HasKey128(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
+        /* check the first key in the _b_t to see if we've gone too far */ \
+        if ((_pxKeys)[_nPos] < (_xKey)) { (_nPos) ^= -1; break; } \
+        --nxPos; (_nPos) -= sizeof(_b_t) / sizeof(_xKey); \
+        if (&px[nxPos] < (_b_t *)(_pxKeys)) { (_nPos) = -1; break; } \
+    } \
+}
 
   #else // defined(PSPLIT_EARLY_OUT)
 
@@ -3026,7 +3087,7 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
     { \
         nSplit = nSplitP * sizeof(_b_t) / sizeof(_x_t); \
         _x_t xKeySplit = (_pxKeys)[nSplit]; \
-        /* now we know the value of a key in the middle */ \
+        /* now we have the value of a key in the list */ \
         if ((_xKey) > xKeySplit) \
         { \
             if (nSplitP == ((_nPopCnt) - 1) * sizeof(_x_t) / sizeof(_b_t)) { \
@@ -3070,6 +3131,71 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
                           (_xKey), sizeof(_x_t) * 8) ); \
             } \
         } \
+    } \
+}
+
+// Do 128-bit parallel has-key independent of sizeof(Bucket_t).
+// Try to get it working with an incomplete final bucket.
+// For 32-bit With MALLOC_ALIGNMENT=16 the size of our list buffers modulo
+// 128 bits is always three words.
+// The only time we have a 128-bit aligned rear end is when the last key
+// in the list is in the last word of the 128 bits.
+// We could use type values to distinguish this aligned rear end case from
+// the other cases.
+// How do we handle the other cases?
+// Use HasKey96.
+#define PSPLIT_HASKEY_GUTS_128(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
+{ \
+    /* printf("PSPHK(nBL %d pxKeys %p nPopCnt %d xKey 0x%x nPos %d\n", */ \
+        /* _nBL, (void *)_pxKeys, _nPopCnt, _xKey, _nPos); */ \
+    __m128i *px = (__m128i *)(_pxKeys); \
+    assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(__m128i)))) == 0); \
+    unsigned nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
+    unsigned nSplitP = nSplit * sizeof(_x_t) / sizeof(__m128i); \
+    assert(((nSplit * sizeof(_x_t)) >> LOG(sizeof(__m128i))) == nSplitP); \
+    /*__m128i xLsbs, xMsbs, xKeys;*/ \
+    /*HAS_KEY_128_SETUP((_xKey), sizeof(_x_t) * 8, xLsbs, xMsbs, xKeys);*/ \
+    if (HasKey96(&px[nSplitP], (_xKey), sizeof(_x_t) * 8) \
+        /* check if nSplitP is the last bucket */ \
+        || (((nSplitP != ((_nPopCnt) - 1) * sizeof(_x_t) / sizeof(__m128i)) \
+                || (((_nPopCnt) - 1) * sizeof(_x_t) / sizeof(Word_t) % 4 == 3)) \
+            && HasKey128(&px[nSplitP], (_xKey), sizeof(_x_t) * 8))) \
+    { \
+        (_nPos) = 0; /* key exists, but we don't know the exact position */ \
+    } \
+    else /* key could be in final word */ \
+    { \
+        nSplit = nSplitP * sizeof(__m128i) / sizeof(_x_t); \
+        _x_t xKeySplit = (_pxKeys)[nSplit]; \
+        /* now we have the value of a key in the list */ \
+        if ((_xKey) > xKeySplit) \
+        { \
+            if (nSplitP == ((_nPopCnt) - 1) * sizeof(_x_t)/sizeof(__m128i)) { \
+                /* we searched the last bucket and the key is not there */ \
+                (_nPos) = -1; /* we don't know where to insert */ \
+            } else { \
+                /* parallel search the tail of the list */ \
+                /* ++nSplitP; */ \
+                (_nPos) = (int)nSplit + sizeof(__m128i) / sizeof(_x_t); \
+                HASKEYF_128(__m128i, (_xKey), \
+                          (_pxKeys), (_nPopCnt) - (_nPos), (_nPos)); \
+            } \
+        } \
+        else \
+        { \
+            if (nSplitP == 0) { \
+                /* we searched the first bucket and the key is not there */ \
+                (_nPos) = -1; /* this is where to insert */ \
+            } else { \
+                /* parallel search the head of the list */ \
+                HASKEYB_128(__m128i, (_xKey), (_pxKeys), nSplit, (_nPos)); \
+            } \
+        } \
+        assert(((_nPos) < 0) \
+            || HasKey128((__m128i *) \
+                                  ((Word_t)&(_pxKeys)[_nPos] \
+                                      & ~MSK(LOG(sizeof(__m128i)))), \
+                              (_xKey), sizeof(_x_t) * 8)); \
     } \
 }
 
@@ -3296,17 +3422,85 @@ printf("*pw " OWx" wKey " Owx" nBL %d wMagic "OWx"\n", *pw, wKey, nBL, wMagic);
     _xKeys = MM_SET1_EPW(wKeys); \
 }
 
+// The word with the biggest address may contain garbage.
+// We don't want to get a false match based on the garbage.
+#define HAS_KEY_96_SETUP(_wKey, _nBL, _xLsbs, _xMsbs, _xKeys) \
+{ \
+    Word_t wMask = MSK(_nBL); /* (1 << nBL) - 1 */ \
+    _wKey &= wMask; /* zero insignificant high bits of _wKey */ \
+    Word_t wLsbs = (Word_t)-1 / wMask; /* only lsb of each slot is set */ \
+    Word_t wKeys = wKey * wLsbs; /* replicate key into every slot in wKeys */ \
+    _xKeys = MM_SET1_EPW(wKeys); /* replicate wKeys into _xKeys */ \
+    _xLsbs = MM_SET1_EPW(wLsbs); /* replicate wLsbs into _xLsbs */ \
+    Word_t wMsbs = wLsbs << (nBL - 1); /* only msb of each slot is set  */ \
+    _xMsbs = _mm_set_epi32(0, wMsbs, wMsbs, wMsbs); \
+}
+
+//
+// Notes on the parallel search of a bucket algorithm.
+//
+// Consider the case of no matching slots.
+// For each slot:
+// Since slot does not match, then (Key^Slot) is not zero.
+// So subtracting one from (Key^Slot) does not borrow from the next slot.
+// And subtracting one from (Key^Slot) doesn't have the msb set ...
+// unless the msb is set in (Key^Slot).
+// If the msb is set in (Key^Slot), then the msb is not set in ~(Key^Slot).
+// So anding the difference with ~(Key^Slot) yields a result with msb clear.
+// Then anding that result with a value that has only the msb set yields zero.
+//
+// QED
+//
+// Now consider the case of at least one matching slot.
+// (Keys^Slots) will be zero in each of the matching slots.
+// For all slots less signficant than the least significant matching slot the
+// result is the same as for the no matching slots case consiered above.
+// Starting with the least significant matching slot we classify the
+// possibilities for the next more significant slot into four cases.
+// 1.  (Key&1) && (Slot == Key-1); diff is -1 and borrows from next slot.
+// 2. !(Key&1) && (Slot == Key+1); diff is -1 and borrows from next slot.
+// 3.             (Slot == Key  ); diff is -2 and borrows from next slot.
+// 4. Everything else; does not borrow from the next slot.
+// Then for cases 1-3 we have the same four possibilities for the next more
+// significant slot.
+// And so on.
+//
+// In the end, the least significant slot with its msb set represents
+// (Slot == Key) and more significant slots with their msb set represent
+// (Slot == Key) or (Key&1) && (Slot == Key-1) or !(Key&1) && (Slot == Key+1).
+//
+// In other words.
+// In the end, the least significant slot with its msb set represents
+// (Slot == Key) and more significant slots with their msb set represent
+// (Slot == Key) or (Slot^Key == 1).
+//
+// In other words.
+// In the end, the least significant slot with its msb set represents
+// (Slot == Key) and more significant slots with their msb set represent
+// ((unsigned)(Slot^Key) <= 1)
+//
+// In other words.
+// In the end, slots with their msb set represent ((unsigned)(Slot^Key) <= 1).
+// And the least significant slot with its msb set represents (Slot == Key).
+//
+// QED
+//
+
 static Word_t // bool
 HasKey128Tail(__m128i *pxBucket,
     __m128i xLsbs,
     __m128i xMsbs,
     __m128i xKeys)
 {
+    (void)xMsbs;
     __m128i xBucket = *pxBucket;
-    __m128i xXor = xKeys ^ xBucket;
-    __m128i xMagic = (xXor - xLsbs) & ~xXor & xMsbs;
-    __m128i xZero = _mm_setzero_si128();
-    return ! _mm_testc_si128(xZero, xMagic);
+    __m128i xXor = xKeys ^ xBucket; // zero slots with matching keys
+    //__m128i xMagic = (xXor - xLsbs) & ~xXor & xMsbs;
+    __m128i xMagic = (xXor - xLsbs); // -1 in least significant matching slot
+    xMagic &= ~xXor; // clear msbs in less significant unmatching slots
+    xMagic &= xMsbs; // clear other bits in less significant unmatching slots
+    __m128i xZero = _mm_setzero_si128(); // get zero for compare
+    return ! _mm_testc_si128(xZero, xMagic); // compare with zero
 }
 
 // Key observations about HasKey:
@@ -3319,6 +3513,14 @@ HasKey128(__m128i *pxBucket, Word_t wKey, int nBL)
 {
     __m128i xLsbs, xMsbs, xKeys;
     HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys);
+    return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
+}
+
+static Word_t // bool
+HasKey96(__m128i *pxBucket, Word_t wKey, int nBL)
+{
+    __m128i xLsbs, xMsbs, xKeys;
+    HAS_KEY_96_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys);
     return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
 }
 
@@ -3561,11 +3763,15 @@ ListHasKey16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
   #if defined(PSPLIT_SEARCH_16) && !defined(INSERT)
       #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 16) {
-        PSPLIT_SEARCH(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+  #if defined(UA_PARALLEL_128)
+        PSPLIT_HASKEY_GUTS_128(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+  #else // defined(UA_PARALLEL_128)
+        PSPLIT_HASKEY_GUTS(Bucket_t, uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
+  #endif // defined(UA_PARALLEL_128)
     } else
       #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
-        PSPLIT_SEARCH(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
+        PSPLIT_HASKEY_GUTS(Bucket_t, uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     }
   #elif defined(BACKWARD_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;

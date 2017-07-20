@@ -2079,7 +2079,8 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, unsigned nKeys,
 #endif // (cnBitsPerWord > 32)
 
 static void
-CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc, int nKeys,
+CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc,
+                    int nKeys, // number of keys excluding the new one
                     uint16_t sKey, int nPos)
 {
     int n;
@@ -2106,13 +2107,18 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc, int nKeys,
     pTgt[n] = sKey; // insert the key
 
 #if defined(PSPLIT_PARALLEL)
-    // pad to a word boundary with a key that exists in the list so
-    // parallel search won't give a false positive
-    while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(Bucket_t)))) != 0)
-    {
+    // pad to a bucket boundary with a key that exists in the list
+    // so parallel search won't give a false positive
+    while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(Bucket_t)))) != 0) {
         pTgt[nKeys+1] = pTgt[nKeys]; // or pTgt[0] or sKey
         ++nKeys;
     }
+  #if defined(OLD_LISTS) && ! defined(LIST_END_MARKERS)
+    // pad to the end of the malloc buffer
+    while ((Word_t)((Word_t *)&pTgt[++nKeys] + 1) & cnMallocMask) {
+        pTgt[nKeys] = pTgt[nKeys-1]; // or pTgt[0] or sKey
+    }
+  #endif // defined(OLD_LISTS) && ! defined(LIST_END_MARKERS)
 #endif // defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
     pTgt[nKeys+1] = -1;
@@ -2144,8 +2150,8 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, unsigned nKeys, uint8_t cKey)
     pTgt[n] = cKey; // insert the key
 
 #if defined(PSPLIT_PARALLEL)
-    // pad to a word boundary with a key that exists in the list so
-    // parallel search won't give a false positive
+    // pad to a bucket boundary with a key that exists in the list
+    // so parallel search won't give a false positive
     while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(Bucket_t)))) != 0) {
         pTgt[nKeys+1] = pTgt[nKeys]; // or pTgt[0] or cKey
         ++nKeys;
@@ -4600,7 +4606,7 @@ embeddedKeys:;
         MOVE(&ls_pcKeysNAT(pwList)[nIndex],
              &ls_pcKeysNAT(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
 #if defined(PSPLIT_PARALLEL)
-        // need to pad the list to a word boundary with a key that exists
+        // pad to a bucket boundary with a key that exists in the list
         // so parallel search won't return a false positive
         while ((Word_t)&ls_pcKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(Bucket_t))))
         {
@@ -4615,13 +4621,20 @@ embeddedKeys:;
         MOVE(&ls_psKeysNAT(pwList)[nIndex],
              &ls_psKeysNAT(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
 #if defined(PSPLIT_PARALLEL)
-        // need to pad the list to a word boundary with a key that exists
+        // pad to a bucket boundary with a key that exists in the list
         // so parallel search won't return a false positive
         while ((Word_t)&ls_psKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(Bucket_t))))
         {
             ls_psKeysNAT(pwr)[nKeys] = ls_psKeysNAT(pwr)[nKeys-1];
             ++nKeys;
         }
+  #if defined(OLD_LISTS) && ! defined(LIST_END_MARKERS)
+    // pad to the end of the malloc buffer
+    while ((Word_t)((Word_t *)&ls_psKeysNAT(pwr)[nKeys] + 1) & cnMallocMask) {
+        ls_psKeysNAT(pwr)[nKeys] = ls_psKeysNAT(pwr)[nKeys-1]; // or ls_psKeysNAT(pwr)[0] or sKey
+        ++nKeys;
+    }
+  #endif // defined(OLD_LISTS) && ! defined(LIST_END_MARKERS)
 #endif // defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
         ls_psKeysNAT(pwList)[nKeys] = -1;
@@ -4745,6 +4758,9 @@ Initialize(void)
     // add enough wasted words so an unaligned malloc will work.
     // Adding wasted words is not coded yet.
     assert(cnBitsMallocMask >= cnLogBytesPerBucket);
+  #if defined(UA_PARALLEL_128)
+    assert(EXP(cnBitsMallocMask) >= sizeof(__m128i));
+  #endif // defined(UA_PARALLEL_128)
 #endif // defined(PSPLIT_PARALLEL) && ! defined(NO_PSPLIT_SEARCH)
 
 #if defined(CODE_BM_SW) && ! defined(PP_IN_LINK)
