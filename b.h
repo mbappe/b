@@ -3494,19 +3494,28 @@ printf("*pw " OWx" wKey " Owx" nBL %d wMagic "OWx"\n", *pw, wKey, nBL, wMagic);
 // QED
 //
 
-static Word_t // bool
-HasKey128Tail(__m128i *pxBucket,
+static __m128i
+HasKey128MagicTail(__m128i *pxBucket,
     __m128i xLsbs,
     __m128i xMsbs,
     __m128i xKeys)
 {
-    (void)xMsbs;
     __m128i xBucket = *pxBucket;
     __m128i xXor = xKeys ^ xBucket; // zero slots with matching keys
     //__m128i xMagic = (xXor - xLsbs) & ~xXor & xMsbs;
     __m128i xMagic = (xXor - xLsbs); // -1 in least significant matching slot
     xMagic &= ~xXor; // clear msbs in less significant unmatching slots
     xMagic &= xMsbs; // clear other bits in less significant unmatching slots
+    return xMagic;
+}
+
+static Word_t // bool
+HasKey128Tail(__m128i *pxBucket,
+    __m128i xLsbs,
+    __m128i xMsbs,
+    __m128i xKeys)
+{
+    __m128i xMagic = HasKey128MagicTail(pxBucket, xLsbs, xMsbs, xKeys);
     __m128i xZero = _mm_setzero_si128(); // get zero for compare
     return ! _mm_testc_si128(xZero, xMagic); // compare with zero
 }
@@ -3548,6 +3557,14 @@ HasKey64(uint64_t *px, Word_t wKey, int nBL)
     uint64_t xXor = xKeys ^ xx; // get zero in slot with matching key
     uint64_t xMagic = (xXor - xLsbs) & ~xXor & xMsbs;
     return xMagic; // bXorHasZero = (xMagic != 0);
+}
+
+static __m128i
+HasKey128Magic(__m128i *pxBucket, Word_t wKey, int nBL)
+{
+    __m128i xLsbs, xMsbs, xKeys;
+    HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys);
+    return HasKey128MagicTail(pxBucket, xLsbs, xMsbs, xKeys);
 }
 
 #endif // defined(COMPRESSED_LISTS)
