@@ -282,9 +282,16 @@ libb.so: $(LIBB_SRCS) JudyMalloc.so
 libb1.so: $(LIBB1_SRCS) JudyMalloc.so
 	$(CC) $(CFLAGS) -fPIC $(DEFINES) -shared -o $@ $^
 
+ifneq "$(CC)" "c++"
+ifneq "$(CC)" "g++"
+ifneq "$(CC)" "clang++"
+  MALLOC_FLAGS = -Wno-old-style-declaration -Wno-unknown-warning-option
+endif
+endif
+endif
+
 JudyMalloc.so: JudyMalloc.c
-	$(CC) $(CFLAGS) -Wno-old-style-declaration \
- -Wno-unknown-warning-option -fPIC $(DEFINES) -shared -o $@ $^
+	$(CC) $(CFLAGS) $(MALLOC_FLAGS) -fPIC $(DEFINES) -shared -o $@ $^
 
 ############################
 #
@@ -308,8 +315,7 @@ stubsHS.o: stubsHS.c
 
 # Default MALLOC_ALIGNMENT is 2 * sizeof(void *), except possibly on OSX.
 JudyMalloc.o: JudyMalloc.c
-	$(CC) $(CFLAGS) -Wno-old-style-declaration \
- -Wno-unknown-warning-option $(DEFINES) -c $^
+	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) -c $^
 
 ############################
 #
@@ -336,8 +342,7 @@ stubsHS.s: stubsHS.c
 
 # Suppress warnings.  sbrk is deprecated.
 JudyMalloc.s: JudyMalloc.c
-	$(CC) $(CFLAGS) -Wno-old-style-declaration \
- -Wno-unknown-warning-option $(DEFINES) -S $^
+	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) -S $^
 
 ############################
 #

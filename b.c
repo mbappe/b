@@ -12,29 +12,6 @@ const char *Judy1MallocSizes = "Judy1MallocSizes = 3, 5, 7, ...";
      (((_nBL) <=  8) ? 1 : ((_nBL) <= 16) ? 2 \
     : ((_nBL) <= 32) ? 4 : sizeof(Word_t))
 
-#if defined(RAMMETRICS)
-
-Word_t j__AllocWordsTOT;
-Word_t j__ExtraWordsTOT;
-Word_t j__ExtraWordsCnt;
-Word_t j__TotalBytesAllocated; // mmap
-
-Word_t j__AllocWordsJLLW; // 1 word/key list leaf
-//Word_t j__AllocWordsJBL;  // linear branch
-Word_t j__AllocWordsJBB;  // bitmap branch
-Word_t j__AllocWordsJBU;  // uncompressed branch
-Word_t j__AllocWordsJLB1; // bitmap leaf
-Word_t j__AllocWordsJLL1; // 1 byte/key list leaf
-Word_t j__AllocWordsJLL2; // 2 bytes/key list leaf
-Word_t j__AllocWordsJLL3; // B2 big bitmap leaf
-//Word_t j__AllocWordsJV;   // value area
-Word_t j__AllocWordsJLL4; // 4 bytes/key list leaf
-//Word_t j__AllocWordsJLL5; // 5 bytes/key list leaf
-//Word_t j__AllocWordsJLL6; // 6 bytes/key list leaf
-Word_t j__AllocWordsJLL7; // words requested
-
-#endif // defined(RAMMETRICS)
-
 Word_t wPopCntTotal;
 #if defined(DEBUG)
 Word_t *pwRootLast; // allow dumping of tree when root is not known

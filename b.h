@@ -4406,5 +4406,29 @@ BmSwIndex(Word_t *pwRoot, Word_t wIndex,
 
 #endif // (cnDigitsPerWord > 1)
 
+#if defined(RAMMETRICS)
+
+extern Word_t j__AllocWordsTOT;
+extern Word_t j__TotalBytesAllocated; // mmap
+
+extern Word_t j__ExtraWordsTOT;
+extern Word_t j__ExtraWordsCnt;
+
+extern Word_t j__AllocWordsJLLW; // 1 word/key list leaf
+//extern Word_t j__AllocWordsJBL;  // linear branch
+extern Word_t j__AllocWordsJBB;  // bitmap branch
+extern Word_t j__AllocWordsJBU;  // uncompressed branch
+extern Word_t j__AllocWordsJLB1; // bitmap leaf
+extern Word_t j__AllocWordsJLL1; // 1 byte/key list leaf
+extern Word_t j__AllocWordsJLL2; // 2 bytes/key list leaf
+extern Word_t j__AllocWordsJLL3; // B2 big bitmap leaf
+//Word_t j__AllocWordsJV;   // value area
+extern Word_t j__AllocWordsJLL4; // 4 bytes/key list leaf
+//extern Word_t j__AllocWordsJLL5; // 5 bytes/key list leaf
+//extern Word_t j__AllocWordsJLL6; // 6 bytes/key list leaf
+extern Word_t j__AllocWordsJLL7; // words requested
+
+#endif // defined(RAMMETRICS)
+
 #endif // ( ! defined(_B_H_INCLUDED) )
 

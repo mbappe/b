@@ -33,14 +33,17 @@
 // Global in case anyone wants to know (kind of kludgy, but only for testing)
 
 #ifdef  RAMMETRICS
+
+extern Word_t    j__AllocWordsTOT;     // words given by JudyMalloc including overhead
+extern Word_t    j__MalFreeCnt;                // keep track of total malloc() + free()
+extern Word_t    j__MFlag;                     // Print memory allocation on stderr
+extern Word_t    j__TotalBytesAllocated;       // mmapped by dlmalloc
+
 Word_t    j__RequestedWordsTOT;       // words requested by Judy via JudyMalloc
-Word_t    j__AllocWordsTOT;     // words given by JudyMalloc including overhead
 Word_t    j__ExtraWordsTOT;             // extra words above previous estimate
                                         // of one or two or three
 Word_t    j__ExtraWordsCnt;             // how many buffers have extra words
-Word_t    j__MalFreeCnt;                // keep track of total malloc() + free()
-Word_t    j__MFlag;                     // Print memory allocation on stderr
-Word_t    j__TotalBytesAllocated;       // mmapped by dlmalloc
+
 #endif  // RAMMETRICS
 
 // Use -DLIBCMALLOC if you want to use the libc malloc() instead of this
