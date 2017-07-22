@@ -242,10 +242,10 @@ t: t.c $(T_OBJS)
 #Judy1LHTime: Judy1LHTime.c libb.a
 #	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 Judy1LHTime: Judy1LHTime.c libb1.a
-	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ $(LDFLAGS) -lJudy -lm
+	$(CC) $(CFLAGS) $(DEFINES) -DMIKEY -o $@ $^ $(LDFLAGS) -lJudy -lm
 
 c++time: Judy1LHTime.c libb.a
-	$(CXX) $(CXXFLAGS) $(DEFINES) \
+	$(CXX) $(CXXFLAGS) $(DEFINES) -DMIKEY \
  -x c++ Judy1LHTime.c -x none libb.a -o $@ -lm
 
 b: Judy1LHTime
@@ -258,10 +258,10 @@ btime: Judy1LHTime
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
 Judy1LHCheck: Judy1LHCheck.c libb1.a
 	$(CC) $(CFLAGS) -Wno-sign-compare \
- $(DEFINES) -o $@ $^ $(LDFLAGS) -lJudy -lm
+ $(DEFINES) -DMIKEY -o $@ $^ $(LDFLAGS) -lJudy -lm
 
 c++check: Judy1LHCheck.c libb1.a
-	$(CXX) $(CXXFLAGS) $(DEFINES) -x c++ Judy1LHCheck.c \
+	$(CXX) $(CXXFLAGS) $(DEFINES) -DMIKEY -x c++ Judy1LHCheck.c \
  -x none libb1.a -o $@ $(LDFLAGS) -lJudy -lm
 
 bcheck: Judy1LHCheck
@@ -332,7 +332,7 @@ t.s: t.c
 
 # Suppress warnings.
 Judy1LHTime.s: Judy1LHTime.c
-	$(CC) $(CFLAGS) $(DEFINES) -S $^
+	$(CC) $(CFLAGS) $(DEFINES) -DMIKEY -S $^
 
 stubsL.s: stubsL.c
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
@@ -387,7 +387,7 @@ stubsHS.i: stubsHS.c
 
 # The .c.i rule doesn't work for some reason.  Later.
 Judy1LHTime.i: Judy1LHTime.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(DEFINES) -DMIKEY -E $^ | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
 t.i: t.c
