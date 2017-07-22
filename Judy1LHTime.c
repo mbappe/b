@@ -2786,7 +2786,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                             else
                             {
                                 printf("\nTstKey = 0x%" PRIxPTR"\n", TstKey);
-                                Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
+                                Judy1Dump((Word_t)*J1, sizeof(Word_t) * 8, 0);
                                 FAILURE("Judy1Set failed - DUP Key at elm", elm);
                             }
                         }
