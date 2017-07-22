@@ -245,7 +245,7 @@ MyFree(Word_t *pw, Word_t wWords)
     size_t zUnitsAllocated = zUnitsRequired + zExtraUnits;
 #endif // defined(DEBUG_MALLOC)
     DBGM(printf("required %zd alloc %zd extra %zd\n",
-                zUnitsRequired, zUnitsRequired+zExtraUnits, zExtraUnits));
+                zUnitsRequired, zUnitsAllocated, zExtraUnits));
     assert((pw)[-1] & 2); // lock down what we think we know
     pw[-1] &= MSK(cnBitsUsed); // clear high bits
     pw[-1] |= (zUnitsRequired + zExtraUnits) << cnBitsMallocMask;
@@ -305,14 +305,30 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
     if (nBytesKeySz < (int)sizeof(Word_t))
   #endif // ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LISTS)
     {
-        if ((cnMallocMask + 1) < sizeof(Bucket_t)) {
-            // We don't know what address we are going to get from malloc.
-            // We have to allocate enough memory to ensure that we will be able
-            // to align the beginning of the array of real keys.
-            nBytesHdr += sizeof(Bucket_t) - (cnMallocMask + 1);
-            nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(Bucket_t) - (cnMallocMask + 1));
-        } else {
-            nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(Bucket_t));
+#if defined(UA_PARALLEL_128)
+        assert(sizeof(Bucket_t) < sizeof(__m128i));
+        if ((nBL == 16) && (wPopCntArg > 6)) {
+            if ((cnMallocMask + 1) < sizeof(__m128i)) {
+                // We don't know what address we are going to get from malloc.
+                // We have to allocate enough memory to ensure that we will be able
+                // to align the beginning of the array of real keys.
+                nBytesHdr += sizeof(__m128i) - (cnMallocMask + 1);
+                nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(__m128i) - (cnMallocMask + 1));
+            } else {
+                nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(__m128i));
+            }
+        } else
+#endif // defined(UA_PARALLEL_128)
+        {
+            if ((cnMallocMask + 1) < sizeof(Bucket_t)) {
+                // We don't know what address we are going to get from malloc.
+                // We have to allocate enough memory to ensure that we will be able
+                // to align the beginning of the array of real keys.
+                nBytesHdr += sizeof(Bucket_t) - (cnMallocMask + 1);
+                nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(Bucket_t) - (cnMallocMask + 1));
+            } else {
+                nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(Bucket_t));
+            }
         }
     }
 #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
@@ -326,7 +342,15 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
   #if ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LIST_ENDS)
     if (nBytesKeySz < (int)sizeof(Word_t))
   #endif // ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LIST_ENDS)
-    { nBytesKeys = ALIGN_UP(nBytesKeys, sizeof(Bucket_t)); }
+    {
+#if defined(UA_PARALLEL_128)
+        assert(sizeof(Bucket_t) < sizeof(__m128i));
+        if ((nBL == 16) && (wPopCntArg > 6)) {
+            nBytesKeys = ALIGN_UP(nBytesKeys, sizeof(__m128i));
+        } else
+#endif // defined(UA_PARALLEL_128)
+        { nBytesKeys = ALIGN_UP(nBytesKeys, sizeof(Bucket_t)); }
+    }
 
 #else // defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)
 
@@ -518,8 +542,11 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
     if (nType == T_EMBEDDED_KEYS) { DBGR(printf("OL: 0.\n")); return 0; }
 #endif // defined(EMBED_KEYS)
 
-    int nWords = ((nType == T_LIST) ? ListWordsTypeList(nPopCnt, nBL)
-                                    : ListWords(nPopCnt, nBL));
+    int nWords = ( (nType == T_LIST)
+#if defined(UA_PARALLEL_128)
+            || (nType == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+            ) ? ListWordsTypeList(nPopCnt, nBL) : ListWords(nPopCnt, nBL);
 
     DBGM(printf("Old pwList %p wLen %d nBL %d nPopCnt %d nType %d\n",
         (void *)pwList, nWords, nBL, nPopCnt, nType));
@@ -1351,7 +1378,12 @@ GetPopCnt(Word_t *pwRoot, int nBL)
 #if defined(EMBED_KEYS)
         if (nType == T_EMBEDDED_KEYS) { return wr_nPopCnt(*pwRoot, nBL); }
 #endif // defined(EMBED_KEYS)
-        if (nType == T_LIST) {
+        if ( (nType == T_LIST)
+#if defined(UA_PARALLEL_128)
+            || (nType == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+            )
+        {
             return PWR_xListPopCnt(pwRoot, wr_pwr(*pwRoot), nBL);
         }
         if ((nType == T_BITMAP)
@@ -1677,10 +1709,19 @@ embeddedKeys:;
 #endif // defined(EMBED_KEYS)
         {
 #if defined(DEBUG)
-            if (nType != T_LIST) {
+            if ( (nType != T_LIST)
+  #if defined(UA_PARALLEL_128)
+                && (nType != T_LIST_UA)
+  #endif // defined(UA_PARALLEL_128)
+                )
+            {
                 printf("nType %d\n", nType);
             }
-            assert(nType == T_LIST);
+            assert( (nType == T_LIST)
+  #if defined(UA_PARALLEL_128)
+                   || (nType == T_LIST_UA)
+  #endif // defined(UA_PARALLEL_128)
+                   );
 #endif // defined(DEBUG)
 
 #if defined(PP_IN_LINK)
@@ -2101,16 +2142,28 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc,
     pTgt[n] = sKey; // insert the key
 
 #if defined(PSPLIT_PARALLEL)
+  #if defined(UA_PARALLEL_128)
+    int nPopCnt = nKeys + 1; // nKeys is key number
+  #endif // defined(UA_PARALLEL_128)
     // pad to a bucket boundary with a key that exists in the list
     // so parallel search won't give a false positive
     while (((Word_t)&pTgt[nKeys+1] & MSK(LOG(sizeof(Bucket_t)))) != 0) {
         pTgt[nKeys+1] = pTgt[nKeys]; // or pTgt[0] or sKey
         ++nKeys;
     }
+  #if defined(UA_PARALLEL_128)
+    if (nPopCnt > 6) {
+        while (((Word_t)&pTgt[nKeys+1] & (sizeof(__m128i) - 1))) {
+            pTgt[nKeys+1] = pTgt[nKeys]; // or pTgt[0] or sKey
+            ++nKeys;
+        }
+    }
+  #endif // defined(UA_PARALLEL_128)
   #if defined(OLD_LISTS) && ! defined(LIST_END_MARKERS)
     // pad to the end of the malloc buffer
-    while ((Word_t)((Word_t *)&pTgt[++nKeys] + 1) & cnMallocMask) {
-        pTgt[nKeys] = pTgt[nKeys-1]; // or pTgt[0] or sKey
+    while ((Word_t)((Word_t *)&pTgt[nKeys+1] + 1) & cnMallocMask) {
+        pTgt[nKeys+1] = pTgt[nKeys]; // or pTgt[0] or sKey
+        ++nKeys;
     }
   #endif // defined(OLD_LISTS) && ! defined(LIST_END_MARKERS)
 #endif // defined(PSPLIT_PARALLEL)
@@ -2321,8 +2374,16 @@ embeddedKeys:;
 #if (cwListPopCntMax != 0)
             else if (wRootLn != 0) {
 #if defined(DEBUG)
-                if (nTypeLn != T_LIST) { printf("nTypeLn %d\n", nTypeLn); }
-                assert(nTypeLn == T_LIST);
+                if (nTypeLn != T_LIST)
+  #if defined(UA_PARALLEL_128)
+                if (nTypeLn != T_LIST_UA)
+  #endif // defined(UA_PARALLEL_128)
+                { printf("nTypeLn %d\n", nTypeLn); }
+                assert( (nTypeLn == T_LIST)
+  #if defined(UA_PARALLEL_128)
+                       || (nTypeLn == T_LIST_UA)
+  #endif // defined(UA_PARALLEL_128)
+                       );
 #endif // defined(DEBUG)
 #if defined(PP_IN_LINK)
                 int nPopCntLn
@@ -2438,19 +2499,31 @@ embeddedKeys:;
 // If (nBLOld < nDL_to_nBL) Dump is going to think wRootOld is embeddded keys.
         //DBGI(Dump(&wRootOld, wKey & ~MSK(nBLOld), nBLOld));
         nType = wr_nType(wRootOld); // changed by IEL
-        assert(nType == T_LIST);
+        assert( (nType == T_LIST)
+  #if defined(UA_PARALLEL_128)
+               || (nType == T_LIST_UA)
+  #endif // defined(UA_PARALLEL_128)
+               );
     }
   #endif // defined(EMBED_KEYS)
 #endif // defined(CODE_XX_SW)
 
     Word_t *pwrOld = wr_pwr(wRootOld);
 
-    if (nType != T_LIST) {
+    if (nType != T_LIST)
+  #if defined(UA_PARALLEL_128)
+    if (nType != T_LIST_UA)
+  #endif // defined(UA_PARALLEL_128)
+    {
         printf("nType %d wRootOld " OWx" pwRootOld %p\n",
                nType, wRootOld, (void *)pwRootOld);
         DBGR(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
     }
-    assert(nType == T_LIST);
+    assert( (nType == T_LIST)
+  #if defined(UA_PARALLEL_128)
+           || (nType == T_LIST_UA)
+  #endif // defined(UA_PARALLEL_128)
+           );
 #if defined(PP_IN_LINK) // ? what about POP_IN_WR_HB ?
     if (nBLOld < cnBitsPerWord) {
         // Adjust the count to compensate for pre-increment during insert.
@@ -3067,7 +3140,12 @@ embeddedKeys:;
                     || (PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)
                             == wPopCnt + 1));
 #endif // defined(PP_IN_LINK)
-                set_wr(wRoot, pwList, T_LIST);
+#if defined(UA_PARALLEL_128)
+                if ((nBL == 16) && (wPopCnt < 6)) {
+                    set_wr(wRoot, pwList, T_LIST_UA);
+                } else
+#endif // defined(UA_PARALLEL_128)
+                { set_wr(wRoot, pwList, T_LIST); }
             }
             else
             {
@@ -3181,7 +3259,11 @@ copyWithInsert16:
 
 #if defined(EMBED_KEYS)
             // Embed the list if it fits.
-            assert(wr_nType(wRoot) == T_LIST);
+            assert( (wr_nType(wRoot) == T_LIST)
+#if defined(UA_PARALLEL_128)
+                   || (wr_nType(wRoot) == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+                   );
             if ((int)wPopCnt < EmbeddedListPopCntMax(nBL))
             {
                 DeflateExternalList(pwRoot, wPopCnt + 1, nBL, pwList);
@@ -3506,12 +3588,20 @@ doubleIt:;
 // So let's try installing it.
 #if defined(NO_TYPE_IN_XX_SW)
                     DBGR(printf("IG: free inflated list.\n"));
-                    assert(wr_nType(wRoot) == T_LIST);
+                    assert( (wr_nType(wRoot) == T_LIST)
+#if defined(UA_PARALLEL_128)
+                           || (wr_nType(wRoot) == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+                           );
                     OldList(wr_pwr(wRoot), wPopCnt, nBL, T_LIST);
 #else // defined(NO_TYPE_IN_XX_SW)
 #if defined(EMBED_KEYS)
                     if (wr_nType(*pwRoot) == T_EMBEDDED_KEYS) {
-                        assert(wr_nType(wRoot) == T_LIST);
+                        assert( (wr_nType(wRoot) == T_LIST)
+#if defined(UA_PARALLEL_128)
+                               || (wr_nType(wRoot) == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+                               );
                         *pwRoot = wRoot;
                     }
 #endif // defined(EMBED_KEYS)
@@ -4076,7 +4166,12 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
     // complicated later?
     Word_t *pwList = NewListTypeList(nPopCnt, nBL);
     Word_t wRootNew = 0;
-    set_wr(wRootNew, pwList, T_LIST);
+#if defined(UA_PARALLEL_128)
+    if ((nBL == 16) && (nPopCnt <= 6)) {
+        set_wr(wRootNew, pwList, T_LIST_UA);
+    } else
+#endif // defined(UA_PARALLEL_128)
+    { set_wr(wRootNew, pwList, T_LIST); }
 #if defined(PP_IN_LINK)
     if (nBL >= cnBitsPerWord)
 #endif // defined(PP_IN_LINK)
@@ -4135,6 +4230,8 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
         }
     }
 
+    // What about padding the bucket and/or malloc buffer?
+
     return wRootNew; // wRootNew is not installed; *pwRoot is intact
 }
 
@@ -4150,7 +4247,11 @@ DeflateExternalList(Word_t *pwRoot,
     int nPopCntMax = EmbeddedListPopCntMax(nBL); (void)nPopCntMax;
 //printf("DEL: nBL %d nPopCntMax %d\n", nBL, nPopCntMax);
 
-    assert(wr_nType(*pwRoot) == T_LIST);
+    assert( (wr_nType(*pwRoot) == T_LIST)
+#if defined(UA_PARALLEL_128)
+           || (wr_nType(*pwRoot) == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+           );
 
     DBGI(printf("DeflateExternalList pwRoot %p nPopCnt %d nBL %d pwr %p\n",
                (void *)pwRoot, nPopCnt, nBL, (void *)pwr));
@@ -4249,7 +4350,7 @@ DeflateExternalList(Word_t *pwRoot,
         }
     }
 
-    OldList(pwr, nPopCnt, nBL, T_LIST);
+    OldList(pwr, nPopCnt, nBL, wr_nType(*pwRoot));
 
     goto done;
 done:;
@@ -4499,14 +4600,23 @@ embeddedKeys:;
         // Is there any reason to preserve *pwRoot?
         // Is it a problem to have an external list that could
         // be embedded?
-        nType = T_LIST;
+        nType = wr_nType(wRoot);
         pwr = wr_pwr(wRoot);
         assert(wr_nType(wRoot) == nType);
     }
 #endif // defined(EMBED_KEYS)
 
-    assert(wr_nType(wRoot) == T_LIST);
-    assert(nType == T_LIST);
+    assert( (wr_nType(wRoot) == T_LIST)
+#if defined(UA_PARALLEL_128)
+           || (wr_nType(wRoot) == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+           );
+    assert( (nType == T_LIST)
+#if defined(UA_PARALLEL_128)
+           || (nType == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+           );
+    assert(nType == wr_nType(wRoot));
 
     Word_t wPopCnt;
 
@@ -4520,6 +4630,8 @@ embeddedKeys:;
     {
         wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL);
     }
+
+    // wPopCnt is the count before the remove.
 
     if (wPopCnt == 1) {
         assert( ! tp_bIsSwitch(nType) );
@@ -4582,7 +4694,12 @@ embeddedKeys:;
              break;
         }
 
-        set_wr(wRoot, pwList, T_LIST);
+#if defined(UA_PARALLEL_128)
+        if ((nBL == 16) && (wPopCnt - 1 <= 6)) {
+            set_wr(wRoot, pwList, T_LIST_UA);
+        } else
+#endif // defined(UA_PARALLEL_128)
+        { set_wr(wRoot, pwList, T_LIST); }
     }
 
 #if defined(PP_IN_LINK)
@@ -4622,12 +4739,54 @@ embeddedKeys:;
             ls_psKeysNAT(pwr)[nKeys] = ls_psKeysNAT(pwr)[nKeys-1];
             ++nKeys;
         }
+  #if defined(UA_PARALLEL_128)
+        // Should we use ListWordsTypeList here?
+        if (wPopCnt - 1 > 6) {
+            while ((Word_t)&ls_psKeysNAT(pwr)[nKeys] & MSK(LOG(sizeof(__m128i))))
+            {
+                ls_psKeysNAT(pwr)[nKeys] = ls_psKeysNAT(pwr)[nKeys-1];
+                ++nKeys;
+            }
+        }
+  #endif // defined(UA_PARALLEL_128)
   #if defined(OLD_LISTS) && ! defined(LIST_END_MARKERS)
     // pad to the end of the malloc buffer
     while ((Word_t)((Word_t *)&ls_psKeysNAT(pwr)[nKeys] + 1) & cnMallocMask) {
         ls_psKeysNAT(pwr)[nKeys] = ls_psKeysNAT(pwr)[nKeys-1]; // or ls_psKeysNAT(pwr)[0] or sKey
         ++nKeys;
     }
+      #if defined(DEBUG)
+    uint16_t *pxKeys = ls_psKeysNAT(pwr);
+    uint16_t *pxKeysEnd = &ls_psKeysNAT(pwr)[wPopCnt - 1];
+    uint16_t *pxBucketEnd = (uint16_t *)ALIGN_UP((Word_t)pxKeysEnd, sizeof(Bucket_t));
+    uint16_t *px128End = (uint16_t *)ALIGN_UP((Word_t)pxKeysEnd, sizeof(__m128i));
+
+    uint16_t *pxMallocEnd;
+          #if defined(UA_PARALLEL_128)
+    if (wPopCnt - 1 > 6) {
+        pxMallocEnd = (uint16_t *)(ALIGN_UP((Word_t)px128End + sizeof(Word_t), cnMallocMask + 1) - sizeof(Word_t));
+    } else
+          #endif // defined(UA_PARALLEL_128)
+    pxMallocEnd = (uint16_t *)(ALIGN_UP((Word_t)pxBucketEnd + sizeof(Word_t), cnMallocMask + 1) - sizeof(Word_t));
+
+    assert(pxKeysEnd > pxKeys);
+    assert(pxBucketEnd >= pxKeysEnd);
+    assert(px128End >= pxBucketEnd);
+    assert(pxMallocEnd >= pxBucketEnd);
+          #if defined(UA_PARALLEL_128)
+    assert((pxMallocEnd >= px128End) || (wr_nType(wRoot) == T_LIST_UA));
+    for (uint16_t *px = pxKeysEnd; px < pxMallocEnd; px++) {
+        if (*px != pxKeys[wPopCnt-2]) {
+            printf("\nwPopCnt - 1: %d\n", wPopCnt - 1);
+            for (uint16_t *px = pxKeys; px < pxMallocEnd; px++) {
+                printf(" 0x%04x", *px);
+            }
+            printf("\n");
+        }
+        assert(*px == pxKeys[wPopCnt-2]);
+    }
+          #endif // defined(UA_PARALLEL_128)
+      #endif // defined(DEBUG)
   #endif // defined(OLD_LISTS) && ! defined(LIST_END_MARKERS)
 #endif // defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
@@ -4674,8 +4833,16 @@ embeddedKeys:;
 
 #if defined(EMBED_KEYS)
     // Embed the list if it fits.
-    assert(wr_nType(wRoot) == T_LIST);
-    assert(nType == T_LIST);
+    assert( (wr_nType(wRoot) == T_LIST)
+#if defined(UA_PARALLEL_128)
+           || (wr_nType(wRoot) == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+           );
+    assert( (nType == T_LIST)
+#if defined(UA_PARALLEL_128)
+           || (nType == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+           );
     if ((int)wPopCnt <= EmbeddedListPopCntMax(nBL) + 1) {
         DeflateExternalList(pwRoot, wPopCnt - 1, nBL, pwList);
     }
@@ -5077,6 +5244,12 @@ Initialize(void)
 #else // defined(PSPLIT_PARALLEL)
     printf("# No PSPLIT_PARALLEL\n");
 #endif // defined(PSPLIT_PARALLEL)
+
+#if defined(UA_PARALLEL_128)
+    printf("#    UA_PARALLEL_128\n");
+#else // defined(UA_PARALLEL_128)
+    printf("# No UA_PARALLEL_128\n");
+#endif // defined(UA_PARALLEL_128)
 
 #if defined(PARALLEL_128)
     printf("#    PARALLEL_128\n");
@@ -5534,6 +5707,12 @@ Initialize(void)
     printf("# No NO_BL_SPECIFIC_PSPLIT_SEARCH\n");
 #endif // defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
 
+#if defined(NO_UA_PARALLEL_128)
+    printf("#    NO_UA_PARALLEL_128\n");
+#else // defined(NO_UA_PARALLEL_128)
+    printf("# No NO_UA_PARALLEL_128\n");
+#endif // defined(NO_UA_PARALLEL_128)
+
 #if defined(NO_PARALLEL_128)
     printf("#    NO_PARALLEL_128\n");
 #else // defined(NO_PARALLEL_128)
@@ -5750,6 +5929,12 @@ Initialize(void)
 #endif // defined(SEPARATE_T_NULL)
 #if (cwListPopCntMax != 0)
     printf("# 0x%x %-20s\n", T_LIST, "T_LIST");
+#if defined(SKIP_TO_LIST)
+    printf("# 0x%x %-20s\n", T_SKIP_TO_LIST, "T_SKIP_TO_LIST");
+#endif // defined(SKIP_TO_LIST)
+#if defined(UA_PARALLEL_128)
+    printf("# 0x%x %-20s\n", T_LIST_UA, "T_LIST_UA");
+#endif // defined(UA_PARALLEL_128)
 #endif // (cwListPopCntMax != 0)
     printf("# 0x%x %-20s\n", T_BITMAP, "T_BITMAP");
 #if defined(SKIP_TO_BITMAP)
@@ -5974,7 +6159,11 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
                 wPopCnt = GetPopCnt(&wRoot, cnBitsPerWord);
       #endif // defined(SKIP_TO_BITMAP)
             } else {
-                assert(nType == T_LIST);
+                assert( (nType == T_LIST)
+#if defined(UA_PARALLEL_128)
+                       || (nType == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+                       );
                 // ls_wPopCnt is valid at top for PP_IN_LINK.
                 wPopCnt = PWR_xListPopCnt(&wRoot, pwr, cnBitsPerWord);
             }
@@ -6058,7 +6247,14 @@ NextGuts(Word_t wRoot, int nBL,
                 wRoot, nBL, *pwKey, wSkip, bPrev, bEmpty, (void *)pwr));
     int nType = wr_nType(wRoot);
     switch (nType) {
+#if defined(UA_PARALLEL_128)
+    case T_LIST_UA:
+        DBGN(printf("T_LIST_UA\n"));
+        goto t_list;
+#endif // defined(UA_PARALLEL_128)
     case T_LIST: {
+        goto t_list;
+t_list:;
         DBGN(printf("T_LIST\n"));
         //A(0);
         if (pwr == NULL) {
@@ -6917,7 +7113,13 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
                 (void *)wRoot, (void *)pwr));
     int nIncr;
     switch (wr_nType(wRoot)) {
+#if defined(UA_PARALLEL_128)
+    case T_LIST_UA:
+        goto t_list;
+#endif // defined(UA_PARALLEL_128)
     case T_LIST:; {
+        goto t_list;
+t_list:;
         int nPos;
         if ((pwr == NULL)
                 || ((nPos = SearchList(pwr, *pwKey, nBL, pwRoot)) < 0)) {
@@ -6972,12 +7174,12 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
         }
         while (SearchList(wr_pwr(wRootNew), *pwKey, nBL, &wRootNew) >= 0) {
             if (*pwKey == wKeyLast) {
-                OldList(wr_pwr(wRootNew), wr_nPopCnt(wRoot, nBL), nBL, T_LIST);
+                OldList(wr_pwr(wRootNew), wr_nPopCnt(wRoot, nBL), nBL, wr_nType(wRootNew));
                 return Failure;
             }
             *pwKey += nIncr;
         }
-        OldList(wr_pwr(wRootNew), wr_nPopCnt(wRoot, nBL), nBL, T_LIST);
+        OldList(wr_pwr(wRootNew), wr_nPopCnt(wRoot, nBL), nBL, wr_nType(wRootNew));
         return Success;
     }
   #endif // defined(EMBED_KEYS)

@@ -113,6 +113,9 @@ CountSw(Word_t *pwRoot,
                 break;
           #endif // defined(EMBED_KEYS)
             case T_LIST:
+          #if defined(UA_PARALLEL_128)
+            case T_LIST_UA:
+          #endif // defined(UA_PARALLEL_128)
                 wPopCntLoop = 0;
           #if ! defined(SEPARATE_T_NULL)
                 if (pwrLoop != NULL)
@@ -542,6 +545,9 @@ again:;
           #if defined(SKIP_TO_LIST)
         &&t_skip_to_list,
           #endif // defined(SKIP_TO_LIST)
+          #if defined(UA_PARALLEL_128)
+        &&t_list_ua,
+          #endif // defined(UA_PARALLEL_128)
       #endif // (cwListPopCntMax != 0)
         &&t_bitmap,
       #if defined(SKIP_TO_BITMAP)
@@ -1529,6 +1535,202 @@ t_list:;
         break;
 
     } // end of case T_LIST
+
+#if defined(UA_PARALLEL_128)
+    case T_LIST_UA:
+    {
+        goto t_list_ua;
+t_list_ua:;
+        DBGX(printf("T_LIST_UA nBL %d nBLR %d\n", nBL, nBLR));
+        DBGX(printf("wKeyPopMask " OWx"\n", wPrefixPopMaskBL(nBLR)));
+
+  #if defined(INSERT) || defined(REMOVE)
+        DBGX(printf("T_LIST_UA bCleanup %d nIncr %d\n", bCleanup, nIncr));
+        if (bCleanup) {
+            return Success;
+        } // cleanup is complete
+  #endif // defined(INSERT) || defined(REMOVE)
+
+      #if defined(PP_IN_LINK)
+          #if defined(INSERT)
+        if (nIncr == -1) { return Failure; }
+          #endif // defined(INSERT)
+          #if defined(REMOVE)
+        if (nIncr == 1) { return Failure; }
+          #endif // defined(REMOVE)
+      #endif // defined(PP_IN_LINK)
+
+        // Search the list.  wPopCnt is the number of keys in the list.
+
+      #if defined(COUNT) && ! defined(SEPARATE_T_NULL)
+        if (pwr == NULL) { nPos = ~0; }
+      #endif // defined(COUNT) && ! defined(SEPARATE_T_NULL)
+
+      #if defined(COMPRESSED_LISTS)
+          #if !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
+        // nBL is relative to the bottom of the switch
+        // containing the pointer to the leaf.
+        // Can we use NAT here since bNeedPrefixCheck will never
+        // be true if we are at the top?
+        // If the top digit is smaller than the rest, then NAT will
+        // return nBL > cnBitsPerWord which works out perfectly.
+          #endif // !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
+          #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+              #if defined(SKIP_TO_LIST)
+        // We don't support skip links directly to leaves -- yet.
+        // Even with defined(PP_IN_LINK).
+        #error SKIP_TO_LIST with SKIP_PREFIX_CHECK
+              #endif // defined(SKIP_TO_LIST)
+        // It is sufficient to check the prefix at the switch just
+        // above the leaf.
+        // pwrPrev is left from the previous iteration of the goto again
+        // loop.
+        // Would like to combine the source code for this prefix
+        // check and the one done in the bitmap section if possible.
+        if ( 0
+              #if (cnBitsPerWord > 32)
+            || (nBL > 32) // leaf has whole key
+              #else // (cnBitsPerWord > 32)
+            || (nBL > 16) // leaf has whole key
+              #endif // (cnBitsPerWord > 32)
+          // can't skip nBL check above or we might be at top
+          // hmm; check nBL or check at top; which is better?
+              #if ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+            // leaf does not have whole key
+            // What if there were no skips in the part that is missing?
+            || ( ! bNeedPrefixCheck ) // we followed no skip links
+              #endif // ! defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
+            // If we need a prefix check, then we're not at the top.
+            // And pwRoot is initialized despite what gcc might think.
+              #if defined(SAVE_PREFIX_TEST_RESULT)
+            || (wPrefixMismatch != 0)
+              #elif defined(SAVE_PREFIX)
+                  #if defined(PP_IN_LINK)
+            || ((pwRootPrefix == NULL) && (wKey < EXP(nBLRPrefix)))
+                  #endif // defined(PP_IN_LINK)
+            || (1
+                  #if defined(PP_IN_LINK)
+                && (pwRootPrefix != NULL)
+                  #endif // defined(PP_IN_LINK)
+                && ((int)LOG(1
+                        | (PWR_wPrefixNATBL(pwRootPrefix,
+                                            (Switch_t *)pwrPrefix, nBLRPrefix)
+                            ^ wKey))
+                    < nBLRPrefix))
+              #else // defined(SAVE_PREFIX_TEST_REUSLT)
+            || ((int)LOG(1
+                    | (PWR_wPrefixNATBL(pwRoot, (Switch_t *)pwrPrev, nBL)
+                        ^ wKey))
+                < (nBL
+                  #if ! defined(PP_IN_LINK)
+                    // prefix in parent switch doesn't contain last digit
+                    // for ! defined(PP_IN_LINK) case
+                    + nDL_to_nBitsIndexSzNAX(nBL_to_nDL(nBL) + 1)
+                  #endif // ! defined(PP_IN_LINK)
+                ))
+              #endif // defined(SAVE_PREFIX_TEST_RESULT)
+            )
+          #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+      #endif // defined(COMPRESSED_LISTS)
+        {
+
+      // LOOKUP_NO_LIST_SEARCH is for analysis only.  We have retrieved the
+      // pop count and prefix but we have not dereferenced the list itself.
+      #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
+            if (1
+        #if ! defined(SEPARATE_T_NULL)
+                && (pwr != NULL)
+        #endif // ! defined(SEPARATE_T_NULL)
+        #if defined(LOOKUP)
+                // I have seen the use of &wRoot instead of pwRoot here have
+                // an enormous performance impact. &wRoot is 30ns while
+                // pwRoot is 40ns. It does not happen with all versions of
+                // code.  &wRoot would be a bug for PP_IN_LINK.
+            #if defined(PP_IN_LINK) || defined(PWROOT_FOR_HASKEY)
+                && ListHasKey(pwr, wKey, nBLR, pwRoot)
+            #else // defined(PP_IN_LINK) || defined(PWROOT_FOR_HASKEY)
+                && ListHasKey1696(&wRoot, pwr, wKey, 16)
+            #endif // defined(PP_IN_LINK) || defined(PWROOT_FOR_HASKEY)
+        #else // defined(LOOKUP)
+                && ((nPos = SearchList(pwr, wKey, nBLR, pwRoot)) >= 0)
+        #endif // defined(LOOKUP)
+                )
+      #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
+            {
+          #if defined(INSERT)
+              #if ! defined(RECURSIVE)
+                if (nIncr > 0) { goto undo; } // undo counting
+              #endif // ! defined(RECURSIVE)
+          #endif // defined(INSERT)
+          #if defined(REMOVE)
+              #if defined(PP_IN_LINK)
+                // Adjust wPopCnt in link to leaf for PP_IN_LINK.
+                // wPopCnt in link to switch is adjusted elsewhere,
+                // i.e. in the same place as wPopCnt in switch is
+                // adjusted for pp-in-switch.
+                assert(nIncr == -1);
+                if (nBL < cnBitsPerWord) {
+                    set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR,
+                        PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR) - 1);
+                }
+              #endif // defined(PP_IN_LINK)
+                goto removeGutsAndCleanup;
+          #endif // defined(REMOVE)
+          #if defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
+                return KeyFound;
+          #endif // defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
+            }
+          #if defined(COUNT)
+            else
+          #endif // defined(COUNT)
+          #if defined(INSERT) || defined(REMOVE) || defined(COUNT)
+            {
+                nPos ^= -1;
+            }
+          #endif // defined(INSERT) || defined(REMOVE) || defined(COUNT)
+        }
+      #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+        else
+        {
+            // Shouldn't this be using the previous nBL for pwrPrev?
+            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
+                 PWR_wPrefixNATBL(pwRoot, pwrPrev, nBL), nBL));
+        }
+      #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && ...
+
+      #if defined(COUNT)
+        DBGC(printf("T_LIST_UA: nPos %d\n", nPos));
+        wPopCntSum += nPos;
+        DBGC(printf("list nPos 0x%x wPopCntSum " OWx"\n", nPos, wPopCntSum));
+        return wPopCntSum;
+      #endif // defined(COUNT)
+
+      #if defined(PP_IN_LINK) && defined(INSERT)
+        // Adjust wPopCnt in link to leaf for PP_IN_LINK.
+        // wPopCnt in link to switch is adjusted elsewhere,
+        // i.e. in the same place as wPopCnt in switch is
+        // adjusted for pp-in-switch.
+        // pwRoot is initialized despite what gcc might think.
+        // Would be nice to be able to get the current pop count from
+        // SearchList because chances are it will have read it.
+        // But it is more important to avoid getting it when not necessary
+        // during lookup.
+        assert((nBL == cnBitsPerWord) // there is no link with pop count
+            || (pwr != NULL) // non-NULL implies non-zero pop count
+            || (PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR) == 0));
+        assert(nIncr == 1);
+        DBGI(printf("did not find key\n"));
+        if (nBL < cnBitsPerWord) {
+            set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR,
+                              PWR_wPopCntBL(pwRoot,
+                                            (Switch_t *)NULL, nBLR) + 1);
+        }
+      #endif // defined(PP_IN_LINK) && defined(INSERT)
+
+        break;
+
+    } // end of case T_LIST_UA
+#endif // defined(UA_PARALLEL_128)
 
 #endif // (cwListPopCntMax != 0)
 
