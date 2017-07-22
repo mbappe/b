@@ -889,7 +889,7 @@ main(int argc, char *argv[])
     // system?
     if (sizeof(Word_t) == 8) {
         wSplayMask
-            = (((((0xeeeeU << 16) | 0xee80) << 16) | 0x4020) << 16) | 0xaaff;
+            = (((((0xeeeeUL << 16) | 0xee80) << 16) | 0x4020) << 16) | 0xaaff;
     }
 
 #ifdef DEADCODE                         // see TimeNumberGen()
