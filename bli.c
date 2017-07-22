@@ -728,9 +728,9 @@ again3:;
 t_skip_to_switch:
         // Skip to switch.
         // pwr points to a switch
-  #if defined(NO_PREFIX_CHECK)
+  #if defined(NO_PREFIX_CHECK) && defined(LOOKUP)
         nBLR = Get_nBLR(pwRoot);
-  #else // defined(NO_PREFIX_CHECK)
+  #else // defined(NO_PREFIX_CHECK) && defined(LOOKUP)
       #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
         DBG((nType != T_SKIP_TO_SWITCH) ? printf("nType: %d\n", nType) : 0);
         assert(nType == T_SKIP_TO_SWITCH);
@@ -776,7 +776,7 @@ t_skip_to_switch:
       #endif // defined(COUNT)
             break;
         }
-  #endif // defined(NO_PREFIX_CHECK)
+  #endif // defined(NO_PREFIX_CHECK) && defined(LOOKUP)
 
         // Logically, if we could arrange the source code accordingly,
         // we could just fall through to T_SWITCH.
