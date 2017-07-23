@@ -865,8 +865,8 @@ t_skip_to_xx_sw:
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:;
         // nBL is bits left after picking the link from the previous switch
-        // nBL is not reduced by any skip indicated in that link
-        // nBLR is nBL reduced by any skip indicated in that link
+        // nBL has not been reduced by any skip indicated in that link
+        // nBLR is bits left after reducing nBL by any skip in that link
         // nBLR is bits left at the top of this switch
 
         DBGX(printf("T_SWITCH nBL %d nBLR %d wPopCnt %" _fw"d pLinks %p\n",
