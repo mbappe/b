@@ -802,7 +802,7 @@ t_skip_to_bm_sw:
         Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_BM_SW);
         if (wPrefixMismatch != 0) {
   #if defined(COUNT)
-            DBGC(printf("SKIP_TO_BM_SW: COUNT PM %" _fw"d\n",
+            DBGC(printf("SKIP_TO_BM_SW: COUNT PM %zd\n",
                         wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
@@ -820,9 +820,9 @@ t_skip_to_bm_sw:
                 {
                     wPopCnt = PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
                 }
-                DBGC(printf("SKIP_TO_BM_SW: PM wPopCnt %" _fw"d\n", wPopCnt));
+                DBGC(printf("SKIP_TO_BM_SW: PM wPopCnt %zd\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
-                DBGC(printf("skbmsw wPopCnt " OWx" wPopCntSum " OWx"\n",
+                DBGC(printf("skbmsw wPopCnt 0x%zx wPopCntSum 0x%zx\n",
                             wPopCnt, wPopCntSum));
             }
   #endif // defined(COUNT)
@@ -1260,7 +1260,7 @@ t_bm_sw:;
         // I'm not sure why it's necessary or helpful.
         wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL, wIndex, INT_MAX);
         wPopCntSum += wPopCnt;
-        DBGC(printf("bmsw wPopCnt " OWx" wPopCntSum " OWx"\n",
+        DBGC(printf("bmsw wPopCnt 0x%zx wPopCntSum 0x%zx\n",
                     wPopCnt, wPopCntSum));
         if ( ! wBit ) { return wPopCntSum; }
 #endif // defined(COUNT)
