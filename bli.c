@@ -1217,7 +1217,7 @@ t_bm_sw:;
       #if defined(BM_SW_FOR_REAL)
                 DBGX(printf("missing link\n"));
                 nBL = nBLUp; // back up for InsertGuts
-                goto notFound; // why can't we just "break;"?
+                break; // not found
       #else // defined(BM_SW_FOR_REAL)
                 assert(0); // only for now
       #endif // defined(BM_SW_FOR_REAL)
@@ -1375,7 +1375,7 @@ t_list_sw:;
       #if defined(LIST_SW_FOR_REAL)
                 DBGX(printf("missing link\n"));
                 nBL = nBLUp; // back up for InsertGuts
-                goto notFound; // why can't we just "break;"?
+                break; // not found
       #else // defined(LIST_SW_FOR_REAL)
                 assert(0); // only for now
       #endif // defined(LIST_SW_FOR_REAL)
@@ -2369,9 +2369,7 @@ foundIt:;
 
     } // end of switch
 
-#if defined(BM_SW_FOR_REAL) && ! defined(COUNT)
-notFound:; // why don't we just "break;" above?
-#endif // defined(BM_SW_FOR_REAL) && ! defined(COUNT)
+    // Key is not present.
 #if defined(COUNT)
     DBGC(printf("done wPopCntSum " OWx"\n", wPopCntSum));
     return wPopCntSum;
