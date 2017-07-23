@@ -661,6 +661,12 @@ enum {
 #if defined(EMBED_KEYS)
     T_EMBEDDED_KEYS, // keys are embedded in the link
 #endif // defined(EMBED_KEYS)
+#if defined(CODE_LIST_SW)
+    T_LIST_SW,
+#endif // defined(CODE_LIST_SW)
+#if defined(SKIP_TO_LIST_SW)
+    T_SKIP_TO_LIST_SW,
+#endif // defined(SKIP_TO_LIST_SW)
 #if defined(CODE_BM_SW)
     T_BM_SW,
 #endif // defined(CODE_BM_SW)
@@ -887,6 +893,8 @@ enum {
 #define nDL_to_nBL_NAT(_nDL)          (nBL_from_nDL_NAT(_nDL))
 #define nDL_to_nBitsIndexSzNAT(_nDL)  (nDL_to_nBitsIndexSz(_nDL))
 
+#define nBL_to_nBWNAB(_nBL)  (nBitsIndexSz_from_nBL_NAB(_nBL))
+
 #if defined(RAMMETRICS)
   #define METRICS(x)  (x)
 #else // defined(RAMMETRICS)
@@ -1028,6 +1036,9 @@ Clr_bIsSkip(Word_t* pwRoot)
   #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
     case T_SKIP_TO_SWITCH: Set_nType(pwRoot, T_SWITCH); break;
   #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+  #if defined(SKIP_TO_LIST_SW)
+    case T_SKIP_TO_LIST_SW: Set_nType(pwRoot, T_LIST_SW); break;
+  #endif // defined(SKIP_TO_LIST_SW)
   #if defined(SKIP_TO_BM_SW)
     case T_SKIP_TO_BM_SW: Set_nType(pwRoot, T_BM_SW); break;
   #endif // defined(SKIP_TO_BM_SW)
@@ -1247,12 +1258,18 @@ tp_bIsSwitch(int nType)
     case T_SKIP_TO_SWITCH:
   #endif // defined(SKIP_LINKS)
 #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+#if defined(CODE_LIST_SW)
+  #if defined(SKIP_TO_LIST_SW)
+    case T_SKIP_TO_LIST_SW:
+  #endif // defined(SKIP_TO_LIST_SW)
+    case T_LIST_SW:
+#endif // defined(CODE_LIST_SW)
 #if defined(CODE_BM_SW)
+  #if defined(SKIP_TO_BM_SW)
+    case T_SKIP_TO_BM_SW:
+  #endif // defined(SKIP_TO_BM_SW)
     case T_BM_SW:
 #endif // defined(CODE_BM_SW)
-#if defined(SKIP_TO_BM_SW)
-    case T_SKIP_TO_BM_SW:
-#endif // defined(SKIP_TO_BM_SW)
 #if defined(CODE_XX_SW)
     case T_XX_SW:
 #endif // defined(CODE_XX_SW)
@@ -1265,6 +1282,15 @@ tp_bIsSwitch(int nType)
 }
 
 #define wr_bIsSwitch(_wr)  (tp_bIsSwitch(wr_nType(_wr)))
+
+#if defined(CODE_LIST_SW)
+    // Is (_tp) a list switch or skip to one?
+  #if defined(SKIP_TO_LIST_SW)
+    #define tp_bIsListSw(_tp)  (((_tp) == T_LIST_SW) || ((_tp) == T_SKIP_TO_LIST_SW))
+  #else // defined(SKIP_TO_LIST_SW)
+    #define tp_bIsListSw(_tp)  ((_tp) == T_LIST_SW)
+  #endif // defined(SKIP_TO_LIST_SW)
+#endif // defined(CODE_LIST_SW)
 
 #if defined(CODE_BM_SW)
     // Is (_tp) a bitmap switch or skip to one?
@@ -1296,6 +1322,9 @@ tp_bIsSkip(int nType)
   #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
     case T_SKIP_TO_SWITCH:
   #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+  #if defined(SKIP_TO_LIST_SW)
+    case T_SKIP_TO_LIST_SW:
+  #endif // defined(SKIP_TO_LIST_SW)
   #if defined(SKIP_TO_BM_SW)
     case T_SKIP_TO_BM_SW:
   #endif // defined(SKIP_TO_BM_SW)
@@ -2226,6 +2255,12 @@ typedef struct {
     Word_t ln_wRoot;
 } Link_t;
 
+#if defined(SW_LIST_IN_LINK)
+    #define SW_LIST
+#else // defined(SW_LIST_IN_LINK)
+    #define SW_LIST  __m128i sw_axList[1];
+#endif // defined(SW_LIST_IN_LINK)
+
 #if defined(BM_IN_LINK)
     #define SW_BM
 #else // defined(BM_IN_LINK)
@@ -2263,6 +2298,13 @@ typedef struct {
 #endif // defined(USE_BM_SW) && defined(BM_IN_NON_BM_SW)
     Link_t sw_aLinks[1]; // variable size
 } Switch_t;
+
+// List switch.
+typedef struct {
+    SWITCH_COMMON
+    SW_LIST
+    Link_t sw_aLinks[1]; // variable size
+} ListSwitch_t;
 
 // Bitmap switch.
 typedef struct {
@@ -4596,6 +4638,23 @@ ls_pxKey(Word_t *pwr, int nBL, int ii)
 #else // defined(COMPRESSED_LISTS)
 #define ls_pxKey(_ls, _nBL, _ii)  (ls_pwKeys((_ls), (_nBL))[_ii])
 #endif // defined(COMPRESSED_LISTS)
+
+// Get list switch link index (offset) from digit (virtual index)
+// extracted from key.
+// If the link is not present then return the index at which it would be.
+static inline void
+ListSwIndex(Word_t *pwRoot, Word_t wDigit,
+          Word_t *pwSwIndex, int *pbLinkPresent)
+{
+    (void)pwRoot, (void)wDigit;
+    //Word_t *pwSwList = PWR_pwSwList(pwRoot, wr_pwr(*pwRoot));
+    if (pwSwIndex != NULL) {
+        *pwSwIndex = wDigit; // for now
+    }
+    if (pbLinkPresent != NULL) {
+        *pbLinkPresent = 1; // for now
+    }
+}
 
 // Get bitmap switch link index (offset) from digit (virtual index)
 // extracted from key.

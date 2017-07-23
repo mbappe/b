@@ -5934,6 +5934,12 @@ Initialize(void)
 #if defined(EMBED_KEYS)
     printf("# 0x%x %-20s\n", T_EMBEDDED_KEYS, "T_EMBEDDED_KEYS");
 #endif // defined(EMBED_KEYS)
+#if defined(CODE_LIST_SW)
+    printf("# 0x%x %-20s\n", T_LIST_SW, "T_LIST_SW");
+#endif // defined(CODE_LIST_SW)
+#if defined(SKIP_TO_LIST_SW)
+    printf("# 0x%x %-20s\n", T_SKIP_TO_LIST_SW, "T_SKIP_TO_LIST_SW");
+#endif // defined(SKIP_TO_LIST_SW)
 #if defined(CODE_BM_SW)
     printf("# 0x%x %-20s\n", T_BM_SW, "T_BM_SW");
 #endif // defined(CODE_BM_SW)
