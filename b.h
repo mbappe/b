@@ -869,16 +869,16 @@ enum {
 
   #define nBL_to_nBitsIndexSz(_nBL)  nDL_to_nBitsIndexSz(nBL_to_nDL(_nBL))
 
-#endif // defined(BPD_TABLE)
-
-#if ! defined(BPD_TABLE)
+#else // defined(BPD_TABLE)
 
   #define nDL_to_nBitsIndexSz(_nDL)  (nBitsIndexSz_from_nDL(_nDL))
   #define nBL_to_nBitsIndexSz(_nBL)  (nBitsIndexSz_from_nBL(_nBL))
   #define nDL_to_nBL(_nDL)           (nBL_from_nDL(_nDL))
   #define nBL_to_nDL(_nBL)           (nDL_from_nBL(_nBL))
 
-#endif // ! defined(BPD_TABLE)
+#endif // defined(BPD_TABLE)
+
+#define nBL_to_nBW(_nBL)  nBL_to_nBitsIndexSz(_nBL)
 
 #define nDL_to_nBL_NAX(_nDL)          (nBL_from_nDL_NAX(_nDL))
 #define nBL_to_nBitsIndexSzNAX(_nBL)  (nBitsIndexSz_from_nBL_NAX(_nBL))
@@ -4597,27 +4597,28 @@ ls_pxKey(Word_t *pwr, int nBL, int ii)
 #define ls_pxKey(_ls, _nBL, _ii)  (ls_pwKeys((_ls), (_nBL))[_ii])
 #endif // defined(COMPRESSED_LISTS)
 
-// Get bitmap switch link index/offset from (virtual) index extracted from key.
+// Get bitmap switch link index (offset) from digit (virtual index)
+// extracted from key.
 // If the index is not present then return the index at which it would be.
 static inline void
-BmSwIndex(Word_t *pwRoot, Word_t wIndex,
-          Word_t *pwBmSwIndex, Word_t *pwBmSwBit)
+BmSwIndex(Word_t *pwRoot, Word_t wDigit,
+          Word_t *pwSwIndex, int *pbLinkPresent)
 {
     Word_t *pwBmWords = PWR_pwBm(pwRoot, wr_pwr(*pwRoot));
     // The bitmap may have more than one word.
     // nBmWordNum is the number of the word which contains the bit we want.
-    int nBmWordNum = wIndex >> cnLogBitsPerWord;
+    int nBmWordNum = wDigit >> cnLogBitsPerWord;
     Word_t wBmWord = pwBmWords[nBmWordNum]; // word we want
-    Word_t wBmBit = ((Word_t)1 << (wIndex & (cnBitsPerWord - 1)));
-    if (pwBmSwIndex != NULL) {
-        *pwBmSwIndex = 0;
+    Word_t wBmBit = ((Word_t)1 << (wDigit & (cnBitsPerWord - 1)));
+    if (pwSwIndex != NULL) {
+        *pwSwIndex = 0;
         for (int nn = 0; nn < nBmWordNum; nn++) {
-            *pwBmSwIndex += __builtin_popcountll(pwBmWords[nn]);
+            *pwSwIndex += __builtin_popcountll(pwBmWords[nn]);
         }
-        *pwBmSwIndex += __builtin_popcountll(wBmWord & (wBmBit - 1));
+        *pwSwIndex += __builtin_popcountll(wBmWord & (wBmBit - 1));
     }
-    if (pwBmSwBit != NULL) {
-        *pwBmSwBit = wBmWord & wBmBit;
+    if (pbLinkPresent != NULL) {
+        *pbLinkPresent = ((wBmWord & wBmBit) != 0);
     }
 }
 

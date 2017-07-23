@@ -1164,33 +1164,21 @@ t_full_bm_sw:
 
     case T_BM_SW:
     {
-        Word_t wBit;
         goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
 t_bm_sw:;
+
+        int nBW = nBL_to_nBW(nBLR);
   #if defined(BM_SW_FOR_REAL) || ! defined(LOOKUP) || defined(DEBUG)
         nBLUp = nBL;
   #endif // defined(BM_SW_FOR_REAL) || ! defined(LOOKUP) || defined(DEBUG)
-        // This assertion is a reminder that the NAX in the line below and
-        // possibly later in this case are cheating.
-        // The NAX assumes our test program doesn't generate any keys
-        // that have bits set in the top digit.
-        // It's really only legitimate to use NAB.
-        //assert(nBLR != cnBitsPerWord);
-        //nBL = nBLR - nBL_to_nBitsIndexSzNAX(nBL);
-        nBL = nBLR - nBW_from_nBL_NAB3(nBLR);
+        nBL = nBLR - nBW;
+        Word_t wDigit = ((wKey >> nBL) & (MSK(nBW)));
 
-        int nBitsIndexSz = nBL_to_nBitsIndexSzNAX(nBLR);
-        Word_t wIndex = ((wKey >> nBL)
-            // It is ok to use NAX here even though we might be at top because
-            // we don't care if it returns an index size that is too big.
-            // Of course, this assumes that NAX will yield nBitsIndexSz
-            // greater than or equal to the actual value and won't cause
-            // a crash.
-            & (MSK(nBitsIndexSz)));
+        DBGX(printf("T_BM_SW nBLR %d pLinks %p wDigit %d 0x%x\n", nBLR,
+             (void *)pwr_pLinks((BmSwitch_t *)pwr), (int)wDigit, (int)wDigit));
 
-        DBGX(printf("T_BM_SW nBLR %d pLinks %p wIndex %d 0x%x\n", nBLR,
-             (void *)pwr_pLinks((BmSwitch_t *)pwr), (int)wIndex, (int)wIndex));
-
+        Word_t wSwIndex;
+        int bLinkPresent;
   #if defined(BM_IN_LINK)
         // Have not coded for skip link at top here and elsewhere.
         assert( ! tp_bIsSkip(nType) || (nBLUp != cnBitsPerWord) );
@@ -1214,10 +1202,10 @@ t_bm_sw:;
             ) )
   #endif // defined(BM_IN_LINK)
         {
-            BmSwIndex(pwRoot, wIndex, /* pwBmSwIndex */ NULL, &wBit);
+            BmSwIndex(pwRoot, wDigit, /* pwSwIndex */ NULL, &bLinkPresent);
   #if ! defined(COUNT)
             // Test to see if link exists before figuring out where it is.
-            if ( ! wBit )
+            if ( ! bLinkPresent )
             {
       #if defined(BM_SW_FOR_REAL)
                 DBGX(printf("missing link\n"));
@@ -1228,7 +1216,7 @@ t_bm_sw:;
       #endif // defined(BM_SW_FOR_REAL)
             }
   #endif // ! defined(COUNT)
-            BmSwIndex(pwRoot, wIndex, &wIndex, /* pbBmSwBit */ NULL);
+            BmSwIndex(pwRoot, wDigit, &wSwIndex, /* pbPresent */ NULL);
             DBGX(printf("\npwRoot %p PWR_pwBm %p\n",
                         (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
         }
@@ -1258,14 +1246,16 @@ t_bm_sw:;
 #if defined(COUNT)
         // Use nLinks = INT_MAX to force CountSw to start from beginning.
         // I'm not sure why it's necessary or helpful.
-        wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL, wIndex, INT_MAX);
+        // Is it because we don't want to calculate nLinks?
+        wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL,
+                          wSwIndex, /* nLinks */ INT_MAX);
         wPopCntSum += wPopCnt;
         DBGC(printf("bmsw wPopCnt 0x%zx wPopCntSum 0x%zx\n",
                     wPopCnt, wPopCntSum));
-        if ( ! wBit ) { return wPopCntSum; }
+        if ( ! bLinkPresent ) { return wPopCntSum; }
 #endif // defined(COUNT)
 
-        pwRoot = &pwr_pLinks((BmSwitch_t *)pwr)[wIndex].ln_wRoot;
+        pwRoot = &pwr_pLinks((BmSwitch_t *)pwr)[wSwIndex].ln_wRoot;
 
         goto switchTail;
 

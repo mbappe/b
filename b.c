@@ -6608,9 +6608,10 @@ t_list:;
         Word_t wBmWord = pwBmWords[nBmWordNum];
 
         // find starting link
-        Word_t wBmSwIndex, wBmSwBit;
+        Word_t wBmSwIndex;
+        int wBmSwBit;
         BmSwIndex(&wRoot, wIndex, &wBmSwIndex, &wBmSwBit);
-        DBGN(printf("T_BM_SW wBmSwIndex %" _fw"u wBmSwBit 0x%" _fw"x\n",
+        DBGN(printf("T_BM_SW wBmSwIndex %" _fw"u wBmSwBit %x\n",
                     wBmSwIndex, wBmSwBit));
 
         if (bPrev) {
@@ -7279,7 +7280,8 @@ t_list:;
         DBGN(printf("T_BM_SW wIndex 0x%" _fw"x\n", wIndex));
         for (;;) {
             //A(0); // check -B17
-            Word_t wBmSwIndex, wBmSwBit;
+            Word_t wBmSwIndex;
+            int wBmSwBit;
             BmSwIndex(pwRoot, wIndex, &wBmSwIndex, &wBmSwBit);
             if ( ! wBmSwBit ) {
                 //A(0); // check -B17
