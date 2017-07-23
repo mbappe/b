@@ -789,51 +789,6 @@ t_skip_to_switch:
 
     } // end of default case
 
-#if defined(SKIP_TO_BM_SW)
-
-    case T_SKIP_TO_BM_SW:
-    {
-        goto t_skip_to_bm_sw; // silence cc in case there are no other uses
-t_skip_to_bm_sw:
-        // pwr points to a bitmap switch
-        DBGX(printf("SKIP_TO_BM_SW\n"));
-
-        // PREFIX_MISMATCH updates nBLR.
-        Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_BM_SW);
-        if (wPrefixMismatch != 0) {
-  #if defined(COUNT)
-            DBGC(printf("SKIP_TO_BM_SW: COUNT PM %zd\n",
-                        wPrefixMismatch));
-            // If key is bigger than prefix we have to count the keys here.
-            // Othwerwise we don't.
-            if (wPrefixMismatch > 0) {
-                Word_t wPopCnt;
-      #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
-          #error Not ready yet
-                if (nBL >= cnBitsPerWord) {
-                    int nBW = Get_nBW(pwRoot);
-                    // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr,
-                          nBLR - nBW, EXP(nBW), EXP(nBW));
-                } else
-      #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
-                {
-                    wPopCnt = PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
-                }
-                DBGC(printf("SKIP_TO_BM_SW: PM wPopCnt %zd\n", wPopCnt));
-                wPopCntSum += wPopCnt; // fall through to return wPopCntSum
-                DBGC(printf("skbmsw wPopCnt 0x%zx wPopCntSum 0x%zx\n",
-                            wPopCnt, wPopCntSum));
-            }
-  #endif // defined(COUNT)
-            break;
-        }
-        goto t_bm_sw;
-
-    } // end of T_SKIP_TO_BM_SW case
-
-#endif // defined(SKIP_TO_BM_SW)
-
 #if defined(SKIP_TO_XX_SW) // Doesn't work yet.
 
     case T_SKIP_TO_XX_SW: // skip link to narrow/wide switch
@@ -1144,6 +1099,51 @@ t_xx_sw:;
 #endif // defined(CODE_XX_SW)
 
 #if defined(CODE_BM_SW)
+
+  #if defined(SKIP_TO_BM_SW)
+
+    case T_SKIP_TO_BM_SW:
+    {
+        goto t_skip_to_bm_sw; // silence cc in case there are no other uses
+t_skip_to_bm_sw:
+        // pwr points to a bitmap switch
+        DBGX(printf("SKIP_TO_BM_SW\n"));
+
+        // PREFIX_MISMATCH updates nBLR.
+        Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_BM_SW);
+        if (wPrefixMismatch != 0) {
+  #if defined(COUNT)
+            DBGC(printf("SKIP_TO_BM_SW: COUNT PM %zd\n",
+                        wPrefixMismatch));
+            // If key is bigger than prefix we have to count the keys here.
+            // Othwerwise we don't.
+            if (wPrefixMismatch > 0) {
+                Word_t wPopCnt;
+      #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
+          #error Not ready yet
+                if (nBL >= cnBitsPerWord) {
+                    int nBW = Get_nBW(pwRoot);
+                    // Abuse CountSw into counting whole switch.
+                    wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr,
+                          nBLR - nBW, EXP(nBW), EXP(nBW));
+                } else
+      #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
+                {
+                    wPopCnt = PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
+                }
+                DBGC(printf("SKIP_TO_BM_SW: PM wPopCnt %zd\n", wPopCnt));
+                wPopCntSum += wPopCnt; // fall through to return wPopCntSum
+                DBGC(printf("skbmsw wPopCnt 0x%zx wPopCntSum 0x%zx\n",
+                            wPopCnt, wPopCntSum));
+            }
+  #endif // defined(COUNT)
+            break;
+        }
+        goto t_bm_sw;
+
+    } // end of T_SKIP_TO_BM_SW case
+
+  #endif // defined(SKIP_TO_BM_SW)
 
   #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
 
