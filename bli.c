@@ -622,14 +622,10 @@ again2:;
     Word_t *pwr = wr_pwr(wRoot);
     goto again3;
 again3:;
-  #if defined(EXTRA_TYPES)
-    switch (wRoot & MSK(cnBitsMallocMask + 1))
-  #else // defined(EXTRA_TYPES)
       #if defined(JUMP_TABLE)
     goto *pvJumpTable[nType];
       #endif // defined(JUMP_TABLE)
     switch (nType)
-  #endif // defined(EXTRA_TYPES)
     {
 
 #if defined(SKIP_LINKS)
@@ -910,9 +906,6 @@ t_skip_to_xx_sw:
 #else // ! defined(DEBUG) && defined(DEFAULT_SWITCH)
     case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
 #endif // ! defined(DEBUG) && defined(DEFAULT_SWITCH)
-#if defined(EXTRA_TYPES)
-    case T_SWITCH | EXP(cnBitsMallocMask): // close switch w/o bm
-#endif // defined(EXTRA_TYPES)
     {
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:;
@@ -1040,9 +1033,6 @@ switchTail:;
 #if defined(CODE_XX_SW)
 
     case T_XX_SW: // no-skip (aka close) switch (vs. distant switch) w/o bm
-#if defined(EXTRA_TYPES)
-    case T_XX_SW | EXP(cnBitsMallocMask): // close switch w/o bm
-#endif // defined(EXTRA_TYPES)
     {
         goto t_xx_sw;
 t_xx_sw:;
@@ -1158,9 +1148,6 @@ t_xx_sw:;
   #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
 
     case T_FULL_BM_SW:
-      #if defined(EXTRA_TYPES)
-    case T_FULL_BM_SW | EXP(cnBitsMallocMask): // no skip switch
-      #endif // defined(EXTRA_TYPES)
     {
         goto t_full_bm_sw; // silence cc in case there are no other uses
 t_full_bm_sw:
@@ -1176,9 +1163,6 @@ t_full_bm_sw:
   #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
 
     case T_BM_SW:
-  #if defined(EXTRA_TYPES)
-    case T_BM_SW | EXP(cnBitsMallocMask): // no skip switch
-  #endif // defined(EXTRA_TYPES)
     {
         Word_t wBit;
         goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
@@ -1340,9 +1324,6 @@ t_bm_sw:;
 #else // ! defined(DEBUG) && defined(DEFAULT_LIST)
     case T_LIST:
 #endif // ! defined(DEBUG) && defined(DEFAULT_LIST)
-#if defined(EXTRA_TYPES)
-    case T_LIST | EXP(cnBitsMallocMask):
-#endif // defined(EXTRA_TYPES)
     {
         goto t_list;
 t_list:;
@@ -1776,9 +1757,6 @@ t_skip_to_bitmap:;
 #else // ! defined(DEBUG) && defined(DEFAULT_BITMAP)
     case T_BITMAP:
 #endif // ! defined(DEBUG) && defined(DEFAULT_BITMAP)
-#if defined(EXTRA_TYPES)
-    case T_BITMAP | EXP(cnBitsMallocMask):
-#endif // defined(EXTRA_TYPES)
     {
         goto t_bitmap;
 t_bitmap:;
@@ -2005,9 +1983,6 @@ t_bitmap:;
 #if defined(EMBED_KEYS)
 
     case T_EMBEDDED_KEYS:
-#if defined(EXTRA_TYPES)
-    case T_EMBEDDED_KEYS | EXP(cnBitsMallocMask):
-#endif // defined(EXTRA_TYPES)
     {
         goto t_embedded_keys; // suppress compiler unused-label warnings
 t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
@@ -2205,9 +2180,6 @@ foundIt:;
 #if defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
 
     case T_NULL:
-#if defined(EXTRA_TYPES)
-    case T_NULL | EXP(cnBitsMallocMask):
-#endif // defined(EXTRA_TYPES)
     {
         assert(wRoot == 0);
 

@@ -3837,16 +3837,11 @@ insertAll:;
       #endif // defined(SKIP_LINKS)
         {
             // Missing link.
-#if defined(EXTRA_TYPES)
-            assert((nType == T_BM_SW)
-                || (nType == T_BM_SW + EXP(cnBitsMallocMask)));
-#else // defined(EXTRA_TYPES)
   #if defined(SKIP_TO_BM_SW)
             assert((nType == T_SKIP_TO_BM_SW) || (nType == T_BM_SW));
   #else // defined(SKIP_TO_BM_SW)
             assert(nType == T_BM_SW);
   #endif // defined(SKIP_TO_BM_SW)
-#endif // defined(EXTRA_TYPES)
 #if defined(SKIP_LINKS)
             DBGI(printf("wPrefix " OWx" w_wPrefix " OWx" nDLR %d\n",
                         PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDLR),
@@ -5455,11 +5450,7 @@ Initialize(void)
     printf("# No REVERSE_SORT_EMBEDDED_KEYS\n");
 #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
 
-#if defined(EXTRA_TYPES)
-    printf("#    EXTRA_TYPES\n");
-#else // defined(EXTRA_TYPES)
     printf("# No EXTRA_TYPES\n");
-#endif // defined(EXTRA_TYPES)
 
 #if defined(POP_WORD)
     printf("#    POP_WORD\n");

@@ -99,6 +99,7 @@ endif
 # -Wpedantic doesn't like the gcc extension &&<label> even with -std=gnu11
 # WFLAGS += -Wpedantic
   WFLAGS += -Wno-unused-function
+  WFLAGS += -Wno-parentheses-equality
   WFLAGS += -Wno-deprecated
   WFLAGS += -Werror
   WFLAGS += -Wfatal-errors
