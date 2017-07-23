@@ -1230,7 +1230,11 @@ t_bm_sw:;
 
         // Why are cleanup and pop count update done first in switch but
         // later in bm_sw?
-        // We don't want to do cleanup if link for key isn't present?
+        // Why update pop count just before finding out a link isn't
+        // present and having to undo it immediately?
+        // Why test bCleanup twice by doing cleanup first and pop count
+        // later?
+        // Why save nBL in nBLUp if we can do cleanup first?
         // We don't want to update pop count only to have to undo it
         // right away?
 #if defined(INSERT) || defined(REMOVE)
