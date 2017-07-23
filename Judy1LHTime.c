@@ -444,7 +444,7 @@ Word_t    PreStack = 0;                 // to test for TLB collisions with stack
 Word_t    Offset = 0;                   // Added to Key
 Word_t    bSplayKeyBitsFlag = 0;        // Splay key bits.
 Word_t    wSplayMask = 0xff00ffff;      // Revisit in main for 64-bit init.
-Word_t    wCheckBit;                    // Bit to complement for gFlag.
+Word_t    wCheckBit = 0;                // Bit to complement for gFlag.
 
 Word_t    TValues = 1000000;            // Maximum numb retrieve timing tests
 Word_t    nElms = 10000000;             // Default population of arrays
@@ -1400,11 +1400,26 @@ main(int argc, char *argv[])
                 wEffMask = Swizzle(wSplayMask);
                 wEffMask >>= (sizeof(Word_t) * 8) - LOG(wSplayMask) - 1;
             }
-            // clear the most significant bytes through the most significant
-            // non-zero byte in wEffMask.
-            wEffMask &= ~(((Word_t)1 << (LOG(wSplayMask) & ~(Word_t)7)) - 1);
-            // choose a bit in the next more significant byte
-            wCheckBit = (Word_t)1 << ((LOG(wEffMask) + 7) & ~7);
+            if (wEffMask != (Word_t)-1)
+            {
+                for (int ii = 2; ii < (int)sizeof(Word_t) - 1; ++ii)
+                {
+                    if (((uint8_t *)&wEffMask)[ii] == 0)
+                    {
+                        wCheckBit = (Word_t)1 << (ii * 8);
+                        break;
+                    }
+                }
+                if (wCheckBit == 0)
+                {
+                    if (LOG(wEffMask) != sizeof(Word_t) * 8 - 1) {
+                        wCheckBit = (Word_t)2 << LOG(wEffMask);
+                    } else {
+                        wCheckBit = (Word_t)1 << LOG(~wEffMask);
+                    }
+                }
+            }
+            printf("# -g wCheckBit %p\n", (void *)wCheckBit);
         }
     }
 
@@ -2846,13 +2861,16 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                             // attempt to test narrow pointers.
                             if (bSplayKeyBitsFlag)
                             {
-                                Word_t TstKeyNot = TstKey ^ wCheckBit;
-                                Rc = Judy1Test(*J1, TstKeyNot, PJE0);
-                                if (Rc != 0)
+                                if (wCheckBit != 0)
                                 {
-                                    printf("\n--- Judy1Test(0x%zx) Rc = %d after Judy1Set, Key = 0x%zx, elm = %zu\n",
-                                           TstKeyNot, Rc, TstKey, elm);
-                                    FAILURE("Judy1Test failed at", elm);
+                                    Word_t TstKeyNot = TstKey ^ wCheckBit;
+                                    Rc = Judy1Test(*J1, TstKeyNot, PJE0);
+                                    if (Rc != 0)
+                                    {
+                                        printf("\n--- Judy1Test(0x%zx) Rc = %d after Judy1Set, Key = 0x%zx, elm = %zu\n",
+                                               TstKeyNot, Rc, TstKey, elm);
+                                        FAILURE("Judy1Test failed at", elm);
+                                    }
                                 }
                             }
                             else if (BValue < sizeof(Word_t) * 8)
@@ -3033,13 +3051,16 @@ TestJudyIns(void **J1, void **JL, void **JH, PSeed_t PSeed, Word_t Elements)
                                 // attempt to test narrow pointers.
                                 if (bSplayKeyBitsFlag)
                                 {
-                                    Word_t TstKeyNot = TstKey ^ wCheckBit;
-                                    PValueNew = (PWord_t)JudyLGet(*JL, TstKeyNot, PJE0);
-                                    if (PValueNew != NULL)
+                                    if (wCheckBit != 0)
                                     {
-                                        printf("\n--- JudyLGet(0x%zx) *PValue = 0x%zx after Judy1Set, Key = 0x%zx, elm = %zu\n",
-                                               TstKeyNot, *PValueNew, TstKey, elm);
-                                        FAILURE("JudyLGet failed at", elm);
+                                        Word_t TstKeyNot = TstKey ^ wCheckBit;
+                                        PValueNew = (PWord_t)JudyLGet(*JL, TstKeyNot, PJE0);
+                                        if (PValueNew != NULL)
+                                        {
+                                            printf("\n--- JudyLGet(0x%zx) *PValue = 0x%zx after Judy1Set, Key = 0x%zx, elm = %zu\n",
+                                                   TstKeyNot, *PValueNew, TstKey, elm);
+                                            FAILURE("JudyLGet failed at", elm);
+                                        }
                                     }
                                 }
                                 else if (BValue < sizeof(Word_t) * 8)
