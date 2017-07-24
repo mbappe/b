@@ -203,12 +203,12 @@
 // Unaligned parallel 128.
 // UA_PARALLEL_128 allows PARALLEL_128 performance and MALLOC_ALIGNMENT 16
 // for 32-bit without sacrificing memory efficiency.
-#if (cnBitsPerWord == 32) && (cnBitsMallocMask >= 16)
+#if (cnBitsPerWord == 32) && (cnBitsMallocMask >= 4)
 #if ! defined(NO_UA_PARALLEL_128)
   #undef UA_PARALLEL_128
   #define UA_PARALLEL_128
 #endif // ! defined(NO_UA_PARALLEL_128)
-#endif // (cnBitsPerWord == 32) && (cnBitsMallocMask >= 16)
+#endif // (cnBitsPerWord == 32) && (cnBitsMallocMask >= 4)
 
 // Ifdefs are getting ugly.
 // Use UA_PARALLEL_128 to undef PARALLEL_128 so

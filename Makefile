@@ -24,9 +24,19 @@
 # I wonder if it works on a 32-bit system.
 cnBitsPerWord ?= 64
 
+# We can't use b.h to set MALLOC_ALIGNMENT because it is not included
+# in JudyMalloc.c or dlmalloc.c. We have to set it here.
+# And we want the bump it to 16 for 32-bit by default.
+ifeq "$(cnBitsPerWord)" "32"
+ifeq "$(cnBitsMallocMask)" ""
+  DEFINES += -DMALLOC_ALIGNMENT=16
+  # b.h will set cnBitsMallocMask appropriately based on MALLOC_ALIGNMENT
+endif
+endif
+
 # There are questions about how macOS handles libraries.
-# It looks like macOS Sierra (10.12) may not honor the LIBRARY_PATH
-# environment variable if exported by .profile but will honor it if set on
+# It looks like macOS Sierra (10.12) may not honor the LIBRARY_PATH, et. al.,
+# environment variables if exported by .profile but will honor them if set on
 # the command line.
 # It looks like macOS doesn't like having a 32-bit library called libJudy
 # in one directory and a 64-bit called libJudy in another directory and
