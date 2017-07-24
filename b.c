@@ -1279,6 +1279,9 @@ OldSwitch(Word_t *pwRoot, int nBL,
 #endif // defined(CODE_BM_SW)
           int nBLUp)
 {
+#if defined(CODE_BM_SW) && ! defined(BM_SW_FOR_REAL)
+    (void)nLinks;
+#endif // defined(CODE_BM_SW) && ! defined(BM_SW_FOR_REAL)
     Word_t *pwr = wr_pwr(*pwRoot);
 
     int nBitsIndexSz;
@@ -3579,8 +3582,10 @@ newSwitch:
 // Shouldn't we think about some other option here?
 // What about a small bitmap?
 // Or another switch?
+#endif // defined(USE_XX_SW)
                     goto doubleIt;
 doubleIt:;
+#if defined(USE_XX_SW)
                     assert(nBL < nDL_to_nBL(2));
 // Hmm.  *pwRoot has not been updated with the inflated list.
 // What should we do?  Call OldList or install the inflated list?

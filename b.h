@@ -1686,7 +1686,8 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 #define PWR_wPopCntBL(_pwRoot, _pwr, _nBL) \
     (w_wPopCntBL(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nBL)))
 
-#if defined(PP_IN_LINK)
+  #if defined(PP_IN_LINK)
+
 #define set_PWR_wPopCnt(_pwRoot, _pwr, _nDL, _cnt) \
   (assert((_nDL) < cnDigitsPerWord), \
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
@@ -1698,7 +1699,9 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
         = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMaskBL(_nBL)) \
             | ((_cnt) & wPrefixPopMaskBL(_nBL)))))
-#else // defined(PP_IN_LINK)
+
+  #else // defined(PP_IN_LINK)
+
 #define set_PWR_wPopCnt(_pwRoot, _pwr, _nDL, _cnt) \
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
         = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMask(_nDL)) \
@@ -1708,7 +1711,8 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
         = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMaskBL(_nBL)) \
             | ((_cnt) & wPrefixPopMaskBL(_nBL))))
-#endif // defined(PP_IN_LINK)
+
+ #endif // defined(PP_IN_LINK)
 
 #endif // defined(POP_WORD)
 
@@ -2321,6 +2325,18 @@ typedef struct {
 
 #define cnBitsPreListPopCnt cnBitsListPopCnt
 #define cnLsbPreListPopCnt (cnBitsPerWord - cnBitsListPopCnt)
+
+static inline Word_t
+Get_wPopCntBL(Word_t *pwRoot, int nBL)
+{
+    return PWR_wPopCntBL(pwRoot, wr_pwr(*pwRoot), nBL);
+}
+
+static inline void
+Set_wPopCntBL(Word_t *pwRoot, int nBL, Word_t wPopCnt)
+{
+    set_PWR_wPopCntBL(pwRoot, wr_pwr(*pwRoot), nBL, wPopCnt);
+}
 
 static inline int
 Get_xListPopCnt(Word_t *pwRoot, int nBL)

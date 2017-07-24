@@ -25,11 +25,11 @@
 static Word_t
 CountSw(Word_t *pwRoot,
         int nBLR, // bits left at top of switch
-        Switch_t *pwr,
         int nBL, // bits left after selection of link in switch
         Word_t wIndex, // index of relevant link in switch
         int nLinks)
 {
+    Word_t *pwr = wr_pwr(*pwRoot);
     //DBGC(Dump(pwRootLast, 0, cnBitsPerWord));
     (void)pwRoot; (void)nBLR; (void)nLinks;
     int nType = Get_nType(pwRoot); (void)nType;
@@ -406,6 +406,38 @@ CaseGuts(int nBL, Word_t *pwRoot, int nBS, int nBW, int nType, Word_t *pwr)
     return 1;
 }
 
+// nBL is bits left after picking the link from the previous switch
+// nBL has not been reduced by any skip indicated in that link
+// nBLR is bits left after reducing nBL by any skip in that link
+// nBLR is bits left at the top of this switch
+static inline void
+SwSetup(Word_t wKey, int nBLR,
+        int *pnBL,
+        int *pnBW, int *pnBLUp, Word_t *pwDigit)
+{
+    (void)pnBLUp;
+
+    *pnBW = nBL_to_nBWNAB(nBLR); // Should we use Get_nBW?
+
+  #if defined(INSERT) || defined(REMOVE)
+    *pnBLUp = *pnBL;
+  #endif // defined(INSERT) || defined(REMOVE)
+
+    *pnBL = nBLR - *pnBW;
+
+    // Is it possible that MSK(nBLR - nBL) would be faster here in some
+    // cases, e.g. BitsInD2 != BitsPerDigit and BitsInD3 != BitsPerDigit?
+
+    *pwDigit = (wKey >> *pnBL) & MSK(*pnBW);
+
+    // ((uint8_t *)&wKey)[(cnBitsPerWord - nBL) >> 3];
+    // ((uint8_t *)&wKey)[cnDigitsPerWord - nDL];
+    // ((uint8_t *)&wSwappedKey)[nDL];
+    // *(uint8_t *)&wSwappedAndShiftedKey;
+
+    DBGX(printf("sw wDigit %zd 0x%zx\n", *pwDigit, *pwDigit));
+}
+
 #if defined(LOOKUP)
 static Status_t
 Lookup(
@@ -430,6 +462,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #if defined(SAVE_PREFIX_TEST_RESULT)
     Word_t wPrefixMismatch = 0; (void)wPrefixMismatch;
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
+    Word_t *pwRootPrev = NULL; (void)pwRootPrev;
 #if defined(LOOKUP)
     int nBL = cnBitsPerWord;
   #if defined(PWROOT_PARAMETER_FOR_LOOKUP)
@@ -454,7 +487,6 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
   #endif // defined(PWROOT_PARAMETER_FOR_LOOKUP)
 #else // defined(LOOKUP)
   #if defined(CODE_XX_SW)
-    Word_t *pwRootPrev = NULL; (void)pwRootPrev;
       #if defined(SKIP_TO_XX_SW)
     int nBLPrev = 0; (void)nBLPrev;
       #endif // defined(SKIP_TO_XX_SW)
@@ -495,6 +527,11 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #if ! defined(LOOKUP)
     int nPos = -1;
 #endif // ! defined(LOOKUP)
+#if defined(COUNT)
+    Word_t wDigit;
+    int bLinkPresent;
+    int nLinks;
+#endif // defined(COUNT)
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
 
@@ -759,9 +796,8 @@ t_skip_to_switch:
                     //int nBitsIndexSz = nBL_to_nBitsIndexSzNAX(nBLR);
                     int nBitsIndexSz = nBL_to_nBitsIndexSzNAB(nBLR);
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr,
-                          nBLR - nBitsIndexSz,
-                          EXP(nBitsIndexSz), EXP(nBitsIndexSz));
+                    wPopCnt = CountSw(pwRoot, nBLR, nBLR - nBitsIndexSz,
+                                      EXP(nBitsIndexSz), EXP(nBitsIndexSz));
                 } else
           #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 {
@@ -827,9 +863,8 @@ t_skip_to_xx_sw:
         int nBitsIndexSz = nBL_to_nBitsIndexSzNAB(nBLR);
                     //int nLinks = ??? __builtin_popcount
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr,
-                          nBLR - nBitsIndexSz,
-                          nLinks, nLinks);
+                    wPopCnt = CountSw(pwRoot, nBLR, nBLR - nBitsIndexSz,
+                                      nLinks, nLinks);
                 } else
       #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 {
@@ -853,7 +888,7 @@ t_skip_to_xx_sw:
     default: printf("unknown type %d\n", nType); assert(0); exit(0);
 #endif // defined(SKIP_LINKS)
 
-#if ! defined(DEBUG) && defined(DEFAULT_SWITCH)
+  #if ! defined(DEBUG) && defined(DEFAULT_SWITCH)
       #if defined(DEFAULT_SKIP_TO_SW)
       #error DEFAULT_SKIP_TO_SW with DEFAULT_SWITCH
       #endif // defined(DEFAULT_SKIP_TO_SW)
@@ -864,102 +899,76 @@ t_skip_to_xx_sw:
       #error DEFAULT_LIST with DEFAULT_SWITCH
       #endif // defined(DEFAULT_LIST)
     default:
-#else // ! defined(DEBUG) && defined(DEFAULT_SWITCH)
+  #else // ! defined(DEBUG) && defined(DEFAULT_SWITCH)
     case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
-#endif // ! defined(DEBUG) && defined(DEFAULT_SWITCH)
+  #endif // ! defined(DEBUG) && defined(DEFAULT_SWITCH)
     {
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:;
-        // nBL is bits left after picking the link from the previous switch
-        // nBL has not been reduced by any skip indicated in that link
-        // nBLR is bits left after reducing nBL by any skip in that link
-        // nBLR is bits left at the top of this switch
+        int nBW;
+  #if ! defined(COUNT)
+        Word_t wDigit; // minimize scope to help compiler
+  #endif // ! defined(COUNT)
+        SwSetup(wKey, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
 
-        DBGX(printf("T_SWITCH nBL %d nBLR %d wPopCnt %" _fw"d pLinks %p\n",
-                    nBL, nBLR, PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR),
-                    (void *)pwr_pLinks((Switch_t *)pwr)));
-
-  // Why are cleanup and pop count update done first in switch but
-  // later in bm_sw?
-  #if defined(INSERT) || defined(REMOVE)
-        // Cleanup is for adjusting tree after successful insert or remove.
-        // It is not for undoing counts after unsuccessful insert or remove.
-        if (unlikely(bCleanup)) {
-      #if defined(INSERT)
-          #if (cn2dBmWpkPercent != 0)
-            if (nBLR <= cnBitsLeftAtDl2) {
-                InsertCleanup(wKey, nBL, pwRoot, wRoot);
-            }
-          #endif // (cn2dBmWpkPercent != 0)
-      #else // defined(INSERT)
-            RemoveCleanup(wKey, nBL, nBLR, pwRoot, wRoot);
-      #endif // defined(INSERT)
-            if (*pwRoot != wRoot) { goto restart; }
-        } else {
-      #if defined(PP_IN_LINK)
-            if (nBL < cnBitsPerWord)
-      #endif // defined(PP_IN_LINK)
-            {
-                // Increment or decrement population count on the way in.
-                wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
-                set_PWR_wPopCntBL(pwRoot,
-                                  (Switch_t *)pwr, nBLR, wPopCnt + nIncr);
-            }
-        }
-      #if defined(INSERT)
-        //pwRootPrev = pwRoot; // save pwRoot for T_XX_SW for InsertGuts
-      #endif // defined(INSERT)
-  #endif // defined(INSERT) || defined(REMOVE)
-
-  #if defined(SKIP_TO_XX_SW)
-        assert(( ! tp_bIsSkip(wr_nType(wRoot)) ) || (Get_nBLR(&wRoot) == nBLR));
-  #endif // defined(SKIP_TO_XX_SW)
-
-        int nBW = nBL_to_nBWNAB(nBLR);
-        nBL = nBLR - nBW;
-
-  #if defined(SKIP_TO_XX_SW)
-        // Hmm. Are we sure nBL_to_nBitsIndexSzNAB is faster than pwr_nBw?
-        // Is pwr_nBW always valid?
-        assert(pwr_nBW(&wRoot) == nBW);
-  #endif // defined(SKIP_TO_XX_SW)
-
-        // Is it possible that MSK(nBLR - nBL) would be faster here in some
-        // cases, e.g. BitsInD2 != BitsPerDigit and BitsInD3 != BitsPerDigit?
-        Word_t wDigit = (wKey >> nBL) & MSK(nBW);
-        // Word_t wDigit = ((uint8_t *)&wKey)[(cnBitsPerWord - nBL) >> 3];
-        // Word_t wDigit = ((uint8_t *)&wKey)[cnDigitsPerWord - nDL];
-        // Word_t wDigit = ((uint8_t *)&wSwappedKey)[nDL];
-        // Word_t wDigit = *(uint8_t *)&wSwappedAndShiftedKey;
-
-        DBGX(printf("T_SWITCH wDigit %d 0x%x\n", (int)wDigit, (int)wDigit));
-
-#if defined(COUNT)
-        wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL, wDigit,
-                          1 << nBW);
-        DBGC(printf("T_SWITCH wPopCnt %zd\n", wPopCnt));
-        wPopCntSum += wPopCnt;
-        DBGC(printf("sw wPopCnt 0x%zx wPopCntSum 0x%zx\n",
-                    wPopCnt, wPopCntSum));
-#endif // defined(COUNT)
-
+  #if defined(COUNT)
+        bLinkPresent = 1;
+        nLinks = 1 << nBW;
+  #endif // defined(COUNT)
+  #if ! defined(LOOKUP)
+        pwRootPrev = pwRoot;
+  #endif // ! defined(LOOKUP)
         pwRoot = &pwr_pLinks((Switch_t *)pwr)[wDigit].ln_wRoot;
 
         goto switchTail;
 switchTail:;
 
+  #if defined(INSERT) || defined(REMOVE)
+        // Cleanup is for adjusting tree after successful insert or remove.
+        // It is not for undoing counts after unsuccessful insert or remove.
+        if (bCleanup) {
+      #if defined(INSERT)
+          #if (cn2dBmWpkPercent != 0)
+            if (nBLR <= cnBitsLeftAtDl2) {
+                InsertCleanup(wKey, nBLUp, pwRootPrev, wRoot);
+            }
+          #endif // (cn2dBmWpkPercent != 0)
+      #else // defined(INSERT)
+            RemoveCleanup(wKey, nBLUp, nBLR, pwRootPrev, wRoot);
+      #endif // defined(INSERT)
+            if (*pwRootPrev != wRoot) { goto restart; }
+        } else {
+      #if defined(PP_IN_LINK)
+            if (nBLUp < cnBitsPerWord)
+      #endif // defined(PP_IN_LINK)
+            {
+                // Increment or decrement population count on the way in.
+                wPopCnt = Get_wPopCntBL(pwRootPrev, nBLR);
+                Set_wPopCntBL(pwRootPrev, nBLR, wPopCnt + nIncr);
+            }
+        }
+  #endif // defined(INSERT) || defined(REMOVE)
+
+  #if defined(COUNT)
+        wPopCnt = CountSw(pwRootPrev, nBLR, nBL, wDigit, nLinks);
+        wPopCntSum += wPopCnt;
+        DBGC(printf("sw wPopCnt 0x%zx wPopCntSum 0x%zx\n",
+                    wPopCnt, wPopCntSum));
+        if ( ! bLinkPresent ) { return wPopCntSum; }
+  #endif // defined(COUNT)
+
         wRoot = *pwRoot;
         DBGX(printf("switchTail: pwRoot %p wRoot " OWx" nBL %d\n",
                     (void *)pwRoot, wRoot, nBL));
 
-#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We may need to check the prefix of the switch we just visited in
         // the next iteration of the loop if we've reached a leaf so we
         // preserve the value of pwr.
         pwrPrev = pwr;
-#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         nBLR = nBL; // Advance nBLR to the bottom of this switch now.
-#if defined(ALLOW_EMBEDDED_BITMAP)
+  #if defined(ALLOW_EMBEDDED_BITMAP)
         // The first test below is done at compile time and will make the rest
         // of the code block go away if it is not needed.
         if ((EXP(cnBitsInD1) <= (sizeof(Link_t) * 8))
@@ -975,7 +984,7 @@ switchTail:;
             // Should we back up nBLR and nBL and goto t_bitmap that way?
             goto t_bitmap;
         }
-#else // defined(ALLOW_EMBEDDED_BITMAP)
+  #else // defined(ALLOW_EMBEDDED_BITMAP)
         // Is there any reason to have
         // EXP(cnBitsInD1) <= (sizeof(Link_t) * 8)? What about lazy conversion
         // of embedded keys at nBL > sizeof(Link_t) * 8 to
@@ -983,12 +992,15 @@ switchTail:;
         // Initialize warns if cnBitsInD1 is too small relative
         // to sizeof(Link_t).
         assert(EXP(nBL) > (sizeof(Link_t) * 8));
-#endif // defined(ALLOW_EMBEDDED_BITMAP)
-#if defined(LOOKUP) || !defined(RECURSIVE)
+  #endif // defined(ALLOW_EMBEDDED_BITMAP)
+  #if defined(LOOKUP) || !defined(RECURSIVE)
+      #if ! defined(LOOKUP)
+        pwRootPrev = NULL; // InsertGuts infers XX_SW if pwRootPrev != NULL
+      #endif // ! defined(LOOKUP)
         goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
-#else // defined(LOOKUP) || !defined(RECURSIVE)
+  #else // defined(LOOKUP) || !defined(RECURSIVE)
         return InsertRemove(pwRoot, wKey, nBL);
-#endif // defined(LOOKUP) || !defined(RECURSIVE)
+  #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
     } // end of case T_SWITCH
 
@@ -1051,7 +1063,7 @@ t_xx_sw:;
                     nBW, nIndex, nIndex));
 
 #if defined(COUNT)
-        wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL, nIndex, 1<<nBW);
+        wPopCnt = CountSw(pwRoot, nBLR, nBL, nIndex, 1<<nBW);
         DBGC(printf("T_XX_SW wPopCnt %" _fw"d\n", wPopCnt));
         wPopCntSum += wPopCnt;
         DBGC(printf("xxsw wPopCnt " OWx" wPopCntSum " OWx"\n",
@@ -1131,8 +1143,8 @@ t_skip_to_bm_sw:
                 if (nBL >= cnBitsPerWord) {
                     int nBW = Get_nBW(pwRoot);
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr,
-                          nBLR - nBW, EXP(nBW), EXP(nBW));
+                    wPopCnt = CountSw(pwRoot, nBLR,
+                                      nBLR - nBW, EXP(nBW), EXP(nBW));
                 } else
       #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 {
@@ -1173,19 +1185,13 @@ t_full_bm_sw:
     {
         goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
 t_bm_sw:;
-
-        int nBW = nBL_to_nBW(nBLR);
-  #if defined(BM_SW_FOR_REAL) || ! defined(LOOKUP) || defined(DEBUG)
-        nBLUp = nBL;
-  #endif // defined(BM_SW_FOR_REAL) || ! defined(LOOKUP) || defined(DEBUG)
-        nBL = nBLR - nBW;
-        Word_t wDigit = ((wKey >> nBL) & (MSK(nBW)));
-
-        DBGX(printf("T_BM_SW nBLR %d pLinks %p wDigit %d 0x%x\n", nBLR,
-             (void *)pwr_pLinks((BmSwitch_t *)pwr), (int)wDigit, (int)wDigit));
+        int nBW;
+  #if ! defined(COUNT)
+        Word_t wDigit; // minimize scope to help compiler
+  #endif // ! defined(COUNT)
+        SwSetup(wKey, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
 
         Word_t wSwIndex;
-        int bLinkPresent;
   #if defined(BM_IN_LINK)
         // Have not coded for skip link at top here and elsewhere.
         assert( ! tp_bIsSkip(nType) || (nBLUp != cnBitsPerWord) );
@@ -1209,6 +1215,9 @@ t_bm_sw:;
             ) )
   #endif // defined(BM_IN_LINK)
         {
+  #if ! defined(COUNT)
+            int bLinkPresent;
+  #endif // ! defined(COUNT)
             BmSwIndex(pwRoot, wDigit, /* pwSwIndex */ NULL, &bLinkPresent);
   #if ! defined(COUNT)
             // Test to see if link exists before figuring out where it is.
@@ -1228,53 +1237,15 @@ t_bm_sw:;
                         (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
         }
 
-        // Why are cleanup and pop count update done first in switch but
-        // later in bm_sw?
-        // Why update pop count just before finding out a link isn't
-        // present and having to undo it immediately?
-        // Why test bCleanup twice by doing cleanup first and pop count
-        // later?
-        // Why save nBL in nBLUp if we can do cleanup first?
-        // We don't want to update pop count only to have to undo it
-        // right away?
-#if defined(INSERT) || defined(REMOVE)
-        if (bCleanup) {
-  #if defined(INSERT)
-          #if (cn2dBmWpkPercent != 0)
-            if (nBLR <= cnBitsLeftAtDl2) {
-                InsertCleanup(wKey, nBLUp, pwRoot, wRoot);
-            }
-          #endif // (cn2dBmWpkPercent != 0)
-  #else // defined(INSERT)
-            RemoveCleanup(wKey, nBLUp, nBLR, pwRoot, wRoot);
-  #endif // defined(INSERT)
-            if (*pwRoot != wRoot) { goto restart; }
-        } else {
-            // Increment or decrement population count on the way in.
-  #if defined(PP_IN_LINK) && defined(INSERT)
-            assert(nBLUp < cnBitsPerWord);
-  #endif // defined(PP_IN_LINK) && defined(INSERT)
-            wPopCnt = PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
-            set_PWR_wPopCntBL(pwRoot,
-                              (BmSwitch_t *)pwr, nBLR, wPopCnt + nIncr);
-            DBGX(printf("wPopCnt %zd\n",
-                (size_t)PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR)));
-        }
-#endif // defined(INSERT) || defined(REMOVE)
-
-#if defined(COUNT)
-        // Use nLinks = INT_MAX to force CountSw to start from beginning.
-        // I'm not sure why it's necessary or helpful.
-        // Is it because we don't want to calculate nLinks?
-        wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL,
-                          wSwIndex, /* nLinks */ INT_MAX);
-        wPopCntSum += wPopCnt;
-        DBGC(printf("bmsw wPopCnt 0x%zx wPopCntSum 0x%zx\n",
-                    wPopCnt, wPopCntSum));
-        if ( ! bLinkPresent ) { return wPopCntSum; }
-#endif // defined(COUNT)
-
+      #if ! defined(LOOKUP)
+        pwRootPrev = pwRoot;
+      #endif // ! defined(LOOKUP)
         pwRoot = &pwr_pLinks((BmSwitch_t *)pwr)[wSwIndex].ln_wRoot;
+
+  #if defined(COUNT)
+        nLinks = INT_MAX;
+        wDigit = wSwIndex;
+  #endif // defined(COUNT)
 
         goto switchTail;
 
@@ -1307,8 +1278,8 @@ t_skip_to_list_sw:
                 if (nBL >= cnBitsPerWord) {
                     int nBW = Get_nBW(pwRoot);
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr,
-                          nBLR - nBW, EXP(nBW), EXP(nBW));
+                    wPopCnt = CountSw(pwRoot, nBLR,
+                                      nBLR - nBW, EXP(nBW), EXP(nBW));
                 } else
       #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 {
@@ -1335,19 +1306,10 @@ t_skip_to_list_sw:
         goto t_list_sw; // silence cc in case other the gotos are ifdef'd out
 t_list_sw:;
 
-        int nBW = nBL_to_nBW(nBLR);
-  #if defined(LIST_SW_FOR_REAL) || ! defined(LOOKUP) || defined(DEBUG)
-        nBLUp = nBL;
-  #endif // defined(LIST_SW_FOR_REAL) || ! defined(LOOKUP) || defined(DEBUG)
-        nBL = nBLR - nBW;
-        Word_t wDigit = ((wKey >> nBL) & (MSK(nBW)));
+        int nBW;
+        SwSetup(wKey, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
 
-        DBGX(printf("T_LIST_SW nBLR %d pLinks %p wDigit %d 0x%x\n", nBLR,
-             (void *)pwr_pLinks((ListSwitch_t *)pwr), (int)wDigit, (int)wDigit));
-
-        Word_t wSwIndex = wSwIndex; // make gcc happy
-        int bLinkPresent = bLinkPresent; // make gcc happy
-
+        Word_t wSwIndex;
   #if defined(SW_LIST_IN_LINK)
         // Have not coded for skip link at top here and elsewhere.
         assert( ! tp_bIsSkip(nType) || (nBLUp != cnBitsPerWord) );
@@ -1371,6 +1333,9 @@ t_list_sw:;
             ) )
   #endif // defined(SW_LIST_IN_LINK)
         {
+  #if ! defined(COUNT)
+            int bLinkPresent;
+  #endif // ! defined(COUNT)
             ListSwIndex(pwRoot, wDigit, /* pwIndex */ NULL, &bLinkPresent);
   #if ! defined(COUNT)
             // Test to see if link exists before figuring out where it is.
@@ -1388,46 +1353,14 @@ t_list_sw:;
             ListSwIndex(pwRoot, wDigit, &wSwIndex, /* pbPresent */ NULL);
         }
 
-        // Why are cleanup and pop count update done first in switch but
-        // later in list_sw?
-#if defined(INSERT) || defined(REMOVE)
-        if (bCleanup) {
-  #if defined(INSERT)
-          #if (cn2dBmWpkPercent != 0)
-            if (nBLR <= cnBitsLeftAtDl2) {
-                InsertCleanup(wKey, nBLUp, pwRoot, wRoot);
-            }
-          #endif // (cn2dBmWpkPercent != 0)
-  #else // defined(INSERT)
-            RemoveCleanup(wKey, nBLUp, nBLR, pwRoot, wRoot);
-  #endif // defined(INSERT)
-            if (*pwRoot != wRoot) { goto restart; }
-        } else {
-            // Increment or decrement population count on the way in.
-  #if defined(PP_IN_LINK) && defined(INSERT)
-            assert(nBLUp < cnBitsPerWord);
-  #endif // defined(PP_IN_LINK) && defined(INSERT)
-            wPopCnt = PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
-            set_PWR_wPopCntBL(pwRoot,
-                              (ListSwitch_t *)pwr, nBLR, wPopCnt + nIncr);
-            DBGX(printf("wPopCnt %zd\n",
-                (size_t)PWR_wPopCntBL(pwRoot, (ListSwitch_t *)pwr, nBLR)));
-        }
-#endif // defined(INSERT) || defined(REMOVE)
-
-#if defined(COUNT)
-        // Use nLinks = INT_MAX to force CountSw to start from beginning.
-        // I'm not sure why it's necessary or helpful.
-        // Is it because we don't want to caculate how many links there are?
-        wPopCnt = CountSw(pwRoot, nBLR, (Switch_t *)pwr, nBL,
-                          wSwIndex, /* nLinks */ INT_MAX);
-        wPopCntSum += wPopCnt;
-        DBGC(printf("lssw wPopCnt " OWx" wPopCntSum " OWx"\n",
-                    wPopCnt, wPopCntSum));
-        if ( ! bLinkPresent ) { return wPopCntSum; }
-#endif // defined(COUNT)
-
+      #if ! defined(LOOKUP)
+        pwRootPrev = pwRoot;
+      #endif // ! defined(LOOKUP)
         pwRoot = &pwr_pLinks((ListSwitch_t *)pwr)[wSwIndex].ln_wRoot;
+
+  #if defined(COUNT)
+        wDigit = wSwIndex;
+  #endif // defined(COUNT)
 
         goto switchTail;
 
