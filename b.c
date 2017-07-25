@@ -1090,11 +1090,11 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
         if ( ! (EXP(nBLR) & sBitsReportedMask) )
         {
             sBitsReportedMask |= EXP(nBLR);
-            DBGI(printf("# Converting nKeys %ld nLinks %d nBLR %d",
+            DBGI(printf("# Converting nKeys %zd nLinks %d nBLR %d",
                    wPopCntKeys, nLinkCnt, nBLR));
-            DBGI(printf(" wPopCntTotal %ld wWordsAllocated %ld",
+            DBGI(printf(" wPopCntTotal %zd wWordsAllocated %zd",
                wPopCntTotal, wWordsAllocated));
-            DBGI(printf(" wMallocs %ld wEvenMallocs %ld nWordsNull %d\n",
+            DBGI(printf(" wMallocs %zd wEvenMallocs %zd nWordsNull %d\n",
                wMallocs, wEvenMallocs, nWordsNull));
         }
 #endif // defined(DEBUG_INSERT)
