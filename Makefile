@@ -7,13 +7,15 @@
 
 # Run the following to build b:
 #   make clean
-#   [CC=<cc|clang|gcc|icc>] [cnBitsPerWord=<32|64>] [DEFINES="..."] make
+#   [CC=<cc|clang|gcc|icc>] [BPW=<32|64>] [DEFINES="..."] make
 # Run the following command to build everything:
 #   make clean
-#   [CC=<cc|clang|gcc|icc>] [cnBitsPerWord=<32|64>] [DEFINES="..."] make all
+#   [CC=<cc|clang|gcc|icc>] [BPW=<32|64>] [DEFINES="..."] make all
 # examples:
 #   make clean all
-#   CC=c++ CSTDFLAG=-std=c++14 make
+#   CC=clang CSTD=c11 DEFINES=-DDEBUG make clean default
+#   CC=clang++ CSTD=c++14 make b
+#   CXX=clang++ CXXSTD=c++11 make bcheck
 
 # I recommend the make clean first because there are so many dependencies
 # that are not discovered by make, e.g. changes in environment variables.
@@ -22,12 +24,12 @@
 # The default build is 64-bits.
 # Use "cnBitsPerWord=32 make" to get a 32-bit build.
 # I wonder if it works on a 32-bit system.
-cnBitsPerWord ?= 64
+BPW ?= 64
 
 # We can't use b.h to set MALLOC_ALIGNMENT because it is not included
 # in JudyMalloc.c or dlmalloc.c. We have to set it here.
 # And we want the bump it to 16 for 32-bit by default.
-ifeq "$(cnBitsPerWord)" "32"
+ifeq "$(BPW)" "32"
 ifeq "$(cnBitsMallocMask)" ""
   DEFINES += -DMALLOC_ALIGNMENT=16
   # b.h will set cnBitsMallocMask appropriately based on MALLOC_ALIGNMENT
@@ -45,7 +47,7 @@ endif
 # It looks like macOS uses its own 'libtool' to create a single dynamic library
 # that holds both 32-bit and 64-bit objects.
 # We are not that sophisticated yet.
-ifeq "$(cnBitsPerWord)" "32"
+ifeq "$(BPW)" "32"
   LDFLAGS = -L/usr/local/lib32
 else
   LDFLAGS = -L/usr/local/lib
@@ -68,23 +70,30 @@ endif
 # -std=c11 gives anonymous unions with no complaints.
 # -std=gnu99 gives a warning for anonymous unions.
 ##
-ifeq "$(CSTDFLAG)" ""
-# CSTDFLAG =
-  CSTDFLAG = -std=gnu11
-# CSTDFLAG = -std=c11
-# CSTDFLAG = -std=gnu99
-# CSTDFLAG = -std=c99
-# CSTDFLAG = -std=c90
-# CSTDFLAG = -std=c89
+ifeq "$(CSTD)" ""
+# CSTD = gnu11
+# CSTD = c11
+# CSTD = gnu99
+# CSTD = c99
+# CSTD = c90
+# CSTD = c89
 endif
 
-ifeq "$(CXXSTDFLAG)" ""
-  CXXSTDFLAG = -std=c++14
-# c++a11 doesn't allow 0ULL.
-# CXXSTDFLAG = -std=c++11
+ifneq "$(CSTD)" ""
+  CSTDFLAG = -std=$(CSTD)
 endif
 
-  MFLAGS += -m$(cnBitsPerWord)
+# c++11 doesn't allow 0ULL.
+ifeq "$(CXXSTD)" ""
+# CXXSTD = -std=c++14
+# CXXSTD = -std=c++11
+endif
+
+ifneq "$(CXXSTD)" ""
+  CXXSTDFLAG = -std=$(CXXSTD)
+endif
+
+  MFLAGS += -m$(BPW)
 # MFLAGS += -mmmx
 # MFLAGS += -mno-mmx
 # MFLAGS += -msse2
