@@ -476,12 +476,13 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
           #if defined(PWROOT_AT_TOP_FOR_LOOKUP) || defined(POP_IN_WR_HB) && ! defined(SEARCH_FROM_WRAPPER)
     Word_t *pwRoot = &wRoot;
           #else // defined(PWROOT_AT_TOP_FOR_LOOKUP) || ...
-    // Silence unwarranted gcc used before initialized warning.
-    // pwRoot is only uninitialized on the first time through the loop.
-    // And we only use it if nBL != cnBitsPerWord
+    // pwRoot is updated each time through the loop.
+    // We use pwRoot in LOOKUP if nBL != cnBitsPerWord
     // or if bNeedPrefixCheck is true.
-    // And both of those imply it's not the first time through the loop.
-    Word_t *pwRoot = pwRoot;
+    // Both of those imply it's not the first time through the loop
+    // so it wouldn't be necessary to initialize it.
+    // But we also use it in t_bm_sw even when nBL == cnBitsPerWord.
+    Word_t *pwRoot = &wRoot;
           #endif // defined(PWROOT_AT_TOP_FOR_LOOKUP) || ...
       #endif // defined(BM_IN_LINK)
   #endif // defined(PWROOT_PARAMETER_FOR_LOOKUP)

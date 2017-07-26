@@ -329,6 +329,8 @@
 // ALIGN_UP assumes _isor is a power of 2.
 #define ALIGN_UP(_idend, _isor)  (((_idend) + (_isor) - 1) & ~((_isor) - 1))
 
+// This LOG macro works for 64-bit and 32-bit on Linux and Windows.
+// No variant of __builtin_clz[l][l] does.
 // Count leading zeros.
 // __builtin_clzll is undefined for zero which allows the compiler to use bsr.
 // Actual x86 clz instruction is defined for zero.
