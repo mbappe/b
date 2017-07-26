@@ -5,6 +5,44 @@
 #if ( ! defined(_B_H_INCLUDED) )
 #define _B_H_INCLUDED
 
+#include <stdio.h>  // printf
+#include <string.h> // memcpy
+
+// assert.h is included later. After we've had a chance to define NDEBUG.
+
+// Let's start with general purpose macros that aren't really specific
+// to our program.
+
+// Do these have any effect?
+#if ! defined(likely)
+#define   likely(_b) (__builtin_expect((_b), 1))
+#define unlikely(_b) (__builtin_expect((_b), 0))
+#endif // ! defined(likely)
+
+// Do integer division by a power of two, but round up instead of down.
+#define DIV_UP(_idend, _isor) \
+    (assert(__builtin_popcountll(_isor) == 1), \
+        (((_idend) + (_isor) - 1) / (_isor)))
+
+#define DIV_UP_X(_idend, _isor)  (((_idend) + (_isor) - 1) / (_isor))
+
+// Align up to the next specified power of two alignment boundary.
+#define ALIGN_UP(_idend, _isor) \
+    (assert(__builtin_popcountll(_isor) == 1), \
+        (((_idend) + (_isor) - 1) & ~((_isor) - 1)))
+
+#define ALIGN_UP_X(_idend, _isor)  (((_idend) + (_isor) - 1) & ~((_isor) - 1))
+
+// This LOG macro works for 64-bit and 32-bit on Linux and Windows.
+// No variant of __builtin_clz[l][l] does.
+// Count leading zeros.
+// __builtin_clzll is undefined for zero which allows the compiler to use bsr.
+// Actual x86 clz instruction is defined for zero.
+// This LOG macro is undefined for zero.
+#define LOG(_x)  ((uintptr_t)63 - __builtin_clzll(_x))
+
+#include "Judy.h"   // Word_t, JudyMalloc, ...
+
 // Default is cnBitsPerWord = 64.
 #if !defined(cnBitsPerWord)
 #if defined(__LP64__) || defined(_WIN64)
@@ -34,11 +72,6 @@
 #endif // defined(MALLOC_ALIGNMENT)
 
 #define cnMallocMask  MSK(cnBitsMallocMask)
-
-#if ! defined(likely)
-#define   likely(_b) (__builtin_expect((_b), 1))
-#define unlikely(_b) (__builtin_expect((_b), 0))
-#endif // ! defined(likely)
 
 // NO_SKIP_LINKS means no skip links of any kind.
 // SKIP_LINKS allows the type-specific SKIP_TO_<BLAH> to be defined.
@@ -292,50 +325,7 @@
 // SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
 // -UNDEBUG, RAMMETRICS, GUARDBAND
 
-// To do:
-//
-// - Constraints: cache size; goal is only one cache miss per get;
-//   only leaf level can be out of cache;
-//   memory usage must be no more than two words per key;
-//   if list leaf must be larger than cache line size, then might as
-//   well add a branch
-// - 3MB/4B/link ~ 750,000 links at full pop ~ 375,000 Bitmaps ~ 18-19 bits
-//   decoded by switches; 13-14 bits per Bitmap.
-// - What about tlb entries?
-// - log(xor) for prefix check
-// - nDLRoot - nDL == -1 means double the size
-//   of the index for the next switch
-// - nDLRoot - nDL == -2 means quadruple the
-//   size of the index for the next switch
-// - nDLRoot - nDL == -3 means times eight the
-//   size of the index for the next switch
-// - 1-byte, 2-byte, 4-byte lists
-// - pop count
-// - special variant of Lookup for undoing pop count increment
-//   of failed insert (or decrement of failed remove)
-// - list switches?  for wide switches?
-// - Bitmap switches?  for wide switches?
-
-#include <stdio.h>  // printf
-#include <string.h> // memcpy
 #include <assert.h> // NDEBUG must be defined before including assert.h.
-#include "Judy.h"   // Word_t, JudyMalloc, ...
-
-// Do integer division, but round up instead of down.
-#define DIV_UP(_idend, _isor)  (((_idend) + (_isor) - 1) / (_isor))
-// Do integer division, but round up instead of down.
-// Pass in the log of the power of 2 divisor.
-#define DIV_UP_X(_idend, _log)  (((_idend) + (1 << (_log)) - 1) >> (_log))
-// ALIGN_UP assumes _isor is a power of 2.
-#define ALIGN_UP(_idend, _isor)  (((_idend) + (_isor) - 1) & ~((_isor) - 1))
-
-// This LOG macro works for 64-bit and 32-bit on Linux and Windows.
-// No variant of __builtin_clz[l][l] does.
-// Count leading zeros.
-// __builtin_clzll is undefined for zero which allows the compiler to use bsr.
-// Actual x86 clz instruction is defined for zero.
-// This LOG macro is undefined for zero.
-#define LOG(_x)  ((Word_t)63 - __builtin_clzll(_x))
 
 #define cnLogBitsPerByte  3
 #define cnBitsPerByte  (EXP(cnLogBitsPerByte))
@@ -616,10 +606,10 @@ typedef Word_t Bucket_t;
 // anDL_to_nBL[].  Yuck.
 #if (cnBitsInD3 != cnBitsPerDigit)
 #define cnDigitsPerWord \
-    (DIV_UP(cnBitsPerWord - cnBitsLeftAtDl3, cnBitsPerDigit) + 3)
+    (DIV_UP_X(cnBitsPerWord - cnBitsLeftAtDl3, cnBitsPerDigit) + 3)
 #else // (cnBitsInD3 != cnBitsPerDigit)
 #define cnDigitsPerWord \
-    (DIV_UP(cnBitsPerWord - cnBitsInD1 - cnBitsInD2, cnBitsPerDigit) + 2)
+    (DIV_UP_X(cnBitsPerWord - cnBitsInD1 - cnBitsInD2, cnBitsPerDigit) + 2)
 #endif // (cnBitsInD3 != cnBitsPerDigit)
 
 // Default is -DEMBED_KEYS.
@@ -2238,7 +2228,7 @@ typedef struct {
     };
 } ListLeaf_t;
 
-#define N_WORDS_SWITCH_BM  DIV_UP(((Word_t)1 << cnBitsPerDigit), cnBitsPerWord)
+#define N_WORDS_SWITCH_BM  DIV_UP_X(((Word_t)1 << cnBitsPerDigit), cnBitsPerWord)
 
 // Default is -UPOP_WORD_IN_LINK.
 // It doesn't matter unless POP_WORD is defined.
