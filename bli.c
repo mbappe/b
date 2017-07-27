@@ -419,9 +419,7 @@ SwSetup(Word_t wKey, int nBLR,
 
     *pnBW = nBL_to_nBWNAB(nBLR); // Should we use Get_nBW?
 
-  #if defined(INSERT) || defined(REMOVE)
-    *pnBLUp = *pnBL;
-  #endif // defined(INSERT) || defined(REMOVE)
+    if (cbInsert || cbRemove) { *pnBLUp = *pnBL; }
 
     *pnBL = nBLR - *pnBW;
 
@@ -462,6 +460,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #if defined(SAVE_PREFIX_TEST_RESULT)
     Word_t wPrefixMismatch = 0; (void)wPrefixMismatch;
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
+    // Do we ever depend on this initialization of pwRootPrev?
     Word_t *pwRootPrev = NULL; (void)pwRootPrev;
 #if defined(LOOKUP)
     int nBL = cnBitsPerWord;
@@ -472,6 +471,9 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     // Is it a problem that we appear to be ignoring PWROOT_AT_TOP_FOR_LOOKUP
     // here? Should we be ensuring that it is not defined?
     Word_t *pwRoot = NULL; // used for top detection
+    // Where is pwRoot == NULL used for top detection? I think I've seen
+    // InsertGuts checking pwRoot or pwRootPrev for NULL to determine
+    // something related to XX_SW.
       #else // defined(BM_IN_LINK)
           #if defined(PWROOT_AT_TOP_FOR_LOOKUP) || defined(POP_IN_WR_HB) && ! defined(SEARCH_FROM_WRAPPER)
     Word_t *pwRoot = &wRoot;
@@ -1198,10 +1200,21 @@ t_bm_sw:;
         assert( ! tp_bIsSkip(nType) || (nBLUp != cnBitsPerWord) );
         // We avoid ambiguity by disallowing calls to Insert/Remove with
         // nBL == cnBitsPerWord and pwRoot not at the top.
+        // What is the possible ambiguity?
+        // How could we ever have nBL == cnBitsPerWord with pwRoot not at top?
+        // Are we trying to distinguish an original call starting
+        // somewhere in the middle of the tree from a normal original call
+        // starting at the top?
+        // Because the recursive implementation wants to do something different
+        // for the final return?
+        // Why do we set pwRoot to NULL sometimes?
+        // Why do we set pwRootPrev to NULL sometimes?
+        // We do actually call InsertOrRemove with nBL < cnBitsPerWord.
         // We need to know if there is a link surrounding *pwRoot.
         // InsertGuts always calls back into Insert with the same pwRoot
         // it was called with.  So it means Insert cannot call InsertGuts
         // with nBL == cnBitsPerWord and pwRoot not at the top.
+        // How could we ever have nBL with pwRoot not at the top?
         // What about defined(RECURSIVE)?
         // What about Remove and RemoveGuts?
         if ( ! (1
