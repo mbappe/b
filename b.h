@@ -1,14 +1,13 @@
 
-// @(#) $Id: b.h,v 1.400 2016/07/15 22:57:11 mike Exp mike $
-// @(#) $Source: /Users/mike/b/RCS/b.h,v $
-
 #if ( ! defined(_B_H_INCLUDED) )
 #define _B_H_INCLUDED
 
+
 #include <stdio.h>  // printf
 #include <string.h> // memcpy
-
-// assert.h is included later. After we've had a chance to define NDEBUG.
+#include "Judy.h"   // Word_t, Judy1Test, JudyMalloc, ...
+#include "bdefines.h"  // May define NDEBUG for assert.h.
+#include <assert.h> // NDEBUG must be defined before including assert.h.
 
 // Let's start with general purpose macros that aren't really specific
 // to our program.
@@ -28,49 +27,68 @@
 
 // Align up to the next specified power of two alignment boundary.
 #define ALIGN_UP(_idend, _isor) \
-    (assert(__builtin_popcountll(_isor) == 1), \
+    (assert(((_isor) & -(_isor)) == (_isor)), \
         (((_idend) + (_isor) - 1) & ~((_isor) - 1)))
 
 #define ALIGN_UP_X(_idend, _isor)  (((_idend) + (_isor) - 1) & ~((_isor) - 1))
 
-// This LOG macro works for 64-bit and 32-bit on Linux and Windows.
-// No variant of __builtin_clz[l][l] does.
-// Count leading zeros.
+#define cnBitsPerByte  8
+
+// Default cnLogBitsPerWord is determined by __LP64__ and _WIN64.
+#if ! defined(cnBitsPerWord)
+  #if defined(__LP64__) || defined(_WIN64)
+    #define cnBitsPerWord  64
+  #else // defined(__LP64__) || defined(_WIN64)
+    #define cnBitsPerWord  32
+  #endif // defined(__LP64__) || defined(_WIN64)
+#endif // ! defined(cnBitsPerWord)
+
+#if (cnBitsPerWord != 64) && (cnBitsPerWord != 32)
+    #error Unsupported cnBitsPerWord.
+#endif
+
+#define cnBytesPerWord  (cnBitsPerWord / cnBitsPerByte)
+
+#define cnLogBitsPerByte  3
+
+#if (cnBitsPerWord == 64)
+    #define cnLogBitsPerWord 6
+    #define cnLogBytesPerWord 3
+#else // cnBitsPerWord
+    #define cnLogBitsPerWord 5
+    #define cnLogBytesPerWord 2
+#endif // cnBitsPerWord
+
+// This LOG macro works for 64-bit and 32-bit on Linux and Windows without
+// any ifdef because we subtract clzll from 63 independent of cnBitsPerWord.
+// This way we avoid using ifdef to choose the variant of __builtin_clz[l][l]
+// we need. The cost is that we have to write this long comment.
+// And what happens if clzll becomes 128-bit someday?
 // __builtin_clzll is undefined for zero which allows the compiler to use bsr.
-// Actual x86 clz instruction is defined for zero.
-// This LOG macro is undefined for zero.
-#define LOG(_x)  ((uintptr_t)63 - __builtin_clzll(_x))
-
-#include "Judy.h"   // Word_t, JudyMalloc, ...
-
-// Default is cnBitsPerWord = 64.
-#if !defined(cnBitsPerWord)
-#if defined(__LP64__) || defined(_WIN64)
-#define cnBitsPerWord  64
-#else // defined(__LP64__) || defined(_WIN64)
-#define cnBitsPerWord  32
-#endif // defined(__LP64__) || defined(_WIN64)
-#endif // !defined(cnBitsPerWord)
+// So this macro is undefined for _x == 0.
+#define LOG(_x)  (63 - __builtin_clzll(_x))
+#define EXP(_x)  (assert((_x) <= cnBitsPerWord), (Word_t)1 << (_x))
+#define MSK(_nBits)  (EXP(_nBits) - 1)
 
 // dlmalloc.c uses MALLOC_ALIGNMENT.
 // Default MALLOC_ALIGNMENT is 2 * sizeof(void *).
 // We have to set cnBitsMallocMask to be consitent with MALLOC_ALIGNMENT.
-#if defined(MALLOC_ALIGNMENT)
-  #if (MALLOC_ALIGNMENT == 4)
+#if (MALLOC_ALIGNMENT == 4)
     #define cnBitsMallocMask 2
-  #elif (MALLOC_ALIGNMENT == 8)
+#elif (MALLOC_ALIGNMENT == 8)
     #define cnBitsMallocMask 3
-  #elif (MALLOC_ALIGNMENT == 16)
+#elif (MALLOC_ALIGNMENT == 16)
     #define cnBitsMallocMask 4
-  #elif (MALLOC_ALIGNMENT == 32)
+#elif (MALLOC_ALIGNMENT == 32)
     #define cnBitsMallocMask 5
-  #else // MALLOC_ALIGNMENT
-    #error Unsupported MALLOC_ALIGNMENT
-  #endif // MALLOC_ALIGNMENT
-#else // defined(MALLOC_ALIGNMENT)
+#elif ! defined(MALLOC_ALIGNMENT)
     #define cnBitsMallocMask (cnLogBytesPerWord + 1)
-#endif // defined(MALLOC_ALIGNMENT)
+#else // defined(MALLOC_ALIGNMENT)
+    #error Unsupported MALLOC_ALIGNMENT.
+#endif // MALLOC_ALIGNMENT
 
+#define cnLogMallocAlignment  cnBitsMallocMask
+#define cnMallocAlignment  EXP(cnBitsMallocMask)
 #define cnMallocMask  MSK(cnBitsMallocMask)
 
 // NO_SKIP_LINKS means no skip links of any kind.
@@ -281,63 +299,6 @@
 
 // Default is -UPLACE_LISTS.
 
-// Default is -DNDEBUG -UDEBUG_ALL -UDEBUG
-// -UDEBUG_INSERT -UDEBUG_REMOVE -UDEBUG_LOOKUP -UDEBUG_MALLOC
-// -UDEBUG_COUNT -UDEBUG_NEXT
-#if defined(DEBUG_ALL)
-
-    #undef  NDEBUG
-    #undef   DEBUG
-    #undef   DEBUG_INSERT
-    #undef   DEBUG_REMOVE
-    #undef   DEBUG_MALLOC
-    #undef   DEBUG_COUNT
-
-    #define  DEBUG
-    #define  DEBUG_INSERT
-    #define  DEBUG_REMOVE
-    #define  DEBUG_MALLOC
-    #define  DEBUG_COUNT
-    #define  DEBUG_NEXT
-
-#else // defined(DEBUG_ALL)
-
-  #if defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) \
-          || defined(DEBUG_REMOVE) || defined(DEBUG_MALLOC) \
-          || defined(DEBUG_COUNT) || defined(DEBUG_NEXT)
-
-    #undef  NDEBUG
-    #undef   DEBUG
-    #define  DEBUG
-
-  #endif // defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || ...
-
-#endif // defined(DEBUG_ALL)
-
-#if ! defined(DEBUG)
-
-    #undef NDEBUG
-    #define NDEBUG
-
-#endif // ! defined(DEBUG)
-
-// Choose features.
-// SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
-// -UNDEBUG, RAMMETRICS, GUARDBAND
-
-#include <assert.h> // NDEBUG must be defined before including assert.h.
-
-#define cnLogBitsPerByte  3
-#define cnBitsPerByte  (EXP(cnLogBitsPerByte))
-
-#if (cnBitsPerWord == 64)
-#define cnLogBytesPerWord  3
-#else // (cnBitsPerWord == 64)
-#define cnLogBytesPerWord  2
-#endif // (cnBitsPerWord == 64)
-
-#define cnLogBitsPerWord  (cnLogBytesPerWord + cnLogBitsPerByte)
-
 #if (cnBitsPerWord == 64)
 #define cnBitsVirtAddr  48
 #define cwVirtAddrMask  MSK(cnBitsVirtAddr)
@@ -348,9 +309,6 @@
 #define cnBitsVirtAddr  32
 #define cwVirtAddrMask  ((Word_t)-1)
 #endif // (cnBitsPerWord == 64)
-
-#define EXP(_x)  (assert((_x) <= cnBitsPerWord), (Word_t)1 << (_x))
-#define MSK(_x)  (EXP(_x) - 1)
 
 // Bits are numbered 0-63 with 0 being the least significant.
 static inline Word_t
