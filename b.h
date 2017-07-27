@@ -66,7 +66,10 @@
 // And what happens if clzll becomes 128-bit someday?
 // __builtin_clzll is undefined for zero which allows the compiler to use bsr.
 // So this macro is undefined for _x == 0.
-#define LOG(_x)  (63 - __builtin_clzll(_x))
+// The cast to uint64_t is not needed for correctness. The code is actually
+// more correct without the cast. I have measured the code being slower
+// without the cast than with. Bummer.
+#define LOG(_x)  ((uintptr_t)63 - __builtin_clzll(_x))
 #define EXP(_x)  (assert((_x) <= cnBitsPerWord), (Word_t)1 << (_x))
 #define MSK(_nBits)  (EXP(_nBits) - 1)
 
