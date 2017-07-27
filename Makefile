@@ -212,7 +212,7 @@ endif
 
 DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 
-FILES_FROM_ME  = b.h b.c bli.c bl.c bi.c br.c bc.c bn.c t.c
+FILES_FROM_ME  = b.h b.c bli.c bl.c bi.c br.c bc.c t.c
 FILES_FROM_ME += stubsL.c stubsHS.c Makefile
 FILES_FROM_ME += bb forx
 FILES_FROM_ME += README.meb
@@ -224,13 +224,13 @@ FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEA)
 EXES = Judy1LHTime Judy1LHCheck c++time c++check # t
 LINKS = b btime bcheck
 LIBS = libb1.a libb1.so libb.a libb.so
-LIBB1_OBJS = b.o bl.o bi.o br.o bc.o bn.o JudyMalloc.o
-LIBB1_SRCS = b.c bl.c bi.c br.c bc.c bn.c
+LIBB1_OBJS = b.o bl.o bi.o br.o bc.o JudyMalloc.o
+LIBB1_SRCS = b.c bl.c bi.c br.c bc.c
 LIBB_OBJS = $(LIBB1_OBJS) stubsL.o stubsHS.o
 LIBB_SRCS = $(LIBB1_SRCS) stubsL.c stubsHS.c
-ASMS  = b.s bl.s bi.s br.s bc.s bn.s
+ASMS  = b.s bl.s bi.s br.s bc.s
 ASMS += stubsL.s stubsHS.s JudyMalloc.s # t.s
-CPPS  = b.i bl.i bi.i br.i bc.i bn.i
+CPPS  = b.i bl.i bi.i br.i bc.i
 CPPS += stubsL.i stubsHS.i JudyMalloc.i # t.i
 
 T_OBJS = stubsL.o stubsHS.o JudyMalloc.o
@@ -391,10 +391,6 @@ br.i: br.c
 
 # The .c.i rule doesn't work for some reason.  Later.
 bc.i: bc.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
-
-# The .c.i rule doesn't work for some reason.  Later.
-bn.i: bn.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
