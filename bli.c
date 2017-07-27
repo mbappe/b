@@ -411,13 +411,15 @@ CaseGuts(int nBL, Word_t *pwRoot, int nBS, int nBW, int nType, Word_t *pwr)
 // nBLR is bits left after reducing nBL by any skip in that link
 // nBLR is bits left at the top of this switch
 static inline void
-SwSetup(Word_t wKey, int nBLR,
+SwSetup(qp, Word_t wKey,
+        int nTypeBase, // type without skip
+        int nBLR,
         int *pnBL,
         int *pnBW, int *pnBLUp, Word_t *pwDigit)
 {
-    (void)pnBLUp;
+    qv; (void)pnBLUp;
 
-    *pnBW = nBL_to_nBWNAB(nBLR); // Should we use Get_nBW?
+    *pnBW = gnBW(qy, nTypeBase, nBLR);
 
     if (cbInsert || cbRemove) { *pnBLUp = *pnBL; }
 
@@ -462,6 +464,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
     // Do we ever depend on this initialization of pwRootPrev?
     Word_t *pwRootPrev = NULL; (void)pwRootPrev;
+
 #if defined(LOOKUP)
     int nBL = cnBitsPerWord;
   #if defined(PWROOT_PARAMETER_FOR_LOOKUP)
@@ -504,6 +507,8 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
           #endif // defined(REMOVE)
   #endif // !defined(RECURSIVE)
 #endif // defined(LOOKUP)
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
+
 #if !defined(RECURSIVE)
   #if !defined(LOOKUP)
     Word_t *pwRootOrig = pwRoot; (void)pwRootOrig;
@@ -912,7 +917,7 @@ t_switch:;
   #if ! defined(COUNT)
         Word_t wDigit; // minimize scope to help compiler
   #endif // ! defined(COUNT)
-        SwSetup(wKey, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
+        SwSetup(qy, wKey, T_SWITCH, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
 
   #if defined(COUNT)
         bLinkPresent = 1;
@@ -1192,7 +1197,7 @@ t_bm_sw:;
   #if ! defined(COUNT)
         Word_t wDigit; // minimize scope to help compiler
   #endif // ! defined(COUNT)
-        SwSetup(wKey, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
+        SwSetup(qy, wKey, T_BM_SW, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
 
         Word_t wSwIndex;
   #if defined(BM_IN_LINK)
@@ -1321,7 +1326,7 @@ t_skip_to_list_sw:
 t_list_sw:;
 
         int nBW;
-        SwSetup(wKey, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
+        SwSetup(qy, wKey, T_LIST, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
 
         Word_t wSwIndex;
   #if defined(SW_LIST_IN_LINK)

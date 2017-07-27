@@ -2,7 +2,6 @@
 #if ( ! defined(_B_H_INCLUDED) )
 #define _B_H_INCLUDED
 
-
 #include <stdio.h>  // printf
 #include <string.h> // memcpy
 #include "Judy.h"   // Word_t, Judy1Test, JudyMalloc, ...
@@ -93,6 +92,25 @@
 #define cnLogMallocAlignment  cnBitsMallocMask
 #define cnMallocAlignment  EXP(cnBitsMallocMask)
 #define cnMallocMask  MSK(cnBitsMallocMask)
+
+// Shorthand for common parameters.
+// Should we define what they mean here?
+// Or should the callee be able to define what they mean?
+// Let's suggest something here and let the callee override it if/as necessary.
+// The parameters are all related to each other.
+// nBL is the number of bits left to decode after identifying the given link.
+// nBL does not include the bits skipped if the link is a skip link.
+#define qp  Link_t *pLn, Word_t *pwRoot, Word_t wRoot, Word_t *pwr, int nBL
+
+// Shorthand for common arguments.
+#define qy  pLn, pwRoot, wRoot, pwr, nBL
+
+// Shorthand to silence not-used compiler warnings.
+// And to validate assumptions.
+#define qv \
+    (void)pLn, (void)pwRoot; (void)wRoot; (void)pwr, (void)nBL; \
+    assert(pLn == STRUCT_OF(pwRoot, Link_t, ln_wRoot)); \
+    assert(wRoot == *pwRoot); assert(pwr == wr_pwr(wRoot))
 
 // NO_SKIP_LINKS means no skip links of any kind.
 // SKIP_LINKS allows the type-specific SKIP_TO_<BLAH> to be defined.
@@ -648,6 +666,12 @@ enum {
     T_SKIP_TO_SWITCH
 #endif // defined(SKIP_LINKS)
 };
+
+#if defined(CODE_XX_SW)
+    #define bnTypeIsXxSw(_nType)  ((_nType) == T_XX_SW)
+#else // defined(CODE_XX_SW)
+    #define bnTypeIsXxSw(_nType)  0
+#endif // defined(CODE_XX_SW)
 
 // Define and optimize nBitsIndexSz_from_nDL, nBitsIndexSz_from_nBL,
 // nBL_from_nDL, nBL_from_nDL, et. al. based on ifdef parameters.
@@ -1315,37 +1339,6 @@ tp_bIsSkip(int nType)
 #endif // defined(SKIP_TO_LIST)
 
 #if defined(CODE_XX_SW)
-
-// Get the width of the branch in bits.
-static inline int
-Get_nBW(Word_t *pwRoot)
-{
-  #if (cnBitsPerWord >= 64)
-    int nBW = GetBits(*pwRoot, cnBitsXxSwWidth, cnLsbXxSwWidth);
-    assert(nBW <= (int)MSK(cnBitsXxSwWidth));
-  #else // (cnBitsPerWord >= 64)
-    (void)pwRoot;
-    int nBW = cnBitsPerDigit / 2;
-  #endif // (cnBitsPerWord >= 64)
-    return nBW;
-}
-
-#define pwr_nBW(_pwRoot)  Get_nBW(_pwRoot)
-
-// Set the width of the branch in bits.
-static inline void
-Set_nBW(Word_t *pwRoot, int nBW)
-{
-  #if (cnBitsPerWord >= 64)
-    assert(nBW <= (int)MSK(cnBitsXxSwWidth));
-    SetBits(pwRoot, cnBitsXxSwWidth, cnLsbXxSwWidth, nBW);
-  #else // (cnBitsPerWord >= 64)
-    (void)pwRoot; (void)nBW;
-  #endif // (cnBitsPerWord >= 64)
-}
-
-#define set_pwr_nBW(_pwRoot, _nBW)  Set_nBW((_pwRoot), (_nBW))
-
 static inline Word_t
 pw_wPrefix(Word_t *pw, int nBL)
 {
@@ -2211,6 +2204,54 @@ typedef struct {
 #endif // (cnDummiesInLink != 0)
     Word_t ln_wRoot;
 } Link_t;
+
+// Get the width of the branch in bits.
+// nBLR includes any skip specified in the qp link.
+static inline int
+gnBW(qp, int nTypeBase, int nBLR)
+{
+    qv; (void)nTypeBase; (void)nBLR;
+    int nBW;
+    if (bnTypeIsXxSw(nTypeBase)) {
+        if (cnBitsPerWord == 64) {
+            // WIDTH_IN_WR_HB
+            nBW = GetBits(wRoot, cnBitsXxSwWidth, cnLsbXxSwWidth);
+        } else {
+            // use the malloc preamble word
+            nBW = GetBits(pwr[-1], cnBitsXxSwWidth, cnLsbXxSwWidth);
+        }
+    } else {
+        nBW = nBL_to_nBW(nBLR);
+    }
+    return nBW;
+}
+
+#define Get_nBW(_pwRoot) \
+    gnBW(STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
+         (_pwRoot), *(_pwRoot), wr_pwr(*(_pwRoot)), 0, T_XX_SW, 0)
+
+#define pwr_nBW  Get_nBW
+
+// Set the width of the branch in bits.
+static inline void
+snBW(qp, int nTypeBase, int nBW)
+{
+    qv; (void)nTypeBase;
+    assert(nBW <= (int)MSK(cnBitsXxSwWidth));
+    if (cnBitsPerWord == 64) {
+        // WIDTH_IN_WR_HB
+        SetBits(pwRoot, cnBitsXxSwWidth, cnLsbXxSwWidth, nBW);
+    } else {
+        // use the malloc preamble word
+        SetBits(&pwr[-1], cnBitsXxSwWidth, cnLsbXxSwWidth, nBW);
+    }
+}
+
+#define Set_nBW(_pwRoot, _nBW) \
+    snBW(STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
+         (_pwRoot), *(_pwRoot), wr_pwr(*(_pwRoot)), 0, T_XX_SW, (_nBW))
+
+#define set_pwr_nBW  Set_nBW
 
 #if defined(SW_LIST_IN_LINK)
     #define SW_LIST
