@@ -535,8 +535,13 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #if ! defined(LOOKUP)
     int nPos = -1;
 #endif // ! defined(LOOKUP)
-#if defined(COUNT)
+    // wDigit needs this broad scope only for COUNT.
+    // I wonder if it would help performance if we were to define this
+    // in the narrower scope for LOOKUP?
+    // In the one quick test I did I saw no performance difference.
+    // Maybe we should revisit occasionally.
     Word_t wDigit;
+#if defined(COUNT)
     int bLinkPresent;
     int nLinks;
 #endif // defined(COUNT)
@@ -914,7 +919,6 @@ t_skip_to_xx_sw:
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:;
         int nBW;
-        IF_NOT_COUNT(Word_t wDigit); // Narrow scope to help the compiler?
         SwSetup(qy, wKey, T_SWITCH, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
@@ -1184,9 +1188,6 @@ t_full_bm_sw:
         goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
 t_bm_sw:;
         int nBW;
-  #if ! defined(COUNT)
-        Word_t wDigit; // minimize scope to help compiler
-  #endif // ! defined(COUNT)
         SwSetup(qy, wKey, T_BM_SW, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
 
         Word_t wSwIndex;
