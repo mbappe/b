@@ -418,23 +418,16 @@ SwSetup(qp, Word_t wKey,
         int *pnBW, int *pnBLUp, Word_t *pwDigit)
 {
     qv; (void)pnBLUp;
-
     *pnBW = gnBW(qy, nTypeBase, nBLR);
-
     if (cbInsert || cbRemove) { *pnBLUp = *pnBL; }
-
     *pnBL = nBLR - *pnBW;
-
     // Is it possible that MSK(nBLR - nBL) would be faster here in some
     // cases, e.g. BitsInD2 != BitsPerDigit and BitsInD3 != BitsPerDigit?
-
     *pwDigit = (wKey >> *pnBL) & MSK(*pnBW);
-
     // ((uint8_t *)&wKey)[(cnBitsPerWord - nBL) >> 3];
     // ((uint8_t *)&wKey)[cnDigitsPerWord - nDL];
     // ((uint8_t *)&wSwappedKey)[nDL];
     // *(uint8_t *)&wSwappedAndShiftedKey;
-
     DBGX(printf("sw wDigit %zd 0x%zx\n", *pwDigit, *pwDigit));
 }
 
@@ -508,6 +501,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
   #endif // !defined(RECURSIVE)
 #endif // defined(LOOKUP)
     Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
+    int nBW;
 
 #if !defined(RECURSIVE)
   #if !defined(LOOKUP)
@@ -918,7 +912,6 @@ t_skip_to_xx_sw:
     {
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:;
-        int nBW;
         SwSetup(qy, wKey, T_SWITCH, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
@@ -1012,24 +1005,21 @@ switchTail:;
     {
         goto t_xx_sw;
 t_xx_sw:;
-        // nBL is bits left after picking the link from the previous switch
-        // nBL is not reduced by any skip indicated in that link
-        // nBLR is nBL reduced by any skip indicated in that link
-        // nBLR is bits left at the top of this switch
-
         DBGX(printf("T_XX_SW nBL %d nBLR %d wPopCnt %" _fw"d pLinks %p\n",
                     nBL, nBLR, PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR),
                     (void *)pwr_pLinks((Switch_t *)pwr)));
+
+        SwSetup(qy, wKey, T_XX_SW, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
 
   #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
       #if defined(INSERT)
           #if (cn2dBmWpkPercent != 0)
             assert(nBLR <= cnBitsLeftAtDl2);
-            InsertCleanup(wKey, nBL, pwRoot, wRoot);
+            InsertCleanup(wKey, nBLUp, pwRoot, wRoot);
           #endif // (cn2dBmWpkPercent != 0)
       #else // defined(INSERT)
-            RemoveCleanup(wKey, nBL, nBLR, pwRoot, wRoot);
+            RemoveCleanup(wKey, nBLUp, nBLR, pwRoot, wRoot);
       #endif // defined(INSERT)
             if (*pwRoot != wRoot) { goto restart; }
         } else {
@@ -1040,7 +1030,7 @@ t_xx_sw:;
       #if defined(INSERT)
         pwRootPrev = pwRoot; // save pwRoot for T_XX_SW for InsertGuts
           #if defined(SKIP_TO_XX_SW)
-        nBLPrev = nBL;
+        nBLPrev = nBLUp;
           #endif // defined(SKIP_TO_XX_SW)
       #endif // defined(INSERT)
   #endif // defined(INSERT) || defined(REMOVE)
@@ -1053,26 +1043,19 @@ t_xx_sw:;
           #endif // defined(DEBUG)
         assert( ! tp_bIsSkip(wr_nType(wRoot)) || (Get_nBLR(&wRoot) == nBLR) );
   #endif // defined(SKIP_TO_XX_SW)
-  #if ! defined(LOOKUP) || (defined(USE_PWROOT_FOR_LOOKUP) && (defined(PWROOT_PARAMETER_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)))
-        int nBW = Get_nBW(pwRoot);
-  #else // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's ok
-        int nBW = Get_nBW(&wRoot);
-  #endif // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's ok
-        nBL = nBLR - nBW;
-        int nIndex = (wKey >> nBL) & MSK(nBW);
 
-        DBGX(printf("T_XX_SW nBW %d nIndex %d 0x%x\n",
-                    nBW, nIndex, nIndex));
+        DBGX(printf("T_XX_SW nBW %d wDigit %d 0x%x\n",
+                    nBW, wDigit, wDigit));
 
 #if defined(COUNT)
-        wPopCnt = CountSw(pwRoot, nBLR, nBL, nIndex, 1<<nBW);
+        wPopCnt = CountSw(pwRoot, nBLR, nBL, wDigit, 1<<nBW);
         DBGC(printf("T_XX_SW wPopCnt %" _fw"d\n", wPopCnt));
         wPopCntSum += wPopCnt;
         DBGC(printf("xxsw wPopCnt " OWx" wPopCntSum " OWx"\n",
                     wPopCnt, wPopCntSum));
 #endif // defined(COUNT)
 
-        pwRoot = &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot;
+        pwRoot = &pwr_pLinks((Switch_t *)pwr)[wDigit].ln_wRoot;
 
         wRoot = *pwRoot;
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -1187,7 +1170,6 @@ t_full_bm_sw:
     {
         goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
 t_bm_sw:;
-        int nBW;
         SwSetup(qy, wKey, T_BM_SW, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
 
         Word_t wSwIndex;
@@ -1316,7 +1298,6 @@ t_skip_to_list_sw:
         goto t_list_sw; // silence cc in case other the gotos are ifdef'd out
 t_list_sw:;
 
-        int nBW;
         SwSetup(qy, wKey, T_LIST, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
 
         Word_t wSwIndex;
