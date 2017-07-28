@@ -450,7 +450,7 @@ Status_t
 InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #endif // defined(LOOKUP)
 {
-    int nBLUp; (void)nBLUp; // silence gcc
+    int nBLUp = nBLUp; (void)nBLUp; // silence gcc
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
 #if defined(SAVE_PREFIX_TEST_RESULT)
     Word_t wPrefixMismatch = 0; (void)wPrefixMismatch;
@@ -485,11 +485,6 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
       #endif // defined(BM_IN_LINK)
   #endif // defined(PWROOT_PARAMETER_FOR_LOOKUP)
 #else // defined(LOOKUP)
-  #if defined(CODE_XX_SW)
-      #if defined(SKIP_TO_XX_SW)
-    int nBLPrev = 0; (void)nBLPrev;
-      #endif // defined(SKIP_TO_XX_SW)
-  #endif // defined(CODE_XX_SW)
     Word_t wRoot;
   #if !defined(RECURSIVE)
           #if defined(INSERT)
@@ -500,7 +495,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
           #endif // defined(REMOVE)
   #endif // !defined(RECURSIVE)
 #endif // defined(LOOKUP)
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
+    Link_t *pLn; DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot)); (void)pLn;
     int nBW;
 
 #if !defined(RECURSIVE)
@@ -919,6 +914,7 @@ t_switch:;
         pwRoot = &pwr_pLinks((Switch_t *)pwr)[wDigit].ln_wRoot;
         goto switchTail; // in case other uses go away by ifdef
 switchTail:;
+        DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
 
   #if defined(INSERT) || defined(REMOVE)
         // Cleanup is for adjusting tree after successful insert or remove.
@@ -988,10 +984,17 @@ switchTail:;
         // to sizeof(Link_t).
         assert(EXP(nBL) > (sizeof(Link_t) * 8));
   #endif // defined(ALLOW_EMBEDDED_BITMAP)
-  #if defined(LOOKUP) || !defined(RECURSIVE)
-      #if ! defined(LOOKUP)
+  #if defined(CODE_XX_SW) && ! defined(LOOKUP)
+    if ( (nType != T_XX_SW)
+      #if defined(SKIP_TO_XX_SW)
+        && (nType != T_SKIP_TO_XX_SW)
+      #endif // defined(SKIP_TO_XX_SW)
+        )
+    {
         pwRootPrev = NULL; // InsertGuts infers XX_SW if pwRootPrev != NULL
-      #endif // ! defined(LOOKUP)
+    }
+  #endif // defined(CODE_XX_SW) && ! defined(LOOKUP)
+  #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
   #else // defined(LOOKUP) || !defined(RECURSIVE)
         return InsertRemove(pwRoot, wKey, nBL);
@@ -1005,70 +1008,62 @@ switchTail:;
     {
         goto t_xx_sw;
 t_xx_sw:;
-        DBGX(printf("T_XX_SW nBL %d nBLR %d wPopCnt %" _fw"d pLinks %p\n",
-                    nBL, nBLR, PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR),
-                    (void *)pwr_pLinks((Switch_t *)pwr)));
-
         SwSetup(qy, wKey, T_XX_SW, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
+        IF_COUNT(bLinkPresent = 1);
+        IF_COUNT(nLinks = 1 << nBW);
+        // Save pwRoot for T_XX_SW for InsertGuts as well as for below.
+        IF_NOT_LOOKUP(pwRootPrev = pwRoot);
+        pwRoot = &pwr_pLinks((Switch_t *)pwr)[wDigit].ln_wRoot;
 
+  #if ! ( defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO) ) \
+         && ! ( defined(NO_TYPE_IN_XX_SW) \
+             || (defined(LOOKUP) && defined(HANDLE_DL2_IN_EMBEDDED_KEYS)) )
+        goto switchTail;
+  #else
+
+        DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
   #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
       #if defined(INSERT)
-          #if (cn2dBmWpkPercent != 0)
-            assert(nBLR <= cnBitsLeftAtDl2);
-            InsertCleanup(wKey, nBLUp, pwRoot, wRoot);
-          #endif // (cn2dBmWpkPercent != 0)
+            if ((cn2dBmWpkPercent != 0) && (nBLR <= cnBitsLeftAtDl2)) {
+                InsertCleanup(wKey, nBLUp, pwRootPrev, wRoot);
+            }
       #else // defined(INSERT)
-            RemoveCleanup(wKey, nBLUp, nBLR, pwRoot, wRoot);
+            RemoveCleanup(wKey, nBLUp, nBLR, pwRootPrev, wRoot);
       #endif // defined(INSERT)
-            if (*pwRoot != wRoot) { goto restart; }
+            if (*pwRootPrev != wRoot) { goto restart; }
         } else {
-            // Increment or decrement population count on the way in.
-            wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
-            set_PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR, wPopCnt + nIncr);
+      #if defined(PP_IN_LINK)
+            if (nBLUp < cnBitsPerWord)
+      #endif // defined(PP_IN_LINK)
+            {
+                // Increment or decrement population count on the way in.
+                wPopCnt = Get_wPopCntBL(pwRootPrev, nBLR);
+                Set_wPopCntBL(pwRootPrev, nBLR, wPopCnt + nIncr);
+            }
         }
-      #if defined(INSERT)
-        pwRootPrev = pwRoot; // save pwRoot for T_XX_SW for InsertGuts
-          #if defined(SKIP_TO_XX_SW)
-        nBLPrev = nBLUp;
-          #endif // defined(SKIP_TO_XX_SW)
-      #endif // defined(INSERT)
   #endif // defined(INSERT) || defined(REMOVE)
 
-  #if defined(SKIP_TO_XX_SW)
-          #if defined(DEBUG)
-        if ( tp_bIsSkip(wr_nType(wRoot)) && (Get_nBLR(&wRoot) != nBLR) ) {
-            printf("T_XX_SW: Get_nBLR %d nBLR %d\n", Get_nBLR(&wRoot), nBLR);
-        }
-          #endif // defined(DEBUG)
-        assert( ! tp_bIsSkip(wr_nType(wRoot)) || (Get_nBLR(&wRoot) == nBLR) );
-  #endif // defined(SKIP_TO_XX_SW)
-
-        DBGX(printf("T_XX_SW nBW %d wDigit %d 0x%x\n",
-                    nBW, wDigit, wDigit));
-
-#if defined(COUNT)
-        wPopCnt = CountSw(pwRoot, nBLR, nBL, wDigit, 1<<nBW);
-        DBGC(printf("T_XX_SW wPopCnt %" _fw"d\n", wPopCnt));
+  #if defined(COUNT)
+        wPopCnt = CountSw(pwRootPrev, nBLR, nBL, wDigit, nLinks);
         wPopCntSum += wPopCnt;
         DBGC(printf("xxsw wPopCnt " OWx" wPopCntSum " OWx"\n",
                     wPopCnt, wPopCntSum));
-#endif // defined(COUNT)
-
-        pwRoot = &pwr_pLinks((Switch_t *)pwr)[wDigit].ln_wRoot;
+        if ( ! bLinkPresent ) { return wPopCntSum; }
+  #endif // defined(COUNT)
 
         wRoot = *pwRoot;
-#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We may need to check the prefix of the switch we just visited in
         // the next iteration of the loop if we've reached a leaf so we
         // preserve the value of pwr.
         pwrPrev = pwr;
-#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+        nBLR = nBL;
+// ALLOW_EMBEDDED_BITMAP is missing and belongs here.
         assert(EXP(nBL) > (sizeof(Link_t) * 8));
 
-        DBGX(printf("T_XX_SW pwRoot %p wRoot " OWx" nBL %d\n",
-                    (void *)pwRoot, wRoot, nBL));
-
+// Below is not in switchTail.
   #if defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
       #if defined(NO_TYPE_IN_XX_SW)
         // ZERO_POP_MAGIC is valid only if a word can hold at least two keys.
@@ -1090,13 +1085,15 @@ t_xx_sw:;
         // The only thing we do at "again" before switching on nType
         // is extract nType and pwr from wRoot.
         // We don't do any updating of nBL or nBLR.
-        nBLR = nBL;
+// Above is not in switchTail
       #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
       #else // defined(LOOKUP) || !defined(RECURSIVE)
         return InsertRemove(pwRoot, wKey, nBL);
       #endif // defined(LOOKUP) || !defined(RECURSIVE)
   #endif // defined(NO_TYPE_IN_XX_SW) || handle dl2 in t_embedded_keys
+
+  #endif // ZERO_POP, NO_TYPE, HANDLE_DL2
 
     } // end of case T_XX_SW
 
@@ -1233,6 +1230,7 @@ t_bm_sw:;
         pwRootPrev = pwRoot;
       #endif // ! defined(LOOKUP)
         pwRoot = &pwr_pLinks((BmSwitch_t *)pwr)[wSwIndex].ln_wRoot;
+        DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
 
   #if defined(COUNT)
         nLinks = INT_MAX;
@@ -1348,6 +1346,7 @@ t_list_sw:;
         pwRootPrev = pwRoot;
       #endif // ! defined(LOOKUP)
         pwRoot = &pwr_pLinks((ListSwitch_t *)pwr)[wSwIndex].ln_wRoot;
+        DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
 
   #if defined(COUNT)
         wDigit = wSwIndex;
@@ -2036,7 +2035,7 @@ t_bitmap:;
       #if defined(CODE_XX_SW)
                    , pwRootPrev
         #if defined(SKIP_TO_XX_SW)
-                   , nBLPrev
+                   , nBLUp
         #endif // defined(SKIP_TO_XX_SW)
       #endif // defined(CODE_XX_SW)
                    );
@@ -2317,7 +2316,7 @@ foundIt:;
   #if defined(CODE_XX_SW)
                , pwRootPrev
       #if defined(SKIP_TO_XX_SW)
-               , nBLPrev
+               , nBLUp
       #endif // defined(SKIP_TO_XX_SW)
   #endif // defined(CODE_XX_SW)
                );
@@ -2338,6 +2337,7 @@ undo:;
         nIncr *= -1;
 restart:;
         pwRoot = pwRootOrig;
+        DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
         nBL = nBLOrig;
         goto top;
     }
