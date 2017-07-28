@@ -914,21 +914,13 @@ t_skip_to_xx_sw:
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:;
         int nBW;
-  #if ! defined(COUNT)
-        Word_t wDigit; // minimize scope to help compiler
-  #endif // ! defined(COUNT)
+        IF_NOT_COUNT(Word_t wDigit); // Narrow scope to help the compiler?
         SwSetup(qy, wKey, T_SWITCH, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
-
-  #if defined(COUNT)
-        bLinkPresent = 1;
-        nLinks = 1 << nBW;
-  #endif // defined(COUNT)
-  #if ! defined(LOOKUP)
-        pwRootPrev = pwRoot;
-  #endif // ! defined(LOOKUP)
+        IF_COUNT(bLinkPresent = 1);
+        IF_COUNT(nLinks = 1 << nBW);
+        IF_NOT_LOOKUP(pwRootPrev = pwRoot);
         pwRoot = &pwr_pLinks((Switch_t *)pwr)[wDigit].ln_wRoot;
-
-        goto switchTail;
+        goto switchTail; // in case other uses go away by ifdef
 switchTail:;
 
   #if defined(INSERT) || defined(REMOVE)
@@ -936,11 +928,9 @@ switchTail:;
         // It is not for undoing counts after unsuccessful insert or remove.
         if (bCleanup) {
       #if defined(INSERT)
-          #if (cn2dBmWpkPercent != 0)
-            if (nBLR <= cnBitsLeftAtDl2) {
+            if ((cn2dBmWpkPercent != 0) && (nBLR <= cnBitsLeftAtDl2)) {
                 InsertCleanup(wKey, nBLUp, pwRootPrev, wRoot);
             }
-          #endif // (cn2dBmWpkPercent != 0)
       #else // defined(INSERT)
             RemoveCleanup(wKey, nBLUp, nBLR, pwRootPrev, wRoot);
       #endif // defined(INSERT)

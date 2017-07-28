@@ -8,6 +8,12 @@
 #define cbRemove  1
 #define cbCount   0
 
+#define IF_LOOKUP(_stmt)
+#define IF_NOT_LOOKUP(_stmt)  _stmt
+
+#define IF_COUNT(_stmt)
+#define IF_NOT_COUNT(_stmt)  _stmt
+
 #define REMOVE
 #include "b.h"
 #include "bli.c"
