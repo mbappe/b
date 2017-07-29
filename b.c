@@ -6238,11 +6238,13 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
 //    if (wKey = 0, Next(&wKey, /* wSkip */ 0) == 0)
 //        do ; while (wKey++, Next(&wKey, /* wSkip */ wN-1) == 0) ;
 static Word_t
-NextGuts(Word_t wRoot, int nBL,
+NextGuts(Word_t *pwRoot, int nBL,
          Word_t *pwKey, Word_t wSkip, int bPrev, int bEmpty)
 {
 #define A(_zero) assert(_zero)
     (void)bEmpty;
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+    Word_t wRoot = *pwRoot;
     Word_t *pwr = wr_pwr(wRoot);
     DBGN(printf("NextGuts(wRoot " OWx" nBL %d *pwKey " OWx
                     " wSkip %" _fw"d bPrev %d bEmpty %d) pwr %p\n",
@@ -6500,7 +6502,7 @@ t_list:;
                         // prev might be in here
                         //A(0);
                         Word_t wCount;
-                        if ((wCount = NextGuts(pLn->ln_wRoot, nBL - nBits,
+                        if ((wCount = NextGuts(&pLn->ln_wRoot, nBL - nBits,
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
@@ -6542,7 +6544,7 @@ t_list:;
                         //A(0);
                         // next might be in here
                         Word_t wCount;
-                        if ((wCount = NextGuts(pLn->ln_wRoot, nBL - nBits,
+                        if ((wCount = NextGuts(&pLn->ln_wRoot, nBL - nBits,
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
@@ -6628,7 +6630,7 @@ t_list:;
         // find starting link
         Word_t wBmSwIndex;
         int wBmSwBit;
-        BmSwIndex(&wRoot, wIndex, &wBmSwIndex, &wBmSwBit);
+        BmSwIndex(qy, wIndex, &wBmSwIndex, &wBmSwBit);
         DBGN(printf("T_BM_SW wIndex 0x%zx wBmSwIndex %" _fw"u bLnPresent %d\n",
                     wIndex, wBmSwIndex, wBmSwBit));
 
@@ -6657,7 +6659,7 @@ t_list:;
                         // prev might be in here
                         //A(0); // check -B17
                         Word_t wCount;
-                        if ((wCount = NextGuts(pLn->ln_wRoot, nBL - nBits,
+                        if ((wCount = NextGuts(&pLn->ln_wRoot, nBL - nBits,
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
@@ -6784,7 +6786,7 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                                     wSkip, *pwKey));
                         // next might be in here
                         Word_t wCount;
-                        if ((wCount = NextGuts(pLn->ln_wRoot, nBL - nBits,
+                        if ((wCount = NextGuts(&pLn->ln_wRoot, nBL - nBits,
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
@@ -6911,7 +6913,7 @@ BmSwGetNextIndex:
                     if (wPopCnt > wSkip) {
                         //A(0);
                         Word_t wCount;
-                        if ((wCount = NextGuts(pLn->ln_wRoot, nBL - nBits, pwKey,
+                        if ((wCount = NextGuts(&pLn->ln_wRoot, nBL - nBits, pwKey,
                                               wSkip, bPrev, bEmpty)) == 0) {
                             //A(0);
                             return 0;
@@ -6947,7 +6949,7 @@ BmSwGetNextIndex:
                     if (wPopCnt > wSkip) {
                         //A(0);
                         Word_t wCount;
-                        if ((wCount = NextGuts(pLn->ln_wRoot, nBL - nBits, pwKey,
+                        if ((wCount = NextGuts(&pLn->ln_wRoot, nBL - nBits, pwKey,
                                               wSkip, bPrev, bEmpty)) == 0) {
                             //A(0);
                             return 0;
@@ -7001,7 +7003,7 @@ Judy1ByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
     // The Judy1 man page specifies that wCount == 0 is reserved for
     // specifying the last key in a fully populated array.
     --wCount; // Judy API spec is off-by-one IMHO
-    wCount = NextGuts((Word_t)PArray, cnBitsPerWord, &wKey,
+    wCount = NextGuts((Word_t *)&PArray, cnBitsPerWord, &wKey,
                       wCount, /* bPrev */ 0, /* bEmpty */ 0);
     if (wCount == 0) {
         *pwKey = wKey;
@@ -7032,7 +7034,7 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     }
     DBGN(printf("J1F: *pwKey " OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
-    Word_t wCount = NextGuts((Word_t)PArray, cnBitsPerWord, &wKey,
+    Word_t wCount = NextGuts((Word_t *)&PArray, cnBitsPerWord, &wKey,
                              /* wCount */ 0, /* bPrev */ 0, /* bEmpty */ 0);
     if (wCount == 0) {
         *pwKey = wKey;
@@ -7085,7 +7087,7 @@ Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     }
     DBGN(printf("J1L: *pwKey " OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
-    Word_t wCount = NextGuts((Word_t)PArray, cnBitsPerWord, &wKey,
+    Word_t wCount = NextGuts((Word_t *)&PArray, cnBitsPerWord, &wKey,
                              /* wCount */ 0, /* bPrev */ 1, /* bEmpty */ 0);
     if (wCount == 0) {
         *pwKey = wKey;
@@ -7134,6 +7136,7 @@ Judy1Prev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 static Status_t
 NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
 {
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
     Word_t wRoot = *pwRoot;
     Word_t *pwr = wr_pwr(wRoot);
     DBGN(printf("NextEmptyGuts(pwRoot %p *pwKey %p nBL %d bPrev %d)"
@@ -7319,7 +7322,7 @@ t_list:;
             //A(0); // check -B17
             Word_t wBmSwIndex;
             int wBmSwBit;
-            BmSwIndex(pwRoot, wIndex, &wBmSwIndex, &wBmSwBit);
+            BmSwIndex(qy, wIndex, &wBmSwIndex, &wBmSwBit);
             if ( ! wBmSwBit ) {
                 //A(0); // check -B17
                 return Success;

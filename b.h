@@ -4670,9 +4670,10 @@ ListSwIndex(Word_t *pwRoot, Word_t wDigit,
 // extracted from key.
 // If the index is not present then return the index at which it would be.
 static inline void
-BmSwIndex(Word_t *pwRoot, Word_t wDigit,
+BmSwIndex(qp, Word_t wDigit,
           Word_t *pwSwIndex, int *pbLinkPresent)
 {
+    qv;
     Word_t *pwBmWords = PWR_pwBm(pwRoot, wr_pwr(*pwRoot));
     // The bitmap may have more than one word.
     // nBmWordNum is the number of the word which contains the bit we want.

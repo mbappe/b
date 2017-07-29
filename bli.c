@@ -1207,7 +1207,7 @@ t_bm_sw:;
   #if ! defined(COUNT)
             int bLinkPresent;
   #endif // ! defined(COUNT)
-            BmSwIndex(pwRoot, wDigit, /* pwSwIndex */ NULL, &bLinkPresent);
+            BmSwIndex(qy, wDigit, /* pwSwIndex */ NULL, &bLinkPresent);
   #if ! defined(COUNT)
             // Test to see if link exists before figuring out where it is.
             if ( ! bLinkPresent )
@@ -1221,7 +1221,7 @@ t_bm_sw:;
       #endif // defined(BM_SW_FOR_REAL)
             }
   #endif // ! defined(COUNT)
-            BmSwIndex(pwRoot, wDigit, &wSwIndex, /* pbPresent */ NULL);
+            BmSwIndex(qy, wDigit, &wSwIndex, /* pbPresent */ NULL);
             DBGX(printf("\npwRoot %p PWR_pwBm %p\n",
                         (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
         }
