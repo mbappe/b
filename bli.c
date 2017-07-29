@@ -450,51 +450,33 @@ Status_t
 InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #endif // defined(LOOKUP)
 {
+  #if defined(LOOKUP) && ! defined(PWROOT_PARAMETER_FOR_LOOKUP)
+    Word_t *pwRoot = &wRoot; // can't get a real *pLn from this
+  #else // defined(LOOKUP) && ! defined(PWROOT_PARAMETER_FOR_LOOKUP)
+    Word_t wRoot = *pwRoot;
+  #endif // defined(LOOKUP) && ! defined(PWROOT_PARAMETER_FOR_LOOKUP)
+
+  #if defined(LOOKUP)
+    int nBL = cnBitsPerWord;
+  #endif // defined(LOOKUP)
+
     int nBLUp = nBLUp; (void)nBLUp; // silence gcc
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
-#if defined(SAVE_PREFIX_TEST_RESULT)
+  #if defined(SAVE_PREFIX_TEST_RESULT)
     Word_t wPrefixMismatch = 0; (void)wPrefixMismatch;
-#endif // defined(SAVE_PREFIX_TEST_RESULT)
+  #endif // defined(SAVE_PREFIX_TEST_RESULT)
     // Do we ever depend on this initialization of pwRootPrev?
     Word_t *pwRootPrev = NULL; (void)pwRootPrev;
 
-#if defined(LOOKUP)
-    int nBL = cnBitsPerWord;
-  #if defined(PWROOT_PARAMETER_FOR_LOOKUP)
-    Word_t wRoot = *pwRoot;
-  #else // defined(PWROOT_PARAMETER_FOR_LOOKUP)
-      #if defined(BM_IN_LINK)
-    // Is it a problem that we appear to be ignoring PWROOT_AT_TOP_FOR_LOOKUP
-    // here? Should we be ensuring that it is not defined?
-    Word_t *pwRoot = NULL; // used for top detection
-    // Where is pwRoot == NULL used for top detection? I think I've seen
-    // InsertGuts checking pwRoot or pwRootPrev for NULL to determine
-    // something related to XX_SW.
-      #else // defined(BM_IN_LINK)
-          #if defined(PWROOT_AT_TOP_FOR_LOOKUP) || defined(POP_IN_WR_HB) && ! defined(SEARCH_FROM_WRAPPER)
-    Word_t *pwRoot = &wRoot;
-          #else // defined(PWROOT_AT_TOP_FOR_LOOKUP) || ...
-    // pwRoot is updated each time through the loop.
-    // We use pwRoot in LOOKUP if nBL != cnBitsPerWord
-    // or if bNeedPrefixCheck is true.
-    // Both of those imply it's not the first time through the loop
-    // so it wouldn't be necessary to initialize it.
-    // But we also use it in t_bm_sw even when nBL == cnBitsPerWord.
-    Word_t *pwRoot = &wRoot;
-          #endif // defined(PWROOT_AT_TOP_FOR_LOOKUP) || ...
-      #endif // defined(BM_IN_LINK)
-  #endif // defined(PWROOT_PARAMETER_FOR_LOOKUP)
-#else // defined(LOOKUP)
-    Word_t wRoot;
   #if !defined(RECURSIVE)
-          #if defined(INSERT)
+      #if defined(INSERT)
     int nIncr = 1;
-          #endif // defined(INSERT)
-          #if defined(REMOVE)
+      #endif // defined(INSERT)
+      #if defined(REMOVE)
     int nIncr = -1;
-          #endif // defined(REMOVE)
+      #endif // defined(REMOVE)
   #endif // !defined(RECURSIVE)
-#endif // defined(LOOKUP)
+
     Link_t *pLn; DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot)); (void)pLn;
     int nBW;
 
@@ -505,7 +487,6 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     Word_t *pwRootOrig = pwRoot; (void)pwRootOrig;
   #endif // !defined(LOOKUP)
 #endif // !defined(RECURSIVE)
-    int nBLR;
 #if defined(INSERT) && (cn2dBmWpkPercent != 0)
     Word_t wPopCnt = 0;
 #else // defined(INSERT) && (cn2dBmWpkPercent != 0)
@@ -541,23 +522,17 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     Word_t wPopCntSum = 0;
 #endif // defined(COUNT)
 
-#if ! defined(LOOKUP)
 #if defined(INSERT) || defined(REMOVE)
   #if !defined(RECURSIVE)
 top:;
   #endif // !defined(RECURSIVE)
 #endif // defined(INSERT) || defined(REMOVE)
-    wRoot = *pwRoot;
-#endif // ! defined(LOOKUP)
-    nBLR = nBL;
+    int nBLR = nBL;
 
 #if defined(LOOKUP) || !defined(RECURSIVE)
 again:;
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
-#if defined(SKIP_LINKS)
-    assert(nBLR == nBL);
-#endif // defined(SKIP_LINKS)
 #if ( ! defined(LOOKUP) )
   #if ! defined(USE_XX_SW)
     assert(nBL >= cnBitsInD1); // valid for LOOKUP too
@@ -2331,6 +2306,7 @@ undo:;
         nIncr *= -1;
 restart:;
         pwRoot = pwRootOrig;
+        wRoot = *pwRoot;
         DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
         nBL = nBLOrig;
         goto top;
