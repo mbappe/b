@@ -573,6 +573,7 @@ again:;
 #else // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's ok
     int nType = Get_nType(&wRoot);
 #endif // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's ok
+    Word_t *pwr = wr_pwr(wRoot);
 
   #if defined(JUMP_TABLE)
     static void *pvJumpTable[] = {
@@ -660,16 +661,9 @@ again:;
           #endif // (T_SKIP_TO_SWITCH <= 3)
       #endif // defined(SKIP_LINKS)
     };
+    goto *pvJumpTable[nType];
   #endif // defined(JUMP_TABLE)
 
-    goto again2;
-again2:;
-    Word_t *pwr = wr_pwr(wRoot);
-    goto again3;
-again3:;
-      #if defined(JUMP_TABLE)
-    goto *pvJumpTable[nType];
-      #endif // defined(JUMP_TABLE)
     switch (nType)
     {
 
