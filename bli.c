@@ -24,8 +24,8 @@
 // precede the specified link in this switch.
 static Word_t
 CountSw(Word_t *pwRoot,
-        int nBLR, // bits left at top of switch
-        int nBL, // bits left after selection of link in switch
+        int nBLR, // number of bits left to decode by switch and below
+        int nBW, // number of bits decoded by the switch
         Word_t wIndex, // index of relevant link in switch
         int nLinks)
 {
@@ -33,8 +33,8 @@ CountSw(Word_t *pwRoot,
     //DBGC(Dump(pwRootLast, 0, cnBitsPerWord));
     (void)pwRoot; (void)nBLR; (void)nLinks;
     int nType = Get_nType(pwRoot); (void)nType;
-    DBGC(printf("\nCountSw nType %d nBL %d nBLR %d wIndex " OWx"\n",
-                nType, nBL, nBLR, wIndex));
+    DBGC(printf("\nCountSw nType %d nBLR %d nBW %d wIndex " OWx"\n",
+                nType, nBLR, nBW, wIndex));
     Word_t wPopCnt = 0;
     Word_t ww, wwLimit;
       #if ! defined(PP_IN_LINK) || defined(NO_SKIP_AT_TOP)
@@ -54,6 +54,7 @@ CountSw(Word_t *pwRoot,
         ww = 0; wwLimit = wIndex;
     }
     DBGC(printf("ww " OWx" wwLimit " OWx"\n", ww, wwLimit));
+    int nBLLoop = nBLR - nBW;
     for (; ww < wwLimit; ++ww) {
         Link_t *pLinks =
 #if defined(CODE_BM_SW)
@@ -64,26 +65,25 @@ CountSw(Word_t *pwRoot,
         Word_t wPopCntLoop;
         DBGC(printf("ww " OWx" pwRootLoop %p\n", ww, (void *)pwRootLoop));
       #if defined(ALLOW_EMBEDDED_BITMAP)
-        if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
-            assert(nBL <= cnLogBitsPerWord); // for now
-            wPopCntLoop = __builtin_popcountll(*pwRootLoop & MSK(EXP(nBL)));
+        if (nBLLoop <= (int)LOG(sizeof(Link_t) * 8)) {
+            assert(nBLLoop <= cnLogBitsPerWord); // for now
+            wPopCntLoop
+                = __builtin_popcountll(*pwRootLoop & MSK(EXP(nBLLoop)));
             wPopCnt += wPopCntLoop;
             DBGC(printf("*pwRootLoop " OWx"\n", *pwRootLoop));
             DBGC(printf("embedded bitmap wPopCntLoop " OWx" wPopCnt " OWx"\n",
                         wPopCntLoop, wPopCnt));
         } else
       #else // defined(ALLOW_EMBEDDED_BITMAP)
-        assert(nBL > (int)LOG(sizeof(Link_t) * 8));
+        assert(nBLLoop > (int)LOG(sizeof(Link_t) * 8));
       #endif // defined(ALLOW_EMBEDDED_BITMAP)
         {
             Word_t *pwrLoop = wr_pwr(*pwRootLoop);
             int nTypeLoop = Get_nType(pwRootLoop);
             DBGC(printf("pwrLoop %p nTypeLoop %d\n",
                         (void *)pwrLoop, nTypeLoop));
-            int nBLRLoop = nBL; // reset nBLRLoop
-            if (tp_bIsSkip(nTypeLoop)) {
-                nBLRLoop = Get_nBLR(pwRootLoop);
-            }
+            int nBLRLoop = tp_bIsSkip(nTypeLoop)
+                         ? Get_nBLR(pwRootLoop) : nBLLoop;
             if (tp_bIsSwitch(nTypeLoop)) {
                 wPopCntLoop = PWR_wPopCntBL(pwRootLoop,
                                             (Switch_t *)pwrLoop, nBLRLoop);
@@ -102,7 +102,7 @@ CountSw(Word_t *pwRoot,
             } else switch (nTypeLoop) {
           #if defined(EMBED_KEYS)
             case T_EMBEDDED_KEYS:
-                wPopCntLoop = wr_nPopCnt(*pwRootLoop, nBL);
+                wPopCntLoop = wr_nPopCnt(*pwRootLoop, nBLLoop);
                 assert(wPopCntLoop != 0);
                 DBGC(printf("ww %" _fw"d T_EMBED_KEYS wRoot " OWx
                             " wPopCnt %" _fw"d\n",
@@ -122,7 +122,7 @@ CountSw(Word_t *pwRoot,
           #endif // ! defined(SEPARATE_T_NULL)
                 {
           #if defined(PP_IN_LINK)
-                    if (nBL < cnBitsPerWord) {
+                    if (nBLLoop < cnBitsPerWord) {
                         wPopCntLoop = PWR_wPopCntBL(pwRootLoop,
                                                     NULL, nBLRLoop);
                     } else
@@ -767,7 +767,7 @@ t_skip_to_switch:
                     //int nBitsIndexSz = nBL_to_nBitsIndexSzNAX(nBLR);
                     int nBitsIndexSz = nBL_to_nBitsIndexSzNAB(nBLR);
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(pwRoot, nBLR, nBLR - nBitsIndexSz,
+                    wPopCnt = CountSw(pwRoot, nBLR, nBW,
                                       EXP(nBitsIndexSz), EXP(nBitsIndexSz));
                 } else
           #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
@@ -834,7 +834,7 @@ t_skip_to_xx_sw:
         int nBitsIndexSz = nBL_to_nBitsIndexSzNAB(nBLR);
                     //int nLinks = ??? __builtin_popcount
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(pwRoot, nBLR, nBLR - nBitsIndexSz,
+                    wPopCnt = CountSw(pwRoot, nBLR, nBW,
                                       nLinks, nLinks);
                 } else
       #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
@@ -910,7 +910,7 @@ switchTail:;
   #endif // defined(INSERT) || defined(REMOVE)
 
   #if defined(COUNT)
-        wPopCnt = CountSw(pwRootPrev, nBLR, nBL, wDigit, nLinks);
+        wPopCnt = CountSw(pwRootPrev, nBLR, nBW, wDigit, nLinks);
         wPopCntSum += wPopCnt;
         DBGC(printf("sw wPopCnt 0x%zx wPopCntSum 0x%zx\n",
                     wPopCnt, wPopCntSum));
@@ -1014,7 +1014,7 @@ t_xx_sw:;
   #endif // defined(INSERT) || defined(REMOVE)
 
   #if defined(COUNT)
-        wPopCnt = CountSw(pwRootPrev, nBLR, nBL, wDigit, nLinks);
+        wPopCnt = CountSw(pwRootPrev, nBLR, nBW, wDigit, nLinks);
         wPopCntSum += wPopCnt;
         DBGC(printf("xxsw wPopCnt " OWx" wPopCntSum " OWx"\n",
                     wPopCnt, wPopCntSum));
@@ -1094,8 +1094,7 @@ t_skip_to_bm_sw:
                 if (nBL >= cnBitsPerWord) {
                     int nBW = Get_nBW(pwRoot);
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(pwRoot, nBLR,
-                                      nBLR - nBW, EXP(nBW), EXP(nBW));
+                    wPopCnt = CountSw(pwRoot, nBLR, nBW, EXP(nBW), EXP(nBW));
                 } else
       #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 {
@@ -1237,8 +1236,7 @@ t_skip_to_list_sw:
                 if (nBL >= cnBitsPerWord) {
                     int nBW = Get_nBW(pwRoot);
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(pwRoot, nBLR,
-                                      nBLR - nBW, EXP(nBW), EXP(nBW));
+                    wPopCnt = CountSw(pwRoot, nBLR, nBW, EXP(nBW), EXP(nBW));
                 } else
       #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 {
