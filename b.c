@@ -6243,7 +6243,7 @@ NextGuts(Word_t *pwRoot, int nBL,
 {
 #define A(_zero) assert(_zero)
     (void)bEmpty;
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
     Word_t wRoot = *pwRoot;
     Word_t *pwr = wr_pwr(wRoot);
     DBGN(printf("NextGuts(wRoot " OWx" nBL %d *pwKey " OWx
@@ -7136,7 +7136,7 @@ Judy1Prev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 static Status_t
 NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
 {
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
     Word_t wRoot = *pwRoot;
     Word_t *pwr = wr_pwr(wRoot);
     DBGN(printf("NextEmptyGuts(pwRoot %p *pwKey %p nBL %d bPrev %d)"
