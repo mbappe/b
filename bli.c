@@ -447,15 +447,17 @@ Status_t
 InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #endif // defined(LOOKUP)
 {
-  #if defined(LOOKUP) && ! defined(PWROOT_PARAMETER_FOR_LOOKUP)
+#if defined(LOOKUP) && ! defined(PWROOT_PARAMETER_FOR_LOOKUP)
     Word_t *pwRoot = &wRoot; // can't get a real *pLn from this
-  #else // defined(LOOKUP) && ! defined(PWROOT_PARAMETER_FOR_LOOKUP)
+#else // defined(LOOKUP) && ! defined(PWROOT_PARAMETER_FOR_LOOKUP)
     Word_t wRoot = *pwRoot;
-  #endif // defined(LOOKUP) && ! defined(PWROOT_PARAMETER_FOR_LOOKUP)
+#endif // defined(LOOKUP) && ! defined(PWROOT_PARAMETER_FOR_LOOKUP)
 
-  #if defined(LOOKUP)
+#if defined(LOOKUP)
     int nBL = cnBitsPerWord;
-  #endif // defined(LOOKUP)
+#endif // defined(LOOKUP)
+
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
 
 #if !defined(RECURSIVE)
     Word_t *pwRootOrig = pwRoot; (void)pwRootOrig;
@@ -464,13 +466,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
   #endif // !defined(LOOKUP)
 #endif // !defined(RECURSIVE)
 
-    int nBLUp = nBLUp; (void)nBLUp; // silence gcc
-    int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
-  #if defined(SAVE_PREFIX_TEST_RESULT)
-    Word_t wPrefixMismatch = 0; (void)wPrefixMismatch;
-  #endif // defined(SAVE_PREFIX_TEST_RESULT)
-    // Do we ever depend on this initialization of pwRootPrev?
-    Word_t *pwRootPrev = NULL; (void)pwRootPrev;
+    int nBW;
     Word_t *pwRootNew;
 
     // wDigit needs this broad scope only for COUNT.
@@ -480,45 +476,60 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     // Maybe we should revisit occasionally.
     Word_t wDigit;
 
-  #if !defined(RECURSIVE)
+#if !defined(RECURSIVE)
       #if defined(INSERT)
     int nIncr = 1;
       #endif // defined(INSERT)
       #if defined(REMOVE)
     int nIncr = -1;
       #endif // defined(REMOVE)
-  #endif // !defined(RECURSIVE)
+#endif // !defined(RECURSIVE)
 
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
-    int nBW;
+    // InsertGuts checks pwRootPrev != NULL to id XX_SW link.
+    // We needed a way to handle NO_TYPE_IN_XX_SW.
+    // Should we limit its existence to that case?
+    // Do we ever depend on this initialization of pwRootPrev?
+    Word_t *pwRootPrev = NULL; (void)pwRootPrev;
 
-#if defined(INSERT) && (cn2dBmWpkPercent != 0)
-    Word_t wPopCnt = 0;
-#else // defined(INSERT) && (cn2dBmWpkPercent != 0)
-    Word_t wPopCnt; (void)wPopCnt;
-#endif // defined(INSERT) && (cn2dBmWpkPercent != 0)
-#if defined(INSERT) || defined(REMOVE)
-    int bCleanup = 0;
-#endif // defined(INSERT) || defined(REMOVE)
+    // nBLUp is used only for SKIP_TO_XX_SW and INSERT.
+    // I think it will eventually be used for REMOVE and for
+    // CODE_XX_SW without SKIP_TO_XX_SW.
+    int nBLUp = nBLUp; (void)nBLUp; // silence gcc
+
+    int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
+#if defined(SAVE_PREFIX_TEST_RESULT)
+    Word_t wPrefixMismatch = 0; (void)wPrefixMismatch;
+#endif // defined(SAVE_PREFIX_TEST_RESULT)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrPrev = pwrPrev; // suppress "uninitialized" compiler warning
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwRootPrefix = NULL; (void)pwRootPrefix;
     Word_t *pwrPrefix = NULL; (void)pwrPrefix;
     int nBLRPrefix = 0; (void)nBLRPrefix;
+
+#if defined(INSERT) && (cn2dBmWpkPercent != 0)
+    Word_t wPopCnt = 0;
+#else // defined(INSERT) && (cn2dBmWpkPercent != 0)
+    Word_t wPopCnt; (void)wPopCnt;
+#endif // defined(INSERT) && (cn2dBmWpkPercent != 0)
+#if defined(COUNT)
+    Word_t wPopCntSum = 0;
+#endif // defined(COUNT)
+
+#if defined(INSERT) || defined(REMOVE)
+    int bCleanup = 0;
+#endif // defined(INSERT) || defined(REMOVE)
+
 #if ! defined(LOOKUP)
     int nPos = -1;
 #endif // ! defined(LOOKUP)
+
 #if defined(COUNT)
     int bLinkPresent;
     int nLinks;
 #endif // defined(COUNT)
 
     DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
-
-#if defined(COUNT)
-    Word_t wPopCntSum = 0;
-#endif // defined(COUNT)
 
 #if defined(INSERT) || defined(REMOVE)
   #if !defined(RECURSIVE)
@@ -531,6 +542,9 @@ top:;
 again:;
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
+#if defined(SKIP_LINKS)
+    assert(nBLR == nBL);
+#endif // defined(SKIP_LINKS)
 #if ( ! defined(LOOKUP) )
   #if ! defined(USE_XX_SW)
     assert(nBL >= cnBitsInD1); // valid for LOOKUP too
@@ -542,7 +556,7 @@ again:;
     DBGX(printf("# wRoot " OWx" wKey " OWx" nBL %d\n", wRoot, wKey, nBL));
 
     int nType = wr_nType(wRoot);
-    Word_t *pwr = wr_pwr(wRoot);
+    Word_t *pwr = wr_pwr(wRoot); // pwr isn't meaningful for all nType values
 
   #if defined(JUMP_TABLE)
     static void *pvJumpTable[] = {
@@ -828,8 +842,7 @@ t_skip_to_xx_sw:
         int nBitsIndexSz = nBL_to_nBitsIndexSzNAB(nBLR);
                     //int nLinks = ??? __builtin_popcount
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(pwRoot, nBLR, nBW,
-                                      nLinks, nLinks);
+                    wPopCnt = CountSw(pwRoot, nBLR, nBW, nLinks, nLinks);
                 } else
       #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 {
@@ -877,6 +890,8 @@ t_switch:;
         goto switchTail; // in case other uses go away by ifdef
 switchTail:;
 
+        // Handle big picture tree cleanup and and pop count adjustment.
+        {
   #if defined(INSERT) || defined(REMOVE)
         // Cleanup is for adjusting tree after successful insert or remove.
         // It is not for undoing counts after unsuccessful insert or remove.
@@ -900,6 +915,7 @@ switchTail:;
             }
         }
   #endif // defined(INSERT) || defined(REMOVE)
+        }
 
   #if defined(COUNT)
         wPopCnt = CountSw(pwRoot, nBLR, nBW, wDigit, nLinks);
@@ -922,17 +938,20 @@ switchTail:;
         nBLUp = nBL;
   #endif // defined(SKIP_TO_XX_SW) && defined(INSERT)
         }
+
         // Advance to the next link.
         {
         pwRoot = pwRootNew;
         wRoot = *pwRoot;
         pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
         nBL = nBLR - nBW;
-        nBLR = nBL; // Advance nBLR to the bottom of this switch now.
-        DBGX(printf("switchTail: pwRoot %p wRoot " OWx" nBL %d\n",
-                    (void *)pwRoot, wRoot, nBL));
+        nBLR = nBL; // Advance nBLR before possible goto bitmap.
+        DBGX(printf("switchTail: pwRoot %p pLn %p wRoot " OWx" nBL %d\n",
+                    (void *)pwRoot, pLn, wRoot, nBL));
         }
 
+        // Handle special cases that don't go back to the top of the loop.
+        {
   #if defined(ALLOW_EMBEDDED_BITMAP)
         // The first test below is done at compile time and will make the rest
         // of the code block go away if it is not needed.
@@ -958,16 +977,19 @@ switchTail:;
         // to sizeof(Link_t).
         assert(EXP(nBL) > (sizeof(Link_t) * 8));
   #endif // defined(ALLOW_EMBEDDED_BITMAP)
+        }
+
   #if defined(CODE_XX_SW) && ! defined(LOOKUP)
-    if ( (nType != T_XX_SW)
+        if ( (nType != T_XX_SW)
       #if defined(SKIP_TO_XX_SW)
-        && (nType != T_SKIP_TO_XX_SW)
+            && (nType != T_SKIP_TO_XX_SW)
       #endif // defined(SKIP_TO_XX_SW)
-        )
-    {
-        pwRootPrev = NULL; // InsertGuts infers XX_SW if pwRootPrev != NULL
-    }
+            )
+        {
+            pwRootPrev = NULL; // InsertGuts infers XX_SW if pwRootPrev != NULL
+        }
   #endif // defined(CODE_XX_SW) && ! defined(LOOKUP)
+
   #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
   #else // defined(LOOKUP) || !defined(RECURSIVE)
@@ -994,6 +1016,8 @@ t_xx_sw:;
         goto switchTail;
   #else
 
+        // Handle big picture tree cleanup and and pop count adjustment.
+        {
   #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
       #if defined(INSERT)
@@ -1015,6 +1039,7 @@ t_xx_sw:;
             }
         }
   #endif // defined(INSERT) || defined(REMOVE)
+        }
 
   #if defined(COUNT)
         wPopCnt = CountSw(pwRoot, nBLR, nBW, wDigit, nLinks);
@@ -1037,19 +1062,24 @@ t_xx_sw:;
         nBLUp = nBL;
   #endif // defined(SKIP_TO_XX_SW) && defined(INSERT)
         }
+
         // Advance to the next link.
         {
         pwRoot = pwRootNew;
         wRoot = *pwRoot;
         pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
         nBL = nBLR - nBW;
-        nBLR = nBL;
+        nBLR = nBL; // Advance nBLR before possible goto bitmap.
         }
 
-// ALLOW_EMBEDDED_BITMAP is missing and belongs here.
+        // Handle special cases that don't go back to the top of the loop.
+        {
+        // ALLOW_EMBEDDED_BITMAP is missing and belongs here.
         assert(EXP(nBL) > (sizeof(Link_t) * 8));
+        }
 
-// Below is not in switchTail.
+        // Handle XX_SW-specific special cases that don't go back to the top.
+        {
   #if defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
       #if defined(NO_TYPE_IN_XX_SW)
         // ZERO_POP_MAGIC is valid only if a word can hold at least two keys.
@@ -1068,10 +1098,8 @@ t_xx_sw:;
         // Blow-ups are handled in t_embedded_keys.
         goto t_embedded_keys;
   #else // defined(NO_TYPE_IN_XX_SW) || handle dl2 in t_embedded_keys
-        // The only thing we do at "again" before switching on nType
-        // is extract nType and pwr from wRoot.
-        // We don't do any updating of nBL or nBLR.
-// Above is not in switchTail
+        }
+
       #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
       #else // defined(LOOKUP) || !defined(RECURSIVE)
