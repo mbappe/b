@@ -5989,67 +5989,71 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 #if (cnDigitsPerWord != 1)
 
   #if defined(DEBUG)
-    Word_t wMallocsBefore = wMallocs;
-    Word_t wEvenMallocsBefore = wEvenMallocs;
+    Word_t wMallocsBefore = wMallocs; (void)wMallocsBefore;
+    Word_t wEvenMallocsBefore = wEvenMallocs; (void)wEvenMallocsBefore;
     Word_t wWordsAllocatedBefore = wWordsAllocated;
       #if defined(RAMMETRICS)
     Word_t j__AllocWordsTOTBefore = j__AllocWordsTOT;
+    (void)j__AllocWordsTOTBefore;
     Word_t j__ExtraWordsTOTBefore = j__ExtraWordsTOT;
+    (void)j__ExtraWordsTOTBefore;
     Word_t j__ExtraWordsCntBefore = j__ExtraWordsCnt;
+    (void)j__ExtraWordsCntBefore;
     Word_t j__TotalBytesAllocatedBefore = j__TotalBytesAllocated;
+    (void)j__TotalBytesAllocatedBefore;
       #endif // defined(RAMMETRICS)
   #endif // defined(DEBUG)
 
     Word_t wBytes = FreeArrayGuts((Word_t *)PPArray, /* wPrefix */ 0,
                                    cnBitsPerWord, /* bDump */ 0);
 
-    DBG(printf("# wPopCntTotal %" _fw"u 0x%" _fw"x\n",
+    DBGR(printf("# wPopCntTotal %" _fw"u 0x%" _fw"x\n",
                wPopCntTotal, wPopCntTotal));
-    DBG(printf("# Judy1FreeArray wBytes %" _fw"u words %" _fw"u\n",
+    DBGR(printf("# Judy1FreeArray wBytes %" _fw"u words %" _fw"u\n",
                wBytes, wBytes/sizeof(Word_t)));
-    DBG(printf("# Judy1FreeArray wBytes 0x%" _fw"x words 0x%" _fw"x\n",
+    DBGR(printf("# Judy1FreeArray wBytes 0x%" _fw"x words 0x%" _fw"x\n",
                wBytes, wBytes/sizeof(Word_t)));
-    DBG(printf("# wWordsAllocatedBefore %" _fw"u 0x%" _fw"x\n",
+    DBGR(printf("# wWordsAllocatedBefore %" _fw"u 0x%" _fw"x\n",
                wWordsAllocatedBefore, wWordsAllocatedBefore));
 #if defined(RAMMETRICS)
-    DBG(printf("# j__AllocWordsTOTBefore %" _fw"u 0x%" _fw"x\n",
+    DBGR(printf("# j__AllocWordsTOTBefore %" _fw"u 0x%" _fw"x\n",
                j__AllocWordsTOTBefore, j__AllocWordsTOTBefore));
-    DBG(printf("# j__ExtraWordsTOTBefore %" _fw"u 0x%" _fw"x\n",
+    DBGR(printf("# j__ExtraWordsTOTBefore %" _fw"u 0x%" _fw"x\n",
                j__ExtraWordsTOTBefore, j__ExtraWordsTOTBefore));
-    DBG(printf("# j__ExtraWordsCntBefore %" _fw"u 0x%" _fw"x\n",
+    DBGR(printf("# j__ExtraWordsCntBefore %" _fw"u 0x%" _fw"x\n",
                j__ExtraWordsCntBefore, j__ExtraWordsCntBefore));
-    DBG(printf("# j__TotalBytesAllocatedBefore %" _fw"u words %" _fw"u\n",
+    DBGR(printf("# j__TotalBytesAllocatedBefore %" _fw"u words %" _fw"u\n",
                j__TotalBytesAllocatedBefore,
                j__TotalBytesAllocatedBefore/sizeof(Word_t)));
-    DBG(printf("# j__TotalBytesAllocatedBefore 0x%" _fw"x words 0x%" _fw"x\n",
+    DBGR(printf("# j__TotalBytesAllocatedBefore 0x%" _fw"x words 0x%" _fw"x\n",
                j__TotalBytesAllocatedBefore,
                j__TotalBytesAllocatedBefore/sizeof(Word_t)));
-    DBG(printf("# Total MiB Before %" _fw"u rem %" _fw"u\n",
+    DBGR(printf("# Total MiB Before %" _fw"u rem %" _fw"u\n",
                j__TotalBytesAllocatedBefore / (1024 * 1024),
                j__TotalBytesAllocatedBefore % (1024 * 1024)));
-    DBG(printf("# Total MiB Before 0x%" _fw"x rem 0x%" _fw"x\n",
+    DBGR(printf("# Total MiB Before 0x%" _fw"x rem 0x%" _fw"x\n",
                j__TotalBytesAllocatedBefore / (1024 * 1024),
                j__TotalBytesAllocatedBefore % (1024 * 1024)));
 #endif // defined(RAMMETRICS)
-    DBG(printf("# wMallocsBefore %" _fw"u 0x%" _fw"x\n",
+    DBGR(printf("# wMallocsBefore %" _fw"u 0x%" _fw"x\n",
                wMallocsBefore, wMallocsBefore));
-    DBG(printf("# wEvenMallocsBefore %" _fw"u 0x%" _fw"x\n",
+    DBGR(printf("# wEvenMallocsBefore %" _fw"u 0x%" _fw"x\n",
                wEvenMallocsBefore, wEvenMallocsBefore));
 
-    DBG(printf("After Judy1FreeArray:\n"));
-    DBG(printf("# wWordsAllocated %" _fw"u\n", wWordsAllocated));
+    DBGR(printf("After Judy1FreeArray:\n"));
+    DBGR(printf("# wWordsAllocated %" _fw"u\n", wWordsAllocated));
 #if defined(RAMMETRICS)
-    DBG(printf("# j__AllocWordsTOT %" _fw"u\n", j__AllocWordsTOT));
-    DBG(printf("# j__ExtraWordsTOT %" _fw"u\n", j__ExtraWordsTOT));
-    DBG(printf("# j__TotalBytesAllocated 0x%" _fw"x\n",
+    DBGR(printf("# j__AllocWordsTOT %" _fw"u\n", j__AllocWordsTOT));
+    DBGR(printf("# j__ExtraWordsTOT %" _fw"u\n", j__ExtraWordsTOT));
+    DBGR(printf("# j__TotalBytesAllocated 0x%" _fw"x\n",
                j__TotalBytesAllocated));
-    DBG(printf("# Total MiB 0x%" _fw"x rem 0x%" _fw"x\n",
+    DBGR(printf("# Total MiB 0x%" _fw"x rem 0x%" _fw"x\n",
                j__TotalBytesAllocated / (1024 * 1024),
                j__TotalBytesAllocated % (1024 * 1024)));
 #endif // defined(RAMMETRICS)
-    DBG(printf("# wMallocs %" _fw"u\n", wMallocs));
-    DBG(printf("# wEvenMallocs %" _fw"u\n", wEvenMallocs));
-    DBG(printf("\n"));
+    DBGR(printf("# wMallocs %" _fw"u\n", wMallocs));
+    DBGR(printf("# wEvenMallocs %" _fw"u\n", wEvenMallocs));
+    DBGR(printf("\n"));
     assert((wWordsAllocatedBefore - wWordsAllocated)
                == (wBytes / sizeof(Word_t)));
     // Assuming wWordsAllocated is zero is presumptuous.
