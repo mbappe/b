@@ -414,16 +414,14 @@ static inline void
 SwSetup(qp, Word_t wKey,
         int nTypeBase, // type without skip
         int nBLR,
-        int *pnBL,
         int *pnBW, int *pnBLUp, Word_t *pwDigit)
 {
-    qv; (void)pnBLUp;
+    qv;
     *pnBW = gnBW(qy, nTypeBase, nBLR);
-    if (cbInsert || cbRemove) { *pnBLUp = *pnBL; }
-    *pnBL = nBLR - *pnBW;
+    if (cbInsert || cbRemove) { *pnBLUp = nBL; }
     // Is it possible that MSK(nBLR - nBL) would be faster here in some
     // cases, e.g. BitsInD2 != BitsPerDigit and BitsInD3 != BitsPerDigit?
-    *pwDigit = (wKey >> *pnBL) & MSK(*pnBW);
+    *pwDigit = (wKey >> (nBLR - *pnBW)) & MSK(*pnBW);
     // ((uint8_t *)&wKey)[(cnBitsPerWord - nBL) >> 3];
     // ((uint8_t *)&wKey)[cnDigitsPerWord - nDL];
     // ((uint8_t *)&wSwappedKey)[nDL];
@@ -877,7 +875,7 @@ t_skip_to_xx_sw:
     {
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:;
-        SwSetup(qy, wKey, T_SWITCH, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
+        SwSetup(qy, wKey, T_SWITCH, nBLR, &nBW, &nBLUp, &wDigit);
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
         pwRootNew = &pwr_pLinks((Switch_t *)pwr)[wDigit].ln_wRoot;
@@ -890,15 +888,15 @@ switchTail:;
         if (bCleanup) {
       #if defined(INSERT)
             if ((cn2dBmWpkPercent != 0) && (nBLR <= cnBitsLeftAtDl2)) {
-                InsertCleanup(wKey, nBLUp, pwRoot, wRoot);
+                InsertCleanup(wKey, nBL, pwRoot, wRoot);
             }
       #else // defined(INSERT)
-            RemoveCleanup(wKey, nBLUp, nBLR, pwRoot, wRoot);
+            RemoveCleanup(wKey, nBL, nBLR, pwRoot, wRoot);
       #endif // defined(INSERT)
             if (*pwRoot != wRoot) { goto restart; }
         } else {
       #if defined(PP_IN_LINK)
-            if (nBLUp < cnBitsPerWord)
+            if (nBL < cnBitsPerWord)
       #endif // defined(PP_IN_LINK)
             {
                 // Increment or decrement population count on the way in.
@@ -931,6 +929,7 @@ switchTail:;
         pwRoot = pwRootNew;
         wRoot = *pwRoot;
         DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
+        nBL = nBLR - nBW;
         nBLR = nBL; // Advance nBLR to the bottom of this switch now.
         DBGX(printf("switchTail: pwRoot %p wRoot " OWx" nBL %d\n",
                     (void *)pwRoot, wRoot, nBL));
@@ -985,7 +984,7 @@ switchTail:;
     {
         goto t_xx_sw;
 t_xx_sw:;
-        SwSetup(qy, wKey, T_XX_SW, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
+        SwSetup(qy, wKey, T_XX_SW, nBLR, &nBW, &nBLUp, &wDigit);
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
         // Save pwRoot for T_XX_SW for InsertGuts as well as for below.
@@ -1001,15 +1000,15 @@ t_xx_sw:;
         if (bCleanup) {
       #if defined(INSERT)
             if ((cn2dBmWpkPercent != 0) && (nBLR <= cnBitsLeftAtDl2)) {
-                InsertCleanup(wKey, nBLUp, pwRoot, wRoot);
+                InsertCleanup(wKey, nBL, pwRoot, wRoot);
             }
       #else // defined(INSERT)
-            RemoveCleanup(wKey, nBLUp, nBLR, pwRoot, wRoot);
+            RemoveCleanup(wKey, nBL, nBLR, pwRoot, wRoot);
       #endif // defined(INSERT)
             if (*pwRoot != wRoot) { goto restart; }
         } else {
       #if defined(PP_IN_LINK)
-            if (nBLUp < cnBitsPerWord)
+            if (nBL < cnBitsPerWord)
       #endif // defined(PP_IN_LINK)
             {
                 // Increment or decrement population count on the way in.
@@ -1042,6 +1041,7 @@ t_xx_sw:;
         pwRoot = pwRootNew;
         wRoot = *pwRoot;
         DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
+        nBL = nBLR - nBW;
         nBLR = nBL;
         }
 
@@ -1151,7 +1151,7 @@ t_full_bm_sw:
     {
         goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
 t_bm_sw:;
-        SwSetup(qy, wKey, T_BM_SW, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
+        SwSetup(qy, wKey, T_BM_SW, nBLR, &nBW, &nBLUp, &wDigit);
 
         Word_t wSwIndex;
   #if defined(BM_IN_LINK)
@@ -1275,7 +1275,7 @@ t_skip_to_list_sw:
         goto t_list_sw; // silence cc in case other the gotos are ifdef'd out
 t_list_sw:;
 
-        SwSetup(qy, wKey, T_LIST, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
+        SwSetup(qy, wKey, T_LIST, nBLR, &nBW, &nBLUp, &wDigit);
 
         Word_t wSwIndex;
   #if defined(SW_LIST_IN_LINK)
