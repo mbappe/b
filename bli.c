@@ -431,11 +431,10 @@ SwCleanup(qp, Word_t wKey, int nBLR, int bCleanup)
 // Increment for insert on the way down.
 // Decrement for remove on the way down.
 // Also used to undo itself after we discover insert or remove is redundant.
-static inline Word_t
+static inline void
 SwIncr(qp, int nBLR, int bCleanup, int nIncr)
 {
     qv; (void)nBLR; (void)bCleanup; (void)nIncr;
-    Word_t wPopCnt = 0;
   #if defined(INSERT) || defined(REMOVE)
     if (!bCleanup) {
       #if defined(PP_IN_LINK)
@@ -443,12 +442,10 @@ SwIncr(qp, int nBLR, int bCleanup, int nIncr)
       #endif // defined(PP_IN_LINK)
         {
             // Increment or decrement population count on the way in.
-            wPopCnt = Get_wPopCntBL(pwRoot, nBLR);
-            Set_wPopCntBL(pwRoot, nBLR, wPopCnt + nIncr);
+            Set_wPopCntBL(pwRoot, nBLR, Get_wPopCntBL(pwRoot, nBLR) + nIncr);
         }
     }
   #endif // defined(INSERT) || defined(REMOVE)
-    return wPopCnt;
 }
 
 #define ADVANCE_PWROOT \
@@ -543,7 +540,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     int nBLRPrefix = 0; (void)nBLRPrefix;
 
 #if defined(INSERT) && (cn2dBmWpkPercent != 0)
-    Word_t wPopCnt = 0;
+    Word_t wPopCnt = 0; (void)wPopCnt;
 #else // defined(INSERT) && (cn2dBmWpkPercent != 0)
     Word_t wPopCnt; (void)wPopCnt;
 #endif // defined(INSERT) && (cn2dBmWpkPercent != 0)
@@ -937,7 +934,7 @@ switchTail:;
 
         // Handle big picture tree cleanup.
         if (SwCleanup(qy, wKey, nBLR, bCleanup)) { goto restart; }
-        wPopCnt = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
+        SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
 
   #if defined(COUNT)
         wPopCntSum += CountSw(pwRoot, nBLR, nBW, wDigit, nLinks);
@@ -1028,7 +1025,7 @@ t_xx_sw:;
   #else // ! defined(LOOKUP) && ! defined(NO_TYPE_IN_XX_SW)
         // Handle big picture tree cleanup.
         if (SwCleanup(qy, wKey, nBLR, bCleanup)) { goto restart; }
-        wPopCnt = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
+        SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
 
       #if defined(COUNT)
         wPopCntSum += CountSw(pwRoot, nBLR, nBW, wDigit, nLinks);
@@ -2066,8 +2063,6 @@ t_bitmap:;
                        / cn2dBmWpkPercent))
   #endif
             // Can we count on a previously initialized wPopCnt here?
-            && (wPopCnt * 100
-                >= EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord) * cn2dBmWpkPercent)
             )
         {
             goto cleanup;
