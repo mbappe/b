@@ -414,11 +414,10 @@ static inline void
 SwSetup(qp, Word_t wKey,
         int nTypeBase, // type without skip
         int nBLR,
-        int *pnBW, int *pnBLUp, Word_t *pwDigit)
+        int *pnBW, Word_t *pwDigit)
 {
     qv;
     *pnBW = gnBW(qy, nTypeBase, nBLR);
-    if (cbInsert || cbRemove) { *pnBLUp = nBL; }
     // Is it possible that MSK(nBLR - nBL) would be faster here in some
     // cases, e.g. BitsInD2 != BitsPerDigit and BitsInD3 != BitsPerDigit?
     *pwDigit = (wKey >> (nBLR - *pnBW)) & MSK(*pnBW);
@@ -875,7 +874,7 @@ t_skip_to_xx_sw:
     {
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:;
-        SwSetup(qy, wKey, T_SWITCH, nBLR, &nBW, &nBLUp, &wDigit);
+        SwSetup(qy, wKey, T_SWITCH, nBLR, &nBW, &wDigit);
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
         pwRootNew = &pwr_pLinks((Switch_t *)pwr)[wDigit].ln_wRoot;
@@ -923,6 +922,9 @@ switchTail:;
         // preserve the value of pwr.
         pwrPrev = pwr;
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+  #if defined(SKIP_TO_XX_SW) && defined(INSERT)
+        nBLUp = nBL;
+  #endif // defined(SKIP_TO_XX_SW) && defined(INSERT)
         }
         // Advance to the next link.
         {
@@ -984,7 +986,7 @@ switchTail:;
     {
         goto t_xx_sw;
 t_xx_sw:;
-        SwSetup(qy, wKey, T_XX_SW, nBLR, &nBW, &nBLUp, &wDigit);
+        SwSetup(qy, wKey, T_XX_SW, nBLR, &nBW, &wDigit);
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
         // Save pwRoot for T_XX_SW for InsertGuts as well as for below.
@@ -1035,6 +1037,9 @@ t_xx_sw:;
         // preserve the value of pwr.
         pwrPrev = pwr;
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+  #if defined(SKIP_TO_XX_SW) && defined(INSERT)
+        nBLUp = nBL;
+  #endif // defined(SKIP_TO_XX_SW) && defined(INSERT)
         }
         // Advance to the next link.
         {
@@ -1151,12 +1156,12 @@ t_full_bm_sw:
     {
         goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
 t_bm_sw:;
-        SwSetup(qy, wKey, T_BM_SW, nBLR, &nBW, &nBLUp, &wDigit);
+        SwSetup(qy, wKey, T_BM_SW, nBLR, &nBW, &wDigit);
 
         Word_t wSwIndex;
   #if defined(BM_IN_LINK)
         // Have not coded for skip link at top here and elsewhere.
-        assert( ! tp_bIsSkip(nType) || (nBLUp != cnBitsPerWord) );
+        assert( ! tp_bIsSkip(nType) || (nBL != cnBitsPerWord) );
         // We avoid ambiguity by disallowing calls to Insert/Remove with
         // nBL == cnBitsPerWord and pwRoot not at the top.
         // What is the possible ambiguity?
@@ -1198,7 +1203,6 @@ t_bm_sw:;
             {
       #if defined(BM_SW_FOR_REAL)
                 DBGX(printf("missing link\n"));
-                nBL = nBLUp; // back up for InsertGuts
                 break; // not found
       #else // defined(BM_SW_FOR_REAL)
                 assert(0); // only for now
@@ -1275,12 +1279,12 @@ t_skip_to_list_sw:
         goto t_list_sw; // silence cc in case other the gotos are ifdef'd out
 t_list_sw:;
 
-        SwSetup(qy, wKey, T_LIST, nBLR, &nBW, &nBLUp, &wDigit);
+        SwSetup(qy, wKey, T_LIST, nBLR, &nBW, &wDigit);
 
         Word_t wSwIndex;
   #if defined(SW_LIST_IN_LINK)
         // Have not coded for skip link at top here and elsewhere.
-        assert( ! tp_bIsSkip(nType) || (nBLUp != cnBitsPerWord) );
+        assert( ! tp_bIsSkip(nType) || (nBL != cnBitsPerWord) );
         // We avoid ambiguity by disallowing calls to Insert/Remove with
         // nBL == cnBitsPerWord and pwRoot not at the top.
         // We need to know if there is a link surrounding *pwRoot.
@@ -1311,7 +1315,6 @@ t_list_sw:;
             {
       #if defined(LIST_SW_FOR_REAL)
                 DBGX(printf("missing link\n"));
-                nBL = nBLUp; // back up for InsertGuts
                 break; // not found
       #else // defined(LIST_SW_FOR_REAL)
                 assert(0); // only for now
