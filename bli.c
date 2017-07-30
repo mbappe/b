@@ -467,6 +467,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
   #endif // defined(SAVE_PREFIX_TEST_RESULT)
     // Do we ever depend on this initialization of pwRootPrev?
     Word_t *pwRootPrev = NULL; (void)pwRootPrev;
+    Word_t *pwRootNew;
 
   #if !defined(RECURSIVE)
       #if defined(INSERT)
@@ -879,11 +880,9 @@ t_switch:;
         SwSetup(qy, wKey, T_SWITCH, nBLR, &nBL, &nBW, &nBLUp, &wDigit);
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
-        IF_NOT_LOOKUP(pwRootPrev = pwRoot);
-        pwRoot = &pwr_pLinks((Switch_t *)pwr)[wDigit].ln_wRoot;
+        pwRootNew = &pwr_pLinks((Switch_t *)pwr)[wDigit].ln_wRoot;
         goto switchTail; // in case other uses go away by ifdef
 switchTail:;
-        DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
 
   #if defined(INSERT) || defined(REMOVE)
         // Cleanup is for adjusting tree after successful insert or remove.
@@ -891,43 +890,52 @@ switchTail:;
         if (bCleanup) {
       #if defined(INSERT)
             if ((cn2dBmWpkPercent != 0) && (nBLR <= cnBitsLeftAtDl2)) {
-                InsertCleanup(wKey, nBLUp, pwRootPrev, wRoot);
+                InsertCleanup(wKey, nBLUp, pwRoot, wRoot);
             }
       #else // defined(INSERT)
-            RemoveCleanup(wKey, nBLUp, nBLR, pwRootPrev, wRoot);
+            RemoveCleanup(wKey, nBLUp, nBLR, pwRoot, wRoot);
       #endif // defined(INSERT)
-            if (*pwRootPrev != wRoot) { goto restart; }
+            if (*pwRoot != wRoot) { goto restart; }
         } else {
       #if defined(PP_IN_LINK)
             if (nBLUp < cnBitsPerWord)
       #endif // defined(PP_IN_LINK)
             {
                 // Increment or decrement population count on the way in.
-                wPopCnt = Get_wPopCntBL(pwRootPrev, nBLR);
-                Set_wPopCntBL(pwRootPrev, nBLR, wPopCnt + nIncr);
+                wPopCnt = Get_wPopCntBL(pwRoot, nBLR);
+                Set_wPopCntBL(pwRoot, nBLR, wPopCnt + nIncr);
             }
         }
   #endif // defined(INSERT) || defined(REMOVE)
 
   #if defined(COUNT)
-        wPopCnt = CountSw(pwRootPrev, nBLR, nBW, wDigit, nLinks);
+        wPopCnt = CountSw(pwRoot, nBLR, nBW, wDigit, nLinks);
         wPopCntSum += wPopCnt;
         DBGC(printf("sw wPopCnt 0x%zx wPopCntSum 0x%zx\n",
                     wPopCnt, wPopCntSum));
         if ( ! bLinkPresent ) { return wPopCntSum; }
   #endif // defined(COUNT)
 
-        wRoot = *pwRoot;
-        DBGX(printf("switchTail: pwRoot %p wRoot " OWx" nBL %d\n",
-                    (void *)pwRoot, wRoot, nBL));
-
+        // Save the previous link.
+        {
+        IF_NOT_LOOKUP(pwRootPrev = pwRoot);
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We may need to check the prefix of the switch we just visited in
         // the next iteration of the loop if we've reached a leaf so we
         // preserve the value of pwr.
         pwrPrev = pwr;
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+        }
+        // Advance to the next link.
+        {
+        pwRoot = pwRootNew;
+        wRoot = *pwRoot;
+        DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
         nBLR = nBL; // Advance nBLR to the bottom of this switch now.
+        DBGX(printf("switchTail: pwRoot %p wRoot " OWx" nBL %d\n",
+                    (void *)pwRoot, wRoot, nBL));
+        }
+
   #if defined(ALLOW_EMBEDDED_BITMAP)
         // The first test below is done at compile time and will make the rest
         // of the code block go away if it is not needed.
@@ -981,8 +989,7 @@ t_xx_sw:;
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
         // Save pwRoot for T_XX_SW for InsertGuts as well as for below.
-        IF_NOT_LOOKUP(pwRootPrev = pwRoot);
-        pwRoot = &pwr_pLinks((Switch_t *)pwr)[wDigit].ln_wRoot;
+        pwRootNew = &pwr_pLinks((Switch_t *)pwr)[wDigit].ln_wRoot;
 
   #if ! ( defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO) ) \
          && ! ( defined(NO_TYPE_IN_XX_SW) \
@@ -990,45 +997,54 @@ t_xx_sw:;
         goto switchTail;
   #else
 
-        DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
   #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
       #if defined(INSERT)
             if ((cn2dBmWpkPercent != 0) && (nBLR <= cnBitsLeftAtDl2)) {
-                InsertCleanup(wKey, nBLUp, pwRootPrev, wRoot);
+                InsertCleanup(wKey, nBLUp, pwRoot, wRoot);
             }
       #else // defined(INSERT)
-            RemoveCleanup(wKey, nBLUp, nBLR, pwRootPrev, wRoot);
+            RemoveCleanup(wKey, nBLUp, nBLR, pwRoot, wRoot);
       #endif // defined(INSERT)
-            if (*pwRootPrev != wRoot) { goto restart; }
+            if (*pwRoot != wRoot) { goto restart; }
         } else {
       #if defined(PP_IN_LINK)
             if (nBLUp < cnBitsPerWord)
       #endif // defined(PP_IN_LINK)
             {
                 // Increment or decrement population count on the way in.
-                wPopCnt = Get_wPopCntBL(pwRootPrev, nBLR);
-                Set_wPopCntBL(pwRootPrev, nBLR, wPopCnt + nIncr);
+                wPopCnt = Get_wPopCntBL(pwRoot, nBLR);
+                Set_wPopCntBL(pwRoot, nBLR, wPopCnt + nIncr);
             }
         }
   #endif // defined(INSERT) || defined(REMOVE)
 
   #if defined(COUNT)
-        wPopCnt = CountSw(pwRootPrev, nBLR, nBW, wDigit, nLinks);
+        wPopCnt = CountSw(pwRoot, nBLR, nBW, wDigit, nLinks);
         wPopCntSum += wPopCnt;
         DBGC(printf("xxsw wPopCnt " OWx" wPopCntSum " OWx"\n",
                     wPopCnt, wPopCntSum));
         if ( ! bLinkPresent ) { return wPopCntSum; }
   #endif // defined(COUNT)
 
-        wRoot = *pwRoot;
+        // Save the previous link.
+        {
+        IF_NOT_LOOKUP(pwRootPrev = pwRoot);
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         // We may need to check the prefix of the switch we just visited in
         // the next iteration of the loop if we've reached a leaf so we
         // preserve the value of pwr.
         pwrPrev = pwr;
   #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+        }
+        // Advance to the next link.
+        {
+        pwRoot = pwRootNew;
+        wRoot = *pwRoot;
+        DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
         nBLR = nBL;
+        }
+
 // ALLOW_EMBEDDED_BITMAP is missing and belongs here.
         assert(EXP(nBL) > (sizeof(Link_t) * 8));
 
@@ -1194,11 +1210,7 @@ t_bm_sw:;
                         (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
         }
 
-      #if ! defined(LOOKUP)
-        pwRootPrev = pwRoot;
-      #endif // ! defined(LOOKUP)
-        pwRoot = &pwr_pLinks((BmSwitch_t *)pwr)[wSwIndex].ln_wRoot;
-        DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
+        pwRootNew = &pwr_pLinks((BmSwitch_t *)pwr)[wSwIndex].ln_wRoot;
 
   #if defined(COUNT)
         nLinks = INT_MAX;
@@ -1309,11 +1321,7 @@ t_list_sw:;
             ListSwIndex(pwRoot, wDigit, &wSwIndex, /* pbPresent */ NULL);
         }
 
-      #if ! defined(LOOKUP)
-        pwRootPrev = pwRoot;
-      #endif // ! defined(LOOKUP)
-        pwRoot = &pwr_pLinks((ListSwitch_t *)pwr)[wSwIndex].ln_wRoot;
-        DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
+        pwRootNew = &pwr_pLinks((ListSwitch_t *)pwr)[wSwIndex].ln_wRoot;
 
   #if defined(COUNT)
         wDigit = wSwIndex;
