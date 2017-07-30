@@ -511,10 +511,11 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #if !defined(RECURSIVE)
       #if defined(INSERT)
     nIncr = 1;
-      #endif // defined(INSERT)
-      #if defined(REMOVE)
+      #elif defined(REMOVE)
     nIncr = -1;
-      #endif // defined(REMOVE)
+      #else // INSERT, REMOVE
+    nIncr = 0; // make gcc happy
+      #endif // INSERT, REMOVE
 #endif // !defined(RECURSIVE)
 
     // InsertGuts checks pwRootPrev != NULL to id XX_SW link.
