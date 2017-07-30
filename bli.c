@@ -457,6 +457,13 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     int nBL = cnBitsPerWord;
   #endif // defined(LOOKUP)
 
+#if !defined(RECURSIVE)
+    Word_t *pwRootOrig = pwRoot; (void)pwRootOrig;
+  #if !defined(LOOKUP)
+    int nBLOrig = nBL; (void)nBLOrig;
+  #endif // !defined(LOOKUP)
+#endif // !defined(RECURSIVE)
+
     int nBLUp = nBLUp; (void)nBLUp; // silence gcc
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
   #if defined(SAVE_PREFIX_TEST_RESULT)
@@ -465,6 +472,13 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     // Do we ever depend on this initialization of pwRootPrev?
     Word_t *pwRootPrev = NULL; (void)pwRootPrev;
     Word_t *pwRootNew;
+
+    // wDigit needs this broad scope only for COUNT.
+    // I wonder if it would help performance if we were to define this
+    // in the narrower scope for LOOKUP?
+    // In the one quick test I did I saw no performance difference.
+    // Maybe we should revisit occasionally.
+    Word_t wDigit;
 
   #if !defined(RECURSIVE)
       #if defined(INSERT)
@@ -478,13 +492,6 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
     int nBW;
 
-#if !defined(RECURSIVE)
-  #if !defined(LOOKUP)
-    Word_t *pwRootOrig = pwRoot; (void)pwRootOrig;
-  #elif defined(BM_IN_LINK)
-    Word_t *pwRootOrig = pwRoot; (void)pwRootOrig;
-  #endif // !defined(LOOKUP)
-#endif // !defined(RECURSIVE)
 #if defined(INSERT) && (cn2dBmWpkPercent != 0)
     Word_t wPopCnt = 0;
 #else // defined(INSERT) && (cn2dBmWpkPercent != 0)
@@ -496,19 +503,12 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrPrev = pwrPrev; // suppress "uninitialized" compiler warning
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-    int nBLOrig = nBL; (void)nBLOrig;
     Word_t *pwRootPrefix = NULL; (void)pwRootPrefix;
     Word_t *pwrPrefix = NULL; (void)pwrPrefix;
     int nBLRPrefix = 0; (void)nBLRPrefix;
 #if ! defined(LOOKUP)
     int nPos = -1;
 #endif // ! defined(LOOKUP)
-    // wDigit needs this broad scope only for COUNT.
-    // I wonder if it would help performance if we were to define this
-    // in the narrower scope for LOOKUP?
-    // In the one quick test I did I saw no performance difference.
-    // Maybe we should revisit occasionally.
-    Word_t wDigit;
 #if defined(COUNT)
     int bLinkPresent;
     int nLinks;
@@ -541,11 +541,7 @@ again:;
 #endif // ( ! defined(LOOKUP) )
     DBGX(printf("# wRoot " OWx" wKey " OWx" nBL %d\n", wRoot, wKey, nBL));
 
-#if ! defined(LOOKUP) || (defined(USE_PWROOT_FOR_LOOKUP) && (defined(PWROOT_PARAMETER_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)))
-    int nType = Get_nType(pwRoot);
-#else // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's ok
-    int nType = Get_nType(&wRoot);
-#endif // ! defined(LOOKUP) || defined(USE_PWROOT_FOR_LOOKUP) && it's ok
+    int nType = wr_nType(wRoot);
     Word_t *pwr = wr_pwr(wRoot);
 
   #if defined(JUMP_TABLE)
