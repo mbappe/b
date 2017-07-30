@@ -108,7 +108,7 @@
 // Shorthand to silence not-used compiler warnings.
 // And to validate assumptions.
 #define qv \
-    (void)pLn, (void)pwRoot; (void)wRoot; (void)pwr, (void)nBL; \
+    (void)pLn; (void)pwRoot; (void)wRoot; (void)pwr; (void)nBL; \
     assert(pLn == STRUCT_OF(pwRoot, Link_t, ln_wRoot)); \
     assert(wRoot == *pwRoot); assert(pwr == wr_pwr(wRoot))
 
