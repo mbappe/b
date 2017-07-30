@@ -475,7 +475,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
       #endif // defined(REMOVE)
   #endif // !defined(RECURSIVE)
 
-    Link_t *pLn; DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot)); (void)pLn;
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
     int nBW;
 
 #if !defined(RECURSIVE)
@@ -930,7 +930,7 @@ switchTail:;
         {
         pwRoot = pwRootNew;
         wRoot = *pwRoot;
-        DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
+        pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
         nBL = nBLR - nBW;
         nBLR = nBL; // Advance nBLR to the bottom of this switch now.
         DBGX(printf("switchTail: pwRoot %p wRoot " OWx" nBL %d\n",
@@ -1045,7 +1045,7 @@ t_xx_sw:;
         {
         pwRoot = pwRootNew;
         wRoot = *pwRoot;
-        DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
+        pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
         nBL = nBLR - nBW;
         nBLR = nBL;
         }
@@ -1214,13 +1214,11 @@ t_bm_sw:;
                         (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
         }
 
-        pwRootNew = &pwr_pLinks((BmSwitch_t *)pwr)[wSwIndex].ln_wRoot;
-
   #if defined(COUNT)
         nLinks = INT_MAX;
         wDigit = wSwIndex;
   #endif // defined(COUNT)
-
+        pwRootNew = &pwr_pLinks((BmSwitch_t *)pwr)[wSwIndex].ln_wRoot;
         goto switchTail;
 
     } // end of case T_BM_SW
@@ -1324,12 +1322,10 @@ t_list_sw:;
             ListSwIndex(pwRoot, wDigit, &wSwIndex, /* pbPresent */ NULL);
         }
 
-        pwRootNew = &pwr_pLinks((ListSwitch_t *)pwr)[wSwIndex].ln_wRoot;
-
   #if defined(COUNT)
         wDigit = wSwIndex;
   #endif // defined(COUNT)
-
+        pwRootNew = &pwr_pLinks((ListSwitch_t *)pwr)[wSwIndex].ln_wRoot;
         goto switchTail;
 
     } // end of case T_LIST_SW
@@ -2316,7 +2312,7 @@ undo:;
 restart:;
         pwRoot = pwRootOrig;
         wRoot = *pwRoot;
-        DBG(pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot));
+        pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
         nBL = nBLOrig;
         goto top;
     }
