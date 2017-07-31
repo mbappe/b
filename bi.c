@@ -8,6 +8,9 @@
 #define cbRemove  0
 #define cbCount   0
 
+#define IF_INSERT(_stmt)  _stmt
+#define IF_NOT_INSERT(_stmt)
+
 #define IF_LOOKUP(_stmt)
 #define IF_NOT_LOOKUP(_stmt)  _stmt
 

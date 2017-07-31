@@ -448,15 +448,19 @@ SwIncr(qp, int nBLR, int bCleanup, int nIncr)
   #endif // defined(INSERT) || defined(REMOVE)
 }
 
-#define ADVANCE_PWROOT \
-{ \
-    pwRoot = pwRootNew; \
-    wRoot = *pwRoot; \
-    pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); \
-    nBL = nBLR - nBW; \
-    nBLR = nBL; \
-    DBGX(printf("sw pwRoot %p pLn %p wRoot " OWx" nBL %d\n", \
-                (void *)pwRoot, pLn, wRoot, nBL)); \
+static inline void
+SwAdvance(pqp, Word_t *pwRootNew, int nBW, int *pnBLR)
+{
+    pqv;
+    // Be very careful with pwRoot from pqp.
+    // I don't think it means what you think it means.
+    *ppwRoot = pwRootNew;
+    *pwRoot = **ppwRoot; // be very careful; yuck
+    *ppLn = STRUCT_OF(*ppwRoot, Link_t, ln_wRoot); // take care
+    *pnBL = *pnBLR - nBW;
+    *pnBLR = *pnBL; \
+    DBGX(printf("sw pwRoot %p wRoot 0x%zx pLn %p nBL %d\n",
+                (void *)*ppwRoot, *pwRoot, *ppLn, *pnBL));
 }
 
 #if defined(LOOKUP)
@@ -518,11 +522,11 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
       #endif // INSERT, REMOVE
 #endif // !defined(RECURSIVE)
 
-    // InsertGuts checks pwRootPrev != NULL to id XX_SW link.
+    // InsertGuts checks pwRootUp != NULL to id XX_SW link.
     // We needed a way to handle NO_TYPE_IN_XX_SW.
     // Should we limit its existence to that case?
-    // Do we ever depend on this initialization of pwRootPrev?
-    Word_t *pwRootPrev = NULL; (void)pwRootPrev;
+    // Do we ever depend on this initialization of pwRootUp?
+    Word_t *pwRootUp = NULL; (void)pwRootUp;
 
     // nBLUp is used only for SKIP_TO_XX_SW and INSERT.
     // I think it will eventually be used for REMOVE and for
@@ -534,7 +538,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     Word_t wPrefixMismatch = 0; (void)wPrefixMismatch;
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-    Word_t *pwrPrev = pwrPrev; // suppress "uninitialized" compiler warning
+    Word_t *pwrUp = pwrUp; // suppress "uninitialized" compiler warning
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwRootPrefix = NULL; (void)pwRootPrefix;
     Word_t *pwrPrefix = NULL; (void)pwrPrefix;
@@ -918,7 +922,6 @@ t_skip_to_xx_sw:
         // nBLR is bits left to decode by this switch and below
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:;
-
         nBW = gnBW(qy, T_SWITCH, nBLR); // num bits decoded by this switch
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
         // ((uint8_t *)&wKey)[(cnBitsPerWord - nBL) >> 3];
@@ -930,73 +933,48 @@ t_switch:;
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
         goto switchTail; // in case other uses go away by ifdef
-
 switchTail:;
-
         // Handle big picture tree cleanup.
         if (SwCleanup(qy, wKey, nBLR, bCleanup)) { goto restart; }
         SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
+        IF_COUNT(wPopCntSum += CountSw(pwRoot, nBLR, nBW, wDigit, nLinks));
+        IF_COUNT(if (!bLinkPresent) return wPopCntSum);
+        // Save the previous link and advance to the next.
+        IF_NOT_LOOKUP(pwRootUp = pwRoot);
+        IF_SKIP_TO_XX_SW(IF_INSERT(nBLUp = nBL));
+        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        SwAdvance(pqy, pwRootNew, nBW, &nBLR);
 
-  #if defined(COUNT)
-        wPopCntSum += CountSw(pwRoot, nBLR, nBW, wDigit, nLinks);
-        if ( ! bLinkPresent ) { return wPopCntSum; }
-  #endif // defined(COUNT)
-
-        // Save the previous link.
-        {
-        IF_NOT_LOOKUP(pwRootPrev = pwRoot);
-  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-        // We may need to check the prefix of the switch we just visited in
-        // the next iteration of the loop if we've reached a leaf so we
-        // preserve the value of pwr.
-        pwrPrev = pwr;
-  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-  #if defined(SKIP_TO_XX_SW) && defined(INSERT)
-        nBLUp = nBL;
-  #endif // defined(SKIP_TO_XX_SW) && defined(INSERT)
-        }
-
-        ADVANCE_PWROOT;
-
-        // Handle special cases that don't go back to the top of the loop.
-        {
-  #if defined(ALLOW_EMBEDDED_BITMAP)
-        // The first test below is done at compile time and will make the rest
-        // of the code block go away if it is not needed.
-        if ((EXP(cnBitsInD1) <= (sizeof(Link_t) * 8))
-            && (nBL <= (int)LOG(sizeof(Link_t) * 8)))
-        {
-            // if nBL == LOG(sizeof(Link_t) * 8) there is no room for a
-            // type field containing T_BITMAP so we goto t_bitmap directly.
-            // What happens when it's time to make a 2-digit bitmap?
-            // What happens when nBL < LOG(sizeof(Link_t) * 8)?
-            // Would NewSwitch just allocate way more memory than we need?
-            // Can we skip to one of these sub link size bitmaps?
-            // What happens when it's time to make a 2-digit bitmap?
-            // Should we back up nBLR and nBL and goto t_bitmap that way?
-            goto t_bitmap;
-        }
-  #else // defined(ALLOW_EMBEDDED_BITMAP)
         // Is there any reason to have
         // EXP(cnBitsInD1) <= (sizeof(Link_t) * 8)? What about lazy conversion
         // of embedded keys at nBL > sizeof(Link_t) * 8 to
         // nBL == sizeof(Link_t) * 8?
         // Initialize warns if cnBitsInD1 is too small relative
         // to sizeof(Link_t).
-        assert(EXP(nBL) > (sizeof(Link_t) * 8));
-  #endif // defined(ALLOW_EMBEDDED_BITMAP)
-        }
+        // if nBL == LOG(sizeof(Link_t) * 8) there is no room for a
+        // type field containing T_BITMAP so we goto t_bitmap directly.
+        // What happens when it's time to make a 2-digit bitmap?
+        // What happens when nBL < LOG(sizeof(Link_t) * 8)?
+        // Would NewSwitch just allocate way more memory than we need?
+        // Can we skip to one of these sub link size bitmaps?
+        // What happens when it's time to make a 2-digit bitmap?
+        // Should we back up nBLR and nBL and goto t_bitmap that way?
+        // The first test below is done at compile time and will make the rest
+        // of the code block go away if it is not needed.
+        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
 
-  #if defined(CODE_XX_SW) && ! defined(LOOKUP)
+  #if defined(INSERT) || defined(REMOVE)
+      #if defined(CODE_XX_SW) && !defined(NO_TYPE_IN_XX_SW)
         if ( (nType != T_XX_SW)
-      #if defined(SKIP_TO_XX_SW)
+          #if defined(SKIP_TO_XX_SW)
             && (nType != T_SKIP_TO_XX_SW)
-      #endif // defined(SKIP_TO_XX_SW)
+          #endif // defined(SKIP_TO_XX_SW)
             )
-        {
-            pwRootPrev = NULL; // InsertGuts infers XX_SW if pwRootPrev != NULL
-        }
-  #endif // defined(CODE_XX_SW) && ! defined(LOOKUP)
+      #else // defined(CODE_XX_SW) && !defined(NO_TYPE_IN_XX_SW)
+        if (assert(nType != T_XX_SW), 1)
+      #endif // defined(CODE_XX_SW) && !defined(NO_TYPE_IN_XX_SW)
+        { pwRootUp = NULL; } // InsertGuts infers XX_SW if pwRootUp != NULL
+  #endif // defined(INSERT) || defined(REMOVE)
 
   #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
@@ -1012,71 +990,25 @@ switchTail:;
     {
         goto t_xx_sw;
 t_xx_sw:;
-
         nBW = gnBW(qy, T_XX_SW, nBLR);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
         pwRootNew = &pwr_pLinks((Switch_t *)pwr)[wDigit].ln_wRoot;
 
-  #if ! defined(LOOKUP) && ! defined(NO_TYPE_IN_XX_SW)
-
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
-        goto switchTail;
-
-  #else // ! defined(LOOKUP) && ! defined(NO_TYPE_IN_XX_SW)
+        // wDigit is already correct.
+  #if defined(LOOKUP) || defined(NO_TYPE_IN_XX_SW)
         // Handle big picture tree cleanup.
         if (SwCleanup(qy, wKey, nBLR, bCleanup)) { goto restart; }
         SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
-
-      #if defined(COUNT)
-        wPopCntSum += CountSw(pwRoot, nBLR, nBW, wDigit, nLinks);
-        if ( ! bLinkPresent ) { return wPopCntSum; }
-      #endif // defined(COUNT)
-
-        // Save the previous link.
-        {
-        IF_NOT_LOOKUP(pwRootPrev = pwRoot);
-      #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-        // We may need to check the prefix of the switch we just visited in
-        // the next iteration of the loop if we've reached a leaf so we
-        // preserve the value of pwr.
-        pwrPrev = pwr;
-      #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-      #if defined(SKIP_TO_XX_SW) && defined(INSERT)
-        nBLUp = nBL;
-      #endif // defined(SKIP_TO_XX_SW) && defined(INSERT)
-        }
-
-        ADVANCE_PWROOT;
-
-        // Handle special cases that don't go back to the top of the loop.
-        {
-      #if defined(ALLOW_EMBEDDED_BITMAP)
-        // The first test below is done at compile time and will make the rest
-        // of the code block go away if it is not needed.
-        if ((EXP(cnBitsInD1) <= (sizeof(Link_t) * 8))
-            && (nBL <= (int)LOG(sizeof(Link_t) * 8)))
-        {
-            // if nBL == LOG(sizeof(Link_t) * 8) there is no room for a
-            // type field containing T_BITMAP so we goto t_bitmap directly.
-            // What happens when it's time to make a 2-digit bitmap?
-            // What happens when nBL < LOG(sizeof(Link_t) * 8)?
-            // Would NewSwitch just allocate way more memory than we need?
-            // Can we skip to one of these sub link size bitmaps?
-            // What happens when it's time to make a 2-digit bitmap?
-            // Should we back up nBLR and nBL and goto t_bitmap that way?
-            goto t_bitmap;
-        }
-      #else // defined(ALLOW_EMBEDDED_BITMAP)
-        // Is there any reason to have
-        // EXP(cnBitsInD1) <= (sizeof(Link_t) * 8)? What about lazy conversion
-        // of embedded keys at nBL > sizeof(Link_t) * 8 to
-        // nBL == sizeof(Link_t) * 8?
-        // Initialize warns if cnBitsInD1 is too small relative
-        // to sizeof(Link_t).
-        assert(EXP(nBL) > (sizeof(Link_t) * 8));
-      #endif // defined(ALLOW_EMBEDDED_BITMAP)
-        }
+        IF_COUNT(wPopCntSum += CountSw(pwRoot, nBLR, nBW, wDigit, nLinks));
+        IF_COUNT(if (!bLinkPresent) return wPopCntSum);
+        // Save the previous link and advance to the next.
+        IF_NOT_LOOKUP(pwRootUp = pwRoot);
+        IF_SKIP_TO_XX_SW(IF_INSERT(nBLUp = nBL));
+        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        SwAdvance(pqy, pwRootNew, nBW, &nBLR);
+        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
 
         // Handle XX_SW-specific special cases that don't go back to the top.
         {
@@ -1107,7 +1039,9 @@ t_xx_sw:;
           #endif // defined(LOOKUP) || !defined(RECURSIVE)
       #endif // defined(NO_TYPE_IN_XX_SW) || handle dl2 in t_embedded_keys
 
-  #endif // ! defined(LOOKUP) && ! defined(NO_TYPE_IN_XX_SW)
+  #else // defined(LOOKUP) || defined(NO_TYPE_IN_XX_SW)
+        goto switchTail;
+  #endif // defined(LOOKUP) || defined(NO_TYPE_IN_XX_SW)
 
     } // end of case T_XX_SW
 
@@ -1197,7 +1131,7 @@ t_bm_sw:;
         // Because the recursive implementation wants to do something different
         // for the final return?
         // Why do we set pwRoot to NULL sometimes?
-        // Why do we set pwRootPrev to NULL sometimes?
+        // Why do we set pwRootUp to NULL sometimes?
         // We do actually call InsertOrRemove with nBL < cnBitsPerWord.
         // We need to know if there is a link surrounding *pwRoot.
         // InsertGuts always calls back into Insert with the same pwRoot
@@ -1239,26 +1173,20 @@ t_bm_sw:;
                         (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
         }
 
+        pwRootNew = &pwr_pLinks((BmSwitch_t *)pwr)[wSwIndex].ln_wRoot;
+        goto bmSwTail;
+bmSwTail:;
+        // bLinkPresent has already been initialized.
         IF_COUNT(nLinks = INT_MAX);
         IF_COUNT(wDigit = wSwIndex);
-        pwRootNew = &pwr_pLinks((BmSwitch_t *)pwr)[wSwIndex].ln_wRoot;
-
-  #if ! defined(LOOKUP)
-        goto switchTail;
-  #else // ! defined(LOOKUP)
-      #if defined(SKIP_PREFIX_CHECK)
-        pwrPrev = pwr;
-      #endif // defined(SKIP_PREFIX_CHECK)
-        ADVANCE_PWROOT;
-      #if defined(ALLOW_EMBEDDED_BITMAP)
-        if ((EXP(cnBitsInD1) <= (sizeof(Link_t) * 8))
-            && (nBL <= (int)LOG(sizeof(Link_t) * 8)))
-        {
-            goto t_bitmap;
-        }
-      #endif // defined(ALLOW_EMBEDDED_BITMAP)
+  #if defined(LOOKUP)
+        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        SwAdvance(pqy, pwRootNew, nBW, &nBLR);
+        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
         goto again;
-  #endif // ! defined(LOOKUP)
+  #else // defined(LOOKUP)
+        goto switchTail;
+  #endif // defined(LOOKUP)
 
     } // end of case T_BM_SW
 
@@ -1363,9 +1291,8 @@ t_list_sw:;
         }
 
         pwRootNew = &pwr_pLinks((ListSwitch_t *)pwr)[wSwIndex].ln_wRoot;
-        IF_COUNT(nLinks = INT_MAX);
-        IF_COUNT(wDigit = wSwIndex);
-        goto switchTail;
+        // We've initialized bLinkPresent and wSwIndex prior to goto bmSwTail.
+        goto bmSwTail;
 
     } // end of case T_LIST_SW
 
@@ -1467,7 +1394,7 @@ t_list:;
               #endif // defined(SKIP_TO_LIST)
         // It is sufficient to check the prefix at the switch just
         // above the leaf.
-        // pwrPrev is left from the previous iteration of the goto again
+        // pwrUp is left from the previous iteration of the goto again
         // loop.
         // Would like to combine the source code for this prefix
         // check and the one done in the bitmap section if possible.
@@ -1503,7 +1430,7 @@ t_list:;
                     < nBLRPrefix))
               #else // defined(SAVE_PREFIX_TEST_REUSLT)
             || ((int)LOG(1
-                    | (PWR_wPrefixNATBL(pwRoot, (Switch_t *)pwrPrev, nBL)
+                    | (PWR_wPrefixNATBL(pwRoot, (Switch_t *)pwrUp, nBL)
                         ^ wKey))
                 < (nBL
                   #if ! defined(PP_IN_LINK)
@@ -1576,9 +1503,9 @@ t_list:;
       #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
         else
         {
-            // Shouldn't this be using the previous nBL for pwrPrev?
+            // Shouldn't this be using the previous nBL for pwrUp?
             DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
-                 PWR_wPrefixNATBL(pwRoot, pwrPrev, nBL), nBL));
+                 PWR_wPrefixNATBL(pwRoot, pwrUp, nBL), nBL));
         }
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && ...
 
@@ -1662,7 +1589,7 @@ t_list_ua:;
               #endif // defined(SKIP_TO_LIST)
         // It is sufficient to check the prefix at the switch just
         // above the leaf.
-        // pwrPrev is left from the previous iteration of the goto again
+        // pwrUp is left from the previous iteration of the goto again
         // loop.
         // Would like to combine the source code for this prefix
         // check and the one done in the bitmap section if possible.
@@ -1698,7 +1625,7 @@ t_list_ua:;
                     < nBLRPrefix))
               #else // defined(SAVE_PREFIX_TEST_REUSLT)
             || ((int)LOG(1
-                    | (PWR_wPrefixNATBL(pwRoot, (Switch_t *)pwrPrev, nBL)
+                    | (PWR_wPrefixNATBL(pwRoot, (Switch_t *)pwrUp, nBL)
                         ^ wKey))
                 < (nBL
                   #if ! defined(PP_IN_LINK)
@@ -1771,9 +1698,9 @@ t_list_ua:;
       #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
         else
         {
-            // Shouldn't this be using the previous nBL for pwrPrev?
+            // Shouldn't this be using the previous nBL for pwrUp?
             DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
-                 PWR_wPrefixNATBL(pwRoot, pwrPrev, nBL), nBL));
+                 PWR_wPrefixNATBL(pwRoot, pwrUp, nBL), nBL));
         }
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && ...
 
@@ -1904,9 +1831,9 @@ t_bitmap:;
             // current pwRoot to find the prefix.
             // nBL is different for the two cases.
             || ((int)LOG(1
-                | (PWR_wPrefixNATBL(pwRoot, (Switch_t *)pwrPrev, cnBitsInD1)
+                | (PWR_wPrefixNATBL(pwRoot, (Switch_t *)pwrUp, cnBitsInD1)
                             ^ wKey))
-                // The +1 is necessary because the pwrPrev
+                // The +1 is necessary because the pwrUp
                 // prefix does not contain any less significant bits.
               #if defined(PP_IN_LINK)
                     < nBL
@@ -1958,12 +1885,12 @@ t_bitmap:;
             return wPopCntSum;
   #else // defined(COUNT)
   #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
-            // BUG?: Is pwrPrev valid here, i.e. does it mean what this code
+            // BUG?: Is pwrUp valid here, i.e. does it mean what this code
             // thinks it means?  Since SKIP_PREFIX_CHECK may not be #defined?
               #if defined(PP_IN_LINK)
-            assert(PWR_wPopCnt(pwRoot, pwrPrev, cnBitsInD1) != 0);
+            assert(PWR_wPopCnt(pwRoot, pwrUp, cnBitsInD1) != 0);
               #else // defined(PP_IN_LINK)
-            assert(PWR_wPopCnt(pwRoot, pwrPrev, cnBitsInD2) != 0);
+            assert(PWR_wPopCnt(pwRoot, pwrUp, cnBitsInD2) != 0);
               #endif // defined(PP_IN_LINK)
             return KeyFound;
   #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
@@ -2012,12 +1939,12 @@ t_bitmap:;
       #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
         else
         {
-            // Shouldn't this be using the previous nBL for the pwrPrev case?
+            // Shouldn't this be using the previous nBL for the pwrUp case?
           #if defined(SKIP_TO_BITMAP)
             // But now that we have prefix in the bitmap can't we use that?
           #endif // defined(SKIP_TO_BITMAP)
             DBGX(printf("Mismatch at bitmap wPrefix " OWx" nBLR %d nBL %d\n",
-                        PWR_wPrefixNATBL(pwRoot, pwrPrev, nBLR), nBLR, nBL));
+                        PWR_wPrefixNATBL(pwRoot, pwrUp, nBLR), nBLR, nBL));
           #if defined(COUNT)
             DBGC(printf("bm wPopCntSum " OWx"\n", wPopCntSum));
             return wPopCntSum;
@@ -2046,7 +1973,7 @@ t_bitmap:;
 // it later because we may have to goto cleanup after?
         InsertGuts(pwRoot, wKey, nBL, wRoot, -1
       #if defined(CODE_XX_SW)
-                   , pwRootPrev
+                   , pwRootUp
         #if defined(SKIP_TO_XX_SW)
                    , nBLUp
         #endif // defined(SKIP_TO_XX_SW)
@@ -2058,7 +1985,7 @@ t_bitmap:;
             && (nBLR == cnBitsInD1) // ???
             && (nBL == nBLR) // no skip; why do we care?
   #if 0
-            && (PWR_wPopCntBL(pwRootPrev, (Switch_t *)wr_pwr(*pwRootPrev),
+            && (PWR_wPopCntBL(pwRootUp, (Switch_t *)wr_pwr(*pwRootUp),
                               cnBitsLeftAtDl2)
                 >= (EXP(cnBitsLeftAtDl2) * 100 / cnBitsPerWord
                        / cn2dBmWpkPercent))
@@ -2325,7 +2252,7 @@ foundIt:;
     // does not include any skip indicated in the type field of *pwRoot.
     InsertGuts(pwRoot, wKey, nBL, wRoot, nPos
   #if defined(CODE_XX_SW)
-               , pwRootPrev
+               , pwRootUp
       #if defined(SKIP_TO_XX_SW)
                , nBLUp
       #endif // defined(SKIP_TO_XX_SW)

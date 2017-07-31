@@ -100,17 +100,25 @@
 // The parameters are all related to each other.
 // nBL is the number of bits left to decode after identifying the given link.
 // nBL does not include the bits skipped if the link is a skip link.
-#define qp  Link_t *pLn, Word_t *pwRoot, Word_t wRoot, Word_t *pwr, int nBL
+#define  qp \
+    Link_t   *pLn, Word_t   *pwRoot, Word_t   wRoot, Word_t   *pwr, int   nBL
+#define pqp \
+    Link_t **ppLn, Word_t **ppwRoot, Word_t *pwRoot, Word_t **ppwr, int *pnBL
 
 // Shorthand for common arguments.
-#define qy  pLn, pwRoot, wRoot, pwr, nBL
+#define  qy  pLn,  pwRoot,  wRoot,  pwr,  nBL
+#define pqy &pLn, &pwRoot, &wRoot, &pwr, &nBL
 
 // Shorthand to silence not-used compiler warnings.
 // And to validate assumptions.
-#define qv \
+#define  qv \
     (void)pLn; (void)pwRoot; (void)wRoot; (void)pwr; (void)nBL; \
     assert(pLn == STRUCT_OF(pwRoot, Link_t, ln_wRoot)); \
     assert(wRoot == *pwRoot); assert(pwr == wr_pwr(wRoot))
+#define pqv \
+    (void)ppLn; (void)ppwRoot; (void)pwRoot; (void)ppwr; (void)pnBL; \
+    assert(*ppLn == STRUCT_OF(*ppwRoot, Link_t, ln_wRoot)); \
+    assert(*pwRoot == **ppwRoot); assert(*ppwr == wr_pwr(*pwRoot))
 
 // NO_SKIP_LINKS means no skip links of any kind.
 // SKIP_LINKS allows the type-specific SKIP_TO_<BLAH> to be defined.
@@ -133,6 +141,14 @@
 #undef  SKIP_PREFIX_CHECK
 #define SKIP_PREFIX_CHECK
 #endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
+
+#if defined(SKIP_PREFIX_CHECK)
+    #define cbSkipPrefixCheck  1
+    #define IF_SKIP_PREFIX_CHECK(_expr)  (_expr)
+#else // defined(SKIP_PREFIX_CHECK)
+    #define cbSkipPrefixCheck  0
+    #define IF_SKIP_PREFIX_CHECK(_expr)
+#endif // defined(SKIP_PREFIX_CHECK)
 
 // Default cn2dBmWpkPercent; create 2-digit bm at cn2dBmWpkPercent  wpk.
 #if ! defined(cn2dBmWpkPercent)
@@ -419,6 +435,14 @@ typedef Word_t Bucket_t;
 #define SKIP_TO_XX_SW
 #endif // ! defined(NO_SKIP_TO_XX_SW) && defined(SKIP_LINKS)
 #endif // defined(CODE_XX_SW)
+
+#if defined(SKIP_TO_XX_SW)
+    #define cbSkipToXxSw  1
+    #define IF_SKIP_TO_XX_SW(_expr)  (_expr)
+#else // defined(SKIP_TO_XX_SW)
+    #define cbSkipToXxSw  0
+    #define IF_SKIP_TO_XX_SW(_expr)
+#endif // defined(SKIP_TO_XX_SW)
 
 // Default is SKIP_TO_BITMAP if LVL_IN_WR_HB
 #if ! defined(NO_SKIP_TO_BITMAP) && defined(SKIP_LINKS)
@@ -2204,6 +2228,10 @@ typedef struct {
 #endif // (cnDummiesInLink != 0)
     Word_t ln_wRoot;
 } Link_t;
+
+#define cnLogBitsPerLink  ((int)LOG(sizeof(Link_t)) + cnLogBitsPerByte)
+
+#define cbEmbeddedBitmap  (cnBitsInD1 <= cnLogBitsPerLink)
 
 // Get the width of the branch in bits.
 // nBLR includes any skip specified in the qp link.

@@ -122,6 +122,7 @@ endif
   WFLAGS += -Wno-deprecated
   WFLAGS += -Werror
   WFLAGS += -Wfatal-errors
+  WFLAGS += -Wno-unused-value
 # WFLAGS_C_ONLY += -Wstrict-prototypes
 # WFLAGS_C_ONLY += -Wmissing-prototypes
   CWFLAGS += $(WFLAGS)
