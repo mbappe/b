@@ -970,8 +970,6 @@ switchTail:;
             && (nType != T_SKIP_TO_XX_SW)
           #endif // defined(SKIP_TO_XX_SW)
             )
-      #else // defined(CODE_XX_SW) && !defined(NO_TYPE_IN_XX_SW)
-        if (assert(nType != T_XX_SW), 1)
       #endif // defined(CODE_XX_SW) && !defined(NO_TYPE_IN_XX_SW)
         { pwRootUp = NULL; } // InsertGuts infers XX_SW if pwRootUp != NULL
   #endif // defined(INSERT) || defined(REMOVE)
