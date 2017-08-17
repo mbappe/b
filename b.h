@@ -75,6 +75,7 @@
 // dlmalloc.c uses MALLOC_ALIGNMENT.
 // Default MALLOC_ALIGNMENT is 2 * sizeof(void *).
 // We have to set cnBitsMallocMask to be consitent with MALLOC_ALIGNMENT.
+#ifndef cnBitsMallocMask
 #if (MALLOC_ALIGNMENT == 4)
     #define cnBitsMallocMask 2
 #elif (MALLOC_ALIGNMENT == 8)
@@ -88,6 +89,7 @@
 #else // defined(MALLOC_ALIGNMENT)
     #error Unsupported MALLOC_ALIGNMENT.
 #endif // MALLOC_ALIGNMENT
+#endif // cnBitsMallocMask
 
 #define cnLogMallocAlignment  cnBitsMallocMask
 #define cnMallocAlignment  EXP(cnBitsMallocMask)
@@ -106,6 +108,7 @@
     Link_t **ppLn, Word_t **ppwRoot, Word_t *pwRoot, Word_t **ppwr, int *pnBL
 
 // Shorthand for common arguments.
+// Why is "qy" not "qa"? Because "qa" is harder to type?
 #define  qy  pLn,  pwRoot,  wRoot,  pwr,  nBL
 #define pqy &pLn, &pwRoot, &wRoot, &pwr, &nBL
 
@@ -191,12 +194,14 @@
 
 #endif // defined(USE_BM_SW)
 
-// Default is USE_XX_SW unless 32-bit.
-#if ! defined(NO_USE_XX_SW) && (cnBitsPerWord > 32)
-  #undef USE_XX_SW
-  #define USE_XX_SW
-#endif // ! defined(NO_USE_XX_SW) && (cnBitsPerWord > 32)
+#if defined(USE_LIST_SW)
+// Default is -USW_LIST_IN_LINK.
+  #define CODE_LIST_SW
+#endif // defined(USE_LIST_SW)
 
+// Default is NO_USE_XX_SW because test runs take so long because of
+// insert times.
+// USE_XX_SW doesn't work on 32-bit yet.
 #if defined(USE_XX_SW)
   #undef  CODE_XX_SW
   #define CODE_XX_SW
@@ -461,6 +466,16 @@ typedef Word_t Bucket_t;
       #endif // defined(LVL_IN_SW) || defined(LVL_IN_WR_HB)
   #endif // defined(USE_BM_SW)
 #endif // ! defined(NO_SKIP_TO_BM_SW) && defined(SKIP_LINKS)
+
+// Default is SKIP_TO_LIST_SW if USE_LIST_SW and (LVL_IN_SW or LVL_IN_WR_HB).
+#if ! defined(NO_SKIP_TO_LIST_SW) && defined(SKIP_LINKS)
+  #if defined(USE_LIST_SW)
+      #if defined(LVL_IN_SW) || defined(LVL_IN_WR_HB)
+          #undef SKIP_TO_LIST_SW
+          #define SKIP_TO_LIST_SW
+      #endif // defined(LVL_IN_SW) || defined(LVL_IN_WR_HB)
+  #endif // defined(USE_LIST_SW)
+#endif // ! defined(NO_SKIP_TO_LIST_SW) && defined(SKIP_LINKS)
 
 // Default is -DOLD_LISTS.
 #if ! defined(NO_OLD_LISTS)
@@ -1346,6 +1361,7 @@ tp_bIsSkip(int nType)
 // Can we use lvl to id skip instead of a bit in the type field?
 // XxSwWidth is the width of the switch.
 // ListPopCnt is the number of keys in the list.
+// ListSwPopM1 is the number of links in the list switch minus one.
 // A field at the end is faster to extract than a field in the middle.
 #define cnBitsLvl  8 // 8 is easier to read in debug output than 7
 #define cnLsbLvl  (cnBitsPerWord - cnBitsLvl)
@@ -1360,6 +1376,13 @@ tp_bIsSkip(int nType)
 #define cnLsbListPopCnt  cnBitsVirtAddr
 #else // defined(SKIP_TO_LIST)
 #define cnLsbListPopCnt  (cnBitsPerWord - cnBitsListPopCnt)
+#endif // defined(SKIP_TO_LIST)
+
+#define cnBitsListSwPopM1  8 // for T_LIST_SW
+#if defined(SKIP_TO_LIST_SW)
+    #define cnLsbListSwPopM1  cnBitsVirtAddr
+#else // defined(SKIP_TO_LIST)
+    #define cnLsbListSwPopM1  (cnBitsPerWord - cnBitsListSwPopM1)
 #endif // defined(SKIP_TO_LIST)
 
 #if defined(CODE_XX_SW)
@@ -1388,24 +1411,6 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 }
 
 #endif // defined(CODE_XX_SW)
-
-// Get the level of the object in number of bits left to decode.
-// This is valid only when *pwRoot is a skip link.
-static inline int
-Get_nBLR(Word_t *pwRoot)
-{
-    int nBLR;
-    assert(tp_bIsSkip(wr_nType(*pwRoot)));
-#if defined(LVL_IN_WR_HB)
-    nBLR = GetBits(*pwRoot, cnBitsLvl, cnLsbLvl);
-#else // defined(LVL_IN_WR_HB)
-  #define tp_to_nDL(_tp) ((_tp) - T_SKIP_TO_SWITCH + 2)
-    nBLR = nDL_to_nBL(tp_to_nDL(wr_nType(*pwRoot)));
-#endif // defined(LVL_IN_WR_HB)
-
-
-    return nBLR;
-}
 
 #if defined(LVL_IN_WR_HB)
 
@@ -2256,7 +2261,8 @@ gnBW(qp, int nTypeBase, int nBLR)
 
 #define Get_nBW(_pwRoot) \
     gnBW(STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
-         (_pwRoot), *(_pwRoot), wr_pwr(*(_pwRoot)), 0, T_XX_SW, 0)
+         (_pwRoot), *(_pwRoot), wr_pwr(*(_pwRoot)), /* nBL */ 0, \
+         T_XX_SW, 0)
 
 #define pwr_nBW  Get_nBW
 
@@ -2277,14 +2283,36 @@ snBW(qp, int nTypeBase, int nBW)
 
 #define Set_nBW(_pwRoot, _nBW) \
     snBW(STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
-         (_pwRoot), *(_pwRoot), wr_pwr(*(_pwRoot)), 0, T_XX_SW, (_nBW))
+         (_pwRoot), *(_pwRoot), wr_pwr(*(_pwRoot)), /* nBL */ 0, \
+         T_XX_SW, (_nBW))
 
 #define set_pwr_nBW  Set_nBW
+
+// Get the level of the object in number of bits left to decode.
+// This is valid only when *pwRoot is a skip link.
+static inline int
+gnBLR(qp)
+{
+    qv;
+    int nBLR;
+    assert(tp_bIsSkip(wr_nType(wRoot)));
+#if defined(LVL_IN_WR_HB)
+    nBLR = GetBits(wRoot, cnBitsLvl, cnLsbLvl);
+#else // defined(LVL_IN_WR_HB)
+  #define tp_to_nDL(_tp) ((_tp) - T_SKIP_TO_SWITCH + 2)
+    nBLR = nDL_to_nBL(tp_to_nDL(wr_nType(wRoot)));
+#endif // defined(LVL_IN_WR_HB)
+    return nBLR;
+}
+
+#define Get_nBLR(_pwRoot) \
+    gnBLR(STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
+          (_pwRoot), *(_pwRoot), wr_pwr(*(_pwRoot)), /* nBL */ 0)
 
 #if defined(SW_LIST_IN_LINK)
     #define SW_LIST
 #else // defined(SW_LIST_IN_LINK)
-    #define SW_LIST  __m128i sw_axList[1];
+    #define SW_LIST  uint8_t sw_aKeys[1<<(sizeof(uint8_t)*8)];
 #endif // defined(SW_LIST_IN_LINK)
 
 #if defined(BM_IN_LINK)
@@ -2311,14 +2339,15 @@ snBW(qp, int nTypeBase, int nBW)
     #define SW_DUMMIES
 #endif // (cnDummiesInSwitch != 0)
 
-#define SWITCH_COMMON \
+// Fields that all switch types have at the same address as each other.
+#define SW_COMMON_HDR \
     SW_PREFIX_POP \
     SW_POP_WORD \
     SW_DUMMIES
 
 // Uncompressed, basic switch.
 typedef struct {
-    SWITCH_COMMON
+    SW_COMMON_HDR
 #if defined(USE_BM_SW) && defined(BM_IN_NON_BM_SW)
     SW_BM
 #endif // defined(USE_BM_SW) && defined(BM_IN_NON_BM_SW)
@@ -2326,15 +2355,17 @@ typedef struct {
 } Switch_t;
 
 // List switch.
+// A switch with a list of subkeys the specifies the links that are
+// present in the switch.
 typedef struct {
-    SWITCH_COMMON
-    SW_LIST
-    Link_t sw_aLinks[1]; // variable size
-} ListSwitch_t;
+    SW_COMMON_HDR
+    SW_LIST // variable size so sw_aLinks follows this
+    // Link_t sw_aLinks[1]; // variable size
+} ListSw_t;
 
 // Bitmap switch.
 typedef struct {
-    SWITCH_COMMON
+    SW_COMMON_HDR
     // sw_awBm must be first and the remainder of BmSwitch_t must be the same
     // as all of Switch_t for RETYPE_FULL_BM_SW without BM_IN_NON_BM_SW.
     // But this doesn't make it easy for us to handle SKIP_TO_BM_SW which
@@ -2347,6 +2378,8 @@ typedef struct {
 
 #define cnBitsPreListPopCnt cnBitsListPopCnt
 #define cnLsbPreListPopCnt (cnBitsPerWord - cnBitsListPopCnt)
+#define cnBitsPreListSwPopM1 cnBitsListSwPopM1
+#define cnLsbPreListSwPopM1 (cnBitsPerWord - cnBitsListSwPopM1)
 
 static inline Word_t
 Get_wPopCntBL(Word_t *pwRoot, int nBL)
@@ -2388,6 +2421,41 @@ Set_xListPopCnt(Word_t *pwRoot, int nBL, int nPopCnt)
     SetBits(&pwr[-1], cnBitsPreListPopCnt, cnLsbPreListPopCnt, nPopCnt);
 #else // POP_IN_WR_HB ...
     set_ls_xPopCnt(wr_pwr(*pwRoot), nBL, nPopCnt);
+#endif // POP_IN_WR_HB ...
+}
+
+// Get the number of links in a list switch.
+static inline int
+gnListSwPop(qp)
+{
+    qv;
+#if defined(POP_IN_WR_HB) // 64-bit default
+    int nPopCnt = GetBits(wRoot, cnBitsListSwPopM1, cnLsbListSwPopM1) + 1;
+#elif defined(LIST_POP_IN_PREAMBLE) // 32-bit default
+    int nPopCnt
+        = GetBits(pwr[-1], cnBitsPreListSwPopM1, cnLsbPreListSwPopM1) + 1;
+#else // POP_IN_WR_HB ...
+    #error No place for ListSwPop.
+    // We'll have to put it at the beginning of the switch, but there is no
+    // such accommodation yet.
+#endif // POP_IN_WR_HB ...
+    return nPopCnt;
+}
+
+static inline void
+snListSwPop(qp, int nPopCnt)
+{
+    qv;
+#if defined(POP_IN_WR_HB) // 64-bit default
+    assert(nPopCnt <= (int)EXP(cnBitsListSwPopM1));
+    SetBits(pwRoot, cnBitsListSwPopM1, cnLsbListSwPopM1, nPopCnt - 1);
+#elif defined(LIST_POP_IN_PREAMBLE) // 32-bit default
+    assert(nPopCnt <= (int)EXP(cnBitsPreListSwPopM1));
+    SetBits(&pwr[-1], cnBitsPreListSwPopM1, cnLsbPreListSwPopM1, nPopCnt - 1);
+#else // POP_IN_WR_HB ...
+    #error No place for ListSwPop.
+    // We'll have to put it at the beginning of the switch, but there is no
+    // such accommodation yet.
 #endif // POP_IN_WR_HB ...
 }
 
@@ -2828,7 +2896,8 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 #define PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     int nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
-    if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) \
+    /* if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) */\
+    if ((_pxKeys)[nSplit] == (_xKey)) \
     { \
         (_nPos) += nSplit; \
     } \
@@ -4677,21 +4746,36 @@ ls_pxKey(Word_t *pwr, int nBL, int ii)
 #define ls_pxKey(_ls, _nBL, _ii)  (ls_pwKeys((_ls), (_nBL))[_ii])
 #endif // defined(COMPRESSED_LISTS)
 
-// Get list switch link index (offset) from digit (virtual index)
-// extracted from key.
+// Get list switch link index (offset) from digit aka virtual index aka
+// subkey extracted from key.
 // If the link is not present then return the index at which it would be.
 static inline void
-ListSwIndex(Word_t *pwRoot, Word_t wDigit,
-          Word_t *pwSwIndex, int *pbLinkPresent)
+ListSwIndex(qp, int nBW, Word_t wDigit,
+            Word_t *pwSwIndex, int *pbLinkPresent)
 {
-    (void)pwRoot, (void)wDigit;
-    //Word_t *pwSwList = PWR_pwSwList(pwRoot, wr_pwr(*pwRoot));
+    qv; (void)nBW;
+    ListSw_t *pListSw = (ListSw_t *)pwr;
+    uint8_t *pKeys = pListSw->sw_aKeys;
+    int nPos = 0;
+#if 1
+    PSPLIT_SEARCH_BY_KEY(uint8_t, 8, pKeys,
+                         gnListSwPop(qy), (uint8_t)wDigit, nPos);
+#else
+    SEARCHF(uint8_t, pKeys, gnListSwPop(qy), (uint8_t)wDigit, nPos);
+#endif
     if (pwSwIndex != NULL) {
-        *pwSwIndex = wDigit; // for now
+        if (nPos < 0) { nPos = -nPos; }
+        *pwSwIndex = nPos;
     }
     if (pbLinkPresent != NULL) {
-        *pbLinkPresent = 1; // for now
+        *pbLinkPresent = (nPos >= 0);
     }
+}
+
+static inline Link_t *
+gpListSwLinks(qp)
+{
+    return (Link_t *)&((ListSw_t *)pwr)->sw_aKeys[gnListSwPop(qy)];
 }
 
 // Get bitmap switch link index (offset) from digit (virtual index)

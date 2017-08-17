@@ -105,6 +105,8 @@ endif
 # MFLAGS += -msse4.1
 # MFLAGS += -mno-sse4.1
   MFLAGS += -msse4.2
+# MFLAGS += -mbmi2
+# MFLAGS += -mavx512f
 # MFLAGS += -mno-sse4.2
 # MFLAGS += -march=native
 # MFLAGS += -mfpmath=sse
@@ -211,7 +213,9 @@ ifeq "$(NO_RAMMETRICS)" ""
     JUDY_DEFINES += -DRAMMETRICS
 endif
 
-DEFINES += $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
+# Put cmdline DEFINES after default defines so defaults can be overridden.
+MAKE_DEFINES = $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
+DEFINES := $(MAKE_DEFINES) $(DEFINES)
 
 FILES_FROM_ME  = b.h b.c bli.c bl.c bi.c br.c bc.c t.c
 FILES_FROM_ME += stubsL.c stubsHS.c Makefile
@@ -231,6 +235,7 @@ LIBB_OBJS = $(LIBB1_OBJS) stubsL.o stubsHS.o
 LIBB_SRCS = $(LIBB1_SRCS) stubsL.c stubsHS.c
 ASMS  = b.s bl.s bi.s br.s bc.s
 ASMS += stubsL.s stubsHS.s JudyMalloc.s # t.s
+ASMS += Judy1LHTime.s Judy1LHCheck.s
 CPPS  = b.i bl.i bi.i br.i bc.i
 CPPS += stubsL.i stubsHS.i JudyMalloc.i # t.i
 
@@ -263,10 +268,10 @@ t: t.c $(T_OBJS)
 #Judy1LHTime: Judy1LHTime.c libb.a
 #	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 Judy1LHTime: Judy1LHTime.c libb1.a
-	$(CC) $(CFLAGS) $(DEFINES) -DMIKEY -o $@ $^ $(LDFLAGS) -lJudy -lm
+	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ $(LDFLAGS) -lJudy -lm
 
 c++time: Judy1LHTime.c libb.a
-	$(CXX) $(CXXFLAGS) $(DEFINES) -DMIKEY \
+	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) \
  -x c++ Judy1LHTime.c -x none libb.a -o $@ -lm
 
 b: Judy1LHTime
@@ -279,10 +284,10 @@ btime: Judy1LHTime
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
 Judy1LHCheck: Judy1LHCheck.c libb1.a
 	$(CC) $(CFLAGS) -Wno-sign-compare \
- $(DEFINES) -DMIKEY -o $@ $^ $(LDFLAGS) -lJudy -lm
+ -DMIKEY $(DEFINES) -o $@ $^ $(LDFLAGS) -lJudy -lm
 
 c++check: Judy1LHCheck.c libb1.a
-	$(CXX) $(CXXFLAGS) $(DEFINES) -DMIKEY -x c++ Judy1LHCheck.c \
+	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) -x c++ Judy1LHCheck.c \
  -x none libb1.a -o $@ $(LDFLAGS) -lJudy -lm
 
 bcheck: Judy1LHCheck
@@ -353,7 +358,7 @@ t.s: t.c
 
 # Suppress warnings.
 Judy1LHTime.s: Judy1LHTime.c
-	$(CC) $(CFLAGS) $(DEFINES) -DMIKEY -S $^
+	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -S $^
 
 stubsL.s: stubsL.c
 	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
@@ -404,7 +409,7 @@ stubsHS.i: stubsHS.c
 
 # The .c.i rule doesn't work for some reason.  Later.
 Judy1LHTime.i: Judy1LHTime.c
-	$(CC) $(CFLAGS) $(DEFINES) -DMIKEY -E $^ | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -E $^ | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
 t.i: t.c

@@ -1,6 +1,6 @@
 //
 // This program is free software; you can redistribute it and/or modify it
-// under the same terms as dlmalloc.c -- the 
+// under the same terms as dlmalloc.c -- the
 //
 // This program is distributed in the hope that it will be useful, but WITHOUT
 // ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -34,15 +34,18 @@
 
 #ifdef  RAMMETRICS
 
-extern Word_t    j__AllocWordsTOT;     // words given by JudyMalloc including overhead
-extern Word_t    j__MalFreeCnt;                // keep track of total malloc() + free()
-extern Word_t    j__MFlag;                     // Print memory allocation on stderr
-extern Word_t    j__TotalBytesAllocated;       // mmapped by dlmalloc
+#ifdef MIKEY
+#define MIKEY_EXTERN extern
+#else // MIKEY
+#define MIKEY_EXTERN
+#endif // MIKEY
+
+MIKEY_EXTERN Word_t    j__AllocWordsTOT;     // words given by JudyMalloc including overhead
+MIKEY_EXTERN Word_t    j__MalFreeCnt;                // keep track of total malloc() + free()
+MIKEY_EXTERN Word_t    j__MFlag;                     // Print memory allocation on stderr
+MIKEY_EXTERN Word_t    j__TotalBytesAllocated;       // mmapped by dlmalloc
 
 Word_t    j__RequestedWordsTOT;       // words requested by Judy via JudyMalloc
-Word_t    j__ExtraWordsTOT;             // extra words above previous estimate
-                                        // of one or two or three
-Word_t    j__ExtraWordsCnt;             // how many buffers have extra words
 
 #endif  // RAMMETRICS
 
@@ -60,16 +63,16 @@ Word_t    j__ExtraWordsCnt;             // how many buffers have extra words
 //
 #define PRINTMMAP(BUF, LENGTH)                                          \
    fprintf(stderr,                                                      \
-        "%p:buf = mmap(addr:0x0, length:%p, prot:0x%x, flags:0x%x, fd:%d)\n", \
-                (void *)(BUF), (void *)(LENGTH), prot, flags, fd)
-   
-#define PRINTMUMAP(BUF, LENGTH)                                         \
+        "%p:buf = mmap(addr:0x0, length:%p, prot:0x%x, flags:0x%x, fd:%d) line %d\n", \
+                (void *)(BUF), (void *)(LENGTH), prot, flags, fd, __LINE__)
+
+#define PRINTMUNMAP(BUF, LENGTH)                                         \
    fprintf(stderr,                                                      \
-        "%d = munmap(buf:%p, length:%p[%d])\n",                         \
-                ret, (void *)(BUF), (void *)(LENGTH), (int)(LENGTH));
+        "%d = munmap(buf:%p, length:%p[%d]) line %d\n",                         \
+                ret, (void *)(BUF), (void *)(LENGTH), (int)(LENGTH), __LINE__)
 
 // Define the Huge TLB size (2MiB) for Intel Haswell+
-#ifndef HUGETLBSZ       
+#ifndef HUGETLBSZ
 #define HUGETLBSZ       ((Word_t)0x200000)
 #endif  // HUGETLBSZ
 
@@ -79,9 +82,9 @@ static int    pre_munmap(void *, size_t);
 // Stuff to modify dlmalloc to use 2MiB pages
 #define DLMALLOC_EXPORT static
 #define dlmalloc_usable_size static dlmalloc_usable_size
-#define USE_DL_PREFIX  
+#define USE_DL_PREFIX
 #define HAVE_MREMAP     0
-#define DEFAULT_MMAP_THRESHOLD HUGETLBSZ 
+#define DEFAULT_MMAP_THRESHOLD HUGETLBSZ
 // normal default == 64 * 1024
 #define DEFAULT_GRANULARITY HUGETLBSZ
 
@@ -94,13 +97,13 @@ static int    pre_munmap(void *, size_t);
 
 #include "dlmalloc.c"   // Version 2.8.6 Wed Aug 29 06:57:58 2012  Doug Lea
 
-#undef mmap             
+#undef mmap
 #define mmap            mmap    // restore it for rest of routine
-#undef munmap           
+#undef munmap
 #define munmap          munmap  // restore it for rest of routine
 
 // This code is not necessary except if j__MFlag is set
-static int 
+static int
 pre_munmap(void *buf, size_t length)
 {
     int ret;
@@ -111,7 +114,7 @@ pre_munmap(void *buf, size_t length)
     j__TotalBytesAllocated -= length;
 
     if (j__MFlag)
-        PRINTMUMAP(buf, length);
+        PRINTMUNMAP(buf, length);
 #endif  // RAMMETRICS
 
     return(ret);
@@ -122,7 +125,7 @@ pre_munmap(void *buf, size_t length)
 // Any mmap equal or larger than 2MiB should be "HUGE TLB aligned" (dlb)
 // ********************************************************************
 
-static void * 
+static void *
 pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 {
     char *buf;
@@ -137,7 +140,7 @@ pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
     if (length != HUGETLBSZ)
     {
 ////        return(buf);
-        fprintf(stderr, "\nSorry, JudyMalloc() is not ready for %d allocations\n", (int)length);
+        fprintf(stderr, "\nSorry, JudyMalloc() is not ready for %zd allocations\n", length);
         exit(-1);
     }
 
@@ -152,7 +155,7 @@ pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
     }
 #endif  // RAMMETRICS
 
-    if (buf == MFAIL)           // out of memory(RAM)
+    if (buf == MAP_FAILED)           // out of memory(RAM)
         return(buf);
 
 //  if we get a mis-aligned buffer, change it to aligned
@@ -161,11 +164,11 @@ pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
         Word_t remain;
 
 //      free the mis-aligned buffer
-        ret = munmap(buf, length);          
+        ret = munmap(buf, length);
 
 #ifdef  RAMMETRICS
         if (j__MFlag)
-            PRINTMUMAP(buf, length);
+            PRINTMUNMAP(buf, length);
 #endif  // RAMMETRICS
 
 //      Allocate again big enough (4Mib) to insure getting a buffer big enough that
@@ -177,30 +180,30 @@ pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
             PRINTMMAP(buf, length + HUGETLBSZ);
 #endif  // RAMMETRICS
 
-        if (buf == MFAIL)               // sorry out of RAM
+        if (buf == MAP_FAILED)               // sorry out of RAM
             return(buf);
 
         remain = (Word_t)buf % HUGETLBSZ;
-        if (remain)
-        {
-            ret = munmap(buf, HUGETLBSZ - remain);          
+
+        ret = munmap(buf, HUGETLBSZ - remain);     // free front to alignment
 
 #ifdef  RAMMETRICS
-            if (j__MFlag)
-                PRINTMUMAP(buf, HUGETLBSZ - remain);
+        if (j__MFlag)
+            PRINTMUNMAP(buf, HUGETLBSZ - remain);
 #endif  // RAMMETRICS
 
-        }
-//      calc where memory is at end of buffer
+//      calc where memory is at end of buffer to free
         buf += HUGETLBSZ - remain;
 
-//      and free it too.
-        ret = munmap(buf + length, remain);
+//      free it too -- only if 4MiB was unaligned
+        if (remain) {
+            ret = munmap(buf + length, remain);
+        }
 
 #ifdef  RAMMETRICS
         if (j__MFlag)
         {
-            PRINTMUMAP(buf + length, remain);
+            PRINTMUNMAP(buf + length, remain);
             fprintf(stderr, "%p == buf\n", (void *)buf);
         }
 #endif  // RAMMETRICS
@@ -255,17 +258,12 @@ RawP_t JudyMalloc(
             j__RequestedWordsTOT += Words;
             // get # bytes in malloc buffer from preamble
             size_t zAllocWords = (((Word_t *)Addr)[-1] & ~3) / sizeof(Word_t);
-            size_t zMinWords = (Words + 2) & ~1;
-            if (zMinWords < 4) { zMinWords = 4; }
             j__AllocWordsTOT += zAllocWords;
-            j__ExtraWordsTOT += zAllocWords - zMinWords;
-            if (zAllocWords != zMinWords)
-                j__ExtraWordsCnt++;
         }
 #endif  // RAMMETRICS
 
 #ifdef  TRACEJM
-        printf("%p = JudyMalloc(%u)\n", (void *)Addr, (int)Bytes / sizeof(Word_t));
+        printf("%p = JudyMalloc(%zu)\n", (void *)Addr, Bytes / sizeof(Word_t));
 #endif  // TRACEJM
 
 #ifdef  GUARDBAND
@@ -303,12 +301,7 @@ void JudyFree(
 #ifdef  RAMMETRICS
         // get # bytes in malloc buffer from preamble
         size_t zAllocWords = (((Word_t *)PWord)[-1] & ~3) / sizeof(Word_t);
-        size_t zMinWords = (Words + 2) & ~1;
-        if (zMinWords < 4) { zMinWords = 4; }
         j__AllocWordsTOT -= zAllocWords;
-        j__ExtraWordsTOT -= zAllocWords - zMinWords;
-        if (zAllocWords != zMinWords)
-            j__ExtraWordsCnt--;
 
         j__MalFreeCnt++;        // keep track of total malloc() + free()
         j__RequestedWordsTOT -= Words;
@@ -329,7 +322,7 @@ void JudyFree(
 
         if (~GuardWord != (Word_t)PWord)
         {
-            printf("\n\nOops GuardWord = %p != PWord = %p\n", 
+            printf("\n\nOops GuardWord = %p != PWord = %p\n",
                     (void *)GuardWord, (void *)PWord);
             exit(-1);
         }

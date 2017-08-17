@@ -23,15 +23,13 @@
 // Return the number of keys in the subtrees rooted by links that
 // precede the specified link in this switch.
 static Word_t
-CountSw(Word_t *pwRoot,
+CountSw(qp,
         int nBLR, // number of bits left to decode by switch and below
         int nBW, // number of bits decoded by the switch
         Word_t wIndex, // index of relevant link in switch
         int nLinks)
 {
-    Word_t *pwr = wr_pwr(*pwRoot);
-    //DBGC(Dump(pwRootLast, 0, cnBitsPerWord));
-    (void)pwRoot; (void)nBLR; (void)nLinks;
+    qv; (void)nBLR; (void)nLinks;
     int nType = Get_nType(pwRoot); (void)nType;
     DBGC(printf("\nCountSw nType %d nBLR %d nBW %d wIndex " OWx"\n",
                 nType, nBLR, nBW, wIndex));
@@ -60,7 +58,10 @@ CountSw(Word_t *pwRoot,
 #if defined(CODE_BM_SW)
              tp_bIsBmSw(nType) ? pwr_pLinks((BmSwitch_t *)pwr) :
 #endif // defined(CODE_BM_SW)
-                                 pwr_pLinks((  Switch_t *)pwr) ;
+#if defined(CODE_LIST_SW)
+             tp_bIsListSw(nType) ? gpListSwLinks(qy) :
+#endif // defined(CODE_LIST_SW)
+             pwr_pLinks((Switch_t *)pwr);
         Word_t *pwRootLoop = &pLinks[ww].ln_wRoot;
         Word_t wPopCntLoop;
         DBGC(printf("ww " OWx" pwRootLoop %p\n", ww, (void *)pwRootLoop));
@@ -91,6 +92,10 @@ CountSw(Word_t *pwRoot,
                 assert(PWR_wPopCntBL(pwRootLoop, (BmSwitch_t *)pwrLoop, nBLRLoop)
                        == wPopCntLoop);
       #endif // defined(CODE_BM_SW)
+      #if defined(CODE_LIST_SW)
+                assert(PWR_wPopCntBL(pwRootLoop, (ListSw_t *)pwrLoop, nBLRLoop)
+                       == wPopCntLoop);
+      #endif // defined(CODE_LIST_SW)
                 if (wPopCntLoop == 0) {
                     wPopCntLoop = EXP(nBLRLoop);
                 }
@@ -161,8 +166,8 @@ CountSw(Word_t *pwRoot,
                             wPopCntLoop, wPopCnt));
                 break;
             default:
-                printf("\nww %" _fw"d *pwRootLoop " OWx" nTypeLoop %d\n",
-                       ww, *pwRootLoop, nTypeLoop);
+                DBG(printf("\nww %" _fw"d *pwRootLoop " OWx" nTypeLoop %d\n",
+                       ww, *pwRootLoop, nTypeLoop));
                 if (wPopCntTotal < 0x1000) {
                     DBGC(Dump(pwRootLast, 0, cnBitsPerWord));
                 }
@@ -704,7 +709,7 @@ again:;
           #if defined(DEFAULT_BITMAP)
           #error DEFAULT_BITMAP with DEBUG
           #endif // defined(DEFAULT_BITMAP)
-    default: printf("unknown type %d\n", nType); assert(0); exit(0);
+    default: DBG(printf("unknown type %d\n", nType)); assert(0); exit(0);
       #endif // defined(DEBUG)
       #if ! defined(DEBUG) && defined(DEFAULT_SKIP_TO_SW)
           #if defined(DEFAULT_SWITCH)
@@ -719,44 +724,25 @@ again:;
     default:
       #else // ! defined(DEBUG) && defined(DEFAULT_SKIP_TO_SW)
 
-          #if (T_SKIP_TO_SWITCH <= 14)
-    case T_SKIP_TO_SWITCH+1:
-          #endif // (T_SKIP_TO_SWITCH <= 14)
-          #if (T_SKIP_TO_SWITCH <= 13)
-    case T_SKIP_TO_SWITCH+2:
-          #endif // (T_SKIP_TO_SWITCH <= 13)
-          #if (T_SKIP_TO_SWITCH <= 12)
-    case T_SKIP_TO_SWITCH+3:
-          #endif // (T_SKIP_TO_SWITCH <= 12)
-          #if (T_SKIP_TO_SWITCH <= 11)
-    case T_SKIP_TO_SWITCH+4:
-          #endif // (T_SKIP_TO_SWITCH <= 11)
-          #if (T_SKIP_TO_SWITCH <= 10)
-    case T_SKIP_TO_SWITCH+5:
-          #endif // (T_SKIP_TO_SWITCH <= 10)
-          #if (T_SKIP_TO_SWITCH <= 9)
-    case T_SKIP_TO_SWITCH+6:
-          #endif // (T_SKIP_TO_SWITCH <= 9)
-          #if (T_SKIP_TO_SWITCH <= 8)
-    case T_SKIP_TO_SWITCH+7:
-          #endif // (T_SKIP_TO_SWITCH <= 8)
-          #if (T_SKIP_TO_SWITCH <= 7)
-    case T_SKIP_TO_SWITCH+8:
-          #endif // (T_SKIP_TO_SWITCH <= 7)
-          #if (T_SKIP_TO_SWITCH <= 6)
-    case T_SKIP_TO_SWITCH+9:
-          #endif // (T_SKIP_TO_SWITCH <= 6)
-          #if (T_SKIP_TO_SWITCH <= 5)
-    case T_SKIP_TO_SWITCH+10:
-          #endif // (T_SKIP_TO_SWITCH <= 5)
-          #if (T_SKIP_TO_SWITCH <= 4)
-    case T_SKIP_TO_SWITCH+11:
-          #endif // (T_SKIP_TO_SWITCH <= 4)
-          #if (T_SKIP_TO_SWITCH <= 3)
-    case T_SKIP_TO_SWITCH+12:
-          #endif // (T_SKIP_TO_SWITCH <= 3)
-
     case T_SKIP_TO_SWITCH: // skip link to uncompressed switch
+    // Extra cases even for LVL_IN_WR_HB and LVL_IN_SWITCH so we
+    // have at least EXP(cnBitsMallocMask) cases and gcc will
+    // create a jump table with no bounds check at the beginning
+    // after extracting the type field from wRoot.
+    case T_SKIP_TO_SWITCH+1:
+    case T_SKIP_TO_SWITCH+2:
+    case T_SKIP_TO_SWITCH+3:
+    case T_SKIP_TO_SWITCH+4:
+    case T_SKIP_TO_SWITCH+5:
+    case T_SKIP_TO_SWITCH+6:
+    case T_SKIP_TO_SWITCH+7:
+    case T_SKIP_TO_SWITCH+8:
+    case T_SKIP_TO_SWITCH+9:
+    case T_SKIP_TO_SWITCH+10:
+    case T_SKIP_TO_SWITCH+11:
+    case T_SKIP_TO_SWITCH+12:
+    case T_SKIP_TO_SWITCH+13:
+    case T_SKIP_TO_SWITCH+14:
       #endif // ! defined(DEBUG) && defined(DEFAULT_SKIP_TO_SW)
   #else // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
           #if defined(DEFAULT_SKIP_TO_SW)
@@ -782,7 +768,7 @@ t_skip_to_switch:
         // Skip to switch.
         // pwr points to a switch
   #if defined(NO_PREFIX_CHECK) && defined(LOOKUP)
-        nBLR = Get_nBLR(pwRoot);
+        nBLR = gnBLR(qy);
   #else // defined(NO_PREFIX_CHECK) && defined(LOOKUP)
       #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
         DBG((nType != T_SKIP_TO_SWITCH) ? printf("nType: %d\n", nType) : 0);
@@ -810,7 +796,7 @@ t_skip_to_switch:
                     //int nBitsIndexSz = nBL_to_nBitsIndexSzNAX(nBLR);
                     int nBitsIndexSz = nBL_to_nBitsIndexSzNAB(nBLR);
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(pwRoot, nBLR, nBW,
+                    wPopCnt = CountSw(qy, nBLR, nBW,
                                       EXP(nBitsIndexSz), EXP(nBitsIndexSz));
                 } else
           #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
@@ -877,7 +863,7 @@ t_skip_to_xx_sw:
         int nBitsIndexSz = nBL_to_nBitsIndexSzNAB(nBLR);
                     //int nLinks = ??? __builtin_popcount
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(pwRoot, nBLR, nBW, nLinks, nLinks);
+                    wPopCnt = CountSw(qy, nBLR, nBW, nLinks, nLinks);
                 } else
       #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 {
@@ -898,7 +884,7 @@ t_skip_to_xx_sw:
 #endif // defined(SKIP_TO_XX_SW)
 
 #else // defined(SKIP_LINKS)
-    default: printf("unknown type %d\n", nType); assert(0); exit(0);
+    default: DBG(printf("unknown type %d\n", nType)); assert(0); exit(0);
 #endif // defined(SKIP_LINKS)
 
   #if ! defined(DEBUG) && defined(DEFAULT_SWITCH)
@@ -937,7 +923,7 @@ switchTail:;
         // Handle big picture tree cleanup.
         if (SwCleanup(qy, wKey, nBLR, bCleanup)) { goto restart; }
         SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
-        IF_COUNT(wPopCntSum += CountSw(pwRoot, nBLR, nBW, wDigit, nLinks));
+        IF_COUNT(wPopCntSum += CountSw(qy, nBLR, nBW, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
         // Save the previous link and advance to the next.
         IF_NOT_LOOKUP(pwRootUp = pwRoot);
@@ -999,7 +985,7 @@ t_xx_sw:;
         // Handle big picture tree cleanup.
         if (SwCleanup(qy, wKey, nBLR, bCleanup)) { goto restart; }
         SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
-        IF_COUNT(wPopCntSum += CountSw(pwRoot, nBLR, nBW, wDigit, nLinks));
+        IF_COUNT(wPopCntSum += CountSw(qy, nBLR, nBW, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
         // Save the previous link and advance to the next.
         IF_NOT_LOOKUP(pwRootUp = pwRoot);
@@ -1009,7 +995,6 @@ t_xx_sw:;
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
 
         // Handle XX_SW-specific special cases that don't go back to the top.
-        {
       #if defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
           #if defined(NO_TYPE_IN_XX_SW)
         // ZERO_POP_MAGIC is valid only if a word can hold at least two keys.
@@ -1028,8 +1013,6 @@ t_xx_sw:;
         // Blow-ups are handled in t_embedded_keys.
         goto t_embedded_keys;
       #else // defined(NO_TYPE_IN_XX_SW) || handle dl2 in t_embedded_keys
-        }
-
           #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
           #else // defined(LOOKUP) || !defined(RECURSIVE)
@@ -1071,7 +1054,7 @@ t_skip_to_bm_sw:
                 if (nBL >= cnBitsPerWord) {
                     int nBW = Get_nBW(pwRoot);
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(pwRoot, nBLR, nBW, EXP(nBW), EXP(nBW));
+                    wPopCnt = CountSw(qy, nBLR, nBW, EXP(nBW), EXP(nBW));
                 } else
       #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 {
@@ -1172,11 +1155,14 @@ t_bm_sw:;
         }
 
         pwRootNew = &pwr_pLinks((BmSwitch_t *)pwr)[wSwIndex].ln_wRoot;
+
+        // Update wDigit before bmSwTail because we have to do it
+        // in t_list_sw before goto bmSwTail.
+        IF_COUNT(wDigit = wSwIndex);
         goto bmSwTail;
 bmSwTail:;
         // bLinkPresent has already been initialized.
         IF_COUNT(nLinks = INT_MAX);
-        IF_COUNT(wDigit = wSwIndex);
   #if defined(LOOKUP)
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
         SwAdvance(pqy, pwRootNew, nBW, &nBLR);
@@ -1215,11 +1201,11 @@ t_skip_to_list_sw:
                 if (nBL >= cnBitsPerWord) {
                     int nBW = Get_nBW(pwRoot);
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(pwRoot, nBLR, nBW, EXP(nBW), EXP(nBW));
+                    wPopCnt = CountSw(qy, nBLR, nBW, EXP(nBW), EXP(nBW));
                 } else
       #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 {
-                    wPopCnt = PWR_wPopCntBL(pwRoot, (ListSwitch_t *)pwr, nBLR);
+                    wPopCnt = PWR_wPopCntBL(pwRoot, (ListSw_t *)pwr, nBLR);
                 }
                 DBGC(printf("SKIP_TO_LIST_SW: PM wPopCnt %" _fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
@@ -1272,25 +1258,38 @@ t_list_sw:;
   #if ! defined(COUNT)
             int bLinkPresent;
   #endif // ! defined(COUNT)
-            ListSwIndex(pwRoot, wDigit, /* pwIndex */ NULL, &bLinkPresent);
+            ListSwIndex(qy, nBW, wDigit, /* pwIndex */ NULL, &bLinkPresent);
   #if ! defined(COUNT)
             // Test to see if link exists before figuring out where it is.
             if ( ! bLinkPresent )
             {
-      #if defined(LIST_SW_FOR_REAL)
                 DBGX(printf("missing link\n"));
                 break; // not found
-      #else // defined(LIST_SW_FOR_REAL)
-                assert(0); // only for now
-      #endif // defined(LIST_SW_FOR_REAL)
             }
   #endif // ! defined(COUNT)
-            ListSwIndex(pwRoot, wDigit, &wSwIndex, /* pbPresent */ NULL);
+            ListSwIndex(qy, nBW, wDigit, &wSwIndex, /* pbPresent */ NULL);
         }
 
-        pwRootNew = &pwr_pLinks((ListSwitch_t *)pwr)[wSwIndex].ln_wRoot;
-        // We've initialized bLinkPresent and wSwIndex prior to goto bmSwTail.
+        pwRootNew = &gpListSwLinks(qy)[wSwIndex].ln_wRoot;
+        // Update wDigit before goto bmSwTail because we're about to
+        // leave the scope of the local wSwIndex and the destination
+        // has its own wSwIndex.
+        IF_COUNT(wDigit = wSwIndex);
+        // We've initialized bLinkPresent prior to goto bmSwTail.
+#if defined(CODE_BM_SW)
         goto bmSwTail;
+#else // defined(CODE_BM_SW)
+        // bLinkPresent has already been initialized.
+        IF_COUNT(nLinks = INT_MAX);
+  #if defined(LOOKUP)
+        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        SwAdvance(pqy, pwRootNew, nBW, &nBLR);
+        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
+        goto again;
+  #else // defined(LOOKUP)
+        goto switchTail;
+  #endif // defined(LOOKUP)
+#endif // defined(CODE_BM_SW)
 
     } // end of case T_LIST_SW
 
@@ -1846,7 +1845,7 @@ t_bitmap:;
         {
   #if defined(COUNT)
             // Count bits.
-            Word_t wCount;
+            Word_t wPopCnt;
       #if defined(ALLOW_EMBEDDED_BITMAP)
             if ((cnBitsInD1 <= LOG(sizeof(Link_t) * 8))
                 && (nBLR == cnBitsInD1))
@@ -1855,29 +1854,29 @@ t_bitmap:;
                 assert(cnBitsInD1 <= cnLogBitsPerWord); // for now
                 Word_t wBit = EXP(wKey & MSK(nBL));
                 Word_t wBmMask = wBit - 1;
-                wCount = __builtin_popcountll(wRoot & wBmMask);
+                wPopCnt = __builtin_popcountll(wRoot & wBmMask);
             } else
       #else // defined(ALLOW_EMBEDDED_BITMAP)
             assert(cnBitsInD1 > LOG(sizeof(Link_t) * 8));
       #endif // defined(ALLOW_EMBEDDED_BITMAP)
             {
-                wCount = 0;
+                wPopCnt = 0;
                 unsigned nWordOffset = (wKey & MSK(nBLR)) >> cnLogBitsPerWord;
                 unsigned nn;
                 for (nn = 0; nn < nWordOffset; nn++) {
-                    wCount += __builtin_popcountll(pwr[nn]);
+                    wPopCnt += __builtin_popcountll(pwr[nn]);
                 }
                 Word_t wBit = ((Word_t)1 << (wKey & (cnBitsPerWord - 1)));
                 Word_t wBmMask = wBit - 1;
                 //Word_t wBmMask = (wBit | wBit - 1);
-                wCount += __builtin_popcountll(pwr[nn] & wBmMask);
+                wPopCnt += __builtin_popcountll(pwr[nn] & wBmMask);
                 DBGC(printf("T_BITMAP: nWordOffset 0x%x wBit " OWx
                             " wBmMask " OWx
-                            " wCount %" _fw"d wPopCntSum + wCount %" _fw"d\n",
-                            nWordOffset, wBit, wBmMask, wCount,
-                            wPopCntSum + wCount));
+                            " wPopCnt %" _fw"d wPopCntSum + wPopCnt %" _fw"d\n",
+                            nWordOffset, wBit, wBmMask, wPopCnt,
+                            wPopCntSum + wPopCnt));
             }
-            wPopCntSum += wCount;
+            wPopCntSum += wPopCnt;
             DBGC(printf("bm nBLR %d wPopCnt " OWx" wPopCntSum " OWx"\n",
                         nBLR, wPopCnt, wPopCntSum));
             return wPopCntSum;

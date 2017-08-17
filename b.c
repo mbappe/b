@@ -122,7 +122,6 @@ int bHitDebugThreshold;
 
 Word_t wWordsAllocated; // number of words allocated but not freed
 Word_t wMallocs; // number of unfreed mallocs
-Word_t wEvenMallocs; // number of unfreed mallocs of an even number of words
 
 #if ! defined(cnMallocExtraWords)
 #define cnMallocExtraWords  0
@@ -166,27 +165,26 @@ MyMalloc(Word_t wWords)
     DBGM(printf("\nM(%zd): %p *%p 0x%zx\n",
                 wWords, (void *)ww, (void *)&((Word_t *)ww)[-1],
                 ((Word_t *)ww)[-1]));
+#if defined(RAMMETRICS)
+    j__AllocWordsJLL7 += wWords; // words requested
+#endif // defined(RAMMETRICS)
 
-    // Validate our assumptions about dlmalloc as we prepare to use
-    // some of the otherwise wasted bits in ww[-1].
-    // Our assumption is that the word contains the number of bytes
-    // actually allocated plus the least significant two bits set.
-    // And that the number of bytes allocated is a multiple of
-    // EXP(cnBitsMallocMask) no greater than one unit more than the number
-    // required.
-    size_t zUnitsAllocated = ((size_t *)ww)[-1] >> cnBitsMallocMask;
-#define cnBitsUsed 2 // low bits used by malloc for bookkeeping
-    assert(((Word_t *)ww)[-1]
-        == ((zUnitsAllocated << cnBitsMallocMask) | MSK(cnBitsUsed)));
     // Calculate the minimum number of units required to satisfy the request
-    // assuming dlmalloc must allocate at least one word for itself.
+    // assuming malloc must allocate at least one word for itself.
     size_t zUnitsRequired
         = ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords + 1,
                    EXP(cnBitsMallocMask - cnLogBytesPerWord))
             >> (cnBitsMallocMask - cnLogBytesPerWord);
-#if defined(RAMMETRICS)
-    j__AllocWordsJLL7 += wWords; // words requested
-#endif // defined(RAMMETRICS)
+
+    // Validate our assumptions about dlmalloc as we prepare to use
+    // some of the otherwise unused bits in ww[-1].
+    // Our assumption is that the word contains the number of bytes
+    // actually allocated or'd with the least significant two bits set.
+    // And that the number of bytes allocated is a multiple of
+    // EXP(cnBitsMallocMask) no greater than cnExtraUnitsMax units more
+    // than the number required.
+    // A unit is EXP(cnBitsMallocMask) bytes.
+    size_t zUnitsAllocated = ((size_t *)ww)[-1] >> cnBitsMallocMask;
 
 // We don't have a good characterization for cnExtraUnitsMax.
 // cnExtraUnitsMax values are based on our observations.
@@ -201,11 +199,20 @@ MyMalloc(Word_t wWords)
 
 #define cnExtraUnitsBits 2 // number of bits used for saving alloc size
     assert(cnExtraUnitsMax <= (int)MSK(cnExtraUnitsBits));
-
     // zExtraUnits is the number of extra EXP(cnBitsMallocMask)-byte units over
     // and above the minimum amount that could be allocated by malloc.
-    size_t zExtraUnits = zUnitsAllocated - zUnitsRequired;
+    size_t zExtraUnits = zUnitsAllocated - zUnitsRequired; (void)zExtraUnits;
     assert(zExtraUnits <= cnExtraUnitsMax);
+#if defined(LIBCMALLOC)
+  // We can't use the preamble word with LIBCMALLOC because it monitors the
+  // preamble word for changes and kills the process if it detects a change.
+  #if defined(LIST_POP_IN_PREAMBLE)
+    #error LIST_POP_IN_PREAMBLE with LIBCMALLOC is not supported
+  #endif // defined(LIST_POP_IN_PREAMBLE)
+#else // defined(LIBCMALLOC)
+
+#define cnBitsUsed 2 // low bits used by malloc for bookkeeping
+    assert((((Word_t *)ww)[-1] & MSK(cnBitsMallocMask)) == MSK(cnBitsUsed));
     // Save the bits of ww[-1] that we need at free time and make sure
     // none of the bits we want to use are changed by malloc while we
     // own the buffer.
@@ -218,15 +225,15 @@ MyMalloc(Word_t wWords)
     // Twiddle the bits to illustrate that we can use them.
     ((Word_t *)ww)[-1] ^= (Word_t)-1 << (cnExtraUnitsBits + cnBitsUsed);
 #endif // defined(LIST_POP_IN_PREAMBLE)
+    DBGM(printf("ww[-1] 0x%zx\n", ((Word_t *)ww)[-1]));
+#endif // defined(LIBCMALLOC)
     DBGM(printf("required %zd alloc %zd extra %zd\n",
                 zUnitsRequired, zUnitsAllocated, zExtraUnits));
-    DBGM(printf("ww[-1] 0x%zx\n", ((Word_t *)ww)[-1]));
     assert(ww != 0);
     assert((ww & 0xffff000000000000UL) == 0);
     assert((ww & cnMallocMask) == 0);
     ++wMallocs; wWordsAllocated += wWords;
     // ? should we keep track of sub-optimal-size requests ?
-    if ( ! (wWords & 1) ) { ++wEvenMallocs; }
     return ww;
 }
 
@@ -239,18 +246,22 @@ MyFree(Word_t *pw, Word_t wWords)
         = ALIGN_UP(wWords + cnMallocExtraWords + cnGuardWords + 1,
                    EXP(cnBitsMallocMask - cnLogBytesPerWord))
             >> (cnBitsMallocMask - cnLogBytesPerWord);
+    (void)zUnitsRequired;
+#ifdef LIBCMALLOC
+    size_t zUnitsAllocated = pw[-1] >> cnBitsMallocMask;
+    size_t zExtraUnits = zUnitsAllocated - zUnitsRequired;
+    (void)zUnitsAllocated; (void)zExtraUnits;
+#else // LIBCMALLOC
+    assert((pw)[-1] & 2); // lock down what we think we know
     // Restore the value expected by dlmalloc.
     size_t zExtraUnits = (pw[-1] >> cnBitsUsed) & MSK(cnExtraUnitsBits);
-#if defined(DEBUG_MALLOC)
     size_t zUnitsAllocated = zUnitsRequired + zExtraUnits;
-#endif // defined(DEBUG_MALLOC)
+    pw[-1] &= MSK(cnBitsUsed); // clear high bits
+    pw[-1] |= zUnitsAllocated << cnBitsMallocMask;
+    DBGM(printf("pw[-1] 0x%zx\n", pw[-1]));
+#endif // LIBCMALLOC
     DBGM(printf("required %zd alloc %zd extra %zd\n",
                 zUnitsRequired, zUnitsAllocated, zExtraUnits));
-    assert((pw)[-1] & 2); // lock down what we think we know
-    pw[-1] &= MSK(cnBitsUsed); // clear high bits
-    pw[-1] |= (zUnitsRequired + zExtraUnits) << cnBitsMallocMask;
-    DBGM(printf("pw[-1] 0x%zx\n", pw[-1]));
-    if ( ! (wWords & 1) ) { --wEvenMallocs; }
     --wMallocs; wWordsAllocated -= wWords;
 #if defined(RAMMETRICS)
     j__AllocWordsJLL7 -= wWords; // words requested
@@ -649,7 +660,6 @@ GetBLR(Word_t *pwRoot, int nBL)
     if (nBL < nDL_to_nBL(2)) { return nBL; }
 #endif // defined(NO_TYPE_IN_XX_SW)
 
-
     return
   #if defined(SKIP_LINKS)
         ((tp_bIsSwitch(wr_nType(*pwRoot)) && tp_bIsSkip(wr_nType(*pwRoot)))
@@ -709,11 +719,12 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #if defined(CODE_XX_SW)
           int nBitsIndexSzX,
 #endif // defined(CODE_XX_SW)
-#if defined(CODE_BM_SW)
-          int bBmSw,
-#endif // defined(CODE_BM_SW)
+          int nType,
           int nBLUp, Word_t wPopCnt)
 {
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
+    Word_t wRoot = *pwRoot; (void)wRoot;
+    (void)nType; // Used only if CODE_BM_SW?
     DBGI(printf("NewSwitch: pwRoot %p wKey " OWx" nBL %d nBLUp %d"
          " wPopCnt %" _fw"d.\n", (void *)pwRoot, wKey, nBL, nBLUp, wPopCnt));
 
@@ -740,16 +751,15 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
     // Should we check here to see if the new switch would be equivalant to a
     // bitmap leaf and create a bitmap leaf instead?
   #if defined(CODE_BM_SW)
-    assert(bBmSw
+    assert((nType != T_SWITCH)
         || (nBL - nBitsIndexSz > (int)LOG(sizeof(Link_t) * 8)));
   #else // defined(CODE_BM_SW)
     assert(nBL - nBitsIndexSz > (int)LOG(sizeof(Link_t) * 8));
   #endif // defined(CODE_BM_SW)
 #endif // ! defined(ALLOW_EMBEDDED_BITMAP)
 
-#if ! defined(NDEBUG)
 #if defined(CODE_BM_SW)
-    if (bBmSw)
+    if (nType == T_BM_SW)
 #if defined(BM_IN_LINK)
     { Link_t ln; assert(wIndexCnt <= sizeof(ln.ln_awBm) * cnBitsPerByte); }
 #else // defined(BM_IN_LINK)
@@ -759,12 +769,11 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
     }
 #endif // defined(BM_IN_LINK)
 #endif // defined(CODE_BM_SW)
-#endif // ! defined(NDEBUG)
 
     Word_t wLinks = wIndexCnt;
 
 #if defined(BM_SW_FOR_REAL)
-    if (bBmSw)
+    if (nType == T_BM_SW)
     {
   #if defined(BM_IN_LINK)
         if (nBLUp != cnBitsPerWord)
@@ -775,37 +784,67 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
     }
 #endif // defined(BM_SW_FOR_REAL)
 
-    Word_t wWords =
+// cnMaskLsSwDL is for testing.
+#if defined(USE_LIST_SW)
+  #if !defined(cnMaskLsSwDL)
+    #define cnMaskLsSwDL  0
+  #endif // !defined(cnMaskLsSwDL)
+    int bLsSw = ((1 << nBL_to_nDL(nBL)) & cnMaskLsSwDL);
+#endif // defined(USE_LIST_SW)
+
+    Word_t wBytes =
 #if defined(CODE_BM_SW)
-        bBmSw ? sizeof(BmSwitch_t) :
+        (nType == T_BM_SW) ? sizeof(BmSwitch_t) :
 #endif // defined(CODE_BM_SW)
-            sizeof(Switch_t);
+#if defined(USE_LIST_SW)
+  #if defined(CODE_XX_SW)
+    #error CODE_XX_SW with USE_LIST_SW is not allowed yet
+  #endif // defined(CODE_XX_SW)
+  #if defined(CODE_BM_SW)
+    #error CODE_BM_SW with USE_LIST_SW is not allowed yet
+  #endif // defined(CODE_BM_SW)
+        bLsSw ? sizeof(ListSw_t) :
+#endif // defined(USE_LIST_SW)
+        sizeof(Switch_t);
 
     // sizeof([Bm]Switch_t) includes one link; add the others
-    wWords += (wLinks - 1) * sizeof(Link_t);
-    wWords /= sizeof(Word_t);
+    wBytes += (wLinks - 1) * sizeof(Link_t);
+    Word_t wWords = wBytes / sizeof(Word_t);
 
     Word_t *pwr = (Word_t *)MyMalloc(wWords);
+    set_wr_pwr(wRoot, pwr);
+    *pwRoot = wRoot;
 
-#if defined(CODE_BM_SW)
-    if (bBmSw) {
-        memset(pwr_pLinks((BmSwitch_t *)pwr), 0, wLinks * sizeof(Link_t));
-    } else
-#endif // defined(CODE_BM_SW)
-    {
-        memset(pwr_pLinks((Switch_t *)pwr), 0, wLinks * sizeof(Link_t));
-#if defined(NO_TYPE_IN_XX_SW)
-        // The links in a switch at nDL_to_nBL(2) have nBL < nDL_to_nBL(2).
-        // Hence the '=' in the '<=' here.
-        if (nBL <= nDL_to_nBL(2)) {
-            DBGI(printf("NS: Init ln_wRoots.\n"));
-            for (int nn = 0; nn < (int)wLinks; ++nn) {
-                pwr_pLinks((Switch_t *)pwr)[nn].ln_wRoot = ZERO_POP_MAGIC;
-            }
-            DBGI(printf("NS: Done init ln_wRoots.\n"));
-        }
-#endif // defined(NO_TYPE_IN_XX_SW)
+#if defined(USE_LIST_SW)
+    if (bLsSw) {
+        snListSwPop(qy, wLinks);
+        wRoot = *pwRoot; // preserve qy invariants
     }
+#endif // defined(USE_LIST_SW)
+
+    Link_t *pLinks =
+#if defined(CODE_BM_SW)
+        (nType == T_BM_SW) ? pwr_pLinks((BmSwitch_t *)pwr) :
+#endif // defined(CODE_BM_SW)
+#if defined(USE_LIST_SW)
+        bLsSw ? gpListSwLinks(qy) :
+#endif // defined(USE_LIST_SW)
+        pwr_pLinks((Switch_t *)pwr);
+    memset(pLinks, 0, wLinks * sizeof(Link_t));
+#if defined(NO_TYPE_IN_XX_SW)
+  #if !defined(USE_XX_SW)
+    #error NO_TYPE_IN_XX_SW without USE_XX_SW is a problem
+  #endif // !defined(USE_XX_SW)
+    // The links in a switch at nDL_to_nBL(2) have nBL < nDL_to_nBL(2).
+    // Hence the '=' in the '<=' here.
+    if (nBL <= nDL_to_nBL(2)) {
+        DBGI(printf("NS: Init ln_wRoots.\n"));
+        for (int nn = 0; nn < (int)wLinks; ++nn) {
+            pLinks[nn].ln_wRoot = ZERO_POP_MAGIC;
+        }
+        DBGI(printf("NS: Done init ln_wRoots.\n"));
+    }
+#endif // defined(NO_TYPE_IN_XX_SW)
 
     // Is a branch with embedded bitmaps a branch?
     // Or is it a bitmap?  Let's use bitmap since we get more info that way.
@@ -817,7 +856,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
         METRICS(j__AllocWordsJLL3 += wWords); // B2 big bitmap leaf
     } else
 #if defined(CODE_BM_SW)
-    if (bBmSw) {
+    if (nType == T_BM_SW) {
         METRICS(j__AllocWordsJBB += wWords); // bitmap branch
     } else
 #endif // defined(CODE_BM_SW)
@@ -825,16 +864,16 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 
 #if defined(CODE_BM_SW)
     DBGM(printf("NewSwitch(pwRoot %p wKey " OWx
-                    " nBL %d bBmSw %d nBLU %d wPopCnt %ld)"
+                    " nBL %d nType %d nBLU %d wPopCnt %ld)"
                     " pwr %p\n",
                 (void *)pwRoot, wKey,
-                nBL, bBmSw, nBLUp, (long)wPopCnt, (void *)pwr));
+                nBL, nType, nBLUp, (long)wPopCnt, (void *)pwr));
 #endif // defined(CODE_BM_SW)
     DBGI(printf("\nNewSwitch nBL %d nDL %d nBLUp %d\n",
                 nBL, nBL_to_nDL(nBL), nBLUp));
 
 #if defined(CODE_BM_SW)
-    if (bBmSw) {
+    if (nType == T_BM_SW) {
   #if defined(SKIP_TO_BM_SW)
         if (nBL != nBLUp) {
             DBGI(printf("\nCreating T_SKIP_TO_BM_SW!\n"));
@@ -869,6 +908,12 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
                 set_wr_nType(*pwRoot, T_SKIP_TO_XX_SW);
             }
   #endif // defined(USE_XX_SW) && defined(SKIP_TO_XX_SW)
+  #if defined(USE_LIST_SW)
+      #if !defined(SKIP_TO_LIST_SW)
+        #error No SKIP_TO_LIST_SW with USE_LIST_SW is not supported yet.
+      #endif // !defined(SKIP_TO_LIST_SW)
+            if (bLsSw) { set_wr_nType(*pwRoot, T_SKIP_TO_LIST_SW); }
+  #endif // defined(USE_LIST_SW)
         } else
 #endif // defined(SKIP_LINKS)
         {
@@ -877,13 +922,29 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
                 set_wr_nType(*pwRoot, T_XX_SW);
             } else
   #endif // defined(USE_XX_SW)
-            { set_wr_nType(*pwRoot, T_SWITCH); }
+            {
+                set_wr_nType(*pwRoot,
+  #if defined(USE_LIST_SW)
+                             bLsSw ? T_LIST_SW :
+  #endif // defined(USE_LIST_SW)
+                             T_SWITCH);
+            }
         }
     }
 
+    wRoot = *pwRoot; // for qy; ? is this assignment backwards ?
+#if defined(USE_LIST_SW)
+    if (bLsSw) {
+        // initialize the list of keys
+        for (int nn = 0; nn < (int)wLinks; nn++) {
+            ((ListSw_t *)pwr)->sw_aKeys[nn] = nn;
+        }
+    }
+#endif // defined(USE_LIST_SW)
 #if defined(CODE_BM_SW)
-    if (bBmSw)
+    if (nType == T_BM_SW)
     {
+        // initialize the bitmap
 #if defined(BM_IN_LINK)
         if (nBLUp < cnBitsPerWord)
 #endif // defined(BM_IN_LINK)
@@ -965,19 +1026,20 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(NO_UNNECESSARY_PREFIX)
         {
 #if defined(CODE_BM_SW)
-            if (bBmSw) {
+            if (nType == T_BM_SW) {
                 set_PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBL, wKey);
             } else
 #endif // defined(CODE_BM_SW)
             {
                 set_PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL, wKey);
-DBGI(printf("NS: set prefix " OWx" pwRoot %p\n", PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL), (void *)pwRoot));
             }
         }
 #else // defined(SKIP_LINKS)
+
+#if 0
         // Why do we bother with this?  Should we make it debug only?
 #if defined(CODE_BM_SW)
-        if (bBmSw) {
+        if (nType == T_BM_SW) {
             set_PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBL, 0);
         } else
 #endif // defined(CODE_BM_SW)
@@ -985,9 +1047,10 @@ DBGI(printf("NS: set prefix " OWx" pwRoot %p\n", PWR_wPrefixBL(pwRoot, (Switch_t
             set_PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL, 0);
         }
 #endif // defined(SKIP_LINKS)
+#endif
 
 #if defined(CODE_BM_SW)
-        if (bBmSw) {
+        if (nType == T_BM_SW) {
             set_PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBL, wPopCnt);
         } else
 #endif // defined(CODE_BM_SW)
@@ -997,7 +1060,7 @@ DBGI(printf("NS: set prefix " OWx" pwRoot %p\n", PWR_wPrefixBL(pwRoot, (Switch_t
 
 #if defined(CODE_BM_SW)
         DBGM(printf("NewSwitch PWR_wPrefixPop " OWx"\n",
-            bBmSw ? PWR_wPrefixPop(pwRoot, (BmSwitch_t *)pwr)
+            (nType == T_BM_SW) ? PWR_wPrefixPop(pwRoot, (BmSwitch_t *)pwr)
                   : PWR_wPrefixPop(pwRoot, (Switch_t *)pwr)));
 #endif // defined(CODE_BM_SW)
     }
@@ -1082,7 +1145,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
     // Shouldn't we be checking to see if conversion is appropriate on
     // insert even if/when we're not adding a new link?
     if ((wPopCntTotal * cnBmSwWpkPercent / 100
-            >= (wWordsAllocated /* + wMallocs + wEvenMallocs */ + nWordsNull))
+            >= (wWordsAllocated /* + wMallocs */ + nWordsNull))
         && (nLinkCnt > (int)EXP(nBitsIndexSz) * cnBmSwLinksPercent / 100))
 #endif
     {
@@ -1094,8 +1157,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
                    wPopCntKeys, nLinkCnt, nBLR));
             DBGI(printf(" wPopCntTotal %zd wWordsAllocated %zd",
                wPopCntTotal, wWordsAllocated));
-            DBGI(printf(" wMallocs %zd wEvenMallocs %zd nWordsNull %d\n",
-               wMallocs, wEvenMallocs, nWordsNull));
+            DBGI(printf(" wMallocs %zd nWordsNull %d\n",
+               wMallocs, nWordsNull));
         }
 #endif // defined(DEBUG_INSERT)
 
@@ -1110,7 +1173,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
 #if defined(CODE_XX_SW)
                         nBL_to_nBitsIndexSz(nBLR),
 #endif // defined(CODE_XX_SW)
-                        /*bBmSw*/ 0, nBLUp, wPopCntKeys);
+                        T_SWITCH, nBLUp, wPopCntKeys);
 #if JUNK
         printf("B PWR_pwBm %p *PWR_pwBm %p\n",
                (void *)PWR_pwBm(pwRoot, pwr), (void *)*PWR_pwBm(pwRoot, pwr));
@@ -1198,8 +1261,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
                        wPopCntKeys, nLinkCnt, nBLR);
                 printf(" wPopCntTotal %ld wWordsAllocated %ld",
                        wPopCntTotal, wWordsAllocated);
-                printf(" wMallocs %ld wEvenMallocs %ld nWordsNull %d\n",
-                       wMallocs, wEvenMallocs, nWordsNull);
+                printf(" wMallocs %ld nWordsNull %d\n",
+                       wMallocs, nWordsNull);
             }
   #endif // defined(DEBUG_INSERT)
             METRICS(j__AllocWordsJBU  += nWordsNew); // uncompressed branch
@@ -1282,6 +1345,7 @@ OldSwitch(Word_t *pwRoot, int nBL,
 #if defined(CODE_BM_SW) && ! defined(BM_SW_FOR_REAL)
     (void)nLinks;
 #endif // defined(CODE_BM_SW) && ! defined(BM_SW_FOR_REAL)
+    int nType = wr_nType(*pwRoot); (void)nType;
     Word_t *pwr = wr_pwr(*pwRoot);
 
     int nBitsIndexSz;
@@ -1322,14 +1386,18 @@ OldSwitch(Word_t *pwRoot, int nBL,
 #endif // defined(BM_SW_FOR_REAL)
 #endif // defined(CODE_BM_SW)
 
+    Word_t wBytes =
 #if defined(CODE_BM_SW)
-    Word_t wWords = bBmSw ? sizeof(BmSwitch_t) : sizeof(Switch_t);
-#else // defined(CODE_BM_SW)
-    Word_t wWords = sizeof(Switch_t);
+        bBmSw ? sizeof(BmSwitch_t) :
 #endif // defined(CODE_BM_SW)
+#if defined(USE_LIST_SW)
+        ((nType == T_LIST_SW) || (nType == T_SKIP_TO_LIST_SW))
+            ? sizeof(ListSw_t) :
+#endif // defined(USE_LIST_SW)
+        sizeof(Switch_t);
     // sizeof([Bm]Switch_t) includes one link; add the others
-    wWords += (wLinks - 1) * sizeof(Link_t);
-    wWords /= sizeof(Word_t);
+    wBytes += (wLinks - 1) * sizeof(Link_t);
+    Word_t wWords = wBytes / sizeof(Word_t);
 
     // No need for ifdef RAMMETRICS. Code will go away if not.
     if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
@@ -1478,6 +1546,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
 #if defined(BM_IN_LINK) || defined(PP_IN_LINK)
     int nBLArg = nBL;
 #endif // defined(BM_IN_LINK) || defined(PP_IN_LINK)
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
     Word_t wRoot = *pwRoot;
     // nType is not valid for NO_TYPE_IN_XX_SW if nBL >= nDL_to_nBL(2)
     int nType = wr_nType(wRoot); (void)nType; // silence gcc
@@ -1803,11 +1872,13 @@ embeddedKeys:;
 
 #if defined(CODE_BM_SW)
     int bBmSw = tp_bIsBmSw(nType);
-  #if ! defined(SKIP_TO_BM_SW)
-    if ( ! bBmSw )
-  #endif // defined(SKIP_TO_BM_SW)
 #endif // defined(CODE_BM_SW)
 #if defined(SKIP_LINKS)
+  #if defined(CODE_BM_SW)
+      #if ! defined(SKIP_TO_BM_SW)
+    if ( ! bBmSw )
+      #endif // defined(SKIP_TO_BM_SW)
+  #endif // defined(CODE_BM_SW)
     {
         if (tp_bIsSkip(nType)) {
             nBL = GetBLR(pwRoot, nBL);
@@ -1824,9 +1895,13 @@ embeddedKeys:;
 
     pLinks =
 #if defined(CODE_BM_SW)
-             bBmSw ? pwr_pLinks((BmSwitch_t *)pwr) :
+        bBmSw ? pwr_pLinks((BmSwitch_t *)pwr) :
 #endif // defined(CODE_BM_SW)
-                     pwr_pLinks((  Switch_t *)pwr) ;
+#if defined(USE_LIST_SW)
+        ((nType == T_LIST_SW) || (nType == T_SKIP_TO_LIST_SW))
+            ? gpListSwLinks(qy) :
+#endif // defined(USE_LIST_SW)
+        pwr_pLinks((Switch_t *)pwr) ;
 
     if (bDump)
     {
@@ -1912,7 +1987,11 @@ embeddedKeys:;
 #if defined(CODE_BM_SW)
             bBmSw ? PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBL) :
 #endif // defined(CODE_BM_SW)
+#if defined(USE_LIST_SW)
+                    PWR_wPrefixBL(pwRoot, (ListSw_t   *)pwr, nBL) ;
+#else // defined(USE_LIST_SW)
                     PWR_wPrefixBL(pwRoot, (  Switch_t *)pwr, nBL) ;
+#endif // defined(USE_LIST_SW)
     }
 
     nBL -= nBitsIndexSz;
@@ -2286,6 +2365,7 @@ void
 InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
 {
     (void)wKey; (void)nBL, (void)pwRoot; (void)wRoot;
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
 #if (cn2dBmWpkPercent != 0) // conversion to big bitmap enabled
     int nDL = nBL_to_nDL(nBL);
 
@@ -2347,7 +2427,11 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
 
         for (Word_t ww = 0; ww < EXP(nBW); ww++)
         {
-            Word_t *pwRootLn = &pwr_pLinks((Switch_t *)pwr)[ww].ln_wRoot;
+            Word_t *pwRootLn =
+#if defined(USE_LIST_SW)
+                (nType == T_LIST_SW) ? &gpListSwLinks(qy)[ww].ln_wRoot :
+#endif // defined(USE_LIST_SW)
+                &pwr_pLinks((Switch_t *)pwr)[ww].ln_wRoot;
             Word_t wRootLn = *pwRootLn;
 #if defined(NO_TYPE_IN_XX_SW)
             if (nBLLn < nDL_to_nBL(2)) {
@@ -2707,8 +2791,9 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
                      nBL_to_nBitsIndexSz(nBL),
 #endif // defined(CODE_XX_SW)
 #if defined(CODE_BM_SW)
-                     bBmSwNew,
+                     bBmSwNew ? T_BM_SW :
 #endif // defined(CODE_BM_SW)
+                     T_SWITCH,
                      nBLUp, wPopCnt);
     //DBGI(HexDump("After NewSwitch", pwSw, EXP(cnBitsPerDigit) + 1));
     DBGI(printf("Just after InsertGuts calls NewSwitch"
@@ -2915,7 +3000,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot, int nPos
     if (nType == T_EMBEDDED_KEYS) {
         goto embeddedKeys;
 embeddedKeys:;
-
           #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
             #if ! defined(PACK_KEYS_RIGHT)
         // This is a performance shortcut that is not necessary.
@@ -3686,29 +3770,27 @@ doubleIt:;
 #if defined(CODE_XX_SW)
                           nBW,
 #endif // defined(CODE_XX_SW)
-#if defined(CODE_BM_SW)
   #if defined(USE_BM_SW)
       #if defined(USE_XX_SW)
                           (nBL <= nDL_to_nBL(2))
-                              ? 0 :
+                              ? T_SWITCH :
       #endif // defined(USE_XX_SW)
       #if defined(SKIP_TO_BM_SW)
           #if defined(BM_IN_LINK)
-                          /* bBmSw */ nBLOld != cnBitsPerWord,
+                          nBLOld != cnBitsPerWord ? T_BM_SW : T_SWITCH,
           #else // defined(BM_IN_LINK)
-                          /* bBmSw */ 1,
+                          T_BM_SW,
           #endif // defined(BM_IN_LINK)
       #else // defined(SKIP_TO_BM_SW)
           #if defined(BM_IN_LINK)
-                          (nBLOld != cnBitsPerWord) && (nBL == nBLOld),
+                          (nBLOld != cnBitsPerWord) && (nBL == nBLOld) ? T_BM_SW : T_SWITCH,
           #else // defined(BM_IN_LINK)
-                          /* bBmSw */ nBL == nBLOld,
+                          (nBL == nBLOld) ? T_BM_SW : T_SWITCH,
           #endif // defined(BM_IN_LINK)
       #endif // defined(SKIP_TO_BM_SW)
   #else // defined(USE_BM_SW)
-                          /* bBmSw */ 0,
+                          T_SWITCH,
   #endif // defined(USE_BM_SW)
-#endif // defined(CODE_BM_SW)
                           nBLOld, /* wPopCnt */ 0);
 
 #if defined(CODE_XX_SW)
@@ -3981,9 +4063,7 @@ insertAll:;
 #if defined(CODE_XX_SW)
                              nBL_to_nBitsIndexSz(nBL),
 #endif // defined(CODE_XX_SW)
-#if defined(CODE_BM_SW)
-                             bBmSwNew,
-#endif // defined(CODE_BM_SW)
+                             bBmSwNew ? T_BM_SW : T_SWITCH,
                              nBLUp, wPopCnt);
             //DBGI(HexDump("After NewSwitch", pwSw, EXP(cnBitsPerDigit) + 1));
             DBGI(printf("Just after InsertGuts calls NewSwitch"
@@ -5679,6 +5759,54 @@ Initialize(void)
     printf("# No DEBUG_COUNT\n");
 #endif // defined(DEBUG_COUNT)
 
+#if defined(IF_SVALUE) // in RandomNumb.h
+    printf("#    IF_SVALUE\n");
+#else // defined(IF_SVALUE)
+    printf("# No IF_SVALUE\n");
+#endif // defined(IF_SVALUE)
+
+#if defined(GAUSS) // in RandomNumb.h
+    printf("#    GAUSS\n");
+#else // defined(GAUSS)
+    printf("# No GAUSS\n");
+#endif // defined(GAUSS)
+
+#if defined(USE_PDEP_INTRINSIC) // in Time.c
+    printf("#    USE_PDEP_INTRINSIC\n");
+#else // defined(USE_PDEP_INTRINSIC)
+    printf("# No USE_PDEP_INTRINSIC\n");
+#endif // defined(USE_PDEP_INTRINSIC)
+
+#if defined(SLOW_PDEP) // in Time.c
+    printf("#    SLOW_PDEP\n");
+#else // defined(SLOW_PDEP)
+    printf("# No SLOW_PDEP\n");
+#endif // defined(SLOW_PDEP)
+
+#if defined(EXTRA_SLOW_PDEP) // in Time.c
+    printf("#    EXTRA_SLOW_PDEP\n");
+#else // defined(EXTRA_SLOW_PDEP)
+    printf("# No EXTRA_SLOW_PDEP\n");
+#endif // defined(EXTRA_SLOW_PDEP)
+
+#if defined(CALL_GET_NEXT_KEY) // in Time.c
+    printf("#    CALL_GET_NEXT_KEY\n");
+#else // defined(CALL_GET_NEXT_KEY)
+    printf("# No CALL_GET_NEXT_KEY\n");
+#endif // defined(CALL_GET_NEXT_KEY)
+
+#if defined(SYNC_SYNC) // in Time.c
+    printf("#    SYNC_SYNC\n");
+#else // defined(SYNC_SYNC)
+    printf("# No SYNC_SYNC\n");
+#endif // defined(SYNC_SYNC)
+
+#if defined(KFLAG) // in Time.c
+    printf("#    KFLAG\n");
+#else // defined(KFLAG)
+    printf("# No KFLAG\n");
+#endif // defined(KFLAG)
+
 #if defined(NO_USE_XX_SW)
     printf("#    NO_USE_XX_SW\n");
 #else // defined(NO_USE_XX_SW)
@@ -5792,6 +5920,60 @@ Initialize(void)
 #else // defined(NO_BINARY_SEARCH_WORD)
     printf("# No NO_BINARY_SEARCH_WORD\n");
 #endif // defined(NO_BINARY_SEARCH_WORD)
+
+#if defined(NO_SVALUE) // in RandomNumb.h
+    printf("#    NO_SVALUE\n");
+#else // defined(NO_SVALUE)
+    printf("# No NO_SVALUE\n");
+#endif // defined(NO_SVALUE)
+
+#if defined(NO_IF_SVALUE) // in RandomNumb.h
+    printf("#    NO_IF_SVALUE\n");
+#else // defined(NO_IF_SVALUE)
+    printf("# No NO_IF_SVALUE\n");
+#endif // defined(NO_IF_SVALUE)
+
+#if defined(NO_LFSR) // in RandomNumb.h
+    printf("#    NO_LFSR\n");
+#else // defined(NO_LFSR)
+    printf("# No NO_LFSR\n");
+#endif // defined(NO_LFSR)
+
+#if defined(NO_GAUSS) // in RandomNumb.h
+    printf("#    NO_GAUSS\n");
+#else // defined(NO_GAUSS)
+    printf("# No NO_GAUSS\n");
+#endif // defined(NO_GAUSS)
+
+#if defined(NO_KFLAG) // in Time.c
+    printf("#    NO_KFLAG\n");
+#else // defined(NO_KFLAG)
+    printf("# No NO_KFLAG\n");
+#endif // defined(NO_KFLAG)
+
+#if defined(NO_FVALUE) // in Time.c
+    printf("#    NO_FVALUE\n");
+#else // defined(NO_FVALUE)
+    printf("# No NO_FVALUE\n");
+#endif // defined(NO_FVALUE)
+
+#if defined(NO_TRIM_EXPANSE) // in Time.c
+    printf("#    NO_TRIM_EXPANSE\n");
+#else // defined(NO_TRIM_EXPANSE)
+    printf("# No NO_TRIM_EXPANSE\n");
+#endif // defined(NO_TRIM_EXPANSE)
+
+#if defined(NO_DFLAG) // in Time.c
+    printf("#    NO_DFLAG\n");
+#else // defined(NO_DFLAG)
+    printf("# No NO_DFLAG\n");
+#endif // defined(NO_DFLAG)
+
+#if defined(NO_OFFSET) // in Time.c
+    printf("#    NO_OFFSET\n");
+#else // defined(NO_OFFSET)
+    printf("# No NO_OFFSET\n");
+#endif // defined(NO_OFFSET)
 
 #if defined(BM_IN_LINK)
     printf("\n");
@@ -5990,15 +6172,10 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 
   #if defined(DEBUG)
     Word_t wMallocsBefore = wMallocs; (void)wMallocsBefore;
-    Word_t wEvenMallocsBefore = wEvenMallocs; (void)wEvenMallocsBefore;
     Word_t wWordsAllocatedBefore = wWordsAllocated;
       #if defined(RAMMETRICS)
     Word_t j__AllocWordsTOTBefore = j__AllocWordsTOT;
     (void)j__AllocWordsTOTBefore;
-    Word_t j__ExtraWordsTOTBefore = j__ExtraWordsTOT;
-    (void)j__ExtraWordsTOTBefore;
-    Word_t j__ExtraWordsCntBefore = j__ExtraWordsCnt;
-    (void)j__ExtraWordsCntBefore;
     Word_t j__TotalBytesAllocatedBefore = j__TotalBytesAllocated;
     (void)j__TotalBytesAllocatedBefore;
       #endif // defined(RAMMETRICS)
@@ -6018,10 +6195,6 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 #if defined(RAMMETRICS)
     DBGR(printf("# j__AllocWordsTOTBefore %" _fw"u 0x%" _fw"x\n",
                j__AllocWordsTOTBefore, j__AllocWordsTOTBefore));
-    DBGR(printf("# j__ExtraWordsTOTBefore %" _fw"u 0x%" _fw"x\n",
-               j__ExtraWordsTOTBefore, j__ExtraWordsTOTBefore));
-    DBGR(printf("# j__ExtraWordsCntBefore %" _fw"u 0x%" _fw"x\n",
-               j__ExtraWordsCntBefore, j__ExtraWordsCntBefore));
     DBGR(printf("# j__TotalBytesAllocatedBefore %" _fw"u words %" _fw"u\n",
                j__TotalBytesAllocatedBefore,
                j__TotalBytesAllocatedBefore/sizeof(Word_t)));
@@ -6037,14 +6210,11 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 #endif // defined(RAMMETRICS)
     DBGR(printf("# wMallocsBefore %" _fw"u 0x%" _fw"x\n",
                wMallocsBefore, wMallocsBefore));
-    DBGR(printf("# wEvenMallocsBefore %" _fw"u 0x%" _fw"x\n",
-               wEvenMallocsBefore, wEvenMallocsBefore));
 
     DBGR(printf("After Judy1FreeArray:\n"));
     DBGR(printf("# wWordsAllocated %" _fw"u\n", wWordsAllocated));
 #if defined(RAMMETRICS)
     DBGR(printf("# j__AllocWordsTOT %" _fw"u\n", j__AllocWordsTOT));
-    DBGR(printf("# j__ExtraWordsTOT %" _fw"u\n", j__ExtraWordsTOT));
     DBGR(printf("# j__TotalBytesAllocated 0x%" _fw"x\n",
                j__TotalBytesAllocated));
     DBGR(printf("# Total MiB 0x%" _fw"x rem 0x%" _fw"x\n",
@@ -6052,7 +6222,6 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
                j__TotalBytesAllocated % (1024 * 1024)));
 #endif // defined(RAMMETRICS)
     DBGR(printf("# wMallocs %" _fw"u\n", wMallocs));
-    DBGR(printf("# wEvenMallocs %" _fw"u\n", wEvenMallocs));
     DBGR(printf("\n"));
     assert((wWordsAllocatedBefore - wWordsAllocated)
                == (wBytes / sizeof(Word_t)));
@@ -6064,14 +6233,12 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
     // What if the application has more than one Judy1 or JudyL array, e.g.
     // Judy1LHTime with -1L or Judy1LHCheck?
     assert(j__AllocWordsTOT == 0);
-    assert(j__ExtraWordsTOT == 0);
     // Dlmalloc doesn't necessarily unmap everything even if we free it.
     //assert(j__TotalBytesAllocated == 0);
 #endif // defined(RAMMETRICS)
-    // Assuming wMallocs and wEvenMallocs are zero is presumptuous.
+    // Assuming wMallocs is zero is presumptuous.
     // What if the application has more than one Judy1 array?
     assert(wMallocs == 0);
-    assert(wEvenMallocs == 0);
 
     // Should have FreeArrayGuts adjust wPopCntTotal this as it goes.
     assert(Judy1Count(*PPArray, 0, (Word_t)-1, NULL) == 0);
@@ -6632,7 +6799,7 @@ t_list:;
         Word_t wBmWord = pwBmWords[nBmWordNum];
 
         // find starting link
-        Word_t wBmSwIndex;
+        Word_t wBmSwIndex = 0; // avoid bogus gcc may be uninitialized warning
         int wBmSwBit;
         BmSwIndex(qy, wIndex, &wBmSwIndex, &wBmSwBit);
         DBGN(printf("T_BM_SW wIndex 0x%zx wBmSwIndex %" _fw"u bLnPresent %d\n",
@@ -6696,8 +6863,8 @@ BmSwGetPrevIndex:
                     // My LOG works for 64-bit and 32-bit Linux and Windows.
                     // No variant of __builtin_clz[l][l] does.
                     nBmBitNum = LOG(wBmWord);
-                    DBGN(printf("T_BM_SW prev link LOG %d nBmBitNum %d\n",
-                                LOG(wBmWord), nBmBitNum));
+                    DBGN(printf("T_BM_SW prev link nBmBitNum %d\n",
+                                nBmBitNum));
                 } else {
                     //A(0); // check -B17
                     nBmBitNum = 0;
