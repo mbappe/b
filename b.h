@@ -3219,27 +3219,7 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 
   #endif // defined(PSPLIT_HYBRID)
 
-  #if defined(SIMPLE_PSPLIT_HASKEY_GUTS) // slow
-
-#define PSPLIT_HASKEY_GUTS(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-{ \
-    unsigned nPsplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nPsplit); \
-    nPsplit &= ~MSK(sizeof(_b_t)/sizeof(_x_t)); \
-    _x_t xKeyPsplit = (_pxKeys)[nPsplit]; \
-    if (xKeyPsplit <= (_xKey)) { \
-        (_nPos) += nPsplit; (_nPopCnt) -= nPsplit; \
-        HASKEYF(_b_t, (_xKey), (_pxKeys), (_nPopCnt), (_nPos)); \
-    } else if (nPsplit == 0) { (_nPos) = ~0; } else { \
-        HASKEYB(_b_t, (_xKey), (_pxKeys), nPsplit, (_nPos)); \
-    } \
-}
-
-  #else // defined(SIMPLE_PSPLIT_HASKEY_GUTS)
-
-// Split search with a parallel search of the bucket at the split point.
-// A bucket is a Word_t or an __m128i.  Or whatever else we decide to pass
-// into _b_t in the future.
-// nSplit is a bucket number.
+// Notes on searching lists:
 // We need a function we can call iteratively.  The position returned
 // ultimately must be relative to the original beginning of the list.
 // What parameters must we pass?
@@ -3252,9 +3232,17 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 // Can we use 0 and -1 for cases where we don't know them?  It might be
 // more efficient to have separate macros for all cases.  Or maybe just
 // a special case for neither is known.
-//
-// _b_t specifies the size of buckets in the list, e.g. Word_t, __m128i.
-// _x_t specifies the size of the keys in the list, e.g. uint8_t, uint16_t.
+
+// PSPLIT parallel search of a bucket-aligned list of keys to see if a
+// key exists in the list.
+// It does not locate the position of the key or the slot where
+// the key would be.
+// It returns a non-negative number if the key is in the list and a
+// negative number if it is not.
+// A bucket is a Word_t or an __m128i or whatever else we decide to pass
+// into _b_t in the future.
+// _b_t specifies the type of buckets in the list, e.g. Word_t, __m128i.
+// _x_t specifies the type of the keys in the list, e.g. uint8_t, uint16_t.
 // _nBL specifies the range of keys, i.e. the size of the expanse.
 #define PSPLIT_HASKEY_GUTS(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
@@ -3262,7 +3250,9 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
         /* _nBL, (void *)_pxKeys, _nPopCnt, _xKey, _nPos); */ \
     _b_t *px = (_b_t *)(_pxKeys); \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
+    /* nSplit is the key chosen by PSPLIT */ \
     unsigned nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
+    /* nSplitP is nSplit rounded down to the first key in the bucket */ \
     unsigned nSplitP = nSplit * sizeof(_x_t) / sizeof(_b_t); \
     assert(((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
     /*__m128i xLsbs, xMsbs, xKeys;*/ \
@@ -3447,8 +3437,6 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
                               (_xKey), sizeof(_x_t) * 8)); \
     } \
 }
-
-  #endif // defined(SIMPLE_PSPLIT_HASKEY_GUTS)
 
   #if JUNK
 static int
@@ -3698,8 +3686,7 @@ printf("*pw " OWx" wKey " Owx" nBL %d wMagic "OWx"\n", *pw, wKey, nBL, wMagic);
 // For each slot:
 // Since slot does not match, then (Key^Slot) is not zero.
 // So subtracting one from (Key^Slot) does not borrow from the next slot.
-// And subtracting one from (Key^Slot) doesn't have the msb set ...
-// unless the msb is set in (Key^Slot).
+// Also, subtracting one from (Key^Slot) doesn't set an otherwise clear msb.
 // If the msb is set in (Key^Slot), then the msb is not set in ~(Key^Slot).
 // So anding the difference with ~(Key^Slot) yields a result with msb clear.
 // Then anding that result with a value that has only the msb set yields zero.
@@ -3709,7 +3696,7 @@ printf("*pw " OWx" wKey " Owx" nBL %d wMagic "OWx"\n", *pw, wKey, nBL, wMagic);
 // Now consider the case of at least one matching slot.
 // (Keys^Slots) will be zero in each of the matching slots.
 // For all slots less signficant than the least significant matching slot the
-// result is the same as for the no matching slots case consiered above.
+// result is the same as for the no matching slots case considered above.
 // Starting with the least significant matching slot we classify the
 // possibilities for the next more significant slot into four cases.
 // 1.  (Key&1) && (Slot == Key-1); diff is -1 and borrows from next slot.
@@ -3732,14 +3719,28 @@ printf("*pw " OWx" wKey " Owx" nBL %d wMagic "OWx"\n", *pw, wKey, nBL, wMagic);
 // In other words.
 // In the end, the least significant slot with its msb set represents
 // (Slot == Key) and more significant slots with their msb set represent
-// ((unsigned)(Slot^Key) <= 1)
+// ((Slot^Key) <= 1)
 //
 // In other words.
-// In the end, slots with their msb set represent ((unsigned)(Slot^Key) <= 1).
+// In the end, slots with their msb set represent ((Slot^Key) <= 1).
 // And the least significant slot with its msb set represents (Slot == Key).
 //
 // QED
 //
+// Can we say anything else?
+//
+// What about matching slots other than the least significant matching one?
+//
+// Any slot with its msb set and the adjacent less significant slot with its
+// msb clear represents (Slot == Key).
+//
+// Any slot with its msb set represents (abs(Slot-Key) == 1) and
+// the adjacent less significant slot has its msb set) or ((Slot == Key)
+// and the adjacent less significant slot has its msb clear).
+//
+// There must be a more elegant way to summarize.
+//
+
 
 static __m128i
 HasKey128MagicTail(__m128i *pxBucket,
