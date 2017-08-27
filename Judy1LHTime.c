@@ -1962,7 +1962,7 @@ main(int argc, char *argv[])
 #ifdef CALC_NEXT_KEY
     StartSeed = *PInitSeed;
 #else // CALC_NEXT_KEY
-    Seed_t TValuesSeed;
+    Seed_t TValuesSeed = { 0 }; // unnecessary init to make gcc happy
     // Use FileKeys for Get measurements even without -F.
     if (FileKeys == NULL)
     {
@@ -2001,6 +2001,7 @@ main(int argc, char *argv[])
         TValuesSeed = WorkingSeed;
     }
     StartSeed = FileKeys;
+    Seed_t DeltaSeed = { 0 }; // unnecessary init to make gcc happy
 #endif // CALC_NEXT_KEY
 
 // ============================================================
@@ -2381,7 +2382,6 @@ main(int argc, char *argv[])
 #endif  // NEVER
 
 #ifndef CALC_NEXT_KEY
-        Seed_t DeltaSeed;
         PWord_t DeltaKeys = &FileKeys[Pop1 - Delta]; // array of Delta keys
         if (Pop1 >= TValues)
         {
@@ -2395,7 +2395,7 @@ main(int argc, char *argv[])
             else
             {
                 // This initialization of DeltaSeed must occur only once.
-                // As it stands the initialization may be done one loop
+                // If done here the initialization may be done one loop
                 // iteration before it is necessary when Pop1 == TValues.
                 DeltaSeed = TValuesSeed;
                 ww = TValues - (Pop1 - Delta);
@@ -3502,7 +3502,8 @@ TestJudyLIns(void **JL, PNewSeed_t PSeed, Word_t Elements)
     }
 
 //  JudyLIns timings
-    for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
+    DminTime = 1e40; icnt = ICNT; lp = 0;
+    do
     {
         WorkingSeed = *PSeed;
 
@@ -3562,6 +3563,7 @@ TestJudyLIns(void **JL, PNewSeed_t PSeed, Word_t Elements)
                 break;
         }
     }
+    while (++lp < Loops);
 
     *PSeed = WorkingSeed;               // advance
 }
