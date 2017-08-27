@@ -46,22 +46,6 @@
 
 #include "RandomNumb.h"                 // Random Number Generators
 
-// Be careful.
-// When GET_NEXT_KEY_MACRO is defined GET_NEXT_KEY bypasses CalcNextKey.
-// But GET_NEXT_KEY is not used everywhere. So GET_NEXT_KEY_MACRO doesn't
-// work with -F, -N, -B:, -S, -G, -D, -E, -O, -o. Is that all?
-#if defined(GET_NEXT_KEY_MACRO)
-  #ifndef CALC_NEXT_KEY
-    #error GET_NEXT_KEY_MACRO without CALC_NEXT_KEY makes no sense
-  #endif // CALC_NEXT_KEY
-
-    #define GET_NEXT_KEY(_wKey, _wMagic) \
-        (((_wKey) >> 1) ^ ((_wMagic) & -((_wKey) & 1)))
-
-#else // defined(GET_NEXT_KEY_MACRO)
-    #define GET_NEXT_KEY(_wKey, _wMagic)  GetNextKey(_wKey)
-#endif // defined(GET_NEXT_KEY_MACRO) && defined(FAST_LFSR) && defined(CALC_NEXT_KEY)
-
 #define WARMUPCPU  10000000             // calls to random() to warmup CPU
 
 #if defined(__LP64__)
@@ -252,7 +236,7 @@ int       TestJudyDel(void **J1, void **JL, void **JH, PNewSeed_t PSeed,
 
 static inline int
 TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elems,
-            Word_t Tit, Word_t KFlag, Word_t hFlag);
+            Word_t Tit, Word_t KFlag, Word_t hFlag, int bLfsrOnly);
 
 void      TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elems);
 
@@ -502,6 +486,8 @@ Word_t    Tit = 1;                      // to measure with calling Judy
 Word_t    VFlag = 1;                    // To verify Value Area contains good Data
 Word_t    fFlag = 0;
 Word_t    KFlag = 0;                    // do a __sync_synchronize() in GetNextKey()
+int       bLfsrOnly = 0;      // -k,--lfsr-only; use lfsr with no -B:DEFGNOoS
+Word_t wFeedBTap; // for bLfsrOnly
 Word_t    hFlag = 0;                    // add "holes" into the insert code
 Word_t    PreStack = 0;                 // to test for TLB collisions with stack
 
@@ -666,7 +652,7 @@ CalcNextKey(PSeed_t PSeed)
 }
 
 static inline Word_t
-GetNextKey(PNewSeed_t PNewSeed)
+GetNextKeyCommon(PNewSeed_t PNewSeed)
 {
 #ifdef CALC_NEXT_KEY
     return CalcNextKey(PNewSeed);
@@ -675,6 +661,45 @@ GetNextKey(PNewSeed_t PNewSeed)
     // but does not affect the behavior of GetNextKey.
     return *(*PNewSeed)++;
 #endif // CALC_NEXT_KEY
+}
+
+static inline Word_t
+FastRandomNumb(PNewSeed_t PNewSeed, Word_t wFeedBTap)
+{
+#ifdef CALC_NEXT_KEY
+    Word_t wKey = PNewSeed->Seeds[0];
+    //PNewSeed->Seeds[0] = (wKey >> 1) ^ (wFeedBTap & -(wKey & 1));
+    (void)wFeedBTap;
+    PNewSeed->Seeds[0] = (wKey >> 1) ^ (PNewSeed->FeedBTap & -(wKey & 1));
+#else // CALC_NEXT_KEY
+    Word_t wKey = (Word_t)*PNewSeed;
+    *PNewSeed = (NewSeed_t)((wKey >> 1) ^ (wFeedBTap & -(wKey & 1)));
+#endif // CALC_NEXT_KEY
+    return wKey;
+}
+
+// GetNextKey exists for compatibility with old code we haven't updated yet.
+// It examines the global bLfsrOnly at runtime.
+static inline Word_t
+GetNextKey(PNewSeed_t PNewSeed)
+{
+    if (bLfsrOnly /* global */) {
+        return FastRandomNumb(PNewSeed, wFeedBTap /* global */);
+    } else {
+        return GetNextKeyCommon(PNewSeed);
+    }
+}
+
+// GetNextKeyX has bLfsrOnly parameter so it can be called with a literal
+// and the test will be compiled out of the test loop.
+static inline Word_t
+GetNextKeyX(PNewSeed_t PNewSeed, Word_t wFeedBTap, int bLfsrOnly)
+{
+    if (bLfsrOnly) {
+        return FastRandomNumb(PNewSeed, wFeedBTap);
+    } else {
+        return GetNextKeyCommon(PNewSeed);
+    }
 }
 
 static void
@@ -862,6 +887,7 @@ Usage(int argc, char **argv)
 
     printf("\n   The following are primarly used for diagnosis and debugging\n");
     printf("-K    do a __sync_synchronize() in GetNextKey() (is mfence instruction in X86)\n");
+    printf("-k,--lfsr-only    use fast lfsr key gen and ignore -DEFGNOoS and -B with colon\n");
     printf("-h    Skip JudyLIns/Judy1Set every 32 numbers from Key Generator [0], (but not in Get/Test)\n");
     printf("-s #  Starting number in Key Generator [0x%" PRIxPTR"]\n", StartSequent);
     printf("-o #, --Offset #     Key += #  additional add to Key\n");
@@ -985,16 +1011,19 @@ static struct option longopts[] = {
  // { name,               has_arg,          flag,      val },
 
     // Long option "--LittleOffset=<#>" is equivalent to short option "-o<#>".
-    { "Offset",    required_argument, NULL,      'o' },
+    { "Offset", required_argument, NULL, 'o' },
 
     // Long option "--BigOffset=<#>" is equivalent to short option '-O<#>".
-    { "BigOffset",       required_argument, NULL,      'O' },
+    { "BigOffset", required_argument, NULL, 'O' },
 
     // Long option '--splay-key-bits' is equivalent to short option '-E'.
-    { "splay-key-bits",       required_argument, NULL,      'E' },
+    { "splay-key-bits", required_argument, NULL, 'E' },
+
+    // Long option '--lfsr-only' is equivalent to short option '-k'.
+    { "lfsr-only", no_argument, NULL, 'k' },
 
     // Last struct option in array must be filled with zeros.
-    { NULL,              0,                 NULL,      0 }
+    { NULL, 0, NULL, 0 }
 };
 
 int
@@ -1121,13 +1150,13 @@ main(int argc, char *argv[])
 #ifdef FANCY_b_flag
                                               ":"
 #endif // FANCY_b_flag
-                                              "N:dDcC1LHvIltmpxVfgiyRMKhE",
+                                              "N:dDcC1LHvIltmpxVfgiyRMKkhE",
                 // Optstring sorted:
-                // "1a:B:bCcDdEF:fG:gHhIiKlLMmN:n:O:o:P:pRS:s:T:tVvW:XXxy",
-                // Gaps left for unused option characters:
-                // " 1         a:B:bCcDdE F:fG:gHhIi  K LlMmN:n:O:o:P:p  R S:s:T:t:  VvW: Xx y  "
-                // Unused option characters:
-                // "0 23456789A          e          Jj k               Qq r        Uu    w  Y Zz"
+                // "1a:B:bCcDdEF:fG:gHhIiKklLMmN:n:O:o:P:pRS:s:T:tVvW:XXxy",
+                // Used option characters sorted and with spaces for unused option characters:
+                // " 1         a:B:bCcDdE F:fG:gHhIi  KkLlMmN:n:O:o:P:p  R S:s:T:t:  VvW: Xx y  "
+                // Unused option characters sorted and with spaces for used option characters:
+                // "0 23456789A          e          Jj                 Qq r        Uu    w  Y Zz"
                    longopts, NULL);
         if (c == -1)
             break;
@@ -1504,6 +1533,10 @@ main(int argc, char *argv[])
             KFlag = 1;
             break;
 
+        case 'k':                      // Use fast lfsr with no options.
+            bLfsrOnly = 1;
+            break;
+
         default:
             ErrorFlag++;
             break;
@@ -1613,6 +1646,14 @@ main(int argc, char *argv[])
     }
 #endif // NO_OFFSET
 
+    if (bLfsrOnly) {
+        if (DFlag || bSplayKeyBitsFlag || FValue || GValue || Offset || SValue
+            || (Bpercent != 100.0))
+        {
+            FAILURE("-k is not compatible with -B:DEFGNOoS", -1);
+        }
+    }
+
 //  build the Random Number Generator starting seeds
     PSeed_t PInitSeed = RandomInit(BValue, GValue);
 
@@ -1620,6 +1661,10 @@ main(int argc, char *argv[])
     {
         printf("\nIllegal Number in -G%" PRIuPTR" !!!\n", GValue);
         ErrorFlag++;
+    }
+
+    if (bLfsrOnly) {
+        wFeedBTap = PInitSeed->FeedBTap;
     }
 
 //  Set MSB number of Random bits in LFSR
@@ -1963,44 +2008,51 @@ main(int argc, char *argv[])
     StartSeed = *PInitSeed;
 #else // CALC_NEXT_KEY
     Seed_t TValuesSeed = { 0 }; // unnecessary init to make gcc happy
-    // Use FileKeys for Get measurements even without -F.
-    if (FileKeys == NULL)
+    if (bLfsrOnly)
     {
-        Word_t wKeysP1 = wMaxEndDeltaKeys + 1;
-        // align wBytes and add an extra huge page so align after alloc is ok
-        Word_t wBytes = ((wKeysP1 * sizeof(Word_t)) + 0x3fffff) & ~0x1fffff;
-#ifdef USE_MALLOC
-        FileKeys = (PWord_t)malloc(wBytes);
+        StartSeed = (NewSeed_t)PInitSeed->Seeds[0];
+    }
+    else
+    {
+        // Use FileKeys for Get measurements even without -F.
         if (FileKeys == NULL)
         {
-            FAILURE("FileKeys malloc failure, Bytes =", wBytes);
-        }
-        printf("# malloc %zd bytes at %p for GetNextKey array.\n",
-               wBytes, (void *)FileKeys);
+            Word_t wKeysP1 = wMaxEndDeltaKeys + 1;
+            // align wBytes and add an extra huge page so align after alloc is ok
+            Word_t wBytes = ((wKeysP1 * sizeof(Word_t)) + 0x3fffff) & ~0x1fffff;
+#ifdef USE_MALLOC
+            FileKeys = (PWord_t)malloc(wBytes);
+            if (FileKeys == NULL)
+            {
+                FAILURE("FileKeys malloc failure, Bytes =", wBytes);
+            }
+            printf("# malloc %zd bytes at %p for GetNextKey array.\n",
+                   wBytes, (void *)FileKeys);
 #else // USE_MALLOC
-        FileKeys = (Word_t *)mmap(NULL, wBytes,
-                                  (PROT_READ|PROT_WRITE),
-                                  (MAP_PRIVATE|MAP_ANONYMOUS), -1, 0);
-        if (FileKeys == MAP_FAILED)
-        {
-            FAILURE("FileKeys mmap failure, Bytes =", wBytes);
-        }
-        printf("# mmap 0x%zx bytes at %p for GetNextKey array.\n",
-               wBytes, (void *)FileKeys);
+            FileKeys = (Word_t *)mmap(NULL, wBytes,
+                                      (PROT_READ|PROT_WRITE),
+                                      (MAP_PRIVATE|MAP_ANONYMOUS), -1, 0);
+            if (FileKeys == MAP_FAILED)
+            {
+                FAILURE("FileKeys mmap failure, Bytes =", wBytes);
+            }
+            printf("# mmap 0x%zx bytes at %p for GetNextKey array.\n",
+                   wBytes, (void *)FileKeys);
 #endif // USE_MALLOC
-        // align the buffer
-        FileKeys = (Word_t *)(((Word_t)FileKeys + 0x1fffff) & ~0x1fffff);
-        printf("# FileKeys is %p after alignment.\n", (void *)FileKeys);
+            // align the buffer
+            FileKeys = (Word_t *)(((Word_t)FileKeys + 0x1fffff) & ~0x1fffff);
+            printf("# FileKeys is %p after alignment.\n", (void *)FileKeys);
 
-        Seed_t WorkingSeed = *PInitSeed;
+            Seed_t WorkingSeed = *PInitSeed;
 
-        for (Word_t ww = 0; ww < TValues; ww++)
-        {
-            FileKeys[ww] = CalcNextKey(&WorkingSeed);
+            for (Word_t ww = 0; ww < TValues; ww++)
+            {
+                FileKeys[ww] = CalcNextKey(&WorkingSeed);
+            }
+            TValuesSeed = WorkingSeed;
         }
-        TValuesSeed = WorkingSeed;
+        StartSeed = FileKeys;
     }
-    StartSeed = FileKeys;
     Seed_t DeltaSeed = { 0 }; // unnecessary init to make gcc happy
 #endif // CALC_NEXT_KEY
 
@@ -2382,36 +2434,39 @@ main(int argc, char *argv[])
 #endif  // NEVER
 
 #ifndef CALC_NEXT_KEY
-        PWord_t DeltaKeys = &FileKeys[Pop1 - Delta]; // array of Delta keys
-        if (Pop1 >= TValues)
+        if (!bLfsrOnly)
         {
-            Word_t ww;
-
-            if (DeltaKeys >= &FileKeys[TValues]) // if (Pop1-Delta >= TValues)
+            PWord_t DeltaKeys = &FileKeys[Pop1 - Delta]; // array of Delta keys
+            if (Pop1 >= TValues)
             {
-                DeltaKeys = &FileKeys[TValues];
-                ww = 0;
-            }
-            else
-            {
-                // This initialization of DeltaSeed must occur only once.
-                // If done here the initialization may be done one loop
-                // iteration before it is necessary when Pop1 == TValues.
-                DeltaSeed = TValuesSeed;
-                ww = TValues - (Pop1 - Delta);
-            }
+                Word_t ww;
 
-            for (; ww < Delta; ww++)
-            {
-                DeltaKeys[ww] = CalcNextKey(&DeltaSeed);
-            }
+                if (DeltaKeys >= &FileKeys[TValues]) // if (Pop1-Delta >= TValues)
+                {
+                    DeltaKeys = &FileKeys[TValues];
+                    ww = 0;
+                }
+                else
+                {
+                    // This initialization of DeltaSeed must occur only once.
+                    // If done here the initialization may be done one loop
+                    // iteration before it is necessary when Pop1 == TValues.
+                    DeltaSeed = TValuesSeed;
+                    ww = TValues - (Pop1 - Delta);
+                }
 
-            // Get one more for -R but don't update InsertSeed.
-            Seed_t TempSeed = DeltaSeed;
-            DeltaKeys[ww] = CalcNextKey(&TempSeed);
+                for (; ww < Delta; ww++)
+                {
+                    DeltaKeys[ww] = CalcNextKey(&DeltaSeed);
+                }
+
+                // Get one more for -R but don't update InsertSeed.
+                Seed_t TempSeed = DeltaSeed;
+                DeltaKeys[ww] = CalcNextKey(&TempSeed);
+            }
+            InsertSeed = DeltaKeys;
+            BitmapSeed = DeltaKeys;
         }
-        InsertSeed = DeltaKeys;
-        BitmapSeed = DeltaKeys;
 #endif // CALC_NEXT_KEY
 
         if (J1Flag || JLFlag || JHFlag)
@@ -2464,21 +2519,49 @@ main(int argc, char *argv[])
 #ifdef DO_TIT
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
-            if (KFlag) {
-                if (hFlag) {
-                    TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
-                                /* KFlag */ 1, /* hFlag */ 1);
+            if (bLfsrOnly) {
+                if (KFlag) {
+                    if (hFlag) {
+                        TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
+                                    /* KFlag */ 1, /* hFlag */ 1,
+                                    /* bLfsrOnly */ 1);
+                    } else {
+                        TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
+                                    /* KFlag */ 1, /* hFlag */ 0,
+                                    /* bLfsrOnly */ 1);
+                    }
                 } else {
-                    TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
-                                /* KFlag */ 1, /* hFlag */ 0);
+                    if (hFlag) {
+                        TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
+                                    /* KFlag */ 0, /* hFlag */ 1,
+                                    /* bLfsrOnly */ 1);
+                    } else {
+                        TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
+                                    /* KFlag */ 0, /* hFlag */ 0,
+                                    /* bLfsrOnly */ 1);
+                    }
                 }
             } else {
-                if (hFlag) {
-                    TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
-                                /* KFlag */ 0, /* hFlag */ 1);
+                if (KFlag) {
+                    if (hFlag) {
+                        TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
+                                    /* KFlag */ 1, /* hFlag */ 1,
+                                    /* bLfsrOnly */ 0);
+                    } else {
+                        TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
+                                    /* KFlag */ 1, /* hFlag */ 0,
+                                    /* bLfsrOnly */ 0);
+                    }
                 } else {
-                    TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
-                                /* KFlag */ 0, /* hFlag */ 0);
+                    if (hFlag) {
+                        TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
+                                    /* KFlag */ 0, /* hFlag */ 1,
+                                    /* bLfsrOnly */ 0);
+                    } else {
+                        TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
+                                    /* KFlag */ 0, /* hFlag */ 0,
+                                    /* bLfsrOnly */ 0);
+                    }
                 }
             }
             DeltaGen1 = DeltanSec1;     // save measurement overhead
@@ -2490,21 +2573,49 @@ main(int argc, char *argv[])
 
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
-            if (KFlag) {
-                if (hFlag) {
-                    TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
-                                /* KFlag */ 1, /* hFlag */ 1);
+            if (bLfsrOnly) {
+                if (KFlag) {
+                    if (hFlag) {
+                        TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
+                                    /* KFlag */ 1, /* hFlag */ 1,
+                                    /* bLfsrOnly */ 1);
+                    } else {
+                        TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
+                                    /* KFlag */ 1, /* hFlag */ 0,
+                                    /* bLfsrOnly */ 1);
+                    }
                 } else {
-                    TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
-                                /* KFlag */ 1, /* hFlag */ 0);
+                    if (hFlag) {
+                        TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
+                                    /* KFlag */ 0, /* hFlag */ 1,
+                                    /* bLfsrOnly */ 1);
+                    } else {
+                        TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
+                                    /* KFlag */ 0, /* hFlag */ 0,
+                                    /* bLfsrOnly */ 1);
+                    }
                 }
             } else {
-                if (hFlag) {
-                    TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
-                                /* KFlag */ 0, /* hFlag */ 1);
+                if (KFlag) {
+                    if (hFlag) {
+                        TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
+                                    /* KFlag */ 1, /* hFlag */ 1,
+                                    /* bLfsrOnly */ 0);
+                    } else {
+                        TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
+                                    /* KFlag */ 1, /* hFlag */ 0,
+                                    /* bLfsrOnly */ 0);
+                    }
                 } else {
-                    TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
-                                /* KFlag */ 0, /* hFlag */ 0);
+                    if (hFlag) {
+                        TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
+                                    /* KFlag */ 0, /* hFlag */ 1,
+                                    /* bLfsrOnly */ 0);
+                    } else {
+                        TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
+                                    /* KFlag */ 0, /* hFlag */ 0,
+                                    /* bLfsrOnly */ 0);
+                    }
                 }
             }
 
@@ -3707,7 +3818,7 @@ TestJudyDup(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
 
 static inline int
 TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
-            Word_t Tit, Word_t KFlag, Word_t hFlag)
+            Word_t Tit, Word_t KFlag, Word_t hFlag, int bLfsrOnly)
 {
     Word_t    TstKey;
     Word_t    elm;
@@ -3741,46 +3852,17 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
+            Word_t wFeedBTapLocal = wFeedBTap; // don't know why this is faster
 
 //          reset for next measurement
 //            j__SearchPopulation = j__TreeDepth = j__MissCompares = j__DirectHits = j__SearchGets = 0;
             j__SearchPopulation = j__MissCompares = j__DirectHits = j__SearchGets = 0;
 
-#if defined(GET_NEXT_KEY_MACRO)
-  #ifdef LOCAL_MAGIC
-            Word_t wMagic = WorkingSeed.FeedBTap;
-  #endif // LOCAL_MAGIC
-  #ifdef NEXT_FIRST // slow
-            TstKey = WorkingSeed.Seeds[0];
-  #endif // NEXT_FIRST
-#endif // defined(GET_NEXT_KEY_MACRO)
-
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
             {
-#if defined(GET_NEXT_KEY_MACRO)
-  // NEXT_FIRST is slow with GET_NEXT_KEY_MACRO but not without.
-  #ifdef NEXT_FIRST
-      // LOCAL_MAGIC seems to have no effect whatsoever.
-      #ifdef LOCAL_MAGIC
-                SYNC_SYNC(TstKey = GET_NEXT_KEY(TstKey, wMagic));
-      #else // LOCAL_MAGIC
-                SYNC_SYNC(TstKey = GET_NEXT_KEY(TstKey, WorkingSeed.FeedBTap));
-      #endif // LOCAL_MAGIC
-  #else // NEXT_FIRST
-      #ifdef LOCAL_MAGIC
-                SYNC_SYNC(
-                    TstKey = WorkingSeed.Seeds[0];
-                    WorkingSeed.Seeds[0] = GET_NEXT_KEY(TstKey, wMagic));
-      #else // LOCAL_MAGIC
-                SYNC_SYNC(
-                    TstKey = WorkingSeed.Seeds[0];
-                    WorkingSeed.Seeds[0] = GET_NEXT_KEY(TstKey, WorkingSeed.FeedBTap));
-      #endif // LOCAL_MAGIC
-  #endif // NEXT_FIRST
-#else // defined(GET_NEXT_KEY_MACRO)
-                SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
-#endif // defined(GET_NEXT_KEY_MACRO)
+                SYNC_SYNC(TstKey = GetNextKeyX(&WorkingSeed, wFeedBTapLocal, bLfsrOnly));
+                //SYNC_SYNC(TstKey = GetNextKeyX(&WorkingSeed, wFeedBTap, bLfsrOnly));
 
 //              Holes in the Set Code ?
                 if (hFlag && ((TstKey & 0x3F) == 13))
