@@ -606,7 +606,7 @@ CalcNextKey(PSeed_t PSeed)
 #ifndef NO_FVALUE
     if (FValue)
     {
-        Key = FileKeys[PSeed->Order++];
+        Key = FileKeys[PSeed->Seeds[0]++];
     }
     else
 #endif // NO_FVALUE
@@ -1338,6 +1338,9 @@ main(int argc, char *argv[])
 #ifdef NO_FVALUE
             FAILURE("compile with -UNO_FVALUE to use '-F'", optarg);
 #endif // NO_FVALUE
+            if (FValue) {
+                FAILURE("only one '-F' allowed", -1);
+            }
             FILE *Pfile;
             char Buffer[BUFSIZ];
             Word_t  KeyValue;
@@ -1399,7 +1402,7 @@ main(int argc, char *argv[])
             }
             fprintf(stderr, "\n");
             nElms = FValue;
-            GValue = 0;
+            StartSequent = 0;
             break;
         }
 
@@ -1505,8 +1508,6 @@ main(int argc, char *argv[])
             ErrorFlag++;
             break;
         }
-        if (FValue)
-            break;
     }
 
 #ifdef NO_TRIM_EXPANSE
@@ -1626,17 +1627,20 @@ main(int argc, char *argv[])
 
     ExpanseM1 = MaxNumb;
 
-//  Check if starting number is too big
-    if (StartSequent > MaxNumb)
+//  Check if starting number is ok
+    if (FValue == 0)
     {
-        printf("\n# Trimming '-s 0x%zx' to 0x%zx.\n", StartSequent, MaxNumb);
-        StartSequent = MaxNumb;
-        //ErrorFlag++;
-    }
-    if (StartSequent == 0 && (SValue == 0))
-    {
-        printf("\nError --- '-s 0' option Illegal if Random\n");
-        ErrorFlag++;
+        if (StartSequent > MaxNumb)
+        {
+            printf("\n# Trimming '-s 0x%zx' to 0x%zx.\n", StartSequent, MaxNumb);
+            StartSequent = MaxNumb;
+            //ErrorFlag++;
+        }
+        if (StartSequent == 0 && (SValue == 0))
+        {
+            printf("\nError --- '-s 0' option Illegal if Random\n");
+            ErrorFlag++;
+        }
     }
 
     if (ErrorFlag)
