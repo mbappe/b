@@ -200,23 +200,23 @@ FastLfsr(Word_t wSeed, Word_t wMagic, int nBitsM1, int bPrev)
     return wNext;
 }
 
-#define SPLAYED_FAST_PREV(_wSeed, _wMagic, _nBitsM1) \
-    ( (((_wSeed) ^ ((_wMagic) & -((_wSeed) >> ((_nBitsM1) * 2)))) << 2) \
-        | ((_wSeed) >> ((_nBitsM1) * 2)) )
+#define SPLAYED_FAST_PREV(_wSeed, _wMagic, _nBitsM1, _nBitsShift) \
+    ( (((_wSeed) ^ ((_wMagic) & -((_wSeed) >> (_nBitsM1)))) << (_nBitsShift)) \
+        | ((_wSeed) >> (_nBitsM1)) )
 
 static inline Word_t
 SplayedFastLfsr(Word_t wSplayedSeed,
-                Word_t wSplayedMagic, int nBitsM1, int bPrev)
+                Word_t wSplayedMagic, int nBitsM1, int nBitsShift, int bPrev)
 {
     Word_t wNext = wSplayedSeed;
     if (bPrev) {
 #ifdef USE_MACROS
-        wNext = SPLAYED_FAST_PREV(wNext, wSplayedMagic, nBitsM1);
+        wNext = SPLAYED_FAST_PREV(wNext, wSplayedMagic, nBitsM1, nBitsShift);
 #else // USE_MACROS
-        Word_t wbMsbSet = wNext >> (nBitsM1 * 2);
+        Word_t wbMsbSet = wNext >> nBitsM1;
         Word_t wXorOperand = wSplayedMagic & -wbMsbSet;
         wNext = wNext ^ wXorOperand;
-        wNext = wNext << 2;
+        wNext = wNext << nBitsShift;
         wNext = wNext | wbMsbSet;
         // No need to mask; xor takes out high bit.
 #endif // USE_MACROS
@@ -224,7 +224,7 @@ SplayedFastLfsr(Word_t wSplayedSeed,
         Word_t wbLsbSet = wSplayedSeed & 1;
         //Word_t wXorOperand = wSplayedMagic * wbLsbSet;
         Word_t wXorOperand = wSplayedMagic & -wbLsbSet;
-        wNext >>= 2;
+        wNext >>= nBitsShift;
         wNext ^= wXorOperand;
     }
     return wNext;
@@ -258,45 +258,61 @@ lfsr(int nBits, Word_t wMagic, Word_t wSeed, char cAlg, int bPrev, int bPrint)
     Word_t wNext = wSeed;
     Word_t wPrev;
     Word_t wPeriod = 0;
-    Word_t wLsbs = (Word_t)-1 / 3;
-    printf("wLsbs 0x%zx\n", wLsbs);
+    int nBitsShift = 2; // pick a number for splay
+    printf("nBitsShift %d\n", nBitsShift);
+    Word_t wLsbs = (Word_t)-1 / ((1 << nBitsShift) - 1);
+    if (sizeof(Word_t) * 8 % nBitsShift != 0) {
+        wLsbs >>= sizeof(Word_t) * 8 % nBitsShift;
+    }
+    printf("wLsbs 0x%" Owx"\n", wLsbs);
     Word_t wSplayedSeed = PDEP(wSeed, wLsbs);
-    printf("wSplayedSeed 0x%zx\n", wSplayedSeed);
+    printf("wSplayedSeed 0x%" Owx"\n", wSplayedSeed);
     Word_t wSplayedMagic = PDEP(wMagic, wLsbs);
-    printf("wSplayedMagic 0x%zx\n", wSplayedMagic);
+    printf("wSplayedMagic 0x%" Owx"\n", wSplayedMagic);
     do {
         if (bPrint) { printf("0x%" Owx"\n", wNext); }
         wPrev = wNext;
-        if (cAlg == 'F') {
-            wNext = SplayedFastLfsr(wNext, wSplayedMagic, nBitsM1, bPrev);
 #ifndef NDEBUG
-            Word_t wBack
-                = SplayedFastLfsr(wNext, wSplayedMagic, nBitsM1, !bPrev);
-            if (bPrint) {
-                if (wBack != wPrev) {
-                    printf("wNext 0x%" Owx" wPrev 0x%" Owx" wBack 0x%" Owx"\n",
-                           wNext, wPrev, wBack);
-                }
-            }
-            assert(wBack == wPrev);
+        Word_t wBack;
 #endif // NDEBUG
-        } else {
-        wNext = (cAlg == 'p') ? ParityLfsr(wNext, wMagic,
-                                           nBitsM1, wMask, bPrev)
-              : (cAlg == 'o') ?    OldLfsr(wNext, wMagic,
-                                           nBitsM1, wMask, bPrev)
-              :                   FastLfsr(wNext, wMagic,
-                                           nBitsM1, bPrev);
-        assert((  (cAlg == 'p') ? ParityLfsr(wNext, wMagic,
-                                             nBitsM1, wMask, !bPrev)
-                : (cAlg == 'o') ?    OldLfsr(wNext, wMagic,
-                                             nBitsM1, wMask, !bPrev)
-                :                   FastLfsr(wNext, wMagic,
-                                             nBitsM1, !bPrev) )
-            == wPrev);
+        switch (cAlg) {
+        case 'F':
+            wNext = SplayedFastLfsr(wNext, wSplayedMagic,
+                                    nBitsM1 * nBitsShift, nBitsShift, bPrev);
+#ifndef NDEBUG
+            wBack = SplayedFastLfsr(wNext, wSplayedMagic,
+                                    nBitsM1 * nBitsShift, nBitsShift, !bPrev);
+#endif // NDEBUG
+            break;
+        case 'f':
+            wNext = FastLfsr(wNext, wMagic, nBitsM1, bPrev);
+#ifndef NDEBUG
+            wBack = FastLfsr(wNext, wMagic, nBitsM1, !bPrev);
+#endif // NDEBUG
+            break;
+        case 'o':
+            wNext = OldLfsr(wNext, wMagic, nBitsM1, wMask, bPrev);
+#ifndef NDEBUG
+            wBack = OldLfsr(wNext, wMagic, nBitsM1, wMask, !bPrev);
+#endif // NDEBUG
+            break;
+        case 'p':
+            wNext = ParityLfsr(wNext, wMagic, nBitsM1, wMask, bPrev);
+#ifndef NDEBUG
+            wBack = ParityLfsr(wNext, wMagic, nBitsM1, wMask, !bPrev);
+#endif // NDEBUG
+            break;
+        default: assert(0);
         }
+#ifndef NDEBUG
+        if (wBack != wPrev) {
+            printf("wNext 0x%" Owx" wPrev 0x%" Owx" wBack 0x%" Owx"\n",
+                   wNext, wPrev, wBack);
+        }
+        assert(wBack == wPrev);
+#endif // NDEBUG
         ++wPeriod;
-    } while (wNext != wSeed) ;
+    } while (wNext != wSeed);
     return wPeriod;
 }
 
@@ -310,7 +326,10 @@ main(int argc, char *argv[])
     char *strName = basename(argv[0]);
     int len = strlen(strName);
     char cAlg = strName[0];
-    int bPrev = (strName[strlen("flfsrnp") - 2] == 'p');
+    int bPrev = 0;
+    if (strlen(strName) >= strlen("flfsrn")) {
+        bPrev = (strName[strlen("flfsrn") - 1] == 'p');
+    }
     int bPrint = (len == strlen("flfsrnp"));
 
     Word_t wBits = (argc > 1) ? strtoul(argv[1], 0, 0) : 12;
@@ -354,7 +373,6 @@ main(int argc, char *argv[])
                            'o', /* bPrev */ 0, /* bPrint */ 0);
             break;
         case 'f':
-        default:
             wPeriod
                 = bPrev
                     ? lfsr(wBits, wMagic, wSeed,
@@ -370,8 +388,17 @@ main(int argc, char *argv[])
                     : lfsr(wBits, wMagic, wSeed,
                            'F', /* bPrev */ 0, /* bPrint */ 0);
             break;
+        default:
+            printf("Invalid cAlg '%c'\n", cAlg);
+            exit(1);
         }
     }
     printf("wPeriod 0x%" Owx"\n", wPeriod);
+    Word_t wTargetPeriod = ((Word_t)1 << nBitsM1) * 2 - 1;
+    if (wPeriod != wTargetPeriod) {
+        printf("wTargetPeriod 0x%" Owx"\n", wTargetPeriod);
+        exit(1);
+    }
+    exit(0);
 }
 
