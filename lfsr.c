@@ -4,6 +4,9 @@
 #include <libgen.h>
 #include <string.h>
 #include <assert.h>
+#ifdef USE_PDEP_INTRINSIC
+#include <immintrin.h>
+#endif // USE_PDEP_INTRINSIC
 
 #if defined(__LP64__)
 #define Owx "016lx"
@@ -18,68 +21,117 @@ typedef uintptr_t Word_t;
 #define LOG(_x) (63 - __builtin_clzll(_x))
 
 static Word_t wMagicList[] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,       // 0..9
-    0x27f,                              // 10 All from 10..36 are Good (Gd)
-    0x27f,                              // 11 37,39,40,41,43 + fail as noted
-    0x27f,                              // 12 so -- may be sensitive to 
-    0x27f,                              // 13 starting Seed.
-    0x27f,                              // 14
-    0x27f,                              // 15
-    0x1e71,                             // 16
-    0xdc0b,                             // 17
-    0xdc0b,                             // 18
-    0xdc0b,                             // 19
-    0xdc0b,                             // 20
-    0xc4fb,                             // 21
-    0xc4fb,                             // 22
-    0xc4fb,                             // 23
-    0x13aab,                            // 24 
-    0x11ca3,                            // 25
-    0x11ca3,                            // 26
-    0x11ca3,                            // 27
-    0x13aab,                            // 28
-    0x11ca3,                            // 29
-    0xc4fb,                             // 30
-    0xc4fb,                             // 31
-    0x13aab                             // 32 
-
+    0, 0,                       // 0..1
+    0x3,                        // 2
+    0x5,                        // 3
+    0x9,                        // 4
+    0x12,                       // 5
+    0x21,                       // 6
+    0x41,                       // 7
+    0x8E,                       // 8
+    0x108,                      // 9
+    0x204,                      // 10
+    0x402,                      // 11
+    0x829,                      // 12
+    0x100D,                     // 13
+    0x2015,                     // 14
+    0x4001,                     // 15
+    0x8016,                     // 16
+    0x10004,                    // 17
+    0x20013,                    // 18
+    0x40013,                    // 19
+    0x80004,                    // 20
+    0x100002,                   // 21
+    0x200001,                   // 22
+    0x400010,                   // 23
+    0x80000D,                   // 24
+    0x1000004,                  // 25
+    0x2000023,                  // 26
+    0x4000013,                  // 27
+    0x8000004,                  // 28
+    0x10000002,                 // 29
+    0x20000029,                 // 30
+    0x40000004,                 // 31
+    0x80000057,                 // 32
 #ifdef __LP64__
-    ,
-    0x14e73UL,                          // 33  
-    0x145d7UL,                          // 34  
-    0x145f9UL,                          // 35  
-    0x151edUL,                          // 36 
-    0x1F00000001,                       // 37 Good  137438953471  (0x1fffffffff) 
-    0x151edUL,                          // 38 Good  274877906943  (0x3fffffffff)
-    0x151edUL,                          // 39 Good  549755813887  (0x7fffffffff) 
-    0x151edUL,                          // 40 Bad   157053914551  (0x2491248db7)
-    0x146c3UL,                          // 41 Bad  1924145348601 (0x1bffffffff9)
-    0x146c3UL,                          // 42 Good 4398046511103 (0x3ffffffffff)
-    0x146c3UL,                          // 43 Bad  6597069766653 (0x5fffffffffd) 
-    0x146c3UL,                          // 44 following tested to 35 billion
-    0x146c3UL,                          // 45  
-    0x146c3UL,                          // 46  
-    0x146c3UL,                          // 47  
-    0x146c3UL,                          // 48  
-    0x146c3UL,                          // 49  
-    0x146c3UL,                          // 50  
-    0x146c3UL,                          // 51  
-    0x146c3UL,                          // 52  
-    0x146c3UL,                          // 53  
-    0x146c3UL,                          // 54  
-    0x146c3UL,                          // 55  
-    0x146c3UL,                          // 56  
-    0x146c3UL,                          // 57  
-    0x146c3UL,                          // 58  
-    0x146c3UL,                          // 59  
-    0x146c3UL,                          // 60  
-    0x146c3UL,                          // 61  
-    0x146c3UL,                          // 62  
-    0x146c3UL,                          // 63  
-    0x146c3UL                           // 64  
+    0x100000029,                // 33
+    0x200000073,                // 34
+    0x400000002,                // 35
+    0x80000003B,                // 36
+    0x100000001F,               // 37
+    0x2000000031,               // 38
+    0x4000000008,               // 39
+    0x800000001C,               // 40
+    0x10000000004,              // 41
+    0x2000000001F,              // 42
+    0x4000000002C,              // 43
+    0x80000000032,              // 44
+    0x10000000000D,             // 45
+    0x200000000097,             // 46
+    0x400000000010,             // 47
+    0x80000000005B,             // 48
+    0x1000000000038,            // 49
+    0x200000000000E,            // 50
+    0x4000000000025,            // 51
+    0x8000000000004,            // 52
+    0x10000000000023,           // 53
+    0x2000000000003E,           // 54
+    0x40000000000023,           // 55
+    0x8000000000004A,           // 56
+    0x100000000000016,          // 57
+    0x200000000000031,          // 58
+    0x40000000000003D,          // 59
+    0x800000000000001,          // 60
+    0x1000000000000013,         // 61
+    0x2000000000000034,         // 62
+    0x4000000000000001,         // 63
+    0x800000000000000D,         // 64
 #endif  // __LP64__
 
 };
+
+static inline Word_t
+PDEP(Word_t wSrc, Word_t wMask)
+{
+#ifdef USE_PDEP_INTRINSIC
+    // requires gcc -mbmi2
+  #if defined(__LP64__) || defined(_WIN64)
+    return _pdep_u64(wSrc, wMask);
+  #else // defined(__LP64__) || defined(_WIN64)
+    return _pdep_u32(wSrc, wMask);
+  #endif // defined(__LP64__) || defined(_WIN64)
+#else // USE_PDEP_INTRINSIC
+    Word_t wTgt = 0;
+  #if defined(SLOW_PDEP) || defined(EXTRA_SLOW_PDEP)
+    // This loop assumes popcount(wMask) >= popcount(wSrc).
+    for (int nMaskBitNum = 0;; ++nMaskBitNum)
+    {
+      #ifdef EXTRA_SLOW_PDEP
+        int nLsb = __builtin_ctzll(wMask);
+        nMaskBitNum += nLsb;
+        wTgt |= (wSrc & 1) << nMaskBitNum;
+        if ((wSrc >>= 1) == 0) { break; }
+        wMask >>= nLsb + 1;
+      #else // EXTRA_SLOW_PDEP
+        if (wMask & 1)
+        {
+            wTgt |= (wSrc & 1) << nMaskBitNum;
+            if ((wSrc >>= 1) == 0) { break; }
+        }
+        wMask >>= 1;
+      #endif // EXTRA_SLOW_PDEP
+    }
+  #else // defined(SLOW_PDEP) || defined(EXTRA_SLOW_PDEP)
+    do
+    {
+        Word_t wLsbMask = (-wMask & wMask);
+        wTgt |= wLsbMask * (wSrc & 1);
+        wMask &= ~wLsbMask;
+    } while ((wSrc >>= 1) != 0);
+  #endif // defined(SLOW_PDEP) || defined(EXTRA_SLOW_PDEP)
+    return wTgt;
+#endif // USE_PDEP_INTRINSIC
+}
 
 Word_t
 BitReverse(Word_t word)
@@ -119,17 +171,17 @@ ParityLfsr(Word_t wSeed, Word_t wMagic, int nBitsM1, Word_t wMask, int bPrev)
    return wNext;
 }
 
-#define FAST_PREV(_wSeed, _wMagic, _nBitsM1, _wMask) \
+#define FAST_PREV(_wSeed, _wMagic, _nBitsM1) \
     ( (((_wSeed) ^ ((_wMagic) & -((_wSeed) >> (_nBitsM1)))) << 1) \
-        | ((_wSeed) >> (_nBitsM1)) /* & (_wMask) */ )
+        | ((_wSeed) >> (_nBitsM1)) )
 
 static inline Word_t
-FastLfsr(Word_t wSeed, Word_t wMagic, int nBitsM1, Word_t wMask, int bPrev)
+FastLfsr(Word_t wSeed, Word_t wMagic, int nBitsM1, int bPrev)
 {
     Word_t wNext = wSeed;
     if (bPrev) {
 #ifdef USE_MACROS
-        wNext = FAST_PREV(wNext, wMagic, nBitsM1, wMask);
+        wNext = FAST_PREV(wNext, wMagic, nBitsM1);
 #else // USE_MACROS
         Word_t wbMsbSet = wNext >> nBitsM1;
         Word_t wXorOperand = wMagic & -wbMsbSet;
@@ -143,6 +195,36 @@ FastLfsr(Word_t wSeed, Word_t wMagic, int nBitsM1, Word_t wMask, int bPrev)
         //Word_t wXorOperand = wMagic * wbLsbSet;
         Word_t wXorOperand = wMagic & -wbLsbSet;
         wNext >>= 1;
+        wNext ^= wXorOperand;
+    }
+    return wNext;
+}
+
+#define SPLAYED_FAST_PREV(_wSeed, _wMagic, _nBitsM1) \
+    ( (((_wSeed) ^ ((_wMagic) & -((_wSeed) >> ((_nBitsM1) * 2)))) << 2) \
+        | ((_wSeed) >> ((_nBitsM1) * 2)) )
+
+static inline Word_t
+SplayedFastLfsr(Word_t wSplayedSeed,
+                Word_t wSplayedMagic, int nBitsM1, int bPrev)
+{
+    Word_t wNext = wSplayedSeed;
+    if (bPrev) {
+#ifdef USE_MACROS
+        wNext = SPLAYED_FAST_PREV(wNext, wSplayedMagic, nBitsM1);
+#else // USE_MACROS
+        Word_t wbMsbSet = wNext >> (nBitsM1 * 2);
+        Word_t wXorOperand = wSplayedMagic & -wbMsbSet;
+        wNext = wNext ^ wXorOperand;
+        wNext = wNext << 2;
+        wNext = wNext | wbMsbSet;
+        // No need to mask; xor takes out high bit.
+#endif // USE_MACROS
+    } else {
+        Word_t wbLsbSet = wSplayedSeed & 1;
+        //Word_t wXorOperand = wSplayedMagic * wbLsbSet;
+        Word_t wXorOperand = wSplayedMagic & -wbLsbSet;
+        wNext >>= 2;
         wNext ^= wXorOperand;
     }
     return wNext;
@@ -176,22 +258,43 @@ lfsr(int nBits, Word_t wMagic, Word_t wSeed, char cAlg, int bPrev, int bPrint)
     Word_t wNext = wSeed;
     Word_t wPrev;
     Word_t wPeriod = 0;
+    Word_t wLsbs = (Word_t)-1 / 3;
+    printf("wLsbs 0x%zx\n", wLsbs);
+    Word_t wSplayedSeed = PDEP(wSeed, wLsbs);
+    printf("wSplayedSeed 0x%zx\n", wSplayedSeed);
+    Word_t wSplayedMagic = PDEP(wMagic, wLsbs);
+    printf("wSplayedMagic 0x%zx\n", wSplayedMagic);
     do {
         if (bPrint) { printf("0x%" Owx"\n", wNext); }
         wPrev = wNext;
+        if (cAlg == 'F') {
+            wNext = SplayedFastLfsr(wNext, wSplayedMagic, nBitsM1, bPrev);
+#ifndef NDEBUG
+            Word_t wBack
+                = SplayedFastLfsr(wNext, wSplayedMagic, nBitsM1, !bPrev);
+            if (bPrint) {
+                if (wBack != wPrev) {
+                    printf("wNext 0x%" Owx" wPrev 0x%" Owx" wBack 0x%" Owx"\n",
+                           wNext, wPrev, wBack);
+                }
+            }
+            assert(wBack == wPrev);
+#endif // NDEBUG
+        } else {
         wNext = (cAlg == 'p') ? ParityLfsr(wNext, wMagic,
                                            nBitsM1, wMask, bPrev)
               : (cAlg == 'o') ?    OldLfsr(wNext, wMagic,
                                            nBitsM1, wMask, bPrev)
               :                   FastLfsr(wNext, wMagic,
-                                           nBitsM1, wMask, bPrev);
+                                           nBitsM1, bPrev);
         assert((  (cAlg == 'p') ? ParityLfsr(wNext, wMagic,
                                              nBitsM1, wMask, !bPrev)
                 : (cAlg == 'o') ?    OldLfsr(wNext, wMagic,
                                              nBitsM1, wMask, !bPrev)
                 :                   FastLfsr(wNext, wMagic,
-                                             nBitsM1, wMask, !bPrev) )
+                                             nBitsM1, !bPrev) )
             == wPrev);
+        }
         ++wPeriod;
     } while (wNext != wSeed) ;
     return wPeriod;
@@ -228,33 +331,45 @@ main(int argc, char *argv[])
 
     Word_t wPeriod;
     if (bPrint) {
-        wPeriod = lfsr(wBits, cAlg == 'f' ? wReverseMagic : wMagic, wSeed,
-                       cAlg, bPrev, /* bPrint */ 1);
+        wPeriod = lfsr(wBits,
+                       cAlg == 'f' || cAlg == 'F' ? wMagic : wReverseMagic,
+                       wSeed, cAlg, bPrev, /* bPrint */ 1);
     } else {
         switch (cAlg)
         {
         case 'p':
             wPeriod
                 = bPrev
-                    ? lfsr(wBits, wMagic, wSeed,
+                    ? lfsr(wBits, wReverseMagic, wSeed,
                            'p', /* bPrev */ 1, /* bPrint */ 0)
-                    : lfsr(wBits, wMagic, wSeed,
+                    : lfsr(wBits, wReverseMagic, wSeed,
                            'p', /* bPrev */ 0, /* bPrint */ 0);
+            break;
         case 'o':
             wPeriod
                 = bPrev
-                    ? lfsr(wBits, wMagic, wSeed,
+                    ? lfsr(wBits, wReverseMagic, wSeed,
                            'o', /* bPrev */ 1, /* bPrint */ 0)
-                    : lfsr(wBits, wMagic, wSeed,
+                    : lfsr(wBits, wReverseMagic, wSeed,
                            'o', /* bPrev */ 0, /* bPrint */ 0);
+            break;
         case 'f':
         default:
             wPeriod
                 = bPrev
-                    ? lfsr(wBits, wReverseMagic, wSeed,
+                    ? lfsr(wBits, wMagic, wSeed,
                            'f', /* bPrev */ 1, /* bPrint */ 0)
-                    : lfsr(wBits, wReverseMagic, wSeed,
+                    : lfsr(wBits, wMagic, wSeed,
                            'f', /* bPrev */ 0, /* bPrint */ 0);
+            break;
+        case 'F':
+            wPeriod
+                = bPrev
+                    ? lfsr(wBits, wMagic, wSeed,
+                           'F', /* bPrev */ 1, /* bPrint */ 0)
+                    : lfsr(wBits, wMagic, wSeed,
+                           'F', /* bPrev */ 0, /* bPrint */ 0);
+            break;
         }
     }
     printf("wPeriod 0x%" Owx"\n", wPeriod);
