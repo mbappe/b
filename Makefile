@@ -419,3 +419,8 @@ t.i: t.c
 JudyMalloc.i: JudyMalloc.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
+psearch: psearch.cpp
+	$(CXX) -msse4.2 psearch.cpp -o psearch
+
+psearch256: psearch.cpp
+	$(CXX) -mavx2 -mavx -msse4.2 psearch.cpp -o psearch256
