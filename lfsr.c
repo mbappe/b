@@ -171,6 +171,8 @@ ParityLfsr(Word_t wSeed, Word_t wMagic, int nBitsM1, Word_t wMask, int bPrev)
    return wNext;
 }
 
+#if 0 // We're using SplayedFastLfsr now.
+
 #define FAST_PREV(_wSeed, _wMagic, _nBitsM1) \
     ( (((_wSeed) ^ ((_wMagic) & -((_wSeed) >> (_nBitsM1)))) << 1) \
         | ((_wSeed) >> (_nBitsM1)) )
@@ -199,6 +201,8 @@ FastLfsr(Word_t wSeed, Word_t wMagic, int nBitsM1, int bPrev)
     }
     return wNext;
 }
+
+#endif // 0
 
 #define SPLAYED_FAST_PREV(_wSeed, _wMagic, _nBitsM1, _nBitsShift) \
     ( (((_wSeed) ^ ((_wMagic) & -((_wSeed) >> (_nBitsM1)))) << (_nBitsShift)) \
@@ -258,51 +262,59 @@ lfsr(int nBits, Word_t wMagic, Word_t wSeed, char cAlg, int bPrev, int bPrint)
     Word_t wNext = wSeed;
     Word_t wPrev;
     Word_t wPeriod = 0;
-    int nBitsShift = 2; // pick a number for splay
-    printf("nBitsShift %d\n", nBitsShift);
-    Word_t wLsbs = (Word_t)-1 / ((1 << nBitsShift) - 1);
-    if (sizeof(Word_t) * 8 % nBitsShift != 0) {
-        wLsbs >>= sizeof(Word_t) * 8 % nBitsShift;
-    }
+#ifndef cnBitsShift
+#define cnBitsShift  2 // pick a number for splay
+#endif // cnBitsShift
+    printf("cnBitsShift %d\n", cnBitsShift);
+    Word_t wLsbs = (Word_t)-1 / ((1 << cnBitsShift) - 1);
+    wLsbs >>= sizeof(Word_t) * 8 % cnBitsShift;
     printf("wLsbs 0x%" Owx"\n", wLsbs);
     Word_t wSplayedSeed = PDEP(wSeed, wLsbs);
     printf("wSplayedSeed 0x%" Owx"\n", wSplayedSeed);
     Word_t wSplayedMagic = PDEP(wMagic, wLsbs);
     printf("wSplayedMagic 0x%" Owx"\n", wSplayedMagic);
+    if (cAlg == 'F') {
+        wNext = wSplayedSeed;
+        wMagic = wSplayedMagic;
+        nBitsM1 *= cnBitsShift;
+    }
+#ifndef NDEBUG
+    Word_t wBack;
+#endif // NDEBUG
     do {
         if (bPrint) { printf("0x%" Owx"\n", wNext); }
         wPrev = wNext;
-#ifndef NDEBUG
-        Word_t wBack;
-#endif // NDEBUG
         switch (cAlg) {
-        case 'F':
-            wNext = SplayedFastLfsr(wNext, wSplayedMagic,
-                                    nBitsM1 * nBitsShift, nBitsShift, bPrev);
+        case 'F':     
+            //wNext = FastLfsr(wNext, wMagic, nBitsM1, bPrev);
+            wNext = SplayedFastLfsr(wNext, wMagic,
+                                    nBitsM1, cnBitsShift, bPrev);
 #ifndef NDEBUG
-            wBack = SplayedFastLfsr(wNext, wSplayedMagic,
-                                    nBitsM1 * nBitsShift, nBitsShift, !bPrev);
+            //wBack = FastLfsr(wNext, wMagic, nBitsM1, !bPrev);
+            wBack = SplayedFastLfsr(wNext, wMagic,
+                                    nBitsM1, cnBitsShift, !bPrev);
 #endif // NDEBUG
             break;
-        case 'f':
-            wNext = FastLfsr(wNext, wMagic, nBitsM1, bPrev);
+        case 'f':     
+            //wNext = FastLfsr(wNext, wMagic, nBitsM1, bPrev);
+            wNext = SplayedFastLfsr(wNext, wMagic, nBitsM1, 1, bPrev);
 #ifndef NDEBUG
-            wBack = FastLfsr(wNext, wMagic, nBitsM1, !bPrev);
+            //wBack = FastLfsr(wNext, wMagic, nBitsM1, !bPrev);
+            wBack = SplayedFastLfsr(wNext, wMagic, nBitsM1, 1, !bPrev);
 #endif // NDEBUG
             break;
-        case 'o':
+        case 'o':     
             wNext = OldLfsr(wNext, wMagic, nBitsM1, wMask, bPrev);
 #ifndef NDEBUG
             wBack = OldLfsr(wNext, wMagic, nBitsM1, wMask, !bPrev);
 #endif // NDEBUG
             break;
-        case 'p':
+        case 'p':     
             wNext = ParityLfsr(wNext, wMagic, nBitsM1, wMask, bPrev);
 #ifndef NDEBUG
             wBack = ParityLfsr(wNext, wMagic, nBitsM1, wMask, !bPrev);
 #endif // NDEBUG
             break;
-        default: assert(0);
         }
 #ifndef NDEBUG
         if (wBack != wPrev) {
