@@ -27,16 +27,28 @@
 #include <typeinfo>
 #include <sstream>
 #include <iostream>
+#include <iomanip>
 #include "emmintrin.h" // SSE2
 #include "smmintrin.h"
 #if defined(__AVX__)
 #include "immintrin.h" // mm256_set1_epi64x
 #endif // defined(__AVX__)
 
+using namespace std;
+
+#if defined(__LP64__)
+#define Owx "016lx"
+#elif defined(_WIN64)
+#define Owx "016llx"
+#else // defined(__LP64__)
+#define Owx "08x"
+#endif // defined(__LP64__)
+
 #if defined(__SSE2__)
 template <typename T>
-std::string __m128i_toString(const __m128i var) {
-    std::stringstream sstr;
+string __m128i_toString(const __m128i var) {
+    stringstream sstr;
+    sstr << hex << setfill('0');
     const T* values = (const T*)&var;
     if (sizeof(T) == 1) {
         for (unsigned int i = 0; i < sizeof(__m128i); i++) {
@@ -44,6 +56,7 @@ std::string __m128i_toString(const __m128i var) {
         }
     } else {
         for (unsigned int i = 0; i < sizeof(__m128i) / sizeof(T); i++) {
+            sstr << setw(16);
             sstr << values[i] << " ";
         }
     }
@@ -53,8 +66,8 @@ std::string __m128i_toString(const __m128i var) {
 
 #if defined(__AVX__)
 template <typename T>
-std::string __m256i_toString(const __m256i var) {
-    std::stringstream sstr;
+string __m256i_toString(const __m256i var) {
+    stringstream sstr;
     const T* values = (const T*)&var;
 //#if 0
     if (sizeof(T) == 1) {
@@ -465,9 +478,13 @@ SearchSetupBucket(Word_t wKey, int nBits, int bKeyAlreadyMasked, int bPackLow,
     Word_t wLsbs, wMsbs, wKeys;
     SearchSetupWord(wKey, nBits, bKeyAlreadyMasked, bPackLow,
                      wLsbs, wMsbs, wKeys);
-    Bucket_t xLsbs = MmSet1<Bucket_t>((__m64)wLsbs);
-    Bucket_t xMsbs = MmSet1<Bucket_t>((__m64)wMsbs);
-    Bucket_t xKeys = MmSet1<Bucket_t>((__m64)wKeys);
+    //cout << "SearchSetupWord wLsbs " << hex << wLsbs << endl;
+    rxLsbs = MmSet1<Bucket_t>((__m64)wLsbs);
+    //cout << "SearchSetupWord rxLsbs " << __m128i_toString<Word_t>(rxLsbs) << endl;
+    rxMsbs = MmSet1<Bucket_t>((__m64)wMsbs);
+    //cout << "SearchSetupWord rxMsbs " << __m128i_toString<Word_t>(rxMsbs) << endl;
+    rxKeys = MmSet1<Bucket_t>((__m64)wKeys);
+    //cout << "SearchSetupWord rxKeys " << __m128i_toString<Word_t>(rxKeys) << endl;
 }
 
 template<typename Word_t>
@@ -490,6 +507,9 @@ SearchBucket(Bucket_t xBucket, Word_t wKey, int nBits, int bKeyAlreadyMasked,
     Bucket_t xLsbs, xMsbs, xKeys;
     SearchSetupBucket(wKey, nBits, bKeyAlreadyMasked, bPackLow,
                       xLsbs, xMsbs, xKeys);
+    cout << "SearchBucket xLsbs " << __m128i_toString<Word_t>(xLsbs) << endl;
+    cout << "SearchBucket xMsbs " << __m128i_toString<Word_t>(xMsbs) << endl;
+    cout << "SearchBucket xKeys " << __m128i_toString<Word_t>(xKeys) << endl;
     Bucket_t xXor = xKeys ^ xBucket; // get zero in slots with matching key
     return (xXor - xLsbs) & ~xXor & xMsbs; // xMatches
 }
@@ -507,10 +527,11 @@ static inline int
 HasKeyBucket(Bucket_t xBucket, Word_t wKey, int nBits,
            int bKeyOk, int bPackLow)
 {
+    cout << "HasKeyBucket xBucket " << __m128i_toString<Word_t>(xBucket) << endl;
     __m128i xMatches = SearchBucket(xBucket, wKey, nBits, bKeyOk, bPackLow);
+    cout << "HasKeyBucket xMatches " << __m128i_toString<Word_t>(xMatches) << endl;
     __m128i xZero = _mm_setzero_si128(); // get zero for compare
     return ! _mm_testc_si128(xZero, xMatches); // compare with zero
-
 }
 
 #if 0
@@ -553,8 +574,8 @@ Bucket<bytes-log2>FindSlot<bits>
 int
 main(int argc, char **argv)
 {
-    if (argc != 4) {
-        printf("usage: %s <# of bits> <key> <bucket>\n", argv[0]);
+    if ((argc != 4) && (argc != 5) && (argc != 7)) {
+        printf("usage: %s <# of bits> <key> <bucket>...\n", argv[0]);
         exit(1);
     }
 
@@ -574,6 +595,14 @@ main(int argc, char **argv)
     Word_t wKey = strtoul(argv[2], NULL, 0); printf("wKey 0x%lx\n", wKey);
     Word_t wBucket = strtoul(argv[3], NULL, 0);
     printf("wBucket 0x%016lx\n", wBucket);
+
+    char **v = &argv[3];
+    Word_t awBucket[4];
+    for (int ii = 0; ii < argc - (v - argv); ii++) {
+        awBucket[ii] = strtoul(v[ii], NULL, 0);
+        printf("awBucket[%d] 0x%" Owx"\n", ii, awBucket[ii]);
+    }
+
     printf("LocateKeyHi  %d\n", LocateKeyHi(&wBucket, wKey, nBL)); 
     printf("LocateKeyHiAlt %d\n", LocateKeyHiAlt(&wBucket, wKey, nBL)); 
     printf("LocateKeyHiR %d\n", LocateKeyHiR(&wBucket, wKey, nBL)); 
@@ -610,7 +639,9 @@ main(int argc, char **argv)
 
         //__m64 wBucket = (__m64)(uintptr_t)0; // vector of one long long
         __m128i xBucket; // vector of two long long values
+        xBucket = *(__m128i *)awBucket;
         //__m256i yBucket = (__m256i)xBucket; // vector of four long long
+        cout << "xBucket " << __m128i_toString<Word_t>(xBucket) << endl;
         printf("HasKeyBucket %d\n",
                HasKeyBucket<__m128i, Word_t>(xBucket, wKey, nBL, 
                                              /* bKeyAlreadyMasked */ 0,
@@ -621,9 +652,10 @@ main(int argc, char **argv)
     {
         __m256i m8;
         m8 = Mm256Set1Epi64x((uint64_t)0);
-        std::cout << "m8 " << __m256i_toString<char>(m8) << std::endl;
+        cout << "m8 " << __m256i_toString<char>(m8) << endl;
     }
 #endif // defined(__AVX__)
-    std::cout << "(char)0 '" << (char)0 << "'" << std::endl;
-    std::cout << "(int)(char)0 '" << (int)(char)0 << "'" << std::endl;
+    // This shows why __m128i_toString has a special case for sizeof(T) == 1.
+    cout << "(char)0 '" << (char)0 << "'" << endl;
+    cout << "(int)(char)0 '" << (int)(char)0 << "'" << endl;
 }
