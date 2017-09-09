@@ -95,19 +95,27 @@ endif
 
   MFLAGS += -m$(BPW)
 # MFLAGS += -mmmx
-# MFLAGS += -mno-mmx
-# MFLAGS += -msse2
-# MFLAGS += -no-msse2
-# MFLAGS += -msse3
-# MFLAGS += -mno-sse3
-# MFLAGS += -mssse3
-# MFLAGS += -mno-ssse3
-# MFLAGS += -msse4.1
-# MFLAGS += -mno-sse4.1
-  MFLAGS += -msse4.2
+# MFLAGS += -mno-mmx      # implies no -msse
+# MFLAGS += -msse         # implies mmx
+# MFLAGS += -mno-sse      # implies no -msse2
+# MFLAGS += -msse2        # implies -msse
+# MFLAGS += -no-msse2     # implies no -msse3
+# MFLAGS += -msse3        # implies -msse2
+# MFLAGS += -mno-sse3     # implies no -mssse3
+# MFLAGS += -mssse3       # implies -msse3
+# MFLAGS += -mno-ssse3    # implies no -msse4.1
+# MFLAGS += -msse4.1      # implies -mssse3
+# MFLAGS += -mno-sse4.1   # implies no -msse4.2
+  MFLAGS += -msse4.2      # implies -msse4.1
+# MFLAGS += -mno-sse4.2   # implies no -mavx
+# MFLAGS += -msse4        # implies -msse4.2
+# MFLAGS += -mno-sse4     # implies no -msse4.1
+# MFLAGS += -mavx         # implies -msse4.2
+# MFLAGS += -mno-avx      # implies no -mavx2
+# MFLAGS += -mavx2        # implies -mavx
+# MFLAGS += -mno-avx2
 # MFLAGS += -mbmi2
 # MFLAGS += -mavx512f
-# MFLAGS += -mno-sse4.2
 # MFLAGS += -march=native
 # MFLAGS += -mfpmath=sse
 
@@ -419,8 +427,27 @@ t.i: t.c
 JudyMalloc.i: JudyMalloc.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
-psearch: psearch.cpp
-	$(CXX) -msse4.2 psearch.cpp -o psearch
+# X=-mno-mmx Y= Z=32 make psearch
+# X=-mno-mmx Y= Z=64 make psearch
+# X=-msse2 Y=-mno-sse3 Z=32 make psearch
+# X=-msse2 Y=-mno-sse3 Z=64 make psearch
+# X=-msse4 Y=-mno-avx Z=32 make psearch
+# X=-msse4 Y=-mno-avx Z=64 make psearch
+# X=-mavx2 Y= Z=32 make psearch
+# X=-mavx2 Y= Z=64 make psearch
 
-psearch256: psearch.cpp
-	$(CXX) -mavx2 -mavx -msse4.2 psearch.cpp -o psearch256
+psearch-all:
+	X=-mno-mmx Y= Z=32 make psearch
+	X=-mno-mmx Y= Z=64 make psearch
+	X=-msse2 Y=-mno-sse3 Z=32 make psearch
+	X=-msse2 Y=-mno-sse3 Z=64 make psearch
+	X=-msse4 Y=-mno-avx Z=32 make psearch
+	X=-msse4 Y=-mno-avx Z=64 make psearch
+	X=-mavx2 Y= Z=32 make psearch
+	X=-mavx2 Y= Z=64 make psearch
+
+psearch: psearch$(X)-$(Z) ;
+
+psearch$(X)-$(Z): psearch.cpp
+	$(CXX) $(X) $(Y) -m$(Z) -I. psearch.cpp -o $@
+
