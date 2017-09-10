@@ -292,10 +292,10 @@ btime: Judy1LHTime
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
 Judy1LHCheck: Judy1LHCheck.c libb1.a
 	$(CC) $(CFLAGS) -Wno-sign-compare \
- -DMIKEY $(DEFINES) -o $@ $^ $(LDFLAGS) -lJudy -lm
+ $(DEFINES) -o $@ $^ $(LDFLAGS) -lJudy -lm
 
 c++check: Judy1LHCheck.c libb1.a
-	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) -x c++ Judy1LHCheck.c \
+	$(CXX) $(CXXFLAGS) $(DEFINES) -x c++ Judy1LHCheck.c \
  -x none libb1.a -o $@ $(LDFLAGS) -lJudy -lm
 
 bcheck: Judy1LHCheck
