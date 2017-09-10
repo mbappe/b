@@ -29,7 +29,7 @@ BPW ?= 64
 
 # We can't use b.h to set MALLOC_ALIGNMENT because it is not included
 # in JudyMalloc.c or dlmalloc.c. We have to set it here.
-# And we want the bump it to 16 for 32-bit by default.
+# And we want to bump it to 16 for 32-bit by default.
 ifeq "$(BPW)" "32"
 ifeq "$(cnBitsMallocMask)" ""
   DEFINES += -DMALLOC_ALIGNMENT=16
