@@ -7,15 +7,16 @@
 
 # Run the following to build b:
 #   make clean
-#   [CC=<cc|clang|gcc|icc>] [BPW=<32|64>] [DEFINES="..."] make
+#   [CC=<cc|clang[++]|gcc|icc|c++|g++>] [BPW=<32|64>] [DEFINES="..."] make b
 # Run the following command to build everything:
 #   make clean
-#   [CC=<cc|clang|gcc|icc>] [BPW=<32|64>] [DEFINES="..."] make all
+#   [CC=<cc|clang[++]|gcc|c++|g++>] [BPW=<32|64>] [DEFINES="..."] make all
 # examples:
 #   make clean all
 #   CC=clang CSTD=c11 DEFINES=-DDEBUG make clean default
 #   CC=clang++ CSTD=c++14 make b
 #   CXX=clang++ CXXSTD=c++11 make bcheck
+CC=c++
 
 # I recommend the make clean first because there are so many dependencies
 # that are not discovered by make, e.g. changes in environment variables.
