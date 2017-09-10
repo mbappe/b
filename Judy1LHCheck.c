@@ -11,28 +11,6 @@
 
 #include <Judy.h>
 
-#if defined(RAMMETRICS)
-Word_t    j__AllocWordsTOT;
-
-Word_t    j__AllocWordsJBB;
-Word_t    j__AllocWordsJBU;
-Word_t    j__AllocWordsJBL;
-Word_t    j__AllocWordsJLB1;
-Word_t    j__AllocWordsJLL1;
-Word_t    j__AllocWordsJLL2;
-Word_t    j__AllocWordsJLL3;
-Word_t    j__AllocWordsJLL4;
-Word_t    j__AllocWordsJLL5;
-Word_t    j__AllocWordsJLL6;
-Word_t    j__AllocWordsJLL7;
-Word_t    j__AllocWordsJLLW;
-Word_t    j__AllocWordsJV;
-
-Word_t    j__MFlag;                     // Print memory allocation on stderr
-Word_t    j__TotalBytesAllocated;       //
-Word_t    j__MalFreeCnt;                // JudyMalloc() + Judyfree() count
-#endif // defined(RAMMETRICS)
-
 // Compile:
 // # cc -O Judy1LHCheck.c -lm -lJudy -o Judy1LHCheck
 

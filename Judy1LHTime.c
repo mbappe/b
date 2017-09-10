@@ -85,28 +85,25 @@ Word_t    j__DirectHits;                // Number of direct hits -- no search
 Word_t    j__SearchGets;                // Number of object calls
 //Word_t    j__TreeDepth;                 // number time Branch_U called
 
-Word_t    j__AllocWordsTOT;
-Word_t    j__AllocWordsJBB;
-Word_t    j__AllocWordsJBU;
-Word_t    j__AllocWordsJBL;
-Word_t    j__AllocWordsJLB1;
-Word_t    j__AllocWordsJLL1;
-Word_t    j__AllocWordsJLL2;
-Word_t    j__AllocWordsJLL3;
+extern Word_t    j__AllocWordsTOT;
+extern Word_t    j__MFlag;                     // Print memory allocation on stderr
+extern Word_t    j__TotalBytesAllocated;       //
+extern Word_t    j__MalFreeCnt;                // JudyMalloc() + Judyfree() count
 
-Word_t    j__AllocWordsJLL4;
-Word_t    j__AllocWordsJLL5;
-Word_t    j__AllocWordsJLL6;
-Word_t    j__AllocWordsJLL7;
-
-
-Word_t    j__AllocWordsJLLW;
-
-Word_t    j__AllocWordsJV;
-
-Word_t    j__MFlag;                     // Print memory allocation on stderr
-Word_t    j__TotalBytesAllocated;       //
-Word_t    j__MalFreeCnt;                // JudyMalloc() + Judyfree() count
+extern Word_t    j__AllocWordsJBB;
+extern Word_t    j__AllocWordsJBU;
+extern Word_t    j__AllocWordsJBL;
+extern Word_t    j__AllocWordsJLB1;
+extern Word_t    j__AllocWordsJLL1;
+extern Word_t    j__AllocWordsJLL2;
+extern Word_t    j__AllocWordsJLL3;
+extern Word_t    j__AllocWordsJLL4;
+extern Word_t    j__AllocWordsJLL5;
+extern Word_t    j__AllocWordsJLL6;
+extern Word_t    j__AllocWordsJLL7;
+extern Word_t    j__AllocWordsJLLW;
+extern Word_t    j__AllocWordsJV;
+extern Word_t    j__NumbJV;
 
 // This 64 Bit define may NOT work on all compilers
 
@@ -493,7 +490,8 @@ Word_t    PreStack = 0;                 // to test for TLB collisions with stack
 
 Word_t    Offset = 0;                   // Added to Key
 Word_t    bSplayKeyBitsFlag = 0;        // Splay key bits.
-Word_t    wSplayMask = 0xff00ffff;      // Revisit in main for 64-bit init.
+Word_t    wSplayMask = 0x55555555;      // Revisit in main for 64-bit init.
+//Word_t    wSplayMask = 0xff00ffff;      // Revisit in main for 64-bit init.
 Word_t    wCheckBit = 0;                // Bit to complement for gFlag.
 
 Word_t    TValues = 1000000;            // Maximum numb retrieve timing tests
@@ -1043,13 +1041,15 @@ main(int argc, char *argv[])
     void     *JL = NULL;                // JudyL
     void     *JH = NULL;                // JudyHS
 
+    // wSplayMask = 0x5555555555555555.
     // wSplayMask = 0xeeee00804020aaff.
     // Is there a better way to initialize wSplayMask to a 64-bit value
     // on a 64-bit system that won't cause compiler complaints on a 32-bit
     // system?
     if (sizeof(Word_t) == 8) {
         wSplayMask
-            = (((((0xeeeeUL << 16) | 0x0080) << 16) | 0x4020) << 16) | 0xaaff;
+            = (((((0x5555UL << 16) | 0x5555) << 16) | 0x5555) << 16) | 0x5555;
+            //= (((((0xeeeeUL << 16) | 0x0080) << 16) | 0x4020) << 16) | 0xaaff;
     }
 
 #ifdef DEADCODE                         // see TimeNumberGen()
@@ -2007,7 +2007,7 @@ main(int argc, char *argv[])
 #ifdef CALC_NEXT_KEY
     StartSeed = *PInitSeed;
 #else // CALC_NEXT_KEY
-    Seed_t TValuesSeed = { 0 }; // unnecessary init to make gcc happy
+    Seed_t TValuesSeed;
     if (bLfsrOnly)
     {
         StartSeed = (NewSeed_t)PInitSeed->Seeds[0];
@@ -2053,7 +2053,7 @@ main(int argc, char *argv[])
         }
         StartSeed = FileKeys;
     }
-    Seed_t DeltaSeed = { 0 }; // unnecessary init to make gcc happy
+    Seed_t DeltaSeed;
 #endif // CALC_NEXT_KEY
 
 // ============================================================

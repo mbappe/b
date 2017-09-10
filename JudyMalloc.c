@@ -31,23 +31,30 @@
 #endif  // TRACEJM
 
 // Global in case anyone wants to know (kind of kludgy, but only for testing)
-
-#ifdef  RAMMETRICS
-
-#ifdef MIKEY
-#define MIKEY_EXTERN extern
-#else // MIKEY
-#define MIKEY_EXTERN
-#endif // MIKEY
-
-MIKEY_EXTERN Word_t    j__AllocWordsTOT;     // words given by JudyMalloc including overhead
-MIKEY_EXTERN Word_t    j__MalFreeCnt;                // keep track of total malloc() + free()
-MIKEY_EXTERN Word_t    j__MFlag;                     // Print memory allocation on stderr
-MIKEY_EXTERN Word_t    j__TotalBytesAllocated;       // mmapped by dlmalloc
-
+Word_t    j__AllocWordsTOT;     // words given by JudyMalloc including overhead
+Word_t    j__MalFreeCnt;                // keep track of total malloc() + free()
+Word_t    j__MFlag;                     // Print memory allocation on stderr
+Word_t    j__TotalBytesAllocated;       // mmapped by dlmalloc
 Word_t    j__RequestedWordsTOT;       // words requested by Judy via JudyMalloc
 
-#endif  // RAMMETRICS
+// Globals used by JudyMallocIF.c.
+// We define them here so they are not defined in both Judy1MallocIF.c and
+// JudyLMallocIF.c.
+Word_t    j__AllocWordsJBB;
+Word_t    j__AllocWordsJBU;
+Word_t    j__AllocWordsJBL;
+Word_t    j__AllocWordsJLB1;
+// Word_t    j__AllocWordsJLB2;
+Word_t    j__AllocWordsJLL1;
+Word_t    j__AllocWordsJLL2;
+Word_t    j__AllocWordsJLL3;
+Word_t    j__AllocWordsJLL4;
+Word_t    j__AllocWordsJLL5;
+Word_t    j__AllocWordsJLL6;
+Word_t    j__AllocWordsJLL7;
+Word_t    j__AllocWordsJLLW;
+Word_t    j__AllocWordsJV;
+Word_t    j__NumbJV;
 
 // Use -DLIBCMALLOC if you want to use the libc malloc() instead of this
 // internal memory allocator.  (This one is much faster on some OS).
