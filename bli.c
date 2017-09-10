@@ -536,7 +536,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     // nBLUp is used only for SKIP_TO_XX_SW and INSERT.
     // I think it will eventually be used for REMOVE and for
     // CODE_XX_SW without SKIP_TO_XX_SW.
-    int nBLUp = nBLUp; (void)nBLUp; // silence gcc
+    int nBLUp /*= nBLUp*/; (void)nBLUp; // silence gcc
 
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
 #if defined(SAVE_PREFIX_TEST_RESULT)
