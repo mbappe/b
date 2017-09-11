@@ -450,5 +450,5 @@ psearch-all:
 psearch: psearch$(X)-$(Z) ;
 
 psearch$(X)-$(Z): psearch.cpp
-	$(CXX) $(X) $(Y) -m$(Z) -I. psearch.cpp -o $@
+	$(CXX) -std=gnu++11 $(X) $(Y) -m$(Z) $(DEFINES) -I. psearch.cpp -o $@
 

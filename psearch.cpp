@@ -9,6 +9,8 @@
 #include <string.h>
 #include <assert.h>
 #include <typeinfo>
+#include <type_traits>
+#include <limits>
 #include <sstream>
 #include <iostream>
 #include <iomanip>
@@ -26,6 +28,14 @@
 #elif defined(__MMX__)
 #include "mmintrin.h" // MMX
 #endif // defined(__AVX2__)
+
+#ifndef cnBitsPerWord
+#if defined(__LP64__) || defined(_WIN64)
+#define cnBitsPerWord 64
+#else // defined(__LP64__) || defined(_WIN64)
+#define cnBitsPerWord 32
+#endif // defined(__LP64__) || defined(_WIN64)
+#endif // cnBitsPerWord
 
 // Overloading is complicated when depending on different sizes of ints for
 // function resolution.
@@ -64,6 +74,9 @@ typedef unsigned long Word_t;
 #if defined(U6_IS_UINT64)
 typedef uint64_t u6_t; // ulong on LP64, ulonglong otherwise?
 #else // defined(U6_IS_UINT64)
+// u6_t is a 64-bit unsigned integer type on both 32-bit and 64-bit platforms
+// that uses the same native type on both.
+// It can help with C++ overload function resolution.
 typedef unsigned long long u6_t;
 #endif // defined(U6_IS_UINT64)
 
@@ -93,6 +106,8 @@ typedef unsigned long long u6_t;
 #define MIN(_a, _b) ((_a) < (_b) ? (_a) : (_b))
 
 #if !defined(__SSE2__)
+// A function can't return an array so we define __mXXXi as a struct
+// if we are emulating it.
 // What is a vector?  Is it something better than a struct for this?
 typedef struct { u6_t u6[2]; } __m128i;
 #endif // !defined(__SSE2__)
@@ -241,26 +256,38 @@ using namespace std;
 // There must be a more elegant way to summarize.
 //
 
-template <typename mx_t>
+template <typename x_t>
 string
-mx_toString(const mx_t rmx)
+x_toString(const x_t rx)
 {
     stringstream sstr;
     sstr << hex << setfill('0');
-    const u6_t* pu6 = (const u6_t*)&rmx;
-    for (unsigned int i = 0; i < sizeof(mx_t) / sizeof(u6_t); i++) {
+    const u6_t* pu6 = (const u6_t*)&rx;
+    for (int i = 0; i < sizeof(x_t) / sizeof(u6_t); i++) {
         if (i != 0) { sstr << "_"; }
-        sstr << setw(16) << pu6[i];
+        sstr << "0x" << setw(16) << pu6[i];
     }
     return sstr.str();
 }
 
-template<typename ux_t, typename uk_t>
+template<typename x_t, typename k_t>
 void
-Set1(ux_t &rux, uk_t uk)
+Set1(x_t &rx, k_t k)
 {
-    assert(sizeof(uk) != sizeof(rux)); // call is a no-op
-    rux = uk * ((ux_t)-1 / (uk_t )-1);
+    // If the size of x_t is the same as the size of k_t then calling this
+    // function is a no-op. The compiler might be smart enough to not generate
+    // any code, but it might be an indication that there is something
+    // unexpected happening in our code.
+    assert(sizeof(k) != sizeof(rx));
+#ifdef MAKE_UNSIGNED
+    typename make_unsigned<x_t>::type ux_t;
+    typename make_unsigned<k_t>::type uk_t;
+    rx = k * ((ux_t)-1 / (uk_t)-1);
+#else // MAKE_UNSIGNED
+    assert(!numeric_limits<x_t>::is_signed);
+    assert(!numeric_limits<k_t>::is_signed);
+    rx = k * ((x_t)-1 / (k_t)-1);
+#endif // MAKE_UNSIGNED
 }
 
 #if defined(__SSE2__)
@@ -272,12 +299,12 @@ void Set1(__m128i& rm7, u6_t u6) { rm7 = _mm_set1_epi64x(u6); }
 
 #else // defined(__SSE2__)
 
-template<typename uk_t>
+template<typename k_t>
 void
-Set1(__m128i& rm7, uk_t uk)
+Set1(__m128i& rm7, k_t k)
 {
-    Set1(((u6_t *)&rm7)[0], uk);
-    Set1(((u6_t *)&rm7)[1], uk);
+    Set1(((u6_t *)&rm7)[0], k);
+    Set1(((u6_t *)&rm7)[1], k);
 }
 
 #endif // defined(__SSE2__)
@@ -291,22 +318,22 @@ void Set1(__m256i& rm8, u6_t u6) { rm8 = _mm256_set1_epi64x(u6); }
 
 #else // defined(__AVX__)
 
-template<typename uk_t>
+template<typename k_t>
 void
-Set1(__m256i& rm8, uk_t uk)
+Set1(__m256i& rm8, k_t k)
 {
-    Set1(((__m128i *)&rm8)[0], uk);
-    Set1(((__m128i *)&rm8)[1], uk);
+    Set1(((__m128i *)&rm8)[0], k);
+    Set1(((__m128i *)&rm8)[1], k);
 }
 
 #endif // defined(__AVX__)
 
-template<typename uk_t>
+template<typename k_t>
 void
-Set1(__m512i& rm9, uk_t uk)
+Set1(__m512i& rm9, k_t k)
 {
-    Set1(((__m256i *)&rm9)[0], uk);
-    Set1(((__m256i *)&rm9)[1], uk);
+    Set1(((__m256i *)&rm9)[0], k);
+    Set1(((__m256i *)&rm9)[1], k);
 }
 
 // Set1 for arbitray size key slots.
@@ -325,10 +352,10 @@ Set1(x_t& rx, Word_t w, int nBits, bool bPackLo)
         Set1(rx, (uint8_t)w);
     } else if (nBits == 16) {
         Set1(rx, (uint16_t)w);
-#if defined(__LP64__) || defined(_WIN64)
+#if cnBitsPerWord > 32
     } else if (nBits == 32) {
         Set1(rx, (uint32_t)w);
-#endif // defined(__LP64__) || defined(_WIN64)
+#endif // cnBitsPerWord > 32
 #if !defined(ONLY_NATIVE_SIZES)
     } else if (nBits != sizeof(Word_t) * 8) {
         int nBitsShift = bPackLo ? MIN(sizeof(x_t), sizeof(u6_t)) * 8 % nBits : 0;
@@ -346,41 +373,41 @@ Set1(x_t& rx, Word_t w, int nBits, bool bPackLo)
 // Sort order doesn't matter.
 // Search assumes all full slots contain valid keys.
 // Search assumes the bits in wKey above nBL are zero.
-template<typename ux_t>
-ux_t
-Search(ux_t ux, Word_t wKey, int nBL, bool bPackSlotsHi)
+template<typename x_t>
+x_t
+Search(x_t x, Word_t wKey, int nBL, bool bPackSlotsHi)
 {
     Word_t wMask = (1ULL << (nBL - 1)) * 2 - 1; // (1 << nBL) - 1
-    ux_t uxLsbs = -1ULL / wMask; // lsb in each key slot
+    x_t xLsbs = -1ULL / wMask; // lsb in each key slot
     // shift to handle non-power-of-two-bit-size keys if necessary
 #if 1
     if (!bPackSlotsHi) {
-        uxLsbs >>= sizeof(ux_t) * 8 % nBL;
+        xLsbs >>= sizeof(x_t) * 8 % nBL;
     }
 #else
     // Does this get compiled out?
-    uxLsbs >>= (sizeof(ux_t) * 8 % nBL) * !bPackSlotsHi;
+    xLsbs >>= (sizeof(x_t) * 8 % nBL) * !bPackSlotsHi;
 #endif
-    ux_t uxKeys = wKey * uxLsbs; // replicate key; put in every slot
-    ux_t uxMsbs = uxLsbs << (nBL - 1); // msb in each key slot
-    ux_t uxXor = uxKeys ^ ux; // get zero in slot with matching key
-    ux_t uxMagic = (uxXor - uxLsbs) & ~uxXor & uxMsbs;
-    return uxMagic; // bHasKey == bXorHasZero == (ixMagic != 0);
+    x_t xKeys = wKey * xLsbs; // replicate key; put in every slot
+    x_t xMsbs = xLsbs << (nBL - 1); // msb in each key slot
+    x_t xXor = xKeys ^ x; // get zero in slot with matching key
+    x_t xMagic = (xXor - xLsbs) & ~xXor & xMsbs;
+    return xMagic; // bHasKey == bXorHasZero == (ixMagic != 0);
 }
 
-template<typename ux_t>
-ux_t
-Search(ux_t *pux, Word_t wKey, int nBL, bool bPackSlotsHi)
+template<typename x_t>
+x_t
+Search(x_t *px, Word_t wKey, int nBL, bool bPackSlotsHi)
 {
-    return Search(*pux, wKey, nBL, bPackSlotsHi);
+    return Search(*px, wKey, nBL, bPackSlotsHi);
 }
 
-// For native size keys. Infer nBL from sizeof(ukKey).
-template<typename ux_t, typename uk_t>
-ux_t
-Search(ux_t ux, uk_t ukKey)
+// For native size keys. Infer nBL from sizeof(kKey).
+template<typename x_t, typename k_t>
+x_t
+Search(x_t x, k_t kKey)
 {
-    return Search(ux, ukKey, sizeof(ukKey) * 8, /* bPackSlotsHi */ 1);
+    return Search(x, kKey, sizeof(kKey) * 8, /* bPackSlotsHi */ 1);
 }
 
 // Intel BSF     finds   bit number of lsb set; undefined for 0.
@@ -405,17 +432,17 @@ Search(ux_t ux, uk_t ukKey)
 // bPackHi means the extra bits in Word_t or u6_t that do not make a
 // whole slot are at the low aka least significant end.
 // bSortHi means the low key is at the high aka most significant end.
-template<typename ux_t>
+template<typename x_t>
 int // nPos
-LocateKey(ux_t *pux, Word_t wKey, int nBL, bool bPackHi, bool bSortHi)
+LocateKey(x_t *px, Word_t wKey, int nBL, bool bPackHi, bool bSortHi)
 {
-    ux_t ux = *pux;
-    ux_t uxMagic = Search(ux, wKey, nBL, /* bPackHi */ 1);
-    //printf("uxMagic 0x%" O6x"\n", (u6_t)uxMagic);
-    if (uxMagic) {
+    x_t x = *px;
+    x_t xMagic = Search(x, wKey, nBL, /* bPackHi */ 1);
+    //printf("xMagic 0x%" O6x"\n", (u6_t)xMagic);
+    if (xMagic) {
         if (!bSortHi) {
-            uxMagic >>= ((nBL - 1) * bPackHi);
-            return __builtin_ctzll(uxMagic) / nBL;
+            xMagic >>= ((nBL - 1) * bPackHi);
+            return __builtin_ctzll(xMagic) / nBL;
         } else {
             // We might have one extra msb set higher than the matching key.
             // We might have multiple extra msbs set lower than the matching
@@ -424,9 +451,9 @@ LocateKey(ux_t *pux, Word_t wKey, int nBL, bool bPackHi, bool bSortHi)
             // key without an extra test.
             // If there is an extra higher msb set, then the key in the slot
             // is even and is one less than wKey.
-            int clz = __builtin_clzll(uxMagic);
-            int nPos = (clz - (sizeof(long long) - sizeof(ux_t)) * 8) / nBL;
-            Word_t wSlot = ux >> (sizeof(ux) * 8 - clz - nBL);
+            int clz = __builtin_clzll(xMagic);
+            int nPos = (clz - (sizeof(long long) - sizeof(x_t)) * 8) / nBL;
+            Word_t wSlot = x >> (sizeof(x) * 8 - clz - nBL);
             return nPos + ((wKey ^ wSlot) & 1);
         }
     } else {
@@ -434,9 +461,9 @@ LocateKey(ux_t *pux, Word_t wKey, int nBL, bool bPackHi, bool bSortHi)
     }
 }
 
-template<typename ux_t>
+template<typename x_t>
 int // nPos
-LocateHole(ux_t *pux, Word_t wKey, int nBL)
+LocateHole(x_t *px, Word_t wKey, int nBL)
 {
     // TBD
     return -1;
@@ -444,7 +471,6 @@ LocateHole(ux_t *pux, Word_t wKey, int nBL)
 
 // Is it better to assign to a reference parameter than to simply
 // return a value? For __m128i, __m256i, __m512i?
-// A function can't return an array.
 // What is a vector? Is it better than a struct for this?
 template<typename x_t> void Load(x_t& rx, x_t* px) { rx = *px; }
 template<typename x_t> x_t Load(x_t* px) { return *px; }
@@ -509,25 +535,25 @@ int /* bool */ IsZero(__m256i m8) {
 // there may be left over bits in Word_t.
 // bPackLow means the keys are packed at the low
 // end of the word.
-template<typename ux_t> // Word_t or u6_t
+template<typename x_t> // Word_t or u6_t
 void
-PreSetup(int nBits, int bPackLow, ux_t& ruxLsbs, ux_t& ruxMsbs)
+PreSetup(int nBits, int bPackLow, x_t& rxLsbs, x_t& rxMsbs)
 {
     Word_t wMask = ((Word_t)1 << (nBits - 1)) * 2 - 1;
-    ruxLsbs = (ux_t)-1 / wMask;
+    rxLsbs = (x_t)-1 / wMask;
     if (bPackLow) {
-        ruxLsbs >>= sizeof(ux_t) * 8 % nBits;
+        rxLsbs >>= sizeof(x_t) * 8 % nBits;
     }
-    ruxMsbs = ruxLsbs << (nBits - 1);
+    rxMsbs = rxLsbs << (nBits - 1);
 }
 
-template<typename ux_t>
+template<typename x_t>
 void
 Setup(Word_t wKey, int nBits, int bPackLow,
-          ux_t& ruxLsbs, ux_t& ruxMsbs, ux_t& ruxKeys)
+          x_t& rxLsbs, x_t& rxMsbs, x_t& rxKeys)
 {
-    PreSetup(nBits, bPackLow, ruxLsbs, ruxMsbs);
-    ruxKeys = wKey * ruxLsbs; // replicate key; put in every slot
+    PreSetup(nBits, bPackLow, rxLsbs, rxMsbs);
+    rxKeys = wKey * rxLsbs; // replicate key; put in every slot
 }
 
 #if 1
@@ -541,18 +567,18 @@ SetupMx(Word_t wKey, int nBits, int bPackLow,
 #endif
 
 // This version of SetupMx works only for native size keys.
-template<typename uk_t, typename mx_t>
+template<typename k_t, typename mx_t>
 void
-SetupMx(uk_t ukKey, mx_t& rmxLsbs, mx_t& rmxMsbs, mx_t& rmxKeys)
+SetupMx(k_t kKey, mx_t& rmxLsbs, mx_t& rmxMsbs, mx_t& rmxKeys)
 {
-    uk_t ukLsb = 1;
-    Set1(rmxLsbs, ukLsb);
-    //cout << "rmxLsbs " << mx_toString(rmxLsbs) << endl;
-    uk_t ukMsb = (uk_t)1 << (sizeof(uk_t) * 8 - 1);
-    Set1(rmxMsbs, ukMsb);
-    //cout << "rmxMsbs " << mx_toString(rmxMsbs) << endl;
-    Set1(rmxKeys, ukKey);
-    //cout << "rmxKeys " << mx_toString(rmxKeys) << endl;
+    k_t kLsb = 1;
+    Set1(rmxLsbs, kLsb);
+    //cout << "rmxLsbs " << x_toString(rmxLsbs) << endl;
+    k_t kMsb = (k_t)1 << (sizeof(k_t) * 8 - 1);
+    Set1(rmxMsbs, kMsb);
+    //cout << "rmxMsbs " << x_toString(rmxMsbs) << endl;
+    Set1(rmxKeys, kKey);
+    //cout << "rmxKeys " << x_toString(rmxKeys) << endl;
 }
 
 template<typename mx_t>
@@ -603,22 +629,24 @@ Search(x_t* pxBucket, Word_t wKey, int nBits, int bPackLow)
 // Will the compiler remove the conversion if it is not really needed?
 
 // This version of HasKey works only for native size keys.
-template<typename x_t, typename uk_t>
+// k_t must be unsigned
+// assert(!std::numeric_limits<k_t>::is_signed);
+template<typename x_t, typename k_t>
 int
-HasKey(x_t xBucket, uk_t ukKey)
+HasKey(x_t xBucket, k_t kKey)
 {
     x_t xLsbs, xMsbs, xKeys;
-    SetupMx(ukKey, xLsbs, xMsbs, xKeys);
+    SetupMx(kKey, xLsbs, xMsbs, xKeys);
     return !IsZero(Search(xBucket, xLsbs, xMsbs, xKeys));
 }
 
 // This version of HasKey works only for native size keys.
-template<typename x_t, typename uk_t>
+template<typename x_t, typename k_t>
 int
-HasKey(x_t *pxBucket, uk_t ukKey)
+HasKey(x_t *pxBucket, k_t kKey)
 {
     x_t xBucket; Load(xBucket, pxBucket);
-    return HasKey(xBucket, ukKey);
+    return HasKey(xBucket, kKey);
 }
 
 template<typename x_t>
@@ -636,11 +664,11 @@ HasKey(x_t *pxBucket, Word_t wKey, int nBits, int bPackLo)
     return HasKey(xBucket, wKey, nBits, bPackLo);
 }
 
-template<typename ux_t>
+template<typename x_t>
 int
-LeastSignificantNonZeroByte(ux_t ux)
+LeastSignificantNonZeroByte(x_t x)
 {
-    return __builtin_ctzll(ux) / 8;
+    return __builtin_ctzll(x) / 8;
 }
 
 // 2^127 => 2^15
@@ -671,7 +699,7 @@ LeastSignificantNonZeroByte(ux_t ux)
 int
 LeastSignificantNonZeroByte(__m128i& rm7)
 {
-    cout << "LeastSignificantNonZeroByte(" << mx_toString(rm7) << "):\n";
+    cout << "LeastSignificantNonZeroByte(" << x_toString(rm7) << "):\n";
 
 #if defined(__SSE4_2__)
     // returns 16 if no match
@@ -779,27 +807,27 @@ LeastSignificantNonZeroByte(__m256i* pm8)
 #endif // defined(__AVX__)
 
 // Native size keys, sorted from lsb to msb in u6_t.
-template<typename x_t, typename uk_t>
+template<typename x_t, typename k_t>
 int
-LocateKey(x_t& rxBucket, uk_t ukKey)
+LocateKey(x_t& rxBucket, k_t kKey)
 {
     x_t xLsbs, xMsbs, xKeys;
-    SetupMx(ukKey, xLsbs, xMsbs, xKeys);
+    SetupMx(kKey, xLsbs, xMsbs, xKeys);
     x_t xMatches = Search(rxBucket, xLsbs, xMsbs, xKeys);
-    //printf("xMatches %s\n", mx_toString(xMatches).c_str());
+    //printf("xMatches %s\n", x_toString(xMatches).c_str());
     int n = LeastSignificantNonZeroByte(xMatches);
     printf("LeastSignificantNonZeroByte %d\n", n);
-    return n / sizeof(ukKey);
+    return n / sizeof(kKey);
 
 #if 0
     // cmpeq does not compress
     // compress with movemask
     // count with ctz
     __m128i m7eq = _mm_cmpeq_epi8(m7, _mm_setzero_si128());
-    cout << "cmpeq(" << mx_toString(m7) << ", zero) "
-         << mx_toString(m7eq)
+    cout << "cmpeq(" << x_toString(m7) << ", zero) "
+         << x_toString(m7eq)
          << endl;
-    cout << "ctz(movemask(~" << mx_toString(m7eq) << " | (1 << 16)) "
+    cout << "ctz(movemask(~" << x_toString(m7eq) << " | (1 << 16)) "
          << __builtin_ctz(_mm_movemask_epi8(~m7eq) | (1 << 16))
          << endl;
 #endif
@@ -813,12 +841,12 @@ LocateKey(x_t& rxBucket, uk_t ukKey)
 
 // If key is present return nPos.
 // Else return a negative number.
-template<typename x_t, typename uk_t>
+template<typename x_t, typename k_t>
 int
-LocateKey(x_t *pxBucket, uk_t ukKey)
+LocateKey(x_t *pxBucket, k_t kKey)
 {
     x_t xBucket; Load(xBucket, pxBucket);
-    return LocateKey(xBucket, ukKey);
+    return LocateKey(xBucket, kKey);
 }
 
 #if defined(__SSE2__)
@@ -862,26 +890,24 @@ LocateSlot(__m256i& rm8Bucket, __m256i& rm8Keys, int nBits)
 
 // If key is not present return nPos of slot where it should be inserted.
 // Else return a negative number.
-template<typename x_t, typename uk_t>
+template<typename x_t, typename k_t>
 int
-LocateSlot(x_t xBucket, uk_t ukKey)
+LocateSlot(x_t xBucket, k_t kKey)
 {
     x_t xKeys;
-    Set1(xKeys, ukKey);
-    int n = LocateSlot(xBucket, xKeys, sizeof(ukKey) * 8);
+    Set1(xKeys, kKey);
+    int n = LocateSlot(xBucket, xKeys, sizeof(kKey) * 8);
     printf("LocateSlot %d\n", n);
     return n;
 }
 
-template<typename x_t, typename uk_t>
+template<typename x_t, typename k_t>
 int
-LocateSlot(x_t* pxBucket, uk_t ukKey)
+LocateSlot(x_t* pxBucket, k_t kKey)
 {
     x_t xBucket; Load(xBucket, pxBucket);
-    return LocateSlot(xBucket, ukKey);
+    return LocateSlot(xBucket, kKey);
 }
-
-#if defined(__SSE2__)
 
 // cmpestri
 //
@@ -918,6 +944,67 @@ LocateSlot(x_t* pxBucket, uk_t ukKey)
 // significant 1 in the result.
 // For MOST_SIGNIFICANT, return the index of the most significant 1
 // in the result.
+
+#if defined(__SSE2__)
+
+// HasKey 2^7 x 2^3 x SSE2
+int
+HasKey732(__m128i* pm7b, uint8_t u3k)
+{
+    __m128i m7b = _mm_load_si128(pm7b); // use loadu for unaligned
+    __m128i m7ks = _mm_set1_epi8(u3k); // replicate key for compare
+    __m128i m7eq = _mm_cmpeq_epi8(m7b, m7ks); // compare keys
+    return _mm_movemask_epi8(m7eq); // compress into int
+}
+
+// HasKey 2^7 x 2^4 x SSE2
+// First experiment shows this being faster than cmpestrc and HasKey744.
+// The experiment was with full length eight character strings.
+int
+HasKey742(__m128i* pm7b, uint16_t u4k)
+{
+    __m128i m7b = _mm_load_si128(pm7b); // use loadu for unaligned
+    __m128i m7ks = _mm_set1_epi16(u4k); // replicate key for compare
+    __m128i m7eq = _mm_cmpeq_epi16(m7b, m7ks); // compare keys
+    return _mm_movemask_epi8(m7eq); // compress into int
+}
+
+// HasKey 2^7 x 2^5 x SSE2
+int
+HasKey752(__m128i* pm7b, uint32_t u5k)
+{
+    __m128i m7b = _mm_load_si128(pm7b); // use loadu for unaligned
+    __m128i m7ks = _mm_set1_epi32(u5k); // replicate key for compare
+    __m128i m7eq = _mm_cmpeq_epi32(m7b, m7ks); // compare keys
+    return _mm_movemask_epi8(m7eq); // compress into int
+}
+
+#endif // defined(__SSE2__)
+
+#if defined(__SSE4_2__)
+
+// HasKey 2^7 x 2^3 x SSE4
+int
+HasKey734(__m128i* pm7b, uint8_t u3k)
+{
+    __m128i m7b = _mm_load_si128(pm7b); // use loadu or lddqu for unaligned
+    return _mm_cmpestrc(m7b, 16,
+                        _mm_set1_epi8(u3k), 16,
+                        _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_EACH);
+}
+
+// HasKey 2^7 x 2^4 x SSE4
+int
+HasKey744(__m128i* pm7b, uint16_t u4k)
+{
+    return _mm_cmpestrc(*pm7b, 8,
+                        _mm_set1_epi16(u4k), 8,
+                        _SIDD_UWORD_OPS | _SIDD_CMP_EQUAL_EACH);
+}
+
+#endif // defined(__SSE4_2__)
+
+#if defined(__SSE2__)
 
 // HasKey 2^7 x 2^6 x SSE2
 // A lot of code to get rid of one test.
@@ -1061,8 +1148,8 @@ Locate(void)
     // m7gt = _cmpgt(m7, m7keys);
     // m7eq = _cmpeq(m7, m7keys);
     // m7ge = m7gt | m7eq;
-    // nPos = ctz/bsf(movemask_epi8(m7ge)) / sizeof(ux_t);
-    // if (aux[nPos] != key) { nPos ^= -1; }
+    // nPos = ctz/bsf(movemask_epi8(m7ge)) / sizeof(x_t);
+    // if (ax[nPos] != key) { nPos ^= -1; }
 
     // n = _cmpestri(m7, 16, m7Keys, 16, EACH|NEG) - SSE4_2 - idx of 8|16 key
     // _lddqu_si128 - SSE3
@@ -1202,15 +1289,15 @@ main(int argc, char **argv)
         //__m128i m7Lsbs, m7Msbs, m7Keys;
         //SetupMx(wKey, nBL, /* PackLo */ 0, m7Lsbs, m7Msbs, m7Keys);
         //cout << "SetupMx" << endl;
-        //cout << "m7Lsbs " << mx_toString(m7Lsbs) << endl;
-        //cout << "m7Msbs " << mx_toString(m7Msbs) << endl;
-        //cout << "m7Keys " << mx_toString(m7Keys) << endl;
+        //cout << "m7Lsbs " << x_toString(m7Lsbs) << endl;
+        //cout << "m7Msbs " << x_toString(m7Msbs) << endl;
+        //cout << "m7Keys " << x_toString(m7Keys) << endl;
 
 #if defined(__SSE2__)
         __m128i m7Bucket; // vector of two long long values
         //m7Bucket = *pm7Bucket;
         Load(m7Bucket, pm7Bucket);
-        cout << "m7Bucket " << mx_toString(m7Bucket) << endl;
+        cout << "m7Bucket " << x_toString(m7Bucket) << endl;
         printf("HasKey(m7Bucket, ...) %d\n",
                HasKey(m7Bucket, wKey, nBL, /* bPackLow */ 0));
 #endif // defined(__SSE2__)
@@ -1218,9 +1305,9 @@ main(int argc, char **argv)
         //__m256i m8Lsbs, m8Msbs, m8Keys;
         //SetupMx(wKey, nBL, /* PackLo */ 0, m8Lsbs, m8Msbs, m8Keys);
         //cout << "SetupMx" << endl;
-        //cout << "m8Lsbs " << mx_toString(m8Lsbs) << endl;
-        //cout << "m8Msbs " << mx_toString(m8Msbs) << endl;
-        //cout << "m8Keys " << mx_toString(m8Keys) << endl;
+        //cout << "m8Lsbs " << x_toString(m8Lsbs) << endl;
+        //cout << "m8Msbs " << x_toString(m8Msbs) << endl;
+        //cout << "m8Keys " << x_toString(m8Keys) << endl;
 
         __m256i m8Bucket; // vector of four long long
         //m8Bucket = *pm8Bucket; // must be aligned
@@ -1229,7 +1316,7 @@ main(int argc, char **argv)
         //m8Bucket = _mm256_loadu_si256(pm8Bucket);
         //m8Bucket = _mm256_lddqu_si256(pm8Bucket); // cache line crossing
         Load(m8Bucket, pm8Bucket);
-        cout << "m8Bucket " << mx_toString(m8Bucket) << endl;
+        cout << "m8Bucket " << x_toString(m8Bucket) << endl;
         printf("HasKey(m8Bucket, ...) %d\n",
                HasKey(m8Bucket, wKey, nBL, /* bPackLow */ 0));
 #endif // defined(__AVX__)
