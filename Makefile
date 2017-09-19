@@ -428,27 +428,49 @@ t.i: t.c
 JudyMalloc.i: JudyMalloc.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
-# X=-mno-mmx Y= Z=32 make psearch
-# X=-mno-mmx Y= Z=64 make psearch
-# X=-msse2 Y=-mno-sse3 Z=32 make psearch
-# X=-msse2 Y=-mno-sse3 Z=64 make psearch
-# X=-msse4 Y=-mno-avx Z=32 make psearch
-# X=-msse4 Y=-mno-avx Z=64 make psearch
-# X=-mavx2 Y= Z=32 make psearch
-# X=-mavx2 Y= Z=64 make psearch
-
+#
+# -mmmx -msse -msse2 -mno-sse4 is the default for -m64 as of this writing
+# -mmmx -mno-sse4 is the default for -m32 as of this writing
+# -malign-stringops is default
+# -mavx256-split-unaligned-load -mavx256-split-unaligned-store is default
+#
+# -mavx512f => -mavx2 => -mavx => -msse4 <=> -msse4.2 => -msse4.1
+# => -mssse3 => -msse3 => -msse2 => msse => -mmmx
+#
+# -mno-mmx does not set -mno-sse
+#
+# -mno-sse does set -mno-sse2
+#
+# Use cc -Q -v <blah>.c to see what gets set.
+#
 psearch-all:
-	X=-mno-mmx Y= Z=32 make psearch
-	X=-mno-mmx Y= Z=64 make psearch
-	X=-msse2 Y=-mno-sse3 Z=32 make psearch
-	X=-msse2 Y=-mno-sse3 Z=64 make psearch
-	X=-msse4 Y=-mno-avx Z=32 make psearch
-	X=-msse4 Y=-mno-avx Z=64 make psearch
-	X=-mavx2 Y= Z=32 make psearch
+	X=-mavx512f Y= Z=64 make psearch
+	X=-mavx512f Y= Z=32 make psearch
 	X=-mavx2 Y= Z=64 make psearch
+	X=-mavx2 Y= Z=32 make psearch
+	X=-mavx Y= Z=64 make psearch
+	X=-mavx Y= Z=32 make psearch
+	X=-msse4 Y= Z=64 make psearch
+	X=-msse4 Y= Z=32 make psearch
+	X=-mssse3 Y= Z=64 make psearch
+	X=-mssse3 Y= Z=32 make psearch
+	X=-msse3 Y= Z=64 make psearch
+	X=-msse3 Y= Z=32 make psearch
+	X=-msse2 Y= Z=64 make psearch
+	X=-msse2 Y= Z=32 make psearch
+	X=-mno-sse2 Y= Z=64 make psearch
+	X=-mno-sse2 Y= Z=32 make psearch
+	# -mno-sse is invalid for -m64
+	#X=-mno-sse Y= Z=64 make psearch
+	X=-mno-sse Y= Z=32 make psearch
+	# -mno-sse is invalid for -m64
+	#X=-mno-mmx Y='-mno-sse' Z=64 make psearch
+	X=-mno-mmx Y='-mno-sse' Z=32 make psearch
 
 psearch: psearch$(X)-$(Z) ;
 
 psearch$(X)-$(Z): psearch.cpp
-	$(CXX) -std=gnu++11 $(X) $(Y) -m$(Z) $(DEFINES) -I. psearch.cpp -o $@
+	$(CXX) -std=gnu++11 -fno-lax-vector-conversions \
+ -Wno-psabi -Wno-unknown-warning-option \
+ $(X) $(Y) -m$(Z) $(DEFINES) -I. psearch.cpp -o $@
 
