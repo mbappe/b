@@ -3020,9 +3020,8 @@ embeddedKeys:;
         // Is it related to SEARCH_FROM_WRAPPER?
         nType = wr_nType(wRoot);
       #if ! defined(PP_IN_LINK)
-        DBGI(printf("IG: wRoot " OWx" nType %d" // " ls_xPopCnt %d"
-                        " PWR_xListPopCnt %d\n",
-                    wRoot, nType, // ls_xPopCnt(wr_pwr(wRoot), nBL),
+        DBGI(printf("IG: wRoot " OWx" nType %d PWR_xListPopCnt %d\n",
+                    wRoot, nType,
                     (int)PWR_xListPopCnt(&wRoot, wr_pwr(wRoot), nBL)));
       #endif // ! defined(PP_IN_LINK)
     }
@@ -3346,6 +3345,17 @@ copyWithInsert16:
 
 #if defined(EMBED_KEYS)
             // Embed the list if it fits.
+            if ( ! ( (wr_nType(wRoot) == T_LIST)
+#if defined(UA_PARALLEL_128)
+                   || (wr_nType(wRoot) == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+                   ) )
+            {
+                printf("wRoot " Owx"\n", wRoot);
+            }
+#endif // defined(EMBED_KEYS)
+#if defined(EMBED_KEYS)
+            // Embed the list if it fits.
             assert( (wr_nType(wRoot) == T_LIST)
 #if defined(UA_PARALLEL_128)
                    || (wr_nType(wRoot) == T_LIST_UA)
@@ -3641,8 +3651,8 @@ newSwitch:
                     DBGI(printf("\n# Blow up nBL %d nPopCnt %d\n",
                                 nBL,
                                 // How do I get pop count here?
-                                // wr_nPopCnt(*pwRoot, nBL)*/
-                                // ls_xPopCnt(wr_pwr(*pwRoot), nBL)
+                                // wr_nPopCnt(*pwRoot, nBL)
+                                // Get_xListPopCnt(pwRoot, nBL)
                                 (int)wPopCnt
                                 ));
                 }
@@ -5986,7 +5996,9 @@ Initialize(void)
 #endif // defined(BM_IN_LINK)
 
     printf("\n");
+#ifdef N_LIST_HDR_KEYS
     printf("# N_LIST_HDR_KEYS %d\n", N_LIST_HDR_KEYS);
+#endif // N_LIST_HDR_KEYS
 
     printf("\n");
 #if defined(MALLOC_ALIGNMENT)

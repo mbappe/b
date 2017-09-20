@@ -501,7 +501,7 @@ typedef Word_t Bucket_t;
 #endif // defined(POP_IN_WR_HB)
 
 // Choose max list lengths.
-// Mind sizeof(ll_nPopCnt) and the maximum value it implies.
+// Respect the maximum value implied by the size of the pop count field.
 
 #if (cnBitsPerWord >= 64)
   // Default is cnListPopCntMax64 is 0x40 (0xec if NO_SKIP_[TO_BM_SW|AT_TOP]).
@@ -1772,8 +1772,9 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
   #endif // defined(OLD_LISTS)
 #endif // defined(PP_IN_LINK)
 
-// align non-word iff align
-// align word iff (psword && psp) || aligniopp
+// PSPLIT_PARALLEL ==> ALIGN_LISTS ==> cbAlignLists
+// align non-word key-size iff align
+// align full-word key-size iff (psword && psp) || aligniopp
 // (1)        align     if !word iff (                         align    )
 // (2)        align     if  word iff ( ( psword and  psp) or   aligniopp)
 // (1a)       align     if !word and (                         align    )
@@ -1793,49 +1794,27 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 // cbAlignListEnds is consulted only if ALIGN_LIST is true.
 // We don't support cbAlignListEnds without cbAlignLists.
 // We don't support ALIGN_LIST_ENDS without ALIGN_LISTS.
+// PSPLIT_PARALLEL ==> ALIGN_LIST_ENDS ==> cbAlignLists
 #define ALIGN_LIST_END(_nBytesKeySz) \
     ( assert(cbAlignLists || !cbAlignListEnds), \
       (ALIGN_LIST(_nBytesKeySz) && cbAlignListEnds) )
 
-// We want an odd number of words (for malloc efficiency) that will
-// hold our list (add one, align to two, then subtract one).
-// 1 => 1, 1.1 => 3, 3 => 3
-// If aligning, align end of dummies on bucket boundary,
-// and allocate a whole bucket to each list-end-marker, if any,
-// and if aligning end align end of keys on bucket boundary,
-// else simply make room for the keys.
-// Add a slot for POP_SLOT -- hmm -- if aligning end, pop-slot
-// at end for new list will be after the last bucket containing
-// a key or list-end-marker.
-// Then do the same trick to align to an odd word boundary
-// What if POP_SLOT is for PP_IN_LINK at top and goes at the
-// beginning of the list? Wouldn't it need a whole bucket of
-// it's own? It seems like we might have a problem with
-// PP_IN_LINK and ALIGN_LISTS.
-#define ls_nSlotsInList(_wPopCnt, _nBL, _nBytesKeySz) \
-( \
-    ( ! ALIGN_LIST(_nBytesKeySz) \
-    ? ( assert(cbAlignLists == cbAlignListEnds), \
-        ALIGN_UP(cnDummiesInList * sizeof(Word_t) / (_nBytesKeySz) \
-                     + 2 * cbListEndMarkers \
-                     + (_wPopCnt) \
-                     + POP_SLOT(_nBL) \
-                     + sizeof(Word_t) / (_nBytesKeySz), \
-                 2 * sizeof(Word_t) / (_nBytesKeySz)) \
-             - sizeof(Word_t) / (_nBytesKeySz) ) \
-    : ( ALIGN_UP(ALIGN_UP(cnDummiesInList * sizeof(Word_t) / (_nBytesKeySz), \
-                          sizeof(Bucket_t) / (_nBytesKeySz)) \
-                     + 2 * sizeof(Bucket_t) \
-                         / (_nBytesKeySz) * cbListEndMarkers \
-                     + cbAlignListEnds \
-                         * ALIGN_UP((_wPopCnt), \
-                                    sizeof(Bucket_t) / (_nBytesKeySz)) \
-                     + ( ! cbAlignListEnds ) * (_wPopCnt) \
-                     + POP_SLOT(_nBL) \
-                     + sizeof(Word_t) / (_nBytesKeySz), \
-                 2 * sizeof(Word_t) / (_nBytesKeySz)) \
-         - sizeof(Word_t) / (_nBytesKeySz) ) ) \
-)
+
+// pop cnt in preamble iff OLD_LISTS && !POP_IN_WR_HB && LIST_POP_IN_PREAMBLE; don't care about PP_IN_LINK
+// - LIST_POP_IN_PREAMBLE should imply OLD_LISTS and !POP_IN_WR_HB (What do we do with pop field in PP?)
+// ListLeaf_t
+// - ll_awDummies
+//   - last dummy contains pop cnt iff there is a dummy && PP_IN_LINK && at top
+//     && OLD_LISTS && !POP_IN_WR_HB && !LIST_POP_IN_PREAMBLE
+// - ll_a[csiw]Keys
+//   - first slot (or partial slot) contains pop cnt iff OLD_LISTS && !POP_IN_WR_HB && !LIST_POP_IN_PREAMBLE
+//     && (!PP_IN_LINK || (at top && there are no dummies))
+//   - unused pad slots for alignment if aligning
+//   - list end marker = 0 (Aligned whole bucket?) so search neednt test for starting address of list
+//   - keys
+//   - pad slots filled with biggest key if psplit parallel
+//   - list end marker = -1 (Whole bucket?) so search needn't test for length of list
+//   - pop cnt in last word iff !OLD_LISTS
 
 #if defined(OLD_LISTS)
 
@@ -1884,11 +1863,11 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
   #else // defined(PP_IN_LINK)
 
       #if ! defined(POP_IN_WR_HB)
+// Are we missing a test for LIST_POP_IN_PREAMBLE here?
+// Did we not update this because we are using Get_xListPopCnt now?
+// Do we not need this anymore?
     #define     ls_xPopCnt(_ls, _nBL) \
         (((_nBL) > 8) ? ls_sPopCnt(_ls) : ls_cPopCnt(_ls))
-      #endif // ! defined(POP_IN_WR_HB)
-
-      #if ! defined(POP_IN_WR_HB)
 #define set_ls_xPopCnt(_ls, _nBL, _cnt) \
     (((_nBL) > 8) ? set_ls_sPopCnt((_ls), (_cnt)) \
                   : set_ls_cPopCnt((_ls), (_cnt)))
@@ -2048,6 +2027,46 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 #define ls_pwKeysNATX(_pwr, _nPopCnt)  ls_pwKeysNAT(_pwr)
 
 #else // defined(OLD_LISTS)
+
+// We want an odd number of words (for dlmalloc efficiency) that will
+// hold our list (add one, align to two, then subtract one).
+// 1 => 1, 1.1 => 3, 3 => 3
+// If aligning, align end of dummies on bucket boundary,
+// and allocate a whole bucket to each list-end-marker, if any,
+// and if aligning end align end of keys on bucket boundary,
+// else simply make room for the keys.
+// Add a slot for POP_SLOT -- hmm -- if aligning end, pop-slot
+// at end for new list will be after the last bucket containing
+// a key or list-end-marker.
+// Then do the same trick to align to an odd word boundary
+// What if POP_SLOT is for PP_IN_LINK at top and goes at the
+// beginning of the list? Wouldn't it need a whole bucket of
+// it's own? It seems like we might have a problem with
+// PP_IN_LINK and ALIGN_LISTS.
+#define ls_nSlotsInList(_wPopCnt, _nBL, _nBytesKeySz) \
+( \
+    ( ! ALIGN_LIST(_nBytesKeySz) \
+    ? ( assert(cbAlignLists == cbAlignListEnds), \
+        ALIGN_UP(cnDummiesInList * sizeof(Word_t) / (_nBytesKeySz) \
+                     + 2 * cbListEndMarkers \
+                     + (_wPopCnt) \
+                     + POP_SLOT(_nBL) \
+                     + sizeof(Word_t) / (_nBytesKeySz), \
+                 2 * sizeof(Word_t) / (_nBytesKeySz)) \
+             - sizeof(Word_t) / (_nBytesKeySz) ) \
+    : ( ALIGN_UP(ALIGN_UP(cnDummiesInList * sizeof(Word_t) / (_nBytesKeySz), \
+                          sizeof(Bucket_t) / (_nBytesKeySz)) \
+                     + 2 * sizeof(Bucket_t) \
+                         / (_nBytesKeySz) * cbListEndMarkers \
+                     + cbAlignListEnds \
+                         * ALIGN_UP((_wPopCnt), \
+                                    sizeof(Bucket_t) / (_nBytesKeySz)) \
+                     + ( ! cbAlignListEnds ) * (_wPopCnt) \
+                     + POP_SLOT(_nBL) \
+                     + sizeof(Word_t) / (_nBytesKeySz), \
+                 2 * sizeof(Word_t) / (_nBytesKeySz)) \
+         - sizeof(Word_t) / (_nBytesKeySz) ) ) \
+)
 
 // pwr aka ls points to the highest malloc-aligned address in the
 // list buffer.  We have to use an aligned address because we use the low
@@ -2402,6 +2421,17 @@ Get_xListPopCnt(Word_t *pwRoot, int nBL)
 #elif defined(LIST_POP_IN_PREAMBLE) // 32-bit default
     int nPopCnt = GetBits(wr_pwr(*pwRoot)[-1],
                           cnBitsPreListPopCnt, cnLsbPreListPopCnt);
+#elif defined(OLD_LISTS)
+  #if defined(PP_IN_LINK)
+    assert(nBL == cnBitsPerWord);
+      #if cnDummiesInList == 0
+    int nPopCnt = ls_xPopCnt(wr_pwr(*pwRoot), nBL);
+      #else // cnDummiesInList == 0
+    int nPopCnt = ls_xPopCnt(wr_pwr(*pwRoot), nBL);
+      #endif // cnDummiesInList == 0
+  #else // defined(PP_IN_LINK)
+    int nPopCnt = ls_xPopCnt(wr_pwr(*pwRoot), nBL);
+  #endif // defined(PP_IN_LINK)
 #else // POP_IN_WR_HB ...
     int nPopCnt = ls_xPopCnt(wr_pwr(*pwRoot), nBL);
 #endif // POP_IN_WR_HB ...
@@ -2419,6 +2449,17 @@ Set_xListPopCnt(Word_t *pwRoot, int nBL, int nPopCnt)
     assert(nPopCnt <= (int)MSK(cnBitsPreListPopCnt));
     Word_t *pwr = wr_pwr(*pwRoot);
     SetBits(&pwr[-1], cnBitsPreListPopCnt, cnLsbPreListPopCnt, nPopCnt);
+#elif defined(OLD_LISTS)
+  #if defined(PP_IN_LINK)
+    assert(nBL == cnBitsPerWord);
+      #if cnDummiesInList == 0
+    set_ls_xPopCnt(wr_pwr(*pwRoot), nBL, nPopCnt);
+      #else // cnDummiesInList == 0
+    set_ls_xPopCnt(wr_pwr(*pwRoot), nBL, nPopCnt);
+      #endif // cnDummiesInList == 0
+  #else // defined(PP_IN_LINK)
+    set_ls_xPopCnt(wr_pwr(*pwRoot), nBL, nPopCnt);
+  #endif // defined(PP_IN_LINK)
 #else // POP_IN_WR_HB ...
     set_ls_xPopCnt(wr_pwr(*pwRoot), nBL, nPopCnt);
 #endif // POP_IN_WR_HB ...

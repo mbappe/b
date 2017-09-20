@@ -2349,8 +2349,8 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     {
         Word_t *pwr = wr_pwr(wRoot);
 
-        // ls_wPopCount is valid only at the top for PP_IN_LINK
-        // the first word in the list is used for pop count at the top
+        // PWR_xListPopCount is valid only at the top for PP_IN_LINK.
+        // The first word in the list is used for pop count at the top.
         return (1
 #if ! defined(SEPARATE_T_NULL)
                 && (pwr != NULL)
