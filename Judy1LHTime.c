@@ -239,7 +239,7 @@ void      TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elems);
 
 int       TestJudy1Copy(void *J1, Word_t Elem);
 
-int       TestJudyCount(void *J1, void *JL, Word_t Elems);
+int       TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elems);
 
 Word_t    TestJudyNext(void *J1, void *JL, Word_t Elems);
 
@@ -2808,13 +2808,13 @@ main(int argc, char *argv[])
         {
             Tit = 0;
             WaitForContextSwitch(Meas);
-            TestJudyCount(J1, JL, Meas);
+            TestJudyCount(J1, JL, &BeginSeed, Meas);
             DeltaGen1 = DeltanSec1;     // save measurement overhead
             DeltaGenL = DeltanSecL;
 
             Tit = 1;
             WaitForContextSwitch(Meas);
-            TestJudyCount(J1, JL, Meas);
+            TestJudyCount(J1, JL, &BeginSeed, Meas);
             if (J1Flag)
                 DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
             if (JLFlag)
@@ -4145,7 +4145,7 @@ TestJudy1Copy(void *J1, Word_t Elements)
 #define __FUNCTI0N__ "TestJudyCount"
 
 int
-TestJudyCount(void *J1, void *JL, Word_t Elements)
+TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 {
     Word_t    elm;
     Word_t    Count1, CountL;
@@ -4165,32 +4165,44 @@ TestJudyCount(void *J1, void *JL, Word_t Elements)
     {
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
+#ifdef TEST_COUNT_USING_JUDY_NEXT
+            (void)PSeed;
             TstKey = 0;
-
             Rc = Judy1First(J1, &TstKey, PJE0);
+#else // TEST_COUNT_USING_JUDY_NEXT
+            (void)Rc;
+            NewSeed_t WorkingSeed = *PSeed;
+#endif // TEST_COUNT_USING_JUDY_NEXT
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
             {
+#ifndef TEST_COUNT_USING_JUDY_NEXT
+                SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
+#endif // TEST_COUNT_USING_JUDY_NEXT
                 if (Tit)
                 {
-
                     Count1 = Judy1Count(J1, 0, TstKey, PJE0);
-
+#ifdef TEST_COUNT_USING_JUDY_NEXT
                     if (Count1 != (elm + 1))
+#else // TEST_COUNT_USING_JUDY_NEXT
+                    if (Count1 > TstKey + 1)
+#endif // TEST_COUNT_USING_JUDY_NEXT
                     {
-                        printf("Count1 = %" PRIuPTR", elm +1 = %" PRIuPTR"\n", Count1, elm + 1);
+                        printf("Count1 = %" PRIuPTR", TstKey = %" PRIuPTR"\n", Count1, TstKey);
                         FAILURE("J1C at", elm);
                     }
                 }
-
+#ifdef TEST_COUNT_USING_JUDY_NEXT
                 Rc = Judy1Next(J1, &TstKey, PJE0);
-
+#endif // TEST_COUNT_USING_JUDY_NEXT
             }
             ENDTm(DeltanSec1);
 
+#ifdef TEST_COUNT_USING_JUDY_NEXT
             if (Rc == 1234)             // impossible value
                 exit(-1);               // shut up compiler only
+#endif // TEST_COUNT_USING_JUDY_NEXT
 
             if (DminTime > DeltanSec1)
             {
