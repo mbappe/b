@@ -2,6 +2,10 @@
 #if ( ! defined(_B_H_INCLUDED) )
 #define _B_H_INCLUDED
 
+// Work on list alignment independent of parallel search.
+// 1. Change list init code to pad to aligned length rather than aligned
+//    ending address.
+
 #include <stdio.h>  // printf
 #include <string.h> // memcpy
 #include "Judy.h"   // Word_t, Judy1Test, JudyMalloc, ...
@@ -293,9 +297,12 @@
 #define PSPLIT_PARALLEL
 #endif // ! defined(NO_PSPLIT_PARALLEL)
 
-// Unaligned parallel 128.
-// UA_PARALLEL_128 allows PARALLEL_128 performance and MALLOC_ALIGNMENT 16
-// for 32-bit without sacrificing memory efficiency.
+// UA_PARALLEL_128, i.e. unaligned parallel 128, was designed to save memory
+// by eliminating the requirement that lists be padded to an integral number
+// of 16-byte bucket lengths while preserving our ability to use 128-bit
+// parallel searches.
+// This first proof-of-concept is very limited. Only 16-byte keys and only
+// lists that fit in 12 bytes and only 32-bit words.
 #if (cnBitsPerWord == 32) && (cnBitsMallocMask >= 4)
 #if ! defined(NO_UA_PARALLEL_128)
   #undef UA_PARALLEL_128
@@ -303,7 +310,7 @@
 #endif // ! defined(NO_UA_PARALLEL_128)
 #endif // (cnBitsPerWord == 32) && (cnBitsMallocMask >= 4)
 
-// Ifdefs are getting ugly.
+// Ifdefs are getting ugly. As if they weren't bad already.
 // Use UA_PARALLEL_128 to undef PARALLEL_128 so
 // sizeof(Bucket_t) == sizeof(Word_t) and we don't align list
 // ends to 128 bits.
@@ -322,6 +329,22 @@
 #define PARALLEL_128
 #endif // ! defined(NO_PARALLEL_128) && ! defined(PARALLEL_64)
 #endif // defined(PSPLIT_PARALLEL)
+
+// The length of a list from the first key through the last (including unused
+// slots filled with the last real key in the list) must be an integral
+// number of parallel search buckets so we don't need any special handling in
+// the parallel search code to handle a partial bucket at the end.
+// This is independent of any header or footer in the list or any alignment
+// of the first key in the list.
+#ifdef PARALLEL_128
+    #define cnBytesListLenAlign  16
+#elif defined(PARALLEL_64)
+    #define cnBytesListLenAlign  8
+#elif defined(PSPLIT_PARALLEL)
+    #define cnBytesListLenAlign  cnBytesPerWord
+#else
+    #define cnBytesListLenAlign  1
+#endif
 
 // Default is -DSORT_LISTS.
 #if ! defined(NO_SORT_LISTS)
