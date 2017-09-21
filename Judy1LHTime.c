@@ -4311,16 +4311,20 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 #endif // TEST_NEXT_USING_JUDY_NEXT
                 if (Tit)
                 {
+#ifndef TEST_NEXT_USING_JUDY_NEXT
+                    Word_t J1KeyBefore = J1Key;
+#endif // TEST_NEXT_USING_JUDY_NEXT
                     Rc = Judy1Next(J1, &J1Key, PJE0);
                     if ((Rc != 1)
 #ifndef TEST_NEXT_USING_JUDY_NEXT
-                        && (J1Key != J1LastKey)
+                        && (J1KeyBefore != J1LastKey)
 #endif // TEST_NEXT_USING_JUDY_NEXT
                         )
                     {
                         printf("\nElements = %" PRIuPTR", elm = %" PRIuPTR"\n", Elements, elm);
 #ifndef TEST_NEXT_USING_JUDY_NEXT
                         printf("J1LastKey %" PRIuPTR"\n", J1LastKey);
+                        printf("J1KeyBefore %" PRIuPTR"\n", J1KeyBefore);
 #endif // TEST_NEXT_USING_JUDY_NEXT
                         FAILURE("Judy1Next Rc != 1 J1Key", J1Key);
                     }
@@ -4449,16 +4453,20 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t HighKey, Word_t Elemen
 #endif // TEST_NEXT_USING_JUDY_NEXT
                 if (Tit)
                 {
+#ifndef TEST_NEXT_USING_JUDY_NEXT
+                    Word_t J1KeyBefore = J1Key;
+#endif // TEST_NEXT_USING_JUDY_NEXT
                     Rc = Judy1Prev(J1, &J1Key, PJE0);
                     if ((Rc != 1)
 #ifndef TEST_NEXT_USING_JUDY_NEXT
-                        && (J1Key != J1FirstKey)
+                        && (J1KeyBefore != J1FirstKey)
 #endif // TEST_NEXT_USING_JUDY_NEXT
                         )
                     {
                         printf("\nElements = %" PRIuPTR", elm = %" PRIuPTR"\n", Elements, elm);
 #ifndef TEST_NEXT_USING_JUDY_NEXT
                         printf("J1FirstKey %" PRIuPTR"\n", J1FirstKey);
+                        printf("J1KeyBefore %" PRIuPTR"\n", J1KeyBefore);
 #endif // TEST_NEXT_USING_JUDY_NEXT
                         FAILURE("Judy1Prev Rc != 1 J1Key", J1Key);
                     }
