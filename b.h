@@ -4375,9 +4375,6 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 #endif // defined(PSPLIT_SEARCH_XOR_WORD)
     if (nBL <= (cnBitsPerWord - 8)) {
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
-        if (nBL == 32) {
-            PSPLIT_SEARCH(Word_t, 32, pwKeys, nPopCnt, wKey, nPos);
-        } else
 #if (cnBitsPerWord > 32)
         if (nBL == 40) {
             PSPLIT_SEARCH(Word_t, 40, pwKeys, nPopCnt, wKey, nPos);
@@ -4392,10 +4389,11 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
             PSPLIT_SEARCH(Word_t, nBL, pwKeys, nPopCnt, wKey, nPos);
         }
     } else { // here to avoid overflow
-        unsigned nSplit
-            = ((wKey & MSK(nBL)) >> 8) * nPopCnt + nPopCnt / 2 >> (nBL - 8);
+        int nSplit
+            = ((wKey & MSK(nBL)) >> 8) * nPopCnt / (1 << (nBL - 8));
         if (pwKeys[nSplit] < wKey) {
             if (nSplit == nPopCnt - 1) { return ~nPopCnt; }
+            nPos = nSplit + 1;
             SEARCHF(Word_t, pwKeys, nPopCnt - nSplit - 1,
                        wKey, nPos);
         } else { // here if wKey <= pwKeys[nSplit]
@@ -4436,9 +4434,9 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
   #else // defined(BACKWARD_SEARCH_WORD)
     SEARCHF(Word_t, pwKeysOrig, nPopCnt, wKey, nPos);
   #endif // defined(BACKWARD_SEARCH_WORD)
-#endif // defined(PSPLIT_SEARCH_WORD)
     DBGX(printf("SLW: return pwKeysOrig %p nPos %d\n",
                 (void *)pwKeysOrig, nPos));
+#endif // defined(PSPLIT_SEARCH_WORD)
     return nPos;
 }
 
