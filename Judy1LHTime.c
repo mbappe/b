@@ -2441,7 +2441,7 @@ main(int argc, char *argv[])
             {
                 Word_t ww;
 
-                if (DeltaKeys >= &FileKeys[TValues]) // if (Pop1-Delta >= TValues)
+                if (Pop1 - Delta >= TValues)
                 {
                     DeltaKeys = &FileKeys[TValues];
                     ww = 0;
