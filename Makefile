@@ -27,14 +27,18 @@ CC=c++
 # I wonder if it works on a 32-bit system.
 BPW ?= 64
 
-# We can't use b.h to set MALLOC_ALIGNMENT because it is not included
-# in JudyMalloc.c or dlmalloc.c. We have to set it here.
-# And we want to bump it to 16 for 32-bit by default.
+# We can't use b.h to set MALLOC_ALIGNMENT because it is not included in
+# JudyMalloc.c or dlmalloc.c. We have to set it here if we want something
+# other than the dlmalloc.c default which is sizeof(void*) * 2.
+# We want to bump MALLOC_ALIGNMENT to 16 for 32-bit for our own default.
 ifeq "$(BPW)" "32"
-ifeq "$(cnBitsMallocMask)" ""
-  DEFINES += -DMALLOC_ALIGNMENT=16
-  # b.h will set cnBitsMallocMask appropriately based on MALLOC_ALIGNMENT
+ifeq "$(MALLOC_ALIGNMENT)" ""
+        MALLOC_ALIGNMENT = 16
 endif
+endif
+ifneq "$(MALLOC_ALIGNMENT)" ""
+    # b.h will set cnBitsMallocMask appropriately based on MALLOC_ALIGNMENT
+    DEFINES += -DMALLOC_ALIGNMENT=$(MALLOC_ALIGNMENT)
 endif
 
 # There are questions about how macOS handles libraries.
