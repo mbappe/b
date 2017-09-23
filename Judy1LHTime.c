@@ -1755,9 +1755,11 @@ main(int argc, char *argv[])
                    (((Word_t)1 << (BValue - 1)) * 2) - 1,
                    wSplayMask, 
                    MyPDEP((((Word_t)1 << (BValue - 1)) * 2) - 1, wSplayMask));
-            printf("LOG %d\n", LOG(MyPDEP((((Word_t)1 << (BValue - 1)) * 2) - 1, wSplayMask)));
+            printf("LOG %d\n",
+                   (int)LOG(MyPDEP((((Word_t)1 << (BValue - 1)) * 2) - 1, wSplayMask)));
             printf("Shift %d\n",
-                   (sizeof(Word_t) * 8) - 1 - LOG(MyPDEP((((Word_t)1 << (BValue - 1)) * 2) - 1, wSplayMask)));
+                   (int)((sizeof(Word_t) * 8) - 1
+                       - LOG(MyPDEP((((Word_t)1 << (BValue - 1)) * 2) - 1, wSplayMask))));
         }
 #endif // DEBUG
 
