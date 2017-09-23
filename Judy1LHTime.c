@@ -4793,6 +4793,7 @@ TestJudyDel(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
                         if (Rc)
                         {
                             printf("\n--- Judy1Test success after Judy1Unset, Key = 0x%" PRIxPTR"", TstKey);
+                            //Judy1Dump((Word_t)*J1, sizeof(Word_t) * 8, 0);
                             FAILURE("Judy1Test success after Judy1Unset", TstKey);
                         }
                     }
