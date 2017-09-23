@@ -78,21 +78,31 @@
 
 // dlmalloc.c uses MALLOC_ALIGNMENT.
 // Default MALLOC_ALIGNMENT is 2 * sizeof(void *).
-// We have to set cnBitsMallocMask to be consitent with MALLOC_ALIGNMENT.
-#ifndef cnBitsMallocMask
-#if (MALLOC_ALIGNMENT == 4)
+// cnBitsMallocMask must be consitent with MALLOC_ALIGNMENT.
+#ifdef cnBitsMallocMask
+  #ifdef MALLOC_ALIGNMENT
+    #if (1 << cnBitsMallocMask) != MALLOC_ALIGNMENT
+      #error cnBitsMallocMask is inconsistent with MALLOC_ALIGNMENT
+    #endif // ((1 << cnBitsMallocMask) - 1) != MALLOC_ALIGNMENT
+  #else // MALLOC_ALIGNMENT
+    #if cnBitsMallocMask != (cnLogBytesPerWord + 1)
+      #error cnBitsMallocMask is inconsistent with MALLOC_ALIGNMENT
+    #endif // cnBitsMallocMask != (cnLogBytesPerWord + 1)
+  #endif // MALLOC_ALIGNMENT
+#else // cnBitsMallocMask
+  #if (MALLOC_ALIGNMENT == 4)
     #define cnBitsMallocMask 2
-#elif (MALLOC_ALIGNMENT == 8)
+  #elif (MALLOC_ALIGNMENT == 8)
     #define cnBitsMallocMask 3
-#elif (MALLOC_ALIGNMENT == 16)
+  #elif (MALLOC_ALIGNMENT == 16)
     #define cnBitsMallocMask 4
-#elif (MALLOC_ALIGNMENT == 32)
+  #elif (MALLOC_ALIGNMENT == 32)
     #define cnBitsMallocMask 5
-#elif ! defined(MALLOC_ALIGNMENT)
+  #elif ! defined(MALLOC_ALIGNMENT)
     #define cnBitsMallocMask (cnLogBytesPerWord + 1)
-#else // defined(MALLOC_ALIGNMENT)
+  #else // MALLOC_ALIGNMENT
     #error Unsupported MALLOC_ALIGNMENT.
-#endif // MALLOC_ALIGNMENT
+  #endif // MALLOC_ALIGNMENT
 #endif // cnBitsMallocMask
 
 #define cnLogMallocAlignment  cnBitsMallocMask
@@ -292,43 +302,18 @@
 #endif
 
 // Default is -DPSPLIT_PARALLEL which forces -DALIGN_LISTS -DALIGN_LIST_ENDS.
-#if ! defined(NO_PSPLIT_PARALLEL)
-#undef  PSPLIT_PARALLEL
-#define PSPLIT_PARALLEL
-#endif // ! defined(NO_PSPLIT_PARALLEL)
-
-// UA_PARALLEL_128, i.e. unaligned parallel 128, was designed to save memory
-// by eliminating the requirement that lists be padded to an integral number
-// of 16-byte bucket lengths while preserving our ability to use 128-bit
-// parallel searches.
-// This first proof-of-concept is very limited. Only 16-byte keys and only
-// lists that fit in 12 bytes and only 32-bit words.
-#if (cnBitsPerWord == 32) && (cnBitsMallocMask >= 4)
-#if ! defined(NO_UA_PARALLEL_128)
-  #undef UA_PARALLEL_128
-  #define UA_PARALLEL_128
-#endif // ! defined(NO_UA_PARALLEL_128)
-#endif // (cnBitsPerWord == 32) && (cnBitsMallocMask >= 4)
-
-// Ifdefs are getting ugly. As if they weren't bad already.
-// Use UA_PARALLEL_128 to undef PARALLEL_128 so
-// sizeof(Bucket_t) == sizeof(Word_t) and we don't align list
-// ends to 128 bits.
-#if defined(UA_PARALLEL_128)
-  #if (cnBitsPerWord != 32)
-    #error UA_PARALLEL_128 is for (cnBitsPerWord == 32) only
-  #endif // (cnBitsPerWord != 32)
-#undef NO_PARALLEL_128
-#define NO_PARALLEL_128
-#endif // defined(UA_PARALLEL_128)
+#ifndef NO_PSPLIT_PARALLEL
+  #undef PSPLIT_PARALLEL
+  #define PSPLIT_PARALLEL
+#endif // NO_PSPLIT_PARALLEL
 
 // Default is -DPARALLEL_128.
-#if defined(PSPLIT_PARALLEL)
-#if ! defined(NO_PARALLEL_128) && ! defined(PARALLEL_64)
-#undef PARALLEL_128
-#define PARALLEL_128
-#endif // ! defined(NO_PARALLEL_128) && ! defined(PARALLEL_64)
-#endif // defined(PSPLIT_PARALLEL)
+#ifdef PSPLIT_PARALLEL
+  #if !defined(PARALLEL_64) && !defined(NO_PARALLEL_128)
+    #undef PARALLEL_128
+    #define PARALLEL_128
+  #endif // !defined(PARALLEL_64) && !defined(NO_PARALLEL_128)
+#endif // PSPLIT_PARALLEL
 
 // The length of a list from the first key through the last (including unused
 // slots filled with the last real key in the list) must be an integral
@@ -345,6 +330,33 @@
 #else
     #define cnBytesListLenAlign  1
 #endif
+
+// UA_PARALLEL_128, i.e. unaligned parallel 128, was designed to save memory
+// by eliminating the requirement that lists be padded to an integral number
+// of 16-byte bucket lengths while preserving our ability to use 128-bit
+// parallel searches.
+// This proof-of-concept is very limited. Only 16-byte keys and only
+// lists that fit in 12 bytes, T_LIST_UA, and only 32-bit words.
+#if defined(PSPLIT_PARALLEL) && defined(PARALLEL_128)
+  #ifndef NO_UA_PARALLEL_128
+    #if (cnBitsPerWord == 32) && (cnBitsMallocMask >= 4)
+      #undef UA_PARALLEL_128
+      #define UA_PARALLEL_128
+    #endif // (cnBitsPerWord == 32) && (cnBitsMallocMask >= 4)
+  #endif // NO_UA_PARALLEL_128
+#endif // defined(PSPLIT_PARALLEL) && defined(PARALLEL_128)
+
+#if defined(UA_PARALLEL_128)
+  #if (cnBitsMallocMask < 4)
+    #error UA_PARALLEL_128 requires MALLOC_ALIGNMENT >= 16
+  #endif // (cnBitsMallocMask < 4)
+  #if (cnBitsPerWord != 32)
+    #error UA_PARALLEL_128 is for (cnBitsPerWord == 32) only
+  #endif // (cnBitsPerWord != 32)
+  #ifndef PARALLEL_128
+    #error UA_PARALLEL_128 requires PARALLEL_128
+  #endif // PARALLEL_128
+#endif // defined(UA_PARALLEL_128)
 
 // Default is -DSORT_LISTS.
 #if ! defined(NO_SORT_LISTS)
@@ -4202,11 +4214,7 @@ ListHasKey16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
   #if defined(PSPLIT_SEARCH_16) && !defined(INSERT)
       #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 16) {
-  #if defined(UA_PARALLEL_128)
-        PSPLIT_HASKEY_GUTS_128(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
-  #else // defined(UA_PARALLEL_128)
         PSPLIT_HASKEY_GUTS(Bucket_t, uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
-  #endif // defined(UA_PARALLEL_128)
     } else
       #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {

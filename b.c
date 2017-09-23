@@ -1,5 +1,5 @@
 
-// @(#) $Id: b.c,v 1.4 2017/09/21 15:22:05 mike Exp mike $
+// @(#) $Id: b.c,v 1.8 2017/09/22 22:43:40 mike Exp mike $
 // @(#) $Source: /home/mike/b/b.c,v $
 
 #include "b.h"
@@ -309,6 +309,8 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 #if defined(OLD_LISTS)
 
     // Why am I not seeing cnDummiesInList here?
+    // Is this related to why PP_IN_LINK doesn't work?
+    // I should test if dummies works.
 
     int nBytesHdr = (N_LIST_HDR_KEYS + POP_SLOT(nBL)) * nBytesKeySz;
 #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
@@ -316,30 +318,14 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
     if (nBytesKeySz < (int)sizeof(Word_t))
   #endif // ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LISTS)
     {
-#if defined(UA_PARALLEL_128)
-        assert(sizeof(Bucket_t) < sizeof(__m128i));
-        if ((nBL == 16) && (wPopCntArg > 6)) {
-            if ((cnMallocMask + 1) < sizeof(__m128i)) {
-                // We don't know what address we are going to get from malloc.
-                // We have to allocate enough memory to ensure that we will be able
-                // to align the beginning of the array of real keys.
-                nBytesHdr += sizeof(__m128i) - (cnMallocMask + 1);
-                nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(__m128i) - (cnMallocMask + 1));
-            } else {
-                nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(__m128i));
-            }
-        } else
-#endif // defined(UA_PARALLEL_128)
-        {
-            if ((cnMallocMask + 1) < sizeof(Bucket_t)) {
-                // We don't know what address we are going to get from malloc.
-                // We have to allocate enough memory to ensure that we will be able
-                // to align the beginning of the array of real keys.
-                nBytesHdr += sizeof(Bucket_t) - (cnMallocMask + 1);
-                nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(Bucket_t) - (cnMallocMask + 1));
-            } else {
-                nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(Bucket_t));
-            }
+        if ((cnMallocMask + 1) < sizeof(Bucket_t)) {
+            // We don't know what address we are going to get from malloc.
+            // We have to allocate enough memory to ensure that we will be able
+            // to align the beginning of the array of real keys.
+            nBytesHdr += sizeof(Bucket_t) - (cnMallocMask + 1);
+            nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(Bucket_t) - (cnMallocMask + 1));
+        } else {
+            nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(Bucket_t));
         }
     }
 #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
@@ -355,9 +341,12 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
   #endif // ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LIST_ENDS)
     {
 #if defined(UA_PARALLEL_128)
-        assert(sizeof(Bucket_t) < sizeof(__m128i));
-        if ((nBL == 16) && (wPopCntArg > 6)) {
-            nBytesKeys = ALIGN_UP(nBytesKeys, sizeof(__m128i));
+        if ((nBL == 16) && (wPopCntArg <= 6)) {
+            // UA_PARALLEL_128 makes a lot of assumptions.
+            // It uses a 96-bit (12 byte) parallel search.
+            // E.g. six keys fit in a three 32-bit-word leaf.
+            assert(nBytesHdr == 0);
+            nBytesKeys = 12;
         } else
 #endif // defined(UA_PARALLEL_128)
         { nBytesKeys = ALIGN_UP(nBytesKeys, sizeof(Bucket_t)); }
@@ -379,6 +368,7 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 #if defined(LIST_REQ_MIN_WORDS)
     return DIV_UP(nBytes, sizeof(Word_t));
 #else // defined(LIST_REQ_MIN_WORDS)
+    // Round up to full malloc chunk which is some odd number of words.
     // Malloc always allocates an integral number of MALLOC_ALIGNMENT-size
     // units with the second word aligned and uses the first word for itself.
     // Malloc never allocates less than four words.
@@ -2235,24 +2225,18 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc,
     n = nKeys + 1;
 #if defined(PSPLIT_PARALLEL)
     // See CopyWithInsertWord for comment.
-    for (; (n * sizeof(sKey)) % cnBytesListLenAlign; ++n) {
-        pTgt[n] = pTgt[n-1];
-    }
   #if defined(UA_PARALLEL_128)
-    // UA_PARALLEL_128 sets cnBytesListAlign = sizeof(Word_t) so we don't
-    // allocate as much memory for small lists. But we still need to pad
-    // larger lists to 16-byte aligned length.
-    // And small lists to 12-byte length.
-    if (nKeys >= 6) {
-        for (; (n * sizeof(sKey)) % sizeof(__m128i); ++n) {
+    if (n <= 6) {
+        for (; (n * sizeof(sKey)) % 12; ++n) {
             pTgt[n] = pTgt[n-1];
         }
-    } else {
-        for (; (n * sizeof(sKey)) < 12; ++n) {
+    } else
+  #endif // defined(UA_PARALLEL_128)
+    {
+        for (; (n * sizeof(sKey)) % cnBytesListLenAlign; ++n) {
             pTgt[n] = pTgt[n-1];
         }
     }
-  #endif // defined(UA_PARALLEL_128)
 #endif // defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
     pTgt[n] = -1;
@@ -4833,56 +4817,18 @@ embeddedKeys:;
              &ls_psKeysNAT(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
         int n = wPopCnt - 1; // first empty slot
 #if defined(PSPLIT_PARALLEL)
-        for (; (n * 2) % cnBytesListLenAlign; ++n) {
-            ls_psKeysNAT(pwr)[n] = ls_psKeysNAT(pwr)[n-1];
-        }
   #if defined(UA_PARALLEL_128)
-        // Should we use ListWordsTypeList here?
-        if (wPopCnt - 1 > 6) {
-            for (; (n * 2) % sizeof(__m128i); ++n) {
+        if (n <= 6) {
+            for (; (n * 2) % 12; ++n) {
                 ls_psKeysNAT(pwr)[n] = ls_psKeysNAT(pwr)[n-1];
             }
-        } else {
-            for (; (n * 2) < 12; ++n) {
-                ls_psKeysNAT(pwr)[n] = ls_psKeysNAT(pwr)[n-1];
-            }
-        }
-      #if defined(OLD_LISTS) && ! defined(LIST_END_MARKERS)
-          #if defined(DEBUG)
-    uint16_t *pxKeys = ls_psKeysNAT(pwr);
-    uint16_t *pxKeysEnd = &ls_psKeysNAT(pwr)[wPopCnt - 1];
-    uint16_t *pxBucketEnd = (uint16_t *)ALIGN_UP((Word_t)pxKeysEnd, sizeof(Bucket_t));
-    uint16_t *px128End = (uint16_t *)ALIGN_UP((Word_t)pxKeysEnd, sizeof(__m128i));
-
-    // Why do we care about pxMallocEnd?
-    // Don't we really just care that we are padded to 12 bytes for T_LIST_UA?
-    uint16_t *pxMallocEnd;
-    if (wPopCnt - 1 > 6) {
-        pxMallocEnd = (uint16_t *)(ALIGN_UP((Word_t)px128End + sizeof(Word_t), cnMallocMask + 1) - sizeof(Word_t));
-    } else {
-        pxMallocEnd = (uint16_t *)(ALIGN_UP((Word_t)pxBucketEnd + sizeof(Word_t), cnMallocMask + 1) - sizeof(Word_t));
-    }
-
-    assert(pxKeysEnd > pxKeys);
-    assert(pxBucketEnd >= pxKeysEnd);
-    assert(px128End >= pxBucketEnd);
-    assert(pxMallocEnd >= pxBucketEnd);
-    assert((pxMallocEnd >= px128End) || (wr_nType(wRoot) == T_LIST_UA));
-    if (wPopCnt - 1 <= 6) {
-        for (uint16_t *px = pxKeysEnd; px < pxMallocEnd; px++) {
-            if (*px != pxKeys[wPopCnt-2]) {
-                printf("\nwPopCnt - 1: %d\n", wPopCnt - 1);
-                for (uint16_t *px = pxKeys; px < pxMallocEnd; px++) {
-                    printf(" 0x%04x", *px);
-                }
-                printf("\n");
-            }
-            assert(*px == pxKeys[wPopCnt-2]);
-        }
-    }
-          #endif // defined(DEBUG)
-      #endif // defined(OLD_LISTS) && ! defined(LIST_END_MARKERS)
+        } else
   #endif // defined(UA_PARALLEL_128)
+        {
+            for (; (n * 2) % cnBytesListLenAlign; ++n) {
+                ls_psKeysNAT(pwr)[n] = ls_psKeysNAT(pwr)[n-1];
+            }
+        }
 #endif // defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
         ls_psKeysNAT(pwList)[n] = -1;
@@ -5013,12 +4959,17 @@ Initialize(void)
     // we need to be careful about bitmaps that 2MB plus one word and bigger.
     assert((cnBitsLeftAtDl2 < 24)
         || ((cn2dBmWpkPercent == 0) && (cnBitsInD1 < 24)));
-
-#if defined(PSPLIT_PARALLEL) && ! defined(NO_PSPLIT_SEARCH)
-  #if defined(UA_PARALLEL_128)
-    assert(EXP(cnBitsMallocMask) >= sizeof(__m128i));
-  #endif // defined(UA_PARALLEL_128)
-#endif // defined(PSPLIT_PARALLEL) && ! defined(NO_PSPLIT_SEARCH)
+#if defined(UA_PARALLEL_128)
+    assert(cnBitsMallocMask >= 4);
+    for (int i = 1; i <= 6; i++) {
+        if (ListWordsTypeList(i, 16) != 3) {
+            printf("ListWordsTypeList(%d, 16) %d\n",
+                   i, ListWordsTypeList(i, 16));
+        }
+        assert(ListWordsTypeList(i, 16) == 3);
+    }
+    assert(ListWordsTypeList(7, 16) > 3);
+#endif // defined(UA_PARALLEL_128)
 
 #if defined(CODE_BM_SW) && ! defined(PP_IN_LINK)
     assert(&((BmSwitch_t *)0)->sw_wPrefixPop == &((Switch_t *)0)->sw_wPrefixPop);
@@ -7250,6 +7201,9 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     Word_t wKeyLocal, *pwKeyLocal;
     if (pwKey != NULL) {
         wKeyLocal = *pwKey + 1;
+        if (wKeyLocal == 0) {
+            return 0; // What about PJError?
+        }
         pwKeyLocal = &wKeyLocal;
     } else {
         pwKeyLocal = NULL;
@@ -7305,6 +7259,9 @@ Judy1Prev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
     Word_t wKeyLocal, *pwKeyLocal;
     if (pwKey != NULL) {
+        if (*pwKey == 0) {
+            return 0; // What about PJError?
+        }
         wKeyLocal = *pwKey - 1;
         pwKeyLocal = &wKeyLocal;
     } else {
