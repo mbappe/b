@@ -616,10 +616,16 @@ CalcNextKey(PSeed_t PSeed)
 #ifdef DEBUG
         if (pFlag)
         {
-            printf("Numb %016" PRIxPTR" Key ", Key);
+            printf("Numb %016" PRIxPTR" ", Key);
         }
 #endif // DEBUG
         Key = MyPDEP(Key, wSplayMask);
+#ifdef DEBUG
+        if (pFlag)
+        {
+            printf("PDEP %016" PRIxPTR" ", Key);
+        }
+#endif // DEBUG
         // Key might be bigger than 1 << BValue -- by design.
     }
 #endif // NO_SPLAY_KEY_BITS
@@ -630,11 +636,17 @@ CalcNextKey(PSeed_t PSeed)
     if (DFlag)
     {
         Key = Swizzle(Key); // Reverse order of bits.
+#ifdef DEBUG
+        if (pFlag)
+        {
+            printf("Swizzle %016" PRIxPTR" ", Key);
+        }
+#endif // DEBUG
 //      move the mirror bits into the least bits determined -B# and -E
         if (bSplayKeyBitsFlag)
         {
             Key >>= (sizeof(Word_t) * 8) - 1
-                - LOG(MyPDEP(((Word_t)1 << (BValue - 1) * 2) - 1, wSplayMask));
+                - LOG(MyPDEP((((Word_t)1 << (BValue - 1)) * 2) - 1, wSplayMask));
         }
         else
         {
@@ -646,6 +658,9 @@ CalcNextKey(PSeed_t PSeed)
 #ifndef NO_OFFSET
     Key = Key + Offset;
 #endif // NO_OFFSET
+#ifdef DEBUG
+    if (pFlag) { printf("Key "); }
+#endif // DEBUG
     return Key;
 }
 
@@ -1733,6 +1748,18 @@ main(int argc, char *argv[])
     {
         Word_t ii;
 // 1      Word_t PrevPrintKey = 0;
+#ifdef DEBUG
+        printf("FeedBTap 0x%zx\n", PInitSeed->FeedBTap);
+        if (bSplayKeyBitsFlag && DFlag) {
+            printf("PDEP(0x%zx 0x%zx) 0x%zx\n",
+                   (((Word_t)1 << (BValue - 1)) * 2) - 1,
+                   wSplayMask, 
+                   MyPDEP((((Word_t)1 << (BValue - 1)) * 2) - 1, wSplayMask));
+            printf("LOG %d\n", LOG(MyPDEP((((Word_t)1 << (BValue - 1)) * 2) - 1, wSplayMask)));
+            printf("Shift %d\n",
+                   (sizeof(Word_t) * 8) - 1 - LOG(MyPDEP((((Word_t)1 << (BValue - 1)) * 2) - 1, wSplayMask)));
+        }
+#endif // DEBUG
 
         for (ii = 0; ii < nElms; ii++)
         {
@@ -1748,7 +1775,7 @@ main(int argc, char *argv[])
 
 //            printf("%" PRIxPTR"\n", PrintKey);
 
-            printf("0x%016" PRIxPTR", %2d %" PRIuPTR"\n",
+            printf("0x%016" PRIxPTR" log2+1 %2d %" PRIuPTR"\n",
                    PrintKey, (int)log2((double)(PrintKey)) + 1, PrintKey);
 
 #ifdef __LP64__
