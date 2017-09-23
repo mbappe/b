@@ -550,8 +550,10 @@ TestJudyIns(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
             FAILURE("Judy1Set failed - DUP Index, population =", TotalPop);
 
         Rcode = Judy1Test(*J1, TstIndex, NULL);
-        if (Rcode != 1)
+        if (Rcode != 1) {
+            Judy1Dump((Word_t)*J1, sizeof(Word_t) * 8, 0);
             FAILURE("Judy1Test failed - Index missing, population =", TotalPop);
+        }
 
         J1S(Rcode, *J1, TstIndex);
         if (Rcode != 0)
@@ -1019,6 +1021,8 @@ TestJudyPrevEmpty(void *J1, void *JL, Word_t HighIndex, Word_t Elements)
         if (PValue != (Word_t *) NULL)
             FAILURE("JLPE returned non-empty Index =", JLindex);
 
+        Word_t J1indexBefore = J1index;
+        Word_t JLindexBefore = JLindex;
 //      find next Index (Key) in array
         Rcode1 = Judy1Prev(J1, &J1index, PJE0);
         PValue = (Word_t *)JudyLPrev(JL, &JLindex, PJE0);
@@ -1027,8 +1031,12 @@ TestJudyPrevEmpty(void *J1, void *JL, Word_t HighIndex, Word_t Elements)
             break;
 
         if ((Rcode1 != 1) || (PValue == NULL)) {
+            printf("J1indexBefore 0x%zx JLindexBefore 0x%zx\n", J1indexBefore, JLindexBefore);
+            printf("J1index 0x%zx JLindex 0x%zx\n", J1index, JLindex);
             printf("Rcode1 = %d, PValue = %p\n", Rcode1, (void *)PValue);
-            FAILURE("Judy1Prev != JudyLPrev return code at", elm);
+            Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
+            printf("HighIndex 0x%zx Elements %zd\n", HighIndex, Elements);
+            FAILURE("Judy1Prev != JudyLPrev return code at elm", elm);
         }
 
         if (J1index != JLindex) {
