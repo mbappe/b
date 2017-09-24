@@ -492,7 +492,7 @@ Word_t    Offset = 0;                   // Added to Key
 Word_t    bSplayKeyBitsFlag = 0;        // Splay key bits.
 Word_t    wSplayMask = 0x55555555;      // Revisit in main for 64-bit init.
 //Word_t    wSplayMask = 0xff00ffff;      // Revisit in main for 64-bit init.
-Word_t    wCheckBit = 0;                // Bit to complement for gFlag.
+Word_t    wCheckBit = 0;                // Bit for narrow ptr testing.
 
 Word_t    TValues = 1000000;            // Maximum numb retrieve timing tests
 Word_t    nElms = 10000000;             // Default population of arrays
@@ -1753,7 +1753,7 @@ main(int argc, char *argv[])
         if (bSplayKeyBitsFlag && DFlag) {
             printf("PDEP(0x%zx 0x%zx) 0x%zx\n",
                    (((Word_t)1 << (BValue - 1)) * 2) - 1,
-                   wSplayMask, 
+                   wSplayMask,
                    MyPDEP((((Word_t)1 << (BValue - 1)) * 2) - 1, wSplayMask));
             printf("LOG %d\n",
                    (int)LOG(MyPDEP((((Word_t)1 << (BValue - 1)) * 2) - 1, wSplayMask)));
@@ -3320,11 +3320,9 @@ TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
                                         FAILURE("Judy1Test failed at", elm);
                                     }
                                 }
-
-                                if (BValue < sizeof(Word_t) * 8 - 10)
+                                else
                                 {
-                                    // anticipating Doug's shifting of digit boundaries by two bits
-                                    Word_t TstKeyNot = TstKey ^ (((Word_t)1 << ((BValue + 9) & ~(Word_t)7)) - 2);
+                                    Word_t TstKeyNot = TstKey ^ ((Word_t)1 << (sizeof(Word_t) * 8 - 1));
                                     Rc = Judy1Test(*J1, TstKeyNot, PJE0);
                                     if (Rc != 0)
                                     {
@@ -3332,15 +3330,6 @@ TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
                                                TstKeyNot, Rc, TstKey, elm);
                                         FAILURE("Judy1Test failed at", elm);
                                     }
-                                }
-
-                                Word_t TstKeyNot = TstKey ^ ((Word_t)1 << (sizeof(Word_t) * 8 - 1));
-                                Rc = Judy1Test(*J1, TstKeyNot, PJE0);
-                                if (Rc != 0)
-                                {
-                                    printf("\n--- Judy1Test(0x%zx) Rc = %d after Judy1Set, Key = 0x%zx, elm = %zu\n",
-                                           TstKeyNot, Rc, TstKey, elm);
-                                    FAILURE("Judy1Test failed at", elm);
                                 }
                             }
                         }
@@ -3505,11 +3494,9 @@ TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
                                             FAILURE("JudyLGet failed at", elm);
                                         }
                                     }
-
-                                    if (BValue < sizeof(Word_t) * 8 - 10)
+                                    else
                                     {
-                                        // anticipating Doug's shifting of digit boundaries by two bits
-                                        Word_t TstKeyNot = TstKey ^ (((Word_t)1 << ((BValue + 9) & ~(Word_t)7)) - 2);
+                                        Word_t TstKeyNot = TstKey ^ ((Word_t)1 << (sizeof(Word_t) * 8 - 1));
                                         PValueNew = (PWord_t)JudyLGet(*JL, TstKeyNot, PJE0);
                                         if (PValueNew != NULL)
                                         {
@@ -3517,15 +3504,6 @@ TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
                                                    TstKeyNot, *PValueNew, TstKey, elm);
                                             FAILURE("JudyLGet failed at", elm);
                                         }
-                                    }
-
-                                    Word_t TstKeyNot = TstKey ^ ((Word_t)1 << (sizeof(Word_t) * 8 - 1));
-                                    PValueNew = (PWord_t)JudyLGet(*JL, TstKeyNot, PJE0);
-                                    if (PValueNew != NULL)
-                                    {
-                                        printf("\n--- JudyLGet(0x%zx) *PValue = 0x%zx after Judy1Set, Key = 0x%zx, elm = %zu\n",
-                                               TstKeyNot, *PValueNew, TstKey, elm);
-                                        FAILURE("JudyLGet failed at", elm);
                                     }
                                 }
                             }
