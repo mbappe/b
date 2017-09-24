@@ -301,35 +301,29 @@
 #define EMBEDDED_KEYS_PARALLEL_FOR_INSERT
 #endif
 
-// Default is -DPSPLIT_PARALLEL which forces -DALIGN_LISTS -DALIGN_LIST_ENDS.
+// Default is -DPSPLIT_PARALLEL.
+// It causes PSPLIT_SEARCH to use a parallel search.  PSPLIT_SEARCH_BY_KEY
+// may be used to avoid a parallel search independent of PSPLIT_PARALLEL.
+// It affects the alignment of the list of keys in a list leaf and the
+// amount of memory allocated for it and the padding of any unused key slots.
+// The size of a parallel search bucket is determined by PARALLEL_128 (or
+// PARALLEL_64 for 32-bit).
+// PSPLIT_PARALLEL applies to lists of all key sizes except lists which use
+// full word size key slots.
+// For lists of full word size key slots we use PSPLIT_PARALLEL_WORD.
+// Ultimately, we'd be able to override the default for any attribute of the
+// type of search to use for any situation independently. But we're not
+// there yet. The ifdef complexity is already horrifying.
 #ifndef NO_PSPLIT_PARALLEL
   #undef PSPLIT_PARALLEL
   #define PSPLIT_PARALLEL
 #endif // NO_PSPLIT_PARALLEL
 
 // Default is -DPARALLEL_128.
-#ifdef PSPLIT_PARALLEL
-  #if !defined(PARALLEL_64) && !defined(NO_PARALLEL_128)
-    #undef PARALLEL_128
-    #define PARALLEL_128
-  #endif // !defined(PARALLEL_64) && !defined(NO_PARALLEL_128)
-#endif // PSPLIT_PARALLEL
-
-// The length of a list from the first key through the last (including unused
-// slots filled with the last real key in the list) must be an integral
-// number of parallel search buckets so we don't need any special handling in
-// the parallel search code to handle a partial bucket at the end.
-// This is independent of any header or footer in the list or any alignment
-// of the first key in the list.
-#ifdef PARALLEL_128
-    #define cnBytesListLenAlign  16
-#elif defined(PARALLEL_64)
-    #define cnBytesListLenAlign  8
-#elif defined(PSPLIT_PARALLEL)
-    #define cnBytesListLenAlign  cnBytesPerWord
-#else
-    #define cnBytesListLenAlign  1
-#endif
+#if !defined(PARALLEL_64) && !defined(NO_PARALLEL_128)
+  #undef PARALLEL_128
+  #define PARALLEL_128
+#endif // !defined(PARALLEL_64) && !defined(NO_PARALLEL_128)
 
 // UA_PARALLEL_128, i.e. unaligned parallel 128, was designed to save memory
 // by eliminating the requirement that lists be padded to an integral number
@@ -400,24 +394,6 @@ SetBits(Word_t *pw, int nBits, int nLsb, Word_t wVal)
     *pw &= ~(MSK(nBits) << nLsb); // clear the field
     *pw |= (wVal & MSK(nBits)) << nLsb; // set the field
 }
-
-// We'd like to ignore ALIGN_LISTS for lists of word-size keys
-// if PSPLIT_SEARCH_WORD is not defined and the only reason
-// ALIGN_LISTS is defined is that PSPLIT_PARALLEL is defined.
-// We use _ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL to
-// indicate that ALIGN_LISTS was defined independent of
-// PSPLIT_PARALLEL and should not be so ignored.
-#if defined(ALIGN_LISTS)
-#define _ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL
-#endif // defined(ALIGN_LISTS)
-
-// Define ALIGN_LISTS if PSPLIT_PARALLEL is defined.
-#if defined(PSPLIT_PARALLEL)
-#undef ALIGN_LISTS
-#define ALIGN_LISTS
-#undef ALIGN_LIST_ENDS
-#define ALIGN_LIST_ENDS
-#endif // defined(PSPLIT_PARALLEL)
 
 // Default is -DPSPLIT_EARLY_OUT which is applicable only if PSPLIT_PARALLEL.
 #if ! defined(NO_PSPLIT_EARLY_OUT)
@@ -1744,53 +1720,55 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 #endif // defined(BM_IN_LINK)
 
 #if defined(PSPLIT_PARALLEL)
-#define cbPsplitParallel 1
+    #define cbPsplitParallel 1
 #else // defined(PSPLIT_PARALLEL)
-#define cbPsplitParallel 0
+    #define cbPsplitParallel 0
 #endif // defined(PSPLIT_PARALLEL)
 
+#if defined(PSPLIT_PARALLEL_WORD)
+  #ifndef PSPLIT_SEARCH_WORD
+    #error PSPLIT_PARALLEL_WORD without PSPLIT_SEARCH_WORD
+  #endif // PSPLIT_SEARCH_WORD
+    #define cbPsplitParallelWord 1
+#else // defined(PSPLIT_PARALLEL_WORD)
+    #define cbPsplitParallelWord 0
+#endif // defined(PSPLIT_PARALLEL_WORD)
+
 #if defined(PARALLEL_128)
-#define cbParallel128 1
+    #define cbParallel128 1
 #else // defined(PARALLEL_128)
-#define cbParallel128 0
+    #define cbParallel128 0
 #endif // defined(PARALLEL_128)
 
 #if defined(PSPLIT_SEARCH_WORD)
-#define cbPsplitSearchWord 1
+    #define cbPsplitSearchWord 1
 #else // defined(PSPLIT_SEARCH_WORD)
-#define cbPsplitSearchWord 0
+    #define cbPsplitSearchWord 0
 #endif // defined(PSPLIT_SEARCH_WORD)
 
 #if defined(ALIGN_LISTS)
-#define cbAlignLists 1
+    #define cbAlignLists 1
 #else // defined(ALIGN_LISTS)
-#define cbAlignLists 0
+    #define cbAlignLists 0
 #endif // defined(ALIGN_LISTS)
 
-#if defined(_ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL)
-#define cbAlignListsIOPP 1
-#else // defined(_ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL)
-#define cbAlignListsIOPP 0
-#endif // defined(_ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL)
-
-#if defined(ALIGN_LIST_ENDS)
-#define cbAlignListEnds 1
-#else // defined(ALIGN_LIST_ENDS)
-#define cbAlignListEnds 0
-#endif // defined(ALIGN_LIST_ENDS)
+#if defined(ALIGN_LIST_LENS)
+    #define cbAlignListLens 1
+#else // defined(ALIGN_LIST_LENS)
+    #define cbAlignListLens 0
+#endif // defined(ALIGN_LIST_LENS)
 
 #if defined(LIST_END_MARKERS)
-#define cbListEndMarkers 1
+    #define cbListEndMarkers 1
 #else // defined(LIST_END_MARKERS)
-#define cbListEndMarkers 0
+    #define cbListEndMarkers 0
 #endif // defined(LIST_END_MARKERS)
 
 // POP_SLOT tells ListWords if we need a slot in the leaf for a pop count
 // that is not included in N_LIST_HDR_KEYS, i.e. a slot that occurs after
 // ll_a[csik]Keys[N_LIST_HDR_KEYS].
 // There is a problem if POP_SLOT is at the beginning of the list and
-// we're aligning lists as with PP_IN_LINK and a list at the top with
-// PSPLIT_PARALLEL at top. Our code doesn't account for aligning the
+// we're aligning lists. Our code doesn't account for aligning the
 // list again after the pop slot.
 #if defined(PP_IN_LINK)
     // Be careful: _nBL here is BEFORE any skip is applied
@@ -1807,33 +1785,31 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
   #endif // defined(OLD_LISTS)
 #endif // defined(PP_IN_LINK)
 
-// PSPLIT_PARALLEL ==> ALIGN_LISTS ==> cbAlignLists
-// align non-word key-size iff align
-// align full-word key-size iff (psword && psp) || aligniopp
-// (1)        align     if !word iff (                         align    )
-// (2)        align     if  word iff ( ( psword and  psp) or   aligniopp)
-// (1a)       align     if !word and (                         align    )
-// (2a)       align     if  word and ( ( psword and  psp) or   aligniopp)
-// (1b) don't align     if !word and (                        !align    )
-// (2b) don't align     if  word and (!( psword and  psp) and !aligniopp)
-// (3)  !align => !psp && !aligniopp
-// (4)  from (2b) and (3): don't align if word and !align
-// (5)  from (1b) and (4): don't align if !align
-// (6)  don't align     if  word and ( (!psword or  !psp) and !aligniopp)
+// ALIGN_LIST is about the alignment of the first real key in a list leaf.
+// The first real key in a list leaf may follow a pop count and/or an
+// end-of-list marker key and/or dummy keys and/or whatever else we decide
+// to implement or experiment with.
+// One main purpose of doing this alignment is to satisfy any alignment
+// requirement of the load instruction used by gcc when an assignment
+// statement is used to read a parallel search bucket from memory.
 #define ALIGN_LIST(_nBytesKeySz) \
-    ( cbAlignLists \
-        && (((_nBytesKeySz) != sizeof(Word_t)) \
-            || (cbPsplitSearchWord && cbPsplitParallel) \
-            ||  cbAlignListsIOPP) )
+    ( cbAlignLists /* independent of psplit parallel */ \
+        || (_nBytesKeySz) == cnBytesPerWord \
+            ? cbPsplitParallelWord : cbPsplitParallel )
 
-// cbAlignListEnds is consulted only if ALIGN_LIST is true.
-// We don't support cbAlignListEnds without cbAlignLists.
-// We don't support ALIGN_LIST_ENDS without ALIGN_LISTS.
-// PSPLIT_PARALLEL ==> ALIGN_LIST_ENDS ==> cbAlignLists
-#define ALIGN_LIST_END(_nBytesKeySz) \
-    ( assert(cbAlignLists || !cbAlignListEnds), \
-      (ALIGN_LIST(_nBytesKeySz) && cbAlignListEnds) )
-
+// The length of a list from the first key through the last (including unused
+// slots filled with the last real key in the list) must be an integral
+// number of parallel search buckets so we don't need any special handling in
+// the parallel search code to handle a partial bucket at the end.
+// This is independent of any header or footer in the list or any alignment
+// of the first key in the list, e.g. if ALIGN_LIST allows a list to start on
+// an odd word boundary and ALIGN_LIST_LEN requires the list to be an integral
+// number of buckets long, then the end of the list may fall on an odd word
+// boundary.
+#define ALIGN_LIST_LEN(_nBytesKeySz) \
+    ( cbAlignListLens /* independent of psplit parallel */ \
+        || (_nBytesKeySz) == cnBytesPerWord \
+            ? cbPsplitParallelWord : cbPsplitParallel )
 
 // pop cnt in preamble iff OLD_LISTS && !POP_IN_WR_HB && LIST_POP_IN_PREAMBLE; don't care about PP_IN_LINK
 // - LIST_POP_IN_PREAMBLE should imply OLD_LISTS and !POP_IN_WR_HB (What do we do with pop field in PP?)
@@ -1930,22 +1906,12 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 #define ls_pwKeysNAT_UA(_ls) \
     (&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS])
 
-  // Align lists of word-size keys only if PSPLIT_SEARCH_WORD and
-  // PSPLIT_PARALLEL are defined or ALIGN_LISTS was defined independent
-  // of PSPLIT_PARALLEL. In other words, don't align lists of word-size
-  // keys if ALIGN_LISTS is defined only because PSPLIT_PARALLEL is
-  // defined unless PSPLIT_SEARCH_WORD is also defined.
-  #if ( defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL) ) \
-      || defined(_ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL)
-
+  #if ALIGN_LIST(cnBytesPerWord)
 #define ls_pwKeysNAT(_ls) \
     ((Word_t *)ALIGN_UP((Word_t)ls_pwKeysNAT_UA(_ls), sizeof(Bucket_t)))
-
-  #else // ( defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL) ) || ...
-
+  #else // ALIGN_LIST(cnBytesPerWord)
 #define ls_pwKeysNAT(_ls)  ls_pwKeysNAT_UA(_ls)
-
-  #endif // ( defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL) ) || ...
+  #endif // ALIGN_LIST(cnBytesPerWord)
 
   #if defined(COMPRESSED_LISTS)
 
@@ -1960,32 +1926,29 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
     (&((ListLeaf_t *)(_ls))->ll_aiKeys[N_LIST_HDR_KEYS])
       #endif // (cnBitsPerWord > 32)
 
-      #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
-// What if we want 128-byte alignment and one-word parallel search?
-// Ifdefs don't allow it at the moment.
-
+      #if ALIGN_LIST(1)
 #define ls_pcKeysNAT(_ls) \
     ((uint8_t *)ALIGN_UP((Word_t)ls_pcKeysNAT_UA(_ls), sizeof(Bucket_t)))
+      #else // ALIGN_LIST(1)
+#define ls_pcKeysNAT(_ls)  ls_pcKeysNAT_UA(_ls)
+      #endif // ALIGN_LIST(1)
 
+      #if ALIGN_LIST(2)
 #define ls_psKeysNAT(_ls) \
     ((uint16_t *)ALIGN_UP((Word_t)ls_psKeysNAT_UA(_ls), sizeof(Bucket_t)))
+      #else // ALIGN_LIST(2)
+#define ls_psKeysNAT(_ls)  ls_psKeysNAT_UA(_ls)
+      #endif // ALIGN_LIST(2)
 
-          #if (cnBitsPerWord > 32)
+      #if (cnBitsPerWord > 32)
+          #if ALIGN_LIST(4)
 #define ls_piKeysNAT(_ls) \
     ((uint32_t *)ALIGN_UP((Word_t)ls_piKeysNAT_UA(_ls), sizeof(Bucket_t)))
-          #endif // (cnBitsPerWord > 32)
-
-      #else // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
-
-#define ls_pcKeysNAT(_ls)  ls_pcKeysNAT_UA(_ls)
-
-#define ls_psKeysNAT(_ls)  ls_psKeysNAT_UA(_ls)
-
-          #if (cnBitsPerWord > 32)
+          #else // ALIGN_LIST(4)
 #define ls_piKeysNAT(_ls)  ls_piKeysNAT_UA(_ls)
-          #endif // (cnBitsPerWord > 32)
+          #endif // ALIGN_LIST(4)
+      #endif // (cnBitsPerWord > 32)
 
-      #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
   #endif // defined(COMPRESSED_LISTS)
 
   // ls_pxKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
@@ -1995,58 +1958,44 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
   // ls_pwKeys(_ls, _nBL) is valid -- even for PP_IN_LINK at the top
   #if defined(PP_IN_LINK)
 
-      #if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
-          #if defined(COMPRESSED_LISTS)
+      #if defined(COMPRESSED_LISTS)
 
+          #if ALIGN_LIST(1)
 #define ls_pcKeys(_ls, _nBL) \
     ((uint8_t *)ALIGN_UP((Word_t)(ls_pcKeysNAT_UA(_ls) + POP_SLOT(_nBL)), \
                          sizeof(Bucket_t)))
+          #else // ALIGN_LIST(1)
+#define ls_pcKeys(_ls, _nBL)  (ls_pcKeysNAT_UA(_ls) + POP_SLOT(_nBL))
+          #endif // ALIGN_LIST(1)
 
+          #if ALIGN_LIST(2)
 #define ls_psKeys(_ls, _nBL) \
     ((uint16_t *)ALIGN_UP((Word_t)(ls_psKeysNAT_UA(_ls) + POP_SLOT(_nBL)),  \
                           sizeof(Bucket_t)))
+          #else // ALIGN_LIST(2)
+#define ls_psKeys(_ls, _nBL)  (ls_psKeysNAT_UA(_ls) + POP_SLOT(_nBL))
+          #endif // ALIGN_LIST(2)
 
-              #if (cnBitsPerWord > 32)
-
+          #if (cnBitsPerWord > 32)
+              #if ALIGN_LIST(4)
 #define ls_piKeys(_ls, _nBL) \
     ((uint32_t *)ALIGN_UP((Word_t)(ls_piKeysNAT_UA(_ls) + POP_SLOT(_nBL)), \
                           sizeof(Bucket_t)))
+              #else // ALIGN_LIST(4)
+#define ls_piKeys(_ls, _nBL)  (ls_piKeysNAT_UA(_ls) + POP_SLOT(_nBL))
+              #endif // ALIGN_LIST(4)
+          #endif // (cnBitsPerWord > 32)
 
-              #endif // (cnBitsPerWord > 32)
+      #endif // defined(COMPRESSED_LISTS)
 
-          #endif // defined(COMPRESSED_LISTS)
-
-          #if (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)) \
-              || ( defined(ALIGN_LISTS) && ! defined(PSPLIT_PARALLEL) )
-
+      #if ALIGN_LIST(8)
 #define ls_pwKeys(_ls, _nBL) \
     ((Word_t *)ALIGN_UP((Word_t)(ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL)), \
                         sizeof(Bucket_t)))
-
-          #else // (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL))..
-
+      #else // ALIGN_LIST(8)
 #define ls_pwKeys(_ls, _nBL)  (ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL))
+      #endif // ALIGN_LIST(8)
 
-          #endif // (defined(PSPLIT_SEARCH_WORD) && defined(PSPLIT_PARALLEL)).
-
-      #else // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
-
-#define ls_pwKeys(_ls, _nBL)  (ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL))
-
-          #if defined(COMPRESSED_LISTS)
-
-#define ls_pcKeys(_ls, _nBL)  (ls_pcKeysNAT_UA(_ls) + POP_SLOT(_nBL))
-
-#define ls_psKeys(_ls, _nBL)  (ls_psKeysNAT_UA(_ls) + POP_SLOT(_nBL))
-
-              #if (cnBitsPerWord > 32)
-
-#define ls_piKeys(_ls, _nBL)  (ls_piKeysNAT_UA(_ls) + POP_SLOT(_nBL))
-
-              #endif // (cnBitsPerWord > 32)
-
-          #endif // defined(COMPRESSED_LISTS)
-      #endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
   #else // defined(PP_IN_LINK)
 
 #define ls_pwKeys(_ls, _nBL)  ls_pwKeysNAT(_ls)
@@ -2081,7 +2030,7 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 #define ls_nSlotsInList(_wPopCnt, _nBL, _nBytesKeySz) \
 ( \
     ( ! ALIGN_LIST(_nBytesKeySz) \
-    ? ( assert(cbAlignLists == cbAlignListEnds), \
+    ? ( assert(cbAlignLists == cbAlignListLens), \
         ALIGN_UP(cnDummiesInList * sizeof(Word_t) / (_nBytesKeySz) \
                      + 2 * cbListEndMarkers \
                      + (_wPopCnt) \
@@ -2093,10 +2042,10 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
                           sizeof(Bucket_t) / (_nBytesKeySz)) \
                      + 2 * sizeof(Bucket_t) \
                          / (_nBytesKeySz) * cbListEndMarkers \
-                     + cbAlignListEnds \
+                     + cbAlignListLens \
                          * ALIGN_UP((_wPopCnt), \
                                     sizeof(Bucket_t) / (_nBytesKeySz)) \
-                     + ( ! cbAlignListEnds ) * (_wPopCnt) \
+                     + ( ! cbAlignListLens ) * (_wPopCnt) \
                      + POP_SLOT(_nBL) \
                      + sizeof(Word_t) / (_nBytesKeySz), \
                  2 * sizeof(Word_t) / (_nBytesKeySz)) \
@@ -2921,13 +2870,48 @@ extern const unsigned anBL_to_nDL[];
 
   #else // defined(OLD_PSPLIT)
 
-#define PSPLIT(_nPopCnt, _nBL, _xKey, _nPsplit) \
+// BIG_MSK is MSK that can handle _nBL == cnBitsPerWord.
+#define BIG_MSK(_nBL)  (((Word_t)1 << ((_nBL) - 1)) * 2 - 1)
+
+// PSPLIT_NNT - Not Near Top. Far enough to avoid overflow with max pop.
+#define PSPLIT_NNT(_nPopCnt, _nBL, _xKey, _nPsplit) \
 { \
     /* make sure we don't overflow */ \
-    DBG( (((_nBL) + LOG(_nPopCnt) + 1 > cnBitsPerWord) \
-        ? printf("_nPopCnt %d\n", _nPopCnt) : 0) );   \
-    assert((_nBL) + LOG(_nPopCnt) + 1 <= cnBitsPerWord); \
-    (_nPsplit) = ((Word_t)((_xKey) & MSK(_nBL)) * (_nPopCnt) / EXP(_nBL)); \
+    assert((_nBL) + LOG(_nPopCnt) < cnBitsPerWord); \
+    (_nPsplit) = (Word_t)((_xKey) & MSK(_nBL)) * (_nPopCnt) / EXP(_nBL); \
+}
+
+// PSPLIT_GT_NAT - sizeof(Word_t) - ? < key size < sizeof(Word_t).
+// Avoid BIG_MSK, but not shift.
+#define PSPLIT_GT_NAT(_nPopCnt, _nBL, _xKey, _nPsplit) \
+{ \
+    /* make sure we don't throw away too many bits */ \
+    assert((_nBL) - 8 > LOG(_nPopCnt)); \
+    assert((_nBL) < sizeof(Word_t) * 8); /* NAT */ \
+    /* make sure we don't overflow */ \
+    assert((_nBL) - 8 + LOG(_nPopCnt) < cnBitsPerWord); \
+    (_nPsplit) \
+        = (((_xKey) & MSK(_nBL)) >> 8) * (_nPopCnt) / EXP((_nBL) - 8); \
+}
+
+// PSPLIT_GT - sizeof(Word_t) - ? < key size.
+#define PSPLIT_GT(_nPopCnt, _nBL, _xKey, _nPsplit) \
+{ \
+    /* make sure we don't throw away too many bits */ \
+    assert((unsigned)(_nBL) > LOG(_nPopCnt) + 8); \
+    /* make sure we don't overflow */ \
+    assert((_nBL) - 8 + LOG(_nPopCnt) < cnBitsPerWord); \
+    (_nPsplit) \
+        = (((_xKey) & BIG_MSK(_nBL)) >> 8) * (_nPopCnt) / EXP((_nBL) - 8); \
+}
+
+#define PSPLIT(_nPopCnt, _nBL, _xKey, _nPsplit) \
+{ \
+    if ((_nBL) <= (int)sizeof(Word_t) * 8 - 16) { \
+        PSPLIT_NNT((_nPopCnt), (_nBL), (_xKey), (_nPsplit)) \
+    } else { \
+        PSPLIT_GT((_nPopCnt), (_nBL), (_xKey), (_nPsplit)); \
+    } \
 }
 
   #endif // defined(OLD_PSPLIT)
@@ -4354,6 +4338,15 @@ ListHasKey32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 // split-loop-w-threshold=20, end-check, continue-first
 //
 
+// PSPLIT_PARALLEL_WORD requires PSPLIT_PARALLEL to behave as expected.
+#if defined(PSPLIT_PARALLEL_WORD)
+  #define PSPLIT_SEARCH_W(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
+      PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
+#else // defined(PSPLIT_PARALLEL_WORD)
+  #define PSPLIT_SEARCH_W(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
+      PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
+#endif // defined(PSPLIT_PARALLEL_WORD)
+
 // Find wKey (the undecoded bits) in the list.
 // If it exists, then return its index in the list.
 // If it does not exist, then return the one's complement of the index where
@@ -4380,34 +4373,35 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
     // Or in 1 to handle nPopCnt==1 else we'd be taking the LOG of zero.
     nBL = LOG((wKeyMin ^ wKeyMax) | 1) + 1;
     // nBL could be 64 and it could be 0.
+    // need a special psplit here that starts at wKeyMin
+  #error Need a special PSPLIT for PSPLIT_SEARCH_XOR_WORD
 #endif // defined(PSPLIT_SEARCH_XOR_WORD)
-    if (nBL <= (cnBitsPerWord - 8)) {
-#if defined(BL_SPECIFIC_PSPLIT_SEARCH)
-#if (cnBitsPerWord > 32)
+#if defined(BL_SPECIFIC_PSPLIT_SEARCH_WORD)
+  #if (cnBitsPerWord > 32)
+        if (nBL == 64) {
+            PSPLIT_SEARCH_W(Word_t, 64, pwKeys, nPopCnt, wKey, nPos);
+        } else
+        if (nBL == 56) {
+            PSPLIT_SEARCH_W(Word_t, 56, pwKeys, nPopCnt, wKey, nPos);
+        } else
+        if (nBL == 48) {
+            PSPLIT_SEARCH_W(Word_t, 48, pwKeys, nPopCnt, wKey, nPos);
+        } else
         if (nBL == 40) {
-            PSPLIT_SEARCH(Word_t, 40, pwKeys, nPopCnt, wKey, nPos);
+            PSPLIT_SEARCH_W(Word_t, 40, pwKeys, nPopCnt, wKey, nPos);
         } else
-#else // (cnBitsPerWord > 32)
+  #else // (cnBitsPerWord > 32)
+        if (nBL == 32) {
+            PSPLIT_SEARCH_W(Word_t, 32, pwKeys, nPopCnt, wKey, nPos);
+        } else
         if (nBL == 24) {
-            PSPLIT_SEARCH(Word_t, 24, pwKeys, nPopCnt, wKey, nPos);
+            PSPLIT_SEARCH_W(Word_t, 24, pwKeys, nPopCnt, wKey, nPos);
         } else
-#endif // (cnBitsPerWord > 32)
+  #endif // (cnBitsPerWord > 32)
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
         {
-            PSPLIT_SEARCH(Word_t, nBL, pwKeys, nPopCnt, wKey, nPos);
+            PSPLIT_SEARCH_W(Word_t, nBL, pwKeys, nPopCnt, wKey, nPos);
         }
-    } else { // here to avoid overflow
-        int nSplit
-            = ((wKey & MSK(nBL)) >> 8) * nPopCnt / (1 << (nBL - 8));
-        if (pwKeys[nSplit] < wKey) {
-            if (nSplit == nPopCnt - 1) { return ~nPopCnt; }
-            nPos = nSplit + 1;
-            SEARCHF(Word_t, pwKeys, nPopCnt - nSplit - 1,
-                       wKey, nPos);
-        } else { // here if wKey <= pwKeys[nSplit]
-            SEARCHB(Word_t, pwKeys, nSplit + 1, wKey, nPos);
-        }
-    }
 #else // defined(PSPLIT_SEARCH_WORD)
     Word_t *pwKeysOrig = pwKeys;
     (void)nPos;

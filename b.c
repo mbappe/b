@@ -313,10 +313,7 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
     // I should test if dummies works.
 
     int nBytesHdr = (N_LIST_HDR_KEYS + POP_SLOT(nBL)) * nBytesKeySz;
-#if defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
-  #if ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LISTS)
-    if (nBytesKeySz < (int)sizeof(Word_t))
-  #endif // ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LISTS)
+    if (ALIGN_LIST(nBytesKeySz))
     {
         if ((cnMallocMask + 1) < sizeof(Bucket_t)) {
             // We don't know what address we are going to get from malloc.
@@ -328,17 +325,13 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
             nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(Bucket_t));
         }
     }
-#endif // defined(ALIGN_LISTS) || defined(PSPLIT_PARALLEL)
 
     int nBytesKeys = wPopCntArg * nBytesKeySz; // add list of real keys
 
-#if defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)
     // Pad array of keys so the end is aligned.
     // We'll eventually fill the padding with replicas of the last real key
     // so parallel searching yields no false positives.
-  #if ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LIST_ENDS)
-    if (nBytesKeySz < (int)sizeof(Word_t))
-  #endif // ! defined(PSPLIT_SEARCH_WORD) && ! defined(ALIGN_LIST_ENDS)
+    if (ALIGN_LIST_LEN(nBytesKeySz))
     {
 #if defined(UA_PARALLEL_128)
         if ((nBL == 16) && (wPopCntArg <= 6)) {
@@ -352,16 +345,12 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
         { nBytesKeys = ALIGN_UP(nBytesKeys, sizeof(Bucket_t)); }
     }
 
-#else // defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)
-
-  #if defined(LIST_END_MARKERS)
+#if defined(LIST_END_MARKERS)
     // Make room for -1 at the end to help make search faster.
     // The marker at the beginning is accounted for in N_LIST_HDR_KEYS.
     // How should we handle LIST_END_MARKERS for parallel searches?
     nBytesKeys += nBytesKeySz;
-  #endif // defined(LIST_END_MARKERS)
-
-#endif // defined(ALIGN_LIST_ENDS) || defined(PSPLIT_PARALLEL)
+#endif // defined(LIST_END_MARKERS)
 
     int nBytes = nBytesHdr + nBytesKeys;
 
@@ -2137,17 +2126,17 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, unsigned nKeys, Word_t wKey)
     pTgt[n] = wKey; // insert the key
 
     n = nKeys + 1;
-#if defined(PSPLIT_PARALLEL) && defined(PSPLIT_SEARCH_WORD)
+#if defined(PSPLIT_PARALLEL_WORD)
     // Pad the list with copies of the last real key in the list so the
     // length of the list from the first key through the last copy of the
     // last real key is an integral multiple of cnBytesListLenAlign.
     // cnBytesListLenAlign is set to the size of a parallel search bucket.
     // This way we don't need any special handling in the parallel search
     // code to handle a partial final bucket.
-    for (; (n * sizeof(wKey)) % cnBytesListLenAlign; ++n) {
+    for (; (n * sizeof(wKey)) % sizeof(Bucket_t); ++n) {
         pTgt[n] = pTgt[n-1];
     }
-#endif // defined(PSPLIT_PARALLEL) && defined(PSPLIT_SEARCH_WORD)
+#endif // defined(PSPLIT_PARALLEL_WORD)
 #if defined(LIST_END_MARKERS)
     pTgt[n] = -1;
 #endif // defined(LIST_END_MARKERS)
@@ -2184,7 +2173,7 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, unsigned nKeys,
     n = nKeys + 1;
 #if defined(PSPLIT_PARALLEL)
     // See CopyWithInsertWord for comment.
-    for (; (n * sizeof(iKey)) % cnBytesListLenAlign; ++n) {
+    for (; (n * sizeof(iKey)) % sizeof(Bucket_t); ++n) {
         pTgt[n] = pTgt[n-1];
     }
 #endif // defined(PSPLIT_PARALLEL)
@@ -2233,7 +2222,7 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc,
     } else
   #endif // defined(UA_PARALLEL_128)
     {
-        for (; (n * sizeof(sKey)) % cnBytesListLenAlign; ++n) {
+        for (; (n * sizeof(sKey)) % sizeof(Bucket_t); ++n) {
             pTgt[n] = pTgt[n-1];
         }
     }
@@ -2269,7 +2258,7 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, unsigned nKeys, uint8_t cKey)
 
     n = nKeys + 1;
 #if defined(PSPLIT_PARALLEL)
-    for (; (n * sizeof(cKey)) % cnBytesListLenAlign; ++n) {
+    for (; (n * sizeof(cKey)) % sizeof(Bucket_t); ++n) {
         pTgt[n] = pTgt[n-1];
     }
 #endif // defined(PSPLIT_PARALLEL)
@@ -4802,10 +4791,10 @@ embeddedKeys:;
     if (nBL <= 8) {
         MOVE(&ls_pcKeysNAT(pwList)[nIndex],
              &ls_pcKeysNAT(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
-        int n = wPopCnt - 1;
+        int n = wPopCnt - 1; (void)n;
 #if defined(PSPLIT_PARALLEL)
         // pad list to an integral number of parallel search buckets in length
-        for (; (n * 1) % cnBytesListLenAlign; ++n) {
+        for (; (n * 1) % sizeof(Bucket_t); ++n) {
             ls_pcKeysNAT(pwr)[n] = ls_pcKeysNAT(pwr)[n-1];
         }
 #endif // defined(PSPLIT_PARALLEL)
@@ -4815,7 +4804,7 @@ embeddedKeys:;
     } else if (nBL <= 16) {
         MOVE(&ls_psKeysNAT(pwList)[nIndex],
              &ls_psKeysNAT(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
-        int n = wPopCnt - 1; // first empty slot
+        int n = wPopCnt - 1; (void)n; // first empty slot
 #if defined(PSPLIT_PARALLEL)
   #if defined(UA_PARALLEL_128)
         if (n <= 6) {
@@ -4825,7 +4814,7 @@ embeddedKeys:;
         } else
   #endif // defined(UA_PARALLEL_128)
         {
-            for (; (n * 2) % cnBytesListLenAlign; ++n) {
+            for (; (n * 2) % sizeof(Bucket_t); ++n) {
                 ls_psKeysNAT(pwr)[n] = ls_psKeysNAT(pwr)[n-1];
             }
         }
@@ -4837,10 +4826,10 @@ embeddedKeys:;
     } else if (nBL <= 32) {
         MOVE(&ls_piKeysNAT(pwList)[nIndex],
              &ls_piKeysNAT(pwr)[nIndex + 1], wPopCnt - nIndex - 1);
-        int n = wPopCnt - 1;
+        int n = wPopCnt - 1; (void)n;
 #if defined(PSPLIT_PARALLEL)
         // pad list to an integral number of parallel search buckets in length
-        for (; (n * 4) % cnBytesListLenAlign; ++n) {
+        for (; (n * 4) % sizeof(Bucket_t); ++n) {
             ls_piKeysNAT(pwr)[n] = ls_piKeysNAT(pwr)[n-1];
         }
 #endif // defined(PSPLIT_PARALLEL)
@@ -4861,7 +4850,7 @@ embeddedKeys:;
         int n = wPopCnt - 1; (void)n;
 #if defined(PSPLIT_PARALLEL) && defined(PSPLIT_SEARCH_WORD)
         // pad list to an integral number of parallel search buckets in length
-        for (; (n * sizeof(Word_t)) % cnBytesListLenAlign; ++n) {
+        for (; (n * sizeof(Word_t)) % sizeof(Bucket_t); ++n) {
             ls_pwKeysNAT(pwr)[n] = ls_pwKeysNAT(pwr)[n-1];
         }
 #endif // defined(PSPLIT_PARALLEL) && defined(PSPLIT_SEARCH_WORD)
@@ -5158,23 +5147,17 @@ Initialize(void)
     printf("# No SORT_LISTS\n");
 #endif // defined(SORT_LISTS)
 
-#if defined(_ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL)
-    printf("#    _ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL\n");
-#else // defined(_ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL)
-    printf("# No _ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL\n");
-#endif // defined(_ALIGN_LISTS_INDEPENDENT_OF_PSPLIT_PARALLEL)
-
 #if defined(ALIGN_LISTS)
     printf("#    ALIGN_LISTS\n");
 #else // defined(ALIGN_LISTS)
     printf("# No ALIGN_LISTS\n");
 #endif // defined(ALIGN_LISTS)
 
-#if defined(ALIGN_LIST_ENDS)
-    printf("#    ALIGN_LIST_ENDS\n");
-#else // defined(ALIGN_LIST_ENDS)
-    printf("# No ALIGN_LIST_ENDS\n");
-#endif // defined(ALIGN_LIST_ENDS)
+#if defined(ALIGN_LIST_LENS)
+    printf("#    ALIGN_LIST_LENS\n");
+#else // defined(ALIGN_LIST_LENS)
+    printf("# No ALIGN_LIST_LENS\n");
+#endif // defined(ALIGN_LIST_LENS)
 
 #if defined(SKIP_LINKS)
     printf("#    SKIP_LINKS\n");
@@ -5236,6 +5219,12 @@ Initialize(void)
     printf("# No BL_SPECIFIC_PSPLIT_SEARCH\n");
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
 
+#if defined(BL_SPECIFIC_PSPLIT_SEARCH_WORD)
+    printf("#    BL_SPECIFIC_PSPLIT_SEARCH_WORD\n");
+#else // defined(BL_SPECIFIC_PSPLIT_SEARCH_WORD)
+    printf("# No BL_SPECIFIC_PSPLIT_SEARCH_WORD\n");
+#endif // defined(BL_SPECIFIC_PSPLIT_SEARCH_WORD)
+
 #if defined(PSPLIT_SEARCH_8)
     printf("#    PSPLIT_SEARCH_8\n");
 #else // defined(PSPLIT_SEARCH_8)
@@ -5295,6 +5284,12 @@ Initialize(void)
 #else // defined(PSPLIT_PARALLEL)
     printf("# No PSPLIT_PARALLEL\n");
 #endif // defined(PSPLIT_PARALLEL)
+
+#if defined(PSPLIT_PARALLEL_WORD)
+    printf("#    PSPLIT_PARALLEL_WORD\n");
+#else // defined(PSPLIT_PARALLEL_WORD)
+    printf("# No PSPLIT_PARALLEL_WORD\n");
+#endif // defined(PSPLIT_PARALLEL_WORD)
 
 #if defined(UA_PARALLEL_128)
     printf("#    UA_PARALLEL_128\n");
