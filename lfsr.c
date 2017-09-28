@@ -328,16 +328,28 @@ lfsr(int nBits, Word_t wMagic, Word_t wSeed, char cAlg, int bPrev, int bPrint)
     return wPeriod;
 }
 
-//   fast: flfsrn, flfsrnp, flfsrp, flfsrpp
-// parity: plfsrn, plfsrnp, plfsrp, plfsrpp
-//    old: olfsrn, olfsrnp, olfsrp, olfsrpp
+// Command name aka argv[0]
+//   splayed-fast: Flfsrn, Flfsrnp, Flfsrp, Flfsrpp
+//           fast: flfsrn, flfsrnp, flfsrp, flfsrpp
+//         parity: plfsrn, plfsrnp, plfsrp, plfsrpp
+//            old: olfsrn, olfsrnp, olfsrp, olfsrpp
+
+// Usage: [Ffpo]lfsr[nr][p] [wBits [wSeed [wMagic]]]
 
 int
 main(int argc, char *argv[])
 {
+    if (argc > 4)
+    {
+        printf("Too many command-line arguments.\n");
+        printf("Usage: [Ffpo]lfsr[nr][p] [wBits [wSeed [wMagic]]]\n");
+        exit(1);
+    }
+
     char *strName = basename(argv[0]);
     int len = strlen(strName);
     char cAlg = strName[0];
+
     int bPrev = 0;
     if (strlen(strName) >= strlen("flfsrn")) {
         bPrev = (strName[strlen("flfsrn") - 1] == 'p');
@@ -402,6 +414,7 @@ main(int argc, char *argv[])
             break;
         default:
             printf("Invalid cAlg '%c'\n", cAlg);
+            printf("Usage: [Ffpo]lfsr[nr][p] [wBits [wSeed [wMagic]]]\n");
             exit(1);
         }
     }
