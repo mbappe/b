@@ -119,7 +119,7 @@ endif
 # MFLAGS += -mno-avx      # implies no -mavx2
 # MFLAGS += -mavx2        # implies -mavx
 # MFLAGS += -mno-avx2
-# MFLAGS += -mbmi2
+# MFLAGS += -mbmi2        # for pdep
 # MFLAGS += -mavx512f
 # MFLAGS += -march=native
 # MFLAGS += -mfpmath=sse
