@@ -1,4 +1,4 @@
-// @(#) $Revision: 1.15 $ $Source: /home/doug/JudyL64A/test/RCS/Judy1LHTime.c,v $
+// @(#) $Revision: 1.1 $ $Source: /home/mike/b/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by-
 //   Author Douglas L. Baskins, Aug 2003.
@@ -33,6 +33,39 @@
 
 #include <Judy.h>                       // for Judy macros J*()
 
+// Why did we create CALC_NEXT_KEY? Or, rather, why did we create the
+// alternative, an array of keys, since CALC_NEXT_KEY used to be the only
+// behavior? And why did we create LFSR_ONLY and -k/--lfsr-only.
+//
+// Because we discovered cases where the Tit flag was not effective at
+// extracting GetNextKey overhead and normalizing the TestJudyGet times
+// from different runs using  different GetNextKey options.
+// For example, we saw the time jump from 28 ns to 52 ns in the bitmap
+// area by adding --splay-key-bits=0xffffffffffffffff to a 64-bit -B32
+// Judy1 run (and --splay-key-bits=0xffffffffffffffff has absolutely no
+// affect on the sequence of keys that are tested).
+//
+// This bump in get time was observed without a __sync_synchronize in
+// the loop.  Adding a __sync_synchronize before the GetNextKey brings
+// the times back within 2% of each other for most of the plot at the cost
+// of bumping those 16-bit bitmap area times up to around 60 ns (the
+// cost of a __sync_synchronize all by itself may be around eight ns).
+// We found that adding a second __sync_synchronize after GetNextKey
+// doesn't change our timings at all other than to increase the overhead
+// number by the __sync_synchronize's own cost of around eight ns.
+//
+// So, even if we're willing to overlook the significant downside of being
+// required to use the __sync_synchronize to get somewhat comparable
+// results, there are other hints that this __sync_synchronize approach is
+// not a perfect solution and comparing times from runs with different
+// GetNextKey options and/or different code may be tricky. Be careful.
+//
+// The original goal of the alternative to CALC_NEXT_KEY was to have
+// consistent overhead independent of GetNextKey options while not being
+// required to do a __sync_synchronize. And wouldn't it be nice if the
+// overhead were so low that we could do away with the Tit flag altogether.
+// The latter is why we came up with LFSR_ONLY and -k/--lfsr-only.
+
 #ifdef LFSR_ONLY
 #define CALC_NEXT_KEY
 #define NO_FVALUE
@@ -42,6 +75,7 @@
 #define NO_OFFSET
 #define NO_SVALUE
 #define NO_GAUSS
+// KFLAG is in by default with LFSR_ONLY
 #endif // LFSR_ONLY
 
 #include "RandomNumb.h"                 // Random Number Generators
@@ -408,22 +442,6 @@ PRINT6_1f(double __X)
         printf("      0");      /* make 0 less noisy         */ \
 }
 
-// Without a __sync_synchronize before GetNextKey we've seen
-// 64-bit -B32 Judy1Test times
-// jump from 28 ns to 52 ns in the 16-bit bitmap area simply by adding
-// --splay-key-bits=0xffffffffffffffff to the command line.
-// Adding this __sync_synchronize brings the numbers back within 2% of
-// each other for most of the plot at the cost of bumping those 16-bit
-// bitmap area times up to around 60 ns which is an increase of about
-// the same as the cost of a __sync_synchronize all by itself.
-// Still, there are hints that this __sync_synchronize is not a perfect
-// solution and comparing times from runs with different command line
-// options and/or different code may be tricky. Be careful.
-// We found that a second __sync_synchronize after GetNextKey doesn't
-// change our timings at
-// all other than to increase the overhead number by the
-// __sync_synchronize's own cost of around eight nanoseconds.
-// Was our testing extensive enough?
 #ifndef NO_KFLAG
 #define KFLAG
 #endif // NO_KFLAG
@@ -485,13 +503,20 @@ Word_t    fFlag = 0;
 Word_t    KFlag = 0;                    // do a __sync_synchronize() in GetNextKey()
 int       bLfsrOnly = 0;      // -k,--lfsr-only; use lfsr with no -B:DEFGNOoS
 Word_t wFeedBTap; // for bLfsrOnly
+static int krshift = 1; // for bLfsrOnly -- static makes it faster
+
 Word_t    hFlag = 0;                    // add "holes" into the insert code
 Word_t    PreStack = 0;                 // to test for TLB collisions with stack
 
 Word_t    Offset = 0;                   // Added to Key
 Word_t    bSplayKeyBitsFlag = 0;        // Splay key bits.
-Word_t    wSplayMask = 0x55555555;      // Revisit in main for 64-bit init.
-//Word_t    wSplayMask = 0xff00ffff;      // Revisit in main for 64-bit init.
+#if defined(__LP64__) || defined(_WIN64)
+Word_t wSplayMask = 0x5555555555555555; // default splay mask
+//Word_t wSplayMask = 0xeeee00804020aaff;
+#else // defined(__LP64__) || defined(_WIN64)
+Word_t wSplayMask = 0x55555555;         // default splay mask
+//Word_t wSplayMask = 0xff00ffff;
+#endif // defined(__LP64__) || defined(_WIN64)
 Word_t    wCheckBit = 0;                // Bit for narrow ptr testing.
 
 Word_t    TValues = 1000000;            // Maximum numb retrieve timing tests
@@ -504,6 +529,7 @@ Word_t    ErrorFlag = 0;
 //Word_t    PtsPdec = 25;               // 9.65% spacing
 //Word_t    PtsPdec = 40;               // 5.93% spacing
 Word_t    PtsPdec = 50;                 // 4.71% spacing - default
+//Word_t    PtsPdec = 231;              // 1% spacing
 
 // For LFSR (Linear-Feedback-Shift-Register) pseudo random Number Generator
 //
@@ -529,10 +555,9 @@ PWord_t   FileKeys = NULL;              // array of FValue keys
 //
 Word_t    DFlag = 0;                    // bit reverse (mirror) the data stream
 
-// Stuff for Sequential number generation
+// Default starting seed value; -s
 //
-//Word_t    StartSequent = 0xc1fc;        // default beginning sequential numbers
-Word_t    StartSequent = 0x2563;          // default beginning sequential numbers
+Word_t    StartSequent = 1;
 
 // Global to store the current Value return from PSeed.
 //
@@ -609,16 +634,17 @@ CalcNextKey(PSeed_t PSeed)
 #endif // NO_TRIM_EXPANSE
     }
 
+#ifdef DEBUG
+    if (pFlag)
+    {
+        printf("Numb %016" PRIxPTR" ", Key);
+    }
+#endif // DEBUG
+
 #ifndef NO_SPLAY_KEY_BITS
     if (bSplayKeyBitsFlag) {
         // Splay the bits in the key.
         // This is not subject to BValue.
-#ifdef DEBUG
-        if (pFlag)
-        {
-            printf("Numb %016" PRIxPTR" ", Key);
-        }
-#endif // DEBUG
         Key = MyPDEP(Key, wSplayMask);
 #ifdef DEBUG
         if (pFlag)
@@ -639,7 +665,7 @@ CalcNextKey(PSeed_t PSeed)
 #ifdef DEBUG
         if (pFlag)
         {
-            printf("Swizzle %016" PRIxPTR" ", Key);
+            printf("BitReverse %016" PRIxPTR" ", Key);
         }
 #endif // DEBUG
 //      move the mirror bits into the least bits determined -B# and -E
@@ -664,55 +690,36 @@ CalcNextKey(PSeed_t PSeed)
     return Key;
 }
 
+// GetNextKeyX has a bLfsrOnlyArg parameter so it can be called with a literal
+// and the test will be compiled out of the test loop.
+// It has a wFeedBTapArg parameter so the caller can use a local variable if
+// that is faster.
 static inline Word_t
-GetNextKeyCommon(PNewSeed_t PNewSeed)
+GetNextKeyX(PNewSeed_t PNewSeed, Word_t wFeedBTapArg, int bLfsrOnlyArg)
 {
 #ifdef CALC_NEXT_KEY
+    (void)wFeedBTapArg; (void)bFastNextKeyArg;
+    // [P]NewSeed_t is the same as [P]Seed_t.
     return CalcNextKey(PNewSeed);
 #else // CALC_NEXT_KEY
-    // NEXT_FIRST impacts the value of the starting key put in the key array,
-    // but does not affect the behavior of GetNextKey.
-    return *(*PNewSeed)++;
+    if (bLfsrOnlyArg) {
+        // PNewSeed is a pointer to a word with the next key value in it.
+        Word_t wKey = (Word_t)*PNewSeed;
+        *PNewSeed = (NewSeed_t)((wKey >> krshift) ^ (wFeedBTapArg & -(wKey & 1)));
+        return wKey;
+    } else {
+        // PNewSeed is a pointer to a pointer into the key array.
+        return *(*PNewSeed)++;
+    }
 #endif // CALC_NEXT_KEY
-}
-
-static inline Word_t
-FastRandomNumb(PNewSeed_t PNewSeed, Word_t wFeedBTap)
-{
-#ifdef CALC_NEXT_KEY
-    Word_t wKey = PNewSeed->Seeds[0];
-    //PNewSeed->Seeds[0] = (wKey >> 1) ^ (wFeedBTap & -(wKey & 1));
-    (void)wFeedBTap;
-    PNewSeed->Seeds[0] = (wKey >> 1) ^ (PNewSeed->FeedBTap & -(wKey & 1));
-#else // CALC_NEXT_KEY
-    Word_t wKey = (Word_t)*PNewSeed;
-    *PNewSeed = (NewSeed_t)((wKey >> 1) ^ (wFeedBTap & -(wKey & 1)));
-#endif // CALC_NEXT_KEY
-    return wKey;
 }
 
 // GetNextKey exists for compatibility with old code we haven't updated yet.
-// It examines the global bLfsrOnly at runtime.
+// It uses the globals wFeedBTap and bLfsrOnly at runtime.
 static inline Word_t
 GetNextKey(PNewSeed_t PNewSeed)
 {
-    if (bLfsrOnly /* global */) {
-        return FastRandomNumb(PNewSeed, wFeedBTap /* global */);
-    } else {
-        return GetNextKeyCommon(PNewSeed);
-    }
-}
-
-// GetNextKeyX has bLfsrOnly parameter so it can be called with a literal
-// and the test will be compiled out of the test loop.
-static inline Word_t
-GetNextKeyX(PNewSeed_t PNewSeed, Word_t wFeedBTap, int bLfsrOnly)
-{
-    if (bLfsrOnly) {
-        return FastRandomNumb(PNewSeed, wFeedBTap);
-    } else {
-        return GetNextKeyCommon(PNewSeed);
-    }
+    return GetNextKeyX(PNewSeed, wFeedBTap /*global*/, bLfsrOnly /*global*/);
 }
 
 static void
@@ -1055,17 +1062,6 @@ main(int argc, char *argv[])
 #endif // DEBUG
     void     *JL = NULL;                // JudyL
     void     *JH = NULL;                // JudyHS
-
-    // wSplayMask = 0x5555555555555555.
-    // wSplayMask = 0xeeee00804020aaff.
-    // Is there a better way to initialize wSplayMask to a 64-bit value
-    // on a 64-bit system that won't cause compiler complaints on a 32-bit
-    // system?
-    if (sizeof(Word_t) == 8) {
-        wSplayMask
-            = (((((0x5555UL << 16) | 0x5555) << 16) | 0x5555) << 16) | 0x5555;
-            //= (((((0xeeeeUL << 16) | 0x0080) << 16) | 0x4020) << 16) | 0xaaff;
-    }
 
 #ifdef DEADCODE                         // see TimeNumberGen()
     void     *TestRan = NULL;           // Test Random generator
@@ -1662,24 +1658,24 @@ main(int argc, char *argv[])
 #endif // NO_OFFSET
 
     if (bLfsrOnly) {
-        if (DFlag || bSplayKeyBitsFlag || FValue || GValue || Offset || SValue
+        if (DFlag || FValue || GValue || Offset || SValue
             || (Bpercent != 100.0))
         {
-            FAILURE("-k is not compatible with -B:DEFGNOoS", -1);
+            FAILURE("-k is not compatible with -B:DFGNOoS", -1);
         }
-    }
-
-//  build the Random Number Generator starting seeds
-    PSeed_t PInitSeed = RandomInit(BValue, GValue);
-
-    if (PInitSeed == NULL)
-    {
-        printf("\nIllegal Number in -G%" PRIuPTR" !!!\n", GValue);
-        ErrorFlag++;
-    }
-
-    if (bLfsrOnly) {
-        wFeedBTap = PInitSeed->FeedBTap;
+        if (bSplayKeyBitsFlag) {
+            if (wSplayMask !=
+#if defined(__LP64__) || defined(_WIN64)
+                0x5555555555555555
+#else // defined(__LP64__) || defined(_WIN64)
+                0x55555555
+#endif // defined(__LP64__) || defined(_WIN64)
+                )
+            {
+                FAILURE("-k --splay-key-bits requires mask 0x55...55 not ",
+                        wSplayMask);
+            }
+        }
     }
 
 //  Set MSB number of Random bits in LFSR
@@ -1740,29 +1736,37 @@ main(int argc, char *argv[])
         }
     }
 
+//  build the Random Number Generator starting seeds
+    PSeed_t PInitSeed = RandomInit(BValue, GValue);
+
+    if (PInitSeed == NULL)
+    {
+        printf("\nIllegal Number in -G%" PRIuPTR" !!!\n", GValue);
+        ErrorFlag++;
+    }
+
 //  Set the starting number in number Generator
     PInitSeed->Seeds[0] = StartSequent;
+
+    if (bLfsrOnly) {
+        wFeedBTap = PInitSeed->FeedBTap;
+        if (bSplayKeyBitsFlag) {
+            krshift = 2;
+            wFeedBTap = MyPDEP(wFeedBTap, wSplayMask);
+            StartSequent = MyPDEP(StartSequent, wSplayMask);
+        }
+    }
 
 //  Print out the number set used for testing
     if (pFlag)
     {
         Word_t ii;
 // 1      Word_t PrevPrintKey = 0;
-#ifdef DEBUG
-        printf("FeedBTap 0x%zx\n", PInitSeed->FeedBTap);
-        if (bSplayKeyBitsFlag && DFlag) {
-            printf("PDEP(0x%zx 0x%zx) 0x%zx\n",
-                   (((Word_t)1 << (BValue - 1)) * 2) - 1,
-                   wSplayMask,
-                   MyPDEP((((Word_t)1 << (BValue - 1)) * 2) - 1, wSplayMask));
-            printf("LOG %d\n",
-                   (int)LOG(MyPDEP((((Word_t)1 << (BValue - 1)) * 2) - 1, wSplayMask)));
-            printf("Shift %d\n",
-                   (int)((sizeof(Word_t) * 8) - 1
-                       - LOG(MyPDEP((((Word_t)1 << (BValue - 1)) * 2) - 1, wSplayMask))));
-        }
-#endif // DEBUG
 
+//printf("PInitSeed->Seeds[0] 0x%zx\n", PInitSeed->Seeds[0]);
+#if !defined(CALC_NEXT_KEY)
+        StartSeed = (NewSeed_t)StartSequent;
+#endif // !defined(CALC_NEXT_KEY)
         for (ii = 0; ii < nElms; ii++)
         {
             Word_t PrintKey;
@@ -1770,6 +1774,12 @@ main(int argc, char *argv[])
 // 1          Word_t RightShift;
 
             PrintKey = CalcNextKey(PInitSeed);
+#if !defined(CALC_NEXT_KEY)
+            if (bLfsrOnly) {
+                Word_t wKey = GetNextKey(&StartSeed); (void)wKey;
+                assert(wKey == PrintKey);
+            }
+#endif // !defined(CALC_NEXT_KEY)
 
 // 1          LeftShift  = __builtin_popcountll(PrintKey ^ (PrevPrintKey << 1));
 // 1          RightShift = __builtin_popcountll(PrintKey ^ (PrevPrintKey >> 1));
@@ -2039,7 +2049,7 @@ main(int argc, char *argv[])
     Seed_t TValuesSeed;
     if (bLfsrOnly)
     {
-        StartSeed = (NewSeed_t)PInitSeed->Seeds[0];
+        StartSeed = (NewSeed_t)StartSequent;
     }
     else
     {
@@ -2450,7 +2460,7 @@ main(int argc, char *argv[])
                 size_t    BMsize;
 
                 // add one cache line for sister cache line read
-                BMsize = (1UL << (BValue - 3));
+                BMsize = ((Word_t)1 << (BValue - 3));
                 if (posix_memalign((void **)&B1, 4096, BMsize) == 0)
                 {
                     FAILURE("malloc failure, Bytes =", BMsize);
@@ -2876,14 +2886,14 @@ main(int argc, char *argv[])
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
-            TestJudyPrev(J1, JL, &BeginSeed, ~0UL, Meas);
+            TestJudyPrev(J1, JL, &BeginSeed, ~(Word_t)0, Meas);
             DeltaGen1 = DeltanSec1;     // save measurement overhead
             DeltaGenL = DeltanSecL;
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
-            TestJudyPrev(J1, JL, &BeginSeed, ~0UL, Meas);
+            TestJudyPrev(J1, JL, &BeginSeed, ~(Word_t)0, Meas);
             if (J1Flag)
                 PRINT6_1f(DeltanSec1);
             if (JLFlag)
