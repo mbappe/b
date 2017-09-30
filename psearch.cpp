@@ -412,13 +412,13 @@ Search(x_t x, k_t kKey)
 
 // Intel BSF     finds   bit number of lsb set; undefined for 0.
 // __builtin_ctz returns bit number of lsb set; undefined for 0.
-// __builtin_ctz(0)     =  0 but undefined
+// __builtin_ctz(0)     = undefined
 // __builtin_ctz(1<< 0) =  0
 // __builtin_ctz(1<<63) = 63
 
 // Intel BSR     finds   bit number of msb set; undefined for 0
 // __builtin_clz returns bit number of msb set; undefined for 0.
-// __builtin_clz(0)     = 63 but undefined
+// __builtin_clz(0)     = undefined
 // __builtin_clz(1<< 0) = 63
 // __builtin_clz(1<<63) =  0
 
@@ -427,6 +427,32 @@ Search(x_t x, k_t kKey)
 // __builtin_ffs(0)      = 0
 // __builtin_ffs(1<< 0)  = 1
 // __builtin_ffs(1<<63) = 64
+
+
+// gcc-32
+// ctz(0x0) 32
+// ctzll(0x0) 64
+// clz(0x0) 17 0x11
+// clzll(0x0) 63 0x3f
+
+// gcc
+// ctz(0x0) 32
+// ctzll(0x0) 64
+// clz(0x0) 2147483629 0x7fffffed
+// clzll(0x0) 2147483614 0x7fffffde
+
+// clang-32
+// ctz(0x0) -143749120
+// ctzll(0x0) 64
+// clz(0x0) -143749089 0xf76e901f
+// clzll(0x0) -143749057 0xf76e903f
+
+// clang
+// ctz(0x0) 0
+// ctzll(0x0) 668403584
+// clz(0x0) 668403615 0x27d7079f
+// clzll(0x0) 668403647 0x27d707bf
+
 
 // Locate key returns found key position relative to the low key.
 // bPackHi means the extra bits in Word_t or u6_t that do not make a
