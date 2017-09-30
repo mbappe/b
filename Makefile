@@ -120,6 +120,7 @@ endif
 # MFLAGS += -mno-avx      # implies no -mavx2
 # MFLAGS += -mavx2        # implies -mavx
 # MFLAGS += -mno-avx2
+# MFLAGS += -mbmi         # for lzcnt, tzcnt
 # MFLAGS += -mbmi2        # for pdep
 # MFLAGS += -mavx512f
 # MFLAGS += -march=native
@@ -479,15 +480,18 @@ psearch$(X)-$(Z): psearch.cpp
  -Wno-psabi -Wno-unknown-warning-option \
  $(X) $(Y) -m$(Z) $(DEFINES) -I. psearch.cpp -o $@
 
+PSC_FLAGS=
+
 psc: psc.c
-	gcc -O2 -g -o psc-gcc $<
-	gcc -O2 -S -o psc-gcc.s $<
-	g++ -O2 -g -o psc-g++ $<
-	g++ -O2 -S -o psc-g++.s $<
-	clang -O2 -o psc-clang $<
-	clang -O2 -S -o psc-clang.s $<
-	rm psc.cpp; ln -s psc.c psc.cpp
-	clang++ -O2 -o psc-clang++ psc.cpp
-	clang++ -O2 -S -o psc-clang++.s psc.cpp
-	rm psc
+	gcc -O2 $(PSC_FLAGS) -g -o psc-gcc $<
+	gcc -O2 $(PSC_FLAGS) -S -fkeep-inline-functions -o psc-gcc.s $<
+	g++ -O2 $(PSC_FLAGS) -g -o psc-g++ $<
+	g++ -O2 $(PSC_FLAGS) -S -fkeep-inline-functions -o psc-g++.s $<
+	clang -O2 $(PSC_FLAGS) -g -o psc-clang $<
+	clang -O2 $(PSC_FLAGS) -S -o psc-clang.s $<
+	rm -f psc.cpp
+	ln -s psc.c psc.cpp
+	clang++ -O2 $(PSC_FLAGS) -g -o psc-clang++ psc.cpp
+	clang++ -O2 $(PSC_FLAGS) -S -o psc-clang++.s psc.cpp
+	rm -f psc
 	ln -s psc-gcc psc
