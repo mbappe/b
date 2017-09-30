@@ -16,14 +16,14 @@
 #   CC=clang CSTD=c11 DEFINES=-DDEBUG make clean default
 #   CC=clang++ CSTD=c++14 make b
 #   CXX=clang++ CXXSTD=c++11 make bcheck
-CC=c++
+CC ?= cc
 
 # I recommend the make clean first because there are so many dependencies
 # that are not discovered by make, e.g. changes in environment variables.
 # Also, I didn't bother adding the header file dependencies.
 
 # The default build is 64-bits.
-# Use "cnBitsPerWord=32 make" to get a 32-bit build.
+# Use "BPW=32 make" to get a 32-bit build.
 # I wonder if it works on a 32-bit system.
 BPW ?= 64
 
@@ -59,6 +59,7 @@ else
 endif
 
 # Potentially interesting gcc options:
+# -fkeep-inline-functions
 # -fverbose-asm
 # -fpic vs. -fPIC
 # -frecord-gcc-switches
@@ -478,3 +479,15 @@ psearch$(X)-$(Z): psearch.cpp
  -Wno-psabi -Wno-unknown-warning-option \
  $(X) $(Y) -m$(Z) $(DEFINES) -I. psearch.cpp -o $@
 
+psc: psc.c
+	gcc -O2 -g -o psc-gcc $<
+	gcc -O2 -S -o psc-gcc.s $<
+	g++ -O2 -g -o psc-g++ $<
+	g++ -O2 -S -o psc-g++.s $<
+	clang -O2 -o psc-clang $<
+	clang -O2 -S -o psc-clang.s $<
+	rm psc.cpp; ln -s psc.c psc.cpp
+	clang++ -O2 -o psc-clang++ psc.cpp
+	clang++ -O2 -S -o psc-clang++.s psc.cpp
+	rm psc
+	ln -s psc-gcc psc
