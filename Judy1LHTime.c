@@ -929,15 +929,6 @@ Usage(int argc, char **argv)
 static int
 BitmapGet(PWord_t B1, Word_t TstKey)
 {
-    Word_t        offset;
-#if defined(BITMAP_BY_BYTE)
-    unsigned char *p = (unsigned char *)B1;
-#else // defined(BITMAP_BY_BYTE)
-    Word_t        *p = B1;
-#endif // defined(BITMAP_BY_BYTE)
-    unsigned      bitnum;
-    int      bSet;
-
 // Original -b did not have this check for NULL.
 #if 0
     if (B1 == NULL)
@@ -948,16 +939,22 @@ BitmapGet(PWord_t B1, Word_t TstKey)
 
 #if defined(LOOKUP_NO_BITMAP_DEREF)
 
+    (void)B1; (void)TstKey;
+
     return 1;
 
 #else // defined(LOOKUP_NO_BITMAP_DEREF)
 
-    offset = TstKey / (sizeof(*p) * 8);
-    bitnum = TstKey % (sizeof(*p) * 8);
+#if defined(BITMAP_BY_BYTE)
+    unsigned char *p = (unsigned char *)B1;
+#else // defined(BITMAP_BY_BYTE)
+    Word_t        *p = B1;
+#endif // defined(BITMAP_BY_BYTE)
 
-    bSet = ((p[offset] & ((Word_t)1 << bitnum)) != 0);
+    Word_t offset = TstKey / (sizeof(*p) * 8);
+    unsigned bitnum = TstKey % (sizeof(*p) * 8);
 
-    return bSet;
+    return (p[offset] & ((Word_t)1 << bitnum)) != 0;
 
 #endif // defined(LOOKUP_NO_BITMAP_DEREF)
 
