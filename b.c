@@ -743,7 +743,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
     { Link_t ln; assert(wIndexCnt <= sizeof(ln.ln_awBm) * cnBitsPerByte); }
 #else // defined(BM_IN_LINK)
     {
-         BmSwitch_t sw;
+         BmSwitch_t sw; (void)sw;
          assert(wIndexCnt <= sizeof(sw.sw_awBm) * cnBitsPerByte);
     }
 #endif // defined(BM_IN_LINK)
@@ -1060,6 +1060,42 @@ DBGI(printf("NS: prefix " OWx"\n", PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL)))
 static Word_t
 OldSwitch(Word_t *pwRoot, int nBL, int bBmSw, int nLinks, int nBLUp);
 
+// Uncompress a bitmap switch.
+void
+InflateBmSw(Word_t *pwRoot, Word_t wKey, int nBLR, int nBLUp)
+{
+    Word_t wRoot = *pwRoot;
+    Word_t *pwr = wr_pwr(wRoot);
+
+    DBGI(printf("# InflateBmSw wKey " Owx" nBLR %d\n", wKey, nBLR));
+
+    int nBW = nBL_to_nBW(nBLR);
+
+    Word_t *pwrNew = NewSwitch(pwRoot, wKey, nBLR,
+  #if defined(CODE_XX_SW)
+                               nBW,
+  #endif // defined(CODE_XX_SW)
+                               T_SWITCH, nBLUp,
+                               PWR_wPopCntBL(pwRoot,
+                                             (BmSwitch_t *)pwr, nBLR));
+    // NewSwitch installed the new wRoot at pwRoot.
+    // What about PWR_pwBm(pwRoot, pwr) which we use below?
+    // If BM_IN_LINK it will use pwRoot to find the bitmap.
+    // How do we know NewSwitch hasn't overwritten the bitmap?
+    // I guess we should make a copy of the link before calling NewSwitch.
+
+    int nLinkCnt = 0; // link number in bm sw
+    for (int nn = 0; nn < (int)EXP(nBW); nn++) {
+        if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn)) {
+            pwr_pLinks((Switch_t *)pwrNew)[nn]
+                = pwr_pLinks((BmSwitch_t *)pwr)[nLinkCnt];
+            ++nLinkCnt;
+        }
+    }
+
+    OldSwitch(&wRoot, nBLR, /* bBmSw */ 1, nLinkCnt, nBLUp);
+}
+
 static void
 NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
 {
@@ -1097,85 +1133,34 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
          = (sizeof(BmSwitch_t) + (nLinkCnt - 1) * sizeof(Link_t))
             / sizeof(Word_t);
     DBGI(printf("nLinkCnt %d nWordsOld %d\n", nLinkCnt, nWordsOld));
-    // What rule should we use to decide when to uncompress a bitmap switch?
 
-    // 5/8 is close to the golden ratio
-    // if (nLinkCnt >= EXP(nBitsIndexSz) * 5 / 8)
+    // What criteria should we use to decide when to uncompress a bitmap
+    // switch?
+    //
+    // An uncompressed switch should not use more memory than would be used
+    // by all of the keys below it if all of the keys below it were in a
+    // leaf just below the switch? This is a local criteria.
+    // A switch uses about EXP(nBW) * sizeof(Link_t) bytes.
+    // The keys below would use about nKeys * EXP(nBL) / 8 bytes.
+    // Uncompress when nKeys * EXP(nBL) / 8 > EXP(nBW) * sizeof(Link_t).
+    // For a switch with 256 64-bit links we'd need about 2K one-byte keys.
+    // We'd need about 1K two-byte keys.
+    // We'd need about 512 four-byte keys.
+    // We'd need about 256 eight-byte keys.
+    // With -E we get 16 keys * 16 links in the bottom switch. Not enough.
+    // We get 16 keys * 16 links * 16 links in the next-to-bottom switch.
+    // Plenty.
 
     // Does this include the key were inserting now?  I think it does.
     Word_t wPopCntKeys = PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
     (void)wPopCntKeys;
 
-    // If the number of null words we'd add by uncompressing the switch
-    // is insignificant w.r.t. the population, then do it.
-    int nWordsNull = sizeof(Switch_t) - nWordsOld
-           + (EXP(nBitsIndexSz) - 2) * sizeof(Link_t) / sizeof(Word_t);
-    (void)nWordsNull;
-
-#if defined(DEBUG_INSERT)
-    static Word_t sBitsReportedMask = 0;
-    (void)sBitsReportedMask;
-#endif // defined(DEBUG_INSERT)
-#if JUNK
-    if (0)
-#else
-    // Threshold for converting bm sw into uncompressed switch.
-    // Words-per-Key Numerator / Words-per-Key Denominator.
-    // Shouldn't we be checking to see if conversion is appropriate on
-    // insert even if/when we're not adding a new link?
-    if ((wPopCntTotal * cnBmSwWpkPercent / 100
-            >= (wWordsAllocated /* + wMallocs */ + nWordsNull))
-        && (nLinkCnt > (int)EXP(nBitsIndexSz) * cnBmSwLinksPercent / 100))
-#endif
-    {
-#if defined(DEBUG_INSERT)
-        if ( ! (EXP(nBLR) & sBitsReportedMask) )
-        {
-            sBitsReportedMask |= EXP(nBLR);
-            DBGI(printf("# Converting nKeys %zd nLinks %d nBLR %d",
-                   wPopCntKeys, nLinkCnt, nBLR));
-            DBGI(printf(" wPopCntTotal %zd wWordsAllocated %zd",
-               wPopCntTotal, wWordsAllocated));
-            DBGI(printf(" wMallocs %zd nWordsNull %d\n",
-               wMallocs, nWordsNull));
-        }
-#endif // defined(DEBUG_INSERT)
-
-#if JUNK
-        printf("A PWR_pwBm %p *PWR_pwBm %p\n",
-               (void *)PWR_pwBm(pwRoot, pwr), (void *)*PWR_pwBm(pwRoot, pwr));
-        Dump(pwRootLast, 0, cnBitsPerWord);
-        HexDump("Before NewSwitch", pwr, 200);
-#endif
-        Word_t *pwrNew
-            = NewSwitch(pwRoot, wKey, nBLR,
-#if defined(CODE_XX_SW)
-                        nBL_to_nBitsIndexSz(nBLR),
-#endif // defined(CODE_XX_SW)
-                        T_SWITCH, nBLUp, wPopCntKeys);
-#if JUNK
-        printf("B PWR_pwBm %p *PWR_pwBm %p\n",
-               (void *)PWR_pwBm(pwRoot, pwr), (void *)*PWR_pwBm(pwRoot, pwr));
-#endif
-        unsigned mm = 0;
-        for (unsigned nn = 0; nn < EXP(nBitsIndexSz); nn++) {
-            if (BitIsSet(PWR_pwBm(pwRoot, pwr), nn)) {
-                pwr_pLinks((Switch_t *)pwrNew)[nn]
-                    = pwr_pLinks((BmSwitch_t *)pwr)[mm];
-                ++mm;
-#if JUNK
-        printf("nn %d ln_wRoot %p\n",
-               nn, (void *)pwr_pLinks((Switch_t *)pwrNew)[nn].ln_wRoot);
-        printf("%p\n", (void *)&pwr_pLinks((BmSwitch_t *)pwr)[mm]);
-#endif
-            }
-        }
-#if JUNK
-        printf("C PWR_pwBm %p *PWR_pwBm %p\n",
-               (void *)PWR_pwBm(pwRoot, pwr), (void *)*PWR_pwBm(pwRoot, pwr));
-        DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
-#endif
-        // NewSwitch installs a proper wRoot at *pwRoot.
+    // Should we consider uncompressing here? Or rely on InsertCleanup?
+    // It's probably more efficient to do it here, but InsertCleanup will
+    // probably end up doing it before we have a chance to do it here
+    // the vast majority of the time.
+    if (wPopCntKeys * nBLR > EXP(nBitsIndexSz) * sizeof(Link_t)) {
+        InflateBmSw(pwRoot, wKey, nBLR, nBLUp);
     } else {
         // We replicate a bunch of newswitch here since
         // newswitch can create only empty bm sw.
@@ -1302,10 +1287,10 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
 
         }
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
-    }
 
     // &wRoot won't cut it for BM_IN_LINK.
     OldSwitch(&wRoot, nBLR, /* bBmSw */ 1, nLinkCnt, nBLUp);
+    }
 
     //DBGI(printf("After NewLink"));
     //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
@@ -2334,28 +2319,40 @@ static void InsertAll(Word_t *pwRootOld,
 // Looks like the main/sole purpose of InsertCleanup at this point is to
 // replace a 2-digit switch and whatever is hanging off of it with a
 // a 2-digit bitmap once the population supports it as defined by
-// cn2dBmWpkPercent.
+// cn2dBmMaxWpkPercent.
 // nBL describes the level of the root word passed in. It has not been
 // advanced by any skip in the containing link.
 void
 InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
 {
-    (void)wKey; (void)nBL, (void)pwRoot; (void)wRoot;
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
-#if (cn2dBmWpkPercent != 0) // conversion to big bitmap enabled
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+    Word_t *pwr = wr_pwr(wRoot);
+    int nType = wr_nType(wRoot);
+    qv, (void)wKey; (void)nType;
+
+#if defined(CODE_BM_SW)
+    if (tp_bIsBmSw(nType)) {
+        // We should have a one-liner for this.
+  #if defined(SKIP_LINKS)
+        int nBLR = tp_bIsSkip(nType) ? gnBLR(qy) : nBL;
+  #else // defined(SKIP_LINKS)
+        int nBLR = nBL;
+  #endif // defined(SKIP_LINKS)
+        Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
+        int nBW = gnBW(qy, T_BM_SW, nBLR);
+        if (wPopCnt * nBLR > EXP(nBW) * sizeof(Link_t)) {
+            InflateBmSw(pwRoot, wKey, nBLR, /* nBLUp */ nBL);
+        }
+    }
+#endif // defined(CODE_BM_SW)
+
+#if (cn2dBmMaxWpkPercent != 0) // conversion to big bitmap enabled
     int nDL = nBL_to_nDL(nBL);
 
     // Can't disable this one by ALLOW_EMBEDDED_BITMAP.
     assert(cnBitsInD1 > LOG(sizeof(Link_t) * 8)); // else doesn't work yet
 
-// Default cnNonBmLeafPopCntMax is 1280.  Keep W/K <= 1.
-#if ! defined(cnNonBmLeafPopCntMax)
-    #define cnNonBmLeafPopCntMax  0
-#endif // ! defined(cnNonBmLeafPopCntMax)
-
     (void)nDL;
-    int nType = wr_nType(wRoot);
-    Word_t *pwr = wr_pwr(wRoot); (void)pwr;
     Word_t wPopCnt;
     if ((nBL == nDL_to_nBL(2))
         && tp_bIsSwitch(nType)
@@ -2365,10 +2362,21 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
 #if defined(CODE_BM_SW)
         && ! tp_bIsBmSw(nType)
 #endif // defined(CODE_BM_SW)
-        && (((wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBL))
-                >= (EXP(nBL - cnLogBitsPerWord) * cn2dBmWpkPercent / 100))
-            || ((cnNonBmLeafPopCntMax != 0)
-                && (wPopCnt > cnNonBmLeafPopCntMax))))
+        // if wpk > maxwpk, don't convert
+        // if wpk < maxwpk, convert
+        // if words / keys < maxwpk, convert
+        // if words < keys * maxwpk, convert
+        // maxwpk = cn2dBmMaxWpkPercent / 100
+        // if words < keys * cn2dBmMaxWpkPercent / 100, convert
+        // if keys * cn2dBmMaxWpkPercent / 100 > words, convert
+        // if keys * cn2dBmMaxWpkPercent > words * 100, convert
+        // words = EXP(nBL - cnLogBitsPerWord)
+        // keys = wPopCnt
+        // if wPopCnt * cn2dBmMaxWpkPercent > EXP(nBL-cnLogBitsPerWord) * 100
+        // Disable with cn2dBmMaxWpkPercent = 0.
+        && ((wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBL))
+                    * cn2dBmMaxWpkPercent
+                > (EXP(nBL - cnLogBitsPerWord) * 100)))
     {
         DBGI(printf("Converting BM leaf.\n"));
         //Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord);
@@ -2523,7 +2531,7 @@ embeddedKeys:;
         assert(count == (int)wPopCnt);
 #endif // defined(DEBUG)
     }
-#endif // (cn2dBmWpkPercent != 0)
+#endif // (cn2dBmMaxWpkPercent != 0)
 }
 
 #if (cwListPopCntMax != 0)
@@ -4947,7 +4955,7 @@ Initialize(void)
     // multiple of 2MB. Since our bitmaps contain an extra word at the end
     // we need to be careful about bitmaps that 2MB plus one word and bigger.
     assert((cnBitsLeftAtDl2 < 24)
-        || ((cn2dBmWpkPercent == 0) && (cnBitsInD1 < 24)));
+        || ((cn2dBmMaxWpkPercent == 0) && (cnBitsInD1 < 24)));
 #if defined(UA_PARALLEL_128)
     assert(cnBitsMallocMask >= 4);
     for (int i = 1; i <= 6; i++) {
@@ -5993,24 +6001,13 @@ Initialize(void)
 #endif // defined(cnListPopCntMaxDl3)
     printf("\n");
     printf("# cwListPopCntMax %d\n", cwListPopCntMax);
-#if defined(cnNonBmLeafPopCntMax)
-    printf("# cnNonBmLeafPopCntMax %d\n", cnNonBmLeafPopCntMax);
-#else // defined(cnNonBmLeafPopCntMax)
-    printf("# cnNonBmLeafPopCntMax n/a\n");
-#endif // defined(cnNonBmLeafPopCntMax)
-    printf("# cn2dBmWpkPercent %d\n", cn2dBmWpkPercent);
+    printf("# cn2dBmMaxWpkPercent %d\n", cn2dBmMaxWpkPercent);
 
 #if defined(CODE_XX_SW)
     printf("\n");
     printf("# cnBW %d\n", cnBW);
     printf("# cnBWIncr %d\n", cnBWIncr);
 #endif // defined(CODE_XX_SW)
-
-#if defined(USE_BM_SW)
-    printf("\n");
-    printf("# cnBmSwLinksPercent %d\n", cnBmSwLinksPercent);
-    printf("# cnBmSwWpkPercent %d\n", cnBmSwWpkPercent);
-#endif // defined(USE_BM_SW)
 
     printf("\n");
     printf("# cnBinarySearchThresholdWord %d\n", cnBinarySearchThresholdWord);
@@ -6784,10 +6781,11 @@ t_list:;
                 //A(0); // check -B17
                 goto BmSwGetPrevIndex;
             }
+            Word_t wPopCnt; // declare outside while for goto above
             //A(0); // check -B17
             while (pLn >= pLinks) {
                 //A(0); // check -B17
-                Word_t wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
+                wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
                 assert(wPopCnt != 0);
                 if (wPopCnt != 0) {
                     //A(0); // check -B17
@@ -6908,10 +6906,11 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                 //A(0); // check -B17
                 goto BmSwGetNextIndex;
             }
+            Word_t wPopCnt; // declare outside while for goto above
             //A(0); // check -B17
             while (pLn < &pLinks[nLinks]) {
                 //A(0); // check -B17
-                Word_t wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
+                wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
                 assert(wPopCnt != 0);
                 if (wPopCnt != 0) {
                     //A(0); // check -B17
@@ -7320,9 +7319,15 @@ t_list:;
             wKeyLoop += nIncr;
             nPos += nIncr;
             if (bPrev) {
-                if (nPos < 0) { break; }
+                if (nPos < 0) {
+                    if (wKeyLoop != (Word_t)-1) { break; }
+                    return Failure;
+                }
             } else {
-                if (nPos >= nPopCnt) { break; }
+                if (nPos >= nPopCnt) {
+                    if (wKeyLoop != ((Word_t)1 << (nBL - 1)) * 2) { break; }
+                    return Failure;
+                }
             }
             Word_t wKeyList = ls_pxKey(pwr, nBL, nPos);
             if (nBL < cnBitsPerWord) { wKeyList &= MSK(nBL); }
@@ -7330,12 +7335,8 @@ t_list:;
             *pwKey |= wKeyLoop;
             return Success;
         }
-        if (((nBL == cnBitsPerWord) && (wKeyLoop != 0))
-                || ((nBL != cnBitsPerWord) && (wKeyLoop != EXP(nBL)))) {
-            *pwKey |= wKeyLoop;
-            return Success;
-        }
-        return Failure;
+        *pwKey |= wKeyLoop;
+        return Success;
     }
   #if defined(EMBED_KEYS)
     case T_EMBEDDED_KEYS:; {

@@ -411,7 +411,12 @@ CaseGuts(int nBL, Word_t *pwRoot, int nBS, int nBW, int nType, Word_t *pwr)
     return 1;
 }
 
-// Handle big picture tree cleanup.
+// Handle bigger picture tree cleanup.
+// E.g.
+// - uncompress bm sw after insert
+// - create 2-digit bitmap leaf after insert
+// - compress switch after remove
+// - break up 2-digit bitmap leaf after remove
 static inline int
 SwCleanup(qp, Word_t wKey, int nBLR, int bCleanup)
 {
@@ -421,7 +426,18 @@ SwCleanup(qp, Word_t wKey, int nBLR, int bCleanup)
     // It is not for undoing counts after unsuccessful insert or remove.
     if (bCleanup) {
       #if defined(INSERT)
-        if ((cn2dBmWpkPercent != 0) && (nBLR <= cnBitsLeftAtDl2)) {
+        if (0
+          #if defined(CODE_BM_SW)
+            || (tp_bIsBmSw(Get_nType(&wRoot))
+                && (Get_wPopCntBL(pwRoot, nBLR) * nBLR
+                    >= EXP(nBW) * sizeof(Link_t)))
+          #endif // defined(CODE_BM_SW)
+            || ((cn2dBmMaxWpkPercent != 0)
+                && (nBLR == cnBitsLeftAtDl2)
+                && (Get_wPopCntBL(pwRoot, nBLR) * cn2dBmMaxWpkPercent
+                     > EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord) * 100))
+            )
+        {
             InsertCleanup(wKey, nBL, pwRoot, wRoot);
         }
       #else // defined(INSERT)
@@ -436,21 +452,24 @@ SwCleanup(qp, Word_t wKey, int nBLR, int bCleanup)
 // Increment for insert on the way down.
 // Decrement for remove on the way down.
 // Also used to undo itself after we discover insert or remove is redundant.
-static inline void
+static inline Word_t
 SwIncr(qp, int nBLR, int bCleanup, int nIncr)
 {
     qv; (void)nBLR; (void)bCleanup; (void)nIncr;
+    Word_t wPopCnt = 0;
   #if defined(INSERT) || defined(REMOVE)
     if (!bCleanup) {
       #if defined(PP_IN_LINK)
         if (nBL < cnBitsPerWord)
       #endif // defined(PP_IN_LINK)
         {
+            wPopCnt = Get_wPopCntBL(pwRoot, nBLR) + nIncr;
             // Increment or decrement population count on the way in.
-            Set_wPopCntBL(pwRoot, nBLR, Get_wPopCntBL(pwRoot, nBLR) + nIncr);
+            Set_wPopCntBL(pwRoot, nBLR, wPopCnt);
         }
     }
   #endif // defined(INSERT) || defined(REMOVE)
+    return wPopCnt;
 }
 
 static inline void
@@ -549,15 +568,13 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     Word_t *pwrPrefix = NULL; (void)pwrPrefix;
     int nBLRPrefix = 0; (void)nBLRPrefix;
 
-#if defined(INSERT) && (cn2dBmWpkPercent != 0)
-    Word_t wPopCnt = 0; (void)wPopCnt;
-#else // defined(INSERT) && (cn2dBmWpkPercent != 0)
-    Word_t wPopCnt; (void)wPopCnt;
-#endif // defined(INSERT) && (cn2dBmWpkPercent != 0)
+    Word_t wPopCntUp = 0; (void)wPopCntUp;
 #if defined(COUNT)
     Word_t wPopCntSum = 0;
 #endif // defined(COUNT)
 
+    // Cleanup is expensive. So we only do it if it has been requested.
+    int bCleanupRequested = 0; (void)bCleanupRequested;
     int bCleanup = 0; (void)bCleanup;
 
 #if ! defined(LOOKUP)
@@ -922,7 +939,7 @@ t_switch:;
 switchTail:;
         // Handle big picture tree cleanup.
         if (SwCleanup(qy, wKey, nBLR, bCleanup)) { goto restart; }
-        SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
+        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
         IF_COUNT(wPopCntSum += CountSw(qy, nBLR, nBW, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
         // Save the previous link and advance to the next.
@@ -984,7 +1001,7 @@ t_xx_sw:;
   #if defined(LOOKUP) || defined(NO_TYPE_IN_XX_SW)
         // Handle big picture tree cleanup.
         if (SwCleanup(qy, wKey, nBLR, bCleanup)) { goto restart; }
-        SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
+        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
         IF_COUNT(wPopCntSum += CountSw(qy, nBLR, nBW, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
         // Save the previous link and advance to the next.
@@ -1169,6 +1186,16 @@ bmSwTail:;
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
         goto again;
   #else // defined(LOOKUP)
+      #ifdef INSERT
+        // This test should be the same as the one in InsertCleanup.
+        if (tp_bIsBmSw(nType)) {
+            if (Get_wPopCntBL(pwRoot, nBLR) * nBLR
+                >= EXP(nBW) * sizeof(Link_t))
+            {
+                bCleanupRequested = 1; // on success
+            }
+        }
+      #endif // INSERT
         goto switchTail;
   #endif // defined(LOOKUP)
 
@@ -1534,6 +1561,18 @@ t_list:;
                                             (Switch_t *)NULL, nBLR) + 1);
         }
       #endif // defined(PP_IN_LINK) && defined(INSERT)
+      #ifdef INSERT
+        if ((cn2dBmMaxWpkPercent // check that conversion is enabled
+            && (EXP(cnBitsInD1) > sizeof(Link_t) * 8) // compiled out
+            && (nBLR == cnBitsInD1) // check that conversion is not done
+            && (nBL == nBLR) // converting skip makes no sense
+            // this should agree with the test in InsertCleanup
+            && (wPopCntUp * cn2dBmMaxWpkPercent
+                > EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord) * 100)))
+        {
+            bCleanupRequested = 1; // goto cleanup when done
+        }
+      #endif // INSERT
 
         break;
 
@@ -1887,6 +1926,7 @@ t_bitmap:;
               #if defined(PP_IN_LINK)
             assert(PWR_wPopCnt(pwRoot, pwrUp, cnBitsInD1) != 0);
               #else // defined(PP_IN_LINK)
+            // ? cnBitsLeftAtDl2 ?
             assert(PWR_wPopCnt(pwRoot, pwrUp, cnBitsInD2) != 0);
               #endif // defined(PP_IN_LINK)
             return KeyFound;
@@ -1906,11 +1946,21 @@ t_bitmap:;
             int bBitIsSet
                 = (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
                         && (nBLR == cnBitsInD1)
-                    ? (cnBitsInD1 <= cnLogBitsPerWord)
-                            ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
+                ? (cnBitsInD1 <= cnLogBitsPerWord)
+                    ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
                     : BitIsSet(STRUCT_OF(pwRoot, Link_t, ln_wRoot),
                                wKey & MSK(cnBitsInD1))
-                : BitIsSet(pwr, wKey & MSK(nBLR));
+                // It's faster with this pre-test of nBL then the literal
+                // argument of cnBitsInD1 or cnBitsInD2 then using nBL
+                // directly. Unfortunately.
+          #if 0
+                : BitIsSet(pwr, wKey & MSK(nBL))
+          #else
+                : (cn2dBmMaxWpkPercent != 0) && (nBL == cnBitsLeftAtDl2)
+                    ? BitIsSet(pwr, wKey & MSK(cnBitsLeftAtDl2))
+                    : BitIsSet(pwr, wKey & MSK(cnBitsLeftAtDl1))
+          #endif
+                ;
       #endif // defined(USE_XX_SW)
             if (bBitIsSet)
             {
@@ -1966,37 +2016,19 @@ t_bitmap:;
         // Should we be using nBLR here?
         InsertAtBitmap(pwRoot, wKey, nBL_to_nDL(nBL), wRoot);
   #else
-// We call InsertGuts here rather than breaking out of the switch to call
-// it later because we may have to goto cleanup after?
-        InsertGuts(pwRoot, wKey, nBL, wRoot, -1
-      #if defined(CODE_XX_SW)
-                   , pwRootUp
-        #if defined(SKIP_TO_XX_SW)
-                   , nBLUp
-        #endif // defined(SKIP_TO_XX_SW)
-      #endif // defined(CODE_XX_SW)
-                   );
-  #endif
-  #if (cn2dBmWpkPercent != 0)
-        if ((EXP(cnBitsInD1) > sizeof(Link_t) * 8) // else doesn't work yet
-            && (nBLR == cnBitsInD1) // ???
-            && (nBL == nBLR) // no skip; why do we care?
-  #if 0
-            && (PWR_wPopCntBL(pwRootUp, (Switch_t *)wr_pwr(*pwRootUp),
-                              cnBitsLeftAtDl2)
-                >= (EXP(cnBitsLeftAtDl2) * 100 / cnBitsPerWord
-                       / cn2dBmWpkPercent))
-  #endif
-            // Can we count on a previously initialized wPopCnt here?
-            )
+        if ((cn2dBmMaxWpkPercent // check that conversion is enabled
+            && (EXP(cnBitsInD1) > sizeof(Link_t) * 8) // compiled out
+            && (nBLR == cnBitsInD1) // check that conversion is not done
+            && (nBL == nBLR) // converting skip to b1 makes no sense
+            // this should agree with the test in InsertCleanup
+            && (wPopCntUp * cn2dBmMaxWpkPercent
+                > EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord) * 100)))
         {
-            goto cleanup;
+            bCleanupRequested = 1; // goto cleanup when done
         }
-  #endif // (cn2dBmWpkPercent != 0)
-        return Success;
-#else // defined(INSERT)
-        break;
+  #endif
 #endif // defined(INSERT)
+        break;
 
     } // end of case T_BITMAP
 
@@ -2255,7 +2287,9 @@ foundIt:;
       #endif // defined(SKIP_TO_XX_SW)
   #endif // defined(CODE_XX_SW)
                );
-    // Skip cleanup. Rely on T_BITMAP for that.
+    if (bCleanupRequested) {
+        goto cleanup;
+    }
     return Success;
 undo:;
     DBGX(printf("undo\n"));
@@ -2288,11 +2322,9 @@ restart:;
       #if defined(REMOVE)
 removeGutsAndCleanup:;
     RemoveGuts(pwRoot, wKey, nBL, wRoot);
-      #else // defined(REMOVE)
-          #if (cn2dBmWpkPercent != 0)
-cleanup:;
-          #endif // (cn2dBmWpkPercent != 0)
       #endif // defined(REMOVE)
+    goto cleanup;
+cleanup:;
     // Walk the tree again to see if we need to make any adjustments.
     // For insert our new pop may justify a bigger bitmap.
     // For remove we may need to pull back.
@@ -2439,9 +2471,13 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     DBGI(printf("\n\n# Judy1Set ppvRoot %p wKey " OWx"\n",
                 (void *)ppvRoot, wKey));
 
+#if 0
+    // This pre-test causes problems if we are running and experiment
+    // that involves returning 1 unconditionally from Lookup.
     if (Judy1Test((Pcvoid_t)*pwRoot, wKey, NULL) == Success) {
         return Failure;
     }
+#endif
 
   #if defined(PP_IN_LINK)
       #if defined(DEBUG)

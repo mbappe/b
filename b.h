@@ -167,14 +167,15 @@
     #define IF_SKIP_PREFIX_CHECK(_expr)
 #endif // defined(SKIP_PREFIX_CHECK)
 
-// Default cn2dBmWpkPercent; create 2-digit bm at cn2dBmWpkPercent  wpk.
-#if ! defined(cn2dBmWpkPercent)
+// Default cn2dBmMaxWpkPercent.
+// Create a 2-digit/big bm leaf when wpk gets below cn2dBmMaxWpkPercent/100.
+#if ! defined(cn2dBmMaxWpkPercent)
   #if (cnBitsPerWord == 32)
-#define cn2dBmWpkPercent  60
+#define cn2dBmMaxWpkPercent  30
   #else // (cnBitsPerWord == 32)
-#define cn2dBmWpkPercent  80
+#define cn2dBmMaxWpkPercent  15
   #endif // (cnBitsPerWord == 32)
-#endif // ! defined(cn2dBmWpkPercent)
+#endif // ! defined(cn2dBmMaxWpkPercent)
 
 #if defined(USE_BM_SW)
 // USE_BM_SW means always use a bm sw when creating a switch with no skip.
@@ -186,26 +187,13 @@
   #endif // ! defined(NO_BM_SW_FOR_REAL)
 
 // Default is -URETYPE_FULL_BM_SW.
+// There is no need for RETYPE_FULL_BM_SW. Switches will be converted sooner.
 // Default is -UBM_IN_NON_BM_SW.
-// There is no need.  It will be converted sooner.
-// Retype without BM_IN_NON_BM_SW requires the
-// guts of BmSwitch_t to look just like Switch_t
-// starting just after sw_awBm.
-
-  #if ! defined(cnBmSwLinksPercent)
-      // Default uncompress bm sw threshold is 33% full (cnBmSwLinksPercent).
-      // Never uncompress with less than 33% of links present.
-      // Otherwise we can overshoot the wpk target.
-      #define cnBmSwLinksPercent  33
-  #endif // ! defined(cnBmSwLinksPercent)
-
-  #if ! defined(cnBmSwWpkPercent)
-      // Default uncompress bm sw threshold is 1 word/key (cnBmSwWpkPercent).
-      // If the switch satisfies cnBmSwLinksPercent, then uncompress if and
-      // only if the words-per-key target is met.
-      #define cnBmSwWpkPercent  100
-  #endif // ! defined(cnBmSwWpkPercent)
-
+// BM_IN_NON_BM_SW with RETYPE_FULL_BM_SW allows retype to T_SWITCH so
+// BmSwitch_t and Switch_t have to be the same.
+// But RETYPE_FULL_BM_SW without BM_IN_NON_BM_SW uses T_FULL_BM_SW so
+// BmSwitch_t and Switch_t don't have to be the same until the end of sw_awBm
+// and after.
 #endif // defined(USE_BM_SW)
 
 #if defined(USE_LIST_SW)
@@ -517,47 +505,35 @@ typedef Word_t Bucket_t;
 #if (cnBitsPerWord >= 64)
   // Default is cnListPopCntMax64 is 0x40 (0xec if NO_SKIP_[TO_BM_SW|AT_TOP]).
   #if ! defined(cnListPopCntMax64)
-      #if defined(SKIP_TO_BM_SW) && ! defined(NO_SKIP_AT_TOP)
-    #define cnListPopCntMax64  0x40
-      #else // defined(SKIP_TO_BM_SW) && ! defined(NO_SKIP_AT_TOP)
-          #if defined(POP_IN_WR_HB)
+      #if defined(POP_IN_WR_HB)
     #define cnListPopCntMax64  0x7c // field size is limited
-          #else // defined(POP_IN_WR_HB)
+      #else // defined(POP_IN_WR_HB)
     #define cnListPopCntMax64  0xec
-          #endif // defined(POP_IN_WR_HB)
-      #endif // defined(SKIP_TO_BM_SW) && ! defined(NO_SKIP_AT_TOP)
+      #endif // defined(POP_IN_WR_HB)
   #endif // ! defined(cnListPopCntMax64)
 #endif // (cnBitsPerWord >= 64)
 
 // Default is cnListPopCntMax32 is 0x30 (0xf0 if NO_USE_BM_SW).
 #if ! defined(cnListPopCntMax32)
-  #if defined(USE_BM_SW)
-      #define cnListPopCntMax32  0x30
-  #else // defined(USE_BM_SW)
-      #if defined(POP_IN_WR_HB)
-          #define cnListPopCntMax32  0x7c // field size is limited
-      #else // defined(POP_IN_WR_HB)
-          #define cnListPopCntMax32  0xf0
-      #endif // defined(POP_IN_WR_HB)
-  #endif  // defined(USE_BM_SW)
+  #if defined(POP_IN_WR_HB)
+      #define cnListPopCntMax32  0x7c // field size is limited
+  #else // defined(POP_IN_WR_HB)
+      #define cnListPopCntMax32  0xf0
+  #endif // defined(POP_IN_WR_HB)
 #endif // ! defined(cnListPopCntMax32)
 
-// Default is cnListPopCntMax16 is 0x40 (0x70 if NO_USE_BM_SW).
+// Default is cnListPopCntMax16 is 0x70.
 #if ! defined(cnListPopCntMax16)
-  #if defined(USE_BM_SW)
-      #define cnListPopCntMax16  0x40
-  #else // defined(USE_BM_SW)
       #define cnListPopCntMax16  0x70
-  #endif // defined(USE_BM_SW)
 #endif // ! defined(cnListPopCntMax16)
 
 // An 8-bit bitmap uses only 32-bytes plus malloc overhead.
-// It makes no sense to have a list that uses as much.
+// Does it make sense to have a list that uses as much or more?
 #if ! defined(cnListPopCntMax8)
   #define cnListPopCntMax8  0x10
 #endif // ! defined(cnListPopCntMax8)
 
-// Default cnListPopCntMaxDl1 is 7 for cnBitsInD1 = 8 (embedded keys only).
+// Default cnListPopCntMaxDl1 is 0x10 for cnBitsInD1 = 8.
 #if ! defined(cnListPopCntMaxDl1)
   #if defined(USE_XX_SW)
       #define cnListPopCntMaxDl1  0x10
@@ -565,11 +541,7 @@ typedef Word_t Bucket_t;
     #  if (cnBitsInD1 == 7)
       #define cnListPopCntMaxDl1  0x08
     #elif (cnBitsInD1 == 8)
-        #if (cnBitsPerWord == 64)
-      #define cnListPopCntMaxDl1  0x07
-        #else // (cnBitsPerWord == 64)
-      #define cnListPopCntMaxDl1  0x03
-        #endif // (cnBitsPerWord == 64)
+      #define cnListPopCntMaxDl1  0x10
     #elif (cnBitsInD1 == 9)
       #define cnListPopCntMaxDl1  0x06
     #elif (cnBitsInD1 <= 11)
@@ -3841,6 +3813,28 @@ HasKey128(__m128i *pxBucket, Word_t wKey, int nBL)
     return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
 }
 
+// v_t is a vector of 16 chars. __m128i is a vector of 2 long longs.
+// We need the char variant so we can compare with a char using '==' or '>='.
+#ifdef __clang__
+// clang has some support for gcc attribute "vector_size" but it doesn't work
+// as well as its own ext_vector_type.
+// For example, it won't promote a scalar to a vector for compare.
+typedef unsigned char __attribute__((ext_vector_type(16))) v_t;
+#else // __clang__
+// gcc has no support for clang attribute "ext_vector_type".
+typedef unsigned char __attribute__((vector_size(16))) v_t;
+#endif // __clang__
+
+// HasKey returns (1 << matching slot number) if sorted full Bucket
+// has Key or zero if Bucket does not have Key.
+// Keys are sorted with lowest key at vector index zero.
+static inline int
+HasKey40(v_t Bucket, unsigned char Key)
+{
+    v_t vEq = (v_t)(Bucket == Key);
+    return _mm_movemask_epi8((__m128i)vEq); // (1 << matching slot) or 0
+}
+
 static Word_t // bool
 HasKey96(__m128i *pxBucket, Word_t wKey, int nBL)
 {
@@ -3969,7 +3963,12 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 static int
 ListHasKey8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 {
-    return SearchList8(pwRoot, pwr, wKey, nBL) >= 0;
+    assert(PWR_xListPopCnt(pwRoot, pwr, 8) <= 16);
+    assert(ls_pcKeys(pwr, PWR_xListPopCnt(pwRoot, pwr, 8) == pwr));
+    assert(((Word_t)pwr & ~((Word_t)-1 << 4)) == 0);
+    return HasKey40(*(v_t*)pwr, wKey); (void)pwRoot; (void)nBL;
+    //return SearchList8(pwRoot, pwr, wKey, nBL) >= 0;
+    //return HasKey128((__m128i*)pwr, wKey, 8); (void)pwRoot; (void)nBL;
 }
 
   #endif // (cnBitsInD1 <= 8)
