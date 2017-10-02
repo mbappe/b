@@ -480,7 +480,7 @@ psearch$(X)-$(Z): psearch.cpp
  -Wno-psabi -Wno-unknown-warning-option \
  $(X) $(Y) -m$(Z) $(DEFINES) -I. psearch.cpp -o $@
 
-PSC_FLAGS=
+#PSC_FLAGS = -mbmi
 
 psc: psc.c
 	gcc -O2 $(PSC_FLAGS) -g -o psc-gcc $<
