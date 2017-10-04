@@ -59,6 +59,8 @@ else
 endif
 
 # Potentially interesting gcc options:
+# -ftree-vectorize (enabled by default with -O3)
+# -ftree-vectorizer-verbose
 # -fkeep-inline-functions
 # -fverbose-asm
 # -fpic vs. -fPIC
@@ -480,18 +482,18 @@ psearch$(X)-$(Z): psearch.cpp
  -Wno-psabi -Wno-unknown-warning-option \
  $(X) $(Y) -m$(Z) $(DEFINES) -I. psearch.cpp -o $@
 
-#PSC_FLAGS = -mbmi
-
+# PSC_FLAGS = -mbmi
+# -O3 is supposed to imply -ftree-vectorize
 psc: psc.c
-	gcc -O2 $(PSC_FLAGS) -g -o psc-gcc $<
-	gcc -O2 $(PSC_FLAGS) -S -fkeep-inline-functions -o psc-gcc.s $<
-	g++ -O2 $(PSC_FLAGS) -g -o psc-g++ $<
-	g++ -O2 $(PSC_FLAGS) -S -fkeep-inline-functions -o psc-g++.s $<
-	clang -O2 $(PSC_FLAGS) -g -o psc-clang $<
-	clang -O2 $(PSC_FLAGS) -S -o psc-clang.s $<
+	gcc -O3 $(PSC_FLAGS) -g -o psc-gcc $<
+	gcc -O3 $(PSC_FLAGS) -S -fkeep-inline-functions -o psc-gcc.s $<
+	g++ -O3 $(PSC_FLAGS) -g -o psc-g++ $<
+	g++ -O3 $(PSC_FLAGS) -S -fkeep-inline-functions -o psc-g++.s $<
+	clang -O3 $(PSC_FLAGS) -g -o psc-clang $<
+	clang -O3 $(PSC_FLAGS) -S -o psc-clang.s $<
 	rm -f psc.cpp
 	ln -s psc.c psc.cpp
-	clang++ -O2 $(PSC_FLAGS) -g -o psc-clang++ psc.cpp
-	clang++ -O2 $(PSC_FLAGS) -S -o psc-clang++.s psc.cpp
+	clang++ -O3 $(PSC_FLAGS) -g -o psc-clang++ psc.cpp
+	clang++ -O3 $(PSC_FLAGS) -S -o psc-clang++.s psc.cpp
 	rm -f psc
 	ln -s psc-gcc psc
