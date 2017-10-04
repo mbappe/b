@@ -177,6 +177,17 @@
   #endif // (cnBitsPerWord == 32)
 #endif // ! defined(cn2dBmMaxWpkPercent)
 
+#if !defined(cnBmSwConvert)
+#define cnBmSwConvert 9
+#endif // !defined(cnBmSwConvert)
+#if !defined(cnBmSwRetain)
+#define cnBmSwRetain 2
+#endif // !defined(cnBmSwRetain)
+
+#ifndef NO_USE_BM_SW
+#undef  USE_BM_SW
+#define USE_BM_SW
+#endif // NO_USE_BM_SW
 #if defined(USE_BM_SW)
 // USE_BM_SW means always use a bm sw when creating a switch with no skip.
 // Default is -DBM_SW_FOR_REAL iff -DUSE_BM_SW.
@@ -502,31 +513,24 @@ typedef Word_t Bucket_t;
 // Choose max list lengths.
 // Respect the maximum value implied by the size of the pop count field.
 
+// Default cnListPopCntMax64.
 #if (cnBitsPerWord >= 64)
-  // Default is cnListPopCntMax64 is 0x40 (0xec if NO_SKIP_[TO_BM_SW|AT_TOP]).
   #if ! defined(cnListPopCntMax64)
-      #if defined(POP_IN_WR_HB)
-    #define cnListPopCntMax64  0x7c // field size is limited
-      #else // defined(POP_IN_WR_HB)
-    #define cnListPopCntMax64  0xec
-      #endif // defined(POP_IN_WR_HB)
+    #define cnListPopCntMax64  256
   #endif // ! defined(cnListPopCntMax64)
 #endif // (cnBitsPerWord >= 64)
 
-// Default is cnListPopCntMax32 is 0x30 (0xf0 if NO_USE_BM_SW).
+// Default cnListPopCntMax32.
 #if ! defined(cnListPopCntMax32)
-  #if defined(POP_IN_WR_HB)
-      #define cnListPopCntMax32  0x7c // field size is limited
-  #else // defined(POP_IN_WR_HB)
-      #define cnListPopCntMax32  0xf0
-  #endif // defined(POP_IN_WR_HB)
+      #define cnListPopCntMax32  256
 #endif // ! defined(cnListPopCntMax32)
 
-// Default is cnListPopCntMax16 is 0x70.
+// Default cnListPopCntMax16.
 #if ! defined(cnListPopCntMax16)
-      #define cnListPopCntMax16  0x70
+      #define cnListPopCntMax16  256
 #endif // ! defined(cnListPopCntMax16)
 
+// Default cnListPopCntMax8.
 // An 8-bit bitmap uses only 32-bytes plus malloc overhead.
 // Does it make sense to have a list that uses as much or more?
 #if ! defined(cnListPopCntMax8)
@@ -2373,7 +2377,7 @@ Get_xListPopCnt(Word_t *pwRoot, int nBL)
 {
     (void)nBL;
 #if defined(POP_IN_WR_HB) // 64-bit default
-    int nPopCnt = GetBits(*pwRoot, cnBitsListPopCnt, cnLsbListPopCnt);
+    int nPopCnt = GetBits(*pwRoot, cnBitsListPopCnt, cnLsbListPopCnt) + 1;
 #elif defined(LIST_POP_IN_PREAMBLE) // 32-bit default
     int nPopCnt = GetBits(wr_pwr(*pwRoot)[-1],
                           cnBitsPreListPopCnt, cnLsbPreListPopCnt);
@@ -2399,8 +2403,8 @@ Set_xListPopCnt(Word_t *pwRoot, int nBL, int nPopCnt)
 {
     (void)nBL;
 #if defined(POP_IN_WR_HB) // 64-bit default
-    assert(nPopCnt <= (int)MSK(cnBitsListPopCnt));
-    SetBits(pwRoot, cnBitsListPopCnt, cnLsbListPopCnt, nPopCnt);
+    assert(nPopCnt - 1 <= (int)MSK(cnBitsListPopCnt));
+    SetBits(pwRoot, cnBitsListPopCnt, cnLsbListPopCnt, nPopCnt - 1);
 #elif defined(LIST_POP_IN_PREAMBLE) // 32-bit default
     assert(nPopCnt <= (int)MSK(cnBitsPreListPopCnt));
     Word_t *pwr = wr_pwr(*pwRoot);
@@ -3800,6 +3804,22 @@ HasKey128Tail(__m128i *pxBucket,
     return ! _mm_testc_si128(xZero, xMagic); // compare with zero
 }
 
+// v_t is a vector of 16 chars. __m128i is a vector of 2 long longs.
+// We need the char variant so we can compare with a char using '==' or '>='.
+#ifdef __clang__
+// clang has some support for gcc attribute "vector_size" but it doesn't work
+// as well as its own ext_vector_type.
+// For example, it won't promote a scalar to a vector for compare.
+typedef unsigned char __attribute__((ext_vector_type(16))) v_t;
+typedef unsigned short __attribute__((ext_vector_type(8))) v41_t;
+typedef unsigned int __attribute__((ext_vector_type(4))) v42_t;
+#else // __clang__
+// gcc has no support for clang attribute "ext_vector_type".
+typedef unsigned char __attribute__((vector_size(16))) v_t;
+typedef unsigned short __attribute__((vector_size(16))) v41_t;
+typedef unsigned int __attribute__((vector_size(16))) v42_t;
+#endif // __clang__
+
 // Key observations about HasKey:
 // HasKey creates a magic number with the high bit set in the key slots
 // that match the target key.  It also sets the high bit in the key slot
@@ -3808,32 +3828,116 @@ HasKey128Tail(__m128i *pxBucket,
 static Word_t // bool
 HasKey128(__m128i *pxBucket, Word_t wKey, int nBL)
 {
+#ifndef OLD_HK_128
+    if (nBL == 16) {
+        v41_t vEq = (v41_t)(*(v41_t*)pxBucket == (unsigned short)wKey);
+  #ifdef HK_MOVEMASK
+        return _mm_movemask_epi8((__m128i)vEq);
+  #else // HK_MOVEMASK
+        // seems marginally faster at startup (in cache)
+        return _mm_packs_epi16((__m128i)vEq, (__m128i)vEq)[0] != 0;
+  #endif // HK_MOVEMASK
+    }
+    if (nBL == 32) {
+        v42_t vEq = (v42_t)(*(v42_t*)pxBucket == (unsigned int)wKey);
+  #ifdef HK_PMOVEMASK
+        return _mm_movemask_epi8((__m128i)vEq);
+  #else // HK_MOVEMASK
+        return _mm_packs_epi32((__m128i)vEq, (__m128i)vEq)[0] != 0;
+  #endif // HK_MOVEMASK
+    }
+    if (nBL == 8) {
+        v_t vEq = (v_t)(*(v_t*)pxBucket == (unsigned char)wKey);
+        return _mm_movemask_epi8((__m128i)vEq);
+    }
+#endif // OLD_HK_128
+    // this appears to be a little slower out of the cache
+#if 0
+    if (nBL == 16) {
+        __m128i xLsbs, xMsbs, xKeys;
+        HAS_KEY_128_SETUP(wKey, 16, xLsbs, xMsbs, xKeys);
+        return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
+    }
+    if (nBL == 32) {
+        __m128i xLsbs, xMsbs, xKeys;
+        HAS_KEY_128_SETUP(wKey, 32, xLsbs, xMsbs, xKeys);
+        return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
+    }
+#endif
     __m128i xLsbs, xMsbs, xKeys;
     HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys);
     return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
 }
 
-// v_t is a vector of 16 chars. __m128i is a vector of 2 long longs.
-// We need the char variant so we can compare with a char using '==' or '>='.
-#ifdef __clang__
-// clang has some support for gcc attribute "vector_size" but it doesn't work
-// as well as its own ext_vector_type.
-// For example, it won't promote a scalar to a vector for compare.
-typedef unsigned char __attribute__((ext_vector_type(16))) v_t;
-#else // __clang__
-// gcc has no support for clang attribute "ext_vector_type".
-typedef unsigned char __attribute__((vector_size(16))) v_t;
-#endif // __clang__
-
-// HasKey returns (1 << matching slot number) if sorted full Bucket
+#ifdef HK40_EXPERIMENT // HasKey128 is 1st; DS1 3rd
+// HasKey returns non-zero if sorted full Bucket
 // has Key or zero if Bucket does not have Key.
 // Keys are sorted with lowest key at vector index zero.
 static inline int
-HasKey40(v_t Bucket, unsigned char Key)
+HasKey40(void *pvBucket, unsigned char Key)
 {
-    v_t vEq = (v_t)(Bucket == Key);
-    return _mm_movemask_epi8((__m128i)vEq); // (1 << matching slot) or 0
+    // PSPLIT_BY_KEY is missing from the options here.
+#if defined(HK40_NO_MM) // 2nd; DS1 5th slowest
+    // Use v4i[0] | v4i[1] != 0 instead of movemask.
+    // Movemask is faster than (v4i[0] | v4i[1]) != 0.
+    v_t vEq = (v_t)(*(v_t*)pvBucket == Key);
+    return (((int64_t*)&vEq)[0] | ((int64_t*)&vEq)[1]) != 0;
+#elif defined(HK40_EQ_OUT) // 3rd; DS1 1st (always hitting first key?)
+    for (int i = 0; i < 16; i++) {
+        if (((unsigned char*)pvBucket)[i] == Key) { return 1; }
+    }
+    return 0;
+#elif defined(HK40_GE_OUT) // 4th; DS1 2nd (always hitting first key?)
+    unsigned char uc;
+    for (int i = 0; i < 16; i++) {
+        if ((uc = ((unsigned char*)pvBucket)[i]) >= Key) {
+            return (uc == Key);
+        }
+    }
+    return 0;
+#elif defined(HK40_128_HAS_KEY) // 2nd; DS1 4th slowest
+    unsigned __int128 Lsbs = (__int128)-1; Lsbs /= 0xff;
+    unsigned __int128 Msbs = Lsbs << 7;
+    unsigned __int128 Keys = Key * Lsbs;
+    unsigned __int128 Xor = Keys ^ *(unsigned __int128*)pvBucket;
+    return ((Xor - Lsbs) & ~Xor & Msbs) != 0;
+#elif defined(HK40_LL_HAS_KEY) // 2nd; DS1 4th
+    return (WordHasKey(&((Word_t*)pvBucket)[0], Key, 8)
+          | WordHasKey(&((Word_t*)pvBucket)[1], Key, 8)) != 0;
+#elif defined(HK40_LL_MAGIC) // 2nd; DS1 4th
+    // Literals are no faster than caclulating with WordHasKey.
+    uint64_t Lsbs = 0x0101010101010101ULL;
+    uint64_t Msbs = 0x1010101010101010ULL;
+    uint64_t Keys = Key * Lsbs;
+    uint64_t Xor = Keys ^ ((uint64_t*)pvBucket)[0];
+    uint64_t wMagic = (Xor - Lsbs) & ~Xor & Msbs;
+    Xor = Keys ^ ((uint64_t*)pvBucket)[1];
+    return (wMagic | ((Xor - Lsbs) & ~Xor & Msbs)) != 0;
+#elif defined(HK40_LL_SUM_CHAR_ARRAY) // slowest; DS1 3rd slowest
+    // Pulling chars from words by pointer casting is slow.
+    uint64_t abHk[2];
+    for (int i = 0; i < 16; i++) {
+        ((unsigned char*)abHk)[i] = (((unsigned char*)pvBucket)[i] == Key);
+    }
+    return (abHk[0] | abHk[1]) != 0;
+#elif defined(HK40_BUCKET_SUM) // slowest; DS1 2nd slowest
+    // Big load is not helpful.
+    v_t Bucket = *(v_t*)pvBucket;
+    int bHk = 0;
+    for (int i = 0; i < 16; i++) {
+        bHk |= (Bucket[i] == Key);
+    }
+    return bHk;
+#else // HK40_EQ_OUT, HK40_GE_OUT; 2nd slowest; DS1 2nd slowest
+    // Individual compares and summing results is terrible.
+    int bHk = 0;
+    for (int i = 0; i < 16; i++) {
+        bHk |= (((unsigned char*)pvBucket)[i] == Key);
+    }
+    return bHk;
+#endif // HK40_...
 }
+#endif // HK40_EXPERIMENT
 
 static Word_t // bool
 HasKey96(__m128i *pxBucket, Word_t wKey, int nBL)
@@ -3963,12 +4067,16 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 static int
 ListHasKey8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 {
+    (void)pwRoot; (void)nBL;
     assert(PWR_xListPopCnt(pwRoot, pwr, 8) <= 16);
     assert(ls_pcKeys(pwr, PWR_xListPopCnt(pwRoot, pwr, 8) == pwr));
     assert(((Word_t)pwr & ~((Word_t)-1 << 4)) == 0);
-    return HasKey40(*(v_t*)pwr, wKey); (void)pwRoot; (void)nBL;
     //return SearchList8(pwRoot, pwr, wKey, nBL) >= 0;
-    //return HasKey128((__m128i*)pwr, wKey, 8); (void)pwRoot; (void)nBL;
+#ifdef HK40_EXPERIMENT
+    return HasKey40(pwr, wKey);
+#else // HK40_EXPERIMENT
+    return HasKey128((__m128i*)pwr, wKey, 8);
+#endif // HK40_EXPERIMENT
 }
 
   #endif // (cnBitsInD1 <= 8)

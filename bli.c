@@ -429,8 +429,11 @@ SwCleanup(qp, Word_t wKey, int nBLR, int bCleanup)
         if (0
           #if defined(CODE_BM_SW)
             || (tp_bIsBmSw(Get_nType(&wRoot))
+                // bits of keys * convert > bits per switch * retain
                 && (Get_wPopCntBL(pwRoot, nBLR) * nBLR
-                    >= EXP(nBW) * sizeof(Link_t)))
+                        * EXP(cnBmSwConvert)
+                    > EXP(gnBW(qy, T_BM_SW, nBLR)) * 8
+                        * sizeof(Link_t) * cnBmSwRetain))
           #endif // defined(CODE_BM_SW)
             || ((cn2dBmMaxWpkPercent != 0)
                 && (nBLR == cnBitsLeftAtDl2)
@@ -1189,8 +1192,8 @@ bmSwTail:;
       #ifdef INSERT
         // This test should be the same as the one in InsertCleanup.
         if (tp_bIsBmSw(nType)) {
-            if (Get_wPopCntBL(pwRoot, nBLR) * nBLR
-                >= EXP(nBW) * sizeof(Link_t))
+            if (Get_wPopCntBL(pwRoot, nBLR) * nBLR * cnBmSwConvert
+                > EXP(nBW) * 8 * sizeof(Link_t) * cnBmSwRetain)
             {
                 bCleanupRequested = 1; // on success
             }

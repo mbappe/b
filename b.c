@@ -1159,7 +1159,8 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
     // It's probably more efficient to do it here, but InsertCleanup will
     // probably end up doing it before we have a chance to do it here
     // the vast majority of the time.
-    if (wPopCntKeys * nBLR > EXP(nBitsIndexSz) * sizeof(Link_t)) {
+    if (wPopCntKeys * nBLR * cnBmSwConvert
+            > EXP(nBitsIndexSz) * 8 * sizeof(Link_t) * cnBmSwRetain) {
         InflateBmSw(pwRoot, wKey, nBLR, nBLUp);
     } else {
         // We replicate a bunch of newswitch here since
@@ -2340,7 +2341,9 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
   #endif // defined(SKIP_LINKS)
         Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
         int nBW = gnBW(qy, T_BM_SW, nBLR);
-        if (wPopCnt * nBLR > EXP(nBW) * sizeof(Link_t)) {
+        // -E: 256*16=4096 > 256*8=2048
+        if (wPopCnt * nBLR * cnBmSwConvert
+                > EXP(nBW) * 8 * sizeof(Link_t) * cnBmSwRetain) {
             InflateBmSw(pwRoot, wKey, nBLR, /* nBLUp */ nBL);
         }
     }
@@ -2374,6 +2377,7 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
         // keys = wPopCnt
         // if wPopCnt * cn2dBmMaxWpkPercent > EXP(nBL-cnLogBitsPerWord) * 100
         // Disable with cn2dBmMaxWpkPercent = 0.
+        //-E: 256 * cn2dBmMaxPercent > 1024*100
         && ((wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBL))
                     * cn2dBmMaxWpkPercent
                 > (EXP(nBL - cnLogBitsPerWord) * 100)))
@@ -5317,6 +5321,24 @@ Initialize(void)
     printf("# No PARALLEL_64\n");
 #endif // defined(PARALLEL_64)
 
+#if defined(OLD_HK_128)
+    printf("#    OLD_HK_128\n");
+#else // defined(OLD_HK_128)
+    printf("# No OLD_HK_128\n");
+#endif // defined(OLD_HK_128)
+
+#if defined(HK_MOVEMASK)
+    printf("#    HK_MOVEMASK\n");
+#else // defined(HK_MOVEMASK)
+    printf("# No HK_MOVEMASK\n");
+#endif // defined(HK_MOVEMASK)
+
+#if defined(HK_EXPERIMENT)
+    printf("#    HK_EXPERIMENT\n");
+#else // defined(HK_EXPERIMENT)
+    printf("# No HK_EXPERIMENT\n");
+#endif // defined(HK_EXPERIMENT)
+
 #if defined(PSPLIT_EARLY_OUT)
     printf("#    PSPLIT_EARLY_OUT\n");
 #else // defined(PSPLIT_EARLY_OUT)
@@ -5847,6 +5869,12 @@ Initialize(void)
     printf("# No NO_SKIP_TO_XX_SW\n");
 #endif // defined(NO_SKIP_TO_XX_SW)
 
+#if defined(NO_USE_BM_SW)
+    printf("#    NO_USE_BM_SW\n");
+#else // defined(NO_USE_BM_SW)
+    printf("# No NO_USE_BM_SW\n");
+#endif // defined(NO_USE_BM_SW)
+
 #if defined(NO_SKIP_TO_BM_SW)
     printf("#    NO_SKIP_TO_BM_SW\n");
 #else // defined(NO_SKIP_TO_BM_SW)
@@ -6002,6 +6030,8 @@ Initialize(void)
     printf("\n");
     printf("# cwListPopCntMax %d\n", cwListPopCntMax);
     printf("# cn2dBmMaxWpkPercent %d\n", cn2dBmMaxWpkPercent);
+    printf("# cnBmSwConvert %d\n", cnBmSwConvert);
+    printf("# cnBmSwRetain %d\n", cnBmSwRetain);
 
 #if defined(CODE_XX_SW)
     printf("\n");
