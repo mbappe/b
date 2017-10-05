@@ -731,8 +731,8 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
     Word_t elm;
     Word_t Count1, CountL;
     Word_t TstIndex = LowIndex;
-    PWord_t PValue;
-    int Rc;
+    PWord_t PValue; (void)PValue;
+    int Rc; (void)Rc;
 
     TstIndex = LowIndex;
     for (elm = 0; elm < Elements; elm++)
