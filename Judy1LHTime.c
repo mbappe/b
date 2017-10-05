@@ -1229,41 +1229,38 @@ main(int argc, char *argv[])
             char *str, *tok;
             char *saveptr = NULL;
 
-//            printf("optarg[0] = %c\n", optarg[0]);
-
 //          parse the sub parameters of the -b option
             str = optarg;
             tok = strtok_r(str, ":", &saveptr);
 //            if (tok == NULL) cant happen, caught by getopt
-            str = NULL;
+            str = NULL; // for subsequent call to strtok_r
 
             BValue = oa2w(tok, NULL, 0, c);
+
+            tok = strtok_r(str, ":", &saveptr);
+            if (tok != NULL) {
+                Bpercent = atof(tok); // default is Bpercent = 100
+            }
+
+            if (Bpercent == 50.0) {
+                --BValue;
+                Bpercent = 100.0;
+            }
 
             if ((BValue > sizeof(Word_t) * 8) || (BValue < 10))
             {
                 FAILURE("\n -B  is out of range, I.E. -B", BValue);
             }
-            tok = strtok_r(str, ":", &saveptr);
-            if (tok == NULL) {
-                Bpercent = 100.0;
-                // Don't want to calculate MaxNumb later based on a Bpercent
-                // that was derived from -N.
-                MaxNumb = pow(2.0, BValue);
-                MaxNumb--;
-                break;
-            }
 
-            Bpercent = atof(tok);
-
-            if (Bpercent <= 50.0 || Bpercent >= 100.0)
+            if (Bpercent < 50.0 || Bpercent > 100.0)
             {
                 ErrorFlag++;
                 printf("\nError --- Percent = %4.2f must be greater than 50 and less than 100 !!!\n", Bpercent);
             }
-            // Don't want to calculate MaxNumb later based on a Bpercent
-            // that was derived from -N.
+
             MaxNumb = pow(2.0, BValue) * Bpercent / 100;
             MaxNumb--;
+
             break;
         }
         case 'G':                      // Gaussian Random numbers
