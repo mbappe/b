@@ -1,7 +1,3 @@
-
-// @(#) $Id: bli.c,v 1.1 2016/12/19 00:10:32 mike Exp mike $
-// @(#) $Source: /Users/mike/Judy/b/bli.c,v $
-
 // This file is #included in other .c files four times.
 // Once with #define LOOKUP and #undef INSERT, REMOVE and COUNT .
 // Once with #define INSERT and #undef LOOKUP, REMOVE and COUNT .
