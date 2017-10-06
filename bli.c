@@ -1152,7 +1152,21 @@ t_bm_sw:;
   #if ! defined(COUNT)
             int bLinkPresent;
   #endif // ! defined(COUNT)
+  #if !defined(BM_SW_FOR_REAL) && defined(SW_BM_DEREF_ONLY)
+            if (PWR_pwBm(pwRoot, pwr)[0] != 0) {
+                bLinkPresent = 1;
+                wSwIndex = wDigit;
+            } else {
+                bLinkPresent = 0;
+                wSwIndex = 0;
+            }
+  #else // !defined(BM_SW_FOR_REAL) && defined(SW_BM_DEREF_ONLY)
+    #ifdef ONE_BM_SW_INDEX_CALL
+            BmSwIndex(qy, wDigit, &wSwIndex, &bLinkPresent);
+    #else // ONE_BM_SW_INDEX_CALL
             BmSwIndex(qy, wDigit, /* pwSwIndex */ NULL, &bLinkPresent);
+    #endif // ONE_BM_SW_INDEX_CALL
+  #endif // !defined(BM_SW_FOR_REAL) && defined(SW_BM_DEREF_ONLY)
   #if ! defined(COUNT)
             // Test to see if link exists before figuring out where it is.
             if ( ! bLinkPresent )
@@ -1165,7 +1179,9 @@ t_bm_sw:;
       #endif // defined(BM_SW_FOR_REAL)
             }
   #endif // ! defined(COUNT)
+    #ifndef ONE_BM_SW_INDEX_CALL
             BmSwIndex(qy, wDigit, &wSwIndex, /* pbPresent */ NULL);
+    #endif // ONE_BM_SW_INDEX_CALL
             DBGX(printf("\npwRoot %p PWR_pwBm %p\n",
                         (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
         }
