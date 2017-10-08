@@ -5012,7 +5012,7 @@ BmSwIndex(qp, Word_t wDigit,
     if (pwSwIndex != NULL) {
 #ifdef X_ADD_ALL_SW_BM_WORDS
   #if defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
-#error X_ADD_ALL_SW_BM_WORDS with OFFSET_IN_BM_SW_WORD or X_SW_BM_HALF_WORDS
+#error X_ADD_ALL_SW_BM_WORDS with OFFSET_IN_SW_BM_WORD or X_SW_BM_HALF_WORDS
   #endif // defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
         Word_t wSwIndex = 0;
         for (int nn = 0; n < N_WORDS_SWITCH_BM; nn++) {
