@@ -1150,38 +1150,77 @@ t_bm_sw:;
   #endif // defined(BM_IN_LINK)
         {
   #if ! defined(COUNT)
-            int bLinkPresent;
+            int bLinkPresent; // need less local bLinkPresent for COUNT
   #endif // ! defined(COUNT)
-  #if !defined(BM_SW_FOR_REAL) && defined(SW_BM_DEREF_ONLY)
-            if (PWR_pwBm(pwRoot, pwr)[0] != 0) {
-                bLinkPresent = 1;
-                wSwIndex = wDigit;
-            } else {
-                bLinkPresent = 0;
-                wSwIndex = 0;
-            }
-  #else // !defined(BM_SW_FOR_REAL) && defined(SW_BM_DEREF_ONLY)
-    #ifdef ONE_BM_SW_INDEX_CALL
+  #if defined(BM_SW_FOR_REAL)
+      #ifdef ONE_BM_SW_INDEX_CALL
             BmSwIndex(qy, wDigit, &wSwIndex, &bLinkPresent);
-    #else // ONE_BM_SW_INDEX_CALL
+      #else // ONE_BM_SW_INDEX_CALL
             BmSwIndex(qy, wDigit, /* pwSwIndex */ NULL, &bLinkPresent);
-    #endif // ONE_BM_SW_INDEX_CALL
-  #endif // !defined(BM_SW_FOR_REAL) && defined(SW_BM_DEREF_ONLY)
+      #endif // ONE_BM_SW_INDEX_CALL
+  #else // defined(BM_SW_FOR_REAL)
+      #ifdef LOOKUP
+            // Here are shortcuts that we use for performance experiments.
+            // The code is not correct. It assumes we only ever test for keys
+            // that are actually present.
+            Word_t wAddr = (Word_t)&pwr_pLinks((BmSwitch_t *)pwr)[wDigit];
+            (void)wAddr;
+            wSwIndex = wDigit;
+          #if defined(SW_BM_NO_DEREF)
+            bLinkPresent = 1;
+          #elif defined(SW_BM_DEREF_ADJACENT_WORD)
+            // Test adjacent word in the same cache line for link presence.
+            // We don't know what will be there so we xor with a constant
+            // to see if we can get through the test.
+            // Is there any difference in performance between reading the
+            // first two words in a cache line in order vs any other two
+            // words in any order?
+            wAddr ^= (1 << cnLogBytesPerWord);
+            bLinkPresent = *(Word_t *)wAddr ^ ~(Word_t)0x12484210;
+          #elif defined(SW_BM_USE_ADJACENT_WORD)
+            // Use adjacent word in link index calculation.
+            wAddr ^= (1 << cnLogBytesPerWord);
+            bLinkPresent = *(Word_t *)wAddr ^ ~(Word_t)0x12484210;
+            wSwIndex += !bLinkPresent;
+          #elif defined(SW_BM_DEREF_NEXT_LINE)
+            // Test word in next cache line for link presence.
+            // slow
+            bLinkPresent = *(Word_t *)(wAddr + 64) ^ ~(Word_t)0x12484210;
+          #elif defined(SW_BM_DEREF_PREV_LINE)
+            // Does cache line read ahead help? Not in first test.
+            // Test word in previous cache line for link presence.
+            // We don't know what will be there so we xor with a constant
+            // to see if we can get through the test.
+            // slow
+            bLinkPresent = *(Word_t *)(wAddr - 64) ^ ~(Word_t)0x12484210;
+          #elif defined(SW_BM_DEREF_END_OF_LINE)
+            // fast
+            bLinkPresent = *(Word_t *)(wAddr | 0x38) ^ ~(Word_t)0x12484210;
+          #elif defined(SW_BM_DEREF_BEGIN_OF_LINE)
+            // fast
+            wAddr &= ~(Word_t)63;
+            bLinkPresent = *(Word_t *)wAddr ^ ~(Word_t)0x12484210;
+          #elif defined(SW_BM_USE_BEGIN_OF_LINE)
+            // Use word at beginning of cache line in link index calculation.
+            // !!! fast !!!
+            wAddr &= ~(Word_t)63;
+            bLinkPresent = *(Word_t *)wAddr ^ ~(Word_t)0x12484210;
+            wSwIndex = wDigit + !bLinkPresent;
+          #endif // defined(BM_SW_FOR_REAL) && defined(SW_BM_DEREF_ONLY)
+      #else // LOOKUP
+            BmSwIndex(qy, wDigit, &wSwIndex, &bLinkPresent);
+      #endif // LOOKUP
+  #endif // defined(BM_SW_FOR_REAL)
   #if ! defined(COUNT)
             // Test to see if link exists before figuring out where it is.
-            if ( ! bLinkPresent )
-            {
-      #if defined(BM_SW_FOR_REAL)
+            if ( ! bLinkPresent ) {
                 DBGX(printf("missing link\n"));
                 break; // not found
-      #else // defined(BM_SW_FOR_REAL)
-                assert(0); // only for now
-      #endif // defined(BM_SW_FOR_REAL)
             }
   #endif // ! defined(COUNT)
-    #ifndef ONE_BM_SW_INDEX_CALL
+  #if defined(BM_SW_FOR_REAL) && !defined(ONE_BM_SW_INDEX_CALL)
             BmSwIndex(qy, wDigit, &wSwIndex, /* pbPresent */ NULL);
-    #endif // ONE_BM_SW_INDEX_CALL
+  #endif // defined(BM_SW_FOR_REAL) && !defined(ONE_BM_SW_INDEX_CALL)
             DBGX(printf("\npwRoot %p PWR_pwBm %p\n",
                         (void *)pwRoot, (void *)PWR_pwBm(pwRoot, pwr)));
         }
