@@ -2348,9 +2348,16 @@ typedef struct {
     // Link_t sw_aLinks[1]; // variable size
 } ListSw_t;
 
+#if ! defined(cnDummiesInBmSw)
+#define cnDummiesInBmSw  0
+#endif // ! defined(cnDummiesInBmSw)
+
 // Bitmap switch.
 typedef struct {
     SW_COMMON_HDR
+#if (cnDummiesInBmSw != 0)
+    Word_t bmsw_awDummies[cnDummiesInBmSw];
+#endif // (cnDummiesInBmSw != 0)
     // sw_awBm must be first and the remainder of BmSwitch_t must be the same
     // as all of Switch_t for RETYPE_FULL_BM_SW without BM_IN_NON_BM_SW.
     // But this doesn't make it easy for us to handle SKIP_TO_BM_SW which

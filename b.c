@@ -155,9 +155,18 @@ Word_t wMallocs; // number of unfreed mallocs
 // acquiring a mutex around each read-modify-write and around each call to
 // malloc and free.
 static Word_t
-MyMalloc(Word_t wWords)
+MyMallocGuts(Word_t wWords, int nLogAlignment)
 {
-    Word_t ww = JudyMalloc(wWords + cnMallocExtraWords);
+    Word_t ww, wOff;
+    if (nLogAlignment > cnBitsMallocMask) {
+        wWords += 1 << (nLogAlignment - cnLogBytesPerWord);
+        ww = JudyMalloc(wWords + cnMallocExtraWords);
+        wOff = ALIGN_UP(ww + 1, /* power of 2 */ 1 << nLogAlignment) - ww;
+        ((Word_t*)(ww + wOff))[-1] = wOff;
+    } else {
+        ww = JudyMalloc(wWords + cnMallocExtraWords);
+        wOff = 0;
+    }
     DBGM(printf("\nM(%zd): %p *%p 0x%zx\n",
                 wWords, (void *)ww, (void *)&((Word_t *)ww)[-1],
                 ((Word_t *)ww)[-1]));
@@ -230,12 +239,27 @@ MyMalloc(Word_t wWords)
     assert((ww & cnMallocMask) == 0);
     ++wMallocs; wWordsAllocated += wWords;
     // ? should we keep track of sub-optimal-size requests ?
+    ww += wOff; // number of bytes
     return ww;
 }
 
-static void
-MyFree(Word_t *pw, Word_t wWords)
+static Word_t
+MyMalloc(Word_t wWords)
 {
+    return MyMallocGuts(wWords, /* nLogAlignment */ cnBitsMallocMask);
+}
+
+static void
+MyFreeGuts(Word_t *pw, Word_t wWords, int nLogAlignment)
+{
+    Word_t wOff;
+    if (nLogAlignment > cnBitsMallocMask) {
+        wOff = pw[-1]; // number of bytes
+        wWords += 1 << (nLogAlignment - cnLogBytesPerWord);
+        pw = (Word_t*)((Word_t)pw - wOff);
+    } else {
+        wOff = 0;
+    }
     DBGM(printf("\nF(pw %p, wWords %zd): pw[-1] 0x%zx\n",
                 (void *)pw, wWords, pw[-1]));
     size_t zUnitsRequired
@@ -263,6 +287,12 @@ MyFree(Word_t *pw, Word_t wWords)
     j__AllocWordsJLL7 -= wWords; // words requested
 #endif // defined(RAMMETRICS)
     JudyFree((RawP_t)pw, wWords + cnMallocExtraWords);
+}
+
+static void
+MyFree(Word_t *pw, Word_t wWords)
+{
+    MyFreeGuts(pw, wWords, /* nLogAlignment */ cnBitsMallocMask);
 }
 
 #if (cwListPopCntMax != 0)
@@ -786,7 +816,13 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
     wBytes += (wLinks - 1) * sizeof(Link_t);
     Word_t wWords = wBytes / sizeof(Word_t);
 
+#if defined(CODE_BM_SW) && defined(CACHE_ALIGN_BM_SW)
+    Word_t *pwr = (Word_t *)MyMallocGuts(wWords,
+                                         (nType == T_BM_SW)
+                                             ? 6 : cnBitsMallocMask);
+#else // CACHE_ALIGN_BM_SW
     Word_t *pwr = (Word_t *)MyMalloc(wWords);
+#endif // CACHE_ALIGN_BM_SW
     set_wr_pwr(wRoot, pwr);
     *pwRoot = wRoot;
 
@@ -1171,7 +1207,11 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
         // Allocate memory for a new switch with one more link than the
         // old one.
         unsigned nWordsNew = nWordsOld + sizeof(Link_t) / sizeof(Word_t);
+#if defined(CODE_BM_SW) && defined(CACHE_ALIGN_BM_SW)
+        *pwRoot = MyMallocGuts(nWordsNew, /* cache line alignment */ 6);
+#else // CACHE_ALIGN_BM_SW
         *pwRoot = MyMalloc(nWordsNew);
+#endif // CACHE_ALIGN_BM_SW
         DBGI(printf("After malloc *pwRoot " OWx"\n", *pwRoot));
 
         // Where does the new link go?
@@ -1400,7 +1440,11 @@ OldSwitch(Word_t *pwRoot, int nBL,
     DBGR(printf("\nOldSwitch nBL %d nBLU %d wWords %" _fw"d " OWx"\n",
          nBL, nBLUp, wWords, wWords));
 
+#if defined(CODE_BM_SW) && defined(CACHE_ALIGN_BM_SW)
+    MyFreeGuts(pwr, wWords, bBmSw ? 6 : cnBitsMallocMask);
+#else // CACHE_ALIGN_BM_SW
     MyFree(pwr, wWords);
+#endif // CACHE_ALIGN_BM_SW
 
     return wWords * sizeof(Word_t);
 
@@ -5633,6 +5677,12 @@ Initialize(void)
     printf("# No BM_SW_FOR_REAL\n");
 #endif // defined(BM_SW_FOR_REAL)
 
+#if defined(CACHE_ALIGN_BM_SW)
+    printf("#    CACHE_ALIGN_BM_SW\n");
+#else // defined(CACHE_ALIGN_BM_SW)
+    printf("# No CACHE_ALIGN_BM_SW\n");
+#endif // defined(CACHE_ALIGN_BM_SW)
+
 #if defined(BITMAP_BY_BYTE)
     printf("#    BITMAP_BY_BYTE\n");
 #else // defined(BITMAP_BY_BYTE)
@@ -6096,6 +6146,7 @@ Initialize(void)
     printf("\n");
     printf("# cnDummiesInList %d\n", cnDummiesInList);
     printf("# cnDummiesInSwitch %d\n", cnDummiesInSwitch);
+    printf("# cnDummiesInBmSw %d\n", cnDummiesInBmSw);
     printf("# cnDummiesInLink %d\n", cnDummiesInLink);
 #if defined(cnMallocExtraWords)
     printf("# cnMallocExtraWords %d\n", cnMallocExtraWords);
@@ -6184,6 +6235,7 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
   #if defined(DEBUG)
     Word_t wMallocsBefore = wMallocs; (void)wMallocsBefore;
     Word_t wWordsAllocatedBefore = wWordsAllocated;
+    (void)wWordsAllocatedBefore;
       #if defined(RAMMETRICS)
     Word_t j__AllocWordsTOTBefore = j__AllocWordsTOT;
     (void)j__AllocWordsTOTBefore;
@@ -6234,8 +6286,10 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 #endif // defined(RAMMETRICS)
     DBGR(printf("# wMallocs %" _fw"u\n", wMallocs));
     DBGR(printf("\n"));
-    assert((wWordsAllocatedBefore - wWordsAllocated)
-               == (wBytes / sizeof(Word_t)));
+    // Assertion below is not valid if MyMallocGuts is called with
+    // nLogAlignment > cnBitsMallocMask.
+    //assert((wWordsAllocatedBefore - wWordsAllocated) == (wBytes / sizeof(Word_t)));
+
     // Assuming wWordsAllocated is zero is presumptuous.
     // What if the application has more than one Judy1 array?
     assert(wWordsAllocated == 0);
