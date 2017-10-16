@@ -184,10 +184,6 @@
 #define cnBmSwRetain 2
 #endif // !defined(cnBmSwRetain)
 
-#ifndef NO_USE_BM_SW
-#undef  USE_BM_SW
-#define USE_BM_SW
-#endif // NO_USE_BM_SW
 #if defined(USE_BM_SW)
 // USE_BM_SW means always use a bm sw when creating a switch with no skip.
 // Default is -DBM_SW_FOR_REAL iff -DUSE_BM_SW.
@@ -458,14 +454,6 @@ typedef Word_t Bucket_t;
     #define cbSkipToXxSw  0
     #define IF_SKIP_TO_XX_SW(_expr)
 #endif // defined(SKIP_TO_XX_SW)
-
-// Default is SKIP_TO_BITMAP if LVL_IN_WR_HB
-#if ! defined(NO_SKIP_TO_BITMAP) && defined(SKIP_LINKS)
-  #if defined(LVL_IN_WR_HB)
-    #undef SKIP_TO_BITMAP
-    #define SKIP_TO_BITMAP
-  #endif // defined(LVL_IN_WR_HB)
-#endif // ! defined(NO_SKIP_TO_BITMAP) && defined(SKIP_LINKS)
 
 // Default is SKIP_TO_BM_SW if USE_BM_SW and (LVL_IN_SW or LVL_IN_WR_HB).
 #if ! defined(NO_SKIP_TO_BM_SW) && defined(SKIP_LINKS)
