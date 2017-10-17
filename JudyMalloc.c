@@ -329,7 +329,7 @@ void JudyFree(
 
         if (GuardWord != ~(Word_t)PWord)
         {
-            printf("\n\nOops JF(PWord %p Words 0x%zx)"
+            printf("\n\nOops JF(PWord %p Words 0x%x)"
                    " GuardWord aka PWord[Words] 0x%zx != ~PWord 0x%zx\n",
                    (void *)PWord, Words, GuardWord, ~(Word_t)PWord);
             exit(-1);
