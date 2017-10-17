@@ -8,14 +8,14 @@
 #define cbRemove  0
 #define cbCount   0
 
-#define IF_INSERT(_stmt)  0
-#define IF_NOT_INSERT(_stmt)  _stmt
+#define IF_INSERT(_expr)  0
+#define IF_NOT_INSERT(_expr)  _expr
 
-#define IF_LOOKUP(_stmt)  _stmt
-#define IF_NOT_LOOKUP(_stmt)
+#define IF_LOOKUP(_expr)  _expr
+#define IF_NOT_LOOKUP(_expr)  0
 
-#define IF_COUNT(_stmt)
-#define IF_NOT_COUNT(_stmt)  _stmt
+#define IF_COUNT(_expr)  0
+#define IF_NOT_COUNT(_expr)  _expr
 
 #define LOOKUP
 #include "b.h"
