@@ -2,9 +2,13 @@
 #if ( ! defined(_BCONF_H_INCLUDED) )
 #define _BCONF_H_INCLUDED
 
-// Choose features and parameters.
-// DEBUG, RAMMETRICS, GUARDBAND
-// SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS
+// Choose conditional features and tuning parameters by #if, #define
+// and #undef.
+// E.g. DEBUG, RAMMETRICS, GUARDBAND.
+// E.g. SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS.
+// E.g. cnListPopCntMax.
+// Does it make sense for this file to be the only place where we use #define
+// and #undef for conditional features and tuning parameters?
 
 // Default is -DNDEBUG -UDEBUG_ALL -UDEBUG
 // -UDEBUG_INSERT -UDEBUG_REMOVE -UDEBUG_LOOKUP -UDEBUG_MALLOC
