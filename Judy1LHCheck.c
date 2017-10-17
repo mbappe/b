@@ -325,10 +325,10 @@ main(int argc, char *argv[])
     RandomBit = (Word_t)1 << (BValue - 1);
     Magic     = MagicList[BValue];
 
-    if (nElms > ((RandomBit-2) * 2))
+    if (nElms > (RandomBit * 2) - 1)
     {
         printf("# Number = -n%" PRIuPTR" of Indexes reduced to max expanse of Random numbers\n", nElms);
-        nElms =  ((RandomBit-2) * 2);
+        nElms =  (RandomBit * 2) - 1;
     }
 
     printf("\n%s -n%" PRIuPTR" -S%" PRIuPTR" -B%" PRIuPTR"", argv[0], nElms, SkipN, BValue);
