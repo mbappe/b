@@ -357,8 +357,10 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
     // Pad array of keys so the end is aligned.
     // We'll eventually fill the padding with replicas of the last real key
     // so parallel searching yields no false positives.
+//printf("nBytesKeySz %d\n", nBytesKeySz);
     if (ALIGN_LIST_LEN(nBytesKeySz))
     {
+//printf("nBytesKeys b %d\n", nBytesKeys);
 #if defined(UA_PARALLEL_128)
         if ((nBL == 16) && (wPopCntArg <= 6)) {
             // UA_PARALLEL_128 makes a lot of assumptions.
@@ -369,6 +371,7 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
         } else
 #endif // defined(UA_PARALLEL_128)
         { nBytesKeys = ALIGN_UP(nBytesKeys, sizeof(Bucket_t)); }
+//printf("nBytesKeys a %d\n", nBytesKeys);
     }
 
 #if defined(LIST_END_MARKERS)
@@ -388,7 +391,14 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
     // units with the second word aligned and uses the first word for itself.
     // Malloc never allocates less than four words.
     nBytes += sizeof(Word_t); // add a word for malloc
-    return MAX(4, ALIGN_UP(nBytes, cnMallocMask + 1) >> cnLogBytesPerWord) - 1;
+    int nWords = MAX(4, ALIGN_UP(nBytes, cnMallocMask + 1) >> cnLogBytesPerWord) - 1;
+if (nBL > 32) {
+//printf("nBytesHdr %d\n", nBytesHdr);
+//printf("nBytesKeys %d\n", nBytesKeys);
+//printf("nBytes %d\n", nBytes);
+//printf("ListWordsTypeList(wPopCntArg %zd nBL %d) %d\n", wPopCntArg, nBL, nWords);
+}
+    return nWords;
 #endif // defined(LIST_REQ_MIN_WORDS)
 
 #else // defined(OLD_LISTS)
@@ -1881,6 +1891,9 @@ embeddedKeys:;
 #endif // defined(COMPRESSED_LISTS)
                 { printf(" " OWx, ls_pwKeysNAT(pwr)[xx]); }
             }
+            if (nBL == cnBitsPerWord) {
+                //printf(" " OWx, ls_pwKeysNAT(pwr)[wPopCnt]);
+            }
             printf("\n");
         }
 
@@ -3305,25 +3318,27 @@ embeddedKeys:;
             {
 #if defined(COMPRESSED_LISTS)
                 if (nBL <= 8) {
-  #if defined(PSPLIT_SEARCH_8) && defined(PSPLIT_PARALLEL)
+                    goto copyWithInsert8;
 copyWithInsert8:
-  #endif // defined(PSPLIT_SEARCH_8) && defined(PSPLIT_PARALLEL)
                     CopyWithInsertChar(ls_pcKeysNAT(pwList),
                         pcKeys, wPopCnt, (unsigned char)wKey);
                 } else if (nBL <= 16) {
-  #if defined(PSPLIT_SEARCH_16) && defined(PSPLIT_PARALLEL)
+                    goto copyWithInsert16;
 copyWithInsert16:
-  #endif // defined(PSPLIT_SEARCH_16) && defined(PSPLIT_PARALLEL)
                     CopyWithInsertShort(ls_psKeysNAT(pwList),
                         psKeys, wPopCnt, (unsigned short)wKey, nPos);
 #if (cnBitsPerWord > 32)
                 } else if (nBL <= 32) {
+                    goto copyWithInsert32;
+copyWithInsert32:
                     CopyWithInsertInt(ls_piKeysNAT(pwList),
                         piKeys, wPopCnt, (unsigned int)wKey);
 #endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
                 {
+                    goto copyWithInsertWord;
+copyWithInsertWord:
                     CopyWithInsertWord(ls_pwKeys(pwList, nBL),
                                        pwKeys, wPopCnt, wKey);
                 }
@@ -3350,37 +3365,42 @@ copyWithInsert16:
             {
 #if defined(COMPRESSED_LISTS)
                 if (nBL <= 8) {
-  #if defined(SORT_LISTS) \
+  #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
       && defined(PSPLIT_SEARCH_8) && defined(PSPLIT_PARALLEL)
                     //printf("goto copyWithInsert8\n");
                     goto copyWithInsert8;
-  #else // defined(SORT_LISTS) && ...
+  #else // !defined(EMBED_KEYS) && ... d&& efined(PSPLIT_PARALLEL)
                     ls_pcKeysNAT(pwList)[wPopCnt] = wKey;
-  #endif // defined(SORT_LISTS) && ...
+  #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
                 } else if (nBL <= 16) {
-  #if defined(SORT_LISTS) \
+  #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
       && defined(PSPLIT_SEARCH_16) && defined(PSPLIT_PARALLEL)
                     nPos = 0;
                     //printf("goto copyWithInsert16\n");
                     goto copyWithInsert16;
-  #else // defined(SORT_LISTS) && ...
+  #else // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
                     ls_psKeysNAT(pwList)[wPopCnt] = wKey;
-  #endif // defined(SORT_LISTS) && ...
+  #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
 #if (cnBitsPerWord > 32)
                 } else if (nBL <= 32) {
-// Don't we need goto copyWithInsert32 for
-// PSPLIT_SEARCH_32 && PSPLIT_PARALLEL?
-// Maybe we're being protected by a Deflate below?
-// Not sure why we're doing goto only for SORT_LISTS.
+  #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
+      && defined(PSPLIT_SEARCH_32) && defined(PSPLIT_PARALLEL)
+                    printf("goto copyWithInsert32\n");
+                    goto copyWithInsert32;
+  #else // !defined(EMBED_KEYS) && ... defined(PSPLIT_PARALLEL)
                     { ls_piKeysNAT(pwList)[wPopCnt] = wKey; }
+  #endif // !defined(EMBED_KEYS) && ... defined(PSPLIT_PARALLEL)
 #endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
                 {
-// Don't we need goto copyWithInsertWord for
-// PSPLIT_SEARCH_WORD && PSPLIT_PARALLEL?
-// Maybe we're being protected by default !PSPLIT_SEARCH_WORD?
+  #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
+      && defined(PSPLIT_PARALLEL_WORD)
+                    printf("goto copyWithInsertWord\n");
+                    goto copyWithInsertWord;
+  #else // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL_WORD)
                     ls_pwKeys(pwList, nBL)[wPopCnt] = wKey;
+  #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL_WORD)
                 }
                 // Shouldn't we be padding the extra key slots
                 // for parallel search? Is the unsorted list
@@ -4920,12 +4940,12 @@ embeddedKeys:;
         MOVE(&ls_pwKeys(pwList, nBL)[nIndex], &pwKeys[nIndex + 1],
              wPopCnt - nIndex - 1);
         int n = wPopCnt - 1; (void)n;
-#if defined(PSPLIT_PARALLEL) && defined(PSPLIT_SEARCH_WORD)
+#if defined(PSPLIT_PARALLEL_WORD)
         // pad list to an integral number of parallel search buckets in length
         for (; (n * sizeof(Word_t)) % sizeof(Bucket_t); ++n) {
             ls_pwKeysNAT(pwr)[n] = ls_pwKeysNAT(pwr)[n-1];
         }
-#endif // defined(PSPLIT_PARALLEL) && defined(PSPLIT_SEARCH_WORD)
+#endif // defined(PSPLIT_PARALLEL_WORD)
 #if defined(LIST_END_MARKERS)
         ls_pwKeys(pwList, nBL)[n] = -1;
 #endif // defined(LIST_END_MARKERS)
@@ -6328,7 +6348,7 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 Word_t
 Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
 {
-    DBGC(printf("Judy1Count\n"));
+    DBGC(printf("Judy1Count(wKey0 " Owx" wKey1 " Owx")\n", wKey0, wKey1));
     //DBGC(Dump(pwRootLast, 0, cnBitsPerWord));
 
 #if (cnDigitsPerWord != 1)
@@ -6374,7 +6394,10 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
     Word_t wCount1 = Count(&wRoot, wKey1, cnBitsPerWord);
     DBGC(printf("Count wKey1 " OWx" Count1 %" _fw"d\n", wKey1, wCount1));
     Word_t wCount = wCount1 - wCount0;
+    int bTest = Judy1Test(PArray, wKey1, NULL); (void)bTest;
+    DBGC(printf("bTest %d\n", bTest));
     wCount += Judy1Test(PArray, wKey1, NULL);
+    DBGC(printf("Judy1Count will return wCount %" _fw"d\n", wCount));
 
     if ((wKey0 == 0) && (wKey1 == (Word_t)-1))
     {
@@ -6441,6 +6464,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
   #endif // defined(DEBUG)
     }
 
+    DBGC(printf("Judy1Count returning wCount %" _fw"d\n", wCount));
     return wCount;
 
 #else // (cnDigitsPerWord != 1)

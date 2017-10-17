@@ -1753,13 +1753,13 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 // The first real key in a list leaf may follow a pop count and/or an
 // end-of-list marker key and/or dummy keys and/or whatever else we decide
 // to implement or experiment with.
-// One main purpose of doing this alignment is to satisfy any alignment
-// requirement of the load instruction used by gcc when an assignment
-// statement is used to read a parallel search bucket from memory.
+// One reason for doing this alignment is to satisfy any alignment
+// requirement of the list search functions, e.g. the load 128-bit register
+// instruction used by gcc requires 128-bit alignment.
 #define ALIGN_LIST(_nBytesKeySz) \
     ( cbAlignLists /* independent of psplit parallel */ \
-        || (_nBytesKeySz) == cnBytesPerWord \
-            ? cbPsplitParallelWord : cbPsplitParallel )
+        || ( (_nBytesKeySz) == cnBytesPerWord \
+            ? cbPsplitParallelWord : cbPsplitParallel ) )
 
 // The length of a list from the first key through the last (including unused
 // slots filled with the last real key in the list) must be an integral
@@ -1772,8 +1772,8 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 // boundary.
 #define ALIGN_LIST_LEN(_nBytesKeySz) \
     ( cbAlignListLens /* independent of psplit parallel */ \
-        || (_nBytesKeySz) == cnBytesPerWord \
-            ? cbPsplitParallelWord : cbPsplitParallel )
+        || ( (_nBytesKeySz) == cnBytesPerWord \
+            ? cbPsplitParallelWord : cbPsplitParallel ) )
 
 // pop cnt in preamble iff OLD_LISTS && !POP_IN_WR_HB && LIST_POP_IN_PREAMBLE; don't care about PP_IN_LINK
 // - LIST_POP_IN_PREAMBLE should imply OLD_LISTS and !POP_IN_WR_HB (What do we do with pop field in PP?)
@@ -2426,6 +2426,8 @@ Set_xListPopCnt(Word_t *pwRoot, int nBL, int nPopCnt)
 #endif // POP_IN_WR_HB ...
 }
 
+#if defined(CODE_LIST_SW)
+
 // Get the number of links in a list switch.
 static inline int
 gnListSwPop(qp)
@@ -2460,6 +2462,8 @@ snListSwPop(qp, int nPopCnt)
     // such accommodation yet.
 #endif // POP_IN_WR_HB ...
 }
+
+#endif // defined(CODE_LIST_SW)
 
 #define     PWR_xListPopCnt(_pwRoot, _pwr, _nBL) \
     (assert(wr_pwr(*(_pwRoot)) == (_pwr)), Get_xListPopCnt((_pwRoot), (_nBL)))
@@ -2858,7 +2862,7 @@ extern const unsigned anBL_to_nDL[];
     (_nPsplit) = (Word_t)((_xKey) & MSK(_nBL)) * (_nPopCnt) / EXP(_nBL); \
 }
 
-// PSPLIT_GT_NAT - sizeof(Word_t) - ? < key size < sizeof(Word_t).
+// PSPLIT_GT_NAT is for (cnBitsPerWord - 16) < key size < cnBitsPerWord.
 // Avoid BIG_MSK, but not shift.
 #define PSPLIT_GT_NAT(_nPopCnt, _nBL, _xKey, _nPsplit) \
 { \
@@ -2871,20 +2875,25 @@ extern const unsigned anBL_to_nDL[];
         = (((_xKey) & MSK(_nBL)) >> 8) * (_nPopCnt) / EXP((_nBL) - 8); \
 }
 
-// PSPLIT_GT - sizeof(Word_t) - ? < key size.
+// PSPLIT_GT is for key size > (cnBitsPerWord - 16).
+// Use BIG_MSK in case key size == cnBitsPerWord.
 #define PSPLIT_GT(_nPopCnt, _nBL, _xKey, _nPsplit) \
 { \
     /* make sure we don't throw away too many bits */ \
     assert((unsigned)(_nBL) > LOG(_nPopCnt) + 8); \
     /* make sure we don't overflow */ \
-    assert((_nBL) - 8 + LOG(_nPopCnt) < cnBitsPerWord); \
+    /* assert((_nBL) - 8 + LOG(_nPopCnt) < cnBitsPerWord); */ \
+    /* LOG((_nPopCnt - 1) | 1) allows maxpop=256 at top */ \
+    assert((_nBL) - 8 + LOG(((_nPopCnt) - 1) | 1) < cnBitsPerWord); \
+    /* assert((Word_t)(_nPopCnt) << ((_nBL) - 9) */ \
+        /* <= (Word_t)1 << (cnBitsPerWord - 1)); */ \
     (_nPsplit) \
         = (((_xKey) & BIG_MSK(_nBL)) >> 8) * (_nPopCnt) / EXP((_nBL) - 8); \
 }
 
 #define PSPLIT(_nPopCnt, _nBL, _xKey, _nPsplit) \
 { \
-    if ((_nBL) <= (int)sizeof(Word_t) * 8 - 16) { \
+    if ((_nBL) <= cnBitsPerWord - 16) { \
         PSPLIT_NNT((_nPopCnt), (_nBL), (_xKey), (_nPsplit)) \
     } else { \
         PSPLIT_GT((_nPopCnt), (_nBL), (_xKey), (_nPsplit)); \
@@ -2930,6 +2939,7 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 
 #endif
 
+// This is a non-parallel psplit search that calculates a descriptive _nPos.
 #define PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     int nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
@@ -3682,13 +3692,11 @@ printf("*pw " OWx" wKey " Owx" nBL %d wMagic "OWx"\n", *pw, wKey, nBL, wMagic);
 
 #endif // defined(USE_WORD_ARRAY_EMBEDDED_KEYS_PARALLEL)
 
-  #if cnBitsPerWord == 64
-#define MM_SET1_EPW(_ww) \
-    _mm_set1_epi64((__m64)_ww)
-  #else // cnBitsPerWord == 64
-#define MM_SET1_EPW(_ww) \
-    _mm_set1_epi32(_ww)
-  #endif // cnBitsPerWord == 64
+#if cnBitsPerWord == 64
+    #define MM_SET1_EPW(_ww)  _mm_set1_epi64((__m64)(_ww))
+#else // cnBitsPerWord == 64
+    #define MM_SET1_EPW(_ww)  _mm_set1_epi32((_ww))
+#endif // cnBitsPerWord == 64
 
 #define HAS_KEY_128_SETUP(_wKey, _nBL, _xLsbs, _xMsbs, _xKeys) \
 { \
@@ -3866,7 +3874,13 @@ HasKey128(__m128i *pxBucket, Word_t wKey, int nBL)
     }
 #endif
     __m128i xLsbs, xMsbs, xKeys;
-    HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys);
+    if (nBL == cnBitsPerWord) {
+        xLsbs = MM_SET1_EPW((Word_t)1);
+        xMsbs = MM_SET1_EPW((Word_t)1 << (cnBitsPerWord - 1));
+        xKeys = MM_SET1_EPW(wKey);
+    } else {
+        HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys);
+    }
     return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
 }
 
@@ -4072,12 +4086,15 @@ ListHasKey8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     assert(PWR_xListPopCnt(pwRoot, pwr, 8) <= 16);
     assert(ls_pcKeys(pwr, PWR_xListPopCnt(pwRoot, pwr, 8) == pwr));
     assert(((Word_t)pwr & ~((Word_t)-1 << 4)) == 0);
-    //return SearchList8(pwRoot, pwr, wKey, nBL) >= 0;
-#ifdef HK40_EXPERIMENT
+#if defined(PSPLIT_PARALLEL)
+  #ifdef HK40_EXPERIMENT
     return HasKey40(pwr, wKey);
-#else // HK40_EXPERIMENT
+  #else // HK40_EXPERIMENT
     return HasKey128((__m128i*)pwr, wKey, 8);
-#endif // HK40_EXPERIMENT
+  #endif // HK40_EXPERIMENT
+#else // defined(PSPLIT_PARALLEL)
+    return SearchList8(pwRoot, pwr, wKey, nBL) >= 0;
+#endif // defined(PSPLIT_PARALLEL)
 }
 
   #endif // (cnBitsInD1 <= 8)
@@ -4475,41 +4492,16 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 #endif // defined(LIST_END_MARKERS)
     int nPos = 0;
 #if defined(PSPLIT_SEARCH_WORD)
-#if defined(PSPLIT_SEARCH_XOR_WORD)
+  #if defined(PSPLIT_SEARCH_XOR_WORD)
     Word_t wKeyMin = pwKeys[0];
     Word_t wKeyMax = pwKeys[nPopCnt - 1];
     // Or in 1 to handle nPopCnt==1 else we'd be taking the LOG of zero.
     nBL = LOG((wKeyMin ^ wKeyMax) | 1) + 1;
     // nBL could be 64 and it could be 0.
     // need a special psplit here that starts at wKeyMin
-  #error Need a special PSPLIT for PSPLIT_SEARCH_XOR_WORD
-#endif // defined(PSPLIT_SEARCH_XOR_WORD)
-#if defined(BL_SPECIFIC_PSPLIT_SEARCH_WORD)
-  #if (cnBitsPerWord > 32)
-        if (nBL == 64) {
-            PSPLIT_SEARCH_W(Word_t, 64, pwKeys, nPopCnt, wKey, nPos);
-        } else
-        if (nBL == 56) {
-            PSPLIT_SEARCH_W(Word_t, 56, pwKeys, nPopCnt, wKey, nPos);
-        } else
-        if (nBL == 48) {
-            PSPLIT_SEARCH_W(Word_t, 48, pwKeys, nPopCnt, wKey, nPos);
-        } else
-        if (nBL == 40) {
-            PSPLIT_SEARCH_W(Word_t, 40, pwKeys, nPopCnt, wKey, nPos);
-        } else
-  #else // (cnBitsPerWord > 32)
-        if (nBL == 32) {
-            PSPLIT_SEARCH_W(Word_t, 32, pwKeys, nPopCnt, wKey, nPos);
-        } else
-        if (nBL == 24) {
-            PSPLIT_SEARCH_W(Word_t, 24, pwKeys, nPopCnt, wKey, nPos);
-        } else
-  #endif // (cnBitsPerWord > 32)
-#endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
-        {
-            PSPLIT_SEARCH_W(Word_t, nBL, pwKeys, nPopCnt, wKey, nPos);
-        }
+    #error Need a special PSPLIT for PSPLIT_SEARCH_XOR_WORD
+  #endif // defined(PSPLIT_SEARCH_XOR_WORD)
+    PSPLIT_SEARCH_BY_KEY(Word_t, nBL, pwKeys, nPopCnt, wKey, nPos);
 #else // defined(PSPLIT_SEARCH_WORD)
     Word_t *pwKeysOrig = pwKeys;
     (void)nPos;
@@ -4544,16 +4536,49 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
   #else // defined(BACKWARD_SEARCH_WORD)
     SEARCHF(Word_t, pwKeysOrig, nPopCnt, wKey, nPos);
   #endif // defined(BACKWARD_SEARCH_WORD)
-    DBGX(printf("SLW: return pwKeysOrig %p nPos %d\n",
-                (void *)pwKeysOrig, nPos));
 #endif // defined(PSPLIT_SEARCH_WORD)
+    DBGX(printf("SLW: return nPos %d\n", nPos));
     return nPos;
 }
 
 static int
 ListHasKeyWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 {
-    return SearchListWord(pwKeys, wKey, nBL, nPopCnt) >= 0;
+    DBGI(printf("LHKW pwKeys %p wKey " OWx" nBL %d nPopCnt %d\n",
+                (void *)pwKeys, wKey, nBL, nPopCnt));
+#if defined(PSPLIT_PARALLEL_WORD)
+    int nPos = 0;
+  #if defined(BL_SPECIFIC_PSPLIT_SEARCH_WORD)
+      #if (cnBitsPerWord > 32)
+    if (nBL == 64) {
+        PSPLIT_SEARCH_W(Word_t, 64, pwKeys, nPopCnt, wKey, nPos);
+    } else
+    if (nBL == 56) {
+        PSPLIT_SEARCH_W(Word_t, 56, pwKeys, nPopCnt, wKey, nPos);
+    } else
+    if (nBL == 48) {
+        PSPLIT_SEARCH_W(Word_t, 48, pwKeys, nPopCnt, wKey, nPos);
+    } else
+    if (nBL == 40) {
+        PSPLIT_SEARCH_W(Word_t, 40, pwKeys, nPopCnt, wKey, nPos);
+    } else
+      #else // (cnBitsPerWord > 32)
+    if (nBL == 32) {
+        PSPLIT_SEARCH_W(Word_t, 32, pwKeys, nPopCnt, wKey, nPos);
+    } else
+    if (nBL == 24) {
+        PSPLIT_SEARCH_W(Word_t, 24, pwKeys, nPopCnt, wKey, nPos);
+    } else
+      #endif // (cnBitsPerWord > 32)
+  #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
+    {
+        PSPLIT_SEARCH_W(Word_t, nBL, pwKeys, nPopCnt, wKey, nPos);
+    }
+#else // defined(PSPLIT_PARALLEL_WORD)
+    int nPos = SearchListWord(pwKeys, wKey, nBL, nPopCnt);
+#endif // defined(PSPLIT_PARALLEL_WORD)
+    DBGX(printf("LHKW: returning %d\n", nPos >= 0));
+    return nPos >= 0;
 }
 
 #if JUNK
@@ -4919,6 +4944,8 @@ ls_pxKey(Word_t *pwr, int nBL, int ii)
 #define ls_pxKey(_ls, _nBL, _ii)  (ls_pwKeys((_ls), (_nBL))[_ii])
 #endif // defined(COMPRESSED_LISTS)
 
+#ifdef CODE_LIST_SW
+
 // Get list switch link index (offset) from digit aka virtual index aka
 // subkey extracted from key.
 // If the link is not present then return the index at which it would be.
@@ -4950,6 +4977,8 @@ gpListSwLinks(qp)
 {
     return (Link_t *)&((ListSw_t *)pwr)->sw_aKeys[gnListSwPop(qy)];
 }
+
+#endif // CODE_LIST_SW
 
 // Which word of the bitmap in a bm switch contains the bit for wDigit?
 static inline int
