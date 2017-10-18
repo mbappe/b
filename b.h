@@ -4084,7 +4084,7 @@ ListHasKey8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 {
     (void)pwRoot; (void)nBL;
     assert(PWR_xListPopCnt(pwRoot, pwr, 8) <= 16);
-    assert(ls_pcKeys(pwr, PWR_xListPopCnt(pwRoot, pwr, 8) == pwr));
+    assert(ls_pcKeys(pwr, PWR_xListPopCnt(pwRoot, pwr, 8)) == (uint8_t*)pwr);
     assert(((Word_t)pwr & ~((Word_t)-1 << 4)) == 0);
 #if defined(PSPLIT_PARALLEL)
   #ifdef HK40_EXPERIMENT
