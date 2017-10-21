@@ -694,11 +694,13 @@ CalcNextKey(PSeed_t PSeed)
 // and the test will be compiled out of the test loop.
 // It has a wFeedBTapArg parameter so the caller can use a local variable if
 // that is faster.
+// We've hacked the code to overload the bLfsrOnlyArg parameter to help us
+// with the !CALC_NEXT_KEY && DFlag && (SValue == 1) case.
 static inline Word_t
 GetNextKeyX(PNewSeed_t PNewSeed, Word_t wFeedBTapArg, int bLfsrOnlyArg)
 {
 #ifdef CALC_NEXT_KEY
-    (void)wFeedBTapArg; (void)bFastNextKeyArg;
+    (void)wFeedBTapArg; (void)bLfsrOnlyArg;
     // [P]NewSeed_t is the same as [P]Seed_t.
     return CalcNextKey(PNewSeed);
 #else // CALC_NEXT_KEY
@@ -706,6 +708,7 @@ GetNextKeyX(PNewSeed_t PNewSeed, Word_t wFeedBTapArg, int bLfsrOnlyArg)
         // PNewSeed is a pointer to a word with the next key value in it.
         Word_t wKey = (Word_t)*PNewSeed;
         *PNewSeed = (NewSeed_t)((wKey >> krshift) ^ (wFeedBTapArg & -(wKey & 1)));
+        wKey <<= bLfsrOnlyArg; // for -DS1
         return wKey;
     } else {
         // PNewSeed is a pointer to a pointer into the key array.
@@ -2414,6 +2417,12 @@ main(int argc, char *argv[])
     BitmapSeed = StartSeed;             // for bitmaps
     LastPPop = 100.0;
 
+#ifndef CALC_NEXT_KEY
+    // LogPop1 and PrevLogPop1 are used only for -DS1.
+    int LogPop1 = -1;
+    static int PrevLogPop1 = 9; // minimum BValue minus one
+#endif // CALC_NEXT_KEY
+
     for (Pop1 = grp = 0; grp < Groups; grp++)
     {
         Word_t    Delta;
@@ -2434,6 +2443,29 @@ main(int argc, char *argv[])
             Meas = TValues;
         else
             Meas = Pop1;
+
+// MEB: Always testing the first keys inserted can give misleading performance
+// numbers for Judy1Test in some cases, e.g. -S1 and -DS1.
+// How can we test the -DS1 keys in a different order than the order in which
+// they are inserted?
+// For -DS1, we know what keys are in the array by virtue of knowing the first
+// key inserted and the last key inserted.
+#ifndef CALC_NEXT_KEY
+// If we start at key=0 or key=1<<BValue-1, then we can use an lfsr with
+// fewer bits and shift the result to generate at least half of the keys in
+// a pseudo random order.
+// So that is what we do.
+        if (DFlag && (SValue == 1)) {
+            assert(!bLfsrOnly);
+            if ((LogPop1 = LOG(Pop1)) > PrevLogPop1) {
+                // RandomInit always initializes the same Seed_t.  Luckily,
+                // that one seed is not being used anymore at this point.
+                // We use it here for the sole purpose of getting FeedBTap.
+                wFeedBTap = RandomInit(LogPop1, 0)->FeedBTap;
+                PrevLogPop1 = LogPop1;
+            }
+        }
+#endif // CALC_NEXT_KEY
 
         if ((double)Pop1 >= LastPPop)
         {
@@ -2581,6 +2613,15 @@ main(int argc, char *argv[])
                                     /* KFlag */ 1, /* hFlag */ 1,
                                     /* bLfsrOnly */ 0);
                     } else {
+#ifndef CALC_NEXT_KEY
+                        if (DFlag && (SValue == 1) && (wFeedBTap != 0)) {
+                            BeginSeed = (NewSeed_t)StartSequent;
+                            TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
+                                        /* Tit */ 0, /* KFlag */ 1,
+                                        /* hFlag */ 0,
+                                        /* bLfsrOnly */ BValue - LogPop1);
+                        } else
+#endif // CALC_NEXT_KEY
                         TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
                                     /* KFlag */ 1, /* hFlag */ 0,
                                     /* bLfsrOnly */ 0);
@@ -2591,6 +2632,15 @@ main(int argc, char *argv[])
                                     /* KFlag */ 0, /* hFlag */ 1,
                                     /* bLfsrOnly */ 0);
                     } else {
+#ifndef CALC_NEXT_KEY
+                        if (DFlag && (SValue == 1) && (wFeedBTap != 0)) {
+                            BeginSeed = (NewSeed_t)StartSequent;
+                            TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
+                                        /* Tit */ 0, /* KFlag */ 0,
+                                        /* hFlag */ 0,
+                                        /* bLfsrOnly */ BValue - LogPop1);
+                        } else
+#endif // CALC_NEXT_KEY
                         TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
                                     /* KFlag */ 0, /* hFlag */ 0,
                                     /* bLfsrOnly */ 0);
@@ -2635,6 +2685,15 @@ main(int argc, char *argv[])
                                     /* KFlag */ 1, /* hFlag */ 1,
                                     /* bLfsrOnly */ 0);
                     } else {
+#ifndef CALC_NEXT_KEY
+                        if (DFlag && (SValue == 1) && (wFeedBTap != 0)) {
+                            BeginSeed = (NewSeed_t)StartSequent;
+                            TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
+                                        /* Tit */ 1, /* KFlag */ 1,
+                                        /* hFlag */ 0,
+                                        /* bLfsrOnly */ BValue - LogPop1);
+                        } else
+#endif // CALC_NEXT_KEY
                         TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
                                     /* KFlag */ 1, /* hFlag */ 0,
                                     /* bLfsrOnly */ 0);
@@ -2645,6 +2704,15 @@ main(int argc, char *argv[])
                                     /* KFlag */ 0, /* hFlag */ 1,
                                     /* bLfsrOnly */ 0);
                     } else {
+#ifndef CALC_NEXT_KEY
+                        if (DFlag && (SValue == 1) && (wFeedBTap != 0)) {
+                            BeginSeed = (NewSeed_t)StartSequent;
+                            TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
+                                        /* Tit */ 1, /* KFlag */ 0,
+                                        /* hFlag */ 0,
+                                        /* bLfsrOnly */ BValue - LogPop1);
+                        } else
+#endif // CALC_NEXT_KEY
                         TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
                                     /* KFlag */ 0, /* hFlag */ 0,
                                     /* bLfsrOnly */ 0);
