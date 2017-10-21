@@ -4087,6 +4087,9 @@ ListHasKey8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     assert(ls_pcKeys(pwr, PWR_xListPopCnt(pwRoot, pwr, 8)) == (uint8_t*)pwr);
     assert(((Word_t)pwr & ~((Word_t)-1 << 4)) == 0);
 #if defined(PSPLIT_PARALLEL)
+  #if (cnListPopCntMax8 > 16) || (cnListPopCntMaxDl1 > 16)
+    #error PSPLIT_PARALLEL && ((PopCntMax8 > 16) || (PopCntMaxDl1 > 16))
+  #endif // (cnListPopCntMax8 > 16) || (cnListPopCntMaxDl1 > 16)
   #ifdef HK40_EXPERIMENT
     return HasKey40(pwr, wKey);
   #else // HK40_EXPERIMENT
