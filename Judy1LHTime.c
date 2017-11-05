@@ -519,8 +519,8 @@ Word_t wSplayMask = 0x55555555;         // default splay mask
 #endif // defined(__LP64__) || defined(_WIN64)
 Word_t    wCheckBit = 0;                // Bit for narrow ptr testing.
 
-Word_t    TValues = 1000000;            // Maximum numb retrieve timing tests
-Word_t    nElms = 10000000;             // Default population of arrays
+Word_t    TValues =  1000000;           // Maximum numb retrieve timing tests
+Word_t    nElms   = 10000000;           // Default population of arrays
 Word_t    ErrorFlag = 0;
 
 //  Measurement points per decade increase of population
@@ -554,6 +554,7 @@ PWord_t   FileKeys = NULL;              // array of FValue keys
 // Sizzle flag == 1 >> I.E. bit reverse (mirror) the data
 //
 Word_t    DFlag = 0;                    // bit reverse (mirror) the data stream
+int bLfsrGetForDS1Only = 0;
 
 // Default starting seed value; -s
 //
@@ -2455,8 +2456,14 @@ main(int argc, char *argv[])
 // fewer bits and shift the result to generate at least half of the keys in
 // a pseudo random order.
 // So that is what we do.
-        if (DFlag && (SValue == 1)) {
+// This doesn't work unless the -DS1 keys are not modified in any other way.
+// Didn't concern myself with off-by-one bugs here.
+        if (DFlag && (SValue == 1) && (StartSequent == 0)
+            && !bSplayKeyBitsFlag && (Offset == 0) && (nElms < MaxNumb))
+        {
+            assert(!FValue);
             assert(!bLfsrOnly);
+            bLfsrGetForDS1Only = 1;
             if ((LogPop1 = LOG(Pop1)) > PrevLogPop1) {
                 // RandomInit always initializes the same Seed_t.  Luckily,
                 // that one seed is not being used anymore at this point.
@@ -2614,7 +2621,7 @@ main(int argc, char *argv[])
                                     /* bLfsrOnly */ 0);
                     } else {
 #ifndef CALC_NEXT_KEY
-                        if (DFlag && (SValue == 1) && (wFeedBTap != 0)) {
+                        if (bLfsrGetForDS1Only && (wFeedBTap != 0)) {
                             BeginSeed = (NewSeed_t)StartSequent;
                             TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
                                         /* Tit */ 0, /* KFlag */ 1,
@@ -2633,7 +2640,7 @@ main(int argc, char *argv[])
                                     /* bLfsrOnly */ 0);
                     } else {
 #ifndef CALC_NEXT_KEY
-                        if (DFlag && (SValue == 1) && (wFeedBTap != 0)) {
+                        if (bLfsrGetForDS1Only && (wFeedBTap != 0)) {
                             BeginSeed = (NewSeed_t)StartSequent;
                             TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
                                         /* Tit */ 0, /* KFlag */ 0,
@@ -2686,7 +2693,7 @@ main(int argc, char *argv[])
                                     /* bLfsrOnly */ 0);
                     } else {
 #ifndef CALC_NEXT_KEY
-                        if (DFlag && (SValue == 1) && (wFeedBTap != 0)) {
+                        if (bLfsrGetForDS1Only && (wFeedBTap != 0)) {
                             BeginSeed = (NewSeed_t)StartSequent;
                             TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
                                         /* Tit */ 1, /* KFlag */ 1,
@@ -2705,7 +2712,7 @@ main(int argc, char *argv[])
                                     /* bLfsrOnly */ 0);
                     } else {
 #ifndef CALC_NEXT_KEY
-                        if (DFlag && (SValue == 1) && (wFeedBTap != 0)) {
+                        if (bLfsrGetForDS1Only && (wFeedBTap != 0)) {
                             BeginSeed = (NewSeed_t)StartSequent;
                             TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
                                         /* Tit */ 1, /* KFlag */ 0,
