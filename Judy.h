@@ -19,7 +19,7 @@
 // Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // _________________
 
-// @(#) $Revision: 4.52 $ $Source: /judy/src/Judy.h $
+// @(#) $Revision: 1.1 $ $Source: /home/mike/b/RCS/Judy.h,v $
 //
 // HEADER FILE FOR EXPORTED FEATURES IN JUDY LIBRARY, libJudy.*
 //
@@ -300,9 +300,30 @@ extern const char *JudyLMallocSizes;
 typedef size_t RawP_t; // printable pointer with other stuff crammed in it
 
 extern RawP_t JudyMalloc(int);                  // words reqd => words allocd.
+extern RawP_t JudyMallocAlign(int, /* nLogAlign */ int);
 extern RawP_t JudyMallocVirtual(int);           // words reqd => words allocd.
 extern void   JudyFree(RawP_t, int);            // free, size in words.
 extern void   JudyFreeVirtual(RawP_t, int);     // free, size in words.
+
+#ifndef LIBCMALLOC
+
+// Space number -1 is the default space.
+#ifndef JUDY_MALLOC_NUM_SPACES
+  #define JUDY_MALLOC_NUM_SPACES  0
+#endif // JUDY_MALLOC_NUM_SPACES
+
+extern RawP_t JudyMallocX(int, /* nSpace */ int, /* nLogAlign */ int);
+extern void   JudyFreeX(RawP_t, int, /* nSpace */ int);
+
+size_t JudyMallocInfoNonMmapped(int nSpace); // non-mmapped space from system
+size_t JudyMallocInfoMmapped(int nSpace); // mmapped space from system
+size_t JudyMallocInfoReleasable(int nSpace); // releasable space
+size_t JudyMallocInfoAllocated(int nSpace); // total allocated space
+size_t JudyMallocInfoFree(int nSpace); // total free space
+size_t JudyMallocInfoFreeChunks(int nSpace); // number of free chunks
+size_t JudyMallocInfoMaxAllocated(int nSpace); // max total allocated space
+
+#endif // LIBCMALLOC
 
 #define JLAP_INVALID    0x1     /* flag to mark pointer "not a Judy array" */
 
