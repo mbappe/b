@@ -252,13 +252,10 @@ MyMalloc(Word_t wWords)
 static void
 MyFreeGuts(Word_t *pw, Word_t wWords, int nLogAlignment)
 {
-    Word_t wOff;
     if (nLogAlignment > cnBitsMallocMask) {
-        wOff = pw[-1]; // number of bytes
+        Word_t wOff = pw[-1]; // number of bytes
         wWords += 1 << (nLogAlignment - cnLogBytesPerWord);
         pw = (Word_t*)((Word_t)pw - wOff);
-    } else {
-        wOff = 0;
     }
     DBGM(printf("\nF(pw %p, wWords %zd): pw[-1] 0x%zx\n",
                 (void *)pw, wWords, pw[-1]));
