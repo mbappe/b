@@ -1,4 +1,3 @@
-// @(#) $Revision: 1.1 $ $Source: /home/mike/b/Judy1LHTime.c,v $
 // =======================================================================
 //                      -by-
 //   Author Douglas L. Baskins, Aug 2003.
@@ -1072,7 +1071,6 @@ main(int argc, char *argv[])
     Word_t    CountL = 0;
     Word_t    Bytes;
 
-    double    DMult;
     Pms_t     Pms;
     NewSeed_t    InsertSeed;               // for Judy testing (random)
     NewSeed_t    StartSeed;
@@ -1964,16 +1962,86 @@ main(int argc, char *argv[])
     }
 
 // ============================================================
-// CALCULATE NUMBER OF MEASUREMENT GROUPS based on measurement points/decade
+// DETERMINE THE NUMBER OF MEASUREMENT GROUPS AND THEIR SIZES
 // ============================================================
 
 #ifndef CALC_NEXT_KEY
     Word_t wMaxEndDeltaKeys = 0; // key array size
 #endif // CALC_NEXT_KEY
+
+    // Use power of two group sizes for -DS1.
+    // Does StartSequent matter?
+    if (DFlag && (SValue == 1) && (Bpercent == 100.0))
+    {
+        int depth;
+        Word_t wStep;
+        Word_t wNumb;
+
+        depth = 0;
+        wStep = 1;
+        for (grp = 0, wNumb = 1; wNumb < nElms; ++grp, wNumb += wStep) {
+            if (wNumb == ((Word_t)1 << depth)) {
+                // Our main goal here is to hit all of the powers of 2.
+                // PtsPdec is way more precise than necessary for this.
+                // But the cli was designed long ago.
+#define PTSPDEC_MAGIC  137300
+                wStep = ((Word_t)1 << depth)
+                      >> (LOG(PtsPdec * PTSPDEC_MAGIC/10000 / LOG(nElms)));
+                if (wStep < 1) { wStep = 1; }
+                depth += 1;
+            }
+            // check for overflow
+            if (wNumb + wStep <= wNumb) { break; }
+        }
+        Groups = grp + 1;
+
+        //printf("#  Groups    0x%04zx == 0d%05zd\n", Groups, Groups);
+
+// Get memory for saving measurements
+        Pms = (Pms_t) malloc(Groups * sizeof(ms_t));
+
+// Calculate number of Keys for each measurement point
+        depth = 0;
+        wStep = 1;
+        wNumb;
+        grp = 0;
+        Word_t wPrev = 0;
+        for (wNumb = wStep; wNumb < nElms; wNumb += wStep)
+        {
+            //printf("# wNumb 0x%016zx grp 0x%04zx\n", wNumb, grp);
+            //Pms[grp].ms_delta = wStep;
+            Pms[grp].ms_delta = wNumb - wPrev;
+#ifndef CALC_NEXT_KEY
+            #define MIN(_a, _b)  ((_a) < (_b) ? (_a) : (_b))
+            Word_t wStartDeltaKeys = MIN(wNumb, TValues);
+            Word_t wEndDeltaKeys = wStartDeltaKeys + Pms[grp].ms_delta;
+            if (wEndDeltaKeys > wMaxEndDeltaKeys) {
+                wMaxEndDeltaKeys = wEndDeltaKeys;
+            }
+#endif // CALC_NEXT_KEY
+
+            wPrev = wNumb;
+            if (wNumb == ((Word_t)1 << depth)) {
+                wStep = ((Word_t)1 << depth)
+                      >> (LOG(PtsPdec * PTSPDEC_MAGIC/10000 / LOG(nElms)));
+                if (wStep < 1) { wStep = 1; }
+                depth += 1;
+            }
+            ++grp;
+            if (wNumb + wStep <= wNumb) {
+                Pms[grp].ms_delta = nElms - wPrev;
+                break;
+            }
+            if (wNumb + wStep > nElms) {
+                Pms[grp].ms_delta = nElms - wPrev;
+            }
+        }
+    }
+    else
+    {
 //  Calculate Multiplier for number of points per decade
 //  Note: Fix, this algorithm chokes at about 1000 points/decade
-    DMult = pow(10.0, 1.0 / (double)PtsPdec);
-    {
+        double DMult = pow(10.0, 1.0 / (double)PtsPdec);
         double    Dsum;
         Word_t    Isum, prevIsum;
 
@@ -1991,7 +2059,7 @@ main(int argc, char *argv[])
             prevIsum = Isum;
         }
 
-//      Get memory for measurements saveing measurements
+//      Get memory for saving measurements
         Pms = (Pms_t) malloc(Groups * sizeof(ms_t));
 //        bzero((void *)Pms,  Groups * sizeof(ms_t));
 
@@ -2024,7 +2092,9 @@ main(int argc, char *argv[])
             if (Pms[grp].ms_delta == 0)
                 break;                  // for very high -P#
         }
-    }                                   // Groups = number of sizes
+    }
+    // Groups = number of sizes
+
     if (GValue)
     {
         if (CFlag || vFlag || dFlag)
