@@ -3825,6 +3825,8 @@ typedef unsigned int __attribute__((ext_vector_type(4))) v42_t;
 #else // __clang__
 // gcc has no support for clang attribute "ext_vector_type".
 typedef unsigned char __attribute__((vector_size(16))) v_t;
+//typedef unsigned char __attribute__((vector_size(16), aligned(4))) v_t;
+//typedef unsigned char __attribute__((vector_size(16), aligned(1), __may_alias__)) v_t;
 typedef unsigned short __attribute__((vector_size(16))) v41_t;
 typedef unsigned int __attribute__((vector_size(16))) v42_t;
 #endif // __clang__
