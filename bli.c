@@ -47,17 +47,19 @@ CountSw(qp,
         ww = 0; wwLimit = wIndex;
     }
     DBGC(printf("ww " OWx" wwLimit " OWx"\n", ww, wwLimit));
-    int nBLLoop = nBLR - nBW;
-    for (; ww < wwLimit; ++ww) {
-        Link_t *pLinks =
+    Link_t *pLinks =
 #if defined(CODE_BM_SW)
-             tp_bIsBmSw(nType) ? pwr_pLinks((BmSwitch_t *)pwr) :
+        tp_bIsBmSw(nType) ? pwr_pLinks((BmSwitch_t *)pwr) :
 #endif // defined(CODE_BM_SW)
 #if defined(CODE_LIST_SW)
-             tp_bIsListSw(nType) ? gpListSwLinks(qy) :
+        tp_bIsListSw(nType) ? gpListSwLinks(qy) :
 #endif // defined(CODE_LIST_SW)
-             pwr_pLinks((Switch_t *)pwr);
-        Word_t *pwRootLoop = &pLinks[ww].ln_wRoot;
+        pwr_pLinks((Switch_t *)pwr);
+    int nBLLoop = nBLR - nBW;
+    for (; ww < wwLimit; ++ww) {
+        Link_t *pLnLoop = &pLinks[ww];
+        Word_t *pwRootLoop = &pLnLoop->ln_wRoot;
+        Word_t wRootLoop = *pwRootLoop;
         Word_t wPopCntLoop;
         DBGC(printf("ww " OWx" pwRootLoop %p\n", ww, (void *)pwRootLoop));
       #if defined(ALLOW_EMBEDDED_BITMAP)
@@ -78,8 +80,7 @@ CountSw(qp,
             int nTypeLoop = Get_nType(pwRootLoop);
             DBGC(printf("pwrLoop %p nTypeLoop %d\n",
                         (void *)pwrLoop, nTypeLoop));
-            int nBLRLoop = tp_bIsSkip(nTypeLoop)
-                         ? gnBLR(qy) : nBLLoop;
+            int nBLRLoop = tp_bIsSkip(nTypeLoop) ? gnBLR(qyLoop) : nBLLoop;
             if (tp_bIsSwitch(nTypeLoop)) {
                 wPopCntLoop = PWR_wPopCntBL(pwRootLoop,
                                             (Switch_t *)pwrLoop, nBLRLoop);
@@ -133,7 +134,7 @@ CountSw(qp,
                     }
                     assert(wPopCntLoop != 0);
                     DBGC(printf("ww %" _fw"d T_LIST pwr %p wPopCnt %" _fw"d\n",
-                                ww, (void *)pwr, wPopCntLoop));
+                                ww, (void *)pwrLoop, wPopCntLoop));
                     wPopCnt += wPopCntLoop;
                 }
                 DBGC(printf("list wPopCntLoop " OWx" wPopCnt " OWx"\n",
@@ -155,7 +156,7 @@ CountSw(qp,
                     wPopCntLoop = EXP(nBLRLoop);
                 }
                 DBGC(printf("ww %" _fw"d T_BITMAp pwr %p wPopCnt %" _fw"d\n",
-                            ww, (void *)pwr, wPopCntLoop));
+                            ww, (void *)pwrLoop, wPopCntLoop));
                 wPopCnt += wPopCntLoop;
                 DBGC(printf("bitmap wPopCntLoop " OWx" wPopCnt " OWx"\n",
                             wPopCntLoop, wPopCnt));

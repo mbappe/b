@@ -115,14 +115,19 @@
 // nBL does not include the bits skipped if the link is a skip link.
 // pLn is NULL if nBL == cnBitsPerWord sizeof(Link_t) > sizeof(Word_t).
 #define  qp \
-    int   nBL, Link_t  * pLn, Word_t  * pwRoot, Word_t   wRoot, int   nType, Word_t  * pwr
+    int   nBL, Link_t  * pLn, Word_t  * pwRoot, Word_t   wRoot, \
+    int   nType, Word_t  * pwr
 #define pqp \
-    int *pnBL, Link_t **ppLn, Word_t **ppwRoot, Word_t *pwRoot, int *pnType, Word_t **ppwr
+    int *pnBL, Link_t **ppLn, Word_t **ppwRoot, Word_t *pwRoot, \
+    int *pnType, Word_t **ppwr
 
 // Shorthand for common arguments.
 // Why is "qy" not "qa"? Because "qa" is harder to type?
 #define  qy   nBL,  pLn,  pwRoot,  wRoot,  nType,  pwr
 #define pqy  &nBL, &pLn, &pwRoot, &wRoot, &nType, &pwr
+
+#define  qyLoop \
+    nBLLoop,  pLnLoop,  pwRootLoop,  wRootLoop,  nTypeLoop,  pwrLoop
 
 // Shorthand to silence not-used compiler warnings.
 // And to validate assumptions.
