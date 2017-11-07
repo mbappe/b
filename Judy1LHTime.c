@@ -2003,7 +2003,6 @@ main(int argc, char *argv[])
 // Calculate number of Keys for each measurement point
         depth = 0;
         wStep = 1;
-        wNumb;
         grp = 0;
         Word_t wPrev = 0;
         for (wNumb = wStep; wNumb < nElms; wNumb += wStep)
