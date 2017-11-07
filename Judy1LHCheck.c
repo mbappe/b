@@ -154,7 +154,11 @@ Swizzle(Word_t word)
 
 Word_t dFlag = 1;
 Word_t pFlag = 0;
-Word_t CFlag = 0;
+#ifdef NO_TEST_COUNT
+Word_t CFlag = 1;
+#else // NO_TEST_COUNT
+Word_t CFlag = 1;
+#endif // NO_TEST_COUNT
 Word_t DFlag = 0;
 Word_t SkipN = 0;               // default == Random skip
 Word_t nElms = 1000000; // Default = 1M
