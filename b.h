@@ -110,30 +110,28 @@
 #define cnMallocMask  MSK(cnBitsMallocMask)
 
 // Shorthand for common parameters.
-// Should we define what they mean here?
-// Or should the callee be able to define what they mean?
-// Let's suggest something here and let the callee override it if/as necessary.
 // The parameters are all related to each other.
 // nBL is the number of bits left to decode after identifying the given link.
 // nBL does not include the bits skipped if the link is a skip link.
+// pLn is NULL if nBL == cnBitsPerWord sizeof(Link_t) > sizeof(Word_t).
 #define  qp \
-    Link_t   *pLn, Word_t   *pwRoot, Word_t   wRoot, Word_t   *pwr, int   nBL
+    int   nBL, Link_t  * pLn, Word_t  * pwRoot, Word_t   wRoot, int   nType, Word_t  * pwr
 #define pqp \
-    Link_t **ppLn, Word_t **ppwRoot, Word_t *pwRoot, Word_t **ppwr, int *pnBL
+    int *pnBL, Link_t **ppLn, Word_t **ppwRoot, Word_t *pwRoot, int *pnType, Word_t **ppwr
 
 // Shorthand for common arguments.
 // Why is "qy" not "qa"? Because "qa" is harder to type?
-#define  qy  pLn,  pwRoot,  wRoot,  pwr,  nBL
-#define pqy &pLn, &pwRoot, &wRoot, &pwr, &nBL
+#define  qy   nBL,  pLn,  pwRoot,  wRoot,  nType,  pwr
+#define pqy  &nBL, &pLn, &pwRoot, &wRoot, &nType, &pwr
 
 // Shorthand to silence not-used compiler warnings.
 // And to validate assumptions.
 #define  qv \
-    (void)pLn; (void)pwRoot; (void)wRoot; (void)pwr; (void)nBL; \
+    (void)nBL; (void)pLn; (void)pwRoot; (void)wRoot; (void)nType; (void)pwr; \
     assert(pLn == STRUCT_OF(pwRoot, Link_t, ln_wRoot)); \
     assert(wRoot == *pwRoot); assert(pwr == wr_pwr(wRoot))
 #define pqv \
-    (void)ppLn; (void)ppwRoot; (void)pwRoot; (void)ppwr; (void)pnBL; \
+    (void)pnBL; (void)ppLn; (void)ppwRoot; (void)pwRoot; (void)pnType; (void)ppwr; \
     assert(*ppLn == STRUCT_OF(*ppwRoot, Link_t, ln_wRoot)); \
     assert(*pwRoot == **ppwRoot); assert(*ppwr == wr_pwr(*pwRoot))
 
@@ -2277,10 +2275,6 @@ gnBLR(qp)
 #endif // defined(LVL_IN_WR_HB)
     return nBLR;
 }
-
-#define Get_nBLR(_pwRoot) \
-    gnBLR(STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
-          (_pwRoot), *(_pwRoot), wr_pwr(*(_pwRoot)), /* nBL */ 0)
 
 #if defined(SW_LIST_IN_LINK)
     #define SW_LIST

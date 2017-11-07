@@ -26,7 +26,6 @@ CountSw(qp,
         int nLinks)
 {
     qv; (void)nBLR; (void)nLinks;
-    int nType = Get_nType(pwRoot); (void)nType;
     DBGC(printf("\nCountSw nType %d nBLR %d nBW %d wIndex " OWx"\n",
                 nType, nBLR, nBW, wIndex));
     Word_t wPopCnt = 0;
@@ -80,7 +79,7 @@ CountSw(qp,
             DBGC(printf("pwrLoop %p nTypeLoop %d\n",
                         (void *)pwrLoop, nTypeLoop));
             int nBLRLoop = tp_bIsSkip(nTypeLoop)
-                         ? Get_nBLR(pwRootLoop) : nBLLoop;
+                         ? gnBLR(qy) : nBLLoop;
             if (tp_bIsSwitch(nTypeLoop)) {
                 wPopCntLoop = PWR_wPopCntBL(pwRootLoop,
                                             (Switch_t *)pwrLoop, nBLRLoop);
@@ -219,10 +218,8 @@ CountSw(qp,
 // get the whole prefix from the lowest switch and use that for the
 // prefix check at the leaf.
 static Word_t
-PrefixMismatch(Word_t *pwRoot,
-               Word_t *pwr,
+PrefixMismatch(qp,
                Word_t wKey,
-               int nBL,
 #if defined(CODE_BM_SW)
                int bBmSw,
 #endif // defined(CODE_BM_SW)
@@ -243,13 +240,13 @@ PrefixMismatch(Word_t *pwRoot,
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
                int *pnBLR)
 {
-    (void)pwr; (void)wKey; (void)nBL; (void)pnBLR;
+    qv; (void)wKey; (void)pnBLR;
   #if defined(CODE_BM_SW)
     (void)bBmSw;
   #endif // defined(CODE_BM_SW)
 
     Word_t wPrefixMismatch; (void)wPrefixMismatch;
-    int nBLR = Get_nBLR(pwRoot);
+    int nBLR = gnBLR(qy);
     assert(nBLR < nBL); // reserved
     *pnBLR = nBLR;
 
@@ -354,35 +351,13 @@ PrefixMismatch(Word_t *pwRoot,
     #define LOOKUP_SKIP_PREFIX_CHECK_ARGS
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
 
+// PREFIX_MISMATCH updates nBLR.
 // PrefixMismatch requires a real pwRoot (as opposed to &wRoot) when it
 // may need to save that value for later dereference by Lookup at the leaf.
-#if defined(PP_IN_LINK)
-
-  #if ! defined(PWROOT_PARAMETER_FOR_LOOKUP) && ! defined(PWROOT_AT_TOP_FOR_LOOKUP)
-      #error PWROOT_[ARG|AT_TOP]_FOR_LOOKUP is required for PP_IN_LINK ...
-  #endif // ! defined(PWROOT_PARAMETER_FOR_LOOKUP) && ! PWROOT_AT_TOP_FOR_LOOKUP
-
-    #define PWROOT_ARG  pwRoot,
-
-#else // defined(PP_IN_LINK)
-
-  #if (defined(PWROOT_PARAMETER_FOR_LOOKUP) || defined(PWROOT_AT_TOP_FOR_LOOKUP)) && defined(USE_PWROOT_FOR_LOOKUP)
-
-    #define PWROOT_ARG  pwRoot,
-
-  #else // ... && defined(USE_PWROOT_FOR_LOOKUP)
-
-    #define PWROOT_ARG  &wRoot,
-
-  #endif // ... && defined(USE_PWROOT_FOR_LOOKUP)
-
-#endif // defined(PP_IN_LINK)
-
-// PREFIX_MISMATCH updates nBLR.
-#define PREFIX_MISMATCH(_nBL, _nType) \
-    ( assert(tp_bIsSkip(_nType)), \
-      PrefixMismatch(PWROOT_ARG \
-                     pwr, wKey, (_nBL), IS_BM_SW_ARG(_nType) \
+#define PREFIX_MISMATCH(qp) \
+    ( assert(tp_bIsSkip(nType)), \
+      PrefixMismatch(qy, wKey, \
+                     IS_BM_SW_ARG(nType) \
                      LOOKUP_SKIP_PREFIX_CHECK_ARGS \
                      &nBLR) )
 
@@ -554,7 +529,7 @@ InsertRemove(Word_t *pwRoot, Word_t wKey, int nBL)
     // nBLUp is used only for SKIP_TO_XX_SW and INSERT.
     // I think it will eventually be used for REMOVE and for
     // CODE_XX_SW without SKIP_TO_XX_SW.
-    int nBLUp = 0; (void)nBLUp; // silence gcc
+    int nBLUp /*= nBLUp*/; (void)nBLUp; // silence gcc
 
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
 #if defined(SAVE_PREFIX_TEST_RESULT)
@@ -799,7 +774,7 @@ t_skip_to_switch:
         // interestingly it does compare nBL to cnBitsPerWord for PP_IN_LINK.
 
         // PREFIX_MISMATCH updates nBLR.
-        Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_SWITCH);
+        Word_t wPrefixMismatch = PREFIX_MISMATCH(qy);
         if (wPrefixMismatch != 0) {
       #if defined(COUNT)
             DBGC(printf("SKIP_TO_SW: COUNT PM " OWx"\n", wPrefixMismatch));
@@ -863,7 +838,7 @@ t_skip_to_xx_sw:
         // interestingly it does compare nBL to cnBitsPerWord.
 
         // PREFIX_MISMATCH updates nBLR.
-        Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_XX_SW);
+        Word_t wPrefixMismatch = PREFIX_MISMATCH(qy);
         if (wPrefixMismatch != 0) {
   #if defined(COUNT)
             DBGC(printf("SKIP_TO_XX_SW: COUNT PM %" _fw"d\n",
@@ -1056,7 +1031,7 @@ t_skip_to_bm_sw:
         DBGX(printf("SKIP_TO_BM_SW\n"));
 
         // PREFIX_MISMATCH updates nBLR.
-        Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_BM_SW);
+        Word_t wPrefixMismatch = PREFIX_MISMATCH(qy);
         if (wPrefixMismatch != 0) {
   #if defined(COUNT)
             DBGC(printf("SKIP_TO_BM_SW: COUNT PM %zd\n",
@@ -1268,7 +1243,7 @@ t_skip_to_list_sw:
         DBGX(printf("SKIP_TO_LIST_SW\n"));
 
         // PREFIX_MISMATCH updates nBLR.
-        Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_LIST_SW);
+        Word_t wPrefixMismatch = PREFIX_MISMATCH(qy);
         if (wPrefixMismatch != 0) {
   #if defined(COUNT)
             DBGC(printf("SKIP_TO_LIST_SW: COUNT PM %" _fw"d\n",
@@ -1382,7 +1357,7 @@ t_list_sw:;
     case T_SKIP_TO_LIST: {
         DBGX(printf("T_SKIP_TO_LIST\n"));
         // PREFIX_MISMATCH updates nBLR.
-        Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_LIST);
+        Word_t wPrefixMismatch = PREFIX_MISMATCH(qy);
         if (wPrefixMismatch != 0) {
   #if defined(COUNT)
             DBGC(printf("T_SKIP_TO_LIST: COUNT PREFIX_MISMATCH %" _fw"d\n",
@@ -1836,7 +1811,7 @@ t_list_ua:;
 t_skip_to_bitmap:;
         DBGX(printf("T_SKIP_TO_BITMAP\n"));
         // PREFIX_MISMATCH updates nBLR.
-        Word_t wPrefixMismatch = PREFIX_MISMATCH(nBL, T_SKIP_TO_BITMAP);
+        Word_t wPrefixMismatch = PREFIX_MISMATCH(qy);
         if (wPrefixMismatch != 0) {
   #if defined(COUNT)
             DBGC(printf("T_SKIP_TO_BITMAP: COUNT PREFIX_MISMATCH %" _fw"d\n",
@@ -1884,7 +1859,7 @@ t_bitmap:;
 
 #if defined(PP_IN_LINK) && (defined(INSERT) || defined(REMOVE))
         if (EXP(cnBitsInD1) > sizeof(Link_t) * 8) {
-            wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR);
+            Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR);
             set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR,
                               wPopCnt + nIncr);
         }
