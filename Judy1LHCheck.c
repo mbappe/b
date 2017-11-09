@@ -1,4 +1,3 @@
-// @(#) $Revision: 1.3 $ $Source: /home/doug/JudyL64A/test/RCS/Judy1LHCheck.c,v $
 //      This program tests the accuracy of a Judy1 with a JudyL Array.
 //                      -by-
 //      Douglas L. Baskins (8/2001)  doug@sourcejudy.com
@@ -45,7 +44,7 @@ Word_t TestJudyGet(void *J1, void *JL, void *JH, Word_t Seed, Word_t Elements);
 
 int TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements);
 
-#if ! defined(NO_TEST_NEXT)
+#if ! defined(NO_TEST_NEXT) // for turn-on testing
 
 Word_t TestJudyNext(void *J1, void *JL, Word_t LowIndex, Word_t Elements);
 
@@ -154,10 +153,10 @@ Swizzle(Word_t word)
 
 Word_t dFlag = 1;
 Word_t pFlag = 0;
-#ifdef NO_TEST_COUNT
+#ifdef NO_TEST_COUNT // for turn-on testing
 Word_t CFlag = 1;
 #else // NO_TEST_COUNT
-Word_t CFlag = 1;
+Word_t CFlag = 0;
 #endif // NO_TEST_COUNT
 Word_t DFlag = 0;
 Word_t SkipN = 0;               // default == Random skip
@@ -433,18 +432,20 @@ main(int argc, char *argv[])
             TestJudyCount(J1, JL, LowIndex, Delta);
         }
 #if ! defined(NO_TEST_NEXT)
-        Word_t HighIndex;
+        Word_t HighIndex; (void)HighIndex;
 //      Test JLN, J1N
         HighIndex = TestJudyNext(J1, JL, (Word_t)0, TotalPop);
 
 //      Test JLP, J1P
         TestJudyPrev(J1, JL, (Word_t)~0, TotalPop);
 
+#ifndef NO_TEST_NEXT_EMPTY // for turn-on testing
 //      Test JLNE, J1NE
         TestJudyNextEmpty(J1, JL, LowIndex, Delta);
 
 //      Test JLPE, J1PE
         TestJudyPrevEmpty(J1, JL, HighIndex, Delta);
+#endif // NO_TEST_NEXT_EMPTY
 #endif // ! defined(NO_TEST_NEXT)
 
 //      Test JLD, J1U
