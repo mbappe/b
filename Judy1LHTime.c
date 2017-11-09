@@ -519,6 +519,13 @@ Word_t wSplayMask = 0x55555555;         // default splay mask
 Word_t    wCheckBit = 0;                // Bit for narrow ptr testing.
 
 Word_t    TValues =  1000000;           // Maximum numb retrieve timing tests
+// nElms is the total number of keys that are inserted into the test arrays.
+// nElms is overridden by -n or -F.
+// Looks like there may be no protection against -F followed by -n.
+// It is then trimmed to MaxNumb.
+// Should it be MaxNumb+1 in cases that allow 0?
+// Then trimmed if ((GValue != 0) && (nElms > (MaxNumb >> 1))) to (MaxNumb >> 1).
+// It is used for -p and to override TValues if TValues == 0 or nElms < TValues.
 Word_t    nElms   = 10000000;           // Default population of arrays
 Word_t    ErrorFlag = 0;
 
@@ -532,10 +539,16 @@ Word_t    PtsPdec = 50;                 // 4.71% spacing - default
 
 // For LFSR (Linear-Feedback-Shift-Register) pseudo random Number Generator
 //
-Word_t    RandomBit;                    // MSB (Most-Significant-Bit) in data
-Word_t    BValue = 32;                  // bigger generates unrealistic data
-double    Bpercent = 100.0;             // default
-Word_t    ExpanseM1 = ~(Word_t)0;       // ExpanseM1 - 1 for number generator
+#define DEFAULT_BVALUE  32
+Word_t    BValue = DEFAULT_BVALUE;
+double    Bpercent = 100.0; // Default MaxNumb assumes 100.0.
+// MaxNumb is initialized from DEFAULT_BVALUE and assumes Bpercent = 100.0.
+// Then overridden by -N and/or by -B. The last one on the command line wins.
+// Then trimmed if bSplayKeyBits and there aren't enough bits set in wSplayMask.
+// MaxNumb is used to put an upper bound on RandomNumb values used in CalcNextKey.
+// And to specifiy -b and -y array sizes.
+// It's meaning is more confusing for GValue != 0.
+Word_t MaxNumb = ((Word_t)1 << (DEFAULT_BVALUE-1)) * 2 - 1;
 Word_t    GValue = 0;                   // 0 = flat spectrum random numbers
 //Word_t    GValue = 1;                 // 1 = pyramid spectrum random numbers
 //Word_t    GValue = 2;                 // 2 = Gaussian random numbers
@@ -630,7 +643,7 @@ CalcNextKey(PSeed_t PSeed)
                  assert((Key < ((Word_t)1 << BValue)) || SValue);
             }
 #ifndef NO_TRIM_EXPANSE
-        } while (Key > ExpanseM1);         // throw away of high keys
+        } while (Key > MaxNumb);         // throw away of high keys
 #endif // NO_TRIM_EXPANSE
     }
 
@@ -1089,7 +1102,6 @@ main(int argc, char *argv[])
     double    DirectHits = 0;           // Number of direct hits
     double    SearchGets = 0;           // Number of object calls
 
-    Word_t    MaxNumb;
     int       Col;
     int       c;
     Word_t    ii;                       // temp iterator
@@ -1102,8 +1114,11 @@ main(int argc, char *argv[])
     double    Davg = 0.0;
 #endif // LATER
 
-    MaxNumb = pow(2.0, BValue) * Bpercent / 100;
-    MaxNumb--;
+// MaxNumb is initialized from statically initialized BValue and Bpercent.
+// Then overridden by -N and/or by -B. The last one on the command line wins.
+// Then trimmed if bSplayKeyBits and there aren't enough bits set in wSplayMask.
+    Word_t MaxNumb = pow(2.0, BValue) * Bpercent / 100;
+    --MaxNumb;
 
     setbuf(stdout, NULL);               // unbuffer output
 
@@ -1676,11 +1691,6 @@ main(int argc, char *argv[])
         }
     }
 
-//  Set MSB number of Random bits in LFSR
-    RandomBit = (Word_t)1 << (BValue - 1);
-
-    ExpanseM1 = MaxNumb;
-
 //  Check if starting number is ok
     if (FValue == 0)
     {
@@ -1723,13 +1733,13 @@ main(int argc, char *argv[])
         }
         if (GValue != 0) // This needs work and review!!!!!
         {
+// MEB: I have no idea what's going on here.
             if (nElms > (MaxNumb >> 1))
             {
                 printf
                     ("# Trim Max number of Elements -n%" PRIuPTR" to -n%" PRIuPTR" due to -G%" PRIuPTR" spectrum of Keys\n",
                      MaxNumb, MaxNumb >> 1, GValue);
                 nElms = MaxNumb >> 1;
-                ExpanseM1 = nElms;
             }
         }
     }
@@ -1931,7 +1941,7 @@ main(int argc, char *argv[])
     }
 
     if (Bpercent != 100.0)
-        printf("# ExpanseM1 of Random Number generator was trimed to 0x%" PRIxPTR" (%" PRIuPTR")\n", ExpanseM1, ExpanseM1);
+        printf("# MaxNumb of Random Number generator was trimed to 0x%" PRIxPTR" (%" PRIuPTR")\n", MaxNumb, MaxNumb);
 
 //  uname(2) strings describing the machine
     {
@@ -1949,7 +1959,8 @@ main(int argc, char *argv[])
         printf("# %s 32 Bit version\n", argv[0]);
 
 //    Debug
-    printf("# MaxNumb = %" PRIuPTR"[0x%" PRIxPTR"]\n", MaxNumb, MaxNumb); // must not do
+    printf("# MaxNumb = %" PRIuPTR"[0x%" PRIxPTR"]\n", MaxNumb, MaxNumb);
+    printf("# nElms   = %" PRIuPTR"[0x%" PRIxPTR"]\n", nElms, nElms);
     printf("# BValue = %" PRIuPTR"\n", BValue);
     printf("# Bpercent = %20.18f\n", Bpercent);
 
@@ -2339,7 +2350,7 @@ main(int argc, char *argv[])
 
     if (bFlag)
     {
-        Bytes = (ExpanseM1 + sizeof(Word_t)) / sizeof(Word_t);
+        Bytes = (MaxNumb + sizeof(Word_t)) / sizeof(Word_t);
 
         printf("# ========================================================\n");
         printf("#     WARNING '-b#' option with '-B%" PRIuPTR"...' option will malloc() a\n", BValue);
@@ -2388,7 +2399,7 @@ main(int argc, char *argv[])
 
     if (yFlag)
     {
-        Bytes = ExpanseM1 + 1;
+        Bytes = MaxNumb + 1;
 
         printf("# ========================================================\n");
         printf("#     WARNING '-y' option with '-B%" PRIuPTR"...' option will malloc() a\n", BValue);
@@ -2529,8 +2540,8 @@ main(int argc, char *argv[])
 // So that is what we do.
 // This doesn't work unless the -DS1 keys are not modified in any other way.
 // Didn't concern myself with off-by-one bugs here.
-        if (DFlag && (SValue == 1) && (StartSequent == 0)
-            && !bSplayKeyBitsFlag && (Offset == 0) && (nElms < MaxNumb))
+        if (DFlag && (SValue == 1) && (StartSequent == 1)
+            && !bSplayKeyBitsFlag && (Offset == 0) && (Bpercent == 100.0))
         {
             assert(!FValue);
             assert(!bLfsrOnly);
@@ -3999,7 +4010,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
         exit(1);
     }
 
-    Loops = (MAXLOOPS / Elements) + MINLOOPS;
+    Loops = (MAXLOOPS / Elements) + 1;
 
     if (lFlag)
         Loops = 1;
