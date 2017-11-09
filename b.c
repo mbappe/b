@@ -2486,11 +2486,12 @@ InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
 
         for (Word_t ww = 0; ww < EXP(nBW); ww++)
         {
-            Word_t *pwRootLn =
+            Link_t *pLnLn =
 #if defined(USE_LIST_SW)
-                (nType == T_LIST_SW) ? &gpListSwLinks(qy)[ww].ln_wRoot :
+                (nType == T_LIST_SW) ? &gpListSwLinks(qy)[ww] :
 #endif // defined(USE_LIST_SW)
-                &pwr_pLinks((Switch_t *)pwr)[ww].ln_wRoot;
+                &pwr_pLinks((Switch_t *)pwr)[ww];
+            Word_t *pwRootLn = &pLnLn->ln_wRoot;
             Word_t wRootLn = *pwRootLn;
 #if defined(NO_TYPE_IN_XX_SW)
             if (nBLLn < nDL_to_nBL(2)) {
@@ -2533,7 +2534,7 @@ embeddedKeys:;
 #endif // defined(DEBUG)
 #if defined(PP_IN_LINK)
                 int nPopCntLn
-                      = PWR_wPopCnt(pwRootLn, (Switch_t *)pwrLn, nBLLn);
+                      = PWR_wPopCntBL(pwRootLn, (Switch_t *)pwrLn, nBLLn);
 #else // defined(PP_IN_LINK)
                 int nPopCntLn = PWR_xListPopCnt(pwRootLn, pwrLn, nBLLn);
 #endif // defined(PP_IN_LINK)
@@ -2572,9 +2573,7 @@ embeddedKeys:;
             }
 #endif // (cwListPopCntMax != 0)
             else {
-                // I guess remove can result in a NULL *pwRootLn in a bitmap
-                // switch since we don't clean them up at the time.
-                DBGI(printf("Null link in bm switch ww %" _fw"d.\n", ww));
+                DBGI(printf("Null link in switch ww %" _fw"d.\n", ww));
             }
         }
 
@@ -6507,6 +6506,8 @@ NextGuts(Word_t *pwRoot, int nBL,
                     " wSkip %" _fw"d bPrev %d bEmpty %d) pwr %p\n",
                 wRoot, nBL, *pwKey, wSkip, bPrev, bEmpty, (void *)pwr));
     int nType = wr_nType(wRoot);
+    DBGN(printf("nBL %d pLn 0x%zx pwRoot 0x%zx nType %d pwr 0x%zx\n",
+                nBL, (size_t)pLn, (size_t)pwRoot, nType, (size_t)pwr));
     switch (nType) {
 #if defined(UA_PARALLEL_128)
     case T_LIST_UA:
@@ -6523,7 +6524,7 @@ t_list:;
             return wSkip + 1;
         }
         //A(0);
-        int nPos = SearchList(pwr, *pwKey, nBL, &wRoot);
+        int nPos = SearchList(pwr, *pwKey, nBL, pwRoot);
         if (bPrev) {
             //A(0);
             if (nPos < 0) {
@@ -6545,7 +6546,15 @@ t_list:;
             //A(0);
             if (nPos < 0) { /*A(0);*/ nPos ^= -1; }
             //A(0);
-            int nPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBL);
+            int nPopCnt =
+#if defined(PP_IN_LINK)
+            // Is this test sufficient even if we allow skip link
+            // directly to T_LIST from the top?
+                (nBL < cnBitsPerWord)
+                    ? (int)PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL)
+                    :
+#endif // defined(PP_IN_LINK)
+                      PWR_xListPopCnt(&wRoot, pwr, nBL);
             if (nPos + wSkip >= (Word_t)nPopCnt) {
                 //A(0);
                 return nPos + wSkip - ((Word_t)nPopCnt - 1);
@@ -6582,7 +6591,7 @@ t_list:;
                 return wSkip - nPos;
             }
             //A(0); // check -B10 -DS1
-            *pwKey &= ~MSK(nBL);
+            *pwKey &= ~MSK(nBL); // clear low bits
             *pwKey |= GetBits(wRoot, nBL,
                               cnBitsPerWord - (nPos - wSkip + 1) * nBL);
         } else {
@@ -6607,10 +6616,15 @@ t_list:;
     case T_SKIP_TO_BITMAP: {
         DBGN(printf("T_SKIP_TO_BITMAP\n"));
         //A(0);
-        nBL = wr_nBL(wRoot);
-        Word_t wPrefix
-            = w_wPrefixBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL);
-        if (wPrefix > (*pwKey & ~MSK(nBL))) {
+        int nBLR = wr_nBL(wRoot);
+        Word_t wPrefix =
+      #ifdef PP_IN_LINK
+            (nBL < cnBitsPerWord)
+                ? PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBLR)
+                :
+      #endif // PP_IN_LINK
+                  w_wPrefixBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
+        if (wPrefix > (*pwKey & ~MSK(nBLR))) {
             //A(0); // check -B16 -S1
             if (bPrev) {
                 A(0); // UNTESTED - Our test skip links have wPrefix == 0?
@@ -6620,11 +6634,11 @@ t_list:;
                 *pwKey = wPrefix;
             }
             //A(0); // check -B16 -S1
-        } else if (wPrefix < (*pwKey & ~MSK(nBL))) {
+        } else if (wPrefix < (*pwKey & ~MSK(nBLR))) {
             //A(0);
             if (bPrev) {
                 //A(0);
-                *pwKey = wPrefix | MSK(nBL);
+                *pwKey = wPrefix | MSK(nBLR);
             } else {
                 //A(0); // check -B16
                 return wSkip + 1;
@@ -6632,9 +6646,10 @@ t_list:;
             //A(0);
         } else {
             //A(0);
-            assert(*pwKey == (wPrefix | (*pwKey & MSK(nBL))));
+            assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
         }
         //A(0);
+        nBL = nBLR;
     }
   #endif // defined(SKIP_TO_BITMAP)
     case T_BITMAP: {
@@ -6707,9 +6722,13 @@ t_list:;
 #endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
         DBGN(printf("SKIP_TO_SW\n"));
         //A(0);
-        nBL = wr_nBL(wRoot);
-        Word_t wPrefix = PWR_wPrefixBL(&wRoot, (Switch_t *)pwr, nBL);
-        if (wPrefix > (*pwKey & ~MSK(nBL))) {
+        int nBLR = wr_nBL(wRoot);
+        Word_t wPrefix =
+#ifdef PP_IN_LINK
+            (nBL >= cnBitsPerWord) ? 0 :
+#endif // PP_IN_LINK
+                PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBLR);
+        if (wPrefix > (*pwKey & ~MSK(nBLR))) {
             //A(0); // check -B16 -S1
             if (bPrev) {
                 //A(0); b-32 -1ICvdgi --splay-key-bits=0xff00ffff
@@ -6719,11 +6738,11 @@ t_list:;
                 *pwKey = wPrefix;
             }
             //A(0); // check -B16 -S1
-        } else if (wPrefix < (*pwKey & ~MSK(nBL))) {
+        } else if (wPrefix < (*pwKey & ~MSK(nBLR))) {
             //A(0);
             if (bPrev) {
                 //A(0);
-                *pwKey = wPrefix | MSK(nBL);
+                *pwKey = wPrefix | MSK(nBLR);
             } else {
                 //A(0); // check -B16
                 return wSkip + 1;
@@ -6731,9 +6750,10 @@ t_list:;
             //A(0);
         } else {
             //A(0);
-            assert(*pwKey == (wPrefix | (*pwKey & MSK(nBL))));
+            assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
         }
         //A(0);
+        nBL = nBLR;
     }
   #endif // defined(SKIP_LINKS)
     case T_SWITCH: {
@@ -6838,9 +6858,13 @@ t_list:;
     case T_SKIP_TO_BM_SW: {
         DBGN(printf("T_SKIP_TO_BM_SW\n"));
         //A(0);
-        nBL = wr_nBL(wRoot);
-        Word_t wPrefix = PWR_wPrefixBL(&wRoot, (BmSwitch_t *)pwr, nBL);
-        if (wPrefix > (*pwKey & ~MSK(nBL))) {
+        nBLR = wr_nBL(wRoot);
+        Word_t wPrefix =
+      #ifdef PP_IN_LINK
+            (nBL >= cnBitsPerWord) ? 0 :
+      #endif // PP_IN_LINK
+                PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
+        if (wPrefix > (*pwKey & ~MSK(nBLR))) {
             //A(0); // check -B16 -S1
             if (bPrev) {
                 A(0); // UNTESTED - Our test skip links have wPrefix == 0?
@@ -6850,11 +6874,11 @@ t_list:;
                 *pwKey = wPrefix;
             }
             //A(0); // check -B16 -S1
-        } else if (wPrefix < (*pwKey & ~MSK(nBL))) {
+        } else if (wPrefix < (*pwKey & ~MSK(nBLR))) {
             //A(0);
             if (bPrev) {
                 //A(0);
-                *pwKey = wPrefix | MSK(nBL);
+                *pwKey = wPrefix | MSK(nBLR);
             } else {
                 //A(0); // check -B16
                 return wSkip + 1;
@@ -6862,9 +6886,10 @@ t_list:;
             //A(0);
         } else {
             //A(0);
-            assert(*pwKey == (wPrefix | (*pwKey & MSK(nBL))));
+            assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
         }
         //A(0);
+        nBL = nBLR;
     }
   #endif // defined(SKIP_TO_BM_SW)
   #if defined(CODE_BM_SW)
@@ -6872,7 +6897,7 @@ t_list:;
         //A(0); // check -B17
         DBGN(printf("T_BM_SW wSkip %" _fw"u\n", wSkip));
         int nBits = nBL_to_nBitsIndexSz(nBL); // bits decoded by switch
-        Word_t *pwBmWords = PWR_pwBm(&wRoot, pwr);
+        Word_t *pwBmWords = PWR_pwBm(pwRoot, pwr);
         int nLinks = 0;
         for (int nn = 0; nn < N_WORDS_SWITCH_BM; nn++) {
             nLinks += __builtin_popcountll(pwBmWords[nn]
@@ -7142,9 +7167,13 @@ BmSwGetNextIndex:
     case T_SKIP_TO_XX_SW: {
         DBGN(printf("T_SKIP_TO_XX_SW\n"));
         //A(0);
-        nBL = wr_nBL(wRoot);
-        Word_t wPrefix = PWR_wPrefixBL(&wRoot, (Switch_t *)pwr, nBL);
-        if (wPrefix > (*pwKey & ~MSK(nBL))) {
+        int nBLR = wr_nBL(wRoot);
+        Word_t wPrefix =
+      #ifdef PP_IN_LINK
+            (nBL >= cnBitsPerWord) ? 0 :
+      #endif // PP_IN_LINK
+                PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBLR);
+        if (wPrefix > (*pwKey & ~MSK(nBLR))) {
             //A(0); // check -B16 -S1
             if (bPrev) {
                 A(0); // UNTESTED - Our test skip links have wPrefix == 0?
@@ -7154,11 +7183,11 @@ BmSwGetNextIndex:
                 *pwKey = wPrefix;
             }
             //A(0); // check -B16 -S1
-        } else if (wPrefix < (*pwKey & ~MSK(nBL))) {
+        } else if (wPrefix < (*pwKey & ~MSK(nBLR))) {
             //A(0);
             if (bPrev) {
                 //A(0);
-                *pwKey = wPrefix | MSK(nBL);
+                *pwKey = wPrefix | MSK(nBLR);
             } else {
                 //A(0); // check -B16
                 return wSkip + 1;
@@ -7166,22 +7195,24 @@ BmSwGetNextIndex:
             //A(0);
         } else {
             //A(0);
-            assert(*pwKey == (wPrefix | (*pwKey & MSK(nBL))));
+            assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
         }
         //A(0);
+        nBL = nBLR;
     }
   #endif // defined(SKIP_TO_XX_SW)
   #if defined(USE_XX_SW)
     case T_XX_SW: {
         //A(0);
         DBGN(printf("T_SW wSkip %" _fw"u\n", wSkip));
-        int nBits = pwr_nBW(&wRoot); // bits decoded by switch
+        int nBits = pwr_nBW(pwRoot); // bits decoded by switch
         Word_t wIndex = (*pwKey >> (nBL-nBits)) & MSK(nBits);
         if (bPrev) {
             //A(0);
             for (; wIndex != (Word_t)-1; wIndex--) {
                 //A(0);
                 Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
+                // Should pLn be NULL for PP_IN_LINK nBLUp == cnBitsPerWord?
                 Word_t wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
                 if (wPopCnt != 0) {
                     //A(0);
@@ -7218,6 +7249,7 @@ BmSwGetNextIndex:
             for (; wIndex < EXP(nBits); wIndex++) {
                 //A(0);
                 Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
+                // Should pLn be NULL for PP_IN_LINK nBLUp == cnBitsPerWord?
                 Word_t wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
                 if (wPopCnt != 0) {
                     //A(0);
@@ -7452,7 +7484,15 @@ t_list:;
         }
         // save prefix for return
         *pwKey = (nBL == cnBitsPerWord) ? 0 : (*pwKey & ~MSK(nBL));
-        int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL);
+        int nPopCnt =
+#if defined(PP_IN_LINK)
+        // Is this test sufficient even if we allow skip link
+        // directly to T_LIST from the top?
+            (nBL < cnBitsPerWord)
+                ? (int)PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL)
+                :
+#endif // defined(PP_IN_LINK)
+                  PWR_xListPopCnt(&wRoot, pwr, nBL);
         nIncr = bPrev ? -1 : 1;
         for (;;)
         {
@@ -7480,7 +7520,6 @@ t_list:;
     }
   #if defined(EMBED_KEYS)
     case T_EMBEDDED_KEYS:; {
-        Word_t wRootNew = InflateEmbeddedList(NULL, *pwKey, nBL, wRoot);
         Word_t wKeyLast = *pwKey & ~MSK(nBL); // prefix
         if (bPrev) {
             nIncr = -1;
@@ -7488,25 +7527,30 @@ t_list:;
             wKeyLast |= MSK(nBL);
             nIncr = 1;
         }
-        while (SearchList(wr_pwr(wRootNew), *pwKey, nBL, &wRootNew) >= 0) {
+        while (SearchEmbeddedX(&wRoot, *pwKey, nBL) >= 0) {
             if (*pwKey == wKeyLast) {
-                OldList(wr_pwr(wRootNew), wr_nPopCnt(wRoot, nBL), nBL, wr_nType(wRootNew));
                 return Failure;
             }
             *pwKey += nIncr;
         }
-        OldList(wr_pwr(wRootNew), wr_nPopCnt(wRoot, nBL), nBL, wr_nType(wRootNew));
         return Success;
     }
   #endif // defined(EMBED_KEYS)
   #if defined(SKIP_TO_BITMAP)
     case T_SKIP_TO_BITMAP: {
-        nBL = wr_nBL(wRoot);
-        Word_t wPrefix = w_wPrefixBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL);
-        if (wPrefix != (*pwKey & ~MSK(nBL))) {
+        int nBLR = wr_nBL(wRoot);
+        Word_t wPrefix =
+      #ifdef PP_IN_LINK
+            (nBL < cnBitsPerWord)
+                ?  PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBLR)
+                :
+      #endif // PP_IN_LINK
+                  w_wPrefixBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
+        if (wPrefix != (*pwKey & ~MSK(nBLR))) {
             return Success;
         }
-        assert(*pwKey == (wPrefix | (*pwKey & MSK(nBL))));
+        assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
+        nBL = nBLR;
     }
   #endif // defined(SKIP_TO_BITMAP)
     case T_BITMAP:; {
@@ -7555,12 +7599,17 @@ t_list:;
             ? printf("NextGuts: Unhandled nType: %d\n", nType) : 0);
         assert(nType == T_SKIP_TO_SWITCH);
       #endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
-        nBL = wr_nBL(wRoot);
-        Word_t wPrefix = PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL);
-        if (wPrefix != (*pwKey & ~MSK(nBL))) {
+        int nBLR = wr_nBL(wRoot);
+        Word_t wPrefix =
+#ifdef PP_IN_LINK
+            (nBL >= cnBitsPerWord) ? 0 :
+#endif // PP_IN_LINK
+                PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBLR);
+        if (wPrefix != (*pwKey & ~MSK(nBLR))) {
             return Success;
         }
-        assert(*pwKey == (wPrefix | (*pwKey & MSK(nBL))));
+        assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
+        nBL = nBLR;
     }
   #endif // defined(SKIP_LINKS)
     case T_SWITCH: {
@@ -7585,12 +7634,17 @@ t_list:;
     }
   #if defined(SKIP_TO_BM_SW)
     case T_SKIP_TO_BM_SW: {
-        nBL = wr_nBL(wRoot);
-        Word_t wPrefix = PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBL);
-        if (wPrefix != (*pwKey & ~MSK(nBL))) {
+        nBLR = wr_nBL(wRoot);
+        Word_t wPrefix =
+      #ifdef PP_IN_LINK
+            (nBL >= cnBitsPerWord) ? 0 :
+      #endif // PP_IN_LINK
+                PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
+        if (wPrefix != (*pwKey & ~MSK(nBLR))) {
             return Success;
         }
-        assert(*pwKey == (wPrefix | (*pwKey & MSK(nBL))));
+        assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
+        nBL = nBLR;
     }
   #endif // defined(SKIP_TO_BM_SW)
   #if defined(USE_BM_SW)
@@ -7648,17 +7702,22 @@ t_list:;
   #endif // defined(USE_BM_SW)
   #if defined(SKIP_TO_XX_SW)
     case T_SKIP_TO_XX_SW: {
-        nBL = wr_nBL(wRoot);
-        Word_t wPrefix = PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL);
-        if (wPrefix != (*pwKey & ~MSK(nBL))) {
+        int nBLR = wr_nBL(wRoot);
+        Word_t wPrefix =
+      #ifdef PP_IN_LINK
+            (nBL >= cnBitsPerWord) ? 0 :
+      #endif // PP_IN_LINK
+                PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBLR);
+        if (wPrefix != (*pwKey & ~MSK(nBLR))) {
             return Success;
         }
-        assert(*pwKey == (wPrefix | (*pwKey & MSK(nBL))));
+        assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
+        nBL = nBLR;
     }
   #endif // defined(SKIP_TO_XX_SW)
   #if defined(USE_XX_SW)
     case T_XX_SW: {
-        int nBits = pwr_nBW(&wRoot); // bits decoded by switch
+        int nBits = pwr_nBW(pwRoot); // bits decoded by switch
         Word_t wPrefix = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
         Word_t wIndex = (*pwKey >> (nBL - nBits)) & MSK(nBits);
         for (;;) {
