@@ -2195,6 +2195,7 @@ typedef struct {
 // I wonder if PP_IN_LINK should cause POP_WORD_IN_LINK to be defined.
 
 typedef struct {
+    Word_t ln_wRoot;
 #if defined(PP_IN_LINK)
     Word_t ln_wPrefixPop;
 #endif // defined(PP_IN_LINK)
@@ -2207,7 +2208,6 @@ typedef struct {
 #if (cnDummiesInLink != 0)
     Word_t ln_awDummies[cnDummiesInLink];
 #endif // (cnDummiesInLink != 0)
-    Word_t ln_wRoot;
 } Link_t;
 
 #define cnLogBitsPerLink  ((int)LOG(sizeof(Link_t)) + cnLogBitsPerByte)
