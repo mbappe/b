@@ -2236,8 +2236,8 @@ gnBW(qp, int nTypeBase, int nBLR)
 }
 
 #define Get_nBW(_pwRoot) \
-    gnBW(STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
-         (_pwRoot), *(_pwRoot), wr_pwr(*(_pwRoot)), /* nBL */ 0, \
+    gnBW(/* nBL */ 0, STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
+         (_pwRoot), *(_pwRoot), /* nType */ 0, wr_pwr(*(_pwRoot)), \
          T_XX_SW, 0)
 
 #define pwr_nBW  Get_nBW
@@ -2258,8 +2258,8 @@ snBW(qp, int nTypeBase, int nBW)
 }
 
 #define Set_nBW(_pwRoot, _nBW) \
-    snBW(STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
-         (_pwRoot), *(_pwRoot), wr_pwr(*(_pwRoot)), /* nBL */ 0, \
+    snBW(/* nBL */ 0, STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
+         (_pwRoot), *(_pwRoot), /* nType */ 0, wr_pwr(*(_pwRoot)), \
          T_XX_SW, (_nBW))
 
 #define set_pwr_nBW  Set_nBW

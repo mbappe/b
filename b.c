@@ -4993,6 +4993,9 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
         int nBLR = nBL;
   #if defined(SKIP_TO_BITMAP)
         if (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP) {
+            Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+            Word_t *pwr = wr_pwr(wRoot);
+            int nType = wr_nType(wRoot);
             nBLR = gnBLR(qy);
         }
   #endif // defined(SKIP_TO_BITMAP)
