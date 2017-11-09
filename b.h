@@ -4035,13 +4035,17 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     assert(nBL <= 8);
     // sizeof(__m128i) == 16 bytes
   #if defined(PSPLIT_SEARCH_8) && defined(PSPLIT_PARALLEL) \
-      && defined(PARALLEL_128) && (cnListPopCntMax8 <= 8)
+          && defined(PARALLEL_128) && (cnListPopCntMax8 <= 8)
+      #if defined(PP_IN_LINK)
+    int nPopCnt = PWR_wPopCntBL(pwRoot, NULL, nBL);
+      #else // defined(PP_IN_LINK)
     // By simply setting nPopCnt = 16 here we are assuming, while not
     // ensuring, that pop count never exceeds 16 here.
     // We do it because reading the pop count is so much slower.
     assert(PWR_xListPopCnt(pwRoot, pwr, 8) <= 16);
     int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 8);
     //int nPopCnt = 16; // Sixteen fit so why do less?
+      #endif // defined(PP_IN_LINK)
   #else // defined(PSPLIT_SEARCH_8) && ...
       #if defined(PP_IN_LINK)
     int nPopCnt = PWR_wPopCntBL(pwRoot, NULL, nBL);
