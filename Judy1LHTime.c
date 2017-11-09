@@ -1455,7 +1455,9 @@ main(int argc, char *argv[])
             break;
 
         case 'v':
+#ifndef NO_TEST_NEXT // for turn-on testing
             vFlag = 1;                 // time Searching
+#endif // NO_TEST_NEXT
             break;
 
         case '1':                      // time Judy1
