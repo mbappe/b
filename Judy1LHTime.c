@@ -1117,7 +1117,7 @@ main(int argc, char *argv[])
 // MaxNumb is initialized from statically initialized BValue and Bpercent.
 // Then overridden by -N and/or by -B. The last one on the command line wins.
 // Then trimmed if bSplayKeyBits and there aren't enough bits set in wSplayMask.
-    Word_t MaxNumb = pow(2.0, BValue) * Bpercent / 100;
+    MaxNumb = pow(2.0, BValue) * Bpercent / 100;
     --MaxNumb;
 
     setbuf(stdout, NULL);               // unbuffer output
@@ -2451,25 +2451,30 @@ main(int argc, char *argv[])
 // ============================================================
 
 //  Try to fool compiler and ACTUALLY execute random()
+    Word_t WarmupVar = 0;
     STARTTm;
     do {
-        for (MaxNumb = ii = 0; ii < 1000000; ii++)
-            MaxNumb = random();
+        for (ii = 0; ii < 1000000; ii++) {
+            WarmupVar = random();
+        }
 
-        if (MaxNumb == 0)       // will never happen, but compiler does not know that
+        if (WarmupVar == 0) { // won't happen, but compiler doesn't know
             printf("!! Bug in random()\n");
+        }
 
         ENDTm(DeltanSecW);      // get accumlated elapsed time
     } while (DeltanSecW < (Warmup * 1000000));
 
 //  Now measure the execute time for 1M calls to random().
     STARTTm;
-    for (MaxNumb = ii = 0; ii < 1000000; ii++)
-        MaxNumb = random();
+    for (ii = 0; ii < 1000000; ii++) {
+        WarmupVar = random();
+    }
     ENDTm(DeltanSecW);      // get elapsed time
 
-    if (MaxNumb == 0)       // will never happen, but compiler does not know
-            printf("\n");
+    if (WarmupVar == 0) { // won't happen, but compiler doesn't know
+        printf("\n");
+    }
 
 //  If this number is not consistant, then a longer warmup period is required
     printf("# random() = %4.2f nSec per/call\n", DeltanSecW/1000000);
