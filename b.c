@@ -1531,7 +1531,7 @@ static Word_t
 Sum(Word_t *pwRoot, int nBLUp)
 {
     Word_t *pwr = wr_pwr(*pwRoot);
-    int nType = wr_nType(*pwRoot);
+    int nType = wr_nType(*pwRoot); (void)nType;
     assert(tp_bIsSwitch(nType));
 
 #if defined(CODE_BM_SW) && defined(BM_IN_LINK)
