@@ -218,8 +218,8 @@ main(int argc, char *argv[])
 #ifdef DEBUG
     // Make sure the word before and after J1's root word is zero. It's
     // pretty easy in some variants of Mikey's code to introduce a bug that
-    // clobbers one or the other so his code depends on these words being
-    // zero so it can verify that neither is getting clobbered.
+    // clobbers one or the other so his debug code depends on these words
+    // being zero so it can verify that neither is getting clobbered.
     struct { void *pv0, *pv1, *pv2; } sj1 = { 0, 0, 0 };
 #define J1 (sj1.pv1)
 #else // DEBUG
