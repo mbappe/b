@@ -221,10 +221,7 @@ fprintf(stderr,"\n--- Error: %s %" PRIuPTR", file='%s', 'function='%s', line %d\
         exit(1);                                                        \
 }
 
-// Interations without improvement
-//
-// Minimum of 2 loops, maximum of 1000000
-#define MINLOOPS 2
+#define MINLOOPS 1
 #define MAXLOOPS 1000
 
 // Maximum of 10 loops with no improvement
@@ -520,7 +517,7 @@ Word_t    wCheckBit = 0;                // Bit for narrow ptr testing.
 
 Word_t    TValues =  1000000;           // Maximum numb retrieve timing tests
 // nElms is the total number of keys that are inserted into the test arrays.
-// nElms is overridden by -n or -F.
+// Default nElms is overridden by -n or -F.
 // Looks like there may be no protection against -F followed by -n.
 // It is then trimmed to MaxNumb.
 // Should it be MaxNumb+1 in cases that allow 0?
@@ -3301,18 +3298,11 @@ TimeNumberGen(void **TestRan, PNewSeed_t PSeed, Word_t Elements)
     double    DminTime;
     Word_t    icnt;
     Word_t    lp;
-    Word_t    Loops;
     Word_t    DummyAccum = 0;
 
     NewSeed_t WorkingSeed;
 
-    if (Elements < 100)
-        Loops = (MAXLOOPS / Elements) + MINLOOPS;
-    else
-        Loops = 1;
-
-    if (lFlag)
-        Loops = 1;
+    Word_t Loops = lFlag ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
     for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
     {
@@ -3366,20 +3356,13 @@ TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
     double    DminTime;
     Word_t    icnt;
     Word_t    lp;
-    Word_t    Loops;
     Word_t    StartMallocs;
 
     DeltanSec1 = 0.0;
     DeltanSecL = 0.0;
     DeltanSecHS = 0.0;
 
-    if (Elements < 100)
-        Loops = (MAXLOOPS / Elements) + MINLOOPS;
-    else
-        Loops = 1;
-
-    if (lFlag)
-        Loops = 1;
+    Word_t Loops = lFlag ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
 //  Judy1Set timings
 
@@ -3772,18 +3755,12 @@ TestJudyLIns(void **JL, PNewSeed_t PSeed, Word_t Elements)
     double    DminTime;
     Word_t    icnt;
     Word_t    lp;
-    Word_t    Loops;
     Word_t    StartMallocs;
 
     DeltanSecL = 0.0;
     PValue = (PWord_t)NULL;
 
-    Loops = 1;
-    if (!lFlag)
-    {
-        if (Elements < 100)
-            Loops = (MAXLOOPS / Elements) + MINLOOPS;
-    }
+    Word_t Loops = lFlag ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
 //  JudyLIns timings
     DminTime = 1e40; icnt = ICNT; lp = 0;
@@ -3867,11 +3844,8 @@ TestJudyDup(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
     double    DminTime;
     Word_t    icnt;
     Word_t    lp;
-    Word_t    Loops;
 
-    Loops = (MAXLOOPS / Elements) + MINLOOPS;
-    if (lFlag)
-        Loops = 1;
+    Word_t Loops = lFlag ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
     if (J1Flag)
     {
@@ -4001,7 +3975,6 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
     double    DminTime;
     Word_t    icnt;
     Word_t    lp;
-    Word_t    Loops;
     PWord_t   DmyStackMem = NULL;
 
     NewSeed_t WorkingSeed;
@@ -4015,10 +3988,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
         exit(1);
     }
 
-    Loops = (MAXLOOPS / Elements) + 1;
-
-    if (lFlag)
-        Loops = 1;
+    Word_t Loops = lFlag ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
     if (J1Flag)
     {
@@ -4203,14 +4173,10 @@ TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elements)
     double    DminTime;
     Word_t    icnt;
     Word_t    lp;
-    Word_t    Loops;
 
     NewSeed_t WorkingSeed;
 
-    Loops = (MAXLOOPS / Elements) + MINLOOPS;
-
-    if (lFlag)
-        Loops = 1;
+    Word_t Loops = lFlag ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
     icnt = ICNT;
 
@@ -4260,13 +4226,10 @@ TestJudy1Copy(void *J1, Word_t Elements)
     double    DminTime;
     Word_t    icnt;
     Word_t    lp;
-    Word_t    Loops;
 
     J1a = NULL;                         // Initialize To array
 
-    Loops = (MAXLOOPS / Elements) + MINLOOPS;
-    if (lFlag)
-        Loops = 1;
+    Word_t Loops = lFlag ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
     for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
     {
@@ -4327,11 +4290,8 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
     double    DminTime;
     Word_t    icnt;
     Word_t    lp;
-    Word_t    Loops;
 
-    Loops = (MAXLOOPS / Elements) + MINLOOPS;
-    if (lFlag)
-        Loops = 1;
+    Word_t Loops = lFlag ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
     if (J1Flag)
     {
@@ -4454,13 +4414,10 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
     double    DminTime;
     Word_t    icnt;
     Word_t    lp;
-    Word_t    Loops;
     Word_t    JLKey;
     Word_t    J1Key;
 
-    Loops = (MAXLOOPS / Elements) + MINLOOPS;
-    if (lFlag)
-        Loops = 1;
+    Word_t Loops = lFlag ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
     if (J1Flag)
     {
@@ -4596,13 +4553,10 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t HighKey, Word_t Elemen
     double    DminTime;
     Word_t    icnt;
     Word_t    lp;
-    Word_t    Loops;
     Word_t    J1Key;
     Word_t    JLKey;
 
-    Loops = (MAXLOOPS / Elements) + MINLOOPS;
-    if (lFlag)
-        Loops = 1;
+    Word_t Loops = lFlag ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
     if (J1Flag)
     {
@@ -4721,13 +4675,10 @@ TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
     double    DminTime;
     Word_t    icnt;
     Word_t    lp;
-    Word_t    Loops;
     NewSeed_t WorkingSeed;
     int       Rc;                       // Return code
 
-    Loops = (MAXLOOPS / Elements) + MINLOOPS;
-    if (lFlag)
-        Loops = 1;
+    Word_t Loops = lFlag ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
     if (J1Flag)
     {
@@ -4818,13 +4769,10 @@ TestJudyPrevEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
     double    DminTime;
     Word_t    icnt;
     Word_t    lp;
-    Word_t    Loops;
     NewSeed_t WorkingSeed;
     int       Rc;
 
-    Loops = (MAXLOOPS / Elements) + MINLOOPS;
-    if (lFlag)
-        Loops = 1;
+    Word_t Loops = lFlag ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
     if (J1Flag)
     {
@@ -5072,12 +5020,8 @@ TestByteTest(PNewSeed_t PSeed, Word_t Elements)
     double    DminTime;
     Word_t    icnt;
     Word_t    lp;
-    Word_t    Loops;
 
-    Loops = (MAXLOOPS / Elements) + MINLOOPS;
-
-    if (lFlag)
-        Loops = 1;
+    Word_t Loops = lFlag ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
     for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
     {
@@ -5209,12 +5153,8 @@ TestBitmapTest(PWord_t B1, PNewSeed_t PSeed, Word_t Elements)
     double    DminTime;
     Word_t    icnt;
     Word_t    lp;
-    Word_t    Loops;
 
-    Loops = (MAXLOOPS / Elements) + MINLOOPS;
-
-    if (lFlag)
-        Loops = 1;
+    Word_t Loops = lFlag ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
     for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
     {
