@@ -3,7 +3,7 @@
 # Use a -DDEBUG build.
 
 : \
-&& b -W0 -1l -n1000000 -S1 --splay-key-bits=0xff00aa00aa00ffff \
+&& b -W0 -1 -n1000000 -S1 --splay-key-bits=0xff00aa00aa00ffff \
 && bcheckall 64 \
 && b -W0 -1ICvdgi -n1000000 --splay-key-bits=0xff00aa00aa00ffff \
 && b -W0 -1ICvdgi -n1000000 -DS1 --splay-key-bits=0xff00aa00aa00ffff \
