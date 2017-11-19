@@ -327,8 +327,11 @@
 // by eliminating the requirement that lists be padded to an integral number
 // of 16-byte bucket lengths while preserving our ability to use 128-bit
 // parallel searches.
-// This proof-of-concept is very limited. Only 16-byte keys and only
-// lists that fit in 12 bytes, T_LIST_UA, and only 32-bit words.
+// This proof-of-concept very limited and has not been hardened.
+// It is enabled by default if and only if cnBitsPerWord==32 and
+// cnBitsMallocMask >= 4.
+// And then only lists of 16-bit keys that fit in 12 bytes are made T_LIST_UA.
+//
 #if defined(PSPLIT_PARALLEL) && defined(PARALLEL_128)
   #ifndef NO_UA_PARALLEL_128
     #if (cnBitsPerWord == 32) && (cnBitsMallocMask >= 4)
@@ -1733,7 +1736,8 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 
 // POP_SLOT tells ListWords if we need a slot in the leaf for a pop count
 // that is not included in N_LIST_HDR_KEYS, i.e. a slot that occurs after
-// ll_a[csik]Keys[N_LIST_HDR_KEYS].
+// ll_a[csiw]Keys[N_LIST_HDR_KEYS].
+// Maybe it should be called N_LIST_FOOTER_KEYS?
 // There is a problem if POP_SLOT is at the beginning of the list and
 // we're aligning lists. Our code doesn't account for aligning the
 // list again after the pop slot.
@@ -1979,6 +1983,10 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 
 #else // defined(OLD_LISTS)
 
+// We want the number of words that will hold our leaf.
+// Plus any word(s) that we get free that would allow us to hold another key.
+// The code isn't quite there yet.
+
 // We want an odd number of words (for dlmalloc efficiency) that will
 // hold our list (add one, align to two, then subtract one).
 // 1 => 1, 1.1 => 3, 3 => 3
@@ -2009,10 +2017,10 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
                           sizeof(Bucket_t) / (_nBytesKeySz)) \
                      + 2 * sizeof(Bucket_t) \
                          / (_nBytesKeySz) * cbListEndMarkers \
-                     + cbAlignListLens \
+                     + ALIGN_LIST_LEN(_nBytesKeySz) \
                          * ALIGN_UP((_wPopCnt), \
                                     sizeof(Bucket_t) / (_nBytesKeySz)) \
-                     + ( ! cbAlignListLens ) * (_wPopCnt) \
+                     + (!ALIGN_LIST_LEN(_nBytesKeySz)) * (_wPopCnt) \
                      + POP_SLOT(_nBL) \
                      + sizeof(Word_t) / (_nBytesKeySz), \
                  2 * sizeof(Word_t) / (_nBytesKeySz)) \
@@ -2029,8 +2037,8 @@ ls_xPopCnt(void *pwr, int nBL)
 {
     (void)nBL;
     int nPopCnt = (nBL > 8)
-        ? (uint8_t)(((uint16_t *)((Word_t *)pwr + 1))[-1])
-        :          (((uint8_t  *)((Word_t *)pwr + 1))[-1]);
+        ? ((uint16_t *)((Word_t *)pwr + 1))[-1]
+        : ((uint8_t  *)((Word_t *)pwr + 1))[-1];
     //printf("    ls_xPopCnt pwr %p nBL %2d nPopCnt %3d\n", pwr, nBL, nPopCnt);
     return nPopCnt;
     //return ((uint8_t *)((Word_t *)pwr + 1))[-1];
@@ -4088,21 +4096,52 @@ static int
 ListHasKey8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 {
     (void)pwRoot; (void)nBL;
-    assert(PWR_xListPopCnt(pwRoot, pwr, 8) <= 16);
-    assert(ls_pcKeys(pwr, PWR_xListPopCnt(pwRoot, pwr, 8)) == (uint8_t*)pwr);
-    assert(((Word_t)pwr & ~((Word_t)-1 << 4)) == 0);
-#if defined(PSPLIT_PARALLEL)
-  #if (cnListPopCntMax8 > 16) || (cnListPopCntMaxDl1 > 16)
-    #error PSPLIT_PARALLEL && ((PopCntMax8 > 16) || (PopCntMaxDl1 > 16))
-  #endif // (cnListPopCntMax8 > 16) || (cnListPopCntMaxDl1 > 16)
-  #ifdef HK40_EXPERIMENT
-    return HasKey40(pwr, wKey);
-  #else // HK40_EXPERIMENT
-    return HasKey128((__m128i*)pwr, wKey, 8);
-  #endif // HK40_EXPERIMENT
-#else // defined(PSPLIT_PARALLEL)
+
+// HasKey128 assumes the list of keys starts at a 128-bit aligned address.
+// SearchList8 makes no such assumption.
+#if !defined(POP_IN_WR_HB) && !defined(LIST_POP_IN_PREAMBLE)
+#if !defined(PP_IN_LINK) || (cnDummiesInList == 0)
+#if !defined(POP_WORD_IN_LINK) || (cnDummiesInList == 0)
+#if defined(OLD_LISTS)
     return SearchList8(pwRoot, pwr, wKey, nBL) >= 0;
+#endif // defined(OLD_LISTS)
+#endif // !defined(POP_WORD_IN_LINK) || (cnDummiesInList == 0)
+#endif // !defined(PP_IN_LINK) || (cnDummiesInList == 0)
+#endif // !defined(POP_IN_WR_HB) && !defined(LIST_POP_IN_PREAMBLE)
+
+#if defined(PSPLIT_SEARCH_8)
+#if defined(PSPLIT_PARALLEL)
+#if defined(PARALLEL_128)
+#if cnBitsInD1 == 8
+#if cnListPopCntMaxDl1 == 16
+#if cnBitsMallocMask >= 4
+  // ls_pcKeys is valid only at the top for pop in link.
+  // Hence it's not really necessary to ifdef out these assertions at the top,
+  // but making the exception is more work than I want to do right now.
+  #if !defined(PP_IN_LINK) && !defined(POP_WORD_IN_LINK)
+  #if defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
+    assert(ls_pcKeys(pwr, PWR_xListPopCnt(pwRoot, pwr, 8)) == (uint8_t*)pwr);
+    assert(PWR_xListPopCnt(pwRoot, pwr, 8) <= 16);
+  #endif // defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
+  #endif // !defined(PP_IN_LINK) && !defined(POP_WORD_IN_LINK)
+    assert(((Word_t)pwr & ~((Word_t)-1 << 4)) == 0);
+  #if defined(OLD_LISTS) && defined(HK40_EXPERIMENT)
+    return HasKey40(pwr, wKey);
+  #else // defined(OLD_LISTS) && defined(HK40_EXPERIMENT)
+      #ifdef OLD_LISTS // includes PP_IN_LINK and POP_WORD_IN_LINK
+    return HasKey128((__m128i*)pwr, wKey, 8);
+      #else // OLD_LISTS
+    return HasKey128((__m128i*)ls_pcKeys(pwr, 8), wKey, 8);
+      #endif // OLD_LISTS
+  #endif // HK40_EXPERIMENT
+#endif // cnBitsMallocMask >= 4
+#endif // cnListPopCntMaxDl1 == 16
+#endif // cnBitsInD1 == 8
+#endif // defined(PARALLEL_128)
 #endif // defined(PSPLIT_PARALLEL)
+#endif // defined(PSPLIT_SEARCH_8)
+
+    return SearchList8(pwRoot, pwr, wKey, nBL) >= 0;
 }
 
   #endif // (cnBitsInD1 <= 8)

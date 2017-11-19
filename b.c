@@ -302,7 +302,8 @@ MyFree(Word_t *pw, Word_t wWords)
 // - followed by some dummy words: cnDummiesInList
 //   - root list pop count goes in a dummy word: PP_IN_LINK
 // - followed by a pop count: ! POP_IN_WR_HB && ! LIST_POP_IN_PREAMBLE
-//   && ( ! PP_IN_LINK or list hangs from root word and cnDummiesInList == 0 )
+//   && ( (!PP_IN_LINK && !POP_WORD_IN_LINK)
+//        or list hangs from root word and cnDummiesInList == 0 )
 // - followed by a marker key 0 at pxKeys[-1]: LIST_END_MARKERS
 // - followed by some padding to align beginning of list: PSPLIT_PARALLEL
 // - followed by the array of keys at pxKeys[0] - pxKeys[nPopCnt - 1]
@@ -571,7 +572,7 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
 #endif // defined(UA_PARALLEL_128)
             ) ? ListWordsTypeList(nPopCnt, nBL) : ListWords(nPopCnt, nBL);
 
-    DBGM(printf("Old pwList %p wLen %d nBL %d nPopCnt %d nType %d\n",
+    DBGM(printf("OldList pwList %p wLen %d nBL %d nPopCnt %d nType %d\n",
         (void *)pwList, nWords, nBL, nPopCnt, nType));
 
     if (nWords == 0) { return 0; }
@@ -4830,11 +4831,23 @@ embeddedKeys:;
         // Malloc a new, smaller list.
         assert(wPopCnt - 1 != 0);
         pwList = NewListTypeList(wPopCnt - 1, nBL);
+        set_wr(wRoot, pwList, T_LIST);
     }
     else
     {
         pwList = pwr;
     }
+
+#if defined(UA_PARALLEL_128)
+    if ((nBL == 16) && (wPopCnt - 1 <= 6)) {
+        set_wr_nType(wRoot, T_LIST_UA);
+    }
+#endif // defined(UA_PARALLEL_128)
+    // Init pop count in list before using ls_p[csiw]Keys below.
+#if defined(PP_IN_LINK)
+    if (nBL >= cnBitsPerWord)
+#endif // defined(PP_IN_LINK)
+    { Set_xListPopCnt(&wRoot, nBL, wPopCnt - 1); }
 
     if (pwList != pwr) {
         // Why are we copying the old list to the new one?
@@ -4856,20 +4869,6 @@ embeddedKeys:;
              COPY(ls_psKeysNAT(pwList), ls_psKeysNAT(pwr), wPopCnt - 1);
              break;
         }
-
-#if defined(UA_PARALLEL_128)
-        if ((nBL == 16) && (wPopCnt - 1 <= 6)) {
-            set_wr(wRoot, pwList, T_LIST_UA);
-        } else
-#endif // defined(UA_PARALLEL_128)
-        { set_wr(wRoot, pwList, T_LIST); }
-    }
-
-#if defined(PP_IN_LINK)
-    if (nBL >= cnBitsPerWord)
-#endif // defined(PP_IN_LINK)
-    {
-        Set_xListPopCnt(&wRoot, nBL, wPopCnt - 1);
     }
 
 #if defined(LIST_END_MARKERS) || defined(PSPLIT_PARALLEL)
