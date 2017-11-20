@@ -242,6 +242,9 @@ PrefixMismatch(qp,
                int *pnBLR)
 {
     qv; (void)wKey; (void)pnBLR;
+    DBGX(printf("PM: nBL %d pLink %p pwRoot %p wRoot " OWx
+                " nType %d pwr %p\n",
+                qyp));
   #if defined(CODE_BM_SW)
     (void)bBmSw;
   #endif // defined(CODE_BM_SW)
@@ -423,6 +426,7 @@ SwCleanup(qp, Word_t wKey, int nBLR, int bCleanup)
   #endif // defined(INSERT) || defined(REMOVE)
     return 0;
 }
+
 // Adjust pop count.
 // Increment for insert on the way down.
 // Decrement for remove on the way down.

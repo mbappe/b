@@ -126,6 +126,9 @@
 #define  qy   nBL,  pLn,  pwRoot,  wRoot,  nType,  pwr
 #define pqy  &nBL, &pLn, &pwRoot, &wRoot, &nType, &pwr
 
+// Common arguments to printf.
+#define qyp   nBL, (void*)pLn, (void*)pwRoot, wRoot, nType, (void*)pwr
+
 #define  qyLoop \
     nBLLoop,  pLnLoop,  pwRootLoop,  wRootLoop,  nTypeLoop,  pwrLoop
 
@@ -1435,6 +1438,10 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 // of bits used for the pop count at nDL == 2.  Or maybe
 // it doesn't matter since we always create an embedded bitmap when
 // EXP(nBL) <= sizeof(Link_t) * 8.
+// Why not simply use a separate word for LVL_IN_SW instead of the more
+// complicated approach of displacing pop from sw_wPrefixPop? We will be
+// able to combine it with the word we are planning to add for memory usage
+// of the subtree, sw_wMem.
 #define POP_WORD
 
 // As it stands we always get the absolute type from sw_wPrefixPop if
@@ -1609,7 +1616,7 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 
 #if defined(POP_WORD)
 
-#define PWR_wPopWord(_pwRoot, _pwr)  ((_pwr)->sw_wPopWord)
+#define PWR_wPopWord(_pwRoot, _pwr)  (((Switch_t*)(_pwr))->sw_wPopWord)
 
 #define PWR_wPopCnt(_pwRoot, _pwr, _nDL) \
     (w_wPopCnt(PWR_wPopWord((_pwRoot), (_pwr)), (_nDL)))
@@ -2229,23 +2236,6 @@ snBW(qp, int nTypeBase, int nBW)
 
 #define set_pwr_nBW  Set_nBW
 
-// Get the level of the object in number of bits left to decode.
-// This is valid only when *pwRoot is a skip link.
-static inline int
-gnBLR(qp)
-{
-    qv;
-    int nBLR;
-    assert(tp_bIsSkip(wr_nType(wRoot)));
-#if defined(LVL_IN_WR_HB)
-    nBLR = GetBits(wRoot, cnBitsLvl, cnLsbLvl);
-#else // defined(LVL_IN_WR_HB)
-  #define tp_to_nDL(_tp) ((_tp) - T_SKIP_TO_SWITCH + 2)
-    nBLR = nDL_to_nBL(tp_to_nDL(wr_nType(wRoot)));
-#endif // defined(LVL_IN_WR_HB)
-    return nBLR;
-}
-
 #if defined(SW_LIST_IN_LINK)
     #define SW_LIST
 #else // defined(SW_LIST_IN_LINK)
@@ -2319,6 +2309,27 @@ typedef struct {
     SW_BM
     Link_t sw_aLinks[1]; // variable size
 } BmSwitch_t;
+
+// Get the level of the object in number of bits left to decode.
+// This is valid only when *pwRoot is a skip link.
+static inline int
+gnBLR(qp)
+{
+    qv;
+    int nBLR;
+    assert(tp_bIsSkip(wr_nType(wRoot)));
+#if defined(LVL_IN_WR_HB)
+    nBLR = GetBits(wRoot, cnBitsLvl, cnLsbLvl);
+#else // defined(LVL_IN_WR_HB)
+  #ifdef POP_WORD
+    nBLR = wr_nBL(wRoot);
+  #else // POP_WORD
+      #define tp_to_nDL(_tp) ((_tp) - T_SKIP_TO_SWITCH + 2)
+    nBLR = nDL_to_nBL(tp_to_nDL(wr_nType(wRoot)));
+  #endif // POP_WORD
+#endif // defined(LVL_IN_WR_HB)
+    return nBLR;
+}
 
 #define cnBitsPreListPopCnt cnBitsListPopCnt
 #define cnLsbPreListPopCnt (cnBitsPerWord - cnBitsListPopCnt)
