@@ -2753,7 +2753,7 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
     int nBL = nDL_to_nBL(nDL);
     // nDL includes the highest order digit that is different.
 
-    if (nDL <= nDLR) { printf("nDL %d nDLR %d\n", nDL, nDLR); }
+    if (nDL <= nDLR) { printf("nDL %d nDLR %d nBLR %d\n", nDL, nDLR, nBLR); }
     assert(nDL > nDLR);
     assert(nBL <= nBLUp);
 
