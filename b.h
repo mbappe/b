@@ -1453,9 +1453,9 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 // prefix word anyway.
 // Should we enhance wr_nDL to take pwRoot and wRoot and nDL?
   #define wr_nBL(_wr) \
-      (assert(tp_bIsSkip(wr_nType(_wr))), \
+      ((int)(assert(tp_bIsSkip(wr_nType(_wr))), \
        w_wPopCntBL(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), \
-                   cnBitsLeftAtDl2))
+                   cnBitsLeftAtDl2)))
 
   #define wr_nDL(_wr)  nBL_to_nDL(wr_nBL(_wr))
 
