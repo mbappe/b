@@ -1471,6 +1471,8 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 
 #else // defined(LVL_IN_SW)
 
+// #define LVL_IN_TYPE
+
 // What is the minimum value of nDL we need nType to represent?
 // We don't use tp_to_nDL for non-skip links and we don't support skip
 // directly to bitmap so the smallest nDL we need is nDL == 2.  Also,
