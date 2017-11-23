@@ -330,8 +330,11 @@
 // by eliminating the requirement that lists be padded to an integral number
 // of 16-byte bucket lengths while preserving our ability to use 128-bit
 // parallel searches.
-// This proof-of-concept is very limited. Only 16-byte keys and only
-// lists that fit in 12 bytes, T_LIST_UA, and only 32-bit words.
+// This proof-of-concept very limited and has not been hardened.
+// It is enabled by default if and only if cnBitsPerWord==32 and
+// cnBitsMallocMask >= 4.
+// And then only lists of 16-bit keys that fit in 12 bytes are made T_LIST_UA.
+//
 #if defined(PSPLIT_PARALLEL) && defined(PARALLEL_128)
   #ifndef NO_UA_PARALLEL_128
     #if (cnBitsPerWord == 32) && (cnBitsMallocMask >= 4)
@@ -495,6 +498,9 @@ typedef Word_t Bucket_t;
 
 #if ! defined(POP_IN_WR_HB)
   #if ! defined(NO_LIST_POP_IN_PREAMBLE)
+      #ifndef OLD_LISTS
+#error "Sorry, LIST_POP_IN_PREAMBLE requires OLD_LISTS."
+      #endif // OLD_LISTS
     #undef LIST_POP_IN_PREAMBLE
     #define LIST_POP_IN_PREAMBLE
   #endif // ! defined(NO_LIST_POP_IN_PREAMBLE)
@@ -1452,9 +1458,9 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 // prefix word anyway.
 // Should we enhance wr_nDL to take pwRoot and wRoot and nDL?
   #define wr_nBL(_wr) \
-      (assert(tp_bIsSkip(wr_nType(_wr))), \
+      ((int)(assert(tp_bIsSkip(wr_nType(_wr))), \
        w_wPopCntBL(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), \
-                   cnBitsLeftAtDl2))
+                   cnBitsLeftAtDl2)))
 
   #define wr_nDL(_wr)  nBL_to_nDL(wr_nBL(_wr))
 
@@ -1469,6 +1475,8 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
   #define set_wr_nDL(_wr, _nDL)  set_wr_nBL((_wr), nDL_to_nBL(_nDL))
 
 #else // defined(LVL_IN_SW)
+
+// #define LVL_IN_TYPE
 
 // What is the minimum value of nDL we need nType to represent?
 // We don't use tp_to_nDL for non-skip links and we don't support skip
@@ -1560,10 +1568,16 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 // Default is -UPP_IN_LINK, i.e. -DPP_IN_SWITCH.
 #if defined(PP_IN_LINK)
 #define PWR_wPrefixPop(_pwRoot, _pwr) \
-    (STRUCT_OF((/*assert(wr_nType(*(_pwRoot) != T_EMBEDDED_KEYS)),*/ (_pwRoot)), \
+    (STRUCT_OF((assert(wr_nType(*(_pwRoot) != T_EMBEDDED_KEYS)), (_pwRoot)), \
                Link_t, ln_wRoot)->ln_wPrefixPop)
 
   #if defined(LVL_IN_SW) || defined(POP_WORD)
+// The main purpose of new lists was to move pop count to the end of
+// the list so we don't have to waste a bucket at the beginning just for
+// pop count. But we don't put the pop count in the list for PP_IN_LINK
+// Except at the top.  We're not currently aligning word-size
+// lists because we're not currently doing psplit search word let alone
+// PSPLIT_PARALLEL_WORD by default.
 // Relocating the pop out of PP requires quite a few code changes.
 // It would be nice for depth, prefix and pop to share the same word.
 #error Sorry, no PP_IN_LINK && (LVL_IN_SW || POP_WORD).
@@ -1631,13 +1645,14 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 
   #ifdef POP_WORD_IN_LINK
     #define PWR_wPopWord(_pwRoot, _pwr) \
-        (/*assert(wr_nType(*(_pwRoot) != T_EMBEDDED_KEYS)),*/ \
-            (STRUCT_OF((_pwRoot), Link_t, ln_wRoot)->ln_wPopWord))
+        (STRUCT_OF((assert(wr_nType(*(_pwRoot) != T_EMBEDDED_KEYS)), \
+                   (_pwRoot)), \
+            Link_t, ln_wRoot)->ln_wPopWord)
     #define set_PWR_wPopWord(_pwRoot, _pwr, _ww) \
         (PWR_wPopWord((_pwRoot), (_pwr)) = (_ww))
     #define PWR_wPopWordBL(_pwRoot, _pwr, _nBL) \
         (assert((_nBL) < cnBitsPerWord), \
-            /*assert(wr_nType(*(_pwRoot) != T_EMBEDDED_KEYS)),*/ \
+            assert(wr_nType(*(_pwRoot) != T_EMBEDDED_KEYS)), \
             STRUCT_OF((_pwRoot), Link_t, ln_wRoot)->ln_wPopWord)
     #define PWR_wPopWordDL(_pwRoot, _pwr, _nDL) \
         (assert((_nDL) < cnDigitsPerWord), \
@@ -1778,7 +1793,8 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 
 // POP_SLOT tells ListWords if we need a slot in the leaf for a pop count
 // that is not included in N_LIST_HDR_KEYS, i.e. a slot that occurs after
-// ll_a[csik]Keys[N_LIST_HDR_KEYS].
+// ll_a[csiw]Keys[N_LIST_HDR_KEYS].
+// Maybe it should be called N_LIST_FOOTER_KEYS?
 // There is a problem if POP_SLOT is at the beginning of the list and
 // we're aligning lists. Our code doesn't account for aligning the
 // list again after the pop slot.
@@ -1786,6 +1802,7 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
     // Be careful: _nBL here is BEFORE any skip is applied
     // Do we allow skip from top for PP_IN_LINK? Looks like we allow
     // skip if prefix is zero. It means we'd need a pop slot.
+    // But do we allow/use skip to list from the top?
     #define POP_SLOT(_nBL) \
         (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))
 #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -1858,28 +1875,6 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 
-  // For PP_IN_LINK and POP_WORD_IN_LINK ls_xPopCnt macros are only valid at
-  // top, i.e. nDL == cnDigitsPerWord, and only for T_LIST.
-      #if (cnDummiesInList == 0)
-
-#define     ls_xPopCnt(_ls, _nBL) \
-    (assert((_nBL) == cnBitsPerWord), ((ListLeaf_t *)(_ls))->ll_awKeys[0])
-#define set_ls_xPopCnt(_ls, _nBL, _cnt) \
-    (assert((_nBL) == cnBitsPerWord), \
-        ((ListLeaf_t *)(_ls))->ll_awKeys[0] = (_cnt))
-
-      #else // (cnDummiesInList == 0)
-
-// Use the last dummy for pop count if we have at least one dummy.
-#define     ls_xPopCnt(_ls, _nBL) \
-    (assert((_nBL) == cnBitsPerWord), \
-        ((ListLeaf_t *)(_ls))->ll_awDummies[cnDummiesInList - 1])
-#define set_ls_xPopCnt(_ls, _nBL, _cnt) \
-    (assert((_nBL) == cnBitsPerWord), \
-        ((ListLeaf_t *)(_ls))->ll_awDummies[cnDummiesInList - 1] = (_cnt))
-
-      #endif // (cnDummiesInList == 0)
-
       // Number of key slots needed for header info after cnDummiesInList
       // (for nBL != cnBitsPerWord).
       #if defined(LIST_END_MARKERS)
@@ -1889,17 +1884,6 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
       #endif // defined(LIST_END_MARKERS)
 
   #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-
-      #if ! defined(POP_IN_WR_HB)
-// Are we missing a test for LIST_POP_IN_PREAMBLE here?
-// Did we not update this because we are using Get_xListPopCnt now?
-// Do we not need this anymore?
-    #define     ls_xPopCnt(_ls, _nBL) \
-        (((_nBL) > 8) ? ls_sPopCnt(_ls) : ls_cPopCnt(_ls))
-#define set_ls_xPopCnt(_ls, _nBL, _cnt) \
-    (((_nBL) > 8) ? set_ls_sPopCnt((_ls), (_cnt)) \
-                  : set_ls_cPopCnt((_ls), (_cnt)))
-      #endif // ! defined(POP_IN_WR_HB)
 
       // Number of key slots needed for header info after cnDummiesInList.
       #if defined(LIST_END_MARKERS)
@@ -2027,7 +2011,16 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 #define ls_piKeysNATX(_pwr, _nPopCnt)  ls_piKeysNAT(_pwr)
 #define ls_pwKeysNATX(_pwr, _nPopCnt)  ls_pwKeysNAT(_pwr)
 
+#define ls_pcKeysX(_ls, _nBL, _nPopCnt)  ls_pcKeys(_ls, _nBL)
+#define ls_psKeysX(_ls, _nBL, _nPopCnt)  ls_psKeys(_ls, _nBL)
+#define ls_piKeysX(_ls, _nBL, _nPopCnt)  ls_piKeys(_ls, _nBL)
+#define ls_pwKeysX(_ls, _nBL, _nPopCnt)  ls_pwKeys(_ls, _nBL)
+
 #else // defined(OLD_LISTS)
+
+// We want the number of words that will hold our leaf.
+// Plus any word(s) that we get free that would allow us to hold another key.
+// The code isn't quite there yet.
 
 // We want an odd number of words (for dlmalloc efficiency) that will
 // hold our list (add one, align to two, then subtract one).
@@ -2044,7 +2037,7 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 // the beginning of the list? Wouldn't it need a whole bucket of
 // it's own? It seems like we might have a problem with
 // PP_IN_LINK or POP_WORD_IN_LINK and ALIGN_LISTS.
-#define ls_nSlotsInList(_wPopCnt, _nBL, _nBytesKeySz) \
+#define ls_nSlotsInListGuts(_wPopCnt, _nBL, _nBytesKeySz) \
 ( \
     ( ! ALIGN_LIST(_nBytesKeySz) \
     ? ( assert(cbAlignLists == cbAlignListLens), \
@@ -2059,43 +2052,30 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
                           sizeof(Bucket_t) / (_nBytesKeySz)) \
                      + 2 * sizeof(Bucket_t) \
                          / (_nBytesKeySz) * cbListEndMarkers \
-                     + cbAlignListLens \
+                     + ALIGN_LIST_LEN(_nBytesKeySz) \
                          * ALIGN_UP((_wPopCnt), \
                                     sizeof(Bucket_t) / (_nBytesKeySz)) \
-                     + ( ! cbAlignListLens ) * (_wPopCnt) \
+                     + (!ALIGN_LIST_LEN(_nBytesKeySz)) * (_wPopCnt) \
                      + POP_SLOT(_nBL) \
                      + sizeof(Word_t) / (_nBytesKeySz), \
                  2 * sizeof(Word_t) / (_nBytesKeySz)) \
          - sizeof(Word_t) / (_nBytesKeySz) ) ) \
 )
 
+#define ls_nSlotsInList(_wPopCnt, _nBL, _nBytesKeySz) \
+    MAX(ls_nSlotsInListGuts(_wPopCnt, _nBL, _nBytesKeySz), 3U * cnBytesPerWord / (_nBytesKeySz))
+
+static inline int Get_xListPopCnt(Word_t *pwRoot, int nBL);
+
 // pwr aka ls points to the highest malloc-aligned address in the
 // list buffer.  We have to use an aligned address because we use the low
 // bits of the pointer as a type field.
-// Pop count is in last pop-size slot in the word pointed to by pwr.
+// Pop count is in the last pop-size slot in the word pointed to by pwr.
 // Other code assumes pop count is not bigger than a single key in the list.
 static inline int
 ls_xPopCnt(void *pwr, int nBL)
 {
-    (void)nBL;
-    int nPopCnt = (nBL > 8)
-        ? (uint8_t)(((uint16_t *)((Word_t *)pwr + 1))[-1])
-        :          (((uint8_t  *)((Word_t *)pwr + 1))[-1]);
-    //printf("    ls_xPopCnt pwr %p nBL %2d nPopCnt %3d\n", pwr, nBL, nPopCnt);
-    return nPopCnt;
-    //return ((uint8_t *)((Word_t *)pwr + 1))[-1];
-}
-
-static inline void
-set_ls_xPopCnt(void *pwr, int nBL, int nPopCnt)
-{
-    (void)nBL;
-    //printf("set_ls_xPopCnt pwr %p nBL %2d nPopCnt %3d\n", pwr, nBL, nPopCnt);
-    if (nBL > 8) {
-        ((uint16_t *)((Word_t *)pwr + 1))[-1] = nPopCnt;
-    } else {
-        ((uint8_t  *)((Word_t *)pwr + 1))[-1] = nPopCnt;
-    }
+    return Get_xListPopCnt((Word_t*)&pwr, nBL);
 }
 
 #define ls_pcKeys(_pwr, _nBL) \
@@ -2151,9 +2131,13 @@ set_ls_xPopCnt(void *pwr, int nBL, int nPopCnt)
 #endif // defined(OLD_LISTS)
 
 #define ls_pwKey(_ls, _nBL, _ii)  (ls_pwKeys(_ls, _nBL)[_ii])
+#define ls_pwKeyX(_ls, _nBL, _nPopCnt, _ii)  (ls_pwKeysX(_ls, _nBL, _nPopCnt)[_ii])
 #define ls_piKey(_ls, _nBL, _ii)  (ls_piKeys(_ls, _nBL)[_ii])
+#define ls_piKeyX(_ls, _nBL, _nPopCnt, _ii)  (ls_piKeysX(_ls, _nBL, _nPopCnt)[_ii])
 #define ls_psKey(_ls, _nBL, _ii)  (ls_psKeys(_ls, _nBL)[_ii])
+#define ls_psKeyX(_ls, _nBL, _nPopCnt, _ii)  (ls_psKeysX(_ls, _nBL, _nPopCnt)[_ii])
 #define ls_pcKey(_ls, _nBL, _ii)  (ls_pcKeys(_ls, _nBL)[_ii])
+#define ls_pcKeyX(_ls, _nBL, _nPopCnt, _ii)  (ls_pcKeysX(_ls, _nBL, _nPopCnt)[_ii])
 
 // Bitmap macros.
 // Accessing a bitmap by byte can be more expensive than
@@ -2400,11 +2384,13 @@ gnBLR(qp)
     assert(tp_bIsSkip(wr_nType(wRoot)));
 #if defined(LVL_IN_WR_HB)
     nBLR = GetBits(wRoot, cnBitsLvl, cnLsbLvl);
-#elif defined(LVL_IN_SW)
+#else // defined(LVL_IN_WR_HB)
+  #ifdef POP_WORD
     nBLR = wr_nBL(wRoot);
-#else // defined(LVL_IN_WR_HB) elif defined(LVL_IN_SW)
+  #else // POP_WORD
     nBLR = nDL_to_nBL(tp_to_nDL(wr_nType(wRoot)));
-#endif // defined(LVL_IN_WR_HB) elif defined(LVL_IN_SW)
+  #endif // POP_WORD
+#endif // defined(LVL_IN_WR_HB)
     return nBLR;
 #else // defined(SKIP_LINKS)
     assert(0);
@@ -2432,24 +2418,32 @@ static inline int
 Get_xListPopCnt(Word_t *pwRoot, int nBL)
 {
     (void)nBL;
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    // Get_xListPopCnt is valid only at top, i.e. nBL >= cnBitsPerWord,
+    // for PP_IN_LINK and POP_WORD_IN_LINK, and only for T_LIST.
+    assert(nBL >= cnBitsPerWord);
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    Word_t *pwr = wr_pwr(*pwRoot); (void)pwr;
 #if defined(POP_IN_WR_HB) // 64-bit default
     int nPopCnt = GetBits(*pwRoot, cnBitsListPopCnt, cnLsbListPopCnt) + 1;
 #elif defined(LIST_POP_IN_PREAMBLE) // 32-bit default
-    int nPopCnt = GetBits(wr_pwr(*pwRoot)[-1],
+    int nPopCnt = GetBits(pwr[-1],
                           cnBitsPreListPopCnt, cnLsbPreListPopCnt) + 1;
 #elif defined(OLD_LISTS)
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     assert(nBL == cnBitsPerWord);
       #if cnDummiesInList == 0
-    int nPopCnt = ls_xPopCnt(wr_pwr(*pwRoot), nBL);
+    int nPopCnt = ((ListLeaf_t *)pwr)->ll_awKeys[0];
       #else // cnDummiesInList == 0
-    int nPopCnt = ls_xPopCnt(wr_pwr(*pwRoot), nBL);
+    int nPopCnt = ((ListLeaf_t *)pwr)->ll_awDummies[cnDummiesInList - 1];
       #endif // cnDummiesInList == 0
   #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    int nPopCnt = ls_xPopCnt(wr_pwr(*pwRoot), nBL);
+    int nPopCnt = (nBL > 8) ? ls_sPopCnt(pwr) : ls_cPopCnt(pwr);
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 #else // POP_IN_WR_HB ...
-    int nPopCnt = ls_xPopCnt(wr_pwr(*pwRoot), nBL);
+    int nPopCnt = (nBL > 8)
+        ? ((uint16_t *)((Word_t *)pwr + 1))[-1]
+        : ((uint8_t  *)((Word_t *)pwr + 1))[-1];
 #endif // POP_IN_WR_HB ...
     return nPopCnt;
 }
@@ -2458,26 +2452,38 @@ static inline void
 Set_xListPopCnt(Word_t *pwRoot, int nBL, int nPopCnt)
 {
     (void)nBL;
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    // Set_xListPopCnt is valid only at top, i.e. nBL >= cnBitsPerWord,
+    // for PP_IN_LINK, and only for T_LIST.
+    assert(nBL >= cnBitsPerWord);
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    Word_t *pwr = wr_pwr(*pwRoot); (void)pwr;
 #if defined(POP_IN_WR_HB) // 64-bit default
     assert(nPopCnt - 1 <= (int)MSK(cnBitsListPopCnt));
     SetBits(pwRoot, cnBitsListPopCnt, cnLsbListPopCnt, nPopCnt - 1);
 #elif defined(LIST_POP_IN_PREAMBLE) // 32-bit default
     assert(nPopCnt - 1 <= (int)MSK(cnBitsPreListPopCnt));
-    Word_t *pwr = wr_pwr(*pwRoot);
     SetBits(&pwr[-1], cnBitsPreListPopCnt, cnLsbPreListPopCnt, nPopCnt - 1);
 #elif defined(OLD_LISTS)
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    assert(nBL == cnBitsPerWord);
       #if cnDummiesInList == 0
-    set_ls_xPopCnt(wr_pwr(*pwRoot), nBL, nPopCnt);
+    ((ListLeaf_t *)pwr)->ll_awKeys[0] = nPopCnt;
       #else // cnDummiesInList == 0
-    set_ls_xPopCnt(wr_pwr(*pwRoot), nBL, nPopCnt);
+    ((ListLeaf_t *)pwr)->ll_awDummies[cnDummiesInList - 1] = nPopCnt;
       #endif // cnDummiesInList == 0
   #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    set_ls_xPopCnt(wr_pwr(*pwRoot), nBL, nPopCnt);
+    if (nBL > 8) {
+        ls_sPopCnt(pwr) = nPopCnt;
+    } else {
+        ls_cPopCnt(pwr) = nPopCnt;
+    }
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 #else // POP_IN_WR_HB ...
-    set_ls_xPopCnt(wr_pwr(*pwRoot), nBL, nPopCnt);
+    if (nBL > 8) {
+        ((uint16_t *)((Word_t *)pwr + 1))[-1] = nPopCnt;
+    } else {
+        ((uint8_t  *)((Word_t *)pwr + 1))[-1] = nPopCnt;
+    }
 #endif // POP_IN_WR_HB ...
 }
 
@@ -4144,21 +4150,54 @@ static int
 ListHasKey8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 {
     (void)pwRoot; (void)nBL;
-    assert(PWR_xListPopCnt(pwRoot, pwr, 8) <= 16);
-    assert(ls_pcKeys(pwr, PWR_xListPopCnt(pwRoot, pwr, 8)) == (uint8_t*)pwr);
-    assert(((Word_t)pwr & ~((Word_t)-1 << 4)) == 0);
-#if defined(PSPLIT_PARALLEL)
-  #if (cnListPopCntMax8 > 16) || (cnListPopCntMaxDl1 > 16)
-    #error PSPLIT_PARALLEL && ((PopCntMax8 > 16) || (PopCntMaxDl1 > 16))
-  #endif // (cnListPopCntMax8 > 16) || (cnListPopCntMaxDl1 > 16)
-  #ifdef HK40_EXPERIMENT
-    return HasKey40(pwr, wKey);
-  #else // HK40_EXPERIMENT
-    return HasKey128((__m128i*)pwr, wKey, 8);
-  #endif // HK40_EXPERIMENT
-#else // defined(PSPLIT_PARALLEL)
+
+// HasKey128 assumes the list of keys starts at a 128-bit aligned address.
+// SearchList8 makes no such assumption.
+#if !defined(POP_IN_WR_HB) && !defined(LIST_POP_IN_PREAMBLE)
+#if !defined(PP_IN_LINK) || (cnDummiesInList == 0)
+#if !defined(POP_WORD_IN_LINK) || (cnDummiesInList == 0)
+#if defined(OLD_LISTS)
     return SearchList8(pwRoot, pwr, wKey, nBL) >= 0;
+#endif // defined(OLD_LISTS)
+#endif // !defined(POP_WORD_IN_LINK) || (cnDummiesInList == 0)
+#endif // !defined(PP_IN_LINK) || (cnDummiesInList == 0)
+#endif // !defined(POP_IN_WR_HB) && !defined(LIST_POP_IN_PREAMBLE)
+
+#if defined(PSPLIT_SEARCH_8)
+#if defined(PSPLIT_PARALLEL)
+#if defined(PARALLEL_128)
+#if cnBitsInD1 == 8
+#if cnListPopCntMaxDl1 == 16
+#if cnBitsMallocMask >= 4
+#if cnDummiesInList == 0
+  // ls_pcKeys is valid only at the top for pop in link.
+  // Hence it's not really necessary to ifdef out these assertions at the top,
+  // but making the exception is more work than I want to do right now.
+  #if !defined(PP_IN_LINK) && !defined(POP_WORD_IN_LINK)
+  #if defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
+    assert(ls_pcKeys(pwr, PWR_xListPopCnt(pwRoot, pwr, 8)) == (uint8_t*)pwr);
+    assert(PWR_xListPopCnt(pwRoot, pwr, 8) <= 16);
+  #endif // defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
+  #endif // !defined(PP_IN_LINK) && !defined(POP_WORD_IN_LINK)
+    assert(((Word_t)pwr & ~((Word_t)-1 << 4)) == 0);
+  #if defined(OLD_LISTS) && defined(HK40_EXPERIMENT)
+    return HasKey40(pwr, wKey);
+  #else // defined(OLD_LISTS) && defined(HK40_EXPERIMENT)
+      #ifdef OLD_LISTS // includes PP_IN_LINK and POP_WORD_IN_LINK
+    return HasKey128((__m128i*)pwr, wKey, 8);
+      #else // OLD_LISTS
+    return HasKey128((__m128i*)ls_pcKeysNATX(pwr, 16), wKey, 8);
+      #endif // OLD_LISTS
+  #endif // HK40_EXPERIMENT
+#endif // cnDummiesInList == 0
+#endif // cnBitsMallocMask >= 4
+#endif // cnListPopCntMaxDl1 == 16
+#endif // cnBitsInD1 == 8
+#endif // defined(PARALLEL_128)
 #endif // defined(PSPLIT_PARALLEL)
+#endif // defined(PSPLIT_SEARCH_8)
+
+    return SearchList8(pwRoot, pwr, wKey, nBL) >= 0;
 }
 
   #endif // (cnBitsInD1 <= 8)
@@ -4776,7 +4815,7 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
       #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         { nPopCnt = Get_xListPopCnt(pwRoot, cnBitsPerWord); }
         //printf("pwRoot %p pwr %p\n", (void *)pwRoot, (void *)pwr);
-        nPos = SearchListWord(ls_pwKeys(pwr, nBL), wKey, nBL, nPopCnt);
+        nPos = SearchListWord(ls_pwKeysX(pwr, nBL, nPopCnt), wKey, nBL, nPopCnt);
   #endif // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
     }
 
@@ -4845,7 +4884,7 @@ ListHasKey(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
       #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         { nPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord); }
         //printf("pwRoot %p pwr %p\n", (void *)pwRoot, (void *)pwr);
-        bHasKey = ListHasKeyWord(ls_pwKeys(pwr, nBL), wKey, nBL, nPopCnt);
+        bHasKey = ListHasKeyWord(ls_pwKeysX(pwr, nBL, nPopCnt), wKey, nBL, nPopCnt);
   #endif // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
     }
 
@@ -4994,6 +5033,18 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, int nBL)
 #endif // ! defined(LOOKUP_NO_LIST_DEREF)
 
 #if defined(COMPRESSED_LISTS)
+static Word_t
+ls_pxKeyX(Word_t *pwr, int nBL, int nPopCnt, int ii)
+{
+    (void)nPopCnt;
+    if (nBL <=  8) { return ls_pcKeyX(pwr, nBL, nPopCnt, ii); }
+    if (nBL <= 16) { return ls_psKeyX(pwr, nBL, nPopCnt, ii); }
+  #if cnBitsPerWord != 32
+    if (nBL <= 32) { return ls_piKeyX(pwr, nBL, nPopCnt, ii); }
+  #endif // cnBitsPerWord != 32
+    return ls_pwKeyX(pwr, nBL, nPopCnt, ii);
+}
+
 static Word_t
 ls_pxKey(Word_t *pwr, int nBL, int ii)
 {
