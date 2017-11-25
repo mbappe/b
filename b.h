@@ -114,6 +114,10 @@
 // nBL is the number of bits left to decode after identifying the given link.
 // nBL does not include the bits skipped if the link is a skip link.
 // pLn is NULL if nBL == cnBitsPerWord sizeof(Link_t) > sizeof(Word_t).
+// Sure would like to get rid of pwRoot.
+// And possibly add nBLR.
+// And I guess wPopCnt would be next.
+// And how about wBytesUsed? 
 #define  qp \
     int   nBL, Link_t  * pLn, Word_t  * pwRoot, Word_t   wRoot, \
     int   nType, Word_t  * pwr
@@ -2065,19 +2069,6 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 #define ls_nSlotsInList(_wPopCnt, _nBL, _nBytesKeySz) \
     MAX(ls_nSlotsInListGuts(_wPopCnt, _nBL, _nBytesKeySz), 3U * cnBytesPerWord / (_nBytesKeySz))
 
-static inline int Get_xListPopCnt(Word_t *pwRoot, int nBL);
-
-// pwr aka ls points to the highest malloc-aligned address in the
-// list buffer.  We have to use an aligned address because we use the low
-// bits of the pointer as a type field.
-// Pop count is in the last pop-size slot in the word pointed to by pwr.
-// Other code assumes pop count is not bigger than a single key in the list.
-static inline int
-ls_xPopCnt(void *pwr, int nBL)
-{
-    return Get_xListPopCnt((Word_t*)&pwr, nBL);
-}
-
 #define ls_pcKeys(_pwr, _nBL) \
     ((uint8_t *)((Word_t *)(_pwr) + 1) \
         - ls_nSlotsInList(ls_xPopCnt((_pwr), (_nBL)), (_nBL), sizeof(uint8_t)))
@@ -2415,37 +2406,56 @@ Set_wPopCntBL(Word_t *pwRoot, int nBL, Word_t wPopCnt)
 }
 
 static inline int
-Get_xListPopCnt(Word_t *pwRoot, int nBL)
+gnListPopCnt(qp, int nBLR)
 {
-    (void)nBL;
+    qv; (void)nBLR;
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    // Get_xListPopCnt is valid only at top, i.e. nBL >= cnBitsPerWord,
-    // for PP_IN_LINK and POP_WORD_IN_LINK, and only for T_LIST.
-    assert(nBL >= cnBitsPerWord);
+    if (nBL < cnBitsPerWord) {
+        return PWR_wPopCntBL(pwRoot, NULL, nBLR);
+    }
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    Word_t *pwr = wr_pwr(*pwRoot); (void)pwr;
 #if defined(POP_IN_WR_HB) // 64-bit default
-    int nPopCnt = GetBits(*pwRoot, cnBitsListPopCnt, cnLsbListPopCnt) + 1;
+    int nPopCnt = GetBits(wRoot, cnBitsListPopCnt, cnLsbListPopCnt) + 1;
 #elif defined(LIST_POP_IN_PREAMBLE) // 32-bit default
     int nPopCnt = GetBits(pwr[-1],
                           cnBitsPreListPopCnt, cnLsbPreListPopCnt) + 1;
 #elif defined(OLD_LISTS)
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    assert(nBL == cnBitsPerWord);
       #if cnDummiesInList == 0
     int nPopCnt = ((ListLeaf_t *)pwr)->ll_awKeys[0];
       #else // cnDummiesInList == 0
     int nPopCnt = ((ListLeaf_t *)pwr)->ll_awDummies[cnDummiesInList - 1];
       #endif // cnDummiesInList == 0
   #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    int nPopCnt = (nBL > 8) ? ls_sPopCnt(pwr) : ls_cPopCnt(pwr);
+    int nPopCnt = (nBLR > 8) ? ls_sPopCnt(pwr) : ls_cPopCnt(pwr);
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 #else // POP_IN_WR_HB ...
-    int nPopCnt = (nBL > 8)
+    int nPopCnt = (nBLR > 8)
         ? ((uint16_t *)((Word_t *)pwr + 1))[-1]
         : ((uint8_t  *)((Word_t *)pwr + 1))[-1];
 #endif // POP_IN_WR_HB ...
     return nPopCnt;
+}
+
+static inline int
+Get_xListPopCnt(Word_t *pwRoot, int nBL)
+{
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+    Word_t wRoot = *pwRoot;
+    int nType = wr_nType(wRoot);
+    Word_t *pwr = wr_pwr(wRoot);
+    return gnListPopCnt(qy, /* nBLR */ nBL);
+}
+
+// pwr aka ls points to the highest malloc-aligned address in the
+// list buffer.  We have to use an aligned address because we use the low
+// bits of the pointer as a type field.
+// Pop count is in the last pop-size slot in the word pointed to by pwr.
+// Other code assumes pop count is not bigger than a single key in the list.
+static inline int
+ls_xPopCnt(void *pwr, int nBL)
+{
+    return Get_xListPopCnt((Word_t*)&pwr, nBL);
 }
 
 static inline void
@@ -4090,29 +4100,29 @@ SearchEmbeddedX(Word_t *pw, Word_t wKey, int nBL)
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
+SearchList8(qp, int nBLR, Word_t wKey)
 {
-    (void)nBL; (void)pwRoot;
+    qv; (void)nBLR;
 
     assert(nBL <= 8);
     // sizeof(__m128i) == 16 bytes
   #if defined(PSPLIT_SEARCH_8) && defined(PSPLIT_PARALLEL) \
-          && defined(PARALLEL_128) && (cnListPopCntMax8 <= 8)
+          && defined(PARALLEL_128) && (cnListPopCntMax8 <= 16)
       #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     int nPopCnt = PWR_wPopCntBL(pwRoot, NULL, nBL);
-      #else // defined(PP_IN_LINK)
+      #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     // By simply setting nPopCnt = 16 here we are assuming, while not
     // ensuring, that pop count never exceeds 16 here.
     // We do it because reading the pop count is so much slower.
     assert(PWR_xListPopCnt(pwRoot, pwr, 8) <= 16);
-    int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 8);
+    int nPopCnt = PWR_xListPopCnt(&wRoot, pwr, 8);
     //int nPopCnt = 16; // Sixteen fit so why do less?
       #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
   #else // defined(PSPLIT_SEARCH_8) && ...
       #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     int nPopCnt = PWR_wPopCntBL(pwRoot, NULL, nBL);
       #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 8);
+    int nPopCnt = PWR_xListPopCnt(&wRoot, pwr, 8);
       #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
   #endif // defined(PSPLIT_SEARCH8) && ...
     uint8_t *pcKeys = ls_pcKeysNATX(pwr, nPopCnt);
@@ -4147,9 +4157,9 @@ SearchList8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 }
 
 static int
-ListHasKey8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
+ListHasKey8(qp, int nBLR, Word_t wKey)
 {
-    (void)pwRoot; (void)nBL;
+    qv; (void)nBLR;
 
 // HasKey128 assumes the list of keys starts at a 128-bit aligned address.
 // SearchList8 makes no such assumption.
@@ -4157,7 +4167,7 @@ ListHasKey8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 #if !defined(PP_IN_LINK) || (cnDummiesInList == 0)
 #if !defined(POP_WORD_IN_LINK) || (cnDummiesInList == 0)
 #if defined(OLD_LISTS)
-    return SearchList8(pwRoot, pwr, wKey, nBL) >= 0;
+    return SearchList8(qy, nBLR, wKey) >= 0;
 #endif // defined(OLD_LISTS)
 #endif // !defined(POP_WORD_IN_LINK) || (cnDummiesInList == 0)
 #endif // !defined(PP_IN_LINK) || (cnDummiesInList == 0)
@@ -4175,8 +4185,8 @@ ListHasKey8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
   // but making the exception is more work than I want to do right now.
   #if !defined(PP_IN_LINK) && !defined(POP_WORD_IN_LINK)
   #if defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
-    assert(ls_pcKeys(pwr, PWR_xListPopCnt(pwRoot, pwr, 8)) == (uint8_t*)pwr);
-    assert(PWR_xListPopCnt(pwRoot, pwr, 8) <= 16);
+    assert(ls_pcKeys(pwr, PWR_xListPopCnt(&wRoot, pwr, 8)) == (uint8_t*)pwr);
+    assert(PWR_xListPopCnt(&wRoot, pwr, 8) <= 16);
   #endif // defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
   #endif // !defined(PP_IN_LINK) && !defined(POP_WORD_IN_LINK)
     assert(((Word_t)pwr & ~((Word_t)-1 << 4)) == 0);
@@ -4197,7 +4207,7 @@ ListHasKey8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 #endif // defined(PSPLIT_PARALLEL)
 #endif // defined(PSPLIT_SEARCH_8)
 
-    return SearchList8(pwRoot, pwr, wKey, nBL) >= 0;
+    return SearchList8(qy, nBLR, wKey) >= 0;
 }
 
   #endif // (cnBitsInD1 <= 8)
@@ -4214,29 +4224,28 @@ ListHasKey8(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
+SearchList16(qp, int nBLR, Word_t wKey)
 {
-    (void)nBL; (void)pwRoot;
+    qv; (void)nBLR;
 
-    assert(nBL >   8);
-    assert(nBL <= 16);
-  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    int nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
-  #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-      #if 0
+    assert(nBLR >   8);
+    assert(nBLR <= 16);
+  #if 1
+    int nPopCnt = gnListPopCnt(qy, nBLR);
+  #else
       #if (cnBitsLeftAtDl2 <= 16)
       #if /* defined(PSPLIT_SEARCH_16) && */ defined(PSPLIT_PARALLEL) \
               && defined(PARALLEL_128) && !defined(INSERT)
           // sizeof(__m128i) == 16 bytes
           #if ! defined(cnListPopCntMaxDl2) || (cnListPopCntMaxDl2 <= 8)
           #if (cnListPopCntMax16 <= 8)
-    assert(PWR_xListPopCnt(pwRoot, nBL) <= 8);
+    assert(PWR_xListPopCnt(pwRoot, nBLR) <= 8);
     int nPopCnt = 8; // Eight fit so why do less?
     assert((cnListPopCntMaxDl1 <= 8) || (cnBitsInD1 <= 8));
           #elif (cnBitsInD1 > 8) // nDL == 1 is handled here
               #if (cnListPopCntMaxDl1 <= 8) // list fits in one __m128i
                   #if (cnBitsLeftAtDl2 <= 16) // need to test nDL
-    int nPopCnt = (nBL == cnBitsInD1) ? 8 : PWR_xListPopCnt(pwRoot, 16);
+    int nPopCnt = (nBLR == cnBitsInD1) ? 8 : PWR_xListPopCnt(pwRoot, 16);
                   #else // (cnBitsLeftAtDl2 <= 16)
     int nPopCnt = 8; // Eight fit so why do less?
                   #endif // (cnBitsLeftAtDl2 <= 16)
@@ -4255,14 +4264,10 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
       #else // (cnBitsLeftAtDl2 <= 16)
     int nPopCnt = PWR_xListPopCnt(pwRoot, 16);
       #endif // (cnBitsLeftAtDl2 <= 16)
-      #else
-    int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 16);
-      #endif
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     uint16_t *psKeys = ls_psKeysNATX(pwr, nPopCnt);
     DBGL(printf("SearchList16 nPopCnt %d psKeys %p\n", nPopCnt, (void *)psKeys));
 
-    (void)nBL;
   #if defined(LIST_END_MARKERS)
     assert(psKeys[-1] == 0);
       #if defined(PSPLIT_PARALLEL) && !defined(INSERT)
@@ -4277,18 +4282,18 @@ SearchList16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     int nPos = 0;
   #if defined(PSPLIT_SEARCH_16) && !defined(INSERT)
       #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
-    if (nBL == 16) {
+    if (nBLR == 16) {
         PSPLIT_SEARCH_BY_KEY(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
     } else
       #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
-        //nPos = PSplitSearch16(nBL, psKeys, nPopCnt, sKey, nPos);
-        PSPLIT_SEARCH_BY_KEY(uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
+        //nPos = PSplitSearch16(nBLR, psKeys, nPopCnt, sKey, nPos);
+        PSPLIT_SEARCH_BY_KEY(uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos);
     }
   #elif defined(BACKWARD_SEARCH_16)
-    SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;
+    SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos);
   #else // here for forward linear search with end check
-    SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;
+    SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos);
   #endif // ...
     return nPos;
 }
@@ -4396,21 +4401,15 @@ ListHasKey1696(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 }
 
 static int
-ListHasKey16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
+ListHasKey16(qp, int nBLR, Word_t wKey)
 {
-    (void)nBL; (void)pwRoot;
+    qv; (void)nBLR;
 
-    assert(nBL >   8);
-    assert(nBL <= 16);
-  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    int nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
-  #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 16);
-  #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    assert(nBLR >   8);
+    assert(nBLR <= 16);
+    int nPopCnt = gnListPopCnt(qy, nBLR);
     uint16_t *psKeys = ls_psKeysNATX(pwr, nPopCnt);
     DBGL(printf("ListHasKey16 nPopCnt %d psKeys %p\n", nPopCnt, (void *)psKeys));
-
-    (void)nBL;
   #if defined(LIST_END_MARKERS)
     assert(psKeys[-1] == 0);
       #if defined(PSPLIT_PARALLEL) && !defined(INSERT)
@@ -4425,17 +4424,17 @@ ListHasKey16(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     int nPos = 0;
   #if defined(PSPLIT_SEARCH_16) && !defined(INSERT)
       #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
-    if (nBL == 16) {
-        PSPLIT_HASKEY_GUTS(Bucket_t, uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+    if (nBLR == 16) {
+        PSPLIT_HASKEY_GUTS(Bucket_t,
+                           uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
     } else
       #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
-    {
-        PSPLIT_HASKEY_GUTS(Bucket_t, uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
-    }
+    { PSPLIT_HASKEY_GUTS(Bucket_t,
+                         uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos); }
   #elif defined(BACKWARD_SEARCH_16)
-    SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;
+    SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos);
   #else // here for forward linear search with end check
-    SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;
+    SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos);
   #endif // ...
     return nPos >= 0;
 }
@@ -4493,11 +4492,14 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 }
 
 static int
-ListHasKey32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
+ListHasKey32(qp, int nBLR, Word_t wKey)
 {
-    (void)nBL;
-    assert(nBL >  16);
-    assert(nBL <= 32);
+    qv; (void)nBLR;
+
+    assert(nBLR >  16);
+    assert(nBLR <= 32);
+    int nPopCnt = gnListPopCnt(qy, nBLR);
+    uint32_t *piKeys = ls_piKeysNATX(pwr, nPopCnt);
 #if defined(LIST_END_MARKERS)
     assert(piKeys[-1] == 0);
 #if defined(PSPLIT_PARALLEL)
@@ -4512,22 +4514,22 @@ ListHasKey32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
     int nPos = 0;
 #if defined(PSPLIT_SEARCH_32)
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
-    if (nBL == 32) {
+    if (nBLR == 32) {
         PSPLIT_HASKEY_GUTS(Bucket_t,
                            uint32_t, 32, piKeys, nPopCnt, iKey, nPos);
-    } else if (nBL == 24) {
+    } else if (nBLR == 24) {
         PSPLIT_HASKEY_GUTS(Bucket_t,
                            uint32_t, 24, piKeys, nPopCnt, iKey, nPos);
     } else
 #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
         PSPLIT_HASKEY_GUTS(Bucket_t,
-                           uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
+                           uint32_t, nBLR, piKeys, nPopCnt, iKey, nPos);
     }
 #elif defined(BACKWARD_SEARCH_32)
-    SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
+    SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos);
 #else // here for forward linear search with end check
-    SEARCHF(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
+    SEARCHF(uint32_t, piKeys, nPopCnt, iKey, nPos);
 #endif // ...
     return nPos >= 0;
 }
@@ -4645,40 +4647,48 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 }
 
 static int
-ListHasKeyWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
+ListHasKeyWord(qp, int nBLR, Word_t wKey)
 {
+    qv; (void)nBLR;
+
     DBGI(printf("LHKW pwKeys %p wKey " OWx" nBL %d nPopCnt %d\n",
                 (void *)pwKeys, wKey, nBL, nPopCnt));
+    int nPopCnt = gnListPopCnt(qy, nBLR);
+  #if defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
+    Word_t *pwKeys = ls_pwKeysNATX(pwr, nPopCnt);
+  #else // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
+    Word_t *pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);
+  #endif // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
 #if defined(PSPLIT_PARALLEL_WORD)
     int nPos = 0;
   #if defined(BL_SPECIFIC_PSPLIT_SEARCH_WORD)
       #if (cnBitsPerWord > 32)
-    if (nBL == 64) {
+    if (nBLR == 64) {
         PSPLIT_SEARCH_W(Word_t, 64, pwKeys, nPopCnt, wKey, nPos);
     } else
-    if (nBL == 56) {
+    if (nBLR == 56) {
         PSPLIT_SEARCH_W(Word_t, 56, pwKeys, nPopCnt, wKey, nPos);
     } else
-    if (nBL == 48) {
+    if (nBLR == 48) {
         PSPLIT_SEARCH_W(Word_t, 48, pwKeys, nPopCnt, wKey, nPos);
     } else
-    if (nBL == 40) {
+    if (nBLR == 40) {
         PSPLIT_SEARCH_W(Word_t, 40, pwKeys, nPopCnt, wKey, nPos);
     } else
       #else // (cnBitsPerWord > 32)
-    if (nBL == 32) {
+    if (nBLR == 32) {
         PSPLIT_SEARCH_W(Word_t, 32, pwKeys, nPopCnt, wKey, nPos);
     } else
-    if (nBL == 24) {
+    if (nBLR == 24) {
         PSPLIT_SEARCH_W(Word_t, 24, pwKeys, nPopCnt, wKey, nPos);
     } else
       #endif // (cnBitsPerWord > 32)
   #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
-        PSPLIT_SEARCH_W(Word_t, nBL, pwKeys, nPopCnt, wKey, nPos);
+        PSPLIT_SEARCH_W(Word_t, nBLR, pwKeys, nPopCnt, wKey, nPos);
     }
 #else // defined(PSPLIT_PARALLEL_WORD)
-    int nPos = SearchListWord(pwKeys, wKey, nBL, nPopCnt);
+    int nPos = SearchListWord(pwKeys, wKey, nBLR, nPopCnt);
 #endif // defined(PSPLIT_PARALLEL_WORD)
     DBGX(printf("LHKW: returning %d\n", nPos >= 0));
     return nPos >= 0;
@@ -4762,7 +4772,7 @@ Word_t cnMagic[] = {
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
+SearchList(qp, int nBLR, Word_t wKey)
 {
     (void)pwRoot;
 
@@ -4776,46 +4786,46 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
       #if (cnBitsInD1 <= 8)
       // There is no need for a key size that is equal to or smaller than
       // whatever size yields a bitmap that will fit in a link.
-    if (nBL <= 8) {
-        nPos = SearchList8(pwRoot, pwr, wKey, nBL);
+    if (nBLR <= 8) {
+        nPos = SearchList8(qy, nBLR, wKey);
     } else
       #endif // defined(cnBitsInD1 <= 8)
       #if (cnBitsInD1 <= 16)
-    if (nBL <= 16) {
-        assert(nBL > 8);
-        nPos = SearchList16(pwRoot, pwr, wKey, nBL);
+    if (nBLR <= 16) {
+        assert(nBLR > 8);
+        nPos = SearchList16(qy, nBLR, wKey);
     } else
       #endif // defined(cnBitsInD1 <= 16)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
-    if (nBL <= 32) {
-        assert(nBL > 16);
+    if (nBLR <= 32) {
+        assert(nBLR > 16);
           #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
+        nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR);
           #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         nPopCnt = Get_xListPopCnt(pwRoot, 32);
           #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        nPos = SearchList32(ls_piKeysNATX(pwr, nPopCnt), wKey, nBL, nPopCnt);
+        nPos = SearchList32(ls_piKeysNATX(pwr, nPopCnt), wKey, nBLR, nPopCnt);
     } else
       #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     {
   #if defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
       #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
+        nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR);
       #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         nPopCnt = Get_xListPopCnt(pwRoot, cnBitsPerWord);
       #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         nPos = SearchListWord(ls_pwKeysNATX(pwr, nPopCnt),
-                              wKey, nBL, nPopCnt);
+                              wKey, nBLR, nPopCnt);
   #else // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
       #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         if (nBL != cnBitsPerWord) {
-            nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
+            nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR);
         } else
       #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         { nPopCnt = Get_xListPopCnt(pwRoot, cnBitsPerWord); }
         //printf("pwRoot %p pwr %p\n", (void *)pwRoot, (void *)pwr);
-        nPos = SearchListWord(ls_pwKeysX(pwr, nBL, nPopCnt), wKey, nBL, nPopCnt);
+        nPos = SearchListWord(ls_pwKeysX(pwr, nBLR, nPopCnt), wKey, nBLR, nPopCnt);
   #endif // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
     }
 
@@ -4830,88 +4840,64 @@ SearchList(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
 // Return any non-negative number if the key is in the list.
 // Return any negative number if the key is not in the list.
 static int
-ListHasKey(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
+ListHasKey(qp, int nBLR, Word_t wKey)
 {
-    (void)pwRoot;
+    qv; (void)nBLR;
 
     DBGL(printf("ListHasKey pwRoot %p wRoot " OWx" wKey " Owx" nBL %d\n",
                 (void *)pwRoot, *pwRoot, wKey, nBL));
 
-    int nPopCnt;
     int bHasKey;
 
   #if defined(COMPRESSED_LISTS)
       #if (cnBitsInD1 <= 8)
       // There is no need for a key size that is equal to or smaller than
       // whatever size yields a bitmap that will fit in a link.
-    if (nBL <= 8) {
-        bHasKey = ListHasKey8(pwRoot, pwr, wKey, nBL);
+    if (nBLR <= 8) {
+        bHasKey = ListHasKey8(qy, nBLR, wKey);
     } else
       #endif // defined(cnBitsInD1 <= 8)
       #if (cnBitsInD1 <= 16)
-    if (nBL <= 16) {
-        assert(nBL > 8);
-        bHasKey = ListHasKey16(pwRoot, pwr, wKey, nBL);
+    if (nBLR <= 16) {
+        bHasKey = ListHasKey16(qy, nBLR, wKey);
     } else
       #endif // defined(cnBitsInD1 <= 16)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
-    if (nBL <= 32) {
-        assert(nBL > 16);
-          #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
-          #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        nPopCnt = PWR_xListPopCnt(pwRoot, pwr, 32);
-          #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        bHasKey = ListHasKey32(ls_piKeysNATX(pwr, nPopCnt), wKey, nBL,
-                               nPopCnt);
+    if (nBLR <= 32) {
+        bHasKey = ListHasKey32(qy, nBLR, wKey);
     } else
       #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     {
-  #if defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
-      #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
-      #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        nPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord);
-      #endif // ! defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        bHasKey = ListHasKeyWord(ls_pwKeysNATX(pwr, nPopCnt),
-                                 wKey, nBL, nPopCnt);
-  #else // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
-      #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        if (nBL != cnBitsPerWord) {
-            nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
-        } else
-      #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        { nPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord); }
-        //printf("pwRoot %p pwr %p\n", (void *)pwRoot, (void *)pwr);
-        bHasKey = ListHasKeyWord(ls_pwKeysX(pwr, nBL, nPopCnt), wKey, nBL, nPopCnt);
-  #endif // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
+        bHasKey = ListHasKeyWord(qy, nBLR, wKey);
     }
 
   #if defined(LOOKUP)
-    SMETRICS(j__SearchPopulation += nPopCnt);
+    SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
   #endif // defined(LOOKUP)
 
     return bHasKey;
 }
 
+#if 0
 // Locate the key in the sorted list.
 // Return the position of the key in the list.
 // Return any negative number if the key is not in the list.
 static int
-LocateKey(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
+LocateKey(qp, int nBLR, Word_t wKey)
 {
-    return SearchList(pwr, wKey, nBL, pwRoot);
+    return SearchList(qy, nBLR, wKey);
 }
 
 // Locate the slot in the sorted list where the key should be.
 // Return the position of the slot in the list.
 // Return any negative number if the key is already in the slot.
 static int
-LocateHole(Word_t *pwr, Word_t wKey, unsigned nBL, Word_t *pwRoot)
+LocateHole(qp, int nBLR, Word_t wKey)
 {
-    return ~SearchList(pwr, wKey, nBL, pwRoot);
+    return ~SearchList(qy, nBLR, wKey);
 }
+#endif
 
 #endif // ! defined(LOOKUP_NO_LIST_SEARCH) || ! defined(LOOKUP)
 #endif // ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)

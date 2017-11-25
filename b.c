@@ -3710,12 +3710,7 @@ newSwitch:
 #if defined(CODE_XX_SW)
                 if (nBL < nDL_to_nBL(2)) {
                     DBGI(printf("\n# Blow up nBL %d nPopCnt %d\n",
-                                nBL,
-                                // How do I get pop count here?
-                                // wr_nPopCnt(*pwRoot, nBL)
-                                // Get_xListPopCnt(pwRoot, nBL)
-                                (int)wPopCnt
-                                ));
+                                nBL, (int)wPopCnt));
                 }
 
   #if defined(USE_XX_SW)
@@ -6579,7 +6574,7 @@ t_list:;
             return wSkip + 1;
         }
         //A(0);
-        int nPos = SearchList(pwr, *pwKey, nBL, pwRoot);
+        int nPos = SearchList(qy, /* nBLR */ nBL, *pwKey);
         if (bPrev) {
             //A(0);
             if (nPos < 0) {
@@ -7524,7 +7519,8 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
                 (void *)pwRoot, (void *)*pwKey, nBL, bPrev,
                 (void *)wRoot, (void *)pwr));
     int nIncr;
-    switch (wr_nType(wRoot)) {
+    int nType = wr_nType(wRoot);
+    switch (nType) {
 #if defined(UA_PARALLEL_128)
     case T_LIST_UA:
         goto t_list;
@@ -7534,7 +7530,7 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
 t_list:;
         int nPos;
         if ((pwr == NULL)
-                || ((nPos = SearchList(pwr, *pwKey, nBL, pwRoot)) < 0)) {
+                || ((nPos = SearchList(qy, /* nBLR */ nBL, *pwKey)) < 0)) {
             return Success;
         }
         Word_t wKeyLoop = *pwKey;

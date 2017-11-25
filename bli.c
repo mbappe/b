@@ -117,16 +117,7 @@ CountSw(qp,
                 if (pwrLoop != NULL)
           #endif // ! defined(SEPARATE_T_NULL)
                 {
-          #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-                    if (nBLLoop < cnBitsPerWord) {
-                        wPopCntLoop = PWR_wPopCntBL(pwRootLoop,
-                                                    NULL, nBLRLoop);
-                    } else
-          #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-                    {
-                        wPopCntLoop = PWR_xListPopCnt(pwRootLoop,
-                                                      pwrLoop, nBLRLoop);
-                    }
+                    wPopCntLoop = gnListPopCnt(qyLoop, nBLRLoop);
                     assert(wPopCntLoop != 0);
                     DBGC(printf("ww %" _fw"d T_LIST pwr %p wPopCnt %" _fw"d\n",
                                 ww, (void *)pwrLoop, wPopCntLoop));
@@ -1371,15 +1362,7 @@ t_list_sw:;
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
             if (wPrefixMismatch > 0) {
-                Word_t wPopCnt;
-#if defined(PP_IN_LINK)
-                if (nBL != cnBitsPerWord) {
-                    wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR);
-                } else
-#endif // defined(PP_IN_LINK)
-                {
-                    wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBLR);
-                }
+                Word_t wPopCnt = gnListPopCnt(qy, nBLR);
                 assert(wPopCnt != 0);
                 DBGC(printf("T_SKIP_TO_LIST: PREFIX_MISMATCH wPopCnt %" _fw
                                 "d\n", wPopCnt));
@@ -1512,19 +1495,9 @@ t_list:;
                 && (pwr != NULL)
         #endif // ! defined(SEPARATE_T_NULL)
         #if defined(LOOKUP)
-                // I have seen the use of &wRoot instead of pwRoot here have
-                // an enormous performance impact. &wRoot is 30ns while
-                // pwRoot is 40ns. It does not happen with all versions of
-                // code.  &wRoot would be a bug for PP_IN_LINK.
-            #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-                && ListHasKey(pwr, wKey, nBLR, pwRoot)
-            #elif defined(PWROOT_FOR_HASKEY)
-                && ListHasKey(pwr, wKey, nBLR, pwRoot)
-            #else // defined(PP_IN_LINK) || ...
-                && ListHasKey(pwr, wKey, nBLR, &wRoot)
-            #endif // defined(PP_IN_LINK) || ...
+                && ListHasKey(qy, nBLR, wKey)
         #else // defined(LOOKUP)
-                && ((nPos = SearchList(pwr, wKey, nBLR, pwRoot)) >= 0)
+                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
         #endif // defined(LOOKUP)
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
@@ -1723,19 +1696,9 @@ t_list_ua:;
                 && (pwr != NULL)
         #endif // ! defined(SEPARATE_T_NULL)
         #if defined(LOOKUP)
-                // I have seen the use of &wRoot instead of pwRoot here have
-                // an enormous performance impact. &wRoot is 30ns while
-                // pwRoot is 40ns. It does not happen with all versions of
-                // code.  &wRoot would be a bug for PP_IN_LINK.
-            #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-                && ListHasKey(pwr, wKey, nBLR, pwRoot)
-            #elif defined(PWROOT_FOR_HASKEY)
-                && ListHasKey(pwr, wKey, nBLR, pwRoot)
-            #else // defined(PP_IN_LINK) || ...
-                && ListHasKey1696(&wRoot, pwr, wKey, 16)
-            #endif // defined(PP_IN_LINK) || ...
+                && ListHasKey(qy, nBLR, wKey)
         #else // defined(LOOKUP)
-                && ((nPos = SearchList(pwr, wKey, nBLR, pwRoot)) >= 0)
+                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
         #endif // defined(LOOKUP)
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
@@ -2404,7 +2367,13 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 {
 #if (cnDigitsPerWord > 1)
 
+    int nBL = cnBitsPerWord;
     Word_t wRoot = (Word_t)pcvRoot;
+    Word_t *pwRoot = &wRoot;
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+    int nType = wr_nType(wRoot);
+    Word_t *pwr = wr_pwr(wRoot);
+    qv;
 
   #if (cwListPopCntMax != 0)
       #if defined(SEARCH_FROM_WRAPPER)
@@ -2419,11 +2388,8 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     // Is T_LIST the only node type that is different at the top for
     // PP_IN_LINK? Doesn't the incomplete Link_t complicate Lookup for
     // the other node types?
-    int nType = Get_nType(&wRoot);
     if (nType == T_LIST)
     {
-        Word_t *pwr = wr_pwr(wRoot);
-
         // PWR_xListPopCount is valid only at the top for PP_IN_LINK.
         // The first word in the list is used for pop count at the top.
         return (1
@@ -2432,7 +2398,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 #endif // ! defined(SEPARATE_T_NULL)
                 && (SearchListWord(ls_pwKeys(pwr, cnBitsPerWord),
                                    wKey, cnBitsPerWord,
-                                   PWR_xListPopCnt(&wRoot, pwr, cnBitsPerWord))
+                                   gnListPopCnt(qy, /* nBLR */ nBL);
                     >= 0))
             ? Success : Failure;
     }
@@ -2506,8 +2472,15 @@ int // Status_t
 Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 {
     Word_t *pwRoot = (Word_t *)ppvRoot;
+    Word_t wRoot = *pwRoot;
 
 #if (cnDigitsPerWord > 1)
+
+    int nBL = cnBitsPerWord;
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+    int nType = wr_nType(wRoot);
+    Word_t *pwr = wr_pwr(wRoot);
+    qv;
 
   // Judy1LHTime and Judy1LHCheck put a zero word before and after the root
   // word of the array. Let's make sure we don't corrupt it.
@@ -2657,7 +2630,6 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     // one big Bitmap
 
-    Word_t wRoot = *pwRoot;
     Word_t wByteNum, wByteMask;
     char c;
 
