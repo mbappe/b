@@ -199,7 +199,7 @@ MyMallocGuts(Word_t wWords, int nLogAlignment)
 #elif (cnBitsMallocMask == 4) && (cnBitsPerWord == 64)
   #define cnExtraUnitsMax 2 // 2
 #else
-  #define cnExtraUnitsMax 0
+  #define cnExtraUnitsMax 1
 #endif // cnBitsMallocMask && cnBitsPerWord
 
 #define cnExtraUnitsBits 2 // number of bits used for saving alloc size
@@ -1468,9 +1468,12 @@ OldSwitch(Word_t *pwRoot, int nBL,
 }
 
 // Get the pop count of the tree/subtree represented by (*pwRoot, nBL).
+// GetPopCnt requires nBL < cnBitsPerWord if pop in link.
+// GetPopCnt doesn't support embedded bitmap.
 static Word_t
 GetPopCnt(Word_t *pwRoot, int nBL)
 {
+    assert(nBL > cnLogBitsPerLink);
     int nBLR = GetBLR(pwRoot, nBL); // handles skip -- or not
 
 #if defined(NO_TYPE_IN_XX_SW)
@@ -1511,9 +1514,9 @@ GetPopCnt(Word_t *pwRoot, int nBL)
         assert(tp_bIsSwitch(nType));
     }
 
-#ifdef POP_WORD_IN_LINK
-    assert(nBL != cnBitsPerWord);
-#endif // POP_WORD_IN_LINK
+  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    assert(nBL < cnBitsPerWord);
+  #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     Word_t wPopCnt =
       #if defined(CODE_BM_SW)
         tp_bIsBmSw(wr_nType(*pwRoot))
@@ -1901,6 +1904,17 @@ embeddedKeys:;
 #endif // defined(COMPRESSED_LISTS)
                 { printf(" " OWx, ls_pwKeysX(pwr, nBL, wPopCnt)[xx]); }
             }
+  #if defined(UA_PARALLEL_128)
+            if (nType == T_LIST_UA) {
+                assert(nBL == 16);
+                assert(wPopCnt <= 6);
+                assert(cnBitsPerWord == 32);
+                assert(cnBitsMallocMask >= 4);
+                assert(ListWordsTypeList(wPopCnt, nBL) == 3);
+                //printf("\nT_LIST_UA pwr %p\n", (void*)pwr);
+                //HexDump(/* str */ "", /* pw */ &pwr[-1], /* nWords */ 5);
+            }
+  #endif // defined(UA_PARALLEL_128)
             if (nBL == cnBitsPerWord) {
                 //printf(" " OWx, ls_pwKeysX(pwr, nBL, wPopCnt)[wPopCnt]);
             }
@@ -2408,12 +2422,9 @@ static void InsertAll(Word_t *pwRootOld,
 // nBL describes the level of the root word passed in. It has not been
 // advanced by any skip in the containing link.
 void
-InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot)
+InsertCleanup(qp, Word_t wKey)
 {
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
-    Word_t *pwr = wr_pwr(wRoot);
-    int nType = wr_nType(wRoot);
-    qv, (void)wKey; (void)nType;
+    qv; (void)wKey;
 
 #if defined(CODE_BM_SW)
     if (tp_bIsBmSw(nType)) {
@@ -2628,6 +2639,7 @@ embeddedKeys:;
 static void
 InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
 {
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
     DBGI(printf("InsertAll(pwRootOld %p nBLOld %d wKey " OWx
                     " pwRoot %p nBL %d\n",
                 (void *)pwRootOld, nBLOld, wKey, (void *)pwRoot, nBL));
@@ -2699,18 +2711,18 @@ embeddedKeys:;
     if (nBLOld <= (int)sizeof(uint8_t) * 8) {
         uint8_t *pcKeys = ls_pcKeysNATX(pwrOld, nPopCnt);
         for (int nn = 0; nn < nPopCnt; nn++) {
-            status = Insert(pwRoot, pcKeys[nn] | (wKey & ~MSK(8)), nBL);
+            status = Insert(nBL, pLn, pcKeys[nn] | (wKey & ~MSK(8)));
         }
     } else if (nBLOld <= (int)sizeof(uint16_t) * 8) {
         uint16_t *psKeys = ls_psKeysNATX(pwrOld, nPopCnt);
         for (int nn = 0; nn < nPopCnt; nn++) {
-            status = Insert(pwRoot, psKeys[nn] | (wKey & ~MSK(16)), nBL);
+            status = Insert(nBL, pLn, psKeys[nn] | (wKey & ~MSK(16)));
         }
 #if (cnBitsPerWord > 32)
     } else if (nBLOld <= (int)sizeof(uint32_t) * 8) {
         uint32_t *piKeys = ls_piKeysNATX(pwrOld, nPopCnt);
         for (int nn = 0; nn < nPopCnt; nn++) {
-            status = Insert(pwRoot, piKeys[nn] | (wKey & ~MSK(32)), nBL);
+            status = Insert(nBL, pLn, piKeys[nn] | (wKey & ~MSK(32)));
         }
 #endif // (cnBitsPerWord > 32)
     } else
@@ -2718,7 +2730,7 @@ embeddedKeys:;
     {
         Word_t *pwKeys = ls_pwKeysX(pwrOld, nBL, nPopCnt);
         for (int nn = 0; nn < nPopCnt; nn++) {
-            status = Insert(pwRoot, pwKeys[nn], nBL);
+            status = Insert(nBL, pLn, pwKeys[nn]);
         }
     }
     assert(status == 1);
@@ -2738,9 +2750,10 @@ embeddedKeys:;
 static void
 PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
 {
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
     Word_t wRoot = *pwRoot;
     Word_t *pwr = Get_pwr(pwRoot); (void)pwr;
-    int nDLUp = nBL_to_nDL(nBLUp);
+    int nDLUp = nBL_to_nDL(nBLUp); (void)nDLUp;
     int nDLR = nBL_to_nDL(nBLR);
 
     // Can't have a prefix mismatch if there is no skip.
@@ -2957,14 +2970,14 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
                     " for prefix mismatch.\n"));
     DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
-    Insert(pwRoot, wKey, nDL_to_nBL(nDLUp));
+    Insert(nBLUp, pLn, wKey);
 }
 
 // InsertGuts
 // This function is called from the iterative Insert function once Insert has
 // determined that the key from an insert request is not present in the array.
 // It is provided with a starting point (pwRoot, wRoot, nBL) for the insert
-// and some additional information (nPos, pwRootPrev, nBLPrev) that may be
+// and some additional information (nPos, pLnUp, nBLPrev) that may be
 // necessary or helpful in some cases.
 // InsertGuts does whatever is necessary to insert the key into the array
 // and returns back to Insert.
@@ -2980,19 +2993,19 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
 // When do we double a switch?
 // When do we coalesce switches?
 Status_t
-InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot, int nPos
+InsertGuts(qp, Word_t wKey, int nPos
 #if defined(CODE_XX_SW)
-           , Word_t *pwRootPrev
+           , Link_t *pLnUp
   #if defined(SKIP_TO_XX_SW)
-           , int nBLPrev
+           , int nBLUp
   #endif // defined(SKIP_TO_XX_SW)
 #endif // defined(CODE_XX_SW)
            )
 {
+    qv;
 #if defined(CODE_XX_SW)
-    (void)pwRootPrev;
   #if defined(SKIP_TO_XX_SW)
-    (void)nBLPrev;
+    (void)nBLUp;
   #endif // defined(SKIP_TO_XX_SW)
     int nBW; (void)nBW;
 #endif // defined(CODE_XX_SW)
@@ -3010,9 +3023,9 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot, int nPos
     // the type field in wRoot.
 
 #if defined(NO_TYPE_IN_XX_SW)
-    if (pwRootPrev != NULL) { // non-NULL only for XX_SW
+    if (pLnUp != NULL) { // non-NULL only for XX_SW
         DBGR(printf("IG: goto embeddedKeys.\n"));
-        assert(tp_bIsXxSw(wr_nType(*pwRootPrev)));
+        assert(tp_bIsXxSw(wr_nType(pLnUp->ln_wRoot)));
         goto embeddedKeys; // no type field is handled by embeddedKeys
     }
 #endif // defined(NO_TYPE_IN_XX_SW)
@@ -3024,8 +3037,6 @@ InsertGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot, int nPos
     if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nBL == cnBitsInD1)) {
         return InsertAtDl1(pwRoot, wKey, nDL, nBL, wRoot);
     }
-
-    unsigned nType = wr_nType(wRoot); (void)nType; // silence gcc
 
     if ((nType == T_BITMAP)
 #if defined(SKIP_TO_BITMAP)
@@ -3080,7 +3091,7 @@ embeddedKeys:;
   #endif // defined(EMBED_KEYS)
 #endif // (cwListPopCntMax != 0)
 
-    Word_t *pwr = wr_pwr(wRoot);
+    pwr = wr_pwr(wRoot);
 
 // This first clause handles wRoot == 0 by treating it like a list leaf
 // with zero population (and no allocated memory).
@@ -3369,7 +3380,7 @@ copyWithInsertWord:
                 } else if (nBL <= 32) {
   #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
       && defined(PSPLIT_SEARCH_32) && defined(PSPLIT_PARALLEL)
-                    printf("goto copyWithInsert32\n");
+                    //printf("goto copyWithInsert32\n");
                     goto copyWithInsert32;
   #else // !defined(EMBED_KEYS) && ... defined(PSPLIT_PARALLEL)
                     { ls_piKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey; }
@@ -3380,7 +3391,7 @@ copyWithInsertWord:
                 {
   #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
       && defined(PSPLIT_PARALLEL_WORD)
-                    printf("goto copyWithInsertWord\n");
+                    //printf("goto copyWithInsertWord\n");
                     goto copyWithInsertWord;
   #else // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL_WORD)
                     ls_pwKeysX(pwList, nBL, wPopCnt + 1)[wPopCnt] = wKey;
@@ -3728,7 +3739,7 @@ newSwitch:
                     }
       #endif // defined(SKIP_TO_XX_SW)
                     nBW = cnBW;
-                } else if (pwRootPrev != NULL) {
+                } else if (pLnUp != NULL) {
 // Shouldn't we think about some other option here?
 // What about a small bitmap?
 // Or another switch?
@@ -3761,8 +3772,9 @@ doubleIt:;
                     }
 #endif // defined(EMBED_KEYS)
 #endif // defined(NO_TYPE_IN_XX_SW)
-                    pwRoot = pwRootPrev;
-                    wRoot = *pwRoot;
+                    pLn = pLnUp;
+                    wRoot = pLn->ln_wRoot;
+                    pwRoot = &pLn->ln_wRoot;
                     nType = wr_nType(wRoot);
                     assert(tp_bIsXxSw(nType));
                     pwr = wr_pwr(wRoot);
@@ -3771,7 +3783,7 @@ doubleIt:;
                     nBL = nDL_to_nBL(nDL);
       #if defined(SKIP_TO_XX_SW)
                     if (tp_bIsSkip(nType)) {
-                        nBLOld = nBLPrev;
+                        nBLOld = nBLUp;
                         assert(nBLOld > nBL);
                         nDLOld = nBL_to_nDL(nBLOld);
                     } else
@@ -3895,7 +3907,7 @@ doubleIt:;
             // But wRoot, nType, pwr, nBL and nBLOld still all apply
             // to the tree whose keys must be reinserted.
 #if defined(USE_XX_SW)
-            if (pwRoot == pwRootPrev) {
+            if (pLn == pLnUp) {
 insertAll:;
                 // nBW is for the new tree.
                 //printf("Calling InsertAll for all links nBW %d\n", nBW);
@@ -3912,7 +3924,7 @@ insertAll:;
                               nBLR,
                               (wKey & ~MSK(nBL)) | (nIndex << nBLR),
                               pwRoot,
-// How are we going to get nBLOld from pwRootPrev?
+// How are we going to get nBLOld from pLnUp?
 // Do we need it?  We need it for the call back into Insert.
                               nBLOld);
                 }
@@ -3952,7 +3964,7 @@ insertAll:;
                 DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
             }
 
-            Insert(pwRoot, wKey, nBLOld);
+            Insert(nBLOld, pLn, wKey);
         }
     }
 #if defined(SKIP_LINKS) || defined(BM_SW_FOR_REAL)
@@ -4001,7 +4013,7 @@ insertAll:;
                         w_wPrefix(wKey, nDLR), nDLR));
 #endif // defined(SKIP_LINKS)
             NewLink(pwRoot, wKey, nDLR, /* nDLUp */ nDL);
-            Insert(pwRoot, wKey, nDL_to_nBL(nDL));
+            Insert(nBL, pLn, wKey);
         }
 #endif // defined(BM_SW_FOR_REAL)
 #if defined(SKIP_LINKS) && defined(BM_SW_FOR_REAL)
@@ -4247,7 +4259,7 @@ insertAll:;
                           " for prefix mismatch.\n"));
             DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
-            Insert(pwRoot, wKey, nDL_to_nBL(nDLUp));
+            Insert(nDL_to_nBL(nDLUp), pLn, wKey);
 #endif // 1
         }
 #endif // defined(SKIP_LINKS)
@@ -4725,12 +4737,11 @@ DBGR(printf("RC: pwRoot %p wRoot " OWx" nBL %d nBLR %d\n", (void *)pwRoot, wRoot
 }
 
 Status_t
-RemoveGuts(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
+RemoveGuts(qp, Word_t wKey)
 {
+    qv;
     // nType is not valid for NO_TYPE_IN_XX_SW and nBL < nDL_to_nBL(2)
-    int nType = wr_nType(wRoot); (void)nType;
     // pwr is not valid for NO_TYPE_IN_XX_SW and nBL < nDL_to_nBL(2)
-    Word_t *pwr = wr_pwr(wRoot); (void)pwr;
     int nDL = nBL_to_nDL(nBL); (void)nDL;
 
     DBGR(printf("RemoveGuts(pwRoot %p wKey " OWx" nBL %d wRoot " OWx")\n",
@@ -5660,23 +5671,11 @@ Initialize(void)
     printf("# No SEARCHMETRICS\n");
 #endif // defined(SEARCHMETRICS)
 
-#if defined(PWROOT_PARAMETER_FOR_LOOKUP)
-    printf("#    PWROOT_PARAMETER_FOR_LOOKUP\n");
-#else // defined(PWROOT_PARAMETER_FOR_LOOKUP)
-    printf("# No PWROOT_PARAMETER_FOR_LOOKUP\n");
-#endif // defined(PWROOT_PARAMETER_FOR_LOOKUP)
-
-#if defined(PWROOT_AT_TOP_FOR_LOOKUP)
-    printf("#    PWROOT_AT_TOP_FOR_LOOKUP\n");
-#else // defined(PWROOT_AT_TOP_FOR_LOOKUP)
-    printf("# No PWROOT_AT_TOP_FOR_LOOKUP\n");
-#endif // defined(PWROOT_AT_TOP_FOR_LOOKUP)
-
-#if defined(USE_PWROOT_FOR_LOOKUP)
-    printf("#    USE_PWROOT_FOR_LOOKUP\n");
-#else // defined(USE_PWROOT_FOR_LOOKUP)
-    printf("# No USE_PWROOT_FOR_LOOKUP\n");
-#endif // defined(USE_PWROOT_FOR_LOOKUP)
+#if defined(PLN_PARAM_FOR_LOOKUP)
+    printf("#    PLN_PARAM_FOR_LOOKUP\n");
+#else // defined(PLN_PARAM_FOR_LOOKUP)
+    printf("# No PLN_PARAM_FOR_LOOKUP\n");
+#endif // defined(PLN_PARAM_FOR_LOOKUP)
 
 #if defined(LVL_IN_SW)
     printf("#    LVL_IN_SW\n");
@@ -6432,11 +6431,12 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
     }
 
     Word_t wRoot = (Word_t)PArray;
+    Link_t *pLn = STRUCT_OF(&wRoot, Link_t, ln_wRoot);
     // Count returns the number of keys before the specified key.
     // It does not include the specified key.
-    Word_t wCount0 = (wKey0 == 0) ? 0 : Count(&wRoot, wKey0, cnBitsPerWord);
+    Word_t wCount0 = (wKey0 == 0) ? 0 : Count(cnBitsPerWord, pLn, wKey0);
     DBGC(printf("Count wKey0 " OWx" Count0 %" _fw"d\n", wKey0, wCount0));
-    Word_t wCount1 = Count(&wRoot, wKey1, cnBitsPerWord);
+    Word_t wCount1 = Count(cnBitsPerWord, pLn, wKey1);
     DBGC(printf("Count wKey1 " OWx" Count1 %" _fw"d\n", wKey1, wCount1));
     Word_t wCount = wCount1 - wCount0;
     int bTest = Judy1Test(PArray, wKey1, NULL); (void)bTest;
@@ -6917,7 +6917,7 @@ t_list:;
     case T_SKIP_TO_BM_SW: {
         DBGN(printf("T_SKIP_TO_BM_SW\n"));
         //A(0);
-        nBLR = wr_nBL(wRoot);
+        int nBLR = wr_nBL(wRoot);
         Word_t wPrefix =
       #ifdef PP_IN_LINK
             (nBL >= cnBitsPerWord) ? 0 :
@@ -7696,7 +7696,7 @@ t_list:;
     }
   #if defined(SKIP_TO_BM_SW)
     case T_SKIP_TO_BM_SW: {
-        nBLR = wr_nBL(wRoot);
+        int nBLR = wr_nBL(wRoot);
         Word_t wPrefix =
       #ifdef PP_IN_LINK
             (nBL >= cnBitsPerWord) ? 0 :

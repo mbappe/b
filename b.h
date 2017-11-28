@@ -116,36 +116,38 @@
 // pLn is NULL if nBL == cnBitsPerWord sizeof(Link_t) > sizeof(Word_t).
 // Sure would like to get rid of pwRoot.
 // And possibly add nBLR.
-// And I guess wPopCnt would be next.
+// And wPopCnt would be an option.
+// And nBW would be an option.
 // And how about wBytesUsed? 
 #define  qp \
-    int   nBL, Link_t  * pLn, Word_t  * pwRoot, Word_t   wRoot, \
-    int   nType, Word_t  * pwr
+    int   nBL, Link_t  * pLn, Word_t   wRoot, int   nType, Word_t  * pwr
 #define pqp \
-    int *pnBL, Link_t **ppLn, Word_t **ppwRoot, Word_t *pwRoot, \
-    int *pnType, Word_t **ppwr
+    int *pnBL, Link_t **ppLn, Word_t *pwRoot, int *pnType, Word_t **ppwr
 
 // Shorthand for common arguments.
 // Why is "qy" not "qa"? Because "qa" is harder to type?
-#define  qy   nBL,  pLn,  pwRoot,  wRoot,  nType,  pwr
-#define pqy  &nBL, &pLn, &pwRoot, &wRoot, &nType, &pwr
+#define  qy   nBL,  pLn,  wRoot,  nType,  pwr
+#define pqy  &nBL, &pLn, &wRoot, &nType, &pwr
 
 // Common arguments to printf.
-#define qyp   nBL, (void*)pLn, (void*)pwRoot, wRoot, nType, (void*)pwr
+#define qyp   nBL, (void*)pLn, wRoot, nType, (void*)pwr
 
 #define  qyLoop \
-    nBLLoop,  pLnLoop,  pwRootLoop,  wRootLoop,  nTypeLoop,  pwrLoop
+    nBLLoop, pLnLoop, wRootLoop, nTypeLoop, pwrLoop
 
 // Shorthand to silence not-used compiler warnings.
 // And to validate assumptions.
 #define  qv \
+    Word_t *pwRoot = &pLn->ln_wRoot; \
     (void)nBL; (void)pLn; (void)pwRoot; (void)wRoot; (void)nType; (void)pwr; \
-    assert(pLn == STRUCT_OF(pwRoot, Link_t, ln_wRoot)); \
-    assert(wRoot == *pwRoot); assert(pwr == wr_pwr(wRoot))
+    assert(wRoot == pLn->ln_wRoot); \
+    assert(nType == wr_nType(wRoot) || (nBL <= cnLogBitsPerLink)); \
+    assert(pwr == wr_pwr(wRoot) || (nBL <= cnLogBitsPerLink))
 #define pqv \
-    (void)pnBL; (void)ppLn; (void)ppwRoot; (void)pwRoot; (void)pnType; (void)ppwr; \
-    assert(*ppLn == STRUCT_OF(*ppwRoot, Link_t, ln_wRoot)); \
-    assert(*pwRoot == **ppwRoot); assert(*ppwr == wr_pwr(*pwRoot))
+    (void)pnBL; (void)ppLn; (void)pwRoot; (void)pnType; (void)ppwr; \
+    assert(*pwRoot == (*ppLn)->ln_wRoot); \
+    assert(*pnType == wr_nType(*pwRoot) || (*pnBL <= cnLogBitsPerLink)); \
+    assert(*ppwr == wr_pwr(*pwRoot) || (*pnBL <= cnLogBitsPerLink))
 
 // NO_SKIP_LINKS means no skip links of any kind.
 // SKIP_LINKS allows the type-specific SKIP_TO_<BLAH> to be defined.
@@ -705,6 +707,9 @@ enum {
 
 // Define and optimize nBitsIndexSz_from_nDL, nBitsIndexSz_from_nBL,
 // nBL_from_nDL, nBL_from_nDL, et. al. based on ifdef parameters.
+
+// NAX means not at top and not at bottom,
+// i.e. nBL != cnBitsPerWord and nBL != cnBitsInD1.
 
 // nBitsIndexSz_from_nDL_NAX(_nDL)
 #if ((cnBitsInD3 == cnBitsPerDigit) && (cnBitsInD2 == cnBitsPerDigit))
@@ -1345,6 +1350,16 @@ tp_bIsSkip(int nType)
     }
 #endif // defined(SKIP_LINKS)
     return 0;
+}
+
+static inline int
+tp_bIsBitmap(int nType)
+{
+    return ((nType == T_BITMAP)
+  #ifdef SKIP_TO_BITMAP
+         || (nType == T_SKIP_TO_BITMAP)
+  #endif // SKIP_TO_BITMAP
+            );
 }
 
 // Bit fields in the upper bits of of wRoot.
@@ -2241,6 +2256,7 @@ typedef struct {
 #define cbEmbeddedBitmap  (cnBitsInD1 <= cnLogBitsPerLink)
 
 // Get the width of the branch in bits.
+// nTypeBase is type without skip, if any.
 // nBLR includes any skip specified in the qp link.
 static inline int
 gnBW(qp, int nTypeBase, int nBLR)
@@ -2263,8 +2279,7 @@ gnBW(qp, int nTypeBase, int nBLR)
 
 #define Get_nBW(_pwRoot) \
     gnBW(/* nBL */ 0, STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
-         (_pwRoot), *(_pwRoot), /* nType */ 0, wr_pwr(*(_pwRoot)), \
-         T_XX_SW, 0)
+         *(_pwRoot), /* nType */ 0, wr_pwr(*(_pwRoot)), T_XX_SW, 0)
 
 #define pwr_nBW  Get_nBW
 
@@ -2276,7 +2291,7 @@ snBW(qp, int nTypeBase, int nBW)
     assert(nBW <= (int)MSK(cnBitsXxSwWidth));
     if (cnBitsPerWord == 64) {
         // WIDTH_IN_WR_HB
-        SetBits(pwRoot, cnBitsXxSwWidth, cnLsbXxSwWidth, nBW);
+        SetBits(&pLn->ln_wRoot, cnBitsXxSwWidth, cnLsbXxSwWidth, nBW);
     } else {
         // use the malloc preamble word
         SetBits(&pwr[-1], cnBitsXxSwWidth, cnLsbXxSwWidth, nBW);
@@ -2285,8 +2300,7 @@ snBW(qp, int nTypeBase, int nBW)
 
 #define Set_nBW(_pwRoot, _nBW) \
     snBW(/* nBL */ 0, STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
-         (_pwRoot), *(_pwRoot), /* nType */ 0, wr_pwr(*(_pwRoot)), \
-         T_XX_SW, (_nBW))
+         *(_pwRoot), /* nType */ 0, wr_pwr(*(_pwRoot)), T_XX_SW, (_nBW))
 
 #define set_pwr_nBW  Set_nBW
 
@@ -2364,28 +2378,43 @@ typedef struct {
     Link_t sw_aLinks[1]; // variable size
 } BmSwitch_t;
 
+#ifdef SKIP_LINKS
+
 // Get the level of the object in number of bits left to decode.
-// This is valid only when *pwRoot is a skip link.
+// qp must specify a skip link.
+static inline int
+gnBLRSkip(qp)
+{
+    qv;
+    assert(tp_bIsSkip(nType));
+  #ifdef LVL_IN_WR_HB
+    return GetBits(wRoot, cnBitsLvl, cnLsbLvl);
+  #elif defined(POP_WORD)
+    return wr_nBL(wRoot);
+  #else // LVL_IN_WR_HB
+    return nDL_to_nBL(tp_to_nDL(nType));
+  #endif // LVL_IN_WR_HB
+}
+
+#endif // SKIP_LINKS
+
+// Get the level of the object in number of bits left to decode.
 static inline int
 gnBLR(qp)
 {
     qv;
-#if defined(SKIP_LINKS)
-    int nBLR;
-    assert(tp_bIsSkip(wr_nType(wRoot)));
-#if defined(LVL_IN_WR_HB)
-    nBLR = GetBits(wRoot, cnBitsLvl, cnLsbLvl);
-#else // defined(LVL_IN_WR_HB)
-  #ifdef POP_WORD
-    nBLR = wr_nBL(wRoot);
-  #else // POP_WORD
-    nBLR = nDL_to_nBL(tp_to_nDL(wr_nType(wRoot)));
-  #endif // POP_WORD
-#endif // defined(LVL_IN_WR_HB)
-    return nBLR;
-#else // defined(SKIP_LINKS)
-    assert(0);
-#endif // defined(SKIP_LINKS)
+    return
+  #ifdef SKIP_LINKS
+        tp_bIsSkip(nType) ? gnBLRSkip(qy) :
+  #endif // SKIP_LINKS
+        nBL;
+}
+
+static inline Word_t
+gwPrefix(qp)
+{
+    qv;
+    return PWR_wPrefixNATBL(pwRoot, pwr, nBL);
 }
 
 #define cnBitsPreListPopCnt cnBitsListPopCnt
@@ -2394,9 +2423,23 @@ gnBLR(qp)
 #define cnLsbPreListSwPopM1 (cnBitsPerWord - cnBitsListSwPopM1)
 
 static inline Word_t
+gwPopCnt(qp, int nBLR)
+{
+    qv;
+    return PWR_wPopCntBL(&pLn->ln_wRoot, pwr, nBLR);
+}
+
+static inline Word_t
 Get_wPopCntBL(Word_t *pwRoot, int nBL)
 {
     return PWR_wPopCntBL(pwRoot, wr_pwr(*pwRoot), nBL);
+}
+
+static inline void
+swPopCnt(qp, int nBLR, Word_t wPopCnt)
+{
+    qv;
+    set_PWR_wPopCntBL(&pLn->ln_wRoot, pwr, nBLR, wPopCnt);
 }
 
 static inline void
@@ -2543,24 +2586,22 @@ snListSwPop(qp, int nPopCnt)
     (assert(wr_pwr(*(_pwRoot)) == (_pwr)), \
     Set_xListPopCnt((_pwRoot), (_nBL), (_cnt)))
 
-Status_t Insert(Word_t *pwRoot, Word_t wKey, int nBL);
-Status_t Remove(Word_t *pwRoot, Word_t wKey, int nBL);
-Word_t Count(Word_t *pwRoot, Word_t wKey, int nBL);
+Status_t Insert(int nBL, Link_t *pLn, Word_t wKey);
+Word_t Count(int nBL, Link_t *pLn, Word_t wKey);
 Status_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
 
-Status_t InsertGuts(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot
-                    , int nPos
+Status_t InsertGuts(qp, Word_t wKey, int nPos
 #if defined(CODE_XX_SW)
-                    , Word_t *pwRootPrev
+                    , Link_t *pLnUp
   #if defined(SKIP_TO_XX_SW)
-                    , int nBLPrev
+                    , int nBLUp
   #endif // defined(SKIP_TO_XX_SW)
 #endif // defined(CODE_XX_SW)
                     );
 
-Status_t RemoveGuts(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
+Status_t RemoveGuts(qp, Word_t wKey);
 
-void InsertCleanup(Word_t wKey, int nBL, Word_t *pwRoot, Word_t wRoot);
+void InsertCleanup(qp, Word_t wKey);
 
 void RemoveCleanup(Word_t wKey, int nBL, int nBLR,
                    Word_t *pwRoot, Word_t wRoot);
@@ -4114,7 +4155,7 @@ SearchList8(qp, int nBLR, Word_t wKey)
     // By simply setting nPopCnt = 16 here we are assuming, while not
     // ensuring, that pop count never exceeds 16 here.
     // We do it because reading the pop count is so much slower.
-    assert(PWR_xListPopCnt(pwRoot, pwr, 8) <= 16);
+    assert(gnListPopCnt(qy, 8) <= 16);
     int nPopCnt = PWR_xListPopCnt(&wRoot, pwr, 8);
     //int nPopCnt = 16; // Sixteen fit so why do less?
       #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -4423,6 +4464,11 @@ ListHasKey16(qp, int nBLR, Word_t wKey)
     uint16_t sKey = (uint16_t)wKey;
     int nPos = 0;
   #if defined(PSPLIT_SEARCH_16) && !defined(INSERT)
+      #ifdef UA_PARALLEL_128
+    if ((nPopCnt <= 6) && (nBLR == 16)) {
+        PSPLIT_HASKEY_GUTS_128_96(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+    } else
+      #endif // UA_PARALLEL_128
       #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBLR == 16) {
         PSPLIT_HASKEY_GUTS(Bucket_t,
@@ -4651,14 +4697,14 @@ ListHasKeyWord(qp, int nBLR, Word_t wKey)
 {
     qv; (void)nBLR;
 
-    DBGI(printf("LHKW pwKeys %p wKey " OWx" nBL %d nPopCnt %d\n",
-                (void *)pwKeys, wKey, nBL, nPopCnt));
     int nPopCnt = gnListPopCnt(qy, nBLR);
   #if defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
     Word_t *pwKeys = ls_pwKeysNATX(pwr, nPopCnt);
   #else // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
     Word_t *pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);
   #endif // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
+    DBGI(printf("LHKW pwKeys %p wKey " OWx" nBL %d nPopCnt %d\n",
+                (void *)pwKeys, wKey, nBL, nPopCnt));
 #if defined(PSPLIT_PARALLEL_WORD)
     int nPos = 0;
   #if defined(BL_SPECIFIC_PSPLIT_SEARCH_WORD)
@@ -4774,7 +4820,7 @@ Word_t cnMagic[] = {
 static int
 SearchList(qp, int nBLR, Word_t wKey)
 {
-    (void)pwRoot;
+    qv;
 
     DBGL(printf("SearchList pwRoot %p wRoot " OWx" wKey " Owx" nBL %d\n",
                 (void *)pwRoot, *pwRoot, wKey, nBL));
@@ -4799,31 +4845,18 @@ SearchList(qp, int nBLR, Word_t wKey)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
     if (nBLR <= 32) {
         assert(nBLR > 16);
-          #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR);
-          #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        nPopCnt = Get_xListPopCnt(pwRoot, 32);
-          #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        nPopCnt = gnListPopCnt(qy, nBLR);
         nPos = SearchList32(ls_piKeysNATX(pwr, nPopCnt), wKey, nBLR, nPopCnt);
     } else
       #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     {
   #if defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
-      #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR);
-      #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        nPopCnt = Get_xListPopCnt(pwRoot, cnBitsPerWord);
-      #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        nPopCnt = gnListPopCnt(qy, nBLR);
         nPos = SearchListWord(ls_pwKeysNATX(pwr, nPopCnt),
                               wKey, nBLR, nPopCnt);
   #else // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
-      #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        if (nBL != cnBitsPerWord) {
-            nPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR);
-        } else
-      #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        { nPopCnt = Get_xListPopCnt(pwRoot, cnBitsPerWord); }
+        nPopCnt = gnListPopCnt(qy, nBLR);
         //printf("pwRoot %p pwr %p\n", (void *)pwRoot, (void *)pwr);
         nPos = SearchListWord(ls_pwKeysX(pwr, nBLR, nPopCnt), wKey, nBLR, nPopCnt);
   #endif // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
