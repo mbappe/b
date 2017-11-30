@@ -11,6 +11,8 @@
 #define IF_INSERT(_expr)  _expr
 #define IF_NOT_INSERT(_expr)
 
+#define IF_INS_OR_REM(_expr)  _expr
+
 #define IF_LOOKUP(_expr)  0
 #define IF_NOT_LOOKUP(_expr)  _expr
 
