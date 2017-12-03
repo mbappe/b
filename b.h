@@ -4836,6 +4836,8 @@ SearchList(qp, int nBLR, Word_t wKey)
     return nPos;
 }
 
+#ifdef LOOKUP
+
 // Figure out if the key is in the sorted list.
 // Return any non-negative number if the key is in the list.
 // Return any negative number if the key is not in the list.
@@ -4844,40 +4846,115 @@ ListHasKey(qp, int nBLR, Word_t wKey)
 {
     qv; (void)nBLR;
 
-    DBGL(printf("ListHasKey pwRoot %p wRoot " OWx" wKey " Owx" nBL %d\n",
-                (void *)pwRoot, *pwRoot, wKey, nBL));
+    SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
 
-    int bHasKey;
-
+#if 0
+    if (nBLR <= 32) {
+        if (nBLR <= 16) {
+            return (nBLR <=  8) ? ListHasKey8 (qy,  8, wKey)
+                                : ListHasKey16(qy, 16, wKey);
+        } else {
+            return (nBLR <= 24) ? ListHasKey32(qy, 24, wKey)
+                                : ListHasKey32(qy, 32, wKey);
+        }
+    } else {
+        if (nBLR <= 48) {
+            return (nBLR <= 40) ? ListHasKeyWord(qy, 40, wKey)
+                                : ListHasKeyWord(qy, 48, wKey);
+        } else {
+            return (nBLR <= 56) ? ListHasKeyWord(qy, 56, wKey)
+                                : ListHasKeyWord(qy, 64, wKey);
+        }
+    }
+#elif 0
+    return (nBLR <= 16)
+         ? (nBLR <=  8) ? ListHasKey8   (qy,    8, wKey)
+                        : ListHasKey16  (qy,   16, wKey)
+         : (nBLR <= 32) ? ListHasKey32  (qy, nBLR, wKey)
+                        : ListHasKeyWord(qy, nBLR, wKey);
+#elif 0
+    return (nBLR <=  8) ? ListHasKey8   (qy,    8, wKey)
+         : (nBLR <= 16) ? ListHasKey16  (qy,   16, wKey)
+         : (nBLR <= 32) ? ListHasKey32  (qy, nBLR, wKey)
+         :                ListHasKeyWord(qy, nBLR, wKey) ;
+#elif 0
+    // The switch looks a little strange because we're trying to get the
+    // compiler to skip the bounds check that it normally does.
+    switch ((nBLR/8 - 1) & 7) {
+      #if (cnBitsInD1 <= 8)
+    case 0 : break;
+      #endif // (cnBitsInD1 <= 8)
+      #if (cnBitsInD1 <= 16)
+    case 1 : return ListHasKey16  (qy, 16, wKey);
+      #endif // (cnBitsInD1 <= 16)
+      #if (cnBitsPerWord <= 32)
+    case 2 : return ListHasKeyWord(qy, 24, wKey);
+    case 3 : return ListHasKeyWord(qy, 32, wKey);
+      #else // (cnBitsPerWord <= 32)
+          #if (cnBitsInD1 <= 32)
+    case 2 : return ListHasKey32  (qy, 24, wKey);
+    case 3 : return ListHasKey32  (qy, 32, wKey);
+          #endif // (cnBitsInD1 <= 32)
+    case 4 : return ListHasKeyWord(qy, 40, wKey);
+    case 5 : return ListHasKeyWord(qy, 48, wKey);
+    case 6 : return ListHasKeyWord(qy, 56, wKey);
+    case 7 : return ListHasKeyWord(qy, 64, wKey);
+      #endif // (cnBitsPerWord <= 32)
+    }
+             return ListHasKey8   (qy,  8, wKey);
+#elif 0
+    // The switch looks a little strange because we're trying to get the
+    // compiler to skip the bounds check that it normally does.
+    //extern int abc(); abc();
+    switch (((nBLR-1) >> 3) & 3) {
+      #if (cnBitsInD1 <= 8)
+    case 0 : break;
+      #endif // (cnBitsInD1 <= 8)
+      #if (cnBitsInD1 <= 16)
+    case 1 : return ListHasKey16  (qy, 16, wKey);
+      #endif // (cnBitsInD1 <= 16)
+      #if (cnBitsPerWord <= 32)
+    case 2 : return ListHasKeyWord(qy, nBLR, wKey);
+      #else // (cnBitsPerWord <= 32)
+          #if (cnBitsInD1 <= 32)
+    case 2 : return ListHasKey32  (qy, nBLR, wKey);
+          #endif // (cnBitsInD1 <= 32)
+    case 3 : return ListHasKeyWord(qy, nBLR, wKey);
+      #endif // (cnBitsPerWord <= 32)
+    }
+             return ListHasKey8   (qy,  8, wKey);
+#elif 0
+  #if (cnBitsInD1 <= 8)
+    if (nBLR <= 8) { return ListHasKey8(qy, nBLR, wKey); }
+  #endif // (cnBitsInD1 <= 8)
+  #if (cnBitsInD1 <= 32) && (cnBitsPerWord >= 32)
+    if (nBLR <= 32) {
+  #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord >= 32)
+  #if (cnBitsInD1 <= 16)
+        if (nBLR <= 16) { return ListHasKey16(qy, nBLR, wKey); }
+  #endif // (cnBitsInD1 <= 16)
+  #if (cnBitsInD1 <= 32) && (cnBitsPerWord >= 32)
+        return ListHasKey32(qy, nBLR, wKey);
+    }
+  #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord >= 32)
+    return ListHasKeyWord(qy, nBLR, wKey);
+#else
   #if defined(COMPRESSED_LISTS)
       #if (cnBitsInD1 <= 8)
-      // There is no need for a key size that is equal to or smaller than
-      // whatever size yields a bitmap that will fit in a link.
-    if (nBLR <= 8) {
-        bHasKey = ListHasKey8(qy, nBLR, wKey);
-    } else
-      #endif // defined(cnBitsInD1 <= 8)
+    if (nBLR <= 8) { return ListHasKey8(qy, nBLR, wKey); }
+      #endif // (cnBitsInD1 <= 8)
       #if (cnBitsInD1 <= 16)
-    if (nBLR <= 16) {
-        bHasKey = ListHasKey16(qy, nBLR, wKey);
-    } else
-      #endif // defined(cnBitsInD1 <= 16)
+    if (nBLR <= 16) { return ListHasKey16(qy, nBLR, wKey); }
+      #endif // (cnBitsInD1 <= 16)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
-    if (nBLR <= 32) {
-        bHasKey = ListHasKey32(qy, nBLR, wKey);
-    } else
+    if (nBLR <= 32) { return ListHasKey32(qy, nBLR, wKey); }
       #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
-    {
-        bHasKey = ListHasKeyWord(qy, nBLR, wKey);
-    }
-
-  #if defined(LOOKUP)
-    SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-  #endif // defined(LOOKUP)
-
-    return bHasKey;
+    return ListHasKeyWord(qy, nBLR, wKey);
+#endif
 }
+
+#endif // LOOKUP
 
 #if 0
 // Locate the key in the sorted list.
