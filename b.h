@@ -147,20 +147,14 @@
     assert(*ppLn == STRUCT_OF(*ppwRoot, Link_t, ln_wRoot)); \
     assert(*pwRoot == **ppwRoot); assert(*ppwr == wr_pwr(*pwRoot))
 
-// NO_SKIP_LINKS means no skip links of any kind.
-// SKIP_LINKS allows the type-specific SKIP_TO_<BLAH> to be defined.
-// Default is -DSKIP_LINKS -USKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX.
+// Default is -USKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX.
 // Default is -USAVE_PREFIX -USAVE_PREFIX_TEST_RESULT
 // Default is -UALWAYS_CHECK_PREFIX_AT_LEAF.
 // -DALWAYS_CHECK_PREFIX_AT_LEAF appears to be best for 64-bit Judy1 with
-// 16-bit digits and a 16-bit bitmap.  More digits and -DSKIP_LINKS of any
+// 16-bit digits and a 16-bit bitmap. More digits and -DSKIP_LINKS of any
 // flavor seems similar.
 // -USKIP_LINKS is a lot better for 32-bit Judy1 with 16-bit digits and a
-// 16-bit bitmap.  Less so for 8-bit digits.  Maybe.
-#if ! defined(NO_SKIP_LINKS)
-#undef  SKIP_LINKS
-#define SKIP_LINKS
-#endif // ! defined(NO_SKIP_LINKS)
+// 16-bit bitmap. Less so for 8-bit digits. Maybe.
 
 // Default is -USEARCH_FROM_WRAPPER.
 
@@ -444,13 +438,6 @@ typedef Word_t Bucket_t;
 #if ! defined(cnBitsInD1)
 #define cnBitsInD1  cnBitsPerDigit
 #endif // ! defined(cnBitsInD1)
-
-// Default is -DLVL_IN_WR_HB unless -DLVL_IN_SW or -DNO_LVL_IN_WR_HB
-// or cnBitsPerWord == 32.
-#if ! defined(LVL_IN_SW) && ! defined(NO_LVL_IN_WR_HB) && (cnBitsPerWord > 32)
-  #undef LVL_IN_WR_HB
-  #define LVL_IN_WR_HB
-#endif // ! defined(LVL_IN_SW) && ! defined(NO_LVL_IN_WR_HB) && ...
 
 #if defined(CODE_XX_SW)
 // Default is -DSKIP_TO_XX_SW.
