@@ -597,6 +597,25 @@ InsertRemove(int nBL, Link_t *pLn, Word_t wKey)
     int bCleanupRequested = 0; (void)bCleanupRequested;
     int bCleanup = 0; (void)bCleanup;
 
+    int nType;
+    Word_t *pwr;
+    int nBLR;
+
+  #ifdef GOTO_AT_FIRST_IN_LOOKUP
+  #ifdef SKIP_LINKS
+  #ifdef LOOKUP
+    // This shortcut made the code faster in my testing.
+    nType = wr_nType(wRoot);
+    pwr = wr_pwr(wRoot);
+    if (nType > T_SWITCH) {
+        goto t_skip_to_switch;
+    }
+    // This shortcut made the code faster in my testing.
+    { nBLR = nBL; goto fastAgain; }
+  #endif // LOOKUP
+  #endif // SKIP_LINKS
+  #endif // GOTO_AT_FIRST_IN_LOOKUP
+
 #if ! defined(LOOKUP)
     int nPos = -1;
 #endif // ! defined(LOOKUP)
@@ -613,7 +632,7 @@ InsertRemove(int nBL, Link_t *pLn, Word_t wKey)
 top:;
   #endif // !defined(RECURSIVE)
 #endif // defined(INSERT) || defined(REMOVE)
-    int nBLR = nBL;
+    nBLR = nBL;
 
 #if defined(LOOKUP) || !defined(RECURSIVE)
 again:;
@@ -631,8 +650,8 @@ again:;
 #endif // ( ! defined(LOOKUP) )
     DBGX(printf("# nBL %d pLn %p wRoot " OWx" wKey " OWx"\n", nBL, pLn, wRoot, wKey));
 
-    int nType = wr_nType(wRoot);
-    Word_t *pwr = wr_pwr(wRoot); // pwr isn't meaningful for all nType values
+    nType = wr_nType(wRoot);
+    pwr = wr_pwr(wRoot); // pwr isn't meaningful for all nType values
 
   #if defined(JUMP_TABLE)
     static void *pvJumpTable[] = {
@@ -723,31 +742,39 @@ again:;
     goto *pvJumpTable[nType];
   #endif // defined(JUMP_TABLE)
 
+    goto fastAgain;
+fastAgain:;
     switch (nType)
     {
 
+  // At most one of DEFAULT_SKIP_TO_SW, DEFAULT_SWITCH,
+  // DEFAULT_LIST and DEFAULT_BITMAP may be defined.
+  #ifdef DEBUG
+  #ifndef DEFAULT_SKIP_TO_SW
+  #ifndef DEFAULT_SWITCH
+  #ifndef DEFAULT_LIST
+  #ifndef DEFAULT_BITMAP
+  #if !defined(SKIP_LINKS) || !defined(ALL_SKIP_TO_SW_CASES)
+    default: DBG(printf("unknown type %d\n", nType)); assert(0); exit(0);
+  #endif // !defined(SKIP_LINKS) || !defined(ALL_SKIP_TO_SW_CASES)
+  #endif // DEFAULT_BITMAP
+  #endif // DEFAULT_LIST
+  #endif // DEFAULT_SWITCH
+  #endif // DEFAULT_SKIP_TO_SW
+  #endif // DEBUG
+
 #if defined(SKIP_LINKS)
 
-  #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
-      // At most one of DEFAULT_SKIP_TO_SW, DEFAULT_SWITCH,
-      // DEFAULT_LIST and DEFAULT_BITMAP may be defined and
-      // only if DEBUG is not defined.
-      #if defined(DEBUG)
-          #if defined(DEFAULT_SKIP_TO_SW)
-          #error DEFAULT_SKIP_TO_SW with DEBUG
-          #endif // defined(DEFAULT_SKIP_TO_SW)
-          #if defined(DEFAULT_SWITCH)
-          #error DEFAULT_SWITCH with DEBUG
-          #endif // defined(DEFAULT_SWITCH)
-          #if defined(DEFAULT_LIST)
-          #error DEFAULT_LIST with DEBUG
-          #endif // defined(DEFAULT_LIST)
-          #if defined(DEFAULT_BITMAP)
-          #error DEFAULT_BITMAP with DEBUG
-          #endif // defined(DEFAULT_BITMAP)
-    default: DBG(printf("unknown type %d\n", nType)); assert(0); exit(0);
-      #endif // defined(DEBUG)
-      #if ! defined(DEBUG) && defined(DEFAULT_SKIP_TO_SW)
+  #if !defined(LVL_IN_WR_HB) && !defined(LVL_IN_SW)
+  #if !defined(DEFAULT_SKIP_TO_SW) && !defined(ALL_SKIP_TO_SW_CASES)
+    // For level in type, i.e. (!LVL_IN_WR_HB && !LVL_IN_SW),
+    // multiple type values all represent T_SKIP_TO_SWITCH, i.e.
+    // level = nType - T_SKIP_TO_SWITCH + 2.
+    #error Level in type requires DEFAULT_SKIP_TO_SW or ALL_SKIP_TO_SW_CASES.
+  #endif // !defined(LVL_IN_WR_HB) && !defined(LVL_IN_SW)
+  #endif // !defined(DEFAULT_SKIP_TO_SW) && !defined(ALL_SKIP_TO_SW_CASES)
+
+  #if defined(DEFAULT_SKIP_TO_SW)
           #if defined(DEFAULT_SWITCH)
           #error DEFAULT_SWITCH with DEFAULT_SKIP_TO_SW
           #endif // defined(DEFAULT_SWITCH)
@@ -758,13 +785,15 @@ again:;
           #error DEFAULT_LIST with DEFAULT_SKIP_TO_SW
           #endif // defined(DEFAULT_LIST)
     default:
-      #else // ! defined(DEBUG) && defined(DEFAULT_SKIP_TO_SW)
-
+  #endif // defined(DEFAULT_SKIP_TO_SW)
+  #if !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     case T_SKIP_TO_SWITCH: // skip link to uncompressed switch
-    // Extra cases even for LVL_IN_WR_HB and LVL_IN_SWITCH so we
-    // have at least EXP(cnBitsMallocMask) cases and gcc will
-    // create a jump table with no bounds check at the beginning
-    // after extracting the type field from wRoot.
+  #endif // !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
+  #ifdef ALL_SKIP_TO_SW_CASES
+    // Extra cases so we have at least EXP(cnBitsMallocMask) cases so gcc
+    // will create a jump table with no bounds check at the beginning after
+    // extracting nType from wRoot.
+    // We have not coded a no-bounds-check version without SKIP_LINKS yet.
     case T_SKIP_TO_SWITCH+1:
     case T_SKIP_TO_SWITCH+2:
     case T_SKIP_TO_SWITCH+3:
@@ -779,25 +808,7 @@ again:;
     case T_SKIP_TO_SWITCH+12:
     case T_SKIP_TO_SWITCH+13:
     case T_SKIP_TO_SWITCH+14:
-      #endif // ! defined(DEBUG) && defined(DEFAULT_SKIP_TO_SW)
-  #else // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
-          #if defined(DEFAULT_SKIP_TO_SW)
-          #error DEFAULT_SKIP_TO_SW with level in type
-          #endif // defined(DEFAULT_SKIP_TO_SW)
-          #if defined(DEFAULT_SWITCH)
-          #error DEFAULT_SWITCH with level in type
-          #endif // defined(DEFAULT_SWITCH)
-          #if defined(DEFAULT_BITMAP)
-          #error DEFAULT_BITMAP with level in type
-          #endif // defined(DEFAULT_BITMAP)
-          #if defined(DEFAULT_LIST)
-          #error DEFAULT_LIST with level in type
-          #endif // defined(DEFAULT_LIST)
-    // Use 'default' for skip to switch for (!LVL_IN_WR_HB && !LVL_IN_SW),
-    // e.g. 32-bit, because depth = type - T_SKIP_TO_SWITCH. Multiple type
-    // values all represent T_SKIP_TO_SWITCH.
-    default:
-  #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+  #endif // ALL_SKIP_TO_SW_CASES
     {
         goto t_skip_to_switch; // silence cc in case there are no other uses
 t_skip_to_switch:
@@ -920,11 +931,9 @@ t_skip_to_xx_sw:
 
 #endif // defined(SKIP_TO_XX_SW)
 
-#else // defined(SKIP_LINKS)
-    default: DBG(printf("unknown type %d\n", nType)); assert(0); exit(0);
 #endif // defined(SKIP_LINKS)
 
-  #if ! defined(DEBUG) && defined(DEFAULT_SWITCH)
+  #if defined(DEFAULT_SWITCH)
       #if defined(DEFAULT_SKIP_TO_SW)
       #error DEFAULT_SKIP_TO_SW with DEFAULT_SWITCH
       #endif // defined(DEFAULT_SKIP_TO_SW)
@@ -935,9 +944,10 @@ t_skip_to_xx_sw:
       #error DEFAULT_LIST with DEFAULT_SWITCH
       #endif // defined(DEFAULT_LIST)
     default:
-  #else // ! defined(DEBUG) && defined(DEFAULT_SWITCH)
+  #endif // defined(DEFAULT_SWITCH)
+  #if !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
-  #endif // ! defined(DEBUG) && defined(DEFAULT_SWITCH)
+  #endif // !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     {
         // nBL is bits left after picking the link from the previous switch
         // nBL has not been reduced by any skip indicated in that link
@@ -1433,7 +1443,7 @@ t_list_sw:;
     }
   #endif // defined(SKIP_TO_LIST)
 
-#if ! defined(DEBUG) && defined(DEFAULT_LIST)
+  #if defined(DEFAULT_LIST)
       #if defined(DEFAULT_SKIP_TO_SW)
       #error DEFAULT_SKIP_TO_SW with DEFAULT_LIST
       #endif // defined(DEFAULT_SKIP_TO_SW)
@@ -1444,9 +1454,10 @@ t_list_sw:;
       #error DEFAULT_SWITCH with DEFAULT_LIST
       #endif // defined(DEFAULT_SWITCH)
     default:
-#else // ! defined(DEBUG) && defined(DEFAULT_LIST)
+  #endif // defined(DEFAULT_LIST)
+  #if !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     case T_LIST:
-#endif // ! defined(DEBUG) && defined(DEFAULT_LIST)
+  #endif // !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     {
         goto t_list;
 t_list:;
@@ -1776,7 +1787,7 @@ t_skip_to_bitmap:;
         goto t_bitmap;
     }
 #endif // defined(SKIP_TO_BITMAP)
-#if ! defined(DEBUG) && defined(DEFAULT_BITMAP)
+  #if defined(DEFAULT_BITMAP)
       #if defined(DEFAULT_SKIP_TO_SW)
       #error DEFAULT_SKIP_TO_SW with DEFAULT_BITMAP
       #endif // defined(DEFAULT_SKIP_TO_SW)
@@ -1787,9 +1798,10 @@ t_skip_to_bitmap:;
       #error DEFAULT_SWITCH with DEFAULT_BITMAP
       #endif // defined(DEFAULT_SWITCH)
     default:
-#else // ! defined(DEBUG) && defined(DEFAULT_BITMAP)
+  #endif // defined(DEFAULT_BITMAP)
+  #if !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     case T_BITMAP:
-#endif // ! defined(DEBUG) && defined(DEFAULT_BITMAP)
+  #endif // !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     {
         goto t_bitmap;
 t_bitmap:;

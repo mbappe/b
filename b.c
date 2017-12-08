@@ -5537,6 +5537,48 @@ Initialize(void)
     printf("# No TRY_MEMCHR\n");
 #endif // defined(TRY_MEMCHR)
 
+#ifdef           GOTO_AT_FIRST_IN_LOOKUP
+    printf("#    GOTO_AT_FIRST_IN_LOOKUP\n");
+#else //         GOTO_AT_FIRST_IN_LOOKUP
+    printf("# No GOTO_AT_FIRST_IN_LOOKUP\n");
+#endif //        GOTO_AT_FIRST_IN_LOOKUP
+
+#ifdef           ALL_SKIP_TO_SW_CASES
+    printf("#    ALL_SKIP_TO_SW_CASES\n");
+#else //         ALL_SKIP_TO_SW_CASES
+    printf("# No ALL_SKIP_TO_SW_CASES\n");
+#endif //        ALL_SKIP_TO_SW_CASES
+
+#ifdef           DEFAULT_SKIP_TO_SW
+    printf("#    DEFAULT_SKIP_TO_SW\n");
+#else //         DEFAULT_SKIP_TO_SW
+    printf("# No DEFAULT_SKIP_TO_SW\n");
+#endif //        DEFAULT_SKIP_TO_SW
+
+#ifdef           DEFAULT_SWITCH
+    printf("#    DEFAULT_SWITCH\n");
+#else //         DEFAULT_SWITCH
+    printf("# No DEFAULT_SWITCH\n");
+#endif //        DEFAULT_SWITCH
+
+#ifdef           DEFAULT_LIST
+    printf("#    DEFAULT_LIST\n");
+#else //         DEFAULT_LIST
+    printf("# No DEFAULT_LIST\n");
+#endif //        DEFAULT_LIST
+
+#ifdef           DEFAULT_BITMAP
+    printf("#    DEFAULT_BITMAP\n");
+#else //         DEFAULT_BITMAP
+    printf("# No DEFAULT_BITMAP\n");
+#endif //        DEFAULT_BITMAP
+
+#ifdef           DEFAULT_AND_CASE
+    printf("#    DEFAULT_AND_CASE\n");
+#else //         DEFAULT_AND_CASE
+    printf("# No DEFAULT_AND_CASE\n");
+#endif //        DEFAULT_AND_CASE
+
 #if defined(RECURSIVE)
     printf("#    RECURSIVE\n");
 #else // defined(RECURSIVE)

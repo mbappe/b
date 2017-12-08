@@ -10,6 +10,36 @@
 // Does it make sense for this file to be the only place where we use #define
 // and #undef for conditional features and tuning parameters?
 
+// NO_SKIP_LINKS means no skip links of any kind.
+// SKIP_LINKS allows the type-specific SKIP_TO_<BLAH> to be defined.
+// Default is -DSKIP_LINKS.
+#ifndef   NO_SKIP_LINKS
+  #undef     SKIP_LINKS
+  #define    SKIP_LINKS
+#endif // NO_SKIP_LINKS
+
+// Default is -DGOTO_AT_FIRST_IN_LOOKUP.
+#ifndef   NO_GOTO_AT_FIRST_IN_LOOKUP
+  #undef     GOTO_AT_FIRST_IN_LOOKUP
+  #define    GOTO_AT_FIRST_IN_LOOKUP
+#endif // NO_GOTO_AT_FIRST_IN_LOOKUP
+
+// DEFAULT_AND_CASE means include the explicit case statement even for the
+// default case defined by DEFAULT_<BLAH>.
+// Default is -DDEFAULT_AND_CASE.
+#ifndef   NO_DEFAULT_AND_CASE
+  #undef     DEFAULT_AND_CASE
+  #define    DEFAULT_AND_CASE
+#endif // NO_DEFAULT_AND_CASE
+
+// Default is -DALL_SKIP_TO_SW_CASES.
+#ifdef SKIP_LINKS
+  #ifndef   NO_ALL_SKIP_TO_SW_CASES
+      #undef   ALL_SKIP_TO_SW_CASES
+      #define  ALL_SKIP_TO_SW_CASES
+  #endif // NO_ALL_SKIP_TO_SW_CASES
+#endif // SKIP_LINKS
+
 // Default is -DNDEBUG -UDEBUG_ALL -UDEBUG
 // -UDEBUG_INSERT -UDEBUG_REMOVE -UDEBUG_LOOKUP -UDEBUG_MALLOC
 // -UDEBUG_COUNT -UDEBUG_NEXT
