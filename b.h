@@ -1314,27 +1314,28 @@ tp_bIsSkip(int nType)
 {
     (void)nType;
 #if defined(SKIP_LINKS)
-  #if ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
-    if (nType >= T_SKIP_TO_SWITCH) { return 1;}
-  #endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
-    switch (nType) {
   #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+    switch (nType) {
+      #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
     case T_SKIP_TO_SWITCH:
-  #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
-  #if defined(SKIP_TO_LIST_SW)
+      #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+      #if defined(SKIP_TO_LIST_SW)
     case T_SKIP_TO_LIST_SW:
-  #endif // defined(SKIP_TO_LIST_SW)
-  #if defined(SKIP_TO_BM_SW)
+      #endif // defined(SKIP_TO_LIST_SW)
+      #if defined(SKIP_TO_BM_SW)
     case T_SKIP_TO_BM_SW:
-  #endif // defined(SKIP_TO_BM_SW)
-  #if defined(SKIP_TO_XX_SW)
+      #endif // defined(SKIP_TO_BM_SW)
+      #if defined(SKIP_TO_XX_SW)
     case T_SKIP_TO_XX_SW:
-  #endif // defined(SKIP_TO_XX_SW)
+      #endif // defined(SKIP_TO_XX_SW)
   #if defined(SKIP_TO_BITMAP)
     case T_SKIP_TO_BITMAP:
   #endif // defined(SKIP_TO_BITMAP)
         return 1;
     }
+  #else // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+    if (nType >= T_SKIP_TO_SWITCH) { return 1;}
+  #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
 #endif // defined(SKIP_LINKS)
     return 0;
 }

@@ -6855,9 +6855,11 @@ t_list:;
         }
         //A(0);
         nBL = nBLR;
+        goto t_switch; // address gcc implicit fall-through warning
     }
   #endif // defined(SKIP_LINKS)
     case T_SWITCH: {
+t_switch:;
         //A(0);
         DBGN(printf("T_SW wSkip %" _fw"u\n", wSkip));
         int nBits = nBL_to_nBitsIndexSz(nBL); // bits decoded by switch
@@ -7714,9 +7716,11 @@ t_list:;
         }
         assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
         nBL = nBLR;
+        goto t_switch; // address gcc implicit fall-through warning
     }
   #endif // defined(SKIP_LINKS)
     case T_SWITCH: {
+t_switch:;
         int nBits = nBL_to_nBitsIndexSz(nBL); // bits decoded by switch
         Word_t wPrefix = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
         Word_t wIndex = (*pwKey >> (nBL - nBits)) & MSK(nBits);

@@ -328,7 +328,8 @@ libb1.so: $(LIBB1_SRCS) JudyMalloc.so
 ifneq "$(CC)" "c++"
 ifneq "$(CC)" "g++"
 ifneq "$(CC)" "clang++"
-  MALLOC_FLAGS = -Wno-old-style-declaration -Wno-unknown-warning-option
+  MALLOC_FLAGS = -Wno-old-style-declaration -Wno-unknown-warning-option \
+    -Wno-expansion-to-defined -Wno-null-pointer-arithmetic
 endif
 endif
 endif
