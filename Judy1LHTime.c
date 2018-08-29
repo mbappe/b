@@ -38,7 +38,7 @@
 //
 // Because we discovered cases where the Tit flag was not effective at
 // extracting GetNextKey overhead and normalizing the TestJudyGet times
-// from different runs using  different GetNextKey options.
+// from different runs using different GetNextKey options.
 // For example, we saw the time jump from 28 ns to 52 ns in the bitmap
 // area by adding --splay-key-bits=0xffffffffffffffff to a 64-bit -B32
 // Judy1 run (and --splay-key-bits=0xffffffffffffffff has absolutely no
@@ -921,7 +921,7 @@ Usage(int argc, char **argv)
     printf("\n   The following are primarly used for diagnosis and debugging\n");
     printf("-K    do a __sync_synchronize() in GetNextKey() (is mfence instruction in X86)\n");
     printf("-k,--lfsr-only    use fast lfsr key gen and ignore -DEFGNOoS and -B with colon\n");
-    printf("-h    Skip JudyLIns/Judy1Set every 32 numbers from Key Generator [0], (but not in Get/Test)\n");
+    printf("-h    Skip 1/64th of the generated keys in Insert/Set, but not in Get/Test\n");
     printf("-s #  Starting number in Key Generator [0x%" PRIxPTR"]\n", StartSequent);
     printf("-o #, --Offset #     Key += #  additional add to Key\n");
     printf("-O #, --BigOffset #  Key += (# << (-B #))  additional add to Key above MSb (high) bits\n");
