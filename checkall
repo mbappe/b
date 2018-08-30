@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# usage: checkall [bitsPerWord]
+
 function report {
     echo
     echo Successes: $SUCCESSES
@@ -19,15 +21,12 @@ fi
 let SUCCESSES=0
 let FAILURES=0
 
-for B in {10..64}
+bitsPerWord=${1:-64}
+for B in `seq 10 $bitsPerWord`
 do
-    for d_ARG in '' # -d
-    do
-    for D_ARG in '' # -D
-    do
     for S_ARG in '' -S1 -DS1
     do
-        CMD="$CHECK -B$B $S_ARG $D_ARG $d_ARG"
+        CMD="$CHECK -B$B $S_ARG"
         echo $CMD
         if $CMD > /dev/null
         then
@@ -35,8 +34,6 @@ do
         else
             let FAILURES=$FAILURES+1
         fi
-    done
-    done
     done
 done
 

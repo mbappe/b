@@ -1,5 +1,35 @@
 
-Run make to build b.
+8/24/18:
+
+Run 'sudo apt install libjudy-dev' to install released 64-bit Judy 1.0.5 library
+binaries on 64-bit Ubuntu.
+Run make to build:
+  - Judy1LHTime aka btime aka b
+  - Judy1LHCheck aka bcheck
+  - c++time
+  - c++check
+  - bl.o, bi.o, br.o, bc.o, JudyMalloc.o, and libb1.a
+  - stubsL.o, stubsHS.o, and libb.a
+Regression tests:
+  - bcheckall
+  - checkall (e.g. 5 minutes)
+
+sudo apt install libc6-dev-i386
+sudo apt install lib32stdc++-7-dev
+Are there 'multilib' variants that are better than above, e.g. g++-multilib?
+
+Run 'wget http://SourceForge.net/project/judy/judy/Judy-1.0.5.tar.gz' to get Judy
+source so we can build 32-bit and install the 32-bit library binary from
+src/obj/.libs/libJudy.a into /usr/local/lib32/libJudy.a.
+./configure --enable-32-bit
+Prior to “make” change -DJU_64BIT to -DJU_32BIT in libtool Makefile config.status */Makefile.
+make
+Prior to "make check" modify test/Checkit. Put the following line after the "CC=" line at the top.
+CC="${CC} -m32"
+make check
+
+Older:
+
 Run bb to test it.  bb -q is less rigorous and bb -Q is even less rigorous.
 Run b -1l as the least rigorous test of all.
 b -? give some help.
