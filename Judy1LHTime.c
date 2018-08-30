@@ -560,7 +560,7 @@ Word_t    FValue = 0;                   // Keys, read from file
 char     *keyfile;                      // -F filename ^ to string
 PWord_t   FileKeys = NULL;              // array of FValue keys
 
-// Sizzle flag == 1 >> I.E. bit reverse (mirror) the data
+// Swizzle flag == 1 >> I.E. bit reverse (mirror) the data
 //
 Word_t    DFlag = 0;                    // bit reverse (mirror) the data stream
 int bLfsrGetForDS1Only = 0;
@@ -718,7 +718,8 @@ GetNextKeyX(PNewSeed_t PNewSeed, Word_t wFeedBTapArg, int bLfsrOnlyArg)
         // PNewSeed is a pointer to a word with the next key value in it.
         Word_t wKey = (Word_t)*PNewSeed;
         *PNewSeed = (NewSeed_t)((wKey >> krshift) ^ (wFeedBTapArg & -(wKey & 1)));
-        wKey <<= bLfsrOnlyArg; // for -DS1
+// Look at assembly to see if this goes away except for -DS1.
+        wKey <<= bLfsrOnlyArg - 1; // for -DS1
         return wKey;
     } else {
         // PNewSeed is a pointer to a pointer into the key array.
@@ -1983,6 +1984,38 @@ main(int argc, char *argv[])
     // Does StartSequent matter?
     if (DFlag && (SValue == 1) && (Bpercent == 100.0))
     {
+// First splay is at insert of n[8]+1'th key,
+// where n[8] is max length of list 8.
+// Would we want n[8] groups of 1?
+// Second splay is at insert of 256 * n[7]+1'th key,
+// where n[7] is max length of list 7.
+// There will be 256 splays.
+// It doesn't matter what n[8] is.
+// Would we want n[7] groups of 256?
+// Third wave of splays starts at insert of 65,536 * n[6]+1'th key,
+// where n[6] is max length of list 6.
+// It doesn't matter what n[8], or n[7] is.
+// There will be 65,536 splays.
+// Would we want n[6] groups of 65,536?
+// Third wave of splays starts at insert of 2^24 * n[5]+1'th key,
+// where n[5] is max length of list 5.
+// It doesn't matter what n[6], or n[7], or n[8] is.
+// There will be 2^24 splays.
+// Would we want n[5] groups of 2^24?
+
+// What if we do 255 groups of each power of 256?
+// Would that handle all list sizes up to 256?
+// We'd see the first splay and the subsequent inserts would
+// put one key in each list.
+// The second splay would occur at the insert after some multiple of 256.
+// The wave of splays would end when all 65,536 switches have one key.
+// 5*255+1=1276 groups gets us to 2^40 keys.
+// 256*1=256, 255*256=64K, 255*64K=16M, 255*16M=4G, 255*4G=1T
+// What if we do 240 groups of each power of 16?
+// 8*240+16=1936 groups gets us to 2^40 keys.
+// 256*1=256, 240*16=4K, 240*256=64K, 240*4K=1M, 240*64K=16M, 240*1M=256M,
+// 240*16M=4G, 240*256M=64G, 240*4G=1T
+
         int depth;
         Word_t wStep;
         Word_t wNumb;
@@ -2020,6 +2053,7 @@ main(int argc, char *argv[])
             //printf("# wNumb 0x%016zx grp 0x%04zx\n", wNumb, grp);
             //Pms[grp].ms_delta = wStep;
             Pms[grp].ms_delta = wNumb - wPrev;
+            //printf("# ms_delta 0x%016zx\n", Pms[grp].ms_delta);
 #ifndef CALC_NEXT_KEY
             #define MIN(_a, _b)  ((_a) < (_b) ? (_a) : (_b))
             Word_t wStartDeltaKeys = MIN(wNumb, TValues);
@@ -2068,6 +2102,8 @@ main(int argc, char *argv[])
             prevIsum = Isum;
         }
 
+        //printf("#  Groups    0x%04zx == 0d%05zd\n", Groups, Groups);
+
 //      Get memory for saving measurements
         Pms = (Pms_t) malloc(Groups * sizeof(ms_t));
 //        bzero((void *)Pms,  Groups * sizeof(ms_t));
@@ -2085,6 +2121,7 @@ main(int argc, char *argv[])
                 Isum = nElms;
             }
             Pms[grp].ms_delta = Isum - prevIsum;
+            //printf("# ms_delta 0x%016zx\n", Pms[grp].ms_delta);
 
 #ifndef CALC_NEXT_KEY
             #define MIN(_a, _b)  ((_a) < (_b) ? (_a) : (_b))
@@ -2710,7 +2747,7 @@ main(int argc, char *argv[])
                             TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
                                         /* Tit */ 0, /* KFlag */ 1,
                                         /* hFlag */ 0,
-                                        /* bLfsrOnly */ BValue - LogPop1);
+                                        /* bLfsrOnly */ BValue - LogPop1 + 1);
                         } else
 #endif // CALC_NEXT_KEY
                         TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
@@ -2729,7 +2766,7 @@ main(int argc, char *argv[])
                             TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
                                         /* Tit */ 0, /* KFlag */ 0,
                                         /* hFlag */ 0,
-                                        /* bLfsrOnly */ BValue - LogPop1);
+                                        /* bLfsrOnly */ BValue - LogPop1 + 1);
                         } else
 #endif // CALC_NEXT_KEY
                         TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
@@ -2782,7 +2819,7 @@ main(int argc, char *argv[])
                             TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
                                         /* Tit */ 1, /* KFlag */ 1,
                                         /* hFlag */ 0,
-                                        /* bLfsrOnly */ BValue - LogPop1);
+                                        /* bLfsrOnly */ BValue - LogPop1 + 1);
                         } else
 #endif // CALC_NEXT_KEY
                         TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
@@ -2801,7 +2838,7 @@ main(int argc, char *argv[])
                             TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
                                         /* Tit */ 1, /* KFlag */ 0,
                                         /* hFlag */ 0,
-                                        /* bLfsrOnly */ BValue - LogPop1);
+                                        /* bLfsrOnly */ BValue - LogPop1 + 1);
                         } else
 #endif // CALC_NEXT_KEY
                         TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
