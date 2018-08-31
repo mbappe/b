@@ -1984,101 +1984,94 @@ main(int argc, char *argv[])
     // Does StartSequent matter?
     if (DFlag && (SValue == 1) && (Bpercent == 100.0))
     {
-// First splay is at insert of n[8]+1'th key,
-// where n[8] is max length of list 8.
-// Would we want n[8] groups of 1?
-// Second splay is at insert of 256 * n[7]+1'th key,
-// where n[7] is max length of list 7.
-// There will be 256 splays.
-// It doesn't matter what n[8] is.
-// Would we want n[7] groups of 256?
-// Third wave of splays starts at insert of 65,536 * n[6]+1'th key,
-// where n[6] is max length of list 6.
-// It doesn't matter what n[8], or n[7] is.
-// There will be 65,536 splays.
-// Would we want n[6] groups of 65,536?
-// Third wave of splays starts at insert of 2^24 * n[5]+1'th key,
-// where n[5] is max length of list 5.
-// It doesn't matter what n[6], or n[7], or n[8] is.
-// There will be 2^24 splays.
-// Would we want n[5] groups of 2^24?
+        // First splay is at insert of n[8]+1'th key,
+        // where n[8] is max length of list 8.
+        // Would we want n[8] groups of 1?
+        // Second splay is at insert of 256 * n[7]+1'th key,
+        // where n[7] is max length of list 7.
+        // There will be 256 splays.
+        // It doesn't matter what n[8] is.
+        // Would we want n[7] groups of 256?
+        // Third wave of splays starts at insert of 64K * n[6]+1'th key,
+        // where n[6] is max length of list 6.
+        // It doesn't matter what n[8], or n[7] is.
+        // There will be 64K splays.
+        // Would we want n[6] groups of 64K?
+        // Third wave of splays starts at insert of 16M * n[5]+1'th key,
+        // It doesn't matter what n[6], or n[7], or n[8] is.
+        // There will be 16M splays.
+        // Would we want n[5] groups of 16M?
 
-// What if we do 255 groups of each power of 256?
-// Would that handle all list sizes up to 256?
-// We'd see the first splay and the subsequent inserts would
-// put one key in each list.
-// The second splay would occur at the insert after some multiple of 256.
-// The wave of splays would end when all 65,536 switches have one key.
-// 5*255+1=1276 groups gets us to 2^40 keys.
-// 256*1=256, 255*256=64K, 255*64K=16M, 255*16M=4G, 255*4G=1T
-// What if we do 240 groups of each power of 16?
-// 8*240+16=1936 groups gets us to 2^40 keys.
-// 256*1=256, 240*16=4K, 240*256=64K, 240*4K=1M, 240*64K=16M, 240*1M=256M,
-// 240*16M=4G, 240*256M=64G, 240*4G=1T
+        // What if we do 255 groups of each power of 256?
+        // Would that handle all list sizes up to 256?
+        // We'd see the first splay and the subsequent inserts would
+        // put one key in each list.
+        // The 2nd splay would occur at the insert after some multiple of 256.
+        // The wave of splays would end when all 64K links have one key.
+        // 5*255+1=1276 groups gets us to 2^40 keys.
+        // 2*255+1 for 64K, 3*255+1 for 16M, 4*255+1 for 4G, 5*255+1 for 1T.
+        // What if we do 240 groups of each power of 16?
+        // 8*240+16=1936 groups gets us to 2^40 keys.
+        // 2*240+16 for 4K, 3*240+16 for 64K, 4*240+16 for 1M,
+        // 5*240+16 for 16M, 6*240+16 for 256M, 7*240+16 for 4G,
+        // 8*240*16 for 64G, 9*240+16 for 1T.
 
-        int depth;
-        Word_t wStep;
-        Word_t wNumb;
+        // Group sizes:
+        // 1 for up to 256: Groups = nElms
+        // 16 for up to 4K: Groups = 256 + (nElms + 15 - 256) / 16
+        // 256 for up to 64K: Groups = 256 + 240 + (nElms + 255 - 4K) / 256
+        // 4K for up to 1M: Groups = 256 + 2 * 240 + (nElms + 4095 - 64K) / 4K
 
-        depth = 0;
-        wStep = 1;
-        for (grp = 0, wNumb = 1; wNumb < nElms; ++grp, wNumb += wStep) {
-            if (wNumb == ((Word_t)1 << depth)) {
-                // Our main goal here is to hit all of the powers of 2.
-                // PtsPdec is way more precise than necessary for this.
-                // But the cli was designed long ago.
-#define PTSPDEC_MAGIC  137300
-                wStep = ((Word_t)1 << depth)
-                      >> (LOG(PtsPdec * PTSPDEC_MAGIC/10000 / LOG(nElms)));
-                if (wStep < 1) { wStep = 1; }
-                depth += 1;
-            }
-            // check for overflow
-            if (wNumb + wStep <= wNumb) { break; }
+        if (nElms <= 256) {
+            Groups = nElms;
+        } else {
+            // The following works for nElms >= 17.
+            Word_t logGrpSz = LOG(nElms-1)/4; // log base 16
+            Word_t grpSz = (Word_t)1 << (logGrpSz-1) * 4; // final group size
+            //printf("# Final group size, grpSz, is %zd.\n", grpSz);
+            Groups = 256 + (logGrpSz-2)*240 + (nElms - grpSz*15 - 1) / grpSz;
         }
-        Groups = grp + 1;
 
-        //printf("#  Groups    0x%04zx == 0d%05zd\n", Groups, Groups);
+        printf("#  Groups    0x%04zx == 0d%05zd\n", Groups, Groups);
 
 // Get memory for saving measurements
         Pms = (Pms_t) malloc(Groups * sizeof(ms_t));
 
 // Calculate number of Keys for each measurement point
-        depth = 0;
-        wStep = 1;
-        grp = 0;
-        Word_t wPrev = 0;
-        for (wNumb = wStep; wNumb < nElms; wNumb += wStep)
-        {
-            //printf("# wNumb 0x%016zx grp 0x%04zx\n", wNumb, grp);
-            //Pms[grp].ms_delta = wStep;
-            Pms[grp].ms_delta = wNumb - wPrev;
-            //printf("# ms_delta 0x%016zx\n", Pms[grp].ms_delta);
-#ifndef CALC_NEXT_KEY
-            #define MIN(_a, _b)  ((_a) < (_b) ? (_a) : (_b))
-            Word_t wStartDeltaKeys = MIN(wNumb, TValues);
-            Word_t wEndDeltaKeys = wStartDeltaKeys + Pms[grp].ms_delta;
-            if (wEndDeltaKeys > wMaxEndDeltaKeys) {
-                wMaxEndDeltaKeys = wEndDeltaKeys;
-            }
-#endif // CALC_NEXT_KEY
-
-            wPrev = wNumb;
-            if (wNumb == ((Word_t)1 << depth)) {
-                wStep = ((Word_t)1 << depth)
-                      >> (LOG(PtsPdec * PTSPDEC_MAGIC/10000 / LOG(nElms)));
-                if (wStep < 1) { wStep = 1; }
-                depth += 1;
-            }
-            ++grp;
-            if (wNumb + wStep <= wNumb) {
-                Pms[grp].ms_delta = nElms - wPrev;
-                break;
-            }
-            if (wNumb + wStep > nElms) {
-                Pms[grp].ms_delta = nElms - wPrev;
-            }
+        for (grp = 0; (grp < 256) && (grp < Groups); grp++) {
+            Pms[grp].ms_delta = 1;
         }
+        Word_t wPrev;
+        for (Word_t wNumb = grp; grp < Groups; ++grp)
+        {
+            wPrev = wNumb;
+            wNumb += Pms[grp].ms_delta = (Word_t)1 << (LOG(wNumb)/4 - 1) * 4;
+            if ((wNumb > nElms) || (wNumb < wPrev)) {
+                wNumb = nElms;
+                Pms[grp].ms_delta = wNumb - wPrev;
+            }
+            //printf("# wNumb 0x%04zx %zd\n", wNumb, wNumb);
+        }
+#ifndef CALC_NEXT_KEY
+    #define MAX(_a, _b)  ((_a) > (_b) ? (_a) : (_b))
+        if (nElms - Pms[grp-1].ms_delta > TValues) {
+            wMaxEndDeltaKeys = TValues + Pms[grp-1].ms_delta;
+            if (nElms - Pms[grp-1].ms_delta - Pms[grp-2].ms_delta > TValues) {
+                if (TValues + Pms[grp-2].ms_delta > wMaxEndDeltaKeys) {
+                    wMaxEndDeltaKeys = TValues + Pms[grp-2].ms_delta;
+                }
+            } else if (nElms - Pms[grp-1].ms_delta > wMaxEndDeltaKeys) {
+                wMaxEndDeltaKeys = nElms - Pms[grp-1].ms_delta;
+            }
+        } else {
+            wMaxEndDeltaKeys = nElms;
+        }
+        //printf("# nElms 0x%04zx %zd\n", nElms, nElms);
+        //printf("# Pms[grp[-1].ms_delta 0x%04zx %zd\n", Pms[grp-1].ms_delta, Pms[grp-1].ms_delta);
+        //printf("# Pms[grp[-2].ms_delta 0x%04zx %zd\n", Pms[grp-2].ms_delta, Pms[grp-2].ms_delta);
+        //printf("# TValues 0x%04zx %zd\n", TValues, TValues);
+        //printf("# wMaxEndDeltaKeys 0x%04zx %zd\n", wMaxEndDeltaKeys, wMaxEndDeltaKeys);
+#endif // CALC_NEXT_KEY
     }
     else
     {
