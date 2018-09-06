@@ -573,6 +573,12 @@ Word_t    StartSequent = 1;
 //
 //Word_t    Key = 0xc1fc;
 
+Word_t PartitionDeltaFlag = 1;
+
+#ifndef CALC_NEXT_KEY
+Word_t TrimKeyArrayFlag = 1;
+#endif // CALC_NEXT_KEY
+
 static inline Word_t
 MyPDEP(Word_t wSrc, Word_t wMask)
 {
@@ -2134,6 +2140,18 @@ main(int argc, char *argv[])
     }
     // Groups = number of sizes
 
+#ifndef CALC_NEXT_KEY
+    // Trim size of key array based on partitioning of groups/deltas into
+    // parts that are no bigger than TValues keys.
+    // Might be able to trim this even more, but we've taken care of the
+    // vast majority of waste with this.
+    if (PartitionDeltaFlag && TrimKeyArrayFlag) {
+        if (wMaxEndDeltaKeys > 2 * TValues) {
+            wMaxEndDeltaKeys = 2 * TValues;
+        }
+    }
+#endif // CALC_NEXT_KEY
+
     if (GValue)
     {
         if (CFlag || vFlag || dFlag)
@@ -2538,6 +2556,8 @@ main(int argc, char *argv[])
     static int PrevLogPop1 = 9; // minimum BValue minus one
 #endif // CALC_NEXT_KEY
 
+    Word_t wFinalPop1 = 0;
+
     for (Pop1 = grp = 0; grp < Groups; grp++)
     {
         Word_t    Delta;
@@ -2549,6 +2569,23 @@ main(int argc, char *argv[])
 
         if (Delta == 0)
             break;
+
+        wFinalPop1 += Delta;
+
+        if (PartitionDeltaFlag) {
+            if (Delta > TValues) {
+                // Number of TValues size parts.
+                // Plus 1 if there is any remainder.
+                Word_t wParts = (Delta + TValues - 1) / TValues;
+                // Equal size parts except the last part may be slightly
+                // smaller.
+                Delta = (Delta + wParts - 1) / wParts;
+            }
+nextPart:
+            if (Pop1 + Delta > wFinalPop1) {
+                Delta = wFinalPop1 - Pop1;
+            }
+        }
 
 //      Accumulate the Total population of arrays
         Pop1 += Delta;
@@ -2594,7 +2631,10 @@ main(int argc, char *argv[])
             PrintHeader();
         }
 
-        printf("%11" PRIuPTR" %10" PRIuPTR" %10" PRIuPTR, Pop1, Delta, Meas);
+        if (Pop1 == wFinalPop1) {
+            printf("%11" PRIuPTR" %10" PRIuPTR" %10" PRIuPTR,
+                   Pop1, Delta, Meas);
+        }
 
 #ifdef NEVER
         I dont think this code is ever executed (dlb)
@@ -2671,26 +2711,29 @@ main(int argc, char *argv[])
             Tit = 1;                    // include Judy
             WaitForContextSwitch(Delta);
             TestJudyIns(&J1, &JL, &JH, &InsertSeed, Delta);
-            if (J1Flag)
-            {
-                if (tFlag)
-                    PRINT6_1f(DeltaGen1);
-                DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
+
+            if (Pop1 == wFinalPop1) {
+                if (J1Flag)
+                {
+                    if (tFlag)
+                        PRINT6_1f(DeltaGen1);
+                    DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
+                }
+                if (JLFlag)
+                {
+                    if (tFlag)
+                        PRINT6_1f(DeltaGenL);
+                    DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+                }
+                if (JHFlag)
+                {
+                    if (tFlag)
+                        PRINT6_1f(DeltaGenHS);
+                    DONTPRINTLESSTHANZERO(DeltanSecHS, DeltaGenHS);
+                }
+                if (fFlag)
+                    fflush(NULL);
             }
-            if (JLFlag)
-            {
-                if (tFlag)
-                    PRINT6_1f(DeltaGenL);
-                DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
-            }
-            if (JHFlag)
-            {
-                if (tFlag)
-                    PRINT6_1f(DeltaGenHS);
-                DONTPRINTLESSTHANZERO(DeltanSecHS, DeltaGenHS);
-            }
-            if (fFlag)
-                fflush(NULL);
 
 //      Note: the Get/Test code always tests from the "first" Key inserted.
 //      The assumption is the "just inserted" Key would be unfair because
@@ -2846,26 +2889,28 @@ main(int argc, char *argv[])
             DirectHits      = j__DirectHits;           // Number of direct hits
             SearchGets       = j__SearchGets;           // Number of object calls
 
-            if (J1Flag)
-            {
-                if (tFlag)
-                    PRINT6_1f(DeltaGen1);
-                DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
+            if (Pop1 == wFinalPop1) {
+                if (J1Flag)
+                {
+                    if (tFlag)
+                        PRINT6_1f(DeltaGen1);
+                    DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
+                }
+                if (JLFlag)
+                {
+                    if (tFlag)
+                        PRINT6_1f(DeltaGenL);
+                    DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+                }
+                if (JHFlag)
+                {
+                    if (tFlag)
+                        PRINT6_1f(DeltaGenHS);
+                    DONTPRINTLESSTHANZERO(DeltanSecHS, DeltaGenHS);
+                }
+                if (fFlag)
+                    fflush(NULL);
             }
-            if (JLFlag)
-            {
-                if (tFlag)
-                    PRINT6_1f(DeltaGenL);
-                DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
-            }
-            if (JHFlag)
-            {
-                if (tFlag)
-                    PRINT6_1f(DeltaGenHS);
-                DONTPRINTLESSTHANZERO(DeltanSecHS, DeltaGenHS);
-            }
-            if (fFlag)
-                fflush(NULL);
         }
 
 //      Insert/Get JudyL using Value area as next Key
@@ -2906,11 +2951,13 @@ main(int argc, char *argv[])
             DirectHits       = j__DirectHits;           // Number of direct hits
             SearchGets       = j__SearchGets;           // Number of object calls
 
-            if (tFlag)
-                PRINT6_1f(DeltaGenL);
-            DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
-            if (fFlag)
-                fflush(NULL);
+            if (Pop1 == wFinalPop1) {
+                if (tFlag)
+                    PRINT6_1f(DeltaGenL);
+                DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+                if (fFlag)
+                    fflush(NULL);
+            }
         }
 
 //      Test a REAL bitmap
@@ -2946,11 +2993,13 @@ main(int argc, char *argv[])
             WaitForContextSwitch(Meas);
             TestBitmapTest(B1, &BeginSeed, Meas);
 
-            if (tFlag)
-                PRINT6_1f(DeltanBit);
-            DONTPRINTLESSTHANZERO(DeltanSecBt, DeltanBit);
-            if (fFlag)
-                fflush(NULL);
+            if (Pop1 == wFinalPop1) {
+                if (tFlag)
+                    PRINT6_1f(DeltanBit);
+                DONTPRINTLESSTHANZERO(DeltanSecBt, DeltanBit);
+                if (fFlag)
+                    fflush(NULL);
+            }
         }
 
 //      Test a REAL ByteMap
@@ -2986,11 +3035,13 @@ main(int argc, char *argv[])
             WaitForContextSwitch(Meas);
             TestByteTest(&BeginSeed, Meas);
 
-            if (tFlag)
-                PRINT6_1f(DeltanByte);
-            DONTPRINTLESSTHANZERO(DeltanSecBy, DeltanByte);
-            if (fFlag)
-                fflush(NULL);
+            if (Pop1 == wFinalPop1) {
+                if (tFlag)
+                    PRINT6_1f(DeltanByte);
+                DONTPRINTLESSTHANZERO(DeltanSecBy, DeltanByte);
+                if (fFlag)
+                    fflush(NULL);
+            }
         }
 
 //      Test J1T, JLI, JHSI - duplicates
@@ -3009,22 +3060,26 @@ main(int argc, char *argv[])
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             TestJudyDup(&J1, &JL, &JH, &BeginSeed, Meas);
-            if (J1Flag)
-                DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
-            if (JLFlag)
-                DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
-            if (JHFlag)
-                DONTPRINTLESSTHANZERO(DeltanSecHS, DeltaGenHS);
-            if (fFlag)
-                fflush(NULL);
+            if (Pop1 == wFinalPop1) {
+                if (J1Flag)
+                    DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
+                if (JLFlag)
+                    DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+                if (JHFlag)
+                    DONTPRINTLESSTHANZERO(DeltanSecHS, DeltaGenHS);
+                if (fFlag)
+                    fflush(NULL);
+            }
         }
         if (cFlag && J1Flag)
         {
             WaitForContextSwitch(Meas);
             TestJudy1Copy(J1, Meas);
-            PRINT6_1f(DeltanSec1);
-            if (fFlag)
-                fflush(NULL);
+            if (Pop1 == wFinalPop1) {
+                PRINT6_1f(DeltanSec1);
+                if (fFlag)
+                    fflush(NULL);
+            }
         }
         if (CFlag)
         {
@@ -3037,12 +3092,14 @@ main(int argc, char *argv[])
             Tit = 1;
             WaitForContextSwitch(Meas);
             TestJudyCount(J1, JL, &BeginSeed, Meas);
-            if (J1Flag)
-                DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
-            if (JLFlag)
-                DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
-            if (fFlag)
-                fflush(NULL);
+            if (Pop1 == wFinalPop1) {
+                if (J1Flag)
+                    DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
+                if (JLFlag)
+                    DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+                if (fFlag)
+                    fflush(NULL);
+            }
         }
         if (vFlag)
         {
@@ -3058,12 +3115,14 @@ main(int argc, char *argv[])
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             TestJudyNext(J1, JL, &BeginSeed, Meas);
-            if (J1Flag)
-                PRINT6_1f(DeltanSec1);
-            if (JLFlag)
-                PRINT6_1f(DeltanSecL);
-            if (fFlag)
-                fflush(NULL);
+            if (Pop1 == wFinalPop1) {
+                if (J1Flag)
+                    PRINT6_1f(DeltanSec1);
+                if (JLFlag)
+                    PRINT6_1f(DeltanSecL);
+                if (fFlag)
+                    fflush(NULL);
+            }
 
 //          Test J1P, JLP
             Tit = 0;
@@ -3077,12 +3136,14 @@ main(int argc, char *argv[])
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             TestJudyPrev(J1, JL, &BeginSeed, ~(Word_t)0, Meas);
-            if (J1Flag)
-                PRINT6_1f(DeltanSec1);
-            if (JLFlag)
-                PRINT6_1f(DeltanSecL);
-            if (fFlag)
-                fflush(NULL);
+            if (Pop1 == wFinalPop1) {
+                if (J1Flag)
+                    PRINT6_1f(DeltanSec1);
+                if (JLFlag)
+                    PRINT6_1f(DeltanSecL);
+                if (fFlag)
+                    fflush(NULL);
+            }
 
 //          Test J1NE, JLNE
             Tit = 0;
@@ -3096,12 +3157,14 @@ main(int argc, char *argv[])
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             TestJudyNextEmpty(J1, JL, &BeginSeed, Meas);
-            if (J1Flag)
-                DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
-            if (JLFlag)
-                DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
-            if (fFlag)
-                fflush(NULL);
+            if (Pop1 == wFinalPop1) {
+                if (J1Flag)
+                    DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
+                if (JLFlag)
+                    DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+                if (fFlag)
+                    fflush(NULL);
+            }
 
 //          Test J1PE, JLPE
 //
@@ -3116,12 +3179,14 @@ main(int argc, char *argv[])
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             TestJudyPrevEmpty(J1, JL, &BeginSeed, Meas);
-            if (J1Flag)
-                DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
-            if (JLFlag)
-                DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
-            if (fFlag)
-                fflush(NULL);
+            if (Pop1 == wFinalPop1) {
+                if (J1Flag)
+                    DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
+                if (JLFlag)
+                    DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+                if (fFlag)
+                    fflush(NULL);
+            }
         }
 
 //      Test J1U, JLD, JHSD
@@ -3139,14 +3204,16 @@ main(int argc, char *argv[])
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             TestJudyDel(&J1, &JL, &JH, &BeginSeed, Meas);
-            if (J1Flag)
-                DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
-            if (JLFlag)
-                DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
-            if (JHFlag)
-                DONTPRINTLESSTHANZERO(DeltanSecHS, DeltaGenHS);
-            if (fFlag)
-                fflush(NULL);
+            if (Pop1 == wFinalPop1) {
+                if (J1Flag)
+                    DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
+                if (JLFlag)
+                    DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+                if (JHFlag)
+                    DONTPRINTLESSTHANZERO(DeltanSecHS, DeltaGenHS);
+                if (fFlag)
+                    fflush(NULL);
+            }
 
 //          Now put back the Just deleted Keys
             Tit = 1;
@@ -3155,92 +3222,98 @@ main(int argc, char *argv[])
             TestJudyIns(&J1, &JL, &JH, &BeginSeed, Meas);
         }
 
-        if ((J1Flag + JLFlag + JHFlag) == 1)            // only 1 Heap
-            PRINT7_3f((double)j__AllocWordsTOT / (double)Pop1);
+            if (Pop1 == wFinalPop1) {
 
-        if (mFlag && (bFlag == 0) && (yFlag == 0))
-        {
-//            double AveSrcCmp, PercentLeafSearched;
-            double PercentLeafWithDirectHits;
+            if ((J1Flag + JLFlag + JHFlag) == 1)            // only 1 Heap
+                PRINT7_3f((double)j__AllocWordsTOT / (double)Pop1);
 
-//          Calc average compares done in Leaf for this measurement interval
-//            AveSrcCmp = SearchCompares / (double)Meas;
-//            AveSrcCmp = DirectHits / SearchGets;
+            if (mFlag && (bFlag == 0) && (yFlag == 0))
+            {
+//                double AveSrcCmp, PercentLeafSearched;
+                double PercentLeafWithDirectHits;
 
-//          Calc average percent of Leaf searched
-//            if (SearchPopulation == 0)
-//                PercentLeafWithDirectHits = 0.0;
-//            else
-//                PercentLeafWithDirectHits = SearchCompares / SearchPopulation * 100.0;
+//              Calc average compares done in Leaf for this measurement interval
+//                AveSrcCmp = SearchCompares / (double)Meas;
+//                AveSrcCmp = DirectHits / SearchGets;
+
+//              Calc average percent of Leaf searched
+//                if (SearchPopulation == 0)
+//                    PercentLeafWithDirectHits = 0.0;
+//                else
+//                    PercentLeafWithDirectHits = SearchCompares / SearchPopulation * 100.0;
 //
-            if (SearchGets == 0)
-                PercentLeafWithDirectHits = 0.0;
-            else
-                PercentLeafWithDirectHits = DirectHits / SearchGets * 100.0;
+                if (SearchGets == 0)
+                    PercentLeafWithDirectHits = 0.0;
+                else
+                    PercentLeafWithDirectHits = DirectHits / SearchGets * 100.0;
 
-            PRINT5_2f((double)j__AllocWordsJBB   / (double)Pop1);       // 256 node branch
-            PRINT5_2f((double)j__AllocWordsJBU   / (double)Pop1);       // 256 node branch
-            PRINT5_2f((double)j__AllocWordsJBL   / (double)Pop1);       // xx node branch
+                PRINT5_2f((double)j__AllocWordsJBB   / (double)Pop1);       // 256 node branch
+                PRINT5_2f((double)j__AllocWordsJBU   / (double)Pop1);       // 256 node branch
+                PRINT5_2f((double)j__AllocWordsJBL   / (double)Pop1);       // xx node branch
 
 
-            PRINT5_2f((double)j__AllocWordsJLLW  / (double)Pop1);       // 32[64] Key
+                PRINT5_2f((double)j__AllocWordsJLLW  / (double)Pop1);       // 32[64] Key
 
-            PRINT5_2f((double)j__AllocWordsJLL7  / (double)Pop1);       // 32 bit Key
-            PRINT5_2f((double)j__AllocWordsJLL6  / (double)Pop1);       // 16 bit Key
-            PRINT5_2f((double)j__AllocWordsJLL5  / (double)Pop1);       // 16 bit Key
-            PRINT5_2f((double)j__AllocWordsJLL4  / (double)Pop1);       // 16 bit Key
-            PRINT5_2f((double)j__AllocWordsJLL3  / (double)Pop1);       // 16 bit Key
-            PRINT5_2f((double)j__AllocWordsJLL2  / (double)Pop1);       // 12 bit Key
-            PRINT5_2f((double)j__AllocWordsJLL1  / (double)Pop1);       // 12 bit Key
-            PRINT5_2f((double)j__AllocWordsJLB1  / (double)Pop1);       // 12 bit Key
-            PRINT5_2f((double)j__AllocWordsJV    / (double)Pop1);       // Values for 12 bit
+                PRINT5_2f((double)j__AllocWordsJLL7  / (double)Pop1);       // 32 bit Key
+                PRINT5_2f((double)j__AllocWordsJLL6  / (double)Pop1);       // 16 bit Key
+                PRINT5_2f((double)j__AllocWordsJLL5  / (double)Pop1);       // 16 bit Key
+                PRINT5_2f((double)j__AllocWordsJLL4  / (double)Pop1);       // 16 bit Key
+                PRINT5_2f((double)j__AllocWordsJLL3  / (double)Pop1);       // 16 bit Key
+                PRINT5_2f((double)j__AllocWordsJLL2  / (double)Pop1);       // 12 bit Key
+                PRINT5_2f((double)j__AllocWordsJLL1  / (double)Pop1);       // 12 bit Key
+                PRINT5_2f((double)j__AllocWordsJLB1  / (double)Pop1);       // 12 bit Key
+                PRINT5_2f((double)j__AllocWordsJV    / (double)Pop1);       // Values for 12 bit
 
 
 // SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSss
 
 
-//          print average number of failed compares done in leaf search
-//            printf(" %6.1f", AveSrcCmp);
-//            PRINT5_2f(j__MissCompares / (double)Meas);
-            printf(" %5.1f", (double)j__MissCompares / (double)Meas);
+//              print average number of failed compares done in leaf search
+//                printf(" %6.1f", AveSrcCmp);
+//                PRINT5_2f(j__MissCompares / (double)Meas);
+                printf(" %5.1f", (double)j__MissCompares / (double)Meas);
 
 //printf("\nj__MissCompares = %" PRIuPTR", Meas = %" PRIuPTR"\n", j__MissCompares, Meas);
 
-//          print average percent of Leaf searched (with compares)
-            printf(" %5.1f", PercentLeafWithDirectHits);
+//              print average percent of Leaf searched (with compares)
+                printf(" %5.1f", PercentLeafWithDirectHits);
 
-//          print average number of Branches traversed per lookup
-//            printf(" %5.1f", TreeDepth / (double)Meas);
+//              print average number of Branches traversed per lookup
+//                printf(" %5.1f", TreeDepth / (double)Meas);
 //
-            if (j__SearchGets == 0)
-                printf(" %5.1f", 0.0);
-            else
-                printf(" %5.1f", (double)j__SearchPopulation / (double)j__SearchGets);
+                if (j__SearchGets == 0)
+                    printf(" %5.1f", 0.0);
+                else
+                    printf(" %5.1f", (double)j__SearchPopulation / (double)j__SearchGets);
 
-//          reset for next measurement
-//            j__SearchPopulation = j__TreeDepth = j__MissCompares = j__DirectHits = j__SearchGets = 0;
-            j__SearchPopulation = j__MissCompares = j__DirectHits = j__SearchGets = 0;
+//              reset for next measurement
+//                j__SearchPopulation = j__TreeDepth = j__MissCompares = j__DirectHits = j__SearchGets = 0;
+                j__SearchPopulation = j__MissCompares = j__DirectHits = j__SearchGets = 0;
 
 
 // SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSss
 
 
-//          Print the percent efficiency of dlmalloc
-            PRINT7_3f(j__AllocWordsTOT / (double)(j__TotalBytesAllocated / sizeof(Word_t)));
-            if (J1Flag)
-                PRINT5_2f((double)DeltaMalFre1);
-            if (JLFlag || JRFlag)
-                PRINT5_2f((double)DeltaMalFreL);
-            if (JHFlag)
-                PRINT5_2f((double)DeltaMalFreHS);
+//              Print the percent efficiency of dlmalloc
+                PRINT7_3f(j__AllocWordsTOT / (double)(j__TotalBytesAllocated / sizeof(Word_t)));
+                if (J1Flag)
+                    PRINT5_2f((double)DeltaMalFre1);
+                if (JLFlag || JRFlag)
+                    PRINT5_2f((double)DeltaMalFreL);
+                if (JHFlag)
+                    PRINT5_2f((double)DeltaMalFreHS);
+            }
+            if (yFlag || bFlag)
+            {
+                printf(" %14.2f", ((double)j__TotalBytesAllocated / sizeof(Word_t)) / (double)Pop1);
+            }
+            printf("\n");
+            if (fFlag)
+                fflush(NULL);                   // assure data gets to file in case malloc fail
         }
-        if (yFlag || bFlag)
-        {
-            printf(" %14.2f", ((double)j__TotalBytesAllocated / sizeof(Word_t)) / (double)Pop1);
+        if (Pop1 != wFinalPop1) {
+            goto nextPart;
         }
-        printf("\n");
-        if (fFlag)
-            fflush(NULL);                   // assure data gets to file in case malloc fail
     }
 
     if (J1Flag)
