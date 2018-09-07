@@ -2185,6 +2185,8 @@ main(int argc, char *argv[])
         // Use FileKeys for Get measurements even without -F.
         if (FileKeys == NULL)
         {
+            // Add one to wMaxEndDeltaKeys because TestJudyLInsert does one
+            // extra GetNextKey.
             Word_t wKeysP1 = wMaxEndDeltaKeys + 1;
             // align wBytes and add an extra huge page so align after alloc is ok
             Word_t wBytes = ((wKeysP1 * sizeof(Word_t)) + 0x3fffff) & ~0x1fffff;
@@ -2221,6 +2223,7 @@ main(int argc, char *argv[])
         }
         StartSeed = FileKeys;
     }
+    // DeltaSeed is not used until we have to initialize keys beyond TValues.
     Seed_t DeltaSeed;
 #endif // CALC_NEXT_KEY
 
@@ -2666,7 +2669,10 @@ nextPart:
 #ifndef CALC_NEXT_KEY
         if (!bLfsrOnly)
         {
+            // What happens if Pop1 == TValues?
             PWord_t DeltaKeys = &FileKeys[Pop1 - Delta]; // array of Delta keys
+            // The above init of DeltaKeys holds up only
+            // if Pop1 - Delta < TValues.
             if (Pop1 >= TValues)
             {
                 Word_t ww;
@@ -2684,13 +2690,17 @@ nextPart:
                     DeltaSeed = TValuesSeed;
                     ww = TValues - (Pop1 - Delta);
                 }
+                // If (Pop1 == TValues) ww = Delta
+                // and &DeltaKeys[ww] = &FileKeys[TValues].
 
                 for (; ww < Delta; ww++)
                 {
                     DeltaKeys[ww] = CalcNextKey(&DeltaSeed);
                 }
-
+                // Now &DeltaKeys[ww] is one past the end of part.
+ 
                 // Get one more for -R but don't update InsertSeed.
+                // TestJudyLIns does one GetNextKey after the delta.
                 Seed_t TempSeed = DeltaSeed;
                 DeltaKeys[ww] = CalcNextKey(&TempSeed);
             }
@@ -3921,6 +3931,8 @@ TestJudyLIns(void **JL, PNewSeed_t PSeed, Word_t Elements)
         // How do I avoid going past the end of the array?
         // By making the array one bigger than it would otherwise need to be.
         NewSeed_t TempSeed = WorkingSeed;
+        // This GetNextKey is the reason the key array has to be one bigger
+        // than the maximum delta size.
         TstKey = GetNextKey(&TempSeed);
         *PValue = TstKey;
 
