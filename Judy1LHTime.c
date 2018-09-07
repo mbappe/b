@@ -710,8 +710,10 @@ CalcNextKey(PSeed_t PSeed)
 // and the test will be compiled out of the test loop.
 // It has a wFeedBTapArg parameter so the caller can use a local variable if
 // that is faster.
+#ifndef NO_LFSR_GET_FOR_DS1_ONLY
 // We've hacked the code to overload the bLfsrOnlyArg parameter to help us
 // with the !CALC_NEXT_KEY && DFlag && (SValue == 1) case.
+#endif // NO_LFSR_GET_FOR_DS1_ONLY
 static inline Word_t
 GetNextKeyX(PNewSeed_t PNewSeed, Word_t wFeedBTapArg, int bLfsrOnlyArg)
 {
@@ -724,8 +726,10 @@ GetNextKeyX(PNewSeed_t PNewSeed, Word_t wFeedBTapArg, int bLfsrOnlyArg)
         // PNewSeed is a pointer to a word with the next key value in it.
         Word_t wKey = (Word_t)*PNewSeed;
         *PNewSeed = (NewSeed_t)((wKey >> krshift) ^ (wFeedBTapArg & -(wKey & 1)));
+#ifndef NO_LFSR_GET_FOR_DS1_ONLY
 // Look at assembly to see if this goes away except for -DS1.
         wKey <<= bLfsrOnlyArg - 1; // for -DS1
+#endif // NO_LFSR_GET_FOR_DS1_ONLY
         return wKey;
     } else {
         // PNewSeed is a pointer to a pointer into the key array.
@@ -2777,6 +2781,7 @@ nextPart:
                                     /* KFlag */ 1, /* hFlag */ 1,
                                     /* bLfsrOnly */ 0);
                     } else {
+#ifndef NO_LFSR_GET_FOR_DS1_ONLY
 #ifndef CALC_NEXT_KEY
                         if (bLfsrGetForDS1Only && (wFeedBTap != 0)) {
                             BeginSeed = (NewSeed_t)StartSequent;
@@ -2786,6 +2791,7 @@ nextPart:
                                         /* bLfsrOnly */ BValue - LogPop1 + 1);
                         } else
 #endif // CALC_NEXT_KEY
+#endif // NO_LFSR_GET_FOR_DS1_ONLY
                         TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
                                     /* KFlag */ 1, /* hFlag */ 0,
                                     /* bLfsrOnly */ 0);
@@ -2796,6 +2802,7 @@ nextPart:
                                     /* KFlag */ 0, /* hFlag */ 1,
                                     /* bLfsrOnly */ 0);
                     } else {
+#ifndef NO_LFSR_GET_FOR_DS1_ONLY
 #ifndef CALC_NEXT_KEY
                         if (bLfsrGetForDS1Only && (wFeedBTap != 0)) {
                             BeginSeed = (NewSeed_t)StartSequent;
@@ -2805,6 +2812,7 @@ nextPart:
                                         /* bLfsrOnly */ BValue - LogPop1 + 1);
                         } else
 #endif // CALC_NEXT_KEY
+#endif // NO_LFSR_GET_FOR_DS1_ONLY
                         TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
                                     /* KFlag */ 0, /* hFlag */ 0,
                                     /* bLfsrOnly */ 0);
@@ -2849,6 +2857,7 @@ nextPart:
                                     /* KFlag */ 1, /* hFlag */ 1,
                                     /* bLfsrOnly */ 0);
                     } else {
+#ifndef NO_LFSR_GET_FOR_DS1_ONLY
 #ifndef CALC_NEXT_KEY
                         if (bLfsrGetForDS1Only && (wFeedBTap != 0)) {
                             BeginSeed = (NewSeed_t)StartSequent;
@@ -2858,6 +2867,7 @@ nextPart:
                                         /* bLfsrOnly */ BValue - LogPop1 + 1);
                         } else
 #endif // CALC_NEXT_KEY
+#endif // NO_LFSR_GET_FOR_DS1_ONLY
                         TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
                                     /* KFlag */ 1, /* hFlag */ 0,
                                     /* bLfsrOnly */ 0);
@@ -2868,6 +2878,7 @@ nextPart:
                                     /* KFlag */ 0, /* hFlag */ 1,
                                     /* bLfsrOnly */ 0);
                     } else {
+#ifndef NO_LFSR_GET_FOR_DS1_ONLY
 #ifndef CALC_NEXT_KEY
                         if (bLfsrGetForDS1Only && (wFeedBTap != 0)) {
                             BeginSeed = (NewSeed_t)StartSequent;
@@ -2877,6 +2888,7 @@ nextPart:
                                         /* bLfsrOnly */ BValue - LogPop1 + 1);
                         } else
 #endif // CALC_NEXT_KEY
+#endif // NO_LFSR_GET_FOR_DS1_ONLY
                         TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
                                     /* KFlag */ 0, /* hFlag */ 0,
                                     /* bLfsrOnly */ 0);
