@@ -34,7 +34,7 @@
 //
 // List of "magic" feedback points for Random number generator
 static Word_t MagicList[] = {
-    0, 0,                       // 0..1
+    0, 1,                       // 0..1
     0x3,                        // 2
     0x5,                        // 3
     0x9,                        // 4
@@ -191,7 +191,7 @@ RandomInit(Word_t Bits, Word_t Order)
     CurrentSeeds.Order = aOrders[Order];
     MaxBits -= CurrentSeeds.Order;
 #endif // GAUSS
-    if (Bits < 10 || Bits > MaxBits)    // cannot be larger than Word_t size
+    if (Bits < 1 || Bits > MaxBits)    // cannot be larger than Word_t size
         return ((PSeed_t) NULL);
     return (&CurrentSeeds);
 }

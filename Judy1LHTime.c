@@ -6,7 +6,8 @@
 //   email - dougbaskins .at. yahoo.com -or- dougbaskins .at. gmail.com
 // =======================================================================
 
-
+// MEB:
+// TODO: Enhance -F to read the file in parts.
 
 #include <unistd.h>                     // getopt()
 #include <getopt.h>                     // getopt_long()
@@ -497,8 +498,13 @@ Word_t    Tit = 1;                      // to measure with calling Judy
 Word_t    VFlag = 1;                    // To verify Value Area contains good Data
 Word_t    fFlag = 0;
 Word_t    KFlag = 0;                    // do a __sync_synchronize() in GetNextKey()
+
+// bLfsrOnly is a way to use a simple, fast lfsr with -UCALC_NEXT_KEY.
 int       bLfsrOnly = 0;      // -k,--lfsr-only; use lfsr with no -B:DEFGNOoS
-Word_t wFeedBTap; // for bLfsrOnly
+// -k with -DS1 requires -DLFSR_GET_FOR_DS1
+int bLfsrForGetOnly = 0; // -k with -DS1 uses fast lfsr for gets only
+
+Word_t wFeedBTap = (Word_t)-1; // for bLfsrOnly; -1 means uninitialized
 static int krshift = 1; // for bLfsrOnly -- static makes it faster
 
 Word_t    hFlag = 0;                    // add "holes" into the insert code
@@ -563,7 +569,6 @@ PWord_t   FileKeys = NULL;              // array of FValue keys
 // Swizzle flag == 1 >> I.E. bit reverse (mirror) the data
 //
 Word_t    DFlag = 0;                    // bit reverse (mirror) the data stream
-int bLfsrGetForDS1Only = 0;
 
 // Default starting seed value; -s
 //
@@ -577,6 +582,10 @@ Word_t PartitionDeltaFlag = 1;
 
 #ifndef CALC_NEXT_KEY
 Word_t TrimKeyArrayFlag = 1;
+// The initial value of wPrevLogPop1 determines when we transition from
+// sequential test keys to random test keys for -DS1.
+// Use wPrevLogPop1 = 64 to use sequential test keys throughout.
+int wPrevLogPop1 = 0; // wPrevLogPop1 is used only for -DS1.
 #endif // CALC_NEXT_KEY
 
 static inline Word_t
@@ -710,10 +719,10 @@ CalcNextKey(PSeed_t PSeed)
 // and the test will be compiled out of the test loop.
 // It has a wFeedBTapArg parameter so the caller can use a local variable if
 // that is faster.
-#ifndef NO_LFSR_GET_FOR_DS1_ONLY
-// We've hacked the code to overload the bLfsrOnlyArg parameter to help us
-// with the !CALC_NEXT_KEY && DFlag && (SValue == 1) case.
-#endif // NO_LFSR_GET_FOR_DS1_ONLY
+#ifdef LFSR_GET_FOR_DS1
+// We've hacked the code to overload the bLfsrOnlyArg parameter in case we
+// want -k to cause us to use the fast lfsr in TestJudyGet for -DS1.
+#endif // LFSR_GET_FOR_DS1
 static inline Word_t
 GetNextKeyX(PNewSeed_t PNewSeed, Word_t wFeedBTapArg, int bLfsrOnlyArg)
 {
@@ -726,10 +735,9 @@ GetNextKeyX(PNewSeed_t PNewSeed, Word_t wFeedBTapArg, int bLfsrOnlyArg)
         // PNewSeed is a pointer to a word with the next key value in it.
         Word_t wKey = (Word_t)*PNewSeed;
         *PNewSeed = (NewSeed_t)((wKey >> krshift) ^ (wFeedBTapArg & -(wKey & 1)));
-#ifndef NO_LFSR_GET_FOR_DS1_ONLY
-// Look at assembly to see if this goes away except for -DS1.
+#ifdef LFSR_GET_FOR_DS1
         wKey <<= bLfsrOnlyArg - 1; // for -DS1
-#endif // NO_LFSR_GET_FOR_DS1_ONLY
+#endif // LFSR_GET_FOR_DS1
         return wKey;
     } else {
         // PNewSeed is a pointer to a pointer into the key array.
@@ -1682,7 +1690,20 @@ main(int argc, char *argv[])
         if (DFlag || FValue || GValue || Offset || SValue
             || (Bpercent != 100.0))
         {
-            FAILURE("-k is not compatible with -B:DFGNOoS", -1);
+            if (DFlag && (SValue == 1) && (StartSequent == 1)
+                && !bSplayKeyBitsFlag && (Offset == 0) && (Bpercent == 100.0))
+            {
+#ifdef LFSR_GET_FOR_DS1
+                bLfsrForGetOnly = 1;
+                bLfsrOnly = 0;
+#else // LFSR_GET_FOR_DS1
+                FAILURE("Use -DLFSR_GET_FOR_DS1 to use -k with -DS1.", 0);
+#endif // LFSR_GET_FOR_DS1
+            }
+            else
+            {
+                FAILURE("-k is not compatible with -B:DFGNOoS", 0);
+            }
         }
         if (bSplayKeyBitsFlag) {
             if (wSplayMask !=
@@ -2175,7 +2196,6 @@ main(int argc, char *argv[])
 #ifdef CALC_NEXT_KEY
     StartSeed = *PInitSeed;
 #else // CALC_NEXT_KEY
-    Seed_t TValuesSeed;
     if (bLfsrOnly)
     {
         StartSeed = (NewSeed_t)StartSequent;
@@ -2215,16 +2235,18 @@ main(int argc, char *argv[])
 
             Seed_t WorkingSeed = *PInitSeed;
 
+            // These keys are used even for -DS1 until wLogPop is bigger than
+            // wPrevLogPop and we want to reinitialize it using an LFSR.
             for (Word_t ww = 0; ww < TValues; ww++)
             {
                 FileKeys[ww] = CalcNextKey(&WorkingSeed);
             }
-            TValuesSeed = WorkingSeed;
         }
+        // Could use StartSeed = &FileKeys[TValues] for -DS1
+        // if PrevLogPop is initialized to 0.
         StartSeed = FileKeys;
     }
-    // DeltaSeed is not used until we have to initialize keys beyond TValues.
-    Seed_t DeltaSeed;
+    Seed_t DeltaSeed = *PInitSeed; // for CalcNextKey
 #endif // CALC_NEXT_KEY
 
 // ============================================================
@@ -2558,9 +2580,7 @@ main(int argc, char *argv[])
     LastPPop = 100.0;
 
 #ifndef CALC_NEXT_KEY
-    // LogPop1 and PrevLogPop1 are used only for -DS1.
-    int LogPop1 = -1;
-    static int PrevLogPop1 = 9; // minimum BValue minus one
+    int wLogPop1 = wLogPop1; // wLogPop1 is used only for -DS1.
 #endif // CALC_NEXT_KEY
 
     Word_t wFinalPop1 = 0;
@@ -2616,18 +2636,49 @@ nextPart:
 // So that is what we do.
 // This doesn't work unless the -DS1 keys are not modified in any other way.
 // Didn't concern myself with off-by-one bugs here.
+// MEB: We might be able to extend this approach to cover more of the -S cases
+// than just -DS1.
         if (DFlag && (SValue == 1) && (StartSequent == 1)
             && !bSplayKeyBitsFlag && (Offset == 0) && (Bpercent == 100.0))
         {
             assert(!FValue);
             assert(!bLfsrOnly);
-            bLfsrGetForDS1Only = 1;
-            if ((LogPop1 = LOG(Pop1)) > PrevLogPop1) {
+            if ((wLogPop1 = LOG(Pop1)) > wPrevLogPop1) {
+                wPrevLogPop1 = wLogPop1;
                 // RandomInit always initializes the same Seed_t.  Luckily,
                 // that one seed is not being used anymore at this point.
                 // We use it here for the sole purpose of getting FeedBTap.
-                wFeedBTap = RandomInit(LogPop1, 0)->FeedBTap;
-                PrevLogPop1 = LogPop1;
+                PInitSeed = RandomInit(wLogPop1, 0);
+#ifdef LFSR_GET_FOR_DS1
+                wFeedBTap = PInitSeed->FeedBTap;
+                BeginSeed = (NewSeed_t)StartSequent;
+#else // LFSR_GET_FOR_DS1
+                // RandomInit always initializes the same seed.
+                // Copy it to RandomSeed.
+                Seed_t RandomSeed = *PInitSeed;
+                RandomSeed.Seeds[0] = StartSequent;
+                // Reinitialize the TestJudyGet key array.
+                // This method uses as few as half of the inserted keys
+                // for testing. Now that we are using a key array we could
+                // take a little more time if necessary and pick keys from
+                // a larger and/or different subset.
+#endif // LFSR_GET_FOR_DS1
+                for (Word_t ww = 0; ww < TValues; ++ww) {
+                    // I wonder about using CalcNextKey here instead.
+#ifdef LFSR_GET_FOR_DS1
+                    // StartSeed[ww] = ...
+                    FileKeys[ww] = GetNextKeyX(&BeginSeed,
+                                               wFeedBTap,
+                                               BValue - wLogPop1 + 1);
+#else // LFSR_GET_FOR_DS1
+                    // StartSeed[ww] = ...
+                    FileKeys[ww]
+                        = RandomNumb(&RandomSeed, 0) << (BValue - wLogPop1);
+#endif // LFSR_GET_FOR_DS1
+                    if (ww == ((Word_t)1 << wLogPop1) - 1) {
+                        break;
+                    }
+                }
             }
         }
 #endif // CALC_NEXT_KEY
@@ -2669,43 +2720,14 @@ nextPart:
 #ifndef CALC_NEXT_KEY
         if (!bLfsrOnly)
         {
-            // What happens if Pop1 == TValues?
-            PWord_t DeltaKeys = &FileKeys[Pop1 - Delta]; // array of Delta keys
-            // The above init of DeltaKeys holds up only
-            // if Pop1 - Delta < TValues.
-            if (Pop1 >= TValues)
-            {
-                Word_t ww;
-
-                if (Pop1 - Delta >= TValues)
-                {
-                    DeltaKeys = &FileKeys[TValues];
-                    ww = 0;
-                }
-                else
-                {
-                    // This initialization of DeltaSeed must occur only once.
-                    // If done here the initialization may be done one loop
-                    // iteration before it is necessary when Pop1 == TValues.
-                    DeltaSeed = TValuesSeed;
-                    ww = TValues - (Pop1 - Delta);
-                }
-                // If (Pop1 == TValues) ww = Delta
-                // and &DeltaKeys[ww] = &FileKeys[TValues].
-
-                for (; ww < Delta; ww++)
-                {
-                    DeltaKeys[ww] = CalcNextKey(&DeltaSeed);
-                }
-                // Now &DeltaKeys[ww] is one past the end of part.
- 
-                // Get one more for -R but don't update InsertSeed.
-                // TestJudyLIns does one GetNextKey after the delta.
-                Seed_t TempSeed = DeltaSeed;
-                DeltaKeys[ww] = CalcNextKey(&TempSeed);
+            // FileKeys[TValues] is where the delta keys begin.
+            for (Word_t ww = 0; ww < Delta; ww++) {
+                FileKeys[TValues + ww] = CalcNextKey(&DeltaSeed);
             }
-            InsertSeed = DeltaKeys;
-            BitmapSeed = DeltaKeys;
+            Seed_t TempSeedForJRFlag = DeltaSeed;
+            FileKeys[TValues + Delta] = CalcNextKey(&TempSeedForJRFlag);
+            InsertSeed = &FileKeys[TValues];
+            BitmapSeed = InsertSeed;
         }
 #endif // CALC_NEXT_KEY
 
@@ -2791,17 +2813,17 @@ nextPart:
                                     /* KFlag */ 1, /* hFlag */ 1,
                                     /* bLfsrOnly */ 0);
                     } else {
-#ifndef NO_LFSR_GET_FOR_DS1_ONLY
+#ifdef LFSR_GET_FOR_DS1
 #ifndef CALC_NEXT_KEY
-                        if (bLfsrGetForDS1Only && (wFeedBTap != 0)) {
+                        if (bLfsrForGetOnly && (wFeedBTap != (Word_t)-1)) {
                             BeginSeed = (NewSeed_t)StartSequent;
                             TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
                                         /* Tit */ 0, /* KFlag */ 1,
                                         /* hFlag */ 0,
-                                        /* bLfsrOnly */ BValue - LogPop1 + 1);
+                                        /* bLfsrOnly */ BValue - wLogPop1 + 1);
                         } else
 #endif // CALC_NEXT_KEY
-#endif // NO_LFSR_GET_FOR_DS1_ONLY
+#endif // LFSR_GET_FOR_DS1
                         TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
                                     /* KFlag */ 1, /* hFlag */ 0,
                                     /* bLfsrOnly */ 0);
@@ -2812,17 +2834,17 @@ nextPart:
                                     /* KFlag */ 0, /* hFlag */ 1,
                                     /* bLfsrOnly */ 0);
                     } else {
-#ifndef NO_LFSR_GET_FOR_DS1_ONLY
+#ifdef LFSR_GET_FOR_DS1
 #ifndef CALC_NEXT_KEY
-                        if (bLfsrGetForDS1Only && (wFeedBTap != 0)) {
+                        if (bLfsrForGetOnly && (wFeedBTap != (Word_t)-1)) {
                             BeginSeed = (NewSeed_t)StartSequent;
                             TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
                                         /* Tit */ 0, /* KFlag */ 0,
                                         /* hFlag */ 0,
-                                        /* bLfsrOnly */ BValue - LogPop1 + 1);
+                                        /* bLfsrOnly */ BValue - wLogPop1 + 1);
                         } else
 #endif // CALC_NEXT_KEY
-#endif // NO_LFSR_GET_FOR_DS1_ONLY
+#endif // LFSR_GET_FOR_DS1
                         TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
                                     /* KFlag */ 0, /* hFlag */ 0,
                                     /* bLfsrOnly */ 0);
@@ -2867,17 +2889,17 @@ nextPart:
                                     /* KFlag */ 1, /* hFlag */ 1,
                                     /* bLfsrOnly */ 0);
                     } else {
-#ifndef NO_LFSR_GET_FOR_DS1_ONLY
+#ifdef LFSR_GET_FOR_DS1
 #ifndef CALC_NEXT_KEY
-                        if (bLfsrGetForDS1Only && (wFeedBTap != 0)) {
+                        if (bLfsrForGetOnly && (wFeedBTap != (Word_t)-1)) {
                             BeginSeed = (NewSeed_t)StartSequent;
                             TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
                                         /* Tit */ 1, /* KFlag */ 1,
                                         /* hFlag */ 0,
-                                        /* bLfsrOnly */ BValue - LogPop1 + 1);
+                                        /* bLfsrOnly */ BValue - wLogPop1 + 1);
                         } else
 #endif // CALC_NEXT_KEY
-#endif // NO_LFSR_GET_FOR_DS1_ONLY
+#endif // LFSR_GET_FOR_DS1
                         TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
                                     /* KFlag */ 1, /* hFlag */ 0,
                                     /* bLfsrOnly */ 0);
@@ -2888,17 +2910,17 @@ nextPart:
                                     /* KFlag */ 0, /* hFlag */ 1,
                                     /* bLfsrOnly */ 0);
                     } else {
-#ifndef NO_LFSR_GET_FOR_DS1_ONLY
+#ifdef LFSR_GET_FOR_DS1
 #ifndef CALC_NEXT_KEY
-                        if (bLfsrGetForDS1Only && (wFeedBTap != 0)) {
+                        if (bLfsrForGetOnly && (wFeedBTap != (Word_t)-1)) {
                             BeginSeed = (NewSeed_t)StartSequent;
                             TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
                                         /* Tit */ 1, /* KFlag */ 0,
                                         /* hFlag */ 0,
-                                        /* bLfsrOnly */ BValue - LogPop1 + 1);
+                                        /* bLfsrOnly */ BValue - wLogPop1 + 1);
                         } else
 #endif // CALC_NEXT_KEY
-#endif // NO_LFSR_GET_FOR_DS1_ONLY
+#endif // LFSR_GET_FOR_DS1
                         TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
                                     /* KFlag */ 0, /* hFlag */ 0,
                                     /* bLfsrOnly */ 0);
