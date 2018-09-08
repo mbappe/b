@@ -2972,11 +2972,13 @@ nextPart:
             Tit = 1;                    // include Judy
             WaitForContextSwitch(Delta);
             TestJudyLIns(&JL, &InsertSeed, Delta);
-            if (tFlag)
-                PRINT6_1f(DeltaGenL);
-            DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
-            if (fFlag)
-                fflush(NULL);
+            if (Pop1 == wFinalPop1) {
+                if (tFlag)
+                    PRINT6_1f(DeltaGenL);
+                DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+                if (fFlag)
+                    fflush(NULL);
+            }
 
             Tit = 0;                    // exclude Judy
             BeginSeed = StartSeed;      // reset at beginning
@@ -3022,9 +3024,11 @@ nextPart:
             WaitForContextSwitch(Delta);
             TestBitmapSet(&B1, &BitmapSeed, Delta);
 
-            if (tFlag)
-                PRINT6_1f(DeltanBit);
-            DONTPRINTLESSTHANZERO(DeltanSecBt, DeltanBit);
+            if (Pop1 == wFinalPop1) {
+                if (tFlag)
+                    PRINT6_1f(DeltanBit);
+                DONTPRINTLESSTHANZERO(DeltanSecBt, DeltanBit);
+            }
 
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3064,9 +3068,11 @@ nextPart:
             WaitForContextSwitch(Delta);
             TestByteSet(&BitmapSeed, Delta);
 
-            if (tFlag)
-                PRINT6_1f(DeltanByte);
-            DONTPRINTLESSTHANZERO(DeltanSecBy, DeltanByte);
+            if (Pop1 == wFinalPop1) {
+                if (tFlag)
+                    PRINT6_1f(DeltanByte);
+                DONTPRINTLESSTHANZERO(DeltanSecBy, DeltanByte);
+            }
 
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
