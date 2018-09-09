@@ -1525,6 +1525,12 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 
 #endif // defined(LVL_IN_SW)
 
+static inline void
+Set_nBLR(Word_t *pwRoot, int nBLR)
+{
+    set_wr_nBL(*pwRoot, nBLR);
+}
+
 #endif // defined(LVL_IN_WR_HB)
 
 
