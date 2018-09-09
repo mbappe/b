@@ -18,6 +18,13 @@
   #define    SKIP_LINKS
 #endif // NO_SKIP_LINKS
 
+// XX_SW doesn't work without LVL_IN_WR_HB yet.
+#ifdef USE_XX_SW
+  #ifndef LVL_IN_WR_HB
+    #error USE_XX_SW requires LVL_IN_WR_HB
+  #endif // LVL_IN_WR_HB
+#endif // USE_XX_SW
+
 // Default is -DGOTO_AT_FIRST_IN_LOOKUP.
 #ifndef   NO_GOTO_AT_FIRST_IN_LOOKUP
   #undef     GOTO_AT_FIRST_IN_LOOKUP
