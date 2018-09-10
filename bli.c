@@ -2808,9 +2808,17 @@ JudyLIns(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     static Word_t wValue;
 
-    wValue = 0;
+    // Judy1Set returns Success if the key was not already present.
+    // Judy1Set returns Failure if the key was already present.
+    // JudyLGet returns a pointer to the value area if the key was
+    // not already present, and it initializes the value area to zero.
+    // JudyLGet returns a pointer to the value area if the key was
+    // already present, but it leaves the content of the value area alone.
+    if (status == Success) {
+        wValue = 0;
+    }
 
-    return (status == Success) ? (PPvoid_t)&wValue : NULL;
+    return (PPvoid_t)&wValue;
 }
 
 #endif // defined(INSERT)
