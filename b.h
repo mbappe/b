@@ -2583,7 +2583,7 @@ snListSwPop(qp, int nPopCnt)
     (assert(wr_pwr(*(_pwRoot)) == (_pwr)), \
     Set_xListPopCnt((_pwRoot), (_nBL), (_cnt)))
 
-Status_t Insert(int nBL, Link_t *pLn, Word_t wKey);
+Word_t *Insert(int nBL, Link_t *pLn, Word_t wKey);
 Word_t Count(int nBL, Link_t *pLn, Word_t wKey);
 Status_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
 

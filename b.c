@@ -2658,23 +2658,22 @@ embeddedKeys:;
         nPopCnt = PWR_xListPopCnt(&wRootOld, pwrOld, nBLOld);
     }
 
-    int status = 0; // for debug
 #if defined(COMPRESSED_LISTS)
     if (nBLOld <= (int)sizeof(uint8_t) * 8) {
         uint8_t *pcKeys = ls_pcKeysNATX(pwrOld, nPopCnt);
         for (int nn = 0; nn < nPopCnt; nn++) {
-            status = Insert(nBL, pLn, pcKeys[nn] | (wKey & ~MSK(8)));
+            Insert(nBL, pLn, pcKeys[nn] | (wKey & ~MSK(8)));
         }
     } else if (nBLOld <= (int)sizeof(uint16_t) * 8) {
         uint16_t *psKeys = ls_psKeysNATX(pwrOld, nPopCnt);
         for (int nn = 0; nn < nPopCnt; nn++) {
-            status = Insert(nBL, pLn, psKeys[nn] | (wKey & ~MSK(16)));
+            Insert(nBL, pLn, psKeys[nn] | (wKey & ~MSK(16)));
         }
 #if (cnBitsPerWord > 32)
     } else if (nBLOld <= (int)sizeof(uint32_t) * 8) {
         uint32_t *piKeys = ls_piKeysNATX(pwrOld, nPopCnt);
         for (int nn = 0; nn < nPopCnt; nn++) {
-            status = Insert(nBL, pLn, piKeys[nn] | (wKey & ~MSK(32)));
+            Insert(nBL, pLn, piKeys[nn] | (wKey & ~MSK(32)));
         }
 #endif // (cnBitsPerWord > 32)
     } else
@@ -2682,11 +2681,9 @@ embeddedKeys:;
     {
         Word_t *pwKeys = ls_pwKeysX(pwrOld, nBL, nPopCnt);
         for (int nn = 0; nn < nPopCnt; nn++) {
-            status = Insert(nBL, pLn, pwKeys[nn]);
+            Insert(nBL, pLn, pwKeys[nn]);
         }
     }
-    assert(status == 1);
-    (void)status;
 
 #if defined(NO_TYPE_IN_XX_SW)
     // OldList uses nType even if (nBL < nDL_to_nBL(2)) implies an
