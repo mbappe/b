@@ -6296,7 +6296,7 @@ Initialize(void)
 // JUDY1 FUNCTIONS:
 
 Word_t
-Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
+JudyLFreeArray(PPvoid_t PPArray, PJError_t PJError)
 {
     (void)PJError; // suppress "unused parameter" compiler warnings
 
@@ -6391,7 +6391,7 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
     assert(wMallocs == 0);
 
     // Should have FreeArrayGuts adjust wPopCntTotal this as it goes.
-    assert(Judy1Count(*PPArray, 0, (Word_t)-1, NULL) == 0);
+    assert(JudyLCount(*PPArray, 0, (Word_t)-1, NULL) == 0);
     wPopCntTotal = 0; // What if there is more than one Judy1 array?
 
   // Judy1LHTime and Judy1LHCheck put a zero word before and after the root
@@ -6409,6 +6409,14 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 #endif // (cnDigitsPerWord != 1)
 }
 
+Word_t
+Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
+{
+    printf("Judy1FreeArray\n");
+    return Judy1FreeArray(PPArray, PJError);
+}
+
+
 // Return the number of keys that are present from wKey0 through wKey1.
 // Include wKey0 and wKey1 in the count if they are present.
 // Return zero for full pop and identify this case by:
@@ -6418,7 +6426,7 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 // Pcvoid_t is a pointer to a constant.
 // The value of *PArray cannot be changed.
 Word_t
-Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
+JudyLCount(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
 {
     DBGC(printf("Judy1Count(wKey0 " Owx" wKey1 " Owx")\n", wKey0, wKey1));
     //DBGC(Dump(pwRootLast, 0, cnBitsPerWord));
@@ -6467,9 +6475,9 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
     Word_t wCount1 = Count(cnBitsPerWord, pLn, wKey1);
     DBGC(printf("Count wKey1 " OWx" Count1 %" _fw"d\n", wKey1, wCount1));
     Word_t wCount = wCount1 - wCount0;
-    int bTest = Judy1Test(PArray, wKey1, NULL); (void)bTest;
-    DBGC(printf("bTest %d\n", bTest));
-    wCount += Judy1Test(PArray, wKey1, NULL);
+    PPvoid_t ppvTest = JudyLGet(PArray, wKey1, NULL); (void)ppvTest;
+    DBGC(printf("ppvTest %p\n", (void *)ppvTest));
+    wCount += JudyLGet(PArray, wKey1, NULL) != NULL;
     DBGC(printf("Judy1Count will return wCount %" _fw"d\n", wCount));
 
     if ((wKey0 == 0) && (wKey1 == (Word_t)-1))
@@ -6547,6 +6555,13 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
     return wPopCntTotal;
 
 #endif // (cnDigitsPerWord != 1)
+}
+
+Word_t
+Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
+{
+    printf("Judy1Count\n");
+    return Judy1Count(PArray, wKey0, wKey1, pJError);
 }
 
 // NextGuts(wRoot, nBL, pwKey, wSkip, bPrev, bEmpty)
@@ -7965,17 +7980,5 @@ Judy1MemActive(Pcvoid_t PArray)
 {
     (void)PArray;
     return 0;
-}
-
-Word_t
-JudyLFreeArray(PPvoid_t PPArray, PJError_t PJError)
-{
-    return Judy1FreeArray(PPArray, PJError);
-}
-
-Word_t
-JudyLCount(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
-{
-    return Judy1Count(PArray, wKey0, wKey1, pJError);
 }
 

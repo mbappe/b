@@ -2339,8 +2339,8 @@ cleanup:;
 //     'typedef void * const Pcvoid_t'.
 // 'Pcvoid_t PArray' is the same as 'const void * PArray'.
 // *pcvRoot cannot be modified.
-int // Status_t
-Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
+PPvoid_t // typedef void **
+JudyLGet(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 {
 #if (cnDigitsPerWord > 1)
 
@@ -2350,6 +2350,12 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     int nType = wr_nType(wRoot);
     Word_t *pwr = wr_pwr(wRoot);
     qv;
+
+    Status_t status;
+
+    static Word_t wValue;
+
+    wValue = wKey;
 
   #if (cwListPopCntMax != 0)
       #if defined(SEARCH_FROM_WRAPPER)
@@ -2368,27 +2374,31 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     {
         // PWR_xListPopCount is valid only at the top for PP_IN_LINK.
         // The first word in the list is used for pop count at the top.
-        return (1
+        status = (1
 #if ! defined(SEPARATE_T_NULL)
-                && (pwr != NULL)
+                  && (pwr != NULL)
 #endif // ! defined(SEPARATE_T_NULL)
-                && (SearchListWord(ls_pwKeys(pwr, cnBitsPerWord),
-                                   wKey, cnBitsPerWord,
-                                   gnListPopCnt(qy, /* nBLR */ nBL))
-                    >= 0))
+                  && (SearchListWord(ls_pwKeys(pwr, cnBitsPerWord),
+                                     wKey, cnBitsPerWord,
+                                     gnListPopCnt(qy, /* nBLR */ nBL))
+                      >= 0))
             ? Success : Failure;
+
+        return (status == Success) ? (PPvoid_t)&wValue : NULL;
     }
       #endif // defined(SEARCH_FROM_WRAPPER)
   #endif // (cwListPopCntMax != 0)
 
-    return Lookup(
+    status = Lookup(
   #if defined(PLN_PARAM_FOR_LOOKUP)
-                  pLn,
+                    pLn,
   #else // defined(PLN_PARAM_FOR_LOOKUP)
-                  wRoot,
+                    wRoot,
   #endif // defined(PLN_PARAM_FOR_LOOKUP)
-                  wKey
-                  );
+                    wKey
+                    );
+
+    return (status == Success) ? (PPvoid_t)&wValue : NULL;
 
 #else // (cnDigitsPerWord > 1)
 
@@ -2439,15 +2449,34 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     (void)PJError; // suppress "unused parameter" compiler warning
 }
 
+int // Status_t
+Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
+{
+    (void)pcvRoot; (void)wKey; (void)PJError;
+
+    printf("Judy1Test stub.\n");
+
+    exit(1);
+
+    return Failure;
+}
+
 #endif // defined(LOOKUP)
 
 #if defined(INSERT)
 
-// 'typedef void ** PPvoid_t'
-int // Status_t
-Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
+// Judy1Set returns Success if the key was not already present.
+// Judy1Set returns Failure if the key was already present.
+// JudyLIns returns a pointer to the value area if the key was
+// not already present, and it initializes the value area to zero.
+// JudyLIns returns a pointer to the value area if the key was
+// already present, but it leaves the content of the value area alone.
+PPvoid_t // 'typedef void ** PPvoid_t'
+JudyLIns(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 {
     Word_t wRoot = *(Word_t*)ppvRoot;
+
+    static Word_t wValue;
 
 #if (cnDigitsPerWord > 1)
 
@@ -2589,7 +2618,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #if ! defined(PP_IN_LINK) || defined(DEBUG_COUNT)
   #if ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
     // Judy1Count really slows down testing for PP_IN_LINK.
-    assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
+    assert(JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
   #endif // ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
   #endif // ! defined(PP_IN_LINK) || defined(DEBUG_COUNT)
 
@@ -2600,7 +2629,11 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     assert(((Word_t*)&pLn->ln_wRoot)[ 1] == 0);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
 
-    return status;
+    if (status == Success) {
+        wValue = 0;
+    }
+
+    return (PPvoid_t)&wValue;
 
 #else // (cnDigitsPerWord > 1)
 
@@ -2642,12 +2675,24 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     (void)PJError; // suppress "unused parameter" compiler warning
 }
 
+int // Status_t
+Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
+{
+    (void)ppvRoot; (void)wKey; (void)PJError;
+
+    printf("Judy1Set stub.\n");
+
+    exit(1);
+
+    return Failure;
+}
+
 #endif // defined(INSERT)
 
 #if defined(REMOVE)
 
 int
-Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
+JudyLDel(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 {
     //Word_t wRoot = *(Word_t*)ppvRoot;
 
@@ -2668,7 +2713,7 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     DBGR(printf("\n\n# Judy1Unset ppvRoot %p wKey " OWx"\n",
                 (void *)ppvRoot, wKey));
 
-    if (Judy1Test((Pcvoid_t)pLn->ln_wRoot, wKey, NULL) != Success) {
+    if (JudyLGet((Pcvoid_t)pLn->ln_wRoot, wKey, NULL) == NULL) {
         return Failure;
     }
 
@@ -2735,12 +2780,12 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #if ! defined(PP_IN_LINK) || defined(DEBUG_COUNT)
   #if ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
     // Judy1Count really slows down testing for PP_IN_LINK.
-    if (Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) != wPopCntTotal) {
+    if (JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL) != wPopCntTotal) {
         printf("wPopCntTotal %zd Judy1Count %zd\n",
                wPopCntTotal,
-               Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL));
+               JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL));
     }
-    assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
+    assert(JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
   #endif // ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
   #endif // ! defined(PP_IN_LINK) || defined(DEBUG_COUNT)
     DBGR(printf("# Judy1Unset (after ): wPopCntTotal %zd\n\n", wPopCntTotal));
@@ -2781,54 +2826,16 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     (void)PJError; // suppress "unused parameter" compiler warnings
 }
 
-#endif // defined(REMOVE)
-
-#if defined(LOOKUP)
-
-PPvoid_t
-JudyLGet(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
-{
-    int status = Judy1Test(pcvRoot, wKey, PJError);
-
-    static Word_t wValue;
-
-    wValue = wKey;
-
-    return (status == Success) ? (PPvoid_t)&wValue : NULL;
-}
-
-#endif // defined(LOOKUP)
-
-#if defined(INSERT)
-
-PPvoid_t
-JudyLIns(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
-{
-    int status = Judy1Set(ppvRoot, wKey, PJError);
-
-    static Word_t wValue;
-
-    // Judy1Set returns Success if the key was not already present.
-    // Judy1Set returns Failure if the key was already present.
-    // JudyLGet returns a pointer to the value area if the key was
-    // not already present, and it initializes the value area to zero.
-    // JudyLGet returns a pointer to the value area if the key was
-    // already present, but it leaves the content of the value area alone.
-    if (status == Success) {
-        wValue = 0;
-    }
-
-    return (PPvoid_t)&wValue;
-}
-
-#endif // defined(INSERT)
-
-#if defined(REMOVE)
-
 int
-JudyLDel(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
+Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 {
-    return Judy1Unset(ppvRoot, wKey, PJError);
+    (void)ppvRoot; (void)wKey; (void)PJError;
+
+    printf("Judy1Unset stub.\n");
+
+    exit(1);
+
+    return Failure;
 }
 
 #endif // defined(REMOVE)
