@@ -2783,3 +2783,34 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 
 #endif // defined(REMOVE)
 
+#if defined(LOOKUP)
+
+PPvoid_t
+JudyLGet(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
+{
+    int status = Judy1Test(pcvRoot, wKey, PJError);
+
+    static Word_t wValue;
+
+    wValue = wKey;
+
+    return (status == Success) ? (PPvoid_t)&wValue : NULL;
+}
+
+#endif // defined(LOOKUP)
+
+#if defined(INSERT)
+
+PPvoid_t
+JudyLIns(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
+{
+    int status = Judy1Set(ppvRoot, wKey, PJError);
+
+    static Word_t wValue;
+
+    wValue = 0;
+
+    return (status == Success) ? (PPvoid_t)&wValue : NULL;
+}
+
+#endif // defined(INSERT)

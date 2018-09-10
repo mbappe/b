@@ -332,72 +332,30 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 
 #if defined(OLD_LISTS)
 
-    int nBytesHdr = cnDummiesInList * sizeof(Word_t);
-    nBytesHdr += (N_LIST_HDR_KEYS + POP_SLOT(nBL)) * nBytesKeySz;
-    if (ALIGN_LIST(nBytesKeySz))
-    {
-        if ((cnMallocMask + 1) < sizeof(Bucket_t)) {
-            // We don't know what address we are going to get from malloc.
-            // We have to allocate enough memory to ensure that we will be able
-            // to align the beginning of the array of real keys.
-            nBytesHdr += sizeof(Bucket_t) - (cnMallocMask + 1);
-            nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(Bucket_t) - (cnMallocMask + 1));
-        } else {
-            nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(Bucket_t));
-        }
-    }
+    assert(cnDummiesInList + N_LIST_HDR_KEYS + POP_SLOT(nBL) == 0);
+    assert(cnMallocMask + 1 == sizeof(Bucket_t));
+    assert(ALIGN_LIST(nBytesKeySz));
+    assert(ALIGN_LIST_LEN(nBytesKeySz));
 
-    int nBytesKeys = wPopCntArg * nBytesKeySz; // add list of real keys
+    int nBytesKeys = ALIGN_UP(wPopCntArg * nBytesKeySz, sizeof(Bucket_t));
+    int nBytesVals = ALIGN_UP(wPopCntArg * sizeof(Word_t), sizeof(Bucket_t));
 
-    // Pad array of keys so the end is aligned.
-    // We'll eventually fill the padding with replicas of the last real key
-    // so parallel searching yields no false positives.
-//printf("nBytesKeySz %d\n", nBytesKeySz);
-    if (ALIGN_LIST_LEN(nBytesKeySz))
-    {
-//printf("nBytesKeys b %d\n", nBytesKeys);
 #if defined(UA_PARALLEL_128)
-        if ((nBL == 16) && (wPopCntArg <= 6)) {
-            // UA_PARALLEL_128 makes a lot of assumptions.
-            // It uses a 96-bit (12 byte) parallel search.
-            // E.g. six keys fit in a three 32-bit-word leaf.
-            assert(nBytesHdr == 0);
-            nBytesKeys = 12;
-        } else
+  #error No UA_PARALLEL_128 for JudyL yet.
 #endif // defined(UA_PARALLEL_128)
-        { nBytesKeys = ALIGN_UP(nBytesKeys, sizeof(Bucket_t)); }
-//printf("nBytesKeys a %d\n", nBytesKeys);
-    }
 
 #if defined(LIST_END_MARKERS)
-    // Make room for -1 at the end to help make search faster.
-    // The marker at the beginning is accounted for in N_LIST_HDR_KEYS.
-    // How should we handle LIST_END_MARKERS for parallel searches?
-    nBytesKeys += nBytesKeySz;
+  #error No LIST_END_MARKERS for JudyL yet.
 #endif // defined(LIST_END_MARKERS)
 
-    int nBytes = nBytesHdr + nBytesKeys;
-
 #if defined(LIST_REQ_MIN_WORDS)
-    return DIV_UP(nBytes, sizeof(Word_t));
+    return (nBytesKeys + nBytesVals) / sizeof(Word_t);
 #else // defined(LIST_REQ_MIN_WORDS)
-    // Round up to full malloc chunk which is some odd number of words.
-    // Malloc always allocates an integral number of MALLOC_ALIGNMENT-size
-    // units with the second word aligned and uses the first word for itself.
-    // Malloc never allocates less than four words.
-    nBytes += sizeof(Word_t); // add a word for malloc
-    int nWords = MAX(4, ALIGN_UP(nBytes, cnMallocMask + 1) >> cnLogBytesPerWord) - 1;
-if (nBL > 32) {
-//printf("nBytesHdr %d\n", nBytesHdr);
-//printf("nBytesKeys %d\n", nBytesKeys);
-//printf("nBytes %d\n", nBytes);
-//printf("ListWordsTypeList(wPopCntArg %zd nBL %d) %d\n", wPopCntArg, nBL, nWords);
-}
-    return nWords;
+  #error LIST_REQ_MIN_WORDS is required for JudyL for now.
 #endif // defined(LIST_REQ_MIN_WORDS)
 
 #else // defined(OLD_LISTS)
-    return ls_nSlotsInList(wPopCntArg, nBL, nBytesKeySz) * nBytesKeySz / sizeof(Word_t);
+  #error JudyL is not coded yet for !defined(OLD_LISTS).
 #endif // defined(OLD_LISTS)
 }
 
@@ -502,20 +460,12 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
     unsigned nWords = ListWordsTypeList(wPopCnt, nBL);
 
     Word_t *pwList;
-#if defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
-    // this is overkill since we don't care if lists are aligned;
-    // only that we don't cross a cache line boundary unnecessarily
-    if ((nBL <= 16) && (nWords > 2)) {
-        posix_memalign((void **)&pwList, 64, nWords * sizeof(Word_t));
-    } else
-#endif // defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
+
     {
         pwList = (Word_t *)MyMalloc(nWords);
     }
 
-#if ! defined(OLD_LISTS)
-    pwList += nWords - 1;
-#endif // ! defined(OLD_LISTS)
+    pwList = (Word_t *)ALIGN_UP((Word_t)&pwList[wPopCnt], sizeof(Bucket_t));
 
     NewListCommon(pwList, wPopCnt, nBL, nWords);
 
@@ -594,6 +544,8 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
     assert(nType == T_LIST);
     if (nType == T_LIST) { pwList -= nWords - 1; }
 #endif // ! defined(OLD_LISTS)
+
+    pwList = (Word_t *)((Word_t)&pwList[-nPopCnt] & ~cnMallocMask);
 
 #if defined(COMPRESSED_LISTS) && defined(PLACE_LISTS)
     // this is overkill since we don't care if lists are aligned;
@@ -7979,5 +7931,17 @@ Judy1MemActive(Pcvoid_t PArray)
 {
     (void)PArray;
     return 0;
+}
+
+Word_t
+JudyLFreeArray(PPvoid_t PPArray, PJError_t PJError)
+{
+    return Judy1FreeArray(PPArray, PJError);
+}
+
+Word_t
+JudyLCount(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
+{
+    return Judy1Count(PArray, wKey0, wKey1, pJError);
 }
 
