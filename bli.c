@@ -530,6 +530,7 @@ Status_t
 InsertRemove(int nBL, Link_t *pLn, Word_t wKey)
 #endif // defined(LOOKUP)
 {
+    DBGX(printf("\n# %s wKey 0x%zx ", strLookupOrInsertOrRemove, wKey));
 #if defined(LOOKUP) && ! defined(PLN_PARAM_FOR_LOOKUP)
     Link_t *pLn = STRUCT_OF(&wRoot, Link_t, ln_wRoot);
 #else // defined(LOOKUP) && ! defined(PLN_PARAM_FOR_LOOKUP)
@@ -614,10 +615,15 @@ InsertRemove(int nBL, Link_t *pLn, Word_t wKey)
     nType = wr_nType(wRoot);
     pwr = wr_pwr(wRoot);
     if (nType > T_SWITCH) {
+        DBGX(printf("# goto t_skip_to_switch\n"));
         goto t_skip_to_switch;
     }
     // This shortcut made the code faster in my testing.
-    { nBLR = nBL; goto fastAgain; }
+    {
+        nBLR = nBL;
+        DBGX(printf("# goto fastAgain\n"));
+        goto fastAgain;
+    }
   #endif // LOOKUP
   #endif // SKIP_LINKS
   #endif // GOTO_AT_FIRST_IN_LOOKUP
@@ -631,18 +637,18 @@ InsertRemove(int nBL, Link_t *pLn, Word_t wKey)
     int nLinks;
 #endif // defined(COUNT)
 
-    DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
-
 #if defined(INSERT) || defined(REMOVE)
   #if !defined(RECURSIVE)
 top:;
   #endif // !defined(RECURSIVE)
 #endif // defined(INSERT) || defined(REMOVE)
+    DBGX(printf("# top\n"));
     nBLR = nBL;
 
 #if defined(LOOKUP) || !defined(RECURSIVE)
 again:;
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
+    DBGX(printf("# again\n"));
 
 #if defined(SKIP_LINKS)
     assert(nBLR == nBL);
