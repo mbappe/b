@@ -179,7 +179,8 @@
   #if (cnBitsPerWord == 32)
 #define cn2dBmMaxWpkPercent  30
   #else // (cnBitsPerWord == 32)
-#define cn2dBmMaxWpkPercent  15
+//#define cn2dBmMaxWpkPercent  15
+#define cn2dBmMaxWpkPercent  0  // For JudyL turn on.
   #endif // (cnBitsPerWord == 32)
 #endif // ! defined(cn2dBmMaxWpkPercent)
 
@@ -527,7 +528,8 @@ typedef Word_t Bucket_t;
 // An 8-bit bitmap uses only 32-bytes plus malloc overhead.
 // Does it make sense to have a list that uses as much or more?
 #if ! defined(cnListPopCntMax8)
-  #define cnListPopCntMax8  0x10
+//  #define cnListPopCntMax8  0x10
+  #define cnListPopCntMax8  256  // For JudyL turn on
 #endif // ! defined(cnListPopCntMax8)
 
 // Default cnListPopCntMaxDl1 is 0x10 for cnBitsInD1 = 8.
@@ -538,7 +540,8 @@ typedef Word_t Bucket_t;
     #  if (cnBitsInD1 == 7)
       #define cnListPopCntMaxDl1  0x08
     #elif (cnBitsInD1 == 8)
-      #define cnListPopCntMaxDl1  0x10
+      //#define cnListPopCntMaxDl1  0x10
+      #define cnListPopCntMaxDl1  256  // For JudyL turn on.
     #elif (cnBitsInD1 == 9)
       #define cnListPopCntMaxDl1  0x06
     #elif (cnBitsInD1 <= 11)
