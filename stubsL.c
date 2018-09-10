@@ -4,9 +4,6 @@
 // ****************************************************************************
 // JUDYL FUNCTIONS:
 
-int JudyLDel(PPvoid_t PPArray, Word_t Index, P_JE)
-{ printf("n/a\n"); exit(1); }
-
 PPvoid_t JudyLByCount(Pcvoid_t PArray, Word_t Count, Word_t * PIndex, P_JE)
 { printf("n/a\n"); exit(1); }
 
