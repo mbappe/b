@@ -510,7 +510,7 @@ PrefixCheckAtLeaf(qp, Word_t wKey
 #endif // SKIP_PREFIX_CHECK
 
 #if defined(LOOKUP)
-static Status_t
+static Word_t *
 Lookup(
       #if defined(PLN_PARAM_FOR_LOOKUP)
        Link_t *pLn;
@@ -522,6 +522,8 @@ Lookup(
 #else // defined(LOOKUP)
   #if defined(COUNT)
 Word_t
+  #elif defined(INSERT)
+Word_t *
   #else // defined(COUNT)
 Status_t
   #endif // defined(COUNT)
@@ -533,6 +535,10 @@ InsertRemove(int nBL, Link_t *pLn, Word_t wKey)
 #else // defined(LOOKUP) && ! defined(PLN_PARAM_FOR_LOOKUP)
     Word_t wRoot = pLn->ln_wRoot;
 #endif // defined(LOOKUP) && ! defined(PLN_PARAM_FOR_LOOKUP)
+
+#if defined(LOOKUP) || defined(INSERT)
+    static Word_t wValue;
+#endif // defined(LOOKUP) || defined(INSERT)
 
 #if defined(LOOKUP)
     int nBL = cnBitsPerWord;
@@ -1467,7 +1473,12 @@ t_list:;
   #if defined(INSERT) || defined(REMOVE)
         DBGX(printf("T_LIST bCleanup %d nIncr %d\n", bCleanup, nIncr));
         if (bCleanup) {
+    #if defined(INSERT)
+            wValue = 0;
+            return &wValue;
+    #else // defined(INSERT)
             return Success;
+    #endif // defined(INSERT)
         } // cleanup is complete
   #endif // defined(INSERT) || defined(REMOVE)
 
@@ -1542,7 +1553,14 @@ t_list:;
                 goto removeGutsAndCleanup;
           #endif // defined(REMOVE)
           #if defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
-                return KeyFound;
+              #if defined(LOOKUP)
+                wValue = wKey;
+              #endif // defined(LOOKUP)
+              #if defined(LOOKUP) || defined(INSERT)
+                return &wValue;
+              #else // defined(LOOKUP) || defined(INSERT)
+                return KeyFound; // Success for Lookup and Remove; Failure for Insert
+              #endif // defined(LOOKUP) || defined(INSERT)
           #endif // defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
             }
           #if defined(COUNT)
@@ -1808,7 +1826,11 @@ t_bitmap:;
   #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
+      #if defined(INSERT)
+            wValue = 0; return &wValue;
+      #else // defined(INSERT)
             return Success;
+      #endif // defined(INSERT)
         } // cleanup is complete
   #endif // defined(INSERT) || defined(REMOVE)
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -1937,7 +1959,11 @@ t_bitmap:;
                 }
           #endif // !defined(RECURSIVE)
       #endif // defined(INSERT)
+      #if defined(LOOKUP) || defined(INSERT)
+                return &wValue;
+      #else //defined(LOOKUP) || defined(INSERT)
                 return KeyFound;
+      #endif //defined(LOOKUP) || defined(INSERT)
             }
             DBGX(printf("Bit is not set.\n"));
     #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
@@ -2222,9 +2248,11 @@ foundIt:;
         assert(wRoot == 0);
 
   // COUNT never gets here so we could probably just use !defined(LOOKUP).
-  #if defined(INSERT) || defined(REMOVE)
+  #if defined(INSERT)
+        if ( bCleanup ) { wValue = 0; return &wValue; }
+  #elif defined(REMOVE)
         if ( bCleanup ) { return Success; }
-  #endif // defined(INSERT) || defined(REMOVE)
+  #endif // defined(INSERT) elif defined(REMOVE)
 
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
   #if defined(INSERT) || defined(REMOVE)
@@ -2275,7 +2303,8 @@ foundIt:;
     if (bCleanupRequested) {
         goto cleanup;
     }
-    return Success;
+    wValue = 0;
+    return &wValue;
 undo:;
     DBGX(printf("undo\n"));
 #endif // defined(INSERT)
@@ -2301,7 +2330,13 @@ restart:;
     }
       #endif // !defined(RECURSIVE)
   #endif // defined(INSERT) || defined(REMOVE)
+  #if defined(LOOKUP)
+    return NULL;
+  #elif defined(INSERT)
+    return &wValue;
+  #else // defined(LOOKUP) elif defined(INSERT)
     return Failure;
+  #endif // defined(LOOKUP) elif defined(INSERT)
   #if defined(INSERT) || defined(REMOVE)
       #if defined(REMOVE)
 removeGutsAndCleanup:;
@@ -2351,12 +2386,6 @@ JudyLGet(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     Word_t *pwr = wr_pwr(wRoot);
     qv;
 
-    Status_t status;
-
-    static Word_t wValue;
-
-    wValue = wKey;
-
   #if (cwListPopCntMax != 0)
       #if defined(SEARCH_FROM_WRAPPER)
     // Handle a top level T_LIST leaf here -- without calling Lookup.
@@ -2389,16 +2418,14 @@ JudyLGet(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
       #endif // defined(SEARCH_FROM_WRAPPER)
   #endif // (cwListPopCntMax != 0)
 
-    status = Lookup(
+    return (PPvoid_t)Lookup(
   #if defined(PLN_PARAM_FOR_LOOKUP)
-                    pLn,
+                            pLn,
   #else // defined(PLN_PARAM_FOR_LOOKUP)
-                    wRoot,
+                            wRoot,
   #endif // defined(PLN_PARAM_FOR_LOOKUP)
-                    wKey
-                    );
-
-    return (status == Success) ? (PPvoid_t)&wValue : NULL;
+                            wKey
+                            );
 
 #else // (cnDigitsPerWord > 1)
 
@@ -2476,7 +2503,7 @@ JudyLIns(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 {
     Word_t wRoot = *(Word_t*)ppvRoot;
 
-    static Word_t wValue;
+    Word_t *pwValue;
 
 #if (cnDigitsPerWord > 1)
 
@@ -2492,8 +2519,6 @@ JudyLIns(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     assert(((Word_t*)&pLn->ln_wRoot)[-1] == 0);
     assert(((Word_t*)&pLn->ln_wRoot)[ 1] == 0);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
-
-    int status;
 
     DBGI(printf("\n\n# Judy1Set ppvRoot %p wKey " OWx"\n",
                 (void *)ppvRoot, wKey));
@@ -2594,11 +2619,15 @@ JudyLIns(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     else
   #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_I)
     {
-        status = Insert(cnBitsPerWord,
-                        STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey);
+        pwValue = Insert(cnBitsPerWord,
+                         STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey);
     }
 
-    if (status == Success) {
+    // Cannot distinguish between new insert of wKey == 0 and
+    // previously inserted wKey == 0 by *pwValue == 0.
+    assert(wKey != 0);
+
+    if (*pwValue == 0) {
         // count successful inserts minus successful removes
         wPopCntTotal++;
   #if defined(DEBUG)
@@ -2629,11 +2658,7 @@ JudyLIns(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     assert(((Word_t*)&pLn->ln_wRoot)[ 1] == 0);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
 
-    if (status == Success) {
-        wValue = 0;
-    }
-
-    return (PPvoid_t)&wValue;
+    return (PPvoid_t)pwValue;
 
 #else // (cnDigitsPerWord > 1)
 
