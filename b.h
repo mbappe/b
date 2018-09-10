@@ -2587,14 +2587,14 @@ Word_t *Insert(int nBL, Link_t *pLn, Word_t wKey);
 Word_t Count(int nBL, Link_t *pLn, Word_t wKey);
 Status_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
 
-Status_t InsertGuts(qp, Word_t wKey, int nPos
+Word_t *InsertGuts(qp, Word_t wKey, int nPos
 #if defined(CODE_XX_SW)
-                    , Link_t *pLnUp
+                   , Link_t *pLnUp
   #if defined(SKIP_TO_XX_SW)
-                    , int nBLUp
+                   , int nBLUp
   #endif // defined(SKIP_TO_XX_SW)
 #endif // defined(CODE_XX_SW)
-                    );
+                   );
 
 Status_t RemoveGuts(qp, Word_t wKey);
 
@@ -2603,7 +2603,7 @@ void InsertCleanup(qp, Word_t wKey);
 void RemoveCleanup(Word_t wKey, int nBL, int nBLR,
                    Word_t *pwRoot, Word_t wRoot);
 
-Status_t InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot);
+Word_t *InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot);
 
 Word_t FreeArrayGuts(Word_t *pwRoot,
                      Word_t wPrefix, int nBL, int bDump);
