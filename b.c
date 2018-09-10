@@ -2136,12 +2136,14 @@ InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
 
 // CopyWithInsert can handle pTgt == pSrc, but cannot handle any other
 // overlapping buffer scenarios.
-static void
+static Word_t *
 CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, unsigned nKeys, Word_t wKey)
 {
     DBGI(printf("\nCopyWithInsertWord(pTgt %p pSrc %p nKeys %d wKey " OWx")\n",
                 (void *)pTgt, (void *)pSrc, nKeys, wKey));
     unsigned n;
+    static Word_t wValue = 0;
+    Word_t *pwValue = &wValue;
 
     // find the insertion point
     for (n = 0; n < nKeys; n++) {
@@ -2176,6 +2178,8 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, unsigned nKeys, Word_t wKey)
 #if defined(LIST_END_MARKERS)
     pTgt[n] = -1;
 #endif // defined(LIST_END_MARKERS)
+
+    return pwValue;
 }
 
 #if defined(COMPRESSED_LISTS)
@@ -3451,17 +3455,17 @@ insertAll:;
 
 static Word_t *
 InsertAtList(qp,
-      Word_t wKey,
-      int nPos,
+             Word_t wKey,
+             int nPos,
 #ifdef CODE_XX_SW
-      int nBW,
-      Link_t *pLnUp,
+             int nBW,
+             Link_t *pLnUp,
   #ifdef SKIP_TO_XX_SW
-      int nBLUp,
+             int nBLUp,
   #endif // SKIP_TO_XX_SW
 #endif // CODE_XX_SW
-      int nDL
-      )
+             int nDL
+             )
 {
     qv;
     Word_t wPopCnt = 0;
@@ -3473,6 +3477,8 @@ InsertAtList(qp,
     unsigned short *psKeys = NULL;
     unsigned char *pcKeys = NULL;
 #endif // defined(COMPRESSED_LISTS)
+    static Word_t wValue = 0;
+    Word_t *pwValue = &wValue;
 
     DBGI(printf("InsertGuts List\n"));
 
@@ -3688,8 +3694,9 @@ copyWithInsert32:
             {
                 goto copyWithInsertWord;
 copyWithInsertWord:
-                CopyWithInsertWord(ls_pwKeysX(pwList, nBL, wPopCnt + 1),
-                                   pwKeys, wPopCnt, wKey);
+                pwValue = CopyWithInsertWord(ls_pwKeysX(pwList, nBL,
+                                                        wPopCnt + 1),
+                                             pwKeys, wPopCnt, wKey);
             }
         }
         else
@@ -3827,9 +3834,7 @@ copyWithInsertWord:
 #endif // CODE_XX_SW
               wPopCnt, pwKeys, piKeys, psKeys, pcKeys);
     }
-    static Word_t wValue;
-    wValue = 0;
-    return &wValue;
+    return pwValue;
 }
 
 // InsertGuts
