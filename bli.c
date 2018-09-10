@@ -2647,7 +2647,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 #if defined(REMOVE)
 
 int
-Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
+Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 {
     //Word_t wRoot = *(Word_t*)ppvRoot;
 
@@ -2814,3 +2814,13 @@ JudyLIns(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 }
 
 #endif // defined(INSERT)
+
+#if defined(REMOVE)
+
+int
+JudyLDel(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
+{
+    return Judy1Unset(ppvRoot, wKey, PJError);
+}
+
+#endif // defined(REMOVE)
