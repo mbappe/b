@@ -2307,11 +2307,11 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, unsigned nKeys, uint8_t cKey)
 #endif // defined(SORT_LISTS)
 #endif // (cwListPopCntMax != 0)
 
-Status_t
+Word_t *
 InsertAtDl1(Word_t *pwRoot, Word_t wKey, int nDL,
             int nBL, Word_t wRoot);
 
-Status_t
+Word_t *
 InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
 
 #if (cwListPopCntMax != 0)
@@ -3468,7 +3468,7 @@ insertAll:;
 // When do we uncompress a switch?
 // When do we double a switch?
 // When do we coalesce switches?
-Status_t
+Word_t *
 InsertGuts(qp, Word_t wKey, int nPos
 #if defined(CODE_XX_SW)
            , Link_t *pLnUp
@@ -4249,7 +4249,9 @@ copyWithInsertWord:
     }
 #endif // defined(SKIP_LINKS) || defined(BM_SW_FOR_REAL)
 
-    return Success;
+    static Word_t wValue;
+    wValue = 0;
+    return &wValue;
 }
 
 #if (cwListPopCntMax != 0)
@@ -4508,7 +4510,7 @@ done:;
 #endif // defined(EMBED_KEYS)
 #endif // (cwListPopCntMax != 0)
 
-Status_t
+Word_t *
 InsertAtDl1(Word_t *pwRoot, Word_t wKey, int nDL,
             int nBL, Word_t wRoot)
 {
@@ -4532,11 +4534,13 @@ InsertAtDl1(Word_t *pwRoot, Word_t wKey, int nDL,
 
 #endif // defined(PP_IN_LINK)
 
-    return Success;
+    static Word_t wValue;
+    wValue = 0;
+    return &wValue;
 }
 
 // InsertAtBitmap is for a bitmap that is not at the bottom.
-Status_t
+Word_t *
 InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
 {
     (void)pwRoot;
@@ -4605,7 +4609,9 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
 
 #endif // defined(PP_IN_LINK)
 
-    return Success;
+    static Word_t wValue;
+    wValue = 0;
+    return &wValue;
 }
 
 Status_t
