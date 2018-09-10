@@ -2161,8 +2161,8 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, int nKeys, Word_t wKey)
 
     pTgt[n] = wKey; // insert the key
 
-    pTgt[-n] = 0; // initialize the value
-    Word_t *pwValue = &pTgt[-n];
+    Word_t *pwValue = &pTgt[~n];
+    *pwValue = 0; // initialize the value
 
     n = nKeys + 1;
 #if defined(PSPLIT_PARALLEL_WORD)
@@ -2186,13 +2186,13 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, int nKeys, Word_t wKey)
 #if defined(COMPRESSED_LISTS)
 
 #if (cnBitsPerWord > 32)
-static void
-CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, unsigned nKeys,
+static Word_t *
+CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, int nKeys,
                   uint32_t iKey)
 {
     DBGI(printf("\nCopyWithInsertInt(pTgt %p pSrc %p nKeys %d iKey 0x%x)\n",
                 (void *)pTgt, (void *)pSrc, nKeys, iKey));
-    unsigned n;
+    int n;
 
     // find the insertion point
     for (n = 0; n < nKeys; n++) {
@@ -2211,6 +2211,9 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, unsigned nKeys,
 
     pTgt[n] = iKey; // insert the key
 
+    Word_t *pwValue = &((Word_t *)pTgt)[~n];
+    *pwValue = 0; // initialize the value
+
     n = nKeys + 1;
 #if defined(PSPLIT_PARALLEL)
     // See CopyWithInsertWord for comment.
@@ -2221,10 +2224,12 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, unsigned nKeys,
 #if defined(LIST_END_MARKERS)
     pTgt[n] = -1;
 #endif // defined(LIST_END_MARKERS)
+
+    return pwValue;
 }
 #endif // (cnBitsPerWord > 32)
 
-static void
+static Word_t *
 CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc,
                     int nKeys, // number of keys excluding the new one
                     uint16_t sKey, int nPos)
@@ -2252,6 +2257,9 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc,
 
     pTgt[n] = sKey; // insert the key
 
+    Word_t *pwValue = &((Word_t *)pTgt)[~n];
+    *pwValue = 0; // initialize the value
+
     n = nKeys + 1;
 #if defined(PSPLIT_PARALLEL)
     // See CopyWithInsertWord for comment.
@@ -2271,12 +2279,14 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc,
 #if defined(LIST_END_MARKERS)
     pTgt[n] = -1;
 #endif // defined(LIST_END_MARKERS)
+
+    return pwValue;
 }
 
-static void
-CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, unsigned nKeys, uint8_t cKey)
+static Word_t *
+CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, int nKeys, uint8_t cKey)
 {
-    unsigned n;
+    int n;
 
     // find the insertion point
     for (n = 0; n < nKeys; n++) {
@@ -2297,6 +2307,9 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, unsigned nKeys, uint8_t cKey)
 
     pTgt[n] = cKey; // insert the key
 
+    Word_t *pwValue = &((Word_t *)pTgt)[~n];
+    *pwValue = 0; // initialize the value
+
     n = nKeys + 1;
 #if defined(PSPLIT_PARALLEL)
     for (; (n * sizeof(cKey)) % sizeof(Bucket_t); ++n) {
@@ -2306,6 +2319,8 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, unsigned nKeys, uint8_t cKey)
 #if defined(LIST_END_MARKERS)
     pTgt[n] = -1;
 #endif // defined(LIST_END_MARKERS)
+
+    return pwValue;
 }
 
 #endif // defined(COMPRESSED_LISTS)
@@ -3676,19 +3691,25 @@ InsertAtList(qp,
             if (nBL <= 8) {
                 goto copyWithInsert8;
 copyWithInsert8:
-                CopyWithInsertChar(ls_pcKeysNATX(pwList, wPopCnt + 1),
-                    pcKeys, wPopCnt, (unsigned char)wKey);
+                pwValue = CopyWithInsertChar(ls_pcKeysNATX(pwList,
+                                                           wPopCnt + 1),
+                                             pcKeys, wPopCnt,
+                                             (unsigned char)wKey);
             } else if (nBL <= 16) {
                 goto copyWithInsert16;
 copyWithInsert16:
-                CopyWithInsertShort(ls_psKeysNATX(pwList, wPopCnt + 1),
-                    psKeys, wPopCnt, (unsigned short)wKey, nPos);
+                pwValue = CopyWithInsertShort(ls_psKeysNATX(pwList,
+                                                            wPopCnt + 1),
+                                              psKeys, wPopCnt,
+                                              (unsigned short)wKey, nPos);
 #if (cnBitsPerWord > 32)
             } else if (nBL <= 32) {
                 goto copyWithInsert32;
 copyWithInsert32:
-                CopyWithInsertInt(ls_piKeysNATX(pwList, wPopCnt + 1),
-                    piKeys, wPopCnt, (unsigned int)wKey);
+                pwValue = CopyWithInsertInt(ls_piKeysNATX(pwList,
+                                                          wPopCnt + 1),
+                                            piKeys, wPopCnt,
+                                            (unsigned int)wKey);
 #endif // (cnBitsPerWord > 32)
             } else
 #endif // defined(COMPRESSED_LISTS)
@@ -6338,7 +6359,7 @@ JudyLFreeArray(PPvoid_t PPArray, PJError_t PJError)
 {
     (void)PJError; // suppress "unused parameter" compiler warnings
 
-    DBGR(printf("Judy1FreeArray\n"));
+    DBGR(printf("JudyLFreeArray\n"));
 
     // A real user shouldn't pass NULL to Judy1FreeArray.
     // Judy1LHTime uses NULL to give us an opportunity to print
