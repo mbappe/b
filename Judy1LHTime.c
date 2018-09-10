@@ -1792,6 +1792,7 @@ main(int argc, char *argv[])
             wFeedBTap = MyPDEP(wFeedBTap, wSplayMask);
             StartSequent = MyPDEP(StartSequent, wSplayMask);
         }
+        //printf("# wFeedBTap 0x%zx\n", wFeedBTap);
     }
 
 //  Print out the number set used for testing
@@ -4233,7 +4234,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
                         PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
                         if (PValue != (Word_t *)NULL)
                         {
-                            printf("\n--- JudyGet Key = 0x%" PRIxPTR"", TstKey);
+                            printf("\n--- JudyLGet Key = 0x%" PRIxPTR"", TstKey);
                             FAILURE("JudyLGet ret PValue != NULL -- Key inserted???", 0L);
                         }
                     }
@@ -4245,7 +4246,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
                         PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
                         if (PValue == (Word_t *)NULL)
                         {
-                            printf("\n--- JudyGet Key = 0x%" PRIxPTR"", TstKey);
+                            printf("\n--- JudyLGet Key = 0x%" PRIxPTR"", TstKey);
                             FAILURE("JudyLGet ret PValue = NULL", 0L);
                         }
                         else if (VFlag && (*PValue != TstKey))
