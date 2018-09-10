@@ -2153,9 +2153,12 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, int nKeys, Word_t wKey)
     }
 
     if (pTgt != pSrc) {
+        COPY(&pTgt[-nKeys], &pSrc[-nKeys], nKeys - n); // copy the values tail
+        COPY(&pTgt[-n], &pSrc[-n], n); // copy the values head
         COPY(pTgt, pSrc, n); // copy the head
-        COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // save the tail
+        COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
     } else {
+        MOVE(&pTgt[~nKeys], &pSrc[-nKeys], nKeys - n); // move the values tail
         MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
     }
 
@@ -2203,9 +2206,12 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, int nKeys,
     }
 
     if (pTgt != pSrc) {
+        COPY(&((Word_t *)pTgt)[-nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
+        COPY(&((Word_t *)pTgt)[-n], &((Word_t *)pSrc)[-n], n); // values head
         COPY(pTgt, pSrc, n); // copy the head
         COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
     } else {
+        MOVE(&((Word_t *)pTgt)[~nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
         MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
     }
 
@@ -2249,9 +2255,12 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc,
     } else { n = nPos; }
 
     if (pTgt != pSrc) {
+        COPY(&((Word_t *)pTgt)[-nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
+        COPY(&((Word_t *)pTgt)[-n], &((Word_t *)pSrc)[-n], n); // values head
         COPY(pTgt, pSrc, n); // copy the head
         COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
     } else {
+        MOVE(&((Word_t *)pTgt)[~nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
         MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
     }
 
@@ -2297,11 +2306,14 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, int nKeys, uint8_t cKey)
     }
 
     if (pTgt != pSrc) {
+        COPY(&((Word_t *)pTgt)[-nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
+        COPY(&((Word_t *)pTgt)[-n], &((Word_t *)pSrc)[-n], n); // values head
         COPY(pTgt, pSrc, n); // copy the head
         COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
     }
     else
     {
+        MOVE(&((Word_t *)pTgt)[~nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
         MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
     }
 
