@@ -2137,13 +2137,11 @@ InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
 // CopyWithInsert can handle pTgt == pSrc, but cannot handle any other
 // overlapping buffer scenarios.
 static Word_t *
-CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, unsigned nKeys, Word_t wKey)
+CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, int nKeys, Word_t wKey)
 {
     DBGI(printf("\nCopyWithInsertWord(pTgt %p pSrc %p nKeys %d wKey " OWx")\n",
                 (void *)pTgt, (void *)pSrc, nKeys, wKey));
-    unsigned n;
-    static Word_t wValue = 0;
-    Word_t *pwValue = &wValue;
+    int n;
 
     // find the insertion point
     for (n = 0; n < nKeys; n++) {
@@ -2162,6 +2160,9 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, unsigned nKeys, Word_t wKey)
     }
 
     pTgt[n] = wKey; // insert the key
+
+    pTgt[-n] = 0; // initialize the value
+    Word_t *pwValue = &pTgt[-n];
 
     n = nKeys + 1;
 #if defined(PSPLIT_PARALLEL_WORD)
