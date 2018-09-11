@@ -500,6 +500,11 @@ main(int argc, char *argv[])
             // Judy library last.
 
 #ifndef NO_TEST_HS
+            // JudyHS assumes JudyL does not use the JLAP_INVALID bit (see
+            // Judy.h) of an array's root word. JudyHS uses the bit for its
+            // own purpose. Since Mikey's JudyL uses (or reserves the right
+            // to use) ALL of the bits of the root word it is incompatible
+            // with the current implementation of JudyHS.
 //            JHSFA(Bytes, JH);   // Free the JudyL Array
             Bytes = JudyHSFreeArray(&JH, NULL);
             if (Bytes == (Word_t)JERR)
