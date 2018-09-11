@@ -2612,7 +2612,9 @@ JudyLIns(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     // Cannot distinguish between new insert of wKey == 0 and
     // previously inserted wKey == 0 by *pwValue == 0.
-    assert(wKey != 0);
+    if (wKey == 0) {
+        bPopCntTotalIsInvalid = 1;
+    }
 
     if (*pwValue == 0) {
         // count successful inserts minus successful removes
@@ -2634,7 +2636,8 @@ JudyLIns(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #if ! defined(PP_IN_LINK) || defined(DEBUG_COUNT)
   #if ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
     // Judy1Count really slows down testing for PP_IN_LINK.
-    assert(JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
+    assert((JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal)
+        || bPopCntTotalIsInvalid);
   #endif // ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
   #endif // ! defined(PP_IN_LINK) || defined(DEBUG_COUNT)
 
@@ -2785,7 +2788,8 @@ JudyLDel(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                     wPopCntTotal,
                     JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL)));
     }
-    assert(JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
+    assert((JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal)
+        || bPopCntTotalIsInvalid);
   #endif // ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
   #endif // ! defined(PP_IN_LINK) || defined(DEBUG_COUNT)
     DBGR(printf("# Judy1Unset (after ): wPopCntTotal %zd\n\n", wPopCntTotal));
