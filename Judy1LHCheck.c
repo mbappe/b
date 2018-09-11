@@ -1083,6 +1083,7 @@ TestJudyDel(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
     Word_t elm;
     Word_t Seed1;
     int Rcode;
+    (void)JH;
 
 //  Only delete half of those inserted
     for (Seed1 = Seed, elm = 0; elm < (Elements / 2); elm++)
@@ -1106,9 +1107,11 @@ TestJudyDel(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
         if (Rcode != 1)
             FAILURE("JudyLDel ret Rcode != 1", Rcode);
 
+#ifndef NO_TEST_HS
         JHSD(Rcode, *JH, (void *)(&TstIndex), sizeof(Word_t));
         if (Rcode != 1)
             FAILURE("JudyHSDel ret Rcode != 1", Rcode);
+#endif // NO_TEST_HS
 
         TotalPop--;
     }
