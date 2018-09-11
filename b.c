@@ -9,6 +9,7 @@ const char *JudyLMallocSizes = "JudyLMallocSizes = 3, 5, 7, ...";
     : ((_nBL) <= 32) ? 4 : sizeof(Word_t))
 
 Word_t wPopCntTotal;
+int bPopCntTotalIsInvalid;
 #if defined(DEBUG)
 Word_t *pwRootLast; // allow dumping of tree when root is not known
 #endif // defined(DEBUG)
@@ -6479,6 +6480,7 @@ JudyLFreeArray(PPvoid_t PPArray, PJError_t PJError)
 
     DBGR(printf("# wPopCntTotal %" _fw"u 0x%" _fw"x\n",
                wPopCntTotal, wPopCntTotal));
+    DBGR(printf("# bPopCntTotalIsInvalid %d\n", bPopCntTotalIsInvalid));
     DBGR(printf("# Judy1FreeArray wBytes %" _fw"u words %" _fw"u\n",
                wBytes, wBytes/sizeof(Word_t)));
     DBGR(printf("# Judy1FreeArray wBytes 0x%" _fw"x words 0x%" _fw"x\n",
@@ -6662,7 +6664,7 @@ JudyLCount(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
         }
 
   #if defined(DEBUG)
-        if (wPopCnt != wPopCntTotal)
+        if ((wPopCnt != wPopCntTotal) && !bPopCntTotalIsInvalid)
         {
             printf("\nAssertion error debug:\n");
             printf("\nwPopCnt %" _fw"u wPopCntTotal %" _fw"u\n",
@@ -6671,7 +6673,7 @@ JudyLCount(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
                 Dump(pwRootLast, 0, cnBitsPerWord);
             }
         }
-        assert(wPopCnt == wPopCntTotal);
+        assert(wPopCnt == wPopCntTotal || bPopCntTotalIsInvalid);
 
         if (wPopCnt != wCount)
         {
