@@ -540,11 +540,15 @@ InsertRemove(int nBL, Link_t *pLn, Word_t wKey)
 #if defined(LOOKUP) || defined(INSERT)
     static Word_t wValue;
 #endif // defined(LOOKUP) || defined(INSERT)
+#if defined(INSERT)
+    Word_t *pwValue;
+#endif // defined(INSERT)
 
 #if defined(LOOKUP)
     int nBL = cnBitsPerWord;
 #endif // defined(LOOKUP)
 
+    DBGX(printf("# nBL %d pLn %p wRoot " OWx" wKey " OWx"\n", nBL, pLn, wRoot, wKey));
 #if !defined(RECURSIVE)
     Link_t *pLnOrig = pLn; (void)pLnOrig;
   #if !defined(LOOKUP)
@@ -628,9 +632,7 @@ InsertRemove(int nBL, Link_t *pLn, Word_t wKey)
   #endif // SKIP_LINKS
   #endif // GOTO_AT_FIRST_IN_LOOKUP
 
-#if ! defined(LOOKUP)
     int nPos = -1;
-#endif // ! defined(LOOKUP)
 
 #if defined(COUNT)
     int bLinkPresent;
@@ -1532,11 +1534,7 @@ t_list:;
         #if ! defined(SEPARATE_T_NULL)
                 && (pwr != NULL)
         #endif // ! defined(SEPARATE_T_NULL)
-        #if defined(LOOKUP)
-                && ListHasKey(qy, nBLR, wKey)
-        #else // defined(LOOKUP)
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
-        #endif // defined(LOOKUP)
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
@@ -1559,11 +1557,9 @@ t_list:;
                 goto removeGutsAndCleanup;
           #endif // defined(REMOVE)
           #if defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
-              #if defined(LOOKUP)
-                wValue = wKey;
-              #endif // defined(LOOKUP)
               #if defined(LOOKUP) || defined(INSERT)
-                return &wValue;
+DBGX(printf("Lookup (or Insert) returning %p\n", (void *)&pwr[~nPos]));
+                return &pwr[~nPos];
               #else // defined(LOOKUP) || defined(INSERT)
                 return KeyFound; // Success for Lookup and Remove; Failure for Insert
               #endif // defined(LOOKUP) || defined(INSERT)
@@ -1695,11 +1691,7 @@ t_list_ua:;
         #if ! defined(SEPARATE_T_NULL)
                 && (pwr != NULL)
         #endif // ! defined(SEPARATE_T_NULL)
-        #if defined(LOOKUP)
-                && ListHasKey(qy, nBLR, wKey)
-        #else // defined(LOOKUP)
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
-        #endif // defined(LOOKUP)
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
@@ -2298,19 +2290,20 @@ foundIt:;
     // InsertGuts is called with a pLn and nBL indicates the
     // bits that were not decoded in identifying pLn.  nBL
     // does not include any skip indicated in the type field of *pLn.
-    InsertGuts(qy, wKey, nPos
+    pwValue = InsertGuts(qy, wKey, nPos
   #if defined(CODE_XX_SW)
-               , pLnUp
+                         , pLnUp
       #if defined(SKIP_TO_XX_SW)
-               , nBLUp
+                         , nBLUp
       #endif // defined(SKIP_TO_XX_SW)
   #endif // defined(CODE_XX_SW)
-               );
+                         );
     if (bCleanupRequested) {
         goto cleanup;
     }
-    wValue = 0;
-    return &wValue;
+DBGX(printf("InsertGuts returned %p\n", (void*)pwValue));
+DBGX(printf("Insert returning %p\n", (void*)pwValue));
+    return pwValue;
 undo:;
     DBGX(printf("undo\n"));
 #endif // defined(INSERT)
@@ -2480,18 +2473,6 @@ JudyLGet(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 #endif // (cnDigitsPerWord > 1)
 
     (void)PJError; // suppress "unused parameter" compiler warning
-}
-
-int // Status_t
-Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
-{
-    (void)pcvRoot; (void)wKey; (void)PJError;
-
-    printf("Judy1Test stub.\n");
-
-    exit(1);
-
-    return Failure;
 }
 
 #endif // defined(LOOKUP)
@@ -2706,18 +2687,6 @@ JudyLIns(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     (void)PJError; // suppress "unused parameter" compiler warning
 }
 
-int // Status_t
-Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
-{
-    (void)ppvRoot; (void)wKey; (void)PJError;
-
-    printf("Judy1Set stub.\n");
-
-    exit(1);
-
-    return Failure;
-}
-
 #endif // defined(INSERT)
 
 #if defined(REMOVE)
@@ -2855,18 +2824,6 @@ JudyLDel(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 #endif // (cnDigitsPerWord > 1)
 
     (void)PJError; // suppress "unused parameter" compiler warnings
-}
-
-int
-Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
-{
-    (void)ppvRoot; (void)wKey; (void)PJError;
-
-    printf("Judy1Unset stub.\n");
-
-    exit(1);
-
-    return Failure;
 }
 
 #endif // defined(REMOVE)

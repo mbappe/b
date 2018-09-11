@@ -243,13 +243,13 @@ FILES_FROM_DOUG_B_OR_DOUG_LEA  = Judy.h RandomNumb.h dlmalloc.c JudyMalloc.c
 FILES_FROM_DOUG_B_OR_DOUG_LEA += Judy1LHCheck.c Judy1LHTime.c jbgraph
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEA)
 
-EXES = Judy1LHTime Judy1LHCheck c++time c++check # t
+EXES = Judy1LHTime Judy1LHCheck # t
 LINKS = b btime bcheck
-LIBS = libb1.a libb1.so libb.a libb.so
-LIBB1_OBJS = b.o bl.o bi.o br.o bc.o JudyMalloc.o
-LIBB1_SRCS = b.c bl.c bi.c br.c bc.c
-LIBB_OBJS = $(LIBB1_OBJS) stubsL.o stubsHS.o
-LIBB_SRCS = $(LIBB1_SRCS) stubsL.c stubsHS.c
+LIBS = libbL.a libbL.so # libb.a libb.so
+LIBBL_OBJS = b.o bl.o bi.o br.o bc.o JudyMalloc.o
+LIBBL_SRCS = b.c bl.c bi.c br.c bc.c
+LIBB_OBJS = $(LIBBL_OBJS) stubsL.o stubsHS.o
+LIBB_SRCS = $(LIBBL_SRCS) stubsL.c stubsHS.c
 ASMS  = b.s bl.s bi.s br.s bc.s
 ASMS += stubsL.s stubsHS.s JudyMalloc.s # t.s
 ASMS += Judy1LHTime.s Judy1LHCheck.s
@@ -284,14 +284,10 @@ t: t.c $(T_OBJS)
 
 #Judy1LHTime: Judy1LHTime.c libb.a
 #	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
-Judy1LHTime: Judy1LHTime.c libb1.a stubsL.o
+Judy1LHTime: Judy1LHTime.c libbL.a
 	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ \
- ../judy/src/obj/.libs/libJudy.a $(LDFLAGS) -lm
+ ../judy/src/obj/.libs/libJudy.a -lm
 # $(LDFLAGS) -lJudy -lm
-
-c++time: Judy1LHTime.c libb.a
-	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) \
- -x c++ Judy1LHTime.c -x none libb.a -o $@ -lm
 
 b: Judy1LHTime
 	ln -sf Judy1LHTime b
@@ -301,13 +297,11 @@ btime: Judy1LHTime
 
 # Set LIBRARY_PATH environment variable to find libJudy.a.
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
-Judy1LHCheck: Judy1LHCheck.c libb1.a
+Judy1LHCheck: Judy1LHCheck.c libbL.a
 	$(CC) $(CFLAGS) -Wno-sign-compare \
- $(DEFINES) -o $@ $^ $(LDFLAGS) -lJudy -lm
-
-c++check: Judy1LHCheck.c libb1.a
-	$(CXX) $(CXXFLAGS) $(DEFINES) -x c++ Judy1LHCheck.c \
- -x none libb1.a -o $@ $(LDFLAGS) -lJudy -lm
+ $(DEFINES) -o $@ $^ \
+ ../judy/src/obj/.libs/libJudy.a -lm
+# $(LDFLAGS) -lJudy -lm
 
 bcheck: Judy1LHCheck
 	ln -sf Judy1LHCheck bcheck
@@ -315,7 +309,7 @@ bcheck: Judy1LHCheck
 libb.a: $(LIBB_OBJS)
 	ar -r $@ $^
 
-libb1.a: $(LIBB1_OBJS)
+libbL.a: $(LIBBL_OBJS)
 	ar -r $@ $^
 
 # Build libb.so directly from sources rather than from
@@ -324,7 +318,7 @@ libb1.a: $(LIBB1_OBJS)
 libb.so: $(LIBB_SRCS) JudyMalloc.so
 	$(CC) $(CFLAGS_NO_WFLAGS) -fPIC $(DEFINES) -shared -o $@ $^
 
-libb1.so: $(LIBB1_SRCS) JudyMalloc.so
+libbL.so: $(LIBBL_SRCS) JudyMalloc.so
 	$(CC) $(CFLAGS) -fPIC $(DEFINES) -shared -o $@ $^
 
 ifneq "$(CC)" "c++"
