@@ -2781,9 +2781,9 @@ JudyLDel(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #if ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
     // Judy1Count really slows down testing for PP_IN_LINK.
     if (JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL) != wPopCntTotal) {
-        printf("wPopCntTotal %zd Judy1Count %zd\n",
-               wPopCntTotal,
-               JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL));
+        DBGR(printf("wPopCntTotal %zd Judy1Count %zd\n",
+                    wPopCntTotal,
+                    JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL)));
     }
     assert(JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
   #endif // ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
