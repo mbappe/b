@@ -9,7 +9,16 @@ const char *JudyLMallocSizes = "JudyLMallocSizes = 3, 5, 7, ...";
     : ((_nBL) <= 32) ? 4 : sizeof(Word_t))
 
 Word_t wPopCntTotal;
-int bPopCntTotalIsInvalid;
+
+// bPopCntTotalIsInvalid is overloaded. We use it to disable
+// other cleanup assertions that assume there is only one
+// array under test. The assumption is invalid for Check
+// testing without NO_TEST_HS.
+// We also use NO_ROOT_WORD_CHECK for Check HS testing.
+#ifndef cbPopCntTotalIsInvalid
+  #define cbPopCntTotalIsInvalid  0
+#endif // cbPopCntTotalIsInvalid
+int bPopCntTotalIsInvalid = cbPopCntTotalIsInvalid;
 #if defined(DEBUG)
 Word_t *pwRootLast; // allow dumping of tree when root is not known
 #endif // defined(DEBUG)
@@ -6527,6 +6536,7 @@ JudyLFreeArray(PPvoid_t PPArray, PJError_t PJError)
 
     // Assuming wWordsAllocated is zero is presumptuous.
     // What if the application has more than one Judy1 array?
+  if (!bPopCntTotalIsInvalid) {
     assert(wWordsAllocated == 0);
 #if defined(RAMMETRICS)
     // Assuming j__AllocWordsTOT is zero is presumptuous.
@@ -6539,6 +6549,7 @@ JudyLFreeArray(PPvoid_t PPArray, PJError_t PJError)
     // Assuming wMallocs is zero is presumptuous.
     // What if the application has more than one Judy1 array?
     assert(wMallocs == 0);
+  }
 
     // Should have FreeArrayGuts adjust wPopCntTotal this as it goes.
     assert(JudyLCount(*PPArray, 0, (Word_t)-1, NULL) == 0);
