@@ -2632,6 +2632,7 @@ extern Word_t *pwRootLast; // allow dumping of tree when root is not known
 #endif // defined(DEBUG)
 
 extern Word_t wPopCntTotal;
+extern int bPopCntTotalIsInvalid;
 
 // Default is -DPSPLIT_SEARCH_8
 // This depends on uniform distribution / flat spectrum data.
