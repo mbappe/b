@@ -5273,6 +5273,7 @@ BmSwIndex(qp, Word_t wDigit,
 #if defined(RAMMETRICS)
 
 extern Word_t j__AllocWordsTOT;
+extern Word_t j__RequestedWordsTOT;
 extern Word_t j__TotalBytesAllocated; // mmap
 
 extern Word_t j__ExtraWordsTOT;
@@ -5291,6 +5292,7 @@ extern Word_t j__AllocWordsJLL4; // 4 bytes/key list leaf
 //extern Word_t j__AllocWordsJLL5; // 5 bytes/key list leaf
 //extern Word_t j__AllocWordsJLL6; // 6 bytes/key list leaf
 extern Word_t j__AllocWordsJLL7; // words requested
+extern Word_t j__MFlag;
 
 #endif // defined(RAMMETRICS)
 

@@ -2,7 +2,7 @@
 
 // Check and/or Time depend on Judy1MallocSizes but this version
 // of Judy does not use it.
-const char *Judy1MallocSizes = "Judy1MallocSizes = 3, 5, 7, ...";
+const char *JudyLMallocSizes = "JudyLMallocSizes = 3, 5, 7, ...";
 
 #define nBytesKeySz(_nBL) \
      (((_nBL) <=  8) ? 1 : ((_nBL) <= 16) ? 2 \
@@ -1834,12 +1834,12 @@ embeddedKeys:;
 #endif // defined(PP_IN_LINK)
             { printf("       N/A"); }
 
-            for (unsigned nn = 0;
+            for (int nn = 0;
                 //(nn < wPopCnt) && (nn < 8);
-                (nn < wPopCnt);
+                (nn < (int)wPopCnt);
                  nn++)
             {
-                unsigned xx = nn;
+                int xx = nn;
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
                 xx += ((nBLArg == cnBitsPerWord) && (cnDummiesInList == 0));
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -1850,11 +1850,17 @@ embeddedKeys:;
                     printf(" %04x", ls_psKeysNATX(pwr, wPopCnt)[xx]);
 #if (cnBitsPerWord > 32)
                 } else if (nBL <= 32) {
-                    printf(" %08x", ls_piKeysNATX(pwr, wPopCnt)[xx]);
+                    printf(" %08x,"OWx,
+                                     ls_piKeysNATX(pwr, wPopCnt)[xx],
+                           ((Word_t*)ls_piKeysNATX(pwr, wPopCnt))[~xx]);
 #endif // (cnBitsPerWord > 32)
                 } else
 #endif // defined(COMPRESSED_LISTS)
-                { printf(" " OWx, ls_pwKeysX(pwr, nBL, wPopCnt)[xx]); }
+                {
+                    printf(" "OWx","OWx,
+                           ls_pwKeysX(pwr, nBL, wPopCnt)[xx],
+                           ls_pwKeysX(pwr, nBL, wPopCnt)[~xx]);
+                }
             }
   #if defined(UA_PARALLEL_128)
             if (nType == T_LIST_UA) {
@@ -2075,7 +2081,7 @@ Dump(Word_t *pwRoot, Word_t wPrefix, int nBL)
 // Dump the path to the subtree rooted at (nBL, wPrefix)
 // and the entire subtree below.
 void
-Judy1Dump(Word_t wRoot, int nBL, Word_t wPrefix)
+JudyLDump(Word_t wRoot, int nBL, Word_t wPrefix)
 {
 #if defined(DEBUG)
     assert(nBL == cnBitsPerWord); // for now
@@ -2153,7 +2159,7 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, int nKeys, Word_t wKey)
     }
 
     if (pTgt != pSrc) {
-        COPY(&pTgt[-nKeys], &pSrc[-nKeys], nKeys - n); // copy the values tail
+        COPY(&pTgt[~nKeys], &pSrc[-nKeys], nKeys - n); // copy the values tail
         COPY(&pTgt[-n], &pSrc[-n], n); // copy the values head
         COPY(pTgt, pSrc, n); // copy the head
         COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
@@ -2183,6 +2189,7 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, int nKeys, Word_t wKey)
     pTgt[n] = -1;
 #endif // defined(LIST_END_MARKERS)
 
+DBGI(printf("CopyWithInsertWord returning %p\n", (void*)pwValue));
     return pwValue;
 }
 
@@ -2206,7 +2213,7 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, int nKeys,
     }
 
     if (pTgt != pSrc) {
-        COPY(&((Word_t *)pTgt)[-nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
+        COPY(&((Word_t *)pTgt)[~nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
         COPY(&((Word_t *)pTgt)[-n], &((Word_t *)pSrc)[-n], n); // values head
         COPY(pTgt, pSrc, n); // copy the head
         COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
@@ -2255,7 +2262,7 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc,
     } else { n = nPos; }
 
     if (pTgt != pSrc) {
-        COPY(&((Word_t *)pTgt)[-nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
+        COPY(&((Word_t *)pTgt)[~nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
         COPY(&((Word_t *)pTgt)[-n], &((Word_t *)pSrc)[-n], n); // values head
         COPY(pTgt, pSrc, n); // copy the head
         COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
@@ -2306,7 +2313,7 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, int nKeys, uint8_t cKey)
     }
 
     if (pTgt != pSrc) {
-        COPY(&((Word_t *)pTgt)[-nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
+        COPY(&((Word_t *)pTgt)[~nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
         COPY(&((Word_t *)pTgt)[-n], &((Word_t *)pSrc)[-n], n); // values head
         COPY(pTgt, pSrc, n); // copy the head
         COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
@@ -2690,22 +2697,26 @@ embeddedKeys:;
         nPopCnt = PWR_xListPopCnt(&wRootOld, pwrOld, nBLOld);
     }
 
+    Word_t* pwVal;
 #if defined(COMPRESSED_LISTS)
     if (nBLOld <= (int)sizeof(uint8_t) * 8) {
         uint8_t *pcKeys = ls_pcKeysNATX(pwrOld, nPopCnt);
         for (int nn = 0; nn < nPopCnt; nn++) {
-            Insert(nBL, pLn, pcKeys[nn] | (wKey & ~MSK(8)));
+            pwVal = Insert(nBL, pLn, pcKeys[nn] | (wKey & ~MSK(8)));
+            *pwVal = ((Word_t*)pcKeys)[~nn];
         }
     } else if (nBLOld <= (int)sizeof(uint16_t) * 8) {
         uint16_t *psKeys = ls_psKeysNATX(pwrOld, nPopCnt);
         for (int nn = 0; nn < nPopCnt; nn++) {
-            Insert(nBL, pLn, psKeys[nn] | (wKey & ~MSK(16)));
+            pwVal = Insert(nBL, pLn, psKeys[nn] | (wKey & ~MSK(16)));
+            *pwVal = ((Word_t*)psKeys)[~nn];
         }
 #if (cnBitsPerWord > 32)
     } else if (nBLOld <= (int)sizeof(uint32_t) * 8) {
         uint32_t *piKeys = ls_piKeysNATX(pwrOld, nPopCnt);
         for (int nn = 0; nn < nPopCnt; nn++) {
-            Insert(nBL, pLn, piKeys[nn] | (wKey & ~MSK(32)));
+            pwVal = Insert(nBL, pLn, piKeys[nn] | (wKey & ~MSK(32)));
+            *pwVal = ((Word_t*)piKeys)[~nn];
         }
 #endif // (cnBitsPerWord > 32)
     } else
@@ -2713,7 +2724,8 @@ embeddedKeys:;
     {
         Word_t *pwKeys = ls_pwKeysX(pwrOld, nBL, nPopCnt);
         for (int nn = 0; nn < nPopCnt; nn++) {
-            Insert(nBL, pLn, pwKeys[nn]);
+            pwVal = Insert(nBL, pLn, pwKeys[nn]);
+            *pwVal = pwKeys[~nn];
         }
     }
 
@@ -2967,7 +2979,7 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
 // How should we decide a list is full?
 // Is a fixed max length at each depth the best way or should it depend
 // on attributes of the actual path to the list?
-static void
+static Word_t*
 Splay(qp,
       Word_t wKey,
       int nBLOld,
@@ -3478,7 +3490,10 @@ insertAll:;
         DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
     }
 
-    Insert(nBLOld, pLn, wKey);
+    Word_t *pwVal = Insert(nBLOld, pLn, wKey);
+    *pwVal = 0;
+
+    return pwVal;
 }
 
 static Word_t *
@@ -3731,6 +3746,7 @@ copyWithInsertWord:
                 pwValue = CopyWithInsertWord(ls_pwKeysX(pwList, nBL,
                                                         wPopCnt + 1),
                                              pwKeys, wPopCnt, wKey);
+//printf("CopyWithInsertWord returned %p\n", (void*)pwValue);
             }
         }
         else
@@ -3760,6 +3776,7 @@ copyWithInsertWord:
                 //printf("goto copyWithInsert8\n");
                 goto copyWithInsert8;
   #else // !defined(EMBED_KEYS) && ... d&& efined(PSPLIT_PARALLEL)
+assert(0);
                 ls_pcKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey;
   #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
             } else if (nBL <= 16) {
@@ -3769,6 +3786,7 @@ copyWithInsertWord:
                 //printf("goto copyWithInsert16\n");
                 goto copyWithInsert16;
   #else // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
+assert(0);
                 ls_psKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey;
   #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
 #if (cnBitsPerWord > 32)
@@ -3778,6 +3796,7 @@ copyWithInsertWord:
                 //printf("goto copyWithInsert32\n");
                 goto copyWithInsert32;
   #else // !defined(EMBED_KEYS) && ... defined(PSPLIT_PARALLEL)
+assert(0);
                 { ls_piKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey; }
   #endif // !defined(EMBED_KEYS) && ... defined(PSPLIT_PARALLEL)
 #endif // (cnBitsPerWord > 32)
@@ -3790,6 +3809,9 @@ copyWithInsertWord:
                 goto copyWithInsertWord;
   #else // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL_WORD)
                 ls_pwKeysX(pwList, nBL, wPopCnt + 1)[wPopCnt] = wKey;
+                pwValue = &ls_pwKeysX(pwList, nBL, wPopCnt + 1)[~wPopCnt];
+                *pwValue = 0;
+//printf("wPopCnt %d p %p: p[0] "OWx", p[~0] "OWx"\n", (int)wPopCnt, (void*)ls_pwKeysX(pwList, nBL, wPopCnt + 1), ls_pwKeysX(pwList, nBL, wPopCnt + 1)[0], ls_pwKeysX(pwList, nBL, wPopCnt + 1)[~0]);
   #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL_WORD)
             }
             // Shouldn't we be padding the extra key slots
@@ -3859,15 +3881,16 @@ copyWithInsertWord:
     {
         DBGI(printf("List is full nBL %d.\n", nBL));
 
-        Splay(qy, wKey, nBLOld, nDL, nDLOld,
+        pwValue = Splay(qy, wKey, nBLOld, nDL, nDLOld,
 #ifdef CODE_XX_SW
-              nBW, pLnUp,
+                        nBW, pLnUp,
   #ifdef SKIP_TO_XX_SW
-              nBLUp,
+                        nBLUp,
   #endif // SKIP_TO_XX_SW
 #endif // CODE_XX_SW
-              wPopCnt, pwKeys, piKeys, psKeys, pcKeys);
+                        wPopCnt, pwKeys, piKeys, psKeys, pcKeys);
     }
+DBGI(printf("InsertAtList returning %p\n", (void*)pwValue));
     return pwValue;
 }
 
@@ -4894,7 +4917,7 @@ embeddedKeys:;
 
     Word_t *pwKeys = ls_pwKeysX(pwr, nBL, wPopCnt);
 
-    unsigned nIndex;
+    int nIndex;
     for (nIndex = 0;
 #if defined(COMPRESSED_LISTS)
         (nBL <=  8) ? (ls_pcKeysNATX(pwr, wPopCnt)[nIndex] != (uint8_t) wKey) :
@@ -4940,20 +4963,35 @@ embeddedKeys:;
         // Except for the the pop count.
         switch (nBytesKeySz(nBL)) {
         case sizeof(Word_t):
+             // copy values
+             COPY(&ls_pwKeysX(pwList, nBL, wPopCnt - 1)[~wPopCnt],
+                  &ls_pwKeysX(pwr, nBL, wPopCnt)[~wPopCnt], wPopCnt - 1);
              COPY(ls_pwKeysX(pwList, nBL, wPopCnt - 1),
                   ls_pwKeysX(pwr, nBL, wPopCnt), wPopCnt - 1);
              break;
 #if (cnBitsPerWord > 32)
         case 4:
+             // copy values
+             COPY(&((Word_t*)ls_piKeysNATX(pwList, wPopCnt - 1))[~wPopCnt],
+                  &((Word_t*)ls_piKeysNATX(pwr, wPopCnt))[~wPopCnt],
+                  wPopCnt - 1);
              COPY(ls_piKeysNATX(pwList, wPopCnt - 1),
                   ls_piKeysNATX(pwr, wPopCnt), wPopCnt - 1);
              break;
 #endif // (cnBitsPerWord > 32)
         case 2:
+             // copy values
+             COPY(&((Word_t*)ls_psKeysNATX(pwList, wPopCnt - 1))[~wPopCnt],
+                  &((Word_t*)ls_psKeysNATX(pwr, wPopCnt))[~wPopCnt],
+                  wPopCnt - 1);
              COPY(ls_psKeysNATX(pwList, wPopCnt - 1),
                   ls_psKeysNATX(pwr, wPopCnt), wPopCnt - 1);
              break;
         case 1:
+             // copy values
+             COPY(&((Word_t*)ls_pcKeysNATX(pwList, wPopCnt - 1))[~wPopCnt],
+                  &((Word_t*)ls_pcKeysNATX(pwr, wPopCnt))[~wPopCnt],
+                  wPopCnt - 1);
              COPY(ls_pcKeysNATX(pwList, wPopCnt - 1),
                   ls_pcKeysNATX(pwr, wPopCnt), wPopCnt - 1);
              break;
@@ -4965,6 +5003,10 @@ embeddedKeys:;
 #endif // defined(LIST_END_MARKERS) || defined(PSPLIT_PARALLEL)
 #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
+        // copy values
+        MOVE(&((Word_t*)ls_pcKeysNATX(pwList, wPopCnt - 1))[~nIndex],
+             &((Word_t*)ls_pcKeysNATX(pwr, wPopCnt))[-nIndex],
+             wPopCnt - nIndex - 1);
         MOVE(&ls_pcKeysNATX(pwList, wPopCnt - 1)[nIndex],
              &ls_pcKeysNATX(pwr, wPopCnt)[nIndex + 1], wPopCnt - nIndex - 1);
         int n = wPopCnt - 1; (void)n;
@@ -4981,6 +5023,10 @@ embeddedKeys:;
         ls_pcKeysNATX(pwList, wPopCnt - 1)[n] = -1;
 #endif // defined(LIST_END_MARKERS)
     } else if (nBL <= 16) {
+        // copy values
+        MOVE(&((Word_t*)ls_psKeysNATX(pwList, wPopCnt - 1))[~nIndex],
+             &((Word_t*)ls_psKeysNATX(pwr, wPopCnt))[-nIndex],
+             wPopCnt - nIndex - 1);
         MOVE(&ls_psKeysNATX(pwList, wPopCnt - 1)[nIndex],
              &ls_psKeysNATX(pwr, wPopCnt)[nIndex + 1], wPopCnt - nIndex - 1);
         int n = wPopCnt - 1; (void)n; // first empty slot
@@ -5005,6 +5051,10 @@ embeddedKeys:;
 #endif // defined(LIST_END_MARKERS)
 #if (cnBitsPerWord > 32)
     } else if (nBL <= 32) {
+        // copy values
+        MOVE(&((Word_t*)ls_piKeysNATX(pwList, wPopCnt - 1))[~nIndex],
+             &((Word_t*)ls_piKeysNATX(pwr, wPopCnt))[-nIndex],
+             wPopCnt - nIndex - 1);
         MOVE(&ls_piKeysNATX(pwList, wPopCnt - 1)[nIndex],
              &ls_piKeysNATX(pwr, wPopCnt)[nIndex + 1], wPopCnt - nIndex - 1);
         int n = wPopCnt - 1; (void)n;
@@ -5029,6 +5079,9 @@ embeddedKeys:;
 #endif // (cnDummiesInList == 0)
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 #endif // defined(LIST_END_MARKERS)
+        // copy values
+        MOVE(&ls_pwKeysNATX(pwList, wPopCnt - 1)[~nIndex],
+             &ls_pwKeysNATX(pwr, wPopCnt)[-nIndex], wPopCnt - nIndex - 1);
         MOVE(&ls_pwKeysX(pwList, nBL, wPopCnt - 1)[nIndex], &pwKeys[nIndex + 1],
              wPopCnt - nIndex - 1);
         int n = wPopCnt - 1; (void)n;
@@ -6395,6 +6448,8 @@ JudyLFreeArray(PPvoid_t PPArray, PJError_t PJError)
       #if defined(RAMMETRICS)
     Word_t j__AllocWordsTOTBefore = j__AllocWordsTOT;
     (void)j__AllocWordsTOTBefore;
+    Word_t j__RequestedWordsTOTBefore = j__RequestedWordsTOT;
+    (void)j__RequestedWordsTOTBefore;
     Word_t j__TotalBytesAllocatedBefore = j__TotalBytesAllocated;
     (void)j__TotalBytesAllocatedBefore;
       #endif // defined(RAMMETRICS)
@@ -6414,6 +6469,8 @@ JudyLFreeArray(PPvoid_t PPArray, PJError_t PJError)
 #if defined(RAMMETRICS)
     DBGR(printf("# j__AllocWordsTOTBefore %" _fw"u 0x%" _fw"x\n",
                j__AllocWordsTOTBefore, j__AllocWordsTOTBefore));
+    DBGR(printf("# j__RequestedWordsTOTBefore %" _fw"u 0x%" _fw"x\n",
+               j__RequestedWordsTOTBefore, j__RequestedWordsTOTBefore));
     DBGR(printf("# j__TotalBytesAllocatedBefore %" _fw"u words %" _fw"u\n",
                j__TotalBytesAllocatedBefore,
                j__TotalBytesAllocatedBefore/sizeof(Word_t)));
@@ -6434,6 +6491,7 @@ JudyLFreeArray(PPvoid_t PPArray, PJError_t PJError)
     DBGR(printf("# wWordsAllocated %" _fw"u\n", wWordsAllocated));
 #if defined(RAMMETRICS)
     DBGR(printf("# j__AllocWordsTOT %" _fw"u\n", j__AllocWordsTOT));
+    DBGR(printf("# j__RequestedWordsTOT %" _fw"u\n", j__RequestedWordsTOT));
     DBGR(printf("# j__TotalBytesAllocated 0x%" _fw"x\n",
                j__TotalBytesAllocated));
     DBGR(printf("# Total MiB 0x%" _fw"x rem 0x%" _fw"x\n",
@@ -6479,14 +6537,6 @@ JudyLFreeArray(PPvoid_t PPArray, PJError_t PJError)
     return EXP(cnBitsPerWord - cnLogBitsPerByte);
 #endif // (cnDigitsPerWord != 1)
 }
-
-Word_t
-Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
-{
-    printf("Judy1FreeArray\n");
-    return Judy1FreeArray(PPArray, PJError);
-}
-
 
 // Return the number of keys that are present from wKey0 through wKey1.
 // Include wKey0 and wKey1 in the count if they are present.
@@ -6626,13 +6676,6 @@ JudyLCount(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
     return wPopCntTotal;
 
 #endif // (cnDigitsPerWord != 1)
-}
-
-Word_t
-Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
-{
-    printf("Judy1Count\n");
-    return Judy1Count(PArray, wKey0, wKey1, pJError);
 }
 
 // NextGuts(wRoot, nBL, pwKey, wSkip, bPrev, bEmpty)
@@ -7472,17 +7515,20 @@ BmSwGetNextIndex:
 // Return 1 if a key is found.
 // Return 0 if wCount is bigger than the population of the array.
 // Return -1 if pwKey is NULL.
-int
-Judy1ByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
+PPvoid_t
+JudyLByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
 {
+    static Word_t wValue;
+    wValue = 0;
     if (pwKey == NULL) {
-        int ret = -1;
+        //int ret = -1;
         if (PJError != NULL) {
             PJError->je_Errno = JU_ERRNO_NULLPINDEX;
             DBGN(printf("J1BC: je_Errno %d\n", PJError->je_Errno));
         }
-        DBGN(printf("J1BC: ret %d\n", ret));
-        return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
+        //DBGN(printf("J1BC: ret %d\n", ret));
+        //return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
+        return (PPvoid_t)&wValue;
     }
     *pwKey = 0;
     DBGN(printf("J1BC: wCount %" _fw"d *pwKey " OWx"\n", wCount, *pwKey));
@@ -7496,7 +7542,8 @@ Judy1ByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
         *pwKey = wKey;
         DBGN(printf("J1BC: *pwKey " OWx"\n", *pwKey));
     }
-    return wCount == 0;
+    //return wCount == 0;
+    return (PPvoid_t)&wValue;
 }
 
 // If *pwKey is in the array then return 1 and leave *pwKey unchanged.
@@ -7507,17 +7554,20 @@ Judy1ByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
 // But we go to the trouble of preserving *pwKey on error.
-int
-Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
+PPvoid_t
+JudyLFirst(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
+    static Word_t wValue;
+    wValue = 0;
     if (pwKey == NULL) {
-        int ret = -1;
+        //int ret = -1;
         if (PJError != NULL) {
             PJError->je_Errno = JU_ERRNO_NULLPINDEX;
             DBGN(printf("J1F: je_Errno %d\n", PJError->je_Errno));
         }
-        DBGN(printf("J1F: ret %d\n", ret));
-        return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
+        //DBGN(printf("J1F: ret %d\n", ret));
+        //return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
+        return (PPvoid_t)&wValue;
     }
     DBGN(printf("J1F: *pwKey " OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
@@ -7528,7 +7578,8 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         DBGN(printf("J1F: *pwKey " OWx"\n", *pwKey));
     }
     DBGN(printf("J1F: returning %d\n", wCount == 0));
-    return wCount == 0;
+    //return wCount == 0;
+    return (PPvoid_t)&wValue;
 }
 
 // Find the next bigger key than *pwKey which is in the array.
@@ -7538,14 +7589,17 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
 // But we go to the trouble of preserving *pwKey on error.
-int
-Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
+PPvoid_t
+JudyLNext(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
+    static Word_t wValue;
+    wValue = 0;
     Word_t wKeyLocal, *pwKeyLocal;
     if (pwKey != NULL) {
         wKeyLocal = *pwKey + 1;
         if (wKeyLocal == 0) {
-            return 0; // What about PJError?
+            //return 0; // What about PJError?
+            return (PPvoid_t)&wValue;
         }
         pwKeyLocal = &wKeyLocal;
     } else {
@@ -7555,7 +7609,8 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     if (ret == 1) {
         *pwKey = wKeyLocal;
     }
-    return ret;
+    //return ret;
+    return (PPvoid_t)&wValue;
 }
 
 // If *pwKey is in the array then return 1 and leave *pwKey unchanged.
@@ -7566,17 +7621,20 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
 // But we go to the trouble of preserving *pwKey on error.
-int
-Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
+PPvoid_t
+JudyLLast(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
+    static Word_t wValue;
+    wValue = 0;
     if (pwKey == NULL) {
-        int ret = -1;
+        //int ret = -1;
         if (PJError != NULL) {
             PJError->je_Errno = JU_ERRNO_NULLPINDEX;
             DBGN(printf("J1L: je_Errno %d\n", PJError->je_Errno));
         }
-        DBGN(printf("J1L: ret %d\n", ret));
-        return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
+        //DBGN(printf("J1L: ret %d\n", ret));
+        //return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
+        return (PPvoid_t)&wValue;
     }
     DBGN(printf("J1L: *pwKey " OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
@@ -7587,7 +7645,8 @@ Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         DBGN(printf("J1L done: *pwKey " OWx"\n", *pwKey));
     }
     DBGN(printf("J1L: returning %d\n", wCount == 0));
-    return wCount == 0;
+    //return wCount == 0;
+    return (PPvoid_t)&wValue;
 }
 
 // Find the next smaller key than *pwKey which is in the array.
@@ -7597,13 +7656,16 @@ Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
 // But we go to the trouble of preserving *pwKey on error.
-int
-Judy1Prev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
+PPvoid_t
+JudyLPrev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
+    static Word_t wValue;
+    wValue = 0;
     Word_t wKeyLocal, *pwKeyLocal;
     if (pwKey != NULL) {
         if (*pwKey == 0) {
-            return 0; // What about PJError?
+            //return 0; // What about PJError?
+            return (PPvoid_t)&wValue;
         }
         wKeyLocal = *pwKey - 1;
         pwKeyLocal = &wKeyLocal;
@@ -7614,7 +7676,8 @@ Judy1Prev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     if (ret == 1) {
         *pwKey = wKeyLocal;
     }
-    return ret;
+    //return ret;
+    return (PPvoid_t)&wValue;
 }
 
 // If *pwKey is not in the array then return Success and leave *pwKey unchanged.
@@ -7931,7 +7994,7 @@ t_switch:;
 // *pwKey is undefined if anything other than 1 is returned.
 // But we go to the trouble of preserving *pwKey on error.
 int
-Judy1FirstEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
+JudyLFirstEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
     DBGN(printf("J1FE: pwKey %p\n", (void *)pwKey));
     if (pwKey == NULL) {
@@ -7962,7 +8025,7 @@ Judy1FirstEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 // *pwKey is undefined if anything other than 1 is returned.
 // But we go to the trouble of preserving *pwKey on error.
 int
-Judy1NextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
+JudyLNextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
     DBGN(printf("J1NE: pwKey %p\n", (void *)pwKey));
     if (pwKey == NULL) {
@@ -7989,7 +8052,7 @@ Judy1NextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 // *pwKey is undefined if anything other than 1 is returned.
 // But we go to the trouble of preserving *pwKey on error.
 int
-Judy1LastEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
+JudyLLastEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
     DBGN(printf("J1LE: pwKey %p\n", (void *)pwKey));
     if (pwKey == NULL) {
@@ -8021,7 +8084,7 @@ Judy1LastEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 // But we go to the trouble of preserving *pwKey on error so we
 // compare with JudyA.
 int
-Judy1PrevEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
+JudyLPrevEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
     DBGN(printf("J1PE: pwKey %p\n", (void *)pwKey));
     if (pwKey == NULL) {
@@ -8040,14 +8103,14 @@ Judy1PrevEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 }
 
 Word_t
-Judy1MemUsed(Pcvoid_t PArray)
+JudyLMemUsed(Pcvoid_t PArray)
 {
     (void)PArray;
     return 0;
 }
 
 Word_t
-Judy1MemActive(Pcvoid_t PArray)
+JudyLMemActive(Pcvoid_t PArray)
 {
     (void)PArray;
     return 0;

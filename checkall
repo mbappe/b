@@ -26,7 +26,7 @@ for B in `seq 10 $bitsPerWord`
 do
     for S_ARG in '' -S1 -DS1
     do
-        CMD="$CHECK -B$B $S_ARG"
+        CMD="$CHECK -C -d -B$B $S_ARG"
         echo $CMD
         if $CMD > /dev/null
         then
