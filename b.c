@@ -6721,7 +6721,8 @@ JudyLCount(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
 //        do ; while (wKey++, Next(&wKey, /* wSkip */ wN-1) == 0) ;
 static Word_t
 NextGuts(Word_t *pwRoot, int nBL,
-         Word_t *pwKey, Word_t wSkip, int bPrev, int bEmpty)
+         Word_t *pwKey, Word_t wSkip,
+         int bPrev, int bEmpty /* , Word_t **ppwVal */)
 {
 #define A(_zero) assert(_zero)
     (void)bEmpty;
@@ -6777,6 +6778,7 @@ t_list:;
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
                       PWR_xListPopCnt(&wRoot, pwr, nBL);
             *pwKey |= ls_pxKeyX(pwr, nBL, nPopCnt, nPos - wSkip);
+            //*ppwVal = &ls_pxKeyX(pwr, nBL, nPopCnt)[~(nPos - wSkip)];
         } else {
             //A(0);
             if (nPos < 0) { /*A(0);*/ nPos ^= -1; }
@@ -6797,6 +6799,7 @@ t_list:;
             //A(0);
             *pwKey = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
             *pwKey |= ls_pxKeyX(pwr, nBL, nPopCnt, nPos + wSkip);
+            //*ppwVal = &ls_pxKeyX(pwr, nBL, nPopCnt)[~(nPos + wSkip)];
         }
         //A(0);
         return 0;
@@ -7020,6 +7023,9 @@ t_switch:;
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
+// How is *pwKey getting set here?
+// Prior to a recursive call?
+// For which recursive calls do we need to set *ppwVal?
                             //A(0);
                             return 0;
                         }
@@ -7591,6 +7597,7 @@ JudyLFirst(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     if (wCount == 0) {
         *pwKey = wKey;
         DBGN(printf("J1F: *pwKey " OWx"\n", *pwKey));
+        return JudyLGet(PArray, wKey, NULL);
     }
     DBGN(printf("J1F: returning %d\n", wCount == 0));
     //return wCount == 0;
@@ -7608,6 +7615,7 @@ PPvoid_t
 JudyLNext(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
     Word_t wKeyLocal, *pwKeyLocal;
+    PPvoid_t ppvVal;
     if (pwKey != NULL) {
         wKeyLocal = *pwKey + 1;
         if (wKeyLocal == 0) {
@@ -7618,12 +7626,12 @@ JudyLNext(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     } else {
         pwKeyLocal = NULL;
     }
-    int ret = Judy1First(PArray, pwKeyLocal, PJError);
-    if (ret == 1) {
+    ppvVal = JudyLFirst(PArray, pwKeyLocal, PJError);
+    if (ppvVal != NULL) {
         *pwKey = wKeyLocal;
     }
     //return ret;
-    return NULL;
+    return ppvVal;
 }
 
 // If *pwKey is in the array then return 1 and leave *pwKey unchanged.
@@ -7654,6 +7662,7 @@ JudyLLast(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     if (wCount == 0) {
         *pwKey = wKey;
         DBGN(printf("J1L done: *pwKey " OWx"\n", *pwKey));
+        return JudyLGet(PArray, wKey, NULL);
     }
     DBGN(printf("J1L: returning %d\n", wCount == 0));
     //return wCount == 0;
@@ -7671,6 +7680,7 @@ PPvoid_t
 JudyLPrev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
     Word_t wKeyLocal, *pwKeyLocal;
+    PPvoid_t ppvVal;
     if (pwKey != NULL) {
         if (*pwKey == 0) {
             //return 0; // What about PJError?
@@ -7681,12 +7691,12 @@ JudyLPrev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     } else {
         pwKeyLocal = NULL;
     }
-    int ret = Judy1Last(PArray, pwKeyLocal, PJError);
-    if (ret == 1) {
+    ppvVal = JudyLLast(PArray, pwKeyLocal, PJError);
+    if (ppvVal != NULL) {
         *pwKey = wKeyLocal;
     }
     //return ret;
-    return NULL;
+    return ppvVal;
 }
 
 // If *pwKey is not in the array then return Success and leave *pwKey unchanged.
@@ -8044,7 +8054,7 @@ JudyLNextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     Word_t wKeyLocal = *pwKey;
     int ret = 0;
     if (++wKeyLocal != 0) {
-        if ((ret = Judy1FirstEmpty(PArray, &wKeyLocal, PJError)) == 1) {
+        if ((ret = JudyLFirstEmpty(PArray, &wKeyLocal, PJError)) == 1) {
             *pwKey = wKeyLocal;
         }
     }
@@ -8103,7 +8113,7 @@ JudyLPrevEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     Word_t wKeyLocal = *pwKey;
     int ret = 0;
     if (wKeyLocal-- != 0) {
-        if ((ret = Judy1LastEmpty(PArray, &wKeyLocal, PJError)) == 1) {
+        if ((ret = JudyLLastEmpty(PArray, &wKeyLocal, PJError)) == 1) {
             *pwKey = wKeyLocal;
         }
     }
