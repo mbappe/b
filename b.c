@@ -4964,34 +4964,46 @@ embeddedKeys:;
         switch (nBytesKeySz(nBL)) {
         case sizeof(Word_t):
              // copy values
-             COPY(&ls_pwKeysX(pwList, nBL, wPopCnt - 1)[~wPopCnt],
-                  &ls_pwKeysX(pwr, nBL, wPopCnt)[~wPopCnt], wPopCnt - 1);
+             COPY(&ls_pwKeysX(pwList, nBL, wPopCnt - 1)[-((int)wPopCnt - 1)],
+                  &ls_pwKeysX(pwr, nBL, wPopCnt)[-((int)wPopCnt - 1)],
+                  wPopCnt - 1);
+// wPopCnt == 2
+// Should copy keys [0, 0] to [0, 0]
+// Should copy values [-1, -1] to [-1, -1]
+// [ 0, wPopCnt-2]
+// [~0, ~(wPopCnt-2)]
+// [~(wPopCnt-2), ~0]
+// [-(wPopCnt-1), ~0]
+             // copy keys
              COPY(ls_pwKeysX(pwList, nBL, wPopCnt - 1),
                   ls_pwKeysX(pwr, nBL, wPopCnt), wPopCnt - 1);
              break;
 #if (cnBitsPerWord > 32)
         case 4:
              // copy values
-             COPY(&((Word_t*)ls_piKeysNATX(pwList, wPopCnt - 1))[~wPopCnt],
-                  &((Word_t*)ls_piKeysNATX(pwr, wPopCnt))[~wPopCnt],
+             COPY(&((Word_t*)ls_piKeysNATX(pwList, wPopCnt - 1))[-((int)wPopCnt - 1)],
+                  &((Word_t*)ls_piKeysNATX(pwr, wPopCnt))[-((int)wPopCnt - 1)],
                   wPopCnt - 1);
+             // copy keys
              COPY(ls_piKeysNATX(pwList, wPopCnt - 1),
                   ls_piKeysNATX(pwr, wPopCnt), wPopCnt - 1);
              break;
 #endif // (cnBitsPerWord > 32)
         case 2:
              // copy values
-             COPY(&((Word_t*)ls_psKeysNATX(pwList, wPopCnt - 1))[~wPopCnt],
-                  &((Word_t*)ls_psKeysNATX(pwr, wPopCnt))[~wPopCnt],
+             COPY(&((Word_t*)ls_psKeysNATX(pwList, wPopCnt - 1))[-((int)wPopCnt - 1)],
+                  &((Word_t*)ls_psKeysNATX(pwr, wPopCnt))[-((int)wPopCnt - 1)],
                   wPopCnt - 1);
+             // copy keys
              COPY(ls_psKeysNATX(pwList, wPopCnt - 1),
                   ls_psKeysNATX(pwr, wPopCnt), wPopCnt - 1);
              break;
         case 1:
              // copy values
-             COPY(&((Word_t*)ls_pcKeysNATX(pwList, wPopCnt - 1))[~wPopCnt],
-                  &((Word_t*)ls_pcKeysNATX(pwr, wPopCnt))[~wPopCnt],
+             COPY(&((Word_t*)ls_pcKeysNATX(pwList, wPopCnt - 1))[-((int)wPopCnt - 1)],
+                  &((Word_t*)ls_pcKeysNATX(pwr, wPopCnt))[-((int)wPopCnt - 1)],
                   wPopCnt - 1);
+             // copy keys
              COPY(ls_pcKeysNATX(pwList, wPopCnt - 1),
                   ls_pcKeysNATX(pwr, wPopCnt), wPopCnt - 1);
              break;
@@ -5003,10 +5015,11 @@ embeddedKeys:;
 #endif // defined(LIST_END_MARKERS) || defined(PSPLIT_PARALLEL)
 #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
-        // copy values
-        MOVE(&((Word_t*)ls_pcKeysNATX(pwList, wPopCnt - 1))[~nIndex],
-             &((Word_t*)ls_pcKeysNATX(pwr, wPopCnt))[-nIndex],
+        // move values
+        MOVE(&((Word_t*)ls_pcKeysNATX(pwList, wPopCnt - 1))[-((int)wPopCnt - 1)],
+             &((Word_t*)ls_pcKeysNATX(pwr, wPopCnt))[-(int)wPopCnt],
              wPopCnt - nIndex - 1);
+        // move keys
         MOVE(&ls_pcKeysNATX(pwList, wPopCnt - 1)[nIndex],
              &ls_pcKeysNATX(pwr, wPopCnt)[nIndex + 1], wPopCnt - nIndex - 1);
         int n = wPopCnt - 1; (void)n;
@@ -5023,10 +5036,11 @@ embeddedKeys:;
         ls_pcKeysNATX(pwList, wPopCnt - 1)[n] = -1;
 #endif // defined(LIST_END_MARKERS)
     } else if (nBL <= 16) {
-        // copy values
-        MOVE(&((Word_t*)ls_psKeysNATX(pwList, wPopCnt - 1))[~nIndex],
-             &((Word_t*)ls_psKeysNATX(pwr, wPopCnt))[-nIndex],
+        // move values
+        MOVE(&((Word_t*)ls_psKeysNATX(pwList, wPopCnt - 1))[-((int)wPopCnt - 1)],
+             &((Word_t*)ls_psKeysNATX(pwr, wPopCnt))[-(int)wPopCnt],
              wPopCnt - nIndex - 1);
+        // move keys
         MOVE(&ls_psKeysNATX(pwList, wPopCnt - 1)[nIndex],
              &ls_psKeysNATX(pwr, wPopCnt)[nIndex + 1], wPopCnt - nIndex - 1);
         int n = wPopCnt - 1; (void)n; // first empty slot
@@ -5051,10 +5065,11 @@ embeddedKeys:;
 #endif // defined(LIST_END_MARKERS)
 #if (cnBitsPerWord > 32)
     } else if (nBL <= 32) {
-        // copy values
-        MOVE(&((Word_t*)ls_piKeysNATX(pwList, wPopCnt - 1))[~nIndex],
-             &((Word_t*)ls_piKeysNATX(pwr, wPopCnt))[-nIndex],
+        // move values
+        MOVE(&((Word_t*)ls_piKeysNATX(pwList, wPopCnt - 1))[-((int)wPopCnt - 1)],
+             &((Word_t*)ls_piKeysNATX(pwr, wPopCnt))[-(int)wPopCnt],
              wPopCnt - nIndex - 1);
+        // move keys
         MOVE(&ls_piKeysNATX(pwList, wPopCnt - 1)[nIndex],
              &ls_piKeysNATX(pwr, wPopCnt)[nIndex + 1], wPopCnt - nIndex - 1);
         int n = wPopCnt - 1; (void)n;
@@ -5079,9 +5094,18 @@ embeddedKeys:;
 #endif // (cnDummiesInList == 0)
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 #endif // defined(LIST_END_MARKERS)
-        // copy values
-        MOVE(&ls_pwKeysNATX(pwList, wPopCnt - 1)[~nIndex],
-             &ls_pwKeysNATX(pwr, wPopCnt)[-nIndex], wPopCnt - nIndex - 1);
+        // move values
+        MOVE(&ls_pwKeysNATX(pwList, wPopCnt - 1)[-((int)wPopCnt - 1)],
+             &ls_pwKeysNATX(pwr, wPopCnt)[-(int)wPopCnt], wPopCnt - nIndex - 1);
+// wPopCnt == 2, nIndex == 0
+// Should move keys [1, 1] to [0, 0]
+// Should move values [-2, -2] to [-1, -1]
+// [nIndex+1, wPopCnt]
+// [-nIndex-2, -wPopCnt-1]
+// [-wPopCnt-1, -nIndex-2]
+// [-(wPopCnt+1), -nIndex-2]
+// [~wPopCnt, -nIndex-2]
+        // move keys
         MOVE(&ls_pwKeysX(pwList, nBL, wPopCnt - 1)[nIndex], &pwKeys[nIndex + 1],
              wPopCnt - nIndex - 1);
         int n = wPopCnt - 1; (void)n;
