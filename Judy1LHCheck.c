@@ -795,9 +795,20 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
 
         Word_t TstIndexBefore = TstIndex; (void)TstIndexBefore;
         Word_t TstIndex1 = TstIndex; (void)TstIndex1;
-        PValue = (PWord_t)JudyLNext(JL, &TstIndex, NULL);
-#if ! defined(NO_TEST_NEXT)
+#if defined(USE_JUDY1_NEXT_IN_COUNT)
         Rc = Judy1Next(J1, &TstIndex1, NULL);
+        TstIndex = TstIndex1;
+#else // defined(USE_JUDY1_NEXT_IN_COUNT)
+        PValue = (PWord_t)JudyLNext(JL, &TstIndex, NULL);
+#endif // defined(USE_JUDY1_NEXT_IN_COUNT)
+        // Count test depends on Next.
+        // But it doesn't require both Judy1Next and JudyLNext.
+#if ! defined(NO_TEST_NEXT)
+  #if defined(USE_JUDY1_NEXT_IN_COUNT)
+        PValue = (PWord_t)JudyLNext(JL, &TstIndex, NULL);
+  #else // defined(USE_JUDY1_NEXT_IN_COUNT)
+        Rc = Judy1Next(J1, &TstIndex1, NULL);
+  #endif // defined(USE_JUDY1_NEXT_IN_COUNT)
         if (TstIndex != TstIndex1) {
             if ((PValue != NULL) || (Rc == 1)) {
                 printf("PValue = %p Rc = %d\n", (void*)PValue, Rc);
