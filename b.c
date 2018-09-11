@@ -2740,7 +2740,7 @@ embeddedKeys:;
 
 // Handle a prefix mismatch by inserting a switch above and demoting
 // the current *pwRoot.
-static void
+static Word_t *
 PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
 {
     Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
@@ -2963,7 +2963,7 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
                     " for prefix mismatch.\n"));
     DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
-    Insert(nBLUp, pLn, wKey);
+    return Insert(nBLUp, pLn, wKey);
 }
 
 // List is full. What do we do now?
@@ -3520,8 +3520,7 @@ InsertAtList(qp,
     unsigned short *psKeys = NULL;
     unsigned char *pcKeys = NULL;
 #endif // defined(COMPRESSED_LISTS)
-    static Word_t wValue = 0;
-    Word_t *pwValue = &wValue;
+    Word_t *pwValue;
 
     DBGI(printf("InsertGuts List\n"));
 
@@ -4096,7 +4095,8 @@ embeddedKeys:;
 #if defined(SKIP_LINKS)
         {
 #if 1
-            PrefixMismatch(pwRoot, nDL_to_nBL(nDL), wKey, nDL_to_nBL(nDLR));
+            return PrefixMismatch(pwRoot,
+                                  nDL_to_nBL(nDL), wKey, nDL_to_nBL(nDLR));
 #else
             // prefix mismatch
             // insert a switch so we can add just one key; seems like a waste
@@ -4340,9 +4340,8 @@ embeddedKeys:;
     }
 #endif // defined(SKIP_LINKS) || defined(BM_SW_FOR_REAL)
 
-    static Word_t wValue;
-    wValue = 0;
-    return &wValue;
+    assert(0);
+    return NULL;
 }
 
 #if (cwListPopCntMax != 0)
@@ -4625,9 +4624,7 @@ InsertAtDl1(Word_t *pwRoot, Word_t wKey, int nDL,
 
 #endif // defined(PP_IN_LINK)
 
-    static Word_t wValue;
-    wValue = 0;
-    return &wValue;
+    return NULL;
 }
 
 // InsertAtBitmap is for a bitmap that is not at the bottom.
@@ -4700,9 +4697,7 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
 
 #endif // defined(PP_IN_LINK)
 
-    static Word_t wValue;
-    wValue = 0;
-    return &wValue;
+    return NULL;
 }
 
 Status_t
@@ -7542,8 +7537,6 @@ BmSwGetNextIndex:
 PPvoid_t
 JudyLByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
 {
-    static Word_t wValue;
-    wValue = 0;
     if (pwKey == NULL) {
         //int ret = -1;
         if (PJError != NULL) {
@@ -7552,7 +7545,7 @@ JudyLByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
         }
         //DBGN(printf("J1BC: ret %d\n", ret));
         //return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
-        return (PPvoid_t)&wValue;
+        return NULL;
     }
     *pwKey = 0;
     DBGN(printf("J1BC: wCount %" _fw"d *pwKey " OWx"\n", wCount, *pwKey));
@@ -7567,7 +7560,7 @@ JudyLByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
         DBGN(printf("J1BC: *pwKey " OWx"\n", *pwKey));
     }
     //return wCount == 0;
-    return (PPvoid_t)&wValue;
+    return NULL;
 }
 
 // If *pwKey is in the array then return 1 and leave *pwKey unchanged.
@@ -7581,8 +7574,6 @@ JudyLByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
 PPvoid_t
 JudyLFirst(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
-    static Word_t wValue;
-    wValue = 0;
     if (pwKey == NULL) {
         //int ret = -1;
         if (PJError != NULL) {
@@ -7591,7 +7582,7 @@ JudyLFirst(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         }
         //DBGN(printf("J1F: ret %d\n", ret));
         //return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
-        return (PPvoid_t)&wValue;
+        return NULL;
     }
     DBGN(printf("J1F: *pwKey " OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
@@ -7603,7 +7594,7 @@ JudyLFirst(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     }
     DBGN(printf("J1F: returning %d\n", wCount == 0));
     //return wCount == 0;
-    return (PPvoid_t)&wValue;
+    return NULL;
 }
 
 // Find the next bigger key than *pwKey which is in the array.
@@ -7616,14 +7607,12 @@ JudyLFirst(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 PPvoid_t
 JudyLNext(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
-    static Word_t wValue;
-    wValue = 0;
     Word_t wKeyLocal, *pwKeyLocal;
     if (pwKey != NULL) {
         wKeyLocal = *pwKey + 1;
         if (wKeyLocal == 0) {
             //return 0; // What about PJError?
-            return (PPvoid_t)&wValue;
+            return NULL;
         }
         pwKeyLocal = &wKeyLocal;
     } else {
@@ -7634,7 +7623,7 @@ JudyLNext(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         *pwKey = wKeyLocal;
     }
     //return ret;
-    return (PPvoid_t)&wValue;
+    return NULL;
 }
 
 // If *pwKey is in the array then return 1 and leave *pwKey unchanged.
@@ -7648,8 +7637,6 @@ JudyLNext(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 PPvoid_t
 JudyLLast(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
-    static Word_t wValue;
-    wValue = 0;
     if (pwKey == NULL) {
         //int ret = -1;
         if (PJError != NULL) {
@@ -7658,7 +7645,7 @@ JudyLLast(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         }
         //DBGN(printf("J1L: ret %d\n", ret));
         //return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
-        return (PPvoid_t)&wValue;
+        return NULL;
     }
     DBGN(printf("J1L: *pwKey " OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
@@ -7670,7 +7657,7 @@ JudyLLast(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     }
     DBGN(printf("J1L: returning %d\n", wCount == 0));
     //return wCount == 0;
-    return (PPvoid_t)&wValue;
+    return NULL;
 }
 
 // Find the next smaller key than *pwKey which is in the array.
@@ -7683,13 +7670,11 @@ JudyLLast(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 PPvoid_t
 JudyLPrev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
-    static Word_t wValue;
-    wValue = 0;
     Word_t wKeyLocal, *pwKeyLocal;
     if (pwKey != NULL) {
         if (*pwKey == 0) {
             //return 0; // What about PJError?
-            return (PPvoid_t)&wValue;
+            return NULL;
         }
         wKeyLocal = *pwKey - 1;
         pwKeyLocal = &wKeyLocal;
@@ -7701,7 +7686,7 @@ JudyLPrev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         *pwKey = wKeyLocal;
     }
     //return ret;
-    return (PPvoid_t)&wValue;
+    return NULL;
 }
 
 // If *pwKey is not in the array then return Success and leave *pwKey unchanged.
