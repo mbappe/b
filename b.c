@@ -1855,9 +1855,13 @@ embeddedKeys:;
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 #if defined(COMPRESSED_LISTS)
                 if (nBL <= 8) {
-                    printf(" %02x", ls_pcKeysNATX(pwr, wPopCnt)[xx]);
+                    printf(" %02x,"OWx,
+                                     ls_pcKeysNATX(pwr, wPopCnt)[xx],
+                           ((Word_t*)ls_pcKeysNATX(pwr, wPopCnt))[~xx]);
                 } else if (nBL <= 16) {
-                    printf(" %04x", ls_psKeysNATX(pwr, wPopCnt)[xx]);
+                    printf(" %04x,"OWx,
+                                     ls_psKeysNATX(pwr, wPopCnt)[xx],
+                           ((Word_t*)ls_psKeysNATX(pwr, wPopCnt))[~xx]);
 #if (cnBitsPerWord > 32)
                 } else if (nBL <= 32) {
                     printf(" %08x,"OWx,
