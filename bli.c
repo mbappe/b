@@ -2385,6 +2385,9 @@ JudyLGet(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     Word_t *pwr = wr_pwr(wRoot);
     qv;
 
+    DBGL(printf("\n\n# JudyLGet pcvRoot %p wKey " OWx"\n",
+                (void *)pcvRoot, wKey));
+
   #if (cwListPopCntMax != 0)
       #if defined(SEARCH_FROM_WRAPPER)
     // Handle a top level T_LIST leaf here -- without calling Lookup.
@@ -2417,7 +2420,8 @@ JudyLGet(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
       #endif // defined(SEARCH_FROM_WRAPPER)
   #endif // (cwListPopCntMax != 0)
 
-    return (PPvoid_t)Lookup(
+    Word_t *pwValue;
+    pwValue = (Word_t *)Lookup(
   #if defined(PLN_PARAM_FOR_LOOKUP)
                             pLn,
   #else // defined(PLN_PARAM_FOR_LOOKUP)
@@ -2425,6 +2429,10 @@ JudyLGet(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
   #endif // defined(PLN_PARAM_FOR_LOOKUP)
                             wKey
                             );
+
+    DBGL(printf("\n\n# JudyLGet pcvRoot %p wKey " OWx" returning %p,0x%zx\n",
+                (void *)pcvRoot, wKey, (void*)pwValue, pwValue == NULL ? 0 : *pwValue));
+    return (PPvoid_t)pwValue;
 
 #else // (cnDigitsPerWord > 1)
 
@@ -2648,6 +2656,8 @@ JudyLIns(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     assert(((Word_t*)&pLn->ln_wRoot)[ 1] == 0);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
 
+    DBGI(printf("JudyLIns ppvRoot %p wKey 0x%zx returning %p,0x%zx\n",
+                (void*)ppvRoot, wKey, (void*)pwValue, *pwValue));
     return (PPvoid_t)pwValue;
 
 #else // (cnDigitsPerWord > 1)
@@ -2709,7 +2719,9 @@ JudyLDel(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     assert(((Word_t*)&pLn->ln_wRoot)[-1] == 0);
     assert(((Word_t*)&pLn->ln_wRoot)[ 1] == 0);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
-    DBGR(printf("\n# Judy1Unset (before): wPopCntTotal %zd\n", wPopCntTotal));
+    DBGR(printf("\n# Judy1Unset ppvRoot %p  wKey 0x%zx (before):"
+                  " wPopCntTotal %zd\n",
+                (void*)ppvRoot, wKey, wPopCntTotal));
 
     int status;
 
@@ -2774,8 +2786,9 @@ JudyLDel(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     if (status == Success) { wPopCntTotal--; }
 
   #if defined(DEBUG_REMOVE)
-    DBGR(printf("\n# After Remove(wKey " OWx") %s Dump\n", wKey,
-            status == Success ? "Success" : "Failure"));
+    DBGR(printf("\n# After Remove(ppvRoot %p, wKey " OWx") %s Dump\n",
+                (void *)ppvRoot, wKey,
+                status == Success ? "Success" : "Failure"));
     DBGR(Dump((Word_t *)ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord));
     DBGR(printf("\n"));
   #endif // defined(DEBUG_REMOVE)
@@ -2801,6 +2814,8 @@ JudyLDel(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     assert(((Word_t*)&pLn->ln_wRoot)[ 1] == 0);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
 
+    DBGR(printf("JudyLDel ppvRoot %p wKey 0x%zx status %d\n",
+                (void*)ppvRoot, wKey, status));
     return status;
 
 #else // (cnDigitsPerWord > 1)
