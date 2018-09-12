@@ -228,7 +228,6 @@ main(int argc, char *argv[])
 #define J1 (sj1.pv1)
     struct { void *pv0, *pv1, *pv2; } sjL = { 0, 0, 0 };
 #define JL (sjL.pv1)
-    printf("&sjL.pv1 %p %p\n", (void*)&sjL.pv1, sjL.pv1);
 #else // DEBUG
     void *J1 = NULL;            // Judy1
     void *JL = NULL;            // JudyL
