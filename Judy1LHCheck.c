@@ -499,7 +499,7 @@ main(int argc, char *argv[])
             // So we have to free whichever array is being handled by Mikey's
             // Judy library last.
 
-#ifndef NO_TEST_HS
+#ifdef TEST_HS
             // JudyHS assumes JudyL does not use the JLAP_INVALID bit (see
             // Judy.h) of an array's root word. JudyHS uses the bit for its
             // own purpose. Since Mikey's JudyL uses (or reserves the right
@@ -512,7 +512,7 @@ main(int argc, char *argv[])
 
             if (pFlag) printf("JudyHSFreeArray = %6.3f Bytes/Index\n",
                    (double)Bytes / (double)TotalPop); // Count not available yet
-#endif // NO_TEST_HS
+#endif // TEST_HS
 
 //            J1FA(Bytes, J1);    // Free the Judy1 Array
             Bytes = Judy1FreeArray(&J1, NULL);
@@ -615,7 +615,7 @@ TestJudyIns(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
 // not ready for this yet! printf("Index moved -- TotalPop = %" PRIuPTR"\n", TotalPop);
             }
         }
-#if ! defined(NO_TEST_HS)
+#if defined(TEST_HS)
 //      JudyHS
         PValue = (PWord_t)JudyHSIns(JH, (void *)(&TstIndex), sizeof(Word_t), NULL);
         if (PValue == PJERR)
@@ -647,7 +647,7 @@ TestJudyIns(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
 // not ready for this yet! printf("Index moved -- TotalPop = %" PRIuPTR"\n", TotalPop);
             }
         }
-#endif // ! defined(NO_TEST_HS)
+#endif // defined(TEST_HS)
         TotalPop++;
         TotalIns++;
     }
@@ -693,13 +693,13 @@ TestJudyGet(void *J1, void *JL, void *JH, Word_t Seed, Word_t Elements)
         if (*PValue != TstIndex)
             FAILURE("JudyLGet ret wrong Value at", elm);
 
-#ifndef NO_TEST_HS
+#ifdef TEST_HS
         PValue = (PWord_t)JudyHSGet(JH, (void *)(&TstIndex), sizeof(Word_t));
         if (PValue == (Word_t *) NULL)
             FAILURE("JudyHSGet ret PValue = NULL", 0L);
         if (*PValue != TstIndex)
             FAILURE("JudyHSGet ret wrong Value at", elm);
-#endif // NO_TEST_HS
+#endif // TEST_HS
     }
 
     return(LowIndex);
@@ -741,13 +741,13 @@ TestJudyDup(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
         if (*PValue != TstIndex)
             FAILURE("JudyLIns ret wrong Value at", elm);
 
-#ifndef NO_TEST_HS
+#ifdef TEST_HS
         PValue = (PWord_t)JudyHSIns(JH, &TstIndex, sizeof(Word_t), NULL);
         if (PValue == (Word_t *) NULL)
             FAILURE("JudyHSIns ret PValue = NULL", 0L);
         if (*PValue != TstIndex)
             FAILURE("JudyHSIns ret wrong Value at", elm);
-#endif // NO_TEST_HS
+#endif // TEST_HS
     }
 
     return(LowIndex);
@@ -1123,11 +1123,11 @@ TestJudyDel(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
         if (Rcode != 1)
             FAILURE("JudyLDel ret Rcode != 1", Rcode);
 
-#ifndef NO_TEST_HS
+#ifdef TEST_HS
         JHSD(Rcode, *JH, (void *)(&TstIndex), sizeof(Word_t));
         if (Rcode != 1)
             FAILURE("JudyHSDel ret Rcode != 1", Rcode);
-#endif // NO_TEST_HS
+#endif // TEST_HS
 
         TotalPop--;
     }
