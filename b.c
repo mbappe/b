@@ -3499,6 +3499,386 @@ insertAll:;
     Insert(nBLOld, pLn, wKey);
 }
 
+static void
+InsertAtList(qp,
+             Word_t wKey,
+             int nPos,
+#ifdef CODE_XX_SW
+             int nBW,
+             Link_t *pLnUp,
+  #ifdef SKIP_TO_XX_SW
+             int nBLUp,
+  #endif // SKIP_TO_XX_SW
+#endif // CODE_XX_SW
+             int nDL
+             )
+{
+    qv;
+    Word_t wPopCnt = 0;
+    Word_t *pwKeys = NULL;
+#if defined(COMPRESSED_LISTS)
+  #if (cnBitsPerWord > 32)
+    unsigned int *piKeys = NULL;
+  #endif // (cnBitsPerWord > 32)
+    unsigned short *psKeys = NULL;
+    unsigned char *pcKeys = NULL;
+#endif // defined(COMPRESSED_LISTS)
+
+    DBGI(printf("InsertGuts List\n"));
+
+    // Initialize wPopCnt, pwKeys, piKeys, psKeys and pcKeys for copy.
+    // And set prefix in link if PP_IN_LINK and the list is empty and
+    // we're not at the top.
+    if (wRoot != 0) // pointer to old List
+    {
+#if defined(EMBED_KEYS)
+        assert(nType != T_EMBEDDED_KEYS);
+#endif // defined(EMBED_KEYS)
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        // this test is no good unless we disallow skip from top
+        if (nBL < cnBitsPerWord) {
+            // Get pop from ln_wPrefixPop.
+            // Why are we subracting one here? Is it because Insert
+            // bumps pop count before calling InsertGuts? Yes.
+            // Can't we make PWR_xListPopCnt handle this case?
+            wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL) - 1;
+        } else
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        { wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL); }
+        pwKeys = ls_pwKeys(pwr, nBL); // list of keys in old List
+#if defined(COMPRESSED_LISTS)
+#if (cnBitsPerWord > 32)
+        piKeys = ls_piKeysNATX(pwr, wPopCnt);
+#endif // (cnBitsPerWord > 32)
+        psKeys = ls_psKeysNATX(pwr, wPopCnt);
+        pcKeys = ls_pcKeysNATX(pwr, wPopCnt);
+#endif // defined(COMPRESSED_LISTS)
+        // prefix is already set
+    }
+    else
+    {
+#if defined(PP_IN_LINK)
+        if (nBL != cnBitsPerWord) {
+            // What about no_unnecessary_prefix?
+            set_PWR_wPrefixBL(pwRoot, pwr, nBL, wKey);
+        }
+#endif // defined(PP_IN_LINK)
+    }
+
+// We don't support skip links to lists yet.
+// And we don't have any criteria yet for converting from a list to a switch
+// other than the list is full.
+// So we just add to an existing list or create a new one here.
+// But this is where we might make a decision to use a skip link
+// to a list or a bitmap or convert a list to a switch or convert the
+// other way or create a bitmap switch or ...
+// We need a new type field the destination of a link with type zero.
+//
+//  - bitmap leaf -- level (width), prefix and pop, bits
+//  - list leaf -- level (key size), prefix, pop (capacity), keys
+//  - bitmap switch -- level, prefix, pop, width, bitmap, links
+//  - list switch -- level, prefix, pop, width, link indexes, links
+
+    int nDLOld = nDL; (void)nDLOld;
+    int nBLOld = nBL; (void)nBLOld;
+
+#if (cwListPopCntMax != 0) // true if we are using lists; embedded or external
+
+  #if defined(EMBED_KEYS)
+  #if ! defined(POP_CNT_MAX_IS_KING) || defined(CODE_XX_SW)
+    // It makes no sense to impose a pop limit that is less than what
+    // will fit as embedded keys.  If we want to be able to do that for
+    // running experiments, then we can use POP_CNT_MAX_IS_KING.
+    int nEmbeddedListPopCntMax = EmbeddedListPopCntMax(nBL);
+  #endif // ! defined(POP_CNT_MAX_IS_KING) || defined(CODE_XX_SW)
+  #endif // defined(EMBED_KEYS)
+  #if defined(NO_TYPE_IN_XX_SW)
+    if ((nBL < nDL_to_nBL(2))
+        && (wPopCnt == (Word_t)nEmbeddedListPopCntMax))
+    {
+        DBGR(printf("IG: goto doubleIt nBL %d cnt %d max %d.\n",
+                    nBL, (int)wPopCnt, nEmbeddedListPopCntMax));
+        goto doubleIt;
+    }
+  #endif // defined(NO_TYPE_IN_XX_SW)
+
+    if (0
+#if defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
+        || (wPopCnt < (Word_t)nEmbeddedListPopCntMax)
+#endif // defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
+        || ((nBL == cnBitsInD1)
+            && ((int)wPopCnt < (int)cnListPopCntMaxDl1))
+#if defined(cnListPopCntMaxDl2)
+        || ((nBL == cnBitsLeftAtDl2)
+            && ((int)wPopCnt < (int)cnListPopCntMaxDl2))
+#endif // defined(cnListPopCntMaxDl2)
+#if defined(cnListPopCntMaxDl3)
+        || ((nBL == cnBitsLeftAtDl3) && (wPopCnt < cnListPopCntMaxDl3))
+#endif // defined(cnListPopCntMaxDl3)
+        || ((nBL != cnBitsInD1)
+#if defined(cnListPopCntMaxDl2)
+            && (nBL != cnBitsLeftAtDl2)
+#endif // defined(cnListPopCntMaxDl2)
+#if defined(cnListPopCntMaxDl3)
+            && (nBL != cnBitsLeftAtDl3)
+#endif // defined(cnListPopCntMaxDl3)
+            && ((int)wPopCnt < anListPopCntMax[LOG(nBL - 1)])))
+    {
+#if defined(CODE_XX_SW)
+#if ! defined(cnXxSwWpkPercent)
+#undef cnXxSwWpkPercent
+#define cnXxSwWpkPercent  150
+#endif // ! defined(cnXxSwWpkPercent)
+        // This block is a performance/efficiency optimization.
+        // It is not necessary for "correct" behavior.
+        // It is only relevant if ifdefs allow for a blow-out.
+        // This is possible if ! defined(NO_TYPE_IN_XX_SW).
+        // We haven't written the blow-up creation code for
+        // NO_TYPE_IN_XX_SW yet.
+        if (nBL == nDL_to_nBL(2)) {
+  #if defined(EMBED_KEYS)
+            if ((int)wPopCnt >= nEmbeddedListPopCntMax)
+  #endif // defined(EMBED_KEYS)
+            {
+                if ((wWordsAllocated * 100 / wPopCntTotal)
+                        < cnXxSwWpkPercent)
+                {
+                    goto newSwitch;
+                }
+            }
+        }
+        if (nBL < nDL_to_nBL(2)) {
+  #if defined(EMBED_KEYS)
+            if ((int)wPopCnt >= nEmbeddedListPopCntMax)
+  #endif // defined(EMBED_KEYS)
+            {
+                if ((wWordsAllocated * 100 / wPopCntTotal)
+                        < cnXxSwWpkPercent)
+                {
+                    goto doubleIt;
+                }
+            }
+        }
+#endif // defined(CODE_XX_SW)
+
+        Word_t *pwList;
+
+        // Allocate memory for a new list if necessary.
+        // Init or update pop count if necessary.
+        if ((pwr == NULL)
+            // Inflate uses LWTL.
+            || (ListWordsTypeList(wPopCnt + 1, nBL)
+                    != ListWordsTypeList(wPopCnt, nBL)))
+        {
+            DBGI(printf("pwr %p wPopCnt %" _fw"d nBL %d\n",
+                        (void *)pwr, wPopCnt, nBL));
+            DBGI(printf("nType %d\n", nType));
+            DBGI(printf("nBL %d LWE(pop %d) %d LWE(pop %d) %d\n",
+                        nBL, (int)wPopCnt + 1,
+                        ListWordsExternal(wPopCnt + 1, nBL),
+                        (int)wPopCnt,
+                        ListWordsExternal(wPopCnt    , nBL)));
+            // Allocate a new list and init pop count if pop count is
+            // in the list.  Also init the beginning of the list marker
+            // if LIST_END_MARKERS.
+            assert(wPopCnt + 1 != 0);
+            pwList = NewListTypeList(wPopCnt + 1, nBL);
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+            assert((nDL == cnDigitsPerWord)
+                || (PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)
+                        == wPopCnt + 1));
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+#if defined(UA_PARALLEL_128)
+            if ((nBL == 16) && (wPopCnt < 6)) {
+                set_wr(wRoot, pwList, T_LIST_UA);
+            } else
+#endif // defined(UA_PARALLEL_128)
+            { set_wr(wRoot, pwList, T_LIST); }
+        }
+        else
+        {
+            pwList = pwr;
+
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+            if (nDL != cnDigitsPerWord) {
+                assert(PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)
+                       == wPopCnt + 1);
+            }
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        }
+
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        if (nBL >= cnBitsPerWord)
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        { Set_xListPopCnt(&wRoot, nBL, wPopCnt + 1); }
+
+        if (wPopCnt != 0)
+#if defined(SORT_LISTS)
+        {
+#if defined(COMPRESSED_LISTS)
+            if (nBL <= 8) {
+                goto copyWithInsert8;
+copyWithInsert8:
+                CopyWithInsertChar(ls_pcKeysNATX(pwList, wPopCnt + 1),
+                    pcKeys, wPopCnt, (unsigned char)wKey);
+            } else if (nBL <= 16) {
+                goto copyWithInsert16;
+copyWithInsert16:
+                CopyWithInsertShort(ls_psKeysNATX(pwList, wPopCnt + 1),
+                    psKeys, wPopCnt, (unsigned short)wKey, nPos);
+#if (cnBitsPerWord > 32)
+            } else if (nBL <= 32) {
+                goto copyWithInsert32;
+copyWithInsert32:
+                CopyWithInsertInt(ls_piKeysNATX(pwList, wPopCnt + 1),
+                    piKeys, wPopCnt, (unsigned int)wKey);
+#endif // (cnBitsPerWord > 32)
+            } else
+#endif // defined(COMPRESSED_LISTS)
+            {
+                goto copyWithInsertWord;
+copyWithInsertWord:
+                CopyWithInsertWord(ls_pwKeysX(pwList, nBL, wPopCnt + 1),
+                                   pwKeys, wPopCnt, wKey);
+            }
+        }
+        else
+#else // defined(SORT_LISTS)
+        {
+#if defined(COMPRESSED_LISTS)
+            if (nBL <= 8) {
+                COPY(ls_pcKeysNAT(pwList), pcKeys, wPopCnt);
+            } else if (nBL <= 16) {
+                COPY(ls_psKeysNAT(pwList), psKeys, wPopCnt);
+#if (cnBitsPerWord > 32)
+            } else if (nBL <= 32) {
+                COPY(ls_piKeysNAT(pwList), piKeys, wPopCnt);
+#endif // (cnBitsPerWord > 32)
+            } else
+#endif // defined(COMPRESSED_LISTS)
+            {
+                COPY(ls_pwKeys(pwList, nBL), pwKeys, wPopCnt);
+            }
+        }
+#endif // defined(SORT_LISTS)
+        {
+#if defined(COMPRESSED_LISTS)
+            if (nBL <= 8) {
+  #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
+  && defined(PSPLIT_SEARCH_8) && defined(PSPLIT_PARALLEL)
+                //printf("goto copyWithInsert8\n");
+                goto copyWithInsert8;
+  #else // !defined(EMBED_KEYS) && ... d&& efined(PSPLIT_PARALLEL)
+                ls_pcKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey;
+  #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
+            } else if (nBL <= 16) {
+  #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
+  && defined(PSPLIT_SEARCH_16) && defined(PSPLIT_PARALLEL)
+                nPos = 0;
+                //printf("goto copyWithInsert16\n");
+                goto copyWithInsert16;
+  #else // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
+                ls_psKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey;
+  #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
+#if (cnBitsPerWord > 32)
+            } else if (nBL <= 32) {
+  #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
+  && defined(PSPLIT_SEARCH_32) && defined(PSPLIT_PARALLEL)
+                //printf("goto copyWithInsert32\n");
+                goto copyWithInsert32;
+  #else // !defined(EMBED_KEYS) && ... defined(PSPLIT_PARALLEL)
+                { ls_piKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey; }
+  #endif // !defined(EMBED_KEYS) && ... defined(PSPLIT_PARALLEL)
+#endif // (cnBitsPerWord > 32)
+            } else
+#endif // defined(COMPRESSED_LISTS)
+            {
+  #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
+  && defined(PSPLIT_PARALLEL_WORD)
+                //printf("goto copyWithInsertWord\n");
+                goto copyWithInsertWord;
+  #else // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL_WORD)
+                ls_pwKeysX(pwList, nBL, wPopCnt + 1)[wPopCnt] = wKey;
+  #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL_WORD)
+            }
+            // Shouldn't we be padding the extra key slots
+            // for parallel search? Is the unsorted list
+            // code so dead that we should abandon it?
+            // Is the uncompressed lists so dead that we
+            // should abandon it?
+        }
+
+        if ((wPopCnt != 0) && (pwr != pwList))
+        {
+            OldList(pwr, wPopCnt, nBL, nType);
+        }
+
+        // It's a bit ugly that we are installing this T_LIST for
+        // if NO_TYPE_IN_XX_SW.  But we know that DEL is going to
+        // fix it.  We could give deflate &wRoot, then install the new
+        // wRoot ourselves (if DEL returned it).
+        *pwRoot = wRoot; // install new
+
+#if defined(EMBED_KEYS)
+        // Embed the list if it fits.
+        if ( ! ( (wr_nType(wRoot) == T_LIST)
+#if defined(UA_PARALLEL_128)
+               || (wr_nType(wRoot) == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+               ) )
+        {
+            printf("wRoot " Owx"\n", wRoot);
+        }
+#endif // defined(EMBED_KEYS)
+#if defined(EMBED_KEYS)
+        // Embed the list if it fits.
+        assert( (wr_nType(wRoot) == T_LIST)
+#if defined(UA_PARALLEL_128)
+               || (wr_nType(wRoot) == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+               );
+        if ((int)wPopCnt < EmbeddedListPopCntMax(nBL))
+        {
+            DeflateExternalList(pwRoot, wPopCnt + 1, nBL, pwList);
+#if defined(NO_TYPE_IN_XX_SW)
+            if (!((nBL < nDL_to_nBL(2))
+                || (wr_nType(*pwRoot) == T_EMBEDDED_KEYS)))
+            {
+                printf("nBL %d wPopCnt %ld nType %d\n",
+                       nBL, wPopCnt, wr_nType(*pwRoot));
+            }
+            assert((nBL < nDL_to_nBL(2))
+                || (wr_nType(*pwRoot) == T_EMBEDDED_KEYS));
+#else // defined(NO_TYPE_IN_XX_SW)
+  #if defined(DEBUG)
+            if ( ! (wr_nType(*pwRoot) == T_EMBEDDED_KEYS) )
+            {
+                printf("\nnType 0x%x wPopCnt " OWx"\n",
+                       wr_nType(*pwRoot), wPopCnt);
+            }
+  #endif // defined(DEBUG)
+            assert(wr_nType(*pwRoot) == T_EMBEDDED_KEYS);
+#endif // defined(NO_TYPE_IN_XX_SW)
+            DBGR(printf("IG: after DEL *pwRoot " OWx"\n", *pwRoot));
+        }
+#endif // defined(EMBED_KEYS)
+    }
+    else
+#endif // (cwListPopCntMax != 0)
+    {
+    DBGI(printf("List is full nBL %d.\n", nBL));
+
+    Splay(qy, wKey, nBLOld, nDL, nDLOld,
+#ifdef CODE_XX_SW
+                    nBW, pLnUp,
+  #ifdef SKIP_TO_XX_SW
+                    nBLUp,
+  #endif // SKIP_TO_XX_SW
+#endif // CODE_XX_SW
+                    wPopCnt, pwKeys, piKeys, psKeys, pcKeys);
+    }
+}
+
 // InsertGuts
 // This function is called from the iterative Insert function once Insert has
 // determined that the key from an insert request is not present in the array.
@@ -3636,369 +4016,15 @@ embeddedKeys:;
   #endif // defined(BM_SW_FOR_REAL)
 #endif // defined(SKIP_LINKS)
     {
-        Word_t wPopCnt = 0;
-        Word_t *pwKeys = NULL;
-#if defined(COMPRESSED_LISTS)
-  #if (cnBitsPerWord > 32)
-        unsigned int *piKeys = NULL;
-  #endif // (cnBitsPerWord > 32)
-        unsigned short *psKeys = NULL;
-        unsigned char *pcKeys = NULL;
-#endif // defined(COMPRESSED_LISTS)
-
-        DBGI(printf("InsertGuts List\n"));
-
-        // Initialize wPopCnt, pwKeys, piKeys, psKeys and pcKeys for copy.
-        // And set prefix in link if PP_IN_LINK and the list is empty and
-        // we're not at the top.
-        if (wRoot != 0) // pointer to old List
-        {
-#if defined(EMBED_KEYS)
-            assert(nType != T_EMBEDDED_KEYS);
-#endif // defined(EMBED_KEYS)
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-            // this test is no good unless we disallow skip from top
-            if (nBL < cnBitsPerWord) {
-                // Get pop from ln_wPrefixPop.
-                // Why are we subracting one here? Is it because Insert
-                // bumps pop count before calling InsertGuts? Yes.
-                // Can't we make PWR_xListPopCnt handle this case?
-                wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL) - 1;
-            } else
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-            { wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL); }
-            pwKeys = ls_pwKeys(pwr, nBL); // list of keys in old List
-#if defined(COMPRESSED_LISTS)
-#if (cnBitsPerWord > 32)
-            piKeys = ls_piKeysNATX(pwr, wPopCnt);
-#endif // (cnBitsPerWord > 32)
-            psKeys = ls_psKeysNATX(pwr, wPopCnt);
-            pcKeys = ls_pcKeysNATX(pwr, wPopCnt);
-#endif // defined(COMPRESSED_LISTS)
-            // prefix is already set
-        }
-        else
-        {
-#if defined(PP_IN_LINK)
-            if (nBL != cnBitsPerWord) {
-                // What about no_unnecessary_prefix?
-                set_PWR_wPrefixBL(pwRoot, pwr, nBL, wKey);
-            }
-#endif // defined(PP_IN_LINK)
-        }
-
-// We don't support skip links to lists yet.
-// And we don't have any criteria yet for converting from a list to a switch
-// other than the list is full.
-// So we just add to an existing list or create a new one here.
-// But this is where we might make a decision to use a skip link
-// to a list or a bitmap or convert a list to a switch or convert the
-// other way or create a bitmap switch or ...
-// We need a new type field the destination of a link with type zero.
-//
-//  - bitmap leaf -- level (width), prefix and pop, bits
-//  - list leaf -- level (key size), prefix, pop (capacity), keys
-//  - bitmap switch -- level, prefix, pop, width, bitmap, links
-//  - list switch -- level, prefix, pop, width, link indexes, links
-
-        int nDLOld = nDL; (void)nDLOld;
-        int nBLOld = nBL; (void)nBLOld;
-
-#if (cwListPopCntMax != 0) // true if we are using lists; embedded or external
-
-  #if defined(EMBED_KEYS)
-      #if ! defined(POP_CNT_MAX_IS_KING) || defined(CODE_XX_SW)
-        // It makes no sense to impose a pop limit that is less than what
-        // will fit as embedded keys.  If we want to be able to do that for
-        // running experiments, then we can use POP_CNT_MAX_IS_KING.
-        int nEmbeddedListPopCntMax = EmbeddedListPopCntMax(nBL);
-      #endif // ! defined(POP_CNT_MAX_IS_KING) || defined(CODE_XX_SW)
-  #endif // defined(EMBED_KEYS)
-  #if defined(NO_TYPE_IN_XX_SW)
-        if ((nBL < nDL_to_nBL(2))
-            && (wPopCnt == (Word_t)nEmbeddedListPopCntMax))
-        {
-            DBGR(printf("IG: goto doubleIt nBL %d cnt %d max %d.\n",
-                        nBL, (int)wPopCnt, nEmbeddedListPopCntMax));
-            goto doubleIt;
-        }
-  #endif // defined(NO_TYPE_IN_XX_SW)
-
-        if (0
-#if defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
-            || (wPopCnt < (Word_t)nEmbeddedListPopCntMax)
-#endif // defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
-            || ((nBL == cnBitsInD1)
-                && ((int)wPopCnt < (int)cnListPopCntMaxDl1))
-#if defined(cnListPopCntMaxDl2)
-            || ((nBL == cnBitsLeftAtDl2)
-                && ((int)wPopCnt < (int)cnListPopCntMaxDl2))
-#endif // defined(cnListPopCntMaxDl2)
-#if defined(cnListPopCntMaxDl3)
-            || ((nBL == cnBitsLeftAtDl3) && (wPopCnt < cnListPopCntMaxDl3))
-#endif // defined(cnListPopCntMaxDl3)
-            || ((nBL != cnBitsInD1)
-#if defined(cnListPopCntMaxDl2)
-                && (nBL != cnBitsLeftAtDl2)
-#endif // defined(cnListPopCntMaxDl2)
-#if defined(cnListPopCntMaxDl3)
-                && (nBL != cnBitsLeftAtDl3)
-#endif // defined(cnListPopCntMaxDl3)
-                && ((int)wPopCnt < anListPopCntMax[LOG(nBL - 1)])))
-        {
-#if defined(CODE_XX_SW)
-#if ! defined(cnXxSwWpkPercent)
-#undef cnXxSwWpkPercent
-#define cnXxSwWpkPercent  150
-#endif // ! defined(cnXxSwWpkPercent)
-            // This block is a performance/efficiency optimization.
-            // It is not necessary for "correct" behavior.
-            // It is only relevant if ifdefs allow for a blow-out.
-            // This is possible if ! defined(NO_TYPE_IN_XX_SW).
-            // We haven't written the blow-up creation code for
-            // NO_TYPE_IN_XX_SW yet.
-            if (nBL == nDL_to_nBL(2)) {
-  #if defined(EMBED_KEYS)
-                if ((int)wPopCnt >= nEmbeddedListPopCntMax)
-  #endif // defined(EMBED_KEYS)
-                {
-                    if ((wWordsAllocated * 100 / wPopCntTotal)
-                            < cnXxSwWpkPercent)
-                    {
-                        goto newSwitch;
-                    }
-                }
-            }
-            if (nBL < nDL_to_nBL(2)) {
-  #if defined(EMBED_KEYS)
-                if ((int)wPopCnt >= nEmbeddedListPopCntMax)
-  #endif // defined(EMBED_KEYS)
-                {
-                    if ((wWordsAllocated * 100 / wPopCntTotal)
-                            < cnXxSwWpkPercent)
-                    {
-                        goto doubleIt;
-                    }
-                }
-            }
-#endif // defined(CODE_XX_SW)
-
-            Word_t *pwList;
-
-            // Allocate memory for a new list if necessary.
-            // Init or update pop count if necessary.
-            if ((pwr == NULL)
-                // Inflate uses LWTL.
-                || (ListWordsTypeList(wPopCnt + 1, nBL)
-                        != ListWordsTypeList(wPopCnt, nBL)))
-            {
-                DBGI(printf("pwr %p wPopCnt %" _fw"d nBL %d\n",
-                            (void *)pwr, wPopCnt, nBL));
-                DBGI(printf("nType %d\n", nType));
-                DBGI(printf("nBL %d LWE(pop %d) %d LWE(pop %d) %d\n",
-                            nBL, (int)wPopCnt + 1,
-                            ListWordsExternal(wPopCnt + 1, nBL),
-                            (int)wPopCnt,
-                            ListWordsExternal(wPopCnt    , nBL)));
-                // Allocate a new list and init pop count if pop count is
-                // in the list.  Also init the beginning of the list marker
-                // if LIST_END_MARKERS.
-                assert(wPopCnt + 1 != 0);
-                pwList = NewListTypeList(wPopCnt + 1, nBL);
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-                assert((nDL == cnDigitsPerWord)
-                    || (PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)
-                            == wPopCnt + 1));
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-#if defined(UA_PARALLEL_128)
-                if ((nBL == 16) && (wPopCnt < 6)) {
-                    set_wr(wRoot, pwList, T_LIST_UA);
-                } else
-#endif // defined(UA_PARALLEL_128)
-                { set_wr(wRoot, pwList, T_LIST); }
-            }
-            else
-            {
-                pwList = pwr;
-
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-                if (nDL != cnDigitsPerWord) {
-                    assert(PWR_wPopCnt(pwRoot, (Switch_t *)NULL, nDL)
-                           == wPopCnt + 1);
-                }
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-            }
-
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-            if (nBL >= cnBitsPerWord)
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-            { Set_xListPopCnt(&wRoot, nBL, wPopCnt + 1); }
-
-            if (wPopCnt != 0)
-#if defined(SORT_LISTS)
-            {
-#if defined(COMPRESSED_LISTS)
-                if (nBL <= 8) {
-                    goto copyWithInsert8;
-copyWithInsert8:
-                    CopyWithInsertChar(ls_pcKeysNATX(pwList, wPopCnt + 1),
-                        pcKeys, wPopCnt, (unsigned char)wKey);
-                } else if (nBL <= 16) {
-                    goto copyWithInsert16;
-copyWithInsert16:
-                    CopyWithInsertShort(ls_psKeysNATX(pwList, wPopCnt + 1),
-                        psKeys, wPopCnt, (unsigned short)wKey, nPos);
-#if (cnBitsPerWord > 32)
-                } else if (nBL <= 32) {
-                    goto copyWithInsert32;
-copyWithInsert32:
-                    CopyWithInsertInt(ls_piKeysNATX(pwList, wPopCnt + 1),
-                        piKeys, wPopCnt, (unsigned int)wKey);
-#endif // (cnBitsPerWord > 32)
-                } else
-#endif // defined(COMPRESSED_LISTS)
-                {
-                    goto copyWithInsertWord;
-copyWithInsertWord:
-                    CopyWithInsertWord(ls_pwKeysX(pwList, nBL, wPopCnt + 1),
-                                       pwKeys, wPopCnt, wKey);
-                }
-            }
-            else
-#else // defined(SORT_LISTS)
-            {
-#if defined(COMPRESSED_LISTS)
-                if (nBL <= 8) {
-                    COPY(ls_pcKeysNAT(pwList), pcKeys, wPopCnt);
-                } else if (nBL <= 16) {
-                    COPY(ls_psKeysNAT(pwList), psKeys, wPopCnt);
-#if (cnBitsPerWord > 32)
-                } else if (nBL <= 32) {
-                    COPY(ls_piKeysNAT(pwList), piKeys, wPopCnt);
-#endif // (cnBitsPerWord > 32)
-                } else
-#endif // defined(COMPRESSED_LISTS)
-                {
-                    COPY(ls_pwKeys(pwList, nBL), pwKeys, wPopCnt);
-                }
-            }
-#endif // defined(SORT_LISTS)
-            {
-#if defined(COMPRESSED_LISTS)
-                if (nBL <= 8) {
-  #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
-      && defined(PSPLIT_SEARCH_8) && defined(PSPLIT_PARALLEL)
-                    //printf("goto copyWithInsert8\n");
-                    goto copyWithInsert8;
-  #else // !defined(EMBED_KEYS) && ... d&& efined(PSPLIT_PARALLEL)
-                    ls_pcKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey;
-  #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
-                } else if (nBL <= 16) {
-  #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
-      && defined(PSPLIT_SEARCH_16) && defined(PSPLIT_PARALLEL)
-                    nPos = 0;
-                    //printf("goto copyWithInsert16\n");
-                    goto copyWithInsert16;
-  #else // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
-                    ls_psKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey;
-  #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
-#if (cnBitsPerWord > 32)
-                } else if (nBL <= 32) {
-  #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
-      && defined(PSPLIT_SEARCH_32) && defined(PSPLIT_PARALLEL)
-                    //printf("goto copyWithInsert32\n");
-                    goto copyWithInsert32;
-  #else // !defined(EMBED_KEYS) && ... defined(PSPLIT_PARALLEL)
-                    { ls_piKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey; }
-  #endif // !defined(EMBED_KEYS) && ... defined(PSPLIT_PARALLEL)
-#endif // (cnBitsPerWord > 32)
-                } else
-#endif // defined(COMPRESSED_LISTS)
-                {
-  #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
-      && defined(PSPLIT_PARALLEL_WORD)
-                    //printf("goto copyWithInsertWord\n");
-                    goto copyWithInsertWord;
-  #else // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL_WORD)
-                    ls_pwKeysX(pwList, nBL, wPopCnt + 1)[wPopCnt] = wKey;
-  #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL_WORD)
-                }
-                // Shouldn't we be padding the extra key slots
-                // for parallel search? Is the unsorted list
-                // code so dead that we should abandon it?
-                // Is the uncompressed lists so dead that we
-                // should abandon it?
-            }
-
-            if ((wPopCnt != 0) && (pwr != pwList))
-            {
-                OldList(pwr, wPopCnt, nBL, nType);
-            }
-
-            // It's a bit ugly that we are installing this T_LIST for
-            // if NO_TYPE_IN_XX_SW.  But we know that DEL is going to
-            // fix it.  We could give deflate &wRoot, then install the new
-            // wRoot ourselves (if DEL returned it).
-            *pwRoot = wRoot; // install new
-
-#if defined(EMBED_KEYS)
-            // Embed the list if it fits.
-            if ( ! ( (wr_nType(wRoot) == T_LIST)
-#if defined(UA_PARALLEL_128)
-                   || (wr_nType(wRoot) == T_LIST_UA)
-#endif // defined(UA_PARALLEL_128)
-                   ) )
-            {
-                printf("wRoot " Owx"\n", wRoot);
-            }
-#endif // defined(EMBED_KEYS)
-#if defined(EMBED_KEYS)
-            // Embed the list if it fits.
-            assert( (wr_nType(wRoot) == T_LIST)
-#if defined(UA_PARALLEL_128)
-                   || (wr_nType(wRoot) == T_LIST_UA)
-#endif // defined(UA_PARALLEL_128)
-                   );
-            if ((int)wPopCnt < EmbeddedListPopCntMax(nBL))
-            {
-                DeflateExternalList(pwRoot, wPopCnt + 1, nBL, pwList);
-#if defined(NO_TYPE_IN_XX_SW)
-                if (!((nBL < nDL_to_nBL(2))
-                    || (wr_nType(*pwRoot) == T_EMBEDDED_KEYS)))
-                {
-                    printf("nBL %d wPopCnt %ld nType %d\n",
-                           nBL, wPopCnt, wr_nType(*pwRoot));
-                }
-                assert((nBL < nDL_to_nBL(2))
-                    || (wr_nType(*pwRoot) == T_EMBEDDED_KEYS));
-#else // defined(NO_TYPE_IN_XX_SW)
-  #if defined(DEBUG)
-                if ( ! (wr_nType(*pwRoot) == T_EMBEDDED_KEYS) )
-                {
-                    printf("\nnType 0x%x wPopCnt " OWx"\n",
-                           wr_nType(*pwRoot), wPopCnt);
-                }
-  #endif // defined(DEBUG)
-                assert(wr_nType(*pwRoot) == T_EMBEDDED_KEYS);
-#endif // defined(NO_TYPE_IN_XX_SW)
-                DBGR(printf("IG: after DEL *pwRoot " OWx"\n", *pwRoot));
-            }
-#endif // defined(EMBED_KEYS)
-        }
-        else
-#endif // (cwListPopCntMax != 0)
-        {
-        DBGI(printf("List is full nBL %d.\n", nBL));
-             
-        Splay(qy, wKey, nBLOld, nDL, nDLOld,
+        InsertAtList(qy, wKey, nPos,
 #ifdef CODE_XX_SW
-                        nBW, pLnUp,
+                            nBW, *pLnUp,
   #ifdef SKIP_TO_XX_SW
-                        nBLUp,
+                            nBLUp,
   #endif // SKIP_TO_XX_SW
 #endif // CODE_XX_SW
-                        wPopCnt, pwKeys, piKeys, psKeys, pcKeys);
-        }
+                            nDL
+                            );
     }
 #if defined(SKIP_LINKS) || defined(BM_SW_FOR_REAL)
     else
