@@ -526,7 +526,7 @@ Word_t    TValues =  1000000;           // Maximum numb retrieve timing tests
 // Default nElms is overridden by -n or -F.
 // Looks like there may be no protection against -F followed by -n.
 // It is then trimmed to MaxNumb.
-// Should it be MaxNumb+1 in cases that allow 0?
+// Should it be MaxNumb+1 in cases that allow 0, e.g. -S1?
 // Then trimmed if ((GValue != 0) && (nElms > (MaxNumb >> 1))) to (MaxNumb >> 1).
 // It is used for -p and to override TValues if TValues == 0 or nElms < TValues.
 Word_t    nElms   = 10000000;           // Default population of arrays
@@ -1081,15 +1081,17 @@ main(int argc, char *argv[])
 //  Names of Judy Arrays
 #ifdef DEBUG
     // Make sure the word before and after J1's root word is zero. It's
-    // pretty easy in some variantts of Mikey's code to introduce a bug that
+    // pretty easy in some variants of Mikey's code to introduce a bug that
     // clobbers one or the other so his code depends on these words being
     // zero so it can verify that neither is getting clobbered.
     struct { void *pv0, *pv1, *pv2; } sj1 = { 0, 0, 0 };
 #define J1 (sj1.pv1)
+    struct { void *pv0, *pv1, *pv2; } sjL = { 0, 0, 0 };
+#define JL (sjL.pv1)
 #else // DEBUG
     void     *J1 = NULL;                // Judy1
-#endif // DEBUG
     void     *JL = NULL;                // JudyL
+#endif // DEBUG
     void     *JH = NULL;                // JudyHS
 
 #ifdef DEADCODE                         // see TimeNumberGen()
@@ -1744,12 +1746,10 @@ main(int argc, char *argv[])
         {
             nElms = MaxNumb;
 
-#ifdef notnecessary
             printf("# Trim Max number of Elements -n%" PRIuPTR" due to max -B%" PRIuPTR" bit Keys",
                    MaxNumb, BValue);
             fprintf(stderr, "# Trim Max number of Elements -n%" PRIuPTR" due to max -B%" PRIuPTR" bit Keys",
                    MaxNumb, BValue);
-#endif  // notnecessary
 
             if (Offset)
             {
@@ -1792,6 +1792,7 @@ main(int argc, char *argv[])
             wFeedBTap = MyPDEP(wFeedBTap, wSplayMask);
             StartSequent = MyPDEP(StartSequent, wSplayMask);
         }
+        //printf("# wFeedBTap 0x%zx\n", wFeedBTap);
     }
 
 //  Print out the number set used for testing
@@ -1988,8 +1989,8 @@ main(int argc, char *argv[])
         printf("# %s 32 Bit version\n", argv[0]);
 
 //    Debug
-    printf("# MaxNumb = %" PRIuPTR"[0x%" PRIxPTR"]\n", MaxNumb, MaxNumb);
-    printf("# nElms   = %" PRIuPTR"[0x%" PRIxPTR"]\n", nElms, nElms);
+    printf("# nElms (number of keys to be inserted) = %" PRIuPTR"[0x%" PRIxPTR"]\n", nElms, nElms);
+    printf("# MaxNumb (maximum key in expanse) = %" PRIuPTR"[0x%" PRIxPTR"]\n", MaxNumb, MaxNumb);
     printf("# BValue = %" PRIuPTR"\n", BValue);
     printf("# Bpercent = %20.18f\n", Bpercent);
 
@@ -3434,6 +3435,7 @@ nextPart:
 //         printf("\n# %" PRIuPTR" Duplicate Keys were found with -G%" PRIuPTR"\n", BitmapDups, GValue);
 
     exit(0);
+#undef JL
 #undef J1
 }
 
@@ -4232,7 +4234,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
                         PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
                         if (PValue != (Word_t *)NULL)
                         {
-                            printf("\n--- JudyGet Key = 0x%" PRIxPTR"", TstKey);
+                            printf("\n--- JudyLGet Key = 0x%" PRIxPTR"", TstKey);
                             FAILURE("JudyLGet ret PValue != NULL -- Key inserted???", 0L);
                         }
                     }
@@ -4244,7 +4246,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
                         PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
                         if (PValue == (Word_t *)NULL)
                         {
-                            printf("\n--- JudyGet Key = 0x%" PRIxPTR"", TstKey);
+                            printf("\n--- JudyLGet Key = 0x%" PRIxPTR"", TstKey);
                             FAILURE("JudyLGet ret PValue = NULL", 0L);
                         }
                         else if (VFlag && (*PValue != TstKey))
