@@ -18,6 +18,9 @@
   #define    SKIP_LINKS
 #endif // NO_SKIP_LINKS
 
+// No sense requesting extra memory that we don't have a use for by default.
+#define LIST_REQ_MIN_WORDS
+
 // XX_SW doesn't work without LVL_IN_WR_HB yet.
 #ifdef USE_XX_SW
   #ifndef LVL_IN_WR_HB
