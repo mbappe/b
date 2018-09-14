@@ -10,6 +10,39 @@
 
 #include <Judy.h>
 
+// The released Judy libraries do not, and some of Doug's work-in-progress
+// libraries may not, have Judy1Dump and/or JudyLDump entry points.
+// And Mike sometimes links Judy1LHCheck with his own Judy1 library and the
+// released or Doug's JudyL or with his own JudyL and the released or
+// Doug's Judy1 libraries.
+// We want to be able to use the same Check.c for all of these cases.
+// The solution is to define JUDY1_V1 and/or JUDYL_V1 to have Check.c
+// include stubs for the Judy1Dump and/or JudyLDump as needed.
+#ifdef JUDY_V1
+  #define JUDY1_V1
+  #define JUDYL_V1
+#endif // JUDY_V1
+
+#ifdef JUDY1_V1
+void Judy1Dump(Word_t wRoot, int nBitsLeft, Word_t wKeyPrefix) {
+    (void)wRoot; (void)nBitsLeft; (void)wKeyPrefix;
+}
+#endif // JUDY1_V1
+
+#ifdef JUDYL_V1
+void JudyLDump(Word_t wRoot, int nBitsLeft, Word_t wKeyPrefix) {
+    (void)wRoot; (void)nBitsLeft; (void)wKeyPrefix;
+}
+#endif // JUDYL_V1
+#ifdef JUDY_V1
+void Judy1Dump(Word_t wRoot, int nBitsLeft, Word_t wKeyPrefix) {
+    (void)wRoot; (void)nBitsLeft; (void)wKeyPrefix;
+}
+void JudyLDump(Word_t wRoot, int nBitsLeft, Word_t wKeyPrefix) {
+    (void)wRoot; (void)nBitsLeft; (void)wKeyPrefix;
+}
+#endif // JUDY_V1
+
 // In case we want to set j__MFlag to one to get JudyMalloc to dump mmap/munmap.
 extern Word_t j__MFlag;
 

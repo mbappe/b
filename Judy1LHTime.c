@@ -33,6 +33,31 @@
 
 #include <Judy.h>                       // for Judy macros J*()
 
+// The released Judy libraries do not, and some of Doug's work-in-progress
+// libraries may not, have Judy1Dump and/or JudyLDump entry points.
+// And Mike sometimes links Judy1LHTime with his own Judy1 library and the
+// released or Doug's JudyL or with his own JudyL and the released or
+// Doug's Judy1 libraries.
+// We want to be able to use the same Time.c for all of these cases.
+// The solution is to define JUDY1_V1 and/or JUDYL_V1 to have Time.c
+// include stubs for the Judy1Dump and/or JudyLDump as needed.
+#ifdef JUDY_V1
+  #define JUDY1_V1
+  #define JUDYL_V1
+#endif // JUDY_V1
+
+#ifdef JUDY1_V1
+void Judy1Dump(Word_t wRoot, int nBitsLeft, Word_t wKeyPrefix) {
+    (void)wRoot; (void)nBitsLeft; (void)wKeyPrefix;
+}
+#endif // JUDY1_V1
+
+#ifdef JUDYL_V1
+void JudyLDump(Word_t wRoot, int nBitsLeft, Word_t wKeyPrefix) {
+    (void)wRoot; (void)nBitsLeft; (void)wKeyPrefix;
+}
+#endif // JUDYL_V1
+
 // Why did we create CALC_NEXT_KEY? Or, rather, why did we create the
 // alternative, an array of keys, since CALC_NEXT_KEY used to be the only
 // behavior? And why did we create LFSR_ONLY and -k/--lfsr-only.

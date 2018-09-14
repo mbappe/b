@@ -5,6 +5,9 @@
 #
 ###########################
 
+# Judy1 or JudyL?
+JUDY ?= L
+
 # Run the following to build b:
 #   make clean
 #   [CC=<cc|clang[++]|gcc|icc|c++|g++>] [BPW=<32|64>] [DEFINES="..."] make b
@@ -49,8 +52,8 @@ endif
 # in one directory and a 64-bit called libJudy in another directory and
 # both directories in the library search path because ld will abort if/when
 # it encounters the library with the wrong architecture first.
-# It looks like macOS uses its own 'libtool' to create a single dynamic library
-# that holds both 32-bit and 64-bit objects.
+# It looks like macOS uses its own 'libtool' to create a single dynamic
+# library that holds both 32-bit and 64-bit objects.
 # We are not that sophisticated yet.
 ifeq "$(BPW)" "32"
   LDFLAGS = -L/usr/local/lib32
@@ -233,6 +236,9 @@ endif
 # Put cmdline DEFINES after default defines so defaults can be overridden.
 MAKE_DEFINES = $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 DEFINES := $(MAKE_DEFINES) $(DEFINES)
+ifeq "$(JUDY)" "L"
+    DEFINES := $(DEFINES) -DB_JUDYL
+endif
 
 FILES_FROM_ME  = b.h b.c bli.c bl.c bi.c br.c bc.c t.c
 FILES_FROM_ME += stubsL.c stubsHS.c Makefile
@@ -282,14 +288,29 @@ clean:
 t: t.c $(T_OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 
+# -DMIKEY tells Judy1LHTime to use different RAMMETRICS column headings.
 #Judy1LHTime: Judy1LHTime.c libb.a
 #	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
+ifeq "$(JUDY)" "L"
 Judy1LHTime: Judy1LHTime.c libb1.a
-	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ $(LDFLAGS) -lJudy -lm
+	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -DJUDY1_V1 -o $@ $^ -lm \
+ $(LDFLAGS) -lJudy
+else # "JUDY" "L"
+Judy1LHTime: Judy1LHTime.c libb1.a
+	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -DJUDYL_V1 -o $@ $^ -lm \
+ $(LDFLAGS) -lJudy
+endif # "JUDY" "L"
+ # ../judy/src/obj/.libs/libJudy.a
 
-c++time: Judy1LHTime.c libb.a
-	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) \
- -x c++ Judy1LHTime.c -x none libb.a -o $@ -lm
+ifeq "$(JUDY)" "L"
+c++time: Judy1LHTime.c libb1.a
+	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) -DJUDY1_V1 \
+ -x c++ Judy1LHTime.c -x none libb1.a -o $@ -lJudy -lm
+else # "JUDY" "L"
+c++time: Judy1LHTime.c libb1.a
+	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) -DJUDYL_V1 \
+ -x c++ Judy1LHTime.c -x none libb1.a -o $@ -lJudy -lm
+endif # "JUDY" "L"
 
 b: Judy1LHTime
 	ln -sf Judy1LHTime b
@@ -299,13 +320,27 @@ btime: Judy1LHTime
 
 # Set LIBRARY_PATH environment variable to find libJudy.a.
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
+ifeq "$(JUDY)" "L"
 Judy1LHCheck: Judy1LHCheck.c libb1.a
-	$(CC) $(CFLAGS) -Wno-sign-compare \
- $(DEFINES) -o $@ $^ $(LDFLAGS) -lJudy -lm
+	$(CC) $(CFLAGS) -Wno-sign-compare $(DEFINES) -DJUDY1_V1 -o $@ $^ -lm \
+ $(LDFLAGS) -lJudy
+else # "JUDY" "L"
+Judy1LHCheck: Judy1LHCheck.c libb1.a
+	$(CC) $(CFLAGS) -Wno-sign-compare $(DEFINES) -DJUDYL_V1 -o $@ $^ -lm \
+ $(LDFLAGS) -lJudy
+endif # "JUDY" "L"
 
+ifeq "$(JUDY)" "L"
 c++check: Judy1LHCheck.c libb1.a
-	$(CXX) $(CXXFLAGS) $(DEFINES) -x c++ Judy1LHCheck.c \
- -x none libb1.a -o $@ $(LDFLAGS) -lJudy -lm
+	$(CXX) $(CXXFLAGS) $(DEFINES) -DJUDY1_V1 -x c++ Judy1LHCheck.c \
+ -x none libb1.a -o $@ -lm \
+ $(LDFLAGS) -lJudy
+else # "JUDY" "L"
+c++check: Judy1LHCheck.c libb1.a
+	$(CXX) $(CXXFLAGS) $(DEFINES) -DJUDYL_V1 -x c++ Judy1LHCheck.c \
+ -x none libb1.a -o $@ -lm \
+ $(LDFLAGS) -lJudy -lm
+endif # "JUDY" "L"
 
 bcheck: Judy1LHCheck
 	ln -sf Judy1LHCheck bcheck
