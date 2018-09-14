@@ -528,6 +528,8 @@ Status_t
 InsertRemove(int nBL, Link_t *pLn, Word_t wKey)
 #endif // defined(LOOKUP)
 {
+    DBGX(printf("\n# %s pLn %p wKey 0x%zx ",
+                strLookupOrInsertOrRemove, (void*)pLn, wKey));
 #if defined(LOOKUP) && ! defined(PLN_PARAM_FOR_LOOKUP)
     Link_t *pLn = STRUCT_OF(&wRoot, Link_t, ln_wRoot);
 #else // defined(LOOKUP) && ! defined(PLN_PARAM_FOR_LOOKUP)
@@ -537,6 +539,9 @@ InsertRemove(int nBL, Link_t *pLn, Word_t wKey)
 #if defined(LOOKUP)
     int nBL = cnBitsPerWord;
 #endif // defined(LOOKUP)
+
+    DBGX(printf("# nBL %d pLn %p wRoot " OWx"\n", nBL, pLn, wRoot));
+
 
 #if !defined(RECURSIVE)
     Link_t *pLnOrig = pLn; (void)pLnOrig;
@@ -608,35 +613,40 @@ InsertRemove(int nBL, Link_t *pLn, Word_t wKey)
     nType = wr_nType(wRoot);
     pwr = wr_pwr(wRoot);
     if (nType > T_SWITCH) {
+        DBGX(printf("# goto t_skip_to_switch\n"));
         goto t_skip_to_switch;
     }
+
     // This shortcut made the code faster in my testing.
-    { nBLR = nBL; goto fastAgain; }
+    nBLR = nBL;
+    DBGX(printf("# goto fastAgain\n"));
+    goto fastAgain;
+
   #endif // LOOKUP
   #endif // SKIP_LINKS
   #endif // GOTO_AT_FIRST_IN_LOOKUP
 
-#if ! defined(LOOKUP)
+  #if ! defined(LOOKUP)
     int nPos = -1;
-#endif // ! defined(LOOKUP)
+  #endif // ! defined(LOOKUP)
 
 #if defined(COUNT)
     int bLinkPresent;
     int nLinks;
 #endif // defined(COUNT)
 
-    DBGX(printf("\n# %s ", strLookupOrInsertOrRemove));
-
 #if defined(INSERT) || defined(REMOVE)
   #if !defined(RECURSIVE)
 top:;
   #endif // !defined(RECURSIVE)
 #endif // defined(INSERT) || defined(REMOVE)
+    DBGX(printf("# top\n"));
     nBLR = nBL;
 
 #if defined(LOOKUP) || !defined(RECURSIVE)
 again:;
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
+    DBGX(printf("# again\n"));
 
 #if defined(SKIP_LINKS)
     assert(nBLR == nBL);
@@ -1542,6 +1552,7 @@ t_list:;
                 goto removeGutsAndCleanup;
           #endif // defined(REMOVE)
           #if defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
+                // Success for Lookup and Remove; Failure for Insert
                 return KeyFound;
           #endif // defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
             }
@@ -2223,7 +2234,9 @@ foundIt:;
 
   // COUNT never gets here so we could probably just use !defined(LOOKUP).
   #if defined(INSERT) || defined(REMOVE)
-        if ( bCleanup ) { return Success; }
+        if ( bCleanup ) {
+            return Success;
+        }
   #endif // defined(INSERT) || defined(REMOVE)
 
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -2264,14 +2277,14 @@ foundIt:;
     // InsertGuts is called with a pLn and nBL indicates the
     // bits that were not decoded in identifying pLn.  nBL
     // does not include any skip indicated in the type field of *pLn.
-    InsertGuts(qy, wKey, nPos
+        InsertGuts(qy, wKey, nPos
   #if defined(CODE_XX_SW)
-               , pLnUp
+                     , pLnUp
       #if defined(SKIP_TO_XX_SW)
-               , nBLUp
+                     , nBLUp
       #endif // defined(SKIP_TO_XX_SW)
   #endif // defined(CODE_XX_SW)
-               );
+                   );
     if (bCleanupRequested) {
         goto cleanup;
     }
@@ -2351,6 +2364,9 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     Word_t *pwr = wr_pwr(wRoot);
     qv;
 
+    DBGL(printf("\n\n# JudyLGet pcvRoot %p wKey " OWx"\n",
+                (void *)pcvRoot, wKey));
+
   #if (cwListPopCntMax != 0)
       #if defined(SEARCH_FROM_WRAPPER)
     // Handle a top level T_LIST leaf here -- without calling Lookup.
@@ -2368,27 +2384,29 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     {
         // PWR_xListPopCount is valid only at the top for PP_IN_LINK.
         // The first word in the list is used for pop count at the top.
-        return (1
+        status = (1
 #if ! defined(SEPARATE_T_NULL)
-                && (pwr != NULL)
+                  && (pwr != NULL)
 #endif // ! defined(SEPARATE_T_NULL)
-                && (SearchListWord(ls_pwKeys(pwr, cnBitsPerWord),
-                                   wKey, cnBitsPerWord,
-                                   gnListPopCnt(qy, /* nBLR */ nBL))
-                    >= 0))
+                  && (SearchListWord(ls_pwKeys(pwr, cnBitsPerWord),
+                                     wKey, cnBitsPerWord,
+                                     gnListPopCnt(qy, /* nBLR */ nBL))
+                      >= 0))
             ? Success : Failure;
+        return status;
     }
       #endif // defined(SEARCH_FROM_WRAPPER)
   #endif // (cwListPopCntMax != 0)
 
-    return Lookup(
+    return
+        Lookup(
   #if defined(PLN_PARAM_FOR_LOOKUP)
-                  pLn,
+                 pLn,
   #else // defined(PLN_PARAM_FOR_LOOKUP)
-                  wRoot,
+                 wRoot,
   #endif // defined(PLN_PARAM_FOR_LOOKUP)
-                  wKey
-                  );
+                 wKey
+                 );
 
 #else // (cnDigitsPerWord > 1)
 
@@ -2443,7 +2461,12 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
 #if defined(INSERT)
 
-// 'typedef void ** PPvoid_t'
+// Judy1Set returns Success if the key was not already present.
+// Judy1Set returns Failure if the key was already present.
+// JudyLIns returns a pointer to the value area if the key was
+// not already present, and it initializes the value area to zero.
+// JudyLIns returns a pointer to the value area if the key was
+// already present, but it leaves the content of the value area alone.
 int // Status_t
 Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 {
@@ -2565,11 +2588,14 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     else
   #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_I)
     {
-        status = Insert(cnBitsPerWord,
-                        STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey);
+        status
+            = Insert(cnBitsPerWord,
+                     STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey);
     }
 
-    if (status == Success) {
+
+    if (status == Success)
+    {
         // count successful inserts minus successful removes
         wPopCntTotal++;
   #if defined(DEBUG)
@@ -2647,7 +2673,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 #if defined(REMOVE)
 
 int
-Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
+Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 {
     //Word_t wRoot = *(Word_t*)ppvRoot;
 
@@ -2661,14 +2687,17 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     assert(((Word_t*)&pLn->ln_wRoot)[-1] == 0);
     assert(((Word_t*)&pLn->ln_wRoot)[ 1] == 0);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
-    DBGR(printf("\n# Judy1Unset (before): wPopCntTotal %zd\n", wPopCntTotal));
+    DBGR(printf("\n# Judy1Unset ppvRoot %p  wKey 0x%zx (before):"
+                  " wPopCntTotal %zd\n",
+                (void*)ppvRoot, wKey, wPopCntTotal));
 
     int status;
 
     DBGR(printf("\n\n# Judy1Unset ppvRoot %p wKey " OWx"\n",
                 (void *)ppvRoot, wKey));
 
-    if (Judy1Test((Pcvoid_t)pLn->ln_wRoot, wKey, NULL) != Success) {
+    if (Judy1Test((Pcvoid_t)pLn->ln_wRoot, wKey, NULL) != Success)
+    {
         return Failure;
     }
 
@@ -2726,8 +2755,9 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     if (status == Success) { wPopCntTotal--; }
 
   #if defined(DEBUG_REMOVE)
-    DBGR(printf("\n# After Remove(wKey " OWx") %s Dump\n", wKey,
-            status == Success ? "Success" : "Failure"));
+    DBGR(printf("\n# After Remove(ppvRoot %p, wKey " OWx") %s Dump\n",
+                (void *)ppvRoot, wKey,
+                status == Success ? "Success" : "Failure"));
     DBGR(Dump((Word_t *)ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord));
     DBGR(printf("\n"));
   #endif // defined(DEBUG_REMOVE)
@@ -2735,10 +2765,12 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
   #if ! defined(PP_IN_LINK) || defined(DEBUG_COUNT)
   #if ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
     // Judy1Count really slows down testing for PP_IN_LINK.
-    if (Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) != wPopCntTotal) {
-        printf("wPopCntTotal %zd Judy1Count %zd\n",
-               wPopCntTotal,
-               Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL));
+    if (Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) != wPopCntTotal)
+    {
+        DBGR(printf("wPopCntTotal %zd Judy1Count %zd\n",
+                    wPopCntTotal,
+                    JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL)
+                    ));
     }
     assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
   #endif // ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
@@ -2752,6 +2784,8 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
     assert(((Word_t*)&pLn->ln_wRoot)[ 1] == 0);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
 
+    DBGR(printf("JudyLDel ppvRoot %p wKey 0x%zx status %d\n",
+                (void*)ppvRoot, wKey, status));
     return status;
 
 #else // (cnDigitsPerWord > 1)
@@ -2782,4 +2816,3 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, P_JE)
 }
 
 #endif // defined(REMOVE)
-
