@@ -2,6 +2,17 @@
 #if ( ! defined(_BCONF_H_INCLUDED) )
 #define _BCONF_H_INCLUDED
 
+// Makefile must define B_JUDYL in order to build libL, i.e. -DB_JUDYL.
+
+// Set initial defines based on whether we are building Judy1 or JudyL.
+// If B_JUDYL is not defined then we are building Judy1.
+#ifdef B_JUDYL
+  #define ALIGN_LISTS
+  #define ALIGN_LIST_LENS
+  #define NO_EMBED_KEYS
+  #define NO_UA_PARALLEL_128
+#endif // B_JUDYL
+
 // Choose conditional features and tuning parameters by #if, #define
 // and #undef.
 // E.g. DEBUG, RAMMETRICS, GUARDBAND.

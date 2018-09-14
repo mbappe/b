@@ -510,7 +510,11 @@ PrefixCheckAtLeaf(qp, Word_t wKey
 #endif // SKIP_PREFIX_CHECK
 
 #if defined(LOOKUP)
+#ifdef B_JUDYL
+static Word_t *
+#else // B_JUDYL
 static Status_t
+#endif // B_JUDYL
 Lookup(
       #if defined(PLN_PARAM_FOR_LOOKUP)
        Link_t *pLn;
@@ -522,7 +526,9 @@ Lookup(
 #else // defined(LOOKUP)
   #if defined(COUNT)
 Word_t
-  #else // defined(COUNT)
+  #elif defined(INSERT) && defined(B_JUDYL)
+Word_t *
+  #else // defined(COUNT) elif defined(INSERT) && defined(JUDYL)
 Status_t
   #endif // defined(COUNT)
 InsertRemove(int nBL, Link_t *pLn, Word_t wKey)
@@ -542,6 +548,9 @@ InsertRemove(int nBL, Link_t *pLn, Word_t wKey)
 
     DBGX(printf("# nBL %d pLn %p wRoot " OWx"\n", nBL, pLn, wRoot));
 
+#if defined(INSERT) && defined(B_JUDYL)
+    Word_t *pwValue;
+#endif // defined(INSERT) && defined(B_JUDYL)
 
 #if !defined(RECURSIVE)
     Link_t *pLnOrig = pLn; (void)pLnOrig;
@@ -626,9 +635,9 @@ InsertRemove(int nBL, Link_t *pLn, Word_t wKey)
   #endif // SKIP_LINKS
   #endif // GOTO_AT_FIRST_IN_LOOKUP
 
-  #if ! defined(LOOKUP)
+  #if ! defined(LOOKUP) || defined(B_JUDYL)
     int nPos = -1;
-  #endif // ! defined(LOOKUP)
+  #endif // ! defined(LOOKUP) || defined(B_JUDYL)
 
 #if defined(COUNT)
     int bLinkPresent;
@@ -1477,7 +1486,11 @@ t_list:;
   #if defined(INSERT) || defined(REMOVE)
         DBGX(printf("T_LIST bCleanup %d nIncr %d\n", bCleanup, nIncr));
         if (bCleanup) {
+    #if defined(INSERT) && defined(B_JUDYL)
+            return NULL;
+    #else // defined(INSERT) && defined(B_JUDYL)
             return Success;
+    #endif // defined(INSERT)
         } // cleanup is complete
   #endif // defined(INSERT) || defined(REMOVE)
 
@@ -1525,11 +1538,11 @@ t_list:;
         #if ! defined(SEPARATE_T_NULL)
                 && (pwr != NULL)
         #endif // ! defined(SEPARATE_T_NULL)
-        #if defined(LOOKUP)
+        #if defined(LOOKUP) && !defined(B_JUDYL)
                 && ListHasKey(qy, nBLR, wKey)
-        #else // defined(LOOKUP)
+        #else // defined(LOOKUP) && !defined(B_JUDYL)
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
-        #endif // defined(LOOKUP)
+        #endif // defined(LOOKUP) && !defined(B_JUDYL)
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
@@ -1552,8 +1565,14 @@ t_list:;
                 goto removeGutsAndCleanup;
           #endif // defined(REMOVE)
           #if defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
+              #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
+                DBGX(printf("Lookup (or Insert) returning %p," OWx"\n",
+                             (void *)&pwr[~nPos], pwr[~nPos]));
+                return &pwr[~nPos];
+              #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 // Success for Lookup and Remove; Failure for Insert
                 return KeyFound;
+              #endif // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
           #endif // defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
             }
           #if defined(COUNT)
@@ -1682,11 +1701,11 @@ t_list_ua:;
         #if ! defined(SEPARATE_T_NULL)
                 && (pwr != NULL)
         #endif // ! defined(SEPARATE_T_NULL)
-        #if defined(LOOKUP)
+        #if defined(LOOKUP) && !defined(B_JUDYL)
                 && ListHasKey(qy, nBLR, wKey)
-        #else // defined(LOOKUP)
+        #else // defined(LOOKUP) && !defined(B_JUDYL)
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
-        #endif // defined(LOOKUP)
+        #endif // defined(LOOKUP) && !defined(B_JUDYL)
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
@@ -1819,7 +1838,11 @@ t_bitmap:;
   #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
+      #if defined(INSERT) && defined(B_JUDYL)
+            return NULL;
+      #else // defined(INSERT) && defined(B_JUDYL)
             return Success;
+      #endif // defined(INSERT) && defined(B_JUDYL)
         } // cleanup is complete
   #endif // defined(INSERT) || defined(REMOVE)
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -1948,7 +1971,11 @@ t_bitmap:;
                 }
           #endif // !defined(RECURSIVE)
       #endif // defined(INSERT)
+      #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
+                return NULL;
+      #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 return KeyFound;
+      #endif // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
             }
             DBGX(printf("Bit is not set.\n"));
     #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
@@ -2235,7 +2262,11 @@ foundIt:;
   // COUNT never gets here so we could probably just use !defined(LOOKUP).
   #if defined(INSERT) || defined(REMOVE)
         if ( bCleanup ) {
+      #if defined(INSERT) && defined(B_JUDYL)
+            return NULL;
+      #else // defined(INSERT) && defined(B_JUDYL)
             return Success;
+      #endif // defined(INSERT) && defined(B_JUDYL)
         }
   #endif // defined(INSERT) || defined(REMOVE)
 
@@ -2277,6 +2308,9 @@ foundIt:;
     // InsertGuts is called with a pLn and nBL indicates the
     // bits that were not decoded in identifying pLn.  nBL
     // does not include any skip indicated in the type field of *pLn.
+  #ifdef B_JUDYL
+    pwValue =
+  #endif // B_JUDYL
         InsertGuts(qy, wKey, nPos
   #if defined(CODE_XX_SW)
                      , pLnUp
@@ -2288,7 +2322,13 @@ foundIt:;
     if (bCleanupRequested) {
         goto cleanup;
     }
+  #ifdef B_JUDYL
+    DBGX(printf("InsertGuts returned %p\n", (void*)pwValue));
+    DBGX(printf("Insert returning %p\n", (void*)pwValue));
+    return pwValue;
+  #else // B_JUDYL
     return Success;
+  #endif // B_JUDYL
 undo:;
     DBGX(printf("undo\n"));
 #endif // defined(INSERT)
@@ -2314,7 +2354,11 @@ restart:;
     }
       #endif // !defined(RECURSIVE)
   #endif // defined(INSERT) || defined(REMOVE)
+  #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
+    return NULL;
+  #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
     return Failure;
+  #endif // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
   #if defined(INSERT) || defined(REMOVE)
       #if defined(REMOVE)
 removeGutsAndCleanup:;
@@ -2352,8 +2396,13 @@ cleanup:;
 //     'typedef void * const Pcvoid_t'.
 // 'Pcvoid_t PArray' is the same as 'const void * PArray'.
 // *pcvRoot cannot be modified.
+#ifdef B_JUDYL
+PPvoid_t // typedef void **
+JudyLGet(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
+#else // B_JUDYL
 int // Status_t
 Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
+#endif // B_JUDYL
 {
 #if (cnDigitsPerWord > 1)
 
@@ -2393,12 +2442,20 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
                                      gnListPopCnt(qy, /* nBLR */ nBL))
                       >= 0))
             ? Success : Failure;
+#ifdef B_JUDYL
+        return NULL;
+#else // B_JUDYL
         return status;
+#endif // B_JUDYL
     }
       #endif // defined(SEARCH_FROM_WRAPPER)
   #endif // (cwListPopCntMax != 0)
 
+  #ifdef B_JUDYL
+    Word_t *pwValue =
+  #else // B_JUDYL
     return
+  #endif // B_JUDYL
         Lookup(
   #if defined(PLN_PARAM_FOR_LOOKUP)
                  pLn,
@@ -2407,6 +2464,9 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
   #endif // defined(PLN_PARAM_FOR_LOOKUP)
                  wKey
                  );
+  #ifdef B_JUDYL
+    return (PPvoid_t)pwValue;
+  #endif // B_JUDYL
 
 #else // (cnDigitsPerWord > 1)
 
@@ -2467,8 +2527,13 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 // not already present, and it initializes the value area to zero.
 // JudyLIns returns a pointer to the value area if the key was
 // already present, but it leaves the content of the value area alone.
+#ifdef B_JUDYL
+PPvoid_t // 'typedef void ** PPvoid_t'
+JudyLIns(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
+#else // B_JUDYL
 int // Status_t
 Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
+#endif // B_JUDYL
 {
     Word_t wRoot = *(Word_t*)ppvRoot;
 
@@ -2487,7 +2552,11 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     assert(((Word_t*)&pLn->ln_wRoot)[ 1] == 0);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
 
+#ifdef B_JUDYL
+    Word_t *pwValue;
+#else // B_JUDYL
     int status;
+#endif // B_JUDYL
 
     DBGI(printf("\n\n# Judy1Set ppvRoot %p wKey " OWx"\n",
                 (void *)ppvRoot, wKey));
@@ -2588,13 +2657,28 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     else
   #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_I)
     {
+  #ifdef B_JUDYL
+        pwValue
+  #else // B_JUDYL
         status
+  #endif // B_JUDYL
             = Insert(cnBitsPerWord,
                      STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey);
     }
 
+  #ifdef B_JUDYL
+    // Cannot distinguish between new insert of wKey and
+    // previously inserted wKey if *pwValue == 0.
+    // If we are running Judy1LHTime we know that *pwValue will never be
+    // zero for a previously inserted key (unless wKey == 0).
+    bPopCntTotalIsInvalid = 1;
+  #endif // B_JUDYL
 
+  #ifdef B_JUDYL
+    if (*pwValue == 0)
+  #else // B_JUDYL
     if (status == Success)
+  #endif // B_JUDYL
     {
         // count successful inserts minus successful removes
         wPopCntTotal++;
@@ -2615,7 +2699,12 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #if ! defined(PP_IN_LINK) || defined(DEBUG_COUNT)
   #if ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
     // Judy1Count really slows down testing for PP_IN_LINK.
+      #if B_JUDYL
+    assert((JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal)
+        || bPopCntTotalIsInvalid);
+      #else // B_JUDYL
     assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
+      #endif // B_JUDYL
   #endif // ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
   #endif // ! defined(PP_IN_LINK) || defined(DEBUG_COUNT)
 
@@ -2626,7 +2715,13 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     assert(((Word_t*)&pLn->ln_wRoot)[ 1] == 0);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
 
+  #ifdef B_JUDYL
+    DBGI(printf("JudyLIns ppvRoot %p wKey 0x%zx returning %p,0x%zx\n",
+                (void*)ppvRoot, wKey, (void*)pwValue, *pwValue));
+    return (PPvoid_t)pwValue;
+  #else // B_JUDYL
     return status;
+  #endif // B_JUDYL
 
 #else // (cnDigitsPerWord > 1)
 
@@ -2673,7 +2768,11 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 #if defined(REMOVE)
 
 int
+#ifdef B_JUDYL
+JudyLDel(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
+#else // B_JUDYL
 Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
+#endif // B_JUDYL
 {
     //Word_t wRoot = *(Word_t*)ppvRoot;
 
@@ -2696,7 +2795,11 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     DBGR(printf("\n\n# Judy1Unset ppvRoot %p wKey " OWx"\n",
                 (void *)ppvRoot, wKey));
 
+  #ifdef B_JUDYL
+    if (JudyLGet((Pcvoid_t)pLn->ln_wRoot, wKey, NULL) == NULL)
+  #else // B_JUDYL
     if (Judy1Test((Pcvoid_t)pLn->ln_wRoot, wKey, NULL) != Success)
+  #endif // B_JUDYL
     {
         return Failure;
     }
@@ -2765,14 +2868,27 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #if ! defined(PP_IN_LINK) || defined(DEBUG_COUNT)
   #if ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
     // Judy1Count really slows down testing for PP_IN_LINK.
+      #ifdef B_JUDYL
+    if (JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL) != wPopCntTotal)
+      #else // B_JUDYL
     if (Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) != wPopCntTotal)
+      #endif // B_JUDYL
     {
         DBGR(printf("wPopCntTotal %zd Judy1Count %zd\n",
                     wPopCntTotal,
+      #ifdef B_JUDYL
+                    Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL)
+      #else // B_JUDYL
                     JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL)
+      #endif // B_JUDYL
                     ));
     }
+      #ifdef B_JUDYL
+    assert(JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL)
+        || bPopCntTotalIsInvalid);
+      #else // B_JUDYL
     assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
+      #endif // B_JUDYL
   #endif // ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
   #endif // ! defined(PP_IN_LINK) || defined(DEBUG_COUNT)
     DBGR(printf("# Judy1Unset (after ): wPopCntTotal %zd\n\n", wPopCntTotal));
