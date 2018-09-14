@@ -7069,7 +7069,7 @@ t_list:;
             //A(0);
             *pwKey = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
             *pwKey |= ls_pxKeyX(pwr, nBL, nPopCnt, nPos + wSkip);
-#if B_JUDYL
+#ifdef B_JUDYL
             //*ppwVal = &ls_pxKeyX(pwr, nBL, nPopCnt)[~(nPos + wSkip)];
 #endif // B_JUDYL
         }
