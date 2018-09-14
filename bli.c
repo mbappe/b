@@ -2699,7 +2699,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #if ! defined(PP_IN_LINK) || defined(DEBUG_COUNT)
   #if ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
     // Judy1Count really slows down testing for PP_IN_LINK.
-      #if B_JUDYL
+      #ifdef B_JUDYL
     assert((JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal)
         || bPopCntTotalIsInvalid);
       #else // B_JUDYL
