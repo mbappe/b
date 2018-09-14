@@ -179,8 +179,11 @@
   #if (cnBitsPerWord == 32)
 #define cn2dBmMaxWpkPercent  30
   #else // (cnBitsPerWord == 32)
-//#define cn2dBmMaxWpkPercent  15
+      #ifdef B_JUDYL
 #define cn2dBmMaxWpkPercent  0  // For JudyL turn on.
+      #else // B_JUDYL
+#define cn2dBmMaxWpkPercent  15
+      #endif // B_JUDYL
   #endif // (cnBitsPerWord == 32)
 #endif // ! defined(cn2dBmMaxWpkPercent)
 
@@ -528,8 +531,11 @@ typedef Word_t Bucket_t;
 // An 8-bit bitmap uses only 32-bytes plus malloc overhead.
 // Does it make sense to have a list that uses as much or more?
 #if ! defined(cnListPopCntMax8)
-//  #define cnListPopCntMax8  0x10
-  #define cnListPopCntMax8  256  // For JudyL turn on
+    #ifdef B_JUDYL
+  #define cnListPopCntMax8  256 // assert in SearchList8 should be fixed
+    #else // B_JUDYL
+  #define cnListPopCntMax8  0x10
+    #endif // B_JUDYL
 #endif // ! defined(cnListPopCntMax8)
 
 // Default cnListPopCntMaxDl1 is 0x10 for cnBitsInD1 = 8.
@@ -540,8 +546,11 @@ typedef Word_t Bucket_t;
     #  if (cnBitsInD1 == 7)
       #define cnListPopCntMaxDl1  0x08
     #elif (cnBitsInD1 == 8)
-      //#define cnListPopCntMaxDl1  0x10
+        #ifdef B_JUDYL
       #define cnListPopCntMaxDl1  256  // For JudyL turn on.
+        #else // B_JUDYL
+      #define cnListPopCntMaxDl1  0x10
+        #endif // B_JUDYL
     #elif (cnBitsInD1 == 9)
       #define cnListPopCntMaxDl1  0x06
     #elif (cnBitsInD1 <= 11)
@@ -2583,11 +2592,22 @@ snListSwPop(qp, int nPopCnt)
     (assert(wr_pwr(*(_pwRoot)) == (_pwr)), \
     Set_xListPopCnt((_pwRoot), (_nBL), (_cnt)))
 
-Word_t *Insert(int nBL, Link_t *pLn, Word_t wKey);
+#ifdef B_JUDYL
+Word_t*
+#else // B_JUDYL
+Status_t
+#endif // B_JUDYL
+Insert(int nBL, Link_t *pLn, Word_t wKey);
+
 Word_t Count(int nBL, Link_t *pLn, Word_t wKey);
 Status_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
 
-Word_t *InsertGuts(qp, Word_t wKey, int nPos
+#ifdef B_JUDYL
+Word_t*
+#else // B_JUDYL
+Status_t
+#endif // B_JUDYL
+InsertGuts(qp, Word_t wKey, int nPos
 #if defined(CODE_XX_SW)
                    , Link_t *pLnUp
   #if defined(SKIP_TO_XX_SW)
@@ -2603,7 +2623,12 @@ void InsertCleanup(qp, Word_t wKey);
 void RemoveCleanup(Word_t wKey, int nBL, int nBLR,
                    Word_t *pwRoot, Word_t wRoot);
 
-Word_t *InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot);
+#ifdef B_JUDYL
+Word_t*
+#else // B_JUDYL
+Status_t
+#endif // B_JUDYL
+InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot);
 
 Word_t FreeArrayGuts(Word_t *pwRoot,
                      Word_t wPrefix, int nBL, int bDump);
@@ -2632,7 +2657,9 @@ extern Word_t *pwRootLast; // allow dumping of tree when root is not known
 #endif // defined(DEBUG)
 
 extern Word_t wPopCntTotal;
+#ifdef B_JUDYL
 extern int bPopCntTotalIsInvalid;
+#endif // B_JUDYL
 
 // Default is -DPSPLIT_SEARCH_8
 // This depends on uniform distribution / flat spectrum data.
@@ -5293,7 +5320,6 @@ extern Word_t j__AllocWordsJLL4; // 4 bytes/key list leaf
 //extern Word_t j__AllocWordsJLL5; // 5 bytes/key list leaf
 //extern Word_t j__AllocWordsJLL6; // 6 bytes/key list leaf
 extern Word_t j__AllocWordsJLL7; // words requested
-extern Word_t j__MFlag;
 
 #endif // defined(RAMMETRICS)
 
