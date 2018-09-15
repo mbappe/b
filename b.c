@@ -5178,10 +5178,6 @@ embeddedKeys:;
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     { Set_xListPopCnt(&wRoot, nBL, wPopCnt - 1); }
 
-  #ifdef B_JUDYL
-    Word_t *pwVals;
-  #endif // B_JUDYL
-
     if (pwList != pwr) {
         // Why are we copying the old list to the new one?
         // Because the beginning will be the same.
@@ -5209,9 +5205,11 @@ embeddedKeys:;
         case 4:
   #ifdef B_JUDYL
              // copy values
-             pwVals = (Word_t *)ls_piKeysNATX(pwList, wPopCnt - 1);
-             COPY(&pwVals[-((int)wPopCnt - 1)],
-                  &pwVals[-((int)wPopCnt - 1)], wPopCnt - 1);
+             COPY(&((Word_t*)ls_piKeysNATX(pwList,
+                                           wPopCnt - 1))[-((int)wPopCnt - 1)],
+                  &((Word_t*)ls_piKeysNATX(pwr,
+                                           wPopCnt))[-((int)wPopCnt - 1)],
+                  wPopCnt - 1);
   #endif // B_JUDYL
              // copy keys
              COPY(ls_piKeysNATX(pwList, wPopCnt - 1),
@@ -5221,9 +5219,11 @@ embeddedKeys:;
         case 2:
   #ifdef B_JUDYL
              // copy values
-             pwVals = (Word_t *)ls_psKeysNATX(pwList, wPopCnt - 1);
-             COPY(&pwVals[-((int)wPopCnt - 1)],
-                  &pwVals[-((int)wPopCnt - 1)], wPopCnt - 1);
+             COPY(&((Word_t*)ls_psKeysNATX(pwList,
+                                           wPopCnt - 1))[-((int)wPopCnt - 1)],
+                  &((Word_t*)ls_psKeysNATX(pwr,
+                                           wPopCnt))[-((int)wPopCnt - 1)],
+                  wPopCnt - 1);
   #endif // B_JUDYL
              // copy keys
              COPY(ls_psKeysNATX(pwList, wPopCnt - 1),
@@ -5232,9 +5232,11 @@ embeddedKeys:;
         case 1:
   #ifdef B_JUDYL
              // copy values
-             pwVals = (Word_t *)ls_pcKeysNATX(pwList, wPopCnt - 1);
-             COPY(&pwVals[-((int)wPopCnt - 1)],
-                  &pwVals[-((int)wPopCnt - 1)], wPopCnt - 1);
+             COPY(&((Word_t*)ls_pcKeysNATX(pwList,
+                                           wPopCnt - 1))[-((int)wPopCnt - 1)],
+                  &((Word_t*)ls_pcKeysNATX(pwr,
+                                           wPopCnt))[-((int)wPopCnt - 1)],
+                  wPopCnt - 1);
   #endif // B_JUDYL
              // copy keys
              COPY(ls_pcKeysNATX(pwList, wPopCnt - 1),
@@ -5250,9 +5252,10 @@ embeddedKeys:;
     if (nBL <= 8) {
   #ifdef B_JUDYL
         // move values
-        pwVals = (Word_t *)ls_pcKeysNATX(pwList, wPopCnt - 1);
-        MOVE(&pwVals[-((int)wPopCnt - 1)],
-             &pwVals[-(int)wPopCnt], wPopCnt - nIndex - 1);
+        MOVE(&((Word_t*)ls_pcKeysNATX(pwList,
+                                      wPopCnt - 1))[-((int)wPopCnt - 1)],
+             &((Word_t*)ls_pcKeysNATX(pwr, wPopCnt))[-(int)wPopCnt],
+             wPopCnt - nIndex - 1);
   #endif // B_JUDYL
         // move keys
         MOVE(&ls_pcKeysNATX(pwList, wPopCnt - 1)[nIndex],
@@ -5273,9 +5276,10 @@ embeddedKeys:;
     } else if (nBL <= 16) {
   #ifdef B_JUDYL
         // move values
-        pwVals = (Word_t *)ls_psKeysNATX(pwList, wPopCnt - 1);
-        MOVE(&pwVals[-((int)wPopCnt - 1)],
-             &pwVals[-(int)wPopCnt], wPopCnt - nIndex - 1);
+        MOVE(&((Word_t*)ls_psKeysNATX(pwList,
+                                      wPopCnt - 1))[-((int)wPopCnt - 1)],
+             &((Word_t*)ls_psKeysNATX(pwr, wPopCnt))[-(int)wPopCnt],
+             wPopCnt - nIndex - 1);
   #endif // B_JUDYL
         // move keys
         MOVE(&ls_psKeysNATX(pwList, wPopCnt - 1)[nIndex],
@@ -5304,9 +5308,10 @@ embeddedKeys:;
     } else if (nBL <= 32) {
   #ifdef B_JUDYL
         // move values
-        pwVals = (Word_t *)ls_piKeysNATX(pwList, wPopCnt - 1);
-        MOVE(&pwVals[-((int)wPopCnt - 1)],
-             &pwVals[-(int)wPopCnt], wPopCnt - nIndex - 1);
+        MOVE(&((Word_t*)ls_piKeysNATX(pwList,
+                                      wPopCnt - 1))[-((int)wPopCnt - 1)],
+             &((Word_t*)ls_piKeysNATX(pwr, wPopCnt))[-(int)wPopCnt],
+             wPopCnt - nIndex - 1);
   #endif // B_JUDYL
         // move keys
         MOVE(&ls_piKeysNATX(pwList, wPopCnt - 1)[nIndex],
@@ -5335,9 +5340,9 @@ embeddedKeys:;
 #endif // defined(LIST_END_MARKERS)
   #ifdef B_JUDYL
         // move values
-        pwVals = ls_pwKeysNATX(pwList, wPopCnt - 1);
-        MOVE(&pwVals[-((int)wPopCnt - 1)],
-             &pwVals[-(int)wPopCnt], wPopCnt - nIndex - 1);
+        MOVE(&ls_pwKeysNATX(pwList, wPopCnt - 1)[-((int)wPopCnt - 1)],
+             &ls_pwKeysNATX(pwr, wPopCnt)[-(int)wPopCnt],
+             wPopCnt - nIndex - 1);
 // wPopCnt == 2, nIndex == 0
 // Should move keys [1, 1] to [0, 0]
 // Should move values [-2, -2] to [-1, -1]
