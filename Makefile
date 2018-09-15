@@ -241,7 +241,7 @@ ifeq "$(JUDY)" "L"
 endif
 
 FILES_FROM_ME  = b.h b.c bli.c bl.c bi.c br.c bc.c t.c
-FILES_FROM_ME += stubsL.c stubsHS.c Makefile
+FILES_FROM_ME += Makefile
 FILES_FROM_ME += bb forx
 FILES_FROM_ME += README.meb
 # I periodically make changes to the files provided by Doug B.
@@ -254,15 +254,15 @@ LINKS = b btime bcheck
 LIBS = libb1.a libb1.so libb.a libb.so
 LIBB1_OBJS = b.o bl.o bi.o br.o bc.o JudyMalloc.o
 LIBB1_SRCS = b.c bl.c bi.c br.c bc.c
-LIBB_OBJS = $(LIBB1_OBJS) stubsL.o stubsHS.o
-LIBB_SRCS = $(LIBB1_SRCS) stubsL.c stubsHS.c
+LIBB_OBJS = $(LIBB1_OBJS)
+LIBB_SRCS = $(LIBB1_SRCS)
 ASMS  = b.s bl.s bi.s br.s bc.s
-ASMS += stubsL.s stubsHS.s JudyMalloc.s # t.s
+ASMS += JudyMalloc.s # t.s
 ASMS += Judy1LHTime.s Judy1LHCheck.s
 CPPS  = b.i bl.i bi.i br.i bc.i
-CPPS += stubsL.i stubsHS.i JudyMalloc.i # t.i
+CPPS += JudyMalloc.i # t.i
 
-T_OBJS = stubsL.o stubsHS.o JudyMalloc.o
+T_OBJS = JudyMalloc.o
 
 ##################################
 #
@@ -386,12 +386,6 @@ JudyMalloc.so: JudyMalloc.c
 .c.o:
 	$(CC) $(CFLAGS) $(DEFINES) -c $^
 
-stubsL.o: stubsL.c
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
-
-stubsHS.o: stubsHS.c
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -c $^
-
 # Default MALLOC_ALIGNMENT is 2 * sizeof(void *), except possibly on OSX.
 JudyMalloc.o: JudyMalloc.c
 	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) -c $^
@@ -412,12 +406,6 @@ t.s: t.c
 # Suppress warnings.
 Judy1LHTime.s: Judy1LHTime.c
 	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -S $^
-
-stubsL.s: stubsL.c
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
-
-stubsHS.s: stubsHS.c
-	$(CC) $(CFLAGS_NO_WFLAGS) $(DEFINES) -S $^
 
 # Suppress warnings.  sbrk is deprecated.
 JudyMalloc.s: JudyMalloc.c
@@ -450,14 +438,6 @@ br.i: br.c
 
 # The .c.i rule doesn't work for some reason.  Later.
 bc.i: bc.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
-
-# The .c.i rule doesn't work for some reason.  Later.
-stubsL.i: stubsL.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
-
-# The .c.i rule doesn't work for some reason.  Later.
-stubsHS.i: stubsHS.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
