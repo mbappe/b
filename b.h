@@ -2593,14 +2593,32 @@ snListSwPop(qp, int nPopCnt)
     Set_xListPopCnt((_pwRoot), (_nBL), (_cnt)))
 
 #ifdef B_JUDYL
-Word_t*
+Word_t* InsertL(int nBL, Link_t *pLn, Word_t wKey);
+#define Remove  RemoveL
+Word_t CountL(int nBL, Link_t *pLn, Word_t wKey);
 #else // B_JUDYL
-Status_t
+Status_t Insert1(int nBL, Link_t *pLn, Word_t wKey);
+#define Remove  Remove1
+Word_t Count1(int nBL, Link_t *pLn, Word_t wKey);
 #endif // B_JUDYL
-Insert(int nBL, Link_t *pLn, Word_t wKey);
 
-Word_t Count(int nBL, Link_t *pLn, Word_t wKey);
 Status_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
+
+#ifdef B_JUDYL
+#define InsertGuts  InsertGutsL
+#define InsertAtBitmap  InsertAtBitmapL
+#define InsertCleanup  InsertCleanupL
+#define RemoveGuts  RemoveGutsL
+#define RemoveCleanup  RemoveCleanupL
+#define Dump  DumpL
+#else // B_JUDYL
+#define InsertGuts  InsertGuts1
+#define InsertAtBitmap  InsertAtBitmap1
+#define InsertCleanup  InsertCleanup1
+#define RemoveGuts  RemoveGuts1
+#define RemoveCleanup  RemoveCleanup1
+#define Dump  Dump1
+#endif // B_JUDYL
 
 #ifdef B_JUDYL
 Word_t*
@@ -2630,8 +2648,8 @@ Status_t
 #endif // B_JUDYL
 InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot);
 
-Word_t FreeArrayGuts(Word_t *pwRoot,
-                     Word_t wPrefix, int nBL, int bDump);
+//Word_t FreeArrayGuts(Word_t *pwRoot,
+//                     Word_t wPrefix, int nBL, int bDump);
 
 #if defined(EMBED_KEYS)
 Word_t InflateEmbeddedList(Word_t *pwRoot,
@@ -2642,9 +2660,9 @@ Word_t InflateEmbeddedList(Word_t *pwRoot,
 extern int bHitDebugThreshold;
 #endif // defined(DEBUG)
 
-int ListWords(int nPopCnt, int nBL);
-Word_t *NewList(int nPopCnt, int nBL);
-int OldList(Word_t *pwList, int nPopCnt, int nBL, int nType);
+//int ListWords(int nPopCnt, int nBL);
+//Word_t *NewList(int nPopCnt, int nBL);
+//int OldList(Word_t *pwList, int nPopCnt, int nBL, int nType);
 
 #if defined(DEBUG)
 void Dump(Word_t *pwRoot, Word_t wPrefix, int nBL);
@@ -2697,8 +2715,6 @@ extern int bPopCntTotalIsInvalid;
 #define PSPLIT_SEARCH_WORD
 #endif // defined(PSPLIT_SEARCH_XOR_WORD)
 
-void HexDump(char *str, Word_t *pw, unsigned nWords);
-
 #if defined(BPD_TABLE)
   #if defined(BPD_TABLE_RUNTIME_INIT)
 extern unsigned anDL_to_nBitsIndexSz[ cnBitsPerWord + 1 ];
@@ -2721,7 +2737,8 @@ extern const unsigned anBL_to_nDL[];
   #else // defined(REMOVE)
 #define strLookupOrInsertOrRemove  "Remove"
 #define DBGX  DBGR
-#define InsertRemove  Remove
+#define InsertRemove1  Remove1
+#define InsertRemoveL  RemoveL
       #if defined(RECURSIVE_REMOVE)
 #define RECURSIVE
       #endif // defined(RECURSIVE_REMOVE)
@@ -2731,7 +2748,8 @@ extern const unsigned anBL_to_nDL[];
   #if defined(INSERT)
 #define strLookupOrInsertOrRemove  "Insert"
 #define DBGX  DBGI
-#define InsertRemove  Insert
+#define InsertRemove1  Insert1
+#define InsertRemoveL  InsertL
       #if defined(RECURSIVE_INSERT)
 #define RECURSIVE
       #endif // defined(RECURSIVE_INSERT)
@@ -2740,7 +2758,8 @@ extern const unsigned anBL_to_nDL[];
 // excluding the key that is passed as a parameter.
 #define strLookupOrInsertOrRemove  "Count"
 #define DBGX  DBGC
-#define InsertRemove  Count
+#define InsertRemoveL  CountL
+#define InsertRemove1  Count1
   #else // defined(INSERT) elif defined(COUNT)
 #define strLookupOrInsertOrRemove  "Next"
 #define DBGX  DBGN

@@ -5,9 +5,6 @@
 #
 ###########################
 
-# Judy1 or JudyL?
-JUDY ?= L
-
 # Run the following to build b:
 #   make clean
 #   [CC=<cc|clang[++]|gcc|icc|c++|g++>] [BPW=<32|64>] [DEFINES="..."] make b
@@ -236,9 +233,6 @@ endif
 # Put cmdline DEFINES after default defines so defaults can be overridden.
 MAKE_DEFINES = $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 DEFINES := $(MAKE_DEFINES) $(DEFINES)
-ifeq "$(JUDY)" "L"
-    DEFINES := $(DEFINES) -DB_JUDYL
-endif
 
 FILES_FROM_ME  = b.h b.c bli.c bl.c bi.c br.c bc.c t.c
 FILES_FROM_ME += Makefile
@@ -251,11 +245,13 @@ FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEA)
 
 EXES = Judy1LHTime Judy1LHCheck c++time c++check # t
 LINKS = b btime bcheck
-LIBS = libb1.a libb1.so libb.a libb.so
+LIBS = libb1.a libb1.so libbL.a libbL.so libb.a libb.so
 LIBB1_OBJS = b.o bl.o bi.o br.o bc.o JudyMalloc.o
 LIBB1_SRCS = b.c bl.c bi.c br.c bc.c
-LIBB_OBJS = $(LIBB1_OBJS)
-LIBB_SRCS = $(LIBB1_SRCS)
+LIBBL_OBJS = bL.o blL.o biL.o brL.o bcL.o JudyMalloc.o
+LIBBL_SRCS = bL.c blL.c biL.c brL.c bcL.c
+LIBB_OBJS = $(LIBB1_OBJS) $(LIBBL_OBJS)
+LIBB_SRCS = $(LIBB1_SRCS) $(LIBBL_SRCS)
 ASMS  = b.s bl.s bi.s br.s bc.s
 ASMS += JudyMalloc.s # t.s
 ASMS += Judy1LHTime.s Judy1LHCheck.s
@@ -289,28 +285,14 @@ t: t.c $(T_OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 
 # -DMIKEY tells Judy1LHTime to use different RAMMETRICS column headings.
-#Judy1LHTime: Judy1LHTime.c libb.a
-#	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
-ifeq "$(JUDY)" "L"
-Judy1LHTime: Judy1LHTime.c libb1.a
-	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -DJUDY1_V1 -o $@ $^ -lm \
- $(LDFLAGS) -lJudy
-else # "JUDY" "L"
-Judy1LHTime: Judy1LHTime.c libb1.a
-	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -DJUDYL_V1 -o $@ $^ -lm \
- $(LDFLAGS) -lJudy
-endif # "JUDY" "L"
- # ../judy/src/obj/.libs/libJudy.a
+# -lJudy is for JudyHS.
+Judy1LHTime: Judy1LHTime.c libb.a
+	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm $(LDFLAGS) -lJudy
+# ../judy/src/obj/.libs/libJudy.a
 
-ifeq "$(JUDY)" "L"
-c++time: Judy1LHTime.c libb1.a
-	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) -DJUDY1_V1 \
- -x c++ Judy1LHTime.c -x none libb1.a -o $@ -lJudy -lm
-else # "JUDY" "L"
-c++time: Judy1LHTime.c libb1.a
-	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) -DJUDYL_V1 \
- -x c++ Judy1LHTime.c -x none libb1.a -o $@ -lJudy -lm
-endif # "JUDY" "L"
+c++time: Judy1LHTime.c libb.a
+	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) \
+ -x c++ Judy1LHTime.c -x none libb.a -o $@ -lm -lJudy
 
 b: Judy1LHTime
 	ln -sf Judy1LHTime b
@@ -320,27 +302,13 @@ btime: Judy1LHTime
 
 # Set LIBRARY_PATH environment variable to find libJudy.a.
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
-ifeq "$(JUDY)" "L"
-Judy1LHCheck: Judy1LHCheck.c libb1.a
-	$(CC) $(CFLAGS) -Wno-sign-compare $(DEFINES) -DJUDY1_V1 -o $@ $^ -lm \
- $(LDFLAGS) -lJudy
-else # "JUDY" "L"
-Judy1LHCheck: Judy1LHCheck.c libb1.a
-	$(CC) $(CFLAGS) -Wno-sign-compare $(DEFINES) -DJUDYL_V1 -o $@ $^ -lm \
- $(LDFLAGS) -lJudy
-endif # "JUDY" "L"
+Judy1LHCheck: Judy1LHCheck.c libb.a
+	$(CC) $(CFLAGS) -Wno-sign-compare $(DEFINES) \
+ -o $@ $^ -lm $(LDFLAGS) -lJudy
 
-ifeq "$(JUDY)" "L"
-c++check: Judy1LHCheck.c libb1.a
-	$(CXX) $(CXXFLAGS) $(DEFINES) -DJUDY1_V1 -x c++ Judy1LHCheck.c \
- -x none libb1.a -o $@ -lm \
- $(LDFLAGS) -lJudy
-else # "JUDY" "L"
-c++check: Judy1LHCheck.c libb1.a
-	$(CXX) $(CXXFLAGS) $(DEFINES) -DJUDYL_V1 -x c++ Judy1LHCheck.c \
- -x none libb1.a -o $@ -lm \
- $(LDFLAGS) -lJudy -lm
-endif # "JUDY" "L"
+c++check: Judy1LHCheck.c libb.a
+	$(CXX) $(CXXFLAGS) $(DEFINES) \
+ -x c++ Judy1LHCheck.c -x none libb.a -o $@ -lm $(LDFLAGS) -lJudy
 
 bcheck: Judy1LHCheck
 	ln -sf Judy1LHCheck bcheck
@@ -351,14 +319,21 @@ libb.a: $(LIBB_OBJS)
 libb1.a: $(LIBB1_OBJS)
 	ar -r $@ $^
 
-# Build libb.so directly from sources rather than from
+libbL.a: $(LIBBL_OBJS)
+	ar -r $@ $^
+
+# Build libb1.so and libbL.so directly from sources rather than from
 # objects so this Makefile doesn't have to deal with the complexity
 # of -fPIC objects and non -fPIC objecs with the same names.
-libb.so: $(LIBB_SRCS) JudyMalloc.so
-	$(CC) $(CFLAGS_NO_WFLAGS) -fPIC $(DEFINES) -shared -o $@ $^
 
 libb1.so: $(LIBB1_SRCS) JudyMalloc.so
 	$(CC) $(CFLAGS) -fPIC $(DEFINES) -shared -o $@ $^
+
+libbL.so: $(LIBBL_SRCS) JudyMalloc.so
+	$(CC) $(CFLAGS) -fPIC $(DEFINES) -DB_JUDYL -shared -o $@ $^
+
+libb.so: libb1.so libbL.so
+	$(CC) -shared -o $@ $^
 
 ifneq "$(CC)" "c++"
 ifneq "$(CC)" "g++"
@@ -371,6 +346,32 @@ endif
 
 JudyMalloc.so: JudyMalloc.c
 	$(CC) $(CFLAGS) $(MALLOC_FLAGS) -fPIC $(DEFINES) -shared -o $@ $^
+
+bL.o: b.c
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $^
+b1L.o: b1.c
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $^
+biL.o: bi.c
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $^
+blL.o: bl.c
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $^
+brL.o: br.c
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $^
+bcL.o: bc.c
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $^
+
+bL.c: b.c
+	ln -s $< $@
+b1L.c: b1.c
+	ln -s $< $@
+biL.c: bi.c
+	ln -s $< $@
+blL.c: bl.c
+	ln -s $< $@
+brL.c: br.c
+	ln -s $< $@
+bcL.c: bc.c
+	ln -s $< $@
 
 ############################
 #
