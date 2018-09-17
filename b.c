@@ -1,5 +1,13 @@
 #include "b.h"
 
+#ifdef B_JUDYL
+#define Insert  InsertL
+#define Count  CountL
+#else // B_JUDYL
+#define Insert  Insert1
+#define Count  Count1
+#endif // B_JUDYL
+
 // Check and/or Time depend on Judy1MallocSizes but this version
 // of Judy does not use it.
 #ifdef B_JUDYL
@@ -15,6 +23,7 @@ const char *Judy1MallocSizes = "Judy1"
 
 Word_t wPopCntTotal;
 
+#ifdef B_JUDYL
 // bPopCntTotalIsInvalid is overloaded. We use cbPopCntTotalIsInvalid to
 // disable cleanup assertions that assume there is only one array under test.
 // The assumption is invalid for JudyL Check testing without NO_TEST_HS and
@@ -24,6 +33,8 @@ Word_t wPopCntTotal;
   #define cbPopCntTotalIsInvalid  0
 #endif // cbPopCntTotalIsInvalid
 int bPopCntTotalIsInvalid = cbPopCntTotalIsInvalid;
+#endif // B_JUDYL
+
 #if defined(DEBUG)
 Word_t *pwRootLast; // allow dumping of tree when root is not known
 #endif // defined(DEBUG)
@@ -430,7 +441,7 @@ ListWordsExternal(Word_t wPopCnt, unsigned nBL)
 
 // How many words are needed for the specified list leaf?
 // Use embedded keys instead of T_LIST if possible.
-int
+static int
 ListWords(int nPopCnt, int nBL)
 {
 #if defined(EMBED_KEYS)
@@ -557,7 +568,7 @@ NewListExternal(Word_t wPopCnt, unsigned nBL)
 // Otherwise use T_LIST.
 // Return NULL if no memory is allocated, i.e. wPopCnt == 0 or
 // embedded list is possible.
-Word_t *
+static Word_t *
 NewList(int nPopCnt, int nBL)
 {
 #if defined(EMBED_KEYS)
@@ -573,7 +584,7 @@ NewList(int nPopCnt, int nBL)
     return NewListExternal(nPopCnt, nBL);
 }
 
-int
+static int
 OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
 {
 #if defined(NO_TYPE_IN_XX_SW)
@@ -1616,7 +1627,7 @@ Sum(Word_t *pwRoot, int nBLUp)
 
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 
-Word_t
+static Word_t
 FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
 {
     Word_t *pwRootArg = pwRoot;
@@ -2510,6 +2521,7 @@ DeflateExternalList(Word_t *pwRoot,
 
 // Max list length as a function of nBL.
 // Array is indexed by LOG(nBL-1).
+static
 const int anListPopCntMax[] = {
                     0, //  1 < nBL <=  2
                     0, //  2 < nBL <=  4
@@ -2523,7 +2535,7 @@ const int anListPopCntMax[] = {
 
 #endif // (cwListPopCntMax != 0)
 
-void
+static void
 HexDump(char *str, Word_t *pw, unsigned nWords)
 {
     printf("\n%s (pw %p nWords %d):\n", str, (void *)pw, nWords);
@@ -4926,7 +4938,7 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
 #endif // B_JUDYL
 }
 
-Status_t
+static Status_t
 RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
              int nBL, Word_t wRoot);
 
@@ -5401,7 +5413,7 @@ embeddedKeys:;
 
 // Clear the bit for wKey in the bitmap.
 // And free the bitmap if it is empty and not embedded.
-Status_t
+static Status_t
 RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
              int nBL, Word_t wRoot)
 {
@@ -6699,7 +6711,7 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 {
     (void)PJError; // suppress "unused parameter" compiler warnings
 
-    DBGR(printf("JudyLFreeArray\n"));
+    DBGR(printf("# JudyLFreeArray\n"));
 
     // A real user shouldn't pass NULL to Judy1FreeArray.
     // Judy1LHTime uses NULL to give us an opportunity to print
@@ -6735,7 +6747,9 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 
     DBGR(printf("# wPopCntTotal %" _fw"u 0x%" _fw"x\n",
                wPopCntTotal, wPopCntTotal));
+#ifdef B_JUDYL
     DBGR(printf("# bPopCntTotalIsInvalid %d\n", bPopCntTotalIsInvalid));
+#endif // B_JUDYL
     DBGR(printf("# Judy1FreeArray wBytes %" _fw"u words %" _fw"u\n",
                wBytes, wBytes/sizeof(Word_t)));
     DBGR(printf("# Judy1FreeArray wBytes 0x%" _fw"x words 0x%" _fw"x\n",
@@ -6782,7 +6796,11 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 
     // Assuming wWordsAllocated is zero is presumptuous.
     // What if the application has more than one Judy1 array?
-  if (!bPopCntTotalIsInvalid) {
+#if 0
+#ifdef B_JUDYL
+  if (!bPopCntTotalIsInvalid)
+#endif // B_JUDYL
+  {
     assert(wWordsAllocated == 0);
 #if defined(RAMMETRICS)
     // Assuming j__AllocWordsTOT is zero is presumptuous.
@@ -6796,6 +6814,7 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
     // What if the application has more than one Judy1 array?
     assert(wMallocs == 0);
   }
+#endif
 
     // Should have FreeArrayGuts adjust wPopCntTotal this as it goes.
 #ifdef B_JUDYL
@@ -6935,7 +6954,12 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
         }
 
   #if defined(DEBUG)
-        if ((wPopCnt != wPopCntTotal) && !bPopCntTotalIsInvalid)
+#if 0
+        if ((wPopCnt != wPopCntTotal)
+      #ifdef B_JUDYL
+            && !bPopCntTotalIsInvalid
+      #endif // B_JUDYL
+            )
         {
             printf("\nAssertion error debug:\n");
             printf("\nwPopCnt %" _fw"u wPopCntTotal %" _fw"u\n",
@@ -6944,7 +6968,12 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
                 Dump(pwRootLast, 0, cnBitsPerWord);
             }
         }
+      #ifdef B_JUDYL
         assert(wPopCnt == wPopCntTotal || bPopCntTotalIsInvalid);
+      #else // B_JUDYL
+        assert(wPopCnt == wPopCntTotal);
+#endif
+      #endif // B_JUDYL
 
         if (wPopCnt != wCount)
         {
