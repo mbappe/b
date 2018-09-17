@@ -33,30 +33,45 @@
 
 #include <Judy.h>                       // for Judy macros J*()
 
+#ifdef JUDY_V105
+// Judy 1.0.5 doesn't have RAMMETRICS but this modern Time program
+// assumes the globals exist.
+Word_t j__MalFreeCnt;
+Word_t j__MFlag;
+Word_t j__AllocWordsTOT;
+Word_t j__AllocWordsJBB;
+Word_t j__AllocWordsJBU;
+Word_t j__AllocWordsJBL;
+Word_t j__AllocWordsJLLW;
+Word_t j__AllocWordsJLL7;
+Word_t j__AllocWordsJLL6;
+Word_t j__AllocWordsJLL5;
+Word_t j__AllocWordsJLL4;
+Word_t j__AllocWordsJLL3;
+Word_t j__AllocWordsJLL2;
+Word_t j__AllocWordsJLL1;
+Word_t j__AllocWordsJLB1;
+Word_t j__AllocWordsJV;
+Word_t j__AllocWordsTOT;
+Word_t j__TotalBytesAllocated;
+#endif // JUDY_V105
+
 // The released Judy libraries do not, and some of Doug's work-in-progress
 // libraries may not, have Judy1Dump and/or JudyLDump entry points.
 // And Mike sometimes links Judy1LHTime with his own Judy1 library and the
 // released or Doug's JudyL or with his own JudyL and the released or
 // Doug's Judy1 libraries.
 // We want to be able to use the same Time.c for all of these cases.
-// The solution is to define JUDY1_V1 and/or JUDYL_V1 to have Time.c
-// include stubs for the Judy1Dump and/or JudyLDump as needed.
-#ifdef JUDY_V1
-  #define JUDY1_V1
-  #define JUDYL_V1
-#endif // JUDY_V1
+// The solution is to define JUDY1_V2 and/or JUDYL_V2 if/when we want Time.c
+// to use Judy1Dump and/or JudyLDump for real.
 
-#ifdef JUDY1_V1
-void Judy1Dump(Word_t wRoot, int nBitsLeft, Word_t wKeyPrefix) {
-    (void)wRoot; (void)nBitsLeft; (void)wKeyPrefix;
-}
-#endif // JUDY1_V1
+#ifndef JUDY1_V2
+#define Judy1Dump(wRoot, nBitsLeft, wKeyPrefix)
+#endif // JUDY1_V2
 
-#ifdef JUDYL_V1
-void JudyLDump(Word_t wRoot, int nBitsLeft, Word_t wKeyPrefix) {
-    (void)wRoot; (void)nBitsLeft; (void)wKeyPrefix;
-}
-#endif // JUDYL_V1
+#ifndef JUDYL_V2
+#define JudyLDump(wRoot, nBitsLeft, wKeyPrefix)
+#endif // JUDYL_V2
 
 // Why did we create CALC_NEXT_KEY? Or, rather, why did we create the
 // alternative, an array of keys, since CALC_NEXT_KEY used to be the only
