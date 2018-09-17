@@ -1507,11 +1507,12 @@ main(int argc, char *argv[])
                 {
                     FileKeys[FValue++] = KeyValue;
                 }
-                FileKeys[FValue] = 0; // Set extra key for -R/TestJudyLIns to 0.
             }
+            FileKeys[FValue] = 0; // Set extra key for -R/TestJudyLIns to 0.
             fprintf(stderr, "\n");
             nElms = FValue;
             StartSequent = 0;
+            PartitionDeltaFlag = 0;
             break;
         }
 
@@ -2119,6 +2120,8 @@ main(int argc, char *argv[])
 // wrong, 255-240+1=256, 255+(257-240)/16=256, 255+(258-240)/16=256
 // For 255:
 // logGrpSz: 1
+// grpSz: 1
+// Groups: 255-240+(255-15)=255
 // For 256:
 // logGrpSz: 1 // Is this what we want?
 // logGrpSz: 2 // Better.
@@ -2817,7 +2820,7 @@ nextPart:
 #endif  // NEVER
 
 #ifndef CALC_NEXT_KEY
-        if (!bLfsrOnly)
+        if (!bLfsrOnly && (FValue == 0))
         {
             // FileKeys[TValues] is where the delta keys begin.
             for (Word_t ww = 0; ww < Delta; ww++) {
