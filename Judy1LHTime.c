@@ -33,9 +33,10 @@
 
 #include <Judy.h>                       // for Judy macros J*()
 
-#ifdef JUDY_V105
-// Judy 1.0.5 doesn't have RAMMETRICS but this modern Time program
-// assumes the globals exist.
+#if defined(JUDY_V105) || defined(JUDY_METRICS_GLOBALS)
+// Judy 1.0.5 doesn't have RAMMETRICS but this modern Time.c program
+// assumes the globals exist. Use -DJUDY_V105 or -DJUDY_METRICS_GLOBALS
+// to build this modern Time.c program in a Judy 1.0.5 working directory.
 Word_t j__MalFreeCnt;
 Word_t j__MFlag;
 Word_t j__AllocWordsTOT;
@@ -54,7 +55,7 @@ Word_t j__AllocWordsJLB1;
 Word_t j__AllocWordsJV;
 Word_t j__AllocWordsTOT;
 Word_t j__TotalBytesAllocated;
-#endif // JUDY_V105
+#endif // defined(JUDY_V105) || defined(JUDY_METRICS_GLOBALS)
 
 // The released Judy libraries do not, and some of Doug's work-in-progress
 // libraries may not, have Judy1Dump and/or JudyLDump entry points.
@@ -64,14 +65,17 @@ Word_t j__TotalBytesAllocated;
 // We want to be able to use the same Time.c for all of these cases.
 // The solution is to define JUDY1_V2 and/or JUDYL_V2 if/when we want Time.c
 // to use Judy1Dump and/or JudyLDump for real.
+// The solution is to define JUDY1_V2 and/or JUDY1_DUMP and/or JUDYL_V2
+// and/or JUDYL_DUMP if/when we want Time.c to use Judy1Dump and/or
+// JudyLDump for real.
 
-#ifndef JUDY1_V2
+#if !defined(JUDY1_V2) && !defined(JUDY1_DUMP)
 #define Judy1Dump(wRoot, nBitsLeft, wKeyPrefix)
-#endif // JUDY1_V2
+#endif // !defined(JUDY1_V2) && !defined(JUDY1DUMP)
 
-#ifndef JUDYL_V2
+#if !defined(JUDYL_V2) && !defined(JUDYL_DUMP)
 #define JudyLDump(wRoot, nBitsLeft, wKeyPrefix)
-#endif // JUDYL_V2
+#endif // !defined(JUDYL_V2) && !defined(JUDYLDUMP)
 
 // Why did we create CALC_NEXT_KEY? Or, rather, why did we create the
 // alternative, an array of keys, since CALC_NEXT_KEY used to be the only
@@ -118,6 +122,9 @@ Word_t j__TotalBytesAllocated;
 // KFLAG is in by default with LFSR_ONLY
 #endif // LFSR_ONLY
 
+// Judy 1.0.5 did not have RandomNumb.h. We must copy the RandomNumb.h that
+// goes with this Time.c into judy/test along with this Time.c in order to
+// build this modern time program in a Judy 1.0.5 working directory.
 #include "RandomNumb.h"                 // Random Number Generators
 
 #define WARMUPCPU  10000000             // calls to random() to warmup CPU

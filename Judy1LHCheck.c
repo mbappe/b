@@ -16,34 +16,19 @@
 // released or Doug's JudyL or with his own JudyL and the released or
 // Doug's Judy1 libraries.
 // We want to be able to use the same Check.c for all of these cases.
-// The solution is to define JUDY1_V1 and/or JUDYL_V1 to have Check.c
-// include stubs for the Judy1Dump and/or JudyLDump as needed.
-#ifdef JUDY_V1
-  #define JUDY1_V1
-  #define JUDYL_V1
-#endif // JUDY_V1
+// The solution is to define JUDY1_V2 and/or JUDY1_DUMP and/or JUDYL_V2
+// and/or JUDYL_DUMP if/when we want Check.c to use Judy1Dump and/or
+// JudyLDump for real.
 
-#ifdef JUDY1_V1
-void Judy1Dump(Word_t wRoot, int nBitsLeft, Word_t wKeyPrefix) {
-    (void)wRoot; (void)nBitsLeft; (void)wKeyPrefix;
-}
-#endif // JUDY1_V1
+#if !defined(JUDY1_V2) && !defined(JUDY1_DUMP)
+#define Judy1Dump(wRoot, nBitsLeft, wKeyPrefix)
+#endif // !defined(JUDY1_V2) && !defined(JUDY1_DUMP)
 
-#ifdef JUDYL_V1
-void JudyLDump(Word_t wRoot, int nBitsLeft, Word_t wKeyPrefix) {
-    (void)wRoot; (void)nBitsLeft; (void)wKeyPrefix;
-}
-#endif // JUDYL_V1
-#ifdef JUDY_V1
-void Judy1Dump(Word_t wRoot, int nBitsLeft, Word_t wKeyPrefix) {
-    (void)wRoot; (void)nBitsLeft; (void)wKeyPrefix;
-}
-void JudyLDump(Word_t wRoot, int nBitsLeft, Word_t wKeyPrefix) {
-    (void)wRoot; (void)nBitsLeft; (void)wKeyPrefix;
-}
-#endif // JUDY_V1
+#if !defined(JUDYL_V2) && !defined(JUDYL_DUMP)
+#define JudyLDump(wRoot, nBitsLeft, wKeyPrefix)
+#endif // !defined(JUDYL_V2) && !defined(JUDYL_DUMP)
 
-// In case we want to set j__MFlag to one to get JudyMalloc to dump mmap/munmap.
+// In case we want to set j__MFlag to 1 to get JudyMalloc to log mmap/munmap.
 extern Word_t j__MFlag;
 
 // Compile:
