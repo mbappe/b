@@ -248,8 +248,8 @@ LINKS = b btime bcheck
 LIBS = libb1.a libb1.so libbL.a libbL.so libb.a libb.so
 LIBB1_OBJS = b.o bl.o bi.o br.o bc.o JudyMalloc.o
 LIBB1_SRCS = b.c bl.c bi.c br.c bc.c
-LIBBL_OBJS = bL.o blL.o biL.o brL.o bcL.o JudyMalloc.o
-LIBBL_SRCS = bL.c blL.c biL.c brL.c bcL.c
+LIBBL_OBJS = b-L.o blL.o biL.o brL.o bcL.o JudyMalloc.o
+LIBBL_SRCS = b-L.c blL.c biL.c brL.c bcL.c
 LIBB_OBJS = $(LIBB1_OBJS) $(LIBBL_OBJS)
 LIBB_SRCS = $(LIBB1_SRCS) $(LIBBL_SRCS)
 ASMS  = b.s bl.s bi.s br.s bc.s
@@ -347,7 +347,7 @@ endif
 JudyMalloc.so: JudyMalloc.c
 	$(CC) $(CFLAGS) $(MALLOC_FLAGS) -fPIC $(DEFINES) -shared -o $@ $^
 
-bL.o: b.c
+b-L.o: b.c
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $^
 b1L.o: b1.c
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $^
@@ -360,7 +360,7 @@ brL.o: br.c
 bcL.o: bc.c
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $^
 
-bL.c: b.c
+b-L.c: b.c
 	ln -s $< $@
 b1L.c: b1.c
 	ln -s $< $@
