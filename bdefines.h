@@ -7,10 +7,6 @@
 // Set initial defines based on whether we are building Judy1 or JudyL.
 // If B_JUDYL is not defined then we are building Judy1.
 #ifdef B_JUDYL
-  #undef ALIGN_LISTS
-  #define ALIGN_LISTS
-  #undef ALIGN_LIST_LENS
-  #define ALIGN_LIST_LENS
   #undef NO_EMBED_KEYS
   #define NO_EMBED_KEYS
   #define NO_UA_PARALLEL_128
