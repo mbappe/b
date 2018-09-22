@@ -2,16 +2,18 @@
 
 # Use a -DDEBUG build.
 
+TIME=Judy1LHTime
+
 : \
-&& b -W0 -1L -n1000000 -S1 --splay-key-bits=0xff00aa00aa00ffff \
-&& b -W0 -RICvdgi -n1000000 \
+&& ${TIME} -W0 -1L -n1000000 -S1 --splay-key-bits=0xff00aa00aa00ffff \
+&& ${TIME} -W0 -RICvdgi -n1000000 \
 && bcheckall 64 \
-&& b -W0 -B25 -1LICvdgi -n100000 --splay-key-bits=0x0400aa00aa00ffff \
-&& b -W0 -B25 -1LICvdgi -n100000 -DS1 --splay-key-bits=0x0400aa00aa00ffff \
-&& b -W0 -B25 -1LICvdgi -n100000 \
-&& b -W0 -B25 -1LICvdgi -n100000 -S1 \
-&& b -W0 -B25 -1LICvdgi -n100000 -DS1 \
-&& b -W0 -B25 -1LICvdgi -n100000 -S1 --splay-key-bits=0x0400aa00aa00ffff \
-&& b -W0 -B25 -1Llmt \
+&& ${TIME} -W0 -B25 -1LICvdgi -n100000 --splay-key-bits=0x0400aa00aa00ffff \
+&& ${TIME} -W0 -B25 -1LICvdgi -n100000 -DS1 \
+   --splay-key-bits=0x0400aa00aa00ffff \
+&& ${TIME} -W0 -B25 -1LICvdgi -n100000 \
+&& ${TIME} -W0 -B25 -1LICvdgi -n100000 -S1 \
+&& ${TIME} -W0 -B25 -1LICvdgi -n100000 -DS1 \
+&& ${TIME} -W0 -B25 -1LICvdgi -n100000 -S1 --splay-key-bits=0x0400aa00aa00ffff \
 :
 
