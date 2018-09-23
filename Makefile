@@ -451,7 +451,7 @@ t.i: t.c
 
 # The .c.i rule doesn't work for some reason.  Later.
 JudyMalloc.i: JudyMalloc.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
 #
 # -mmmx -msse -msse2 -mno-sse4 is the default for -m64 as of this writing

@@ -8443,7 +8443,11 @@ Judy1NextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
     DBGN(printf("J1NE: pwKey %p\n", (void *)pwKey));
     if (pwKey == NULL) {
+#ifdef B_JUDYL
+        return JudyLFirstEmpty(PArray, pwKey, PJError);
+#else // B_JUDYL
         return Judy1FirstEmpty(PArray, pwKey, PJError);
+#endif // B_JUDYL
     }
     DBGN(printf("J1NE: *pwKey %zx\n", *pwKey));
     Word_t wKeyLocal = *pwKey;
@@ -8515,7 +8519,11 @@ Judy1PrevEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 {
     DBGN(printf("J1PE: pwKey %p\n", (void *)pwKey));
     if (pwKey == NULL) {
+#ifdef B_JUDYL
+        return JudyLLastEmpty(PArray, pwKey, PJError);
+#else // B_JUDYL
         return Judy1LastEmpty(PArray, pwKey, PJError);
+#endif // B_JUDYL
     }
     DBGN(printf("J1PE: *pwKey %zx\n", *pwKey));
     Word_t wKeyLocal = *pwKey;
