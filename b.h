@@ -4249,6 +4249,7 @@ ListHasKey8(qp, int nBLR, Word_t wKey)
 // HasKey128 assumes the list of keys starts at a 128-bit aligned address.
 // SearchList8 makes no such assumption.
 #if !defined(POP_IN_WR_HB) && !defined(LIST_POP_IN_PREAMBLE)
+// Should these ifdefs say (cnDummiesInList != 0)?
 #if !defined(PP_IN_LINK) || (cnDummiesInList == 0)
 #if !defined(POP_WORD_IN_LINK) || (cnDummiesInList == 0)
 #if defined(OLD_LISTS)
@@ -4260,6 +4261,7 @@ ListHasKey8(qp, int nBLR, Word_t wKey)
 
 #if defined(PSPLIT_SEARCH_8)
 #if defined(PSPLIT_PARALLEL)
+
 #if defined(PARALLEL_128)
 #if cnBitsInD1 == 8
 #if cnListPopCntMaxDl1 == 16
@@ -4289,6 +4291,14 @@ ListHasKey8(qp, int nBLR, Word_t wKey)
 #endif // cnListPopCntMaxDl1 == 16
 #endif // cnBitsInD1 == 8
 #endif // defined(PARALLEL_128)
+
+    int nPopCnt = gnListPopCnt(qy, nBLR);
+    uint8_t *pcKeys = ls_pcKeys(pwr, PWR_xListPopCnt(&wRoot, pwr, 8));
+    uint8_t cKey = (uint8_t)wKey;
+    int nPos = 0;
+    PSPLIT_HASKEY_GUTS(Bucket_t, uint8_t, 8, pcKeys, nPopCnt, cKey, nPos);
+    return nPos >= 0;
+
 #endif // defined(PSPLIT_PARALLEL)
 #endif // defined(PSPLIT_SEARCH_8)
 
