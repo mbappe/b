@@ -3,17 +3,28 @@
 # Use a -DDEBUG build.
 
 TIME=Judy1LHTime
+CHECK=Judy1LHCheck
 
 : \
-&& ${TIME} -W0 -1L -n1000000 -S1 --splay-key-bits=0xff00aa00aa00ffff \
-&& ${TIME} -W0 -RICvdgi -n1000000 \
-&& bcheckall 64 \
+&& ${TIME} -W0 -B32 -1L -n1000000 -S1 --splay-key-bits=0xff00aa00aa00ffff \
+&& ${TIME} -W0 -B33 -RICvdgi -n1000000 \
+&& ${CHECK} -B17 \
+&& ${CHECK} -B17 -S1 \
+&& ${CHECK} -B17 -DS1 \
 && ${TIME} -W0 -B25 -1LICvdgi -n100000 --splay-key-bits=0x0400aa00aa00ffff \
 && ${TIME} -W0 -B25 -1LICvdgi -n100000 -DS1 \
    --splay-key-bits=0x0400aa00aa00ffff \
+&& ${CHECK} -B25 \
+&& ${CHECK} -B25 -S1 \
+&& ${CHECK} -B25 -DS1 \
 && ${TIME} -W0 -B25 -1LICvdgi -n100000 \
 && ${TIME} -W0 -B25 -1LICvdgi -n100000 -S1 \
+&& ${CHECK} -B33 \
+&& ${CHECK} -B33 -S1 \
+&& ${CHECK} -B33 -DS1 \
 && ${TIME} -W0 -B25 -1LICvdgi -n100000 -DS1 \
-&& ${TIME} -W0 -B25 -1LICvdgi -n100000 -S1 --splay-key-bits=0x0400aa00aa00ffff \
+&& ${TIME} -W0 -B25 -1LICvdgi -n100000 -S1 \
+   --splay-key-bits=0x0400aa00aa00ffff \
 :
 
+#&& bcheckall 64 \

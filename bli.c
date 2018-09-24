@@ -1539,24 +1539,29 @@ t_list:;
       // pop count and prefix but we have not dereferenced the list itself.
       #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
             if (1
-        #if ! defined(SEPARATE_T_NULL)
+          #if ! defined(SEPARATE_T_NULL)
                 && (pwr != NULL)
-        #endif // ! defined(SEPARATE_T_NULL)
-        #if defined(LOOKUP) && !defined(B_JUDYL)
-            #if defined(SEARCH_FOR_JUDY1_LOOKUP) && defined(LOOKUP)
-                // SEARCH_FOR_JUDY1_LOOKUP is for analysis only.
-                && (SearchList(qy, nBLR, wKey) >= 0)
-            #else // defined(SEARCH_FOR_JUDY1_LOOKUP) && defined(LOOKUP)
-                && ListHasKey(qy, nBLR, wKey)
-            #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) && defined(LOOKUP)
-        #else // defined(LOOKUP) && !defined(B_JUDYL)
-            #if defined(HASKEY_FOR_JUDYL_LOOKUP) && defined(LOOKUP)
+          #endif // ! defined(SEPARATE_T_NULL)
+          #if defined(LOOKUP)
+              #if defined(B_JUDYL)
+                  #if defined(HASKEY_FOR_JUDYL_LOOKUP)
                 // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
                 && ((nPos = !ListHasKey(qy, nBLR, wKey)) >= 0)
-            #else // defined(HASKEY_FOR_JUDYL_LOOKUP) && defined(LOOKUP)
+                  #else // defined(HASKEY_FOR_JUDYL_LOOKUP)
+                && ((nPos = LocateKeyInList(qy, nBLR, wKey)) >= 0)
+                  #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
+              #else // defined(B_JUDYL)
+                  #if defined(SEARCH_FOR_JUDY1_LOOKUP)
+                && (SearchList(qy, nBLR, wKey) >= 0)
+                  #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
+                && (LocateKeyInList(qy, nBLR, wKey) >= 0)
+                  #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+                && ListHasKey(qy, nBLR, wKey)
+                  #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+              #endif // defined(B_JUDYL)
+          #else // defined(LOOKUP)
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
-            #endif // defined(HASKEY_FOR_JUDYL_LOOKUP) && defined(LOOKUP)
-        #endif // defined(LOOKUP) && !defined(B_JUDYL)
+          #endif // defined(LOOKUP)
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
