@@ -1547,6 +1547,8 @@ t_list:;
                   #if defined(HASKEY_FOR_JUDYL_LOOKUP)
                 // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
                 && ((nPos = !ListHasKey(qy, nBLR, wKey)) >= 0)
+                  #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
+                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
                   #else // defined(HASKEY_FOR_JUDYL_LOOKUP)
                 && ((nPos = LocateKeyInList(qy, nBLR, wKey)) >= 0)
                   #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
@@ -1585,8 +1587,8 @@ t_list:;
           #endif // defined(REMOVE)
           #if defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
               #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
-                DBGX(printf("Lookup (or Insert) returning %p," OWx"\n",
-                             (void *)&pwr[~nPos], pwr[~nPos]));
+                DBGX(printf("Lookup (or Insert) returning nPos %d %p," OWx"\n",
+                             nPos, (void *)&pwr[~nPos], pwr[~nPos]));
                 return &pwr[~nPos];
               #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 // Success for Lookup and Remove; Failure for Insert
