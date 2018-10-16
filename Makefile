@@ -287,6 +287,7 @@ t: t.c $(T_OBJS)
 # -DMIKEY tells Judy1LHTime to use different RAMMETRICS column headings.
 # -lJudy is for JudyHS.
 Judy1LHTime: Judy1LHTime.c libb.a
+#Judy1LHTime: Judy1LHTime.c libb1.a
 	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm $(LDFLAGS) -lJudy
 # ../judy/src/obj/.libs/libJudy.a
 
@@ -303,6 +304,7 @@ btime: Judy1LHTime
 # Set LIBRARY_PATH environment variable to find libJudy.a.
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
 Judy1LHCheck: Judy1LHCheck.c libb.a
+#Judy1LHCheck: Judy1LHCheck.c libb1.a
 	$(CC) $(CFLAGS) -Wno-sign-compare $(DEFINES) \
  -o $@ $^ -lm $(LDFLAGS) -lJudy
 
