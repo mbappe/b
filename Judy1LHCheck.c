@@ -10,6 +10,13 @@
 
 #include <Judy.h>
 
+// Judy1LHCheck.c doesn't include bdefines.h so we want to be sure to
+// define DEBUG if DEBUG_ALL is defined.
+#ifdef DEBUG_ALL
+#undef DEBUG
+#define DEBUG
+#endif // DEBUG_ALL
+
 // The released Judy libraries do not, and some of Doug's work-in-progress
 // libraries may not, have Judy1Dump and/or JudyLDump entry points.
 // And Mike sometimes links Judy1LHCheck with his own Judy1 library and the
