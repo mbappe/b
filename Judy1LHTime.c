@@ -24,6 +24,13 @@
 #include <immintrin.h>
 #endif // USE_PDEP_INTRINSIC
 
+// Judy1LHTime.c doesn't include bdefines.h so we want to be sure to
+// define DEBUG if DEBUG_ALL is defined.
+#ifdef DEBUG_ALL
+#undef DEBUG
+#define DEBUG
+#endif // DEBUG_ALL
+
 // Turn off assert(0) by default
 #ifndef DEBUG
 #define NDEBUG 1
