@@ -118,7 +118,7 @@
 // And possibly add nBLR.
 // And wPopCnt would be an option.
 // And nBW would be an option.
-// And how about wBytesUsed? 
+// And how about wBytesUsed?
 #define  qp \
     int   nBL, Link_t  * pLn, Word_t   wRoot, int   nType, Word_t  * pwr
 #define pqp \
@@ -3571,7 +3571,10 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
     /*HAS_KEY_128_SETUP((_xKey), sizeof(_x_t) * 8, xLsbs, xMsbs, xKeys);*/ \
     if (((_nPos) = BUCKET_LOCATE_KEY(&px[nSplitP], \
                                      (_xKey), sizeof(_x_t) * 8)) >= 0) { \
-        (_nPos) += 64 / _nBL * (sizeof(_b_t) / 8) * nSplitP; \
+        /* keys per bucket * number of buckets */ \
+        int nBL2 = 1 << (LOG((_nBL) - 1) + 1); \
+        int nKeysPerBucket = 64 / nBL2 * (sizeof(_b_t) / 8); \
+        _nPos += nKeysPerBucket * nSplitP; \
     } \
     else \
     { \
@@ -5471,6 +5474,9 @@ BmSwIndex(qp, Word_t wDigit,
     }
 }
 
+#if defined(COMPRESSED_LISTS)
+  #if (cnBitsInD1 <= 8)
+
 static int
 LocateKeyInList8(qp, int nBLR, Word_t wKey)
 {
@@ -5533,6 +5539,8 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
 
     return SearchList8(qy, nBLR, wKey);
 }
+  #endif // (cnBitsInD1 <= 8)
+#endif // defined(COMPRESSED_LISTS)
 
 static int
 LocateKeyInList16(qp, int nBLR, Word_t wKey)
