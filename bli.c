@@ -1546,10 +1546,10 @@ t_list:;
               #if defined(B_JUDYL)
                   #if defined(HASKEY_FOR_JUDYL_LOOKUP)
                 // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
-                && ((nPos = !ListHasKey(qy, nBLR, wKey)) >= 0)
+                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
                   #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
-                  #else // defined(HASKEY_FOR_JUDYL_LOOKUP)
+                  #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
                 && ((nPos = LocateKeyInList(qy, nBLR, wKey)) >= 0)
                   #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
               #else // defined(B_JUDYL)
