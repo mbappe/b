@@ -2057,10 +2057,10 @@ main(int argc, char *argv[])
             Groups = nElms;
         } else {
             // The following works for nElms >= 17.
-            Word_t logGrpSz = LOG(nElms-1)/4; // log base 16
+            Word_t logGrpSz = LOG(nElms)/4; // log base 16
             Word_t grpSz = (Word_t)1 << (logGrpSz-1) * 4; // final group size
             //printf("# Final group size, grpSz, is %zd.\n", grpSz);
-            Groups = 256 + (logGrpSz-2)*240 + (nElms - grpSz*15 - 1) / grpSz;
+            Groups = 255 + (logGrpSz-2)*240 + (nElms - grpSz*15) / grpSz;
         }
 
         printf("#  Groups    0x%04zx == 0d%05zd\n", Groups, Groups);
@@ -2069,14 +2069,13 @@ main(int argc, char *argv[])
         Pms = (Pms_t) malloc(Groups * sizeof(ms_t));
 
 // Calculate number of Keys for each measurement point
-        for (grp = 0; (grp < 256) && (grp < Groups); grp++) {
+        for (grp = 0; (grp < 255) && (grp < Groups); grp++) {
             Pms[grp].ms_delta = 1;
         }
         Word_t wPrev;
-        for (Word_t wNumb = grp; grp < Groups; ++grp)
-        {
+        for (Word_t wNumb = grp; grp < Groups; ++grp) {
             wPrev = wNumb;
-            wNumb += Pms[grp].ms_delta = (Word_t)1 << (LOG(wNumb)/4 - 1) * 4;
+            wNumb += Pms[grp].ms_delta = (Word_t)1 << (LOG(wNumb+1)/4 - 1) * 4;
             if ((wNumb > nElms) || (wNumb < wPrev)) {
                 wNumb = nElms;
                 Pms[grp].ms_delta = wNumb - wPrev;
@@ -2643,7 +2642,7 @@ nextPart:
         {
             assert(!FValue);
             assert(!bLfsrOnly);
-            if ((wLogPop1 = LOG(Pop1)) > wPrevLogPop1) {
+            if ((wLogPop1 = LOG(Pop1+1)) > wPrevLogPop1) {
                 wPrevLogPop1 = wLogPop1;
                 // RandomInit always initializes the same Seed_t.  Luckily,
                 // that one seed is not being used anymore at this point.
@@ -2663,7 +2662,8 @@ nextPart:
                 // take a little more time if necessary and pick keys from
                 // a larger and/or different subset.
 #endif // LFSR_GET_FOR_DS1
-                for (Word_t ww = 0; ww < TValues; ++ww) {
+                Meas = MIN(TValues, ((Word_t)1 << wLogPop1) - 1);
+                for (Word_t ww = 0; ww < Meas; ++ww) {
                     // I wonder about using CalcNextKey here instead.
 #ifdef LFSR_GET_FOR_DS1
                     // StartSeed[ww] = ...
@@ -2672,8 +2672,8 @@ nextPart:
                                                BValue - wLogPop1 + 1);
 #else // LFSR_GET_FOR_DS1
                     // StartSeed[ww] = ...
-                    FileKeys[ww]
-                        = RandomNumb(&RandomSeed, 0) << (BValue - wLogPop1);
+                    Word_t wRand = RandomNumb(&RandomSeed, 0);
+                    FileKeys[ww] = wRand << (BValue - wLogPop1);
 #endif // LFSR_GET_FOR_DS1
                     if (ww == ((Word_t)1 << wLogPop1) - 1) {
                         break;
@@ -3266,7 +3266,7 @@ nextPart:
             TestJudyIns(&J1, &JL, &JH, &BeginSeed, Meas);
         }
 
-            if (Pop1 == wFinalPop1) {
+        if (Pop1 == wFinalPop1) {
 
             if ((J1Flag + JLFlag + JHFlag) == 1)            // only 1 Heap
                 PRINT7_3f((double)j__AllocWordsTOT / (double)Pop1);
@@ -4655,7 +4655,7 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                 }
                 Prev = JLKey;
                 PValue = (PWord_t)JudyLNext(JL, &JLKey, PJE0);
-                if (JLKey == Prev)
+                if ((PValue != NULL) && (JLKey == Prev))
                 {
                     printf("OOPs, JLN did not advance 0x%" PRIxPTR"\n", Prev);
                     FAILURE("JudyLNext ret did not advance", Prev);
