@@ -86,6 +86,7 @@
 #define ALIGN_LISTS
 #define ALIGN_LIST_LENS
 #define NO_EMBED_KEYS
+#define NO_UA_PARALLEL_128
 
 #endif // ( ! defined(_BCONF_H_INCLUDED) )
 

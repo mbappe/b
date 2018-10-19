@@ -286,8 +286,8 @@ t: t.c $(T_OBJS)
 #	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 Judy1LHTime: Judy1LHTime.c libb1.a stubsL.o
 	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ \
- ../judy/src/obj/.libs/libJudy.a $(LDFLAGS) -lm
-# $(LDFLAGS) -lJudy -lm
+ $(LDFLAGS) -lJudy -lm
+# ../judy/src/obj/.libs/libJudy.a $(LDFLAGS) -lm
 
 c++time: Judy1LHTime.c libb.a
 	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) \
