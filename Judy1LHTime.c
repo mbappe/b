@@ -2165,8 +2165,7 @@ main(int argc, char *argv[])
 // Old code:
         //for (grp = 0; (grp < 256) && (grp < Groups); grp++)
 // Fixed code:
-        for (grp = 0; (grp < 255) && (grp < Groups); grp++)
-        {
+        for (grp = 0; (grp < 255) && (grp < Groups); grp++) {
             Pms[grp].ms_delta = 1;
         }
         Word_t wPrev;

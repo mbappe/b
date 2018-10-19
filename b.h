@@ -5734,4 +5734,3 @@ extern Word_t j__AllocWordsJLL7; // words requested
 #endif // defined(RAMMETRICS)
 
 #endif // ( ! defined(_B_H_INCLUDED) )
-
