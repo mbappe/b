@@ -4104,6 +4104,11 @@ typedef unsigned short __attribute__((vector_size(16))) v41_t;
 typedef unsigned int __attribute__((vector_size(16))) v42_t;
 #endif // __clang__
 
+#if (cnBitsPerWord < 64)
+#undef HK_MOVEMASK
+#define HK_MOVEMASK
+#endif // (cnBitsPerWord < 64)
+
 // Key observations about HasKey:
 // HasKey creates a magic number with the high bit set in the key slots
 // that match the target key.  It also sets the high bit in the key slot
