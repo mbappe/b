@@ -3186,7 +3186,9 @@ Splay(qp,
 #endif // CODE_XX_SW
       Word_t wPopCnt,
       Word_t *pwKeys,
+#if (cnBitsPerWord > 32)
       unsigned int *piKeys,
+#endif // (cnBitsPerWord > 32)
       unsigned short *psKeys,
       unsigned char *pcKeys)
 {
@@ -4094,7 +4096,11 @@ copyWithInsertWord:
                   nBLUp,
   #endif // SKIP_TO_XX_SW
 #endif // CODE_XX_SW
-                  wPopCnt, pwKeys, piKeys, psKeys, pcKeys);
+                  wPopCnt, pwKeys,
+#if (cnBitsPerWord > 32)
+                  piKeys,
+#endif // (cnBitsPerWord > 32)
+                  psKeys, pcKeys);
     }
 #ifdef B_JUDYL
     DBGI(printf("InsertAtList returning %p\n", (void*)pwValue));
