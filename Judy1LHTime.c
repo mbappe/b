@@ -33,6 +33,31 @@
 
 #include <Judy.h>                       // for Judy macros J*()
 
+// The released Judy libraries do not, and some of Doug's work-in-progress
+// libraries may not, have Judy1Dump and/or JudyLDump entry points.
+// And Mike sometimes links Judy1LHTime with his own Judy1 library and the
+// released or Doug's JudyL or with his own JudyL and the released or
+// Doug's Judy1 libraries.
+// We want to be able to use the same Time.c for all of these cases.
+// The solution is to define JUDY1_V1 and/or JUDYL_V1 to have Time.c
+// include stubs for the Judy1Dump and/or JudyLDump as needed.
+#ifdef JUDY_V1
+  #define JUDY1_V1
+  #define JUDYL_V1
+#endif // JUDY_V1
+
+#ifdef JUDY1_V1
+void Judy1Dump(Word_t wRoot, int nBitsLeft, Word_t wKeyPrefix) {
+    (void)wRoot; (void)nBitsLeft; (void)wKeyPrefix;
+}
+#endif // JUDY1_V1
+
+#ifdef JUDYL_V1
+void JudyLDump(Word_t wRoot, int nBitsLeft, Word_t wKeyPrefix) {
+    (void)wRoot; (void)nBitsLeft; (void)wKeyPrefix;
+}
+#endif // JUDYL_V1
+
 // Why did we create CALC_NEXT_KEY? Or, rather, why did we create the
 // alternative, an array of keys, since CALC_NEXT_KEY used to be the only
 // behavior? And why did we create LFSR_ONLY and -k/--lfsr-only.
@@ -526,7 +551,7 @@ Word_t    TValues =  1000000;           // Maximum numb retrieve timing tests
 // Default nElms is overridden by -n or -F.
 // Looks like there may be no protection against -F followed by -n.
 // It is then trimmed to MaxNumb.
-// Should it be MaxNumb+1 in cases that allow 0?
+// Should it be MaxNumb+1 in cases that allow 0, e.g. -S1?
 // Then trimmed if ((GValue != 0) && (nElms > (MaxNumb >> 1))) to (MaxNumb >> 1).
 // It is used for -p and to override TValues if TValues == 0 or nElms < TValues.
 Word_t    nElms   = 10000000;           // Default population of arrays
@@ -1081,15 +1106,17 @@ main(int argc, char *argv[])
 //  Names of Judy Arrays
 #ifdef DEBUG
     // Make sure the word before and after J1's root word is zero. It's
-    // pretty easy in some variantts of Mikey's code to introduce a bug that
+    // pretty easy in some variants of Mikey's code to introduce a bug that
     // clobbers one or the other so his code depends on these words being
     // zero so it can verify that neither is getting clobbered.
     struct { void *pv0, *pv1, *pv2; } sj1 = { 0, 0, 0 };
 #define J1 (sj1.pv1)
+    struct { void *pv0, *pv1, *pv2; } sjL = { 0, 0, 0 };
+#define JL (sjL.pv1)
 #else // DEBUG
     void     *J1 = NULL;                // Judy1
-#endif // DEBUG
     void     *JL = NULL;                // JudyL
+#endif // DEBUG
     void     *JH = NULL;                // JudyHS
 
 #ifdef DEADCODE                         // see TimeNumberGen()
@@ -1744,12 +1771,10 @@ main(int argc, char *argv[])
         {
             nElms = MaxNumb;
 
-#ifdef notnecessary
             printf("# Trim Max number of Elements -n%" PRIuPTR" due to max -B%" PRIuPTR" bit Keys",
                    MaxNumb, BValue);
             fprintf(stderr, "# Trim Max number of Elements -n%" PRIuPTR" due to max -B%" PRIuPTR" bit Keys",
                    MaxNumb, BValue);
-#endif  // notnecessary
 
             if (Offset)
             {
@@ -1792,6 +1817,7 @@ main(int argc, char *argv[])
             wFeedBTap = MyPDEP(wFeedBTap, wSplayMask);
             StartSequent = MyPDEP(StartSequent, wSplayMask);
         }
+        //printf("# wFeedBTap 0x%zx\n", wFeedBTap);
     }
 
 //  Print out the number set used for testing
@@ -1988,8 +2014,8 @@ main(int argc, char *argv[])
         printf("# %s 32 Bit version\n", argv[0]);
 
 //    Debug
-    printf("# MaxNumb = %" PRIuPTR"[0x%" PRIxPTR"]\n", MaxNumb, MaxNumb);
-    printf("# nElms   = %" PRIuPTR"[0x%" PRIxPTR"]\n", nElms, nElms);
+    printf("# nElms (number of keys to be inserted) = %" PRIuPTR"[0x%" PRIxPTR"]\n", nElms, nElms);
+    printf("# MaxNumb (maximum key in expanse) = %" PRIuPTR"[0x%" PRIxPTR"]\n", MaxNumb, MaxNumb);
     printf("# BValue = %" PRIuPTR"\n", BValue);
     printf("# Bpercent = %20.18f\n", Bpercent);
 
@@ -2052,15 +2078,50 @@ main(int argc, char *argv[])
         // 16 for up to 4K: Groups = 256 + (nElms + 15 - 256) / 16
         // 256 for up to 64K: Groups = 256 + 240 + (nElms + 255 - 4K) / 256
         // 4K for up to 1M: Groups = 256 + 2 * 240 + (nElms + 4095 - 64K) / 4K
+// Shoot. Above is off-by-one. Should be:
+        // 1 for keys [1,255]
+        // 16 for keys [256-271],[272,287],...[4090,4095]
 
         if (nElms <= 256) {
             Groups = nElms;
         } else {
+// For 17, 256, 257, 258
+// Old code:
             // The following works for nElms >= 17.
-            Word_t logGrpSz = LOG(nElms-1)/4; // log base 16
+            //Word_t logGrpSz = LOG(nElms-1)/4; // log base 16
+// Fixed code:
+            Word_t logGrpSz = LOG(nElms)/4; // log base 16
+// 1, 1, 2, 2
             Word_t grpSz = (Word_t)1 << (logGrpSz-1) * 4; // final group size
+// 1, 1, 16, 16
             //printf("# Final group size, grpSz, is %zd.\n", grpSz);
-            Groups = 256 + (logGrpSz-2)*240 + (nElms - grpSz*15 - 1) / grpSz;
+// Old code:
+            //Groups = 256 + (logGrpSz-2)*240 + (nElms - grpSz*15 - 1) / grpSz;
+// 256-240+1=17, 256-240+240=256, 256+(257-16*15-1)/16=257, 256+(258-16*15-1)/16=257
+// Wanted: 17, 256, 256, 256,
+// Fixed code:
+            Groups = 255 + (logGrpSz-2)*240 + (nElms - grpSz*15) / grpSz;
+// wrong, 255-240+1=256, 255+(257-240)/16=256, 255+(258-240)/16=256
+// For 255:
+// logGrpSz: 1
+// For 256:
+// logGrpSz: 1 // Is this what we want?
+// logGrpSz: 2 // Better.
+// For 271:
+// logGrpSz: 2
+// grpSz: 16
+// Groups: 255+(271-240)/16=256
+// For 272:
+// logGrpSz: 2
+// grpSz: 16
+// Groups: 255+(272-240)/16=257
+// For 4095:
+// logGrpSz: 2
+// grpSz: 16
+// For 4096:
+// logGrpSz: 3 // doesn't seem right
+// grpSz: 256
+// Groups: 255+240+(4096-3840)/256=496
         }
 
         printf("#  Groups    0x%04zx == 0d%05zd\n", Groups, Groups);
@@ -2069,14 +2130,20 @@ main(int argc, char *argv[])
         Pms = (Pms_t) malloc(Groups * sizeof(ms_t));
 
 // Calculate number of Keys for each measurement point
-        for (grp = 0; (grp < 256) && (grp < Groups); grp++) {
+// Old code:
+        //for (grp = 0; (grp < 256) && (grp < Groups); grp++)
+// Fixed code:
+        for (grp = 0; (grp < 255) && (grp < Groups); grp++)
+        {
             Pms[grp].ms_delta = 1;
         }
         Word_t wPrev;
-        for (Word_t wNumb = grp; grp < Groups; ++grp)
-        {
+        for (Word_t wNumb = grp; grp < Groups; ++grp) {
             wPrev = wNumb;
-            wNumb += Pms[grp].ms_delta = (Word_t)1 << (LOG(wNumb)/4 - 1) * 4;
+// Old code:
+            //wNumb += Pms[grp].ms_delta = (Word_t)1 << (LOG(wNumb)/4 - 1) * 4;
+// Fixed code:
+            wNumb += Pms[grp].ms_delta = (Word_t)1 << (LOG(wNumb+1)/4 - 1) * 4;
             if ((wNumb > nElms) || (wNumb < wPrev)) {
                 wNumb = nElms;
                 Pms[grp].ms_delta = wNumb - wPrev;
@@ -2630,12 +2697,11 @@ nextPart:
 // For -DS1, we know what keys are in the array by virtue of knowing the first
 // key inserted and the last key inserted.
 #ifndef CALC_NEXT_KEY
-// If we start at key=0 or key=1<<BValue-1, then we can use an lfsr with
-// fewer bits and shift the result to generate at least half of the keys in
+// If we start at key=1, then we can use an lfsr with BValue == LOG(Pop1)
+// and shift the result to generate at least half of the keys in
 // a pseudo random order.
 // So that is what we do.
 // This doesn't work unless the -DS1 keys are not modified in any other way.
-// Didn't concern myself with off-by-one bugs here.
 // MEB: We might be able to extend this approach to cover more of the -S cases
 // than just -DS1.
         if (DFlag && (SValue == 1) && (StartSequent == 1)
@@ -2643,7 +2709,24 @@ nextPart:
         {
             assert(!FValue);
             assert(!bLfsrOnly);
-            if ((wLogPop1 = LOG(Pop1)) > wPrevLogPop1) {
+// If Pop1 is 2^n, then we will have inserted [1,2^n].
+// LOG(Pop1) == n.
+// LFSR(n) will generate values [1,2^n-1]. Ideal.
+// If Pop1 is 2^n-1, then we will have inserted [1,2^n-1].
+// LOG(Pop1) == n-1.
+// LFSR(n) will generate values [1,2^(n-1)-1]. Not ideal.
+
+// If Pop1 is 2^n-1, then we will have inserted [1,2^n-1].
+// LOG(Pop1+1) == n.
+// LFSR(n) will generate values in [1,2^n-1]. Ideal.
+// If Pop1 is 2^n-2, then we will have inserted [1,2^n-2].
+// LOG(Pop1+1) == n-1.
+// LFSR(n) will generate values  [1,2^(n-1)-1]. Ideal.
+
+// If Pop1 is 2^n-2, then we will have inserted [1,2^n-2].
+// LOG(Pop1+2) == n.
+// LFSR(n) will generate values in [1,2^n-1]. Bad.
+            if ((wLogPop1 = LOG(Pop1+1)) > wPrevLogPop1) {
                 wPrevLogPop1 = wLogPop1;
                 // RandomInit always initializes the same Seed_t.  Luckily,
                 // that one seed is not being used anymore at this point.
@@ -2663,7 +2746,8 @@ nextPart:
                 // take a little more time if necessary and pick keys from
                 // a larger and/or different subset.
 #endif // LFSR_GET_FOR_DS1
-                for (Word_t ww = 0; ww < TValues; ++ww) {
+                Meas = MIN(TValues, ((Word_t)1 << wLogPop1) - 1);
+                for (Word_t ww = 0; ww < Meas; ++ww) {
                     // I wonder about using CalcNextKey here instead.
 #ifdef LFSR_GET_FOR_DS1
                     // StartSeed[ww] = ...
@@ -2672,8 +2756,8 @@ nextPart:
                                                BValue - wLogPop1 + 1);
 #else // LFSR_GET_FOR_DS1
                     // StartSeed[ww] = ...
-                    FileKeys[ww]
-                        = RandomNumb(&RandomSeed, 0) << (BValue - wLogPop1);
+                    Word_t wRand = RandomNumb(&RandomSeed, 0);
+                    FileKeys[ww] = wRand << (BValue - wLogPop1);
 #endif // LFSR_GET_FOR_DS1
                     if (ww == ((Word_t)1 << wLogPop1) - 1) {
                         break;
@@ -2972,11 +3056,13 @@ nextPart:
             Tit = 1;                    // include Judy
             WaitForContextSwitch(Delta);
             TestJudyLIns(&JL, &InsertSeed, Delta);
-            if (tFlag)
-                PRINT6_1f(DeltaGenL);
-            DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
-            if (fFlag)
-                fflush(NULL);
+            if (Pop1 == wFinalPop1) {
+                if (tFlag)
+                    PRINT6_1f(DeltaGenL);
+                DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+                if (fFlag)
+                    fflush(NULL);
+            }
 
             Tit = 0;                    // exclude Judy
             BeginSeed = StartSeed;      // reset at beginning
@@ -3022,9 +3108,11 @@ nextPart:
             WaitForContextSwitch(Delta);
             TestBitmapSet(&B1, &BitmapSeed, Delta);
 
-            if (tFlag)
-                PRINT6_1f(DeltanBit);
-            DONTPRINTLESSTHANZERO(DeltanSecBt, DeltanBit);
+            if (Pop1 == wFinalPop1) {
+                if (tFlag)
+                    PRINT6_1f(DeltanBit);
+                DONTPRINTLESSTHANZERO(DeltanSecBt, DeltanBit);
+            }
 
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3064,9 +3152,11 @@ nextPart:
             WaitForContextSwitch(Delta);
             TestByteSet(&BitmapSeed, Delta);
 
-            if (tFlag)
-                PRINT6_1f(DeltanByte);
-            DONTPRINTLESSTHANZERO(DeltanSecBy, DeltanByte);
+            if (Pop1 == wFinalPop1) {
+                if (tFlag)
+                    PRINT6_1f(DeltanByte);
+                DONTPRINTLESSTHANZERO(DeltanSecBy, DeltanByte);
+            }
 
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3266,7 +3356,7 @@ nextPart:
             TestJudyIns(&J1, &JL, &JH, &BeginSeed, Meas);
         }
 
-            if (Pop1 == wFinalPop1) {
+        if (Pop1 == wFinalPop1) {
 
             if ((J1Flag + JLFlag + JHFlag) == 1)            // only 1 Heap
                 PRINT7_3f((double)j__AllocWordsTOT / (double)Pop1);
@@ -3428,6 +3518,7 @@ nextPart:
 //         printf("\n# %" PRIuPTR" Duplicate Keys were found with -G%" PRIuPTR"\n", BitmapDups, GValue);
 
     exit(0);
+#undef JL
 #undef J1
 }
 
@@ -4226,7 +4317,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
                         PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
                         if (PValue != (Word_t *)NULL)
                         {
-                            printf("\n--- JudyGet Key = 0x%" PRIxPTR"", TstKey);
+                            printf("\n--- JudyLGet Key = 0x%" PRIxPTR"", TstKey);
                             FAILURE("JudyLGet ret PValue != NULL -- Key inserted???", 0L);
                         }
                     }
@@ -4238,7 +4329,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
                         PValue = (PWord_t)JudyLGet(JL, TstKey, PJE0);
                         if (PValue == (Word_t *)NULL)
                         {
-                            printf("\n--- JudyGet Key = 0x%" PRIxPTR"", TstKey);
+                            printf("\n--- JudyLGet Key = 0x%" PRIxPTR"", TstKey);
                             FAILURE("JudyLGet ret PValue = NULL", 0L);
                         }
                         else if (VFlag && (*PValue != TstKey))
@@ -4655,7 +4746,7 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                 }
                 Prev = JLKey;
                 PValue = (PWord_t)JudyLNext(JL, &JLKey, PJE0);
-                if (JLKey == Prev)
+                if ((PValue != NULL) && (JLKey == Prev))
                 {
                     printf("OOPs, JLN did not advance 0x%" PRIxPTR"\n", Prev);
                     FAILURE("JudyLNext ret did not advance", Prev);
@@ -5047,7 +5138,6 @@ TestJudyDel(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
             {
                 if (Tit)
                 {
-
                     Rc = Judy1Unset(J1, TstKey, PJE0);
 
                     if (Rc != 1)
