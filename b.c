@@ -3174,7 +3174,9 @@ Splay(qp,
 #endif // CODE_XX_SW
       Word_t wPopCnt,
       Word_t *pwKeys,
+#if (cnBitsPerWord > 32)
       unsigned int *piKeys,
+#endif // (cnBitsPerWord > 32)
       unsigned short *psKeys,
       unsigned char *pcKeys)
 {
@@ -4082,7 +4084,11 @@ copyWithInsertWord:
                   nBLUp,
   #endif // SKIP_TO_XX_SW
 #endif // CODE_XX_SW
-                  wPopCnt, pwKeys, piKeys, psKeys, pcKeys);
+                  wPopCnt, pwKeys,
+#if (cnBitsPerWord > 32)
+                  piKeys,
+#endif // (cnBitsPerWord > 32)
+                  psKeys, pcKeys);
     }
 #ifdef B_JUDYL
     DBGI(printf("InsertAtList returning %p\n", (void*)pwValue));
@@ -6788,7 +6794,7 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
     // Assuming j__AllocWordsTOT is zero is presumptuous.
     // What if the application has more than one Judy1 or JudyL array, e.g.
     // Judy1LHTime with -1L or Judy1LHCheck?
-    assert(j__AllocWordsTOT == 0);
+    //assert(j__AllocWordsTOT == 0);
     // Dlmalloc doesn't necessarily unmap everything even if we free it.
     //assert(j__TotalBytesAllocated == 0);
 #endif // defined(RAMMETRICS)
