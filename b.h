@@ -5474,6 +5474,20 @@ BmSwIndex(qp, Word_t wDigit,
     }
 }
 
+#if defined(B_JUDYL)
+  #if !defined(SEARCH_FOR_JUDYL_LOOKUP)
+      #if !defined(HASKEY_FOR_JUDYL_LOOKUP)
+#define LOCATEKEY_FOR_LOOKUP
+      #endif // !defined(HASKEY_FOR_JUDYL_LOOKUP)
+  #endif // !defined(SEARCH_FOR_JUDYL_LOOKUP)
+#else // defined(B_JUDYL)
+  #if defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
+#define LOCATEKEY_FOR_LOOKUP
+  #endif // defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
+#endif // defined(B_JUDYL)
+
+#if defined(LOCATEKEY_FOR_LOOKUP)
+
 #if defined(COMPRESSED_LISTS)
   #if (cnBitsInD1 <= 8)
 
@@ -5587,6 +5601,8 @@ LocateKeyInList16(qp, int nBLR, Word_t wKey)
     return nPos;
 }
 
+#if (cnBitsPerWord > 32)
+
 static int
 LocateKeyInList32(qp, int nBLR, Word_t wKey)
 {
@@ -5629,6 +5645,8 @@ LocateKeyInList32(qp, int nBLR, Word_t wKey)
 #endif // ...
     return nPos;
 }
+
+#endif // (cnBitsPerWord > 32)
 
 static int
 LocateKeyInListWord(qp, int nBLR, Word_t wKey)
@@ -5705,6 +5723,8 @@ LocateKeyInList(qp, int nBLR, Word_t wKey)
     //return LocateKeyInListWord(qy, nBLR, wKey);
     return SearchList(qy, nBLR, wKey);
 }
+
+#endif // defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
 
 #endif // (cnDigitsPerWord > 1)
 
