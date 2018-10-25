@@ -3533,19 +3533,13 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
                 HASKEYB(_b_t, (_xKey), (_pxKeys), nSplit, (_nPos)); \
             } \
         } \
-        assert(((_nPos) < 0) \
-            || BUCKET_HAS_KEY((_b_t *) \
-                                  ((Word_t)&(_pxKeys)[_nPos] \
-                                      & ~MSK(LOG(sizeof(_b_t)))), \
-                              (_xKey), sizeof(_x_t) * 8)); \
         /* everything below is just assertions */ \
-        if ((_nPos) < 0) { \
-            /* assert(~(_nPos) <= (int)(_nPopCnt)); not true */ \
-            assert((~(_nPos) == (int)(_nPopCnt)) \
-                    || (~(_nPos == 0)) \
-                    || (~(_nPos) \
-                        < (int)((_nPopCnt + sizeof(_b_t) - 1) \
-                            & ~MSK(sizeof(_b_t))))); \
+        if ((_nPos) >= 0) { \
+            assert(BUCKET_HAS_KEY((_b_t *) \
+                                      ((Word_t)&(_pxKeys)[_nPos] \
+                                          & ~MSK(LOG(sizeof(_b_t)))), \
+                                  (_xKey), sizeof(_x_t) * 8)); \
+        } else { \
             for (int ii = 0; ii < (_nPopCnt); \
                  ii += sizeof(_b_t) / sizeof(_xKey)) \
             { \
@@ -3569,6 +3563,7 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
     assert(((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
     /*__m128i xLsbs, xMsbs, xKeys;*/ \
     /*HAS_KEY_128_SETUP((_xKey), sizeof(_x_t) * 8, xLsbs, xMsbs, xKeys);*/ \
+    /*int nPos = _nPos;*/ \
     if (((_nPos) = BUCKET_LOCATE_KEY(&px[nSplitP], \
                                      (_xKey), sizeof(_x_t) * 8)) >= 0) { \
         /* keys per bucket * number of buckets */ \
@@ -3604,24 +3599,16 @@ PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
                 LOCATEKEYB(_b_t, (_xKey), (_pxKeys), nSplit, (_nPos)); \
             } \
         } \
-        assert(((_nPos) < 0) \
-            || (BUCKET_LOCATE_KEY((_b_t *) \
-                                     ((Word_t)&(_pxKeys)[_nPos] \
-                                         & ~MSK(LOG(sizeof(_b_t)))), \
-                                 (_xKey), sizeof(_x_t) * 8) >= 0)); \
         /* everything below is just assertions */ \
-        if ((_nPos) < 0) { \
-            /* assert(~(_nPos) <= (int)(_nPopCnt)); not true */ \
-            assert((~(_nPos) == (int)(_nPopCnt)) \
-                    || (~(_nPos == 0)) \
-                    || (~(_nPos) \
-                        < (int)((_nPopCnt + sizeof(_b_t) - 1) \
-                            & ~MSK(sizeof(_b_t))))); \
+        if ((_nPos) >= 0) { \
+            assert((_nPos) < (_nPopCnt)); \
+            assert((_pxKeys)[_nPos] == (_xKey)); \
+        } else { \
             for (int ii = 0; ii < (_nPopCnt); \
                  ii += sizeof(_b_t) / sizeof(_xKey)) \
             { \
-                assert((BUCKET_LOCATE_KEY((_b_t *)&(_pxKeys)[ii], (_xKey), \
-                                          sizeof(_x_t) * 8) < 0)); \
+                assert( ! BUCKET_HAS_KEY((_b_t *)&(_pxKeys)[ii], (_xKey), \
+                                         sizeof(_x_t) * 8) ); \
             } \
         } \
     } \
