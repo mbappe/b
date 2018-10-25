@@ -79,7 +79,7 @@ endif
 # -std=gnu99 gives a warning for anonymous unions.
 ##
 ifeq "$(CSTD)" ""
-# CSTD = gnu11
+  CSTD = gnu11
 # CSTD = c11
 # CSTD = gnu99
 # CSTD = c99
@@ -142,6 +142,7 @@ endif
   WFLAGS += -Werror
   WFLAGS += -Wfatal-errors
   WFLAGS += -Wno-unused-value
+  WFLAGS += -Wno-bool-operation
 # WFLAGS_C_ONLY += -Wstrict-prototypes
 # WFLAGS_C_ONLY += -Wmissing-prototypes
   CWFLAGS += $(WFLAGS)
