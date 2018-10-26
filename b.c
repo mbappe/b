@@ -3984,6 +3984,12 @@ copyWithInsertWord:
                 goto copyWithInsert8;
   #else // !defined(EMBED_KEYS) && ... d&& efined(PSPLIT_PARALLEL)
                 ls_pcKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey;
+      #ifdef B_JUDYL
+                pwValue
+                    = &((Word_t *)ls_pcKeysNATX(pwList, wPopCnt + 1))
+                            [~wPopCnt];
+                *pwValue = 0;
+      #endif // B_JUDYL
   #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
             } else if (nBL <= 16) {
   #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
@@ -3993,6 +3999,12 @@ copyWithInsertWord:
                 goto copyWithInsert16;
   #else // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
                 ls_psKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey;
+      #ifdef B_JUDYL
+                pwValue
+                    = &((Word_t *)ls_psKeysNATX(pwList, wPopCnt + 1))
+                            [~wPopCnt];
+                *pwValue = 0;
+      #endif // B_JUDYL
   #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
 #if (cnBitsPerWord > 32)
             } else if (nBL <= 32) {
@@ -4001,7 +4013,13 @@ copyWithInsertWord:
                 //printf("goto copyWithInsert32\n");
                 goto copyWithInsert32;
   #else // !defined(EMBED_KEYS) && ... defined(PSPLIT_PARALLEL)
-                { ls_piKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey; }
+                ls_piKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey;
+      #ifdef B_JUDYL
+                pwValue
+                    = &((Word_t *)ls_piKeysNATX(pwList, wPopCnt + 1))
+                            [~wPopCnt];
+                *pwValue = 0;
+      #endif // B_JUDYL
   #endif // !defined(EMBED_KEYS) && ... defined(PSPLIT_PARALLEL)
 #endif // (cnBitsPerWord > 32)
             } else
@@ -4951,7 +4969,8 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
 void
 RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
 {
-DBGR(printf("RC: pwRoot %p wRoot " OWx" nBL %d nBLR %d\n", (void *)pwRoot, wRoot, nBL, nBLR));
+    DBGR(printf("RC: pwRoot %p wRoot " OWx" nBL %d nBLR %d\n",
+                (void *)pwRoot, wRoot, nBL, nBLR));
     (void)nBL; (void)nBLR;
     int nDL = nBL_to_nDL(nBL);
     int nDLR = nBL_to_nDL(nBLR);
@@ -4999,7 +5018,8 @@ DBGR(printf("RC: pwRoot %p wRoot " OWx" nBL %d nBLR %d\n", (void *)pwRoot, wRoot
                     nDL_to_nBL(nDLR - 1);
 
             //--nDLX;
-//printf("ww %zd nBLX %d pwRootLn %p *pwRootLn 0x%zx\n", ww, nBLX, (void*)pwRootLn, *pwRootLn);
+//printf("ww %zd nBLX %d pwRootLn %p *pwRootLn 0x%zx\n",
+//       ww, nBLX, (void*)pwRootLn, *pwRootLn);
 // What about ZERO_POP_MAGIC?
             if ((*pwRootLn != 0)
                  // Non-zero wRoot doesn't necessarily imply non-zero pop.
@@ -5371,8 +5391,8 @@ embeddedKeys:;
 // [~wPopCnt, -nIndex-2]
   #endif // B_JUDYL
         // move keys
-        MOVE(&ls_pwKeysX(pwList, nBL, wPopCnt - 1)[nIndex], &pwKeys[nIndex + 1],
-             wPopCnt - nIndex - 1);
+        MOVE(&ls_pwKeysX(pwList, nBL, wPopCnt - 1)[nIndex],
+             &pwKeys[nIndex + 1], wPopCnt - nIndex - 1);
         int n = wPopCnt - 1; (void)n;
 #if defined(PSPLIT_PARALLEL_WORD)
         // pad list to an integral number of parallel search buckets in length
@@ -5450,7 +5470,8 @@ RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
         for (Word_t ww = 0; ww < EXP(nBLR - cnLogBitsPerWord); ww++) {
             wPopCnt += __builtin_popcountll(pwr[ww]);
         }
-        assert(wPopCnt == w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR));
+        assert(wPopCnt
+            == w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR));
 #endif // defined(DEBUG_COUNT)
 
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -6798,7 +6819,8 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
     DBGR(printf("\n"));
     // Assertion below is not valid if MyMallocGuts is called with
     // nLogAlignment > cnBitsMallocMask.
-    //assert((wWordsAllocatedBefore - wWordsAllocated) == (wBytes / sizeof(Word_t)));
+    //assert((wWordsAllocatedBefore - wWordsAllocated)
+    //    == (wBytes / sizeof(Word_t)));
 
     // Assuming wWordsAllocated is zero is presumptuous.
     // What if the application has more than one Judy1 array?
@@ -7579,7 +7601,9 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                                         *pwKey, wSkip+1));
                             return wSkip + 1;
                         }
-                        wIndex = (nBmWordNum << (nBits - LOG(N_WORDS_SWITCH_BM))) + nBmBitNum;
+                        wIndex
+                            = (nBmWordNum << (nBits - LOG(N_WORDS_SWITCH_BM)))
+                                + nBmBitNum;
 
                         //wIndex &= MSK(nBL);
                         DBGN(printf("T_BM_SW wIndex 0x%" _fw"x\n", wIndex));
@@ -7591,7 +7615,9 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                     }
                 }
                 //A(0); // check -B17
-                wIndex = (nBmWordNum << (nBits - LOG(N_WORDS_SWITCH_BM))) + nBmBitNum;
+                wIndex
+                    = (nBmWordNum << (nBits - LOG(N_WORDS_SWITCH_BM)))
+                        + nBmBitNum;
                 //wIndex &= MSK(nBL);
                 DBGN(printf("T_BM_SW wIndex 0x%" _fw"x\n", wIndex));
                 if (nBL == cnBitsPerWord) {
@@ -7633,7 +7659,7 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                                 _fw"x pLn->ln_wRoot " OWx"\n",
                                 wIndex, wBmSwIndex, pLn->ln_wRoot));
                     DBGN(printf("T_BM_SW: wPopCnt %" _fw"d\n", wPopCnt));
-                    if ((wPopCnt > wSkip) /* || (*pwKey & MSK(nBL - nBits)) */ ) {
+                    if ((wPopCnt > wSkip) /*|| (*pwKey & MSK(nBL - nBits))*/) {
                         //A(0); // check -B17
                         DBGN(printf("T_BM_SW: wSkip %" _fw"d *pwKey " OWx"\n",
                                     wSkip, *pwKey));
@@ -7669,7 +7695,9 @@ BmSwGetNextIndex:
                     //A(0); // check -B17
 // remember to abstract for structured wBmWord
                     nBmBitNum = __builtin_ctzll(wBmWord);
-                    DBGN(printf("T_BM_SW next link nBmWordNum %d nBmBitNum %d\n", nBmWordNum, nBmBitNum));
+                    DBGN(printf("T_BM_SW next link"
+                                " nBmWordNum %d nBmBitNum %d\n",
+                                nBmWordNum, nBmBitNum));
                 } else {
                     //A(0); // check -B17
                     nBmBitNum = 0;
@@ -7684,13 +7712,17 @@ BmSwGetNextIndex:
                             //A(0); // check -B17
 // remember to abstract for structured wBmWord
                             nBmBitNum = __builtin_ctzll(wBmWord);
-                            DBGN(printf("T_BM_SW next link nBmWordNum %d nBmBitNum %d\n", nBmWordNum, nBmBitNum));
+                            DBGN(printf("T_BM_SW next link"
+                                        " nBmWordNum %d nBmBitNum %d\n",
+                                        nBmWordNum, nBmBitNum));
                             break;
                         }
                         //A(0); // check -B33 -S1
                     }
                     //A(0); // check -B17
-                    DBGN(printf("bNext T_BM_SW no more links nBmWordNum %d wIndex " OWx" *pwKey " OWx"\n", nBmWordNum, wIndex, *pwKey));
+                    DBGN(printf("bNext T_BM_SW no more links"
+                                " nBmWordNum %d wIndex " OWx" *pwKey " OWx"\n",
+                                nBmWordNum, wIndex, *pwKey));
                     if (nBmWordNum == N_WORDS_SWITCH_BM) {
                         if (*pwKey & ~MSK(nBL)) {
                             return wSkip + 1;
@@ -7698,7 +7730,9 @@ BmSwGetNextIndex:
                     }
                 }
                 //A(0); // check -B17
-                wIndex = (nBmWordNum << (nBits - LOG(N_WORDS_SWITCH_BM))) + nBmBitNum;
+                wIndex
+                    = (nBmWordNum << (nBits - LOG(N_WORDS_SWITCH_BM)))
+                        + nBmBitNum;
                 DBGN(printf("T_BM_SW wIndex 0x%" _fw"x\n", wIndex));
                 if (nBL == cnBitsPerWord) {
                     *pwKey = 0;
@@ -7780,8 +7814,10 @@ BmSwGetNextIndex:
                     if (wPopCnt > wSkip) {
                         //A(0);
                         Word_t wCount;
-                        if ((wCount = NextGuts(&pLn->ln_wRoot, nBL - nBits, pwKey,
-                                              wSkip, bPrev, bEmpty)) == 0) {
+                        if ((wCount = NextGuts(&pLn->ln_wRoot, nBL - nBits,
+                                               pwKey, wSkip, bPrev, bEmpty))
+                            == 0)
+                        {
                             //A(0);
                             return 0;
                         }
@@ -7812,14 +7848,17 @@ BmSwGetNextIndex:
                 Word_t wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
                 if (wPopCnt != 0) {
                     //A(0);
-                    DBGN(printf("T_SW: wIndex 0x%" _fw"x pLn->ln_wRoot " OWx"\n",
+                    DBGN(printf("T_SW: wIndex 0x%" _fw"x pLn->ln_wRoot "
+                                OWx"\n",
                                 wIndex, pLn->ln_wRoot));
                     DBGN(printf("T_SW: wPopCnt %" _fw"d\n", wPopCnt));
                     if (wPopCnt > wSkip) {
                         //A(0);
                         Word_t wCount;
-                        if ((wCount = NextGuts(&pLn->ln_wRoot, nBL - nBits, pwKey,
-                                              wSkip, bPrev, bEmpty)) == 0) {
+                        if ((wCount = NextGuts(&pLn->ln_wRoot, nBL - nBits,
+                                               pwKey, wSkip, bPrev, bEmpty))
+                            == 0)
+                        {
                             //A(0);
                             return 0;
                         }
@@ -8092,7 +8131,7 @@ Judy1Prev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 #endif // B_JUDYL
 }
 
-// If *pwKey is not in the array then return Success and leave *pwKey unchanged.
+// If *pwKey is not in the array return Success and leave *pwKey unchanged.
 // Otherwise find the next bigger (or smaller if bPrev) key than *pwKey
 // which is not in the array.
 // Put the resulting key in *pwKey on return.
