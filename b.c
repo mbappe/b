@@ -1941,6 +1941,7 @@ embeddedKeys:;
   #ifdef B_JUDYL
                     printf("," OWx,
                            ((Word_t*)ls_psKeysNATX(pwr, wPopCnt))[~xx]);
+
   #endif // B_JUDYL
 #if (cnBitsPerWord > 32)
                 } else if (nBL <= 32) {
@@ -2281,7 +2282,6 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, int nKeys, Word_t wKey)
 
 #ifdef B_JUDYL
     Word_t *pwValue = &pTgt[~n];
-    *pwValue = 0; // initialize the value
 #endif // B_JUDYL
 
     n = nKeys + 1;
@@ -2346,7 +2346,6 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, int nKeys, uint32_t iKey)
 
 #ifdef B_JUDYL
     Word_t *pwValue = &((Word_t *)pTgt)[~n];
-    *pwValue = 0; // initialize the value
 #endif // B_JUDYL
 
     n = nKeys + 1;
@@ -2407,7 +2406,6 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc,
 
 #ifdef B_JUDYL
     Word_t *pwValue = &((Word_t *)pTgt)[~n];
-    *pwValue = 0; // initialize the value
 #endif // B_JUDYL
 
     n = nKeys + 1;
@@ -2472,7 +2470,6 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, int nKeys, uint8_t cKey)
 
 #ifdef B_JUDYL
     Word_t *pwValue = &((Word_t *)pTgt)[~n];
-    *pwValue = 0; // initialize the value
 #endif // B_JUDYL
 
     n = nKeys + 1;
@@ -3988,7 +3985,6 @@ copyWithInsertWord:
                 pwValue
                     = &((Word_t *)ls_pcKeysNATX(pwList, wPopCnt + 1))
                             [~wPopCnt];
-                *pwValue = 0;
       #endif // B_JUDYL
   #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
             } else if (nBL <= 16) {
@@ -4003,7 +3999,6 @@ copyWithInsertWord:
                 pwValue
                     = &((Word_t *)ls_psKeysNATX(pwList, wPopCnt + 1))
                             [~wPopCnt];
-                *pwValue = 0;
       #endif // B_JUDYL
   #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
 #if (cnBitsPerWord > 32)
@@ -4018,7 +4013,6 @@ copyWithInsertWord:
                 pwValue
                     = &((Word_t *)ls_piKeysNATX(pwList, wPopCnt + 1))
                             [~wPopCnt];
-                *pwValue = 0;
       #endif // B_JUDYL
   #endif // !defined(EMBED_KEYS) && ... defined(PSPLIT_PARALLEL)
 #endif // (cnBitsPerWord > 32)
@@ -4026,14 +4020,13 @@ copyWithInsertWord:
 #endif // defined(COMPRESSED_LISTS)
             {
   #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
-  && defined(PSPLIT_PARALLEL_WORD)
+      && defined(PSPLIT_PARALLEL_WORD)
                 //printf("goto copyWithInsertWord\n");
                 goto copyWithInsertWord;
   #else // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL_WORD)
                 ls_pwKeysX(pwList, nBL, wPopCnt + 1)[wPopCnt] = wKey;
       #ifdef B_JUDYL
                 pwValue = &ls_pwKeysX(pwList, nBL, wPopCnt + 1)[~wPopCnt];
-                *pwValue = 0;
       #endif // B_JUDYL
   #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL_WORD)
             }

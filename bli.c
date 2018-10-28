@@ -2340,6 +2340,9 @@ foundIt:;
       #endif // defined(SKIP_TO_XX_SW)
   #endif // defined(CODE_XX_SW)
                    );
+  #ifdef B_JUDYL
+    *pwValue = 0;
+  #endif // B_JUDYL
     if (bCleanupRequested) {
         goto cleanup;
     }
