@@ -3110,6 +3110,56 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 #endif
 
 // This is a non-parallel psplit search that calculates a descriptive _nPos.
+#define PSPLIT_SEARCH_BY_KEY_WORD(_x_t, _nBL, \
+                                  _pxKeys, _nPopCnt, _xKey, _nPos) \
+{ \
+    int nSplit; PSPLIT_GT((_nPopCnt), (_nBL), (_xKey), nSplit); \
+    /* if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) */\
+    if ((_pxKeys)[nSplit] == (_xKey)) \
+    { \
+        (_nPos) += nSplit; \
+    } \
+    else if ((_pxKeys)[nSplit] < (_xKey)) \
+    { \
+        if (nSplit == (_nPopCnt) - 1) \
+        { \
+            (_nPos) = ~((_nPos) + (_nPopCnt)); \
+        } \
+        else if (TEST_AND_KEY_IS_MAX(_x_t, _pxKeys, _nPopCnt, _xKey)) \
+        { \
+            (_nPos) += ((_pxKeys)[(_nPopCnt) - 1] == (_x_t)-1) \
+                        ? (_nPopCnt) - 1 : ~(_nPopCnt); \
+        } \
+        else \
+        { \
+            (_nPos) = nSplit + 1; \
+            SEARCHF(_x_t, (_pxKeys), (_nPopCnt) - nSplit - 1, \
+                    (_xKey), (_nPos)); \
+        } \
+    } \
+    else /* here if (_xKey) < (_pxKeys)[nSplit] (and possibly if equal) */ \
+    { \
+        if (TEST_AND_KEY_IS_ZERO(_x_t, _pxKeys, _nPopCnt, _xKey)) \
+        { \
+            if ((_pxKeys)[0] != 0) { (_nPos) ^= -1; } \
+        } \
+        else \
+        { \
+            assert((_nPos) == 0); \
+            SEARCHB(_x_t, (_pxKeys), nSplit + 1, (_xKey), (_nPos)); \
+        } \
+    } \
+}
+
+static int
+PsplitSearchByKeyWord(Word_t *pwKeys, int nPopCnt, Word_t wKey, int nPos)
+{
+    PSPLIT_SEARCH_BY_KEY_WORD(Word_t,
+                              cnBitsPerWord, pwKeys, nPopCnt, wKey, nPos);
+    return nPos;
+}
+
+// This is a non-parallel psplit search that calculates a descriptive _nPos.
 #define PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     int nSplit; PSPLIT((_nPopCnt), (_nBL), (_xKey), nSplit); \
@@ -3150,17 +3200,26 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
     } \
 }
 
+#if (cnBitsPerWord > 32)
 static int
 PsplitSearchByKey32(uint32_t *piKeys, int nPopCnt, uint32_t iKey, int nPos)
 {
     PSPLIT_SEARCH_BY_KEY(uint32_t, 32, piKeys, nPopCnt, iKey, nPos);
     return nPos;
 }
+#endif // (cnBitsPerWord > 32)
 
 static int
 PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 {
     PSPLIT_SEARCH_BY_KEY(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+    return nPos;
+}
+
+static int
+PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
+{
+    PSPLIT_SEARCH_BY_KEY(uint8_t, 8, pcKeys, nPopCnt, cKey, nPos);
     return nPos;
 }
 

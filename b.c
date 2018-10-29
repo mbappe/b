@@ -2260,20 +2260,25 @@ static Word_t *
 #else // B_JUDYL
 static void
 #endif // B_JUDYL
-CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc, int nKeys, Word_t wKey)
+CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc,
+                   int nKeys, // number of keys excluding the new one
+                   Word_t wKey, int nPos)
 {
     DBGI(printf("\nCopyWithInsertWord(pTgt %p pSrc %p nKeys %d wKey " OWx")\n",
                 (void *)pTgt, (void *)pSrc, nKeys, wKey));
     int n;
 
-    // find the insertion point
-    for (n = 0; n < nKeys; n++) {
-        if (pSrc[n] >= wKey) {
-            //if (pSrc[n] == wKey) Dump(pwRootLast, 0, cnBitsPerWord);
-            assert(pSrc[n] != wKey);
-            break;
-        }
-    }
+    if ((nPos == -1) // inflated embedded list
+#if ! defined(EMBED_KEYS)
+            && (nKeys != 0)
+#else // ! defined(EMBED_KEYS)
+            && 1 // avoid extraneous parens error
+#endif // ! defined(EMBED_KEYS)
+        )
+    {
+        // find the insertion point
+        n = ~PsplitSearchByKeyWord(pSrc, nKeys, wKey, 0);
+    } else { n = nPos; }
 
     if (pTgt != pSrc) {
 #ifdef B_JUDYL
@@ -2455,17 +2460,24 @@ static Word_t *
 #else // B_JUDYL
 static void
 #endif // B_JUDYL
-CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc, int nKeys, uint8_t cKey)
+CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc,
+                   int nKeys, // number of keys excluding the new one
+                   uint8_t cKey, int nPos)
 {
     int n;
 
-    // find the insertion point
-    for (n = 0; n < nKeys; n++) {
-        if (pSrc[n] >= cKey) {
-            assert(pSrc[n] != cKey);
-            break;
-        }
-    }
+    if ((nPos == -1) // inflated embedded list
+#if ! defined(EMBED_KEYS)
+            && (nKeys != 0)
+#else // ! defined(EMBED_KEYS)
+            && 1 // avoid extraneous parens error
+#endif // ! defined(EMBED_KEYS)
+        )
+    {
+        // find the insertion point
+        n = ~PsplitSearchByKey8(pSrc, nKeys, cKey, 0);
+    } else { n = nPos; }
+
 
     if (pTgt != pSrc) {
 #ifdef B_JUDYL
@@ -3938,7 +3950,8 @@ copyWithInsert8:
                 pwValue =
   #endif // B_JUDYL
                     CopyWithInsertChar(ls_pcKeysNATX(pwList, wPopCnt + 1),
-                                       pcKeys, wPopCnt, (unsigned char)wKey);
+                                       pcKeys, wPopCnt,
+                                       (unsigned char)wKey, nPos);
             } else if (nBL <= 16) {
                 goto copyWithInsert16;
 copyWithInsert16:
@@ -3968,7 +3981,7 @@ copyWithInsertWord:
                 pwValue =
   #endif // B_JUDYL
                     CopyWithInsertWord(ls_pwKeysX(pwList, nBL, wPopCnt + 1),
-                                       pwKeys, wPopCnt, wKey);
+                                       pwKeys, wPopCnt, wKey, nPos);
             }
         }
         else
