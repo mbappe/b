@@ -3192,13 +3192,13 @@ DoubleIt(qp,
          int nBLOld,
          int nBLUp,
          int nDLOld,
-         int nBW,
          Link_t *pLnUp
          )
 {
     qv;
     (void)nDLOld;
     (void)nBLUp;
+    int nBW;
 
     {
   #if defined(USE_XX_SW)
@@ -3439,9 +3439,6 @@ InsertSwitch(qp,
              Word_t wKey,
              int nDL,
              int nDLOld,
-#ifdef CODE_XX_SW
-             int nBW,
-#endif // CODE_XX_SW
              int nBLOld
   #ifdef SKIP_TO_XX_SW
              , int nBLUp
@@ -3453,6 +3450,9 @@ InsertSwitch(qp,
 {
     qv;
     (void)nDLOld;
+#ifdef CODE_XX_SW
+    int nBW;
+#endif // CODE_XX_SW
 #if defined(SKIP_LINKS)
     DBGI(printf("InsertGuts newSwitch 0 nDL %d nBL %d nDLOld %d nBLOld %d\n",
                 nDL, nBL, nDLOld, nBLOld));
@@ -3562,7 +3562,7 @@ InsertSwitch(qp,
 // What about a small bitmap?
 // Or another switch?
   #endif // defined(USE_XX_SW)
-            return DoubleIt(qy, nDL, wKey, nBLOld, nBLUp, nDLOld, nBW, pLnUp);
+            return DoubleIt(qy, nDL, wKey, nBLOld, nBLUp, nDLOld, pLnUp);
   #if defined(USE_XX_SW)
         } else
         { nBW = nBL_to_nBitsIndexSz(nBL); }
@@ -3739,7 +3739,6 @@ Splay(qp,
       int nDL,
       int nDLOld,
 #ifdef CODE_XX_SW
-      int nBW,
       Link_t *pLnUp,
   #ifdef SKIP_TO_XX_SW
       int nBLUp,
@@ -3781,9 +3780,6 @@ Splay(qp,
             }
         }
         return InsertSwitch(qy, wKey, nDL, nDLOld,
-#ifdef CODE_XX_SW
-                            nBW,
-#endif // CODE_XX_SW
                             nBLOld, nBLUp, pLnUp);
     }
 #endif // (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) || ...
@@ -3796,7 +3792,7 @@ Splay(qp,
     // since we can't skip anyway.  And the
     // skip code causes problems for T_XX_SW.
     if (nBL <= cnBitsLeftAtDl2) {
-        return InsertSwitch(qy, wKey, nDL, nDLOld, nBW, nBLOld, nBLUp, pLnUp);
+        return InsertSwitch(qy, wKey, nDL, nDLOld, nBLOld, nBLUp, pLnUp);
     }
 #endif // defined(CODE_XX_SW)
 
@@ -3913,9 +3909,6 @@ Splay(qp,
 
 #endif // defined(SKIP_LINKS)
     return InsertSwitch(qy, wKey, nDL, nDLOld,
-#if defined(CODE_XX_SW)
-                        nBW,
-#endif // defined(CODE_XX_SW)
                         nBLOld
   #ifdef SKIP_TO_XX_SW
                         , nBLUp
@@ -3935,7 +3928,6 @@ InsertAtList(qp,
              Word_t wKey,
              int nPos,
 #ifdef CODE_XX_SW
-             int nBW,
              Link_t *pLnUp,
   #ifdef SKIP_TO_XX_SW
              int nBLUp,
@@ -4032,7 +4024,7 @@ InsertAtList(qp,
     {
         DBGR(printf("IG: goto doubleIt nBL %d cnt %d max %d.\n",
                     nBL, (int)wPopCnt, nEmbeddedListPopCntMax));
-        return DoubleIt(qy, nDL, wKey, nBLOld, nBLUp, nDLOld, nBW, pLnUp);
+        return DoubleIt(qy, nDL, wKey, nBLOld, nBLUp, nDLOld, pLnUp);
     }
   #endif // defined(NO_TYPE_IN_XX_SW)
 
@@ -4077,7 +4069,7 @@ InsertAtList(qp,
                 if ((wWordsAllocated * 100 / wPopCntTotal)
                         < cnXxSwWpkPercent)
                 {
-                    return InsertSwitch(qy, wKey, nDL, nDLOld, nBW, nBLOld,
+                    return InsertSwitch(qy, wKey, nDL, nDLOld, nBLOld,
                                         nBLUp, pLnUp);
                 }
             }
@@ -4090,7 +4082,7 @@ InsertAtList(qp,
                 if ((wWordsAllocated * 100 / wPopCntTotal)
                         < cnXxSwWpkPercent)
                 {
-                    return DoubleIt(qy, nDL, wKey, nBLOld, nBLUp, nDLOld, nBW,
+                    return DoubleIt(qy, nDL, wKey, nBLOld, nBLUp, nDLOld,
                                     pLnUp);
                 }
             }
@@ -4342,7 +4334,7 @@ copyWithInsertWord:
   #endif // B_JUDYL
             Splay(qy, wKey, nBLOld, nDL, nDLOld,
 #ifdef CODE_XX_SW
-                  nBW, pLnUp,
+                  pLnUp,
   #ifdef SKIP_TO_XX_SW
                   nBLUp,
   #endif // SKIP_TO_XX_SW
@@ -4505,7 +4497,7 @@ embeddedKeys:;
 #endif // B_JUDYL
             InsertAtList(qy, wKey, nPos,
 #ifdef CODE_XX_SW
-                         nBW, pLnUp,
+                         pLnUp,
   #ifdef SKIP_TO_XX_SW
                          nBLUp,
   #endif // SKIP_TO_XX_SW
