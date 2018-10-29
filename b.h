@@ -3151,6 +3151,13 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 }
 
 static int
+PsplitSearchByKey32(uint32_t *piKeys, int nPopCnt, uint32_t iKey, int nPos)
+{
+    PSPLIT_SEARCH_BY_KEY(uint32_t, 32, piKeys, nPopCnt, iKey, nPos);
+    return nPos;
+}
+
+static int
 PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 {
     PSPLIT_SEARCH_BY_KEY(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);

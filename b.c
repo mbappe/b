@@ -346,6 +346,9 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
     (void)nBL;
 
     if (wPopCntArg == 0) { return 0; }
+#ifdef FULL_ALLOC
+    wPopCntArg = 256;
+#endif // FULL_ALLOC
 
     int nBytesKeySz =
 #if defined(COMPRESSED_LISTS)
@@ -544,7 +547,11 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
     }
 
 #ifdef B_JUDYL
+  #ifdef FULL_ALLOC
+    pwList = (Word_t *)ALIGN_UP((Word_t)&pwList[256], sizeof(Bucket_t));
+  #else // FULL_ALLOC
     pwList = (Word_t *)ALIGN_UP((Word_t)&pwList[wPopCnt], sizeof(Bucket_t));
+  #endif // FULL_ALLOC
 #else // B_JUDYL
   #if ! defined(OLD_LISTS)
     pwList += nWords - 1;
@@ -625,7 +632,11 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
     }
 
 #ifdef B_JUDYL
+  #ifdef FULL_ALLOC
+    pwList = (Word_t *)((Word_t)&pwList[-256] & ~cnMallocMask);
+  #else // FULL_ALLOC
     pwList = (Word_t *)((Word_t)&pwList[-nPopCnt] & ~cnMallocMask);
+  #endif // FULL_ALLOC
 #else // B_JUDYL
   #if ! defined(OLD_LISTS)
     assert(nType == T_LIST);
@@ -2314,19 +2325,25 @@ static Word_t *
 #else // B_JUDYL
 static void
 #endif // B_JUDYL
-CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc, int nKeys, uint32_t iKey)
+CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc,
+                  int nKeys, // number of keys excluding the new one
+                  uint32_t iKey, int nPos)
 {
     DBGI(printf("\nCopyWithInsertInt(pTgt %p pSrc %p nKeys %d iKey 0x%x)\n",
                 (void *)pTgt, (void *)pSrc, nKeys, iKey));
     int n;
 
-    // find the insertion point
-    for (n = 0; n < nKeys; n++) {
-        if (pSrc[n] >= iKey) {
-            assert(pSrc[n] != iKey);
-            break;
-        }
-    }
+    if ((nPos == -1) // inflated embedded list
+#if ! defined(EMBED_KEYS)
+            && (nKeys != 0)
+#else // ! defined(EMBED_KEYS)
+            && 1 // avoid extraneous parens error
+#endif // ! defined(EMBED_KEYS)
+        )
+    {
+        // find the insertion point
+        n = ~PsplitSearchByKey32(pSrc, nKeys, iKey, 0);
+    } else { n = nPos; }
 
     if (pTgt != pSrc) {
 #ifdef B_JUDYL
@@ -3939,7 +3956,8 @@ copyWithInsert32:
                 pwValue =
   #endif // B_JUDYL
                     CopyWithInsertInt(ls_piKeysNATX(pwList, wPopCnt + 1),
-                                      piKeys, wPopCnt, (unsigned int)wKey);
+                                      piKeys, wPopCnt,
+                                      (unsigned int)wKey, nPos);
 #endif // (cnBitsPerWord > 32)
             } else
 #endif // defined(COMPRESSED_LISTS)
@@ -6632,7 +6650,14 @@ Initialize(void)
     for (int nBL = cnBitsPerWord; nBL >= 8; nBL >>= 1) {
         printf("\n");
         int nWordsPrev = 0, nBoundaries = 0, nWords;
-        for (int nPopCnt = 1; nBoundaries <= 3; nPopCnt++) {
+        for (int nPopCnt = 1;
+             nBoundaries <= 3
+#ifdef FULL_ALLOC
+                 && nPopCnt <= 256
+#endif // FULL_ALLOC
+                 ;
+             nPopCnt++)
+        {
             if ((nWords = ListWordsTypeList(nPopCnt, nBL)) != nWordsPrev) {
                 ++nBoundaries;
                 if (nWordsPrev != 0) {
