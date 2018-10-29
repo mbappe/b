@@ -6866,13 +6866,7 @@ Initialize(void)
     for (int nBL = cnBitsPerWord; nBL >= 8; nBL >>= 1) {
         printf("\n");
         int nWordsPrev = 0, nBoundaries = 0, nWords;
-        for (int nPopCnt = 1;
-             nBoundaries <= 3
-#ifdef FULL_ALLOC
-                 && nPopCnt <= 256
-#endif // FULL_ALLOC
-                 ;
-             nPopCnt++)
+        for (int nPopCnt = 1; nBoundaries <= 3 && nPopCnt <= 256; nPopCnt++)
         {
             if ((nWords = ListWordsTypeList(nPopCnt, nBL)) != nWordsPrev) {
                 ++nBoundaries;
