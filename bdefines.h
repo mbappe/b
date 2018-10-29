@@ -9,6 +9,7 @@
 #ifdef B_JUDYL
   #undef NO_EMBED_KEYS
   #define NO_EMBED_KEYS
+  #undef NO_UA_PARALLEL_128
   #define NO_UA_PARALLEL_128
 #endif // B_JUDYL
 
