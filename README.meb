@@ -1,3 +1,41 @@
+10/25/18:
+
+- sudo apt update
+- sudo apt install build-essential git libjudy-dev
+- git config --global --add user.name "Mike Bappe"
+- git config --global --add user.email michaelbappe@gmail.com
+- git config --global --add merge.tool vimdiff
+- git config --global --add core.edior vim
+- git config --global --add push.default simple
+- git clone https://git@github.com/mbappe/b
+  - git clone ssh://git@github.com/mbappe/b
+  - git clone https://git@github.com/mbappe/b.git
+  - git clone ssh://git@github.com/mbappe/b.git
+- cd b
+- DEFINES=-DDEBUG make
+- bcheckall
+- time ./b -1m > b-1.plot
+
+- sudo apt install libtool automake
+- git clone http://git@github.com/mbappe/judy
+- cd judy
+- aclocal
+- libtoolize # linux
+- glibtoolize # mac
+- autoheader
+- automake --add-missing
+- autoconf
+- CC="cc -std=gnu11 -DRAMMETRICS" ./configure
+- Add CC="${CC} -std=gnu11" as second line in test/Checkit.
+- make check
+- cd test
+- time ./Judy1LHTime -1m > time-1.plot
+- make distclean
+- CC="cc -std=c99 -DRAMMETRICS" ./configure
+- Add CC="${CC} -std=c99" as second line in test/Checkit.
+- make check
+
+
 10/15/18:
 
 It sure would be nice to have a table of maximum populations reachable and/or meaningful
