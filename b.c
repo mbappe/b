@@ -4024,88 +4024,12 @@ newSwitch:
 // Shouldn't we think about some other option here?
 // What about a small bitmap?
 // Or another switch?
-#endif // defined(USE_XX_SW)
-            return DoubleIt(qy, nDL, wKey, nBLOld, nBLUp, nDLOld, nBW, pLnUp);
-//doubleIt:;
-#if defined(USE_XX_SW)
-            assert(nBL < nDL_to_nBL(2));
-// Hmm.  *pwRoot has not been updated with the inflated list.
-// What should we do?  Call OldList or install the inflated list?
-// I think we are going to just inflate it again if we don't just leave it.
-// So let's try installing it.
-#if defined(NO_TYPE_IN_XX_SW)
-            DBGR(printf("IG: free inflated list.\n"));
-            assert( (wr_nType(wRoot) == T_LIST)
-#if defined(UA_PARALLEL_128)
-                   || (wr_nType(wRoot) == T_LIST_UA)
-#endif // defined(UA_PARALLEL_128)
-                   );
-            OldList(wr_pwr(wRoot), wPopCnt, nBL, T_LIST);
-#else // defined(NO_TYPE_IN_XX_SW)
-#if defined(EMBED_KEYS)
-            if (wr_nType(*pwRoot) == T_EMBEDDED_KEYS) {
-                assert( (wr_nType(wRoot) == T_LIST)
-#if defined(UA_PARALLEL_128)
-                       || (wr_nType(wRoot) == T_LIST_UA)
-#endif // defined(UA_PARALLEL_128)
-                       );
-                *pwRoot = wRoot;
-            }
-#endif // defined(EMBED_KEYS)
-#endif // defined(NO_TYPE_IN_XX_SW)
-            pLn = pLnUp;
-            wRoot = pLn->ln_wRoot;
-            pwRoot = &pLn->ln_wRoot;
-            nType = wr_nType(wRoot);
-            assert(tp_bIsXxSw(nType));
-            pwr = wr_pwr(wRoot);
-            // parent is XX_SW; back up and replace it
-            nDL = 2;
-            nBL = nDL_to_nBL(nDL);
-      #if defined(SKIP_TO_XX_SW)
-            if (tp_bIsSkip(nType)) {
-                nBLOld = nBLUp;
-                assert(nBLOld > nBL);
-                nDLOld = nBL_to_nDL(nBLOld);
-            } else
-      #endif // defined(SKIP_TO_XX_SW)
-            {
-                nBLOld = nBL;
-                nDLOld = nDL;
-            }
-            nBW = pwr_nBW(&wRoot);
-            DBGI(printf("# Double nBL %d from nBW %d.\n", nBL, nBW));
-            assert(nBL > (int)LOG(sizeof(Link_t) * 8));
-            nBW += cnBWIncr;
-            if (nBL - nBW <= (int)LOG(sizeof(Link_t) * 8)) {
-// Doubling here would use at least as much memory as a big bitmap.
-// Are we here because the list is full?
-// Is it possible we are here because our words/key is good?
-                DBGI(printf("# IG: NewBitmap nBL %d"
-                              " nBLOld %d"
-                              " wWordsAllocated %" _fw"d"
-                              " wPopCntTotal %" _fw"d.\n",
-                            nBL, nBLOld, wWordsAllocated, wPopCntTotal));
-                DBGI(printf("# IG: NewBitmap wPopCnt %" _fw"d.\n",
-                            wPopCnt));
-                DBGI(printf("# IG: NewBitmap nBL %d.\n", nBL));
-#if ! defined(SKIP_TO_BITMAP)
-                assert(nBL == nBLOld);
-#endif // ! defined(SKIP_TO_BITMAP)
-                NewBitmap(pwRoot, nBL, nBLOld, wKey);
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-                set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL, 0);
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-                DBGI(printf("# After NewBitmap; before insertAll.\n"));
-                DBGI(Dump(pwRootLast,
-                      /* wPrefix */ (Word_t)0, cnBitsPerWord));
-                goto insertAll;
-            }
-            DBGI(Dump(pwRootLast,
-                      /* wPrefix */ (Word_t)0, cnBitsPerWord));
-        } else
   #endif // defined(USE_XX_SW)
+            return DoubleIt(qy, nDL, wKey, nBLOld, nBLUp, nDLOld, nBW, pLnUp);
+  #if defined(USE_XX_SW)
+        } else
         { nBW = nBL_to_nBitsIndexSz(nBL); }
+  #endif // defined(USE_XX_SW)
 #endif // defined(CODE_XX_SW)
 
 #if defined(DEBUG)
@@ -4189,7 +4113,7 @@ newSwitch:
     // to the tree whose keys must be reinserted.
 #if defined(USE_XX_SW)
     if (pLn == pLnUp) {
-insertAll:;
+//insertAll:;
         // nBW is for the new tree.
         //printf("Calling InsertAll for all links nBW %d\n", nBW);
         //printf("# Old tree:\n");
