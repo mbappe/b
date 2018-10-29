@@ -3180,6 +3180,617 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
         Insert(nBLUp, pLn, wKey);
 }
 
+#if defined(CODE_XX_SW)
+#ifdef B_JUDYL
+static Word_t*
+#else // B_JUDYL
+static void
+#endif // B_JUDYL
+DoubleIt(qp,
+         int nDL,
+         Word_t wKey,
+         int nBLOld,
+         int nBLUp,
+         int nDLOld,
+         int nBW,
+         Link_t *pLnUp
+         )
+{
+    qv;
+    (void)nDLOld;
+    (void)nBLUp;
+
+    {
+  #if defined(USE_XX_SW)
+        {
+            assert(nBL < nDL_to_nBL(2));
+// Hmm.  *pwRoot has not been updated with the inflated list.
+// What should we do?  Call OldList or install the inflated list?
+// I think we are going to just inflate it again if we don't just leave it.
+// So let's try installing it.
+#if defined(NO_TYPE_IN_XX_SW)
+            DBGR(printf("IG: free inflated list.\n"));
+            assert( (wr_nType(wRoot) == T_LIST)
+#if defined(UA_PARALLEL_128)
+                   || (wr_nType(wRoot) == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+                   );
+            OldList(wr_pwr(wRoot), wPopCnt, nBL, T_LIST);
+#else // defined(NO_TYPE_IN_XX_SW)
+#if defined(EMBED_KEYS)
+            if (wr_nType(*pwRoot) == T_EMBEDDED_KEYS) {
+                assert( (wr_nType(wRoot) == T_LIST)
+#if defined(UA_PARALLEL_128)
+                       || (wr_nType(wRoot) == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+                       );
+                *pwRoot = wRoot;
+            }
+#endif // defined(EMBED_KEYS)
+#endif // defined(NO_TYPE_IN_XX_SW)
+            pLn = pLnUp;
+            wRoot = pLn->ln_wRoot;
+            pwRoot = &pLn->ln_wRoot;
+            nType = wr_nType(wRoot);
+            assert(tp_bIsXxSw(nType));
+            pwr = wr_pwr(wRoot);
+            // parent is XX_SW; back up and replace it
+            nDL = 2;
+            nBL = nDL_to_nBL(nDL);
+      #if defined(SKIP_TO_XX_SW)
+            if (tp_bIsSkip(nType)) {
+                nBLOld = nBLUp;
+                assert(nBLOld > nBL);
+                nDLOld = nBL_to_nDL(nBLOld);
+            } else
+      #endif // defined(SKIP_TO_XX_SW)
+            {
+                nBLOld = nBL;
+                nDLOld = nDL;
+            }
+            nBW = pwr_nBW(&wRoot);
+            DBGI(printf("# Double nBL %d from nBW %d.\n", nBL, nBW));
+            assert(nBL > (int)LOG(sizeof(Link_t) * 8));
+            nBW += cnBWIncr;
+            if (nBL - nBW <= (int)LOG(sizeof(Link_t) * 8)) {
+// Doubling here would use at least as much memory as a big bitmap.
+// Are we here because the list is full?
+// Is it possible we are here because our words/key is good?
+                DBGI(printf("# IG: NewBitmap nBL %d"
+                              " nBLOld %d"
+                              " wWordsAllocated %" _fw"d"
+                              " wPopCntTotal %" _fw"d.\n",
+                            nBL, nBLOld, wWordsAllocated, wPopCntTotal));
+                DBGI(printf("# IG: NewBitmap wPopCnt %" _fw"d.\n",
+                            wPopCnt));
+                DBGI(printf("# IG: NewBitmap nBL %d.\n", nBL));
+#if ! defined(SKIP_TO_BITMAP)
+                assert(nBL == nBLOld);
+#endif // ! defined(SKIP_TO_BITMAP)
+                NewBitmap(pwRoot, nBL, nBLOld, wKey);
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+                set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL, 0);
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+                DBGI(printf("# After NewBitmap; before insertAll.\n"));
+                DBGI(Dump(pwRootLast,
+                      /* wPrefix */ (Word_t)0, cnBitsPerWord));
+                goto insertAll;
+            }
+            DBGI(Dump(pwRootLast,
+                      /* wPrefix */ (Word_t)0, cnBitsPerWord));
+        }
+  #else // defined(USE_XX_SW)
+        { nBW = nBL_to_nBitsIndexSz(nBL); }
+  #endif // defined(USE_XX_SW)
+
+#if defined(DEBUG)
+        if (nBL > nBLOld) {
+            printf("IG: pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
+                   (void *)pwRoot, wKey, nBL, wRoot);
+            printf("nBLOld %d\n", nBLOld);
+        }
+#endif // defined(DEBUG)
+        assert(nBL <= nBLOld);
+
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        // NewSwitch changes *pwRoot and the Link_t containing it.
+        // We need to preserve the Link_t for subsequent InsertAll.
+        // We don't have a whole link at the top.
+        if (nBLOld < cnBitsPerWord) {
+            link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+        }
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        NewSwitch(pwRoot, wKey, nBL,
+#if defined(CODE_XX_SW)
+                  nBW,
+#endif // defined(CODE_XX_SW)
+  #if defined(USE_BM_SW)
+      #if defined(USE_XX_SW)
+                  (nBL <= nDL_to_nBL(2))
+                      ? T_SWITCH :
+      #endif // defined(USE_XX_SW)
+      #if defined(SKIP_TO_BM_SW)
+  #if defined(BM_IN_LINK)
+                  nBLOld != cnBitsPerWord ? T_BM_SW : T_SWITCH,
+  #else // defined(BM_IN_LINK)
+                  T_BM_SW,
+  #endif // defined(BM_IN_LINK)
+      #else // defined(SKIP_TO_BM_SW)
+  #if defined(BM_IN_LINK)
+                  (nBLOld != cnBitsPerWord) && (nBL == nBLOld) ? T_BM_SW : T_SWITCH,
+  #else // defined(BM_IN_LINK)
+                  (nBL == nBLOld) ? T_BM_SW : T_SWITCH,
+  #endif // defined(BM_IN_LINK)
+      #endif // defined(SKIP_TO_BM_SW)
+  #else // defined(USE_BM_SW)
+                  T_SWITCH,
+  #endif // defined(USE_BM_SW)
+                  nBLOld, /* wPopCnt */ 0);
+
+#if defined(CODE_XX_SW)
+        if (nBL <= nDL_to_nBL(2)) {
+  #if defined(SKIP_TO_XX_SW)
+            if (nBL != nBLOld) {
+                assert(nBL == nDL_to_nBL(nBL_to_nDL(nBL)));
+                assert(GetBLR(pwRoot, nBLOld) == nBL);
+                set_wr_nType(*pwRoot, T_SKIP_TO_XX_SW);
+                assert(tp_bIsXxSw(wr_nType(*pwRoot)));
+                assert(GetBLR(pwRoot, nBLOld) == nBL);
+            } else
+  #endif // defined(SKIP_TO_XX_SW)
+            {
+                if (nBW >= 7) {
+                    DBGI(printf("# Setting T_XX_SW nBW %d nBL %d.\n",
+                                nBW, nBL));
+                }
+                set_wr_nType(*pwRoot, T_XX_SW);
+            }
+        }
+#endif // defined(CODE_XX_SW)
+
+        if (nBL == nBLOld) {
+            DBGI(printf("\n# InsertGuts After NewSwitch Dump\n"));
+            DBGI(Dump(pwRootLast,
+                      /* wPrefix */ (Word_t)0, cnBitsPerWord));
+            DBGI(printf("\n"));
+        }
+    }
+
+    // Now we need to move the keys from the old subtree to the new
+    // subtree.
+
+    // NewSwitch changed *pwRoot.
+    // But wRoot, nType, pwr, nBL and nBLOld still all apply
+    // to the tree whose keys must be reinserted.
+#if defined(USE_XX_SW)
+    if (pLn == pLnUp) {
+insertAll:;
+        // nBW is for the new tree.
+        //printf("Calling InsertAll for all links nBW %d\n", nBW);
+        //printf("# Old tree:\n");
+        //DBG(Dump(&wRoot, wKey & ~MSK(nBLOld), nBLOld));
+        int nBLR = nBL - pwr_nBW(&wRoot);
+        for (int nIndex = 0;
+                 nIndex < (int)EXP(pwr_nBW(&wRoot));
+                 nIndex++)
+        {
+            //printf("# New tree before IA nIndex %d:\n", nIndex);
+            //DBG(Dump(pwRoot, wKey, nBLOld));
+            InsertAll(&pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot,
+                      nBLR,
+                      (wKey & ~MSK(nBL)) | (nIndex << nBLR),
+                      pwRoot,
+// How are we going to get nBLOld from pLnUp?
+// Do we need it?  We need it for the call back into Insert.
+                      nBLOld);
+        }
+
+#if ! defined(SKIP_TO_XX_SW)
+        assert(nBL == nDL_to_nBL(2));
+        assert(nBLOld == nBL);
+#endif // ! defined(SKIP_TO_XX_SW)
+        OldSwitch(&wRoot, /* nBL */ nBL,
+#if defined(CODE_BM_SW)
+                  /* bBmSw */ 0, /* nLinks */ 0,
+#endif // defined(CODE_BM_SW)
+                  /* nBLUp */ nBLOld);
+
+        //printf("# New tree after InsertAll done looping:\n");
+        //DBG(Dump(pwRoot, wKey, nBLOld));
+
+    } else
+#endif // defined(USE_XX_SW)
+    {
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        // InsertAll may look in the link containing wRoot for
+        // pop count. That's why we preserved the contents of
+        // the link before overwriting it above.
+        if (nBLOld < cnBitsPerWord) {
+            InsertAll(&link.ln_wRoot, nBLOld, wKey, pwRoot, nBLOld);
+        } else
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        {
+            // *pwRoot now points to a switch
+            InsertAll(&wRoot, nBLOld, wKey, pwRoot, nBLOld);
+        }
+    }
+
+    if (nBL == nBLOld) {
+        DBGI(printf("Just Before InsertGuts calls final Insert"));
+        DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+    }
+
+#ifdef B_JUDYL
+    Word_t *pwVal = Insert(nBLOld, pLn, wKey);
+    *pwVal = 0; // How much does this cost?
+    return pwVal;
+#else // B_JUDYL
+    Insert(nBLOld, pLn, wKey);
+#endif // B_JUDYL
+}
+#endif // defined(CODE_XX_SW)
+
+#if ((cwListPopCntMax != 0) \
+  && ((cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) \
+                               || (cnListPopCntMax16 == 0))) \
+      || defined(CODE_XX_SW)
+#ifdef B_JUDYL
+static Word_t*
+#else // B_JUDYL
+static void
+#endif // B_JUDYL
+NewSwitchLabel(qp,
+               Word_t wKey,
+               int nDL,
+               int nDLOld,
+               int nBW,
+               int nBLOld,
+               int nBLUp,
+               Link_t *pLnUp
+               )
+{
+    qv;
+    (void)nDLOld;
+    (void)nBLUp;
+#if defined(SKIP_LINKS)
+    DBGI(printf("InsertGuts newSwitch 0 nDL %d nBL %d nDLOld %d nBLOld %d\n",
+                nDL, nBL, nDLOld, nBLOld));
+
+    // Apply constraints that cause us to create the new switch
+    // at a higher level than would be required if only the common
+    // prefix were considered.
+
+    // We don't create a switch below nDL == 2.
+    // Nor do we create a switch at or below nBL == cnLogBitsPerWord.
+    // The latter is enforced by disallowing
+    // cnBitsAtDl2 <= cnLogBitsPerWord no later than Initialize time.
+    // Nor do we support a skip link directly to a bitmap -- yet.
+#if defined(USE_XX_SW) && ! defined(SKIP_TO_XX_SW)
+    // We don't skip to a switch below DL3.  Because we don't support
+    // skip to T_XX_SW yet and T_XX_SW is critically important at
+    // DL2 and below.
+    if ((nBL < cnBitsLeftAtDl3) && (nBLOld >= cnBitsLeftAtDl3)) {
+        nBL = cnBitsLeftAtDl3;
+        nDL = 3;
+    }
+#else // defined(USE_XX_SW) && ! defined(SKIP_TO_XX_SW)
+    if ((nBL < cnBitsLeftAtDl2) && (nBLOld >= cnBitsLeftAtDl2)) {
+        nBL = cnBitsLeftAtDl2;
+        nDL = 2;
+    }
+#endif // defined(USE_XX_SW) && ! defined(SKIP_TO_XX_SW)
+    DBGI(printf("InsertGuts newSwitch 1 nDL %d nBL %d nDLOld %d nBLOld %d\n",
+                nDL, nBL, nDLOld, nBLOld));
+    assert(nBL > (int)LOG(sizeof(Link_t) * 8));
+
+#if defined(PP_IN_LINK)
+    // PP_IN_LINK can only support skip from top for wPrefix == 0.
+    if (nBLOld == cnBitsPerWord) {
+        while ((nBL != nBLOld) && ((wKey >> nBL) != 0)) {
+            nDL += 1;
+            nBL = nDL_to_nBL(nDL);
+            DBGI(printf("Bumping PP_IN_LINK skip at top nDLR"
+                            " from %d to %d.\n",
+                        nDL - 1, nDL));
+        }
+    }
+#endif // defined(PP_IN_LINK)
+#if ! defined(LVL_IN_SW) && ! defined(LVL_IN_WR_HB)
+// Depth is in type.
+    if (nDL != nDLOld) {
+        if (nDL_to_tp(nDL) > (int)cnMallocMask) {
+            printf("# Oops. Can't encode absolute level for skip.\n");
+            printf("nDL %d nDLOld %d\n", nDL, nDLOld);
+            nDL = nDLOld - 1;
+            nBL = nDL_to_nBL(nDL);
+            assert(0);
+        }
+    }
+#endif // ! defined(LVL_IN_SW) && ! defined(LVL_IN_WR_HB)
+#else // defined(SKIP_LINKS)
+    // I don't remember why this assertion was here.
+    // But it blows and the code seems to do ok with it
+    // commented out.
+    // assert(nDL > 1);
+#endif // defined(SKIP_LINKS)
+
+#if ! defined(USE_XX_SW)
+    if ((EXP(cnBitsInD1) > sizeof(Link_t) * 8) && (nDL == 1)) {
+        assert(nBLOld == nBL);
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        // NewBitmap changes *pwRoot and we change the Link_t
+        // containing it on return from NewBitmap.
+        // We need to preserve the Link_t for subsequent InsertAll.
+        link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        NewBitmap(pwRoot, nBL, nBLOld, wKey);
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL, 0);
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    }
+    else
+#endif // ! defined(USE_XX_SW)
+    {
+        // NewSwitch overwrites *pwRoot which would be a problem for
+        // embedded keys.
+        // Unless we've inflated them out.  Which we have.
+
+#if defined(CODE_XX_SW)
+        if (nBL < nDL_to_nBL(2)) {
+            DBGI(printf("\n# Blow up nBL %d nPopCnt %d\n",
+                        nBL, (int)wPopCnt));
+        }
+
+  #if defined(USE_XX_SW)
+        if (1 && (nBL == nDL_to_nBL(2)) // Use XX_SW at DL2.
+      #if ! defined(SKIP_TO_XX_SW)
+              && (nBL == nBLOld)
+      #endif // ! defined(SKIP_TO_XX_SW)
+            )
+        {
+            DBGI(printf("# Creating T_XX_SW wKey " OWx" nBL %d\n",
+                        wKey, nBL));
+      #if defined(SKIP_TO_XX_SW)
+            if (nBLOld != nBL) {
+                DBGR(printf("Skip to T_XX_SW nBLOld %d\n", nBLOld));
+            }
+      #endif // defined(SKIP_TO_XX_SW)
+            nBW = cnBW;
+        } else if (pLnUp != NULL) {
+// Shouldn't we think about some other option here?
+// What about a small bitmap?
+// Or another switch?
+#endif // defined(USE_XX_SW)
+            goto doubleIt;
+doubleIt:;
+#if defined(USE_XX_SW)
+            assert(nBL < nDL_to_nBL(2));
+// Hmm.  *pwRoot has not been updated with the inflated list.
+// What should we do?  Call OldList or install the inflated list?
+// I think we are going to just inflate it again if we don't just leave it.
+// So let's try installing it.
+#if defined(NO_TYPE_IN_XX_SW)
+            DBGR(printf("IG: free inflated list.\n"));
+            assert( (wr_nType(wRoot) == T_LIST)
+#if defined(UA_PARALLEL_128)
+                   || (wr_nType(wRoot) == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+                   );
+            OldList(wr_pwr(wRoot), wPopCnt, nBL, T_LIST);
+#else // defined(NO_TYPE_IN_XX_SW)
+#if defined(EMBED_KEYS)
+            if (wr_nType(*pwRoot) == T_EMBEDDED_KEYS) {
+                assert( (wr_nType(wRoot) == T_LIST)
+#if defined(UA_PARALLEL_128)
+                       || (wr_nType(wRoot) == T_LIST_UA)
+#endif // defined(UA_PARALLEL_128)
+                       );
+                *pwRoot = wRoot;
+            }
+#endif // defined(EMBED_KEYS)
+#endif // defined(NO_TYPE_IN_XX_SW)
+            pLn = pLnUp;
+            wRoot = pLn->ln_wRoot;
+            pwRoot = &pLn->ln_wRoot;
+            nType = wr_nType(wRoot);
+            assert(tp_bIsXxSw(nType));
+            pwr = wr_pwr(wRoot);
+            // parent is XX_SW; back up and replace it
+            nDL = 2;
+            nBL = nDL_to_nBL(nDL);
+      #if defined(SKIP_TO_XX_SW)
+            if (tp_bIsSkip(nType)) {
+                nBLOld = nBLUp;
+                assert(nBLOld > nBL);
+                nDLOld = nBL_to_nDL(nBLOld);
+            } else
+      #endif // defined(SKIP_TO_XX_SW)
+            {
+                nBLOld = nBL;
+                nDLOld = nDL;
+            }
+            nBW = pwr_nBW(&wRoot);
+            DBGI(printf("# Double nBL %d from nBW %d.\n", nBL, nBW));
+            assert(nBL > (int)LOG(sizeof(Link_t) * 8));
+            nBW += cnBWIncr;
+            if (nBL - nBW <= (int)LOG(sizeof(Link_t) * 8)) {
+// Doubling here would use at least as much memory as a big bitmap.
+// Are we here because the list is full?
+// Is it possible we are here because our words/key is good?
+                DBGI(printf("# IG: NewBitmap nBL %d"
+                              " nBLOld %d"
+                              " wWordsAllocated %" _fw"d"
+                              " wPopCntTotal %" _fw"d.\n",
+                            nBL, nBLOld, wWordsAllocated, wPopCntTotal));
+                DBGI(printf("# IG: NewBitmap wPopCnt %" _fw"d.\n",
+                            wPopCnt));
+                DBGI(printf("# IG: NewBitmap nBL %d.\n", nBL));
+#if ! defined(SKIP_TO_BITMAP)
+                assert(nBL == nBLOld);
+#endif // ! defined(SKIP_TO_BITMAP)
+                NewBitmap(pwRoot, nBL, nBLOld, wKey);
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+                set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL, 0);
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+                DBGI(printf("# After NewBitmap; before insertAll.\n"));
+                DBGI(Dump(pwRootLast,
+                      /* wPrefix */ (Word_t)0, cnBitsPerWord));
+                goto insertAll;
+            }
+            DBGI(Dump(pwRootLast,
+                      /* wPrefix */ (Word_t)0, cnBitsPerWord));
+        } else
+  #endif // defined(USE_XX_SW)
+        { nBW = nBL_to_nBitsIndexSz(nBL); }
+#endif // defined(CODE_XX_SW)
+
+#if defined(DEBUG)
+        if (nBL > nBLOld) {
+            printf("IG: pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
+                   (void *)pwRoot, wKey, nBL, wRoot);
+            printf("nBLOld %d\n", nBLOld);
+        }
+#endif // defined(DEBUG)
+        assert(nBL <= nBLOld);
+
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        // NewSwitch changes *pwRoot and the Link_t containing it.
+        // We need to preserve the Link_t for subsequent InsertAll.
+        // We don't have a whole link at the top.
+        if (nBLOld < cnBitsPerWord) {
+            link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+        }
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        NewSwitch(pwRoot, wKey, nBL,
+#if defined(CODE_XX_SW)
+                  nBW,
+#endif // defined(CODE_XX_SW)
+  #if defined(USE_BM_SW)
+      #if defined(USE_XX_SW)
+                  (nBL <= nDL_to_nBL(2))
+                      ? T_SWITCH :
+      #endif // defined(USE_XX_SW)
+      #if defined(SKIP_TO_BM_SW)
+  #if defined(BM_IN_LINK)
+                  nBLOld != cnBitsPerWord ? T_BM_SW : T_SWITCH,
+  #else // defined(BM_IN_LINK)
+                  T_BM_SW,
+  #endif // defined(BM_IN_LINK)
+      #else // defined(SKIP_TO_BM_SW)
+  #if defined(BM_IN_LINK)
+                  (nBLOld != cnBitsPerWord) && (nBL == nBLOld) ? T_BM_SW : T_SWITCH,
+  #else // defined(BM_IN_LINK)
+                  (nBL == nBLOld) ? T_BM_SW : T_SWITCH,
+  #endif // defined(BM_IN_LINK)
+      #endif // defined(SKIP_TO_BM_SW)
+  #else // defined(USE_BM_SW)
+                  T_SWITCH,
+  #endif // defined(USE_BM_SW)
+                  nBLOld, /* wPopCnt */ 0);
+
+#if defined(CODE_XX_SW)
+        if (nBL <= nDL_to_nBL(2)) {
+  #if defined(SKIP_TO_XX_SW)
+            if (nBL != nBLOld) {
+                assert(nBL == nDL_to_nBL(nBL_to_nDL(nBL)));
+                assert(GetBLR(pwRoot, nBLOld) == nBL);
+                set_wr_nType(*pwRoot, T_SKIP_TO_XX_SW);
+                assert(tp_bIsXxSw(wr_nType(*pwRoot)));
+                assert(GetBLR(pwRoot, nBLOld) == nBL);
+            } else
+  #endif // defined(SKIP_TO_XX_SW)
+            {
+                if (nBW >= 7) {
+                    DBGI(printf("# Setting T_XX_SW nBW %d nBL %d.\n",
+                                nBW, nBL));
+                }
+                set_wr_nType(*pwRoot, T_XX_SW);
+            }
+        }
+#endif // defined(CODE_XX_SW)
+
+        if (nBL == nBLOld) {
+            DBGI(printf("\n# InsertGuts After NewSwitch Dump\n"));
+            DBGI(Dump(pwRootLast,
+                      /* wPrefix */ (Word_t)0, cnBitsPerWord));
+            DBGI(printf("\n"));
+        }
+    }
+
+    // Now we need to move the keys from the old subtree to the new
+    // subtree.
+
+    // NewSwitch changed *pwRoot.
+    // But wRoot, nType, pwr, nBL and nBLOld still all apply
+    // to the tree whose keys must be reinserted.
+#if defined(USE_XX_SW)
+    if (pLn == pLnUp) {
+insertAll:;
+        // nBW is for the new tree.
+        //printf("Calling InsertAll for all links nBW %d\n", nBW);
+        //printf("# Old tree:\n");
+        //DBG(Dump(&wRoot, wKey & ~MSK(nBLOld), nBLOld));
+        int nBLR = nBL - pwr_nBW(&wRoot);
+        for (int nIndex = 0;
+                 nIndex < (int)EXP(pwr_nBW(&wRoot));
+                 nIndex++)
+        {
+            //printf("# New tree before IA nIndex %d:\n", nIndex);
+            //DBG(Dump(pwRoot, wKey, nBLOld));
+            InsertAll(&pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot,
+                      nBLR,
+                      (wKey & ~MSK(nBL)) | (nIndex << nBLR),
+                      pwRoot,
+// How are we going to get nBLOld from pLnUp?
+// Do we need it?  We need it for the call back into Insert.
+                      nBLOld);
+        }
+
+#if ! defined(SKIP_TO_XX_SW)
+        assert(nBL == nDL_to_nBL(2));
+        assert(nBLOld == nBL);
+#endif // ! defined(SKIP_TO_XX_SW)
+        OldSwitch(&wRoot, /* nBL */ nBL,
+#if defined(CODE_BM_SW)
+                  /* bBmSw */ 0, /* nLinks */ 0,
+#endif // defined(CODE_BM_SW)
+                  /* nBLUp */ nBLOld);
+
+        //printf("# New tree after InsertAll done looping:\n");
+        //DBG(Dump(pwRoot, wKey, nBLOld));
+
+    } else
+#endif // defined(USE_XX_SW)
+    {
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        // InsertAll may look in the link containing wRoot for
+        // pop count. That's why we preserved the contents of
+        // the link before overwriting it above.
+        if (nBLOld < cnBitsPerWord) {
+            InsertAll(&link.ln_wRoot, nBLOld, wKey, pwRoot, nBLOld);
+        } else
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        {
+            // *pwRoot now points to a switch
+            InsertAll(&wRoot, nBLOld, wKey, pwRoot, nBLOld);
+        }
+    }
+
+    if (nBL == nBLOld) {
+        DBGI(printf("Just Before InsertGuts calls final Insert"));
+        DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+    }
+
+#ifdef B_JUDYL
+    Word_t *pwVal = Insert(nBLOld, pLn, wKey);
+    *pwVal = 0; // How much does this cost?
+    return pwVal;
+#else // B_JUDYL
+    Insert(nBLOld, pLn, wKey);
+#endif // B_JUDYL
+}
+#endif // ((cwListPopCntMax != 0) && ... ) || ...
+
 // List is full. What do we do now?
 // - Partition the keys between two or more links?
 //   - Widen the switch with the link to the list?
@@ -3618,24 +4229,24 @@ doubleIt:;
                   nBLOld, /* wPopCnt */ 0);
 
 #if defined(CODE_XX_SW)
-       if (nBL <= nDL_to_nBL(2)) {
+        if (nBL <= nDL_to_nBL(2)) {
   #if defined(SKIP_TO_XX_SW)
-           if (nBL != nBLOld) {
-               assert(nBL == nDL_to_nBL(nBL_to_nDL(nBL)));
-               assert(GetBLR(pwRoot, nBLOld) == nBL);
-               set_wr_nType(*pwRoot, T_SKIP_TO_XX_SW);
-               assert(tp_bIsXxSw(wr_nType(*pwRoot)));
-               assert(GetBLR(pwRoot, nBLOld) == nBL);
-           } else
+            if (nBL != nBLOld) {
+                assert(nBL == nDL_to_nBL(nBL_to_nDL(nBL)));
+                assert(GetBLR(pwRoot, nBLOld) == nBL);
+                set_wr_nType(*pwRoot, T_SKIP_TO_XX_SW);
+                assert(tp_bIsXxSw(wr_nType(*pwRoot)));
+                assert(GetBLR(pwRoot, nBLOld) == nBL);
+            } else
   #endif // defined(SKIP_TO_XX_SW)
-           {
-               if (nBW >= 7) {
-                   DBGI(printf("# Setting T_XX_SW nBW %d nBL %d.\n",
-                               nBW, nBL));
-               }
-               set_wr_nType(*pwRoot, T_XX_SW);
-           }
-       }
+            {
+                if (nBW >= 7) {
+                    DBGI(printf("# Setting T_XX_SW nBW %d nBL %d.\n",
+                                nBW, nBL));
+                }
+                set_wr_nType(*pwRoot, T_XX_SW);
+            }
+        }
 #endif // defined(CODE_XX_SW)
 
         if (nBL == nBLOld) {
@@ -3870,7 +4481,8 @@ InsertAtList(qp,
                 if ((wWordsAllocated * 100 / wPopCntTotal)
                         < cnXxSwWpkPercent)
                 {
-                    goto newSwitch;
+                    return NewSwitchLabel(qy, wKey, nDL, nDLOld, nBW, nBLOld,
+                                          nBLUp, pLnUp);
                 }
             }
         }
@@ -3882,7 +4494,8 @@ InsertAtList(qp,
                 if ((wWordsAllocated * 100 / wPopCntTotal)
                         < cnXxSwWpkPercent)
                 {
-                    goto doubleIt;
+                    return DoubleIt(qy, nDL, wKey, nBLOld, nBLUp, nDLOld, nBW,
+                                    pLnUp);
                 }
             }
         }
@@ -4296,7 +4909,7 @@ embeddedKeys:;
 #endif // B_JUDYL
             InsertAtList(qy, wKey, nPos,
 #ifdef CODE_XX_SW
-                         nBW, *pLnUp,
+                         nBW, pLnUp,
   #ifdef SKIP_TO_XX_SW
                          nBLUp,
   #endif // SKIP_TO_XX_SW
@@ -4944,8 +5557,10 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
         { bPrefixMismatch = ((int)LOG(1 | (wPrefix ^ wKey)) >= nBLR); }
 
         if (bPrefixMismatch) {
-            PrefixMismatch(pwRoot, nBL, wKey, nBLR);
-            return Success;
+  #ifdef B_JUDYL
+            return
+  #endif // B_JUDYL
+                PrefixMismatch(pwRoot, nBL, wKey, nBLR);
         }
 
         nBL = nBLR;
