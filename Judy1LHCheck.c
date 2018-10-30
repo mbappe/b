@@ -994,8 +994,10 @@ TestJudyNextEmpty(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
 
         Rcode1 = Judy1Test(J1, J1index, NULL);
 
-        if (Rcode1 != 0)
+        if (Rcode1 != 0) {
+            printf("PrevKey 0x%zx J1index 0x%zx\n", PrevKey, J1index);
             FAILURE("J1NE returned non-empty Index =", J1index);
+        }
 
         PValue = (PWord_t)JudyLGet(JL, JLindex, NULL);
         if (PValue != (Word_t *) NULL)
