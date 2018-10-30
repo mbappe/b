@@ -117,14 +117,15 @@ CountSw(qp,
                 DBGC(printf("list wPopCntLoop " OWx" wPopCnt " OWx"\n",
                      wPopCntLoop, wPopCnt));
                 break;
-          #if defined(SKIP_TO_BITMAP)
+          #ifdef BITMAP
+              #if defined(SKIP_TO_BITMAP)
             case T_SKIP_TO_BITMAP:
-              #if defined(PP_IN_LINK)
+                  #if defined(PP_IN_LINK)
                 // From where should we get pop count for PP_IN_LINK?
                 // It exists in the bitmap but also in the link.
                 // But there is no link at the top. KISS.
-              #endif // defined(PP_IN_LINK)
-          #endif // defined(SKIP_TO_BITMAP)
+                  #endif // defined(PP_IN_LINK)
+              #endif // defined(SKIP_TO_BITMAP)
             case T_BITMAP:
                 wPopCntLoop
                     = w_wPopCntBL(*(pwrLoop + EXP(nBLRLoop - cnLogBitsPerWord)),
@@ -138,6 +139,7 @@ CountSw(qp,
                 DBGC(printf("bitmap wPopCntLoop " OWx" wPopCnt " OWx"\n",
                             wPopCntLoop, wPopCnt));
                 break;
+          #endif // BITMAP
             default:
                 DBG(printf("\nww %" _fw"d wRootLoop " OWx" nTypeLoop %d\n",
                        ww, wRootLoop, nTypeLoop));
@@ -1007,6 +1009,7 @@ switchTail:;
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
 
+#ifdef BITMAP
         // Is there any reason to have
         // EXP(cnBitsInD1) <= (sizeof(Link_t) * 8)? What about lazy conversion
         // of embedded keys at nBL > sizeof(Link_t) * 8 to
@@ -1027,6 +1030,9 @@ switchTail:;
             // We're leaving qy in an iffy state without updating nType and pwr.
             goto t_bitmap;
         }
+#else // BITMAP
+        assert(!cbEmbeddedBitmap || (nBL > cnLogBitsPerLink));
+#endif // BITMAP
 
   #if defined(INSERT) || defined(REMOVE)
       #if defined(CODE_XX_SW) && !defined(NO_TYPE_IN_XX_SW)
@@ -1810,7 +1816,8 @@ t_list_ua:;
 
 #endif // (cwListPopCntMax != 0)
 
-#if defined(SKIP_TO_BITMAP)
+#ifdef BITMAP
+  #if defined(SKIP_TO_BITMAP)
     case T_SKIP_TO_BITMAP: {
         goto t_skip_to_bitmap;
 t_skip_to_bitmap:;
@@ -1837,7 +1844,7 @@ t_skip_to_bitmap:;
         }
         goto t_bitmap;
     }
-#endif // defined(SKIP_TO_BITMAP)
+  #endif // defined(SKIP_TO_BITMAP)
   #if defined(DEFAULT_BITMAP)
       #if defined(DEFAULT_SKIP_TO_SW)
       #error DEFAULT_SKIP_TO_SW with DEFAULT_BITMAP
@@ -2056,6 +2063,7 @@ t_bitmap:;
         break;
 
     } // end of case T_BITMAP
+#endif // BITMAP
 
 #if defined(EMBED_KEYS)
 

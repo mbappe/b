@@ -345,10 +345,32 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
 {
     (void)nBL;
 
-    if (wPopCntArg == 0) { return 0; }
-#ifdef FULL_ALLOC
+    assert(wPopCntArg != 0);
+
+#ifdef FAST_LIST_WORDS
+  #ifndef COMPRESSED_LISTS
+    #error FAST_LIST_WORDS requires COMPRESSED_LISTS
+  #endif // COMPRESSED_LISTS
+  #ifdef LIST_END_MARKERS
+    #error FAST_LIST_WORDS requires no LIST_END_MARKERS
+  #endif // LIST_END_MARKERS
+  #ifndef OLD_LISTS
+    #error FAST_LIST_WORDS requires OLD_LISTS
+  #endif // OLD_LISTS
+  #if (N_LIST_HDR_KEYS != 0)
+    #error FAST_LIST_WORDS requires (N_LIST_HDR_KEYS != 0)
+  #endif // (N_LIST_HDR_KEYS != 0)
+    // FAST_LIST_WORDS also requires sizeof(Bucket_t) <= cnMallocMask + 1.
+    (void)wPopCntArg;
+  #ifdef B_JUDYL
+    return 256 + 256 * (nBL >> 3);
+  #else // B_JUDYL
+    return 256 * (nBL >> 3);
+  #endif // B_JUDYL
+#else // FAST_LIST_WORDS
+  #ifdef FULL_ALLOC
     wPopCntArg = 256;
-#endif // FULL_ALLOC
+  #endif // FULL_ALLOC
 
     int nBytesKeySz =
 #if defined(COMPRESSED_LISTS)
@@ -432,15 +454,10 @@ if (nBL > 32) {
 #else // defined(OLD_LISTS)
     return ls_nSlotsInList(wPopCntArg, nBL, nBytesKeySz) * nBytesKeySz / sizeof(Word_t);
 #endif // defined(OLD_LISTS)
+#endif // FAST_LIST_WORDS
 }
 
-// How many words needed for external leaf?
-// Do not embed.
-static unsigned
-ListWordsExternal(Word_t wPopCnt, unsigned nBL)
-{
-    return ListWordsTypeList(wPopCnt, nBL);
-}
+#define ListWordsExternal  ListWordsTypeList
 
 // How many words are needed for the specified list leaf?
 // Use embedded keys instead of T_LIST if possible.
@@ -547,11 +564,15 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
     }
 
 #ifdef B_JUDYL
-  #ifdef FULL_ALLOC
+  #ifdef FAST_LIST_WORDS
+    pwList = &pwList[256];
+  #else // FAST_LIST_WORDS
+      #ifdef FULL_ALLOC
     pwList = (Word_t *)ALIGN_UP((Word_t)&pwList[256], sizeof(Bucket_t));
-  #else // FULL_ALLOC
+      #else // FULL_ALLOC
     pwList = (Word_t *)ALIGN_UP((Word_t)&pwList[wPopCnt], sizeof(Bucket_t));
-  #endif // FULL_ALLOC
+      #endif // FULL_ALLOC
+  #endif // FAST_LIST_WORDS
 #else // B_JUDYL
   #if ! defined(OLD_LISTS)
     pwList += nWords - 1;
@@ -632,11 +653,15 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
     }
 
 #ifdef B_JUDYL
-  #ifdef FULL_ALLOC
+  #ifdef FAST_LIST_WORDS
+    pwList = &pwList[-256];
+  #else // FAST_LIST_WORDS
+      #ifdef FULL_ALLOC
     pwList = (Word_t *)((Word_t)&pwList[-256] & ~cnMallocMask);
-  #else // FULL_ALLOC
+      #else // FULL_ALLOC
     pwList = (Word_t *)((Word_t)&pwList[-nPopCnt] & ~cnMallocMask);
-  #endif // FULL_ALLOC
+      #endif // FULL_ALLOC
+  #endif // FAST_LIST_WORDS
 #else // B_JUDYL
   #if ! defined(OLD_LISTS)
     assert(nType == T_LIST);
@@ -660,6 +685,7 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
 
 #endif // (cwListPopCntMax != 0)
 
+#ifdef BITMAP
 // We don't need NewBitmap unless cnBitsLeftAtD1 > LOG(sizeof(Link_t) * 8).
 // Hopefully, the compiler will figure it out and not emit it.
 static Word_t *
@@ -709,6 +735,7 @@ NewBitmap(Word_t *pwRoot, int nBL, int nBLUp, Word_t wKey)
 
     return pwBitmap;
 }
+#endif // BITMAP
 
 static int
 GetBLR(Word_t *pwRoot, int nBL)
@@ -1550,16 +1577,18 @@ GetPopCnt(Word_t *pwRoot, int nBL)
         {
             return PWR_xListPopCnt(pwRoot, wr_pwr(*pwRoot), nBL);
         }
+  #ifdef BITMAP
         if ((nType == T_BITMAP)
-  #if defined(SKIP_TO_BITMAP)
+      #if defined(SKIP_TO_BITMAP)
             || (nType == T_SKIP_TO_BITMAP)
-  #endif // defined(SKIP_TO_BITMAP)
+      #endif // defined(SKIP_TO_BITMAP)
             || 0)
         {
             Word_t wPP = *(wr_pwr(*pwRoot) + EXP(nBLR - cnLogBitsPerWord));
             Word_t wPopCnt = w_wPopCntBL(wPP, nBLR);
             return (wPopCnt == 0) ? EXP(nBLR) : wPopCnt ;
         }
+  #endif // BITMAP
         assert(tp_bIsSwitch(nType));
     }
 
@@ -1747,6 +1776,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
     }
 #endif // defined(SKIP_TO_BITMAP)
 
+#ifdef BITMAP
     if ((nType == T_BITMAP)
         || ((nBL < cnBitsPerWord) && (EXP(nBL) <= sizeof(Link_t) * 8)))
     {
@@ -1821,6 +1851,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
         assert(nBL != cnBitsPerWord); // wPopCntTotal, zeroLink
         return 0;
     }
+#endif // BITMAP
 
 #if defined(SKIP_LINKS) // || (cwListPopCntMax != 0)
     assert( ! tp_bIsSkip(nType) || ((int)wr_nBL(wRoot) < nBL) );
@@ -2539,7 +2570,7 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
 
 #if defined(EMBED_KEYS)
 
-Word_t
+static Word_t
 DeflateExternalList(Word_t *pwRoot,
                     int nPopCnt, int nBL, Word_t *pwr);
 
@@ -2618,6 +2649,7 @@ InsertCleanup(qp, Word_t wKey)
     }
 #endif // defined(CODE_BM_SW)
 
+#ifdef BITMAP
 #if (cn2dBmMaxWpkPercent != 0) // conversion to big bitmap enabled
     int nDL = nBL_to_nDL(nBL);
 
@@ -2711,11 +2743,13 @@ embeddedKeys:;
                 }
             } else
 #endif // defined(EMBED_KEYS)
+#ifdef BITMAP
             if (nTypeLn == T_BITMAP) {
                 memcpy(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
                        pwrLn, EXP(nBLLn - 3));
                 OldBitmap(pwRootLn, pwrLn, nBLLn);
             }
+#endif // BITMAP
 #if (cwListPopCntMax != 0)
             else if (wRootLn != 0) {
 #if defined(DEBUG)
@@ -2804,6 +2838,7 @@ embeddedKeys:;
 #endif // defined(DEBUG)
     }
 #endif // (cn2dBmMaxWpkPercent != 0)
+#endif // BITMAP
 }
 
 #if (cwListPopCntMax != 0)
@@ -3515,6 +3550,7 @@ InsertSwitch(qp,
     // assert(nDL > 1);
 #endif // defined(SKIP_LINKS)
 
+#ifdef BITMAP
 #if ! defined(USE_XX_SW)
     if ((EXP(cnBitsInD1) > sizeof(Link_t) * 8) && (nDL == 1)) {
         assert(nBLOld == nBL);
@@ -3531,6 +3567,9 @@ InsertSwitch(qp,
     }
     else
 #endif // ! defined(USE_XX_SW)
+#else // BITMAP
+    assert((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) || (nDL > 1));
+#endif // BITMAP
     {
         // NewSwitch overwrites *pwRoot which would be a problem for
         // embedded keys.
@@ -3779,8 +3818,14 @@ Splay(qp,
                 nDL = 2;
             }
         }
-        return InsertSwitch(qy, wKey, nDL, nDLOld,
-                            nBLOld, nBLUp, pLnUp);
+        return InsertSwitch(qy, wKey, nDL, nDLOld, nBLOld
+      #ifdef CODE_XX_SW
+          #ifdef SKIP_TO_XX_SW
+                          , nBLUp
+          #endif // SKIP_TO_XX_SW
+                          , pLnUp
+      #endif // CODE_XX_SW
+                            );
     }
 #endif // (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) || ...
 #endif // (cwListPopCntMax != 0)
@@ -4024,7 +4069,11 @@ InsertAtList(qp,
     {
         DBGR(printf("IG: goto doubleIt nBL %d cnt %d max %d.\n",
                     nBL, (int)wPopCnt, nEmbeddedListPopCntMax));
-        return DoubleIt(qy, nDL, wKey, nBLOld, nBLUp, nDLOld, pLnUp);
+        return DoubleIt(qy, nDL, wKey, nBLOld,
+      #ifdef SKIP_TO_XX_SW
+                        nBLUp,
+      #endif // SKIP_TO_XX_SW
+                        nDLOld, pLnUp);
     }
   #endif // defined(NO_TYPE_IN_XX_SW)
 
@@ -4070,7 +4119,10 @@ InsertAtList(qp,
                         < cnXxSwWpkPercent)
                 {
                     return InsertSwitch(qy, wKey, nDL, nDLOld, nBLOld,
-                                        nBLUp, pLnUp);
+      #ifdef SKIP_TO_XX_SW
+                                        nBLUp,
+      #endif // SKIP_TO_XX_SW
+                                        pLnUp);
                 }
             }
         }
@@ -4350,7 +4402,6 @@ copyWithInsertWord:
     return pwValue;
 #endif // B_JUDYL
 }
-
 // InsertGuts
 // This function is called from the iterative Insert function once Insert has
 // determined that the key from an insert request is not present in the array.
@@ -4420,14 +4471,16 @@ InsertGuts(qp, Word_t wKey, int nPos
         return InsertAtDl1(pwRoot, wKey, nDL, nBL, wRoot);
     }
 
+#ifdef BITMAP
     if ((nType == T_BITMAP)
-#if defined(SKIP_TO_BITMAP)
+  #if defined(SKIP_TO_BITMAP)
         || (nType == T_SKIP_TO_BITMAP)
-#endif // defined(SKIP_TO_BITMAP)
+  #endif // defined(SKIP_TO_BITMAP)
         || 0)
     {
         return InsertAtBitmap(pwRoot, wKey, nDL, wRoot);
     }
+#endif // BITMAP
 
     // Can the following be moved into the if ! switch block?
 #if (cwListPopCntMax != 0)
@@ -4940,7 +4993,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 
 // Replace an external T_LIST leaf with a wRoot with embedded keys.
 // The function assumes it is possible.
-Word_t
+static Word_t
 DeflateExternalList(Word_t *pwRoot,
                     int nPopCnt, int nBL, Word_t *pwr)
 {
@@ -5319,6 +5372,7 @@ RemoveGuts(qp, Word_t wKey)
     }
 #endif // defined(NO_TYPE_IN_XX_SW)
 
+#ifdef BITMAP
 // Could we be more specific in this ifdef, e.g. cnListPopCntMax16?
 #if (cwListPopCntMax != 0)
     if ((nBL <= (int)LOG(sizeof(Link_t) * 8))
@@ -5336,6 +5390,7 @@ RemoveGuts(qp, Word_t wKey)
     {
         return RemoveBitmap(pwRoot, wKey, nDL, nBL, wRoot);
     }
+#endif // BITMAP
 
 #if (cwListPopCntMax != 0)
 
@@ -5884,6 +5939,18 @@ Initialize(void)
 
     printf("\n");
 
+#if defined(FAST_LIST_WORDS)
+    printf("#    FAST_LIST_WORDS\n");
+#else // defined(FAST_LIST_WORDS)
+    printf("# No FAST_LIST_WORDS\n");
+#endif // defined(FAST_LIST_WORDS)
+
+#if defined(FULL_ALLOC)
+    printf("#    FULL_ALLOC\n");
+#else // defined(FULL_ALLOC)
+    printf("# No FULL_ALLOC\n");
+#endif // defined(FULL_ALLOC)
+
 #if defined(POP_IN_WR_HB)
     printf("#    POP_IN_WR_HB\n");
 #else // defined(POP_IN_WR_HB)
@@ -5943,6 +6010,12 @@ Initialize(void)
 #else // defined(SKIP_LINKS)
     printf("# No SKIP_LINKS\n");
 #endif // defined(SKIP_LINKS)
+
+#if defined(BITMAP)
+    printf("#    BITMAP\n");
+#else // defined(BITMAP)
+    printf("# No BITMAP\n");
+#endif // defined(BITMAP)
 
 #if defined(SKIP_TO_BITMAP)
     printf("#    SKIP_TO_BITMAP\n");
@@ -6696,6 +6769,12 @@ Initialize(void)
     printf("# No NO_EMBED_KEYS\n");
 #endif // defined(NO_EMBED_KEYS)
 
+#if defined(NO_BITMAP)
+    printf("#    NO_BITMAP\n");
+#else // defined(NO_BITMAP)
+    printf("# No NO_BITMAP\n");
+#endif // defined(NO_BITMAP)
+
 #if defined(NO_EK_CALC_POP)
     printf("#    NO_EK_CALC_POP\n");
 #else // defined(NO_EK_CALC_POP)
@@ -6866,8 +6945,7 @@ Initialize(void)
     for (int nBL = cnBitsPerWord; nBL >= 8; nBL >>= 1) {
         printf("\n");
         int nWordsPrev = 0, nBoundaries = 0, nWords;
-        for (int nPopCnt = 1; nBoundaries <= 3 && nPopCnt <= 256; nPopCnt++)
-        {
+        for (int nPopCnt = 1; nBoundaries <= 3 && nPopCnt <= 256; nPopCnt++) {
             if ((nWords = ListWordsTypeList(nPopCnt, nBL)) != nWordsPrev) {
                 ++nBoundaries;
                 if (nWordsPrev != 0) {
@@ -6915,10 +6993,12 @@ Initialize(void)
     printf("# 0x%x %-20s\n", T_LIST_UA, "T_LIST_UA");
 #endif // defined(UA_PARALLEL_128)
 #endif // (cwListPopCntMax != 0)
+#if defined(BITMAP)
     printf("# 0x%x %-20s\n", T_BITMAP, "T_BITMAP");
-#if defined(SKIP_TO_BITMAP)
+  #if defined(SKIP_TO_BITMAP)
     printf("# 0x%x %-20s\n", T_SKIP_TO_BITMAP, "T_SKIP_TO_BITMAP");
-#endif // defined(SKIP_TO_BITMAP)
+  #endif // defined(SKIP_TO_BITMAP)
+#endif // defined(BITMAP)
 #if defined(EMBED_KEYS)
     printf("# 0x%x %-20s\n", T_EMBEDDED_KEYS, "T_EMBEDDED_KEYS");
 #endif // defined(EMBED_KEYS)
@@ -7412,7 +7492,8 @@ t_list:;
         return 0;
     }
   #endif // defined(EMBED_KEYS)
-  #if defined(SKIP_TO_BITMAP)
+  #ifdef BITMAP
+      #if defined(SKIP_TO_BITMAP)
     case T_SKIP_TO_BITMAP: {
         DBGN(printf("T_SKIP_TO_BITMAP\n"));
         //A(0);
@@ -7451,7 +7532,7 @@ t_list:;
         //A(0);
         nBL = nBLR;
     }
-  #endif // defined(SKIP_TO_BITMAP)
+      #endif // defined(SKIP_TO_BITMAP)
     case T_BITMAP: {
         DBGN(printf("T_BITMAP *pwKey " OWx" wSkip %" _fw"u\n", *pwKey, wSkip));
         assert(nBL != cnBitsPerWord);
@@ -7512,6 +7593,7 @@ t_list:;
         *pwKey |= (nWordNum << cnLogBitsPerWord) + nBitNum;
         return 0;
     }
+  #endif // BITMAP
   #if defined(SKIP_LINKS)
     default: {
     /* case T_SKIP_TO_SWITCH */
@@ -8456,7 +8538,8 @@ t_list:;
         return Success;
     }
   #endif // defined(EMBED_KEYS)
-  #if defined(SKIP_TO_BITMAP)
+  #ifdef BITMAP
+      #if defined(SKIP_TO_BITMAP)
     case T_SKIP_TO_BITMAP: {
         int nBLR = wr_nBL(wRoot);
         Word_t wPrefix =
@@ -8472,7 +8555,7 @@ t_list:;
         assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
         nBL = nBLR;
     }
-  #endif // defined(SKIP_TO_BITMAP)
+      #endif // defined(SKIP_TO_BITMAP)
     case T_BITMAP:; {
         int nWordNum = (*pwKey & MSK(nBL)) >> cnLogBitsPerWord;
         int nBitNum = *pwKey & MSK(cnLogBitsPerWord);
@@ -8510,6 +8593,7 @@ t_list:;
             }
         }
     }
+  #endif // BITMAP
   #if defined(SKIP_LINKS)
     default: {
     /* case T_SKIP_TO_SWITCH */

@@ -7,9 +7,9 @@
 // Set initial defines based on whether we are building Judy1 or JudyL.
 // If B_JUDYL is not defined then we are building Judy1.
 #ifdef B_JUDYL
-  #undef NO_EMBED_KEYS
+  #undef  NO_EMBED_KEYS
   #define NO_EMBED_KEYS
-  #undef NO_UA_PARALLEL_128
+  #undef  NO_UA_PARALLEL_128
   #define NO_UA_PARALLEL_128
 #endif // B_JUDYL
 
@@ -28,6 +28,13 @@
   #undef     SKIP_LINKS
   #define    SKIP_LINKS
 #endif // NO_SKIP_LINKS
+
+// BITMAP is required for one-digit and two-digit T_BITMAP bitmaps
+// and for embedded bitmaps.
+#ifndef   NO_BITMAP
+  #undef     BITMAP
+  #define    BITMAP
+#endif // NO_BITMAP
 
 // No sense requesting extra memory that we don't have a use for by default.
 #define LIST_REQ_MIN_WORDS

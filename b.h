@@ -656,11 +656,13 @@ enum {
     T_LIST_UA, // external list of keys
   #endif // defined(UA_PARALLEL_128)
 #endif // (cwListPopCntMax != 0)
+#if defined(BITMAP)
     // T_BITMAP may not be needed if it is implied by the level/depth.
     T_BITMAP, // external (not embedded) bitmap leaf
-#if defined(SKIP_TO_BITMAP)
+  #if defined(SKIP_TO_BITMAP)
     T_SKIP_TO_BITMAP, // skip to external bitmap leaf
-#endif // defined(SKIP_TO_BITMAP)
+  #endif // defined(SKIP_TO_BITMAP)
+#endif // defined(BITMAP)
 #if defined(EMBED_KEYS)
     T_EMBEDDED_KEYS, // keys are embedded in the link
 #endif // defined(EMBED_KEYS)
@@ -1357,6 +1359,7 @@ tp_bIsSkip(int nType)
     return 0;
 }
 
+#if defined(BITMAP)
 static inline int
 tp_bIsBitmap(int nType)
 {
@@ -1366,6 +1369,7 @@ tp_bIsBitmap(int nType)
   #endif // SKIP_TO_BITMAP
             );
 }
+#endif // defined(BITMAP)
 
 // Bit fields in the upper bits of of wRoot.
 // Lvl is the level of the node pointed to.
