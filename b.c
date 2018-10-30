@@ -2002,6 +2002,47 @@ embeddedKeys:;
   #endif // B_JUDYL
                 }
             }
+  #ifdef PSPLIT_PARALLEL
+            for (int nn = (int)wPopCnt;
+                 nn * (nBL >> 3) % sizeof(Bucket_t);
+                 nn++)
+            {
+                int xx = nn;
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+                xx += ((nBLArg == cnBitsPerWord) && (cnDummiesInList == 0));
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+#if defined(COMPRESSED_LISTS)
+                if (nBL <= 8) {
+                    printf(" %02x", ls_pcKeysNATX(pwr, wPopCnt)[xx]);
+  #ifdef B_JUDYL
+                    printf("," OWx,
+                           ((Word_t*)ls_pcKeysNATX(pwr, wPopCnt))[~xx]);
+  #endif // B_JUDYL
+                } else if (nBL <= 16) {
+                    printf(" %04x", ls_psKeysNATX(pwr, wPopCnt)[xx]);
+  #ifdef B_JUDYL
+                    printf("," OWx,
+                           ((Word_t*)ls_psKeysNATX(pwr, wPopCnt))[~xx]);
+
+  #endif // B_JUDYL
+#if (cnBitsPerWord > 32)
+                } else if (nBL <= 32) {
+                    printf(" %08x", ls_piKeysNATX(pwr, wPopCnt)[xx]);
+  #ifdef B_JUDYL
+                    printf(","OWx,
+                           ((Word_t*)ls_piKeysNATX(pwr, wPopCnt))[~xx]);
+  #endif // B_JUDYL
+#endif // (cnBitsPerWord > 32)
+                } else
+#endif // defined(COMPRESSED_LISTS)
+                {
+                    printf(" " OWx, ls_pwKeysX(pwr, nBL, wPopCnt)[xx]);
+  #ifdef B_JUDYL
+                    printf("," OWx, ls_pwKeysX(pwr, nBL, wPopCnt)[~xx]);
+  #endif // B_JUDYL
+                }
+            }
+  #endif // PSPLIT_PARALLEL
   #if defined(UA_PARALLEL_128)
             if (nType == T_LIST_UA) {
                 assert(nBL == 16);
@@ -2310,6 +2351,7 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc,
         // find the insertion point
         n = ~PsplitSearchByKeyWord(pSrc, nKeys, wKey, 0);
     } else { n = nPos; }
+    assert(nPos <= nKeys);
 
     if (pTgt != pSrc) {
 #ifdef B_JUDYL
@@ -2380,6 +2422,7 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc,
         // find the insertion point
         n = ~PsplitSearchByKey32(pSrc, nKeys, iKey, 0);
     } else { n = nPos; }
+    assert(nPos <= nKeys);
 
     if (pTgt != pSrc) {
 #ifdef B_JUDYL
@@ -2403,7 +2446,7 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc,
 
     n = nKeys + 1;
 #if defined(PSPLIT_PARALLEL)
-    // See CopyWithInsertWord for comment.
+    // See CopyWithInsertWord and CopyWithInsertChar for comment.
     for (; (n * sizeof(iKey)) % sizeof(Bucket_t); ++n) {
         pTgt[n] = pTgt[n-1];
     }
@@ -2440,6 +2483,7 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc,
         // find the insertion point
         n = ~PsplitSearchByKey16(pSrc, nKeys, sKey, 0);
     } else { n = nPos; }
+    assert(nPos <= nKeys);
 
     if (pTgt != pSrc) {
 #ifdef B_JUDYL
@@ -2472,8 +2516,9 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc,
     } else
   #endif // defined(UA_PARALLEL_128)
     {
+        // See CopyWithInsertWord and CopyWithInsertChar for comment.
         for (; (n * sizeof(sKey)) % sizeof(Bucket_t); ++n) {
-            pTgt[n] = pTgt[n-1];
+             pTgt[n] = pTgt[n-1];
         }
     }
 #endif // defined(PSPLIT_PARALLEL)
@@ -2508,7 +2553,7 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc,
         // find the insertion point
         n = ~PsplitSearchByKey8(pSrc, nKeys, cKey, 0);
     } else { n = nPos; }
-
+    assert(nPos <= nKeys);
 
     if (pTgt != pSrc) {
 #ifdef B_JUDYL
@@ -2534,9 +2579,18 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc,
 
     n = nKeys + 1;
 #if defined(PSPLIT_PARALLEL)
-    for (; (n * sizeof(cKey)) % sizeof(Bucket_t); ++n) {
-        pTgt[n] = pTgt[n-1];
-    }
+    // Padding is redundant in some cases.
+    // But avoiding it is probably more expensive than doing it.
+    // This code assumes InflateEmbedded pads the list.
+    //if ((pTgt != pSrc)
+    //    || ((nKeys * sizeof(cKey) % sizeof(Bucket_t)) == 0)
+    //    //|| 1
+    //    || (nPos == nKeys))
+    //{
+        for (; (n * sizeof(cKey)) % sizeof(Bucket_t); ++n) {
+            pTgt[n] = pTgt[n-1];
+        }
+    //}
 #endif // defined(PSPLIT_PARALLEL)
 #if defined(LIST_END_MARKERS)
     pTgt[n] = -1;
@@ -4153,11 +4207,9 @@ InsertAtList(qp,
             DBGI(printf("pwr %p wPopCnt %" _fw"d nBL %d\n",
                         (void *)pwr, wPopCnt, nBL));
             DBGI(printf("nType %d\n", nType));
-            DBGI(printf("nBL %d LWE(pop %d) %d LWE(pop %d) %d\n",
+            DBGI(printf("nBL %d LWE(pop+1 %d) %d\n",
                         nBL, (int)wPopCnt + 1,
-                        ListWordsExternal(wPopCnt + 1, nBL),
-                        (int)wPopCnt,
-                        ListWordsExternal(wPopCnt    , nBL)));
+                        ListWordsExternal(wPopCnt + 1, nBL)));
             // Allocate a new list and init pop count if pop count is
             // in the list.  Also init the beginning of the list marker
             // if LIST_END_MARKERS.
