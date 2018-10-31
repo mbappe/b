@@ -2798,6 +2798,12 @@ nextPart:
         }
 #endif // CALC_NEXT_KEY
 
+#ifdef DO_TIT
+        int bDoTit = 1;
+#else // DO_TIT
+        int bDoTit = (Meas <= 256); // bDoTit threshold is 256
+#endif // DO_TIT
+
         if ((double)Pop1 >= LastPPop)
         {
             LastPPop *= 10.0;
@@ -2851,6 +2857,7 @@ nextPart:
 //          Test J1S, JLI, JLHS
 //          Exit with InsertSeed/Key ready for next batch
 //
+          if (bDoTit) {
             Tit = 0;                    // exclude Judy
             DummySeed = InsertSeed;
             WaitForContextSwitch(Delta);
@@ -2858,6 +2865,9 @@ nextPart:
             DeltaGen1 = DeltanSec1;     // save measurement overhead
             DeltaGenL = DeltanSecL;
             DeltaGenHS = DeltanSecHS;
+          } else {
+            DeltaGen1 = DeltaGenL = DeltaGenHS = 0.1;
+          } // end of bDoTit
 
             Tit = 1;                    // include Judy
             WaitForContextSwitch(Delta);
@@ -2896,7 +2906,7 @@ nextPart:
 
 //          Test J1T, JLG, JHSG
 
-#ifdef DO_TIT
+        if (bDoTit) {
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             if (bLfsrOnly) {
@@ -2969,9 +2979,9 @@ nextPart:
             DeltaGen1 = DeltanSec1;     // save measurement overhead
             DeltaGenL = DeltanSecL;
             DeltaGenHS = DeltanSecHS;
-#else // DO_TIT
+        } else {
             DeltaGen1 = DeltaGenL = DeltaGenHS = 0.1;
-#endif // DO_TIT
+        } // end of bDoTit
 
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
@@ -3078,11 +3088,15 @@ nextPart:
 //          Test JLI
 //          Exit with InsertSeed/Key ready for next batch
 
+          if (bDoTit) {
             Tit = 0;                    // exclude Judy
             DummySeed = InsertSeed;
             WaitForContextSwitch(Delta);
             TestJudyLIns(&JL, &DummySeed, Delta);
             DeltaGenL = DeltanSecL;
+          } else {
+            DeltaGenL = 0.1;
+          } // end of bDoTit
 
             Tit = 1;                    // include Judy
             WaitForContextSwitch(Delta);
@@ -3095,11 +3109,15 @@ nextPart:
                     fflush(NULL);
             }
 
+          if (bDoTit) {
             Tit = 0;                    // exclude Judy
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             TestJudyLGet(JL, &BeginSeed, Meas);
             DeltaGenL = DeltanSecL;
+          } else {
+            DeltaGenL = 0.1;
+          } // end of bDoTit
 
             Tit = 1;                    // include Judy
             BeginSeed = StartSeed;      // reset at beginning
@@ -3129,11 +3147,15 @@ nextPart:
             //DummySeed = BitmapSeed;
             //GetNextKey(&DummySeed);   // warm up cache
 
+          if (bDoTit) {
             Tit = 0;
             DummySeed = BitmapSeed;
             WaitForContextSwitch(Delta);
             TestBitmapSet(&B1, &DummySeed, Delta);
             DeltanBit = DeltanSecBt;
+          } else {
+            DeltanBit = 0.1;
+          } // end of bDoTit
 
             Tit = 1;
             WaitForContextSwitch(Delta);
@@ -3145,11 +3167,15 @@ nextPart:
                 DONTPRINTLESSTHANZERO(DeltanSecBt, DeltanBit);
             }
 
+          if (bDoTit) {
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             TestBitmapTest(B1, &BeginSeed, Meas);
             DeltanBit = DeltanSecBt;
+          } else {
+            DeltanBit = 0.1;
+          } // end of bDoTit
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3173,11 +3199,15 @@ nextPart:
             //DummySeed = BitmapSeed;
             //GetNextKey(&DummySeed);   // warm up cache
 
+          if (bDoTit) {
             Tit = 0;
             DummySeed = BitmapSeed;
             WaitForContextSwitch(Delta);
             TestByteSet(&DummySeed, Delta);
             DeltanByte = DeltanSecBy;
+          } else {
+            DeltanByte = 0.1;
+          } // end of bDoTit
 
             Tit = 1;
             WaitForContextSwitch(Delta);
@@ -3189,11 +3219,15 @@ nextPart:
                 DONTPRINTLESSTHANZERO(DeltanSecBy, DeltanByte);
             }
 
+          if (bDoTit) {
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             TestByteTest(&BeginSeed, Meas);
             DeltanByte = DeltanSecBy;
+          } else {
+            DeltanByte = 0.1;
+          } // end of bDoTit
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3213,6 +3247,7 @@ nextPart:
 
         if (IFlag)
         {
+          if (bDoTit) {
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
@@ -3220,6 +3255,9 @@ nextPart:
             DeltaGen1 = DeltanSec1;     // save measurement overhead
             DeltaGenL = DeltanSecL;
             DeltaGenHS = DeltanSecHS;
+          } else {
+            DeltaGen1 = DeltaGenL = DeltaGenHS = 0.1;
+          } // end of bDoTit
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3248,11 +3286,15 @@ nextPart:
         }
         if (CFlag)
         {
+          if (bDoTit) {
             Tit = 0;
             WaitForContextSwitch(Meas);
             TestJudyCount(J1, JL, &BeginSeed, Meas);
             DeltaGen1 = DeltanSec1;     // save measurement overhead
             DeltaGenL = DeltanSecL;
+          } else {
+            DeltaGen1 = DeltaGenL = 0.1;
+          } // end of bDoTit
 
             Tit = 1;
             WaitForContextSwitch(Meas);
@@ -3269,12 +3311,16 @@ nextPart:
         if (vFlag)
         {
 //          Test J1N, JLN
+          if (bDoTit) {
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             TestJudyNext(J1, JL, &BeginSeed, Meas);
             DeltaGen1 = DeltanSec1;     // save measurement overhead
             DeltaGenL = DeltanSecL;
+          } else {
+            DeltaGen1 = DeltaGenL = 0.1;
+          } // end of bDoTit
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3290,12 +3336,16 @@ nextPart:
             }
 
 //          Test J1P, JLP
+          if (bDoTit) {
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             TestJudyPrev(J1, JL, &BeginSeed, ~(Word_t)0, Meas);
             DeltaGen1 = DeltanSec1;     // save measurement overhead
             DeltaGenL = DeltanSecL;
+          } else {
+            DeltaGen1 = DeltaGenL = 0.1;
+          } // end of bDoTit
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3311,12 +3361,16 @@ nextPart:
             }
 
 //          Test J1NE, JLNE
+          if (bDoTit) {
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             TestJudyNextEmpty(J1, JL, &BeginSeed, Meas);
             DeltaGen1 = DeltanSec1;     // save measurement overhead
             DeltaGenL = DeltanSecL;
+          } else {
+            DeltaGen1 = DeltaGenL = 0.1;
+          } // end of bDoTit
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3333,12 +3387,16 @@ nextPart:
 
 //          Test J1PE, JLPE
 //
+          if (bDoTit) {
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             TestJudyPrevEmpty(J1, JL, &BeginSeed, Meas);
             DeltaGen1 = DeltanSec1;     // save measurement overhead
             DeltaGenL = DeltanSecL;
+          } else {
+            DeltaGen1 = DeltaGenL = 0.1;
+          } // end of bDoTit
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3357,6 +3415,7 @@ nextPart:
 //      Test J1U, JLD, JHSD
         if (dFlag)
         {
+          if (bDoTit) {
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
@@ -3364,6 +3423,9 @@ nextPart:
             DeltaGen1 = DeltanSec1;     // save measurement overhead
             DeltaGenL = DeltanSecL;
             DeltaGenHS = DeltanSecHS;
+          } else {
+            DeltaGen1 = DeltaGenL = DeltaGenHS = 0.1;
+          } // end of bDoTit
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
