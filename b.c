@@ -320,6 +320,37 @@ MyFree(Word_t *pw, Word_t wWords)
 
 #if (cwListPopCntMax != 0)
 
+static int
+ExtListBytesPerKey(int nBL)
+{
+  #if defined(COMPRESSED_LISTS)
+    // log(56-1) = 5, log(40-1) = 5, exp(5+1) = 64
+    // log(32-1) = 4, log(24-1) = 4, exp(4+1) = 32
+    // log(16-1) = 3, exp(3+1) = 16
+    // log(8-1) = 2, exp(2+1) = 8
+    //assert(nBL >= 5);
+    //return EXP(LOG(nBL-1)-2);
+    // Will the compiler get rid of LOG and EXP if nBL is a constant?
+    // Or are we better off with the old way?
+    return (nBL <=  8) ? 1 : (nBL <= 16) ? 2 :
+      #if (cnBitsPerWord > 32)
+        (nBL <= 32) ? 4 :
+      #endif // (cnBitsPerWord > 32)
+        sizeof(Word_t);
+    // Or should we just assume that nBL is a multiple of 8?
+  #else // defined(COMPRESSED_LISTS)
+    return sizeof(Word_t);
+  #endif // defined(COMPRESSED_LISTS)
+}
+
+// How many keys fit in a list buffer that must hold at least nPopCnt keys?
+static int
+ExtListKeySlotCnt(int nPopCnt, int nBytesPerKey)
+{
+    int nSlots = ALIGN_UP(nPopCnt, sizeof(Bucket_t) / nBytesPerKey);
+    return EXP(LOG(nSlots - 1) + 1);
+}
+
 // How many words are needed for a T_LIST leaf?
 // The layout of a list leaf depends on ifdefs and possibly nBL.
 // One thing all T_LIST leaves have in common (presently) is an array of keys.
@@ -386,14 +417,29 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
     wPopCntArg = 256;
   #endif // FULL_ALLOC
 
-    int nBytesKeySz =
   #if defined(COMPRESSED_LISTS)
-        (nBL <=  8) ? 1 : (nBL <= 16) ? 2 :
-      #if (cnBitsPerWord > 32)
-        (nBL <= 32) ? 4 :
-      #endif // (cnBitsPerWord > 32)
+    // log(56-1) = 5, log(40-1) = 5, exp(5+1) = 64
+    // log(32-1) = 4, log(24-1) = 4, exp(4+1) = 32
+    // log(16-1) = 3, exp(3+1) = 16
+    // log(8-1) = 2, exp(2+1) = 8
+    assert(nBL >= 5);
+    // Will the compiler get rid of LOG and EXP if nBL is a constant?
+    // Or are we better off with the old way?
+    //    int nBytesKeySz =
+    //   #if defined(COMPRESSED_LISTS)
+    //        (nBL <=  8) ? 1 : (nBL <= 16) ? 2 :
+    //      #if (cnBitsPerWord > 32)
+    //        (nBL <= 32) ? 4 :
+    //      #endif // (cnBitsPerWord > 32)
+    //   #endif // defined(COMPRESSED_LISTS)
+    //        sizeof(Word_t);
+    // Or should we just assume that nBL is a multiple of 8?
+    int nBytesKeySz = EXP(LOG(nBL-1)-2);
+  #else // defined(COMPRESSED_LISTS)
+    int nBytesKeySz = sizeof(Word_t);
   #endif // defined(COMPRESSED_LISTS)
-        sizeof(Word_t);
+
+    wPopCntArg = ExtListKeySlotCnt(wPopCntArg, ExtListBytesPerKey(nBL));
 
 #if defined(OLD_LISTS)
 
@@ -588,7 +634,10 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
       #ifdef FULL_ALLOC
     pwList = (Word_t *)ALIGN_UP((Word_t)&pwList[256], sizeof(Bucket_t));
       #else // FULL_ALLOC
-    pwList = (Word_t *)ALIGN_UP((Word_t)&pwList[wPopCnt], sizeof(Bucket_t));
+    //pwList = (Word_t *)ALIGN_UP((Word_t)&pwList[nKeySlots], sizeof(Bucket_t));
+    int nKeySlots = ExtListKeySlotCnt(wPopCnt, ExtListBytesPerKey(nBL));
+    assert(nKeySlots * ExtListBytesPerKey(nBL) % sizeof(Bucket_t) == 0);
+    pwList = &pwList[nKeySlots];
       #endif // FULL_ALLOC
   #endif // FAST_LIST_WORDS
 #else // B_JUDYL
@@ -681,7 +730,10 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
       #ifdef FULL_ALLOC
     pwList = (Word_t *)((Word_t)&pwList[-256] & ~cnMallocMask);
       #else // FULL_ALLOC
-    pwList = (Word_t *)((Word_t)&pwList[-nPopCnt] & ~cnMallocMask);
+    //pwList = (Word_t *)((Word_t)&pwList[-nPopCnt] & ~cnMallocMask);
+    int nKeySlots = ExtListKeySlotCnt(nPopCnt, ExtListBytesPerKey(nBL));
+    pwList = &pwList[-nKeySlots];
+    assert(((Word_t)pwList & cnMallocMask) == 0);
       #endif // FULL_ALLOC
   #endif // FAST_LIST_WORDS
 #else // B_JUDYL
@@ -4229,10 +4281,12 @@ InsertAtList(qp,
 
         // Allocate memory for a new list if necessary.
         // Init or update pop count if necessary.
+        int nBytesPerKey;
         if ((pwr == NULL)
             // Inflate uses LWTL.
-            || (ListWordsTypeList(wPopCnt + 1, nBL)
-                    != ListWordsTypeList(wPopCnt, nBL)))
+            || (nBytesPerKey = ExtListBytesPerKey(nBL),
+                ExtListKeySlotCnt(wPopCnt + 1, nBytesPerKey)
+                    != ExtListKeySlotCnt(wPopCnt, nBytesPerKey)))
         {
             DBGI(printf("pwr %p wPopCnt %" _fw"d nBL %d\n",
                         (void *)pwr, wPopCnt, nBL));
@@ -8551,6 +8605,12 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
     case T_LIST:; {
         goto t_list;
 t_list:;
+        // skip over the list if it is full pop
+        if (nBL < cnBitsPerWord) {
+            if (GetPopCnt(pwRoot, nBL) == EXP(nBL)) {
+                return Failure;
+            }
+        }
         int nPos;
         if ((pwr == NULL)
                 || ((nPos = SearchList(qy, /* nBLR */ nBL, *pwKey)) < 0)) {
@@ -8640,6 +8700,10 @@ t_list:;
     }
       #endif // defined(SKIP_TO_BITMAP)
     case T_BITMAP:; {
+        // skip over the bitmap if it is full pop
+        if (GetPopCnt(pwRoot, nBL) == EXP(nBL)) {
+            return Failure;
+        }
         int nWordNum = (*pwKey & MSK(nBL)) >> cnLogBitsPerWord;
         int nBitNum = *pwKey & MSK(cnLogBitsPerWord);
         if (bPrev) {
@@ -8703,6 +8767,12 @@ t_list:;
     case T_SWITCH: {
         goto t_switch;
 t_switch:;
+        // skip over the switch if it is full pop
+        if (nBL < cnBitsPerWord) {
+            if (GetPopCnt(pwRoot, nBL) == EXP(nBL)) {
+                return Failure;
+            }
+        }
         int nBits = nBL_to_nBitsIndexSz(nBL); // bits decoded by switch
         Word_t wPrefix = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
         Word_t wIndex = (*pwKey >> (nBL - nBits)) & MSK(nBits);
