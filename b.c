@@ -363,9 +363,23 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
     // FAST_LIST_WORDS also requires sizeof(Bucket_t) <= cnMallocMask + 1.
     (void)wPopCntArg;
   #ifdef B_JUDYL
-    return 256 + 256 * (nBL >> 3);
+    if (nBL == 8) {
+        return 256 + 256 / 8; // cnListPopCntMax8 == 256
+    } else {
+        // log(56-1) = 5, log(40-1) = 5, exp(5+1) = 64
+        // log(32-1) = 4, log(24-1) = 4, exp(4+1) = 32
+        // log(16-1) = 3, exp(3+1) = 16
+        // log(8-1) = 2, exp(2+1) = 8
+        int nBytesPerListEntry = EXP(LOG(nBL-1)-2);
+        return 32 + 32 * nBytesPerListEntry / 8; // cnListPopCntMax8 == 32
+    }
   #else // B_JUDYL
-    return 256 * (nBL >> 3);
+    if (nBL == 8) {
+        return 256 / 8; // cnListPopCntMax = 256
+    } else {
+        int nBytesPerListEntry = EXP(LOG(nBL-1)-2);
+        return 32 * nBytesPerListEntry / 8; // cnListPopCntMax = 32
+    }
   #endif // B_JUDYL
 #else // FAST_LIST_WORDS
   #ifdef FULL_ALLOC
@@ -373,12 +387,12 @@ ListWordsTypeList(Word_t wPopCntArg, unsigned nBL)
   #endif // FULL_ALLOC
 
     int nBytesKeySz =
-#if defined(COMPRESSED_LISTS)
+  #if defined(COMPRESSED_LISTS)
         (nBL <=  8) ? 1 : (nBL <= 16) ? 2 :
-  #if (cnBitsPerWord > 32)
+      #if (cnBitsPerWord > 32)
         (nBL <= 32) ? 4 :
-  #endif // (cnBitsPerWord > 32)
-#endif // defined(COMPRESSED_LISTS)
+      #endif // (cnBitsPerWord > 32)
+  #endif // defined(COMPRESSED_LISTS)
         sizeof(Word_t);
 
 #if defined(OLD_LISTS)
@@ -565,7 +579,11 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
 
 #ifdef B_JUDYL
   #ifdef FAST_LIST_WORDS
-    pwList = &pwList[256];
+    if (nBL == 8) {
+        pwList = &pwList[256]; // must agree with ListWordsTypeList
+    } else {
+        pwList = &pwList[32]; // must agree with ListWordsTypeList
+    }
   #else // FAST_LIST_WORDS
       #ifdef FULL_ALLOC
     pwList = (Word_t *)ALIGN_UP((Word_t)&pwList[256], sizeof(Bucket_t));
@@ -654,7 +672,11 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
 
 #ifdef B_JUDYL
   #ifdef FAST_LIST_WORDS
-    pwList = &pwList[-256];
+    if (nBL == 8) {
+        pwList = &pwList[-256];
+    } else {
+        pwList = &pwList[-32];
+    }
   #else // FAST_LIST_WORDS
       #ifdef FULL_ALLOC
     pwList = (Word_t *)((Word_t)&pwList[-256] & ~cnMallocMask);
@@ -3018,6 +3040,8 @@ embeddedKeys:;
 #else // B_JUDYL
             status = Insert(nBL, pLn, pwKeys[nn]);
 #endif // B_JUDYL
+            //DBGI(printf("Just after Insert in InsertAll(Word_t)"));
+            //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
         }
     }
 #ifndef B_JUDYL
@@ -3538,6 +3562,7 @@ InsertSwitch(qp,
              )
 {
     qv;
+    (void)nDL;
     (void)nDLOld;
 #ifdef CODE_XX_SW
     int nBW;
@@ -3846,6 +3871,11 @@ Splay(qp,
       unsigned char *pcKeys)
 {
       qv;
+      (void)wPopCnt;
+      (void)pwKeys;
+      (void)piKeys;
+      (void)psKeys;
+      (void)pcKeys;
 
       DBGI(printf("Splay nBL %d.\n", nBL));
 
@@ -7692,6 +7722,7 @@ t_list:;
     }
   #endif // defined(SKIP_LINKS)
     case T_SWITCH: {
+        goto t_switch;
 t_switch:;
         //A(0);
         DBGN(printf("T_SW wSkip %" _fw"u\n", wSkip));
@@ -8670,6 +8701,7 @@ t_list:;
     }
   #endif // defined(SKIP_LINKS)
     case T_SWITCH: {
+        goto t_switch;
 t_switch:;
         int nBits = nBL_to_nBitsIndexSz(nBL); // bits decoded by switch
         Word_t wPrefix = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);

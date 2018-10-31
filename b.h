@@ -1546,11 +1546,13 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 
 #endif // defined(LVL_IN_SW)
 
+#ifdef SKIP_LINKS
 static inline void
 Set_nBLR(Word_t *pwRoot, int nBLR)
 {
     set_wr_nBL(*pwRoot, nBLR);
 }
+#endif // SKIP_LINKS
 
 #endif // defined(LVL_IN_WR_HB)
 
