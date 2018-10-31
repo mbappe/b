@@ -5349,6 +5349,12 @@ LocateHole(qp, int nBLR, Word_t wKey)
 // If we're not using those key sizes, then there is no cost.
 // What if we have no valid-key fill?  And no pop field?
 static Word_t
+// I'm not sure why, but Insert performance seems worse if
+// EmbeddedListMagic is inlined. I noticed the performance of -DDEBUG
+// was better than -UDEBUG and this is where the investigation led me.
+#ifdef INSERT
+__attribute__ ((noinline))
+#endif // INSERT
 EmbeddedListMagic(Word_t wRoot, Word_t wKey, int nBL)
 {
 #if defined(NO_TYPE_IN_XX_SW)
