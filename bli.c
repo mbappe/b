@@ -67,9 +67,9 @@ CountSw(qp,
             DBGC(printf("embedded bitmap wPopCntLoop " OWx" wPopCnt " OWx"\n",
                         wPopCntLoop, wPopCnt));
         } else
-      #else // defined(ALLOW_EMBEDDED_BITMAP)
+      #elif defined(BITMAP) // defined(ALLOW_EMBEDDED_BITMAP
         assert(nBLLoop > (int)LOG(sizeof(Link_t) * 8));
-      #endif // defined(ALLOW_EMBEDDED_BITMAP)
+      #endif // defined(ALLOW_EMBEDDED_BITMAP) elif defined(BITMAP)
         {
             Word_t *pwrLoop = wr_pwr(wRootLoop);
             int nTypeLoop = wr_nType(wRootLoop);
@@ -981,12 +981,14 @@ t_skip_to_xx_sw:
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:;
         nBW = gnBW(qy, T_SWITCH, nBLR); // num bits decoded by this switch
-// What if nBLR <= nBW + cnLogBitsPerLink?
-// Don't we have a two-digit bitmap?
-// Shouldn't we have already changed nType when we created it?
-// Should we goto the bitmap code here?
-// Could we be doing lazy conversion with cnBitsInD1 < cnLogBitsPerLink?
-assert((nBLR > nBW + cnLogBitsPerLink) || cbEmbeddedBitmap);
+  #ifdef BITMAP
+        // What if nBLR <= nBW + cnLogBitsPerLink?
+        // Don't we have a two-digit bitmap?
+        // Shouldn't we have already changed nType when we created it?
+        // Should we goto the bitmap code here?
+        // Could we be doing lazy conversion with cnBitsInD1 < cnLogBitsPerLink?
+        assert((nBLR > nBW + cnLogBitsPerLink) || cbEmbeddedBitmap);
+  #endif // BITMAP
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
         // ((uint8_t *)&wKey)[(cnBitsPerWord - nBL) >> 3];
         // ((uint8_t *)&wKey)[cnDigitsPerWord - nDL];

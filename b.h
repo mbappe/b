@@ -541,17 +541,18 @@ typedef Word_t Bucket_t;
 
 // Default cnListPopCntMaxDl1 is 0x10 for cnBitsInD1 = 8.
 #if ! defined(cnListPopCntMaxDl1)
-  #if defined(USE_XX_SW)
-      #define cnListPopCntMaxDl1  0x10
-  #else // defined(USE_XX_SW)
-    #  if (cnBitsInD1 == 7)
-      #define cnListPopCntMaxDl1  0x08
-    #elif (cnBitsInD1 == 8)
+  // I'm confused. Should this be !defined(USE_XX_SW)?
+  #if !defined(USE_XX_SW)
         #ifdef B_JUDYL
       #define cnListPopCntMaxDl1  256  // For JudyL turn on.
         #else // B_JUDYL
       #define cnListPopCntMaxDl1  0x10
         #endif // B_JUDYL
+  #else // defined(USE_XX_SW)
+    #  if (cnBitsInD1 == 7)
+      #define cnListPopCntMaxDl1  0x08
+    #elif (cnBitsInD1 == 8)
+      #define cnListPopCntMaxDl1  0x10
     #elif (cnBitsInD1 == 9)
       #define cnListPopCntMaxDl1  0x06
     #elif (cnBitsInD1 <= 11)
@@ -776,7 +777,7 @@ enum {
     // constant before (or after) dividing.
     // But we have to round up when this is used to figure the depth of a skip
     // link from a common prefix which may be a non-integral number of digits.
-    #define nDL_from_nBL(_nBL)  (DIV_UP((_nBL), cnBitsPerDigit))
+    #define nDL_from_nBL(_nBL)  (DIV_UP_X((_nBL), cnBitsPerDigit))
 
     // In cases where rounding is not necessary we can use this.
     #define nDL_from_nBL_NIB(_nBL)  ((_nBL) / cnBitsPerDigit)
@@ -2278,7 +2279,11 @@ typedef struct {
 
 #define cnLogBitsPerLink  ((int)LOG(sizeof(Link_t)) + cnLogBitsPerByte)
 
+#ifdef ALLOW_EMBEDDED_BITMAP
 #define cbEmbeddedBitmap  (cnBitsInD1 <= cnLogBitsPerLink)
+#else // ALLOW_EMBEDDED_BITMAP
+#define cbEmbeddedBitmap  (0)
+#endif // ALLOW_EMBEDDED_BITMAP
 
 // Get the width of the branch in bits.
 // nTypeBase is type without skip, if any.

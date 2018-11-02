@@ -909,7 +909,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(CODE_XX_SW)
     Word_t wIndexCnt = EXP(nBitsIndexSz);
 
-#if ! defined(ALLOW_EMBEDDED_BITMAP)
+#if defined(BITMAP) && !defined(ALLOW_EMBEDDED_BITMAP)
     // Should we check here to see if the new switch would be equivalant to a
     // bitmap leaf and create a bitmap leaf instead?
   #if defined(CODE_BM_SW)
@@ -918,7 +918,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
   #else // defined(CODE_BM_SW)
     assert(nBL - nBitsIndexSz > (int)LOG(sizeof(Link_t) * 8));
   #endif // defined(CODE_BM_SW)
-#endif // ! defined(ALLOW_EMBEDDED_BITMAP)
+#endif // defined(BITMAP) && !defined(ALLOW_EMBEDDED_BITMAP)
 
 #if defined(CODE_BM_SW)
     if (nType == T_BM_SW)
@@ -1623,7 +1623,15 @@ OldSwitch(Word_t *pwRoot, int nBL,
 static Word_t
 GetPopCnt(Word_t *pwRoot, int nBL)
 {
+#ifdef ALLOW_EMBEDDED_BITMAP
+    if (nBL <= cnLogBitsPerLink) {
+        assert(nBL <= cnLogBitsPerWord); // multiword link not implemented yet
+        return __builtin_popcountll(*pwRoot);
+    }
+#elif BITMAP // ALLOW_EMBEDDED_BITMAP
     assert(nBL > cnLogBitsPerLink);
+#endif // ALLOW_EMBEDDED_BITMAP elif BITMAP
+
     int nBLR = GetBLR(pwRoot, nBL); // handles skip -- or not
 
 #if defined(NO_TYPE_IN_XX_SW)
@@ -3253,7 +3261,7 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
                      T_SWITCH,
                      nBLUp, wPopCnt);
     //DBGI(HexDump("After NewSwitch", pwSw, EXP(cnBitsPerDigit) + 1));
-    DBGI(printf("Just after InsertGuts calls NewSwitch"
+    DBGI(printf("Just after PrefixMismatch calls NewSwitch"
                     " for prefix mismatch.\n"));
     DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
@@ -3335,7 +3343,7 @@ PrefixMismatch(Word_t *pwRoot, int nBLUp, Word_t wKey, int nBLR)
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     set_PWR_wPopCnt(&pLinks[nIndex].ln_wRoot, NULL, nDLR, wPopCnt);
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    DBGI(printf("Just before InsertGuts calls Insert"
+    DBGI(printf("Just before PrefixMismatch calls Insert"
                     " for prefix mismatch.\n"));
     DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
@@ -3514,7 +3522,7 @@ DoubleIt(qp,
 #endif // defined(CODE_XX_SW)
 
         if (nBL == nBLOld) {
-            DBGI(printf("\n# InsertGuts After NewSwitch Dump\n"));
+            DBGI(printf("\n# DoubleIt After NewSwitch Dump\n"));
             DBGI(Dump(pwRootLast,
                       /* wPrefix */ (Word_t)0, cnBitsPerWord));
             DBGI(printf("\n"));
@@ -3581,7 +3589,7 @@ insertAll:;
     }
 
     if (nBL == nBLOld) {
-        DBGI(printf("Just Before InsertGuts calls final Insert"));
+        DBGI(printf("Just Before DoubleIt calls final Insert"));
         DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
     }
 
@@ -3620,7 +3628,7 @@ InsertSwitch(qp,
     int nBW;
 #endif // CODE_XX_SW
 #if defined(SKIP_LINKS)
-    DBGI(printf("InsertGuts newSwitch 0 nDL %d nBL %d nDLOld %d nBLOld %d\n",
+    DBGI(printf("InsertSwitch 0 nDL %d nBL %d nDLOld %d nBLOld %d\n",
                 nDL, nBL, nDLOld, nBLOld));
 
     // Apply constraints that cause us to create the new switch
@@ -3646,9 +3654,11 @@ InsertSwitch(qp,
         nDL = 2;
     }
 #endif // defined(USE_XX_SW) && ! defined(SKIP_TO_XX_SW)
-    DBGI(printf("InsertGuts newSwitch 1 nDL %d nBL %d nDLOld %d nBLOld %d\n",
+    DBGI(printf("InsertSwitch 1 nDL %d nBL %d nDLOld %d nBLOld %d\n",
                 nDL, nBL, nDLOld, nBLOld));
+#ifdef BITMAP
     assert(nBL > (int)LOG(sizeof(Link_t) * 8));
+#endif // BITMAP
 
 #if defined(PP_IN_LINK)
     // PP_IN_LINK can only support skip from top for wPrefix == 0.
@@ -3666,7 +3676,7 @@ InsertSwitch(qp,
 // Depth is in type.
     if (nDL != nDLOld) {
         if (nDL_to_tp(nDL) > (int)cnMallocMask) {
-            printf("# Oops. Can't encode absolute level for skip.\n");
+            printf("\n# Oops. Can't encode absolute level for skip.\n");
             printf("nDL %d nDLOld %d\n", nDL, nDLOld);
             nDL = nDLOld - 1;
             nBL = nDL_to_nBL(nDL);
@@ -3805,7 +3815,7 @@ InsertSwitch(qp,
 #endif // defined(CODE_XX_SW)
 
         if (nBL == nBLOld) {
-            DBGI(printf("\n# InsertGuts After NewSwitch Dump\n"));
+            DBGI(printf("\n# InsertSwitch After NewSwitch Dump\n"));
             DBGI(Dump(pwRootLast,
                       /* wPrefix */ (Word_t)0, cnBitsPerWord));
             DBGI(printf("\n"));
@@ -4131,7 +4141,7 @@ InsertAtList(qp,
     Word_t *pwValue;
 #endif // B_JUDYL
 
-    DBGI(printf("InsertGuts List\n"));
+    DBGI(printf("InsertAtList\n"));
 
     // Initialize wPopCnt, pwKeys, piKeys, psKeys and pcKeys for copy.
     // And set prefix in link if PP_IN_LINK and the list is empty and
@@ -4515,7 +4525,7 @@ copyWithInsertWord:
     else
 #endif // (cwListPopCntMax != 0)
     {
-        DBGI(printf("List is full nBL %d.\n", nBL));
+        DBGI(printf("List is full nBL %d wPopCnt %zd.\n", nBL, wPopCnt));
 
   #ifdef B_JUDYL
         pwValue =
@@ -4599,6 +4609,7 @@ InsertGuts(qp, Word_t wKey, int nPos
     }
 #endif // defined(NO_TYPE_IN_XX_SW)
 
+#ifdef BITMAP
     // Check to see if we're at the bottom before checking nType since
     // nType may be invalid if wRoot is an embedded bitmap.
     // The first test can be done at compile time and might make the
@@ -4607,7 +4618,6 @@ InsertGuts(qp, Word_t wKey, int nPos
         return InsertAtDl1(pwRoot, wKey, nDL, nBL, wRoot);
     }
 
-#ifdef BITMAP
     if ((nType == T_BITMAP)
   #if defined(SKIP_TO_BITMAP)
         || (nType == T_SKIP_TO_BITMAP)
@@ -5992,9 +6002,9 @@ Initialize(void)
                  " makes no sense.\n");
         printf("# Mabye increase cnBitsInD1 or decrease sizeof(Link_t).\n");
     }
-#if ! defined(ALLOW_EMBEDDED_BITMAP)
+#if defined(BITMAP) && !defined(ALLOW_EMBEDDED_BITMAP)
     assert(EXP(cnBitsInD1) > sizeof(Link_t) * 8);
-#endif // ! defined(ALLOW_EMBEDDED_BITMAP)
+#endif // defined(BITMAP) && !defined(ALLOW_EMBEDDED_BITMAP)
     assert(EXP(cnBitsLeftAtDl2) > sizeof(Link_t) * 8);
 
 // SAVE_PREFIX should be called SAVE_PREFIX_PTR?
@@ -7501,10 +7511,19 @@ NextGuts(Word_t *pwRoot, int nBL,
     (void)bEmpty;
     Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
     Word_t wRoot = *pwRoot;
-    Word_t *pwr = wr_pwr(wRoot);
     DBGN(printf("NextGuts(wRoot " OWx" nBL %d *pwKey " OWx
-                    " wSkip %" _fw"d bPrev %d bEmpty %d) pwr %p\n",
-                wRoot, nBL, *pwKey, wSkip, bPrev, bEmpty, (void *)pwr));
+                    " wSkip %" _fw"d bPrev %d bEmpty %d)\n",
+                wRoot, nBL, *pwKey, wSkip, bPrev, bEmpty));
+    Word_t *pwr;
+    int nBitNum; (void)nBitNum; // BITMAP
+#ifdef ALLOW_EMBEDDED_BITMAP
+    pwr = pwRoot;
+    if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
+        nBitNum = *pwKey & MSK(cnLogBitsPerWord) & MSK(nBL);
+        goto embeddedBitmap;
+    }
+#endif // ALLOW_EMBEDDED_BITMAP
+    pwr = wr_pwr(wRoot);
     int nType = wr_nType(wRoot);
     DBGN(printf("nBL %d pLn 0x%zx pwRoot 0x%zx nType %d pwr 0x%zx\n",
                 nBL, (size_t)pLn, (size_t)pwRoot, nType, (size_t)pwr));
@@ -7669,10 +7688,12 @@ t_list:;
     }
       #endif // defined(SKIP_TO_BITMAP)
     case T_BITMAP: {
+        nBitNum = *pwKey & MSK(cnLogBitsPerWord);
+        goto embeddedBitmap;
+embeddedBitmap:;
         DBGN(printf("T_BITMAP *pwKey " OWx" wSkip %" _fw"u\n", *pwKey, wSkip));
         assert(nBL != cnBitsPerWord);
         int nWordNum = (*pwKey & MSK(nBL)) >> cnLogBitsPerWord;
-        int nBitNum = *pwKey & MSK(cnLogBitsPerWord);
         if (bPrev) {
             //A(0);
             Word_t wBm = pwr[nWordNum];
@@ -7707,7 +7728,12 @@ t_list:;
                 if ((Word_t)nPopCnt > wSkip) { /*A(0);*/ break; }
                 //A(0);
                 wSkip -= nPopCnt;
-                if (++nWordNum >= (int)EXP(nBL - cnLogBitsPerWord)) {
+                if (++nWordNum >= (int)(
+#ifdef ALLOW_EMBEDDED_BITMAP
+                    (nBL <= cnLogBitsPerWord) ? 0 :
+#endif // ALLOW_EMBEDDED_BITMAP
+                        EXP(nBL - cnLogBitsPerWord)))
+                {
                     //A(0);
                     return wSkip + 1;
                 }
@@ -8412,7 +8438,7 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
 #endif // B_JUDYL
     }
-    DBGN(printf("J1F: *pwKey " OWx"\n", *pwKey));
+    DBGN(printf("\nJ1F: *pwKey " OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
     Word_t wCount = NextGuts((Word_t *)&PArray, cnBitsPerWord, &wKey,
                              /* wCount */ 0, /* bPrev */ 0, /* bEmpty */ 0);
@@ -8511,7 +8537,7 @@ Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
 #endif // B_JUDYL
     }
-    DBGN(printf("J1L: *pwKey " OWx"\n", *pwKey));
+    DBGN(printf("\nJ1L: *pwKey " OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
     Word_t wCount = NextGuts((Word_t *)&PArray, cnBitsPerWord, &wKey,
                              /* wCount */ 0, /* bPrev */ 1, /* bEmpty */ 0);
@@ -8589,11 +8615,19 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
 {
     Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
     Word_t wRoot = *pwRoot;
-    Word_t *pwr = wr_pwr(wRoot);
     DBGN(printf("NextEmptyGuts(pwRoot %p *pwKey %p nBL %d bPrev %d)"
-                    " wRoot %p pwr %p\n",
-                (void *)pwRoot, (void *)*pwKey, nBL, bPrev,
-                (void *)wRoot, (void *)pwr));
+                    " wRoot %p\n",
+                (void *)pwRoot, (void *)*pwKey, nBL, bPrev, (void *)wRoot));
+    Word_t *pwr;
+    int nBitNum; (void)nBitNum; // BITMAP
+#ifdef ALLOW_EMBEDDED_BITMAP
+    pwr = pwRoot;
+    if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
+        nBitNum = *pwKey & MSK(cnLogBitsPerWord) & MSK(nBL);
+        goto embeddedBitmap;
+    }
+#endif // ALLOW_EMBEDDED_BITMAP
+    pwr = wr_pwr(wRoot);
     int nIncr;
     int nType = wr_nType(wRoot);
     switch (nType) {
@@ -8699,12 +8733,14 @@ t_list:;
     }
       #endif // defined(SKIP_TO_BITMAP)
     case T_BITMAP:; {
+        nBitNum = *pwKey & MSK(cnLogBitsPerWord);
+        goto embeddedBitmap;
+embeddedBitmap:;
         // skip over the bitmap if it is full pop
         if (GetPopCnt(pwRoot, nBL) == EXP(nBL)) {
             return Failure;
         }
         int nWordNum = (*pwKey & MSK(nBL)) >> cnLogBitsPerWord;
-        int nBitNum = *pwKey & MSK(cnLogBitsPerWord);
         if (bPrev) {
             Word_t wBm = ~pwr[nWordNum];
             if (nBitNum < cnBitsPerWord - 1) {
@@ -8725,6 +8761,9 @@ t_list:;
         } else {
             // invert bits so empty looks full then keep high bits
             Word_t wBm = ~pwr[nWordNum] & ~MSK(nBitNum);
+            if (nBL < cnLogBitsPerWord) {
+                wBm &= MSK(EXP(nBL));
+            }
             for (;;) {
                 if (wBm != 0) {
                     nBitNum = __builtin_ctzll(wBm);
@@ -8732,13 +8771,19 @@ t_list:;
                            | (nWordNum << cnLogBitsPerWord) | nBitNum;
                     return Success;
                 }
-                if (++nWordNum >= (int)EXP(nBL - cnLogBitsPerWord)) {
+                if (++nWordNum >= (int)(
+#ifdef ALLOW_EMBEDDED_BITMAP
+                    (nBL <= cnLogBitsPerWord) ? 0 :
+#endif // ALLOW_EMBEDDED_BITMAP
+                        EXP(nBL - cnLogBitsPerWord)))
+                {
                     return Failure;
                 }
                 wBm = ~pwr[nWordNum];
             }
         }
     }
+    assert(0);
   #endif // BITMAP
   #if defined(SKIP_LINKS)
     default: {
@@ -8926,7 +8971,7 @@ Judy1FirstEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         DBGN(printf("J1FE: ret %d\n", ret));
         return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
-    DBGN(printf("J1FE: *pwKey " OWx"\n", *pwKey));
+    DBGN(printf("\nJ1FE: *pwKey " OWx"\n", *pwKey));
     Word_t wKeyLocal = *pwKey;
     Status_t status = NextEmptyGuts((Word_t *)&PArray,
                                     &wKeyLocal, cnBitsPerWord, /* bPrev */ 0);
@@ -9001,7 +9046,7 @@ Judy1LastEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         DBGN(printf("J1LE: ret %d\n", ret));
         return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
-    DBGN(printf("J1LE: *pwKey " OWx"\n", *pwKey));
+    DBGN(printf("\nJ1LE: *pwKey " OWx"\n", *pwKey));
     Word_t wKeyLocal = *pwKey;
     Status_t status = NextEmptyGuts((Word_t *)&PArray,
                                      &wKeyLocal, cnBitsPerWord, /* bPrev */ 1);

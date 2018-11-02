@@ -11,6 +11,9 @@
   #define NO_EMBED_KEYS
   #undef  NO_UA_PARALLEL_128
   #define NO_UA_PARALLEL_128
+  #undef  NO_BITMAP
+  #define NO_BITMAP
+  #undef ALLOW_EMBEDDED_BITMAP
 #endif // B_JUDYL
 
 // Choose conditional features and tuning parameters by #if, #define
@@ -31,10 +34,19 @@
 
 // BITMAP is required for one-digit and two-digit T_BITMAP bitmaps
 // and for embedded bitmaps.
-#ifndef   NO_BITMAP
+#ifdef   NO_BITMAP
+  #ifdef BITMAP
+    #error Cannot have BITMAP and NO_BITMAP
+  #endif // BITMAP
+#else // NO_BITMAP
   #undef     BITMAP
   #define    BITMAP
 #endif // NO_BITMAP
+#ifndef BITMAP
+  #ifdef ALLOW_EMBEDDED_BITMAP
+    #error ALLOW_EMBEDDED_BITMAP requires BITMAP
+  #endif // ALLOW_EMBEDDED_BITMAP
+#endif // BITMAP
 
 // No sense requesting extra memory that we don't have a use for by default.
 #define LIST_REQ_MIN_WORDS
