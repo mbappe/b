@@ -1924,21 +1924,38 @@ t_bitmap:;
             assert(cnBitsInD1 > LOG(sizeof(Link_t) * 8));
       #endif // defined(ALLOW_EMBEDDED_BITMAP)
             {
-                wPopCnt = 0;
-                unsigned nWordOffset = (wKey & MSK(nBLR)) >> cnLogBitsPerWord;
-                unsigned nn;
-                for (nn = 0; nn < nWordOffset; nn++) {
-                    wPopCnt += __builtin_popcountll(pwr[nn]);
+                int nWordOffset = (wKey & MSK(nBLR)) >> cnLogBitsPerWord;
+                // Do we count from the front or the back? If nBLR is small
+                // enough it's faster to just always count from the same
+                // end rather than going to the trouble of figuring out
+                // which end is closer.
+                if ((nBLR > 8) && wKey & EXP(nBLR - 1)) {
+                    wPopCnt
+                        = w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)),
+                                      nBLR);
+                    if (wPopCnt == 0) {
+                        wPopCnt = EXP(nBLR);
+                    }
+                    for (int nn = nWordOffset + 1;
+                             nn < (int)EXP(nBLR - cnLogBitsPerWord); nn++) {
+                        wPopCnt -= __builtin_popcountll(pwr[nn]);
+                    }
+                    Word_t wBmMask
+                        = ((Word_t)-1 << (wKey & (cnBitsPerWord - 1)));
+                    wPopCnt
+                        -= __builtin_popcountll(pwr[nWordOffset] & wBmMask);
                 }
-                Word_t wBit = ((Word_t)1 << (wKey & (cnBitsPerWord - 1)));
-                Word_t wBmMask = wBit - 1;
-                //Word_t wBmMask = (wBit | wBit - 1);
-                wPopCnt += __builtin_popcountll(pwr[nn] & wBmMask);
-                DBGC(printf("T_BITMAP: nWordOffset 0x%x wBit " OWx
-                            " wBmMask " OWx
-                            " wPopCnt %" _fw"d wPopCntSum + wPopCnt %" _fw"d\n",
-                            nWordOffset, wBit, wBmMask, wPopCnt,
-                            wPopCntSum + wPopCnt));
+                else
+                {
+                    wPopCnt = 0;
+                    for (int nn = 0; nn < nWordOffset; nn++) {
+                        wPopCnt += __builtin_popcountll(pwr[nn]);
+                    }
+                    Word_t wBmMask
+                        = ((Word_t)1 << (wKey & (cnBitsPerWord - 1))) - 1;
+                    wPopCnt
+                        += __builtin_popcountll(pwr[nWordOffset] & wBmMask);
+                }
             }
             wPopCntSum += wPopCnt;
             DBGC(printf("bm nBLR %d wPopCnt " OWx" wPopCntSum " OWx"\n",

@@ -4092,10 +4092,10 @@ Splay(qp,
     return InsertSwitch(qy, wKey, nDL, nDLOld,
                         nBLOld
   #ifdef SKIP_TO_XX_SW
-                        , nBLUp
+                      , nBLUp
   #endif // SKIP_TO_XX_SW
 #if defined(CODE_XX_SW)
-                        , pLnUp
+                      , pLnUp
 #endif // defined(CODE_XX_SW)
                         );
 }
@@ -7370,22 +7370,22 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
     // It does not include the specified key.
     Word_t wCount0 = (wKey0 == 0) ? 0 : Count(cnBitsPerWord, pLn, wKey0);
     DBGC(printf("Count wKey0 " OWx" Count0 %" _fw"d\n", wKey0, wCount0));
-    Word_t wCount1 = Count(cnBitsPerWord, pLn, wKey1);
+    Word_t wCount1 = (wKey1 == 0) ? 0 : Count(cnBitsPerWord, pLn, wKey1);
     DBGC(printf("Count wKey1 " OWx" Count1 %" _fw"d\n", wKey1, wCount1));
     Word_t wCount = wCount1 - wCount0;
 #ifdef B_JUDYL
     PPvoid_t ppvTest = JudyLGet(PArray, wKey1, NULL); (void)ppvTest;
     DBGC(printf("ppvTest %p\n", (void *)ppvTest));
-    wCount += JudyLGet(PArray, wKey1, NULL) != NULL;
+    wCount += (ppvTest != NULL);
 #else // B_JUDYL
     int bTest = Judy1Test(PArray, wKey1, NULL); (void)bTest;
     DBGC(printf("bTest %d\n", bTest));
-    wCount += Judy1Test(PArray, wKey1, NULL);
+    wCount += bTest;
 #endif // B_JUDYL
     DBGC(printf("Judy1Count will return wCount %" _fw"d\n", wCount));
 
-    if ((wKey0 == 0) && (wKey1 == (Word_t)-1))
-    {
+#if 0
+    if ((wKey0 == 0) && (wKey1 == (Word_t)-1)) {
         unsigned nType = wr_nType(wRoot);
         Word_t *pwr = wr_pwr(wRoot);
         Word_t wPopCnt; (void)wPopCnt;
@@ -7426,7 +7426,6 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
         }
 
   #if defined(DEBUG)
-#if 0
         if ((wPopCnt != wPopCntTotal)
       #ifdef B_JUDYL
             && !bPopCntTotalIsInvalid
@@ -7444,7 +7443,6 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
         assert(wPopCnt == wPopCntTotal || bPopCntTotalIsInvalid);
       #else // B_JUDYL
         assert(wPopCnt == wPopCntTotal);
-#endif
       #endif // B_JUDYL
 
         if (wPopCnt != wCount)
@@ -7459,6 +7457,7 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
         assert(wPopCnt == wCount);
   #endif // defined(DEBUG)
     }
+#endif // 0
 
     DBGC(printf("Judy1Count returning wCount %" _fw"d\n", wCount));
     return wCount;
