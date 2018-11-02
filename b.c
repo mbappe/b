@@ -6015,9 +6015,9 @@ Initialize(void)
     // in a different word anyway.  See comments at tp_to_nDL in b.h.
     if (nDL_to_tp(cnDigitsPerWord - 1) > cnMallocMask) {
         printf("\n");
-        printf("nDL_to_tp(cnDigitsPerWord   %2d) 0x%02x\n",
+        printf("# nDL_to_tp(cnDigitsPerWord   %2d) 0x%02x\n",
                cnDigitsPerWord, nDL_to_tp(cnDigitsPerWord));
-        printf("tp_to_nDL(cnMallocMask    0x%02x)   %2d\n",
+        printf("# tp_to_nDL(cnMallocMask    0x%02x)   %2d\n",
                (int)cnMallocMask, (int)tp_to_nDL(cnMallocMask));
     }
       #endif // ! defined(LVL_IN_SW)
