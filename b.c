@@ -1628,9 +1628,9 @@ GetPopCnt(Word_t *pwRoot, int nBL)
         assert(nBL <= cnLogBitsPerWord); // multiword link not implemented yet
         return __builtin_popcountll(*pwRoot);
     }
-#elif BITMAP // ALLOW_EMBEDDED_BITMAP
+#elif defined(BITMAP) // ALLOW_EMBEDDED_BITMAP
     assert(nBL > cnLogBitsPerLink);
-#endif // ALLOW_EMBEDDED_BITMAP elif BITMAP
+#endif // ALLOW_EMBEDDED_BITMAP elif defined(BITMAP)
 
     int nBLR = GetBLR(pwRoot, nBL); // handles skip -- or not
 
@@ -1864,6 +1864,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
     {
 #if ! defined(USE_XX_SW)
         assert((nType == T_BITMAP) || (nBL == cnBitsInD1));
+        //assert((nType == T_BITMAP) || (nBL <= (int)LOG(sizeof(Link_t) * 8)));
 #endif // ! defined(USE_XX_SW)
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         if (bDump) {
@@ -4614,7 +4615,9 @@ InsertGuts(qp, Word_t wKey, int nPos
     // nType may be invalid if wRoot is an embedded bitmap.
     // The first test can be done at compile time and might make the
     // InsertAtDl1 go away.
-    if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nBL == cnBitsInD1)) {
+    if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nBL == cnBitsInD1))
+    //if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nBL <= (int)LOG(sizeof(Link_t) * 8)))
+    {
         return InsertAtDl1(pwRoot, wKey, nDL, nBL, wRoot);
     }
 
@@ -6004,8 +6007,8 @@ Initialize(void)
     }
 #if defined(BITMAP) && !defined(ALLOW_EMBEDDED_BITMAP)
     assert(EXP(cnBitsInD1) > sizeof(Link_t) * 8);
-#endif // defined(BITMAP) && !defined(ALLOW_EMBEDDED_BITMAP)
     assert(EXP(cnBitsLeftAtDl2) > sizeof(Link_t) * 8);
+#endif // defined(BITMAP) && !defined(ALLOW_EMBEDDED_BITMAP)
 
 // SAVE_PREFIX should be called SAVE_PREFIX_PTR?
 #if defined(SAVE_PREFIX)
@@ -7517,8 +7520,8 @@ NextGuts(Word_t *pwRoot, int nBL,
     Word_t *pwr;
     int nBitNum; (void)nBitNum; // BITMAP
 #ifdef ALLOW_EMBEDDED_BITMAP
-    pwr = pwRoot;
     if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
+        pwr = pwRoot;
         nBitNum = *pwKey & MSK(cnLogBitsPerWord) & MSK(nBL);
         goto embeddedBitmap;
     }
@@ -8621,8 +8624,8 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
     Word_t *pwr;
     int nBitNum; (void)nBitNum; // BITMAP
 #ifdef ALLOW_EMBEDDED_BITMAP
-    pwr = pwRoot;
     if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
+        pwr = pwRoot;
         nBitNum = *pwKey & MSK(cnLogBitsPerWord) & MSK(nBL);
         goto embeddedBitmap;
     }

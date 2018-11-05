@@ -23,7 +23,7 @@
 
 // Do integer division by a power of two, but round up instead of down.
 #define DIV_UP(_idend, _isor) \
-    (assert(__builtin_popcountll(_isor) == 1), \
+    (/*assert(__builtin_popcountll(_isor) == 1),*/ \
         (((_idend) + (_isor) - 1) / (_isor)))
 
 #define DIV_UP_X(_idend, _isor)  (((_idend) + (_isor) - 1) / (_isor))
