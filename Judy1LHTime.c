@@ -167,11 +167,12 @@ Word_t j__TotalBytesAllocated;
 //  For figuring out how much different structures contribute.   Must be
 //  turned on in source compile of Judy with -DRAMMETRICS
 
-Word_t    j__MissCompares;            // number times LGet/1Test called
-Word_t    j__SearchPopulation;          // Population of Searched object
-Word_t    j__DirectHits;                // Number of direct hits -- no search
-Word_t    j__SearchGets;                // Number of object calls
-//Word_t    j__TreeDepth;                 // number time Branch_U called
+Word_t    j__MisComparesP;            // number times LGet/1Test called
+Word_t    j__MisComparesM;            // number times LGet/1Test called
+Word_t    j__DirectHits;               // Number of direct hits -- no search
+Word_t    j__SearchPopulation;         // Population of Searched object
+Word_t    j__GetCalls;                 // number of search calls
+//Word_t    j__TreeDepth;                // number time Branch_U called
 
 extern Word_t    j__AllocWordsTOT;
 extern Word_t    j__MFlag;                     // Print memory allocation on stderr
@@ -937,7 +938,8 @@ PrintHeader(const char *strFirstCol)
         printf("  B1/K");
         printf("  JV/K");
 
-        printf(" MsCmp");
+        printf(" +MsCm");
+        printf(" -MsCm");
         printf(" %%DiHt");
 
 //        printf(" TrDep");
@@ -950,6 +952,8 @@ PrintHeader(const char *strFirstCol)
             printf(" MFL/K");
         if (JHFlag)
             printf(" MFHS/K");
+
+        printf("  mmap/K");
     }
     printf("\n");
 }
@@ -1131,6 +1135,13 @@ static struct option longopts[] = {
     { NULL, 0, NULL, 0 }
 };
 
+Word_t    MisComparesP;            // number times LGet/1Test called
+Word_t    MisComparesM;            // number times LGet/1Test called
+Word_t    DirectHits;               // Number of direct hits -- no search
+Word_t    SearchPopulation;         // Population of Searched object
+Word_t    GetCalls;                 // number of search calls
+
+
 #ifndef OLD_DS1_GROUPS
 
 #define EXP(x) ((Word_t)1<<(x))
@@ -1217,10 +1228,6 @@ main(int argc, char *argv[])
 //    double    TreeDepth = 0;
     Word_t    LittleOffset = 0;
     Word_t    BigOffset = 0;
-
-//    double    SearchPopulation = 0;     // Population of Searched object
-    double    DirectHits = 0;           // Number of direct hits
-    double    SearchGets = 0;           // Number of object calls
 
     int       Col;
     int       c;
@@ -2520,7 +2527,8 @@ main(int argc, char *argv[])
         printf("# COLHEAD %2d B1  - Bitmap Leaf 1 Bit Key/Key\n", Col++);
         printf("# COLHEAD %2d VA  - Value area Words/Key\n", Col++);
 
-        printf("# COLHEAD %2d MsCmp  - Average number missed Compares Per Leaf Search\n", Col++);
+        printf("# COLHEAD %2d +MsCm  - Average number forward Compares failed Per Leaf Search\n", Col++);
+        printf("# COLHEAD %2d -MsCm  - Average number reverse Compares failed Per Leaf Search\n", Col++);
         printf("# COLHEAD %2d %%DiHt - %% of Direct Hits per Leaf Search\n", Col++);
 
 //        printf("# COLHEAD %2d TrDep  - Tree depth with LGet/1Test searches\n", Col++);
@@ -2539,6 +2547,9 @@ main(int argc, char *argv[])
             printf
                 ("# COLHEAD %2d MFHS/K   - JudyHS average malloc+free's per Key\n",
                  Col++);
+
+            printf
+                ("# COLHEAD %2d mmap/K   - mmap()ed Words per Key\n", Col++);
     }
     if (J1Flag)
         printf("# %s - Leaf sizes in Words\n", Judy1MallocSizes);
@@ -3097,9 +3108,6 @@ nextPart:
                 }
 
 //            TreeDepth        = j__TreeDepth;
-//            SearchPopulation = j__SearchPopulation;
-                DirectHits      = j__DirectHits;           // Number of direct hits
-                SearchGets       = j__SearchGets;           // Number of object calls
 
                 if (J1Flag)
                 {
@@ -3173,10 +3181,6 @@ nextPart:
             TestJudyLGet(JL, &BeginSeed, Meas);
 
 //            TreeDepth        = j__TreeDepth;
-
-//            SearchPopulation = j__SearchPopulation;
-            DirectHits       = j__DirectHits;           // Number of direct hits
-            SearchGets       = j__SearchGets;           // Number of object calls
 
             if (Pop1 == wFinalPop1) {
                 if (tFlag)
@@ -3505,22 +3509,12 @@ nextPart:
             if (mFlag && (bFlag == 0) && (yFlag == 0))
             {
 //                double AveSrcCmp, PercentLeafSearched;
-                double PercentLeafWithDirectHits;
 
 //              Calc average compares done in Leaf for this measurement interval
 //                AveSrcCmp = SearchCompares / (double)Meas;
 //                AveSrcCmp = DirectHits / SearchGets;
 
 //              Calc average percent of Leaf searched
-//                if (SearchPopulation == 0)
-//                    PercentLeafWithDirectHits = 0.0;
-//                else
-//                    PercentLeafWithDirectHits = SearchCompares / SearchPopulation * 100.0;
-//
-                if (SearchGets == 0)
-                    PercentLeafWithDirectHits = 0.0;
-                else
-                    PercentLeafWithDirectHits = DirectHits / SearchGets * 100.0;
 
                 PRINT5_2f((double)j__AllocWordsJBB   / (double)Pop1);       // 256 node branch
                 PRINT5_2f((double)j__AllocWordsJBU   / (double)Pop1);       // 256 node branch
@@ -3544,30 +3538,33 @@ nextPart:
 
 
 //              print average number of failed compares done in leaf search
-//                printf(" %6.1f", AveSrcCmp);
-//                PRINT5_2f(j__MissCompares / (double)Meas);
-                printf(" %5.1f", (double)j__MissCompares / (double)Meas);
+                if (GetCalls - DirectHits)
+                {
+                    PRINT5_2f((double)MisComparesP / (double)(GetCalls - DirectHits) / XScale);
+                    PRINT5_2f((double)MisComparesM / (double)(GetCalls - DirectHits) / XScale);
+                }
+                else
+                {
+                    printf("    00");
+                    printf("    00");
+                }
 
-//printf("\nj__MissCompares = %" PRIuPTR", Meas = %" PRIuPTR"\n", j__MissCompares, Meas);
+//printf("\nMisComparesP = %" PRIuPTR", Meas = %" PRIuPTR"\n", MisComparesP, Meas);
+//printf("\nMisComparesM = %" PRIuPTR", Meas = %" PRIuPTR"\n", MisComparesM, Meas);
 
-//              print average percent of Leaf searched (with compares)
-                printf(" %5.1f", PercentLeafWithDirectHits);
+                if (GetCalls)
+                {
+                    PRINT5_2f((double)DirectHits / (double)GetCalls);
+                    PRINT5_2f((double)SearchPopulation / (double)GetCalls / XScale); // ave search Pop1
+                }
+                else
+                {
+                    printf("    00");
+                    printf("    00");
+                }
 
 //              print average number of Branches traversed per lookup
 //                printf(" %5.1f", TreeDepth / (double)Meas);
-//
-                if (j__SearchGets == 0)
-                    printf(" %5.1f", 0.0);
-                else
-                    printf(" %5.1f", (double)j__SearchPopulation / (double)j__SearchGets);
-
-//              reset for next measurement
-//                j__SearchPopulation = j__TreeDepth = j__MissCompares = j__DirectHits = j__SearchGets = 0;
-                j__SearchPopulation = j__MissCompares = j__DirectHits = j__SearchGets = 0;
-
-
-// SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSss
-
 
 //              Print the percent efficiency of dlmalloc
                 PRINT7_3f(j__AllocWordsTOT / (double)(j__TotalBytesAllocated / sizeof(Word_t)));
@@ -3578,10 +3575,11 @@ nextPart:
                 if (JHFlag)
                     PRINT5_2f(DeltaMalFreHSSum / Pms[grp].ms_delta);
             }
-            if (yFlag || bFlag)
+////////////            if (yFlag || bFlag)
             {
-                printf(" %14.2f", ((double)j__TotalBytesAllocated / sizeof(Word_t)) / (double)Pop1);
+                PRINT7_3f(((double)(j__TotalBytesAllocated / sizeof(Word_t))) / (double)Pop1);
             }
+printf(" %ld", GetCalls);
             printf("\n");
             if (fFlag)
                 fflush(NULL);                   // assure data gets to file in case malloc fail
@@ -4377,8 +4375,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
             Word_t wFeedBTapLocal = wFeedBTap; // don't know why this is faster
 
 //          reset for next measurement
-//            j__SearchPopulation = j__TreeDepth = j__MissCompares = j__DirectHits = j__SearchGets = 0;
-            j__SearchPopulation = j__MissCompares = j__DirectHits = j__SearchGets = 0;
+            j__SearchPopulation = j__MisComparesP = j__MisComparesM = j__DirectHits = j__GetCalls = 0;
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
@@ -4416,6 +4413,13 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
             }
             ENDTm(DeltanSec1);
 
+//          Save for later (these parameters are just for Get/Test)
+            MisComparesP    = j__MisComparesP;
+            MisComparesM    = j__MisComparesM;
+            DirectHits       = j__DirectHits;
+            SearchPopulation = j__SearchPopulation; 
+            GetCalls         = j__GetCalls;
+
             if (DminTime > DeltanSec1)
             {
                 icnt = ICNT;
@@ -4440,8 +4444,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
             WorkingSeed = *PSeed;
 
 //          reset for next measurement
-//            j__SearchPopulation = j__TreeDepth = j__MissCompares = j__DirectHits = j__SearchGets = 0;
-            j__SearchPopulation = j__MissCompares = j__DirectHits = j__SearchGets = 0;
+            j__SearchPopulation = j__MisComparesP = j__MisComparesM = j__DirectHits = j__GetCalls  = 0;
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
@@ -4482,6 +4485,12 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
                 }
             }
             ENDTm(DeltanSecL);
+//          Save for later (these parameters are just for Get/Test)
+            MisComparesP =     j__MisComparesP;
+            MisComparesM =     j__MisComparesM;
+            DirectHits =        j__DirectHits;
+            SearchPopulation =  j__SearchPopulation; 
+            GetCalls =          j__GetCalls;
 
             if (DminTime > DeltanSecL)
             {
@@ -4506,8 +4515,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
         {
             WorkingSeed = *PSeed;
 
-//            j__SearchPopulation = j__TreeDepth = j__MissCompares = j__DirectHits = j__SearchGets = 0;
-            j__SearchPopulation = j__MissCompares = j__DirectHits = j__SearchGets = 0;
+            j__SearchPopulation = j__MisComparesP = j__MisComparesM = j__DirectHits = j__GetCalls = 0;
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
@@ -4564,8 +4572,7 @@ TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elements)
         WorkingSeed = *PSeed;
 
 //      reset for next measurement
-//        j__SearchPopulation = j__TreeDepth = j__MissCompares = j__DirectHits = j__SearchGets = 0;
-            j__SearchPopulation = j__MissCompares = j__DirectHits = j__SearchGets = 0;
+        j__SearchPopulation = j__MisComparesP = j__MisComparesM = j__DirectHits, j__GetCalls = 0;
 
         TstKey = GetNextKey(&WorkingSeed);    // Get 1st Key
 
@@ -4576,6 +4583,12 @@ TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elements)
                 TstKey = *(PWord_t)JudyLGet(JL, TstKey, PJE0);
         }
         ENDTm(DeltanSecL);
+//      Save for later (these parameters are just for Get/Test)
+        MisComparesP =     j__MisComparesP;
+        MisComparesM =     j__MisComparesM;
+        DirectHits =        j__DirectHits;
+        SearchPopulation =  j__SearchPopulation; 
+        GetCalls =          j__GetCalls;
 
         if (DminTime > DeltanSecL)
         {
@@ -5289,7 +5302,7 @@ TestJudyDel(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
                     {
                         Rc = Judy1Test(*J1, TstKey, PJE0);
 
-                        if (Rc)
+                        if (Rc != 0)
                         {
                             printf("\n--- Judy1Test success after Judy1Unset, Key = 0x%" PRIxPTR"", TstKey);
                             //Judy1Dump((Word_t)*J1, sizeof(Word_t) * 8, 0);
