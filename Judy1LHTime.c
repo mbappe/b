@@ -277,7 +277,7 @@ fprintf(stderr,"\n--- Error: %s %" PRIuPTR", file='%s', 'function='%s', line %d\
         exit(1);                                                        \
 }
 
-#define MINLOOPS 1
+#define MINLOOPS 2
 #define MAXLOOPS 1000
 
 // Maximum of 10 loops with no improvement
@@ -1645,9 +1645,9 @@ main(int argc, char *argv[])
             break;
 
         case 't':                      // print Number Generator cost
-#ifndef DO_TIT
+#ifndef DO_TIT0
             printf("\n# Warning -- compile with -DDO_TIT to use '-t'.\n");
-#endif // DO_TIT
+#endif // DO_TIT0
             tFlag = 1;
             break;
 
@@ -2001,7 +2001,7 @@ main(int argc, char *argv[])
         printf("M");
     if (KFlag)
         printf("K");
-    if (PartitionDeltaFlag)
+    if (!PartitionDeltaFlag)
         printf("Z");
 
     if (Bpercent == 100.0) {
@@ -2694,12 +2694,25 @@ main(int argc, char *argv[])
 // PRINT INITIALIZE COMMENTS IN YOUR VERSION OF JUDY FOR INFO
 // ============================================================
 
-    if (J1Flag)         // put initialize comments in
-        Bytes = Judy1FreeArray(NULL, PJE0);
-    if (JLFlag)
-        Bytes = JudyLFreeArray(NULL, PJE0);
-    if (JHFlag)
-        Bytes = JudyHSFreeArray(NULL, PJE0);
+    // Calling JudyXFreeArray with a NULL pointer gives Judy an
+    // opportunity to put configuration information, e.g. ifdefs,
+    // into the output for later reference.
+    // Maybe we should have used JudyX[Set|Ins](NULL) for global
+    // initialization and JudyXFreeArray for global cleanup.
+    if (J1Flag) { Judy1FreeArray(NULL, PJE0); }
+    if (JLFlag) { JudyLFreeArray(NULL, PJE0); }
+    if (JHFlag) { JudyHSFreeArray(NULL, PJE0); }
+
+    // Warm up, e.g. JudyMalloc and caches.
+    Tit = 1;
+    DummySeed = StartSeed;
+    TestJudyIns(&J1, &JL, &JH, &DummySeed, /* Elements */ 1000);
+    DummySeed = StartSeed;
+    TestJudyGet(J1, JL, JH, &DummySeed, /* Elements */ 1000,
+                Tit, KFlag, hFlag, bLfsrOnly);
+    if (J1Flag) { Judy1FreeArray(&J1, NULL); }
+    if (JLFlag) { JudyLFreeArray(&JL, NULL); }
+    if (JHFlag) { JudyHSFreeArray(&JH, NULL); }
 
 // ============================================================
 // PRINT COLUMNS HEADER TO PERFORMANCE TIMERS
@@ -2720,12 +2733,19 @@ main(int argc, char *argv[])
 
     Word_t wFinalPop1 = 0;
 
+    double DeltaGenIns1Min = 1000.0;
+    double DeltaGenInsLMin = 1000.0;
+    double DeltaGenInsHSMin = 1000.0;
+    double DeltaGenGet1Min = 1000.0;
+    double DeltaGenGetLMin = 1000.0;
+    double DeltaGenGetHSMin = 1000.0;
+
     for (Pop1 = grp = 0; grp < Groups; grp++)
     {
-        Word_t    Delta;
-        double    DeltaGen1;
-        double    DeltaGenL;
-        double    DeltaGenHS;
+        Word_t Delta;
+        double DeltaGen1 = 0.0;
+        double DeltaGenL = 0.0;
+        double DeltaGenHS = 0.0;
         double DeltanSec1Sum = 0.0;
         double DeltanSecLSum = 0.0;
         double DeltanSecHSSum = 0.0;
@@ -2842,11 +2862,11 @@ nextPart:
         }
 #endif // CALC_NEXT_KEY
 
-#ifdef DO_TIT
-        int bDoTit = 1;
-#else // DO_TIT
-        int bDoTit = (Meas <= 256); // bDoTit threshold is 256
-#endif // DO_TIT
+#ifdef DO_TIT0
+        int bDoTit0 = 1;
+#else // DO_TIT0
+        int bDoTit0 = (Delta <= 10000);
+#endif // DO_TIT0
 
         if (bFirstPart) {
             // first part of Delta
@@ -2902,7 +2922,7 @@ nextPart:
             if (bFirstPart || (Pop1 == wFinalPop1)) {
                 // first or last part of delta
                 // last part might be a different size than the rest
-                if (bDoTit) {
+                if (Delta < 10000) { // bDoTit0
                     Tit = 0;                    // exclude Judy
                     DummySeed = InsertSeed;
                     WaitForContextSwitch(Delta);
@@ -2910,9 +2930,17 @@ nextPart:
                     DeltaGen1 = DeltanSec1 / Delta;     // save measurement overhead
                     DeltaGenL = DeltanSecL / Delta;
                     DeltaGenHS = DeltanSecHS / Delta;
+                    if (DeltaGen1 < DeltaGenIns1Min) { DeltaGenIns1Min = DeltaGen1; }
+                    if (DeltaGen1 > DeltaGenIns1Min) { DeltaGen1 = DeltaGenIns1Min; }
+                    if (DeltaGenL < DeltaGenInsLMin) { DeltaGenInsLMin = DeltaGenL; }
+                    if (DeltaGenL > DeltaGenInsLMin) { DeltaGenL = DeltaGenInsLMin; }
+                    if (DeltaGenHS < DeltaGenInsHSMin) { DeltaGenInsHSMin = DeltaGenHS; }
+                    if (DeltaGenHS > DeltaGenInsHSMin) { DeltaGenHS = DeltaGenInsHSMin; }
                 } else {
-                    DeltaGen1 = DeltaGenL = DeltaGenHS = 0.1;
-                } // end of bDoTit
+                    DeltaGen1 = DeltaGenIns1Min;
+                    DeltaGenL = DeltaGenInsLMin;
+                    DeltaGenHS = DeltaGenInsHSMin;
+                } // end of bDoTit0
             }
 
             Tit = 1;                    // include Judy
@@ -2960,7 +2988,7 @@ nextPart:
 //          Test J1T, JLG, JHSG
 
             if (Pop1 == wFinalPop1) {
-                if (bDoTit) {
+                if (Meas < 10000) { // bDoTit0
                     BeginSeed = StartSeed;      // reset at beginning
                     WaitForContextSwitch(Meas);
                     if (bLfsrOnly) {
@@ -3033,9 +3061,17 @@ nextPart:
                     DeltaGen1 = DeltanSec1;     // save measurement overhead
                     DeltaGenL = DeltanSecL;
                     DeltaGenHS = DeltanSecHS;
+                    if (DeltaGen1 < DeltaGenGet1Min) { DeltaGenGet1Min = DeltaGen1; }
+                    if (DeltaGen1 > DeltaGenGet1Min) { DeltaGen1 = DeltaGenGet1Min; }
+                    if (DeltaGenL < DeltaGenGetLMin) { DeltaGenGetLMin = DeltaGenL; }
+                    if (DeltaGenL > DeltaGenGetLMin) { DeltaGenL = DeltaGenGetLMin; }
+                    if (DeltaGenHS < DeltaGenGetHSMin) { DeltaGenGetHSMin = DeltaGenHS; }
+                    if (DeltaGenHS > DeltaGenGetHSMin) { DeltaGenHS = DeltaGenGetHSMin; }
                 } else {
-                    DeltaGen1 = DeltaGenL = DeltaGenHS = 0.1;
-                } // end of bDoTit
+                    DeltaGen1 = DeltaGenGet1Min;
+                    DeltaGenL = DeltaGenGetLMin;
+                    DeltaGenHS = DeltaGenGetHSMin;
+                } // end of bDoTit0
 
                 BeginSeed = StartSeed;      // reset at beginning
                 WaitForContextSwitch(Meas);
@@ -3141,7 +3177,7 @@ nextPart:
             if (bFirstPart || (Pop1 == wFinalPop1)) {
                 // first or last part of delta
                 // last part might be a different size than the rest
-                if (bDoTit) {
+                if (bDoTit0) {
                     Tit = 0;                    // exclude Judy
                     DummySeed = InsertSeed;
                     WaitForContextSwitch(Delta);
@@ -3149,7 +3185,7 @@ nextPart:
                     DeltaGenL = DeltanSecL;
                 } else {
                     DeltaGenL = 0.1;
-                } // end of bDoTit
+                } // end of bDoTit0
             }
 
             Tit = 1;                    // include Judy
@@ -3165,7 +3201,7 @@ nextPart:
                     fflush(NULL);
             }
 
-          if (bDoTit) {
+          if (bDoTit0) {
             Tit = 0;                    // exclude Judy
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
@@ -3173,7 +3209,7 @@ nextPart:
             DeltaGenL = DeltanSecL;
           } else {
             DeltaGenL = 0.1;
-          } // end of bDoTit
+          } // end of bDoTit0
 
             Tit = 1;                    // include Judy
             BeginSeed = StartSeed;      // reset at beginning
@@ -3199,7 +3235,7 @@ nextPart:
             //DummySeed = BitmapSeed;
             //GetNextKey(&DummySeed);   // warm up cache
 
-          if (bDoTit) {
+          if (bDoTit0) {
             Tit = 0;
             DummySeed = BitmapSeed;
             WaitForContextSwitch(Delta);
@@ -3207,7 +3243,7 @@ nextPart:
             DeltanBit = DeltanSecBt;
           } else {
             DeltanBit = 0.1;
-          } // end of bDoTit
+          } // end of bDoTit0
 
             Tit = 1;
             WaitForContextSwitch(Delta);
@@ -3219,7 +3255,7 @@ nextPart:
                 DONTPRINTLESSTHANZERO(DeltanSecBt, DeltanBit);
             }
 
-          if (bDoTit) {
+          if (bDoTit0) {
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
@@ -3227,7 +3263,7 @@ nextPart:
             DeltanBit = DeltanSecBt;
           } else {
             DeltanBit = 0.1;
-          } // end of bDoTit
+          } // end of bDoTit0
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3251,7 +3287,7 @@ nextPart:
             //DummySeed = BitmapSeed;
             //GetNextKey(&DummySeed);   // warm up cache
 
-          if (bDoTit) {
+          if (bDoTit0) {
             Tit = 0;
             DummySeed = BitmapSeed;
             WaitForContextSwitch(Delta);
@@ -3259,7 +3295,7 @@ nextPart:
             DeltanByte = DeltanSecBy;
           } else {
             DeltanByte = 0.1;
-          } // end of bDoTit
+          } // end of bDoTit0
 
             Tit = 1;
             WaitForContextSwitch(Delta);
@@ -3271,7 +3307,7 @@ nextPart:
                 DONTPRINTLESSTHANZERO(DeltanSecBy, DeltanByte);
             }
 
-          if (bDoTit) {
+          if (bDoTit0) {
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
@@ -3279,7 +3315,7 @@ nextPart:
             DeltanByte = DeltanSecBy;
           } else {
             DeltanByte = 0.1;
-          } // end of bDoTit
+          } // end of bDoTit0
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3299,7 +3335,7 @@ nextPart:
 
         if (IFlag)
         {
-          if (bDoTit) {
+          if (bDoTit0) {
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
@@ -3309,7 +3345,7 @@ nextPart:
             DeltaGenHS = DeltanSecHS;
           } else {
             DeltaGen1 = DeltaGenL = DeltaGenHS = 0.1;
-          } // end of bDoTit
+          } // end of bDoTit0
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3338,7 +3374,7 @@ nextPart:
         }
         if (CFlag)
         {
-          if (bDoTit) {
+          if (bDoTit0) {
             Tit = 0;
             WaitForContextSwitch(Meas);
             TestJudyCount(J1, JL, &BeginSeed, Meas);
@@ -3346,7 +3382,7 @@ nextPart:
             DeltaGenL = DeltanSecL;
           } else {
             DeltaGen1 = DeltaGenL = 0.1;
-          } // end of bDoTit
+          } // end of bDoTit0
 
             Tit = 1;
             WaitForContextSwitch(Meas);
@@ -3363,7 +3399,7 @@ nextPart:
         if (vFlag)
         {
 //          Test J1N, JLN
-          if (bDoTit) {
+          if (bDoTit0) {
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
@@ -3372,7 +3408,7 @@ nextPart:
             DeltaGenL = DeltanSecL;
           } else {
             DeltaGen1 = DeltaGenL = 0.1;
-          } // end of bDoTit
+          } // end of bDoTit0
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3388,7 +3424,7 @@ nextPart:
             }
 
 //          Test J1P, JLP
-          if (bDoTit) {
+          if (bDoTit0) {
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
@@ -3397,7 +3433,7 @@ nextPart:
             DeltaGenL = DeltanSecL;
           } else {
             DeltaGen1 = DeltaGenL = 0.1;
-          } // end of bDoTit
+          } // end of bDoTit0
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3413,7 +3449,7 @@ nextPart:
             }
 
 //          Test J1NE, JLNE
-          if (bDoTit) {
+          if (bDoTit0) {
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
@@ -3422,7 +3458,7 @@ nextPart:
             DeltaGenL = DeltanSecL;
           } else {
             DeltaGen1 = DeltaGenL = 0.1;
-          } // end of bDoTit
+          } // end of bDoTit0
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3439,7 +3475,7 @@ nextPart:
 
 //          Test J1PE, JLPE
 //
-          if (bDoTit) {
+          if (bDoTit0) {
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
@@ -3448,7 +3484,7 @@ nextPart:
             DeltaGenL = DeltanSecL;
           } else {
             DeltaGen1 = DeltaGenL = 0.1;
-          } // end of bDoTit
+          } // end of bDoTit0
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3467,7 +3503,7 @@ nextPart:
 //      Test J1U, JLD, JHSD
         if (dFlag)
         {
-          if (bDoTit) {
+          if (bDoTit0) {
             Tit = 0;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
@@ -3477,7 +3513,7 @@ nextPart:
             DeltaGenHS = DeltanSecHS;
           } else {
             DeltaGen1 = DeltaGenL = DeltaGenHS = 0.1;
-          } // end of bDoTit
+          } // end of bDoTit0
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
@@ -3740,7 +3776,8 @@ TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
     DeltanSecL = 0.0;
     DeltanSecHS = 0.0;
 
-    Word_t Loops = 1; // loops don't work as expected for array modifying ops
+    // Loops don't work as expected for array modifying ops.
+    Word_t Loops = Tit ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
 //  Judy1Set timings
 
@@ -4136,7 +4173,8 @@ TestJudyLIns(void **JL, PNewSeed_t PSeed, Word_t Elements)
     DeltanSecL = 0.0;
     PValue = (PWord_t)NULL;
 
-    Word_t Loops = 1;
+    // Loops don't work as expected for array modifying ops.
+    Word_t Loops = Tit ? 1 : (MAXLOOPS / Elements) + MINLOOPS;
 
 //  JudyLIns timings
     DminTime = 1e40; icnt = ICNT; lp = 0;
