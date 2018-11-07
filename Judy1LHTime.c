@@ -484,6 +484,16 @@ PRINT6_1f(double __X)
         printf("      0");              // keep white space cleaner
 }
 
+#define DONTPRINTLESSTHANZERO7(A,B)                              \
+{                                                               \
+    if (((A) - (B)) >= 0.05)                                     \
+        printf(" %7.1f", ((A) - (B)));                          \
+    else if (((A) - (B)) < 0.0)                                 \
+        printf("    -0.0");      /* minus time makes no sense */ \
+    else                                                        \
+        printf("       0");      /* make 0 less noisy         */ \
+}
+
 #define DONTPRINTLESSTHANZERO(A,B)                              \
 {                                                               \
     if (((A) - (B)) >= 0.05)                                     \
@@ -812,13 +822,12 @@ GetNextKey(PNewSeed_t PNewSeed)
 static void
 PrintHeader(const char *strFirstCol)
 {
-  //printf("# %s ............   ......  GetMeasmts", strFirstCol);
-    printf("# %s . GetMeasmts", strFirstCol);
+    printf("# %11s  DeltaIns  GetMeasmts", strFirstCol);
 
     if (tFlag)
         printf(" MeasOv");
     if (J1Flag)
-        printf("    J1S");
+        printf("     J1S");
     if (JLFlag)
         printf("    JLI");
     if (JRFlag)
@@ -2387,7 +2396,7 @@ main(int argc, char *argv[])
 
     Col = 1;
     printf("# COLHEAD %2d Population of the Array\n", Col++);
-    printf("# COLHEAD %2d Place holder\n", Col++);
+    printf("# COLHEAD %2d Delta Inserts to the Array\n", Col++);
     printf("# COLHEAD %2d Number of Measurments done by JudyLGet/Judy1Test\n", Col++);
 
     if (tFlag)
@@ -2871,10 +2880,11 @@ nextPart:
         if (bFirstPart) {
             // first part of Delta
             // (Pop1 - Delta == wFinalPop1 - Pms[grp].ms_delta)
-            if (grp && (grp % 16 == 0)) {
-                PrintHeader("9876543210"); // print column headers periodically
+            if (grp && (grp % 32 == 0)) {
+                PrintHeader(" 0-1-0-1-0-"); // print column headers periodically
             }
-            printf("%12" PRIuPTR" .%11" PRIuPTR, wFinalPop1, Meas);
+            printf(" 0x%-10" PRIxPTR" 0x%-8" PRIxPTR" %10" PRIuPTR,
+                   wFinalPop1, Pms[grp].ms_delta, Meas);
         }
 
 #ifdef NEVER
@@ -2959,19 +2969,19 @@ nextPart:
                 {
                     if (tFlag)
                         PRINT6_1f(DeltaGen1);
-                    DONTPRINTLESSTHANZERO(DeltanSec1Sum / Pms[grp].ms_delta, DeltaGen1);
+                    DONTPRINTLESSTHANZERO7(DeltanSec1Sum / Pms[grp].ms_delta, DeltaGen1);
                 }
                 if (JLFlag)
                 {
                     if (tFlag)
                         PRINT6_1f(DeltaGenL);
-                    DONTPRINTLESSTHANZERO(DeltanSecLSum / Pms[grp].ms_delta, DeltaGenL);
+                    DONTPRINTLESSTHANZERO7(DeltanSecLSum / Pms[grp].ms_delta, DeltaGenL);
                 }
                 if (JHFlag)
                 {
                     if (tFlag)
                         PRINT6_1f(DeltaGenHS);
-                    DONTPRINTLESSTHANZERO(DeltanSecHSSum / Pms[grp].ms_delta, DeltaGenHS);
+                    DONTPRINTLESSTHANZERO7(DeltanSecHSSum / Pms[grp].ms_delta, DeltaGenHS);
                 }
                 if (fFlag)
                     fflush(NULL);
