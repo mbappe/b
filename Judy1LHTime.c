@@ -829,11 +829,11 @@ PrintHeader(const char *strFirstCol)
     if (J1Flag)
         printf("     J1S");
     if (JLFlag)
-        printf("    JLI");
+        printf("     JLI");
     if (JRFlag)
-        printf("  JLI-R");
+        printf("   JLI-R");
     if (JHFlag)
-        printf("   JHSI");
+        printf("    JHSI");
     if (bFlag)
         printf("  BMSet");
     if (yFlag)
@@ -3206,7 +3206,7 @@ nextPart:
             if (Pop1 == wFinalPop1) {
                 if (tFlag)
                     PRINT6_1f(DeltaGenL);
-                DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+                DONTPRINTLESSTHANZERO7(DeltanSecL, DeltaGenL);
                 if (fFlag)
                     fflush(NULL);
             }
