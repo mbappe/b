@@ -8621,6 +8621,7 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
     DBGN(printf("NextEmptyGuts(pwRoot %p *pwKey %p nBL %d bPrev %d)"
                     " wRoot %p\n",
                 (void *)pwRoot, (void *)*pwKey, nBL, bPrev, (void *)wRoot));
+    int nBLPrev = nBL; // test this in t_sw to determine if there was a skip
     Word_t *pwr;
     int nBitNum; (void)nBitNum; // BITMAP
 #ifdef ALLOW_EMBEDDED_BITMAP
@@ -8807,6 +8808,7 @@ embeddedBitmap:;
             return Success;
         }
         assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
+        nBLPrev = nBL;
         nBL = nBLR;
         goto t_switch; // address gcc implicit fall-through warning
     }
@@ -8817,6 +8819,17 @@ t_switch:;
         // skip over the switch if it is full pop
         if (nBL < cnBitsPerWord) {
             if (GetPopCnt(pwRoot, nBL) == EXP(nBL)) {
+                if (nBL != nBLPrev) {
+                    // We skipped bits to get here.
+                    Word_t wKey = *pwKey;
+                    if (bPrev) wKey -= EXP(nBL); else wKey += EXP(nBL);
+                    if (((wKey ^ *pwKey) & ~MSK(nBLPrev)) == 0) {
+                        // There is at least one empty link in a
+                        // skipped virtual switch.
+                        *pwKey = wKey;
+                        return Success;
+                    }
+                }
                 return Failure;
             }
         }
