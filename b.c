@@ -3658,6 +3658,9 @@ InsertSwitch(qp,
     DBGI(printf("InsertSwitch 1 nDL %d nBL %d nDLOld %d nBLOld %d\n",
                 nDL, nBL, nDLOld, nBLOld));
 #ifdef BITMAP
+    // How did we get here?
+    // I don't think we should get here if
+    // nBL <= (int)LOG(sizeof(Link_t) * 8).
     assert(nBL > (int)LOG(sizeof(Link_t) * 8));
 #endif // BITMAP
 
