@@ -128,6 +128,10 @@ endif
 # MFLAGS += -march=native
 # MFLAGS += -mfpmath=sse
 
+# -frecord-gcc-switches causes gcc to put a record in the object
+# indicating what options were used to build.
+# It includes -D options for ifdefs on the gcc command line.
+
 # Leave off -Wmissing-prototypes because I don't like providing prototypes
 # that have no value at all, i.e. when the function definition appears
 # before any use of the function. Nevermind. Looks like "static" addresses
