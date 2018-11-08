@@ -587,6 +587,7 @@ Word_t wSplayMask = 0x55555555;         // default splay mask
 Word_t    wCheckBit = 0;                // Bit for narrow ptr testing.
 
 Word_t    TValues =  1000000;           // Maximum numb retrieve timing tests
+
 // nElms is the total number of keys that are inserted into the test arrays.
 // Default nElms is overridden by -n or -F.
 // Looks like there may be no protection against -F followed by -n.
@@ -1196,6 +1197,8 @@ NumGrps(Word_t wElms)
 }
 
 #endif // OLD_DS1_GROUPS
+
+static int bDS1 = 0; // Shorthand to trigger -DS1 special behaviors.
 
 int
 main(int argc, char *argv[])
@@ -1809,22 +1812,23 @@ main(int argc, char *argv[])
     }
 #endif // NO_OFFSET
 
+    if (DFlag && (SValue == 1) && (StartSequent == 1)
+            && !bSplayKeyBitsFlag && (Offset == 0) && (Bpercent == 100.0)) {
+        bDS1 = 1;
+    }
+
     if (bLfsrOnly) {
         if (DFlag || FValue || GValue || Offset || SValue
             || (Bpercent != 100.0))
         {
-            if (DFlag && (SValue == 1) && (StartSequent == 1)
-                && !bSplayKeyBitsFlag && (Offset == 0) && (Bpercent == 100.0))
-            {
+            if (bDS1) {
 #ifdef LFSR_GET_FOR_DS1
                 bLfsrForGetOnly = 1;
                 bLfsrOnly = 0;
 #else // LFSR_GET_FOR_DS1
                 FAILURE("Use -DLFSR_GET_FOR_DS1 to use -k with -DS1.", 0);
 #endif // LFSR_GET_FOR_DS1
-            }
-            else
-            {
+            } else {
                 FAILURE("-k is not compatible with -B:DFGNOoS", 0);
             }
         }
@@ -2378,8 +2382,7 @@ main(int argc, char *argv[])
 
             // These keys are used even for -DS1 until wLogPop is bigger than
             // wPrevLogPop and we want to reinitialize it using an LFSR.
-            for (Word_t ww = 0; ww < TValues; ww++)
-            {
+            for (Word_t ww = 0; ww < TValues; ww++) {
                 FileKeys[ww] = CalcNextKey(&WorkingSeed);
             }
         }
@@ -2808,9 +2811,7 @@ nextPart:
 // This doesn't work unless the -DS1 keys are not modified in any other way.
 // MEB: We might be able to extend this approach to cover more of the -S cases
 // than just -DS1.
-        if (DFlag && (SValue == 1) && (StartSequent == 1)
-            && !bSplayKeyBitsFlag && (Offset == 0) && (Bpercent == 100.0))
-        {
+        if (bDS1) {
             assert(!FValue);
             assert(!bLfsrOnly);
 // If Pop1 is 2^n, then we will have inserted [1,2^n].
@@ -2830,7 +2831,9 @@ nextPart:
 // If Pop1 is 2^n-2, then we will have inserted [1,2^n-2].
 // LOG(Pop1+2) == n.
 // LFSR(n) will generate values in [1,2^n-1]. Bad.
-            if ((wLogPop1 = LOG(Pop1+1)) > wPrevLogPop1) {
+            wLogPop1 = LOG(Pop1 + 1);
+            Meas = MIN(TValues, EXP(wLogPop1) - 1);
+            if (wLogPop1 > wPrevLogPop1) {
                 wPrevLogPop1 = wLogPop1;
                 // RandomInit always initializes the same Seed_t.  Luckily,
                 // that one seed is not being used anymore at this point.
@@ -2850,7 +2853,6 @@ nextPart:
                 // take a little more time if necessary and pick keys from
                 // a larger and/or different subset.
 #endif // LFSR_GET_FOR_DS1
-                Meas = MIN(TValues, ((Word_t)1 << wLogPop1) - 1);
                 for (Word_t ww = 0; ww < Meas; ++ww) {
                     // I wonder about using CalcNextKey here instead.
 #ifdef LFSR_GET_FOR_DS1
@@ -2863,14 +2865,14 @@ nextPart:
                     Word_t wRand = RandomNumb(&RandomSeed, 0);
                     FileKeys[ww] = wRand << (BValue - wLogPop1);
 #endif // LFSR_GET_FOR_DS1
-                    if (ww == ((Word_t)1 << wLogPop1) - 1) {
-                        break;
-                    }
+                    assert(ww < EXP(wLogPop1) - 1);
                 }
             }
         }
 #endif // CALC_NEXT_KEY
 
+// Remember to add option to skip do-tit-0 measurements for platforms with
+// unreliable results.
 #ifdef DO_TIT0
         int bDoTit0 = 1;
 #else // DO_TIT0
@@ -2881,10 +2883,19 @@ nextPart:
             // first part of Delta
             // (Pop1 - Delta == wFinalPop1 - Pms[grp].ms_delta)
             if (grp && (grp % 32 == 0)) {
-                PrintHeader(" 0-1-0-1-0-"); // print column headers periodically
+              //PrintHeader(" 0-1-0-1-0-"); // print column headers periodically
+                PrintHeader(" 9876543210"); // print column headers periodically
             }
-            printf(" 0x%-10" PRIxPTR" 0x%-8" PRIxPTR" %10" PRIuPTR,
-                   wFinalPop1, Pms[grp].ms_delta, Meas);
+#if 0
+            if (bDS1) {
+                printf(" 0x%-10" PRIxPTR" 0x%-8" PRIxPTR" %10" PRIuPTR,
+                       wFinalPop1, Pms[grp].ms_delta, Meas);
+            } else
+#endif
+            {
+                printf(" %12"   PRIuPTR" %10"  PRIuPTR" %10" PRIuPTR,
+                       wFinalPop1, Pms[grp].ms_delta, Meas);
+            }
         }
 
 #ifdef NEVER
