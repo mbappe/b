@@ -1260,6 +1260,54 @@ main(int argc, char *argv[])
 
     setbuf(stdout, NULL);               // unbuffer output
 
+#if 0
+    // Different get time functions on Linux.
+    {
+        struct timespec tv;
+
+        if (clock_getres(CLOCK_REALTIME, &tv) == 0) {
+            printf("getres(CLOCK_REALTIME)           %6ld.%09ld\n", tv.tv_sec, tv.tv_nsec);
+        }
+        if (clock_getres(CLOCK_MONOTONIC, &tv) == 0) {
+            printf("getres(CLOCK_MONTONIC)           %6ld.%09ld\n", tv.tv_sec, tv.tv_nsec);
+        }
+        if (clock_getres(CLOCK_MONOTONIC_RAW, &tv) == 0) {
+            printf("getres(CLOCK_MONTONIC_RAW)       %6ld.%09ld\n", tv.tv_sec, tv.tv_nsec);
+        }
+        if (clock_getres(CLOCK_BOOTTIME, &tv) == 0) {
+            printf("getres(CLOCK_BOOTTIME)           %6ld.%09ld\n", tv.tv_sec, tv.tv_nsec);
+        }
+        if (clock_getres(CLOCK_PROCESS_CPUTIME_ID, &tv) == 0) {
+            printf("getres(CLOCK_PROCESS_CPUTIME_ID) %6ld.%09ld\n", tv.tv_sec, tv.tv_nsec);
+        }
+        if (clock_getres(CLOCK_THREAD_CPUTIME_ID, &tv) == 0) {
+            printf("getres(CLOCK_THREAD_CPUTIME_ID)  %6ld.%09ld\n", tv.tv_sec, tv.tv_nsec);
+        }
+        //if (clock_getres(CLOCK_REALTIME_COURSE, &tv) == 0) { }
+        //if (clock_getres(CLOCK_MONOTONIC_COURSE, &tv) == 0) { }
+        if (clock_gettime(CLOCK_REALTIME, &tv) == 0) {
+            printf("clock_gettime(CLOCK_REALTIME)           %6ld.%09ld\n", tv.tv_sec, tv.tv_nsec);
+        }
+        if (clock_gettime(CLOCK_MONOTONIC, &tv) == 0) {
+            printf("clock_gettime(CLOCK_MONTONIC)           %6ld.%09ld\n", tv.tv_sec, tv.tv_nsec);
+        }
+        if (clock_gettime(CLOCK_MONOTONIC_RAW, &tv) == 0) {
+            printf("clock_gettime(CLOCK_MONTONIC_RAW)       %6ld.%09ld\n", tv.tv_sec, tv.tv_nsec);
+        }
+        if (clock_gettime(CLOCK_BOOTTIME, &tv) == 0) {
+            printf("clock_gettime(CLOCK_BOOTTIME)           %6ld.%09ld\n", tv.tv_sec, tv.tv_nsec);
+        }
+        if (clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &tv) == 0) {
+            printf("clock_gettime(CLOCK_PROCESS_CPUTIME_ID) %6ld.%09ld\n", tv.tv_sec, tv.tv_nsec);
+        }
+        if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tv) == 0) {
+            printf("clock_gettime(CLOCK_THREAD_CPUTIME_ID)  %6ld.%09ld\n", tv.tv_sec, tv.tv_nsec);
+        }
+        //if (clock_gettime(CLOCK_REALTIME_COURSE, &tv) == 0) { }
+        //if (clock_gettime(CLOCK_MONOTONIC_COURSE, &tv) == 0) { }
+    }
+#endif // 0
+
 #ifdef LATER
     MaxNumb = 0;
     for (ii = 0; ii < 1000; ii++)
