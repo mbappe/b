@@ -2799,6 +2799,7 @@ extern const unsigned anBL_to_nDL[];
 #elif defined(PARALLEL_64) // defined(PARALLEL_128)
 
 #define BUCKET_HAS_KEY HasKey64
+#define BUCKET_LOCATE_KEY LocateKey64
 
 #else // defined(PARALLEL_128)
 
@@ -3609,6 +3610,10 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                 (_nPos) = -1; /* we don't know where to insert */ \
             } else { \
                 /* parallel search the tail of the list */ \
+                /* we are doing a search of the bucket after the original */ \
+                /* nSplitP that would be avoidable if */ \
+                /* (_xKey) <= pxKeys[nSplit+sizeof(_b_t)/sizeof(_x_t)-1] */ \
+                /* and we were willing to do the test */ \
                 /* ++nSplitP; */ \
                 (_nPos) = (int)nSplit + sizeof(_b_t) / sizeof(_x_t); \
                 HASKEYF(_b_t, (_xKey), \
@@ -4380,6 +4385,17 @@ HasKey64(uint64_t *px, Word_t wKey, int nBL)
     return xMagic; // bXorHasZero = (xMagic != 0);
 }
 
+static int
+LocateKey64(uint64_t *px, Word_t wKey, int nBL)
+{
+    Word_t wHasKey = HasKey64(px, wKey, nBL);
+    if (wHasKey == 0) {
+        return -1;
+    }
+    int nFirstSetBit = __builtin_ffsll(wHasKey) - 1;
+    return nFirstSetBit / nBL;
+}
+
 static __m128i
 HasKey128Magic(__m128i *pxBucket, Word_t wKey, int nBL)
 {
@@ -4608,7 +4624,7 @@ SearchList16(qp, int nBLR, Word_t wKey)
 
   #if defined(LIST_END_MARKERS)
     assert(psKeys[-1] == 0);
-      #if defined(PSPLIT_PARALLEL) && !defined(INSERT)
+      #if defined(PSPLIT_PARALLEL)
     assert(*(uint16_t *)(((Word_t)&psKeys[nPopCnt] + sizeof(Bucket_t) - 1)
             & ~(sizeof(Bucket_t) - 1))
         == (uint16_t)-1);
@@ -4618,7 +4634,7 @@ SearchList16(qp, int nBLR, Word_t wKey)
   #endif // defined(LIST_END_MARKERS)
     uint16_t sKey = (uint16_t)wKey;
     int nPos = 0;
-  #if defined(PSPLIT_SEARCH_16) && !defined(INSERT)
+  #if defined(PSPLIT_SEARCH_16)
       #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBLR == 16) {
         PSPLIT_SEARCH_BY_KEY(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
@@ -4628,11 +4644,12 @@ SearchList16(qp, int nBLR, Word_t wKey)
         //nPos = PSplitSearch16(nBLR, psKeys, nPopCnt, sKey, nPos);
         PSPLIT_SEARCH_BY_KEY(uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos);
     }
-  #elif defined(BACKWARD_SEARCH_16)
+  #elif defined(BACKWARD_SEARCH_16) // defined(PSPLIT_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos);
-  #else // here for forward linear search with end check
+  #else // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
+    // here for forward linear search with end check
     SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos);
-  #endif // ...
+  #endif // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
     return nPos;
 }
 
@@ -4709,7 +4726,7 @@ ListHasKey1696(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
     (void)nBL;
   #if defined(LIST_END_MARKERS)
     assert(psKeys[-1] == 0);
-      #if defined(PSPLIT_PARALLEL) && !defined(INSERT)
+      #if defined(PSPLIT_PARALLEL)
     assert(*(uint16_t *)(((Word_t)&psKeys[nPopCnt] + sizeof(Bucket_t) - 1)
             & ~(sizeof(Bucket_t) - 1))
         == (uint16_t)-1);
@@ -4719,7 +4736,7 @@ ListHasKey1696(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
   #endif // defined(LIST_END_MARKERS)
     uint16_t sKey = (uint16_t)wKey;
     int nPos = 0;
-  #if defined(PSPLIT_SEARCH_16) && !defined(INSERT)
+  #if defined(PSPLIT_SEARCH_16)
       #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBL == 16) {
   #if defined(UA_PARALLEL_128)
@@ -4734,11 +4751,12 @@ ListHasKey1696(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
         PSPLIT_HASKEY_GUTS(Bucket_t,
                            uint16_t, nBL, psKeys, nPopCnt, sKey, nPos);
     }
-  #elif defined(BACKWARD_SEARCH_16)
+  #elif defined(BACKWARD_SEARCH_16) // defined(PSPLIT_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;
-  #else // here for forward linear search with end check
+  #else // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
+    // here for forward linear search with end check
     SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos); (void)nBL;
-  #endif // ...
+  #endif // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
     return nPos >= 0;
 }
 
@@ -4755,7 +4773,7 @@ ListHasKey16(qp, int nBLR, Word_t wKey)
                 nPopCnt, (void *)psKeys));
   #if defined(LIST_END_MARKERS)
     assert(psKeys[-1] == 0);
-      #if defined(PSPLIT_PARALLEL) && !defined(INSERT)
+      #if defined(PSPLIT_PARALLEL)
     assert(*(uint16_t *)(((Word_t)&psKeys[nPopCnt] + sizeof(Bucket_t) - 1)
             & ~(sizeof(Bucket_t) - 1))
         == (uint16_t)-1);
@@ -4765,7 +4783,7 @@ ListHasKey16(qp, int nBLR, Word_t wKey)
   #endif // defined(LIST_END_MARKERS)
     uint16_t sKey = (uint16_t)wKey;
     int nPos = 0;
-  #if defined(PSPLIT_SEARCH_16) && !defined(INSERT)
+  #if defined(PSPLIT_SEARCH_16)
       #ifdef UA_PARALLEL_128
     if ((nPopCnt <= 6) && (nBLR == 16)) {
         PSPLIT_HASKEY_GUTS_128_96(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
@@ -4779,11 +4797,12 @@ ListHasKey16(qp, int nBLR, Word_t wKey)
       #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     { PSPLIT_HASKEY_GUTS(Bucket_t,
                          uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos); }
-  #elif defined(BACKWARD_SEARCH_16)
+  #elif defined(BACKWARD_SEARCH_16) // defined(PSPLIT_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos);
-  #else // here for forward linear search with end check
+  #else // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
+    // here for forward linear search with end check
     SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos);
-  #endif // ...
+  #endif // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
     return nPos >= 0;
 }
 
@@ -4815,7 +4834,7 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
         == (uint32_t)-1);
 #else // defined(PSPLIT_PARALLEL)
     assert(piKeys[nPopCnt] == (uint32_t)-1);
-#endif // ! defined(PSPLIT_PARALLEL)
+#endif // defined(PSPLIT_PARALLEL)
 #endif // defined(LIST_END_MARKERS)
     uint32_t iKey = (uint32_t)wKey;
     int nPos = 0;
@@ -4831,11 +4850,12 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
         PSPLIT_SEARCH_BY_KEY(uint32_t, nBL, piKeys, nPopCnt, iKey, nPos);
         DBGX(printf("SearchList32 nPos %d\n", nPos));
     }
-#elif defined(BACKWARD_SEARCH_32)
+#elif defined(BACKWARD_SEARCH_32) // defined(PSPLIT_PARALLEL_32)
     SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
-#else // here for forward linear search with end check
+#else // defined(PSPLIT_PARALLEL_32) elif defined(BACKWARD_SEARCH_32) else
+    // here for forward linear search with end check
     SEARCHF(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
-#endif // ...
+#endif // defined(PSPLIT_PARALLEL_32) elif defined(BACKWARD_SEARCH_32) else
     return nPos;
 }
 
@@ -4856,7 +4876,7 @@ ListHasKey32(qp, int nBLR, Word_t wKey)
         == (uint32_t)-1);
 #else // defined(PSPLIT_PARALLEL)
     assert(piKeys[nPopCnt] == (uint32_t)-1);
-#endif // ! defined(PSPLIT_PARALLEL)
+#endif // defined(PSPLIT_PARALLEL)
 #endif // defined(LIST_END_MARKERS)
     uint32_t iKey = (uint32_t)wKey;
     int nPos = 0;
@@ -5675,7 +5695,7 @@ LocateKeyInList16(qp, int nBLR, Word_t wKey)
                 nPopCnt, (void *)psKeys));
   #if defined(LIST_END_MARKERS)
     assert(psKeys[-1] == 0);
-      #if defined(PSPLIT_PARALLEL) && !defined(INSERT)
+      #if defined(PSPLIT_PARALLEL)
     assert(*(uint16_t *)(((Word_t)&psKeys[nPopCnt] + sizeof(Bucket_t) - 1)
             & ~(sizeof(Bucket_t) - 1))
         == (uint16_t)-1);
@@ -5685,7 +5705,7 @@ LocateKeyInList16(qp, int nBLR, Word_t wKey)
   #endif // defined(LIST_END_MARKERS)
     uint16_t sKey = (uint16_t)wKey;
     int nPos = 0;
-  #if defined(PSPLIT_SEARCH_16) && !defined(INSERT)
+  #if defined(PSPLIT_SEARCH_16)
       #ifdef UA_PARALLEL_128
     if ((nPopCnt <= 6) && (nBLR == 16)) {
         PSPLIT_LOCATEKEY_GUTS_128_96(uint16_t,
@@ -5700,11 +5720,12 @@ LocateKeyInList16(qp, int nBLR, Word_t wKey)
       #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     { PSPLIT_LOCATEKEY_GUTS(Bucket_t,
                             uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos); }
-  #elif defined(BACKWARD_SEARCH_16)
+  #elif defined(BACKWARD_SEARCH_16) // defined(PSPLIT_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos);
-  #else // here for forward linear search with end check
+  #else // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
+    // here for forward linear search with end check
     SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos);
-  #endif // ...
+  #endif // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
     return nPos;
 }
 
@@ -5727,7 +5748,7 @@ LocateKeyInList32(qp, int nBLR, Word_t wKey)
         == (uint32_t)-1);
 #else // defined(PSPLIT_PARALLEL)
     assert(piKeys[nPopCnt] == (uint32_t)-1);
-#endif // ! defined(PSPLIT_PARALLEL)
+#endif // defined(PSPLIT_PARALLEL)
 #endif // defined(LIST_END_MARKERS)
     uint32_t iKey = (uint32_t)wKey;
     int nPos = 0;
@@ -5745,11 +5766,12 @@ LocateKeyInList32(qp, int nBLR, Word_t wKey)
         PSPLIT_LOCATEKEY_GUTS(Bucket_t,
                               uint32_t, nBLR, piKeys, nPopCnt, iKey, nPos);
     }
-#elif defined(BACKWARD_SEARCH_32)
+#elif defined(BACKWARD_SEARCH_32) // defined(PSPLIT_SEARCH_32)
     SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos);
-#else // here for forward linear search with end check
+#else // defined(PSPLIT_SEARCH_32) elif defined(BACKWARD_SEARCH_32) else
+    // here for forward linear search with end check
     SEARCHF(uint32_t, piKeys, nPopCnt, iKey, nPos);
-#endif // ...
+#endif // defined(PSPLIT_SEARCH_32) elif defined(BACKWARD_SEARCH_32) else
     return nPos;
 }
 
