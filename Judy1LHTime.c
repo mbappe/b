@@ -823,7 +823,7 @@ GetNextKey(PNewSeed_t PNewSeed)
 static void
 PrintHeader(const char *strFirstCol)
 {
-    printf("# %11s  DeltaIns  GetMeasmts", strFirstCol);
+    printf("# %7s  DeltaIns   GetMeas", strFirstCol);
 
     if (tFlag)
         printf(" MeasOv");
@@ -1096,6 +1096,7 @@ BitmapSet(PWord_t B1, Word_t TstKey)
 static Word_t
 oa2w(char *str, char **endptr, int base, int ch)
 {
+    (void)base;
     char *lendptr;
     Word_t ul;
 
@@ -1106,7 +1107,8 @@ oa2w(char *str, char **endptr, int base, int ch)
 
     errno = 0;
 
-    ul = strtoul(str, &lendptr, base);
+    long double ld = strtold(str, &lendptr);
+    ul = (Word_t)ld;
 
     if (errno != 0) {
         printf("\nError --- Illegal optarg, \"%s\", for option \"-%c\": %s.\n",
@@ -2786,7 +2788,7 @@ printf("# COLHEAD %2d GetsM - Num get calls that miss and search backward\n", Co
 // PRINT COLUMNS HEADER TO PERFORMANCE TIMERS
 // ============================================================
 
-    PrintHeader("Population");
+    PrintHeader("   Pop");
 
 // ============================================================
 // BEGIN TESTS AT EACH GROUP SIZE
@@ -2939,8 +2941,7 @@ nextPart:
             // first part of Delta
             // (Pop1 - Delta == wFinalPop1 - Pms[grp].ms_delta)
             if (grp && (grp % 32 == 0)) {
-              //PrintHeader(" 0-1-0-1-0-"); // print column headers periodically
-                PrintHeader(" 9876543210"); // print column headers periodically
+                PrintHeader("    Pop"); // print column headers periodically
             }
 #if 0
             if (bDS1) {
@@ -2949,8 +2950,21 @@ nextPart:
             } else
 #endif
             {
-                printf(" %12"   PRIuPTR" %10"  PRIuPTR" %10" PRIuPTR,
-                       wFinalPop1, Pms[grp].ms_delta, Meas);
+                if (wFinalPop1 > 99999999) {
+                    printf("%.3e", (double)wFinalPop1);
+                } else {
+                    printf(" %8" PRIuPTR, wFinalPop1);
+                }
+                if (Pms[grp].ms_delta > 99999999) {
+                     printf(" %.3e", (double)Pms[grp].ms_delta);
+                } else {
+                    printf("  %8" PRIuPTR, Pms[grp].ms_delta);
+                }
+                if (Meas > 99999999) {
+                     printf(" %.3e", (double)Meas);
+                } else {
+                    printf("  %8" PRIuPTR, Meas);
+                }
             }
         }
 
@@ -3273,7 +3287,7 @@ nextPart:
             if (Pop1 == wFinalPop1) {
                 if (tFlag)
                     PRINT6_1f(DeltaGenL);
-                DONTPRINTLESSTHANZERO7(DeltanSecL, DeltaGenL);
+                DONTPRINTLESSTHANZERO7(DeltanSecLSum / Pms[grp].ms_delta, DeltaGenL);
                 if (fFlag)
                     fflush(NULL);
             }
@@ -3667,11 +3681,13 @@ nextPart:
                     PRINT5_2f(DeltaMalFreLSum / Pms[grp].ms_delta);
                 if (JHFlag)
                     PRINT5_2f(DeltaMalFreHSSum / Pms[grp].ms_delta);
-            }
-////////////            if (yFlag || bFlag)
-            {
-                //PRINT7_3f(((double)(j__TotalBytesAllocated / sizeof(Word_t))) / Pop1);
-                printf(" %.1e", (double)j__TotalBytesAllocated / sizeof(Word_t) / Pop1);
+
+                double dVal = (double)j__TotalBytesAllocated / sizeof(Word_t) / Pop1;
+                if (dVal * 100 > 99999) {
+                    printf(" %.1e", dVal * 100);
+                } else {
+                    PRINT7_3f(dVal);
+                }
             }
 printf(" %6zd", DirectHits);
 printf(" %6zd", GetCallsP);
