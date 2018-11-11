@@ -670,8 +670,6 @@ again:;
   #if ! defined(USE_XX_SW)
     assert(nBL >= cnBitsInD1); // valid for LOOKUP too
   #endif // ! defined(USE_XX_SW)
-#else // ( ! defined(LOOKUP) )
-    SMETRICS(j__TreeDepth++);
 #endif // ( ! defined(LOOKUP) )
     DBGX(printf("# nBL %d pLn %p wRoot " OWx" wKey " OWx"\n", nBL, pLn, wRoot, wKey));
 
