@@ -167,12 +167,12 @@ Word_t j__TotalBytesAllocated;
 //  For figuring out how much different structures contribute.   Must be
 //  turned on in source compile of Judy with -DRAMMETRICS
 
-Word_t    j__MisComparesP;            // number times LGet/1Test called
-Word_t    j__MisComparesM;            // number times LGet/1Test called
+Word_t    j__MisComparesP; // Number of miscompares in searches forward
+Word_t    j__MisComparesM; // Number of miscompares in searches backward
 Word_t    j__DirectHits;               // Number of direct hits -- no search
 Word_t    j__SearchPopulation;         // Population of Searched object
-Word_t    j__GetCalls;                 // number of search calls
-//Word_t    j__TreeDepth;                // number time Branch_U called
+Word_t    j__GetCallsP; // Num search calls with no direct hit and resulting in forward search
+Word_t    j__GetCallsM; // Num search calls with no direct hit and resulting in backward search
 
 extern Word_t    j__AllocWordsTOT;
 extern Word_t    j__MFlag;                     // Print memory allocation on stderr
@@ -965,6 +965,9 @@ PrintHeader(const char *strFirstCol)
 
         printf("  mmap/K");
     }
+printf("  DiHts");
+printf("  GetsP");
+printf("  GetsM");
     printf("\n");
 }
 
@@ -1149,7 +1152,8 @@ Word_t    MisComparesP;            // number times LGet/1Test called
 Word_t    MisComparesM;            // number times LGet/1Test called
 Word_t    DirectHits;               // Number of direct hits -- no search
 Word_t    SearchPopulation;         // Population of Searched object
-Word_t    GetCalls;                 // number of search calls
+Word_t    GetCallsP;                 // number of search calls
+Word_t    GetCallsM;                 // number of search calls
 
 
 #ifndef OLD_DS1_GROUPS
@@ -2587,12 +2591,12 @@ main(int argc, char *argv[])
         printf("# COLHEAD %2d B1  - Bitmap Leaf 1 Bit Key/Key\n", Col++);
         printf("# COLHEAD %2d VA  - Value area Words/Key\n", Col++);
 
-        printf("# COLHEAD %2d +MsCm  - Average number forward Compares failed Per Leaf Search\n", Col++);
-        printf("# COLHEAD %2d -MsCm  - Average number reverse Compares failed Per Leaf Search\n", Col++);
+        printf("# COLHEAD %2d +MsCm - Average number forward Compares failed Per Leaf Search\n", Col++);
+        printf("# COLHEAD %2d -MsCm - Average number reverse Compares failed Per Leaf Search\n", Col++);
         printf("# COLHEAD %2d %%DiHt - %% of Direct Hits per Leaf Search\n", Col++);
 
 //        printf("# COLHEAD %2d TrDep  - Tree depth with LGet/1Test searches\n", Col++);
-        printf("# COLHEAD %2d AvPop  - Average Current Leaf Population\n", Col++);
+        printf("# COLHEAD %2d AvPop - Average Current Leaf Population\n", Col++);
         printf("# COLHEAD %2d %%MalEff - %% RAM JudyMalloc()ed vs mmap()ed from Kernel\n", Col++);
 
         if (J1Flag)
@@ -2611,6 +2615,10 @@ main(int argc, char *argv[])
             printf
                 ("# COLHEAD %2d mmap/K   - mmap()ed Words per Key\n", Col++);
     }
+printf("# COLHEAD %2d DiHts - Num get calls the result in a direct hit\n", Col++);
+printf("# COLHEAD %2d GetsP - Num get calls that miss and search forward\n", Col++);
+printf("# COLHEAD %2d GetsM - Num get calls that miss and search backward\n", Col++);
+
     if (J1Flag)
         printf("# %s - Leaf sizes in Words\n", Judy1MallocSizes);
 
@@ -3641,38 +3649,18 @@ nextPart:
 
 // SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSss
 
-
 //              print average number of failed compares done in leaf search
-                if (GetCalls - DirectHits)
-                {
-                    PRINT5_2f((double)MisComparesP / (double)(GetCalls - DirectHits) / XScale);
-                    PRINT5_2f((double)MisComparesM / (double)(GetCalls - DirectHits) / XScale);
-                }
-                else
-                {
-                    printf("    00");
-                    printf("    00");
-                }
-
-//printf("\nMisComparesP = %" PRIuPTR", Meas = %" PRIuPTR"\n", MisComparesP, Meas);
-//printf("\nMisComparesM = %" PRIuPTR", Meas = %" PRIuPTR"\n", MisComparesM, Meas);
-
-                if (GetCalls)
-                {
-                    PRINT5_2f((double)DirectHits / (double)GetCalls);
-                    PRINT5_2f((double)SearchPopulation / (double)GetCalls / XScale); // ave search Pop1
-                }
-                else
-                {
-                    printf("    00");
-                    printf("    00");
-                }
+                printf(" %5.1f", (double)MisComparesP * 100 / MAX(GetCallsP + DirectHits, 1));
+                printf(" %5.1f", (double)MisComparesM * 100 / MAX(GetCallsM + DirectHits, 1));
+                printf(" %5.1f", (double)DirectHits * 100 / MAX(DirectHits + GetCallsP + GetCallsM, 1));
+                printf(" %5.1f", (double)SearchPopulation / MAX(DirectHits + GetCallsP + GetCallsM, 1));
 
 //              print average number of Branches traversed per lookup
 //                printf(" %5.1f", TreeDepth / (double)Meas);
 
 //              Print the percent efficiency of dlmalloc
-                PRINT7_3f(j__AllocWordsTOT / (double)(j__TotalBytesAllocated / sizeof(Word_t)));
+                printf(" %7.3f", 100 * j__AllocWordsTOT / (double)(j__TotalBytesAllocated / sizeof(Word_t)));
+                //PRINTT7_3f(j__AllocWordsTOT / (double)(j__TotalBytesAllocated / sizeof(Word_t)));
                 if (J1Flag)
                     PRINT5_2f(DeltaMalFre1Sum / Pms[grp].ms_delta);
                 if (JLFlag || JRFlag)
@@ -3682,9 +3670,12 @@ nextPart:
             }
 ////////////            if (yFlag || bFlag)
             {
-                PRINT7_3f(((double)(j__TotalBytesAllocated / sizeof(Word_t))) / (double)Pop1);
+                //PRINT7_3f(((double)(j__TotalBytesAllocated / sizeof(Word_t))) / Pop1);
+                printf(" %.1e", (double)j__TotalBytesAllocated / sizeof(Word_t) / Pop1);
             }
-printf(" %ld", GetCalls);
+printf(" %6zd", DirectHits);
+printf(" %6zd", GetCallsP);
+printf(" %6zd", GetCallsM);
             printf("\n");
             if (fFlag)
                 fflush(NULL);                   // assure data gets to file in case malloc fail
@@ -4482,7 +4473,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
             Word_t wFeedBTapLocal = wFeedBTap; // don't know why this is faster
 
 //          reset for next measurement
-            j__SearchPopulation = j__MisComparesP = j__MisComparesM = j__DirectHits = j__GetCalls = 0;
+            j__SearchPopulation = j__MisComparesP = j__MisComparesM = j__DirectHits = j__GetCallsP = j__GetCallsM = 0;
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
@@ -4525,7 +4516,8 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
             MisComparesM    = j__MisComparesM;
             DirectHits       = j__DirectHits;
             SearchPopulation = j__SearchPopulation; 
-            GetCalls         = j__GetCalls;
+            GetCallsP        = j__GetCallsP;
+            GetCallsM        = j__GetCallsM;
 
             if (DminTime > DeltanSec1)
             {
@@ -4551,7 +4543,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
             WorkingSeed = *PSeed;
 
 //          reset for next measurement
-            j__SearchPopulation = j__MisComparesP = j__MisComparesM = j__DirectHits = j__GetCalls  = 0;
+            j__SearchPopulation = j__MisComparesP = j__MisComparesM = j__DirectHits = j__GetCallsP = j__GetCallsM = 0;
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
@@ -4597,7 +4589,8 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
             MisComparesM =     j__MisComparesM;
             DirectHits =        j__DirectHits;
             SearchPopulation =  j__SearchPopulation; 
-            GetCalls =          j__GetCalls;
+            GetCallsP =         j__GetCallsP;
+            GetCallsM =         j__GetCallsM;
 
             if (DminTime > DeltanSecL)
             {
@@ -4622,7 +4615,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
         {
             WorkingSeed = *PSeed;
 
-            j__SearchPopulation = j__MisComparesP = j__MisComparesM = j__DirectHits = j__GetCalls = 0;
+            j__SearchPopulation = j__MisComparesP = j__MisComparesM = j__DirectHits = j__GetCallsP = j__GetCallsM = 0;
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
@@ -4679,7 +4672,7 @@ TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elements)
         WorkingSeed = *PSeed;
 
 //      reset for next measurement
-        j__SearchPopulation = j__MisComparesP = j__MisComparesM = j__DirectHits, j__GetCalls = 0;
+        j__SearchPopulation = j__MisComparesP = j__MisComparesM = j__DirectHits = j__GetCallsP = j__GetCallsM = 0;
 
         TstKey = GetNextKey(&WorkingSeed);    // Get 1st Key
 
@@ -4695,7 +4688,8 @@ TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elements)
         MisComparesM =     j__MisComparesM;
         DirectHits =        j__DirectHits;
         SearchPopulation =  j__SearchPopulation; 
-        GetCalls =          j__GetCalls;
+        GetCallsP =         j__GetCallsP;
+        GetCallsM =         j__GetCallsM;
 
         if (DminTime > DeltanSecL)
         {
