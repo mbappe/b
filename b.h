@@ -924,7 +924,7 @@ enum {
 #endif // defined(SEARCHMETRICS)
 
 #if defined(DEBUG)
-  #define DBG(x)  (x)
+  #define DBG(x)  x
 // Default is cwDebugThreshold = 0.
   #if ! defined(cwDebugThreshold)
     #define cwDebugThreshold  0ULL
@@ -3251,6 +3251,10 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 // |fe:dc|ba:98|76:54|32:10|
 
   #if defined(PSPLIT_EARLY_OUT)
+#define EARLY_OUT(x)  x
+  #else // defined(PSPLIT_EARLY_OUT)
+#define EARLY_OUT(x)
+  #endif // defined(PSPLIT_EARLY_OUT)
 
 // Has-key forward scan of a sub-list.
 // With a check and early-out if we've gone past the key we want.
@@ -3265,16 +3269,19 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
     assert((((_nPos) * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
     /* first address beyond address of last bucket to search */ \
-    _b_t *pxEnd = (_b_t *)&(_pxKeys)[_nPos + _nPopCnt]; \
+    _b_t *pbEnd = (_b_t *)&(_pxKeys)[_nPopCnt]; \
     /* address of first bucket to search */ \
-    _b_t *px = (_b_t *)&(_pxKeys)[_nPos]; \
+    _b_t *pb = (_b_t *)&(_pxKeys)[_nPos]; \
     /* number of last key in first bucket to search */ \
-    (_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1; \
-    while ( ! BUCKET_HAS_KEY(px, (_xKey), sizeof(_xKey) * 8) ) { \
+    EARLY_OUT((_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1); \
+    for (;;) { \
+        if (BUCKET_HAS_KEY(pb, (_xKey), sizeof(_xKey) * 8)) { \
+            break; \
+        } \
         /* check the last key in the _b_t to see if we've gone too far */ \
-        if ((_xKey) < (_pxKeys)[_nPos]) { (_nPos) ^= -1; break; } \
-        ++px; (_nPos) += sizeof(_b_t) / sizeof(_xKey); \
-        if (px >= pxEnd) { (_nPos) ^= -1; break; } \
+        EARLY_OUT(if ((_xKey) < (_pxKeys)[_nPos]) { (_nPos) ^= -1; break; }); \
+        EARLY_OUT((_nPos) += sizeof(_b_t) / sizeof(_xKey)); \
+        if (++pb >= pbEnd) { (_nPos) ^= -1; break; } \
     } \
 }
 
@@ -3299,45 +3306,49 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     (_nPos) += nBPos; \
 }
 
-      #if defined(SUB_LIST)
-
-// Has-key backward scan of a sub-list.
 #define HASKEYB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
     assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
-    _b_t *px = (_b_t *)(_pxKeys); \
+    _b_t *pb = (_b_t *)(_pxKeys); \
     /* bucket number of first bucket to search */ \
-    int nxPos = ((_nPos) + (_nPopCnt) - 1) * sizeof(_xKey) / sizeof(_b_t); \
-    /* address of last bucket to search */ \
-    _b_t *pxEnd = (_b_t *)&(_pxKeys)[_nPos]; \
+    int nxPos = (_nPos) * sizeof(_xKey) / sizeof(_b_t); \
     /* number of first key in first bucket to search */ \
-    (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
-    assert((((_nPos) * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
-    while ( ! BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
+    EARLY_OUT((_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey)); \
+    for (;;) { \
+        if (BUCKET_HAS_KEY(&pb[nxPos], (_xKey), sizeof(_xKey) * 8)) { \
+            break; \
+        } \
         /* check the first key in the _b_t to see if we've gone too far */ \
-        if ((_pxKeys)[_nPos] < (_xKey)) { (_nPos) ^= -1; break; } \
-        --nxPos; (_nPos) -= sizeof(_b_t) / sizeof(_xKey); \
-        if (&px[nxPos] < pxEnd) { (_nPos) = -1; break; } \
+        EARLY_OUT(if ((_pxKeys)[_nPos] < (_xKey)) { (_nPos) ^= -1; break; }); \
+        EARLY_OUT((_nPos) -= sizeof(_b_t) / sizeof(_xKey)); \
+        if (&pb[--nxPos] < (_b_t *)(_pxKeys)) { (_nPos) = -1; break; } \
     } \
 }
 
-      #else // defined(SUB_LIST)
-
+#if 0
 #define HASKEYB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
     assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
-    _b_t *px = (_b_t *)(_pxKeys); \
+    _b_t *pb = (_b_t *)(_pxKeys); \
     /* bucket number of first bucket to search */ \
-    int nxPos = ((_nPopCnt) - 1) * sizeof(_xKey) / sizeof(_b_t); \
+    int nxPos = (_nPos) * sizeof(_xKey) / sizeof(_b_t); \
+    SMETRICS(int nxPosStart = nxPos); \
     /* number of first key in first bucket to search */ \
-    (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
-    while ( ! BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
+    EARLY_OUT((_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey)); \
+    for (;;) { \
+        if (BUCKET_HAS_KEY(&pb[nxPos], (_xKey), sizeof(_xKey) * 8)) { \
+            SMETRICS(j__MisComparesM += nxPosStart - nxPos + 1); \
+            SMETRICS(++j__GetCallsM); \
+            SMETRICS(j__SearchPopulation += (_nPopCnt)); \
+            break; \
+        } \
         /* check the first key in the _b_t to see if we've gone too far */ \
-        if ((_pxKeys)[_nPos] < (_xKey)) { (_nPos) ^= -1; break; } \
-        --nxPos; (_nPos) -= sizeof(_b_t) / sizeof(_xKey); \
-        if (&px[nxPos] < (_b_t *)(_pxKeys)) { (_nPos) = -1; break; } \
+        EARLY_OUT(if ((_pxKeys)[_nPos] < (_xKey)) { (_nPos) ^= -1; break; }); \
+        EARLY_OUT((_nPos) -= sizeof(_b_t) / sizeof(_xKey)); \
+        if (&pb[--nxPos] < (_b_t *)(_pxKeys)) { (_nPos) = -1; break; } \
     } \
 }
+#endif
 
 #define LOCATEKEYB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
@@ -3357,8 +3368,6 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     } \
     (_nPos) += nBPos; \
 }
-
-      #endif // defined(SUB_LIST)
 
       #if JUNK
 // Amazingly, the variant above was the best performing in my tests.
@@ -3464,46 +3473,6 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
         if (&px[nxPos] < (_b_t *)(_pxKeys)) { (_nPos) = -1; break; } \
     } \
 }
-
-  #else // defined(PSPLIT_EARLY_OUT)
-
-// Has-key forward scan of a whole sub-list.
-// Without a check and early-out if we've gone past the key we want.
-#define HASKEYF(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
-{ \
-    assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
-    assert((((_nPos) * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
-    /* first address beyond address of last bucket to search */ \
-    _b_t *pxEnd = (_b_t *)&(_pxKeys)[_nPos + _nPopCnt]; \
-    /* address of first bucket to search */ \
-    _b_t *px = (_b_t *)&(_pxKeys)[_nPos]; \
-    /* number of last key first bucket to search */ \
-    (_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1; \
-    while ( ! BUCKET_HAS_KEY(px, (_xKey), sizeof(_xKey) * 8) ) { \
-        /* check to see if we've reached the end of the list */ \
-        if (++px >= pxEnd) { (_nPos) ^= -1; break; } \
-        (_nPos) += sizeof(_b_t) / sizeof(_xKey); \
-    } \
-}
-
-// Has-key backward scan of a whole sub-list.
-// Without a check and early-out if we've gone past the key we want.
-#define HASKEYB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
-{ \
-    assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
-    _b_t *px = (_b_t *)(_pxKeys); \
-    /* bucket number of first bucket to search */ \
-    int nxPos = (_nPos) * sizeof(_xKey) / sizeof(_b_t); \
-    /* number of first key in first bucket to search */ \
-    (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
-    while ( ! BUCKET_HAS_KEY(&px[nxPos], (_xKey), sizeof(_xKey) * 8) ) { \
-        /* check to see if we've reached the beginning of the list */ \
-        if (nxPos <= 0) { (_nPos) ^= -1; break; } \
-        --nxPos; (_nPos) -= sizeof(_b_t) / sizeof(_xKey); \
-    } \
-}
-
-  #endif // defined(PSPLIT_EARLY_OUT)
 
   #if defined(PSPLIT_HYBRID)
 
@@ -3616,8 +3585,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                 /* and we were willing to do the test */ \
                 /* ++nSplitP; */ \
                 (_nPos) = (int)nSplit + sizeof(_b_t) / sizeof(_x_t); \
-                HASKEYF(_b_t, (_xKey), \
-                          (_pxKeys), (_nPopCnt) - (_nPos), (_nPos)); \
+                HASKEYF(_b_t, (_xKey), (_pxKeys), (_nPopCnt), (_nPos)); \
             } \
         } \
         else \
@@ -3627,23 +3595,18 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                 (_nPos) = -1; /* this is where to insert */ \
             } else { \
                 /* parallel search the head of the list */ \
-                HASKEYB(_b_t, (_xKey), (_pxKeys), nSplit, (_nPos)); \
+                (_nPos) = nSplit - sizeof(_b_t)/sizeof(_xKey); \
+                HASKEYB(_b_t, (_xKey), (_pxKeys), (_nPopCnt), (_nPos)); \
             } \
         } \
         /* everything below is just assertions */ \
-        if ((_nPos) >= 0) { \
-            assert(BUCKET_HAS_KEY((_b_t *) \
-                                      ((Word_t)&(_pxKeys)[_nPos] \
-                                          & ~MSK(LOG(sizeof(_b_t)))), \
-                                  (_xKey), sizeof(_x_t) * 8)); \
-        } else { \
-            for (int ii = 0; ii < (_nPopCnt); \
-                 ii += sizeof(_b_t) / sizeof(_xKey)) \
-            { \
-                assert( ! BUCKET_HAS_KEY((_b_t *)&(_pxKeys)[ii], \
-                          (_xKey), sizeof(_x_t) * 8) ); \
-            } \
+        DBG(int nCnt = 0); \
+        DBG(for (int i = 0; i < (_nPopCnt); i += sizeof(_b_t) / sizeof(_xKey))) { \
+            DBG(nCnt += (BUCKET_HAS_KEY((_b_t*)&(_pxKeys)[i], \
+                                    (_xKey), sizeof(_x_t) * 8) \
+                        != 0)); \
         } \
+        assert(nCnt == ((_nPos) >= 0)); \
     } \
 }
 
