@@ -2474,7 +2474,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
                 (void *)pcvRoot, wKey));
 
   #if (cwListPopCntMax != 0)
-      #if defined(SEARCH_FROM_WRAPPER)
+  #if defined(SEARCH_FROM_WRAPPER)
     // Handle a top level T_LIST leaf here -- without calling Lookup.
     // For PP_IN_LINK a T_LIST leaf at the top has a pop count field in
     // the list, but T_LIST leaves that are not at the top do not. And,
@@ -2486,44 +2486,38 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     // Is T_LIST the only node type that is different at the top for
     // PP_IN_LINK? Doesn't the incomplete Link_t complicate Lookup for
     // the other node types?
-    if (nType == T_LIST)
+    if ((nType == T_LIST)
+      #if ! defined(SEPARATE_T_NULL)
+        && (pwr != NULL)
+      #endif // ! defined(SEPARATE_T_NULL)
+        && 1)
     {
+      #ifdef B_JUDYL
         // PWR_xListPopCount is valid only at the top for PP_IN_LINK.
         // The first word in the list is used for pop count at the top.
-        status = (1
-#if ! defined(SEPARATE_T_NULL)
-                  && (pwr != NULL)
-#endif // ! defined(SEPARATE_T_NULL)
-                  && (SearchListWord(ls_pwKeys(pwr, cnBitsPerWord),
-                                     wKey, cnBitsPerWord,
-                                     gnListPopCnt(qy, /* nBLR */ nBL))
-                      >= 0))
-            ? Success : Failure;
-#ifdef B_JUDYL
-        return NULL;
-#else // B_JUDYL
-        return status;
-#endif // B_JUDYL
+        int nPos = SearchListWord(ls_pwKeys(pwr, cnBitsPerWord),
+                                  wKey, cnBitsPerWord,
+                                  gnListPopCnt(qy, /* nBLR */ nBL));
+        return (nPos >= 0) ? (PPvoid_t)&pwr[~nPos] : NULL;
+      #else // B_JUDYL
+        return ListHasKeyWord(qy, cnBitsPerWord, wKey);
+      #endif // B_JUDYL
     }
-      #endif // defined(SEARCH_FROM_WRAPPER)
+  #endif // defined(SEARCH_FROM_WRAPPER)
   #endif // (cwListPopCntMax != 0)
 
-  #ifdef B_JUDYL
-    Word_t *pwValue =
-  #else // B_JUDYL
     return
-  #endif // B_JUDYL
-        Lookup(
-  #if defined(PLN_PARAM_FOR_LOOKUP)
-                 pLn,
-  #else // defined(PLN_PARAM_FOR_LOOKUP)
-                 wRoot,
-  #endif // defined(PLN_PARAM_FOR_LOOKUP)
-                 wKey
-                 );
   #ifdef B_JUDYL
-    return (PPvoid_t)pwValue;
+        (PPvoid_t)
   #endif // B_JUDYL
+            Lookup(
+  #if defined(PLN_PARAM_FOR_LOOKUP)
+                   pLn,
+  #else // defined(PLN_PARAM_FOR_LOOKUP)
+                   wRoot,
+  #endif // defined(PLN_PARAM_FOR_LOOKUP)
+                   wKey
+                   );
 
 #else // (cnDigitsPerWord > 1)
 
