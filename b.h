@@ -917,11 +917,17 @@ enum {
   #define METRICS(x)
 #endif // defined(RAMMETRICS)
 
-#if defined(SEARCHMETRICS)
-  #define SMETRICS(x)  (x)
-#else // defined(SEARCHMETRICS)
+#ifdef SEARCHMETRICS
+  #define SMETRICS(x)  x
+Word_t j__SearchPopulation;
+Word_t j__DirectHits;
+Word_t j__GetCallsP;
+Word_t j__GetCallsM;
+Word_t j__MisComparesP;
+Word_t j__MisComparesM;
+#else // SEARCHMETRICS)
   #define SMETRICS(x)
-#endif // defined(SEARCHMETRICS)
+#endif // SEARCHMETRICS
 
 #if defined(DEBUG)
   #define DBG(x)  x
@@ -3252,8 +3258,10 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 
   #if defined(PSPLIT_EARLY_OUT)
 #define EARLY_OUT(x)  x
+#define SMETRICS_OR_EARLY_OUT(x)  x
   #else // defined(PSPLIT_EARLY_OUT)
 #define EARLY_OUT(x)
+#define SMETRICS_OR_EARLY_OUT  SMETRICS
   #endif // defined(PSPLIT_EARLY_OUT)
 
 // Has-key forward scan of a sub-list.
@@ -3272,15 +3280,20 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     _b_t *pbEnd = (_b_t *)&(_pxKeys)[_nPopCnt]; \
     /* address of first bucket to search */ \
     _b_t *pb = (_b_t *)&(_pxKeys)[_nPos]; \
+    SMETRICS(int nPosStart = (_nPos)); \
     /* number of last key in first bucket to search */ \
-    EARLY_OUT((_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1); \
+    SMETRICS_OR_EARLY_OUT((_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1); \
     for (;;) { \
         if (BUCKET_HAS_KEY(pb, (_xKey), sizeof(_xKey) * 8)) { \
+            SMETRICS(j__MisComparesP \
+                += ((_nPos) - nPosStart + 1) * sizeof(_xKey) / sizeof(_b_t)); \
+            SMETRICS(++j__GetCallsP); \
+            SMETRICS(j__SearchPopulation += (_nPopCnt)); \
             break; \
         } \
         /* check the last key in the _b_t to see if we've gone too far */ \
         EARLY_OUT(if ((_xKey) < (_pxKeys)[_nPos]) { (_nPos) ^= -1; break; }); \
-        EARLY_OUT((_nPos) += sizeof(_b_t) / sizeof(_xKey)); \
+        SMETRICS_OR_EARLY_OUT((_nPos) += sizeof(_b_t) / sizeof(_xKey)); \
         if (++pb >= pbEnd) { (_nPos) ^= -1; break; } \
     } \
 }
@@ -3311,33 +3324,13 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
     _b_t *pb = (_b_t *)(_pxKeys); \
     /* bucket number of first bucket to search */ \
-    int nxPos = (_nPos) * sizeof(_xKey) / sizeof(_b_t); \
+    int nbPos = (_nPos) * sizeof(_xKey) / sizeof(_b_t); \
+    SMETRICS(int nbPosStart = nbPos); \
     /* number of first key in first bucket to search */ \
-    EARLY_OUT((_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey)); \
+    EARLY_OUT((_nPos) = nbPos * sizeof(_b_t) / sizeof(_xKey)); \
     for (;;) { \
-        if (BUCKET_HAS_KEY(&pb[nxPos], (_xKey), sizeof(_xKey) * 8)) { \
-            break; \
-        } \
-        /* check the first key in the _b_t to see if we've gone too far */ \
-        EARLY_OUT(if ((_pxKeys)[_nPos] < (_xKey)) { (_nPos) ^= -1; break; }); \
-        EARLY_OUT((_nPos) -= sizeof(_b_t) / sizeof(_xKey)); \
-        if (&pb[--nxPos] < (_b_t *)(_pxKeys)) { (_nPos) = -1; break; } \
-    } \
-}
-
-#if 0
-#define HASKEYB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
-{ \
-    assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
-    _b_t *pb = (_b_t *)(_pxKeys); \
-    /* bucket number of first bucket to search */ \
-    int nxPos = (_nPos) * sizeof(_xKey) / sizeof(_b_t); \
-    SMETRICS(int nxPosStart = nxPos); \
-    /* number of first key in first bucket to search */ \
-    EARLY_OUT((_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey)); \
-    for (;;) { \
-        if (BUCKET_HAS_KEY(&pb[nxPos], (_xKey), sizeof(_xKey) * 8)) { \
-            SMETRICS(j__MisComparesM += nxPosStart - nxPos + 1); \
+        if (BUCKET_HAS_KEY(&pb[nbPos], (_xKey), sizeof(_xKey) * 8)) { \
+            SMETRICS(j__MisComparesM += nbPosStart - nbPos + 1); \
             SMETRICS(++j__GetCallsM); \
             SMETRICS(j__SearchPopulation += (_nPopCnt)); \
             break; \
@@ -3345,10 +3338,9 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
         /* check the first key in the _b_t to see if we've gone too far */ \
         EARLY_OUT(if ((_pxKeys)[_nPos] < (_xKey)) { (_nPos) ^= -1; break; }); \
         EARLY_OUT((_nPos) -= sizeof(_b_t) / sizeof(_xKey)); \
-        if (&pb[--nxPos] < (_b_t *)(_pxKeys)) { (_nPos) = -1; break; } \
+        if (&pb[--nbPos] < (_b_t *)(_pxKeys)) { (_nPos) = -1; break; } \
     } \
 }
-#endif
 
 #define LOCATEKEYB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
@@ -3566,6 +3558,8 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     /*HAS_KEY_128_SETUP((_xKey), sizeof(_x_t) * 8, xLsbs, xMsbs, xKeys);*/ \
     if (BUCKET_HAS_KEY(&px[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
         (_nPos) = 0; /* key exists, but we don't know the exact position */ \
+        SMETRICS(++j__DirectHits); \
+        SMETRICS(j__SearchPopulation += (_nPopCnt)); \
     } \
     else \
     { \
@@ -5148,10 +5142,6 @@ SearchList(qp, int nBLR, Word_t wKey)
   #endif // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
     }
 
-  #if defined(LOOKUP)
-    SMETRICS(j__SearchPopulation += nPopCnt);
-  #endif // defined(LOOKUP)
-
     return nPos;
 }
 
@@ -5164,8 +5154,6 @@ static int
 ListHasKey(qp, int nBLR, Word_t wKey)
 {
     qv; (void)nBLR;
-
-    SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
 
 #if 0
     if (nBLR <= 32) {
@@ -5792,8 +5780,6 @@ static int
 LocateKeyInList(qp, int nBLR, Word_t wKey)
 {
     qv; (void)nBLR;
-
-    SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
 
   #if defined(COMPRESSED_LISTS)
       #if (cnBitsInD1 <= 8)
