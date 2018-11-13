@@ -16,6 +16,8 @@
   #undef ALLOW_EMBEDDED_BITMAP
 #endif // B_JUDYL
 
+// Default is -UPARALLEL_SEARCH_WORD.
+
 // Choose conditional features and tuning parameters by #if, #define
 // and #undef.
 // E.g. DEBUG, RAMMETRICS, GUARDBAND.

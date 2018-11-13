@@ -2457,7 +2457,7 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc,
 #endif // B_JUDYL
 
     n = nKeys + 1;
-#if defined(PSPLIT_PARALLEL_WORD)
+#if defined(PARALLEL_SEARCH_WORD)
     // Pad the list with copies of the last real key in the list so the
     // length of the list from the first key through the last copy of the
     // last real key is an integral multiple of cnBytesListLenAlign.
@@ -2467,7 +2467,7 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc,
     for (; (n * sizeof(wKey)) % sizeof(Bucket_t); ++n) {
         pTgt[n] = pTgt[n-1];
     }
-#endif // defined(PSPLIT_PARALLEL_WORD)
+#endif // defined(PARALLEL_SEARCH_WORD)
 #if defined(LIST_END_MARKERS)
     pTgt[n] = -1;
 #endif // defined(LIST_END_MARKERS)
@@ -4454,15 +4454,15 @@ copyWithInsertWord:
 #endif // defined(COMPRESSED_LISTS)
             {
   #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
-      && defined(PSPLIT_PARALLEL_WORD)
+      && defined(PARALLEL_SEARCH_WORD)
                 //printf("goto copyWithInsertWord\n");
                 goto copyWithInsertWord;
-  #else // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL_WORD)
+  #else // !defined(EMBED_KEYS) && ... && defined(PARALLEL_SEARCH_WORD)
                 ls_pwKeysX(pwList, nBL, wPopCnt + 1)[wPopCnt] = wKey;
       #ifdef B_JUDYL
                 pwValue = &ls_pwKeysX(pwList, nBL, wPopCnt + 1)[~wPopCnt];
       #endif // B_JUDYL
-  #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL_WORD)
+  #endif // !defined(EMBED_KEYS) && ... && defined(PARALLEL_SEARCH_WORD)
             }
             // Shouldn't we be padding the extra key slots
             // for parallel search? Is the unsorted list
@@ -5828,13 +5828,13 @@ embeddedKeys:;
         MOVE(&ls_pwKeysX(pwList, nBL, wPopCnt - 1)[nIndex],
              &pwKeys[nIndex + 1], wPopCnt - nIndex - 1);
         int n = wPopCnt - 1; (void)n;
-#if defined(PSPLIT_PARALLEL_WORD)
+#if defined(PARALLEL_SEARCH_WORD)
         // pad list to an integral number of parallel search buckets in length
         for (; (n * sizeof(Word_t)) % sizeof(Bucket_t); ++n) {
             ls_pwKeysX(pwList, nBL, wPopCnt-1)[n]
                 = ls_pwKeysX(pwList, nBL, wPopCnt-1)[n-1];
         }
-#endif // defined(PSPLIT_PARALLEL_WORD)
+#endif // defined(PARALLEL_SEARCH_WORD)
 #if defined(LIST_END_MARKERS)
         ls_pwKeysX(pwList, nBL, wPopCnt - 1)[n] = -1;
 #endif // defined(LIST_END_MARKERS)
@@ -6289,11 +6289,11 @@ Initialize(void)
     printf("# No PSPLIT_PARALLEL\n");
 #endif // defined(PSPLIT_PARALLEL)
 
-#if defined(PSPLIT_PARALLEL_WORD)
-    printf("#    PSPLIT_PARALLEL_WORD\n");
-#else // defined(PSPLIT_PARALLEL_WORD)
-    printf("# No PSPLIT_PARALLEL_WORD\n");
-#endif // defined(PSPLIT_PARALLEL_WORD)
+#if defined(PARALLEL_SEARCH_WORD)
+    printf("#    PARALLEL_SEARCH_WORD\n");
+#else // defined(PARALLEL_SEARCH_WORD)
+    printf("# No PARALLEL_SEARCH_WORD\n");
+#endif // defined(PARALLEL_SEARCH_WORD)
 
 #if defined(UA_PARALLEL_128)
     printf("#    UA_PARALLEL_128\n");
