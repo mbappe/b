@@ -885,7 +885,7 @@ Word_t TestJudyNext(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
         if (JLindex != J1index)
         {
             printf("JudyLNext = %zx Judy1Next = %zx\n", JLindex, J1index);
-            FAILURE("JudyLNext & Judy1Next ret different PIndex at", elm);
+            FAILURE("JudyLNext & Judy1Next ret different *PIndex at", elm);
         }
 
         JPindex = J1index;              // save the last found index
