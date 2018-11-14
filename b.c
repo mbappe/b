@@ -3367,11 +3367,15 @@ DoubleIt(qp,
          int nBLUp,
          int nDLOld,
          Link_t *pLnUp
+      #ifdef CODE_XX_SW
+       , Word_t wPopCnt
+      #endif // CODE_XX_SW
          )
 {
     qv;
     (void)nDLOld;
     (void)nBLUp;
+    (void)wPopCnt;
     int nBW;
 
     {
@@ -3435,8 +3439,6 @@ DoubleIt(qp,
                               " wWordsAllocated %" _fw"d"
                               " wPopCntTotal %" _fw"d.\n",
                             nBL, nBLOld, wWordsAllocated, wPopCntTotal));
-                DBGI(printf("# IG: NewBitmap wPopCnt %" _fw"d.\n",
-                            wPopCnt));
                 DBGI(printf("# IG: NewBitmap nBL %d.\n", nBL));
 #if ! defined(SKIP_TO_BITMAP)
                 assert(nBL == nBLOld);
@@ -3615,10 +3617,13 @@ InsertSwitch(qp,
              int nDLOld,
              int nBLOld
   #ifdef SKIP_TO_XX_SW
-             , int nBLUp
+           , int nBLUp
   #endif // SKIP_TO_XX_SW
 #ifdef CODE_XX_SW
-             , Link_t *pLnUp
+           , Link_t *pLnUp
+#endif // CODE_XX_SW
+#ifdef CODE_XX_SW
+           , Word_t wPopCnt
 #endif // CODE_XX_SW
              )
 {
@@ -3746,7 +3751,11 @@ InsertSwitch(qp,
 // What about a small bitmap?
 // Or another switch?
   #endif // defined(USE_XX_SW)
-            return DoubleIt(qy, nDL, wKey, nBLOld, nBLUp, nDLOld, pLnUp);
+            return DoubleIt(qy, nDL, wKey, nBLOld, nBLUp, nDLOld, pLnUp
+      #ifdef CODE_XX_SW
+                          , wPopCnt
+      #endif // CODE_XX_SW
+                            );
   #if defined(USE_XX_SW)
         } else
         { nBW = nBL_to_nBitsIndexSz(nBL); }
@@ -3975,6 +3984,9 @@ Splay(qp,
           #endif // SKIP_TO_XX_SW
                           , pLnUp
       #endif // CODE_XX_SW
+      #ifdef CODE_XX_SW
+                          , wPopCnt
+      #endif // CODE_XX_SW
                             );
     }
 #endif // (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) || ...
@@ -3987,7 +3999,11 @@ Splay(qp,
     // since we can't skip anyway.  And the
     // skip code causes problems for T_XX_SW.
     if (nBL <= cnBitsLeftAtDl2) {
-        return InsertSwitch(qy, wKey, nDL, nDLOld, nBLOld, nBLUp, pLnUp);
+        return InsertSwitch(qy, wKey, nDL, nDLOld, nBLOld, nBLUp, pLnUp
+      #ifdef CODE_XX_SW
+                          , wPopCnt
+      #endif // CODE_XX_SW
+                            );
     }
 #endif // defined(CODE_XX_SW)
 
@@ -4111,6 +4127,9 @@ Splay(qp,
 #if defined(CODE_XX_SW)
                       , pLnUp
 #endif // defined(CODE_XX_SW)
+      #ifdef CODE_XX_SW
+                      , wPopCnt
+      #endif // CODE_XX_SW
                         );
 }
 
@@ -4223,7 +4242,11 @@ InsertAtList(qp,
       #ifdef SKIP_TO_XX_SW
                         nBLUp,
       #endif // SKIP_TO_XX_SW
-                        nDLOld, pLnUp);
+                        nDLOld, pLnUp
+      #if CODE_XX_SW
+                      , wPopCnt
+      #endif // CODE_XX_SW
+                        );
     }
   #endif // defined(NO_TYPE_IN_XX_SW)
 
@@ -4272,7 +4295,11 @@ InsertAtList(qp,
       #ifdef SKIP_TO_XX_SW
                                         nBLUp,
       #endif // SKIP_TO_XX_SW
-                                        pLnUp);
+                                        pLnUp
+      #ifdef CODE_XX_SW
+                                      , wPopCnt
+      #endif // CODE_XX_SW
+                                        );
                 }
             }
         }
@@ -4285,7 +4312,11 @@ InsertAtList(qp,
                         < cnXxSwWpkPercent)
                 {
                     return DoubleIt(qy, nDL, wKey, nBLOld, nBLUp, nDLOld,
-                                    pLnUp);
+                                    pLnUp
+      #ifdef CODE_XX_SW
+                                  , wPopCnt
+      #endif // CODE_XX_SW
+                                    );
                 }
             }
         }
@@ -4552,6 +4583,7 @@ copyWithInsertWord:
     return pwValue;
 #endif // B_JUDYL
 }
+
 // InsertGuts
 // This function is called from the iterative Insert function once Insert has
 // determined that the key from an insert request is not present in the array.
@@ -5351,9 +5383,10 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
 
         if (bPrefixMismatch) {
   #ifdef B_JUDYL
-            return
+            return PrefixMismatch(pwRoot, nBL, wKey, nBLR);
+  #else // B_JUDYL
+            PrefixMismatch(pwRoot, nBL, wKey, nBLR); return Success;
   #endif // B_JUDYL
-                PrefixMismatch(pwRoot, nBL, wKey, nBLR);
         }
 
         nBL = nBLR;
@@ -6734,6 +6767,12 @@ Initialize(void)
 #else // defined(SEARCH_FROM_WRAPPER)
     printf("# No SEARCH_FROM_WRAPPER\n");
 #endif // defined(SEARCH_FROM_WRAPPER)
+
+#if defined(SEARCH_FROM_WRAPPER_I)
+    printf("#    SEARCH_FROM_WRAPPER_I\n");
+#else // defined(SEARCH_FROM_WRAPPER_I)
+    printf("# No SEARCH_FROM_WRAPPER_I\n");
+#endif // defined(SEARCH_FROM_WRAPPER_I)
 
 #if defined(DEBUG)
     printf("#    DEBUG\n");
