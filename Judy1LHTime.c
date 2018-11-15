@@ -2774,12 +2774,15 @@ printf("# COLHEAD %2d GetsM - Num get calls that miss and search backward\n", Co
     if (JHFlag) { JudyHSFreeArray(NULL, PJE0); }
 
     // Warm up, e.g. JudyMalloc and caches.
-    Tit = 1;
-    DummySeed = StartSeed;
-    TestJudyIns(&J1, &JL, &JH, &DummySeed, /* Elements */ 1000);
-    DummySeed = StartSeed;
-    TestJudyGet(J1, JL, JH, &DummySeed, /* Elements */ 1000,
-                Tit, KFlag, hFlag, bLfsrOnly);
+    if (Warmup) {
+        Tit = 1;
+        DummySeed = StartSeed;
+        TestJudyIns(&J1, &JL, &JH, &DummySeed, /* Elements */ 1000);
+        DummySeed = StartSeed;
+        TestJudyGet(J1, JL, JH, &DummySeed, /* Elements */ 1000,
+                    Tit, KFlag, hFlag, bLfsrOnly);
+    }
+
     if (J1Flag) { Judy1FreeArray(&J1, NULL); }
     if (JLFlag) { JudyLFreeArray(&JL, NULL); }
     if (JHFlag) { JudyHSFreeArray(&JH, NULL); }
