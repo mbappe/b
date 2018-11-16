@@ -6900,6 +6900,12 @@ Initialize(void)
     printf("# No NO_BL_SPECIFIC_PSPLIT_SEARCH\n");
 #endif // defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
 
+#if defined(NO_PARALLEL_SEARCH_WORD)
+    printf("#    NO_PARALLEL_SEARCH_WORD\n");
+#else // defined(NO_PARALLEL_SEARCH_WORD)
+    printf("# No NO_PARALLEL_SEARCH_WORD\n");
+#endif // defined(NO_PARALLEL_SEARCH_WORD)
+
 #if defined(NO_UA_PARALLEL_128)
     printf("#    NO_UA_PARALLEL_128\n");
 #else // defined(NO_UA_PARALLEL_128)

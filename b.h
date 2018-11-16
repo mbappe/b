@@ -5066,12 +5066,19 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
     }
     nPos = pwKeys - pwKeysOrig;
   #if defined(BACKWARD_SEARCH_WORD)
+      #ifdef PARALLEL_SEARCH_WORD
+    assert(sizeof(Bucket_t) == sizeof(Word_t) * 2);
+    // assumes bucket size is two words
+    nPos = (nPos + 1) & ~1; // won't be required when code above is fixed
+    HASKEYB(Bucket_t, wKey, pwKeysOrig, nPopCntOrig, nPos);
+      #else // PARALLEL_SEARCH_WORD
     SEARCHB(Word_t, pwKeysOrig, nPopCnt, wKey, nPos);
+      #endif // PARALLEL_SEARCH_WORD
   #else // defined(BACKWARD_SEARCH_WORD)
       #ifdef PARALLEL_SEARCH_WORD
-//printf("nPos %d\n", nPos);
-//fflush(stdout);
-    nPos &= ~1;
+    assert(sizeof(Bucket_t) == sizeof(Word_t) * 2);
+    // assumes bucket size is two words
+    nPos &= ~1; // won't be required when code above is fixed
     HASKEYF(Bucket_t, wKey, pwKeysOrig, nPopCntOrig, nPos);
       #else // PARALLEL_SEARCH_WORD
     SEARCHF(Word_t, pwKeysOrig, nPopCnt, wKey, nPos);

@@ -33,7 +33,11 @@
   #endif // BINARY_SEARCH_WORD
 #endif // NO_PSPLIT_SEARCH_WORD
 
-// Default is -UPARALLEL_SEARCH_WORD.
+// Default is -DPARALLEL_SEARCH_WORD.
+#ifndef NO_PARALLEL_SEARCH_WORD
+    #undef   PARALLEL_SEARCH_WORD
+    #define  PARALLEL_SEARCH_WORD
+#endif // NO_PARALLEL_SEARCH_WORD
 
 // Choose conditional features and tuning parameters by #if, #define
 // and #undef.
