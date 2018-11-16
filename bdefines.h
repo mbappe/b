@@ -24,6 +24,15 @@
   #endif // SKIP_TO_BITMAP
 #endif // B_JUDYL
 
+// Default is -DPSPLIT_SEARCH_WORD.
+// It does not apply at top.
+#ifndef NO_PSPLIT_SEARCH_WORD
+  #ifndef BINARY_SEARCH_WORD
+    #undef   PSPLIT_SEARCH_WORD
+    #define  PSPLIT_SEARCH_WORD
+  #endif // BINARY_SEARCH_WORD
+#endif // NO_PSPLIT_SEARCH_WORD
+
 // Default is -UPARALLEL_SEARCH_WORD.
 
 // Choose conditional features and tuning parameters by #if, #define

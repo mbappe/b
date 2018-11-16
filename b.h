@@ -5132,47 +5132,44 @@ ListHasKeyWord(qp, int nBLR, Word_t wKey)
   #endif // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
     DBGI(printf("LHKW pwKeys %p wKey " OWx" nBL %d nPopCnt %d\n",
                 (void *)pwKeys, wKey, nBL, nPopCnt));
+    int nPos;
 #if defined(PSPLIT_SEARCH_WORD)
-    int nPos = 0;
+    nPos = 0;
+  #if !defined(SEARCH_FROM_WRAPPER) || !defined(LOOKUP)
+    if (nBLR != cnBitsPerWord)
+  #endif // !defined(SEARCH_FROM_WRAPPER) || !defined(LOOKUP)
+    {
   #if defined(BL_SPECIFIC_PSPLIT_SEARCH_WORD)
       #if (cnBitsPerWord > 32)
-    if (nBLR == 64) {
-        //int nBitsExpanse = LOG(pwKeys[nPopCnt-1]) + 1;
-        //PSPLIT_SEARCH_W(Word_t, nBitsExpanse, pwKeys, nPopCnt, wKey, nPos);
-        PSPLIT_SEARCH_W(Word_t, 64, pwKeys, nPopCnt, wKey, nPos);
-    } else
-    if (nBLR == 56) {
-        PSPLIT_SEARCH_W(Word_t, 56, pwKeys, nPopCnt, wKey, nPos);
-    } else
-    if (nBLR == 48) {
-        PSPLIT_SEARCH_W(Word_t, 48, pwKeys, nPopCnt, wKey, nPos);
-    } else
-    if (nBLR == 40) {
-        PSPLIT_SEARCH_W(Word_t, 40, pwKeys, nPopCnt, wKey, nPos);
-    } else
+        if (nBLR == 56) {
+            PSPLIT_SEARCH_W(Word_t, 56, pwKeys, nPopCnt, wKey, nPos);
+        } else
+        if (nBLR == 48) {
+            PSPLIT_SEARCH_W(Word_t, 48, pwKeys, nPopCnt, wKey, nPos);
+        } else
+        if (nBLR == 40) {
+            PSPLIT_SEARCH_W(Word_t, 40, pwKeys, nPopCnt, wKey, nPos);
+        } else
       #else // (cnBitsPerWord > 32)
-    if (nBLR == 32) {
-        PSPLIT_SEARCH_W(Word_t, 32, pwKeys, nPopCnt, wKey, nPos);
-    } else
-    if (nBLR == 24) {
-        PSPLIT_SEARCH_W(Word_t, 24, pwKeys, nPopCnt, wKey, nPos);
-    } else
+        if (nBLR == 24) {
+            PSPLIT_SEARCH_W(Word_t, 24, pwKeys, nPopCnt, wKey, nPos);
+        } else
       #endif // (cnBitsPerWord > 32)
   #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH_WORD)
-    {
-        PSPLIT_SEARCH_W(Word_t, nBLR, pwKeys, nPopCnt, wKey, nPos);
+        {
+            PSPLIT_SEARCH_W(Word_t, nBLR, pwKeys, nPopCnt, wKey, nPos);
+        }
+        DBGX(printf("LHKW: returning %d\n", nPos >= 0));
+        return nPos >= 0;
     }
-    DBGX(printf("LHKW: returning %d\n", nPos >= 0));
-    return nPos >= 0;
-#else // defined(PSPLIT_SEARCH_WORD)
-  #ifdef PARALLEL_SEARCH_WORD
-    return BinaryHasKeyWord(pwKeys, wKey, nBLR, nPopCnt);
-  #else // PARALLEL_SEARCH_WORD
-    int nPos = SearchListWord(pwKeys, wKey, nBLR, nPopCnt);
-    DBGX(printf("LHKW: returning %d\n", nPos >= 0));
-    return nPos >= 0;
-  #endif // PARALLEL_SEARCH_WORD
 #endif // defined(PSPLIT_SEARCH_WORD)
+#ifdef PARALLEL_SEARCH_WORD
+    return BinaryHasKeyWord(pwKeys, wKey, nBLR, nPopCnt);
+#else // PARALLEL_SEARCH_WORD
+    nPos = SearchListWord(pwKeys, wKey, nBLR, nPopCnt);
+    DBGX(printf("LHKW: returning %d\n", nPos >= 0));
+    return nPos >= 0;
+#endif // PARALLEL_SEARCH_WORD
 }
 
 #if JUNK

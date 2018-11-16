@@ -6888,6 +6888,12 @@ Initialize(void)
     printf("# No NO_XX_SHORTCUT_GOTO\n");
 #endif // defined(NO_XX_SHORTCUT_GOTO)
 
+#if defined(NO_PSPLIT_SEARCH_WORD)
+    printf("#    NO_PSPLIT_SEARCH_WORD\n");
+#else // defined(NO_PSPLIT_SEARCH_WORD)
+    printf("# No NO_PSPLIT_SEARCH_WORD\n");
+#endif // defined(NO_PSPLIT_SEARCH_WORD)
+
 #if defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
     printf("#    NO_BL_SPECIFIC_PSPLIT_SEARCH\n");
 #else // defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
