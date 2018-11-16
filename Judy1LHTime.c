@@ -2775,11 +2775,27 @@ printf("# COLHEAD %2d GetsM - Num get calls that miss and search backward\n", Co
 
     // Warm up, e.g. JudyMalloc and caches.
     if (Warmup) {
+#define N_WARMUP_KEYS  1000
+        InsertSeed = StartSeed; // Test values
+#ifndef CALC_NEXT_KEY
+        if (!bLfsrOnly && (FValue == 0)
+            && (TValues < N_WARMUP_KEYS) && (nElms > TValues))
+        {
+            // Initialize delta key array.
+            // FileKeys[TValues] is where the delta keys begin.
+            for (Word_t ww = 0; ww < MIN(N_WARMUP_KEYS, nElms); ww++) {
+                FileKeys[TValues + ww] = CalcNextKey(&DeltaSeed);
+            }
+            DeltaSeed = *PInitSeed;
+            InsertSeed = &FileKeys[TValues];
+        }
+#endif // CALC_NEXT_KEY
         Tit = 1;
+        TestJudyIns(&J1, &JL, &JH, &InsertSeed,
+                    /* nElms */ MIN(N_WARMUP_KEYS, nElms));
         DummySeed = StartSeed;
-        TestJudyIns(&J1, &JL, &JH, &DummySeed, /* Elements */ 1000);
-        DummySeed = StartSeed;
-        TestJudyGet(J1, JL, JH, &DummySeed, /* Elements */ 1000,
+        TestJudyGet(J1, JL, JH, &DummySeed,
+                    /* nElms */ MIN(N_WARMUP_KEYS, TValues),
                     Tit, KFlag, hFlag, bLfsrOnly);
     }
 
@@ -2997,6 +3013,7 @@ nextPart:
 #ifndef CALC_NEXT_KEY
         if (!bLfsrOnly && (FValue == 0))
         {
+            // Initialize delta key array.
             // FileKeys[TValues] is where the delta keys begin.
             for (Word_t ww = 0; ww < Delta; ww++) {
                 FileKeys[TValues + ww] = CalcNextKey(&DeltaSeed);
