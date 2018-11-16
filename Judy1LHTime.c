@@ -4551,7 +4551,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
             MisComparesP    = j__MisComparesP;
             MisComparesM    = j__MisComparesM;
             DirectHits       = j__DirectHits;
-            SearchPopulation = j__SearchPopulation; 
+            SearchPopulation = j__SearchPopulation;
             GetCallsP        = j__GetCallsP;
             GetCallsM        = j__GetCallsM;
 
@@ -4624,7 +4624,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
             MisComparesP =     j__MisComparesP;
             MisComparesM =     j__MisComparesM;
             DirectHits =        j__DirectHits;
-            SearchPopulation =  j__SearchPopulation; 
+            SearchPopulation =  j__SearchPopulation;
             GetCallsP =         j__GetCallsP;
             GetCallsM =         j__GetCallsM;
 
@@ -4723,7 +4723,7 @@ TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elements)
         MisComparesP =     j__MisComparesP;
         MisComparesM =     j__MisComparesM;
         DirectHits =        j__DirectHits;
-        SearchPopulation =  j__SearchPopulation; 
+        SearchPopulation =  j__SearchPopulation;
         GetCallsP =         j__GetCallsP;
         GetCallsM =         j__GetCallsM;
 
