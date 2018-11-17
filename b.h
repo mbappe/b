@@ -574,6 +574,23 @@ typedef Word_t Bucket_t;
   #endif // defined(USE_XX_SW)
 #endif // ! defined(cnListPopCntMaxDl1)
 
+#ifndef cnListPopCntMax24
+    #define cnListPopCntMax24  cnListPopCntMax32
+#endif // cnListPopCntMax24
+
+#ifndef cnListPopCntMax40
+    #define cnListPopCntMax40  cnListPopCntMax64
+#endif // cnListPopCntMax40
+
+#ifndef cnListPopCntMax48
+    #define cnListPopCntMax48  cnListPopCntMax64
+#endif // cnListPopCntMax48
+
+#ifndef cnListPopCntMax56
+    #define cnListPopCntMax56  cnListPopCntMax64
+#endif // cnListPopCntMax56
+
+
 // cwListPopCntMax is mostly used as a boolean that indicates whether
 // or not we are using lists at all; embedded or external.
 // But it is also used to size the temporary buffer used when copying
@@ -586,14 +603,18 @@ typedef Word_t Bucket_t;
   #if (cnBitsPerWord >= 64)
 #define cwListPopCntMax \
    MAX(cnListPopCntMax64, \
+   MAX(cnListPopCntMax56, \
+   MAX(cnListPopCntMax48, \
+   MAX(cnListPopCntMax40, \
        MAX(cnListPopCntMax32, \
            MAX(cnListPopCntMax16, \
-               MAX(cnListPopCntMax8, 0))))
+               MAX(cnListPopCntMax8, 0)))))))
   #else // (cnBitsPerWord >= 64)
 #define cwListPopCntMax \
        MAX(cnListPopCntMax32, \
+       MAX(cnListPopCntMax24, \
            MAX(cnListPopCntMax16, \
-               MAX(cnListPopCntMax8, 0)))
+               MAX(cnListPopCntMax8, 0))))
   #endif // (cnBitsPerWord >= 64)
 #endif // ! defined(cwListPopCntMax)
 
@@ -5983,11 +6004,16 @@ extern Word_t j__AllocWordsJLB1; // bitmap leaf
 extern Word_t j__AllocWordsJLL1; // 1 byte/key list leaf
 extern Word_t j__AllocWordsJLL2; // 2 bytes/key list leaf
 extern Word_t j__AllocWordsJLL3; // B2 big bitmap leaf
-//Word_t j__AllocWordsJV;   // value area
 extern Word_t j__AllocWordsJLL4; // 4 bytes/key list leaf
-//extern Word_t j__AllocWordsJLL5; // 5 bytes/key list leaf
-//extern Word_t j__AllocWordsJLL6; // 6 bytes/key list leaf
+extern Word_t j__AllocWordsJLL5; // 5 bytes/key list leaf
+extern Word_t j__AllocWordsJLL6; // 6 bytes/key list leaf
 extern Word_t j__AllocWordsJLL7; // words requested
+
+#ifndef B_JUDYL
+// Coopt j__AllocWordsJV for JLB2 big bitmap at digit 2.
+extern Word_t j__AllocWordsJV;   // value area
+#define j__AllocWordsJLB2  j__AllocWordsJV
+#endif // B_JUDYL
 
 #endif // defined(RAMMETRICS)
 

@@ -197,7 +197,7 @@ MyMallocGuts(Word_t wWords, int nLogAlignment)
                 wWords, (void *)ww, (void *)&((Word_t *)ww)[-1],
                 ((Word_t *)ww)[-1]));
 #if defined(RAMMETRICS)
-    j__AllocWordsJLL7 += wWords; // words requested
+    //j__AllocWordsJLL7 += wWords; // words requested
 #endif // defined(RAMMETRICS)
 
     // Calculate the minimum number of units required to satisfy the request
@@ -307,7 +307,7 @@ MyFreeGuts(Word_t *pw, Word_t wWords, int nLogAlignment)
                 zUnitsRequired, zUnitsAllocated, zExtraUnits));
     --wMallocs; wWordsAllocated -= wWords;
 #if defined(RAMMETRICS)
-    j__AllocWordsJLL7 -= wWords; // words requested
+    //j__AllocWordsJLL7 -= wWords; // words requested
 #endif // defined(RAMMETRICS)
     JudyFree((RawP_t)pw, wWords + cnMallocExtraWords);
 }
@@ -571,6 +571,15 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
         ls_psKeysNAT(pwList)[-1] = 0;
 #endif // defined(LIST_END_MARKERS)
         METRICS(j__AllocWordsJLL2 += nWords); // 2 bytes/key list leaf
+    } else if (nBL <= 24) {
+#if defined(LIST_END_MARKERS)
+  #if (cnBitsPerWord > 32)
+        ls_piKeysNAT(pwList)[-1] = 0;
+  #else // (cnBitsPerWord > 32)
+        ls_pwKeysNAT(pwList)[-1] = 0;
+  #endif // (cnBitsPerWord > 32)
+#endif // defined(LIST_END_MARKERS)
+        METRICS(j__AllocWordsJLL3 += nWords); // 3 bytes/key list leaf
 #if (cnBitsPerWord > 32)
     } else if (nBL <= 32) {
 #if defined(LIST_END_MARKERS)
@@ -583,15 +592,26 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 #endif // defined(COMPRESSED_LISTS)
     {
 #if defined(LIST_END_MARKERS)
-#if (defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)) && (cnDummiesInList==0)
-        // ls_pwKeys is for T_LIST not at top (it incorporates dummies
-        // and markers, but not pop count)
-        ls_pwKeysNAT(pwList)[-1 + (nBL == cnBitsPerWord)] = 0;
-#else // (defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)) && ...
-        ls_pwKeysNAT(pwList)[-1] = 0;
-#endif // (defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)) && ...
+        ls_pwKeysNAT(pwList)[-1
+  #if (defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)) && (cnDummiesInList==0)
+            // ls_pwKeys is for T_LIST not at top (it incorporates dummies
+            // and markers, but not pop count)
+                             + (nBL == cnBitsPerWord)
+  #endif // (defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)) && ...
+                             ] = 0;
 #endif // defined(LIST_END_MARKERS)
-        METRICS(j__AllocWordsJLLW += nWords); // 1 word/key list leaf
+#if (cnBitsPerWord > 32)
+        if (nBL <= 40) {
+            METRICS(j__AllocWordsJLL5 += nWords); // 5 bytes/key list leaf
+        } else if (nBL <= 48) {
+            METRICS(j__AllocWordsJLL6 += nWords); // 6 bytes/key list leaf
+        } else if (nBL <= 56) {
+            METRICS(j__AllocWordsJLL7 += nWords); // 7 bytes/key list leaf
+        } else
+#endif // (cnBitsPerWord > 32)
+        {
+            METRICS(j__AllocWordsJLLW += nWords); // 1 word/key list leaf
+        }
     }
 
     // Should we be setting wPrefix here for PP_IN_LINK?
@@ -708,6 +728,8 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
         METRICS(j__AllocWordsJLL1 -= nWords); // 1 byte/key list leaf
     } else if (nBL <= 16) {
         METRICS(j__AllocWordsJLL2 -= nWords); // 2 bytes/key list leaf
+    } else if (nBL <= 24) {
+        METRICS(j__AllocWordsJLL3 -= nWords); // 3 bytes/key list leaf
 #if (cnBitsPerWord > 32)
     } else if (nBL <= 32) {
         METRICS(j__AllocWordsJLL4 -= nWords); // 4 bytes/key list leaf
@@ -716,7 +738,19 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
     else
 #endif // defined(COMPRESSED_LISTS)
     {
-        METRICS(j__AllocWordsJLLW -= nWords); // 1 word/key list leaf
+#if (cnBitsPerWord > 32)
+        if (nBL <= 40) {
+            METRICS(j__AllocWordsJLL5 -= nWords); // 5 bytes/key list leaf
+        } else if (nBL <= 48) {
+            METRICS(j__AllocWordsJLL6 -= nWords); // 6 bytes/key list leaf
+        } else if (nBL <= 56) {
+            METRICS(j__AllocWordsJLL7 -= nWords); // 7 bytes/key list leaf
+        } else
+#endif // (cnBitsPerWord > 32)
+        {
+//printf("\n- %d\n", nWords);
+            METRICS(j__AllocWordsJLLW -= nWords); // 1 word/key list leaf
+        }
     }
 
 #ifdef B_JUDYL
@@ -771,8 +805,8 @@ NewBitmap(Word_t *pwRoot, int nBL, int nBLUp, Word_t wKey)
     Word_t *pwBitmap = (Word_t *)MyMalloc(wWords);
 
     if (nBL == nDL_to_nBL(2)) {
-        // Use LL3 column for B2 big bitmap leaf.
-        METRICS(j__AllocWordsJLL3 += wWords);
+        // Use JLB2 column for B2 big bitmap leaf.
+        METRICS(j__AllocWordsJLB2 += wWords);
     } else {
         METRICS(j__AllocWordsJLB1 += wWords); // bitmap leaf
     }
@@ -841,10 +875,13 @@ OldBitmap(Word_t *pwRoot, Word_t *pwr, int nBL)
 
     MyFree(pwr, wWords);
 
+#ifndef B_JUDYL
     if (nBLR == nDL_to_nBL(2)) {
-        // Use LL3 column for B2 big bitmap leaf.
-        METRICS(j__AllocWordsJLL3 -= wWords); // B2 big bitmap leaf
-    } else {
+        // Use JLB2 column for B2 big bitmap leaf.
+        METRICS(j__AllocWordsJLB2 -= wWords); // B2 big bitmap leaf
+    } else
+#endif // B_JUDYL
+    {
         METRICS(j__AllocWordsJLB1 -= wWords); // bitmap leaf
     }
 
@@ -1435,6 +1472,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
              PWR_wPopCntBL(pwRoot, (BmSwitch_t *)*pwRoot, nBLR)));
 
         if (nBLR <= (int)LOG(sizeof(Link_t) * 8)) {
+// BUG? Is this ever decremented?
             METRICS(j__AllocWordsJLB1 += nWordsNew); // bitmap leaf
         } else
 #if defined(RETYPE_FULL_BM_SW)
@@ -2715,15 +2753,18 @@ DeflateExternalList(Word_t *pwRoot,
 
 // Max list length as a function of nBL.
 // Array is indexed by LOG(nBL-1).
+// Array is indexed by nBL/8;
 static
 const int anListPopCntMax[] = {
-                    0, //  1 < nBL <=  2
-                    0, //  2 < nBL <=  4
-    cnListPopCntMax8 , //  4 < nBL <=  8
+    cnListPopCntMax8 , //  0 < nBL <=  8
     cnListPopCntMax16, //  8 < nBL <= 16
-    cnListPopCntMax32, // 16 < nBL <= 32
+    cnListPopCntMax24, // 16 < nBL <= 24
+    cnListPopCntMax32, // 24 < nBL <= 32
   #if (cnBitsPerWord >= 64)
-    cnListPopCntMax64, // 32 < nBL <= 64
+    cnListPopCntMax40, // 32 < nBL <= 40
+    cnListPopCntMax48, // 40 < nBL <= 48
+    cnListPopCntMax56, // 48 < nBL <= 56
+    cnListPopCntMax64, // 56 < nBL <= 64
   #endif // (cnBitsPerWord >= 64)
     };
 
@@ -4270,7 +4311,7 @@ InsertAtList(qp,
 #if defined(cnListPopCntMaxDl3)
             && (nBL != cnBitsLeftAtDl3)
 #endif // defined(cnListPopCntMaxDl3)
-            && ((int)wPopCnt < anListPopCntMax[LOG(nBL - 1)])))
+            && ((int)wPopCnt < anListPopCntMax[(nBL-1)/8])))
     {
 #if defined(CODE_XX_SW)
 #if ! defined(cnXxSwWpkPercent)
@@ -5987,22 +6028,10 @@ Initialize(void)
     assert(T_EMBEDDED_KEYS != 0); // see b.h
   #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
 #endif // defined(NO_TYPE_IN_XX_SW)
-#if ! defined(EMBED_KEYS)
-    // We don't support NO_EMBED_KEYS with cnListPopCntMax<X> == 0.
-    assert(cnListPopCntMaxDl1 != 0);
-  #if defined(cnListPopCntMaxDl2)
-    assert(cnListPopCntMaxDl2 != 0);
-  #endif // defined(cnListPopCntMaxDl2)
-  #if defined(cnListPopCntMaxDl3)
-    assert(cnListPopCntMaxDl3 != 0);
-  #endif // defined(cnListPopCntMaxDl3)
-    assert(cnListPopCntMax8   != 0);
-    assert(cnListPopCntMax16  != 0);
-    assert(cnListPopCntMax32  != 0);
-  #if cnBitsPerWord > 32
-    assert(cnListPopCntMax64  != 0);
-  #endif // cnBitsPerWord > 32
-#endif // ! defined(EMBED_KEYS)
+#ifndef BITMAP
+    assert(cnListPopCntMaxDl1 >= EXP(cnBitsInD1));
+    // What if cnBitsInD1 < sizeof(Link_t)*8 and -DALLOW_EMBEDDED_BITMAP?
+#endif // BITMAP
 
     // Search assumes lists are sorted if LIST_END_MARKERS is defined.
 #if defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
@@ -7097,10 +7126,16 @@ Initialize(void)
     printf("\n");
     printf("# cnListPopCntMax8  %d\n", cnListPopCntMax8);
     printf("# cnListPopCntMax16 %d\n", cnListPopCntMax16);
+    printf("# cnListPopCntMax24 %d\n", cnListPopCntMax24);
     printf("# cnListPopCntMax32 %d\n", cnListPopCntMax32);
+#if (cnBitsPerWord > 32)
+    printf("# cnListPopCntMax40 %d\n", cnListPopCntMax40);
+    printf("# cnListPopCntMax48 %d\n", cnListPopCntMax48);
+    printf("# cnListPopCntMax56 %d\n", cnListPopCntMax56);
 #if defined(cnListPopCntMax64)
     printf("# cnListPopCntMax64 %d\n", cnListPopCntMax64);
 #endif // defined(cnListPopCntMax64)
+#endif // (cnBitsPerWord > 32)
     printf("\n");
     printf("# cnListPopCntMaxDl1 %d\n", cnListPopCntMaxDl1);
 #if defined(cnListPopCntMaxDl2)

@@ -930,22 +930,19 @@ PrintHeader(const char *strFirstCol)
 
         printf(" LWd/K");
 
-#if defined(MIKEY)
-        printf(" REQ/K"); // words requested per key
-#else // defined(MIKEY)
         printf("  L7/K");
-#endif // defined(MIKEY)
         printf("  L6/K");
         printf("  L5/K");
         printf("  L4/K");
-#if defined(MIKEY)
-        printf("  B2/K"); // big bitmap leaf words per key
-#else // defined(MIKEY)
         printf("  L3/K");
-#endif // defined(MIKEY)
         printf("  L2/K");
         printf("  L1/K");
         printf("  B1/K");
+#if defined(MIKEY)
+        if (J1Flag) {
+            printf("  B2/K"); // big bitmap leaf words per key
+        } else
+#endif // defined(MIKEY)
         printf("  JV/K");
 
         printf(" +MsCm");
@@ -2575,22 +2572,19 @@ main(int argc, char *argv[])
         printf("# COLHEAD %2d JBU - 256 node Branch Words/Key\n", Col++);
         printf("# COLHEAD %2d JBL - Linear node Branch Words/Key\n", Col++);
         printf("# COLHEAD %2d LW  - Leaf Word_t Key/Key\n", Col++);
-#if defined(MIKEY)
-        printf("# COLHEAD %2d REQ - Words requested/Key\n", Col++);
-#else // defined(MIKEY)
         printf("# COLHEAD %2d L7  - Leaf 7 Byte Key/Key\n", Col++);
-#endif // defined(MIKEY)
         printf("# COLHEAD %2d L6  - Leaf 6 Byte Key/Key\n", Col++);
         printf("# COLHEAD %2d L5  - Leaf 5 Byte Key/Key\n", Col++);
         printf("# COLHEAD %2d L4  - Leaf 4 Byte Key/Key\n", Col++);
-#if defined(MIKEY)
-        printf("# COLHEAD %2d B2  - Big bitmap leaf/Key\n", Col++);
-#else // defined(MIKEY)
         printf("# COLHEAD %2d L3  - Leaf 3 Byte Key/Key\n", Col++);
-#endif // defined(MIKEY)
         printf("# COLHEAD %2d L2  - Leaf 2 Byte Key/Key\n", Col++);
         printf("# COLHEAD %2d L1  - Leaf 1 Byte Key/Key\n", Col++);
         printf("# COLHEAD %2d B1  - Bitmap Leaf 1 Bit Key/Key\n", Col++);
+#if defined(MIKEY)
+        if (J1Flag) {
+            printf("# COLHEAD %2d B2  - Big bitmap leaf/Key\n", Col++);
+        } else
+#endif // defined(MIKEY)
         printf("# COLHEAD %2d VA  - Value area Words/Key\n", Col++);
 
         printf("# COLHEAD %2d +MsCm - Average number forward Compares failed Per Leaf Search\n", Col++);
@@ -3670,15 +3664,15 @@ nextPart:
 
                 PRINT5_2f((double)j__AllocWordsJLLW  / (double)Pop1);       // 32[64] Key
 
-                PRINT5_2f((double)j__AllocWordsJLL7  / (double)Pop1);       // 32 bit Key
-                PRINT5_2f((double)j__AllocWordsJLL6  / (double)Pop1);       // 16 bit Key
-                PRINT5_2f((double)j__AllocWordsJLL5  / (double)Pop1);       // 16 bit Key
-                PRINT5_2f((double)j__AllocWordsJLL4  / (double)Pop1);       // 16 bit Key
-                PRINT5_2f((double)j__AllocWordsJLL3  / (double)Pop1);       // 16 bit Key
-                PRINT5_2f((double)j__AllocWordsJLL2  / (double)Pop1);       // 12 bit Key
-                PRINT5_2f((double)j__AllocWordsJLL1  / (double)Pop1);       // 12 bit Key
-                PRINT5_2f((double)j__AllocWordsJLB1  / (double)Pop1);       // 12 bit Key
-                PRINT5_2f((double)j__AllocWordsJV    / (double)Pop1);       // Values for 12 bit
+                PRINT5_2f((double)j__AllocWordsJLL7  / (double)Pop1);       // 56 bit Key
+                PRINT5_2f((double)j__AllocWordsJLL6  / (double)Pop1);       // 48 bit Key
+                PRINT5_2f((double)j__AllocWordsJLL5  / (double)Pop1);       // 40 bit Key
+                PRINT5_2f((double)j__AllocWordsJLL4  / (double)Pop1);       // 32 bit Key
+                PRINT5_2f((double)j__AllocWordsJLL3  / (double)Pop1);       // 24 bit Key
+                PRINT5_2f((double)j__AllocWordsJLL2  / (double)Pop1);       // 16 bit Key
+                PRINT5_2f((double)j__AllocWordsJLL1  / (double)Pop1);       //  8 bit Key
+                PRINT5_2f((double)j__AllocWordsJLB1  / (double)Pop1);       // 1 digit bimap
+                PRINT5_2f((double)j__AllocWordsJV    / (double)Pop1);       // Values
 
 
 // SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSss
