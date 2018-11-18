@@ -2963,20 +2963,20 @@ nextPart:
             } else
 #endif
             {
-                if (wFinalPop1 > 99999999) {
+                if (wFinalPop1 > 999999999) {
                     printf("%.3e", (double)wFinalPop1);
                 } else {
-                    printf(" %8" PRIuPTR, wFinalPop1);
+                    printf("%9" PRIuPTR, wFinalPop1);
                 }
-                if (Pms[grp].ms_delta > 99999999) {
+                if (Pms[grp].ms_delta > 999999999) {
                      printf(" %.3e", (double)Pms[grp].ms_delta);
                 } else {
-                    printf("  %8" PRIuPTR, Pms[grp].ms_delta);
+                    printf(" %9" PRIuPTR, Pms[grp].ms_delta);
                 }
-                if (Meas > 99999999) {
+                if (Meas > 999999999) {
                      printf(" %.3e", (double)Meas);
                 } else {
-                    printf("  %8" PRIuPTR, Meas);
+                    printf(" %9" PRIuPTR, Meas);
                 }
             }
         }
