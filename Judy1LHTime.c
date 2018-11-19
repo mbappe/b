@@ -2594,7 +2594,7 @@ main(int argc, char *argv[])
         printf("# COLHEAD %2d %%DiHt - %% of Direct Hits per Leaf Search\n", Col++);
 
 //        printf("# COLHEAD %2d TrDep  - Tree depth with LGet/1Test searches\n", Col++);
-        printf("# COLHEAD %2d AvPop - Average Current Leaf Population\n", Col++);
+        printf("# COLHEAD %2d AvPop - Average Population of Leaves Searched (be careful)\n", Col++);
         printf("# COLHEAD %2d %%MalEff - %% RAM JudyMalloc()ed vs mmap()ed from Kernel\n", Col++);
 
         if (J1Flag)
