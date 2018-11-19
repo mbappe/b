@@ -173,6 +173,7 @@ Word_t    j__DirectHits;               // Number of direct hits -- no search
 Word_t    j__SearchPopulation;         // Population of Searched object
 Word_t    j__GetCallsP; // Num search calls with no direct hit and resulting in forward search
 Word_t    j__GetCallsM; // Num search calls with no direct hit and resulting in backward search
+Word_t    j__GetCalls;  // Num search calls
 
 extern Word_t    j__AllocWordsTOT;
 extern Word_t    j__MFlag;                     // Print memory allocation on stderr
@@ -823,7 +824,7 @@ GetNextKey(PNewSeed_t PNewSeed)
 static void
 PrintHeader(const char *strFirstCol)
 {
-    printf("# %7s  DeltaIns   GetMeas", strFirstCol);
+    printf("# %7s DeltaIns GetMeas", strFirstCol);
 
     if (tFlag)
         printf(" MeasOv");
@@ -965,6 +966,7 @@ PrintHeader(const char *strFirstCol)
 printf("  DiHts");
 printf("  GetsP");
 printf("  GetsM");
+printf("   Gets");
     printf("\n");
 }
 
@@ -1153,7 +1155,7 @@ Word_t    DirectHits;               // Number of direct hits -- no search
 Word_t    SearchPopulation;         // Population of Searched object
 Word_t    GetCallsP;                 // number of search calls
 Word_t    GetCallsM;                 // number of search calls
-
+Word_t    GetCalls;                  // number of search calls
 
 #ifndef OLD_DS1_GROUPS
 
@@ -2614,6 +2616,7 @@ main(int argc, char *argv[])
 printf("# COLHEAD %2d DiHts - Num get calls the result in a direct hit\n", Col++);
 printf("# COLHEAD %2d GetsP - Num get calls that miss and search forward\n", Col++);
 printf("# COLHEAD %2d GetsM - Num get calls that miss and search backward\n", Col++);
+printf("# COLHEAD %2d Gets  - Num get calls\n", Col++);
 
     if (J1Flag)
         printf("# %s - Leaf sizes in Words\n", Judy1MallocSizes);
@@ -2969,14 +2972,14 @@ nextPart:
                     printf("%9" PRIuPTR, wFinalPop1);
                 }
                 if (Pms[grp].ms_delta > 999999999) {
-                     printf(" %.3e", (double)Pms[grp].ms_delta);
+                     printf(" %.2e", (double)Pms[grp].ms_delta);
                 } else {
-                    printf(" %9" PRIuPTR, Pms[grp].ms_delta);
+                    printf(" %8" PRIuPTR, Pms[grp].ms_delta);
                 }
                 if (Meas > 999999999) {
-                     printf(" %.3e", (double)Meas);
+                     printf(" %.1e", (double)Meas);
                 } else {
-                    printf(" %9" PRIuPTR, Meas);
+                    printf(" %7" PRIuPTR, Meas);
                 }
             }
         }
@@ -3681,7 +3684,7 @@ nextPart:
                 printf(" %5.1f", (double)MisComparesP * 100 / MAX(GetCallsP + DirectHits, 1));
                 printf(" %5.1f", (double)MisComparesM * 100 / MAX(GetCallsM + DirectHits, 1));
                 printf(" %5.1f", (double)DirectHits * 100 / MAX(DirectHits + GetCallsP + GetCallsM, 1));
-                printf(" %5.1f", (double)SearchPopulation / MAX(DirectHits + GetCallsP + GetCallsM, 1));
+                printf(" %5.1f", (double)SearchPopulation / MAX(GetCalls, 1));
 
 //              print average number of Branches traversed per lookup
 //                printf(" %5.1f", TreeDepth / (double)Meas);
@@ -3706,6 +3709,7 @@ nextPart:
 printf(" %6zd", DirectHits);
 printf(" %6zd", GetCallsP);
 printf(" %6zd", GetCallsM);
+printf(" %6zd", GetCalls);
             printf("\n");
             if (fFlag)
                 fflush(NULL);                   // assure data gets to file in case malloc fail
@@ -4503,7 +4507,9 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
             Word_t wFeedBTapLocal = wFeedBTap; // don't know why this is faster
 
 //          reset for next measurement
-            j__SearchPopulation = j__MisComparesP = j__MisComparesM = j__DirectHits = j__GetCallsP = j__GetCallsM = 0;
+            j__SearchPopulation = j__GetCalls = 0;
+            j__MisComparesP = j__MisComparesM = 0;
+            j__DirectHits = j__GetCallsP = j__GetCallsM = 0;
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
@@ -4548,6 +4554,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
             SearchPopulation = j__SearchPopulation;
             GetCallsP        = j__GetCallsP;
             GetCallsM        = j__GetCallsM;
+            GetCalls         = j__GetCalls;
 
             if (DminTime > DeltanSec1)
             {
@@ -4573,7 +4580,9 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
             WorkingSeed = *PSeed;
 
 //          reset for next measurement
-            j__SearchPopulation = j__MisComparesP = j__MisComparesM = j__DirectHits = j__GetCallsP = j__GetCallsM = 0;
+            j__SearchPopulation = j__GetCalls = 0;
+            j__MisComparesP = j__MisComparesM = 0;
+            j__DirectHits = j__GetCallsP = j__GetCallsM = 0;
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
@@ -4621,6 +4630,7 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
             SearchPopulation =  j__SearchPopulation;
             GetCallsP =         j__GetCallsP;
             GetCallsM =         j__GetCallsM;
+            GetCalls  =         j__GetCalls;
 
             if (DminTime > DeltanSecL)
             {
@@ -4645,7 +4655,9 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
         {
             WorkingSeed = *PSeed;
 
-            j__SearchPopulation = j__MisComparesP = j__MisComparesM = j__DirectHits = j__GetCallsP = j__GetCallsM = 0;
+            j__SearchPopulation = j__GetCalls = 0;
+            j__MisComparesP = j__MisComparesM = 0;
+            j__DirectHits = j__GetCallsP = j__GetCallsM = 0;
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
@@ -4702,7 +4714,9 @@ TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elements)
         WorkingSeed = *PSeed;
 
 //      reset for next measurement
-        j__SearchPopulation = j__MisComparesP = j__MisComparesM = j__DirectHits = j__GetCallsP = j__GetCallsM = 0;
+        j__SearchPopulation = j__GetCalls = 0;
+        j__MisComparesP = j__MisComparesM = 0;
+        j__DirectHits = j__GetCallsP = j__GetCallsM = 0;
 
         TstKey = GetNextKey(&WorkingSeed);    // Get 1st Key
 
@@ -4720,6 +4734,7 @@ TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elements)
         SearchPopulation =  j__SearchPopulation;
         GetCallsP =         j__GetCallsP;
         GetCallsM =         j__GetCallsM;
+        GetCalls  =         j__GetCalls;
 
         if (DminTime > DeltanSecL)
         {

@@ -1540,9 +1540,9 @@ t_list:;
       #endif // SKIP_PREFIX_CHECK
       #endif // COMPRESSED_LISTS
         {
-
-      // LOOKUP_NO_LIST_SEARCH is for analysis only.  We have retrieved the
-      // pop count and prefix but we have not dereferenced the list itself.
+            SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+            SMETRICS(++j__GetCalls);
+      // LOOKUP_NO_LIST_SEARCH is for analysis only.
       #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
             if (1
           #if ! defined(SEPARATE_T_NULL)
@@ -1720,9 +1720,9 @@ t_list_ua:;
       #endif // SKIP_PREFIX_CHECK
       #endif // COMPRESSED_LISTS
         {
-
-      // LOOKUP_NO_LIST_SEARCH is for analysis only.  We have retrieved the
-      // pop count and prefix but we have not dereferenced the list itself.
+            SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+            SMETRICS(++j__GetCalls);
+      // LOOKUP_NO_LIST_SEARCH is for analysis only.
       #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
             if (1
         #if ! defined(SEPARATE_T_NULL)
@@ -2492,16 +2492,16 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
       #endif // ! defined(SEPARATE_T_NULL)
         && 1)
     {
-      #ifdef B_JUDYL
+      #if defined(B_JUDYL) && !defined(HASKEY_FROM_JUDYL_LOOKUP)
         // PWR_xListPopCount is valid only at the top for PP_IN_LINK.
         // The first word in the list is used for pop count at the top.
         int nPos = SearchListWord(ls_pwKeys(pwr, cnBitsPerWord),
                                   wKey, cnBitsPerWord,
                                   gnListPopCnt(qy, /* nBLR */ nBL));
         return (nPos >= 0) ? (PPvoid_t)&pwr[~nPos] : NULL;
-      #else // B_JUDYL
+      #else // // defined(B_JUDYL) && !defined(HASKEY_FROM_JUDYL_LOOKUP)
         return ListHasKeyWord(qy, cnBitsPerWord, wKey);
-      #endif // B_JUDYL
+      #endif // defined(B_JUDYL) && !defined(HASKEY_FROM_JUDYL_LOOKUP)
     }
   #endif // defined(SEARCH_FROM_WRAPPER)
   #endif // (cwListPopCntMax != 0)

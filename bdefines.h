@@ -24,13 +24,14 @@
   #endif // SKIP_TO_BITMAP
 #endif // B_JUDYL
 
-// Default is -DPSPLIT_SEARCH_WORD.
-// It does not apply at top.
-#ifndef NO_PSPLIT_SEARCH_WORD
-  #ifndef BINARY_SEARCH_WORD
+// Default is -DPSPLIT_SEARCH_WORD -UPSPLIT_SEARCH_XOR_WORD.
+// Default is -UNO_BINARY_SEARCH_WORD -UBACKWARD_SEARCH_WORD.
+// PSPLIT_SEARCH_WORD does not apply at nBL == cnBitsPerDigit.
+// If -DNO_PSPLIT_SEARCH_WORD, then binary search for nBL != cnBitsPerDigit
+// unless -DNO_BINARY_SEARCH_WORD.
+#ifndef   NO_PSPLIT_SEARCH_WORD
     #undef   PSPLIT_SEARCH_WORD
     #define  PSPLIT_SEARCH_WORD
-  #endif // BINARY_SEARCH_WORD
 #endif // NO_PSPLIT_SEARCH_WORD
 
 // Default is -DPARALLEL_SEARCH_WORD.

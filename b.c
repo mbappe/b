@@ -6399,12 +6399,6 @@ Initialize(void)
     printf("# No PSPLIT_EARLY_OUT\n");
 #endif // defined(PSPLIT_EARLY_OUT)
 
-#if defined(BINARY_SEARCH_WORD)
-    printf("#    BINARY_SEARCH_WORD\n");
-#else // defined(BINARY_SEARCH_WORD)
-    printf("# No BINARY_SEARCH_WORD\n");
-#endif // defined(BINARY_SEARCH_WORD)
-
 #if defined(RAMMETRICS)
     printf("#    RAMMETRICS\n");
 #else // defined(RAMMETRICS)
