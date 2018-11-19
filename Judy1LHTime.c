@@ -2971,12 +2971,12 @@ nextPart:
                 } else {
                     printf("%9" PRIuPTR, wFinalPop1);
                 }
-                if (Pms[grp].ms_delta > 999999999) {
+                if (Pms[grp].ms_delta > 99999999) {
                      printf(" %.2e", (double)Pms[grp].ms_delta);
                 } else {
                     printf(" %8" PRIuPTR, Pms[grp].ms_delta);
                 }
-                if (Meas > 999999999) {
+                if (Meas > 9999999) {
                      printf(" %.1e", (double)Meas);
                 } else {
                     printf(" %7" PRIuPTR, Meas);
