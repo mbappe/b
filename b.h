@@ -4228,6 +4228,20 @@ typedef unsigned short __attribute__((vector_size(16))) v41_t;
 typedef unsigned int __attribute__((vector_size(16))) v42_t;
 #endif // __clang__
 
+// vBK_t: vector of 2^B bytes of 2^K-byte elements.
+// v64c_t, v64uc_t: vector of 64 bits of char  or unsigned char.
+// v64s_t, v64us_t, vector of 64 bits of short or unsigned short.
+// v64i_t, v64ui_t, vector of 64 bits of int   or unsigned int.
+#ifdef __clang__
+typedef unsigned char  __attribute__((ext_vector_type(8))) v30_t;
+typedef unsigned short __attribute__((ext_vector_type(4))) v31_t;
+typedef unsigned int   __attribute__((ext_vector_type(2))) v32_t;
+#else // __clang__
+typedef unsigned char  __attribute__((vector_size(8))) v30_t;
+typedef unsigned short __attribute__((vector_size(8))) v31_t;
+typedef unsigned int   __attribute__((vector_size(8))) v32_t;
+#endif // __clang__
+
 #if (cnBitsPerWord < 64)
 #undef HK_MOVEMASK
 #define HK_MOVEMASK
@@ -4401,6 +4415,19 @@ HasKey96(__m128i *pxBucket, Word_t wKey, int nBL)
 static uint64_t
 HasKey64(uint64_t *px, Word_t wKey, int nBL)
 {
+#ifndef OLD_HK_64
+    if (nBL == 16) {
+        return (uint64_t)(*(v31_t*)px == (unsigned short)wKey);
+    }
+    if (nBL == 8) {
+        return (uint64_t)(*(v30_t*)px == (unsigned char)wKey);
+    }
+    if (nBL <= 32) {
+        assert(nBL == 32);
+        return (uint64_t)(*(v32_t*)px == (unsigned int)wKey);
+    }
+    assert(nBL == 64);
+#endif // ifndef OLD_HK_64
     // It helps Lookup performance to eliminate the need to know nPopCnt.
     // So we replicate the first key in the list into the unused slots
     // at insert time to make sure the unused slots don't cause a false
@@ -5197,13 +5224,16 @@ ListHasKeyWord(qp, int nBLR, Word_t wKey)
         return nPos >= 0;
     }
 #endif // defined(PSPLIT_SEARCH_WORD)
-#ifdef PARALLEL_SEARCH_WORD
-    return BinaryHasKeyWord(pwKeys, wKey, nBLR, nPopCnt);
-#else // PARALLEL_SEARCH_WORD
-    nPos = SearchListWord(pwKeys, wKey, nBLR, nPopCnt);
+#if !defined(NO_BINARY_SEARCH_WORD) && defined(PARALLEL_SEARCH_WORD)
+    if (sizeof(Bucket_t) > sizeof(Word_t)) {
+        return BinaryHasKeyWord(pwKeys, wKey, nBLR, nPopCnt);
+    } else
+#endif // !defined(NO_BINARY_SEARCH_WORD) && defined(PARALLEL_SEARCH_WORD)
+    {
+        nPos = SearchListWord(pwKeys, wKey, nBLR, nPopCnt);
+    }
     DBGX(printf("LHKW: returning %d\n", nPos >= 0));
     return nPos >= 0;
-#endif // PARALLEL_SEARCH_WORD
 }
 
 #endif // !defined(B_JUDYL) || defined(HASKEY_FOR_JUDYL_LOOKUP)

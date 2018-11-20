@@ -6387,6 +6387,12 @@ Initialize(void)
     printf("# No HK_MOVEMASK\n");
 #endif // defined(HK_MOVEMASK)
 
+#if defined(OLD_HK_64)
+    printf("#    OLD_HK_64\n");
+#else // defined(OLD_HK_64)
+    printf("# No OLD_HK_64\n");
+#endif // defined(OLD_HK_64)
+
 #if defined(HK_EXPERIMENT)
     printf("#    HK_EXPERIMENT\n");
 #else // defined(HK_EXPERIMENT)
