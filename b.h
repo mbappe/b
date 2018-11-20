@@ -3696,6 +3696,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
         int nBL2 = 1 << (LOG((_nBL) - 1) + 1); \
         int nKeysPerBucket = 64 / nBL2 * (sizeof(_b_t) / 8); \
         _nPos += nKeysPerBucket * nSplitP; \
+        SMETRICS(++j__DirectHits); \
     } \
     else \
     { \
@@ -3713,6 +3714,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                 (_nPos) = (int)nSplit + sizeof(_b_t) / sizeof(_x_t); \
                 LOCATEKEYF(_b_t, (_xKey), \
                           (_pxKeys), (_nPopCnt) - (_nPos), (_nPos)); \
+                SMETRICS(++j__GetCallsP); \
             } \
         } \
         else \
@@ -3723,6 +3725,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
             } else { \
                 /* parallel search the head of the list */ \
                 LOCATEKEYB(_b_t, (_xKey), (_pxKeys), nSplit, (_nPos)); \
+                SMETRICS(++j__GetCallsM); \
             } \
         } \
         /* everything below is just assertions */ \
@@ -4521,8 +4524,10 @@ SearchList8(qp, int nBLR, Word_t wKey)
     }
 #elif defined(BACKWARD_SEARCH_8)
     SEARCHB(uint8_t, pcKeys, nPopCnt, cKey, nPos); (void)nBL;
+    SMETRICS(++j__GetCallsM);
 #else // here for forward linear search with end check
     SEARCHF(uint8_t, pcKeys, nPopCnt, cKey, nPos); (void)nBL;
+    SMETRICS(++j__GetCallsP);
 #endif // ...
     return nPos;
 }
@@ -4674,9 +4679,11 @@ SearchList16(qp, int nBLR, Word_t wKey)
     }
   #elif defined(BACKWARD_SEARCH_16) // defined(PSPLIT_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos);
+    SMETRICS(++j__GetCallsM);
   #else // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
     // here for forward linear search with end check
     SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos);
+    SMETRICS(++j__GetCallsP);
   #endif // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
     return nPos;
 }
@@ -4827,9 +4834,11 @@ ListHasKey16(qp, int nBLR, Word_t wKey)
                          uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos); }
   #elif defined(BACKWARD_SEARCH_16) // defined(PSPLIT_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos);
+    SMETRICS(++j__GetCallsM);
   #else // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
     // here for forward linear search with end check
     SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos);
+    SMETRICS(++j__GetCallsP);
   #endif // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
     return nPos >= 0;
 }
@@ -4880,9 +4889,11 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
     }
 #elif defined(BACKWARD_SEARCH_32) // defined(PSPLIT_PARALLEL_32)
     SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
+    SMETRICS(++j__GetCallsM);
 #else // defined(PSPLIT_PARALLEL_32) elif defined(BACKWARD_SEARCH_32) else
     // here for forward linear search with end check
     SEARCHF(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
+    SMETRICS(++j__GetCallsP);
 #endif // defined(PSPLIT_PARALLEL_32) elif defined(BACKWARD_SEARCH_32) else
     return nPos;
 }
@@ -4924,8 +4935,10 @@ ListHasKey32(qp, int nBLR, Word_t wKey)
     }
 #elif defined(BACKWARD_SEARCH_32)
     SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos);
+    SMETRICS(++j__GetCallsM);
 #else // here for forward linear search with end check
     SEARCHF(uint32_t, piKeys, nPopCnt, iKey, nPos);
+    SMETRICS(++j__GetCallsP);
 #endif // ...
     return nPos >= 0;
 }
@@ -5856,9 +5869,11 @@ LocateKeyInList16(qp, int nBLR, Word_t wKey)
                             uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos); }
   #elif defined(BACKWARD_SEARCH_16) // defined(PSPLIT_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos);
+    SMETRICS(++j__GetCallsM);
   #else // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
     // here for forward linear search with end check
     SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos);
+    SMETRICS(++j__GetCallsP);
   #endif // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
     return nPos;
 }
@@ -5902,9 +5917,11 @@ LocateKeyInList32(qp, int nBLR, Word_t wKey)
     }
 #elif defined(BACKWARD_SEARCH_32) // defined(PSPLIT_SEARCH_32)
     SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos);
+    SMETRICS(++j__GetCallsM);
 #else // defined(PSPLIT_SEARCH_32) elif defined(BACKWARD_SEARCH_32) else
     // here for forward linear search with end check
     SEARCHF(uint32_t, piKeys, nPopCnt, iKey, nPos);
+    SMETRICS(++j__GetCallsP);
 #endif // defined(PSPLIT_SEARCH_32) elif defined(BACKWARD_SEARCH_32) else
     return nPos;
 }
