@@ -6,7 +6,7 @@ TIME=Judy1LHTime
 CHECK=Judy1LHCheck
 
 : \
-&& ${TIME} -W0 -B32 -1L -n1000000 -S1 --splay-key-bits=0xff00aa00aa00ffff \
+&& ${TIME} -W0 -B32 -1Lh -n1000000 -S1 --splay-key-bits=0xff00aa00aa00ffff \
 && ${TIME} -W0 -B33 -RICvdgi -n1000000 \
 && ${CHECK} -B17 \
 && ${CHECK} -B17 -S1 \
