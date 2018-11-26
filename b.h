@@ -4417,14 +4417,33 @@ HasKey64(uint64_t *px, Word_t wKey, int nBL)
 {
 #ifndef OLD_HK_64
     if (nBL == 16) {
+#ifdef __clang__
+        v31_t vBucket = *px;
+        v31_t v31 = (v31_t)(vBucket == (unsigned short)wKey);
+        return *(uint64_t*)&v31;
+#else // __clang__
         return (uint64_t)(*(v31_t*)px == (unsigned short)wKey);
+#endif // __clang__
+
     }
     if (nBL == 8) {
+#ifdef __clang__
+        v30_t vBucket = *px;
+        v30_t v30 = (v30_t)(vBucket == (unsigned char)wKey);
+        return *(uint64_t*)&v30;
+#else // __clang__
         return (uint64_t)(*(v30_t*)px == (unsigned char)wKey);
+#endif // __clang__
     }
     if (nBL <= 32) {
         assert(nBL == 32);
+#ifdef __clang__
+        v32_t vBucket = *px;
+        v32_t v32 = (v32_t)(vBucket == (unsigned char)wKey);
+        return *(uint64_t*)&v32;
+#else // __clang__
         return (uint64_t)(*(v32_t*)px == (unsigned int)wKey);
+#endif // __clang__
     }
     assert(nBL == 64);
 #endif // ifndef OLD_HK_64
