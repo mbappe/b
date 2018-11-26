@@ -829,17 +829,17 @@ PrintHeader(const char *strFirstCol)
     if (tFlag)
         printf(" MeasOv");
     if (J1Flag)
-        printf("     J1S");
+        printf("    J1S");
     if (JLFlag)
-        printf("     JLI");
+        printf("    JLI");
     if (JRFlag)
-        printf("   JLI-R");
+        printf("  JLI-R");
     if (JHFlag)
-        printf("    JHSI");
+        printf("   JHSI");
     if (bFlag)
         printf("  BMSet");
     if (yFlag)
-        printf("  ByMSet");
+        printf(" ByMSet");
     if (tFlag)
         printf(" MeasOv");
     if (J1Flag)
@@ -906,20 +906,8 @@ PrintHeader(const char *strFirstCol)
             printf("   JHSD");
     }
 
-    if (bFlag)
-        printf("  Heap: Words/Key");
-    if (yFlag)
-        printf("  Heap: Words/Key");
-
-    if ((J1Flag + JLFlag + JHFlag) == 1)    // only if 1 Heap
-    {
-        if (J1Flag)
-            printf(" 1heap/K");
-        if (JLFlag || JRFlag)
-            printf(" Lheap/K");
-        if (JHFlag)
-            printf(" HSheap/K");
-    }
+    if (J1Flag | JLFlag | JHFlag)
+        printf("  Hp/K");
 
     if (mFlag && (bFlag == 0) && (yFlag == 0))
     {
@@ -952,7 +940,7 @@ PrintHeader(const char *strFirstCol)
 
 //        printf(" TrDep");
         printf(" AvPop");
-        printf(" %%MalEff");
+        printf(" %%MEff");
 
         if (J1Flag)
             printf(" MF1/K");
@@ -963,10 +951,15 @@ PrintHeader(const char *strFirstCol)
 
         printf("  mmap/K");
     }
-printf("  DiHts");
-printf("  GetsP");
-printf("  GetsM");
-printf("   Gets");
+
+    if (J1Flag | JLFlag | JHFlag | JRFlag)
+    {
+        printf("  DiHts");
+        printf("  GetsP");
+        printf("  GetsM");
+        printf("   Gets");
+    }
+
     printf("\n");
 }
 
@@ -2595,7 +2588,7 @@ main(int argc, char *argv[])
 
 //        printf("# COLHEAD %2d TrDep  - Tree depth with LGet/1Test searches\n", Col++);
         printf("# COLHEAD %2d AvPop - Average Population of Leaves Searched (be careful)\n", Col++);
-        printf("# COLHEAD %2d %%MalEff - %% RAM JudyMalloc()ed vs mmap()ed from Kernel\n", Col++);
+        printf("# COLHEAD %2d %%MEff - %% RAM JudyMalloc()ed vs mmap()ed from Kernel\n", Col++);
 
         if (J1Flag)
             printf
@@ -2613,10 +2606,14 @@ main(int argc, char *argv[])
             printf
                 ("# COLHEAD %2d mmap/K   - mmap()ed Words per Key\n", Col++);
     }
-printf("# COLHEAD %2d DiHts - Num get calls the result in a direct hit\n", Col++);
-printf("# COLHEAD %2d GetsP - Num get calls that miss and search forward\n", Col++);
-printf("# COLHEAD %2d GetsM - Num get calls that miss and search backward\n", Col++);
-printf("# COLHEAD %2d Gets  - Num get calls\n", Col++);
+
+    if (J1Flag | JLFlag | JHFlag | JRFlag)
+    {
+        printf("# COLHEAD %2d DiHts - Num get calls the result in a direct hit\n", Col++);
+        printf("# COLHEAD %2d GetsP - Num get calls that miss and search forward\n", Col++);
+        printf("# COLHEAD %2d GetsM - Num get calls that miss and search backward\n", Col++);
+        printf("# COLHEAD %2d Gets  - Num get calls\n", Col++);
+    }
 
     if (J1Flag)
         printf("# %s - Leaf sizes in Words\n", Judy1MallocSizes);
@@ -3067,19 +3064,19 @@ nextPart:
                 {
                     if (tFlag)
                         PRINT6_1f(DeltaGen1);
-                    DONTPRINTLESSTHANZERO7(DeltanSec1Sum / Pms[grp].ms_delta, DeltaGen1);
+                    DONTPRINTLESSTHANZERO(DeltanSec1Sum / Pms[grp].ms_delta, DeltaGen1);
                 }
                 if (JLFlag)
                 {
                     if (tFlag)
                         PRINT6_1f(DeltaGenL);
-                    DONTPRINTLESSTHANZERO7(DeltanSecLSum / Pms[grp].ms_delta, DeltaGenL);
+                    DONTPRINTLESSTHANZERO(DeltanSecLSum / Pms[grp].ms_delta, DeltaGenL);
                 }
                 if (JHFlag)
                 {
                     if (tFlag)
                         PRINT6_1f(DeltaGenHS);
-                    DONTPRINTLESSTHANZERO7(DeltanSecHSSum / Pms[grp].ms_delta, DeltaGenHS);
+                    DONTPRINTLESSTHANZERO(DeltanSecHSSum / Pms[grp].ms_delta, DeltaGenHS);
                 }
                 if (fFlag)
                     fflush(NULL);
@@ -3304,7 +3301,7 @@ nextPart:
             if (Pop1 == wFinalPop1) {
                 if (tFlag)
                     PRINT6_1f(DeltaGenL);
-                DONTPRINTLESSTHANZERO7(DeltanSecLSum / Pms[grp].ms_delta, DeltaGenL);
+                DONTPRINTLESSTHANZERO(DeltanSecLSum / Pms[grp].ms_delta, DeltaGenL);
                 if (fFlag)
                     fflush(NULL);
             }
@@ -3647,8 +3644,8 @@ nextPart:
 
         if (Pop1 == wFinalPop1) {
 
-            if ((J1Flag + JLFlag + JHFlag) == 1)            // only 1 Heap
-                PRINT7_3f((double)j__AllocWordsTOT / (double)Pop1);
+            if (J1Flag | JLFlag | JHFlag)
+                printf(" %5.1f", (double)j__AllocWordsTOT * 100 / Pop1);
 
             if (mFlag && (bFlag == 0) && (yFlag == 0))
             {
@@ -3690,7 +3687,7 @@ nextPart:
 //                printf(" %5.1f", TreeDepth / (double)Meas);
 
 //              Print the percent efficiency of dlmalloc
-                printf(" %7.3f", 100 * j__AllocWordsTOT / (double)(j__TotalBytesAllocated / sizeof(Word_t)));
+                printf(" %5.2f", 100 * j__AllocWordsTOT / (double)(j__TotalBytesAllocated / sizeof(Word_t)));
                 //PRINTT7_3f(j__AllocWordsTOT / (double)(j__TotalBytesAllocated / sizeof(Word_t)));
                 if (J1Flag)
                     PRINT5_2f(DeltaMalFre1Sum / Pms[grp].ms_delta);
@@ -3706,10 +3703,15 @@ nextPart:
                     PRINT7_3f(dVal);
                 }
             }
-printf(" %6zd", DirectHits);
-printf(" %6zd", GetCallsP);
-printf(" %6zd", GetCallsM);
-printf(" %6zd", GetCalls);
+
+            if (J1Flag | JLFlag | JHFlag | JRFlag)
+            {
+                printf(" %6zd", DirectHits);
+                printf(" %6zd", GetCallsP);
+                printf(" %6zd", GetCallsM);
+                printf(" %6zd", GetCalls);
+            }
+
             printf("\n");
             if (fFlag)
                 fflush(NULL);                   // assure data gets to file in case malloc fail
