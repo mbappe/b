@@ -2603,8 +2603,7 @@ main(int argc, char *argv[])
                 ("# COLHEAD %2d MFHS/K   - JudyHS average malloc+free's per Key\n",
                  Col++);
 
-            printf
-                ("# COLHEAD %2d mmap/K   - mmap()ed Words per Key\n", Col++);
+        printf("# COLHEAD %2d mmap/K   - mmap()ed Words per Key\n", Col++);
     }
 
     if (J1Flag | JLFlag | JHFlag | JRFlag)
@@ -3645,7 +3644,7 @@ nextPart:
         if (Pop1 == wFinalPop1) {
 
             if (J1Flag | JLFlag | JHFlag)
-                printf(" %5.1f", (double)j__AllocWordsTOT * 100 / Pop1);
+                PRINT5_2f((double)j__AllocWordsTOT / Pop1);
 
             if (mFlag && (bFlag == 0) && (yFlag == 0))
             {
@@ -3687,8 +3686,7 @@ nextPart:
 //                printf(" %5.1f", TreeDepth / (double)Meas);
 
 //              Print the percent efficiency of dlmalloc
-                printf(" %5.2f", 100 * j__AllocWordsTOT / (double)(j__TotalBytesAllocated / sizeof(Word_t)));
-                //PRINTT7_3f(j__AllocWordsTOT / (double)(j__TotalBytesAllocated / sizeof(Word_t)));
+                PRINT5_2f((double)j__AllocWordsTOT / (j__TotalBytesAllocated / sizeof(Word_t)));
                 if (J1Flag)
                     PRINT5_2f(DeltaMalFre1Sum / Pms[grp].ms_delta);
                 if (JLFlag || JRFlag)
