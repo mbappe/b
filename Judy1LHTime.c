@@ -472,7 +472,7 @@ PRINT7_3f(double __X)
     }
     else
     {
-        printf("     0");               // keep white space cleaner
+        printf("       0");               // keep white space cleaner
     }
 }
 
