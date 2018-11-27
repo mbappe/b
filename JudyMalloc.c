@@ -62,7 +62,7 @@ Word_t    j__NumbJV;
 
   // JUDY_MALLOC_ALIGNMENT is for internal use only.
   #ifndef JUDY_MALLOC_ALIGNMENT
-    #define JUDY_MALLOC_ALIGNMENT  (2 * sizeof(size_t))
+    #define JUDY_MALLOC_ALIGNMENT  (2 * sizeof(Word_t))
   #endif // JUDY_MALLOC_ALIGNMENT
 
 #else // LIBCMALLOC
@@ -73,7 +73,7 @@ Word_t    j__NumbJV;
     #ifdef MALLOC_ALIGNMENT
       #define JUDY_MALLOC_ALIGNMENT  MALLOC_ALIGNMENT
     #else // MALLOC_ALIGNMENT
-      #define JUDY_MALLOC_ALIGNMENT  (2 * sizeof(size_t))
+      #define JUDY_MALLOC_ALIGNMENT  (2 * sizeof(Word_t))
     #endif // MALLOC_ALIGNMENT
   #endif // JUDY_MALLOC_ALIGNMENT
 
@@ -99,8 +99,8 @@ Word_t    j__NumbJV;
 #define HUGETLBSZ       ((Word_t)0x200000)
 #endif  // HUGETLBSZ
 
-static void * pre_mmap(void *, size_t, int, int, int, off_t);
-static int    pre_munmap(void *, size_t);
+static void * pre_mmap(void *, Word_t, int, int, int, off_t);
+static int    pre_munmap(void *, Word_t);
 
 // Stuff to modify dlmalloc to use 2MiB pages
 #define DLMALLOC_EXPORT static
@@ -155,7 +155,7 @@ JudyMallocPrepSpace(int nSpace)
 
 // This code is not necessary except if j__MFlag is set
 static int
-pre_munmap(void *buf, size_t length)
+pre_munmap(void *buf, Word_t length)
 {
     int ret;
 
@@ -177,7 +177,7 @@ pre_munmap(void *buf, size_t length)
 // ********************************************************************
 
 static void *
-pre_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
+pre_mmap(void *addr, Word_t length, int prot, int flags, int fd, off_t offset)
 {
     char *buf;
     int   ret;
@@ -284,10 +284,10 @@ RawP_t
 JudyMallocX(int Words, int nSpace, int nLogAlign)
 {
         (void)nSpace;
-        size_t Addr;
-        size_t Bytes;
+        Word_t Addr;
+        Word_t Bytes;
 
-        Bytes = Words * sizeof(size_t);
+        Bytes = Words * sizeof(Word_t);
 
 //  Note: This define is only for DEBUGGING
 #ifdef  GUARDBAND
@@ -301,11 +301,11 @@ JudyMallocX(int Words, int nSpace, int nLogAlign)
         Bytes += sizeof(Word_t);    // one word
 #endif  // GUARDBAND
 
-        size_t zAlign = (size_t)1 << nLogAlign; (void)zAlign;
+        Word_t zAlign = (Word_t)1 << nLogAlign; (void)zAlign;
 #ifdef  LIBCMALLOC
         if (zAlign > JUDY_MALLOC_ALIGNMENT) {
             if (posix_memalign((void*)&Addr, zAlign, Bytes) != 0) {
-                Addr = (size_t)NULL;
+                Addr = (Word_t)NULL;
             }
         } else {
             Addr = (Word_t) malloc(Bytes);
@@ -334,7 +334,7 @@ JudyMallocX(int Words, int nSpace, int nLogAlign)
         {
             j__RequestedWordsTOT += Words;
             // get # bytes in malloc buffer from preamble
-            size_t zAllocWords = (((Word_t *)Addr)[-1] & ~3) / sizeof(Word_t);
+            Word_t zAllocWords = (((Word_t *)Addr)[-1] & ~3) / sizeof(Word_t);
             j__AllocWordsTOT += zAllocWords;
         }
 #endif  // RAMMETRICS
@@ -391,7 +391,7 @@ JudyFreeX(RawP_t PWord, int Words, int nSpace)
 
 #ifdef  RAMMETRICS
     // get # bytes in malloc buffer from preamble
-    size_t zAllocWords = (((Word_t *)PWord)[-1] & ~3) / sizeof(Word_t);
+    Word_t zAllocWords = (((Word_t *)PWord)[-1] & ~3) / sizeof(Word_t);
     j__AllocWordsTOT -= zAllocWords;
 
     j__MalFreeCnt++;        // keep track of total malloc() + free()
@@ -492,7 +492,7 @@ JudyMallocTrim(int nSpace)
 #endif // JUDY_MALLOC_NUM_SPACES != 0
 
 // non-mmapped space allocated from system
-size_t
+Word_t
 JudyMallocInfoNonMmapped(int nSpace)
 {
     (void)nSpace;
@@ -500,7 +500,7 @@ JudyMallocInfoNonMmapped(int nSpace)
 }
 
 // mmapped space allocated from system
-size_t
+Word_t
 JudyMallocInfoMmapped(int nSpace)
 {
     (void)nSpace;
@@ -508,7 +508,7 @@ JudyMallocInfoMmapped(int nSpace)
 }
 
 // releasable space (via JudyMallocTrim)
-size_t
+Word_t
 JudyMallocInfoReleasable(int nSpace)
 {
     (void)nSpace;
@@ -516,7 +516,7 @@ JudyMallocInfoReleasable(int nSpace)
 }
 
 // total allocated space
-size_t
+Word_t
 JudyMallocInfoAllocated(int nSpace)
 {
     (void)nSpace;
@@ -524,7 +524,7 @@ JudyMallocInfoAllocated(int nSpace)
 }
 
 // total free space
-size_t
+Word_t
 JudyMallocInfoFree(int nSpace)
 {
     (void)nSpace;
@@ -532,7 +532,7 @@ JudyMallocInfoFree(int nSpace)
 }
 
 // number of free chunks
-size_t
+Word_t
 JudyMallocInfoFreeChunks(int nSpace)
 {
     (void)nSpace;
@@ -540,7 +540,7 @@ JudyMallocInfoFreeChunks(int nSpace)
 }
 
 // maximum total allocated space
-size_t
+Word_t
 JudyMallocInfoMaxAllocated(int nSpace)
 {
     (void)nSpace;
