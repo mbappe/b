@@ -114,6 +114,7 @@ static int    pre_munmap(void *, size_t);
 // #define DARWIN  1
 #define HAVE_MORECORE 0
 #define HAVE_MMAP 1
+#define USE_LOCKS 0 // work around Ubuntu 18.04 c++ complaint about dlmalloc.c
 
 #define mmap            pre_mmap        // re-define for dlmalloc
 #define munmap          pre_munmap      // re-define for dlmalloc

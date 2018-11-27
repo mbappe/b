@@ -79,7 +79,7 @@ endif
 # -std=gnu99 gives a warning for anonymous unions.
 ##
 ifeq "$(CSTD)" ""
-  CSTD = gnu11
+# CSTD = gnu11
 # CSTD = c11
 # CSTD = gnu99
 # CSTD = c99
@@ -341,11 +341,15 @@ libbL.so: $(LIBBL_SRCS) JudyMalloc.so
 libb.so: libb1.so libbL.so
 	$(CC) -shared -o $@ $^
 
+# dlmalloc.c needs special accommodations
+# We put them in MALLOC_FLAGS.
+MALLOC_FLAGS += -Wno-null-pointer-arithmetic -Wno-expansion-to-defined \
+ -Wno-unknown-warning-option
+
 ifneq "$(CC)" "c++"
 ifneq "$(CC)" "g++"
 ifneq "$(CC)" "clang++"
-  MALLOC_FLAGS = -Wno-old-style-declaration -Wno-unknown-warning-option \
-    -Wno-expansion-to-defined -Wno-null-pointer-arithmetic
+  MALLOC_FLAGS += -Wno-old-style-declaration
 endif
 endif
 endif

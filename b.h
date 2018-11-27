@@ -2711,6 +2711,11 @@ Word_t InflateEmbeddedList(Word_t *pwRoot,
 #endif // defined(EMBED_KEYS)
 
 #if defined(DEBUG)
+#ifdef B_JUDYL
+#define bHitDebugThreshold  bHitDebugThresholdL
+#else // B_JUDYL
+#define bHitDebugThreshold  bHitDebugThreshold1
+#endif // B_JUDYL
 extern int bHitDebugThreshold;
 #endif // defined(DEBUG)
 
@@ -2725,8 +2730,19 @@ void Dump(Word_t *pwRoot, Word_t wPrefix, int nBL);
 #endif // (cnDigitsPerWord != 1)
 
 #if defined(DEBUG)
+#ifdef B_JUDYL
+#define pwRootLast  pwRootLastL
+#else // B_JUDYL
+#define pwRootLast  pwRootLast1
+#endif // B_JUDYL
 extern Word_t *pwRootLast; // allow dumping of tree when root is not known
 #endif // defined(DEBUG)
+
+#ifdef B_JUDYL
+#define wPopCntTotal  wPopCntTotalL
+#else // B_JUDYL
+#define wPopCntTotal  wPopCntTotal1
+#endif // B_JUDYL
 
 extern Word_t wPopCntTotal;
 #ifdef B_JUDYL

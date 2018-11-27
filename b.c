@@ -142,6 +142,14 @@ int bHitDebugThreshold;
 
 #if (cnDigitsPerWord != 1)
 
+#ifdef B_JUDYL
+#define wMallocs  wMallocsL
+#define wWordsAllocated  wWordsAllocatedL
+#else // B_JUDYL
+#define wMallocs  wMallocs1
+#define wWordsAllocated  wWordsAllocated1
+#endif // B_JUDYL
+
 Word_t wWordsAllocated; // number of words allocated but not freed
 Word_t wMallocs; // number of unfreed mallocs
 
@@ -2110,7 +2118,7 @@ embeddedKeys:;
                 } else if (nBL <= 32) {
                     printf(" %08x", ls_piKeysNATX(pwr, wPopCnt)[xx]);
   #ifdef B_JUDYL
-                    printf(","OWx,
+                    printf("," OWx,
                            ((Word_t*)ls_piKeysNATX(pwr, wPopCnt))[~xx]);
   #endif // B_JUDYL
 #endif // (cnBitsPerWord > 32)
@@ -2150,7 +2158,7 @@ embeddedKeys:;
                 } else if (nBL <= 32) {
                     printf(" %08x", ls_piKeysNATX(pwr, wPopCnt)[xx]);
   #ifdef B_JUDYL
-                    printf(","OWx,
+                    printf("," OWx,
                            ((Word_t*)ls_piKeysNATX(pwr, wPopCnt))[~xx]);
   #endif // B_JUDYL
 #endif // (cnBitsPerWord > 32)
@@ -7296,7 +7304,7 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
   // Judy1LHTime and Judy1LHCheck put a zero word before and after the root
   // word of the array. Let's make sure we don't corrupt it.
   #if defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
-    Word_t *pwRoot = (void*)PPArray;
+    Word_t *pwRoot = (Word_t*)PPArray;
     assert(pwRoot[-1] == 0);
     assert(pwRoot[ 1] == 0);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)

@@ -40,29 +40,37 @@
 
 #include <Judy.h>                       // for Judy macros J*()
 
+// This Judy1LHTime program uses RAMMETRICS globals which are, at present,
+// defined unconditionally in the Judy library in JudyMalloc.c.
+// The Judy 1.0.5 library doesn't define the RAMMETRICS globals but we'd like
+// to be able link this modern Judy1LHTime with the Judy 1.0.5 library.
+// Use -DJUDY_V105 or -DJUDY_METRICS_GLOBALS to define the variables in the
+// Judy1LHtime program, itself, in order to link this modern Judy1LHTime
+// program with a Judy 1.0.5 library or build it in a Judy 1.0.5 working
+// directory.
 #if defined(JUDY_V105) || defined(JUDY_METRICS_GLOBALS)
-// Judy 1.0.5 doesn't have RAMMETRICS but this modern Time.c program
-// assumes the globals exist. Use -DJUDY_V105 or -DJUDY_METRICS_GLOBALS
-// to build this modern Time.c program in a Judy 1.0.5 working directory.
-Word_t j__MalFreeCnt;
-Word_t j__MFlag;
-Word_t j__AllocWordsTOT;
-Word_t j__AllocWordsJBB;
-Word_t j__AllocWordsJBU;
-Word_t j__AllocWordsJBL;
-Word_t j__AllocWordsJLLW;
-Word_t j__AllocWordsJLL7;
-Word_t j__AllocWordsJLL6;
-Word_t j__AllocWordsJLL5;
-Word_t j__AllocWordsJLL4;
-Word_t j__AllocWordsJLL3;
-Word_t j__AllocWordsJLL2;
-Word_t j__AllocWordsJLL1;
-Word_t j__AllocWordsJLB1;
-Word_t j__AllocWordsJV;
-Word_t j__AllocWordsTOT;
-Word_t j__TotalBytesAllocated;
+#define RM_EXTERN
+#else // defined(JUDY_V105) || defined(JUDY_METRICS_GLOBALS)
+#define RM_EXTERN  extern
 #endif // defined(JUDY_V105) || defined(JUDY_METRICS_GLOBALS)
+RM_EXTERN Word_t j__TotalBytesAllocated; // allocated by mmap
+RM_EXTERN Word_t j__MFlag; // print mmap and munmap calls on stderr
+RM_EXTERN Word_t j__MalFreeCnt; // count of JudyMalloc + JudyFree calls
+RM_EXTERN Word_t j__AllocWordsTOT;
+RM_EXTERN Word_t j__AllocWordsTOT;
+RM_EXTERN Word_t j__AllocWordsJBB;
+RM_EXTERN Word_t j__AllocWordsJBU;
+RM_EXTERN Word_t j__AllocWordsJBL;
+RM_EXTERN Word_t j__AllocWordsJLLW;
+RM_EXTERN Word_t j__AllocWordsJLL7;
+RM_EXTERN Word_t j__AllocWordsJLL6;
+RM_EXTERN Word_t j__AllocWordsJLL5;
+RM_EXTERN Word_t j__AllocWordsJLL4;
+RM_EXTERN Word_t j__AllocWordsJLL3;
+RM_EXTERN Word_t j__AllocWordsJLL2;
+RM_EXTERN Word_t j__AllocWordsJLL1;
+RM_EXTERN Word_t j__AllocWordsJLB1;
+RM_EXTERN Word_t j__AllocWordsJV;
 
 // The released Judy libraries do not, and some of Doug's work-in-progress
 // libraries may not, have Judy1Dump and/or JudyLDump entry points.
@@ -75,6 +83,16 @@ Word_t j__TotalBytesAllocated;
 // The solution is to define JUDY1_V2 and/or JUDY1_DUMP and/or JUDYL_V2
 // and/or JUDYL_DUMP if/when we want Time.c to use Judy1Dump and/or
 // JudyLDump for real.
+
+// The released Judy libraries do not, and some of Doug's work-in-progress
+// libraries may not, have Judy[1L]Dump entry points.
+// And Mike sometimes links Judy1LHTime with his own Judy1 library and the
+// released or Doug's JudyL library, or links Judy1LHTime with his own JudyL
+// library and the released or Doug's Judy1 library.
+// We want to be able to use the same Judy1LHTime.c for all of these cases.
+// The solution is to define JUDY1_V2 and/or JUDY1_DUMP when we want
+// Judy1LHTime to use Judy1Dump for real. And to define JUDYL_V2
+// and/or JUDYL_DUMP if/when we want Judy1LHTime to use JudyLDump for real.
 
 #if !defined(JUDY1_V2) && !defined(JUDY1_DUMP)
 #define Judy1Dump(wRoot, nBitsLeft, wKeyPrefix)

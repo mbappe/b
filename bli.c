@@ -595,7 +595,7 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
     // nBLUp is used only for SKIP_TO_XX_SW and INSERT.
     // I think it will eventually be used for REMOVE and for
     // CODE_XX_SW without SKIP_TO_XX_SW.
-    int nBLUp = nBLUp; (void)nBLUp; // silence gcc
+    int nBLUp /* = nBLUp*/; (void)nBLUp; // silence gcc
 
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
 #if defined(SAVE_PREFIX_TEST_RESULT)
@@ -620,6 +620,9 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
     int nType;
     Word_t *pwr;
     int nBLR;
+  #if ! defined(LOOKUP) || defined(B_JUDYL)
+    int nPos;
+  #endif // ! defined(LOOKUP) || defined(B_JUDYL)
 
   #ifdef GOTO_AT_FIRST_IN_LOOKUP
   #ifdef SKIP_LINKS
@@ -642,7 +645,7 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
   #endif // GOTO_AT_FIRST_IN_LOOKUP
 
   #if ! defined(LOOKUP) || defined(B_JUDYL)
-    int nPos = -1;
+    nPos = -1;
   #endif // ! defined(LOOKUP) || defined(B_JUDYL)
 
 #if defined(COUNT)
@@ -1653,16 +1656,21 @@ t_list:;
       #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
       #endif // defined(INSERT)
       #ifdef INSERT
-        if ((cn2dBmMaxWpkPercent // check that conversion is enabled
-            && (EXP(cnBitsInD1) > sizeof(Link_t) * 8) // compiled out
+          // Tried putting test for (cn2dBmMaxWpkPercent != 0) in the
+          // condition below but g++ complained about the unsigned comparison
+          // to less than zero at the end of the condition always being false.
+          #if (cn2dBmMaxWpkPercent != 0) // g++ warns always
+        if ((EXP(cnBitsInD1) > sizeof(Link_t) * 8) // compiled out
             && (nBLR == cnBitsInD1) // check that conversion is not done
             && (nBL == nBLR) // converting skip makes no sense
             // this should agree with the test in InsertCleanup
             && (wPopCntUp * cn2dBmMaxWpkPercent
-                > EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord) * 100)))
+                > EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord) * 100)
+            )
         {
             bCleanupRequested = 1; // goto cleanup when done
         }
+          #endif // (cn2dBmMaxWpkPercent != 0)
       #endif // INSERT
 
         break;
