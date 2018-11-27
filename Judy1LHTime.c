@@ -57,7 +57,6 @@ RM_EXTERN Word_t j__TotalBytesAllocated; // allocated by mmap
 RM_EXTERN Word_t j__MFlag; // print mmap and munmap calls on stderr
 RM_EXTERN Word_t j__MalFreeCnt; // count of JudyMalloc + JudyFree calls
 RM_EXTERN Word_t j__AllocWordsTOT;
-RM_EXTERN Word_t j__AllocWordsTOT;
 RM_EXTERN Word_t j__AllocWordsJBB;
 RM_EXTERN Word_t j__AllocWordsJBU;
 RM_EXTERN Word_t j__AllocWordsJBL;
@@ -193,14 +192,9 @@ Word_t    j__GetCallsP; // Num search calls with no direct hit and resulting in 
 Word_t    j__GetCallsM; // Num search calls with no direct hit and resulting in backward search
 Word_t    j__GetCalls;  // Num search calls
 
-// This 64 Bit define may NOT work on all compilers
-
-
 //=======================================================================
 //      T I M I N G   M A C R O S
 //=======================================================================
-
-// (D) is returned in nano-seconds from last STARTTm
 
 #include <time.h>
 
@@ -224,6 +218,7 @@ struct timespec TVBeg__, TVEnd__;
 /*  asm volatile("" ::: "memory");   */                                 \
 }
 
+// (D) is returned in nano-seconds from last STARTTm
 #define ENDTm(D) 							\
 { 									\
 /*    asm volatile("" ::: "memory");        */                          \
@@ -421,9 +416,13 @@ PRINT5_2f(double __X)
         {
             printf(" %5.1f", __X);
         }
-        else
+        else if (__X >= .5)
         {
             printf(" %5.0f", __X);
+        }
+        else
+        {
+            printf("    00"); // -nan
         }
     }
     else
@@ -904,7 +903,7 @@ PrintHeader(const char *strFirstCol)
             printf("   JHSD");
     }
 
-    if (J1Flag | JLFlag | JHFlag)
+    if (J1Flag | JLFlag | JHFlag | JRFlag)
         printf("  Hp/K");
 
     if (mFlag && (bFlag == 0) && (yFlag == 0))
@@ -3641,7 +3640,7 @@ nextPart:
 
         if (Pop1 == wFinalPop1) {
 
-            if (J1Flag | JLFlag | JHFlag)
+            if (J1Flag | JLFlag | JHFlag | JRFlag)
                 PRINT5_2f((double)j__AllocWordsTOT / Pop1);
 
             if (mFlag && (bFlag == 0) && (yFlag == 0))
