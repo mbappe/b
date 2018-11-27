@@ -193,26 +193,6 @@ Word_t    j__GetCallsP; // Num search calls with no direct hit and resulting in 
 Word_t    j__GetCallsM; // Num search calls with no direct hit and resulting in backward search
 Word_t    j__GetCalls;  // Num search calls
 
-extern Word_t    j__AllocWordsTOT;
-extern Word_t    j__MFlag;                     // Print memory allocation on stderr
-extern Word_t    j__TotalBytesAllocated;       //
-extern Word_t    j__MalFreeCnt;                // JudyMalloc() + Judyfree() count
-
-extern Word_t    j__AllocWordsJBB;
-extern Word_t    j__AllocWordsJBU;
-extern Word_t    j__AllocWordsJBL;
-extern Word_t    j__AllocWordsJLB1;
-extern Word_t    j__AllocWordsJLL1;
-extern Word_t    j__AllocWordsJLL2;
-extern Word_t    j__AllocWordsJLL3;
-extern Word_t    j__AllocWordsJLL4;
-extern Word_t    j__AllocWordsJLL5;
-extern Word_t    j__AllocWordsJLL6;
-extern Word_t    j__AllocWordsJLL7;
-extern Word_t    j__AllocWordsJLLW;
-extern Word_t    j__AllocWordsJV;
-extern Word_t    j__NumbJV;
-
 // This 64 Bit define may NOT work on all compilers
 
 
