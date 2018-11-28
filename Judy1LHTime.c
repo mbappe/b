@@ -40,19 +40,25 @@
 
 #include <Judy.h>                       // for Judy macros J*()
 
+//=======================================================================
+//             R A M   M E T R I C S
+//=======================================================================
+//  For figuring out how much different structures contribute.   Must be
+//  turned on in source compile of Judy with -DRAMMETRICS
+
 // This Judy1LHTime program uses RAMMETRICS globals which are, at present,
-// defined unconditionally in the Judy library in JudyMalloc.c.
+// defined conditionally in the Judy library in JudyMalloc.c.
 // The Judy 1.0.5 library doesn't define the RAMMETRICS globals but we'd like
 // to be able link this modern Judy1LHTime with the Judy 1.0.5 library.
-// Use -DJUDY_V105 or -DJUDY_METRICS_GLOBALS to define the variables in the
+// Use -URAMMETRICS to define the variables in the
 // Judy1LHtime program, itself, in order to link this modern Judy1LHTime
 // program with a Judy 1.0.5 library or build it in a Judy 1.0.5 working
-// directory.
-#if defined(JUDY_V105) || defined(JUDY_METRICS_GLOBALS)
+// directory or build it with a modern Judy library with -URAMMETRICS.
+#ifdef RAMMETRICS
+#define RM_EXTERN extern
+#else // RAMMETRICS
 #define RM_EXTERN
-#else // defined(JUDY_V105) || defined(JUDY_METRICS_GLOBALS)
-#define RM_EXTERN  extern
-#endif // defined(JUDY_V105) || defined(JUDY_METRICS_GLOBALS)
+#endif // RAMMETRICS
 RM_EXTERN Word_t j__TotalBytesAllocated; // allocated by mmap
 RM_EXTERN Word_t j__MFlag; // print mmap and munmap calls on stderr
 RM_EXTERN Word_t j__MalFreeCnt; // count of JudyMalloc + JudyFree calls
@@ -70,6 +76,19 @@ RM_EXTERN Word_t j__AllocWordsJLL2;
 RM_EXTERN Word_t j__AllocWordsJLL1;
 RM_EXTERN Word_t j__AllocWordsJLB1;
 RM_EXTERN Word_t j__AllocWordsJV;
+
+#ifdef SEARCHMETRICS
+#define SM_EXTERN extern
+#else // SEARCHMETRICS
+#define SM_EXTERN
+#endif // SEARCHMETRICS
+SM_EXTERN Word_t j__MisComparesP; // Number of miscompares in searches forward
+SM_EXTERN Word_t j__MisComparesM; // Number of miscompares in searches backward
+SM_EXTERN Word_t j__DirectHits;   // Number of direct hits -- no search
+SM_EXTERN Word_t j__SearchPopulation; // Population of Searched object
+SM_EXTERN Word_t j__GetCallsP; // Num search calls with no direct hit and resulting in forward search
+SM_EXTERN Word_t j__GetCallsM; // Num search calls with no direct hit and resulting in backward search
+SM_EXTERN Word_t j__GetCalls;  // Num search calls
 
 // The released Judy libraries do not, and some of Doug's work-in-progress
 // libraries may not, have Judy1Dump and/or JudyLDump entry points.
@@ -177,20 +196,6 @@ RM_EXTERN Word_t j__AllocWordsJV;
 #ifndef MAP_ANONYMOUS
 #define  MAP_ANONYMOUS MAP_ANON
 #endif  // ! MAP_ANONYMOUS
-
-//=======================================================================
-//             R A M   M E T R I C S
-//=======================================================================
-//  For figuring out how much different structures contribute.   Must be
-//  turned on in source compile of Judy with -DRAMMETRICS
-
-Word_t    j__MisComparesP; // Number of miscompares in searches forward
-Word_t    j__MisComparesM; // Number of miscompares in searches backward
-Word_t    j__DirectHits;               // Number of direct hits -- no search
-Word_t    j__SearchPopulation;         // Population of Searched object
-Word_t    j__GetCallsP; // Num search calls with no direct hit and resulting in forward search
-Word_t    j__GetCallsM; // Num search calls with no direct hit and resulting in backward search
-Word_t    j__GetCalls;  // Num search calls
 
 //=======================================================================
 //      T I M I N G   M A C R O S
@@ -388,84 +393,59 @@ Swizzle(Word_t word)
     return (word);
 }
 
-int       XScale = 100;                   // for scaling number output under the -m flag
-
 static void
-PRINT5_2f(double __X)
+PRINT5e(double __X, int XScale)
 {
-    if (XScale == 100)
+    __X *= XScale;
+    if (__X == 0.0)
     {
-        __X *= XScale;
-        if (__X == 0.0)
-        {
-            printf("     0");               // keep white space cleaner
-        }
-        else if (__X < .0005)
-        {
-            printf(" %5.0f", __X);
-        }
-        else if (__X < .005)
-        {
-            printf(" %5.3f", __X);
-        }
-        else if (__X < .05)
-        {
-            printf(" %5.2f", __X);
-        }
-        else if (__X < .5)
-        {
-            printf(" %5.1f", __X);
-        }
-        else if (__X >= .5)
-        {
-            printf(" %5.0f", __X);
-        }
-        else
-        {
-            printf("    00"); // -nan
-        }
+        printf("     0");               // keep white space cleaner
+    }
+    else if ((__X < .0001) || (__X > 99999))
+    {
+        // Would like to enhance this to use a more compressed
+        // modified scientific notation than used by printf("%e").
+        // It looks like gnuplot understands numbers without
+        // wasting a character on a decimal point or on a '+'
+        // sign for the exponent.
+        // XYZeA, XYeAB, XeABC, XYe-A, Xe-AB
+        // Now we just have to write the code.
+        printf(" %.0e", __X);
+    }
+    else if (__X < .0005)
+    {
+        printf(" %5.0f", __X);
+    }
+    else if (__X < .005)
+    {
+        printf(" %5.3f", __X);
+    }
+    else if (__X < .05)
+    {
+        printf(" %5.2f", __X);
+    }
+    else if (__X < .5)
+    {
+        printf(" %5.1f", __X);
+    }
+    else if (__X >= .5)
+    {
+        printf(" %5.0f", __X);
     }
     else
     {
-        if (__X > .005)
-        {
-            if (XScale <= 2)
-            {
-                printf(" %5.2f", __X * XScale);
-            }
-            else if (XScale <= 20)
-            {
-                printf(" %5.1f", __X * XScale);
-            }
-            else
-            {
-                printf(" %5.0f", __X * XScale);
-            }
-        }
-        else
-        {
-            printf("     0");               // keep white space cleaner
-        }
+        printf("    00"); // -nan
     }
 }
+
+#define PRINT5_2f(__X)  PRINT5e((__X), 100)
 
 static void
 PRINT7_3f(double __X)
 {
     if (__X > .0005)
     {
-        if (XScale <= 2)
-        {
-            printf(" %7.3f", __X * XScale);
-        }
-        else if (XScale <= 20)
-        {
-            printf(" %7.2f", __X * XScale);
-        }
-        else
-        {
-            printf(" %7.1f", __X * XScale);
-        }
+        printf(" %7.1f", __X * 100); // used to be XScale == 100
     }
     else
     {
@@ -908,11 +888,9 @@ PrintHeader(const char *strFirstCol)
 
     if (mFlag && (bFlag == 0) && (yFlag == 0))
     {
-
         printf(" JBB/K");
         printf(" JBU/K");
         printf(" JBL/K");
-
 
         printf(" LWd/K");
 
@@ -931,12 +909,6 @@ PrintHeader(const char *strFirstCol)
 #endif // defined(MIKEY)
         printf("  JV/K");
 
-        printf(" +MsCm");
-        printf(" -MsCm");
-        printf(" %%DiHt");
-
-//        printf(" TrDep");
-        printf(" AvPop");
         printf(" %%MEff");
 
         if (J1Flag)
@@ -944,17 +916,17 @@ PrintHeader(const char *strFirstCol)
         if (JLFlag || JRFlag)
             printf(" MFL/K");
         if (JHFlag)
-            printf(" MFHS/K");
-
-        printf("  mmap/K");
-    }
-
-    if (J1Flag | JLFlag | JHFlag | JRFlag)
-    {
+            printf(" MFH/K");
+#ifdef SEARCHMETRICS
+        printf(" +MsCm");
+        printf(" -MsCm");
+        printf(" %%DiHt");
+        printf(" AvPop");
         printf("  DiHts");
         printf("  GetsP");
         printf("  GetsM");
-        printf("   Gets");
+        printf("    Gets");
+#endif // SEARCHMETRICS
     }
 
     printf("\n");
@@ -968,7 +940,6 @@ Usage(int argc, char **argv)
     printf("\n<<< Program to do performance measurements (and Diagnostics) on Judy Arrays >>>\n\n");
     printf("%s -n# -P# -S# [-B#[:#]|-N#] -T# -G# -1LH -bIcCvdtDlMK... -F <filename>\n\n", argv[0]);
     printf("   Where: # is a number, default is shown as [#]\n\n");
-    printf("-X #  Scale numbers produced by '-m' flag (for plotting) [%d]\n", XScale);
     printf("-m #  Output measurements when libJudy is compiled with -DRAMMETRICS &| -DSEARCHMETRICS\n");
     printf("-n #  Number of Keys (Population) used in Measurement [10000000]\n");
     printf("-P #  Measurement points per decade (1..1000) [50] (231 = ~1%%, 46 = ~5%% delta Population)\n");
@@ -1232,7 +1203,6 @@ main(int argc, char *argv[])
     Word_t    grp;
     Word_t    Pop1;
     Word_t    Meas;
-//    double    TreeDepth = 0;
     Word_t    LittleOffset = 0;
     Word_t    BigOffset = 0;
 
@@ -1352,17 +1322,17 @@ main(int argc, char *argv[])
     while (1)
     {
         c = getopt_long(argc, argv,
-                   "a:n:S:T:P:s:B:G:X:W:o:O:F:b"
+                   "a:n:S:T:P:s:B:G:W:o:O:F:b"
 #ifdef FANCY_b_flag
-                                              ":"
+                                            ":"
 #endif // FANCY_b_flag
-                                              "N:dDcC1LHvIltmpxVfgiyRMKkhEZ",
+                                             "N:dDcC1LHvIltmpxVfgiyRMKkhEZ",
                 // Optstring sorted:
-                // "1a:B:bCcDdEF:fG:gHhIiKklLMmN:n:O:o:P:pRS:s:T:tVvW:XXxy",
+                // "1a:B:bCcDdEF:fG:gHhIiKklLMmN:n:O:o:P:pRS:s:T:tVvW:xy",
                 // Used option characters sorted and with spaces for unused option characters:
-                // " 1         a:B:bCcDdE F:fG:gHhIi  KkLlMmN:n:O:o:P:p  R S:s:T:t:  VvW: Xx yZ "
+                // " 1         a:B:bCcDdE F:fG:gHhIi  KkLlMmN:n:O:o:P:p  R S:s:T:t:  VvW:  x yZ "
                 // Unused option characters sorted and with spaces for used option characters:
-                // "0 23456789A          e          Jj                 Qq r        Uu    w  Y  z"
+                // "0 23456789A          e          Jj                 Qq r        Uu    wX Y  z"
                    longopts, NULL);
         if (c == -1)
             break;
@@ -1473,15 +1443,6 @@ main(int argc, char *argv[])
 #elif !defined(NEXT_FIRST)
                 printf("\n# Warning -- '-G %zd' behaves like -DNEXT_FIRST\n", GValue);
 #endif // GAUSS
-            }
-            break;
-
-        case 'X':                      // Scale numbers under the '-m' flag
-            XScale = strtol(optarg, NULL, 0);   // 1..1000
-            if (XScale < 1)
-            {
-                ErrorFlag++;
-                printf("\nError --- option -X%d must be greater than 0 !!!\n", XScale);
             }
             break;
 
@@ -2078,7 +2039,7 @@ main(int argc, char *argv[])
     }
 
 //  print more options - default, adjusted or otherwise
-    printf(" -n%" PRIuPTR" -T%" PRIuPTR" -P%" PRIuPTR" -X%d", nElms, TValues, PtsPdec, XScale);
+    printf(" -n%" PRIuPTR" -T%" PRIuPTR" -P%" PRIuPTR, nElms, TValues, PtsPdec);
     if (bFlag && (bParm[0] != 0))
     {
         int ii;
@@ -2100,7 +2061,6 @@ main(int argc, char *argv[])
 
     printf("\n");
 
-    if (mFlag)
     {
         int       count = 0;
         if (JLFlag)
@@ -2116,26 +2076,26 @@ main(int argc, char *argv[])
         if (yFlag)
             count++;
 
-        if (count != 1)
+        if (mFlag && (count != 1))
         {
             printf
                 (" ========================================================\n");
             printf
-                (" Sorry, '-m' measurements compatable with exactly ONE of -1LRHby.\n");
+                (" Sorry, '-m' measurements compatible with exactly ONE of -1LRHby.\n");
             printf
                 (" This is because Judy object measurements include RAM sum of all.\n");
             printf
                 (" ========================================================\n");
             exit(1);
         }
-    }
-    if (tFlag)
-    {
-        if (mFlag == 0)
+
+        if (tFlag && (count != 1))
         {
             printf
                 (" ========================================================\n");
-            printf(" Sorry, '-t' measurements must include '-m' set\n");
+            printf(" Sorry, '-t' measurements compatible with exactly ONE of -1LRHby.\n");
+            printf
+                (" This is because we haven't coded otherwise yet.\n");
             printf
                 (" ========================================================\n");
             exit(1);
@@ -2168,7 +2128,7 @@ main(int argc, char *argv[])
 
 
     printf("# XLABEL Array Population\n");
-    printf("# YLABEL Nano-Seconds -or- Words per %d Key(s)\n", XScale);
+    printf("# YLABEL Nano-Seconds -or- ???\n");
 
     // Simplify subsequent handling of TValues by getting rid of special cases.
     if ((TValues == 0) || (TValues > nElms))
@@ -2579,12 +2539,6 @@ main(int argc, char *argv[])
 #endif // defined(MIKEY)
         printf("# COLHEAD %2d VA  - Value area Words/Key\n", Col++);
 
-        printf("# COLHEAD %2d +MsCm - Average number forward Compares failed Per Leaf Search\n", Col++);
-        printf("# COLHEAD %2d -MsCm - Average number reverse Compares failed Per Leaf Search\n", Col++);
-        printf("# COLHEAD %2d %%DiHt - %% of Direct Hits per Leaf Search\n", Col++);
-
-//        printf("# COLHEAD %2d TrDep  - Tree depth with LGet/1Test searches\n", Col++);
-        printf("# COLHEAD %2d AvPop - Average Population of Leaves Searched (be careful)\n", Col++);
         printf("# COLHEAD %2d %%MEff - %% RAM JudyMalloc()ed vs mmap()ed from Kernel\n", Col++);
 
         if (J1Flag)
@@ -2597,18 +2551,19 @@ main(int argc, char *argv[])
                  Col++);
         if (JHFlag)
             printf
-                ("# COLHEAD %2d MFHS/K   - JudyHS average malloc+free's per Key\n",
+                ("# COLHEAD %2d MFS/K   - JudyHS average malloc+free's per Key\n",
                  Col++);
 
-        printf("# COLHEAD %2d mmap/K   - mmap()ed Words per Key\n", Col++);
-    }
-
-    if (J1Flag | JLFlag | JHFlag | JRFlag)
-    {
+#ifdef SEARCHMETRICS
+        printf("# COLHEAD %2d +MsCm - Average number forward Compares failed Per Leaf Search\n", Col++);
+        printf("# COLHEAD %2d -MsCm - Average number reverse Compares failed Per Leaf Search\n", Col++);
+        printf("# COLHEAD %2d %%DiHt - %% of Direct Hits per Leaf Search\n", Col++);
+        printf("# COLHEAD %2d AvPop - Average Population of Leaves Searched (be careful)\n", Col++);
         printf("# COLHEAD %2d DiHts - Num get calls the result in a direct hit\n", Col++);
         printf("# COLHEAD %2d GetsP - Num get calls that miss and search forward\n", Col++);
         printf("# COLHEAD %2d GetsM - Num get calls that miss and search backward\n", Col++);
         printf("# COLHEAD %2d Gets  - Num get calls\n", Col++);
+#endif // SEARCHMETRICS
     }
 
     if (J1Flag)
@@ -3244,8 +3199,6 @@ nextPart:
                     }
                 }
 
-//            TreeDepth        = j__TreeDepth;
-
                 if (J1Flag)
                 {
                     if (tFlag)
@@ -3316,8 +3269,6 @@ nextPart:
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             TestJudyLGet(JL, &BeginSeed, Meas);
-
-//            TreeDepth        = j__TreeDepth;
 
             if (Pop1 == wFinalPop1) {
                 if (tFlag)
@@ -3645,14 +3596,6 @@ nextPart:
 
             if (mFlag && (bFlag == 0) && (yFlag == 0))
             {
-//                double AveSrcCmp, PercentLeafSearched;
-
-//              Calc average compares done in Leaf for this measurement interval
-//                AveSrcCmp = SearchCompares / (double)Meas;
-//                AveSrcCmp = DirectHits / SearchGets;
-
-//              Calc average percent of Leaf searched
-
                 PRINT5_2f((double)j__AllocWordsJBB   / (double)Pop1);       // 256 node branch
                 PRINT5_2f((double)j__AllocWordsJBU   / (double)Pop1);       // 256 node branch
                 PRINT5_2f((double)j__AllocWordsJBL   / (double)Pop1);       // xx node branch
@@ -3673,15 +3616,6 @@ nextPart:
 
 // SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSss
 
-//              print average number of failed compares done in leaf search
-                printf(" %5.1f", (double)MisComparesP * 100 / MAX(GetCallsP + DirectHits, 1));
-                printf(" %5.1f", (double)MisComparesM * 100 / MAX(GetCallsM + DirectHits, 1));
-                printf(" %5.1f", (double)DirectHits * 100 / MAX(DirectHits + GetCallsP + GetCallsM, 1));
-                printf(" %5.1f", (double)SearchPopulation / MAX(GetCalls, 1));
-
-//              print average number of Branches traversed per lookup
-//                printf(" %5.1f", TreeDepth / (double)Meas);
-
 //              Print the percent efficiency of dlmalloc
                 PRINT5_2f((double)j__AllocWordsTOT / (j__TotalBytesAllocated / sizeof(Word_t)));
                 if (J1Flag)
@@ -3690,21 +3624,18 @@ nextPart:
                     PRINT5_2f(DeltaMalFreLSum / Pms[grp].ms_delta);
                 if (JHFlag)
                     PRINT5_2f(DeltaMalFreHSSum / Pms[grp].ms_delta);
-
-                double dVal = (double)j__TotalBytesAllocated / sizeof(Word_t) / Pop1;
-                if (dVal * 100 > 99999) {
-                    printf(" %.1e", dVal * 100);
-                } else {
-                    PRINT7_3f(dVal);
-                }
-            }
-
-            if (J1Flag | JLFlag | JHFlag | JRFlag)
-            {
+#ifdef SEARCHMETRICS
+//              print average number of failed compares done in leaf search
+                printf(" %5.1f", (double)MisComparesP * 100 / MAX(GetCallsP + DirectHits, 1));
+                printf(" %5.1f", (double)MisComparesM * 100 / MAX(GetCallsM + DirectHits, 1));
+                printf(" %5.1f", (double)DirectHits * 100 / MAX(DirectHits + GetCallsP + GetCallsM, 1));
+                printf(" %5.1f", (double)SearchPopulation / MAX(GetCalls, 1));
                 printf(" %6zd", DirectHits);
                 printf(" %6zd", GetCallsP);
                 printf(" %6zd", GetCallsM);
-                printf(" %6zd", GetCalls);
+                //PRINT5e(GetCalls, 1);
+                printf(" %7zd", GetCalls);
+#endif // SEARCHMETRICS
             }
 
             printf("\n");

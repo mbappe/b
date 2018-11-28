@@ -945,13 +945,13 @@ enum {
 
 #ifdef SEARCHMETRICS
   #define SMETRICS(x)  x
-Word_t j__SearchPopulation;
-Word_t j__GetCalls;
-Word_t j__DirectHits;
-Word_t j__GetCallsP;
-Word_t j__GetCallsM;
-Word_t j__MisComparesP;
-Word_t j__MisComparesM;
+extern Word_t j__SearchPopulation;
+extern Word_t j__GetCalls;
+extern Word_t j__DirectHits;
+extern Word_t j__GetCallsP;
+extern Word_t j__GetCallsM;
+extern Word_t j__MisComparesP;
+extern Word_t j__MisComparesM;
 #else // SEARCHMETRICS)
   #define SMETRICS(x)
 #endif // SEARCHMETRICS

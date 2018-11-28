@@ -35,9 +35,6 @@
 #define JudyLDump(wRoot, nBitsLeft, wKeyPrefix)
 #endif // !defined(JUDYL_V2) && !defined(JUDYL_DUMP)
 
-// In case we want to set j__MFlag to 1 to get JudyMalloc to log mmap/munmap.
-extern Word_t j__MFlag;
-
 // Compile:
 // # cc -O Judy1LHCheck.c -lm -lJudy -o Judy1LHCheck
 
@@ -241,8 +238,6 @@ GetNextIndex(Word_t Index)
 int
 main(int argc, char *argv[])
 {
-    // Set j__MFlag to one to get JudyMalloc to dump mmap/munmap.
-    //j__MFlag = 1;
 //  Names of Judy Arrays
 #ifdef DEBUG
     // Make sure the word before and after J1's root word is zero. It's

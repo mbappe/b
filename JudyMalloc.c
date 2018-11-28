@@ -30,6 +30,7 @@
 #define RAMMETRICS 1
 #endif  // TRACEJM
 
+#ifdef RAMMETRICS
 // Global in case anyone wants to know (kind of kludgy, but only for testing)
 Word_t    j__AllocWordsTOT;     // words given by JudyMalloc including overhead
 Word_t    j__MalFreeCnt;                // keep track of total malloc() + free()
@@ -44,7 +45,6 @@ Word_t    j__AllocWordsJBB;
 Word_t    j__AllocWordsJBU;
 Word_t    j__AllocWordsJBL;
 Word_t    j__AllocWordsJLB1;
-// Word_t    j__AllocWordsJLB2;
 Word_t    j__AllocWordsJLL1;
 Word_t    j__AllocWordsJLL2;
 Word_t    j__AllocWordsJLL3;
@@ -53,8 +53,19 @@ Word_t    j__AllocWordsJLL5;
 Word_t    j__AllocWordsJLL6;
 Word_t    j__AllocWordsJLL7;
 Word_t    j__AllocWordsJLLW;
-Word_t    j__AllocWordsJV;
+Word_t    j__AllocWordsJV; // j__AllocWordsJLB2 for JUDY1
 Word_t    j__NumbJV;
+#endif // RAMMETRICS
+
+#ifdef SEARCHMETRICS
+Word_t j__SearchPopulation;
+Word_t j__GetCalls;
+Word_t j__DirectHits;
+Word_t j__GetCallsP;
+Word_t j__GetCallsM;
+Word_t j__MisComparesP;
+Word_t j__MisComparesM;
+#endif // SEARCHMETRICS
 
 // Use -DLIBCMALLOC if you want to use the libc malloc() instead of this
 // internal memory allocator.  (This one is much faster on some OS).
