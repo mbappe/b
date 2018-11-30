@@ -262,8 +262,6 @@ WaitForContextSwitch(Word_t Loops)
     }
 }
 
-
-
 // =======================================================================
 // Common macro to handle a failure
 // =======================================================================
@@ -393,65 +391,127 @@ Swizzle(Word_t word)
     return (word);
 }
 
+// print number in width provided with a format fits and try to get as
+// much precision as possible.
 static void
-PRINT5e(double __X, int XScale)
+PrintValFreeForm(double dVal, // raw value to be scaled, formatted and printed
+                 int nWidth, // field width for printed number
+                 int bUseSymbol // use engineering notation prefix symbol
+                 )
 {
-    __X *= XScale;
-    if (__X == 0.0)
-    {
-        printf("     0");               // keep white space cleaner
-    }
-    else if ((__X < .0001) || (__X > 99999))
-    {
-        // Would like to enhance this to use a more compressed
-        // modified scientific notation than used by printf("%e").
-        // It looks like gnuplot understands numbers without
-        // wasting a character on a decimal point or on a '+'
-        // sign for the exponent.
-        // XYZeA, XYeAB, XeABC, XYe-A, Xe-AB
-        // Now we just have to write the code.
-        printf(" %.0e", __X);
-    }
-    else if (__X < .0005)
-    {
-        printf(" %5.0f", __X);
-    }
-    else if (__X < .005)
-    {
-        printf(" %5.3f", __X);
-    }
-    else if (__X < .05)
-    {
-        printf(" %5.2f", __X);
-    }
-    else if (__X < .5)
-    {
-        printf(" %5.1f", __X);
-    }
-    else if (__X >= .5)
-    {
-        printf(" %5.0f", __X);
-    }
-    else
-    {
-        printf("    00"); // -nan
+    char acFormat[16];
+    double dExpWidth = pow(10, nWidth);
+    if (dVal < 5 / dExpWidth) {
+        // Must use a variant of scientific notation with a negative exponent.
+        if (dVal < 1e-9) {
+            sprintf(acFormat, "%%%dd", nWidth); // minimum field width
+             printf(acFormat, 0);
+        } else {
+            sprintf(acFormat, "%%%d.0e", nWidth); // minimum field width
+             printf(acFormat, dVal);
+        }
+    } else /* if (dVal >= dExpWidth - .5) */ {
+        // Must use a variant of scientific notation with a positive exponent.
+        // Normalized scientific notation: 1 <= abs(significant) < 10.
+        // Engineering notation: exponents are multiples of 3.
+        // The '=' above is necessary to avoid assertion below.
+        // How many digits of exponent are needed?
+        //  999e9 is dMax for 5 characters with 1 digit  of exponent
+        //        it represents up to  999.5e9
+        // 9999e9 is dMax for 6 characters with 1 digit  of exponent
+        //        it represents up to 9999.5e9
+        //  99e99 is dMax for 5 characters with 2 digits of exponent
+        //        it represents up to  99.5e99
+        // 999e99 is dMax for 6 characters with 2 digits of exponent
+        //        it represents up to 999.5e99
+        // Does GNUplot understand SI prefixes, e.g. k, M, G, T? No.
+        int nDigitsSig = nWidth - 2; // no decimal point in significand
+        int nDigitsExp = 1; // arbitrary -- ok for now
+        double dMaxE1 = (pow(10, nDigitsSig) - .5) * pow(10, pow(10, nDigitsExp) - 1);
+        if (dVal >= dMaxE1) { // too big for one-digit exponent
+            sprintf(acFormat, "%%%d.0e", nWidth);
+             printf(acFormat, dVal);
+        } else { // one-digit exponent
+            int nExp = (int)log10(dVal) - nDigitsSig + 1;
+            int nSig = dVal / pow(10, nExp) + .5;
+            if (log10(nSig) >= nWidth - nDigitsExp - 1) {
+                ++nExp; nSig /= 10;
+            }
+            int nEngMod = nExp % 3; (void)nEngMod;
+            if ((dVal < dExpWidth - .5)
+                || (!bUseSymbol && (nEngMod == 0))
+                || (!bUseSymbol
+                    && (((nWidth < 5) && (nEngMod == 1))
+                        || (nWidth < 4))))
+            {
+                sprintf(acFormat, "%%%dde%%d", nWidth - nDigitsExp - 1);
+                printf(acFormat, nSig, nExp);
+            }
+            else
+            {
+                int nExpAdj = (nEngMod == 0) ? 0 : 3 - nEngMod;
+                nExp += nExpAdj;
+                double dSig = (double)nSig / pow(10, nExpAdj);
+                if (bUseSymbol) {
+                    sprintf(acFormat, "%%%d.%df%s", nWidth - 1, nExpAdj,
+                            nExp == 9 ? "G" : nExp == 6 ? "M" : "k");
+                     printf(acFormat, dSig);
+                } else {
+                    // GNUplot can't handle 'k', 'M', 'G', ...
+                    sprintf(acFormat, "%%%d.%dfe%%d", nWidth - nDigitsExp - 1, 3 - nEngMod - 1);
+                     printf(acFormat, dSig, nExp);
+                }
+            }
+        }
     }
 }
 
-#define PRINT5_2f(__X)  PRINT5e((__X), 100)
-
+// nWidth and nDigitsFraction specify the desired format
 static void
-PRINT7_3f(double __X)
+PrintValX(double dVal, // raw value to be scaled, formatted and printed
+          int nWidth, // field width for printed number
+          int nDigitsFraction, // number of digits after the decimal point
+          int bUseSymbol, // use engineering notation prefix symbol
+          const char *strPrefix, // field separator printed before number
+          double dScale // multiply dVal by dScale prior to format and print
+          )
 {
-    if (__X > .0005)
-    {
-        printf(" %7.1f", __X * 100); // used to be XScale == 100
-    }
-    else
-    {
-        printf("       0");               // keep white space cleaner
+    fputs(strPrefix, stdout);
+    dVal *= dScale;
+    char acFormat[16];
+    int nLogVal = log10(dVal);
+    if ((nDigitsFraction > 0) && (nLogVal < nWidth - nDigitsFraction - 1)) {
+        sprintf(acFormat, "%%%d.%df", nWidth, nDigitsFraction);
+         printf(acFormat, dVal);
+    } else if ((nDigitsFraction == 0) && (nLogVal < nWidth)) {
+        sprintf(acFormat, "%%%dlu", nWidth);
+         printf(acFormat, (unsigned long)dVal);
+    } else {
+        PrintValFreeForm(dVal, nWidth, bUseSymbol);
     }
 }
+
+static void
+PrintVal(double dVal, // raw value to be scaled, formatted and printed
+         int nWidth, // field width for printed number
+         int nDigitsFraction // number of digits after the decimal point
+         )
+{
+    PrintValX(dVal, nWidth, nDigitsFraction, /* bUseSymbol */ 0,
+              /* strPrefix */ " ", /* dScale */ 1);
+}
+
+static void
+PrintValx100(double dVal, // raw value to be scaled, formatted and printed
+             int nWidth, // field width for printed number
+             int nDigitsFraction // number of digits after the decimal point
+             )
+{
+    PrintValX(dVal, nWidth, nDigitsFraction, /* bUseSymbol */ 0,
+              /* strPrefix */ " ", /* dScale */ 100);
+}
+
+#define PRINT5_1f(__X)  PrintValx100((__X), 5, 1)
 
 static void
 PRINT6_1f(double __X)
@@ -462,25 +522,7 @@ PRINT6_1f(double __X)
         printf("      0");              // keep white space cleaner
 }
 
-#define DONTPRINTLESSTHANZERO7(A,B)                              \
-{                                                               \
-    if (((A) - (B)) >= 0.05)                                     \
-        printf(" %7.1f", ((A) - (B)));                          \
-    else if (((A) - (B)) < 0.0)                                 \
-        printf("    -0.0");      /* minus time makes no sense */ \
-    else                                                        \
-        printf("       0");      /* make 0 less noisy         */ \
-}
-
-#define DONTPRINTLESSTHANZERO(A,B)                              \
-{                                                               \
-    if (((A) - (B)) >= 0.05)                                     \
-        printf(" %6.1f", ((A) - (B)));                          \
-    else if (((A) - (B)) < 0.0)                                 \
-        printf("   -0.0");      /* minus time makes no sense */ \
-    else                                                        \
-        printf("      0");      /* make 0 less noisy         */ \
-}
+#define DONTPRINTLESSTHANZERO(A,B)  PrintVal((A) - (B), 6, 1)
 
 #ifndef NO_KFLAG
 #define KFLAG
@@ -505,6 +547,16 @@ double    DeltanSecBy = 0.0;            // Global for measuring delta times
 double    DeltaMalFre1 = 0.0;           // Delta mallocs/frees per inserted Key
 double    DeltaMalFreL = 0.0;           // Delta mallocs/frees per inserted Key
 double    DeltaMalFreHS = 0.0;          // Delta mallocs/frees per inserted Key
+
+#define DEFAULT_TVALUES  1000000
+
+// wDoTit0Max is max Delta or Meas for which we do Tit=0 phase.
+// Use wDoTit0Max == 0 to skip overhead measurements altogether.
+// Use wDoTit0Max == -1 to disable overhead smoothing between deltas.
+// Use wDoTit0Max = DEFAULT_TVALUES / 2 to make sure we get to a place where we quit.
+//Word_t wDoTit0Max = 0; // Should be fastest.
+//Word_t wDoTit0Max = (Word_t)-1; // Should be slowest.
+Word_t wDoTit0Max = DEFAULT_TVALUES / 2;
 
 Word_t    Judy1Dups =  0;
 Word_t    JudyLDups =  0;
@@ -564,7 +616,7 @@ Word_t wSplayMask = 0x55555555;         // default splay mask
 #endif // defined(__LP64__) || defined(_WIN64)
 Word_t    wCheckBit = 0;                // Bit for narrow ptr testing.
 
-Word_t    TValues =  1000000;           // Maximum numb retrieve timing tests
+Word_t TValues = DEFAULT_TVALUES; // Maximum numb retrieve timing tests
 
 // nElms is the total number of keys that are inserted into the test arrays.
 // Default nElms is overridden by -n or -F.
@@ -799,137 +851,148 @@ GetNextKey(PNewSeed_t PNewSeed)
 }
 
 static void
-PrintHeader(const char *strFirstCol)
+PrintHeaderX(const char *strFirstCol, int nRow)
 {
-    printf("# %7s DeltaIns GetMeas", strFirstCol);
+    printf("# %3s", strFirstCol);
 
-    if (tFlag)
-        printf(" MeasOv");
+    printf(nRow ? "   Ins" : " Delta");
+    printf(nRow ? "  Meas" : "   Get");
+
     if (J1Flag)
-        printf("    J1S");
+        printf(nRow ? "      " : "   J1S");
     if (JLFlag)
-        printf("    JLI");
-    if (JRFlag)
-        printf("  JLI-R");
+        printf(nRow ? "      " : "   JLI");
     if (JHFlag)
-        printf("   JHSI");
+        printf(nRow ? "      " : "  JHSI");
+    if (JRFlag)
+        printf(nRow ? "      " : " JLI-R");
     if (bFlag)
-        printf("  BMSet");
+        printf(nRow ? "      " : " BMSet");
     if (yFlag)
-        printf(" ByMSet");
+        printf(nRow ? "      " : " BySet");
     if (tFlag)
-        printf(" MeasOv");
+        printf(nRow ? "      " : (J1Flag|bFlag|yFlag) ? " SetOv" : " InsOv");
     if (J1Flag)
-        printf("    J1T");
+        printf(nRow ? "      " : "   J1T");
     if (JLFlag)
-        printf("    JLG");
-    if (JRFlag)
-        printf("  JLG-R");
+        printf(nRow ? "      " : "   JLG");
     if (JHFlag)
-        printf("   JHSG");
-    if (yFlag)
-        printf(" ByTest");
+        printf(nRow ? "      " : "  JHSG");
+    if (JRFlag)
+        printf(nRow ? "      " : " JLG-R");
     if (bFlag)
-        printf(" BMTest");
+        printf(nRow ? "      " : " BMTst");
+    if (yFlag)
+        printf(nRow ? "      " : " ByTst");
+    if (tFlag)
+        printf(nRow ? "      " : (J1Flag|bFlag|yFlag) ? " TstOv" : " GetOv");
 
     if (IFlag)
     {
         if (J1Flag)
-            printf(" dupJ1S");
+            printf(nRow ? "   J1S" : "   DUP");
         if (JLFlag)
-            printf(" dupJLI");
+            printf(nRow ? "   JLI" : "   DUP");
         if (JHFlag)
-            printf(" dupJHI");
+            printf(nRow ? "   JHI" : "   DUP");
     }
 
     if (cFlag)
     {
-        printf(" CopyJ1");
+        printf(nRow ? "       " : " CopyJ1");
     }
+
     if (CFlag)
     {
         if (J1Flag)
-            printf("    J1C");
+            printf(nRow ? "      " : "   J1C");
         if (JLFlag)
-            printf("    JLC");
+            printf(nRow ? "      " : "   JLC");
     }
     if (vFlag)
     {
         if (J1Flag)
-            printf("    J1N");
+            printf(nRow ? "      " : "   J1N");
         if (JLFlag)
-            printf("    JLN");
+            printf(nRow ? "      " : "   JLN");
         if (J1Flag)
-            printf("    J1P");
+            printf(nRow ? "      " : "   J1P");
         if (JLFlag)
-            printf("    JLP");
+            printf(nRow ? "      " : "   JLP");
         if (J1Flag)
-            printf("   J1NE");
+            printf(nRow ? "      " : "  J1NE");
         if (JLFlag)
-            printf("   JLNE");
+            printf(nRow ? "      " : "  JLNE");
         if (J1Flag)
-            printf("   J1PE");
+            printf(nRow ? "      " : "  J1PE");
         if (JLFlag)
-            printf("   JLPE");
+            printf(nRow ? "      " : "  JLPE");
     }
 
     if (dFlag)
     {
         if (J1Flag)
-            printf("    J1U");
+            printf(nRow ? "      " : "   J1U");
         if (JLFlag)
-            printf("    JLD");
+            printf(nRow ? "      " : "   JLD");
         if (JHFlag)
-            printf("   JHSD");
+            printf(nRow ? "      " : "  JHSD");
     }
 
     if (J1Flag | JLFlag | JHFlag | JRFlag)
-        printf("  Hp/K");
+        printf(nRow ? "  %%W/K" : "  Heap");
 
     if (mFlag && (bFlag == 0) && (yFlag == 0))
     {
-        printf(" JBB/K");
-        printf(" JBU/K");
-        printf(" JBL/K");
+        printf(nRow ? "      " : " JBB/K");
+        printf(nRow ? "      " : " JBU/K");
+        printf(nRow ? "      " : " JBL/K");
 
-        printf(" LWd/K");
+        printf(nRow ? "      " : " LWd/K");
 
-        printf("  L7/K");
-        printf("  L6/K");
-        printf("  L5/K");
-        printf("  L4/K");
-        printf("  L3/K");
-        printf("  L2/K");
-        printf("  L1/K");
-        printf("  B1/K");
+        printf(nRow ? "      " : "  L7/K");
+        printf(nRow ? "      " : "  L6/K");
+        printf(nRow ? "      " : "  L5/K");
+        printf(nRow ? "      " : "  L4/K");
+        printf(nRow ? "      " : "  L3/K");
+        printf(nRow ? "      " : "  L2/K");
+        printf(nRow ? "      " : "  L1/K");
+        printf(nRow ? "      " : "  B1/K");
 #if defined(MIKEY)
         if (J1Flag) {
-            printf("  B2/K"); // big bitmap leaf words per key
+            printf(nRow ? "      " : "  B2/K"); // big bitmap leaf words per key
         } else
 #endif // defined(MIKEY)
-        printf("  JV/K");
+        printf(nRow ? "      " : "  JV/K");
 
-        printf(" %%MEff");
+        printf(nRow ? "      " : " %%MEff");
 
         if (J1Flag)
-            printf(" MF1/K");
+            printf(nRow ? "      " : " MF1/K");
         if (JLFlag || JRFlag)
-            printf(" MFL/K");
+            printf(nRow ? "      " : " MFL/K");
         if (JHFlag)
-            printf(" MFH/K");
+            printf(nRow ? "  %%W/K" : "   MFH");
 #ifdef SEARCHMETRICS
-        printf(" +MsCm");
-        printf(" -MsCm");
-        printf(" %%DiHt");
-        printf(" AvPop");
-        printf("  DiHts");
-        printf("  GetsP");
-        printf("  GetsM");
-        printf("    Gets");
+        printf(nRow ? "      " : " +MsCm");
+        printf(nRow ? "      " : " -MsCm");
+        printf(nRow ? "      " : " %%DiHt");
+        printf(nRow ? "      " : " AvPop");
+        printf(nRow ? "      " : " DiHts");
+        printf(nRow ? "      " : " GetsP");
+        printf(nRow ? "      " : " GetsM");
+        printf(nRow ? "   Cnt" : "  Gets");
 #endif // SEARCHMETRICS
     }
 
     printf("\n");
+}
+
+static void
+PrintHeader(const char *strFirstCol)
+{
+    PrintHeaderX(strFirstCol, /* nRow */ 0);
+    PrintHeaderX("",          /* nRow */ 1);
 }
 
 static void
@@ -1661,9 +1724,6 @@ main(int argc, char *argv[])
             break;
 
         case 't':                      // print Number Generator cost
-#ifndef DO_TIT0
-            printf("\n# Warning -- compile with -DDO_TIT to use '-t'.\n");
-#endif // DO_TIT0
             tFlag = 1;
             break;
 
@@ -1711,6 +1771,12 @@ main(int argc, char *argv[])
             ErrorFlag++;
             break;
         }
+    }
+
+    if ((bFlag && (J1Flag|JLFlag|JHFlag|JRFlag|yFlag))
+        || (yFlag && (J1Flag|JLFlag|JHFlag|JRFlag|bFlag)))
+    {
+        FAILURE("-b and -y don't get along with each other nor with any of -1LHR", 0);
     }
 
 #ifdef NO_TRIM_EXPANSE
@@ -2767,12 +2833,19 @@ main(int argc, char *argv[])
 
     Word_t wFinalPop1 = 0;
 
-    double DeltaGenIns1Min = 1000.0;
-    double DeltaGenInsLMin = 1000.0;
-    double DeltaGenInsHSMin = 1000.0;
-    double DeltaGenGet1Min = 1000.0;
-    double DeltaGenGetLMin = 1000.0;
-    double DeltaGenGetHSMin = 1000.0;
+    double DeltaGenInitMin = (wDoTit0Max == 0) ? .005 : 9e9;
+
+    double DeltaGenIns1Min = DeltaGenInitMin;
+    double DeltaGenInsLMin = DeltaGenInitMin;
+    double DeltaGenInsHSMin = DeltaGenInitMin;
+    double DeltaGenInsBtMin = DeltaGenInitMin;
+    double DeltaGenInsByMin = DeltaGenInitMin;
+
+    double DeltaGenGet1Min = DeltaGenInitMin;
+    double DeltaGenGetLMin = DeltaGenInitMin;
+    double DeltaGenGetHSMin = DeltaGenInitMin;
+    double DeltaGenGetBtMin = DeltaGenInitMin;
+    double DeltaGenGetByMin = DeltaGenInitMin;
 
     for (Pop1 = grp = 0; grp < Groups; grp++)
     {
@@ -2780,9 +2853,13 @@ main(int argc, char *argv[])
         double DeltaGen1 = 0.0;
         double DeltaGenL = 0.0;
         double DeltaGenHS = 0.0;
+        double DeltaGenBt = 0.0;
+        double DeltaGenBy = 0.0;
         double DeltanSec1Sum = 0.0;
         double DeltanSecLSum = 0.0;
         double DeltanSecHSSum = 0.0;
+        double DeltanSecBtSum = 0.0;
+        double DeltanSecBySum = 0.0;
         double DeltaMalFre1Sum = 0.0;
         double DeltaMalFreLSum = 0.0;
         double DeltaMalFreHSSum = 0.0;
@@ -2803,6 +2880,14 @@ main(int argc, char *argv[])
                 // Equal size parts except the last part may be slightly
                 // smaller.
                 Delta = (Delta + wParts - 1) / wParts;
+                // Some code below mildly assumes that every delta is at
+                // least as big as the previous delta. I'm thinking of
+                // the measurement overhead smoothing that assumes the
+                // overhead from a bigger delta can't really be bigger
+                // than the overhead from a smaller delta and implements
+                // a monotonically decreasing overhead value called "Min".
+                // Unfortunatly, the parts on one delta aren't always
+                // bigger than the parts of the previous delta.
             }
 nextPart:
             if (Pop1 + Delta > wFinalPop1) {
@@ -2893,19 +2978,11 @@ nextPart:
         }
 #endif // CALC_NEXT_KEY
 
-// Remember to add option to skip do-tit-0 measurements for platforms with
-// unreliable results.
-#ifdef DO_TIT0
-        int bDoTit0 = 1;
-#else // DO_TIT0
-        int bDoTit0 = (Delta <= 10000);
-#endif // DO_TIT0
-
         if (bFirstPart) {
             // first part of Delta
             // (Pop1 - Delta == wFinalPop1 - Pms[grp].ms_delta)
             if (grp && (grp % 32 == 0)) {
-                PrintHeader("    Pop"); // print column headers periodically
+                PrintHeader("Pop"); // print column headers periodically
             }
 #if 0
             if (bDS1) {
@@ -2914,46 +2991,14 @@ nextPart:
             } else
 #endif
             {
-                if (wFinalPop1 > 999999999) {
-                    printf("%.3e", (double)wFinalPop1);
-                } else {
-                    printf("%9" PRIuPTR, wFinalPop1);
-                }
-                if (Pms[grp].ms_delta > 99999999) {
-                    printf(" %.2e", (double)Pms[grp].ms_delta);
-                } else {
-                    printf(" %8" PRIuPTR, Pms[grp].ms_delta);
-                }
-                if (Meas > 9999999) {
-                    printf(" %.1e", (double)Meas);
-                } else {
-                    printf(" %7" PRIuPTR, Meas);
-                }
+                PrintValX(wFinalPop1, 5, 0, /* bUseSymbol */ 0,
+                          /* strPrefix */ "", /* dScale */ 1);
+                PrintValX(Pms[grp].ms_delta, 5, 0, /* bUseSymbol */ 1,
+                          /* strPrefix */ " ", /* dScale */ 1);
+                PrintValX(Meas, 5, 0, /* bUseSymbol */ 1,
+                          /* strPrefix */ " ", /* dScale */ 1);
             }
         }
-
-#ifdef NEVER
-        I dont think this code is ever executed (dlb)
-        if (bFlag)
-        {
-//          Allocate a Bitmap, if not already done so
-            if (B1 == NULL)
-            {
-                Word_t    ii;
-                size_t    BMsize;
-
-                // add one cache line for sister cache line read
-                BMsize = ((Word_t)1 << (BValue - 3));
-                if (posix_memalign((void **)&B1, 4096, BMsize) == 0)
-                {
-                    FAILURE("malloc failure, Bytes =", BMsize);
-                }
-//              clear the bitmap and bring into RAM
-                for (ii = 0; ii < (BMsize / sizeof(Word_t)); ii++)
-                    B1[ii] = 0;
-            }
-        }
-#endif  // NEVER
 
 #ifndef CALC_NEXT_KEY
         if (!bLfsrOnly && (FValue == 0))
@@ -2978,7 +3023,7 @@ nextPart:
             if (bFirstPart || (Pop1 == wFinalPop1)) {
                 // first or last part of delta
                 // last part might be a different size than the rest
-                if (Delta < 10000) { // bDoTit0
+                if (Delta <= wDoTit0Max) {
                     Tit = 0;                    // exclude Judy
                     DummySeed = InsertSeed;
                     WaitForContextSwitch(Delta);
@@ -2987,16 +3032,19 @@ nextPart:
                     DeltaGenL = DeltanSecL / Delta;
                     DeltaGenHS = DeltanSecHS / Delta;
                     if (DeltaGen1 < DeltaGenIns1Min) { DeltaGenIns1Min = DeltaGen1; }
-                    if (DeltaGen1 > DeltaGenIns1Min) { DeltaGen1 = DeltaGenIns1Min; }
                     if (DeltaGenL < DeltaGenInsLMin) { DeltaGenInsLMin = DeltaGenL; }
-                    if (DeltaGenL > DeltaGenInsLMin) { DeltaGenL = DeltaGenInsLMin; }
                     if (DeltaGenHS < DeltaGenInsHSMin) { DeltaGenInsHSMin = DeltaGenHS; }
-                    if (DeltaGenHS > DeltaGenInsHSMin) { DeltaGenHS = DeltaGenInsHSMin; }
+                    if (wDoTit0Max != (Word_t)-1) {
+                        // use the previous miniumum to avoid erratic overhead numbers
+                        if (DeltaGen1 > DeltaGenIns1Min) { DeltaGen1 = DeltaGenIns1Min; }
+                        if (DeltaGenL > DeltaGenInsLMin) { DeltaGenL = DeltaGenInsLMin; }
+                        if (DeltaGenHS > DeltaGenInsHSMin) { DeltaGenHS = DeltaGenInsHSMin; }
+                    }
                 } else {
                     DeltaGen1 = DeltaGenIns1Min;
                     DeltaGenL = DeltaGenInsLMin;
                     DeltaGenHS = DeltaGenInsHSMin;
-                } // end of bDoTit0
+                } // end of Delta <= wDoTit0Max
             }
 
             Tit = 1;                    // include Judy
@@ -3013,25 +3061,24 @@ nextPart:
                 // last part of Delta
                 if (J1Flag)
                 {
+                    PrintVal(DeltanSec1Sum / Pms[grp].ms_delta - DeltaGen1, 5, 1);
                     if (tFlag)
-                        PRINT6_1f(DeltaGen1);
-                    DONTPRINTLESSTHANZERO(DeltanSec1Sum / Pms[grp].ms_delta, DeltaGen1);
+                        PrintVal(DeltaGen1, 5, 1);
                 }
                 if (JLFlag)
                 {
+                    PrintVal(DeltanSecLSum / Pms[grp].ms_delta - DeltaGenL, 5, 1);
                     if (tFlag)
-                        PRINT6_1f(DeltaGenL);
-                    DONTPRINTLESSTHANZERO(DeltanSecLSum / Pms[grp].ms_delta, DeltaGenL);
+                        PrintVal(DeltaGenL, 5, 1);
                 }
                 if (JHFlag)
                 {
+                    PrintVal(DeltanSecHSSum / Pms[grp].ms_delta - DeltaGenHS, 5, 1);
                     if (tFlag)
-                        PRINT6_1f(DeltaGenHS);
-                    DONTPRINTLESSTHANZERO(DeltanSecHSSum / Pms[grp].ms_delta, DeltaGenHS);
+                        PrintVal(DeltaGenHS, 5, 1);
                 }
                 if (fFlag)
                     fflush(NULL);
-            }
 
 //      Note: the Get/Test code always tests from the "first" Key inserted.
 //      The assumption is the "just inserted" Key would be unfair because
@@ -3043,8 +3090,7 @@ nextPart:
 
 //          Test J1T, JLG, JHSG
 
-            if (Pop1 == wFinalPop1) {
-                if (Meas < 10000) { // bDoTit0
+                if (Meas <= wDoTit0Max) {
                     BeginSeed = StartSeed;      // reset at beginning
                     WaitForContextSwitch(Meas);
                     if (bLfsrOnly) {
@@ -3118,16 +3164,18 @@ nextPart:
                     DeltaGenL = DeltanSecL;
                     DeltaGenHS = DeltanSecHS;
                     if (DeltaGen1 < DeltaGenGet1Min) { DeltaGenGet1Min = DeltaGen1; }
-                    if (DeltaGen1 > DeltaGenGet1Min) { DeltaGen1 = DeltaGenGet1Min; }
                     if (DeltaGenL < DeltaGenGetLMin) { DeltaGenGetLMin = DeltaGenL; }
-                    if (DeltaGenL > DeltaGenGetLMin) { DeltaGenL = DeltaGenGetLMin; }
                     if (DeltaGenHS < DeltaGenGetHSMin) { DeltaGenGetHSMin = DeltaGenHS; }
-                    if (DeltaGenHS > DeltaGenGetHSMin) { DeltaGenHS = DeltaGenGetHSMin; }
+                    if (wDoTit0Max != (Word_t)-1) {
+                        if (DeltaGen1 > DeltaGenGet1Min) { DeltaGen1 = DeltaGenGet1Min; }
+                        if (DeltaGenL > DeltaGenGetLMin) { DeltaGenL = DeltaGenGetLMin; }
+                        if (DeltaGenHS > DeltaGenGetHSMin) { DeltaGenHS = DeltaGenGetHSMin; }
+                    }
                 } else {
                     DeltaGen1 = DeltaGenGet1Min;
                     DeltaGenL = DeltaGenGetLMin;
                     DeltaGenHS = DeltaGenGetHSMin;
-                } // end of bDoTit0
+                } // end of Meas <= wDoTit0Max
 
                 BeginSeed = StartSeed;      // reset at beginning
                 WaitForContextSwitch(Meas);
@@ -3201,21 +3249,21 @@ nextPart:
 
                 if (J1Flag)
                 {
+                    PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
                     if (tFlag)
-                        PRINT6_1f(DeltaGen1);
-                    DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
+                        PrintVal(DeltaGen1, 5, 1);
                 }
                 if (JLFlag)
                 {
+                    PrintVal(DeltanSecL - DeltaGenL, 5, 1);
                     if (tFlag)
-                        PRINT6_1f(DeltaGenL);
-                    DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+                        PrintVal(DeltaGenL, 5, 1);
                 }
                 if (JHFlag)
                 {
+                    PrintVal(DeltanSecHS - DeltaGenHS, 5, 1);
                     if (tFlag)
-                        PRINT6_1f(DeltaGenHS);
-                    DONTPRINTLESSTHANZERO(DeltanSecHS, DeltaGenHS);
+                        PrintVal(DeltaGenHS, 5, 1);
                 }
                 if (fFlag)
                     fflush(NULL);
@@ -3231,15 +3279,19 @@ nextPart:
             if (bFirstPart || (Pop1 == wFinalPop1)) {
                 // first or last part of delta
                 // last part might be a different size than the rest
-                if (bDoTit0) {
+                if (Delta <= wDoTit0Max) { // Delta < wDoTit0Max
                     Tit = 0;                    // exclude Judy
                     DummySeed = InsertSeed;
                     WaitForContextSwitch(Delta);
                     TestJudyLIns(&JL, &DummySeed, Delta);
-                    DeltaGenL = DeltanSecL;
+                    DeltaGenL = DeltanSecL / Delta;
+                    if (DeltaGenL < DeltaGenInsLMin) { DeltaGenInsLMin = DeltaGenL; }
+                    if (wDoTit0Max != (Word_t)-1) {
+                        if (DeltaGenL > DeltaGenInsLMin) { DeltaGenL = DeltaGenInsLMin; }
+                    }
                 } else {
-                    DeltaGenL = 0.1;
-                } // end of bDoTit0
+                    DeltaGenL = DeltaGenInsLMin;
+                } // end of Delta <= wDoTit0Max
             }
 
             Tit = 1;                    // include Judy
@@ -3247,33 +3299,36 @@ nextPart:
             TestJudyLIns(&JL, &InsertSeed, Delta);
             DeltanSecLSum += DeltanSecL;
             DeltaMalFreLSum += DeltaMalFreL;
+
             if (Pop1 == wFinalPop1) {
+                PrintVal(DeltanSecLSum / Pms[grp].ms_delta - DeltaGenL, 5, 1);
                 if (tFlag)
-                    PRINT6_1f(DeltaGenL);
-                DONTPRINTLESSTHANZERO(DeltanSecLSum / Pms[grp].ms_delta, DeltaGenL);
+                    PrintVal(DeltaGenL, 5, 1);
                 if (fFlag)
                     fflush(NULL);
-            }
 
-          if (bDoTit0) {
-            Tit = 0;                    // exclude Judy
-            BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
-            TestJudyLGet(JL, &BeginSeed, Meas);
-            DeltaGenL = DeltanSecL;
-          } else {
-            DeltaGenL = 0.1;
-          } // end of bDoTit0
+                if (Meas <= wDoTit0Max) {
+                    Tit = 0;                    // exclude Judy
+                    BeginSeed = StartSeed;      // reset at beginning
+                    WaitForContextSwitch(Meas);
+                    TestJudyLGet(JL, &BeginSeed, Meas);
+                    DeltaGenL = DeltanSecL;
+                    if (DeltaGenL < DeltaGenGetLMin) { DeltaGenGetLMin = DeltaGenL; }
+                    if (wDoTit0Max != (Word_t)-1) {
+                        if (DeltaGenL > DeltaGenGetLMin) { DeltaGenL = DeltaGenGetLMin; }
+                    }
+                } else {
+                    DeltaGenL = DeltaGenGetLMin;
+                } // end of Meas <= wDoTit0Max
 
-            Tit = 1;                    // include Judy
-            BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
-            TestJudyLGet(JL, &BeginSeed, Meas);
+                Tit = 1;                    // include Judy
+                BeginSeed = StartSeed;      // reset at beginning
+                WaitForContextSwitch(Meas);
+                TestJudyLGet(JL, &BeginSeed, Meas);
 
-            if (Pop1 == wFinalPop1) {
+                PrintVal(DeltanSecL - DeltaGenL, 5, 1);
                 if (tFlag)
-                    PRINT6_1f(DeltaGenL);
-                DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+                    PrintVal(DeltaGenL, 5, 1);
                 if (fFlag)
                     fflush(NULL);
             }
@@ -3282,50 +3337,55 @@ nextPart:
 //      Test a REAL bitmap
         if (bFlag)
         {
-            double    DeltanBit;
-
             //DummySeed = BitmapSeed;
             //GetNextKey(&DummySeed);   // warm up cache
 
-          if (bDoTit0) {
-            Tit = 0;
-            DummySeed = BitmapSeed;
-            WaitForContextSwitch(Delta);
-            TestBitmapSet(&B1, &DummySeed, Delta);
-            DeltanBit = DeltanSecBt;
-          } else {
-            DeltanBit = 0.1;
-          } // end of bDoTit0
+            if (Delta <= wDoTit0Max) {
+                Tit = 0;
+                DummySeed = BitmapSeed;
+                WaitForContextSwitch(Delta);
+                TestBitmapSet(&B1, &DummySeed, Delta);
+                DeltaGenBt = DeltanSecBt / Delta;
+                if (DeltaGenBt < DeltaGenInsBtMin) { DeltaGenInsBtMin = DeltaGenBt; }
+                if (wDoTit0Max != (Word_t)-1) {
+                    if (DeltaGenBt > DeltaGenInsBtMin) { DeltaGenBt = DeltaGenInsBtMin; }
+                }
+            } else {
+                DeltaGenBt = DeltaGenInsBtMin;
+            } // end of Delta <= wDoTit0Max
 
             Tit = 1;
             WaitForContextSwitch(Delta);
             TestBitmapSet(&B1, &BitmapSeed, Delta);
+            DeltanSecBtSum += DeltanSecBt;
 
             if (Pop1 == wFinalPop1) {
+                PrintVal(DeltanSecBtSum / Pms[grp].ms_delta - DeltaGenBt, 5, 1);
                 if (tFlag)
-                    PRINT6_1f(DeltanBit);
-                DONTPRINTLESSTHANZERO(DeltanSecBt, DeltanBit);
-            }
+                    PrintVal(DeltaGenBt, 5, 1);
 
-          if (bDoTit0) {
-            Tit = 0;
-            BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
-            TestBitmapTest(B1, &BeginSeed, Meas);
-            DeltanBit = DeltanSecBt;
-          } else {
-            DeltanBit = 0.1;
-          } // end of bDoTit0
+                if (Meas <= wDoTit0Max) {
+                    Tit = 0;
+                    BeginSeed = StartSeed;      // reset at beginning
+                    WaitForContextSwitch(Meas);
+                    TestBitmapTest(B1, &BeginSeed, Meas);
+                    DeltaGenBt = DeltanSecBt;
+                    if (DeltaGenBt < DeltaGenGetBtMin) { DeltaGenGetBtMin = DeltaGenBt; }
+                    if (wDoTit0Max != (Word_t)-1) {
+                        if (DeltaGenBt > DeltaGenGetBtMin) { DeltaGenBt = DeltaGenGetBtMin; }
+                    }
+                } else {
+                    DeltaGenBt = DeltaGenGetBtMin;
+                } // end of Meas <= wDoTit0Max
 
-            Tit = 1;
-            BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
-            TestBitmapTest(B1, &BeginSeed, Meas);
+                Tit = 1;
+                BeginSeed = StartSeed;      // reset at beginning
+                WaitForContextSwitch(Meas);
+                TestBitmapTest(B1, &BeginSeed, Meas);
 
-            if (Pop1 == wFinalPop1) {
+                PrintVal(DeltanSecBt - DeltaGenBt, 5, 1);
                 if (tFlag)
-                    PRINT6_1f(DeltanBit);
-                DONTPRINTLESSTHANZERO(DeltanSecBt, DeltanBit);
+                    PrintVal(DeltaGenBt, 5, 1);
                 if (fFlag)
                     fflush(NULL);
             }
@@ -3334,219 +3394,293 @@ nextPart:
 //      Test a REAL ByteMap
         if (yFlag)
         {
-            double    DeltanByte;
-
             //DummySeed = BitmapSeed;
             //GetNextKey(&DummySeed);   // warm up cache
 
-          if (bDoTit0) {
-            Tit = 0;
-            DummySeed = BitmapSeed;
-            WaitForContextSwitch(Delta);
-            TestByteSet(&DummySeed, Delta);
-            DeltanByte = DeltanSecBy;
-          } else {
-            DeltanByte = 0.1;
-          } // end of bDoTit0
+            if (Delta <= wDoTit0Max) {
+                Tit = 0;
+                DummySeed = BitmapSeed;
+                WaitForContextSwitch(Delta);
+                TestByteSet(&DummySeed, Delta);
+                DeltaGenBy = DeltanSecBy / Delta;
+                if (DeltaGenBy < DeltaGenInsByMin) { DeltaGenInsByMin = DeltaGenBy; }
+                if (wDoTit0Max != (Word_t)-1) {
+                    if (DeltaGenBy > DeltaGenInsByMin) { DeltaGenBy = DeltaGenInsByMin; }
+                }
+            } else {
+                DeltaGenBy = DeltaGenInsByMin;
+            } // end of Delta <= wDoTit0Max
 
             Tit = 1;
             WaitForContextSwitch(Delta);
             TestByteSet(&BitmapSeed, Delta);
+            DeltanSecBySum += DeltanSecBy;
 
             if (Pop1 == wFinalPop1) {
+                PrintVal(DeltanSecBySum / Pms[grp].ms_delta - DeltaGenBy, 5, 1);
                 if (tFlag)
-                    PRINT6_1f(DeltanByte);
-                DONTPRINTLESSTHANZERO(DeltanSecBy, DeltanByte);
-            }
+                    PrintVal(DeltaGenBy, 5, 1);
 
-          if (bDoTit0) {
-            Tit = 0;
-            BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
-            TestByteTest(&BeginSeed, Meas);
-            DeltanByte = DeltanSecBy;
-          } else {
-            DeltanByte = 0.1;
-          } // end of bDoTit0
+                if (Meas <= wDoTit0Max) {
+                    Tit = 0;
+                    BeginSeed = StartSeed;      // reset at beginning
+                    WaitForContextSwitch(Meas);
+                    TestByteTest(&BeginSeed, Meas);
+                    DeltaGenBy = DeltanSecBy;
+                    if (DeltaGenBy < DeltaGenGetByMin) { DeltaGenGetByMin = DeltaGenBy; }
+                    if (wDoTit0Max != (Word_t)-1) {
+                        if (DeltaGenBy > DeltaGenGetByMin) { DeltaGenBy = DeltaGenGetByMin; }
+                    }
+                } else {
+                    DeltaGenBy = DeltaGenGetByMin;
+                } // end of Meas <= wDoTit0Max
 
-            Tit = 1;
-            BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
-            TestByteTest(&BeginSeed, Meas);
+                Tit = 1;
+                BeginSeed = StartSeed;      // reset at beginning
+                WaitForContextSwitch(Meas);
+                TestByteTest(&BeginSeed, Meas);
 
-            if (Pop1 == wFinalPop1) {
+                PrintVal(DeltanSecBy - DeltaGenBy, 5, 1);
                 if (tFlag)
-                    PRINT6_1f(DeltanByte);
-                DONTPRINTLESSTHANZERO(DeltanSecBy, DeltanByte);
+                    PrintVal(DeltaGenBy, 5, 1);
                 if (fFlag)
                     fflush(NULL);
             }
         }
+
+        if (Pop1 != wFinalPop1)
+        {
+            bFirstPart = 0;
+            goto nextPart;
+        }
+
+        // (Pop1 == wFinalPop1)
 
 //      Test J1T, JLI, JHSI - duplicates
-
         if (IFlag)
         {
-          if (bDoTit0) {
-            Tit = 0;
-            BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
-            TestJudyDup(&J1, &JL, &JH, &BeginSeed, Meas);
-            DeltaGen1 = DeltanSec1;     // save measurement overhead
-            DeltaGenL = DeltanSecL;
-            DeltaGenHS = DeltanSecHS;
-          } else {
-            DeltaGen1 = DeltaGenL = DeltaGenHS = 0.1;
-          } // end of bDoTit0
+            static double DeltaGen1Min, DeltaGenLMin, DeltaGenHSMin;
+            if (Pop1 == Delta) {
+                DeltaGen1Min = DeltaGenLMin = DeltaGenHSMin = DeltaGenInitMin;
+            }
+            if (Meas <= wDoTit0Max) {
+                Tit = 0;
+                BeginSeed = StartSeed;      // reset at beginning
+                WaitForContextSwitch(Meas);
+                TestJudyDup(&J1, &JL, &JH, &BeginSeed, Meas);
+                DeltaGen1 = DeltanSec1;     // save measurement overhead
+                DeltaGenL = DeltanSecL;
+                DeltaGenHS = DeltanSecHS;
+                if (DeltaGen1 < DeltaGen1Min) { DeltaGen1Min = DeltaGen1; }
+                if (DeltaGenL < DeltaGenLMin) { DeltaGenLMin = DeltaGenL; }
+                if (DeltaGenHS < DeltaGenHSMin) { DeltaGenHSMin = DeltaGenHS; }
+                if (wDoTit0Max != (Word_t)-1) {
+                    if (DeltaGen1 > DeltaGen1Min) { DeltaGen1 = DeltaGen1Min; }
+                    if (DeltaGenL > DeltaGenLMin) { DeltaGenL = DeltaGenLMin; }
+                    if (DeltaGenHS > DeltaGenHSMin) { DeltaGenHS = DeltaGenHSMin; }
+                }
+            } else {
+                DeltaGen1 = DeltaGen1Min;
+                DeltaGenL = DeltaGenLMin;
+                DeltaGenHS = DeltaGenHSMin;
+            } // end of Meas <= wDoTit0Max
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             TestJudyDup(&J1, &JL, &JH, &BeginSeed, Meas);
-            if (Pop1 == wFinalPop1) {
-                if (J1Flag)
-                    DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
-                if (JLFlag)
-                    DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
-                if (JHFlag)
-                    DONTPRINTLESSTHANZERO(DeltanSecHS, DeltaGenHS);
-                if (fFlag)
-                    fflush(NULL);
-            }
+            if (J1Flag)
+                PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
+            if (JLFlag)
+                PrintVal(DeltanSecL - DeltaGenL, 5, 1);
+            if (JHFlag)
+                PrintVal(DeltanSecHS - DeltaGenHS, 5, 1);
+            if (fFlag)
+                fflush(NULL);
         }
+
         if (cFlag && J1Flag)
         {
             WaitForContextSwitch(Meas);
             TestJudy1Copy(J1, Meas);
-            if (Pop1 == wFinalPop1) {
-                PRINT6_1f(DeltanSec1);
-                if (fFlag)
-                    fflush(NULL);
-            }
+            PRINT6_1f(DeltanSec1);
+            if (fFlag)
+                fflush(NULL);
         }
+
         if (CFlag)
         {
-          if (bDoTit0) {
-            Tit = 0;
-            WaitForContextSwitch(Meas);
-            TestJudyCount(J1, JL, &BeginSeed, Meas);
-            DeltaGen1 = DeltanSec1;     // save measurement overhead
-            DeltaGenL = DeltanSecL;
-          } else {
-            DeltaGen1 = DeltaGenL = 0.1;
-          } // end of bDoTit0
+            static double DeltaGen1Min, DeltaGenLMin;
+            if (Pop1 == Delta) {
+                DeltaGen1Min = DeltaGenLMin = DeltaGenInitMin;
+            }
+            if (Meas <= wDoTit0Max) {
+                Tit = 0;
+                WaitForContextSwitch(Meas);
+                TestJudyCount(J1, JL, &BeginSeed, Meas);
+                DeltaGen1 = DeltanSec1;     // save measurement overhead
+                DeltaGenL = DeltanSecL;
+                if (DeltaGen1 < DeltaGen1Min) { DeltaGen1Min = DeltaGen1; }
+                if (DeltaGenL < DeltaGenLMin) { DeltaGenLMin = DeltaGenL; }
+                if (wDoTit0Max != (Word_t)-1) {
+                    if (DeltaGen1 > DeltaGen1Min) { DeltaGen1 = DeltaGen1Min; }
+                    if (DeltaGenL > DeltaGenLMin) { DeltaGenL = DeltaGenLMin; }
+                }
+            } else {
+                DeltaGen1 = DeltaGen1Min;
+                DeltaGenL = DeltaGenLMin;
+            } // end of Meas <= wDoTit0Max
 
             Tit = 1;
             WaitForContextSwitch(Meas);
             TestJudyCount(J1, JL, &BeginSeed, Meas);
-            if (Pop1 == wFinalPop1) {
-                if (J1Flag)
-                    DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
-                if (JLFlag)
-                    DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
-                if (fFlag)
-                    fflush(NULL);
-            }
+            if (J1Flag)
+                PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
+            if (JLFlag)
+                PrintVal(DeltanSecL - DeltaGenL, 5, 1);
+            if (fFlag)
+                fflush(NULL);
         }
+
         if (vFlag)
         {
-//          Test J1N, JLN
-          if (bDoTit0) {
-            Tit = 0;
-            BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
-            TestJudyNext(J1, JL, &BeginSeed, Meas);
-            DeltaGen1 = DeltanSec1;     // save measurement overhead
-            DeltaGenL = DeltanSecL;
-          } else {
-            DeltaGen1 = DeltaGenL = 0.1;
-          } // end of bDoTit0
+            { // open a new scope because we want to reuse variable names
+                static double DeltaGen1Min, DeltaGenLMin;
+                if (Pop1 == Delta) {
+                    DeltaGen1Min = DeltaGenLMin = DeltaGenInitMin;
+                }
+//              Test J1N, JLN
+                if (Meas <= wDoTit0Max) {
+                    Tit = 0;
+                    BeginSeed = StartSeed;      // reset at beginning
+                    WaitForContextSwitch(Meas);
+                    TestJudyNext(J1, JL, &BeginSeed, Meas);
+                    DeltaGen1 = DeltanSec1;     // save measurement overhead
+                    DeltaGenL = DeltanSecL;
+                    if (DeltaGen1 < DeltaGen1Min) { DeltaGen1Min = DeltaGen1; }
+                    if (DeltaGenL < DeltaGenLMin) { DeltaGenLMin = DeltaGenL; }
+                    if (wDoTit0Max != (Word_t)-1) {
+                        if (DeltaGen1 > DeltaGen1Min) { DeltaGen1 = DeltaGen1Min; }
+                        if (DeltaGenL > DeltaGenLMin) { DeltaGenL = DeltaGenLMin; }
+                    }
+                } else {
+                    DeltaGen1 = DeltaGen1Min;
+                    DeltaGenL = DeltaGenLMin;
+                } // end of Meas <= wDoTit0Max
 
-            Tit = 1;
-            BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
-            TestJudyNext(J1, JL, &BeginSeed, Meas);
-            if (Pop1 == wFinalPop1) {
+                Tit = 1;
+                BeginSeed = StartSeed;      // reset at beginning
+                WaitForContextSwitch(Meas);
+                TestJudyNext(J1, JL, &BeginSeed, Meas);
                 if (J1Flag)
-                    PRINT6_1f(DeltanSec1);
+                    PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
                 if (JLFlag)
-                    PRINT6_1f(DeltanSecL);
+                    PrintVal(DeltanSecL - DeltaGenL, 5, 1);
                 if (fFlag)
                     fflush(NULL);
             }
+            { // open a new scope because we want to reuse variable names
+                static double DeltaGen1Min, DeltaGenLMin;
+                if (Pop1 == Delta) {
+                    DeltaGen1Min = DeltaGenLMin = DeltaGenInitMin;
+                }
+//              Test J1P, JLP
+                if (Meas <= wDoTit0Max) {
+                    Tit = 0;
+                    BeginSeed = StartSeed;      // reset at beginning
+                    WaitForContextSwitch(Meas);
+                    TestJudyPrev(J1, JL, &BeginSeed, ~(Word_t)0, Meas);
+                    DeltaGen1 = DeltanSec1;     // save measurement overhead
+                    DeltaGenL = DeltanSecL;
+                    if (DeltaGen1 < DeltaGen1Min) { DeltaGen1Min = DeltaGen1; }
+                    if (DeltaGenL < DeltaGenLMin) { DeltaGenLMin = DeltaGenL; }
+                    if (wDoTit0Max != (Word_t)-1) {
+                        if (DeltaGen1 > DeltaGen1Min) { DeltaGen1 = DeltaGen1Min; }
+                        if (DeltaGenL > DeltaGenLMin) { DeltaGenL = DeltaGenLMin; }
+                    }
+                } else {
+                    DeltaGen1 = DeltaGen1Min;
+                    DeltaGenL = DeltaGenLMin;
+                } // end of Meas <= wDoTit0Max
 
-//          Test J1P, JLP
-          if (bDoTit0) {
-            Tit = 0;
-            BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
-            TestJudyPrev(J1, JL, &BeginSeed, ~(Word_t)0, Meas);
-            DeltaGen1 = DeltanSec1;     // save measurement overhead
-            DeltaGenL = DeltanSecL;
-          } else {
-            DeltaGen1 = DeltaGenL = 0.1;
-          } // end of bDoTit0
-
-            Tit = 1;
-            BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
-            TestJudyPrev(J1, JL, &BeginSeed, ~(Word_t)0, Meas);
-            if (Pop1 == wFinalPop1) {
+                Tit = 1;
+                BeginSeed = StartSeed;      // reset at beginning
+                WaitForContextSwitch(Meas);
+                TestJudyPrev(J1, JL, &BeginSeed, ~(Word_t)0, Meas);
                 if (J1Flag)
-                    PRINT6_1f(DeltanSec1);
+                    PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
                 if (JLFlag)
-                    PRINT6_1f(DeltanSecL);
+                    PrintVal(DeltanSecL - DeltaGenL, 5, 1);
                 if (fFlag)
                     fflush(NULL);
             }
+            { // open a new scope because we want to reuse variable names
+                static double DeltaGen1Min, DeltaGenLMin;
+                if (Pop1 == Delta) {
+                    DeltaGen1Min = DeltaGenLMin = DeltaGenInitMin;
+                }
+//              Test J1NE, JLNE
+                if (Meas <= wDoTit0Max) {
+                    Tit = 0;
+                    BeginSeed = StartSeed;      // reset at beginning
+                    WaitForContextSwitch(Meas);
+                    TestJudyNextEmpty(J1, JL, &BeginSeed, Meas);
+                    DeltaGen1 = DeltanSec1;     // save measurement overhead
+                    DeltaGenL = DeltanSecL;
+                    if (DeltaGen1 < DeltaGen1Min) { DeltaGen1Min = DeltaGen1; }
+                    if (DeltaGenL < DeltaGenLMin) { DeltaGenLMin = DeltaGenL; }
+                    if (wDoTit0Max != (Word_t)-1) {
+                        if (DeltaGen1 > DeltaGen1Min) { DeltaGen1 = DeltaGen1Min; }
+                        if (DeltaGenL > DeltaGenLMin) { DeltaGenL = DeltaGenLMin; }
+                    }
+                } else {
+                    DeltaGen1 = DeltaGen1Min;
+                    DeltaGenL = DeltaGenLMin;
+                } // end of Meas <= wDoTit0Max
 
-//          Test J1NE, JLNE
-          if (bDoTit0) {
-            Tit = 0;
-            BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
-            TestJudyNextEmpty(J1, JL, &BeginSeed, Meas);
-            DeltaGen1 = DeltanSec1;     // save measurement overhead
-            DeltaGenL = DeltanSecL;
-          } else {
-            DeltaGen1 = DeltaGenL = 0.1;
-          } // end of bDoTit0
-
-            Tit = 1;
-            BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
-            TestJudyNextEmpty(J1, JL, &BeginSeed, Meas);
-            if (Pop1 == wFinalPop1) {
+                Tit = 1;
+                BeginSeed = StartSeed;      // reset at beginning
+                WaitForContextSwitch(Meas);
+                TestJudyNextEmpty(J1, JL, &BeginSeed, Meas);
                 if (J1Flag)
-                    DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
+                    PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
                 if (JLFlag)
-                    DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+                    PrintVal(DeltanSecL - DeltaGenL, 5, 1);
                 if (fFlag)
                     fflush(NULL);
             }
+            { // open a new scope because we want to reuse variable names
+                static double DeltaGen1Min, DeltaGenLMin;
+                if (Pop1 == Delta) {
+                    DeltaGen1Min = DeltaGenLMin = DeltaGenInitMin;
+                }
+//              Test J1PE, JLPE
+                if (Meas <= wDoTit0Max) {
+                    Tit = 0;
+                    BeginSeed = StartSeed;      // reset at beginning
+                    WaitForContextSwitch(Meas);
+                    TestJudyPrevEmpty(J1, JL, &BeginSeed, Meas);
+                    DeltaGen1 = DeltanSec1;     // save measurement overhead
+                    DeltaGenL = DeltanSecL;
+                    if (DeltaGen1 < DeltaGen1Min) { DeltaGen1Min = DeltaGen1; }
+                    if (DeltaGenL < DeltaGenLMin) { DeltaGenLMin = DeltaGenL; }
+                    if (wDoTit0Max != (Word_t)-1) {
+                        if (DeltaGen1 > DeltaGen1Min) { DeltaGen1 = DeltaGen1Min; }
+                        if (DeltaGenL > DeltaGenLMin) { DeltaGenL = DeltaGenLMin; }
+                    }
+                } else {
+                    DeltaGen1 = DeltaGen1Min;
+                    DeltaGenL = DeltaGenLMin;
+                } // end of Meas <= wDoTit0Max
 
-//          Test J1PE, JLPE
-//
-          if (bDoTit0) {
-            Tit = 0;
-            BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
-            TestJudyPrevEmpty(J1, JL, &BeginSeed, Meas);
-            DeltaGen1 = DeltanSec1;     // save measurement overhead
-            DeltaGenL = DeltanSecL;
-          } else {
-            DeltaGen1 = DeltaGenL = 0.1;
-          } // end of bDoTit0
-
-            Tit = 1;
-            BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
-            TestJudyPrevEmpty(J1, JL, &BeginSeed, Meas);
-            if (Pop1 == wFinalPop1) {
+                Tit = 1;
+                BeginSeed = StartSeed;      // reset at beginning
+                WaitForContextSwitch(Meas);
+                TestJudyPrevEmpty(J1, JL, &BeginSeed, Meas);
                 if (J1Flag)
-                    DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
+                    PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
                 if (JLFlag)
-                    DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
+                    PrintVal(DeltanSecL - DeltaGenL, 5, 1);
                 if (fFlag)
                     fflush(NULL);
             }
@@ -3555,32 +3689,44 @@ nextPart:
 //      Test J1U, JLD, JHSD
         if (dFlag)
         {
-          if (bDoTit0) {
-            Tit = 0;
-            BeginSeed = StartSeed;      // reset at beginning
-            WaitForContextSwitch(Meas);
-            TestJudyDel(&J1, &JL, &JH, &BeginSeed, Meas);
-            DeltaGen1 = DeltanSec1;     // save measurement overhead
-            DeltaGenL = DeltanSecL;
-            DeltaGenHS = DeltanSecHS;
-          } else {
-            DeltaGen1 = DeltaGenL = DeltaGenHS = 0.1;
-          } // end of bDoTit0
+            static double DeltaGen1Min, DeltaGenLMin, DeltaGenHSMin;
+            if (Pop1 == Delta) {
+                DeltaGen1Min = DeltaGenLMin = DeltaGenHSMin = DeltaGenInitMin;
+            }
+            if (Meas <= wDoTit0Max) {
+                Tit = 0;
+                BeginSeed = StartSeed;      // reset at beginning
+                WaitForContextSwitch(Meas);
+                TestJudyDel(&J1, &JL, &JH, &BeginSeed, Meas);
+                DeltaGen1 = DeltanSec1;     // save measurement overhead
+                DeltaGenL = DeltanSecL;
+                DeltaGenHS = DeltanSecHS;
+                if (DeltaGen1 < DeltaGen1Min) { DeltaGen1Min = DeltaGen1; }
+                if (DeltaGenL < DeltaGenLMin) { DeltaGenLMin = DeltaGenL; }
+                if (DeltaGenHS < DeltaGenHSMin) { DeltaGenHSMin = DeltaGenHS; }
+                if (wDoTit0Max != (Word_t)-1) {
+                    if (DeltaGen1 > DeltaGen1Min) { DeltaGen1 = DeltaGen1Min; }
+                    if (DeltaGenL > DeltaGenLMin) { DeltaGenL = DeltaGenLMin; }
+                    if (DeltaGenHS > DeltaGenHSMin) { DeltaGenHS = DeltaGenHSMin; }
+                }
+            } else {
+                DeltaGen1 = DeltaGen1Min;
+                DeltaGenL = DeltaGenLMin;
+                DeltaGenHS = DeltaGenHSMin;
+            } // end of Meas <= wDoTit0Max
 
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
             TestJudyDel(&J1, &JL, &JH, &BeginSeed, Meas);
-            if (Pop1 == wFinalPop1) {
-                if (J1Flag)
-                    DONTPRINTLESSTHANZERO(DeltanSec1, DeltaGen1);
-                if (JLFlag)
-                    DONTPRINTLESSTHANZERO(DeltanSecL, DeltaGenL);
-                if (JHFlag)
-                    DONTPRINTLESSTHANZERO(DeltanSecHS, DeltaGenHS);
-                if (fFlag)
-                    fflush(NULL);
-            }
+            if (J1Flag)
+                PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
+            if (JLFlag)
+                PrintVal(DeltanSecL - DeltaGenL, 5, 1);
+            if (JHFlag)
+                PrintVal(DeltanSecHS - DeltaGenHS, 5, 1);
+            if (fFlag)
+                fflush(NULL);
 
 //          Now put back the Just deleted Keys
             Tit = 1;
@@ -3589,63 +3735,55 @@ nextPart:
             TestJudyIns(&J1, &JL, &JH, &BeginSeed, Meas);
         }
 
-        if (Pop1 == wFinalPop1) {
+        if (J1Flag | JLFlag | JHFlag | JRFlag)
+            PRINT5_1f((double)j__AllocWordsTOT / Pop1);
 
-            if (J1Flag | JLFlag | JHFlag | JRFlag)
-                PRINT5_2f((double)j__AllocWordsTOT / Pop1);
-
-            if (mFlag && (bFlag == 0) && (yFlag == 0))
-            {
-                PRINT5_2f((double)j__AllocWordsJBB   / (double)Pop1);       // 256 node branch
-                PRINT5_2f((double)j__AllocWordsJBU   / (double)Pop1);       // 256 node branch
-                PRINT5_2f((double)j__AllocWordsJBL   / (double)Pop1);       // xx node branch
+        if (mFlag && (bFlag == 0) && (yFlag == 0))
+        {
+            PRINT5_1f((double)j__AllocWordsJBB   / (double)Pop1);       // 256 node branch
+            PRINT5_1f((double)j__AllocWordsJBU   / (double)Pop1);       // 256 node branch
+            PRINT5_1f((double)j__AllocWordsJBL   / (double)Pop1);       // xx node branch
 
 
-                PRINT5_2f((double)j__AllocWordsJLLW  / (double)Pop1);       // 32[64] Key
+            PRINT5_1f((double)j__AllocWordsJLLW  / (double)Pop1);       // 32[64] Key
 
-                PRINT5_2f((double)j__AllocWordsJLL7  / (double)Pop1);       // 56 bit Key
-                PRINT5_2f((double)j__AllocWordsJLL6  / (double)Pop1);       // 48 bit Key
-                PRINT5_2f((double)j__AllocWordsJLL5  / (double)Pop1);       // 40 bit Key
-                PRINT5_2f((double)j__AllocWordsJLL4  / (double)Pop1);       // 32 bit Key
-                PRINT5_2f((double)j__AllocWordsJLL3  / (double)Pop1);       // 24 bit Key
-                PRINT5_2f((double)j__AllocWordsJLL2  / (double)Pop1);       // 16 bit Key
-                PRINT5_2f((double)j__AllocWordsJLL1  / (double)Pop1);       //  8 bit Key
-                PRINT5_2f((double)j__AllocWordsJLB1  / (double)Pop1);       // 1 digit bimap
-                PRINT5_2f((double)j__AllocWordsJV    / (double)Pop1);       // Values
+            PRINT5_1f((double)j__AllocWordsJLL7  / (double)Pop1);       // 56 bit Key
+            PRINT5_1f((double)j__AllocWordsJLL6  / (double)Pop1);       // 48 bit Key
+            PRINT5_1f((double)j__AllocWordsJLL5  / (double)Pop1);       // 40 bit Key
+            PRINT5_1f((double)j__AllocWordsJLL4  / (double)Pop1);       // 32 bit Key
+            PRINT5_1f((double)j__AllocWordsJLL3  / (double)Pop1);       // 24 bit Key
+            PRINT5_1f((double)j__AllocWordsJLL2  / (double)Pop1);       // 16 bit Key
+            PRINT5_1f((double)j__AllocWordsJLL1  / (double)Pop1);       //  8 bit Key
+            PRINT5_1f((double)j__AllocWordsJLB1  / (double)Pop1);       // 1 digit bimap
+            PRINT5_1f((double)j__AllocWordsJV    / (double)Pop1);       // Values
 
 
 // SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSss
 
-//              Print the percent efficiency of dlmalloc
-                PRINT5_2f((double)j__AllocWordsTOT / (j__TotalBytesAllocated / sizeof(Word_t)));
-                if (J1Flag)
-                    PRINT5_2f(DeltaMalFre1Sum / Pms[grp].ms_delta);
-                if (JLFlag || JRFlag)
-                    PRINT5_2f(DeltaMalFreLSum / Pms[grp].ms_delta);
-                if (JHFlag)
-                    PRINT5_2f(DeltaMalFreHSSum / Pms[grp].ms_delta);
+//          Print the percent efficiency of dlmalloc
+            PRINT5_1f((double)j__AllocWordsTOT / (j__TotalBytesAllocated / sizeof(Word_t)));
+            if (J1Flag)
+                PRINT5_1f(DeltaMalFre1Sum / Pms[grp].ms_delta);
+            if (JLFlag || JRFlag)
+                PRINT5_1f(DeltaMalFreLSum / Pms[grp].ms_delta);
+            if (JHFlag)
+                PRINT5_1f(DeltaMalFreHSSum / Pms[grp].ms_delta);
 #ifdef SEARCHMETRICS
-//              print average number of failed compares done in leaf search
-                printf(" %5.1f", (double)MisComparesP * 100 / MAX(GetCallsP + DirectHits, 1));
-                printf(" %5.1f", (double)MisComparesM * 100 / MAX(GetCallsM + DirectHits, 1));
-                printf(" %5.1f", (double)DirectHits * 100 / MAX(DirectHits + GetCallsP + GetCallsM, 1));
-                printf(" %5.1f", (double)SearchPopulation / MAX(GetCalls, 1));
-                printf(" %6zd", DirectHits);
-                printf(" %6zd", GetCallsP);
-                printf(" %6zd", GetCallsM);
-                //PRINT5e(GetCalls, 1);
-                printf(" %7zd", GetCalls);
+//          print average number of failed compares done in leaf search
+            PrintValx100((double)MisComparesP / MAX(GetCallsP + DirectHits, 1), 5, 1);
+            PrintValx100((double)MisComparesM / MAX(GetCallsM + DirectHits, 1), 5, 1);
+            PrintValx100((double)DirectHits / MAX(DirectHits + GetCallsP + GetCallsM, 1), 5, 1);
+            PrintVal((double)SearchPopulation / MAX(GetCalls, 1), 5, 1);
+            PrintVal(DirectHits, 5, 0);
+            PrintVal(GetCallsP, 5, 0);
+            PrintVal(GetCallsM, 5, 0);
+            PrintVal(GetCalls, 5, 0);
 #endif // SEARCHMETRICS
-            }
+        }
 
-            printf("\n");
-            if (fFlag)
-                fflush(NULL);                   // assure data gets to file in case malloc fail
-        }
-        if (Pop1 != wFinalPop1) {
-            bFirstPart = 0;
-            goto nextPart;
-        }
+        printf("\n");
+        if (fFlag)
+            fflush(NULL);                   // assure data gets to file in case malloc fail
     }
 
     if (J1Flag)
@@ -4112,6 +4250,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
                     break;
             }
         }
+        DeltanSecL = DminTime;
     }
 
 //  JudyHSIns timings
@@ -4168,6 +4307,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
                     break;
             }
         }
+        DeltanSecHS = DminTime;
     }
 
     *PSeed = WorkingSeed;
@@ -4262,6 +4402,8 @@ TestJudyLIns(void **JL, PNewSeed_t PSeed, Word_t Elements)
         }
     }
     while (++lp < Loops);
+
+    DeltanSecL = DminTime;
 
     *PSeed = WorkingSeed;               // advance
 }
@@ -5560,8 +5702,6 @@ TestByteSet(PNewSeed_t PSeed, Word_t Elements)
     }
     ENDTm(DeltanSecBy);
 
-    DeltanSecBy /= (double)Elements;
-
     return (0);
 }       // TestByteSet()
 
@@ -5599,8 +5739,6 @@ TestBitmapSet(PWord_t *pB1, PNewSeed_t PSeed, Word_t Elements)
         }
     }
     ENDTm(DeltanSecBt);
-
-    DeltanSecBt /= (double)Elements;
 
     return (0);
 }
