@@ -283,7 +283,7 @@ default: $(EXES) $(LINKS)
 all: $(EXES) $(LINKS) $(LIBS) $(ASMS) $(CPPS)
 
 clean:
-	rm -f $(EXES) $(LINKS) $(LIBS) $(LIBB_OBJS) $(ASMS) $(CPPS)
+	rm -f $(EXES) $(LINKS) $(LIBS) $(LIBB_OBJS) $(ASMS) $(CPPS) b1 bL
 
 t: t.c $(T_OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
@@ -291,13 +291,12 @@ t: t.c $(T_OBJS)
 # -DMIKEY tells Judy1LHTime to use different RAMMETRICS column headings.
 # -lJudy is for JudyHS.
 Judy1LHTime: Judy1LHTime.c libb.a
-#Judy1LHTime: Judy1LHTime.c libb1.a
 	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm $(LDFLAGS) -lJudy
 # ../judy/src/obj/.libs/libJudy.a
 
 c++time: Judy1LHTime.c libb.a
 	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) \
- -x c++ Judy1LHTime.c -x none libb.a -o $@ -lm -lJudy
+ -x c++ Judy1LHTime.c -x none libb.a -o $@ -lm $(LDFLAGS) -lJudy
 
 b: Judy1LHTime
 	ln -sf Judy1LHTime b
@@ -308,7 +307,6 @@ btime: Judy1LHTime
 # Set LIBRARY_PATH environment variable to find libJudy.a.
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
 Judy1LHCheck: Judy1LHCheck.c libb.a
-#Judy1LHCheck: Judy1LHCheck.c libb1.a
 	$(CC) $(CFLAGS) -Wno-sign-compare $(DEFINES) \
  -o $@ $^ -lm $(LDFLAGS) -lJudy
 
@@ -327,6 +325,34 @@ libb1.a: $(LIBB1_OBJS)
 
 libbL.a: $(LIBBL_OBJS)
 	ar -r $@ $^
+
+# Targets 1, b1 and b1check link with libb1 to get Judy1 locally and
+# JudyL from -lJudy.
+1: b1 b1check
+
+b1: Judy1LHTime.c libb1.a
+	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm $(LDFLAGS) -lJudy
+	ln -sf $@ Judy1LHTime
+	ln -sf $@ b
+
+b1check: Judy1LHCheck.c libb1.a
+	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm $(LDFLAGS) -lJudy
+	ln -sf $@ Judy1LHCheck
+	ln -sf $@ bcheck
+
+# Targets L, bL and bLcheck link with libbL to get JudyL locally and
+# Judy1 from -lJudy.
+L: bL bLcheck
+
+bL: Judy1LHTime.c libbL.a
+	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm $(LDFLAGS) -lJudy
+	ln -sf $@ Judy1LHTime
+	ln -sf $@ b
+
+bLcheck: Judy1LHTime.c libbL.a
+	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm $(LDFLAGS) -lJudy
+	ln -sf $@ Judy1LHCheck
+	ln -sf $@ bcheck
 
 # Build libb1.so and libbL.so directly from sources rather than from
 # objects so this Makefile doesn't have to deal with the complexity
