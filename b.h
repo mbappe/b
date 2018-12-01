@@ -578,18 +578,17 @@ typedef Word_t Bucket_t;
     #define cnListPopCntMax24  cnListPopCntMax32
 #endif // cnListPopCntMax24
 
-#ifndef cnListPopCntMax40
-    #define cnListPopCntMax40  cnListPopCntMax64
-#endif // cnListPopCntMax40
-
-#ifndef cnListPopCntMax48
-    #define cnListPopCntMax48  cnListPopCntMax64
-#endif // cnListPopCntMax48
-
 #ifndef cnListPopCntMax56
     #define cnListPopCntMax56  cnListPopCntMax64
 #endif // cnListPopCntMax56
 
+#ifndef cnListPopCntMax48
+    #define cnListPopCntMax48  cnListPopCntMax56
+#endif // cnListPopCntMax48
+
+#ifndef cnListPopCntMax40
+    #define cnListPopCntMax40  cnListPopCntMax48
+#endif // cnListPopCntMax40
 
 // cwListPopCntMax is mostly used as a boolean that indicates whether
 // or not we are using lists at all; embedded or external.
