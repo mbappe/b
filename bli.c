@@ -1307,7 +1307,10 @@ bmSwTail:;
   #if defined(LOOKUP)
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
+      #ifdef BITMAP
+        // compiler complains ifndef BITMAP even if cbEmbeddedBitmap==0
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
+      #endif // BITMAP
         goto again;
   #else // defined(LOOKUP)
       #ifdef INSERT

@@ -1301,6 +1301,12 @@ DBGI(printf("NS: prefix " OWx"\n", PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL)))
 static Word_t
 OldSwitch(Word_t *pwRoot, int nBL, int bBmSw, int nLinks, int nBLUp);
 
+#ifdef B_JUDYL
+#define InflateBmSw  InflateBmSwL
+#else // B_JUDYL
+#define InflateBmSw  InflateBmSw1
+#endif // B_JUDYL
+
 // Uncompress a bitmap switch.
 void
 InflateBmSw(Word_t *pwRoot, Word_t wKey, int nBLR, int nBLUp)
@@ -6708,6 +6714,18 @@ Initialize(void)
 #else // defined(BM_SW_FOR_REAL)
     printf("# No BM_SW_FOR_REAL\n");
 #endif // defined(BM_SW_FOR_REAL)
+
+#if defined(OFFSET_IN_SW_BM_WORD)
+    printf("#    OFFSET_IN_SW_BM_WORD\n");
+#else // defined(OFFSET_IN_SW_BM_WORD)
+    printf("# No OFFSET_IN_SW_BM_WORD\n");
+#endif // defined(OFFSET_IN_SW_BM_WORD)
+
+#if defined(X_SW_BM_HALF_WORDS)
+    printf("#    X_SW_BM_HALF_WORDS\n");
+#else // defined(X_SW_BM_HALF_WORDS)
+    printf("# No X_SW_BM_HALF_WORDS\n");
+#endif // defined(X_SW_BM_HALF_WORDS)
 
 #if defined(CACHE_ALIGN_BM_SW)
     printf("#    CACHE_ALIGN_BM_SW\n");
