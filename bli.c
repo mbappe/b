@@ -511,6 +511,12 @@ PrefixCheckAtLeaf(qp, Word_t wKey
 #endif // LOOKUP
 #endif // SKIP_PREFIX_CHECK
 
+static void
+Log(qp, const char *str)
+{
+    printf("# %20s: " qfmt "\n", str, qy);
+}
+
 #if defined(LOOKUP)
 #ifdef B_JUDYL
 static Word_t *
@@ -555,7 +561,7 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
     DBGX(printf("# nBL %d pLn %p wRoot " OWx"\n", nBL, pLn, wRoot));
 
 #if defined(INSERT) && defined(B_JUDYL)
-    Word_t *pwValue;
+    Word_t *pwValue = NULL;
 #endif // defined(INSERT) && defined(B_JUDYL)
 
 #if !defined(RECURSIVE)
@@ -656,15 +662,15 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
 #if defined(INSERT) || defined(REMOVE)
   #if !defined(RECURSIVE)
 top:;
+    DBGX(Log(qy, "top"));
   #endif // !defined(RECURSIVE)
 #endif // defined(INSERT) || defined(REMOVE)
-    DBGX(printf("# top\n"));
     nBLR = nBL;
 
 #if defined(LOOKUP) || !defined(RECURSIVE)
 again:;
+    DBGX(Log(qy, "again"));
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
-    DBGX(printf("# again\n"));
 
 #if defined(SKIP_LINKS)
     assert(nBLR == nBL);
@@ -770,6 +776,7 @@ again:;
 
     goto fastAgain;
 fastAgain:;
+    DBGX(Log(qy, "fastAgain"));
     switch (nType)
     {
 
@@ -1278,6 +1285,8 @@ t_bm_sw:;
             wAddr &= ~(Word_t)63;
             bLinkPresent = *(Word_t *)wAddr ^ ~(Word_t)0x12484210;
             wSwIndex = wDigit + !bLinkPresent;
+          #else
+            BmSwIndex(qy, wDigit, &wSwIndex, &bLinkPresent);
           #endif // defined(BM_SW_FOR_REAL) && defined(SW_BM_DEREF_ONLY)
       #else // LOOKUP
             BmSwIndex(qy, wDigit, &wSwIndex, &bLinkPresent);
@@ -1319,6 +1328,7 @@ bmSwTail:;
             if (gwPopCnt(qy, nBLR) * nBLR * cnBmSwConvert
                 > EXP(nBW) * 8 * sizeof(Link_t) * cnBmSwRetain)
             {
+                DBGX(Log(qy, "T_BM_SW req cleanup"));
                 bCleanupRequested = 1; // on success
             }
         }
@@ -1503,7 +1513,7 @@ t_list:;
         DBGX(printf("T_LIST bCleanup %d nIncr %d\n", bCleanup, nIncr));
         if (bCleanup) {
     #if defined(INSERT) && defined(B_JUDYL)
-            return NULL;
+            return pwValue;
     #else // defined(INSERT) && defined(B_JUDYL)
             return Success;
     #endif // defined(INSERT)
@@ -1671,6 +1681,7 @@ t_list:;
                 > EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord) * 100)
             )
         {
+            DBGX(Log(qy, "T_LIST req cleanup"));
             bCleanupRequested = 1; // goto cleanup when done
         }
           #endif // (cn2dBmMaxWpkPercent != 0)
@@ -2349,6 +2360,8 @@ foundIt:;
 
     } // end of switch
 
+    DBGX(Log(qy, "end of switch"));
+
     // Key is not present.
 #if defined(COUNT)
     DBGC(printf("done wPopCntSum " OWx"\n", wPopCntSum));
@@ -2390,7 +2403,7 @@ foundIt:;
     return Success;
   #endif // B_JUDYL
 undo:;
-    DBGX(printf("undo\n"));
+    DBGX(Log(qy, "undo"));
 #endif // defined(INSERT)
 #if defined(REMOVE)
   #if !defined(RECURSIVE)
@@ -2405,6 +2418,7 @@ undo:;
       #endif // !defined(RECURSIVE)
   #endif // defined(INSERT) || defined(REMOVE)
 restart:;
+        DBGX(Log(qy, "restart"));
   #if defined(INSERT) || defined(REMOVE)
       #if !defined(RECURSIVE)
         nBL = nBLOrig;
@@ -2422,10 +2436,12 @@ restart:;
   #if defined(INSERT) || defined(REMOVE)
       #if defined(REMOVE)
 removeGutsAndCleanup:;
+    DBGX(Log(qy, "removeGutsAndCleanup"));
     RemoveGuts(qy, wKey);
       #endif // defined(REMOVE)
     goto cleanup;
 cleanup:;
+    DBGX(Log(qy, "cleanup"));
     // Walk the tree again to see if we need to make any adjustments.
     // For insert our new pop may justify a bigger bitmap.
     // For remove we may need to pull back.

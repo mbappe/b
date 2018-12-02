@@ -149,6 +149,8 @@
     assert(*pnType == wr_nType(*pwRoot) || (*pnBL <= cnLogBitsPerLink)); \
     assert(*ppwr == wr_pwr(*pwRoot) || (*pnBL <= cnLogBitsPerLink))
 
+#define qfmt "nBL %2d pLn %p wRoot 0x%016zx nType %x pwr %p"
+
 // Default is -USKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX.
 // Default is -USAVE_PREFIX -USAVE_PREFIX_TEST_RESULT
 // Default is -UALWAYS_CHECK_PREFIX_AT_LEAF.

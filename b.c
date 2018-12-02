@@ -166,6 +166,12 @@ Word_t wMallocs; // number of unfreed mallocs
   #define cnGuardWords 0
 #endif // defined(cnGuardWords)
 
+static void
+Log(qp, const char *str)
+{
+    printf("# %20s: " qfmt "\n", str, qy);
+}
+
 // Can we use some of the bits in the word at the address immediately
 // preceeding the address returned by malloc?
 //
@@ -4524,7 +4530,7 @@ copyWithInsertWord:
 #if (cnBitsPerWord > 32)
             } else if (nBL <= 32) {
   #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
-  && defined(PSPLIT_SEARCH_32) && defined(PSPLIT_PARALLEL)
+      && defined(PSPLIT_SEARCH_32) && defined(PSPLIT_PARALLEL)
                 //printf("goto copyWithInsert32\n");
                 goto copyWithInsert32;
   #else // !defined(EMBED_KEYS) && ... defined(PSPLIT_PARALLEL)
@@ -4843,7 +4849,10 @@ embeddedKeys:;
                         w_wPrefix(wKey, nDLR), nDLR));
 #endif // defined(SKIP_LINKS)
             NewLink(pwRoot, wKey, nDLR, /* nDLUp */ nDL);
-            Insert(nBL, pLn, wKey);
+#ifdef B_JUDYL
+            return
+#endif // B_JUDYL
+                Insert(nBL, pLn, wKey);
         }
 #endif // defined(BM_SW_FOR_REAL)
 #if defined(SKIP_LINKS) && defined(BM_SW_FOR_REAL)
@@ -5093,16 +5102,17 @@ embeddedKeys:;
                           " for prefix mismatch.\n"));
             DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
-            Insert(nDL_to_nBL(nDLUp), pLn, wKey);
+#ifdef B_JUDYL
+            return
+#endif // B_JUDYL
+                Insert(nDL_to_nBL(nDLUp), pLn, wKey);
 #endif // 1
         }
 #endif // defined(SKIP_LINKS)
     }
 #endif // defined(SKIP_LINKS) || defined(BM_SW_FOR_REAL)
 
-#ifdef B_JUDYL
-    return NULL;
-#else // B_JUDYL
+#ifndef B_JUDYL
     return Success;
 #endif // B_JUDYL
 }
