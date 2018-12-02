@@ -353,6 +353,7 @@ ExtListBytesPerKey(int nBL)
         sizeof(Word_t);
     // Or should we just assume that nBL is a multiple of 8?
   #else // defined(COMPRESSED_LISTS)
+    (void)nBL;
     return sizeof(Word_t);
   #endif // defined(COMPRESSED_LISTS)
 }
@@ -1958,7 +1959,14 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
             }
 
             printf(" nWords %4" _fw"d", EXP(nBL - cnLogBitsPerWord));
+            printf(" wPopCnt %5zd", w_wPopCntBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL));
+            Word_t wPopCntL = 0;
             for (Word_t ww = 0; (ww < EXP(nBL - cnLogBitsPerWord)); ww++) {
+                wPopCntL += __builtin_popcountll(pwr[ww]);
+                if ((ww != 0) && (ww % 4) == 0) {
+                    printf(" %5zd", wPopCntL);
+                    wPopCntL = 0;
+                }
                 if ((ww % 8) == 0) {
                     printf("\n");
                 }
@@ -2968,6 +2976,7 @@ embeddedKeys:;
 #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
                 int nPopCntLn = PWR_xListPopCnt(pwRootLn, pwrLn, nBLLn);
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+#ifdef COMPRESSED_LISTS
                 if (nBLLn <= 8) {
                     uint8_t *pcKeysLn = ls_pcKeysNATX(pwrLn, nPopCntLn);
                     for (int nn = 0; nn < nPopCntLn; nn++) {
@@ -2975,20 +2984,20 @@ embeddedKeys:;
                                (pcKeysLn[nn] & wBLM));
                     }
                 } else
-#if (cnBitsPerWord == 64)
+  #if (cnBitsPerWord == 64)
                 if (nBLLn <= 16)
-#endif // (cnBitsPerWord == 64)
+  #endif // (cnBitsPerWord == 64)
                 {
-#if (cnBitsPerWord == 32)
+  #if (cnBitsPerWord == 32)
                     assert(nBLLn <= 16);
-#endif // (cnBitsPerWord == 32)
+  #endif // (cnBitsPerWord == 32)
                     uint16_t *psKeysLn = ls_psKeysNATX(pwrLn, nPopCntLn);
                     for (int nn = 0; nn < nPopCntLn; nn++) {
                         SetBit(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
                                (psKeysLn[nn] & wBLM));
                     }
                 }
-#if (cnBitsPerWord == 64)
+  #if (cnBitsPerWord == 64)
                 else {
                     assert(nBLLn <= 32);
                     uint32_t *piKeysLn = ls_piKeysNATX(pwrLn, nPopCntLn);
@@ -2997,7 +3006,14 @@ embeddedKeys:;
                                (piKeysLn[nn] & wBLM));
                     }
                 }
-#endif // (cnBitsPerWord == 64)
+  #endif // (cnBitsPerWord == 64)
+#else // COMPRESSED_LISTS
+                Word_t *pwKeysLn = ls_pwKeysNATX(pwrLn, nPopCntLn);
+                for (int nn = 0; nn < nPopCntLn; nn++) {
+                    SetBit(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
+                           (pwKeysLn[nn] & wBLM));
+                }
+#endif // COMPRESSED_LISTS
                 assert(nPopCntLn != 0);
                 OldList(pwrLn, nPopCntLn, nBLLn, T_LIST);
             }
@@ -3028,9 +3044,9 @@ embeddedKeys:;
             count += __builtin_popcountll(pwBitmap[jj]);
         }
         if (count != (int)wPopCnt) {
-            printf("count %d wPopCnt %" _fw"d\n", count, wPopCnt);
-                    Dump(pwRootLast,
-                              /* wPrefix */ (Word_t)0, cnBitsPerWord);
+            printf("count %d wPopCnt %" _fw"d wKey %zx\n",
+                   count, wPopCnt, wKey);
+            Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord);
         }
         assert(count == (int)wPopCnt);
 #endif // defined(DEBUG)
@@ -3152,6 +3168,8 @@ embeddedKeys:;
         }
 #endif // (cnBitsPerWord > 32)
     } else
+#else // defined(COMPRESSED_LISTS)
+    (void)wKey;
 #endif // defined(COMPRESSED_LISTS)
     {
         Word_t *pwKeys = ls_pwKeysX(pwrOld, nBL, nPopCnt);
@@ -3999,19 +4017,24 @@ Splay(qp,
   #endif // SKIP_TO_XX_SW
 #endif // CODE_XX_SW
       Word_t wPopCnt,
-      Word_t *pwKeys,
+      Word_t *pwKeys
+#ifdef COMPRESSED_LISTS
 #if (cnBitsPerWord > 32)
-      unsigned int *piKeys,
+    , unsigned int *piKeys
 #endif // (cnBitsPerWord > 32)
-      unsigned short *psKeys,
-      unsigned char *pcKeys)
+    , unsigned short *psKeys,
+      unsigned char *pcKeys
+#endif // COMPRESSED_LISTS
+      )
 {
       qv;
       (void)wPopCnt;
       (void)pwKeys;
+#ifdef COMPRESSED_LISTS
       (void)piKeys;
       (void)psKeys;
       (void)pcKeys;
+#endif // COMPRESSED_LISTS
 
       DBGI(printf("Splay nBL %d.\n", nBL));
 
@@ -4099,7 +4122,13 @@ Splay(qp,
 // Why do I get a wSufix may be uninitialized warning only with DEBUG_INSERT?
 // Compiler doesn't know wSuffix is only used if nBL <= cnBitsPerWord.
 // Why is it different for DEBUG_INSERT?
-        { wMin = pwKeys[0]; wMax = pwKeys[wPopCnt - 1]; wSuffix = wKey; }
+        {
+            wMin = pwKeys[0];
+            wMax = pwKeys[wPopCnt - 1];
+#if defined(COMPRESSED_LISTS)
+            wSuffix = wKey;
+#endif // defined(COMPRESSED_LISTS)
+        }
 #else // defined(SORT_LISTS)
         // walk the list to find max and min
         wMin = (Word_t)-1;
@@ -4633,11 +4662,14 @@ copyWithInsertWord:
                   nBLUp,
   #endif // SKIP_TO_XX_SW
 #endif // CODE_XX_SW
-                  wPopCnt, pwKeys,
+                  wPopCnt, pwKeys
+#ifdef COMPRESSED_LISTS
 #if (cnBitsPerWord > 32)
-                  piKeys,
+                , piKeys
 #endif // (cnBitsPerWord > 32)
-                  psKeys, pcKeys);
+                , psKeys, pcKeys
+#endif // COMPRESSED_LISTS
+                  );
     }
 #ifdef B_JUDYL
     DBGI(printf("InsertAtList returning %p\n", (void*)pwValue));
@@ -5752,8 +5784,10 @@ embeddedKeys:;
         // Why are we copying the old list to the new one?
         // Because the beginning will be the same.
         // Except for the the pop count.
+#ifdef COMPRESSED_LISTS
         switch (nBytesKeySz(nBL)) {
         case sizeof(Word_t):
+#endif // COMPRESSED_LISTS
 #ifdef B_JUDYL
              // copy values
              COPY(&ls_pwKeysX(pwList, nBL, wPopCnt - 1)[-((int)wPopCnt - 1)],
@@ -5770,6 +5804,7 @@ embeddedKeys:;
              // copy keys
              COPY(ls_pwKeysX(pwList, nBL, wPopCnt - 1),
                   ls_pwKeysX(pwr, nBL, wPopCnt), wPopCnt - 1);
+#ifdef COMPRESSED_LISTS
              break;
 #if (cnBitsPerWord > 32)
         case 4:
@@ -5813,6 +5848,7 @@ embeddedKeys:;
                   ls_pcKeysNATX(pwr, wPopCnt), wPopCnt - 1);
              break;
         }
+#endif // COMPRESSED_LISTS
     }
 
 #if defined(LIST_END_MARKERS) || defined(PSPLIT_PARALLEL)

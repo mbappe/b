@@ -4100,6 +4100,7 @@ printf("*pw " OWx" wKey " Owx" nBL %d wMagic "OWx"\n", *pw, wKey, nBL, wMagic);
 #endif
 
 #endif // defined(USE_WORD_ARRAY_EMBEDDED_KEYS_PARALLEL)
+#endif // defined(COMPRESSED_LISTS)
 
 #if cnBitsPerWord == 64
     #define MM_SET1_EPW(_ww)  _mm_set1_epi64((__m64)(_ww))
@@ -4497,8 +4498,6 @@ HasKey128Magic(__m128i *pxBucket, Word_t wKey, int nBL)
     HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys);
     return HasKey128MagicTail(pxBucket, xLsbs, xMsbs, xKeys);
 }
-
-#endif // defined(COMPRESSED_LISTS)
 
 #endif // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
 
@@ -5670,32 +5669,36 @@ EmbeddedListHasKey(Word_t wRoot, Word_t wKey, int nBL)
 #endif // defined(EMBED_KEYS) ...
 #endif // ! defined(LOOKUP_NO_LIST_DEREF)
 
-#if defined(COMPRESSED_LISTS)
 static Word_t
 ls_pxKeyX(Word_t *pwr, int nBL, int nPopCnt, int ii)
 {
     (void)nPopCnt;
+#if defined(COMPRESSED_LISTS)
     if (nBL <=  8) { return ls_pcKeyX(pwr, nBL, nPopCnt, ii); }
     if (nBL <= 16) { return ls_psKeyX(pwr, nBL, nPopCnt, ii); }
   #if cnBitsPerWord != 32
     if (nBL <= 32) { return ls_piKeyX(pwr, nBL, nPopCnt, ii); }
   #endif // cnBitsPerWord != 32
+#else // defined(COMPRESSED_LISTS)
+    (void)nBL;
+#endif // defined(COMPRESSED_LISTS)
     return ls_pwKeyX(pwr, nBL, nPopCnt, ii);
 }
 
 static Word_t
 ls_pxKey(Word_t *pwr, int nBL, int ii)
 {
+#if defined(COMPRESSED_LISTS)
     if (nBL <=  8) { return ls_pcKey(pwr, nBL, ii); }
     if (nBL <= 16) { return ls_psKey(pwr, nBL, ii); }
   #if cnBitsPerWord != 32
     if (nBL <= 32) { return ls_piKey(pwr, nBL, ii); }
   #endif // cnBitsPerWord != 32
+#else // defined(COMPRESSED_LISTS)
+    (void)nBL;
+#endif // defined(COMPRESSED_LISTS)
     return ls_pwKey(pwr, nBL, ii);
 }
-#else // defined(COMPRESSED_LISTS)
-#define ls_pxKey(_ls, _nBL, _ii)  (ls_pwKeys((_ls), (_nBL))[_ii])
-#endif // defined(COMPRESSED_LISTS)
 
 #ifdef CODE_LIST_SW
 
@@ -5893,7 +5896,6 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
     return SearchList8(qy, nBLR, wKey);
 }
   #endif // (cnBitsInD1 <= 8)
-#endif // defined(COMPRESSED_LISTS)
 
 static int
 LocateKeyInList16(qp, int nBLR, Word_t wKey)
@@ -5993,6 +5995,7 @@ LocateKeyInList32(qp, int nBLR, Word_t wKey)
 }
 
 #endif // (cnBitsPerWord > 32)
+#endif // defined(COMPRESSED_LISTS)
 
 static int
 LocateKeyInListWord(qp, int nBLR, Word_t wKey)
