@@ -853,7 +853,7 @@ GetNextKey(PNewSeed_t PNewSeed)
 static void
 PrintHeaderX(const char *strFirstCol, int nRow)
 {
-    printf("# %3s", strFirstCol);
+    printf("# %4s", strFirstCol);
 
     printf(nRow ? "   Ins" : " Delta");
     printf(nRow ? "  Meas" : "   Get");
@@ -2991,7 +2991,7 @@ nextPart:
             } else
 #endif
             {
-                PrintValX(wFinalPop1, 5, 0, /* bUseSymbol */ 0,
+                PrintValX(wFinalPop1, 6, 0, /* bUseSymbol */ 0,
                           /* strPrefix */ "", /* dScale */ 1);
                 PrintValX(Pms[grp].ms_delta, 5, 0, /* bUseSymbol */ 1,
                           /* strPrefix */ " ", /* dScale */ 1);
