@@ -592,6 +592,15 @@ typedef Word_t Bucket_t;
     #define cnListPopCntMax40  cnListPopCntMax48
 #endif // cnListPopCntMax40
 
+// If we don't support a bitmap for the last digit then the list must
+// be capable of holding all the keys.
+#ifndef BITMAP
+  #if       cnListPopCntMaxDl1 < (1 << cnBitsInD1)
+    #undef  cnListPopCntMaxDl1
+    #define cnListPopCntMaxDl1   (1 << cnBitsInD1)
+  #endif // cnListPopCntMaxDl1 < (1 << cnBitsInD1)
+#endif // BITMAP
+
 // cwListPopCntMax is mostly used as a boolean that indicates whether
 // or not we are using lists at all; embedded or external.
 // But it is also used to size the temporary buffer used when copying
@@ -1288,9 +1297,12 @@ wr_nPopCnt(Word_t wRoot, int nBL)
 static inline int
 EmbeddedListPopCntMax(int nBL)
 {
-    int nBitsForKeys = cnBitsPerWord;
-    nBitsForKeys -= nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL);
-    return nBitsForKeys / nBL;
+    int nBitsOverhead = nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL);
+  #ifdef B_JUDYL
+    return nBL <= (cnBitsPerWord - nBitsOverhead);
+  #else // B_JUDYL
+    return (cnBitsPerWord - nBitsOverhead) / nBL;
+  #endif // B_JUDYL
 }
 
 #endif // defined(EMBED_KEYS)
@@ -2662,6 +2674,7 @@ Status_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
 #ifdef B_JUDYL
 #define InsertGuts  InsertGutsL
 #define InsertAtBitmap  InsertAtBitmapL
+#define InflateEmbeddedList  InflateEmbeddedListL
 #define InsertCleanup  InsertCleanupL
 #define RemoveGuts  RemoveGutsL
 #define RemoveCleanup  RemoveCleanupL
@@ -2669,6 +2682,7 @@ Status_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
 #else // B_JUDYL
 #define InsertGuts  InsertGuts1
 #define InsertAtBitmap  InsertAtBitmap1
+#define InflateEmbeddedList  InflateEmbeddedList1
 #define InsertCleanup  InsertCleanup1
 #define RemoveGuts  RemoveGuts1
 #define RemoveCleanup  RemoveCleanup1
@@ -2682,14 +2696,21 @@ Status_t
 #endif // B_JUDYL
 InsertGuts(qp, Word_t wKey, int nPos
 #if defined(CODE_XX_SW)
-                   , Link_t *pLnUp
+         , Link_t *pLnUp
   #if defined(SKIP_TO_XX_SW)
-                   , int nBLUp
+         , int nBLUp
   #endif // defined(SKIP_TO_XX_SW)
 #endif // defined(CODE_XX_SW)
-                   );
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+         , Word_t *pwrUp, int nBW
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+           );
 
-Status_t RemoveGuts(qp, Word_t wKey);
+Status_t RemoveGuts(qp, Word_t wKey
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+                  , Word_t *pwrUp, int nBW
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+                    );
 
 void InsertCleanup(qp, Word_t wKey);
 
@@ -2708,7 +2729,11 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot);
 
 #if defined(EMBED_KEYS)
 Word_t InflateEmbeddedList(Word_t *pwRoot,
-                           Word_t wKey, int nBL, Word_t wRoot);
+                           Word_t wKey, int nBL, Word_t wRoot
+  #ifdef B_JUDYL
+                         , Word_t *pwrUp, int nBW
+  #endif // B_JUDYL
+                           );
 #endif // defined(EMBED_KEYS)
 
 #if defined(DEBUG)

@@ -1024,6 +1024,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
     // sizeof([Bm]Switch_t) includes one link; add the others
     wBytes += (wLinks - 1) * sizeof(Link_t);
     Word_t wWords = wBytes / sizeof(Word_t);
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+    wWords += wLinks; // Embedded Values in Switch
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 
 #if defined(CODE_BM_SW) && defined(CACHE_ALIGN_BM_SW)
     Word_t *pwr = (Word_t *)MyMallocGuts(wWords,
@@ -1430,6 +1433,9 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
         // Allocate memory for a new switch with one more link than the
         // old one.
         unsigned nWordsNew = nWordsOld + sizeof(Link_t) / sizeof(Word_t);
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+        wWordsNew += nLinkCnt; // Embedded Values in Switch
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 #if defined(CODE_BM_SW) && defined(CACHE_ALIGN_BM_SW)
         *pwRoot = MyMallocGuts(nWordsNew, /* cache line alignment */ 6);
 #else // CACHE_ALIGN_BM_SW
@@ -1643,6 +1649,9 @@ OldSwitch(Word_t *pwRoot, int nBL,
     // sizeof([Bm]Switch_t) includes one link; add the others
     wBytes += (wLinks - 1) * sizeof(Link_t);
     Word_t wWords = wBytes / sizeof(Word_t);
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+    wWords += wLinks; // Embedded Values in Switch
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 
     // No need for ifdef RAMMETRICS. Code will go away if not.
     if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
@@ -1809,7 +1818,11 @@ Sum(Word_t *pwRoot, int nBLUp)
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 
 static Word_t
-FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump)
+FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+           ,  Word_t *pwrUp, int nBW
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+              )
 {
     Word_t *pwRootArg = pwRoot;
 #if defined(BM_IN_LINK) || defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -2048,14 +2061,22 @@ embeddedKeys:;
 
             if (EmbeddedListPopCntMax(nBL) != 0) {
                 for (unsigned nn = 0; nn < wPopCnt; nn++) {
-                    //char fmt[5]; sprintf(fmt, " %%0%d" _fw"x", (int)LOG((nBL<<1)-1));
-                    printf(" %" _fw"x",
+        //char fmt[5]; sprintf(fmt, " %%0%d" _fw"x", (int)LOG((nBL<<1)-1));
+                    printf(" 0x%016" _fw"x",
 #if defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(PACK_KEYS_RIGHT)
-                        (wRoot >> (cnBitsPerWord - ((nn + nPopCntMax - wPopCnt + 1) * nBL)))
+                        (wRoot
+                            >> (cnBitsPerWord
+                                - ((nn + nPopCntMax - wPopCnt + 1) * nBL)))
 #else // defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(PACK_KEYS_RIGHT)
                         (wRoot >> (cnBitsPerWord - ((nn + 1) * nBL)))
 #endif // defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(PACK_KEYS_RIGHT)
                             & MSK(nBL));
+#ifdef B_JUDYL
+                    int nDigitX = (wPrefix >> nBL) & MSK(nBW);
+                    printf(",0x%zx",
+                           ((Word_t*)&pwr_pLinks((Switch_t*)pwrUp)
+                               [1<<nBW])[nDigitX]);
+#endif // B_JUDYL
                 }
                 printf("\n");
             } else {
@@ -2153,8 +2174,8 @@ embeddedKeys:;
             }
   #ifdef PSPLIT_PARALLEL
             for (int nn = (int)wPopCnt;
-                 nn * (nBL >> 3) % sizeof(Bucket_t);
-                 nn++)
+                 nn * ExtListBytesPerKey(nBL) % sizeof(Bucket_t);
+                 ++nn)
             {
                 int xx = nn;
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -2360,7 +2381,11 @@ embeddedKeys:;
             {
                 //printf("nn %" _fw"x\n", nn);
                 wBytes += FreeArrayGuts(&pLinks[ww].ln_wRoot,
-                        wPrefix | (nn << nBL), nBL, bDump);
+                                        wPrefix | (nn << nBL), nBL, bDump
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+                                      , /*pwrUp*/ pwr, /*nBW*/ nBitsIndexSz
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+                                        );
             }
 
             ww++;
@@ -2402,7 +2427,11 @@ Dump(Word_t *pwRoot, Word_t wPrefix, int nBL)
 {
     if (bHitDebugThreshold) {
         printf("\nDump\n");
-        FreeArrayGuts(pwRoot, wPrefix, nBL, /* bDump */ 1);
+        FreeArrayGuts(pwRoot, wPrefix, nBL, /* bDump */ 1
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+                    , /*pwrUp*/ NULL, /*nBW*/ 0
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+                      );
         printf("End Dump\n");
     }
 }
@@ -2775,7 +2804,11 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
 
 static Word_t
 DeflateExternalList(Word_t *pwRoot,
-                    int nPopCnt, int nBL, Word_t *pwr);
+                    int nPopCnt, int nBL, Word_t *pwr
+#ifdef B_JUDYL
+                  , Word_t *pwrUp, int nBW
+#endif // B_JUDYL
+                    );
 
 #endif // defined(EMBED_KEYS)
 
@@ -3088,7 +3121,11 @@ embeddedKeys:;
         DBGI(printf("IA: Calling IEL nBLOld %d wKey " OWx" nBL %d\n",
                     nBLOld, wKey, nBL));
         // wRootOld here, but new from IEL's perspective
-        wRootOld = InflateEmbeddedList(pwRootOld, wKey, nBLOld, wRootOld);
+        wRootOld = InflateEmbeddedList(pwRootOld, wKey, nBLOld, wRootOld
+#ifdef B_JUDYL
+                                     , pwrUp, nBW
+#endif // B_JUDYL
+                                       );
         DBGI(printf("After IEL\n"));
 // If (nBLOld < nDL_to_nBL) Dump is going to think wRootOld is embeddded keys.
         //DBGI(Dump(&wRootOld, wKey & ~MSK(nBLOld), nBLOld));
@@ -4238,6 +4275,9 @@ InsertAtList(qp,
   #endif // SKIP_TO_XX_SW
 #endif // CODE_XX_SW
              int nDL
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+           , Word_t *pwrUp, int nBW
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
              )
 {
     qv;
@@ -4623,7 +4663,17 @@ copyWithInsertWord:
                );
         if ((int)wPopCnt < EmbeddedListPopCntMax(nBL))
         {
-            DeflateExternalList(pwRoot, wPopCnt + 1, nBL, pwList);
+            DeflateExternalList(pwRoot, wPopCnt + 1, nBL, pwList
+#ifdef B_JUDYL
+                              , pwrUp, nBW
+#endif // B_JUDYL
+                                );
+#ifdef B_JUDYL
+            // Update pwValue.
+            int nDigitX = (wKey >> nBL) & MSK(nBW); // extract bits from key
+            pwValue
+                = &((Word_t*)&pwr_pLinks((Switch_t *)pwrUp)[1<<nBW])[nDigitX];
+#endif // B_JUDYL
 #if defined(NO_TYPE_IN_XX_SW)
             if (!((nBL < nDL_to_nBL(2))
                 || (wr_nType(*pwRoot) == T_EMBEDDED_KEYS)))
@@ -4703,11 +4753,14 @@ Status_t
 #endif // B_JUDYL
 InsertGuts(qp, Word_t wKey, int nPos
 #if defined(CODE_XX_SW)
-           , Link_t *pLnUp
+         , Link_t *pLnUp
   #if defined(SKIP_TO_XX_SW)
-           , int nBLUp
+         , int nBLUp
   #endif // defined(SKIP_TO_XX_SW)
 #endif // defined(CODE_XX_SW)
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+         , Word_t *pwrUp, int nBW
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
            )
 {
     qv;
@@ -4769,15 +4822,21 @@ InsertGuts(qp, Word_t wKey, int nPos
 embeddedKeys:;
         int nPopCnt = wr_nPopCnt(*pwRoot, nBL); (void)nPopCnt;
           #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
-            #if ! defined(PACK_KEYS_RIGHT)
+              #if ! defined(PACK_KEYS_RIGHT)
+                  #ifndef B_JUDYL // for JudyL turn-on
         // This is a performance shortcut that is not necessary.
         if (wr_nPopCnt(*pwRoot, nBL) < EmbeddedListPopCntMax(nBL)) {
             InsertEmbedded(pwRoot, nBL, wKey); return Success;
         }
-            #endif // ! defined(PACK_KEYS_RIGHT)
+                  #endif // B_JUDYL // for JudyL turn-on
+              #endif // ! defined(PACK_KEYS_RIGHT)
           #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
 
-        wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot);
+        wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot
+#ifdef B_JUDYL
+                                  , pwrUp, nBW
+#endif // B_JUDYL
+                                    );
         // InflateEmbeddedList installs wRoot. It also initializes the
         // other words in the link if there are any.
       #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -4833,6 +4892,9 @@ embeddedKeys:;
   #endif // SKIP_TO_XX_SW
 #endif // CODE_XX_SW
                          nDL
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+                       , pwrUp, nBW
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                          );
     }
 #if defined(SKIP_LINKS) || defined(BM_SW_FOR_REAL)
@@ -5155,7 +5217,11 @@ embeddedKeys:;
 // Replace a wRoot that has embedded keys with an external T_LIST leaf.
 // It assumes the input is an embedded list.
 Word_t
-InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
+InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
+#ifdef B_JUDYL
+                  , Word_t *pwrUp, int nBW
+#endif // B_JUDYL
+                    )
 {
     (void)pwRoot;
     DBGI(printf(
@@ -5263,6 +5329,17 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
             pwKeys[nn] = (wKey & ~wBLM)
                        | ((wRoot >> (cnBitsPerWord - (nSlot * nBL))) & wBLM);
         }
+#ifdef B_JUDYL
+        // Copy the value.
+        if (pwrUp != NULL) {
+            // Should digit come from prefix? wKey?
+            int nDigitX = (wKey >> nBL) & MSK(nBW); // extract bits from key
+            assert(nn == 0);
+            Word_t *pwValue = &pwList[~nn];
+            *pwValue
+                = ((Word_t*)&pwr_pLinks((Switch_t*)pwrUp)[1<<nBW])[nDigitX];
+        }
+#endif // B_JUDYL
     }
 
     // What about padding the bucket and/or malloc buffer?
@@ -5276,7 +5353,11 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot)
 // The function assumes it is possible.
 static Word_t
 DeflateExternalList(Word_t *pwRoot,
-                    int nPopCnt, int nBL, Word_t *pwr)
+                    int nPopCnt, int nBL, Word_t *pwr
+#ifdef B_JUDYL
+                  , Word_t *pwrUp, int nBW
+#endif // B_JUDYL
+                    )
 {
 #if defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(EK_CALC_POP)
     assert(0); // not yet
@@ -5388,6 +5469,21 @@ DeflateExternalList(Word_t *pwRoot,
             SetBits(&wRoot, nBL, cnBitsPerWord - (nSlot * nBL),
                     pwKeys[(nn < nPopCnt) ? nn : 0]);
         }
+#ifdef B_JUDYL
+        // Copy the value.
+#if defined(FILL_W_KEY)
+        if (nn < nPopCnt)
+#endif // defined(FILL_W_KEY)
+        if (pwrUp != NULL) {
+            int nDigitX
+                = (Link_t*)pwRoot
+                    - (Link_t*)&pwr_pLinks((Switch_t *)pwrUp)->ln_wRoot;
+            assert(nn == 0);
+            Word_t *pwValue = &pwr[~nn]; // old value area
+            ((Word_t*)&pwr_pLinks((Switch_t *)pwrUp)[1<<nBW])[nDigitX]
+                = *pwValue;
+        }
+#endif // B_JUDYL
     }
 
     OldList(pwr, nPopCnt, nBL, wr_nType(*pwRoot));
@@ -5528,6 +5624,11 @@ static Status_t
 RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
              int nBL, Word_t wRoot);
 
+// RemoveCleanup needs work.
+// All it does is look for switches (subtrees) with popcnt zero and free them.
+// It should be converting sparse subtrees to lists, creating compressed
+// switches from uncompressed switches, and removing links from compressed
+// switches.
 void
 RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
 {
@@ -5620,7 +5721,11 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
             assert((*pwRootLn == 0) || tp_bIsSwitch(Get_nType(pwRootLn)));
         }
         // whole array pop is zero
-        FreeArrayGuts(pwRoot, wKey, nBL, /* bDump */ 0);
+        FreeArrayGuts(pwRoot, wKey, nBL, /* bDump */ 0
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+                    , /*pwrUp*/ NULL, /*nBW*/ 0
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+                      );
         // caller checks *pwRoot == NULL to see if cleanup is done
     } else
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -5632,13 +5737,21 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
                                 PWR_wPopCnt(pwRoot, (  Switch_t *)pwr, nDLR);
 
         if (wPopCnt == 0) {
-            FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDL), /* bDump */ 0);
+            FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDL), /* bDump */ 0
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+                        , /*pwrUp*/ NULL, /*nBW*/ 0
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+                          );
         }
     }
 }
 
 Status_t
-RemoveGuts(qp, Word_t wKey)
+RemoveGuts(qp, Word_t wKey
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+        ,  Word_t *pwrUp, int nBW
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+           )
 {
     qv;
     // nType is not valid for NO_TYPE_IN_XX_SW and nBL < nDL_to_nBL(2)
@@ -5686,7 +5799,11 @@ RemoveGuts(qp, Word_t wKey)
         goto embeddedKeys;
 embeddedKeys:;
         wPopCnt = wr_nPopCnt(*pwRoot, nBL);
-        wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot);
+        wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot
+#ifdef B_JUDYL
+                                  , pwrUp, nBW
+#endif // B_JUDYL
+                                    );
       #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         // Remove would have decremented pop count in the link on the way in
         // if this had been a T_LIST at that time.
@@ -5994,7 +6111,11 @@ embeddedKeys:;
 #endif // defined(UA_PARALLEL_128)
            );
     if ((int)wPopCnt <= EmbeddedListPopCntMax(nBL) + 1) {
-        DeflateExternalList(pwRoot, wPopCnt - 1, nBL, pwList);
+        DeflateExternalList(pwRoot, wPopCnt - 1, nBL, pwList
+#ifdef B_JUDYL
+                          , pwrUp, nBW
+#endif // B_JUDYL
+                            );
     }
 #endif // defined(EMBED_KEYS)
 
@@ -7388,7 +7509,11 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
   #endif // defined(DEBUG)
 
     Word_t wBytes = FreeArrayGuts((Word_t *)PPArray, /* wPrefix */ 0,
-                                   cnBitsPerWord, /* bDump */ 0);
+                                  cnBitsPerWord, /* bDump */ 0
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+                                , /*pwrUp*/ NULL, /*nBW*/ 0
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+                                  );
 
     DBGR(printf("# wPopCntTotal %" _fw"u 0x%" _fw"x\n",
                wPopCntTotal, wPopCntTotal));

@@ -7,8 +7,6 @@
 // Set initial defines based on whether we are building Judy1 or JudyL.
 // If B_JUDYL is not defined then we are building Judy1.
 #ifdef B_JUDYL
-  #undef  NO_EMBED_KEYS
-  #define NO_EMBED_KEYS
   #undef  NO_UA_PARALLEL_128
   #define NO_UA_PARALLEL_128
   #undef  NO_BITMAP

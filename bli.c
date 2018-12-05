@@ -607,9 +607,14 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
 #if defined(SAVE_PREFIX_TEST_RESULT)
     Word_t wPrefixMismatch = 0; (void)wPrefixMismatch;
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
-#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+    nBW = cnBitsPerDigit; // compiler complains if not initialized here
+    Word_t *pwrUp = pwrUp; // "uninitialized" compiler warning
+#else // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrUp = pwrUp; // suppress "uninitialized" compiler warning
-#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#endif // defined(B_JUDYL) && defined(EV_IN_SW)
     Link_t *pLnPrefix = NULL; (void)pLnPrefix;
     Word_t *pwrPrefix = NULL; (void)pwrPrefix;
     int nBLRPrefix = 0; (void)nBLRPrefix;
@@ -1016,7 +1021,12 @@ switchTail:;
         // Save the previous link and advance to the next.
         IF_NOT_LOOKUP(pLnUp = pLn);
         IF_SKIP_TO_XX_SW(IF_INSERT(nBLUp = nBL));
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+        // save so B_JUDYL can find embedded key value area
+        pwrUp = pwr;
+#else // defined(B_JUDYL) && defined(EMBED_KEYS)
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+#endif // defined(B_JUDYL) && defined(EV_IN_SW)
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
 
 #ifdef BITMAP
@@ -2114,7 +2124,11 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
   #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
+      #if defined(B_JUDYL) && defined(INSERT)
+            return pwValue;
+      #else // defined(B_JUDYL) && defined(INSERT)
             return Success;
+      #endif // defined(B_JUDYL) && defined(INSERT)
         } // cleanup is complete
   #endif // defined(INSERT) || defined(REMOVE)
 
@@ -2315,7 +2329,12 @@ foundIt:;
 
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
+  #if defined(B_JUDYL) && (defined(INSERT) || defined(LOOKUP))
+        int nDigitX = (wKey >> nBL) & MSK(nBW); // extract bits from key
+        return &((Word_t*)&pwr_pLinks((Switch_t *)pwrUp)[1<<nBW])[nDigitX];
+  #else // defined(B_JUDYL) && (defined(INSERT) || defined(LOOKUP))
         return KeyFound;
+  #endif // defined(B_JUDYL) && (defined(INSERT) || defined(LOOKUP))
 
     } // end of case T_EMBEDDED_KEYS
 
@@ -2383,11 +2402,14 @@ foundIt:;
   #endif // B_JUDYL
         InsertGuts(qy, wKey, nPos
   #if defined(CODE_XX_SW)
-                     , pLnUp
+                 , pLnUp
       #if defined(SKIP_TO_XX_SW)
-                     , nBLUp
+                 , nBLUp
       #endif // defined(SKIP_TO_XX_SW)
   #endif // defined(CODE_XX_SW)
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+                 , pwrUp, nBW
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                    );
   #ifdef B_JUDYL
     *pwValue = 0;
@@ -2437,7 +2459,11 @@ restart:;
       #if defined(REMOVE)
 removeGutsAndCleanup:;
     DBGX(Log(qy, "removeGutsAndCleanup"));
-    RemoveGuts(qy, wKey);
+    RemoveGuts(qy, wKey
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+             , pwrUp, nBW
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+               );
       #endif // defined(REMOVE)
     goto cleanup;
 cleanup:;
