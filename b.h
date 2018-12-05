@@ -539,11 +539,11 @@ typedef Word_t Bucket_t;
 // An 8-bit bitmap uses only 32-bytes plus malloc overhead.
 // Does it make sense to have a list that uses as much or more?
 #if ! defined(cnListPopCntMax8)
-    #ifdef B_JUDYL
-  #define cnListPopCntMax8  256 // assert in SearchList8 should be fixed
-    #else // B_JUDYL
+    #ifdef BITMAP
   #define cnListPopCntMax8  0x10
-    #endif // B_JUDYL
+    #else // BITMAP
+  #define cnListPopCntMax8  256 // assert in SearchList8 should be fixed
+    #endif // BITMAP
 #endif // ! defined(cnListPopCntMax8)
 
 // Default cnListPopCntMaxDl1 is 0x10 for cnBitsInD1 = 8.
