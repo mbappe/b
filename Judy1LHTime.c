@@ -586,7 +586,8 @@ Word_t    mFlag = 0;                    // words/Key for all structures
 Word_t    pFlag = 0;                    // Print number set
 Word_t    lFlag = 0;                    // do not do multi-insert tests
 
-Word_t    gFlag = 0;                    // do Get after Ins (that succeds)
+Word_t    gFlag = 0;                    // do Get check(s) after Ins/Del
+Word_t    GFlag = 0; // disable narrow pointer check that is default with gFlag
 Word_t    iFlag = 0;                    // do another Ins (that fails) after Ins
 Word_t    tFlag = 0;                    // for general new testing
 Word_t    Tit = 1;                      // to measure with calling Judy
@@ -1011,7 +1012,6 @@ Usage(int argc, char **argv)
     printf("-B #:#  Second # is percent expanse is limited [100]\n");
     printf("-N #  max key #; alternative to -B\n");
     printf("-E,--splay-key-bits [splay-mask]    Splay key bits\n");
-    printf("-G #  Type (0..4) of random numbers 0 = flat spectrum, 1..4 = Gaussian [0]\n");
     printf("-l    Do not smooth data with iteration at low (<100) populations (Del/Unset not called)\n");
     printf("-F <filename>  Ascii file of Keys, zeros ignored -- must be last option!!!\n");
 //    printf("-b #:#:# ... 1st number required [1] where each number is next level of tree\n");
@@ -1040,7 +1040,8 @@ Usage(int argc, char **argv)
     printf("-o #, --Offset #     Key += #  additional add to Key\n");
     printf("-O #, --BigOffset #  Key += (# << (-B #))  additional add to Key above MSb (high) bits\n");
     printf("-p     Print number set used for testing  - takes presedence over other options\n");
-    printf("-g     Do a JudyLGet/Judy1Test after every Ins/Set/Del/Unset (adds to times)\n");
+    printf("-g     Do Get/Test sanity check(s) after every Ins/Set/Del/Unset (adds to times)\n");
+    printf("-G     Disable narrow pointer checking that is default with -g\n");
     printf("-i     Do a JudyLIns/Judy1Set after every Ins/Set (adds to times)\n");
     printf("-M     Print on stderr Judy_mmap() and Judy_unmap() calls to kernel\n");
     printf("-h     Put 'Key holes' in the Insert path 1 and L options only\n");
@@ -1385,17 +1386,17 @@ main(int argc, char *argv[])
     while (1)
     {
         c = getopt_long(argc, argv,
-                   "a:n:S:T:P:s:B:G:W:o:O:F:b"
+                   "a:n:S:T:P:s:B:GW:o:O:F:b"
 #ifdef FANCY_b_flag
-                                            ":"
+                                           ":"
 #endif // FANCY_b_flag
-                                             "N:dDcC1LHvIltmpxVfgiyRMKkhEZ",
+                                            "N:dDcC1LHvIltmpxVfgiyRMKkhEZ",
                 // Optstring sorted:
-                // "1a:B:bCcDdEF:fG:gHhIiKklLMmN:n:O:o:P:pRS:s:T:tVvW:xy",
+                // "1a:B:bCcDdEF:fGgHhIiKklLMmN:n:O:o:P:pRS:s:T:tVvW:xy",
                 // Used option characters sorted and with spaces for unused option characters:
-                // " 1         a:B:bCcDdE F:fG:gHhIi  KkLlMmN:n:O:o:P:p  R S:s:T:t:  VvW:  x yZ "
+                // " 1         a:B:bCcDdE F:fGgHhIi  KkLlMmN:n:O:o:P:p  R S:s:T:t:  VvW:  x yZ "
                 // Unused option characters sorted and with spaces for used option characters:
-                // "0 23456789A          e          Jj                 Qq r        Uu    wX Y  z"
+                // "0 23456789A          e         Jj                 Qq r        Uu    wX Y  z"
                    longopts, NULL);
         if (c == -1)
             break;
@@ -1497,17 +1498,6 @@ main(int argc, char *argv[])
 
             break;
         }
-        case 'G':                      // Gaussian Random numbers
-            GValue = oa2w(optarg, NULL, 0, c);  // 0..4 -- check by RandomInit()
-            if (GValue != 0)
-            {
-#ifndef GAUSS
-                FAILURE("compile with -UNO_GAUSS to use -G", GValue);
-#elif !defined(NEXT_FIRST)
-                printf("\n# Warning -- '-G %zd' behaves like -DNEXT_FIRST\n", GValue);
-#endif // GAUSS
-            }
-            break;
 
         case 'W':                      // Warm up CPU number of random() calls
             Warmup = oa2w(optarg, NULL, 0, c);
@@ -1739,8 +1729,12 @@ main(int argc, char *argv[])
             fFlag = 0;
             break;
 
-        case 'g':                      // do a Get after an Ins/Del
+        case 'g':                      // do Get check(s) after each Ins/Del
             gFlag = 1;
+            break;
+
+        case 'G': // disable narrow pointer checking that is default with -g
+            GFlag = 1;
             break;
 
         case 'i':                      // do a Ins after an Ins
@@ -1823,7 +1817,7 @@ main(int argc, char *argv[])
                    (int)BValue, wSplayMask);
         }
 
-        if (gFlag)
+        if (gFlag && !GFlag)
         {
 #if defined(SPLAY_KEY_BITS) && defined(DFLAG)
             // Calculate wCheckBit for use with gFlag later.
@@ -2074,6 +2068,8 @@ main(int argc, char *argv[])
         printf("p");
     if (gFlag)
         printf("g");
+    if (GFlag)
+        printf("G");
     if (iFlag)
         printf("i");
     if (xFlag)
@@ -2122,8 +2118,6 @@ main(int argc, char *argv[])
 
     if (Offset)
         printf(" -o 0x%" PRIxPTR"", Offset);
-
-    printf(" -G%" PRIuPTR, GValue);
 
     printf("\n");
 
@@ -4011,48 +4005,50 @@ TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
                                      Rc, TstKey, elm);
                                 FAILURE("Judy1Test failed at", elm);
                             }
-
-                            // Test for a key that has not been inserted.
-                            // Pick one that differs from a key that has
-                            // been inserted by only a single digit in an
-                            // attempt to test narrow pointers.
-                            if (bSplayKeyBitsFlag)
+                            if (!GFlag)
                             {
-                                if (wCheckBit != 0)
+                                // Test for a key that has not been inserted.
+                                // Pick one that differs from a key that has
+                                // been inserted by only a single digit in an
+                                // attempt to test narrow pointers.
+                                if (bSplayKeyBitsFlag)
                                 {
-                                    Word_t TstKeyNot = TstKey ^ wCheckBit;
-                                    Rc = Judy1Test(*J1, TstKeyNot, PJE0);
-                                    if (Rc != 0)
+                                    if (wCheckBit != 0)
                                     {
-                                        printf("\n--- Judy1Test(0x%zx) Rc = %d after Judy1Set, Key = 0x%zx, elm = %zu\n",
-                                               TstKeyNot, Rc, TstKey, elm);
-                                        FAILURE("Judy1Test failed at", elm);
+                                        Word_t TstKeyNot = TstKey ^ wCheckBit;
+                                        Rc = Judy1Test(*J1, TstKeyNot, PJE0);
+                                        if (Rc != 0)
+                                        {
+                                            printf("\n--- Judy1Test(0x%zx) Rc = %d after Judy1Set, Key = 0x%zx, elm = %zu\n",
+                                                   TstKeyNot, Rc, TstKey, elm);
+                                            FAILURE("Judy1Test failed at", elm);
+                                        }
                                     }
                                 }
-                            }
-                            else if (BValue < sizeof(Word_t) * 8)
-                            {
-                                if (BValue < sizeof(Word_t) * 8 - 8)
+                                else if (BValue < sizeof(Word_t) * 8)
                                 {
-                                    // try changing a bit in the next 8-bit digit up from the BValue
-                                    Word_t TstKeyNot = TstKey ^ ((Word_t)1 << ((BValue + 7) & ~(Word_t)7));
-                                    Rc = Judy1Test(*J1, TstKeyNot, PJE0);
-                                    if (Rc != 0)
+                                    if (BValue < sizeof(Word_t) * 8 - 8)
                                     {
-                                        printf("\n--- Judy1Test(0x%zx) Rc = %d after Judy1Set, Key = 0x%zx, elm = %zu\n",
-                                               TstKeyNot, Rc, TstKey, elm);
-                                        FAILURE("Judy1Test failed at", elm);
+                                        // try changing a bit in the next 8-bit digit up from the BValue
+                                        Word_t TstKeyNot = TstKey ^ ((Word_t)1 << ((BValue + 7) & ~(Word_t)7));
+                                        Rc = Judy1Test(*J1, TstKeyNot, PJE0);
+                                        if (Rc != 0)
+                                        {
+                                            printf("\n--- Judy1Test(0x%zx) Rc = %d after Judy1Set, Key = 0x%zx, elm = %zu\n",
+                                                   TstKeyNot, Rc, TstKey, elm);
+                                            FAILURE("Judy1Test failed at", elm);
+                                        }
                                     }
-                                }
-                                else
-                                {
-                                    Word_t TstKeyNot = TstKey ^ ((Word_t)1 << (sizeof(Word_t) * 8 - 1));
-                                    Rc = Judy1Test(*J1, TstKeyNot, PJE0);
-                                    if (Rc != 0)
+                                    else
                                     {
-                                        printf("\n--- Judy1Test(0x%zx) Rc = %d after Judy1Set, Key = 0x%zx, elm = %zu\n",
-                                               TstKeyNot, Rc, TstKey, elm);
-                                        FAILURE("Judy1Test failed at", elm);
+                                        Word_t TstKeyNot = TstKey ^ ((Word_t)1 << (sizeof(Word_t) * 8 - 1));
+                                        Rc = Judy1Test(*J1, TstKeyNot, PJE0);
+                                        if (Rc != 0)
+                                        {
+                                            printf("\n--- Judy1Test(0x%zx) Rc = %d after Judy1Set, Key = 0x%zx, elm = %zu\n",
+                                                   TstKeyNot, Rc, TstKey, elm);
+                                            FAILURE("Judy1Test failed at", elm);
+                                        }
                                     }
                                 }
                             }
@@ -4185,48 +4181,50 @@ TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
                                         FAILURE("JudyLGet failed after Insert", TstKey);
                                     }
                                 }
-
-                                // Test for a key that has not been inserted.
-                                // Pick one that differs from a key that has
-                                // been inserted by only a single digit in an
-                                // attempt to test narrow pointers.
-                                if (bSplayKeyBitsFlag)
+                                if (!GFlag)
                                 {
-                                    if (wCheckBit != 0)
+                                    // Test for a key that has not been inserted.
+                                    // Pick one that differs from a key that has
+                                    // been inserted by only a single digit in an
+                                    // attempt to test narrow pointers.
+                                    if (bSplayKeyBitsFlag)
                                     {
-                                        Word_t TstKeyNot = TstKey ^ wCheckBit;
-                                        PValueNew = (PWord_t)JudyLGet(*JL, TstKeyNot, PJE0);
-                                        if (PValueNew != NULL)
+                                        if (wCheckBit != 0)
                                         {
-                                            printf("\n--- JudyLGet(0x%zx) *PValue = 0x%zx after Judy1Set, Key = 0x%zx, elm = %zu\n",
-                                                   TstKeyNot, *PValueNew, TstKey, elm);
-                                            FAILURE("JudyLGet failed at", elm);
+                                            Word_t TstKeyNot = TstKey ^ wCheckBit;
+                                            PValueNew = (PWord_t)JudyLGet(*JL, TstKeyNot, PJE0);
+                                            if (PValueNew != NULL)
+                                            {
+                                                printf("\n--- JudyLGet(0x%zx) *PValue = 0x%zx after Judy1Set, Key = 0x%zx, elm = %zu\n",
+                                                       TstKeyNot, *PValueNew, TstKey, elm);
+                                                FAILURE("JudyLGet failed at", elm);
+                                            }
                                         }
                                     }
-                                }
-                                else if (BValue < sizeof(Word_t) * 8)
-                                {
-                                    if (BValue < sizeof(Word_t) * 8 - 8)
+                                    else if (BValue < sizeof(Word_t) * 8)
                                     {
-                                        // try changing a bit in the next 8-bit digit up from the BValue
-                                        Word_t TstKeyNot = TstKey ^ ((Word_t)1 << ((BValue + 7) & ~(Word_t)7));
-                                        PValueNew = (PWord_t)JudyLGet(*JL, TstKeyNot, PJE0);
-                                        if (PValueNew != NULL)
+                                        if (BValue < sizeof(Word_t) * 8 - 8)
                                         {
-                                            printf("\n--- JudyLGet(0x%zx) *PValue = 0x%zx after Judy1Set, Key = 0x%zx, elm = %zu\n",
-                                                   TstKeyNot, *PValueNew, TstKey, elm);
-                                            FAILURE("JudyLGet failed at", elm);
+                                            // try changing a bit in the next 8-bit digit up from the BValue
+                                            Word_t TstKeyNot = TstKey ^ ((Word_t)1 << ((BValue + 7) & ~(Word_t)7));
+                                            PValueNew = (PWord_t)JudyLGet(*JL, TstKeyNot, PJE0);
+                                            if (PValueNew != NULL)
+                                            {
+                                                printf("\n--- JudyLGet(0x%zx) *PValue = 0x%zx after Judy1Set, Key = 0x%zx, elm = %zu\n",
+                                                       TstKeyNot, *PValueNew, TstKey, elm);
+                                                FAILURE("JudyLGet failed at", elm);
+                                            }
                                         }
-                                    }
-                                    else
-                                    {
-                                        Word_t TstKeyNot = TstKey ^ ((Word_t)1 << (sizeof(Word_t) * 8 - 1));
-                                        PValueNew = (PWord_t)JudyLGet(*JL, TstKeyNot, PJE0);
-                                        if (PValueNew != NULL)
+                                        else
                                         {
-                                            printf("\n--- JudyLGet(0x%zx) *PValue = 0x%zx after Judy1Set, Key = 0x%zx, elm = %zu\n",
-                                                   TstKeyNot, *PValueNew, TstKey, elm);
-                                            FAILURE("JudyLGet failed at", elm);
+                                            Word_t TstKeyNot = TstKey ^ ((Word_t)1 << (sizeof(Word_t) * 8 - 1));
+                                            PValueNew = (PWord_t)JudyLGet(*JL, TstKeyNot, PJE0);
+                                            if (PValueNew != NULL)
+                                            {
+                                                printf("\n--- JudyLGet(0x%zx) *PValue = 0x%zx after Judy1Set, Key = 0x%zx, elm = %zu\n",
+                                                       TstKeyNot, *PValueNew, TstKey, elm);
+                                                FAILURE("JudyLGet failed at", elm);
+                                            }
                                         }
                                     }
                                 }
