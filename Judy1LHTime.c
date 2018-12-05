@@ -2818,7 +2818,7 @@ main(int argc, char *argv[])
 // PRINT COLUMNS HEADER TO PERFORMANCE TIMERS
 // ============================================================
 
-    PrintHeader("   Pop");
+    PrintHeader("Pop");
 
 // ============================================================
 // BEGIN TESTS AT EACH GROUP SIZE
@@ -4905,6 +4905,7 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
     {
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
+// TEST_COUNT_USING_JUDY_NEXT seems to be incompatible with hFlag.
 #ifdef TEST_COUNT_USING_JUDY_NEXT
             (void)PSeed;
             TstKey = 0;
@@ -5094,30 +5095,33 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 //          Get an Key low enough for Elements
             JLKey = 0;
 
-            STARTTm;
-
             PValue = (PWord_t)JudyLFirst(JL, &JLKey, PJE0);
 
+            STARTTm;
             for (elm = 0; elm < Elements; elm++)
             {
                 Word_t    Prev;
-                if (PValue == NULL)
+
+                if (Tit)
                 {
-                    printf("\nElements = %" PRIuPTR", elm = %" PRIuPTR"\n", Elements, elm);
-                    FAILURE("JudyLNext ret NULL PValue at", elm);
-                }
-                if (VFlag && (*PValue != JLKey))
-                {
-                    printf("\n*PValue=0x%" PRIxPTR", JLKey=0x%" PRIxPTR"\n", *PValue,
-                           JLKey);
-                    FAILURE("JudyLNext ret bad *PValue at", elm);
-                }
-                Prev = JLKey;
-                PValue = (PWord_t)JudyLNext(JL, &JLKey, PJE0);
-                if ((PValue != NULL) && (JLKey == Prev))
-                {
-                    printf("OOPs, JLN did not advance 0x%" PRIxPTR"\n", Prev);
-                    FAILURE("JudyLNext ret did not advance", Prev);
+                    if (PValue == NULL)
+                    {
+                        printf("\nElements = %" PRIuPTR", elm = %" PRIuPTR"\n", Elements, elm);
+                        FAILURE("JudyLNext ret NULL PValue at", elm);
+                    }
+                    if (VFlag && (*PValue != JLKey))
+                    {
+                        printf("\n*PValue=0x%" PRIxPTR", JLKey=0x%" PRIxPTR"\n", *PValue,
+                               JLKey);
+                        FAILURE("JudyLNext ret bad *PValue at", elm);
+                    }
+                    Prev = JLKey;
+                    PValue = (PWord_t)JudyLNext(JL, &JLKey, PJE0);
+                    if ((PValue != NULL) && (JLKey == Prev))
+                    {
+                        printf("OOPs, JLN did not advance 0x%" PRIxPTR"\n", Prev);
+                        FAILURE("JudyLNext ret did not advance", Prev);
+                    }
                 }
             }
             ENDTm(DeltanSecL);
@@ -5131,7 +5135,9 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
             {
                 icnt = ICNT;
                 if (DeltanSecL > 0.0)   // Ignore 0
+                {
                     DminTime = DeltanSecL;
+                }
             }
             else
             {
@@ -5231,21 +5237,23 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t HighKey, Word_t Elemen
             Word_t   *PValue;
             JLKey = HighKey;
 
-            STARTTm;
-
             PValue = (PWord_t)JudyLLast(JL, &JLKey, PJE0);
 
+            STARTTm;
             for (elm = 0; elm < Elements; elm++)
             {
-                if (PValue == NULL)
+                if (Tit)
                 {
-                    printf("\nElements = %" PRIuPTR", elm = %" PRIuPTR"\n", Elements, elm);
-                    FAILURE("JudyLPrev ret NULL PValue at", elm);
-                }
-                if (VFlag && (*PValue != JLKey))
-                    FAILURE("JudyLPrev ret bad *PValue at", elm);
+                    if (PValue == NULL)
+                    {
+                        printf("\nElements = %" PRIuPTR", elm = %" PRIuPTR"\n", Elements, elm);
+                        FAILURE("JudyLPrev ret NULL PValue at", elm);
+                    }
+                    if (VFlag && (*PValue != JLKey))
+                        FAILURE("JudyLPrev ret bad *PValue at", elm);
 
-                PValue = (PWord_t)JudyLPrev(JL, &JLKey, PJE0);
+                    PValue = (PWord_t)JudyLPrev(JL, &JLKey, PJE0);
+                }
             }
             ENDTm(DeltanSecL);
 
