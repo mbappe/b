@@ -1022,11 +1022,13 @@ switchTail:;
         IF_NOT_LOOKUP(pLnUp = pLn);
         IF_SKIP_TO_XX_SW(IF_INSERT(nBLUp = nBL));
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-        // save so B_JUDYL can find embedded key value area
-        pwrUp = pwr;
+        pwrUp = pwr; // save so B_JUDYL can find embedded key value area
+  #if defined(CODE_BM_SW) || defined(CODE_XX_SW) || defined(CODE_LIST_SW)
+        pLnUp = pLn; // B_JUDYL needs type of pwrUp
+  #endif // defined(CODE_BM_SW) || defined(CODE_XX_SW) || defined(CODE_LIST_SW)
 #else // defined(B_JUDYL) && defined(EMBED_KEYS)
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
-#endif // defined(B_JUDYL) && defined(EV_IN_SW)
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
 
 #ifdef BITMAP
@@ -1095,7 +1097,12 @@ t_xx_sw:;
         // Save the previous link and advance to the next.
         IF_NOT_LOOKUP(pLnUp = pLn);
         IF_SKIP_TO_XX_SW(IF_INSERT(nBLUp = nBL));
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+        pwrUp = pwr; // save so B_JUDYL can find embedded key value area
+        pLnUp = pLn; // B_JUDYL needs type of pwrUp
+#else // defined(B_JUDYL) && defined(EMBED_KEYS)
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
 
@@ -1204,7 +1211,9 @@ t_bm_sw:;
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
 
         Word_t wSwIndex;
-  #if defined(BM_IN_LINK)
+  #if defined(BM_IN_LINK) && defined(SKIP_TO_BM_SW)
+        wSwIndex = wDigit; // in case the condition below is false
+        IF_COUNT(bLinkPresent = 1); // in case the condition below is false
         // Have not coded for skip link at top here and elsewhere.
         assert( ! tp_bIsSkip(nType) || (nBL != cnBitsPerWord) );
         // We avoid ambiguity by disallowing calls to Insert/Remove with
@@ -1236,7 +1245,7 @@ t_bm_sw:;
           #endif // !defined(LOOKUP)
       #endif // defined(RECURSIVE)
             ) )
-  #endif // defined(BM_IN_LINK)
+  #endif // defined(BM_IN_LINK) && defined(SKIP_TO_BM_SW)
         {
   #if ! defined(COUNT)
             int bLinkPresent; // need less local bLinkPresent for COUNT
@@ -1324,7 +1333,12 @@ bmSwTail:;
         // bLinkPresent has already been initialized.
         IF_COUNT(nLinks = INT_MAX);
   #if defined(LOOKUP)
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+        pwrUp = pwr; // save so B_JUDYL can find embedded key value area
+        pLnUp = pLn; // B_JUDYL needs type of pwrUp
+#else // defined(B_JUDYL) && defined(EMBED_KEYS)
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
       #ifdef BITMAP
         // compiler complains ifndef BITMAP even if cbEmbeddedBitmap==0
@@ -1456,7 +1470,12 @@ t_list_sw:;
         // bLinkPresent has already been initialized.
         IF_COUNT(nLinks = INT_MAX);
   #if defined(LOOKUP)
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+        pwrUp = pwr; // save so B_JUDYL can find embedded key value area
+        pLnUp = pLn; // B_JUDYL needs type of pwrUp
+#else // defined(B_JUDYL) && defined(EMBED_KEYS)
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
         goto again;
@@ -2331,6 +2350,10 @@ foundIt:;
 
   #if defined(B_JUDYL) && (defined(INSERT) || defined(LOOKUP))
         int nDigitX = (wKey >> nBL) & MSK(nBW); // extract bits from key
+      #if defined(CODE_BM_SW) || defined(CODE_XX_SW) || defined(CODE_LIST_SW)
+        assert(0); // not coded yet
+        // Use pLnUp.
+      #endif // defined(CODE_BM_SW) || defined(CODE_XX_SW) || ...
         return &((Word_t*)&pwr_pLinks((Switch_t *)pwrUp)[1<<nBW])[nDigitX];
   #else // defined(B_JUDYL) && (defined(INSERT) || defined(LOOKUP))
         return KeyFound;
@@ -2444,7 +2467,7 @@ restart:;
   #if defined(INSERT) || defined(REMOVE)
       #if !defined(RECURSIVE)
         nBL = nBLOrig;
-        pLn = pLnOrig;
+        pLn = pLnOrig; // should we set pLnUp = NULL
         wRoot = pLn->ln_wRoot;
         goto top;
     }

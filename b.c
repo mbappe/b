@@ -975,7 +975,10 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #if defined(CODE_BM_SW)
     if (nType == T_BM_SW)
 #if defined(BM_IN_LINK)
-    { Link_t ln; assert(wIndexCnt <= sizeof(ln.ln_awBm) * cnBitsPerByte); }
+    {
+        Link_t ln; (void)ln;
+        assert(wIndexCnt <= sizeof(ln.ln_awBm) * cnBitsPerByte);
+    }
 #else // defined(BM_IN_LINK)
     {
          BmSwitch_t sw; (void)sw;
@@ -1434,7 +1437,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
         // old one.
         unsigned nWordsNew = nWordsOld + sizeof(Link_t) / sizeof(Word_t);
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-        wWordsNew += nLinkCnt; // Embedded Values in Switch
+        nWordsNew += nLinkCnt; // Embedded Values in Switch
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 #if defined(CODE_BM_SW) && defined(CACHE_ALIGN_BM_SW)
         *pwRoot = MyMallocGuts(nWordsNew, /* cache line alignment */ 6);

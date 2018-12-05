@@ -20,6 +20,10 @@
   #ifdef SKIP_TO_BITMAP
     #undef SKIP_TO_BITMAP
   #endif // SKIP_TO_BITMAP
+  #if defined(USE_BM_SW) && !defined(NO_EMBED_KEYS)
+    // USE_BM_SW with EMBED_KEYS with B_JUDYL isn't coded
+    #define NO_EMBED_KEYS
+  #endif // defined(USE_BM_SW) && !defined(NO_EMBED_KEYS)
 #endif // B_JUDYL
 
 // Default is -DPSPLIT_SEARCH_WORD -UPSPLIT_SEARCH_XOR_WORD.

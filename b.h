@@ -5793,6 +5793,28 @@ gwBitMaskInSwBmWord(Word_t wDigit)
     return (Word_t)1 << gnBitNumInSwBmWord(wDigit);
 }
 
+#if 0 // BmSwLinkCnt is not tested yet
+static inline void
+BmSwLinkCnt(Word_t *pwRoot)
+{
+    qv;
+    Word_t *pwBmWords = PWR_pwBm(pwRoot, wr_pwr(*pwRoot));
+    // The bitmap may have more than one word.
+  #if defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
+#error X_ADD_ALL_SW_BM_WORDS with OFFSET_IN_SW_BM_WORD or X_SW_BM_HALF_WORDS
+  #endif // defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
+    int nLinkCnt = 0;
+    for (int nn = 0; n < N_WORDS_SWITCH_BM; nn++) {
+        nLinkCnt += __builtin_popcountll(pwBmWords[nn]
+  #if defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
+                                  & (((Word_t)1 << (cnBitsPerWord / 2)) - 1)
+  #endif // defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
+                                         );
+    }
+    return nLinkCnt;
+}
+#endif // 0
+
 // Get bitmap switch link index (offset) from digit (virtual index)
 // extracted from key.
 // If the index is not present then return the index at which it would be.
