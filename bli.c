@@ -390,10 +390,12 @@ SwCleanup(qp, Word_t wKey, int nBLR, int bCleanup)
                     > EXP(gnBW(qy, T_BM_SW, nBLR)) * 8
                         * sizeof(Link_t) * cnBmSwRetain))
           #endif // defined(CODE_BM_SW)
+          #ifdef BITMAP
             || ((cn2dBmMaxWpkPercent != 0)
                 && (nBLR == cnBitsLeftAtDl2)
-                && (gwPopCnt(qy, nBLR) * cn2dBmMaxWpkPercent
-                     > EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord) * 100))
+                && (gwPopCnt(qy, nBLR) * cn2dBmMaxWpkPercent * cnBitsPerWord
+                     > EXP(cnBitsLeftAtDl2) * 100))
+          #endif // BITMAP
             )
         {
             InsertCleanup(qy, wKey);
@@ -1702,17 +1704,19 @@ t_list:;
           // condition below but g++ complained about the unsigned comparison
           // to less than zero at the end of the condition always being false.
           #if (cn2dBmMaxWpkPercent != 0) // g++ warns always
+              #ifdef BITMAP
         if ((EXP(cnBitsInD1) > sizeof(Link_t) * 8) // compiled out
             && (nBLR == cnBitsInD1) // check that conversion is not done
             && (nBL == nBLR) // converting skip makes no sense
             // this should agree with the test in InsertCleanup
-            && (wPopCntUp * cn2dBmMaxWpkPercent
-                > EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord) * 100)
+            && (wPopCntUp * cn2dBmMaxWpkPercent * cnBitsPerWord
+                > EXP(cnBitsLeftAtDl2) * 100)
             )
         {
             DBGX(Log(qy, "T_LIST req cleanup"));
             bCleanupRequested = 1; // goto cleanup when done
         }
+              #endif // BITMAP
           #endif // (cn2dBmMaxWpkPercent != 0)
       #endif // INSERT
 
@@ -2116,16 +2120,18 @@ t_bitmap:;
         // Should we be using nBLR here?
         InsertAtBitmap(qy, wKey);
   #else
+      #ifdef BITMAP
         if ((cn2dBmMaxWpkPercent // check that conversion is enabled
             && (EXP(cnBitsInD1) > sizeof(Link_t) * 8) // compiled out
             && (nBLR == cnBitsInD1) // check that conversion is not done
             && (nBL == nBLR) // converting skip to b1 makes no sense
             // this should agree with the test in InsertCleanup
-            && (wPopCntUp * cn2dBmMaxWpkPercent
-                > EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord) * 100)))
+            && (wPopCntUp * cn2dBmMaxWpkPercent * cnBitsPerWord
+                > EXP(cnBitsLeftAtDl2) * 100)))
         {
             bCleanupRequested = 1; // goto cleanup when done
         }
+      #endif // BITMAP
   #endif
 #endif // defined(INSERT)
         break;
