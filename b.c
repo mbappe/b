@@ -8277,7 +8277,9 @@ t_switch:;
             while (pLn >= pLinks) {
                 //A(0); // check -B17
                 wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
+  #ifdef BM_SW_FOR_REAL
                 assert(wPopCnt != 0);
+  #endif // BM_SW_FOR_REAL
                 if (wPopCnt != 0) {
                     //A(0); // check -B17
                     DBGN(printf("T_BM_SW: wIndex 0x%" _fw"x pLn->ln_wRoot "
@@ -8416,7 +8418,9 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
             while (pLn < &pLinks[nLinks]) {
                 //A(0); // check -B17
                 wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
+  #ifdef BM_SW_FOR_REAL
                 assert(wPopCnt != 0);
+  #endif // BM_SW_FOR_REAL
                 if (wPopCnt != 0) {
                     //A(0); // check -B17
                     DBGN(printf("T_BM_SW: wIndex 0x%" _fw"x wBmSwIndex 0x%"
