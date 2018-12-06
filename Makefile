@@ -52,6 +52,7 @@ endif
 # It looks like macOS uses its own 'libtool' to create a single dynamic
 # library that holds both 32-bit and 64-bit objects.
 # We are not that sophisticated yet.
+JUDY_LIBDIR = src/obj/.libs
 ifeq "$(BPW)" "32"
   LDFLAGS = -L/usr/local/lib32
 else
@@ -247,8 +248,8 @@ FILES_FROM_DOUG_B_OR_DOUG_LEA  = Judy.h RandomNumb.h dlmalloc.c JudyMalloc.c
 FILES_FROM_DOUG_B_OR_DOUG_LEA += Judy1LHCheck.c Judy1LHTime.c jbgraph
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEA)
 
-EXES = Judy1LHTime Judy1LHCheck c++time c++check # t
-LINKS = b btime bcheck
+EXES = btime bcheck # t
+LINKS = b check
 LIBS = libb1.a libb1.so libbL.a libbL.so libb.a libb.so
 LIBB1_OBJS = b.o bl.o bi.o br.o bc.o JudyMalloc.o
 LIBB1_SRCS = b.c bl.c bi.c br.c bc.c
@@ -283,40 +284,42 @@ default: $(EXES) $(LINKS)
 all: $(EXES) $(LINKS) $(LIBS) $(ASMS) $(CPPS)
 
 clean:
-	rm -f $(EXES) $(LINKS) $(LIBS) $(LIBB_OBJS) $(ASMS) $(CPPS) b1 bL
+	rm -f $(EXES) $(LINKS) $(LIBS) $(LIBB_OBJS) $(ASMS) $(CPPS) \
+    b1time b1check bLtime blcheck jtime jcheck \
+    b check Judy1LHTime Judy1LHCheck
 
 t: t.c $(T_OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 
-# -DMIKEY tells Judy1LHTime to use different RAMMETRICS column headings.
-# -lJudy is for JudyHS.
-Judy1LHTime: Judy1LHTime.c libb.a
-	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm \
- $(LDFLAGS) -lJudy
-# ../judy-asus/src/obj/.libs/libJudy.a
+# -DMIKEY tells Judy1LHTime to use different RAMMETRICS column headings
+# and be more strict in testing.
+# libJudy.a is for JudyHS.
+btime: Judy1LHTime.c libb.a libJudy.a
+	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
+	ln -sf btime Judy1LHTime
 
-c++time: Judy1LHTime.c libb.a
-	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) \
- -x c++ Judy1LHTime.c -x none libb.a -o $@ -lm $(LDFLAGS) -lJudy
+c++time: Judy1LHTime.c libb.a libJudy.a
+	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) -o $@ \
+    -x c++ Judy1LHTime.c -x none libb.a libJudy.a -lm
 
-b: Judy1LHTime
+# btime, bcheck, b1time, b1check, bLtime, bLcheck, jtime, and jcheck
+# always mean the same thing.
+# b, check, Judy1LHTime, and Judy1LHCheck are fickle; they point to
+# the most recent commands built for use by regress
+b:
 	ln -sf Judy1LHTime b
 
-btime: Judy1LHTime
-	ln -sf Judy1LHTime btime
+check:
+	ln -sf Judy1LHCheck check
 
-# Set LIBRARY_PATH environment variable to find libJudy.a.
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
-Judy1LHCheck: Judy1LHCheck.c libb.a
-	$(CC) $(CFLAGS) -Wno-sign-compare $(DEFINES) \
- -o $@ $^ -lm $(LDFLAGS) -lJudy
+bcheck: Judy1LHCheck.c libb.a libJudy.a
+	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
+	ln -sf bcheck Judy1LHCheck
 
-c++check: Judy1LHCheck.c libb.a
-	$(CXX) $(CXXFLAGS) $(DEFINES) \
- -x c++ Judy1LHCheck.c -x none libb.a -o $@ -lm $(LDFLAGS) -lJudy
-
-bcheck: Judy1LHCheck
-	ln -sf Judy1LHCheck bcheck
+c++check: Judy1LHCheck.c libb.a libJudy.a
+	$(CXX) $(CXXFLAGS) $(DEFINES) -o $@ \
+    -x c++ Judy1LHCheck.c -x none libb.a libJudy.a -lm
 
 libb.a: $(LIBB_OBJS)
 	ar -r $@ $^
@@ -327,33 +330,46 @@ libb1.a: $(LIBB1_OBJS)
 libbL.a: $(LIBBL_OBJS)
 	ar -r $@ $^
 
-# Targets 1, b1 and b1check link with libb1 to get Judy1 locally and
-# JudyL from -lJudy.
-1: b1 b1check
+# Targets 1, b1 and b1check link with libb1 to get Judy1 from libb1.a
+# and JudyL from libJudy.a
+1:
+	rm -f b1time b1check
+	make b1time b1check
 
-b1: Judy1LHTime.c libb1.a
-	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm $(LDFLAGS) -lJudy
+b1time: Judy1LHTime.c libb1.a libJudy.a
+	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
 	ln -sf $@ Judy1LHTime
-	ln -sf $@ b
 
-b1check: Judy1LHCheck.c libb1.a
-	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm $(LDFLAGS) -lJudy
+b1check: Judy1LHCheck.c libb1.a libJudy.a
+	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
 	ln -sf $@ Judy1LHCheck
-	ln -sf $@ bcheck
 
-# Targets L, bL and bLcheck link with libbL to get JudyL locally and
-# Judy1 from -lJudy.
-L: bL bLcheck
+# Targets L, bL and bLcheck link with libbL to get JudyL from libbL.a
+# and Judy1 from libJudy.a
+L:
+	rm -f bLtime bLcheck
+	make bLtime bLcheck
 
-bL: Judy1LHTime.c libbL.a
-	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm $(LDFLAGS) -lJudy
+bLtime: Judy1LHTime.c libbL.a libJudy.a
+	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
 	ln -sf $@ Judy1LHTime
-	ln -sf $@ b
 
-bLcheck: Judy1LHTime.c libbL.a
-	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm $(LDFLAGS) -lJudy
+bLcheck: Judy1LHTime.c libbL.a libJudy.a
+	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
 	ln -sf $@ Judy1LHCheck
-	ln -sf $@ bcheck
+
+# Targets j, jtime and jcheck link with libJudy.a
+j:
+	rm -f jtime jcheck
+	make jtime jcheck
+
+jtime: Judy1LHTime.c libJudy.a
+	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
+	ln -sf jtime Judy1LHTime
+
+jcheck: Judy1LHCheck.c libJudy.a
+	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
+	ln -sf jcheck Judy1LHCheck
 
 # Build libb1.so and libbL.so directly from sources rather than from
 # objects so this Makefile doesn't have to deal with the complexity
