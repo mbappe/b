@@ -291,8 +291,9 @@ t: t.c $(T_OBJS)
 # -DMIKEY tells Judy1LHTime to use different RAMMETRICS column headings.
 # -lJudy is for JudyHS.
 Judy1LHTime: Judy1LHTime.c libb.a
-	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm $(LDFLAGS) -lJudy
-# ../judy/src/obj/.libs/libJudy.a
+	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm \
+ $(LDFLAGS) -lJudy
+# ../judy-asus/src/obj/.libs/libJudy.a
 
 c++time: Judy1LHTime.c libb.a
 	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) \
