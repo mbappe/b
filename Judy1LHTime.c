@@ -4942,8 +4942,7 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     }
                     --TstKey2;
                     Count1 = Judy1Count(J1, TstKey, TstKey2, PJE0);
-                    if ((Count1 < 1)
-                        || ((Count1 > TstKey2 - TstKey) && (TstKey2 != TstKey)))
+                    if ((Count1 < 1) || (Count1 > TstKey2 - TstKey + 1))
                     {
                         printf("\n");
                         printf("Count1 %zd TstKey 0x%zx TstKey2 0x%zx\n",
@@ -5025,8 +5024,7 @@ TestJudyCount(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     }
                     --TstKey2;
                     CountL = JudyLCount(JL, TstKey, TstKey2, PJE0);
-                    if ((CountL < 1)
-                        || ((CountL > TstKey2 - TstKey) && (TstKey2 != TstKey)))
+                    if ((Count1 < 1) || (Count1 > TstKey2 - TstKey + 1))
                     {
                         printf("\n");
                         printf("CountL %zd TstKey 0x%zx TstKey2 0x%zx\n",
