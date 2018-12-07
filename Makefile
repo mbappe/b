@@ -354,7 +354,7 @@ bLtime: Judy1LHTime.c libbL.a libJudy.a
 	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
 	ln -sf $@ Judy1LHTime
 
-bLcheck: Judy1LHTime.c libbL.a libJudy.a
+bLcheck: Judy1LHCheck.c libbL.a libJudy.a
 	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
 	ln -sf $@ Judy1LHCheck
 
