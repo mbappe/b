@@ -374,7 +374,11 @@ CaseGuts(int nBL, Word_t *pwRoot, int nBS, int nBW, int nType, Word_t *pwr)
 // - compress switch after remove
 // - break up 2-digit bitmap leaf after remove
 static inline int
-SwCleanup(qp, Word_t wKey, int nBLR, int bCleanup)
+SwCleanup(qp, Word_t wKey, int nBLR, int bCleanup
+#if defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
+        , Word_t **ppwValue
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
+          )
 {
     qv; (void)wKey; (void)nBLR; (void)bCleanup;
   #if defined(INSERT) || defined(REMOVE)
@@ -398,7 +402,15 @@ SwCleanup(qp, Word_t wKey, int nBLR, int bCleanup)
           #endif // BITMAP
             )
         {
+          #if defined(B_JUDYL) && defined(EMBED_KEYS)
+            // InsertCleanup may change pwValue of embedded keys.
+            Word_t *pwValue;
+            if ((pwValue = InsertCleanup(qy, wKey)) != NULL) {
+                *ppwValue = pwValue;
+            }
+          #else // defined(B_JUDYL) && defined(EMBED_KEYS)
             InsertCleanup(qy, wKey);
+          #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
         }
       #else // defined(INSERT)
         RemoveCleanup(wKey, nBL, nBLR, pwRoot, wRoot);
@@ -406,6 +418,7 @@ SwCleanup(qp, Word_t wKey, int nBLR, int bCleanup)
         if (pLn->ln_wRoot != wRoot) { return 1; /* not done; goto restart */ }
     }
   #endif // defined(INSERT) || defined(REMOVE)
+    DBGX(printf("SwCleanup returning 0\n"));
     return 0;
 }
 
@@ -612,6 +625,7 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
     nBW = cnBitsPerDigit; // compiler complains if not initialized here
     Word_t *pwrUp = pwrUp; // "uninitialized" compiler warning
+    Word_t *pwValueUp = NULL; (void)pwValueUp;
 #else // defined(B_JUDYL) && defined(EMBED_KEYS)
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrUp = pwrUp; // suppress "uninitialized" compiler warning
@@ -1010,13 +1024,23 @@ t_switch:;
         // ((uint8_t *)&wSwappedKey)[nDL];
         // *(uint8_t *)&wSwappedAndShiftedKey;
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
+  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+        pwValueUp = &((Word_t*)&pwr_pLinks((Switch_t *)pwr)[1<<nBW])[wDigit];
+  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
         goto switchTail; // in case other uses go away by ifdef
 switchTail:;
         // Handle big picture tree cleanup.
-        if (SwCleanup(qy, wKey, nBLR, bCleanup)) { goto restart; }
+        if (SwCleanup(qy, wKey, nBLR, bCleanup
+  #if defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
+                    , &pwValue
+  #endif // defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
+                      ) != 0)
+        {
+            goto restart;
+        }
         wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
         IF_COUNT(wPopCntSum += CountSw(qy, nBLR, nBW, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
@@ -1326,6 +1350,14 @@ t_bm_sw:;
         }
 
         pLnNew = &pwr_pLinks((BmSwitch_t *)pwr)[wSwIndex];
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+        int nLinkCnt = BmSwLinkCnt(qy);
+      #ifndef BM_SW_FOR_REAL
+        assert(nLinkCnt == (1<<nBW));
+      #endif // BM_SW_FOR_REAL
+        pwValueUp = &((Word_t*)&pwr_pLinks((BmSwitch_t *)pwr)[nLinkCnt])[wSwIndex];
+//printf("t_bm_sw: pwr %p nBW %d wSwIndex %zd pwValueUp %p\n", pwr, nBW, wSwIndex, pwValueUp);
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 
         // Update wDigit before bmSwTail because we have to do it
         // in t_list_sw before goto bmSwTail.
@@ -2355,12 +2387,7 @@ foundIt:;
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
   #if defined(B_JUDYL) && (defined(INSERT) || defined(LOOKUP))
-        int nDigitX = (wKey >> nBL) & MSK(nBW); // extract bits from key
-      #if defined(CODE_BM_SW) || defined(CODE_XX_SW) || defined(CODE_LIST_SW)
-        assert(0); // not coded yet
-        // Use pLnUp.
-      #endif // defined(CODE_BM_SW) || defined(CODE_XX_SW) || ...
-        return &((Word_t*)&pwr_pLinks((Switch_t *)pwrUp)[1<<nBW])[nDigitX];
+        return pwValueUp;
   #else // defined(B_JUDYL) && (defined(INSERT) || defined(LOOKUP))
         return KeyFound;
   #endif // defined(B_JUDYL) && (defined(INSERT) || defined(LOOKUP))
@@ -2437,7 +2464,7 @@ foundIt:;
       #endif // defined(SKIP_TO_XX_SW)
   #endif // defined(CODE_XX_SW)
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                 , pwrUp, nBW
+                 , pwValueUp
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                    );
   #ifdef B_JUDYL
@@ -2490,7 +2517,7 @@ removeGutsAndCleanup:;
     DBGX(Log(qy, "removeGutsAndCleanup"));
     RemoveGuts(qy, wKey
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-             , pwrUp, nBW
+             , pwValueUp
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                );
       #endif // defined(REMOVE)
@@ -2819,7 +2846,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         if (!bHitDebugThreshold && (wPopCntTotal > cwDebugThreshold)) {
             bHitDebugThreshold = 1;
             if (cwDebugThreshold != 0) {
-                printf("\nHit debug threshold.\n");
+                printf("\n# Hit debug threshold.\n");
             }
         }
   #endif // defined(DEBUG)

@@ -1318,16 +1318,20 @@ OldSwitch(Word_t *pwRoot, int nBL, int bBmSw, int nLinks, int nBLUp);
 #define InflateBmSw  InflateBmSwL
 #else // B_JUDYL
 #define InflateBmSw  InflateBmSw1
-#endif // B_JUDYL
+#endif // #else B_JUDYL
 
 // Uncompress a bitmap switch.
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+Word_t*
+#else // defined(B_JUDYL) && defined(EMBED_KEYS)
 void
+#endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
 InflateBmSw(Word_t *pwRoot, Word_t wKey, int nBLR, int nBLUp)
 {
     Word_t wRoot = *pwRoot;
     Word_t *pwr = wr_pwr(wRoot);
 
-    DBGI(printf("# InflateBmSw wKey " Owx" nBLR %d\n", wKey, nBLR));
+    DBGI(printf("# InflateBmSw wKey " Owx" nBLR %d nBLUp %d\n", wKey, nBLR, nBLUp));
 
     int nBW = nBL_to_nBW(nBLR);
 
@@ -1345,16 +1349,39 @@ InflateBmSw(Word_t *pwRoot, Word_t wKey, int nBLR, int nBLUp)
     // I guess we should make a copy of the link before calling NewSwitch.
 
     Word_t *pwBm = PWR_pwBm(pwRoot, pwr);
+    Link_t *pSwLinks = pwr_pLinks((Switch_t*)pwrNew);
+    Link_t *pBmSwLinks = pwr_pLinks((BmSwitch_t *)pwr);
     int nLinkCnt = 0; // link number in bm sw
     for (int nn = 0; nn < (int)EXP(nBW); nn++) {
         if (pwBm[gnWordNumInSwBm(nn)] & gwBitMaskInSwBmWord(nn)) {
-            pwr_pLinks((Switch_t *)pwrNew)[nn]
-                = pwr_pLinks((BmSwitch_t *)pwr)[nLinkCnt];
+            pSwLinks[nn] = pBmSwLinks[nLinkCnt];
             ++nLinkCnt;
         }
     }
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+    Word_t *pSwValues = (Word_t*)&pSwLinks[1<<nBW];
+    Word_t *pBmSwValues = (Word_t*)&pBmSwLinks[nLinkCnt];
+    nLinkCnt = 0;
+    for (int nn = 0; nn < (int)EXP(nBW); nn++) {
+        if (pwBm[gnWordNumInSwBm(nn)] & gwBitMaskInSwBmWord(nn)) {
+            pSwValues[nn] = pBmSwValues[nLinkCnt];
+            ++nLinkCnt;
+        }
+    }
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 
     OldSwitch(&wRoot, nBLR, /* bBmSw */ 1, nLinkCnt, nBLUp);
+
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+    Word_t wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
+    if (wr_nType(pSwLinks[wDigit].ln_wRoot) == T_EMBEDDED_KEYS) {
+        Word_t *pwValue = &pSwValues[wDigit];
+        DBGX(printf("InflateBmSw returning pwValue %p\n", pwValue));
+        return pwValue;
+    }
+    // NULL means pwValue didn't change, but not that nothing changed.
+    return NULL;
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 }
 
 #if defined(BM_SW_FOR_REAL)
@@ -1437,7 +1464,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
         // old one.
         unsigned nWordsNew = nWordsOld + sizeof(Link_t) / sizeof(Word_t);
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-        nWordsNew += nLinkCnt; // Embedded Values in Switch
+        nWordsNew += nLinkCnt + 1; // Embedded Values in Switch
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 #if defined(CODE_BM_SW) && defined(CACHE_ALIGN_BM_SW)
         *pwRoot = MyMallocGuts(nWordsNew, /* cache line alignment */ 6);
@@ -1471,6 +1498,20 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
             sizeof(BmSwitch_t) + (wIndex - 1) * sizeof(Link_t));
         DBGI(printf("PWR_wPopCnt %" _fw"d\n",
              PWR_wPopCntBL(pwRoot, (BmSwitch_t *)*pwRoot, nBLR)));
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+        Link_t *pNewLinks = pwr_pLinks((BmSwitch_t *)*pwRoot);
+        Word_t *pNewValues = (Word_t*)&pNewLinks[nLinkCnt + 1];
+        Link_t *pOldLinks = pwr_pLinks((BmSwitch_t *)pwr);
+        Word_t *pOldValues = (Word_t*)&pOldLinks[nLinkCnt];
+        Word_t ww;
+        for (ww = 0; ww < wIndex; ++ww) {
+            pNewValues[ww] = pOldValues[ww];
+        }
+        for (++ww; ww <= (Word_t)nLinkCnt; ++ww) {
+            pNewValues[ww] = pOldValues[ww - 1];
+        }
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+
         // Initialize the new link.
         DBGI(printf("pLinks %p\n",
                     (void *)pwr_pLinks((BmSwitch_t *)*pwRoot)));
@@ -1574,12 +1615,11 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
       #endif // defined(SKIP_TO_BM_SW)
   #endif // defined(LVL_IN_WR_HB)
             set_wr_nType(*pwRoot, nType);
-
         }
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
-    // &wRoot won't cut it for BM_IN_LINK.
-    OldSwitch(&wRoot, nBLR, /* bBmSw */ 1, nLinkCnt, nBLUp);
+        // &wRoot won't cut it for BM_IN_LINK. Really?
+        OldSwitch(&wRoot, nBLR, /* bBmSw */ 1, nLinkCnt, nBLUp);
     }
 
     //DBGI(printf("After NewLink"));
@@ -1823,7 +1863,10 @@ Sum(Word_t *pwRoot, int nBLUp)
 static Word_t
 FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-           ,  Word_t *pwrUp, int nBW
+            , Word_t *pwrUp, int nBW
+  #ifdef CODE_BM_SW
+            , int nTypeUp
+  #endif // CODE_BM_SW
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
               )
 {
@@ -2076,6 +2119,17 @@ embeddedKeys:;
                             & MSK(nBL));
 #ifdef B_JUDYL
                     int nDigitX = (wPrefix >> nBL) & MSK(nBW);
+  #ifdef CODE_BM_SW
+                    if (tp_bIsBmSw(nTypeUp)) {
+      #ifdef BM_SW_FOR_REAL
+                        printf(",n/a");
+      #else // BM_SW_FOR_REAL
+                        printf(",0x%zx",
+                               ((Word_t*)&pwr_pLinks((BmSwitch_t*)pwrUp)
+                                   [1<<nBW])[nDigitX]);
+      #endif // else BM_SW_FOR_REAL
+                    } else
+  #endif // CODE_BM_SW
                     printf(",0x%zx",
                            ((Word_t*)&pwr_pLinks((Switch_t*)pwrUp)
                                [1<<nBW])[nDigitX]);
@@ -2375,6 +2429,12 @@ embeddedKeys:;
   #if defined(BM_IN_LINK)
         assert( ! bBmSw || (nBLArg != cnBitsPerWord));
   #endif // defined(BM_IN_LINK)
+      #if defined(B_JUDYL) && defined(EMBED_KEYS)
+        int nLinks = 0;
+        if (bBmSw) {
+            nLinks = BmSwLinkCnt(qy);
+        }
+      #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
         int nBmWordNum = gnWordNumInSwBm(nn);
         Word_t wBmBitMask = gwBitMaskInSwBmWord(nn);
         if ( ! bBmSw || (PWR_pwBm(pwRoot, pwr)[nBmWordNum] & wBmBitMask) )
@@ -2382,11 +2442,33 @@ embeddedKeys:;
         {
             if (pLinks[ww].ln_wRoot != 0)
             {
-                //printf("nn %" _fw"x\n", nn);
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #if defined(CODE_BM_SW)
+                if (bDump
+                      && bBmSw
+                      && (wr_nType(pLinks[ww].ln_wRoot) == T_EMBEDDED_KEYS))
+                {
+                    printf(" wPrefix " OWx, wPrefix | (nn << nBL));
+                    printf(" nBL %2d", nBL);
+                    printf(" pwRoot " OWx, (Word_t)&pLinks[ww].ln_wRoot);
+                    printf(" wr " OWx, pLinks[ww].ln_wRoot);
+                    printf(" 0x%016" _fw"x",
+                           (pLinks[ww].ln_wRoot
+                                  >> (cnBitsPerWord - nBL))
+                               & MSK(nBL));
+                    printf(",0x%zx",
+                           ((Word_t*)&pLinks[nLinks])[ww]);
+                    printf("\n");
+                } else
+  #endif // defined(CODE_BM_SW)
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                 wBytes += FreeArrayGuts(&pLinks[ww].ln_wRoot,
                                         wPrefix | (nn << nBL), nBL, bDump
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                                       , /*pwrUp*/ pwr, /*nBW*/ nBitsIndexSz
+  #ifdef CODE_BM_SW
+                                      , nType
+  #endif // CODE_BM_SW
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                         );
             }
@@ -2433,6 +2515,9 @@ Dump(Word_t *pwRoot, Word_t wPrefix, int nBL)
         FreeArrayGuts(pwRoot, wPrefix, nBL, /* bDump */ 1
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                     , /*pwrUp*/ NULL, /*nBW*/ 0
+  #ifdef CODE_BM_SW
+                    , /* nTypeUp */ -1
+  #endif // CODE_BM_SW
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                       );
         printf("End Dump\n");
@@ -2808,9 +2893,9 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
 static Word_t
 DeflateExternalList(Word_t *pwRoot,
                     int nPopCnt, int nBL, Word_t *pwr
-#ifdef B_JUDYL
-                  , Word_t *pwrUp, int nBW
-#endif // B_JUDYL
+  #ifdef B_JUDYL
+                  , Word_t *pwValueUp
+  #endif // B_JUDYL
                     );
 
 #endif // defined(EMBED_KEYS)
@@ -2868,10 +2953,17 @@ static void InsertAll(Word_t *pwRootOld,
 // cn2dBmMaxWpkPercent.
 // nBL describes the level of the root word passed in. It has not been
 // advanced by any skip in the containing link.
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+Word_t*
+#else // defined(B_JUDYL) && defined(EMBED_KEYS)
 void
+#endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
 InsertCleanup(qp, Word_t wKey)
 {
     qv; (void)wKey;
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+    Word_t *pwValue = NULL;
+#endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
 
 #if defined(CODE_BM_SW)
     if (tp_bIsBmSw(nType)) {
@@ -2886,7 +2978,16 @@ InsertCleanup(qp, Word_t wKey)
         // -E: 256*16=4096 > 256*8=2048
         if (wPopCnt * nBLR * cnBmSwConvert
                 > EXP(nBW) * 8 * sizeof(Link_t) * cnBmSwRetain) {
+  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+            // InflateBmSw may change pwValue of all embedded keys.
+            Word_t *pwValueRet
+                = InflateBmSw(pwRoot, wKey, nBLR, /* nBLUp */ nBL);
+            if (pwValueRet != NULL) {
+                pwValue = pwValueRet;
+            }
+  #else // defined(B_JUDYL) && defined(EMBED_KEYS)
             InflateBmSw(pwRoot, wKey, nBLR, /* nBLUp */ nBL);
+  #endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
         }
     }
 #endif // defined(CODE_BM_SW)
@@ -3089,6 +3190,12 @@ embeddedKeys:;
     }
 #endif // (cn2dBmMaxWpkPercent != 0)
 #endif // BITMAP
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+    // InsertCleanup may or may not change pwValue.
+    // It returns NULL for unchanged.
+    DBGX(printf("InsertCleanup returning pwValue %p\n", pwValue));
+    return pwValue;
+#endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
 }
 
 #if (cwListPopCntMax != 0)
@@ -3126,7 +3233,7 @@ embeddedKeys:;
         // wRootOld here, but new from IEL's perspective
         wRootOld = InflateEmbeddedList(pwRootOld, wKey, nBLOld, wRootOld
 #ifdef B_JUDYL
-                                     , pwrUp, nBW
+                                     , pwValueUp
 #endif // B_JUDYL
                                        );
         DBGI(printf("After IEL\n"));
@@ -4279,7 +4386,7 @@ InsertAtList(qp,
 #endif // CODE_XX_SW
              int nDL
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-           , Word_t *pwrUp, int nBW
+           , Word_t *pwValueUp
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
              )
 {
@@ -4668,14 +4775,12 @@ copyWithInsertWord:
         {
             DeflateExternalList(pwRoot, wPopCnt + 1, nBL, pwList
 #ifdef B_JUDYL
-                              , pwrUp, nBW
+                              , pwValueUp
 #endif // B_JUDYL
                                 );
 #ifdef B_JUDYL
-            // Update pwValue.
-            int nDigitX = (wKey >> nBL) & MSK(nBW); // extract bits from key
-            pwValue
-                = &((Word_t*)&pwr_pLinks((Switch_t *)pwrUp)[1<<nBW])[nDigitX];
+            // Update pwValue for return.
+            pwValue = pwValueUp;
 #endif // B_JUDYL
 #if defined(NO_TYPE_IN_XX_SW)
             if (!((nBL < nDL_to_nBL(2))
@@ -4762,7 +4867,7 @@ InsertGuts(qp, Word_t wKey, int nPos
   #endif // defined(SKIP_TO_XX_SW)
 #endif // defined(CODE_XX_SW)
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-         , Word_t *pwrUp, int nBW
+         , Word_t *pwValueUp
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
            )
 {
@@ -4837,7 +4942,7 @@ embeddedKeys:;
 
         wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot
 #ifdef B_JUDYL
-                                  , pwrUp, nBW
+                                  , pwValueUp
 #endif // B_JUDYL
                                     );
         // InflateEmbeddedList installs wRoot. It also initializes the
@@ -4896,7 +5001,7 @@ embeddedKeys:;
 #endif // CODE_XX_SW
                          nDL
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                       , pwrUp, nBW
+                       , pwValueUp
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                          );
     }
@@ -5222,7 +5327,7 @@ embeddedKeys:;
 Word_t
 InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
 #ifdef B_JUDYL
-                  , Word_t *pwrUp, int nBW
+                  , Word_t *pwValueUp
 #endif // B_JUDYL
                     )
 {
@@ -5334,14 +5439,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
         }
 #ifdef B_JUDYL
         // Copy the value.
-        if (pwrUp != NULL) {
-            // Should digit come from prefix? wKey?
-            int nDigitX = (wKey >> nBL) & MSK(nBW); // extract bits from key
-            assert(nn == 0);
-            Word_t *pwValue = &pwList[~nn];
-            *pwValue
-                = ((Word_t*)&pwr_pLinks((Switch_t*)pwrUp)[1<<nBW])[nDigitX];
-        }
+        pwList[~nn] = *pwValueUp;
 #endif // B_JUDYL
     }
 
@@ -5358,7 +5456,7 @@ static Word_t
 DeflateExternalList(Word_t *pwRoot,
                     int nPopCnt, int nBL, Word_t *pwr
 #ifdef B_JUDYL
-                  , Word_t *pwrUp, int nBW
+                  , Word_t *pwValueUp
 #endif // B_JUDYL
                     )
 {
@@ -5477,15 +5575,7 @@ DeflateExternalList(Word_t *pwRoot,
 #if defined(FILL_W_KEY)
         if (nn < nPopCnt)
 #endif // defined(FILL_W_KEY)
-        if (pwrUp != NULL) {
-            int nDigitX
-                = (Link_t*)pwRoot
-                    - (Link_t*)&pwr_pLinks((Switch_t *)pwrUp)->ln_wRoot;
-            assert(nn == 0);
-            Word_t *pwValue = &pwr[~nn]; // old value area
-            ((Word_t*)&pwr_pLinks((Switch_t *)pwrUp)[1<<nBW])[nDigitX]
-                = *pwValue;
-        }
+            *pwValueUp = pwr[~nn];
 #endif // B_JUDYL
     }
 
@@ -5727,12 +5817,16 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
         FreeArrayGuts(pwRoot, wKey, nBL, /* bDump */ 0
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                     , /*pwrUp*/ NULL, /*nBW*/ 0
+  #ifdef CODE_BM_SW
+                    , /* nTypeUp */ -1
+  #endif // CODE_BM_SW
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                       );
         // caller checks *pwRoot == NULL to see if cleanup is done
     } else
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     {
+        assert(tp_bIsSwitch(nType));
         Word_t wPopCnt =
 #if defined(CODE_BM_SW)
             tp_bIsBmSw(nType) ? PWR_wPopCnt(pwRoot, (BmSwitch_t *)pwr, nDLR) :
@@ -5743,6 +5837,9 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
             FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDL), /* bDump */ 0
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                         , /*pwrUp*/ NULL, /*nBW*/ 0
+  #ifdef CODE_BM_SW
+                        , /* nTypeUp */ -1
+  #endif // CODE_BM_SW
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                           );
         }
@@ -5752,7 +5849,7 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
 Status_t
 RemoveGuts(qp, Word_t wKey
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-        ,  Word_t *pwrUp, int nBW
+         , Word_t *pwValueUp
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
            )
 {
@@ -5804,7 +5901,7 @@ embeddedKeys:;
         wPopCnt = wr_nPopCnt(*pwRoot, nBL);
         wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot
 #ifdef B_JUDYL
-                                  , pwrUp, nBW
+                                  , pwValueUp
 #endif // B_JUDYL
                                     );
       #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -6116,7 +6213,7 @@ embeddedKeys:;
     if ((int)wPopCnt <= EmbeddedListPopCntMax(nBL) + 1) {
         DeflateExternalList(pwRoot, wPopCnt - 1, nBL, pwList
 #ifdef B_JUDYL
-                          , pwrUp, nBW
+                          , pwValueUp
 #endif // B_JUDYL
                             );
     }
@@ -7515,6 +7612,9 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
                                   cnBitsPerWord, /* bDump */ 0
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                                 , /*pwrUp*/ NULL, /*nBW*/ 0
+  #ifdef CODE_BM_SW
+                                , /* nTypeUp */ -1
+  #endif // CODE_BM_SW
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                   );
 

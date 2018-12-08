@@ -2702,17 +2702,22 @@ InsertGuts(qp, Word_t wKey, int nPos
   #endif // defined(SKIP_TO_XX_SW)
 #endif // defined(CODE_XX_SW)
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-         , Word_t *pwrUp, int nBW
+         , Word_t *pwValueUp
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
            );
 
 Status_t RemoveGuts(qp, Word_t wKey
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                  , Word_t *pwrUp, int nBW
+                  , Word_t *pwValueUp
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                     );
 
-void InsertCleanup(qp, Word_t wKey);
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+Word_t*
+#else // defined(B_JUDYL) && defined(EMBED_KEYS)
+void
+#endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
+InsertCleanup(qp, Word_t wKey);
 
 void RemoveCleanup(Word_t wKey, int nBL, int nBLR,
                    Word_t *pwRoot, Word_t wRoot);
@@ -2731,7 +2736,7 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot);
 Word_t InflateEmbeddedList(Word_t *pwRoot,
                            Word_t wKey, int nBL, Word_t wRoot
   #ifdef B_JUDYL
-                         , Word_t *pwrUp, int nBW
+                         , Word_t *pwValueUp
   #endif // B_JUDYL
                            );
 #endif // defined(EMBED_KEYS)
@@ -5793,27 +5798,29 @@ gwBitMaskInSwBmWord(Word_t wDigit)
     return (Word_t)1 << gnBitNumInSwBmWord(wDigit);
 }
 
-#if 0 // BmSwLinkCnt is not tested yet
-static inline void
-BmSwLinkCnt(Word_t *pwRoot)
+static inline int
+BmSwLinkCnt(qp)
 {
     qv;
     Word_t *pwBmWords = PWR_pwBm(pwRoot, wr_pwr(*pwRoot));
-    // The bitmap may have more than one word.
-  #if defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
-#error X_ADD_ALL_SW_BM_WORDS with OFFSET_IN_SW_BM_WORD or X_SW_BM_HALF_WORDS
-  #endif // defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
-    int nLinkCnt = 0;
-    for (int nn = 0; n < N_WORDS_SWITCH_BM; nn++) {
-        nLinkCnt += __builtin_popcountll(pwBmWords[nn]
-  #if defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
-                                  & (((Word_t)1 << (cnBitsPerWord / 2)) - 1)
-  #endif // defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
-                                         );
+    int nLinks = 0;
+    for (int nn = 0; nn < N_WORDS_SWITCH_BM; ++nn) {
+        nLinks += __builtin_popcountll(pwBmWords[nn]
+  #ifdef X_SW_BM_HALF_WORDS
+                          & (((Word_t)1 << (cnBitsPerWord / 2)) - 1)
+  #endif // X_SW_BM_HALF_WORDS
+                                       );
     }
-    return nLinkCnt;
+  #ifndef BM_SW_FOR_REAL
+    assert(nLinks
+        == (cnBitsPerWord
+      #ifdef X_SW_BM_HALF_WORDS
+               / 2
+      #endif // X_SW_BM_HALF_WORDS
+               * N_WORDS_SWITCH_BM));
+  #endif // BM_SW_FOR_REAL
+    return nLinks;
 }
-#endif // 0
 
 // Get bitmap switch link index (offset) from digit (virtual index)
 // extracted from key.
