@@ -2600,6 +2600,9 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc,
                 (void *)pTgt, (void *)pSrc, nKeys, wKey));
     int n;
 
+    // Why don't we know nPos for inflated embedded list?
+    // We should enhance Insert to use LocateKey for embedded keys so we
+    // don't need to search here.
     if ((nPos == -1) // inflated embedded list
 #if ! defined(EMBED_KEYS)
             && (nKeys != 0)
@@ -2609,7 +2612,7 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc,
         )
     {
         // find the insertion point
-        n = ~PsplitSearchByKeyWord(pSrc, nKeys, wKey, 0);
+        n = ~SearchListWord(pSrc, wKey, cnBitsPerWord, nKeys);
     } else { n = nPos; }
     assert(nPos <= nKeys);
 

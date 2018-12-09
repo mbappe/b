@@ -69,12 +69,23 @@
 // And what happens if clzll becomes 128-bit someday?
 // __builtin_clzll is undefined for zero which allows the compiler to use bsr.
 // So this macro is undefined for _x == 0.
-// The cast to uint64_t is not needed for correctness. The code is actually
-// more correct without the cast. I have measured the code being slower
-// without the cast than with. Bummer.
-#define LOG(_x)  ((uintptr_t)63 - __builtin_clzll(_x))
+#define LOG(_x)  (63 - (int)__builtin_clzll(_x))
 #define EXP(_x)  (assert((_x) <= cnBitsPerWord), (Word_t)1 << (_x))
-#define MSK(_nBits)  (EXP(_nBits) - 1)
+// NBPW - Not Bits Per Word - can't handle nBits == cnBitsPerWord
+#define NBPW_MSK(_nBits) \
+     (EXP(_nBits) - 1) // can't handle nBits == cnBitsPerWord
+// NZ - Not Zero - can't handle nBits == 0
+#define NZ_MSK(_nBits) \
+    (assert((_nBits) > 0), (Word_t)-1 >> (cnBitsPerWord - (_nBits)))
+// ANY_MSK can handle both _nBits == cnBitsPerWord AND _nBits == 0.
+#if 1
+#define ANY_MSK(_nBits) \
+    ((((Word_t)1 << (_nBits)) - 1) - ((_nBits) == cnBitsPerWord))
+#else
+#define ANY_MSK(_nBits) \
+    ((Word_t)-1 >> cnBitsPerWord - (_nBits)) + ((_nBits) == 0)
+#endif
+#define MSK(_nBits)  NBPW_MSK(_nBits)
 
 // dlmalloc.c uses MALLOC_ALIGNMENT.
 // Default MALLOC_ALIGNMENT is 2 * sizeof(void *).
@@ -3068,73 +3079,22 @@ extern const unsigned anBL_to_nDL[];
 
 #else // defined(SPLIT_SEARCH_BINARY)
 
-  #if defined(OLD_PSPLIT)
-
-// One old method:
-// nSplit = (((_xKey) & MSK(_nBL)) * (_nPopCnt) + (_nPopCnt) / 2) >> (_nBL);
-// Current method:
-// Take the (_nBL - _nn) most significant bits of the _nBL least significant
-// bits in _xKey times _nPopCnt and divide by EXP(_nBL - _nn).
-// If _nBL < _nn then shift _wKey left as needed.
-// The rounding term is probably insignificant and unnecessary at least in
-// some cases.
-// The trick is finding an expression for _nn that will work for all values
-// of _nBL.
-#define PSPLIT_NN(_nPopCnt, _nBL, _xKey, _nn, _nSplit) \
-{ \
-    /* make sure we don't overflow when we shift _nPopCnt with big _nBL */ \
-    assert((_nPopCnt) <= ((Word_t)1 << (cnBitsPerWord - (_nBL) + (_nn)))); \
-    (_nSplit) = ((((((Word_t)(_xKey) << (cnBitsPerWord - (_nBL))) \
-                            >> (cnBitsPerWord + (_nn) - (_nBL))) \
-                        * (_nPopCnt)) \
-                    + ((_nPopCnt) / 2)) \
-                >> ((_nBL) - (_nn))); \
-}
-
-// I think this value for _nn may work for everything except:
-//    ((_nBL == cnBitsPerWord) && (_nPopCnt == 1))
-// But PSPLIT isn't effective when the set of values is concentrated
-// at one end of the expanse.  For example, the top of a 64-bit tree
-// and 32-bit values.
-// We need to make sure we are passing a constant in for _nBL for the
-// performance path cases so the compiler can simplify this.
-#define PSPLIT(_nPopCnt, _nBL, _xKey, _nSplit) \
-        PSPLIT_NN((_nPopCnt), (_nBL), (_xKey), \
-                  LOG((((_nPopCnt) << 1) - 1)) - cnBitsPerWord + (_nBL), \
-                  (_nSplit))
-
-  #else // defined(OLD_PSPLIT)
-
-// BIG_MSK is MSK that can handle _nBL == cnBitsPerWord.
-#define BIG_MSK(_nBL)  (((Word_t)1 << ((_nBL) - 1)) * 2 - 1)
-
 // PSPLIT_NNT - Not Near Top. Far enough to avoid overflow with max pop.
+// Use NBPW_MSK because we know _nBL != cnBitsPerWord.
 #define PSPLIT_NNT(_nPopCnt, _nBL, _xKey, _nPsplit) \
 { \
     /* make sure we don't overflow */ \
-    assert((_nBL) + LOG(_nPopCnt) < cnBitsPerWord); \
-    (_nPsplit) = (Word_t)((_xKey) & MSK(_nBL)) * (_nPopCnt) / EXP(_nBL); \
+    assert(((_nPopCnt) <= 1) /* LOG is undefined for 0 */ \
+        || (_nBL) + LOG((_nPopCnt) - 1) < cnBitsPerWord); \
+    (_nPsplit) = (Word_t)((_xKey) & NBPW_MSK(_nBL)) * (_nPopCnt) >> (_nBL); \
 }
 
-// PSPLIT_GT_NAT is for (cnBitsPerWord - 16) < key size < cnBitsPerWord.
-// Avoid BIG_MSK, but not shift.
-#define PSPLIT_GT_NAT(_nPopCnt, _nBL, _xKey, _nPsplit) \
+// PSPLIT_NNB - Not Near Bottom - is for maxPop <= EXP(keyBits - 8).
+// Use NZ_MSK because we know _nBL != 0.
+#define PSPLIT_NNB(_nPopCnt, _nBL, _xKey, _nPsplit) \
 { \
     /* make sure we don't throw away too many bits */ \
-    assert((_nBL) - 8 > LOG(_nPopCnt)); \
-    assert((_nBL) < sizeof(Word_t) * 8); /* NAT */ \
-    /* make sure we don't overflow */ \
-    assert((_nBL) - 8 + LOG(_nPopCnt) < cnBitsPerWord); \
-    (_nPsplit) \
-        = (((_xKey) & MSK(_nBL)) >> 8) * (_nPopCnt) / EXP((_nBL) - 8); \
-}
-
-// PSPLIT_GT is for key size > (cnBitsPerWord - 16).
-// Use BIG_MSK in case key size == cnBitsPerWord.
-#define PSPLIT_GT(_nPopCnt, _nBL, _xKey, _nPsplit) \
-{ \
-    /* make sure we don't throw away too many bits */ \
-    assert((unsigned)(_nBL) > LOG(_nPopCnt) + 8); \
+    assert((_nBL) > LOG(_nPopCnt) + 8); \
     /* make sure we don't overflow */ \
     /* assert((_nBL) - 8 + LOG(_nPopCnt) < cnBitsPerWord); */ \
     /* LOG((_nPopCnt - 1) | 1) allows maxpop=256 at top */ \
@@ -3142,19 +3102,52 @@ extern const unsigned anBL_to_nDL[];
     /* assert((Word_t)(_nPopCnt) << ((_nBL) - 9) */ \
         /* <= (Word_t)1 << (cnBitsPerWord - 1)); */ \
     (_nPsplit) \
-        = (((_xKey) & BIG_MSK(_nBL)) >> 8) * (_nPopCnt) / EXP((_nBL) - 8); \
+        = (((_xKey) & NZ_MSK(_nBL)) >> 8) * (_nPopCnt) >> ((_nBL) - 8); \
 }
 
+// If list may be at top and is not at bottom.
+//  slot = pop * (key & MSK(nBL)) >> XX / EXP(nBL - XX)
+// If list may be at bottom and is not at top.
+//  slot = pop * (key & MSK(nBL)) / EXP(nBL)
+// Psplit search doesn't usually make sense at top.
+// If key is already masked and list is not at top.
+//  slot = pop * key / EXP(nBL)
+// If expanse is already calculated and key is already masked
+// and list is not at top.
+//  slot = pop * key / exp
 #define PSPLIT(_nPopCnt, _nBL, _xKey, _nPsplit) \
+    PSPLIT_NNT((_nPopCnt), (_nBL), (_xKey), (_nPsplit))
+
+static int
+PsplitAny(int nPopCnt, int nBL, Word_t wKey)
+{
+    int nPos;
+    if (nBL <= cnBitsPerWord - 16) {
+        PSPLIT_NNT(nPopCnt, nBL, wKey, nPos);
+    } else {
+        PSPLIT_NNB(nPopCnt, nBL, wKey, nPos);
+    }
+    return nPos;
+}
+
+#define PSPLIT_ANY(_nPopCnt, _nBL, _xKey, _nPsplit) \
 { \
     if ((_nBL) <= cnBitsPerWord - 16) { \
-        PSPLIT_NNT((_nPopCnt), (_nBL), (_xKey), (_nPsplit)) \
+        PSPLIT_NNT((_nPopCnt), (_nBL), (_xKey), (_nPsplit)); \
     } else { \
-        PSPLIT_GT((_nPopCnt), (_nBL), (_xKey), (_nPsplit)); \
+        PSPLIT_NNB((_nPopCnt), (_nBL), (_xKey), (_nPsplit)); \
     } \
 }
 
-  #endif // defined(OLD_PSPLIT)
+#ifdef PSPLIT_AT_TOP
+    // PSPLIT_ANY variant throws a compile error for EXP(cnBitsPerWord)
+    // which we addressed by creating PsplitAny.
+    #define PSPLIT_WORD(_nPopCnt, _nBL, _xKey, _nPsplit) \
+        ((_nPsplit) = PsplitAny((_nPopCnt), (_nBL), (_xKey)))
+#else // PSPLIT_AT_TOP
+    #define PSPLIT_WORD(_nPopCnt, _nBL, _xKey, _nPsplit) \
+        PSPLIT_NNB(_nPopCnt, _nBL, _xKey, _nPsplit)
+#endif // #else PSPLIT_AT_TOP
 
 #endif // defined(SPLIT_SEARCH_BINARY)
 
@@ -3194,10 +3187,13 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 #endif
 
 // This is a non-parallel psplit search that calculates a descriptive _nPos.
+// It has to work for small nBL in case of no COMPRESSED_LISTS.
+// It doesn't usually have to work for nBL == cnBitsPerWord since psplit
+// search is usually a bad choice for that case.
 #define PSPLIT_SEARCH_BY_KEY_WORD(_x_t, _nBL, \
                                   _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    int nSplit; PSPLIT_GT((_nPopCnt), (_nBL), (_xKey), nSplit); \
+    int nSplit; PSPLIT_WORD((_nPopCnt), (_nBL), (_xKey), nSplit); \
     /* if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) */\
     if ((_pxKeys)[nSplit] == (_xKey)) \
     { \
@@ -3240,10 +3236,10 @@ nn  = LOG(pop * 2 - 1) - bpw + nbl
 }
 
 static int
-PsplitSearchByKeyWord(Word_t *pwKeys, int nPopCnt, Word_t wKey, int nPos)
+PsplitSearchByKeyWord(int nBL,
+                      Word_t *pwKeys, int nPopCnt, Word_t wKey, int nPos)
 {
-    PSPLIT_SEARCH_BY_KEY_WORD(Word_t,
-                              cnBitsPerWord, pwKeys, nPopCnt, wKey, nPos);
+    PSPLIT_SEARCH_BY_KEY_WORD(Word_t, nBL, pwKeys, nPopCnt, wKey, nPos);
     return nPos;
 }
 
@@ -3315,7 +3311,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     return nPos;
 }
 
-#if defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
+#if (defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)) && ! defined(LIST_END_MARKERS)
 
 // Little endian:
 // 00:      10: smallest key
@@ -3740,9 +3736,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     if (((_nPos) = BUCKET_LOCATE_KEY(&px[nSplitP], \
                                      (_xKey), sizeof(_x_t) * 8)) >= 0) { \
         /* keys per bucket * number of buckets */ \
-        int nBL2 = 1 << (LOG((_nBL) - 1) + 1); \
-        int nKeysPerBucket = 64 / nBL2 * (sizeof(_b_t) / 8); \
-        _nPos += nKeysPerBucket * nSplitP; \
+        _nPos += sizeof(_b_t) / sizeof(_x_t) * nSplitP; \
         SMETRICS(++j__DirectHits); \
     } \
     else \
@@ -3960,15 +3954,10 @@ again:;
 }
   #endif // JUNK
 
-  #if defined(COUNT)
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-    PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
-  #else // defined(COUNT)
-#define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-    PSPLIT_HASKEY_GUTS(Bucket_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
-  #endif // defined(COUNT)
+    PSPLIT_SEARCH_BY_KEY(Bucket_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
 
-#else // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
+#else // (defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)) && ...
 
 #define PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
     PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
@@ -3983,9 +3972,10 @@ again:;
 #define PSPLIT_HASKEY_GUTS_128(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
     PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
 
-#endif // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
+#endif // #else (defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)) ...
 
-#if defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
+#if defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)
+#if ! defined(LIST_END_MARKERS)
 
 #if JUNK
 static Status_t
@@ -4320,7 +4310,7 @@ HasKey128(__m128i *pxBucket, Word_t wKey, int nBL)
     if (nBL <= 32) {
         assert(nBL == 32);
         v42_t vEq = (v42_t)(*(v42_t*)pxBucket == (unsigned int)wKey);
-  #ifdef HK_PMOVEMASK
+  #ifdef HK_MOVEMASK
         return _mm_movemask_epi8((__m128i)vEq);
   #else // HK_MOVEMASK
         return _mm_packs_epi32((__m128i)vEq, (__m128i)vEq)[0];
@@ -4529,7 +4519,8 @@ HasKey128Magic(__m128i *pxBucket, Word_t wKey, int nBL)
     return HasKey128MagicTail(pxBucket, xLsbs, xMsbs, xKeys);
 }
 
-#endif // defined(PSPLIT_PARALLEL) && ! defined(LIST_END_MARKERS)
+#endif // ! defined(LIST_END_MARKERS)
+#endif // defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)
 
 #if defined(EMBED_KEYS)
 // Find key or hole and return it's position.
@@ -5071,7 +5062,7 @@ ListHasKey32(qp, int nBLR, Word_t wKey)
 
 #if defined(PARALLEL_SEARCH_WORD)
   #define PSPLIT_SEARCH_W(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
-      PSPLIT_SEARCH(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
+      PSPLIT_SEARCH_BY_KEY_WORD(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
 #else // defined(PARALLEL_SEARCH_WORD)
   #define PSPLIT_SEARCH_W(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
       PSPLIT_SEARCH_BY_KEY_WORD(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos)
@@ -5107,7 +5098,7 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
         // need a special psplit here that starts at wKeyMin
         #error Need a special PSPLIT for PSPLIT_SEARCH_XOR_WORD
   #endif // defined(PSPLIT_SEARCH_XOR_WORD)
-        return PsplitSearchByKeyWord(pwKeys, nPopCnt, wKey, 0);
+        return PsplitSearchByKeyWord(nBL, pwKeys, nPopCnt, wKey, 0);
     }
 #endif // defined(PSPLIT_SEARCH_WORD)
     // We want binary search for nBL == cnBitsPerWord by default.
@@ -5260,30 +5251,52 @@ ListHasKeyWord(qp, int nBLR, Word_t wKey)
                 (void *)pwKeys, wKey, nBL, nPopCnt));
     int nPos;
 #if defined(PSPLIT_SEARCH_WORD)
-    nPos = 0;
-  #if !defined(SEARCH_FROM_WRAPPER)
+  #ifdef SEARCH_FROM_WRAPPER
+    assert(nBLR != cnBitsPerWord);
+  #else // SEARCH_FROM_WRAPPER
     if (nBLR != cnBitsPerWord)
-  #endif // !defined(SEARCH_FROM_WRAPPER)
+  #endif // #else SEARCH_FROM_WRAPPER
     {
+        nPos = 0;
   #if defined(BL_SPECIFIC_PSPLIT_SEARCH_WORD)
       #if (cnBitsPerWord > 32)
         if (nBLR == 56) {
-            PSPLIT_SEARCH_W(Word_t, 56, pwKeys, nPopCnt, wKey, nPos);
+            PSPLIT_HASKEY_GUTS(Bucket_t,
+                               Word_t, 56, pwKeys, nPopCnt, wKey, nPos);
         } else
         if (nBLR == 48) {
-            PSPLIT_SEARCH_W(Word_t, 48, pwKeys, nPopCnt, wKey, nPos);
+            PSPLIT_HASKEY_GUTS(Bucket_t,
+                               Word_t, 48, pwKeys, nPopCnt, wKey, nPos);
         } else
         if (nBLR == 40) {
-            PSPLIT_SEARCH_W(Word_t, 40, pwKeys, nPopCnt, wKey, nPos);
+            PSPLIT_HASKEY_GUTS(Bucket_t,
+                               Word_t, 40, pwKeys, nPopCnt, wKey, nPos);
         } else
+          #ifndef COMPRESSED_LISTS
+        if (nBLR == 32) {
+            PSPLIT_HASKEY_GUTS(Bucket_t,
+                               Word_t, 32, pwKeys, nPopCnt, wKey, nPos);
+        } else
+          #endif // COMPRESSED_LISTS
       #else // (cnBitsPerWord > 32)
         if (nBLR == 24) {
-            PSPLIT_SEARCH_W(Word_t, 24, pwKeys, nPopCnt, wKey, nPos);
+            PSPLIT_HASKEY_GUTS(Bucket_t,
+                               Word_t, 24, pwKeys, nPopCnt, wKey, nPos);
         } else
+          #ifndef COMPRESSED_LISTS
+        if (nBLR == 16) {
+            PSPLIT_HASKEY_GUTS(Bucket_t,
+                               Word_t, 16, pwKeys, nPopCnt, wKey, nPos);
+        } else if (nBLR == 8) {
+            PSPLIT_HASKEY_GUTS(Bucket_t,
+                               Word_t,  8, pwKeys, nPopCnt, wKey, nPos);
+        } else
+          #endif // COMPRESSED_LISTS
       #endif // (cnBitsPerWord > 32)
   #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH_WORD)
         {
-            PSPLIT_SEARCH_W(Word_t, nBLR, pwKeys, nPopCnt, wKey, nPos);
+            PSPLIT_HASKEY_GUTS(Bucket_t,
+                               Word_t, nBLR, pwKeys, nPopCnt, wKey, nPos);
         }
         DBGX(printf("LHKW: returning %d\n", nPos >= 0));
         return nPos >= 0;
@@ -6062,40 +6075,61 @@ LocateKeyInListWord(qp, int nBLR, Word_t wKey)
   #else // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
     Word_t *pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);
   #endif // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
-    DBGI(printf("LHKW pwKeys %p wKey " OWx" nBL %d nPopCnt %d\n",
+    DBGI(printf("LKILW pwKeys %p wKey " OWx" nBL %d nPopCnt %d\n",
                 (void *)pwKeys, wKey, nBL, nPopCnt));
+    int nPos;
 #if defined(PSPLIT_SEARCH_WORD)
-    int nPos = 0;
+  #ifdef SEARCH_FROM_WRAPPER
+    assert(nBLR != cnBitsPerWord);
+  #else // SEARCH_FROM_WRAPPER
+    if (nBLR != cnBitsPerWord)
+  #endif // #else SEARCH_FROM_WRAPPER
+    {
+        nPos = 0;
   #if defined(BL_SPECIFIC_PSPLIT_SEARCH_WORD)
       #if (cnBitsPerWord > 32)
-    if (nBLR == 64) {
-        PSPLIT_SEARCH_W(Word_t, 64, pwKeys, nPopCnt, wKey, nPos);
-    } else
-    if (nBLR == 56) {
-        PSPLIT_SEARCH_W(Word_t, 56, pwKeys, nPopCnt, wKey, nPos);
-    } else
-    if (nBLR == 48) {
-        PSPLIT_SEARCH_W(Word_t, 48, pwKeys, nPopCnt, wKey, nPos);
-    } else
-    if (nBLR == 40) {
-        PSPLIT_SEARCH_W(Word_t, 40, pwKeys, nPopCnt, wKey, nPos);
-    } else
+        if (nBLR == 56) {
+            PSPLIT_LOCATEKEY_GUTS(Bucket_t,
+                                  Word_t, 56, pwKeys, nPopCnt, wKey, nPos);
+        } else if (nBLR == 48) {
+            PSPLIT_LOCATEKEY_GUTS(Bucket_t,
+                                  Word_t, 48, pwKeys, nPopCnt, wKey, nPos);
+        } else if (nBLR == 40) {
+            PSPLIT_LOCATEKEY_GUTS(Bucket_t,
+                                  Word_t, 40, pwKeys, nPopCnt, wKey, nPos);
+        } else
+          #ifndef COMPRESSED_LISTS
+        if (nBLR == 32) {
+            PSPLIT_LOCATEKEY_GUTS(Bucket_t,
+                                  Word_t, 32, pwKeys, nPopCnt, wKey, nPos);
+        } else
+          #endif // COMPRESSED_LISTS
       #else // (cnBitsPerWord > 32)
-    if (nBLR == 32) {
-        PSPLIT_SEARCH_W(Word_t, 32, pwKeys, nPopCnt, wKey, nPos);
-    } else
-    if (nBLR == 24) {
-        PSPLIT_SEARCH_W(Word_t, 24, pwKeys, nPopCnt, wKey, nPos);
-    } else
+        if (nBLR == 24) {
+            PSPLIT_LOCATEKEY_GUTS(Bucket_t,
+                                  Word_t, 24, pwKeys, nPopCnt, wKey, nPos);
+        } else
+          #ifndef COMPRESSED_LISTS
+        if (nBLR == 16) {
+            PSPLIT_LOCATEKEY_GUTS(Bucket_t,
+                                  Word_t, 16, pwKeys, nPopCnt, wKey, nPos);
+        } else if (nBLR == 8) {
+            PSPLIT_LOCATEKEY_GUTS(Bucket_t,
+                                  Word_t,  8, pwKeys, nPopCnt, wKey, nPos);
+        } else
+          #endif // COMPRESSED_LISTS
       #endif // (cnBitsPerWord > 32)
   #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH_WORD)
-    {
-        PSPLIT_SEARCH_W(Word_t, nBLR, pwKeys, nPopCnt, wKey, nPos);
+        {
+            PSPLIT_LOCATEKEY_GUTS(Bucket_t,
+                                  Word_t, nBLR, pwKeys, nPopCnt, wKey, nPos);
+        }
+        DBGX(printf("LKILW: returning %d\n", nPos));
+        return nPos;
     }
-#else // defined(PSPLIT_SEARCH_WORD)
-    int nPos = SearchListWord(pwKeys, wKey, nBLR, nPopCnt);
 #endif // defined(PSPLIT_SEARCH_WORD)
-    DBGX(printf("LHKW: returning %d\n", nPos >= 0));
+    nPos = SearchListWord(pwKeys, wKey, nBLR, nPopCnt);
+    DBGX(printf("LKILW: returning %d\n", nPos));
     return nPos;
 }
 
@@ -6121,8 +6155,7 @@ LocateKeyInList(qp, int nBLR, Word_t wKey)
     }
       #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
-    //return LocateKeyInListWord(qy, nBLR, wKey);
-    return SearchList(qy, nBLR, wKey);
+    return LocateKeyInListWord(qy, nBLR, wKey);
 }
 
 #endif // defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
