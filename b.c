@@ -580,12 +580,10 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 #if defined(LIST_END_MARKERS)
         ls_pcKeysNAT(pwList)[-1] = 0;
 #endif // defined(LIST_END_MARKERS)
-        METRICS(j__AllocWordsJLL1 += nWords); // 1 byte/key list leaf
     } else if (nBL <= 16) {
 #if defined(LIST_END_MARKERS)
         ls_psKeysNAT(pwList)[-1] = 0;
 #endif // defined(LIST_END_MARKERS)
-        METRICS(j__AllocWordsJLL2 += nWords); // 2 bytes/key list leaf
     } else if (nBL <= 24) {
 #if defined(LIST_END_MARKERS)
   #if (cnBitsPerWord > 32)
@@ -594,13 +592,11 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
         ls_pwKeysNAT(pwList)[-1] = 0;
   #endif // (cnBitsPerWord > 32)
 #endif // defined(LIST_END_MARKERS)
-        METRICS(j__AllocWordsJLL3 += nWords); // 3 bytes/key list leaf
 #if (cnBitsPerWord > 32)
     } else if (nBL <= 32) {
 #if defined(LIST_END_MARKERS)
         ls_piKeysNAT(pwList)[-1] = 0;
 #endif // defined(LIST_END_MARKERS)
-        METRICS(j__AllocWordsJLL4 += nWords); // 4 bytes/key list leaf
 #endif // (cnBitsPerWord > 32)
     }
     else
@@ -615,18 +611,26 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
   #endif // (defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)) && ...
                              ] = 0;
 #endif // defined(LIST_END_MARKERS)
+    }
+
+    if (nBL <= 8) {
+        METRICS(j__AllocWordsJLL1 += nWords); // 1 byte/key list leaf
+    } else if (nBL <= 16) {
+        METRICS(j__AllocWordsJLL2 += nWords); // 2 bytes/key list leaf
+    } else if (nBL <= 24) {
+        METRICS(j__AllocWordsJLL3 += nWords); // 3 bytes/key list leaf
+    } else if (nBL <= 32) {
 #if (cnBitsPerWord > 32)
-        if (nBL <= 40) {
-            METRICS(j__AllocWordsJLL5 += nWords); // 5 bytes/key list leaf
-        } else if (nBL <= 48) {
-            METRICS(j__AllocWordsJLL6 += nWords); // 6 bytes/key list leaf
-        } else if (nBL <= 56) {
-            METRICS(j__AllocWordsJLL7 += nWords); // 7 bytes/key list leaf
-        } else
+        METRICS(j__AllocWordsJLL4 += nWords); // 4 bytes/key list leaf
+    } else if (nBL <= 40) {
+        METRICS(j__AllocWordsJLL5 += nWords); // 5 bytes/key list leaf
+    } else if (nBL <= 48) {
+        METRICS(j__AllocWordsJLL6 += nWords); // 6 bytes/key list leaf
+    } else if (nBL <= 56) {
+        METRICS(j__AllocWordsJLL7 += nWords); // 7 bytes/key list leaf
 #endif // (cnBitsPerWord > 32)
-        {
-            METRICS(j__AllocWordsJLLW += nWords); // 1 word/key list leaf
-        }
+    } else {
+        METRICS(j__AllocWordsJLLW += nWords); // 1 word/key list leaf
     }
 
     // Should we be setting wPrefix here for PP_IN_LINK?
@@ -738,7 +742,6 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
 
     if (nWords == 0) { return 0; }
 
-#if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
         METRICS(j__AllocWordsJLL1 -= nWords); // 1 byte/key list leaf
     } else if (nBL <= 16) {
@@ -748,24 +751,15 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
 #if (cnBitsPerWord > 32)
     } else if (nBL <= 32) {
         METRICS(j__AllocWordsJLL4 -= nWords); // 4 bytes/key list leaf
+    } else if (nBL <= 40) {
+        METRICS(j__AllocWordsJLL5 -= nWords); // 5 bytes/key list leaf
+    } else if (nBL <= 48) {
+        METRICS(j__AllocWordsJLL6 -= nWords); // 6 bytes/key list leaf
+    } else if (nBL <= 56) {
+        METRICS(j__AllocWordsJLL7 -= nWords); // 7 bytes/key list leaf
 #endif // (cnBitsPerWord > 32)
-    }
-    else
-#endif // defined(COMPRESSED_LISTS)
-    {
-#if (cnBitsPerWord > 32)
-        if (nBL <= 40) {
-            METRICS(j__AllocWordsJLL5 -= nWords); // 5 bytes/key list leaf
-        } else if (nBL <= 48) {
-            METRICS(j__AllocWordsJLL6 -= nWords); // 6 bytes/key list leaf
-        } else if (nBL <= 56) {
-            METRICS(j__AllocWordsJLL7 -= nWords); // 7 bytes/key list leaf
-        } else
-#endif // (cnBitsPerWord > 32)
-        {
-//printf("\n- %d\n", nWords);
-            METRICS(j__AllocWordsJLLW -= nWords); // 1 word/key list leaf
-        }
+    } else {
+        METRICS(j__AllocWordsJLLW -= nWords); // 1 word/key list leaf
     }
 
 #ifdef B_JUDYL
@@ -1547,7 +1541,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
             METRICS(j__AllocWordsJLB1 += nWordsNew); // bitmap leaf
         } else
 #if defined(RETYPE_FULL_BM_SW)
-        if (nLinkCnt == EXP(nBitsIndexSz) - 1) {
+        if ((Word_t)nLinkCnt == EXP(nBitsIndexSz) - 1) {
   #if defined(DEBUG_INSERT)
             if ( ! (EXP(nBLR) & sBitsReportedMask) )
             {
@@ -1570,7 +1564,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
         // Update the type field in *pwRoot if necessary.
 #if defined(SKIP_LINKS) || (cwListPopCntMax != 0)
   #if defined(RETYPE_FULL_BM_SW)
-        if (nLinkCnt == EXP(nBitsIndexSz) - 1) {
+        if ((Word_t)nLinkCnt == EXP(nBitsIndexSz) - 1) {
             // Bitmap switch is fully populated.
             // Let's change the type so Lookup is faster.
             // Hopefully we never get here because we convert to a true
@@ -7555,7 +7549,9 @@ Initialize(void)
     printf("# 0x%x %-20s\n", T_FULL_BM_SW, "T_FULL_BM_SW");
 #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
 #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+  #ifdef SKIP_TO_BM_SW
     printf("# 0x%x %-20s\n", T_SKIP_TO_FULL_BM_SW, "T_SKIP_TO_FULL_BM_SW");
+  #endif // SKIP_TO_BM_SW
 #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
     printf("# 0x%x %-20s\n", T_SWITCH, "T_SWITCH");
 #if defined(SKIP_LINKS)
