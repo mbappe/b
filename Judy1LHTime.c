@@ -1848,7 +1848,7 @@ main(int argc, char *argv[])
                     }
                 }
             }
-            printf("# -g wCheckBit %p\n", (void *)wCheckBit);
+            printf("# -g wCheckBit 0x%zx\n", wCheckBit);
         }
     }
 
