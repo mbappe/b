@@ -20,13 +20,6 @@
   #undef SKIP_TO_BITMAP
 #endif // B_JUDYL
 
-// RETYPE_FULL_BM_SW requires BM_IN_NON_BM_SW (see comment in code)
-// BM_IN_NON_BM_SW exists primarily for RETYPE_FULL_BM_SW.
-#if defined(RETYPE_FULL_BM_SW)
-  #undef BM_IN_NON_BM_SW
-  #define BM_IN_NON_BM_SW
-#endif // defined(RETYPE_FULL_BM_SW) && !defined(BM_IN_NON_BM_SW)
-
 // Default is -DPSPLIT_SEARCH_WORD -UPSPLIT_SEARCH_XOR_WORD.
 // Default is -UNO_BINARY_SEARCH_WORD -UBACKWARD_SEARCH_WORD.
 // PSPLIT_SEARCH_WORD does not apply at nBL == cnBitsPerDigit.

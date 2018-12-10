@@ -211,6 +211,7 @@
 // USE_BM_SW means always use a bm sw when creating a switch with no skip.
 // Default is -DBM_SW_FOR_REAL iff -DUSE_BM_SW.
 // Default is -UBM_IN_LINK.
+  #undef  CODE_BM_SW
   #define CODE_BM_SW
   #if ! defined(NO_BM_SW_FOR_REAL)
       #define BM_SW_FOR_REAL
@@ -1436,22 +1437,33 @@ tp_bIsBitmap(int nType)
 // ListPopCnt is the number of keys in the list.
 // ListSwPopM1 is the number of links in the list switch minus one.
 // A field at the end is faster to extract than a field in the middle.
-#define cnBitsLvl  8 // 8 is easier to read in debug output than 7
-#define cnLsbLvl  (cnBitsPerWord - cnBitsLvl)
-#define cnBitsXxSwWidth   6
-#if defined(SKIP_TO_XX_SW)
-#define cnLsbXxSwWidth  cnBitsVirtAddr
-#else // defined(SKIP_TO_XX_SW)
-#define cnLsbXxSwWidth  (cnBitsPerWord - cnBitsXxSwWidth)
-#endif // defined(SKIP_TO_XX_SW)
-#define cnBitsListPopCnt  8
+
+#if (cnBitsInD1 == 9) // useful for BM_IN_LINK and no embedded bitmap
+  #define cnBitsListPopCnt  9
+  #define cnBitsLvl  7
+#else // (cnBitsInD1 == 9)
+  #define cnBitsListPopCnt  8
+  #define cnBitsLvl  8 // 8 is easier to read in debug output than 7
+#endif // #else (cnBitsInD1 == 9)
+
 #if defined(SKIP_TO_LIST)
-#define cnLsbListPopCnt  cnBitsVirtAddr
+  #define cnLsbListPopCnt  cnBitsVirtAddr
 #else // defined(SKIP_TO_LIST)
-#define cnLsbListPopCnt  (cnBitsPerWord - cnBitsListPopCnt)
+  #define cnLsbListPopCnt  (cnBitsPerWord - cnBitsListPopCnt)
 #endif // defined(SKIP_TO_LIST)
 
+#define cnLsbLvl  (cnBitsPerWord - cnBitsLvl)
+
+#define cnBitsXxSwWidth   6
+
+#if defined(SKIP_TO_XX_SW)
+  #define cnLsbXxSwWidth  cnBitsVirtAddr
+#else // defined(SKIP_TO_XX_SW)
+  #define cnLsbXxSwWidth  (cnBitsPerWord - cnBitsXxSwWidth)
+#endif // defined(SKIP_TO_XX_SW)
+
 #define cnBitsListSwPopM1  8 // for T_LIST_SW
+
 #if defined(SKIP_TO_LIST_SW)
     #define cnLsbListSwPopM1  cnBitsVirtAddr
 #else // defined(SKIP_TO_LIST)
@@ -1839,7 +1851,7 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 #define     PWR_pwBm(_pwRoot, _pwr) \
     (STRUCT_OF((_pwRoot), Link_t, ln_wRoot)->ln_awBm)
 #else // defined(BM_IN_LINK)
-#define     PWR_pwBm(_pwRoot, _pwr)  (((BmSwitch_t *)(_pwr))->sw_awBm)
+#define     PWR_pwBm(_pwRoot, _pwr)  (&(_pwr)[-N_WORDS_SWITCH_BM])
 #endif // defined(BM_IN_LINK)
 
 #if defined(PSPLIT_PARALLEL)
@@ -2447,20 +2459,9 @@ typedef struct {
 #endif // ! defined(cnDummiesInBmSw)
 
 // Bitmap switch.
-typedef struct {
-    SW_COMMON_HDR
-#if (cnDummiesInBmSw != 0)
-    Word_t bmsw_awDummies[cnDummiesInBmSw];
-#endif // (cnDummiesInBmSw != 0)
-    // sw_awBm must be first and the remainder of BmSwitch_t must be the same
-    // as all of Switch_t for RETYPE_FULL_BM_SW without BM_IN_NON_BM_SW.
-    // But this doesn't make it easy for us to handle SKIP_TO_BM_SW which
-    // requires at least that sw_wPrefixPop have the same offset in both
-    // BmSwitch_t and Switch_t.  SKIP_TO_BM_SW wins for the moment since
-    // RETYPE_FULL_BM_SW isn't very important.
-    SW_BM
-    Link_t sw_aLinks[1]; // variable size
-} BmSwitch_t;
+// Using the same struct as Switch_t allows for minimal work
+// to RETYPE_FULL_BM_SW.
+typedef Switch_t BmSwitch_t;
 
 #ifdef SKIP_LINKS
 

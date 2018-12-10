@@ -967,18 +967,14 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(BITMAP) && !defined(ALLOW_EMBEDDED_BITMAP)
 
 #if defined(CODE_BM_SW)
-    if (nType == T_BM_SW)
-#if defined(BM_IN_LINK)
-    {
-        Link_t ln; (void)ln;
-        assert(wIndexCnt <= sizeof(ln.ln_awBm) * cnBitsPerByte);
+    if (nType == T_BM_SW) {
+        assert(wIndexCnt <= N_WORDS_SWITCH_BM
+               * cnBitsPerWord
+  #ifdef OFFSET_IN_SW_BM_WORD
+               / 2
+  #endif // OFFSET_IN_SW_BM_WORD
+               );
     }
-#else // defined(BM_IN_LINK)
-    {
-         BmSwitch_t sw; (void)sw;
-         assert(wIndexCnt <= sizeof(sw.sw_awBm) * cnBitsPerByte);
-    }
-#endif // defined(BM_IN_LINK)
 #endif // defined(CODE_BM_SW)
 
     Word_t wLinks = wIndexCnt;
@@ -1005,7 +1001,12 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 
     Word_t wBytes =
 #if defined(CODE_BM_SW)
-        (nType == T_BM_SW) ? sizeof(BmSwitch_t) :
+        (nType == T_BM_SW)
+            ? sizeof(BmSwitch_t)
+  #ifndef BM_IN_LINK
+                + N_WORDS_SWITCH_BM * sizeof(Word_t)
+  #endif // BM_IN_LINK
+            :
 #endif // defined(CODE_BM_SW)
 #if defined(USE_LIST_SW)
   #if defined(CODE_XX_SW)
@@ -1032,6 +1033,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #else // CACHE_ALIGN_BM_SW
     Word_t *pwr = (Word_t *)MyMalloc(wWords);
 #endif // CACHE_ALIGN_BM_SW
+#if defined(CODE_BM_SW) && !defined(BM_IN_LINK)
+    if (nType == T_BM_SW) { pwr += N_WORDS_SWITCH_BM; }
+#endif // defined(CODE_BM_SW) && !defined(BM_IN_LINK)
     set_wr_pwr(wRoot, pwr);
     *pwRoot = wRoot;
 
@@ -1170,7 +1174,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(BM_IN_LINK)
         {
 #if defined(BM_SW_FOR_REAL)
-            memset(PWR_pwBm(pwRoot, pwr), 0, sizeof(PWR_pwBm(pwRoot, pwr)));
+            memset(PWR_pwBm(pwRoot, pwr), 0, N_WORDS_SWITCH_BM * sizeof(Word_t));
             Word_t wIndex = (wKey >> (nBL - nBitsIndexSz)) & (wIndexCnt - 1);
             // Set the bit in the bitmap indicating that the new link exists.
             // SetBitInSwBmWord
@@ -1190,7 +1194,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
                 *PWR_pwBm(pwRoot, pwr) = EXP(wIndexCnt) - 1;
             } else {
                 memset(PWR_pwBm(pwRoot, pwr), -1,
-                       sizeof(PWR_pwBm(pwRoot, pwr)));
+                       N_WORDS_SWITCH_BM * sizeof(Word_t));
             }
 #endif // defined(BM_SW_FOR_REAL)
         }
@@ -1418,7 +1422,11 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
 
     // sizeof(BmSwitch_t) includes one link; add the others
     unsigned nWordsOld
-         = (sizeof(BmSwitch_t) + (nLinkCnt - 1) * sizeof(Link_t))
+         = (sizeof(BmSwitch_t)
+#if defined(CODE_BM_SW) && !defined(BM_IN_LINK)
+                + N_WORDS_SWITCH_BM * sizeof(Word_t)
+#endif // defined(CODE_BM_SW) && !defined(BM_IN_LINK)
+                + (nLinkCnt - 1) * sizeof(Link_t))
             / sizeof(Word_t);
     DBGI(printf("nLinkCnt %d nWordsOld %d\n", nLinkCnt, nWordsOld));
 
@@ -1465,6 +1473,9 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
 #else // CACHE_ALIGN_BM_SW
         *pwRoot = MyMalloc(nWordsNew);
 #endif // CACHE_ALIGN_BM_SW
+#ifndef BM_IN_LINK
+        *pwRoot += N_WORDS_SWITCH_BM * sizeof(Word_t);
+#endif // BM_IN_LINK
         DBGI(printf("After malloc *pwRoot " OWx"\n", *pwRoot));
 
         // Where does the new link go?
@@ -1489,7 +1500,11 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
         // Copy the old switch to the new switch and insert the new link.
         // copy header and leading links from old switch to new switch
         memcpy(wr_pwr(*pwRoot), pwr,
-            sizeof(BmSwitch_t) + (wIndex - 1) * sizeof(Link_t));
+               sizeof(BmSwitch_t) + (wIndex - 1) * sizeof(Link_t));
+#ifndef BM_IN_LINK
+        memcpy(wr_pwr(*pwRoot) - N_WORDS_SWITCH_BM, pwr - N_WORDS_SWITCH_BM,
+               N_WORDS_SWITCH_BM * sizeof(Word_t));
+#endif // BM_IN_LINK
         DBGI(printf("PWR_wPopCnt %" _fw"d\n",
              PWR_wPopCntBL(pwRoot, (BmSwitch_t *)*pwRoot, nBLR)));
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
@@ -1675,9 +1690,9 @@ OldSwitch(Word_t *pwRoot, int nBL,
 #endif // defined(CODE_BM_SW)
 
     Word_t wBytes =
-#if defined(CODE_BM_SW)
-        bBmSw ? sizeof(BmSwitch_t) :
-#endif // defined(CODE_BM_SW)
+#if defined(CODE_BM_SW) && !defined(BM_IN_LINK)
+        bBmSw ? sizeof(BmSwitch_t) + N_WORDS_SWITCH_BM * sizeof(Word_t) :
+#endif // defined(CODE_BM_SW) && !defined(BM_IN_LINK)
 #if defined(USE_LIST_SW)
         ((nType == T_LIST_SW) || (nType == T_SKIP_TO_LIST_SW))
             ? sizeof(ListSw_t) :
@@ -1710,6 +1725,9 @@ OldSwitch(Word_t *pwRoot, int nBL,
     DBGR(printf("\nOldSwitch nBL %d nBLU %d wWords %" _fw"d " OWx"\n",
          nBL, nBLUp, wWords, wWords));
 
+#if defined(CODE_BM_SW) && !defined(BM_IN_LINK)
+    if (bBmSw) { pwr -= N_WORDS_SWITCH_BM; }
+#endif // defined(CODE_BM_SW) && !defined(BM_IN_LINK)
 #if defined(CODE_BM_SW) && defined(CACHE_ALIGN_BM_SW)
     MyFreeGuts(pwr, wWords, bBmSw ? 6 : cnBitsMallocMask);
 #else // CACHE_ALIGN_BM_SW
@@ -3288,6 +3306,8 @@ embeddedKeys:;
 #else // B_JUDYL
             status = Insert(nBL, pLn, pcKeys[nn] | (wKey & ~MSK(8)));
 #endif // B_JUDYL
+            DBGI(printf("Just after Insert in InsertAll(uint8_t)"));
+            DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
         }
     } else if (nBLOld <= (int)sizeof(uint16_t) * 8) {
         uint16_t *psKeys = ls_psKeysNATX(pwrOld, nPopCnt);
@@ -3298,6 +3318,8 @@ embeddedKeys:;
 #else // B_JUDYL
             status = Insert(nBL, pLn, psKeys[nn] | (wKey & ~MSK(16)));
 #endif // B_JUDYL
+            DBGI(printf("Just after Insert in InsertAll(uint16_t)"));
+            DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
         }
 #if (cnBitsPerWord > 32)
     } else if (nBLOld <= (int)sizeof(uint32_t) * 8) {
@@ -3309,6 +3331,8 @@ embeddedKeys:;
 #else // B_JUDYL
             status = Insert(nBL, pLn, piKeys[nn] | (wKey & ~MSK(32)));
 #endif // B_JUDYL
+            DBGI(printf("Just after Insert in InsertAll(uint32_t)"));
+            DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
         }
 #endif // (cnBitsPerWord > 32)
     } else
@@ -3324,8 +3348,8 @@ embeddedKeys:;
 #else // B_JUDYL
             status = Insert(nBL, pLn, pwKeys[nn]);
 #endif // B_JUDYL
-            //DBGI(printf("Just after Insert in InsertAll(Word_t)"));
-            //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+            DBGI(printf("Just after Insert in InsertAll(Word_t)"));
+            DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
         }
     }
 #ifndef B_JUDYL
