@@ -258,6 +258,7 @@ LIBBL_SRCS = b-L.c blL.c biL.c brL.c bcL.c
 LIBB_OBJS = $(LIBB1_OBJS) $(LIBBL_OBJS)
 LIBB_SRCS = $(LIBB1_SRCS) $(LIBBL_SRCS)
 ASMS  = b.s bl.s bi.s br.s bc.s
+ASMS += b-L.s blL.s biL.s brL.s bcL.s
 ASMS += JudyMalloc.s # t.s
 ASMS += Judy1LHTime.s Judy1LHCheck.s
 CPPS  = b.i bl.i bi.i br.i bc.i
