@@ -18,6 +18,13 @@
   #endif // USE_XX_SW
   // Allow DEFINES=-DSKIP_TO_BITMAP on make command line for JUDY1.
   #undef SKIP_TO_BITMAP
+
+  // Disabling PARALLEL_SEARCH_WORD helps with worst case memory usage.
+  #ifndef PARALLEL_SEARCH_WORD
+    #undef NO_PARALLEL_SEARCH_WORD
+    #define NO_PARALLEL_SEARCH_WORD
+  #endif // PARALLEL_SEARCH_WORD
+
 #endif // B_JUDYL
 
 // Default is -DPSPLIT_SEARCH_WORD -UPSPLIT_SEARCH_XOR_WORD.

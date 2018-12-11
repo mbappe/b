@@ -4254,17 +4254,17 @@ HasKey128Tail(__m128i *pxBucket,
 // clang has some support for gcc attribute "vector_size" but it doesn't work
 // as well as its own ext_vector_type.
 // For example, it won't promote a scalar to a vector for compare.
-typedef unsigned char __attribute__((ext_vector_type(16))) v_t;
+typedef unsigned char  __attribute__((ext_vector_type(16))) v_t;
 typedef unsigned short __attribute__((ext_vector_type(8))) v41_t;
-typedef unsigned int __attribute__((ext_vector_type(4))) v42_t;
+typedef unsigned int   __attribute__((ext_vector_type(4))) v42_t;
 #else // __clang__
 // gcc has no support for clang attribute "ext_vector_type".
-typedef unsigned char __attribute__((vector_size(16))) v_t;
+typedef unsigned char  __attribute__((vector_size(16))) v_t;
 //typedef unsigned char __attribute__((vector_size(16), aligned(4))) v_t;
 //typedef unsigned char
 //  __attribute__((vector_size(16), aligned(1), __may_alias__)) v_t;
 typedef unsigned short __attribute__((vector_size(16))) v41_t;
-typedef unsigned int __attribute__((vector_size(16))) v42_t;
+typedef unsigned int   __attribute__((vector_size(16))) v42_t;
 #endif // __clang__
 
 // vBK_t: vector of 2^B bytes of 2^K-byte elements.
@@ -5259,6 +5259,7 @@ ListHasKeyWord(qp, int nBLR, Word_t wKey)
   #endif // #else SEARCH_FROM_WRAPPER
     {
         nPos = 0;
+  #ifdef PARALLEL_SEARCH_WORD
   #if defined(BL_SPECIFIC_PSPLIT_SEARCH_WORD)
       #if (cnBitsPerWord > 32)
         if (nBLR == 56) {
@@ -5299,6 +5300,9 @@ ListHasKeyWord(qp, int nBLR, Word_t wKey)
             PSPLIT_HASKEY_GUTS(Bucket_t,
                                Word_t, nBLR, pwKeys, nPopCnt, wKey, nPos);
         }
+  #else // PARALLEL_SEARCH_WORD
+        PSPLIT_SEARCH_BY_KEY_WORD(Word_t, nBLR, pwKeys, nPopCnt, wKey, nPos);
+  #endif // PARALLEL_SEARCH_WORD
         DBGX(printf("LHKW: returning %d\n", nPos >= 0));
         return nPos >= 0;
     }
@@ -6087,6 +6091,7 @@ LocateKeyInListWord(qp, int nBLR, Word_t wKey)
   #endif // #else SEARCH_FROM_WRAPPER
     {
         nPos = 0;
+  #ifdef PARALLEL_SEARCH_WORD
   #if defined(BL_SPECIFIC_PSPLIT_SEARCH_WORD)
       #if (cnBitsPerWord > 32)
         if (nBLR == 56) {
@@ -6126,6 +6131,9 @@ LocateKeyInListWord(qp, int nBLR, Word_t wKey)
                                   Word_t, nBLR, pwKeys, nPopCnt, wKey, nPos);
         }
         DBGX(printf("LKILW: returning %d\n", nPos));
+  #else // PARALLEL_SEARCH_WORD
+        PSPLIT_SEARCH_BY_KEY_WORD(Word_t, nBLR, pwKeys, nPopCnt, wKey, nPos);
+  #endif // #else PARALLEL_SEARCH_WORD
         return nPos;
     }
 #endif // defined(PSPLIT_SEARCH_WORD)
