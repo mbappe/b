@@ -6503,6 +6503,12 @@ Initialize(void)
     printf("# No COMPRESSED_LISTS\n");
 #endif // defined(COMPRESSED_LISTS)
 
+#if defined(WORD_ALIGNED_VECTORS)
+    printf("#    WORD_ALIGNED_VECTORS\n");
+#else // defined(WORD_ALIGNED_VECTORS)
+    printf("# No WORD_ALIGNED_VECTORS\n");
+#endif // defined(WORD_ALIGNED_VECTORS)
+
 #if defined(SORT_LISTS)
     printf("#    SORT_LISTS\n");
 #else // defined(SORT_LISTS)

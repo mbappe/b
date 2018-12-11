@@ -4250,14 +4250,34 @@ HasKey128Tail(__m128i *pxBucket,
 
 // v_t is a vector of 16 chars. __m128i is a vector of 2 long longs.
 // We need the char variant so we can compare with a char using '==' or '>='.
-#ifdef __clang__
+#ifdef WORD_ALIGNED_VECTORS
+  #ifdef __clang__
+typedef unsigned char  __attribute__((ext_vector_type(16), aligned(8))) v_t;
+typedef unsigned short __attribute__((ext_vector_type( 8), aligned(8))) v41_t;
+typedef unsigned int   __attribute__((ext_vector_type( 4), aligned(8))) v42_t;
+  #else // __clang__
+typedef unsigned char  __attribute__((vector_size(16), aligned(8))) v_t;
+typedef unsigned short __attribute__((vector_size(16), aligned(8))) v41_t;
+typedef unsigned int   __attribute__((vector_size(16), aligned(8))) v42_t;
+  #endif // __clang__
+  #ifdef __clang__
+typedef unsigned char  __attribute__((ext_vector_type(8), aligned(8))) v30_t;
+typedef unsigned short __attribute__((ext_vector_type(4), aligned(8))) v31_t;
+typedef unsigned int   __attribute__((ext_vector_type(2), aligned(8))) v32_t;
+  #else // __clang__
+typedef unsigned char  __attribute__((vector_size(8), aligned(8))) v30_t;
+typedef unsigned short __attribute__((vector_size(8), aligned(8))) v31_t;
+typedef unsigned int   __attribute__((vector_size(8), aligned(8))) v32_t;
+  #endif // __clang__
+#else // WORD_ALIGNED_VECTORS
+  #ifdef __clang__
 // clang has some support for gcc attribute "vector_size" but it doesn't work
 // as well as its own ext_vector_type.
 // For example, it won't promote a scalar to a vector for compare.
 typedef unsigned char  __attribute__((ext_vector_type(16))) v_t;
 typedef unsigned short __attribute__((ext_vector_type(8))) v41_t;
 typedef unsigned int   __attribute__((ext_vector_type(4))) v42_t;
-#else // __clang__
+  #else // __clang__
 // gcc has no support for clang attribute "ext_vector_type".
 typedef unsigned char  __attribute__((vector_size(16))) v_t;
 //typedef unsigned char __attribute__((vector_size(16), aligned(4))) v_t;
@@ -4265,21 +4285,21 @@ typedef unsigned char  __attribute__((vector_size(16))) v_t;
 //  __attribute__((vector_size(16), aligned(1), __may_alias__)) v_t;
 typedef unsigned short __attribute__((vector_size(16))) v41_t;
 typedef unsigned int   __attribute__((vector_size(16))) v42_t;
-#endif // __clang__
-
+  #endif // __clang__
 // vBK_t: vector of 2^B bytes of 2^K-byte elements.
 // v64c_t, v64uc_t: vector of 64 bits of char  or unsigned char.
 // v64s_t, v64us_t, vector of 64 bits of short or unsigned short.
 // v64i_t, v64ui_t, vector of 64 bits of int   or unsigned int.
-#ifdef __clang__
+  #ifdef __clang__
 typedef unsigned char  __attribute__((ext_vector_type(8))) v30_t;
 typedef unsigned short __attribute__((ext_vector_type(4))) v31_t;
 typedef unsigned int   __attribute__((ext_vector_type(2))) v32_t;
-#else // __clang__
+  #else // __clang__
 typedef unsigned char  __attribute__((vector_size(8))) v30_t;
 typedef unsigned short __attribute__((vector_size(8))) v31_t;
 typedef unsigned int   __attribute__((vector_size(8))) v32_t;
-#endif // __clang__
+  #endif // __clang__
+#endif // WORD_ALIGNED_VECTORS
 
 #if (cnBitsPerWord < 64)
 #undef HK_MOVEMASK
