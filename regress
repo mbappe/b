@@ -1,9 +1,20 @@
 #!/bin/sh -x
 
+# What is the goal of this regression test script?
+# How much memory should it require? Should it test and adapt?
+
 # Use a -DDEBUG build.
 
 TIME=Judy1LHTime
 CHECK=Judy1LHCheck
+
+# Basic runs we use for performance testing:
+# ${TIME} -1m
+# ${TIME} -1m -E
+# ${TIME} -1m -DS1
+# ${TIME} -Lm
+# ${TIME} -Lm -E
+# ${TIME} -Lm -DS1
 
 : \
 && ${TIME} -W0 -B32 -1Lh -n1000000 -S1 --splay-key-bits=0xff00aa00aa00ffff \
