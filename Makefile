@@ -55,9 +55,12 @@ endif
 JUDY_LIBDIR = src/obj/.libs
 ifeq "$(BPW)" "32"
   LDFLAGS = -L/usr/local/lib32
+  LIBJUDY = libJudy32.a
 else
   LDFLAGS = -L/usr/local/lib
+  LIBJUDY = libJudy.a
 endif
+
 
 # Potentially interesting gcc options:
 # -ftree-vectorize (enabled by default with -O3)
@@ -295,11 +298,11 @@ t: t.c $(T_OBJS)
 # -DMIKEY tells Judy1LHTime to use different RAMMETRICS column headings
 # and be more strict in testing.
 # libJudy.a is for JudyHS.
-btime: Judy1LHTime.c libb.a libJudy.a
+btime: Judy1LHTime.c libb.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
 	ln -sf btime Judy1LHTime
 
-c++time: Judy1LHTime.c libb.a libJudy.a
+c++time: Judy1LHTime.c libb.a ${LIBJUDY}
 	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) -o $@ \
     -x c++ Judy1LHTime.c -x none libb.a libJudy.a -lm
 
@@ -314,11 +317,11 @@ check:
 	ln -sf Judy1LHCheck check
 
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
-bcheck: Judy1LHCheck.c libb.a libJudy.a
+bcheck: Judy1LHCheck.c libb.a ${LIBJUDY}
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 	ln -sf bcheck Judy1LHCheck
 
-c++check: Judy1LHCheck.c libb.a libJudy.a
+c++check: Judy1LHCheck.c libb.a ${LIBJUDY}
 	$(CXX) $(CXXFLAGS) $(DEFINES) -o $@ \
     -x c++ Judy1LHCheck.c -x none libb.a libJudy.a -lm
 
@@ -337,11 +340,11 @@ libbL.a: $(LIBBL_OBJS)
 	rm -f b1time b1check
 	make b1time b1check
 
-b1time: Judy1LHTime.c libb1.a libJudy.a
+b1time: Judy1LHTime.c libb1.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
 	ln -sf $@ Judy1LHTime
 
-b1check: Judy1LHCheck.c libb1.a libJudy.a
+b1check: Judy1LHCheck.c libb1.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
 	ln -sf $@ Judy1LHCheck
 
@@ -351,11 +354,11 @@ L:
 	rm -f bLtime bLcheck
 	make bLtime bLcheck
 
-bLtime: Judy1LHTime.c libbL.a libJudy.a
+bLtime: Judy1LHTime.c libbL.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
 	ln -sf $@ Judy1LHTime
 
-bLcheck: Judy1LHCheck.c libbL.a libJudy.a
+bLcheck: Judy1LHCheck.c libbL.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
 	ln -sf $@ Judy1LHCheck
 
@@ -364,11 +367,11 @@ j:
 	rm -f jtime jcheck
 	make jtime jcheck
 
-jtime: Judy1LHTime.c libJudy.a
+jtime: Judy1LHTime.c ${LIBJUDY}
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 	ln -sf jtime Judy1LHTime
 
-jcheck: Judy1LHCheck.c libJudy.a
+jcheck: Judy1LHCheck.c ${LIBJUDY}
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 	ln -sf jcheck Judy1LHCheck
 
