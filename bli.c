@@ -388,7 +388,7 @@ SwCleanup(qp, Word_t wKey, int nBLR, int bCleanup
       #if defined(INSERT)
         if (0
           #if defined(CODE_BM_SW)
-            || tp_bIsBmSw(Get_nType(&wRoot)) && InflateBmSwTest(qy)
+            || (tp_bIsBmSw(Get_nType(&wRoot)) && InflateBmSwTest(qy))
           #endif // defined(CODE_BM_SW)
           #ifdef BITMAP
             || ((cn2dBmMaxWpkPercent != 0)
