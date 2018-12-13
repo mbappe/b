@@ -2,16 +2,19 @@
 
 # Use a -DDEBUG build.
 
+TIME=Judy1LHTime
+CHECK=Judy1LHCheck
+
 : \
-&& b -W0 -1l -n1000000 -S1 --splay-key-bits=0xff00ffff \
+&& ${TIME} -W0 -1l -n1000000 -S1 --splay-key-bits=0xff00ffff \
 && bcheckall 32 \
-&& b -W0 -1ICvdgi -n1000000 --splay-key-bits=0xff00ffff \
-&& b -W0 -1ICvdgi -n1000000 -DS1 --splay-key-bits=0xff00ffff \
-&& b -W0 -1ICvdgi -n1000000 \
-&& b -W0 -1ICvdgi -n1000000 -S1 \
-&& b -W0 -1ICvdgi -n1000000 -DS1 \
-&& b -W0 -1ICvdgi -n1000000 -S1 --splay-key-bits=0xff00ffff \
-&& b -W0 -1lmt \
-&& b -W0 -RICvdgi -n1000000 \
+&& ${TIME} -W0 -1ICvdgi -n1000000 --splay-key-bits=0xff00ffff \
+&& ${TIME} -W0 -1ICvdgi -n1000000 -DS1 --splay-key-bits=0xff00ffff \
+&& ${TIME} -W0 -1ICvdgi -n1000000 \
+&& ${TIME} -W0 -1ICvdgi -n1000000 -S1 \
+&& ${TIME} -W0 -1ICvdgi -n1000000 -DS1 \
+&& ${TIME} -W0 -1ICvdgi -n1000000 -S1 --splay-key-bits=0xff00ffff \
+&& ${TIME} -W0 -1lmt \
+&& ${TIME} -W0 -RICvdgi -n1000000 \
 :
 
