@@ -4241,7 +4241,9 @@ Splay(qp,
       (void)wPopCnt;
       (void)pwKeys;
 #ifdef COMPRESSED_LISTS
+#if (cnBitsPerWord > 32)
       (void)piKeys;
+#endif // (cnBitsPerWord > 32)
       (void)psKeys;
       (void)pcKeys;
 #endif // COMPRESSED_LISTS
