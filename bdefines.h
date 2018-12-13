@@ -27,6 +27,19 @@
 
 #endif // B_JUDYL
 
+// Define LVL_IN_WR_HB by default.
+#if       !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_SW)
+  #undef              LVL_IN_WR_HB
+  #define             LVL_IN_WR_HB
+  // NO_LVL_IN_SW is not necessary
+#endif // !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_SW)
+
+// Define USE_BM_SW by default.
+#ifndef   NO_USE_BM_SW
+  #undef     USE_BM_SW
+  #define    USE_BM_SW
+#endif // NO_USE_BM_SW
+
 // Default is -DPSPLIT_SEARCH_WORD -UPSPLIT_SEARCH_XOR_WORD.
 // Default is -UNO_BINARY_SEARCH_WORD -UBACKWARD_SEARCH_WORD.
 // PSPLIT_SEARCH_WORD does not apply at nBL == cnBitsPerDigit.

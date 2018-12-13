@@ -346,30 +346,6 @@ MyFree(Word_t *pw, Word_t wWords)
   #define ExtListKeySlotCnt  ListSlotCnt
 #endif // OLD_LIST_WORD_CNT
 
-static int
-ExtListBytesPerKey(int nBL)
-{
-  #if defined(COMPRESSED_LISTS)
-    // log(56-1) = 5, log(40-1) = 5, exp(5+1) = 64
-    // log(32-1) = 4, log(24-1) = 4, exp(4+1) = 32
-    // log(16-1) = 3, exp(3+1) = 16
-    // log(8-1) = 2, exp(2+1) = 8
-    //assert(nBL >= 5);
-    //return EXP(LOG(nBL-1)-2);
-    // Will the compiler get rid of LOG and EXP if nBL is a constant?
-    // Or are we better off with the old way?
-    return (nBL <=  8) ? 1 : (nBL <= 16) ? 2 :
-      #if (cnBitsPerWord > 32)
-        (nBL <= 32) ? 4 :
-      #endif // (cnBitsPerWord > 32)
-        sizeof(Word_t);
-    // Or should we just assume that nBL is a multiple of 8?
-  #else // defined(COMPRESSED_LISTS)
-    (void)nBL;
-    return sizeof(Word_t);
-  #endif // defined(COMPRESSED_LISTS)
-}
-
 // How many keys fit in a list buffer that must hold at least nPopCnt keys?
 static int
 ListSlotCntOld(int nPopCnt, int nBytesPerKey)
@@ -1454,15 +1430,13 @@ InflateBmSw(Word_t *pwRoot, Word_t wKey, int nBLR, int nBLUp)
 
 #if defined(BM_SW_FOR_REAL)
 static void
-NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
+NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
 {
-    Word_t wRoot = *pwRoot;
-    Word_t *pwr = wr_pwr(wRoot);
+    qv;
     int nBLR = nDL_to_nBL(nDLR);
     int nBLUp = nDL_to_nBL(nDLUp);
 
-    DBGI(printf("NewLink(pwRoot %p wKey " OWx" nBLR %d)\n",
-        (void *)pwRoot, wKey, nBLR));
+    DBGI(printf("NewLink(pLn %p wKey " OWx" nBLR %d)\n", pLn, wKey, nBLR));
     DBGI(printf("PWR_wPopCnt %" _fw"d\n",
          PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR)));
 
@@ -1525,8 +1499,7 @@ NewLink(Word_t *pwRoot, Word_t wKey, int nDLR, int nDLUp)
     // It's probably more efficient to do it here, but InsertCleanup will
     // probably end up doing it before we have a chance to do it here
     // the vast majority of the time.
-    if (wPopCntKeys * nBLR * cnBmSwConvert
-            > EXP(nBitsIndexSz) * 8 * sizeof(Link_t) * cnBmSwRetain) {
+    if (InflateBmSwTest(qy)) {
         InflateBmSw(pwRoot, wKey, nBLR, nBLUp);
     } else {
         // We replicate a bunch of newswitch here since
@@ -3061,11 +3034,7 @@ InsertCleanup(qp, Word_t wKey)
   #else // defined(SKIP_LINKS)
         int nBLR = nBL;
   #endif // defined(SKIP_LINKS)
-        Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
-        int nBW = gnBW(qy, T_BM_SW, nBLR);
-        // -E: 256*16=4096 > 256*8=2048
-        if (wPopCnt * nBLR * cnBmSwConvert
-                > EXP(nBW) * 8 * sizeof(Link_t) * cnBmSwRetain) {
+        if (InflateBmSwTest(qy)) {
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
             // InflateBmSw may change pwValue of all embedded keys.
             Word_t *pwValueRet
@@ -5144,7 +5113,7 @@ embeddedKeys:;
                         PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDLR),
                         w_wPrefix(wKey, nDLR), nDLR));
 #endif // defined(SKIP_LINKS)
-            NewLink(pwRoot, wKey, nDLR, /* nDLUp */ nDL);
+            NewLink(qy, wKey, nDLR, /* nDLUp */ nDL);
 #ifdef B_JUDYL
             return
 #endif // B_JUDYL

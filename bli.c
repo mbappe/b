@@ -388,11 +388,7 @@ SwCleanup(qp, Word_t wKey, int nBLR, int bCleanup
       #if defined(INSERT)
         if (0
           #if defined(CODE_BM_SW)
-            || (tp_bIsBmSw(Get_nType(&wRoot))
-                // bits of keys * convert > bits per switch * retain
-                && (gwPopCnt(qy, nBLR) * nBLR * EXP(cnBmSwConvert)
-                    > EXP(gnBW(qy, T_BM_SW, nBLR)) * 8
-                        * sizeof(Link_t) * cnBmSwRetain))
+            || tp_bIsBmSw(Get_nType(&wRoot)) && InflateBmSwTest(qy)
           #endif // defined(CODE_BM_SW)
           #ifdef BITMAP
             || ((cn2dBmMaxWpkPercent != 0)
@@ -1382,13 +1378,9 @@ bmSwTail:;
   #else // defined(LOOKUP)
       #ifdef INSERT
         // This test should be the same as the one in InsertCleanup.
-        if (tp_bIsBmSw(nType)) {
-            if (gwPopCnt(qy, nBLR) * nBLR * cnBmSwConvert
-                > EXP(nBW) * 8 * sizeof(Link_t) * cnBmSwRetain)
-            {
-                DBGX(Log(qy, "T_BM_SW req cleanup"));
-                bCleanupRequested = 1; // on success
-            }
+        if (tp_bIsBmSw(nType) && InflateBmSwTest(qy)) {
+            DBGX(Log(qy, "T_BM_SW req cleanup"));
+            bCleanupRequested = 1; // on success
         }
       #endif // INSERT
         goto switchTail;

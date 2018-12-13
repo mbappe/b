@@ -124,7 +124,7 @@
 // The parameters are all related to each other.
 // nBL is the number of bits left to decode after identifying the given link.
 // nBL does not include the bits skipped if the link is a skip link.
-// pLn is NULL if nBL == cnBitsPerWord sizeof(Link_t) > sizeof(Word_t).
+// pLn is NULL if nBL == cnBitsPerWord && sizeof(Link_t) > sizeof(Word_t).
 // Sure would like to get rid of pwRoot.
 // And possibly add nBLR.
 // And wPopCnt would be an option.
@@ -199,13 +199,6 @@
       #endif // B_JUDYL
   #endif // (cnBitsPerWord == 32)
 #endif // ! defined(cn2dBmMaxWpkPercent)
-
-#if !defined(cnBmSwConvert)
-#define cnBmSwConvert 9
-#endif // !defined(cnBmSwConvert)
-#if !defined(cnBmSwRetain)
-#define cnBmSwRetain 2
-#endif // !defined(cnBmSwRetain)
 
 #if defined(USE_BM_SW)
 // USE_BM_SW means always use a bm sw when creating a switch with no skip.
@@ -421,6 +414,30 @@ SetBits(Word_t *pw, int nBits, int nLsb, Word_t wVal)
 {
     *pw &= ~(MSK(nBits) << nLsb); // clear the field
     *pw |= (wVal & MSK(nBits)) << nLsb; // set the field
+}
+
+static int
+ExtListBytesPerKey(int nBL)
+{
+  #if defined(COMPRESSED_LISTS)
+    // log(56-1) = 5, log(40-1) = 5, exp(5+1) = 64
+    // log(32-1) = 4, log(24-1) = 4, exp(4+1) = 32
+    // log(16-1) = 3, exp(3+1) = 16
+    // log(8-1) = 2, exp(2+1) = 8
+    //assert(nBL >= 5);
+    //return EXP(LOG(nBL-1)-2);
+    // Will the compiler get rid of LOG and EXP if nBL is a constant?
+    // Or are we better off with the old way?
+    return (nBL <=  8) ? 1 : (nBL <= 16) ? 2 :
+      #if (cnBitsPerWord > 32)
+        (nBL <= 32) ? 4 :
+      #endif // (cnBitsPerWord > 32)
+        sizeof(Word_t);
+    // Or should we just assume that nBL is a multiple of 8?
+  #else // defined(COMPRESSED_LISTS)
+    (void)nBL;
+    return sizeof(Word_t);
+  #endif // defined(COMPRESSED_LISTS)
 }
 
 // Default is -DPSPLIT_EARLY_OUT which is applicable only if PSPLIT_PARALLEL.
@@ -1626,7 +1643,6 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 
 #endif // defined(LVL_IN_WR_HB)
 
-
 // methods for Switch (and aliases)
 
 #define wPrefixPopMaskNotAtTop(_nDL)    (MSK(nDL_to_nBL_NAT(_nDL)))
@@ -2670,6 +2686,56 @@ snListSwPop(qp, int nPopCnt)
 #define set_PWR_xListPopCnt(_pwRoot, _pwr, _nBL, _cnt) \
     (assert(wr_pwr(*(_pwRoot)) == (_pwr)), \
     Set_xListPopCnt((_pwRoot), (_nBL), (_cnt)))
+
+#ifdef CODE_BM_SW
+
+#ifdef B_JUDYL
+  #if !defined(cnBmSwConvertL)
+    #define cnBmSwConvertL 5
+  #endif // !defined(cnBmSwConvertL)
+    #define cnBmSwConvert  cnBmSwConvertL
+  #if !defined(cnBmSwRetainL)
+    #define cnBmSwRetainL 2
+  #endif // !defined(cnBmSwRetainL)
+  #define cnBmSwRetain  cnBmSwRetainL
+#else // B_JUDYL
+  #if !defined(cnBmSwConvert1)
+    #define cnBmSwConvert1 3
+  #endif // !defined(cnBmSwConvert1)
+    #define cnBmSwConvert  cnBmSwConvert1
+  #if !defined(cnBmSwRetain1)
+    #define cnBmSwRetain1 2
+  #endif // !defined(cnBmSwRetain1)
+    #define cnBmSwRetain  cnBmSwRetain1
+#endif // #else B_JUDYL
+
+static int // bool
+InflateBmSwTest(qp) // qp points to BM switch
+{
+    int nBLR = gnBLR(qy);
+    int nBW = gnBW(qy, T_BM_SW, nBLR); // BW is width of switch
+    Word_t wPopCnt = gwPopCnt(qy, nBLR);
+    qv;
+
+    int nBytesPerPop = ExtListBytesPerKey(nBLR - nBW);
+    int nBytesPerLink = sizeof(Link_t);
+#ifdef B_JUDYL
+    nBytesPerPop += sizeof(Word_t); // value
+    nBytesPerLink += sizeof(Word_t); // value
+#endif // B_JUDYL
+
+// inflate: total-words / pop < words-per-key
+// (bytes-in-sw + bytes-below-sw) / sizeof(Word_t) / pop < wpk
+// (bytes-in-sw + bytes-below-sw) / sizeof(Word_t) / pop < convert/retain
+// (bytes-in-sw + bytes-below-sw) / pop < sizeof(Word_t) * convert/retain
+// (bytes-in-sw + bytes-below-sw) * retain < sizeof(Word_t) * convert * pop
+// convert * pop * sizeof(Word_t) > retain * (bytes-in-sw + bytes-below-sw)
+
+    return cnBmSwConvert * wPopCnt * sizeof(Word_t)
+        > cnBmSwRetain * (EXP(nBW) * nBytesPerLink + wPopCnt * nBytesPerPop);
+}
+
+#endif // CODE_BM_SW
 
 #ifdef B_JUDYL
 Word_t* InsertL(int nBL, Link_t *pLn, Word_t wKey);
