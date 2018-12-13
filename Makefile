@@ -338,7 +338,7 @@ libbL.a: $(LIBBL_OBJS)
 # and JudyL from libJudy.a
 1:
 	rm -f b1time b1check
-	make b1time b1check
+	make b1time b1check b check
 
 b1time: Judy1LHTime.c libb1.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
@@ -352,7 +352,7 @@ b1check: Judy1LHCheck.c libb1.a ${LIBJUDY}
 # and Judy1 from libJudy.a
 L:
 	rm -f bLtime bLcheck
-	make bLtime bLcheck
+	make bLtime bLcheck b bcheck
 
 bLtime: Judy1LHTime.c libbL.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
