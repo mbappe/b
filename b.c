@@ -359,9 +359,6 @@ ListSlotCntOld(int nPopCnt, int nBytesPerKey)
 static int
 ListWordsMin(int nPopCnt, int nBL)
 {
-// nPopCnt 5 nSlots 7 nBytesPerKey 4 Words() 15 nWords 11
-// 5: 6 words of values and 3 words of keys = 9
-// 7: 8 words of values and 4 words of keys = 12
     int nBytesPerKey = ExtListBytesPerKey(nBL);
     int nBytesPerBucket
         = ALIGN_LIST_LEN(nBytesPerKey)
@@ -378,13 +375,11 @@ ListWordsMin(int nPopCnt, int nBL)
     return nKeyWords;
 }
 
-// 3/4 Double 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024,
+// 3/4 Double: 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512
 static int
 ListWordCnt(int nPopCnt, int nBL)
 {
     int nListWordsMin = ListWordsMin(nPopCnt, nBL);
-//  9: 12, 11 looks ok
-// 12: 12, 15 looks ok
     int n = MAX(4, EXP(LOG(nListWordsMin) + 1) * 3 / 4);
     if (nListWordsMin > n - 1) { n = n * 4 / 3; }
     return n - 1;
@@ -406,17 +401,38 @@ ListSlotCnt(int nPopCnt, int nBytesPerKey)
     int nKeysPerBucket = nBytesPerBucket / nBytesPerKey;
 #ifdef B_JUDYL
     nWordsPerUnit += nKeysPerBucket;
-#endif // B_JUDYL
+    int nWordsPerMallocChunk = cnMallocAlignment >> cnLogBytesPerWord;
+    int nWordsPerChunk = nWordsPerMallocChunk;
+    if (nWordsPerBucket < nWordsPerChunk) {
+        nWordsPerChunk = nWordsPerBucket;
+    }
+    int nListChunks = nListWords / nWordsPerChunk;
+    int nValueChunks = nListChunks * nKeysPerBucket / nWordsPerUnit;
+    int nValueMallocChunks
+        = nValueChunks * nWordsPerChunk / nWordsPerMallocChunk;
+    int nValues = nValueMallocChunks * nWordsPerMallocChunk;
+    int nKeyChunks
+        = nListChunks
+            - nValueMallocChunks * nWordsPerMallocChunk / nWordsPerChunk;
+    int nKeyBuckets = nKeyChunks * nWordsPerChunk / nWordsPerBucket;
+    int nKeys = nKeyBuckets * nKeysPerBucket;
+    if (nKeys > nValues) {
+        nKeys = nValues;
+        // try one less key chunk and one more value chunk
+        nKeyChunks -= nWordsPerMallocChunk / nWordsPerChunk;
+        nKeyBuckets = nKeyChunks * nWordsPerChunk / nWordsPerBucket;
+        if (nKeyBuckets * nKeysPerBucket > nValues) {
+            nKeys = nKeyBuckets * nKeysPerBucket;
+            if (nValues + (int)nWordsPerMallocChunk < nKeys) {
+                nKeys = nValues + nWordsPerMallocChunk;
+            }
+        }
+    }
+    int nListSlots = nKeys;
+#else // B_JUDYL
     int nListUnits = nListWords / nWordsPerUnit;
     int nListSlots = nListUnits * nKeysPerBucket; // slots/unit = keys/bucket
-#ifdef B_JUDYL
-    int nWordsLeft = nListWords - nListUnits * nWordsPerUnit;
-    if (nWordsLeft > nWordsPerBucket) {
-        nListSlots
-            += (nWordsLeft - nWordsPerBucket)
-                & ~(cnMallocMask >> cnLogBytesPerWord);
-    }
-#endif // B_JUDYL
+#endif // #endif B_JUDYL
     assert(ListWordCnt(nListSlots, nBytesPerKey * 8) == nListWords);
     return nListSlots;
 }
@@ -7532,7 +7548,10 @@ Initialize(void)
     printf("# cnBmSwConvert %d\n", cnBmSwConvert);
     printf("# cnBmSwRetain %d\n", cnBmSwRetain);
 
-    for (int nLogBytesPerKey = 3; nLogBytesPerKey >= 0; --nLogBytesPerKey) {
+    for (int nLogBytesPerKey = cnLogBytesPerWord;
+             nLogBytesPerKey >= 0;
+           --nLogBytesPerKey)
+    {
         int nMallocPrev = 0; (void)nMallocPrev;
         int nPopCntPrev = 0; (void)nPopCntPrev;
         printf("\n");
