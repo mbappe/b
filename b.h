@@ -347,7 +347,7 @@
 // by eliminating the requirement that lists be padded to an integral number
 // of 16-byte bucket lengths while preserving our ability to use 128-bit
 // parallel searches.
-// This proof-of-concept very limited and has not been hardened.
+// This proof-of-concept is very limited and has not been hardened.
 // It is enabled by default if and only if cnBitsPerWord==32 and
 // cnBitsMallocMask >= 4.
 // And then only lists of 16-bit keys that fit in 12 bytes are made T_LIST_UA.
@@ -3926,6 +3926,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 }
 #endif // 0
 
+// PSPLIT_HASKEY_GUTS_128_96 is for UA_PARALLEL_128 and T_LIST_UA.
 #define PSPLIT_HASKEY_GUTS_128_96(_x_t, \
                                   _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
@@ -4535,6 +4536,8 @@ HasKey40(void *pvBucket, unsigned char Key)
 }
 #endif // HK40_EXPERIMENT
 
+// Find a key in a 96-bit bucket.
+// HasKey96 is for UA_PARALLEL_128 and T_LIST_UA.
 static Word_t // bool
 HasKey96(__m128i *pxBucket, Word_t wKey, int nBL)
 {
@@ -4917,6 +4920,11 @@ ListHasKey16Ua(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 }
 #endif // 0
 
+// What is the purpose of ListHasKey1696?
+// Is it for UA_PARALLEL_128? Then why is there an ifdef UA_PARALLEL_128 inside?
+// Is it for T_LIST_UA?
+//
+//   8 < nBL <= 16, nPopCnt <= 6
 static int
 ListHasKey1696(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 {
@@ -5245,11 +5253,9 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
 {
     (void)nBL;
     int nPos = 0;
-    Word_t *pwKeysOrig = pwKeys;
-  #ifdef PARALLEL_SEARCH_WORD
-    int nPopCntOrig = nPopCnt; (void)nPopCntOrig;
-  #endif // PARALLEL_SEARCH_WORD
-  // BINARY_SEARCH narrows the scope of the linear search that follows.
+    //Word_t *pwKeysOrig = pwKeys;
+    //int nPopCntOrig = nPopCnt; (void)nPopCntOrig;
+    // BINARY_SEARCH narrows the scope of the linear search that follows.
     unsigned nSplit;
     // Looks like we might want a loop threshold of 8 for
     // 64-bit keys at the top level.
@@ -5257,18 +5263,12 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
     // 16 or 64.
     // Not sure about 64-bit keys at a lower level or
     // 64-bit keys at the top level.
-//printf("pwKeys %p nPopCnt %d\n", pwKeys, nPopCnt);
     SMETRICS(int nCompares = 0);
-    while (nPopCnt >= cnBinarySearchThresholdWord)
-    {
-        nSplit = nPopCnt / 2;
-//printf("nSplit %d\n", nSplit);
-//printf("nSplit & ~1 %d\n", nSplit & ~1);
-//printf("pwKeys %p nPopCnt %d\n", pwKeys, nPopCnt);
-//printf("pBucket %p\n", (void*)(((Word_t)&pwKeys[nSplit])&~0xf));
-//fflush(stdout);
-        if (BUCKET_HAS_KEY((Bucket_t *)(((Word_t)&pwKeys[nSplit])&~0xf), wKey, nBL)) {
-//printf("ret\n"); fflush(stdout);
+    int nKeysPerBucket = sizeof(Bucket_t) / sizeof(Word_t);
+    while (nPopCnt >= cnBinarySearchThresholdWord) {
+        //nSplit = ALIGN_UP(nPopCnt / 2, nKeysPerBucket);
+        nSplit = (nPopCnt / 2) & ~(nKeysPerBucket - 1);
+        if (BUCKET_HAS_KEY((Bucket_t *)&pwKeys[nSplit], wKey, nBL)) {
   #ifdef SEARCHMETRICS
             if (nPopCnt == nPopCntOrig) {
                 ++j__DirectHits;
@@ -5282,43 +5282,23 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
   #endif // SEARCHMETRICS
             return 1;
         }
-//printf("cont\n"); fflush(stdout);
         if (pwKeys[nSplit] <= wKey) {
-            pwKeys = &pwKeys[nSplit];
-            nPopCnt -= nSplit;
+            pwKeys = &pwKeys[nSplit + nKeysPerBucket];
+            nPopCnt -= nSplit + nKeysPerBucket;
         } else {
             nPopCnt = nSplit;
-            if (nPopCnt == 0) {
-                assert(~(pwKeys - pwKeysOrig) < 0);
-                return ~(pwKeys - pwKeysOrig);
-            }
         }
         SMETRICS(++nCompares);
     }
-    nPos = pwKeys - pwKeysOrig;
-    pwKeys = pwKeysOrig;
     // What if one of nComparesB is not a miscompare? */
     // Call it a miscompare because it is an extra conditional branch.
   #if defined(BACKWARD_SEARCH_WORD)
-      #ifdef PARALLEL_SEARCH_WORD
-    assert(sizeof(Bucket_t) == sizeof(Word_t) * 2);
-    // assumes bucket size is two words
-    nPos = (nPos + 1) & ~1; // won't be required when code above is fixed
-    HASKEYB(Bucket_t, wKey, pwKeys, nPopCntOrig, nPos);
-      #else // PARALLEL_SEARCH_WORD
-    SEARCHB(Word_t, pwKeys, nPopCnt, wKey, nPos);
-      #endif // PARALLEL_SEARCH_WORD
+    nPos = nPopCnt - 1;
+    HASKEYB(Bucket_t, wKey, pwKeys, nPopCnt, nPos);
     SMETRICS(j__MisComparesM += nCompares);
     SMETRICS(++j__GetCallsM);
   #else // defined(BACKWARD_SEARCH_WORD)
-      #ifdef PARALLEL_SEARCH_WORD
-    assert(sizeof(Bucket_t) == sizeof(Word_t) * 2);
-    // assumes bucket size is two words
-    nPos &= ~1; // won't be required when code above is fixed
-    HASKEYF(Bucket_t, wKey, pwKeys, nPopCntOrig, nPos);
-      #else // PARALLEL_SEARCH_WORD
-    SEARCHF(Word_t, pwKeys, nPopCnt, wKey, nPos);
-      #endif // PARALLEL_SEARCH_WORD
+    HASKEYF(Bucket_t, wKey, pwKeys, nPopCnt, nPos);
     SMETRICS(j__MisComparesP += nCompares);
     SMETRICS(++j__GetCallsP);
   #endif // defined(BACKWARD_SEARCH_WORD)
@@ -5399,11 +5379,13 @@ ListHasKeyWord(qp, int nBLR, Word_t wKey)
         return nPos >= 0;
     }
   #endif // defined(PSPLIT_SEARCH_WORD)
-  #if !defined(NO_BINARY_SEARCH_WORD) && defined(PARALLEL_SEARCH_WORD)
+  #if (cnBitsPerWord > 32)
+      #if !defined(NO_BINARY_SEARCH_WORD) && defined(PARALLEL_SEARCH_WORD)
     if (sizeof(Bucket_t) > sizeof(Word_t)) {
         return BinaryHasKeyWord(pwKeys, wKey, nBLR, nPopCnt);
     } else
-  #endif // !defined(NO_BINARY_SEARCH_WORD) && defined(PARALLEL_SEARCH_WORD)
+      #endif // !defined(NO_BINARY_SEARCH_WORD) && defined(PARALLEL_SEARCH_WORD)
+  #endif // (cnBitsPerWord > 32)
     {
         nPos = SearchListWord(pwKeys, wKey, nBLR, nPopCnt);
     }

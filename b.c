@@ -364,7 +364,11 @@ ListWordsMin(int nPopCnt, int nBL)
 // 7: 8 words of values and 4 words of keys = 12
     int nBytesPerKey = ExtListBytesPerKey(nBL);
     int nBytesPerBucket
-        = ALIGN_LIST_LEN(nBytesPerKey) ? sizeof(Bucket_t) : sizeof(Word_t);
+        = ALIGN_LIST_LEN(nBytesPerKey)
+#ifdef UA_PARALLEL_128 // implies B_JUDYL && PARALLEL_128
+                && ((nPopCnt > 6) || (nBytesPerKey != 2))
+#endif // UA_PARALLEL_128
+            ? sizeof(Bucket_t) : sizeof(Word_t);
     int nKeyBytes = ALIGN_UP(nPopCnt * nBytesPerKey, nBytesPerBucket);
     int nKeyWords = nKeyBytes / sizeof(Word_t);
 #ifdef B_JUDYL
@@ -391,7 +395,11 @@ static int
 ListSlotCnt(int nPopCnt, int nBytesPerKey)
 {
     int nBytesPerBucket
-        = ALIGN_LIST_LEN(nBytesPerKey) ? sizeof(Bucket_t) : sizeof(Word_t);
+        = ALIGN_LIST_LEN(nBytesPerKey)
+#ifdef UA_PARALLEL_128 // implies B_JUDYL && PARALLEL_128
+                && ((nPopCnt > 6) || (nBytesPerKey != 2))
+#endif // UA_PARALLEL_128
+            ? sizeof(Bucket_t) : sizeof(Word_t);
     int nListWords = ListWordCnt(nPopCnt, nBytesPerKey * 8);
     int nWordsPerBucket = nBytesPerBucket >> cnLogBytesPerWord;
     int nWordsPerUnit = nWordsPerBucket;

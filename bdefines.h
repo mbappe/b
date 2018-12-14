@@ -27,12 +27,14 @@
 
 #endif // B_JUDYL
 
-// Define LVL_IN_WR_HB by default.
-#if       !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_SW)
-  #undef              LVL_IN_WR_HB
-  #define             LVL_IN_WR_HB
-  // NO_LVL_IN_SW is not necessary
-#endif // !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_SW)
+// Define LVL_IN_WR_HB by default for 64-bit.
+#if (cnBitsPerWord > 32)
+  #if       !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_SW)
+    #undef              LVL_IN_WR_HB
+    #define             LVL_IN_WR_HB
+  //                 NO_LVL_IN_SW is not necessary.
+  #endif // !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_SW)
+#endif // (cnBitsPerWord > 32)
 
 // Define USE_BM_SW by default.
 #ifndef   NO_USE_BM_SW
