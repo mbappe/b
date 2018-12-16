@@ -352,7 +352,7 @@ b1check: Judy1LHCheck.c libb1.a ${LIBJUDY}
 # and Judy1 from libJudy.a
 L:
 	rm -f bLtime bLcheck
-	make bLtime bLcheck b bcheck
+	make bLtime bLcheck b check
 
 bLtime: Judy1LHTime.c libbL.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
