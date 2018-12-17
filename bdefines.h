@@ -2,6 +2,33 @@
 #if ( ! defined(_BCONF_H_INCLUDED) )
 #define _BCONF_H_INCLUDED
 
+#define cnBitsPerByte  8
+
+// Default cnLogBitsPerWord is determined by __LP64__ and _WIN64.
+#if ! defined(cnBitsPerWord)
+  #if defined(__LP64__) || defined(_WIN64)
+    #define cnBitsPerWord  64
+  #else // defined(__LP64__) || defined(_WIN64)
+    #define cnBitsPerWord  32
+  #endif // defined(__LP64__) || defined(_WIN64)
+#endif // ! defined(cnBitsPerWord)
+
+#if (cnBitsPerWord != 64) && (cnBitsPerWord != 32)
+    #error Unsupported cnBitsPerWord.
+#endif
+
+#define cnBytesPerWord  (cnBitsPerWord / cnBitsPerByte)
+
+#define cnLogBitsPerByte  3
+
+#if (cnBitsPerWord == 64)
+    #define cnLogBitsPerWord 6
+    #define cnLogBytesPerWord 3
+#else // cnBitsPerWord
+    #define cnLogBitsPerWord 5
+    #define cnLogBytesPerWord 2
+#endif // cnBitsPerWord
+
 // Makefile must define B_JUDYL in order to build libL, i.e. -DB_JUDYL.
 
 // Set initial defines based on whether we are building Judy1 or JudyL.
