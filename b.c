@@ -625,23 +625,6 @@ ListWords(int nPopCnt, int nBL)
     return ListWordsExternal(nPopCnt, nBL);
 }
 
-#if JUNK
-#define PSPLIT(_nWords, _nBL, _xKeyMin, _KeyMax, _xKey) \
-    (_xKey - xKeyMin) * _nWords + _nWords / 2 / (_xKeyMax - _xKeyMin);
-
-unsigned
-HolyListWords(Word_t *pwKeys, unsigned nPopCnt, unsigned nBL)
-{
-    if (nBL != sizeof(uint16_t) * 8) { return 0; }
-    unsigned nKeysPerWord = sizeof(Word_t) / sizeof(uint16_t);
-    if (nPopCnt <= nKeysPerWord) { return 1; }
-    uint16_t psKeys = pwKeys;
-    sKeyMin = psKeys[0];
-    sKeyMax = psKeys[nPopCnt - 1];
-    //unsigned nWords = nPopCnt + (nKeysPerWord - 1) / nKeysPerWord;
-}
-#endif
-
 static void
 NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
 {
@@ -1074,7 +1057,8 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
         (nType == T_BM_SW)
             ? sizeof(BmSwitch_t)
   #ifndef BM_IN_LINK
-                + N_WORDS_SWITCH_BM * sizeof(Word_t)
+                + ALIGN_UP(N_WORDS_SWITCH_BM * sizeof(Word_t),
+                           cnMallocAlignment)
   #endif // BM_IN_LINK
             :
 #endif // defined(CODE_BM_SW)
@@ -1104,7 +1088,10 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
     Word_t *pwr = (Word_t *)MyMalloc(wWords);
 #endif // CACHE_ALIGN_BM_SW
 #if defined(CODE_BM_SW) && !defined(BM_IN_LINK)
-    if (nType == T_BM_SW) { pwr += N_WORDS_SWITCH_BM; }
+    if (nType == T_BM_SW) {
+        pwr += ALIGN_UP(N_WORDS_SWITCH_BM,
+                        cnMallocAlignment >> cnLogBytesPerWord);
+    }
 #endif // defined(CODE_BM_SW) && !defined(BM_IN_LINK)
     set_wr_pwr(wRoot, pwr);
     *pwRoot = wRoot;
@@ -1492,7 +1479,8 @@ NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
     unsigned nWordsOld
          = (sizeof(BmSwitch_t)
 #if defined(CODE_BM_SW) && !defined(BM_IN_LINK)
-                + N_WORDS_SWITCH_BM * sizeof(Word_t)
+                + ALIGN_UP(N_WORDS_SWITCH_BM * sizeof(Word_t),
+                           cnMallocAlignment)
 #endif // defined(CODE_BM_SW) && !defined(BM_IN_LINK)
                 + (nLinkCnt - 1) * sizeof(Link_t))
             / sizeof(Word_t);
@@ -1535,13 +1523,15 @@ NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
         nWordsNew += nLinkCnt + 1; // Embedded Values in Switch
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+        Word_t *pwBm = PWR_pwBm(pwRoot, pwr);
 #if defined(CODE_BM_SW) && defined(CACHE_ALIGN_BM_SW)
         *pwRoot = MyMallocGuts(nWordsNew, /* cache line alignment */ 6);
 #else // CACHE_ALIGN_BM_SW
         *pwRoot = MyMalloc(nWordsNew);
 #endif // CACHE_ALIGN_BM_SW
 #ifndef BM_IN_LINK
-        *pwRoot += N_WORDS_SWITCH_BM * sizeof(Word_t);
+        *pwRoot += ALIGN_UP(N_WORDS_SWITCH_BM * sizeof(Word_t),
+                            cnMallocAlignment);
 #endif // BM_IN_LINK
         DBGI(printf("After malloc *pwRoot " OWx"\n", *pwRoot));
 
@@ -1569,7 +1559,7 @@ NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
         memcpy(wr_pwr(*pwRoot), pwr,
                sizeof(BmSwitch_t) + (wIndex - 1) * sizeof(Link_t));
 #ifndef BM_IN_LINK
-        memcpy(wr_pwr(*pwRoot) - N_WORDS_SWITCH_BM, pwr - N_WORDS_SWITCH_BM,
+        memcpy(PWR_pwBm(pwRoot, wr_pwr(*pwRoot)), pwBm,
                N_WORDS_SWITCH_BM * sizeof(Word_t));
 #endif // BM_IN_LINK
         DBGI(printf("PWR_wPopCnt %" _fw"d\n",
@@ -1758,7 +1748,10 @@ OldSwitch(Word_t *pwRoot, int nBL,
 
     Word_t wBytes =
 #if defined(CODE_BM_SW) && !defined(BM_IN_LINK)
-        bBmSw ? sizeof(BmSwitch_t) + N_WORDS_SWITCH_BM * sizeof(Word_t) :
+        bBmSw ? sizeof(BmSwitch_t)
+                  + ALIGN_UP(N_WORDS_SWITCH_BM * sizeof(Word_t),
+                             cnMallocAlignment)
+              :
 #endif // defined(CODE_BM_SW) && !defined(BM_IN_LINK)
 #if defined(USE_LIST_SW)
         ((nType == T_LIST_SW) || (nType == T_SKIP_TO_LIST_SW))
@@ -1793,7 +1786,10 @@ OldSwitch(Word_t *pwRoot, int nBL,
          nBL, nBLUp, wWords, wWords));
 
 #if defined(CODE_BM_SW) && !defined(BM_IN_LINK)
-    if (bBmSw) { pwr -= N_WORDS_SWITCH_BM; }
+    if (bBmSw) {
+        pwr -= ALIGN_UP(N_WORDS_SWITCH_BM,
+                        cnMallocAlignment >> cnLogBytesPerWord);
+    }
 #endif // defined(CODE_BM_SW) && !defined(BM_IN_LINK)
 #if defined(CODE_BM_SW) && defined(CACHE_ALIGN_BM_SW)
     MyFreeGuts(pwr, wWords, bBmSw ? 6 : cnBitsMallocMask);
@@ -2229,7 +2225,7 @@ embeddedKeys:;
   #endif // defined(UA_PARALLEL_128)
                 )
             {
-                printf("nType %d\n", nType);
+                printf("\nnType %d\n", nType);
             }
             assert( (nType == T_LIST)
   #if defined(UA_PARALLEL_128)
@@ -2323,22 +2319,31 @@ embeddedKeys:;
                     if (nBL <= 8) {
                         printf(" %02x", ls_pcKeysNATX(pwr, wPopCnt)[xx]);
   #ifdef B_JUDYL
-                        printf("," OWx,
-                               ((Word_t*)ls_pcKeysNATX(pwr, wPopCnt))[~xx]);
+                        if (nn < (int)wPopCnt) {
+                            printf("," OWx,
+                                   ((Word_t*)ls_pcKeysNATX(pwr,
+                                                           wPopCnt))[~nn]);
+                        }
   #endif // B_JUDYL
                     } else if (nBL <= 16) {
                         printf(" %04x", ls_psKeysNATX(pwr, wPopCnt)[xx]);
   #ifdef B_JUDYL
-                        printf("," OWx,
-                               ((Word_t*)ls_psKeysNATX(pwr, wPopCnt))[~xx]);
+                        if (nn < (int)wPopCnt) {
+                            printf("," OWx,
+                                   ((Word_t*)ls_psKeysNATX(pwr,
+                                                           wPopCnt))[~nn]);
+                        }
 
   #endif // B_JUDYL
 #if (cnBitsPerWord > 32)
                     } else if (nBL <= 32) {
                         printf(" %08x", ls_piKeysNATX(pwr, wPopCnt)[xx]);
   #ifdef B_JUDYL
-                        printf("," OWx,
-                               ((Word_t*)ls_piKeysNATX(pwr, wPopCnt))[~xx]);
+                        if (nn < (int)wPopCnt) {
+                            printf("," OWx,
+                                   ((Word_t*)ls_piKeysNATX(pwr,
+                                                           wPopCnt))[~nn]);
+                        }
   #endif // B_JUDYL
 #endif // (cnBitsPerWord > 32)
                     } else
@@ -2346,7 +2351,10 @@ embeddedKeys:;
                     {
                         printf(" " OWx, ls_pwKeysX(pwr, nBL, wPopCnt)[xx]);
   #ifdef B_JUDYL
-                        printf("," OWx, ls_pwKeysX(pwr, nBL, wPopCnt)[~xx]);
+                        if (nn < (int)wPopCnt) {
+                            printf("," OWx,
+                                   ls_pwKeysX(pwr, nBL, wPopCnt)[~nn]);
+                        }
   #endif // B_JUDYL
                     }
                 }
@@ -7545,8 +7553,11 @@ Initialize(void)
     printf("\n");
     printf("# cwListPopCntMax %d\n", cwListPopCntMax);
     printf("# cn2dBmMaxWpkPercent %d\n", cn2dBmMaxWpkPercent);
+#ifdef CODE_BM_SW
     printf("# cnBmSwConvert %d\n", cnBmSwConvert);
     printf("# cnBmSwRetain %d\n", cnBmSwRetain);
+    printf("# N_WORDS_SWITCH_BM %d\n", N_WORDS_SWITCH_BM);
+#endif // CODE_BM_SW
 
     for (int nLogBytesPerKey = cnLogBytesPerWord;
              nLogBytesPerKey >= 0;

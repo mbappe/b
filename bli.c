@@ -868,7 +868,7 @@ t_skip_to_switch:
         nBLR = gnBLRSkip(qy);
   #else // defined(NO_PREFIX_CHECK) && defined(LOOKUP)
       #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
-        DBG((nType != T_SKIP_TO_SWITCH) ? printf("nType: %d\n", nType) : 0);
+        DBG((nType != T_SKIP_TO_SWITCH) ? printf("\nnType: %d\n", nType) : 0);
         assert(nType == T_SKIP_TO_SWITCH);
       #endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
         DBGX(printf("SKIP_TO_SW\n"));
