@@ -170,6 +170,7 @@ static void
 Log(qp, const char *str)
 {
     printf("# %20s: " qfmt "\n", str, qy);
+    qv; // assertions after printf
 }
 
 // Can we use some of the bits in the word at the address immediately
@@ -251,9 +252,11 @@ MyMallocGuts(Word_t wWords, int nLogAlignment)
 #if defined(LIBCMALLOC)
   // We can't use the preamble word with LIBCMALLOC because it monitors the
   // preamble word for changes and kills the process if it detects a change.
-  #if defined(LIST_POP_IN_PREAMBLE)
+  // LIST_POP_IN_PREAMBLE means something different for B_JUDYL so the
+  // LIBCMALLOC limitation does not apply. It means use the word before pwr.
+  #if defined(LIST_POP_IN_PREAMBLE) && !defined(B_JUDYL)
     #error LIST_POP_IN_PREAMBLE with LIBCMALLOC is not supported
-  #endif // defined(LIST_POP_IN_PREAMBLE)
+  #endif // defined(LIST_POP_IN_PREAMBLE) && !defined(B_JUDYL)
 #else // defined(LIBCMALLOC)
 
 #define cnBitsUsed 2 // low bits used by malloc for bookkeeping
@@ -263,13 +266,13 @@ MyMallocGuts(Word_t wWords, int nLogAlignment)
     // own the buffer.
     ((Word_t *)ww)[-1] &= ~(MSK(cnExtraUnitsBits) << cnBitsUsed);
     ((Word_t *)ww)[-1] |= zExtraUnits << cnBitsUsed;
-#if defined(LIST_POP_IN_PREAMBLE)
+#if defined(LIST_POP_IN_PREAMBLE) && !defined(B_JUDYL)
     // Zero the high bits for our use.
     ((Word_t *)ww)[-1] &= MSK(cnExtraUnitsBits + cnBitsUsed);
-#else // defined(LIST_POP_IN_PREAMBLE)
+#else // defined(LIST_POP_IN_PREAMBLE) && !defined(B_JUDYL)
     // Twiddle the bits to illustrate that we can use them.
     ((Word_t *)ww)[-1] ^= (Word_t)-1 << (cnExtraUnitsBits + cnBitsUsed);
-#endif // defined(LIST_POP_IN_PREAMBLE)
+#endif // #else defined(LIST_POP_IN_PREAMBLE) && !defined(B_JUDYL)
     DBGM(printf("ww[-1] 0x%zx\n", ((Word_t *)ww)[-1]));
 #endif // defined(LIBCMALLOC)
     DBGM(printf("required %zd alloc %zd extra %zd\n",
@@ -369,8 +372,16 @@ ListWordsMin(int nPopCnt, int nBL)
     int nKeyBytes = ALIGN_UP(nPopCnt * nBytesPerKey, nBytesPerBucket);
     int nKeyWords = nKeyBytes / sizeof(Word_t);
 #ifdef B_JUDYL
+    int nValueWords = nPopCnt;
+  #ifdef LIST_POP_IN_PREAMBLE
+    ++nValueWords; // space for list pop
+  #else // LIST_POP_IN_PREAMBLE
+      #if (cnBitsPerWord == 32)
+          #error ListWordsMin requires LIST_POP_IN_PREAMBLE for 32-bit JudyL.
+      #endif // (cnBitsPerWord == 32)
+  #endif // #else LIST_POP_IN_PREAMBLE
     // Keys must begin on a malloc alignment boundary.
-    nKeyWords += ALIGN_UP(nPopCnt, (cnMallocMask + 1) >> cnLogBytesPerWord);
+    nKeyWords += ALIGN_UP(nValueWords, cnMallocAlignment >> cnLogBytesPerWord);
 #endif // B_JUDYL
     return nKeyWords;
 }
@@ -406,11 +417,22 @@ ListSlotCnt(int nPopCnt, int nBytesPerKey)
     if (nWordsPerBucket < nWordsPerChunk) {
         nWordsPerChunk = nWordsPerBucket;
     }
+#ifdef LIST_POP_IN_PREAMBLE
+    // How do we incorporate the pop word?
+    // I'm not sure about this method.
+    // I wonder if we should go after key chunks first rather than
+    // value chunks.
+    int nListChunks = (nListWords - 1) / nWordsPerChunk;
+#else // LIST_POP_IN_PREAMBLE
     int nListChunks = nListWords / nWordsPerChunk;
+#endif // #endif LIST_POP_IN_PREAMBLE
     int nValueChunks = nListChunks * nKeysPerBucket / nWordsPerUnit;
     int nValueMallocChunks
         = nValueChunks * nWordsPerChunk / nWordsPerMallocChunk;
     int nValues = nValueMallocChunks * nWordsPerMallocChunk;
+#ifdef LIST_POP_IN_PREAMBLE
+    --nValues;
+#endif // LIST_POP_IN_PREAMBLE
     int nKeyChunks
         = nListChunks
             - nValueMallocChunks * nWordsPerMallocChunk / nWordsPerChunk;
@@ -418,7 +440,8 @@ ListSlotCnt(int nPopCnt, int nBytesPerKey)
     int nKeys = nKeyBuckets * nKeysPerBucket;
     if (nKeys > nValues) {
         nKeys = nValues;
-        // try one less key chunk and one more value chunk
+        // Try one less key chunk and one more value chunk.
+        // Will it always be enough for LIST_POP_IN_PREAMBLE?
         nKeyChunks -= nWordsPerMallocChunk / nWordsPerChunk;
         nKeyBuckets = nKeyChunks * nWordsPerChunk / nWordsPerBucket;
         if (nKeyBuckets * nKeysPerBucket > nValues) {
@@ -729,6 +752,9 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
       #else // FULL_ALLOC
     //pwList = (Word_t*)ALIGN_UP((Word_t)&pwList[nKeySlots], sizeof(Bucket_t));
     int nKeySlots = ExtListKeySlotCnt(wPopCnt, ExtListBytesPerKey(nBL));
+#ifdef LIST_POP_IN_PREAMBLE
+    ++nKeySlots; // make room for list pop count
+#endif // LIST_POP_IN_PREAMBLE
     pwList = (Word_t*)ALIGN_UP((Word_t)&pwList[nKeySlots], cnMallocAlignment);
       #endif // FULL_ALLOC
   #endif // FAST_LIST_WORDS
@@ -828,6 +854,9 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
       #else // FULL_ALLOC
     //pwList = (Word_t *)((Word_t)&pwList[-nPopCnt] & ~cnMallocMask);
     int nKeySlots = ExtListKeySlotCnt(nPopCnt, ExtListBytesPerKey(nBL));
+#ifdef LIST_POP_IN_PREAMBLE
+    ++nKeySlots; // make room for list pop count
+#endif // LIST_POP_IN_PREAMBLE
     pwList = (Word_t*)((Word_t)&pwList[-nKeySlots] & ~cnMallocMask);
     assert(((Word_t)pwList & cnMallocMask) == 0);
       #endif // FULL_ALLOC
@@ -2300,7 +2329,7 @@ embeddedKeys:;
                 {
                     printf(" " OWx, ls_pwKeysX(pwr, nBL, wPopCnt)[xx]);
   #ifdef B_JUDYL
-                    printf("," OWx, ls_pwKeysX(pwr, nBL, wPopCnt)[~xx]);
+                    printf("," OWx, gpwValues(qy)[~xx]);
   #endif // B_JUDYL
                 }
             }
@@ -2681,6 +2710,12 @@ InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
 
 #if defined(SORT_LISTS)
 
+// CopyWithInsert may operate on a list that is installed and one that is not.
+// What is our general rule w.r.t. qp?
+// Should we add qpOld? What about qpUp?
+// Since InsertGuts may want to use Insert to move things from old to new it
+// makes sense to install the new and update qy even if it means using a new
+// local variable, qyOld.
 // CopyWithInsert can handle pTgt == pSrc, but cannot handle any other
 // overlapping buffer scenarios.
 #ifdef B_JUDYL
@@ -2688,12 +2723,22 @@ static Word_t *
 #else // B_JUDYL
 static void
 #endif // B_JUDYL
-CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc,
+CopyWithInsertWord(qp, Word_t *pSrc,
                    int nKeys, // number of keys excluding the new one
                    Word_t wKey, int nPos)
 {
-    DBGI(printf("\nCopyWithInsertWord(pTgt %p pSrc %p nKeys %d wKey " OWx")\n",
-                (void *)pTgt, (void *)pSrc, nKeys, wKey));
+    DBGI(Log(qy, "CopyWithInsertWord"));
+    qv;
+    DBGI(printf("\nCopyWithInsertWord(pSrc %p nKeys %d wKey " OWx")\n",
+                (void *)pSrc, nKeys, wKey));
+    Word_t *pTgt = ls_pwKeysX(pwr, nBL, nKeys + 1);
+  #ifdef B_JUDYL
+    Word_t *pwTgtValues = gpwValues(qy);
+    Word_t *pwSrcValues = pSrc;
+      #ifdef LIST_POP_IN_PREAMBLE
+    pwSrcValues -= 1;
+      #endif // LIST_POP_IN_PREAMBLE
+  #endif // B_JUDYL
     int n;
 
     // Why don't we know nPos for inflated embedded list?
@@ -2714,14 +2759,17 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc,
 
     if (pTgt != pSrc) {
 #ifdef B_JUDYL
-        COPY(&pTgt[~nKeys], &pSrc[-nKeys], nKeys - n); // copy the values tail
-        COPY(&pTgt[-n], &pSrc[-n], n); // copy the values head
+        // copy the values tail
+        COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n);
+        // copy the values head
+        COPY(&pwTgtValues[-n    ], &pwSrcValues[-n    ], n        );
 #endif // B_JUDYL
         COPY(pTgt, pSrc, n); // copy the head
         COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
     } else {
 #ifdef B_JUDYL
-        MOVE(&pTgt[~nKeys], &pSrc[-nKeys], nKeys - n); // move the values tail
+        // move the values tail
+        MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n);
 #endif // B_JUDYL
         MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
     }
@@ -2729,7 +2777,12 @@ CopyWithInsertWord(Word_t *pTgt, Word_t *pSrc,
     pTgt[n] = wKey; // insert the key
 
 #ifdef B_JUDYL
-    Word_t *pwValue = &pTgt[~n];
+    // I think we should change this a bit.
+    // A couple of options:
+    // - This function returns n and caller figures out pwValue.
+    // - Add qp parameters to this function so it can legitimately
+    //   figure out pwValue.
+    Word_t *pwValue = &pwTgtValues[~n];
 #endif // B_JUDYL
 
     n = nKeys + 1;
@@ -2762,12 +2815,20 @@ static Word_t *
 #else // B_JUDYL
 static void
 #endif // B_JUDYL
-CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc,
-                  int nKeys, // number of keys excluding the new one
-                  uint32_t iKey, int nPos)
+CopyWithInsert32(qp, uint32_t *pSrc,
+                 int nKeys, // number of keys excluding the new one
+                 uint32_t iKey, int nPos)
 {
-    DBGI(printf("\nCopyWithInsertInt(pTgt %p pSrc %p nKeys %d iKey 0x%x)\n",
-                (void *)pTgt, (void *)pSrc, nKeys, iKey));
+    DBGI(Log(qy, "CopyWithInsert32"));
+    qv;
+    uint32_t *pTgt = ls_piKeysX(pwr, nBL, nKeys + 1);
+  #ifdef B_JUDYL
+    Word_t *pwTgtValues = gpwValues(qy);
+    Word_t *pwSrcValues = (Word_t*)pSrc;
+      #ifdef LIST_POP_IN_PREAMBLE
+    pwSrcValues -= 1;
+      #endif // LIST_POP_IN_PREAMBLE
+  #endif // B_JUDYL
     int n;
 
     if ((nPos == -1) // inflated embedded list
@@ -2785,14 +2846,17 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc,
 
     if (pTgt != pSrc) {
 #ifdef B_JUDYL
-        COPY(&((Word_t *)pTgt)[~nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
-        COPY(&((Word_t *)pTgt)[-n], &((Word_t *)pSrc)[-n], n); // values head
+        // copy the values tail
+        COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n);
+        // copy the values head
+        COPY(&pwTgtValues[-n    ], &pwSrcValues[-n    ], n        );
 #endif // B_JUDYL
         COPY(pTgt, pSrc, n); // copy the head
         COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
     } else {
 #ifdef B_JUDYL
-        MOVE(&((Word_t *)pTgt)[~nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
+        // move the values tail
+        MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n);
 #endif // B_JUDYL
         MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
     }
@@ -2800,12 +2864,12 @@ CopyWithInsertInt(uint32_t *pTgt, uint32_t *pSrc,
     pTgt[n] = iKey; // insert the key
 
 #ifdef B_JUDYL
-    Word_t *pwValue = &((Word_t *)pTgt)[~n];
+    Word_t *pwValue = &pwTgtValues[~n];
 #endif // B_JUDYL
 
     n = nKeys + 1;
 #if defined(PSPLIT_PARALLEL)
-    // See CopyWithInsertWord and CopyWithInsertChar for comment.
+    // See CopyWithInsertWord and CopyWithInsert8 for comment.
     for (; (n * sizeof(iKey)) % sizeof(Bucket_t); ++n) {
         pTgt[n] = pTgt[n-1];
     }
@@ -2825,10 +2889,20 @@ static Word_t *
 #else // B_JUDYL
 static void
 #endif // B_JUDYL
-CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc,
-                    int nKeys, // number of keys excluding the new one
-                    uint16_t sKey, int nPos)
+CopyWithInsert16(qp, uint16_t *pSrc,
+                 int nKeys, // number of keys excluding the new one
+                 uint16_t sKey, int nPos)
 {
+    DBGI(Log(qy, "CopyWithInsert16"));
+    qv;
+    uint16_t *pTgt = ls_psKeysX(pwr, nBL, nKeys + 1);
+  #ifdef B_JUDYL
+    Word_t *pwTgtValues = gpwValues(qy);
+    Word_t *pwSrcValues = (Word_t*)pSrc;
+      #ifdef LIST_POP_IN_PREAMBLE
+    pwSrcValues -= 1;
+      #endif // LIST_POP_IN_PREAMBLE
+  #endif // B_JUDYL
     int n;
 
     if ((nPos == -1) // inflated embedded list
@@ -2846,14 +2920,17 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc,
 
     if (pTgt != pSrc) {
 #ifdef B_JUDYL
-        COPY(&((Word_t *)pTgt)[~nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
-        COPY(&((Word_t *)pTgt)[-n], &((Word_t *)pSrc)[-n], n); // values head
+        // copy the values tail
+        COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n);
+        // copy the values head
+        COPY(&pwTgtValues[-n    ], &pwSrcValues[-n    ], n        );
 #endif // B_JUDYL
         COPY(pTgt, pSrc, n); // copy the head
         COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
     } else {
 #ifdef B_JUDYL
-        MOVE(&((Word_t *)pTgt)[~nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
+        // move the values tail
+        MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n);
 #endif // B_JUDYL
         MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
     }
@@ -2861,7 +2938,7 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc,
     pTgt[n] = sKey; // insert the key
 
 #ifdef B_JUDYL
-    Word_t *pwValue = &((Word_t *)pTgt)[~n];
+    Word_t *pwValue = &pwTgtValues[~n];
 #endif // B_JUDYL
 
     n = nKeys + 1;
@@ -2875,7 +2952,7 @@ CopyWithInsertShort(uint16_t *pTgt, uint16_t *pSrc,
     } else
   #endif // defined(UA_PARALLEL_128)
     {
-        // See CopyWithInsertWord and CopyWithInsertChar for comment.
+        // See CopyWithInsertWord and CopyWithInsert8 for comment.
         for (; (n * sizeof(sKey)) % sizeof(Bucket_t); ++n) {
              pTgt[n] = pTgt[n-1];
         }
@@ -2895,10 +2972,20 @@ static Word_t *
 #else // B_JUDYL
 static void
 #endif // B_JUDYL
-CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc,
-                   int nKeys, // number of keys excluding the new one
-                   uint8_t cKey, int nPos)
+CopyWithInsert8(qp, uint8_t *pSrc,
+                int nKeys, // number of keys excluding the new one
+                uint8_t cKey, int nPos)
 {
+    DBGI(Log(qy, "CopyWithInsert16"));
+    qv;
+    uint8_t *pTgt = ls_pcKeysX(pwr, nBL, nKeys + 1);
+  #ifdef B_JUDYL
+    Word_t *pwTgtValues = gpwValues(qy);
+    Word_t *pwSrcValues = (Word_t*)pSrc;
+      #ifdef LIST_POP_IN_PREAMBLE
+    pwSrcValues -= 1;
+      #endif // LIST_POP_IN_PREAMBLE
+  #endif // B_JUDYL
     int n;
 
     if ((nPos == -1) // inflated embedded list
@@ -2916,8 +3003,10 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc,
 
     if (pTgt != pSrc) {
 #ifdef B_JUDYL
-        COPY(&((Word_t *)pTgt)[~nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
-        COPY(&((Word_t *)pTgt)[-n], &((Word_t *)pSrc)[-n], n); // values head
+        // copy the values tail
+        COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n);
+        // copy the values head
+        COPY(&pwTgtValues[-n    ], &pwSrcValues[-n    ], n        );
 #endif // B_JUDYL
         COPY(pTgt, pSrc, n); // copy the head
         COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
@@ -2925,7 +3014,8 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc,
     else
     {
 #ifdef B_JUDYL
-        MOVE(&((Word_t *)pTgt)[~nKeys], &((Word_t *)pSrc)[-nKeys], nKeys - n);
+        // move the values tail
+        MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n);
 #endif // B_JUDYL
         MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
     }
@@ -2933,7 +3023,7 @@ CopyWithInsertChar(uint8_t *pTgt, uint8_t *pSrc,
     pTgt[n] = cKey; // insert the key
 
 #ifdef B_JUDYL
-    Word_t *pwValue = &((Word_t *)pTgt)[~n];
+    Word_t *pwValue = &pwTgtValues[~n];
 #endif // B_JUDYL
 
     n = nKeys + 1;
@@ -3373,10 +3463,16 @@ embeddedKeys:;
 #if defined(COMPRESSED_LISTS)
     if (nBLOld <= (int)sizeof(uint8_t) * 8) {
         uint8_t *pcKeys = ls_pcKeysNATX(pwrOld, nPopCnt);
+  #ifdef B_JUDYL
+        Word_t* pwValues = (Word_t*)pcKeys;
+      #ifdef LIST_POP_IN_PREAMBLE
+        --pwValues;
+      #endif // LIST_POP_IN_PREAMBLE
+  #endif // B_JUDYL
         for (int nn = 0; nn < nPopCnt; nn++) {
 #ifdef B_JUDYL
             pwVal = Insert(nBL, pLn, pcKeys[nn] | (wKey & ~MSK(8)));
-            *pwVal = ((Word_t*)pcKeys)[~nn];
+            *pwVal = pwValues[~nn];
 #else // B_JUDYL
             status = Insert(nBL, pLn, pcKeys[nn] | (wKey & ~MSK(8)));
 #endif // B_JUDYL
@@ -3385,10 +3481,16 @@ embeddedKeys:;
         }
     } else if (nBLOld <= (int)sizeof(uint16_t) * 8) {
         uint16_t *psKeys = ls_psKeysNATX(pwrOld, nPopCnt);
+  #ifdef B_JUDYL
+        Word_t* pwValues = (Word_t*)psKeys;
+      #ifdef LIST_POP_IN_PREAMBLE
+        --pwValues;
+      #endif // LIST_POP_IN_PREAMBLE
+  #endif // B_JUDYL
         for (int nn = 0; nn < nPopCnt; nn++) {
 #ifdef B_JUDYL
             pwVal = Insert(nBL, pLn, psKeys[nn] | (wKey & ~MSK(16)));
-            *pwVal = ((Word_t*)psKeys)[~nn];
+            *pwVal = pwValues[~nn];
 #else // B_JUDYL
             status = Insert(nBL, pLn, psKeys[nn] | (wKey & ~MSK(16)));
 #endif // B_JUDYL
@@ -3398,10 +3500,16 @@ embeddedKeys:;
 #if (cnBitsPerWord > 32)
     } else if (nBLOld <= (int)sizeof(uint32_t) * 8) {
         uint32_t *piKeys = ls_piKeysNATX(pwrOld, nPopCnt);
+  #ifdef B_JUDYL
+        Word_t* pwValues = (Word_t*)piKeys;
+      #ifdef LIST_POP_IN_PREAMBLE
+        --pwValues;
+      #endif // LIST_POP_IN_PREAMBLE
+  #endif // B_JUDYL
         for (int nn = 0; nn < nPopCnt; nn++) {
 #ifdef B_JUDYL
             pwVal = Insert(nBL, pLn, piKeys[nn] | (wKey & ~MSK(32)));
-            *pwVal = ((Word_t*)piKeys)[~nn];
+            *pwVal = pwValues[~nn];
 #else // B_JUDYL
             status = Insert(nBL, pLn, piKeys[nn] | (wKey & ~MSK(32)));
 #endif // B_JUDYL
@@ -3415,10 +3523,16 @@ embeddedKeys:;
 #endif // defined(COMPRESSED_LISTS)
     {
         Word_t *pwKeys = ls_pwKeysX(pwrOld, nBL, nPopCnt);
+  #ifdef B_JUDYL
+        Word_t* pwValues = pwKeys;
+      #ifdef LIST_POP_IN_PREAMBLE
+        --pwValues;
+      #endif // LIST_POP_IN_PREAMBLE
+  #endif // B_JUDYL
         for (int nn = 0; nn < nPopCnt; nn++) {
 #ifdef B_JUDYL
             pwVal = Insert(nBL, pLn, pwKeys[nn]);
-            *pwVal = pwKeys[~nn];
+            *pwVal = pwValues[~nn];
 #else // B_JUDYL
             status = Insert(nBL, pLn, pwKeys[nn]);
 #endif // B_JUDYL
@@ -4692,6 +4806,13 @@ InsertAtList(qp,
             } else
 #endif // defined(UA_PARALLEL_128)
             { set_wr(wRoot, pwList, T_LIST); }
+
+            // qy is no longer correct.
+            // wRoot has been updated.
+            // pLn->ln_wRoot has not been updated.
+            // pwr, nType have not been updated.
+            // Can we delay updating wRoot?
+            // Can we update the others now?
         }
         else
         {
@@ -4710,6 +4831,18 @@ InsertAtList(qp,
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         { Set_xListPopCnt(&wRoot, nBL, wPopCnt + 1); }
 
+        // It's a bit ugly that we are installing this T_LIST for
+        // NO_TYPE_IN_XX_SW.  But we know that DEL is going to fix it.
+        // We could give DeflateExternalList &wRoot, then install the new
+        // wRoot ourselves (if DEL returned it).
+
+        pLn->ln_wRoot = wRoot; // install new
+        int nTypeOld = nType;
+        nType = wr_nType(wRoot);
+        Word_t *pwrOld = pwr;
+        pwr = pwList;
+        DBGX(Log(qy, "After NewList"));
+
         if (wPopCnt != 0)
 #if defined(SORT_LISTS)
         {
@@ -4720,18 +4853,16 @@ copyWithInsert8:
   #ifdef B_JUDYL
                 pwValue =
   #endif // B_JUDYL
-                    CopyWithInsertChar(ls_pcKeysNATX(pwList, wPopCnt + 1),
-                                       pcKeys, wPopCnt,
-                                       (unsigned char)wKey, nPos);
+                    CopyWithInsert8(qy, pcKeys, wPopCnt,
+                                    (unsigned char)wKey, nPos);
             } else if (nBL <= 16) {
                 goto copyWithInsert16;
 copyWithInsert16:
   #ifdef B_JUDYL
                 pwValue =
   #endif // B_JUDYL
-                    CopyWithInsertShort(ls_psKeysNATX(pwList, wPopCnt + 1),
-                                        psKeys, wPopCnt,
-                                        (unsigned short)wKey, nPos);
+                    CopyWithInsert16(qy, psKeys, wPopCnt,
+                                     (uint16_t)wKey, nPos);
 #if (cnBitsPerWord > 32)
             } else if (nBL <= 32) {
                 goto copyWithInsert32;
@@ -4739,9 +4870,8 @@ copyWithInsert32:
   #ifdef B_JUDYL
                 pwValue =
   #endif // B_JUDYL
-                    CopyWithInsertInt(ls_piKeysNATX(pwList, wPopCnt + 1),
-                                      piKeys, wPopCnt,
-                                      (unsigned int)wKey, nPos);
+                    CopyWithInsert32(qy, piKeys, wPopCnt,
+                                     (unsigned int)wKey, nPos);
 #endif // (cnBitsPerWord > 32)
             } else
 #endif // defined(COMPRESSED_LISTS)
@@ -4751,8 +4881,7 @@ copyWithInsertWord:
   #ifdef B_JUDYL
                 pwValue =
   #endif // B_JUDYL
-                    CopyWithInsertWord(ls_pwKeysX(pwList, nBL, wPopCnt + 1),
-                                       pwKeys, wPopCnt, wKey, nPos);
+                    CopyWithInsertWord(qy, pwKeys, wPopCnt, wKey, nPos);
             }
         }
         else
@@ -4784,9 +4913,7 @@ copyWithInsertWord:
   #else // !defined(EMBED_KEYS) && ... d&& efined(PSPLIT_PARALLEL)
                 ls_pcKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey;
       #ifdef B_JUDYL
-                pwValue
-                    = &((Word_t *)ls_pcKeysNATX(pwList, wPopCnt + 1))
-                            [~wPopCnt];
+                pwValue = &gpwValues(qy)[~wPopCnt];
       #endif // B_JUDYL
   #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
             } else if (nBL <= 16) {
@@ -4798,9 +4925,7 @@ copyWithInsertWord:
   #else // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
                 ls_psKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey;
       #ifdef B_JUDYL
-                pwValue
-                    = &((Word_t *)ls_psKeysNATX(pwList, wPopCnt + 1))
-                            [~wPopCnt];
+                pwValue = &gpwValues(qy)[~wPopCnt];
       #endif // B_JUDYL
   #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
 #if (cnBitsPerWord > 32)
@@ -4812,9 +4937,7 @@ copyWithInsertWord:
   #else // !defined(EMBED_KEYS) && ... defined(PSPLIT_PARALLEL)
                 ls_piKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey;
       #ifdef B_JUDYL
-                pwValue
-                    = &((Word_t *)ls_piKeysNATX(pwList, wPopCnt + 1))
-                            [~wPopCnt];
+                pwValue = &gpwValues(qy)[~wPopCnt];
       #endif // B_JUDYL
   #endif // !defined(EMBED_KEYS) && ... defined(PSPLIT_PARALLEL)
 #endif // (cnBitsPerWord > 32)
@@ -4828,7 +4951,7 @@ copyWithInsertWord:
   #else // !defined(EMBED_KEYS) && ... && defined(PARALLEL_SEARCH_WORD)
                 ls_pwKeysX(pwList, nBL, wPopCnt + 1)[wPopCnt] = wKey;
       #ifdef B_JUDYL
-                pwValue = &ls_pwKeysX(pwList, nBL, wPopCnt + 1)[~wPopCnt];
+                pwValue = &gpwValues(qy)[~wPopCnt];
       #endif // B_JUDYL
   #endif // !defined(EMBED_KEYS) && ... && defined(PARALLEL_SEARCH_WORD)
             }
@@ -4839,22 +4962,15 @@ copyWithInsertWord:
             // should abandon it?
         }
 
-        if ((wPopCnt != 0) && (pwr != pwList))
-        {
-            OldList(pwr, wPopCnt, nBL, nType);
+        if ((wPopCnt != 0) && (pwr != pwrOld)) {
+            OldList(pwrOld, wPopCnt, nBL, nTypeOld);
         }
-
-        // It's a bit ugly that we are installing this T_LIST for
-        // if NO_TYPE_IN_XX_SW.  But we know that DEL is going to
-        // fix it.  We could give deflate &wRoot, then install the new
-        // wRoot ourselves (if DEL returned it).
-        *pwRoot = wRoot; // install new
 
 #if defined(EMBED_KEYS)
         // Embed the list if it fits.
-        if ( ! ( (wr_nType(wRoot) == T_LIST)
+        if ( ! ( (nType == T_LIST)
 #if defined(UA_PARALLEL_128)
-               || (wr_nType(wRoot) == T_LIST_UA)
+               || (nType == T_LIST_UA)
 #endif // defined(UA_PARALLEL_128)
                ) )
         {
@@ -4863,9 +4979,9 @@ copyWithInsertWord:
 #endif // defined(EMBED_KEYS)
 #if defined(EMBED_KEYS)
         // Embed the list if it fits.
-        assert( (wr_nType(wRoot) == T_LIST)
+        assert((nType == T_LIST)
 #if defined(UA_PARALLEL_128)
-               || (wr_nType(wRoot) == T_LIST_UA)
+               || (nType == T_LIST_UA)
 #endif // defined(UA_PARALLEL_128)
                );
         if ((int)wPopCnt < EmbeddedListPopCntMax(nBL))
@@ -5068,6 +5184,7 @@ embeddedKeys:;
 #endif // (cwListPopCntMax != 0)
 
     pwr = wr_pwr(wRoot);
+    DBGX(Log(qy, "InsertGuts"));
 
 // This first clause handles wRoot == 0 by treating it like a list leaf
 // with zero population (and no allocated memory).
@@ -5536,7 +5653,12 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
         }
 #ifdef B_JUDYL
         // Copy the value.
-        pwList[~nn] = *pwValueUp;
+        // BUG: Fix this to use gpwValues
+        pwList[~(nn
+  #ifdef LIST_POP_IN_PREAMBLE
+                 + 1
+  #endif // LIST_POP_IN_PREAMBLE
+                 )] = *pwValueUp; // gpwValues(qy)[~nn] = *pwValueUp;
 #endif // B_JUDYL
     }
 
@@ -5669,10 +5791,14 @@ DeflateExternalList(Word_t *pwRoot,
         }
 #ifdef B_JUDYL
         // Copy the value.
-#if defined(FILL_W_KEY)
+  #if defined(FILL_W_KEY)
         if (nn < nPopCnt)
-#endif // defined(FILL_W_KEY)
-            *pwValueUp = pwr[~nn];
+  #endif // defined(FILL_W_KEY)
+            *pwValueUp = pwr[~(nn
+  #ifdef LIST_POP_IN_PREAMBLE
+                               + 1
+  #endif // LIST_POP_IN_PREAMBLE
+                               )];
 #endif // B_JUDYL
     }
 
@@ -6053,17 +6179,25 @@ embeddedKeys:;
     }
 
     Word_t *pwKeys = ls_pwKeysX(pwr, nBL, wPopCnt);
+#if defined(COMPRESSED_LISTS)
+  #if (cnBitsPerWord > 32)
+    uint32_t *piKeys = ls_piKeysNATX(pwr, wPopCnt);
+  #endif // (cnBitsPerWord > 32)
+    uint16_t *psKeys = ls_psKeysNATX(pwr, wPopCnt);
+    uint8_t *pcKeys = ls_pcKeysNATX(pwr, wPopCnt);
+#endif // defined(COMPRESSED_LISTS)
 
     int nIndex;
     for (nIndex = 0;
 #if defined(COMPRESSED_LISTS)
-        (nBL <=  8) ? (ls_pcKeysNATX(pwr, wPopCnt)[nIndex] != (uint8_t) wKey) :
-        (nBL <= 16) ? (ls_psKeysNATX(pwr, wPopCnt)[nIndex] != (uint16_t)wKey) :
-#if (cnBitsPerWord > 32)
-        (nBL <= 32) ? (ls_piKeysNATX(pwr, wPopCnt)[nIndex] != (uint32_t)wKey) :
-#endif // (cnBitsPerWord > 32)
+        (nBL <=  8) ? (pcKeys[nIndex] != (uint8_t) wKey) :
+        (nBL <= 16) ? (psKeys[nIndex] != (uint16_t)wKey) :
+  #if (cnBitsPerWord > 32)
+        (nBL <= 32) ? (piKeys[nIndex] != (uint32_t)wKey) :
+  #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-        (pwKeys[nIndex] != wKey); nIndex++) { }
+        (pwKeys[nIndex] != wKey);
+        nIndex++) ;
 
     // nIndex identifies the key being removed.
 
@@ -6094,7 +6228,23 @@ embeddedKeys:;
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     { Set_xListPopCnt(&wRoot, nBL, wPopCnt - 1); }
 
-    if (pwList != pwr) {
+  #ifdef B_JUDYL
+    Word_t *pwSrcValues = pwr;
+      #ifdef LIST_POP_IN_PREAMBLE
+    pwSrcValues -= 1;
+      #endif // LIST_POP_IN_PREAMBLE
+  #endif // B_JUDYL
+
+    *pwRoot = wRoot;
+    Word_t *pwrOld = pwr;
+    pwr = pwList;
+    DBGX(Log(qy, "RemoveGuts"));
+
+  #ifdef B_JUDYL
+    Word_t *pwTgtValues = gpwValues(qy);
+  #endif // B_JUDYL
+
+    if (pwr != pwrOld) {
         // Why are we copying the old list to the new one?
         // Because the beginning will be the same.
         // Except for the the pop count.
@@ -6104,8 +6254,8 @@ embeddedKeys:;
 #endif // COMPRESSED_LISTS
 #ifdef B_JUDYL
              // copy values
-             COPY(&ls_pwKeysX(pwList, nBL, wPopCnt - 1)[-((int)wPopCnt - 1)],
-                  &ls_pwKeysX(pwr, nBL, wPopCnt)[-((int)wPopCnt - 1)],
+             COPY(&pwTgtValues[-((int)wPopCnt - 1)],
+                  &pwSrcValues[-((int)wPopCnt - 1)],
                   wPopCnt - 1);
 // wPopCnt == 2
 // Should copy keys [0, 0] to [0, 0]
@@ -6116,50 +6266,40 @@ embeddedKeys:;
 // [-(wPopCnt-1), ~0]
 #endif // B_JUDYL
              // copy keys
-             COPY(ls_pwKeysX(pwList, nBL, wPopCnt - 1),
-                  ls_pwKeysX(pwr, nBL, wPopCnt), wPopCnt - 1);
+             COPY(ls_pwKeysX(pwList, nBL, wPopCnt - 1), pwKeys, wPopCnt - 1);
 #ifdef COMPRESSED_LISTS
              break;
 #if (cnBitsPerWord > 32)
         case 4:
   #ifdef B_JUDYL
              // copy values
-             COPY(&((Word_t*)ls_piKeysNATX(pwList,
-                                           wPopCnt - 1))[-((int)wPopCnt - 1)],
-                  &((Word_t*)ls_piKeysNATX(pwr,
-                                           wPopCnt))[-((int)wPopCnt - 1)],
+             COPY(&pwTgtValues[-((int)wPopCnt - 1)],
+                  &pwSrcValues[-((int)wPopCnt - 1)],
                   wPopCnt - 1);
   #endif // B_JUDYL
              // copy keys
-             COPY(ls_piKeysNATX(pwList, wPopCnt - 1),
-                  ls_piKeysNATX(pwr, wPopCnt), wPopCnt - 1);
+             COPY(ls_piKeysNATX(pwList, wPopCnt - 1), piKeys, wPopCnt - 1);
              break;
 #endif // (cnBitsPerWord > 32)
         case 2:
   #ifdef B_JUDYL
              // copy values
-             COPY(&((Word_t*)ls_psKeysNATX(pwList,
-                                           wPopCnt - 1))[-((int)wPopCnt - 1)],
-                  &((Word_t*)ls_psKeysNATX(pwr,
-                                           wPopCnt))[-((int)wPopCnt - 1)],
+             COPY(&pwTgtValues[-((int)wPopCnt - 1)],
+                  &pwSrcValues[-((int)wPopCnt - 1)],
                   wPopCnt - 1);
   #endif // B_JUDYL
              // copy keys
-             COPY(ls_psKeysNATX(pwList, wPopCnt - 1),
-                  ls_psKeysNATX(pwr, wPopCnt), wPopCnt - 1);
+             COPY(ls_psKeysNATX(pwList, wPopCnt - 1), psKeys, wPopCnt - 1);
              break;
         case 1:
   #ifdef B_JUDYL
              // copy values
-             COPY(&((Word_t*)ls_pcKeysNATX(pwList,
-                                           wPopCnt - 1))[-((int)wPopCnt - 1)],
-                  &((Word_t*)ls_pcKeysNATX(pwr,
-                                           wPopCnt))[-((int)wPopCnt - 1)],
+             COPY(&pwTgtValues[-((int)wPopCnt - 1)],
+                  &pwSrcValues[-((int)wPopCnt - 1)],
                   wPopCnt - 1);
   #endif // B_JUDYL
              // copy keys
-             COPY(ls_pcKeysNATX(pwList, wPopCnt - 1),
-                  ls_pcKeysNATX(pwr, wPopCnt), wPopCnt - 1);
+             COPY(ls_pcKeysNATX(pwList, wPopCnt - 1), pcKeys, wPopCnt - 1);
              break;
         }
 #endif // COMPRESSED_LISTS
@@ -6172,14 +6312,13 @@ embeddedKeys:;
     if (nBL <= 8) {
   #ifdef B_JUDYL
         // move values
-        MOVE(&((Word_t*)ls_pcKeysNATX(pwList,
-                                      wPopCnt - 1))[-((int)wPopCnt - 1)],
-             &((Word_t*)ls_pcKeysNATX(pwr, wPopCnt))[-(int)wPopCnt],
+        MOVE(&pwTgtValues[-((int)wPopCnt - 1)],
+             &pwSrcValues[- (int)wPopCnt     ],
              wPopCnt - nIndex - 1);
   #endif // B_JUDYL
         // move keys
         MOVE(&ls_pcKeysNATX(pwList, wPopCnt - 1)[nIndex],
-             &ls_pcKeysNATX(pwr, wPopCnt)[nIndex + 1], wPopCnt - nIndex - 1);
+             &pcKeys[nIndex + 1], wPopCnt - nIndex - 1);
         int n = wPopCnt - 1; (void)n;
 #if defined(PSPLIT_PARALLEL)
         // pad list to an integral number of parallel search buckets in length
@@ -6196,14 +6335,13 @@ embeddedKeys:;
     } else if (nBL <= 16) {
   #ifdef B_JUDYL
         // move values
-        MOVE(&((Word_t*)ls_psKeysNATX(pwList,
-                                      wPopCnt - 1))[-((int)wPopCnt - 1)],
-             &((Word_t*)ls_psKeysNATX(pwr, wPopCnt))[-(int)wPopCnt],
+        MOVE(&pwTgtValues[-((int)wPopCnt - 1)],
+             &pwSrcValues[- (int)wPopCnt     ],
              wPopCnt - nIndex - 1);
   #endif // B_JUDYL
         // move keys
         MOVE(&ls_psKeysNATX(pwList, wPopCnt - 1)[nIndex],
-             &ls_psKeysNATX(pwr, wPopCnt)[nIndex + 1], wPopCnt - nIndex - 1);
+             &psKeys[nIndex + 1], wPopCnt - nIndex - 1);
         int n = wPopCnt - 1; (void)n; // first empty slot
 #if defined(PSPLIT_PARALLEL)
   #if defined(UA_PARALLEL_128)
@@ -6228,14 +6366,13 @@ embeddedKeys:;
     } else if (nBL <= 32) {
   #ifdef B_JUDYL
         // move values
-        MOVE(&((Word_t*)ls_piKeysNATX(pwList,
-                                      wPopCnt - 1))[-((int)wPopCnt - 1)],
-             &((Word_t*)ls_piKeysNATX(pwr, wPopCnt))[-(int)wPopCnt],
+        MOVE(&pwTgtValues[-((int)wPopCnt - 1)],
+             &pwSrcValues[- (int)wPopCnt     ],
              wPopCnt - nIndex - 1);
   #endif // B_JUDYL
         // move keys
         MOVE(&ls_piKeysNATX(pwList, wPopCnt - 1)[nIndex],
-             &ls_piKeysNATX(pwr, wPopCnt)[nIndex + 1], wPopCnt - nIndex - 1);
+             &piKeys[nIndex + 1], wPopCnt - nIndex - 1);
         int n = wPopCnt - 1; (void)n;
 #if defined(PSPLIT_PARALLEL)
         // pad list to an integral number of parallel search buckets in length
@@ -6260,8 +6397,8 @@ embeddedKeys:;
 #endif // defined(LIST_END_MARKERS)
   #ifdef B_JUDYL
         // move values
-        MOVE(&ls_pwKeysNATX(pwList, wPopCnt - 1)[-((int)wPopCnt - 1)],
-             &ls_pwKeysNATX(pwr, wPopCnt)[-(int)wPopCnt],
+        MOVE(&pwTgtValues[-((int)wPopCnt - 1)],
+             &pwSrcValues[- (int)wPopCnt     ],
              wPopCnt - nIndex - 1);
 // wPopCnt == 2, nIndex == 0
 // Should move keys [1, 1] to [0, 0]
@@ -6288,12 +6425,9 @@ embeddedKeys:;
 #endif // defined(LIST_END_MARKERS)
     }
 
-    if (pwList != pwr)
-    {
-        OldList(pwr, wPopCnt, nBL, nType);
+    if (pwr != pwrOld) {
+        OldList(pwrOld, wPopCnt, nBL, nType);
     }
-
-    *pwRoot = wRoot;
 
 #if defined(EMBED_KEYS)
     // Embed the list if it fits.

@@ -1,20 +1,60 @@
 #!/bin/sh -x
 
+# What is the goal of this regression test script?
+# How much memory should it require? Should it test and adapt?
+
 # Use a -DDEBUG build.
 
 TIME=Judy1LHTime
 CHECK=Judy1LHCheck
 
+# Basic runs we use for performance testing:
+# ${TIME} -1m
+# ${TIME} -1m -E
+# ${TIME} -1m -DS1
+# ${TIME} -Lm
+# ${TIME} -Lm -E
+# ${TIME} -Lm -DS1
+
+# Both Judy1 and JudyL
 : \
-&& ${TIME} -W0 -1l -n1000000 -S1 --splay-key-bits=0xff00ffff \
-&& bcheckall 32 \
-&& ${TIME} -W0 -1ICvdgi -n1000000 --splay-key-bits=0xff00ffff \
-&& ${TIME} -W0 -1ICvdgi -n1000000 -DS1 --splay-key-bits=0xff00ffff \
-&& ${TIME} -W0 -1ICvdgi -n1000000 \
-&& ${TIME} -W0 -1ICvdgi -n1000000 -S1 \
-&& ${TIME} -W0 -1ICvdgi -n1000000 -DS1 \
-&& ${TIME} -W0 -1ICvdgi -n1000000 -S1 --splay-key-bits=0xff00ffff \
-&& ${TIME} -W0 -1lmt \
-&& ${TIME} -W0 -RICvdgi -n1000000 \
+&& ${CHECK} -B17 -C -S1  \
+&& ${CHECK} -B17 -C -DS1 \
+&& ${CHECK} -B17 -C      \
+&& ${CHECK} -S1  \
+&& ${CHECK} -DS1 \
+&& ${CHECK}      \
 :
+
+# Judy1
+: \
+&& ${TIME} -W0 -1 -l -Cvdgi -n1e6 -B17 -S1  \
+&& ${TIME} -W0 -1 -l -vdgi  -n1e6 -B17 -DS1 \
+&& ${TIME} -W0 -1 -l -vdgi  -n1e6 -B17      \
+&& ${TIME} -W0 -1 -l -vdgi  -n1e6 -S1  --splay-key-bits=0xff00ffff \
+&& ${TIME} -W0 -1 -l -Cvdgi -n1e6 -DS1 --splay-key-bits=0xff00ffff \
+&& ${TIME} -W0 -1 -l -vdgi  -n1e6      --splay-key-bits=0xff00ffff \
+&& ${TIME} -W0 -1 -l -vdgi  -n1e6 -S1  \
+&& ${TIME} -W0 -1 -l -vdgi  -n1e6 -DS1 \
+&& ${TIME} -W0 -1 -l -Cvdgi -n1e6      \
+:
+
+# JudyL
+: \
+&& ${TIME} -W0 -L -l -Cvdgi -n1e6 -B17 -S1  \
+&& ${TIME} -W0 -L -l -vdgi  -n1e6 -B17 -DS1 \
+&& ${TIME} -W0 -L -l -vdgi  -n1e6 -B17      \
+&& ${TIME} -W0 -L -l -vdgi  -n1e6 -S1  --splay-key-bits=0xff00ffff \
+&& ${TIME} -W0 -L -l -Cvdgi -n1e6 -DS1 --splay-key-bits=0xff00ffff \
+&& ${TIME} -W0 -L -l -vdgi  -n1e6      --splay-key-bits=0xff00ffff \
+&& ${TIME} -W0 -L -l -vdgi  -n1e6 -S1  \
+&& ${TIME} -W0 -L -l -vdgi  -n1e6 -DS1 \
+&& ${TIME} -W0 -L -l -Cvdgi -n1e6      \
+:
+
+#&& bcheckall 32 \
+
+#&& ${TIME} -W0 -1lmt \
+#&& ${TIME} -W0 -RICvdgi -n1000000 \
+#&& ${TIME} -W0 -1Lh -n1000000 -S1 --splay-key-bits=0xff00ffff \
 

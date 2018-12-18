@@ -526,6 +526,8 @@ static void
 Log(qp, const char *str)
 {
     printf("# %20s: " qfmt "\n", str, qy);
+    // qv assertions would constrain us too much in this
+    // highly tuned code.
 }
 
 #if defined(LOOKUP)
@@ -562,12 +564,14 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
 #else // defined(LOOKUP) && ! defined(PLN_PARAM_FOR_LOOKUP)
     Word_t wRoot = pLn->ln_wRoot;
 #endif // defined(LOOKUP) && ! defined(PLN_PARAM_FOR_LOOKUP)
+    // pLn and wRoot of qy are set up
     DBGX(printf("\n# %s pLn %p wRoot 0x%zx wKey 0x%zx ",
                 strLookupOrInsertOrRemove, (void*)pLn, wRoot, wKey));
 
 #if defined(LOOKUP)
     int nBL = cnBitsPerWord;
 #endif // defined(LOOKUP)
+    // nBL, pLn and wRoot of qy are set up
 
     DBGX(printf("# nBL %d pLn %p wRoot " OWx"\n", nBL, pLn, wRoot));
 
@@ -640,8 +644,11 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
     int bCleanupRequested = 0; (void)bCleanupRequested;
     int bCleanup = 0; (void)bCleanup;
 
+    // nBL, pLn and wRoot of qy are set up
     int nType;
+    //DBG(nType = -1); // for compiler for qv in Log
     Word_t *pwr;
+    //DBG(pwr = NULL); // for compiler for qv in Log
     int nBLR;
   #if ! defined(LOOKUP) || defined(B_JUDYL)
     int nPos;
@@ -653,6 +660,7 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
     // This shortcut made the code faster in my testing.
     nType = wr_nType(wRoot);
     pwr = wr_pwr(wRoot);
+    // nBL, pLn, wRoot, nType and pwr of qy are set up
     if (nType > T_SWITCH) {
         DBGX(printf("# goto t_skip_to_switch\n"));
         goto t_skip_to_switch;
@@ -701,6 +709,7 @@ again:;
 
     nType = wr_nType(wRoot);
     pwr = wr_pwr(wRoot); // pwr isn't meaningful for all nType values
+    // nBL, pLn, wRoot, nType and pwr of qy are set up
 
   #if defined(JUMP_TABLE)
     static void *pvJumpTable[] = {
@@ -1561,6 +1570,7 @@ t_list_sw:;
     {
         goto t_list;
 t_list:;
+        DBGX(Log(qy, "fastAgain"));
         DBGX(printf("T_LIST nBL %d nBLR %d\n", nBL, nBLR));
         DBGX(printf("wKeyPopMask " OWx"\n", wPrefixPopMaskBL(nBLR)));
 
@@ -1664,9 +1674,9 @@ t_list:;
           #endif // defined(REMOVE)
           #if defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
               #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
-                DBGX(printf("Lookup (or Insert) returning nPos %d %p," OWx"\n",
-                             nPos, (void *)&pwr[~nPos], pwr[~nPos]));
-                return &pwr[~nPos];
+                DBGX(printf("Lookup (or Insert) returning nPos %d %p\n",
+                             nPos, gpwValues(qy)[~nPos]));
+                return &gpwValues(qy)[~nPos];
               #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 // Success for Lookup and Remove; Failure for Insert
                 return KeyFound;
@@ -2593,16 +2603,14 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
       #endif // ! defined(SEPARATE_T_NULL)
         && 1)
     {
-      #if defined(B_JUDYL) && !defined(HASKEY_FROM_JUDYL_LOOKUP)
-        // PWR_xListPopCount is valid only at the top for PP_IN_LINK.
-        // The first word in the list is used for pop count at the top.
-        int nPos = SearchListWord(ls_pwKeys(pwr, cnBitsPerWord),
-                                  wKey, cnBitsPerWord,
-                                  gnListPopCnt(qy, /* nBLR */ nBL));
-        return (nPos >= 0) ? (PPvoid_t)&pwr[~nPos] : NULL;
-      #else // // defined(B_JUDYL) && !defined(HASKEY_FROM_JUDYL_LOOKUP)
-        return ListHasKeyWord(qy, cnBitsPerWord, wKey);
-      #endif // defined(B_JUDYL) && !defined(HASKEY_FROM_JUDYL_LOOKUP)
+      // PWR_xListPopCount is valid only at the top for PP_IN_LINK.
+      // The first word in the list is used for pop count at the top.
+      #if defined(B_JUDYL)
+        int nPos = LocateKeyInListWord(qy, nBL, wKey);
+        return (nPos >= 0) ? (PPvoid_t)&gpwValues(qy)[~nPos] : NULL;
+      #else // defined(B_JUDYL)
+        return ListHasKeyWord(qy, nBL, wKey);
+      #endif // #else defined(B_JUDYL)
     }
   #endif // defined(SEARCH_FROM_WRAPPER)
   #endif // (cwListPopCntMax != 0)

@@ -161,15 +161,15 @@
 // Default cn2dBmMaxWpkPercent.
 // Create a 2-digit/big bm leaf when wpk gets below cn2dBmMaxWpkPercent/100.
 #if ! defined(cn2dBmMaxWpkPercent)
-  #if (cnBitsPerWord == 32)
-#define cn2dBmMaxWpkPercent  30
-  #else // (cnBitsPerWord == 32)
-      #ifdef B_JUDYL
-#define cn2dBmMaxWpkPercent  0  // For JudyL turn on.
-      #else // B_JUDYL
-#define cn2dBmMaxWpkPercent  15
-      #endif // B_JUDYL
-  #endif // (cnBitsPerWord == 32)
+  #ifdef BITMAP // JudyL has no BITMAP
+    #if (cnBitsPerWord == 32)
+      #define cn2dBmMaxWpkPercent  30
+    #else // (cnBitsPerWord == 32)
+      #define cn2dBmMaxWpkPercent  15
+    #endif // #else (cnBitsPerWord == 32)
+  #else // BITMAP
+    #define cn2dBmMaxWpkPercent  0  // JudyL has no BITMAP
+  #endif // #else BITMAP
 #endif // ! defined(cn2dBmMaxWpkPercent)
 
 #if defined(USE_BM_SW)
@@ -497,10 +497,10 @@ typedef Word_t Bucket_t;
 #endif // ! defined(NO_OLD_LISTS)
 
 // Default is -DPOP_IN_WR_HB. List pop count in wRoot high bits.
-#if ! defined(NO_POP_IN_WR_HB) && (cnBitsPerWord != 32)
+#if ! defined(NO_POP_IN_WR_HB) && (cnBitsPerWord > 32)
   #undef  POP_IN_WR_HB
   #define POP_IN_WR_HB
-#endif // ! defined(NO_POP_IN_WR_HB) && (cnBitsPerWord != 32)
+#endif // ! defined(NO_POP_IN_WR_HB) && (cnBitsPerWord > 32)
 
 #if ! defined(POP_IN_WR_HB)
   #if ! defined(NO_LIST_POP_IN_PREAMBLE)
@@ -1956,6 +1956,8 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 
 #if defined(OLD_LISTS)
 
+  #ifndef LIST_POP_IN_PREAMBLE
+
 // Use ls_sPopCnt in the performance path when we know the keys are bigger
 // than one byte.
 #define     ls_sPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_asKeys[0])
@@ -1965,6 +1967,8 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 // PopCnt fits in a single key slot.
 #define     ls_cPopCnt(_ls)        (((ListLeaf_t *)(_ls))->ll_acKeys[0])
 #define set_ls_cPopCnt(_ls, _cnt)  (ls_cPopCnt(_ls) = (_cnt))
+
+  #endif // LIST_POP_IN_PREAMBLE
 
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 
@@ -1994,6 +1998,12 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
       #endif // defined(LIST_END_MARKERS)
 
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+
+  #ifndef OLD_LIST_WORD_CNT
+      #if (N_LIST_HDR_KEYS != 0)
+#error ListWordCnt cannot handle N_LIST_HDR_KEYS != 0.
+      #endif // (N_LIST_HDR_KEYS != 0)
+  #endif // OLD_LIST_WORD_CNT
 
 // NAT is relevant only for PP_IN_LINK and POP_WORD_IN_LINK where POP_SLOT
 // depends on whether we are at the top or not.
@@ -2450,6 +2460,19 @@ typedef struct {
 // Using the same struct as Switch_t allows for minimal work
 // to RETYPE_FULL_BM_SW.
 typedef Switch_t BmSwitch_t;
+
+#ifdef B_JUDYL
+static Word_t*
+gpwValues(qp)
+{
+    qv;
+  #ifdef LIST_POP_IN_PREAMBLE
+    return &pwr[-1];
+  #else // LIST_POP_IN_PREAMBLE
+    return pwr;
+  #endif // #else LIST_POP_IN_PREAMBLE
+}
+#endif // B_JUDYL
 
 #ifdef SKIP_LINKS
 
