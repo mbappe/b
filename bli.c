@@ -2584,6 +2584,8 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
                 (void *)pcvRoot, wKey));
 
   #if (cwListPopCntMax != 0)
+  // Use SEARCH_FROM_WRAPPER to handle nBL == cnBitsPerWord situations that
+  // would otherwise complicate, i.e. slow down, Lookup.
   #if defined(SEARCH_FROM_WRAPPER)
     // Handle a top level T_LIST leaf here -- without calling Lookup.
     // For PP_IN_LINK a T_LIST leaf at the top has a pop count field in
