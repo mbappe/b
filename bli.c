@@ -1570,9 +1570,7 @@ t_list_sw:;
     {
         goto t_list;
 t_list:;
-        DBGX(Log(qy, "fastAgain"));
-        DBGX(printf("T_LIST nBL %d nBLR %d\n", nBL, nBLR));
-        DBGX(printf("wKeyPopMask " OWx"\n", wPrefixPopMaskBL(nBLR)));
+        DBGX(Log(qy, "t_list"));
 
   #if defined(INSERT) || defined(REMOVE)
         DBGX(printf("T_LIST bCleanup %d nIncr %d\n", bCleanup, nIncr));
