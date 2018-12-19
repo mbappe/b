@@ -17,25 +17,36 @@ CHECK=Judy1LHCheck
 # ${TIME} -Lm -DS1
 
 : \
-&& ${TIME} -W0 -B32 -1Lh -n1000000 -S1 --splay-key-bits=0xff00aa00aa00ffff \
-&& ${TIME} -W0 -B33 -RICvdgi -n1000000 \
-&& ${CHECK} -B17 \
-&& ${CHECK} -B17 -S1 \
-&& ${CHECK} -B17 -DS1 \
-&& ${TIME} -W0 -B25 -1LICvdgi -n100000 --splay-key-bits=0x0400aa00aa00ffff \
-&& ${TIME} -W0 -B25 -1LICvdgi -n100000 -DS1 \
-   --splay-key-bits=0x0400aa00aa00ffff \
+&& ${TIME} -W0 -B25 -1lCvdgi -n1e5      --splay-key-bits=0x0400aa00aa00ffff \
+&& ${TIME} -W0 -B25 -1lvdgi  -n1e5 -S1  --splay-key-bits=0x0400aa00aa00ffff \
+&& ${TIME} -W0 -B25 -1lvdgi  -n1e5 -DS1 --splay-key-bits=0x0400aa00aa00ffff \
+&& ${TIME} -W0 -B25 -1lvdgi  -n1e5 \
+&& ${TIME} -W0 -B25 -1lCvdgi -n1e5 -S1 \
+&& ${TIME} -W0 -B25 -1lvdgi  -n1e5 -DS1 \
+&& ${TIME} -W0 -B32 -1lh     -n1e5 -S1  --splay-key-bits=0xff00aa00aa00ffff \
+:
+
+: \
+&& ${TIME} -W0 -B25 -LlCvdgi -n1e5      --splay-key-bits=0x0400aa00aa00ffff \
+&& ${TIME} -W0 -B25 -Llvdgi  -n1e5 -S1  --splay-key-bits=0x0400aa00aa00ffff \
+&& ${TIME} -W0 -B25 -Llvdgi  -n1e5 -DS1 --splay-key-bits=0x0400aa00aa00ffff \
+&& ${TIME} -W0 -B25 -Llvdgi  -n1e5 \
+&& ${TIME} -W0 -B25 -Llvdgi  -n1e5 -S1 \
+&& ${TIME} -W0 -B25 -LlCvdgi -n1e5 -DS1 \
+&& ${TIME} -W0 -B32 -Llh     -n1e5 -S1  --splay-key-bits=0xff00aa00aa00ffff \
+&& ${TIME} -W0 -B33 -Rlvdgi  -n1e5 \
+:
+
+:\
+&& ${CHECK} -B17 -C \
+&& ${CHECK} -B17 -C -S1 \
+&& ${CHECK} -B17 -C -DS1 \
 && ${CHECK} -B25 \
 && ${CHECK} -B25 -S1 \
 && ${CHECK} -B25 -DS1 \
-&& ${TIME} -W0 -B25 -1LICvdgi -n100000 \
-&& ${TIME} -W0 -B25 -1LICvdgi -n100000 -S1 \
-&& ${CHECK} -B33 \
-&& ${CHECK} -B33 -S1 \
-&& ${CHECK} -B33 -DS1 \
-&& ${TIME} -W0 -B25 -1LICvdgi -n100000 -DS1 \
-&& ${TIME} -W0 -B25 -1LICvdgi -n100000 -S1 \
-   --splay-key-bits=0x0400aa00aa00ffff \
+&& ${CHECK} -B33 -C \
+&& ${CHECK} -B33 -C -S1 \
+&& ${CHECK} -B33 -C -DS1 \
 :
 
 #&& bcheckall 64 \

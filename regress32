@@ -28,28 +28,28 @@ CHECK=Judy1LHCheck
 
 # Judy1
 : \
-&& ${TIME} -W0 -1 -l -Cvdgi -n1e6 -B17 -S1  \
-&& ${TIME} -W0 -1 -l -vdgi  -n1e6 -B17 -DS1 \
-&& ${TIME} -W0 -1 -l -vdgi  -n1e6 -B17      \
-&& ${TIME} -W0 -1 -l -vdgi  -n1e6 -S1  --splay-key-bits=0xff00ffff \
-&& ${TIME} -W0 -1 -l -Cvdgi -n1e6 -DS1 --splay-key-bits=0xff00ffff \
-&& ${TIME} -W0 -1 -l -vdgi  -n1e6      --splay-key-bits=0xff00ffff \
-&& ${TIME} -W0 -1 -l -vdgi  -n1e6 -S1  \
-&& ${TIME} -W0 -1 -l -vdgi  -n1e6 -DS1 \
-&& ${TIME} -W0 -1 -l -Cvdgi -n1e6      \
+&& ${TIME} -W0 -1 -l -Cvdgi -n1e5 -B17 -S1  \
+&& ${TIME} -W0 -1 -l -vdgi  -n1e5 -B17 -DS1 \
+&& ${TIME} -W0 -1 -l -vdgi  -n1e5 -B17      \
+&& ${TIME} -W0 -1 -l -vdgi  -n1e5 -S1  --splay-key-bits=0xff00ffff \
+&& ${TIME} -W0 -1 -l -Cvdgi -n1e5 -DS1 --splay-key-bits=0xff00ffff \
+&& ${TIME} -W0 -1 -l -vdgi  -n1e5      --splay-key-bits=0xff00ffff \
+&& ${TIME} -W0 -1 -l -vdgi  -n1e5 -S1  \
+&& ${TIME} -W0 -1 -l -vdgi  -n1e5 -DS1 \
+&& ${TIME} -W0 -1 -l -Cvdgi -n1e5      \
 :
 
 # JudyL
 : \
-&& ${TIME} -W0 -L -l -Cvdgi -n1e6 -B17 -S1  \
-&& ${TIME} -W0 -L -l -vdgi  -n1e6 -B17 -DS1 \
-&& ${TIME} -W0 -L -l -vdgi  -n1e6 -B17      \
-&& ${TIME} -W0 -L -l -vdgi  -n1e6 -S1  --splay-key-bits=0xff00ffff \
-&& ${TIME} -W0 -L -l -Cvdgi -n1e6 -DS1 --splay-key-bits=0xff00ffff \
-&& ${TIME} -W0 -L -l -vdgi  -n1e6      --splay-key-bits=0xff00ffff \
-&& ${TIME} -W0 -L -l -vdgi  -n1e6 -S1  \
-&& ${TIME} -W0 -L -l -vdgi  -n1e6 -DS1 \
-&& ${TIME} -W0 -L -l -Cvdgi -n1e6      \
+&& ${TIME} -W0 -L -l -Cvdgi -n1e5 -B17 -S1  \
+&& ${TIME} -W0 -L -l -vdgi  -n1e5 -B17 -DS1 \
+&& ${TIME} -W0 -L -l -vdgi  -n1e5 -B17      \
+&& ${TIME} -W0 -L -l -vdgi  -n1e5 -S1  --splay-key-bits=0xff00ffff \
+&& ${TIME} -W0 -L -l -Cvdgi -n1e5 -DS1 --splay-key-bits=0xff00ffff \
+&& ${TIME} -W0 -L -l -vdgi  -n1e5      --splay-key-bits=0xff00ffff \
+&& ${TIME} -W0 -L -l -vdgi  -n1e5 -S1  \
+&& ${TIME} -W0 -L -l -vdgi  -n1e5 -DS1 \
+&& ${TIME} -W0 -L -l -Cvdgi -n1e5      \
 :
 
 #&& bcheckall 32 \

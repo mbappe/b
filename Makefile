@@ -178,6 +178,7 @@ ifeq "$(OFLAGS)" ""
 # OFLAGS = -g -O0
 # OFLAGS = -g -O1
   OFLAGS = -g -O2 -fno-stack-protector
+# OFLAGS = -g -O2 -fno-stack-protector -pg -a
 # OFLAGS =    -O2
 # OFLAGS = -g -O3
 # OFLAGS = -g -O4
