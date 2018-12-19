@@ -900,11 +900,11 @@ t_skip_to_switch:
           #if ! defined(NO_SKIP_AT_TOP)
           #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
                 if (nBL >= cnBitsPerWord) {
-                    //int nBitsIndexSz = nBL_to_nBitsIndexSzNAX(nBLR);
-                    int nBitsIndexSz = nBL_to_nBitsIndexSzNAB(nBLR);
+                    //int nBW = nBL_to_nBWNAX(nBLR);
+                    int nBW = nBL_to_nBWNAB(nBLR);
                     // Abuse CountSw into counting whole switch.
                     wPopCnt = CountSw(qy, nBLR, nBW,
-                                      EXP(nBitsIndexSz), EXP(nBitsIndexSz));
+                                      EXP(nBW), EXP(nBW));
                 } else
           #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
           #endif // ! defined(NO_SKIP_AT_TOP)
@@ -967,7 +967,7 @@ t_skip_to_xx_sw:
       #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
           #error Not ready yet
                 if (nBL >= cnBitsPerWord) {
-                    int nBitsIndexSz = nBL_to_nBitsIndexSzNAB(nBLR);
+                    int nBW = nBL_to_nBWNAB(nBLR);
                     //int nLinks = ??? __builtin_popcount
                     // Abuse CountSw into counting whole switch.
                     wPopCnt = CountSw(qy, nBLR, nBW, nLinks, nLinks);

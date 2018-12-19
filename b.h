@@ -648,10 +648,10 @@ typedef Word_t Bucket_t;
 
 #define cnBitsLeftAtDl3     (cnBitsLeftAtDl2 + cnBitsInD3)
 
-#define cnBitsIndexSzAtTop \
+#define cnBWAtTop \
     (cnBitsPerWord - nBL_from_nDL(cnDigitsPerWord - 1))
 
-// cnDigitsPerWord makes assumptions about anDL_to_nBitsIndexSz[] and
+// cnDigitsPerWord makes assumptions about anDL_to_nBW[] and
 // anDL_to_nBL[].  Yuck.
 #if (cnBitsInD3 != cnBitsPerDigit)
 #define cnDigitsPerWord \
@@ -745,27 +745,27 @@ enum {
     #define bnTypeIsXxSw(_nType)  0
 #endif // defined(CODE_XX_SW)
 
-// Define and optimize nBitsIndexSz_from_nDL, nBitsIndexSz_from_nBL,
+// Define and optimize nBW_from_nDL, nBW_from_nBL,
 // nBL_from_nDL, nBL_from_nDL, et. al. based on ifdef parameters.
 
 // NAX means not at top and not at bottom,
 // i.e. nBL != cnBitsPerWord and nBL != cnBitsInD1.
 
-// nBitsIndexSz_from_nDL_NAX(_nDL)
+// nBW_from_nDL_NAX(_nDL)
 #if ((cnBitsInD3 == cnBitsPerDigit) && (cnBitsInD2 == cnBitsPerDigit))
-  #define nBitsIndexSz_from_nDL_NAX(_nDL)  (cnBitsPerDigit)
-  #define nBitsIndexSz_from_nBL_NAX(_nBL)  (cnBitsPerDigit)
+  #define nBW_from_nDL_NAX(_nDL)  (cnBitsPerDigit)
+  #define nBW_from_nBL_NAX(_nBL)  (cnBitsPerDigit)
 #elif (cnBitsInD3 == cnBitsPerDigit)
-  #define nBitsIndexSz_from_nDL_NAX(_nDL) \
+  #define nBW_from_nDL_NAX(_nDL) \
     (((_nDL) == 2) ? cnBitsInD2 : cnBitsPerDigit)
-  #define nBitsIndexSz_from_nBL_NAX(_nBL) \
+  #define nBW_from_nBL_NAX(_nBL) \
     (((_nBL) == cnBitsLeftAtDl2) ? cnBitsInD2 : cnBitsPerDigit)
 #else // ((cnBitsInD3 == cnBitsPerDigit) && (cnBitsInD2 == cnBitsPerDigit))
-  #define nBitsIndexSz_from_nDL_NAX(_nDL) \
+  #define nBW_from_nDL_NAX(_nDL) \
     ( ((_nDL) == 2) ? cnBitsInD2 \
     : ((_nDL) == 3) ? cnBitsInD3 \
     : cnBitsPerDigit )
-  #define nBitsIndexSz_from_nBL_NAX(_nBL) \
+  #define nBW_from_nBL_NAX(_nBL) \
     ( ((_nBL) == cnBitsLeftAtDl2) ? cnBitsInD2 \
     : ((_nBL) == cnBitsLeftAtDl3) ? cnBitsInD3 \
     : cnBitsPerDigit )
@@ -849,52 +849,52 @@ enum {
 
 #endif // (cnBitsInD1 == cnBitsPerDigit) && ...
 
-#define nBitsIndexSz_from_nBL_NAB(_nBL) \
+#define nBW_from_nBL_NAB(_nBL) \
     ( (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) != 0) \
-        && ((_nBL) == cnBitsPerWord) ? cnBitsIndexSzAtTop \
+        && ((_nBL) == cnBitsPerWord) ? cnBWAtTop \
     : ((cnBitsInD2 != cnBitsPerDigit) && ((_nBL) <= 2)) ? cnBitsInD2 \
     : ((cnBitsInD3 != cnBitsPerDigit) && ((_nBL) <= 3)) ? cnBitsInD3 \
     : cnBitsPerDigit )
 
 #if (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
-// cnBitsIndexSzAtTop == cnBitsPerDigit
+// cnBWAtTop == cnBitsPerDigit
 
-// nBitsIndexSz_from_nDL(_nDL)
+// nBW_from_nDL(_nDL)
 #if (cnBitsInD1 == cnBitsPerDigit)
-    #define nBitsIndexSz_from_nDL(_nDL)  (nBitsIndexSz_from_nDL_NAX(_nDL))
-    #define nBitsIndexSz_from_nBL(_nBL)  (nBitsIndexSz_from_nBL_NAX(_nBL))
+    #define nBW_from_nDL(_nDL)  (nBW_from_nDL_NAX(_nDL))
+    #define nBW_from_nBL(_nBL)  (nBW_from_nBL_NAX(_nBL))
 #else // (cnBitsInD1 == cnBitsPerDigit)
-    #define nBitsIndexSz_from_nDL(_nDL) \
-        ( ((_nDL) <= 1) ? cnBitsLeftAtDl1 : nBitsIndexSz_from_nDL_NAX(_nDL) )
-    #define nBitsIndexSz_from_nBL(_nBL) \
+    #define nBW_from_nDL(_nDL) \
+        ( ((_nDL) <= 1) ? cnBitsLeftAtDl1 : nBW_from_nDL_NAX(_nDL) )
+    #define nBW_from_nBL(_nBL) \
         ( ((_nBL) <= cnBitsInD1) ? cnBitsLeftAtDl1 \
-                                 : nBitsIndexSz_from_nBL_NAX(_nBL) )
+                                 : nBW_from_nBL_NAX(_nBL) )
 #endif // (cnBitsInD1 == cnBitsPerDigit)
 
 // nBL_from_nDL(_nDL)
 #define nBL_from_nDL(_nDL)  (nBL_from_nDL_NAT(_nDL))
 
 #else // (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
-// cnBitsIndexSzAtTop != cnBitsPerDigit
+// cnBWAtTop != cnBitsPerDigit
 
-  // nBitsIndexSz_from_nDL(_nDL)
+  // nBW_from_nDL(_nDL)
   #if (cnBitsInD1 == cnBitsPerDigit)
-    #define nBitsIndexSz_from_nDL(_nDL) \
-        ( ((_nDL) < cnDigitsPerWord) ? nBitsIndexSz_from_nDL_NAX(_nDL) \
-        : cnBitsIndexSzAtTop )
-    #define nBitsIndexSz_from_nBL(_nBL) \
-        ( ((_nBL) < cnBitsPerWord) ? nBitsIndexSz_from_nBL_NAX(_nBL) \
-        : cnBitsIndexSzAtTop )
+    #define nBW_from_nDL(_nDL) \
+        ( ((_nDL) < cnDigitsPerWord) ? nBW_from_nDL_NAX(_nDL) \
+        : cnBWAtTop )
+    #define nBW_from_nBL(_nBL) \
+        ( ((_nBL) < cnBitsPerWord) ? nBW_from_nBL_NAX(_nBL) \
+        : cnBWAtTop )
   #else // (cnBitsInD1 == cnBitsPerDigit)
     // Do we need this to be valid for _nDL < 1?
-    #define nBitsIndexSz_from_nDL(_nDL) \
+    #define nBW_from_nDL(_nDL) \
         ( ((_nDL) <= 1) ? cnBitsInD1 \
-        : ((_nDL) < cnDigitsPerWord) ? nBitsIndexSz_from_nDL_NAX(_nDL) \
-        : cnBitsIndexSzAtTop )
-    #define nBitsIndexSz_from_nBL(_nBL) \
+        : ((_nDL) < cnDigitsPerWord) ? nBW_from_nDL_NAX(_nDL) \
+        : cnBWAtTop )
+    #define nBW_from_nBL(_nBL) \
         ( ((_nBL) <= cnBitsInD1) ? cnBitsInD1 \
-        : ((_nBL) < cnBitsPerWord) ? nBitsIndexSz_from_nBL_NAX(_nBL) \
-        : cnBitsIndexSzAtTop )
+        : ((_nBL) < cnBitsPerWord) ? nBW_from_nBL_NAX(_nBL) \
+        : cnBWAtTop )
   #endif // (cnBitsInD1 == cnBitsPerDigit)
 
     // nBL_from_nDL(_nDL)
@@ -903,12 +903,12 @@ enum {
 
 #endif // (((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0)
 
-#if (cnBitsIndexSzAtTop == cnBitsPerDigit)
+#if (cnBWAtTop == cnBitsPerDigit)
   #define nBW_from_nBL_NAB3(_nBL)  (cnBitsPerDigit)
-#else // (cnBitsIndexSzAtTop == cnBitsPerDigit)
+#else // (cnBWAtTop == cnBitsPerDigit)
   #define nBW_from_nBL_NAB3(_nBL) \
-    (((_nBL) >= cnBitsPerWord) ? cnBitsIndexSzAtTop : (cnBitsPerDigit))
-#endif // (cnBitsIndexSzAtTop == cnBitsPerDigit)
+    (((_nBL) >= cnBitsPerWord) ? cnBWAtTop : (cnBitsPerDigit))
+#endif // (cnBWAtTop == cnBitsPerDigit)
 
 // Default is -UBPD_TABLE.  This causes the table to exist and allows
 // us to reference it in cases when we think it will be faster.
@@ -922,31 +922,29 @@ enum {
 
 #if defined(BPD_TABLE)
 
-  #define nDL_to_nBitsIndexSz(_nDL)  (anDL_to_nBitsIndexSz[_nDL])
+  #define nDL_to_nBW(_nDL)  (anDL_to_nBW[_nDL])
   #define nDL_to_nBL(_nDL)           (anDL_to_nBL[_nDL])
   #define nBL_to_nDL(_nBL)           (anBL_to_nDL[_nBL])
 
-  #define nBL_to_nBitsIndexSz(_nBL)  nDL_to_nBitsIndexSz(nBL_to_nDL(_nBL))
+  #define nBL_to_nBW(_nBL)  nDL_to_nBW(nBL_to_nDL(_nBL))
 
 #else // defined(BPD_TABLE)
 
-  #define nDL_to_nBitsIndexSz(_nDL)  (nBitsIndexSz_from_nDL(_nDL))
-  #define nBL_to_nBitsIndexSz(_nBL)  (nBitsIndexSz_from_nBL(_nBL))
+  #define nDL_to_nBW(_nDL)  (nBW_from_nDL(_nDL))
+  #define nBL_to_nBW(_nBL)  (nBW_from_nBL(_nBL))
   #define nDL_to_nBL(_nDL)           (nBL_from_nDL(_nDL))
   #define nBL_to_nDL(_nBL)           (nDL_from_nBL(_nBL))
 
 #endif // defined(BPD_TABLE)
 
-#define nBL_to_nBW(_nBL)  nBL_to_nBitsIndexSz(_nBL)
-
 #define nDL_to_nBL_NAX(_nDL)          (nBL_from_nDL_NAX(_nDL))
-#define nBL_to_nBitsIndexSzNAX(_nBL)  (nBitsIndexSz_from_nBL_NAX(_nBL))
-#define nBL_to_nBitsIndexSzNAB(_nBL)  (nBitsIndexSz_from_nBL_NAB(_nBL))
-#define nDL_to_nBitsIndexSzNAX(_nDL)  (nBitsIndexSz_from_nDL_NAX(_nDL))
+#define nBL_to_nBWNAX(_nBL)  (nBW_from_nBL_NAX(_nBL))
+#define nBL_to_nBWNAB(_nBL)  (nBW_from_nBL_NAB(_nBL))
+#define nDL_to_nBWNAX(_nDL)  (nBW_from_nDL_NAX(_nDL))
 #define nDL_to_nBL_NAT(_nDL)          (nBL_from_nDL_NAT(_nDL))
-#define nDL_to_nBitsIndexSzNAT(_nDL)  (nDL_to_nBitsIndexSz(_nDL))
+#define nDL_to_nBWNAT(_nDL)  (nDL_to_nBW(_nDL))
 
-#define nBL_to_nBWNAB(_nBL)  (nBitsIndexSz_from_nBL_NAB(_nBL))
+#define nBL_to_nBWNAB(_nBL)  (nBW_from_nBL_NAB(_nBL))
 
 #if defined(RAMMETRICS)
   #define METRICS(x)  (x)
@@ -2876,11 +2874,11 @@ extern int bPopCntTotalIsInvalid;
 
 #if defined(BPD_TABLE)
   #if defined(BPD_TABLE_RUNTIME_INIT)
-extern unsigned anDL_to_nBitsIndexSz[ cnBitsPerWord + 1 ];
+extern unsigned anDL_to_nBW[ cnBitsPerWord + 1 ];
 extern unsigned anDL_to_nBL[ cnBitsPerWord + 1 ];
 extern unsigned anBL_to_nDL[ cnBitsPerWord * 2 ];
   #else // defined(BPD_TABLE_RUNTIME_INIT)
-extern const unsigned anDL_to_nBitsIndexSz[];
+extern const unsigned anDL_to_nBW[];
 extern const unsigned anDL_to_nBL[];
 extern const unsigned anBL_to_nDL[];
   #endif // defined(BPD_TABLE_RUNTIME_INIT)
