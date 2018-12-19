@@ -5225,7 +5225,11 @@ embeddedKeys:;
   #if defined(EMBED_KEYS)
         assert(wr_nType(*pwRoot) != T_EMBEDDED_KEYS);
   #endif // defined(EMBED_KEYS)
-        int nDLR = ! tp_bIsSkip(nType) ? nDL : (int)wr_nDL(wRoot);
+        int nDLR =
+  #ifdef SKIP_LINKS
+                 tp_bIsSkip(nType) ? (int)wr_nDL(wRoot) :
+  #endif // SKIP_LINKS
+                 nDL;
         (void)nDLR; // silence the compiler
   #if defined(BM_SW_FOR_REAL)
       #if defined(SKIP_LINKS)
