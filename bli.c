@@ -646,9 +646,9 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
 
     // nBL, pLn and wRoot of qy are set up
     int nType;
-    //DBG(nType = -1); // for compiler for qv in Log
+    DBGX(nType = -1); // for compiler for qv in Log
     Word_t *pwr;
-    //DBG(pwr = NULL); // for compiler for qv in Log
+    DBGX(pwr = NULL); // for compiler for qv in Log
     int nBLR;
   #if ! defined(LOOKUP) || defined(B_JUDYL)
     int nPos;
@@ -1674,8 +1674,9 @@ t_list:;
           #endif // defined(REMOVE)
           #if defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
               #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
-                DBGX(printf("Lookup (or Insert) returning nPos %d %p\n",
-                             nPos, gpwValues(qy)[~nPos]));
+                DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
+                             nPos,
+                             &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
                 return &gpwValues(qy)[~nPos];
               #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 // Success for Lookup and Remove; Failure for Insert
@@ -3037,9 +3038,9 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         DBGR(printf("wPopCntTotal %zd Judy1Count %zd\n",
                     wPopCntTotal,
       #ifdef B_JUDYL
-                    Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL)
-      #else // B_JUDYL
                     JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL)
+      #else // B_JUDYL
+                    Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL)
       #endif // B_JUDYL
                     ));
     }

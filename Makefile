@@ -289,6 +289,7 @@ all: $(EXES) $(LINKS) $(LIBS) $(ASMS) $(CPPS)
 
 clean:
 	rm -f $(EXES) $(LINKS) $(LIBS) $(LIBB_OBJS) $(ASMS) $(CPPS) \
+    JudyMalloc.so \
     b1time b1check bLtime blcheck jtime jcheck \
     b check Judy1LHTime Judy1LHCheck
 
