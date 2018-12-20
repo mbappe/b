@@ -1881,8 +1881,10 @@ GetPopCnt(Word_t *pwRoot, int nBL)
       #endif // defined(SKIP_TO_BITMAP)
             || 0)
         {
-            Word_t wPP = *(wr_pwr(*pwRoot) + EXP(nBLR - cnLogBitsPerWord));
-            Word_t wPopCnt = w_wPopCntBL(wPP, nBLR);
+            Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
+            Word_t wRoot = *pwRoot; (void)wRoot;
+            Word_t *pwr = wr_pwr(wRoot);
+            Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR);
             return (wPopCnt == 0) ? EXP(nBLR) : wPopCnt ;
         }
   #endif // BITMAP
@@ -3067,7 +3069,7 @@ Word_t *
 #else // B_JUDYL
 Status_t
 #endif // B_JUDYL
-InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot);
+InsertAtBitmap(qp, Word_t wKey);
 
 #if (cwListPopCntMax != 0)
 
@@ -5129,7 +5131,7 @@ InsertGuts(qp, Word_t wKey, int nPos
   #endif // defined(SKIP_TO_BITMAP)
         || 0)
     {
-        return InsertAtBitmap(pwRoot, wKey, nDL, wRoot);
+        return InsertAtBitmap(qy, wKey);
     }
 #endif // BITMAP
 
@@ -5856,29 +5858,29 @@ InsertAtDl1(Word_t *pwRoot, Word_t wKey, int nDL,
 #endif // B_JUDYL
 }
 
+#ifdef BITMAP
+
 // InsertAtBitmap is for a bitmap that is not at the bottom.
 #ifdef B_JUDYL
 Word_t*
 #else // B_JUDYL
 Status_t
 #endif // B_JUDYL
-InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
+InsertAtBitmap(qp, Word_t wKey)
 {
-    (void)pwRoot;
-    int nBL = nDL_to_nBL(nDL);
+    qv;
 
+    int nBLR = nBL;
 #if defined(SKIP_TO_BITMAP)
-    if (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP) {
-        int nBLR = GetBLR(pwRoot, nBL);
-        int nDLR = nBL_to_nDL(nBLR);
-        Word_t *pwr = Get_pwr(pwRoot); (void)pwr;
+    if (nType == T_SKIP_TO_BITMAP) {
+        nBLR = gnBLR(qy);
 
         Word_t wPrefix;
 #if defined(PP_IN_LINK)
         if (nBL == cnBitsPerWord) { wPrefix = 0; /* limitation */ } else
 #endif // defined(PP_IN_LINK)
 #if defined(SKIP_TO_BITMAP) && ! defined(PP_IN_LINK)
-        if (Get_nType(pwRoot) == T_SKIP_TO_BITMAP) {
+        if (nType == T_SKIP_TO_BITMAP) {
             wPrefix = w_wPrefixBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)),
                                  nBLR);
         } else
@@ -5901,26 +5903,17 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
             PrefixMismatch(pwRoot, nBL, wKey, nBLR); return Success;
   #endif // B_JUDYL
         }
-
-        nBL = nBLR;
-        nDL = nDLR;
     }
 #endif // defined(SKIP_TO_BITMAP)
 
-    Word_t *pwr = wr_pwr(wRoot);
-
-    assert(pwr != NULL);
-
-    assert( ! BitIsSet(pwr, wKey & MSK(nBL)) );
+    assert( ! BitIsSet(pwr, wKey & MSK(nBLR)) );
 
     DBGI(printf("SetBit(pwr " OWx" wKey " OWx") pwRoot %p\n",
-                (Word_t)pwr, wKey & MSK(nBL), (void *)pwRoot));
+                (Word_t)pwr, wKey & MSK(nBLR), (void *)pwRoot));
 
-    SetBit(pwr, wKey & MSK(nBL));
+    SetBit(pwr, wKey & MSK(nBLR));
 
-    // population is in the word following the bitmap
-    set_w_wPopCntBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL,
-        w_wPopCntBL(*(pwr + EXP(nBL - cnLogBitsPerWord)), nBL) + 1);
+    swBitmapPopCnt(qy, nBLR, gwBitmapPopCnt(qy, nBLR) + 1);
 
 #if defined(PP_IN_LINK)
 
@@ -5929,7 +5922,7 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
     // the bitmap?
 
     // What about no_unnecessary_prefix?
-    set_PWR_wPrefix(pwRoot, NULL, nDL, wKey);
+    set_PWR_wPrefixBL(pwRoot, NULL, nBLR, wKey);
 
 #endif // defined(PP_IN_LINK)
 
@@ -5940,9 +5933,9 @@ InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nDL, Word_t wRoot)
 #endif // B_JUDYL
 }
 
-static Status_t
-RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
-             int nBL, Word_t wRoot);
+#endif // BITMAP
+
+static Status_t RemoveAtBitmap(qp, Word_t wKey);
 
 // RemoveCleanup needs work.
 // All it does is look for switches (subtrees) with popcnt zero and free them.
@@ -6110,7 +6103,7 @@ RemoveGuts(qp, Word_t wKey
         || (nType == T_BITMAP));
 #endif // (cwListPopCntMax != 0)
     {
-        return RemoveBitmap(pwRoot, wKey, nDL, nBL, wRoot);
+        return RemoveAtBitmap(qy, wKey);
     }
 #endif // BITMAP
 
@@ -6461,56 +6454,51 @@ embeddedKeys:;
     (void)pwRoot; (void)wKey; (void)nDL; (void)wRoot;
 }
 
+#ifdef BITMAP
 // Clear the bit for wKey in the bitmap.
 // And free the bitmap if it is empty and not embedded.
 static Status_t
-RemoveBitmap(Word_t *pwRoot, Word_t wKey, int nDL,
-             int nBL, Word_t wRoot)
+RemoveAtBitmap(qp, Word_t wKey)
 {
-    (void)nDL;
+    qv;
 
     // EXP(nBL) is risky because nBL could be cnBitsPerWord
     if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
-        ClrBit(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL));
+        ClrBit(pLn, wKey & MSK(nBL));
     } else {
         int nBLR = nBL;
   #if defined(SKIP_TO_BITMAP)
-        if (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP) {
-            Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
-            Word_t *pwr = wr_pwr(wRoot);
-            int nType = wr_nType(wRoot);
+        if (nType == T_SKIP_TO_BITMAP) {
             nBLR = gnBLR(qy);
         }
   #endif // defined(SKIP_TO_BITMAP)
-        Word_t *pwr = wr_pwr(wRoot);
 
         ClrBit(pwr, wKey & MSK(nBLR));
 
-        set_w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR,
-            w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR) - 1);
+        Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR) - 1;
+        swBitmapPopCnt(qy, nBLR, wPopCnt);
 
 #if defined(DEBUG_COUNT)
-        Word_t wPopCnt = 0;
+        Word_t wPopCntDbg = 0;
         for (Word_t ww = 0; ww < EXP(nBLR - cnLogBitsPerWord); ww++) {
-            wPopCnt += __builtin_popcountll(pwr[ww]);
+            wPopCntDbg += __builtin_popcountll(pwr[ww]);
         }
-        assert(wPopCnt
-            == w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR));
+        assert(wPopCntDbg == wPopCnt);
 #endif // defined(DEBUG_COUNT)
 
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        assert(PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR)
-            == w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR));
+        assert(PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR) == wPopCnt);
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 
         // Free the bitmap if it is empty.
-        if (w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR) == 0) {
+        if (wPopCnt == 0) {
             OldBitmap(pwRoot, pwr, nBL);
         }
     }
 
     return Success;
 }
+#endif // BITMAP
 
 #endif // (cnDigitsPerWord != 1)
 

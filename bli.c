@@ -127,9 +127,7 @@ CountSw(qp,
                   #endif // defined(PP_IN_LINK)
               #endif // defined(SKIP_TO_BITMAP)
             case T_BITMAP:
-                wPopCntLoop
-                    = w_wPopCntBL(*(pwrLoop + EXP(nBLRLoop - cnLogBitsPerWord)),
-                                  nBLRLoop);
+                wPopCntLoop = gwBitmapPopCnt(qyLoop, nBLRLoop);
                 if (wPopCntLoop == 0) {
                     wPopCntLoop = EXP(nBLRLoop);
                 }
@@ -1919,8 +1917,7 @@ t_skip_to_bitmap:;
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
             if (wPrefixMismatch > 0) {
-                Word_t wPopCnt
-                    = w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
+                Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR);
                 DBGC(printf("T_SKIP_TO_BITMAP: PREFIX_MISMATCH wPopCnt %" _fw
                                 "d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
@@ -2018,9 +2015,7 @@ t_bitmap:;
                 // end rather than going to the trouble of figuring out
                 // which end is closer.
                 if ((nBLR > 8) && wKey & EXP(nBLR - 1)) {
-                    wPopCnt
-                        = w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)),
-                                      nBLR);
+                    wPopCnt = gwBitmapPopCnt(qy, nBLR);
                     if (wPopCnt == 0) {
                         wPopCnt = EXP(nBLR);
                     }

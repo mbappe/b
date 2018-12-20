@@ -2634,6 +2634,32 @@ Set_xListPopCnt(Word_t *pwRoot, int nBL, int nPopCnt)
 #endif // POP_IN_WR_HB ...
 }
 
+#if defined(BITMAP)
+
+static Word_t
+gwBitmapPopCnt(qp, int nBLR)
+{
+    qv;
+  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    #error gwBitmapPopCnt does not handle pop in link yet
+  #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    // population is in the word following the bitmap
+    return w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
+}
+
+static void
+swBitmapPopCnt(qp, int nBLR, Word_t wPopCnt)
+{
+    qv;
+  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    #error gwBitmapPopCnt does not handle pop in link yet
+  #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    set_w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR, wPopCnt);
+}
+
+#endif // defined(BITMAP)
+
+
 #if defined(CODE_LIST_SW)
 
 // Get the number of links in a list switch.
@@ -2798,7 +2824,7 @@ Word_t*
 #else // B_JUDYL
 Status_t
 #endif // B_JUDYL
-InsertAtBitmap(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot);
+InsertAtBitmap(qp, Word_t wKey);
 
 //Word_t FreeArrayGuts(Word_t *pwRoot,
 //                     Word_t wPrefix, int nBL, int bDump);
