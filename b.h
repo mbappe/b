@@ -2637,6 +2637,28 @@ Set_xListPopCnt(Word_t *pwRoot, int nBL, int nPopCnt)
 #if defined(BITMAP)
 
 static Word_t
+gwBitmapPrefix(qp, int nBLR)
+{
+    qv;
+  #if defined(PP_IN_LINK)
+    #error gwBitmapPrefix does not handle prefix in link yet
+  #endif // defined(PP_IN_LINK)
+    // prefix is in the word following the bitmap
+    return w_wPrefixBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
+}
+
+static void
+swBitmapPrefix(qp, int nBLR, Word_t wPrefix)
+{
+    qv;
+  #if defined(PP_IN_LINK)
+    #error gwBitmapPrefix does not handle prefix in link yet
+  #endif // defined(PP_IN_LINK)
+    // prefix is in the word following the bitmap
+    set_w_wPrefixBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR, wPrefix);
+}
+
+static Word_t
 gwBitmapPopCnt(qp, int nBLR)
 {
     qv;
@@ -2654,6 +2676,7 @@ swBitmapPopCnt(qp, int nBLR, Word_t wPopCnt)
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     #error gwBitmapPopCnt does not handle pop in link yet
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    // population is in the word following the bitmap
     set_w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR, wPopCnt);
 }
 

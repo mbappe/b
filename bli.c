@@ -244,7 +244,7 @@ PrefixMismatch(qp,
 #error SKIP_TO_BITMAP and PP_IN_LINK is not coded yet
           #else // defined(PP_IN_LINK)
         : (wr_nType(pLn->ln_wRoot) == T_SKIP_TO_BITMAP)
-            ?  w_wPrefixBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR)
+            ? gwBitmapPrefix(qy, nBLR)
           #endif // defined(PP_IN_LINK)
       #endif // defined(SKIP_TO_BITMAP)
       #if defined(CODE_BM_SW)

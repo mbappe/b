@@ -40,9 +40,12 @@
   #define NO_BITMAP
   #undef ALLOW_EMBEDDED_BITMAP
   // Allow DEFINES=-DUSE_XX_SW on make command line for JUDY1.
-  #ifdef USE_XX_SW
-    #undef USE_XX_SW
+  #ifdef    USE_XX_SW
+    #undef  USE_XX_SW
   #endif // USE_XX_SW
+  #ifdef    SKIP_TO_XX_SW
+    #undef  SKIP_TO_XX_SW
+  #endif // SKIP_TO_XX_SW
   // Allow DEFINES=-DSKIP_TO_BITMAP on make command line for JUDY1.
   #undef SKIP_TO_BITMAP
 
