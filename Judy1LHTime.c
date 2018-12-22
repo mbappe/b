@@ -960,6 +960,7 @@ PrintHeaderX(const char *strFirstCol, int nRow)
         printf(nRow ? "      " : "  L1/K");
         printf(nRow ? "      " : "  B1/K");
 #if defined(MIKEY)
+        // Doug's code doesn't have a B2 yet.
         if (J1Flag) {
             printf(nRow ? "      " : "  B2/K"); // big bitmap leaf words per key
         } else
@@ -4151,6 +4152,14 @@ TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
                                 }
                                 if (PValueNew != PValue)
                                 {
+#ifdef MIKEY
+                                    FAILURE("Second JudyLIns failed with"
+                                            " wrong PValue after Insert",
+                                            TstKey);
+#else // MIKEY
+                                    // Doug's code isn't strict about this yet
+                                    // because it modifies the array on the way
+                                    // down.
                                     printf("\n#Line = %d,"
                                            " Caution: PValueNew = 0x%" PRIxPTR
                                            ", PValueold = 0x%" PRIxPTR
@@ -4159,9 +4168,7 @@ TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
                                     printf("- ValueNew = 0x%" PRIxPTR
                                            ", Valueold = 0x%" PRIxPTR"\n",
                                            *PValueNew, *PValue);
-                                    FAILURE("Second JudyLIns failed with"
-                                            " wrong PValue after Insert",
-                                            TstKey);
+#endif // #else MIKEY
                                 }
                                 if (*PValueNew != TstKey)
                                 {
@@ -5133,7 +5140,7 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     if (J1KeyBefore == J1LastKey)
                     {
                         if ((Rc == 1)
-  #ifdef MIKEY // Judy fails this test
+  #ifdef MIKEY // Doug's code fails with this test.
                             || (J1Key != J1KeyBefore)
   #endif // MIKEY
                             )
@@ -5208,7 +5215,7 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     if (JLKeyBefore == JLLastKey)
                     {
                         if ((PValue != NULL)
-  #ifdef MIKEY // Judy fails this test
+  #ifdef MIKEY // Doug's code fails with this test.
                             || (JLKey != JLKeyBefore)
   #endif // MIKEY
                             )
