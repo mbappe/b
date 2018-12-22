@@ -4151,9 +4151,17 @@ TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
                                 }
                                 if (PValueNew != PValue)
                                 {
-//                                    printf("\n#Line = %d, Caution: PValueNew = 0x%" PRIxPTR", PValueold = 0x%" PRIxPTR" changed\n", __LINE__, (Word_t)PValueNew, (Word_t)PValue);
-//                                    printf("- ValueNew = 0x%" PRIxPTR", Valueold = 0x%" PRIxPTR"\n", *PValueNew, *PValue);
-//                                    FAILURE("Second JudyLIns failed with wrong PValue after Insert", TstKey);
+                                    printf("\n#Line = %d,"
+                                           " Caution: PValueNew = 0x%" PRIxPTR
+                                           ", PValueold = 0x%" PRIxPTR
+                                           " changed\n", __LINE__,
+                                           (Word_t)PValueNew, (Word_t)PValue);
+                                    printf("- ValueNew = 0x%" PRIxPTR
+                                           ", Valueold = 0x%" PRIxPTR"\n",
+                                           *PValueNew, *PValue);
+                                    FAILURE("Second JudyLIns failed with"
+                                            " wrong PValue after Insert",
+                                            TstKey);
                                 }
                                 if (*PValueNew != TstKey)
                                 {
@@ -5734,6 +5742,30 @@ TestJudyDel(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
             {
                 if (Tit)
                 {
+                    if (gFlag)
+                    {
+                        PWord_t   PValueNew;
+
+                        PValueNew = (PWord_t)JudyLGet(*JL, TstKey, PJE0);
+                        if (PValueNew == NULL)
+                        {
+                            printf("\n--- JudyLGet failure before JudyLDel"
+                                   ", Key = 0x%" PRIxPTR
+                                   ", Value = 0x%" PRIxPTR"",
+                                   TstKey, *PValueNew);
+                            FAILURE("JudyLGet failure before JudyLDel",
+                                    TstKey);
+                        }
+                        else if (*PValueNew != TstKey)
+                        {
+                            printf("\n--- JudyLGet wrong value before JudyLDel"
+                                   ", Key = 0x%" PRIxPTR
+                                   ", Value = 0x%" PRIxPTR"",
+                                   TstKey, *PValueNew);
+                            FAILURE("JudyLGet wrong value before JudyLDel",
+                                    TstKey);
+                        }
+                    }
 
                     Rc = JudyLDel(JL, TstKey, PJE0);
 
