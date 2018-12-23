@@ -7779,7 +7779,9 @@ Initialize(void)
 #endif // defined(cnListPopCntMaxDl3)
     printf("\n");
     printf("# cwListPopCntMax %d\n", cwListPopCntMax);
+#ifdef BITMAP
     printf("# cn2dBmMaxWpkPercent %d\n", cn2dBmMaxWpkPercent);
+#endif // BITMAP
 #ifdef CODE_BM_SW
     printf("# cnBmSwConvert %d\n", cnBmSwConvert);
     printf("# cnBmSwRetain %d\n", cnBmSwRetain);
