@@ -118,6 +118,9 @@
 #define  qyLoop \
     nBLLoop, pLnLoop, wRootLoop, nTypeLoop, pwrLoop
 
+#define  qyLn \
+    nBLLn, pLnLn, wRootLn, nTypeLn, pwrLn
+
 // Shorthand to silence not-used compiler warnings.
 // And to validate assumptions.
 #define  qv \
@@ -160,17 +163,19 @@
 
 // Default cn2dBmMaxWpkPercent.
 // Create a 2-digit/big bm leaf when wpk gets below cn2dBmMaxWpkPercent/100.
-#if ! defined(cn2dBmMaxWpkPercent)
-  #ifdef BITMAP // JudyL has no BITMAP
-    #if (cnBitsPerWord == 32)
-      #define cn2dBmMaxWpkPercent  30
-    #else // (cnBitsPerWord == 32)
-      #define cn2dBmMaxWpkPercent  15
-    #endif // #else (cnBitsPerWord == 32)
-  #else // BITMAP
-    #define cn2dBmMaxWpkPercent  0  // JudyL has no BITMAP
-  #endif // #else BITMAP
-#endif // ! defined(cn2dBmMaxWpkPercent)
+#ifdef BITMAP
+  #if !defined(cn2dBmMaxWpkPercent)
+      #ifdef B_JUDYL // JudyL has no 2-digit bitmap yet.
+    #define cn2dBmMaxWpkPercent  0 // JudyL has no 2-digit bitmap yet.
+      #else // B_JUDYL
+        #if (cnBitsPerWord == 32)
+    #define cn2dBmMaxWpkPercent  30
+        #else // (cnBitsPerWord == 32)
+    #define cn2dBmMaxWpkPercent  15
+        #endif // #else (cnBitsPerWord == 32)
+      #endif // #else B_JUDYL
+  #endif // !defined(cn2dBmMaxWpkPercent)
+#endif // BITMAP
 
 #if defined(USE_BM_SW)
 // USE_BM_SW means always use a bm sw when creating a switch with no skip.
@@ -224,8 +229,7 @@
 // If nBL == cnListPopCntMaxDl<x>, then cnListPopCntMaxDl<x> governs maximum
 // external list size, where nBL == cnBitsLeftAtDl<x>.
 // If nBL != cnBitsLeftAtDl<x> for any <x>, then maximum
-// external list size is governed by cnListPopCntMax8, cnListPopCntMax16,
-// cnListPopCntMax32 or cnListPopCntMax64.
+// external list size is governed by cnListPopCntMax(8|16|24|32|40|48|56|64).
 // EmbeddedListPopCntMax(nBL) governs maximum embedded list size unless
 // defined(POP_CNT_MAX_IS_KING) in which case the rules above for maximum
 // external list size also govern the maximum embedded list size.
@@ -549,14 +553,7 @@ typedef Word_t Bucket_t;
 
 // Default cnListPopCntMaxDl1 is 0x10 for cnBitsInD1 = 8.
 #if ! defined(cnListPopCntMaxDl1)
-  // I'm confused. Should this be !defined(USE_XX_SW)?
-  #if !defined(USE_XX_SW)
-        #ifdef B_JUDYL
-      #define cnListPopCntMaxDl1  256  // For JudyL turn on.
-        #else // B_JUDYL
-      #define cnListPopCntMaxDl1  0x10
-        #endif // B_JUDYL
-  #else // defined(USE_XX_SW)
+  #if defined(USE_XX_SW)
     #  if (cnBitsInD1 == 7)
       #define cnListPopCntMaxDl1  0x08
     #elif (cnBitsInD1 == 8)
@@ -574,7 +571,9 @@ typedef Word_t Bucket_t;
     #else
       #define cnListPopCntMaxDl1  0x01
     #endif // cnBitsInD1
-  #endif // defined(USE_XX_SW)
+  #else // defined(USE_XX_SW)
+      #define cnListPopCntMaxDl1  0x10
+  #endif // #else defined(USE_XX_SW)
 #endif // ! defined(cnListPopCntMaxDl1)
 
 #ifndef cnListPopCntMax24
@@ -2460,6 +2459,7 @@ typedef struct {
 typedef Switch_t BmSwitch_t;
 
 #ifdef B_JUDYL
+
 static Word_t*
 gpwValues(qp)
 {
@@ -2470,6 +2470,40 @@ gpwValues(qp)
     return pwr;
   #endif // #else LIST_POP_IN_PREAMBLE
 }
+
+  #ifdef BITMAP
+
+static Word_t *
+gpwBitmapValues(qp, int nBLR)
+{
+    qv;
+    return &pwr[EXP(nBLR - cnLogBitsPerWord) + /* wPrefixPop */ 1];
+}
+
+static int
+BmIndex(qp, int nBLR, Word_t wKey)
+{
+    qv;
+    Word_t wDigit = wKey & MSK(nBLR);
+    Word_t *pwBmWords = pwr;
+    // The bitmap may have more than one word.
+    // nBmWordNum is the number of the word which contains the bit we want.
+    int nBmWordNum = wDigit >> cnLogBitsPerWord;
+    Word_t wBmWord = pwBmWords[nBmWordNum]; // word we want
+    Word_t wBmBitMask = EXP(wDigit & (cnBitsPerWord - 1));
+    Word_t wIndex = 0;
+    for (int nn = 0; nn < nBmWordNum; nn++) {
+        wIndex += __builtin_popcountll(pwBmWords[nn]);
+    }
+    wIndex += __builtin_popcountll(wBmWord & (wBmBitMask - 1));
+    if ((wBmWord & wBmBitMask) == 0) {
+        wIndex ^= -1;
+    }
+    return wIndex;
+}
+
+  #endif // BITMAP
+
 #endif // B_JUDYL
 
 #ifdef SKIP_LINKS
@@ -2666,7 +2700,9 @@ gwBitmapPopCnt(qp, int nBLR)
     #error gwBitmapPopCnt does not handle pop in link yet
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     // population is in the word following the bitmap
-    return w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
+    Word_t wPopCnt = w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
+    if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop
+    return wPopCnt;
 }
 
 static void
@@ -2677,6 +2713,7 @@ swBitmapPopCnt(qp, int nBLR, Word_t wPopCnt)
     #error gwBitmapPopCnt does not handle pop in link yet
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     // population is in the word following the bitmap
+    // Full pop gets masked to zero.
     set_w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR, wPopCnt);
 }
 
@@ -4507,14 +4544,6 @@ SearchEmbeddedX(Word_t *pw, Word_t wKey, int nBL)
 #if defined(COMPRESSED_LISTS)
   #if (cnBitsInD1 <= 8)
 
-// Find wKey (the undecoded bits) in the list.
-// If it exists, then return its index in the list.
-// If it does not exist, then return the one's complement of the index where
-// it belongs.
-// Lookup doesn't need to know where key should be if it is not in the list.
-// Only Insert and Remove benefit from that information.
-// And even Insert and Remove don't need to know where the key is if it is
-// in the list (until we start thinking about JudyL).
 static int
 SearchList8(qp, int nBLR, Word_t wKey)
 {
@@ -5289,7 +5318,7 @@ Word_t cnMagic[] = {
 // Neither Lookup nor Remove need to know where key should be if it is not in
 // the list. Only Insert benefits from that information.
 // Remove needs to know where the key is if it is in the list as does
-// Lookup JudyL. See ListHasKey and LocateKeyInList.
+// Lookup for JudyL. See ListHasKey and LocateKeyInList.
 static int
 SearchList(qp, int nBLR, Word_t wKey)
 {

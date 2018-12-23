@@ -1952,7 +1952,7 @@ t_bitmap:;
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
       #if defined(INSERT) && defined(B_JUDYL)
-            return NULL;
+            return pwValue;
       #else // defined(INSERT) && defined(B_JUDYL)
             return Success;
       #endif // defined(INSERT) && defined(B_JUDYL)
@@ -2077,9 +2077,9 @@ t_bitmap:;
                 // argument of cnBitsInD1 or cnBitsInD2 then using nBL
                 // directly. Unfortunately.
           #if 0
-                : BitIsSet(pwr, wKey & MSK(nBL))
+                : BitIsSet(pwr, wKey & MSK(nBLR))
           #else
-                : (cn2dBmMaxWpkPercent != 0) && (nBL == cnBitsLeftAtDl2)
+                : (cn2dBmMaxWpkPercent != 0) && (nBLR == cnBitsLeftAtDl2)
                     ? BitIsSet(pwr, wKey & MSK(cnBitsLeftAtDl2))
                     : BitIsSet(pwr, wKey & MSK(cnBitsLeftAtDl1))
           #endif
@@ -2100,7 +2100,7 @@ t_bitmap:;
           #endif // !defined(RECURSIVE)
       #endif // defined(INSERT)
       #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
-                return NULL;
+                return &gpwBitmapValues(qy, nBLR)[BmIndex(qy, nBLR, wKey)];
       #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 return KeyFound;
       #endif // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)

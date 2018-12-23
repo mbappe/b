@@ -337,6 +337,38 @@ MyFree(Word_t *pw, Word_t wWords)
 
 #if (cwListPopCntMax != 0)
 
+// Max list length as a function of nBL.
+// Array is indexed by nBL.
+static int anListPopCntMax[] = {
+    0,
+    //  0 < nBL <=  8
+    cnListPopCntMax8 , cnListPopCntMax8 , cnListPopCntMax8 , cnListPopCntMax8 ,
+    cnListPopCntMax8 , cnListPopCntMax8 , cnListPopCntMax8 , cnListPopCntMax8 ,
+    //  8 < nBL <= 16
+    cnListPopCntMax16, cnListPopCntMax16, cnListPopCntMax16, cnListPopCntMax16,
+    cnListPopCntMax16, cnListPopCntMax16, cnListPopCntMax16, cnListPopCntMax16,
+    // 16 < nBL <= 24
+    cnListPopCntMax24, cnListPopCntMax24, cnListPopCntMax24, cnListPopCntMax24,
+    cnListPopCntMax24, cnListPopCntMax24, cnListPopCntMax24, cnListPopCntMax24,
+    // 24 < nBL <= 32
+    cnListPopCntMax32, cnListPopCntMax32, cnListPopCntMax32, cnListPopCntMax32,
+    cnListPopCntMax32, cnListPopCntMax32, cnListPopCntMax32, cnListPopCntMax32,
+  #if (cnBitsPerWord >= 64)
+    // 32 < nBL <= 40
+    cnListPopCntMax40, cnListPopCntMax40, cnListPopCntMax40, cnListPopCntMax40,
+    cnListPopCntMax40, cnListPopCntMax40, cnListPopCntMax40, cnListPopCntMax40,
+    // 40 < nBL <= 48
+    cnListPopCntMax48, cnListPopCntMax48, cnListPopCntMax48, cnListPopCntMax48,
+    cnListPopCntMax48, cnListPopCntMax48, cnListPopCntMax48, cnListPopCntMax48,
+    // 48 < nBL <= 56
+    cnListPopCntMax56, cnListPopCntMax56, cnListPopCntMax56, cnListPopCntMax56,
+    cnListPopCntMax56, cnListPopCntMax56, cnListPopCntMax56, cnListPopCntMax56,
+    // 56 < nBL <= 64
+    cnListPopCntMax64, cnListPopCntMax64, cnListPopCntMax64, cnListPopCntMax64,
+    cnListPopCntMax64, cnListPopCntMax64, cnListPopCntMax64, cnListPopCntMax64,
+  #endif // (cnBitsPerWord >= 64)
+    };
+
 #ifdef OLD_LIST_WORD_CNT
   #define ListWordsTypeList  ListWordCntOld
   #define ExtListKeySlotCnt  ListSlotCntOld
@@ -391,9 +423,14 @@ static int
 ListWordCnt(int nPopCnt, int nBL)
 {
     int nListWordsMin = ListWordsMin(nPopCnt, nBL);
-    int n = MAX(4, EXP(LOG(nListWordsMin) + 1) * 3 / 4);
-    if (nListWordsMin > n - 1) { n = n * 4 / 3; }
-    return n - 1;
+    int nFullListWordsMin = ListWordsMin(anListPopCntMax[nBL], nBL);
+    int nWords = MAX(4, EXP(LOG(nListWordsMin) + 1) * 3 / 4);
+    if (nListWordsMin > nWords - 1) { nWords = nWords * 4 / 3; }
+    --nWords; // Subtract malloc overhead word for request.
+    if (nFullListWordsMin < nWords) {
+        nWords = nFullListWordsMin;
+    }
+    return nWords;
 }
 
 // How many keys fit in a list buffer that must hold at least nPopCnt keys?
@@ -884,27 +921,48 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
 
 #endif // (cwListPopCntMax != 0)
 
+static Word_t
+BitmapWords(int nBLR, Word_t wPopCnt)
+{
+    (void)wPopCnt;
+    Word_t wWordsMin = EXP(nBLR - cnLogBitsPerWord) + /* wPrefixPop */ 1;
+  #ifdef B_JUDYL
+    Word_t wFullPopWordsMin = wWordsMin + EXP(nBLR);
+    wWordsMin += wPopCnt; // space for values
+    Word_t wWords = MAX(4, EXP(LOG(wWordsMin) + 1) * 3 / 4);
+    if (wWordsMin > wWords - 1) { wWords = wWords * 4 / 3; }
+    --wWords; // subtract malloc overhead word from request
+    if (wWords > wFullPopWordsMin) { wWords = wFullPopWordsMin; }
+    return wWords;
+  #else // B_JUDYL
+    return wWordsMin;
+  #endif // #else B_JUDYL
+}
+
 #ifdef BITMAP
 // We don't need NewBitmap unless cnBitsLeftAtD1 > LOG(sizeof(Link_t) * 8).
 // Hopefully, the compiler will figure it out and not emit it.
 static Word_t *
-NewBitmap(qp, int nBLNew, Word_t wKey)
+NewBitmap(qp, int nBLR, Word_t wKey, Word_t wPopCnt)
 {
     qv; (void)wKey;
-    Word_t wWords = EXP(nBLNew - cnLogBitsPerWord) + 1;
+    Word_t wWords = BitmapWords(nBLR, wPopCnt);
 
     Word_t *pwBitmap = (Word_t *)MyMalloc(wWords);
 
-    if (nBLNew == nDL_to_nBL(2)) {
+#if (cn2dBmMaxWpkPercent != 0)
+    if (nBLR == nDL_to_nBL(2)) {
         // Use JLB2 column for B2 big bitmap leaf.
         METRICS(j__AllocWordsJLB2 += wWords);
-    } else {
+    } else
+#endif // (cn2dBmMaxWpkPercent != 0)
+    {
         METRICS(j__AllocWordsJLB1 += wWords); // bitmap leaf
     }
 
-    DBGM(printf("NewBitmap nBLNew %d nBits " OWx
+    DBGM(printf("NewBitmap nBLR %d nBits " OWx
       " nBytes " OWx" wWords " OWx" pwBitmap " OWx"\n",
-        nBLNew, EXP(nBLNew), EXP(nBLNew - cnLogBitsPerByte), wWords,
+        nBLR, EXP(nBLR), EXP(nBLR - cnLogBitsPerByte), wWords,
         (Word_t)pwBitmap));
 
     memset((void *)pwBitmap, 0, wWords * sizeof(Word_t));
@@ -915,20 +973,20 @@ NewBitmap(qp, int nBLNew, Word_t wKey)
     wRoot = 0; set_wr(wRoot, pwBitmap, T_BITMAP);
 
 #if defined(SKIP_TO_BITMAP)
-    Set_nBLR(&wRoot, nBLNew);
-    if (nBL != nBLNew) {
+    Set_nBLR(&wRoot, nBLR);
+    if (nBL != nBLR) {
         set_wr_nType(wRoot, T_SKIP_TO_BITMAP);
     }
 #else // defined(SKIP_TO_BITMAP)
-    assert(nBL == nBLNew);
+    assert(nBL == nBLR);
 #endif // defined(SKIP_TO_BITMAP)
     *pwRoot = wRoot;
     pwr = wr_pwr(wRoot);
     nType = wr_nType(wRoot);
 #if defined(SKIP_TO_BITMAP)
-    swBitmapPrefix(qy, nBLNew, wKey);
+    swBitmapPrefix(qy, nBLR, wKey);
 #endif // defined(SKIP_TO_BITMAP)
-    swBitmapPopCnt(qy, /* nBLR */ nBLNew, 0);
+    swBitmapPopCnt(qy, /* nBLR */ nBLR, wPopCnt);
 
     return pwBitmap;
 }
@@ -956,14 +1014,13 @@ GetBLR(Word_t *pwRoot, int nBL)
 }
 
 static Word_t
-OldBitmap(Word_t *pwRoot, Word_t *pwr, int nBL)
+OldBitmap(Word_t *pwr, int nBLR, Word_t wPopCnt)
 {
-    int nBLR = GetBLR(pwRoot, nBL);
-
-    Word_t wWords = EXP(nBLR - cnLogBitsPerWord) + 1;
+    Word_t wWords = BitmapWords(nBLR, wPopCnt);
 
     MyFree(pwr, wWords);
 
+// should be cn2d... != 0
 #ifndef B_JUDYL
     if (nBLR == nDL_to_nBL(2)) {
         // Use JLB2 column for B2 big bitmap leaf.
@@ -973,20 +1030,6 @@ OldBitmap(Word_t *pwRoot, Word_t *pwr, int nBL)
     {
         METRICS(j__AllocWordsJLB1 -= wWords); // bitmap leaf
     }
-
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-#if defined(SKIP_TO_BITMAP)
-    if ((nBL != cnBitsPerWord)
-        && (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP))
-    {
-        // We have to zero some higher bits so cleanup knows what to do.
-        //printf("here pwRoot %p nBL %d\n", (void *)pwRoot, nBL);
-        set_PWR_wPopCntBL(pwRoot, NULL, nBL, 0);
-    }
-#endif // defined(SKIP_TO_BITMAP)
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-
-    *pwRoot = 0; // Do we need to clear the rest of the link, e.g. PP_IN_LINK?
 
     return wWords * sizeof(Word_t);
 }
@@ -1381,9 +1424,10 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(CODE_BM_SW)
     }
 
-    //DBGI(printf("After NewSwitch"));
+    DBGI(printf("NS: prefix " OWx"\n",
+                PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL)));
+    //DBGI(printf("\n# Just before returning from NewSwitch "));
     //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
-DBGI(printf("NS: prefix " OWx"\n", PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBL)));
 
     return pwr;
 
@@ -2048,14 +2092,10 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
 
 #if defined(SKIP_TO_BITMAP)
     if (nType == T_SKIP_TO_BITMAP) {
+        int nBLR = GetBLR(pwRoot, nBL);
+        Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR);
         if (bDump) {
-            int nBLR = nBL;
-            assert(tp_bIsSkip(nType));
-            if (tp_bIsSkip(nType)) {
-                nBLR = GetBLR(pwRoot, nBL);
-            }
             printf(" wPrefixPop " OWx, *(pwr + EXP(nBLR - cnLogBitsPerWord)));
-            Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR);
             if (wPopCnt == 0) {
                 wPopCnt = EXP(nBLR);
             }
@@ -2072,10 +2112,14 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
             return 0;
         }
 
-        assert((nBL != cnBitsPerWord) || (wBytes == 0)); // wPopCntTotal, zeroLink
+        // wPopCntTotal, zeroLink
+        assert((nBL != cnBitsPerWord) || (wBytes == 0));
         assert((nBL != cnBitsPerWord) || (wr_pwr(*pwRootArg) == pwr));
-        wBytes += OldBitmap(pwRoot, pwr, nBL);
-        // OldBitmap zeros *pwRoot but not the rest of the link.
+        wBytes += OldBitmap(pwr, nBLR, wPopCnt);
+        // Zero *pwRoot. What about the rest of the link?
+        // nType == 0 && pwr == NULL should be good enough, no?
+        *pwRoot = 0;
+
         return wBytes;
     }
 #endif // defined(SKIP_TO_BITMAP)
@@ -2118,7 +2162,10 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
             if ( ! bDump )
             {
                 assert(nBL != cnBitsPerWord); // wPopCntTotal, zeroLink
-                return OldBitmap(pwRoot, pwr, nBL);
+                Word_t wPopCnt = gwBitmapPopCnt(qy, nBL);
+                wBytes = OldBitmap(pwr, nBL, wPopCnt);
+                *pwRoot = 0; // What about the rest of the link?
+                return wBytes;
             }
 
             printf(" nWords %4" _fw"d", EXP(nBL - cnLogBitsPerWord));
@@ -2133,8 +2180,19 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
                 if ((ww % 8) == 0) {
                     printf("\n");
                 }
-                printf(" " OWx, pwr[ww]);
+                printf(" 0x%016zx", pwr[ww]);
             }
+            printf("\n PP 0x%016zx", pwr[EXP(nBL - cnLogBitsPerWord)]);
+            printf("\n");
+  #ifdef B_JUDYL
+            for (int ww = 0; ww < (int)gwBitmapPopCnt(qy, nBL); ++ww) {
+                if ((ww != 0) && (ww % 4) == 0) {
+                    printf("\n");
+                }
+                printf(" 0x%016zx", gpwBitmapValues(qy, nBL)[ww]);
+            }
+            printf("\n");
+  #endif // B_JUDYL
         }
         else
         {
@@ -2630,7 +2688,7 @@ void
 Dump(Word_t *pwRoot, Word_t wPrefix, int nBL)
 {
     if (bHitDebugThreshold) {
-        printf("\nDump\n");
+        printf("# Dump\n");
         FreeArrayGuts(pwRoot, wPrefix, nBL, /* bDump */ 1
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                     , /*pwrUp*/ NULL, /*nBW*/ 0
@@ -2639,7 +2697,7 @@ Dump(Word_t *pwRoot, Word_t wPrefix, int nBL)
   #endif // CODE_BM_SW
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                       );
-        printf("End Dump\n");
+        printf("# End Dump\n");
     }
 }
 #endif // defined(DEBUG)
@@ -3083,23 +3141,6 @@ DeflateExternalList(Word_t *pwRoot,
 
 #endif // defined(EMBED_KEYS)
 
-// Max list length as a function of nBL.
-// Array is indexed by LOG(nBL-1).
-// Array is indexed by nBL/8;
-static
-const int anListPopCntMax[] = {
-    cnListPopCntMax8 , //  0 < nBL <=  8
-    cnListPopCntMax16, //  8 < nBL <= 16
-    cnListPopCntMax24, // 16 < nBL <= 24
-    cnListPopCntMax32, // 24 < nBL <= 32
-  #if (cnBitsPerWord >= 64)
-    cnListPopCntMax40, // 32 < nBL <= 40
-    cnListPopCntMax48, // 40 < nBL <= 48
-    cnListPopCntMax56, // 48 < nBL <= 56
-    cnListPopCntMax64, // 56 < nBL <= 64
-  #endif // (cnBitsPerWord >= 64)
-    };
-
 #endif // (cwListPopCntMax != 0)
 
 static void
@@ -3227,20 +3268,10 @@ InsertCleanup(qp, Word_t wKey)
         DBGI(printf("# IC: NewBitmap nBL %d nBW %d wPopCnt %" _fw"d"
                         " wWordsAllocated %" _fw"d wPopCntTotal %" _fw"d.\n",
                     nBL, nBW, wPopCnt, wWordsAllocated, wPopCntTotal));
-        Word_t *pwBitmap = NewBitmap(qy, /* nBLNew */ nBL, wKey);
+        Word_t *pwBitmap = NewBitmap(qy, /* nBLNew */ nBL, wKey, wPopCnt);
 // NewBitmap installs a new wRoot.
 // nBL, pLn, pwRoot have not changed, but wRoot, pwr and nType have.
 // Do we use them below?
-        Word_t wRootSave = wRoot;
-        int nTypeSave = nType;
-        Word_t *pwrSave = pwr;
-        wRoot = *pwRoot;
-        nType = wr_nType(wRoot);
-        pwr = wr_pwr(wRoot);
-        swBitmapPopCnt(qy, nBL, wPopCnt);
-        pwr = pwrSave;
-        nType = nTypeSave;
-        wRoot = wRootSave;
 
         // Why are we not using InsertAll here to insert the keys?
         // It doesn't handle switches yet.
@@ -3281,7 +3312,9 @@ embeddedKeys:;
             if (nTypeLn == T_BITMAP) {
                 memcpy(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
                        pwrLn, EXP(nBLLn - 3));
-                OldBitmap(pwRootLn, pwrLn, nBLLn);
+                Word_t wPopCntLn = gwBitmapPopCnt(qyLn, nBLLn);
+                OldBitmap(pwrLn, nBLLn, wPopCntLn);
+                *pwRootLn = 0; // What about the rest of the link?
             }
 #endif // BITMAP
 #if (cwListPopCntMax != 0)
@@ -3548,7 +3581,7 @@ embeddedKeys:;
 #else // B_JUDYL
             status = Insert(nBL, pLn, pwKeys[nn]);
 #endif // B_JUDYL
-            DBGI(printf("Just after Insert in InsertAll(Word_t)"));
+            DBGI(printf("\n# Just after Insert in InsertAll(Word_t) "));
             DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
         }
     }
@@ -3897,7 +3930,7 @@ DoubleIt(qp,
                 // And nBLOld has what should be in nBL.
                 int nBLNew = nBL;
                 nBL = nBLOld;
-                NewBitmap(qy, nBLNew, wKey);
+                NewBitmap(qy, nBLNew, wKey, /* wPopCnt */ 0);
                 nBL = nBLNew;
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
                 set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL, 0);
@@ -4168,7 +4201,7 @@ InsertSwitch(qp,
         // We need to preserve the Link_t for subsequent InsertAll.
         link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        NewBitmap(qy, nBLNew, wKey);
+        NewBitmap(qy, nBLNew, wKey, /* wPopCnt */ 0);
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLNew, 0);
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -4723,27 +4756,12 @@ InsertAtList(qp,
     }
   #endif // defined(NO_TYPE_IN_XX_SW)
 
-    if (0
+    if (
 #if defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
-        || (wPopCnt < (Word_t)nEmbeddedListPopCntMax)
+        (wPopCnt < (Word_t)nEmbeddedListPopCntMax)
 #endif // defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
-        || ((nBL == cnBitsInD1)
-            && ((int)wPopCnt < (int)cnListPopCntMaxDl1))
-#if defined(cnListPopCntMaxDl2)
-        || ((nBL == cnBitsLeftAtDl2)
-            && ((int)wPopCnt < (int)cnListPopCntMaxDl2))
-#endif // defined(cnListPopCntMaxDl2)
-#if defined(cnListPopCntMaxDl3)
-        || ((nBL == cnBitsLeftAtDl3) && (wPopCnt < cnListPopCntMaxDl3))
-#endif // defined(cnListPopCntMaxDl3)
-        || ((nBL != cnBitsInD1)
-#if defined(cnListPopCntMaxDl2)
-            && (nBL != cnBitsLeftAtDl2)
-#endif // defined(cnListPopCntMaxDl2)
-#if defined(cnListPopCntMaxDl3)
-            && (nBL != cnBitsLeftAtDl3)
-#endif // defined(cnListPopCntMaxDl3)
-            && ((int)wPopCnt < anListPopCntMax[(nBL-1)/8])))
+            || ((int)wPopCnt < anListPopCntMax[nBL])
+        )
     {
 #if defined(CODE_XX_SW)
 #if ! defined(cnXxSwWpkPercent)
@@ -5928,9 +5946,35 @@ InsertAtBitmap(qp, Word_t wKey)
     DBGI(printf("SetBit(pwr " OWx" wKey " OWx") pwRoot %p\n",
                 (Word_t)pwr, wKey & MSK(nBLR), (void *)pwRoot));
 
+    // Mask to convert EXP(nBLR) back to 0 for newly created bitmap.
+    Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR) & MSK(nBLR);
+#ifdef B_JUDYL
+    int nPos = ~BmIndex(qy, nBLR, wKey);
+    Word_t *pwSrcValues = gpwBitmapValues(qy, nBLR);
+    if (BitmapWords(nBLR, wPopCnt + 1) != BitmapWords(nBLR, wPopCnt)) {
+        NewBitmap(qy, nBLR, wKey, wPopCnt + 1);
+        // Prefix and popcnt are set; bits are not.
+        // *pwRoot has been updated. qy is out of date.
+        // Copy bits and update qy.
+        wRoot = *pwRoot;
+        assert(wr_nType(wRoot) == nType);
+        Word_t *pwrOld = pwr;
+        pwr = wr_pwr(wRoot);
+        memcpy(pwr, pwrOld, EXP(nBLR - cnLogBitsPerByte));
+        Word_t *pwTgtValues = gpwBitmapValues(qy, nBLR);
+        COPY(&pwTgtValues[nPos + 1], &pwSrcValues[nPos], wPopCnt - nPos);
+        COPY(pwTgtValues, pwSrcValues, nPos);
+        OldBitmap(pwrOld, nBLR, wPopCnt);
+        pwSrcValues = pwTgtValues;
+    } else
+#endif // B_JUDYL
+    {
+#ifdef B_JUDYL
+        MOVE(&pwSrcValues[nPos + 1], &pwSrcValues[nPos], wPopCnt - nPos);
+#endif // B_JUDYL
+        swBitmapPopCnt(qy, nBLR, wPopCnt + 1);
+    }
     SetBit(pwr, wKey & MSK(nBLR));
-
-    swBitmapPopCnt(qy, nBLR, gwBitmapPopCnt(qy, nBLR) + 1);
 
 #if defined(PP_IN_LINK)
 
@@ -5944,7 +5988,8 @@ InsertAtBitmap(qp, Word_t wKey)
 #endif // defined(PP_IN_LINK)
 
 #ifdef B_JUDYL
-    return NULL;
+    // Insert is responsible for zeroing the value.
+    return &pwSrcValues[nPos];
 #else // B_JUDYL
     return Success;
 #endif // B_JUDYL
@@ -6490,10 +6535,34 @@ RemoveAtBitmap(qp, Word_t wKey)
         }
   #endif // defined(SKIP_TO_BITMAP)
 
-        ClrBit(pwr, wKey & MSK(nBLR));
-
         Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR) - 1;
-        swBitmapPopCnt(qy, nBLR, wPopCnt);
+#ifdef B_JUDYL
+        Word_t *pwSrcValues = gpwBitmapValues(qy, nBLR);
+        int nPos = BmIndex(qy, nBLR, wKey);
+        if (BitmapWords(nBLR, wPopCnt) != BitmapWords(nBLR, wPopCnt + 1)) {
+            NewBitmap(qy, nBLR, wKey, wPopCnt);
+            // Prefix and popcnt are set; bits are not.
+            // *pwRoot has been updated. qy is out of date.
+            // Copy bits and update qy.
+            wRoot = *pwRoot;
+            assert(wr_nType(wRoot) == nType);
+            Word_t *pwrOld = pwr;
+            pwr = wr_pwr(wRoot);
+            memcpy(pwr, pwrOld, EXP(nBLR - cnLogBitsPerByte));
+            Word_t *pwTgtValues = gpwBitmapValues(qy, nBLR);
+            COPY(&pwTgtValues[nPos], &pwSrcValues[nPos + 1], wPopCnt - nPos);
+            COPY(pwTgtValues, pwSrcValues, nPos);
+            OldBitmap(pwrOld, nBLR, wPopCnt + 1);
+        } else
+#endif // B_JUDYL
+        {
+#ifdef B_JUDYL
+            Word_t *pwSrcValues = gpwBitmapValues(qy, nBLR);
+            MOVE(&pwSrcValues[nPos], &pwSrcValues[nPos + 1], wPopCnt - nPos);
+#endif // B_JUDYL
+            swBitmapPopCnt(qy, nBLR, wPopCnt);
+        }
+        ClrBit(pwr, wKey & MSK(nBLR));
 
 #if defined(DEBUG_COUNT)
         Word_t wPopCntDbg = 0;
@@ -6509,7 +6578,8 @@ RemoveAtBitmap(qp, Word_t wKey)
 
         // Free the bitmap if it is empty.
         if (wPopCnt == 0) {
-            OldBitmap(pwRoot, pwr, nBL);
+            OldBitmap(pwr, nBLR, 0);
+            *pwRoot = 0; // What about the rest of the link?
         }
     }
 
@@ -6522,6 +6592,20 @@ RemoveAtBitmap(qp, Word_t wKey)
 static void
 Initialize(void)
 {
+    // Fine tune anListPopCntMax from cnListPopCntMaxDl*.
+    anListPopCntMax[cnBitsInD1] = cnListPopCntMaxDl1;
+#if defined(cnListPopCntMaxDl2)
+    assert(cnBitsLeftAtDl2 > cnBitsInD1);
+    anListPopCntMax[cnBitsLeftAtDl2] = cnListPopCntMaxDl2;
+#endif // defined(cnListPopCntMaxDl2)
+#if defined(cnListPopCntMaxDl3)
+  #if !defined(cnListPopCntMaxDl2)
+    #error No cnListPopCntMaxDl3 without cnListPopCntMaxDl2
+  #endif // !defined(cnListPopCntMaxDl2)
+    assert(cnBitsLeftAtDl3 > cnBitsLeftAtDl2);
+    anListPopCntMax[cnBitsLeftAtDl3] = cnListPopCntMaxDl3;
+#endif // defined(cnListPopCntMaxDl3)
+
     // There may be an issue with dlmalloc and greater than 2MB (size of huge
     // page) requests. Dlmalloc may mmap something other than an integral
     // multiple of 2MB. Since our bitmaps contain an extra word at the end

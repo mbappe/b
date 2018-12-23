@@ -34,20 +34,21 @@
 // Set initial defines based on whether we are building Judy1 or JudyL.
 // If B_JUDYL is not defined then we are building Judy1.
 #ifdef B_JUDYL
+
   #undef  NO_UA_PARALLEL_128
   #define NO_UA_PARALLEL_128
-  #undef  NO_BITMAP
-  #define NO_BITMAP
+
+  // Allow DEFINES=-DALLOW_EMBEDDED_BITMAP on make command line for JUDY1.
   #undef ALLOW_EMBEDDED_BITMAP
+
   // Allow DEFINES=-DUSE_XX_SW on make command line for JUDY1.
   #ifdef    USE_XX_SW
     #undef  USE_XX_SW
   #endif // USE_XX_SW
+
   #ifdef    SKIP_TO_XX_SW
     #undef  SKIP_TO_XX_SW
   #endif // SKIP_TO_XX_SW
-  // Allow DEFINES=-DSKIP_TO_BITMAP on make command line for JUDY1.
-  #undef SKIP_TO_BITMAP
 
   // Disabling PARALLEL_SEARCH_WORD helps with worst case memory usage.
   #ifndef PARALLEL_SEARCH_WORD
@@ -114,6 +115,7 @@
   #undef     BITMAP
   #define    BITMAP
 #endif // NO_BITMAP
+
 #ifndef BITMAP
   #ifdef ALLOW_EMBEDDED_BITMAP
     #error ALLOW_EMBEDDED_BITMAP requires BITMAP
