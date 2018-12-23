@@ -365,6 +365,7 @@ CaseGuts(int nBL, Word_t *pwRoot, int nBS, int nBW, int nType, Word_t *pwr)
     return 1;
 }
 
+#if defined(INSERT) || defined(REMOVE)
 // Handle bigger picture tree cleanup.
 // E.g.
 // - uncompress bm sw after insert
@@ -372,49 +373,48 @@ CaseGuts(int nBL, Word_t *pwRoot, int nBS, int nBW, int nType, Word_t *pwr)
 // - compress switch after remove
 // - break up 2-digit bitmap leaf after remove
 static inline int
-SwCleanup(qp, Word_t wKey, int nBLR, int bCleanup
-#if defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
+SwCleanup(qp, Word_t wKey, int nBLR
+  #if defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
         , Word_t **ppwValue
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
+  #endif // defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
           )
 {
-    qv; (void)wKey; (void)nBLR; (void)bCleanup;
-  #if defined(INSERT) || defined(REMOVE)
+    qv; (void)wKey; (void)nBLR;
+    DBGX(Checkpoint(qy, "SwCleanup"));
+    DBGX(printf("wKey 0x%016zx nBLR %d\n"));
     // Cleanup is for adjusting tree after successful insert or remove.
     // It is not for undoing counts after unsuccessful insert or remove.
-    if (bCleanup) {
-      #if defined(INSERT)
-        if (0
-          #if defined(CODE_BM_SW)
-            || (tp_bIsBmSw(Get_nType(&wRoot)) && InflateBmSwTest(qy))
-          #endif // defined(CODE_BM_SW)
-          #ifdef BITMAP
-            || ((cn2dBmMaxWpkPercent != 0)
-                && (nBLR == cnBitsLeftAtDl2)
-                && (gwPopCnt(qy, nBLR) * cn2dBmMaxWpkPercent * cnBitsPerWord
-                     > EXP(cnBitsLeftAtDl2) * 100))
-          #endif // BITMAP
-            )
-        {
-          #if defined(B_JUDYL) && defined(EMBED_KEYS)
-            // InsertCleanup may change pwValue of embedded keys.
-            Word_t *pwValue;
-            if ((pwValue = InsertCleanup(qy, wKey)) != NULL) {
-                *ppwValue = pwValue;
-            }
-          #else // defined(B_JUDYL) && defined(EMBED_KEYS)
-            InsertCleanup(qy, wKey);
-          #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #if defined(INSERT)
+    if (0
+      #if defined(CODE_BM_SW)
+        || (tp_bIsBmSw(Get_nType(&wRoot)) && InflateBmSwTest(qy))
+      #endif // defined(CODE_BM_SW)
+      #ifdef BITMAP
+        || ((cn2dBmMaxWpkPercent != 0)
+            && (nBLR == cnBitsLeftAtDl2)
+            && (gwPopCnt(qy, nBLR) * cn2dBmMaxWpkPercent * cnBitsPerWord
+                 > EXP(cnBitsLeftAtDl2) * 100))
+      #endif // BITMAP
+        )
+    {
+      #if defined(B_JUDYL) && defined(EMBED_KEYS)
+        // InsertCleanup may change pwValue of embedded keys.
+        Word_t *pwValue;
+        if ((pwValue = InsertCleanup(qy, wKey)) != NULL) {
+            *ppwValue = pwValue;
         }
-      #else // defined(INSERT)
-        RemoveCleanup(wKey, nBL, nBLR, pwRoot, wRoot);
-      #endif // defined(INSERT)
-        if (pLn->ln_wRoot != wRoot) { return 1; /* not done; goto restart */ }
+      #else // defined(B_JUDYL) && defined(EMBED_KEYS)
+        InsertCleanup(qy, wKey);
+      #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
     }
-  #endif // defined(INSERT) || defined(REMOVE)
+  #else // defined(INSERT)
+    RemoveCleanup(wKey, nBL, nBLR, pwRoot, wRoot);
+  #endif // defined(INSERT)
+    if (pLn->ln_wRoot != wRoot) { return 1; /* not done; goto restart */ }
     DBGX(printf("SwCleanup returning 0\n"));
     return 0;
 }
+#endif // defined(INSERT) || defined(REMOVE)
 
 // Adjust pop count.
 // Increment for insert on the way down.
@@ -521,7 +521,7 @@ PrefixCheckAtLeaf(qp, Word_t wKey
 #endif // SKIP_PREFIX_CHECK
 
 static void
-Log(qp, const char *str)
+Checkpoint(qp, const char *str)
 {
     printf("# %20s: " qfmt "\n", str, qy);
     // qv assertions would constrain us too much in this
@@ -683,14 +683,14 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
 #if defined(INSERT) || defined(REMOVE)
   #if !defined(RECURSIVE)
 top:;
-    DBGX(Log(qy, "top"));
+    DBGX(Checkpoint(qy, "top"));
   #endif // !defined(RECURSIVE)
 #endif // defined(INSERT) || defined(REMOVE)
     nBLR = nBL;
 
 #if defined(LOOKUP) || !defined(RECURSIVE)
 again:;
-    DBGX(Log(qy, "again"));
+    DBGX(Checkpoint(qy, "again"));
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
 #if defined(SKIP_LINKS)
@@ -798,7 +798,7 @@ again:;
 
     goto fastAgain;
 fastAgain:;
-    DBGX(Log(qy, "fastAgain"));
+    DBGX(Checkpoint(qy, "fastAgain"));
     switch (nType)
     {
 
@@ -1029,23 +1029,25 @@ t_switch:;
         // Save pwValue so we can find the embedded value area easily later.
         // pLnUp would be more general. I wonder if we should put an up
         // pointer in our tree nodes.
-        pwValueUp = gpwEmbeddedValue(qy, /* wLinks */ EXP(nBW),
-                                     /* wIndex */ wDigit);
+        pwValueUp
+            = gpwEmbeddedValue(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
         goto switchTail; // in case other uses go away by ifdef
 switchTail:;
+  #if defined(INSERT) || defined(REMOVE)
         // Handle big picture tree cleanup.
-        if (SwCleanup(qy, wKey, nBLR, bCleanup
-  #if defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
+        if (bCleanup
+            && SwCleanup(qy, wKey, nBLR
+    #if defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
                     , &pwValue
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
+    #endif // defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
                       ) != 0)
         {
             goto restart;
         }
+  #endif // defined(INSERT) || defined(REMOVE)
         wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
         IF_COUNT(wPopCntSum += CountSw(qy, nBLR, nBW, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
@@ -1108,13 +1110,25 @@ t_xx_sw:;
         nBW = gnBW(qy, T_XX_SW, nBLR);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-
+  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+        pwValueUp
+            = gpwEmbeddedValue(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
-        // wDigit is already correct.
   #if defined(LOOKUP) || defined(NO_TYPE_IN_XX_SW)
+      #if defined(INSERT) || defined(REMOVE)
         // Handle big picture tree cleanup.
-        if (SwCleanup(qy, wKey, nBLR, bCleanup)) { goto restart; }
+        if (bCleanup
+            && SwCleanup(qy, wKey, nBLR
+          #if defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
+                    , &pwValue
+          #endif // defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
+                      ) != 0)
+        {
+            goto restart;
+        }
+      #endif // defined(INSERT) || defined(REMOVE)
         wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
         IF_COUNT(wPopCntSum += CountSw(qy, nBLR, nBW, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
@@ -1370,7 +1384,7 @@ bmSwTail:;
       #ifdef INSERT
         // This test should be the same as the one in InsertCleanup.
         if (tp_bIsBmSw(nType) && InflateBmSwTest(qy)) {
-            DBGX(Log(qy, "T_BM_SW req cleanup"));
+            DBGX(Checkpoint(qy, "T_BM_SW req cleanup"));
             bCleanupRequested = 1; // on success
         }
       #endif // INSERT
@@ -1547,7 +1561,7 @@ t_list_sw:;
     {
         goto t_list;
 t_list:;
-        DBGX(Log(qy, "t_list"));
+        DBGX(Checkpoint(qy, "t_list"));
 
   #if defined(INSERT) || defined(REMOVE)
         DBGX(printf("T_LIST bCleanup %d nIncr %d\n", bCleanup, nIncr));
@@ -1723,7 +1737,7 @@ t_list:;
                 > EXP(cnBitsLeftAtDl2) * 100)
             )
         {
-            DBGX(Log(qy, "T_LIST req cleanup"));
+            DBGX(Checkpoint(qy, "T_LIST req cleanup"));
             bCleanupRequested = 1; // goto cleanup when done
         }
               #endif // BITMAP
@@ -2410,7 +2424,7 @@ foundIt:;
 
     } // end of switch
 
-    DBGX(Log(qy, "end of switch"));
+    DBGX(Checkpoint(qy, "end of switch"));
 
     // Key is not present.
 #if defined(COUNT)
@@ -2456,7 +2470,7 @@ foundIt:;
     return Success;
   #endif // B_JUDYL
 undo:;
-    DBGX(Log(qy, "undo"));
+    DBGX(Checkpoint(qy, "undo"));
 #endif // defined(INSERT)
 #if defined(REMOVE)
   #if !defined(RECURSIVE)
@@ -2470,8 +2484,9 @@ undo:;
         nIncr *= -1;
       #endif // !defined(RECURSIVE)
   #endif // defined(INSERT) || defined(REMOVE)
+    goto restart;
 restart:;
-        DBGX(Log(qy, "restart"));
+        DBGX(Checkpoint(qy, "restart"));
   #if defined(INSERT) || defined(REMOVE)
       #if !defined(RECURSIVE)
         nBL = nBLOrig;
@@ -2489,7 +2504,7 @@ restart:;
   #if defined(INSERT) || defined(REMOVE)
       #if defined(REMOVE)
 removeGutsAndCleanup:;
-    DBGX(Log(qy, "removeGutsAndCleanup"));
+    DBGX(Checkpoint(qy, "removeGutsAndCleanup"));
     RemoveGuts(qy, wKey
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
              , pwValueUp
@@ -2498,7 +2513,7 @@ removeGutsAndCleanup:;
       #endif // defined(REMOVE)
     goto cleanup;
 cleanup:;
-    DBGX(Log(qy, "cleanup"));
+    DBGX(Checkpoint(qy, "cleanup"));
     // Walk the tree again to see if we need to make any adjustments.
     // For insert our new pop may justify a bigger bitmap.
     // For remove we may need to pull back.
