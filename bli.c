@@ -155,8 +155,9 @@ CountSw(qp,
            );
     if ((ww == (unsigned)nLinks)
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-            // It wouldn't hurt to include this test even when there is no pop in
-            // link, but it's not necessary in that case. We're being pedantic.
+            // It wouldn't hurt to include this test even when there is no pop
+            // in link, but it's not necessary in that case.
+            // We're being pedantic.
             && ((int)wIndex != nLinks)
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         )
@@ -233,7 +234,17 @@ PrefixMismatch(qp,
     assert(nBLR < nBL); // reserved
     *pnBLR = nBLR;
 
-  #if ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK) || defined(SAVE_PREFIX_TEST_RESULT)
+  #if !defined(LOOKUP)
+    #define DO_PREFIX_TEST
+  #endif // !defined(LOOKUP)
+  #if !defined(SKIP_PREFIX_CHECK)
+    #define DO_PREFIX_TEST
+  #endif // !defined(SKIP_PREFIX_CHECK)
+  #if defined(SAVE_PREFIX_TEST_RESULT)
+    #define DO_PREFIX_TEST
+  #endif // defined(SAVE_PREFIX_TEST_RESULT)
+
+  #ifdef DO_PREFIX_TEST
     Word_t wPrefix =
         0 ? 0
       #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
@@ -261,7 +272,7 @@ PrefixMismatch(qp,
       #if ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK)
     return wPrefixMismatch;
       #endif // ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK)
-  #endif // ! defined(LOOKUP) || ! defined(SKIP_PREFIX_CHECK) || ...
+  #endif // DO_PREFIX_TEST
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
       #if defined(SAVE_PREFIX)
     // Save info needed for prefix check at leaf.
@@ -701,7 +712,8 @@ again:;
     assert(nBL >= cnBitsInD1); // valid for LOOKUP too
   #endif // ! defined(USE_XX_SW)
 #endif // ( ! defined(LOOKUP) )
-    DBGX(printf("# nBL %d pLn %p wRoot " OWx" wKey " OWx"\n", nBL, pLn, wRoot, wKey));
+    DBGX(printf("# nBL %d pLn %p wRoot " OWx" wKey " OWx"\n",
+                nBL, pLn, wRoot, wKey));
 
     nType = wr_nType(wRoot);
     pwr = wr_pwr(wRoot); // pwr isn't meaningful for all nType values
@@ -1016,7 +1028,7 @@ t_switch:;
         // Don't we have a two-digit bitmap?
         // Shouldn't we have already changed nType when we created it?
         // Should we goto the bitmap code here?
-        // Could we be doing lazy conversion with cnBitsInD1 < cnLogBitsPerLink?
+        // Are we doing lazy conversion with cnBitsInD1 < cnLogBitsPerLink?
         assert((nBLR > nBW + cnLogBitsPerLink) || cbEmbeddedBitmap);
   #endif // BITMAP
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
@@ -1074,7 +1086,7 @@ switchTail:;
         // The first test below is done at compile time and will make the rest
         // of the code block go away if it is not needed.
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
-            // We're leaving qy in an iffy state without updating nType and pwr.
+            // qy is in an iffy state without updating nType and pwr.
             goto t_bitmap;
         }
   #else // BITMAP
@@ -1430,7 +1442,8 @@ t_skip_to_list_sw:
                 {
                     wPopCnt = gwPopCnt(qy, nBLR);
                 }
-                DBGC(printf("SKIP_TO_LIST_SW: PM wPopCnt %" _fw"d\n", wPopCnt));
+                DBGC(printf("SKIP_TO_LIST_SW: PM wPopCnt %" _fw"d\n",
+                            wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
                 DBGC(printf("sklssw wPopCnt " OWx" wPopCntSum " OWx"\n",
                             wPopCnt, wPopCntSum));
@@ -1674,7 +1687,7 @@ t_list:;
               #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 // Success for Lookup and Remove; Failure for Insert
                 return KeyFound;
-              #endif // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
+              #endif // (defined(LOOKUP) || defined(INSERT)) && ...
           #endif // defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
             }
           #if defined(COUNT)
@@ -1686,19 +1699,21 @@ t_list:;
             }
           #endif // defined(INSERT) || defined(REMOVE) || defined(COUNT)
         }
-      #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+      #if defined(LOOKUP)
+          #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
         else
         {
             // Shouldn't this be using the previous nBL for pwrUp?
             DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
-          #ifdef PP_IN_LINK
+              #ifdef PP_IN_LINK
                         gwPrefix(qy),
-          #else // PP_IN_LINK
+              #else // PP_IN_LINK
                         PWR_wPrefixNATBL(NULL, pwrUp, nBL),
-          #endif // PP_IN_LINK
+              #endif // PP_IN_LINK
                         nBL));
         }
-      #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && ...
+          #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+      #endif // defined(LOOKUP)
 
       #if defined(COUNT)
         DBGC(printf("T_LIST: nPos %d\n", nPos));
@@ -1850,19 +1865,21 @@ t_list_ua:;
             }
           #endif // defined(INSERT) || defined(REMOVE) || defined(COUNT)
         }
-      #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+      #if defined(LOOKUP) 
+          #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
         else
         {
             // Shouldn't this be using the previous nBL for pwrUp?
             DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
-          #ifdef PP_IN_LINK
+              #ifdef PP_IN_LINK
                         gwPrefix(qy),
-          #else // PP_IN_LINK
+              #else // PP_IN_LINK
                         PWR_wPrefixNATBL(NULL, pwrUp, nBL),
-          #endif // PP_IN_LINK
+              #endif // PP_IN_LINK
                         nBL));
         }
-      #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK) && ...
+          #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+      #endif // defined(LOOKUP)
 
       #if defined(COUNT)
         DBGC(printf("T_LIST_UA: nPos %d\n", nPos));
@@ -2199,8 +2216,9 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
             int nn;
             for (nn = 0; nn < nPopCnt; nn++) {
                 int nSlot = (nn + 1);
-                Word_t wKeyInSlot = (wKey & ~wBLM)
-                               | ((wRoot >> (cnBitsPerWord - (nSlot * nBL))) & wBLM);
+                Word_t wKeyInSlot
+                    = (wKey & ~wBLM)
+                        | ((wRoot >> (cnBitsPerWord - (nSlot * nBL))) & wBLM);
                 if (wKeyInSlot >= wKey) {
                     break;
                 }
@@ -2242,7 +2260,15 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
       #endif // SKIP_PREFIX_CHECK
       #endif // COMPRESSED_LISTS
         {
-      #if    (defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)) || (defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP))
+
+      #if defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)
+          #define PARALLEL_EK
+      #endif // defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)
+      #if defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP)
+          #define PARALLEL_EK
+      #endif // defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP)
+
+      #ifdef PARALLEL_EK
 
 #if defined(HANDLE_BLOWOUTS)
     // We haven't written the insert code to create blow-outs for
@@ -2303,32 +2329,9 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         }
 break2:;
 
-      #endif // (defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) ... )
-
-      #if (!defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)) || (!defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP))
+      #else // PARALLEL_EK
 
         int nPopCnt = wr_nPopCnt(wRoot, nBL);
-
-          #if (defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP) && defined(LOOKUP)) || (defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_INSERT) && !defined(LOOKUP))
-
-        // PSPLIT_SEARCH_BY_KEY expects smallest key in xKeys[0] and
-        // largest key in xKeys[nPopCnt-1].
-              #if 0
-        int nPos = 0;
-        if (nBL == 8) {
-           PSPLIT_SEARCH_BY_KEY(uint8_t, 8, &wRoot, nPopCnt, wKey, nPos);
-        } else if (nBL == 16) {
-           PSPLIT_SEARCH_BY_KEY(uint16_t, 16, &wRoot, nPopCnt, wKey, nPos);
-        } else if (nBL == 32) {
-           PSPLIT_SEARCH_BY_KEY(uint32_t, 32, &wRoot, nPopCnt, wKey, nPos);
-        } else {
-            goto unrolled;
-        }
-        if (nPos >= 0) { goto foundIt; }
-        break;
-unrolled:;
-              #endif
-          #endif // (defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP) ... )
 
         Word_t wKeyRoot;
 
@@ -2361,7 +2364,7 @@ unrolled:;
             if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
         }
 
-      #endif // (!defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) ... )
+      #endif // #else PARALLEL_EK
         }
 
         break;
