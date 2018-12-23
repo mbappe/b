@@ -598,7 +598,8 @@ ListWordCntOld(Word_t wPopCntArg, unsigned nBL)
             // We have to allocate enough memory to ensure that we will be able
             // to align the beginning of the array of real keys.
             nBytesHdr += sizeof(Bucket_t) - (cnMallocMask + 1);
-            nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(Bucket_t) - (cnMallocMask + 1));
+            nBytesHdr
+                = ALIGN_UP(nBytesHdr, sizeof(Bucket_t) - (cnMallocMask + 1));
         } else {
             nBytesHdr = ALIGN_UP(nBytesHdr, sizeof(Bucket_t));
         }
@@ -647,18 +648,14 @@ ListWordCntOld(Word_t wPopCntArg, unsigned nBL)
     // units with the second word aligned and uses the first word for itself.
     // Malloc never allocates less than four words.
     nBytes += sizeof(Word_t); // add a word for malloc
-    int nWords = MAX(4, ALIGN_UP(nBytes, cnMallocMask + 1) >> cnLogBytesPerWord) - 1;
-if (nBL > 32) {
-//printf("nBytesHdr %d\n", nBytesHdr);
-//printf("nBytesKeys %d\n", nBytesKeys);
-//printf("nBytes %d\n", nBytes);
-//printf("ListWordsTypeList(wPopCntArg %zd nBL %d) %d\n", wPopCntArg, nBL, nWords);
-}
+    int nWords
+        = MAX(4, ALIGN_UP(nBytes, cnMallocMask + 1) >> cnLogBytesPerWord) - 1;
     return nWords;
 #endif // defined(LIST_REQ_MIN_WORDS)
 
 #else // defined(OLD_LISTS)
-    return ls_nSlotsInList(wPopCntArg, nBL, nBytesKeySz) * nBytesKeySz / sizeof(Word_t);
+    return ls_nSlotsInList(wPopCntArg, nBL, nBytesKeySz)
+        * nBytesKeySz / sizeof(Word_t);
 #endif // defined(OLD_LISTS)
 #endif // FAST_LIST_WORDS
 }
@@ -718,11 +715,13 @@ NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
     {
 #if defined(LIST_END_MARKERS)
         ls_pwKeysNAT(pwList)[-1
-  #if (defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)) && (cnDummiesInList==0)
+  #if (cnDummiesInList==0)
+      #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             // ls_pwKeys is for T_LIST not at top (it incorporates dummies
             // and markers, but not pop count)
                              + (nBL == cnBitsPerWord)
-  #endif // (defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)) && ...
+      #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+  #endif // (cnDummiesInList==0)
                              ] = 0;
 #endif // defined(LIST_END_MARKERS)
     }
@@ -1301,7 +1300,8 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(BM_IN_LINK)
         {
 #if defined(BM_SW_FOR_REAL)
-            memset(PWR_pwBm(pwRoot, pwr), 0, N_WORDS_SWITCH_BM * sizeof(Word_t));
+            memset(PWR_pwBm(pwRoot, pwr), 0,
+                   N_WORDS_SWITCH_BM * sizeof(Word_t));
             Word_t wIndex = (wKey >> (nBL - nBW)) & (wIndexCnt - 1);
             // Set the bit in the bitmap indicating that the new link exists.
             // SetBitInSwBmWord
@@ -1457,7 +1457,8 @@ InflateBmSw(Word_t *pwRoot, Word_t wKey, int nBLR, int nBLUp)
     Word_t wRoot = *pwRoot;
     Word_t *pwr = wr_pwr(wRoot);
 
-    DBGI(printf("# InflateBmSw wKey " Owx" nBLR %d nBLUp %d\n", wKey, nBLR, nBLUp));
+    DBGI(printf("# InflateBmSw wKey " Owx" nBLR %d nBLUp %d\n",
+                wKey, nBLR, nBLUp));
 
     int nBW = nBL_to_nBW(nBLR);
 
@@ -2038,8 +2039,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
 
     if ( ! bDump )
     {
-        DBGR(printf("FreeArrayGuts pwR " OWx" wPrefix " OWx" nBL %d bDump %d\n",
-             (Word_t)pwRoot, wPrefix, nBL, bDump));
+        DBGR(printf("FreeArrayGuts pwR " OWx" wPrefix " OWx
+                    " nBL %d bDump %d\n",
+                    (Word_t)pwRoot, wPrefix, nBL, bDump));
         DBGR(printf("wRoot " OWx"\n", wRoot));
     }
 
@@ -3636,7 +3638,9 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
     int nBLOnly = nDL_to_nBL(nDLOnly);
     // nDLOnly includes the highest order digit that is different.
 
-    if (nDLOnly <= nDLR) { printf("nDLOnly %d nDLR %d nBLR %d\n", nDLOnly, nDLR, nBLR); }
+    if (nDLOnly <= nDLR) {
+        printf("nDLOnly %d nDLR %d nBLR %d\n", nDLOnly, nDLR, nBLR);
+    }
     assert(nDLOnly > nDLR);
     assert(nBLOnly <= nBL);
 
@@ -3990,7 +3994,8 @@ DoubleIt(qp,
   #endif // defined(BM_IN_LINK)
       #else // defined(SKIP_TO_BM_SW)
   #if defined(BM_IN_LINK)
-                  (nBLOld != cnBitsPerWord) && (nBL == nBLOld) ? T_BM_SW : T_SWITCH,
+                  (nBLOld != cnBitsPerWord)
+                      && (nBL == nBLOld) ? T_BM_SW : T_SWITCH,
   #else // defined(BM_IN_LINK)
                   (nBL == nBLOld) ? T_BM_SW : T_SWITCH,
   #endif // defined(BM_IN_LINK)
@@ -4295,7 +4300,8 @@ InsertSwitch(qp,
   #endif // defined(BM_IN_LINK)
       #else // defined(SKIP_TO_BM_SW)
   #if defined(BM_IN_LINK)
-                  (nBL != cnBitsPerWord) && (nBLNew == nBL) ? T_BM_SW : T_SWITCH,
+                  (nBL != cnBitsPerWord)
+                      && (nBLNew == nBL) ? T_BM_SW : T_SWITCH,
   #else // defined(BM_IN_LINK)
                   (nBLNew == nBL) ? T_BM_SW : T_SWITCH,
   #endif // defined(BM_IN_LINK)
@@ -5173,7 +5179,7 @@ InsertGuts(qp, Word_t wKey, int nPos
     // The first test can be done at compile time and might make the
     // InsertAtDl1 go away.
     if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nBL == cnBitsInD1))
-    //if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nBL <= (int)LOG(sizeof(Link_t) * 8)))
+    // ??? (nBL <= (int)LOG(sizeof(Link_t) * 8)) ???
     {
         return InsertAtDl1(pwRoot, wKey, nDL, nBL, wRoot);
     }
