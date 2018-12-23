@@ -3833,25 +3833,29 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
 }
 
 #if defined(CODE_XX_SW)
-#ifdef B_JUDYL
+  #ifdef B_JUDYL
 static Word_t*
-#else // B_JUDYL
+  #else // B_JUDYL
 static void
-#endif // B_JUDYL
+  #endif // B_JUDYL
 DoubleIt(qp,
-         Word_t wKey,
-         int nBLUp,
-         Link_t *pLnUp
-      #ifdef CODE_XX_SW
+         Word_t wKey
+  #ifdef SKIP_TO_XX_SW
+       , int nBLUp
+  #endif // SKIP_TO_XX_SW
+       , Link_t *pLnUp
+  #ifdef CODE_XX_SW
        , Word_t wPopCnt
-      #endif // CODE_XX_SW
+  #endif // CODE_XX_SW
          )
 {
     qv;
     int nDL = nBL_to_nDL(nBL);
     int nBLOld = nBL;
     int nDLOld = nDL; (void)nDLOld;
+  #ifdef SKIP_TO_XX_SW
     (void)nBLUp;
+  #endif // SKIP_TO_XX_SW
     (void)wPopCnt;
     int nBW;
 
@@ -4089,13 +4093,13 @@ insertAll:;
         DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
     }
 
-#ifdef B_JUDYL
+  #ifdef B_JUDYL
     Word_t *pwVal = Insert(nBLOld, pLn, wKey);
     *pwVal = 0; // How much does this cost?
     return pwVal;
-#else // B_JUDYL
+  #else // B_JUDYL
     Insert(nBLOld, pLn, wKey);
-#endif // B_JUDYL
+  #endif // B_JUDYL
 }
 #endif // defined(CODE_XX_SW)
 
@@ -4242,7 +4246,11 @@ InsertSwitch(qp,
 // What about a small bitmap?
 // Or another switch?
   #endif // defined(USE_XX_SW)
-            return DoubleIt(qy, wKey, nBLUp, pLnUp
+            return DoubleIt(qy, wKey
+      #if defined(SKIP_TO_XX_SW)
+                          , nBLUp
+      #endif // defined(SKIP_TO_XX_SW)
+                          , pLnUp
       #ifdef CODE_XX_SW
                           , wPopCnt
       #endif // CODE_XX_SW
@@ -4496,7 +4504,11 @@ Splay(qp,
     // since we can't skip anyway.  And the
     // skip code causes problems for T_XX_SW.
     if (nBL <= cnBitsLeftAtDl2) {
-        return InsertSwitch(qy, wKey, nBLNew, nBLUp, pLnUp
+        return InsertSwitch(qy, wKey, nBLNew
+      #ifdef SKIP_TO_XX_SW
+                          , nBLUp
+      #endif // SKIP_TO_XX_SW
+                          , pLnUp
       #ifdef CODE_XX_SW
                           , wPopCnt
       #endif // CODE_XX_SW
@@ -4744,11 +4756,11 @@ InsertAtList(qp,
     {
         DBGR(printf("IG: goto doubleIt nBL %d cnt %d max %d.\n",
                     nBL, (int)wPopCnt, nEmbeddedListPopCntMax));
-        return DoubleIt(qy, wKey,
+        return DoubleIt(qy, wKey
       #ifdef SKIP_TO_XX_SW
-                        nBLUp,
+                      , nBLUp
       #endif // SKIP_TO_XX_SW
-                        pLnUp
+                      , pLnUp
       #if CODE_XX_SW
                       , wPopCnt
       #endif // CODE_XX_SW
@@ -4802,8 +4814,11 @@ InsertAtList(qp,
                 if ((wWordsAllocated * 100 / wPopCntTotal)
                         < cnXxSwWpkPercent)
                 {
-                    return DoubleIt(qy, wKey, nBLUp,
-                                    pLnUp
+                    return DoubleIt(qy, wKey
+      #if defined(SKIP_TO_XX_SW)
+                                  , nBLUp
+      #endif // defined(SKIP_TO_XX_SW)
+                                  , pLnUp
       #ifdef CODE_XX_SW
                                   , wPopCnt
       #endif // CODE_XX_SW
