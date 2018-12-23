@@ -3326,7 +3326,8 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     return nPos;
 }
 
-#if (defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)) && ! defined(LIST_END_MARKERS)
+#if defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)
+#if !defined(LIST_END_MARKERS)
 
 // Little endian:
 // 00:      10: smallest key
@@ -3955,11 +3956,6 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     } \
 }
 
-#endif // (defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)) ...
-
-#if defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)
-#if ! defined(LIST_END_MARKERS)
-
 #if JUNK
 static Status_t
 TwoWordsHaveKey(Word_t *pw, Word_t wKey, int nBL)
@@ -4524,7 +4520,7 @@ HasKey128Magic(__m128i *pxBucket, Word_t wKey, int nBL)
     return HasKey128MagicTail(pxBucket, xLsbs, xMsbs, xKeys);
 }
 
-#endif // ! defined(LIST_END_MARKERS)
+#endif // !defined(LIST_END_MARKERS)
 #endif // defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)
 
 #if defined(EMBED_KEYS)
@@ -4822,7 +4818,8 @@ ListHasKey16Ua(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 #ifdef PSPLIT_PARALLEL
   #ifdef PARALLEL_128
 // What is the purpose of ListHasKey1696?
-// Is it for UA_PARALLEL_128? Then why is there an ifdef UA_PARALLEL_128 inside?
+// Is it for UA_PARALLEL_128?
+// Then why is there an ifdef UA_PARALLEL_128 inside?
 // Is it for T_LIST_UA?
 //
 //   8 < nBL <= 16, nPopCnt <= 6
@@ -5239,7 +5236,7 @@ ListHasKeyWord(qp, int nBLR, Word_t wKey)
     if (sizeof(Bucket_t) > sizeof(Word_t)) {
         return BinaryHasKeyWord(pwKeys, wKey, nBLR, nPopCnt);
     } else
-      #endif // !defined(NO_BINARY_SEARCH_WORD) && defined(PARALLEL_SEARCH_WORD)
+      #endif // !defined(NO_BINARY_SEARCH_WORD) && ...
   #endif // (cnBitsPerWord > 32)
     {
         nPos = SearchListWord(pwKeys, wKey, nBLR, nPopCnt);
