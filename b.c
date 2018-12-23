@@ -1059,9 +1059,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
          " wPopCnt %" _fw"d.\n", (void *)pwRoot, wKey, nBL, nBLUp, wPopCnt));
 
 #if defined(CODE_XX_SW)
-    if ((nBWX != nBL_to_nBW(nBL))
-        /*&& (nBWX != cnBW)*/)
-    {
+    if ((nBWX != nBL_to_nBW(nBL)) /*&& (nBWX != cnBW)*/) {
         DBGI(printf("# NewSwitch(nBWX %d)\n", nBWX));
     }
 #endif // defined(CODE_XX_SW)
@@ -3634,15 +3632,15 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
     }
 
     // Figure nBL for the new switch.
-    int nDLOnly = nBL_to_nDL(LOG(1 | (wPrefix ^ wKey)) + 1);
-    int nBLOnly = nDL_to_nBL(nDLOnly);
-    // nDLOnly includes the highest order digit that is different.
+    int nDLNew = nBL_to_nDL(LOG(1 | (wPrefix ^ wKey)) + 1);
+    int nBLNew = nDL_to_nBL(nDLNew);
+    // nDLNew includes the highest order digit that is different.
 
-    if (nDLOnly <= nDLR) {
-        printf("nDLOnly %d nDLR %d nBLR %d\n", nDLOnly, nDLR, nBLR);
+    if (nDLNew <= nDLR) {
+        printf("nDLNew %d nDLR %d nBLR %d\n", nDLNew, nDLR, nBLR);
     }
-    assert(nDLOnly > nDLR);
-    assert(nBLOnly <= nBL);
+    assert(nDLNew > nDLR);
+    assert(nBLNew <= nBL);
 
     Word_t wPopCnt;
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -3671,8 +3669,8 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
 #endif // defined(NO_SKIP_AT_TOP)
 
     // todo nBW; wide switch
-    int nIndex = (wPrefix >> nDL_to_nBL_NAT(nDLOnly - 1))
-               & (EXP(nDL_to_nBW(nDLOnly)) - 1);
+    int nIndex = (wPrefix >> nDL_to_nBL_NAT(nDLNew - 1))
+               & (EXP(nDL_to_nBW(nDLNew)) - 1);
     // nIndex is the logical index in new switch.
     // It may not be the same as the index in the old switch.
 
@@ -3688,9 +3686,9 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
   #endif // defined(BM_IN_LINK)
       #else // defined(SKIP_TO_BM_SW)
   #if defined(BM_IN_LINK)
-    int bBmSwNew = ((nDLUp != cnDigitsPerWord) && (nDLOnly == nDLUp));
+    int bBmSwNew = ((nDLUp != cnDigitsPerWord) && (nDLNew == nDLUp));
   #else // defined(BM_IN_LINK)
-    int bBmSwNew = (nDLOnly == nDLUp);
+    int bBmSwNew = (nDLNew == nDLUp);
   #endif // defined(BM_IN_LINK)
       #endif // defined(SKIP_TO_BM_SW)
   #else // defined(USE_BM_SW)
@@ -3730,13 +3728,13 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
     Word_t *pwSw;
     // initialize prefix/pop for new switch
     // Make sure to pass the right key for BM_SW_FOR_REAL.
-    DBGI(printf("IG: nDLOnly %d nDLUp %d\n", nDLOnly, nDLUp));
-    assert(nBLOnly <= nBL);
+    DBGI(printf("IG: nDLNew %d nDLUp %d\n", nDLNew, nDLUp));
+    assert(nBLNew <= nBL);
     // NewSwitch changes *pwRoot (and the link containing it).
     // It does not change our local wRoot and pwr (or pwRoot).
-    pwSw = NewSwitch(pwRoot, wPrefix, nBLOnly,
+    pwSw = NewSwitch(pwRoot, wPrefix, nBLNew,
 #if defined(CODE_XX_SW)
-                     nBL_to_nBW(nBLOnly),
+                     nBL_to_nBW(nBLNew),
 #endif // defined(CODE_XX_SW)
 #if defined(CODE_BM_SW)
                      bBmSwNew ? T_BM_SW :
@@ -3798,7 +3796,7 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
     // Initialize the link in the new switch that points to the
     // old *pwRoot.
   #if defined(SKIP_LINKS)
-    if (nDLOnly - nDLR - 1 == 0) {
+    if (nDLNew - nDLR - 1 == 0) {
         Clr_bIsSkip(&wRoot); // Change type to the non-skip variant.
     }
   #endif // defined(SKIP_LINKS)
@@ -3814,7 +3812,7 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
     // switch if they are in the link.
 #if defined(PP_IN_LINK)
   #if defined(NO_UNNECESSARY_PREFIX)
-    if (nDLR < nDLOnly - 1)
+    if (nDLR < nDLNew - 1)
   #endif // defined(NO_UNNECESSARY_PREFIX)
     { set_PWR_wPrefix(&pLinks[nIndex].ln_wRoot, NULL, nDLR, wPrefix); }
 #else // defined(PP_IN_LINK)
