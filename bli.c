@@ -622,13 +622,11 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
     nBW = cnBitsPerDigit; // compiler complains if not initialized here
-    Word_t *pwrUp = pwrUp; // "uninitialized" compiler warning
     Word_t *pwValueUp = NULL; (void)pwValueUp;
-#else // defined(B_JUDYL) && defined(EMBED_KEYS)
-  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrUp = pwrUp; // suppress "uninitialized" compiler warning
-  #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
-#endif // defined(B_JUDYL) && defined(EV_IN_SW)
+#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Link_t *pLnPrefix = NULL; (void)pLnPrefix;
     Word_t *pwrPrefix = NULL; (void)pwrPrefix;
     int nBLRPrefix = 0; (void)nBLRPrefix;
@@ -1006,9 +1004,9 @@ t_skip_to_xx_sw:
     case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
   #endif // !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     {
-        // nBL is bits left after picking the link from the previous switch
+        // nBL is bits left after picking the link we're handling now
         // nBL has not been reduced by any skip indicated in that link
-        // nBLR is bits left after reducing nBL by any skip in that link
+        // nBLR is bits left after reducing nBL by any skip in the link
         // nBLR is bits left to decode by this switch and below
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:;
@@ -1028,7 +1026,11 @@ t_switch:;
         // *(uint8_t *)&wSwappedAndShiftedKey;
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-        pwValueUp = &((Word_t*)&pwr_pLinks((Switch_t *)pwr)[1<<nBW])[wDigit];
+        // Save pwValue so we can find the embedded value area easily later.
+        // pLnUp would be more general. I wonder if we should put an up
+        // pointer in our tree nodes.
+        pwValueUp = gpwEmbeddedValue(qy, /* wLinks */ EXP(nBW),
+                                     /* wIndex */ wDigit);
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 
         IF_COUNT(bLinkPresent = 1);
@@ -1050,14 +1052,7 @@ switchTail:;
         // Save the previous link and advance to the next.
         IF_NOT_LOOKUP(pLnUp = pLn);
         IF_SKIP_TO_XX_SW(IF_INSERT(nBLUp = nBL));
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-        pwrUp = pwr; // save so B_JUDYL can find embedded key value area
-  #if defined(CODE_BM_SW) || defined(CODE_XX_SW) || defined(CODE_LIST_SW)
-        pLnUp = pLn; // B_JUDYL needs type of pwrUp
-  #endif // defined(CODE_BM_SW) || defined(CODE_XX_SW) || defined(CODE_LIST_SW)
-#else // defined(B_JUDYL) && defined(EMBED_KEYS)
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
 
 #ifdef BITMAP
@@ -1126,12 +1121,7 @@ t_xx_sw:;
         // Save the previous link and advance to the next.
         IF_NOT_LOOKUP(pLnUp = pLn);
         IF_SKIP_TO_XX_SW(IF_INSERT(nBLUp = nBL));
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-        pwrUp = pwr; // save so B_JUDYL can find embedded key value area
-        pLnUp = pLn; // B_JUDYL needs type of pwrUp
-#else // defined(B_JUDYL) && defined(EMBED_KEYS)
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
 
@@ -1358,8 +1348,7 @@ t_bm_sw:;
       #ifndef BM_SW_FOR_REAL
         assert(nLinkCnt == (1<<nBW));
       #endif // BM_SW_FOR_REAL
-        pwValueUp = &((Word_t*)&pwr_pLinks((BmSwitch_t *)pwr)[nLinkCnt])[wSwIndex];
-//printf("t_bm_sw: pwr %p nBW %d wSwIndex %zd pwValueUp %p\n", pwr, nBW, wSwIndex, pwValueUp);
+        pwValueUp = gpwEmbeddedValue(qy, nLinkCnt, wSwIndex);
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 
         // Update wDigit before bmSwTail because we have to do it
@@ -1370,12 +1359,7 @@ bmSwTail:;
         // bLinkPresent has already been initialized.
         IF_COUNT(nLinks = INT_MAX);
   #if defined(LOOKUP)
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-        pwrUp = pwr; // save so B_JUDYL can find embedded key value area
-        pLnUp = pLn; // B_JUDYL needs type of pwrUp
-#else // defined(B_JUDYL) && defined(EMBED_KEYS)
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
       #ifdef BITMAP
         // compiler complains ifndef BITMAP even if cbEmbeddedBitmap==0
@@ -1503,12 +1487,7 @@ t_list_sw:;
         // bLinkPresent has already been initialized.
         IF_COUNT(nLinks = INT_MAX);
   #if defined(LOOKUP)
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-        pwrUp = pwr; // save so B_JUDYL can find embedded key value area
-        pLnUp = pLn; // B_JUDYL needs type of pwrUp
-#else // defined(B_JUDYL) && defined(EMBED_KEYS)
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
         goto again;

@@ -2460,6 +2460,15 @@ typedef Switch_t BmSwitch_t;
 
 #ifdef B_JUDYL
 
+  #ifdef EMBED_KEYS
+static Word_t*
+gpwEmbeddedValue(qp, Word_t wLinks, Word_t wIndex)
+{
+    qv;
+    return &((Word_t*)&pwr_pLinks((Switch_t *)pwr)[wLinks])[wIndex];
+}
+  #endif // EMBED_KEYS
+
 static Word_t*
 gpwValues(qp)
 {
