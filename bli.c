@@ -1056,8 +1056,7 @@ switchTail:;
         IF_SKIP_TO_XX_SW(IF_INSERT(nBLUp = nBL));
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
-
-#ifdef BITMAP
+  #ifdef BITMAP
         // Is there any reason to have
         // EXP(cnBitsInD1) <= (sizeof(Link_t) * 8)? What about lazy conversion
         // of embedded keys at nBL > sizeof(Link_t) * 8 to
@@ -1078,10 +1077,9 @@ switchTail:;
             // We're leaving qy in an iffy state without updating nType and pwr.
             goto t_bitmap;
         }
-#else // BITMAP
+  #else // BITMAP
         assert(!cbEmbeddedBitmap || (nBL > cnLogBitsPerLink));
-#endif // BITMAP
-
+  #endif // BITMAP
   #if defined(INSERT) || defined(REMOVE)
       #if defined(CODE_XX_SW) && !defined(NO_TYPE_IN_XX_SW)
         if ( (nType != T_XX_SW)
@@ -1116,19 +1114,39 @@ t_xx_sw:;
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
-  #if defined(LOOKUP) || defined(NO_TYPE_IN_XX_SW)
-      #if defined(INSERT) || defined(REMOVE)
+  #ifndef NO_TYPE_IN_XX_SW
+      #ifndef LOOKUP
+        goto switchTail;
+      #endif // LOOKUP
+      #ifndef ZERO_POP_CHECK_BEFORE_GOTO
+          #ifndef HANDLE_DL2_IN_EMBEDDED_KEYS
+        // Zero pop check is done in t_embedded_keys.
+        // I don't know why yet, but it measures faster to defer
+        // the zero check until then.
+        goto switchTail;
+          #endif // HANDLE_DL2_IN_EMBEDDED_KEYS
+      #endif // ZERO_POP_CHECK_BEFORE_GOTO
+        // Handle XX_SW-specific special cases that don't go back to the top.
+        // But first we have to do a bunch of stuff in common with a regular
+        // switchTail.
+  #endif // NO_TYPE_IN_XX_SW
+// Would be nice to be able to extract this chunk of code into a function
+// because it is a replica of what is in t_switch. There would be a lot of
+// parameters: qp, pqp, nBLUp, pLnUp, pwrUp, pLnNew, wKey, pnBLR, nBW, wDigit,
+// nLinks, nCleanup, nIncr, bLinkPresent, wPopCntSum,
+// Beginning of SwTailCommon:
+  #if defined(INSERT) || defined(REMOVE)
         // Handle big picture tree cleanup.
         if (bCleanup
             && SwCleanup(qy, wKey, nBLR
-          #if defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
+      #if defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
                     , &pwValue
-          #endif // defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
+      #endif // defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
                       ) != 0)
         {
             goto restart;
         }
-      #endif // defined(INSERT) || defined(REMOVE)
+  #endif // defined(INSERT) || defined(REMOVE)
         wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
         IF_COUNT(wPopCntSum += CountSw(qy, nBLR, nBW, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
@@ -1137,37 +1155,23 @@ t_xx_sw:;
         IF_SKIP_TO_XX_SW(IF_INSERT(nBLUp = nBL));
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
+  #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
-
+  #endif // BITMAP
+// End of SwTailCommon.
         // Handle XX_SW-specific special cases that don't go back to the top.
-      #if defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
-          #if defined(NO_TYPE_IN_XX_SW)
+  #if defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
+      #if defined(NO_TYPE_IN_XX_SW)
         // ZERO_POP_MAGIC is valid only if a word can hold at least two keys.
         assert(EmbeddedListPopCntMax(nBL) >= 2);
         if (wRoot == ZERO_POP_MAGIC)
-          #else // defined(NO_TYPE_IN_XX_SW)
+      #else // defined(NO_TYPE_IN_XX_SW)
         if (wRoot == 0)
-          #endif // defined(NO_TYPE_IN_XX_SW)
+      #endif // defined(NO_TYPE_IN_XX_SW)
         { return Failure; }
-      #else // defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
-        // Zero pop check is done in t_embedded_keys.
-        // I don't know why yet, but it measures faster to defer
-        // the zero check until then.
-      #endif // defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
-      #if defined(NO_TYPE_IN_XX_SW) || (defined(LOOKUP) && defined(HANDLE_DL2_IN_EMBEDDED_KEYS))
+  #endif // defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
         // Blow-ups are handled in t_embedded_keys.
         goto t_embedded_keys;
-      #else // defined(NO_TYPE_IN_XX_SW) || handle dl2 in t_embedded_keys
-          #if defined(LOOKUP) || !defined(RECURSIVE)
-        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
-          #else // defined(LOOKUP) || !defined(RECURSIVE)
-        return InsertRemove(nBL, pLn, wKey);
-          #endif // defined(LOOKUP) || !defined(RECURSIVE)
-      #endif // defined(NO_TYPE_IN_XX_SW) || handle dl2 in t_embedded_keys
-
-  #else // defined(LOOKUP) || defined(NO_TYPE_IN_XX_SW)
-        goto switchTail;
-  #endif // defined(LOOKUP) || defined(NO_TYPE_IN_XX_SW)
 
     } // end of case T_XX_SW
 
