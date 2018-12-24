@@ -15,6 +15,14 @@
 // and Judy1Unset.  There is no need for Lookup, Insert and Remove.
 #else // (cnDigitsPerWord <= 1)
 
+static void
+Checkpoint(qp, const char *str)
+{
+    printf("# %20s: " qfmt "\n", str, qy);
+    // qv assertions would constrain us too much in this
+    // highly tuned code.
+}
+
   #if defined(COUNT)
 // Return the number of keys in the subtrees rooted by links that
 // precede the specified link in this switch.
@@ -392,7 +400,7 @@ SwCleanup(qp, Word_t wKey, int nBLR
 {
     qv; (void)wKey; (void)nBLR;
     DBGX(Checkpoint(qy, "SwCleanup"));
-    DBGX(printf("wKey 0x%016zx nBLR %d\n"));
+    DBGX(printf("wKey 0x%016zx nBLR %d\n", wKey, nBLR));
     // Cleanup is for adjusting tree after successful insert or remove.
     // It is not for undoing counts after unsuccessful insert or remove.
   #if defined(INSERT)
@@ -530,14 +538,6 @@ PrefixCheckAtLeaf(qp, Word_t wKey
 }
 #endif // LOOKUP
 #endif // SKIP_PREFIX_CHECK
-
-static void
-Checkpoint(qp, const char *str)
-{
-    printf("# %20s: " qfmt "\n", str, qy);
-    // qv assertions would constrain us too much in this
-    // highly tuned code.
-}
 
 #if defined(LOOKUP)
 #ifdef B_JUDYL

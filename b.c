@@ -4765,7 +4765,7 @@ InsertAtList(qp,
                       , nBLUp
       #endif // SKIP_TO_XX_SW
                       , pLnUp
-      #if CODE_XX_SW
+      #ifdef CODE_XX_SW
                       , wPopCnt
       #endif // CODE_XX_SW
                         );
