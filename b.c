@@ -423,13 +423,16 @@ static int
 ListWordCnt(int nPopCnt, int nBL)
 {
     int nListWordsMin = ListWordsMin(nPopCnt, nBL);
-    int nFullListWordsMin = ListWordsMin(anListPopCntMax[nBL], nBL);
     int nWords = MAX(4, EXP(LOG(nListWordsMin) + 1) * 3 / 4);
     if (nListWordsMin > nWords - 1) { nWords = nWords * 4 / 3; }
     --nWords; // Subtract malloc overhead word for request.
+#ifdef COMPRESSED_LISTS
+    // We don't yet know why this code breaks NO_COMPRESSED_LISTS.
+    int nFullListWordsMin = ListWordsMin(anListPopCntMax[nBL], nBL);
     if (nFullListWordsMin < nWords) {
         nWords = nFullListWordsMin;
     }
+#endif // COMPRESSED_LISTS
     return nWords;
 }
 
@@ -4836,12 +4839,23 @@ InsertAtList(qp,
 
         // Allocate memory for a new list if necessary.
         // Init or update pop count if necessary.
-        int nBytesPerKey;
+        int nBytesPerKey = ExtListBytesPerKey(nBL);
+        (void)nBytesPerKey;
+        assert((pwr == NULL)
+            || ((ExtListKeySlotCnt(wPopCnt, nBytesPerKey)
+                    < (int)(wPopCnt + 1))
+                == (ListWordsTypeList(wPopCnt + 1, nBL)
+                    != ListWordsTypeList(wPopCnt, nBL))));
         if ((pwr == NULL)
             // Inflate uses LWTL.
-            || (nBytesPerKey = ExtListBytesPerKey(nBL),
-                ExtListKeySlotCnt(wPopCnt + 1, nBytesPerKey)
-                    != ExtListKeySlotCnt(wPopCnt, nBytesPerKey)))
+#if 0
+            || (ExtListKeySlotCnt(wPopCnt, nBytesPerKey)
+                < (int)(wPopCnt + 1))
+#else
+            || (ListWordsTypeList(wPopCnt + 1, nBL)
+                != ListWordsTypeList(wPopCnt, nBL))
+#endif
+            )
         {
             DBGI(printf("pwr %p wPopCnt %" _fw"d nBL %d\n",
                         (void *)pwr, wPopCnt, nBL));
