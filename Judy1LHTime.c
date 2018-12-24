@@ -5757,9 +5757,8 @@ TestJudyDel(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
                         if (PValueNew == NULL)
                         {
                             printf("\n--- JudyLGet failure before JudyLDel"
-                                   ", Key = 0x%" PRIxPTR
-                                   ", Value = 0x%" PRIxPTR"",
-                                   TstKey, *PValueNew);
+                                   ", Key = 0x%" PRIxPTR,
+                                   TstKey);
                             FAILURE("JudyLGet failure before JudyLDel",
                                     TstKey);
                         }
