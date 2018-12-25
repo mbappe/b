@@ -25,6 +25,10 @@ CHECK=Judy1LHCheck
 && ${TIME} -W0 -B25 -1lvdgi  -n1e5 -DS1 \
 && ${TIME} -W0 -B32 -1lh     -n1e5 -S1  --splay-key-bits=0xff00aa00aa00ffff \
 :
+if [ $? != 0 ]
+then
+    exit 1
+fi
 
 : \
 && ${TIME} -W0 -B25 -LlCvdgi -n1e5      --splay-key-bits=0x0400aa00aa00ffff \
@@ -36,6 +40,10 @@ CHECK=Judy1LHCheck
 && ${TIME} -W0 -B32 -Llh     -n1e5 -S1  --splay-key-bits=0xff00aa00aa00ffff \
 && ${TIME} -W0 -B33 -Rlvdgi  -n1e5 \
 :
+if [ $? != 0 ]
+then
+    exit 1
+fi
 
 :\
 && ${CHECK} -B17 -C \
@@ -48,5 +56,11 @@ CHECK=Judy1LHCheck
 && ${CHECK} -B33 -C -S1 \
 && ${CHECK} -B33 -C -DS1 \
 :
+if [ $? != 0 ]
+then
+    exit 1
+fi
 
 #&& bcheckall 64 \
+
+exit 0

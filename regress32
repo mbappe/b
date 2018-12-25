@@ -25,6 +25,10 @@ CHECK=Judy1LHCheck
 && ${CHECK} -DS1 \
 && ${CHECK}      \
 :
+if [ $? -ne 0 ]
+then
+    exit 1
+fi
 
 # Judy1
 : \
@@ -38,6 +42,10 @@ CHECK=Judy1LHCheck
 && ${TIME} -W0 -1 -l -vdgi  -n1e5 -DS1 \
 && ${TIME} -W0 -1 -l -Cvdgi -n1e5      \
 :
+if [ $? -ne 0 ]
+then
+    exit 1
+fi
 
 # JudyL
 : \
@@ -51,6 +59,10 @@ CHECK=Judy1LHCheck
 && ${TIME} -W0 -L -l -vdgi  -n1e5 -DS1 \
 && ${TIME} -W0 -L -l -Cvdgi -n1e5      \
 :
+if [ $? -ne 0 ]
+then
+    exit 1
+fi
 
 #&& bcheckall 32 \
 
@@ -58,3 +70,4 @@ CHECK=Judy1LHCheck
 #&& ${TIME} -W0 -RICvdgi -n1000000 \
 #&& ${TIME} -W0 -1Lh -n1000000 -S1 --splay-key-bits=0xff00ffff \
 
+exit 0
