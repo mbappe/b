@@ -4841,6 +4841,22 @@ InsertAtList(qp,
         // Init or update pop count if necessary.
         int nBytesPerKey = ExtListBytesPerKey(nBL);
         (void)nBytesPerKey;
+        if ((pwr != NULL)
+            && ((ExtListKeySlotCnt(wPopCnt, nBytesPerKey)
+                    < (int)(wPopCnt + 1))
+                != (ListWordsTypeList(wPopCnt + 1, nBL)
+                    != ListWordsTypeList(wPopCnt, nBL))))
+        {
+            printf("\n");
+            printf("nBL %d nBytesPerKey %d\n", nBL, nBytesPerKey);
+            printf("wPopCnt %zd\n", wPopCnt);
+            printf("ExtListKeySlotCnt(wPopCnt, nBytesPerKey) %d\n",
+                    ExtListKeySlotCnt(wPopCnt, nBytesPerKey));
+            printf("ListWordsTypeList(wPopCnt, nBL) %d\n",
+                    ListWordsTypeList(wPopCnt, nBL));
+            printf("ListWordsTypeList(wPopCnt + 1, nBL) %d\n",
+                    ListWordsTypeList(wPopCnt + 1, nBL));
+        }
         assert((pwr == NULL)
             || ((ExtListKeySlotCnt(wPopCnt, nBytesPerKey)
                     < (int)(wPopCnt + 1))
