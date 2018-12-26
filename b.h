@@ -319,6 +319,11 @@
   #define PARALLEL_128
 #endif // !defined(PARALLEL_64) && !defined(NO_PARALLEL_128)
 
+// Default is -DCOMPRESSED_LISTS.
+#if ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
+#define COMPRESSED_LISTS
+#endif // ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
+
 // UA_PARALLEL_128, i.e. unaligned parallel 128, was designed to save memory
 // by eliminating the requirement that lists be padded to an integral number
 // of 16-byte bucket lengths while preserving our ability to use 128-bit
@@ -329,13 +334,21 @@
 // And then only lists of 16-bit keys that fit in 12 bytes are made T_LIST_UA.
 //
 #if defined(PSPLIT_PARALLEL) && defined(PARALLEL_128)
+  #ifdef COMPRESSED_LISTS
   #ifndef NO_UA_PARALLEL_128
     #if (cnBitsPerWord == 32) && (cnBitsMallocMask >= 4)
       #undef UA_PARALLEL_128
       #define UA_PARALLEL_128
     #endif // (cnBitsPerWord == 32) && (cnBitsMallocMask >= 4)
   #endif // NO_UA_PARALLEL_128
+  #endif // COMPRESSED_LISTS
 #endif // defined(PSPLIT_PARALLEL) && defined(PARALLEL_128)
+
+#ifndef COMPRESSED_LISTS
+  #ifdef UA_PARALLEL_128
+    #error UA_PARALLEL_128 without COMPRESSED_LISTS
+  #endif // UA_PARALLEL_128
+#endif // #ifndef COMPRESSED_LISTS
 
 #if defined(UA_PARALLEL_128)
   #if (cnBitsMallocMask < 4)
@@ -359,11 +372,6 @@
 #if ! defined(cnBinarySearchThresholdWord)
 #define cnBinarySearchThresholdWord  16
 #endif // ! defined(cnBinarySearchThresholdWord)
-
-// Default is -DCOMPRESSED_LISTS.
-#if ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
-#define COMPRESSED_LISTS
-#endif // ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
 
 // Default is -UPLACE_LISTS.
 
@@ -1904,18 +1912,20 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
   #endif // defined(OLD_LISTS)
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 
-// ALIGN_LIST is about the alignment of the first real key in a list leaf.
+// ALIGN_LIST is about the alignment of the first real key in a list leaf
+// to a sizeof(Bucket_t) boundary.
 // The first real key in a list leaf may follow a pop count and/or an
 // end-of-list marker key and/or dummy keys and/or whatever else we decide
 // to implement or experiment with.
 // One reason for doing this alignment is to satisfy any alignment
-// requirement of the list search functions, e.g. the load 128-bit register
-// instruction used by gcc requires 128-bit alignment.
+// requirement of the list search functions, e.g. the fastest load 128-bit
+// register instruction requires 128-bit alignment.
 #define ALIGN_LIST(_nBytesKeySz) \
-    ( cbAlignLists /* independent of psplit parallel */ \
+    ( cbAlignLists /* independent of parallel search */ \
         || ( (_nBytesKeySz) == cnBytesPerWord \
             ? cbParallelSearchWord : cbPsplitParallel ) )
 
+// ALIGN_LIST_LEN is about the length of the key area in a list.
 // The length of a list from the first key through the last (including unused
 // slots filled with the last real key in the list) must be an integral
 // number of parallel search buckets so we don't need any special handling in
@@ -1926,7 +1936,7 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 // number of buckets long, then the end of the list may fall on an odd word
 // boundary.
 #define ALIGN_LIST_LEN(_nBytesKeySz) \
-    ( cbAlignListLens /* independent of psplit parallel */ \
+    ( cbAlignListLens /* independent of parallel search */ \
         || ( (_nBytesKeySz) == cnBytesPerWord \
             ? cbParallelSearchWord : cbPsplitParallel ) )
 
