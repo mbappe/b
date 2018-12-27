@@ -708,9 +708,9 @@ again:;
     assert(nBLR == nBL);
 #endif // defined(SKIP_LINKS)
 #if ( ! defined(LOOKUP) )
-  #if ! defined(USE_XX_SW)
+  #if ! defined(CODE_XX_SW)
     assert(nBL >= cnBitsInD1); // valid for LOOKUP too
-  #endif // ! defined(USE_XX_SW)
+  #endif // ! defined(CODE_XX_SW)
 #endif // ( ! defined(LOOKUP) )
     DBGX(printf("# nBL %d pLn %p wRoot " OWx" wKey " OWx"\n",
                 nBL, pLn, wRoot, wKey));
@@ -2070,7 +2070,7 @@ t_bitmap:;
               #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             return KeyFound;
     #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
-      #if defined(USE_XX_SW)
+      #if defined(CODE_XX_SW)
             // We assume we never blow-out into a bitmap.
             // But we don't really enforce it.
           #if defined(DEBUG)
@@ -2079,7 +2079,7 @@ t_bitmap:;
             assert(nBLR == cnBitsLeftAtDl2);
             assert(pwr == wr_pwr(wRoot));
             int bBitIsSet = BitIsSet(pwr, wKey & MSK(cnBitsLeftAtDl2));
-      #else // defined(USE_XX_SW)
+      #else // defined(CODE_XX_SW)
             // Might be able to speed this up with bl-specific code.
             int bBitIsSet
                 = (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
@@ -2098,7 +2098,7 @@ t_bitmap:;
                     : BitIsSet(pwr, wKey & MSK(cnBitsLeftAtDl1))
           #endif
                 ;
-      #endif // defined(USE_XX_SW)
+      #endif // defined(CODE_XX_SW)
             if (bBitIsSet)
             {
       #if defined(REMOVE)

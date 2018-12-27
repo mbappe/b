@@ -1,6 +1,16 @@
 
-#if ( ! defined(_BCONF_H_INCLUDED) )
-#define _BCONF_H_INCLUDED
+#if ( ! defined(_BDEFINES_H_INCLUDED) )
+#define _BDEFINES_H_INCLUDED
+
+// If B_JUDYL is defined then we are building JudyL.
+// If B_JUDYL is not defined then we are building Judy1.
+// JudyL and Judy1 have different constraints and different defaults.
+// We may build both Judy1 and JudyL with a single make, hence with
+// a single set of -D options. Maybe we need to enhance the Makefile
+// to have JUDY1_DEFINES and JUDYL_DEFINES.
+// We don't build both 64-bit and 32-bit with a single make, but maybe
+// we should. And maybe with DEFINES_32 and DEFINES_64.
+// And maybe JUDY[1L]_DEFINES_(32|64).
 
 #define cnBitsPerByte  8
 
@@ -29,26 +39,19 @@
     #define cnLogBytesPerWord 2
 #endif // cnBitsPerWord
 
-// Makefile must define B_JUDYL in order to build libL, i.e. -DB_JUDYL.
-
-// Set initial defines based on whether we are building Judy1 or JudyL.
-// If B_JUDYL is not defined then we are building Judy1.
+// Apply JudyL-specific constraints to ifdefs from the build process.
 #ifdef B_JUDYL
 
   #undef  NO_UA_PARALLEL_128
   #define NO_UA_PARALLEL_128
 
   // Allow DEFINES=-DALLOW_EMBEDDED_BITMAP on make command line for JUDY1.
+
+  // Allow DEFINES=-D<blah> on shared make command line for JUDY1.
   #undef ALLOW_EMBEDDED_BITMAP
-
-  // Allow DEFINES=-DUSE_XX_SW on make command line for JUDY1.
-  #ifdef    USE_XX_SW
-    #undef  USE_XX_SW
-  #endif // USE_XX_SW
-
-  #ifdef    SKIP_TO_XX_SW
-    #undef  SKIP_TO_XX_SW
-  #endif // SKIP_TO_XX_SW
+  #undef USE_XX_SW
+  #undef SKIP_TO_XX_SW
+  #undef NO_TYPE_IN_XX_SW
 
   // Disabling PARALLEL_SEARCH_WORD helps with worst case memory usage.
   #ifndef PARALLEL_SEARCH_WORD
@@ -58,7 +61,32 @@
 
 #endif // B_JUDYL
 
-// Define LVL_IN_WR_HB by default for 64-bit.
+// Default is -UCODE_XX_SW.
+
+// Default is -UNO_TYPE_IN_XX_SW.
+// NO_TYPE_IN_XX_SW implies CODE_XX_SW.
+// Should it imply USE_XX_SW?
+#ifdef NO_TYPE_IN_XX_SW
+  #undef  CODE_XX_SW
+  #define CODE_XX_SW
+#endif // NO_TYPE_IN_XX_SW
+
+// SKIP_TO_XX_SW implies CODE_XX_SW.
+// Should it imply USE_XX_SW?
+#ifdef SKIP_TO_XX_SW
+  #undef  CODE_XX_SW
+  #define CODE_XX_SW
+#endif // SKIP_TO_XX_SW
+
+// Default is -UUSE_XX_SW.
+// USE_XX_SW implies CODE_XX_SW.
+// Time runs with USE_XX_SW take a long time because of insert times.
+// USE_XX_SW doesn't work on JudyL or 32-bit yet.
+#if defined(USE_XX_SW)
+  #undef  CODE_XX_SW
+  #define CODE_XX_SW
+#endif // defined(USE_XX_SW)
+
 #if (cnBitsPerWord > 32)
   #if       !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_SW)
     #undef              LVL_IN_WR_HB
@@ -188,5 +216,5 @@
     #define NDEBUG
 #endif // ! defined(DEBUG)
 
-#endif // ( ! defined(_BCONF_H_INCLUDED) )
+#endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 

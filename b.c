@@ -1333,9 +1333,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
         pwr_pLinks((Switch_t *)pwr);
     memset(pLinks, 0, wLinks * sizeof(Link_t));
 #if defined(NO_TYPE_IN_XX_SW)
-  #if !defined(USE_XX_SW)
-    #error NO_TYPE_IN_XX_SW without USE_XX_SW is a problem
-  #endif // !defined(USE_XX_SW)
+  #if !defined(CODE_XX_SW)
+    #error NO_TYPE_IN_XX_SW without CODE_XX_SW is a problem
+  #endif // !defined(CODE_XX_SW)
     // The links in a switch at nDL_to_nBL(2) have nBL < nDL_to_nBL(2).
     // Hence the '=' in the '<=' here.
     if (nBL <= nDL_to_nBL(2)) {
@@ -4004,7 +4004,7 @@ DoubleIt(qp,
   #endif // CODE_XX_SW
          )
 {
-    qv;
+    qv; (void)pLnUp;
     int nDL = nBL_to_nDL(nBL);
     int nBLOld = nBL;
     int nDLOld = nDL; (void)nDLOld;

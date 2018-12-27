@@ -121,14 +121,23 @@
 #define  qyLn \
     nBLLn, pLnLn, wRootLn, nTypeLn, pwrLn
 
-// Shorthand to silence not-used compiler warnings.
+// qv is shorthand to silence not-used compiler warnings.
+// And to initialize local variables.
 // And to validate assumptions.
+#ifdef NO_TYPE_IN_XX_SW
+#define  qv \
+    Word_t *pwRoot = &pLn->ln_wRoot; \
+    (void)nBL; (void)pLn; (void)pwRoot; (void)wRoot; (void)nType; (void)pwr; \
+    assert(wRoot == pLn->ln_wRoot);
+#else // NO_TYPE_IN_XX_SW
 #define  qv \
     Word_t *pwRoot = &pLn->ln_wRoot; \
     (void)nBL; (void)pLn; (void)pwRoot; (void)wRoot; (void)nType; (void)pwr; \
     assert(wRoot == pLn->ln_wRoot); \
     assert(nType == wr_nType(wRoot) || (nBL <= cnLogBitsPerLink)); \
     assert(pwr == wr_pwr(wRoot) || (nBL <= cnLogBitsPerLink))
+#endif // NO_TYPE_IN_XX_SW
+
 #define pqv \
     (void)pnBL; (void)ppLn; (void)pwRoot; (void)pnType; (void)ppwr; \
     assert(*pwRoot == (*ppLn)->ln_wRoot); \
@@ -202,14 +211,6 @@
   #define CODE_LIST_SW
 #endif // defined(USE_LIST_SW)
 
-// Default is NO_USE_XX_SW because test runs take so long because of
-// insert times.
-// USE_XX_SW doesn't work on 32-bit yet.
-#if defined(USE_XX_SW)
-  #undef  CODE_XX_SW
-  #define CODE_XX_SW
-#endif // defined(USE_XX_SW)
-
 // Default cnBW is 1 if CODE_XX_SW.
 // cnBW is the minimum width of a narrow switch.
 #if defined(CODE_XX_SW)
@@ -233,8 +234,6 @@
 // EmbeddedListPopCntMax(nBL) governs maximum embedded list size unless
 // defined(POP_CNT_MAX_IS_KING) in which case the rules above for maximum
 // external list size also govern the maximum embedded list size.
-
-// Default is -UNO_TYPE_IN_XX_SW.
 
 // Default is XX_SHORTCUT if USE_XX_SW.
 // Default cnListPopCntMaxDl2 is 0 if USE_XX_SW.
@@ -467,12 +466,18 @@ typedef Word_t Bucket_t;
 #endif // ! defined(cnBitsInD1)
 
 #if defined(CODE_XX_SW)
-// Default is -DSKIP_TO_XX_SW.
+// Default is -DSKIP_TO_XX_SW iff -DSKIP_LINKS && -DCODE_XX_SW.
 #if ! defined(NO_SKIP_TO_XX_SW) && defined(SKIP_LINKS)
 #undef SKIP_TO_XX_SW
 #define SKIP_TO_XX_SW
 #endif // ! defined(NO_SKIP_TO_XX_SW) && defined(SKIP_LINKS)
 #endif // defined(CODE_XX_SW)
+
+// SKIP_TO_XX_SW implies SKIP_TO_BITMAP.
+#ifdef SKIP_TO_XX_SW
+  #undef  SKIP_TO_BITMAP
+  #define SKIP_TO_BITMAP
+#endif // SKIP_TO_XX_SW
 
 #if defined(SKIP_TO_XX_SW)
     #define cbSkipToXxSw  1
