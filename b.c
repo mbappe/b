@@ -384,19 +384,43 @@ static int anListPopCntMax[] = {
 #ifndef OLD_LIST_WORD_CNT
 
 // Minimum number of words that will hold a list.
-// Must respect alignment constraints.
+// Must respect all alignment constraints.
+// The return value could be passed to MyMalloc and we'd get a buffer
+// big enough for the list.
+// What cases can we not handle yet? We assume pop is not in key area.
+#ifndef LIST_POP_IN_PREAMBLE
+#ifndef POP_WORD_IN_LINK
+#ifndef POP_IN_WR_HB
+#ifndef PP_IN_LINK
+  #error ListWordsMin requires LIST_POP_IN_PREAMBLE for 32-bit JudyL.
+#endif // #ifndef PP_IN_LINK
+#endif // #ifndef POP_IN_WR_HB
+#endif // #ifndef POP_WORD_IN_LINK
+#endif // #ifndef LIST_POP_IN_PREAMBLE
 static int
 ListWordsMin(int nPopCnt, int nBL)
 {
     int nBytesPerKey = ExtListBytesPerKey(nBL);
-    int nBytesPerBucket
-        = ALIGN_LIST_LEN(nBytesPerKey)
-#ifdef UA_PARALLEL_128 // implies B_JUDYL && PARALLEL_128
-                && ((nPopCnt > 6) || (nBytesPerKey != 2))
+#ifdef UA_PARALLEL_128 // implies !B_JUDYL && PARALLEL_128 && 32-bit
+  #ifdef B_JUDYL
+    #error UA_PARALLEL_128 and B_JUDYL are incompatible
+  #endif // B_JUDYL
+  #ifndef PARALLEL_128
+    #error UA_PARALLEL_128 and no PARALLEL_128 are incompatible
+  #endif // PARALLEL_128
+  #if (cnBitsPerWord > 32)
+    #error UA_PARALLEL_128 and 64-bit are incompatible
+  #endif // (cnBitsPerWord > 32)
+    // I wonder if we could calculate the population count for this case to
+    // obviate the need for a pop count in memory.
+    if ((nPopCnt <= 6) && (nBytesPerKey == 2)) {
+        return 3;
+    }
 #endif // UA_PARALLEL_128
-            ? sizeof(Bucket_t) : sizeof(Word_t);
+    int nBytesPerBucket // key allocation unit
+        = ALIGN_LIST_LEN(nBytesPerKey) ? sizeof(Bucket_t) : sizeof(Word_t);
     int nKeyBytes = ALIGN_UP(nPopCnt * nBytesPerKey, nBytesPerBucket);
-    int nKeyWords = nKeyBytes / sizeof(Word_t);
+    int nKeyWords = nKeyBytes / sizeof(Word_t); // accumulator
 #ifdef B_JUDYL
     int nValueWords = nPopCnt;
   #ifdef LIST_POP_IN_PREAMBLE
@@ -407,27 +431,49 @@ ListWordsMin(int nPopCnt, int nBL)
       #endif // (cnBitsPerWord == 32)
   #endif // #else LIST_POP_IN_PREAMBLE
     // Keys must begin on a malloc alignment boundary.
-    nKeyWords += ALIGN_UP(nValueWords, cnMallocAlignment >> cnLogBytesPerWord);
-    if ((sizeof(Bucket_t) > cnMallocAlignment) && ALIGN_LIST(nBytesPerKey)) {
-        nKeyWords = ALIGN_UP(nKeyWords, sizeof(Bucket_t) >> cnLogBytesPerWord);
-    }
+    nValueWords = ALIGN_UP(nValueWords, cnMallocAlignment >> cnLogBytesPerWord);
+    // Malloc returns a malloc aligned pointer. If our keys have to be more
+    // strictly aligned then we have a problem because we have to wait until
+    // runtime to figure out how much to offset pwr. Or we have to overallocate.
+    // The code isn't smart enough for either one yet.
+    assert((cnMallocAlignment >= sizeof(Bucket_t))
+        || !ALIGN_LIST(nBytesPerKey));
+    nKeyWords += nValueWords;
 #endif // B_JUDYL
-    return nKeyWords;
+    return nKeyWords; // accumulated list words
 }
 
-// 3/4 Double: 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512
+// ListWordCnt is for reducing the frequency of list mallocs and copies and
+// the number of different sizes of malloc buffers that we would otherwise
+// use if we had only ListWordsMin.
+// We use sizes that are roughly the powers of the square root of two.
 static int
 ListWordCnt(int nPopCnt, int nBL)
 {
     int nListWordsMin = ListWordsMin(nPopCnt, nBL);
-    int nWords = MAX(4, EXP(LOG(nListWordsMin) + 1) * 3 / 4);
-    if (nListWordsMin > nWords - 1) { nWords = nWords * 4 / 3; }
+    // What is the first power of two bigger than nListWordsMin ** 2?
+    // nListWordsMin being a power of two does us no good because it won't
+    // accommodate the malloc overhead word.
+    int nNextPow = EXP(LOG(nListWordsMin) + 1); // first power of two bigger
+    // See if the power of two divided by the square root of two is
+    // big enough for our list.
+    // Candidate number of malloc words including one word of malloc overhead.
+    int nWords = MAX(4, (nNextPow * 46340 / (1<<16) + 1) & ~1);
+    if (nListWordsMin > nWords - 1) { nWords = nNextPow; }
     --nWords; // Subtract malloc overhead word for request.
     assert(nPopCnt <= anListPopCntMax[nBL]);
     int nFullListWordsMin = ListWordsMin(anListPopCntMax[nBL], nBL);
     if (nFullListWordsMin < nWords) {
         nWords = nFullListWordsMin;
     }
+#ifdef LIST_REQ_MIN_WORDS // don't request words that have no benefit
+    // We used a simple method of choosing the malloc request size.
+    // Is it possible that nWords minus one malloc chunk holds
+    // just as many keys so we're wasting a malloc chunk? Or wasting
+    // more than one malloc chunk?
+    // Requesting a single word that we won't use, even if it doesn't take
+    // memory from the heap, is inconsistent with LIST_REQ_MIN_WORDS.
+#endif // LIST_REQ_MIN_WORDS
     return nWords;
 }
 
@@ -460,9 +506,8 @@ ListSlotCnt(int nPopCnt, int nBL)
     // It must be malloc aligned because we use the low bits of the pointer.
     int nWordsPerChunk = nWordsPerMallocChunk; // accumulator
     // It must be bucket aligned if we are aligning buckets.
-    if (ALIGN_LIST(nBytesPerKey) && (nWordsPerBucket > nWordsPerChunk)) {
-        nWordsPerChunk = nWordsPerBucket;
-    }
+    assert((nWordsPerBucket <= nWordsPerMallocChunk)
+        || !ALIGN_LIST(nBytesPerKey));
 #ifdef LIST_POP_IN_PREAMBLE
     // How do we incorporate the pop word?
     // I'm not sure about this method.
