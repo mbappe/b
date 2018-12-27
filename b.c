@@ -383,10 +383,14 @@ static int anListPopCntMax[] = {
 
 #ifndef OLD_LIST_WORD_CNT
 
-// Minimum number of words that will hold a list.
-// Must respect all alignment constraints.
+// ListWordsMin returns the minimum number of words that will hold a list.
+// It respects all alignment constraints.
 // The return value could be passed to MyMalloc and we'd get a buffer
 // big enough for the list.
+// Our current approach for 64-bit JudyL is to put the key area after the
+// value area with pwr pointing at the key area. One benefit of this
+// approach is locating the value after finding the key is really easy.
+// One disadvantage is we have to align the key area on a malloc boundary.
 // What cases can we not handle yet? We assume pop is not in key area.
 #ifndef LIST_POP_IN_PREAMBLE
 #ifndef POP_WORD_IN_LINK
