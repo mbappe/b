@@ -6564,8 +6564,10 @@ Initialize(void)
     // page) requests. Dlmalloc may mmap something other than an integral
     // multiple of 2MB. Since our bitmaps contain an extra word at the end
     // we need to be careful about bitmaps that 2MB plus one word and bigger.
+#ifdef BITMAP
     assert((cnBitsLeftAtDl2 < 24)
         || ((cn2dBmMaxWpkPercent == 0) && (cnBitsInD1 < 24)));
+#endif // BITMAP
 #if defined(UA_PARALLEL_128)
     assert(cnBitsMallocMask >= 4);
     for (int i = 1; i <= 6; i++) {
