@@ -626,6 +626,10 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
     // I think it will eventually be used for REMOVE and for
     // CODE_XX_SW without SKIP_TO_XX_SW.
     int nBLUp /* = nBLUp*/; (void)nBLUp; // silence gcc
+    // gcc complains that nBLUp may be used uninitialized with CODE_XX_SW.
+#ifdef CODE_XX_SW
+    nBLUp = cnBitsPerWord;
+#endif // CODE_XX_SW
 
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
 #if defined(SAVE_PREFIX_TEST_RESULT)
@@ -1022,6 +1026,7 @@ t_skip_to_xx_sw:
         // nBLR is bits left to decode by this switch and below
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:;
+        DBGX(Checkpoint(qy, "t_switch"));
         nBW = gnBW(qy, T_SWITCH, nBLR); // num bits decoded by this switch
   #ifdef BITMAP
         // What if nBLR <= nBW + cnLogBitsPerLink?
@@ -1117,6 +1122,7 @@ switchTail:;
     {
         goto t_xx_sw;
 t_xx_sw:;
+        DBGX(Checkpoint(qy, "t_xx_sw"));
         nBW = gnBW(qy, T_XX_SW, nBLR);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];

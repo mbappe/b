@@ -78,6 +78,16 @@
   #define CODE_XX_SW
 #endif // SKIP_TO_XX_SW
 
+#ifdef    USE_XX_SW_ONLY_AT_DL2
+  #undef  USE_XX_SW
+  #define USE_XX_SW
+#endif // USE_XX_SW_ONLY_AT_DL2
+
+#ifdef    USE_XX_SW_AT_DLX
+  #undef  USE_XX_SW
+  #define USE_XX_SW
+#endif // USE_XX_SW_AT_DLX
+
 // Default is -UUSE_XX_SW.
 // USE_XX_SW implies CODE_XX_SW.
 // Time runs with USE_XX_SW take a long time because of insert times.
@@ -86,6 +96,13 @@
   #undef  CODE_XX_SW
   #define CODE_XX_SW
 #endif // defined(USE_XX_SW)
+
+#ifdef USE_XX_SW
+  #undef  USE_XX_SW_ONLY_AT_DL2
+  #ifndef USE_XX_SW_AT_DLX
+    #define USE_XX_SW_ONLY_AT_DL2
+  #endif // #ifndef USE_XX_SW_AT_DLX
+#endif // USE_XX_SW
 
 #if (cnBitsPerWord > 32)
   #if       !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_SW)

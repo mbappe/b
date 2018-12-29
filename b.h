@@ -215,14 +215,22 @@
 // cnBW is the minimum width of a narrow switch.
 #if defined(CODE_XX_SW)
   #if ! defined(cnBW)
+    #ifdef USE_XX_SW_AT_DL2_ONLY
       #define cnBW  1
+    #else // USE_XX_SW_AT_DL2_ONLY
+      #define cnBW  4
+    #endif // #else USE_XX_SW_AT_DL2_ONLY
   #endif // ! defined(cnBW)
 #endif // defined(CODE_XX_SW)
 
 // Default cnBWIncr is 1 if CODE_XX_SW.
 #if defined(CODE_XX_SW)
   #if ! defined(cnBWIncr)
+    #ifdef USE_XX_SW_AT_DL2_ONLY
       #define cnBWIncr  1
+    #else // USE_XX_SW_AT_DL2_ONLY
+      #define cnBWIncr  4
+    #endif // #else USE_XX_SW_AT_DL2_ONLY
   #endif // ! defined(cnBWIncr)
 #endif // defined(CODE_XX_SW)
 
@@ -371,8 +379,6 @@
 #if ! defined(cnBinarySearchThresholdWord)
 #define cnBinarySearchThresholdWord  16
 #endif // ! defined(cnBinarySearchThresholdWord)
-
-// Default is -UPLACE_LISTS.
 
 #if (cnBitsPerWord == 64)
 #define cnBitsVirtAddr  48
@@ -5965,30 +5971,24 @@ LocateKeyInList(qp, int nBLR, Word_t wKey)
 
 #if defined(RAMMETRICS)
 
-extern Word_t j__AllocWordsTOT;
 extern Word_t j__RequestedWordsTOT;
-extern Word_t j__TotalBytesAllocated; // mmap
+extern Word_t j__AllocWordsTOT;
+extern Word_t j__MmapWordsTOT; // mmap
 
-extern Word_t j__ExtraWordsTOT;
-extern Word_t j__ExtraWordsCnt;
-
-extern Word_t j__AllocWordsJLLW; // 1 word/key list leaf
 //extern Word_t j__AllocWordsJBL;  // linear branch
 extern Word_t j__AllocWordsJBB;  // bitmap branch
 extern Word_t j__AllocWordsJBU;  // uncompressed branch
-extern Word_t j__AllocWordsJLB1; // bitmap leaf
-extern Word_t j__AllocWordsJLL1; // 1 byte/key list leaf
-extern Word_t j__AllocWordsJLL2; // 2 bytes/key list leaf
-extern Word_t j__AllocWordsJLL3; // B2 big bitmap leaf
-extern Word_t j__AllocWordsJLL4; // 4 bytes/key list leaf
-extern Word_t j__AllocWordsJLL5; // 5 bytes/key list leaf
-extern Word_t j__AllocWordsJLL6; // 6 bytes/key list leaf
-extern Word_t j__AllocWordsJLL7; // words requested
+extern Word_t j__AllocWordsJLB1; // bitmap leaf at dl1
+extern Word_t j__AllocWordsJLL[8];
+//#define j__AllocWordsJLLW  j__AllocWordsJLL[0]
+//#define j__AllocWordsJLL1  j__AllocWordsJLL[1]
+//...
+//#define j__AllocWordsJLL7  j__AllocWordsJLL[7]
 
 #ifndef B_JUDYL
 // Coopt j__AllocWordsJV for JLB2 big bitmap at digit 2.
 extern Word_t j__AllocWordsJV;   // value area
-#define j__AllocWordsJLB2  j__AllocWordsJV
+#define j__AllocWordsJLB2  j__AllocWordsJV // big bitmap leaf at dl2
 #endif // B_JUDYL
 
 #endif // defined(RAMMETRICS)

@@ -35,7 +35,7 @@
 Word_t    j__AllocWordsTOT;     // words given by JudyMalloc including overhead
 Word_t    j__MalFreeCnt;                // keep track of total malloc() + free()
 Word_t    j__MFlag;                     // Print memory allocation on stderr
-Word_t    j__TotalBytesAllocated;       // mmapped by dlmalloc
+Word_t    j__MmapWordsTOT;       // mmapped by dlmalloc
 Word_t    j__RequestedWordsTOT;       // words requested by Judy via JudyMalloc
 
 // Globals used by JudyMallocIF.c.
@@ -45,15 +45,8 @@ Word_t    j__AllocWordsJBB;
 Word_t    j__AllocWordsJBU;
 Word_t    j__AllocWordsJBL;
 Word_t    j__AllocWordsJLB1;
-Word_t    j__AllocWordsJLL1;
-Word_t    j__AllocWordsJLL2;
-Word_t    j__AllocWordsJLL3;
-Word_t    j__AllocWordsJLL4;
-Word_t    j__AllocWordsJLL5;
-Word_t    j__AllocWordsJLL6;
-Word_t    j__AllocWordsJLL7;
-Word_t    j__AllocWordsJLLW;
-Word_t    j__AllocWordsJV; // j__AllocWordsJLB2 for JUDY1
+Word_t    j__AllocWordsJLL[8];
+Word_t    j__AllocWordsJV; // j__AllocWordsJLB2 for JUDY1 for MIKEY
 Word_t    j__NumbJV;
 #endif // RAMMETRICS
 
@@ -173,7 +166,7 @@ pre_munmap(void *buf, Word_t length)
     ret =  munmap(buf, length);
 
 #ifdef  RAMMETRICS
-    j__TotalBytesAllocated -= length;
+    j__MmapWordsTOT -= length / sizeof(Word_t);
 
     if (j__MFlag)
         PRINTMUNMAP(buf, length);
@@ -274,7 +267,7 @@ pre_mmap(void *addr, Word_t length, int prot, int flags, int fd, off_t offset)
 //  DONE, have self-aligned buffer to return to dlmalloc
 
 #ifdef  RAMMETRICS
-    j__TotalBytesAllocated += length;
+    j__MmapWordsTOT += length / sizeof(Word_t);
 #endif  // RAMMETRICS
 
     return(buf);
@@ -344,8 +337,12 @@ JudyMallocX(int Words, int nSpace, int nLogAlign)
         if (Addr)
         {
             j__RequestedWordsTOT += Words;
+  #if !defined(LIBCMALLOC) || defined(__linux__)
             // get # bytes in malloc buffer from preamble
             Word_t zAllocWords = (((Word_t *)Addr)[-1] & ~3) / sizeof(Word_t);
+  #else // !defined(LIBCMALLOC) || defined(__linux__)
+            Word_t zAllocWords = Words;
+  #endif // #else !defined(LIBCMALLOC) || defined(__linux__)
             j__AllocWordsTOT += zAllocWords;
         }
 #endif  // RAMMETRICS
@@ -401,8 +398,12 @@ JudyFreeX(RawP_t PWord, int Words, int nSpace)
     (void)nSpace;
 
 #ifdef  RAMMETRICS
+  #if !defined(LIBCMALLOC) || defined(__linux__)
     // get # bytes in malloc buffer from preamble
     Word_t zAllocWords = (((Word_t *)PWord)[-1] & ~3) / sizeof(Word_t);
+  #else // !defined(LIBCMALLOC) || defined(__linux__)
+    Word_t zAllocWords = Words;
+  #endif // #else !defined(LIBCMALLOC) || defined(__linux__)
     j__AllocWordsTOT -= zAllocWords;
 
     j__MalFreeCnt++;        // keep track of total malloc() + free()

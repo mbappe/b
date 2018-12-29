@@ -59,21 +59,18 @@
 #else // RAMMETRICS
 #define RM_EXTERN
 #endif // RAMMETRICS
-RM_EXTERN Word_t j__TotalBytesAllocated; // allocated by mmap
+RM_EXTERN Word_t j__MmapWordsTOT; // allocated by mmap
 RM_EXTERN Word_t j__MFlag; // print mmap and munmap calls on stderr
 RM_EXTERN Word_t j__MalFreeCnt; // count of JudyMalloc + JudyFree calls
 RM_EXTERN Word_t j__AllocWordsTOT;
 RM_EXTERN Word_t j__AllocWordsJBB;
 RM_EXTERN Word_t j__AllocWordsJBU;
 RM_EXTERN Word_t j__AllocWordsJBL;
-RM_EXTERN Word_t j__AllocWordsJLLW;
-RM_EXTERN Word_t j__AllocWordsJLL7;
-RM_EXTERN Word_t j__AllocWordsJLL6;
-RM_EXTERN Word_t j__AllocWordsJLL5;
-RM_EXTERN Word_t j__AllocWordsJLL4;
-RM_EXTERN Word_t j__AllocWordsJLL3;
-RM_EXTERN Word_t j__AllocWordsJLL2;
-RM_EXTERN Word_t j__AllocWordsJLL1;
+RM_EXTERN Word_t j__AllocWordsJLL[8];
+//#define j__AllocWordsJLLW  j__AllocWordsJLL[0]
+//#define j__AllocWordsJLL1  j__AllocWordsJLL[1]
+//...
+//#define j__AllocWordsJLL7  j__AllocWordsJLL[7]
 RM_EXTERN Word_t j__AllocWordsJLB1;
 RM_EXTERN Word_t j__AllocWordsJV;
 
@@ -3738,25 +3735,17 @@ nextPart:
             PRINT5_1f((double)j__AllocWordsJBB   / (double)Pop1);       // 256 node branch
             PRINT5_1f((double)j__AllocWordsJBU   / (double)Pop1);       // 256 node branch
             PRINT5_1f((double)j__AllocWordsJBL   / (double)Pop1);       // xx node branch
-
-
-            PRINT5_1f((double)j__AllocWordsJLLW  / (double)Pop1);       // 32[64] Key
-
-            PRINT5_1f((double)j__AllocWordsJLL7  / (double)Pop1);       // 56 bit Key
-            PRINT5_1f((double)j__AllocWordsJLL6  / (double)Pop1);       // 48 bit Key
-            PRINT5_1f((double)j__AllocWordsJLL5  / (double)Pop1);       // 40 bit Key
-            PRINT5_1f((double)j__AllocWordsJLL4  / (double)Pop1);       // 32 bit Key
-            PRINT5_1f((double)j__AllocWordsJLL3  / (double)Pop1);       // 24 bit Key
-            PRINT5_1f((double)j__AllocWordsJLL2  / (double)Pop1);       // 16 bit Key
-            PRINT5_1f((double)j__AllocWordsJLL1  / (double)Pop1);       //  8 bit Key
+            PRINT5_1f((double)j__AllocWordsJLL[0] / (double)Pop1);      // > 56-bit key
+            for (int ll = 7; ll > 0; --ll) {
+                PRINT5_1f((double)j__AllocWordsJLL[ll] / (double)Pop1); // ll * 8 bit Key
+            }
             PRINT5_1f((double)j__AllocWordsJLB1  / (double)Pop1);       // 1 digit bimap
             PRINT5_1f((double)j__AllocWordsJV    / (double)Pop1);       // Values
-
 
 // SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSss
 
 //          Print the percent efficiency of dlmalloc
-            PRINT5_1f((double)j__AllocWordsTOT / (j__TotalBytesAllocated / sizeof(Word_t)));
+            PRINT5_1f((double)j__AllocWordsTOT / j__MmapWordsTOT);
             if (J1Flag)
                 PRINT5_1f(DeltaMalFre1Sum / Pms[grp].ms_delta);
             if (JLFlag || JRFlag)
@@ -5118,25 +5107,28 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 #define      TEST_NEXT_USING_JUDY_NEXT
 #endif // NO_TEST_NEXT_USING_JUDY_NEXT
 
+            Word_t J1KeyBefore;
 #ifdef TEST_NEXT_USING_JUDY_NEXT
+            J1KeyBefore = -1;
             J1Key = 0;
+            Rc = Judy1First(J1, &J1Key, PJE0);
 #else // TEST_NEXT_USING_JUDY_NEXT
             Word_t J1LastKey = -1;
             Judy1Last(J1, &J1LastKey, PJE0);
             NewSeed_t WorkingSeed = *PSeed;
-#endif // TEST_NEXT_USING_JUDY_NEXT
+#endif // #else TEST_NEXT_USING_JUDY_NEXT
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
             {
 #ifndef TEST_NEXT_USING_JUDY_NEXT
                 SYNC_SYNC(J1Key = GetNextKey(&WorkingSeed));
-#endif // TEST_NEXT_USING_JUDY_NEXT
+#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
                 if (Tit)
                 {
-                    Word_t J1KeyBefore = J1Key;
-                    Rc = Judy1Next(J1, &J1Key, PJE0);
 #ifndef TEST_NEXT_USING_JUDY_NEXT
+                    J1KeyBefore = J1Key;
+                    Rc = Judy1Next(J1, &J1Key, PJE0);
                     if (J1KeyBefore == J1LastKey)
                     {
                         if ((Rc == 1)
@@ -5153,22 +5145,28 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                                    Elements, elm);
                             FAILURE("J1N succeeded on last key J1Key", J1Key);
                         }
-                    }
-                    else
-#endif // TEST_NEXT_USING_JUDY_NEXT
-                    {
-                        if ((Rc != 1) || (J1Key == J1KeyBefore))
-                        {
-#ifndef TEST_NEXT_USING_JUDY_NEXT
-                            printf("J1LastKey %" PRIuPTR"\n", J1LastKey);
-#endif // TEST_NEXT_USING_JUDY_NEXT
-                            printf("J1KeyBefore %" PRIuPTR"\n", J1KeyBefore);
-                            printf("\nElements = %" PRIuPTR
-                                   ", elm = %" PRIuPTR"\n",
-                                   Elements, elm);
-                            FAILURE("J1N failed J1Key", J1Key);
+                        if (Elements == 1) {
+                            break;
                         }
+                        J1Key = 0;
+                        Rc = Judy1First(J1, &J1Key, PJE0);
                     }
+#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
+                    if ((Rc != 1) || (J1Key == J1KeyBefore))
+                    {
+                        printf("\n");
+#ifndef TEST_NEXT_USING_JUDY_NEXT
+                        printf("J1LastKey 0x%zx\n", J1LastKey);
+#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
+                        printf("J1KeyBefore 0x%zx\n", J1KeyBefore);
+                        printf("Elements %zu elm %zu\n", Elements, elm);
+                        printf("J1Key 0x%zx", J1Key);
+                        FAILURE("J1N failed J1Key", J1Key);
+                    }
+#ifdef TEST_NEXT_USING_JUDY_NEXT
+                    J1KeyBefore = J1Key;
+                    Rc = Judy1Next(J1, &J1Key, PJE0);
+#endif // TEST_NEXT_USING_JUDY_NEXT
                 }
             }
             ENDTm(DeltanSec1);
@@ -5192,26 +5190,29 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
     {
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
+            Word_t JLKeyBefore;
             Word_t *PValue = NULL;
 #ifdef TEST_NEXT_USING_JUDY_NEXT
+            JLKeyBefore = -1;
             JLKey = 0;
+            PValue = (Word_t*)JudyLFirst(JL, &JLKey, PJE0);
 #else // TEST_NEXT_USING_JUDY_NEXT
             Word_t JLLastKey = -1;
             JudyLLast(JL, &JLLastKey, PJE0);
             NewSeed_t WorkingSeed = *PSeed;
-#endif // TEST_NEXT_USING_JUDY_NEXT
+#endif // #else TEST_NEXT_USING_JUDY_NEXT
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
             {
 #ifndef TEST_NEXT_USING_JUDY_NEXT
                 SYNC_SYNC(JLKey = GetNextKey(&WorkingSeed));
-#endif // TEST_NEXT_USING_JUDY_NEXT
+#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
                 if (Tit)
                 {
-                    Word_t JLKeyBefore = JLKey;
-                    PValue = (Word_t*)JudyLNext(JL, &JLKey, PJE0);
 #ifndef TEST_NEXT_USING_JUDY_NEXT
+                    JLKeyBefore = JLKey;
+                    PValue = (Word_t*)JudyLNext(JL, &JLKey, PJE0);
                     if (JLKeyBefore == JLLastKey)
                     {
                         if ((PValue != NULL)
@@ -5228,29 +5229,36 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                                    Elements, elm);
                             FAILURE("JLN succeeded on last key JLKey", JLKey);
                         }
-                    }
-                    else
-#endif // TEST_NEXT_USING_JUDY_NEXT
-                    {
-                        if ((PValue == NULL)
-                            || (JLKey == JLKeyBefore)
-                            || (VFlag && (*PValue != JLKey)))
-                        {
-                            printf("\n");
-#ifndef TEST_NEXT_USING_JUDY_NEXT
-                            printf("JLLastKey %" PRIuPTR"\n", JLLastKey);
-#endif // TEST_NEXT_USING_JUDY_NEXT
-                            printf("JLKeyBefore %" PRIuPTR"\n", JLKeyBefore);
-                            if (PValue != NULL)
-                            {
-                                printf("*PValue=0x%" PRIxPTR"\n", *PValue);
-                            }
-                            printf("\nElements = %" PRIuPTR
-                                   ", elm = %" PRIuPTR"\n",
-                                   Elements, elm);
-                            FAILURE("JLN failed JLKey", JLKey);
+                        if (Elements == 1) {
+                            break;
                         }
+                        JLKey = 0;
+                        PValue = (Word_t*)JudyLFirst(JL, &JLKey, PJE0);
                     }
+#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
+                    if ((PValue == NULL)
+                        || (JLKey == JLKeyBefore)
+                        // Could verify that PValue != PValueBefore.
+                        || (VFlag && (*PValue != JLKey)))
+                    {
+                        printf("\n");
+#ifndef TEST_NEXT_USING_JUDY_NEXT
+                        printf("JLLastKey %" PRIuPTR"\n", JLLastKey);
+#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
+                        printf("JLKeyBefore %" PRIuPTR"\n", JLKeyBefore);
+                        if (PValue != NULL)
+                        {
+                            printf("*PValue=0x%" PRIxPTR"\n", *PValue);
+                        }
+                        printf("\nElements = %" PRIuPTR
+                               ", elm = %" PRIuPTR"\n",
+                               Elements, elm);
+                        FAILURE("JLN failed JLKey", JLKey);
+                    }
+#ifdef TEST_NEXT_USING_JUDY_NEXT
+                    JLKeyBefore = JLKey;
+                    PValue = (Word_t*)JudyLNext(JL, &JLKey, PJE0);
+#endif // TEST_NEXT_USING_JUDY_NEXT
                 }
             }
             ENDTm(DeltanSecL);
@@ -5303,25 +5311,28 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
             int Rc;
+            Word_t J1KeyBefore;
 #ifdef TEST_NEXT_USING_JUDY_NEXT
+            J1KeyBefore = 0;
             J1Key = -1;
+            Rc = Judy1Last(J1, &J1Key, PJE0);
 #else // TEST_NEXT_USING_JUDY_NEXT
             Word_t J1FirstKey = 0;
             Judy1First(J1, &J1FirstKey, PJE0);
             NewSeed_t WorkingSeed = *PSeed;
-#endif // TEST_NEXT_USING_JUDY_NEXT
+#endif // #else TEST_NEXT_USING_JUDY_NEXT
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
             {
 #ifndef TEST_NEXT_USING_JUDY_NEXT
                 SYNC_SYNC(J1Key = GetNextKey(&WorkingSeed));
-#endif // TEST_NEXT_USING_JUDY_NEXT
+#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
                 if (Tit)
                 {
-                    Word_t J1KeyBefore = J1Key;
-                    Rc = Judy1Prev(J1, &J1Key, PJE0);
 #ifndef TEST_NEXT_USING_JUDY_NEXT
+                    J1KeyBefore = J1Key;
+                    Rc = Judy1Prev(J1, &J1Key, PJE0);
                     if (J1KeyBefore == J1FirstKey)
                     {
                         if ((Rc == 1)
@@ -5338,22 +5349,29 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                                    Elements, elm);
                             FAILURE("J1P succeeded on first key J1Key", J1Key);
                         }
-                    }
-                    else
-#endif // TEST_NEXT_USING_JUDY_NEXT
-                    {
-                        if ((Rc != 1) || (J1Key == J1KeyBefore))
-                        {
-#ifndef TEST_NEXT_USING_JUDY_NEXT
-                            printf("J1FirstKey %" PRIuPTR"\n", J1FirstKey);
-#endif // TEST_NEXT_USING_JUDY_NEXT
-                            printf("J1KeyBefore %" PRIuPTR"\n", J1KeyBefore);
-                            printf("\nElements = %" PRIuPTR
-                                   ", elm = %" PRIuPTR"\n",
-                                   Elements, elm);
-                            FAILURE("J1P failed J1Key", J1Key);
+                        if (Elements == 1) {
+                            break;
                         }
+                        J1Key = -1;
+                        Rc = Judy1Last(J1, &J1Key, PJE0);
                     }
+#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
+                    if ((Rc != 1) || (J1Key == J1KeyBefore))
+                    {
+                        printf("\n");
+#ifndef TEST_NEXT_USING_JUDY_NEXT
+                        printf("J1FirstKey %" PRIuPTR"\n", J1FirstKey);
+#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
+                        printf("J1KeyBefore %" PRIuPTR"\n", J1KeyBefore);
+                        printf("\nElements = %" PRIuPTR
+                               ", elm = %" PRIuPTR"\n",
+                               Elements, elm);
+                        FAILURE("J1P failed J1Key", J1Key);
+                    }
+#ifdef TEST_NEXT_USING_JUDY_NEXT
+                    J1KeyBefore = J1Key;
+                    Rc = Judy1Prev(J1, &J1Key, PJE0);
+#endif // TEST_NEXT_USING_JUDY_NEXT
                 }
             }
             ENDTm(DeltanSec1);
@@ -5377,26 +5395,29 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
     {
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
-            Word_t   *PValue;
+            Word_t JLKeyBefore;
+            Word_t *PValue = NULL;
 #ifdef TEST_NEXT_USING_JUDY_NEXT
+            JLKeyBefore = 0;
             JLKey = -1;
+            PValue = (Word_t*)JudyLLast(JL, &JLKey, PJE0);
 #else // TEST_NEXT_USING_JUDY_NEXT
             Word_t JLFirstKey = 0;
             JudyLFirst(JL, &JLFirstKey, PJE0);
             NewSeed_t WorkingSeed = *PSeed;
-#endif // TEST_NEXT_USING_JUDY_NEXT
+#endif // #else TEST_NEXT_USING_JUDY_NEXT
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
             {
 #ifndef TEST_NEXT_USING_JUDY_NEXT
                 SYNC_SYNC(JLKey = GetNextKey(&WorkingSeed));
-#endif // TEST_NEXT_USING_JUDY_NEXT
+#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
                 if (Tit)
                 {
-                    Word_t JLKeyBefore = JLKey;
-                    PValue = (Word_t*)JudyLPrev(JL, &JLKey, PJE0);
 #ifndef TEST_NEXT_USING_JUDY_NEXT
+                    JLKeyBefore = JLKey;
+                    PValue = (Word_t*)JudyLPrev(JL, &JLKey, PJE0);
                     if (JLKeyBefore == JLFirstKey)
                     {
                         if ((PValue != NULL)
@@ -5413,29 +5434,35 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                                    Elements, elm);
                             FAILURE("JLP succeeded on first key JLKey", JLKey);
                         }
-                    }
-                    else
-#endif // TEST_NEXT_USING_JUDY_NEXT
-                    {
-                        if ((PValue == NULL)
-                            || (JLKey == JLKeyBefore)
-                            || (VFlag && (*PValue != JLKey)))
-                        {
-                            printf("\n");
-#ifndef TEST_NEXT_USING_JUDY_NEXT
-                            printf("JLFirstKey %" PRIuPTR"\n", JLFirstKey);
-#endif // TEST_NEXT_USING_JUDY_NEXT
-                            printf("JLKeyBefore %" PRIuPTR"\n", JLKeyBefore);
-                            if (PValue != NULL)
-                            {
-                                printf("*PValue=0x%" PRIxPTR"\n", *PValue);
-                            }
-                            printf("\nElements = %" PRIuPTR
-                                   ", elm = %" PRIuPTR"\n",
-                                   Elements, elm);
-                            FAILURE("JLP failed JLKey", JLKey);
+                        if (Elements == 1) {
+                            break;
                         }
+                        JLKey = -1;
+                        PValue = (Word_t*)JudyLLast(JL, &JLKey, PJE0);
                     }
+#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
+                    if ((PValue == NULL)
+                        || (JLKey == JLKeyBefore)
+                        || (VFlag && (*PValue != JLKey)))
+                    {
+                        printf("\n");
+#ifndef TEST_NEXT_USING_JUDY_NEXT
+                        printf("JLFirstKey %" PRIuPTR"\n", JLFirstKey);
+#endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
+                        printf("JLKeyBefore %" PRIuPTR"\n", JLKeyBefore);
+                        if (PValue != NULL)
+                        {
+                            printf("*PValue=0x%" PRIxPTR"\n", *PValue);
+                        }
+                        printf("\nElements = %" PRIuPTR
+                               ", elm = %" PRIuPTR"\n",
+                               Elements, elm);
+                        FAILURE("JLP failed JLKey", JLKey);
+                    }
+#ifdef TEST_NEXT_USING_JUDY_NEXT
+                    JLKeyBefore = JLKey;
+                    PValue = (Word_t*)JudyLPrev(JL, &JLKey, PJE0);
+#endif // TEST_NEXT_USING_JUDY_NEXT
                 }
             }
             ENDTm(DeltanSecL);
@@ -5491,7 +5518,11 @@ TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                 {
                     Word_t J1KeyBefore = J1Key;
                     Rc = Judy1NextEmpty(J1, &J1Key, PJE0);
-                    if (Rc != 1) {
+                    if ((Rc != 1)
+                        && (Judy1Count(J1, J1KeyBefore, -1, PJE0)
+                            != -J1KeyBefore))
+                    {
+                        printf("\n");
                         Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
                         FAILURE("Judy1NextEmpty Rcode != 1 Key", J1KeyBefore);
                     }
@@ -5529,8 +5560,12 @@ TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                 {
                     Word_t JLKeyBefore = JLKey;
                     Rc = JudyLNextEmpty(JL, &JLKey, PJE0);
-                    if (Rc != 1)
+                    if ((Rc != 1)
+                        && (JudyLCount(JL, JLKeyBefore, -1, PJE0)
+                            != -JLKeyBefore))
+                    {
                         FAILURE("JudyLNextEmpty Rcode != 1 Key", JLKeyBefore);
+                    }
                 }
             }
             ENDTm(DeltanSecL);
@@ -5585,11 +5620,11 @@ TestJudyPrevEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                 {
                     Word_t J1KeyBefore = J1Key;
                     Rc = Judy1PrevEmpty(J1, &J1Key, PJE0);
-                    if (Rc != 1) {
-                        Word_t wCount = Judy1Count(J1, 0, J1KeyBefore, PJE0);
-                        if (wCount < J1KeyBefore + 1) {
-                            FAILURE("Judy1PrevEmpty Rc != 1 Key", J1KeyBefore);
-                        }
+                    if ((Rc != 1)
+                        && (Judy1Count(J1, 0, J1KeyBefore, PJE0)
+                            != (J1KeyBefore + 1)))
+                    {
+                        FAILURE("Judy1PrevEmpty Rc != 1 Key", J1KeyBefore);
                     }
                 }
             }
@@ -5625,11 +5660,11 @@ TestJudyPrevEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                 {
                     Word_t JLKeyBefore = JLKey;
                     Rc = JudyLPrevEmpty(JL, &JLKey, PJE0);
-                    if (Rc != 1) {
-                        Word_t wCount = JudyLCount(JL, 0, JLKeyBefore, PJE0);
-                        if (wCount < JLKeyBefore + 1) {
-                            FAILURE("JudyLPrevEmpty Rc != 1 Key", JLKeyBefore);
-                        }
+                    if ((Rc != 1)
+                        && (JudyLCount(JL, 0, JLKeyBefore, PJE0)
+                            != (JLKeyBefore + 1)))
+                    {
+                        FAILURE("JudyLPrevEmpty Rc != 1 Key", JLKeyBefore);
                     }
                 }
             }
