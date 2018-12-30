@@ -1132,22 +1132,26 @@ t_xx_sw:;
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
-  #ifndef NO_TYPE_IN_XX_SW
-      #ifndef LOOKUP
-        goto switchTail;
-      #endif // LOOKUP
-      #ifndef ZERO_POP_CHECK_BEFORE_GOTO
-          #ifndef HANDLE_DL2_IN_EMBEDDED_KEYS
-        // Zero pop check is done in t_embedded_keys.
-        // I don't know why yet, but it measures faster to defer
-        // the zero check until then.
-        goto switchTail;
-          #endif // HANDLE_DL2_IN_EMBEDDED_KEYS
-      #endif // ZERO_POP_CHECK_BEFORE_GOTO
-        // Handle XX_SW-specific special cases that don't go back to the top.
-        // But first we have to do a bunch of stuff in common with a regular
-        // switchTail.
+  // _XX_SW_TAIL is for cases where we don't go back to the top switch but
+  // rather go directly to embedded keys.
+  // NO_TYPE_IN_XX_SW needs it.
+  // LOOKUP with ZERO_POP_CHECK_BEFORE_GOTO and
+  // LOOKUP with HANDLE_DL2_IN_EMBEDDED_KEYS use it in an attempt to improve
+  // performance.
+  #ifdef NO_TYPE_IN_XX_SW // implies EMBED_KEYS
+    #define _XX_SW_TAIL // the '_' prefix means internal and not for user
   #endif // NO_TYPE_IN_XX_SW
+  #ifdef EMBED_KEYS
+  #ifdef LOOKUP
+    #ifdef ZERO_POP_CHECK_BEFORE_GOTO
+      #define _XX_SW_TAIL
+    #endif // ZERO_POP_CHECK_BEFORE_GOTO
+    #ifdef HANDLE_DL2_IN_EMBEDDED_KEYS
+      #define _XX_SW_TAIL
+    #endif // HANDLE_DL2_IN_EMBEDDED_KEYS
+  #endif // LOOKUP
+  #endif // EMBED_KEYS
+  #ifdef _XX_SW_TAIL
 // Would be nice to be able to extract this chunk of code into a function
 // because it is a replica of what is in t_switch. There would be a lot of
 // parameters: qp, pqp, nBLUp, pLnUp, pwrUp, pLnNew, wKey, pnBLR, nBW, wDigit,
@@ -1190,6 +1194,8 @@ t_xx_sw:;
   #endif // defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
         // Blow-ups are handled in t_embedded_keys.
         goto t_embedded_keys;
+  #endif // #else _XX_SW_TAIL
+        goto switchTail;
 
     } // end of case T_XX_SW
 
@@ -2076,7 +2082,7 @@ t_bitmap:;
               #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             return KeyFound;
     #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
-      #if defined(CODE_XX_SW)
+      #if defined(USE_XX_SW) // only if we USE is it ok to assume DL2
             // We assume we never blow-out into a bitmap.
             // But we don't really enforce it.
           #if defined(DEBUG)
@@ -2085,7 +2091,7 @@ t_bitmap:;
             assert(nBLR == cnBitsLeftAtDl2);
             assert(pwr == wr_pwr(wRoot));
             int bBitIsSet = BitIsSet(pwr, wKey & MSK(cnBitsLeftAtDl2));
-      #else // defined(CODE_XX_SW)
+      #else // defined(USE_XX_SW)
             // Might be able to speed this up with bl-specific code.
             int bBitIsSet
                 = (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
@@ -2104,7 +2110,7 @@ t_bitmap:;
                     : BitIsSet(pwr, wKey & MSK(cnBitsLeftAtDl1))
           #endif
                 ;
-      #endif // defined(CODE_XX_SW)
+      #endif // defined(USE_XX_SW)
             if (bBitIsSet)
             {
       #if defined(REMOVE)
