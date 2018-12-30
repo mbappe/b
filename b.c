@@ -6751,18 +6751,6 @@ Initialize(void)
     printf("# No SKIP_TO_XX_SW\n");
 #endif // defined(SKIP_TO_XX_SW)
 
-#if defined(XX_SHORTCUT)
-    printf("#    XX_SHORTCUT\n");
-#else // defined(XX_SHORTCUT)
-    printf("# No XX_SHORTCUT\n");
-#endif // defined(XX_SHORTCUT)
-
-#if defined(XX_SHORTCUT_GOTO)
-    printf("#    XX_SHORTCUT_GOTO\n");
-#else // defined(XX_SHORTCUT_GOTO)
-    printf("# No XX_SHORTCUT_GOTO\n");
-#endif // defined(XX_SHORTCUT_GOTO)
-
 #if defined(EMBED_KEYS)
     printf("#    EMBED_KEYS\n");
 #else // defined(EMBED_KEYS)
@@ -7412,18 +7400,6 @@ Initialize(void)
 #else // defined(NO_USE_XX_SW)
     printf("# No NO_USE_XX_SW\n");
 #endif // defined(NO_USE_XX_SW)
-
-#if defined(NO_XX_SHORTCUT)
-    printf("#    NO_XX_SHORTCUT\n");
-#else // defined(NO_XX_SHORTCUT)
-    printf("# No NO_XX_SHORTCUT\n");
-#endif // defined(NO_XX_SHORTCUT)
-
-#if defined(NO_XX_SHORTCUT_GOTO)
-    printf("#    NO_XX_SHORTCUT_GOTO\n");
-#else // defined(NO_XX_SHORTCUT_GOTO)
-    printf("# No NO_XX_SHORTCUT_GOTO\n");
-#endif // defined(NO_XX_SHORTCUT_GOTO)
 
 #if defined(NO_PSPLIT_SEARCH_WORD)
     printf("#    NO_PSPLIT_SEARCH_WORD\n");

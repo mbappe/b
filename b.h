@@ -243,16 +243,11 @@
 // defined(POP_CNT_MAX_IS_KING) in which case the rules above for maximum
 // external list size also govern the maximum embedded list size.
 
-// Default is XX_SHORTCUT if USE_XX_SW.
 // Default cnListPopCntMaxDl2 is 0 if USE_XX_SW.
 // Default cnListPopCntMax16  is 0 if USE_XX_SW.
 // Default cnListPopCntMaxDl1 is 0 if USE_XX_SW.
 // Default cnListPopCntMax8   is 0 if USE_XX_SW.
 #if defined(USE_XX_SW)
-  #if ! defined(NO_XX_SHORTCUT)
-      #undef XX_SHORTCUT
-      #define XX_SHORTCUT
-  #endif // defined(NO_XX_SHORTCUT)
   #if ! defined(cnListPopCntMaxDl2)
       #define cnListPopCntMaxDl2  0
   #endif // ! defined(cnListPopCntMaxDl2)
@@ -266,13 +261,6 @@
       #define cnListPopCntMax8  0
   #endif // ! defined(cnListPopCntMax8)
 #endif // defined(USE_XX_SW)
-// Default is XX_SHORTCUT_GOTO if XX_SHORTCUT
-#if defined(XX_SHORTCUT)
-  #if ! defined(NO_XX_SHORTCUT_GOTO)
-      #undef XX_SHORTCUT_GOTO
-      #define XX_SHORTCUT_GOTO
-  #endif // ! defined(NO_XX_SHORTCUT_GOTO)
-#endif // defined(XX_SHORTCUT)
 
 // Default is -DBL_SPECIFIC_PSPLIT_SEARCH.
 #if ! defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
