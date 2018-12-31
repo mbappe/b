@@ -3729,7 +3729,7 @@ static void
 PrefixMismatch(qp, Word_t wKey, int nBLR)
 {
     qv;
-    int nDLUp = nBL_to_nDL(nBL); (void)nDLUp;
+    int nDL = nBL_to_nDL(nBL); (void)nDL;
     int nDLR = nBL_to_nDL(nBLR);
 
     // Can't have a prefix mismatch if there is no skip.
@@ -3800,15 +3800,15 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
   #if defined(USE_BM_SW)
       #if defined(SKIP_TO_BM_SW)
   #if defined(BM_IN_LINK)
-    int bBmSwNew = (nDLUp != cnDigitsPerWord);
+    int bBmSwNew = (nDL != cnDigitsPerWord);
   #else // defined(BM_IN_LINK)
     int bBmSwNew = 1;
   #endif // defined(BM_IN_LINK)
       #else // defined(SKIP_TO_BM_SW)
   #if defined(BM_IN_LINK)
-    int bBmSwNew = ((nDLUp != cnDigitsPerWord) && (nDLNew == nDLUp));
+    int bBmSwNew = ((nDL != cnDigitsPerWord) && (nDLNew == nDL));
   #else // defined(BM_IN_LINK)
-    int bBmSwNew = (nDLNew == nDLUp);
+    int bBmSwNew = (nDLNew == nDL);
   #endif // defined(BM_IN_LINK)
       #endif // defined(SKIP_TO_BM_SW)
   #else // defined(USE_BM_SW)
@@ -3831,9 +3831,9 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
     if (bBmSwOld)
     {
         // Save the old bitmap before it is trashed by NewSwitch.
-        // Is it possible that nDLUp != cnDigitsPerWord and
+        // Is it possible that nDL != cnDigitsPerWord and
         // we are at the top?
-        if (nDLUp != cnDigitsPerWord)
+        if (nDL != cnDigitsPerWord)
         {
             memcpy(ln.ln_awBm, PWR_pwBm(pwRoot, NULL), sizeof(ln.ln_awBm));
       #if ! defined(BM_SW_FOR_REAL)
@@ -3848,7 +3848,7 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
     Word_t *pwSw;
     // initialize prefix/pop for new switch
     // Make sure to pass the right key for BM_SW_FOR_REAL.
-    DBGI(printf("IG: nDLNew %d nDLUp %d\n", nDLNew, nDLUp));
+    DBGI(printf("IG: nDLNew %d nDL %d\n", nDLNew, nDL));
     assert(nBLNew <= nBL);
     // NewSwitch changes *pwRoot (and the link containing it).
     // It does not change our local wRoot and pwr (or pwRoot).
@@ -3871,7 +3871,7 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
     {
 #if defined(BM_SW_FOR_REAL)
 #if defined(BM_IN_LINK)
-    if (nDLUp != cnDigitsPerWord)
+    if (nDL != cnDigitsPerWord)
 #endif // defined(BM_IN_LINK)
     {
         // Switch was created with only one link based on wKey
@@ -3884,7 +3884,7 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
 #if defined(BM_IN_LINK)
     if (bBmSwOld)
     {
-        if (nDLUp != cnDigitsPerWord)
+        if (nDL != cnDigitsPerWord)
         {
             // Copy bitmap from old link to new link.
             memcpy(pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_awBm,
