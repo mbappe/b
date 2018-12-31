@@ -490,12 +490,28 @@ ListWordCnt(int nPopCnt, int nBL)
     int nWords = MAX(4, (nNextPow * 46340 / (1<<16) + 1) & ~1);
     if (nListWordsMin > nWords - 1) { nWords = nNextPow; }
     --nWords; // Subtract malloc overhead word for request.
+    // The nFullListWordsMin code can't handle nPopCnt > anListPopCntMax
+    // which can happen when we are inflating an embedded list for temporary
+    // processing.
     // How do we handle the situation where
-    // EmbeddedKeysPopCntMax > anListPopCntMax? Avoidance?
+    // EmbeddedKeysPopCntMax > anListPopCntMax?
+    // We don't want to have to call EmbeddedListPopCntMax every time
+    // ListWordCnt is called.
+    // Require anListPopCntMax[nBL] == 0
+    // or anListPopCntMax[nBL] >= EmbeddedListPopCntMax.
+    // What if we want to limit list length to less than
+    // EmbeddedListPopCntMax, i.e. POP_CNT_MAX_IS_KING?
+#if defined(POP_CNT_MAX_IS_KING) || !defined(EMBED_KEYS)
     assert(nPopCnt <= anListPopCntMax[nBL]);
-    int nFullListWordsMin = ListWordsMin(anListPopCntMax[nBL], nBL);
-    if (nFullListWordsMin < nWords) {
-        nWords = nFullListWordsMin;
+#else // defined(POP_CNT_MAX_IS_KING) || !defined(EMBED_KEYS)
+    assert((anListPopCntMax[nBL] >= EmbeddedListPopCntMax(nBL)
+        || anListPopCntMax[nBL] == 0));
+#endif // #else defined(POP_CNT_MAX_IS_KING) || !defined(EMBED_KEYS)
+    if (nPopCnt <= anListPopCntMax[nBL]) {
+        int nFullListWordsMin = ListWordsMin(anListPopCntMax[nBL], nBL);
+        if (nFullListWordsMin < nWords) {
+            nWords = nFullListWordsMin;
+        }
     }
 #ifdef LIST_REQ_MIN_WORDS // don't request words that have no benefit
     // We used a simple method of choosing the malloc request size.
@@ -507,6 +523,7 @@ ListWordCnt(int nPopCnt, int nBL)
 #endif // LIST_REQ_MIN_WORDS
     return nWords;
 }
+
 
 // We have to be able to figure out where to point pwr from nPopCnt and nBL.
 // We can get list words from ListWordCnt.
@@ -578,8 +595,13 @@ ListSlotCnt(int nPopCnt, int nBL)
     int nListUnits = nListWords / nWordsPerUnit;
     int nListSlots = nListUnits * nKeysPerBucket; // slots/unit = keys/bucket
 #endif // #endif B_JUDYL
-    if (nListSlots > anListPopCntMax[nBL]) {
-        nListSlots = anListPopCntMax[nBL];
+#if !defined(POP_CNT_MAX_IS_KING) && defined(EMBED_KEYS)
+    if (anListPopCntMax[nBL] != 0)
+#endif // !defined(POP_CNT_MAX_IS_KING) && defined(EMBED_KEYS)
+    {
+        if (nListSlots > anListPopCntMax[nBL]) {
+            nListSlots = anListPopCntMax[nBL];
+        }
     }
     if (ListWordCnt(nListSlots, nBL) != nListWords) {
         printf("\n");
@@ -3550,9 +3572,12 @@ embeddedKeys:;
         DBGI(printf("IA: Calling IEL nBLOld %d wKey " OWx" nBL %d\n",
                     nBLOld, wKey, nBL));
         // wRootOld here, but new from IEL's perspective
+#ifdef B_JUDYL
+       assert(0);
+#endif // B_JUDYL
         wRootOld = InflateEmbeddedList(pwRootOld, wKey, nBLOld, wRootOld
 #ifdef B_JUDYL
-                                     , pwValueUp
+                                     , /* pwValueUp */ NULL
 #endif // B_JUDYL
                                        );
         DBGI(printf("After IEL\n"));
@@ -4840,11 +4865,11 @@ InsertAtList(qp,
   #endif // defined(NO_TYPE_IN_XX_SW)
 
     if (0
-#if 0 // ListWordsMin can't handle embedded pop max bigger than anListPopCntMax
-#if defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
+  // ListWordsMin can't handle embedded pop max bigger than anListPopCntMax
+  // unless POP_CNT_MAX_IS_KING or anListPopCntMax is 0.
+  #if defined(EMBED_KEYS) && !defined(POP_CNT_MAX_IS_KING)
             || (wPopCnt < (Word_t)nEmbeddedListPopCntMax)
-#endif // defined(EMBED_KEYS) && ! defined(POP_CNT_MAX_IS_KING)
-#endif // ListWordsMin ...
+  #endif // defined(EMBED_KEYS) && !defined(POP_CNT_MAX_IS_KING)
             || ((int)wPopCnt < anListPopCntMax[nBL])
         )
     {
@@ -6750,6 +6775,18 @@ Initialize(void)
 #else // defined(SKIP_TO_XX_SW)
     printf("# No SKIP_TO_XX_SW\n");
 #endif // defined(SKIP_TO_XX_SW)
+
+#ifdef           USE_XX_SW_AT_DLX
+    printf("#    USE_XX_SW_AT_DLX\n");
+#else //         USE_XX_SW_AT_DLX
+    printf("# No USE_XX_SW_AT_DLX\n");
+#endif //        USE_XX_SW_AT_DLX
+
+#ifdef           USE_XX_SW_ONLY_AT_DL2
+    printf("#    USE_XX_SW_ONLY_AT_DL2\n");
+#else //         USE_XX_SW_ONLY_AT_DL2
+    printf("# No USE_XX_SW_ONLY_AT_DL2\n");
+#endif //        USE_XX_SW_ONLY_AT_DL2
 
 #if defined(EMBED_KEYS)
     printf("#    EMBED_KEYS\n");

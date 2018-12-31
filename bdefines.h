@@ -49,9 +49,12 @@
 
   // Allow DEFINES=-D<blah> on shared make command line for JUDY1.
   #undef ALLOW_EMBEDDED_BITMAP
-  #undef USE_XX_SW
-  #undef SKIP_TO_XX_SW
+  #undef CODE_XX_SW
   #undef NO_TYPE_IN_XX_SW
+  #undef SKIP_TO_XX_SW
+  #undef USE_XX_SW
+  #undef USE_XX_SW_ONLY_AT_DL2
+  #undef USE_XX_SW_AT_DLX
 
   // Disabling PARALLEL_SEARCH_WORD helps with worst case memory usage.
   #ifndef PARALLEL_SEARCH_WORD
