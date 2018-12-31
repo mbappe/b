@@ -6704,6 +6704,15 @@ Initialize(void)
     printf("# No LVL_IN_WR_HB\n");
 #endif // defined(LVL_IN_WR_HB)
 
+// We don't have our story straight w.r.t. EXP(cnBitsInD1) <= sizeof(Link_t)*8.
+// We disallow EXP(cnBitsInD1) <= sizeof(Link_t)*8 if !ALLOW_EMBEDDED_BITMAP.
+// But what does it mean to have ALLOW_EMBEDED_BITMAP and
+// EXP(cnBitsInD1) <= sizeof(Link_t)*8 or EXP(cnBitsInD1) > sizeof(Link_t)*8?
+// What does the current definition do for us? Allows the code to assume
+// EXP(cnBitsInD1) > sizeof(Link_t)*8 if !ALLOW_EMBEDDED_BITMAP. Can we not
+// fashon a complile-time test for this and obviate the need for the current
+// definition of ALLOW_EMBEDDED_BITMAP?
+// Is (EXP(cnBitsInD1) > sizeof(Link_t)*8) a compile-time test?
 #if defined(ALLOW_EMBEDDED_BITMAP)
     printf("#    ALLOW_EMBEDDED_BITMAP\n");
 #else // defined(ALLOW_EMBEDDED_BITMAP)

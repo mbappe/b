@@ -2082,28 +2082,27 @@ t_bitmap:;
               #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             return KeyFound;
     #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
-      #if defined(USE_XX_SW) // only if we USE is it ok to assume DL2
-            // We assume we never blow-out into a bitmap.
-            // But we don't really enforce it.
+      #ifdef USE_XX_SW_ONLY_AT_DL2
+            // We assume we never blow-out into a one-digit bitmap.
+            // We just double until we end up with one big bitmap at DL2.
             assert(nBLR == cnBitsLeftAtDl2);
-            assert(pwr == wr_pwr(wRoot));
-            int bBitIsSet = BitIsSet(pwr, wKey & MSK(cnBitsLeftAtDl2));
-      #else // defined(USE_XX_SW)
-            // Might be able to speed this up with bl-specific code.
-            int bBitIsSet
-                = (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
-                        && (nBLR == cnBitsInD1)
-                ? (cnBitsInD1 <= cnLogBitsPerWord)
-                    ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
-                    : BitIsSet(pLn, wKey & MSK(cnBitsInD1))
-                // The rest is faster with this pre-test of nBLR and the
-                // literal argument of cnBitsLeftAtDl1 or cnBitsLeftAtDl2 than
-                // using nBLR directly.
-                // The test of cn2dBmMaxWpkPercent is done at compile time.
-                : (cn2dBmMaxWpkPercent != 0) && (nBLR == cnBitsLeftAtDl2)
-                    ? BitIsSet(pwr, wKey & MSK(cnBitsLeftAtDl2))
-                    : BitIsSet(pwr, wKey & MSK(cnBitsLeftAtDl1));
-      #endif // defined(USE_XX_SW)
+      #endif // USE_XX_SW_ONLY_AT_DL2
+            // Use compile-time tests to speed this up. Hopefully.
+            int bBitIsSet =
+      #ifndef USE_XX_SW_ONLY_AT_DL2
+                ((cn2dBmMaxWpkPercent == 0) || (nBLR == cnBitsInD1))
+                    ? (cnBitsInD1 <= cnLogBitsPerWord)
+                        ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
+                        : BitIsSet((EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
+                                       ? (Word_t*)pLn : pwr,
+                                   wKey & MSK(cnBitsInD1))
+                    :
+      #endif // #ifndef USE_XX_SW_ONLY_AT_DL2
+                      (cnBitsLeftAtDl2 <= cnLogBitsPerWord)
+                        ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsLeftAtDl2))
+                        : BitIsSet((EXP(cnBitsLeftAtDl2) <= sizeof(Link_t) * 8)
+                                       ? (Word_t*)pLn : pwr,
+                                   wKey & MSK(cnBitsLeftAtDl2));
             if (bBitIsSet)
             {
       #if defined(REMOVE)

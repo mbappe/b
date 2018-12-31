@@ -215,22 +215,22 @@
 // cnBW is the minimum width of a narrow switch.
 #if defined(CODE_XX_SW)
   #if ! defined(cnBW)
-    #ifdef USE_XX_SW_AT_DL2_ONLY
+    #ifdef USE_XX_SW_ONLY_AT_DL2
       #define cnBW  1
-    #else // USE_XX_SW_AT_DL2_ONLY
+    #else // USE_XX_SW_ONLY_AT_DL2
       #define cnBW  4
-    #endif // #else USE_XX_SW_AT_DL2_ONLY
+    #endif // #else USE_XX_SW_ONLY_AT_DL2
   #endif // ! defined(cnBW)
 #endif // defined(CODE_XX_SW)
 
 // Default cnBWIncr is 1 if CODE_XX_SW.
 #if defined(CODE_XX_SW)
   #if ! defined(cnBWIncr)
-    #ifdef USE_XX_SW_AT_DL2_ONLY
+    #ifdef USE_XX_SW_ONLY_AT_DL2
       #define cnBWIncr  1
-    #else // USE_XX_SW_AT_DL2_ONLY
+    #else // USE_XX_SW_ONLY_AT_DL2
       #define cnBWIncr  4
-    #endif // #else USE_XX_SW_AT_DL2_ONLY
+    #endif // #else USE_XX_SW_ONLY_AT_DL2
   #endif // ! defined(cnBWIncr)
 #endif // defined(CODE_XX_SW)
 

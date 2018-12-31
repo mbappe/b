@@ -81,6 +81,12 @@
   #define CODE_XX_SW
 #endif // SKIP_TO_XX_SW
 
+// USE_XX_SW_ONLY_AT_DL2 started life as a flag to preserve legacy USE_XX_SW
+// behavior of creating XX_SW only at DL2 and doubling it as necessary to
+// have only embedded keys and avoid blow-outs into external lists or branches
+// or bitmaps. Keep doubling all the way through 8-bit and 7-bit embedded keys
+// until we end up with one big bitmap at DL2.
+// The t_bitmap code in Lookup assumes there are no bitmaps at DL1.
 #ifdef    USE_XX_SW_ONLY_AT_DL2
   #undef  USE_XX_SW
   #define USE_XX_SW
