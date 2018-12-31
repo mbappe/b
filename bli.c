@@ -2085,9 +2085,6 @@ t_bitmap:;
       #if defined(USE_XX_SW) // only if we USE is it ok to assume DL2
             // We assume we never blow-out into a bitmap.
             // But we don't really enforce it.
-          #if defined(DEBUG)
-            if (nBLR != cnBitsLeftAtDl2) { printf("nBLR %d\n", nBLR); }
-          #endif // defined(DEBUG)
             assert(nBLR == cnBitsLeftAtDl2);
             assert(pwr == wr_pwr(wRoot));
             int bBitIsSet = BitIsSet(pwr, wKey & MSK(cnBitsLeftAtDl2));
@@ -2099,17 +2096,13 @@ t_bitmap:;
                 ? (cnBitsInD1 <= cnLogBitsPerWord)
                     ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
                     : BitIsSet(pLn, wKey & MSK(cnBitsInD1))
-                // It's faster with this pre-test of nBL then the literal
-                // argument of cnBitsInD1 or cnBitsInD2 then using nBL
-                // directly. Unfortunately.
-          #if 0
-                : BitIsSet(pwr, wKey & MSK(nBLR))
-          #else
+                // The rest is faster with this pre-test of nBLR and the
+                // literal argument of cnBitsLeftAtDl1 or cnBitsLeftAtDl2 than
+                // using nBLR directly.
+                // The test of cn2dBmMaxWpkPercent is done at compile time.
                 : (cn2dBmMaxWpkPercent != 0) && (nBLR == cnBitsLeftAtDl2)
                     ? BitIsSet(pwr, wKey & MSK(cnBitsLeftAtDl2))
-                    : BitIsSet(pwr, wKey & MSK(cnBitsLeftAtDl1))
-          #endif
-                ;
+                    : BitIsSet(pwr, wKey & MSK(cnBitsLeftAtDl1));
       #endif // defined(USE_XX_SW)
             if (bBitIsSet)
             {

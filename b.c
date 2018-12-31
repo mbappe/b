@@ -3573,7 +3573,7 @@ embeddedKeys:;
                     nBLOld, wKey, nBL));
         // wRootOld here, but new from IEL's perspective
 #ifdef B_JUDYL
-       assert(0);
+        assert(0); // No code for getting pwValueUp here yet.
 #endif // B_JUDYL
         wRootOld = InflateEmbeddedList(pwRootOld, wKey, nBLOld, wRootOld
 #ifdef B_JUDYL
