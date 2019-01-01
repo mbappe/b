@@ -1176,28 +1176,96 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
 #if defined(NO_TYPE_IN_XX_SW)
 // We need some way to represent an empty list when we have no type field.
-// Zero is no good because it is a valid wRoot for nBL == 8 representing
-// a list with a single key and that key being zero.
-// We use ZERO_POP_MAGIC which would otherwise be an invalid value for wRoot
-// if nBL is less than or equal to cnBitsPerWord - cnBitsMallocMask.
-// We make sure at least one bit is set in cnMallocMask which is either an
-// invalid zero-fill bit (making the value invalid all by itself) or it
-// indicates that the list is full.  With the high bit in wRoot set and
-// all of the bits between the high bit and the type field bits clear
-// means the first key is bigger than the second so the list is not sorted
-// hence the value is invalid.
-// We gave ZERO_POP_MAGIC type value of T_EMBEDDED_KEYS just because we
-// could and we thought it might come in handy. It assumes T_EMBEDDED_KEYS
-// is not zero.
+// Can we find a value that is not otherwise a valid list of embedded keys?
+// A single value that is the same for all key sizes woud be ideal.
+// Consider that we bitwise pack and sort the embedded list with the smallest
+// key at the most significant end of the word and we pad empty slots with
+// the biggest key in the list and zero fill any left over bits.
+// Zero is not a candidate for our invalid value because it is a valid wRoot
+// for an embedded list (especially those with power-of-two size keys since
+// the word has no spare bits) with a single key and that key being zero.
+// But 0x80..0 is an invalid value for wRoot for any key size less than or
+// equal to one half the size of a word. It is invalid because if the high
+// bit is one in the smallest key in the list then it must also be one for
+// all other keys or empty slots in the rest of the list.
+// In fact, we could choose any number with the the most significant half
+// of the word being all zeroes except the most significant bit being one
+// and the least significant half of the word being any value with the most
+// sigificant bit being zero.
+// Furthermore, if the smallest keys we ever put in the list for a 64-bit
+// word are seven bits, then the magic number could have anything in the
+// six least significant bits of the first key slot.
+//
+//       f   e   d   c   b   a   9   8   7   6   5   4   3   2   1   0
+// 0b 1xxxxxx000000000xxxxxxxxxxxxxxxx0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+//
+// #define MAGIC  EXP(cnBitsInWord - 1)
+// #define LINK_IS_EMPTY(_wRoot)  ((_wRoot) == MAGIC)
+//
+// That is a lot of options for choosing a magic number that is the same
+// for all key sizes less than or equal to one half the size of a word.
+// But we can do better. Consider keys that are larger than one half
+// the size of a word. If our magic number has a one in the least significant
+// bit it becomes an invalid value for any key size up to one bit less than
+// the size of a word.
+// We have 2**36 values to choose from for a 64-bit word. 30 don't care bits
+// in the low half of the word and 6 don't care bits in the high half of
+// the word.
+
+// Can we do even better than simply being able to use the whole word
+// for embedded keys without wasting any bits on a type field or pop count?
+// And devise a test that would allow us to also have a regular link with
+// a type field and pointer and other stuff in the word?
+//
+// In a 64-bit wRoot that does not contain embedded keys  we use the least
+// significant bits, cnMallocMask, for a type field and the next most
+// significant 44 bits as a malloc-aligned pointer. If we want to allow the
+// 48 pointer and type bits to assume any value, then we must devise a test
+// using the most significant 16 bits to tell us we have a link without
+// embedded keys. Any 64-bit number with a one in the most significant bit,
+// bit 63, and zeros in bits 48-56 is an invalid value for keys of 15-bits
+// or less.
+//
+//       f   e   d   c   b   a   9   8   7   6   5   4   3   2   1   0
+// 0b 1xxxxxx000000000xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+//
+// #define HAS_TYPE(_wRoot)  (((_wRoot) & (0x81ff << 48)) == MAGIC)
+//
+// If six bits isn't enough for augmenting the type field we could use
+// a more expensive test and get that number up to 14 bits for extending
+// the type field (exactly which eight extra bits would depend on nBL).
+// And remember that we might be able to coopt
+// T_EMBEDDED_KEYS for a different use in this type of link.
+//
+// #define MAGIC_MSK(_nBL)  ((EXP(_nBL) | 1) << (cnBitsPerWord - (_nBL) - 1))
+// #define HAS_TYPE(_wRoot, _nBL)  (((_wRoot) & MAGIC_MSK(_nBL)) == MAGIC)
+// #define XTYPE_MSK(_nBL)  ~(MAGIC_MSK(_nBL) | MSK(48))
+// #define XTYPE_VAL(_wRoot, _nBL)  ((_wRoot) & XTYPE_MSK(_nBL))
+//
+// It would be possible to extend this functionality to support slightly
+// larger keys in exchange for slightly fewer bits for type and extended type.
+// Or if we could somehow coopt swaths of addresses that a platform would
+// not use for pointers to objects in our array.
+
+// I wonder if we could use this encoding for all links rather than only
+// those with smaller nBL in an XX_SW.
+// We'd be limited to 14 extended type bits instead of our current 16 for
+// nBL < 16. It would be a little more expensive to get them since the exact
+// bits would be dependent on nBL.
+// If we choose MAGIC and T_EMBEDDED_KEYS such that
+// gnType(MAGIC) == T_EMBEDDED_KEYS we'd only have to check for an empty
+// link in the T_EMBEDDED_KEYS case.
+// Any link type that uses only six of the high bits would suffer no
+// performance penalty.
+// For link types that can exist at nBL < 16 we'd have to use HAS_TYPE
+// For link types that can exist at nBL < 16 and nBL >= 16 we'd have to
+// test nBL and HAS_TYPE.
+
 // Our old embedded list with a type field and a 3-bit pop count where
 // pop-field=0 means pop=1 cannot represent an empty list using only the
 // pop count.  In that case we could represent an empty list for nBL small
-// enough that two keys will fit with
-// (EXP(63) + EXP(cnBitsMallocMask) + T_EMBEDDED_KEYS).
-// I don't know if that code works anymore.
-// Is it possible that we are going to want to sort the list in the other
-// order for JudyL?
-// Enough talk for now.  We'll come back to these other cases.
+// enough that two keys will fit with a magic number.
+
   #if defined(REVERSE_SORT_EMBEDDED_KEYS)
 #define ZERO_POP_MAGIC  1
   #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
@@ -1208,7 +1276,7 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 #if defined(NO_TYPE_IN_XX_SW) // && defined(HANDLE_BLOWOUTS)
     // Identify blowouts using (wRoot & BLOWOUT_MASK(nBL) == ZERO_POP_MAGIC).
     #define BLOWOUT_MASK(_nBL) \
-        (((EXP(_nBL) + 1) << (cnBitsPerWord - (_nBL) - 1)) + cnMallocMask)
+        ((EXP(_nBL) + 1) << (cnBitsPerWord - (_nBL) - 1))
 #endif // defined(NO_TYPE_IN_XX_SW) && defined(HANDLE_BLOWOUTS)
 
 #if defined(CODE_XX_SW) && defined(NO_TYPE_IN_XX_SW)

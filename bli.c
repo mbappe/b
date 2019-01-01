@@ -2278,8 +2278,15 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
     // We haven't written the insert code to create blow-outs for
     // NO_TYPE_IN_XX_SW yet.
   #if defined(NO_TYPE_IN_XX_SW)
+    // A blowout has the high bit set and the high bit of the next key
+    // slot clear. Type field can be anything other than T_EMBEDED_KEYS.
+    // 44 pointer bits can be anything.
+    // High bit must be set.
+    // nBL is never less than 7 so next six high bits are always usable.
+    // And 8 of the next 9 high bits are usable, but exactly which ones
+    // depends on nBL.
     #define BLOWOUT_CHECK(_nBL) \
-         ((wRoot & BLOWOUT_MASK(_nBL)) == ZERO_POP_MAGIC)
+         ((wRoot & BLOWOUT_MASK(_nBL)) == (ZERO_POP_MAGIC & ~cnMallocMask))
   #else // defined(NO_TYPE_IN_XX_SW)
     #define BLOWOUT_CHECK(_nBL)  (wr_nType(wRoot) != T_EMBEDDED_KEYS)
   #endif // defined(NO_TYPE_IN_XX_SW)
