@@ -3726,15 +3726,16 @@ static Word_t *
 #else // B_JUDYL
 static void
 #endif // B_JUDYL
-PrefixMismatch(qp, Word_t wKey, int nBLR)
+InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
 {
     qv;
     int nDL = nBL_to_nDL(nBL); (void)nDL;
-    int nDLR = nBL_to_nDL(nBLR);
+    int nDLR = nBL_to_nDL(nBLR); (void)nDLR;
 
     // Can't have a prefix mismatch if there is no skip.
     assert(nBLR < nBL);
 
+    // Get wPrefix for qp.
     // For PP_IN_LINK, we'll use wPrefix to install the prefix for the
     // old *pwRoot in it's new location.
     Word_t wPrefix;
@@ -3750,16 +3751,26 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
         //printf("pwRoot %p\n", (void *)pwRoot);
         wPrefix = PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBLR);
     }
+    // Have wPrefix for qp.
 
     // Figure nBL for the new switch.
-    int nDLNew = nBL_to_nDL(LOG(1 | (wPrefix ^ wKey)) + 1);
-    int nBLNew = nDL_to_nBL(nDLNew);
+
+    // Determine the minimum nBL for the new switch, i.e. where the prefix
+    // no longer matches.
+    // After finding the minimum nBL we have to choose an (nBLNew, nBWNew)
+    // such that nBLNew >= nBLMin >= nBLNew - nBWNew.
+    assert(wPrefix != wKey);
+    int nBLNew = LOG(wPrefix ^ wKey) + 1;
+    // nBLNew is the highest order bit that is different changed into an nBL.
+    int nDLNew = nBL_to_nDL(nBLNew);
     // nDLNew includes the highest order digit that is different.
 
-    if (nDLNew <= nDLR) {
-        printf("nDLNew %d nDLR %d nBLR %d\n", nDLNew, nDLR, nBLR);
-    }
-    assert(nDLNew > nDLR);
+    // Choose (nBLNew, nBWNew).
+    nBLNew = nDL_to_nBL(nDLNew);
+    int nBWNew = nDL_to_nBW(nDLNew);
+    DBGX(printf("InsertAtPrefixMismatch choosing nBLNew %d nBwNew %d.\n",
+                nBLNew, nBWNew));
+    assert(nBLNew > nBLR);
     assert(nBLNew <= nBL);
 
     Word_t wPopCnt;
@@ -3854,17 +3865,13 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
     // It does not change our local wRoot and pwr (or pwRoot).
     pwSw = NewSwitch(pwRoot, wPrefix, nBLNew,
 #if defined(CODE_XX_SW)
-                     nBL_to_nBW(nBLNew),
+                     nBWNew,
 #endif // defined(CODE_XX_SW)
 #if defined(CODE_BM_SW)
                      bBmSwNew ? T_BM_SW :
 #endif // defined(CODE_BM_SW)
                      T_SWITCH,
                      nBL, wPopCnt);
-    //DBGI(HexDump("After NewSwitch", pwSw, EXP(cnBitsPerDigit) + 1));
-    DBGI(printf("Just after PrefixMismatch calls NewSwitch"
-                    " for prefix mismatch.\n"));
-    DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
 #if defined(CODE_BM_SW)
     if (bBmSwNew)
@@ -3916,7 +3923,7 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
     // Initialize the link in the new switch that points to the
     // old *pwRoot.
   #if defined(SKIP_LINKS)
-    if (nDLNew - nDLR - 1 == 0) {
+    if (nBLNew - nBLR == nBWNew) {
         Clr_bIsSkip(&wRoot); // Change type to the non-skip variant.
     }
   #endif // defined(SKIP_LINKS)
@@ -3944,7 +3951,7 @@ PrefixMismatch(qp, Word_t wKey, int nBLR)
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     set_PWR_wPopCnt(&pLinks[nIndex].ln_wRoot, NULL, nDLR, wPopCnt);
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    DBGI(printf("Just before PrefixMismatch calls Insert"
+    DBGI(printf("Just before InsertAtPrefixMismatch calls Insert"
                     " for prefix mismatch.\n"));
     DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
@@ -4259,26 +4266,25 @@ InsertSwitch(qp,
     // at a higher level than would be required if only the common
     // prefix, n[BD]LNew, were considered.
 
-    // We don't create a switch below nDL == 2. Why?
+    // We don't create a switch below nDL == 2. Why? Policy?
     // Nor do we create a switch at or below nBL == cnLogBitsPerWord.
     // Why can't we?
     // The latter is enforced in one way by disallowing
     // cnBitsAtDl2 <= cnLogBitsPerWord no later than Initialize time.
-#if !defined(USE_XX_SW) || defined(USE_XX_SW_ONLY_AT_DL2)
-#if defined(USE_XX_SW) && !defined(SKIP_TO_XX_SW)
+#ifdef USE_XX_SW_ONLY_AT_DL2
+#ifndef SKIP_TO_XX_SW
     // We don't skip to a switch below DL3.  Because we can't
     // skip to T_XX_SW and we want T_XX_SW at DL2 and below.
     if ((nBLNew < cnBitsLeftAtDl3) && (nBL >= cnBitsLeftAtDl3)) {
         nBLNew = cnBitsLeftAtDl3;
         nDLNew = 3;
     }
-#else // defined(USE_XX_SW) && !defined(SKIP_TO_XX_SW)
+#endif // #ifndef SKIP_TO_XX_SW
+#endif // USE_XX_SW_ONLY_AT_DL2
     if ((nBLNew < cnBitsLeftAtDl2) && (nBL >= cnBitsLeftAtDl2)) {
         nBLNew = cnBitsLeftAtDl2;
         nDLNew = 2;
     }
-#endif // #else defined(USE_XX_SW) && !defined(SKIP_TO_XX_SW)
-#endif // !defined(USE_XX_SW) || defined(USE_XX_SW_ONLY_AT_DL2)
     DBGI(printf("InsertSwitch 1 nDLNew %d nBLNew %d nDL %d nBL %d\n",
                 nDLNew, nBLNew, nDL, nBL));
 #ifdef BITMAP
@@ -4721,12 +4727,10 @@ Splay(qp,
         }
 #endif // (cwListPopCntMax != 0)
     }
-#if !defined(CODE_XX_SW) || defined(USE_XX_SW_ONLY_AT_DL2)
     nBLNew = nDL_to_nBL(nBL_to_nDL(nBLNew)); // round up to digit boundary
   #ifdef USE_XX_SW_ONLY_AT_DL2
-    if (nBLNew > nBL) { nBLNew = nBL; } // blowout
+    if (nBLNew > nBL) { nBLNew = nBL; } // time to double the switch
   #endif // USE_XX_SW_ONLY_AT_DL2
-#endif // !defined(CODE_XX_SW) || defined(USE_XX_SW_ONLY_AT_DL2)
     assert(nBLNew <= nBL);
 
 #endif // defined(SKIP_LINKS)
@@ -5463,7 +5467,7 @@ embeddedKeys:;
   #ifdef B_JUDYL
             return
   #endif // B_JUDYL
-                PrefixMismatch(qy, wKey, nDL_to_nBL(nDLR));
+                InsertAtPrefixMismatch(qy, wKey, nDL_to_nBL(nDLR));
         }
 #endif // defined(SKIP_LINKS)
     }
@@ -5832,9 +5836,9 @@ InsertAtBitmap(qp, Word_t wKey)
 
         if (bPrefixMismatch) {
   #ifdef B_JUDYL
-            return PrefixMismatch(qy, wKey, nBLR);
+            return InsertAtPrefixMismatch(qy, wKey, nBLR);
   #else // B_JUDYL
-            PrefixMismatch(qy, wKey, nBLR); return Success;
+            InsertAtPrefixMismatch(qy, wKey, nBLR); return Success;
   #endif // B_JUDYL
         }
     }
