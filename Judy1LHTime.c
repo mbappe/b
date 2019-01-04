@@ -937,8 +937,11 @@ PrintHeaderX(const char *strFirstCol, int nRow)
             printf(nRow ? "      " : "  JHSD");
     }
 
-    if (J1Flag | JLFlag | JHFlag | JRFlag)
+#ifdef RAMMETRICS
+    if (J1Flag | JLFlag | JHFlag | JRFlag) {
         printf(nRow ? "  %%W/K" : "  Heap");
+    }
+#endif // RAMMETRICS
 
     if (mFlag && (bFlag == 0) && (yFlag == 0))
     {
@@ -2545,36 +2548,14 @@ main(int argc, char *argv[])
         if (JHFlag)
             printf("# COLHEAD %2d JHSD\n", Col++);
     }
-    if (J1Flag)
+#ifdef RAMMETRICS
+    if (J1Flag | JLFlag | JHFlag | JRFlag)
     {
         printf
-            ("# COLHEAD %2d 1heap/K  - Judy1 malloc'ed words per Key\n",
+            ("# COLHEAD %2d Heap/K  - Judy1 malloc'ed %% words per Key\n",
              Col++);
     }
-    if (JLFlag)
-    {
-        printf
-            ("# COLHEAD %2d Lheap/K  - JudyL malloc'ed words per Key\n",
-             Col++);
-    }
-    if (JHFlag)
-    {
-        printf
-            ("# COLHEAD %2d HSheap/K - JudyHS malloc'ed words per Key\n",
-             Col++);
-    }
-    if (bFlag)
-    {
-        printf
-            ("# COLHEAD %2d Btheap/K - Bitmap malloc'ed words per Key\n",
-             Col++);
-    }
-    if (yFlag)
-    {
-        printf
-            ("# COLHEAD %2d Byheap/K - Bytemap malloc'ed words per Key\n",
-             Col++);
-    }
+#endif // RAMMETRICS
     if (mFlag)
     {
 
@@ -3727,8 +3708,11 @@ nextPart:
             TestJudyIns(&J1, &JL, &JH, &BeginSeed, Meas);
         }
 
-        if (J1Flag | JLFlag | JHFlag | JRFlag)
+#ifdef RAMMETRICS
+        if (J1Flag | JLFlag | JHFlag | JRFlag) {
             PRINT5_1f((double)j__AllocWordsTOT / Pop1);
+        }
+#endif // RAMMETRICS
 
         if (mFlag && (bFlag == 0) && (yFlag == 0))
         {
