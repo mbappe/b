@@ -707,9 +707,6 @@ enum {
     T_SKIP_TO_BITMAP, // skip to external bitmap leaf
   #endif // defined(SKIP_TO_BITMAP)
 #endif // defined(BITMAP)
-#if defined(EMBED_KEYS)
-    T_EMBEDDED_KEYS, // keys are embedded in the link
-#endif // defined(EMBED_KEYS)
 #if defined(CODE_LIST_SW)
     T_LIST_SW,
 #endif // defined(CODE_LIST_SW)
@@ -735,6 +732,9 @@ enum {
     T_SKIP_TO_FULL_BM_SW,
   #endif // defined(SKIP_TO_BM_SW)
 #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+#if defined(EMBED_KEYS)
+    T_EMBEDDED_KEYS, // keys are embedded in the link
+#endif // defined(EMBED_KEYS)
     T_SWITCH, // Uncompressed, close (i.e. no-skip) switch.
 #if defined(SKIP_LINKS)
     // T_SKIP_TO_SWITCH has to have the biggest value in this enum
@@ -1174,21 +1174,78 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // Default is -UMASK_EMPTIES.
 // See EmbeddedListHasKey.
 
-#if defined(NO_TYPE_IN_XX_SW)
-// We need some way to represent an empty list when we have no type field.
+// Notes on ZERO_POP_MAGIC and NO_TYPE_IN_XX_SW:
+//
+// We need some way to represent an empty list when we have no type field,
+// i.e. for embedded keys with NO_TYPE_IN_XX_SW.
 // Can we find a value that is not otherwise a valid list of embedded keys?
 // A single value that is the same for all key sizes woud be ideal.
+//
 // Consider that we bitwise pack and sort the embedded list with the smallest
-// key at the most significant end of the word and we pad empty slots with
-// the biggest key in the list and zero fill any left over bits.
+// key at the most significant end of the word and pad empty slots and the
+// remainder bits with zero. This makes it easy to calculate the population
+// so we don't have to store it.
+//
 // Zero is not a candidate for our invalid value because it is a valid wRoot
-// for an embedded list (especially those with power-of-two size keys since
-// the word has no spare bits) with a single key and that key being zero.
+// for an embedded list with a single key and that key being zero.
+// But 0x800000004xxxxxxx is an invalid value for wRoot for any key size less
+// than or equal to one half the size of a word. It is invalid because the
+// 0x40000000 bit implies there are at least two keys in the list, and if the
+// high bit is one in the smallest key in the list then it must also be one
+// for the second key, but with this number the msb of the second key in the
+// list is zero.
+//
+// For keys up to 63 bits we can create an invalid value by setting the least
+// significant bit in the word because we are zero-filling valid lists.
+// So we can create a magic number that supports up to 60-bit keys and use
+// any valid type value in the type field that has at least one bit set.
+// Or we can support up to 59-bit keys and use any type field value by setting
+// the bit just above the type field.
+//
+//       f   e   d   c   b   a   9   8   7   6   5   4   3   2   1   0
+// 0b 1000000000000000000000000000000001xxxxxxxxxxxxxxxxxxxxxxxxx1<ek>
+// 0b 1000000000000000000000000000000001xxxxxxxxxxxxxxxxxxxxxxxxx0<ek>
+//
+// I wonder if it makes sense to use this value in wRoot for a link with an
+// empty expanse even in non-XX_SW switches and even w/o NO_TYPE_IN_XX_SW.
+//
+// Can we do even better than simply being able to use the whole word
+// for embedded keys without wasting any bits on a type field or pop count?
+// And devise a test that would allow us to also have a regular link with
+// a type field and pointer and maybe even other other stuff in the word?
+// If we limit ourselves to keys of size 7 bits to 14 bits we could use
+// the following:
+//
+//       f   e   d   c   b   a   9   8   7   6   5   4   3   2   1   0
+// 0b 1xxxxxxx0x0x0001xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx<ek>
+//
+// This number is invalid for 7-bit keys because it implies the existence
+// of a third key with the high bit being 0.
+// It is invalid for 8-14-bit keys because it implies the existence of
+// a second key with the high bit being 0.
+//
+// We have a whopping 9 bits for extending the type field.
+//
+// Could we support larger keys? Or get more spare bits? Could we coopt
+// swaths of pointer values that we know won't be used for our objects?
+// Would it make sense to increase the alignment requirement for objects
+// pointed to by an XX_SW. Or get them from a specific malloc arena.
+
+// Consider if we were to bitwise pack and sort the embedded list with the
+// smallest key at the most significant end of the word and pad empty slots
+// with the biggest key in the list and zero fill any left over bits.
+// We don't do it that way, but consider if we did.
+//
+// Is there a fast way to calculate the population of a list padded with the
+// biggest key?
+//
+// Zero is not a candidate for our invalid value because it is a valid wRoot
+// for an embedded list with a single key and that key being zero.
 // But 0x80..0 is an invalid value for wRoot for any key size less than or
 // equal to one half the size of a word. It is invalid because if the high
 // bit is one in the smallest key in the list then it must also be one for
-// all other keys or empty slots in the rest of the list.
-// In fact, we could choose any number with the the most significant half
+// all other keys or empty slots in the rest of the list. In fact, we could
+// choose any number for the magic number with the the most significant half
 // of the word being all zeroes except the most significant bit being one
 // and the least significant half of the word being any value with the most
 // sigificant bit being zero.
@@ -1202,21 +1259,17 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // #define MAGIC  EXP(cnBitsInWord - 1)
 // #define LINK_IS_EMPTY(_wRoot)  ((_wRoot) == MAGIC)
 //
-// That is a lot of options for choosing a magic number that is the same
+// There are a lot of options for choosing a magic number that is the same
 // for all key sizes less than or equal to one half the size of a word.
 // But we can do better. Consider keys that are larger than one half
-// the size of a word. If our magic number has a one in the least significant
-// bit it becomes an invalid value for any key size up to one bit less than
-// the size of a word.
+// the size of a word. Since we have no type field and we are zero filling
+// the unused bits at the least significant end of the word, if our magic
+// number has a one in the least significant bit it becomes an invalid value
+// for any key size up to one bit less than the size of a word.
 // We have 2**36 values to choose from for a 64-bit word. 30 don't care bits
 // in the low half of the word and 6 don't care bits in the high half of
 // the word.
 
-// Can we do even better than simply being able to use the whole word
-// for embedded keys without wasting any bits on a type field or pop count?
-// And devise a test that would allow us to also have a regular link with
-// a type field and pointer and other stuff in the word?
-//
 // In a 64-bit wRoot that does not contain embedded keys  we use the least
 // significant bits, cnMallocMask, for a type field and the next most
 // significant 44 bits as a malloc-aligned pointer. If we want to allow the
@@ -1231,6 +1284,7 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 //
 // #define HAS_TYPE(_wRoot)  (((_wRoot) & (0x81ff << 48)) == MAGIC)
 //
+// That leaves us bits 57-62 for whatever other purpose we want.
 // If six bits isn't enough for augmenting the type field we could use
 // a more expensive test and get that number up to 14 bits for extending
 // the type field (exactly which eight extra bits would depend on nBL).
@@ -1238,14 +1292,14 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // T_EMBEDDED_KEYS for a different use in this type of link.
 //
 // #define MAGIC_MSK(_nBL)  ((EXP(_nBL) | 1) << (cnBitsPerWord - (_nBL) - 1))
-// #define HAS_TYPE(_wRoot, _nBL)  (((_wRoot) & MAGIC_MSK(_nBL)) == MAGIC)
-// #define XTYPE_MSK(_nBL)  ~(MAGIC_MSK(_nBL) | MSK(48))
-// #define XTYPE_VAL(_wRoot, _nBL)  ((_wRoot) & XTYPE_MSK(_nBL))
+// #define HAS_TYPE(_wRoot, _nBL)  (((wRoot) & FAST_MAGIC_MSK(_nBL)) == MAGIC)
+// #define FAST_XTYPE_MSK(_nBL)  ~(MAGIC_MSK(_nBL) | MSK(48))
+// #define FAST_XTYPE_VAL(_wRoot, _nBL)  ((_wRoot) & XTYPE_MSK(_nBL))
 //
 // It would be possible to extend this functionality to support slightly
 // larger keys in exchange for slightly fewer bits for type and extended type.
-// Or if we could somehow coopt swaths of addresses that a platform would
-// not use for pointers to objects in our array.
+// Or we could extend it if we could somehow coopt swaths of addresses that
+// we know we would never use for a pointer to an object in our array.
 
 // I wonder if we could use this encoding for all links rather than only
 // those with smaller nBL in an XX_SW.
@@ -1255,6 +1309,11 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // If we choose MAGIC and T_EMBEDDED_KEYS such that
 // gnType(MAGIC) == T_EMBEDDED_KEYS we'd only have to check for an empty
 // link in the T_EMBEDDED_KEYS case.
+// But our MAGIC would require the least significant bit above the type
+// field be one and it would limit our key size for embedded keys to
+// 64 - 4 - 1 = 59 bits. If we need that 60th bit then we could consider
+// using a different type value.
+//
 // Any link type that uses only six of the high bits would suffer no
 // performance penalty.
 // For link types that can exist at nBL < 16 we'd have to use HAS_TYPE
@@ -1265,13 +1324,40 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // pop-field=0 means pop=1 cannot represent an empty list using only the
 // pop count.  In that case we could represent an empty list for nBL small
 // enough that two keys will fit with a magic number.
-
+#ifdef WROOT_NULL_IS_EK
   #if defined(REVERSE_SORT_EMBEDDED_KEYS)
-#define ZERO_POP_MAGIC  1
+    #define ZERO_POP_MAGIC  1
   #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
-#define ZERO_POP_MAGIC  (EXP(cnBitsPerWord - 1) + T_EMBEDDED_KEYS)
-  #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
-#endif // defined(NO_TYPE_IN_XX_SW)
+    #define ZERO_POP_MAGIC \
+        (((Word_t)0x800000004 << 28) + T_EMBEDDED_KEYS)
+  #endif // #else defined(REVERSE_SORT_EMBEDDED_KEYS)
+#endif // WROOT_NULL_IS_EK
+
+// Default for WROOT_NULL is 0 if no SEPARATE_T_NULL.
+// It will be handled by whatever type is 0.
+// wRoot == 0 must be an otherwise unused value for the type.
+#if defined(SEPARATE_T_NULL)
+  #define WROOT_NULL  T_NULL
+#elif defined(WROOT_NULL_IS_EK) // defined(SEPARATE_T_NULL)
+  #ifndef EMBED_KEYS
+    #error WROOT_NULL_IS_EK without EMBED_KEYS
+  #endif // #ifndef EMBED_KEYS
+  #define WROOT_NULL  ZERO_POP_MAGIC
+#elif defined(WROOT_NULL_IS_LIST) // #elif defined(WROOT_NULL_IS_EK)
+  #if (cwListPopCntMax == 0)
+    #error WROOT_NULL_IS_LIST with cwListPopCntMax == 0
+  #endif // (cwListPopCntMax == 0)
+  #define WROOT_NULL  T_LIST
+#elif defined(WROOT_NULL_IS_BITMAP) // #elif defined(WROOT_NULL_IS_LIST)
+  #ifndef BITMAP
+    #error WROOT_NULL_IS_BITMAP without BITMAP
+  #endif // #ifndef BITMAP
+  #define WROOT_NULL  T_BITMAP
+#elif defined(WROOT_NULL_IS_SWITCH) // #elif defined(WROOT_NULL_IS_BITMAP)
+  #define WROOT_NULL  T_SWITCH
+#else // #elif defined(WROOT_NULL_IS_SWITCH)
+  #define WROOT_NULL  0
+#endif // MAGIC_WROOT_NULL
 
 #if defined(NO_TYPE_IN_XX_SW) // && defined(HANDLE_BLOWOUTS)
     // Identify blowouts using (wRoot & BLOWOUT_MASK(nBL) == ZERO_POP_MAGIC).
@@ -1298,23 +1384,16 @@ static inline int
 wr_nPopCnt(Word_t wRoot, int nBL)
 {
     Word_t wKeys = wRoot;
-          #if defined(NO_TYPE_IN_XX_SW)
+  #if defined(NO_TYPE_IN_XX_SW)
     if (nBL < nDL_to_nBL(2)) {
         if (wRoot == ZERO_POP_MAGIC) { return 0; }
     } else
-          #endif // defined(NO_TYPE_IN_XX_SW)
+  #endif // #else defined(NO_TYPE_IN_XX_SW)
     {
         // The code below assumes the pop count is not zero.
-        // Why do we know the link is non-empty here but not for the
+        // Why is it ok to assume the link is non-empty here but not for the
         // NO_TYPE_IN_XX_SW with (nBL >= nDL_to_nBL(2)) case above?
-        // Because, in this case, the type field exists and tells the
-        // caller the link is not empty and the caller does not call us.
-        // Unfortunately, ZERO_POP_MAGIC is a valid value when there is a
-        // real type value so we can't use it in that case.  I think we
-        // could devise a magic number that would work in both cases (see
-        // above) but I think it might make it just a little trickier to
-        // handle blowouts without having a type field and there is no big
-        // motivator to make it work in both cases at this point.
+        assert(wRoot != WROOT_NULL);
         assert(wr_nType(wRoot) == T_EMBEDDED_KEYS);
         wKeys &= ~MSK(nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL));
     }
@@ -2640,7 +2719,15 @@ static inline Word_t
 gwPopCnt(qp, int nBLR)
 {
     qv;
-    return PWR_wPopCntBL(&pLn->ln_wRoot, pwr, nBLR);
+    assert(tp_bIsSwitch(nType));
+    if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
+        return 0;
+    }
+    Word_t wPopCnt = PWR_wPopCntBL(&pLn->ln_wRoot, pwr, nBLR);
+    if ((wPopCnt == 0) && (nBLR != cnBitsPerWord)) {
+        return EXP(nBLR);
+    }
+    return wPopCnt;
 }
 
 static inline Word_t
@@ -2785,6 +2872,11 @@ gwBitmapPopCnt(qp, int nBLR)
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     #error gwBitmapPopCnt does not handle pop in link yet
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    if ((wr_nType(WROOT_NULL) == T_BITMAP)
+        && (wRoot == WROOT_NULL))
+    {
+        return 0;
+    }
     // population is in the word following the bitmap
     Word_t wPopCnt = w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
     if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop

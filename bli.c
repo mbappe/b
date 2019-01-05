@@ -34,6 +34,7 @@ CountSw(qp,
         int nLinks)
 {
     qv; (void)nBLR; (void)nLinks;
+    assert(wRoot != WROOT_NULL);
     DBGC(printf("\nCountSw nType %d nBLR %d nBW %d wIndex " OWx"\n",
                 nType, nBLR, nBW, wIndex));
     Word_t wPopCnt = 0;
@@ -86,9 +87,6 @@ CountSw(qp,
             int nBLRLoop = gnBLR(qyLoop);
             if (tp_bIsSwitch(nTypeLoop)) {
                 wPopCntLoop = gwPopCnt(qyLoop, nBLRLoop);
-                if (wPopCntLoop == 0) {
-                    wPopCntLoop = EXP(nBLRLoop);
-                }
                 DBGC(printf("ww %" _fw"d bIsSwitch pwr %p wPopCnt %" _fw"d\n",
                             ww, (void *)pwrLoop, wPopCntLoop));
                 wPopCnt += wPopCntLoop;
@@ -97,8 +95,10 @@ CountSw(qp,
             } else switch (nTypeLoop) {
           #if defined(EMBED_KEYS)
             case T_EMBEDDED_KEYS:
-                wPopCntLoop = wr_nPopCnt(wRootLoop, nBLLoop);
-                assert(wPopCntLoop != 0);
+                wPopCntLoop
+                    = ((wr_nType(WROOT_NULL) == T_EMBEDDED_KEYS)
+                            && (wRootLoop == WROOT_NULL))
+                        ? 0 : wr_nPopCnt(wRootLoop, nBLLoop);
                 DBGC(printf("ww %" _fw"d T_EMBED_KEYS wRoot " OWx
                             " wPopCnt %" _fw"d\n",
                             ww, wRootLoop, wPopCntLoop));
@@ -136,16 +136,17 @@ CountSw(qp,
               #endif // defined(SKIP_TO_BITMAP)
             case T_BITMAP:
                 wPopCntLoop = gwBitmapPopCnt(qyLoop, nBLRLoop);
-                if (wPopCntLoop == 0) {
-                    wPopCntLoop = EXP(nBLRLoop);
-                }
-                DBGC(printf("ww %" _fw"d T_BITMAp pwr %p wPopCnt %" _fw"d\n",
+                DBGC(printf("ww %" _fw"d T_BITMAP pwr %p wPopCnt %" _fw"d\n",
                             ww, (void *)pwrLoop, wPopCntLoop));
                 wPopCnt += wPopCntLoop;
                 DBGC(printf("bitmap wPopCntLoop " OWx" wPopCnt " OWx"\n",
                             wPopCntLoop, wPopCnt));
                 break;
           #endif // BITMAP
+          #ifdef SEPARATE_T_NULL
+            case T_NULL:
+                break;
+          #endif // SEPARATE_T_NULL
             default:
                 DBG(printf("\nww %" _fw"d wRootLoop " OWx" nTypeLoop %d\n",
                        ww, wRootLoop, nTypeLoop));
@@ -170,10 +171,9 @@ CountSw(qp,
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         )
     {
+        assert(wRoot != WROOT_NULL);
         Word_t wPopCntSw = gwPopCnt(qy, nBLR);
-        if (wPopCntSw == 0) {
-            wPopCntSw = EXP(nBLR);
-        }
+        DBGC(printf("wPopCntSw 0x%zx wPopCnt 0x%zx\n", wPopCntSw, wPopCnt));
         wPopCnt = wPopCntSw - wPopCnt;
         DBGC(printf("wPopCntSw " OWx"\n", wPopCntSw));
     }
@@ -922,9 +922,6 @@ t_skip_to_switch:
           #endif // ! defined(NO_SKIP_AT_TOP)
                 {
                     wPopCnt = gwPopCnt(qy, nBLR);
-                    if (wPopCnt == 0) {
-                        wPopCnt = EXP(nBLR);
-                    }
                 }
                 DBGC(printf("SKIP_TO_SW: PM wPopCnt %" _fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
@@ -1026,6 +1023,19 @@ t_skip_to_xx_sw:
         // nBLR is bits left to decode by this switch and below
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:;
+        if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
+  #if defined(INSERT) || defined(REMOVE)
+            if (bCleanup) {
+      #if defined(INSERT) && defined(B_JUDYL)
+                return pwValue;
+      #else // defined(INSERT) && defined(B_JUDYL)
+                return Success;
+      #endif // defined(INSERT)
+            } // cleanup is complete
+  #endif // defined(INSERT) || defined(REMOVE)
+            IF_COUNT(return wPopCntSum);
+            break;
+        }
         DBGX(Checkpoint(qy, "t_switch"));
         nBW = gnBW(qy, T_SWITCH, nBLR); // num bits decoded by this switch
   #ifdef BITMAP
@@ -1186,11 +1196,10 @@ t_xx_sw:;
       #if defined(NO_TYPE_IN_XX_SW)
         // ZERO_POP_MAGIC is valid only if a word can hold at least two keys.
         assert(EmbeddedListPopCntMax(nBL) >= 2);
-        if (wRoot == ZERO_POP_MAGIC)
-      #else // defined(NO_TYPE_IN_XX_SW)
-        if (wRoot == 0)
       #endif // defined(NO_TYPE_IN_XX_SW)
-        { return Failure; }
+        if (wRoot == WROOT_NULL) {
+            return Failure;
+        }
   #endif // defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
         // Blow-ups are handled in t_embedded_keys.
         goto t_embedded_keys;
@@ -1612,11 +1621,15 @@ t_list:;
           #endif // defined(REMOVE)
       #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 
+        assert((pwr != NULL) || (wr_nType(WROOT_NULL) == T_LIST));
+
         // Search the list.  wPopCnt is the number of keys in the list.
 
-      #if defined(COUNT) && ! defined(SEPARATE_T_NULL)
-        if (pwr == NULL) { nPos = ~0; }
-      #endif // defined(COUNT) && ! defined(SEPARATE_T_NULL)
+      #if defined(COUNT)
+        if ((wr_nType(WROOT_NULL) == T_LIST) && (wRoot == WROOT_NULL)) {
+             nPos = ~0;
+        }
+      #endif // defined(COUNT)
 
       #ifdef COMPRESSED_LISTS
       #ifdef SKIP_PREFIX_CHECK
@@ -1644,9 +1657,8 @@ t_list:;
       // LOOKUP_NO_LIST_SEARCH is for analysis only.
       #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
             if (1
-          #if ! defined(SEPARATE_T_NULL)
-                && (pwr != NULL)
-          #endif // ! defined(SEPARATE_T_NULL)
+                && ((wr_nType(WROOT_NULL) != T_LIST)
+                    || (wRoot != WROOT_NULL))
           #if defined(LOOKUP)
               #if defined(B_JUDYL)
                   #if defined(HASKEY_FOR_JUDYL_LOOKUP)
@@ -1984,6 +1996,8 @@ t_bitmap:;
       #endif // defined(INSERT) && defined(B_JUDYL)
         } // cleanup is complete
   #endif // defined(INSERT) || defined(REMOVE)
+
+
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 #if defined(INSERT) || defined(REMOVE)
         if (EXP(cnBitsInD1) > sizeof(Link_t) * 8) {
@@ -2019,6 +2033,9 @@ t_bitmap:;
       #endif // COMPRESSED_LISTS
         {
   #if defined(COUNT)
+            if ((wr_nType(WROOT_NULL) == T_BITMAP) && (wRoot == WROOT_NULL)) {
+                return wPopCntSum;
+            }
             // Count bits.
             Word_t wPopCnt;
       #if defined(ALLOW_EMBEDDED_BITMAP)
@@ -2085,10 +2102,14 @@ t_bitmap:;
       #ifdef USE_XX_SW_ONLY_AT_DL2
             // We assume we never blow-out into a one-digit bitmap.
             // We just double until we end up with one big bitmap at DL2.
-            assert(nBLR == cnBitsLeftAtDl2);
+            assert((nBLR == cnBitsLeftAtDl2)
+                || ((wr_nType(WROOT_NULL) == T_BITMAP)
+                    && (wRoot == WROOT_NULL)));
       #endif // USE_XX_SW_ONLY_AT_DL2
             // Use compile-time tests to speed this up. Hopefully.
             int bBitIsSet =
+                ((wr_nType(WROOT_NULL) == T_BITMAP) && (wRoot == WROOT_NULL))
+                    ? 0 :
       #ifndef USE_XX_SW_ONLY_AT_DL2
                 ((cn2dBmMaxWpkPercent == 0) || (nBLR == cnBitsInD1))
                     ? (cnBitsInD1 <= cnLogBitsPerWord)
@@ -2166,7 +2187,6 @@ t_bitmap:;
         // Should we be using nBLR here?
         InsertAtBitmap(qy, wKey);
   #else
-      #ifdef BITMAP
         if ((cn2dBmMaxWpkPercent // check that conversion is enabled
             && (EXP(cnBitsInD1) > sizeof(Link_t) * 8) // compiled out
             && (nBLR == cnBitsInD1) // check that conversion is not done
@@ -2177,7 +2197,6 @@ t_bitmap:;
         {
             bCleanupRequested = 1; // goto cleanup when done
         }
-      #endif // BITMAP
   #endif
 #endif // defined(INSERT)
         break;
@@ -2191,7 +2210,6 @@ t_bitmap:;
     {
         goto t_embedded_keys; // suppress compiler unused-label warnings
 t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
-        assert(EmbeddedListPopCntMax(nBL) != 0);
   #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
@@ -2202,6 +2220,20 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
       #endif // defined(B_JUDYL) && defined(INSERT)
         } // cleanup is complete
   #endif // defined(INSERT) || defined(REMOVE)
+
+        // Have to or in cnMallocAlignment unless nBL allows for at least
+        // two embedded keys plus a type field. It doesn't buy us anything
+        // unless we want to support an embedded key with more than
+        // cnBitsPerWord - cnBitsMallocMask - 1 bits.
+  #ifndef NO_TYPE_IN_XX_SW
+        if (wr_nType(WROOT_NULL) == T_EMBEDDED_KEYS)
+  #endif // #ifndef NO_TYPE_IN_XX_SW
+        {
+            if (wRoot == WROOT_NULL) {
+                break; // switch (nType) case T_EMBEDDED_KEYS
+            }
+        }
+        assert(EmbeddedListPopCntMax(nBL) != 0);
 
 // The pop field in a link with type T_EMBEDDED_KEYS is not the same as
 // with other link types. We may be attempting to squeeze every last key
@@ -2286,7 +2318,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
     // And 8 of the next 9 high bits are usable, but exactly which ones
     // depends on nBL.
     #define BLOWOUT_CHECK(_nBL) \
-         ((wRoot & BLOWOUT_MASK(_nBL)) == (ZERO_POP_MAGIC & ~cnMallocMask))
+        ((wRoot & BLOWOUT_MASK(_nBL)) == (ZERO_POP_MAGIC & ~cnMallocMask))
   #else // defined(NO_TYPE_IN_XX_SW)
     #define BLOWOUT_CHECK(_nBL)  (wr_nType(wRoot) != T_EMBEDDED_KEYS)
   #endif // defined(NO_TYPE_IN_XX_SW)
@@ -2297,11 +2329,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
 #if defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
     #define ZERO_CHECK  (0)
 #else // defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
-  #if defined(NO_TYPE_IN_XX_SW)
-    #define ZERO_CHECK  (wRoot == ZERO_POP_MAGIC)
-  #else // defined(NO_TYPE_IN_XX_SW)
-    #define ZERO_CHECK  (wRoot == 0)
-  #endif // defined(NO_TYPE_IN_XX_SW)
+    #define ZERO_CHECK  (wRoot == WROOT_NULL)
 #endif // defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
 
 #if defined(NO_TYPE_IN_XX_SW) || defined(HANDLE_DL2_IN_EMBEDDED_KEYS)
@@ -2378,7 +2406,7 @@ break2:;
       #endif // #else PARALLEL_EK
         }
 
-        break;
+        break; // switch (nType) case T_EMBEDDED_KEYS
 
 foundIt:;
 
@@ -2407,7 +2435,7 @@ foundIt:;
 
     case T_NULL:
     {
-        assert(wRoot == 0);
+        assert(wRoot == WROOT_NULL);
 
   // COUNT never gets here so we could probably just use !defined(LOOKUP).
   #if defined(INSERT) || defined(REMOVE)
@@ -2440,7 +2468,7 @@ foundIt:;
 
 #endif // defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
 
-    } // end of switch
+    } // end of switch (nType)
 
     DBGX(Checkpoint(qy, "end of switch"));
 
@@ -2590,6 +2618,10 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     DBGL(printf("\n\n# JudyLGet pcvRoot %p wKey " OWx"\n",
                 (void *)pcvRoot, wKey));
 
+    if ((WROOT_NULL != 0) && (wRoot == 0)) {
+        return 0;
+    }
+
   #if (cwListPopCntMax != 0)
   // Use SEARCH_FROM_WRAPPER to handle nBL == cnBitsPerWord situations that
   // would otherwise complicate, i.e. slow down, Lookup.
@@ -2706,6 +2738,14 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     Word_t wRoot = *(Word_t*)ppvRoot;
 
 #if (cnDigitsPerWord > 1)
+
+    // We use WROOT_NULL internally to represent an empty expanse.
+    // But the user initializes the root word to 0.
+    // If WROOT_NULL != 0 we change it before calling any internal
+    // functions.
+    if ((WROOT_NULL != 0) && (wRoot == 0)) {
+        *(Word_t*)ppvRoot = wRoot = WROOT_NULL;
+    }
 
     int nBL = cnBitsPerWord;
     Link_t *pLn = STRUCT_OF(ppvRoot, Link_t, ln_wRoot);
