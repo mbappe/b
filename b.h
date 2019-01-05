@@ -5316,7 +5316,7 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
     (void)nBL;
     int nPos = 0;
     //Word_t *pwKeysOrig = pwKeys;
-    //int nPopCntOrig = nPopCnt; (void)nPopCntOrig;
+    int nPopCntOrig = nPopCnt; (void)nPopCntOrig;
     // BINARY_SEARCH narrows the scope of the linear search that follows.
     unsigned nSplit;
     // Looks like we might want a loop threshold of 8 for
