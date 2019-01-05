@@ -21,7 +21,7 @@ CHECK=Judy1LHCheck
 && ${TIME} -W0 -B64 -1lvdgi  -n4 -S1 -s0xfffffffffffffffd \
 && ${TIME} -W0 -B16 -1lvdgi  -n4 -S-1 -s2 \
 && ${TIME} -W0 -B16 -1lvdgi  -n4 -S-1 -s2 --splay-key-bits=0xffff000000000000 \
-:
+&& :
 if [ $? != 0 ]
 then
     exit 1
@@ -32,7 +32,7 @@ fi
 && ${TIME} -W0 -B64 -Llvdgi  -n4 -S1 -s0xfffffffffffffffd \
 && ${TIME} -W0 -B16 -Llvdgi  -n4 -S-1 -s2 \
 && ${TIME} -W0 -B16 -Llvdgi  -n4 -S-1 -s2 --splay-key-bits=0xffff000000000000 \
-:
+&& :
 if [ $? != 0 ]
 then
     exit 1
@@ -46,7 +46,7 @@ fi
 && ${TIME} -W0 -B25 -1lCvdgi -n1e5 -S1 \
 && ${TIME} -W0 -B25 -1lvdgi  -n1e5 -DS1 \
 && ${TIME} -W0 -B32 -1lh     -n1e5 -S1  --splay-key-bits=0xff00aa00aa00ffff \
-:
+&& :
 if [ $? != 0 ]
 then
     exit 1
@@ -61,7 +61,7 @@ fi
 && ${TIME} -W0 -B25 -LlCvdgi -n1e5 -DS1 \
 && ${TIME} -W0 -B32 -Llh     -n1e5 -S1  --splay-key-bits=0xff00aa00aa00ffff \
 && ${TIME} -W0 -B33 -Rlvdgi  -n1e5 \
-:
+&& :
 if [ $? != 0 ]
 then
     exit 1
@@ -77,7 +77,7 @@ fi
 && ${CHECK} -B33 -C \
 && ${CHECK} -B33 -C -S1 \
 && ${CHECK} -B33 -C -DS1 \
-:
+&& :
 if [ $? != 0 ]
 then
     exit 1

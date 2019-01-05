@@ -24,7 +24,7 @@ CHECK=Judy1LHCheck
 && ${CHECK} -S1  \
 && ${CHECK} -DS1 \
 && ${CHECK}      \
-:
+&& :
 if [ $? -ne 0 ]
 then
     exit 1
@@ -41,7 +41,7 @@ fi
 && ${TIME} -W0 -1 -l -vdgi  -n1e5 -S1  \
 && ${TIME} -W0 -1 -l -vdgi  -n1e5 -DS1 \
 && ${TIME} -W0 -1 -l -Cvdgi -n1e5      \
-:
+&& :
 if [ $? -ne 0 ]
 then
     exit 1
@@ -58,7 +58,7 @@ fi
 && ${TIME} -W0 -L -l -vdgi  -n1e5 -S1  \
 && ${TIME} -W0 -L -l -vdgi  -n1e5 -DS1 \
 && ${TIME} -W0 -L -l -Cvdgi -n1e5      \
-:
+&& :
 if [ $? -ne 0 ]
 then
     exit 1
