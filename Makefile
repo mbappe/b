@@ -301,11 +301,11 @@ t: t.c $(T_OBJS)
 # and be more strict in testing.
 # libJudy.a is for JudyHS.
 btime: Judy1LHTime.c libb.a ${LIBJUDY}
-	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
+	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -o $@ $^ -lm
 	ln -sf btime Judy1LHTime
 
 c++time: Judy1LHTime.c libb.a ${LIBJUDY}
-	$(CXX) $(CXXFLAGS) -DMIKEY $(DEFINES) -o $@ \
+	$(CXX) $(CXXFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -o $@ \
     -x c++ Judy1LHTime.c -x none libb.a libJudy.a -lm
 
 # btime, bcheck, b1time, b1check, bLtime, bLcheck, jtime, and jcheck
@@ -343,11 +343,11 @@ libbL.a: $(LIBBL_OBJS)
 	make b1time b1check b check
 
 b1time: Judy1LHTime.c libb1.a ${LIBJUDY}
-	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
+	$(CC) $(CFLAGS) -DMIKEY_1 $(DEFINES) -o $@ $^ -lm
 	ln -sf $@ Judy1LHTime
 
 b1check: Judy1LHCheck.c libb1.a ${LIBJUDY}
-	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
+	$(CC) $(CFLAGS) -DMIKEY_1 $(DEFINES) -o $@ $^ -lm
 	ln -sf $@ Judy1LHCheck
 
 # Targets L, bL and bLcheck link with libbL to get JudyL from libbL.a
@@ -357,11 +357,11 @@ L:
 	make bLtime bLcheck b check
 
 bLtime: Judy1LHTime.c libbL.a ${LIBJUDY}
-	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
+	$(CC) $(CFLAGS) -DMIKEY_L $(DEFINES) -o $@ $^ -lm
 	ln -sf $@ Judy1LHTime
 
 bLcheck: Judy1LHCheck.c libbL.a ${LIBJUDY}
-	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -o $@ $^ -lm
+	$(CC) $(CFLAGS) -DMIKEY_L $(DEFINES) -o $@ $^ -lm
 	ln -sf $@ Judy1LHCheck
 
 # Targets j, jtime and jcheck link with libJudy.a
@@ -465,7 +465,7 @@ t.s: t.c
 
 # Suppress warnings.
 Judy1LHTime.s: Judy1LHTime.c
-	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -S $^
+	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -S $^
 
 # Suppress warnings.  sbrk is deprecated.
 JudyMalloc.s: JudyMalloc.c
@@ -502,7 +502,8 @@ bc.i: bc.c
 
 # The .c.i rule doesn't work for some reason.  Later.
 Judy1LHTime.i: Judy1LHTime.c
-	$(CC) $(CFLAGS) -DMIKEY $(DEFINES) -E $^ | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -E $^ \
+  | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
 t.i: t.c
@@ -510,7 +511,8 @@ t.i: t.c
 
 # The .c.i rule doesn't work for some reason.  Later.
 JudyMalloc.i: JudyMalloc.c
-	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) -E $^ \
+  | indent -i4 | expand > $@
 
 #
 # -mmmx -msse -msse2 -mno-sse4 is the default for -m64 as of this writing

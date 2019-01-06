@@ -46,7 +46,7 @@ Word_t    j__AllocWordsJBU;
 Word_t    j__AllocWordsJBL;
 Word_t    j__AllocWordsJLB1;
 Word_t    j__AllocWordsJLL[8];
-Word_t    j__AllocWordsJV; // j__AllocWordsJLB2 for JUDY1 for MIKEY
+Word_t    j__AllocWordsJV; // j__AllocWordsJLB2 for JUDY1 for MIKEY_1
 Word_t    j__NumbJV;
 #endif // RAMMETRICS
 

@@ -959,12 +959,12 @@ PrintHeaderX(const char *strFirstCol, int nRow)
         printf(nRow ? "      " : "  L2/K");
         printf(nRow ? "      " : "  L1/K");
         printf(nRow ? "      " : "  B1/K");
-#if defined(MIKEY)
+#if defined(MIKEY_1)
         // Doug's code doesn't have a B2 yet.
         if (J1Flag) {
             printf(nRow ? "      " : "  B2/K"); // big bitmap leaf words per key
         } else
-#endif // defined(MIKEY)
+#endif // defined(MIKEY_1)
         printf(nRow ? "      " : "  JV/K");
 
         printf(nRow ? "      " : " %%MEff");
@@ -2571,11 +2571,11 @@ main(int argc, char *argv[])
         printf("# COLHEAD %2d L2  - Leaf 2 Byte Key/Key\n", Col++);
         printf("# COLHEAD %2d L1  - Leaf 1 Byte Key/Key\n", Col++);
         printf("# COLHEAD %2d B1  - Bitmap Leaf 1 Bit Key/Key\n", Col++);
-#if defined(MIKEY)
+#if defined(MIKEY_1)
         if (J1Flag) {
             printf("# COLHEAD %2d B2  - Big bitmap leaf/Key\n", Col++);
         } else
-#endif // defined(MIKEY)
+#endif // defined(MIKEY_1)
         printf("# COLHEAD %2d VA  - Value area Words/Key\n", Col++);
 
         printf("# COLHEAD %2d %%MEff - %% RAM JudyMalloc()ed vs mmap()ed from Kernel\n", Col++);
@@ -4123,13 +4123,13 @@ TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
                                     printf("\nTstKey = 0x%" PRIxPTR"\n", TstKey);
                                     FAILURE("JudyLIns failed with NULL after Insert", TstKey);
                                 }
+#ifdef MIKEY_L
                                 if (PValueNew != PValue)
                                 {
-#ifdef MIKEY
                                     FAILURE("Second JudyLIns failed with"
                                             " wrong PValue after Insert",
                                             TstKey);
-#else // MIKEY
+  #if 0
                                     // Doug's code isn't strict about this yet
                                     // because it modifies the array on the way
                                     // down.
@@ -4141,8 +4141,9 @@ TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
                                     printf("- ValueNew = 0x%" PRIxPTR
                                            ", Valueold = 0x%" PRIxPTR"\n",
                                            *PValueNew, *PValue);
-#endif // #else MIKEY
+  #endif // 0
                                 }
+#endif // MIKEY_L
                                 if (*PValueNew != TstKey)
                                 {
                                     printf("\n*PValueNew = 0x%" PRIxPTR"\n", *PValueNew);
@@ -5116,9 +5117,9 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     if (J1KeyBefore == J1LastKey)
                     {
                         if ((Rc == 1)
-  #ifdef MIKEY // Doug's code fails with this test.
+  #ifdef MIKEY_1 // Doug's code fails with this test.
                             || (J1Key != J1KeyBefore)
-  #endif // MIKEY
+  #endif // MIKEY_1
                             )
                         {
                             printf("\n");
@@ -5200,9 +5201,9 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     if (JLKeyBefore == JLLastKey)
                     {
                         if ((PValue != NULL)
-  #ifdef MIKEY // Doug's code fails with this test.
+  #ifdef MIKEY_L // Doug's code fails with this test.
                             || (JLKey != JLKeyBefore)
-  #endif // MIKEY
+  #endif // MIKEY_L
                             )
                         {
                             printf("\n");
@@ -5320,9 +5321,9 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     if (J1KeyBefore == J1FirstKey)
                     {
                         if ((Rc == 1)
-  #ifdef MIKEY // Judy fails this test
+  #ifdef MIKEY_1 // Judy fails this test
                             || (J1Key != J1KeyBefore)
-  #endif // MIKEY
+  #endif // MIKEY_1
                             )
                         {
                             printf("\n");
@@ -5405,9 +5406,9 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     if (JLKeyBefore == JLFirstKey)
                     {
                         if ((PValue != NULL)
-  #ifdef MIKEY // Judy fails this test
+  #ifdef MIKEY_L // Judy fails this test
                             || (JLKey != JLKeyBefore)
-  #endif // MIKEY
+  #endif // MIKEY_L
                             )
                         {
                             printf("\n");
