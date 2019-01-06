@@ -1079,22 +1079,61 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
 
 #endif // (cwListPopCntMax != 0)
 
+// cnLogBmWordsX determines when a bitmap value area grows to uncompressed.
+// Roughly, we transition when words per key won't be much more than
+// EXP(cnLogBmWordsX + 1) / (EXP(cnLogBmWordsX) + 1)
+// It's a number between one and two.
+// A bigger cnLogBmWordsX means a bigger words per key is allowed.
+#define cnLogBmWordsX  5
+
 static Word_t
 BitmapWords(int nBLR, Word_t wPopCnt)
 {
     (void)wPopCnt;
-    Word_t wWordsMin = EXP(nBLR - cnLogBitsPerWord) + /* wPrefixPop */ 1;
+    Word_t wWords;
+    // Number of words in the bitmap plus the prefix-pop word.
+    Word_t wWordsHdr = EXP(MAX(1, nBLR - cnLogBitsPerWord)) + 1;
   #ifdef B_JUDYL
-    Word_t wFullPopWordsMin = wWordsMin + EXP(nBLR);
-    wWordsMin += wPopCnt; // space for values
-    Word_t wWords = MAX(4, EXP(LOG(wWordsMin) + 1) * 3 / 4);
-    if (wWordsMin > wWords - 1) { wWords = wWords * 4 / 3; }
-    --wWords; // subtract malloc overhead word from request
-    if (wWords > wFullPopWordsMin) { wWords = wFullPopWordsMin; }
-    return wWords;
+    // Go for an uncompressed value area as soon as possible while keeping
+    // words per key reasonable.
+    // If wpk <= threshhold, then go to uncompressed, where words is size of
+    // the bitmap leaf (including 1 word of malloc overhead) plus
+    // 1 word in the switch for wRoot and one word in the switch
+    // for an embedded value.
+    Word_t wFullPopWordsMin = wWordsHdr + EXP(nBLR);
+    Word_t wFullPopWordsMinPlusOverhead = wFullPopWordsMin + 1 + 1;
+      #ifdef EMBED_KEYS
+    ++wFullPopWordsMinPlusOverhead; // 2nd word per link in switch
+      #endif // EMBED_KEYS
+    if (wPopCnt
+        > wFullPopWordsMinPlusOverhead
+            * (EXP(cnLogBmWordsX) + 1) / EXP(cnLogBmWordsX + 1))
+    {
+        return wFullPopWordsMin;
+    }
+    Word_t wWordsMin = wWordsHdr + wPopCnt; // space for hdr + values
+    if (wPopCnt > 1) {
+        wWords = (EXP(LOG(wPopCnt - 1) + 1) * 3 / 4 + wWordsHdr) | 1;
+        if (wWords < wWordsMin) {
+            wWords = ((wWords - wWordsHdr) * 4 / 3 + wWordsHdr) | 1;
+        }
+        // Max pop with compressed value area.
+        Word_t wPopCntMax
+            = wFullPopWordsMinPlusOverhead
+                * (EXP(cnLogBmWordsX) + 1) / EXP(cnLogBmWordsX + 1);
+        // Total words needed at max pop with compressed value area
+        // excluding malloc overhead.
+        Word_t wPopCntMaxWordsMin = wWordsHdr + wPopCntMax;
+        // Don't alloc memory that won't be used before we uncompress.
+        if (wWords >= wPopCntMaxWordsMin) { wWords = wPopCntMaxWordsMin; }
+    } else {
+        wWords = wWordsMin;
+        if (wWords < 3) { wWords = 3; }
+    }
   #else // B_JUDYL
-    return wWordsMin;
+    wWords = wWordsHdr;
   #endif // #else B_JUDYL
+    return wWords;
 }
 
 #ifdef BITMAP
