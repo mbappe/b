@@ -1594,6 +1594,11 @@ tp_bIsBitmap(int nType)
 
 #define cnLsbLvl  (cnBitsPerWord - cnBitsLvl)
 
+#ifdef B_JUDYL
+  // Use the high bit in wRoot to indicate an uncompressed bitmap value area.
+  #define cnLsbBmUncompressed  (cnBitsPerWord - 1)
+#endif // B_JUDYL
+
 #define cnBitsXxSwWidth   6
 
 #if defined(SKIP_TO_XX_SW)

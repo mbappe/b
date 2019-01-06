@@ -1126,6 +1126,12 @@ NewBitmap(qp, int nBLR, Word_t wKey, Word_t wPopCnt)
     // the high bits, e.g. if LVL_IN_WR_HB, so we want them to
     // be initialized.
     wRoot = 0; set_wr(wRoot, pwBitmap, T_BITMAP);
+#ifdef B_JUDYL
+    if (wWords == BitmapWords(nBLR, EXP(nBLR))) {
+        wRoot |= EXP(cnLsbBmUncompressed);
+    }
+    DBGM(printf("NewBitmap wRoot 0x%zx\n", wRoot));
+#endif // B_JUDYL
 
 #if defined(SKIP_TO_BITMAP)
     Set_nBLR(&wRoot, nBLR);
@@ -2306,7 +2312,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
             printf("\n PP 0x%016zx", pwr[EXP(nBL - cnLogBitsPerWord)]);
             printf("\n");
   #ifdef B_JUDYL
-            for (int ww = 0; ww < (int)gwBitmapPopCnt(qy, nBL); ++ww) {
+            for (int ww = 0;
+                 ww < (int)((wRoot & EXP(cnLsbBmUncompressed))
+                         ? EXP(nBL) : gwBitmapPopCnt(qy, nBL));
+                 ++ww)
+            {
                 if ((ww != 0) && (ww % 4) == 0) {
                     printf("\n");
                 }
@@ -5883,9 +5893,15 @@ InsertAtBitmap(qp, Word_t wKey)
     // Mask to convert EXP(nBLR) back to 0 for newly created bitmap.
     Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR) & MSK(nBLR);
 #ifdef B_JUDYL
-    int nPos = ~BmIndex(qy, nBLR, wKey);
     Word_t *pwSrcValues = gpwBitmapValues(qy, nBLR);
-    if (BitmapWords(nBLR, wPopCnt + 1) != BitmapWords(nBLR, wPopCnt)) {
+    int nPos;
+    if (wRoot & EXP(cnLsbBmUncompressed)) {
+        nPos = wKey & MSK(nBLR);
+        goto done;
+    }
+    nPos = ~BmIndex(qy, nBLR, wKey);
+    Word_t wWords = BitmapWords(nBLR, wPopCnt + 1); // new
+    if (wWords != BitmapWords(nBLR, wPopCnt)) {
         NewBitmap(qy, nBLR, wKey, wPopCnt + 1);
         // Prefix and popcnt are set; bits are not.
         // *pwRoot has been updated. qy is out of date.
@@ -5894,10 +5910,19 @@ InsertAtBitmap(qp, Word_t wKey)
         assert(wr_nType(wRoot) == nType);
         Word_t *pwrOld = pwr;
         pwr = wr_pwr(wRoot);
-        memcpy(pwr, pwrOld, EXP(nBLR - cnLogBitsPerByte));
+        memcpy(pwr, pwrOld, MAX(1, EXP(nBLR - cnLogBitsPerByte)));
         Word_t *pwTgtValues = gpwBitmapValues(qy, nBLR);
-        COPY(&pwTgtValues[nPos + 1], &pwSrcValues[nPos], wPopCnt - nPos);
-        COPY(pwTgtValues, pwSrcValues, nPos);
+        if (wRoot & EXP(cnLsbBmUncompressed)) {
+            for (int k = 0; k < (int)EXP(nBLR); ++k) {
+                if (BitIsSet(pwr, k)) {
+                    pwTgtValues[k] = *pwSrcValues++;
+                }
+            }
+            nPos = wKey & MSK(nBLR);
+        } else {
+            COPY(&pwTgtValues[nPos + 1], &pwSrcValues[nPos], wPopCnt - nPos);
+            COPY(pwTgtValues, pwSrcValues, nPos);
+        }
         OldBitmap(pwrOld, nBLR, wPopCnt);
         pwSrcValues = pwTgtValues;
     } else
@@ -5905,6 +5930,7 @@ InsertAtBitmap(qp, Word_t wKey)
     {
 #ifdef B_JUDYL
         MOVE(&pwSrcValues[nPos + 1], &pwSrcValues[nPos], wPopCnt - nPos);
+done:
 #endif // B_JUDYL
         swBitmapPopCnt(qy, nBLR, wPopCnt + 1);
     }
@@ -6450,6 +6476,7 @@ RemoveAtBitmap(qp, Word_t wKey)
 {
     qv;
 
+    DBGX(printf("RemoveAtBitmap\n"));
     // EXP(nBL) is risky because nBL could be cnBitsPerWord
     if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
         ClrBit(pLn, wKey & MSK(nBL));
@@ -6463,9 +6490,16 @@ RemoveAtBitmap(qp, Word_t wKey)
 
         Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR) - 1;
 #ifdef B_JUDYL
+        Word_t wWords = BitmapWords(nBLR, wPopCnt); // new
+        Word_t bUncompressed = wRoot & EXP(cnLsbBmUncompressed);
+        if (bUncompressed) {
+            if (wWords == BitmapWords(nBLR, EXP(nBLR))) {
+                goto done;
+            }
+        }
         Word_t *pwSrcValues = gpwBitmapValues(qy, nBLR);
         int nPos = BmIndex(qy, nBLR, wKey);
-        if (BitmapWords(nBLR, wPopCnt) != BitmapWords(nBLR, wPopCnt + 1)) {
+        if (wWords != BitmapWords(nBLR, wPopCnt + 1)) {
             NewBitmap(qy, nBLR, wKey, wPopCnt);
             // Prefix and popcnt are set; bits are not.
             // *pwRoot has been updated. qy is out of date.
@@ -6474,10 +6508,18 @@ RemoveAtBitmap(qp, Word_t wKey)
             assert(wr_nType(wRoot) == nType);
             Word_t *pwrOld = pwr;
             pwr = wr_pwr(wRoot);
-            memcpy(pwr, pwrOld, EXP(nBLR - cnLogBitsPerByte));
+            memcpy(pwr, pwrOld, MAX(1, EXP(nBLR - cnLogBitsPerByte)));
             Word_t *pwTgtValues = gpwBitmapValues(qy, nBLR);
-            COPY(&pwTgtValues[nPos], &pwSrcValues[nPos + 1], wPopCnt - nPos);
-            COPY(pwTgtValues, pwSrcValues, nPos);
+            if (bUncompressed) {
+                for (int k = 0; k < (int)EXP(nBLR); ++k) {
+                    if ((k != (int)(wKey & MSK(nBLR))) && BitIsSet(pwr, k)) {
+                        *pwTgtValues++ = pwSrcValues[k];
+                    }
+                }
+            } else {
+                COPY(&pwTgtValues[nPos], &pwSrcValues[nPos + 1], wPopCnt - nPos);
+                COPY(pwTgtValues, pwSrcValues, nPos);
+            }
             OldBitmap(pwrOld, nBLR, wPopCnt + 1);
         } else
 #endif // B_JUDYL
@@ -6485,6 +6527,7 @@ RemoveAtBitmap(qp, Word_t wKey)
 #ifdef B_JUDYL
             Word_t *pwSrcValues = gpwBitmapValues(qy, nBLR);
             MOVE(&pwSrcValues[nPos], &pwSrcValues[nPos + 1], wPopCnt - nPos);
+done:
 #endif // B_JUDYL
             swBitmapPopCnt(qy, nBLR, wPopCnt);
         }
@@ -9113,6 +9156,9 @@ Judy1ByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
     if (wCount == 0) {
         *pwKey = wKey;
         DBGN(printf("J1BC: *pwKey " OWx"\n", *pwKey));
+#ifdef B_JUDYL
+        return JudyLGet(PArray, wKey, NULL);
+#endif // B_JUDYL
     }
 #ifdef B_JUDYL
     return NULL;

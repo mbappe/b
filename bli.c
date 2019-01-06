@@ -2139,7 +2139,10 @@ t_bitmap:;
           #endif // !defined(RECURSIVE)
       #endif // defined(INSERT)
       #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
-                return &gpwBitmapValues(qy, nBLR)[BmIndex(qy, nBLR, wKey)];
+                int nIndex = (wRoot & EXP(cnLsbBmUncompressed))
+                               ? (int)(wKey & MSK(nBLR))
+                               : BmIndex(qy, nBLR, wKey);
+                return &gpwBitmapValues(qy, nBLR)[nIndex];
       #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 return KeyFound;
       #endif // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
