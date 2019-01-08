@@ -320,7 +320,8 @@ check:
 
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
 bcheck: Judy1LHCheck.c libb.a ${LIBJUDY}
-	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
+	$(CC) $(CFLAGS) -DJUDY1_DUMP -DJUDYL_DUMP -DMIKEY_1 -DMIKEY_L \
+ $(DEFINES) -o $@ $^ -lm
 	ln -sf bcheck Judy1LHCheck
 
 c++check: Judy1LHCheck.c libb.a ${LIBJUDY}
@@ -347,7 +348,7 @@ b1time: Judy1LHTime.c libb1.a ${LIBJUDY}
 	ln -sf $@ Judy1LHTime
 
 b1check: Judy1LHCheck.c libb1.a ${LIBJUDY}
-	$(CC) $(CFLAGS) -DMIKEY_1 $(DEFINES) -o $@ $^ -lm
+	$(CC) $(CFLAGS) -DJUDY1_DUMP -DMIKEY_1 $(DEFINES) -o $@ $^ -lm
 	ln -sf $@ Judy1LHCheck
 
 # Targets L, bL and bLcheck link with libbL to get JudyL from libbL.a
@@ -361,7 +362,7 @@ bLtime: Judy1LHTime.c libbL.a ${LIBJUDY}
 	ln -sf $@ Judy1LHTime
 
 bLcheck: Judy1LHCheck.c libbL.a ${LIBJUDY}
-	$(CC) $(CFLAGS) -DMIKEY_L $(DEFINES) -o $@ $^ -lm
+	$(CC) $(CFLAGS) -DJUDYL_DUMP -DMIKEY_L $(DEFINES) -o $@ $^ -lm
 	ln -sf $@ Judy1LHCheck
 
 # Targets j, jtime and jcheck link with libJudy.a
