@@ -69,17 +69,23 @@ Word_t TestJudyGet(void *J1, void *JL, void *JH, Word_t Seed, Word_t Elements);
 
 int TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements);
 
-#if ! defined(NO_TEST_NEXT) // for turn-on testing
+#ifdef NO_TEST_NEXT // for turn-on testing
+  #define NO_TEST_NEXT_EMPTY // NO_TEST_NEXT ==> NO_TEST_NEXT_EMPTY
+#else // NO_TEST_NEXT
 
 Word_t TestJudyNext(void *J1, void *JL, Word_t LowIndex, Word_t Elements);
 
 int TestJudyPrev(void *J1, void *JL, Word_t HighIndex, Word_t Elements);
 
+#endif // #else NO_TEST_NEXT
+
+#ifndef NO_TEST_NEXT_EMPTY // for turn-on testing
+
 int TestJudyNextEmpty(void *J1, void *JL, Word_t LowIndex, Word_t Elements);
 
 int TestJudyPrevEmpty(void *J1, void *JL, Word_t HighIndex, Word_t Elements);
 
-#endif // ! defined(NO_TEST_NEXT)
+#endif // NO_TEST_NEXT_EMPTY
 
 Word_t MagicList[] =
 {
@@ -459,22 +465,21 @@ main(int argc, char *argv[])
         {
             TestJudyCount(J1, JL, LowIndex, Delta);
         }
-#if ! defined(NO_TEST_NEXT)
+#ifndef NO_TEST_NEXT // for turn-on testing
         Word_t HighIndex; (void)HighIndex;
 //      Test JLN, J1N
         HighIndex = TestJudyNext(J1, JL, (Word_t)0, TotalPop);
 
 //      Test JLP, J1P
         TestJudyPrev(J1, JL, (Word_t)~0, TotalPop);
-
+#endif // #ifndef NO_TEST_NEXT
 #ifndef NO_TEST_NEXT_EMPTY // for turn-on testing
 //      Test JLNE, J1NE
         TestJudyNextEmpty(J1, JL, LowIndex, Delta);
 
 //      Test JLPE, J1PE
         TestJudyPrevEmpty(J1, JL, HighIndex, Delta);
-#endif // NO_TEST_NEXT_EMPTY
-#endif // ! defined(NO_TEST_NEXT)
+#endif // #ifndef NO_TEST_NEXT_EMPTY
 
 //      Test JLD, J1U
         if (dFlag)
@@ -828,7 +833,7 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
 #endif // defined(USE_JUDY1_NEXT_IN_COUNT)
         // Count test depends on Next.
         // But it doesn't require both Judy1Next and JudyLNext.
-#if ! defined(NO_TEST_NEXT)
+#ifndef NO_TEST_NEXT
   #if defined(USE_JUDY1_NEXT_IN_COUNT)
         PValue = (PWord_t)JudyLNext(JL, &TstIndex, NULL);
   #else // defined(USE_JUDY1_NEXT_IN_COUNT)
@@ -849,7 +854,7 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
                 FAILURE("Count at", elm);
             }
         }
-#endif // ! defined(NO_TEST_NEXT)
+#endif // #ifndef NO_TEST_NEXT
     }
     return(0);
 }
@@ -1064,8 +1069,13 @@ TestJudyPrevEmpty(void *J1, void *JL, Word_t HighIndex, Word_t Elements)
             }
             break;
         }
-        if (J1index != JLindex)
+        if (J1index != JLindex) {
+            printf("JLPE != J1PE Key 0x%zx J1PE 0x%zx JLPE 0x%zx\n",
+                    PrevKey, J1index, JLindex);
+            Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
+            JudyLDump((Word_t)JL, sizeof(Word_t) * 8, 0);
             FAILURE("JLPE != J1PE returned index at", elm);
+        }
 
         if (pFlag)
         {
