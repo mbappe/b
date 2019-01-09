@@ -1897,6 +1897,12 @@ main(int argc, char *argv[])
                 FAILURE("-k is not compatible with -B:DFGNOoS", 0);
             }
         }
+
+        // We allow -E/--splay-key-bits=0x5555555555555555 with -k/--lfsr-only
+        // because we were able to tweak the lfsr code to act like -E without
+        // doing a PDEP and with zero additional cost over a regular lfsr.
+        // We do this by splaying an lfsr magic number seed at the outset and
+        // shifting by two instead of one within the lfsr itself.
         if (bSplayKeyBitsFlag) {
             if (wSplayMask !=
 #if defined(__LP64__) || defined(_WIN64)
