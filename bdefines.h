@@ -45,10 +45,13 @@
   #undef  NO_UA_PARALLEL_128
   #define NO_UA_PARALLEL_128
 
-  // Allow DEFINES=-DALLOW_EMBEDDED_BITMAP on make command line for JUDY1.
+  #ifdef ALLOW_EMBEDDED_BITMAP
+    #error No ALLOW_EMBEDDED_BITMAP for B_JUDYL.
+  #endif // ALLOW_EMBEDDED_BITMAP
+  #undef  NO_ALLOW_EMBEDDED_BITMAP
+  #define NO_ALLOW_EMBEDDED_BITMAP
 
   // Allow DEFINES=-D<blah> on shared make command line for JUDY1.
-  #undef ALLOW_EMBEDDED_BITMAP
   #undef CODE_XX_SW
   #undef NO_TYPE_IN_XX_SW
   #undef SKIP_TO_XX_SW
@@ -159,15 +162,31 @@
   #define    SKIP_LINKS
 #endif // NO_SKIP_LINKS
 
+// Default is BITMAP.
 // BITMAP is required for one-digit and two-digit T_BITMAP bitmaps
 // and for embedded bitmaps.
 #ifdef   NO_BITMAP
   #ifdef BITMAP
     #error Cannot have BITMAP and NO_BITMAP
   #endif // BITMAP
+  #ifdef SKIP_TO_BITMAP
+    #error Cannot have SKIP_TO_BITMAP and NO_BITMAP.
+  #endif // SKIP_TO_BITMAP
 #else // NO_BITMAP
   #undef     BITMAP
   #define    BITMAP
+  // Default is SKIP_TO_BITMAP.
+  #ifndef NO_SKIP_TO_BITMAP
+    #undef  SKIP_TO_BITMAP
+    #define SKIP_TO_BITMAP
+  #endif // #ifndef NO_SKIP_TO_BITMAP
+  // Default is ALLOW_EMBEDDED_BITMAP for Judy1.
+  #ifndef NO_ALLOW_EMBEDDED_BITMAP
+    // What are the consequences of ALLOW_EMBEDDED_BITMAP
+    // if (cnBitsInD1 > cnLogBitsPerLink)?
+    // What about USE_XX_SW_ONLY_AT_DL2 which can yield (nBLR < cnBitsInD1)?
+    #define ALLOW_EMBEDDED_BITMAP
+  #endif // #ifndef NO_ALLOW_EMBEDDED_BITMAP
 #endif // NO_BITMAP
 
 #ifndef BITMAP
