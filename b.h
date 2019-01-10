@@ -2647,7 +2647,18 @@ static Word_t *
 gpwBitmapValues(qp, int nBLR)
 {
     qv;
-    return &pwr[EXP(nBLR - cnLogBitsPerWord) + /* wPrefixPop */ 1];
+    // The value area follows the bitmap and the prefix-pop word.
+    // What if (nBLR < cnLogBitsPerWord) and (cnBitsInD1 >= cnLogBitsPerWord)?
+    // This might happen for USE_XX_SW_ONLY_AT_DL2 if we are not careful.
+    // Our code should manipulate the XX_SW nBW so that we get an embedded
+    // bitmap at (nBLR == cnBitsInD1) for ALLOW_EMBEDDED_BITMAP, or replace
+    // the XX_SW with a T_BITMAP at (nBLR == cnBitsLeftAtDl2).
+    // What if (cnBitsLeftAtDl2 < cnLogBitsPerWord)? TBD, but this assertion
+    // will catch it if we forget about something.
+    assert((nBLR >= cnLogBitsPerWord) || (cnBitsInD1 < cnLogBitsPerWord));
+    return
+        &pwr[((cnBitsInD1 < cnLogBitsPerWord) && (nBLR <= cnLogBitsPerWord))
+                    ? 2 : (EXP(nBLR - cnLogBitsPerWord) + 1)];
 }
 
 static int
