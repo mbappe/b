@@ -9176,17 +9176,17 @@ Judy1ByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
 #endif // B_JUDYL
         if (PJError != NULL) {
             PJError->je_Errno = JU_ERRNO_NULLPINDEX;
-            DBGN(printf("J1BC: je_Errno %d\n", PJError->je_Errno));
+            DBGN(printf("JxBC: je_Errno %d\n", PJError->je_Errno));
         }
 #ifdef B_JUDYL
         return NULL;
 #else // B_JUDYL
-        DBGN(printf("J1BC: ret %d\n", ret));
+        DBGN(printf("JxBC: ret %d\n", ret));
         return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
 #endif // B_JUDYL
     }
     *pwKey = 0;
-    DBGN(printf("J1BC: wCount %" _fw"d *pwKey " OWx"\n", wCount, *pwKey));
+    DBGN(printf("JxBC: wCount %" _fw"d *pwKey " OWx"\n", wCount, *pwKey));
     Word_t wKey = *pwKey;
     // The Judy1 man page specifies that wCount == 0 is reserved for
     // specifying the last key in a fully populated array.
@@ -9195,7 +9195,7 @@ Judy1ByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
                       wCount, /* bPrev */ 0, /* bEmpty */ 0);
     if (wCount == 0) {
         *pwKey = wKey;
-        DBGN(printf("J1BC: *pwKey " OWx"\n", *pwKey));
+        DBGN(printf("JxBC: *pwKey " OWx"\n", *pwKey));
 #ifdef B_JUDYL
         return JudyLGet(PArray, wKey, NULL);
 #endif // B_JUDYL
@@ -9229,22 +9229,22 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 #endif // B_JUDYL
         if (PJError != NULL) {
             PJError->je_Errno = JU_ERRNO_NULLPINDEX;
-            DBGN(printf("J1F: je_Errno %d\n", PJError->je_Errno));
+            DBGN(printf("JxF: je_Errno %d\n", PJError->je_Errno));
         }
 #ifdef B_JUDYL
         return NULL;
 #else // B_JUDYL
-        DBGN(printf("J1F: ret %d\n", ret));
+        DBGN(printf("JxF: ret %d\n", ret));
         return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
 #endif // B_JUDYL
     }
-    DBGN(printf("\nJ1F: *pwKey " OWx"\n", *pwKey));
+    DBGN(printf("\nJxF: *pwKey " OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
     Word_t wCount = NextGuts((Word_t *)&PArray, cnBitsPerWord, &wKey,
                              /* wCount */ 0, /* bPrev */ 0, /* bEmpty */ 0);
     if (wCount == 0) {
         *pwKey = wKey;
-        DBGN(printf("J1F: *pwKey " OWx"\n", *pwKey));
+        DBGN(printf("JxF: *pwKey " OWx"\n", *pwKey));
 #ifdef B_JUDYL
         return JudyLGet(PArray, wKey, NULL);
 #endif // B_JUDYL
@@ -9252,7 +9252,7 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 #ifdef B_JUDYL
     return NULL;
 #else // B_JUDYL
-    DBGN(printf("J1F: returning %d\n", wCount == 0));
+    DBGN(printf("JxF: returning %d\n", wCount == 0));
     return wCount == 0;
 #endif // B_JUDYL
 }
@@ -9328,27 +9328,27 @@ Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 #endif // B_JUDYL
         if (PJError != NULL) {
             PJError->je_Errno = JU_ERRNO_NULLPINDEX;
-            DBGN(printf("J1L: je_Errno %d\n", PJError->je_Errno));
+            DBGN(printf("JxL: je_Errno %d\n", PJError->je_Errno));
         }
 #ifdef B_JUDYL
         return NULL;
 #else // B_JUDYL
-        DBGN(printf("J1L: ret %d\n", ret));
+        DBGN(printf("JxL: ret %d\n", ret));
         return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
 #endif // B_JUDYL
     }
-    DBGN(printf("\nJ1L: *pwKey " OWx"\n", *pwKey));
+    DBGN(printf("\nJxL: *pwKey " OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
     Word_t wCount = NextGuts((Word_t *)&PArray, cnBitsPerWord, &wKey,
                              /* wCount */ 0, /* bPrev */ 1, /* bEmpty */ 0);
     if (wCount == 0) {
         *pwKey = wKey;
-        DBGN(printf("J1L done: *pwKey " OWx"\n", *pwKey));
+        DBGN(printf("JxL done: *pwKey " OWx"\n", *pwKey));
 #ifdef B_JUDYL
         return JudyLGet(PArray, wKey, NULL);
 #endif // B_JUDYL
     }
-    DBGN(printf("J1L: returning %d\n", wCount == 0));
+    DBGN(printf("JxL: returning %d\n", wCount == 0));
 #ifdef B_JUDYL
     return NULL;
 #else // B_JUDYL
@@ -9854,23 +9854,23 @@ JudyLFirstEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 Judy1FirstEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 #endif // B_JUDYL
 {
-    DBGN(printf("J1FE: pwKey %p\n", (void *)pwKey));
+    DBGN(printf("JxFE: pwKey %p\n", (void *)pwKey));
     if (pwKey == NULL) {
         int ret = -1;
         if (PJError != NULL) {
             PJError->je_Errno = JU_ERRNO_NULLPINDEX;
-            DBGN(printf("J1FE: je_Errno %d\n", PJError->je_Errno));
+            DBGN(printf("JxFE: je_Errno %d\n", PJError->je_Errno));
         }
-        DBGN(printf("J1FE: ret %d\n", ret));
+        DBGN(printf("JxFE: ret %d\n", ret));
         return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
-    DBGN(printf("\nJ1FE: *pwKey " OWx"\n", *pwKey));
+    DBGN(printf("\nJxFE: *pwKey " OWx"\n", *pwKey));
     Word_t wKeyLocal = *pwKey;
     Status_t status = NextEmptyGuts((Word_t *)&PArray,
                                     &wKeyLocal, cnBitsPerWord, /* bPrev */ 0);
     if (status == Success) {
         *pwKey = wKeyLocal;
-        DBGN(printf("J1FE: *pwKey " OWx"\n", *pwKey));
+        DBGN(printf("JxFE: *pwKey " OWx"\n", *pwKey));
     }
     return status == Success;
 }
@@ -9889,7 +9889,7 @@ JudyLNextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 Judy1NextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 #endif // B_JUDYL
 {
-    DBGN(printf("J1NE: pwKey %p\n", (void *)pwKey));
+    DBGN(printf("JxNE: pwKey %p\n", (void *)pwKey));
     if (pwKey == NULL) {
 #ifdef B_JUDYL
         return JudyLFirstEmpty(PArray, pwKey, PJError);
@@ -9897,7 +9897,7 @@ Judy1NextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         return Judy1FirstEmpty(PArray, pwKey, PJError);
 #endif // B_JUDYL
     }
-    DBGN(printf("J1NE: *pwKey %zx\n", *pwKey));
+    DBGN(printf("JxNE: *pwKey %zx\n", *pwKey));
     Word_t wKeyLocal = *pwKey;
     int ret = 0;
     if (++wKeyLocal != 0) {
@@ -9910,7 +9910,7 @@ Judy1NextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
             *pwKey = wKeyLocal;
         }
     }
-    DBGN(printf("J1NE: ret %d\n", ret));
+    DBGN(printf("JxNE: ret %d\n", ret));
     return ret;
 }
 
@@ -9929,23 +9929,23 @@ JudyLLastEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 Judy1LastEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 #endif // B_JUDYL
 {
-    DBGN(printf("J1LE: pwKey %p\n", (void *)pwKey));
+    DBGN(printf("JxLE: pwKey %p\n", (void *)pwKey));
     if (pwKey == NULL) {
         int ret = -1;
         if (PJError != NULL) {
             PJError->je_Errno = JU_ERRNO_NULLPINDEX;
-            DBGN(printf("J1LE: je_Errno %d\n", PJError->je_Errno));
+            DBGN(printf("JxLE: je_Errno %d\n", PJError->je_Errno));
         }
-        DBGN(printf("J1LE: ret %d\n", ret));
+        DBGN(printf("JxLE: ret %d\n", ret));
         return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
     }
-    DBGN(printf("\nJ1LE: *pwKey " OWx"\n", *pwKey));
+    DBGN(printf("\nJxLE: *pwKey " OWx"\n", *pwKey));
     Word_t wKeyLocal = *pwKey;
     Status_t status = NextEmptyGuts((Word_t *)&PArray,
                                      &wKeyLocal, cnBitsPerWord, /* bPrev */ 1);
     if (status == Success) {
         *pwKey = wKeyLocal;
-        DBGN(printf("J1LE: *pwKey " OWx"\n", *pwKey));
+        DBGN(printf("JxLE: *pwKey " OWx"\n", *pwKey));
     }
     return status == Success;
 }
@@ -9965,7 +9965,7 @@ JudyLPrevEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 Judy1PrevEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 #endif // B_JUDYL
 {
-    DBGN(printf("J1PE: pwKey %p\n", (void *)pwKey));
+    DBGN(printf("JxPE: pwKey %p\n", (void *)pwKey));
     if (pwKey == NULL) {
 #ifdef B_JUDYL
         return JudyLLastEmpty(PArray, pwKey, PJError);
@@ -9973,7 +9973,7 @@ Judy1PrevEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         return Judy1LastEmpty(PArray, pwKey, PJError);
 #endif // B_JUDYL
     }
-    DBGN(printf("J1PE: *pwKey %zx\n", *pwKey));
+    DBGN(printf("JxPE: *pwKey %zx\n", *pwKey));
     Word_t wKeyLocal = *pwKey;
     int ret = 0;
     if (wKeyLocal-- != 0) {
@@ -9986,7 +9986,7 @@ Judy1PrevEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
             *pwKey = wKeyLocal;
         }
     }
-    DBGN(printf("J1PE: ret %d\n", ret));
+    DBGN(printf("JxPE: ret %d\n", ret));
     return ret;
 }
 
