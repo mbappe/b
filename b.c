@@ -502,24 +502,23 @@ ListWordCnt(int nPopCnt, int nBL)
     int nWords = MAX(4, (nNextPow * 46340 / (1<<16) + 1) & ~1);
     if (nListWordsMin > nWords - 1) { nWords = nNextPow; }
     --nWords; // Subtract malloc overhead word for request.
-    // The nFullListWordsMin code can't handle nPopCnt > anListPopCntMax
-    // which can happen when we are inflating an embedded list for temporary
-    // processing.
-    // How do we handle the situation where
-    // EmbeddedKeysPopCntMax > anListPopCntMax?
-    // We don't want to have to call EmbeddedListPopCntMax every time
-    // ListWordCnt is called.
-    // Require anListPopCntMax[nBL] == 0
-    // or anListPopCntMax[nBL] >= EmbeddedListPopCntMax.
-    // What if we want to limit list length to less than
-    // EmbeddedListPopCntMax, i.e. POP_CNT_MAX_IS_KING?
-#if defined(POP_CNT_MAX_IS_KING) || !defined(EMBED_KEYS)
-    assert(nPopCnt <= anListPopCntMax[nBL]);
-#else // defined(POP_CNT_MAX_IS_KING) || !defined(EMBED_KEYS)
-    assert((anListPopCntMax[nBL] >= EmbeddedListPopCntMax(nBL)
-        || anListPopCntMax[nBL] == 0));
-#endif // #else defined(POP_CNT_MAX_IS_KING) || !defined(EMBED_KEYS)
-    if (nPopCnt <= anListPopCntMax[nBL]) {
+    assert((nPopCnt <= anListPopCntMax[nBL])
+#ifdef EMBED_KEYS
+  #ifndef POP_CNT_MAX_IS_KING
+        || (nPopCnt <= EmbeddedListPopCntMax(nBL))
+  #endif // #ifndef POP_CNT_MAX_IS_KING
+#endif // EMBED_KEYS
+            );
+    // Trim to avoid wasted space.
+    // No need to trim for temporarily inflated embedded list that
+    // exceeds the maximum external list length.
+    // Don't waste cpu calling EmbeddedListPopCntMax.
+#ifdef EMBED_KEYS
+  #ifndef POP_CNT_MAX_IS_KING
+    if (nPopCnt <= anListPopCntMax[nBL])
+  #endif // #ifndef POP_CNT_MAX_IS_KING
+#endif // EMBED_KEYS
+    {
         int nFullListWordsMin = ListWordsMin(anListPopCntMax[nBL], nBL);
         if (nFullListWordsMin < nWords) {
             nWords = nFullListWordsMin;
@@ -535,7 +534,6 @@ ListWordCnt(int nPopCnt, int nBL)
 #endif // LIST_REQ_MIN_WORDS
     return nWords;
 }
-
 
 // We have to be able to figure out where to point pwr from nPopCnt and nBL.
 // We can get list words from ListWordCnt.
@@ -607,9 +605,11 @@ ListSlotCnt(int nPopCnt, int nBL)
     int nListUnits = nListWords / nWordsPerUnit;
     int nListSlots = nListUnits * nKeysPerBucket; // slots/unit = keys/bucket
 #endif // #endif B_JUDYL
-#if !defined(POP_CNT_MAX_IS_KING) && defined(EMBED_KEYS)
-    if (anListPopCntMax[nBL] != 0)
-#endif // !defined(POP_CNT_MAX_IS_KING) && defined(EMBED_KEYS)
+#ifdef EMBED_KEYS
+  #ifndef POP_CNT_MAX_IS_KING
+    if (nPopCnt <= anListPopCntMax[nBL])
+  #endif // #ifndef POP_CNT_MAX_IS_KING
+#endif // EMBED_KEYS
     {
         if (nListSlots > anListPopCntMax[nBL]) {
             nListSlots = anListPopCntMax[nBL];
@@ -4933,8 +4933,6 @@ InsertAtList(qp,
   #endif // defined(NO_TYPE_IN_XX_SW)
 
     if (0
-  // ListWordsMin can't handle embedded pop max bigger than anListPopCntMax
-  // unless POP_CNT_MAX_IS_KING or anListPopCntMax is 0.
   #if defined(EMBED_KEYS) && !defined(POP_CNT_MAX_IS_KING)
             || (wPopCnt < (Word_t)nEmbeddedListPopCntMax)
   #endif // defined(EMBED_KEYS) && !defined(POP_CNT_MAX_IS_KING)
@@ -6615,9 +6613,6 @@ Initialize(void)
     assert(cnBitsLeftAtDl3 > cnBitsLeftAtDl2);
     anListPopCntMax[cnBitsLeftAtDl3] = cnListPopCntMaxDl3;
 #endif // defined(cnListPopCntMaxDl3)
-    // We should verify that EmbeddedListPopCntMax <= anListPopCntMax
-    // or fix ListWord(sMin|Cnt) to be able to handle it and let InsertAtList
-    // handle it.
 
 #ifdef WROOT_NULL_IS_EK
     // We need a bit set in T_EMBEDDED_KEYS to maximize the size of key that
