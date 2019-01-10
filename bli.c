@@ -65,8 +65,7 @@ CountSw(qp,
         Word_t wRootLoop = pLnLoop->ln_wRoot;
         Word_t wPopCntLoop;
         DBGC(printf("ww " OWx" wRootLoop " Owx"\n", ww, wRootLoop));
-      #if defined(ALLOW_EMBEDDED_BITMAP)
-        if (nBLLoop <= (int)LOG(sizeof(Link_t) * 8)) {
+        if (cbEmbeddedBitmap && (nBLLoop <= cnLogBitsPerLink)) {
             assert(nBLLoop <= cnLogBitsPerWord); // for now
             wPopCntLoop
                 = __builtin_popcountll(wRootLoop
@@ -75,11 +74,7 @@ CountSw(qp,
             wPopCnt += wPopCntLoop;
             DBGC(printf("embedded bitmap wPopCntLoop " OWx" wPopCnt " OWx"\n",
                         wPopCntLoop, wPopCnt));
-        } else
-      #elif defined(BITMAP) // defined(ALLOW_EMBEDDED_BITMAP
-        assert(nBLLoop > (int)LOG(sizeof(Link_t) * 8));
-      #endif // defined(ALLOW_EMBEDDED_BITMAP) elif defined(BITMAP)
-        {
+        } else {
             Word_t *pwrLoop = wr_pwr(wRootLoop);
             int nTypeLoop = wr_nType(wRootLoop);
             DBGC(printf("pwrLoop %p nTypeLoop %d\n",
@@ -1038,14 +1033,6 @@ t_switch:;
         }
         DBGX(Checkpoint(qy, "t_switch"));
         nBW = gnBW(qy, T_SWITCH, nBLR); // num bits decoded by this switch
-  #ifdef BITMAP
-        // What if nBLR <= nBW + cnLogBitsPerLink?
-        // Don't we have a two-digit bitmap?
-        // Shouldn't we have already changed nType when we created it?
-        // Should we goto the bitmap code here?
-        // Are we doing lazy conversion with cnBitsInD1 < cnLogBitsPerLink?
-        assert((nBLR > nBW + cnLogBitsPerLink) || cbEmbeddedBitmap);
-  #endif // BITMAP
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
         // ((uint8_t *)&wKey)[(cnBitsPerWord - nBL) >> 3];
         // ((uint8_t *)&wKey)[cnDigitsPerWord - nDL];
@@ -1085,15 +1072,15 @@ switchTail:;
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
   #ifdef BITMAP
         // Is there any reason to have
-        // EXP(cnBitsInD1) <= (sizeof(Link_t) * 8)? What about lazy conversion
-        // of embedded keys at nBL > sizeof(Link_t) * 8 to
-        // nBL == sizeof(Link_t) * 8?
+        // (cnBitsInD1 <= cnLogBitsPerLink)? What about lazy conversion
+        // of embedded keys at (nBL > cnLogBitsPerLink) to
+        // (nBL == cnLogBitsPerLink)?
         // Initialize warns if cnBitsInD1 is too small relative
         // to sizeof(Link_t).
-        // if nBL == LOG(sizeof(Link_t) * 8) there is no room for a
+        // if (nBL == cnLogBitsPerLink) there is no room for a
         // type field containing T_BITMAP so we goto t_bitmap directly.
         // What happens when it's time to make a 2-digit bitmap?
-        // What happens when nBL < LOG(sizeof(Link_t) * 8)?
+        // What happens when (nBL < cnLogBitsPerword)?
         // Would NewSwitch just allocate way more memory than we need?
         // Can we skip to one of these sub link size bitmaps?
         // What happens when it's time to make a 2-digit bitmap?
@@ -1167,18 +1154,18 @@ t_xx_sw:;
 // parameters: qp, pqp, nBLUp, pLnUp, pwrUp, pLnNew, wKey, pnBLR, nBW, wDigit,
 // nLinks, nCleanup, nIncr, bLinkPresent, wPopCntSum,
 // Beginning of SwTailCommon:
-  #if defined(INSERT) || defined(REMOVE)
+      #if defined(INSERT) || defined(REMOVE)
         // Handle big picture tree cleanup.
         if (bCleanup
             && SwCleanup(qy, wKey, nBLR
-      #if defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
+          #if defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
                     , &pwValue
-      #endif // defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
+          #endif // defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
                       ) != 0)
         {
             goto restart;
         }
-  #endif // defined(INSERT) || defined(REMOVE)
+      #endif // defined(INSERT) || defined(REMOVE)
         wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
         IF_COUNT(wPopCntSum += CountSw(qy, nBLR, nBW, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
@@ -1187,23 +1174,23 @@ t_xx_sw:;
         IF_SKIP_TO_XX_SW(IF_INSERT(nBLUp = nBL));
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
-  #ifdef BITMAP
+      #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
-  #endif // BITMAP
+      #endif // BITMAP
 // End of SwTailCommon.
         // Handle XX_SW-specific special cases that don't go back to the top.
-  #if defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
-      #if defined(NO_TYPE_IN_XX_SW)
+      #if defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
+          #if defined(NO_TYPE_IN_XX_SW)
         // ZERO_POP_MAGIC is valid only if a word can hold at least two keys.
         assert(EmbeddedListPopCntMax(nBL) >= 2);
-      #endif // defined(NO_TYPE_IN_XX_SW)
+          #endif // defined(NO_TYPE_IN_XX_SW)
         if (wRoot == WROOT_NULL) {
             return Failure;
         }
-  #endif // defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
+      #endif // defined(LOOKUP) && defined(ZERO_POP_CHECK_BEFORE_GOTO)
         // Blow-ups are handled in t_embedded_keys.
         goto t_embedded_keys;
-  #endif // #else _XX_SW_TAIL
+  #endif // _XX_SW_TAIL
         goto switchTail;
 
     } // end of case T_XX_SW
@@ -1772,7 +1759,7 @@ t_list:;
           // to less than zero at the end of the condition always being false.
           #if (cn2dBmMaxWpkPercent != 0) // g++ warns always
               #ifdef BITMAP
-        if ((EXP(cnBitsInD1) > sizeof(Link_t) * 8) // compiled out
+        if ((cnBitsInD1 > cnLogBitsPerLink) // compiled out
             && (nBLR == cnBitsInD1) // check that conversion is not done
             && (nBL == nBLR) // converting skip makes no sense
             // this should agree with the test in InsertCleanup
@@ -2000,7 +1987,7 @@ t_bitmap:;
 
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 #if defined(INSERT) || defined(REMOVE)
-        if (EXP(cnBitsInD1) > sizeof(Link_t) * 8) {
+        if (cnBitsInD1 > cnLogBitsPerLink) {
             Word_t wPopCnt = gwPopCnt(qy, nBLR);
             swPopCnt(qy, nBLR, wPopCnt + nIncr);
         }
@@ -2038,20 +2025,13 @@ t_bitmap:;
             }
             // Count bits.
             Word_t wPopCnt;
-      #if defined(ALLOW_EMBEDDED_BITMAP)
-            if ((cnBitsInD1 <= LOG(sizeof(Link_t) * 8))
-                && (nBLR == cnBitsInD1))
-            {
+            if (cbEmbeddedBitmap && (nBLR == cnBitsInD1)) {
                 //assert(nBL == nBLR); // skip to sub-link-size bm
                 assert(cnBitsInD1 <= cnLogBitsPerWord); // for now
                 Word_t wBit = EXP(wKey & MSK(nBL));
                 Word_t wBmMask = wBit - 1;
                 wPopCnt = __builtin_popcountll(wRoot & wBmMask);
-            } else
-      #else // defined(ALLOW_EMBEDDED_BITMAP)
-            assert(cnBitsInD1 > LOG(sizeof(Link_t) * 8));
-      #endif // defined(ALLOW_EMBEDDED_BITMAP)
-            {
+            } else {
                 int nWordOffset = (wKey & MSK(nBLR)) >> cnLogBitsPerWord;
                 // Do we count from the front or the back? If nBLR is small
                 // enough it's faster to just always count from the same
@@ -2102,6 +2082,12 @@ t_bitmap:;
       #ifdef USE_XX_SW_ONLY_AT_DL2
             // We assume we never blow-out into a one-digit bitmap.
             // We just double until we end up with one big bitmap at DL2.
+            // But what about when we create XX_SW at (nBLR == nBitsLeftAtDl2)
+            // and cbEmbeddedBitmap and nBLR - cnBW == cnBitsInD1? We did not
+            // explicitly double.
+            // Do we have code to make the whole thing T_BITMAP?
+            // Or do we end up here with (nBL == cnBitsInD1) which we don't
+            // handle below for USE_XX_SW_ONLY_AT_DL2?
             assert((nBLR == cnBitsLeftAtDl2)
                 || ((wr_nType(WROOT_NULL) == T_BITMAP)
                     && (wRoot == WROOT_NULL)));
@@ -2112,27 +2098,27 @@ t_bitmap:;
                     ? 0 :
       #ifndef USE_XX_SW_ONLY_AT_DL2
                 ((cn2dBmMaxWpkPercent == 0) || (nBLR == cnBitsInD1))
-                    ? (cnBitsInD1 <= cnLogBitsPerWord)
+                    ? (cbEmbeddedBitmap && (cnBitsInD1 <= cnLogBitsPerWord))
                         ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
-                        : BitIsSet((EXP(cnBitsInD1) <= sizeof(Link_t) * 8)
-                                       ? (Word_t*)pLn : pwr,
+                        : BitIsSet(cbEmbeddedBitmap ? (Word_t*)pLn : pwr,
                                    wKey & MSK(cnBitsInD1))
                     :
       #endif // #ifndef USE_XX_SW_ONLY_AT_DL2
-                      (cnBitsLeftAtDl2 <= cnLogBitsPerWord)
+                      (cbEmbeddedBitmap
+                            && (cnBitsLeftAtDl2 <= cnLogBitsPerWord))
                         ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsLeftAtDl2))
-                        : BitIsSet((EXP(cnBitsLeftAtDl2) <= sizeof(Link_t) * 8)
+                        : BitIsSet((cbEmbeddedBitmap
+                                           && (cnBitsLeftAtDl2
+                                               <= cnLogBitsPerLink))
                                        ? (Word_t*)pLn : pwr,
                                    wKey & MSK(cnBitsLeftAtDl2));
-            if (bBitIsSet)
-            {
+            if (bBitIsSet) {
       #if defined(REMOVE)
                 goto removeGutsAndCleanup;
       #endif // defined(REMOVE)
       #if defined(INSERT)
           #if !defined(RECURSIVE)
-                if (nIncr > 0)
-                {
+                if (nIncr > 0) {
                     DBGX(printf("Bit is set!\n"));
                     goto undo; // undo counting
                 }
@@ -2191,7 +2177,7 @@ t_bitmap:;
         InsertAtBitmap(qy, wKey);
   #else
         if ((cn2dBmMaxWpkPercent // check that conversion is enabled
-            && (EXP(cnBitsInD1) > sizeof(Link_t) * 8) // compiled out
+            && (cnBitsInD1 > cnLogBitsPerLink) // compiled out
             && (nBLR == cnBitsInD1) // check that conversion is not done
             && (nBL == nBLR) // converting skip to b1 makes no sense
             // this should agree with the test in InsertCleanup
