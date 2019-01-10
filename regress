@@ -19,6 +19,8 @@ CHECK=Judy1LHCheck
 : \
 && ${TIME} -W0 -B16 -1lvdgi  -n4 -S1 -s0xfffd \
 && ${TIME} -W0 -B64 -1lvdgi  -n4 -S1 -s0xfffffffffffffffd \
+&& ${TIME} -W0 -B64 -1lvdgi  -n1e3 -S1 -s0x1000000 \
+&& ${TIME} -W0 -B64 -1lvdgi  -n1e3 -S-1 -s0xffffff \
 && ${TIME} -W0 -B16 -1lvdgi  -n4 -S-1 -s2 \
 && ${TIME} -W0 -B16 -1lvdgi  -n4 -S-1 -s2 --splay-key-bits=0xffff000000000000 \
 && :
@@ -30,6 +32,8 @@ fi
 : \
 && ${TIME} -W0 -B16 -Llvdgi  -n4 -S1 -s0xfffd \
 && ${TIME} -W0 -B64 -Llvdgi  -n4 -S1 -s0xfffffffffffffffd \
+&& ${TIME} -W0 -B64 -Llvdgi  -n1e3 -S1 -s0x1000000 \
+&& ${TIME} -W0 -B64 -Llvdgi  -n1e3 -S-1 -s0xffffff \
 && ${TIME} -W0 -B16 -Llvdgi  -n4 -S-1 -s2 \
 && ${TIME} -W0 -B16 -Llvdgi  -n4 -S-1 -s2 --splay-key-bits=0xffff000000000000 \
 && :

@@ -8454,7 +8454,8 @@ t_list:;
         if (wPrefix > (*pwKey & ~MSK(nBLR))) {
             //A(0); // check -B16 -S1
             if (bPrev) {
-                A(0); // UNTESTED - Our test skip links have wPrefix == 0?
+                // A(0); // -DUSE_XX_SW_ONLY_AT_DL2
+                // A(0); // b -B64 -1v -S1 -s0x1000000
                 return wSkip + 1;
             } else {
                 //A(0); -B16 -S1
@@ -9567,6 +9568,13 @@ embeddedBitmap:;
                     return Success;
                 }
                 if (nWordNum-- <= 0) {
+                    Word_t wPrefix
+                        = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
+                    if ((nBLPrev == cnBitsPerWord) && (wPrefix != 0)) {
+                        *pwKey -= EXP(nBL);
+                        *pwKey |= MSK(nBL);
+                        return Success;
+                    }
                     return Failure;
                 }
                 wBm = ~pwr[nWordNum];
@@ -9590,6 +9598,15 @@ embeddedBitmap:;
 #endif // ALLOW_EMBEDDED_BITMAP
                         EXP(nBL - cnLogBitsPerWord)))
                 {
+                    Word_t wPrefix
+                        = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);
+                    if ((nBLPrev == cnBitsPerWord)
+                        && (wPrefix != ((Word_t)-1 << nBL)))
+                    {
+                        *pwKey += EXP(nBL);
+                        *pwKey &= ~MSK(nBL);
+                        return Success;
+                    }
                     return Failure;
                 }
                 wBm = ~pwr[nWordNum];
