@@ -235,32 +235,20 @@
 #endif // defined(CODE_XX_SW)
 
 // Notes on cnListPopCntMax<blah>:
-// If nBL == cnListPopCntMaxDl<x>, then cnListPopCntMaxDl<x> governs maximum
-// external list size, where nBL == cnBitsLeftAtDl<x>.
-// If nBL != cnBitsLeftAtDl<x> for any <x>, then maximum
-// external list size is governed by cnListPopCntMax(8|16|24|32|40|48|56|64).
+// If nBL == cnBitsLeftAtDl<x> and cnListPopCntMaxDl<x> is defined, then
+// cnListPopCntMaxDl<x> governs maximum external list size.
+// If cnListPopCntMaxDl<x> is not defined or nBL != cnBitsLeftAtDl<x> for
+// any <x>, then maximum external list size is governed by
+// cnListPopCntMax(8|16|24|32|40|48|56|64).
+// For example, cnListPopCntMax24 governs maximum external list size for
+// 16 < nBL <= 24.
 // EmbeddedListPopCntMax(nBL) governs maximum embedded list size unless
 // defined(POP_CNT_MAX_IS_KING) in which case the rules above for maximum
 // external list size also govern the maximum embedded list size.
+// I wonder if we should extend the reach of cnListPopCntMaxDl<blah>.
 
-// Default cnListPopCntMaxDl2 is 0 if USE_XX_SW.
-// Default cnListPopCntMax16  is 0 if USE_XX_SW.
-// Default cnListPopCntMaxDl1 is 0 if USE_XX_SW.
-// Default cnListPopCntMax8   is 0 if USE_XX_SW.
-#if defined(USE_XX_SW)
-  #if ! defined(cnListPopCntMaxDl2)
-      #define cnListPopCntMaxDl2  0
-  #endif // ! defined(cnListPopCntMaxDl2)
-  #if ! defined(cnListPopCntMax16)
-      #define cnListPopCntMax16  0
-  #endif // ! defined(cnListPopCntMax16)
-  #if ! defined(cnListPopCntMaxDl1)
-      #define cnListPopCntMaxDl1  0
-  #endif // ! defined(cnListPopCntMaxDl1)
-  #if ! defined(cnListPopCntMax8)
-      #define cnListPopCntMax8  0
-  #endif // ! defined(cnListPopCntMax8)
-#endif // defined(USE_XX_SW)
+// USE_XX_SW_ONLY_AT_DL2 should ignore anListPopCntMax
+// for nBL <= cnBitsLeftAtDl2.
 
 // Default is -DBL_SPECIFIC_PSPLIT_SEARCH.
 #if ! defined(NO_BL_SPECIFIC_PSPLIT_SEARCH)
@@ -530,110 +518,114 @@ typedef Word_t Bucket_t;
 // Choose max list lengths.
 // Respect the maximum value implied by the size of the pop count field.
 
-// Default cnListPopCntMax64.
-#if (cnBitsPerWord >= 64)
-  #if ! defined(cnListPopCntMax64)
-    #define cnListPopCntMax64  256
-  #endif // ! defined(cnListPopCntMax64)
-#endif // (cnBitsPerWord >= 64)
+// Default cnListPopCntMax64 is 256.
+#ifndef cnListPopCntMax64
+  #define cnListPopCntMax64  256
+#endif // #ifndef cnListPopCntMax64
 
-// Default cnListPopCntMax32.
-#if ! defined(cnListPopCntMax32)
-      #define cnListPopCntMax32  256
-#endif // ! defined(cnListPopCntMax32)
-
-// Default cnListPopCntMax16.
-#if ! defined(cnListPopCntMax16)
-      #define cnListPopCntMax16  256
-#endif // ! defined(cnListPopCntMax16)
-
-// Default cnListPopCntMax8.
-// An 8-bit bitmap uses only 32-bytes plus malloc overhead.
-// Does it make sense to have a list that uses as much or more?
-#if ! defined(cnListPopCntMax8)
-    #ifdef BITMAP
-  #define cnListPopCntMax8  0x10
-    #else // BITMAP
-  #define cnListPopCntMax8  256 // assert in SearchList8 should be fixed
-    #endif // BITMAP
-#endif // ! defined(cnListPopCntMax8)
-
-// Default cnListPopCntMaxDl1 is 0x10 for cnBitsInD1 = 8.
-#if ! defined(cnListPopCntMaxDl1)
-  #if defined(USE_XX_SW)
-    #  if (cnBitsInD1 == 7)
-      #define cnListPopCntMaxDl1  0x08
-    #elif (cnBitsInD1 == 8)
-      #define cnListPopCntMaxDl1  0x10
-    #elif (cnBitsInD1 == 9)
-      #define cnListPopCntMaxDl1  0x06
-    #elif (cnBitsInD1 <= 11)
-      #define cnListPopCntMaxDl1  0x05
-    #elif (cnBitsInD1 <= 16)
-      #define cnListPopCntMaxDl1  0x04
-    #elif (cnBitsInD1 <= 19)
-      #define cnListPopCntMaxDl1  0x03
-    #elif (cnBitsInD1 <= 29)
-      #define cnListPopCntMaxDl1  0x02
-    #else
-      #define cnListPopCntMaxDl1  0x01
-    #endif // cnBitsInD1
-  #else // defined(USE_XX_SW)
-      #define cnListPopCntMaxDl1  0x10
-  #endif // #else defined(USE_XX_SW)
-#endif // ! defined(cnListPopCntMaxDl1)
-
-#ifndef cnListPopCntMax24
-    #define cnListPopCntMax24  cnListPopCntMax32
-#endif // cnListPopCntMax24
-
+// Default cnListPopCntMax56 is cnListPopCntMax64.
 #ifndef cnListPopCntMax56
-    #define cnListPopCntMax56  cnListPopCntMax64
-#endif // cnListPopCntMax56
+  #define cnListPopCntMax56  cnListPopCntMax64
+#endif // #ifndef cnListPopCntMax56
 
+// Default cnListPopCntMax48 is cnListPopCntMax56.
 #ifndef cnListPopCntMax48
-    #define cnListPopCntMax48  cnListPopCntMax56
-#endif // cnListPopCntMax48
+  #define cnListPopCntMax48  cnListPopCntMax56
+#endif // #ifndef cnListPopCntMax48
 
+// Default cnListPopCntMax40 is cnListPopCntMax48.
 #ifndef cnListPopCntMax40
-    #define cnListPopCntMax40  cnListPopCntMax48
-#endif // cnListPopCntMax40
+  #define cnListPopCntMax40  cnListPopCntMax48
+#endif // #ifndef cnListPopCntMax40
 
-// If we don't support a bitmap for the last digit then the list must
-// be capable of holding all the keys.
+// Default cnListPopCntMax32 is cnListPopCntMax40.
+#ifndef cnListPopCntMax32
+  #define cnListPopCntMax32  cnListPopCntMax40
+#endif // #ifndef cnListPopCntMax32
+
+// Default cnListPopCntMax24 is cnListPopCntMax32.
+#ifndef cnListPopCntMax24
+  #define cnListPopCntMax24  cnListPopCntMax32
+#endif // #ifndef cnListPopCntMax24
+
+// Default cnListPopCntMax16 is cnListPopCntMax24.
+#ifndef cnListPopCntMax16
+  #define cnListPopCntMax16  cnListPopCntMax24
+#endif // #ifndef cnListPopCntMax16
+
+// Default cnListPopCntMax8 is 0x10.
+// An 8-bit bitmap uses only 32-bytes plus malloc overhead.
+#ifndef cnListPopCntMax8
+  #ifdef BITMAP
+    #define cnListPopCntMax8  0x10
+  #else // BITMAP
+    #define cnListPopCntMax8  cnListPopCntMax16 // fix assert in SearchList8
+  #endif // BITMAP
+#endif // #ifndef cnListPopCntMax8
+
+// If we're not using bitmaps then we must have some other way of getting to
+// full pop. The only options are embedded or external list at Dl1 or higher.
 #ifndef BITMAP
-  #if       cnListPopCntMaxDl1 < (1 << cnBitsInD1)
-    #undef  cnListPopCntMaxDl1
-    #define cnListPopCntMaxDl1   (1 << cnBitsInD1)
-  #endif // cnListPopCntMaxDl1 < (1 << cnBitsInD1)
+  #ifdef cnListPopCntMaxDl1
+    #if !defined(EMBED_KEYS) || defined(POP_CNT_MAX_IS_KING)
+      #if (cnListPopCntMaxDl1 < (1 << cnBitsInD1))
+        // It is possible that a higher level list makes Dl1 irrelevant.
+        // If that is the case then why define cnListPopCntMaxDl1 at all?
+        // Work around this error by not defining cnListPopCntMaxDl1.
+        #error (cnListPopCntMaxDl1 < (1 << cnBitsInD1)) with no BITMAP
+      #endif // (cnListPopCntMaxDl1 < (1 << cnBitsInD1))
+    #else // !defined(EMBED_KEYS) || defined(POP_CNT_MAX_IS_KING)
+      // Let's hope EmbeddedListPopCntMax(cnBitsInD1) >= (1 << cnBitsInD1).
+      // Or that we are covered by a higher level list.
+      // Let's check it in Initialize.
+    #endif // #else !defined(EMBED_KEYS) || defined(POP_CNT_MAX_IS_KING)
+  #else // cnListPopCntMaxDl1
+    // Setting cnListPopCntMaxDl1 if we're covered by embedded keys and
+    // !POP_CNT_MAX_IS_KING or by a higher level list does no harm.
+    #define cnListPopCntMaxDl1  (1 << cnBitsInD1)
+  #endif // #else cnListPopCntMaxDl1 < (1 << cnBitsInD1)
 #endif // BITMAP
 
-// cwListPopCntMax is mostly used as a boolean that indicates whether
+// cwListPopCntMax is used only as a boolean that indicates whether
 // or not we are using lists at all; embedded or external.
-// But it is also used to size the temporary buffer used when copying
-// one list to another hence it must be at least as big as the
-// biggest list.
-// 8 is the maximum number of keys we can embed (assuming at least two
-// bits of type info in the link).  Hence the 8 in the expression below.
-#if ! defined(cwListPopCntMax)
 #define MAX(_x, _y)  ((_x) > (_y) ? (_x) : (_y))
-  #if (cnBitsPerWord >= 64)
-#define cwListPopCntMax \
-   MAX(cnListPopCntMax64, \
-   MAX(cnListPopCntMax56, \
-   MAX(cnListPopCntMax48, \
-   MAX(cnListPopCntMax40, \
-       MAX(cnListPopCntMax32, \
-           MAX(cnListPopCntMax16, \
-               MAX(cnListPopCntMax8, 0)))))))
-  #else // (cnBitsPerWord >= 64)
-#define cwListPopCntMax \
-       MAX(cnListPopCntMax32, \
-       MAX(cnListPopCntMax24, \
-           MAX(cnListPopCntMax16, \
-               MAX(cnListPopCntMax8, 0))))
-  #endif // (cnBitsPerWord >= 64)
-#endif // ! defined(cwListPopCntMax)
+#if (cnBitsPerWord >= 64)
+  #define _cnListPopCntMax0 \
+    MAX(cnListPopCntMax64, \
+    MAX(cnListPopCntMax56, \
+    MAX(cnListPopCntMax48, \
+    MAX(cnListPopCntMax40, \
+        MAX(cnListPopCntMax32, \
+            MAX(cnListPopCntMax16, \
+                MAX(cnListPopCntMax8, 0)))))))
+#else // (cnBitsPerWord >= 64)
+  #define _cnListPopCntMax0 \
+    MAX(cnListPopCntMax32, \
+    MAX(cnListPopCntMax24, \
+        MAX(cnListPopCntMax16, \
+            MAX(cnListPopCntMax8, 0))))
+#endif // (cnBitsPerWord >= 64)
+#ifdef cnListPopCntMaxDl1
+  #define _cnListPopCntMax1  MAX(_cnListPopCntMax0, cnListPopCntMaxDl1)
+#else // cnListPopCntMaxDl1
+  #define _cnListPopCntMax1  _cnListPopCntMax0
+#endif // #else cnListPopCntMaxDl1
+#ifdef cnListPopCntMaxDl2
+  #define _cnListPopCntMax2  MAX(_cnListPopCntMax1, cnListPopCntMaxDl2)
+#else // cnListPopCntMaxDl2
+  #define _cnListPopCntMax2  _cnListPopCntMax1
+#endif // #else cnListPopCntMaxDl2
+#ifdef cnListPopCntMaxDl3
+  #define _cnListPopCntMax3  MAX(_cnListPopCntMax2, cnListPopCntMaxDl3)
+#else // cnListPopCntMaxDl3
+  #define _cnListPopCntMax3  _cnListPopCntMax2
+#endif // #else cnListPopCntMaxDl3
+#if defined(EMBED_KEYS) && !defined(POP_CNT_MAX_IS_KING)
+  #define _cnListPopCntMaxEK  MAX(_cnListPopCntMax3, 1)
+#else // defined(EMBED_KEYS && !defined(POP_CNT_MAX_IS_KING)
+  #define _cnListPopCntMaxEK  _cnListPopCntMax3
+#endif // #else defined(EMBED_KEYS && !defined(POP_CNT_MAX_IS_KING)
+#define cwListPopCntMax  _cnListPopCntMaxEK
 
 #define cnBitsLeftAtDl1     (cnBitsInD1)
 

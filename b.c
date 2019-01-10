@@ -6601,7 +6601,9 @@ static void
 Initialize(void)
 {
     // Fine tune anListPopCntMax from cnListPopCntMaxDl*.
+#if defined(cnListPopCntMaxDl1)
     anListPopCntMax[cnBitsInD1] = cnListPopCntMaxDl1;
+#endif // defined(cnListPopCntMaxDl1)
 #if defined(cnListPopCntMaxDl2)
     assert(cnBitsLeftAtDl2 > cnBitsInD1);
     anListPopCntMax[cnBitsLeftAtDl2] = cnListPopCntMaxDl2;
@@ -7785,7 +7787,11 @@ Initialize(void)
 #endif // defined(cnListPopCntMax64)
 #endif // (cnBitsPerWord > 32)
     printf("\n");
+#if defined(cnListPopCntMaxDl1)
     printf("# cnListPopCntMaxDl1 %d\n", cnListPopCntMaxDl1);
+#else // defined(cnListPopCntMaxDl1)
+    printf("# cnListPopCntMaxDl1 n/a\n");
+#endif // #else defined(cnListPopCntMaxDl1)
 #if defined(cnListPopCntMaxDl2)
     printf("# cnListPopCntMaxDl2 %d\n", cnListPopCntMaxDl2);
 #else // defined(cnListPopCntMaxDl2)
