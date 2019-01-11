@@ -1137,7 +1137,7 @@ BitmapWords(int nBLR, Word_t wPopCnt)
 }
 
 #ifdef BITMAP
-// We don't need NewBitmap unless cnBitsLeftAtD1 > LOG(sizeof(Link_t) * 8).
+// We don't need NewBitmap unless (cnBitsLeftAtD1 > cnLogBitsPerLink).
 // Hopefully, the compiler will figure it out and not emit it.
 static Word_t *
 NewBitmap(qp, int nBLR, Word_t wKey, Word_t wPopCnt)
@@ -1276,9 +1276,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
     // bitmap leaf and create a bitmap leaf instead?
   #if defined(CODE_BM_SW)
     assert((nType != T_SWITCH)
-        || (nBL - nBW > (int)LOG(sizeof(Link_t) * 8)));
+        || (nBL - nBW > cnLogBitsPerLink));
   #else // defined(CODE_BM_SW)
-    assert(nBL - nBW > (int)LOG(sizeof(Link_t) * 8));
+    assert(nBL - nBW > cnLogBitsPerLink);
   #endif // defined(CODE_BM_SW)
 #endif // defined(BITMAP) && !defined(ALLOW_EMBEDDED_BITMAP)
 
@@ -2292,17 +2292,17 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
 
 #ifdef BITMAP
     if ((nType == T_BITMAP)
-        || ((nBL < cnBitsPerWord) && (EXP(nBL) <= sizeof(Link_t) * 8)))
+        || ((nBL < cnBitsPerWord) && (nBL <= cnLogBitsPerLink)))
     {
 #if ! defined(USE_XX_SW)
         assert((nType == T_BITMAP) || (nBL == cnBitsInD1));
-        //assert((nType == T_BITMAP) || (nBL <= (int)LOG(sizeof(Link_t) * 8)));
+        //assert((nType == T_BITMAP) || (nBL <= cnLogBitsPerLink));
 #endif // ! defined(USE_XX_SW)
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         if (bDump) {
             assert(nBLArg != cnBitsPerWord);
 
-            if (EXP(cnBitsInD1) > sizeof(Link_t) * 8) {
+            if (cnBitsInD1 > cnLogBitsPerLink) {
                 Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
                 printf(" wr_wPopCnt %3" _fw"u",
                        wPopCnt != 0 ? wPopCnt : EXP(nBL));
@@ -2313,7 +2313,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
         if (bDump) {
             assert(nBLArg != cnBitsPerWord);
 
-            if (EXP(cnBitsInD1) > sizeof(Link_t) * 8) {
+            if (cnBitsInD1 > cnLogBitsPerLink) {
                 printf(" wr_wPrefix " OWx,
                        PWR_wPrefixBL(pwRoot, (Switch_t *)NULL, nBL));
             }
@@ -2323,7 +2323,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
         // If the bitmap is not embedded, then we have more work to do.
         // The test can be done at compile time and will make one the
         // other clauses go away.
-        if (EXP(nBL) > sizeof(Link_t) * 8)
+        if (nBL > cnLogBitsPerLink)
         {
             if ( ! bDump )
             {
@@ -3392,7 +3392,7 @@ InsertCleanup(qp, Word_t wKey)
     int nDL = nBL_to_nDL(nBL);
 
     // Can't disable this one by ALLOW_EMBEDDED_BITMAP.
-    assert(cnBitsInD1 > LOG(sizeof(Link_t) * 8)); // else doesn't work yet
+    assert(cnBitsInD1 > cnLogBitsPerLink); // else doesn't work yet
 
     (void)nDL;
     Word_t wPopCnt;
@@ -4107,9 +4107,9 @@ DoubleIt(qp,
             }
             nBW = pwr_nBW(&wRoot);
             DBGI(printf("# Double nBL %d from nBW %d.\n", nBL, nBW));
-            assert(nBL > (int)LOG(sizeof(Link_t) * 8));
+            assert(nBL > cnLogBitsPerLink);
             nBW += cnBWIncr;
-            if (nBL - nBW <= (int)LOG(sizeof(Link_t) * 8)) {
+            if (nBL - nBW <= cnLogBitsPerLink) {
 // Doubling here would use at least as much memory as a big bitmap.
 // Are we here because the list is full?
 // Is it possible we are here because our words/key is good?
@@ -4352,9 +4352,8 @@ InsertSwitch(qp,
                 nDLNew, nBLNew, nDL, nBL));
 #ifdef BITMAP
     // How did we get here?
-    // I don't think we should get here if
-    // nBLNew <= (int)LOG(sizeof(Link_t) * 8).
-    assert(nBLNew > (int)LOG(sizeof(Link_t) * 8));
+    // I don't think we should get here if (nBLNew <= cnLogBitsPerLink).
+    assert(nBLNew > cnLogBitsPerLink);
 #endif // BITMAP
 
 #if defined(PP_IN_LINK)
@@ -4390,7 +4389,7 @@ InsertSwitch(qp,
 
 #ifdef BITMAP
 #if ! defined(USE_XX_SW)
-    if ((EXP(cnBitsInD1) > sizeof(Link_t) * 8) && (nDLNew == 1)) {
+    if ((cnBitsInD1 > cnLogBitsPerLink) && (nDLNew == 1)) {
         assert(nBL == nBLNew);
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         // NewBitmap changes *pwRoot and we change the Link_t
@@ -4406,7 +4405,7 @@ InsertSwitch(qp,
     else
 #endif // ! defined(USE_XX_SW)
 #else // BITMAP
-    assert((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) || (nDLNew > 1));
+    assert((cnBitsInD1 <= cnLogBitsPerLink) || (nDLNew > 1));
 #endif // BITMAP
     {
         // NewSwitch overwrites *pwRoot which would be a problem for
@@ -5365,8 +5364,8 @@ InsertGuts(qp, Word_t wKey, int nPos
     // nType may be invalid if wRoot is an embedded bitmap.
     // The first test can be done at compile time and might make the
     // InsertAtDl1 go away.
-    if ((EXP(cnBitsInD1) <= sizeof(Link_t) * 8) && (nBL == cnBitsInD1))
-    // ??? (nBL <= (int)LOG(sizeof(Link_t) * 8)) ???
+    if ((cnBitsInD1 <= cnLogBitsPerLink) && (nBL == cnBitsInD1))
+    // ??? (nBL <= cnLogBitsPerLink) ???
     {
         return InsertAtDl1(pwRoot, wKey, nDL, nBL, wRoot);
     }
@@ -5850,7 +5849,7 @@ InsertAtDl1(Word_t *pwRoot, Word_t wKey, int nDL,
 {
     (void)nDL; (void)nBL; (void)wRoot;
 
-    assert(EXP(nBL) <= sizeof(Link_t) * 8);
+    assert(nBL <= cnLogBitsPerLink);
     assert( ! BitIsSet(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL)));
 
     DBGI(printf("SetBit(pwRoot " OWx" wKey " OWx")\n",
@@ -5862,7 +5861,7 @@ InsertAtDl1(Word_t *pwRoot, Word_t wKey, int nDL,
 
     // What about no_unnecessary_prefix?
     // And is this ever necessary since we don't support skip to bitmap?
-    if (EXP(cnBitsInD1) > sizeof(Link_t) * 8) {
+    if (cnBitsInD1 > cnLogBitsPerLink) {
         set_PWR_wPrefix(pwRoot, NULL, nDL, wKey);
     }
 
@@ -6146,13 +6145,13 @@ RemoveGuts(qp, Word_t wKey
 #ifdef BITMAP
 // Could we be more specific in this ifdef, e.g. cnListPopCntMax16?
 #if (cwListPopCntMax != 0)
-    if ((nBL <= (int)LOG(sizeof(Link_t) * 8))
+    if ((nBL <= cnLogBitsPerLink)
   #if defined(SKIP_TO_BITMAP)
         || (nType == T_SKIP_TO_BITMAP)
   #endif // defined(SKIP_TO_BITMAP)
         || (nType == T_BITMAP))
 #else // (cwListPopCntMax != 0)
-    assert((nBL <= (int)LOG(sizeof(Link_t) * 8))
+    assert((nBL <= cnLogBitsPerLink)
   #if defined(SKIP_TO_BITMAP)
         || (nType == T_SKIP_TO_BITMAP)
   #endif // defined(SKIP_TO_BITMAP)
@@ -6515,7 +6514,7 @@ RemoveAtBitmap(qp, Word_t wKey)
 
     DBGX(printf("RemoveAtBitmap\n"));
     // EXP(nBL) is risky because nBL could be cnBitsPerWord
-    if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
+    if (nBL <= cnLogBitsPerLink) {
         ClrBit(pLn, wKey & MSK(nBL));
     } else {
         int nBLR = nBL;
@@ -6675,8 +6674,8 @@ Initialize(void)
     // And, unlike a link that is completely filled with an embedded
     // bitmap, there would be room for a type field.
     // For experimentation?
-    if (EXP(cnBitsLeftAtDl2) <= sizeof(Link_t) * 8) {
-        printf("# Warning: (EXP(cnBitsLeftAtDl2) <= sizeof(Link_t) * 8)"
+    if (cnBitsLeftAtDl2 <= cnLogBitsPerLink) {
+        printf("# Warning: (cnBitsLeftAtDl2 <= cnLogBitsPerLink)"
                  " makes no sense.\n");
         printf("# Maybe increase cnBitsInD[12] or decrease sizeof(Link_t).\n");
         printf("# Or increase cnBitsPerDigit.\n");
@@ -6689,14 +6688,14 @@ Initialize(void)
     // And a skip link to such a bitmap might provide some value?
     // For experimentation?
     // Does JudyL change the situation?
-    else if (EXP(cnBitsInD1) <= sizeof(Link_t) * 8) {
-        printf("# Warning: (EXP(cnBitsInD1) <= sizeof(Link_t) * 8)"
+    else if (cnBitsInD1 <= cnLogBitsPerLink) {
+        printf("# Warning: (cnBitsInD1 <= cnLogBitsPerLink)"
                  " makes no sense.\n");
         printf("# Mabye increase cnBitsInD1 or decrease sizeof(Link_t).\n");
     }
 #if defined(BITMAP) && !defined(ALLOW_EMBEDDED_BITMAP)
-    assert(EXP(cnBitsInD1) > sizeof(Link_t) * 8);
-    assert(EXP(cnBitsLeftAtDl2) > sizeof(Link_t) * 8);
+    assert(cnBitsInD1 > cnLogBitsPerLink);
+    assert(cnBitsLeftAtDl2 > cnLogBitsPerLink);
 #endif // defined(BITMAP) && !defined(ALLOW_EMBEDDED_BITMAP)
 
 // SAVE_PREFIX should be called SAVE_PREFIX_PTR?
@@ -8306,7 +8305,7 @@ NextGuts(Word_t *pwRoot, int nBL,
     Word_t *pwr;
     int nBitNum; (void)nBitNum; // BITMAP
 #ifdef ALLOW_EMBEDDED_BITMAP
-    if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
+    if (nBL <= cnLogBitsPerLink) {
         pwr = pwRoot;
         nBitNum = *pwKey & MSK(cnLogBitsPerWord) & MSK(nBL);
         goto embeddedBitmap;
@@ -9423,7 +9422,7 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
     Word_t *pwr;
     int nBitNum; (void)nBitNum; // BITMAP
 #ifdef ALLOW_EMBEDDED_BITMAP
-    if (nBL <= (int)LOG(sizeof(Link_t) * 8)) {
+    if (nBL <= cnLogBitsPerLink) {
         pwr = pwRoot;
         nBitNum = *pwKey & MSK(cnLogBitsPerWord) & MSK(nBL);
         goto embeddedBitmap;
