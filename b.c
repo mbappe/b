@@ -2201,72 +2201,63 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
     assert(nBL >= cnBitsInD1);
 #endif // ! defined(USE_XX_SW)
 
-    if ( ! bDump )
-    {
-        DBGR(printf("FreeArrayGuts pwR " OWx" wPrefix " OWx
-                    " nBL %d bDump %d\n",
-                    (Word_t)pwRoot, wPrefix, nBL, bDump));
-        DBGR(printf("wRoot " OWx"\n", wRoot));
+    if (!bDump) { DBGR(printf("FreeArrayGuts")); }
+
+    if (bDump) {
+        printf(" nBL %2d", nBL);
+        // Check for zeros in suffix?  Print dots for suffix?
+        // How would we represent a partially significant hex digit?
+        printf(" wPrefix " OWx, wPrefix);
+        printf(" pwRoot " OWx, (Word_t)pwRoot);
+        printf(" wRoot " OWx, wRoot);
+    }
+
+    if (wRoot == WROOT_NULL) {
+        if (bDump) { printf(" WROOT_NULL\n"); }
+        return 0;
+    }
+
+    // Check for embedded bitmap before assuming nType is valid.
+    if (cbEmbeddedBitmap && (nBL == cnBitsInD1)) {
+        if (bDump) {
+            if (cnBitsInD1 > cnLogBitsPerWord) {
+                printf(" nWords %4" _fw"d", EXP(nBL - cnLogBitsPerWord));
+                for (Word_t ww = 0; ww < EXP(nBL - cnLogBitsPerWord); ++ww) {
+                    if ((ww % 8) == 0) { printf("\n"); }
+                    printf(" " OWx,
+                           ((Word_t*)STRUCT_OF(pwRoot, Link_t, ln_wRoot))[ww]);
+                }
+            }
+            printf("\n");
+        }
+        return 0;
     }
 
 #if defined(NO_TYPE_IN_XX_SW)
+    assert(WROOT_NULL == ZERO_POP_MAGIC);
     if (nBL < nDL_to_nBL(2)) {
-        if (wRoot == ZERO_POP_MAGIC) { return 0; }
   #if defined(HANDLE_BLOWOUTS)
         if ((wRoot & BLOWOUT_MASK(nBL)) == ZERO_POP_MAGIC) {
-            if (bDump) { printf(" blowout\n"); return 0; }
+            if (bDump) { printf(" BLOWOUT\n"); }
             assert(0); // not yet
         }
   #endif // defined(HANDLE_BLOWOUTS)
-
-        //DBG(printf("FAG: goto embeddedKeys.\n"));
-        if (bDump) {
-            printf(" wPrefix " OWx, wPrefix);
-            printf(" nBL %2d", nBL);
-            printf(" pwRoot " OWx, (Word_t)pwRoot);
-            printf(" wr " OWx, wRoot);
-            goto embeddedKeys;
-        }
-        return 0;
+        goto embeddedKeys;
     }
 #endif // defined(NO_TYPE_IN_XX_SW)
 
-    if (wRoot == WROOT_NULL)
-    {
-#if defined(BM_SW_FOR_REAL)
-        if (bDump)
-        {
-            printf(" wPrefix " OWx, wPrefix);
-            printf(" nBL %2d", nBL);
-            printf(" pwRoot " OWx, (Word_t)pwRoot);
-            printf(" wr " OWx" WROOT_NULL", wRoot);
-            printf("\n");
-        }
-#endif // defined(BM_SW_FOR_REAL)
-        return 0;
-    }
-
-    if (bDump)
-    {
-        // should enhance this to check for zeros in suffix and to print
-        // dots for suffix.
-        printf(" wPrefix " OWx, wPrefix);
-        printf(" nBL %2d", nBL);
-        printf(" pwRoot " OWx, (Word_t)pwRoot);
-        printf(" wr " OWx, wRoot);
-    }
-
 #if defined(SKIP_TO_BITMAP)
     if (nType == T_SKIP_TO_BITMAP) {
+        if (bDump) { printf(" SKIP_TO_BITMAP"); }
         int nBLR = GetBLR(pwRoot, nBL);
         Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR);
         if (bDump) {
+            printf(" nBLR %2d", nBLR);
             printf(" wPrefixPop " OWx, *(pwr + EXP(nBLR - cnLogBitsPerWord)));
             if (wPopCnt == 0) {
                 wPopCnt = EXP(nBLR);
             }
             printf(" w_wPopCnt %" _fw"d", wPopCnt);
-            printf(" skip to bitmap\n");
             printf(" nWords %4" _fw"d", EXP(nBLR - cnLogBitsPerWord));
             for (Word_t ww = 0; (ww < EXP(nBLR - cnLogBitsPerWord)); ww++) {
                 if ((ww % 8) == 0) {
@@ -2291,13 +2282,8 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
 #endif // defined(SKIP_TO_BITMAP)
 
 #ifdef BITMAP
-    if ((nType == T_BITMAP)
-        || ((nBL < cnBitsPerWord) && (nBL <= cnLogBitsPerLink)))
-    {
-#if ! defined(USE_XX_SW)
-        assert((nType == T_BITMAP) || (nBL == cnBitsInD1));
-        //assert((nType == T_BITMAP) || (nBL <= cnLogBitsPerLink));
-#endif // ! defined(USE_XX_SW)
+    if (nType == T_BITMAP) {
+        if (bDump) { printf(" BITMAP"); }
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         if (bDump) {
             assert(nBLArg != cnBitsPerWord);
@@ -2323,70 +2309,43 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
         // If the bitmap is not embedded, then we have more work to do.
         // The test can be done at compile time and will make one the
         // other clauses go away.
-        if (nBL > cnLogBitsPerLink)
-        {
-            if ( ! bDump )
-            {
-                assert(nBL != cnBitsPerWord); // wPopCntTotal, zeroLink
-                Word_t wPopCnt = gwBitmapPopCnt(qy, nBL);
-                wBytes = OldBitmap(pwr, nBL, wPopCnt);
-                *pwRoot = WROOT_NULL;
-                return wBytes;
-            }
+        if (!bDump) {
+            assert(nBL != cnBitsPerWord); // wPopCntTotal, zeroLink
+            Word_t wPopCnt = gwBitmapPopCnt(qy, nBL);
+            wBytes = OldBitmap(pwr, nBL, wPopCnt);
+            *pwRoot = WROOT_NULL;
+            return wBytes;
+        }
 
-            printf(" nWords %4" _fw"d", EXP(nBL - cnLogBitsPerWord));
-            printf(" wPopCnt %5zd", gwBitmapPopCnt(qy, nBL));
-            Word_t wPopCntL = 0;
-            for (Word_t ww = 0; (ww < EXP(nBL - cnLogBitsPerWord)); ww++) {
-                wPopCntL += __builtin_popcountll(pwr[ww]);
-                if ((ww != 0) && (ww % 4) == 0) {
-                    printf(" %5zd", wPopCntL);
-                    wPopCntL = 0;
-                }
-                if ((ww % 8) == 0) {
-                    printf("\n");
-                }
-                printf(" 0x%016zx", pwr[ww]);
+        printf(" nWords %4" _fw"d", EXP(nBL - cnLogBitsPerWord));
+        printf(" wPopCnt %5zd", gwBitmapPopCnt(qy, nBL));
+        printf(" PP 0x%016zx", pwr[EXP(nBL - cnLogBitsPerWord)]);
+        Word_t wPopCntL = 0;
+        for (Word_t ww = 0; (ww < EXP(nBL - cnLogBitsPerWord)); ww++) {
+            wPopCntL += __builtin_popcountll(pwr[ww]);
+            if ((ww != 0) && (ww % 4) == 0) {
+                printf(" %5zd", wPopCntL);
+                wPopCntL = 0;
             }
-            printf("\n PP 0x%016zx", pwr[EXP(nBL - cnLogBitsPerWord)]);
-            printf("\n");
+            if ((ww % 8) == 0) {
+                printf("\n");
+            }
+            printf(" 0x%016zx", pwr[ww]);
+        }
+        printf("\n");
   #ifdef B_JUDYL
-            for (int ww = 0;
-                 ww < (int)((wRoot & EXP(cnLsbBmUncompressed))
-                         ? EXP(nBL) : gwBitmapPopCnt(qy, nBL));
-                 ++ww)
-            {
-                if ((ww != 0) && (ww % 4) == 0) {
-                    printf("\n");
-                }
-                printf(" 0x%016zx", gpwBitmapValues(qy, nBL)[ww]);
+        for (int ww = 0;
+             ww < (int)((wRoot & EXP(cnLsbBmUncompressed))
+                     ? EXP(nBL) : gwBitmapPopCnt(qy, nBL));
+             ++ww)
+        {
+            if ((ww != 0) && (ww % 4) == 0) {
+                printf("\n");
             }
-            printf("\n");
+            printf(" 0x%016zx", gpwBitmapValues(qy, nBL)[ww]);
+        }
+        printf("\n");
   #endif // B_JUDYL
-        }
-        else
-        {
-            if (bDump) {
-                if (cnBitsInD1 > cnLogBitsPerWord) {
-                    printf(" nWords %4" _fw"d", EXP(nBL - cnLogBitsPerWord));
-                    for (Word_t ww = 0;
-                         (ww < EXP(nBL - cnLogBitsPerWord)); ww++)
-                    {
-                        if ((ww % 8) == 0) { printf("\n"); }
-                        printf(" " OWx,
-                               ((Word_t *)
-                                   STRUCT_OF(pwRoot, Link_t, ln_wRoot))[ww]);
-                    }
-                } else {
-                    printf(" wr " OWx, wRoot);
-                }
-            }
-        }
-
-        if (bDump)
-        {
-            printf("\n");
-        }
 
         assert(nBL != cnBitsPerWord); // wPopCntTotal, zeroLink
         return 0;
@@ -2406,27 +2365,15 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
 
 #if defined(EMBED_KEYS)
 
-        if (nType == T_EMBEDDED_KEYS)
-        {
-            assert(wRoot != WROOT_NULL);
-            int nPopCntMax = EmbeddedListPopCntMax(nBL); (void)nPopCntMax;
-            assert(nPopCntMax != 0);
+        if (nType == T_EMBEDDED_KEYS) {
             goto embeddedKeys;
 embeddedKeys:;
+            if (!bDump) { return 0; }
+
+            printf(" EMBEDDED_KEYS");
             wPopCnt = wr_nPopCnt(wRoot, nBL);
             assert(wPopCnt != 0);
-
-            if (!bDump) {
-#if defined(NO_TYPE_IN_XX_SW)
-                assert(nBL >= nDL_to_nBL(2));
-#endif // defined(NO_TYPE_IN_XX_SW)
-                // This OldList is a no-op and will return zero if
-                // the key(s) is(are) embedded.
-                assert(nBL != cnBitsPerWord); // wPopCntTotal, zeroLink
-                return OldList(pwr, /* wPopCnt */ 1, nBL, nType);
-            }
-
-            printf(" tp_wPopCnt %3d", (int)wPopCnt);
+            printf(" wr_nPopCnt %3d", (int)wPopCnt);
 
 #if defined(PP_IN_LINK)
             assert(nBL == nBLArg);
@@ -2796,8 +2743,8 @@ embeddedKeys:;
                       && bBmSw
                       && (wr_nType(pLinks[ww].ln_wRoot) == T_EMBEDDED_KEYS))
                 {
-                    printf(" wPrefix " OWx, wPrefix | (nn << nBL));
                     printf(" nBL %2d", nBL);
+                    printf(" wPrefix " OWx, wPrefix | (nn << nBL));
                     printf(" pwRoot " OWx, (Word_t)&pLinks[ww].ln_wRoot);
                     printf(" wr " OWx, pLinks[ww].ln_wRoot);
                     printf(" 0x%016" _fw"x",
