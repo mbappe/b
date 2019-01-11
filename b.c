@@ -1271,16 +1271,9 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(CODE_XX_SW)
     Word_t wIndexCnt = EXP(nBW);
 
-#if defined(BITMAP) && !defined(ALLOW_EMBEDDED_BITMAP)
-    // Should we check here to see if the new switch would be equivalant to a
-    // bitmap leaf and create a bitmap leaf instead?
-  #if defined(CODE_BM_SW)
-    assert((nType != T_SWITCH)
-        || (nBL - nBW > cnLogBitsPerLink));
-  #else // defined(CODE_BM_SW)
-    assert(nBL - nBW > cnLogBitsPerLink);
-  #endif // defined(CODE_BM_SW)
-#endif // defined(BITMAP) && !defined(ALLOW_EMBEDDED_BITMAP)
+#ifndef USE_XX_SW_ONLY_AT_DL2
+    assert(nBL - nBW >= cnBitsInD1);
+#endif // #ifndef USE_XX_SW_ONLY_AT_DL2
 
 #if defined(CODE_BM_SW)
     if (nType == T_BM_SW) {
@@ -2043,14 +2036,10 @@ OldSwitch(Word_t *pwRoot, int nBL,
 static Word_t
 GetPopCnt(Word_t *pwRoot, int nBL)
 {
-#ifdef ALLOW_EMBEDDED_BITMAP
-    if (nBL <= cnLogBitsPerLink) {
+    if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
         assert(nBL <= cnLogBitsPerWord); // multiword link not implemented yet
         return __builtin_popcountll(*pwRoot);
     }
-#elif defined(BITMAP) // ALLOW_EMBEDDED_BITMAP
-    assert(nBL > cnLogBitsPerLink);
-#endif // ALLOW_EMBEDDED_BITMAP elif defined(BITMAP)
 
     int nBLR = GetBLR(pwRoot, nBL); // handles skip -- or not
 
@@ -3235,14 +3224,6 @@ CopyWithInsert8(qp, uint8_t *pSrc,
 #endif // (cwListPopCntMax != 0)
 
 #ifdef B_JUDYL
-static Word_t *
-#else // B_JUDYL
-static Status_t
-#endif // B_JUDYL
-InsertAtDl1(Word_t *pwRoot, Word_t wKey, int nDL,
-            int nBL, Word_t wRoot);
-
-#ifdef B_JUDYL
 Word_t *
 #else // B_JUDYL
 Status_t
@@ -3338,9 +3319,6 @@ InsertCleanup(qp, Word_t wKey)
 #if (cn2dBmMaxWpkPercent != 0) // conversion to big bitmap enabled
     int nDL = nBL_to_nDL(nBL);
 
-    // Can't disable this one by ALLOW_EMBEDDED_BITMAP.
-    assert(cnBitsInD1 > cnLogBitsPerLink); // else doesn't work yet
-
     (void)nDL;
     Word_t wPopCnt;
     if ((nBL == nDL_to_nBL(2))
@@ -3369,6 +3347,12 @@ InsertCleanup(qp, Word_t wKey)
                 > (EXP(nBL - cnLogBitsPerWord) * 100)))
     {
         DBGI(printf("Converting BM leaf.\n"));
+
+        // Can't disable this one by ALLOW_EMBEDDED_BITMAP.
+        // The code doesn't work yet.
+        assert((cnBitsInD1 > cnLogBitsPerLink) || !cbEmbeddedBitmap);
+        //assert((cnBitsInD2 > cnLogBitsPerLink) || !cbEmbeddedBitmap);
+
         //Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord);
 #if defined(SKIP_LINKS)
         assert( ! tp_bIsSkip(nType) );
@@ -4300,7 +4284,7 @@ InsertSwitch(qp,
 #ifdef BITMAP
     // How did we get here?
     // I don't think we should get here if (nBLNew <= cnLogBitsPerLink).
-    assert(nBLNew > cnLogBitsPerLink);
+    assert((nBLNew > cnLogBitsPerLink) || !cbEmbeddedBitmap);
 #endif // BITMAP
 
 #if defined(PP_IN_LINK)
@@ -4327,34 +4311,44 @@ InsertSwitch(qp,
         }
     }
 #endif // ! defined(LVL_IN_SW) && ! defined(LVL_IN_WR_HB)
-#else // defined(SKIP_LINKS)
-    // I don't remember why this assertion was here.
-    // But it blows and the code seems to do ok with it
-    // commented out.
-    // assert(nDLNew > 1);
 #endif // defined(SKIP_LINKS)
 
 #ifdef BITMAP
-#if ! defined(USE_XX_SW)
-    if ((cnBitsInD1 > cnLogBitsPerLink) && (nDLNew == 1)) {
+  #ifndef B_JUDYL
+    // If the proposed switch would be big enough hold a bitmap covering
+    // nBLNew, then we should create a bitmap,
+    // i.e. (nBLNew - nBW) <= cnLogBitsPerLink.
+  #endif // B_JUDYL
+      #ifdef USE_XX_SW_ONLY_AT_DL2
+    // t_bitmap in Insert1 can't handle a bitmap at (nBL != cnBitsLeftAtD2)
+    // for USE_XX_SW_ONLY_AT_DL2 because we don't want to have to test for it.
+    // We expect that once (nBL == cnBitsLeftAtDl2) we just keep doubling
+    // until (nBL == cnLogBitsPerLink).
+      #else // USE_XX_SW_ONLY_AT_DL2
+    if ((nDLNew == 1) && !cbEmbeddedBitmap)
+    {
         assert(nBL == nBLNew);
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+          #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         // NewBitmap changes *pwRoot and we change the Link_t
         // containing it on return from NewBitmap.
         // We need to preserve the Link_t for subsequent InsertAll.
         link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+          #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         NewBitmap(qy, nBLNew, wKey, /* wPopCnt */ 0);
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+          #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLNew, 0);
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+          #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     }
     else
-#endif // ! defined(USE_XX_SW)
-#else // BITMAP
-    assert((cnBitsInD1 <= cnLogBitsPerLink) || (nDLNew > 1));
+      #endif // #else USE_XX_SW_ONLY_AT_DL2
 #endif // BITMAP
     {
+#ifndef USE_XX_SW_ONLY_AT_DL2
+        // When would a switch at nDLNew == 1 make any sense?
+        // A bitmap switch for B_JUDYL with the link containing the value?
+        assert(nDLNew > 1);
+#endif // #ifndef USE_XX_SW_ONLY_AT_DL2
+
         // NewSwitch overwrites *pwRoot which would be a problem for
         // embedded keys.
         // Unless we've inflated them out.  Which we have.
@@ -4484,6 +4478,11 @@ InsertSwitch(qp,
     // But wRoot, nType, pwr, nBLNew and nBL still all apply
     // to the tree whose keys must be reinserted.
 #if defined(USE_XX_SW)
+// Hmm. pLnUp was created to handle NO_TYPE_IN_XX_SW.
+// Why would we test it for a different case?
+// If pLn == pLnUp does it mean we backed up?
+// Do we use this during doubling?
+    assert(pLn != pLnUp);
     if (pLn == pLnUp) {
 //insertAll:;
         // nBW is for the new tree.
@@ -4532,7 +4531,7 @@ InsertSwitch(qp,
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         {
             // *pwRoot now points to a switch
-            InsertAll(&wRoot, nBL, wKey, pwRoot, nBL);
+            InsertAll(/* old */ &wRoot, /* old */ nBL, wKey, pwRoot, nBL);
         }
     }
 
@@ -4916,6 +4915,14 @@ InsertAtList(qp,
                 }
             }
         }
+// We get here only if list is not full.
+// And here we check if embedded list is full?
+// The earlier requirement that the list is full inhibits us
+// from taking this opportunity to double instead of splay?
+// Do we need anListPopCntMax to be bigger for this case?
+// Or ifdef USE_XX_SW_ONLY_AT_DL2 in the above list is full test?
+// I'm not a fan of putting the list is full and needs to double
+// case in with the code for handling the list is not full case.
         if (nBL < nDL_to_nBL(2)) {
   #if defined(EMBED_KEYS)
             if ((int)wPopCnt >= nEmbeddedListPopCntMax)
@@ -5307,15 +5314,15 @@ InsertGuts(qp, Word_t wKey, int nPos
 #endif // defined(NO_TYPE_IN_XX_SW)
 
 #ifdef BITMAP
+  #ifndef B_JUDYL
+    // Embedded bitmap is not implemented for B_JUDYL yet.
     // Check to see if we're at the bottom before checking nType since
     // nType may be invalid if wRoot is an embedded bitmap.
-    // The first test can be done at compile time and might make the
-    // InsertAtDl1 go away.
-    if ((cnBitsInD1 <= cnLogBitsPerLink) && (nBL == cnBitsInD1))
-    // ??? (nBL <= cnLogBitsPerLink) ???
-    {
-        return InsertAtDl1(pwRoot, wKey, nDL, nBL, wRoot);
+    if (cbEmbeddedBitmap && (nBL == cnBitsInD1)) {
+        SetBit(pLn, wKey & MSK(nBL)); // Insert into embedded bitmap.
+        return Success;
     }
+  #endif // #ifndef B_JUDYL
 
     // Shouldn't we be checking for nDL <= 2 for USE_XX_SW_ONLY_AT_DL2
     // before testing any type values? Nope. USE_XX_SW_ONLY_AT_DL2 does
@@ -5786,41 +5793,6 @@ done:;
 #endif // defined(EMBED_KEYS)
 #endif // (cwListPopCntMax != 0)
 
-#ifdef B_JUDYL
-static Word_t*
-#else // B_JUDYL
-static Status_t
-#endif // B_JUDYL
-InsertAtDl1(Word_t *pwRoot, Word_t wKey, int nDL,
-            int nBL, Word_t wRoot)
-{
-    (void)nDL; (void)nBL; (void)wRoot;
-
-    assert(nBL <= cnLogBitsPerLink);
-    assert( ! BitIsSet(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL)));
-
-    DBGI(printf("SetBit(pwRoot " OWx" wKey " OWx")\n",
-                    (Word_t)pwRoot, wKey & MSK(nBL)));
-
-    SetBit(STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey & MSK(nBL));
-
-#if defined(PP_IN_LINK)
-
-    // What about no_unnecessary_prefix?
-    // And is this ever necessary since we don't support skip to bitmap?
-    if (cnBitsInD1 > cnLogBitsPerLink) {
-        set_PWR_wPrefix(pwRoot, NULL, nDL, wKey);
-    }
-
-#endif // defined(PP_IN_LINK)
-
-#ifdef B_JUDYL
-    return NULL;
-#else // B_JUDYL
-    return Success;
-#endif // B_JUDYL
-}
-
 #ifdef BITMAP
 
 // InsertAtBitmap is for a bitmap that is not at the bottom.
@@ -5870,7 +5842,7 @@ InsertAtBitmap(qp, Word_t wKey)
 
     assert( ! BitIsSet(pwr, wKey & MSK(nBLR)) );
 
-    DBGI(printf("SetBit(pwr " OWx" wKey " OWx") pwRoot %p\n",
+    DBGI(printf("IAB SetBit(pwr " OWx" wKey " OWx") pwRoot %p\n",
                 (Word_t)pwr, wKey & MSK(nBLR), (void *)pwRoot));
 
     // Mask to convert EXP(nBLR) back to 0 for newly created bitmap.
@@ -6090,20 +6062,20 @@ RemoveGuts(qp, Word_t wKey
 #endif // defined(NO_TYPE_IN_XX_SW)
 
 #ifdef BITMAP
-// Could we be more specific in this ifdef, e.g. cnListPopCntMax16?
-#if (cwListPopCntMax != 0)
-    if ((nBL <= cnLogBitsPerLink)
-  #if defined(SKIP_TO_BITMAP)
+  // Could we be more specific in this ifdef, e.g. cnListPopCntMax16?
+  #if (cwListPopCntMax != 0)
+    if ((cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink))
+      #if defined(SKIP_TO_BITMAP)
         || (nType == T_SKIP_TO_BITMAP)
-  #endif // defined(SKIP_TO_BITMAP)
+      #endif // defined(SKIP_TO_BITMAP)
         || (nType == T_BITMAP))
-#else // (cwListPopCntMax != 0)
-    assert((nBL <= cnLogBitsPerLink)
-  #if defined(SKIP_TO_BITMAP)
+  #else // (cwListPopCntMax != 0)
+    assert((cbEmbeddedBitmap && (nBL <= cnLogBitsInLink))
+      #if defined(SKIP_TO_BITMAP)
         || (nType == T_SKIP_TO_BITMAP)
-  #endif // defined(SKIP_TO_BITMAP)
+      #endif // defined(SKIP_TO_BITMAP)
         || (nType == T_BITMAP));
-#endif // (cwListPopCntMax != 0)
+  #endif // (cwListPopCntMax != 0)
     {
         return RemoveAtBitmap(qy, wKey);
     }
@@ -6461,7 +6433,7 @@ RemoveAtBitmap(qp, Word_t wKey)
 
     DBGX(printf("RemoveAtBitmap\n"));
     // EXP(nBL) is risky because nBL could be cnBitsPerWord
-    if (nBL <= cnLogBitsPerLink) {
+    if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
         ClrBit(pLn, wKey & MSK(nBL));
     } else {
         int nBLR = nBL;
@@ -6545,6 +6517,11 @@ static void
 Initialize(void)
 {
     // Fine tune anListPopCntMax from cnListPopCntMaxDl*.
+    // I wonder if we should apply cnListPopCntMaxDl* to more values of nBL.
+    // For example, apply cnListPopCntMaxDl1 or cnListPopCntMaxDl2 for
+    // (cnBitsInD1 < nBL <= cnListPopCntMaxDl2).
+    // And/or, if COMPRESS_LISTS, apply cnListPopCntMaxDlx to all lists with
+    // the same key size as that of nBL == cnBitsLeftAtDlx.
 #if defined(cnListPopCntMaxDl1)
     anListPopCntMax[cnBitsInD1] = cnListPopCntMaxDl1;
 #endif // defined(cnListPopCntMaxDl1)
@@ -6640,10 +6617,6 @@ Initialize(void)
                  " makes no sense.\n");
         printf("# Mabye increase cnBitsInD1 or decrease sizeof(Link_t).\n");
     }
-#if defined(BITMAP) && !defined(ALLOW_EMBEDDED_BITMAP)
-    assert(cnBitsInD1 > cnLogBitsPerLink);
-    assert(cnBitsLeftAtDl2 > cnLogBitsPerLink);
-#endif // defined(BITMAP) && !defined(ALLOW_EMBEDDED_BITMAP)
 
 // SAVE_PREFIX should be called SAVE_PREFIX_PTR?
 #if defined(SAVE_PREFIX)
@@ -8402,7 +8375,7 @@ t_list:;
             //A(0); // check -B16 -S1
             if (bPrev) {
                 // A(0); // -DUSE_XX_SW_ONLY_AT_DL2
-                // A(0); // b -B64 -1v -S1 -s0x1000000
+                // A(0); // b -B64 -1v -S1 -s0x1000000 
                 return wSkip + 1;
             } else {
                 //A(0); -B16 -S1
