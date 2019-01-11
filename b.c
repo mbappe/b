@@ -8658,7 +8658,8 @@ t_switch:;
         if (wPrefix > (*pwKey & ~MSK(nBLR))) {
             //A(0); // check -B16 -S1
             if (bPrev) {
-                A(0); // UNTESTED - Our test skip links have wPrefix == 0?
+                // A(0); // -DUSE_XX_SW_ONLY_AT_DL2 -DcnListPopCntMax64=1
+                // A(0); // b -W0 -Llv -n1e3 -S1 -s0x1000000
                 return wSkip + 1;
             } else {
                 //A(0); -B16 -S1
@@ -8983,7 +8984,9 @@ BmSwGetNextIndex:
         if (wPrefix > (*pwKey & ~MSK(nBLR))) {
             //A(0); // check -B16 -S1
             if (bPrev) {
-                A(0); // UNTESTED - Our test skip links have wPrefix == 0?
+                // A(0); // -DUSE_XX_SW_ONLY_AT_DL2 -DcnBitsPerDigit=2
+                // A(0); // -DcnBitsInD1=6 -DcnListPopCntMax64=1
+                // A(0); // b -W0 -1lv -n1e3 -S1 -s0x1000000
                 return wSkip + 1;
             } else {
                 //A(0); -B16 -S1
@@ -9487,18 +9490,20 @@ t_list:;
             return Success;
         }
         assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
+        nBLPrev = nBL;
         nBL = nBLR;
     }
       #endif // defined(SKIP_TO_BITMAP)
     case T_BITMAP:; {
-        nBitNum = *pwKey & MSK(cnLogBitsPerWord);
-        goto embeddedBitmap;
-embeddedBitmap:;
         if ((wr_nType(WROOT_NULL) == T_BITMAP) && (wRoot == WROOT_NULL)) {
             return Success;
         }
+        nBitNum = *pwKey & MSK(cnLogBitsPerWord);
+        goto embeddedBitmap;
+embeddedBitmap:;
         // skip over the bitmap if it is full pop
         if (GetPopCnt(pwRoot, nBL) == EXP(nBL)) {
+            assert(nBL == nBLPrev); // skip to bitmap
             return Failure;
         }
         int nWordNum = (*pwKey & MSK(nBL)) >> cnLogBitsPerWord;
@@ -9630,30 +9635,40 @@ t_switch:;
             }
             if (bPrev) {
                 if (wIndex-- <= 0) {
-                    //printf("no links left in switch\n");
-                    //printf("nBL %d nBLPrev %d *pwKey 0x%zx\n",
-                    //        nBL, nBLPrev, *pwKey);
-                    if (nBL != nBLPrev) {
+                    // No links left in switch.
+                    // If we skipped all the way from the top to get to this
+                    // switch and wPrefix != 0, then we have a winner.
+                    if ((nBLPrev == cnBitsPerWord) && (wPrefix != 0)) {
+                        // A(0); // b -1v -S1 -s65536
                         *pwKey -= EXP(nBL);
+                        *pwKey |= MSK(nBL);
                         return Success;
                     }
+                    // A(0); // b -1v -S1
                     return Failure;
                 }
+                // A(0); // b -1v -S1
+                // set all bits in suffix; index and prefix are done later
                 *pwKey = MSK(nBL - nBits); // suffix
             } else {
                 if (++wIndex >= EXP(nBits)) {
-                    //printf("no links left in switch\n");
-                    //printf("nBL %d nBLPrev %d *pwKey 0x%zx\n",
-                    //        nBL, nBLPrev, *pwKey);
-                    // if we skipped to get here and we skipped something
-                    // other than -1, then we have a winner
-                    if (nBL != nBLPrev) {
-                        //A(0); // b -W0 -1lv -S1 -s65534 -B16
+                    // No links left in switch.
+                    // If we skipped all the way from the top to get to this
+                    // switch and wPrefix != (-1 << nBL) then we have a winner.
+                    // A(0); // b -1v -S1
+                    if ((nBLPrev == cnBitsPerWord)
+                        && (wPrefix != ((Word_t)-1 << nBL)))
+                    {
+                        // A(0); // b -1v -S-1 -s0xffffff
                         *pwKey += EXP(nBL);
+                        *pwKey &= ~MSK(nBL);
                         return Success;
                     }
+                    // A(0); // b -1v -S1
                     return Failure;
                 }
+                // A(0); // b -1v -S1
+                // set all bits in suffix; index and prefix are done later
                 *pwKey = 0; // suffix
             }
             *pwKey |= wPrefix + (wIndex << (nBL - nBits));
@@ -9705,8 +9720,9 @@ t_switch:;
                 //A(0); // check -B17 -S1
                 if (wIndex-- <= 0) {
                     //A(0); // check -B17 -S1
-                    if (nBL != nBLPrev) {
+                    if ((nBLPrev = cnBitsPerWord) && (wPrefix != 0)) {
                         *pwKey -= EXP(nBL);
+                        *pwKey |= MSK(nBL);
                         return Success;
                     }
                     return Failure;
@@ -9717,8 +9733,11 @@ t_switch:;
                 //A(0); // check -B17 -S1
                 if (++wIndex >= EXP(nBits)) {
                     //A(0); // check -B17 (with SKIP_TO_BM_SW)
-                    if (nBL != nBLPrev) {
+                    if ((nBLPrev == cnBitsPerWord)
+                        && (wPrefix != ((Word_t)-1 << nBL)))
+                    {
                         *pwKey += EXP(nBL);
+                        *pwKey &= ~MSK(nBL);
                         return Success;
                     }
                     return Failure;
@@ -9760,8 +9779,9 @@ t_switch:;
             }
             if (bPrev) {
                 if (wIndex-- <= 0) {
-                    if (nBL != nBLPrev) {
-                        *pwKey += EXP(nBL);
+                    if ((nBLPrev = cnBitsPerWord) && (wPrefix != 0)) {
+                        *pwKey -= EXP(nBL);
+                        *pwKey |= MSK(nBL);
                         return Success;
                     }
                     return Failure;
@@ -9769,8 +9789,11 @@ t_switch:;
                 *pwKey = MSK(nBL - nBits); // suffix
             } else {
                 if (++wIndex >= EXP(nBits)) {
-                    if (nBL != nBLPrev) {
+                    if ((nBLPrev == cnBitsPerWord)
+                        && (wPrefix != ((Word_t)-1 << nBL)))
+                    {
                         *pwKey += EXP(nBL);
+                        *pwKey &= ~MSK(nBL);
                         return Success;
                     }
                     return Failure;
