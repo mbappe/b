@@ -234,10 +234,17 @@ CXXFLAGS =         $(CXXSTDFLAG) $(MFLAGS) $(CXXWFLAGS) $(OFLAGS) -I.
 # TIME_DEFINES += -DJUDYA
 
 # Default is -DRAMMETRICS.
-# Use NO_RAMMETRICS=<anything> to get -URAMMETRICS.
-ifeq "$(NO_RAMMETRICS)" ""
+# Use NO_RM=<anything> to get -URAMMETRICS.
+ifeq "$(NO_RM)" ""
     JUDY_DEFINES += -DRAMMETRICS
 endif
+
+# Default is -DSEARCHMETRICS.
+# Use NO_SM=<anything> to get -USEARCHMETRICS.
+ifeq "$(NO_SM)" ""
+    JUDY_DEFINES += -DSEARCHMETRICS
+endif
+
 
 # Put cmdline DEFINES after default defines so defaults can be overridden.
 MAKE_DEFINES = $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
