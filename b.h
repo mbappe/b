@@ -2493,10 +2493,16 @@ typedef struct {
 
 #define cnLogBitsPerLink  ((int)LOG(sizeof(Link_t)) + cnLogBitsPerByte)
 
-#ifdef ALLOW_EMBEDDED_BITMAP
-#define cbEmbeddedBitmap  (cnBitsInD1 <= cnLogBitsPerLink)
-#else // ALLOW_EMBEDDED_BITMAP
-#define cbEmbeddedBitmap  (0)
+#ifdef USE_XX_SW_ONLY_AT_DL2
+  #ifndef ALLOW_EMBEDDED_BITMAP
+    #error USE_XX_ONLY_AT_DL2 requires ALLOW_EMBEDDED_BITMAP
+  #endif // #ifndef ALLOW_EMBEDDED_BITMAP
+  #define cbEmbeddedBitmap  (cnBitsInD1 <= cnLogBitsPerLink)
+  // To do: #define cbEmbeddedBitmap  1
+#elif defined(ALLOW_EMBEDDED_BITMAP)
+  #define cbEmbeddedBitmap  (cnBitsInD1 <= cnLogBitsPerLink)
+#else // #ifdef USE_XX_SW_ONLY_AT_DL2 #elif defined(ALLOW_EMBEDDED_BITMAP)
+  #define cbEmbeddedBitmap  (0)
 #endif // ALLOW_EMBEDDED_BITMAP
 
 // Get the width of the branch in bits.

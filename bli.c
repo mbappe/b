@@ -66,11 +66,20 @@ CountSw(qp,
         Word_t wPopCntLoop;
         DBGC(printf("ww " OWx" wRootLoop " Owx"\n", ww, wRootLoop));
         if (cbEmbeddedBitmap && (nBLLoop <= cnLogBitsPerLink)) {
-            assert(nBLLoop <= cnLogBitsPerWord); // for now
-            wPopCntLoop
-                = __builtin_popcountll(wRootLoop
-                    & ((nBLLoop >= cnLogBitsPerWord)
-                        ? (Word_t)-1 : MSK(EXP(nBLLoop))));
+            if (nBLLoop <= cnLogBitsPerWord) {
+                wPopCntLoop
+                    = __builtin_popcountll(wRootLoop
+// Is this mask really necessary? Or can we count on the bits being zero?
+                        & ((nBLLoop >= cnLogBitsPerWord)
+                            ? (Word_t)-1 : MSK(EXP(nBLLoop))));
+            } else {
+                Word_t *pwLnLoop = (Word_t*)pLnLoop;
+                wPopCntLoop = 0;
+                for (int i = 0; i < (int)EXP(nBLLoop - cnLogBitsPerWord); ++i)
+                {
+                    wPopCntLoop += __builtin_popcountll(pwLnLoop[i]);
+                }
+            }
             wPopCnt += wPopCntLoop;
             DBGC(printf("embedded bitmap wPopCntLoop " OWx" wPopCnt " OWx"\n",
                         wPopCntLoop, wPopCnt));
@@ -1975,7 +1984,6 @@ t_skip_to_bitmap:;
 t_bitmap:;
   #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
-//assert(0); // Just checking; uh oh; do we need better testing?
       #if defined(INSERT) && defined(B_JUDYL)
             return pwValue;
       #else // defined(INSERT) && defined(B_JUDYL)
@@ -2026,11 +2034,24 @@ t_bitmap:;
             // Count bits.
             Word_t wPopCnt;
             if (cbEmbeddedBitmap && (nBLR == cnBitsInD1)) {
-                //assert(nBL == nBLR); // skip to sub-link-size bm
-                assert(cnBitsInD1 <= cnLogBitsPerWord); // for now
-                Word_t wBit = EXP(wKey & MSK(nBL));
-                Word_t wBmMask = wBit - 1;
-                wPopCnt = __builtin_popcountll(wRoot & wBmMask);
+                assert(nBL == nBLR); // skip to sub-link-size bm
+                if (cnBitsInD1 <= cnLogBitsPerWord) {
+                    Word_t wBit = EXP(wKey & MSK(cnBitsInD1));
+                    Word_t wBmMask = wBit - 1;
+                    wPopCnt = __builtin_popcountll(wRoot & wBmMask);
+                } else {
+                    Word_t wBitNum = wKey & MSK(cnBitsInD1);
+                    Word_t wBmWordNum = wBitNum >> cnLogBitsPerWord;
+                    Word_t wBit = EXP(wBitNum & MSK(cnLogBitsPerWord));
+                    Word_t wBmMask = wBit - 1;
+                    Word_t *pwLn = (Word_t*)pLn;
+                    wPopCnt = 0;
+                    for (int i = 0; i < (int)wBmWordNum; ++i) {
+                        wPopCnt += __builtin_popcountll(pwLn[i]);
+                    }
+                    wPopCnt
+                        += __builtin_popcountll(pwLn[wBmWordNum] & wBmMask);
+                }
             } else {
                 int nWordOffset = (wKey & MSK(nBLR)) >> cnLogBitsPerWord;
                 // Do we count from the front or the back? If nBLR is small
@@ -2085,25 +2106,41 @@ t_bitmap:;
             // But what about when we create XX_SW at (nBLR == nBitsLeftAtDl2)
             // and cbEmbeddedBitmap and nBLR - cnBW == cnBitsInD1? We did not
             // explicitly double.
+            // Or nBLR - cnBW <= cnLogBitsPerLink?
+            // We end up with one big bitmap at DL2 but it is
+            // represented by an XX_SW and embedded bitmaps?
+            // What if cnBitsInD1 > cnLogBitsPerLink?
+            // cbEmbeddedBitmap won't be true.
             // Do we have code to make the whole thing T_BITMAP?
-            // Or do we end up here with (nBL == cnBitsInD1) which we don't
-            // handle below for USE_XX_SW_ONLY_AT_DL2?
-            assert((nBLR == cnBitsLeftAtDl2)
-                || ((wr_nType(WROOT_NULL) == T_BITMAP)
-                    && (wRoot == WROOT_NULL)));
+            // We end up here with (nBL <= cnBitsInD1)?
+            // We have to be sure to handle that case below
+            // for USE_XX_SW_ONLY_AT_DL2?
       #endif // USE_XX_SW_ONLY_AT_DL2
             // Use compile-time tests to speed this up. Hopefully.
             int bBitIsSet =
-                ((wr_nType(WROOT_NULL) == T_BITMAP) && (wRoot == WROOT_NULL))
+// We don't need/want to check for WROOT_NULL for embedded bitmap.
+                ((wr_nType(WROOT_NULL) == T_BITMAP)
+      #ifdef ALLOW_EMBEDDED_BITMAP
+                        && (nBLR > cnLogBitsPerLink)
+      #endif // ALLOW_EMBEDDED_BITMAP
+                        && (wRoot == WROOT_NULL))
                     ? 0 :
-      #ifndef USE_XX_SW_ONLY_AT_DL2
+      #ifdef USE_XX_SW_ONLY_AT_DL2
+          #if ((cnBitsLeftAtDl2 - cnBW) <= cnBitsInD1)
+                (nBLR <= cnBitsInD1)
+                    ? (cnBitsInD1 <= cnLogBitsPerWord)
+                        ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
+                        : BitIsSet(cbEmbeddedBitmap ? (Word_t*)pLn : pwr,
+                                   wKey & MSK(cnBitsInD1)) :
+          #endif // ((cnBitsLeftAtDl2 - cnBW) <= cnBitsInD1)
+      #else // USE_XX_SW_ONLY_AT_DL2
                 ((cn2dBmMaxWpkPercent == 0) || (nBLR == cnBitsInD1))
                     ? (cbEmbeddedBitmap && (cnBitsInD1 <= cnLogBitsPerWord))
                         ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
                         : BitIsSet(cbEmbeddedBitmap ? (Word_t*)pLn : pwr,
                                    wKey & MSK(cnBitsInD1))
                     :
-      #endif // #ifndef USE_XX_SW_ONLY_AT_DL2
+      #endif // #else USE_XX_SW_ONLY_AT_DL2
                       (cbEmbeddedBitmap
                             && (cnBitsLeftAtDl2 <= cnLogBitsPerWord))
                         ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsLeftAtDl2))

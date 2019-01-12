@@ -189,6 +189,10 @@
   #endif // #ifndef NO_ALLOW_EMBEDDED_BITMAP
 #endif // NO_BITMAP
 
+// How should we handle the relationship between USE_XX_SW_ONLY_AT_DL2,
+// ALLOW_EMBEDDED_BITMAP, cbEmbeddedBitmap, cnBitsInD1, and cnLogBitsPerLink?
+// Would be nice to simplify.
+
 #ifndef BITMAP
   #ifdef ALLOW_EMBEDDED_BITMAP
     #error ALLOW_EMBEDDED_BITMAP requires BITMAP

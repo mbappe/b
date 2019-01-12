@@ -1376,8 +1376,19 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
         bLsSw ? gpListSwLinks(qy) :
 #endif // defined(USE_LIST_SW)
         pwr_pLinks((Switch_t *)pwr);
-    for (int nn = 0; nn < (int)wLinks; ++nn) {
-        pLinks[nn].ln_wRoot = WROOT_NULL;
+    if (1
+#ifndef USE_XX_SW_ONLY_AT_DL2
+        // It is assumed that USE_XX_SW_ONLY_AT_DL2 culminates in an
+        // embedded bitmap.
+        && cbEmbeddedBitmap
+#endif // #ifndef USE_XX_SW_ONLY_AT_DL2
+        && ((nBL - nBW) <= cnLogBitsPerLink))
+    {
+        memset(pLinks, 0, sizeof(Link_t) * wLinks);
+    } else {
+        for (int nn = 0; nn < (int)wLinks; ++nn) {
+            pLinks[nn].ln_wRoot = WROOT_NULL;
+        }
     }
 #if defined(CODE_BM_SW)
     DBGM(printf("NewSwitch(pwRoot %p wKey " OWx
@@ -1840,7 +1851,19 @@ NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
         DBGI(printf("pLinks %p\n",
                     (void *)pwr_pLinks((BmSwitch_t *)*pwRoot)));
         // initialize new link in new switch
-        pwr_pLinks((BmSwitch_t *)*pwRoot)[wIndex].ln_wRoot = WROOT_NULL;
+        if (1
+#ifndef USE_XX_SW_ONLY_AT_DL2
+            // It is assumed that USE_XX_SW_ONLY_AT_DL2 culminates in an
+            // embedded bitmap.
+            && cbEmbeddedBitmap
+#endif // #ifndef USE_XX_SW_ONLY_AT_DL2
+            && ((nBLR - nBW) <= cnLogBitsPerLink))
+        {
+            memset(&pwr_pLinks((BmSwitch_t *)*pwRoot)[wIndex], 0,
+                               sizeof(Link_t));
+        } else {
+            pwr_pLinks((BmSwitch_t *)*pwRoot)[wIndex].ln_wRoot = WROOT_NULL;
+        }
         DBGI(printf("PWR_wPopCnt A %" _fw"d\n",
              PWR_wPopCntBL(pwRoot, (BmSwitch_t *)*pwRoot, nBLR)));
         // copy trailing links from old switch to new switch
@@ -2036,10 +2059,57 @@ OldSwitch(Word_t *pwRoot, int nBL,
 static Word_t
 GetPopCnt(Word_t *pwRoot, int nBL)
 {
-    if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
-        assert(nBL <= cnLogBitsPerWord); // multiword link not implemented yet
-        return __builtin_popcountll(*pwRoot);
+#ifdef USE_XX_SW_ONLY_AT_DL2
+    if (nBL <= cnLogBitsPerLink) {
+        assert(nBL == cnLogBitsPerLink);
+        int wPopCnt = 0;
+        for (int i = 0; i < (int)EXP(nBL - cnLogBitsPerWord); ++i) {
+            wPopCnt += __builtin_popcountll(pwRoot[i]);
+        }
+        return wPopCnt;
     }
+#else // USE_XX_SW_ONLY_AT_DL2
+    if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
+        int wPopCnt = 0;
+        if (cnBitsLeftAtDl2 > cnLogBitsPerLink) {
+            assert(nBL == cnBitsLeftAtDl1);
+            if (cnBitsInD1 <= cnLogBitsPerWord) {
+                wPopCnt += __builtin_popcountll(*pwRoot);
+            } else {
+                for (int i = 0;
+                     i < (int)EXP(cnBitsInD1 - cnLogBitsPerWord); ++i)
+                {
+                    wPopCnt += __builtin_popcountll(pwRoot[i]);
+                }
+            }
+        } else if (cnBitsLeftAtDl3 > cnLogBitsPerLink) {
+            assert(nBL == cnBitsLeftAtDl2);
+            if (cnBitsInD2 <= cnLogBitsPerWord) {
+                wPopCnt += __builtin_popcountll(*pwRoot);
+            } else {
+                for (int i = 0;
+                     i < (int)EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord); ++i)
+                {
+                    wPopCnt += __builtin_popcountll(pwRoot[i]);
+                }
+            }
+        } else {
+            // We don't handle
+            // cnBitsLeftAtDl3 + cnBitsPerDigit <= cnLogBitsPerLink yet.
+            assert(nBL == cnBitsLeftAtDl3);
+            if (cnBitsInD3 <= cnLogBitsPerWord) {
+                wPopCnt += __builtin_popcountll(*pwRoot);
+            } else {
+                for (int i = 0;
+                     i < (int)EXP(cnBitsLeftAtDl3 - cnLogBitsPerWord); ++i)
+                {
+                    wPopCnt += __builtin_popcountll(pwRoot[i]);
+                }
+            }
+        }
+        return wPopCnt;
+    }
+#endif // #else USE_XX_SW_ONLY_AT_DL2
 
     int nBLR = GetBLR(pwRoot, nBL); // handles skip -- or not
 
@@ -2201,13 +2271,13 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
         printf(" wRoot " OWx, wRoot);
     }
 
-    if (wRoot == WROOT_NULL) {
-        if (bDump) { printf(" WROOT_NULL\n"); }
-        return 0;
-    }
-
     // Check for embedded bitmap before assuming nType is valid.
-    if (cbEmbeddedBitmap && (nBL == cnBitsInD1)) {
+    if (1
+#ifndef USE_XX_SW_ONLY_AT_DL2
+        && cbEmbeddedBitmap
+#endif // #ifndef USE_XX_SW_ONLY_AT_DL2
+        && (nBL == cnBitsInD1))
+    {
         if (bDump) {
             if (cnBitsInD1 > cnLogBitsPerWord) {
                 printf(" nWords %4" _fw"d", EXP(nBL - cnLogBitsPerWord));
@@ -2219,6 +2289,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
             }
             printf("\n");
         }
+        return 0;
+    }
+
+    if (wRoot == WROOT_NULL) {
+        if (bDump) { printf(" WROOT_NULL\n"); }
         return 0;
     }
 
@@ -2725,9 +2800,33 @@ embeddedKeys:;
         if ( ! bBmSw || (PWR_pwBm(pwRoot, pwr)[nBmWordNum] & wBmBitMask) )
 #endif // defined(CODE_BM_SW)
         {
+            if (1
+#ifdef USE_XX_SW_ONLY_AT_DL2
+  #ifndef ALLOW_EMBEDDED_BITMAP
+    // I'm not sure the code requires ALLOW_EMBEDDED_BITMAP be defined.
+    // It probably shouldn't
+    // But it assumes embedded bitmaps do happen for ONLY_AT_DL2.
+    // And I'm nervous that the code may not ignore cbEmbeddedBitmap
+    // for ONLY_AT_DL2 like it should in all places.
+    // Maybe we should change cbEmbeddedBitmap for ONLY_AT_DL2.
+    // And ALLOW_EMBEDDED_BITMAP for that matter.
+    #error USE_XX_SW_ONLY_AT_DL2 requires ALLOW_EMBEDDED_BITMAP
+  #endif // #ifndef ALLOW_EMBEDDED_BITMAP
+#else // USE_XX_SW_ONLY_AT_DL2
+                // cnEmbeddedBitmap may not be true for ONLY_AT_DL2 because
+                // nBL may get less than cnBitsInD1.
+                && cbEmbeddedBitmap
+#endif // #else USE_XX_SW_ONLY_AT_DL2
+                && (nBL <= cnLogBitsPerLink))
+            {
+                goto recurse;
+            }
             if (pLinks[ww].ln_wRoot != WROOT_NULL) {
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
   #if defined(CODE_BM_SW)
+                // We don't pass enough info to FreeArrayGuts yet for it to
+                // be able to handle printing the values in this case.
+                // So we handle it here. Yuck.
                 if (bDump
                       && bBmSw
                       && (wr_nType(pLinks[ww].ln_wRoot) == T_EMBEDDED_KEYS))
@@ -2746,6 +2845,7 @@ embeddedKeys:;
                 } else
   #endif // defined(CODE_BM_SW)
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+recurse:
                 wBytes += FreeArrayGuts(&pLinks[ww].ln_wRoot,
                                         wPrefix | (nn << nBL), nBL, bDump
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
@@ -4827,7 +4927,9 @@ InsertAtList(qp,
             set_PWR_wPrefixBL(pwRoot, pwr, nBL, wKey);
         }
 #endif // defined(PP_IN_LINK)
-        if (nPos == -1) { nPos = 0; }
+        // I don't think it is necessary to set nPos here.
+        // I wonder what is best for performance of CopyWithInsert.
+        nPos = 0;
     }
 
 // We don't support skip links to lists yet.
@@ -5111,6 +5213,9 @@ copyWithInsertWord:
                 //printf("goto copyWithInsert8\n");
                 goto copyWithInsert8;
   #else // !defined(EMBED_KEYS) && ... d&& efined(PSPLIT_PARALLEL)
+// Why is it ok here to skip the padding that would be done in
+// CopyWithInsert8? Because we know wPopCnt == 0 so we know we are
+// going to deflate into embedded keys later?
                 ls_pcKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey;
       #ifdef B_JUDYL
                 pwValue = &gpwValues(qy)[~wPopCnt];
@@ -9480,9 +9585,13 @@ embeddedBitmap:;
             return Failure;
         }
         int nWordNum = (*pwKey & MSK(nBL)) >> cnLogBitsPerWord;
+// Word and bit will always be the last ones in the expanse for any
+// recursive call.
         if (bPrev) {
             Word_t wBm = ~pwr[nWordNum];
             if (nBitNum < cnBitsPerWord - 1) {
+// Will always be true because nBitNum has already been masked with
+// cnBitsPerWord - 1.
                 wBm &= MSK(nBitNum + 1);
             }
             for (;;) {
@@ -9693,7 +9802,7 @@ t_switch:;
                 //A(0); // check -B17 -S1
                 if (wIndex-- <= 0) {
                     //A(0); // check -B17 -S1
-                    if ((nBLPrev = cnBitsPerWord) && (wPrefix != 0)) {
+                    if ((nBLPrev == cnBitsPerWord) && (wPrefix != 0)) {
                         *pwKey -= EXP(nBL);
                         *pwKey |= MSK(nBL);
                         return Success;
@@ -9752,7 +9861,7 @@ t_switch:;
             }
             if (bPrev) {
                 if (wIndex-- <= 0) {
-                    if ((nBLPrev = cnBitsPerWord) && (wPrefix != 0)) {
+                    if ((nBLPrev == cnBitsPerWord) && (wPrefix != 0)) {
                         *pwKey -= EXP(nBL);
                         *pwKey |= MSK(nBL);
                         return Success;
