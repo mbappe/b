@@ -5123,9 +5123,10 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     if (J1KeyBefore == J1LastKey)
                     {
                         if ((Rc == 1)
-  #ifdef MIKEY_1 // Doug's code fails with this test.
+  // Judy 1.0.5 did not preserve the key value on next/prev failure.
+  #ifndef NO_PRESERVED_KEY
                             || (J1Key != J1KeyBefore)
-  #endif // MIKEY_1
+  #endif // #ifndef NO_PRESERVED_KEY
                             )
                         {
                             printf("\n");
@@ -5134,6 +5135,12 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                             printf("\nElements = %" PRIuPTR
                                    ", elm = %" PRIuPTR"\n",
                                    Elements, elm);
+  #ifndef NO_PRESERVED_KEY
+                            if (Rc != 1) {
+                                printf("Build with -DNO_PRESERVED_KEY"
+                                printf(" to disable this test.");
+                            }
+  #endif // #ifndef NO_PRESERVED_KEY
                             FAILURE("J1N succeeded on last key J1Key", J1Key);
                         }
                         if (Elements == 1) {
@@ -5207,9 +5214,9 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     if (JLKeyBefore == JLLastKey)
                     {
                         if ((PValue != NULL)
-  #ifdef MIKEY_L // Doug's code fails with this test.
+  #ifndef NO_PRESERVED_KEY
                             || (JLKey != JLKeyBefore)
-  #endif // MIKEY_L
+  #endif // #ifndef NO_PRESERVED_KEY
                             )
                         {
                             printf("\n");
@@ -5218,6 +5225,12 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                             printf("\nElements = %" PRIuPTR
                                    ", elm = %" PRIuPTR"\n",
                                    Elements, elm);
+  #ifndef NO_PRESERVED_KEY
+                            if (PValue == NULL) {
+                                printf("Build with -DNO_PRESERVED_KEY"
+                                printf(" to disable this test.");
+                            }
+  #endif // #ifndef NO_PRESERVED_KEY
                             FAILURE("JLN succeeded on last key JLKey", JLKey);
                         }
                         if (Elements == 1) {
@@ -5327,9 +5340,9 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     if (J1KeyBefore == J1FirstKey)
                     {
                         if ((Rc == 1)
-  #ifdef MIKEY_1 // Judy fails this test
+  #ifndef NO_PRESERVED_KEY
                             || (J1Key != J1KeyBefore)
-  #endif // MIKEY_1
+  #endif // #ifndef NO_PRESERVED_KEY
                             )
                         {
                             printf("\n");
@@ -5338,6 +5351,12 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                             printf("\nElements = %" PRIuPTR
                                    ", elm = %" PRIuPTR"\n",
                                    Elements, elm);
+  #ifndef NO_PRESERVED_KEY
+                            if (Rc != 1) {
+                                printf("Build with -DNO_PRESERVED_KEY"
+                                printf(" to disable this test.");
+                            }
+  #endif // #ifndef NO_PRESERVED_KEY
                             FAILURE("J1P succeeded on first key J1Key", J1Key);
                         }
                         if (Elements == 1) {
@@ -5412,9 +5431,9 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     if (JLKeyBefore == JLFirstKey)
                     {
                         if ((PValue != NULL)
-  #ifdef MIKEY_L // Judy fails this test
+  #ifndef NO_PRESERVED_KEY
                             || (JLKey != JLKeyBefore)
-  #endif // MIKEY_L
+  #endif // #ifndef NO_PRESERVED_KEY
                             )
                         {
                             printf("\n");
@@ -5423,6 +5442,12 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                             printf("\nElements = %" PRIuPTR
                                    ", elm = %" PRIuPTR"\n",
                                    Elements, elm);
+  #ifndef NO_PRESERVED_KEY
+                            if (PValue == NULL) {
+                                printf("Build with -DNO_PRESERVED_KEY"
+                                printf(" to disable this test.");
+                            }
+  #endif // #ifndef NO_PRESERVED_KEY
                             FAILURE("JLP succeeded on first key JLKey", JLKey);
                         }
                         if (Elements == 1) {
@@ -5510,8 +5535,9 @@ TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     Word_t J1KeyBefore = J1Key;
                     Rc = Judy1NextEmpty(J1, &J1Key, PJE0);
                     if ((Rc != 1)
-                        && (Judy1Count(J1, J1KeyBefore, -1, PJE0)
-                            != -J1KeyBefore))
+                        && ((Judy1Count(J1, J1KeyBefore, -1, PJE0)
+                                != -J1KeyBefore)
+                            || (J1Key != J1KeyBefore)))
                     {
                         printf("\n");
                         Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
@@ -5552,8 +5578,9 @@ TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                     Word_t JLKeyBefore = JLKey;
                     Rc = JudyLNextEmpty(JL, &JLKey, PJE0);
                     if ((Rc != 1)
-                        && (JudyLCount(JL, JLKeyBefore, -1, PJE0)
-                            != -JLKeyBefore))
+                        && ((JudyLCount(JL, JLKeyBefore, -1, PJE0)
+                                != -JLKeyBefore)
+                            || (JLKey != JLKeyBefore)))
                     {
                         FAILURE("JudyLNextEmpty Rcode != 1 Key", JLKeyBefore);
                     }
