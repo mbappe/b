@@ -816,9 +816,13 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
             printf("Count1 = %" PRIuPTR", CountL = %" PRIuPTR
                    ", should be: elm + 1 = %" PRIuPTR"\n",
                    Count1, CountL, elm + 1);
-            if (Count1 != (elm + 1))
-            {
+            if (Count1 != elm + 1) {
+                printf("Judy1Dump");
                 Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
+            }
+            if (CountL != elm + 1) {
+                printf("JudyLDump");
+                JudyLDump((Word_t)JL, sizeof(Word_t) * 8, 0);
             }
             FAILURE("Count at", elm);
         }
