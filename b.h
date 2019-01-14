@@ -1782,6 +1782,7 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 #define w_wPrefixNotAtTop(_w, _nDL)  ((_w) & ~wPrefixPopMaskNotAtTop(_nDL))
 #define w_wPrefixNotAtTopBL(_w, _nBL)  ((_w) & ~wPrefixPopMaskNotAtTopBL(_nBL))
 #define w_wPopCntNotAtTop(_w, _nDL)  ((_w) &  wPrefixPopMaskNotAtTop(_nDL))
+#define w_wPopCntNATBL(_w, _nBL)  ((_w) &  wPrefixPopMaskNotAtTopBL(_nBL))
 
 // PP_IN_LINK and POP_WORD_IN_LINK don't work without OLD_LISTS.
 // The whole purpose of new lists was to move pop count to the end of
@@ -1977,9 +1978,17 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
     ((_w) = (((_w) & wPrefixPopMaskNotAtTop(_nDL)) \
             | ((_key) & ~wPrefixPopMaskNotAtTop(_nDL))))
 
+#define set_w_wPrefixNATBL(_w, _nBL, _key) \
+    ((_w) = (((_w) & wPrefixPopMaskNotAtTopBL(_nBL)) \
+            | ((_key) & ~wPrefixPopMaskNotAtTopBL(_nBL))))
+
 #define set_w_wPopCntNotAtTop(_w, _nDL, _cnt) \
     ((_w) = (((_w) & ~wPrefixPopMaskNotAtTop(_nDL)) \
             | ((_cnt) & wPrefixPopMaskNotAtTop(_nDL))))
+
+#define set_w_wPopCntNATBL(_w, _nBL, _cnt) \
+    ((_w) = (((_w) & ~wPrefixPopMaskNotAtTopBL(_nBL)) \
+            | ((_cnt) & wPrefixPopMaskNotAtTopBL(_nBL))))
 
 #define     pwr_pLinks(_pwr)  ((_pwr)->sw_aLinks)
 
@@ -2497,12 +2506,11 @@ typedef struct {
   #ifndef ALLOW_EMBEDDED_BITMAP
     #error USE_XX_ONLY_AT_DL2 requires ALLOW_EMBEDDED_BITMAP
   #endif // #ifndef ALLOW_EMBEDDED_BITMAP
-  #define cbEmbeddedBitmap  (cnBitsInD1 <= cnLogBitsPerLink)
-  // To do: #define cbEmbeddedBitmap  1
+  #define cbEmbeddedBitmap  1
 #elif defined(ALLOW_EMBEDDED_BITMAP)
   #define cbEmbeddedBitmap  (cnBitsInD1 <= cnLogBitsPerLink)
 #else // #ifdef USE_XX_SW_ONLY_AT_DL2 #elif defined(ALLOW_EMBEDDED_BITMAP)
-  #define cbEmbeddedBitmap  (0)
+  #define cbEmbeddedBitmap  0
 #endif // ALLOW_EMBEDDED_BITMAP
 
 // Get the width of the branch in bits.
@@ -2857,6 +2865,9 @@ Set_xListPopCnt(Word_t *pwRoot, int nBL, int nPopCnt)
 
 #if defined(BITMAP)
 
+  #ifdef SKIP_TO_BITMAP
+
+// Prefix is in the word following the bitmap.
 static Word_t
 gwBitmapPrefix(qp, int nBLR)
 {
@@ -2864,21 +2875,25 @@ gwBitmapPrefix(qp, int nBLR)
   #if defined(PP_IN_LINK)
     #error gwBitmapPrefix does not handle prefix in link yet
   #endif // defined(PP_IN_LINK)
-    // prefix is in the word following the bitmap
-    return w_wPrefixBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
+    assert(nType == T_SKIP_TO_BITMAP);
+    return w_wPrefixNotAtTopBL(pwr[(nBLR <= cnLogBitsPerWord)
+                                       ? 1 : EXP(nBLR - cnLogBitsPerWord)],
+                               nBLR);
 }
 
+// Prefix is in the word following the bitmap.
 static void
 swBitmapPrefix(qp, int nBLR, Word_t wPrefix)
 {
     qv;
-  #if defined(PP_IN_LINK)
-    #error gwBitmapPrefix does not handle prefix in link yet
-  #endif // defined(PP_IN_LINK)
-    // prefix is in the word following the bitmap
-    set_w_wPrefixBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR, wPrefix);
+    set_w_wPrefixNATBL(pwr[(nBLR <= cnLogBitsPerWord)
+                               ? 1 : EXP(nBLR - cnLogBitsPerWord)],
+                       nBLR, wPrefix);
 }
 
+  #endif // SKIP_TO_BITMAP
+
+// Pop cnt is in the word following the bitmap.
 static Word_t
 gwBitmapPopCnt(qp, int nBLR)
 {
@@ -2886,17 +2901,66 @@ gwBitmapPopCnt(qp, int nBLR)
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     #error gwBitmapPopCnt does not handle pop in link yet
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    if ((wr_nType(WROOT_NULL) == T_BITMAP)
-        && (wRoot == WROOT_NULL))
-    {
+    // No need to handle embedded bitmaps.
+    assert(!cbEmbeddedBitmap || (nBLR > cnLogBitsPerLink));
+    assert((nType == T_BITMAP) || (nType == T_SKIP_TO_BITMAP));
+    if ((wr_nType(WROOT_NULL) == T_BITMAP) && (wRoot == WROOT_NULL)) {
         return 0;
     }
-    // population is in the word following the bitmap
-    Word_t wPopCnt = w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR);
+  #if defined(KISS_BM_POPCNT) || defined(KISS)
+    Word_t wPopCnt = w_wPopCntNATBL(pwr[(nBLR <= cnLogBitsPerWord)
+                                          ? 1 : EXP(nBLR - cnLogBitsPerWord)],
+                                 nBLR);
+    // Avoiding a conditional branch here might be more straightforward if
+    // we were storing pop - 1 in the PrefixPop word.
+    // Are we just obfuscating the conditional branch with !wPopCnt?
+    // Is the compiler smart enough to get rid of the conditional branch even
+    // if we leave it in the source?
+    // A quick comparison of the resulting objects leads me to believe either
+    // version of the source results in the same object code.
+    //wPopCnt += EXP(nBLR) * !wPopCnt; // full pop
     if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop
+  #else // defined(KISS_BM_POPCNT) || defined(KISS)
+    // We'd like to avoid a runtime conditional branch.
+    // External bitmap leaves can exist at cnBitsInD1 or cnBitsLeftAtDl2
+    // but nowhere else.
+    // If we are here, then we have an external bitmap leaf.
+    assert((nBLR == cnBitsInD1) || (nBLR == cnBitsLeftAtDl2));
+    Word_t wPopCnt;
+    if (cbEmbeddedBitmap) {
+        assert(nBLR == cnBitsLeftAtDl2);
+        wPopCnt
+            = w_wPopCntNATBL(pwr[(cnBitsLeftAtDl2 <= cnLogBitsPerWord)
+                                   ? 1
+                                   : EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord)],
+                             cnBitsLeftAtDl2);
+        if (wPopCnt == 0) { wPopCnt = EXP(cnBitsLeftAtDl2); } // full pop
+    } else if (cn2dBmMaxWpkPercent == 0) {
+        assert(nBLR == cnBitsInD1);
+        wPopCnt = w_wPopCntNATBL(pwr[(cnBitsInD1 <= cnLogBitsPerWord)
+                                       ? 1
+                                       : EXP(cnBitsInD1 - cnLogBitsPerWord)],
+                                 cnBitsInD1);
+        if (wPopCnt == 0) { wPopCnt = EXP(cnBitsInD1); } // full pop
+    } else if (cnBitsInD1 >= cnLogBitsPerWord) {
+        wPopCnt = w_wPopCntNATBL(pwr[EXP(nBLR - cnLogBitsPerWord)], nBLR);
+        if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop
+    } else if (cnBitsInD2 <= cnLogBitsPerWord) {
+        wPopCnt = w_wPopCntNATBL(pwr[1], nBLR);
+        if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop
+    } else if (nBLR == cnBitsInD1) {
+        wPopCnt = w_wPopCntNATBL(pwr[1], cnBitsInD1);
+        if (wPopCnt == 0) { wPopCnt = EXP(cnBitsInD1); } // full pop
+    } else {
+        wPopCnt = w_wPopCntNATBL(pwr[EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord)],
+                                 cnBitsLeftAtDl2);
+        if (wPopCnt == 0) { wPopCnt = EXP(cnBitsLeftAtDl2); } // full pop
+    }
+  #endif // #else defined(KISS_BM_POPCNT) || defined(KISS)
     return wPopCnt;
 }
 
+// Pop cnt is in the word following the bitmap.
 static void
 swBitmapPopCnt(qp, int nBLR, Word_t wPopCnt)
 {
@@ -2904,13 +2968,43 @@ swBitmapPopCnt(qp, int nBLR, Word_t wPopCnt)
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     #error gwBitmapPopCnt does not handle pop in link yet
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    // population is in the word following the bitmap
+    assert((wr_nType(WROOT_NULL) != T_BITMAP) || (wRoot != WROOT_NULL));
     // Full pop gets masked to zero.
-    set_w_wPopCntBL(*(pwr + EXP(nBLR - cnLogBitsPerWord)), nBLR, wPopCnt);
+  #if defined(KISS_BM_POPCNT) || defined(KISS)
+    set_w_wPopCntNATBL(pwr[(nBLR <= cnLogBitsPerWord)
+                               ? 1 : EXP(nBLR - cnLogBitsPerWord)],
+                       nBLR, wPopCnt);
+  #else // defined(KISS_BM_POPCNT) || defined(KISS)
+    // We'd like to avoid a runtime conditional branch.
+    // External bitmap leaves can exist at cnBitsInD1 or cnBitsLeftAtDl2
+    // but nowhere else.
+    // If we are here, then we have an external bitmap leaf.
+    assert((nBLR == cnBitsInD1) || (nBLR == cnBitsLeftAtDl2));
+    if (cbEmbeddedBitmap) {
+        assert(nBLR == cnBitsLeftAtDl2);
+        set_w_wPopCntNATBL(pwr[(cnBitsLeftAtDl2 <= cnLogBitsPerWord)
+                                   ? 1
+                                   : EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord)],
+                           cnBitsLeftAtDl2, wPopCnt);
+    } else if (cn2dBmMaxWpkPercent == 0) {
+        assert(nBLR == cnBitsInD1);
+        set_w_wPopCntNATBL(pwr[(cnBitsInD1 <= cnLogBitsPerWord)
+                                   ? 1 : EXP(cnBitsInD1 - cnLogBitsPerWord)],
+                           cnBitsInD1, wPopCnt);
+    } else if (cnBitsInD1 >= cnLogBitsPerWord) {
+        set_w_wPopCntNATBL(pwr[EXP(nBLR - cnLogBitsPerWord)], nBLR, wPopCnt);
+    } else if (cnBitsInD2 <= cnLogBitsPerWord) {
+        set_w_wPopCntNATBL(pwr[1], nBLR, wPopCnt);
+    } else if (nBLR == cnBitsInD1) {
+        set_w_wPopCntNATBL(pwr[1], cnBitsInD1, wPopCnt);
+    } else {
+        set_w_wPopCntNATBL(pwr[EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord)],
+                           cnBitsLeftAtDl2, wPopCnt);
+    }
+  #endif // #else defined(KISS_BM_POPCNT) || defined(KISS)
 }
 
 #endif // defined(BITMAP)
-
 
 #if defined(CODE_LIST_SW)
 

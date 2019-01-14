@@ -1376,14 +1376,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
         bLsSw ? gpListSwLinks(qy) :
 #endif // defined(USE_LIST_SW)
         pwr_pLinks((Switch_t *)pwr);
-    if (1
-#ifndef USE_XX_SW_ONLY_AT_DL2
-        // It is assumed that USE_XX_SW_ONLY_AT_DL2 culminates in an
-        // embedded bitmap.
-        && cbEmbeddedBitmap
-#endif // #ifndef USE_XX_SW_ONLY_AT_DL2
-        && ((nBL - nBW) <= cnLogBitsPerLink))
-    {
+    if (cbEmbeddedBitmap && ((nBL - nBW) <= cnLogBitsPerLink)) {
         memset(pLinks, 0, sizeof(Link_t) * wLinks);
     } else {
         for (int nn = 0; nn < (int)wLinks; ++nn) {
@@ -1851,14 +1844,7 @@ NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
         DBGI(printf("pLinks %p\n",
                     (void *)pwr_pLinks((BmSwitch_t *)*pwRoot)));
         // initialize new link in new switch
-        if (1
-#ifndef USE_XX_SW_ONLY_AT_DL2
-            // It is assumed that USE_XX_SW_ONLY_AT_DL2 culminates in an
-            // embedded bitmap.
-            && cbEmbeddedBitmap
-#endif // #ifndef USE_XX_SW_ONLY_AT_DL2
-            && ((nBLR - nBW) <= cnLogBitsPerLink))
-        {
+        if (cbEmbeddedBitmap && ((nBLR - nBW) <= cnLogBitsPerLink)) {
             memset(&pwr_pLinks((BmSwitch_t *)*pwRoot)[wIndex], 0,
                                sizeof(Link_t));
         } else {
@@ -2059,57 +2045,19 @@ OldSwitch(Word_t *pwRoot, int nBL,
 static Word_t
 GetPopCnt(Word_t *pwRoot, int nBL)
 {
+    if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
 #ifdef USE_XX_SW_ONLY_AT_DL2
-    if (nBL <= cnLogBitsPerLink) {
         assert(nBL == cnLogBitsPerLink);
+#endif // USE_XX_SW_ONLY_AT_DL2
+        if (nBL <= cnLogBitsPerWord) {
+            return __builtin_popcountll(*pwRoot);
+        }
         int wPopCnt = 0;
         for (int i = 0; i < (int)EXP(nBL - cnLogBitsPerWord); ++i) {
             wPopCnt += __builtin_popcountll(pwRoot[i]);
         }
         return wPopCnt;
     }
-#else // USE_XX_SW_ONLY_AT_DL2
-    if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
-        int wPopCnt = 0;
-        if (cnBitsLeftAtDl2 > cnLogBitsPerLink) {
-            assert(nBL == cnBitsLeftAtDl1);
-            if (cnBitsInD1 <= cnLogBitsPerWord) {
-                wPopCnt += __builtin_popcountll(*pwRoot);
-            } else {
-                for (int i = 0;
-                     i < (int)EXP(cnBitsInD1 - cnLogBitsPerWord); ++i)
-                {
-                    wPopCnt += __builtin_popcountll(pwRoot[i]);
-                }
-            }
-        } else if (cnBitsLeftAtDl3 > cnLogBitsPerLink) {
-            assert(nBL == cnBitsLeftAtDl2);
-            if (cnBitsInD2 <= cnLogBitsPerWord) {
-                wPopCnt += __builtin_popcountll(*pwRoot);
-            } else {
-                for (int i = 0;
-                     i < (int)EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord); ++i)
-                {
-                    wPopCnt += __builtin_popcountll(pwRoot[i]);
-                }
-            }
-        } else {
-            // We don't handle
-            // cnBitsLeftAtDl3 + cnBitsPerDigit <= cnLogBitsPerLink yet.
-            assert(nBL == cnBitsLeftAtDl3);
-            if (cnBitsInD3 <= cnLogBitsPerWord) {
-                wPopCnt += __builtin_popcountll(*pwRoot);
-            } else {
-                for (int i = 0;
-                     i < (int)EXP(cnBitsLeftAtDl3 - cnLogBitsPerWord); ++i)
-                {
-                    wPopCnt += __builtin_popcountll(pwRoot[i]);
-                }
-            }
-        }
-        return wPopCnt;
-    }
-#endif // #else USE_XX_SW_ONLY_AT_DL2
 
     int nBLR = GetBLR(pwRoot, nBL); // handles skip -- or not
 
@@ -2272,14 +2220,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
     }
 
     // Check for embedded bitmap before assuming nType is valid.
-    if (1
-#ifndef USE_XX_SW_ONLY_AT_DL2
-        && cbEmbeddedBitmap
-#endif // #ifndef USE_XX_SW_ONLY_AT_DL2
-        && (nBL == cnBitsInD1))
-    {
+    if (cbEmbeddedBitmap && (nBL == cnBitsInD1)) {
         if (bDump) {
-            if (cnBitsInD1 > cnLogBitsPerWord) {
+            if (nBL > cnLogBitsPerWord) {
                 printf(" nWords %4" _fw"d", EXP(nBL - cnLogBitsPerWord));
                 for (Word_t ww = 0; ww < EXP(nBL - cnLogBitsPerWord); ++ww) {
                     if ((ww % 8) == 0) { printf("\n"); }
@@ -2381,11 +2324,13 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
             return wBytes;
         }
 
-        printf(" nWords %4" _fw"d", EXP(nBL - cnLogBitsPerWord));
+        int nWords
+            = (nBL <= cnLogBitsPerWord) ? 1 : EXP(nBL - cnLogBitsPerWord);
+        printf(" nWords %4d", nWords);
+        printf(" PP 0x%016zx", pwr[nWords]);
         printf(" wPopCnt %5zd", gwBitmapPopCnt(qy, nBL));
-        printf(" PP 0x%016zx", pwr[EXP(nBL - cnLogBitsPerWord)]);
         Word_t wPopCntL = 0;
-        for (Word_t ww = 0; (ww < EXP(nBL - cnLogBitsPerWord)); ww++) {
+        for (Word_t ww = 0; (int)ww < nWords; ++ww) {
             wPopCntL += __builtin_popcountll(pwr[ww]);
             if ((ww != 0) && (ww % 4) == 0) {
                 printf(" %5zd", wPopCntL);
@@ -2396,7 +2341,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
             }
             printf(" 0x%016zx", pwr[ww]);
         }
-        printf("\n");
+        printf("\n Values\n");
   #ifdef B_JUDYL
         for (int ww = 0;
              ww < (int)((wRoot & EXP(cnLsbBmUncompressed))
@@ -2800,28 +2745,9 @@ embeddedKeys:;
         if ( ! bBmSw || (PWR_pwBm(pwRoot, pwr)[nBmWordNum] & wBmBitMask) )
 #endif // defined(CODE_BM_SW)
         {
-            if (1
-#ifdef USE_XX_SW_ONLY_AT_DL2
-  #ifndef ALLOW_EMBEDDED_BITMAP
-    // I'm not sure the code requires ALLOW_EMBEDDED_BITMAP be defined.
-    // It probably shouldn't
-    // But it assumes embedded bitmaps do happen for ONLY_AT_DL2.
-    // And I'm nervous that the code may not ignore cbEmbeddedBitmap
-    // for ONLY_AT_DL2 like it should in all places.
-    // Maybe we should change cbEmbeddedBitmap for ONLY_AT_DL2.
-    // And ALLOW_EMBEDDED_BITMAP for that matter.
-    #error USE_XX_SW_ONLY_AT_DL2 requires ALLOW_EMBEDDED_BITMAP
-  #endif // #ifndef ALLOW_EMBEDDED_BITMAP
-#else // USE_XX_SW_ONLY_AT_DL2
-                // cnEmbeddedBitmap may not be true for ONLY_AT_DL2 because
-                // nBL may get less than cnBitsInD1.
-                && cbEmbeddedBitmap
-#endif // #else USE_XX_SW_ONLY_AT_DL2
-                && (nBL <= cnLogBitsPerLink))
+            if ((cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink))
+                || (pLinks[ww].ln_wRoot != WROOT_NULL))
             {
-                goto recurse;
-            }
-            if (pLinks[ww].ln_wRoot != WROOT_NULL) {
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
   #if defined(CODE_BM_SW)
                 // We don't pass enough info to FreeArrayGuts yet for it to
@@ -2845,7 +2771,6 @@ embeddedKeys:;
                 } else
   #endif // defined(CODE_BM_SW)
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-recurse:
                 wBytes += FreeArrayGuts(&pLinks[ww].ln_wRoot,
                                         wPrefix | (nn << nBL), nBL, bDump
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
@@ -5423,7 +5348,7 @@ InsertGuts(qp, Word_t wKey, int nPos
     // Embedded bitmap is not implemented for B_JUDYL yet.
     // Check to see if we're at the bottom before checking nType since
     // nType may be invalid if wRoot is an embedded bitmap.
-    if (cbEmbeddedBitmap && (nBL == cnBitsInD1)) {
+    if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
         SetBit(pLn, wKey & MSK(nBL)); // Insert into embedded bitmap.
         return Success;
     }
@@ -5970,7 +5895,9 @@ InsertAtBitmap(qp, Word_t wKey)
         assert(wr_nType(wRoot) == nType);
         Word_t *pwrOld = pwr;
         pwr = wr_pwr(wRoot);
-        memcpy(pwr, pwrOld, MAX(1, EXP(nBLR - cnLogBitsPerByte)));
+        int nBmWords
+            = (nBLR <= cnLogBitsPerWord) ? 1 : EXP(nBLR - cnLogBitsPerWord);
+        memcpy(pwr, pwrOld, nBmWords * sizeof(Word_t));
         Word_t *pwTgtValues = gpwBitmapValues(qy, nBLR);
         if (wRoot & EXP(cnLsbBmUncompressed)) {
             for (int k = 0; k < (int)EXP(nBLR); ++k) {
@@ -6006,6 +5933,7 @@ done:
     set_PWR_wPrefixBL(pwRoot, NULL, nBLR, wKey);
 
 #endif // defined(PP_IN_LINK)
+
 
 #ifdef B_JUDYL
     // Insert is responsible for zeroing the value.
@@ -6568,7 +6496,9 @@ RemoveAtBitmap(qp, Word_t wKey)
             assert(wr_nType(wRoot) == nType);
             Word_t *pwrOld = pwr;
             pwr = wr_pwr(wRoot);
-            memcpy(pwr, pwrOld, MAX(1, EXP(nBLR - cnLogBitsPerByte)));
+            int nBmWords = (nBLR <= cnLogBitsPerWord)
+                             ? 1 : EXP(nBLR - cnLogBitsPerWord);
+            memcpy(pwr, pwrOld, nBmWords * sizeof(Word_t));
             Word_t *pwTgtValues = gpwBitmapValues(qy, nBLR);
             if (bUncompressed) {
                 for (int k = 0; k < (int)EXP(nBLR); ++k) {
@@ -6595,8 +6525,10 @@ done:
 
 #if defined(DEBUG_COUNT)
         Word_t wPopCntDbg = 0;
-        for (Word_t ww = 0; ww < EXP(nBLR - cnLogBitsPerWord); ww++) {
-            wPopCntDbg += __builtin_popcountll(pwr[ww]);
+        int nWords
+            = (nBLR <= cnLogBitsPerWord) ? 1 : EXP(nBLR - cnLogBitsPerWord);
+        for (int i = 0; i < nWords; ++i) {
+            wPopCntDbg += __builtin_popcountll(pwr[i]);
         }
         assert(wPopCntDbg == wPopCnt);
 #endif // defined(DEBUG_COUNT)
@@ -8506,7 +8438,7 @@ t_list:;
     }
       #endif // defined(SKIP_TO_BITMAP)
     case T_BITMAP: {
-        nBitNum = *pwKey & MSK(cnLogBitsPerWord);
+        nBitNum = *pwKey & MSK(nBL) & MSK(cnLogBitsPerWord);
         goto embeddedBitmap;
 embeddedBitmap:;
         DBGN(printf("T_BITMAP *pwKey " OWx" wSkip %" _fw"u\n", *pwKey, wSkip));
@@ -9576,7 +9508,7 @@ t_list:;
         if ((wr_nType(WROOT_NULL) == T_BITMAP) && (wRoot == WROOT_NULL)) {
             return Success;
         }
-        nBitNum = *pwKey & MSK(cnLogBitsPerWord);
+        nBitNum = *pwKey & MSK(nBL) & MSK(cnLogBitsPerWord);
         goto embeddedBitmap;
 embeddedBitmap:;
         // skip over the bitmap if it is full pop

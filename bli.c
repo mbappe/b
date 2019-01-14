@@ -2028,7 +2028,10 @@ t_bitmap:;
       #endif // COMPRESSED_LISTS
         {
   #if defined(COUNT)
-            if ((wr_nType(WROOT_NULL) == T_BITMAP) && (wRoot == WROOT_NULL)) {
+            if ((wr_nType(WROOT_NULL) == T_BITMAP)
+                && (!cbEmbeddedBitmap || (nBLR > cnLogBitsPerLink))
+                && (wRoot == WROOT_NULL))
+            {
                 return wPopCntSum;
             }
             // Count bits.
@@ -2058,7 +2061,7 @@ t_bitmap:;
                 // enough it's faster to just always count from the same
                 // end rather than going to the trouble of figuring out
                 // which end is closer.
-                if ((nBLR > 8) && wKey & EXP(nBLR - 1)) {
+                if ((nBLR > 8) && (wKey & EXP(nBLR - 1))) {
                     wPopCnt = gwBitmapPopCnt(qy, nBLR);
                     if (wPopCnt == 0) {
                         wPopCnt = EXP(nBLR);
@@ -2068,18 +2071,18 @@ t_bitmap:;
                         wPopCnt -= __builtin_popcountll(pwr[nn]);
                     }
                     Word_t wBmMask
-                        = ((Word_t)-1 << (wKey & (cnBitsPerWord - 1)));
+                        = ((Word_t)-1
+                            << (wKey & MSK(nBLR) & (cnBitsPerWord - 1)));
                     wPopCnt
                         -= __builtin_popcountll(pwr[nWordOffset] & wBmMask);
-                }
-                else
-                {
+                } else {
                     wPopCnt = 0;
                     for (int nn = 0; nn < nWordOffset; nn++) {
                         wPopCnt += __builtin_popcountll(pwr[nn]);
                     }
                     Word_t wBmMask
-                        = ((Word_t)1 << (wKey & (cnBitsPerWord - 1))) - 1;
+                        = ((Word_t)1
+                            << (wKey & MSK(nBLR) & (cnBitsPerWord - 1))) - 1;
                     wPopCnt
                         += __builtin_popcountll(pwr[nWordOffset] & wBmMask);
                 }
@@ -2118,21 +2121,14 @@ t_bitmap:;
       #endif // USE_XX_SW_ONLY_AT_DL2
             // Use compile-time tests to speed this up. Hopefully.
             int bBitIsSet =
-// We don't need/want to check for WROOT_NULL for embedded bitmap.
+     // We don't need/want to check for WROOT_NULL for embedded bitmap.
                 ((wr_nType(WROOT_NULL) == T_BITMAP)
-      #ifdef ALLOW_EMBEDDED_BITMAP
-                        && (nBLR > cnLogBitsPerLink)
-      #endif // ALLOW_EMBEDDED_BITMAP
+                        && (!cbEmbeddedBitmap || (nBLR > cnLogBitsPerLink))
                         && (wRoot == WROOT_NULL))
                     ? 0 :
       #ifdef USE_XX_SW_ONLY_AT_DL2
-          #if ((cnBitsLeftAtDl2 - cnBW) <= cnBitsInD1)
-                (nBLR <= cnBitsInD1)
-                    ? (cnBitsInD1 <= cnLogBitsPerWord)
-                        ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
-                        : BitIsSet(cbEmbeddedBitmap ? (Word_t*)pLn : pwr,
-                                   wKey & MSK(cnBitsInD1)) :
-          #endif // ((cnBitsLeftAtDl2 - cnBW) <= cnBitsInD1)
+                BitIsSet((nBLR <= cnLogBitsPerLink) ? (Word_t*)pLn : pwr,
+                          wKey & MSK(nBLR));
       #else // USE_XX_SW_ONLY_AT_DL2
                 ((cn2dBmMaxWpkPercent == 0) || (nBLR == cnBitsInD1))
                     ? (cbEmbeddedBitmap && (cnBitsInD1 <= cnLogBitsPerWord))
@@ -2140,7 +2136,6 @@ t_bitmap:;
                         : BitIsSet(cbEmbeddedBitmap ? (Word_t*)pLn : pwr,
                                    wKey & MSK(cnBitsInD1))
                     :
-      #endif // #else USE_XX_SW_ONLY_AT_DL2
                       (cbEmbeddedBitmap
                             && (cnBitsLeftAtDl2 <= cnLogBitsPerWord))
                         ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsLeftAtDl2))
@@ -2149,6 +2144,7 @@ t_bitmap:;
                                                <= cnLogBitsPerLink))
                                        ? (Word_t*)pLn : pwr,
                                    wKey & MSK(cnBitsLeftAtDl2));
+      #endif // #else USE_XX_SW_ONLY_AT_DL2
             if (bBitIsSet) {
       #if defined(REMOVE)
                 goto removeGutsAndCleanup;
