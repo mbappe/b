@@ -519,6 +519,8 @@ typedef Word_t Bucket_t;
 // Respect the maximum value implied by the size of the pop count field.
 
 // Default cnListPopCntMax64 is 256.
+// Use 255 to allow us to use uint8_t for uPopCntMax_t.
+// It might be faster.
 #ifndef cnListPopCntMax64
   #define cnListPopCntMax64  256
 #endif // #ifndef cnListPopCntMax64
