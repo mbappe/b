@@ -2760,7 +2760,7 @@ main(int argc, char *argv[])
     // Maybe we should have used JudyX[Set|Ins](NULL) for global
     // initialization and JudyXFreeArray for global cleanup.
     if (J1Flag) { Judy1FreeArray(NULL, PJE0); }
-    if (JLFlag) { JudyLFreeArray(NULL, PJE0); }
+    if (JLFlag || JRFlag) { JudyLFreeArray(NULL, PJE0); }
     if (JHFlag) { JudyHSFreeArray(NULL, PJE0); }
 
     // Warm up, e.g. JudyMalloc and caches.
