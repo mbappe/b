@@ -1706,7 +1706,7 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
        set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
        (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
            = ((PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
-                   & ~wPrefixPopMaskBL(cnBitsLeftAtDl2)) \
+                   & wPrefixMaskBL(cnBitsLeftAtDl2)) \
                | (_nBL))))
 
   #define set_wr_nDL(_wr, _nDL)  set_wr_nBL((_wr), nDL_to_nBL(_nDL))
@@ -1767,24 +1767,29 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 
 // methods for Switch (and aliases)
 
-#define wPrefixPopMaskNotAtTop(_nDL)    (MSK(nDL_to_nBL_NAT(_nDL)))
-#define wPrefixPopMaskNotAtTopBL(_nBL)  (MSK(_nBL))
+#define wPrefixMaskNAT(_nDL)    (~MSK(nDL_to_nBL_NAT(_nDL)))
+#define wPrefixMaskNATBL(_nBL)  (~MSK(_nBL))
+#define wPrefixMask(_nDL) \
+    (((_nDL) == cnDigitsPerWord) ? (Word_t)-1 : wPrefixMaskNAT(_nDL))
+#define wPrefixMaskBL(_nBL) \
+    (((_nBL) == cnBitsPerWord) ? (Word_t)-1 : wPrefixMaskNATBL(_nBL))
 
-#define wPrefixPopMask(_nDL) \
-    (((_nDL) == cnDigitsPerWord) ? (Word_t)-1 : wPrefixPopMaskNotAtTop(_nDL))
+#define wPopMaskNAT(_nDL)    (MSK(nDL_to_nBL_NAT(_nDL)))
+#define wPopMaskNATBL(_nBL)  (MSK(_nBL))
+#define wPopMask(_nDL) \
+    (((_nDL) == cnDigitsPerWord) ? (Word_t)-1 : wPopMaskNAT(_nDL))
+#define wPopMaskBL(_nBL) \
+    (((_nBL) == cnBitsPerWord) ? (Word_t)-1 : wPopMaskNATBL(_nBL))
 
-#define wPrefixPopMaskBL(_nBL) \
-    (((_nBL) == cnBitsPerWord) ? (Word_t)-1 : wPrefixPopMaskNotAtTopBL(_nBL))
+#define w_wPrefix(  _w, _nDL)  ((_w) & wPrefixMask  (_nDL))
+#define w_wPrefixBL(_w, _nBL)  ((_w) & wPrefixMaskBL(_nBL))
+#define w_wPopCnt(  _w, _nDL)  ((_w) & wPopMask     (_nDL))
+#define w_wPopCntBL(_w, _nBL)  ((_w) & wPopMaskBL   (_nBL))
 
-#define w_wPrefix(  _w, _nDL)  ((_w) & ~wPrefixPopMask  (_nDL))
-#define w_wPrefixBL(_w, _nBL)  ((_w) & ~wPrefixPopMaskBL(_nBL))
-#define w_wPopCnt(  _w, _nDL)  ((_w) &  wPrefixPopMask  (_nDL))
-#define w_wPopCntBL(_w, _nBL)  ((_w) &  wPrefixPopMaskBL(_nBL))
-
-#define w_wPrefixNotAtTop(_w, _nDL)  ((_w) & ~wPrefixPopMaskNotAtTop(_nDL))
-#define w_wPrefixNotAtTopBL(_w, _nBL)  ((_w) & ~wPrefixPopMaskNotAtTopBL(_nBL))
-#define w_wPopCntNotAtTop(_w, _nDL)  ((_w) &  wPrefixPopMaskNotAtTop(_nDL))
-#define w_wPopCntNATBL(_w, _nBL)  ((_w) &  wPrefixPopMaskNotAtTopBL(_nBL))
+#define w_wPrefixNotAtTop(_w, _nDL)    ((_w) & wPrefixMaskNAT  (_nDL))
+#define w_wPrefixNotAtTopBL(_w, _nBL)  ((_w) & wPrefixMaskNATBL(_nBL))
+#define w_wPopCntNotAtTop(_w, _nDL)    ((_w) & wPopMaskNAT     (_nDL))
+#define w_wPopCntNATBL(_w, _nBL)       ((_w) & wPopMaskNATBL   (_nBL))
 
 // PP_IN_LINK and POP_WORD_IN_LINK don't work without OLD_LISTS.
 // The whole purpose of new lists was to move pop count to the end of
@@ -1847,43 +1852,43 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
     (w_wPrefixNotAtTopBL(PWR_wPrefixPop((_pwRoot), (_pwr)), (_nBL)))
 
 #define set_w_wPrefix(_w, _nDL, _key) \
-    ((_w) = (((_w) & wPrefixPopMask(_nDL)) \
-            | ((_key) & ~wPrefixPopMask(_nDL))))
+    ((_w) = (((_w) & wPopMask(_nDL)) \
+            | ((_key) & wPrefixMask(_nDL))))
 
 #define set_w_wPrefixBL(_w, _nBL, _key) \
-    ((_w) = (((_w) & wPrefixPopMaskBL(_nBL)) \
-            | ((_key) & ~wPrefixPopMaskBL(_nBL))))
+    ((_w) = (((_w) & wPopMaskBL(_nBL)) \
+            | ((_key) & wPrefixMaskBL(_nBL))))
 
 #define set_w_wPopCnt(_w, _nDL, _cnt) \
-    ((_w) = (((_w) & ~wPrefixPopMask(_nDL)) \
-            | ((_cnt) & wPrefixPopMask(_nDL))))
+    ((_w) = (((_w) & wPrefixMask(_nDL)) \
+            | ((_cnt) & wPopMask(_nDL))))
 
 #define set_w_wPopCntBL(_w, _nBL, _cnt) \
-    ((_w) = (((_w) & ~wPrefixPopMaskBL(_nBL)) \
-            | ((_cnt) & wPrefixPopMaskBL(_nBL))))
+    ((_w) = (((_w) & wPrefixMaskBL(_nBL)) \
+            | ((_cnt) & wPopMaskBL(_nBL))))
 
 #if defined(PP_IN_LINK)
 #define set_PWR_wPrefix(_pwRoot, _pwr, _nDL, _key) \
   (assert((_nDL) < cnDigitsPerWord), \
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
-        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixPopMask(_nDL)) \
-            | ((_key) & ~wPrefixPopMask(_nDL)))))
+        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPopMask(_nDL)) \
+            | ((_key) & wPrefixMask(_nDL)))))
 
 #define set_PWR_wPrefixBL(_pwRoot, _pwr, _nBL, _key) \
   (assert((_nBL) < cnBitsPerWord), \
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
-        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixPopMaskBL(_nBL)) \
-            | ((_key) & ~wPrefixPopMaskBL(_nBL)))))
+        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPopMaskBL(_nBL)) \
+            | ((_key) & wPrefixMaskBL(_nBL)))))
 #else // defined(PP_IN_LINK)
 #define set_PWR_wPrefix(_pwRoot, _pwr, _nDL, _key) \
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
-        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixPopMask(_nDL)) \
-            | ((_key) & ~wPrefixPopMask(_nDL))))
+        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPopMask(_nDL)) \
+            | ((_key) & wPrefixMask(_nDL))))
 
 #define set_PWR_wPrefixBL(_pwRoot, _pwr, _nBL, _key) \
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
-        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixPopMaskBL(_nBL)) \
-            | ((_key) & ~wPrefixPopMaskBL(_nBL))))
+        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPopMaskBL(_nBL)) \
+            | ((_key) & wPrefixMaskBL(_nBL))))
 #endif // defined(PP_IN_LINK)
 
 #if defined(POP_WORD)
@@ -1920,14 +1925,14 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 #define set_PWR_wPopCnt(_pwRoot, _pwr, _nDL, _cnt) \
     (PWR_wPopWord((_pwRoot), (_pwr)) \
         = ((PWR_wPopWordDL((_pwRoot), (_pwr), (_nDL)) \
-                & ~wPrefixPopMask(_nDL)) \
-            | ((_cnt) & wPrefixPopMask(_nDL))))
+                & wPrefixMask(_nDL)) \
+            | ((_cnt) & wPopMask(_nDL))))
 
 #define set_PWR_wPopCntBL(_pwRoot, _pwr, _nBL, _cnt) \
     (PWR_wPopWord((_pwRoot), (_pwr)) \
         = ((PWR_wPopWordBL((_pwRoot), (_pwr), (_nBL)) \
-                & ~wPrefixPopMaskBL(_nBL)) \
-            | ((_cnt) & wPrefixPopMaskBL(_nBL))))
+                & wPrefixMaskBL(_nBL)) \
+            | ((_cnt) & wPopMaskBL(_nBL))))
 
 #else // defined(POP_WORD)
 
@@ -1945,28 +1950,28 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 #define set_PWR_wPopCnt(_pwRoot, _pwr, _nDL, _cnt) \
   (assert((_nDL) < cnDigitsPerWord), \
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
-        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMask(_nDL)) \
-            | ((_cnt) & wPrefixPopMask(_nDL)))))
+        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixMask(_nDL)) \
+            | ((_cnt) & wPopMask(_nDL)))))
 
 #define set_PWR_wPopCntBL(_pwRoot, _pwr, _nBL, _cnt) \
     (assert((_nBL) < cnBitsPerWord), \
         /*assert(wr_nType(*(_pwRoot) != T_EMBEDDED_KEYS)),*/ \
         (PWR_wPrefixPop((_pwRoot), (_pwr)) \
-            = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMaskBL(_nBL)) \
-                | ((_cnt) & wPrefixPopMaskBL(_nBL)))))
+            = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixMaskBL(_nBL)) \
+                | ((_cnt) & wPopMaskBL(_nBL)))))
 
   #else // defined(PP_IN_LINK)
 
 #define set_PWR_wPopCnt(_pwRoot, _pwr, _nDL, _cnt) \
     (PWR_wPrefixPop((_pwRoot), (_pwr)) \
-        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMask(_nDL)) \
-            | ((_cnt) & wPrefixPopMask(_nDL))))
+        = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixMask(_nDL)) \
+            | ((_cnt) & wPopMask(_nDL))))
 
 #define set_PWR_wPopCntBL(_pwRoot, _pwr, _nBL, _cnt) \
     (/*assert(wr_nType(*(_pwRoot) != T_EMBEDDED_KEYS)),*/ \
         (PWR_wPrefixPop((_pwRoot), (_pwr)) \
-            = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & ~wPrefixPopMaskBL(_nBL)) \
-                | ((_cnt) & wPrefixPopMaskBL(_nBL)))))
+            = ((PWR_wPrefixPop((_pwRoot), (_pwr)) & wPrefixMaskBL(_nBL)) \
+                | ((_cnt) & wPopMaskBL(_nBL)))))
 
  #endif // defined(PP_IN_LINK)
 
@@ -1977,20 +1982,20 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 #endif // defined(POP_WORD_IN_LINK) && !defined(POP_WORD)
 
 #define set_w_wPrefixNotAtTop(_w, _nDL, _key) \
-    ((_w) = (((_w) & wPrefixPopMaskNotAtTop(_nDL)) \
-            | ((_key) & ~wPrefixPopMaskNotAtTop(_nDL))))
+    ((_w) = (((_w) & wPopMaskNAT(_nDL)) \
+            | ((_key) & wPrefixMaskNAT(_nDL))))
 
 #define set_w_wPrefixNATBL(_w, _nBL, _key) \
-    ((_w) = (((_w) & wPrefixPopMaskNotAtTopBL(_nBL)) \
-            | ((_key) & ~wPrefixPopMaskNotAtTopBL(_nBL))))
+    ((_w) = (((_w) & wPopMaskNATBL(_nBL)) \
+            | ((_key) & wPrefixMaskNATBL(_nBL))))
 
 #define set_w_wPopCntNotAtTop(_w, _nDL, _cnt) \
-    ((_w) = (((_w) & ~wPrefixPopMaskNotAtTop(_nDL)) \
-            | ((_cnt) & wPrefixPopMaskNotAtTop(_nDL))))
+    ((_w) = (((_w) & wPrefixMaskNAT(_nDL)) \
+            | ((_cnt) & wPopMaskNAT(_nDL))))
 
 #define set_w_wPopCntNATBL(_w, _nBL, _cnt) \
-    ((_w) = (((_w) & ~wPrefixPopMaskNotAtTopBL(_nBL)) \
-            | ((_cnt) & wPrefixPopMaskNotAtTopBL(_nBL))))
+    ((_w) = (((_w) & wPrefixMaskNATBL(_nBL)) \
+            | ((_cnt) & wPopMaskNATBL(_nBL))))
 
 #define     pwr_pLinks(_pwr)  ((_pwr)->sw_aLinks)
 
@@ -2754,23 +2759,11 @@ gwPopCnt(qp, int nBLR)
     return wPopCnt;
 }
 
-static inline Word_t
-Get_wPopCntBL(Word_t *pwRoot, int nBL)
-{
-    return PWR_wPopCntBL(pwRoot, wr_pwr(*pwRoot), nBL);
-}
-
 static inline void
 swPopCnt(qp, int nBLR, Word_t wPopCnt)
 {
     qv;
     set_PWR_wPopCntBL(&pLn->ln_wRoot, pwr, nBLR, wPopCnt);
-}
-
-static inline void
-Set_wPopCntBL(Word_t *pwRoot, int nBL, Word_t wPopCnt)
-{
-    set_PWR_wPopCntBL(pwRoot, wr_pwr(*pwRoot), nBL, wPopCnt);
 }
 
 static inline int
