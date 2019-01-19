@@ -4828,25 +4828,11 @@ SearchList8(qp, int nBLR, Word_t wKey)
 
     assert(nBL <= 8);
     // sizeof(__m128i) == 16 bytes
-  #if defined(PSPLIT_SEARCH_8) && defined(PSPLIT_PARALLEL) \
-          && defined(PARALLEL_128) && (cnListPopCntMax8 <= 16)
-      #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     int nPopCnt = PWR_wPopCntBL(pwRoot, NULL, nBL);
-      #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    // By simply setting nPopCnt = 16 here we are assuming, while not
-    // ensuring, that pop count never exceeds 16 here.
-    // We do it because reading the pop count is so much slower.
-    assert(gnListPopCnt(qy, 8) <= 16);
-    int nPopCnt = PWR_xListPopCnt(&wRoot, pwr, 8);
-    //int nPopCnt = 16; // Sixteen fit so why do less?
-      #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-  #else // defined(PSPLIT_SEARCH_8) && ...
-      #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    int nPopCnt = PWR_wPopCntBL(pwRoot, NULL, nBL);
-      #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    int nPopCnt = PWR_xListPopCnt(&wRoot, pwr, 8);
-      #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-  #endif // defined(PSPLIT_SEARCH8) && ...
+  #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    int nPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBLR);
+  #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     uint8_t *pcKeys = ls_pcKeysNATX(pwr, nPopCnt);
 
 #if defined(LIST_END_MARKERS)
