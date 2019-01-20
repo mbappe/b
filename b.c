@@ -7614,6 +7614,12 @@ Initialize(void)
     printf("# No NO_POP_IN_WR_HB\n");
 #endif // defined(NO_POP_IN_WR_HB)
 
+#ifdef           NO_POP_WORD
+    printf("#    NO_POP_WORD\n");
+#else //         NO_POP_WORD
+    printf("# No NO_POP_WORD\n");
+#endif // #else  NO_POP_WORD
+
 #if defined(NO_EMBED_KEYS)
     printf("#    NO_EMBED_KEYS\n");
 #else // defined(NO_EMBED_KEYS)

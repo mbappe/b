@@ -1914,22 +1914,16 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
   #endif // POP_WORD_IN_LINK
 
 #define PWR_wPopCnt(_pwRoot, _pwr, _nDL) \
-    (w_wPopCnt(PWR_wPopWord((_pwRoot), (_pwr)), (_nDL)))
+    (PWR_wPopWord((_pwRoot), (_pwr)))
 
 #define PWR_wPopCntBL(_pwRoot, _pwr, _nBL) \
-    (w_wPopCntBL(PWR_wPopWordBL((_pwRoot), (_pwr), (_nBL)), (_nBL)))
+    (PWR_wPopWordBL((_pwRoot), (_pwr), (_nBL)))
 
 #define set_PWR_wPopCnt(_pwRoot, _pwr, _nDL, _cnt) \
-    (PWR_wPopWord((_pwRoot), (_pwr)) \
-        = ((PWR_wPopWordDL((_pwRoot), (_pwr), (_nDL)) \
-                & ~wPrefixPopMask(_nDL)) \
-            | ((_cnt) & wPrefixPopMask(_nDL))))
+    (PWR_wPopWord((_pwRoot), (_pwr)) = (_cnt))
 
 #define set_PWR_wPopCntBL(_pwRoot, _pwr, _nBL, _cnt) \
-    (PWR_wPopWord((_pwRoot), (_pwr)) \
-        = ((PWR_wPopWordBL((_pwRoot), (_pwr), (_nBL)) \
-                & ~wPrefixPopMaskBL(_nBL)) \
-            | ((_cnt) & wPrefixPopMaskBL(_nBL))))
+    (PWR_wPopWord((_pwRoot), (_pwr)) = (_cnt))
 
 #else // defined(POP_WORD)
 
@@ -2771,23 +2765,31 @@ gwPrefix(qp)
 static inline Word_t
 gwPopCnt(qp, int nBLR)
 {
-    qv;
+    qv; (void)nBLR;
     assert(tp_bIsSwitch(nType));
     if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
         return 0;
     }
+  #ifdef POP_WORD
+    Word_t wPopCnt = PWR_wPopWordBL(&pLn->ln_wRoot, pwr, nBLR);
+  #else // POP_WORD
     Word_t wPopCnt = PWR_wPopCntBL(&pLn->ln_wRoot, pwr, nBLR);
-    if ((wPopCnt == 0) && (nBLR != cnBitsPerWord)) {
-        return EXP(nBLR);
+    if (wPopCnt == 0) {
+        return NZ_MSK(nBLR) + 1; // Must handle nBLR == cnBitsPerWord.
     }
+  #endif // #else POP_WORD
     return wPopCnt;
 }
 
 static inline void
 swPopCnt(qp, int nBLR, Word_t wPopCnt)
 {
-    qv;
+    qv; (void)nBLR;
+  #ifdef POP_WORD
+    PWR_wPopWordBL(&pLn->ln_wRoot, pwr, nBLR) = wPopCnt;
+  #else // POP_WORD
     set_PWR_wPopCntBL(&pLn->ln_wRoot, pwr, nBLR, wPopCnt);
+  #endif // #else POP_WORD
 }
 
 static inline int
