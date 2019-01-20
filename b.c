@@ -2310,9 +2310,8 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
             assert(nBLArg != cnBitsPerWord);
 
             if (cnBitsInD1 > cnLogBitsPerLink) {
-                Word_t wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL);
-                printf(" wr_wPopCnt %3" _fw"u",
-                       wPopCnt != 0 ? wPopCnt : EXP(nBL));
+                Word_t wPopCnt = gwBitmapPopCnt(qy, nBL);
+                printf(" wr_wPopCnt %3" _fw"u", wPopCnt);
             }
         }
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -3382,8 +3381,13 @@ InsertCleanup(qp, Word_t wKey)
         // if wPopCnt * cn2dBmMaxWpkPercent > EXP(nBL-cnLogBitsPerWord) * 100
         // Disable with cn2dBmMaxWpkPercent = 0.
         //-E: 256 * cn2dBmMaxPercent > 1024*100
-        && ((wPopCnt = gwPopCnt(qy, nBL)) * cn2dBmMaxWpkPercent
-            > (EXP(nBL - cnLogBitsPerWord) * 100)))
+        // Use PWR_wPopCntBL because we might get called with pop count zero
+        // during InsertAll and we should be done converting before we ever
+        // get called with full pop. See embedded assert.
+        && ((wPopCnt = PWR_wPopCntBL(pwRoot, pwr, nBL)),
+            assert(wPopCnt < MSK(nBL)),
+            wPopCnt * cn2dBmMaxWpkPercent
+                > (EXP(nBL - cnLogBitsPerWord) * 100)))
     {
         DBGI(printf("Converting BM leaf.\n"));
 
@@ -3821,10 +3825,12 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
         } else
 #endif // !defined(PP_IN_LINK) && !defined(POP_WORD_IN_LINK)
 #endif // defined(SKIP_TO_BITMAP)
-        { wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR); }
-        if (wPopCnt == 0) {
-            // full pop
-            wPopCnt = wPrefixPopMaskBL(nBLR) + 1;
+        {
+            wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
+            if (wPopCnt == 0) {
+                // full pop
+                wPopCnt = EXP(nBLR);
+            }
         }
     }
 
@@ -6522,7 +6528,7 @@ done:
         int nWords
             = (nBLR <= cnLogBitsPerWord) ? 1 : EXP(nBLR - cnLogBitsPerWord);
         for (int i = 0; i < nWords; ++i) {
-            wPopCntDbg += __builtin_popcountll(pwr[i]);
+            wPopCntDbg += __builtin_popcountll(pwBitmap[i]);
         }
         assert(wPopCntDbg == wPopCnt);
 #endif // defined(DEBUG_COUNT)

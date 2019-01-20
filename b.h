@@ -1686,12 +1686,14 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 // PP_IN_LINK?
 #define POP_WORD
 
-// As it stands we always get the absolute type from sw_wPrefixPop if
-// LVL_IN_SW.  We assume the macro is used only when it is known that
-// we have a skip link.  We could enhance it to use one type value to indicate
-// that we have to go to sw_wPrefixPop and use any other values that we
-// have available to represent some key absolute depths.
-// But why?  There is no real performance win since we have to look at the
+// We coopt the pop field in sw_wPrefixPop and use it for absolute level if
+// LVL_IN_SW. This seems risky from a code maintenance perspective. Some
+// renaming might be in order.
+// We assume wr_n[BD]L and set_wr_n[BD]L are used only when it is
+// known that we have a skip link.  We could enhance it to use one type value
+// to indicate that we have to go to sw_wPrefixPop and use any other values
+// that we have available to represent some key absolute levels.
+// But why? Is there a performance win since we have to look at the
 // prefix word anyway.
 // Should we enhance wr_nDL to take pwRoot and wRoot and nDL?
   #define wr_nBL(_wr) \
@@ -2932,23 +2934,24 @@ gwBitmapPopCnt(qp, int nBLR)
   #endif // SKIP_TO_BITMAP
            );
     assert((wr_nType(WROOT_NULL) != T_BITMAP) || (wRoot != WROOT_NULL));
-    Word_t wPopCnt = ((BmLeaf_t*)pwr)->bmlf_wPopCnt;
+    BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
+    Word_t wPopCnt = pBmLeaf->bmlf_wPopCnt;
   #ifdef SKIP_TO_BITMAP
   #ifndef PREFIX_WORD_IN_BITMAP_LEAF
       #if !defined(KISS_BM) && !defined(KISS)
     assert((nBLR == cnBitsInD1) || (nBLR == cnBitsLeftAtDl2));
     if (cbEmbeddedBitmap) {
         assert(nBLR == cnBitsLeftAtDl2);
-        wPopCnt = w_wPopCntNATBL(wPopCnt, cnBitsLeftAtDl2);
+        wPopCnt = pBmLeaf->bmlf_wPopCnt & MSK(cnBitsLeftAtDl2);
         if (wPopCnt == 0) { wPopCnt = EXP(cnBitsLeftAtDl2); } // full pop
     } else if (cn2dBmMaxWpkPercent == 0) {
         assert(nBLR == cnBitsInD1);
-        wPopCnt = w_wPopCntNATBL(wPopCnt, cnBitsInD1);
+        wPopCnt = pBmLeaf->bmlf_wPopCnt & MSK(cnBitsInD1);
         if (wPopCnt == 0) { wPopCnt = EXP(cnBitsInD1); } // full pop
     } else
       #endif // !defined(KISS_BM) && !defined(KISS)
     {
-        wPopCnt = w_wPopCntBL(wPopCnt, nBLR);
+        wPopCnt = pBmLeaf->bmlf_wPopCnt & MSK(nBLR);
         // Avoiding a conditional branch here might be more straightforward if
         // we were storing pop - 1 in the PrefixPop word.
         // Are we just obfuscating the conditional branch with !wPopCnt?
@@ -2983,14 +2986,14 @@ swBitmapPopCnt(qp, int nBLR, Word_t wPopCnt)
     assert((nBLR == cnBitsInD1) || (nBLR == cnBitsLeftAtDl2));
     if (cbEmbeddedBitmap) {
         assert(nBLR == cnBitsLeftAtDl2);
-        set_w_wPopCntNATBL(pBmLeaf->bmlf_wPopCnt, cnBitsLeftAtDl2, wPopCnt);
+        SetBits(&pBmLeaf->bmlf_wPopCnt, cnBitsLeftAtDl2, 0, wPopCnt);
     } else if (cn2dBmMaxWpkPercent == 0) {
         assert(nBLR == cnBitsInD1);
-        set_w_wPopCntNATBL(pBmLeaf->bmlf_wPopCnt, cnBitsInD1, wPopCnt);
+        SetBits(&pBmLeaf->bmlf_wPopCnt, cnBitsInD1, 0, wPopCnt);
     } else
       #endif // !defined(KISS_BM) && !defined(KISS)
     {
-        set_w_wPopCntBL(pBmLeaf->bmlf_wPopCnt, nBLR, wPopCnt);
+        SetBits(&pBmLeaf->bmlf_wPopCnt, nBLR, 0, wPopCnt);
     }
   #endif // #else !defined(SKIP_TO_BITMAP) || defined(PREFIX_WORD_...)
 }
