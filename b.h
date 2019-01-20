@@ -2781,23 +2781,11 @@ gwPopCnt(qp, int nBLR)
     return wPopCnt;
 }
 
-static inline Word_t
-Get_wPopCntBL(Word_t *pwRoot, int nBL)
-{
-    return PWR_wPopCntBL(pwRoot, wr_pwr(*pwRoot), nBL);
-}
-
 static inline void
 swPopCnt(qp, int nBLR, Word_t wPopCnt)
 {
     qv;
     set_PWR_wPopCntBL(&pLn->ln_wRoot, pwr, nBLR, wPopCnt);
-}
-
-static inline void
-Set_wPopCntBL(Word_t *pwRoot, int nBL, Word_t wPopCnt)
-{
-    set_PWR_wPopCntBL(pwRoot, wr_pwr(*pwRoot), nBL, wPopCnt);
 }
 
 static inline int
