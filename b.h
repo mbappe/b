@@ -2632,6 +2632,18 @@ typedef struct {
 // to RETYPE_FULL_BM_SW.
 typedef Switch_t BmSwitch_t;
 
+typedef struct {
+    Word_t bmlf_wPopCnt;
+  #ifdef SKIP_TO_BITMAP
+      #ifdef PREFIX_WORD_IN_BITMAP_LEAF
+    Word_t bmlf_wPrefix;
+      #else // PREFIX_WORD_IN_BITMAP_LEAF
+    #define bmlf_wPrefixPop  bmlf_wPopCnt
+      #endif // PREFIX_WORD_IN_BITMAP_LEAF
+  #endif // SKIP_TO_BITMAP
+    Word_t bmlf_awBitmap[1];
+} BmLeaf_t;
+
 #ifdef B_JUDYL
 
   #ifdef EMBED_KEYS
@@ -2659,7 +2671,7 @@ gpwValues(qp)
 static Word_t *
 gpwBitmapValues(qp, int nBLR)
 {
-    qv;
+    qv; (void)nBLR;
     // The value area follows the bitmap and the prefix-pop word.
     // What if (nBLR < cnLogBitsPerWord) and (cnBitsInD1 >= cnLogBitsPerWord)?
     // This might happen for USE_XX_SW_ONLY_AT_DL2 if we are not careful.
@@ -2669,17 +2681,32 @@ gpwBitmapValues(qp, int nBLR)
     // What if (cnBitsLeftAtDl2 < cnLogBitsPerWord)? TBD, but this assertion
     // will catch it if we forget about something.
     assert((nBLR >= cnLogBitsPerWord) || (cnBitsInD1 < cnLogBitsPerWord));
-    return
-        &pwr[((cnBitsInD1 < cnLogBitsPerWord) && (nBLR <= cnLogBitsPerWord))
-                    ? 2 : (EXP(nBLR - cnLogBitsPerWord) + 1)];
+#if defined(KISS_BM) || defined(KISS)
+    Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t) - 1
+                         + EXP(MAX(1, nBLR - cnLogBitsPerWord));
+#else // defined(KISS_BM) || defined(KISS)
+    // We only ever have bitmaps for B_JUDYL at cnBitsInD1.
+    assert(nBLR == cnBitsInD1);
+    Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t);
+    if (cnBitsInD1 > cnLogBitsPerWord) {
+        wWordsHdr += EXP(cnBitsInD1 - cnLogBitsPerWord) - 1;
+    }
+#endif // #else defined(KISS_BM) || defined(KISS)
+    return &pwr[wWordsHdr];
 }
 
 static int
 BmIndex(qp, int nBLR, Word_t wKey)
 {
     qv;
+    assert(!cbEmbeddedBitmap);
+    assert((nType == T_BITMAP)
+  #ifdef SKIP_TO_BITMAP
+               || (nType == T_SKIP_TO_BITMAP)
+  #endif // SKIP_TO_BITMAP
+           );
     Word_t wDigit = wKey & MSK(nBLR);
-    Word_t *pwBmWords = pwr;
+    Word_t *pwBmWords = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
     // The bitmap may have more than one word.
     // nBmWordNum is the number of the word which contains the bit we want.
     int nBmWordNum = wDigit >> cnLogBitsPerWord;
@@ -2866,24 +2893,30 @@ Set_xListPopCnt(Word_t *pwRoot, int nBL, int nPopCnt)
 static Word_t
 gwBitmapPrefix(qp, int nBLR)
 {
-    qv;
+    qv; (void)nBLR;
   #if defined(PP_IN_LINK)
     #error gwBitmapPrefix does not handle prefix in link yet
   #endif // defined(PP_IN_LINK)
     assert(nType == T_SKIP_TO_BITMAP);
-    return w_wPrefixNotAtTopBL(pwr[(nBLR <= cnLogBitsPerWord)
-                                       ? 1 : EXP(nBLR - cnLogBitsPerWord)],
-                               nBLR);
+    BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
+  #ifdef PREFIX_WORD_IN_BITMAP_LEAF
+    return pBmLeaf->bmlf_wPrefix;
+  #else // PREFIX_WORD_IN_BITMAP_LEAF
+    return w_wPrefixNotAtTopBL(pBmLeaf->bmlf_wPrefixPop, nBLR);
+  #endif // #else PREFIX_WORD_IN_BITMAP_LEAF
 }
 
 // Prefix is in the word following the bitmap.
 static void
 swBitmapPrefix(qp, int nBLR, Word_t wPrefix)
 {
-    qv;
-    set_w_wPrefixNATBL(pwr[(nBLR <= cnLogBitsPerWord)
-                               ? 1 : EXP(nBLR - cnLogBitsPerWord)],
-                       nBLR, wPrefix);
+    qv; (void)nBLR;
+    BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
+  #ifdef PREFIX_WORD_IN_BITMAP_LEAF
+    pBmLeaf->bmlf_wPrefix = wPrefix & ~MSK(nBLR);
+  #else // PREFIX_WORD_IN_BITMAP_LEAF
+    set_w_wPrefixNATBL(pBmLeaf->bmlf_wPrefixPop, nBLR, wPrefix);
+  #endif // #else PREFIX_WORD_IN_BITMAP_LEAF
 }
 
   #endif // SKIP_TO_BITMAP
@@ -2892,111 +2925,79 @@ swBitmapPrefix(qp, int nBLR, Word_t wPrefix)
 static Word_t
 gwBitmapPopCnt(qp, int nBLR)
 {
-    qv;
+    qv; (void)nBLR;
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     #error gwBitmapPopCnt does not handle pop in link yet
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    // No need to handle embedded bitmaps.
+    // No need to handle embedded bitmaps here.
     assert(!cbEmbeddedBitmap || (nBLR > cnLogBitsPerLink));
-    assert((nType == T_BITMAP) || (nType == T_SKIP_TO_BITMAP));
-    if ((wr_nType(WROOT_NULL) == T_BITMAP) && (wRoot == WROOT_NULL)) {
-        return 0;
-    }
-  #if defined(KISS_BM_POPCNT) || defined(KISS)
-    Word_t wPopCnt = w_wPopCntNATBL(pwr[(nBLR <= cnLogBitsPerWord)
-                                          ? 1 : EXP(nBLR - cnLogBitsPerWord)],
-                                 nBLR);
-    // Avoiding a conditional branch here might be more straightforward if
-    // we were storing pop - 1 in the PrefixPop word.
-    // Are we just obfuscating the conditional branch with !wPopCnt?
-    // Is the compiler smart enough to get rid of the conditional branch even
-    // if we leave it in the source?
-    // A quick comparison of the resulting objects leads me to believe either
-    // version of the source results in the same object code.
-    //wPopCnt += EXP(nBLR) * !wPopCnt; // full pop
-    if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop
-  #else // defined(KISS_BM_POPCNT) || defined(KISS)
-    // We'd like to avoid a runtime conditional branch.
-    // External bitmap leaves can exist at cnBitsInD1 or cnBitsLeftAtDl2
-    // but nowhere else.
-    // If we are here, then we have an external bitmap leaf.
+    assert((nType == T_BITMAP)
+  #ifdef SKIP_TO_BITMAP
+               || (nType == T_SKIP_TO_BITMAP)
+  #endif // SKIP_TO_BITMAP
+           );
+    assert((wr_nType(WROOT_NULL) != T_BITMAP) || (wRoot != WROOT_NULL));
+    Word_t wPopCnt = ((BmLeaf_t*)pwr)->bmlf_wPopCnt;
+  #ifdef SKIP_TO_BITMAP
+  #ifndef PREFIX_WORD_IN_BITMAP_LEAF
+      #if !defined(KISS_BM) && !defined(KISS)
     assert((nBLR == cnBitsInD1) || (nBLR == cnBitsLeftAtDl2));
-    Word_t wPopCnt;
     if (cbEmbeddedBitmap) {
         assert(nBLR == cnBitsLeftAtDl2);
-        wPopCnt
-            = w_wPopCntNATBL(pwr[(cnBitsLeftAtDl2 <= cnLogBitsPerWord)
-                                   ? 1
-                                   : EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord)],
-                             cnBitsLeftAtDl2);
+        wPopCnt = w_wPopCntNATBL(wPopCnt, cnBitsLeftAtDl2);
         if (wPopCnt == 0) { wPopCnt = EXP(cnBitsLeftAtDl2); } // full pop
     } else if (cn2dBmMaxWpkPercent == 0) {
         assert(nBLR == cnBitsInD1);
-        wPopCnt = w_wPopCntNATBL(pwr[(cnBitsInD1 <= cnLogBitsPerWord)
-                                       ? 1
-                                       : EXP(cnBitsInD1 - cnLogBitsPerWord)],
-                                 cnBitsInD1);
+        wPopCnt = w_wPopCntNATBL(wPopCnt, cnBitsInD1);
         if (wPopCnt == 0) { wPopCnt = EXP(cnBitsInD1); } // full pop
-    } else if (cnBitsInD1 >= cnLogBitsPerWord) {
-        wPopCnt = w_wPopCntNATBL(pwr[EXP(nBLR - cnLogBitsPerWord)], nBLR);
+    } else
+      #endif // !defined(KISS_BM) && !defined(KISS)
+    {
+        wPopCnt = w_wPopCntBL(wPopCnt, nBLR);
+        // Avoiding a conditional branch here might be more straightforward if
+        // we were storing pop - 1 in the PrefixPop word.
+        // Are we just obfuscating the conditional branch with !wPopCnt?
+        // Is the compiler smart enough to get rid of the conditional branch
+        // even if we leave it in the source?
+        // A quick comparison of the resulting objects leads me to believe
+        // either version of the source results in the same object code.
+        // wPopCnt += EXP(nBLR) * !wPopCnt; // full pop
         if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop
-    } else if (cnBitsInD2 <= cnLogBitsPerWord) {
-        wPopCnt = w_wPopCntNATBL(pwr[1], nBLR);
-        if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop
-    } else if (nBLR == cnBitsInD1) {
-        wPopCnt = w_wPopCntNATBL(pwr[1], cnBitsInD1);
-        if (wPopCnt == 0) { wPopCnt = EXP(cnBitsInD1); } // full pop
-    } else {
-        wPopCnt = w_wPopCntNATBL(pwr[EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord)],
-                                 cnBitsLeftAtDl2);
-        if (wPopCnt == 0) { wPopCnt = EXP(cnBitsLeftAtDl2); } // full pop
     }
-  #endif // #else defined(KISS_BM_POPCNT) || defined(KISS)
+  #endif // #ifndef PREFIX_WORD_IN_BITMAP_LEAF
+  #endif // SKIP_TO_BITMAP
+    assert(wPopCnt <= EXP(nBLR));
     return wPopCnt;
 }
 
 // Pop cnt is in the word following the bitmap.
+// Full pop gets masked to zero if pop is sharing a word with prefix.
 static void
 swBitmapPopCnt(qp, int nBLR, Word_t wPopCnt)
 {
-    qv;
+    qv; (void)nBLR;
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     #error gwBitmapPopCnt does not handle pop in link yet
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     assert((wr_nType(WROOT_NULL) != T_BITMAP) || (wRoot != WROOT_NULL));
-    // Full pop gets masked to zero.
-  #if defined(KISS_BM_POPCNT) || defined(KISS)
-    set_w_wPopCntNATBL(pwr[(nBLR <= cnLogBitsPerWord)
-                               ? 1 : EXP(nBLR - cnLogBitsPerWord)],
-                       nBLR, wPopCnt);
-  #else // defined(KISS_BM_POPCNT) || defined(KISS)
-    // We'd like to avoid a runtime conditional branch.
-    // External bitmap leaves can exist at cnBitsInD1 or cnBitsLeftAtDl2
-    // but nowhere else.
-    // If we are here, then we have an external bitmap leaf.
+    BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
+  #if !defined(SKIP_TO_BITMAP) || defined(PREFIX_WORD_IN_BITMAP_LEAF)
+    pBmLeaf->bmlf_wPopCnt = wPopCnt;
+  #else // !defined(SKIP_TO_BITMAP) || defined(PREFIX_WORD_IN_BITMAP_LEAF)
+      #if !defined(KISS_BM) && !defined(KISS)
     assert((nBLR == cnBitsInD1) || (nBLR == cnBitsLeftAtDl2));
     if (cbEmbeddedBitmap) {
         assert(nBLR == cnBitsLeftAtDl2);
-        set_w_wPopCntNATBL(pwr[(cnBitsLeftAtDl2 <= cnLogBitsPerWord)
-                                   ? 1
-                                   : EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord)],
-                           cnBitsLeftAtDl2, wPopCnt);
+        set_w_wPopCntNATBL(pBmLeaf->bmlf_wPopCnt, cnBitsLeftAtDl2, wPopCnt);
     } else if (cn2dBmMaxWpkPercent == 0) {
         assert(nBLR == cnBitsInD1);
-        set_w_wPopCntNATBL(pwr[(cnBitsInD1 <= cnLogBitsPerWord)
-                                   ? 1 : EXP(cnBitsInD1 - cnLogBitsPerWord)],
-                           cnBitsInD1, wPopCnt);
-    } else if (cnBitsInD1 >= cnLogBitsPerWord) {
-        set_w_wPopCntNATBL(pwr[EXP(nBLR - cnLogBitsPerWord)], nBLR, wPopCnt);
-    } else if (cnBitsInD2 <= cnLogBitsPerWord) {
-        set_w_wPopCntNATBL(pwr[1], nBLR, wPopCnt);
-    } else if (nBLR == cnBitsInD1) {
-        set_w_wPopCntNATBL(pwr[1], cnBitsInD1, wPopCnt);
-    } else {
-        set_w_wPopCntNATBL(pwr[EXP(cnBitsLeftAtDl2 - cnLogBitsPerWord)],
-                           cnBitsLeftAtDl2, wPopCnt);
+        set_w_wPopCntNATBL(pBmLeaf->bmlf_wPopCnt, cnBitsInD1, wPopCnt);
+    } else
+      #endif // !defined(KISS_BM) && !defined(KISS)
+    {
+        set_w_wPopCntBL(pBmLeaf->bmlf_wPopCnt, nBLR, wPopCnt);
     }
-  #endif // #else defined(KISS_BM_POPCNT) || defined(KISS)
+  #endif // #else !defined(SKIP_TO_BITMAP) || defined(PREFIX_WORD_...)
 }
 
 #endif // defined(BITMAP)

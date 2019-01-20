@@ -199,6 +199,17 @@
   #endif // ALLOW_EMBEDDED_BITMAP
 #endif // BITMAP
 
+// Default is PREFIX_WORD_IN_BITMAP_LEAF for B_JUDYL.
+// The only reason it is not the default for Judy1 is that it would make our
+// bitmap struct be eight words instead of six words. Maybe we should use
+// the preamble word.
+#ifdef SKIP_TO_BITMAP
+  #ifdef B_JUDYL
+    #undef  PREFIX_WORD_IN_BITMAP_LEAF
+    #define PREFIX_WORD_IN_BITMAP_LEAF
+  #endif // B_JUDYL
+#endif // SKIP_TO_BITMAP
+
 // No sense requesting extra memory that we don't have a use for by default.
 #define LIST_REQ_MIN_WORDS
 

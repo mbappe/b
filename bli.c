@@ -2061,6 +2061,7 @@ t_bitmap:;
                 // enough it's faster to just always count from the same
                 // end rather than going to the trouble of figuring out
                 // which end is closer.
+                Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
                 if ((nBLR > 8) && (wKey & EXP(nBLR - 1))) {
                     wPopCnt = gwBitmapPopCnt(qy, nBLR);
                     if (wPopCnt == 0) {
@@ -2068,23 +2069,23 @@ t_bitmap:;
                     }
                     for (int nn = nWordOffset + 1;
                              nn < (int)EXP(nBLR - cnLogBitsPerWord); nn++) {
-                        wPopCnt -= __builtin_popcountll(pwr[nn]);
+                        wPopCnt -= __builtin_popcountll(pwBitmap[nn]);
                     }
                     Word_t wBmMask
                         = ((Word_t)-1
                             << (wKey & MSK(nBLR) & (cnBitsPerWord - 1)));
-                    wPopCnt
-                        -= __builtin_popcountll(pwr[nWordOffset] & wBmMask);
+                    wPopCnt -= __builtin_popcountll(pwBitmap[nWordOffset]
+                                                        & wBmMask);
                 } else {
                     wPopCnt = 0;
                     for (int nn = 0; nn < nWordOffset; nn++) {
-                        wPopCnt += __builtin_popcountll(pwr[nn]);
+                        wPopCnt += __builtin_popcountll(pwBitmap[nn]);
                     }
                     Word_t wBmMask
                         = ((Word_t)1
                             << (wKey & MSK(nBLR) & (cnBitsPerWord - 1))) - 1;
-                    wPopCnt
-                        += __builtin_popcountll(pwr[nWordOffset] & wBmMask);
+                    wPopCnt += __builtin_popcountll(pwBitmap[nWordOffset]
+                                                        & wBmMask);
                 }
             }
             wPopCntSum += wPopCnt;
@@ -2127,13 +2128,16 @@ t_bitmap:;
                         && (wRoot == WROOT_NULL))
                     ? 0 :
       #ifdef USE_XX_SW_ONLY_AT_DL2
-                BitIsSet((nBLR <= cnLogBitsPerLink) ? (Word_t*)pLn : pwr,
-                          wKey & MSK(nBLR));
+                BitIsSet((nBLR <= cnLogBitsPerLink)
+                             ? (Word_t*)pLn : ((BmLeaf_t*)pwr)->bmlf_awBitmap,
+                         wKey & MSK(nBLR));
       #else // USE_XX_SW_ONLY_AT_DL2
                 ((cn2dBmMaxWpkPercent == 0) || (nBLR == cnBitsInD1))
                     ? (cbEmbeddedBitmap && (cnBitsInD1 <= cnLogBitsPerWord))
                         ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
-                        : BitIsSet(cbEmbeddedBitmap ? (Word_t*)pLn : pwr,
+                        : BitIsSet(cbEmbeddedBitmap
+                                       ? (Word_t*)pLn
+                                       : ((BmLeaf_t*)pwr)->bmlf_awBitmap,
                                    wKey & MSK(cnBitsInD1))
                     :
                       (cbEmbeddedBitmap
@@ -2142,7 +2146,8 @@ t_bitmap:;
                         : BitIsSet((cbEmbeddedBitmap
                                            && (cnBitsLeftAtDl2
                                                <= cnLogBitsPerLink))
-                                       ? (Word_t*)pLn : pwr,
+                                       ? (Word_t*)pLn
+                                       : ((BmLeaf_t*)pwr)->bmlf_awBitmap,
                                    wKey & MSK(cnBitsLeftAtDl2));
       #endif // #else USE_XX_SW_ONLY_AT_DL2
             if (bBitIsSet) {
