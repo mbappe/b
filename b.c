@@ -3824,7 +3824,7 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
         { wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR); }
         if (wPopCnt == 0) {
             // full pop
-            wPopCnt = wPopMaskBL(nBLR) + 1;
+            wPopCnt = wPrefixPopMaskBL(nBLR) + 1;
         }
     }
 
