@@ -3048,9 +3048,19 @@ snListSwPop(qp, int nPopCnt)
 
 #ifdef CODE_BM_SW
 
+// Bitmap switches are meant to handle data that would otherwise cause us to
+// use too much memory.
+// We don't want bitmap switches with uniformly distributed random data.
+// Choose defaults empirically to cause conversion at lowest population
+// possible while avoiding bitmap switches for uniformly distributed random
+// data.
 #ifdef B_JUDYL
   #if !defined(cnBmSwConvertL)
+      #ifdef EMBED_KEYS
+    #define cnBmSwConvertL 7
+      #else // EMBED_KEYS
     #define cnBmSwConvertL 5
+      #endif // EMBED_KEYS
   #endif // !defined(cnBmSwConvertL)
     #define cnBmSwConvert  cnBmSwConvertL
   #if !defined(cnBmSwRetainL)
@@ -3076,14 +3086,16 @@ InflateBmSwTest(qp) // qp points to BM switch
     Word_t wPopCnt = gwPopCnt(qy, nBLR);
     qv;
 
-    int nBytesPerPop = ExtListBytesPerKey(nBLR - nBW);
-    int nBytesPerLink = sizeof(Link_t);
+    int nBytesPerPop = ExtListBytesPerKey(nBLR - nBW); // accumulator
+    int nBytesPerLink = sizeof(Link_t); // accumulator
 #ifdef B_JUDYL
     nBytesPerPop += sizeof(Word_t); // value
+  #ifdef EMBED_KEYS
     nBytesPerLink += sizeof(Word_t); // value
+  #endif // EMBED_KEYS
 #endif // B_JUDYL
 
-// inflate: total-words / pop < words-per-key
+// inflate <==> inflated total-words / pop < words-per-key
 // (bytes-in-sw + bytes-below-sw) / sizeof(Word_t) / pop < wpk
 // (bytes-in-sw + bytes-below-sw) / sizeof(Word_t) / pop < convert/retain
 // (bytes-in-sw + bytes-below-sw) / pop < sizeof(Word_t) * convert/retain
