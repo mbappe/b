@@ -1343,8 +1343,7 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(USE_LIST_SW)
         sizeof(Switch_t);
 
-    // sizeof([Bm]Switch_t) includes one link; add the others
-    wBytes += (wLinks - 1) * sizeof(Link_t);
+    wBytes += wLinks * sizeof(Link_t);
     Word_t wWords = wBytes / sizeof(Word_t);
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
     wWords += wLinks; // Embedded Values in Switch
@@ -1732,8 +1731,7 @@ NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
 
     // What is the index of the new link?
     unsigned nBW = nBL_to_nBW(nBLR);
-    Word_t wIndex
-        = ((wKey >> (nBLR - nBW)) & (EXP(nBW) - 1));
+    Word_t wIndex = (wKey >> (nBLR - nBW)) & MSK(nBW);
     Word_t wDigit = wIndex;
     DBGI(printf("wKey " OWx" nBLR %d nBW %d wIndex (virtual) " OWx"\n",
                 wKey, nBLR, nBW, wIndex));
@@ -1757,7 +1755,7 @@ NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
                 + ALIGN_UP(N_WORDS_SWITCH_BM * sizeof(Word_t),
                            cnMallocAlignment)
 #endif // defined(CODE_BM_SW) && !defined(BM_IN_LINK)
-                + (nLinkCnt - 1) * sizeof(Link_t))
+                + nLinkCnt * sizeof(Link_t))
             / sizeof(Word_t);
     DBGI(printf("nLinkCnt %d nWordsOld %d\n", nLinkCnt, nWordsOld));
 
@@ -1833,7 +1831,7 @@ NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
         // Copy the old switch to the new switch and insert the new link.
         // copy header and leading links from old switch to new switch
         memcpy(wr_pwr(*pwRoot), pwr,
-               sizeof(BmSwitch_t) + (wIndex - 1) * sizeof(Link_t));
+               sizeof(BmSwitch_t) + wIndex * sizeof(Link_t));
 #ifndef BM_IN_LINK
         memcpy(PWR_pwBm(pwRoot, wr_pwr(*pwRoot)), pwBm,
                N_WORDS_SWITCH_BM * sizeof(Word_t));
@@ -1988,11 +1986,13 @@ OldSwitch(Word_t *pwRoot, int nBL,
                 // How many links are there in the old switch?
                 wLinks = 0;
                 for (int nn = 0; nn < N_WORDS_SWITCH_BM; nn++) {
-            wLinks += __builtin_popcountll(PWR_pwBm(pwRoot, pwr)[nn]
+                    wLinks
+                        += __builtin_popcountll(
+                            PWR_pwBm(pwRoot, pwr)[nn]
   #if defined(OFFSET_IN_SW_BM_WORD)
-                                   & (((Word_t)1 << (cnBitsPerWord / 2)) - 1)
+                                & (((Word_t)1 << (cnBitsPerWord / 2)) - 1)
   #endif // defined(OFFSET_IN_SW_BM_WORD)
-                                           );
+                                                );
                 }
                 assert(wLinks <= EXP(nBL_to_nBW(nBL)));
                 // Now we know how many links were in the old switch.
@@ -2016,8 +2016,7 @@ OldSwitch(Word_t *pwRoot, int nBL,
             ? sizeof(ListSw_t) :
 #endif // defined(USE_LIST_SW)
         sizeof(Switch_t);
-    // sizeof([Bm]Switch_t) includes one link; add the others
-    wBytes += (wLinks - 1) * sizeof(Link_t);
+    wBytes += wLinks * sizeof(Link_t);
     Word_t wWords = wBytes / sizeof(Word_t);
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
     wWords += wLinks; // Embedded Values in Switch

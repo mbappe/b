@@ -2602,7 +2602,7 @@ typedef struct {
 #if defined(USE_BM_SW) && defined(BM_IN_NON_BM_SW)
     SW_BM
 #endif // defined(USE_BM_SW) && defined(BM_IN_NON_BM_SW)
-    Link_t sw_aLinks[1]; // variable size
+    Link_t sw_aLinks[]; // variable size
 } Switch_t;
 
 // List switch.
@@ -2611,7 +2611,7 @@ typedef struct {
 typedef struct {
     SW_COMMON_HDR
     SW_LIST // variable size so sw_aLinks follows this
-    // Link_t sw_aLinks[1]; // variable size
+    // Link_t sw_aLinks[]; // variable size
 } ListSw_t;
 
 #if ! defined(cnDummiesInBmSw)
