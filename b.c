@@ -1095,7 +1095,7 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
     assert(nBLR == cnBitsInD1);
     // Number of words in BmLeaf_t plus the bitmap.
     // BmLeaf_t proper includes one word of the bitmap.
-    Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t) - 1
+    Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t)
                          + EXP(MAX(1, cnBitsInD1 - cnLogBitsPerWord));
     // Go for an uncompressed value area as soon as possible while keeping
     // words per key reasonable.
@@ -1130,18 +1130,18 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
       #if !defined(KISS_BM) && !defined(KISS)
     if (cbEmbeddedBitmap) {
         assert(nBLR == cnBitsLeftAtDl2);
-        wWords = sizeof(BmLeaf_t) / sizeof(Word_t) - 1
+        wWords = sizeof(BmLeaf_t) / sizeof(Word_t)
                      + EXP(MAX(1, cnBitsLeftAtDl2 - cnLogBitsPerWord));
     } else if (cn2dBmMaxWpkPercent == 0) {
         assert(nBLR == cnBitsInD1);
-        wWords = sizeof(BmLeaf_t) / sizeof(Word_t) - 1
+        wWords = sizeof(BmLeaf_t) / sizeof(Word_t)
                      + EXP(MAX(1, cnBitsInD1 - cnLogBitsPerWord));
     } else
       #endif // !defined(KISS_BM) && !defined(KISS)
     {
         // Number of words in the bitmap plus the rest of BmLeaf_t.
         // BmLeaf_t includes one word of bitmap.
-        wWords = sizeof(BmLeaf_t) / sizeof(Word_t) - 1
+        wWords = sizeof(BmLeaf_t) / sizeof(Word_t)
                      + EXP(MAX(1, nBLR - cnLogBitsPerWord));
     }
   #endif // #else B_JUDYL

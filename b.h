@@ -2632,7 +2632,7 @@ typedef struct {
     #define bmlf_wPrefixPop  bmlf_wPopCnt
       #endif // PREFIX_WORD_IN_BITMAP_LEAF
   #endif // SKIP_TO_BITMAP
-    Word_t bmlf_awBitmap[1];
+    Word_t bmlf_awBitmap[];
 } BmLeaf_t;
 
 #ifdef B_JUDYL
@@ -2673,15 +2673,13 @@ gpwBitmapValues(qp, int nBLR)
     // will catch it if we forget about something.
     assert((nBLR >= cnLogBitsPerWord) || (cnBitsInD1 < cnLogBitsPerWord));
 #if defined(KISS_BM) || defined(KISS)
-    Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t) - 1
+    Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t)
                          + EXP(MAX(1, nBLR - cnLogBitsPerWord));
 #else // defined(KISS_BM) || defined(KISS)
     // We only ever have bitmaps for B_JUDYL at cnBitsInD1.
     assert(nBLR == cnBitsInD1);
-    Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t);
-    if (cnBitsInD1 > cnLogBitsPerWord) {
-        wWordsHdr += EXP(cnBitsInD1 - cnLogBitsPerWord) - 1;
-    }
+    Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t)
+                         + EXP(MAX(1, cnBitsInD1 - cnLogBitsPerWord));
 #endif // #else defined(KISS_BM) || defined(KISS)
     return &pwr[wWordsHdr];
 }
