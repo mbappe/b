@@ -2458,15 +2458,15 @@ typedef struct {
 // Since we never test without COMPRESSED_LISTS the
 // || !PP_IN_LINK (and relationship to POP_WORD_IN_LINK) is suspect.
 #if defined(COMPRESSED_LISTS) || ! defined(PP_IN_LINK)
-        uint16_t ll_asKeys[1];
+        uint16_t ll_asKeys[0];
 #endif // defined(COMPRESSED_LISTS) || ! defined(PP_IN_LINK)
 #if defined(COMPRESSED_LISTS)
-        uint8_t  ll_acKeys[1];
+        uint8_t  ll_acKeys[0];
   #if (cnBitsPerWord > 32)
-        uint32_t ll_aiKeys[1];
+        uint32_t ll_aiKeys[0];
   #endif // (cnBitsPerWord > 32)
 #endif // defined(COMPRESSED_LISTS)
-        Word_t   ll_awKeys[1];
+        Word_t   ll_awKeys[0];
     };
 } ListLeaf_t;
 
