@@ -2054,7 +2054,6 @@ OldSwitch(Word_t *pwRoot, int nBL,
 
 // Get the pop count of the tree/subtree represented by (*pwRoot, nBL).
 // GetPopCnt requires nBL < cnBitsPerWord if pop in link.
-// GetPopCnt doesn't support embedded bitmap.
 static Word_t
 GetPopCnt(Word_t *pwRoot, int nBL)
 {
@@ -4294,9 +4293,6 @@ InsertSwitch(qp,
     qv;
     int nDL = nBL_to_nDL(nBL); (void)nDL;
     int nDLNew = nBL_to_nDL(nBLNew); (void)nDLNew;
-#ifdef CODE_XX_SW
-    int nBW;
-#endif // CODE_XX_SW
 #if defined(SKIP_LINKS)
     DBGI(printf("InsertSwitch 0 nDLNew %d nBLNew %d nDL %d nBL %d\n",
                 nDLNew, nBLNew, nDL, nBL));
@@ -4388,6 +4384,9 @@ InsertSwitch(qp,
       #endif // #else USE_XX_SW_ONLY_AT_DL2
 #endif // BITMAP
     {
+#if defined(USE_BM_SW) || defined(CODE_XX_SW)
+        int nBW;
+#endif // defined(USE_BM_SW) || defined(CODE_XX_SW)
 #ifndef USE_XX_SW_ONLY_AT_DL2
         // When would a switch at nDLNew == 1 make any sense?
         // A bitmap switch for B_JUDYL with the link containing the value?
@@ -4436,11 +4435,13 @@ InsertSwitch(qp,
                           , wPopCnt
       #endif // CODE_XX_SW
                             );
-  #if defined(USE_XX_SW)
+  #if defined(USE_BM_SW) || defined(USE_XX_SW)
         } else
         { nBW = nBL_to_nBW(nBLNew); }
-  #endif // defined(USE_XX_SW)
-#endif // defined(CODE_XX_SW)
+  #endif // defined(USE_BM_SW) || defined(USE_XX_SW)
+#elif defined(USE_BM_SW) // defined(CODE_XX_SW)
+        nBW = nBL_to_nBW(nBLNew);
+#endif // #elif defined(USE_BM_SW)
 
 #if defined(DEBUG)
         if (nBLNew > nBL) {
@@ -4465,22 +4466,39 @@ InsertSwitch(qp,
 #endif // defined(CODE_XX_SW)
   #if defined(USE_BM_SW)
       #if defined(USE_XX_SW)
-                  (nBLNew <= nDL_to_nBL(2))
-                      ? T_SWITCH :
+                  (nBLNew <= nDL_to_nBL(2)) ? T_SWITCH :
       #endif // defined(USE_XX_SW)
+                  // Don't waste time with T_BM_SW if splaying a big list.
+                  // Use T_BM_SW if splaying a small list or handling a prefix
+                  // mismatch.
+                  // This should be fine-tuned for Judy1 vs. JudyL with
+                  // EMBED_KEYS vs. JudyL without EMBED_KEYS, etc.
+                  ((GetPopCnt(pwRoot, nBL) + 1) >= EXP(nBW))
+                          && (nBLNew <= nBL)
+                      ? T_SWITCH :
+                  // Here only if small subtree or nBLNew > nBL.
+                  // Use uncompressed switch in prefix mismatch case if pop
+                  // handles it.
+                  // This should be fine-tuned for Judy1 vs. JudyL with
+                  // EMBED_KEYS vs. JudyL without EMBED_KEYS, as well as
+                  // variable bits per digit, etc.
+                  (nBLNew > nBL)
+                          && (GetPopCnt(pwRoot, nBL)
+                              >= nDLNew * EXP(cnBitsPerDigit))
+                      ? T_SWITCH :
       #if defined(SKIP_TO_BM_SW)
-  #if defined(BM_IN_LINK)
+          #if defined(BM_IN_LINK)
                   nBL != cnBitsPerWord ? T_BM_SW : T_SWITCH,
-  #else // defined(BM_IN_LINK)
+          #else // defined(BM_IN_LINK)
                   T_BM_SW,
-  #endif // defined(BM_IN_LINK)
+          #endif // defined(BM_IN_LINK)
       #else // defined(SKIP_TO_BM_SW)
-  #if defined(BM_IN_LINK)
+          #if defined(BM_IN_LINK)
                   (nBL != cnBitsPerWord)
                       && (nBLNew == nBL) ? T_BM_SW : T_SWITCH,
-  #else // defined(BM_IN_LINK)
+          #else // defined(BM_IN_LINK)
                   (nBLNew == nBL) ? T_BM_SW : T_SWITCH,
-  #endif // defined(BM_IN_LINK)
+          #endif // defined(BM_IN_LINK)
       #endif // defined(SKIP_TO_BM_SW)
   #else // defined(USE_BM_SW)
                   T_SWITCH,
