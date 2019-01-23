@@ -2164,7 +2164,11 @@ t_bitmap:;
       #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 int nIndex =
           #if (cnBitsPerWord > 32)
+#ifdef PACK_BM_VALUES
                      (wRoot & EXP(cnLsbBmUncompressed))
+#else // PACK_BM_VALUES
+                     1
+#endif // PACK_BM_VALUES
                                ? (int)(wKey & MSK(nBLR)) :
           #endif // (cnBitsPerWord > 32)
                          BmIndex(qy, nBLR, wKey);

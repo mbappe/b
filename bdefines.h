@@ -65,6 +65,12 @@
     #define NO_PARALLEL_SEARCH_WORD
   #endif // PARALLEL_SEARCH_WORD
 
+  // Default is to use a packed value area for a bitmap leaf.
+  #ifndef   NO_PACK_BM_VALUES
+  #undef       PACK_BM_VALUES
+  #define      PACK_BM_VALUES
+  #endif // NO_PACK_BM_VALUES
+
 #endif // B_JUDYL
 
 // Default is POP_WORD unless NO_POP_WORD.

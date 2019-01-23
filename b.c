@@ -1089,7 +1089,7 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
 static Word_t
 BitmapWordCnt(int nBLR, Word_t wPopCnt)
 {
-    (void)nBLR;
+    (void)nBLR; (void)wPopCnt;
     Word_t wWords;
   #ifdef B_JUDYL
     assert(nBLR == cnBitsInD1);
@@ -1104,12 +1104,16 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
     // 1 word in the switch for wRoot and one word in the switch
     // for an embedded value.
     Word_t wFullPopWordsMin = wWordsHdr + EXP(nBLR);
+      // PACK_BM_VALUES is a quick hack to see the performance of a bitmap
+      // leaf with an uncompressed value area and no test of
+      // bLsbBmUncompressed. The plot is perfectly flat.
+      #ifdef PACK_BM_VALUES
     Word_t wFullPopWordsMinPlusMalloc = (wFullPopWordsMin | 1) + 1;
     Word_t wFullPopWordsMinPlusX
         = wFullPopWordsMinPlusMalloc + sizeof(Link_t) / sizeof(Word_t);
-      #ifdef EMBED_KEYS
+          #ifdef EMBED_KEYS
     ++wFullPopWordsMinPlusX; // Value word in switch.
-      #endif // EMBED_KEYS
+          #endif // EMBED_KEYS
     // Max pop with compressed value area.
     Word_t wPopCntMax
         = wFullPopWordsMinPlusX
@@ -1125,6 +1129,9 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
     Word_t wWordsMin = wWordsHdr + wPopCnt; // space for hdr + values
     wWords = wWordsMin | 1; // make efficent for malloc
     assert(wWords >= 3); // minimum efficient for malloc
+      #else // PACK_BM_VALUES
+    return wWords = wFullPopWordsMin;
+      #endif // PACK_BM_VALUES
   #else // B_JUDYL
     (void)wPopCnt;
       #if !defined(KISS_BM) && !defined(KISS)
@@ -6872,6 +6879,12 @@ Initialize(void)
     printf("# No SKIP_TO_BITMAP\n");
 #endif // defined(SKIP_TO_BITMAP)
 
+#if defined(PACK_BM_VALUES)
+    printf("#    PACK_BM_VALUES\n");
+#else // defined(PACK_BM_VALUES)
+    printf("# No PACK_BM_VALUES\n");
+#endif // defined(PACK_BM_VALUES)
+
 #if defined(USE_XX_SW)
     printf("#    USE_XX_SW\n");
 #else // defined(USE_XX_SW)
@@ -7665,6 +7678,12 @@ Initialize(void)
 #else // defined(NO_BITMAP)
     printf("# No NO_BITMAP\n");
 #endif // defined(NO_BITMAP)
+
+#if defined(NO_PACK_BM_VALUES)
+    printf("#    NO_PACK_BM_VALUES\n");
+#else // defined(NO_PACK_BM_VALUES)
+    printf("# No NO_PACK_BM_VALUES\n");
+#endif // defined(NO_PACK_BM_VALUES)
 
 #if defined(NO_EK_CALC_POP)
     printf("#    NO_EK_CALC_POP\n");
