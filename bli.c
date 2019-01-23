@@ -1648,13 +1648,10 @@ t_list:;
       #endif // SKIP_PREFIX_CHECK
       #endif // COMPRESSED_LISTS
         {
-            SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-            SMETRICS(++j__GetCalls);
       // LOOKUP_NO_LIST_SEARCH is for analysis only.
       #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
             if (1
-                && ((wr_nType(WROOT_NULL) != T_LIST)
-                    || (wRoot != WROOT_NULL))
+                && ((wr_nType(WROOT_NULL) != T_LIST) || (wRoot != WROOT_NULL))
           #if defined(LOOKUP)
               #if defined(B_JUDYL)
                   #if defined(HASKEY_FOR_JUDYL_LOOKUP)
@@ -1680,6 +1677,8 @@ t_list:;
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
+                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+                SMETRICS(++j__GetCalls);
           #if defined(INSERT)
               #if ! defined(RECURSIVE)
                 if (nIncr > 0) { goto undo; } // undo counting
@@ -2163,9 +2162,12 @@ t_bitmap:;
           #endif // !defined(RECURSIVE)
       #endif // defined(INSERT)
       #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
-                int nIndex = (wRoot & EXP(cnLsbBmUncompressed))
-                               ? (int)(wKey & MSK(nBLR))
-                               : BmIndex(qy, nBLR, wKey);
+                int nIndex =
+          #if (cnBitsPerWord > 32)
+                     (wRoot & EXP(cnLsbBmUncompressed))
+                               ? (int)(wKey & MSK(nBLR)) :
+          #endif // (cnBitsPerWord > 32)
+                         BmIndex(qy, nBLR, wKey);
                 return &gpwBitmapValues(qy, nBLR)[nIndex];
       #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 return KeyFound;

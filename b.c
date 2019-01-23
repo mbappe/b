@@ -1176,16 +1176,18 @@ NewBitmap(qp, int nBLR, Word_t wKey, Word_t wPopCnt)
     // the high bits, e.g. if LVL_IN_WR_HB, so we want them to
     // be initialized.
     wRoot = 0; set_wr(wRoot, pwBitmap, T_BITMAP);
-#ifdef B_JUDYL
+  #ifdef B_JUDYL
+      #if (cnBitsPerWord > 32)
     if (wWords == BitmapWordCnt(nBLR, EXP(nBLR))) {
         wRoot |= EXP(cnLsbBmUncompressed);
     }
+      #endif // (cnBitsPerWord > 32)
     DBGM(printf("NewBitmap wRoot 0x%zx\n", wRoot));
-#endif // B_JUDYL
+  #endif // B_JUDYL
 
 #if defined(SKIP_TO_BITMAP)
-    Set_nBLR(&wRoot, nBLR);
     if (nBL != nBLR) {
+        Set_nBLR(&wRoot, nBLR);
         set_wr_nType(wRoot, T_SKIP_TO_BITMAP);
     }
 #else // defined(SKIP_TO_BITMAP)
@@ -2356,8 +2358,11 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
   #ifdef B_JUDYL
         printf("\n Values\n");
         for (int ww = 0;
-             ww < (int)((wRoot & EXP(cnLsbBmUncompressed))
-                     ? EXP(nBL) : gwBitmapPopCnt(qy, nBL));
+             ww < (int)(
+      #if (cnBitsPerWord > 32)
+                        (wRoot & EXP(cnLsbBmUncompressed)) ? EXP(nBL) :
+      #endif // (cnBitsPerWord > 32)
+                            gwBitmapPopCnt(qy, nBL));
              ++ww)
         {
             if ((ww != 0) && (ww % 4) == 0) {
@@ -5888,13 +5893,15 @@ InsertAtBitmap(qp, Word_t wKey)
     assert(wPopCnt < EXP(nBLR));
     Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
     assert(!BitIsSet(pwBitmap, wKey & MSK(nBLR)));
-#ifdef B_JUDYL
+  #ifdef B_JUDYL
     Word_t *pwSrcValues = gpwBitmapValues(qy, nBLR);
     int nPos;
+      #if (cnBitsPerWord > 32)
     if (wRoot & EXP(cnLsbBmUncompressed)) {
         nPos = wKey & MSK(nBLR);
         goto done;
     }
+      #endif // (cnBitsPerWord > 32)
     nPos = ~BmIndex(qy, nBLR, wKey);
     Word_t wWords = BitmapWordCnt(nBLR, wPopCnt + 1); // new
     if (wWords != BitmapWordCnt(nBLR, wPopCnt)) {
@@ -5912,6 +5919,7 @@ InsertAtBitmap(qp, Word_t wKey)
         pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
         COPY(pwBitmap, pwBitmapOld, nBmWords);
         Word_t *pwTgtValues = gpwBitmapValues(qy, nBLR);
+      #if (cnBitsPerWord > 32)
         if (wRoot & EXP(cnLsbBmUncompressed)) {
             for (int k = 0; k < (int)EXP(nBLR); ++k) {
                 if (BitIsSet(pwBitmap, k)) {
@@ -5919,17 +5927,20 @@ InsertAtBitmap(qp, Word_t wKey)
                 }
             }
             nPos = wKey & MSK(nBLR);
-        } else {
+        } else
+      #endif // (cnBitsPerWord > 32)
+        {
             COPY(&pwTgtValues[nPos + 1], &pwSrcValues[nPos], wPopCnt - nPos);
             COPY(pwTgtValues, pwSrcValues, nPos);
         }
         OldBitmap(pwrOld, nBLR, wPopCnt);
         pwSrcValues = pwTgtValues;
     } else
-#endif // B_JUDYL
+  #endif // B_JUDYL
     {
 #ifdef B_JUDYL
         MOVE(&pwSrcValues[nPos + 1], &pwSrcValues[nPos], wPopCnt - nPos);
+        goto done;
 done:
 #endif // B_JUDYL
         swBitmapPopCnt(qy, nBLR, wPopCnt + 1);
@@ -6489,14 +6500,16 @@ RemoveAtBitmap(qp, Word_t wKey)
 
         Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR) - 1;
         Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
-#ifdef B_JUDYL
+  #ifdef B_JUDYL
         Word_t wWords = BitmapWordCnt(nBLR, wPopCnt); // new
+      #if (cnBitsPerWord > 32)
         Word_t bUncompressed = wRoot & EXP(cnLsbBmUncompressed);
         if (bUncompressed) {
             if (wWords == BitmapWordCnt(nBLR, EXP(nBLR))) {
                 goto done;
             }
         }
+      #endif // (cnBitsPerWord > 32)
         Word_t *pwSrcValues = gpwBitmapValues(qy, nBLR);
         int nPos = BmIndex(qy, nBLR, wKey);
         if (wWords != BitmapWordCnt(nBLR, wPopCnt + 1)) {
@@ -6514,6 +6527,7 @@ RemoveAtBitmap(qp, Word_t wKey)
             pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
             COPY(pwBitmap, pwBitmapOld, nBmWords);
             Word_t *pwTgtValues = gpwBitmapValues(qy, nBLR);
+      #if (cnBitsPerWord > 32)
             if (bUncompressed) {
                 for (int k = 0; k < (int)EXP(nBLR); ++k) {
                     if ((k != (int)(wKey & MSK(nBLR)))
@@ -6522,18 +6536,21 @@ RemoveAtBitmap(qp, Word_t wKey)
                         *pwTgtValues++ = pwSrcValues[k];
                     }
                 }
-            } else {
+            } else
+      #endif // (cnBitsPerWord > 32)
+            {
                 COPY(&pwTgtValues[nPos], &pwSrcValues[nPos + 1],
                      wPopCnt - nPos);
                 COPY(pwTgtValues, pwSrcValues, nPos);
             }
             OldBitmap(pwrOld, nBLR, wPopCnt + 1);
         } else
-#endif // B_JUDYL
+  #endif // B_JUDYL
         {
 #ifdef B_JUDYL
             Word_t *pwSrcValues = gpwBitmapValues(qy, nBLR);
             MOVE(&pwSrcValues[nPos], &pwSrcValues[nPos + 1], wPopCnt - nPos);
+            goto done;
 done:
 #endif // B_JUDYL
             swBitmapPopCnt(qy, nBLR, wPopCnt);
