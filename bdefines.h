@@ -71,6 +71,12 @@
   #define      PACK_BM_VALUES
   #endif // NO_PACK_BM_VALUES
 
+  // Default is to use a packed value area for a list leaf.
+  #ifndef   NO_PACK_L1_VALUES
+  #undef       PACK_L1_VALUES
+  #define      PACK_L1_VALUES
+  #endif // NO_PACK_L1_VALUES
+
 #endif // B_JUDYL
 
 // Default is POP_WORD unless NO_POP_WORD.

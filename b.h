@@ -6044,7 +6044,14 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
     uint8_t *pcKeys = ls_pcKeys(pwr, PWR_xListPopCnt(&wRoot, pwr, 8));
     uint8_t cKey = (uint8_t)wKey;
     int nPos = 0;
+    // PACK_L1_VALUES is an incomplete quick hack to see the performance of
+    // a list leaf with an uncompressed value area.
+    // At present, LocateKeyInList is used only for B_JUDYL Lookup.
+#ifdef PACK_L1_VALUES
     PSPLIT_LOCATEKEY(Bucket_t, uint8_t, 8, pcKeys, nPopCnt, cKey, nPos);
+#else // PACK_L1_VALUES
+    PSPLIT_HASKEY(Bucket_t, uint8_t, 8, pcKeys, nPopCnt, cKey, nPos);
+#endif // #else PACK_L1_VALUES
     return nPos;
 
 #endif // defined(PSPLIT_PARALLEL)

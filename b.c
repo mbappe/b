@@ -605,6 +605,13 @@ static int
 ListWordsMin(int nPopCnt, int nBL)
 {
     int nBytesPerKey = ExtListBytesPerKey(nBL);
+#ifdef B_JUDYL
+#ifndef PACK_L1_VALUES
+    if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
+        nPopCnt = EXP(cnBitsInD1);
+    }
+#endif // #ifndef PACK_L1_VALUES
+#endif // B_JUDYL
 #ifdef UA_PARALLEL_128 // implies !B_JUDYL && PARALLEL_128 && 32-bit
   #ifdef B_JUDYL
     #error UA_PARALLEL_128 and B_JUDYL are incompatible
@@ -741,6 +748,13 @@ CalcListSlotCnt(int nPopCnt, int nBL)
 static int
 CalcListSlotCnt(int nPopCnt, int nBL)
 {
+#ifdef B_JUDYL
+#ifndef PACK_L1_VALUES
+    if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
+        return EXP(cnBitsInD1);
+    }
+#endif // #ifndef PACK_L1_VALUES
+#endif // B_JUDYL
     int nBytesPerKey = ExtListBytesPerKey(nBL);
     int nBytesPerBucket
         = ALIGN_LIST_LEN(nBytesPerKey)
@@ -1104,8 +1118,8 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
     // 1 word in the switch for wRoot and one word in the switch
     // for an embedded value.
     Word_t wFullPopWordsMin = wWordsHdr + EXP(nBLR);
-      // PACK_BM_VALUES is a quick hack to see the performance of a bitmap
-      // leaf with an uncompressed value area and no test of
+      // PACK_BM_VALUES is an incomplete quick hack to see the performance of
+      // a bitmap leaf with an uncompressed value area and no test of
       // bLsbBmUncompressed. The plot is perfectly flat.
       #ifdef PACK_BM_VALUES
     Word_t wFullPopWordsMinPlusMalloc = (wFullPopWordsMin | 1) + 1;
@@ -3194,12 +3208,12 @@ CopyWithInsert8(qp, uint8_t *pSrc,
                 int nKeys, // number of keys excluding the new one
                 uint8_t cKey, int nPos)
 {
-    DBGI(Log(qy, "CopyWithInsert16"));
+    DBGI(Log(qy, "CopyWithInsert8"));
     qv;
     uint8_t *pTgt = ls_pcKeysX(pwr, nBL, nKeys + 1);
   #ifdef B_JUDYL
     Word_t *pwTgtValues = gpwValues(qy);
-    Word_t *pwSrcValues = (Word_t*)pSrc;
+    Word_t *pwSrcValues = (Word_t*)pSrc; (void)pwSrcValues;
       #ifdef LIST_POP_IN_PREAMBLE
     pwSrcValues -= 1;
       #endif // LIST_POP_IN_PREAMBLE
@@ -3221,10 +3235,15 @@ CopyWithInsert8(qp, uint8_t *pSrc,
 
     if (pTgt != pSrc) {
 #ifdef B_JUDYL
-        // copy the values tail
-        COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n);
-        // copy the values head
-        COPY(&pwTgtValues[-n    ], &pwSrcValues[-n    ], n        );
+#ifndef PACK_L1_VALUES
+        if (nBL != cnBitsInD1)
+#endif // #ifndef PACK_L1_VALUES
+        {
+            // copy the values tail
+            COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n);
+            // copy the values head
+            COPY(&pwTgtValues[-n    ], &pwSrcValues[-n    ], n        );
+        }
 #endif // B_JUDYL
         COPY(pTgt, pSrc, n); // copy the head
         COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
@@ -3232,8 +3251,13 @@ CopyWithInsert8(qp, uint8_t *pSrc,
     else
     {
 #ifdef B_JUDYL
-        // move the values tail
-        MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n);
+#ifndef PACK_L1_VALUES
+        if (nBL != cnBitsInD1)
+#endif // #ifndef PACK_L1_VALUES
+        {
+            // move the values tail
+            MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n);
+        }
 #endif // B_JUDYL
         MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
     }
@@ -3241,7 +3265,13 @@ CopyWithInsert8(qp, uint8_t *pSrc,
     pTgt[n] = cKey; // insert the key
 
 #ifdef B_JUDYL
-    Word_t *pwValue = &pwTgtValues[~n];
+    Word_t *pwValue;
+#ifndef PACK_L1_VALUES
+    if (nBL == cnBitsInD1) {
+        pwValue = &pwTgtValues[~(cKey & MSK(cnBitsInD1))];
+    } else
+#endif // #ifndef PACK_L1_VALUES
+    { pwValue = &pwTgtValues[~n]; }
 #endif // B_JUDYL
 
     n = nKeys + 1;
@@ -5026,8 +5056,7 @@ InsertAtList(qp,
 
         // Allocate memory for a new list if necessary.
         // Init or update pop count if necessary.
-        if ((wPopCnt == 0) || (ListSlotCnt(wPopCnt, nBL) < (int)(wPopCnt + 1)))
-        {
+        if ((wPopCnt == 0) || (ListSlotCnt(wPopCnt, nBL) < (int)(wPopCnt + 1))) {
             DBGI(printf("pwr %p wPopCnt %" _fw"d nBL %d\n",
                         (void *)pwr, wPopCnt, nBL));
             DBGI(printf("nType %d\n", nType));
@@ -5057,9 +5086,7 @@ InsertAtList(qp,
             // pwr, nType have not been updated.
             // Can we delay updating wRoot?
             // Can we update the others now?
-        }
-        else
-        {
+        } else {
             pwList = pwr;
 
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -6321,10 +6348,15 @@ embeddedKeys:;
              break;
         case 1:
   #ifdef B_JUDYL
-             // copy values
-             COPY(&pwTgtValues[-((int)wPopCnt - 1)],
-                  &pwSrcValues[-((int)wPopCnt - 1)],
-                  wPopCnt - 1);
+      #ifndef PACK_L1_VALUES
+             if (nBL != cnBitsInD1)
+      #endif // #ifndef PACK_L1_VALUES
+             {
+                 // copy values
+                 COPY(&pwTgtValues[-((int)wPopCnt - 1)],
+                      &pwSrcValues[-((int)wPopCnt - 1)],
+                      wPopCnt - 1);
+             }
   #endif // B_JUDYL
              // copy keys
              COPY(ls_pcKeysNATX(pwList, wPopCnt - 1), pcKeys, wPopCnt - 1);
@@ -6339,10 +6371,15 @@ embeddedKeys:;
 #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
   #ifdef B_JUDYL
-        // move values
-        MOVE(&pwTgtValues[-((int)wPopCnt - 1)],
-             &pwSrcValues[- (int)wPopCnt     ],
-             wPopCnt - nIndex - 1);
+      #ifndef PACK_L1_VALUES
+        if (nBL != cnBitsInD1)
+      #endif // #ifndef PACK_L1_VALUES
+        {
+            // move values
+            MOVE(&pwTgtValues[-((int)wPopCnt - 1)],
+                 &pwSrcValues[- (int)wPopCnt     ],
+                 wPopCnt - nIndex - 1);
+        }
   #endif // B_JUDYL
         // move keys
         MOVE(&ls_pcKeysNATX(pwList, wPopCnt - 1)[nIndex],
