@@ -50,12 +50,17 @@
 #define NZ_MSK(_nBits) \
     (assert((_nBits) > 0), (Word_t)-1 >> (cnBitsPerWord - (_nBits)))
 // ANY_MSK can handle both _nBits == cnBitsPerWord AND _nBits == 0.
-#if 1
+#if 0
+// I think this worked with gcc when I tested it. But it is not defined
+// for _nBits == cnBitsPerWord.
+// And I have seen it fail with clang.
 #define ANY_MSK(_nBits) \
     ((((Word_t)1 << (_nBits)) - 1) - ((_nBits) == cnBitsPerWord))
-#else
+#endif
+#if 0
+// This is not defined for _nBits == 0.
 #define ANY_MSK(_nBits) \
-    ((Word_t)-1 >> cnBitsPerWord - (_nBits)) + ((_nBits) == 0)
+    ((Word_t)-1 >> (cnBitsPerWord - (_nBits))) + ((_nBits) == 0)
 #endif
 #define MSK(_nBits)  NBPW_MSK(_nBits)
 
@@ -3318,6 +3323,10 @@ extern const unsigned anBL_to_nDL[];
 
 #define BUCKET_HAS_KEY WordHasKey
 
+  #if (cnBitsPerWord == 64)
+    #define BUCKET_LOCATE_KEY LocateKey64
+  #endif // (cnBitsPerWord == 64)
+
 #endif // defined(PARALLEL_128)
 
 #if defined(TRY_MEMCHR)
@@ -4352,7 +4361,7 @@ WordHasKey(Word_t *pw, Word_t wKey, int nBL)
     // at insert time to make sure the unused slots don't cause a false
     // bXorHasZero.
     Word_t ww = *pw;
-    Word_t wMask = MSK(nBL); // (1 << nBL) - 1
+    Word_t wMask = NZ_MSK(nBL);
     wKey &= wMask; // get rid of already-decoded bits
     Word_t wLsbs = (Word_t)-1 / wMask; // lsb in each key slot
     Word_t wKeys = wKey * wLsbs; // replicate key; put in every slot
@@ -4514,7 +4523,7 @@ HasKey128Tail(__m128i *pxBucket,
 // v_t is a vector of 16 chars. __m128i is a vector of 2 long longs.
 // We need the char variant so we can compare with a char using '==' or '>='.
 #ifdef WORD_ALIGNED_VECTORS
-  #ifdef __clang__
+  #if defined(__clang__) && !defined(GCC_VECTORS)
 typedef unsigned char  __attribute__((ext_vector_type(16), aligned(8))) v_t;
 typedef unsigned short __attribute__((ext_vector_type( 8), aligned(8))) v41_t;
 typedef unsigned int   __attribute__((ext_vector_type( 4), aligned(8))) v42_t;
@@ -4523,7 +4532,7 @@ typedef unsigned char  __attribute__((vector_size(16), aligned(8))) v_t;
 typedef unsigned short __attribute__((vector_size(16), aligned(8))) v41_t;
 typedef unsigned int   __attribute__((vector_size(16), aligned(8))) v42_t;
   #endif // __clang__
-  #ifdef __clang__
+  #if defined(__clang__) && !defined(GCC_VECTORS)
 typedef unsigned char  __attribute__((ext_vector_type(8), aligned(8))) v30_t;
 typedef unsigned short __attribute__((ext_vector_type(4), aligned(8))) v31_t;
 typedef unsigned int   __attribute__((ext_vector_type(2), aligned(8))) v32_t;
@@ -4533,7 +4542,7 @@ typedef unsigned short __attribute__((vector_size(8), aligned(8))) v31_t;
 typedef unsigned int   __attribute__((vector_size(8), aligned(8))) v32_t;
   #endif // __clang__
 #else // WORD_ALIGNED_VECTORS
-  #ifdef __clang__
+  #if defined(__clang__) && !defined(GCC_VECTORS)
 // clang has some support for gcc attribute "vector_size" but it doesn't work
 // as well as its own ext_vector_type.
 // For example, it won't promote a scalar to a vector for compare.
@@ -4553,7 +4562,7 @@ typedef unsigned int   __attribute__((vector_size(16))) v42_t;
 // v64c_t, v64uc_t: vector of 64 bits of char  or unsigned char.
 // v64s_t, v64us_t, vector of 64 bits of short or unsigned short.
 // v64i_t, v64ui_t, vector of 64 bits of int   or unsigned int.
-  #ifdef __clang__
+  #if defined(__clang__) && !defined(GCC_VECTORS)
 typedef unsigned char  __attribute__((ext_vector_type(8))) v30_t;
 typedef unsigned short __attribute__((ext_vector_type(4))) v31_t;
 typedef unsigned int   __attribute__((ext_vector_type(2))) v32_t;
@@ -4741,33 +4750,33 @@ HasKey64(uint64_t *px, Word_t wKey, int nBL)
 {
 #ifndef OLD_HK_64
     if (nBL == 16) {
-#ifdef __clang__
-        v31_t vBucket = *px;
+  #if defined(__clang__) && !defined(GCC_VECTORS)
+        v31_t vBucket = *(v31_t*)px;
         v31_t v31 = (v31_t)(vBucket == (unsigned short)wKey);
         return *(uint64_t*)&v31;
-#else // __clang__
+  #else // __clang__
         return (uint64_t)(*(v31_t*)px == (unsigned short)wKey);
-#endif // __clang__
+  #endif // __clang__
 
     }
     if (nBL == 8) {
-#ifdef __clang__
-        v30_t vBucket = *px;
+  #if defined(__clang__) && !defined(GCC_VECTORS)
+        v30_t vBucket = *(v30_t*)px;
         v30_t v30 = (v30_t)(vBucket == (unsigned char)wKey);
         return *(uint64_t*)&v30;
-#else // __clang__
+  #else // __clang__
         return (uint64_t)(*(v30_t*)px == (unsigned char)wKey);
-#endif // __clang__
+  #endif // __clang__
     }
     if (nBL <= 32) {
         assert(nBL == 32);
-#ifdef __clang__
-        v32_t vBucket = *px;
-        v32_t v32 = (v32_t)(vBucket == (unsigned char)wKey);
+  #if defined(__clang__) && !defined(GCC_VECTORS)
+        v32_t vBucket = *(v32_t*)px;
+        v32_t v32 = (v32_t)(vBucket == (unsigned int)wKey);
         return *(uint64_t*)&v32;
-#else // __clang__
+  #else // __clang__
         return (uint64_t)(*(v32_t*)px == (unsigned int)wKey);
-#endif // __clang__
+  #endif // __clang__
     }
     assert(nBL == 64);
 #endif // ifndef OLD_HK_64
@@ -4776,7 +4785,7 @@ HasKey64(uint64_t *px, Word_t wKey, int nBL)
     // at insert time to make sure the unused slots don't cause a false
     // bXorHasZero.
     uint64_t xx = *px;
-    uint64_t xMask = MSK(nBL); // (1 << nBL) - 1
+    uint64_t xMask = NZ_MSK(nBL);
     wKey &= xMask; // get rid of already-decoded bits
     uint64_t xLsbs = (uint64_t)-1 / xMask; // lsb in each key slot
     uint64_t xKeys = wKey * xLsbs; // replicate key; put in every slot
@@ -6046,12 +6055,14 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
     int nPos = 0;
     // PACK_L1_VALUES is an incomplete quick hack to see the performance of
     // a list leaf with an uncompressed value area.
+    // USE_LOCATE_FOR_NO_PACK chooses LOCATEKEY rather than HASKEY for
+    // NO_PACK_L1_VALUES.
     // At present, LocateKeyInList is used only for B_JUDYL Lookup.
-#ifdef PACK_L1_VALUES
+#if defined(PACK_L1_VALUES) || defined(USE_LOCATE_FOR_NO_PACK)
     PSPLIT_LOCATEKEY(Bucket_t, uint8_t, 8, pcKeys, nPopCnt, cKey, nPos);
-#else // PACK_L1_VALUES
+#else // defined(PACK_L1_VALUES) || defined(USE_LOCATE_FOR_NO_PACK)
     PSPLIT_HASKEY(Bucket_t, uint8_t, 8, pcKeys, nPopCnt, cKey, nPos);
-#endif // #else PACK_L1_VALUES
+#endif // #else defined(PACK_L1_VALUES) || defined(USE_LOCATE_FOR_NO_PACK)
     return nPos;
 
 #endif // defined(PSPLIT_PARALLEL)

@@ -6922,6 +6922,18 @@ Initialize(void)
     printf("# No PACK_BM_VALUES\n");
 #endif // defined(PACK_BM_VALUES)
 
+#if defined(PACK_L1_VALUES)
+    printf("#    PACK_L1_VALUES\n");
+#else // defined(PACK_L1_VALUES)
+    printf("# No PACK_L1_VALUES\n");
+#endif // defined(PACK_L1_VALUES)
+
+#if defined(USE_LOCATE_FOR_NO_PACK)
+    printf("#    USE_LOCATE_FOR_NO_PACK\n");
+#else // defined(USE_LOCATE_FOR_NO_PACK)
+    printf("# No USE_LOCATE_FOR_NO_PACK\n");
+#endif // defined(USE_LOCATE_FOR_NO_PACK)
+
 #if defined(USE_XX_SW)
     printf("#    USE_XX_SW\n");
 #else // defined(USE_XX_SW)
@@ -7613,6 +7625,18 @@ Initialize(void)
 #else // defined(KFLAG)
     printf("# No KFLAG\n");
 #endif // defined(KFLAG)
+
+#if defined(__clang__)
+    printf("#    __clang__\n");
+#else // defined(__clang__)
+    printf("# No __clang__\n");
+#endif // defined(__clang__)
+
+#if defined(GCC_VECTORS)
+    printf("#    GCC_VECTORS\n");
+#else // defined(GCC_VECTORS)
+    printf("# No GCC_VECTORS\n");
+#endif // defined(GCC_VECTORS)
 
 #if defined(NO_USE_XX_SW)
     printf("#    NO_USE_XX_SW\n");
