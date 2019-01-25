@@ -3235,9 +3235,9 @@ CopyWithInsert8(qp, uint8_t *pSrc,
 
     if (pTgt != pSrc) {
 #ifdef B_JUDYL
-#ifndef PACK_L1_VALUES
+#if !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
         if (nBL != cnBitsInD1)
-#endif // #ifndef PACK_L1_VALUES
+#endif // !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
         {
             // copy the values tail
             COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n);
@@ -3251,9 +3251,9 @@ CopyWithInsert8(qp, uint8_t *pSrc,
     else
     {
 #ifdef B_JUDYL
-#ifndef PACK_L1_VALUES
+#if !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
         if (nBL != cnBitsInD1)
-#endif // #ifndef PACK_L1_VALUES
+#endif // !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
         {
             // move the values tail
             MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n);
@@ -3266,11 +3266,11 @@ CopyWithInsert8(qp, uint8_t *pSrc,
 
 #ifdef B_JUDYL
     Word_t *pwValue;
-#ifndef PACK_L1_VALUES
+#if !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
     if (nBL == cnBitsInD1) {
         pwValue = &pwTgtValues[~(cKey & MSK(cnBitsInD1))];
     } else
-#endif // #ifndef PACK_L1_VALUES
+#endif // !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
     { pwValue = &pwTgtValues[~n]; }
 #endif // B_JUDYL
 
@@ -5187,7 +5187,12 @@ copyWithInsertWord:
 // going to deflate into embedded keys later?
                 ls_pcKeysNATX(pwList, wPopCnt + 1)[wPopCnt] = wKey;
       #ifdef B_JUDYL
-                pwValue = &gpwValues(qy)[~wPopCnt];
+          #if !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
+                if (nBL == cnBitsInD1) {
+                    pwValue = &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
+                } else
+          #endif // !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
+                { pwValue = &gpwValues(qy)[~wPopCnt]; }
       #endif // B_JUDYL
   #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
             } else if (nBL <= 16) {
@@ -6348,9 +6353,9 @@ embeddedKeys:;
              break;
         case 1:
   #ifdef B_JUDYL
-      #ifndef PACK_L1_VALUES
+      #if !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
              if (nBL != cnBitsInD1)
-      #endif // #ifndef PACK_L1_VALUES
+      #endif // !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
              {
                  // copy values
                  COPY(&pwTgtValues[-((int)wPopCnt - 1)],
@@ -6371,9 +6376,9 @@ embeddedKeys:;
 #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
   #ifdef B_JUDYL
-      #ifndef PACK_L1_VALUES
+      #if !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
         if (nBL != cnBitsInD1)
-      #endif // #ifndef PACK_L1_VALUES
+      #endif // !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
         {
             // move values
             MOVE(&pwTgtValues[-((int)wPopCnt - 1)],

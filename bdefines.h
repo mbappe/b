@@ -72,11 +72,14 @@
   #endif // NO_PACK_BM_VALUES
 
   // Default is to use a packed value area for a list leaf.
-  #ifndef   NO_PACK_L1_VALUES
-    #undef     PACK_L1_VALUES
-    #define    PACK_L1_VALUES
+  // If NO_PACK_L1_VALUES && (cnBitsInD1 <= 8) then don't
+  // pack the L1 value area.
+  #ifdef   NO_PACK_L1_VALUES
     #define NO_EMBED_KEYS
     #undef     EMBED_KEYS
+  #else // NO_PACK_L1_VALUES
+    #undef     PACK_L1_VALUES
+    #define    PACK_L1_VALUES
   #endif // NO_PACK_L1_VALUES
 
 #endif // B_JUDYL
