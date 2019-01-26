@@ -454,9 +454,12 @@ typedef Word_t Bucket_t;
 
 #if defined(CODE_XX_SW)
 // Default is -DSKIP_TO_XX_SW iff -DSKIP_LINKS && -DCODE_XX_SW.
+// And lvl not in type.
 #if ! defined(NO_SKIP_TO_XX_SW) && defined(SKIP_LINKS)
+#if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
 #undef SKIP_TO_XX_SW
 #define SKIP_TO_XX_SW
+#endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
 #endif // ! defined(NO_SKIP_TO_XX_SW) && defined(SKIP_LINKS)
 #endif // defined(CODE_XX_SW)
 
@@ -1645,15 +1648,6 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
 #if defined(LVL_IN_WR_HB)
 
-// Set the level of the object in number of bits left to decode.
-// Use this only when *pwRoot is a skip link.
-static inline void
-Set_nBLR(Word_t *pwRoot, int nBLR)
-{
-    assert(nBLR <= (int)MSK(cnBitsLvl));
-    SetBits(pwRoot, cnBitsLvl, cnLsbLvl, nBLR);
-}
-
   #if defined(SKIP_TO_BITMAP)
     #define wr_nBL(_wr) \
         (assert((tp_bIsSwitch(wr_nType(_wr)) && tp_bIsSkip(wr_nType(_wr))) \
@@ -1763,14 +1757,6 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
       set_wr_nDL((_wr), nBL_to_nDL(_nBL))
 
 #endif // defined(LVL_IN_SW)
-
-#ifdef SKIP_LINKS
-static inline void
-Set_nBLR(Word_t *pwRoot, int nBLR)
-{
-    set_wr_nBL(*pwRoot, nBLR);
-}
-#endif // SKIP_LINKS
 
 #endif // defined(LVL_IN_WR_HB)
 
@@ -2641,6 +2627,21 @@ typedef struct {
   #endif // SKIP_TO_BITMAP
     Word_t bmlf_awBitmap[];
 } BmLeaf_t;
+
+#ifdef SKIP_LINKS
+// Set the level of the object in number of bits left to decode.
+// Use this only when *pwRoot is a skip link.
+static inline void
+Set_nBLR(Word_t *pwRoot, int nBLR)
+{
+  #ifdef LVL_IN_WR_HB
+    assert(nBLR <= (int)MSK(cnBitsLvl));
+    SetBits(pwRoot, cnBitsLvl, cnLsbLvl, nBLR);
+  #else // LVL_IN_WR_HB
+    set_wr_nBL(*pwRoot, nBLR);
+  #endif // #else LVL_IN_WR_HB
+}
+#endif // SKIP_LINKS
 
 #ifdef B_JUDYL
 

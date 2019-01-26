@@ -239,11 +239,11 @@
 #define LIST_REQ_MIN_WORDS
 
 // XX_SW doesn't work without LVL_IN_WR_HB yet.
-#ifdef USE_XX_SW
-  #ifndef LVL_IN_WR_HB
-    #error USE_XX_SW requires LVL_IN_WR_HB
-  #endif // LVL_IN_WR_HB
-#endif // USE_XX_SW
+#ifdef SKIP_TO_XX_SW
+  #if !defined(LVL_IN_WR_HB) && !defined(LVL_IN_SW)
+    #error SKIP_TO_XX_SW requires LVL_IN_WR_HB or LVL_IN_SW
+  #endif // !defined(LVL_IN_WR_HB) && !defined(LVL_IN_SW)
+#endif // SKIP_TO_XX_SW
 
 // Default is -DGOTO_AT_FIRST_IN_LOOKUP.
 #ifndef   NO_GOTO_AT_FIRST_IN_LOOKUP
