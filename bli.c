@@ -1259,8 +1259,6 @@ t_skip_to_bm_sw:
         goto t_full_bm_sw; // silence cc in case there are no other uses
 t_full_bm_sw:
       #if defined(LOOKUP)
-// Skip over sw_awBm.  The rest of BmSwitch_t must be same as Switch_t.
-        pwr = (Word_t *)&((BmSwitch_t *)pwr)->sw_wPrefixPop;
         goto t_switch;
       #endif // defined(LOOKUP)
         goto t_bm_sw;
