@@ -334,7 +334,7 @@ MyFreeGutsRM(Word_t *pw, Word_t wWords, int nLogAlignment,
     size_t zExtraUnits = zUnitsAllocated - zUnitsRequired;
     (void)zUnitsAllocated; (void)zExtraUnits;
 #else // LIBCMALLOC
-    assert((pw)[-1] & 2); // lock down what we think we know
+    assert(pw[-1] & 2); // lock down what we think we know
     // Restore the value expected by dlmalloc.
     size_t zExtraUnits = (pw[-1] >> cnBitsUsed) & MSK(cnExtraUnitsBits);
     size_t zUnitsAllocated = zUnitsRequired + zExtraUnits;
@@ -624,7 +624,7 @@ ListWordsMin(int nPopCnt, int nBL)
   #endif // (cnBitsPerWord > 32)
     // I wonder if we could calculate the population count for this case to
     // obviate the need for a pop count in memory.
-    if ((nPopCnt <= 6) && (nBytesPerKey == 2)) {
+    if ((nPopCnt <= 6) && (nBL == 16)) {
         return 3;
     }
 #endif // UA_PARALLEL_128
@@ -759,7 +759,7 @@ CalcListSlotCnt(int nPopCnt, int nBL)
     int nBytesPerBucket
         = ALIGN_LIST_LEN(nBytesPerKey)
 #ifdef UA_PARALLEL_128 // implies B_JUDYL && PARALLEL_128
-                && ((nPopCnt > 6) || (nBytesPerKey != 2))
+                && ((nPopCnt > 6) || (nBL != 2))
 #endif // UA_PARALLEL_128
             ? sizeof(Bucket_t) : sizeof(Word_t);
     int nListWords = ListWordCnt(nPopCnt, nBL);
@@ -858,7 +858,7 @@ CalcListSlotCntX(int nPopCnt, int nBL)
   #if (cnBitsPerWord > 32)
     #error B_JUDYL with UA_PARALLEL_128.
   #endif // (cnBitsPerWord > 32)
-    if ((nPopCnt <= 6) && (nBytesPerKey == 2)) {
+    if ((nPopCnt <= 6) && (nBL == 2)) {
         return 6;
     }
 #endif // UA_PARALLEL_128
@@ -1428,7 +1428,6 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(CODE_BM_SW)
     DBGI(printf("\nNewSwitch nBL %d nDL %d nBLUp %d\n",
                 nBL, nBL_to_nDL(nBL), nBLUp));
-
 #if defined(CODE_BM_SW)
     if (nType == T_BM_SW) {
   #if defined(SKIP_TO_BM_SW)
@@ -1638,12 +1637,6 @@ NewSwitch(Word_t *pwRoot, Word_t wKey, int nBL,
                 set_PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBL, wPopCnt);
             }
         }
-
-#if defined(CODE_BM_SW)
-        DBGM(printf("NewSwitch PWR_wPrefixPop " OWx"\n",
-            (nType == T_BM_SW) ? PWR_wPrefixPop(pwRoot, (BmSwitch_t *)pwr)
-                  : PWR_wPrefixPop(pwRoot, (Switch_t *)pwr)));
-#endif // defined(CODE_BM_SW)
     }
 
     DBGI(printf("NS: prefix " OWx"\n",
@@ -3177,7 +3170,7 @@ CopyWithInsert16(qp, uint16_t *pSrc,
 #if defined(PSPLIT_PARALLEL)
     // See CopyWithInsertWord for comment.
   #if defined(UA_PARALLEL_128)
-    if (n <= 6) {
+    if ((nType == T_LIST_UA) && (n <= 6)) {
         for (; (n * sizeof(sKey)) % 12; ++n) {
             pTgt[n] = pTgt[n-1];
         }
@@ -4068,6 +4061,7 @@ DoubleIt(qp,
     (void)wPopCnt;
     int nBW;
 
+    DBGI(printf("DoubleIt\n"));
     {
   #if defined(USE_XX_SW)
         {
@@ -4905,17 +4899,7 @@ InsertAtList(qp,
 #if defined(EMBED_KEYS)
         assert(nType != T_EMBEDDED_KEYS);
 #endif // defined(EMBED_KEYS)
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        // this test is no good unless we disallow skip from top
-        if (nBL < cnBitsPerWord) {
-            // Get pop from ln_wPrefixPop.
-            // Why are we subracting one here? Is it because Insert
-            // bumps pop count before calling InsertGuts? Yes.
-            // Can't we make PWR_xListPopCnt handle this case?
-            wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL) - 1;
-        } else
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        { wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL); }
+        wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL);
         pwKeys = ls_pwKeys(pwr, nBL); // list of keys in old List
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
@@ -5628,7 +5612,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
     DBGI(printf("IEL: nPopCnt %d\n", nPopCnt));
     int nPopCntMax = EmbeddedListPopCntMax(nBL); (void)nPopCntMax;
 #if defined(DEBUG)
-    if (nPopCnt > EmbeddedListPopCntMax(nBL)) {
+    if (nPopCnt > nPopCntMax) {
         printf("IEL: wRoot " OWx" nBL %d nPopCnt %d Max %d nBitsPopCntSz %d\n",
                wRoot, nBL, nPopCnt, nPopCntMax, nBL_to_nBitsPopCntSz(nBL));
     }
@@ -6080,11 +6064,6 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
                 DBGR(printf(" PWR_wPopCntBL %" _fw"d " OWx"\n",
                             PWR_wPopCntBL(pwRootLn, NULL, nBLX),
                             PWR_wPopCntBL(pwRootLn, NULL, nBLX)));
-#ifdef PP_IN_LINK
-                DBGR(printf("PWR_wPrefixPop %" _fw"d " OWx"\n",
-                            PWR_wPrefixPop(pwRootLn, NULL),
-                            PWR_wPrefixPop(pwRootLn, NULL)));
-#endif // PP_IN_LINK
 #ifdef POP_WORD_IN_LINK
                 DBGR(printf("PWR_wPopWord %" _fw"d " OWx"\n",
                             PWR_wPopWordBL(pwRootLn, NULL, nBLX),
@@ -6298,6 +6277,8 @@ embeddedKeys:;
     *pwRoot = wRoot;
     Word_t *pwrOld = pwr;
     pwr = pwList;
+    int nTypeOld = nType;
+    nType = wr_nType(wRoot);
     DBGX(Log(qy, "RemoveGuts"));
 
   #ifdef B_JUDYL
@@ -6415,7 +6396,7 @@ embeddedKeys:;
         int n = wPopCnt - 1; (void)n; // first empty slot
 #if defined(PSPLIT_PARALLEL)
   #if defined(UA_PARALLEL_128)
-        if (n <= 6) {
+        if ((nType == T_LIST_UA) && (n <= 6)) {
             for (; (n * 2) % 12; ++n) {
                 ls_psKeysNATX(pwList, wPopCnt-1)[n]
                     = ls_psKeysNATX(pwList, wPopCnt-1)[n-1];
@@ -6496,7 +6477,7 @@ embeddedKeys:;
     }
 
     if (pwr != pwrOld) {
-        OldList(pwrOld, wPopCnt, nBL, nType);
+        OldList(pwrOld, wPopCnt, nBL, nTypeOld);
     }
 
 #if defined(EMBED_KEYS)
@@ -6685,11 +6666,6 @@ Initialize(void)
     }
     assert(ListWordCnt(7, 16) > 3);
 #endif // defined(UA_PARALLEL_128)
-
-#if defined(CODE_BM_SW) && ! defined(PP_IN_LINK)
-    assert(&((BmSwitch_t *)0)->sw_wPrefixPop
-           == &((Switch_t *)0)->sw_wPrefixPop);
-#endif // defined(CODE_BM_SW) && ! defined(PP_IN_LINK)
 #if defined(NO_TYPE_IN_XX_SW)
   #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
     assert(T_EMBEDDED_KEYS != 0); // see b.h

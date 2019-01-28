@@ -1605,11 +1605,14 @@ tp_bIsBitmap(int nType)
 
 #define cnBitsXxSwWidth   6
 
-#if defined(SKIP_TO_XX_SW)
+#if (cnBitsPerWord > 32) && defined(SKIP_TO_XX_SW)
   #define cnLsbXxSwWidth  cnBitsVirtAddr
-#else // defined(SKIP_TO_XX_SW)
+#else // (cnBitsPerWord > 32) && defined(SKIP_TO_XX_SW)
+  // This applies to the preamble word for 32-bit -- not to wRoot.
+  // So there is no collision with cnLsbLvl because level is put
+  // elsewhere for 32-bit.
   #define cnLsbXxSwWidth  (cnBitsPerWord - cnBitsXxSwWidth)
-#endif // defined(SKIP_TO_XX_SW)
+#endif // (cnBitsPerWord > 32) && defined(SKIP_TO_XX_SW)
 
 #define cnBitsListSwPopM1  8 // for T_LIST_SW
 
@@ -1800,7 +1803,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
 // It is a bit of a bummer that the macros for extracting fields that might
 // be in the switch or in the link depending on ifdefs require a mask and
-// and extra dereference in one of the cases if the only parameter is pwRoot.
+// an extra dereference in one of the cases if the only parameter is pwRoot.
 // It would be nice if the compiler could optimize them out, but I'm not
 // optimistic so I chose to make both pwRoot and pwr be parameters.
 // Only one will be used, for each field, in the compiled code, depending
@@ -2617,14 +2620,17 @@ typedef struct {
 typedef Switch_t BmSwitch_t;
 
 typedef struct {
-    Word_t bmlf_wPopCnt;
-  #ifdef SKIP_TO_BITMAP
-      #ifdef PREFIX_WORD_IN_BITMAP_LEAF
-    Word_t bmlf_wPrefix;
-      #else // PREFIX_WORD_IN_BITMAP_LEAF
-    #define bmlf_wPrefixPop  bmlf_wPopCnt
-      #endif // PREFIX_WORD_IN_BITMAP_LEAF
-  #endif // SKIP_TO_BITMAP
+  // Emulate sw_wPrefixPop and sw_wPopWord at the beginning of BmLeaf_t.
+  #ifndef PP_IN_LINK
+    Word_t bmlf_wPrefixPop;
+  #endif // #ifndef PP_IN_LINK
+  #if !defined(SKIP_TO_BITMAP) || defined(PREFIX_WORD_IN_BITMAP_LEAF)
+    Word_t bmlf_wPopCnt; // gwBitmapPopCnt doesn't mask
+  #elif defined(POP_WORD) && !defined(POP_WORD_IN_LINK)
+    Word_t bmlf_wPopCnt; // gwBitmapPopCnt doesn't mask
+  #else // #elif defined(POP_WORD) && !defined(POP_WORD_IN_LINK)
+    #define bmlf_wPopCnt  bmlf_wPrefixPop
+  #endif // #else defined(POP_WORD) && !defined(POP_WORD_IN_LINK)
     Word_t bmlf_awBitmap[];
 } BmLeaf_t;
 
@@ -2894,7 +2900,6 @@ Set_xListPopCnt(Word_t *pwRoot, int nBL, int nPopCnt)
 
   #ifdef SKIP_TO_BITMAP
 
-// Prefix is in the word following the bitmap.
 static Word_t
 gwBitmapPrefix(qp, int nBLR)
 {
@@ -2905,7 +2910,7 @@ gwBitmapPrefix(qp, int nBLR)
     assert(nType == T_SKIP_TO_BITMAP);
     BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
   #ifdef PREFIX_WORD_IN_BITMAP_LEAF
-    return pBmLeaf->bmlf_wPrefix;
+    return pBmLeaf->bmlf_wPrefixPop;
   #else // PREFIX_WORD_IN_BITMAP_LEAF
     return w_wPrefixNotAtTopBL(pBmLeaf->bmlf_wPrefixPop, nBLR);
   #endif // #else PREFIX_WORD_IN_BITMAP_LEAF
@@ -2918,7 +2923,7 @@ swBitmapPrefix(qp, int nBLR, Word_t wPrefix)
     qv; (void)nBLR;
     BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
   #ifdef PREFIX_WORD_IN_BITMAP_LEAF
-    pBmLeaf->bmlf_wPrefix = wPrefix & ~MSK(nBLR);
+    pBmLeaf->bmlf_wPrefixPop = wPrefix & ~MSK(nBLR);
   #else // PREFIX_WORD_IN_BITMAP_LEAF
     set_w_wPrefixNATBL(pBmLeaf->bmlf_wPrefixPop, nBLR, wPrefix);
   #endif // #else PREFIX_WORD_IN_BITMAP_LEAF
@@ -2926,7 +2931,6 @@ swBitmapPrefix(qp, int nBLR, Word_t wPrefix)
 
   #endif // SKIP_TO_BITMAP
 
-// Pop cnt is in the word following the bitmap.
 static Word_t
 gwBitmapPopCnt(qp, int nBLR)
 {
