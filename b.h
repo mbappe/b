@@ -2598,7 +2598,7 @@ typedef struct {
 #if defined(USE_BM_SW) && defined(BM_IN_NON_BM_SW)
     SW_BM
 #endif // defined(USE_BM_SW) && defined(BM_IN_NON_BM_SW)
-    Link_t sw_aLinks[]; // variable size
+    Link_t sw_aLinks[0]; // variable size
 } Switch_t;
 
 // List switch.
@@ -2631,7 +2631,7 @@ typedef struct {
   #else // #elif defined(POP_WORD) && !defined(POP_WORD_IN_LINK)
     #define bmlf_wPopCnt  bmlf_wPrefixPop
   #endif // #else defined(POP_WORD) && !defined(POP_WORD_IN_LINK)
-    Word_t bmlf_awBitmap[];
+    Word_t bmlf_awBitmap[0];
 } BmLeaf_t;
 
 #ifdef SKIP_LINKS
