@@ -4376,7 +4376,7 @@ InsertSwitch(qp,
         }
     }
 #endif // defined(PP_IN_LINK)
-#if ! defined(LVL_IN_SW) && ! defined(LVL_IN_WR_HB)
+#if ! defined(LVL_IN_PP) && ! defined(LVL_IN_WR_HB)
 // Depth is in type.
     if (nDLNew != nDL) {
         if (nDL_to_tp(nDLNew) > (int)cnMallocMask) {
@@ -4387,7 +4387,7 @@ InsertSwitch(qp,
             assert(0);
         }
     }
-#endif // ! defined(LVL_IN_SW) && ! defined(LVL_IN_WR_HB)
+#endif // ! defined(LVL_IN_PP) && ! defined(LVL_IN_WR_HB)
 #endif // defined(SKIP_LINKS)
 
 #ifdef BITMAP
@@ -6726,7 +6726,7 @@ Initialize(void)
 
 #if defined(SKIP_LINKS)
   #if ! defined(LVL_IN_WR_HB)
-      #if ! defined(LVL_IN_SW)
+      #if ! defined(LVL_IN_PP)
     // We could be a lot more creative here w.r.t. mapping our scarce type
     // values to absolute depths.  But why?  We have to look at the prefix
     // in a different word anyway.  See comments at tp_to_nDL in b.h.
@@ -6737,7 +6737,7 @@ Initialize(void)
         printf("# tp_to_nDL(cnMallocMask    0x%02x)   %2d\n",
                (int)cnMallocMask, (int)tp_to_nDL(cnMallocMask));
     }
-      #endif // ! defined(LVL_IN_SW)
+      #endif // ! defined(LVL_IN_PP)
   #endif // ! defined(LVL_IN_WR_HB)
 #else // defined(SKIP_LINKS)
   #if defined(SKIP_TO_BITMAP)
@@ -7349,11 +7349,11 @@ Initialize(void)
     printf("# No PLN_PARAM_FOR_LOOKUP\n");
 #endif // defined(PLN_PARAM_FOR_LOOKUP)
 
-#if defined(LVL_IN_SW)
-    printf("#    LVL_IN_SW\n");
-#else // defined(LVL_IN_SW)
-    printf("# No LVL_IN_SW\n");
-#endif // defined(LVL_IN_SW)
+#if defined(LVL_IN_PP)
+    printf("#    LVL_IN_PP\n");
+#else // defined(LVL_IN_PP)
+    printf("# No LVL_IN_PP\n");
+#endif // defined(LVL_IN_PP)
 
 #if defined(SEPARATE_T_NULL)
     printf("#    SEPARATE_T_NULL\n");
@@ -8629,11 +8629,11 @@ embeddedBitmap:;
   #if defined(SKIP_LINKS)
     default: {
     /* case T_SKIP_TO_SWITCH */
-#if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+#if defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
         DBG((nType != T_SKIP_TO_SWITCH)
             ? printf("NextGuts: Unhandled nType: %d\n", nType) : 0);
         assert(nType == T_SKIP_TO_SWITCH);
-#endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
+#endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_PP)
         DBGN(printf("SKIP_TO_SW\n"));
         //A(0);
         int nBLR = wr_nBL(wRoot);
@@ -9711,12 +9711,12 @@ embeddedBitmap:;
   #if defined(SKIP_LINKS)
     default: {
     /* case T_SKIP_TO_SWITCH */
-      #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+      #if defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
         int nType = wr_nType(wRoot); (void)nType;
         DBG((nType != T_SKIP_TO_SWITCH)
             ? printf("NextGuts: Unhandled nType: %d\n", nType) : 0);
         assert(nType == T_SKIP_TO_SWITCH);
-      #endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
+      #endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_PP)
         int nBLR = wr_nBL(wRoot);
         Word_t wPrefix =
 #ifdef PP_IN_LINK

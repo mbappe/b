@@ -840,13 +840,13 @@ fastAgain:;
 
 #if defined(SKIP_LINKS)
 
-  #if !defined(LVL_IN_WR_HB) && !defined(LVL_IN_SW)
+  #if !defined(LVL_IN_WR_HB) && !defined(LVL_IN_PP)
   #if !defined(DEFAULT_SKIP_TO_SW) && !defined(ALL_SKIP_TO_SW_CASES)
-    // For level in type, i.e. (!LVL_IN_WR_HB && !LVL_IN_SW),
+    // For level in type, i.e. (!LVL_IN_WR_HB && !LVL_IN_PP),
     // multiple type values all represent T_SKIP_TO_SWITCH, i.e.
     // level = nType - T_SKIP_TO_SWITCH + 2.
     #error Level in type requires DEFAULT_SKIP_TO_SW or ALL_SKIP_TO_SW_CASES.
-  #endif // !defined(LVL_IN_WR_HB) && !defined(LVL_IN_SW)
+  #endif // !defined(LVL_IN_WR_HB) && !defined(LVL_IN_PP)
   #endif // !defined(DEFAULT_SKIP_TO_SW) && !defined(ALL_SKIP_TO_SW_CASES)
 
   #if defined(DEFAULT_SKIP_TO_SW)
@@ -892,10 +892,10 @@ t_skip_to_switch:
   #if defined(NO_PREFIX_CHECK) && defined(LOOKUP)
         nBLR = gnBLRSkip(qy);
   #else // defined(NO_PREFIX_CHECK) && defined(LOOKUP)
-      #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+      #if defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
         DBG((nType != T_SKIP_TO_SWITCH) ? printf("\nnType: %d\n", nType) : 0);
         assert(nType == T_SKIP_TO_SWITCH);
-      #endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
+      #endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_PP)
         DBGX(printf("SKIP_TO_SW\n"));
 
         // Looks to me like PrefixMismatch has no performance issues with

@@ -456,10 +456,10 @@ typedef Word_t Bucket_t;
 // Default is -DSKIP_TO_XX_SW iff -DSKIP_LINKS && -DCODE_XX_SW.
 // And lvl not in type.
 #if ! defined(NO_SKIP_TO_XX_SW) && defined(SKIP_LINKS)
-#if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+#if defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
 #undef SKIP_TO_XX_SW
 #define SKIP_TO_XX_SW
-#endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+#endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
 #endif // ! defined(NO_SKIP_TO_XX_SW) && defined(SKIP_LINKS)
 #endif // defined(CODE_XX_SW)
 
@@ -477,23 +477,23 @@ typedef Word_t Bucket_t;
     #define IF_SKIP_TO_XX_SW(_expr)
 #endif // defined(SKIP_TO_XX_SW)
 
-// Default is SKIP_TO_BM_SW if USE_BM_SW and (LVL_IN_SW or LVL_IN_WR_HB).
+// Default is SKIP_TO_BM_SW if USE_BM_SW and (LVL_IN_PP or LVL_IN_WR_HB).
 #if ! defined(NO_SKIP_TO_BM_SW) && defined(SKIP_LINKS)
   #if defined(USE_BM_SW)
-      #if defined(LVL_IN_SW) || defined(LVL_IN_WR_HB)
+      #if defined(LVL_IN_PP) || defined(LVL_IN_WR_HB)
           #undef SKIP_TO_BM_SW
           #define SKIP_TO_BM_SW
-      #endif // defined(LVL_IN_SW) || defined(LVL_IN_WR_HB)
+      #endif // defined(LVL_IN_PP) || defined(LVL_IN_WR_HB)
   #endif // defined(USE_BM_SW)
 #endif // ! defined(NO_SKIP_TO_BM_SW) && defined(SKIP_LINKS)
 
-// Default is SKIP_TO_LIST_SW if USE_LIST_SW and (LVL_IN_SW or LVL_IN_WR_HB).
+// Default is SKIP_TO_LIST_SW if USE_LIST_SW and (LVL_IN_PP or LVL_IN_WR_HB).
 #if ! defined(NO_SKIP_TO_LIST_SW) && defined(SKIP_LINKS)
   #if defined(USE_LIST_SW)
-      #if defined(LVL_IN_SW) || defined(LVL_IN_WR_HB)
+      #if defined(LVL_IN_PP) || defined(LVL_IN_WR_HB)
           #undef SKIP_TO_LIST_SW
           #define SKIP_TO_LIST_SW
-      #endif // defined(LVL_IN_SW) || defined(LVL_IN_WR_HB)
+      #endif // defined(LVL_IN_PP) || defined(LVL_IN_WR_HB)
   #endif // defined(USE_LIST_SW)
 #endif // ! defined(NO_SKIP_TO_LIST_SW) && defined(SKIP_LINKS)
 
@@ -680,9 +680,9 @@ typedef Word_t Bucket_t;
 #endif // defined(SKIP_TO_BM_SW) && ! defined(USE_BM_SW)
 
 #if defined(SKIP_TO_BM_SW) && defined(USE_BM_SW)
-  #if ! defined(LVL_IN_SW) && ! defined(LVL_IN_WR_HB)
-      #error Sorry, no SKIP_TO_BM_SW without LVL_IN_SW or NO_LVL_IN_WR_HB.
-  #endif // ! defined(LVL_IN_SW) && ! defined(LVL_IN_WR_HB)
+  #if ! defined(LVL_IN_PP) && ! defined(LVL_IN_WR_HB)
+      #error Sorry, no SKIP_TO_BM_SW without LVL_IN_PP or NO_LVL_IN_WR_HB.
+  #endif // ! defined(LVL_IN_PP) && ! defined(LVL_IN_WR_HB)
 #endif // defined(SKIP_TO_BM_SW) && defined(USE_BM_SW)
 
 // Values for nType.
@@ -740,7 +740,7 @@ enum {
     T_SWITCH, // Uncompressed, close (i.e. no-skip) switch.
 #if defined(SKIP_LINKS)
     // T_SKIP_TO_SWITCH has to have the biggest value in this enum
-    // if not LVL_IN_WR_HB and not LVL_IN_SW.  All of the bigger
+    // if not LVL_IN_WR_HB and not LVL_IN_PP.  All of the bigger
     // values have a meaning relative to T_SKIP_TO_SWITCH.
     // Depth/level is determined by (nType - T_SKIP_TO_SWITCH).
     T_SKIP_TO_SWITCH
@@ -1095,13 +1095,13 @@ Clr_bIsSkip(Word_t* pwRoot)
     (void)pwRoot;
 #if defined(SKIP_LINKS)
     int nType = wr_nType(*pwRoot);
-  #if ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
+  #if ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_PP)
     if (nType >= T_SKIP_TO_SWITCH) { Set_nType(pwRoot, T_SWITCH); return; }
-  #endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
+  #endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_PP)
     switch (nType) {
-  #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+  #if defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
     case T_SKIP_TO_SWITCH: Set_nType(pwRoot, T_SWITCH); break;
-  #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+  #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
   #if defined(SKIP_TO_LIST_SW)
     case T_SKIP_TO_LIST_SW: Set_nType(pwRoot, T_LIST_SW); break;
   #endif // defined(SKIP_TO_LIST_SW)
@@ -1464,18 +1464,18 @@ EmbeddedListPopCntMax(int nBL)
 static inline int
 tp_bIsSwitch(int nType)
 {
-#if ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
+#if ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_PP)
   #if defined(SKIP_LINKS)
     if (nType >= T_SKIP_TO_SWITCH) { return 1;}
   #endif // defined(SKIP_LINKS)
-#endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_SW)
+#endif // ! defined(LVL_IN_WR_HB) && ! defined(LVL_IN_PP)
     switch (nType) {
     case T_SWITCH:
-#if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+#if defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
   #if defined(SKIP_LINKS)
     case T_SKIP_TO_SWITCH:
   #endif // defined(SKIP_LINKS)
-#endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+#endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
 #if defined(CODE_LIST_SW)
   #if defined(SKIP_TO_LIST_SW)
     case T_SKIP_TO_LIST_SW:
@@ -1534,11 +1534,11 @@ tp_bIsSkip(int nType)
 {
     (void)nType;
 #if defined(SKIP_LINKS)
-  #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+  #if defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
     switch (nType) {
-      #if defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+      #if defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
     case T_SKIP_TO_SWITCH:
-      #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+      #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
       #if defined(SKIP_TO_LIST_SW)
     case T_SKIP_TO_LIST_SW:
       #endif // defined(SKIP_TO_LIST_SW)
@@ -1553,9 +1553,9 @@ tp_bIsSkip(int nType)
   #endif // defined(SKIP_TO_BITMAP)
         return 1;
     }
-  #else // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+  #else // defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
     if (nType >= T_SKIP_TO_SWITCH) { return 1;}
-  #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_SW)
+  #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
 #endif // defined(SKIP_LINKS)
     return 0;
 }
@@ -1673,8 +1673,8 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
 #else // defined(LVL_IN_WR_HB)
 
-#if defined(LVL_IN_SW)
-// LVL_IN_SW directs us to use the low bits of sw_wPrefixPop for absolute
+#if defined(LVL_IN_PP)
+// LVL_IN_PP directs us to use the low bits of sw_wPrefixPop for absolute
 // depth instead of encoding it into the type field directly.
 // It means we can't use the low bits of sw_wPrefixPop for pop.  So we
 // define POP_WORD and use a separate word.
@@ -1682,7 +1682,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 // of bits used for the pop count at nDL == 2.  Or maybe
 // it doesn't matter since we always create an embedded bitmap when
 // EXP(nBL) <= sizeof(Link_t) * 8.
-// Why not simply use a separate word for LVL_IN_SW instead of the more
+// Why not simply use a separate word for LVL_IN_PP instead of the more
 // complicated approach of displacing pop from sw_wPrefixPop? We will be
 // able to combine it with the word we are planning to add for memory usage
 // of the subtree, sw_wMem.
@@ -1691,7 +1691,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #define POP_WORD
 
 // We coopt the pop field in sw_wPrefixPop and use it for absolute level if
-// LVL_IN_SW. This seems risky from a code maintenance perspective. Some
+// LVL_IN_PP. This seems risky from a code maintenance perspective. Some
 // renaming might be in order.
 // We assume wr_n[BD]L and set_wr_n[BD]L are used only when it is
 // known that we have a skip link.  We could enhance it to use one type value
@@ -1717,7 +1717,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
   #define set_wr_nDL(_wr, _nDL)  set_wr_nBL((_wr), nDL_to_nBL(_nDL))
 
-#else // defined(LVL_IN_SW)
+#else // defined(LVL_IN_PP)
 
 // #define LVL_IN_TYPE
 
@@ -1742,7 +1742,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 // any conditional branches.
 // We could be more creative w.r.t. mapping our scarce type values to nDL
 // values.  E.g. start at the top instead of the bottom, count by twos,
-// lookup table, ...  But why?  We're going to use LVL_IN_SW.  This code
+// lookup table, ...  But why?  We're going to use LVL_IN_PP.  This code
 // is an anachronism.
   #define tp_to_nDL(_tp)   ((_tp)  - T_SKIP_TO_SWITCH + 2)
   #define nDL_to_tp(_nDL)  ((_nDL) + T_SKIP_TO_SWITCH - 2)
@@ -1759,7 +1759,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
   #define set_wr_nBL(_wr, _nBL) \
       set_wr_nDL((_wr), nBL_to_nDL(_nBL))
 
-#endif // defined(LVL_IN_SW)
+#endif // defined(LVL_IN_PP)
 
 #endif // defined(LVL_IN_WR_HB)
 
@@ -1814,7 +1814,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
     (STRUCT_OF((assert(wr_nType(*(_pwRoot) != T_EMBEDDED_KEYS)), (_pwRoot)), \
                Link_t, ln_wRoot)->ln_wPrefixPop)
 
-  #if defined(LVL_IN_SW) || defined(POP_WORD)
+  #if defined(LVL_IN_PP) || defined(POP_WORD)
 // The main purpose of new lists was to move pop count to the end of
 // the list so we don't have to waste a bucket at the beginning just for
 // pop count. But we don't put the pop count in the list for PP_IN_LINK
@@ -1823,8 +1823,8 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 // with full word size key slots.
 // Relocating the pop out of PP requires quite a few code changes.
 // It would be nice for depth, prefix and pop to share the same word.
-#error Sorry, no PP_IN_LINK && (LVL_IN_SW || POP_WORD).
-  #endif // defined(LVL_IN_SW) || defined(POP_WORD)
+#error Sorry, no PP_IN_LINK && (LVL_IN_PP || POP_WORD).
+  #endif // defined(LVL_IN_PP) || defined(POP_WORD)
 
 #else // defined(PP_IN_LINK)
 // This cast assumes sw_wPrefixPop is the same for all types of switch.
@@ -2476,7 +2476,7 @@ typedef struct {
 
 // Default is -UPOP_WORD_IN_LINK.
 // It doesn't matter unless POP_WORD is defined.
-// POP_WORD is defined automatically if LVL_IN_SW is defined.
+// POP_WORD is defined automatically if LVL_IN_PP is defined.
 
 typedef struct {
     Word_t ln_wRoot;

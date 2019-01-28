@@ -142,11 +142,11 @@
 #endif // USE_XX_SW
 
 #if (cnBitsPerWord > 32)
-  #if       !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_SW)
+  #if       !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_PP)
     #undef              LVL_IN_WR_HB
     #define             LVL_IN_WR_HB
-  //                 NO_LVL_IN_SW is not necessary.
-  #endif // !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_SW)
+  //                 NO_LVL_IN_PP is not necessary.
+  #endif // !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_PP)
 #endif // (cnBitsPerWord > 32)
 
 // Define USE_BM_SW by default.
@@ -237,9 +237,9 @@
 
 // XX_SW doesn't work without LVL_IN_WR_HB yet.
 #ifdef SKIP_TO_XX_SW
-  #if !defined(LVL_IN_WR_HB) && !defined(LVL_IN_SW)
-    #error SKIP_TO_XX_SW requires LVL_IN_WR_HB or LVL_IN_SW
-  #endif // !defined(LVL_IN_WR_HB) && !defined(LVL_IN_SW)
+  #if !defined(LVL_IN_WR_HB) && !defined(LVL_IN_PP)
+    #error SKIP_TO_XX_SW requires LVL_IN_WR_HB or LVL_IN_PP
+  #endif // !defined(LVL_IN_WR_HB) && !defined(LVL_IN_PP)
 #endif // SKIP_TO_XX_SW
 
 // Default is -DGOTO_AT_FIRST_IN_LOOKUP.
