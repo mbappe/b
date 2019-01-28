@@ -2904,16 +2904,17 @@ static Word_t
 gwBitmapPrefix(qp, int nBLR)
 {
     qv; (void)nBLR;
-  #if defined(PP_IN_LINK)
-    #error gwBitmapPrefix does not handle prefix in link yet
-  #endif // defined(PP_IN_LINK)
     assert(nType == T_SKIP_TO_BITMAP);
+  #if defined(PP_IN_LINK)
+    return PWR_wPrefixBL(pwRoot, pwr, nBLR);
+  #else // defined(PP_IN_LINK)
     BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
-  #ifdef PREFIX_WORD_IN_BITMAP_LEAF
+      #ifdef PREFIX_WORD_IN_BITMAP_LEAF
     return pBmLeaf->bmlf_wPrefixPop;
-  #else // PREFIX_WORD_IN_BITMAP_LEAF
+      #else // PREFIX_WORD_IN_BITMAP_LEAF
     return w_wPrefixNotAtTopBL(pBmLeaf->bmlf_wPrefixPop, nBLR);
-  #endif // #else PREFIX_WORD_IN_BITMAP_LEAF
+      #endif // #else PREFIX_WORD_IN_BITMAP_LEAF
+  #endif // #else defined(PP_IN_LINK)
 }
 
 // Prefix is in the word following the bitmap.
@@ -2921,12 +2922,16 @@ static void
 swBitmapPrefix(qp, int nBLR, Word_t wPrefix)
 {
     qv; (void)nBLR;
+  #if defined(PP_IN_LINK)
+    set_PWR_wPrefixBL(pwRoot, pwr, nBLR, wPrefix);
+  #else // defined(PP_IN_LINK)
     BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
-  #ifdef PREFIX_WORD_IN_BITMAP_LEAF
+      #ifdef PREFIX_WORD_IN_BITMAP_LEAF
     pBmLeaf->bmlf_wPrefixPop = wPrefix & ~MSK(nBLR);
-  #else // PREFIX_WORD_IN_BITMAP_LEAF
+      #else // PREFIX_WORD_IN_BITMAP_LEAF
     set_w_wPrefixNATBL(pBmLeaf->bmlf_wPrefixPop, nBLR, wPrefix);
-  #endif // #else PREFIX_WORD_IN_BITMAP_LEAF
+      #endif // #else PREFIX_WORD_IN_BITMAP_LEAF
+  #endif // #else defined(PP_IN_LINK)
 }
 
   #endif // SKIP_TO_BITMAP
@@ -2936,21 +2941,21 @@ gwBitmapPopCnt(qp, int nBLR)
 {
     qv; (void)nBLR;
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    #error gwBitmapPopCnt does not handle pop in link yet
-  #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    return PWR_wPopCntBL(pwRoot, pwr, nBLR);
+  #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     // No need to handle embedded bitmaps here.
     assert(!cbEmbeddedBitmap || (nBLR > cnLogBitsPerLink));
     assert((nType == T_BITMAP)
-  #ifdef SKIP_TO_BITMAP
+      #ifdef SKIP_TO_BITMAP
                || (nType == T_SKIP_TO_BITMAP)
-  #endif // SKIP_TO_BITMAP
+      #endif // SKIP_TO_BITMAP
            );
     assert((wr_nType(WROOT_NULL) != T_BITMAP) || (wRoot != WROOT_NULL));
     BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
     Word_t wPopCnt = pBmLeaf->bmlf_wPopCnt;
-  #ifdef SKIP_TO_BITMAP
-  #ifndef PREFIX_WORD_IN_BITMAP_LEAF
-      #if !defined(KISS_BM) && !defined(KISS)
+      #ifdef SKIP_TO_BITMAP
+      #ifndef PREFIX_WORD_IN_BITMAP_LEAF
+          #if !defined(KISS_BM) && !defined(KISS)
     assert((nBLR == cnBitsInD1) || (nBLR == cnBitsLeftAtDl2));
     if (cbEmbeddedBitmap) {
         assert(nBLR == cnBitsLeftAtDl2);
@@ -2961,7 +2966,7 @@ gwBitmapPopCnt(qp, int nBLR)
         wPopCnt = pBmLeaf->bmlf_wPopCnt & MSK(cnBitsInD1);
         if (wPopCnt == 0) { wPopCnt = EXP(cnBitsInD1); } // full pop
     } else
-      #endif // !defined(KISS_BM) && !defined(KISS)
+          #endif // !defined(KISS_BM) && !defined(KISS)
     {
         wPopCnt = pBmLeaf->bmlf_wPopCnt & MSK(nBLR);
         // Avoiding a conditional branch here might be more straightforward if
@@ -2974,10 +2979,11 @@ gwBitmapPopCnt(qp, int nBLR)
         // wPopCnt += EXP(nBLR) * !wPopCnt; // full pop
         if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop
     }
-  #endif // #ifndef PREFIX_WORD_IN_BITMAP_LEAF
-  #endif // SKIP_TO_BITMAP
+      #endif // #ifndef PREFIX_WORD_IN_BITMAP_LEAF
+      #endif // SKIP_TO_BITMAP
     assert(wPopCnt <= EXP(nBLR));
     return wPopCnt;
+  #endif // #else defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 }
 
 // Pop cnt is in the word following the bitmap.
@@ -2987,14 +2993,14 @@ swBitmapPopCnt(qp, int nBLR, Word_t wPopCnt)
 {
     qv; (void)nBLR;
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    #error gwBitmapPopCnt does not handle pop in link yet
-  #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    set_PWR_wPopCntBL(pwRoot, pwr, nBLR, wPopCnt);
+  #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     assert((wr_nType(WROOT_NULL) != T_BITMAP) || (wRoot != WROOT_NULL));
     BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
-  #if !defined(SKIP_TO_BITMAP) || defined(PREFIX_WORD_IN_BITMAP_LEAF)
+      #if !defined(SKIP_TO_BITMAP) || defined(PREFIX_WORD_IN_BITMAP_LEAF)
     pBmLeaf->bmlf_wPopCnt = wPopCnt;
-  #else // !defined(SKIP_TO_BITMAP) || defined(PREFIX_WORD_IN_BITMAP_LEAF)
-      #if !defined(KISS_BM) && !defined(KISS)
+      #else // !defined(SKIP_TO_BITMAP) || defined(PREFIX_WORD_IN_BITMAP_LEAF)
+          #if !defined(KISS_BM) && !defined(KISS)
     assert((nBLR == cnBitsInD1) || (nBLR == cnBitsLeftAtDl2));
     if (cbEmbeddedBitmap) {
         assert(nBLR == cnBitsLeftAtDl2);
@@ -3003,11 +3009,12 @@ swBitmapPopCnt(qp, int nBLR, Word_t wPopCnt)
         assert(nBLR == cnBitsInD1);
         SetBits(&pBmLeaf->bmlf_wPopCnt, cnBitsInD1, 0, wPopCnt);
     } else
-      #endif // !defined(KISS_BM) && !defined(KISS)
+          #endif // !defined(KISS_BM) && !defined(KISS)
     {
         SetBits(&pBmLeaf->bmlf_wPopCnt, nBLR, 0, wPopCnt);
     }
-  #endif // #else !defined(SKIP_TO_BITMAP) || defined(PREFIX_WORD_...)
+      #endif // #else !defined(SKIP_TO_BITMAP) || defined(PREFIX_WORD_...)
+  #endif // #else defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 }
 
 #endif // defined(BITMAP)

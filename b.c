@@ -2222,9 +2222,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
 #endif // defined(BM_IN_LINK) || defined(PP_IN_LINK) || ...
     Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
     Word_t wRoot = *pwRoot;
-    // nType is not valid for NO_TYPE_IN_XX_SW if nBL >= nDL_to_nBL(2)
+    // nType is not valid for NO_TYPE_IN_XX_SW if nBL <= nDL_to_nBL(2)
     int nType = wr_nType(wRoot); (void)nType; // silence gcc
-    // pwr is not valid for NO_TYPE_IN_XX_SW if nBL >= nDL_to_nBL(2)
+    // pwr is not valid for NO_TYPE_IN_XX_SW if nBL <= nDL_to_nBL(2)
     Word_t *pwr = wr_pwr(wRoot);
     int nBW;
     Link_t *pLinks;
@@ -2355,7 +2355,6 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
             = (nBL <= cnLogBitsPerWord) ? 1 : EXP(nBL - cnLogBitsPerWord);
         BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
         printf(" nWords %4d", nWords);
-        printf(" PP 0x%016zx", pBmLeaf->bmlf_wPopCnt);
         printf(" wPopCnt %5zd", gwBitmapPopCnt(qy, nBL));
         Word_t wPopCntL = 0;
         for (Word_t ww = 0; (int)ww < nWords; ++ww) {
@@ -4364,6 +4363,7 @@ InsertSwitch(qp,
     assert((nBLNew > cnLogBitsPerLink) || !cbEmbeddedBitmap);
 #endif // BITMAP
 
+    Link_t link; (void)link;
 #if defined(PP_IN_LINK)
     // PP_IN_LINK can only support skip from top for wPrefix == 0.
     if (nBL == cnBitsPerWord) {

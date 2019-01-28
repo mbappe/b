@@ -263,12 +263,8 @@ PrefixMismatch(qp,
         : (nBL == cnBitsPerWord) ? 0
       #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
       #if defined(SKIP_TO_BITMAP)
-          #if defined(PP_IN_LINK)
-#error SKIP_TO_BITMAP and PP_IN_LINK is not coded yet
-          #else // defined(PP_IN_LINK)
         : (wr_nType(pLn->ln_wRoot) == T_SKIP_TO_BITMAP)
             ? gwBitmapPrefix(qy, nBLR)
-          #endif // defined(PP_IN_LINK)
       #endif // defined(SKIP_TO_BITMAP)
       #if defined(CODE_BM_SW)
         : bBmSw ? PWR_wPrefixNATBL(pwRoot, (BmSwitch_t *)pwr, nBLR)
