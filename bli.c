@@ -574,15 +574,13 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
     Word_t wRoot = pLn->ln_wRoot;
 #endif // defined(LOOKUP) && ! defined(PLN_PARAM_FOR_LOOKUP)
     // pLn and wRoot of qy are set up
-    DBGX(printf("\n# %s pLn %p wRoot 0x%zx wKey 0x%zx ",
+    DBGX(printf("\n# %s pLn %p wRoot 0x%zx wKey 0x%zx\n",
                 strLookupOrInsertOrRemove, (void*)pLn, wRoot, wKey));
 
 #if defined(LOOKUP)
     int nBL = cnBitsPerWord;
 #endif // defined(LOOKUP)
     // nBL, pLn and wRoot of qy are set up
-
-    DBGX(printf("# nBL %d pLn %p wRoot " OWx"\n", nBL, pLn, wRoot));
 
 #if defined(INSERT) && defined(B_JUDYL)
     Word_t *pwValue = NULL;
@@ -673,13 +671,12 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
     pwr = wr_pwr(wRoot);
     // nBL, pLn, wRoot, nType and pwr of qy are set up
     if (nType > T_SWITCH) {
-        DBGX(printf("# goto t_skip_to_switch\n"));
+        DBGX(Checkpoint(qy, "goto skip_to_sw"));
         goto t_skip_to_switch;
     }
 
     // This shortcut made the code faster in my testing.
     nBLR = nBL;
-    DBGX(printf("# goto fastAgain\n"));
     goto fastAgain;
 
   #endif // LOOKUP
@@ -697,15 +694,17 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
 
 #if defined(INSERT) || defined(REMOVE)
   #if !defined(RECURSIVE)
-top:;
+    goto top;
     DBGX(Checkpoint(qy, "top"));
+top:;
   #endif // !defined(RECURSIVE)
 #endif // defined(INSERT) || defined(REMOVE)
     nBLR = nBL;
 
 #if defined(LOOKUP) || !defined(RECURSIVE)
-again:;
+    goto again;
     DBGX(Checkpoint(qy, "again"));
+again:;
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
 
 #if defined(SKIP_LINKS)
@@ -716,12 +715,11 @@ again:;
     assert(nBL >= cnBitsInD1); // valid for LOOKUP too
   #endif // ! defined(CODE_XX_SW)
 #endif // ( ! defined(LOOKUP) )
-    DBGX(printf("# nBL %d pLn %p wRoot " OWx" wKey " OWx"\n",
-                nBL, pLn, wRoot, wKey));
 
     nType = wr_nType(wRoot);
     pwr = wr_pwr(wRoot); // pwr isn't meaningful for all nType values
     // nBL, pLn, wRoot, nType and pwr of qy are set up
+    DBGX(Checkpoint(qy, "enter switch stmt"));
 
   #if defined(JUMP_TABLE)
     static void *pvJumpTable[] = {
@@ -814,7 +812,6 @@ again:;
 
     goto fastAgain;
 fastAgain:;
-    DBGX(Checkpoint(qy, "fastAgain"));
     switch (nType)
     {
 
@@ -1592,7 +1589,6 @@ t_list:;
         DBGX(Checkpoint(qy, "t_list"));
 
   #if defined(INSERT) || defined(REMOVE)
-        DBGX(printf("T_LIST bCleanup %d nIncr %d\n", bCleanup, nIncr));
         if (bCleanup) {
     #if defined(INSERT) && defined(B_JUDYL)
             return pwValue;
@@ -1754,7 +1750,7 @@ t_list:;
             || (pwr != NULL) // non-NULL implies non-zero pop count
             || (gwPopCnt(qy, nBLR) == 0));
         assert(nIncr == 1);
-        DBGI(printf("did not find key\n"));
+        DBGI(printf("# Did not find key in list.\n"));
         if (nBL < cnBitsPerWord) {
             swPopCnt(qy, nBLR, gwPopCnt(qy, nBLR) + 1);
         }
@@ -2502,7 +2498,7 @@ foundIt:;
 
     } // end of switch (nType)
 
-    DBGX(Checkpoint(qy, "end of switch"));
+    DBGX(Checkpoint(qy, "exit switch stmt"));
 
     // Key is not present.
 #if defined(COUNT)
@@ -2923,7 +2919,9 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         // count successful inserts minus successful removes
         wPopCntTotal++;
   #if defined(DEBUG)
-        if (!bHitDebugThreshold && (wPopCntTotal > cwDebugThreshold)) {
+        if (!bHitDebugThreshold
+            && ((cwDebugThreshold == 0) || (wPopCntTotal > cwDebugThreshold)))
+        {
             bHitDebugThreshold = 1;
             if (cwDebugThreshold != 0) {
                 printf("\n# Hit debug threshold.\n");

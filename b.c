@@ -2508,6 +2508,7 @@ embeddedKeys:;
             } else
 #endif // defined(PP_IN_LINK)
             { printf("       N/A"); }
+            printf(" pKeys %p", ls_pwKeysX(pwr, nBL, wPopCnt));
 
             for (int nn = 0;
                 //(nn < wPopCnt) && (nn < 8);
@@ -2515,9 +2516,6 @@ embeddedKeys:;
                  nn++)
             {
                 int xx = nn;
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-                xx += ((nBLArg == cnBitsPerWord) && (cnDummiesInList == 0));
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 #if defined(COMPRESSED_LISTS)
                 if (nBL <= 8) {
                     printf(" %02x", ls_pcKeysNATX(pwr, wPopCnt)[xx]);
@@ -2556,10 +2554,6 @@ embeddedKeys:;
                      ++nn)
                 {
                     int xx = nn;
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-                    xx += ((nBLArg == cnBitsPerWord)
-                        && (cnDummiesInList == 0));
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 #if defined(COMPRESSED_LISTS)
                     if (nBL <= 8) {
                         printf(" %02x", ls_pcKeysNATX(pwr, wPopCnt)[xx]);

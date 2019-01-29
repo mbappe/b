@@ -2047,8 +2047,12 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
     // Do we allow skip from top for PP_IN_LINK? Looks like we allow
     // skip if prefix is zero. It means we'd need a pop slot.
     // But do we allow/use skip to list from the top?
+  #if defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
+    #define POP_SLOT(_nBL)  0
+  #else // defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
     #define POP_SLOT(_nBL) \
         (((_nBL) >= cnBitsPerWord) && (cnDummiesInList == 0))
+  #endif // #else defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
 #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
   #if defined(OLD_LISTS)
     // N_HDR_KEYS incorporates this for ! PP_IN_LINK so don't add it again.
@@ -2245,13 +2249,13 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
       #endif // defined(COMPRESSED_LISTS)
 
-      #if ALIGN_LIST(8)
+      #if ALIGN_LIST(cnBytesPerWord) // ALIGN_LIST(cnBytesPerKey)
 #define ls_pwKeys(_ls, _nBL) \
     ((Word_t *)ALIGN_UP((Word_t)(ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL)), \
                         sizeof(Bucket_t)))
-      #else // ALIGN_LIST(8)
+      #else // ALIGN_LIST(cnBytesPerWord)
 #define ls_pwKeys(_ls, _nBL)  (ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL))
-      #endif // ALIGN_LIST(8)
+      #endif // #else ALIGN_LIST(cnBytesPerWord)
 
   #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 
@@ -2451,11 +2455,11 @@ typedef struct {
     Word_t ll_awDummies[cnDummiesInList];
 #endif // (cnDummiesInList != 0)
     union {
-// Since we never test without COMPRESSED_LISTS the
-// || !PP_IN_LINK (and relationship to POP_WORD_IN_LINK) is suspect.
-#if defined(COMPRESSED_LISTS) || ! defined(PP_IN_LINK)
+// Do we ever use ll_asKeys or ll_acKeys for list pop count or anything
+// else if !defined(COMPRESSED_LISTS)?
+#if defined(COMPRESSED_LISTS)
         uint16_t ll_asKeys[0];
-#endif // defined(COMPRESSED_LISTS) || ! defined(PP_IN_LINK)
+#endif // defined(COMPRESSED_LISTS)
 #if defined(COMPRESSED_LISTS)
         uint8_t  ll_acKeys[0];
   #if (cnBitsPerWord > 32)
@@ -2778,10 +2782,7 @@ static inline Word_t
 gwPopCnt(qp, int nBLR)
 {
     qv; (void)nBLR;
-    assert(tp_bIsSwitch(nType));
-    if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
-        return 0;
-    }
+    if (wRoot == WROOT_NULL) { return 0; }
   #ifdef POP_WORD
     Word_t wPopCnt = PWR_wPopWordBL(&pLn->ln_wRoot, pwr, nBLR);
   #else // POP_WORD
