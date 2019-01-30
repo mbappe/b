@@ -5509,6 +5509,8 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 int
 TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 {
+    (void)J1; (void)JL; (void)PSeed; (void)Elements;
+#ifndef NO_TEST_NEXT_EMPTY
     Word_t    elm;
 
     double    DminTime;
@@ -5602,6 +5604,7 @@ TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
         }
         DeltanSecL = DminTime / (double)Elements;
     }
+#endif // #ifndef NO_TEST_NEXT_EMPTY
     return (0);
 }
 
@@ -5613,6 +5616,8 @@ TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 int
 TestJudyPrevEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 {
+    (void)J1; (void)JL; (void)PSeed; (void)Elements;
+#ifndef NO_TEST_NEXT_EMPTY
     Word_t    elm;
 
     double    DminTime;
@@ -5703,6 +5708,7 @@ TestJudyPrevEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
         DeltanSecL = DminTime / (double)Elements;
     }
 
+#endif // #ifndef NO_TEST_NEXT_EMPTY
     return (0);
 }
 
