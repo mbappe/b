@@ -983,8 +983,11 @@ TestJudyNextEmpty(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
             FAILURE("Judy1NextEmpty Rcode != 1 =", Rcode1);
         }
 
-        if (J1index != JLindex)
+        if (J1index != JLindex) {
+            printf("RcodeL = %d, Rcode1 = %d, Index1 = 0x%" PRIxPTR", IndexL = 0x%" PRIxPTR"\n",
+                    RcodeL, Rcode1, J1index, JLindex);
             FAILURE("JLNE != J1NE returned index at", elm);
+        }
 
         if (pFlag)
         {
