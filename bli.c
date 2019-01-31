@@ -24,7 +24,7 @@ Checkpoint(qp, const char *str)
 }
 
   #if defined(COUNT)
-// Return the number of keys in the subtrees rooted by links that
+// Return the total number of keys in the subtrees rooted by links that
 // precede the specified link in this switch.
 static Word_t
 CountSw(qp,
@@ -59,122 +59,13 @@ CountSw(qp,
         tp_bIsListSw(nType) ? gpListSwLinks(qy) :
 #endif // defined(CODE_LIST_SW)
         pwr_pLinks((Switch_t *)pwr);
-    int nBLLoop = nBLR - nBW;
-    for (; ww < wwLimit; ++ww) {
-        Link_t *pLnLoop = &pLinks[ww];
-        Word_t wRootLoop = pLnLoop->ln_wRoot;
-        Word_t wPopCntLoop;
-        DBGC(printf("ww " OWx" wRootLoop " Owx"\n", ww, wRootLoop));
-        if (cbEmbeddedBitmap && (nBLLoop <= cnLogBitsPerLink)) {
-            if (nBLLoop <= cnLogBitsPerWord) {
-                wPopCntLoop
-                    = __builtin_popcountll(wRootLoop
-// Is this mask really necessary? Or can we count on the bits being zero?
-                        & ((nBLLoop >= cnLogBitsPerWord)
-                            ? (Word_t)-1 : MSK(EXP(nBLLoop))));
-            } else {
-                Word_t *pwLnLoop = (Word_t*)pLnLoop;
-                wPopCntLoop = 0;
-                for (int i = 0; i < (int)EXP(nBLLoop - cnLogBitsPerWord); ++i)
-                {
-                    wPopCntLoop += __builtin_popcountll(pwLnLoop[i]);
-                }
-            }
-            wPopCnt += wPopCntLoop;
-            DBGC(printf("embedded bitmap wPopCntLoop " OWx" wPopCnt " OWx"\n",
-                        wPopCntLoop, wPopCnt));
-        } else {
-            Word_t *pwrLoop = wr_pwr(wRootLoop);
-            int nTypeLoop = wr_nType(wRootLoop);
-            DBGC(printf("pwrLoop %p nTypeLoop %d\n",
-                        (void *)pwrLoop, nTypeLoop));
-            int nBLRLoop = gnBLR(qyLoop);
-            if (tp_bIsSwitch(nTypeLoop)) {
-                wPopCntLoop = gwPopCnt(qyLoop, nBLRLoop);
-                DBGC(printf("ww %" _fw"d bIsSwitch pwr %p wPopCnt %" _fw"d\n",
-                            ww, (void *)pwrLoop, wPopCntLoop));
-                wPopCnt += wPopCntLoop;
-                DBGC(printf("switch wPopCntLoop " OWx" wPopCnt " OWx"\n",
-                            wPopCntLoop, wPopCnt));
-            } else switch (nTypeLoop) {
-          #if defined(EMBED_KEYS)
-            case T_EMBEDDED_KEYS:
-                wPopCntLoop
-                    = ((wr_nType(WROOT_NULL) == T_EMBEDDED_KEYS)
-                            && (wRootLoop == WROOT_NULL))
-                        ? 0 : wr_nPopCnt(wRootLoop, nBLLoop);
-                DBGC(printf("ww %" _fw"d T_EMBED_KEYS wRoot " OWx
-                            " wPopCnt %" _fw"d\n",
-                            ww, wRootLoop, wPopCntLoop));
-                wPopCnt += wPopCntLoop;
-                DBGC(printf("embedded keys wPopCntLoop " OWx
-                            " wPopCnt " OWx"\n", wPopCntLoop, wPopCnt));
-                break;
-          #endif // defined(EMBED_KEYS)
-            case T_LIST:
-          #if defined(UA_PARALLEL_128)
-            case T_LIST_UA:
-          #endif // defined(UA_PARALLEL_128)
-                wPopCntLoop = 0;
-          #if ! defined(SEPARATE_T_NULL)
-                if (pwrLoop != NULL)
-          #endif // ! defined(SEPARATE_T_NULL)
-                {
-                    wPopCntLoop = gnListPopCnt(qyLoop, nBLRLoop);
-                    assert(wPopCntLoop != 0);
-                    DBGC(printf("ww %" _fw"d T_LIST pwr %p wPopCnt %" _fw"d\n",
-                                ww, (void *)pwrLoop, wPopCntLoop));
-                    wPopCnt += wPopCntLoop;
-                }
-                DBGC(printf("list wPopCntLoop " OWx" wPopCnt " OWx"\n",
-                     wPopCntLoop, wPopCnt));
-                break;
-          #ifdef BITMAP
-              #if defined(SKIP_TO_BITMAP)
-            case T_SKIP_TO_BITMAP:
-                  #if defined(PP_IN_LINK)
-                // From where should we get pop count for PP_IN_LINK?
-                // It exists in the bitmap but also in the link.
-                // But there is no link at the top. KISS.
-                  #endif // defined(PP_IN_LINK)
-              #endif // defined(SKIP_TO_BITMAP)
-            case T_BITMAP:
-                wPopCntLoop = gwBitmapPopCnt(qyLoop, nBLRLoop);
-                DBGC(printf("ww %" _fw"d T_BITMAP pwr %p wPopCnt %" _fw"d\n",
-                            ww, (void *)pwrLoop, wPopCntLoop));
-                wPopCnt += wPopCntLoop;
-                DBGC(printf("bitmap wPopCntLoop " OWx" wPopCnt " OWx"\n",
-                            wPopCntLoop, wPopCnt));
-                break;
-          #endif // BITMAP
-          #ifdef SEPARATE_T_NULL
-            case T_NULL:
-                break;
-          #endif // SEPARATE_T_NULL
-            default:
-                DBG(printf("\nww %" _fw"d wRootLoop " OWx" nTypeLoop %d\n",
-                       ww, wRootLoop, nTypeLoop));
-                if (wPopCntTotal < 0x1000) {
-                    DBGC(Dump(pwRootLast, 0, cnBitsPerWord));
-                }
-                assert(0);
-            }
-        }
-    }
+    wPopCnt = CountSwLoop(nBLR - nBW, &pLinks[ww], wwLimit - ww);
     assert(((int)wIndex < nLinks)
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
                || (nBL == cnBitsPerWord)
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
            );
-    if ((ww == (unsigned)nLinks)
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-            // It wouldn't hurt to include this test even when there is no pop
-            // in link, but it's not necessary in that case.
-            // We're being pedantic.
-            && ((int)wIndex != nLinks)
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        )
-    {
+    if (ww != 0) {
         assert(wRoot != WROOT_NULL);
         Word_t wPopCntSw = gwPopCnt(qy, nBLR);
         DBGC(printf("wPopCntSw 0x%zx wPopCnt 0x%zx\n", wPopCntSw, wPopCnt));
@@ -1221,16 +1112,16 @@ t_skip_to_bm_sw:
             if (wPrefixMismatch > 0) {
                 Word_t wPopCnt;
       #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
-          #error Not ready yet
                 if (nBL >= cnBitsPerWord) {
                     int nBW = gnBW(qy, T_BM_SW, nBL);
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(qy, nBLR, nBW, EXP(nBW), EXP(nBW));
+                    int nLinkCnt = BmSwLinkCnt(qy);
+                    wPopCnt = CountSw(qy, nBLR, nBW,
+                                      /*wIndex*/ nLinkCnt,
+                                      /*nLinks*/ nLinkCnt);
                 } else
       #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
-                {
-                    wPopCnt = gwPopCnt(qy, nBLR);
-                }
+                { wPopCnt = gwPopCnt(qy, nBLR); }
                 DBGC(printf("SKIP_TO_BM_SW: PM wPopCnt %zd\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
                 DBGC(printf("skbmsw wPopCnt 0x%zx wPopCntSum 0x%zx\n",
@@ -1598,15 +1489,6 @@ t_list:;
         } // cleanup is complete
   #endif // defined(INSERT) || defined(REMOVE)
 
-      #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-          #if defined(INSERT)
-        if (nIncr == -1) { return Failure; } // undo
-          #endif // defined(INSERT)
-          #if defined(REMOVE)
-        if (nIncr == 1) { return Failure; } // undo
-          #endif // defined(REMOVE)
-      #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-
         assert((pwr != NULL) || (wr_nType(WROOT_NULL) == T_LIST));
 
         // Search the list.  wPopCnt is the number of keys in the list.
@@ -1675,16 +1557,6 @@ t_list:;
               #endif // ! defined(RECURSIVE)
           #endif // defined(INSERT)
           #if defined(REMOVE)
-              #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-                // Adjust wPopCnt in link to leaf if pop cnt is in the link.
-                // wPopCnt in link to switch is adjusted elsewhere, i.e. in
-                // the same place as wPopCnt in switch is adjusted when pop
-                // cnt is in the switch.
-                assert(nIncr == -1);
-                if (nBL < cnBitsPerWord) {
-                    swPopCnt(qy, nBLR, gwPopCnt(qy, nBLR) - 1);
-                }
-              #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
                 goto removeGutsAndCleanup;
           #endif // defined(REMOVE)
           #if defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
@@ -1736,26 +1608,6 @@ t_list:;
         return wPopCntSum;
       #endif // defined(COUNT)
 
-      #if defined(INSERT)
-      #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        // Adjust wPopCnt in link to leaf if pop cnt is in the link.
-        // wPopCnt in link to switch is adjusted elsewhere, i.e. in
-        // the same place as wPopCnt in switch is adjusted when pop
-        // cnt is in the switch.
-        // Would be nice to be able to get the current pop count from
-        // SearchList because chances are it will have read it.
-        // But it is more important to avoid getting it when not necessary
-        // during lookup.
-        assert((nBL == cnBitsPerWord) // there is no link with pop count
-            || (pwr != NULL) // non-NULL implies non-zero pop count
-            || (gwPopCnt(qy, nBLR) == 0));
-        assert(nIncr == 1);
-        DBGI(printf("# Did not find key in list.\n"));
-        if (nBL < cnBitsPerWord) {
-            swPopCnt(qy, nBLR, gwPopCnt(qy, nBLR) + 1);
-        }
-      #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-      #endif // defined(INSERT)
       #ifdef INSERT
           // Tried putting test for (cn2dBmMaxWpkPercent != 0) in the
           // condition below but g++ complained about the unsigned comparison
@@ -1795,15 +1647,6 @@ t_list_ua:;
             return Success;
         } // cleanup is complete
   #endif // defined(INSERT) || defined(REMOVE)
-
-      #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-          #if defined(INSERT)
-        if (nIncr == -1) { return Failure; } // undo
-          #endif // defined(INSERT)
-          #if defined(REMOVE)
-        if (nIncr == 1) { return Failure; } // undo
-          #endif // defined(REMOVE)
-      #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 
         // Search the list.  wPopCnt is the number of keys in the list.
 
@@ -1854,16 +1697,6 @@ t_list_ua:;
               #endif // ! defined(RECURSIVE)
           #endif // defined(INSERT)
           #if defined(REMOVE)
-              #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-                // Adjust wPopCnt in link to leaf if pop cnt is in the link.
-                // wPopCnt in link to switch is adjusted elsewhere, i.e. in
-                // the same place as wPopCnt in switch is adjusted when pop
-                // cnt is in the switch.
-                assert(nIncr == -1);
-                if (nBL < cnBitsPerWord) {
-                    swPopCnt(qy, nBLR, gwPopCnt(qy, nBLR) - 1);
-                }
-              #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
                 goto removeGutsAndCleanup;
           #endif // defined(REMOVE)
           #if defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
@@ -1901,27 +1734,6 @@ t_list_ua:;
         DBGC(printf("list nPos 0x%x wPopCntSum " OWx"\n", nPos, wPopCntSum));
         return wPopCntSum;
       #endif // defined(COUNT)
-
-      #if defined(INSERT)
-      #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        // Adjust wPopCnt in link to leaf if pop cnt is in the link.
-        // wPopCnt in link to switch is adjusted elsewhere, i.e. in
-        // the same place as wPopCnt in switch is adjusted when pop
-        // cnt is in the switch.
-        // Would be nice to be able to get the current pop count from
-        // SearchList because chances are it will have read it.
-        // But it is more important to avoid getting it when not necessary
-        // during lookup.
-        assert((nBL == cnBitsPerWord) // there is no link with pop count
-            || (pwr != NULL) // non-NULL implies non-zero pop count
-            || (gwPopCnt(qy, nBLR) == 0));
-        assert(nIncr == 1);
-        DBGI(printf("did not find key\n"));
-        if (nBL < cnBitsPerWord) {
-            swPopCnt(qy, nBLR, gwPopCnt(qy, nBLR) + 1);
-        }
-      #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-      #endif // defined(INSERT)
 
         break;
 
@@ -1985,16 +1797,6 @@ t_bitmap:;
       #endif // defined(INSERT) && defined(B_JUDYL)
         } // cleanup is complete
   #endif // defined(INSERT) || defined(REMOVE)
-
-
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-#if defined(INSERT) || defined(REMOVE)
-        if (cnBitsInD1 > cnLogBitsPerLink) {
-            Word_t wPopCnt = gwPopCnt(qy, nBLR);
-            swPopCnt(qy, nBLR, wPopCnt + nIncr);
-        }
-#endif // defined(INSERT) || defined(REMOVE)
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 
 #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
         return KeyFound;

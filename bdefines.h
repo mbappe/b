@@ -84,13 +84,15 @@
 
 #endif // B_JUDYL
 
-// Default is POP_WORD unless NO_POP_WORD.
-// POP_WORD makes gwPopCnt faster.
-// gwPopCnt showed up as a heavy hitter in the profile.
-#ifndef   NO_POP_WORD
-  #undef     POP_WORD
-  #define    POP_WORD
-#endif // NO_POP_WORD
+#ifndef PP_IN_LINK
+  // Default is POP_WORD ifndef PP_IN_LINK unless NO_POP_WORD.
+  // POP_WORD makes gwPopCnt faster.
+  // gwPopCnt showed up as a heavy hitter in the profile.
+  #ifndef   NO_POP_WORD
+    #undef     POP_WORD
+    #define    POP_WORD
+  #endif // NO_POP_WORD
+#endif // #ifndef PP_IN_LINK
 
 // Default is -UCODE_XX_SW.
 

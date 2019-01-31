@@ -1784,17 +1784,26 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #define w_wPopCntNotAtTop(_w, _nDL)  ((_w) &  wPrefixPopMaskNotAtTop(_nDL))
 #define w_wPopCntNATBL(_w, _nBL)  ((_w) &  wPrefixPopMaskNotAtTopBL(_nBL))
 
-// PP_IN_LINK and POP_WORD_IN_LINK don't work without OLD_LISTS.
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+#ifndef POP_IN_WR_HB
+#ifndef LIST_POP_IN_PREAMBLE
+  // List leaf pop is in link but not in ln_wRoot hence not at top.
+  #define _LIST_POP_IN_LINK_X
+#endif // #ifndef LIST_POP_IN_PREAMBLE
+#endif // #ifndef POP_IN_WR_HB
+#ifdef BITMAP
+  // Bitmap leaf pop is in link but not in ln_wRoot.
+  #define _BM_POP_IN_LINK_X
+#endif // BITMAP
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+
+// _LIST_POP_IN_LINK_X doesn't need to work with !OLD_LISTS.
 // The whole purpose of new lists was to move pop count to the end of
 // the list so we don't have to waste a bucket at the beginning just for
-// pop count.  But we don't put the pop count in the list for PP_IN_LINK
-// or POP_WORD_IN_LINK. Except at the top.
-// We'll still be wasting that bucket for PP_IN_LINK and POP_WORD_IN_LINK if
-// we are aligning word-size lists.  But we're not currently aligning
-// word-size lists because we're not currently doing psplit search word.
-// We can worry about aligned word size lists later.  It should be easy
-// to distinguish the top level list from other word size lists and treat
-// them differently.
+// pop count.  But we don't put the pop count in the list for
+// _LIST_POP_IN_LINK_X. Except at the top.
+// We'll still be wasting that bucket for _LIST_POP_IN_LINK_X if
+// we are aligning word-size lists.
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
   #if ! defined(OLD_LISTS)
 #error Sorry, PP_IN_LINK and POP_WORD_IN_LINK require OLD_LISTS.
@@ -1810,6 +1819,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 // on ifdefs.
 // Default is -UPP_IN_LINK, i.e. -DPP_IN_SWITCH.
 #if defined(PP_IN_LINK)
+
 #define PWR_wPrefixPop(_pwRoot, _pwr) \
     (STRUCT_OF((assert(wr_nType(*(_pwRoot) != T_EMBEDDED_KEYS)), (_pwRoot)), \
                Link_t, ln_wRoot)->ln_wPrefixPop)
@@ -2038,8 +2048,8 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 // POP_SLOT tells ListWords if we need a slot in the leaf for a pop count
 // that is not included in N_LIST_HDR_KEYS, i.e. a slot that occurs after
 // ll_a[csiw]Keys[N_LIST_HDR_KEYS].
-// Maybe it should be called N_LIST_FOOTER_KEYS?
-// There is a problem if POP_SLOT is at the beginning of the list and
+// It may be before or after the slots used for keys.
+// There is a problem if it is at the beginning of the list and
 // we're aligning lists. Our code doesn't account for aligning the
 // list again after the pop slot.
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -2162,8 +2172,8 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
       #endif // (N_LIST_HDR_KEYS != 0)
   #endif // OLD_LIST_WORD_CNT
 
-// NAT is relevant only for PP_IN_LINK and POP_WORD_IN_LINK where POP_SLOT
-// depends on whether we are at the top or not.
+// NAT is relevant only for _LIST_POP_IN_LINK_X where POP_SLOT at the
+// beginning of the list depends on whether we are at the top or not.
 #define ls_pwKeysNAT_UA(_ls) \
     (&((ListLeaf_t *)(_ls))->ll_awKeys[N_LIST_HDR_KEYS])
 
@@ -2249,22 +2259,25 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
       #endif // defined(COMPRESSED_LISTS)
 
-      #if ALIGN_LIST(cnBytesPerWord) // ALIGN_LIST(cnBytesPerKey)
-#define ls_pwKeys(_ls, _nBL) \
-    ((Word_t *)ALIGN_UP((Word_t)(ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL)), \
-                        sizeof(Bucket_t)))
-      #else // ALIGN_LIST(cnBytesPerWord)
-#define ls_pwKeys(_ls, _nBL)  (ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL))
-      #endif // #else ALIGN_LIST(cnBytesPerWord)
-
   #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 
-#define ls_pwKeys(_ls, _nBL)  ls_pwKeysNAT(_ls)
 #define ls_piKeys(_ls, _nBL)  ls_piKeysNAT(_ls)
 #define ls_psKeys(_ls, _nBL)  ls_psKeysNAT(_ls)
 #define ls_pcKeys(_ls, _nBL)  ls_pcKeysNAT(_ls)
 
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+
+#ifdef _LIST_POP_IN_LINK_X
+  #if ALIGN_LIST(cnBytesPerWord) // ALIGN_LIST(cnBytesPerKey)
+    #define ls_pwKeys(_ls, _nBL) \
+        ((Word_t *)ALIGN_UP((Word_t)(ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL)), \
+                            sizeof(Bucket_t)))
+  #else // ALIGN_LIST(cnBytesPerWord)
+    #define ls_pwKeys(_ls, _nBL)  (ls_pwKeysNAT_UA(_ls) + POP_SLOT(_nBL))
+  #endif // #else ALIGN_LIST(cnBytesPerWord)
+#else // _LIST_POP_IN_LINK_X
+  #define ls_pwKeys(_ls, _nBL)  ls_pwKeysNAT(_ls)
+#endif // #else _LIST_POP_IN_LINK_X
 
 #define ls_pcKeysNATX(_pwr, _nPopCnt)  ls_pcKeysNAT(_pwr)
 #define ls_psKeysNATX(_pwr, _nPopCnt)  ls_psKeysNAT(_pwr)
@@ -2783,6 +2796,9 @@ gwPopCnt(qp, int nBLR)
 {
     qv; (void)nBLR;
     if (wRoot == WROOT_NULL) { return 0; }
+  #ifdef PP_IN_LINK
+    assert(nBL < cnBitsPerWord);
+  #endif // PP_IN_LINK
   #ifdef POP_WORD
     Word_t wPopCnt = PWR_wPopWordBL(&pLn->ln_wRoot, pwr, nBLR);
   #else // POP_WORD
@@ -2809,11 +2825,11 @@ static inline int
 gnListPopCnt(qp, int nBLR)
 {
     qv; (void)nBLR;
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+#ifdef _LIST_POP_IN_LINK_X
     if (nBL < cnBitsPerWord) {
         return PWR_wPopCntBL(pwRoot, NULL, nBLR);
     }
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+#endif // _LIST_POP_IN_LINK_X
 #if defined(POP_IN_WR_HB) // 64-bit default
     int nPopCnt = GetBits(wRoot, cnBitsListPopCnt, cnLsbListPopCnt) + 1;
 #elif defined(LIST_POP_IN_PREAMBLE) // 32-bit default
@@ -2862,11 +2878,9 @@ static inline void
 Set_xListPopCnt(Word_t *pwRoot, int nBL, int nPopCnt)
 {
     (void)nBL;
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    // Set_xListPopCnt is valid only at top, i.e. nBL >= cnBitsPerWord,
-    // for PP_IN_LINK, and only for T_LIST.
-    assert(nBL >= cnBitsPerWord);
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+#ifdef _LIST_POP_IN_LINK_X
+    assert(nBL < cnBitsPerWord); // not coded yet
+#endif // _LIST_POP_IN_LINK_X
     Word_t *pwr = wr_pwr(*pwRoot); (void)pwr;
 #if defined(POP_IN_WR_HB) // 64-bit default
     assert(nPopCnt - 1 <= (int)MSK(cnBitsListPopCnt));
@@ -2895,6 +2909,27 @@ Set_xListPopCnt(Word_t *pwRoot, int nBL, int nPopCnt)
         ((uint8_t  *)((Word_t *)pwr + 1))[-1] = nPopCnt;
     }
 #endif // POP_IN_WR_HB ...
+}
+
+static int
+GetBLR(Word_t *pwRoot, int nBL)
+{
+    (void)pwRoot;
+
+#if defined(NO_TYPE_IN_XX_SW)
+    if (nBL < nDL_to_nBL(2)) { return nBL; }
+#endif // defined(NO_TYPE_IN_XX_SW)
+
+    return
+  #if defined(SKIP_LINKS)
+        ((tp_bIsSwitch(wr_nType(*pwRoot)) && tp_bIsSkip(wr_nType(*pwRoot)))
+      #if defined(SKIP_TO_BITMAP)
+                || (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP)
+      #endif // defined(SKIP_TO_BITMAP)
+                || 0)
+            ? (int)wr_nBL(*pwRoot) :
+  #endif // defined(SKIP_LINKS)
+              nBL ;
 }
 
 #if defined(BITMAP)
@@ -2941,9 +2976,10 @@ static Word_t
 gwBitmapPopCnt(qp, int nBLR)
 {
     qv; (void)nBLR;
-  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    return PWR_wPopCntBL(pwRoot, pwr, nBLR);
-  #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+  #ifdef _BM_POP_IN_LINK_X
+    Word_t wPopCnt = PWR_wPopCntBL(pwRoot, pwr, nBLR);
+    if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop
+  #else // _BM_POP_IN_LINK_X
     // No need to handle embedded bitmaps here.
     assert(!cbEmbeddedBitmap || (nBLR > cnLogBitsPerLink));
     assert((nType == T_BITMAP)
@@ -2982,9 +3018,9 @@ gwBitmapPopCnt(qp, int nBLR)
     }
       #endif // #ifndef PREFIX_WORD_IN_BITMAP_LEAF
       #endif // SKIP_TO_BITMAP
+  #endif // #else _BM_POP_IN_LINK_X
     assert(wPopCnt <= EXP(nBLR));
     return wPopCnt;
-  #endif // #else defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 }
 
 // Pop cnt is in the word following the bitmap.
@@ -2993,9 +3029,9 @@ static void
 swBitmapPopCnt(qp, int nBLR, Word_t wPopCnt)
 {
     qv; (void)nBLR;
-  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+  #ifdef _BM_POP_IN_LINK_X
     set_PWR_wPopCntBL(pwRoot, pwr, nBLR, wPopCnt);
-  #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+  #else // _BM_POP_IN_LINK_X
     assert((wr_nType(WROOT_NULL) != T_BITMAP) || (wRoot != WROOT_NULL));
     BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
       #if !defined(SKIP_TO_BITMAP) || defined(PREFIX_WORD_IN_BITMAP_LEAF)
@@ -3015,7 +3051,7 @@ swBitmapPopCnt(qp, int nBLR, Word_t wPopCnt)
         SetBits(&pBmLeaf->bmlf_wPopCnt, nBLR, 0, wPopCnt);
     }
       #endif // #else !defined(SKIP_TO_BITMAP) || defined(PREFIX_WORD_...)
-  #endif // #else defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+  #endif // #else _BM_POP_IN_LINK_X
 }
 
 #endif // defined(BITMAP)
@@ -3066,6 +3102,20 @@ snListSwPop(qp, int nPopCnt)
     (assert(wr_pwr(*(_pwRoot)) == (_pwr)), \
     Set_xListPopCnt((_pwRoot), (_nBL), (_cnt)))
 
+  #ifdef B_JUDYL
+    #define GetPopCnt  GetPopCntL
+    #define CountSwLoop  CountSwLoopL
+    #define SumPopCnt  SumPopCntL
+  #else // B_JUDYL
+    #define GetPopCnt  GetPopCnt1
+    #define CountSwLoop  CountSwLoop1
+    #define SumPopCnt  SumPopCnt1
+  #endif // #else B_JUDYL
+
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+static Word_t SumPopCnt(Word_t *pwRoot, int nBL);
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+
 #ifdef CODE_BM_SW
 
 // Bitmap switches are meant to handle data that would otherwise cause us to
@@ -3101,10 +3151,16 @@ snListSwPop(qp, int nPopCnt)
 static int // bool
 InflateBmSwTest(qp) // qp points to BM switch
 {
+    qv;
     int nBLR = gnBLR(qy);
     int nBW = gnBW(qy, T_BM_SW, nBLR); // BW is width of switch
-    Word_t wPopCnt = gwPopCnt(qy, nBLR);
-    qv;
+    Word_t wPopCnt;
+#if defined(PP_IN_LINK) && !defined(NO_SKIP_AT_TOP)
+    if (nBL >= cnBitsPerWord) {
+        wPopCnt = SumPopCnt(pwRoot, cnBitsPerWord);
+    } else
+#endif // defined(PP_IN_LINK) && !defined(NO_SKIP_AT_TOP)
+    { wPopCnt = gwPopCnt(qy, nBLR); }
 
     int nBytesPerPop = ExtListBytesPerKey(nBLR - nBW); // accumulator
     int nBytesPerLink = sizeof(Link_t); // accumulator
@@ -4863,11 +4919,7 @@ SearchList8(qp, int nBLR, Word_t wKey)
 
     assert(nBL <= 8);
     // sizeof(__m128i) == 16 bytes
-  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    int nPopCnt = PWR_wPopCntBL(pwRoot, NULL, nBL);
-  #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     int nPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBLR);
-  #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     uint8_t *pcKeys = ls_pcKeysNATX(pwr, nPopCnt);
 
 #if defined(LIST_END_MARKERS)
@@ -6247,6 +6299,133 @@ LocateKeyInList(qp, int nBLR, Word_t wKey)
 }
 
 #endif // defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
+
+// Get the pop count of the tree/subtree represented by (*pwRoot, nBL).
+static Word_t
+GetPopCnt(Word_t *pwRoot, int nBL)
+{
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+    Word_t wRoot = *pwRoot;
+    Word_t wPopCnt;
+    if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
+        if (nBL <= cnLogBitsPerWord) {
+            wPopCnt
+                = __builtin_popcountll(wRoot
+                    // Is this mask really necessary?
+                    // Or can we count on the bits being zero?
+                    & ((nBL >= cnLogBitsPerWord)
+                        ? (Word_t)-1 : MSK(EXP(nBL))));
+        } else {
+            Word_t *pwLn = (Word_t*)pLn;
+            wPopCnt = 0;
+            for (int i = 0; i < (int)EXP(nBL - cnLogBitsPerWord); ++i)
+            {
+                wPopCnt += __builtin_popcountll(pwLn[i]);
+            }
+        }
+    } else {
+        Word_t *pwr = wr_pwr(wRoot);
+        int nType = wr_nType(wRoot);
+        if (pwr != NULL) {
+            DBGC(printf("pwr %p nType %d\n", pwr, nType));
+        }
+        int nBLR = gnBLR(qy);
+        if (tp_bIsSwitch(nType)) {
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+            if (nBL >= cnBitsPerWord) {
+                wPopCnt = SumPopCnt(pwRoot, cnBitsPerWord);
+            } else
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+            { wPopCnt = gwPopCnt(qy, nBLR); }
+        } else switch (nType) {
+      #if defined(EMBED_KEYS)
+        case T_EMBEDDED_KEYS:
+            wPopCnt
+                = ((wr_nType(WROOT_NULL) == T_EMBEDDED_KEYS)
+                        && (wRoot == WROOT_NULL))
+                    ? 0 : wr_nPopCnt(wRoot, nBL);
+            break;
+      #endif // defined(EMBED_KEYS)
+        case T_LIST:
+      #if defined(UA_PARALLEL_128)
+        case T_LIST_UA:
+      #endif // defined(UA_PARALLEL_128)
+            wPopCnt = 0;
+      #if ! defined(SEPARATE_T_NULL)
+            if (pwr != NULL)
+      #endif // ! defined(SEPARATE_T_NULL)
+            {
+                wPopCnt = gnListPopCnt(qy, nBLR);
+                assert(wPopCnt != 0);
+            }
+            break;
+      #ifdef BITMAP
+          #if defined(SKIP_TO_BITMAP)
+        case T_SKIP_TO_BITMAP:
+              #if defined(PP_IN_LINK)
+            // From where should we get pop count for PP_IN_LINK?
+            // It exists in the bitmap but also in the link.
+            // But there is no link at the top. KISS.
+              #endif // defined(PP_IN_LINK)
+          #endif // defined(SKIP_TO_BITMAP)
+        case T_BITMAP:
+            wPopCnt = gwBitmapPopCnt(qy, nBLR);
+            break;
+      #endif // BITMAP
+      #ifdef SEPARATE_T_NULL
+        case T_NULL:
+            break;
+      #endif // SEPARATE_T_NULL
+        default:
+            if (wPopCntTotal < 0x1000) {
+                DBGC(Dump(pwRootLast, 0, cnBitsPerWord));
+            }
+            assert(0);
+            wPopCnt = 0; // make cc -UDEBUG happy
+        }
+    }
+    return wPopCnt;
+}
+
+// Return the total number of keys in the subtrees rooted by the specified
+// consecutive links in a switch.
+// nBLLoop is the number of bits left to decode after identifying each link
+// before any skip specified by the link is applied.
+static Word_t
+CountSwLoop(int nBLLoop, Link_t *pLinks, int nLinkCnt)
+{
+    Word_t wPopCnt = 0;
+    for (int i = 0; i < nLinkCnt; ++i) {
+        wPopCnt += GetPopCnt(&pLinks[i].ln_wRoot, nBLLoop);
+    }
+    return wPopCnt;
+}
+
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+
+// Sum up the pop counts of all of the links in the specified switch.
+// It assumes *pwRoot is in a link to a switch.
+// nBL is the bits left to decode after getting to pwRoot.
+// If *pwRoot is in a skip link, then nBL must be adjusted by the skip
+// amount to get the digits left at the next node.
+static Word_t
+SumPopCnt(Word_t *pwRoot, int nBL)
+{
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
+    Word_t wRoot = *pwRoot;
+    int nType = wr_nType(wRoot); (void)nType;
+    Word_t *pwr = wr_pwr(wRoot);
+    int nBLR = GetBLR(pwRoot, nBL);
+    int nBW = nBL_to_nBW(nBLR);
+    int nLinkCnt =
+  #if defined(CODE_BM_SW)
+        tp_bIsBmSw(nType) ? BmSwLinkCnt(qy) :
+  #endif // defined(CODE_BM_SW)
+        (int)EXP(nBW);
+    return CountSwLoop(nBLR - nBW, pwr_pLinks((Switch_t*)pwr), nLinkCnt);
+}
+
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 
 #endif // (cnDigitsPerWord > 1)
 
