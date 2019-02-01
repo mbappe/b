@@ -176,7 +176,7 @@
 // Choose conditional features and tuning parameters by #if, #define
 // and #undef.
 // E.g. DEBUG, RAMMETRICS, GUARDBAND.
-// E.g. SKIP_LINKS, SKIP_PREFIX_CHECK, SORT_LISTS.
+// E.g. SKIP_LINKS, SKIP_PREFIX_CHECK.
 // E.g. cnListPopCntMax.
 // Does it make sense for this file to be the only place where we use #define
 // and #undef for conditional features and tuning parameters?

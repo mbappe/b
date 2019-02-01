@@ -2462,8 +2462,6 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     // for PP_IN_LINK there is no complete Link_t at the top -- only wRoot.
     // SEARCH_FROM_WRAPPER allows us avoid making the mainline PP_IN_LINK
     // T_LIST leaf handling code have to know or test if it is at the top.
-    // The list search function we use here can't assume the list is sorted
-    // if we're not sorting lists on insert.
     // Is T_LIST the only node type that is different at the top for
     // PP_IN_LINK? Doesn't the incomplete Link_t complicate Lookup for
     // the other node types?
@@ -2504,8 +2502,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 
     DBGL(printf("\nJudy1Test(pcvRoot %p)\n", (void *)pcvRoot));
 
-    if (pcvRoot == NULL)
-    {
+    if (pcvRoot == NULL) {
         return Failure;
     }
 
@@ -2616,9 +2613,6 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #if (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_I)
     // Handle the top level list leaf before calling Insert.  Why?
     // To simplify Insert for PP_IN_LINK.  Does it still apply?
-    // Do not assume the list is sorted.
-    // But if we do the insert here, and the list is sorted, then leave it
-    // sorted -- so we don't have to worry about ifdefs in this code.
     Word_t wRoot = *pwRoot;
     unsigned nType = wr_nType(wRoot);
 
@@ -2632,12 +2626,9 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
       #endif // defined(SEPARATE_T_NULL)
         )
     {
-        if (Judy1Test((Pcvoid_t)wRoot, wKey, PJError) == Success)
-        {
+        if (Judy1Test((Pcvoid_t)wRoot, wKey, PJError) == Success) {
             status = Failure;
-        }
-        else
-        {
+        } else {
             Word_t *pwr = wr_pwr(wRoot);
             Word_t wPopCnt;
 
@@ -2647,9 +2638,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 wPopCnt = 0;
             } else
       #endif // defined(SEPARATE_T_NULL)
-            {
-                wPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord);
-            }
+            { wPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord); }
 
 #if (cnBitsPerWord == 64)
             if (wPopCnt == cnListPopCntMax64)
@@ -2665,9 +2654,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #endif // defined(SKIP_TO_XX_SW)
                                     );
 #endif // defined(CODE_XX_SW)
-            }
-            else
-            {
+            } else {
                 Word_t *pwListNew = NewList(wPopCnt + 1, cnDigitsPerWord);
                 Word_t *pwKeysNew = ls_pwKeys(pwListNew, cnBitsPerWord);
                 set_wr(wRoot, pwListNew, T_LIST);
@@ -2773,8 +2760,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     DBGI(printf("\n# Judy1Set(ppvRoot %p wKey " OWx") wRoot " OWx"\n",
         (void *)ppvRoot, wKey, wRoot));
 
-    if (wRoot == 0)
-    {
+    if (wRoot == 0) {
         wRoot = JudyMalloc(EXP(cnBitsPerWord - cnLogBitsPerWord));
         assert(wRoot != 0);
         assert((wRoot & cnMallocMask) == 0);
@@ -2789,8 +2775,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     DBGI(printf("Judy1Set num " OWx" mask " OWx"\n", wByteNum, wByteMask));
 
-    if ((c = ((char *)wRoot)[wByteNum]) & wByteMask)
-    {
+    if ((c = ((char *)wRoot)[wByteNum]) & wByteMask) {
         return Failure; // dup
     }
 
@@ -2846,23 +2831,16 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
   #if (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_R)
     // Handle the top level list leaf.
-    // Do not assume the list is sorted, but maintain the current order so
-    // we don't have to bother with ifdefs in this code.
     Word_t wRoot = *pwRoot;
     unsigned nType = wr_nType(wRoot);
-    if (nType == T_LIST)
-    {
-        if (Judy1Test((Pcvoid_t)wRoot, wKey, PJError) == Failure)
-        {
+    if (nType == T_LIST) {
+        if (Judy1Test((Pcvoid_t)wRoot, wKey, PJError) == Failure) {
             status = Failure;
-        }
-        else
-        {
+        } else {
             Word_t *pwr = wr_pwr(wRoot);
             Word_t wPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord);
             Word_t *pwListNew;
-            if (wPopCnt != 1)
-            {
+            if (wPopCnt != 1) {
                 pwListNew = NewList(wPopCnt - 1, cnDigitsPerWord);
                 Word_t *pwKeysNew;
                 set_wr(wRoot, pwListNew, T_LIST);
@@ -2879,21 +2857,16 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 // pwKeysNew incorporates top pop count and markers
                 pwKeysNew[wPopCnt - 1] = -1;
       #endif // defined(LIST_END_MARKERS)
-            }
-            else
-            {
+            } else {
                 wRoot = 0; // set_wr(wRoot, NULL, 0)
             }
             OldList(pwr, wPopCnt, cnBitsPerWord, nType);
             *pwRoot = wRoot;
             status = Success;
         }
-    }
-    else
+    } else
   #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_R)
-    {
-        status = Remove(cnBitsPerWord, pLn, wKey);
-    }
+    { status = Remove(cnBitsPerWord, pLn, wKey); }
 
     if (status == Success) { wPopCntTotal--; }
 

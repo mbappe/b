@@ -2756,8 +2756,6 @@ InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
 
 #if (cwListPopCntMax != 0)
 
-#if defined(SORT_LISTS)
-
 // CopyWithInsert may operate on a list that is installed and one that is not.
 // What is our general rule w.r.t. qp?
 // Should we add qpOld? What about qpUp?
@@ -3115,7 +3113,6 @@ CopyWithInsert8(qp, uint8_t *pSrc,
 }
 
 #endif // defined(COMPRESSED_LISTS)
-#endif // defined(SORT_LISTS)
 #endif // (cwListPopCntMax != 0)
 
 #ifdef B_JUDYL
@@ -4574,7 +4571,6 @@ ListIsFull(qp,
         Word_t wSuffix;
 #if (cwListPopCntMax != 0)
         Word_t wMax, wMin;
-#if defined(SORT_LISTS)
 #if defined(COMPRESSED_LISTS)
         if (nBL <= 8) {
             wMin = pcKeys[0];
@@ -4600,33 +4596,6 @@ ListIsFull(qp,
             wMax = pwKeys[wPopCnt - 1];
             wSuffix = wKey;
         }
-#else // defined(SORT_LISTS)
-        // walk the list to find max and min
-        wMin = (Word_t)-1;
-        wMax = 0;
-
-        for (w = 0; w < wPopCnt; w++)
-        {
-#if defined(COMPRESSED_LISTS)
-            if (nBL <= 8) {
-                if (pcKeys[w] < wMin) wMin = pcKeys[w];
-                if (pcKeys[w] > wMax) wMax = pcKeys[w];
-            } else if (nBL <= 16) {
-                if (psKeys[w] < wMin) wMin = psKeys[w];
-                if (psKeys[w] > wMax) wMax = psKeys[w];
-#if (cnBitsPerWord > 32)
-            } else if (nBL <= 32) {
-                if (piKeys[w] < wMin) wMin = piKeys[w];
-                if (piKeys[w] > wMax) wMax = piKeys[w];
-#endif // (cnBitsPerWord > 32)
-            } else
-#endif // defined(COMPRESSED_LISTS)
-            {
-                if (pwKeys[w] < wMin) wMin = pwKeys[w];
-                if (pwKeys[w] > wMax) wMax = pwKeys[w];
-            }
-        }
-#endif // defined(SORT_LISTS)
         DBGI(printf("wMin " OWx" wMax " OWx"\n", wMin, wMax));
         nBLNew = LOG((wSuffix ^ wMin) | (wSuffix ^ wMax)) + 1;
 #else // (cwListPopCntMax != 0)
@@ -4895,9 +4864,7 @@ InsertAtList(qp,
         pwr = pwList;
         DBGX(Log(qy, "After NewList"));
 
-        if (wPopCnt != 0)
-#if defined(SORT_LISTS)
-        {
+        if (wPopCnt != 0) {
 #if defined(COMPRESSED_LISTS)
             if (nBL <= 8) {
                 goto copyWithInsert8;
@@ -4935,31 +4902,11 @@ copyWithInsertWord:
   #endif // B_JUDYL
                     CopyWithInsertWord(qy, pwKeys, wPopCnt, wKey, nPos);
             }
-        }
-        else
-#else // defined(SORT_LISTS)
-        {
+        } else {
 #if defined(COMPRESSED_LISTS)
             if (nBL <= 8) {
-                COPY(ls_pcKeysNAT(pwList), pcKeys, wPopCnt);
-            } else if (nBL <= 16) {
-                COPY(ls_psKeysNAT(pwList), psKeys, wPopCnt);
-#if (cnBitsPerWord > 32)
-            } else if (nBL <= 32) {
-                COPY(ls_piKeysNAT(pwList), piKeys, wPopCnt);
-#endif // (cnBitsPerWord > 32)
-            } else
-#endif // defined(COMPRESSED_LISTS)
-            {
-                COPY(ls_pwKeys(pwList, nBL), pwKeys, wPopCnt);
-            }
-        }
-#endif // defined(SORT_LISTS)
-        {
-#if defined(COMPRESSED_LISTS)
-            if (nBL <= 8) {
-  #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
-  && defined(PSPLIT_SEARCH_8) && defined(PSPLIT_PARALLEL)
+  #if !defined(EMBED_KEYS) \
+      && defined(PSPLIT_SEARCH_8) && defined(PSPLIT_PARALLEL)
                 //printf("goto copyWithInsert8\n");
                 goto copyWithInsert8;
   #else // !defined(EMBED_KEYS) && ... d&& efined(PSPLIT_PARALLEL)
@@ -4977,8 +4924,8 @@ copyWithInsertWord:
       #endif // B_JUDYL
   #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
             } else if (nBL <= 16) {
-  #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
-  && defined(PSPLIT_SEARCH_16) && defined(PSPLIT_PARALLEL)
+  #if !defined(EMBED_KEYS) \
+      && defined(PSPLIT_SEARCH_16) && defined(PSPLIT_PARALLEL)
                 nPos = 0;
                 //printf("goto copyWithInsert16\n");
                 goto copyWithInsert16;
@@ -4990,7 +4937,7 @@ copyWithInsertWord:
   #endif // !defined(EMBED_KEYS) && ... && defined(PSPLIT_PARALLEL)
 #if (cnBitsPerWord > 32)
             } else if (nBL <= 32) {
-  #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
+  #if !defined(EMBED_KEYS) \
       && defined(PSPLIT_SEARCH_32) && defined(PSPLIT_PARALLEL)
                 //printf("goto copyWithInsert32\n");
                 goto copyWithInsert32;
@@ -5004,20 +4951,18 @@ copyWithInsertWord:
             } else
 #endif // defined(COMPRESSED_LISTS)
             {
-  #if !defined(EMBED_KEYS) && defined(SORT_LISTS) \
-      && defined(PARALLEL_SEARCH_WORD)
+  #if !defined(EMBED_KEYS) && defined(PARALLEL_SEARCH_WORD)
                 //printf("goto copyWithInsertWord\n");
                 goto copyWithInsertWord;
-  #else // !defined(EMBED_KEYS) && ... && defined(PARALLEL_SEARCH_WORD)
+  #else // !defined(EMBED_KEYS) && defined(PARALLEL_SEARCH_WORD)
                 ls_pwKeysX(pwList, nBL, wPopCnt + 1)[wPopCnt] = wKey;
       #ifdef B_JUDYL
                 pwValue = &gpwValues(qy)[~wPopCnt];
       #endif // B_JUDYL
-  #endif // !defined(EMBED_KEYS) && ... && defined(PARALLEL_SEARCH_WORD)
+  #endif // !defined(EMBED_KEYS) && defined(PARALLEL_SEARCH_WORD)
             }
             // Shouldn't we be padding the extra key slots
-            // for parallel search? Is the unsorted list
-            // code so dead that we should abandon it?
+            // for parallel search?
             // Is the uncompressed lists so dead that we
             // should abandon it?
         }
@@ -5236,12 +5181,6 @@ embeddedKeys:;
         nPos = -1; // Tell copy that we have no nPos.
         // Why don't we have an nPos?
 
-        // BUG: The list may not be sorted at this point.  Does it matter?
-        // Update: I'm not sure why I wrote that the list may not be sorted
-        // at this point.  I can't think of why it would not be sorted.
-        // Is it related to SEARCH_FROM_WRAPPER?
-        // Is it related to possibly not sorting embedded keys since we
-        // parallel search embedded keys?
         nType = wr_nType(wRoot);
         DBGI(printf("IG: wRoot " OWx" nType %d PWR_xListPopCnt %d\n",
                     wRoot, nType,
@@ -6456,11 +6395,6 @@ Initialize(void)
     // What if cnBitsInD1 < sizeof(Link_t)*8 and -DALLOW_EMBEDDED_BITMAP?
 #endif // BITMAP
 
-    // Search assumes lists are sorted if LIST_END_MARKERS is defined.
-#if defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
-    assert(0);
-#endif // defined(LIST_END_MARKERS) && ! defined(SORT_LISTS)
-
 #if ! defined(SKIP_TO_BITMAP) && defined(SKIP_TO_XX_SW)
     #error SKIP_TO_XX_SW without SKIP_TO_BITMAP
 #endif // ! defined(SKIP_TO_BITMAP) && defined(SKIP_TO_XX_SW)
@@ -6640,12 +6574,6 @@ Initialize(void)
 #else // defined(WORD_ALIGNED_VECTORS)
     printf("# No WORD_ALIGNED_VECTORS\n");
 #endif // defined(WORD_ALIGNED_VECTORS)
-
-#if defined(SORT_LISTS)
-    printf("#    SORT_LISTS\n");
-#else // defined(SORT_LISTS)
-    printf("# No SORT_LISTS\n");
-#endif // defined(SORT_LISTS)
 
 #if defined(ALIGN_LISTS)
     printf("#    ALIGN_LISTS\n");
@@ -7434,12 +7362,6 @@ Initialize(void)
 #else // defined(NO_PARALLEL_128)
     printf("# No NO_PARALLEL_128\n");
 #endif // defined(NO_PARALLEL_128)
-
-#if defined(NO_SORT_LISTS)
-    printf("#    NO_SORT_LISTS\n");
-#else // defined(NO_SORT_LISTS)
-    printf("# No NO_SORT_LISTS\n");
-#endif // defined(NO_SORT_LISTS)
 
 #if defined(NO_PSPLIT_PARALLEL)
     printf("#    NO_PSPLIT_PARALLEL\n");

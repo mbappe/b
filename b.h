@@ -350,12 +350,6 @@
   #endif // PARALLEL_128
 #endif // defined(UA_PARALLEL_128)
 
-// Default is -DSORT_LISTS.
-#if ! defined(NO_SORT_LISTS)
-#undef  SORT_LISTS
-#define SORT_LISTS
-#endif // defined(NO_SORT_LISTS)
-
 // Default is cnBinarySearchThresholdWord is 16.
 #if ! defined(cnBinarySearchThresholdWord)
 #define cnBinarySearchThresholdWord  16
