@@ -3484,6 +3484,22 @@ embeddedKeys:;
 
     Word_t *pwrOld = wr_pwr(wRootOld);
 
+#ifdef DEBUG
+#ifdef CODE_XX_SW
+    if (nType == T_XX_SW) {
+        Word_t *pwRootLoop = pwRootOld;
+        Link_t *pLnLoop = STRUCT_OF(pwRootLoop, Link_t, ln_wRoot);
+        Word_t wRootLoop = *pwRoot;
+        int nTypeLoop = wr_nType(wRootLoop);
+        Word_t *pwrLoop = wr_pwr(wRootLoop);
+        int nBLLoop = nBL;
+        int nBW = gnBW(qyLoop, T_XX_SW, nBL);
+        DBG(printf("IA: T_XX_SW nBL %d nBW %d\n", nBL, nBW));
+    }
+    assert(nType != T_XX_SW);
+#endif // defined(CODE_XX_SW)
+#endif // DEBUG
+
     if (nType != T_LIST)
   #if defined(UA_PARALLEL_128)
     if (nType != T_LIST_UA)
@@ -4117,6 +4133,8 @@ insertAll:;
 }
 #endif // defined(CODE_XX_SW)
 
+// Replace the link at qp with a link to a new switch.
+// Transfer any keys from the old array rooted at qp to the new switch.
 #ifdef B_JUDYL
 static Word_t*
 #else // B_JUDYL
@@ -4232,7 +4250,7 @@ InsertSwitch(qp,
 #endif // BITMAP
     {
 #if defined(USE_BM_SW) || defined(CODE_XX_SW)
-        int nBW;
+        int nBW; (void)nBW;
 #endif // defined(USE_BM_SW) || defined(CODE_XX_SW)
 #ifndef USE_XX_SW_ONLY_AT_DL2
         // When would a switch at nDLNew == 1 make any sense?
@@ -4277,15 +4295,11 @@ InsertSwitch(qp,
       #if defined(SKIP_TO_XX_SW)
                           , nBLUp
       #endif // defined(SKIP_TO_XX_SW)
-                          , pLnUp
-      #ifdef CODE_XX_SW
-                          , wPopCnt
-      #endif // CODE_XX_SW
-                            );
-  #if defined(USE_BM_SW) || defined(USE_XX_SW)
+                          , pLnUp, wPopCnt);
+  #ifdef USE_XX_SW
         } else
+  #endif // defined(USE_XX_SW)
         { nBW = nBL_to_nBW(nBLNew); }
-  #endif // defined(USE_BM_SW) || defined(USE_XX_SW)
 #elif defined(USE_BM_SW) // defined(CODE_XX_SW)
         nBW = nBL_to_nBW(nBLNew);
 #endif // #elif defined(USE_BM_SW)
@@ -4459,7 +4473,9 @@ InsertSwitch(qp,
 #endif // B_JUDYL
 }
 
-// List is full. What do we do now?
+// List is full, i.e. code constraints and/or policy do not allow us to
+// simply replace the current list with a longer one.
+// What do we do now?
 // - Partition the keys between two or more links?
 //   - Widen the switch with the link to the list?
 //   - Create and insert a new switch below the link to the list?
@@ -4477,24 +4493,24 @@ static Word_t*
 #else // B_JUDYL
 static void
 #endif // B_JUDYL
-Splay(qp,
-      Word_t wKey,
+ListIsFull(qp,
+           Word_t wKey,
 #ifdef CODE_XX_SW
-      Link_t *pLnUp,
+           Link_t *pLnUp,
   #ifdef SKIP_TO_XX_SW
-      int nBLUp,
+           int nBLUp,
   #endif // SKIP_TO_XX_SW
 #endif // CODE_XX_SW
-      Word_t wPopCnt,
-      Word_t *pwKeys
+           Word_t wPopCnt,
+           Word_t *pwKeys
 #ifdef COMPRESSED_LISTS
 #if (cnBitsPerWord > 32)
-    , unsigned int *piKeys
+         , unsigned int *piKeys
 #endif // (cnBitsPerWord > 32)
-    , unsigned short *psKeys,
-      unsigned char *pcKeys
+         , unsigned short *psKeys,
+           unsigned char *pcKeys
 #endif // COMPRESSED_LISTS
-      )
+           )
 {
       qv;
       int nDL = nBL_to_nDL(nBL); (void)nDL;
@@ -4509,7 +4525,7 @@ Splay(qp,
 #endif // COMPRESSED_LISTS
       int nBLNew = nBL;
 
-      DBGI(printf("Splay nBL %d.\n", nBL));
+      DBGI(printf("ListIsFull nBL %d.\n", nBL));
 
 #if defined(SKIP_LINKS)
 #if (cwListPopCntMax != 0)
@@ -4533,6 +4549,7 @@ Splay(qp,
                 nBLNew = cnBitsLeftAtDl2;
             }
         }
+        // Empty list is full.
         return InsertSwitch(qy, wKey, nBLNew
       #ifdef CODE_XX_SW
           #ifdef SKIP_TO_XX_SW
@@ -4548,24 +4565,6 @@ Splay(qp,
 #endif // (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) || ...
 #endif // (cwListPopCntMax != 0)
 #endif // defined(SKIP_LINKS)
-
-#if defined(CODE_XX_SW)
-    // If we are already at dl2, then there
-    // is no need to check for a common prefix
-    // since we can't skip anyway.  And the
-    // skip code causes problems for T_XX_SW.
-    if (nBL <= cnBitsLeftAtDl2) {
-        return InsertSwitch(qy, wKey, nBLNew
-      #ifdef SKIP_TO_XX_SW
-                          , nBLUp
-      #endif // SKIP_TO_XX_SW
-                          , pLnUp
-      #ifdef CODE_XX_SW
-                          , wPopCnt
-      #endif // CODE_XX_SW
-                            );
-    }
-#endif // defined(CODE_XX_SW)
 
 #if defined(NO_SKIP_AT_TOP)
     if (nDL < cnDigitsPerWord)
@@ -5088,21 +5087,21 @@ copyWithInsertWord:
   #ifdef B_JUDYL
         pwValue =
   #endif // B_JUDYL
-            Splay(qy, wKey,
+            ListIsFull(qy, wKey,
 #ifdef CODE_XX_SW
-                  pLnUp,
+                       pLnUp,
   #ifdef SKIP_TO_XX_SW
-                  nBLUp,
+                       nBLUp,
   #endif // SKIP_TO_XX_SW
 #endif // CODE_XX_SW
-                  wPopCnt, pwKeys
+                       wPopCnt, pwKeys
 #ifdef COMPRESSED_LISTS
 #if (cnBitsPerWord > 32)
-                , piKeys
+                     , piKeys
 #endif // (cnBitsPerWord > 32)
-                , psKeys, pcKeys
+                     , psKeys, pcKeys
 #endif // COMPRESSED_LISTS
-                  );
+                       );
     }
 #ifdef B_JUDYL
     DBGI(printf("InsertAtList returning %p\n", (void*)pwValue));
