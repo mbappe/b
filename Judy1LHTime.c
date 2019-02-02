@@ -636,7 +636,11 @@ Word_t    PtsPdec = 50;                 // 4.71% spacing - default
 
 // For LFSR (Linear-Feedback-Shift-Register) pseudo random Number Generator
 //
-#define DEFAULT_BVALUE  32
+// DEFAULT_BVALUE of size of word makes it easier to design a regression test
+// that doesn't know or care if it is running 64-bit or 32-bit.
+// For example, we can use negative numbers as option arguments on the
+// command line for -s to get numbers near the maximum of the expanse.
+#define DEFAULT_BVALUE  (sizeof(Word_t) * 8)
 Word_t    BValue = DEFAULT_BVALUE;
 double    Bpercent = 100.0; // Default MaxNumb assumes 100.0.
 // MaxNumb is initialized from DEFAULT_BVALUE and assumes Bpercent = 100.0.
@@ -665,12 +669,9 @@ PWord_t   FileKeys = NULL;              // array of FValue keys
 Word_t    DFlag = 0;                    // bit reverse (mirror) the data stream
 
 // Default starting seed value; -s
+// This is changed to 1 if SValue is non-zero.
 //
-Word_t    StartSequent = 1;
-
-// Global to store the current Value return from PSeed.
-//
-//Word_t    Key = 0xc1fc;
+Word_t StartSequent = (Word_t)-1 / 7; // 0x2492492492492492 or 0x24924924
 
 Word_t PartitionDeltaFlag = 1; // use -Z to disable small key array
 
@@ -1383,6 +1384,7 @@ main(int argc, char *argv[])
 // PARSE INPUT PARAMETERS
 // ============================================================
 
+    int sFlag = 0; // boolean; has -s been seen
     errno = 0;
     while (1)
     {
@@ -1446,6 +1448,11 @@ main(int argc, char *argv[])
                 FAILURE("compile with -UNO_SVALUE to use -S", SValue);
             }
 #endif // NO_SVALUE
+            // Change default StartSequent to zero for non-zero SValue.
+            // This makes it possible to to random gets for -DS1.
+            if ((SValue != 0) && !sFlag) {
+                StartSequent = 1;
+            }
             break;
         }
         case 'T':                      // Maximum retrieve tests for timing
@@ -1457,6 +1464,7 @@ main(int argc, char *argv[])
             break;
 
         case 's':
+            sFlag = 1;
             StartSequent = oa2w(optarg, NULL, 0, c);
             break;
 
@@ -1990,6 +1998,8 @@ main(int argc, char *argv[])
         }
         //printf("# wFeedBTap 0x%zx\n", wFeedBTap);
     }
+
+    printf("# StartSequent 0x%zx\n", StartSequent);
 
 //  Print out the number set used for testing
     if (pFlag)
