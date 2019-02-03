@@ -1,7 +1,14 @@
-#!/bin/sh -x
+#!/bin/bash
 
 # What is the goal of this regression test script?
 # How much memory should it require? Should it test and adapt?
+# Should it assume 64-bit or 32-bit Judy?
+# Should it figure out which?
+# Should it work with either?
+# Is it supposed to test Judy1LHTime and Judy1LHCheck or just Judy?
+
+# For now it is a fast hoop test that works with both 64-bit and
+# 32-bit Judy.
 
 # Use a -DDEBUG build.
 
@@ -16,77 +23,75 @@ CHECK=Judy1LHCheck
 # ${TIME} -Lm -E
 # ${TIME} -Lm -DS1
 
-: \
-&& ${TIME} -W0 -B16 -1lvdgi  -n4 -S1 -s0xfffd \
-&& ${TIME} -W0 -B64 -1lvdgi  -n4 -S1 -s0xfffffffffffffffd \
-&& ${TIME} -W0 -B64 -1lvdgi  -n1e3 -S1 -s0x1000000 \
-&& ${TIME} -W0 -B64 -1lvdgi  -n1e3 -S-1 -s0xffffff \
-&& ${TIME} -W0 -B16 -1lvdgi  -n4 -S-1 -s2 \
-&& ${TIME} -W0 -B16 -1lvdgi  -n4 -S-1 -s2 --splay-key-bits=0xffff000000000000 \
-&& :
+# Test keys going from small negative numbers to small positive numbers
+# relative to a particular BValue and vice versa.
+for Judy in 1 L
+do
+for magnitude in 1 5
+do
+for sign in 1 -1
+do
+for D in "" -D
+do
+for BOPT in "" -B31 -B25 -B24 -B23 -B17 -B16 -B15 -B10
+do
+
+let S="$sign * $magnitude"
+let n=0x400
+let s="$S * $n / 2 * -1"
+
+cmd="${TIME} -W0 -$Judy -lvdgi -s$s -S$S -n$n $BOPT"
+echo $cmd
+$cmd > /dev/null
 if [ $? != 0 ]
 then
     exit 1
 fi
 
-: \
-&& ${TIME} -W0 -B16 -Llvdgi  -n4 -S1 -s0xfffd \
-&& ${TIME} -W0 -B64 -Llvdgi  -n4 -S1 -s0xfffffffffffffffd \
-&& ${TIME} -W0 -B64 -Llvdgi  -n1e3 -S1 -s0x1000000 \
-&& ${TIME} -W0 -B64 -Llvdgi  -n1e3 -S-1 -s0xffffff \
-&& ${TIME} -W0 -B16 -Llvdgi  -n4 -S-1 -s2 \
-&& ${TIME} -W0 -B16 -Llvdgi  -n4 -S-1 -s2 --splay-key-bits=0xffff000000000000 \
-&& :
+done
+done
+done
+done
+done
+
+# Both Judy1 and JudyL
+for B in 10 15 16 17 # 23 24 25 31 32
+do
+for SOPT in "" -S1 -DS1 -S7 -DS7
+do
+
+cmd="${CHECK} -B$B $SOPT"
+echo $cmd
+time $cmd > /dev/null
 if [ $? != 0 ]
 then
     exit 1
 fi
 
-: \
-&& ${TIME} -W0 -B25 -1lCvdgi -n1e5      --splay-key-bits=0x0400aa00aa00ffff \
-&& ${TIME} -W0 -B25 -1lvdgi  -n1e5 -S1  --splay-key-bits=0x0400aa00aa00ffff \
-&& ${TIME} -W0 -B25 -1lvdgi  -n1e5 -DS1 --splay-key-bits=0x0400aa00aa00ffff \
-&& ${TIME} -W0 -B25 -1lvdgi  -n1e5 \
-&& ${TIME} -W0 -B25 -1lCvdgi -n1e5 -S1 \
-&& ${TIME} -W0 -B25 -1lvdgi  -n1e5 -DS1 \
-&& ${TIME} -W0 -B32 -1lh     -n1e5 -S1  --splay-key-bits=0xff00aa00aa00ffff \
-&& :
+done
+done
+
+for Judy in 1 R # L
+do
+for EOPT in -E --splay-key-bits=0xff00ffff
+do
+
+# -v and -h are incompatible
+
+# These options take a very long time.
+# cmd="${TIME} -W0 -$Judy -Cvdgi -n1e9 $EOPT"
+
+# These options take less time hence are more suitable for a hoop test.
+cmd="${TIME} -W0 -$Judy -lgih -n2e6 $EOPT"
+echo $cmd
+time $cmd > /dev/null
 if [ $? != 0 ]
 then
     exit 1
 fi
 
-: \
-&& ${TIME} -W0 -B25 -LlCvdgi -n1e5      --splay-key-bits=0x0400aa00aa00ffff \
-&& ${TIME} -W0 -B25 -Llvdgi  -n1e5 -S1  --splay-key-bits=0x0400aa00aa00ffff \
-&& ${TIME} -W0 -B25 -Llvdgi  -n1e5 -DS1 --splay-key-bits=0x0400aa00aa00ffff \
-&& ${TIME} -W0 -B25 -Llvdgi  -n1e5 \
-&& ${TIME} -W0 -B25 -Llvdgi  -n1e5 -S1 \
-&& ${TIME} -W0 -B25 -LlCvdgi -n1e5 -DS1 \
-&& ${TIME} -W0 -B32 -Llh     -n1e5 -S1  --splay-key-bits=0xff00aa00aa00ffff \
-&& ${TIME} -W0 -B33 -Rlvdgi  -n1e5 \
-&& :
-if [ $? != 0 ]
-then
-    exit 1
-fi
-
-:\
-&& ${CHECK} -B17 -C \
-&& ${CHECK} -B17 -C -S1 \
-&& ${CHECK} -B17 -C -DS1 \
-&& ${CHECK} -B25 \
-&& ${CHECK} -B25 -S1 \
-&& ${CHECK} -B25 -DS1 \
-&& ${CHECK} -B33 -C \
-&& ${CHECK} -B33 -C -S1 \
-&& ${CHECK} -B33 -C -DS1 \
-&& :
-if [ $? != 0 ]
-then
-    exit 1
-fi
-
-#&& bcheckall 64 \
+done
+done
 
 exit 0
+
