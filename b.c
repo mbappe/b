@@ -685,7 +685,7 @@ CalcListWordCnt(int nPopCnt, int nBL)
     assert((nPopCnt <= auListPopCntMax[nBL])
 #ifdef EMBED_KEYS
   #ifndef POP_CNT_MAX_IS_KING
-        || (nPopCnt <= EmbeddedListPopCntMax(nBL))
+        || (auListPopCntMax[nBL] < EmbeddedListPopCntMax(nBL))
   #endif // #ifndef POP_CNT_MAX_IS_KING
 #endif // EMBED_KEYS
             );
@@ -2131,17 +2131,14 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
         Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR);
         if (bDump) {
             printf(" nBLR %2d", nBLR);
-            printf(" wPrefixPop " OWx, *(pwr + EXP(nBLR - cnLogBitsPerWord)));
-            if (wPopCnt == 0) {
-                wPopCnt = EXP(nBLR);
-            }
-            printf(" w_wPopCnt %" _fw"d", wPopCnt);
+            printf(" wPopCnt %" _fw"d", wPopCnt);
             printf(" nWords %4" _fw"d", EXP(nBLR - cnLogBitsPerWord));
+            Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
             for (Word_t ww = 0; (ww < EXP(nBLR - cnLogBitsPerWord)); ww++) {
                 if ((ww % 8) == 0) {
                     printf("\n");
                 }
-                printf(" " OWx, pwr[ww]);
+                printf(" " OWx, pwBitmap[ww]);
             }
             printf("\n");
             return 0;
@@ -3433,9 +3430,6 @@ static void
 InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
 {
     Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
-    DBGI(printf("InsertAll(pwRootOld %p nBLOld %d wKey " OWx
-                    " pwRoot %p nBL %d\n",
-                (void *)pwRootOld, nBLOld, wKey, (void *)pwRoot, nBL));
     Word_t wRootOld = *pwRootOld;
 #if defined(NO_TYPE_IN_XX_SW)
     if (nBLOld < nDL_to_nBL(2)) {
@@ -3443,10 +3437,16 @@ InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
   #if defined(HANDLE_BLOWOUTS)
         if ((wRootOld & BLOWOUT_MASK(nBLOld)) == ZERO_POP_MAGIC) { return; }
   #endif // defined(HANDLE_BLOWOUTS)
+#else // defined(NO_TYPE_IN_XX_SW)
+    if (wRootOld == WROOT_NULL) { return; }
+#endif // #else defined(NO_TYPE_IN_XX_SW)
+        DBGI(printf("InsertAll(pwRootOld %p nBLOld %d wKey " OWx
+                    " pwRoot %p nBL %d\n",
+                    (void *)pwRootOld, nBLOld, wKey, (void *)pwRoot, nBL));
+#if defined(NO_TYPE_IN_XX_SW)
         goto embeddedKeys;
     }
 #endif // defined(NO_TYPE_IN_XX_SW)
-    if (wRootOld == WROOT_NULL) { return; }
     int nType = wr_nType(wRootOld);
     int nPopCnt;
 #if defined(CODE_XX_SW)
@@ -4492,144 +4492,100 @@ static void
 #endif // B_JUDYL
 ListIsFull(qp,
            Word_t wKey,
-#ifdef CODE_XX_SW
+  #ifdef CODE_XX_SW
            Link_t *pLnUp,
+  #endif // CODE_XX_SW
   #ifdef SKIP_TO_XX_SW
            int nBLUp,
   #endif // SKIP_TO_XX_SW
-#endif // CODE_XX_SW
-           Word_t wPopCnt,
-           Word_t *pwKeys
-#ifdef COMPRESSED_LISTS
-#if (cnBitsPerWord > 32)
-         , unsigned int *piKeys
-#endif // (cnBitsPerWord > 32)
-         , unsigned short *psKeys,
-           unsigned char *pcKeys
-#endif // COMPRESSED_LISTS
-           )
+           Word_t wPopCnt)
 {
-      qv;
-      int nDL = nBL_to_nDL(nBL); (void)nDL;
-      (void)wPopCnt;
-      (void)pwKeys;
-#ifdef COMPRESSED_LISTS
-#if (cnBitsPerWord > 32)
-      (void)piKeys;
-#endif // (cnBitsPerWord > 32)
-      (void)psKeys;
-      (void)pcKeys;
-#endif // COMPRESSED_LISTS
-      int nBLNew = nBL;
+    qv; (void)wPopCnt;
+    int nBLNew = nBL;
 
-      DBGI(printf("ListIsFull nBL %d.\n", nBL));
+    DBGI(printf("ListIsFull nBL %d.\n", nBL));
 
-#if defined(SKIP_LINKS)
-#if (cwListPopCntMax != 0)
-#if    (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) \
-    || (cnListPopCntMax16 == 0)
-    // Figure out the length of the common prefix of
-    // the keys that are in the list and the key that
-    // we are inserting.
-    if (wPopCnt == 0) {
-        // If max list length is zero there are
-        // no keys in the list.   We need to jump over
-        // dereferencing of the list and skip as far
-        // down as possible, i.e. go directly to dl2.
-        // We can't skip directly to dl1 since neither
-        // bitmap nor list leaf have a prefix.
-        if (nDL >= 2) {
-  #if defined(NO_SKIP_AT_TOP)
-            if (nBL != cnBitsPerWord)
-  #endif // defined(NO_SKIP_AT_TOP)
-            {
+  #if defined(SKIP_LINKS)
+    if (1
+      #if defined(NO_SKIP_AT_TOP)
+        && (nBL < cnBitsPerWord)
+      #endif // defined(NO_SKIP_AT_TOP)
+        )
+    {
+      #ifdef ALLOW_LIST_POP_CNT_MAX_ZERO
+          #if (cwListPopCntMax != 0)
+        if (wPopCnt == 0)
+          #endif // (cwListPopCntMax != 0)
+        {
+            // Can't look at keys in the list to figure out how far down to
+            // if there are no keys in the list.
+            // We can skip down as far as we like.
+            // Go directly to dl2. It is simple and is tolerant of no
+            // support for skip to leaf.
+            if (nBL >= cnBitsLeftAtDl2) {
                 nBLNew = cnBitsLeftAtDl2;
             }
         }
-        // Empty list is full.
-        return InsertSwitch(qy, wKey, nBLNew
-      #ifdef CODE_XX_SW
-          #ifdef SKIP_TO_XX_SW
-                          , nBLUp
-          #endif // SKIP_TO_XX_SW
-                          , pLnUp
-      #endif // CODE_XX_SW
-      #ifdef CODE_XX_SW
-                          , wPopCnt
-      #endif // CODE_XX_SW
-                            );
-    }
-#endif // (cnListPopCntMax64 == 0) || (cnListPopCntMax32 == 0) || ...
-#endif // (cwListPopCntMax != 0)
-#endif // defined(SKIP_LINKS)
-
-#if defined(NO_SKIP_AT_TOP)
-    if (nDL < cnDigitsPerWord)
-#endif // defined(NO_SKIP_AT_TOP)
-#if defined(SKIP_LINKS)
-    {
-        Word_t wSuffix;
-#if (cwListPopCntMax != 0)
-        Word_t wMax, wMin;
-#if defined(COMPRESSED_LISTS)
-        if (nBL <= 8) {
-            wMin = pcKeys[0];
-            wMax = pcKeys[wPopCnt - 1];
-            wSuffix = wKey & 0xff;
-        } else if (nBL <= 16) {
-            wMin = psKeys[0];
-            wMax = psKeys[wPopCnt - 1];
-            wSuffix = wKey & 0xffff;
-#if (cnBitsPerWord > 32)
-        } else if (nBL <= 32) {
-            wMin = piKeys[0];
-            wMax = piKeys[wPopCnt - 1];
-            wSuffix = wKey & 0xffffffff;
-#endif // (cnBitsPerWord > 32)
-        } else
-#endif // defined(COMPRESSED_LISTS)
-// Why do I get a wSufix may be uninitialized warning only with DEBUG_INSERT?
-// Compiler doesn't know wSuffix is only used if nBL <= cnBitsPerWord.
-// Why is it different for DEBUG_INSERT?
+          #if (cwListPopCntMax != 0)
+        else
+          #endif // (cwListPopCntMax != 0)
+      #else // ALLOW_LIST_POP_CNT_MAX_ZERO
+        assert(wPopCnt != 0);
+      #endif // #else ALLOW_LIST_POP_CNT_MAX_ZERO
+      #if (cwListPopCntMax != 0)
         {
-            wMin = pwKeys[0];
-            wMax = pwKeys[wPopCnt - 1];
-            wSuffix = wKey;
-        }
-        DBGI(printf("wMin " OWx" wMax " OWx"\n", wMin, wMax));
-        nBLNew = LOG((wSuffix ^ wMin) | (wSuffix ^ wMax)) + 1;
-#else // (cwListPopCntMax != 0)
-        // Can't dereference list if there isn't one.
-        // Go directly to dl2.
-        // Can't skip directly to dl1 since neither bitmap nor
-        // list leaf have a prefix.
-        if (nDL >= 2) {
-  #if defined(NO_SKIP_AT_TOP)
-            if (nBL != cnBitsPerWord)
-  #endif // defined(NO_SKIP_AT_TOP)
+            // Figure out the length of the common prefix of
+            // the keys that are in the list and the key that
+            // we are inserting.
+            Word_t wMin, wMax, wSuffix;
+          #if defined(COMPRESSED_LISTS)
+            if (nBL <= 8) {
+                unsigned char *pcKeys = ls_pcKeysNATX(pwr, wPopCnt);
+                wMin = pcKeys[0];
+                wMax = pcKeys[wPopCnt - 1];
+                wSuffix = wKey & MSK(8);
+            } else if (nBL <= 16) {
+                unsigned short *psKeys = ls_psKeysNATX(pwr, wPopCnt);
+                wMin = psKeys[0];
+                wMax = psKeys[wPopCnt - 1];
+                wSuffix = wKey & MSK(16);
+              #if (cnBitsPerWord > 32)
+            } else if (nBL <= 32) {
+                unsigned int *piKeys = ls_piKeysNATX(pwr, wPopCnt);
+                wMin = piKeys[0];
+                wMax = piKeys[wPopCnt - 1];
+                wSuffix = wKey & MSK(32);
+              #endif // (cnBitsPerWord > 32)
+            } else
+          #endif // defined(COMPRESSED_LISTS)
             {
-                nBLNew = nDL_to_nBL(2);
+                Word_t *pwKeys = ls_pwKeys(pwr, nBL);
+                wMin = pwKeys[0];
+                wMax = pwKeys[wPopCnt - 1];
+                wSuffix = wKey;
             }
+            nBLNew = LOG((wSuffix ^ wMin) | (wSuffix ^ wMax)) + 1;
+            nBLNew = nDL_to_nBL(nBL_to_nDL(nBLNew)); // align to digit
+          #ifdef USE_XX_SW_ONLY_AT_DL2
+            // nBLNew is aligned up. But nBL isn't.
+            if (nBLNew > nBL) { nBLNew = nBL; } // time to double the switch
+          #endif // USE_XX_SW_ONLY_AT_DL2
+      #endif // (cwListPopCntMax != 0)
         }
-#endif // #else (cwListPopCntMax != 0)
     }
-    nBLNew = nDL_to_nBL(nBL_to_nDL(nBLNew)); // round up to digit boundary
-  #ifdef USE_XX_SW_ONLY_AT_DL2
-    if (nBLNew > nBL) { nBLNew = nBL; } // time to double the switch
-  #endif // USE_XX_SW_ONLY_AT_DL2
     assert(nBLNew <= nBL);
+  #endif // defined(SKIP_LINKS)
 
-#endif // defined(SKIP_LINKS)
     return InsertSwitch(qy, wKey, nBLNew
   #ifdef SKIP_TO_XX_SW
                       , nBLUp
   #endif // SKIP_TO_XX_SW
-#if defined(CODE_XX_SW)
+  #if defined(CODE_XX_SW)
                       , pLnUp
-#endif // defined(CODE_XX_SW)
-      #ifdef CODE_XX_SW
+  #endif // defined(CODE_XX_SW)
+  #ifdef CODE_XX_SW
                       , wPopCnt
-      #endif // CODE_XX_SW
+  #endif // CODE_XX_SW
                         );
 }
 
@@ -4654,22 +4610,13 @@ InsertAtList(qp,
 {
     qv;
     Word_t wPopCnt = 0;
-    Word_t *pwKeys = NULL;
-#if defined(COMPRESSED_LISTS)
-  #if (cnBitsPerWord > 32)
-    unsigned int *piKeys = NULL;
-  #endif // (cnBitsPerWord > 32)
-    unsigned short *psKeys = NULL;
-    unsigned char *pcKeys = NULL;
-#endif // defined(COMPRESSED_LISTS)
 #ifdef B_JUDYL
     Word_t *pwValue;
 #endif // B_JUDYL
 
     DBGI(printf("InsertAtList\n"));
 
-    // Initialize wPopCnt, pwKeys, piKeys, psKeys and pcKeys for copy.
-    // And set prefix in link if PP_IN_LINK and the list is empty and
+    // Set prefix in link if PP_IN_LINK and the list is empty and
     // we're not at the top.
     assert((wRoot != 0) || (WROOT_NULL == 0));
     // We get here no matter which type of WROOT_NULL we have.
@@ -4679,14 +4626,6 @@ InsertAtList(qp,
         assert(nType != T_EMBEDDED_KEYS);
 #endif // defined(EMBED_KEYS)
         wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL);
-        pwKeys = ls_pwKeys(pwr, nBL); // list of keys in old List
-#if defined(COMPRESSED_LISTS)
-#if (cnBitsPerWord > 32)
-        piKeys = ls_piKeysNATX(pwr, wPopCnt);
-#endif // (cnBitsPerWord > 32)
-        psKeys = ls_psKeysNATX(pwr, wPopCnt);
-        pcKeys = ls_pcKeysNATX(pwr, wPopCnt);
-#endif // defined(COMPRESSED_LISTS)
         // prefix is already set
     } else {
 #if defined(PP_IN_LINK)
@@ -4729,21 +4668,24 @@ InsertAtList(qp,
     (void)nEmbeddedListPopCntMax;
   #endif // ! defined(POP_CNT_MAX_IS_KING) || defined(CODE_XX_SW)
   #endif // defined(EMBED_KEYS)
+
   #if defined(NO_TYPE_IN_XX_SW)
+    // For NO_TYPE_IN_XX_SW we assume we always have embedded keys in all
+    // links at or below DL2. Hence we have to double the switch when
+    // inserting into an embedded list that is already full.
+    // This will be true until we have code that can handle a blow-up with
+    // NO_TYPE_IN_XX_SW.
     if ((nBL < nDL_to_nBL(2))
-        && (wPopCnt == (Word_t)nEmbeddedListPopCntMax))
+        && (wPopCnt >= (Word_t)nEmbeddedListPopCntMax))
     {
-        DBGR(printf("IG: goto doubleIt nBL %d cnt %d max %d.\n",
+        assert(wPopCnt == nEmbeddedListPopCntMax);
+        DBGI(printf("IG: goto doubleIt nBL %d cnt %d max %d.\n",
                     nBL, (int)wPopCnt, nEmbeddedListPopCntMax));
         return DoubleIt(qy, wKey
       #ifdef SKIP_TO_XX_SW
                       , nBLUp
       #endif // SKIP_TO_XX_SW
-                      , pLnUp
-      #ifdef CODE_XX_SW
-                      , wPopCnt
-      #endif // CODE_XX_SW
-                        );
+                      , pLnUp, wPopCnt);
     }
   #endif // defined(NO_TYPE_IN_XX_SW)
 
@@ -4872,16 +4814,16 @@ copyWithInsert8:
   #ifdef B_JUDYL
                 pwValue =
   #endif // B_JUDYL
-                    CopyWithInsert8(qy, pcKeys, wPopCnt,
-                                    (unsigned char)wKey, nPos);
+                    CopyWithInsert8(qy, ls_pcKeysNATX(pwrOld, wPopCnt),
+                                    wPopCnt, (unsigned char)wKey, nPos);
             } else if (nBL <= 16) {
                 goto copyWithInsert16;
 copyWithInsert16:
   #ifdef B_JUDYL
                 pwValue =
   #endif // B_JUDYL
-                    CopyWithInsert16(qy, psKeys, wPopCnt,
-                                     (uint16_t)wKey, nPos);
+                    CopyWithInsert16(qy, ls_psKeysNATX(pwrOld, wPopCnt),
+                                     wPopCnt, (uint16_t)wKey, nPos);
 #if (cnBitsPerWord > 32)
             } else if (nBL <= 32) {
                 goto copyWithInsert32;
@@ -4889,8 +4831,8 @@ copyWithInsert32:
   #ifdef B_JUDYL
                 pwValue =
   #endif // B_JUDYL
-                    CopyWithInsert32(qy, piKeys, wPopCnt,
-                                     (unsigned int)wKey, nPos);
+                    CopyWithInsert32(qy, ls_piKeysNATX(pwrOld, wPopCnt),
+                                     wPopCnt, (unsigned int)wKey, nPos);
 #endif // (cnBitsPerWord > 32)
             } else
 #endif // defined(COMPRESSED_LISTS)
@@ -4900,7 +4842,8 @@ copyWithInsertWord:
   #ifdef B_JUDYL
                 pwValue =
   #endif // B_JUDYL
-                    CopyWithInsertWord(qy, pwKeys, wPopCnt, wKey, nPos);
+                    CopyWithInsertWord(qy, ls_pwKeys(pwrOld, nBL),
+                                       wPopCnt, wKey, nPos);
             }
         } else {
 #if defined(COMPRESSED_LISTS)
@@ -5033,20 +4976,13 @@ copyWithInsertWord:
         pwValue =
   #endif // B_JUDYL
             ListIsFull(qy, wKey,
-#ifdef CODE_XX_SW
+  #ifdef CODE_XX_SW
                        pLnUp,
+  #endif // CODE_XX_SW
   #ifdef SKIP_TO_XX_SW
                        nBLUp,
   #endif // SKIP_TO_XX_SW
-#endif // CODE_XX_SW
-                       wPopCnt, pwKeys
-#ifdef COMPRESSED_LISTS
-#if (cnBitsPerWord > 32)
-                     , piKeys
-#endif // (cnBitsPerWord > 32)
-                     , psKeys, pcKeys
-#endif // COMPRESSED_LISTS
-                       );
+                       wPopCnt);
     }
 #ifdef B_JUDYL
     DBGI(printf("InsertAtList returning %p\n", (void*)pwValue));
@@ -5251,9 +5187,9 @@ embeddedKeys:;
         // But at least we only do it if there is a skip.
         if ((nDLR == nDL)
 #if defined(PP_IN_LINK)
-            || ((nDLR == cnDigitsPerWord)
+            || ((nDL == cnDigitsPerWord)
                     && ((wPrefix = 0) == w_wPrefixNotAtTop(wKey, nDLR)))
-            || ((nDLR != cnDigitsPerWord)
+            || ((nDL != cnDigitsPerWord)
                 && ((wPrefix = PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDLR))
                             == w_wPrefixNotAtTop(wKey, nDLR)))
 #else // defined(PP_IN_LINK)
@@ -7764,12 +7700,12 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 
 #if (cnDigitsPerWord != 1)
 
-  // Judy1LHTime and Judy1LHCheck put a zero word before and after the root
-  // word of the array. Let's make sure we don't corrupt it.
+  // Judy1LHTime and Judy1LHCheck put a -1 word before and after the root
+  // word of the array solely so we can make sure we don't corrupt it.
   #if defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
     Word_t *pwRoot = (Word_t*)PPArray;
-    assert(pwRoot[-1] == 0);
-    assert(pwRoot[ 1] == 0);
+    assert(pwRoot[-1] == (Word_t)-1);
+    assert(pwRoot[ 1] == (Word_t)-1);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
 
   #if defined(DEBUG)
@@ -7872,11 +7808,11 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 #endif // B_JUDYL
     wPopCntTotal = 0; // What if there is more than one Judy1 array?
 
-  // Judy1LHTime and Judy1LHCheck put a zero word before and after the root
-  // word of the array. Let's make sure we don't corrupt it.
+  // Judy1LHTime and Judy1LHCheck put a -1 word before and after the root
+  // word of the array solely so we can make sure we don't corrupt it.
   #if defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
-    assert(pwRoot[-1] == 0);
-    assert(pwRoot[ 1] == 0);
+    assert(pwRoot[-1] == (Word_t)-1);
+    assert(pwRoot[ 1] == (Word_t)-1);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
 
     return wBytes;

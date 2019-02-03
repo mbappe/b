@@ -250,9 +250,9 @@ main(int argc, char *argv[])
     // pretty easy in some variants of Mikey's code to introduce a bug that
     // clobbers one or the other so his debug code depends on these words
     // being zero so it can verify that neither is getting clobbered.
-    struct { void *pv0, *pv1, *pv2; } sj1 = { 0, 0, 0 };
+    struct { void *pv0, *pv1, *pv2; } sj1 = { (void*)-1, NULL, (void*)-1 };
 #define J1 (sj1.pv1)
-    struct { void *pv0, *pv1, *pv2; } sjL = { 0, 0, 0 };
+    struct { void *pv0, *pv1, *pv2; } sjL = { (void*)-1, NULL, (void*)-1 };
 #define JL (sjL.pv1)
     printf("&sjL.pv1 %p %p\n", (void*)&sjL.pv1, sjL.pv1);
 #else // DEBUG

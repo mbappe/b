@@ -302,7 +302,7 @@ SwCleanup(qp, Word_t wKey, int nBLR
       #ifdef BITMAP
         || ((cn2dBmMaxWpkPercent != 0)
             && (nBLR == cnBitsLeftAtDl2)
-            && (gwPopCnt(qy, nBLR) * cn2dBmMaxWpkPercent * cnBitsPerWord
+            && (GetPopCnt(pwRoot, nBL) * cn2dBmMaxWpkPercent * cnBitsPerWord
                  > EXP(cnBitsLeftAtDl2) * 100))
       #endif // BITMAP
         )
@@ -2580,11 +2580,11 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     Word_t *pwr = wr_pwr(wRoot);
     qv;
 
-  // Judy1LHTime and Judy1LHCheck put a zero word before and after the root
-  // word of the array. Let's make sure we don't corrupt it.
+  // Judy1LHTime and Judy1LHCheck put a -1 word before and after the root
+  // word of the array solely so we can make sure we don't corrupt it.
   #if defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
-    assert(((Word_t*)&pLn->ln_wRoot)[-1] == 0);
-    assert(((Word_t*)&pLn->ln_wRoot)[ 1] == 0);
+    assert(((void**)ppvRoot)[-1] == (void*)-1);
+    assert(((void**)ppvRoot)[ 1] == (void*)-1);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
 
 #ifdef B_JUDYL
@@ -2735,11 +2735,11 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #endif // ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
   #endif // ! defined(PP_IN_LINK) || defined(DEBUG_COUNT)
 
-  // Judy1LHTime and Judy1LHCheck put a zero word before and after the root
-  // word of the array. Let's make sure we don't corrupt it.
+  // Judy1LHTime and Judy1LHCheck put a -1 word before and after the root
+  // word of the array solely so we can make sure we don't corrupt it.
   #if defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
-    assert(((Word_t*)&pLn->ln_wRoot)[-1] == 0);
-    assert(((Word_t*)&pLn->ln_wRoot)[ 1] == 0);
+    assert(((void**)ppvRoot)[-1] == (void*)-1);
+    assert(((void**)ppvRoot)[ 1] == (void*)-1);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
 
   #ifdef B_JUDYL
@@ -2808,8 +2808,8 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   // Judy1LHTime and Judy1LHCheck put a zero word before and after the root
   // word of the array. Let's make sure we don't corrupt it.
   #if defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
-    assert(((Word_t*)&pLn->ln_wRoot)[-1] == 0);
-    assert(((Word_t*)&pLn->ln_wRoot)[ 1] == 0);
+    assert(((void**)&pLn->ln_wRoot)[-1] == (void*)-1);
+    assert(((void**)&pLn->ln_wRoot)[ 1] == (void*)-1);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
     DBGR(printf("\n# Judy1Unset ppvRoot %p  wKey 0x%zx (before):"
                   " wPopCntTotal %zd\n",
@@ -2909,8 +2909,8 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   // Judy1LHTime and Judy1LHCheck put a zero word before and after the root
   // word of the array. Let's make sure we don't corrupt it.
   #if defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
-    assert(((Word_t*)&pLn->ln_wRoot)[-1] == 0);
-    assert(((Word_t*)&pLn->ln_wRoot)[ 1] == 0);
+    assert(((void**)&pLn->ln_wRoot)[-1] == (void*)-1);
+    assert(((void**)&pLn->ln_wRoot)[ 1] == (void*)-1);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
 
     DBGR(printf("JudyLDel ppvRoot %p wKey 0x%zx status %d\n",
