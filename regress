@@ -62,7 +62,7 @@ do
 
 cmd="${CHECK} -B$B $SOPT"
 echo $cmd
-time $cmd > /dev/null
+$cmd > /dev/null
 if [ $? != 0 ]
 then
     exit 1
@@ -84,7 +84,7 @@ do
 # These options take less time hence are more suitable for a hoop test.
 cmd="${TIME} -W0 -$Judy -lgih -n2e6 $EOPT"
 echo $cmd
-time $cmd > /dev/null
+$cmd > /dev/null
 if [ $? != 0 ]
 then
     exit 1

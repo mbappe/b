@@ -2490,7 +2490,9 @@ typedef struct {
 // POP_WORD is defined automatically if LVL_IN_PP is defined.
 
 typedef struct {
+#ifndef DEBUG
     Word_t ln_wRoot;
+#endif // #ifndef DEBUG
 #if defined(PP_IN_LINK)
     Word_t ln_wPrefixPop;
 #endif // defined(PP_IN_LINK)
@@ -2503,6 +2505,9 @@ typedef struct {
 #if (cnDummiesInLink != 0)
     Word_t ln_awDummies[cnDummiesInLink];
 #endif // (cnDummiesInLink != 0)
+#ifdef DEBUG
+    Word_t ln_wRoot;
+#endif // #ifdef DEBUG
 } Link_t;
 
 #define cnLogBitsPerLink  ((int)LOG(sizeof(Link_t)) + cnLogBitsPerByte)
