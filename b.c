@@ -6987,12 +6987,6 @@ Initialize(void)
     printf("# No SEARCHMETRICS\n");
 #endif // defined(SEARCHMETRICS)
 
-#if defined(PLN_PARAM_FOR_LOOKUP)
-    printf("#    PLN_PARAM_FOR_LOOKUP\n");
-#else // defined(PLN_PARAM_FOR_LOOKUP)
-    printf("# No PLN_PARAM_FOR_LOOKUP\n");
-#endif // defined(PLN_PARAM_FOR_LOOKUP)
-
 #if defined(LVL_IN_PP)
     printf("#    LVL_IN_PP\n");
 #else // defined(LVL_IN_PP)

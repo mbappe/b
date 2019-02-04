@@ -436,14 +436,7 @@ static Word_t *
 #else // B_JUDYL
 static Status_t
 #endif // B_JUDYL
-Lookup(
-      #if defined(PLN_PARAM_FOR_LOOKUP)
-       Link_t *pLn;
-      #else // defined(PLN_PARAM_FOR_LOOKUP)
-       Word_t wRoot,
-      #endif // defined(PLN_PARAM_FOR_LOOKUP)
-       Word_t wKey
-       )
+Lookup(Word_t wRoot, Word_t wKey)
 #else // defined(LOOKUP)
   #if defined(COUNT)
 Word_t
@@ -459,11 +452,11 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
   #endif // B_JUDYL
 #endif // defined(LOOKUP)
 {
-#if defined(LOOKUP) && ! defined(PLN_PARAM_FOR_LOOKUP)
+#ifdef LOOKUP
     Link_t *pLn = STRUCT_OF(&wRoot, Link_t, ln_wRoot);
-#else // defined(LOOKUP) && ! defined(PLN_PARAM_FOR_LOOKUP)
+#else // LOOKUP
     Word_t wRoot = pLn->ln_wRoot;
-#endif // defined(LOOKUP) && ! defined(PLN_PARAM_FOR_LOOKUP)
+#endif // #else LOOKUP
     // pLn and wRoot of qy are set up
     DBGX(printf("\n# %s pLn %p wRoot 0x%zx wKey 0x%zx\n",
                 strLookupOrInsertOrRemove, (void*)pLn, wRoot, wKey));
@@ -2438,17 +2431,10 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
 {
 #if (cnDigitsPerWord > 1)
 
-    int nBL = cnBitsPerWord;
-    Link_t *pLn = STRUCT_OF(&pcvRoot, Link_t, ln_wRoot);
-    Word_t wRoot = (Word_t)pcvRoot;
-    int nType = wr_nType(wRoot);
-    Word_t *pwr = wr_pwr(wRoot);
-    qv;
-
     DBGL(printf("\n\n# JudyLGet pcvRoot %p wKey " OWx"\n",
                 (void *)pcvRoot, wKey));
 
-    if ((WROOT_NULL != 0) && (wRoot == 0)) {
+    if ((WROOT_NULL != 0) && (pcvRoot == 0)) {
         return 0;
     }
 
@@ -2465,19 +2451,24 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     // Is T_LIST the only node type that is different at the top for
     // PP_IN_LINK? Doesn't the incomplete Link_t complicate Lookup for
     // the other node types?
+    Word_t wRoot = (Word_t)pcvRoot;
+    int nType = wr_nType(wRoot);
+    Word_t *pwr wr_pwr(wRoot); (void)pwr;
     if ((nType == T_LIST)
       #if ! defined(SEPARATE_T_NULL)
         && (pwr != NULL)
       #endif // ! defined(SEPARATE_T_NULL)
         && 1)
     {
+        Link_t *pLn = STRUCT_OF(&pcvRoot, Link_t, ln_wRoot);
+        int nBL = cnBitsPerWord;
       // PWR_xListPopCount is valid only at the top for PP_IN_LINK.
       // The first word in the list is used for pop count at the top.
       #if defined(B_JUDYL)
-        int nPos = LocateKeyInListWord(qy, nBL, wKey);
+        int nPos = LocateKeyInListWord(qy, cnBitsPerWord, wKey);
         return (nPos >= 0) ? (PPvoid_t)&gpwValues(qy)[~nPos] : NULL;
       #else // defined(B_JUDYL)
-        return ListHasKeyWord(qy, nBL, wKey);
+        return ListHasKeyWord(qy, cnBitsPerWord, wKey);
       #endif // #else defined(B_JUDYL)
     }
   #endif // defined(SEARCH_FROM_WRAPPER)
@@ -2487,14 +2478,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
   #ifdef B_JUDYL
         (PPvoid_t)
   #endif // B_JUDYL
-            Lookup(
-  #if defined(PLN_PARAM_FOR_LOOKUP)
-                   pLn,
-  #else // defined(PLN_PARAM_FOR_LOOKUP)
-                   wRoot,
-  #endif // defined(PLN_PARAM_FOR_LOOKUP)
-                   wKey
-                   );
+            Lookup((Word_t)pcvRoot, wKey);
 
 #else // (cnDigitsPerWord > 1)
 
