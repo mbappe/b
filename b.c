@@ -4139,7 +4139,7 @@ static void
 #endif // B_JUDYL
 InsertSwitch(qp,
              Word_t wKey,
-             int nBLNew
+             int nBLNew // digit-aligned but possibly nBLNew > nBL
   #ifdef SKIP_TO_XX_SW
            , int nBLUp
   #endif // SKIP_TO_XX_SW
@@ -4167,16 +4167,16 @@ InsertSwitch(qp,
     // Why can't we?
     // The latter is enforced in one way by disallowing
     // cnBitsAtDl2 <= cnLogBitsPerWord no later than Initialize time.
-#ifdef USE_XX_SW_ONLY_AT_DL2
-#ifndef SKIP_TO_XX_SW
+  #ifndef SKIP_TO_XX_SW
+  #ifdef USE_XX_SW_ONLY_AT_DL2
     // We don't skip to a switch below DL3.  Because we can't
     // skip to T_XX_SW and we want T_XX_SW at DL2 and below.
     if ((nBLNew < cnBitsLeftAtDl3) && (nBL >= cnBitsLeftAtDl3)) {
         nBLNew = cnBitsLeftAtDl3;
         nDLNew = 3;
     }
-#endif // #ifndef SKIP_TO_XX_SW
-#endif // USE_XX_SW_ONLY_AT_DL2
+  #endif // USE_XX_SW_ONLY_AT_DL2
+  #endif // #ifndef SKIP_TO_XX_SW
     if ((nBLNew < cnBitsLeftAtDl2) && (nBL >= cnBitsLeftAtDl2)) {
         nBLNew = cnBitsLeftAtDl2;
         nDLNew = 2;
@@ -4565,6 +4565,7 @@ ListIsFull(qp,
                 wSuffix = wKey;
             }
             nBLNew = LOG((wSuffix ^ wMin) | (wSuffix ^ wMax)) + 1;
+            assert(nBLNew <= nBL);
             nBLNew = nDL_to_nBL(nBL_to_nDL(nBLNew)); // align to digit
           #ifdef USE_XX_SW_ONLY_AT_DL2
             // nBLNew is aligned up. But nBL isn't.
