@@ -3320,7 +3320,7 @@ embeddedKeys:;
                 Word_t *pwBitmapLn = ((BmLeaf_t*)pwrLn)->bmlf_awBitmap;
                 memcpy(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
                        pwBitmapLn, EXP(nBLLn - 3));
-                Word_t wPopCntLn = gwBitmapPopCnt(qyLn, nBLLn);
+                Word_t wPopCntLn = gwBitmapPopCnt(qyx(Ln), nBLLn);
                 OldBitmap(pwrLn, nBLLn, wPopCntLn);
                 continue;
             }
@@ -3490,7 +3490,7 @@ embeddedKeys:;
         int nTypeLoop = wr_nType(wRootLoop);
         Word_t *pwrLoop = wr_pwr(wRootLoop);
         int nBLLoop = nBL;
-        int nBW = gnBW(qyLoop, T_XX_SW, nBL);
+        int nBW = gnBW(qyx(Loop), nBL);
         DBG(printf("IA: T_XX_SW nBL %d nBW %d\n", nBL, nBW));
     }
     assert(nType != T_XX_SW);

@@ -97,6 +97,7 @@
 // Default is -UCODE_XX_SW.
 
 // Default is -UNO_TYPE_IN_XX_SW.
+// NO_TYPE_IN_XX_SW means no type in XX_SW links with nBL < DL2.
 // NO_TYPE_IN_XX_SW implies CODE_XX_SW.
 // Should it imply USE_XX_SW?
 #ifdef NO_TYPE_IN_XX_SW

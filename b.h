@@ -120,11 +120,8 @@
 // Common arguments to printf.
 #define qyp   nBL, (void*)pLn, wRoot, nType, (void*)pwr
 
-#define  qyLoop \
-    nBLLoop, pLnLoop, wRootLoop, nTypeLoop, pwrLoop
-
-#define  qyLn \
-    nBLLn, pLnLn, wRootLn, nTypeLn, pwrLn
+#define qyx(Suffix) \
+    nBL##Suffix, pLn##Suffix, wRoot##Suffix, nType##Suffix, pwr##Suffix
 
 // qv is shorthand to silence not-used compiler warnings.
 // And to initialize local variables.
@@ -1171,6 +1168,8 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // See EmbeddedListHasKey.
 
 // Notes on ZERO_POP_MAGIC and NO_TYPE_IN_XX_SW:
+//
+// NO_TYPE_IN_XX_SW means no type in XX_SW links with nBL < DL2.
 //
 // We need some way to represent an empty list when we have no type field,
 // i.e. for embedded keys with NO_TYPE_IN_XX_SW.
@@ -2524,14 +2523,25 @@ typedef struct {
 #endif // ALLOW_EMBEDDED_BITMAP
 
 // Get the width of the branch in bits.
-// nTypeBase is type without skip, if any.
 // nBLR includes any skip specified in the qp link.
 static inline int
-gnBW(qp, int nTypeBase, int nBLR)
+gnBW(qp, int nBLR)
 {
-    qv; (void)nTypeBase; (void)nBLR;
+    // nType may not be wr_nType(wRoot).
+    // It may be T_XX_SW for (wr_nType(wRoot) == T_SKIP_TO_XX_SW) or
+    // it may be T_SWITCH for (wr_nType(wRoot) == T_SKIP_TO_SWITCH) or ...
+    // It is a silly performance hack for Lookup where we use a literal in
+    // case T_XX_SW and T_SWITCH and ... because we have already 'switch'ed
+    // on nType.
+    (void)nBL; (void)pLn; (void)wRoot; (void)nType; (void)pwr; (void)nBLR;
     int nBW;
-    if (bnTypeIsXxSw(nTypeBase)) {
+  #ifdef CODE_XX_SW
+    if ((nType == T_XX_SW)
+      #ifdef SKIP_TO_XX_SW
+        || (nType == T_SKIP_TO_XX_SW)
+      #endif // SKIP_TO_XX_SW
+        )
+    {
         if (cnBitsPerWord == 64) {
             // WIDTH_IN_WR_HB
             nBW = GetBits(wRoot, cnBitsXxSwWidth, cnLsbXxSwWidth);
@@ -2539,23 +2549,23 @@ gnBW(qp, int nTypeBase, int nBLR)
             // use the malloc preamble word
             nBW = GetBits(pwr[-1], cnBitsXxSwWidth, cnLsbXxSwWidth);
         }
-    } else {
-        nBW = nBL_to_nBW(nBLR);
-    }
+    } else
+  #endif // CODE_XX_SW
+    { nBW = nBL_to_nBW(nBLR); }
     return nBW;
 }
 
 #define Get_nBW(_pwRoot) \
     gnBW(/* nBL */ 0, STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
-         *(_pwRoot), /* nType */ 0, wr_pwr(*(_pwRoot)), T_XX_SW, 0)
+         *(_pwRoot), T_XX_SW, wr_pwr(*(_pwRoot)), 0)
 
 #define pwr_nBW  Get_nBW
 
 // Set the width of the branch in bits.
 static inline void
-snBW(qp, int nTypeBase, int nBW)
+snBW(qp, int nBW)
 {
-    qv; (void)nTypeBase;
+    qv;
     assert(nBW <= (int)MSK(cnBitsXxSwWidth));
     if (cnBitsPerWord == 64) {
         // WIDTH_IN_WR_HB
@@ -2568,7 +2578,7 @@ snBW(qp, int nTypeBase, int nBW)
 
 #define Set_nBW(_pwRoot, _nBW) \
     snBW(/* nBL */ 0, STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
-         *(_pwRoot), /* nType */ 0, wr_pwr(*(_pwRoot)), T_XX_SW, (_nBW))
+         *(_pwRoot), T_XX_SW, wr_pwr(*(_pwRoot)), (_nBW))
 
 #define set_pwr_nBW  Set_nBW
 
@@ -3152,7 +3162,7 @@ InflateBmSwTest(qp) // qp points to BM switch
 {
     qv;
     int nBLR = gnBLR(qy);
-    int nBW = gnBW(qy, T_BM_SW, nBLR); // BW is width of switch
+    int nBW = gnBW(qy, nBLR); // BW is width of switch
     Word_t wPopCnt;
 #if defined(PP_IN_LINK) && !defined(NO_SKIP_AT_TOP)
     if (nBL >= cnBitsPerWord) {

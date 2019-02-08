@@ -918,7 +918,7 @@ t_switch:;
             break;
         }
         DBGX(Checkpoint(qy, "t_switch"));
-        nBW = gnBW(qy, T_SWITCH, nBLR); // num bits decoded by this switch
+        nBW = gnBW(nBL, pLn, wRoot, T_SWITCH, pwr, nBLR); // num bits decoded
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
         // ((uint8_t *)&wKey)[(cnBitsPerWord - nBL) >> 3];
         // ((uint8_t *)&wKey)[cnDigitsPerWord - nDL];
@@ -1006,7 +1006,7 @@ switchTail:;
         goto t_xx_sw;
 t_xx_sw:;
         DBGX(Checkpoint(qy, "t_xx_sw"));
-        nBW = gnBW(qy, T_XX_SW, nBLR);
+        nBW = gnBW(nBL, pLn, wRoot, T_XX_SW, pwr, nBLR); // num bits decoded
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
@@ -1106,7 +1106,7 @@ t_skip_to_bm_sw:
                 Word_t wPopCnt;
       #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 if (nBL >= cnBitsPerWord) {
-                    int nBW = gnBW(qy, T_BM_SW, nBL);
+                    int nBW = gnBW(nBL, pLn, wRoot, T_BM_SW, pwr, nBLR);
                     // Abuse CountSw into counting whole switch.
                     int nLinkCnt = BmSwLinkCnt(qy);
                     wPopCnt = CountSw(qy, nBLR, nBW,
@@ -1148,7 +1148,7 @@ t_full_bm_sw:
     {
         goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
 t_bm_sw:;
-        nBW = gnBW(qy, T_BM_SW, nBLR);
+        nBW = gnBW(nBL, pLn, wRoot, T_BM_SW, pwr, nBLR);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
 
         Word_t wSwIndex;
@@ -1326,7 +1326,7 @@ t_skip_to_list_sw:
       #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
           #error Not ready yet
                 if (nBL >= cnBitsPerWord) {
-                    int nBW = gnBW(qy, T_LIST_SW, nBLR);
+                    int nBW = gnBW(nBL, pLn, wRoot, T_LIST_SW, pwr, nBLR);
                     // Abuse CountSw into counting whole switch.
                     wPopCnt = CountSw(qy, nBLR, nBW, EXP(nBW), EXP(nBW));
                 } else
@@ -1356,7 +1356,7 @@ t_skip_to_list_sw:
         goto t_list_sw; // silence cc in case other the gotos are ifdef'd out
 t_list_sw:;
 
-        nBW = gnBW(qy, T_LIST_SW, nBLR);
+        nBW = gnBW(nBL, pLn, wRoot, T_LIST_SW, pwr, nBLR);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
 
         Word_t wSwIndex;
