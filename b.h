@@ -389,6 +389,10 @@ ExtListBytesPerKey(int nBL)
     //return EXP(LOG(nBL-1)-2);
     // Will the compiler get rid of LOG and EXP if nBL is a constant?
     // Or are we better off with the old way?
+    #if 0
+    return (nBL <= 16) ? (nBL <=  8) ? 1 : 2
+        : ((cnBitsPerWord > 32) && (nBL <= 32)) ? 4 : sizeof(Word_t);
+    #else
       #if 1
     return EXP((nBL > 8) + (nBL > 16) + ((cnBitsPerWord > 32) && (nBL > 32)));
       #else
@@ -396,6 +400,7 @@ ExtListBytesPerKey(int nBL)
         ((cnBitsPerWord > 32) && (nBL <= 32)) ? 4 : sizeof(Word_t);
     // Or should we just assume that nBL is a multiple of 8?
       #endif
+    #endif
   #else // defined(COMPRESSED_LISTS)
     (void)nBL;
     return sizeof(Word_t);
