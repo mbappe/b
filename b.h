@@ -112,6 +112,10 @@
 #define pqp \
     int *pnBL, Link_t **ppLn, Word_t *pwRoot, int *pnType, Word_t **ppwr
 
+#define  qpx(Suffix) \
+    int nBL##Suffix, Link_t *pLn##Suffix, Word_t wRoot##Suffix, \
+    int nType##Suffix, Word_t *pwr##Suffix
+
 // Shorthand for common arguments.
 // Why is "qy" not "qa"? Because "qa" is harder to type?
 #define  qy   nBL,  pLn,  wRoot,  nType,  pwr
@@ -123,21 +127,39 @@
 #define qyx(Suffix) \
     nBL##Suffix, pLn##Suffix, wRoot##Suffix, nType##Suffix, pwr##Suffix
 
-// qv is shorthand to silence not-used compiler warnings.
-// And to initialize local variables.
-// And to validate assumptions.
+#define  qvg \
+    Word_t *pwRoot = &pLn->ln_wRoot; \
+    (void)nBL; (void)pLn; (void)pwRoot; (void)wRoot; (void)nType; (void)pwr; \
+    assert(wRoot == pLn->ln_wRoot)
+
+#define  qvxg(Suffix) \
+    Word_t *pwRoot##Suffix = &pLn##Suffix->ln_wRoot; \
+    (void)nBL##Suffix; (void)pLn##Suffix; (void)pwRoot##Suffix; \
+    (void)wRoot##Suffix; (void)nType##Suffix; (void)pwr##Suffix; \
+    assert(wRoot##Suffix == pLn##Suffix->ln_wRoot)
+
 #ifdef NO_TYPE_IN_XX_SW
-#define  qv \
-    Word_t *pwRoot = &pLn->ln_wRoot; \
-    (void)nBL; (void)pLn; (void)pwRoot; (void)wRoot; (void)nType; (void)pwr; \
-    assert(wRoot == pLn->ln_wRoot);
+
+  // qv is shorthand to silence not-used compiler warnings.
+  // And to initialize local variables.
+  // And to validate assumptions.
+  #define qv  qvg
+  #define qvx(Suffix)  qvxg(Suffix)
+
 #else // NO_TYPE_IN_XX_SW
-#define  qv \
-    Word_t *pwRoot = &pLn->ln_wRoot; \
-    (void)nBL; (void)pLn; (void)pwRoot; (void)wRoot; (void)nType; (void)pwr; \
-    assert(wRoot == pLn->ln_wRoot); \
+
+  #define qv \
+    qvg; \
     assert(nType == wr_nType(wRoot) || (nBL <= cnLogBitsPerLink)); \
     assert(pwr == wr_pwr(wRoot) || (nBL <= cnLogBitsPerLink))
+
+  #define qvx(Suffix) \
+    qvxg(Suffix); \
+    assert(nType##Suffix == wr_nType(wRoot##Suffix) \
+           || (nBL##Suffix <= cnLogBitsPerLink)); \
+    assert(pwr##Suffix == wr_pwr(wRoot##Suffix) \
+           || (nBL##Suffix <= cnLogBitsPerLink))
+
 #endif // NO_TYPE_IN_XX_SW
 
 #define pqv \
@@ -304,11 +326,6 @@
   #define PARALLEL_128
 #endif // !defined(PARALLEL_64) && !defined(NO_PARALLEL_128)
 
-// Default is -DCOMPRESSED_LISTS.
-#if ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
-#define COMPRESSED_LISTS
-#endif // ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
-
 // UA_PARALLEL_128, i.e. unaligned parallel 128, was designed to save memory
 // by eliminating the requirement that lists be padded to an integral number
 // of 16-byte bucket lengths while preserving our ability to use 128-bit
@@ -454,8 +471,10 @@ typedef Word_t Bucket_t;
 // And lvl not in type.
 #if ! defined(NO_SKIP_TO_XX_SW) && defined(SKIP_LINKS)
 #if defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
+#if defined(BITMAP) && !defined(NO_SKIP_TO_BITMAP)
 #undef SKIP_TO_XX_SW
 #define SKIP_TO_XX_SW
+#endif // defined(BITMAP) && !defined(NO_SKIP_TO_BITMAP)
 #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
 #endif // ! defined(NO_SKIP_TO_XX_SW) && defined(SKIP_LINKS)
 #endif // defined(CODE_XX_SW)
@@ -593,9 +612,8 @@ typedef Word_t Bucket_t;
   #endif // #else cnListPopCntMaxDl1 < (1 << cnBitsInD1)
 #endif // BITMAP
 
-// cwListPopCntMax is used only as a boolean that indicates whether
-// or not we are using lists at all; embedded or external.
 #define MAX(_x, _y)  ((_x) > (_y) ? (_x) : (_y))
+
 #if (cnBitsPerWord >= 64)
   #define _cnListPopCntMax0 \
     MAX(cnListPopCntMax64, \
@@ -612,6 +630,7 @@ typedef Word_t Bucket_t;
         MAX(cnListPopCntMax16, \
             MAX(cnListPopCntMax8, 0))))
 #endif // (cnBitsPerWord >= 64)
+
 #ifdef cnListPopCntMaxDl1
   #define _cnListPopCntMax1  MAX(_cnListPopCntMax0, cnListPopCntMaxDl1)
 #else // cnListPopCntMaxDl1
@@ -627,11 +646,13 @@ typedef Word_t Bucket_t;
 #else // cnListPopCntMaxDl3
   #define _cnListPopCntMax3  _cnListPopCntMax2
 #endif // #else cnListPopCntMaxDl3
+
 #if defined(EMBED_KEYS) && !defined(POP_CNT_MAX_IS_KING)
   #define _cnListPopCntMaxEK  MAX(_cnListPopCntMax3, 1)
 #else // defined(EMBED_KEYS && !defined(POP_CNT_MAX_IS_KING)
   #define _cnListPopCntMaxEK  _cnListPopCntMax3
 #endif // #else defined(EMBED_KEYS && !defined(POP_CNT_MAX_IS_KING)
+
 #define cwListPopCntMax  _cnListPopCntMaxEK
 
 #define cnBitsLeftAtDl1     (cnBitsInD1)
@@ -1508,7 +1529,11 @@ tp_bIsSwitch(int nType)
   #else // defined(SKIP_TO_LIST_SW)
     #define tp_bIsListSw(_tp)  ((_tp) == T_LIST_SW)
   #endif // defined(SKIP_TO_LIST_SW)
-#endif // defined(CODE_LIST_SW)
+  #define LIST_SW(_x)  _x
+#else // defined(CODE_LIST_SW)
+  #define tp_bIsListSw(_tp)  0
+  #define LIST_SW(_x)
+#endif // #else defined(CODE_LIST_SW)
 
 #if defined(CODE_BM_SW)
     // Is (_tp) a bitmap switch or skip to one?
@@ -1517,7 +1542,12 @@ tp_bIsSwitch(int nType)
   #else // defined(SKIP_TO_BM_SW)
     #define tp_bIsBmSw(_tp)  ((_tp) == T_BM_SW)
   #endif // defined(SKIP_TO_BM_SW)
-#endif // defined(CODE_BM_SW)
+  #define BM_SW(_x)  _x
+#else // defined(CODE_BM_SW)
+  #define tp_bIsBmSw(_tp)  0
+  #define BM_SW(_x)
+#endif // #else defined(CODE_BM_SW)
+
 
 #if defined(CODE_XX_SW)
     // Is (_tp) a doubling switch or skip to one?
@@ -1526,7 +1556,11 @@ tp_bIsSwitch(int nType)
   #else // defined(SKIP_TO_XX_SW)
     #define tp_bIsXxSw(_tp)  ((_tp) == T_XX_SW)
   #endif // defined(SKIP_TO_XX_SW)
-#endif // defined(CODE_XX_SW)
+  #define XX_SW(_x)  _x
+#else // defined(CODE_XX_SW)
+  #define tp_bIsXxSw(_tp)  0
+  #define XX_SW(_x)
+#endif // #else defined(CODE_XX_SW)
 
 static inline int
 tp_bIsSkip(int nType)
@@ -1559,17 +1593,39 @@ tp_bIsSkip(int nType)
     return 0;
 }
 
-#if defined(BITMAP)
+static inline int
+tp_bIsList(int nType)
+{
+    return
+  // Even though _cnListPopCntMax3 might be zero we still have to concern
+  // ourselves with temporarily inflated lists.
+  #if (cwListPopCntMax > 0)
+        ((nType == T_LIST)
+      #ifdef UA_PARALLEL_128
+             || (nType == T_LIST_UA)
+      #endif // UA_PARALLEL_128
+         )
+  #else // (cwListPopCntMax > 0)
+        0
+  #endif // #else (cwListPopCntMax > 0)
+        ;
+}
+
 static inline int
 tp_bIsBitmap(int nType)
 {
-    return ((nType == T_BITMAP)
+    return
+  #if defined(BITMAP)
+        ((nType == T_BITMAP)
   #ifdef SKIP_TO_BITMAP
-         || (nType == T_SKIP_TO_BITMAP)
+             || (nType == T_SKIP_TO_BITMAP)
   #endif // SKIP_TO_BITMAP
-            );
+         )
+  #else // defined(BITMAP)
+        0
+  #endif // #else defined(BITMAP)
+        ;
 }
-#endif // defined(BITMAP)
 
 // Bit fields in the upper bits of of wRoot.
 // Lvl is the level of the node pointed to.
@@ -2811,9 +2867,9 @@ gwPopCnt(qp, int nBLR)
 {
     qv; (void)nBLR;
     if (wRoot == WROOT_NULL) { return 0; }
-  #ifdef PP_IN_LINK
+  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     assert(nBL < cnBitsPerWord);
-  #endif // PP_IN_LINK
+  #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
   #ifdef POP_WORD
     Word_t wPopCnt = PWR_wPopWordBL(&pLn->ln_wRoot, pwr, nBLR);
   #else // POP_WORD
@@ -2829,6 +2885,9 @@ static inline void
 swPopCnt(qp, int nBLR, Word_t wPopCnt)
 {
     qv; (void)nBLR;
+  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    assert(nBL < cnBitsPerWord);
+  #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
   #ifdef POP_WORD
     PWR_wPopWordBL(&pLn->ln_wRoot, pwr, nBLR) = wPopCnt;
   #else // POP_WORD

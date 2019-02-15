@@ -52,12 +52,7 @@
   #define NO_ALLOW_EMBEDDED_BITMAP
 
   // Allow DEFINES=-D<blah> on shared make command line for JUDY1.
-  #undef CODE_XX_SW
-  #undef NO_TYPE_IN_XX_SW
-  #undef SKIP_TO_XX_SW
-  #undef USE_XX_SW
   #undef USE_XX_SW_ONLY_AT_DL2
-  #undef USE_XX_SW_AT_DLX
 
   // Disabling PARALLEL_SEARCH_WORD helps with worst case memory usage.
   #ifndef PARALLEL_SEARCH_WORD
@@ -83,6 +78,14 @@
   #endif // NO_PACK_L1_VALUES
 
 #endif // B_JUDYL
+
+#ifdef B_JUDYL
+  #define BJL(_x)  _x
+  #define BJ1(_x)
+#else // B_JUDYL
+  #define BJL(_x)
+  #define BJ1(_x)  _x
+#endif // #else B_JUDYL
 
 #ifndef PP_IN_LINK
   // Default is POP_WORD ifndef PP_IN_LINK unless NO_POP_WORD.
@@ -123,10 +126,10 @@
   #define USE_XX_SW
 #endif // USE_XX_SW_ONLY_AT_DL2
 
-#ifdef    USE_XX_SW_AT_DLX
+#ifdef    USE_XX_SW_ALWAYS
   #undef  USE_XX_SW
   #define USE_XX_SW
-#endif // USE_XX_SW_AT_DLX
+#endif // USE_XX_SW_ALWAYS
 
 // Default is -UUSE_XX_SW.
 // USE_XX_SW implies CODE_XX_SW.
@@ -136,13 +139,6 @@
   #undef  CODE_XX_SW
   #define CODE_XX_SW
 #endif // defined(USE_XX_SW)
-
-#ifdef USE_XX_SW
-  #undef  USE_XX_SW_ONLY_AT_DL2
-  #ifndef USE_XX_SW_AT_DLX
-    #define USE_XX_SW_ONLY_AT_DL2
-  #endif // #ifndef USE_XX_SW_AT_DLX
-#endif // USE_XX_SW
 
 #if (cnBitsPerWord > 32)
   #if       !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_PP)
@@ -300,6 +296,18 @@
     #undef  NDEBUG
     #define NDEBUG
 #endif // ! defined(DEBUG)
+
+// Default is -DCOMPRESSED_LISTS.
+#if ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
+#define COMPRESSED_LISTS
+#endif // ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
+
+// SPLAY triggers the use of an optimized Splay method instead of a generic
+// InsertAll method when a list gets too big and the conditions are right.
+#ifndef           NO_SPLAY
+  #undef             SPLAY
+  #define            SPLAY
+#endif // #ifndef NO_SPLAY
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 
