@@ -713,6 +713,14 @@ enum {
 #endif // defined(SEPARATE_T_NULL)
 #if (cwListPopCntMax != 0)
     T_LIST, // external list of keys
+#ifdef XX_LISTS
+    // T_XX_LIST is shared by multiple links.
+    // It allows faster deferred splay when doubling a switch.
+    // It allows better memory efficiency for JudyL with no embedded keys.
+    // The log of the number of links that share the list is specified by
+    // [gs]nXxListBW.
+    T_XX_LIST,
+#endif // XX_LISTS
   #if defined(SKIP_TO_LIST)
     T_SKIP_TO_LIST, // skip to external list of keys
   #endif // defined(SKIP_TO_LIST)
@@ -1604,6 +1612,9 @@ tp_bIsList(int nType)
       #ifdef UA_PARALLEL_128
              || (nType == T_LIST_UA)
       #endif // UA_PARALLEL_128
+      #ifdef XX_LISTS
+             || (nType == T_XX_LIST)
+      #endif // XX_LISTS
          )
   #else // (cwListPopCntMax > 0)
         0
@@ -1629,9 +1640,9 @@ tp_bIsBitmap(int nType)
 
 // Bit fields in the upper bits of of wRoot.
 // Lvl is the level of the node pointed to.
-// Can we use lvl to id skip instead of a bit in the type field?
-// XxSwWidth is the width of the switch.
-// ListPopCnt is the number of keys in the list.
+// XxSwWidth is the log of the number of virtual links in the switch.
+// XxListBW is the log of the number of virtual links that share the list.
+// ListPopCnt is the number of keys in the list minus 1.
 // ListSwPopM1 is the number of links in the list switch minus one.
 // A field at the end is faster to extract than a field in the middle.
 
@@ -1658,15 +1669,18 @@ tp_bIsBitmap(int nType)
       #endif // (cnBitsPerWord > 32)
 #endif // B_JUDYL
 
-#define cnBitsXxSwWidth   6
+#define cnBitsXxSwWidth  6
+#define cnBitsXxListBW   6
 
 #if (cnBitsPerWord > 32) && defined(SKIP_TO_XX_SW)
   #define cnLsbXxSwWidth  cnBitsVirtAddr
+  #define cnLsbXxListBW   cnBitsVirtAddr
 #else // (cnBitsPerWord > 32) && defined(SKIP_TO_XX_SW)
   // This applies to the preamble word for 32-bit -- not to wRoot.
-  // So there is no collision with cnLsbLvl because level is put
+  // There is no collision with cnLsbLvl because level is put
   // elsewhere for 32-bit.
   #define cnLsbXxSwWidth  (cnBitsPerWord - cnBitsXxSwWidth)
+  #define cnLsbXxListBW   (cnBitsPerWord - cnBitsXxListBW)
 #endif // (cnBitsPerWord > 32) && defined(SKIP_TO_XX_SW)
 
 #define cnBitsListSwPopM1  8 // for T_LIST_SW
@@ -2584,7 +2598,7 @@ typedef struct {
   #define cbEmbeddedBitmap  0
 #endif // ALLOW_EMBEDDED_BITMAP
 
-// Get the width of the branch in bits.
+// Get the width of the switch in bits.
 // nBLR includes any skip specified in the qp link.
 static inline int
 gnBW(qp, int nBLR)
@@ -2643,6 +2657,26 @@ snBW(qp, int nBW)
          *(_pwRoot), T_XX_SW, wr_pwr(*(_pwRoot)), (_nBW))
 
 #define set_pwr_nBW  Set_nBW
+
+// Get the log of the number of virtual links that share the list.
+static inline int
+gnXxListBW(qp)
+{
+    qv;
+    return (cnBitsPerWord > 32)
+        ? GetBits(wRoot,   cnBitsXxListBW, cnLsbXxListBW)
+        : GetBits(pwr[-1], cnBitsXxListBW, cnLsbXxListBW);
+}
+
+// Set the log of the number of virtual links that share the list.
+static inline void
+snXxListBW(qp, int nXxListBW)
+{
+    qv;
+    assert(nXxListBW <= (int)MSK(cnBitsXxListBW));
+    SetBits((cnBitsPerWord > 32) ? &pLn->ln_wRoot : &pwr[-1],
+            cnBitsXxListBW, cnLsbXxListBW, nXxListBW);
+}
 
 #if defined(SW_LIST_IN_LINK)
     #define SW_LIST

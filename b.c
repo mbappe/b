@@ -5002,6 +5002,11 @@ TransformList(qp,
                 DBGR(printf("Skip to T_XX_SW nBL %d\n", nBL));
             }
       #endif // defined(SKIP_TO_XX_SW)
+            // cnBW may not be wide enough to splay the list.
+            // What happens if it's not?
+            // I suspect we would end up recursively widening the list
+            // in a DoubleIt, InsertAll, Insert, InsertGuts, InsertAtList,
+            // TransformList cycle. Yuck.
             nBW = cnBW;
       #ifdef USE_XX_SW_ALWAYS
             nBW = nBL_to_nBW(nBLNew);
@@ -5324,10 +5329,17 @@ ListIsFull(qp,
             }
             nBLNew = LOG((wSuffix ^ wMin) | (wSuffix ^ wMax)) + 1;
             assert(nBLNew <= nBL);
+            // Maybe we shouldn't adjust nBLNew here.
+            // We are throwing away information that could be useful to
+            // TransformList.
+            // Do other callers of TransformList have this information?
             nBLNew = nDL_to_nBL(nBL_to_nDL(nBLNew)); // align up to digit
           #ifdef USE_XX_SW
             // nBLNew is aligned up. But nBL isn't.
-            if (nBLNew > nBL) { nBLNew = nBL; } // time to double the switch
+            if (nBLNew > nBL) {
+                // nBL of list is not digit-aligned
+                nBLNew = nBL; // time to widen the switch
+            }
           #endif // USE_XX_SW
       #endif // (cwListPopCntMax != 0)
         }
@@ -5380,7 +5392,7 @@ InsertAtList(qp,
     Word_t *pwValue;
 #endif // B_JUDYL
 
-    DBGI(printf("InsertAtList\n"));
+    DBGI(Log(qy, "InsertAtList"));
 
     // Set prefix in link if PP_IN_LINK and the list is empty and
     // we're not at the top.
@@ -5464,10 +5476,10 @@ InsertAtList(qp,
     {
         // here only if list has room for another key
 #if defined(CODE_XX_SW)
-#if ! defined(cnXxSwWpkPercent)
-#undef cnXxSwWpkPercent
-#define cnXxSwWpkPercent  150
-#endif // ! defined(cnXxSwWpkPercent)
+  #if ! defined(cnXxSwWpkPercent)
+    #undef cnXxSwWpkPercent
+    #define cnXxSwWpkPercent  150
+  #endif // ! defined(cnXxSwWpkPercent)
         // This block is a performance/efficiency optimization.
         // It is not necessary for "correct" behavior.
         // It is only relevant if ifdefs allow for a blow-out.
@@ -5477,20 +5489,20 @@ InsertAtList(qp,
   #ifdef USE_XX_SW_ONLY_AT_DL2
         if (nBL == nDL_to_nBL(2)) {
             if (((wr_nType(WROOT_NULL) == T_LIST) && (wRoot != WROOT_NULL))
-  #if defined(EMBED_KEYS)
+      #if defined(EMBED_KEYS)
                 && ((int)wPopCnt >= nEmbeddedListPopCntMax)
-  #endif // defined(EMBED_KEYS)
+      #endif // defined(EMBED_KEYS)
                 )
             {
-  #ifdef PERF_TODO
-  #ifndef POP_CNT_MAX_IS_KING
+      #ifdef PERF_TODO
+      #ifndef POP_CNT_MAX_IS_KING
 printf("\n");
 printf("wPopCnt %zd nEmbeddedListPopCntMax %d\n",
         wPopCnt, nEmbeddedListPopCntMax);
 printf("auListPopCntMax[nBL %d] %d\n", nBL, auListPopCntMax[nBL]);
                 assert(0);
-  #endif // #ifndef POP_CNT_MAX_IS_KING
-  #endif // PERF_TODO
+      #endif // #ifndef POP_CNT_MAX_IS_KING
+      #endif // PERF_TODO
                 if ((wWordsAllocated * 100 / wPopCntTotal)
                         < cnXxSwWpkPercent)
                 {
@@ -5840,29 +5852,45 @@ InsertGuts(qp, Word_t wKey, int nPos
   #endif // defined(SKIP_TO_XX_SW)
     int nBW; (void)nBW;
 #endif // defined(CODE_XX_SW)
-    int nDL = nBL_to_nDL(nBL);
-    assert(nDL_to_nBL(nDL) >= nBL);
+    int nDL = nBL_to_nDL(nBL); // fyi assert(nDL_to_nBL(nDL) >= nBL);
     DBGI(printf("InsertGuts pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
                 (void *)pwRoot, wKey, nBL, wRoot));
     Link_t link; (void)link;
 
-#if ! defined(USE_XX_SW)
+  // One of the key aspects of USE_XX_SW_ONLY_AT_DL2 is that we go ahead and
+  // widen a DL2 switch right on past DL1 and all the way to an embedded
+  // bitmap so the DL2 switch with embedded bitmaps is equivalent to a DL2
+  // bitmap.
+  // Another key aspect is that we try to avoid external leaves, i.e. we
+  // widen the switch when we have to insert a key and it can't be embedded
+  // in the link. The name, USE_XX_SW_ONLY_AT_DL2, leaves a lot to be
+  // desired.
+  // USE_XX_SW_ONLY_AT_DL2 significantly impacts our behavior at DL2 and
+  // below.
+  #ifndef USE_XX_SW_ONLY_AT_DL2
     assert(nBL >= cnBitsInD1);
-#endif // ! defined(USE_XX_SW)
+  #endif // #ifndef USE_XX_SW_ONLY_AT_DL2
 
     // Handle cases where wRoot has no type field before looking at
     // the type field in wRoot.
 
-#if defined(NO_TYPE_IN_XX_SW)
+  #ifdef NO_TYPE_IN_XX_SW
+    // This code makes it look like NO_TYPE_IN_XX_SW applies to all T_XX_SW
+    // nodes, but I wonder if it was written when we only used T_XX_SW at
+    // DL2 and below.
+    // We may someday handle external leaves even with NO_TYPE_IN_XX_SW
+    // using some magic, but its not coded yet.
+    // So, for now, if NO_TYPE_IN_XX_SW applies to this link, then it
+    // contains embedded keys.
     if (pLnUp != NULL) { // non-NULL only for XX_SW
         DBGR(printf("IG: goto embeddedKeys.\n"));
         assert(tp_bIsXxSw(wr_nType(pLnUp->ln_wRoot)));
         goto embeddedKeys; // no type field is handled by embeddedKeys
     }
-#endif // defined(NO_TYPE_IN_XX_SW)
+  #endif // NO_TYPE_IN_XX_SW
 
-#ifdef BITMAP
-  #ifndef B_JUDYL
+  #ifdef BITMAP
+      #ifndef B_JUDYL
     // Embedded bitmap is not implemented for B_JUDYL yet.
     // Check to see if we're at the bottom before checking nType since
     // nType may be invalid if wRoot is an embedded bitmap.
@@ -5870,25 +5898,25 @@ InsertGuts(qp, Word_t wKey, int nPos
         SetBit(pLn, wKey & MSK(nBL)); // Insert into embedded bitmap.
         return Success;
     }
-  #endif // #ifndef B_JUDYL
+      #endif // #ifndef B_JUDYL
 
-    // Shouldn't we be checking for nDL <= 2 for USE_XX_SW_ONLY_AT_DL2
-    // before testing any type values? Nope. USE_XX_SW_ONLY_AT_DL2 does
-    // not imply NO_TYPE_IN_XX_SW.
-
-    if ((wr_nType(WROOT_NULL) != T_BITMAP) || (wRoot != WROOT_NULL)) {
-        if ((nType == T_BITMAP)
-  #if defined(SKIP_TO_BITMAP)
-            || (nType == T_SKIP_TO_BITMAP)
-  #endif // defined(SKIP_TO_BITMAP)
-            || 0)
-        {
+    // Call InsertAtBitmap to do the insert if we have an external bitmap
+    // leaf. We don't want to call InsertAtBitmap for an empty link.
+    // Inserting into an empty link is handled elsewhere.
+    // The 2nd half of this test is intended to make the whole test
+    // go away at compile time if appropriate.
+    if ((wRoot != WROOT_NULL) || (wr_nType(WROOT_NULL) != T_BITMAP)) {
+        if (tp_bIsBitmap(nType)) {
             return InsertAtBitmap(qy, wKey);
         }
     }
-#endif // BITMAP
+  #endif // BITMAP
 
-#ifdef CODE_XX_SW
+    // Widen an XX_SW if the population warrants it.
+    // I think the idea was to do some work now in order to avoid some
+    // later in an effort to control the worst-case insert time.
+    // I fear the idea was ill-conceived.
+  #ifdef CODE_XX_SW
     if ((nBL != nDL_to_nBL(nDL)) && tp_bIsList(nType)) {
         // What about when nBL <= nDL_to_nBL(2)?
         // And USE_XX_SW_ONLY_AT_DL2?
@@ -5901,39 +5929,45 @@ InsertGuts(qp, Word_t wKey, int nPos
         if (wPopCntUp >= EXP(nBWUp + cnBWIncr) * 2) {
 // Can DoubleIt handle a deflated list?
             BJL(return) DoubleIt(qy, wKey,
-  #ifdef SKIP_TO_XX_SW
+      #ifdef SKIP_TO_XX_SW
                                  nBLUp,
-  #endif // SKIP_TO_XX_SW
+      #endif // SKIP_TO_XX_SW
                                  pLnUp,
                                  PWR_xListPopCnt(pwRoot, pwr, nBL));
              BJ1(return Success);
          }
     }
-#endif // CODE_XX_SW
+  #endif // CODE_XX_SW
 
-    // Can the following be moved into the if ! switch block?
+    // Should the following be moved into the if ! switch block?
 #if (cwListPopCntMax != 0)
   #if defined(EMBED_KEYS)
-    // Change an embedded list into an external list to make things
-    // easier for Insert.  We'll change it back later if it makes sense.
     if (nType == T_EMBEDDED_KEYS) {
         goto embeddedKeys;
 embeddedKeys:;
+        // If the key will fit in an embedded list the use InsertEmbedded
+        // to do the insert and avoid the overhead of inlating the list
+        // and going through the heavier weight insert process.
         int nPopCnt
             = ((wr_nType(WROOT_NULL) == T_EMBEDDED_KEYS)
                     && (wRoot == WROOT_NULL))
                 ? 0 : wr_nPopCnt(wRoot, nBL);
           #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
               #if ! defined(PACK_KEYS_RIGHT)
-                  #ifndef B_JUDYL // for JudyL turn-on
+                  #ifdef B_JUDYL
+        // JudyL supports only one embedded key.
+        assert(nPopCnt >= EmbeddedListPopCntMax(nBL));
+                  #else // B_JUDYL
         // This is a performance shortcut that is not necessary.
         if (nPopCnt < EmbeddedListPopCntMax(nBL)) {
             InsertEmbedded(pwRoot, nBL, wKey); return Success;
         }
-                  #endif // B_JUDYL // for JudyL turn-on
+                  #endif // #else B_JUDYL
               #endif // ! defined(PACK_KEYS_RIGHT)
           #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
 
+        // Change an embedded list into an external list to make things
+        // easier for Insert.  We'll change it back later if it makes sense.
         if (nPopCnt != 0) {
             wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot
 #ifdef B_JUDYL
@@ -5944,10 +5978,11 @@ embeddedKeys:;
         // InflateEmbeddedList installs wRoot. It also initializes the
         // other words in the link if there are any.
 
-        nPos = -1; // Tell copy that we have no nPos.
+        nPos = -1; // Tell CopyWithInsert that we have no nPos.
         // Why don't we have an nPos?
 
         nType = wr_nType(wRoot);
+        assert(tp_bIsList(nType));
         DBGI(printf("IG: wRoot " OWx" nType %d PWR_xListPopCnt %d\n",
                     wRoot, nType,
                     (int)PWR_xListPopCnt(pwRoot, wr_pwr(*pwRoot), nBL)));
@@ -5970,6 +6005,9 @@ embeddedKeys:;
     if (!tp_bIsSwitch(nType)
         || ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)))
       #else // (cwListPopCntMax == 0)
+    // Why are we calling InsertAtList for WROOT_NULL if cwListPopCntMax == 0?
+    // Because InsertAtList is where we handle inserting into an empty link
+    // even if cwListPopCntMax == 0?
     if (wRoot == WROOT_NULL)
       #endif // (cwListPopCntMax == 0)
   #endif // defined(BM_SW_FOR_REAL)

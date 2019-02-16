@@ -103,6 +103,7 @@
 // NO_TYPE_IN_XX_SW means no type in XX_SW links with nBL < DL2.
 // NO_TYPE_IN_XX_SW implies CODE_XX_SW.
 // Should it imply USE_XX_SW?
+// I don't know if NO_TYPE_IN_XX_SW applies only if USE_XX_SW_ONLY_AT_DL2.
 #ifdef NO_TYPE_IN_XX_SW
   #undef  CODE_XX_SW
   #define CODE_XX_SW
@@ -121,6 +122,9 @@
 // or bitmaps. Keep doubling all the way through 8-bit and 7-bit embedded keys
 // until we end up with one big bitmap at DL2.
 // The t_bitmap code in Lookup assumes there are no bitmaps at DL1.
+// I don't know if/when embedded list overflow results in the creation of
+// an external list. I don't know if an external list hanging from a DL2
+// XX_SW can be splayed into another switch.
 #ifdef    USE_XX_SW_ONLY_AT_DL2
   #undef  USE_XX_SW
   #define USE_XX_SW

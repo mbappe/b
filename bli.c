@@ -1733,6 +1733,155 @@ t_list_ua:;
     } // end of case T_LIST_UA
 #endif // defined(UA_PARALLEL_128)
 
+#ifdef XX_LISTS
+  #ifdef DEFAULT_XX_LIST
+    default:
+  #endif // DEFAULT_XX_LIST
+  #if !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
+    case T_XX_LIST:
+  #endif // !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
+    {
+        goto t_xx_list;
+t_xx_list:;
+        DBGX(Checkpoint(qy, "t_xx_list"));
+
+  #if defined(INSERT) || defined(REMOVE)
+        if (bCleanup) {
+    #if defined(INSERT) && defined(B_JUDYL)
+            return pwValue;
+    #else // defined(INSERT) && defined(B_JUDYL)
+            return Success;
+    #endif // defined(INSERT)
+        } // cleanup is complete
+  #endif // defined(INSERT) || defined(REMOVE)
+
+        assert((pwr != NULL) || (wr_nType(WROOT_NULL) == T_XX_LIST));
+
+        // Search the list. wPopCnt is the number of keys in the list.
+
+      #if defined(COUNT)
+        if ((wr_nType(WROOT_NULL) == T_XX_LIST) && (wRoot == WROOT_NULL)) {
+             nPos = ~0;
+        }
+      #endif // defined(COUNT)
+
+      #ifdef COMPRESSED_LISTS
+      #ifdef SKIP_PREFIX_CHECK
+      #ifdef LOOKUP
+        if (PrefixCheckAtLeaf(qy, wKey
+  #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
+                , bNeedPrefixCheck
+  #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
+  #ifdef SAVE_PREFIX_TEST_RESULT
+                , wPrefixMismatch
+  #else // SAVE_PREFIX_TEST_RESULT
+                , pwrUp
+  #endif // SAVE_PREFIX_TEST_RESULT
+  #ifdef SAVE_PREFIX
+                , pLnPrefix, pwrPrefix, nBLRPrefix
+  #endif // SAVE_PREFIX
+                  ) // end call to PrefixCheckAtLeaf
+            == Success)
+      #endif // LOOKUP
+      #endif // SKIP_PREFIX_CHECK
+      #endif // COMPRESSED_LISTS
+        {
+            int nXxListBW = gnXxListBW(qy);
+            nBLR += nXxListBW; // nBLR is funky for XX_LIST
+      // LOOKUP_NO_LIST_SEARCH is for analysis only.
+      #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
+            if (1
+                && ((wr_nType(WROOT_NULL) != T_XX_LIST)
+                    || (wRoot != WROOT_NULL))
+          #if defined(LOOKUP)
+              #if defined(B_JUDYL)
+                  #if defined(HASKEY_FOR_JUDYL_LOOKUP)
+                // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
+                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
+                  #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
+                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
+                  #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
+                && ((nPos = LocateKeyInList(qy, nBLR, wKey)) >= 0)
+                  #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
+              #else // defined(B_JUDYL)
+                  #if defined(SEARCH_FOR_JUDY1_LOOKUP)
+                && (SearchList(qy, nBLR, wKey) >= 0)
+                  #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
+                && (LocateKeyInList(qy, nBLR, wKey) >= 0)
+                  #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+                && ListHasKey(qy, nBLR, wKey)
+                  #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+              #endif // defined(B_JUDYL)
+          #else // defined(LOOKUP)
+                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
+          #endif // defined(LOOKUP)
+                )
+      #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
+            {
+                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+                SMETRICS(++j__GetCalls);
+          #if defined(INSERT)
+              #if ! defined(RECURSIVE)
+                if (nIncr > 0) { goto undo; } // undo counting
+              #endif // ! defined(RECURSIVE)
+          #endif // defined(INSERT)
+          #if defined(REMOVE)
+                goto removeGutsAndCleanup;
+          #endif // defined(REMOVE)
+          #if defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
+              #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
+                DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
+                             nPos,
+                             &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
+                  #ifndef PACK_L1_VALUES
+                if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
+                    return &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
+                } else
+                  #endif // #ifndef PACK_L1_VALUES
+                { return &gpwValues(qy)[~nPos]; }
+              #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
+                // Success for Lookup and Remove; Failure for Insert
+                return KeyFound;
+              #endif // (defined(LOOKUP) || defined(INSERT)) && ...
+          #endif // defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
+            }
+          #if defined(COUNT)
+            else
+          #endif // defined(COUNT)
+          #if defined(INSERT) || defined(REMOVE) || defined(COUNT)
+            {
+                nPos ^= -1;
+            }
+          #endif // defined(INSERT) || defined(REMOVE) || defined(COUNT)
+        }
+      #if defined(LOOKUP)
+          #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+        else
+        {
+            // Shouldn't this be using the previous nBL for pwrUp?
+            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
+              #ifdef PP_IN_LINK
+                        gwPrefix(qy),
+              #else // PP_IN_LINK
+                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
+              #endif // PP_IN_LINK
+                        nBL));
+        }
+          #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+      #endif // defined(LOOKUP)
+
+      #if defined(COUNT)
+        DBGC(printf("T_XX_LIST: nPos %d\n", nPos));
+        wPopCntSum += nPos;
+        DBGC(printf("list nPos 0x%x wPopCntSum " OWx"\n", nPos, wPopCntSum));
+        return wPopCntSum;
+      #endif // defined(COUNT)
+
+        break;
+
+    } // end of case T_XX_LIST
+#endif // XX_LISTS
+
 #endif // (cwListPopCntMax != 0)
 
 #ifdef BITMAP
@@ -2311,9 +2460,7 @@ foundIt:;
     // InsertGuts is called with a pLn and nBL indicates the
     // bits that were not decoded in identifying pLn.  nBL
     // does not include any skip indicated in the type field of *pLn.
-  #ifdef B_JUDYL
-    pwValue =
-  #endif // B_JUDYL
+    BJL(pwValue =)
         InsertGuts(qy, wKey, nPos
   #if defined(CODE_XX_SW)
                  , pLnUp
@@ -2453,7 +2600,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     // the other node types?
     Word_t wRoot = (Word_t)pcvRoot;
     int nType = wr_nType(wRoot);
-    Word_t *pwr wr_pwr(wRoot); (void)pwr;
+    Word_t *pwr = wr_pwr(wRoot); (void)pwr;
     if ((nType == T_LIST)
       #if ! defined(SEPARATE_T_NULL)
         && (pwr != NULL)
@@ -2597,9 +2744,6 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #if (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_I)
     // Handle the top level list leaf before calling Insert.  Why?
     // To simplify Insert for PP_IN_LINK.  Does it still apply?
-    Word_t wRoot = *pwRoot;
-    unsigned nType = wr_nType(wRoot);
-
     if (((T_LIST == nType)
 #if ! defined(SEPARATE_T_NULL)
             && (wr_pwr(wRoot) != NULL)
