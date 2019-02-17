@@ -306,12 +306,5 @@
 #define COMPRESSED_LISTS
 #endif // ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
 
-// SPLAY triggers the use of an optimized Splay method instead of a generic
-// InsertAll method when a list gets too big and the conditions are right.
-#ifndef           NO_SPLAY
-  #undef             SPLAY
-  #define            SPLAY
-#endif // #ifndef NO_SPLAY
-
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 
