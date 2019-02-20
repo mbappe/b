@@ -579,19 +579,18 @@ typedef Word_t Bucket_t;
   #define cnListPopCntMax16  cnListPopCntMax24
 #endif // #ifndef cnListPopCntMax16
 
-// Default cnListPopCntMax8 is 0x10.
-// An 8-bit bitmap uses only 32-bytes plus malloc overhead.
+// Default cnListPopCntMax8 is cnListPopCntMax16.
 #ifndef cnListPopCntMax8
-  #ifdef BITMAP
-    #define cnListPopCntMax8  0x10
-  #else // BITMAP
-    #define cnListPopCntMax8  cnListPopCntMax16 // fix assert in SearchList8
-  #endif // BITMAP
+  #define cnListPopCntMax8  cnListPopCntMax16 // fix assert in SearchList8
 #endif // #ifndef cnListPopCntMax8
 
 // If we're not using bitmaps then we must have some other way of getting to
 // full pop. The only options are embedded or external list at Dl1 or higher.
-#ifndef BITMAP
+#ifdef BITMAP
+  #ifndef cnListPopCntMaxDl1
+    #define cnListPopCntMaxDl1  0x10
+  #endif // cnListPopCntMaxDl1
+#else // BITMAP
   #ifdef cnListPopCntMaxDl1
     #if !defined(EMBED_KEYS) || defined(POP_CNT_MAX_IS_KING)
       #if (cnListPopCntMaxDl1 < (1 << cnBitsInD1))
@@ -610,7 +609,7 @@ typedef Word_t Bucket_t;
     // !POP_CNT_MAX_IS_KING or by a higher level list does no harm.
     #define cnListPopCntMaxDl1  (1 << cnBitsInD1)
   #endif // #else cnListPopCntMaxDl1 < (1 << cnBitsInD1)
-#endif // BITMAP
+#endif // #else BITMAP
 
 #define MAX(_x, _y)  ((_x) > (_y) ? (_x) : (_y))
 
@@ -704,6 +703,14 @@ typedef Word_t Bucket_t;
 #endif // defined(SKIP_TO_BM_SW) && defined(USE_BM_SW)
 
 // Values for nType.
+// Be very careful with enumerators in cpp #if statements. I got bit by the
+// fact that enumerators all have a value of zero at preprocessor time.
+// The preprocessor does not generate an error if identifiers ENUMERATOR_1
+// and ENUMERATOR_2 are not defined as macros and are used like
+// "#if ENUMERATOR_1 == ENUMERATOR_2".
+// The preprocessor will simply always take the condition is true path.
+// Guess I need to go through the code with a fine-tooth comb.
+// Or maybe define nType values in a different way?
 enum {
     // Put T_NULL and T_LIST at beginning of enum so one of them gets
     // type == 0 if either exists. For no reason other than a dump with
@@ -5083,6 +5090,7 @@ ListHasKey8(qp, int nBLR, Word_t wKey)
 #if defined(PSPLIT_PARALLEL)
 
 #if defined(PARALLEL_128)
+#ifndef USE_XX_SW_ONLY_AT_DL2
 #if cnBitsInD1 == 8
 #if cnListPopCntMaxDl1 == 16
 #if cnBitsMallocMask >= 4
@@ -5093,6 +5101,12 @@ ListHasKey8(qp, int nBLR, Word_t wKey)
   #if !defined(PP_IN_LINK) && !defined(POP_WORD_IN_LINK)
   #if defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
     assert(ls_pcKeys(pwr, PWR_xListPopCnt(&wRoot, pwr, 8)) == (uint8_t*)pwr);
+  #ifdef DEBUG
+    if (PWR_xListPopCnt(&wRoot, pwr, 8) > 16) {
+        printf("\nnBL %d nBLR %d nPopCnt %d\n",
+               nBL, nBLR, PWR_xListPopCnt(&wRoot, pwr, 8));
+    }
+  #endif // DEBUG
     assert(PWR_xListPopCnt(&wRoot, pwr, 8) <= 16);
   #endif // defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
   #endif // !defined(PP_IN_LINK) && !defined(POP_WORD_IN_LINK)
@@ -5110,6 +5124,7 @@ ListHasKey8(qp, int nBLR, Word_t wKey)
 #endif // cnBitsMallocMask >= 4
 #endif // cnListPopCntMaxDl1 == 16
 #endif // cnBitsInD1 == 8
+#endif // #ifndef USE_XX_SW_ONLY_AT_DL2
 #endif // defined(PARALLEL_128)
 
     int nPopCnt = gnListPopCnt(qy, nBLR);

@@ -653,6 +653,12 @@ again:;
         &&t_switch,
       #if defined(SKIP_LINKS)
         &&t_skip_to_switch,
+// This #if (T_SKIP_TO_SWITCH <= 14) is not going to work as we hoped when
+// it was written. T_SKIP_TO_SWITCH is an enumeration not a macro. It's value
+// is treated as zero by the preprocessor.
+          #if (T_SKIP_TO_SWITCH == 0)
+            #error Cannot use enumerations at preprocessor time.
+          #endif // (T_SKIP_TO_SWITCH == 0)
           #if (T_SKIP_TO_SWITCH <= 14)
         &&t_skip_to_switch,
           #endif // (T_SKIP_TO_SWITCH <= 14)
