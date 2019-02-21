@@ -504,14 +504,10 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
     // Do we ever depend on this initialization of pLnUp?
     Link_t *pLnUp = NULL; (void)pLnUp;
 
-    // nBLUp is used only for SKIP_TO_XX_SW and INSERT.
-    // I think it will eventually be used for REMOVE and for
-    // CODE_XX_SW without SKIP_TO_XX_SW.
-    int nBLUp /* = nBLUp*/; (void)nBLUp; // silence gcc
+    // nBLUp is used only for CODE_XX_SW and INSERT.
+    // I think it will eventually be used for REMOVE.
+    int nBLUp = cnBitsPerWord; (void)nBLUp; // silence gcc
     // gcc complains that nBLUp may be used uninitialized with CODE_XX_SW.
-#ifdef CODE_XX_SW
-    nBLUp = cnBitsPerWord;
-#endif // CODE_XX_SW
 
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
 #if defined(SAVE_PREFIX_TEST_RESULT)
@@ -959,7 +955,7 @@ switchTail:;
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
         // Save the previous link and advance to the next.
         IF_NOT_LOOKUP(pLnUp = pLn);
-        IF_SKIP_TO_XX_SW(IF_INSERT(nBLUp = nBL));
+        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
   #ifdef BITMAP
@@ -1063,7 +1059,7 @@ t_xx_sw:;
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
         // Save the previous link and advance to the next.
         IF_NOT_LOOKUP(pLnUp = pLn);
-        IF_SKIP_TO_XX_SW(IF_INSERT(nBLUp = nBL));
+        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
       #ifdef BITMAP
@@ -2470,9 +2466,7 @@ foundIt:;
         InsertGuts(qy, wKey, nPos
   #if defined(CODE_XX_SW)
                  , pLnUp
-      #if defined(SKIP_TO_XX_SW)
                  , nBLUp
-      #endif // defined(SKIP_TO_XX_SW)
   #endif // defined(CODE_XX_SW)
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                  , pwValueUp
@@ -2783,9 +2777,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 status = InsertGuts(qy, wKey, /* nPos */ -1
 #if defined(CODE_XX_SW)
                                   , /* pLnUp */ NULL
-  #if defined(SKIP_TO_XX_SW)
                                   , /* nBLUp */ 0
-  #endif // defined(SKIP_TO_XX_SW)
                                     );
 #endif // defined(CODE_XX_SW)
             } else {

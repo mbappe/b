@@ -190,6 +190,11 @@
   #define    SKIP_LINKS
 #endif // NO_SKIP_LINKS
 
+#ifdef NO_SKIP_LINKS
+  #undef  NO_SKIP_TO_BITMAP
+  #define NO_SKIP_TO_BITMAP
+#endif // NO_SKIP_LINKS
+
 // Default is BITMAP.
 // BITMAP is required for one-digit and two-digit T_BITMAP bitmaps
 // and for embedded bitmaps.

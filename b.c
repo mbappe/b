@@ -4356,7 +4356,7 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
 
     // Choose (nBLNew, nBWNew).
     nBLNew = nDL_to_nBL(nDLNew);
-    int nBWNew = nDL_to_nBW(nDLNew);
+    int nBWNew = nDL_to_nBW(nDLNew); (void)nBWNew;
     DBGX(printf("InsertAtPrefixMismatch choosing nBLNew %d nBwNew %d.\n",
                 nBLNew, nBWNew));
     assert(nBLNew > nBLR);
@@ -4554,22 +4554,21 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
         Insert(nBL, pLn, wKey);
 }
 
+// Widen a switch.
+// Replace *pLnUp, which is the link to the switch containing qp, with a link
+// to a new, wider switch, and transfer the keys and values from the old
+// switch to the new switch, and insert wKey.
 #if defined(CODE_XX_SW)
   #ifdef B_JUDYL
 static Word_t*
   #else // B_JUDYL
 static void
   #endif // B_JUDYL
-DoubleIt(qp,
-         Word_t wKey
-  #ifdef SKIP_TO_XX_SW
-       , int nBLUp
-  #endif // SKIP_TO_XX_SW
-       , Link_t *pLnUp
-  #ifdef CODE_XX_SW
-       , Word_t wPopCnt
-  #endif // CODE_XX_SW
-         )
+DoubleIt(qp, // (nBL, pLn) of list
+         Word_t wKey, // key being inserted
+         int nBLUp, // nBL of link to switch containing qp (not nBLR of sw)
+         Link_t *pLnUp, // link to switch containing qp
+         Word_t wPopCnt)
 {
     qv; (void)pLnUp;
     int nDL = nBL_to_nDL(nBL);
@@ -4588,31 +4587,18 @@ DoubleIt(qp,
       #ifdef USE_XX_SW_ONLY_AT_DL2
             assert(nBL < nDL_to_nBL(2));
       #endif // USE_XX_SW_ONLY_AT_DL2
-// Hmm.  *pwRoot has not been updated with the inflated list.
-// What should we do?  Call OldList or install the inflated list?
-// I think we are going to just inflate it again if we don't just leave it.
-// So let's try installing it.
-#if defined(NO_TYPE_IN_XX_SW)
+            assert(tp_bIsList(wr_nType(wRoot))); // list has been inflated
+          #if defined(NO_TYPE_IN_XX_SW)
+// Hmm.
+// I think things have changed since NO_TYPE_IN_XX_SW worked.
+// It used to be that *pwRoot had not been updated with the inflated list
+// that wRoot represents.
+// But that's not really possible now since qv doesn't allow it.
+// We used to call OldList to free wRoot. What now?
             DBGR(printf("IG: free inflated list.\n"));
-            assert( (wr_nType(wRoot) == T_LIST)
-#if defined(UA_PARALLEL_128)
-                   || (wr_nType(wRoot) == T_LIST_UA)
-#endif // defined(UA_PARALLEL_128)
-                   );
             OldList(wr_pwr(wRoot), wPopCnt, nBL, T_LIST);
-#else // defined(NO_TYPE_IN_XX_SW)
-#if defined(EMBED_KEYS)
-            if (wr_nType(*pwRoot) == T_EMBEDDED_KEYS) {
-                assert( (wr_nType(wRoot) == T_LIST)
-#if defined(UA_PARALLEL_128)
-                       || (wr_nType(wRoot) == T_LIST_UA)
-#endif // defined(UA_PARALLEL_128)
-                       );
-                *pwRoot = wRoot;
-            }
-#endif // defined(EMBED_KEYS)
-#endif // defined(NO_TYPE_IN_XX_SW)
-            // parent is XX_SW; back up and replace it
+          #endif // defined(NO_TYPE_IN_XX_SW)
+            // pLnUp is XX_SW; back up and replace it
             pLn = pLnUp;
             wRoot = pLn->ln_wRoot;
             pwRoot = &pLn->ln_wRoot;
@@ -4623,10 +4609,12 @@ DoubleIt(qp,
                         nDL, nBL, nBLOld, nBLUp));
       #ifdef USE_XX_SW_ONLY_AT_DL2
             // The only place we put XX_SW is nDL == 2.
-            nDL = 2; // This is more accurately nDLR.
+            nDL = 2; // This is more accurately nDLR of the switch.
       #else // USE_XX_SW_ONLY_AT_DL2
             nDL = nBL_to_nDL(nBLOld);
       #endif // USE_XX_SW_ONLY_AT_DL2
+            // We're not changing nBLR of the switch.
+            assert(GetBLR(&pLnUp->ln_wRoot, nBLUp) == nDL_to_nBL(nDL));
             DBGI(printf("\nmiddle: nDL %d nBL %d nBLOld %d nBLUp %d\n",
                          nDL, nBL, nBLOld, nBLUp));
             nBL = nDL_to_nBL(nDL); // This is more accurately nBLR.
@@ -4784,7 +4772,9 @@ insertAll:;
         }
 
 #if ! defined(SKIP_TO_XX_SW)
+          #ifdef USE_XX_SW_ONLY_AT_DL2
         assert(nBL == nDL_to_nBL(2));
+          #endif // USE_XX_SW_ONLY_AT_DL2
         assert(nBLOld == nBL);
 #endif // ! defined(SKIP_TO_XX_SW)
         OldSwitch(&wRoot, /* nBL */ nBL,
@@ -4887,9 +4877,10 @@ SignificantBitCnt(qp, Word_t wKey, Word_t wPopCnt)
 // Replace the link at qp that points to an external list with a link to a
 // new switch or bitmap.
 // Or replace the link to the switch that contains qp, i.e. (nBLUp, pLnUp),
-// with a link to a new, widened switch.
-// Do we ever replacy the link to the switch than contains qp with a link
+// with a link to a new, widened switch using DoubleIt.
+// Do we ever replace the link to the switch than contains qp with a link
 // to a bitmap?
+//
 // Then transfer any keys and values from the array that was rooted at the
 // replaced link to the tree that is rooted at the new link.
 // And, finally, insert wKey.
@@ -4938,16 +4929,15 @@ static void
 #endif // B_JUDYL
 TransformList(qp,
               Word_t wKey,
-  #ifdef SKIP_TO_XX_SW
-              int nBLUp,
-  #endif // SKIP_TO_XX_SW
   #ifdef CODE_XX_SW
+              int nBLUp,
               Link_t *pLnUp,
   #endif // CODE_XX_SW
               Word_t wPopCnt)
 {
     qv; (void)wPopCnt;
     int nDL = nBL_to_nDL(nBL); (void)nDL;
+    Link_t link; (void)link;
 
     // This used to be part of ListIsFull.
   #ifdef SKIP_LINKS
@@ -4967,7 +4957,6 @@ TransformList(qp,
 
     // How the heck is TransformList supposed to figure out what
     // the caller wants?
-    // Why is InsertAtList calling TransformList for a DoubleIt case?
 // To widen a switch when pop count justifies it for USE_XX_SW_ONLY_AT_DL2?
     // Can we limit TransformList to bitmap conversions and Splay?
     // nBLNew == nBL is quite ambiguous.
@@ -5009,7 +4998,6 @@ TransformList(qp,
     assert((nBLNew > cnLogBitsPerLink) || !cbEmbeddedBitmap);
 #endif // BITMAP
 
-    Link_t link; (void)link;
 #if defined(PP_IN_LINK)
     // PP_IN_LINK can only support skip from top for wPrefix == 0.
     if (nBL == cnBitsPerWord) {
@@ -5140,11 +5128,7 @@ TransformList(qp,
 // Or another switch?
   #endif // defined(USE_XX_SW)
             DBGI(printf("TransformList: DoubleIt\n"));
-            return DoubleIt(qy, wKey
-      #if defined(SKIP_TO_XX_SW)
-                          , nBLUp
-      #endif // defined(SKIP_TO_XX_SW)
-                          , pLnUp, wPopCnt);
+            return DoubleIt(qy, wKey, nBLUp, pLnUp, wPopCnt);
   #ifdef USE_XX_SW
         } else
   #endif // defined(USE_XX_SW)
@@ -5376,10 +5360,7 @@ InsertAtList(qp,
              Word_t wKey,
              int nPos
 #ifdef CODE_XX_SW
-           , Link_t *pLnUp
-  #ifdef SKIP_TO_XX_SW
-           , int nBLUp
-  #endif // SKIP_TO_XX_SW
+           , Link_t *pLnUp, int nBLUp
 #endif // CODE_XX_SW
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
            , Word_t *pwValueUp
@@ -5459,11 +5440,7 @@ InsertAtList(qp,
         assert(wPopCnt == nEmbeddedListPopCntMax);
         DBGI(printf("IAL: DoubleIt nBL %d cnt %d max %d.\n",
                     nBL, (int)wPopCnt, nEmbeddedListPopCntMax));
-        return DoubleIt(qy, wKey
-      #ifdef SKIP_TO_XX_SW
-                      , nBLUp
-      #endif // SKIP_TO_XX_SW
-                      , pLnUp, wPopCnt);
+        return DoubleIt(qy, wKey, nBLUp, pLnUp, wPopCnt);
     }
   #endif // defined(NO_TYPE_IN_XX_SW)
 
@@ -5506,13 +5483,11 @@ printf("auListPopCntMax[nBL %d] %d\n", nBL, auListPopCntMax[nBL]);
                 if ((wWordsAllocated * 100 / wPopCntTotal)
                         < cnXxSwWpkPercent)
                 {
-// Why are we not calling DoubleIt directly?
+                    // Create a switch and splay into it before the list is
+                    // full.
                     return TransformList(qy, wKey,
-      #ifdef SKIP_TO_XX_SW
-                                         nBLUp,
-      #endif // SKIP_TO_XX_SW
       #ifdef CODE_XX_SW
-                                         pLnUp,
+                                         nBLUp, pLnUp,
       #endif // CODE_XX_SW
                                          wPopCnt);
                 }
@@ -5540,11 +5515,7 @@ DBGI(printf("wPopCnt %zd nEmbeddedListPopCntMax %d\n",
                         < cnXxSwWpkPercent)
                 {
                     DBGI(printf("IAL: DoubleIt\n"));
-                    return DoubleIt(qy, wKey
-      #if defined(SKIP_TO_XX_SW)
-                                  , nBLUp
-      #endif // defined(SKIP_TO_XX_SW)
-                                  , pLnUp, wPopCnt);
+                    return DoubleIt(qy, wKey, nBLUp, pLnUp, wPopCnt);
                 }
             }
         }
@@ -5552,11 +5523,7 @@ DBGI(printf("wPopCnt %zd nEmbeddedListPopCntMax %d\n",
         if ((int)wPopCnt >= auListPopCntMax[nBL]) {
 // Does it matter that we may not have an XX_SW here?
             DBGI(printf("IAL: DoubleIt\n"));
-            return DoubleIt(qy, wKey
-      #if defined(SKIP_TO_XX_SW)
-                          , nBLUp
-      #endif // defined(SKIP_TO_XX_SW)
-                          , pLnUp, wPopCnt);
+            return DoubleIt(qy, wKey, nBLUp, pLnUp, wPopCnt);
         }
   #endif // #else USE_XX_SW_ONLY_AT_DL2
 #endif // defined(CODE_XX_SW)
@@ -5780,11 +5747,7 @@ copyWithInsertWord:
         if (nBL != nDL_to_nBL(nBL_to_nDL(nBL))) {
             DBGI(printf("IAL: ListIsFull DoubleIt nBL %d nBLUp %d\n",
                         nBL, nBLUp));
-            BJL(pwValue =) DoubleIt(qy, wKey
-      #if defined(SKIP_TO_XX_SW)
-                                  , nBLUp
-      #endif // defined(SKIP_TO_XX_SW)
-                                  , pLnUp, wPopCnt);
+            BJL(pwValue =) DoubleIt(qy, wKey, nBLUp, pLnUp, wPopCnt);
         }
         else
   #endif // CODE_XX_SW
@@ -5793,11 +5756,8 @@ copyWithInsertWord:
             pwValue =
   #endif // B_JUDYL
                 TransformList(qy, wKey,
-      #ifdef SKIP_TO_XX_SW
-                              nBLUp,
-      #endif // SKIP_TO_XX_SW
       #ifdef CODE_XX_SW
-                              pLnUp,
+                              nBLUp, pLnUp,
       #endif // CODE_XX_SW
                               wPopCnt);
         }
@@ -5835,9 +5795,7 @@ Status_t
 InsertGuts(qp, Word_t wKey, int nPos
 #if defined(CODE_XX_SW)
          , Link_t *pLnUp
-  #if defined(SKIP_TO_XX_SW)
          , int nBLUp
-  #endif // defined(SKIP_TO_XX_SW)
 #endif // defined(CODE_XX_SW)
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
          , Word_t *pwValueUp
@@ -5915,7 +5873,7 @@ InsertGuts(qp, Word_t wKey, int nPos
     // I think the idea was to do some work now in order to avoid some
     // later in an effort to control the worst-case insert time.
     // I fear the idea was ill-conceived.
-  #ifdef CODE_XX_SW
+  #ifdef SKIP_TO_XX_SW
     if ((nBL != nDL_to_nBL(nDL)) && tp_bIsList(nType)) {
         // What about when nBL <= nDL_to_nBL(2)?
         // And USE_XX_SW_ONLY_AT_DL2?
@@ -5927,16 +5885,13 @@ InsertGuts(qp, Word_t wKey, int nPos
         int nBWUp = Get_nBW(pwRootUp);
         if (wPopCntUp >= EXP(nBWUp + cnBWIncr) * 2) {
 // Can DoubleIt handle a deflated list?
-            BJL(return) DoubleIt(qy, wKey,
-      #ifdef SKIP_TO_XX_SW
-                                 nBLUp,
-      #endif // SKIP_TO_XX_SW
-                                 pLnUp,
-                                 PWR_xListPopCnt(pwRoot, pwr, nBL));
-             BJ1(return Success);
-         }
+            BJL(return)
+                DoubleIt(qy, wKey, nBLUp, pLnUp,
+                         PWR_xListPopCnt(pwRoot, pwr, nBL));
+            BJ1(return Success);
+        }
     }
-  #endif // CODE_XX_SW
+  #endif // SKIP_TO_XX_SW
 
     // Should the following be moved into the if ! switch block?
 #if (cwListPopCntMax != 0)
@@ -6017,10 +5972,7 @@ embeddedKeys:;
 #endif // B_JUDYL
             InsertAtList(qy, wKey, nPos
 #ifdef CODE_XX_SW
-                       , pLnUp
-  #ifdef SKIP_TO_XX_SW
-                       , nBLUp
-  #endif // SKIP_TO_XX_SW
+                       , pLnUp, nBLUp
 #endif // CODE_XX_SW
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                        , pwValueUp

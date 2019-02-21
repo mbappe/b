@@ -485,6 +485,14 @@ typedef Word_t Bucket_t;
   #define SKIP_TO_BITMAP
 #endif // SKIP_TO_XX_SW
 
+#if defined(CODE_XX_SW)
+    #define cbCodeXxSw  1
+    #define IF_CODE_XX_SW(_expr)  (_expr)
+#else // defined(CODE_XX_SW)
+    #define cbCodeXxSw  0
+    #define IF_CODE_XX_SW(_expr)
+#endif // defined(CODE_XX_SW)
+
 #if defined(SKIP_TO_XX_SW)
     #define cbSkipToXxSw  1
     #define IF_SKIP_TO_XX_SW(_expr)  (_expr)
@@ -1608,6 +1616,7 @@ tp_bIsSkip(int nType)
     return 0;
 }
 
+// External list. T_EMBEDDED_KEYS does not qualify.
 static inline int
 tp_bIsList(int nType)
 {
@@ -3337,9 +3346,7 @@ Status_t
 InsertGuts(qp, Word_t wKey, int nPos
 #if defined(CODE_XX_SW)
          , Link_t *pLnUp
-  #if defined(SKIP_TO_XX_SW)
          , int nBLUp
-  #endif // defined(SKIP_TO_XX_SW)
 #endif // defined(CODE_XX_SW)
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
          , Word_t *pwValueUp

@@ -73,7 +73,8 @@ done
 
 for Judy in 1 R # L
 do
-for EOPT in -E --splay-key-bits=0xff00ffff
+for EOPT in -E --splay-key-bits=0xff00ffff \
+               --splay-key-bits=0x0f0f0fff
 do
 
 # -v and -h are incompatible
