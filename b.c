@@ -3556,15 +3556,13 @@ Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
     }
   #endif // CODE_BM_SW
 
-    // this block is for the normal case where we are splaying into switch
-    // {
     Link_t *pLinks = pwr_pLinks((Switch_t *)pwr);
     int nBLLoop = nBLR - nBW;
 #ifdef EMBED_KEYS
     int nEmbeddedListPopCntMax = EmbeddedListPopCntMax(nBLLoop);
 #endif // EMBED_KEYS
     int nDigitKey = (wKey >> nBLLoop) & MSK(nBW); (void)nDigitKey;
-    // }
+    Word_t wDigitMask = ~MSK(nBLLoop) & NZ_MSK(nBLR);
 
     BJL(Word_t *pwValues = gpwValues(qyx(Old)));
     int nnStart = 0; (void)nnStart;
@@ -3575,9 +3573,11 @@ Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
 #if defined(COMPRESSED_LISTS)
     if (nBLOld <= (int)sizeof(uint8_t) * 8) {
         uint8_t *pcKeys = ls_pcKeysNATX(pwrOld, nPopCnt);
-        int nDigit = (pcKeys[0] >> nBLLoop) & MSK(nBW);
+        Word_t wBitsFromKey = wKey & ~MSK(8) & NZ_MSK(nBLR);
+        int nDigit = ((pcKeys[0] & wDigitMask) | wBitsFromKey) >> nBLLoop;
         for (int nn = 0; nn < nPopCnt; nn++) {
-            int nDigitNew = (pcKeys[nn] >> nBLLoop) & MSK(nBW);
+            int nDigitNew
+                = ((pcKeys[nn] & wDigitMask) | wBitsFromKey) >> nBLLoop;
             if (nDigitNew != nDigit) {
 lastDigit8:;
   #ifdef BM_SW_FOR_REAL
@@ -3680,9 +3680,11 @@ lastDigit8:;
         }
     } else if (nBLOld <= (int)sizeof(uint16_t) * 8) {
         uint16_t *psKeys = ls_psKeysNATX(pwrOld, nPopCnt);
-        int nDigit = (psKeys[0] >> nBLLoop) & MSK(nBW);
+        Word_t wBitsFromKey = wKey & ~MSK(16) & NZ_MSK(nBLR);
+        int nDigit = ((psKeys[0] & wDigitMask) | wBitsFromKey) >> nBLLoop;
         for (int nn = 0; nn < nPopCnt; nn++) {
-            int nDigitNew = (psKeys[nn] >> nBLLoop) & MSK(nBW);
+            int nDigitNew
+                = ((psKeys[nn] & wDigitMask) | wBitsFromKey) >> nBLLoop;
             if (nDigitNew != nDigit) {
 lastDigit16:;
   #ifdef BM_SW_FOR_REAL
@@ -3807,9 +3809,11 @@ lastDigit16:;
 #if (cnBitsPerWord > 32)
     } else if (nBLOld <= (int)sizeof(uint32_t) * 8) {
         uint32_t *piKeys = ls_piKeysNATX(pwrOld, nPopCnt);
-        int nDigit = (piKeys[0] >> nBLLoop) & MSK(nBW);
+        Word_t wBitsFromKey = wKey & ~MSK(32) & NZ_MSK(nBLR);
+        int nDigit = ((piKeys[0] & wDigitMask) | wBitsFromKey) >> nBLLoop;
         for (int nn = 0; nn < nPopCnt; nn++) {
-            int nDigitNew = (piKeys[nn] >> nBLLoop) & MSK(nBW);
+            int nDigitNew
+                = ((piKeys[nn] & wDigitMask) | wBitsFromKey) >> nBLLoop;
             if (nDigitNew != nDigit) {
 lastDigit32:;
   #ifdef BM_SW_FOR_REAL
@@ -3941,9 +3945,11 @@ lastDigit32:;
 #endif // defined(COMPRESSED_LISTS)
     {
         Word_t *pwKeys = ls_pwKeysX(pwrOld, nBL, nPopCnt);
-        int nDigit = (pwKeys[0] >> nBLLoop) & MSK(nBW);
+        Word_t wBitsFromKey = 0;
+        int nDigit = ((pwKeys[0] & wDigitMask) | wBitsFromKey) >> nBLLoop;
         for (int nn = 0; nn < nPopCnt; nn++) {
-            int nDigitNew = (pwKeys[nn] >> nBLLoop) & MSK(nBW);
+            int nDigitNew
+                = ((pwKeys[nn] & wDigitMask) | wBitsFromKey) >> nBLLoop;
             if (nDigitNew != nDigit) {
 lastDigit:;
   #ifdef BM_SW_FOR_REAL
@@ -4571,6 +4577,7 @@ DoubleIt(qp, // (nBL, pLn) of list
          Word_t wPopCnt)
 {
     qv; (void)pLnUp;
+    int nBLList = nBL; (void)nBLList; // save because code is messed up
     int nDL = nBL_to_nDL(nBL);
     int nBLOld = nBL;
     int nDLOld = nDL; (void)nDLOld;
@@ -4614,9 +4621,14 @@ DoubleIt(qp, // (nBL, pLn) of list
             nDL = nBL_to_nDL(nBLOld);
       #endif // USE_XX_SW_ONLY_AT_DL2
             // We're not changing nBLR of the switch.
-            assert(GetBLR(&pLnUp->ln_wRoot, nBLUp) == nDL_to_nBL(nDL));
             DBGI(printf("\nmiddle: nDL %d nBL %d nBLOld %d nBLUp %d\n",
                          nDL, nBL, nBLOld, nBLUp));
+      #ifdef DEBUG
+            if (GetBLR(&pLnUp->ln_wRoot, nBLUp) != nDL_to_nBL(nDL)) {
+                printf("nBLRUp %d\n", GetBLR(&pLnUp->ln_wRoot, nBLUp));
+            }
+      #endif // DEBUG
+            assert(GetBLR(&pLnUp->ln_wRoot, nBLUp) == nDL_to_nBL(nDL));
             nBL = nDL_to_nBL(nDL); // This is more accurately nBLR.
             DBGI(printf("\nafter: nDL %d nBL %d nBLOld %d nBLUp %d\n",
                            nDL, nBL, nBLOld, nBLUp));
@@ -4640,7 +4652,13 @@ DoubleIt(qp, // (nBL, pLn) of list
             nBW = pwr_nBW(&wRoot);
             DBGI(printf("# Double nBL %d from nBW %d.\n", nBL, nBW));
             assert(nBL > cnLogBitsPerLink);
-            nBW += cnBWIncr;
+      #ifdef USE_XX_SW_ONLY_AT_DL2
+            if (nBLList < nDL_to_nBL(2)) {
+                nBW += cnBWIncr; // nBWUp? nBWNew?
+            } else
+      #endif // USE_XX_SW_ONLY_AT_DL2
+            { nBW = nDL_to_nBW(nDL); }
+            DBGI(printf("# To nBW %d.\n", nBW));
             if (nBL - nBW <= cnLogBitsPerLink) {
 // Doubling here would use at least as much memory as a big bitmap.
 // Are we here because the list is full?
@@ -4962,9 +4980,9 @@ TransformList(qp,
     // nBLNew == nBL is quite ambiguous.
     // nBL < nBLNew means create a switch and Splay?
 
-#if defined(SKIP_LINKS)
-    DBGI(printf("InsertSwitch 0 nDLNew %d nBLNew %d nDL %d nBL %d\n",
+    DBGI(printf("TransformList 0 nDLNew %d nBLNew %d nDL %d nBL %d\n",
                 nDLNew, nBLNew, nDL, nBL));
+#if defined(SKIP_LINKS)
 
     // Apply constraints that cause us to create the new switch
     // at a higher level than would be required if only the common
@@ -5116,7 +5134,16 @@ TransformList(qp,
             // I suspect we would end up recursively widening the list
             // in a DoubleIt, InsertAll, Insert, InsertGuts, InsertAtList,
             // TransformList cycle. Yuck.
-            nBW = cnBW;
+      #ifdef USE_XX_SW_ONLY_AT_DL2
+            if (nBLNew == nDL_to_nBL(2)) {
+                nBW = cnBW; // nBWUp? nBWNew?
+            } else
+      #endif // USE_XX_SW_ONLY_AT_DL2
+            {
+                if ((nBW = nBL_to_nBW(nBLNew)) > 3) {
+                    nBW /= 2;
+                }
+            }
       #ifdef USE_XX_SW_ALWAYS
             nBW = nBL_to_nBW(nBLNew);
         } else if (0) {
@@ -5812,6 +5839,7 @@ InsertGuts(qp, Word_t wKey, int nPos
     int nDL = nBL_to_nDL(nBL); // fyi assert(nDL_to_nBL(nDL) >= nBL);
     DBGI(printf("InsertGuts pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
                 (void *)pwRoot, wKey, nBL, wRoot));
+    DBGI(printf("IG: nPos %d\n", nPos));
     Link_t link; (void)link;
 
   // One of the key aspects of USE_XX_SW_ONLY_AT_DL2 is that we go ahead and

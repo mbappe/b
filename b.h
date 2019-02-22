@@ -239,22 +239,14 @@
 // cnBW is the minimum width of a narrow switch.
 #if defined(CODE_XX_SW)
   #if ! defined(cnBW)
-    #ifdef USE_XX_SW_ONLY_AT_DL2
       #define cnBW  1
-    #else // USE_XX_SW_ONLY_AT_DL2
-      #define cnBW  4
-    #endif // #else USE_XX_SW_ONLY_AT_DL2
   #endif // ! defined(cnBW)
 #endif // defined(CODE_XX_SW)
 
 // Default cnBWIncr is 1 if CODE_XX_SW.
 #if defined(CODE_XX_SW)
   #if ! defined(cnBWIncr)
-    #ifdef USE_XX_SW_ONLY_AT_DL2
       #define cnBWIncr  1
-    #else // USE_XX_SW_ONLY_AT_DL2
-      #define cnBWIncr  4
-    #endif // #else USE_XX_SW_ONLY_AT_DL2
   #endif // ! defined(cnBWIncr)
 #endif // defined(CODE_XX_SW)
 
@@ -5032,7 +5024,7 @@ SearchEmbeddedX(Word_t *pw, Word_t wKey, int nBL)
 #if ! defined(LOOKUP_NO_LIST_SEARCH) || ! defined(LOOKUP)
 
 #if defined(COMPRESSED_LISTS)
-  #if (cnBitsInD1 <= 8)
+  #if (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
 
 static int
 SearchList8(qp, int nBLR, Word_t wKey)
@@ -5147,7 +5139,7 @@ ListHasKey8(qp, int nBLR, Word_t wKey)
     return SearchList8(qy, nBLR, wKey) >= 0;
 }
 
-  #endif // (cnBitsInD1 <= 8)
+  #endif // (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
 #endif // defined(COMPRESSED_LISTS)
 
 #if defined(COMPRESSED_LISTS)
@@ -5805,22 +5797,22 @@ SearchList(qp, int nBLR, Word_t wKey)
 {
     qv;
   #if defined(COMPRESSED_LISTS)
-      #if (cnBitsInD1 <= 8)
+      #if (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
       // There is no need for a key size that is equal to or smaller than
       // whatever size yields a bitmap that will fit in a link.
     if (nBLR <= 8) {
         return SearchList8(qy, nBLR, wKey);
     }
-      #endif // defined(cnBitsInD1 <= 8)
+      #endif // (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
+    assert(nBLR > 8);
       #if (cnBitsInD1 <= 16)
     if (nBLR <= 16) {
-        assert(nBLR > 8);
         return SearchList16(qy, nBLR, wKey);
     }
       #endif // defined(cnBitsInD1 <= 16)
+    assert(nBLR > 16);
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
     if (nBLR <= 32) {
-        assert(nBLR > 16);
         int nPopCnt = gnListPopCnt(qy, nBLR);
         return SearchList32(ls_piKeysNATX(pwr, nPopCnt), wKey, nBLR, nPopCnt);
     }
@@ -5843,9 +5835,9 @@ ListHasKey(qp, int nBLR, Word_t wKey)
 {
     qv;
   #if defined(COMPRESSED_LISTS)
-      #if (cnBitsInD1 <= 8)
+      #if (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
     if (nBLR <= 8) { return ListHasKey8(qy, nBLR, wKey); }
-      #endif // (cnBitsInD1 <= 8)
+      #endif // (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
       #if (cnBitsInD1 <= 16)
     if (nBLR <= 16) { return ListHasKey16(qy, nBLR, wKey); }
       #endif // (cnBitsInD1 <= 16)
@@ -6192,7 +6184,7 @@ BmSwIndex(qp, Word_t wDigit,
 #if defined(LOCATEKEY_FOR_LOOKUP)
 
 #if defined(COMPRESSED_LISTS)
-  #if (cnBitsInD1 <= 8)
+  #if (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
 
 static int
 LocateKeyInList8(qp, int nBLR, Word_t wKey)
@@ -6265,7 +6257,7 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
 
     return SearchList8(qy, nBLR, wKey);
 }
-  #endif // (cnBitsInD1 <= 8)
+  #endif // (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
 
 static int
 LocateKeyInList16(qp, int nBLR, Word_t wKey)
@@ -6409,11 +6401,11 @@ LocateKeyInList(qp, int nBLR, Word_t wKey)
 {
     qv;
   #if defined(COMPRESSED_LISTS)
-      #if (cnBitsInD1 <= 8)
+      #if (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
     if (nBLR <= 8) {
         return LocateKeyInList8(qy, nBLR, wKey);
     }
-      #endif // (cnBitsInD1 <= 8)
+      #endif // (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
       #if (cnBitsInD1 <= 16)
     if (nBLR <= 16) {
         return LocateKeyInList16(qy, nBLR, wKey);
