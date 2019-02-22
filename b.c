@@ -3460,6 +3460,114 @@ InsertAllAtBitmap(qp, qpx(Old), int nStart, int nPopCnt)
     } \
 }
 
+static int
+SplayMaxPopCnt(Word_t *pwRootOld, int nBLOld, Word_t wKey, int nBLNew)
+{
+    (void)wKey;
+    int nPopCntMax = 0;
+
+    // Assert that we have a non-empty link that may be a T_LIST[_UA] link
+    // for non-KISS to streamline this function and make caller responsible
+    // for not calling it with an empty link.
+  #ifdef NO_TYPE_IN_XX_SW
+    assert(nBLOld >= nDL_to_nBL(2));
+  #endif // NO_TYPE_IN_XX_SW
+
+    Link_t *pLnOld = STRUCT_OF(pwRootOld, Link_t, ln_wRoot); (void)pLnOld;
+    Word_t wRootOld = *pwRootOld;
+    assert(wRootOld != WROOT_NULL);
+    int nTypeOld = wr_nType(wRootOld);
+    assert(tp_bIsList(nTypeOld));
+    Word_t *pwrOld = wr_pwr(wRootOld);
+    int nPopCnt = PWR_xListPopCnt(&wRootOld, pwrOld, nBLOld);
+
+    Word_t wPrefixKey = wKey & ~MSK(nBLNew);
+
+    int nnStart = 0; (void)nnStart;
+#if defined(COMPRESSED_LISTS)
+    if (nBLOld <= (int)sizeof(uint8_t) * 8) {
+        uint8_t *pcKeys = ls_pcKeysNATX(pwrOld, nPopCnt);
+        Word_t wPrefix = pcKeys[0] & ~MSK(nBLNew);
+        wPrefixKey &= MSK(8);
+        for (int nn = 0; nn < nPopCnt; nn++) {
+            Word_t wPrefixNew = pcKeys[nn] & ~MSK(nBLNew);
+            if (wPrefixNew != wPrefix) {
+lastDigit8:;
+                if (nn - nnStart + (wPrefixKey == wPrefix) > nPopCntMax) {
+                    nPopCntMax = nn - nnStart + (wPrefixKey == wPrefix);
+                }
+                nnStart = nn;
+                wPrefix = wPrefixNew;
+            }
+            if (nn == nPopCnt - 1) {
+                ++nn;
+                goto lastDigit8;
+            }
+        }
+    } else if (nBLOld <= (int)sizeof(uint16_t) * 8) {
+        uint16_t *psKeys = ls_psKeysNATX(pwrOld, nPopCnt);
+        Word_t wPrefix = psKeys[0] & ~MSK(nBLNew);
+        wPrefixKey &= MSK(16);
+        for (int nn = 0; nn < nPopCnt; nn++) {
+            Word_t wPrefixNew = psKeys[nn] & ~MSK(nBLNew);
+            if (wPrefixNew != wPrefix) {
+lastDigit16:;
+                if (nn - nnStart + (wPrefixKey == wPrefix) > nPopCntMax) {
+                    nPopCntMax = nn - nnStart + (wPrefixKey == wPrefix);
+                }
+                nnStart = nn;
+                wPrefix = wPrefixNew;
+            }
+            if (nn == nPopCnt - 1) {
+                ++nn;
+                goto lastDigit16;
+            }
+        }
+#if (cnBitsPerWord > 32)
+    } else if (nBLOld <= (int)sizeof(uint32_t) * 8) {
+        uint32_t *piKeys = ls_piKeysNATX(pwrOld, nPopCnt);
+        Word_t wPrefix = piKeys[0] & ~MSK(nBLNew);
+        wPrefixKey &= MSK(32);
+        for (int nn = 0; nn < nPopCnt; nn++) {
+            Word_t wPrefixNew = piKeys[nn] & ~MSK(nBLNew);
+            if (wPrefixNew != wPrefix) {
+lastDigit32:;
+                if (nn - nnStart + (wPrefixKey == wPrefix) > nPopCntMax) {
+                    nPopCntMax = nn - nnStart + (wPrefixKey == wPrefix);
+                }
+                nnStart = nn;
+                wPrefix = wPrefixNew;
+            }
+            if (nn == nPopCnt - 1) {
+                ++nn;
+                goto lastDigit32;
+            }
+        }
+#endif // (cnBitsPerWord > 32)
+    } else
+#endif // defined(COMPRESSED_LISTS)
+    {
+        Word_t *pwKeys = ls_pwKeysX(pwrOld, nBL, nPopCnt);
+        Word_t wPrefix = pwKeys[0] & ~MSK(nBLNew);
+        for (int nn = 0; nn < nPopCnt; nn++) {
+            Word_t wPrefixNew = pwKeys[nn] & ~MSK(nBLNew);
+            if (wPrefixNew != wPrefix) {
+lastDigit:;
+                if (nn - nnStart + (wPrefixKey == wPrefix) > nPopCntMax) {
+                    nPopCntMax = nn - nnStart + (wPrefixKey == wPrefix);
+                }
+                nnStart = nn;
+                wPrefix = wPrefixNew;
+            }
+            if (nn == nPopCnt - 1) {
+                ++nn;
+                goto lastDigit;
+            }
+        }
+    }
+    return nPopCntMax;
+}
+
 // Insert each key from pwRootOld into pwRoot.  Then free pwRootOld.
 // wKey contains the common prefix.
 // pwRootOld is a non-empty external list.
@@ -3468,6 +3576,9 @@ static void
 Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
 {
     (void)wKey;
+  #ifdef DEBUG
+    int nPopCntMax = 0;
+  #endif // DEBUG
     Word_t wRootOld = *pwRootOld;
     DBGI(printf("\n# Splay nBLOld %d nBL %d ", nBLOld, nBL));
     DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
@@ -3580,6 +3691,11 @@ Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
                 = ((pcKeys[nn] & wDigitMask) | wBitsFromKey) >> nBLLoop;
             if (nDigitNew != nDigit) {
 lastDigit8:;
+  #ifdef DEBUG
+                if (nn - nnStart + (nDigitKey == nDigit) > nPopCntMax) {
+                    nPopCntMax = nn - nnStart + (nDigitKey == nDigit);
+                }
+  #endif // DEBUG
   #ifdef BM_SW_FOR_REAL
                 if (bIsBmSw) {
                     SetBitInSwBmWord(pwRoot, nDigit);
@@ -3687,6 +3803,11 @@ lastDigit8:;
                 = ((psKeys[nn] & wDigitMask) | wBitsFromKey) >> nBLLoop;
             if (nDigitNew != nDigit) {
 lastDigit16:;
+  #ifdef DEBUG
+                if (nn - nnStart + (nDigitKey == nDigit) > nPopCntMax) {
+                    nPopCntMax = nn - nnStart + (nDigitKey == nDigit);
+                }
+  #endif // DEBUG
   #ifdef BM_SW_FOR_REAL
                 if (bIsBmSw) {
                     SetBitInSwBmWord(pwRoot, nDigit);
@@ -3816,6 +3937,11 @@ lastDigit16:;
                 = ((piKeys[nn] & wDigitMask) | wBitsFromKey) >> nBLLoop;
             if (nDigitNew != nDigit) {
 lastDigit32:;
+  #ifdef DEBUG
+                if (nn - nnStart + (nDigitKey == nDigit) > nPopCntMax) {
+                    nPopCntMax = nn - nnStart + (nDigitKey == nDigit);
+                }
+  #endif // DEBUG
   #ifdef BM_SW_FOR_REAL
                 if (bIsBmSw) {
                     SetBitInSwBmWord(pwRoot, nDigit);
@@ -3952,6 +4078,11 @@ lastDigit32:;
                 = ((pwKeys[nn] & wDigitMask) | wBitsFromKey) >> nBLLoop;
             if (nDigitNew != nDigit) {
 lastDigit:;
+  #ifdef DEBUG
+                if (nn - nnStart + (nDigitKey == nDigit) > nPopCntMax) {
+                    nPopCntMax = nn - nnStart + (nDigitKey == nDigit);
+                }
+  #endif // DEBUG
   #ifdef BM_SW_FOR_REAL
                 if (bIsBmSw) {
                     SetBitInSwBmWord(pwRoot, nDigit);
@@ -4071,6 +4202,10 @@ lastDigit:;
             }
         }
     }
+
+  #ifdef DEBUG
+    assert(nPopCntMax == SplayMaxPopCnt(pwRootOld, nBLOld, wKey, nBLLoop));
+  #endif // DEBUG
 
     // Fix up pop count in the new switch.
     Word_t wPopCnt = 0;
