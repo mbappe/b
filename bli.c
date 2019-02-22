@@ -2046,6 +2046,8 @@ t_bitmap:;
     #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
       #ifdef USE_XX_SW_ONLY_AT_DL2
             // We assume we never blow-out into a one-digit bitmap.
+// But that doesn't mean we don't want to support skip directly to a
+// one-digit bitmap bypassing DL2.
             // We just double until we end up with one big bitmap at DL2.
             // But what about when we create XX_SW at (nBLR == nBitsLeftAtDl2)
             // and cbEmbeddedBitmap and nBLR - cnBW == cnBitsInD1? We did not

@@ -3175,8 +3175,8 @@ InsertCleanup(qp, Word_t wKey)
     }
 #endif // defined(CODE_BM_SW)
 
-#ifdef BITMAP
-#if (cn2dBmMaxWpkPercent != 0) // conversion to big bitmap enabled
+  #ifdef BITMAP
+      #if (cn2dBmMaxWpkPercent != 0) // conversion to big bitmap enabled
     int nDL = nBL_to_nDL(nBL);
 
     (void)nDL;
@@ -3184,9 +3184,9 @@ InsertCleanup(qp, Word_t wKey)
     int nBLR = GetBLR(pwRoot, nBL);
     if ((nBLR == nDL_to_nBL(2))
         && tp_bIsSwitch(nType)
-#if defined(CODE_BM_SW)
+          #if defined(CODE_BM_SW)
         && !tp_bIsBmSw(nType) // can't handle it yet
-#endif // defined(CODE_BM_SW)
+          #endif // defined(CODE_BM_SW)
         // if wpk > maxwpk, don't convert
         // if wpk < maxwpk, convert
         // if words / keys < maxwpk, convert
@@ -3220,10 +3220,12 @@ InsertCleanup(qp, Word_t wKey)
         DBGI(printf("\n# IC: Creating a bitmap at nBL %d.\n", nBL));
 
         int nBW;
-#if defined(USE_XX_SW)
+          #if defined(USE_XX_SW)
+              #if defined(USE_XX_SW_ONLY_AT_DL2)
         assert(tp_bIsXxSw(nType));
+              #endif // defined(USE_XX_SW_ONLY_AT_DL2)
         if (tp_bIsXxSw(nType)) { nBW = pwr_nBW(&wRoot); } else
-#endif // defined(USE_XX_SW)
+          #endif // defined(USE_XX_SW)
         {
             assert(nBLR == nDL_to_nBL(nBL_to_nDL(nBLR)));
             nBW = nBL_to_nBW(nBLR);
@@ -3247,9 +3249,9 @@ InsertCleanup(qp, Word_t wKey)
         for (Word_t ww = 0; ww < EXP(nBW); ww++)
         {
             Link_t *pLnLn =
-#if defined(USE_LIST_SW)
+          #if defined(USE_LIST_SW)
                 (nType == T_LIST_SW) ? &gpListSwLinks(qy)[ww] :
-#endif // defined(USE_LIST_SW)
+          #endif // defined(USE_LIST_SW)
                 &pwr_pLinks((Switch_t *)pwr)[ww];
             Word_t *pwRootLn = &pLnLn->ln_wRoot;
             Word_t wRootLn = *pwRootLn;
@@ -3260,15 +3262,15 @@ InsertCleanup(qp, Word_t wKey)
             if (wRootLn == WROOT_NULL) {
                 continue;
             }
-#if defined(NO_TYPE_IN_XX_SW)
+          #if defined(NO_TYPE_IN_XX_SW)
             if (nBLLn < nDL_to_nBL(2)) {
                 goto embeddedKeys;
             }
-#endif // defined(NO_TYPE_IN_XX_SW)
+          #endif // defined(NO_TYPE_IN_XX_SW)
             int nTypeLn = wr_nType(wRootLn);
             Word_t *pwrLn = wr_pwr(wRootLn);
 
-#if defined(EMBED_KEYS)
+          #if defined(EMBED_KEYS)
             if (nTypeLn == T_EMBEDDED_KEYS) {
                 goto embeddedKeys;
 embeddedKeys:;
@@ -3280,8 +3282,7 @@ embeddedKeys:;
                 }
                 continue;
             }
-#endif // defined(EMBED_KEYS)
-#ifdef BITMAP
+          #endif // defined(EMBED_KEYS)
             if (nTypeLn == T_BITMAP) {
                 Word_t *pwBitmapLn = ((BmLeaf_t*)pwrLn)->bmlf_awBitmap;
                 memcpy(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
@@ -3290,23 +3291,22 @@ embeddedKeys:;
                 OldBitmap(pwrLn, nBLLn, wPopCntLn);
                 continue;
             }
-#endif // BITMAP
-#if (cwListPopCntMax != 0)
+          #if (cwListPopCntMax != 0)
             {
-#if defined(DEBUG)
+              #if defined(DEBUG)
                 if (nTypeLn != T_LIST)
-  #if defined(UA_PARALLEL_128)
+                  #if defined(UA_PARALLEL_128)
                     if (nTypeLn != T_LIST_UA)
-  #endif // defined(UA_PARALLEL_128)
+                  #endif // defined(UA_PARALLEL_128)
                     { printf("nTypeLn %d\n", nTypeLn); }
                 assert((nTypeLn == T_LIST)
-  #if defined(UA_PARALLEL_128)
-                   || (nTypeLn == T_LIST_UA)
-  #endif // defined(UA_PARALLEL_128)
-                   );
-#endif // defined(DEBUG)
+                  #if defined(UA_PARALLEL_128)
+                       || (nTypeLn == T_LIST_UA)
+                  #endif // defined(UA_PARALLEL_128)
+                       );
+              #endif // defined(DEBUG)
                 int nPopCntLn = PWR_xListPopCnt(pwRootLn, pwrLn, nBLLn);
-#ifdef COMPRESSED_LISTS
+              #ifdef COMPRESSED_LISTS
                 if (nBLLn <= 8) {
                     uint8_t *pcKeysLn = ls_pcKeysNATX(pwrLn, nPopCntLn);
                     for (int nn = 0; nn < nPopCntLn; nn++) {
@@ -3314,20 +3314,20 @@ embeddedKeys:;
                                (pcKeysLn[nn] & wBLM));
                     }
                 } else
-  #if (cnBitsPerWord == 64)
+                  #if (cnBitsPerWord == 64)
                 if (nBLLn <= 16)
-  #endif // (cnBitsPerWord == 64)
+                  #endif // (cnBitsPerWord == 64)
                 {
-  #if (cnBitsPerWord == 32)
+                  #if (cnBitsPerWord == 32)
                     assert(nBLLn <= 16);
-  #endif // (cnBitsPerWord == 32)
+                  #endif // (cnBitsPerWord == 32)
                     uint16_t *psKeysLn = ls_psKeysNATX(pwrLn, nPopCntLn);
                     for (int nn = 0; nn < nPopCntLn; nn++) {
                         SetBit(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
                                (psKeysLn[nn] & wBLM));
                     }
                 }
-  #if (cnBitsPerWord == 64)
+                  #if (cnBitsPerWord == 64)
                 else {
                     assert(nBLLn <= 32);
                     uint32_t *piKeysLn = ls_piKeysNATX(pwrLn, nPopCntLn);
@@ -3336,27 +3336,27 @@ embeddedKeys:;
                                (piKeysLn[nn] & wBLM));
                     }
                 }
-  #endif // (cnBitsPerWord == 64)
-#else // COMPRESSED_LISTS
+                  #endif // (cnBitsPerWord == 64)
+              #else // COMPRESSED_LISTS
                 Word_t *pwKeysLn = ls_pwKeysNATX(pwrLn, nPopCntLn);
                 for (int nn = 0; nn < nPopCntLn; nn++) {
                     SetBit(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
                            (pwKeysLn[nn] & wBLM));
                 }
-#endif // COMPRESSED_LISTS
+              #endif // COMPRESSED_LISTS
                 assert(nPopCntLn != 0);
                 OldList(pwrLn, nPopCntLn, nBLLn, T_LIST);
             }
-#endif // (cwListPopCntMax != 0)
+          #endif // (cwListPopCntMax != 0)
         }
 
         OldSwitch(&wRoot, nBL,
-#if defined(CODE_BM_SW)
+          #if defined(CODE_BM_SW)
                   /* bBmSw */ 0, /* nLinks */ 0,
-#endif // defined(CODE_BM_SW)
+          #endif // defined(CODE_BM_SW)
                   /* nBLUp */ nBL);
 
-#if defined(DEBUG)
+          #if defined(DEBUG)
         int count = 0;
         for (int jj = 0; jj < (int)EXP(nBLR - cnLogBitsPerWord); jj++)
         {
@@ -3373,16 +3373,16 @@ embeddedKeys:;
             Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord);
         }
         assert(count == (int)wPopCnt);
-#endif // defined(DEBUG)
+          #endif // defined(DEBUG)
     }
-#endif // (cn2dBmMaxWpkPercent != 0)
-#endif // BITMAP
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
+      #endif // (cn2dBmMaxWpkPercent != 0)
+  #endif // BITMAP
+  #if defined(B_JUDYL) && defined(EMBED_KEYS)
     // InsertCleanup may or may not change pwValue.
     // It returns NULL for unchanged.
     DBGX(printf("InsertCleanup returning pwValue %p\n", pwValue));
     return pwValue;
-#endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
+  #endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
 }
 
 #if (cwListPopCntMax != 0)
@@ -4974,7 +4974,8 @@ TransformList(qp,
     int nDLNew = nBL_to_nDL(nBLNew);
 
     // How the heck is TransformList supposed to figure out what
-    // the caller wants?
+    // the caller wants? Does it matter?
+    // Does it matter if the list is full or not?
 // To widen a switch when pop count justifies it for USE_XX_SW_ONLY_AT_DL2?
     // Can we limit TransformList to bitmap conversions and Splay?
     // nBLNew == nBL is quite ambiguous.
@@ -4983,6 +4984,16 @@ TransformList(qp,
     DBGI(printf("TransformList 0 nDLNew %d nBLNew %d nDL %d nBL %d\n",
                 nDLNew, nBLNew, nDL, nBL));
 #if defined(SKIP_LINKS)
+
+  #ifdef SKIP_TO_BITMAP
+    // Assuming here that we cannot skip to a list so if we want to skip to
+    // D1 we have to skip to a bitmap.
+    // What if USE_XX_SW_ONLY_AT_DL2?
+    if ((nDLNew == 1) && (nDL > 1) && !cbEmbeddedBitmap) {
+        // Shouldn't we make sure the population justifies a bitmap?
+        goto newSkipToBitmap;
+    }
+  #endif // SKIP_TO_BITMAP
 
     // Apply constraints that cause us to create the new switch
     // at a higher level than would be required if only the common
@@ -5048,12 +5059,13 @@ TransformList(qp,
     // nBLNew, then we should create a bitmap,
     // i.e. (nBLNew - nBW) <= cnLogBitsPerLink.
   #endif // B_JUDYL
-      #ifdef USE_XX_SW_ONLY_AT_DL2
+      //#ifdef USE_XX_SW_ONLY_AT_DL2
     // t_bitmap in Insert1 can't handle a bitmap at (nBL != cnBitsLeftAtD2)
     // for USE_XX_SW_ONLY_AT_DL2 because we don't want to have to test for it.
+// I'm not seeing that limitation still exists when I look at the code.
     // We expect that once (nBL == cnBitsLeftAtDl2) we just keep doubling
     // until (nBL == cnLogBitsPerLink).
-      #else // USE_XX_SW_ONLY_AT_DL2
+      //#else // USE_XX_SW_ONLY_AT_DL2
 // Splay is complicated by this installation of a (close) bitmap.
 // Why don't we allow skip to bitmap?
     if ((nDLNew == 1) && !cbEmbeddedBitmap) {
@@ -5061,6 +5073,8 @@ TransformList(qp,
             printf("\nnBLNew %d nBL %d\n", nBLNew, nBL);
         }
         assert(nBLNew == nBL);
+        goto newSkipToBitmap;
+newSkipToBitmap:;
         // NewBitmap changes *pwRoot and we may change the Link_t
         // containing it on return from NewBitmap.
         // We need to preserve the Link_t for subsequent InsertAll.
@@ -5077,6 +5091,9 @@ TransformList(qp,
 // *pLn and *pwRoot are changed.
         int nPopCntOld = GetPopCnt(pwRootOld, nBL);
         pwr = NewBitmap(qy, nBLNew, wKey, nPopCntOld);
+          #ifdef SKIP_TO_BITMAP
+        assert((nBLNew == nBL) || (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP));
+          #endif // SKIP_TO_BITMAP
         assert((int)GetPopCnt(pwRoot, nBLNew) == nPopCntOld);
           #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         // When is this necessary? Only if nBLNew != nBL?
@@ -5090,7 +5107,7 @@ TransformList(qp,
         goto finalInsert;
     }
     else
-      #endif // #else USE_XX_SW_ONLY_AT_DL2
+      //#endif // #else USE_XX_SW_ONLY_AT_DL2
 #endif // BITMAP
     {
 #if defined(USE_BM_SW) || defined(CODE_XX_SW)
@@ -5341,9 +5358,9 @@ TransformList(qp,
     }
 
   #ifdef BITMAP
-  #ifndef USE_XX_SW_ONLY_AT_DL2
+  //#ifndef USE_XX_SW_ONLY_AT_DL2
 finalInsert:
-  #endif // #ifndef USE_XX_SW_ONLY_AT_DL2
+  //#endif // #ifndef USE_XX_SW_ONLY_AT_DL2
   #endif // BITMAP
 
     if (nBLNew == nBL) {
