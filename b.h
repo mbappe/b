@@ -1581,12 +1581,9 @@ static inline int
 tp_bIsSkip(int nType)
 {
     (void)nType;
-#if defined(SKIP_LINKS)
-  #if defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
+  #if defined(SKIP_LINKS)
     switch (nType) {
-      #if defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
     case T_SKIP_TO_SWITCH:
-      #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
       #if defined(SKIP_TO_LIST_SW)
     case T_SKIP_TO_LIST_SW:
       #endif // defined(SKIP_TO_LIST_SW)
@@ -1596,15 +1593,20 @@ tp_bIsSkip(int nType)
       #if defined(SKIP_TO_XX_SW)
     case T_SKIP_TO_XX_SW:
       #endif // defined(SKIP_TO_XX_SW)
-  #if defined(SKIP_TO_BITMAP)
+      #ifdef SKIP_TO_LIST
+    case T_SKIP_TO_LIST:
+      #endif // SKIP_TO_LIST
+      #if defined(SKIP_TO_BITMAP)
     case T_SKIP_TO_BITMAP:
-  #endif // defined(SKIP_TO_BITMAP)
+      #endif // defined(SKIP_TO_BITMAP)
         return 1;
+      #ifndef LVL_IN_WR_HB
+      #ifndef LVL_IN_PP
+    default: return (nType > T_SKIP_TO_SWITCH);
+      #endif // #ifndef LVL_IN_PP
+      #endif // #ifndef LVL_IN_WR_HB
     }
-  #else // defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
-    if (nType >= T_SKIP_TO_SWITCH) { return 1;}
-  #endif // defined(LVL_IN_WR_HB) || defined(LVL_IN_PP)
-#endif // defined(SKIP_LINKS)
+  #endif // defined(SKIP_LINKS)
     return 0;
 }
 
@@ -1620,6 +1622,9 @@ tp_bIsList(int nType)
       #ifdef UA_PARALLEL_128
              || (nType == T_LIST_UA)
       #endif // UA_PARALLEL_128
+      #ifdef SKIP_TO_LIST
+             || (nType == T_SKIP_TO_LIST)
+      #endif // SKIP_TO_LIST
       #ifdef XX_LISTS
              || (nType == T_XX_LIST)
       #endif // XX_LISTS
@@ -1728,22 +1733,15 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
 #if defined(LVL_IN_WR_HB)
 
-  #if defined(SKIP_TO_BITMAP)
     #define wr_nBL(_wr) \
-        (assert((tp_bIsSwitch(wr_nType(_wr)) && tp_bIsSkip(wr_nType(_wr))) \
-                || (wr_nType(_wr) == T_SKIP_TO_BITMAP)), \
+        (assert(tp_bIsSkip(wr_nType(_wr))), \
             (int)GetBits((_wr), cnBitsLvl, cnLsbLvl))
-  #else // defined(SKIP_TO_BITMAP)
-    #define wr_nBL(_wr) \
-        (assert(tp_bIsSwitch(wr_nType(_wr)) && tp_bIsSkip(wr_nType(_wr))), \
-            (int)GetBits((_wr), cnBitsLvl, cnLsbLvl))
-  #endif // defined(SKIP_TO_BITMAP)
 
   #define wr_nDL(_wr)  nBL_to_nDL(wr_nBL(_wr))
 
   #define set_wr_nBL(_wr, _nBL) \
       (assert((_nBL) <= (int)MSK(cnBitsLvl)), \
-          set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
+          assert(tp_bIsSkip(wr_nType(_wr))), \
           SetBits(&(_wr), cnBitsLvl, cnLsbLvl, (_nBL)))
 
   #define set_wr_nDL(_wr, _nDL)  set_wr_nBL((_wr), nDL_to_nBL(_nDL))
@@ -1786,11 +1784,11 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
   #define set_wr_nBL(_wr, _nBL) \
       (assert((_nBL) >= cnBitsLeftAtDl2), \
-       set_wr_nType((_wr), T_SKIP_TO_SWITCH), \
-       (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
-           = ((PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
-                   & ~wPrefixPopMaskBL(cnBitsLeftAtDl2)) \
-               | (_nBL))))
+          assert(tp_bIsSkip(wr_nType(_wr))), \
+          (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
+              = ((PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
+                      & ~wPrefixPopMaskBL(cnBitsLeftAtDl2)) \
+                  | (_nBL))))
 
   #define set_wr_nDL(_wr, _nDL)  set_wr_nBL((_wr), nDL_to_nBL(_nDL))
 
@@ -2764,6 +2762,8 @@ typedef struct {
     Word_t bmlf_awBitmap[0];
 } BmLeaf_t;
 
+static int GetBLR(Word_t *pwRoot, int nBL);
+
 #ifdef SKIP_LINKS
 // Set the level of the object in number of bits left to decode.
 // Use this only when *pwRoot is a skip link.
@@ -2791,9 +2791,15 @@ gpwEmbeddedValue(qp, Word_t wLinks, Word_t wIndex)
   #endif // EMBED_KEYS
 
 static Word_t*
-gpwValues(qp)
+gpwValues(qp) // gpwListValues
 {
     qv;
+  #ifdef SKIP_TO_LIST
+    if (nType == T_SKIP_TO_LIST) {
+        assert(GetBLR(pwRoot, nBL) <= 32);
+        return &pwr[-1];
+    }
+  #endif // SKIP_TO_LIST
   #ifdef LIST_POP_IN_PREAMBLE
     return &pwr[-1];
   #else // LIST_POP_IN_PREAMBLE
@@ -2976,7 +2982,7 @@ Get_xListPopCnt(Word_t *pwRoot, int nBL)
     Word_t wRoot = *pwRoot;
     int nType = wr_nType(wRoot);
     Word_t *pwr = wr_pwr(wRoot);
-    return gnListPopCnt(qy, /* nBLR */ nBL);
+    return gnListPopCnt(qy, GetBLR(pwRoot, nBL));
 }
 
 // pwr aka ls points to the highest malloc-aligned address in the
@@ -3037,16 +3043,26 @@ GetBLR(Word_t *pwRoot, int nBL)
 #endif // defined(NO_TYPE_IN_XX_SW)
 
     return
-  #if defined(SKIP_LINKS)
-        ((tp_bIsSwitch(wr_nType(*pwRoot)) && tp_bIsSkip(wr_nType(*pwRoot)))
-      #if defined(SKIP_TO_BITMAP)
-                || (wr_nType(*pwRoot) == T_SKIP_TO_BITMAP)
-      #endif // defined(SKIP_TO_BITMAP)
-                || 0)
-            ? (int)wr_nBL(*pwRoot) :
-  #endif // defined(SKIP_LINKS)
-              nBL ;
+  #ifdef SKIP_LINKS
+        tp_bIsSkip(wr_nType(*pwRoot)) ? (int)wr_nBL(*pwRoot) :
+  #endif // SKIP_LINKS
+            nBL;
 }
+
+  #ifdef SKIP_TO_LIST
+static Word_t
+gwListPrefix(qp, int nBLR)
+{
+    qv; (void)nBLR;
+    assert(nType == T_SKIP_TO_LIST);
+  #if defined(PP_IN_LINK)
+    return PWR_wPrefixBL(pwRoot, pwr, nBLR);
+  #else // defined(PP_IN_LINK)
+    assert(nBLR == 32);
+    return w_wPrefixNotAtTopBL(pwr[-1], nBLR);
+  #endif // #else defined(PP_IN_LINK)
+}
+  #endif // SKIP_TO_LIST
 
 #if defined(BITMAP)
 
@@ -6574,5 +6590,34 @@ extern Word_t j__AllocWordsJV;   // value area
 #endif // B_JUDYL
 
 #endif // defined(RAMMETRICS)
+
+// This is a good place to test ifdef constraints -- at the end of the last
+// header file -- after all macros have been defined.
+// This is not a good place to use one macro to affect the definition of
+// another -- that should be done in bdefines.h.
+
+// If we're using the type field to encode type and level then we can only
+// skip to a regular switch.
+#ifndef LVL_IN_WR_HB
+#ifndef LVL_IN_PP
+  // We have a different type value for each level. So we can only support
+  // skip to a regular switch.
+  #ifdef SKIP_TO_BM_SW
+    #error No SKIP_TO_BM_SW with level in type.
+  #endif // SKIP_TO_BM_SW
+  #ifdef SKIP_TO_XX_SW
+    #error No SKIP_TO_XX_SW with level in type.
+  #endif // SKIP_TO_XX_SW
+  #ifdef SKIP_TO_LIST_SW
+    #error No SKIP_TO_LIST_SW with level in type.
+  #endif // SKIP_TO_LIST_SW
+  #ifdef SKIP_TO_LIST
+    #error No SKIP_TO_LIST with level in type.
+  #endif // SKIP_TO_LIST
+  #ifdef SKIP_TO_BITMAP
+    #error No SKIP_TO_BITMAP with level in type.
+  #endif // SKIP_TO_BITMAP
+#endif // #ifndef LVL_IN_PP
+#endif // #ifndef LVL_IN_WR_HB
 
 #endif // ( ! defined(_B_H_INCLUDED) )

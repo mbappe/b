@@ -599,11 +599,12 @@ CalcListWordCnt(Word_t wPopCntArg, unsigned nBL)
 // It respects all alignment constraints.
 // The return value could be passed to MyMalloc and we'd get a buffer
 // big enough for the list.
-// Our current approach for 64-bit JudyL is to put the key area after the
-// value area with pwr pointing at the key area. One benefit of this
+// Our current approach for 64-bit JudyL is to put the value area before
+// the key area with pwr pointing at the key area. One benefit of this
 // approach is locating the value after finding the key is really easy.
 // One disadvantage is we have to align the key area on a malloc boundary.
 // What cases can we not handle yet? We assume pop is not in key area.
+// We assume SKIP_TO_LIST prefix is not in key area.
 #ifndef LIST_POP_IN_PREAMBLE
 #ifndef POP_WORD_IN_LINK
 #ifndef POP_IN_WR_HB
@@ -614,48 +615,58 @@ CalcListWordCnt(Word_t wPopCntArg, unsigned nBL)
 #endif // #ifndef POP_WORD_IN_LINK
 #endif // #ifndef LIST_POP_IN_PREAMBLE
 static int
-ListWordsMin(int nPopCnt, int nBL)
+ListWordsMin(int nPopCnt, int nBLR)
 {
-    int nBytesPerKey = ExtListBytesPerKey(nBL);
-#ifdef _LIST_POP_IN_LINK_X
-    assert(nBL != cnBitsPerWord);
-#endif // _LIST_POP_IN_LINK_X
-#ifdef B_JUDYL
-#ifndef PACK_L1_VALUES
-    if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
+    int nBytesPerKey = ExtListBytesPerKey(nBLR);
+  #ifdef _LIST_POP_IN_LINK_X
+    // This assertion is too weak.
+    // We should be checking nBL != cnBitsPerWord.
+    assert(nBLR != cnBitsPerWord);
+  #endif // _LIST_POP_IN_LINK_X
+  #ifdef B_JUDYL
+  #ifndef PACK_L1_VALUES
+    if ((cnBitsInD1 <= 8) && (nBLR == cnBitsInD1)) {
         nPopCnt = EXP(cnBitsInD1);
     }
-#endif // #ifndef PACK_L1_VALUES
-#endif // B_JUDYL
-#ifdef UA_PARALLEL_128 // implies !B_JUDYL && PARALLEL_128 && 32-bit
-  #ifdef B_JUDYL
-    #error UA_PARALLEL_128 and B_JUDYL are incompatible
+  #endif // #ifndef PACK_L1_VALUES
   #endif // B_JUDYL
-  #ifndef PARALLEL_128
+  #ifdef UA_PARALLEL_128 // implies !B_JUDYL && PARALLEL_128 && 32-bit
+      #ifdef B_JUDYL
+    #error UA_PARALLEL_128 and B_JUDYL are incompatible
+      #endif // B_JUDYL
+      #ifndef PARALLEL_128
     #error UA_PARALLEL_128 and no PARALLEL_128 are incompatible
-  #endif // PARALLEL_128
-  #if (cnBitsPerWord > 32)
+      #endif // PARALLEL_128
+      #if (cnBitsPerWord > 32)
     #error UA_PARALLEL_128 and 64-bit are incompatible
-  #endif // (cnBitsPerWord > 32)
+      #endif // (cnBitsPerWord > 32)
     // I wonder if we could calculate the population count for this case to
     // obviate the need for a pop count in memory.
-    if ((nPopCnt <= 6) && (nBL == 16)) {
+    if ((nPopCnt <= 6) && (nBLR == 16)) {
         return 3;
     }
-#endif // UA_PARALLEL_128
+  #endif // UA_PARALLEL_128
     int nBytesPerBucket // key allocation unit
         = ALIGN_LIST_LEN(nBytesPerKey) ? sizeof(Bucket_t) : sizeof(Word_t);
     int nKeyBytes = ALIGN_UP(nPopCnt * nBytesPerKey, nBytesPerBucket);
     int nKeyWords = nKeyBytes / sizeof(Word_t); // accumulator
-#ifdef B_JUDYL
+  #ifdef B_JUDYL
     int nValueWords = nPopCnt;
-  #ifdef LIST_POP_IN_PREAMBLE
+      #ifdef SKIP_TO_LIST
+      #ifndef PP_IN_LINK
+    // Make room for prefix.
+    if (nBLR <= cnBitsPerDigit / 2) {
+        ++nValueWords;
+    }
+      #endif // #ifndef PP_IN_LINK
+      #endif // SKIP_TO_LIST
+      #ifdef LIST_POP_IN_PREAMBLE
     ++nValueWords; // space for list pop
-  #else // LIST_POP_IN_PREAMBLE
-      #if (cnBitsPerWord == 32)
-          #error ListWordsMin requires LIST_POP_IN_PREAMBLE for 32-bit JudyL.
-      #endif // (cnBitsPerWord == 32)
-  #endif // #else LIST_POP_IN_PREAMBLE
+      #else // LIST_POP_IN_PREAMBLE
+          #if (cnBitsPerWord == 32)
+    #error ListWordsMin requires LIST_POP_IN_PREAMBLE for 32-bit JudyL.
+          #endif // (cnBitsPerWord == 32)
+      #endif // #else LIST_POP_IN_PREAMBLE
     // Keys must begin on a malloc alignment boundary.
     nValueWords = ALIGN_UP(nValueWords,
                            cnMallocAlignment >> cnLogBytesPerWord);
@@ -667,7 +678,9 @@ ListWordsMin(int nPopCnt, int nBL)
     assert((cnMallocAlignment >= sizeof(Bucket_t))
         || !ALIGN_LIST(nBytesPerKey));
     nKeyWords += nValueWords;
-#endif // B_JUDYL
+#else // B_JUDYL
+    // Prefix and/or pop have to be in the link or the preamble.
+#endif // #else B_JUDYL
     return nKeyWords; // accumulated list words
 }
 
@@ -680,9 +693,9 @@ ListWordsMin(int nPopCnt, int nBL)
 // They have not been enhanced for header words
 // LIST_END_MARKERS, !LIST_REQ_MIN_WORDS, !OLD_LISTS.
 static int
-CalcListWordCnt(int nPopCnt, int nBL)
+CalcListWordCnt(int nPopCnt, int nBLR)
 {
-    int nListWordsMin = ListWordsMin(nPopCnt, nBL);
+    int nListWordsMin = ListWordsMin(nPopCnt, nBLR);
     // What is the first power of two bigger than nListWordsMin ** 2?
     // nListWordsMin being a power of two does us no good because it won't
     // accommodate the malloc overhead word.
@@ -694,15 +707,15 @@ CalcListWordCnt(int nPopCnt, int nBL)
     if (nListWordsMin > nWords - 1) { nWords = nNextPow; }
     --nWords; // Subtract malloc overhead word for request.
 #ifdef DEBUG
-    if (nPopCnt > auListPopCntMax[nBL]) {
-        printf("nPopCnt %d auListPopCntMax[nBL %d] %u\n",
-                nPopCnt, nBL, auListPopCntMax[nBL]);
+    if (nPopCnt > auListPopCntMax[nBLR]) {
+        printf("nPopCnt %d auListPopCntMax[nBLR %d] %u\n",
+                nPopCnt, nBLR, auListPopCntMax[nBLR]);
     }
 #endif // DEBUG
-    assert((nPopCnt <= auListPopCntMax[nBL])
+    assert((nPopCnt <= auListPopCntMax[nBLR])
 #ifdef EMBED_KEYS
   #ifndef POP_CNT_MAX_IS_KING
-        || (auListPopCntMax[nBL] < EmbeddedListPopCntMax(nBL))
+        || (auListPopCntMax[nBLR] < EmbeddedListPopCntMax(nBLR))
   #endif // #ifndef POP_CNT_MAX_IS_KING
 #endif // EMBED_KEYS
             );
@@ -712,11 +725,11 @@ CalcListWordCnt(int nPopCnt, int nBL)
     // Don't waste cpu calling EmbeddedListPopCntMax.
 #ifdef EMBED_KEYS
   #ifndef POP_CNT_MAX_IS_KING
-    if (nPopCnt <= auListPopCntMax[nBL])
+    if (nPopCnt <= auListPopCntMax[nBLR])
   #endif // #ifndef POP_CNT_MAX_IS_KING
 #endif // EMBED_KEYS
     {
-        int nFullListWordsMin = ListWordsMin(auListPopCntMax[nBL], nBL);
+        int nFullListWordsMin = ListWordsMin(auListPopCntMax[nBLR], nBLR);
         if (nFullListWordsMin < nWords) {
             nWords = nFullListWordsMin;
         }
@@ -735,15 +748,15 @@ CalcListWordCnt(int nPopCnt, int nBL)
 #endif // #else OLD_LIST_WORD_CNT
 
 static int
-ListWordCnt(int nPopCnt, int nBL)
+ListWordCnt(int nPopCnt, int nBLR)
 {
-    assert(nBL < (int)(sizeof(aauListWordCnt) / sizeof(aauListWordCnt[0])));
+    assert(nBLR < (int)(sizeof(aauListWordCnt) / sizeof(aauListWordCnt[0])));
     assert(nPopCnt
            < (int)(sizeof(aauListWordCnt[0]) / sizeof(aauListWordCnt[0][0])));
-    int nListWordCnt = aauListWordCnt[nBL][nPopCnt];
+    int nListWordCnt = aauListWordCnt[nBLR][nPopCnt];
     if (nListWordCnt == 0) {
-        nListWordCnt = CalcListWordCnt(nPopCnt, nBL);
-        aauListWordCnt[nBL][nPopCnt] = nListWordCnt;
+        nListWordCnt = CalcListWordCnt(nPopCnt, nBLR);
+        aauListWordCnt[nBLR][nPopCnt] = nListWordCnt;
     }
     return nListWordCnt;
 }
@@ -767,23 +780,23 @@ CalcListSlotCnt(int nPopCnt, int nBL)
 // How do we do it? Successive approximation method. Yuck.
 // How many keys fit in a list buffer that must hold at least nPopCnt keys?
 static int
-CalcListSlotCnt(int nPopCnt, int nBL)
+CalcListSlotCnt(int nPopCnt, int nBLR)
 {
-#ifdef B_JUDYL
-#ifndef PACK_L1_VALUES
-    if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
+  #ifdef B_JUDYL
+  #ifndef PACK_L1_VALUES
+    if ((cnBitsInD1 <= 8) && (nBLR == cnBitsInD1)) {
         return EXP(cnBitsInD1);
     }
-#endif // #ifndef PACK_L1_VALUES
-#endif // B_JUDYL
-    int nBytesPerKey = ExtListBytesPerKey(nBL);
+  #endif // #ifndef PACK_L1_VALUES
+  #endif // B_JUDYL
+    int nBytesPerKey = ExtListBytesPerKey(nBLR);
     int nBytesPerBucket
         = ALIGN_LIST_LEN(nBytesPerKey)
-#ifdef UA_PARALLEL_128 // implies B_JUDYL && PARALLEL_128
-                && ((nPopCnt > 6) || (nBL != 2))
+#ifdef UA_PARALLEL_128 // implies !B_JUDYL && PARALLEL_128 && 32-bit
+                && ((nPopCnt > 6) || (nBLR != 2))
 #endif // UA_PARALLEL_128
             ? sizeof(Bucket_t) : sizeof(Word_t);
-    int nListWords = ListWordCnt(nPopCnt, nBL);
+    int nListWords = ListWordCnt(nPopCnt, nBLR);
     int nWordsPerBucket = nBytesPerBucket >> cnLogBytesPerWord;
     int nWordsPerUnit = nWordsPerBucket; // accumulator
     int nKeysPerBucket = nBytesPerBucket / nBytesPerKey;
@@ -799,23 +812,37 @@ CalcListSlotCnt(int nPopCnt, int nBL)
     // It must be bucket aligned if we are aligning buckets.
     assert((nWordsPerBucket <= nWordsPerMallocChunk)
         || !ALIGN_LIST(nBytesPerKey));
-#ifdef LIST_POP_IN_PREAMBLE
+    int nListWordsMinus = nListWords; // accumulator
+      #ifdef LIST_POP_IN_PREAMBLE
     // How do we incorporate the pop word?
     // I'm not sure about this method.
     // I wonder if we should go after key chunks first rather than
     // value chunks.
-    int nListChunks = (nListWords - 1) / nWordsPerChunk;
-#else // LIST_POP_IN_PREAMBLE
-    int nListChunks = nListWords / nWordsPerChunk;
-#endif // #endif LIST_POP_IN_PREAMBLE
+    --nListWordsMinus;
+      #endif // LIST_POP_IN_PREAMBLE
+      #ifdef SKIP_TO_LIST
+      #ifndef PP_IN_LINK
+    if (nBLR <= cnBitsPerDigit / 2) {
+        --nListWordsMinus;
+    }
+      #endif // #ifndef PP_IN_LINK
+      #endif // SKIP_TO_LIST
+    int nListChunks = nListWordsMinus / nWordsPerChunk;
     int nValueChunks = nListChunks * nKeysPerBucket / nWordsPerUnit;
     if (nValueChunks == 0) {
         nValueChunks = 1;
     }
     int nValues = nValueChunks * nWordsPerChunk;
-#ifdef LIST_POP_IN_PREAMBLE
+      #ifdef LIST_POP_IN_PREAMBLE
     --nValues;
-#endif // LIST_POP_IN_PREAMBLE
+      #endif // LIST_POP_IN_PREAMBLE
+      #ifdef SKIP_TO_LIST
+      #ifndef PP_IN_LINK
+    if (nBLR <= cnBitsPerDigit / 2) {
+        --nValues;
+    }
+      #endif // #ifndef PP_IN_LINK
+      #endif // SKIP_TO_LIST
     int nKeyBuckets
         = (nListWords - nValueChunks * nWordsPerChunk) / nWordsPerBucket;
     int nKeys = nKeyBuckets * nKeysPerBucket;
@@ -840,25 +867,25 @@ CalcListSlotCnt(int nPopCnt, int nBL)
 #endif // #endif B_JUDYL
 #ifdef EMBED_KEYS
   #ifndef POP_CNT_MAX_IS_KING
-    if (nPopCnt <= auListPopCntMax[nBL])
+    if (nPopCnt <= auListPopCntMax[nBLR])
   #endif // #ifndef POP_CNT_MAX_IS_KING
 #endif // EMBED_KEYS
     {
-        if (nListSlots > auListPopCntMax[nBL]) {
-            nListSlots = auListPopCntMax[nBL];
+        if (nListSlots > auListPopCntMax[nBLR]) {
+            nListSlots = auListPopCntMax[nBLR];
         }
     }
 #ifdef DEBUG
-    int nListWordsX = CalcListWordCnt(nListSlots, nBL);
+    int nListWordsX = CalcListWordCnt(nListSlots, nBLR);
     if (nListWordsX != nListWords) {
         printf("\n");
-        printf("ListWordCnt(nPopCnt %d, nBL %d) %d\n",
-                nPopCnt, nBL, nListWords);
-        printf("ListSlotCnt(nPopCnt %d, nBL %d) %d\n",
-                nPopCnt, nBL, nListSlots);
-        printf("ListWordCnt(nPopCnt %d, nBL %d) %d\n",
-                nListSlots, nBL, nListWordsX);
-        printf("auListPopCntMax[nBL %d] %d\n", nBL, auListPopCntMax[nBL]);
+        printf("ListWordCnt(nPopCnt %d, nBLR %d) %d\n",
+                nPopCnt, nBLR, nListWords);
+        printf("ListSlotCnt(nPopCnt %d, nBLR %d) %d\n",
+                nPopCnt, nBLR, nListSlots);
+        printf("ListWordCnt(nPopCnt %d, nBLR %d) %d\n",
+                nListSlots, nBLR, nListWordsX);
+        printf("auListPopCntMax[nBLR %d] %d\n", nBLR, auListPopCntMax[nBLR]);
     }
     assert(nListWordsX == nListWords);
 #endif // DEBUG
@@ -868,23 +895,23 @@ CalcListSlotCnt(int nPopCnt, int nBL)
 // Successive approximation version of ListSlotCnt.
 #ifdef LIST_SLOT_CNT_SUCCESSIVE_APPROXIMATION
 static int
-CalcListSlotCntX(int nPopCnt, int nBL)
+CalcListSlotCntX(int nPopCnt, int nBLR)
 {
-    assert(nPopCnt <= auListPopCntMax[nBL]);
-    int nBytesPerKey = ExtListBytesPerKey(nBL);
-#ifdef UA_PARALLEL_128 // implies 32-bit Judy && PARALLEL_128
+    assert(nPopCnt <= auListPopCntMax[nBLR]);
+    int nBytesPerKey = ExtListBytesPerKey(nBLR);
+#ifdef UA_PARALLEL_128 // implies !B_JUDYL && PARALLEL_128 && 32-bit
   #ifdef B_JUDYL
     #error B_JUDYL with UA_PARALLEL_128.
   #endif // B_JUDYL
   #if (cnBitsPerWord > 32)
     #error B_JUDYL with UA_PARALLEL_128.
   #endif // (cnBitsPerWord > 32)
-    if ((nPopCnt <= 6) && (nBL == 2)) {
+    if ((nPopCnt <= 6) && (nBLR == 2)) {
         return 6;
     }
 #endif // UA_PARALLEL_128
     // How many words are we working with?
-    int nListWords = ListWordCnt(nPopCnt, nBL);
+    int nListWords = ListWordCnt(nPopCnt, nBLR);
     // How many whole units fit in nListWords?
     int nBytesPerBucket // bytes of keys per allocation unit
         = ALIGN_LIST_LEN(nBytesPerKey) ? sizeof(Bucket_t) : sizeof(Word_t);
@@ -898,36 +925,37 @@ CalcListSlotCntX(int nPopCnt, int nBL)
     // Do that many keys fit in our list?
     // Keys per unit == keys per bucket.
     int nSlots = nKeysPerBucket * nUnits;
-    if (nSlots > auListPopCntMax[nBL]) {
-        nSlots = auListPopCntMax[nBL];
+    if (nSlots > auListPopCntMax[nBLR]) {
+        nSlots = auListPopCntMax[nBLR];
     }
-    if (ListWordCnt(nSlots, nBL) <= nListWords) {
-        if (nSlots < auListPopCntMax[nBL]) {
-            while (ListWordCnt(++nSlots, nBL) <= nListWords) {}
+    if (ListWordCnt(nSlots, nBLR) <= nListWords) {
+        if (nSlots < auListPopCntMax[nBLR]) {
+            while (ListWordCnt(++nSlots, nBLR) <= nListWords) {}
             --nSlots;
         }
     } else {
-        while (ListWordCnt(--nSlots, nBL) > nListWords) {}
+        while (ListWordCnt(--nSlots, nBLR) > nListWords) {}
     }
-    if (nSlots > auListPopCntMax[nBL]) {
-        nSlots = auListPopCntMax[nBL];
+    if (nSlots > auListPopCntMax[nBLR]) {
+        nSlots = auListPopCntMax[nBLR];
     }
-    assert(ListWordCnt(nSlots, nBL) == nListWords);
-    if (ListSlotCnt(nPopCnt, nBL) != nSlots) {
+    assert(ListWordCnt(nSlots, nBLR) == nListWords);
+    if (ListSlotCnt(nPopCnt, nBLR) != nSlots) {
         printf("\n");
         printf("nPopCnt %d\n", nPopCnt);
-        printf("nBL %d\n", nBL);
+        printf("nBLR %d\n", nBLR);
         printf("nSlots %d\n", nSlots);
-        printf("ListSlotCnt(nPopCnt, nBL) %d\n", ListSlotCnt(nPopCnt, nBL));
+        printf("ListSlotCnt(nPopCnt, nBLR) %d\n",
+                ListSlotCnt(nPopCnt, nBLR));
     }
-    assert(ListSlotCnt(nPopCnt, nBL) == nSlots);
-    if (ListSlotCnt(nSlots, nBL) != nSlots) {
+    assert(ListSlotCnt(nPopCnt, nBLR) == nSlots);
+    if (ListSlotCnt(nSlots, nBLR) != nSlots) {
         printf("\n");
         printf("nSlots %d\n", nSlots);
-        printf("nBL %d\n", nBL);
-        printf("ListSlotCnt(nSlots, nBL) %d\n", ListSlotCnt(nSlots, nBL));
+        printf("nBLR %d\n", nBLR);
+        printf("ListSlotCnt(nSlots, nBLR) %d\n", ListSlotCnt(nSlots, nBLR));
     }
-    assert(ListSlotCnt(nSlots, nBL) == nSlots);
+    assert(ListSlotCnt(nSlots, nBLR) == nSlots);
     return nSlots;
 }
 #endif // LIST_SLOT_CNT_SUCCESSIVE_APPROXIMATION
@@ -935,16 +963,16 @@ CalcListSlotCntX(int nPopCnt, int nBL)
 #endif // #else OLD_LIST_WORD_CNT
 
 static int
-ListSlotCnt(int nPopCnt, int nBL)
+ListSlotCnt(int nPopCnt, int nBLR)
 {
-    assert(nBL < (int)(sizeof(aauListSlotCnt) / sizeof(aauListSlotCnt[0])));
+    assert(nBLR < (int)(sizeof(aauListSlotCnt) / sizeof(aauListSlotCnt[0])));
     assert(nPopCnt
            < (int)(sizeof(aauListSlotCnt[0]) / sizeof(aauListSlotCnt[0][0])));
-    int nListSlotCnt = aauListSlotCnt[nBL][nPopCnt];
+    int nListSlotCnt = aauListSlotCnt[nBLR][nPopCnt];
     if (nListSlotCnt == 0) {
-        nListSlotCnt = CalcListSlotCnt(nPopCnt, nBL);
+        nListSlotCnt = CalcListSlotCnt(nPopCnt, nBLR);
         assert(nListSlotCnt <= (int)MSK(sizeof(aauListSlotCnt[0][0]) * 8));
-        aauListSlotCnt[nBL][nPopCnt] = nListSlotCnt;
+        aauListSlotCnt[nBLR][nPopCnt] = nListSlotCnt;
     }
     return nListSlotCnt;
 }
@@ -1232,15 +1260,16 @@ NewBitmap(qp, int nBLR, Word_t wKey, Word_t wPopCnt)
     DBGM(printf("NewBitmap wRoot 0x%zx\n", wRoot));
   #endif // B_JUDYL
 
+    *pwRoot = wRoot;
 #if defined(SKIP_TO_BITMAP)
     if (nBL != nBLR) {
-        Set_nBLR(&wRoot, nBLR);
-        set_wr_nType(wRoot, T_SKIP_TO_BITMAP);
+        set_wr_nType(*pwRoot, T_SKIP_TO_BITMAP);
+        Set_nBLR(pwRoot, nBLR);
+        wRoot = *pwRoot;
     }
 #else // defined(SKIP_TO_BITMAP)
     assert(nBL == nBLR);
 #endif // defined(SKIP_TO_BITMAP)
-    *pwRoot = wRoot;
     pwr = wr_pwr(wRoot);
     nType = wr_nType(wRoot);
 #if defined(SKIP_TO_BITMAP)
@@ -1474,12 +1503,8 @@ NewSwitchX(Word_t *pwRoot, Word_t wKey, int nBL,
   #if defined(SKIP_TO_BM_SW)
         if (nBL != nBLUp) {
             DBGI(printf("\nCreating T_SKIP_TO_BM_SW!\n"));
-            set_wr_pwr(*pwRoot, pwr);
-            set_wr_nBL(*pwRoot, nBL); // set nBL
-            // set_wr_nDS and set_wr_nBL overwrite
-            // the type field.  So we have to set
-            // T_SKIP_TO_BM_SW after that.
             set_wr(*pwRoot, pwr, T_SKIP_TO_BM_SW); // set type
+            set_wr_nBL(*pwRoot, nBL); // set nBL
         } else
   #endif // defined(SKIP_TO_BM_SW)
         { set_wr(*pwRoot, pwr, T_BM_SW); }
@@ -1499,7 +1524,8 @@ NewSwitchX(Word_t *pwRoot, Word_t wKey, int nBL,
         assert(nBL <= nBLUp);
 #if defined(SKIP_LINKS)
         if (nBL < nBLUp) { // Is "nBLUp" actually pre-skip "nBL"?
-            set_wr_nBL(*pwRoot, nBL); // also sets nType == T_SKIP_TO_SWITCH
+            set_wr_nType(*pwRoot, T_SKIP_TO_SWITCH);
+            set_wr_nBL(*pwRoot, nBL);
   #if defined(USE_XX_SW) && defined(SKIP_TO_XX_SW)
       #ifdef USE_XX_SW_ONLY_AT_DL2
             if (nBL <= nDL_to_nBL(2))
@@ -1989,20 +2015,18 @@ printf("retyping full bmsw\n");
   #endif // defined(RETYPE_FULL_BM_SW)
         {
             int nType = wr_nType(wRoot);
-  #if ! defined(LVL_IN_WR_HB)
             set_wr_nType(*pwRoot, nType);
-  #endif // ! defined(LVL_IN_WR_HB)
             // depth is preserved if the beginning of the switch is copied
             // in some cases
   #if defined(LVL_IN_WR_HB)
       #if defined(SKIP_TO_BM_SW)
             if (nType == T_SKIP_TO_BM_SW) {
                 set_wr_nBL(*pwRoot, nBLR);
+                assert(tp_bIsSkip(wr_nType(*pwRoot)));
                 assert(wr_nBL(*pwRoot) == wr_nBL(wRoot));
             }
       #endif // defined(SKIP_TO_BM_SW)
   #endif // defined(LVL_IN_WR_HB)
-            set_wr_nType(*pwRoot, nType);
         }
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
@@ -2361,21 +2385,7 @@ embeddedKeys:;
         else
 #endif // defined(EMBED_KEYS)
         {
-#if defined(DEBUG)
-            if ( (nType != T_LIST)
-  #if defined(UA_PARALLEL_128)
-                && (nType != T_LIST_UA)
-  #endif // defined(UA_PARALLEL_128)
-                )
-            {
-                printf("\nnType %d\n", nType);
-            }
-            assert( (nType == T_LIST)
-  #if defined(UA_PARALLEL_128)
-                   || (nType == T_LIST_UA)
-  #endif // defined(UA_PARALLEL_128)
-                   );
-#endif // defined(DEBUG)
+            assert(tp_bIsList(nType));
 
             assert((wRoot != 0) || (WROOT_NULL == 0));
             wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL);
@@ -3184,6 +3194,9 @@ InsertCleanup(qp, Word_t wKey)
     int nBLR = GetBLR(pwRoot, nBL);
     if ((nBLR == nDL_to_nBL(2))
         && tp_bIsSwitch(nType)
+          #ifdef _LVL_IN_TYPE
+        && !tp_bIsSkip(nType)
+          #endif // _LVL_IN_TYPE
           #if defined(CODE_BM_SW)
         && !tp_bIsBmSw(nType) // can't handle it yet
           #endif // defined(CODE_BM_SW)
@@ -3476,7 +3489,7 @@ SplayMaxPopCnt(Word_t *pwRootOld, int nBLOld, Word_t wKey, int nBLNew)
     Link_t *pLnOld = STRUCT_OF(pwRootOld, Link_t, ln_wRoot); (void)pLnOld;
     Word_t wRootOld = *pwRootOld;
     assert(wRootOld != WROOT_NULL);
-    int nTypeOld = wr_nType(wRootOld);
+    int nTypeOld = wr_nType(wRootOld); (void)nTypeOld;
     assert(tp_bIsList(nTypeOld));
     Word_t *pwrOld = wr_pwr(wRootOld);
     int nPopCnt = PWR_xListPopCnt(&wRootOld, pwrOld, nBLOld);
@@ -5095,6 +5108,52 @@ TransformList(qp,
     // This used to be part of ListIsFull.
   #ifdef SKIP_LINKS
     int nBLNew = SignificantBitCnt(qy, wKey, wPopCnt);
+      #ifdef _SKIP_TO_LIST
+    // Think about USE_XX_SW[_ONLY_AT_DL2].
+    if ((nBL == 64)
+        && (nDL_to_nBL(nBL_to_nDL(cnBitsPerWord / 2)) == cnBitsPerWord / 2)
+        && (nDL_to_nBL(nBL_to_nDL(nBLNew + 1)) <= cnBitsPerWord / 2)
+        && ((wPopCnt + 1) < auListPopCntMax[cnBitsPerWord / 2]))
+    {
+        DBGI(printf("SKIP_TO_LIST\n"));
+        int nBLR = cnBitsPerWord / 2;
+        Word_t *pwKeysOld = ls_pwKeys(pwr, nBL);
+      #ifdef B_JUDYL
+        Word_t *pwValuesOld = gpwValues(qy);
+      #endif // B_JUDYL
+        //int nDLR = nBL_to_nDL(nBLR);
+        int nTypeOld = nType;
+        Word_t *pwrOld = pwr;
+        Word_t *pwr = NewListTypeList(wPopCnt, nBLR);
+        Word_t wRoot = 0;
+        int nType = T_SKIP_TO_LIST;
+        set_wr(wRoot, pwr, nType);
+        Set_nBLR(&wRoot, nBLR);
+        //Word_t *pwRootOld = pwRoot;
+        *pwRoot = wRoot; // install
+        // Does this work for list pop cnt not in wRoot?
+        Set_xListPopCnt(pwRoot, nBLR, wPopCnt);
+        wRoot = *pwRoot;
+      #ifdef B_JUDYL
+        // copy the values
+        Word_t *pwValues = gpwValues(qy);
+        COPY(&pwValues[-wPopCnt], &pwValuesOld[-wPopCnt], wPopCnt);
+      #endif // B_JUDYL
+        // copy the keys
+        uint32_t *piKeys = ls_piKeysNATX(pwr, wPopCnt);
+        COPYX(piKeys, pwKeysOld, wPopCnt);
+        PAD(piKeys, wPopCnt);
+        OldList(pwrOld, wPopCnt, nBL, nTypeOld);
+        DBGI(printf("\n# Just before final Insert ");
+        DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
+        assert(tp_bIsSkip(wr_nType(*pwRoot)));
+        assert(wr_nBL(*pwRoot) == cnBitsPerWord / 2);
+        //BJL(return) Insert(nBL, pLn, wKey);
+        goto finalInsert;
+    } else {
+        //DBGI(printf("No SKIP_TO_LIST\n"));
+    }
+      #endif // _SKIP_TO_LIST
     nBLNew = nDL_to_nBL(nBL_to_nDL(nBLNew));
       #ifdef USE_XX_SW
     // nBL might not be aligned. So nBLNew might be bigger.
@@ -5492,11 +5551,8 @@ newSkipToBitmap:;
         }
     }
 
-  #ifdef BITMAP
-  //#ifndef USE_XX_SW_ONLY_AT_DL2
-finalInsert:
-  //#endif // #ifndef USE_XX_SW_ONLY_AT_DL2
-  #endif // BITMAP
+    goto finalInsert;
+finalInsert:;
 
     if (nBLNew == nBL) {
         DBGI(printf("Just Before InsertGuts calls final Insert"));

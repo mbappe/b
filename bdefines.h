@@ -6,15 +6,23 @@
 // If B_JUDYL is not defined then we are building Judy1.
 // JudyL and Judy1 have different constraints and different defaults.
 // We may build both Judy1 and JudyL with a single make, hence with
-// a single set of -D options. Maybe we need to enhance the Makefile
+// a single set of -D options. We probably ought to enhance Makefile
 // to have JUDY1_DEFINES and JUDYL_DEFINES.
 // We don't build both 64-bit and 32-bit with a single make, but maybe
 // we should. And maybe with DEFINES_32 and DEFINES_64.
 // And maybe JUDY[1L]_DEFINES_(32|64).
 
+#ifdef B_JUDYL
+  #define BJL(_OnlyForJudyL)  _OnlyForJudyL
+  #define BJ1(_OnlyForJudy1)
+#else // B_JUDYL
+  #define BJL(_OnlyForJudyL)
+  #define BJ1(_OnlyForJudy1)  _OnlyForJudy1
+#endif // #else B_JUDYL
+
 #define cnBitsPerByte  8
 
-// Default cnLogBitsPerWord is determined by __LP64__ and _WIN64.
+// Default cnBitsPerWord is determined by __LP64__ and _WIN64.
 #if ! defined(cnBitsPerWord)
   #if defined(__LP64__) || defined(_WIN64)
     #define cnBitsPerWord  64
@@ -38,6 +46,29 @@
     #define cnLogBitsPerWord 5
     #define cnLogBytesPerWord 2
 #endif // cnBitsPerWord
+
+// Default is LVL_IN_WR_HB for 64-bit and level in nType for 32-bit.
+// The absence of LVL_IN_WR_HB and LVL_IN_PP is level in nType.
+#if (cnBitsPerWord > 32)
+  #if       !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_PP)
+    #undef              LVL_IN_WR_HB
+    #define             LVL_IN_WR_HB
+  //                 NO_LVL_IN_PP is not necessary.
+  #endif // !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_PP)
+#endif // (cnBitsPerWord > 32)
+#if !defined(LVL_IN_WR_HB) && !defined(LVL_IN_PP)
+  // Macro names that begin with '_' are derived from other macros
+  // and are not inteded to be set explicitly on the build command line.
+  #define _LVL_IN_TYPE
+#endif // !defined(LVL_IN_WR_HB) && !defined(LVL_IN_PP)
+
+#ifdef _LVL_IN_TYPE
+  #define NO_SKIP_TO_XX_SW
+  #define NO_SKIP_TO_BM_SW
+  #define NO_SKIP_TO_LIST_SW
+  #define NO_SKIP_TO_BITMAP
+  #define NO_SKIP_TO_LIST
+#endif // _LVL_IN_TYPE
 
 // Apply JudyL-specific constraints to ifdefs from the build process.
 #ifdef B_JUDYL
@@ -78,24 +109,6 @@
   #endif // NO_PACK_L1_VALUES
 
 #endif // B_JUDYL
-
-#ifdef B_JUDYL
-  #define BJL(_x)  _x
-  #define BJ1(_x)
-#else // B_JUDYL
-  #define BJL(_x)
-  #define BJ1(_x)  _x
-#endif // #else B_JUDYL
-
-#ifndef PP_IN_LINK
-  // Default is POP_WORD ifndef PP_IN_LINK unless NO_POP_WORD.
-  // POP_WORD makes gwPopCnt faster.
-  // gwPopCnt showed up as a heavy hitter in the profile.
-  #ifndef   NO_POP_WORD
-    #undef     POP_WORD
-    #define    POP_WORD
-  #endif // NO_POP_WORD
-#endif // #ifndef PP_IN_LINK
 
 // Default is -UCODE_XX_SW.
 
@@ -143,14 +156,6 @@
   #undef  CODE_XX_SW
   #define CODE_XX_SW
 #endif // defined(USE_XX_SW)
-
-#if (cnBitsPerWord > 32)
-  #if       !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_PP)
-    #undef              LVL_IN_WR_HB
-    #define             LVL_IN_WR_HB
-  //                 NO_LVL_IN_PP is not necessary.
-  #endif // !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_PP)
-#endif // (cnBitsPerWord > 32)
 
 // Define USE_BM_SW by default.
 #ifndef   NO_USE_BM_SW
@@ -310,6 +315,16 @@
 #if ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
 #define COMPRESSED_LISTS
 #endif // ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
+
+#ifndef PP_IN_LINK
+  // Default is POP_WORD ifndef PP_IN_LINK unless NO_POP_WORD.
+  // POP_WORD makes gwPopCnt faster.
+  // gwPopCnt showed up as a heavy hitter in the profile.
+  #ifndef   NO_POP_WORD
+    #undef     POP_WORD
+    #define    POP_WORD
+  #endif // NO_POP_WORD
+#endif // #ifndef PP_IN_LINK
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 
