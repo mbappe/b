@@ -180,8 +180,8 @@ HexDump(char *str, Word_t *pw, unsigned nWords)
 static void
 Log(qp, const char *str)
 {
-    printf("# %20s: " qfmt "\n", str, qy);
-    qv; // assertions after printf
+    qv;
+    printf("# %20s: " qfmt "\n", str, qyp);
 }
 
 #ifdef RAMMETRICS
@@ -3779,12 +3779,9 @@ lastDigit8:;
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
                     Word_t wRootLoop = pLnLoop->ln_wRoot;
-                    int nTypeLoop = wr_nType(wRootLoop);
-                    Word_t *pwrLoop = wr_pwr(wRootLoop);
-                    pwrLoop = NewBitmap(qyx(Loop), cnBitsInD1,
-                                        pcKeys[nnStart], nPopCntLoop);
+                    NewBitmap(qyx(Loop), cnBitsInD1,
+                              pcKeys[nnStart], nPopCntLoop);
                     wRootLoop = pLnLoop->ln_wRoot;
-                    nTypeLoop = wr_nType(wRootLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop);
                 } else
@@ -3897,12 +3894,9 @@ lastDigit16:;
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
                     Word_t wRootLoop = pLnLoop->ln_wRoot;
-                    int nTypeLoop = wr_nType(wRootLoop);
-                    Word_t *pwrLoop = wr_pwr(wRootLoop);
-                    pwrLoop = NewBitmap(qyx(Loop), cnBitsInD1,
-                                        psKeys[nnStart], nPopCntLoop);
+                    NewBitmap(qyx(Loop), cnBitsInD1,
+                              psKeys[nnStart], nPopCntLoop);
                     wRootLoop = pLnLoop->ln_wRoot;
-                    nTypeLoop = wr_nType(wRootLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop);
                 } else
@@ -4019,12 +4013,9 @@ lastDigit32:;
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
                     Word_t wRootLoop = pLnLoop->ln_wRoot;
-                    int nTypeLoop = wr_nType(wRootLoop);
-                    Word_t *pwrLoop = wr_pwr(wRootLoop);
-                    pwrLoop = NewBitmap(qyx(Loop), cnBitsInD1,
-                                        piKeys[nnStart], nPopCntLoop);
+                    NewBitmap(qyx(Loop), cnBitsInD1,
+                              piKeys[nnStart], nPopCntLoop);
                     wRootLoop = pLnLoop->ln_wRoot;
-                    nTypeLoop = wr_nType(wRootLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop);
                 } else
@@ -4152,12 +4143,9 @@ lastDigit:;
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
                     Word_t wRootLoop = pLnLoop->ln_wRoot;
-                    int nTypeLoop = wr_nType(wRootLoop);
-                    Word_t *pwrLoop = wr_pwr(wRootLoop);
-                    pwrLoop = NewBitmap(qyx(Loop), cnBitsInD1,
-                                        pwKeys[nnStart], nPopCntLoop);
+                    NewBitmap(qyx(Loop), cnBitsInD1,
+                              pwKeys[nnStart], nPopCntLoop);
                     wRootLoop = pLnLoop->ln_wRoot;
-                    nTypeLoop = wr_nType(wRootLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop);
                 } else
@@ -4304,12 +4292,10 @@ embeddedKeys:;
         int nDigitUp = ((wKey >> nBLOld) & MSK(nBWUp));
         Link_t *pLinksUp = pLnOld - nDigitUp;
         Word_t *pwrUp = (Word_t*)STRUCT_OF(pLinksUp, Switch_t, sw_aLinks);
-        int nTypeUp = T_XX_SW;
         Link_t linkUp = {0};
         Link_t *pLnUp = &linkUp;
         set_wr(linkUp.ln_wRoot, pwrUp, T_XX_SW);
         Word_t wRootUp = pLnUp->ln_wRoot;
-        qvx(Up); // sets pwRootUp
         snBW(qyx(Up), nBWUp); // catch22? Don't use qy for gn*/sn*?
         wRootUp = pLnUp->ln_wRoot;
         Word_t *pwValueUp = gpwEmbeddedValue(qyx(Up), EXP(nBWUp), nDigitUp);
@@ -5241,8 +5227,6 @@ newSkipToBitmap:;
         int nBLOld = nBL;
         Link_t *pLnOld = &link;
         Word_t wRootOld = wRoot;
-        int nTypeOld = nType;
-        Word_t *pwrOld = pwr;
         qvx(Old); // declare and init pwRootOld
 // NewBitmap installs the new bitmap.
 // How are we keeping track of the list being splayed?

@@ -18,9 +18,8 @@
 static void
 Checkpoint(qp, const char *str)
 {
-    printf("# %20s: " qfmt "\n", str, qy);
-    // qv assertions would constrain us too much in this
-    // highly tuned code.
+    qv;
+    printf("# %20s: " qfmt "\n", str, qyp);
 }
 
   #if defined(COUNT)
@@ -920,7 +919,7 @@ t_switch:;
             break;
         }
         DBGX(Checkpoint(qy, "t_switch"));
-        nBW = gnBW(nBL, pLn, wRoot, T_SWITCH, pwr, nBLR); // num bits decoded
+        nBW = gnBW(qy, nBLR); // num bits decoded
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
         // ((uint8_t *)&wKey)[(cnBitsPerWord - nBL) >> 3];
         // ((uint8_t *)&wKey)[cnDigitsPerWord - nDL];
@@ -1008,7 +1007,7 @@ switchTail:;
         goto t_xx_sw;
 t_xx_sw:;
         DBGX(Checkpoint(qy, "t_xx_sw"));
-        nBW = gnBW(nBL, pLn, wRoot, T_XX_SW, pwr, nBLR); // num bits decoded
+        nBW = gnBW(qy, nBLR); // num bits decoded
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
@@ -1108,7 +1107,7 @@ t_skip_to_bm_sw:
                 Word_t wPopCnt;
       #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 if (nBL >= cnBitsPerWord) {
-                    int nBW = gnBW(nBL, pLn, wRoot, T_BM_SW, pwr, nBLR);
+                    int nBW = gnBW(qy, nBLR); // num bits decoded
                     // Abuse CountSw into counting whole switch.
                     int nLinkCnt = BmSwLinkCnt(qy);
                     wPopCnt = CountSw(qy, nBLR, nBW,
@@ -1150,7 +1149,7 @@ t_full_bm_sw:
     {
         goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
 t_bm_sw:;
-        nBW = gnBW(nBL, pLn, wRoot, T_BM_SW, pwr, nBLR);
+        nBW = gnBW(qy, nBLR); // num bits decoded
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
 
         Word_t wSwIndex;
@@ -1328,7 +1327,7 @@ t_skip_to_list_sw:
       #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
           #error Not ready yet
                 if (nBL >= cnBitsPerWord) {
-                    int nBW = gnBW(nBL, pLn, wRoot, T_LIST_SW, pwr, nBLR);
+                    int nBW = gnBW(qy, nBLR); // num bits decoded
                     // Abuse CountSw into counting whole switch.
                     wPopCnt = CountSw(qy, nBLR, nBW, EXP(nBW), EXP(nBW));
                 } else
@@ -1358,7 +1357,7 @@ t_skip_to_list_sw:
         goto t_list_sw; // silence cc in case other the gotos are ifdef'd out
 t_list_sw:;
 
-        nBW = gnBW(nBL, pLn, wRoot, T_LIST_SW, pwr, nBLR);
+        nBW = gnBW(qy, nBLR); // num bits decoded
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
 
         Word_t wSwIndex;
@@ -2709,8 +2708,6 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
     int nBL = cnBitsPerWord;
     Link_t *pLn = STRUCT_OF(ppvRoot, Link_t, ln_wRoot);
-    int nType = wr_nType(wRoot);
-    Word_t *pwr = wr_pwr(wRoot);
     qv;
 
   // Judy1LHTime and Judy1LHCheck put a -1 word before and after the root

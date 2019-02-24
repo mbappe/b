@@ -107,33 +107,31 @@
 // And wPopCnt would be an option.
 // And nBW would be an option.
 // And how about wBytesUsed?
-#define  qp \
-    int   nBL, Link_t  * pLn, Word_t   wRoot, int   nType, Word_t  * pwr
+#define  qp  int   nBL, Link_t  * pLn, Word_t   wRoot
 #define pqp \
     int *pnBL, Link_t **ppLn, Word_t *pwRoot, int *pnType, Word_t **ppwr
 
 #define  qpx(Suffix) \
-    int nBL##Suffix, Link_t *pLn##Suffix, Word_t wRoot##Suffix, \
-    int nType##Suffix, Word_t *pwr##Suffix
+    int nBL##Suffix, Link_t *pLn##Suffix, Word_t wRoot##Suffix
 
 // Shorthand for common arguments.
 // Why is "qy" not "qa"? Because "qa" is harder to type?
-#define  qy   nBL,  pLn,  wRoot,  nType,  pwr
+#define  qy   nBL,  pLn,  wRoot
 #define pqy  &nBL, &pLn, &wRoot, &nType, &pwr
 
-// Common arguments to printf.
-#define qyp   nBL, (void*)pLn, wRoot, nType, (void*)pwr
-
-#define qyx(Suffix) \
-    nBL##Suffix, pLn##Suffix, wRoot##Suffix, nType##Suffix, pwr##Suffix
+#define qyx(Suffix)  nBL##Suffix, pLn##Suffix, wRoot##Suffix
 
 #define  qvg \
     Word_t *pwRoot = &pLn->ln_wRoot; \
+    int nType = wr_nType(wRoot); \
+    Word_t* pwr = wr_pwr(wRoot); \
     (void)nBL; (void)pLn; (void)pwRoot; (void)wRoot; (void)nType; (void)pwr; \
     assert(wRoot == pLn->ln_wRoot)
 
 #define  qvxg(Suffix) \
     Word_t *pwRoot##Suffix = &pLn##Suffix->ln_wRoot; \
+    int nType##Suffix = wr_nType(wRoot##Suffix); \
+    Word_t* pwr##Suffix = wr_pwr(wRoot##Suffix); \
     (void)nBL##Suffix; (void)pLn##Suffix; (void)pwRoot##Suffix; \
     (void)wRoot##Suffix; (void)nType##Suffix; (void)pwr##Suffix; \
     assert(wRoot##Suffix == pLn##Suffix->ln_wRoot)
@@ -168,6 +166,10 @@
     assert(*pnType == wr_nType(*pwRoot) || (*pnBL <= cnLogBitsPerLink)); \
     assert(*ppwr == wr_pwr(*pwRoot) || (*pnBL <= cnLogBitsPerLink))
 
+// Common arguments to printf.
+#define qyp   nBL, (void*)pLn, wRoot, nType, (void*)pwr
+
+// Format string for qyp
 #define qfmt "nBL %2d pLn %p wRoot 0x%016zx nType %x pwr %p"
 
 // Default is -USKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX.
@@ -2615,7 +2617,7 @@ gnBW(qp, int nBLR)
     // It is a silly performance hack for Lookup where we use a literal in
     // case T_XX_SW and T_SWITCH and ... because we have already 'switch'ed
     // on nType.
-    (void)nBL; (void)pLn; (void)wRoot; (void)nType; (void)pwr; (void)nBLR;
+    qv; (void)nBLR;
     int nBW;
   #ifdef CODE_XX_SW
     if ((nType == T_XX_SW)
@@ -2639,7 +2641,7 @@ gnBW(qp, int nBLR)
 
 #define Get_nBW(_pwRoot) \
     gnBW(/* nBL */ 0, STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
-         *(_pwRoot), T_XX_SW, wr_pwr(*(_pwRoot)), 0)
+         /* wRoot */ *(_pwRoot), /* nBLR */ 0)
 
 #define pwr_nBW  Get_nBW
 
@@ -2660,7 +2662,7 @@ snBW(qp, int nBW)
 
 #define Set_nBW(_pwRoot, _nBW) \
     snBW(/* nBL */ 0, STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
-         *(_pwRoot), T_XX_SW, wr_pwr(*(_pwRoot)), (_nBW))
+         /* wRoot */ *(_pwRoot), /* nBW */ (_nBW))
 
 #define set_pwr_nBW  Set_nBW
 
@@ -2980,8 +2982,6 @@ Get_xListPopCnt(Word_t *pwRoot, int nBL)
 {
     Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
     Word_t wRoot = *pwRoot;
-    int nType = wr_nType(wRoot);
-    Word_t *pwr = wr_pwr(wRoot);
     return gnListPopCnt(qy, GetBLR(pwRoot, nBL));
 }
 
