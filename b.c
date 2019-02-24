@@ -4687,166 +4687,164 @@ DoubleIt(qp, // (nBL, pLn) of list
     int nBW;
 
     DBGI(printf("DoubleIt\n"));
-    {
   #if defined(USE_XX_SW)
-        {
+    {
       #ifdef USE_XX_SW_ONLY_AT_DL2
-            assert(nBL < nDL_to_nBL(2));
+        assert(nBL < nDL_to_nBL(2));
       #endif // USE_XX_SW_ONLY_AT_DL2
-            assert(tp_bIsList(wr_nType(wRoot))); // list has been inflated
-          #if defined(NO_TYPE_IN_XX_SW)
+        assert(tp_bIsList(wr_nType(wRoot))); // list has been inflated
+      #if defined(NO_TYPE_IN_XX_SW)
 // Hmm.
 // I think things have changed since NO_TYPE_IN_XX_SW worked.
 // It used to be that *pwRoot had not been updated with the inflated list
 // that wRoot represents.
 // But that's not really possible now since qv doesn't allow it.
 // We used to call OldList to free wRoot. What now?
-            DBGR(printf("IG: free inflated list.\n"));
-            OldList(wr_pwr(wRoot), wPopCnt, nBL, T_LIST);
-          #endif // defined(NO_TYPE_IN_XX_SW)
-            // pLnUp is XX_SW; back up and replace it
-            pLn = pLnUp;
-            wRoot = pLn->ln_wRoot;
-            pwRoot = &pLn->ln_wRoot;
-            nType = wr_nType(wRoot);
-            assert(tp_bIsXxSw(nType));
-            pwr = wr_pwr(wRoot);
-            DBGI(printf("\nbefore: nDL %d nBL %d nBLOld %d nBLUp %d\n",
-                        nDL, nBL, nBLOld, nBLUp));
+        DBGR(printf("IG: free inflated list.\n"));
+        OldList(wr_pwr(wRoot), wPopCnt, nBL, T_LIST);
+      #endif // defined(NO_TYPE_IN_XX_SW)
+        // pLnUp is XX_SW; back up and replace it
+        pLn = pLnUp;
+        wRoot = pLn->ln_wRoot;
+        pwRoot = &pLn->ln_wRoot;
+        nType = wr_nType(wRoot);
+        assert(tp_bIsXxSw(nType));
+        pwr = wr_pwr(wRoot);
+        DBGI(printf("\nbefore: nDL %d nBL %d nBLOld %d nBLUp %d\n",
+                    nDL, nBL, nBLOld, nBLUp));
       #ifdef USE_XX_SW_ONLY_AT_DL2
-            // The only place we put XX_SW is nDL == 2.
-            nDL = 2; // This is more accurately nDLR of the switch.
+        // The only place we put XX_SW is nDL == 2.
+        nDL = 2; // This is more accurately nDLR of the switch.
       #else // USE_XX_SW_ONLY_AT_DL2
-            nDL = nBL_to_nDL(nBLOld);
+        nDL = nBL_to_nDL(nBLOld);
       #endif // USE_XX_SW_ONLY_AT_DL2
-            // We're not changing nBLR of the switch.
-            DBGI(printf("\nmiddle: nDL %d nBL %d nBLOld %d nBLUp %d\n",
-                         nDL, nBL, nBLOld, nBLUp));
+        // We're not changing nBLR of the switch.
+        DBGI(printf("\nmiddle: nDL %d nBL %d nBLOld %d nBLUp %d\n",
+                     nDL, nBL, nBLOld, nBLUp));
       #ifdef DEBUG
-            if (GetBLR(&pLnUp->ln_wRoot, nBLUp) != nDL_to_nBL(nDL)) {
-                printf("nBLRUp %d\n", GetBLR(&pLnUp->ln_wRoot, nBLUp));
-            }
+        if (GetBLR(&pLnUp->ln_wRoot, nBLUp) != nDL_to_nBL(nDL)) {
+            printf("nBLRUp %d\n", GetBLR(&pLnUp->ln_wRoot, nBLUp));
+        }
       #endif // DEBUG
-            assert(GetBLR(&pLnUp->ln_wRoot, nBLUp) == nDL_to_nBL(nDL));
-            nBL = nDL_to_nBL(nDL); // This is more accurately nBLR.
-            DBGI(printf("\nafter: nDL %d nBL %d nBLOld %d nBLUp %d\n",
-                           nDL, nBL, nBLOld, nBLUp));
-            //assert(nBL == nBLUp);
-            // We now have a new qy. Partially.
-            // nBL isn't quite right.
-            // We should be updating nBL and nDL here.
-            // But the code below isn't ready.
-            // Except for the call to NewBitmap.
+        assert(GetBLR(&pLnUp->ln_wRoot, nBLUp) == nDL_to_nBL(nDL));
+        nBL = nDL_to_nBL(nDL); // This is more accurately nBLR.
+        DBGI(printf("\nafter: nDL %d nBL %d nBLOld %d nBLUp %d\n",
+                       nDL, nBL, nBLOld, nBLUp));
+        //assert(nBL == nBLUp);
+        // We now have a new qy. Partially.
+        // nBL isn't quite right.
+        // We should be updating nBL and nDL here.
+        // But the code below isn't ready.
+        // Except for the call to NewBitmap.
       #if defined(SKIP_TO_XX_SW)
-            if (tp_bIsSkip(nType)) {
-                nBLOld = nBLUp;
-                assert(nBLOld > nBL);
-                nDLOld = nBL_to_nDL(nBLOld);
-            } else
+        if (tp_bIsSkip(nType)) {
+            nBLOld = nBLUp;
+            assert(nBLOld > nBL);
+            nDLOld = nBL_to_nDL(nBLOld);
+        } else
       #endif // defined(SKIP_TO_XX_SW)
-            {
-                nBLOld = nBL;
-                nDLOld = nDL;
-            }
-            nBW = pwr_nBW(&wRoot);
-            DBGI(printf("# Double nBL %d from nBW %d.\n", nBL, nBW));
-            assert(nBL > cnLogBitsPerLink);
+        {
+            nBLOld = nBL;
+            nDLOld = nDL;
+        }
+        nBW = pwr_nBW(&wRoot);
+        DBGI(printf("# Double nBL %d from nBW %d.\n", nBL, nBW));
+        assert(nBL > cnLogBitsPerLink);
       #ifdef USE_XX_SW_ONLY_AT_DL2
-            if (nBLList < nDL_to_nBL(2)) {
-                nBW += cnBWIncr; // nBWUp? nBWNew?
-            } else
+        if (nBLList < nDL_to_nBL(2)) {
+            nBW += cnBWIncr; // nBWUp? nBWNew?
+        } else
       #endif // USE_XX_SW_ONLY_AT_DL2
-            { nBW = nDL_to_nBW(nDL); }
-            DBGI(printf("# To nBW %d.\n", nBW));
-            if (nBL - nBW <= cnLogBitsPerLink) {
+        { nBW = nDL_to_nBW(nDL); }
+        DBGI(printf("# To nBW %d.\n", nBW));
+        if (nBL - nBW <= cnLogBitsPerLink) {
 // Doubling here would use at least as much memory as a big bitmap.
 // Are we here because the list is full?
 // Is it possible we are here because our words/key is good?
-                DBGI(printf("# IG: NewBitmap nBL %d"
-                              " nBLOld %d"
-                              " wWordsAllocated %" _fw"d"
-                              " wPopCntTotal %" _fw"d.\n",
-                            nBL, nBLOld, wWordsAllocated, wPopCntTotal));
-                DBGI(printf("# IG: NewBitmap nBL %d.\n", nBL));
+            DBGI(printf("# IG: NewBitmap nBL %d"
+                          " nBLOld %d"
+                          " wWordsAllocated %" _fw"d"
+                          " wPopCntTotal %" _fw"d.\n",
+                        nBL, nBLOld, wWordsAllocated, wPopCntTotal));
+            DBGI(printf("# IG: NewBitmap nBL %d.\n", nBL));
 #if ! defined(SKIP_TO_BITMAP)
-                assert(nBL == nBLOld);
+            assert(nBL == nBLOld);
 #endif // ! defined(SKIP_TO_BITMAP)
-                // We have updated qy to qyUp. Except nBL is really nBLR.
-                // And nBLOld has what should be in nBL.
-                int nBLNew = nBL;
-                nBL = nBLOld;
-                NewBitmap(qy, nBLNew, wKey, /* wPopCnt */ 0);
-                nBL = nBLNew;
+            // We have updated qy to qyUp. Except nBL is really nBLR.
+            // And nBLOld has what should be in nBL.
+            int nBLNew = nBL;
+            nBL = nBLOld;
+            NewBitmap(qy, nBLNew, wKey, /* wPopCnt */ 0);
+            nBL = nBLNew;
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-                set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL, 0);
+            set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL, 0);
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-                DBGI(printf("# After NewBitmap; before insertAll.\n"));
-                DBGI(Dump(pwRootLast,
-                      /* wPrefix */ (Word_t)0, cnBitsPerWord));
-                // We have updated qy to qyUp. Except nBL is really nBLR.
-                // And nBLOld has what should be in nBL.
-                goto insertAll;
-            }
+            DBGI(printf("# After NewBitmap; before insertAll.\n"));
             DBGI(Dump(pwRootLast,
-                      /* wPrefix */ (Word_t)0, cnBitsPerWord));
+                  /* wPrefix */ (Word_t)0, cnBitsPerWord));
+            // We have updated qy to qyUp. Except nBL is really nBLR.
+            // And nBLOld has what should be in nBL.
+            goto insertAll;
         }
+        DBGI(Dump(pwRootLast,
+                  /* wPrefix */ (Word_t)0, cnBitsPerWord));
+    }
   #else // defined(USE_XX_SW)
-        { nBW = nBL_to_nBW(nBL); }
+    { nBW = nBL_to_nBW(nBL); }
   #endif // defined(USE_XX_SW)
 
-        // For XX_SW we have updated qy to qyUp. Except nBL is really nBLR.
-        // And nBLOld has what should be in nBL.
+    // For XX_SW we have updated qy to qyUp. Except nBL is really nBLR.
+    // And nBLOld has what should be in nBL.
 
 #if defined(DEBUG)
-        if (nBL > nBLOld) {
-            printf("IG: pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
-                   (void *)pwRoot, wKey, nBL, wRoot);
-            printf("nBLOld %d\n", nBLOld);
-        }
+    if (nBL > nBLOld) {
+        printf("IG: pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
+               (void *)pwRoot, wKey, nBL, wRoot);
+        printf("nBLOld %d\n", nBLOld);
+    }
 #endif // defined(DEBUG)
-        assert(nBL <= nBLOld);
+    assert(nBL <= nBLOld);
 
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        // NewSwitch changes *pwRoot and the Link_t containing it.
-        // We need to preserve the Link_t for subsequent InsertAll.
-        // We don't have a whole link at the top.
-        if (nBLOld < cnBitsPerWord) {
-            link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
-        }
+    // NewSwitch changes *pwRoot and the Link_t containing it.
+    // We need to preserve the Link_t for subsequent InsertAll.
+    // We don't have a whole link at the top.
+    if (nBLOld < cnBitsPerWord) {
+        link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+    }
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        NewSwitch(pwRoot, wKey, nBL,
+    NewSwitch(pwRoot, wKey, nBL,
 #if defined(CODE_XX_SW)
-                  nBW,
+              nBW,
 #endif // defined(CODE_XX_SW)
-                  T_SWITCH, nBLOld, /* wPopCnt */ 0);
+              T_SWITCH, nBLOld, /* wPopCnt */ 0);
 
 #if defined(CODE_XX_SW)
-        if (nBL <= nDL_to_nBL(2)) {
+    if (nBL <= nDL_to_nBL(2)) {
   #if defined(SKIP_TO_XX_SW)
-            if (nBL != nBLOld) {
-                assert(nBL == nDL_to_nBL(nBL_to_nDL(nBL)));
-                assert(GetBLR(pwRoot, nBLOld) == nBL);
-                set_wr_nType(*pwRoot, T_SKIP_TO_XX_SW);
-                assert(tp_bIsXxSw(wr_nType(*pwRoot)));
-                assert(GetBLR(pwRoot, nBLOld) == nBL);
-            } else
+        if (nBL != nBLOld) {
+            assert(nBL == nDL_to_nBL(nBL_to_nDL(nBL)));
+            assert(GetBLR(pwRoot, nBLOld) == nBL);
+            set_wr_nType(*pwRoot, T_SKIP_TO_XX_SW);
+            assert(tp_bIsXxSw(wr_nType(*pwRoot)));
+            assert(GetBLR(pwRoot, nBLOld) == nBL);
+        } else
   #endif // defined(SKIP_TO_XX_SW)
-            {
-                if (nBW >= 7) {
-                    DBGI(printf("# Setting T_XX_SW nBW %d nBL %d.\n",
-                                nBW, nBL));
-                }
-                set_wr_nType(*pwRoot, T_XX_SW);
+        {
+            if (nBW >= 7) {
+                DBGI(printf("# Setting T_XX_SW nBW %d nBL %d.\n",
+                            nBW, nBL));
             }
+            set_wr_nType(*pwRoot, T_XX_SW);
         }
+    }
 #endif // defined(CODE_XX_SW)
 
-        if (nBL == nBLOld) {
-            DBGI(printf("\n# DoubleIt After NewSwitch Dump\n"));
-            DBGI(Dump(pwRootLast,
-                      /* wPrefix */ (Word_t)0, cnBitsPerWord));
-            DBGI(printf("\n"));
-        }
+    if (nBL == nBLOld) {
+        DBGI(printf("\n# DoubleIt After NewSwitch Dump\n"));
+        DBGI(Dump(pwRootLast,
+                  /* wPrefix */ (Word_t)0, cnBitsPerWord));
+        DBGI(printf("\n"));
     }
 
     // Now we need to move the keys from the old subtree to the new
@@ -5988,16 +5986,13 @@ InsertGuts(qp, Word_t wKey, int nPos
 {
     qv;
 #if defined(CODE_XX_SW)
-  #if defined(SKIP_TO_XX_SW)
     (void)nBLUp;
-  #endif // defined(SKIP_TO_XX_SW)
     int nBW; (void)nBW;
 #endif // defined(CODE_XX_SW)
     int nDL = nBL_to_nDL(nBL); // fyi assert(nDL_to_nBL(nDL) >= nBL);
     DBGI(printf("InsertGuts pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
                 (void *)pwRoot, wKey, nBL, wRoot));
     DBGI(printf("IG: nPos %d\n", nPos));
-    Link_t link; (void)link;
 
   // One of the key aspects of USE_XX_SW_ONLY_AT_DL2 is that we go ahead and
   // widen a DL2 switch right on past DL1 and all the way to an embedded
