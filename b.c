@@ -4343,8 +4343,6 @@ embeddedKeys:;
     {
         Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
         Word_t wRoot = *pwRoot;
-        int nType = wr_nType(wRoot);
-        Word_t *pwr = wr_pwr(wRoot);
         printf("\n");
         printf("IA: Switch PopCnt %zd nBL %d nBLR %d nBW %d nBLOld %d",
                GetPopCnt(pwRoot, nBL), nBL, GetBLR(pwRoot, nBL),
@@ -5058,6 +5056,9 @@ TransformList(qp,
   #ifdef SKIP_LINKS
     int nBLNew = SignificantBitCnt(qy, wKey, wPopCnt);
       #ifdef _SKIP_TO_LIST
+    // Can we just move the list down?
+    // Is nBLNew smaller than nBL?
+    // Is the population small enough to fit in a list at nBLNew?
     // Think about USE_XX_SW[_ONLY_AT_DL2].
     if ((nBL == 64)
         && (nDL_to_nBL(nBL_to_nDL(cnBitsPerWord / 2)) == cnBitsPerWord / 2)
@@ -5103,6 +5104,7 @@ TransformList(qp,
         //DBGI(printf("No SKIP_TO_LIST\n"));
     }
       #endif // _SKIP_TO_LIST
+    // We were not able to simply move the list to a smaller nBL.
     nBLNew = nDL_to_nBL(nBL_to_nDL(nBLNew));
       #ifdef USE_XX_SW
     // nBL might not be aligned. So nBLNew might be bigger.
@@ -5989,7 +5991,7 @@ InsertGuts(qp, Word_t wKey, int nPos
     (void)nBLUp;
     int nBW; (void)nBW;
 #endif // defined(CODE_XX_SW)
-    int nDL = nBL_to_nDL(nBL); // fyi assert(nDL_to_nBL(nDL) >= nBL);
+    int nDL = nBL_to_nDL(nBL); (void)nDL; // assert(nDL_to_nBL(nDL) >= nBL);
     DBGI(printf("InsertGuts pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
                 (void *)pwRoot, wKey, nBL, wRoot));
     DBGI(printf("IG: nPos %d\n", nPos));

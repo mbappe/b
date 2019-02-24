@@ -11,6 +11,14 @@
 #include "bdefines.h"  // May define NDEBUG for assert.h.
 #include <assert.h> // NDEBUG must be defined before including assert.h.
 
+// Use ASSERT for assertions that might be in the performance path and
+// would slow down regression testing with DEBUG.
+#ifdef DEBUG_ASSERT
+  #define ASSERT  assert
+#else // DEBUG_ASSERT
+  #define ASSERT
+#endif // DEBUG_ASSERT
+
 // Let's start with general purpose macros that aren't really specific
 // to our program.
 
@@ -121,50 +129,29 @@
 
 #define qyx(Suffix)  nBL##Suffix, pLn##Suffix, wRoot##Suffix
 
-#define  qvg \
+#define  qv \
+    ASSERT(wRoot == pLn->ln_wRoot); \
     Word_t *pwRoot = &pLn->ln_wRoot; \
     int nType = wr_nType(wRoot); \
     Word_t* pwr = wr_pwr(wRoot); \
-    (void)nBL; (void)pLn; (void)pwRoot; (void)wRoot; (void)nType; (void)pwr; \
-    assert(wRoot == pLn->ln_wRoot)
+    (void)nBL; (void)pLn; (void)pwRoot; (void)wRoot; (void)nType; (void)pwr
 
-#define  qvxg(Suffix) \
+// qv is shorthand to silence not-used compiler warnings.
+// And to initialize local variables.
+// And to validate assumptions.
+#define  qvx(Suffix) \
+    ASSERT(wRoot##Suffix == pLn##Suffix->ln_wRoot); \
     Word_t *pwRoot##Suffix = &pLn##Suffix->ln_wRoot; \
     int nType##Suffix = wr_nType(wRoot##Suffix); \
     Word_t* pwr##Suffix = wr_pwr(wRoot##Suffix); \
     (void)nBL##Suffix; (void)pLn##Suffix; (void)pwRoot##Suffix; \
-    (void)wRoot##Suffix; (void)nType##Suffix; (void)pwr##Suffix; \
-    assert(wRoot##Suffix == pLn##Suffix->ln_wRoot)
-
-#ifdef NO_TYPE_IN_XX_SW
-
-  // qv is shorthand to silence not-used compiler warnings.
-  // And to initialize local variables.
-  // And to validate assumptions.
-  #define qv  qvg
-  #define qvx(Suffix)  qvxg(Suffix)
-
-#else // NO_TYPE_IN_XX_SW
-
-  #define qv \
-    qvg; \
-    assert(nType == wr_nType(wRoot) || (nBL <= cnLogBitsPerLink)); \
-    assert(pwr == wr_pwr(wRoot) || (nBL <= cnLogBitsPerLink))
-
-  #define qvx(Suffix) \
-    qvxg(Suffix); \
-    assert(nType##Suffix == wr_nType(wRoot##Suffix) \
-           || (nBL##Suffix <= cnLogBitsPerLink)); \
-    assert(pwr##Suffix == wr_pwr(wRoot##Suffix) \
-           || (nBL##Suffix <= cnLogBitsPerLink))
-
-#endif // NO_TYPE_IN_XX_SW
+    (void)wRoot##Suffix; (void)nType##Suffix; (void)pwr##Suffix
 
 #define pqv \
     (void)pnBL; (void)ppLn; (void)pwRoot; (void)pnType; (void)ppwr; \
-    assert(*pwRoot == (*ppLn)->ln_wRoot); \
-    assert(*pnType == wr_nType(*pwRoot) || (*pnBL <= cnLogBitsPerLink)); \
-    assert(*ppwr == wr_pwr(*pwRoot) || (*pnBL <= cnLogBitsPerLink))
+    ASSERT(*pwRoot == (*ppLn)->ln_wRoot); \
+    ASSERT(*pnType == wr_nType(*pwRoot) || (*pnBL <= cnLogBitsPerLink)); \
+    ASSERT(*ppwr == wr_pwr(*pwRoot) || (*pnBL <= cnLogBitsPerLink))
 
 // Common arguments to printf.
 #define qyp   nBL, (void*)pLn, wRoot, nType, (void*)pwr
@@ -4168,12 +4155,12 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     /* printf("PSPHK(nBL %d pxKeys %p nPopCnt %d xKey 0x%x nPos %d\n", */ \
         /* _nBL, (void *)_pxKeys, _nPopCnt, _xKey, _nPos); */ \
     _b_t *px = (_b_t *)(_pxKeys); \
-    assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
+    ASSERT(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
     /* nSplit is the key chosen by PSPLIT */ \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_x), (_xKey)); \
     /* nSplitP is nSplit rounded down to the first key in the bucket */ \
     int nSplitP = nSplit * sizeof(_x_t) / sizeof(_b_t); \
-    assert((int)((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
+    ASSERT((int)((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
     /*__m128i xLsbs, xMsbs, xKeys;*/ \
     /*HAS_KEY_128_SETUP((_xKey), sizeof(_x_t) * 8, xLsbs, xMsbs, xKeys);*/ \
     if (BUCKET_HAS_KEY(&px[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
@@ -4220,7 +4207,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                                 (_xKey), sizeof(_x_t) * 8) \
                     != 0)); \
     } \
-    assert(nCnt == ((_nPos) >= 0)); \
+    ASSERT(nCnt == ((_nPos) >= 0)); \
 }
 
 #define PSPLIT_HASKEY(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
@@ -4800,7 +4787,7 @@ HasKey128(__m128i *pxBucket, Word_t wKey, int nBL)
         return _mm_movemask_epi8((__m128i)vEq);
     }
     if (nBL <= 32) {
-        assert(nBL == 32);
+        ASSERT(nBL == 32);
         v42_t vEq = (v42_t)(*(v42_t*)pxBucket == (unsigned int)wKey);
   #ifdef HK_MOVEMASK
         return _mm_movemask_epi8((__m128i)vEq);
@@ -4808,7 +4795,7 @@ HasKey128(__m128i *pxBucket, Word_t wKey, int nBL)
         return _mm_packs_epi32((__m128i)vEq, (__m128i)vEq)[0];
   #endif // HK_MOVEMASK
     }
-    assert(nBL == 64);
+    ASSERT(nBL == 64);
 #endif // ifndef OLD_HK_128
     // this appears to be a little slower out of the cache
 #if 0

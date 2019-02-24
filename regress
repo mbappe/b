@@ -25,7 +25,7 @@ CHECK=Judy1LHCheck
 
 # Test keys going from small negative numbers to small positive numbers
 # relative to a particular BValue and vice versa.
-for Judy in 1 L
+for Judy in 1 R # L
 do
 for magnitude in 1 5
 do
@@ -71,7 +71,7 @@ fi
 done
 done
 
-for Judy in 1 R # L
+for Judy in 1 L # R # L
 do
 for EOPT in -E --splay-key-bits=0xff00ffff \
                --splay-key-bits=0x0f0f0fff
