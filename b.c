@@ -3777,14 +3777,14 @@ lastDigit8:;
                     PAD(pcKeysLoop, nPopCntLoop);
                 } else
   #ifdef BITMAP
-                if (nBLLoop <= cnBitsInD1) {
-                    assert(nBL != cnBitsInD1);
-                    assert(nBLLoop == cnBitsInD1);
+                if (nBLLoop == cnBitsInD1) {
                     Word_t wRootLoop = pLnLoop->ln_wRoot;
                     int nTypeLoop = wr_nType(wRootLoop);
                     Word_t *pwrLoop = wr_pwr(wRootLoop);
                     pwrLoop = NewBitmap(qyx(Loop), cnBitsInD1,
                                         pcKeys[nnStart], nPopCntLoop);
+                    wRootLoop = pLnLoop->ln_wRoot;
+                    nTypeLoop = wr_nType(wRootLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop);
                 } else
@@ -3895,8 +3895,7 @@ lastDigit16:;
                     }
                 } else
   #ifdef BITMAP
-                if (nBLLoop <= cnBitsInD1) {
-                    assert(nBLLoop == cnBitsInD1);
+                if (nBLLoop == cnBitsInD1) {
                     Word_t wRootLoop = pLnLoop->ln_wRoot;
                     int nTypeLoop = wr_nType(wRootLoop);
                     Word_t *pwrLoop = wr_pwr(wRootLoop);
@@ -3904,24 +3903,8 @@ lastDigit16:;
                                         psKeys[nnStart], nPopCntLoop);
                     wRootLoop = pLnLoop->ln_wRoot;
                     nTypeLoop = wr_nType(wRootLoop);
-                    Word_t *pwBitmap = ((BmLeaf_t*)pwrLoop)->bmlf_awBitmap;
-      #ifdef B_JUDYL
-                    Word_t *pwValuesLoop
-                        = gpwBitmapValues(qyx(Loop), cnBitsInD1);
-      #endif // B_JUDYL
-                    for (int xx = nnStart; xx < nn; ++xx) {
-                         // Streamlined version of InsertAtBitmap.
-                        SetBit(pwBitmap, psKeys[xx] & MSK(nBLLoop));
-      #ifdef B_JUDYL
-          #if (cnBitsPerWord > 32)
-                        if (wRootLoop & EXP(cnLsbBmUncompressed)) {
-                            pwValuesLoop[psKeys[xx] & MSK(nBLLoop)]
-                                = pwValuesOld[~xx];
-                        } else
-          #endif // (cnBitsPerWord > 32)
-                        { *pwValuesLoop++ = pwValuesOld[~xx]; }
-      #endif // B_JUDYL
-                    }
+                    InsertAllAtBitmap(qyx(Loop), qyx(Old),
+                                      nnStart, nPopCntLoop);
                 } else
   #endif // BITMAP
                 {
@@ -4034,8 +4017,7 @@ lastDigit32:;
                     }
                 } else
   #ifdef BITMAP
-                if (nBLLoop <= cnBitsInD1) {
-                    assert(nBLLoop == cnBitsInD1);
+                if (nBLLoop == cnBitsInD1) {
                     Word_t wRootLoop = pLnLoop->ln_wRoot;
                     int nTypeLoop = wr_nType(wRootLoop);
                     Word_t *pwrLoop = wr_pwr(wRootLoop);
@@ -4043,24 +4025,8 @@ lastDigit32:;
                                         piKeys[nnStart], nPopCntLoop);
                     wRootLoop = pLnLoop->ln_wRoot;
                     nTypeLoop = wr_nType(wRootLoop);
-                    Word_t *pwBitmap = ((BmLeaf_t*)pwrLoop)->bmlf_awBitmap;
-      #ifdef B_JUDYL
-                    Word_t *pwValuesLoop
-                        = gpwBitmapValues(qyx(Loop), cnBitsInD1);
-      #endif // B_JUDYL
-                    for (int xx = nnStart; xx < nn; ++xx) {
-                         // Streamlined version of InsertAtBitmap.
-                        SetBit(pwBitmap, piKeys[xx] & MSK(nBLLoop));
-      #ifdef B_JUDYL
-          #if (cnBitsPerWord > 32)
-                        if (wRootLoop & EXP(cnLsbBmUncompressed)) {
-                            pwValuesLoop[piKeys[xx] & MSK(nBLLoop)]
-                                = pwValuesOld[~xx];
-                        } else
-          #endif // (cnBitsPerWord > 32)
-                        { *pwValuesLoop++ = pwValuesOld[~xx]; }
-      #endif // B_JUDYL
-                    }
+                    InsertAllAtBitmap(qyx(Loop), qyx(Old),
+                                      nnStart, nPopCntLoop);
                 } else
   #endif // BITMAP
                 {
@@ -4184,8 +4150,7 @@ lastDigit:;
                     }
                 } else
   #ifdef BITMAP
-                if (nBLLoop <= cnBitsInD1) {
-                    assert(nBLLoop == cnBitsInD1);
+                if (nBLLoop == cnBitsInD1) {
                     Word_t wRootLoop = pLnLoop->ln_wRoot;
                     int nTypeLoop = wr_nType(wRootLoop);
                     Word_t *pwrLoop = wr_pwr(wRootLoop);
