@@ -18,7 +18,9 @@
 static void
 Checkpoint(qp, const char *str)
 {
-    qv;
+    //qv;
+    int nType = wr_nType(wRoot);
+    Word_t *pwr = wr_pwr(wRoot);
     printf("# %20s: " qfmt "\n", str, qyp);
 }
 
@@ -514,7 +516,7 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
     nBW = cnBitsPerDigit; // compiler complains if not initialized here
-    Word_t *pwValueUp = NULL; (void)pwValueUp;
+    Word_t* pwValueUp = NULL; (void)pwValueUp;
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrUp = pwrUp; // suppress "uninitialized" compiler warning
@@ -1975,14 +1977,14 @@ t_bitmap:;
             }
             // Count bits.
             Word_t wPopCnt;
-            if (cbEmbeddedBitmap && (nBLR == cnBitsInD1)) {
-                assert(nBL == nBLR); // skip to sub-link-size bm
-                if (cnBitsInD1 <= cnLogBitsPerWord) {
-                    Word_t wBit = EXP(wKey & MSK(cnBitsInD1));
+            if (cbEmbeddedBitmap && (nBLR <= cnLogBitsPerLink)) {
+                assert(nBL == nBLR); // no skip to sub-link-size bm
+                if (nBLR <= cnLogBitsPerWord) {
+                    Word_t wBit = EXP(wKey & MSK(nBLR));
                     Word_t wBmMask = wBit - 1;
                     wPopCnt = __builtin_popcountll(wRoot & wBmMask);
                 } else {
-                    Word_t wBitNum = wKey & MSK(cnBitsInD1);
+                    Word_t wBitNum = wKey & MSK(nBLR);
                     Word_t wBmWordNum = wBitNum >> cnLogBitsPerWord;
                     Word_t wBit = EXP(wBitNum & MSK(cnLogBitsPerWord));
                     Word_t wBmMask = wBit - 1;
@@ -2852,8 +2854,8 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #if ! defined(POP_WORD_IN_LINK) || defined(DEBUG_COUNT)
     // Judy1Count really slows down testing for PP_IN_LINK.
       #ifdef B_JUDYL
-    assert((JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal)
-        || bPopCntTotalIsInvalid);
+    //assert((JudyLCount(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal)
+    //    || bPopCntTotalIsInvalid);
       #else // B_JUDYL
     //assert(Judy1Count(*ppvRoot, 0, (Word_t)-1, NULL) == wPopCntTotal);
       #endif // B_JUDYL

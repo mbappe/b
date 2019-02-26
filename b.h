@@ -14,9 +14,9 @@
 // Use ASSERT for assertions that might be in the performance path and
 // would slow down regression testing with DEBUG.
 #ifdef DEBUG_ASSERT
-  #define ASSERT  assert
+  #define ASSERT(_p)  assert(_p)
 #else // DEBUG_ASSERT
-  #define ASSERT
+  #define ASSERT(_p)  0
 #endif // DEBUG_ASSERT
 
 // Let's start with general purpose macros that aren't really specific
@@ -643,6 +643,24 @@ typedef Word_t Bucket_t;
 
 #define cwListPopCntMax  _cnListPopCntMaxEK
 
+#if (cwListPopCntMax != 0)
+  #if (cwListPopCntMax < 256)
+typedef uint8_t uListPopCntMax_t;
+  #else // (cwListPopCntMax < 256)
+typedef uint16_t uListPopCntMax_t;
+  #endif // #else (cwListPopCntMax < 256)
+  #ifdef POP_CNT_MAX_IS_KING
+      #ifdef B_JUDYL
+#define auListPopCntMax  auListPopCntMaxL
+      #else // B_JUDYL
+#define auListPopCntMax  auListPopCntMax1
+      #endif // #else B_JUDYL
+// Max list length as a function of nBL.
+// Array is indexed by nBL.
+extern uListPopCntMax_t auListPopCntMax[];
+  #endif // POP_CNT_MAX_IS_KING
+#endif // (cwListPopCntMax != 0)
+
 #define cnBitsLeftAtDl1     (cnBitsInD1)
 
 // Bits in the second least significant digit of the key.  Not bits left.
@@ -952,16 +970,16 @@ enum {
 
 #if defined(BPD_TABLE)
 
-  #define nDL_to_nBW(_nDL)  (anDL_to_nBW[_nDL])
+  #define nDLR_to_nBW(_nDLR)  (anDL_to_nBW[_nDLR])
   #define nDL_to_nBL(_nDL)           (anDL_to_nBL[_nDL])
   #define nBL_to_nDL(_nBL)           (anBL_to_nDL[_nBL])
 
-  #define nBL_to_nBW(_nBL)  nDL_to_nBW(nBL_to_nDL(_nBL))
+  #define nBLR_to_nBW(_nBLR)  nDL_to_nBW(nBL_to_nDL(_nBLR))
 
 #else // defined(BPD_TABLE)
 
-  #define nDL_to_nBW(_nDL)  (nBW_from_nDL(_nDL))
-  #define nBL_to_nBW(_nBL)  (nBW_from_nBL(_nBL))
+  #define nDLR_to_nBW(_nDLR)  (nBW_from_nDL(_nDLR))
+  #define nBLR_to_nBW(_nBLR)  (nBW_from_nBL(_nBLR))
   #define nDL_to_nBL(_nDL)           (nBL_from_nDL(_nDL))
   #define nBL_to_nDL(_nBL)           (nDL_from_nBL(_nBL))
 
@@ -972,7 +990,7 @@ enum {
 #define nBL_to_nBWNAB(_nBL)  (nBW_from_nBL_NAB(_nBL))
 #define nDL_to_nBWNAX(_nDL)  (nBW_from_nDL_NAX(_nDL))
 #define nDL_to_nBL_NAT(_nDL)          (nBL_from_nDL_NAT(_nDL))
-#define nDL_to_nBWNAT(_nDL)  (nDL_to_nBW(_nDL))
+#define nDL_to_nBWNAT(_nDL)  (nDLR_to_nBW(_nDL))
 
 #define nBL_to_nBWNAB(_nBL)  (nBW_from_nBL_NAB(_nBL))
 
@@ -1477,10 +1495,16 @@ EmbeddedListPopCntMax(int nBL)
 {
     int nBitsOverhead = nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL);
   #ifdef B_JUDYL
-    return nBL <= (cnBitsPerWord - nBitsOverhead);
+    int nKeysMax = (nBL <= (cnBitsPerWord - nBitsOverhead));
   #else // B_JUDYL
-    return (cnBitsPerWord - nBitsOverhead) / nBL;
+    int nKeysMax = (cnBitsPerWord - nBitsOverhead) / nBL;
   #endif // B_JUDYL
+  #ifdef POP_CNT_MAX_IS_KING
+    if (auListPopCntMax[nBL] < nKeysMax) {
+        nKeysMax = auListPopCntMax[nBL];
+    }
+  #endif // POP_CNT_MAX_IS_KING
+    return nKeysMax;
 }
 
 #endif // defined(EMBED_KEYS)
@@ -1627,6 +1651,7 @@ tp_bIsList(int nType)
 static inline int
 tp_bIsBitmap(int nType)
 {
+    (void)nType;
     return
   #if defined(BITMAP)
         ((nType == T_BITMAP)
@@ -1722,18 +1747,18 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
 #if defined(LVL_IN_WR_HB)
 
-    #define wr_nBL(_wr) \
+    #define wr_nBLR(_wr) \
         (assert(tp_bIsSkip(wr_nType(_wr))), \
             (int)GetBits((_wr), cnBitsLvl, cnLsbLvl))
 
-  #define wr_nDL(_wr)  nBL_to_nDL(wr_nBL(_wr))
+  #define wr_nDLR(_wr)  nBL_to_nDL(wr_nBLR(_wr))
 
-  #define set_wr_nBL(_wr, _nBL) \
-      (assert((_nBL) <= (int)MSK(cnBitsLvl)), \
+  #define set_wr_nBLR(_wr, _nBLR) \
+      (assert((_nBLR) <= (int)MSK(cnBitsLvl)), \
           assert(tp_bIsSkip(wr_nType(_wr))), \
-          SetBits(&(_wr), cnBitsLvl, cnLsbLvl, (_nBL)))
+          SetBits(&(_wr), cnBitsLvl, cnLsbLvl, (_nBLR)))
 
-  #define set_wr_nDL(_wr, _nDL)  set_wr_nBL((_wr), nDL_to_nBL(_nDL))
+  #define set_wr_nDLR(_wr, _nDLR)  set_wr_nBLR((_wr), nDL_to_nBL(_nDLR))
 
 #else // defined(LVL_IN_WR_HB)
 
@@ -1764,22 +1789,22 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 // But why? Is there a performance win since we have to look at the
 // prefix word anyway.
 // Should we enhance wr_nDL to take pwRoot and wRoot and nDL?
-  #define wr_nBL(_wr) \
+  #define wr_nBLR(_wr) \
       ((int)(assert(tp_bIsSkip(wr_nType(_wr))), \
        w_wPopCntBL(PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)), \
                    cnBitsLeftAtDl2)))
 
-  #define wr_nDL(_wr)  nBL_to_nDL(wr_nBL(_wr))
+  #define wr_nDLR(_wr)  nBL_to_nDL(wr_nBLR(_wr))
 
-  #define set_wr_nBL(_wr, _nBL) \
-      (assert((_nBL) >= cnBitsLeftAtDl2), \
+  #define set_wr_nBLR(_wr, _nBLR) \
+      (assert((_nBLR) >= cnBitsLeftAtDl2), \
           assert(tp_bIsSkip(wr_nType(_wr))), \
           (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
               = ((PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
                       & ~wPrefixPopMaskBL(cnBitsLeftAtDl2)) \
-                  | (_nBL))))
+                  | (_nBLR))))
 
-  #define set_wr_nDL(_wr, _nDL)  set_wr_nBL((_wr), nDL_to_nBL(_nDL))
+  #define set_wr_nDLR(_wr, _nDLR)  set_wr_nBLR((_wr), nDL_to_nBL(_nDLR))
 
 #else // defined(LVL_IN_PP)
 
@@ -1808,20 +1833,20 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 // values.  E.g. start at the top instead of the bottom, count by twos,
 // lookup table, ...  But why?  We're going to use LVL_IN_PP.  This code
 // is an anachronism.
-  #define tp_to_nDL(_tp)   ((_tp)  - T_SKIP_TO_SWITCH + 2)
+  #define tp_to_nDLR(_tp)   ((_tp)  - T_SKIP_TO_SWITCH + 2)
   #define nDL_to_tp(_nDL)  ((_nDL) + T_SKIP_TO_SWITCH - 2)
 
-  #define wr_nDL(_wr) \
-      (assert(tp_bIsSkip(wr_nType(_wr))), tp_to_nDL(wr_nType(_wr)))
+  #define wr_nDLR(_wr) \
+      (assert(tp_bIsSkip(wr_nType(_wr))), tp_to_nDLR(wr_nType(_wr)))
 
-  #define wr_nBL(_wr)  nDL_to_nBL(tp_to_nDL(wr_nType(_wr)))
+  #define wr_nBLR(_wr)  nDL_to_nBL(tp_to_nDLR(wr_nType(_wr)))
 
-  #define set_wr_nDL(_wr, _nDL) \
-      (assert(nDL_to_tp(_nDL) >= T_SKIP_TO_SWITCH), \
-       set_wr_nType((_wr), nDL_to_tp(_nDL)))
+  #define set_wr_nDLR(_wr, _nDLR) \
+      (assert(nDL_to_tp(_nDLR) >= T_SKIP_TO_SWITCH), \
+       set_wr_nType((_wr), nDL_to_tp(_nDLR)))
 
-  #define set_wr_nBL(_wr, _nBL) \
-      set_wr_nDL((_wr), nBL_to_nDL(_nBL))
+  #define set_wr_nBLR(_wr, _nBLR) \
+      set_wr_nDLR((_wr), nBL_to_nDL(_nBLR))
 
 #endif // defined(LVL_IN_PP)
 
@@ -2622,7 +2647,7 @@ gnBW(qp, int nBLR)
         }
     } else
   #endif // CODE_XX_SW
-    { nBW = nBL_to_nBW(nBLR); }
+    { nBW = nBLR_to_nBW(nBLR); }
     return nBW;
 }
 
@@ -2763,7 +2788,7 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
     assert(nBLR <= (int)MSK(cnBitsLvl));
     SetBits(pwRoot, cnBitsLvl, cnLsbLvl, nBLR);
   #else // LVL_IN_WR_HB
-    set_wr_nBL(*pwRoot, nBLR);
+    set_wr_nBLR(*pwRoot, nBLR);
   #endif // #else LVL_IN_WR_HB
 }
 #endif // SKIP_LINKS
@@ -2867,9 +2892,9 @@ gnBLRSkip(qp)
   #ifdef LVL_IN_WR_HB
     return GetBits(wRoot, cnBitsLvl, cnLsbLvl);
   #elif defined(POP_WORD)
-    return wr_nBL(wRoot);
+    return wr_nBLR(wRoot);
   #else // LVL_IN_WR_HB
-    return nDL_to_nBL(tp_to_nDL(nType));
+    return nDL_to_nBL(tp_to_nDLR(nType));
   #endif // LVL_IN_WR_HB
 }
 
@@ -3031,7 +3056,7 @@ GetBLR(Word_t *pwRoot, int nBL)
 
     return
   #ifdef SKIP_LINKS
-        tp_bIsSkip(wr_nType(*pwRoot)) ? (int)wr_nBL(*pwRoot) :
+        tp_bIsSkip(wr_nType(*pwRoot)) ? (int)wr_nBLR(*pwRoot) :
   #endif // SKIP_LINKS
             nBL;
 }
@@ -6541,7 +6566,7 @@ SumPopCnt(Word_t *pwRoot, int nBL)
     int nType = wr_nType(wRoot); (void)nType;
     Word_t *pwr = wr_pwr(wRoot);
     int nBLR = GetBLR(pwRoot, nBL);
-    int nBW = nBL_to_nBW(nBLR);
+    int nBW = nBLR_to_nBW(nBLR);
     int nLinkCnt =
   #if defined(CODE_BM_SW)
         tp_bIsBmSw(nType) ? BmSwLinkCnt(qy) :
