@@ -453,46 +453,6 @@ CalcListWordCnt(Word_t wPopCntArg, unsigned nBL)
     (void)nBL;
 
     assert(wPopCntArg != 0);
-
-#ifdef FAST_LIST_WORDS
-  #ifndef COMPRESSED_LISTS
-    #error FAST_LIST_WORDS requires COMPRESSED_LISTS
-  #endif // COMPRESSED_LISTS
-  #ifdef LIST_END_MARKERS
-    #error FAST_LIST_WORDS requires no LIST_END_MARKERS
-  #endif // LIST_END_MARKERS
-  #ifndef OLD_LISTS
-    #error FAST_LIST_WORDS requires OLD_LISTS
-  #endif // OLD_LISTS
-  #if (N_LIST_HDR_KEYS != 0)
-    #error FAST_LIST_WORDS requires (N_LIST_HDR_KEYS != 0)
-  #endif // (N_LIST_HDR_KEYS != 0)
-    // FAST_LIST_WORDS also requires sizeof(Bucket_t) <= cnMallocMask + 1.
-    (void)wPopCntArg;
-  #ifdef B_JUDYL
-    if (nBL == 8) {
-        return 256 + 256 / 8; // cnListPopCntMax8 == 256
-    } else {
-        // log(56-1) = 5, log(40-1) = 5, exp(5+1) = 64
-        // log(32-1) = 4, log(24-1) = 4, exp(4+1) = 32
-        // log(16-1) = 3, exp(3+1) = 16
-        // log(8-1) = 2, exp(2+1) = 8
-        int nBytesPerListEntry = EXP(LOG(nBL-1)-2);
-        return 32 + 32 * nBytesPerListEntry / 8; // cnListPopCntMax8 == 32
-    }
-  #else // B_JUDYL
-    if (nBL == 8) {
-        return 256 / 8; // cnListPopCntMax = 256
-    } else {
-        int nBytesPerListEntry = EXP(LOG(nBL-1)-2);
-        return 32 * nBytesPerListEntry / 8; // cnListPopCntMax = 32
-    }
-  #endif // B_JUDYL
-#else // FAST_LIST_WORDS
-  #ifdef FULL_ALLOC
-    wPopCntArg = 256;
-  #endif // FULL_ALLOC
-
   #if defined(COMPRESSED_LISTS)
     // log(56-1) = 5, log(40-1) = 5, exp(5+1) = 64
     // log(32-1) = 4, log(24-1) = 4, exp(4+1) = 32
@@ -587,7 +547,6 @@ CalcListWordCnt(Word_t wPopCntArg, unsigned nBL)
     return ls_nSlotsInList(wPopCntArg, nBL, nBytesKeySz)
         * nBytesKeySz / sizeof(Word_t);
 #endif // defined(OLD_LISTS)
-#endif // FAST_LIST_WORDS
 }
 
 #else // OLD_LIST_WORD_CNT
@@ -1004,82 +963,37 @@ NewListSetMarker(Word_t *pwList, Word_t wPopCnt, int nBL, int nWords)
 }
 #endif // LIST_END_MARKERS
 
-// Allocate a new T_LIST leaf (even if the leaf could be embedded).
-// If we want to do a one-word parallel search when doing PSPLIT_SEARCH
-// then we have to make sure every word in the list is full of keys, e.g.
-// no pop count.
+// Allocate a new list leaf buffer.
+// Return a pointer to the start of the key area.
+// If we want to do a parallel search when doing PSPLIT_SEARCH then
+// the key area must be bucket-aligned and have nothing but keys in
+// the key area buckets. That is, no pop count or list end markers
+// in the key area buckets.
 static Word_t *
-NewListTypeList(Word_t wPopCnt, unsigned nBL)
+NewList(Word_t wPopCnt, int nBL)
 {
     assert(wPopCnt != 0);
-
     int nWords = ListWordCnt(wPopCnt, nBL);
-
     Word_t *pwList
         = (Word_t*)MyMalloc(nWords,
                             &j__AllocWordsJLL[(nBL + 7) / 8
                                                   & (sizeof(Word_t) - 1)]);
-
-#ifdef B_JUDYL
-  #ifdef FAST_LIST_WORDS
-    if (nBL == 8) {
-        pwList = &pwList[256]; // must agree with ListWordCnt
-    } else {
-        pwList = &pwList[32]; // must agree with ListWordCnt
-    }
-  #else // FAST_LIST_WORDS
-      #ifdef FULL_ALLOC
-    pwList = (Word_t *)ALIGN_UP((Word_t)&pwList[256], sizeof(Bucket_t));
-      #else // FULL_ALLOC
+  #ifdef B_JUDYL
     //pwList = (Word_t*)ALIGN_UP((Word_t)&pwList[nKeySlots], sizeof(Bucket_t));
     int nKeySlots = ListSlotCnt(wPopCnt, nBL);
-#ifdef LIST_POP_IN_PREAMBLE
+      #ifdef LIST_POP_IN_PREAMBLE
     ++nKeySlots; // make room for list pop count
-#endif // LIST_POP_IN_PREAMBLE
+      #endif // LIST_POP_IN_PREAMBLE
     pwList = (Word_t*)ALIGN_UP((Word_t)&pwList[nKeySlots], cnMallocAlignment);
-      #endif // FULL_ALLOC
-  #endif // FAST_LIST_WORDS
-#else // B_JUDYL
-  #if ! defined(OLD_LISTS)
+  #else // B_JUDYL
+      #ifndef OLD_LISTS
     pwList += nWords - 1;
-  #endif // ! defined(OLD_LISTS)
-#endif // B_JUDYL
-
+      #endif // #ifndef OLD_LISTS
+  #endif // B_JUDYL
   #ifdef LIST_END_MARKERS
     NewListSetMarker(pwList, wPopCnt, nBL, nWords);
   #endif // LIST_END_MARKERS
-
-    // Should we be setting wPrefix here for PP_IN_LINK?
-
-    return pwList;
-}
-
-static Word_t *
-NewListExternal(Word_t wPopCnt, unsigned nBL)
-{
-    assert(wPopCnt != 0);
-    return NewListTypeList(wPopCnt, nBL);
-}
-
-// Allocate memory for a new list for the given wPopCnt.
-// Use an embedded list if possible.
-// Otherwise use T_LIST.
-// Return NULL if no memory is allocated, i.e. wPopCnt == 0 or
-// embedded list is possible.
-static Word_t *
-NewList(int nPopCnt, int nBL)
-{
-#if defined(EMBED_KEYS)
-    // We need space for the keys, the pop count and the type.
-    // What about PP_IN_LINK?  See ListWords for more comments.
-    if (nPopCnt * nBL + nBL_to_nBitsPopCntSz(nBL) + cnBitsMallocMask
-            <= cnBitsPerWord)
-    {
-        return NULL;
-    }
-#endif // defined(EMBED_KEYS)
-
-    return NewListExternal(nPopCnt, nBL);
+    return pwList; // pwr
 }
 
 static int
@@ -1087,35 +1001,20 @@ OldList(Word_t *pwList, int nPopCnt, int nBL, int nType)
 {
     (void)nType;
     int nWords = ListWordCnt(nPopCnt, nBL);
-
-#ifdef B_JUDYL
-  #ifdef FAST_LIST_WORDS
-    if (nBL == 8) {
-        pwList = &pwList[-256];
-    } else {
-        pwList = &pwList[-32];
-    }
-  #else // FAST_LIST_WORDS
-      #ifdef FULL_ALLOC
-    pwList = (Word_t *)((Word_t)&pwList[-256] & ~cnMallocMask);
-      #else // FULL_ALLOC
+  #ifdef B_JUDYL
     int nKeySlots = ListSlotCnt(nPopCnt, nBL);
-          #ifdef LIST_POP_IN_PREAMBLE
+      #ifdef LIST_POP_IN_PREAMBLE
     ++nKeySlots; // make room for list pop count
-          #endif // LIST_POP_IN_PREAMBLE
+      #endif // LIST_POP_IN_PREAMBLE
     pwList = (Word_t*)((Word_t)&pwList[-nKeySlots] & ~cnMallocMask);
-      #endif // FULL_ALLOC
-  #endif // FAST_LIST_WORDS
-#else // B_JUDYL
-  #if ! defined(OLD_LISTS)
+  #else // B_JUDYL
+      #ifndef OLD_LISTS
     assert(nType == T_LIST);
     if (nType == T_LIST) { pwList -= nWords - 1; }
-  #endif // ! defined(OLD_LISTS)
-#endif // B_JUDYL
-
+      #endif // #ifndef OLD_LISTS
+  #endif // B_JUDYL
     MyFree(pwList, nWords,
            &j__AllocWordsJLL[(nBL + 7) / 8 & (sizeof(Word_t) - 1)]);
-
     return nWords * sizeof(Word_t);
 }
 
@@ -3757,7 +3656,7 @@ lastDigit8:;
                     // Let's make a new list and copy it over.
                     Word_t wRootLoop = 0;
                     int nTypeLoop = T_LIST; (void)nTypeLoop;
-                    Word_t *pwrLoop = NewListTypeList(nPopCntLoop, nBLLoop);
+                    Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
                     // Does this work for list pop cnt not in wRoot?
@@ -3864,7 +3763,7 @@ lastDigit16:;
                     // Let's make a new list and copy it over.
                     Word_t wRootLoop = 0;
                     int nTypeLoop = T_LIST; (void)nTypeLoop;
-                    Word_t *pwrLoop = NewListTypeList(nPopCntLoop, nBLLoop);
+                    Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
                     // Does this work for list pop cnt not in wRoot?
@@ -3977,7 +3876,7 @@ lastDigit32:;
                     // Let's make a new list and copy it over.
                     Word_t wRootLoop = 0;
                     int nTypeLoop = T_LIST; (void)nTypeLoop;
-                    Word_t *pwrLoop = NewListTypeList(nPopCntLoop, nBLLoop);
+                    Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
                     // Does this work for list pop cnt not in wRoot?
@@ -4097,7 +3996,7 @@ lastDigit:;
                     // Let's make a new list and copy it over.
                     Word_t wRootLoop = 0;
                     int nTypeLoop = T_LIST; (void)nTypeLoop;
-                    Word_t *pwrLoop = NewListTypeList(nPopCntLoop, nBLLoop);
+                    Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
                     // Does this work for list pop cnt not in wRoot?
@@ -5152,7 +5051,7 @@ TransformList(qp,
         //int nDLR = nBL_to_nDL(nBLR);
         int nTypeOld = nType;
         Word_t *pwrOld = pwr;
-        Word_t *pwr = NewListTypeList(wPopCnt, nBLR);
+        Word_t *pwr = NewList(wPopCnt, nBLR);
         Word_t wRoot = 0;
         int nType = T_SKIP_TO_LIST;
         set_wr(wRoot, pwr, nType);
@@ -5809,7 +5708,7 @@ InsertAtList(qp,
             // in the list.  Also init the beginning of the list marker
             // if LIST_END_MARKERS.
             assert(wPopCnt + 1 != 0);
-            pwList = NewListTypeList(wPopCnt + 1, nBL);
+            pwList = NewList(wPopCnt + 1, nBL);
 #if defined(UA_PARALLEL_128)
             if ((nBL == 16) && (wPopCnt < 6)) {
                 set_wr(wRoot, pwList, T_LIST_UA);
@@ -6358,7 +6257,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
     // to insert? Maybe we already do for most cases but why not make sure by
     // adding one to the nPopCnt argument here? Would it make some things more
     // complicated later?
-    Word_t *pwList = NewListTypeList(nPopCnt, nBL);
+    Word_t *pwList = NewList(nPopCnt, nBL);
     Word_t wRootNew = 0;
 #if defined(UA_PARALLEL_128)
     if ((nBL == 16) && (nPopCnt <= 6)) {
@@ -6971,7 +6870,7 @@ embeddedKeys:;
              wPopCnt-1, nBL, ListWordCnt(wPopCnt-1, nBL)));
         // Malloc a new, smaller list.
         assert(wPopCnt - 1 != 0);
-        pwList = NewListTypeList(wPopCnt - 1, nBL);
+        pwList = NewList(wPopCnt - 1, nBL);
         set_wr(wRoot, pwList, T_LIST);
     } else {
         pwList = pwr;
@@ -7558,18 +7457,6 @@ Initialize(void)
 #else // OLD_LIST_WORD_CNT
     printf("# No OLD_LIST_WORD_CNT\n");
 #endif // #endif OLD_LIST_WORD_CNT
-
-#if defined(FAST_LIST_WORDS)
-    printf("#    FAST_LIST_WORDS\n");
-#else // defined(FAST_LIST_WORDS)
-    printf("# No FAST_LIST_WORDS\n");
-#endif // defined(FAST_LIST_WORDS)
-
-#if defined(FULL_ALLOC)
-    printf("#    FULL_ALLOC\n");
-#else // defined(FULL_ALLOC)
-    printf("# No FULL_ALLOC\n");
-#endif // defined(FULL_ALLOC)
 
 #if defined(POP_IN_WR_HB)
     printf("#    POP_IN_WR_HB\n");
