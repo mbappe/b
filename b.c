@@ -3119,7 +3119,8 @@ InsertCleanup(qp, Word_t wKey)
 
         //Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord);
         //printf("wRoot %p wPopCnt %ld\n", (void *)wRoot, wPopCnt);
-        DBGI(printf("\n# IC: Creating a bitmap at nBL %d.\n", nBL));
+        DBGI(printf("\n# IC: Creating a bitmap at nBL %d nBLR %d.\n",
+                    nBL, nBLR));
 
         int nBW;
           #if defined(USE_XX_SW)
@@ -3659,6 +3660,7 @@ lastDigit8:;
                     Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
+                    snListBLR(qyx(Loop), nBLLoop);
                     // Does this work for list pop cnt not in wRoot?
                     Set_xListPopCnt(&pLnLoop->ln_wRoot, nBLLoop, nPopCntLoop);
                     wRootLoop = pLnLoop->ln_wRoot;
@@ -3766,6 +3768,7 @@ lastDigit16:;
                     Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
+                    snListBLR(qyx(Loop), nBLLoop);
                     // Does this work for list pop cnt not in wRoot?
                     Set_xListPopCnt(&pLnLoop->ln_wRoot, nBLLoop, nPopCntLoop);
                     wRootLoop = pLnLoop->ln_wRoot;
@@ -3879,6 +3882,7 @@ lastDigit32:;
                     Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
+                    snListBLR(qyx(Loop), nBLLoop);
                     // Does this work for list pop cnt not in wRoot?
                     Set_xListPopCnt(&pLnLoop->ln_wRoot, nBLLoop, nPopCntLoop);
                     wRootLoop = pLnLoop->ln_wRoot;
@@ -3999,6 +4003,7 @@ lastDigit:;
                     Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
+                    snListBLR(qyx(Loop), nBLLoop);
                     // Does this work for list pop cnt not in wRoot?
                     Set_xListPopCnt(&pLnLoop->ln_wRoot, nBLLoop, nPopCntLoop);
                     wRootLoop = pLnLoop->ln_wRoot;
@@ -5055,9 +5060,9 @@ TransformList(qp,
         Word_t wRoot = 0;
         int nType = T_SKIP_TO_LIST;
         set_wr(wRoot, pwr, nType);
-        Set_nBLR(&wRoot, nBLR);
         //Word_t *pwRootOld = pwRoot;
         *pwRoot = wRoot; // install
+        snListBLR(qy, nBLR);
         // Does this work for list pop cnt not in wRoot?
         Set_xListPopCnt(pwRoot, nBLR, wPopCnt);
         wRoot = *pwRoot;
@@ -5732,6 +5737,7 @@ InsertAtList(qp,
         // wRoot ourselves (if DEL returned it).
 
         pLn->ln_wRoot = wRoot; // install new
+        snListBLR(qy, nBL);
         Set_xListPopCnt(pwRoot, nBL, wPopCnt + 1);
         wRoot = pLn->ln_wRoot;
         int nTypeOld = nType;
@@ -6213,6 +6219,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
 #endif // B_JUDYL
                     )
 {
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
     (void)pwRoot;
     DBGI(printf(
          "InflateEmbeddedList pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
@@ -6328,7 +6335,8 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
 
     // What about padding the bucket and/or malloc buffer?
 
-    *pwRoot = wRootNew;
+    *pwRoot = wRoot = wRootNew;
+    snListBLR(qy, nBL);
     Set_xListPopCnt(pwRoot, nBL, nPopCnt);
 
     return *pwRoot; // wRootNew is installed
@@ -6892,6 +6900,7 @@ embeddedKeys:;
   #endif // B_JUDYL
 
     *pwRoot = wRoot;
+    snListBLR(qy, nBL);
     // Init pop count in list before using ls_p[csiw]Keys below.
     Set_xListPopCnt(pwRoot, nBL, wPopCnt - 1);
     wRoot = pLn->ln_wRoot;

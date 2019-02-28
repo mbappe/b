@@ -1485,7 +1485,9 @@ t_list:;
         } // cleanup is complete
   #endif // defined(INSERT) || defined(REMOVE)
 
-        assert((pwr != NULL) || (wr_nType(WROOT_NULL) == T_LIST));
+        assert((pwr != NULL)
+            || ((wr_nType(WROOT_NULL) == T_LIST) && (wRoot == WROOT_NULL)));
+        assert((pwr == NULL) || (gnListBLR(qy) == nBL));
 
         // Search the list.  wPopCnt is the number of keys in the list.
 

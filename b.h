@@ -2762,6 +2762,10 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
     assert(nBLR <= (int)MSK(cnBitsLvl));
     SetBits(pwRoot, cnBitsLvl, cnLsbLvl, nBLR);
   #else // LVL_IN_WR_HB
+      #ifndef PP_IN_LINK
+      // POP_WORD <==> _LVL_IN_PP, but is there a PP field in a list?
+    assert(!tp_bIsList(wr_nType(*pwRoot)));
+      #endif // #ifndef PP_IN_LINK
     set_wr_nBLR(*pwRoot, nBLR);
   #endif // #else LVL_IN_WR_HB
 }
@@ -2890,14 +2894,24 @@ static int
 gnListBLR(qp)
 {
     qv;
-    return gnBLR(qy);
+  #ifdef LVL_IN_WR_HB
+    return GetBits(wRoot, cnBitsLvl, cnLsbLvl);
+  #elif defined(PP_IN_LINK)
+    return wr_nBLR(wRoot);
+  #else // #elif LVL_IN_WR_HB #elif def(PP_IN_LINK)
+    // POP_WORD <==> _LVL_IN_PP, but is there a PP field in a list?
+    return nBL;
+  #endif // #elif LVL_IN_WR_HB #elif def(PP_IN_LINK)
 }
 
 static void
 snListBLR(qp, int nBLR)
 {
     qv; (void)nBLR;
+  #if defined(LVL_IN_WR_HB) || defined(PP_IN_LINK)
     Set_nBLR(pwRoot, nBLR);
+  #endif // defined(LVL_IN_WR_HB) || defined(PP_IN_LINK)
+    // POP_WORD <==> _LVL_IN_PP, but is there a PP field in a list?
 }
 
 static inline Word_t
