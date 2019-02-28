@@ -1789,8 +1789,8 @@ t_xx_list:;
       #endif // SKIP_PREFIX_CHECK
       #endif // COMPRESSED_LISTS
         {
-            int nXxListBW = gnXxListBW(qy);
-            nBLR += nXxListBW; // nBLR is funky for XX_LIST
+            nBLR = gnListBLR(qy);
+            assert(nBLR > nBL); // skip up instead of down
       // LOOKUP_NO_LIST_SEARCH is for analysis only.
       #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
             if (1

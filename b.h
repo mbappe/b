@@ -727,14 +727,14 @@ enum {
 #endif // defined(SEPARATE_T_NULL)
 #if (cwListPopCntMax != 0)
     T_LIST, // external list of keys
-#ifdef XX_LISTS
+  #ifdef XX_LISTS
     // T_XX_LIST is shared by multiple links.
-    // It allows faster deferred splay when doubling a switch.
+    // It allows deferred splay when doubling-down a switch.
     // It allows better memory efficiency for JudyL with no embedded keys.
     // The log of the number of links that share the list is specified by
-    // [gs]nXxListBW.
+    // gnListBLR(qy) - nBL.
     T_XX_LIST,
-#endif // XX_LISTS
+  #endif // XX_LISTS
   #if defined(SKIP_TO_LIST)
     T_SKIP_TO_LIST, // skip to external list of keys
   #endif // defined(SKIP_TO_LIST)
@@ -1666,9 +1666,8 @@ tp_bIsBitmap(int nType)
 }
 
 // Bit fields in the upper bits of of wRoot.
-// Lvl is the level of the node pointed to.
+// (cnBitsLvl, cnLsbLvl) is the level of the node pointed to.
 // XxSwWidth is the log of the number of virtual links in the switch.
-// XxListBW is the log of the number of virtual links that share the list.
 // ListPopCnt is the number of keys in the list minus 1.
 // ListSwPopM1 is the number of links in the list switch minus one.
 // A field at the end is faster to extract than a field in the middle.
@@ -1681,12 +1680,7 @@ tp_bIsBitmap(int nType)
   #define cnBitsLvl  8 // 8 is easier to read in debug output than 7
 #endif // #else (cnBitsInD1 == 9)
 
-#if defined(SKIP_TO_LIST)
-  #define cnLsbListPopCnt  cnBitsVirtAddr
-#else // defined(SKIP_TO_LIST)
-  #define cnLsbListPopCnt  (cnBitsPerWord - cnBitsListPopCnt)
-#endif // defined(SKIP_TO_LIST)
-
+#define cnLsbListPopCnt  cnBitsVirtAddr
 #define cnLsbLvl  (cnBitsPerWord - cnBitsLvl)
 
 #ifdef B_JUDYL
@@ -1697,17 +1691,14 @@ tp_bIsBitmap(int nType)
 #endif // B_JUDYL
 
 #define cnBitsXxSwWidth  6
-#define cnBitsXxListBW   6
 
 #if (cnBitsPerWord > 32) && defined(SKIP_TO_XX_SW)
   #define cnLsbXxSwWidth  cnBitsVirtAddr
-  #define cnLsbXxListBW   cnBitsVirtAddr
 #else // (cnBitsPerWord > 32) && defined(SKIP_TO_XX_SW)
   // This applies to the preamble word for 32-bit -- not to wRoot.
   // There is no collision with cnLsbLvl because level is put
   // elsewhere for 32-bit.
   #define cnLsbXxSwWidth  (cnBitsPerWord - cnBitsXxSwWidth)
-  #define cnLsbXxListBW   (cnBitsPerWord - cnBitsXxListBW)
 #endif // (cnBitsPerWord > 32) && defined(SKIP_TO_XX_SW)
 
 #define cnBitsListSwPopM1  8 // for T_LIST_SW
@@ -2678,26 +2669,6 @@ snBW(qp, int nBW)
 
 #define set_pwr_nBW  Set_nBW
 
-// Get the log of the number of virtual links that share the list.
-static inline int
-gnXxListBW(qp)
-{
-    qv;
-    return (cnBitsPerWord > 32)
-        ? GetBits(wRoot,   cnBitsXxListBW, cnLsbXxListBW)
-        : GetBits(pwr[-1], cnBitsXxListBW, cnLsbXxListBW);
-}
-
-// Set the log of the number of virtual links that share the list.
-static inline void
-snXxListBW(qp, int nXxListBW)
-{
-    qv;
-    assert(nXxListBW <= (int)MSK(cnBitsXxListBW));
-    SetBits((cnBitsPerWord > 32) ? &pLn->ln_wRoot : &pwr[-1],
-            cnBitsXxListBW, cnLsbXxListBW, nXxListBW);
-}
-
 #if defined(SW_LIST_IN_LINK)
     #define SW_LIST
 #else // defined(SW_LIST_IN_LINK)
@@ -2778,9 +2749,12 @@ typedef struct {
 
 static int GetBLR(Word_t *pwRoot, int nBL);
 
-#ifdef SKIP_LINKS
 // Set the level of the object in number of bits left to decode.
 // Use this only when *pwRoot is a skip link.
+// Hmm. We also use it for XX_LIST aka deferred splay which makes it kind of
+// a skip up, but we haven't decided if it will be a SKIP_LINK from the
+// ifdef perspective yet.
+//#ifdef SKIP_LINKS
 static inline void
 Set_nBLR(Word_t *pwRoot, int nBLR)
 {
@@ -2791,7 +2765,7 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
     set_wr_nBLR(*pwRoot, nBLR);
   #endif // #else LVL_IN_WR_HB
 }
-#endif // SKIP_LINKS
+//#endif // SKIP_LINKS
 
 #ifdef B_JUDYL
 
@@ -2910,6 +2884,20 @@ gnBLR(qp)
         tp_bIsSkip(nType) ? gnBLRSkip(qy) :
   #endif // SKIP_LINKS
         nBL;
+}
+
+static int
+gnListBLR(qp)
+{
+    qv;
+    return gnBLR(qy);
+}
+
+static void
+snListBLR(qp, int nBLR)
+{
+    qv; (void)nBLR;
+    Set_nBLR(pwRoot, nBLR);
 }
 
 static inline Word_t
