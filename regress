@@ -94,5 +94,14 @@ fi
 done
 done
 
+# Targeted testing for LOWER_XX_SW and DoubleUp with cnListPopCntMax64=64.
+: \
+&& b -W0 -1lgi --splay-key-bits=0x1f8f4f2fe000 -S1 -n0x100000 > /dev/null \
+:
+if [ $? != 0 ]
+then
+    exit 1
+fi
+
 exit 0
 

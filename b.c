@@ -974,55 +974,35 @@ ListSlotCnt(int nPopCnt, int nBLR)
     return nListSlotCnt;
 }
 
+#ifdef LIST_END_MARKERS
 static void
-NewListCommon(Word_t *pwList, Word_t wPopCnt, unsigned nBL, unsigned nWords)
+NewListSetMarker(Word_t *pwList, Word_t wPopCnt, int nBL, int nWords)
 {
     (void)pwList; (void)wPopCnt; (void)nBL; (void)nWords;
-#if defined(COMPRESSED_LISTS)
+  #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
-#if defined(LIST_END_MARKERS)
         ls_pcKeysNAT(pwList)[-1] = 0;
-#endif // defined(LIST_END_MARKERS)
     } else if (nBL <= 16) {
-#if defined(LIST_END_MARKERS)
         ls_psKeysNAT(pwList)[-1] = 0;
-#endif // defined(LIST_END_MARKERS)
-    } else if (nBL <= 24) {
-#if defined(LIST_END_MARKERS)
-  #if (cnBitsPerWord > 32)
-        ls_piKeysNAT(pwList)[-1] = 0;
-  #else // (cnBitsPerWord > 32)
-        ls_pwKeysNAT(pwList)[-1] = 0;
-  #endif // (cnBitsPerWord > 32)
-#endif // defined(LIST_END_MARKERS)
-#if (cnBitsPerWord > 32)
+      #if (cnBitsPerWord > 32)
     } else if (nBL <= 32) {
-#if defined(LIST_END_MARKERS)
         ls_piKeysNAT(pwList)[-1] = 0;
-#endif // defined(LIST_END_MARKERS)
-#endif // (cnBitsPerWord > 32)
-    }
-    else
-#endif // defined(COMPRESSED_LISTS)
+      #endif // (cnBitsPerWord > 32)
+    } else
+  #endif // defined(COMPRESSED_LISTS)
     {
-#if defined(LIST_END_MARKERS)
         ls_pwKeysNAT(pwList)[-1
-  #if (cnDummiesInList==0)
-      #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+      #if (cnDummiesInList==0)
+          #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             // ls_pwKeys is for T_LIST not at top (it incorporates dummies
             // and markers, but not pop count)
                              + (nBL == cnBitsPerWord)
-      #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-  #endif // (cnDummiesInList==0)
+          #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+      #endif // (cnDummiesInList==0)
                              ] = 0;
-#endif // defined(LIST_END_MARKERS)
     }
-
-    // Should we be setting wPrefix here for PP_IN_LINK?
-
-    DBGM(printf("NewListCommon pwList %p wPopCnt " OWx" nBL %d nWords %d\n",
-        (void *)pwList, wPopCnt, nBL, nWords));
 }
+#endif // LIST_END_MARKERS
 
 // Allocate a new T_LIST leaf (even if the leaf could be embedded).
 // If we want to do a one-word parallel search when doing PSPLIT_SEARCH
@@ -1065,7 +1045,11 @@ NewListTypeList(Word_t wPopCnt, unsigned nBL)
   #endif // ! defined(OLD_LISTS)
 #endif // B_JUDYL
 
-    NewListCommon(pwList, wPopCnt, nBL, nWords);
+  #ifdef LIST_END_MARKERS
+    NewListSetMarker(pwList, wPopCnt, nBL, nWords);
+  #endif // LIST_END_MARKERS
+
+    // Should we be setting wPrefix here for PP_IN_LINK?
 
     return pwList;
 }
@@ -1301,7 +1285,7 @@ OldBitmap(Word_t *pwr, int nBLR, Word_t wPopCnt)
 static void
 SetBitInSwBmWord(Word_t *pwRoot, int nDigit)
 {
-    Word_t *pwr = wr_pwr(*pwRoot);
+    Word_t *pwr = wr_pwr(*pwRoot); (void)pwr;
     int nn = gnWordNumInSwBm(nDigit);
     PWR_pwBm(pwRoot, pwr)[nn] |= gwBitMaskInSwBmWord(nDigit);
   #ifdef OFFSET_IN_SW_BM_WORD
@@ -1316,7 +1300,7 @@ SetBitInSwBmWord(Word_t *pwRoot, int nDigit)
 static void
 ClrBitInSwBmWord(Word_t *pwRoot, int nDigit)
 {
-    Word_t *pwr = wr_pwr(*pwRoot);
+    Word_t *pwr = wr_pwr(*pwRoot); (void)pwr;
     int nn = gnWordNumInSwBm(nDigit);
     PWR_pwBm(pwRoot, pwr)[nn] &= ~gwBitMaskInSwBmWord(nDigit);
   #ifdef OFFSET_IN_SW_BM_WORD
@@ -1897,7 +1881,7 @@ NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
             nWordsNew += nLinkCnt + 1; // Embedded Values in Switch
         }
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-        Word_t *pwBm = PWR_pwBm(pwRoot, pwr);
+        Word_t *pwBm = PWR_pwBm(pwRoot, pwr); (void)pwBm;
 #if defined(CODE_BM_SW) && defined(CACHE_ALIGN_BM_SW)
         *pwRoot = MyMallocGuts(nWordsNew, /* logAlign */ 6, &j__AllocWordsJBB);
 #else // CACHE_ALIGN_BM_SW
@@ -4428,6 +4412,108 @@ embeddedKeys:;
 
 #endif // (cwListPopCntMax != 0)
 
+#ifdef USE_LOWER_XX_SW
+  #ifndef SKIP_TO_XX_SW
+    #error USE_LOWER_XX_SW requires SKIP_TO_XX_SW
+  #endif // SKIP_TO_XX_SW
+// Widen a switch.
+// Replace *pLnUp, which is the link to the switch containing qp, with a link
+// to a new, wider switch, and transfer the keys and values from the old
+// switch to the new switch, and insert wKey.
+  #ifdef B_JUDYL
+static Word_t*
+  #else // B_JUDYL
+static void
+  #endif // B_JUDYL
+DoubleUp(qp, // (nBL, pLn) of skip link to original switch
+         Word_t wKey, // key being inserted
+         Word_t wPopCnt) // pop count of original sub tree at qp?
+{
+    qv; (void)wPopCnt;
+    int nBLR = gnBLR(qy);
+    int nDLR = nBL_to_nDL(nBLR);
+    int nBW = gnBW(qy, nBLR);
+    Word_t wPrefix =
+  #ifdef PP_IN_LINK
+         (nBL == cnBitsPerWord) ? 0 :
+  #endif // PP_IN_LINK
+             PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBLR);
+    DBGI(printf("# DoubleUp from nBLR %d nBW %d.\n", nBLR, nBW));
+    assert(tp_bIsSkip(nType));
+    assert(tp_bIsXxSw(wr_nType(wRoot)));
+    assert(nBLR > nDL_to_nBL(2)); // temp
+  #if defined(NO_TYPE_IN_XX_SW)
+    assert(0);
+  #endif // defined(NO_TYPE_IN_XX_SW)
+    // We're creating a new switch at a bigger nBLR.
+    int nBLRNew = nDL_to_nBL(nDLR);
+    assert(nBLRNew > nBLR);
+    int nBWNew = nDLR_to_nBW(nDLR);
+    assert(nBWNew > nBW);
+    DBGI(printf("# To nBLRNew %d nBWNew %d.\n", nBLRNew, nBWNew));
+    DBGI(printf("\n# DoubleUp just before NewSwitch "));
+    DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
+
+    // For XX_SW we have updated qy to qyUp. Except nBL is really nBLR.
+    // And nBLOld has what should be in nBL.
+
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    // NewSwitch changes *pwRoot and the Link_t containing it.
+    // We need to preserve the Link_t for subsequent InsertAll.
+    // We don't have a whole link at the top.
+    if (nBLOld < cnBitsPerWord) {
+        link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+    } else
+#endif // #else defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    { /* wRoot serves as our saved link */ }
+    NewSwitch(pwRoot, wKey, nBLRNew, nBWNew,
+              T_SWITCH, nBL, /* wPopCnt */ 0);
+
+    DBGI(printf("\n# DoubleUp just after NewSwitch "));
+    DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
+
+    // Now we need to move the keys from the old subtree to the new
+    // subtree.
+
+    // NewSwitch changed *pwRoot.
+    // But wPrefix, nBL, wRoot, nType, pwr, nBLR and nBW still all apply
+    // to the tree whose keys must be reinserted.
+
+    // nBW is for the new tree.
+    DBGI(printf("# Copying 1<<nBW links from old switch to new switch.\n"));
+    DBGI(printf("# Old tree:\n"));
+    DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+    //DBGI(Dump(&wRoot, wPrefix, nBL));
+
+    Word_t* pwrNew = wr_pwr(*pwRoot);
+    //printf("wPrefix & MSK(nBLRNew) 0x%zx\n", wPrefix & MSK(nBLRNew));
+    for (int nIndex = 0; nIndex < (int)EXP(nBW); nIndex++) {
+        DBGI(printf("# New tree before nIndex 0x%02x ", nIndex));
+        DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+        int nIndexNew = ((wPrefix & MSK(nBLRNew)) >> (nBLR - nBW)) | nIndex;
+        //printf("nIndexNew 0x%02x\n", nIndexNew);
+        if (wr_nType(pwr_pLinks((Switch_t*)pwr)[nIndex].ln_wRoot)
+            == T_EMBEDDED_KEYS)
+        {
+printf("T_EMBEDDED_KEYS\n");
+        }
+        pwr_pLinks((Switch_t*)pwrNew)[nIndexNew]
+            = pwr_pLinks((Switch_t*)pwr)[nIndex];
+    }
+
+    OldSwitch(&wRoot, nBL
+#if defined(CODE_BM_SW)
+            , /* bBmSw */ 0, /* nLinks */ 0
+#endif // defined(CODE_BM_SW)
+              );
+
+    DBGI(printf("# DoubleUp just before final Insert "));
+    DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+
+    BJL(return) Insert(nBL, pLn, wKey);
+}
+#endif // USE_LOWER_XX_SW
+
 // Handle a prefix mismatch by inserting a switch above and demoting
 // the current *pwRoot.
 #ifdef B_JUDYL
@@ -4438,11 +4524,15 @@ static void
 InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
 {
     qv;
-    int nDL = nBL_to_nDL(nBL); (void)nDL;
-    int nDLR = nBL_to_nDL(nBLR); (void)nDLR;
-
+  #if defined(NO_SKIP_AT_TOP)
+    // no skip link at top => no prefix mismatch at top
+    assert(nBL < cnBitsPerWord);
+  #endif // defined(NO_SKIP_AT_TOP)
     // Can't have a prefix mismatch if there is no skip.
     assert(nBLR < nBL);
+  #ifndef USE_LOWER_XX_SW
+    assert(nDL_to_nBL(nBL_to_nDL(nBLR)) == nBLR);
+  #endif // #ifndef USE_LOWER_XX_SW
 
     // Get wPrefix for qp.
     // For PP_IN_LINK, we'll use wPrefix to install the prefix for the
@@ -4469,11 +4559,12 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
     // After finding the minimum nBL we have to choose an (nBLNew, nBWNew)
     // such that nBLNew >= nBLMin >= nBLNew - nBWNew.
     assert(wPrefix != wKey);
-    int nBLNew = LOG(wPrefix ^ wKey) + 1;
+    int nBLNew = LOG(wPrefix ^ wKey) + 1; // sig bits
     // nBLNew is the highest order bit that is different changed into an nBL.
     int nDLNew = nBL_to_nDL(nBLNew);
     // nDLNew includes the highest order digit that is different.
 
+// We may want to consider creating an upper or lower xx sw here.
     // Choose (nBLNew, nBWNew).
     nBLNew = nDL_to_nBL(nDLNew);
     int nBWNew = nDLR_to_nBW(nDLNew); (void)nBWNew;
@@ -4484,33 +4575,13 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
 // -DNO_USE_BM_SW  -DcnBitsPerDigit=4 -DNO_ALLOW_EMBEDDED_BITMAP
     assert(nBLNew <= nBL);
 
-    Word_t wPopCnt;
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-#if !defined(NO_SKIP_AT_TOP)
-    if (nBL == cnBitsPerWord) { wPopCnt = wPopCntTotal; /* hack */ } else
-#endif // !defined(NO_SKIP_AT_TOP)
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    {
-#if defined(SKIP_TO_BITMAP)
-#if !defined(PP_IN_LINK) && !defined(POP_WORD_IN_LINK)
-        if (Get_nType(pwRoot) == T_SKIP_TO_BITMAP) {
-            wPopCnt = gwBitmapPopCnt(qy, nBLR);
-        } else
-#endif // !defined(PP_IN_LINK) && !defined(POP_WORD_IN_LINK)
-#endif // defined(SKIP_TO_BITMAP)
-        {
-            wPopCnt = PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR);
-            if (wPopCnt == 0) {
-                // full pop
-                wPopCnt = EXP(nBLR);
-            }
-        }
-    }
+    Word_t wPopCnt = GetPopCnt(pwRoot, nBL);
 
-#if defined(NO_SKIP_AT_TOP)
-    // no skip link at top => no prefix mismatch at top
-    assert(nBL < cnBitsPerWord);
-#endif // defined(NO_SKIP_AT_TOP)
+  #ifdef USE_LOWER_XX_SW
+    if (nBLNew - nBWNew < nBLR) {
+        return DoubleUp(qy, wKey, wPopCnt);
+    }
+  #endif // USE_LOWER_XX_SW
 
     // todo nBW; wide switch
     int nIndex = (wPrefix >> nDL_to_nBL_NAT(nDLNew - 1))
@@ -4524,15 +4595,15 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
   #if defined(USE_BM_SW)
       #if defined(SKIP_TO_BM_SW)
   #if defined(BM_IN_LINK)
-    int bBmSwNew = (nDL != cnDigitsPerWord);
+    int bBmSwNew = (nBL != cnBitsPerWord);
   #else // defined(BM_IN_LINK)
     int bBmSwNew = 1;
   #endif // defined(BM_IN_LINK)
       #else // defined(SKIP_TO_BM_SW)
   #if defined(BM_IN_LINK)
-    int bBmSwNew = ((nDL != cnDigitsPerWord) && (nDLNew == nDL));
+    int bBmSwNew = ((nDL != cnDigitsPerWord) && (nBLNew == nBL));
   #else // defined(BM_IN_LINK)
-    int bBmSwNew = (nDLNew == nDL);
+    int bBmSwNew = (nBLNew == nBL);
   #endif // defined(BM_IN_LINK)
       #endif // defined(SKIP_TO_BM_SW)
   #else // defined(USE_BM_SW)
@@ -4557,7 +4628,7 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
         // Save the old bitmap before it is trashed by NewSwitch.
         // Is it possible that nDL != cnDigitsPerWord and
         // we are at the top?
-        if (nDL != cnDigitsPerWord)
+        if (nBL != cnBitsPerWord)
         {
             memcpy(ln.ln_awBm, PWR_pwBm(pwRoot, NULL), sizeof(ln.ln_awBm));
       #if ! defined(BM_SW_FOR_REAL)
@@ -4572,7 +4643,7 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
     Word_t *pwSw;
     // initialize prefix/pop for new switch
     // Make sure to pass the right key for BM_SW_FOR_REAL.
-    DBGI(printf("IG: nDLNew %d nDL %d\n", nDLNew, nDL));
+    DBGI(printf("IG: nBLNew %d nBL %d\n", nBLNew, nBL));
     assert(nBLNew <= nBL);
     // NewSwitch changes *pwRoot (and the link containing it).
     // It does not change our local wRoot and pwr (or pwRoot).
@@ -4586,52 +4657,42 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
                      T_SWITCH,
                      nBL, wPopCnt);
 
-#if defined(CODE_BM_SW)
-    if (bBmSwNew)
-    {
-#if defined(BM_SW_FOR_REAL)
-#if defined(BM_IN_LINK)
-    if (nDL != cnDigitsPerWord)
-#endif // defined(BM_IN_LINK)
-    {
-        // Switch was created with only one link based on wKey
-        // passed in.  Unless BM_IN_LINK && switch is at top.
-        nIndex = 0;
-    }
-#endif // defined(BM_SW_FOR_REAL)
-    }
-
-#if defined(BM_IN_LINK)
-    if (bBmSwOld)
-    {
-        if (nDL != cnDigitsPerWord)
+  #if defined(CODE_BM_SW)
+    if (bBmSwNew) {
+      #if defined(BM_SW_FOR_REAL)
+          #if defined(BM_IN_LINK)
+        if (nBL != cnBitsPerWord)
+          #endif // defined(BM_IN_LINK)
         {
+            // Switch was created with only one link based on wKey
+            // passed in.  Unless BM_IN_LINK && switch is at top.
+            nIndex = 0;
+        }
+      #endif // defined(BM_SW_FOR_REAL)
+    }
+      #if defined(BM_IN_LINK)
+    if (bBmSwOld) {
+        if (nBL != cnBitsPerWord) {
             // Copy bitmap from old link to new link.
             memcpy(pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_awBm,
                    ln.ln_awBm,
                    DIV_UP(wIndexCnt, cnBitsPerWord) * sizeof(Word_t));
-        }
-        else
-        {
+        } else {
             // Initialize bitmap in new link.
             // Mind the high-order bits of the bitmap word if/when the
             // bitmap is smaller than a whole word.
             // Mind endianness.
-            if (wIndexCnt < cnBitsPerWord)
-            {
+            if (wIndexCnt < cnBitsPerWord) {
                 *pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_awBm
                     = EXP(wIndexCnt) - 1;
-            }
-            else
-            {
+            } else {
                 memset(pwr_pLinks((BmSwitch_t *)pwSw)[nIndex].ln_awBm, -1,
                        DIV_UP(wIndexCnt, cnBitsPerWord) * sizeof(Word_t));
             }
         }
     }
-#endif // defined(BM_IN_LINK)
-
-#endif // defined(CODE_BM_SW)
+      #endif // defined(BM_IN_LINK)
+  #endif // defined(CODE_BM_SW)
 
     // Initialize the link in the new switch that points to the
     // old *pwRoot.
@@ -4654,7 +4715,7 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
   #if defined(NO_UNNECESSARY_PREFIX)
     if (nDLR < nDLNew - 1)
   #endif // defined(NO_UNNECESSARY_PREFIX)
-    { set_PWR_wPrefix(&pLinks[nIndex].ln_wRoot, NULL, nDLR, wPrefix); }
+    { set_PWR_wPrefixBL(&pLinks[nIndex].ln_wRoot, NULL, nBLR, wPrefix); }
 #else // defined(PP_IN_LINK)
   #if defined(NO_UNNECESSARY_PREFIX)
     // We could go to the trouble of zeroing the no-longer necessary
@@ -4662,15 +4723,13 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
   #endif // defined(NO_UNNECESSARY_PREFIX)
 #endif // defined(PP_IN_LINK)
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    set_PWR_wPopCnt(&pLinks[nIndex].ln_wRoot, NULL, nDLR, wPopCnt);
+    set_PWR_wPopCntBL(&pLinks[nIndex].ln_wRoot, NULL, nBLR, wPopCnt);
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     DBGI(printf("Just before InsertAtPrefixMismatch calls Insert"
                     " for prefix mismatch.\n"));
     DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
-#ifdef B_JUDYL
-    return
-#endif // B_JUDYL
+    BJL(return)
         Insert(nBL, pLn, wKey);
 }
 
@@ -4679,6 +4738,7 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
 // to a new, wider switch, and transfer the keys and values from the old
 // switch to the new switch, and insert wKey.
 #if defined(CODE_XX_SW)
+
   #ifdef B_JUDYL
 static Word_t*
   #else // B_JUDYL
@@ -4956,6 +5016,7 @@ insertAll:;
 
     BJL(return) Insert(nBLOld, pLn, wKey);
 }
+
 #endif // defined(CODE_XX_SW)
 
 // Figure out the length of the prefix that is common for all the keys in the
@@ -5070,7 +5131,8 @@ TransformList(qp,
     assert(nDL_to_nBL(nDL) == nBL);
     Link_t link; (void)link;
   #ifdef SKIP_LINKS
-    int nBLNew = SignificantBitCnt(qy, wKey, wPopCnt);
+    int nSignificantBitCnt = SignificantBitCnt(qy, wKey, wPopCnt);
+    int nBLNew = nSignificantBitCnt;
       #ifdef _SKIP_TO_LIST
     // Can we just move the list down?
     // Is nBLNew smaller than nBL?
@@ -5313,11 +5375,22 @@ newSkipToBitmap:;
                 assert(nBLNew == nBL);
       #endif // #else SKIP_LINKS
                 if ((nBW = nBLR_to_nBW(nBLNew)) >= 4) {
-                    nBW /= 2;
-                    if (SplayMaxPopCnt(pwRoot, nBL, wKey, nBLNew - nBW)
-                            > auListPopCntMax[nBLNew - nBW])
+                    int nBWBy2 = nBW / 2;
+      #ifdef USE_LOWER_XX_SW // implies SKIP_LINKS
+                    if ((nBLNew > cnBitsLeftAtDl2) // temp
+                        && (nSignificantBitCnt <= nBLNew - nBWBy2))
                     {
-                        nBW = nBLR_to_nBW(nBLNew);
+                        nBLNew -= nBWBy2;
+                        nBW -= nBWBy2;
+                        DBGI(printf("# Creating bottom narrow switch nBL %d"
+                                        " nSigBits %d nBLNew %d nBW %d\n",
+                                    nBL, nSignificantBitCnt, nBLNew, nBW));
+                    } else
+      #endif // USE_LOWER_XX_SW
+                    if (SplayMaxPopCnt(pwRoot, nBL, wKey, nBLNew - nBWBy2)
+                            <= auListPopCntMax[nBLNew - nBWBy2])
+                    {
+                        nBW = nBWBy2;
                     }
                 }
             }
@@ -5403,26 +5476,28 @@ newSkipToBitmap:;
   #endif // defined(USE_BM_SW)
                   nBL, /* wPopCnt */ 0);
 
-#if defined(CODE_XX_SW)
+  #ifdef USE_XX_SW_ONLY_AT_DL2
         if (nBLNew <= nDL_to_nBL(2)) {
-  #if defined(SKIP_TO_XX_SW)
+      #if defined(SKIP_TO_XX_SW)
             if (nBLNew != nBL) {
                 assert(nBLNew == nDL_to_nBL(nBL_to_nDL(nBLNew)));
                 assert(GetBLR(pwRoot, nBL) == nBLNew);
+            assert(wr_nType(*pwRoot) == T_SKIP_TO_XX_SW);
                 set_wr_nType(*pwRoot, T_SKIP_TO_XX_SW);
                 assert(tp_bIsXxSw(wr_nType(*pwRoot)));
                 assert(GetBLR(pwRoot, nBL) == nBLNew);
             } else
-  #endif // defined(SKIP_TO_XX_SW)
+      #endif // defined(SKIP_TO_XX_SW)
             {
                 if (nBW >= 7) {
                     DBGI(printf("# Setting T_XX_SW nBW %d nBLNew %d.\n",
                                 nBW, nBLNew));
                 }
+            assert(wr_nType(*pwRoot) == T_XX_SW);
                 set_wr_nType(*pwRoot, T_XX_SW);
             }
         }
-#endif // defined(CODE_XX_SW)
+  #endif // USE_XX_SW_ONLY_AT_DL2
 
         if (nBLNew == nBL) {
             DBGI(printf("\n# InsertSwitch After NewSwitch Dump\n"));
@@ -6002,6 +6077,7 @@ InsertGuts(qp, Word_t wKey, int nPos
     int nDL = nBL_to_nDL(nBL); (void)nDL; // assert(nDL_to_nBL(nDL) >= nBL);
     DBGI(printf("InsertGuts pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
                 (void *)pwRoot, wKey, nBL, wRoot));
+    DBGI(printf("IG nBLR %d\n", gnBLR(qy)));
     DBGI(printf("IG: nPos %d\n", nPos));
 
   // One of the key aspects of USE_XX_SW_ONLY_AT_DL2 is that we go ahead and
@@ -6157,9 +6233,7 @@ embeddedKeys:;
   #endif // defined(BM_SW_FOR_REAL)
 #endif // defined(SKIP_LINKS)
     {
-#ifdef B_JUDYL
-        return
-#endif // B_JUDYL
+        BJL(return)
             InsertAtList(qy, wKey, nPos
 #ifdef CODE_XX_SW
                        , pLnUp, nBLUp
@@ -6176,35 +6250,24 @@ embeddedKeys:;
   #if defined(EMBED_KEYS)
         assert(wr_nType(*pwRoot) != T_EMBEDDED_KEYS);
   #endif // defined(EMBED_KEYS)
-        int nDLR =
-  #ifdef SKIP_LINKS
-                 tp_bIsSkip(nType) ? (int)wr_nDLR(wRoot) :
-  #endif // SKIP_LINKS
-                 nDL;
-        (void)nDLR; // silence the compiler
+        int nBLR = gnBLR(qy);
   #if defined(BM_SW_FOR_REAL)
       #if defined(SKIP_LINKS)
         Word_t wPrefix;
         // Test to see if this is a missing link case.
         // If not, then it is a prefix mismatch case.
-        // nDL does not include any skip indicated in nType.
-        // If nDS == 0 or nDL == tp_to_nDL, then we know
-        // it is a missing link because it can't be a prefix mismatch.
-        // Unfortunately, nDS != 0 (or the other) does not imply a prefix
-        // mismatch.
+        // If nBLR == nBL there is no skip hence no prefix mismatch hence it
+        // must be a missing link case.
+        // Unfortunately, nBLR != nBL does not imply a prefix mismatch.
         // It's a bit of a bummer that we are doing the prefix check again.
         // But at least we only do it if there is a skip.
-        if ((nDLR == nDL)
-#if defined(PP_IN_LINK)
-            || ((nDL == cnDigitsPerWord)
-                    && ((wPrefix = 0) == w_wPrefixNotAtTop(wKey, nDLR)))
-            || ((nDL != cnDigitsPerWord)
-                && ((wPrefix = PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDLR))
-                            == w_wPrefixNotAtTop(wKey, nDLR)))
-#else // defined(PP_IN_LINK)
-            || ((wPrefix = PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDLR))
-                            == w_wPrefixNotAtTop(wKey, nDLR))
-#endif // defined(PP_IN_LINK)
+        if ((nBLR == nBL)
+                || ((wPrefix =
+          #ifdef PP_IN_LINK
+                         (nBL == cnBitsPerWord) ? 0 :
+          #endif // PP_IN_LINK
+                             PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBLR))
+                    == w_wPrefixNotAtTopBL(wKey, nBLR))
             )
       #endif // defined(SKIP_LINKS)
         {
@@ -6215,14 +6278,13 @@ embeddedKeys:;
             assert(nType == T_BM_SW);
   #endif // defined(SKIP_TO_BM_SW)
 #if defined(SKIP_LINKS)
-            DBGI(printf("wPrefix " OWx" w_wPrefix " OWx" nDLR %d\n",
-                        PWR_wPrefix(pwRoot, (Switch_t *)pwr, nDLR),
-                        w_wPrefix(wKey, nDLR), nDLR));
+            DBGI(printf("wPrefix " OWx" w_wPrefix " OWx" nBLR %d\n",
+                        PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBLR),
+                        w_wPrefixBL(wKey, nBLR), nBLR));
 #endif // defined(SKIP_LINKS)
-            NewLink(qy, wKey, nDLR, /* nDLUp */ nDL);
-#ifdef B_JUDYL
-            return
-#endif // B_JUDYL
+            assert(nDL_to_nBL(nBL_to_nDL(nBLR)) == nBLR);
+            NewLink(qy, wKey, nBL_to_nDL(nBLR), /* nDLUp */ nDL);
+            BJL(return)
                 Insert(nBL, pLn, wKey);
         }
 #endif // defined(BM_SW_FOR_REAL)
@@ -6231,18 +6293,13 @@ embeddedKeys:;
 #endif // defined(SKIP_LINKS) && defined(BM_SW_FOR_REAL)
 #if defined(SKIP_LINKS)
         {
-  #ifdef B_JUDYL
-            return
-  #endif // B_JUDYL
-                InsertAtPrefixMismatch(qy, wKey, nDL_to_nBL(nDLR));
+            BJL(return)
+                InsertAtPrefixMismatch(qy, wKey, nBLR);
         }
 #endif // defined(SKIP_LINKS)
     }
 #endif // defined(SKIP_LINKS) || defined(BM_SW_FOR_REAL)
-
-#ifndef B_JUDYL
-    return Success;
-#endif // B_JUDYL
+    BJ1(return Success);
 }
 
 #if (cwListPopCntMax != 0)

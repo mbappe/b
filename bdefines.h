@@ -110,6 +110,16 @@
 
 #endif // B_JUDYL
 
+// USE_LOWER_XX_SW turns on the use of narrow switches that decode the
+// least significant bits of a digit.
+// Default is -UUSE_LOWER_XX_SW
+#ifdef USE_LOWER_XX_SW
+  #undef  USE_XX_SW
+  #define USE_XX_SW
+  #undef  SKIP_TO_XX_SW
+  #define SKIP_TO_XX_SW
+#endif // USE_LOWER_XX_SW
+
 // Default is -UCODE_XX_SW.
 
 // Default is -UNO_TYPE_IN_XX_SW.

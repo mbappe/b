@@ -4,6 +4,10 @@
 # used by git bisect run.
 
 : \
+&& DEFINES="-DDEBUG -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64" make clean default \
+&& regress \
+&& DEFINES="-DBM_IN_LINK -DDEBUG" make clean default \
+&& regress \
 && DEFINES="-DDEBUG" make clean default \
 && regress \
 && make clean default \
