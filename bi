@@ -66,6 +66,10 @@
 && regress \
 && DEFINES="-DUSE_XX_SW -DcnListPopCntMax64=64 -DNO_SKIP_LINKS -DDEBUG" make clean default \
 && regress \
+&& DEFINES="-DUSE_XX_SW -DcnListPopCntMax64=64 -DNO_SKIP_TO_BITMAP -DDEBUG" make clean default \
+&& regress \
+&& DEFINES="-DPOP_WORD -DDEBUG" make clean default \
+&& regress \
 && : \
 && DEFINES="-DPOP_CNT_MAX_IS_KING -DcnListPopCntMax64=1 -DDEBUG" make clean default \
 && DEFINES="-DDEBUG_ALL" make clean default \

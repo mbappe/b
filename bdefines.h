@@ -56,11 +56,22 @@
   //                 NO_LVL_IN_PP is not necessary.
   #endif // !defined(NO_LVL_IN_WR_HB) && !defined(LVL_IN_PP)
 #endif // (cnBitsPerWord > 32)
+
+// NO_SKIP_LINKS means no skip links of any kind.
+// SKIP_LINKS allows the type-specific SKIP_TO_<BLAH> to be defined.
+// Default is -DSKIP_LINKS.
+#ifndef   NO_SKIP_LINKS
+  #undef     SKIP_LINKS
+  #define    SKIP_LINKS
+#endif // NO_SKIP_LINKS
+
+#ifdef SKIP_LINKS
 #if !defined(LVL_IN_WR_HB) && !defined(LVL_IN_PP)
   // Macro names that begin with '_' are derived from other macros
   // and are not inteded to be set explicitly on the build command line.
   #define _LVL_IN_TYPE
 #endif // !defined(LVL_IN_WR_HB) && !defined(LVL_IN_PP)
+#endif // SKIP_LINKS
 
 #ifdef _LVL_IN_TYPE
   #define NO_SKIP_TO_XX_SW
@@ -196,14 +207,6 @@
 // E.g. cnListPopCntMax.
 // Does it make sense for this file to be the only place where we use #define
 // and #undef for conditional features and tuning parameters?
-
-// NO_SKIP_LINKS means no skip links of any kind.
-// SKIP_LINKS allows the type-specific SKIP_TO_<BLAH> to be defined.
-// Default is -DSKIP_LINKS.
-#ifndef   NO_SKIP_LINKS
-  #undef     SKIP_LINKS
-  #define    SKIP_LINKS
-#endif // NO_SKIP_LINKS
 
 #ifdef NO_SKIP_LINKS
   #undef  NO_SKIP_TO_BITMAP

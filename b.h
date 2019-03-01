@@ -2681,11 +2681,13 @@ snBW(qp, int nBW)
     #define SW_BM  Word_t sw_awBm[N_WORDS_SWITCH_BM];
 #endif // defined(BM_IN_LINK)
 
-#if defined(PP_IN_LINK)
-    #define SW_PREFIX_POP
-#else // defined(PP_IN_LINK)
+#if !defined(PP_IN_LINK) && (defined(SKIP_LINKS) || !defined(POP_WORD))
     #define SW_PREFIX_POP  Word_t sw_wPrefixPop;
-#endif // defined(PP_IN_LINK)
+#else // !defined(PP_IN_LINK) && (defined(SKIP_LINKS) || !defined(POP_WORD))
+    // We don't need sw_wPrefixPop if we don't have SKIP_LINKS and
+    // we do have POP_WORD so we're not using sw_wPrefixPop for pop count.
+    #define SW_PREFIX_POP
+#endif // #else !def(PP_IN_LINK) && (def(SKIP_LINKS) || !def(POP_WORD))
 
 #if defined(POP_WORD) && ! defined(POP_WORD_IN_LINK)
     #define SW_POP_WORD  Word_t sw_wPopWord;
@@ -2734,9 +2736,11 @@ typedef Switch_t BmSwitch_t;
 
 typedef struct {
   // Emulate sw_wPrefixPop and sw_wPopWord at the beginning of BmLeaf_t.
+  #ifdef SKIP_TO_BITMAP
   #ifndef PP_IN_LINK
     Word_t bmlf_wPrefixPop;
   #endif // #ifndef PP_IN_LINK
+  #endif // SKIP_TO_BITMAP
   #if !defined(SKIP_TO_BITMAP) || defined(PREFIX_WORD_IN_BITMAP_LEAF)
     Word_t bmlf_wPopCnt; // gwBitmapPopCnt doesn't mask
   #elif defined(POP_WORD) && !defined(POP_WORD_IN_LINK)
@@ -2898,10 +2902,9 @@ gnListBLR(qp)
     return GetBits(wRoot, cnBitsLvl, cnLsbLvl);
   #elif defined(PP_IN_LINK)
     return wr_nBLR(wRoot);
-  #else // #elif LVL_IN_WR_HB #elif def(PP_IN_LINK)
-    // POP_WORD <==> _LVL_IN_PP, but is there a PP field in a list?
+  #else // LVL_IN_WR_HB #elif def(PP_IN_LINK)
     return nBL;
-  #endif // #elif LVL_IN_WR_HB #elif def(PP_IN_LINK)
+  #endif // LVL_IN_WR_HB #elif def(PP_IN_LINK) #else
 }
 
 static void
@@ -2911,15 +2914,16 @@ snListBLR(qp, int nBLR)
   #if defined(LVL_IN_WR_HB) || defined(PP_IN_LINK)
     Set_nBLR(pwRoot, nBLR);
   #endif // defined(LVL_IN_WR_HB) || defined(PP_IN_LINK)
-    // POP_WORD <==> _LVL_IN_PP, but is there a PP field in a list?
 }
 
+#ifdef SKIP_LINKS
 static inline Word_t
 gwPrefix(qp)
 {
     qv;
     return PWR_wPrefixNATBL(pwRoot, pwr, nBL);
 }
+#endif // SKIP_LINKS
 
 #define cnBitsPreListPopCnt cnBitsListPopCnt
 #define cnLsbPreListPopCnt (cnBitsPerWord - cnBitsListPopCnt)

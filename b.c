@@ -1110,6 +1110,9 @@ NewBitmap(qp, int nBLR, Word_t wKey, Word_t wPopCnt)
 {
     qv; (void)wKey;
     Word_t wWords = BitmapWordCnt(nBLR, wPopCnt);
+  #ifndef SKIP_TO_BITMAP
+    assert(nBL == nBLR);
+  #endif // #ifndef SKIP_TO_BITMAP
 
     Word_t *pwBitmap
         = (Word_t *)MyMalloc(wWords,
@@ -2418,6 +2421,7 @@ embeddedKeys:;
 #endif // (cwListPopCntMax != 0)
 
     // Switch
+    assert(tp_bIsSwitch(nType));
 
     { // make C++ happy
 
@@ -2488,11 +2492,13 @@ embeddedKeys:;
                 // wPopCnt = EXP(nBL);
             }
             printf(" wr_wPopCnt %3" _fw"u", wPopCnt);
+  #ifdef SKIP_LINKS
             printf(" wr_wPrefix " OWx,
 #if defined(CODE_BM_SW)
                    bBmSw ? PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBL) :
 #endif // defined(CODE_BM_SW)
                            PWR_wPrefixBL(pwRoot, (  Switch_t *)pwr, nBL) );
+  #endif // SKIP_LINKS
         }
 
         printf(" wr_nBL %2d", nBL);
@@ -2526,14 +2532,16 @@ embeddedKeys:;
         printf("\n");
     }
 
+  #ifdef SKIP_LINKS
     // skip link has extra prefix bits
     if (nBLPrev > nBL) {
 #ifdef PP_IN_LINK
-        if (nBLPrev >= cnBitsPerWord) {
-            wPrefix = 0;
-        } else
+        if (nBLPrev < cnBitsPerWord)
 #endif // PP_IN_LINK
         {
+  #ifdef DEBUG
+            Word_t wPrefixPrev = wPrefix;
+  #endif // DEBUG
             wPrefix =
 #if defined(CODE_BM_SW)
                 bBmSw ? PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBL) :
@@ -2543,8 +2551,18 @@ embeddedKeys:;
 #else // defined(USE_LIST_SW)
                         PWR_wPrefixBL(pwRoot, (  Switch_t *)pwr, nBL) ;
 #endif // defined(USE_LIST_SW)
+  #ifdef DEBUG
+            if ((wPrefix & ~MSK(nBLPrev)) != wPrefixPrev) {
+                printf("nBLPrev %d nBL %d wPrefixPrev 0x%zx wPrefix 0x%zx\n",
+                       nBLPrev, nBL, wPrefixPrev, wPrefix);
+            }
+  #endif // DEBUG
+            assert(((wPrefix ^ wPrefixPrev) & ~NZ_MSK(nBLPrev)) == 0);
         }
     }
+  #else // SKIP_LINKS
+    assert(nBLPrev == nBL);
+  #endif // SKIP_LINKS
 
     nBL -= nBW;
 
@@ -3083,9 +3101,9 @@ InsertCleanup(qp, Word_t wKey)
     int nBLR = GetBLR(pwRoot, nBL);
     if ((nBLR == nDL_to_nBL(2))
         && tp_bIsSwitch(nType)
-          #ifdef _LVL_IN_TYPE
+          #ifndef SKIP_TO_BITMAP
         && !tp_bIsSkip(nType)
-          #endif // _LVL_IN_TYPE
+          #endif // #ifndef SKIP_TO_BITMAP
           #if defined(CODE_BM_SW)
         && !tp_bIsBmSw(nType) // can't handle it yet
           #endif // defined(CODE_BM_SW)
@@ -4418,6 +4436,7 @@ printf("T_EMBEDDED_KEYS\n");
 }
 #endif // USE_LOWER_XX_SW
 
+#ifdef SKIP_LINKS
 // Handle a prefix mismatch by inserting a switch above and demoting
 // the current *pwRoot.
 #ifdef B_JUDYL
@@ -4636,6 +4655,7 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
     BJL(return)
         Insert(nBL, pLn, wKey);
 }
+#endif // SKIP_LINKS
 
 // Widen a switch.
 // Replace *pLnUp, which is the link to the switch containing qp, with a link
