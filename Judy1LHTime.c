@@ -1977,6 +1977,16 @@ main(int argc, char *argv[])
         }
     }
 
+  #if defined(__LP64__) || defined(_WIN64)
+    // MEB: not sure why but -DS1 group calc code can't handle nElms > (0x11 << 56).
+    if (bDS1 && (nElms > ((Word_t)0x11 << 56)))
+    {
+        nElms = (Word_t)0x11 << 56;
+        printf("# Trim Max number of Elements -n%" PRIuPTR" due to -DS1 groups limitation", nElms);
+        fprintf(stderr, "# Trim Max number of Elements -n%" PRIuPTR" due to -DS1 groups limitation", nElms);
+    }
+  #endif // defined(__LP64__) || defined(_WIN64)
+
 //  build the Random Number Generator starting seeds
     PSeed_t PInitSeed = RandomInit(BValue, GValue);
 
@@ -2300,6 +2310,7 @@ main(int argc, char *argv[])
             if ((wNumb > nElms) || (wNumb < wPrev)) {
                 wNumb = nElms;
                 Pms[grp].ms_delta = nElms - wPrev;
+                // MEB: not sure why but assert blows for nElms > (0x11 << 56).
                 assert(grp == Groups - 1);
             } else {
                 Pms[grp].ms_delta = wNumb - wPrev;
