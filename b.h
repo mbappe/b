@@ -50,10 +50,15 @@
 // __builtin_clzll is undefined for zero which allows the compiler to use bsr.
 // So this macro is undefined for _x == 0.
 #define LOG(_x)  (63 - (int)__builtin_clzll(_x))
-#define EXP(_x)  (assert((_x) <= cnBitsPerWord), (Word_t)1 << (_x))
+// BPW - Bits Per Word - can handle _x == cnBitsPerWord
+#define BPW_EXP(_x) \
+    (assert((_x) <= cnBitsPerWord), ((Word_t)1 << ((_x) - 1)) << 1)
+// NBPW - Not Bits Per Word - can't handle _x == cnBitsPerWord
+#define NBPW_EXP(_x)  (assert((_x) < cnBitsPerWord), (Word_t)1 << (_x))
+#define EXP(_x)  NBPW_EXP(_x)
 // NBPW - Not Bits Per Word - can't handle nBits == cnBitsPerWord
 #define NBPW_MSK(_nBits) \
-     (EXP(_nBits) - 1) // can't handle nBits == cnBitsPerWord
+    (NBPW_EXP(_nBits) - 1) // can't handle nBits == cnBitsPerWord
 // NZ - Not Zero - can't handle nBits == 0
 #define NZ_MSK(_nBits) \
     (assert((_nBits) > 0), (Word_t)-1 >> (cnBitsPerWord - (_nBits)))
@@ -244,9 +249,9 @@
 // cnListPopCntMaxDl<x> governs maximum external list size.
 // If cnListPopCntMaxDl<x> is not defined or nBL != cnBitsLeftAtDl<x> for
 // any <x>, then maximum external list size is governed by
-// cnListPopCntMax(8|16|24|32|40|48|56|64).
+// cnListPopCntMax(4|8|12|16|20|24|28|32|36|40|44|48|52|56|60|64).
 // For example, cnListPopCntMax24 governs maximum external list size for
-// 16 < nBL <= 24.
+// 20 < nBL <= 24.
 // EmbeddedListPopCntMax(nBL) governs maximum embedded list size unless
 // defined(POP_CNT_MAX_IS_KING) in which case the rules above for maximum
 // external list size also govern the maximum embedded list size.
@@ -531,47 +536,76 @@ typedef Word_t Bucket_t;
 // Choose max list lengths.
 // Respect the maximum value implied by the size of the pop count field.
 
+// Default cnListPopCntMaxIncr is 0.
+#ifndef cnListPopCntMaxIncr
+  #define cnListPopCntMaxIncr  0
+#endif // #ifndef cnListPopCntMaxIncr
+
 // Default cnListPopCntMax64 is 256.
-// Use 255 to allow us to use uint8_t for uPopCntMax_t.
-// It might be faster.
 #ifndef cnListPopCntMax64
   #define cnListPopCntMax64  256
 #endif // #ifndef cnListPopCntMax64
 
-// Default cnListPopCntMax56 is cnListPopCntMax64.
+// Default cnListPopCntMax[n] is cnListPopCntMax[n+4] + cnListPopCntMaxIncr.
+#ifndef cnListPopCntMax60
+  #define cnListPopCntMax60  (cnListPopCntMax64 + cnListPopCntMaxIncr)
+#endif // #ifndef cnListPopCntMax60
+
 #ifndef cnListPopCntMax56
-  #define cnListPopCntMax56  cnListPopCntMax64
+  #define cnListPopCntMax56  (cnListPopCntMax60 + cnListPopCntMaxIncr)
 #endif // #ifndef cnListPopCntMax56
 
-// Default cnListPopCntMax48 is cnListPopCntMax56.
+#ifndef cnListPopCntMax52
+  #define cnListPopCntMax52  (cnListPopCntMax56 + cnListPopCntMaxIncr)
+#endif // #ifndef cnListPopCntMax52
+
 #ifndef cnListPopCntMax48
-  #define cnListPopCntMax48  cnListPopCntMax56
+  #define cnListPopCntMax48  (cnListPopCntMax52 + cnListPopCntMaxIncr)
 #endif // #ifndef cnListPopCntMax48
 
-// Default cnListPopCntMax40 is cnListPopCntMax48.
+#ifndef cnListPopCntMax44
+  #define cnListPopCntMax44  (cnListPopCntMax48 + cnListPopCntMaxIncr)
+#endif // #ifndef cnListPopCntMax44
+
 #ifndef cnListPopCntMax40
-  #define cnListPopCntMax40  cnListPopCntMax48
+  #define cnListPopCntMax40  (cnListPopCntMax44 + cnListPopCntMaxIncr)
 #endif // #ifndef cnListPopCntMax40
 
-// Default cnListPopCntMax32 is cnListPopCntMax40.
+#ifndef cnListPopCntMax36
+  #define cnListPopCntMax36  (cnListPopCntMax40 + cnListPopCntMaxIncr)
+#endif // #ifndef cnListPopCntMax36
+
 #ifndef cnListPopCntMax32
-  #define cnListPopCntMax32  cnListPopCntMax40
+  #define cnListPopCntMax32  (cnListPopCntMax36 + cnListPopCntMaxIncr)
 #endif // #ifndef cnListPopCntMax32
 
-// Default cnListPopCntMax24 is cnListPopCntMax32.
+#ifndef cnListPopCntMax28
+  #define cnListPopCntMax28  (cnListPopCntMax32 + cnListPopCntMaxIncr)
+#endif // #ifndef cnListPopCntMax28
+
 #ifndef cnListPopCntMax24
-  #define cnListPopCntMax24  cnListPopCntMax32
+  #define cnListPopCntMax24  (cnListPopCntMax28 + cnListPopCntMaxIncr)
 #endif // #ifndef cnListPopCntMax24
 
-// Default cnListPopCntMax16 is cnListPopCntMax24.
+#ifndef cnListPopCntMax20
+  #define cnListPopCntMax20  (cnListPopCntMax24 + cnListPopCntMaxIncr)
+#endif // #ifndef cnListPopCntMax20
+
 #ifndef cnListPopCntMax16
-  #define cnListPopCntMax16  cnListPopCntMax24
+  #define cnListPopCntMax16  (cnListPopCntMax20 + cnListPopCntMaxIncr)
 #endif // #ifndef cnListPopCntMax16
 
-// Default cnListPopCntMax8 is cnListPopCntMax16.
+#ifndef cnListPopCntMax12
+  #define cnListPopCntMax12  (cnListPopCntMax16 + cnListPopCntMaxIncr)
+#endif // #ifndef cnListPopCntMax12
+
 #ifndef cnListPopCntMax8
-  #define cnListPopCntMax8  cnListPopCntMax16 // fix assert in SearchList8
+  #define cnListPopCntMax8  (cnListPopCntMax12 + cnListPopCntMaxIncr)
 #endif // #ifndef cnListPopCntMax8
+
+#ifndef cnListPopCntMax4
+  #define cnListPopCntMax4  (cnListPopCntMax8 + cnListPopCntMaxIncr)
+#endif // #ifndef cnListPopCntMax4
 
 // If we're not using bitmaps then we must have some other way of getting to
 // full pop. The only options are embedded or external list at Dl1 or higher.
@@ -644,6 +678,8 @@ typedef Word_t Bucket_t;
 #define cwListPopCntMax  _cnListPopCntMaxEK
 
 #if (cwListPopCntMax != 0)
+  // ListPopCntMax of 255 allows us to use uint8_t for uPopCntMax_t.
+  // It might be faster.
   #if (cwListPopCntMax < 256)
 typedef uint8_t uListPopCntMax_t;
   #else // (cwListPopCntMax < 256)
@@ -1788,8 +1824,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
   #define wr_nDLR(_wr)  nBL_to_nDL(wr_nBLR(_wr))
 
   #define set_wr_nBLR(_wr, _nBLR) \
-      (assert((_nBLR) >= cnBitsLeftAtDl2), \
-          assert(tp_bIsSkip(wr_nType(_wr))), \
+      (assert(tp_bIsSkip(wr_nType(_wr))), \
           (PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
               = ((PWR_wPrefixPop(NULL, (Switch_t *)wr_pwr(_wr)) \
                       & ~wPrefixPopMaskBL(cnBitsLeftAtDl2)) \
@@ -2887,6 +2922,7 @@ static inline int
 gnBLR(qp)
 {
     qv;
+    assert(!tp_bIsList(nType));
     return
   #ifdef SKIP_LINKS
         tp_bIsSkip(nType) ? gnBLRSkip(qy) :
@@ -2898,6 +2934,10 @@ static int
 gnListBLR(qp)
 {
     qv;
+    assert(tp_bIsList(nType));
+    if (tp_bIsList(wr_nType(WROOT_NULL)) && (nType == WROOT_NULL)) {
+        return nBL;
+    }
   #ifdef LVL_IN_WR_HB
     return GetBits(wRoot, cnBitsLvl, cnLsbLvl);
   #elif defined(PP_IN_LINK)
@@ -5714,8 +5754,6 @@ ListHasKeyWord(qp, int nBLR, Word_t wKey)
   #else // defined(SEARCH_FROM_WRAPPER)
     Word_t *pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);
   #endif // defined(SEARCH_FROM_WRAPPER)
-    DBGI(printf("LHKW pwKeys %p wKey " OWx" nBL %d nPopCnt %d\n",
-                (void *)pwKeys, wKey, nBL, nPopCnt));
     int nPos;
   #if defined(PSPLIT_SEARCH_WORD)
     // No PSPLIT for nBLR == cnBitsPerWord.
@@ -6410,8 +6448,6 @@ LocateKeyInListWord(qp, int nBLR, Word_t wKey)
   #else // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
     Word_t *pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);
   #endif // defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
-    DBGI(printf("LKILW pwKeys %p wKey " OWx" nBL %d nPopCnt %d\n",
-                (void *)pwKeys, wKey, nBL, nPopCnt));
     int nPos;
   #if defined(PSPLIT_SEARCH_WORD)
     if (nBLR != cnBitsPerWord) {
@@ -6456,6 +6492,15 @@ LocateKeyInList(qp, int nBLR, Word_t wKey)
 
 #endif // defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
 
+#ifdef XX_LISTS
+  #ifdef B_JUDYL
+#define SubexpansePopCnt  SubexpansePopCntL
+  #else // B_JUDYL
+#define SubexpansePopCnt  SubexpansePopCnt1
+  #endif // #else B_JUDYL
+int SubexpansePopCnt(qp, Word_t wKey);
+#endif // XX_LISTS
+
 // Get the pop count of the tree/subtree represented by (*pwRoot, nBL).
 static Word_t
 GetPopCnt(Word_t *pwRoot, int nBL)
@@ -6485,14 +6530,13 @@ GetPopCnt(Word_t *pwRoot, int nBL)
         if (pwr != NULL) {
             DBGC(printf("pwr %p nType %d\n", pwr, nType));
         }
-        int nBLR = gnBLR(qy);
         if (tp_bIsSwitch(nType)) {
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             if (nBL >= cnBitsPerWord) {
                 wPopCnt = SumPopCnt(pwRoot, cnBitsPerWord);
             } else
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-            { wPopCnt = gwPopCnt(qy, nBLR); }
+            { wPopCnt = gwPopCnt(qy, gnBLR(qy)); }
         } else switch (nType) {
       #if defined(EMBED_KEYS)
         case T_EMBEDDED_KEYS:
@@ -6511,7 +6555,7 @@ GetPopCnt(Word_t *pwRoot, int nBL)
             if (pwr != NULL)
       #endif // ! defined(SEPARATE_T_NULL)
             {
-                wPopCnt = gnListPopCnt(qy, nBLR);
+                wPopCnt = gnListPopCnt(qy, gnListBLR(qy));
                 assert(wPopCnt != 0);
             }
             break;
@@ -6525,13 +6569,25 @@ GetPopCnt(Word_t *pwRoot, int nBL)
               #endif // defined(PP_IN_LINK)
           #endif // defined(SKIP_TO_BITMAP)
         case T_BITMAP:
-            wPopCnt = gwBitmapPopCnt(qy, nBLR);
+            wPopCnt = gwBitmapPopCnt(qy, gnBLR(qy));
             break;
       #endif // BITMAP
       #ifdef SEPARATE_T_NULL
         case T_NULL:
             break;
       #endif // SEPARATE_T_NULL
+      #ifdef XX_LISTS
+        case T_XX_LIST:
+        // Yikes! We have to find/count the correct sublist.
+        // And we have to be creative to figure out which subexpanse.
+        {
+            int n = 0; while (pLn[--n].ln_wRoot == wRoot); // get index
+            int nBLR = gnListBLR(qy); (void)nBLR;
+            int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBLR); (void)nPopCnt;
+            wPopCnt = SubexpansePopCnt(qy, /* wKey */ (-n - 1) << nBL);
+            break;
+        }
+      #endif // XX_LISTS
         default:
             if (wPopCntTotal < 0x1000) {
                 DBGC(Dump(pwRootLast, 0, cnBitsPerWord));
@@ -6547,13 +6603,33 @@ GetPopCnt(Word_t *pwRoot, int nBL)
 // consecutive links in a switch.
 // nBLLoop is the number of bits left to decode after identifying each link
 // before any skip specified by the link is applied.
+// nBL applies to pLinks[x].
+// If (pLinks, nLinkCnt) contains links to any shared lists, then it must
+// contain all of the links to any shared lists it contains.
 static Word_t
-CountSwLoop(int nBLLoop, Link_t *pLinks, int nLinkCnt)
+CountSwLoop(int nBL, Link_t *pLinks, int nLinkCnt)
 {
     Word_t wPopCnt = 0;
+    //DBGC(printf("\n# CountSwLoop nLinkCnt %d\n", nLinkCnt));
     for (int i = 0; i < nLinkCnt; ++i) {
-        wPopCnt += GetPopCnt(&pLinks[i].ln_wRoot, nBLLoop);
+        Link_t *pLn = &pLinks[i];
+  #ifdef XX_LISTS
+        Word_t wRoot = pLn->ln_wRoot;
+        int nType = wr_nType(wRoot);
+        if (nType == T_XX_LIST) {
+            Word_t *pwr = wr_pwr(wRoot);
+            int nBLR = gnListBLR(qy);
+            int nXxCnt = EXP(nBLR - nBL);
+            if ((i + nXxCnt <= nLinkCnt)) {
+                wPopCnt += PWR_xListPopCnt(&pLn->ln_wRoot, pwr, nBLR);
+                i += nXxCnt - 1;
+                continue;
+            }
+        }
+  #endif // XX_LISTS
+        wPopCnt += GetPopCnt(&pLn->ln_wRoot, nBL);
     }
+    //DBGC(printf("# CountSwLoop returning wPopCnt %zd\n", wPopCnt));
     return wPopCnt;
 }
 

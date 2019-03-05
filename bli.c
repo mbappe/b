@@ -36,7 +36,7 @@ CountSw(qp,
 {
     qv; (void)nBLR; (void)nLinks;
     assert(wRoot != WROOT_NULL);
-    DBGC(printf("\nCountSw nType %d nBLR %d nBW %d wIndex " OWx"\n",
+    DBGC(printf("\n# CountSw nType %d nBLR %d nBW %d wIndex " OWx"\n",
                 nType, nBLR, nBW, wIndex));
     Word_t wPopCnt = 0;
     Word_t ww, wwLimit;
@@ -61,6 +61,7 @@ CountSw(qp,
 #endif // defined(CODE_LIST_SW)
         pwr_pLinks((Switch_t *)pwr);
     wPopCnt = CountSwLoop(nBLR - nBW, &pLinks[ww], wwLimit - ww);
+//printf("# CountSwLoop returned %zd\n", wPopCnt);
     assert(((int)wIndex < nLinks)
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
                || (nBL == cnBitsPerWord)
@@ -1042,6 +1043,8 @@ t_xx_sw:;
 // because it is a replica of what is in t_switch. There would be a lot of
 // parameters: qp, pqp, nBLUp, pLnUp, pwrUp, pLnNew, wKey, pnBLR, nBW, wDigit,
 // nLinks, nCleanup, nIncr, bLinkPresent, wPopCntSum,
+// We can't simply goto because the code diverges. But we might be able to
+// handle the divergence by testing for XX_SW.
 // Beginning of SwTailCommon:
       #if defined(INSERT) || defined(REMOVE)
         // Handle big picture tree cleanup.
