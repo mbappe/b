@@ -6617,7 +6617,7 @@ CountSwLoop(int nBL, Link_t *pLinks, int nLinkCnt)
         Word_t wRoot = pLn->ln_wRoot;
         int nType = wr_nType(wRoot);
         if (nType == T_XX_LIST) {
-            Word_t *pwr = wr_pwr(wRoot);
+            Word_t *pwr = wr_pwr(wRoot); (void)pwr;
             int nBLR = gnListBLR(qy);
             int nXxCnt = EXP(nBLR - nBL);
             if ((i + nXxCnt <= nLinkCnt)) {
