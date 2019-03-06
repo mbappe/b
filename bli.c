@@ -40,6 +40,25 @@ CountSw(qp,
                 nType, nBLR, nBW, wIndex));
     Word_t wPopCnt = 0;
     Word_t ww, wwLimit;
+    Link_t *pLinks =
+#if defined(CODE_BM_SW)
+        tp_bIsBmSw(nType) ? pwr_pLinks((BmSwitch_t *)pwr) :
+#endif // defined(CODE_BM_SW)
+#if defined(CODE_LIST_SW)
+        tp_bIsListSw(nType) ? gpListSwLinks(qy) :
+#endif // defined(CODE_LIST_SW)
+        pwr_pLinks((Switch_t *)pwr);
+  #ifdef XX_LISTS
+    int nBLLoop = nBLR - nBW;
+    Link_t *pLnLoop = &pLinks[wIndex];
+    Word_t wRootLoop = pLnLoop->ln_wRoot;
+    int nTypeLoop = wr_nType(wRootLoop);
+    if (nTypeLoop == T_XX_LIST) {
+        int nBLRLoop = gnListBLR(qyx(Loop));
+        wIndex &= ~MSK(nBLRLoop - nBLLoop);
+DBGC(printf("# CountSw wIndex " OWx"\n", wIndex));
+    }
+  #endif // XX_LISTS
     if ((wIndex > (unsigned)nLinks / 2)
           #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             // We don't have a whole link with a pop count at the top.
@@ -52,14 +71,6 @@ CountSw(qp,
         ww = 0; wwLimit = wIndex;
     }
     DBGC(printf("ww " OWx" wwLimit " OWx"\n", ww, wwLimit));
-    Link_t *pLinks =
-#if defined(CODE_BM_SW)
-        tp_bIsBmSw(nType) ? pwr_pLinks((BmSwitch_t *)pwr) :
-#endif // defined(CODE_BM_SW)
-#if defined(CODE_LIST_SW)
-        tp_bIsListSw(nType) ? gpListSwLinks(qy) :
-#endif // defined(CODE_LIST_SW)
-        pwr_pLinks((Switch_t *)pwr);
     wPopCnt = CountSwLoop(nBLR - nBW, &pLinks[ww], wwLimit - ww);
 //printf("# CountSwLoop returned %zd\n", wPopCnt);
     assert(((int)wIndex < nLinks)

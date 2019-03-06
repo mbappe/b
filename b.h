@@ -467,8 +467,10 @@ typedef Word_t Bucket_t;
 
 // SKIP_TO_XX_SW implies SKIP_TO_BITMAP.
 #ifdef SKIP_TO_XX_SW
-  #undef  SKIP_TO_BITMAP
-  #define SKIP_TO_BITMAP
+  #ifdef USE_XX_SW_ONLY_AT_DL2
+    #undef  SKIP_TO_BITMAP
+    #define SKIP_TO_BITMAP
+  #endif // USE_XX_SW_ONLY_AT_DL2
 #endif // SKIP_TO_XX_SW
 
 #if defined(CODE_XX_SW)

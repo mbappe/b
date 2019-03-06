@@ -1246,10 +1246,19 @@ NewSwitchX(Word_t *pwRoot, Word_t wKey, int nBLR,
     Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
     Word_t wRoot = *pwRoot; (void)wRoot;
     (void)nType; // Used only if CODE_BM_SW?
-    DBGI(printf("NewSwitch: pwRoot %p wKey " OWx" nBLR %d nBL %d"
-         " wPopCnt %" _fw"d.\n", (void *)pwRoot, wKey, nBLR, nBL, wPopCnt));
-
+    DBGI(printf("NewSwitch: pwRoot %p wKey " OWx" nBLR %d nType %d nBL %d"
+                    " wPopCnt %" _fw"d.\n",
+                (void *)pwRoot, wKey, nBLR, nType, nBL, wPopCnt));
 #if defined(CODE_XX_SW)
+      #ifdef CODE_BM_SW
+    if ((nType == T_BM_SW)
+        && ((nDL_to_nBL(nBL_to_nDL(nBL)) != nBL)
+            || (nDL_to_nBL(nBL_to_nDL(nBLR)) != nBLR)
+            || (nBWX != nBLR_to_nBW(nBLR))))
+    {
+        nType = T_SWITCH;
+    }
+      #endif // CODE_BM_SW
     if ((nBWX != nBLR_to_nBW(nBLR)) /*&& (nBWX != cnBW)*/) {
         DBGI(printf("# NewSwitch(nBWX %d)\n", nBWX));
     }
@@ -5368,7 +5377,7 @@ TransformList(qp,
         nBLNew = cnBitsLeftAtDl2;
         nDLNew = 2;
     }
-    DBGI(printf("InsertSwitch 1 nDLNew %d nBLNew %d nDL %d nBL %d\n",
+    DBGI(printf("TL 1 nDLNew %d nBLNew %d nDL %d nBL %d\n",
                 nDLNew, nBLNew, nDL, nBL));
 #ifdef BITMAP
     // How did we get here?
@@ -5510,24 +5519,24 @@ newSkipToBitmap:;
                 assert(nBLNew == nBL);
       #endif // #else SKIP_LINKS
                 if ((nBW = nBLR_to_nBW(nBLNew)) >= 4) {
-                    int nBWBy2 = nBW / 2;
+                    int nBWTopPart = nBW / 2;
       #ifdef USE_LOWER_XX_SW // implies SKIP_LINKS
                     if ((nBLNew > cnBitsLeftAtDl2) // temp
-                        && (nSignificantBitCnt <= nBLNew - nBWBy2))
+                        && (nSignificantBitCnt <= nBLNew - nBWTopPart))
                     {
 //fprintf(stderr, "\n# Creating lower xx sw nBLUp %d.\n", nBLUp);
-                        nBLNew -= nBWBy2;
-                        nBW -= nBWBy2;
+                        nBLNew -= nBWTopPart;
+                        nBW -= nBWTopPart;
                         DBGI(printf("# Creating bottom narrow switch nBL %d"
                                         " nSigBits %d nBLNew %d nBW %d\n",
                                     nBL, nSignificantBitCnt, nBLNew, nBW));
                     } else
       #endif // USE_LOWER_XX_SW
-                    if (SplayMaxPopCnt(pwRoot, nBL, wKey, nBLNew - nBWBy2)
-                            <= auListPopCntMax[nBLNew - nBWBy2])
+                    if (SplayMaxPopCnt(pwRoot, nBL, wKey, nBLNew - nBWTopPart)
+                            <= auListPopCntMax[nBLNew - nBWTopPart])
                     {
 //fprintf(stderr, "\n# Creating upper xx sw nBLUp %d.\n", nBLUp);
-                        nBW = nBWBy2;
+                        nBW = nBWTopPart;
                     }
                 }
             }
@@ -6304,7 +6313,7 @@ InsertGuts(qp, Word_t wKey, int nPos
     int nDL = nBL_to_nDL(nBL); (void)nDL; // assert(nDL_to_nBL(nDL) >= nBL);
     DBGI(printf("InsertGuts pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
                 (void *)pwRoot, wKey, nBL, wRoot));
-    DBGI(printf("IG nBLR %d\n", gnBLR(qy)));
+    DBGI(printf("IG nBLR %d\n", tp_bIsList(nType) ? gnListBLR(qy) : gnBLR(qy)));
     DBGI(printf("IG: nPos %d\n", nPos));
 
   // One of the key aspects of USE_XX_SW_ONLY_AT_DL2 is that we go ahead and
@@ -7164,7 +7173,23 @@ embeddedKeys:;
             *pwRoot = ZERO_POP_MAGIC;
         } else
 #endif // defined(NO_TYPE_IN_XX_SW)
-        { *pwRoot = WROOT_NULL; }
+        {
+            *pwRoot = WROOT_NULL;
+  #ifdef XX_LISTS
+            if (nType == T_XX_LIST) {
+                // Replicate the link with a new pop cnt and maybe pwr.
+                int nDLRUp = nBL_to_nDL(nBLR); (void)nDLRUp;
+                int nBWRUp = nDLR_to_nBW(nDLRUp);
+                int nDigit = (wKey >> nBL) & MSK(nBWRUp);
+                Link_t *pLinks = &pLn[-(nDigit & MSK(nBLR - nBL))];
+                for (int nSubDigit = 0;
+                     nSubDigit < (1 << (nBLR - nBL)); ++nSubDigit)
+                {
+                    pLinks[nSubDigit] = *pLn;
+                }
+            }
+  #endif // XX_LISTS
+        }
         // Do we need to clear the rest of the link also?
         // See bCleanup in Lookup/Remove for the rest.
         return Success;
@@ -7720,9 +7745,13 @@ Initialize(void)
     // What if cnBitsInD1 < sizeof(Link_t)*8 and -DALLOW_EMBEDDED_BITMAP?
 #endif // BITMAP
 
-#if ! defined(SKIP_TO_BITMAP) && defined(SKIP_TO_XX_SW)
-    #error SKIP_TO_XX_SW without SKIP_TO_BITMAP
-#endif // ! defined(SKIP_TO_BITMAP) && defined(SKIP_TO_XX_SW)
+  #ifdef USE_XX_SW_ONLY_AT_DL2
+  #ifdef SKIP_TO_XX_SW
+  #ifndef SKIP_TO_BITMAP
+    #error USE_XX_SW_ONLY_AT_DL2 and SKIP_TO_XX_SW without SKIP_TO_BITMAP
+  #endif // #ifndef SKIP_TO_BITMAP
+  #endif // SKIP_TO_XX_SW
+  #endif // USE_XX_SW_ONLY_AT_DL2
 
     // Why would we want to be able to fit more than one digits' worth of
     // keys into a Link_t as an embedded bitmap?

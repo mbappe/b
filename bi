@@ -4,9 +4,9 @@
 # used by git bisect run.
 
 : \
-&& DEFINES="-DDOUBLE_DOWN -DXX_LISTS -DcnListPopCntMax64=64 -DUSE_XX_SW -DUSE_LOWER_XX_SW -DNO_EMBED_KEYS -DDEBUG" make clean default \
+&& DEFINES="-DDOUBLE_DOWN -DXX_LISTS -DcnListPopCntMax64=64 -DUSE_XX_SW -DUSE_LOWER_XX_SW -DNO_EMBED_KEYS -DNO_USE_BM_SW -DNO_BITMAP -DDEBUG" make clean default \
 && regress \
-&& DEFINES="-DDOUBLE_DOWN -DXX_LISTS -DcnListPopCntMax64=64 -DUSE_XX_SW -DNO_EMBED_KEYS -DDEBUG" make clean default \
+&& DEFINES="-DDOUBLE_DOWN -DXX_LISTS -DcnListPopCntMax64=64 -DUSE_XX_SW -DNO_EMBED_KEYS -DNO_USE_BM_SW -DNO_BITMAP -DDEBUG" make clean default \
 && regress \
 && DEFINES="-DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 -DDEBUG" make clean default \
 && regress \
