@@ -302,7 +302,12 @@ JudyMallocX(int Words, int nSpace, int nLogAlign)
             exit(-1);
         }
 //      Add one word to the size of malloc
+  #if cnGuardWords > 1
+        int BytesBefore = Bytes;
+        Bytes += cnGuardWords * sizeof(Word_t);    // one word
+  #else // cnGuardWords > 1
         Bytes += sizeof(Word_t);    // one word
+  #endif // #else cnGuardWords > 1
 #endif  // GUARDBAND
 
         Word_t zAlign = (Word_t)1 << nLogAlign; (void)zAlign;
@@ -354,6 +359,9 @@ JudyMallocX(int Words, int nSpace, int nLogAlign)
 #ifdef  GUARDBAND
 //      Put the ~Addr in that extra word
         *((Word_t *)Addr + ((Bytes/sizeof(Word_t)) - 1)) = ~Addr;
+  #if cnGuardWords > 1
+        *((Word_t *)Addr + ((BytesBefore/sizeof(Word_t)))) = ~Addr;
+  #endif // cnGuardWords > 1
 
 //      Verify that all mallocs are 2 word aligned
         if (Addr & ((sizeof(Word_t) * 2) - 1))
@@ -430,6 +438,18 @@ JudyFreeX(RawP_t PWord, int Words, int nSpace)
                    (void *)PWord, Words, GuardWord, ~(Word_t)PWord);
             exit(-1);
         }
+
+  #if cnGuardWords > 1
+        GuardWord = *((((Word_t *)PWord) + Words + cnGuardWords - 1));
+        if (GuardWord != ~(Word_t)PWord)
+        {
+            printf("\n\nOops JF(PWord %p Words 0x%x)"
+                   " GuardWord aka PWord[Words + cnGuardWords - 1] 0x%zx"
+                   " != ~PWord 0x%zx\n",
+                   (void *)PWord, Words, GuardWord, ~(Word_t)PWord);
+            exit(-1);
+        }
+  #endif // cnGuardWords > 1
     }
 #endif  // GUARDBAND
 
