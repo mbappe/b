@@ -209,7 +209,6 @@ typedef struct J_UDY_ERROR_STRUCT
 
 #define PJE0  ((PJError_t) NULL)
 
-
 // ****************************************************************************
 // JUDY FUNCTIONS:
 //

@@ -1448,7 +1448,7 @@ main(int argc, char *argv[])
                 FAILURE("compile with -UNO_SVALUE to use -S", SValue);
             }
 #endif // NO_SVALUE
-            // Change default StartSequent to zero for non-zero SValue.
+            // Change default StartSequent to one for non-zero SValue.
             // This makes it possible to to random gets for -DS1.
             if ((SValue != 0) && !sFlag) {
                 StartSequent = 1;
