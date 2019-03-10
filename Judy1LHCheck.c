@@ -303,6 +303,13 @@ main(int argc, char *argv[])
 
         case 'B':
             BValue = strtoul(optarg, NULL, 0);
+
+            // Allow -B0 to mean -B64 on 64-bit and -B32 on 32-bit.
+            // Allow -B-1 to mean -B63 on 64-bit and -B31 on 32-bit.
+            // To simplify writing shell scripts for testing that
+            // are compatible with 32-bit and 64-bit.
+            BValue = (BValue - 1) % (sizeof(Word_t) * 8) + 1;
+
             if  (
                     (BValue > (sizeof(Word_t) * 8))
                            ||
