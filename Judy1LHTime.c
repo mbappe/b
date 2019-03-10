@@ -3287,7 +3287,7 @@ nextPart:
                 // last part might be a different size than the rest
                 if (Delta <= wDoTit0Max) { // Delta < wDoTit0Max
                     Tit = 0;                    // exclude Judy
-                    DummySeed = InsertSeed;
+                    DummySeed = BitmapSeed;
                     WaitForContextSwitch(Delta);
                     TestJudyLIns(&JL, &DummySeed, Delta);
                     DeltaGenL = DeltanSecL / Delta;
@@ -3302,7 +3302,7 @@ nextPart:
 
             Tit = 1;                    // include Judy
             WaitForContextSwitch(Delta);
-            TestJudyLIns(&JL, &InsertSeed, Delta);
+            TestJudyLIns(&JL, &BitmapSeed, Delta);
             DeltanSecLSum += DeltanSecL;
             DeltaMalFreLSum += DeltaMalFreL;
 
@@ -4813,8 +4813,11 @@ TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elements)
         STARTTm;
         for (elm = 0; elm < Elements; elm++)
         {
-            if (Tit)
-                TstKey = *(PWord_t)JudyLGet(JL, TstKey, PJE0);
+            if (Tit) {
+                Word_t* pwValue = (Word_t*)JudyLGet(JL, TstKey, PJE0);
+                assert(pwValue != NULL);
+                TstKey = *pwValue;
+            }
         }
         ENDTm(DeltanSecL);
 //      Save for later (these parameters are just for Get/Test)
