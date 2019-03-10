@@ -1481,6 +1481,12 @@ main(int argc, char *argv[])
 
             BValue = oa2w(tok, NULL, 0, c);
 
+            // Allow -B0 to mean -B64 on 64-bit and -B32 on 32-bit.
+            // Allow -B-1 to mean -B63 on 64-bit and -B31 on 32-bit.
+            // To simplify writing shell scripts for testing that
+            // are compatible with 32-bit and 64-bit.
+            BValue = (BValue - 1) % (sizeof(Word_t) * 8) + 1;
+
             tok = strtok_r(str, ":", &saveptr);
             if (tok != NULL) {
                 Bpercent = atof(tok); // default is Bpercent = 100
@@ -5178,8 +5184,9 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                         printf("J1LastKey 0x%zx\n", J1LastKey);
 #endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
                         printf("J1KeyBefore 0x%zx\n", J1KeyBefore);
+                        printf("Rc %d\n", Rc);
+                        printf("J1Key 0x%zx\n", J1Key);
                         printf("Elements %zu elm %zu\n", Elements, elm);
-                        printf("J1Key 0x%zx", J1Key);
                         FAILURE("J1N failed J1Key", J1Key);
                     }
 #ifdef TEST_NEXT_USING_JUDY_NEXT
