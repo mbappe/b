@@ -3,12 +3,13 @@
 # This lengthy regression test script has the structure required to be
 # used by git bisect run.
 
+
 : \
-&& DEFINES="-DDOUBLE_DOWN -DXX_LISTS -DcnListPopCntMax64=64 -DUSE_XX_SW -DUSE_LOWER_XX_SW -DNO_EMBED_KEYS -DNO_USE_BM_SW -DNO_BITMAP -DDEBUG" make clean default \
+&& DEFINES="-DDOUBLE_DOWN -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 -DNO_EMBED_KEYS -DNO_USE_BM_SW -DDEBUG" make clean default \
 && regress \
-&& DEFINES="-DDOUBLE_DOWN -DXX_LISTS -DcnListPopCntMax64=64 -DUSE_XX_SW -DNO_EMBED_KEYS -DNO_USE_BM_SW -DNO_BITMAP -DDEBUG" make clean default \
+&& DEFINES="-DDOUBLE_DOWN -DcnListPopCntMax64=64 -DNO_EMBED_KEYS -DNO_USE_BM_SW -DDEBUG" make clean default \
 && regress \
-&& DEFINES="-DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 -DDEBUG" make clean default \
+&& DEFINES="-DXX_LISTS -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 -DDEBUG" make clean default \
 && regress \
 && DEFINES="-DBM_IN_LINK -DDEBUG" make clean default \
 && regress \

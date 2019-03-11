@@ -5616,8 +5616,6 @@ ListHasKey32(qp, int nBLR, Word_t wKey)
 static int
 SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 {
-    DBGI(printf("SLW pwKeys %p wKey " OWx" nBL %d nPopCnt %d\n",
-                (void *)pwKeys, wKey, nBL, nPopCnt));
     (void)nBL;
 #if defined(LIST_END_MARKERS)
     assert(pwKeys[-1] == 0);
@@ -6504,6 +6502,7 @@ int SubexpansePopCnt(qp, Word_t wKey);
 #endif // XX_LISTS
 
 // Get the pop count of the tree/subtree represented by (*pwRoot, nBL).
+// We can't handle T_XX_LIST by virtue of our inadequate parameter list.
 static Word_t
 GetPopCnt(Word_t *pwRoot, int nBL)
 {
@@ -6530,7 +6529,7 @@ GetPopCnt(Word_t *pwRoot, int nBL)
         Word_t *pwr = wr_pwr(wRoot);
         int nType = wr_nType(wRoot);
         if (pwr != NULL) {
-            DBGC(printf("pwr %p nType %d\n", pwr, nType));
+            DBGC(printf("GetPopCnt nBL %d pwr %p nType %d\n", nBL, pwr, nType));
         }
         if (tp_bIsSwitch(nType)) {
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -6580,15 +6579,8 @@ GetPopCnt(Word_t *pwRoot, int nBL)
       #endif // SEPARATE_T_NULL
       #ifdef XX_LISTS
         case T_XX_LIST:
-        // Yikes! We have to find/count the correct sublist.
-        // And we have to be creative to figure out which subexpanse.
-        {
-            int n = 0; while (pLn[--n].ln_wRoot == wRoot); // get index
-            int nBLR = gnListBLR(qy); (void)nBLR;
-            int nPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBLR); (void)nPopCnt;
-            wPopCnt = SubexpansePopCnt(qy, /* wKey */ (-n - 1) << nBL);
-            break;
-        }
+            assert(0); // Our parameters are inadequate. Use GetPopCntX.
+            // break;
       #endif // XX_LISTS
         default:
             if (wPopCntTotal < 0x1000) {
@@ -6596,6 +6588,9 @@ GetPopCnt(Word_t *pwRoot, int nBL)
             }
             assert(0);
             wPopCnt = 0; // make cc -UDEBUG happy
+        }
+        if (pwr != NULL) {
+            DBGC(printf("GetPopCnt %zd\n", wPopCnt));
         }
     }
     return wPopCnt;

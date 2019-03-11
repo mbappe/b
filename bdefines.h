@@ -121,6 +121,16 @@
 
 #endif // B_JUDYL
 
+#ifdef DOUBLE_DOWN
+  #undef  XX_LISTS
+  #define XX_LISTS
+#endif // DOUBLE_DOWN
+
+#ifdef XX_LISTS
+  #undef  SKIP_TO_XX_SW
+  #define SKIP_TO_XX_SW
+#endif // XX_LISTS
+
 // USE_LOWER_XX_SW turns on the use of narrow switches that decode the
 // least significant bits of a digit.
 // Default is -UUSE_LOWER_XX_SW
@@ -143,11 +153,10 @@
   #define CODE_XX_SW
 #endif // NO_TYPE_IN_XX_SW
 
-// SKIP_TO_XX_SW implies CODE_XX_SW.
-// Should it imply USE_XX_SW?
+// SKIP_TO_XX_SW implies USE_XX_SW.
 #ifdef SKIP_TO_XX_SW
-  #undef  CODE_XX_SW
-  #define CODE_XX_SW
+  #undef  USE_XX_SW
+  #define USE_XX_SW
 #endif // SKIP_TO_XX_SW
 
 // USE_XX_SW_ONLY_AT_DL2 started life as a flag to preserve legacy USE_XX_SW
