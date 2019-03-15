@@ -451,7 +451,7 @@ PrintValFreeForm(double dVal, // raw value to be scaled, formatted and printed
                 double dSig = (double)nSig / pow(10, nExpAdj);
                 if (bUseSymbol) {
                     sprintf(acFormat, "%%%d.%df%s", nWidth - 1, nExpAdj,
-                            nExp == 9 ? "G" : nExp == 6 ? "M" : "k");
+                            nExp == 9 ? "G" : nExp == 6 ? "M" : "K");
                      printf(acFormat, dSig);
                 } else {
                     // GNUplot can't handle 'k', 'M', 'G', ...
@@ -620,9 +620,10 @@ Word_t TValues = DEFAULT_TVALUES; // Maximum numb retrieve timing tests
 // Default nElms is overridden by -n or -F.
 // Looks like there may be no protection against -F followed by -n.
 // It is then trimmed to MaxNumb.
-// Should it be MaxNumb+1 in cases that allow 0, e.g. -S1?
-// Then trimmed if ((GValue != 0) && (nElms > (MaxNumb >> 1))) to (MaxNumb >> 1).
-// It is used for -p and to override TValues if TValues == 0 or nElms < TValues.
+// Should it be MaxNumb+1 in cases that allow 0, e.g. non-zero SValue?
+// And trimmed if (GValue != 0) && (nElms > (MaxNumb >> 1)) to (MaxNumb >> 1).
+// It is used for -p
+// and to override TValues if TValues == 0 or nElms < TValues.
 Word_t    nElms   = 10000000;           // Default population of arrays
 Word_t    ErrorFlag = 0;
 
@@ -645,9 +646,12 @@ Word_t    BValue = DEFAULT_BVALUE;
 double    Bpercent = 100.0; // Default MaxNumb assumes 100.0.
 // MaxNumb is initialized from DEFAULT_BVALUE and assumes Bpercent = 100.0.
 // Then overridden by -N and/or by -B. The last one on the command line wins.
-// Then trimmed if bSplayKeyBits and there aren't enough bits set in wSplayMask.
-// MaxNumb is used to put an upper bound on RandomNumb values used in CalcNextKey.
-// And to specifiy -b and -y array sizes.
+// Then trimmed if bSplayKeyBits
+// and there aren't enough bits set in wSplayMask.
+// MaxNumb is used to put an upper bound on RandomNumb values used in
+// CalcNextKey, but -D, --splay-key-bits and Offset can all result in final
+// key values getting bigger than MaxNumb.
+// MaxNumb is also used to specifiy -b and -y array sizes.
 // It's meaning is more confusing for GValue != 0.
 Word_t MaxNumb = ((Word_t)1 << (DEFAULT_BVALUE-1)) * 2 - 1;
 Word_t    GValue = 0;                   // 0 = flat spectrum random numbers
@@ -668,8 +672,10 @@ PWord_t   FileKeys = NULL;              // array of FValue keys
 //
 Word_t    DFlag = 0;                    // bit reverse (mirror) the data stream
 
-// Default starting seed value; -s
-// This is changed to 1 if SValue is non-zero.
+// StartSequent is the starting seed value for the key generator.
+// It is changed to SValue for non-zero SValue unless -s is used to set it
+// explicitly. We set it to SValue for non-zero SValue by default so we can
+// do random gets with non-zero SValue by default.
 //
 Word_t StartSequent = (Word_t)-1 / 7; // 0x2492492492492492 or 0x24924924
 
@@ -726,10 +732,14 @@ MyPDEP(Word_t wSrc, Word_t wMask)
 #endif // USE_PDEP_INTRINSIC
 }
 
-// returns next Key, depending on SValue, DFlag and GValue.
+// CalcNextKeyX returns the next key.
+// We use this same function for non-zero SValue inserts and for random gets.
+// The globals, BValue and SValue, are used for inserts.
+// The caller passes in nBValueArg == wLogPop1 and wSValueArg == 0 when it
+// wants a random get and global SValue != 0.
 //
 static inline Word_t
-CalcNextKey(PSeed_t PSeed)
+CalcNextKeyX(PSeed_t PSeed, int nBValueArg, Word_t wSValueArg)
 {
     Word_t Key;
 #ifndef NO_FVALUE
@@ -744,14 +754,18 @@ CalcNextKey(PSeed_t PSeed)
         do
         {
 #endif // NO_TRIM_EXPANSE
-            Key = RandomNumb(PSeed, SValue);
-            if ((sizeof(Word_t) * 8) != BValue)
+            Key = RandomNumb(PSeed, wSValueArg);
+            if ((sizeof(Word_t) * 8) != nBValueArg)
             {
-                 assert((Key < ((Word_t)1 << BValue)) || SValue);
+                 assert((Key < ((Word_t)1 << nBValueArg)) || wSValueArg);
             }
 #ifndef NO_TRIM_EXPANSE
         } while (Key > MaxNumb);         // throw away of high keys
 #endif // NO_TRIM_EXPANSE
+    }
+
+    if (wSValueArg /* local */ != /* global */ SValue) {
+        Key *= SValue;
     }
 
 #ifdef DEBUG
@@ -760,21 +774,6 @@ CalcNextKey(PSeed_t PSeed)
         printf("Numb %016" PRIxPTR" ", Key);
     }
 #endif // DEBUG
-
-#ifndef NO_SPLAY_KEY_BITS
-    if (bSplayKeyBitsFlag) {
-        // Splay the bits in the key.
-        // This is not subject to BValue.
-        Key = MyPDEP(Key, wSplayMask);
-#ifdef DEBUG
-        if (pFlag)
-        {
-            printf("PDEP %016" PRIxPTR" ", Key);
-        }
-#endif // DEBUG
-        // Key might be bigger than 1 << BValue -- by design.
-    }
-#endif // NO_SPLAY_KEY_BITS
 
 #define LOG(_x) ((Word_t)63 - __builtin_clzll(_x))
 
@@ -788,26 +787,41 @@ CalcNextKey(PSeed_t PSeed)
             printf("BitReverse %016" PRIxPTR" ", Key);
         }
 #endif // DEBUG
-//      move the mirror bits into the least bits determined -B# and -E
-        if (bSplayKeyBitsFlag)
-        {
-            Key >>= (sizeof(Word_t) * 8) - 1
-                - LOG(MyPDEP((((Word_t)1 << (BValue - 1)) * 2) - 1, wSplayMask));
-        }
-        else
-        {
-            Key >>= (sizeof(Word_t) * 8) - BValue;
-        }
+        Key >>= (sizeof(Word_t) * 8) - BValue; // global BValue
+
+        // Key will be smaller than 1 << BValue, but it might be bigger
+        // than MaxNumb.
     }
 #endif // NO_DFLAG
 
+#ifndef NO_SPLAY_KEY_BITS
+    if (bSplayKeyBitsFlag) {
+        // Splay the bits in the key.
+        Key = MyPDEP(Key, wSplayMask);
+#ifdef DEBUG
+        if (pFlag)
+        {
+            printf("PDEP %016" PRIxPTR" ", Key);
+        }
+#endif // DEBUG
+        // Key might be bigger than ((1 << BValue) - 1) -- by design.
+    }
+#endif // NO_SPLAY_KEY_BITS
+
 #ifndef NO_OFFSET
     Key = Key + Offset;
+    // Key might be bigger than ((1 << BValue) - 1) -- by design.
 #endif // NO_OFFSET
 #ifdef DEBUG
     if (pFlag) { printf("Key "); }
 #endif // DEBUG
     return Key;
+}
+
+static inline Word_t
+CalcNextKey(PSeed_t PSeed)
+{
+    return CalcNextKeyX(PSeed, BValue, SValue);
 }
 
 // GetNextKeyX has a bLfsrOnlyArg parameter so it can be called with a literal
@@ -1013,7 +1027,10 @@ Usage(int argc, char **argv)
     printf("-B #  Significant bits output (16..64) in Random Key Generator [32]\n");
     printf("-B #:#  Second # is percent expanse is limited [100]\n");
     printf("-N #  max key #; alternative to -B\n");
-    printf("-E,--splay-key-bits [splay-mask]    Splay key bits\n");
+    printf("-e [splay-mask]"
+             "  Splay key bits with default splay-mask 0xaa..aa\n");
+    printf("-E,--splay-key-bits [splay-mask]"
+             "  Splay key bits with default splay-mask 0x55..55\n");
     printf("-l    Do not smooth data with iteration at low (<100) populations (Del/Unset not called)\n");
     printf("-F <filename>  Ascii file of Keys, zeros ignored -- must be last option!!!\n");
 //    printf("-b #:#:# ... 1st number required [1] where each number is next level of tree\n");
@@ -1167,7 +1184,7 @@ static struct option longopts[] = {
     { "BigOffset", required_argument, NULL, 'O' },
 
     // Long option '--splay-key-bits' is equivalent to short option '-E'.
-    { "splay-key-bits", required_argument, NULL, 'E' },
+    { "splay-key-bits", optional_argument, NULL, 'E' },
 
     // Long option '--lfsr-only' is equivalent to short option '-k'.
     { "lfsr-only", no_argument, NULL, 'k' },
@@ -1230,7 +1247,12 @@ NumGrps(Word_t wElms)
 
 #endif // OLD_DS1_GROUPS
 
-static int bDS1 = 0; // Shorthand to trigger -DS1 special behaviors.
+static int bPureDS1 = 0; // Shorthand to trigger pure -DS1 special behaviors.
+// Get random keys for TestJudyGet (w/o random inserts).
+static int bRandomGets = 0;
+
+#define MIN(_a, _b)  ((_a) < (_b) ? (_a) : (_b))
+#define MAX(_a, _b)  ((_a) > (_b) ? (_a) : (_b))
 
 int
 main(int argc, char *argv[])
@@ -1283,11 +1305,8 @@ main(int argc, char *argv[])
     double    Davg = 0.0;
 #endif // LATER
 
-// MaxNumb is initialized from statically initialized BValue and Bpercent.
-// Then overridden by -N and/or by -B. The last one on the command line wins.
-// Then trimmed if bSplayKeyBits and there aren't enough bits set in wSplayMask.
-    MaxNumb = pow(2.0, BValue) * Bpercent / 100;
-    --MaxNumb;
+    // Validate static initialization of MaxNumb, BValue and Bpercent.
+    assert(MaxNumb == (Word_t)(pow(2.0, BValue) * Bpercent / 100) - 1);
 
     setbuf(stdout, NULL);               // unbuffer output
 
@@ -1389,18 +1408,30 @@ main(int argc, char *argv[])
     while (1)
     {
         c = getopt_long(argc, argv,
-                   "a:n:S:T:P:s:B:GW:o:O:F:b"
-#ifdef FANCY_b_flag
-                                           ":"
-#endif // FANCY_b_flag
-                                            "N:dDcC1LHvIltmpxVfgiyRMKkhEZ",
-                // Optstring sorted:
-                // "1a:B:bCcDdEF:fGgHhIiKklLMmN:n:O:o:P:pRS:s:T:tVvW:xy",
-                // Used option characters sorted and with spaces for unused option characters:
-                // " 1         a:B:bCcDdE F:fGgHhIi  KkLlMmN:n:O:o:P:p  R S:s:T:t:  VvW:  x yZ "
-                // Unused option characters sorted and with spaces for used option characters:
-                // "0 23456789A          e         Jj                 Qq r        Uu    wX Y  z"
-                   longopts, NULL);
+                        "1a:B:b"
+  #ifdef FANCY_b_flag
+                            ":"
+  #endif // FANCY_b_flag
+                            "CcDdE::e::F:fGgHhIiKklLMm"
+                            "N:n:O:o:P:pRS:s:T:tVvW:xyZ",
+                        longopts, NULL);
+
+                // Used upper-case option letters sorted and with spaces for
+                // unused letters. Unused letters are on the following line.
+                //   " B:CDE::F:GHI KLMN:O:P: RS:T: VW:  Z"
+                //   "A            J         Q     U   XY "
+                //
+                // Used lower-case option letters sorted and with spaces for
+                // unused letters. Unused letters are on the following line.
+                //
+                //   "a:bcde::fghi klmn:o:p  s:t: v xy "
+                //   "            j        qr    u w  z"
+                //
+                // Used option numbers sorted and with spaces for unused
+                // numbers. Unused numbers are on the following line.
+                //
+                //   "0 23456789"
+                //   " 1        "
         if (c == -1)
             break;
 
@@ -1416,6 +1447,21 @@ main(int argc, char *argv[])
             }
 #ifdef NO_SPLAY_KEY_BITS
             FAILURE("compile with -UNO_SPLAY_KEY_BITS to use -E", wSplayMask);
+#endif // NO_SPLAY_KEY_BITS
+            break;
+        case 'e':
+            bSplayKeyBitsFlag = 1;
+            if (optarg != NULL) {
+                wSplayMask = oa2w(optarg, NULL, 0, c);
+            } else {
+  #if defined(__LP64__) || defined(_WIN64)
+                wSplayMask = 0xaaaaaaaaaaaaaaaa;
+  #else // defined(__LP64__) || defined(_WIN64)
+                wSplayMask = 0xaaaaaaaa;
+  #endif // defined(__LP64__) || defined(_WIN64)
+            }
+#ifdef NO_SPLAY_KEY_BITS
+            FAILURE("compile with -UNO_SPLAY_KEY_BITS to use -e", wSplayMask);
 #endif // NO_SPLAY_KEY_BITS
             break;
         case 'a':                      // Max population of arrays
@@ -1451,7 +1497,7 @@ main(int argc, char *argv[])
             // Change default StartSequent to one for non-zero SValue.
             // This makes it possible to to random gets for -DS1.
             if ((SValue != 0) && !sFlag) {
-                StartSequent = 1;
+                StartSequent = SValue;
             }
             break;
         }
@@ -1481,12 +1527,6 @@ main(int argc, char *argv[])
 
             BValue = oa2w(tok, NULL, 0, c);
 
-            // Allow -B0 to mean -B64 on 64-bit and -B32 on 32-bit.
-            // Allow -B-1 to mean -B63 on 64-bit and -B31 on 32-bit.
-            // To simplify writing shell scripts for testing that
-            // are compatible with 32-bit and 64-bit.
-            BValue = (BValue - 1) % (sizeof(Word_t) * 8) + 1;
-
             tok = strtok_r(str, ":", &saveptr);
             if (tok != NULL) {
                 Bpercent = atof(tok); // default is Bpercent = 100
@@ -1497,19 +1537,27 @@ main(int argc, char *argv[])
                 Bpercent = 100.0;
             }
 
-            if ((BValue > sizeof(Word_t) * 8) || (BValue < 10))
-            {
-                FAILURE("\n -B  is out of range, I.E. -B", BValue);
+            // Allow -B0 to mean -B64 on 64-bit and -B32 on 32-bit.
+            // Allow -B-1 to mean -B63 on 64-bit and -B31 on 32-bit.
+            // To simplify writing shell scripts for testing that
+            // are compatible with 32-bit and 64-bit.
+            BValue = (BValue - 1) % (sizeof(Word_t) * 8) + 1;
+
+            if (BValue < 10) {
+                FAILURE("-B value must be at least 10; BValue", BValue);
             }
 
             if (Bpercent < 50.0 || Bpercent > 100.0)
             {
                 ErrorFlag++;
-                printf("\nError --- Percent = %4.2f must be greater than 50 and less than 100 !!!\n", Bpercent);
+                printf("\nError --- Bpercent = %.2f must be at least 50"
+                           " and no more than 100 !!!\n",
+                       Bpercent);
+                break;
             }
 
             MaxNumb = pow(2.0, BValue) * Bpercent / 100;
-            MaxNumb--;
+            --MaxNumb; // Do this after converting back to Word_t.
 
             break;
         }
@@ -1782,17 +1830,26 @@ main(int argc, char *argv[])
         }
     }
 
-    if ((bFlag && (J1Flag|JLFlag|JHFlag|JRFlag|yFlag))
+    // Make sure there are no rounding errors in MaxNumb calculation for
+    // Bpercent values that are integral multiples of reciprocals of powers
+    // of two up to (1<<10) == 1024.
+    // Choose 1024 because bigger would be problematic with -B10.
+    assert((MaxNumb + 1
+            == ((Word_t)1 << (BValue - 10)) * (int)(Bpercent * 1024 / 100))
+        || ((int)(Bpercent * 1024 / 100) == Bpercent * 1024 / 100));
+
+    if ((   bFlag && (J1Flag|JLFlag|JHFlag|JRFlag|yFlag))
         || (yFlag && (J1Flag|JLFlag|JHFlag|JRFlag|bFlag)))
     {
-        FAILURE("-b and -y don't get along with each other nor with any of -1LHR", 0);
+        FAILURE("-b and -y don't get along with each other"
+                    " nor with any of -1LHR",
+                0);
     }
 
 #ifdef NO_TRIM_EXPANSE
-    Word_t MaxNumbP1 = MaxNumb + 1;
-    if ((MaxNumbP1 & -MaxNumbP1) != MaxNumbP1)
-    {
-        FAILURE("compile with -UNO_TRIM_EXPANSE to use '-N'", MaxNumb);
+    if (((MaxNumb + 1) & MaxNumb) != 0) {
+        FAILURE("compile with -ULFSR_ONLY -UNO_TRIM_EXPANSE to use -N",
+                MaxNumb);
     }
 #endif // NO_TRIM_EXPANSE
 
@@ -1825,11 +1882,16 @@ main(int argc, char *argv[])
         int nBitsSet = __builtin_popcountll(wSplayMask);
         if (nBitsSet < (int)BValue)
         {
+            if (nBitsSet < 10) {
+                FAILURE("Splay mask must have at least 10 bits set; mask",
+                        wSplayMask);
+            }
             BValue = nBitsSet;
             MaxNumb = ((Word_t)2 << (BValue - 1)) - 1;
-            printf("\n# Warning -- trimming '-B' value to %d;"
+            printf("\n# Trimming '-B' value to %d;"
                    " the number of bits set in <splay-mask> 0x%zx.\n",
                    (int)BValue, wSplayMask);
+
         }
 
         if (gFlag && !GFlag)
@@ -1891,16 +1953,25 @@ main(int argc, char *argv[])
     }
 #endif // NO_OFFSET
 
-    if (DFlag && (SValue == 1) && (StartSequent == 1)
-            && !bSplayKeyBitsFlag && (Offset == 0) && (Bpercent == 100.0)) {
-        bDS1 = 1;
+    if (DFlag && (SValue == 1) && (StartSequent == 1) && !bSplayKeyBitsFlag
+        && (Offset == 0) && (((MaxNumb + 1) & MaxNumb) == 0))
+    {
+        bPureDS1 = 1;
+    }
+
+    // Currently using StartSequent == 1 to trigger bRandomGets.
+    // Would be better to use an explicit option so we can use StartSequent
+    // for !bRandomGets also.
+    if ((SValue != 0) && (StartSequent == SValue)) {
+        bRandomGets = 1;
+        StartSequent &= (Word_t)-1 >> (sizeof(Word_t) * 8 - BValue);
     }
 
     if (bLfsrOnly) {
         if (DFlag || FValue || GValue || Offset || SValue
-            || (Bpercent != 100.0))
+            || (((MaxNumb + 1) & MaxNumb) != 0))
         {
-            if (bDS1) {
+            if (bPureDS1) {
 #ifdef LFSR_GET_FOR_DS1
                 bLfsrForGetOnly = 1;
                 bLfsrOnly = 0;
@@ -1912,7 +1983,7 @@ main(int argc, char *argv[])
             }
         }
 
-        // We allow -E/--splay-key-bits=0x5555555555555555 with -k/--lfsr-only
+        // We allow --splay-key-bits=0x5555555555555555 with -k/--lfsr-only
         // because we were able to tweak the lfsr code to act like -E without
         // doing a PDEP and with zero additional cost over a regular lfsr.
         // We do this by splaying an lfsr magic number seed at the outset and
@@ -1937,9 +2008,9 @@ main(int argc, char *argv[])
     {
         if (StartSequent > MaxNumb)
         {
-            printf("\n# Trimming '-s 0x%zx' to 0x%zx.\n", StartSequent, MaxNumb);
-            StartSequent = MaxNumb;
-            //ErrorFlag++;
+            printf("\n# Trimming '-s 0x%zx'", StartSequent);
+            StartSequent %= MaxNumb + 1;
+            printf(" to 0x%zx.\n", StartSequent);
         }
         if (StartSequent == 0 && (SValue == 0))
         {
@@ -1984,12 +2055,16 @@ main(int argc, char *argv[])
     }
 
   #if defined(__LP64__) || defined(_WIN64)
-    // MEB: not sure why but -DS1 group calc code can't handle nElms > (0x11 << 56).
-    if (bDS1 && (nElms > ((Word_t)0x11 << 56)))
-    {
+    // bPureDS1 group calc code can't handle nElms > (0x11 << 56). Why?
+    if (bPureDS1 && (nElms > ((Word_t)0x11 << 56))) {
         nElms = (Word_t)0x11 << 56;
-        printf("# Trim Max number of Elements -n%" PRIuPTR" due to -DS1 groups limitation", nElms);
-        fprintf(stderr, "# Trim Max number of Elements -n%" PRIuPTR" due to -DS1 groups limitation", nElms);
+        printf("# Trim Max number of Elements -n%" PRIuPTR
+                   " due to bRandomGets groups limitation.\n",
+               nElms);
+        fprintf(stderr,
+                "# Trim Max number of Elements -n%" PRIuPTR
+                    " due to bRandomGets groups limitation.\n",
+                nElms);
     }
   #endif // defined(__LP64__) || defined(_WIN64)
 
@@ -2237,9 +2312,8 @@ main(int argc, char *argv[])
     Word_t wMaxEndDeltaKeys = 0; // key array size
 #endif // CALC_NEXT_KEY
 
-    // Use power of two group sizes for -DS1.
-    // Does StartSequent matter?
-    if (DFlag && (SValue == 1) && (Bpercent == 100.0))
+    // Use multiples of power of two group sizes for pure -DS1.
+    if (bPureDS1)
     {
         // First splay is at insert of n[8]+1'th key,
         // where n[8] is max length of list 8.
@@ -2326,7 +2400,6 @@ main(int argc, char *argv[])
         }
 #endif // OLD_DS1_GROUPS
 #ifndef CALC_NEXT_KEY
-    #define MAX(_a, _b)  ((_a) > (_b) ? (_a) : (_b))
         if (nElms - Pms[grp-1].ms_delta > TValues) {
             wMaxEndDeltaKeys = TValues + Pms[grp-1].ms_delta;
             if (nElms - Pms[grp-1].ms_delta - Pms[grp-2].ms_delta > TValues) {
@@ -2390,7 +2463,6 @@ main(int argc, char *argv[])
             //printf("# ms_delta 0x%016zx\n", Pms[grp].ms_delta);
 
 #ifndef CALC_NEXT_KEY
-            #define MIN(_a, _b)  ((_a) < (_b) ? (_a) : (_b))
             Word_t wStartDeltaKeys = MIN(Isum, TValues);
             Word_t wEndDeltaKeys = wStartDeltaKeys + Pms[grp].ms_delta;
             if (wEndDeltaKeys > wMaxEndDeltaKeys)
@@ -2834,7 +2906,14 @@ main(int argc, char *argv[])
     BitmapSeed = StartSeed;             // for bitmaps
 
 #ifndef CALC_NEXT_KEY
-    int wLogPop1 = wLogPop1; // wLogPop1 is used only for -DS1.
+    int wLogPop1 = 0;
+      #ifdef CLEVER_RANDOM_KEYS
+    Word_t wSValueMagnitude = SValue;
+    if ((intptr_t)SValue < 0) {
+        wSValueMagnitude *= -1;
+    }
+    int nRandomGetsShift = 0; (void)nRandomGetsShift;
+      #endif // CLEVER_RANDOM_KEYS
 #endif // CALC_NEXT_KEY
 
     Word_t wFinalPop1 = 0;
@@ -2924,7 +3003,7 @@ nextPart:
 // This doesn't work unless the -DS1 keys are not modified in any other way.
 // MEB: We might be able to extend this approach to cover more of the -S cases
 // than just -DS1.
-        if (bDS1) {
+        if (bRandomGets) {
             assert(!FValue);
             assert(!bLfsrOnly);
 // If Pop1 is 2^n, then we will have inserted [1,2^n].
@@ -2948,36 +3027,63 @@ nextPart:
             Meas = MIN(TValues, EXP(wLogPop1) - 1);
             if (wLogPop1 > wPrevLogPop1) {
                 wPrevLogPop1 = wLogPop1;
+      #ifdef CLEVER_RANDOM_KEYS
+                nRandomGetsShift = BValue - wLogPop1 - LOG(wSValueMagnitude);
+      #endif // CLEVER_RANDOM_KEYS
                 // RandomInit always initializes the same Seed_t.  Luckily,
                 // that one seed is not being used anymore at this point.
-                // We use it here for the sole purpose of getting FeedBTap.
+                // We use it here for bPureDS1 and LFSR_GET_FOR_DS1 the sole
+                // purpose of getting FeedBTap.
                 PInitSeed = RandomInit(wLogPop1, 0);
-#ifdef LFSR_GET_FOR_DS1
-                wFeedBTap = PInitSeed->FeedBTap;
-                BeginSeed = (NewSeed_t)StartSequent;
-#else // LFSR_GET_FOR_DS1
-                // RandomInit always initializes the same seed.
-                // Copy it to RandomSeed.
                 Seed_t RandomSeed = *PInitSeed;
-                RandomSeed.Seeds[0] = StartSequent;
+#ifdef LFSR_GET_FOR_DS1
+                if (bPureDS1) {
+                    wFeedBTap = PInitSeed->FeedBTap;
+                    BeginSeed = (NewSeed_t)StartSequent;
+                } else
+#endif // LFSR_GET_FOR_DS1
+                {
+                    RandomSeed.Seeds[0] = 1;
+                }
                 // Reinitialize the TestJudyGet key array.
                 // This method uses as few as half of the inserted keys
-                // for testing. Now that we are using a key array we could
-                // take a little more time if necessary and pick keys from
+                // for testing. Since we are using a key array it would be ok
+                // to take a little more time if necessary and pick keys from
                 // a larger and/or different subset.
-#endif // LFSR_GET_FOR_DS1
                 for (Word_t ww = 0; ww < Meas; ++ww) {
-                    // I wonder about using CalcNextKey here instead.
-#ifdef LFSR_GET_FOR_DS1
-                    // StartSeed[ww] = ...
-                    FileKeys[ww] = GetNextKeyX(&BeginSeed,
-                                               wFeedBTap,
-                                               BValue - wLogPop1 + 1);
-#else // LFSR_GET_FOR_DS1
-                    // StartSeed[ww] = ...
-                    Word_t wRand = RandomNumb(&RandomSeed, 0);
-                    FileKeys[ww] = wRand << (BValue - wLogPop1);
-#endif // LFSR_GET_FOR_DS1
+      #ifdef CLEVER_RANDOM_KEYS
+          #ifdef LFSR_GET_FOR_DS1
+                    // If LFSR_GET_FOR_DS1, then GetNextKeyX is capable of
+                    // of generating random keys for pure -DS1.
+                    // Is using it here just stupidly clever?
+                    if (bPureDS1) {
+                        FileKeys[ww] = GetNextKeyX(&BeginSeed,
+                                                   wFeedBTap,
+                                                   BValue - wLogPop1 + 1);
+                    } else
+          #endif // LFSR_GET_FOR_DS1
+                    // For DFlag if abs(SValue) is a power of two we can
+                    // avoid Swizzle.
+                    // Is this method just stupidly clever with no
+                    // redeeming qualities?
+                    if (((wSValueMagnitude & (wSValueMagnitude - 1)) == 0)
+                        && DFlag && !bSplayKeyBitsFlag && (Offset == 0)
+                        && (((MaxNumb + 1) & MaxNumb) == 0))
+                    {
+                        Word_t wRand = RandomNumb(&RandomSeed, 0);
+                        FileKeys[ww] = wRand << nRandomGetsShift;
+                        if ((intptr_t)SValue < 0) {
+                            FileKeys[ww]
+                                |= ((Word_t)-1
+                                    >> (sizeof(Word_t) * 8
+                                        - nRandomGetsShift));
+                        }
+                    } else
+      #endif // CLEVER_RANDOM_KEYS
+                    {
+                        FileKeys[ww]
+                            = CalcNextKeyX(&RandomSeed, wLogPop1, 0);
+                    }
                     assert(ww < EXP(wLogPop1) - 1);
                 }
             }
@@ -2991,8 +3097,9 @@ nextPart:
                 PrintHeader("Pop"); // print column headers periodically
             }
 #if 0
-            if (bDS1) {
+            if (bPureDS1) {
                 printf(" 0x%-10" PRIxPTR" 0x%-8" PRIxPTR" %10" PRIuPTR,
+                //printf("%6" PRIxPTR" %5" PRIxPTR" %5" PRIuPTR,
                        wFinalPop1, Pms[grp].ms_delta, Meas);
             } else
 #endif
