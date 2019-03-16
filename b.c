@@ -2673,13 +2673,17 @@ embeddedKeys:;
                 } else
   #endif // defined(CODE_BM_SW)
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+                Word_t wPrefixLoop = wPrefix | (nn << nBL);
   #ifdef XX_LISTS
                 if (bDump
                     && (ww != 0)
                     && (pLinks[ww].ln_wRoot == pLinks[ww - 1].ln_wRoot))
                 {
                     assert(wr_nType(pLinks[ww].ln_wRoot) == T_XX_LIST);
-// Shouldn't we at least somehow note the number of links?
+                    printf(" ditto ");
+                    printf(" wPrefix " OWx, wPrefixLoop);
+                    printf("\n");
+                    ++ww;
                     continue;
                 }
 // See comment in T_XX_LIST handling about about running off the end of
@@ -2691,7 +2695,7 @@ embeddedKeys:;
                     || (nDL_to_nBL(nBL_to_nDL(nBL + nBW)) == nBL + nBW));
   #endif // XX_LISTS
                 wBytes += FreeArrayGuts(&pLinks[ww].ln_wRoot,
-                                        wPrefix | (nn << nBL), nBL, bDump
+                                        wPrefixLoop, nBL, bDump
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                                       , /*pwrUp*/ pwr, /*nBWUp*/ nBW
   #ifdef CODE_BM_SW
@@ -4936,7 +4940,6 @@ DoubleDown(qp, // (nBL, pLn) of link to original switch
 // that belong in the expanse. But would that confuse other code that
 // compares ln_wRoot to find the expanse of a shared list?
 // And/or would it be expensive?
-            //printf("# nIndexNew 0x%02x\n", nIndexNew);
             Link_t *pLnNewLoop = &pwr_pLinks((Switch_t*)pwrNew)[nIndexNew];
             *pLnNewLoop = *pLnNewModel;
         }
@@ -6125,7 +6128,8 @@ InsertAtList(qp,
                                           GetPopCnt(pwRootUp, nBLUp));
                 return BJL(pwValue);
             }
-            assert(ListSlotCnt(wPopCnt + 1, nBLR) >= (int)wPopCnt + 2);
+            assert((ListSlotCnt(wPopCnt + 1, nBLR) >= (int)wPopCnt + 2)
+               || ((int)wPopCnt == auListPopCntMax[nBLR] - 1));
           }
           }
         } else if (nType != T_XX_LIST) { // temp code limitation

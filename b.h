@@ -2215,7 +2215,9 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #ifdef B_JUDYL
   // Low pop cnt JudyL lists are very memory inefficient.
   // Hence cnParallelSearchWordPopCntMinL.
-  #define cnParallelSearchWordPopCntMinL  5
+  #ifndef cnParallelSearchWordPopCntMinL
+    #define cnParallelSearchWordPopCntMinL  5
+  #endif // cnParallelSearchWordPopCntMinL
   #define ALIGN_LIST_LEN(_nBytesKeySz, _nPopCnt) \
     (cbAlignListLens /* independent of parallel search */ \
         || ((_nBytesKeySz) == cnBytesPerWord \
