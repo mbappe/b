@@ -509,8 +509,7 @@ CalcListWordCnt(Word_t wPopCntArg, unsigned nBL)
     // We'll eventually fill the padding with replicas of the last real key
     // so parallel searching yields no false positives.
 //printf("nBytesKeySz %d\n", nBytesKeySz);
-    if (ALIGN_LIST_LEN(nBytesKeySz))
-    {
+    if (ALIGN_LIST_LEN(nBytesKeySz, wPopCntArg)) {
 //printf("nBytesKeys b %d\n", nBytesKeys);
 #if defined(UA_PARALLEL_128)
         if ((nBL == 16) && (wPopCntArg <= 6)) {
@@ -611,7 +610,8 @@ ListWordsMin(int nPopCnt, int nBLR)
     }
   #endif // UA_PARALLEL_128
     int nBytesPerBucket // key allocation unit
-        = ALIGN_LIST_LEN(nBytesPerKey) ? sizeof(Bucket_t) : sizeof(Word_t);
+        = ALIGN_LIST_LEN(nBytesPerKey, nPopCnt)
+            ? sizeof(Bucket_t) : sizeof(Word_t);
     int nKeyBytes = ALIGN_UP(nPopCnt * nBytesPerKey, nBytesPerBucket);
     int nKeyWords = nKeyBytes / sizeof(Word_t); // accumulator
   #ifdef B_JUDYL
@@ -667,8 +667,13 @@ CalcListWordCnt(int nPopCnt, int nBLR)
     // See if the power of two divided by the square root of two is
     // big enough for our list.
     // Candidate number of malloc words including one word of malloc overhead.
+#ifdef POW_2_ALLOC
+    int nWords = MAX(4, nNextPow);
+#else // POW_2_ALLOC
     int nWords = MAX(4, (nNextPow * 46340 / (1<<16) + 1) & ~1);
-    if (nListWordsMin > nWords - 1) { nWords = nNextPow; }
+    if (nListWordsMin > nWords - 1)
+#endif // #endif POW_2_ALLOC
+    { nWords = nNextPow; }
     --nWords; // Subtract malloc overhead word for request.
 #ifdef DEBUG
     if (nPopCnt > auListPopCntMax[nBLR]) {
@@ -755,7 +760,7 @@ CalcListSlotCnt(int nPopCnt, int nBLR)
   #endif // B_JUDYL
     int nBytesPerKey = ExtListBytesPerKey(nBLR);
     int nBytesPerBucket
-        = ALIGN_LIST_LEN(nBytesPerKey)
+        = ALIGN_LIST_LEN(nBytesPerKey, nPopCnt)
 #ifdef UA_PARALLEL_128 // implies !B_JUDYL && PARALLEL_128 && 32-bit
                 && ((nPopCnt > 6) || (nBLR != 2))
 #endif // UA_PARALLEL_128
@@ -878,7 +883,8 @@ CalcListSlotCntX(int nPopCnt, int nBLR)
     int nListWords = ListWordCnt(nPopCnt, nBLR);
     // How many whole units fit in nListWords?
     int nBytesPerBucket // bytes of keys per allocation unit
-        = ALIGN_LIST_LEN(nBytesPerKey) ? sizeof(Bucket_t) : sizeof(Word_t);
+        = ALIGN_LIST_LEN(nBytesPerKey, nPopCnt)
+            ? sizeof(Bucket_t) : sizeof(Word_t);
     int nWordsPerBucket = nBytesPerBucket / cnBytesPerWord;
     int nWordsPerUnit = nWordsPerBucket; // accumulator
     int nKeysPerBucket = nBytesPerBucket / nBytesPerKey;
@@ -2403,7 +2409,7 @@ embeddedKeys:;
                 }
             }
   #ifdef PSPLIT_PARALLEL
-            if (ALIGN_LIST_LEN(ExtListBytesPerKey(nBLR))) {
+            if (ALIGN_LIST_LEN(ExtListBytesPerKey(nBLR), wPopCnt)) {
                 for (int nn = (int)wPopCnt;
                      nn * ExtListBytesPerKey(nBLR) % sizeof(Bucket_t);
                      ++nn)
@@ -2825,7 +2831,7 @@ InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
 // code to handle a partial final bucket.
 #define PAD(_pxKeys, _nPopCnt) \
 { \
-    if (ALIGN_LIST_LEN(sizeof(*(_pxKeys)))) { \
+    if (ALIGN_LIST_LEN(sizeof(*(_pxKeys)), (_nPopCnt))) { \
         for (int nn = (_nPopCnt); \
              (nn * sizeof(*(_pxKeys))) % sizeof(Bucket_t); ++nn) \
         { \

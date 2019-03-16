@@ -2212,10 +2212,22 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 // an odd word boundary and ALIGN_LIST_LEN requires the list to be an integral
 // number of buckets long, then the end of the list may fall on an odd word
 // boundary.
-#define ALIGN_LIST_LEN(_nBytesKeySz) \
+#ifdef B_JUDYL
+  // Low pop cnt JudyL lists are very memory inefficient.
+  // Hence cnParallelSearchWordPopCntMinL.
+  #define cnParallelSearchWordPopCntMinL  5
+  #define ALIGN_LIST_LEN(_nBytesKeySz, _nPopCnt) \
+    (cbAlignListLens /* independent of parallel search */ \
+        || ((_nBytesKeySz) == cnBytesPerWord \
+            ? (cbParallelSearchWord \
+                && ((_nPopCnt) > cnParallelSearchWordPopCntMinL)) \
+            : cbPsplitParallel))
+#else // B_JUDYL
+  #define ALIGN_LIST_LEN(_nBytesKeySz, _nPopCnt) \
     ( cbAlignListLens /* independent of parallel search */ \
         || ( (_nBytesKeySz) == cnBytesPerWord \
             ? cbParallelSearchWord : cbPsplitParallel ) )
+#endif // // B_JUDYL
 
 // pop cnt in preamble iff OLD_LISTS && !POP_IN_WR_HB && LIST_POP_IN_PREAMBLE;
 // don't care about PP_IN_LINK
