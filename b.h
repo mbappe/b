@@ -2216,13 +2216,13 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
   // Low pop cnt JudyL lists are very memory inefficient.
   // Hence cnParallelSearchWordPopCntMinL.
   #ifndef cnParallelSearchWordPopCntMinL
-    #define cnParallelSearchWordPopCntMinL  5
+    #define cnParallelSearchWordPopCntMinL  6
   #endif // cnParallelSearchWordPopCntMinL
   #define ALIGN_LIST_LEN(_nBytesKeySz, _nPopCnt) \
     (cbAlignListLens /* independent of parallel search */ \
         || ((_nBytesKeySz) == cnBytesPerWord \
             ? (cbParallelSearchWord \
-                && ((_nPopCnt) > cnParallelSearchWordPopCntMinL)) \
+                && ((_nPopCnt) >= cnParallelSearchWordPopCntMinL)) \
             : cbPsplitParallel))
 #else // B_JUDYL
   #define ALIGN_LIST_LEN(_nBytesKeySz, _nPopCnt) \
@@ -5776,6 +5776,12 @@ ListHasKeyWord(qp, int nBLR, Word_t wKey)
     if (nBLR != cnBitsPerWord) {
         nPos = 0;
       #ifdef PARALLEL_SEARCH_WORD
+// Are we using parallel PSPLIT_HASKEY_WORD when we shouldn't be?
+//  if ((sizeof(Bucket_t) > sizeof(Word_t))
+//    #ifdef B_JUDYL
+//      && (nPopCnt >= cnParallelSearchWordPopCntMinL)
+//    #endif // B_JUDYL
+//      )
         PSPLIT_HASKEY_WORD(Bucket_t, nBLR, pwKeys, nPopCnt, wKey, nPos);
       #else // PARALLEL_SEARCH_WORD
         PSPLIT_SEARCH_BY_KEY_WORD(nBLR, pwKeys, nPopCnt, wKey, nPos);
@@ -5786,7 +5792,12 @@ ListHasKeyWord(qp, int nBLR, Word_t wKey)
   #endif // defined(PSPLIT_SEARCH_WORD)
   #if (cnBitsPerWord > 32)
       #if !defined(NO_BINARY_SEARCH_WORD) && defined(PARALLEL_SEARCH_WORD)
-    if (sizeof(Bucket_t) > sizeof(Word_t)) {
+    if ((sizeof(Bucket_t) > sizeof(Word_t))
+      #ifdef B_JUDYL
+        && (nPopCnt >= cnParallelSearchWordPopCntMinL)
+      #endif // B_JUDYL
+        )
+    {
         return BinaryHasKeyWord(pwKeys, wKey, nBLR, nPopCnt);
     } else
       #endif // !defined(NO_BINARY_SEARCH_WORD) && ...

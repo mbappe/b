@@ -335,6 +335,11 @@
     #define NDEBUG
 #endif // ! defined(DEBUG)
 
+#ifdef SPLAY_WITH_INSERT
+  #undef  NO_COMPRESSED_LISTS
+  #define NO_COMPRESSED_LISTS
+#endif // SPLAY_WITH_INSERT
+
 // Default is -DCOMPRESSED_LISTS.
 #if ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
 #define COMPRESSED_LISTS

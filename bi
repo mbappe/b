@@ -3,13 +3,19 @@
 # This lengthy regression test script has the structure required to be
 # used by git bisect run.
 
-
 : \
-&& DEFINES="-DDOUBLE_DOWN -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 -DNO_EMBED_KEYS -DNO_USE_BM_SW -DDEBUG" make clean default \
+&& DEFINES="-DSPLAY_WITH_INSERT -DDOUBLE_DOWN -DUSE_LOWER_XX_SW \
+-DcnListPopCntMax64=16 -DNO_EMBED_KEYS -DNO_USE_BM_SW -DDEBUG" \
+   make clean default \
 && regress \
-&& DEFINES="-DDOUBLE_DOWN -DcnListPopCntMax64=64 -DNO_EMBED_KEYS -DNO_USE_BM_SW -DDEBUG" make clean default \
+&& DEFINES="-DDOUBLE_DOWN -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 \
+-DNO_EMBED_KEYS -DNO_USE_BM_SW -DDEBUG" make clean default \
 && regress \
-&& DEFINES="-DXX_LISTS -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 -DDEBUG" make clean default \
+&& DEFINES="-DDOUBLE_DOWN -DcnListPopCntMax64=64 -DNO_EMBED_KEYS \
+-DNO_USE_BM_SW -DDEBUG" make clean default \
+&& regress \
+&& DEFINES="-DXX_LISTS -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 -DDEBUG" \
+   make clean default \
 && regress \
 && DEFINES="-DBM_IN_LINK -DDEBUG" make clean default \
 && regress \
@@ -23,7 +29,8 @@
 && regress \
 && BPW=32 DEFINES="-DDEBUG" make clean default \
 && regress \
-&& DEFINES="-DUSE_XX_SW_ONLY_AT_DL2 -DcnListPopCntMax64=64 -DDEBUG" make clean default \
+&& DEFINES="-DUSE_XX_SW_ONLY_AT_DL2 -DcnListPopCntMax64=64 -DDEBUG" \
+   make clean default \
 && regress \
 && DEFINES="-DNO_EMBED_KEYS -DDEBUG" make clean default \
 && regress \
@@ -37,15 +44,20 @@
 && regress \
 && DEFINES="-DPP_IN_LINK -DDEBUG" make clean default \
 && regress \
-&& DEFINES="-DcnBitsPerDigit=16	-Dcn2dBmMaxWpkPercent=0 -DDEBUG" make clean default \
+&& DEFINES="-DcnBitsPerDigit=16	-Dcn2dBmMaxWpkPercent=0 -DDEBUG" \
+   make clean default \
 && regress \
-&& DEFINES="-DcnBitsPerDigit=15	-Dcn2dBmMaxWpkPercent=0 -DDEBUG" make clean default \
+&& DEFINES="-DcnBitsPerDigit=15	-Dcn2dBmMaxWpkPercent=0 -DDEBUG" \
+   make clean default \
 && regress \
-&& DEFINES="-DcnBitsPerDigit=14 -Dcn2dBmMaxWpkPercent=0 -DDEBUG" make clean default \
+&& DEFINES="-DcnBitsPerDigit=14 -Dcn2dBmMaxWpkPercent=0 -DDEBUG" \
+   make clean default \
 && regress \
-&& DEFINES="-DcnBitsPerDigit=13 -Dcn2dBmMaxWpkPercent=0 -DDEBUG" make clean default \
+&& DEFINES="-DcnBitsPerDigit=13 -Dcn2dBmMaxWpkPercent=0 -DDEBUG" \
+   make clean default \
 && regress \
-&& DEFINES="-DcnBitsPerDigit=12 -Dcn2dBmMaxWpkPercent=0 -DDEBUG" make clean default \
+&& DEFINES="-DcnBitsPerDigit=12 -Dcn2dBmMaxWpkPercent=0 -DDEBUG" \
+   make clean default \
 && regress \
 && DEFINES="-DcnBitsPerDigit=11 -DDEBUG" make clean default \
 && regress \
@@ -69,14 +81,17 @@
 && regress \
 && DEFINES="-DcnBitsPerDigit=1 -DDEBUG" make clean default \
 && regress \
-&& DEFINES="-DUSE_XX_SW -DcnListPopCntMax64=64 -DNO_SKIP_LINKS -DDEBUG" make clean default \
+&& DEFINES="-DUSE_XX_SW -DcnListPopCntMax64=64 -DNO_SKIP_LINKS -DDEBUG" \
+   make clean default \
 && regress \
-&& DEFINES="-DUSE_XX_SW -DcnListPopCntMax64=64 -DNO_SKIP_TO_BITMAP -DDEBUG" make clean default \
+&& DEFINES="-DUSE_XX_SW -DcnListPopCntMax64=64 -DNO_SKIP_TO_BITMAP -DDEBUG" \
+   make clean default \
 && regress \
 && DEFINES="-DPOP_WORD -DDEBUG" make clean default \
 && regress \
 && : \
-&& DEFINES="-DPOP_CNT_MAX_IS_KING -DcnListPopCntMax64=1 -DDEBUG" make clean default \
+&& DEFINES="-DPOP_CNT_MAX_IS_KING -DcnListPopCntMax64=1 -DDEBUG" \
+   make clean default \
 && DEFINES="-DDEBUG_ALL" make clean default \
 && BPW=32 DEFINES="-DDEBUG_ALL" make clean default \
 && NO_SM=1 DEFINES="-DDEBUG_ALL" make clean default \
