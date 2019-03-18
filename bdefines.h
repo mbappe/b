@@ -355,5 +355,15 @@
   #endif // NO_POP_WORD
 #endif // #ifndef PP_IN_LINK
 
+#ifdef FAST_MALLOC_2
+  #undef  FAST_MALLOC_1
+  #define FAST_MALLOC_1
+#endif // FAST_MALLOC_2
+
+#ifdef FAST_MALLOC_1
+  #undef  FAST_MALLOC
+  #define FAST_MALLOC
+#endif // FAST_MALLOC_1
+
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 

@@ -356,13 +356,13 @@ MyFreeGutsRM(Word_t *pw, Word_t wWords, int nLogAlignment,
     assert((pw[-1] & ~0x1fffff) == 0);
     int nUnits = pw[-1] >> cnBitsMallocMask;
     if (nUnits < (int)(sizeof(apwFreeBufs)/sizeof(apwFreeBufs[0]))) {
-      #if defined(FAST_MALLOC_1) || defined(FAST_MALLOC_2)
+      #ifdef FAST_MALLOC_1
         if ((apwFreeBufs[nUnits] == NULL)
           #ifdef FAST_MALLOC_2
             || (apwFreeBufs[nUnits][0] == 0)
           #endif // FAST_MALLOC_2
             )
-      #endif // defined(FAST_MALLOC_1) || defined(FAST_MALLOC_2)
+      #endif // FAST_MALLOC_1
         {
             *pw = (Word_t)apwFreeBufs[nUnits];
             apwFreeBufs[nUnits] = pw;
@@ -5706,7 +5706,8 @@ static void
   #endif // B_JUDYL
 DoubleDown(qp, // (nBL, pLn) of link to original switch
            Word_t wKey, // key being inserted
-           Word_t wPopCnt) // pop count of original sub tree at qp?
+           Word_t wPopCnt, // pop count of original sub tree at qp?
+           int nBWRUpNew)
 {
     qv; (void)wPopCnt;
     int nBLR = gnBLR(qy);
@@ -5718,12 +5719,9 @@ DoubleDown(qp, // (nBL, pLn) of link to original switch
     assert(0);
   #endif // defined(NO_TYPE_IN_XX_SW)
     // We're creating a new switch with a bigger nBW at the same nBLR.
-    //int nBWNew = nDLR_to_nBW(nDLR);
 // We need to be able to DoubleDown further. We don't want to DoubleDown
 // if splay won't be effective or final insert will require another splay.
-    int nBWNew = nBW + 1;
-    assert(nBWNew > nBW);
-    DBGI(printf("# To nBWNew %d.\n", nBWNew));
+    DBGI(printf("# To nBWRUpNew %d.\n", nBWRUpNew));
     DBGI(printf("\n# DoubleDown just before NewSwitch "));
     DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
 
@@ -5743,7 +5741,7 @@ DoubleDown(qp, // (nBL, pLn) of link to original switch
 // This insert has already been counted in the switch.
 // wPopCnt is not the pop count of the list.
 // Should we call it wPopCntUp?
-    NewSwitch(pwRoot, wKey, nBLR, nBWNew, T_SWITCH, nBL, wPopCnt - 1);
+    NewSwitch(pwRoot, wKey, nBLR, nBWRUpNew, T_SWITCH, nBL, wPopCnt - 1);
 
     DBGI(printf("\n# DoubleDown just after NewSwitch new tree "));
     DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
@@ -5756,7 +5754,7 @@ DoubleDown(qp, // (nBL, pLn) of link to original switch
     // But wPrefix, nBL, wRoot, nType, pwr, nBLR and nBW still all apply
     // to the tree whose keys must be reinserted.
 
-    // nBWNew is for the new tree.
+    // nBWRUpNew is for the new tree.
     DBGI(printf("# Copying 1<<nBW links from old switch to new switch.\n"));
     //DBGI(printf("# Old tree:\n"));
     //DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
@@ -5805,8 +5803,9 @@ DoubleDown(qp, // (nBL, pLn) of link to original switch
             DBGX(printf("pLnNew->ln_wRoot 0x%zx\n", pLnNewModel->ln_wRoot));
             assert(0);
         }
-        for (int nIndexNew = nIndex << (nBWNew - nBW);
-             nIndexNew < (nIndex << (nBWNew - nBW)) + (int)EXP(nBWNew - nBW);
+        for (int nIndexNew = nIndex << (nBWRUpNew - nBW);
+             nIndexNew
+                 < (nIndex << (nBWRUpNew - nBW)) + (int)EXP(nBWRUpNew - nBW);
              ++nIndexNew)
         {
 // We could leave some links with WROOT_NULL if there are no keys in the list
@@ -6247,6 +6246,8 @@ InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos)
     set_wr(wRootUp, pwrUp, T_SWITCH);
     pLnUp->ln_wRoot = wRootUp;
     // Set the links in the switch to WROOT_NULL.
+// Ultimately, I would like to be able to limit the splay to 1-bit.
+// The first step is a partial splay of one half of the list.
     for (int nDigit = 0; nDigit < (1 << nBWRUp); ++nDigit) {
         if (pLinks[nDigit].ln_wRoot == wRoot) {
             pLinks[nDigit].ln_wRoot = WROOT_NULL;
@@ -6857,6 +6858,10 @@ finalInsert:;
   #define cnSplayPrepThreshold  2
 #endif // #ifndef cnPrepForSplayThreshold
 
+#ifndef cnBWIncrDD
+  #define cnBWIncrDD  0
+#endif // cnBWIncrDD
+
 // List is full, i.e. code constraints and/or policy do not allow us to
 // simply replace the current list with a longer one.
 // What do we do now?
@@ -7005,9 +7010,19 @@ InsertAtList(qp,
                             nBL, nBLUp));
                 Word_t* pwRootUp = &pLnUp->ln_wRoot;
                 Word_t wRootUp = *pwRootUp;
-//fprintf(stderr, "\n# List is not full DoubleDown nBL %d wPopCnt %zd.\n", nBL, wPopCnt);
+                int nBWRUpNew;
+                if (cnBWIncrDD != 0) {
+                    nBWRUpNew = nDL_to_nBL(nDL) - nBL + cnBWIncrDD;
+                    int nBWRUpMax = nDL_to_nBL(nDL) - nDL_to_nBL(nDL - 1);
+                    if (nBWRUpNew > nBWRUpMax) {
+                        nBWRUpNew = nBWRUpMax;
+                    }
+                } else {
+                    nBWRUpNew = nDL_to_nBL(nDL) - nBitCnt + 1;
+                }
                 BJL(pwValue =) DoubleDown(qyx(Up), wKey,
-                                          GetPopCnt(pwRootUp, nBLUp));
+                                          GetPopCnt(pwRootUp, nBLUp),
+                                          nBWRUpNew);
                 return BJL(pwValue);
             }
             assert((ListSlotCnt(wPopCnt + 1, nBLR) >= (int)wPopCnt + 2)
@@ -7015,12 +7030,16 @@ InsertAtList(qp,
           }
           }
         } else if (nType != T_XX_LIST) { // temp code limitation
-            if (nBLR > cnBitsInD1)
-            if (SignificantBitCnt(qy, wKey, wPopCnt) > cnBitsInD1)
+          if (nBLR > cnBitsInD1)
+          {
+            int nBitCnt = SignificantBitCnt(qy, wKey, wPopCnt);
+            if (nBitCnt > cnBitsInD1)
+            if (nBitCnt > nDL_to_nBL(nDL - 1))
             if (ListSlotCnt(wPopCnt, nBLR) >= (int)wPopCnt + 1) {
                 BJL(pwValue =) InsertXxSw(qy, wKey, wPopCnt);
                 return BJL(pwValue);
             }
+          }
         }
         }
   #endif // DOUBLE_DOWN
@@ -7353,7 +7372,8 @@ copyWithInsertWord:
                                                            nPos,
                                                            nBLUp, pLnUp);
             }
-        } else
+            return BJL(pwValue);
+        }
       #endif // XX_LISTS
   #ifdef CODE_XX_SW
         // This is where we DoubleDown an upper narrow switch
@@ -7361,18 +7381,39 @@ copyWithInsertWord:
         // We don't send it to TransformList with a digit-unaligned list.
         if (nBL != nDL_to_nBL(nBL_to_nDL(nBL))) {
 #ifdef DOUBLE_DOWN
+            int nBitCnt = SignificantBitCnt(qy, wKey, wPopCnt);
+// Don't DoubleDown if we can't splay within the digit.
             DBGI(printf("IAL: ListIsFull DoubleDown nBL %d nBLUp %d\n",
                         nBL, nBLUp));
             Word_t* pwRootUp = &pLnUp->ln_wRoot;
             Word_t wRootUp = *pwRootUp;
+            int nBWRUpNew;
+            if (cnBWIncrDD != 0) {
+                nBWRUpNew = nDL_to_nBL(nDL) - nBL + cnBWIncrDD;
+                int nBWRUpMax = nDL_to_nBL(nDL) - nDL_to_nBL(nDL - 1);
+                if (nBWRUpNew > nBWRUpMax) {
+                    nBWRUpNew = nBWRUpMax;
+                }
+            } else {
+                nBWRUpNew = nDL_to_nBL(nDL) - nBitCnt + 1;
+                int nBWRUpMax = nDL_to_nBL(nDL) - nDL_to_nBL(nDL - 1);
+                if (nBWRUpNew > nBWRUpMax) {
+//fprintf(stderr, "\n# work around TransformList limitation nBL %d nBitCnt %d\n", nBL, nBitCnt);
+// We need to enhance TransformList so we don't have to do a useless DoubleDown here.
+                    nBWRUpNew = nBWRUpMax;
+                }
+            }
             BJL(pwValue =) DoubleDown(qyx(Up), wKey,
-                                      GetPopCnt(pwRootUp, nBLUp));
+                                      GetPopCnt(pwRootUp, nBLUp),
+                                      nBWRUpNew);
+            return BJL(pwValue);
 #else // DOUBLE_DOWN
             DBGI(printf("IAL: ListIsFull DoubleIt nBL %d nBLUp %d\n",
                         nBL, nBLUp));
             BJL(pwValue =) DoubleIt(qy, wKey, nBLUp, pLnUp, wPopCnt);
+            return BJL(pwValue);
 #endif // #else DOUBLE_DOWN
-        } else
+        }
   #endif // CODE_XX_SW
         {
             BJL(pwValue =) TransformList(qy, wKey,
