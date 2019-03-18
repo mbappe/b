@@ -4417,7 +4417,7 @@ static Word_t*
 #else // B_JUDYL
 static void
 #endif // #else B_JUDYL
-SplayWithInsert(Word_t *pwRootOld, int nBLOld, Word_t wKey,
+SplayWithInsert(Word_t *pwRootOld, int nBLOld, Word_t wKey, int nPos,
                 Word_t *pwRoot, int nBL)
 {
     (void)wKey;
@@ -5023,7 +5023,7 @@ lastDigit:;
                                                     &pwValuesOld[-nnStart],
        #endif // B_JUDYL
                                                     nPopCntLoop - 1,
-                                                    wKey, -1);
+                                                    wKey, nPos - nnStart);
                         } else {
                             Word_t *pwKeysLoop
                                 = ls_pwKeysX(pwrLoop, nBLLoop, nPopCntLoop);
@@ -6226,7 +6226,7 @@ static Word_t*
   #else // B_JUDYL
 static void
   #endif // B_JUDYL
-InsertAtFullXxList(qp, Word_t wKey, int nPopCnt)
+InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos)
 {
     qv; (void)nPopCnt;
     DBGI(printf("# IAXL pLn %p\n", pLn));
@@ -6255,7 +6255,8 @@ InsertAtFullXxList(qp, Word_t wKey, int nPopCnt)
 
     // We need to splay the XX list into the links in the full-width switch.
   #ifdef SPLAY_WITH_INSERT
-    BJL(return) SplayWithInsert(/* pwRootOld */ &wRoot, nBL, wKey, &wRootUp, /* nBLUp */ nBLRUp);
+    BJL(return) SplayWithInsert(/* pwRootOld */ &wRoot, nBL, wKey, nPos,
+                                &wRootUp, /* nBLUp */ nBLRUp);
   #else // SPLAY_WITH_INSERT
     Splay(/* pwRootOld */ &wRoot, nBL, wKey, &wRootUp, /* nBLUp */ nBLRUp);
     BJL(return) Insert(nBL, pLn, wKey);
@@ -6267,7 +6268,7 @@ static Word_t*
   #else // B_JUDYL
 static void
   #endif // B_JUDYL
-InsertAtFullUnalignedXxList(qp, Word_t wKey, int nPopCnt,
+InsertAtFullUnalignedXxList(qp, Word_t wKey, int nPopCnt, int nPos,
                             int nBLUp, Link_t* pLnUp)
 {
     qv; (void)nPopCnt;
@@ -6291,7 +6292,8 @@ InsertAtFullUnalignedXxList(qp, Word_t wKey, int nPopCnt,
 
   #ifdef SPLAY_WITH_INSERT
     // We need to splay the XX list into the links in the full-width switch.
-    BJL(return) SplayWithInsert(/* pwRootOld */ &wRoot, nBL, wKey, &pLnUp->ln_wRoot, nBLUp);
+    BJL(return) SplayWithInsert(/* pwRootOld */ &wRoot, nBL, wKey, nPos,
+                                &pLnUp->ln_wRoot, nBLUp);
   #else // SPLAY_WITH_INSERT
     Splay(/* pwRootOld */ &wRoot, nBL, wKey, &pLnUp->ln_wRoot, nBLUp);
     swPopCnt(qyx(Up), nBLRUp, gwPopCnt(qyx(Up), nBLRUp) - 1);
@@ -7345,9 +7347,10 @@ copyWithInsertWord:
       #ifdef XX_LISTS
         if (nType == T_XX_LIST) {
             if (nDL_to_nBL(nDL) == nBL) {
-                BJL(pwValue =) InsertAtFullXxList(qy, wKey, wPopCnt);
+                BJL(pwValue =) InsertAtFullXxList(qy, wKey, wPopCnt, nPos);
             } else {
                 BJL(pwValue =) InsertAtFullUnalignedXxList(qy, wKey, wPopCnt,
+                                                           nPos,
                                                            nBLUp, pLnUp);
             }
         } else
