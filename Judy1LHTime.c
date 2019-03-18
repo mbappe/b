@@ -1443,7 +1443,16 @@ main(int argc, char *argv[])
         case 'E':
             bSplayKeyBitsFlag = 1;
             if (optarg != NULL) {
-                wSplayMask = oa2w(optarg, NULL, 0, c);
+                if ((optarg[0] >= '0') && (optarg[0] <= '9')) {
+                    wSplayMask = oa2w(optarg, NULL, 0, c);
+                } else {
+                    --optind; // rewind
+                    // skip over -E and put a '-' in place
+                    if (optarg != argv[optind]) {
+                        argv[optind] = optarg - 1;
+                        argv[optind][0] = '-';
+                    }
+                }
             }
 #ifdef NO_SPLAY_KEY_BITS
             FAILURE("compile with -UNO_SPLAY_KEY_BITS to use -E", wSplayMask);
@@ -1452,7 +1461,16 @@ main(int argc, char *argv[])
         case 'e':
             bSplayKeyBitsFlag = 1;
             if (optarg != NULL) {
-                wSplayMask = oa2w(optarg, NULL, 0, c);
+                if ((optarg[0] >= '0') && (optarg[0] <= '9')) {
+                    wSplayMask = oa2w(optarg, NULL, 0, c);
+                } else {
+                    --optind; // rewind
+                    // skip over -e and put a '-' in place
+                    if (optarg != argv[optind]) {
+                        argv[optind] = optarg - 1;
+                        argv[optind][0] = '-';
+                    }
+                }
             } else {
   #if defined(__LP64__) || defined(_WIN64)
                 wSplayMask = 0xaaaaaaaaaaaaaaaa;
