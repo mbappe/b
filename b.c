@@ -6227,7 +6227,7 @@ static void
   #endif // B_JUDYL
 InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos)
 {
-    qv; (void)nPopCnt;
+    qv; (void)nPopCnt; (void)nPos;
     DBGI(printf("# IAXL pLn %p\n", pLn));
     DBGI(printf("# IAXL pwr %p\n", pwr));
     int nDLRUp = nBL_to_nDL(nBL + 1); (void)nDLRUp;
@@ -6272,7 +6272,7 @@ static void
 InsertAtFullUnalignedXxList(qp, Word_t wKey, int nPopCnt, int nPos,
                             int nBLUp, Link_t* pLnUp)
 {
-    qv; (void)nPopCnt;
+    qv; (void)nPopCnt; (void)nPos;
     Word_t wRootUp = pLnUp->ln_wRoot;
     DBGI(printf("# IAFUXL pLn %p\n", pLn));
     DBGI(printf("# IAFUXL pwr %p\n", pwr));
