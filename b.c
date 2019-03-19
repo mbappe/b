@@ -692,6 +692,13 @@ ListWordsMin(int nPopCnt, int nBLR)
     return nKeyWords; // accumulated list words
 }
 
+  #ifdef SLOW_FIBONACCI
+// Slow Fibonacci.
+static int anListMallocSizes[] = {
+     4,   6,   8,  10,  14,  18,  24,  32,  42,
+    56,  74,  98, 130, 172, 228, 302, 400, 530  };
+  #endif // SLOW_FIBONACCI
+
 // CalcListWordCnt is for reducing the frequency of list mallocs and copies
 // and the number of different sizes of malloc buffers that we would otherwise
 // use if we had only ListWordsMin.
@@ -704,7 +711,11 @@ static int
 CalcListWordCnt(int nPopCnt, int nBLR)
 {
     int nListWordsMin = ListWordsMin(nPopCnt, nBLR);
-    // What is the first power of two bigger than nListWordsMin ** 2?
+  #ifdef SLOW_FIBONACCI
+    int n; for (n = 0; anListMallocSizes[n] <= nListWordsMin; ++n);
+    int nWords = anListMallocSizes[n] - 1;
+  #else // SLOW_FIBONACCI
+    // What is the first power of two bigger than nListWordsMin?
     // nListWordsMin being a power of two does us no good because it won't
     // accommodate the malloc overhead word.
     int nNextPow = EXP(LOG(nListWordsMin) + 1); // first power of two bigger
@@ -719,6 +730,7 @@ CalcListWordCnt(int nPopCnt, int nBLR)
 #endif // #endif POW_2_ALLOC
     { nWords = nNextPow; }
     --nWords; // Subtract malloc overhead word for request.
+  #endif // SLOW_FIBONACCI
 #ifdef DEBUG
     if (nPopCnt > auListPopCntMax[nBLR]) {
         printf("nPopCnt %d auListPopCntMax[nBLR %d] %u\n",
