@@ -2937,43 +2937,26 @@ CopyWithInsertWordX(qp, Word_t *pSrc,
   #ifdef B_JUDYL
     Word_t *pwTgtValues = gpwValues(qy);
   #endif // B_JUDYL
-    int n;
-
-    // Why don't we know nPos for inflated embedded list?
-    // We should enhance Insert to use LocateKey for embedded keys so we
-    // don't need to search here.
-    if ((nPos == -1) // inflated embedded list
-  #if ! defined(EMBED_KEYS)
-            && (nKeys != 0)
-  #else // ! defined(EMBED_KEYS)
-            && 1 // avoid extraneous parens error
-  #endif // ! defined(EMBED_KEYS)
-        )
-    {
-        // find the insertion point
-        n = ~SearchListWord(pSrc, wKey, cnBitsPerWord, nKeys);
-    } else { n = nPos; }
-    assert(nPos <= nKeys);
 
     if (pTgt != pSrc) {
         // copy the values tail
-        BJL(COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n));
+        BJL(COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - nPos));
         // copy the values head
-        BJL(COPY(&pwTgtValues[-n    ], &pwSrcValues[-n    ], n        ));
-        COPY(pTgt, pSrc, n); // copy the head
-        COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
+        BJL(COPY(&pwTgtValues[-nPos ], &pwSrcValues[-nPos ], nPos     ));
+        COPY(pTgt, pSrc, nPos); // copy the head
+        COPY(&pTgt[nPos+1], &pSrc[nPos], nKeys - nPos); // copy the tail
     } else {
         // move the values tail
-        BJL(MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n));
-        MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
+        BJL(MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - nPos));
+        MOVE(&pTgt[nPos+1], &pSrc[nPos], nKeys - nPos); // move the tail
     }
 
-    pTgt[n] = wKey; // insert the key
+    pTgt[nPos] = wKey; // insert the key
     PAD(pTgt, nKeys + 1);
 
     DBGI(Log(qy, "CopyWithInsertWordX done "));
     //DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
-    BJL(return &pwTgtValues[~n]);
+    BJL(return &pwTgtValues[~nPos]);
 }
 
 #ifdef B_JUDYL
@@ -3022,38 +3005,24 @@ CopyWithInsert32(qp, uint32_t *pSrc,
     pwSrcValues -= 1;
       #endif // LIST_POP_IN_PREAMBLE
   #endif // B_JUDYL
-    int n;
-
-    if ((nPos == -1) // inflated embedded list
-  #if ! defined(EMBED_KEYS)
-            && (nKeys != 0)
-  #else // ! defined(EMBED_KEYS)
-            && 1 // avoid extraneous parens error
-  #endif // ! defined(EMBED_KEYS)
-        )
-    {
-        // find the insertion point
-        n = ~PsplitSearchByKey32(pSrc, nKeys, iKey, 0);
-    } else { n = nPos; }
-    assert(nPos <= nKeys);
 
     if (pTgt != pSrc) {
         // copy the values tail
-        BJL(COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n));
+        BJL(COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - nPos));
         // copy the values head
-        BJL(COPY(&pwTgtValues[-n    ], &pwSrcValues[-n    ], n        ));
-        COPY(pTgt, pSrc, n); // copy the head
-        COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
+        BJL(COPY(&pwTgtValues[-nPos ], &pwSrcValues[-nPos ], nPos        ));
+        COPY(pTgt, pSrc, nPos); // copy the head
+        COPY(&pTgt[nPos+1], &pSrc[nPos], nKeys - nPos); // copy the tail
     } else {
         // move the values tail
-        BJL(MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n));
-        MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
+        BJL(MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - nPos));
+        MOVE(&pTgt[nPos+1], &pSrc[nPos], nKeys - nPos); // move the tail
     }
 
-    pTgt[n] = iKey; // insert the key
+    pTgt[nPos] = iKey; // insert the key
     PAD(pTgt, nKeys + 1);
 
-    BJL(return &pwTgtValues[~n]);
+    BJL(return &pwTgtValues[~nPos]);
 }
 #endif // (cnBitsPerWord > 32)
 
@@ -3077,45 +3046,31 @@ CopyWithInsert16(qp, uint16_t *pSrc,
     pwSrcValues -= 1;
       #endif // LIST_POP_IN_PREAMBLE
   #endif // B_JUDYL
-    int n;
-
-    if ((nPos == -1) // inflated embedded list
-  #if ! defined(EMBED_KEYS)
-            && (nKeys != 0)
-  #else // ! defined(EMBED_KEYS)
-            && 1 // avoid extraneous parens error
-  #endif // ! defined(EMBED_KEYS)
-        )
-    {
-        // find the insertion point
-        n = ~PsplitSearchByKey16(pSrc, nKeys, sKey, 0);
-    } else { n = nPos; }
-    assert(nPos <= nKeys);
 
     if (pTgt != pSrc) {
         // copy the values tail
-        BJL(COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n));
+        BJL(COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - nPos));
         // copy the values head
-        BJL(COPY(&pwTgtValues[-n    ], &pwSrcValues[-n    ], n        ));
-        COPY(pTgt, pSrc, n); // copy the head
-        COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
+        BJL(COPY(&pwTgtValues[-nPos ], &pwSrcValues[-nPos ], nPos        ));
+        COPY(pTgt, pSrc, nPos); // copy the head
+        COPY(&pTgt[nPos+1], &pSrc[nPos], nKeys - nPos); // copy the tail
     } else {
         // move the values tail
-        BJL(MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n));
-        MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
+        BJL(MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - nPos));
+        MOVE(&pTgt[nPos+1], &pSrc[nPos], nKeys - nPos); // move the tail
     }
 
-    pTgt[n] = sKey; // insert the key
+    pTgt[nPos] = sKey; // insert the key
   #if defined(UA_PARALLEL_128)
-    if ((nType == T_LIST_UA) && (n <= 6)) {
-        for (n = nKeys + 1; (n * sizeof(sKey)) % 12; ++n) {
-            pTgt[n] = pTgt[n-1];
+    if ((nType == T_LIST_UA) && (nPos <= 6)) {
+        for (nPos = nKeys + 1; (nPos * sizeof(sKey)) % 12; ++nPos) {
+            pTgt[nPos] = pTgt[nPos-1];
         }
     } else
   #endif // defined(UA_PARALLEL_128)
     { PAD(pTgt, nKeys + 1); }
 
-    BJL(return &pwTgtValues[~n]);
+    BJL(return &pwTgtValues[~nPos]);
 }
 
 #ifdef B_JUDYL
@@ -3138,20 +3093,6 @@ CopyWithInsert8(qp, uint8_t *pSrc,
     pwSrcValues -= 1;
       #endif // LIST_POP_IN_PREAMBLE
   #endif // B_JUDYL
-    int n;
-
-    if ((nPos == -1) // inflated embedded list
-  #if ! defined(EMBED_KEYS)
-            && (nKeys != 0)
-  #else // ! defined(EMBED_KEYS)
-            && 1 // avoid extraneous parens error
-  #endif // ! defined(EMBED_KEYS)
-        )
-    {
-        // find the insertion point
-        n = ~PsplitSearchByKey8(pSrc, nKeys, cKey, 0);
-    } else { n = nPos; }
-    assert(n <= nKeys);
 
     if (pTgt != pSrc) {
   #ifdef B_JUDYL
@@ -3160,13 +3101,13 @@ CopyWithInsert8(qp, uint8_t *pSrc,
       #endif // !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
         {
             // copy the values tail
-            COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n);
+            COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - nPos);
             // copy the values head
-            COPY(&pwTgtValues[-n    ], &pwSrcValues[-n    ], n        );
+            COPY(&pwTgtValues[-nPos    ], &pwSrcValues[-nPos    ], nPos        );
         }
   #endif // B_JUDYL
-        COPY(pTgt, pSrc, n); // copy the head
-        COPY(&pTgt[n+1], &pSrc[n], nKeys - n); // copy the tail
+        COPY(pTgt, pSrc, nPos); // copy the head
+        COPY(&pTgt[nPos+1], &pSrc[nPos], nKeys - nPos); // copy the tail
     }
     else
     {
@@ -3176,13 +3117,13 @@ CopyWithInsert8(qp, uint8_t *pSrc,
       #endif // !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
         {
             // move the values tail
-            MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - n);
+            MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - nPos);
         }
   #endif // B_JUDYL
-        MOVE(&pTgt[n+1], &pSrc[n], nKeys - n); // move the tail
+        MOVE(&pTgt[nPos+1], &pSrc[nPos], nKeys - nPos); // move the tail
     }
 
-    pTgt[n] = cKey; // insert the key
+    pTgt[nPos] = cKey; // insert the key
     // Padding is redundant in some cases.
     // But avoiding it is probably more expensive than doing it.
     // This code assumes InflateEmbedded pads the list.
@@ -3199,7 +3140,7 @@ CopyWithInsert8(qp, uint8_t *pSrc,
       #if !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
         (nBLR == cnBitsInD1) ?  &pwTgtValues[~(cKey & MSK(cnBitsInD1))] :
       #endif // !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
-            &pwTgtValues[~n];
+            &pwTgtValues[~nPos];
   #endif // B_JUDYL
 }
 
@@ -7605,12 +7546,13 @@ embeddedKeys:;
                                       , pwValueUp
 #endif // B_JUDYL
                                         );
+            nPos = ~SearchList(qy, /*nBLR*/ nBL, wKey);
+        } else {
+            nPos = 0;
         }
+
         // InflateEmbeddedList installs wRoot. It also initializes the
         // other words in the link if there are any.
-
-        nPos = -1; // Tell CopyWithInsert that we have no nPos.
-        // Why don't we have an nPos?
 
         nType = wr_nType(wRoot);
         assert(tp_bIsList(nType));
