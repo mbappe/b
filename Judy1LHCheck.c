@@ -608,6 +608,7 @@ TestJudyIns(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
         Rcode = Judy1Test(*J1, TstIndex, NULL);
         if (Rcode != 1) {
             Judy1Dump((Word_t)*J1, sizeof(Word_t) * 8, 0);
+            printf("TstIndex %zu 0x%zx\n", TstIndex, TstIndex);
             FAILURE("Judy1Test failed - Index missing, population =", TotalPop);
         }
 
