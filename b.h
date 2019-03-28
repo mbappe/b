@@ -1142,11 +1142,25 @@ extern Word_t j__MisComparesM;
 #define STRUCT_OF(_p, _type, _field) \
     ((_type *)((char *)(_p) - OFFSET_OF(_type, _field)))
 
-#define COPY(_tgt, _src, _cnt) \
-    memcpy((_tgt), (_src), sizeof(*(_src)) * (_cnt))
+// COPYX is for copying keys betweeen lists with different size keys.
+#define COPYX(_pTgt, _pSrc, _nCnt) \
+{ \
+    for (int nn = 0; nn < (int)(_nCnt); ++nn) { \
+        (_pTgt)[nn] = (_pSrc)[nn]; \
+    } \
+}
 
-#define MOVE(_tgt, _src, _cnt) \
-    memmove((_tgt), (_src), sizeof(*(_src)) * (_cnt))
+#define COPY(_pTgt, _pSrc, _cnt) \
+{ \
+    if (sizeof(*(_pTgt)) == sizeof(*(_pSrc))) { \
+        memcpy((_pTgt), (_pSrc), sizeof(*(_pSrc)) * (_cnt)); \
+    } else { \
+        COPYX(_pTgt, _pSrc, _cnt); \
+    } \
+}
+
+#define MOVE(_pTgt, _pSrc, _cnt) \
+    memmove((_pTgt), (_pSrc), sizeof(*(_pSrc)) * (_cnt))
 
 #define SET(_p, _v, _cnt) \
     memset((_p), (_v), sizeof(*(_p)) * (_cnt))

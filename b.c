@@ -2906,6 +2906,48 @@ InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
     } \
 }
 
+#define COPY_KEYS_WITH_INSERT(_pTgtKeys, _pSrcKeys, _nSrcCnt, _wKey, _nPos) \
+{ \
+    if ((void*)(_pTgtKeys) != (void*)(_pSrcKeys)) { \
+        COPY((_pTgtKeys), (_pSrcKeys), (_nPos)); \
+        COPY(&(_pTgtKeys)[(_nPos)+1], \
+              &(_pSrcKeys)[_nPos], (_nSrcCnt) - (_nPos)); \
+    } else { \
+        MOVE(&(_pTgtKeys)[(_nPos)+1], \
+             &(_pSrcKeys)[_nPos], (_nSrcCnt) - (_nPos)); \
+    } \
+    (_pTgtKeys)[_nPos] = (_wKey); \
+    PAD((_pTgtKeys), (_nSrcCnt) + 1); \
+}
+
+#ifdef B_JUDYL
+
+#define COPY_WITH_INSERT(_pTgtKeys, _pSrcKeys, _nSrcKeyCnt, _wKey, _nPos, \
+                         _pwTgtVals, _pwSrcVals, _ppwRetVal) \
+{ \
+    COPY_KEYS_WITH_INSERT((_pTgtKeys), (_pSrcKeys), (_nSrcKeyCnt), \
+                          (_wKey), (_nPos)); \
+    if ((void*)(_pTgtKeys) != (void*)(_pSrcKeys)) { \
+        COPY(&(_pwTgtVals)[~(_nSrcKeyCnt)], &(_pwSrcVals)[-(_nSrcKeyCnt)], \
+             (_nSrcKeyCnt) - (_nPos)); \
+        COPY(&(_pwTgtVals)[-(_nPos)], &(_pwSrcVals)[-(_nPos)], (_nPos)); \
+    } else { \
+        MOVE(&(_pwTgtVals)[~(_nSrcKeyCnt)], &(_pwSrcVals)[-(_nSrcKeyCnt)], \
+             (_nSrcKeyCnt) - (_nPos)); \
+    } \
+    *(_ppwRetVal) = &(_pwTgtVals)[~(_nPos)]; \
+}
+
+#else // B_JUDYL
+
+#define COPY_WITH_INSERT(_pTgtKeys, _pSrcKeys, _nSrcKeyCnt, _wKey, _nPos) \
+{ \
+    COPY_KEYS_WITH_INSERT((_pTgtKeys), (_pSrcKeys), (_nSrcKeyCnt), \
+                          (_wKey), (_nPos)); \
+}
+
+#endif // #else B_JUDYL
+
 // CopyWithInsert may operate on a list that is installed and one that is not.
 // What is our general rule w.r.t. qp?
 // Should we add qpOld? What about qpUp?
@@ -2921,7 +2963,7 @@ static void
 #endif // B_JUDYL
 CopyWithInsertWordX(qp, Word_t *pSrc,
   #ifdef B_JUDYL
-                    Word_t *pwSrcValues,
+                    Word_t *pwSrcVals,
   #endif // B_JUDYL
                     int nKeys, // number of keys excluding the new one
                     Word_t wKey, int nPos)
@@ -2935,28 +2977,17 @@ CopyWithInsertWordX(qp, Word_t *pSrc,
     Word_t *pTgt = ls_pwKeysX(pwr, nBLR, nKeys + 1);
 //printf("pTgt %p\n", pTgt);
   #ifdef B_JUDYL
-    Word_t *pwTgtValues = gpwValues(qy);
+    Word_t *pwTgtVals = gpwValues(qy);
+    Word_t* pwRetVal;
   #endif // B_JUDYL
-
-    if (pTgt != pSrc) {
-        // copy the values tail
-        BJL(COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - nPos));
-        // copy the values head
-        BJL(COPY(&pwTgtValues[-nPos ], &pwSrcValues[-nPos ], nPos     ));
-        COPY(pTgt, pSrc, nPos); // copy the head
-        COPY(&pTgt[nPos+1], &pSrc[nPos], nKeys - nPos); // copy the tail
-    } else {
-        // move the values tail
-        BJL(MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - nPos));
-        MOVE(&pTgt[nPos+1], &pSrc[nPos], nKeys - nPos); // move the tail
-    }
-
-    pTgt[nPos] = wKey; // insert the key
-    PAD(pTgt, nKeys + 1);
-
+    COPY_WITH_INSERT(pTgt, pSrc, nKeys, wKey, nPos
+  #ifdef B_JUDYL
+                   , pwTgtVals, pwSrcVals, &pwRetVal
+  #endif // B_JUDYL
+                     );
     DBGI(Log(qy, "CopyWithInsertWordX done "));
     //DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
-    BJL(return &pwTgtValues[~nPos]);
+    BJL(return pwRetVal);
 }
 
 #ifdef B_JUDYL
@@ -2969,15 +3000,15 @@ CopyWithInsertWord(qp, Word_t *pSrc,
                    Word_t wKey, int nPos)
 {
   #ifdef B_JUDYL
-    Word_t *pwSrcValues = pSrc;
+    Word_t *pwSrcVals = pSrc;
       #ifdef LIST_POP_IN_PREAMBLE
-    --pwSrcValues;
+    --pwSrcVals;
       #endif // LIST_POP_IN_PREAMBLE
   #endif // B_JUDYL
     BJL(return)
         CopyWithInsertWordX(qy, pSrc,
   #ifdef B_JUDYL
-                            pwSrcValues,
+                            pwSrcVals,
   #endif // B_JUDYL
                             nKeys, wKey, nPos);
 }
@@ -2999,30 +3030,30 @@ CopyWithInsert32(qp, uint32_t *pSrc,
     int nBLR = gnListBLR(qy); (void)nBLR;
     uint32_t *pTgt = ls_piKeysX(pwr, nBLR, nKeys + 1);
   #ifdef B_JUDYL
-    Word_t *pwTgtValues = gpwValues(qy);
-    Word_t *pwSrcValues = (Word_t*)pSrc;
+    Word_t *pwTgtVals = gpwValues(qy);
+    Word_t *pwSrcVals = (Word_t*)pSrc;
       #ifdef LIST_POP_IN_PREAMBLE
-    pwSrcValues -= 1;
+    pwSrcVals -= 1;
       #endif // LIST_POP_IN_PREAMBLE
   #endif // B_JUDYL
 
     if (pTgt != pSrc) {
         // copy the values tail
-        BJL(COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - nPos));
+        BJL(COPY(&pwTgtVals[~nKeys], &pwSrcVals[-nKeys], nKeys - nPos));
         // copy the values head
-        BJL(COPY(&pwTgtValues[-nPos ], &pwSrcValues[-nPos ], nPos        ));
+        BJL(COPY(&pwTgtVals[-nPos ], &pwSrcVals[-nPos ], nPos        ));
         COPY(pTgt, pSrc, nPos); // copy the head
         COPY(&pTgt[nPos+1], &pSrc[nPos], nKeys - nPos); // copy the tail
     } else {
         // move the values tail
-        BJL(MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - nPos));
+        BJL(MOVE(&pwTgtVals[~nKeys], &pwSrcVals[-nKeys], nKeys - nPos));
         MOVE(&pTgt[nPos+1], &pSrc[nPos], nKeys - nPos); // move the tail
     }
 
     pTgt[nPos] = iKey; // insert the key
     PAD(pTgt, nKeys + 1);
 
-    BJL(return &pwTgtValues[~nPos]);
+    BJL(return &pwTgtVals[~nPos]);
 }
 #endif // (cnBitsPerWord > 32)
 
@@ -3040,23 +3071,23 @@ CopyWithInsert16(qp, uint16_t *pSrc,
     int nBLR = gnListBLR(qy); (void)nBLR;
     uint16_t *pTgt = ls_psKeysX(pwr, nBLR, nKeys + 1);
   #ifdef B_JUDYL
-    Word_t *pwTgtValues = gpwValues(qy);
-    Word_t *pwSrcValues = (Word_t*)pSrc;
+    Word_t *pwTgtVals = gpwValues(qy);
+    Word_t *pwSrcVals = (Word_t*)pSrc;
       #ifdef LIST_POP_IN_PREAMBLE
-    pwSrcValues -= 1;
+    pwSrcVals -= 1;
       #endif // LIST_POP_IN_PREAMBLE
   #endif // B_JUDYL
 
     if (pTgt != pSrc) {
         // copy the values tail
-        BJL(COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - nPos));
+        BJL(COPY(&pwTgtVals[~nKeys], &pwSrcVals[-nKeys], nKeys - nPos));
         // copy the values head
-        BJL(COPY(&pwTgtValues[-nPos ], &pwSrcValues[-nPos ], nPos        ));
+        BJL(COPY(&pwTgtVals[-nPos ], &pwSrcVals[-nPos ], nPos        ));
         COPY(pTgt, pSrc, nPos); // copy the head
         COPY(&pTgt[nPos+1], &pSrc[nPos], nKeys - nPos); // copy the tail
     } else {
         // move the values tail
-        BJL(MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - nPos));
+        BJL(MOVE(&pwTgtVals[~nKeys], &pwSrcVals[-nKeys], nKeys - nPos));
         MOVE(&pTgt[nPos+1], &pSrc[nPos], nKeys - nPos); // move the tail
     }
 
@@ -3070,7 +3101,7 @@ CopyWithInsert16(qp, uint16_t *pSrc,
   #endif // defined(UA_PARALLEL_128)
     { PAD(pTgt, nKeys + 1); }
 
-    BJL(return &pwTgtValues[~nPos]);
+    BJL(return &pwTgtVals[~nPos]);
 }
 
 #ifdef B_JUDYL
@@ -3087,10 +3118,10 @@ CopyWithInsert8(qp, uint8_t *pSrc,
     int nBLR = gnListBLR(qy); (void)nBLR;
     uint8_t *pTgt = ls_pcKeysX(pwr, nBLR, nKeys + 1);
   #ifdef B_JUDYL
-    Word_t *pwTgtValues = gpwValues(qy);
-    Word_t *pwSrcValues = (Word_t*)pSrc; (void)pwSrcValues;
+    Word_t *pwTgtVals = gpwValues(qy);
+    Word_t *pwSrcVals = (Word_t*)pSrc; (void)pwSrcVals;
       #ifdef LIST_POP_IN_PREAMBLE
-    pwSrcValues -= 1;
+    pwSrcVals -= 1;
       #endif // LIST_POP_IN_PREAMBLE
   #endif // B_JUDYL
 
@@ -3101,9 +3132,9 @@ CopyWithInsert8(qp, uint8_t *pSrc,
       #endif // !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
         {
             // copy the values tail
-            COPY(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - nPos);
+            COPY(&pwTgtVals[~nKeys], &pwSrcVals[-nKeys], nKeys - nPos);
             // copy the values head
-            COPY(&pwTgtValues[-nPos    ], &pwSrcValues[-nPos    ], nPos        );
+            COPY(&pwTgtVals[-nPos    ], &pwSrcVals[-nPos    ], nPos        );
         }
   #endif // B_JUDYL
         COPY(pTgt, pSrc, nPos); // copy the head
@@ -3117,7 +3148,7 @@ CopyWithInsert8(qp, uint8_t *pSrc,
       #endif // !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
         {
             // move the values tail
-            MOVE(&pwTgtValues[~nKeys], &pwSrcValues[-nKeys], nKeys - nPos);
+            MOVE(&pwTgtVals[~nKeys], &pwSrcVals[-nKeys], nKeys - nPos);
         }
   #endif // B_JUDYL
         MOVE(&pTgt[nPos+1], &pSrc[nPos], nKeys - nPos); // move the tail
@@ -3138,9 +3169,9 @@ CopyWithInsert8(qp, uint8_t *pSrc,
   #ifdef B_JUDYL
     return
       #if !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
-        (nBLR == cnBitsInD1) ?  &pwTgtValues[~(cKey & MSK(cnBitsInD1))] :
+        (nBLR == cnBitsInD1) ?  &pwTgtVals[~(cKey & MSK(cnBitsInD1))] :
       #endif // !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
-            &pwTgtValues[~nPos];
+            &pwTgtVals[~nPos];
   #endif // B_JUDYL
 }
 
@@ -3556,14 +3587,6 @@ InsertAllAtBitmap(qp, qpx(Old), int nStart, int nPopCnt)
 }
 #endif // BITMAP
 
-// COPYX is for copying keys betweeen lists with different size keys.
-#define COPYX(_pTgt, _pSrc, _nn) \
-{ \
-    for (int xx = 0; xx < (_nn); ++xx) { \
-        (_pTgt)[xx] = (_pSrc)[xx]; \
-    } \
-}
-
 static int
 SplayMaxPopCnt(Word_t *pwRootOld, int nBLOld, Word_t wKey, int nBLNew)
 {
@@ -3978,7 +4001,7 @@ lastDigit16:;
                     if (nBLLoop <= 8) {
                         uint8_t *pcKeysLoop
                             = ls_pcKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-                        COPYX(pcKeysLoop, &psKeys[nnStart], nPopCntLoop);
+                        COPY(pcKeysLoop, &psKeys[nnStart], nPopCntLoop);
                         PAD(pcKeysLoop, nPopCntLoop);
                     } else {
                         uint16_t *psKeysLoop
@@ -4092,12 +4115,12 @@ lastDigit32:;
                     if (nBLLoop <= 8) {
                         uint8_t *pcKeysLoop
                             = ls_pcKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-                        COPYX(pcKeysLoop, &piKeys[nnStart], nPopCntLoop);
+                        COPY(pcKeysLoop, &piKeys[nnStart], nPopCntLoop);
                         PAD(pcKeysLoop, nPopCntLoop);
                     } else if (nBLLoop <= 16) {
                         uint16_t *psKeysLoop
                             = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-                        COPYX(psKeysLoop, &piKeys[nnStart], nPopCntLoop);
+                        COPY(psKeysLoop, &piKeys[nnStart], nPopCntLoop);
                         PAD(psKeysLoop, nPopCntLoop);
                     } else {
                         uint32_t *piKeysLoop
@@ -4215,19 +4238,19 @@ lastDigit:;
                         if (nBLLoop <= 8) {
                             uint8_t *pcKeysLoop
                                 = ls_pcKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-                            COPYX(pcKeysLoop, &pwKeys[nnStart], nPopCntLoop);
+                            COPY(pcKeysLoop, &pwKeys[nnStart], nPopCntLoop);
                             PAD(pcKeysLoop, nPopCntLoop);
                         } else {
                             uint16_t *psKeysLoop
                                 = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-                            COPYX(psKeysLoop, &pwKeys[nnStart], nPopCntLoop);
+                            COPY(psKeysLoop, &pwKeys[nnStart], nPopCntLoop);
                             PAD(psKeysLoop, nPopCntLoop);
                         }
           #if (cnBitsPerWord > 32)
                     } else if (nBLLoop <= 32) {
                         uint32_t *piKeysLoop
                             = ls_piKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-                        COPYX(piKeysLoop, &pwKeys[nnStart], nPopCntLoop);
+                        COPY(piKeysLoop, &pwKeys[nnStart], nPopCntLoop);
                         PAD(piKeysLoop, nPopCntLoop);
           #endif // (cnBitsPerWord > 32)
                     } else
@@ -4490,11 +4513,18 @@ SplayWithInsert(Word_t *pwRootOld, int nBLOld, Word_t wKey, int nPos,
         uint8_t *pcKeys = ls_pcKeysNATX(pwrOld, nPopCnt);
         Word_t wBitsFromKey = wKey & ~MSK(8) & NZ_MSK(nBLR);
         int nDigit = ((pcKeys[0] & wDigitMask) | wBitsFromKey) >> nBLLoop;
+        int nDigit0 = nDigit;
         for (int nn = 0; nn < nPopCnt; nn++) {
             int nDigitNew
                 = ((pcKeys[nn] & wDigitMask) | wBitsFromKey) >> nBLLoop;
             if (nDigitNew != nDigit) {
 lastDigit8:;
+                if (((nDigitKey < nDigitNew) && (nDigitKey > nDigit))
+                    || ((nDigit == nDigit0) && (nDigitKey < nDigit)))
+                {
+                    nPos = 0;
+                    bInsertNotDone = 1;
+                }
   #ifdef DEBUG
                 if (nn - nnStart + (nDigitKey == nDigit) > nPopCntMax) {
                     nPopCntMax = nn - nnStart + (nDigitKey == nDigit);
@@ -4548,6 +4578,11 @@ lastDigit8:;
                     // Let's make a new list and copy it over.
                     Word_t wRootLoop = 0;
                     int nTypeLoop = T_LIST; (void)nTypeLoop;
+                    if ((nDigit == nDigitKey)
+                        && (nPopCntLoop < auListPopCntMax[nBLLoop]))
+                    {
+                        ++nPopCntLoop;
+                    }
                     Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
@@ -4556,16 +4591,36 @@ lastDigit8:;
                     Set_xListPopCnt(&pLnLoop->ln_wRoot, nBLLoop, nPopCntLoop);
                     wRootLoop = pLnLoop->ln_wRoot;
       #ifdef B_JUDYL
-                    // copy the values
-                    Word_t *pwValuesLoop = gpwValues(qyx(Loop));
-                    COPY(&pwValuesLoop[-nPopCntLoop],
-                         &pwValuesOld[-nPopCntLoop - nnStart], nPopCntLoop);
+                    if (nPopCntLoop == (nn - nnStart)) {
+                        // copy the values
+                        Word_t *pwValuesLoop = gpwValues(qyx(Loop));
+                        COPY(&pwValuesLoop[-nPopCntLoop],
+                             &pwValuesOld[-nPopCntLoop - nnStart],
+                             nPopCntLoop);
+                    }
       #endif // B_JUDYL
+                    if (nDigit == nDigitKey) {
+                        nPos -= nnStart;
+                        bInsertNotDone = 1;
+                    }
                     // copy the keys
                     uint8_t *pcKeysLoop
                         = ls_pcKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-                    COPY(pcKeysLoop, &pcKeys[nnStart], nPopCntLoop);
-                    PAD(pcKeysLoop, nPopCntLoop);
+                    if ((nDigit == nDigitKey)
+                        && ((nn - nnStart) < auListPopCntMax[nBLLoop]))
+                    {
+                        COPY_WITH_INSERT(pcKeysLoop, &pcKeys[nnStart],
+                                         nPopCntLoop - 1, wKey, nPos
+       #ifdef B_JUDYL
+                                       , gpwValues(qyx(Loop)),
+                                         &pwValuesOld[-nnStart], &pwValue
+       #endif // B_JUDYL
+                                         );
+                        bInsertNotDone = 0;
+                    } else {
+                        COPY(pcKeysLoop, &pcKeys[nnStart], nPopCntLoop);
+                        PAD(pcKeysLoop, nPopCntLoop);
+                    }
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
@@ -4575,6 +4630,9 @@ lastDigit8:;
                     wRootLoop = pLnLoop->ln_wRoot;
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop);
+                    if (nDigit == nDigitKey) {
+                        InsertAtBitmap(qyx(Loop), wKey);
+                    }
                 } else
   #endif // BITMAP
                 {
@@ -4591,6 +4649,10 @@ lastDigit8:;
                 nDigit = nDigitNew;
             }
             if (nn == nPopCnt - 1) {
+                if (nDigitKey > nDigit) {
+                    nPos = 0;
+                    bInsertNotDone = 1;
+                }
                 ++nn;
                 goto lastDigit8;
             }
@@ -4599,11 +4661,18 @@ lastDigit8:;
         uint16_t *psKeys = ls_psKeysNATX(pwrOld, nPopCnt);
         Word_t wBitsFromKey = wKey & ~MSK(16) & NZ_MSK(nBLR);
         int nDigit = ((psKeys[0] & wDigitMask) | wBitsFromKey) >> nBLLoop;
+        int nDigit0 = nDigit;
         for (int nn = 0; nn < nPopCnt; nn++) {
             int nDigitNew
                 = ((psKeys[nn] & wDigitMask) | wBitsFromKey) >> nBLLoop;
             if (nDigitNew != nDigit) {
 lastDigit16:;
+                if (((nDigitKey < nDigitNew) && (nDigitKey > nDigit))
+                    || ((nDigit == nDigit0) && (nDigitKey < nDigit)))
+                {
+                    nPos = 0;
+                    bInsertNotDone = 1;
+                }
   #ifdef DEBUG
                 if (nn - nnStart + (nDigitKey == nDigit) > nPopCntMax) {
                     nPopCntMax = nn - nnStart + (nDigitKey == nDigit);
@@ -4656,6 +4725,11 @@ lastDigit16:;
                     // Let's make a new list and copy it over.
                     Word_t wRootLoop = 0;
                     int nTypeLoop = T_LIST; (void)nTypeLoop;
+                    if ((nDigit == nDigitKey)
+                        && (nPopCntLoop < auListPopCntMax[nBLLoop]))
+                    {
+                        ++nPopCntLoop;
+                    }
                     Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
@@ -4664,22 +4738,55 @@ lastDigit16:;
                     Set_xListPopCnt(&pLnLoop->ln_wRoot, nBLLoop, nPopCntLoop);
                     wRootLoop = pLnLoop->ln_wRoot;
       #ifdef B_JUDYL
-                    // copy the values
-                    Word_t *pwValuesLoop = gpwValues(qyx(Loop));
-                    COPY(&pwValuesLoop[-nPopCntLoop],
-                         &pwValuesOld[-nPopCntLoop - nnStart], nPopCntLoop);
+                    if (nPopCntLoop == (nn - nnStart)) {
+                        // copy the values
+                        Word_t *pwValuesLoop = gpwValues(qyx(Loop));
+                        COPY(&pwValuesLoop[-nPopCntLoop],
+                             &pwValuesOld[-nPopCntLoop - nnStart],
+                             nPopCntLoop);
+                    }
       #endif // B_JUDYL
+                    if (nDigit == nDigitKey) {
+                        nPos -= nnStart;
+                        bInsertNotDone = 1;
+                    }
                     // copy the keys
                     if (nBLLoop <= 8) {
                         uint8_t *pcKeysLoop
                             = ls_pcKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-                        COPYX(pcKeysLoop, &psKeys[nnStart], nPopCntLoop);
-                        PAD(pcKeysLoop, nPopCntLoop);
+                        if ((nDigit == nDigitKey)
+                            && ((nn - nnStart) < auListPopCntMax[nBLLoop]))
+                        {
+                            COPY_WITH_INSERT(pcKeysLoop, &psKeys[nnStart],
+                                             nPopCntLoop - 1, wKey, nPos
+       #ifdef B_JUDYL
+                                           , gpwValues(qyx(Loop)),
+                                             &pwValuesOld[-nnStart], &pwValue
+       #endif // B_JUDYL
+                                             );
+                            bInsertNotDone = 0;
+                        } else {
+                            COPY(pcKeysLoop, &psKeys[nnStart], nPopCntLoop);
+                            PAD(pcKeysLoop, nPopCntLoop);
+                        }
                     } else {
                         uint16_t *psKeysLoop
                             = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-                        COPY(psKeysLoop, &psKeys[nnStart], nPopCntLoop);
-                        PAD(psKeysLoop, nPopCntLoop);
+                        if ((nDigit == nDigitKey)
+                            && ((nn - nnStart) < auListPopCntMax[nBLLoop]))
+                        {
+                            COPY_WITH_INSERT(psKeysLoop, &psKeys[nnStart],
+                                             nPopCntLoop - 1, wKey, nPos
+       #ifdef B_JUDYL
+                                           , gpwValues(qyx(Loop)),
+                                             &pwValuesOld[-nnStart], &pwValue
+       #endif // B_JUDYL
+                                             );
+                            bInsertNotDone = 0;
+                        } else {
+                            COPY(psKeysLoop, &psKeys[nnStart], nPopCntLoop);
+                            PAD(psKeysLoop, nPopCntLoop);
+                        }
                     }
                 } else
   #ifdef BITMAP
@@ -4690,6 +4797,9 @@ lastDigit16:;
                     wRootLoop = pLnLoop->ln_wRoot;
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop);
+                    if (nDigit == nDigitKey) {
+                        InsertAtBitmap(qyx(Loop), wKey);
+                    }
                 } else
   #endif // BITMAP
                 {
@@ -4704,6 +4814,10 @@ lastDigit16:;
                 nDigit = nDigitNew;
             }
             if (nn == nPopCnt - 1) {
+                if (nDigitKey > nDigit) {
+                    nPos = 0;
+                    bInsertNotDone = 1;
+                }
                 ++nn;
                 goto lastDigit16;
             }
@@ -4713,11 +4827,18 @@ lastDigit16:;
         uint32_t *piKeys = ls_piKeysNATX(pwrOld, nPopCnt);
         Word_t wBitsFromKey = wKey & ~MSK(32) & NZ_MSK(nBLR);
         int nDigit = ((piKeys[0] & wDigitMask) | wBitsFromKey) >> nBLLoop;
+        int nDigit0 = nDigit;
         for (int nn = 0; nn < nPopCnt; nn++) {
             int nDigitNew
                 = ((piKeys[nn] & wDigitMask) | wBitsFromKey) >> nBLLoop;
             if (nDigitNew != nDigit) {
 lastDigit32:;
+                if (((nDigitKey < nDigitNew) && (nDigitKey > nDigit))
+                    || ((nDigit == nDigit0) && (nDigitKey < nDigit)))
+                {
+                    nPos = 0;
+                    bInsertNotDone = 1;
+                }
   #ifdef DEBUG
                 if (nn - nnStart + (nDigitKey == nDigit) > nPopCntMax) {
                     nPopCntMax = nn - nnStart + (nDigitKey == nDigit);
@@ -4770,6 +4891,11 @@ lastDigit32:;
                     // Let's make a new list and copy it over.
                     Word_t wRootLoop = 0;
                     int nTypeLoop = T_LIST; (void)nTypeLoop;
+                    if ((nDigit == nDigitKey)
+                        && (nPopCntLoop < auListPopCntMax[nBLLoop]))
+                    {
+                        ++nPopCntLoop;
+                    }
                     Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
@@ -4778,27 +4904,73 @@ lastDigit32:;
                     Set_xListPopCnt(&pLnLoop->ln_wRoot, nBLLoop, nPopCntLoop);
                     wRootLoop = pLnLoop->ln_wRoot;
       #ifdef B_JUDYL
-                    // copy the values
-                    Word_t *pwValuesLoop = gpwValues(qyx(Loop));
-                    COPY(&pwValuesLoop[-nPopCntLoop],
-                         &pwValuesOld[-nPopCntLoop - nnStart], nPopCntLoop);
+                    if (nPopCntLoop == (nn - nnStart)) {
+                        // copy the values
+                        Word_t *pwValuesLoop = gpwValues(qyx(Loop));
+                        COPY(&pwValuesLoop[-nPopCntLoop],
+                             &pwValuesOld[-nPopCntLoop - nnStart],
+                             nPopCntLoop);
+                    }
       #endif // B_JUDYL
+                    if (nDigit == nDigitKey) {
+                        nPos -= nnStart;
+                        bInsertNotDone = 1;
+                    }
                     // copy the keys
                     if (nBLLoop <= 8) {
                         uint8_t *pcKeysLoop
                             = ls_pcKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-                        COPYX(pcKeysLoop, &piKeys[nnStart], nPopCntLoop);
-                        PAD(pcKeysLoop, nPopCntLoop);
+                        if ((nDigit == nDigitKey)
+                            && ((nn - nnStart) < auListPopCntMax[nBLLoop]))
+                        {
+                            COPY_WITH_INSERT(pcKeysLoop, &piKeys[nnStart],
+                                             nPopCntLoop - 1, wKey, nPos
+       #ifdef B_JUDYL
+                                           , gpwValues(qyx(Loop)),
+                                             &pwValuesOld[-nnStart], &pwValue
+       #endif // B_JUDYL
+                                             );
+                            bInsertNotDone = 0;
+                        } else {
+                            COPY(pcKeysLoop, &piKeys[nnStart], nPopCntLoop);
+                            PAD(pcKeysLoop, nPopCntLoop);
+                        }
                     } else if (nBLLoop <= 16) {
                         uint16_t *psKeysLoop
                             = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-                        COPYX(psKeysLoop, &piKeys[nnStart], nPopCntLoop);
-                        PAD(psKeysLoop, nPopCntLoop);
+                        if ((nDigit == nDigitKey)
+                            && ((nn - nnStart) < auListPopCntMax[nBLLoop]))
+                        {
+                            COPY_WITH_INSERT(psKeysLoop, &piKeys[nnStart],
+                                             nPopCntLoop - 1, wKey, nPos
+       #ifdef B_JUDYL
+                                           , gpwValues(qyx(Loop)),
+                                             &pwValuesOld[-nnStart], &pwValue
+       #endif // B_JUDYL
+                                             );
+                            bInsertNotDone = 0;
+                        } else {
+                            COPY(psKeysLoop, &piKeys[nnStart], nPopCntLoop);
+                            PAD(psKeysLoop, nPopCntLoop);
+                        }
                     } else {
                         uint32_t *piKeysLoop
                             = ls_piKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-                        COPY(piKeysLoop, &piKeys[nnStart], nPopCntLoop);
-                        PAD(piKeysLoop, nPopCntLoop);
+                        if ((nDigit == nDigitKey)
+                            && ((nn - nnStart) < auListPopCntMax[nBLLoop]))
+                        {
+                            COPY_WITH_INSERT(piKeysLoop, &piKeys[nnStart],
+                                             nPopCntLoop - 1, wKey, nPos
+       #ifdef B_JUDYL
+                                           , gpwValues(qyx(Loop)),
+                                             &pwValuesOld[-nnStart], &pwValue
+       #endif // B_JUDYL
+                                             );
+                            bInsertNotDone = 0;
+                        } else {
+                            COPY(piKeysLoop, &piKeys[nnStart], nPopCntLoop);
+                            PAD(piKeysLoop, nPopCntLoop);
+                        }
                     }
                 } else
   #ifdef BITMAP
@@ -4809,6 +4981,9 @@ lastDigit32:;
                     wRootLoop = pLnLoop->ln_wRoot;
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop);
+                    if (nDigit == nDigitKey) {
+                        InsertAtBitmap(qyx(Loop), wKey);
+                    }
                 } else
   #endif // BITMAP
                 {
@@ -4823,6 +4998,10 @@ lastDigit32:;
                 nDigit = nDigitNew;
             }
             if (nn == nPopCnt - 1) {
+                if (nDigitKey > nDigit) {
+                    nPos = 0;
+                    bInsertNotDone = 1;
+                }
                 ++nn;
                 goto lastDigit32;
             }
@@ -4839,28 +5018,12 @@ lastDigit32:;
             int nDigitNew
                 = ((pwKeys[nn] & wDigitMask) | wBitsFromKey) >> nBLLoop;
             if (nDigitNew != nDigit) {
-// We're not catching the case where nDigitKey < the digit of the first key in the list.
-// Ah! Because it could be the last digit.
 lastDigit:;
                 if (((nDigitKey < nDigitNew) && (nDigitKey > nDigit))
                     || ((nDigit == nDigit0) && (nDigitKey < nDigit)))
                 {
-                    Link_t *pLnLoop = &pLinks[nDigitKey];
-                    assert(pLnLoop->ln_wRoot == WROOT_NULL);
-                    Word_t wRootLoop = WROOT_NULL;
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                    assert(0); // The code isn't calculating pwValueUp yet.
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                    BJL(pwValue =)
-                        InsertAtList(qyx(Loop), wKey, 0
-  #ifdef CODE_XX_SW
-                                   , /*pLnUp*/ tp_bIsXxSw(nType) ? pLn : NULL
-                                   , /*nBLUp*/ nBL
-  #endif // CODE_XX_SW
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                   , /*pwValueUp*/ NULL
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                                     );
+                        nPos = 0;
+                        bInsertNotDone = 1;
                 }
   #ifdef DEBUG
                 if (nn - nnStart + (nDigitKey == nDigit) > nPopCntMax) {
@@ -4929,62 +5092,101 @@ lastDigit:;
                     Set_xListPopCnt(&pLnLoop->ln_wRoot, nBLLoop, nPopCntLoop);
                     wRootLoop = pLnLoop->ln_wRoot;
       #ifdef B_JUDYL
-                    if ((nDigit != nDigitKey)
-                        || ((nn - nnStart) >= auListPopCntMax[nBLLoop]))
-                    {
-                        assert((nDigit != nDigitKey)
-                            || ((nn - nnStart) == auListPopCntMax[nBLLoop]));
+                    if (nPopCntLoop == (nn - nnStart)) {
                         // copy the values
                         Word_t *pwValuesLoop = gpwValues(qyx(Loop));
                         COPY(&pwValuesLoop[-nPopCntLoop],
-                             &pwValuesOld[-nPopCntLoop - nnStart], nPopCntLoop);
+                             &pwValuesOld[-nPopCntLoop - nnStart],
+                             nPopCntLoop);
                     }
       #endif // B_JUDYL
+                    if (nDigit == nDigitKey) {
+                        nPos -= nnStart;
+                        bInsertNotDone = 1;
+                    }
                     // copy the keys
       #ifdef COMPRESSED_LISTS
                     if (nBLLoop <= 16) {
                         if (nBLLoop <= 8) {
                             uint8_t *pcKeysLoop
                                 = ls_pcKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-                            COPYX(pcKeysLoop, &pwKeys[nnStart], nPopCntLoop);
-                            PAD(pcKeysLoop, nPopCntLoop);
+                            if ((nDigit == nDigitKey)
+                                && ((nn - nnStart) < auListPopCntMax[nBLLoop]))
+                            {
+                                COPY_WITH_INSERT(pcKeysLoop, &pwKeys[nnStart],
+                                                 nPopCntLoop - 1, wKey, nPos
+       #ifdef B_JUDYL
+                                               , gpwValues(qyx(Loop)),
+                                                 &pwValuesOld[-nnStart],
+                                                 &pwValue
+       #endif // B_JUDYL
+                                                 );
+                                bInsertNotDone = 0;
+                            } else {
+                                COPY(pcKeysLoop, &pwKeys[nnStart],
+                                     nPopCntLoop);
+                                PAD(pcKeysLoop, nPopCntLoop);
+                            }
                         } else {
                             uint16_t *psKeysLoop
                                 = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-                            COPYX(psKeysLoop, &pwKeys[nnStart], nPopCntLoop);
-                            PAD(psKeysLoop, nPopCntLoop);
+                            if ((nDigit == nDigitKey)
+                                && ((nn - nnStart) < auListPopCntMax[nBLLoop]))
+                            {
+                                COPY_WITH_INSERT(psKeysLoop, &pwKeys[nnStart],
+                                                 nPopCntLoop - 1, wKey, nPos
+       #ifdef B_JUDYL
+                                               , gpwValues(qyx(Loop)),
+                                                 &pwValuesOld[-nnStart],
+                                                 &pwValue
+       #endif // B_JUDYL
+                                                 );
+                                bInsertNotDone = 0;
+                            } else {
+                                COPY(psKeysLoop, &pwKeys[nnStart],
+                                     nPopCntLoop);
+                                PAD(psKeysLoop, nPopCntLoop);
+                            }
                         }
           #if (cnBitsPerWord > 32)
                     } else if (nBLLoop <= 32) {
                         uint32_t *piKeysLoop
                             = ls_piKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-                        COPYX(piKeysLoop, &pwKeys[nnStart], nPopCntLoop);
-                        PAD(piKeysLoop, nPopCntLoop);
+                        if ((nDigit == nDigitKey)
+                            && ((nn - nnStart) < auListPopCntMax[nBLLoop]))
+                        {
+                            COPY_WITH_INSERT(piKeysLoop, &pwKeys[nnStart],
+                                             nPopCntLoop - 1, wKey, nPos
+       #ifdef B_JUDYL
+                                           , gpwValues(qyx(Loop)),
+                                             &pwValuesOld[-nnStart], &pwValue
+       #endif // B_JUDYL
+                                             );
+                            bInsertNotDone = 0;
+                        } else {
+                            COPY(piKeysLoop, &pwKeys[nnStart], nPopCntLoop);
+                            PAD(piKeysLoop, nPopCntLoop);
+                        }
           #endif // (cnBitsPerWord > 32)
                     } else
       #endif // COMPRESSED_LISTS
                     {
+                        Word_t *pwKeysLoop
+                            = ls_pwKeysX(pwrLoop, nBLLoop, nPopCntLoop);
                         if ((nDigit == nDigitKey)
                             && ((nn - nnStart) < auListPopCntMax[nBLLoop]))
                         {
-                            Link_t *pLnLoop = &pLinks[nDigitKey];
-                            Word_t wRootLoop = pLnLoop->ln_wRoot;
-                            BJL(pwValue =)
-                                CopyWithInsertWordX(qyx(Loop),
-                                                    &pwKeys[nnStart],
+                            COPY_WITH_INSERT(pwKeysLoop, &pwKeys[nnStart],
+                                             nPopCntLoop - 1, wKey, nPos
        #ifdef B_JUDYL
-                                                    &pwValuesOld[-nnStart],
+                                           , gpwValues(qyx(Loop)),
+                                             &pwValuesOld[-nnStart], &pwValue
        #endif // B_JUDYL
-                                                    nPopCntLoop - 1,
-                                                    wKey, nPos - nnStart);
+                                             );
+                            bInsertNotDone = 0;
                         } else {
-                            Word_t *pwKeysLoop
-                                = ls_pwKeysX(pwrLoop, nBLLoop, nPopCntLoop);
                             COPY(pwKeysLoop, &pwKeys[nnStart], nPopCntLoop);
                             PAD(pwKeysLoop, nPopCntLoop);
-                            if (nDigit == nDigitKey) {
-                                bInsertNotDone = 1;
-                            }
                         }
                     }
                 } else
@@ -5015,34 +5217,13 @@ lastDigit:;
             }
             if (nn == nPopCnt - 1) {
                 if (nDigitKey > nDigit) {
-                    Link_t *pLnLoop = &pLinks[nDigitKey];
-                    if (pLnLoop->ln_wRoot != WROOT_NULL) {
-                        //printf("pLnLoop->ln_wRoot 0x%zx\n", pLnLoop->ln_wRoot);
-                        //printf("nDigitKey 0x%02x\n", nDigitKey);
-                        //printf("nDigit 0x%02x\n", nDigit);
-                    }
-                    assert(pLnLoop->ln_wRoot == WROOT_NULL);
-                    Word_t wRootLoop = WROOT_NULL;
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                    assert(0); // The code isn't calculating pwValueUp yet.
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                    BJL(pwValue =)
-                        InsertAtList(qyx(Loop), wKey, 0
-  #ifdef CODE_XX_SW
-                                   , /*pLnUp*/ tp_bIsXxSw(nType) ? pLn : NULL
-                                   , /*nBLUp*/ nBL
-  #endif // CODE_XX_SW
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                   , /*pwValueUp*/ NULL
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                                     );
+                    nPos = 0;
+                    bInsertNotDone = 1;
                 }
                 ++nn;
                 //printf("pLn %p\n", pLn);
                 //printf("pLn->ln_wRoot 0x%zx\n", pLn->ln_wRoot);
                 //printf("pLinks %p\n", pLinks);
-                //printf("STRUCT_OF(pLinks, Switch_t, sw_aLinks) %p\n", STRUCT_OF(pLinks, Switch_t, sw_aLinks));
-                //printf("goto lastDigit nDigit 0x%02x nDigitNew 0x%02x\n", nDigit, nDigitNew);
                 goto lastDigit;
             }
         }
@@ -5129,8 +5310,10 @@ lastDigit:;
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
         assert(0); // The code isn't calculating pwValueUp yet.
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+        DBGI(printf("\n# Just before InsertAtList in SplayWithInsert "));
+        DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
         BJL(pwValue =)
-            InsertAtList(qyx(Loop), wKey, /* nPos */ -1
+            InsertAtList(qyx(Loop), wKey, nPos
   #if defined(CODE_XX_SW)
                        , /*pLnUp*/ tp_bIsXxSw(nType) ? pLn : NULL
                        , /*pBLUp*/ nBL
@@ -6363,7 +6546,7 @@ TransformList(qp,
       #endif // B_JUDYL
         // copy the keys
         uint32_t *piKeys = ls_piKeysNATX(pwr, wPopCnt);
-        COPYX(piKeys, pwKeysOld, wPopCnt);
+        COPY(piKeys, pwKeysOld, wPopCnt);
         PAD(piKeys, wPopCnt);
         OldList(pwrOld, wPopCnt, nBL, nTypeOld);
         DBGI(printf("\n# Just before final Insert "));
@@ -7249,7 +7432,6 @@ copyWithInsertWord:
                 int nBLRUp = nDL_to_nBL(nDLRUp); (void)nBLRUp;
                 nBWRUp = nDLR_to_nBW(nDLRUp);
                 // replicate the link with a new pop cnt and maybe pwr
-                // What is the address of the first link that we need to update?
                 int nDigitUp = (wKey >> nBL) & MSK(nBWRUp);
                 pLinksUp = &pLn[-nDigitUp];
                 DBGI(printf("pLinksUp %p\n", pLinksUp));
@@ -7351,8 +7533,8 @@ copyWithInsertWord:
                 nBWRUpNew = nDL_to_nBL(nDL) - nBitCnt + 1;
                 int nBWRUpMax = nDL_to_nBL(nDL) - nDL_to_nBL(nDL - 1);
                 if (nBWRUpNew > nBWRUpMax) {
-//fprintf(stderr, "\n# work around TransformList limitation nBL %d nBitCnt %d\n", nBL, nBitCnt);
-// We need to enhance TransformList so we don't have to do a useless DoubleDown here.
+// We need to enhance TransformList so we don't have to do a useless
+// DoubleDown here.
                     nBWRUpNew = nBWRUpMax;
                 }
             }
@@ -7428,7 +7610,8 @@ InsertGuts(qp, Word_t wKey, int nPos
 #endif // defined(CODE_XX_SW)
     DBGI(printf("InsertGuts pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
                 (void *)pwRoot, wKey, nBL, wRoot));
-    DBGI(printf("IG nBLR %d\n", tp_bIsList(nType) ? gnListBLR(qy) : gnBLR(qy)));
+    DBGI(printf("IG nBLR %d\n",
+                tp_bIsList(nType) ? gnListBLR(qy) : gnBLR(qy)));
     DBGI(printf("IG: nPos %d\n", nPos));
 
   // One of the key aspects of USE_XX_SW_ONLY_AT_DL2 is that we go ahead and
@@ -8003,7 +8186,7 @@ InsertAtBitmap(qp, Word_t wKey)
     Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
     assert(!BitIsSet(pwBitmap, wKey & MSK(nBLR)));
   #ifdef B_JUDYL
-    Word_t *pwSrcValues = gpwBitmapValues(qy, nBLR);
+    Word_t *pwSrcVals = gpwBitmapValues(qy, nBLR);
     int nPos;
       #if (cnBitsPerWord > 32)
     if (wRoot & EXP(cnLsbBmUncompressed)) {
@@ -8027,28 +8210,28 @@ InsertAtBitmap(qp, Word_t wKey)
         Word_t *pwBitmapOld = pwBitmap;
         pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
         COPY(pwBitmap, pwBitmapOld, nBmWords);
-        Word_t *pwTgtValues = gpwBitmapValues(qy, nBLR);
+        Word_t *pwTgtVals = gpwBitmapValues(qy, nBLR);
       #if (cnBitsPerWord > 32)
         if (wRoot & EXP(cnLsbBmUncompressed)) {
             for (int k = 0; k < (int)EXP(nBLR); ++k) {
                 if (BitIsSet(pwBitmap, k)) {
-                    pwTgtValues[k] = *pwSrcValues++;
+                    pwTgtVals[k] = *pwSrcVals++;
                 }
             }
             nPos = wKey & MSK(nBLR);
         } else
       #endif // (cnBitsPerWord > 32)
         {
-            COPY(&pwTgtValues[nPos + 1], &pwSrcValues[nPos], wPopCnt - nPos);
-            COPY(pwTgtValues, pwSrcValues, nPos);
+            COPY(&pwTgtVals[nPos + 1], &pwSrcVals[nPos], wPopCnt - nPos);
+            COPY(pwTgtVals, pwSrcVals, nPos);
         }
         OldBitmap(pwrOld, nBLR, wPopCnt);
-        pwSrcValues = pwTgtValues;
+        pwSrcVals = pwTgtVals;
     } else
   #endif // B_JUDYL
     {
 #ifdef B_JUDYL
-        MOVE(&pwSrcValues[nPos + 1], &pwSrcValues[nPos], wPopCnt - nPos);
+        MOVE(&pwSrcVals[nPos + 1], &pwSrcVals[nPos], wPopCnt - nPos);
         goto done;
 done:
 #endif // B_JUDYL
@@ -8070,7 +8253,7 @@ done:
 
 #ifdef B_JUDYL
     // Insert is responsible for zeroing the value.
-    return &pwSrcValues[nPos];
+    return &pwSrcVals[nPos];
 #else // B_JUDYL
     return Success;
 #endif // B_JUDYL
@@ -8300,7 +8483,6 @@ embeddedKeys:;
                 int nBWRUp = nBLRUp - nBL;
                 int nDigit = (wKey >> nBL) & MSK(nBWRUp);
                 Link_t *pLinks = &pLn[-nDigit];
-//printf("nBL %d nBLRUp %d nBWRUp %d nDigit 0x%02x pLn %p pLinks %p\n", nBL, nBLRUp, nBWRUp, nDigit, pLn, pLinks);
 //printf("wRoot 0x%zx pLn->ln_wRoot 0x%zx\n", wRoot, pLn->ln_wRoot);
                 for (int nDigit = 0; nDigit < (1 << nBWRUp); ++nDigit) {
 //printf("pLinks[%d].ln_wRoot 0x%zx\n", nDigit, pLinks[nDigit].ln_wRoot);
@@ -8364,9 +8546,9 @@ embeddedKeys:;
 #endif // defined(UA_PARALLEL_128)
 
   #ifdef B_JUDYL
-    Word_t *pwSrcValues = pwr;
+    Word_t *pwSrcVals = pwr;
       #ifdef LIST_POP_IN_PREAMBLE
-    pwSrcValues -= 1;
+    pwSrcVals -= 1;
       #endif // LIST_POP_IN_PREAMBLE
   #endif // B_JUDYL
 
@@ -8382,7 +8564,7 @@ embeddedKeys:;
     DBGX(Log(qy, "RemoveGuts"));
 
   #ifdef B_JUDYL
-    Word_t *pwTgtValues = gpwValues(qy);
+    Word_t *pwTgtVals = gpwValues(qy);
   #endif // B_JUDYL
 
     if (pwr != pwrOld) {
@@ -8395,8 +8577,8 @@ embeddedKeys:;
 #endif // COMPRESSED_LISTS
 #ifdef B_JUDYL
              // copy values
-             COPY(&pwTgtValues[-((int)wPopCnt - 1)],
-                  &pwSrcValues[-((int)wPopCnt - 1)],
+             COPY(&pwTgtVals[-((int)wPopCnt - 1)],
+                  &pwSrcVals[-((int)wPopCnt - 1)],
                   wPopCnt - 1);
 // wPopCnt == 2
 // Should copy keys [0, 0] to [0, 0]
@@ -8414,8 +8596,8 @@ embeddedKeys:;
         case 4:
   #ifdef B_JUDYL
              // copy values
-             COPY(&pwTgtValues[-((int)wPopCnt - 1)],
-                  &pwSrcValues[-((int)wPopCnt - 1)],
+             COPY(&pwTgtVals[-((int)wPopCnt - 1)],
+                  &pwSrcVals[-((int)wPopCnt - 1)],
                   wPopCnt - 1);
   #endif // B_JUDYL
              // copy keys
@@ -8425,8 +8607,8 @@ embeddedKeys:;
         case 2:
   #ifdef B_JUDYL
              // copy values
-             COPY(&pwTgtValues[-((int)wPopCnt - 1)],
-                  &pwSrcValues[-((int)wPopCnt - 1)],
+             COPY(&pwTgtVals[-((int)wPopCnt - 1)],
+                  &pwSrcVals[-((int)wPopCnt - 1)],
                   wPopCnt - 1);
   #endif // B_JUDYL
              // copy keys
@@ -8439,8 +8621,8 @@ embeddedKeys:;
       #endif // !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
              {
                  // copy values
-                 COPY(&pwTgtValues[-((int)wPopCnt - 1)],
-                      &pwSrcValues[-((int)wPopCnt - 1)],
+                 COPY(&pwTgtVals[-((int)wPopCnt - 1)],
+                      &pwSrcVals[-((int)wPopCnt - 1)],
                       wPopCnt - 1);
              }
   #endif // B_JUDYL
@@ -8462,8 +8644,8 @@ embeddedKeys:;
       #endif // !defined(PACK_L1_VALUES) && (cnBitsInD1 <= 8)
         {
             // move values
-            MOVE(&pwTgtValues[-((int)wPopCnt - 1)],
-                 &pwSrcValues[- (int)wPopCnt     ],
+            MOVE(&pwTgtVals[-((int)wPopCnt - 1)],
+                 &pwSrcVals[- (int)wPopCnt     ],
                  wPopCnt - nIndex - 1);
         }
   #endif // B_JUDYL
@@ -8486,8 +8668,8 @@ embeddedKeys:;
     } else if (nBLR <= 16) {
   #ifdef B_JUDYL
         // move values
-        MOVE(&pwTgtValues[-((int)wPopCnt - 1)],
-             &pwSrcValues[- (int)wPopCnt     ],
+        MOVE(&pwTgtVals[-((int)wPopCnt - 1)],
+             &pwSrcVals[- (int)wPopCnt     ],
              wPopCnt - nIndex - 1);
   #endif // B_JUDYL
         // move keys
@@ -8517,8 +8699,8 @@ embeddedKeys:;
     } else if (nBLR <= 32) {
   #ifdef B_JUDYL
         // move values
-        MOVE(&pwTgtValues[-((int)wPopCnt - 1)],
-             &pwSrcValues[- (int)wPopCnt     ],
+        MOVE(&pwTgtVals[-((int)wPopCnt - 1)],
+             &pwSrcVals[- (int)wPopCnt     ],
              wPopCnt - nIndex - 1);
   #endif // B_JUDYL
         // move keys
@@ -8548,8 +8730,8 @@ embeddedKeys:;
 #endif // defined(LIST_END_MARKERS)
   #ifdef B_JUDYL
         // move values
-        MOVE(&pwTgtValues[-((int)wPopCnt - 1)],
-             &pwSrcValues[- (int)wPopCnt     ],
+        MOVE(&pwTgtVals[-((int)wPopCnt - 1)],
+             &pwSrcVals[- (int)wPopCnt     ],
              wPopCnt - nIndex - 1);
 // wPopCnt == 2, nIndex == 0
 // Should move keys [1, 1] to [0, 0]
@@ -8653,7 +8835,7 @@ RemoveAtBitmap(qp, Word_t wKey)
             }
         }
       #endif // (cnBitsPerWord > 32)
-        Word_t *pwSrcValues = gpwBitmapValues(qy, nBLR);
+        Word_t *pwSrcVals = gpwBitmapValues(qy, nBLR);
         int nPos = BmIndex(qy, nBLR, wKey);
         if (wWords != BitmapWordCnt(nBLR, wPopCnt + 1)) {
             NewBitmap(qy, nBLR, wKey, wPopCnt);
@@ -8669,30 +8851,30 @@ RemoveAtBitmap(qp, Word_t wKey)
             Word_t *pwBitmapOld = pwBitmap;
             pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
             COPY(pwBitmap, pwBitmapOld, nBmWords);
-            Word_t *pwTgtValues = gpwBitmapValues(qy, nBLR);
+            Word_t *pwTgtVals = gpwBitmapValues(qy, nBLR);
       #if (cnBitsPerWord > 32)
             if (bUncompressed) {
                 for (int k = 0; k < (int)EXP(nBLR); ++k) {
                     if ((k != (int)(wKey & MSK(nBLR)))
                         && BitIsSet(pwBitmap, k))
                     {
-                        *pwTgtValues++ = pwSrcValues[k];
+                        *pwTgtVals++ = pwSrcVals[k];
                     }
                 }
             } else
       #endif // (cnBitsPerWord > 32)
             {
-                COPY(&pwTgtValues[nPos], &pwSrcValues[nPos + 1],
+                COPY(&pwTgtVals[nPos], &pwSrcVals[nPos + 1],
                      wPopCnt - nPos);
-                COPY(pwTgtValues, pwSrcValues, nPos);
+                COPY(pwTgtVals, pwSrcVals, nPos);
             }
             OldBitmap(pwrOld, nBLR, wPopCnt + 1);
         } else
   #endif // B_JUDYL
         {
 #ifdef B_JUDYL
-            Word_t *pwSrcValues = gpwBitmapValues(qy, nBLR);
-            MOVE(&pwSrcValues[nPos], &pwSrcValues[nPos + 1], wPopCnt - nPos);
+            Word_t *pwSrcVals = gpwBitmapValues(qy, nBLR);
+            MOVE(&pwSrcVals[nPos], &pwSrcVals[nPos + 1], wPopCnt - nPos);
             goto done;
 done:
 #endif // B_JUDYL
