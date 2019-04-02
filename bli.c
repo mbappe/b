@@ -511,10 +511,6 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
       #endif // INSERT, REMOVE
 #endif // !defined(RECURSIVE)
 
-    // InsertGuts checks pLnUp != NULL to id XX_SW link.
-    // We needed a way to handle NO_TYPE_IN_XX_SW.
-    // Should we limit its existence to that case?
-    // Do we ever depend on this initialization of pLnUp?
     Link_t *pLnUp = NULL; (void)pLnUp;
 
     // nBLUp is used only for CODE_XX_SW and INSERT.
@@ -995,17 +991,6 @@ switchTail:;
   #else // BITMAP
         assert(!cbEmbeddedBitmap || (nBL > cnLogBitsPerLink));
   #endif // BITMAP
-  #if defined(INSERT) || defined(REMOVE)
-      #if defined(CODE_XX_SW) && !defined(NO_TYPE_IN_XX_SW)
-        if ( (nType != T_XX_SW)
-          #if defined(SKIP_TO_XX_SW)
-            && (nType != T_SKIP_TO_XX_SW)
-          #endif // defined(SKIP_TO_XX_SW)
-            )
-      #endif // defined(CODE_XX_SW) && !defined(NO_TYPE_IN_XX_SW)
-        { pLnUp = NULL; } // InsertGuts infers XX_SW if pLnUp != NULL
-  #endif // defined(INSERT) || defined(REMOVE)
-
   #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
   #else // defined(LOOKUP) || !defined(RECURSIVE)

@@ -6785,7 +6785,7 @@ newSkipToBitmap:;
             nBW = nBLR_to_nBW(nBLNew);
         } else if (0) {
       #else // USE_XX_SW_ALWAYS
-        } else if (pLnUp != NULL) {
+        } else if ((pLnUp != NULL) && (nBL <= nDL_to_nBL(2))) {
       #endif // USE_XX_SW_ALWAYS
 // Shouldn't we think about some other option here?
 // What about a small bitmap?
@@ -7600,14 +7600,10 @@ InsertGuts(qp, Word_t wKey, int nPos
 {
     qv;
 #if defined(CODE_XX_SW)
-    assert((pLnUp == NULL) || tp_bIsXxSw(wr_nType(pLnUp->ln_wRoot)));
     (void)nBLUp;
     int nBW; (void)nBW;
 #endif // defined(CODE_XX_SW)
     int nDL = nBL_to_nDL(nBL); (void)nDL; // assert(nDL_to_nBL(nDL) >= nBL);
-#if defined(CODE_XX_SW)
-    assert((pLnUp != NULL) || (nDL_to_nBL(nDL) == nBL));
-#endif // defined(CODE_XX_SW)
     DBGI(printf("InsertGuts pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
                 (void *)pwRoot, wKey, nBL, wRoot));
     DBGI(printf("IG nBLR %d\n",
@@ -7639,7 +7635,8 @@ InsertGuts(qp, Word_t wKey, int nPos
     // using some magic, but its not coded yet.
     // So, for now, if NO_TYPE_IN_XX_SW applies to this link, then it
     // contains embedded keys.
-    if (pLnUp != NULL) { // non-NULL only for XX_SW
+// Shouldn't we check for embedded bitmap before this?
+    if ((pLnUp != NULL) && (nBL <= nDL_to_nBL(2))) {
         DBGR(printf("IG: goto embeddedKeys.\n"));
         goto embeddedKeys; // no type field is handled by embeddedKeys
     }
