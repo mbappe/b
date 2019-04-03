@@ -520,8 +520,10 @@ main(int argc, char *argv[])
         if (CountL != TotalPop)
             FAILURE("JudyLCount wrong", CountL);
 
-        if (Count1 != TotalPop)
+        if (Count1 != TotalPop) {
+            printf("Count1 %zd TotalPop %zd\n", Count1, TotalPop);
             FAILURE("Judy1Count wrong", Count1);
+        }
 
         if (TotalPop)
         {
@@ -597,6 +599,11 @@ TestJudyIns(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
         if (pFlag) { printf("JudyLIns: %8" PRIuPTR"\t%p\n", elm, (void *)TstIndex); }
 
 //      Judy1
+        Word_t wCount = Judy1Count(*J1, 0, ~0, NULL);
+        if (wCount != TotalPop) {
+            printf("wCount %zd TotalPop %zd\n", wCount, TotalPop);
+            FAILURE("Count TotalIns", TotalIns);
+        }
 
         J1S(Rcode, *J1, TstIndex);
         if (Rcode == JERR)
