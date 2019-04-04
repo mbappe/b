@@ -5,13 +5,22 @@
 
 : \
 && DEFINES="-DSPLAY_WITH_INSERT -DDOUBLE_DOWN -DUSE_LOWER_XX_SW \
--DcnListPopCntMax64=16 -DNO_EMBED_KEYS -DNO_USE_BM_SW -DDEBUG" \
+-DcnListPopCntMax64=16 -DNO_USE_BM_SW -DDEBUG" \
+   make clean default \
+&& DEFINES="-DSPLAY_WITH_INSERT -DDOUBLE_DOWN -DUSE_LOWER_XX_SW \
+-DNO_EMBED_KEYS -DcnListPopCntMax64=16 -DNO_USE_BM_SW -DDEBUG" \
    make clean default \
 && regress \
 && DEFINES="-DDOUBLE_DOWN -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 \
 -DNO_EMBED_KEYS -DNO_USE_BM_SW -DDEBUG" make clean default \
 && regress \
+&& DEFINES="-DDOUBLE_DOWN -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 \
+-DNO_USE_BM_SW -DDEBUG" make clean default \
+&& regress \
 && DEFINES="-DDOUBLE_DOWN -DcnListPopCntMax64=64 -DNO_EMBED_KEYS \
+-DNO_USE_BM_SW -DDEBUG" make clean default \
+&& regress \
+&& DEFINES="-DDOUBLE_DOWN -DcnListPopCntMax64=64 \
 -DNO_USE_BM_SW -DDEBUG" make clean default \
 && regress \
 && DEFINES="-DXX_LISTS -DUSE_LOWER_XX_SW -DcnListPopCntMax64=64 -DDEBUG" \

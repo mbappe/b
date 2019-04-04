@@ -120,23 +120,23 @@
 // And wPopCnt would be an option.
 // And nBW would be an option.
 // And how about wBytesUsed?
-#define  qp  int   nBL, Link_t  * pLn, Word_t   wRoot
+#define  qp  int   nBL, Link_t  * pLn
 #define pqp \
     int *pnBL, Link_t **ppLn, Word_t *pwRoot, int *pnType, Word_t **ppwr
 
 #define  qpx(Suffix) \
-    int nBL##Suffix, Link_t *pLn##Suffix, Word_t wRoot##Suffix
+    int nBL##Suffix, Link_t *pLn##Suffix
 
 // Shorthand for common arguments.
 // Why is "qy" not "qa"? Because "qa" is harder to type?
-#define  qy   nBL,  pLn,  wRoot
+#define  qy   nBL,  pLn
 #define pqy  &nBL, &pLn, &wRoot, &nType, &pwr
 
-#define qyx(Suffix)  nBL##Suffix, pLn##Suffix, wRoot##Suffix
+#define qyx(Suffix)  nBL##Suffix, pLn##Suffix
 
 #define  qv \
-    ASSERT(wRoot == pLn->ln_wRoot); \
-    Word_t *pwRoot = &pLn->ln_wRoot; \
+    Word_t* pwRoot = &pLn->ln_wRoot; \
+    Word_t wRoot = pLn->ln_wRoot; \
     int nType = wr_nType(wRoot); \
     Word_t* pwr = wr_pwr(wRoot); \
     (void)nBL; (void)pLn; (void)pwRoot; (void)wRoot; (void)nType; (void)pwr
@@ -145,8 +145,8 @@
 // And to initialize local variables.
 // And to validate assumptions.
 #define  qvx(Suffix) \
-    ASSERT(wRoot##Suffix == pLn##Suffix->ln_wRoot); \
-    Word_t *pwRoot##Suffix = &pLn##Suffix->ln_wRoot; \
+    Word_t* pwRoot##Suffix = &pLn##Suffix->ln_wRoot; \
+    Word_t wRoot##Suffix = pLn##Suffix->ln_wRoot; \
     int nType##Suffix = wr_nType(wRoot##Suffix); \
     Word_t* pwr##Suffix = wr_pwr(wRoot##Suffix); \
     (void)nBL##Suffix; (void)pLn##Suffix; (void)pwRoot##Suffix; \
@@ -2708,8 +2708,7 @@ gnBW(qp, int nBLR)
 }
 
 #define Get_nBW(_pwRoot) \
-    gnBW(/* nBL */ 0, STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
-         /* wRoot */ *(_pwRoot), /* nBLR */ 0)
+    gnBW(/*nBL*/ 0, STRUCT_OF((_pwRoot), Link_t, ln_wRoot), /*nBLR*/ 0)
 
 #define pwr_nBW  Get_nBW
 
@@ -2729,8 +2728,7 @@ snBW(qp, int nBW)
 }
 
 #define Set_nBW(_pwRoot, _nBW) \
-    snBW(/* nBL */ 0, STRUCT_OF((_pwRoot), Link_t, ln_wRoot), \
-         /* wRoot */ *(_pwRoot), /* nBW */ (_nBW))
+    snBW(/*nBL*/ 0, STRUCT_OF((_pwRoot), Link_t, ln_wRoot), /*nBW*/ (_nBW))
 
 #define set_pwr_nBW  Set_nBW
 
@@ -3069,7 +3067,6 @@ static inline int
 Get_xListPopCnt(Word_t *pwRoot, int nBL)
 {
     Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
-    Word_t wRoot = *pwRoot;
     return gnListPopCnt(qy, GetBLR(pwRoot, nBL));
 }
 

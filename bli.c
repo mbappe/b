@@ -18,9 +18,7 @@
 static void
 Checkpoint(qp, const char *str)
 {
-    //qv;
-    int nType = wr_nType(wRoot);
-    Word_t *pwr = wr_pwr(wRoot);
+    qv;
     printf("# %20s: " qfmt "\n", str, qyp);
 }
 
@@ -2198,6 +2196,9 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
       #endif // defined(B_JUDYL) && defined(INSERT)
         } // cleanup is complete
   #endif // defined(INSERT) || defined(REMOVE)
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+    assert(pwValueUp != NULL);
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 
         // Have to or in cnMallocAlignment unless nBL allows for at least
         // two embedded keys plus a type field. It doesn't buy us anything
@@ -2697,9 +2698,11 @@ int // Status_t
 Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 #endif // B_JUDYL
 {
-    Word_t wRoot = *(Word_t*)ppvRoot;
-
 #if (cnDigitsPerWord > 1)
+
+    int nBL = cnBitsPerWord;
+    Link_t *pLn = STRUCT_OF(ppvRoot, Link_t, ln_wRoot);
+    qv;
 
     // We use WROOT_NULL internally to represent an empty expanse.
     // But the user initializes the root word to 0.
@@ -2708,10 +2711,6 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     if ((WROOT_NULL != 0) && (wRoot == 0)) {
         *(Word_t*)ppvRoot = wRoot = WROOT_NULL;
     }
-
-    int nBL = cnBitsPerWord;
-    Link_t *pLn = STRUCT_OF(ppvRoot, Link_t, ln_wRoot);
-    qv;
 
   // Judy1LHTime and Judy1LHCheck put a -1 word before and after the root
   // word of the array solely so we can make sure we don't corrupt it.
@@ -2881,6 +2880,8 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 #else // (cnDigitsPerWord > 1)
 
     // one big Bitmap
+
+    Word_t wRoot = *(Word_t*)ppvRoot;
 
     Word_t wByteNum, wByteMask;
     char c;
