@@ -467,6 +467,9 @@ JudyMalloc.o: JudyMalloc.c
 .c.s:
 	$(CC) $(CFLAGS) $(DEFINES) -S $^
 
+blL.s: blL.c
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S $^
+
 # Suppress warnings. Transitive warnings. t.c just includes other files.
 t.s: t.c
 	$(CC) $(CFLAGS) $(DEFINES) -S $^
