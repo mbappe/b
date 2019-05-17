@@ -307,6 +307,8 @@ t: t.c $(T_OBJS)
 # -DMIKEY tells Judy1LHTime to use different RAMMETRICS column headings
 # and be more strict in testing.
 # libJudy.a is for JudyHS.
+# Will need to add -no-pie here to link to non-fpic objects in newer
+# compilers where -pie is default.
 btime: Judy1LHTime.c libb.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -o $@ $^ -lm
 	ln -sf btime Judy1LHTime
@@ -387,7 +389,7 @@ jcheck: Judy1LHCheck.c ${LIBJUDY}
 
 # Build libb1.so and libbL.so directly from sources rather than from
 # objects so this Makefile doesn't have to deal with the complexity
-# of -fPIC objects and non -fPIC objecs with the same names.
+# of -fPIC objects and non -fPIC objects with the same names.
 
 libb1.so: $(LIBB1_SRCS) JudyMalloc.so
 	$(CC) $(CFLAGS) -fPIC $(DEFINES) -shared -o $@ $^
