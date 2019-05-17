@@ -10909,9 +10909,12 @@ NextGuts(Word_t *pwRoot, int nBL,
         }
         //A(0);
         nBL = nBLR;
+        goto t_bitmap; // address gcc implicit fall-through warning
     }
       #endif // defined(SKIP_TO_BITMAP)
     case T_BITMAP: {
+        goto t_bitmap;
+t_bitmap:;
         nBitNum = *pwKey & MSK(nBL) & MSK(cnLogBitsPerWord);
         pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
         goto embeddedBitmap;
@@ -11175,10 +11178,13 @@ t_switch:;
         }
         //A(0);
         nBL = nBLR;
+        goto t_bm_sw; // address gcc implicit fall-through warning
     }
   #endif // defined(SKIP_TO_BM_SW)
   #if defined(CODE_BM_SW)
     case T_BM_SW: {
+        goto t_bm_sw;
+t_bm_sw:;
         //A(0); // check -B17
         DBGN(printf("T_BM_SW wSkip %" _fw"u\n", wSkip));
         int nBits = nBLR_to_nBW(nBL); // bits decoded by switch
@@ -11996,9 +12002,12 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
         assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
         nBLPrev = nBL;
         nBL = nBLR;
+        goto t_bitmap; // address gcc implicit fall-through warning
     }
       #endif // defined(SKIP_TO_BITMAP)
     case T_BITMAP:; {
+        goto t_bitmap;
+t_bitmap:;
         if ((wr_nType(WROOT_NULL) == T_BITMAP) && (wRoot == WROOT_NULL)) {
             return Success;
         }
@@ -12215,10 +12224,13 @@ t_switch:;
         }
         assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
         nBL = nBLR;
+        goto t_bm_sw; // address gcc implicit fall-through warning
     }
   #endif // defined(SKIP_TO_BM_SW)
   #if defined(USE_BM_SW)
     case T_BM_SW: {
+        goto t_bm_sw;
+t_bm_sw:;
         //A(0); // check -B17
         //Word_t wKey = *pwKey;
         int nBits = nBLR_to_nBW(nBL); // bits decoded by switch
