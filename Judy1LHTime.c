@@ -5407,7 +5407,7 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                         printf("JLLastKey %" PRIuPTR"\n", JLLastKey);
 #endif // #ifndef TEST_NEXT_USING_JUDY_NEXT
                         printf("JLKeyBefore %" PRIuPTR"\n", JLKeyBefore);
-                        printf("JLKeyBefore 0x%016lx\n", JLKeyBefore);
+                        printf("JLKeyBefore 0x%zx\n", JLKeyBefore);
                         if (PValue != NULL)
                         {
                             printf("*PValue=0x%" PRIxPTR"\n", *PValue);
@@ -5415,7 +5415,7 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                         printf("\nElements = %" PRIuPTR
                                ", elm = %" PRIuPTR"\n",
                                Elements, elm);
-                        printf("JLN failed JLKey 0x%016lx, Value = 0x%016lx", JLKey, *PValue);
+                        printf("JLN failed JLKey 0x%zx, Value = 0x%zx", JLKey, *PValue);
                         FAILURE("JLN failed JLKey", JLKey);
                     }
 #ifdef TEST_NEXT_USING_JUDY_NEXT
