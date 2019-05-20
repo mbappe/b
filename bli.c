@@ -933,14 +933,19 @@ t_switch:;
         // ((uint8_t *)&wKey)[cnDigitsPerWord - nDL];
         // ((uint8_t *)&wSwappedKey)[nDL];
         // *(uint8_t *)&wSwappedAndShiftedKey;
-        pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
         // Save pwValue so we can find the embedded value area easily later.
         // pLnUp would be more general. I wonder if we should put an up
         // pointer in our tree nodes.
         pwValueUp
             = gpwEmbeddedValue(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+      #ifdef PREFETCH_EK_VAL
+      #ifdef LOOKUP
+        _mm_prefetch(pwValueUp, _MM_HINT_NTA);
+      #endif // LOOKUP
+      #endif // PREFETCH_EK_VAL
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+        pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
         goto switchTail; // in case other uses go away by ifdef
@@ -2062,6 +2067,23 @@ t_bitmap:;
             // We have to be sure to handle that case below
             // for USE_XX_SW_ONLY_AT_DL2?
       #endif // USE_XX_SW_ONLY_AT_DL2
+      #ifdef PREFETCH_BM_VAL
+      #ifdef LOOKUP
+      #ifdef PACK_BM_VALUES
+            char* pcPrefetch
+                = (char*)&gpwBitmapValues(qy, nBLR)[
+                              Psplit(gwBitmapPopCnt(qy, nBLR),
+                                        nBLR, /*nShift*/ 0, wKey)];
+            BJL(_mm_prefetch(pcPrefetch - 64, _MM_HINT_NTA));
+            BJL(_mm_prefetch(pcPrefetch     , _MM_HINT_NTA));
+            BJL(_mm_prefetch(pcPrefetch + 64, _MM_HINT_NTA));
+      #endif // PACK_BM_VALUES
+      #ifdef UNPACK_BM_VALUES
+            BJL(_mm_prefetch(&gpwBitmapValues(qy, nBLR)[wKey & MSK(nBLR)],
+                             _MM_HINT_NTA));
+      #endif // UNPACK_BM_VALUES
+      #endif // LOOKUP
+      #endif // PREFETCH_BM_VAL
             // Use compile-time tests to speed this up. Hopefully.
             int bBitIsSet =
      // We don't need/want to check for WROOT_NULL for embedded bitmap.
@@ -2106,14 +2128,16 @@ t_bitmap:;
       #endif // defined(INSERT)
       #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 int nIndex =
+          #ifdef UNPACK_BM_VALUES
           #if (cnBitsPerWord > 32)
-#ifdef PACK_BM_VALUES
+              #ifdef PACK_BM_VALUES
                      (wRoot & EXP(cnLsbBmUncompressed))
-#else // PACK_BM_VALUES
+              #else // PACK_BM_VALUES
                      1
-#endif // PACK_BM_VALUES
+              #endif // PACK_BM_VALUES
                                ? (int)(wKey & MSK(nBLR)) :
           #endif // (cnBitsPerWord > 32)
+          #endif // UNPACK_BM_VALUES
                          BmIndex(qy, nBLR, wKey);
                 return &gpwBitmapValues(qy, nBLR)[nIndex];
       #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
@@ -2196,9 +2220,9 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
       #endif // defined(B_JUDYL) && defined(INSERT)
         } // cleanup is complete
   #endif // defined(INSERT) || defined(REMOVE)
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #if defined(B_JUDYL)
     assert(pwValueUp != NULL);
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #endif // defined(B_JUDYL)
 
         // Have to or in cnMallocAlignment unless nBL allows for at least
         // two embedded keys plus a type field. It doesn't buy us anything
@@ -2277,13 +2301,13 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         {
 
       #if defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)
-          #define PARALLEL_EK
+          #define _PARALLEL_EK
       #endif // defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)
       #if defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP)
-          #define PARALLEL_EK
+          #define _PARALLEL_EK
       #endif // defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP)
 
-      #ifdef PARALLEL_EK
+      #ifdef _PARALLEL_EK
 
 #if defined(HANDLE_BLOWOUTS)
     // We haven't written the insert code to create blow-outs for
@@ -2347,12 +2371,15 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         }
 break2:;
 
-      #else // PARALLEL_EK
-
-        int nPopCnt = wr_nPopCnt(wRoot, nBL);
+      #else // _PARALLEL_EK
 
         Word_t wKeyRoot;
 
+          #ifdef B_JUDYL
+        wKeyRoot = wRoot >> (cnBitsPerWord - nBL);
+        if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+          #else // B_JUDYL
+        int nPopCnt = wr_nPopCnt(wRoot, nBL);
         switch (nPopCnt) {
           #if (cnBitsPerWord == 64)
         case 8: // max for 7-bit keys and 64 bits;
@@ -2381,8 +2408,9 @@ break2:;
             wKeyRoot = wRoot >> (cnBitsPerWord - (1 * nBL));
             if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
         }
+          #endif // #else B_JUDYL
 
-      #endif // #else PARALLEL_EK
+      #endif // #else _PARALLEL_EK
         }
 
         break; // switch (nType) case T_EMBEDDED_KEYS

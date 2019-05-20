@@ -282,30 +282,6 @@
 #define EMBEDDED_KEYS_PARALLEL_FOR_INSERT
 #endif
 
-// Default is -DPSPLIT_PARALLEL.
-// It causes PSPLIT_SEARCH to use a parallel search.
-// It affects the alignment of the list of keys in a list leaf and the
-// amount of memory allocated for it and the padding of any unused key slots.
-// The size of a parallel search bucket is determined by PARALLEL_128 (or
-// PARALLEL_64 for 32-bit).
-// PSPLIT_PARALLEL applies to lists of all key sizes except lists which use
-// full word size key slots.
-//
-// For lists of full word size key slots we use PARALLEL_SEARCH_WORD to
-// cause PSPLIT_SEARCH_WORD to use a parallel search. PARALLEL_SEARCH_WORD
-// also affects the alignment of lists with full word size key slots and the
-// padding of any unused key slots.
-//
-// PSPLIT_SEARCH_BY_KEY(...)
-// may be used to avoid a parallel search independent of PSPLIT_PARALLEL.
-// Ultimately, we'd like be able to override the default for any attribute of
-// the type of search to use for any situation independently. But we're not
-// there yet. The ifdef complexity is already horrifying.
-#ifndef NO_PSPLIT_PARALLEL
-  #undef PSPLIT_PARALLEL
-  #define PSPLIT_PARALLEL
-#endif // NO_PSPLIT_PARALLEL
-
 // Default is -DPARALLEL_128.
 #if !defined(PARALLEL_64) && !defined(NO_PARALLEL_128)
   #undef PARALLEL_128
@@ -417,6 +393,9 @@ ExtListBytesPerKey(int nBL)
 #endif // ! defined(NO_PSPLIT_EARLY_OUT)
 
 #include <immintrin.h> // __m128i
+#ifdef B_JUDYL
+  #include <xmmintrin.h> // _MM_HINT_ET0, _MM_HINT_T0, _MM_HINT_NTA
+#endif // B_JUDYL
 #if defined(PARALLEL_128)
 typedef __m128i Bucket_t;
 #define cnLogBytesPerBucket  4
@@ -613,7 +592,13 @@ typedef Word_t Bucket_t;
 // full pop. The only options are embedded or external list at Dl1 or higher.
 #ifdef BITMAP
   #ifndef cnListPopCntMaxDl1
-    #define cnListPopCntMaxDl1  0x10
+    #ifdef B_JUDYL
+      // Default is to transition from list leaf one to uncompressed bitmap
+      // leaf when the leaf is half way to full pop.
+      #define cnListPopCntMaxDl1  128
+    #else // B_JUDYL
+      #define cnListPopCntMaxDl1  0x10
+    #endif // #else B_JUDYL
   #endif // cnListPopCntMaxDl1
 #else // BITMAP
   #ifdef cnListPopCntMaxDl1
@@ -3520,13 +3505,6 @@ extern Word_t wPopCntTotal;
 extern int bPopCntTotalIsInvalid;
 #endif // B_JUDYL
 
-// Default is -DPSPLIT_SEARCH_8
-// This depends on uniform distribution / flat spectrum data.
-#if ! defined(NO_PSPLIT_SEARCH_8)
-#undef  PSPLIT_SEARCH_8
-#define PSPLIT_SEARCH_8
-#endif // ! defined(NO_PSPLIT_SEARCH_8)
-
 // Default is -DPSPLIT_SEARCH_16.
 // This depends on uniform distribution / flat spectrum data.
 #if ! defined(NO_PSPLIT_SEARCH_16)
@@ -4322,7 +4300,27 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                        (_pwKeys), (_nPopCnt), (_wKey), (_nPos)); \
 }
 
-#define PSPLIT_LOCATEKEY_GUTS(_b_t, _x_t, _nBL, _x, \
+#ifdef PREFETCH_LOCATEKEY_PSPLIT_VAL
+#define _PF_LK(_x)  (_x)
+#else // PREFETCH_LOCATEKEY_PSPLIT_VAL
+#define _PF_LK(_x)
+#endif // #else PREFETCH_LOCATEKEY_PSPLIT_VAL
+
+#ifdef PREFETCH_LOCATEKEY_NEXT_VAL
+#define _PF_LK_NX(_x)  (_x)
+#else // PREFETCH_LOCATEKEY_NEXT_VAL
+#define _PF_LK_NX(_x)
+#endif // #else PREFETCH_LOCATEKEY_NEXT_VAL
+
+#ifdef PREFETCH_LOCATEKEY_PREV_VAL
+#define _PF_LK_PV(_x)  (_x)
+#else // PREFETCH_LOCATEKEY_PREV_VAL
+#define _PF_LK_PV(_x)
+#endif // #else PREFETCH_LOCATEKEY_PREV_VAL
+
+// PSPLIT_LOCATEKEY_GUTS uses qy for prefetch but qy is not in the parameter
+// list. Shame on us.
+#define PSPLIT_LOCATEKEY_GUTS(_b_t, _x_t, _nBL, _xShift, \
                               _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     /* printf("PSPHK(nBL %d pxKeys %p nPopCnt %d xKey 0x%x nPos %d\n", */ \
@@ -4330,7 +4328,12 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     _b_t *px = (_b_t *)(_pxKeys); \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
     /* nSplit is the key chosen by PSPLIT */ \
-    int nSplit = Psplit((_nPopCnt), (_nBL), (_x), (_xKey)); \
+    int nSplit = Psplit((_nPopCnt), (_nBL), (_xShift), (_xKey)); \
+    /* What hint should we use for prefetch? NTA, T0, T1, ... */ \
+    BJL(char* pcPrefetch = (char*)&gpwValues(qy)[~nSplit]; (void)pcPrefetch); \
+    _PF_LK(BJL(_mm_prefetch(pcPrefetch, _MM_HINT_NTA))); \
+    _PF_LK_NX(BJL(_mm_prefetch(pcPrefetch - 64, _MM_HINT_NTA))); \
+    _PF_LK_PV(BJL(_mm_prefetch(pcPrefetch + 64, _MM_HINT_NTA))); \
     /* nSplitP is nSplit rounded down to the first key in the bucket */ \
     int nSplitP = nSplit * sizeof(_x_t) / sizeof(_b_t); \
     assert((int)((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
@@ -6312,8 +6315,9 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
 #endif // !defined(POP_IN_WR_HB) && !defined(LIST_POP_IN_PREAMBLE)
 
 #if defined(PSPLIT_SEARCH_8)
-#if defined(PSPLIT_PARALLEL)
+#ifdef PARALLEL_LOCATEKEY_8
 
+    int nPos;
 #if defined(PARALLEL_128)
 #if cnBitsInD1 == 8
 #if cnListPopCntMaxDl1 == 16
@@ -6329,15 +6333,28 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
   #endif // defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
   #endif // !defined(PP_IN_LINK) && !defined(POP_WORD_IN_LINK)
     assert(((Word_t)pwr & ~((Word_t)-1 << 4)) == 0);
+    BJL(char* pcValues = (char*)gpwValues(qy)); (void)pcValues;
+  #ifdef PREFETCH_LOCATE_KEY_8_BEG_VAL
+    // Prefetch the cache line before the keys.
+    // Fetching the keys brings in 0 - 6 values.
+    // We'll end up with 8 - 14 values.
+    BJL(_mm_prefetch(&pcValues[~7], _MM_HINT_NTA));
+  #endif // PREFETCH_LOCATE_KEY_8_BEG_VAL
+  #ifdef PREFETCH_LOCATE_KEY_8_END_VAL
+    // And the one before that.
+    BJL(_mm_prefetch(&pcValues[~15], _MM_HINT_NTA));
+  #endif // PREFETCH_LOCATE_KEY_8_END_VAL
   #if defined(OLD_LISTS) && defined(HK40_EXPERIMENT)
-    return LocateKey40(pwr, wKey);
+    nPos = LocateKey40(pwr, wKey);
   #else // defined(OLD_LISTS) && defined(HK40_EXPERIMENT)
       #ifdef OLD_LISTS // includes PP_IN_LINK and POP_WORD_IN_LINK
-    return LocateKey128((__m128i*)pwr, wKey, 8);
+    nPos = LocateKey128((__m128i*)pwr, wKey, 8);
       #else // OLD_LISTS
-    return LocateKey128((__m128i*)ls_pcKeysNATX(pwr, 16), wKey, 8);
+    nPos = LocateKey128((__m128i*)ls_pcKeysNATX(pwr, 16), wKey, 8);
       #endif // OLD_LISTS
   #endif // HK40_EXPERIMENT
+    SMETRICS(j__DirectHits += (nPos >= 0));
+    return nPos;
 #endif // cnDummiesInList == 0
 #endif // cnBitsMallocMask >= 4
 #endif // cnListPopCntMaxDl1 == 16
@@ -6347,7 +6364,7 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
     int nPopCnt = gnListPopCnt(qy, nBLR);
     uint8_t *pcKeys = ls_pcKeys(pwr, PWR_xListPopCnt(&wRoot, pwr, 8));
     uint8_t cKey = (uint8_t)wKey;
-    int nPos = 0;
+    nPos = 0;
     // PACK_L1_VALUES is an incomplete quick hack to see the performance of
     // a list leaf with an uncompressed value area.
     // USE_LOCATE_FOR_NO_PACK chooses LOCATEKEY rather than HASKEY for
@@ -6360,7 +6377,7 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
 #endif // #else defined(PACK_L1_VALUES) || defined(USE_LOCATE_FOR_NO_PACK)
     return nPos;
 
-#endif // defined(PSPLIT_PARALLEL)
+#endif // PARALLEL_LOCATEKEY_8
 #endif // defined(PSPLIT_SEARCH_8)
 
     return SearchList8(qy, nBLR, wKey);

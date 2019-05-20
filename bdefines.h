@@ -102,11 +102,28 @@
     #define NO_PARALLEL_SEARCH_WORD
   #endif // PARALLEL_SEARCH_WORD
 
-  // Default is to use a packed value area for a bitmap leaf.
+  // PACK_BM_VALUES means use a packed value area for a bitmap leaf if/when
+  // the values area is less than max and/or when UNPACK_BM_VALUES is not
+  // defined.
+  // Default is PACK_BM_VALUES.
   #ifndef   NO_PACK_BM_VALUES
     #undef     PACK_BM_VALUES
     #define    PACK_BM_VALUES
   #endif // NO_PACK_BM_VALUES
+
+  // UNPACK_BM_VALUES means use an unpacked value area for a bitmap leaf
+  // if/when the value area is max and/or when PACK_BM_VALUES is not defined.
+  // Default is UNPACK_BM_VALUES.
+  #ifndef   NO_UNPACK_BM_VALUES
+    #undef     UNPACK_BM_VALUES
+    #define    UNPACK_BM_VALUES
+  #endif // NO_UNPACK_BM_VALUES
+
+  #ifndef PACK_BM_VALUES
+  #ifndef UNPACK_BM_VALUES
+    #error Must have at least one of PACK_BM_VALUES and UNPACK_BM_VALUES.
+  #endif // #ifndef UNPACK_BM_VALUES
+  #endif // #ifndef PACK_BM_VALUES
 
   // Default is to use a packed value area for a list leaf.
   // If NO_PACK_L1_VALUES && (cnBitsInD1 <= 8) then don't
@@ -118,6 +135,31 @@
     #undef     PACK_L1_VALUES
     #define    PACK_L1_VALUES
   #endif // NO_PACK_L1_VALUES
+
+  #ifndef   NO_PREFETCH_LOCATEKEY_PSPLIT_VAL
+    #undef     PREFETCH_LOCATEKEY_PSPLIT_VAL
+    #define    PREFETCH_LOCATEKEY_PSPLIT_VAL
+  #endif // NO_PREFETCH_LOCATEKEY_PSPLIT_VAL
+
+  #ifndef   NO_PREFETCH_LOCATEKEY_NEXT_VAL
+    #undef     PREFETCH_LOCATEKEY_NEXT_VAL
+    #define    PREFETCH_LOCATEKEY_NEXT_VAL
+  #endif // NO_PREFETCH_LOCATEKEY_NEXT_VAL
+
+  #ifndef   NO_PREFETCH_LOCATEKEY_PREV_VAL
+    #undef     PREFETCH_LOCATEKEY_PREV_VAL
+    #define    PREFETCH_LOCATEKEY_PREV_VAL
+  #endif // NO_PREFETCH_LOCATEKEY_PREV_VAL
+
+  #ifndef   NO_PREFETCH_LOCATE_KEY_8_BEG_VAL
+    #undef     PREFETCH_LOCATE_KEY_8_BEG_VAL
+    #define    PREFETCH_LOCATE_KEY_8_BEG_VAL
+  #endif // NO_PREFETCH_LOCATE_KEY_8_BEG_VAL
+
+  #ifndef   NO_PREFETCH_LOCATE_KEY_8_END_VAL
+    #undef     PREFETCH_LOCATE_KEY_8_END_VAL
+    #define    PREFETCH_LOCATE_KEY_8_END_VAL
+  #endif // NO_PREFETCH_LOCATE_KEY_8_END_VAL
 
 #endif // B_JUDYL
 
@@ -359,6 +401,45 @@
   #undef  FAST_MALLOC
   #define FAST_MALLOC
 #endif // FAST_MALLOC_1
+
+// Default is -DPSPLIT_SEARCH_8
+#if ! defined(NO_PSPLIT_SEARCH_8)
+#undef  PSPLIT_SEARCH_8
+#define PSPLIT_SEARCH_8
+#endif // ! defined(NO_PSPLIT_SEARCH_8)
+
+// Default is -DPSPLIT_PARALLEL.
+// It causes PSPLIT_SEARCH to use a parallel search.
+// It affects the alignment of the list of keys in a list leaf and the
+// amount of memory allocated for it and the padding of any unused key slots.
+// The size of a parallel search bucket is determined by PARALLEL_128 (or
+// PARALLEL_64 for 32-bit).
+// PSPLIT_PARALLEL applies to lists of all key sizes except lists which use
+// full word size key slots.
+//
+// For lists of full word size key slots we use PARALLEL_SEARCH_WORD to
+// cause PSPLIT_SEARCH_WORD to use a parallel search. PARALLEL_SEARCH_WORD
+// also affects the alignment of lists with full word size key slots and the
+// padding of any unused key slots.
+//
+// PSPLIT_SEARCH_BY_KEY(...)
+// may be used to avoid a parallel search independent of PSPLIT_PARALLEL.
+// Ultimately, we'd like be able to override the default for any attribute of
+// the type of search to use for any situation independently. But we're not
+// there yet. The ifdef complexity is already horrifying.
+#ifndef NO_PSPLIT_PARALLEL
+  #undef PSPLIT_PARALLEL
+  #define PSPLIT_PARALLEL
+#endif // NO_PSPLIT_PARALLEL
+
+#ifdef PSPLIT_SEARCH_8
+#ifdef PSPLIT_PARALLEL
+#ifndef NO_PARALLEL_LOCATEKEY_8
+  #undef  PARALLEL_LOCATEKEY_8
+  #define PARALLEL_LOCATEKEY_8
+#endif // #ifndef NO_PARALLEL_LOCATEKEY_8
+#endif // PSPLIT_PARALLEL
+#endif // PSPLIT_SEARCH_8
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 

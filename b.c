@@ -1205,11 +1205,23 @@ NewBitmap(qp, int nBLR, Word_t wKey, Word_t wPopCnt)
     // be initialized.
     wRoot = 0; set_wr(wRoot, pwBitmap, T_BITMAP);
   #ifdef B_JUDYL
+      #ifdef UNPACK_BM_VALUES
+      #ifdef PACK_BM_VALUES
+    // We don't really need cnLsbBmUncompressed for 1-digit bitmap if
+    // BitmapWordCnt(cnBitsInD1, cnPopCntMaxDl1)
+    //     == BitmapWordCnt(cnBitsInD1, EXP(cnBitsInD1))
+    // But that is too hard to ifdef so we go ahead and set it even though
+    // it adds no information. As long as it doesn't cause any harm.
+    // I suppose we could have separate UNPACK and PACK macros for 1-digit
+    // and 2-digit bitmaps. We don't have 2-digit bitmaps for JudyL yet.
+    // Later.
       #if (cnBitsPerWord > 32)
     if (wWords == BitmapWordCnt(nBLR, EXP(nBLR))) {
         wRoot |= EXP(cnLsbBmUncompressed);
     }
       #endif // (cnBitsPerWord > 32)
+      #endif // PACK_BM_VALUES
+      #endif // UNPACK_BM_VALUES
     DBGM(printf("NewBitmap wRoot 0x%zx\n", wRoot));
   #endif // B_JUDYL
 
@@ -9145,19 +9157,19 @@ Initialize(void)
     printf("#    XX_LISTS\n");
 #else //         XX_LISTS
     printf("# No XX_LISTS\n");
-#endif // #endif XX_LISTS
+#endif // #else  XX_LISTS
 
 #ifdef           DOUBLE_DOWN
     printf("#    DOUBLE_DOWN\n");
 #else //         DOUBLE_DOWN
     printf("# No DOUBLE_DOWN\n");
-#endif // #endif DOUBLE_DOWN
+#endif // #else  DOUBLE_DOWN
 
 #ifdef OLD_LIST_WORD_CNT
     printf("#    OLD_LIST_WORD_CNT\n");
 #else // OLD_LIST_WORD_CNT
     printf("# No OLD_LIST_WORD_CNT\n");
-#endif // #endif OLD_LIST_WORD_CNT
+#endif // #else  OLD_LIST_WORD_CNT
 
 #if defined(POP_IN_WR_HB)
     printf("#    POP_IN_WR_HB\n");
@@ -9240,11 +9252,17 @@ Initialize(void)
     printf("# No SKIP_TO_BITMAP\n");
 #endif // defined(SKIP_TO_BITMAP)
 
-#if defined(PACK_BM_VALUES)
+#ifdef           PACK_BM_VALUES
     printf("#    PACK_BM_VALUES\n");
-#else // defined(PACK_BM_VALUES)
+#else //         PACK_BM_VALUES
     printf("# No PACK_BM_VALUES\n");
-#endif // defined(PACK_BM_VALUES)
+#endif // #else  PACK_BM_VALUES
+
+#ifdef           UNPACK_BM_VALUES
+    printf("#    UNPACK_BM_VALUES\n");
+#else //         UNPACK_BM_VALUES
+    printf("# No UNPACK_BM_VALUES\n");
+#endif // #else  UNPACK_BM_VALUES
 
 #if defined(PACK_L1_VALUES)
     printf("#    PACK_L1_VALUES\n");
@@ -9257,6 +9275,48 @@ Initialize(void)
 #else // defined(USE_LOCATE_FOR_NO_PACK)
     printf("# No USE_LOCATE_FOR_NO_PACK\n");
 #endif // defined(USE_LOCATE_FOR_NO_PACK)
+
+#ifdef           PREFETCH_LOCATEKEY_PSPLIT_VAL
+    printf("#    PREFETCH_LOCATEKEY_PSPLIT_VAL\n");
+#else //         PREFETCH_LOCATEKEY_PSPLIT_VAL
+    printf("# No PREFETCH_LOCATEKEY_PSPLIT_VAL\n");
+#endif // #else  PREFETCH_LOCATEKEY_PSPLIT_VAL
+
+#ifdef           PREFETCH_LOCATEKEY_NEXT_VAL
+    printf("#    PREFETCH_LOCATEKEY_NEXT_VAL\n");
+#else //         PREFETCH_LOCATEKEY_NEXT_VAL
+    printf("# No PREFETCH_LOCATEKEY_NEXT_VAL\n");
+#endif // #else  PREFETCH_LOCATEKEY_NEXT_VAL
+
+#ifdef           PREFETCH_LOCATEKEY_PREV_VAL
+    printf("#    PREFETCH_LOCATEKEY_PREV_VAL\n");
+#else //         PREFETCH_LOCATEKEY_PREV_VAL
+    printf("# No PREFETCH_LOCATEKEY_PREV_VAL\n");
+#endif // #else  PREFETCH_LOCATEKEY_PREV_VAL
+
+#ifdef           PREFETCH_LOCATE_KEY_8_BEG_VAL
+    printf("#    PREFETCH_LOCATE_KEY_8_BEG_VAL\n");
+#else //         PREFETCH_LOCATE_KEY_8_BEG_VAL
+    printf("# No PREFETCH_LOCATE_KEY_8_BEG_VAL\n");
+#endif // #else  PREFETCH_LOCATE_KEY_8_BEG_VAL
+
+#ifdef           PREFETCH_LOCATE_KEY_8_END_VAL
+    printf("#    PREFETCH_LOCATE_KEY_8_END_VAL\n");
+#else //         PREFETCH_LOCATE_KEY_8_END_VAL
+    printf("# No PREFETCH_LOCATE_KEY_8_END_VAL\n");
+#endif // #else  PREFETCH_LOCATE_KEY_8_END_VAL
+
+#ifdef           PREFETCH_EK_VAL
+    printf("#    PREFETCH_EK_VAL\n");
+#else //         PREFETCH_EK_VAL
+    printf("# No PREFETCH_EK_VAL\n");
+#endif // #else  PREFETCH_EK_VAL
+
+#ifdef           PREFETCH_BM_VAL
+    printf("#    PREFETCH_BM_VAL\n");
+#else //         PREFETCH_BM_VAL
+    printf("# No PREFETCH_BM_VAL\n");
+#endif // #else  PREFETCH_BM_VAL
 
 #if defined(USE_XX_SW)
     printf("#    USE_XX_SW\n");
@@ -9377,6 +9437,12 @@ Initialize(void)
 #else // defined(PSPLIT_PARALLEL)
     printf("# No PSPLIT_PARALLEL\n");
 #endif // defined(PSPLIT_PARALLEL)
+
+#ifdef           PARALLEL_LOCATEKEY_8
+    printf("#    PARALLEL_LOCATEKEY_8\n");
+#else //         PARALLEL_LOCATEKEY_8
+    printf("# No PARALLEL_LOCATEKEY_8\n");
+#endif // #else  PARALLEL_LOCATEKEY_8
 
 #if defined(PARALLEL_SEARCH_WORD)
     printf("#    PARALLEL_SEARCH_WORD\n");
@@ -9962,6 +10028,48 @@ Initialize(void)
     printf("# No GCC_VECTORS\n");
 #endif // defined(GCC_VECTORS)
 
+#ifdef           NO_PREFETCH_LOCATEKEY_PSPLIT_VAL
+    printf("#    NO_PREFETCH_LOCATEKEY_PSPLIT_VAL\n");
+#else //         NO_PREFETCH_LOCATEKEY_PSPLIT_VAL
+    printf("# No NO_PREFETCH_LOCATEKEY_PSPLIT_VAL\n");
+#endif // #else  NO_PREFETCH_LOCATEKEY_PSPLIT_VAL
+
+#ifdef           NO_PREFETCH_LOCATEKEY_NEXT_VAL
+    printf("#    NO_PREFETCH_LOCATEKEY_NEXT_VAL\n");
+#else //         NO_PREFETCH_LOCATEKEY_NEXT_VAL
+    printf("# No NO_PREFETCH_LOCATEKEY_NEXT_VAL\n");
+#endif // #else  NO_PREFETCH_LOCATEKEY_NEXT_VAL
+
+#ifdef           NO_PREFETCH_LOCATEKEY_PREV_VAL
+    printf("#    NO_PREFETCH_LOCATEKEY_PREV_VAL\n");
+#else //         NO_PREFETCH_LOCATEKEY_PREV_VAL
+    printf("# No NO_PREFETCH_LOCATEKEY_PREV_VAL\n");
+#endif // #else  NO_PREFETCH_LOCATEKEY_PREV_VAL
+
+#ifdef           NO_PREFETCH_LOCATE_KEY_8_BEG_VAL
+    printf("#    NO_PREFETCH_LOCATE_KEY_8_BEG_VAL\n");
+#else //         NO_PREFETCH_LOCATE_KEY_8_BEG_VAL
+    printf("# No NO_PREFETCH_LOCATE_KEY_8_BEG_VAL\n");
+#endif // #else  NO_PREFETCH_LOCATE_KEY_8_BEG_VAL
+
+#ifdef           NO_PREFETCH_LOCATE_KEY_8_END_VAL
+    printf("#    NO_PREFETCH_LOCATE_KEY_8_END_VAL\n");
+#else //         NO_PREFETCH_LOCATE_KEY_8_END_VAL
+    printf("# No NO_PREFETCH_LOCATE_KEY_8_END_VAL\n");
+#endif // #else  NO_PREFETCH_LOCATE_KEY_8_END_VAL
+
+#ifdef           NO_PREFETCH_EK_VAL
+    printf("#    NO_PREFETCH_EK_VAL\n");
+#else //         NO_PREFETCH_EK_VAL
+    printf("# No NO_PREFETCH_EK_VAL\n");
+#endif // #else  NO_PREFETCH_EK_VAL
+
+#ifdef           NO_PREFETCH_BM_VAL
+    printf("#    NO_PREFETCH_BM_VAL\n");
+#else //         NO_PREFETCH_BM_VAL
+    printf("# No NO_PREFETCH_BM_VAL\n");
+#endif // #else  NO_PREFETCH_BM_VAL
+
 #if defined(NO_USE_XX_SW)
     printf("#    NO_USE_XX_SW\n");
 #else // defined(NO_USE_XX_SW)
@@ -10003,6 +10111,12 @@ Initialize(void)
 #else // defined(NO_PSPLIT_PARALLEL)
     printf("# No NO_PSPLIT_PARALLEL\n");
 #endif // defined(NO_PSPLIT_PARALLEL)
+
+#ifdef           NO_PARALLEL_LOCATEKEY_8
+    printf("#    NO_PARALLEL_LOCATEKEY_8\n");
+#else //         NO_PARALLEL_LOCATEKEY_8
+    printf("# No NO_PARALLEL_LOCATEKEY_8\n");
+#endif // #else  NO_PARALLEL_LOCATEKEY_8
 
 #if defined(NO_PSPLIT_EARLY_OUT)
     printf("#    NO_PSPLIT_EARLY_OUT\n");
@@ -10058,11 +10172,17 @@ Initialize(void)
     printf("# No NO_BITMAP\n");
 #endif // defined(NO_BITMAP)
 
-#if defined(NO_PACK_BM_VALUES)
+#ifdef           NO_PACK_BM_VALUES
     printf("#    NO_PACK_BM_VALUES\n");
-#else // defined(NO_PACK_BM_VALUES)
+#else //         NO_PACK_BM_VALUES
     printf("# No NO_PACK_BM_VALUES\n");
-#endif // defined(NO_PACK_BM_VALUES)
+#endif // #else  NO_PACK_BM_VALUES
+
+#ifdef           NO_UNPACK_BM_VALUES
+    printf("#    NO_UNPACK_BM_VALUES\n");
+#else //         NO_UNPACK_BM_VALUES
+    printf("# No NO_UNPACK_BM_VALUES\n");
+#endif // #else  NO_UNPACK_BM_VALUES
 
 #if defined(NO_EK_CALC_POP)
     printf("#    NO_EK_CALC_POP\n");
