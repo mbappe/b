@@ -105,11 +105,7 @@
   // PACK_BM_VALUES means use a packed value area for a bitmap leaf if/when
   // the values area is less than max and/or when UNPACK_BM_VALUES is not
   // defined.
-  // Default is PACK_BM_VALUES.
-  #ifndef   NO_PACK_BM_VALUES
-    #undef     PACK_BM_VALUES
-    #define    PACK_BM_VALUES
-  #endif // NO_PACK_BM_VALUES
+  // Default is No PACK_BM_VALUES.
 
   // UNPACK_BM_VALUES means use an unpacked value area for a bitmap leaf
   // if/when the value area is max and/or when PACK_BM_VALUES is not defined.
