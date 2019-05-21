@@ -501,6 +501,9 @@ b.i: b.c
 bl.i: bl.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
+blL.i: blL.c
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $^ | indent -i4 | expand > $@
+
 # The .c.i rule doesn't work for some reason.  Later.
 bi.i: bi.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
