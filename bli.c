@@ -2127,18 +2127,9 @@ t_bitmap:;
           #endif // !defined(RECURSIVE)
       #endif // defined(INSERT)
       #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
-                int nIndex =
-          #ifdef UNPACK_BM_VALUES
-          #if (cnBitsPerWord > 32)
-              #ifdef PACK_BM_VALUES
-                     (wRoot & EXP(cnLsbBmUncompressed))
-              #else // PACK_BM_VALUES
-                     1
-              #endif // PACK_BM_VALUES
-                               ? (int)(wKey & MSK(nBLR)) :
-          #endif // (cnBitsPerWord > 32)
-          #endif // UNPACK_BM_VALUES
-                         BmIndex(qy, nBLR, wKey);
+                int nIndex = BM_UNCOMPRESSED(wRoot)
+                               ? (int)(wKey & MSK(nBLR))
+                               : BmIndex(qy, nBLR, wKey);
                 return &gpwBitmapValues(qy, nBLR)[nIndex];
       #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 return KeyFound;

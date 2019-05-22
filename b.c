@@ -1117,9 +1117,6 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
     // 1 word in the switch for wRoot and one word in the switch
     // for an embedded value.
     Word_t wFullPopWordsMin = wWordsHdr + EXP(nBLR);
-      // PACK_BM_VALUES is an incomplete quick hack to see the performance of
-      // a bitmap leaf with an uncompressed value area and no test of
-      // bLsbBmUncompressed. The plot is perfectly flat.
       #ifdef PACK_BM_VALUES
     Word_t wFullPopWordsMinPlusMalloc = (wFullPopWordsMin | 1) + 1;
     Word_t wFullPopWordsMinPlusX
@@ -1205,24 +1202,21 @@ NewBitmap(qp, int nBLR, Word_t wKey, Word_t wPopCnt)
     // be initialized.
     wRoot = 0; set_wr(wRoot, pwBitmap, T_BITMAP);
   #ifdef B_JUDYL
-      #ifdef UNPACK_BM_VALUES
-      #ifdef PACK_BM_VALUES
     // We don't really need cnLsbBmUncompressed for 1-digit bitmap if
     // BitmapWordCnt(cnBitsInD1, cnPopCntMaxDl1)
     //     == BitmapWordCnt(cnBitsInD1, EXP(cnBitsInD1))
+    // Because we'll never have a packed bm even if PACK_BM_VALUES is defined.
     // But that is too hard to ifdef so we go ahead and set it even though
     // it adds no information. As long as it doesn't cause any harm.
     // I suppose we could have separate UNPACK and PACK macros for 1-digit
     // and 2-digit bitmaps. We don't have 2-digit bitmaps for JudyL yet.
     // Later.
-      #if (cnBitsPerWord > 32)
+      #ifdef _TEST_BM_UNCOMPRESSED
     if (wWords == BitmapWordCnt(nBLR, EXP(nBLR))) {
         wRoot |= EXP(cnLsbBmUncompressed);
     }
-      #endif // (cnBitsPerWord > 32)
-      #endif // PACK_BM_VALUES
-      #endif // UNPACK_BM_VALUES
     DBGM(printf("NewBitmap wRoot 0x%zx\n", wRoot));
+      #endif // _TEST_BM_UNCOMPRESSED
   #endif // B_JUDYL
 
     *pwRoot = wRoot;
@@ -2285,11 +2279,8 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
   #ifdef B_JUDYL
         printf("\n Values\n");
         for (int ww = 0;
-             ww < (int)(
-      #if (cnBitsPerWord > 32)
-                        (wRoot & EXP(cnLsbBmUncompressed)) ? EXP(nBL) :
-      #endif // (cnBitsPerWord > 32)
-                            gwBitmapPopCnt(qy, nBL));
+             ww < (int)(BM_UNCOMPRESSED(wRoot)
+                            ? EXP(nBL) : gwBitmapPopCnt(qy, nBL));
              ++ww)
         {
             if ((ww != 0) && (ww % 4) == 0) {
@@ -3592,12 +3583,11 @@ InsertAllAtBitmap(qp, qpx(Old), int nStart, int nPopCnt)
         // The bitmap has already been sized.
         SetBit(pwBitmap, wKeyLoop);
   #ifdef B_JUDYL
-      #if (cnBitsPerWord > 32)
-        if (wRoot & EXP(cnLsbBmUncompressed)) {
+        if (BM_UNCOMPRESSED(wRoot)) {
             pwValues[wKeyLoop] = pwValuesOld[~nn];
-        } else
-      #endif // (cnBitsPerWord > 32)
-        { *pwValues++ = pwValuesOld[~nn]; }
+        } else {
+            *pwValues++ = pwValuesOld[~nn];
+        }
   #endif // B_JUDYL
     }
 }
@@ -3719,6 +3709,9 @@ lastDigit:;
 static void
 Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
 {
+#ifdef UA_PARALLEL_128
+    int bCounted = 0;
+#endif // UA_PARALLEL_128
     (void)wKey;
   #ifdef DEBUG
     int nPopCntMax = 0;
@@ -4000,6 +3993,7 @@ lastDigit16:;
                     Word_t wRootLoop = 0;
                     int nTypeLoop = T_LIST; (void)nTypeLoop;
                     Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
+// What about UA_PARALLEL_128 and T_LIST_UA here?
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
                     snListBLR(qyx(Loop), nBLLoop);
@@ -4021,6 +4015,7 @@ lastDigit16:;
                     } else {
                         uint16_t *psKeysLoop
                             = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
+// What about UA_PARALLEL_128 and T_LIST_UA here?
                         COPY(psKeysLoop, &psKeys[nnStart], nPopCntLoop);
                         PAD(psKeysLoop, nPopCntLoop);
                     }
@@ -4227,10 +4222,31 @@ lastDigit:;
                         <= auListPopCntMax[nBLLoop])
                 {
                     // We have a sub list.
+  #if (cnBitsPerWord <= 32)
+  #ifndef B_JUDYL
+                    // I don't yet know why this bypass is needed for this
+                    // special case. I think the code works without it if
+                    // DEBUG is defined but not if it isn't defined.
+// I think the issue is UA_PARALLEL_128 and T_LIST_UA.
+#ifdef UA_PARALLEL_128
+  #error Cannot have UA_PARALLEL_128 with Splay.
+// Unfortunately, we got rid of the non-Splay code so we have to fix Splay
+// if we want to continue to support T_LIST_UA.
+                    if (nBLLoop <= (int)sizeof(Word_t) * 8 / 2) {
+                        bCounted = 1;
+                        goto insertAll;
+                    }
+#endif // UA_PARALLEL_128
+  #endif // #ifndef B_JUDYL
+  #endif // (cnBitsPerWord <= 32)
                     // Let's make a new list and copy it over.
                     Word_t wRootLoop = 0;
                     int nTypeLoop = T_LIST; (void)nTypeLoop;
                     Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
+// What about UA_PARALLEL_128 and T_LIST_UA here?
+// We need to handle 32-bit, UA_PARALLEL_128, T_LIST_UA here.
+// NewList has no facility for setting type to T_LIST_UA even though it
+// allocates the reduced number of words for T_LIST_UA.
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
                     snListBLR(qyx(Loop), nBLLoop);
@@ -4254,6 +4270,7 @@ lastDigit:;
                         } else {
                             uint16_t *psKeysLoop
                                 = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
+// What about UA_PARALLEL_128 and T_LIST_UA here?
                             COPY(psKeysLoop, &pwKeys[nnStart], nPopCntLoop);
                             PAD(psKeysLoop, nPopCntLoop);
                         }
@@ -4286,6 +4303,8 @@ lastDigit:;
                            nBL, nBLROld, nBLLoop, cnBitsInD1);
                     assert(0);
 // I wonder if I could call ListIsFull here instead of doing this loop.
+                    goto insertAll;
+insertAll:
                     for (int xx = nnStart; xx < nn; ++xx) {
                         Insert(nBL, pLn, pwKeys[xx])BJL([0] = pwValues[~xx]);
                     }
@@ -4324,7 +4343,11 @@ lastDigit:;
         if (wr_nType(*pwRootOld) != T_XX_LIST)
   #endif // XX_LISTS
         {
+#if UA_PARALLEL_128
+            wPopCnt = !bCounted * gwPopCnt(qy, nBLR) + nPopCnt;
+#else // UA_PARALLEL_128
             wPopCnt = gwPopCnt(qy, nBLR) + nPopCnt;
+#endif // #else UA_PARALLEL_128
             swPopCnt(qy, nBLR, wPopCnt);
         }
     }
@@ -4744,6 +4767,10 @@ lastDigit16:;
                         ++nPopCntLoop;
                     }
                     Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
+// What about UA_PARALLEL_128 and T_LIST_UA here?
+#ifdef UA_PARALLEL_128
+  #error Cannot have UA_PARALLEL_128 with SPLAY_WITH_INSERT.
+#endif // UA_PARALLEL_128
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
                     snListBLR(qyx(Loop), nBLLoop);
@@ -4785,6 +4812,7 @@ lastDigit16:;
                     } else {
                         uint16_t *psKeysLoop
                             = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
+// What about UA_PARALLEL_128 and T_LIST_UA here?
                         if ((nDigit == nDigitKey)
                             && ((nn - nnStart) < auListPopCntMax[nBLLoop]))
                         {
@@ -5100,6 +5128,7 @@ lastDigit:;
                     }
 // How do we know if we bumped it? nn - nnStart?
                     Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
+// What about UA_PARALLEL_128 and T_LIST_UA here?
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
                     snListBLR(qyx(Loop), nBLLoop);
@@ -5145,6 +5174,7 @@ lastDigit:;
                         } else {
                             uint16_t *psKeysLoop
                                 = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
+// What about UA_PARALLEL_128 and T_LIST_UA here?
                             if ((nDigit == nDigitKey)
                                 && ((nn - nnStart) < auListPopCntMax[nBLLoop]))
                             {
@@ -8178,12 +8208,10 @@ InsertAtBitmap(qp, Word_t wKey)
   #ifdef B_JUDYL
     Word_t *pwSrcVals = gpwBitmapValues(qy, nBLR);
     int nPos;
-      #if (cnBitsPerWord > 32)
-    if (wRoot & EXP(cnLsbBmUncompressed)) {
+    if (BM_UNCOMPRESSED(wRoot)) {
         nPos = wKey & MSK(nBLR);
         goto done;
     }
-      #endif // (cnBitsPerWord > 32)
     nPos = ~BmIndex(qy, nBLR, wKey);
     Word_t wWords = BitmapWordCnt(nBLR, wPopCnt + 1); // new
     if (wWords != BitmapWordCnt(nBLR, wPopCnt)) {
@@ -8201,17 +8229,14 @@ InsertAtBitmap(qp, Word_t wKey)
         pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
         COPY(pwBitmap, pwBitmapOld, nBmWords);
         Word_t *pwTgtVals = gpwBitmapValues(qy, nBLR);
-      #if (cnBitsPerWord > 32)
-        if (wRoot & EXP(cnLsbBmUncompressed)) {
+        if (BM_UNCOMPRESSED(wRoot)) {
             for (int k = 0; k < (int)EXP(nBLR); ++k) {
                 if (BitIsSet(pwBitmap, k)) {
                     pwTgtVals[k] = *pwSrcVals++;
                 }
             }
             nPos = wKey & MSK(nBLR);
-        } else
-      #endif // (cnBitsPerWord > 32)
-        {
+        } else {
             COPY(&pwTgtVals[nPos + 1], &pwSrcVals[nPos], wPopCnt - nPos);
             COPY(pwTgtVals, pwSrcVals, nPos);
         }
@@ -8817,14 +8842,12 @@ RemoveAtBitmap(qp, Word_t wKey)
         Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
   #ifdef B_JUDYL
         Word_t wWords = BitmapWordCnt(nBLR, wPopCnt); // new
-      #if (cnBitsPerWord > 32)
-        Word_t bUncompressed = wRoot & EXP(cnLsbBmUncompressed);
+        Word_t bUncompressed = BM_UNCOMPRESSED(wRoot);
         if (bUncompressed) {
             if (wWords == BitmapWordCnt(nBLR, EXP(nBLR))) {
                 goto done;
             }
         }
-      #endif // (cnBitsPerWord > 32)
         Word_t *pwSrcVals = gpwBitmapValues(qy, nBLR);
         int nPos = BmIndex(qy, nBLR, wKey);
         if (wWords != BitmapWordCnt(nBLR, wPopCnt + 1)) {
@@ -8842,7 +8865,6 @@ RemoveAtBitmap(qp, Word_t wKey)
             pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
             COPY(pwBitmap, pwBitmapOld, nBmWords);
             Word_t *pwTgtVals = gpwBitmapValues(qy, nBLR);
-      #if (cnBitsPerWord > 32)
             if (bUncompressed) {
                 for (int k = 0; k < (int)EXP(nBLR); ++k) {
                     if ((k != (int)(wKey & MSK(nBLR)))
@@ -8851,9 +8873,7 @@ RemoveAtBitmap(qp, Word_t wKey)
                         *pwTgtVals++ = pwSrcVals[k];
                     }
                 }
-            } else
-      #endif // (cnBitsPerWord > 32)
-            {
+            } else {
                 COPY(&pwTgtVals[nPos], &pwSrcVals[nPos + 1],
                      wPopCnt - nPos);
                 COPY(pwTgtVals, pwSrcVals, nPos);
@@ -9164,6 +9184,12 @@ Initialize(void)
 #else //         DOUBLE_DOWN
     printf("# No DOUBLE_DOWN\n");
 #endif // #else  DOUBLE_DOWN
+
+#ifdef           SPLAY_WITH_INSERT
+    printf("#    SPLAY_WITH_INSERT\n");
+#else //         SPLAY_WITH_INSERT
+    printf("# No SPLAY_WITH_INSERT\n");
+#endif // #else  SPLAY_WITH_INSERT
 
 #ifdef OLD_LIST_WORD_CNT
     printf("#    OLD_LIST_WORD_CNT\n");

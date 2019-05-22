@@ -308,6 +308,10 @@
   #endif // COMPRESSED_LISTS
 #endif // defined(PSPLIT_PARALLEL) && defined(PARALLEL_128)
 
+// Oops. Splay does not handle UA_PARALLEL_128 and T_LIST_UA at the moment so
+// we have to disable it until that is fixed.
+#undef UA_PARALLEL_128
+
 #ifndef COMPRESSED_LISTS
   #ifdef UA_PARALLEL_128
     #error UA_PARALLEL_128 without COMPRESSED_LISTS
@@ -6763,5 +6767,25 @@ extern Word_t j__AllocWordsJV;   // value area
   #endif // SKIP_TO_BITMAP
 #endif // #ifndef LVL_IN_PP
 #endif // #ifndef LVL_IN_WR_HB
+
+#ifdef B_JUDYL
+
+#ifdef UNPACK_BM_VALUES
+#ifdef PACK_BM_VALUES
+#if (cnBitsPerWord > 32)
+  #define _TEST_BM_UNCOMPRESSED
+#endif // (cnBitsPerWord > 32)
+#endif // PACK_BM_VALUES
+#endif // UNPACK_BM_VALUES
+
+#ifdef _TEST_BM_UNCOMPRESSED
+  #define BM_UNCOMPRESSED(_wRoot)  ((_wRoot) & EXP(cnLsbBmUncompressed))
+#elif defined(UNPACK_BM_VALUES)
+  #define BM_UNCOMPRESSED(_wRoot)  1
+#else
+  #define BM_UNCOMPRESSED(_wRoot)  0
+#endif
+
+#endif // B_JUDYL
 
 #endif // ( ! defined(_B_H_INCLUDED) )
