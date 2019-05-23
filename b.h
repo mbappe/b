@@ -173,8 +173,6 @@
 // -USKIP_LINKS is a lot better for 32-bit Judy1 with 16-bit digits and a
 // 16-bit bitmap. Less so for 8-bit digits. Maybe.
 
-// Default is -USEARCH_FROM_WRAPPER.
-
 #if defined(ALWAYS_CHECK_PREFIX_AT_LEAF) || defined(SAVE_PREFIX)
 #undef  SKIP_PREFIX_CHECK
 #define SKIP_PREFIX_CHECK

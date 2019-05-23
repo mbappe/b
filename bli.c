@@ -2605,7 +2605,8 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     DBGL(printf("\n\n# JudyLGet pcvRoot %p wKey " OWx"\n",
                 (void *)pcvRoot, wKey));
 
-    if ((WROOT_NULL != 0) && (pcvRoot == 0)) {
+    Word_t wRoot = (Word_t)pcvRoot;
+    if ((WROOT_NULL != 0) && (wRoot == 0)) {
         return 0;
     }
 
@@ -2622,14 +2623,8 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     // Is T_LIST the only node type that is different at the top for
     // PP_IN_LINK? Doesn't the incomplete Link_t complicate Lookup for
     // the other node types?
-    Word_t wRoot = (Word_t)pcvRoot;
     int nType = wr_nType(wRoot);
-    Word_t *pwr = wr_pwr(wRoot); (void)pwr;
-    if ((nType == T_LIST)
-      #if ! defined(SEPARATE_T_NULL)
-        && (pwr != NULL)
-      #endif // ! defined(SEPARATE_T_NULL)
-        && 1)
+    if ((nType == T_LIST) && ((WROOT_NULL != T_LIST) || (wRoot != 0)))
     {
         Link_t *pLn = STRUCT_OF(&pcvRoot, Link_t, ln_wRoot);
         int nBL = cnBitsPerWord;
@@ -2649,7 +2644,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
   #ifdef B_JUDYL
         (PPvoid_t)
   #endif // B_JUDYL
-            Lookup((Word_t)pcvRoot, wKey);
+            Lookup(wRoot, wKey);
 
 #else // (cnDigitsPerWord > 1)
 

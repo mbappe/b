@@ -10240,6 +10240,12 @@ Initialize(void)
     printf("# No NO_BINARY_SEARCH_WORD\n");
 #endif // defined(NO_BINARY_SEARCH_WORD)
 
+#ifdef           NO_SEARCH_FROM_WRAPPER
+    printf("#    NO_SEARCH_FROM_WRAPPER\n");
+#else //         NO_SEARCH_FROM_WRAPPER
+    printf("# No NO_SEARCH_FROM_WRAPPER\n");
+#endif //        NO_SEARCH_FROM_WRAPPER
+
 #if defined(NO_SVALUE) // in RandomNumb.h
     printf("#    NO_SVALUE\n");
 #else // defined(NO_SVALUE)

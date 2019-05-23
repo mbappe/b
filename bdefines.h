@@ -437,5 +437,11 @@
 #endif // PSPLIT_PARALLEL
 #endif // PSPLIT_SEARCH_8
 
+// Default is -DSEARCH_FROM_WRAPPER.
+#ifndef           NO_SEARCH_FROM_WRAPPER
+  #undef             SEARCH_FROM_WRAPPER
+  #define            SEARCH_FROM_WRAPPER
+#endif // #ifndef NO_SEARCH_FROM_WRAPPER
+
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 
