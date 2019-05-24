@@ -260,8 +260,7 @@ MyMallocGutsRM(Word_t wWords, int nLogAlignment, Word_t *pwAllocWords)
 
 #ifdef RAMMETRICS
     if (pwAllocWords != NULL) {
-        (*pwAllocWords)
-            += AllocWords((Word_t*)ww, wWords + cnMallocExtraWords);
+        *pwAllocWords += AllocWords((Word_t*)ww, wWords + cnMallocExtraWords);
     }
 #endif // RAMMETRICS
 
@@ -818,7 +817,7 @@ CalcListSlotCnt(int nPopCnt, int nBLR)
     int nBytesPerBucket
         = ALIGN_LIST_LEN(nBytesPerKey, nPopCnt)
 #ifdef UA_PARALLEL_128 // implies !B_JUDYL && PARALLEL_128 && 32-bit
-                && ((nPopCnt > 6) || (nBLR != 2))
+                && ((nPopCnt > 6) || (nBLR != 16))
 #endif // UA_PARALLEL_128
             ? sizeof(Bucket_t) : sizeof(Word_t);
     int nListWords = ListWordCnt(nPopCnt, nBLR);
@@ -931,7 +930,7 @@ CalcListSlotCntX(int nPopCnt, int nBLR)
   #if (cnBitsPerWord > 32)
     #error B_JUDYL with UA_PARALLEL_128.
   #endif // (cnBitsPerWord > 32)
-    if ((nPopCnt <= 6) && (nBLR == 2)) {
+    if ((nPopCnt <= 6) && (nBLR == 16)) {
         return 6;
     }
 #endif // UA_PARALLEL_128
@@ -2485,6 +2484,11 @@ embeddedKeys:;
                         }
   #endif // B_JUDYL
                     } else if (nBLR <= 16) {
+  #ifdef UA_PARALLEL_128
+                        if ((nBLR == 16) && (nn == 6)) {
+                            assert(nType == T_LIST_UA);
+                        }
+  #endif // UA_PARALLEL_128
                         printf(" %04x", ls_psKeysNATX(pwr, wPopCnt)[xx]);
   #ifdef B_JUDYL
                         if (nn < (int)wPopCnt) {
@@ -2492,7 +2496,6 @@ embeddedKeys:;
                                    ((Word_t*)ls_psKeysNATX(pwr,
                                                            wPopCnt))[~nn]);
                         }
-
   #endif // B_JUDYL
 #if (cnBitsPerWord > 32)
                     } else if (nBLR <= 32) {
@@ -2913,6 +2916,15 @@ InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
     } \
 }
 
+#ifdef UA_PARALLEL_128
+#define UA_PAD(_pxKeys, _nPopCnt) \
+{ \
+    for (int nn = (_nPopCnt); nn < 6; ++nn) { \
+        (_pxKeys)[nn] = (_pxKeys)[nn - 1]; \
+    } \
+}
+#endif // UA_PARALLEL_128
+
 #define COPY_KEYS_WITH_INSERT(_pTgtKeys, _pSrcKeys, _nSrcCnt, _wKey, _nPos) \
 { \
     if ((void*)(_pTgtKeys) != (void*)(_pSrcKeys)) { \
@@ -3101,9 +3113,7 @@ CopyWithInsert16(qp, uint16_t *pSrc,
     pTgt[nPos] = sKey; // insert the key
   #if defined(UA_PARALLEL_128)
     if ((nType == T_LIST_UA) && (nPos <= 6)) {
-        for (nPos = nKeys + 1; (nPos * sizeof(sKey)) % 12; ++nPos) {
-            pTgt[nPos] = pTgt[nPos-1];
-        }
+        UA_PAD(pTgt, nKeys + 1);
     } else
   #endif // defined(UA_PARALLEL_128)
     { PAD(pTgt, nKeys + 1); }
@@ -3709,9 +3719,6 @@ lastDigit:;
 static void
 Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL)
 {
-#ifdef UA_PARALLEL_128
-    int bCounted = 0;
-#endif // UA_PARALLEL_128
     (void)wKey;
   #ifdef DEBUG
     int nPopCntMax = 0;
@@ -3991,9 +3998,13 @@ lastDigit16:;
                     // We have a sub list.
                     // Let's make a new list and copy it over.
                     Word_t wRootLoop = 0;
-                    int nTypeLoop = T_LIST; (void)nTypeLoop;
+                    int nTypeLoop = T_LIST;
+  #ifdef UA_PARALLEL_128
+                    if ((nBLLoop == 16) && (nPopCntLoop <= 6)) {
+                        nTypeLoop = T_LIST_UA;
+                    }
+  #endif // UA_PARALLEL_128
                     Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
-// What about UA_PARALLEL_128 and T_LIST_UA here?
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
                     snListBLR(qyx(Loop), nBLLoop);
@@ -4015,9 +4026,13 @@ lastDigit16:;
                     } else {
                         uint16_t *psKeysLoop
                             = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-// What about UA_PARALLEL_128 and T_LIST_UA here?
                         COPY(psKeysLoop, &psKeys[nnStart], nPopCntLoop);
-                        PAD(psKeysLoop, nPopCntLoop);
+  #ifdef UA_PARALLEL_128
+                        if (nTypeLoop == T_LIST_UA) {
+                            UA_PAD(psKeysLoop, nPopCntLoop);
+                        } else
+  #endif // UA_PARALLEL_128
+                        { PAD(psKeysLoop, nPopCntLoop); }
                     }
                 } else
   #ifdef BITMAP
@@ -4222,31 +4237,15 @@ lastDigit:;
                         <= auListPopCntMax[nBLLoop])
                 {
                     // We have a sub list.
-  #if (cnBitsPerWord <= 32)
-  #ifndef B_JUDYL
-                    // I don't yet know why this bypass is needed for this
-                    // special case. I think the code works without it if
-                    // DEBUG is defined but not if it isn't defined.
-// I think the issue is UA_PARALLEL_128 and T_LIST_UA.
-#ifdef UA_PARALLEL_128
-  #error Cannot have UA_PARALLEL_128 with Splay.
-// Unfortunately, we got rid of the non-Splay code so we have to fix Splay
-// if we want to continue to support T_LIST_UA.
-                    if (nBLLoop <= (int)sizeof(Word_t) * 8 / 2) {
-                        bCounted = 1;
-                        goto insertAll;
-                    }
-#endif // UA_PARALLEL_128
-  #endif // #ifndef B_JUDYL
-  #endif // (cnBitsPerWord <= 32)
                     // Let's make a new list and copy it over.
                     Word_t wRootLoop = 0;
-                    int nTypeLoop = T_LIST; (void)nTypeLoop;
+                    int nTypeLoop = T_LIST;
+  #ifdef UA_PARALLEL_128
+                    if ((nBLLoop == 16) && (nPopCntLoop <= 6)) {
+                        nTypeLoop = T_LIST_UA;
+                    }
+  #endif // UA_PARALLEL_128
                     Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
-// What about UA_PARALLEL_128 and T_LIST_UA here?
-// We need to handle 32-bit, UA_PARALLEL_128, T_LIST_UA here.
-// NewList has no facility for setting type to T_LIST_UA even though it
-// allocates the reduced number of words for T_LIST_UA.
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
                     snListBLR(qyx(Loop), nBLLoop);
@@ -4270,9 +4269,13 @@ lastDigit:;
                         } else {
                             uint16_t *psKeysLoop
                                 = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-// What about UA_PARALLEL_128 and T_LIST_UA here?
                             COPY(psKeysLoop, &pwKeys[nnStart], nPopCntLoop);
-                            PAD(psKeysLoop, nPopCntLoop);
+  #ifdef UA_PARALLEL_128
+                            if (nTypeLoop == T_LIST_UA) {
+                                UA_PAD(psKeysLoop, nPopCntLoop);
+                            } else
+  #endif // UA_PARALLEL_128
+                            { PAD(psKeysLoop, nPopCntLoop); }
                         }
           #if (cnBitsPerWord > 32)
                     } else if (nBLLoop <= 32) {
@@ -4343,11 +4346,7 @@ insertAll:
         if (wr_nType(*pwRootOld) != T_XX_LIST)
   #endif // XX_LISTS
         {
-#if UA_PARALLEL_128
-            wPopCnt = !bCounted * gwPopCnt(qy, nBLR) + nPopCnt;
-#else // UA_PARALLEL_128
             wPopCnt = gwPopCnt(qy, nBLR) + nPopCnt;
-#endif // #else UA_PARALLEL_128
             swPopCnt(qy, nBLR, wPopCnt);
         }
     }
@@ -4420,6 +4419,7 @@ InsertAtList(qp,
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
              );
 
+#ifdef SPLAY_WITH_INSERT
 #ifdef B_JUDYL
 static Word_t*
 #else // B_JUDYL
@@ -4760,17 +4760,18 @@ lastDigit16:;
                     // We have a sub list.
                     // Let's make a new list and copy it over.
                     Word_t wRootLoop = 0;
-                    int nTypeLoop = T_LIST; (void)nTypeLoop;
+                    int nTypeLoop = T_LIST;
                     if ((nDigit == nDigitKey)
                         && (nPopCntLoop < auListPopCntMax[nBLLoop]))
                     {
                         ++nPopCntLoop;
                     }
+  #ifdef UA_PARALLEL_128
+                    if ((nBLLoop == 16) && (nPopCntLoop <= 6)) {
+                        nTypeLoop = T_LIST_UA;
+                    }
+  #endif // UA_PARALLEL_128
                     Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
-// What about UA_PARALLEL_128 and T_LIST_UA here?
-#ifdef UA_PARALLEL_128
-  #error Cannot have UA_PARALLEL_128 with SPLAY_WITH_INSERT.
-#endif // UA_PARALLEL_128
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
                     snListBLR(qyx(Loop), nBLLoop);
@@ -4812,7 +4813,6 @@ lastDigit16:;
                     } else {
                         uint16_t *psKeysLoop
                             = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-// What about UA_PARALLEL_128 and T_LIST_UA here?
                         if ((nDigit == nDigitKey)
                             && ((nn - nnStart) < auListPopCntMax[nBLLoop]))
                         {
@@ -4826,7 +4826,12 @@ lastDigit16:;
                             bInsertNotDone = 0;
                         } else {
                             COPY(psKeysLoop, &psKeys[nnStart], nPopCntLoop);
-                            PAD(psKeysLoop, nPopCntLoop);
+  #ifdef UA_PARALLEL_128
+                            if (nTypeLoop == T_LIST_UA) {
+                                UA_PAD(psKeysLoop, nPopCntLoop);
+                            } else
+  #endif // UA_PARALLEL_128
+                            { PAD(psKeysLoop, nPopCntLoop); }
                         }
                     }
                 } else
@@ -5119,7 +5124,7 @@ lastDigit:;
                     // We have a sub list.
                     // Let's make a new list and copy it over.
                     Word_t wRootLoop = 0;
-                    int nTypeLoop = T_LIST; (void)nTypeLoop;
+                    int nTypeLoop = T_LIST;
                     if ((nDigit == nDigitKey)
                         && (nPopCntLoop < auListPopCntMax[nBLLoop]))
                     {
@@ -5127,8 +5132,12 @@ lastDigit:;
                         ++nPopCntLoop;
                     }
 // How do we know if we bumped it? nn - nnStart?
+  #ifdef UA_PARALLEL_128
+                    if ((nBLLoop == 16) && (nPopCntLoop <= 6)) {
+                        nTypeLoop = T_LIST_UA;
+                    }
+  #endif // UA_PARALLEL_128
                     Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
-// What about UA_PARALLEL_128 and T_LIST_UA here?
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
                     snListBLR(qyx(Loop), nBLLoop);
@@ -5174,7 +5183,6 @@ lastDigit:;
                         } else {
                             uint16_t *psKeysLoop
                                 = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
-// What about UA_PARALLEL_128 and T_LIST_UA here?
                             if ((nDigit == nDigitKey)
                                 && ((nn - nnStart) < auListPopCntMax[nBLLoop]))
                             {
@@ -5190,7 +5198,12 @@ lastDigit:;
                             } else {
                                 COPY(psKeysLoop, &pwKeys[nnStart],
                                      nPopCntLoop);
-                                PAD(psKeysLoop, nPopCntLoop);
+  #ifdef UA_PARALLEL_128
+                                if (nTypeLoop == T_LIST_UA) {
+                                    UA_PAD(psKeysLoop, nPopCntLoop);
+                                } else
+  #endif // UA_PARALLEL_128
+                                { PAD(psKeysLoop, nPopCntLoop); }
                             }
                         }
           #if (cnBitsPerWord > 32)
@@ -5369,6 +5382,7 @@ lastDigit:;
     BJL(return pwValue);
     // Caller is going to insert wKey when we return.
 }
+#endif // SPLAY_WITH_INSERT
 
 // Insert each key from pwRootOld into pwRoot.  Then free pwRootOld.
 // wKey contains the common prefix.
@@ -7307,11 +7321,16 @@ InsertAtList(qp,
             assert(wPopCnt + 1 != 0);
             pwList = NewList(wPopCnt + 1, nBLR);
   #if defined(UA_PARALLEL_128)
-            if ((nBL == 16) && (wPopCnt < 6)) {
+            if ((nBL == 16) && (wPopCnt == 0)) {
       #ifdef XX_LIST
                 assert(nType != T_XX_LIST);
       #endif // XX_LIST
                 set_wr(wRoot, pwList, T_LIST_UA);
+            } else if ((nBL == 16) && (wPopCnt == 6)) {
+      #ifdef XX_LIST
+                assert(nType != T_XX_LIST);
+      #endif // XX_LIST
+                set_wr(wRoot, pwList, T_LIST);
             } else
   #endif // defined(UA_PARALLEL_128)
             { set_wr(wRoot, pwList, nType); }
@@ -8555,6 +8574,9 @@ embeddedKeys:;
 
 #if defined(UA_PARALLEL_128)
     if ((nBL == 16) && (wPopCnt - 1 <= 6)) {
+  #ifdef XX_LISTS
+        assert(nType != T_XX_LIST);
+  #endif // XX_LISTS
         assert(nBLR == nBL);
         set_wr_nType(wRoot, T_LIST_UA);
     }

@@ -2067,6 +2067,7 @@ t_bitmap:;
             // We have to be sure to handle that case below
             // for USE_XX_SW_ONLY_AT_DL2?
       #endif // USE_XX_SW_ONLY_AT_DL2
+      #ifdef B_JUDYL
       #ifdef PREFETCH_BM_VAL
       #ifdef LOOKUP
       #ifdef PACK_BM_VALUES
@@ -2084,6 +2085,7 @@ t_bitmap:;
       #endif // UNPACK_BM_VALUES
       #endif // LOOKUP
       #endif // PREFETCH_BM_VAL
+      #endif // B_JUDYL
             // Use compile-time tests to speed this up. Hopefully.
             int bBitIsSet =
      // We don't need/want to check for WROOT_NULL for embedded bitmap.

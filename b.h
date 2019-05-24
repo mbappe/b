@@ -306,10 +306,6 @@
   #endif // COMPRESSED_LISTS
 #endif // defined(PSPLIT_PARALLEL) && defined(PARALLEL_128)
 
-// Oops. Splay does not handle UA_PARALLEL_128 and T_LIST_UA at the moment so
-// we have to disable it until that is fixed.
-#undef UA_PARALLEL_128
-
 #ifndef COMPRESSED_LISTS
   #ifdef UA_PARALLEL_128
     #error UA_PARALLEL_128 without COMPRESSED_LISTS
@@ -6411,11 +6407,6 @@ LocateKeyInList16(qp, int nBLR, Word_t wKey)
     int nPos = 0;
   #if defined(PSPLIT_SEARCH_16)
       #ifdef PSPLIT_PARALLEL
-          #ifdef UA_PARALLEL_128
-    if ((nPopCnt <= 6) && (nBLR == 16)) {
-        PSPLIT_LOCATEKEY_128_96(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
-    } else
-          #endif // UA_PARALLEL_128
           #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     if (nBLR == 16) {
         PSPLIT_LOCATEKEY(Bucket_t, uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
