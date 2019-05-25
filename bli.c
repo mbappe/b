@@ -941,11 +941,14 @@ t_switch:;
             = gpwEmbeddedValue(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
       #ifdef PREFETCH_EK_VAL
       #ifdef LOOKUP
-        _mm_prefetch(pwValueUp, _MM_HINT_NTA);
+        PREFETCH(pwValueUp);
       #endif // LOOKUP
       #endif // PREFETCH_EK_VAL
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
+      #ifdef PREFETCH_PWR
+        PREFETCH(wr_pwr(pLnNew->ln_wRoot));
+      #endif // PREFETCH_PWR
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
         goto switchTail; // in case other uses go away by ifdef
@@ -969,7 +972,7 @@ switchTail:;
         IF_NOT_LOOKUP(pLnUp = pLn);
         IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
-        SwAdvance(pqy, pLnNew, nBW, &nBLR);
+        SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
   #ifdef BITMAP
         // Is there any reason to have
         // (cnBitsInD1 <= cnLogBitsPerLink)? What about lazy conversion
@@ -2068,23 +2071,29 @@ t_bitmap:;
             // for USE_XX_SW_ONLY_AT_DL2?
       #endif // USE_XX_SW_ONLY_AT_DL2
       #ifdef B_JUDYL
-      #ifdef PREFETCH_BM_VAL
       #ifdef LOOKUP
-      #ifdef PACK_BM_VALUES
+          #ifdef PACK_BM_VALUES
             char* pcPrefetch
                 = (char*)&gpwBitmapValues(qy, nBLR)[
                               Psplit(gwBitmapPopCnt(qy, nBLR),
                                         nBLR, /*nShift*/ 0, wKey)];
-            BJL(_mm_prefetch(pcPrefetch - 64, _MM_HINT_NTA));
-            BJL(_mm_prefetch(pcPrefetch     , _MM_HINT_NTA));
-            BJL(_mm_prefetch(pcPrefetch + 64, _MM_HINT_NTA));
-      #endif // PACK_BM_VALUES
-      #ifdef UNPACK_BM_VALUES
-            BJL(_mm_prefetch(&gpwBitmapValues(qy, nBLR)[wKey & MSK(nBLR)],
-                             _MM_HINT_NTA));
-      #endif // UNPACK_BM_VALUES
+            (void)pcPrefetch;
+              #ifdef PREFETCH_BM_PREV_VAL
+            PREFETCH(pcPrefetch - 64);
+              #endif // PREFETCH_BM_PREV_VAL
+              #ifdef PREFETCH_BM_PSPLIT_VAL
+            PREFETCH(pcPrefetch);
+              #endif // PREFETCH_BM_PSPLIT_VAL
+              #ifdef PREFETCH_BM_NEXT_VAL
+            PREFETCH(pcPrefetch + 64);
+              #endif // PREFETCH_BM_NEXT_VAL
+          #endif // PACK_BM_VALUES
+          #ifdef UNPACK_BM_VALUES
+          #ifdef PREFETCH_BM_VAL
+            PREFETCH(&gpwBitmapValues(qy, nBLR)[wKey & MSK(nBLR)];
+          #endif // PREFETCH_BM_VAL
+          #endif // UNPACK_BM_VALUES
       #endif // LOOKUP
-      #endif // PREFETCH_BM_VAL
       #endif // B_JUDYL
             // Use compile-time tests to speed this up. Hopefully.
             int bBitIsSet =

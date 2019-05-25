@@ -157,6 +157,8 @@
     #define    PREFETCH_LOCATE_KEY_8_END_VAL
   #endif // NO_PREFETCH_LOCATE_KEY_8_END_VAL
 
+  // Default is no PREFETCH_BM_[PSPLIT|NEXT|PREV]_VAL
+
 #endif // B_JUDYL
 
 #ifdef DOUBLE_DOWN
@@ -442,6 +444,19 @@
   #undef             SEARCH_FROM_WRAPPER
   #define            SEARCH_FROM_WRAPPER
 #endif // #ifndef NO_SEARCH_FROM_WRAPPER
+
+#ifdef BM_POP_IN_WR_HB
+//#if (cn2dBmMaxWpkPercent != 0) && (cnBitsLeftAtDl2 > cnBitsCnt)
+  #undef BM_POP_IN_WR_HB
+//#endif // (cn2dBmMaxWpkPercent != 0) && (cnBitsLeftAtDl2 > cnBitsCnt)
+//#if (cnBitsInDl1 > cnBitsCnt)
+  #undef BM_POP_IN_WR_HB
+//#endif // (cnBitsInDl1 > cnBitsCnt)
+// B_JUDYL is a poor substitute for the ifdefs above.
+#ifndef B_JUDYL
+  #undef BM_POP_IN_WR_HB
+#endif // #ifndef B_JUDYL
+#endif // BM_POP_IN_WR_HB
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 

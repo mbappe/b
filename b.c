@@ -9366,6 +9366,48 @@ Initialize(void)
     printf("# No PREFETCH_BM_VAL\n");
 #endif // #else  PREFETCH_BM_VAL
 
+#ifdef           PREFETCH_BM_PSPLIT_VAL
+    printf("#    PREFETCH_BM_PSPLIT_VAL\n");
+#else //         PREFETCH_BM_PSPLIT_VAL
+    printf("# No PREFETCH_BM_PSPLIT_VAL\n");
+#endif // #else  PREFETCH_BM_PSPLIT_VAL
+
+#ifdef           PREFETCH_BM_NEXT_VAL
+    printf("#    PREFETCH_BM_NEXT_VAL\n");
+#else //         PREFETCH_BM_NEXT_VAL
+    printf("# No PREFETCH_BM_NEXT_VAL\n");
+#endif // #else  PREFETCH_BM_NEXT_VAL
+
+#ifdef           PREFETCH_BM_PREV_VAL
+    printf("#    PREFETCH_BM_PREV_VAL\n");
+#else //         PREFETCH_BM_PREV_VAL
+    printf("# No PREFETCH_BM_PREV_VAL\n");
+#endif // #else  PREFETCH_BM_PREV_VAL
+
+#ifdef           PREFETCH_PWR
+    printf("#    PREFETCH_PWR\n");
+#else //         PREFETCH_PWR
+    printf("# No PREFETCH_PWR\n");
+#endif // #else  PREFETCH_PWR
+
+#if defined(BUILTIN_PREFETCH_0)
+    printf("# BUILTIN_PREFETCH_0\n");
+#elif defined(BUILTIN_PREFETCH_1)
+    printf("# BUILTIN_PREFETCH_1\n");
+#elif defined(BUILTIN_PREFETCH_2)
+    printf("# BUILTIN_PREFETCH_2\n");
+#elif defined(BUILTIN_PREFETCH_3)
+    printf("# BUILTIN_PREFETCH_3\n");
+#elif defined(INTEL_PREFETCH_NTA)
+    printf("# INTEL_PREFETCH_NTA\n");
+#elif defined(INTEL_PREFETCH_T0)
+    printf("# INTEL_PREFETCH_T0\n");
+#elif defined(INTEL_PREFETCH_T1)
+    printf("# INTEL_PREFETCH_T1\n");
+#elif defined(INTEL_PREFETCH_T2)
+    printf("# INTEL_PREFETCH_T1\n");
+#endif
+
 #if defined(USE_XX_SW)
     printf("#    USE_XX_SW\n");
 #else // defined(USE_XX_SW)

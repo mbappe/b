@@ -4,9 +4,14 @@
 # used by git bisect run.
 
 : \
+&& DEFINES="-DPACK_BM_VALUES -DcnListPopCntMax64=16 -DcnListPopCntMaxDl1=16 \
+-DDEBUG" \
+   make clean default \
+&& regress \
 && DEFINES="-DSPLAY_WITH_INSERT -DDOUBLE_DOWN -DUSE_LOWER_XX_SW \
 -DcnListPopCntMax64=16 -DNO_USE_BM_SW -DDEBUG" \
    make clean default \
+&& regress \
 && DEFINES="-DSPLAY_WITH_INSERT -DDOUBLE_DOWN -DUSE_LOWER_XX_SW \
 -DNO_EMBED_KEYS -DcnListPopCntMax64=16 -DNO_USE_BM_SW -DDEBUG" \
    make clean default \

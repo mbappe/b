@@ -1700,49 +1700,54 @@ tp_bIsBitmap(int nType)
         ;
 }
 
-// Bit fields in the upper bits of of wRoot.
-// (cnBitsLvl, cnLsbLvl) is the level of the node pointed to.
-// XxSwWidth is the log of the number of virtual links in the switch.
-// ListPopCnt is the number of keys in the list minus 1.
-// ListSwPopM1 is the number of links in the list switch minus one.
-// A field at the end is faster to extract than a field in the middle.
-
-#if (cnBitsInD1 == 9) // useful for BM_IN_LINK and no embedded bitmap
-  #define cnBitsListPopCnt  9
-  #define cnBitsLvl  7
-#else // (cnBitsInD1 == 9)
-  #define cnBitsListPopCnt  8
-  #define cnBitsLvl  8 // 8 is easier to read in debug output than 7
-#endif // #else (cnBitsInD1 == 9)
-
-#define cnLsbListPopCnt  cnBitsVirtAddr
-#define cnLsbLvl  (cnBitsPerWord - cnBitsLvl)
-
 #ifdef B_JUDYL
-      #if (cnBitsPerWord > 32)
-  // Use the high bit in wRoot to indicate an uncompressed bitmap value area.
-  #define cnLsbBmUncompressed  (cnBitsPerWord - 1)
-      #endif // (cnBitsPerWord > 32)
+  #ifdef UNPACK_BM_VALUES
+  #ifdef PACK_BM_VALUES
+  #if (cnBitsPerWord > 32)
+    #define _TEST_BM_UNCOMPRESSED
+  #endif // (cnBitsPerWord > 32)
+  #endif // PACK_BM_VALUES
+  #endif // UNPACK_BM_VALUES
+
+  #ifdef _TEST_BM_UNCOMPRESSED
+    #define BM_UNCOMPRESSED(_wRoot)  ((_wRoot) & EXP(cnLsbBmUncompressed))
+  #elif defined(UNPACK_BM_VALUES) // _TEST_BM_UNCOMPRESSED
+    #define BM_UNCOMPRESSED(_wRoot)  1
+  #else // #elif defined(UNPACK_BM_VALUES) // _TEST_BM_UNCOMPRESSED
+    #define BM_UNCOMPRESSED(_wRoot)  0
+  #endif // #else // #elif defined(UNPACK_BM_VALUES) // _TEST_BM_UNCOMPRESSED
 #endif // B_JUDYL
 
-#define cnBitsXxSwWidth  6
+// Bit fields in the upper bits of of wRoot.
+// (cnBitsLvl, cnLsbLvl) is the level of the node pointed to.
+#ifdef _TEST_BM_UNCOMPRESSED
+  #define cnBitsLvl  7
+  #define cnBitsFlg  1
+  #define cnLsbFlg  (cnBitsPerWord - cnBitsLvl - cnBitsFlg)
+#else // _TEST_BM_UNCOMPRESSED
+  #define cnBitsLvl  8
+#endif // _TEST_BM_UNCOMPRESSED
+#define cnLsbLvl   (cnBitsPerWord - cnBitsLvl)
+#define cnBitsCnt  8
+#define cnLsbCnt   cnBitsVirtAddr
 
-#if (cnBitsPerWord > 32) && defined(SKIP_TO_XX_SW)
-  #define cnLsbXxSwWidth  cnBitsVirtAddr
-#else // (cnBitsPerWord > 32) && defined(SKIP_TO_XX_SW)
-  // This applies to the preamble word for 32-bit -- not to wRoot.
-  // There is no collision with cnLsbLvl because level is put
-  // elsewhere for 32-bit.
-  #define cnLsbXxSwWidth  (cnBitsPerWord - cnBitsXxSwWidth)
-#endif // (cnBitsPerWord > 32) && defined(SKIP_TO_XX_SW)
+// ListPopCnt is the number of keys in the list minus 1.
+#define cnBitsListPopCnt  cnBitsCnt
+#define cnLsbListPopCnt   cnLsbCnt
 
-#define cnBitsListSwPopM1  8 // for T_LIST_SW
+#ifdef _TEST_BM_UNCOMPRESSED
+    #define cnLsbBmUncompressed  cnLsbFlg
+#endif // _TEST_BM_UNCOMPRESSED
 
-#if defined(SKIP_TO_LIST_SW)
-    #define cnLsbListSwPopM1  cnBitsVirtAddr
-#else // defined(SKIP_TO_LIST)
-    #define cnLsbListSwPopM1  (cnBitsPerWord - cnBitsListSwPopM1)
-#endif // defined(SKIP_TO_LIST)
+// XxSwWidth is the log of the number of virtual links in the switch.
+// For 32-bit, cn[Bits|Lsb]XxSwWidth applies to the preamble
+// word -- not to wRoot.
+#define cnBitsXxSwWidth  cnBitsCnt
+#define cnLsbXxSwWidth   cnLsbCnt
+
+// ListSwPopM1 is the number of links in the list switch minus one.
+#define cnBitsListSwPopM1  cnBitsCnt // for T_LIST_SW
+#define cnLsbListSwPopM1   cnLsbCnt
 
 #if defined(CODE_XX_SW)
 static inline Word_t
@@ -2809,7 +2814,11 @@ static inline void
 Set_nBLR(Word_t *pwRoot, int nBLR)
 {
   #ifdef LVL_IN_WR_HB
-    assert(nBLR <= (int)MSK(cnBitsLvl));
+    // nBLR may get set to cnBitsPerWord and it will be masked and later
+    // read as zero. But we'll never read it because we never skip to
+    // cnBitsPerWord.
+    assert(cnLogBitsPerWord <= cnBitsLvl);
+    assert(nBLR <= cnBitsPerWord);
     SetBits(pwRoot, cnBitsLvl, cnLsbLvl, nBLR);
   #else // LVL_IN_WR_HB
       #ifndef PP_IN_LINK
@@ -2950,7 +2959,13 @@ gnListBLR(qp)
         return nBL;
     }
   #ifdef LVL_IN_WR_HB
-    return GetBits(wRoot, cnBitsLvl, cnLsbLvl);
+    int nBLR = GetBits(wRoot, cnBitsLvl, cnLsbLvl);
+      #ifdef XX_LISTS
+      #if (cnBitsLvl == cnLogBitsPerWord)
+    if (nBLR == 0) { nBLR = 64; }
+      #endif // (cnBitsLvl == cnLogBitsPerWord)
+      #endif // XX_LISTS
+    return nBLR;
   #elif defined(PP_IN_LINK)
     return wr_nBLR(wRoot);
   #else // LVL_IN_WR_HB #elif def(PP_IN_LINK)
@@ -3176,8 +3191,12 @@ static Word_t
 gwBitmapPopCnt(qp, int nBLR)
 {
     qv; (void)nBLR;
+    Word_t wPopCnt;
   #ifdef _BM_POP_IN_LINK_X
-    Word_t wPopCnt = PWR_wPopCntBL(pwRoot, pwr, nBLR);
+    wPopCnt = PWR_wPopCntBL(pwRoot, pwr, nBLR);
+    if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop
+  #elif defined(BM_POP_IN_WR_HB)
+    wPopCnt = GetBits(*pwRoot, cnBitsCnt, cnLsbCnt);
     if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop
   #else // _BM_POP_IN_LINK_X
     // No need to handle embedded bitmaps here.
@@ -3189,7 +3208,7 @@ gwBitmapPopCnt(qp, int nBLR)
            );
     assert((wr_nType(WROOT_NULL) != T_BITMAP) || (wRoot != WROOT_NULL));
     BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
-    Word_t wPopCnt = pBmLeaf->bmlf_wPopCnt;
+    wPopCnt = pBmLeaf->bmlf_wPopCnt;
       #ifdef SKIP_TO_BITMAP
       #ifndef PREFIX_WORD_IN_BITMAP_LEAF
           #if !defined(KISS_BM) && !defined(KISS)
@@ -3231,6 +3250,8 @@ swBitmapPopCnt(qp, int nBLR, Word_t wPopCnt)
     qv; (void)nBLR;
   #ifdef _BM_POP_IN_LINK_X
     set_PWR_wPopCntBL(pwRoot, pwr, nBLR, wPopCnt);
+  #elif defined(BM_POP_IN_WR_HB)
+    SetBits(pwRoot, cnBitsCnt, cnLsbCnt, wPopCnt);
   #else // _BM_POP_IN_LINK_X
     assert((wr_nType(WROOT_NULL) != T_BITMAP) || (wRoot != WROOT_NULL));
     BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
@@ -4316,6 +4337,30 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 #define _PF_LK_PV(_x)
 #endif // #else PREFETCH_LOCATEKEY_PREV_VAL
 
+// I looked at executables generated on asus on 160403.
+// The second argument to __builtin_prefetch is ignored.
+// And _mm_prefetch results in different code than __builtin_prefetch.
+#if defined(BUILTIN_PREFETCH_0)
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 0)
+#elif defined(BUILTIN_PREFETCH_1)
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 1)
+#elif defined(BUILTIN_PREFETCH_2)
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 2)
+#elif defined(BUILTIN_PREFETCH_3)
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 3)
+#elif defined(INTEL_PREFETCH_NTA)
+  #define PREFETCH(_p)  _mm_prefetch((_p), _MM_HINT_NTA) // 3
+#elif defined(INTEL_PREFETCH_T0)
+  #define PREFETCH(_p)  _mm_prefetch((_p), _MM_HINT_T0) // 2
+#elif defined(INTEL_PREFETCH_T1)
+  #define PREFETCH(_p)  _mm_prefetch((_p), _MM_HINT_T1) // 1
+#elif defined(INTEL_PREFETCH_T2)
+  #define PREFETCH(_p)  _mm_prefetch((_p), _MM_HINT_T2) // 0
+#else
+  #define BUILTIN_PREFETCH_0
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 0)
+#endif
+
 // PSPLIT_LOCATEKEY_GUTS uses qy for prefetch but qy is not in the parameter
 // list. Shame on us.
 #define PSPLIT_LOCATEKEY_GUTS(_b_t, _x_t, _nBL, _xShift, \
@@ -4329,9 +4374,9 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     int nSplit = Psplit((_nPopCnt), (_nBL), (_xShift), (_xKey)); \
     /* What hint should we use for prefetch? NTA, T0, T1, ... */ \
     BJL(char* pcPrefetch = (char*)&gpwValues(qy)[~nSplit]; (void)pcPrefetch); \
-    _PF_LK(BJL(_mm_prefetch(pcPrefetch, _MM_HINT_NTA))); \
-    _PF_LK_NX(BJL(_mm_prefetch(pcPrefetch - 64, _MM_HINT_NTA))); \
-    _PF_LK_PV(BJL(_mm_prefetch(pcPrefetch + 64, _MM_HINT_NTA))); \
+    _PF_LK(BJL(PREFETCH(pcPrefetch))); \
+    _PF_LK_NX(BJL(PREFETCH(pcPrefetch - 64))); \
+    _PF_LK_PV(BJL(PREFETCH(pcPrefetch + 64))); \
     /* nSplitP is nSplit rounded down to the first key in the bucket */ \
     int nSplitP = nSplit * sizeof(_x_t) / sizeof(_b_t); \
     assert((int)((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
@@ -6336,11 +6381,11 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
     // Prefetch the cache line before the keys.
     // Fetching the keys brings in 0 - 6 values.
     // We'll end up with 8 - 14 values.
-    BJL(_mm_prefetch(&pcValues[~7], _MM_HINT_NTA));
+    BJL(PREFETCH(&pcValues[~7]));
   #endif // PREFETCH_LOCATE_KEY_8_BEG_VAL
   #ifdef PREFETCH_LOCATE_KEY_8_END_VAL
     // And the one before that.
-    BJL(_mm_prefetch(&pcValues[~15], _MM_HINT_NTA));
+    BJL(PREFETCH(&pcValues[~15]));
   #endif // PREFETCH_LOCATE_KEY_8_END_VAL
   #if defined(OLD_LISTS) && defined(HK40_EXPERIMENT)
     nPos = LocateKey40(pwr, wKey);
@@ -6756,25 +6801,5 @@ extern Word_t j__AllocWordsJV;   // value area
   #endif // SKIP_TO_BITMAP
 #endif // #ifndef LVL_IN_PP
 #endif // #ifndef LVL_IN_WR_HB
-
-#ifdef B_JUDYL
-
-#ifdef UNPACK_BM_VALUES
-#ifdef PACK_BM_VALUES
-#if (cnBitsPerWord > 32)
-  #define _TEST_BM_UNCOMPRESSED
-#endif // (cnBitsPerWord > 32)
-#endif // PACK_BM_VALUES
-#endif // UNPACK_BM_VALUES
-
-#ifdef _TEST_BM_UNCOMPRESSED
-  #define BM_UNCOMPRESSED(_wRoot)  ((_wRoot) & EXP(cnLsbBmUncompressed))
-#elif defined(UNPACK_BM_VALUES)
-  #define BM_UNCOMPRESSED(_wRoot)  1
-#else
-  #define BM_UNCOMPRESSED(_wRoot)  0
-#endif
-
-#endif // B_JUDYL
 
 #endif // ( ! defined(_B_H_INCLUDED) )
