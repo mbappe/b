@@ -447,10 +447,10 @@
 
 #ifdef BM_POP_IN_WR_HB
 //#if (cn2dBmMaxWpkPercent != 0) && (cnBitsLeftAtDl2 > cnBitsCnt)
-  #undef BM_POP_IN_WR_HB
+//#undef BM_POP_IN_WR_HB
 //#endif // (cn2dBmMaxWpkPercent != 0) && (cnBitsLeftAtDl2 > cnBitsCnt)
 //#if (cnBitsInDl1 > cnBitsCnt)
-  #undef BM_POP_IN_WR_HB
+//#undef BM_POP_IN_WR_HB
 //#endif // (cnBitsInDl1 > cnBitsCnt)
 // B_JUDYL is a poor substitute for the ifdefs above.
 #ifndef B_JUDYL

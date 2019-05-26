@@ -9225,6 +9225,12 @@ Initialize(void)
     printf("# No POP_IN_WR_HB\n");
 #endif // defined(POP_IN_WR_HB)
 
+#ifdef           BM_POP_IN_WR_HB
+    printf("#    BM_POP_IN_WR_HB\n");
+#else //         BM_POP_IN_WR_HB
+    printf("# No BM_POP_IN_WR_HB\n");
+#endif // #else  BM_POP_IN_WR_HB
+
 #if defined(LIST_POP_IN_PREAMBLE)
     printf("#    LIST_POP_IN_PREAMBLE\n");
 #else // defined(LIST_POP_IN_PREAMBLE)
