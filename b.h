@@ -2726,12 +2726,6 @@ snBW(qp, int nBW)
     #define SW_LIST  uint8_t sw_aKeys[1<<(sizeof(uint8_t)*8)];
 #endif // defined(SW_LIST_IN_LINK)
 
-#if defined(BM_IN_LINK)
-    #define SW_BM
-#else // defined(BM_IN_LINK)
-    #define SW_BM  Word_t sw_awBm[N_WORDS_SWITCH_BM];
-#endif // defined(BM_IN_LINK)
-
 #if !defined(PP_IN_LINK) && (defined(SKIP_LINKS) || !defined(POP_WORD))
     #define SW_PREFIX_POP  Word_t sw_wPrefixPop;
 #else // !defined(PP_IN_LINK) && (defined(SKIP_LINKS) || !defined(POP_WORD))
@@ -2759,11 +2753,9 @@ snBW(qp, int nBW)
     SW_DUMMIES
 
 // Uncompressed, basic switch.
+// Also used for BmSwitch_t. Bitmap resides in front of SW_COMMON_HDR.
 typedef struct {
     SW_COMMON_HDR
-#if defined(USE_BM_SW) && defined(BM_IN_NON_BM_SW)
-    SW_BM
-#endif // defined(USE_BM_SW) && defined(BM_IN_NON_BM_SW)
     Link_t sw_aLinks[0]; // variable size
 } Switch_t;
 
