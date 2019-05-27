@@ -1940,6 +1940,16 @@ t_skip_to_bitmap:;
     {
         goto t_bitmap;
 t_bitmap:;
+  #ifdef PREFETCH_BMLF_CNTS
+  #ifdef LOOKUP
+      #ifdef BMLF_CNTS
+        PREFETCH(((BmLeaf_t*)pwr)->bmlf_au8Cnts);
+      #else // BMLF_CNTS
+        PREFETCH(((BmLeaf_t*)pwr)->bmlf_awBitmap);
+        PREFETCH((char*)(((BmLeaf_t*)pwr)->bmlf_awBitmap) + 64);
+      #endif // BMLF_CNTS
+  #endif // LOOKUP
+  #endif // PREFETCH_BMLF_CNTS
   #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
       #if defined(INSERT) && defined(B_JUDYL)
@@ -2073,6 +2083,13 @@ t_bitmap:;
       #ifdef B_JUDYL
       #ifdef LOOKUP
           #ifdef PACK_BM_VALUES
+// Note: I'm hypothesizing that the penalty for a branch misprediction is
+// exacerbated when prefetching is done on both forks of the branch.
+// For example, T_LIST vs T_BITMAP(packed) at nBLR==cnBitsInD1.
+// We could structure the leaves so that both sides would want to prefetch
+// the exact same cache lines relative to pwr and be able to initiate the
+// prefetch before the switch;
+// pop in wRoot and value area starting at pwr[-1].
             char* pcPrefetch
                 = (char*)&gpwBitmapValues(qy, nBLR)[
                               Psplit(gwBitmapPopCnt(qy, nBLR),

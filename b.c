@@ -1115,14 +1115,17 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
     // the bitmap leaf (including an estimated 1 word of malloc overhead) plus
     // 1 word in the switch for wRoot and one word in the switch
     // for an embedded value.
+      #ifdef UNPACK_BM_VALUES
     Word_t wFullPopWordsMin = wWordsHdr + EXP(nBLR);
+      #endif // UNPACK_BM_VALUES
       #ifdef PACK_BM_VALUES
+          #ifdef UNPACK_BM_VALUES
     Word_t wFullPopWordsMinPlusMalloc = (wFullPopWordsMin | 1) + 1;
     Word_t wFullPopWordsMinPlusX
         = wFullPopWordsMinPlusMalloc + sizeof(Link_t) / sizeof(Word_t);
-          #ifdef EMBED_KEYS
+              #ifdef EMBED_KEYS
     ++wFullPopWordsMinPlusX; // Value word in switch.
-          #endif // EMBED_KEYS
+              #endif // EMBED_KEYS
     // Max pop with compressed value area.
     Word_t wPopCntMax
         = wFullPopWordsMinPlusX
@@ -1135,6 +1138,7 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
     if (wPopCnt > wPopCntMax) {
         return wFullPopWordsMin;
     }
+          #endif // UNPACK_BM_VALUES
     Word_t wWordsMin = wWordsHdr + wPopCnt; // space for hdr + values
     wWords = wWordsMin | 1; // make efficent for malloc
     assert(wWords >= 3); // minimum efficient for malloc
@@ -2198,8 +2202,8 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
         Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR);
         if (bDump) {
             printf(" nBLR %2d", nBLR);
-            printf(" wPopCnt %" _fw"d", wPopCnt);
             printf(" nWords %4" _fw"d", EXP(nBLR - cnLogBitsPerWord));
+            printf(" wPopCnt %" _fw"d", wPopCnt);
             Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
             for (Word_t ww = 0; (ww < EXP(nBLR - cnLogBitsPerWord)); ww++) {
                 if ((ww % 8) == 0) {
@@ -3600,6 +3604,12 @@ InsertAllAtBitmap(qp, qpx(Old), int nStart, int nPopCnt)
         }
   #endif // B_JUDYL
     }
+  #ifdef BMLF_CNTS
+    for (Word_t ww = 0; ww < EXP(cnBitsInD1 - cnLogBitsPerWord); ++ww) {
+        ((BmLeaf_t*)pwr)->bmlf_au8Cnts[ww]
+            = __builtin_popcountll(pwBitmap[ww]);
+    }
+  #endif // BMLF_CNTS
 }
 #endif // BITMAP
 
@@ -8247,6 +8257,11 @@ InsertAtBitmap(qp, Word_t wKey)
         Word_t *pwBitmapOld = pwBitmap;
         pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
         COPY(pwBitmap, pwBitmapOld, nBmWords);
+      #ifdef BMLF_CNTS
+        COPY(((BmLeaf_t*)pwr)->bmlf_au8Cnts,
+             ((BmLeaf_t*)pwrOld)->bmlf_au8Cnts,
+             sizeof(((BmLeaf_t*)pwr)->bmlf_au8Cnts));
+      #endif // BMLF_CNTS
         Word_t *pwTgtVals = gpwBitmapValues(qy, nBLR);
         if (BM_UNCOMPRESSED(wRoot)) {
             for (int k = 0; k < (int)EXP(nBLR); ++k) {
@@ -8271,6 +8286,10 @@ done:
 #endif // B_JUDYL
         swBitmapPopCnt(qy, nBLR, wPopCnt + 1);
     }
+  #ifdef BMLF_CNTS
+    int nBmWord = (wKey >> cnLogBitsPerWord) & MSK(cnBitsInD1 - cnLogBitsPerWord);
+    ++((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBmWord];
+  #endif // BMLF_CNTS
     SetBit(pwBitmap, wKey & MSK(nBLR));
 
 #if defined(PP_IN_LINK)
@@ -8886,6 +8905,11 @@ RemoveAtBitmap(qp, Word_t wKey)
             Word_t *pwBitmapOld = pwBitmap;
             pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
             COPY(pwBitmap, pwBitmapOld, nBmWords);
+      #ifdef BMLF_CNTS
+            COPY(((BmLeaf_t*)pwr)->bmlf_au8Cnts,
+                 ((BmLeaf_t*)pwrOld)->bmlf_au8Cnts,
+                 sizeof(((BmLeaf_t*)pwr)->bmlf_au8Cnts));
+      #endif // BMLF_CNTS
             Word_t *pwTgtVals = gpwBitmapValues(qy, nBLR);
             if (bUncompressed) {
                 for (int k = 0; k < (int)EXP(nBLR); ++k) {
@@ -8913,6 +8937,10 @@ done:
             swBitmapPopCnt(qy, nBLR, wPopCnt);
         }
         ClrBit(pwBitmap, wKey & MSK(nBLR));
+  #ifdef BMLF_CNTS
+        int nBmWord = (wKey >> cnLogBitsPerWord) & MSK(cnBitsInD1 - cnLogBitsPerWord);
+        --((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBmWord];
+  #endif // BMLF_CNTS
 
 #if defined(DEBUG_COUNT)
         Word_t wPopCntDbg = 0;
@@ -9194,6 +9222,18 @@ Initialize(void)
 #endif // defined(BPD_TABLE_RUNTIME_INIT)
 
     printf("\n");
+
+#ifdef           BMLF_CNTS
+    printf("#    BMLF_CNTS\n");
+#else //         BMLF_CNTS
+    printf("# No BMLF_CNTS\n");
+#endif // #else  BMLF_CNTS
+
+#ifdef           PREFETCH_BMLF_CNTS
+    printf("#    PREFETCH_BMLF_CNTS\n");
+#else //         PREFETCH_BMLF_CNTS
+    printf("# No PREFETCH_BMLF_CNTS\n");
+#endif // #else  PREFETCH_BMLF_CNTS
 
 #ifdef           XX_LISTS
     printf("#    XX_LISTS\n");

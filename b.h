@@ -2799,6 +2799,9 @@ typedef struct {
   #else // #elif defined(POP_WORD) && !defined(POP_WORD_IN_LINK)
     #define bmlf_wPopCnt  bmlf_wPrefixPop
   #endif // #else defined(POP_WORD) && !defined(POP_WORD_IN_LINK)
+  #ifdef BMLF_CNTS
+    uint8_t bmlf_au8Cnts[cnBytesPerWord];
+  #endif // BMLF_CNTS
     Word_t bmlf_awBitmap[0];
 } BmLeaf_t;
 
@@ -2902,10 +2905,18 @@ BmIndex(qp, int nBLR, Word_t wKey)
     int nBmWordNum = wDigit >> cnLogBitsPerWord;
     Word_t wBmWord = pwBmWords[nBmWordNum]; // word we want
     Word_t wBmBitMask = EXP(wDigit & (cnBitsPerWord - 1));
+#ifdef BMLF_CNTS
+    void* pvCnts = ((BmLeaf_t*)pwr)->bmlf_au8Cnts;
+    Word_t *pwCnts = pvCnts;
+    Word_t wSums = *pwCnts * 0x01010100;
+    uint8_t *pu8Sums = (void*)&wSums;
+    Word_t wIndex = pu8Sums[nBmWordNum];
+#else // BMLF_CNTS
     Word_t wIndex = 0;
     for (int nn = 0; nn < nBmWordNum; nn++) {
         wIndex += __builtin_popcountll(pwBmWords[nn]);
     }
+#endif // #else BMLF_CNTS
     wIndex += __builtin_popcountll(wBmWord & (wBmBitMask - 1));
     if ((wBmWord & wBmBitMask) == 0) {
         wIndex ^= -1;
