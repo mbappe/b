@@ -9234,6 +9234,24 @@ Initialize(void)
 
     printf("\n");
 
+#ifdef           BM_SW_CNT_IN_WR
+    printf("#    BM_SW_CNT_IN_WR\n");
+#else //         BM_SW_CNT_IN_WR
+    printf("# No BM_SW_CNT_IN_WR\n");
+#endif // #else  BM_SW_CNT_IN_WR
+
+#ifdef           PREFETCH_BM_LN
+    printf("#    PREFETCH_BM_LN\n");
+#else //         PREFETCH_BM_LN
+    printf("# No PREFETCH_BM_LN\n");
+#endif // #else  PREFETCH_BM_LN
+
+#ifdef           PREFETCH_BM_EK_
+    printf("#    PREFETCH_BM_EK\n");
+#else //         PREFETCH_BM_EK
+    printf("# No PREFETCH_BM_EK\n");
+#endif // #else  PREFETCH_BM_EK
+
 #ifdef           BMLF_CNTS
     printf("#    BMLF_CNTS\n");
 #else //         BMLF_CNTS
