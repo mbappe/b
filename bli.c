@@ -1200,6 +1200,33 @@ t_bm_sw:;
             int bLinkPresent; // need less local bLinkPresent for COUNT
   #endif // ! defined(COUNT)
   #if defined(BM_SW_FOR_REAL)
+            char* pcPrefetch; (void)pcPrefetch;
+      #ifndef OFFSET_IN_SW_BM_WORD
+            pcPrefetch = (void*)PWR_pwBm(&pLn->ln_wRoot, pwr);
+            PREFETCH(pcPrefetch);
+            PREFETCH(pcPrefetch + 64);
+      #endif // #ifndef OFFSET_IN_SW_BM_WORD
+      #ifdef B_JUDYL
+      #if (cnBitsPerWord > 32)
+            int nLinkCnt = BmSwLinkCnt(qy);
+            wSwIndex = Psplit(nLinkCnt, nBW, /*nShift*/ 0, wDigit);
+            (void)wSwIndex;
+          #ifdef PREFETCH_BM_LN
+            pcPrefetch = (void*)&pwr_pLinks((BmSwitch_t*)pwr)[wSwIndex];
+            PREFETCH(pcPrefetch - 64);
+            PREFETCH(pcPrefetch);
+            PREFETCH(pcPrefetch + 64);
+          #endif // PREFETCH_BM_LN
+          #ifdef EMBED_KEYS
+          #ifdef PREFETCH_BM_EK
+            pcPrefetch = (void*)gpwEmbeddedValue(qy, nLinkCnt, wSwIndex);
+            PREFETCH(pcPrefetch - 64);
+            PREFETCH(pcPrefetch);
+            PREFETCH(pcPrefetch + 64);
+          #endif // PREFETCH_BM_EK
+          #endif // EMBED_KEYS
+      #endif // (cnBitsPerWord > 32)
+      #endif // B_JUDYL
       #ifdef ONE_BM_SW_INDEX_CALL
             BmSwIndex(qy, wDigit, &wSwIndex, &bLinkPresent);
       #else // ONE_BM_SW_INDEX_CALL

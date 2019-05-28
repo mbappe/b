@@ -1479,6 +1479,11 @@ NewSwitchX(Word_t *pwRoot, Word_t wKey, int nBLR,
         } else
   #endif // defined(SKIP_TO_BM_SW)
         { set_wr(*pwRoot, pwr, T_BM_SW); }
+  #if (cnBitsPerWord > 32)
+  #ifdef BM_SW_CNT_IN_WR
+        SetBits(pwRoot, cnBitsCnt, cnLsbCnt, nLinkCnt - 1);
+  #endif // BM_SW_CNT_IN_WR
+  #endif // (cnBitsPerWord > 32)
     } else
 #endif // defined(CODE_BM_SW)
     {
@@ -2003,6 +2008,12 @@ printf("retyping full bmsw\n");
   #endif // defined(LVL_IN_WR_HB)
         }
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
+
+  #if (cnBitsPerWord > 32)
+  #ifdef BM_SW_CNT_IN_WR
+        SetBits(pwRoot, cnBitsCnt, cnLsbCnt, nLinkCnt + 1 - 1);
+  #endif // BM_SW_CNT_IN_WR
+  #endif // (cnBitsPerWord > 32)
 
         // &wRoot won't cut it for BM_IN_LINK. Really?
         OldSwitch(&wRoot, nBLUp, /* bBmSw */ 1, nLinkCnt);
