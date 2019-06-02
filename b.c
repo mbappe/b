@@ -6899,6 +6899,7 @@ newSkipToBitmap:;
                   (nBLNew <= nDL_to_nBL(2)) ? T_SWITCH :
       #endif // defined(USE_XX_SW)
                   // Don't waste time with T_BM_SW if splaying a big list.
+// Shouldn't we be using an equivalent to InflateBmSwTest(qy) here?
                   // Use T_BM_SW if splaying a small list or handling a prefix
                   // mismatch.
                   // This should be fine-tuned for Judy1 vs. JudyL with

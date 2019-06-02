@@ -3388,7 +3388,8 @@ InflateBmSwTest(qp) // qp points to BM switch
   #endif // EMBED_KEYS
 #endif // B_JUDYL
 
-// inflate <==> inflated total-words / pop < words-per-key
+// inflate <==> inflated total-words / pop < words-per-key threshold
+// How do we estimate inflated total words?
 // (bytes-in-sw + bytes-below-sw) / sizeof(Word_t) / pop < wpk
 // (bytes-in-sw + bytes-below-sw) / sizeof(Word_t) / pop < convert/retain
 // (bytes-in-sw + bytes-below-sw) / pop < sizeof(Word_t) * convert/retain
