@@ -9400,6 +9400,24 @@ Initialize(void)
     printf("# No USE_LOCATE_FOR_NO_PACK\n");
 #endif // defined(USE_LOCATE_FOR_NO_PACK)
 
+#ifdef           NO_BM_SW_CNT_IN_WR_HB
+    printf("#    NO_BM_SW_CNT_IN_WR_HB\n");
+#else //         NO_BM_SW_CNT_IN_WR_HB
+    printf("# No NO_BM_SW_CNT_IN_WR_HB\n");
+#endif //        NO_BM_SW_CNT_IN_WR_HB
+
+#ifdef           NO_OFFSET_IN_SW_BM_WORD
+    printf("#    NO_OFFSET_IN_SW_BM_WORD\n");
+#else //         NO_OFFSET_IN_SW_BM_WORD
+    printf("# No NO_OFFSET_IN_SW_BM_WORD\n");
+#endif //        NO_OFFSET_IN_SW_BM_WORD
+
+#ifdef           NO_PREFETCH_BM_LN
+    printf("#    NO_PREFETCH_BM_LN\n");
+#else //         NO_PREFETCH_BM_LN
+    printf("# No NO_PREFETCH_BM_LN\n");
+#endif // #else  NO_PREFETCH_BM_LN
+
 #ifdef           PREFETCH_LOCATEKEY_PSPLIT_VAL
     printf("#    PREFETCH_LOCATEKEY_PSPLIT_VAL\n");
 #else //         PREFETCH_LOCATEKEY_PSPLIT_VAL

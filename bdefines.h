@@ -458,5 +458,24 @@
 #endif // #ifndef B_JUDYL
 #endif // BM_POP_IN_WR_HB
 
+#ifdef B_JUDYL
+#if cnBitsPerWord > 32
+    #ifndef NO_BM_SW_CNT_IN_WR_HB
+        #undef  BM_SW_CNT_IN_WR_HB
+        #define BM_SW_CNT_IN_WR_HB
+    #endif // #ifndef NO_BM_SW_CNT_IN_WR_HB
+#endif // cnBitsPerWord > 32
+#endif // B_JUDYL
+
+#ifndef   NO_OFFSET_IN_SW_BM_WORD
+    #undef   OFFSET_IN_SW_BM_WORD
+    #define  OFFSET_IN_SW_BM_WORD
+#endif // NO_OFFSET_IN_SW_BM_WORD
+
+#ifndef   NO_PREFETCH_BM_LN
+    #undef   PREFETCH_BM_LN
+    #define  PREFETCH_BM_LN
+#endif // NO_PREFETCH_BM_LN
+
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 
