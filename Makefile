@@ -309,13 +309,13 @@ t: t.c $(T_OBJS)
 # libJudy.a is for JudyHS.
 # Will need to add -no-pie here to link to non-fpic objects in newer
 # compilers where -pie is default.
-btime: Judy1LHTime.c libb.a ${LIBJUDY}
+btime: Judy1LHTime.c libb.a
 	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -o $@ $^ -lm
 	ln -sf btime Judy1LHTime
 
-c++time: Judy1LHTime.c libb.a ${LIBJUDY}
+c++time: Judy1LHTime.c libb.a
 	$(CXX) $(CXXFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -o $@ \
-    -x c++ Judy1LHTime.c -x none libb.a libJudy.a -lm
+    -x c++ Judy1LHTime.c -x none libb.a -lm
 
 # btime, bcheck, b1time, b1check, bLtime, bLcheck, jtime, and jcheck
 # always mean the same thing.
@@ -328,14 +328,14 @@ check:
 	ln -sf Judy1LHCheck check
 
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
-bcheck: Judy1LHCheck.c libb.a ${LIBJUDY}
+bcheck: Judy1LHCheck.c libb.a
 	$(CC) $(CFLAGS) -DJUDY1_DUMP -DJUDYL_DUMP -DMIKEY_1 -DMIKEY_L \
  $(DEFINES) -o $@ $^ -lm
 	ln -sf bcheck Judy1LHCheck
 
-c++check: Judy1LHCheck.c libb.a ${LIBJUDY}
+c++check: Judy1LHCheck.c libb.a
 	$(CXX) $(CXXFLAGS) $(DEFINES) -o $@ \
-    -x c++ Judy1LHCheck.c -x none libb.a libJudy.a -lm
+    -x c++ Judy1LHCheck.c -x none libb.a -lm
 
 libb.a: $(LIBB_OBJS)
 	ar -r $@ $^

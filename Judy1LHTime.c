@@ -300,19 +300,19 @@ typedef NewSeed_t *PNewSeed_t;
 // Specify prototypes for each test routine
 //int       NextSum(Word_t *PNumber, double *PDNumb, double DMult);
 
-int       TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed,
+int       TestJudyIns(void **J1, void **JL, PNewSeed_t PSeed,
                       Word_t Elems);
 
 void      TestJudyLIns(void **JL, PNewSeed_t PSeed, Word_t Elems);
 
-int       TestJudyDup(void **J1, void **JL, void **JH, PNewSeed_t PSeed,
+int       TestJudyDup(void **J1, void **JL, PNewSeed_t PSeed,
                       Word_t Elems);
 
-int       TestJudyDel(void **J1, void **JL, void **JH, PNewSeed_t PSeed,
+int       TestJudyDel(void **J1, void **JL, PNewSeed_t PSeed,
                       Word_t Elems);
 
 static inline int
-TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elems,
+TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elems,
             Word_t Tit, Word_t KFlag, Word_t hFlag, int bLfsrOnly);
 
 void      TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elems);
@@ -564,7 +564,6 @@ Word_t    ByteDups   = 0;
 Word_t    J1Flag = 0;                   // time Judy1
 Word_t    JLFlag = 0;                   // time JudyL
 Word_t    JRFlag = 0;                   // time JudyL with no cheat
-Word_t    JHFlag = 0;                   // time JudyHS
 Word_t    dFlag = 0;                    // time Judy1Unset JudyLDel
 Word_t    vFlag = 0;                    // time Searching
 Word_t    CFlag = 0;                    // time Counting
@@ -875,8 +874,6 @@ PrintHeaderX(const char *strFirstCol, int nRow)
         printf(nRow ? "      " : "   J1S");
     if (JLFlag)
         printf(nRow ? "      " : "   JLI");
-    if (JHFlag)
-        printf(nRow ? "      " : "  JHSI");
     if (JRFlag)
         printf(nRow ? "      " : " JLI-R");
     if (bFlag)
@@ -889,8 +886,6 @@ PrintHeaderX(const char *strFirstCol, int nRow)
         printf(nRow ? "      " : "   J1T");
     if (JLFlag)
         printf(nRow ? "      " : "   JLG");
-    if (JHFlag)
-        printf(nRow ? "      " : "  JHSG");
     if (JRFlag)
         printf(nRow ? "      " : " JLG-R");
     if (bFlag)
@@ -906,8 +901,6 @@ PrintHeaderX(const char *strFirstCol, int nRow)
             printf(nRow ? "   J1S" : "   DUP");
         if (JLFlag)
             printf(nRow ? "   JLI" : "   DUP");
-        if (JHFlag)
-            printf(nRow ? "   JHI" : "   DUP");
     }
 
     if (cFlag)
@@ -948,12 +941,10 @@ PrintHeaderX(const char *strFirstCol, int nRow)
             printf(nRow ? "      " : "   J1U");
         if (JLFlag)
             printf(nRow ? "      " : "   JLD");
-        if (JHFlag)
-            printf(nRow ? "      " : "  JHSD");
     }
 
 #ifdef RAMMETRICS
-    if (J1Flag | JLFlag | JHFlag | JRFlag) {
+    if (J1Flag | JLFlag | JRFlag) {
         printf(nRow ? "  %%W/K" : "  Heap");
     }
 #endif // RAMMETRICS
@@ -988,8 +979,6 @@ PrintHeaderX(const char *strFirstCol, int nRow)
             printf(nRow ? "      " : " MF1/K");
         if (JLFlag || JRFlag)
             printf(nRow ? "      " : " MFL/K");
-        if (JHFlag)
-            printf(nRow ? "  %%W/K" : "   MFH");
 #ifdef SEARCHMETRICS
         printf(nRow ? "      " : " +MsCm");
         printf(nRow ? "      " : " -MsCm");
@@ -1039,7 +1028,6 @@ Usage(int argc, char **argv)
     printf("-1    Time Judy1\n");
     printf("-L    Time JudyL\n");
     printf("-R    Time JudyL using *PValue as next TstKey\n");
-    printf("-H    Time JudyHS\n");
     printf("-I    Time DUPLICATE (already in array) JudyIns/Set times\n");
     printf("-c    Time copying a Judy1 Array\n");
     printf("-C    Include timing of Judy[1L]Count tests\n");
@@ -1271,7 +1259,6 @@ main(int argc, char *argv[])
     void     *J1 = NULL;                // Judy1
     void     *JL = NULL;                // JudyL
 #endif // DEBUG
-    void     *JH = NULL;                // JudyHS
 
 #ifdef DEADCODE                         // see TimeNumberGen()
     void     *TestRan = NULL;           // Test Random generator
@@ -1412,14 +1399,14 @@ main(int argc, char *argv[])
   #ifdef FANCY_b_flag
                             ":"
   #endif // FANCY_b_flag
-                            "CcDdE::e::F:fGgHhIiKklLMm"
+                            "CcDdE::e::F:fGghIiKklLMm"
                             "N:n:O:o:P:pRS:s:T:tVvW:xyZ",
                         longopts, NULL);
 
                 // Used upper-case option letters sorted and with spaces for
                 // unused letters. Unused letters are on the following line.
-                //   " B:CDE::F:GHI KLMN:O:P: RS:T: VW:  Z"
-                //   "A            J         Q     U   XY "
+                //   " B:CDE::F:G I KLMN:O:P: RS:T: VW:  Z"
+                //   "A          H J         Q     U   XY "
                 //
                 // Used lower-case option letters sorted and with spaces for
                 // unused letters. Unused letters are on the following line.
@@ -1763,10 +1750,6 @@ main(int argc, char *argv[])
             JLFlag = 1;
             break;
 
-        case 'H':                      // time JudyHS
-            JHFlag = 1;
-            break;
-
         case 'd':                      // time Judy1Unset JudyLDel
             dFlag = 1;
             break;
@@ -1856,8 +1839,8 @@ main(int argc, char *argv[])
             == ((Word_t)1 << (BValue - 10)) * (int)(Bpercent * 1024 / 100))
         || ((int)(Bpercent * 1024 / 100) == Bpercent * 1024 / 100));
 
-    if ((   bFlag && (J1Flag|JLFlag|JHFlag|JRFlag|yFlag))
-        || (yFlag && (J1Flag|JLFlag|JHFlag|JRFlag|bFlag)))
+    if ((   bFlag && (J1Flag|JLFlag|JRFlag|yFlag))
+        || (yFlag && (J1Flag|JLFlag|JRFlag|bFlag)))
     {
         FAILURE("-b and -y don't get along with each other"
                     " nor with any of -1LHR",
@@ -2172,8 +2155,6 @@ main(int argc, char *argv[])
         printf("L");
     if (JRFlag)
         printf("R");
-    if (JHFlag)
-        printf("H");
     if (tFlag)
         printf("t");
     if (dFlag)
@@ -2254,8 +2235,6 @@ main(int argc, char *argv[])
         if (JRFlag)
             count++;
         if (J1Flag)
-            count++;
-        if (JHFlag)
             count++;
         if (bFlag)
             count++;
@@ -2599,8 +2578,6 @@ main(int argc, char *argv[])
         printf("# COLHEAD %2d JLI  - JudyLIns\n", Col++);
     if (JRFlag)
         printf("# COLHEAD %2d JLI-R  - JudyLIns\n", Col++);
-    if (JHFlag)
-        printf("# COLHEAD %2d JHSI - JudyHSIns\n", Col++);
     if (bFlag)
         printf("# COLHEAD %2d BMSet  - Bitmap Set\n", Col++);
     if (yFlag)
@@ -2616,8 +2593,6 @@ main(int argc, char *argv[])
         printf("# COLHEAD %2d JLG  - JudyLGet\n", Col++);
     if (JRFlag)
         printf("# COLHEAD %2d JLG-R  - JudyLGet\n", Col++);
-    if (JHFlag)
-        printf("# COLHEAD %2d JHSG - JudyHSGet\n", Col++);
     if (bFlag)
         printf("# COLHEAD %2d BMTest  - Bitmap Test\n", Col++);
     if (yFlag)
@@ -2629,8 +2604,6 @@ main(int argc, char *argv[])
             printf("# COLHEAD %2d J1S-duplicate entry\n", Col++);
         if (JLFlag)
             printf("# COLHEAD %2d JLI-duplicate entry\n", Col++);
-        if (JHFlag)
-            printf("# COLHEAD %2d JHSI-duplicate entry\n", Col++);
     }
     if (cFlag && J1Flag)
     {
@@ -2668,11 +2641,9 @@ main(int argc, char *argv[])
             printf("# COLHEAD %2d J1U\n", Col++);
         if (JLFlag)
             printf("# COLHEAD %2d JLD\n", Col++);
-        if (JHFlag)
-            printf("# COLHEAD %2d JHSD\n", Col++);
     }
 #ifdef RAMMETRICS
-    if (J1Flag | JLFlag | JHFlag | JRFlag)
+    if (J1Flag | JLFlag | JRFlag)
     {
         printf
             ("# COLHEAD %2d Heap/K  - Judy1 malloc'ed %% words per Key\n",
@@ -2710,10 +2681,6 @@ main(int argc, char *argv[])
         if (JLFlag)
             printf
                 ("# COLHEAD %2d MFL/K    - JudyL average malloc+free's per Key\n",
-                 Col++);
-        if (JHFlag)
-            printf
-                ("# COLHEAD %2d MFS/K   - JudyHS average malloc+free's per Key\n",
                  Col++);
 
 #ifdef SEARCHMETRICS
@@ -2878,7 +2845,6 @@ main(int argc, char *argv[])
     // initialization and JudyXFreeArray for global cleanup.
     if (J1Flag) { Judy1FreeArray(NULL, PJE0); }
     if (JLFlag || JRFlag) { JudyLFreeArray(NULL, PJE0); }
-    if (JHFlag) { JudyHSFreeArray(NULL, PJE0); }
 
     // Warm up, e.g. JudyMalloc and caches.
     if (Warmup) {
@@ -2898,17 +2864,16 @@ main(int argc, char *argv[])
         }
 #endif // CALC_NEXT_KEY
         Tit = 1;
-        TestJudyIns(&J1, &JL, &JH, &InsertSeed,
+        TestJudyIns(&J1, &JL, &InsertSeed,
                     /* nElms */ MIN(N_WARMUP_KEYS, nElms));
         DummySeed = StartSeed;
-        TestJudyGet(J1, JL, JH, &DummySeed,
+        TestJudyGet(J1, JL, &DummySeed,
                     /* nElms */ MIN(N_WARMUP_KEYS, TValues),
                     Tit, KFlag, hFlag, bLfsrOnly);
     }
 
     if (J1Flag) { Judy1FreeArray(&J1, NULL); }
     if (JLFlag) { JudyLFreeArray(&JL, NULL); }
-    if (JHFlag) { JudyHSFreeArray(&JH, NULL); }
 
 // ============================================================
 // PRINT COLUMNS HEADER TO PERFORMANCE TIMERS
@@ -3146,7 +3111,7 @@ nextPart:
         }
 #endif // CALC_NEXT_KEY
 
-        if (J1Flag || JLFlag || JHFlag)
+        if (J1Flag || JLFlag)
         {
 //          Test J1S, JLI, JLHS
 //          Exit with InsertSeed/Key ready for next batch
@@ -3158,7 +3123,7 @@ nextPart:
                     Tit = 0;                    // exclude Judy
                     DummySeed = InsertSeed;
                     WaitForContextSwitch(Delta);
-                    TestJudyIns(&J1, &JL, &JH, &DummySeed, Delta);
+                    TestJudyIns(&J1, &JL, &DummySeed, Delta);
                     DeltaGen1 = DeltanSec1 / Delta;     // save measurement overhead
                     DeltaGenL = DeltanSecL / Delta;
                     DeltaGenHS = DeltanSecHS / Delta;
@@ -3180,7 +3145,7 @@ nextPart:
 
             Tit = 1;                    // include Judy
             WaitForContextSwitch(Delta);
-            TestJudyIns(&J1, &JL, &JH, &InsertSeed, Delta);
+            TestJudyIns(&J1, &JL, &InsertSeed, Delta);
             DeltanSec1Sum += DeltanSec1;
             DeltanSecLSum += DeltanSecL;
             DeltanSecHSSum += DeltanSecHS;
@@ -3202,12 +3167,6 @@ nextPart:
                     if (tFlag)
                         PrintVal(DeltaGenL, 5, 1);
                 }
-                if (JHFlag)
-                {
-                    PrintVal(DeltanSecHSSum / Pms[grp].ms_delta - DeltaGenHS, 5, 1);
-                    if (tFlag)
-                        PrintVal(DeltaGenHS, 5, 1);
-                }
                 if (fFlag)
                     fflush(NULL);
 
@@ -3227,21 +3186,21 @@ nextPart:
                     if (bLfsrOnly) {
                         if (KFlag) {
                             if (hFlag) {
-                                TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
+                                TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 0,
                                             /* KFlag */ 1, /* hFlag */ 1,
                                             /* bLfsrOnly */ 1);
                             } else {
-                                TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
+                                TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 0,
                                             /* KFlag */ 1, /* hFlag */ 0,
                                             /* bLfsrOnly */ 1);
                             }
                         } else {
                             if (hFlag) {
-                                TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
+                                TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 0,
                                             /* KFlag */ 0, /* hFlag */ 1,
                                             /* bLfsrOnly */ 1);
                             } else {
-                                TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
+                                TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 0,
                                             /* KFlag */ 0, /* hFlag */ 0,
                                             /* bLfsrOnly */ 1);
                             }
@@ -3249,7 +3208,7 @@ nextPart:
                     } else {
                         if (KFlag) {
                             if (hFlag) {
-                                TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
+                                TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 0,
                                             /* KFlag */ 1, /* hFlag */ 1,
                                             /* bLfsrOnly */ 0);
                             } else {
@@ -3257,20 +3216,20 @@ nextPart:
 #ifndef CALC_NEXT_KEY
                                 if (bLfsrForGetOnly && (wFeedBTap != (Word_t)-1)) {
                                     BeginSeed = (NewSeed_t)StartSequent;
-                                    TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
+                                    TestJudyGet(J1, JL, &BeginSeed, Meas,
                                                 /* Tit */ 0, /* KFlag */ 1,
                                                 /* hFlag */ 0,
                                                 /* bLfsrOnly */ BValue - wLogPop1 + 1);
                                 } else
 #endif // CALC_NEXT_KEY
 #endif // LFSR_GET_FOR_DS1
-                                TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
+                                TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 0,
                                             /* KFlag */ 1, /* hFlag */ 0,
                                             /* bLfsrOnly */ 0);
                             }
                         } else {
                             if (hFlag) {
-                                TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
+                                TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 0,
                                             /* KFlag */ 0, /* hFlag */ 1,
                                             /* bLfsrOnly */ 0);
                             } else {
@@ -3278,14 +3237,14 @@ nextPart:
 #ifndef CALC_NEXT_KEY
                                 if (bLfsrForGetOnly && (wFeedBTap != (Word_t)-1)) {
                                     BeginSeed = (NewSeed_t)StartSequent;
-                                    TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
+                                    TestJudyGet(J1, JL, &BeginSeed, Meas,
                                                 /* Tit */ 0, /* KFlag */ 0,
                                                 /* hFlag */ 0,
                                                 /* bLfsrOnly */ BValue - wLogPop1 + 1);
                                 } else
 #endif // CALC_NEXT_KEY
 #endif // LFSR_GET_FOR_DS1
-                                TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 0,
+                                TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 0,
                                             /* KFlag */ 0, /* hFlag */ 0,
                                             /* bLfsrOnly */ 0);
                             }
@@ -3313,21 +3272,21 @@ nextPart:
                 if (bLfsrOnly) {
                     if (KFlag) {
                         if (hFlag) {
-                            TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
+                            TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 1,
                                         /* KFlag */ 1, /* hFlag */ 1,
                                         /* bLfsrOnly */ 1);
                         } else {
-                            TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
+                            TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 1,
                                         /* KFlag */ 1, /* hFlag */ 0,
                                         /* bLfsrOnly */ 1);
                         }
                     } else {
                         if (hFlag) {
-                            TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
+                            TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 1,
                                         /* KFlag */ 0, /* hFlag */ 1,
                                         /* bLfsrOnly */ 1);
                         } else {
-                            TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
+                            TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 1,
                                         /* KFlag */ 0, /* hFlag */ 0,
                                         /* bLfsrOnly */ 1);
                         }
@@ -3335,7 +3294,7 @@ nextPart:
                 } else {
                     if (KFlag) {
                         if (hFlag) {
-                            TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
+                            TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 1,
                                         /* KFlag */ 1, /* hFlag */ 1,
                                         /* bLfsrOnly */ 0);
                         } else {
@@ -3343,20 +3302,20 @@ nextPart:
 #ifndef CALC_NEXT_KEY
                             if (bLfsrForGetOnly && (wFeedBTap != (Word_t)-1)) {
                                 BeginSeed = (NewSeed_t)StartSequent;
-                                TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
+                                TestJudyGet(J1, JL, &BeginSeed, Meas,
                                             /* Tit */ 1, /* KFlag */ 1,
                                             /* hFlag */ 0,
                                             /* bLfsrOnly */ BValue - wLogPop1 + 1);
                             } else
 #endif // CALC_NEXT_KEY
 #endif // LFSR_GET_FOR_DS1
-                            TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
+                            TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 1,
                                         /* KFlag */ 1, /* hFlag */ 0,
                                         /* bLfsrOnly */ 0);
                         }
                     } else {
                         if (hFlag) {
-                            TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
+                            TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 1,
                                         /* KFlag */ 0, /* hFlag */ 1,
                                         /* bLfsrOnly */ 0);
                         } else {
@@ -3364,14 +3323,14 @@ nextPart:
 #ifndef CALC_NEXT_KEY
                             if (bLfsrForGetOnly && (wFeedBTap != (Word_t)-1)) {
                                 BeginSeed = (NewSeed_t)StartSequent;
-                                TestJudyGet(J1, JL, JH, &BeginSeed, Meas,
+                                TestJudyGet(J1, JL, &BeginSeed, Meas,
                                             /* Tit */ 1, /* KFlag */ 0,
                                             /* hFlag */ 0,
                                             /* bLfsrOnly */ BValue - wLogPop1 + 1);
                             } else
 #endif // CALC_NEXT_KEY
 #endif // LFSR_GET_FOR_DS1
-                            TestJudyGet(J1, JL, JH, &BeginSeed, Meas, /* Tit */ 1,
+                            TestJudyGet(J1, JL, &BeginSeed, Meas, /* Tit */ 1,
                                         /* KFlag */ 0, /* hFlag */ 0,
                                         /* bLfsrOnly */ 0);
                         }
@@ -3389,12 +3348,6 @@ nextPart:
                     PrintVal(DeltanSecL - DeltaGenL, 5, 1);
                     if (tFlag)
                         PrintVal(DeltaGenL, 5, 1);
-                }
-                if (JHFlag)
-                {
-                    PrintVal(DeltanSecHS - DeltaGenHS, 5, 1);
-                    if (tFlag)
-                        PrintVal(DeltaGenHS, 5, 1);
                 }
                 if (fFlag)
                     fflush(NULL);
@@ -3598,7 +3551,7 @@ nextPart:
                 Tit = 0;
                 BeginSeed = StartSeed;      // reset at beginning
                 WaitForContextSwitch(Meas);
-                TestJudyDup(&J1, &JL, &JH, &BeginSeed, Meas);
+                TestJudyDup(&J1, &JL, &BeginSeed, Meas);
                 DeltaGen1 = DeltanSec1;     // save measurement overhead
                 DeltaGenL = DeltanSecL;
                 DeltaGenHS = DeltanSecHS;
@@ -3619,13 +3572,11 @@ nextPart:
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
-            TestJudyDup(&J1, &JL, &JH, &BeginSeed, Meas);
+            TestJudyDup(&J1, &JL, &BeginSeed, Meas);
             if (J1Flag)
                 PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
             if (JLFlag)
                 PrintVal(DeltanSecL - DeltaGenL, 5, 1);
-            if (JHFlag)
-                PrintVal(DeltanSecHS - DeltaGenHS, 5, 1);
             if (fFlag)
                 fflush(NULL);
         }
@@ -3828,7 +3779,7 @@ nextPart:
                 Tit = 0;
                 BeginSeed = StartSeed;      // reset at beginning
                 WaitForContextSwitch(Meas);
-                TestJudyDel(&J1, &JL, &JH, &BeginSeed, Meas);
+                TestJudyDel(&J1, &JL, &BeginSeed, Meas);
                 DeltaGen1 = DeltanSec1;     // save measurement overhead
                 DeltaGenL = DeltanSecL;
                 DeltaGenHS = DeltanSecHS;
@@ -3849,13 +3800,11 @@ nextPart:
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
-            TestJudyDel(&J1, &JL, &JH, &BeginSeed, Meas);
+            TestJudyDel(&J1, &JL, &BeginSeed, Meas);
             if (J1Flag)
                 PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
             if (JLFlag)
                 PrintVal(DeltanSecL - DeltaGenL, 5, 1);
-            if (JHFlag)
-                PrintVal(DeltanSecHS - DeltaGenHS, 5, 1);
             if (fFlag)
                 fflush(NULL);
 
@@ -3863,11 +3812,11 @@ nextPart:
             Tit = 1;
             BeginSeed = StartSeed;      // reset at beginning
             WaitForContextSwitch(Meas);
-            TestJudyIns(&J1, &JL, &JH, &BeginSeed, Meas);
+            TestJudyIns(&J1, &JL, &BeginSeed, Meas);
         }
 
 #ifdef RAMMETRICS
-        if (J1Flag | JLFlag | JHFlag | JRFlag) {
+        if (J1Flag | JLFlag | JRFlag) {
             PRINT5_1f((double)j__AllocWordsTOT / Pop1);
         }
 #endif // RAMMETRICS
@@ -3892,8 +3841,6 @@ nextPart:
                 PRINT5_1f(DeltaMalFre1Sum / Pms[grp].ms_delta);
             if (JLFlag || JRFlag)
                 PRINT5_1f(DeltaMalFreLSum / Pms[grp].ms_delta);
-            if (JHFlag)
-                PRINT5_1f(DeltaMalFreHSSum / Pms[grp].ms_delta);
 #ifdef SEARCHMETRICS
 //          print average number of failed compares done in leaf search
             PrintValx100((double)MisComparesP / MAX(GetCallsP + DirectHits, 1), 5, 1);
@@ -3954,26 +3901,6 @@ nextPart:
             ("# JudyLFreeArray:  %" PRIuPTR", %0.3f Words/Key, %" PRIuPTR" Bytes released, %0.3f nSec/Key\n",
              CountL, (double)(Bytes / sizeof(Word_t)) / (double)CountL, Bytes,
              DeltanSecL);
-    }
-
-    if (JHFlag)
-    {
-
-        STARTTm;
-
-//#ifdef SKIPMACRO
-        Bytes = JudyHSFreeArray(&JH, PJE0);     // Free the JudyHS Array
-//#else
-//        JHSFA(Bytes, JH);               // Free the JudyHS Array
-//#endif // SKIPMACRO
-
-        ENDTm(DeltanSecHS);
-
-        DeltanSecHS /= (double)nElms;   // no Counts yet
-        printf
-            ("# JudyHSFreeArray: %" PRIuPTR", %0.3f Words/Key, %0.3f nSec/Key\n",
-             nElms, (double)(Bytes / sizeof(Word_t)) / (double)nElms,
-             DeltanSecHS);
     }
 
 //    if (bFlag && GValue)
@@ -4044,7 +3971,7 @@ TimeNumberGen(void **TestRan, PNewSeed_t PSeed, Word_t Elements)
 // static int Flag = 0;
 
 int
-TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
+TestJudyIns(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
 {
     Word_t    TstKey;
     Word_t    elm;
@@ -4399,63 +4326,6 @@ TestJudyIns(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
         DeltanSecL = DminTime;
     }
 
-//  JudyHSIns timings
-
-    if (JHFlag)
-    {
-        for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
-        {
-            WorkingSeed = *PSeed;
-
-            if (lp != 0 && Tit)                // Remove previously inserted
-            {
-                for (elm = 0; elm < Elements; elm++)
-                {
-                    TstKey = GetNextKey(&WorkingSeed);
-
-                    JHSD(Rc, *JH, &TstKey, sizeof(Word_t));
-                }
-            }
-
-            StartMallocs = j__MalFreeCnt;
-            WorkingSeed = *PSeed;
-
-            STARTTm;
-            for (elm = 0; elm < Elements; elm++)
-            {
-                SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
-
-                if (Tit)
-                {
-                    PValue = (PWord_t)JudyHSIns(JH, &TstKey, sizeof(Word_t), PJE0);
-                    if (*PValue == TstKey)
-                    {
-                        if (GValue)
-                            JudyHSDups++;
-                        else
-                            FAILURE("JudyHSIns failed - DUP Key =", TstKey);
-                    }
-                    *PValue = TstKey; // save Key in Value
-                }
-            }
-            ENDTm(DeltanSecHS);
-            DeltaMalFreHS = j__MalFreeCnt - StartMallocs;
-
-            if (DminTime > DeltanSecHS)
-            {
-                icnt = ICNT;
-                if (DeltanSecHS > 0.0)  // Ignore 0
-                    DminTime = DeltanSecHS;
-            }
-            else
-            {
-                if (--icnt == 0)
-                    break;
-            }
-        }
-        DeltanSecHS = DminTime;
-    }
-
     *PSeed = WorkingSeed;
 
     return 0;
@@ -4558,7 +4428,7 @@ TestJudyLIns(void **JL, PNewSeed_t PSeed, Word_t Elements)
 #define __FUNCTI0N__ "TestJudyDup"
 
 int
-TestJudyDup(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
+TestJudyDup(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
 {
     Word_t    TstKey;
     Word_t    elm;
@@ -4646,42 +4516,6 @@ TestJudyDup(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
 
     icnt = ICNT;
 
-    if (JHFlag)
-    {
-        for (DminTime = 1e40, lp = 0; lp < Loops; lp++)
-        {
-            WorkingSeed = *PSeed;
-
-            STARTTm;
-            for (elm = 0; elm < Elements; elm++)
-            {
-                TstKey = GetNextKey(&WorkingSeed);
-                if (Tit)
-                {
-                    PValue =
-                        (PWord_t)JudyHSIns(JH, &TstKey, sizeof(Word_t), PJE0);
-                    if (PValue == (Word_t *)NULL)
-                        FAILURE("JudyHSGet ret PValue = NULL", 0L);
-                    if (*PValue != TstKey)
-                        FAILURE("JudyHSGet ret wrong Value at", elm);
-                }
-            }
-            ENDTm(DeltanSecHS);
-
-            if (DminTime > DeltanSecHS)
-            {
-                icnt = ICNT;
-                if (DeltanSecHS > 0.0)  // Ignore 0
-                    DminTime = DeltanSecHS;
-            }
-            else
-            {
-                if (--icnt == 0)
-                    break;
-            }
-        }
-        DeltanSecHS = DminTime / (double)Elements;
-    }
     return 0;
 }
 
@@ -4689,7 +4523,7 @@ TestJudyDup(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
 #define __FUNCTI0N__ "TestJudyGet"
 
 static inline int
-TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
+TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
             Word_t Tit, Word_t KFlag, Word_t hFlag, int bLfsrOnly)
 {
     Word_t    TstKey;
@@ -4865,46 +4699,6 @@ TestJudyGet(void *J1, void *JL, void *JH, PNewSeed_t PSeed, Word_t Elements,
 
     icnt = ICNT;
 
-    if (JHFlag)
-    {
-        for (DminTime = 1e40, lp = 0; lp < Loops; lp++)
-        {
-            WorkingSeed = *PSeed;
-
-            j__SearchPopulation = j__GetCalls = 0;
-            j__MisComparesP = j__MisComparesM = 0;
-            j__DirectHits = j__GetCallsP = j__GetCallsM = 0;
-
-            STARTTm;
-            for (elm = 0; elm < Elements; elm++)
-            {
-                SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
-
-                if (Tit)
-                {
-                    PValue = (PWord_t)JudyHSGet(JH, &TstKey, sizeof(Word_t));
-                    if (PValue == (Word_t *)NULL)
-                        FAILURE("JudyHSGet ret PValue = NULL", 0L);
-                    if (VFlag && (*PValue != TstKey))
-                        FAILURE("JudyHSGet ret wrong Value at", elm);
-                }
-            }
-            ENDTm(DeltanSecHS);
-
-            if (DminTime > DeltanSecHS)
-            {
-                icnt = ICNT;
-                if (DeltanSecHS > 0.0)  // Ignore 0
-                    DminTime = DeltanSecHS;
-            }
-            else
-            {
-                if (--icnt == 0)
-                    break;
-            }
-        }
-        DeltanSecHS = DminTime / (double)Elements;
-    }
     return 0;
 }
 
@@ -5875,7 +5669,7 @@ TestJudyPrevEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 #define __FUNCTI0N__ "TestJudyDel"
 
 int
-TestJudyDel(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
+TestJudyDel(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
 {
     Word_t    TstKey;
     Word_t    elm;
@@ -6017,27 +5811,6 @@ TestJudyDel(void **J1, void **JL, void **JH, PNewSeed_t PSeed, Word_t Elements)
         DeltanSecL /= Elements;
     }
 
-    if (JHFlag)
-    {
-        WorkingSeed = *PSeed;
-
-// reset PSeed to beginning of Inserts
-//
-        STARTTm;
-        for (elm = 0; elm < Elements; elm++)
-        {
-            SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
-
-            if (Tit)
-            {
-                JHSD(Rc, *JH, &TstKey, sizeof(Word_t));
-                if (Rc != 1)
-                    FAILURE("JudyHSDel ret Rcode != 1", Rc);
-            }
-        }
-        ENDTm(DeltanSecHS);
-        DeltanSecHS /= Elements;
-    }
     return (0);
 }
 
