@@ -714,12 +714,6 @@ extern uListPopCntMax_t auListPopCntMax[];
     (DIV_UP_X(cnBitsPerWord - cnBitsInD1 - cnBitsInD2, cnBitsPerDigit) + 2)
 #endif // (cnBitsInD3 != cnBitsPerDigit)
 
-// Default is -DEMBED_KEYS.
-#if ! defined(NO_EMBED_KEYS)
-#undef  EMBED_KEYS
-#define EMBED_KEYS
-#endif // ! defined(NO_EMBED_KEYS)
-
 #if defined(SKIP_TO_BM_SW) && ! defined(USE_BM_SW)
   #error Sorry, no SKIP_TO_BM_SW without USE_BM_SW.
 #endif // defined(SKIP_TO_BM_SW) && ! defined(USE_BM_SW)

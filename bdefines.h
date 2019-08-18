@@ -161,6 +161,12 @@
 
 #endif // B_JUDYL
 
+// Default is -DEMBED_KEYS.
+#if ! defined(NO_EMBED_KEYS)
+#undef  EMBED_KEYS
+#define EMBED_KEYS
+#endif // ! defined(NO_EMBED_KEYS)
+
 #ifdef DOUBLE_DOWN
   #undef  XX_LISTS
   #define XX_LISTS
