@@ -982,8 +982,7 @@ PrintHeaderX(const char *strFirstCol, int nRow)
 #ifdef SEARCHMETRICS
         printf(nRow ? "      " : " +MsCm");
         printf(nRow ? "      " : " -MsCm");
-        printf(nRow ? "      " : " %%DiHt");
-        printf(nRow ? "      " : " AvPop");
+        printf(nRow ? " Lenth" : " Srch ");
         printf(nRow ? "      " : " %%DiHt");
         printf(nRow ? "      " : " %%GetP");
         printf(nRow ? "      " : " %%GetM");
@@ -2686,8 +2685,7 @@ main(int argc, char *argv[])
 #ifdef SEARCHMETRICS
         printf("# COLHEAD %2d +MsCm - Average number forward Compares failed Per Leaf Search\n", Col++);
         printf("# COLHEAD %2d -MsCm - Average number reverse Compares failed Per Leaf Search\n", Col++);
-        printf("# COLHEAD %2d %%DiHt - %% of Direct Hits per Leaf Search\n", Col++);
-        printf("# COLHEAD %2d AvPop - Average Population of Leaves Searched (be careful)\n", Col++);
+        printf("# COLHEAD %2d Srch Lenth - Average Search Length (number of keys in list)\n", Col++);
         printf("# COLHEAD %2d %%DiHt - %% get calls the result in a direct hit\n", Col++);
         printf("# COLHEAD %2d %%GetP - %% get calls that miss and search forward\n", Col++);
         printf("# COLHEAD %2d %%GetM - %% get calls that miss and search backward\n", Col++);
@@ -3845,7 +3843,6 @@ nextPart:
 //          print average number of failed compares done in leaf search
             PrintValx100((double)MisComparesP / MAX(GetCallsP + DirectHits, 1), 5, 1);
             PrintValx100((double)MisComparesM / MAX(GetCallsM + DirectHits, 1), 5, 1);
-            PrintValx100((double)DirectHits / GetCalls, 5, 1);
             PrintVal((double)SearchPopulation / MAX(GetCalls, 1), 5, 1);
             PrintValx100((double)DirectHits / GetCalls, 5, 1);
             PrintValx100((double)GetCallsP / GetCalls, 5, 1);
