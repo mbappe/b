@@ -557,7 +557,6 @@ Word_t wDoTit0Max = DEFAULT_TVALUES / 2;
 
 Word_t    Judy1Dups =  0;
 Word_t    JudyLDups =  0;
-Word_t    JudyHSDups = 0;
 Word_t    BitmapDups = 0;
 Word_t    ByteDups   = 0;
 
