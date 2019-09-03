@@ -601,6 +601,7 @@ TestJudyIns(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
 //      Judy1
         Word_t wCount = Judy1Count(*J1, 0, ~0, NULL);
         if (wCount != TotalPop) {
+            Judy1Dump((Word_t)*J1, sizeof(Word_t) * 8, 0);
             printf("wCount %zd TotalPop %zd\n", wCount, TotalPop);
             FAILURE("Count TotalIns", TotalIns);
         }
