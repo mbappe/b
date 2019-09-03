@@ -987,7 +987,7 @@ CalcListSlotCntX(int nPopCnt, int nBLR)
 
 #endif // #else OLD_LIST_WORD_CNT
 
-static int
+int
 ListSlotCnt(int nPopCnt, int nBLR)
 {
     assert(nBLR < (int)(sizeof(aauListSlotCnt) / sizeof(aauListSlotCnt[0])));
@@ -1038,7 +1038,7 @@ NewListSetMarker(Word_t *pwList, Word_t wPopCnt, int nBL, int nWords)
 // the key area must be bucket-aligned and have nothing but keys in
 // the key area buckets. That is, no pop count or list end markers
 // in the key area buckets.
-static Word_t *
+Word_t *
 NewList(Word_t wPopCnt, int nBL)
 {
     assert(wPopCnt != 0);
@@ -1065,7 +1065,7 @@ NewList(Word_t wPopCnt, int nBL)
     return pwList; // pwr
 }
 
-static int
+int
 OldList(Word_t *pwList, int nPopCnt, int nBLR, int nType)
 {
     (void)nType;
@@ -2914,23 +2914,6 @@ InsertEmbedded(Word_t *pwRoot, int nBL, Word_t wKey)
 
 #if (cwListPopCntMax != 0)
 
-// Pad the list with copies of the last real key in the list so the
-// length of the list from the first key through the last copy of the
-// last real key is an integral multiple of cnBytesListLenAlign.
-// cnBytesListLenAlign is set to the size of a parallel search bucket.
-// This way we don't need any special handling in the parallel search
-// code to handle a partial final bucket.
-#define PAD(_pxKeys, _nPopCnt) \
-{ \
-    if (ALIGN_LIST_LEN(sizeof(*(_pxKeys)), (_nPopCnt))) { \
-        for (int nn = (_nPopCnt); \
-             (nn * sizeof(*(_pxKeys))) % sizeof(Bucket_t); ++nn) \
-        { \
-            (_pxKeys)[nn] = (_pxKeys)[nn - 1]; \
-        } \
-    } \
-}
-
 #ifdef UA_PARALLEL_128
 #define UA_PAD(_pxKeys, _nPopCnt) \
 { \
@@ -3033,6 +3016,7 @@ CopyWithInsertWord(qp, Word_t *pSrc,
                    int nKeys, // number of keys excluding the new one
                    Word_t wKey, int nPos)
 {
+    assert(nPos >= 0);
   #ifdef B_JUDYL
     Word_t *pwSrcVals = pSrc;
       #ifdef LIST_POP_IN_PREAMBLE
@@ -4423,22 +4407,6 @@ insertAll:
 
     // Caller is going to insert wKey when we return.
 }
-
-#ifdef B_JUDYL
-static Word_t*
-#else // B_JUDYL
-static void
-#endif // B_JUDYL
-InsertAtList(qp,
-             Word_t wKey,
-             int nPos
-#ifdef CODE_XX_SW
-           , Link_t *pLnUp, int nBLUp
-#endif // CODE_XX_SW
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-           , Word_t *pwValueUp
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-             );
 
 #ifdef SPLAY_WITH_INSERT
 #ifdef B_JUDYL
@@ -7082,9 +7050,9 @@ finalInsert:;
 // We should consider moving the code for inserting into a WROOT_NULL link
 // out of InsertAtList and into a new function.
 #ifdef B_JUDYL
-static Word_t*
+Word_t*
 #else // B_JUDYL
-static void
+void
 #endif // B_JUDYL
 InsertAtList(qp,
              Word_t wKey,
@@ -9235,6 +9203,12 @@ Initialize(void)
 
     printf("\n");
 
+#ifdef           POP_COUNT_64
+    printf("#    POP_COUNT_64\n");
+#else //         POP_COUNT_64
+    printf("# No POP_COUNT_64\n");
+#endif // #else  POP_COUNT_64
+
 #ifdef           BM_SW_CNT_IN_WR
     printf("#    BM_SW_CNT_IN_WR\n");
 #else //         BM_SW_CNT_IN_WR
@@ -10103,6 +10077,12 @@ Initialize(void)
 #else // defined(SEARCH_FROM_WRAPPER_I)
     printf("# No SEARCH_FROM_WRAPPER_I\n");
 #endif // defined(SEARCH_FROM_WRAPPER_I)
+
+#ifdef           SWFI_INSERT_AT_LIST
+    printf("#    SWFI_INSERT_AT_LIST\n");
+#else //         SWFI_INSERT_AT_LIST
+    printf("# No SWFI_INSERT_AT_LIST\n");
+#endif // #else  SWFI_INSERT_AT_LIST
 
 #if defined(DEBUG)
     printf("#    DEBUG\n");

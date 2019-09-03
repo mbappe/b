@@ -1034,12 +1034,15 @@ extern Word_t j__MisComparesM;
   #if ! defined(cwDebugThreshold)
     #define cwDebugThreshold  0ULL
   #endif // ! defined(cwDebugThreshold)
+  #if ! defined(cwDebugThresholdMax)
+    #define cwDebugThresholdMax  0ULL
+  #endif // ! defined(cwDebugThresholdMax)
 #else // defined(DEBUG)
   #define DBG(x)
 #endif // defined(DEBUG)
 
 #if defined(DEBUG_INSERT)
-  #if (cwDebugThreshold != 0)
+  #if (cwDebugThreshold || cwDebugThresholdMax)
     #define DBGI(x)  if (bHitDebugThreshold) (x)
   #else // (cwDebugThreshold != 0)
     #define DBGI(x)  (x)
@@ -1049,7 +1052,7 @@ extern Word_t j__MisComparesM;
 #endif // defined(DEBUG_INSERT)
 
 #if defined(DEBUG_LOOKUP)
-  #if (cwDebugThreshold != 0)
+  #if (cwDebugThreshold || cwDebugThresholdMax)
     #define DBGL(x)  if (bHitDebugThreshold) (x)
   #else // (cwDebugThreshold != 0)
     #define DBGL(x)  (x)
@@ -1059,7 +1062,7 @@ extern Word_t j__MisComparesM;
 #endif // defined(DEBUG_LOOKUP)
 
 #if defined(DEBUG_REMOVE)
-#if (cwDebugThreshold != 0)
+#if (cwDebugThreshold || cwDebugThresholdMax)
 #define DBGR(x)  if (bHitDebugThreshold) (x)
 #else // (cwDebugThreshold != 0)
 #define DBGR(x)  (x)
@@ -1069,7 +1072,7 @@ extern Word_t j__MisComparesM;
 #endif // defined(DEBUG_REMOVE)
 
 #if defined(DEBUG_COUNT)
-  #if (cwDebugThreshold != 0)
+  #if (cwDebugThreshold || cwDebugThresholdMax)
     #define DBGC(x)  if (bHitDebugThreshold) (x)
   #else // (cwDebugThreshold != 0)
     #define DBGC(x)  (x)
@@ -1079,7 +1082,7 @@ extern Word_t j__MisComparesM;
 #endif // defined(DEBUG_COUNT)
 
 #if defined(DEBUG_NEXT)
-  #if (cwDebugThreshold != 0)
+  #if (cwDebugThreshold || cwDebugThresholdMax)
     #define DBGN(x)  if (bHitDebugThreshold) (x)
   #else // (cwDebugThreshold != 0)
     #define DBGN(x)  (x)
@@ -1089,7 +1092,7 @@ extern Word_t j__MisComparesM;
 #endif // defined(DEBUG_NEXT)
 
 #if defined(DEBUG_MALLOC)
-#if (cwDebugThreshold != 0)
+#if (cwDebugThreshold || cwDebugThresholdMax)
 #define DBGM(x)  if (bHitDebugThreshold) (x)
 #else // (cwDebugThreshold != 0)
 #define DBGM(x)  (x)
@@ -2845,6 +2848,31 @@ gpwValues(qp) // gpwListValues
   #endif // #else LIST_POP_IN_PREAMBLE
 }
 
+static int
+PopCount64(uint64_t word64)
+{
+#ifdef POP_COUNT_64
+//  Calculate each nibble to have counts of 0..4 bits in each nibble.
+    word64 -= (word64 >> 1) & (uint64_t)0x5555555555555555;
+    word64 = ((word64 >> 2) & (uint64_t)0x3333333333333333) +
+                    (word64 & (uint64_t)0x3333333333333333);
+
+//  Odd nibbles += even nibbles (in parallel)
+    word64 += word64 >> 4;
+
+//  Clean out the even nibbles for some calculating space
+    word64 &= (uint64_t)0x0F0F0F0F0F0F0F0F;    // sums bytes (1 instruction)
+
+//  Now sum the 8 bytes of bit counts of 0..8 bits each in odd nibble.
+    word64 *= (uint64_t)0x0101010101010101;
+    word64  = word64 >> (64 - 8);       // sum in high byte
+
+    return ((int)word64);                       // 0..64
+#else // POP_COUNT_64
+    return __builtin_popcountll(word64);
+#endif // #else POP_COUNT_64
+}
+
   #ifdef BITMAP
 
 static Word_t *
@@ -2872,6 +2900,7 @@ gpwBitmapValues(qp, int nBLR)
     return &pwr[wWordsHdr];
 }
 
+// How many keys precede the key we are looking for in the bitmap?
 static int
 BmIndex(qp, int nBLR, Word_t wKey)
 {
@@ -2898,10 +2927,10 @@ BmIndex(qp, int nBLR, Word_t wKey)
 #else // BMLF_CNTS
     Word_t wIndex = 0;
     for (int nn = 0; nn < nBmWordNum; nn++) {
-        wIndex += __builtin_popcountll(pwBmWords[nn]);
+        wIndex += PopCount64(pwBmWords[nn]);
     }
 #endif // #else BMLF_CNTS
-    wIndex += __builtin_popcountll(wBmWord & (wBmBitMask - 1));
+    wIndex += PopCount64(wBmWord & (wBmBitMask - 1));
     if ((wBmWord & wBmBitMask) == 0) {
         wIndex ^= -1;
     }
@@ -3409,7 +3438,11 @@ Word_t Count1(int nBL, Link_t *pLn, Word_t wKey);
 Status_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
 
 #ifdef B_JUDYL
+#define ListSlotCnt  ListSlotCntL
+#define NewList  NewListL
+#define OldList  OldListL
 #define InsertGuts  InsertGutsL
+#define InsertAtList  InsertAtListL
 #define InsertAtBitmap  InsertAtBitmapL
 #define InflateEmbeddedList  InflateEmbeddedListL
 #define InsertCleanup  InsertCleanupL
@@ -3417,7 +3450,11 @@ Status_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
 #define RemoveCleanup  RemoveCleanupL
 #define Dump  DumpL
 #else // B_JUDYL
+#define ListSlotCnt  ListSlotCnt1
+#define NewList  NewList1
+#define OldList  OldList1
 #define InsertGuts  InsertGuts1
+#define InsertAtList  InsertAtList1
 #define InsertAtBitmap  InsertAtBitmap1
 #define InflateEmbeddedList  InflateEmbeddedList1
 #define InsertCleanup  InsertCleanup1
@@ -3440,6 +3477,21 @@ InsertGuts(qp, Word_t wKey, int nPos
          , Word_t *pwValueUp
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
            );
+
+#ifdef B_JUDYL
+Word_t*
+#else // B_JUDYL
+void
+#endif // B_JUDYL
+InsertAtList(qp, Word_t wKey, int nPos
+#if defined(CODE_XX_SW)
+           , Link_t *pLnUp
+           , int nBLUp
+#endif // defined(CODE_XX_SW)
+#if defined(B_JUDYL) && defined(EMBED_KEYS)
+           , Word_t *pwValueUp
+#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+             );
 
 Status_t RemoveGuts(qp, Word_t wKey
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
@@ -3485,9 +3537,9 @@ Word_t InflateEmbeddedList(Word_t *pwRoot,
 extern int bHitDebugThreshold;
 #endif // defined(DEBUG)
 
-//int ListWords(int nPopCnt, int nBL);
-//Word_t *NewList(int nPopCnt, int nBL);
-//int OldList(Word_t *pwList, int nPopCnt, int nBL, int nType);
+int ListSlotCnt(int nPopCnt, int nBLR);
+Word_t *NewList(Word_t wPopCnt, int nBL);
+int OldList(Word_t *pwList, int nPopCnt, int nBLR, int nType);
 
 #if defined(DEBUG)
 void Dump(Word_t *pwRoot, Word_t wPrefix, int nBL);
@@ -6800,5 +6852,22 @@ extern Word_t j__AllocWordsJV;   // value area
   #endif // SKIP_TO_BITMAP
 #endif // #ifndef LVL_IN_PP
 #endif // #ifndef LVL_IN_WR_HB
+
+// Pad the list with copies of the last real key in the list so the
+// length of the list from the first key through the last copy of the
+// last real key is an integral multiple of cnBytesListLenAlign.
+// cnBytesListLenAlign is set to the size of a parallel search bucket.
+// This way we don't need any special handling in the parallel search
+// code to handle a partial final bucket.
+#define PAD(_pxKeys, _nPopCnt) \
+{ \
+    if (ALIGN_LIST_LEN(sizeof(*(_pxKeys)), (_nPopCnt))) { \
+        for (int nn = (_nPopCnt); \
+             (nn * sizeof(*(_pxKeys))) % sizeof(Bucket_t); ++nn) \
+        { \
+            (_pxKeys)[nn] = (_pxKeys)[nn - 1]; \
+        } \
+    } \
+}
 
 #endif // ( ! defined(_B_H_INCLUDED) )

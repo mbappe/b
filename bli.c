@@ -2134,7 +2134,7 @@ t_bitmap:;
           #endif // PACK_BM_VALUES
           #ifdef UNPACK_BM_VALUES
           #ifdef PREFETCH_BM_VAL
-            PREFETCH(&gpwBitmapValues(qy, nBLR)[wKey & MSK(nBLR)];
+            PREFETCH(&gpwBitmapValues(qy, nBLR)[wKey & MSK(nBLR)]);
           #endif // PREFETCH_BM_VAL
           #endif // UNPACK_BM_VALUES
       #endif // LOOKUP
@@ -2624,7 +2624,7 @@ cleanup:;
 }
 
 #undef RECURSIVE
-#undef InsertGuts
+//#undef InsertGuts
 #undef InsertRemove
 #undef DBGX
 #undef strLookupOrInsertOrRemove
@@ -2788,22 +2788,22 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     assert(((void**)ppvRoot)[ 1] == (void*)-1);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
 
-#ifdef B_JUDYL
+  #ifdef B_JUDYL
     Word_t *pwValue;
-#else // B_JUDYL
+  #else // B_JUDYL
     int status;
-#endif // B_JUDYL
+  #endif // B_JUDYL
 
     DBGI(printf("\n\n# Judy1Set ppvRoot %p wKey " OWx"\n",
                 (void *)ppvRoot, wKey));
 
-#if 0
+  #if 0
     // This pre-test causes problems if we are running an experiment
     // that involves returning 1 unconditionally from Lookup.
     if (Judy1Test((Pcvoid_t)pLn->ln_wRoot, wKey, NULL) == Success) {
         return Failure;
     }
-#endif
+  #endif
 
   #if defined(DEBUG)
 
@@ -2814,77 +2814,95 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   #if (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_I)
     // Handle the top level list leaf before calling Insert.  Why?
     // To simplify Insert for PP_IN_LINK.  Does it still apply?
-    if (((T_LIST == nType)
-#if ! defined(SEPARATE_T_NULL)
-            && (wr_pwr(wRoot) != NULL)
-#endif // ! defined(SEPARATE_T_NULL)
-            && 1)
-      #if defined(SEPARATE_T_NULL)
-        || (nType == T_NULL)
-      #endif // defined(SEPARATE_T_NULL)
-        )
+    // To make insert faster?
+    int nPopCnt;
+    //assert(cnListPopCntMax64 == auListPopCntMax[64]);
+    //assert(cnListPopCntMax32 == auListPopCntMax[32]);
+    if ((T_LIST == nType) && (pwr != NULL)
+        && ((nPopCnt = gnListPopCnt(qy, cnBitsPerWord))
+            !=
+      #if (cnBitsPerWord == 64)
+                cnListPopCntMax64
+      #else // (cnBitsPerWord == 64)
+                cnListPopCntMax32
+      #endif // (cnBitsPerWord == 64)
+            ))
     {
-        if (Judy1Test((Pcvoid_t)wRoot, wKey, PJError) == Success) {
-            status = Failure;
-        } else {
-            Word_t *pwr = wr_pwr(wRoot);
-            Word_t wPopCnt;
-
-      #if defined(SEPARATE_T_NULL)
-            if (nType == T_NULL) {
-                assert(pwr == NULL);
-                wPopCnt = 0;
-            } else
-      #endif // defined(SEPARATE_T_NULL)
-            { wPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord); }
-
-#if (cnBitsPerWord == 64)
-            if (wPopCnt == cnListPopCntMax64)
-#else // (cnBitsPerWord == 64)
-            if (wPopCnt == cnListPopCntMax32)
-#endif // (cnBitsPerWord == 64)
-            {
-                status = InsertGuts(qy, wKey, /* nPos */ -1
-#if defined(CODE_XX_SW)
-                                  , /* pLnUp */ NULL
-                                  , /* nBLUp */ 0
-                                    );
-#endif // defined(CODE_XX_SW)
+        int nPos = ~SearchListWord(ls_pwKeysX(pwr, cnBitsPerWord, nPopCnt),
+                                   wKey, cnBitsPerWord, nPopCnt);
+        if (nPos >= 0) {
+            Word_t *pwKeys = ls_pwKeys(pwr, cnBitsPerWord);
+            assert(ls_pwKeysX(pwr, cnBitsPerWord, nPopCnt) == pwKeys);
+            BJL(Word_t *pwValues = gpwValues(qy));
+            Word_t *pwrNew; (void)pwrNew;
+            Word_t *pwKeysNew; (void)pwKeysNew;
+            BJL(Word_t *pwValuesNew);
+            if (ListSlotCnt(nPopCnt, cnBitsPerWord) < (nPopCnt + 1)) {
+                // need bigger buffer
+      #ifdef SFWI_INSERT_AT_LIST
+                BJL(pwValue =) InsertAtList(qy, wKey, nPos
+          #if defined(CODE_XX_SW)
+                                          , /* pLnUp */ NULL
+                                          , /* nBLUp */ 0
+          #endif // defined(CODE_XX_SW)
+          #if defined(B_JUDYL) && defined(EMBED_KEYS)
+                                          , /* pwValueUp */ NULL
+          #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+                                            );
+      #else // SWFI_INSERT_AT_LIST
+                pwrNew = NewList(nPopCnt + 1, cnBitsPerWord);
+                set_wr(wRoot, pwrNew, T_LIST);
+                *pwRoot = wRoot;
+                pwKeysNew = ls_pwKeys(pwrNew, cnBitsPerWord);
+                assert(ls_pwKeysX(pwrNew, cnBitsPerWord, nPopCnt + 1) == pwKeysNew);
+                COPY(pwKeysNew, pwKeys, nPos);
+                COPY(&pwKeysNew[nPos + 1], &pwKeys[nPos], nPopCnt - nPos);
+          #ifdef B_JUDYL
+                pwValuesNew = gpwValues(qy); // (pLn, nBLR)
+                COPY(&pwValuesNew[~nPos + 1], &pwValues[~nPos + 1], nPos);
+                COPY(&pwValuesNew[~nPopCnt], &pwValues[~nPopCnt + 1], nPopCnt - nPos);
+          #endif // B_JUDYL
+                if (pwr != NULL) {
+                    OldList(pwr, nPopCnt, cnBitsPerWord, T_LIST);
+                }
+                pwKeysNew[nPos] = wKey;
+          #if defined(LIST_END_MARKERS)
+                // pwKeysNew incorporates top pop count and markers
+                pwKeysNew[nPopCnt + 1] = -1;
+          #endif // defined(LIST_END_MARKERS)
+                Set_xListPopCnt(pwRoot, cnBitsPerWord, nPopCnt + 1);
+                BJL(pwValue = &pwValuesNew[~nPos]);
+                DBGI(printf("PAD(pwKeysNew %p nPopCnt + 1 %d)\n", pwKeysNew, nPopCnt + 1));
+                PAD(pwKeysNew, nPopCnt + 1);
+      #endif // SWFI_INSERT_AT_LIST
+                BJL(*pwValue = 0);
+                BJ1(status = Success);
             } else {
-                Word_t *pwListNew = NewList(wPopCnt + 1, cnDigitsPerWord);
-                Word_t *pwKeysNew = ls_pwKeys(pwListNew, cnBitsPerWord);
-                set_wr(wRoot, pwListNew, T_LIST);
-                Word_t *pwKeys;
-                pwKeys = ls_pwKeys(pwr, cnBitsPerWord);
-
- // Isn't this chunk of code already in InsertGuts?
-                unsigned nn;
-                for (nn = 0; (nn < wPopCnt) && (pwKeys[nn] < wKey); nn++) { }
-                COPY(pwKeysNew, pwKeys, nn);
-                pwKeysNew[nn] = wKey;
-                COPY(&pwKeysNew[nn + 1], &pwKeys[nn], wPopCnt - nn);
+                MOVE(&pwKeys[nPos + 1], &pwKeys[nPos], nPopCnt - nPos);
+                pwKeysNew = pwKeys;
+      #ifdef B_JUDYL
+                MOVE(&pwValues[~nPopCnt], &pwValues[~nPopCnt + 1], nPopCnt - nPos);
+                pwValuesNew = pwValues;
+      #endif // B_JUDYL
+                pwKeysNew[nPos] = wKey;
       #if defined(LIST_END_MARKERS)
                 // pwKeysNew incorporates top pop count and markers
-                pwKeysNew[wPopCnt + 1] = -1;
+                pwKeysNew[nPopCnt + 1] = -1;
       #endif // defined(LIST_END_MARKERS)
-
-                OldList(pwr, wPopCnt, cnBitsPerWord, nType);
-                *pwRoot = wRoot;
-
-                status = Success;
+                Set_xListPopCnt(pwRoot, cnBitsPerWord, nPopCnt + 1);
+                BJL(pwValue = &pwValuesNew[~nPos]);
+                PAD(pwKeysNew, nPopCnt + 1);
+                BJL(*pwValue = 0);
+                BJ1(status = Success);
             }
+        } else {
+            BJL(pwValue = &gpwValues(qy)[nPos]);
+            BJ1(status = Failure);
         }
-    }
-    else
+    } else
   #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_I)
     {
-  #ifdef B_JUDYL
-        pwValue
-  #else // B_JUDYL
-        status
-  #endif // B_JUDYL
-            = Insert(cnBitsPerWord,
-                     STRUCT_OF(pwRoot, Link_t, ln_wRoot), wKey);
+        BJL(pwValue) BJ1(status) = Insert(cnBitsPerWord, pLn, wKey);
     }
 
   #ifdef B_JUDYL
@@ -2904,13 +2922,22 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         // count successful inserts minus successful removes
         wPopCntTotal++;
   #if defined(DEBUG)
-        if (!bHitDebugThreshold
-            && ((cwDebugThreshold == 0) || (wPopCntTotal > cwDebugThreshold)))
-        {
-            bHitDebugThreshold = 1;
-            if (cwDebugThreshold != 0) {
-                printf("\n# Hit debug threshold.\n");
+        if (!bHitDebugThreshold) {
+            if ((wPopCntTotal > cwDebugThreshold)
+                && ((cwDebugThresholdMax == 0)
+                    || (wPopCntTotal <= cwDebugThresholdMax)))
+            {
+                bHitDebugThreshold = 1;
+                if (cwDebugThreshold != 0) {
+                    BJ1(printf("\n# Hit debug threshold 1.\n"));
+                    BJL(printf("\n# Hit debug threshold L.\n"));
+                }
             }
+        } else if ((cwDebugThresholdMax != 0)
+            && (wPopCntTotal > cwDebugThresholdMax)) {
+                bHitDebugThreshold = 0;
+                BJ1(printf("\n# Beyond debug threshold 1.\n"));
+                BJL(printf("\n# Beyond debug threshold L.\n"));
         }
   #endif // defined(DEBUG)
     }
