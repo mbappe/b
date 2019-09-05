@@ -2853,28 +2853,33 @@ gpwValues(qp) // gpwListValues
 }
 
 static int
-PopCount64(uint64_t word64)
+PopCount64(uint64_t v)
 {
-  #ifdef POP_COUNT_64
+  #ifdef BEST_POP_COUNT_64 // definitely not best
+    v = v - ((v >> 1) & (uint64_t)~(uint64_t)0/3);                           // temp
+    v = (v & (uint64_t)~(uint64_t)0/15*3) + ((v >> 2) & (uint64_t)~(uint64_t)0/15*3);      // temp
+    v = (v + (v >> 4)) & (uint64_t)~(uint64_t)0/255*15;                      // temp
+    return (uint64_t)(v * ((uint64_t)~(uint64_t)0/255)) >> (sizeof(uint64_t) - 1) * CHAR_BIT; // count
+  #elif defined(POP_COUNT_64)
     // Calculate each nibble to have counts of 0..4 bits in each nibble.
-    word64 -= (word64 >> 1) & (uint64_t)0x5555555555555555;
-    word64 = ((word64 >> 2) & (uint64_t)0x3333333333333333) +
-                    (word64 & (uint64_t)0x3333333333333333);
+    v -= (v >> 1) & (uint64_t)0x5555555555555555;
+    v = ((v >> 2) & (uint64_t)0x3333333333333333) +
+                    (v & (uint64_t)0x3333333333333333);
 
     // Odd nibbles += even nibbles (in parallel)
-    word64 += word64 >> 4;
+    v += v >> 4;
 
     // Clean out the even nibbles for some calculating space
-    word64 &= (uint64_t)0x0F0F0F0F0F0F0F0F; // sums bytes (1 instruction)
+    v &= (uint64_t)0x0F0F0F0F0F0F0F0F; // sums bytes (1 instruction)
 
     // Now sum the 8 bytes of bit counts of 0..8 bits each in odd nibble.
-    word64 *= (uint64_t)0x0101010101010101;
-    word64  = word64 >> (64 - 8); // sum in high byte
+    v *= (uint64_t)0x0101010101010101;
+    v = v >> (64 - 8); // sum in high byte
 
-    return ((int)word64); // 0..64
-  #else // POP_COUNT_64
-    return __builtin_popcountll(word64);
-  #endif // #else POP_COUNT_64
+    return ((int)v); // 0..64
+  #else // BEST_POP_COUNT_64 #elifdef POP_COUNT_64
+    return __builtin_popcountll(v);
+  #endif // #else BEST_POP_COUNT_64 #elifdef POP_COUNT_64
 }
 
 static int
