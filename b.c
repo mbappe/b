@@ -1407,9 +1407,11 @@ NewSwitchX(Word_t *pwRoot, Word_t wKey, int nBLR,
     wBytes += wLinks * sizeof(Link_t);
     Word_t wWords = wBytes / sizeof(Word_t);
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #if !defined(VALUE_IN_DUMMY) || (cnDummiesInLink == 0)
     /*if (EmbeddedListPopCntMax(nBLR))*/ {
         wWords += wLinks; // Embedded Values in Switch
     }
+  #endif // !defined(VALUE_IN_DUMMY) || (cnDummiesInLink == 0)
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 
 #ifdef RAMMETRICS
@@ -1428,13 +1430,14 @@ NewSwitchX(Word_t *pwRoot, Word_t wKey, int nBLR,
 #else // CACHE_ALIGN_BM_SW
     Word_t *pwr = (Word_t*)MyMalloc(wWords, pwAllocWords);
 #endif // CACHE_ALIGN_BM_SW
-    DBGI(printf("wWords %zd\n", wWords));
+    DBGI(printf("pwr %p wWords %zd\n", pwr, wWords));
 #if defined(CODE_BM_SW) && !defined(BM_IN_LINK)
     if (nType == T_BM_SW) {
         pwr += ALIGN_UP(N_WORDS_SWITCH_BM,
                         cnMallocAlignment >> cnLogBytesPerWord);
     }
 #endif // defined(CODE_BM_SW) && !defined(BM_IN_LINK)
+    DBGI(printf("pwr %p\n", pwr));
     set_wr_pwr(wRoot, pwr);
     *pwRoot = wRoot;
 
@@ -1870,9 +1873,11 @@ NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
         // old one.
         unsigned nWordsNew = nWordsOld + sizeof(Link_t) / sizeof(Word_t);
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #if !defined(VALUE_IN_DUMMY) || (cnDummiesInLink == 0)
         /*if (EmbeddedListPopCntMax(nBLR))*/ {
             nWordsNew += nLinkCnt + 1; // Embedded Values in Switch
         }
+  #endif // !defined(VALUE_IN_DUMMY) || (cnDummiesInLink == 0)
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
         Word_t *pwBm = PWR_pwBm(pwRoot, pwr); (void)pwBm;
 #if defined(CODE_BM_SW) && defined(CACHE_ALIGN_BM_SW)
@@ -2096,9 +2101,11 @@ OldSwitch(Word_t *pwRoot, int nBL
     wBytes += wLinks * sizeof(Link_t);
     Word_t wWords = wBytes / sizeof(Word_t);
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #if !defined(VALUE_IN_DUMMY) || (cnDummiesInLink == 0)
     /*if (EmbeddedListPopCntMax(nBLR))*/ {
         wWords += wLinks; // Embedded Values in Switch
     }
+  #endif // !defined(VALUE_IN_DUMMY) || (cnDummiesInLink == 0)
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 
 #ifdef RAMMETRICS
@@ -2358,9 +2365,10 @@ embeddedKeys:;
       #endif // else BM_SW_FOR_REAL
                     } else
   #endif // CODE_BM_SW
-                    printf(",0x%zx",
-                           ((Word_t*)&pwr_pLinks((Switch_t*)pwrUp)
-                               [1<<nBWUp])[nDigitX]);
+                    (void)pwrUp;
+                    Link_t *pLnUp = STRUCT_OF(&pwrUp, Link_t, ln_wRoot); // hack
+                    int nBLUp = nBL + nBWUp;
+                    printf(",0x%zx", *gpwEmbeddedValue(qyx(Up), 1<<nBWUp, nDigitX));
 #endif // B_JUDYL
                 }
                 printf("\n");
@@ -7641,6 +7649,7 @@ InsertGuts(qp, Word_t wKey, int nPos
     DBGI(printf("IG nBLR %d\n",
                 tp_bIsList(nType) ? gnListBLR(qy) : gnBLR(qy)));
     DBGI(printf("IG: nPos %d\n", nPos));
+    BJL(DBGI(printf("IG: pwValueUp %p\n", pwValueUp)));
 
   // One of the key aspects of USE_XX_SW_ONLY_AT_DL2 is that we go ahead and
   // widen a DL2 switch right on past DL1 and all the way to an embedded
@@ -8124,6 +8133,7 @@ DeflateExternalList(Word_t *pwRoot,
         }
 #ifdef B_JUDYL
         // Copy the value.
+        DBGI(printf("DEL: pwValueUp %p\n", pwValueUp));
   #if defined(FILL_W_KEY)
         if (nn < nPopCnt)
   #endif // defined(FILL_W_KEY)
@@ -9524,6 +9534,12 @@ Initialize(void)
     printf("# No EK_CALC_POP\n");
 #endif // defined(EK_CALC_POP)
 
+#ifdef           VALUE_IN_DUMMY
+    BJL(printf("#    VALUE_IN_DUMMY\n"));
+#else //         VALUE_IN_DUMMY
+    BJL(printf("# No VALUE_IN_DUMMY\n"));
+#endif //        VALUE_IN_DUMMY
+
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     printf("#    BL_SPECIFIC_PSPLIT_SEARCH\n");
 #else // defined(BL_SPECIFIC_PSPLIT_SEARCH)
@@ -10509,6 +10525,7 @@ Initialize(void)
     printf("# cnBmSwRetain %d\n", cnBmSwRetain);
     printf("# N_WORDS_SWITCH_BM %d\n", N_WORDS_SWITCH_BM);
 #endif // CODE_BM_SW
+    printf("# cnGuardWords %d\n", cnGuardWords);
 
 #ifndef OLD_LIST_WORD_CNT
     for (int nLogBytesPerKey = cnLogBytesPerWord;

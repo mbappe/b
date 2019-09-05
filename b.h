@@ -2826,8 +2826,12 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 static Word_t*
 gpwEmbeddedValue(qp, Word_t wLinks, Word_t wIndex)
 {
-    qv;
+    qv; (void)wLinks; (void)wIndex;
+      #if defined(VALUE_IN_DUMMY) && (cnDummiesInLink > 0)
+    return pwr_pLinks((Switch_t*)pwr)[wIndex].ln_awDummies;
+      #else // defined(VALUE_IN_DUMMY) && (cnDummiesInLink > 0)
     return &((Word_t*)&pwr_pLinks((Switch_t *)pwr)[wLinks])[wIndex];
+      #endif // defined(VALUE_IN_DUMMY) && (cnDummiesInLink > 0)
 }
   #endif // EMBED_KEYS
 
@@ -2851,26 +2855,49 @@ gpwValues(qp) // gpwListValues
 static int
 PopCount64(uint64_t word64)
 {
-#ifdef POP_COUNT_64
-//  Calculate each nibble to have counts of 0..4 bits in each nibble.
+  #ifdef POP_COUNT_64
+    // Calculate each nibble to have counts of 0..4 bits in each nibble.
     word64 -= (word64 >> 1) & (uint64_t)0x5555555555555555;
     word64 = ((word64 >> 2) & (uint64_t)0x3333333333333333) +
                     (word64 & (uint64_t)0x3333333333333333);
 
-//  Odd nibbles += even nibbles (in parallel)
+    // Odd nibbles += even nibbles (in parallel)
     word64 += word64 >> 4;
 
-//  Clean out the even nibbles for some calculating space
-    word64 &= (uint64_t)0x0F0F0F0F0F0F0F0F;    // sums bytes (1 instruction)
+    // Clean out the even nibbles for some calculating space
+    word64 &= (uint64_t)0x0F0F0F0F0F0F0F0F; // sums bytes (1 instruction)
 
-//  Now sum the 8 bytes of bit counts of 0..8 bits each in odd nibble.
+    // Now sum the 8 bytes of bit counts of 0..8 bits each in odd nibble.
     word64 *= (uint64_t)0x0101010101010101;
-    word64  = word64 >> (64 - 8);       // sum in high byte
+    word64  = word64 >> (64 - 8); // sum in high byte
 
-    return ((int)word64);                       // 0..64
-#else // POP_COUNT_64
+    return ((int)word64); // 0..64
+  #else // POP_COUNT_64
     return __builtin_popcountll(word64);
-#endif // #else POP_COUNT_64
+  #endif // #else POP_COUNT_64
+}
+
+static int
+PopCount32(uint32_t v)
+{
+  #ifdef MOD_POP_COUNT_32
+    uint64_t c;
+    c = ((v & 0xfff) * 0x1001001001001ULL & 0x84210842108421ULL) % 0x1f;
+    c += (((v & 0xfff000) >> 12) * 0x1001001001001ULL & 0x84210842108421ULL)
+             % 0x1f;
+    c += ((v >> 24) * 0x1001001001001ULL & 0x84210842108421ULL) % 0x1f;
+    return c;
+  #elif BEST_POP_COUNT_32
+    // The best method for counting bits in a 32-bit integer v is the following:
+    v = v - ((v >> 1) & 0x55555555); // reuse input as temporary
+    v = (v & 0x33333333) + ((v >> 2) & 0x33333333); // temp
+    return ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24; // count
+  #elif TABLE_POP_COUNT_32
+  #else // POP_COUNT_32
+    return (sizeof(int) == 4)
+        ? __builtin_popcount((unsigned int)v)
+        : __builtin_popcountl((unsigned int)v);
+  #endif // #else POP_COUNT_32
 }
 
   #ifdef BITMAP

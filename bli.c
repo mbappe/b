@@ -2552,6 +2552,7 @@ foundIt:;
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                    );
   #ifdef B_JUDYL
+    DBGI(printf("Initializing pwValue %p for wKey 0x%zx\n", pwValue, wKey));
     *pwValue = 0;
   #endif // B_JUDYL
     if (bCleanupRequested) {
@@ -2961,6 +2962,10 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
   // Judy1LHTime and Judy1LHCheck put a -1 word before and after the root
   // word of the array solely so we can make sure we don't corrupt it.
   #if defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)
+    if (ppvRoot[-1] != (void*)-1) {
+        printf("ppvRoot %p\n", ppvRoot);
+        printf("ppvRoot[-1] %p\n", ppvRoot[-1]);
+    }
     assert(((void**)ppvRoot)[-1] == (void*)-1);
     assert(((void**)ppvRoot)[ 1] == (void*)-1);
   #endif // defined(DEBUG) && !defined(NO_ROOT_WORD_CHECK)

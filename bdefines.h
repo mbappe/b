@@ -483,5 +483,13 @@
     #define  PREFETCH_BM_LN
 #endif // NO_PREFETCH_BM_LN
 
+#ifdef B_JUDYL
+#ifdef VALUE_IN_DUMMY
+#ifndef cnDummiesInLink
+  #define cnDummiesInLink  1
+#endif // #ifndef cnDummiesInLink
+#endif // VALUE_IN_DUMMY
+#endif // B_JUDYL
+
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 
