@@ -6348,7 +6348,6 @@ BmSwLinkCnt(qp)
           #endif // defined(OFFSET_IN_SW_BM_WORD) || def(X_SW_BM_HALF_WORDS)
                * N_WORDS_SWITCH_BM));
       #endif // BM_SW_FOR_REAL
-    assert((int)GetBits(*pwRoot, cnBitsCnt, cnLsbCnt) == nLinks - 1);
     return nLinks;
   #endif // #else BM_SW_CNT_IN_WR
 }
