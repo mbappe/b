@@ -1,3 +1,12 @@
+8/5/19:
+- Added VALUE_IN_DUMMY to experiment with two-word Link_t for JudyL.
+  - Get is a little slower, as expected, due to cache pollution.
+  - PREFETCH_EK of the remote immediate value is not as bad as a
+    two-word Link_t. Presumably because higher level branches don't
+    suffer from the cache pollution of two-word link.
+  - Let's try using the extra word for speeding list and bm leaves.
+    - Doug's stacked leaves? Bm offsets?
+
 10/25/18:
 
 - sudo apt update
