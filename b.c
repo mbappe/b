@@ -3614,11 +3614,17 @@ InsertAllAtBitmap(qp, qpx(Old), int nStart, int nPopCnt)
   #ifdef BMLF_POP_COUNT_32
     uint32_t* pu32Bitmap = (uint32_t*)pwBitmap;
     for (Word_t ww = 0; ww < EXP(cnBitsInD1 - 5); ++ww) {
+      #if cnDummiesInLink > 0
+        ((uint8_t*)pLn->ln_awDummies)[ww] =
+      #endif // cnDummiesInLink > 0
         ((BmLeaf_t*)pwr)->bmlf_au8Cnts[ww]
             = PopCount32(pu32Bitmap[ww]);
     }
   #else // BMLF_POP_COUNT_32
     for (Word_t ww = 0; ww < EXP(cnBitsInD1 - cnLogBitsPerWord); ++ww) {
+      #if cnDummiesInLink > 0
+        ((uint8_t*)pLn->ln_awDummies)[ww] =
+      #endif // cnDummiesInLink > 0
         ((BmLeaf_t*)pwr)->bmlf_au8Cnts[ww]
             = __builtin_popcountll(pwBitmap[ww]);
     }
@@ -8262,6 +8268,9 @@ InsertAtBitmap(qp, Word_t wKey)
         COPY(((BmLeaf_t*)pwr)->bmlf_au8Cnts,
              ((BmLeaf_t*)pwrOld)->bmlf_au8Cnts,
              sizeof(((BmLeaf_t*)pwr)->bmlf_au8Cnts));
+          #if cnDummiesInLink > 0
+        *pLn->ln_awDummies = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts;
+          #endif // cnDummiesInLink > 0
       #endif // BMLF_CNTS
         Word_t *pwTgtVals = gpwBitmapValues(qy, nBLR);
         if (BM_UNCOMPRESSED(wRoot)) {
@@ -8290,9 +8299,15 @@ done:
   #ifdef BMLF_CNTS
   #ifdef BMLF_POP_COUNT_32
     int nBm = (wKey >> 5) & MSK(cnBitsInD1 - 5);
+      #if cnDummiesInLink > 0
+    ((uint8_t*)pLn->ln_awDummies)[nBm] =
+      #endif // cnDummiesInLink > 0
     ++((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBm];
   #else // BMLF_POP_COUNT_32
     int nBmWord = (wKey >> cnLogBitsPerWord) & MSK(cnBitsInD1 - cnLogBitsPerWord);
+      #if cnDummiesInLink > 0
+    ((uint8_t*)pLn->ln_awDummies)[nBmWord] =
+      #endif // cnDummiesInLink > 0
     ++((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBmWord];
   #endif // #else BMLF_POP_COUNT_32
   #endif // BMLF_CNTS
@@ -8915,6 +8930,9 @@ RemoveAtBitmap(qp, Word_t wKey)
             COPY(((BmLeaf_t*)pwr)->bmlf_au8Cnts,
                  ((BmLeaf_t*)pwrOld)->bmlf_au8Cnts,
                  sizeof(((BmLeaf_t*)pwr)->bmlf_au8Cnts));
+          #if cnDummiesInLink > 0
+            *pLn->ln_awDummies = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts;
+          #endif // cnDummiesInLink > 0
       #endif // BMLF_CNTS
             Word_t *pwTgtVals = gpwBitmapValues(qy, nBLR);
             if (bUncompressed) {
@@ -8946,9 +8964,15 @@ done:
   #ifdef BMLF_CNTS
   #ifdef BMLF_POP_COUNT_32
         int nBm = (wKey >> 5) & MSK(cnBitsInD1 - 5);
+      #if cnDummiesInLink > 0
+        ((uint8_t*)pLn->ln_awDummies)[nBm] =
+      #endif // cnDummiesInLink > 0
         --((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBm];
   #else // BMLF_POP_COUNT_32
         int nBmWord = (wKey >> cnLogBitsPerWord) & MSK(cnBitsInD1 - cnLogBitsPerWord);
+      #if cnDummiesInLink > 0
+        ((uint8_t*)pLn->ln_awDummies)[nBmWord] =
+      #endif // cnDummiesInLink > 0
         --((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBmWord];
   #endif // #else BMLF_POP_COUNT_32
   #endif // BMLF_CNTS
