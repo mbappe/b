@@ -2285,6 +2285,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
         BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
         printf(" nWords %4d", nWords);
         printf(" wPopCnt %5zd", gwBitmapPopCnt(qy, nBL));
+  #ifdef BMLF_CNTS
+        printf(" wCnts 0x%016zx", *(Word_t*)(((BmLeaf_t*)pwr)->bmlf_au8Cnts));
+  #endif // BMLF_CNTS
         Word_t wPopCntL = 0;
         for (Word_t ww = 0; (int)ww < nWords; ++ww) {
             wPopCntL += __builtin_popcountll(pBmLeaf->bmlf_awBitmap[ww]);
@@ -3608,10 +3611,18 @@ InsertAllAtBitmap(qp, qpx(Old), int nStart, int nPopCnt)
   #endif // B_JUDYL
     }
   #ifdef BMLF_CNTS
+  #ifdef BMLF_POP_COUNT_32
+    uint32_t* pu32Bitmap = (uint32_t*)pwBitmap;
+    for (Word_t ww = 0; ww < EXP(cnBitsInD1 - 5); ++ww) {
+        ((BmLeaf_t*)pwr)->bmlf_au8Cnts[ww]
+            = PopCount32(pu32Bitmap[ww]);
+    }
+  #else // BMLF_POP_COUNT_32
     for (Word_t ww = 0; ww < EXP(cnBitsInD1 - cnLogBitsPerWord); ++ww) {
         ((BmLeaf_t*)pwr)->bmlf_au8Cnts[ww]
             = __builtin_popcountll(pwBitmap[ww]);
     }
+  #endif // #else BMLF_POP_COUNT_32
   #endif // BMLF_CNTS
 }
 #endif // BITMAP
@@ -8277,8 +8288,13 @@ done:
         swBitmapPopCnt(qy, nBLR, wPopCnt + 1);
     }
   #ifdef BMLF_CNTS
+  #ifdef BMLF_POP_COUNT_32
+    int nBm = (wKey >> 5) & MSK(cnBitsInD1 - 5);
+    ++((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBm];
+  #else // BMLF_POP_COUNT_32
     int nBmWord = (wKey >> cnLogBitsPerWord) & MSK(cnBitsInD1 - cnLogBitsPerWord);
     ++((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBmWord];
+  #endif // #else BMLF_POP_COUNT_32
   #endif // BMLF_CNTS
     SetBit(pwBitmap, wKey & MSK(nBLR));
 
@@ -8928,8 +8944,13 @@ done:
         }
         ClrBit(pwBitmap, wKey & MSK(nBLR));
   #ifdef BMLF_CNTS
+  #ifdef BMLF_POP_COUNT_32
+        int nBm = (wKey >> 5) & MSK(cnBitsInD1 - 5);
+        --((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBm];
+  #else // BMLF_POP_COUNT_32
         int nBmWord = (wKey >> cnLogBitsPerWord) & MSK(cnBitsInD1 - cnLogBitsPerWord);
         --((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBmWord];
+  #endif // #else BMLF_POP_COUNT_32
   #endif // BMLF_CNTS
 
 #if defined(DEBUG_COUNT)
@@ -9219,6 +9240,24 @@ Initialize(void)
     printf("# No POP_COUNT_64\n");
 #endif // #else  POP_COUNT_64
 
+#ifdef           BEST_POP_COUNT_64
+    printf("#    BEST_POP_COUNT_64\n");
+#else //         BEST_POP_COUNT_64
+    printf("# No BEST_POP_COUNT_64\n");
+#endif // #else  BEST_POP_COUNT_64
+
+#ifdef           MOD_POP_COUNT_32
+    printf("#    MOD_POP_COUNT_32\n");
+#else //         MOD_POP_COUNT_32
+    printf("# No MOD_POP_COUNT_32\n");
+#endif // #else  MOD_POP_COUNT_32
+
+#ifdef           BEST_POP_COUNT_32_
+    printf("#    BEST_POP_COUNT_32\n");
+#else //         BEST_POP_COUNT_32
+    printf("# No BEST_POP_COUNT_32\n");
+#endif // #else  BEST_POP_COUNT_32
+
 #ifdef           BM_SW_CNT_IN_WR
     printf("#    BM_SW_CNT_IN_WR\n");
 #else //         BM_SW_CNT_IN_WR
@@ -9236,6 +9275,12 @@ Initialize(void)
 #else //         PREFETCH_BM_EK
     printf("# No PREFETCH_BM_EK\n");
 #endif // #else  PREFETCH_BM_EK
+
+#ifdef           BMLF_POP_COUNT_32
+    printf("#    BMLF_POP_COUNT_32\n");
+#else //         BMLF_POP_COUNT_32
+    printf("# No BMLF_POP_COUNT_32\n");
+#endif // #else  BMLF_POP_COUNT_32
 
 #ifdef           BMLF_CNTS
     printf("#    BMLF_CNTS\n");

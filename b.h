@@ -2820,6 +2820,29 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 }
 //#endif // SKIP_LINKS
 
+static int
+PopCount32(uint32_t v)
+{
+  #ifdef MOD_POP_COUNT_32
+    uint64_t c;
+    c = ((v & 0xfff) * 0x1001001001001ULL & 0x84210842108421ULL) % 0x1f;
+    c += (((v & 0xfff000) >> 12) * 0x1001001001001ULL & 0x84210842108421ULL)
+             % 0x1f;
+    c += ((v >> 24) * 0x1001001001001ULL & 0x84210842108421ULL) % 0x1f;
+    return c;
+  #elif BEST_POP_COUNT_32
+    // The best method for counting bits in a 32-bit integer v is the following:
+    v = v - ((v >> 1) & 0x55555555); // reuse input as temporary
+    v = (v & 0x33333333) + ((v >> 2) & 0x33333333); // temp
+    return (((v + (v >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24; // count
+  #elif TABLE_POP_COUNT_32
+  #else // POP_COUNT_32
+    return (sizeof(int) == 4)
+        ? __builtin_popcount((unsigned int)v)
+        : __builtin_popcountl((unsigned int)v);
+  #endif // #else POP_COUNT_32
+}
+
 #ifdef B_JUDYL
 
   #ifdef EMBED_KEYS
@@ -2882,29 +2905,6 @@ PopCount64(uint64_t v)
   #endif // #else BEST_POP_COUNT_64 #elifdef POP_COUNT_64
 }
 
-static int
-PopCount32(uint32_t v)
-{
-  #ifdef MOD_POP_COUNT_32
-    uint64_t c;
-    c = ((v & 0xfff) * 0x1001001001001ULL & 0x84210842108421ULL) % 0x1f;
-    c += (((v & 0xfff000) >> 12) * 0x1001001001001ULL & 0x84210842108421ULL)
-             % 0x1f;
-    c += ((v >> 24) * 0x1001001001001ULL & 0x84210842108421ULL) % 0x1f;
-    return c;
-  #elif BEST_POP_COUNT_32
-    // The best method for counting bits in a 32-bit integer v is the following:
-    v = v - ((v >> 1) & 0x55555555); // reuse input as temporary
-    v = (v & 0x33333333) + ((v >> 2) & 0x33333333); // temp
-    return ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24; // count
-  #elif TABLE_POP_COUNT_32
-  #else // POP_COUNT_32
-    return (sizeof(int) == 4)
-        ? __builtin_popcount((unsigned int)v)
-        : __builtin_popcountl((unsigned int)v);
-  #endif // #else POP_COUNT_32
-}
-
   #ifdef BITMAP
 
 static Word_t *
@@ -2944,29 +2944,54 @@ BmIndex(qp, int nBLR, Word_t wKey)
   #endif // SKIP_TO_BITMAP
            );
     Word_t wDigit = wKey & MSK(nBLR);
+  #ifdef BMLF_POP_COUNT_32
+    uint32_t *pu32Bms = (uint32_t*)((BmLeaf_t*)pwr)->bmlf_awBitmap;
+    // The bitmap may have more than one uint32_t.
+    // nBmNum is the number of the uint32_t which contains the bit we want.
+    int nBmNum = wDigit >> 5;
+    uint32_t u32Bm = pu32Bms[nBmNum]; // uint32_t we want
+    uint32_t u32BmBitMask = EXP(wDigit & (32 - 1));
+      #ifdef BMLF_CNTS
+    void* pvCnts = ((BmLeaf_t*)pwr)->bmlf_au8Cnts;
+    Word_t *pwCnts = pvCnts;
+    Word_t wSums = *pwCnts * 0x0101010101010100;
+    uint8_t *pu8Sums = (void*)&wSums;
+    int nIndex = pu8Sums[nBmNum];
+      #else // BMLF_CNTS
+    int nIndex = 0;
+    for (int nn = 0; nn < nBmNum; nn++) {
+        nIndex += PopCount32(pu32Bms[nn]);
+    }
+      #endif // #else BMLF_CNTS
+    nIndex += PopCount32(u32Bm & (u32BmBitMask - 1));
+    if ((u32Bm & u32BmBitMask) == 0) {
+        nIndex ^= -1;
+    }
+  #else // BMLF_POP_COUNT_32
     Word_t *pwBmWords = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
     // The bitmap may have more than one word.
     // nBmWordNum is the number of the word which contains the bit we want.
     int nBmWordNum = wDigit >> cnLogBitsPerWord;
     Word_t wBmWord = pwBmWords[nBmWordNum]; // word we want
     Word_t wBmBitMask = EXP(wDigit & (cnBitsPerWord - 1));
-#ifdef BMLF_CNTS
+      #ifdef BMLF_CNTS
     void* pvCnts = ((BmLeaf_t*)pwr)->bmlf_au8Cnts;
     Word_t *pwCnts = pvCnts;
     Word_t wSums = *pwCnts * 0x01010100;
     uint8_t *pu8Sums = (void*)&wSums;
-    Word_t wIndex = pu8Sums[nBmWordNum];
-#else // BMLF_CNTS
-    Word_t wIndex = 0;
+    int nIndex = pu8Sums[nBmWordNum];
+      #else // BMLF_CNTS
+    int nIndex = 0;
     for (int nn = 0; nn < nBmWordNum; nn++) {
-        wIndex += PopCount64(pwBmWords[nn]);
+        nIndex += PopCount64(pwBmWords[nn]);
     }
-#endif // #else BMLF_CNTS
-    wIndex += PopCount64(wBmWord & (wBmBitMask - 1));
+      #endif // #else BMLF_CNTS
+    nIndex += PopCount64(wBmWord & (wBmBitMask - 1));
     if ((wBmWord & wBmBitMask) == 0) {
-        wIndex ^= -1;
+        nIndex ^= -1;
     }
-    return wIndex;
+  #endif // #else BMLF_POP_COUNT_32
+    return nIndex;
 }
 
   #endif // BITMAP
