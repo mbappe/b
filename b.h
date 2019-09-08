@@ -3473,7 +3473,9 @@ InflateBmSwTest(qp) // qp points to BM switch
 #ifdef B_JUDYL
     nBytesPerPop += sizeof(Word_t); // value
   #ifdef EMBED_KEYS
+  #ifndef VALUE_IN_DUMMY
     nBytesPerLink += sizeof(Word_t); // value
+  #endif // VALUE_IN_DUMMY
   #endif // EMBED_KEYS
 #endif // B_JUDYL
 
