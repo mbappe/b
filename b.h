@@ -2787,7 +2787,9 @@ typedef struct {
     #define bmlf_wPopCnt  bmlf_wPrefixPop
   #endif // #else defined(POP_WORD) && !defined(POP_WORD_IN_LINK)
   #ifdef BMLF_CNTS
+  #if cnDummiesInLink == 0
     uint8_t bmlf_au8Cnts[cnBytesPerWord];
+  #endif // cnDummiesInLink == 0
   #endif // BMLF_CNTS
     Word_t bmlf_awBitmap[0];
 } BmLeaf_t;
@@ -2952,9 +2954,12 @@ BmIndex(qp, int nBLR, Word_t wKey)
     uint32_t u32Bm = pu32Bms[nBmNum]; // uint32_t we want
     uint32_t u32BmBitMask = EXP(wDigit & (32 - 1));
       #ifdef BMLF_CNTS
-    void* pvCnts = ((BmLeaf_t*)pwr)->bmlf_au8Cnts;
-    Word_t *pwCnts = pvCnts;
-    Word_t wSums = *pwCnts * 0x0101010101010100;
+          #if cnDummiesInLink > 0
+    Word_t wSums = *pLn->ln_awDummies;
+          #else // cnDummiesInLink > 0
+    Word_t wSums = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts;
+          #endif // #else cnDummiesInLink > 0
+    wSums *= 0x0101010101010100;
     uint8_t *pu8Sums = (void*)&wSums;
     int nIndex = pu8Sums[nBmNum];
       #else // BMLF_CNTS
@@ -2975,9 +2980,12 @@ BmIndex(qp, int nBLR, Word_t wKey)
     Word_t wBmWord = pwBmWords[nBmWordNum]; // word we want
     Word_t wBmBitMask = EXP(wDigit & (cnBitsPerWord - 1));
       #ifdef BMLF_CNTS
-    void* pvCnts = ((BmLeaf_t*)pwr)->bmlf_au8Cnts;
-    Word_t *pwCnts = pvCnts;
-    Word_t wSums = *pwCnts * 0x01010100;
+          #if cnDummiesInLink > 0
+    Word_t wSums = *pLn->ln_awDummies;
+          #else // cnDummiesInLink > 0
+    Word_t wSums = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts;
+          #endif // #else cnDummiesInLink > 0
+    wSums *= 0x01010100;
     uint8_t *pu8Sums = (void*)&wSums;
     int nIndex = pu8Sums[nBmWordNum];
       #else // BMLF_CNTS
