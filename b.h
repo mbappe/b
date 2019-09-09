@@ -2843,17 +2843,27 @@ PopCount32(uint32_t v)
   #endif // #else POP_COUNT_32
 }
 
+static inline int BmSwLinkCnt(qp);
+
 #ifdef B_JUDYL
 
   #ifdef EMBED_KEYS
+// qp is a pointer to the switch containing the link that contains the
+// embedded key.
+// nLinks is the number of links in the switch. This may not be the same as
+// EXP(gnBW(qp, gnBLR(qp)), e.g. for a bitmap switch.
+// nIndex is the link number in the switch. It is NOT necessarily the same
+// as the digit of the key represented by the link, e.g. for a bitmap switch.
 static Word_t*
-gpwEmbeddedValue(qp, Word_t wLinks, Word_t wIndex)
+gpwEmbeddedValue(qp, int nLinks, int nIndex)
 {
-    qv; (void)wLinks; (void)wIndex;
+    qv;
       #if defined(VALUE_IN_DUMMY) && (cnDummiesInLink > 0)
-    return pwr_pLinks((Switch_t*)pwr)[wIndex].ln_awDummies;
+    (void)nLinks;
+    return pwr_pLinks((Switch_t*)pwr)[nIndex].ln_awDummies;
       #else // defined(VALUE_IN_DUMMY) && (cnDummiesInLink > 0)
-    return &((Word_t*)&pwr_pLinks((Switch_t *)pwr)[wLinks])[wIndex];
+    assert(!tp_bIsBmSw(nType) || (BmSwLinkCnt(qy) == nLinks));
+    return &((Word_t*)&pwr_pLinks((Switch_t *)pwr)[nLinks])[nIndex];
       #endif // defined(VALUE_IN_DUMMY) && (cnDummiesInLink > 0)
 }
   #endif // EMBED_KEYS
