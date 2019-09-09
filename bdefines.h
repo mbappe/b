@@ -485,9 +485,10 @@
 
 #ifdef B_JUDYL
 #ifdef VALUE_IN_DUMMY
-#ifndef cnDummiesInLink
+#if cnDummiesInLink == 0
+  #undef  cnDummiesInLink
   #define cnDummiesInLink  1
-#endif // #ifndef cnDummiesInLink
+#endif // cnDummiesInLink == 0
 #endif // VALUE_IN_DUMMY
 #endif // B_JUDYL
 

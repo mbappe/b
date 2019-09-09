@@ -1764,6 +1764,7 @@ InflateBmSw(Word_t *pwRoot, Word_t wKey, int nBLR, int nBLUp)
         }
     }
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifndef VALUE_IN_DUMMY
     Word_t *pSwValues = (Word_t*)&pSwLinks[1<<nBW];
     Word_t *pBmSwValues = (Word_t*)&pBmSwLinks[nLinkCnt];
     nLinkCnt = 0;
@@ -1773,16 +1774,23 @@ InflateBmSw(Word_t *pwRoot, Word_t wKey, int nBLR, int nBLUp)
             ++nLinkCnt;
         }
     }
+  #endif // #ifndef VALUE_IN_DUMMY
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 
     OldSwitch(&wRoot, nBLUp, /* bBmSw */ 1, nLinkCnt);
 
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
     Word_t wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
+    // How is it possible for pSwLinks[wDigit].ln_wRoot to be WROOT_NULL?
+    //assert(pSwLinks[wDigit].ln_wRoot != WROOT_NULL);
     if ((pSwLinks[wDigit].ln_wRoot != WROOT_NULL)
         && (wr_nType(pSwLinks[wDigit].ln_wRoot) == T_EMBEDDED_KEYS))
     {
+#ifdef VALUE_IN_DUMMY
+        Word_t *pwValue = pSwLinks[wDigit].ln_awDummies;
+#else // VALUE_IN_DUMMY
         Word_t *pwValue = &pSwValues[wDigit];
+#endif // #else VALUE_IN_DUMMY
         DBGX(printf("InflateBmSw returning pwValue %p\n", pwValue));
         return pwValue;
     }
@@ -1922,6 +1930,7 @@ NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
         DBGI(printf("PWR_wPopCnt %" _fw"d\n",
              PWR_wPopCntBL(pwRoot, (BmSwitch_t *)*pwRoot, nBLR)));
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifndef VALUE_IN_DUMMY
         /*if (EmbeddedListPopCntMax(nBLR))*/ {
             Link_t *pNewLinks = pwr_pLinks((BmSwitch_t *)*pwRoot);
             Word_t *pNewValues = (Word_t*)&pNewLinks[nLinkCnt + 1];
@@ -1935,6 +1944,7 @@ NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
                 pNewValues[ww] = pOldValues[ww - 1];
             }
         }
+  #endif // #ifndef VALUE_IN_DUMMY
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 
         // Initialize the new link.
