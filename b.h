@@ -2787,7 +2787,9 @@ typedef struct {
     #define bmlf_wPopCnt  bmlf_wPrefixPop
   #endif // #else defined(POP_WORD) && !defined(POP_WORD_IN_LINK)
   #ifdef BMLF_CNTS
+  #if cnDummiesInLink == 0
     uint8_t bmlf_au8Cnts[cnBytesPerWord];
+  #endif // cnDummiesInLink == 0
   #endif // BMLF_CNTS
     Word_t bmlf_awBitmap[0];
 } BmLeaf_t;
@@ -2964,7 +2966,6 @@ BmIndex(qp, int nBLR, Word_t wKey)
       #ifdef BMLF_CNTS
           #if cnDummiesInLink > 0
     Word_t wSums = *pLn->ln_awDummies;
-    assert(*(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts == wSums);
           #else // cnDummiesInLink > 0
     Word_t wSums = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts;
           #endif // #else cnDummiesInLink > 0
@@ -2991,8 +2992,6 @@ BmIndex(qp, int nBLR, Word_t wKey)
       #ifdef BMLF_CNTS
           #if cnDummiesInLink > 0
     Word_t wSums = *pLn->ln_awDummies;
-    assert((*(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts & 0xffffffff)
-           == (wSums & 0xffffffff));
           #else // cnDummiesInLink > 0
     Word_t wSums = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts;
           #endif // #else cnDummiesInLink > 0

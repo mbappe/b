@@ -2296,7 +2296,13 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
         printf(" nWords %4d", nWords);
         printf(" wPopCnt %5zd", gwBitmapPopCnt(qy, nBL));
   #ifdef BMLF_CNTS
-        printf(" wCnts 0x%016zx", *(Word_t*)(((BmLeaf_t*)pwr)->bmlf_au8Cnts));
+        printf(" wCnts 0x%016zx",
+      #if cnDummiesInLink > 0
+               *pLn->ln_awDummies
+      #else // cnDummiesInLink > 0
+               *(Word_t*)(((BmLeaf_t*)pwr)->bmlf_au8Cnts)
+      #endif // #else cnDummiesInLink > 0
+               );
   #endif // BMLF_CNTS
         Word_t wPopCntL = 0;
         for (Word_t ww = 0; (int)ww < nWords; ++ww) {
@@ -3625,17 +3631,19 @@ InsertAllAtBitmap(qp, qpx(Old), int nStart, int nPopCnt)
     uint32_t* pu32Bitmap = (uint32_t*)pwBitmap;
     for (Word_t ww = 0; ww < EXP(cnBitsInD1 - 5); ++ww) {
       #if cnDummiesInLink > 0
-        ((uint8_t*)pLn->ln_awDummies)[ww] =
-      #endif // cnDummiesInLink > 0
+        ((uint8_t*)pLn->ln_awDummies)[ww]
+      #else // cnDummiesInLink > 0
         ((BmLeaf_t*)pwr)->bmlf_au8Cnts[ww]
+      #endif // #else cnDummiesInLink > 0
             = PopCount32(pu32Bitmap[ww]);
     }
   #else // BMLF_POP_COUNT_32
     for (Word_t ww = 0; ww < EXP(cnBitsInD1 - cnLogBitsPerWord); ++ww) {
       #if cnDummiesInLink > 0
-        ((uint8_t*)pLn->ln_awDummies)[ww] =
-      #endif // cnDummiesInLink > 0
+        ((uint8_t*)pLn->ln_awDummies)[ww]
+      #else // cnDummiesInLink > 0
         ((BmLeaf_t*)pwr)->bmlf_au8Cnts[ww]
+      #endif // #else cnDummiesInLink > 0
             = __builtin_popcountll(pwBitmap[ww]);
     }
   #endif // #else BMLF_POP_COUNT_32
@@ -8261,6 +8269,11 @@ InsertAtBitmap(qp, Word_t wKey)
     nPos = ~BmIndex(qy, nBLR, wKey);
     Word_t wWords = BitmapWordCnt(nBLR, wPopCnt + 1); // new
     if (wWords != BitmapWordCnt(nBLR, wPopCnt)) {
+      #ifdef BMLF_CNTS
+          #if cnDummiesInLink > 0
+        Link_t LnOld = *pLn;
+          #endif // cnDummiesInLink > 0
+      #endif // BMLF_CNTS
         NewBitmap(qy, nBLR, wKey, wPopCnt + 1);
         // Prefix and popcnt are set; bits are not.
         // *pwRoot has been updated. qy is out of date.
@@ -8275,12 +8288,12 @@ InsertAtBitmap(qp, Word_t wKey)
         pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
         COPY(pwBitmap, pwBitmapOld, nBmWords);
       #ifdef BMLF_CNTS
-        COPY(((BmLeaf_t*)pwr)->bmlf_au8Cnts,
-             ((BmLeaf_t*)pwrOld)->bmlf_au8Cnts,
-             sizeof(((BmLeaf_t*)pwr)->bmlf_au8Cnts));
           #if cnDummiesInLink > 0
-        *pLn->ln_awDummies = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts;
-          #endif // cnDummiesInLink > 0
+        *pLn->ln_awDummies = LnOld.ln_awDummies[0];
+          #else // cnDummiesInLink > 0
+        *(Word_t*)(((BmLeaf_t*)pwr)->bmlf_au8Cnts)
+            = *(Word_t*)((BmLeaf_t*)pwrOld)->bmlf_au8Cnts;
+          #endif // #else cnDummiesInLink > 0
       #endif // BMLF_CNTS
         Word_t *pwTgtVals = gpwBitmapValues(qy, nBLR);
         if (BM_UNCOMPRESSED(wRoot)) {
@@ -8310,15 +8323,17 @@ done:
   #ifdef BMLF_POP_COUNT_32
     int nBm = (wKey >> 5) & MSK(cnBitsInD1 - 5);
       #if cnDummiesInLink > 0
-    ((uint8_t*)pLn->ln_awDummies)[nBm] =
-      #endif // cnDummiesInLink > 0
+    ++((uint8_t*)pLn->ln_awDummies)[nBm];
+      #else // cnDummiesInLink > 0
     ++((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBm];
+      #endif // #else cnDummiesInLink > 0
   #else // BMLF_POP_COUNT_32
     int nBmWord = (wKey >> cnLogBitsPerWord) & MSK(cnBitsInD1 - cnLogBitsPerWord);
       #if cnDummiesInLink > 0
-    ((uint8_t*)pLn->ln_awDummies)[nBmWord] =
-      #endif // cnDummiesInLink > 0
+    ++((uint8_t*)pLn->ln_awDummies)[nBmWord];
+      #else // cnDummiesInLink > 0
     ++((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBmWord];
+      #endif // #else cnDummiesInLink > 0
   #endif // #else BMLF_POP_COUNT_32
   #endif // BMLF_CNTS
     SetBit(pwBitmap, wKey & MSK(nBLR));
@@ -8923,6 +8938,11 @@ RemoveAtBitmap(qp, Word_t wKey)
         Word_t *pwSrcVals = gpwBitmapValues(qy, nBLR);
         int nPos = BmIndex(qy, nBLR, wKey);
         if (wWords != BitmapWordCnt(nBLR, wPopCnt + 1)) {
+      #ifdef BMLF_CNTS
+          #if cnDummiesInLink > 0
+            Link_t LnOld = *pLn;
+          #endif // cnDummiesInLink > 0
+      #endif // BMLF_CNTS
             NewBitmap(qy, nBLR, wKey, wPopCnt);
             // Prefix and popcnt are set; bits are not.
             // *pwRoot has been updated. qy is out of date.
@@ -8937,12 +8957,12 @@ RemoveAtBitmap(qp, Word_t wKey)
             pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
             COPY(pwBitmap, pwBitmapOld, nBmWords);
       #ifdef BMLF_CNTS
-            COPY(((BmLeaf_t*)pwr)->bmlf_au8Cnts,
-                 ((BmLeaf_t*)pwrOld)->bmlf_au8Cnts,
-                 sizeof(((BmLeaf_t*)pwr)->bmlf_au8Cnts));
           #if cnDummiesInLink > 0
-            *pLn->ln_awDummies = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts;
-          #endif // cnDummiesInLink > 0
+            *pLn->ln_awDummies = LnOld.ln_awDummies[0];
+          #else // cnDummiesInLink > 0
+            *(Word_t*)(((BmLeaf_t*)pwr)->bmlf_au8Cnts)
+                = *(Word_t*)((BmLeaf_t*)pwrOld)->bmlf_au8Cnts;
+          #endif // #else cnDummiesInLink > 0
       #endif // BMLF_CNTS
             Word_t *pwTgtVals = gpwBitmapValues(qy, nBLR);
             if (bUncompressed) {
@@ -8975,15 +8995,17 @@ done:
   #ifdef BMLF_POP_COUNT_32
         int nBm = (wKey >> 5) & MSK(cnBitsInD1 - 5);
       #if cnDummiesInLink > 0
-        ((uint8_t*)pLn->ln_awDummies)[nBm] =
-      #endif // cnDummiesInLink > 0
+        --((uint8_t*)pLn->ln_awDummies)[nBm];
+      #else // cnDummiesInLink > 0
         --((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBm];
+      #endif // #else cnDummiesInLink > 0
   #else // BMLF_POP_COUNT_32
         int nBmWord = (wKey >> cnLogBitsPerWord) & MSK(cnBitsInD1 - cnLogBitsPerWord);
       #if cnDummiesInLink > 0
-        ((uint8_t*)pLn->ln_awDummies)[nBmWord] =
-      #endif // cnDummiesInLink > 0
+        --((uint8_t*)pLn->ln_awDummies)[nBmWord];
+      #else // cnDummiesInLink > 0
         --((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBmWord];
+      #endif // #else cnDummiesInLink > 0
   #endif // #else BMLF_POP_COUNT_32
   #endif // BMLF_CNTS
 
