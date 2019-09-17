@@ -2232,6 +2232,20 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
             printf(" nBLR %2d", nBLR);
             printf(" nWords %4" _fw"d", EXP(nBLR - cnLogBitsPerWord));
             printf(" wPopCnt %" _fw"d", wPopCnt);
+  #ifdef BMLF_CNTS
+  #ifdef BMLF_POP_COUNT_8
+            HexDump("bmlf_au8Cnts",
+                    (Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts, 4);
+  #else // BMLF_POP_COUNT_8
+            printf(" wCnts 0x%016zx",
+      #if cnDummiesInLink > 0
+                   *pLn->ln_awDummies
+      #else // cnDummiesInLink > 0
+                   *(Word_t*)(((BmLeaf_t*)pwr)->bmlf_au8Cnts)
+      #endif // #else cnDummiesInLink > 0
+                   );
+  #endif // #else BMLF_POP_COUNT_8
+  #endif // BMLF_CNTS
             Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
             for (Word_t ww = 0; (ww < EXP(nBLR - cnLogBitsPerWord)); ww++) {
                 if ((ww % 8) == 0) {
@@ -2296,6 +2310,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
         printf(" nWords %4d", nWords);
         printf(" wPopCnt %5zd", gwBitmapPopCnt(qy, nBL));
   #ifdef BMLF_CNTS
+  #ifndef BMLF_POP_COUNT_8
         printf(" wCnts 0x%016zx",
       #if cnDummiesInLink > 0
                *pLn->ln_awDummies
@@ -2303,6 +2318,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
                *(Word_t*)(((BmLeaf_t*)pwr)->bmlf_au8Cnts)
       #endif // #else cnDummiesInLink > 0
                );
+  #endif // #ifndef BMLF_POP_COUNT_8
   #endif // BMLF_CNTS
         Word_t wPopCntL = 0;
         for (Word_t ww = 0; (int)ww < nWords; ++ww) {
@@ -3638,6 +3654,13 @@ InsertAllAtBitmap(qp, qpx(Old), int nStart, int nPopCnt)
             = PopCount32(pu32Bitmap[ww]);
     }
   #else // BMLF_POP_COUNT_32
+      #ifdef BMLF_POP_COUNT_8
+    int nSum = 0;
+    for (int nn = 0; nn < 1<<(cnBitsInD1-cnLogBitsPerByte); ++nn) {
+        ((BmLeaf_t*)pwr)->bmlf_au8Cnts[nn] = nSum;
+        nSum += PopCount8(((uint8_t*)pwBitmap)[nn]);
+    }
+      #else // BMLF_POP_COUNT_8
     for (Word_t ww = 0; ww < EXP(cnBitsInD1 - cnLogBitsPerWord); ++ww) {
       #if cnDummiesInLink > 0
         ((uint8_t*)pLn->ln_awDummies)[ww]
@@ -3646,6 +3669,7 @@ InsertAllAtBitmap(qp, qpx(Old), int nStart, int nPopCnt)
       #endif // #else cnDummiesInLink > 0
             = __builtin_popcountll(pwBitmap[ww]);
     }
+      #endif // #else BMLF_POP_COUNT_8
   #endif // #else BMLF_POP_COUNT_32
   #endif // BMLF_CNTS
 }
@@ -8288,12 +8312,18 @@ InsertAtBitmap(qp, Word_t wKey)
         pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
         COPY(pwBitmap, pwBitmapOld, nBmWords);
       #ifdef BMLF_CNTS
+          #ifdef BMLF_POP_COUNT_8
+        COPY(((BmLeaf_t*)pwr)->bmlf_au8Cnts,
+             ((BmLeaf_t*)pwrOld)->bmlf_au8Cnts,
+             sizeof((BmLeaf_t*)pwr)->bmlf_au8Cnts);
+          #else // BMLF_POP_COUNT_8
           #if cnDummiesInLink > 0
         *pLn->ln_awDummies = LnOld.ln_awDummies[0];
           #else // cnDummiesInLink > 0
         *(Word_t*)(((BmLeaf_t*)pwr)->bmlf_au8Cnts)
             = *(Word_t*)((BmLeaf_t*)pwrOld)->bmlf_au8Cnts;
           #endif // #else cnDummiesInLink > 0
+          #endif // #else BMLF_POP_COUNT_8
       #endif // BMLF_CNTS
         Word_t *pwTgtVals = gpwBitmapValues(qy, nBLR);
         if (BM_UNCOMPRESSED(wRoot)) {
@@ -8328,11 +8358,20 @@ done:
     ++((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBm];
       #endif // #else cnDummiesInLink > 0
   #else // BMLF_POP_COUNT_32
-    int nBmWord = (wKey >> cnLogBitsPerWord) & MSK(cnBitsInD1 - cnLogBitsPerWord);
+          #ifdef BMLF_POP_COUNT_8
+    int nBmByte
+        = (wKey >> cnLogBitsPerByte) & MSK(cnBitsInD1 - cnLogBitsPerByte);
+    for (int nn = nBmByte + 1; nn < 1<<(cnBitsInD1-cnLogBitsPerByte); ++nn) {
+        ++((BmLeaf_t*)pwr)->bmlf_au8Cnts[nn];
+    }
+          #else // BMLF_POP_COUNT_8
+    int nBmWord
+        = (wKey >> cnLogBitsPerWord) & MSK(cnBitsInD1 - cnLogBitsPerWord);
       #if cnDummiesInLink > 0
     ++((uint8_t*)pLn->ln_awDummies)[nBmWord];
       #else // cnDummiesInLink > 0
     ++((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBmWord];
+          #endif // #else BMLF_POP_COUNT_8
       #endif // #else cnDummiesInLink > 0
   #endif // #else BMLF_POP_COUNT_32
   #endif // BMLF_CNTS
@@ -8957,12 +8996,17 @@ RemoveAtBitmap(qp, Word_t wKey)
             pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
             COPY(pwBitmap, pwBitmapOld, nBmWords);
       #ifdef BMLF_CNTS
+          #ifdef BMLF_POP_COUNT_8
+            COPY(((BmLeaf_t*)pwr)->bmlf_au8Cnts,
+                ((BmLeaf_t*)pwrOld)->bmlf_au8Cnts, 32);
+          #else // BMLF_POP_COUNT_8
           #if cnDummiesInLink > 0
             *pLn->ln_awDummies = LnOld.ln_awDummies[0];
           #else // cnDummiesInLink > 0
             *(Word_t*)(((BmLeaf_t*)pwr)->bmlf_au8Cnts)
                 = *(Word_t*)((BmLeaf_t*)pwrOld)->bmlf_au8Cnts;
           #endif // #else cnDummiesInLink > 0
+          #endif // #else BMLF_POP_COUNT_8
       #endif // BMLF_CNTS
             Word_t *pwTgtVals = gpwBitmapValues(qy, nBLR);
             if (bUncompressed) {
@@ -9000,11 +9044,21 @@ done:
         --((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBm];
       #endif // #else cnDummiesInLink > 0
   #else // BMLF_POP_COUNT_32
-        int nBmWord = (wKey >> cnLogBitsPerWord) & MSK(cnBitsInD1 - cnLogBitsPerWord);
+          #ifdef BMLF_POP_COUNT_8
+        int nBmByte
+            = (wKey >> cnLogBitsPerByte) & MSK(cnBitsInD1 - cnLogBitsPerByte);
+        for (int nn = nBmByte + 1; nn < 1<<(cnBitsInD1-cnLogBitsPerByte); ++nn)
+        {
+            --((BmLeaf_t*)pwr)->bmlf_au8Cnts[nn];
+        }
+          #else // BMLF_POP_COUNT_8
+        int nBmWord
+            = (wKey >> cnLogBitsPerWord) & MSK(cnBitsInD1 - cnLogBitsPerWord);
       #if cnDummiesInLink > 0
         --((uint8_t*)pLn->ln_awDummies)[nBmWord];
       #else // cnDummiesInLink > 0
         --((BmLeaf_t*)pwr)->bmlf_au8Cnts[nBmWord];
+          #endif // #else BMLF_POP_COUNT_8
       #endif // #else cnDummiesInLink > 0
   #endif // #else BMLF_POP_COUNT_32
   #endif // BMLF_CNTS
