@@ -2789,7 +2789,7 @@ typedef struct {
   #ifdef BMLF_CNTS
   #if cnDummiesInLink == 0
       #ifdef BMLF_POP_COUNT_8
-    uint8_t bmlf_au8Cnts[1<<(cnBitsInD1-cnLogBitsPerByte)];
+    uint8_t bmlf_au8Cnts[1 << (cnBitsInD1 - cnLogBitsPerByte)];
       #else // BMLF_POP_COUNT_8
     uint8_t bmlf_au8Cnts[cnBytesPerWord];
       #endif // #else BMLF_POP_COUNT_8
@@ -3009,35 +3009,40 @@ BmIndex(qp, int nBLR, Word_t wKey)
         nIndex ^= -1;
     }
   #else // BMLF_POP_COUNT_32
-          #ifndef BMLF_POP_COUNT_8
+      #ifndef BMLF_POP_COUNT_8
     Word_t *pwBmWords = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
     // The bitmap may have more than one word.
     // nBmWordNum is the number of the word which contains the bit we want.
     int nBmWordNum = wDigit >> cnLogBitsPerWord;
     Word_t wBmWord = pwBmWords[nBmWordNum]; // word we want
     Word_t wBmBitMask = EXP(wDigit & (cnBitsPerWord - 1));
-          #endif // #ifndef BMLF_POP_COUNT_8
+      #endif // #ifndef BMLF_POP_COUNT_8
       #ifdef BMLF_CNTS
           #ifdef BMLF_POP_COUNT_8
     uint8_t *pu8BmBytes = (uint8_t*)((BmLeaf_t*)pwr)->bmlf_awBitmap;
     int nBmByteNum = wDigit >> 3;
     uint8_t u8BmByte = pu8BmBytes[nBmByteNum]; // byte we want
     uint8_t u8BmBitMask = EXP(wDigit & 7);
-    uint8_t* pu8SumsNew = ((BmLeaf_t*)pwr)->bmlf_au8Cnts;
-    int nIndex = pu8SumsNew[nBmByteNum];
+    uint8_t* pu8Sums = ((BmLeaf_t*)pwr)->bmlf_au8Cnts;
+    int nIndex = pu8Sums[nBmByteNum];
     nIndex += PopCount8(u8BmByte & (u8BmBitMask - 1));
     if ((u8BmByte & u8BmBitMask) == 0) {
         nIndex ^= -1;
     }
           #else // BMLF_POP_COUNT_8
-          #if cnDummiesInLink > 0
+              #ifdef BMLF_CNTS_CUM
+    uint8_t* pu8Sums = ((BmLeaf_t*)pwr)->bmlf_au8Cnts;
+    int nIndex = pu8Sums[nBmWordNum];
+              #else // BMLF_CNTS_CUM
+              #if cnDummiesInLink > 0
     Word_t wSums = *pLn->ln_awDummies;
-          #else // cnDummiesInLink > 0
+              #else // cnDummiesInLink > 0
     Word_t wSums = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts;
-          #endif // #else cnDummiesInLink > 0
+              #endif // #else cnDummiesInLink > 0
     wSums *= 0x01010100;
     uint8_t *pu8Sums = (void*)&wSums;
     int nIndex = pu8Sums[nBmWordNum];
+              #endif // #else BMLF_CNTS_CUM
           #endif // BMLF_POP_COUNT_8
       #else // BMLF_CNTS
     int nIndex = 0;
@@ -3045,12 +3050,12 @@ BmIndex(qp, int nBLR, Word_t wKey)
         nIndex += PopCount64(pwBmWords[nn]);
     }
       #endif // #else BMLF_CNTS
-          #ifndef BMLF_POP_COUNT_8
+      #ifndef BMLF_POP_COUNT_8
     nIndex += PopCount64(wBmWord & (wBmBitMask - 1));
     if ((wBmWord & wBmBitMask) == 0) {
         nIndex ^= -1;
     }
-          #endif // #ifndef BMLF_POP_COUNT_8
+      #endif // #ifndef BMLF_POP_COUNT_8
   #endif // #else BMLF_POP_COUNT_32
     return nIndex;
 }
