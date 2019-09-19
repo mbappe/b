@@ -2105,6 +2105,9 @@ t_bitmap:;
             // for USE_XX_SW_ONLY_AT_DL2?
       #endif // USE_XX_SW_ONLY_AT_DL2
       #ifdef B_JUDYL
+          #if defined(LOOKUP) || defined(INSERT)
+            Word_t* pwBitmapValues = gpwBitmapValues(qy, nBLR);
+          #endif // defined(LOOKUP) || defined(INSERT)
       #ifdef LOOKUP
           #ifdef PACK_BM_VALUES
 // Note: I'm hypothesizing that the penalty for a branch misprediction is
@@ -2115,39 +2118,42 @@ t_bitmap:;
 // prefetch before the switch;
 // pop in wRoot and value area starting at pwr[-1].
             char* pcPrefetch
-                = (char*)&gpwBitmapValues(qy, nBLR)[
+                = (char*)&pwBitmapValues[
                               Psplit(gwBitmapPopCnt(qy, nBLR),
                                         nBLR, /*nShift*/ 0, wKey)];
             (void)pcPrefetch;
+              #ifdef PREREAD_BM_PSPLIT_VAL
+            wPrefetch = *(Word_t*)pcPrefetch;
+              #endif // PREREAD_BM_PSPLIT_VAL
               #ifdef PREFETCH_BM_PREV_VAL
             PREFETCH(pcPrefetch - 64);
               #endif // PREFETCH_BM_PREV_VAL
-              #ifdef PREFETCH_BM_PSPLIT_VAL
-            PREFETCH(pcPrefetch);
-              #endif // PREFETCH_BM_PSPLIT_VAL
               #ifdef PREFETCH_BM_NEXT_VAL
             PREFETCH(pcPrefetch + 64);
               #endif // PREFETCH_BM_NEXT_VAL
           #endif // PACK_BM_VALUES
           #ifdef UNPACK_BM_VALUES
           #ifdef PREFETCH_BM_VAL
-            PREFETCH(&gpwBitmapValues(qy, nBLR)[wKey & MSK(nBLR)]);
+            PREFETCH(&pwBitmapValues[wKey & MSK(nBLR)]);
           #endif // PREFETCH_BM_VAL
           #endif // UNPACK_BM_VALUES
       #endif // LOOKUP
       #endif // B_JUDYL
             // Use compile-time tests to speed this up. Hopefully.
+      #if defined(B_JUDYL) && defined(LOOKUP) && defined(BMLF_POP_COUNT_1_NO_TEST)
+            int bBitIsSet = 1;
+      #else // BMLF_POP_COUNT_1_NO_TEST
             int bBitIsSet =
      // We don't need/want to check for WROOT_NULL for embedded bitmap.
                 ((wr_nType(WROOT_NULL) == T_BITMAP)
                         && (!cbEmbeddedBitmap || (nBLR > cnLogBitsPerLink))
                         && (wRoot == WROOT_NULL))
                     ? 0 :
-      #ifdef USE_XX_SW_ONLY_AT_DL2
+          #ifdef USE_XX_SW_ONLY_AT_DL2
                 BitIsSet((nBLR <= cnLogBitsPerLink)
                              ? (Word_t*)pLn : ((BmLeaf_t*)pwr)->bmlf_awBitmap,
                          wKey & MSK(nBLR));
-      #else // USE_XX_SW_ONLY_AT_DL2
+          #else // USE_XX_SW_ONLY_AT_DL2
                 ((cn2dBmMaxWpkPercent == 0) || (nBLR == cnBitsInD1))
                     ? (cbEmbeddedBitmap && (cnBitsInD1 <= cnLogBitsPerWord))
                         ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
@@ -2165,7 +2171,8 @@ t_bitmap:;
                                        ? (Word_t*)pLn
                                        : ((BmLeaf_t*)pwr)->bmlf_awBitmap,
                                    wKey & MSK(cnBitsLeftAtDl2));
-      #endif // #else USE_XX_SW_ONLY_AT_DL2
+          #endif // #else USE_XX_SW_ONLY_AT_DL2
+      #endif // BMLF_POP_COUNT_1_NO_TEST
             if (bBitIsSet) {
       #if defined(REMOVE)
                 goto removeGutsAndCleanup;
@@ -2182,7 +2189,7 @@ t_bitmap:;
                 int nIndex = BM_UNCOMPRESSED(wRoot)
                                ? (int)(wKey & MSK(nBLR))
                                : BmIndex(qy, nBLR, wKey);
-                return &gpwBitmapValues(qy, nBLR)[nIndex];
+                return &pwBitmapValues[nIndex];
       #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 return KeyFound;
       #endif // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)

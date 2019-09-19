@@ -21,6 +21,9 @@
 
 #define LOOKUP
 #include "b.h"
+#ifdef B_JUDYL
+Word_t wPrefetch;
+#endif // B_JUDYL
 #include "bli.c"
 #undef LOOKUP
 

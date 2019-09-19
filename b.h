@@ -2790,6 +2790,8 @@ typedef struct {
   #if cnDummiesInLink == 0
       #ifdef BMLF_POP_COUNT_8
     uint8_t bmlf_au8Cnts[1 << (cnBitsInD1 - cnLogBitsPerByte)];
+      #elif defined(BMLF_POP_COUNT_1)
+    uint8_t bmlf_au8Cnts[1 << cnBitsInD1];
       #else // BMLF_POP_COUNT_8
     uint8_t bmlf_au8Cnts[cnBytesPerWord];
       #endif // #else BMLF_POP_COUNT_8
@@ -3029,20 +3031,19 @@ BmIndex(qp, int nBLR, Word_t wKey)
     if ((u8BmByte & u8BmBitMask) == 0) {
         nIndex ^= -1;
     }
-          #else // BMLF_POP_COUNT_8
-              #ifdef BMLF_CNTS_CUM
+          #elif defined(BMLF_POP_COUNT_1)
     uint8_t* pu8Sums = ((BmLeaf_t*)pwr)->bmlf_au8Cnts;
-    int nIndex = pu8Sums[nBmWordNum];
-              #else // BMLF_CNTS_CUM
+    int nIndex = pu8Sums[wDigit];
+          #else // BMLF_POP_COUNT_8
               #if cnDummiesInLink > 0
     Word_t wSums = *pLn->ln_awDummies;
               #else // cnDummiesInLink > 0
     Word_t wSums = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts;
               #endif // #else cnDummiesInLink > 0
+              #ifndef BMLF_CNTS_CUM
     wSums *= 0x01010100;
-    uint8_t *pu8Sums = (void*)&wSums;
-    int nIndex = pu8Sums[nBmWordNum];
-              #endif // #else BMLF_CNTS_CUM
+              #endif // #ifndef BMLF_CNTS_CUM
+    int nIndex = ((uint8_t*)&wSums)[nBmWordNum];
           #endif // BMLF_POP_COUNT_8
       #else // BMLF_CNTS
     int nIndex = 0;
@@ -3051,7 +3052,9 @@ BmIndex(qp, int nBLR, Word_t wKey)
     }
       #endif // #else BMLF_CNTS
       #ifndef BMLF_POP_COUNT_8
+      #ifndef BMLF_POP_COUNT_1
     nIndex += PopCount64(wBmWord & (wBmBitMask - 1));
+      #endif // #ifndef BMLF_POP_COUNT_1
     if ((wBmWord & wBmBitMask) == 0) {
         nIndex ^= -1;
     }
