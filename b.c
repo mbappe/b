@@ -368,7 +368,7 @@ MyFreeGutsRM(Word_t *pw, Word_t wWords, int nLogAlignment,
             return;
         }
     }
-    JudyFree((RawP_t)pw, wWords);
+    JudyFree((Word_t)pw, wWords);
     return;
   #endif // FAST_MALLOC
     if (nLogAlignment > cnBitsMallocMask) {
@@ -406,7 +406,7 @@ MyFreeGutsRM(Word_t *pw, Word_t wWords, int nLogAlignment,
     }
 #endif // RAMMETRICS
 
-    JudyFree((RawP_t)pw, wWords + cnMallocExtraWords);
+    JudyFree((Word_t)pw, wWords + cnMallocExtraWords);
 }
 
 static void
@@ -11078,7 +11078,7 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
     return wBytes;
 
 #else // (cnDigitsPerWord != 1)
-    JudyFree((RawP_t)*PPArray, EXP(cnBitsPerWord - cnLogBitsPerWord));
+    JudyFree((Word_t)*PPArray, EXP(cnBitsPerWord - cnLogBitsPerWord));
     return EXP(cnBitsPerWord - cnLogBitsPerByte);
 #endif // (cnDigitsPerWord != 1)
 }

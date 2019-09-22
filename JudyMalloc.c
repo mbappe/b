@@ -284,7 +284,7 @@ pre_mmap(void *addr, Word_t length, int prot, int flags, int fd, off_t offset)
 #ifdef LIBCMALLOC
 static
 #endif // LIBCMALLOC
-RawP_t
+Word_t
 JudyMallocX(int Words, int nSpace, int nLogAlign)
 {
         (void)nSpace;
@@ -381,13 +381,13 @@ JudyMallocX(int Words, int nSpace, int nLogAlign)
 
 } // JudyMalloc()
 
-RawP_t
+Word_t
 JudyMallocAlign(int Words, int nLogAlign)
 {
     return JudyMallocX(Words, /* nSpace */ -1, nLogAlign);
 }
 
-RawP_t
+Word_t
 JudyMalloc(int Words)
 {
     return JudyMallocX(Words, /* nSpace */ -1, /* nLogAlign */ 0);
@@ -400,7 +400,7 @@ JudyMalloc(int Words)
 static
 #endif // LIBCMALLOC
 void
-JudyFreeX(RawP_t PWord, int Words, int nSpace)
+JudyFreeX(Word_t PWord, int Words, int nSpace)
 {
     (void) Words;
     (void)nSpace;
@@ -472,14 +472,14 @@ JudyFreeX(RawP_t PWord, int Words, int nSpace)
 } // JudyFree()
 
 void
-JudyFree(RawP_t PWord, int Words)
+JudyFree(Word_t PWord, int Words)
 {
     (void) Words;
     JudyFreeX(PWord, Words, /* nSpace */ -1);
 }
 
 
-RawP_t JudyMallocVirtual(
+Word_t JudyMallocVirtual(
 	int Words)
 {
 	return(JudyMalloc(Words));
@@ -491,7 +491,7 @@ RawP_t JudyMallocVirtual(
 // J U D Y   F R E E
 
 void JudyFreeVirtual(
-	RawP_t PWord,
+	Word_t PWord,
 	int    Words)
 {
         JudyFree(PWord, Words);

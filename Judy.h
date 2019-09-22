@@ -296,13 +296,11 @@ extern const char *JudyLMallocSizes;
 // ****************************************************************************
 // JUDY memory interface to malloc() FUNCTIONS:
 
-typedef size_t RawP_t; // printable pointer with other stuff crammed in it
-
-extern RawP_t JudyMalloc(int);                  // words reqd => words allocd.
-extern RawP_t JudyMallocAlign(int, /* nLogAlign */ int);
-extern RawP_t JudyMallocVirtual(int);           // words reqd => words allocd.
-extern void   JudyFree(RawP_t, int);            // free, size in words.
-extern void   JudyFreeVirtual(RawP_t, int);     // free, size in words.
+extern Word_t JudyMalloc(int);                  // words reqd => words allocd.
+extern Word_t JudyMallocAlign(int, /* nLogAlign */ int);
+extern Word_t JudyMallocVirtual(int);           // words reqd => words allocd.
+extern void   JudyFree(Word_t, int);            // free, size in words.
+extern void   JudyFreeVirtual(Word_t, int);     // free, size in words.
 
 #ifndef LIBCMALLOC
 
@@ -311,8 +309,8 @@ extern void   JudyFreeVirtual(RawP_t, int);     // free, size in words.
   #define JUDY_MALLOC_NUM_SPACES  0
 #endif // JUDY_MALLOC_NUM_SPACES
 
-extern RawP_t JudyMallocX(int, /* nSpace */ int, /* nLogAlign */ int);
-extern void   JudyFreeX(RawP_t, int, /* nSpace */ int);
+extern Word_t JudyMallocX(int, /* nSpace */ int, /* nLogAlign */ int);
+extern void   JudyFreeX(Word_t, int, /* nSpace */ int);
 
 size_t JudyMallocInfoNonMmapped(int nSpace); // non-mmapped space from system
 size_t JudyMallocInfoMmapped(int nSpace); // mmapped space from system
