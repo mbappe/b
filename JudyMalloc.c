@@ -387,8 +387,12 @@ JudyMallocAlign(int Words, int nLogAlign)
     return JudyMallocX(Words, /* nSpace */ -1, nLogAlign);
 }
 
-Word_t
-JudyMalloc(int Words)
+// Use -DJUDY_105 to build this JudyMalloc.c in a Judy 1.0.5 build area.
+#ifdef JUDY_105
+Word_t JudyMalloc(Word_t Words)
+#else // JUDY_105
+Word_t JudyMalloc(int Words)
+#endif // #else JUDY_105
 {
     return JudyMallocX(Words, /* nSpace */ -1, /* nLogAlign */ 0);
 }
@@ -471,16 +475,22 @@ JudyFreeX(Word_t PWord, int Words, int nSpace)
 
 } // JudyFree()
 
-void
-JudyFree(Word_t PWord, int Words)
+#ifdef JUDY_105
+void JudyFree(Pvoid_t PWord, Word_t Words)
+#else // JUDY_105
+void JudyFree(Word_t PWord, int Words)
+#endif // #else JUDY_105
 {
     (void) Words;
     JudyFreeX(PWord, Words, /* nSpace */ -1);
 }
 
 
-Word_t JudyMallocVirtual(
-	int Words)
+#ifdef JUDY_105
+Word_t JudyMallocVirtual(Word_t Words)
+#else // JUDY_105
+Word_t JudyMallocVirtual(int Words)
+#endif // #else JUDY_105
 {
 	return(JudyMalloc(Words));
 
@@ -490,9 +500,11 @@ Word_t JudyMallocVirtual(
 // ****************************************************************************
 // J U D Y   F R E E
 
-void JudyFreeVirtual(
-	Word_t PWord,
-	int    Words)
+#ifdef JUDY_105
+void JudyFreeVirtual(Pvoid_t PWord, Word_t Words)
+#else // JUDY_105
+void JudyFreeVirtual(Word_t PWord, int Words)
+#endif // #else JUDY_105
 {
         JudyFree(PWord, Words);
 
