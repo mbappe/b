@@ -5140,12 +5140,25 @@ static int
 LocateKey128(__m128i *pxBucket, Word_t wKey, int nBL)
 {
     Word_t wHasKey = HasKey128(pxBucket, wKey, nBL);
-    if (nBL == 8) {
-        return __builtin_ffsll(wHasKey) - 1;
-    }
+  #if defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
     if (wHasKey == 0) {
         return -1;
     }
+  #endif // defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
+    if (nBL == 8) {
+  #ifdef USE_POPCOUNT_IN_LK8
+        return __builtin_popcountll((wHasKey & -wHasKey) - 1);
+  #elif defined(USE_FFS_IN_LK8)
+        return __builtin_ffsll(wHasKey) - 1;
+  #else // USE_POPCOUNT_IN_LK8 #elif USE_FFS_IN_LK8
+        return __builtin_ctzll(wHasKey);
+  #endif // USE_POPCOUNT_IN_LK8 #elif USE_FFS_IN_LK8 #else
+    }
+  #if !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
+    if (wHasKey == 0) {
+        return -1;
+    }
+  #endif // !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
     int nFirstSetBit = __builtin_ffsll(wHasKey) - 1;
     if (nBL == 16) {
   #ifdef HK_MOVEMASK

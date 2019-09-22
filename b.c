@@ -9390,6 +9390,30 @@ Initialize(void)
 
     printf("\n");
 
+#ifdef           USE_POPCOUNT_IN_LK8
+    printf("#    USE_POPCOUNT_IN_LK8\n");
+#else //         USE_POPCOUNT_IN_LK8
+    printf("# No USE_POPCOUNT_IN_LK8\n");
+#endif // #else  USE_POPCOUNT_IN_LK8
+
+#ifdef           USE_FFS_IN_LK8
+    printf("#    USE_FFS_IN_LK8\n");
+#else //         USE_FFS_IN_LK8
+    printf("# No USE_FFS_IN_LK8\n");
+#endif // #else  USE_FFS_IN_LK8
+
+#ifdef           SLOW_FIBONACCI
+    printf("#    SLOW_FIBONACCI\n");
+#else //         SLOW_FIBONACCI
+    printf("# No SLOW_FIBONACCI\n");
+#endif // #else  SLOW_FIBONACCI
+
+#ifdef           POW_2_ALLOC
+    printf("#    POW_2_ALLOC\n");
+#else //         POW_2_ALLOC
+    printf("# No POW_2_ALLOC\n");
+#endif // #else  POW_2_ALLOC
+
 #ifdef           POP_COUNT_64
     printf("#    POP_COUNT_64\n");
 #else //         POP_COUNT_64
