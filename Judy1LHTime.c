@@ -4661,8 +4661,8 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
                         else if (VFlag && (*PValue != TstKey))
                         {
                             printf
-                                ("--- JudyLGet returned Value=0x%" PRIxPTR", should be=0x%" PRIxPTR"",
-                                 *PValue, TstKey);
+                                ("--- JudyLGet Key 0x%" PRIxPTR" returned PValue %p Value=0x%" PRIxPTR", should be=0x%" PRIxPTR"",
+                                 TstKey, PValue, *PValue, TstKey);
                             FAILURE("JudyLGet ret wrong Value at", elm);
                         }
                     }
