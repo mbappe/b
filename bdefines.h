@@ -493,12 +493,8 @@
 #endif // B_JUDYL
 
 #ifndef B_JUDYL
-  #ifdef BMLF_CNTS
-    #undef BMLF_CNTS
-  #endif // BMLF_CNTS
-  #ifdef PREFETCH_BMLF_CNTS
-    #undef PREFETCH_BMLF_CNTS
-  #endif // PREFETCH_BMLF_CNTS
+  #undef BMLF_CNTS
+  #undef PREFETCH_BMLF_CNTS
 #endif // B_JUDYL
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
