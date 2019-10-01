@@ -2890,7 +2890,12 @@ gpwEmbeddedValue(qp, int nLinks, int nIndex)
     (void)nLinks;
     return pwr_pLinks((Switch_t*)pwr)[nIndex].ln_awDummies;
       #else // defined(VALUE_IN_DUMMY) && (cnDummiesInLink > 0)
-    assert(!tp_bIsBmSw(nType) || (BmSwLinkCnt(qy) == nLinks));
+    if (tp_bIsBmSw(nType) && (BmSwLinkCnt(qy) != nLinks)) {
+        printf("\n# nLinks %d BmSwLinkCnt %d\n", nLinks, BmSwLinkCnt(qy));
+    }
+    // The following assertion is bogus during Splay which doesn't bother to
+    // initialize the bitmap in the switch being used to stage the splay.
+    //assert(!tp_bIsBmSw(nType) || (BmSwLinkCnt(qy) == nLinks));
     return &((Word_t*)&pwr_pLinks((Switch_t *)pwr)[nLinks])[nIndex];
       #endif // defined(VALUE_IN_DUMMY) && (cnDummiesInLink > 0)
 }
