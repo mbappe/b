@@ -2122,9 +2122,9 @@ t_bitmap:;
                               Psplit(gwBitmapPopCnt(qy, nBLR),
                                         nBLR, /*nShift*/ 0, wKey)];
             (void)pcPrefetch;
-              #ifdef PREREAD_BM_PSPLIT_VAL
-            wPrefetch = *(Word_t*)pcPrefetch;
-              #endif // PREREAD_BM_PSPLIT_VAL
+              #ifdef PREFETCH_BM_PSPLIT_VAL
+            PREFETCH(pcPrefetch);
+              #endif // PREFETCH_BM_PSPLIT_VAL
               #ifdef PREFETCH_BM_PREV_VAL
             PREFETCH(pcPrefetch - 64);
               #endif // PREFETCH_BM_PREV_VAL
