@@ -3060,9 +3060,6 @@ BmIndex(qp, int nBLR, Word_t wKey)
       #ifndef BMLF_POP_COUNT_1
     nIndex += PopCount64(wBmWord & (wBmBitMask - 1));
       #endif // #ifndef BMLF_POP_COUNT_1
-    if ((wBmWord & wBmBitMask) == 0) {
-        nIndex ^= -1;
-    }
       #endif // #ifndef BMLF_POP_COUNT_8
   #endif // #else BMLF_POP_COUNT_32
     return nIndex;

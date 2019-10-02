@@ -8303,7 +8303,7 @@ InsertAtBitmap(qp, Word_t wKey)
         nPos = wKey & MSK(nBLR);
         goto done;
     }
-    nPos = ~BmIndex(qy, nBLR, wKey);
+    nPos = BmIndex(qy, nBLR, wKey);
     Word_t wWords = BitmapWordCnt(nBLR, wPopCnt + 1); // new
     if (wWords != BitmapWordCnt(nBLR, wPopCnt)) {
       #ifdef BMLF_CNTS
