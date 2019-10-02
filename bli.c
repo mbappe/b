@@ -2106,7 +2106,7 @@ t_bitmap:;
       #endif // USE_XX_SW_ONLY_AT_DL2
       #ifdef B_JUDYL
           #if defined(LOOKUP) || defined(INSERT)
-            Word_t* pwBitmapValues = gpwBitmapValues(qy, nBLR);
+            Word_t* pwBitmapValues = gpwBitmapValues(qy, cnBitsInD1);
           #endif // defined(LOOKUP) || defined(INSERT)
       #ifdef LOOKUP
           #ifdef PACK_BM_VALUES
@@ -2119,8 +2119,8 @@ t_bitmap:;
 // pop in wRoot and value area starting at pwr[-1].
             char* pcPrefetch
                 = (char*)&pwBitmapValues[
-                              Psplit(gwBitmapPopCnt(qy, nBLR),
-                                        nBLR, /*nShift*/ 0, wKey)];
+                              Psplit(gwBitmapPopCnt(qy, cnBitsInD1),
+                                        cnBitsInD1, /*nShift*/ 0, wKey)];
             (void)pcPrefetch;
               #ifdef PREFETCH_BM_PSPLIT_VAL
             PREFETCH(pcPrefetch);
@@ -2134,7 +2134,7 @@ t_bitmap:;
           #endif // PACK_BM_VALUES
           #ifdef UNPACK_BM_VALUES
           #ifdef PREFETCH_BM_VAL
-            PREFETCH(&pwBitmapValues[wKey & MSK(nBLR)]);
+            PREFETCH(&pwBitmapValues[wKey & MSK(cnBitsInD1)]);
           #endif // PREFETCH_BM_VAL
           #endif // UNPACK_BM_VALUES
       #endif // LOOKUP
@@ -2188,7 +2188,7 @@ t_bitmap:;
       #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 int nIndex = BM_UNCOMPRESSED(wRoot)
                                ? (int)(wKey & MSK(nBLR))
-                               : BmIndex(qy, nBLR, wKey);
+                               : BmIndex(qy, cnBitsInD1, wKey);
                 return &pwBitmapValues[nIndex];
       #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 return KeyFound;

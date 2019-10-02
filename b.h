@@ -2972,7 +2972,7 @@ gpwBitmapValues(qp, int nBLR)
     // We only ever have bitmaps for B_JUDYL at cnBitsInD1.
     assert(nBLR == cnBitsInD1);
     Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t)
-                         + EXP(MAX(1, cnBitsInD1 - cnLogBitsPerWord));
+                         + EXP(MAX(0, cnBitsInD1 - cnLogBitsPerWord));
 #endif // #else defined(KISS_BM) || defined(KISS)
     return &pwr[wWordsHdr];
 }
