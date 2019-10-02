@@ -2110,31 +2110,31 @@ t_bitmap:;
           #endif // defined(LOOKUP) || defined(INSERT)
       #ifdef LOOKUP
           #ifdef PACK_BM_VALUES
-// Note: I'm hypothesizing that the penalty for a branch misprediction is
+// Note: I wonder if the penalty for a branch misprediction is
 // exacerbated when prefetching is done on both forks of the branch.
 // For example, T_LIST vs T_BITMAP(packed) at nBLR==cnBitsInD1.
 // We could structure the leaves so that both sides would want to prefetch
 // the exact same cache lines relative to pwr and be able to initiate the
 // prefetch before the switch;
 // pop in wRoot and value area starting at pwr[-1].
-            char* pcPrefetch
-                = (char*)&pwBitmapValues[
-                              Psplit(gwBitmapPopCnt(qy, cnBitsInD1),
-                                        cnBitsInD1, /*nShift*/ 0, wKey)];
-            (void)pcPrefetch;
+                char* pcPrefetch
+                    = (char*)&pwBitmapValues[
+                                  Psplit(gwBitmapPopCnt(qy, cnBitsInD1),
+                                            cnBitsInD1, /*nShift*/ 0, wKey)];
+                (void)pcPrefetch;
               #ifdef PREFETCH_BM_PSPLIT_VAL
-            PREFETCH(pcPrefetch);
+                PREFETCH(pcPrefetch);
               #endif // PREFETCH_BM_PSPLIT_VAL
               #ifdef PREFETCH_BM_PREV_VAL
-            PREFETCH(pcPrefetch - 64);
+                PREFETCH(pcPrefetch - 64);
               #endif // PREFETCH_BM_PREV_VAL
               #ifdef PREFETCH_BM_NEXT_VAL
-            PREFETCH(pcPrefetch + 64);
+                PREFETCH(pcPrefetch + 64);
               #endif // PREFETCH_BM_NEXT_VAL
           #endif // PACK_BM_VALUES
           #ifdef UNPACK_BM_VALUES
           #ifdef PREFETCH_BM_VAL
-            PREFETCH(&pwBitmapValues[wKey & MSK(cnBitsInD1)]);
+                PREFETCH(&pwBitmapValues[wKey & MSK(cnBitsInD1)]);
           #endif // PREFETCH_BM_VAL
           #endif // UNPACK_BM_VALUES
       #endif // LOOKUP
