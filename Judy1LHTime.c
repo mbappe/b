@@ -1895,16 +1895,12 @@ main(int argc, char *argv[])
 
         if (gFlag && !GFlag)
         {
-#if defined(SPLAY_KEY_BITS) && defined(DFLAG)
             // Calculate wCheckBit for use with gFlag later.
             Word_t wEffMask = wSplayMask;
             if (DFlag) {
                 wEffMask = Swizzle(wSplayMask);
                 wEffMask >>= (sizeof(Word_t) * 8) - LOG(wSplayMask) - 1;
             }
-#else // defined(SPLAY_KEY_BITS) && defined(DFLAG)
-            Word_t wEffMask = -1;
-#endif // defined(SPLAY_KEY_BITS) && defined(DFLAG)
             if (wEffMask != (Word_t)-1)
             {
                 for (int ii = 2; ii < (int)sizeof(Word_t) - 1; ++ii)
@@ -4080,6 +4076,9 @@ TestJudyIns(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
                                         }
                                     }
                                 }
+                                // It would be better to set and use wCheckBit
+                                // for !bSpayKeyBits as well to simplify and
+                                // and speed up TestJudyIns.
                                 else if (BValue < sizeof(Word_t) * 8)
                                 {
                                     if (BValue < sizeof(Word_t) * 8 - 8)
