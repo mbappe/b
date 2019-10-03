@@ -610,7 +610,7 @@ Word_t wSplayMask = 0x5555555555555555; // default splay mask
 Word_t wSplayMask = 0x55555555;         // default splay mask
 //Word_t wSplayMask = 0xff00ffff;
 #endif // defined(__LP64__) || defined(_WIN64)
-Word_t    wCheckBit = 0;                // Bit for narrow ptr testing.
+Word_t    wCheckBits = 0;               // Bits for narrow pointer testing.
 
 Word_t TValues = DEFAULT_TVALUES; // Maximum numb retrieve timing tests
 
@@ -1896,37 +1896,22 @@ main(int argc, char *argv[])
 
     if (GFlag)
     {
-        // Calculate wCheckBit for use with GFlag later.
-        Word_t wEffMask = (((Word_t)1 << (BValue - 1)) << 1) - 1;
+        // Calculate wCheckBits for use with GFlag later.
+        wCheckBits = (((Word_t)1 << (BValue - 1)) << 1) - 1;
         if (bSplayKeyBitsFlag) {
-            wEffMask = wSplayMask;
+            wCheckBits = wSplayMask;
             if (DFlag) {
-                wEffMask = Swizzle(wSplayMask);
-                wEffMask >>= (sizeof(Word_t) * 8) - LOG(wSplayMask) - 1;
+                wCheckBits = Swizzle(wSplayMask);
+                wCheckBits >>= (sizeof(Word_t) * 8) - LOG(wSplayMask) - 1;
             }
         }
-        if (wEffMask == (Word_t)-1) {
+        if (wCheckBits == (Word_t)-1) {
             FAILURE("-G requires -B value less than bits per word"
                     " or splay mask not equal to -1; bits per word",
                     sizeof(Word_t) * 8);
         }
-        for (int ii = 2; ii < (int)sizeof(Word_t) - 1; ++ii)
-        {
-            if (((uint8_t *)&wEffMask)[ii] == 0)
-            {
-                wCheckBit = (Word_t)1 << (ii * 8);
-                break;
-            }
-        }
-        if (wCheckBit == 0)
-        {
-            if (LOG(wEffMask) != sizeof(Word_t) * 8 - 1) {
-                wCheckBit = (Word_t)2 << LOG(wEffMask);
-            } else {
-                wCheckBit = (Word_t)1 << LOG(~wEffMask);
-            }
-        }
-        printf("# -G wCheckBit 0x%zx\n", wCheckBit);
+        wCheckBits ^= (Word_t)-1;
+        printf("# -G wCheckBits 0x%zx\n", wCheckBits);
     }
 
 //  BValue already check to be <= 64 or <=32 and >=16
@@ -4062,13 +4047,15 @@ TestJudyIns(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
                                 FAILURE("Judy1Test failed at", elm);
                             }
                         }
-                        if (GFlag && (elm == 0))
+                        if (GFlag
+                            && (elm < sizeof(Word_t) * 8)
+                            && (wCheckBits & ((Word_t)1 << elm)))
                         {
                             // Test for a key that has not been inserted.
                             // Pick one that differs from a key that has
                             // been inserted by only a single digit in an
                             // attempt to test narrow pointers.
-                            Word_t TstKeyNot = TstKey ^ wCheckBit;
+                            Word_t TstKeyNot = TstKey ^ ((Word_t)1 << elm);
                             Rc = Judy1Test(*J1, TstKeyNot, PJE0);
                             if (Rc != 0)
                             {
@@ -4163,38 +4150,40 @@ TestJudyIns(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
                         if (VFlag)
                         {
                             *PValue = TstKey;     // save Key in Value
+                        }
+                        if (iFlag)  // mainly for debug
+                        {
+                            PWord_t   PValueNew;
 
-                            if (iFlag)  // mainly for debug
+                            PValueNew = (PWord_t)JudyLIns(JL, TstKey, PJE0);
+                            if (PValueNew == NULL)
                             {
-                                PWord_t   PValueNew;
-
-                                PValueNew = (PWord_t)JudyLIns(JL, TstKey, PJE0);
-                                if (PValueNew == NULL)
-                                {
-                                    printf("\nTstKey = 0x%" PRIxPTR"\n", TstKey);
-                                    FAILURE("JudyLIns failed with NULL after Insert", TstKey);
-                                }
-#ifdef MIKEY_L
-                                if (PValueNew != PValue)
-                                {
-                                    FAILURE("Second JudyLIns failed with"
-                                            " wrong PValue after Insert",
-                                            TstKey);
-  #if 0
-                                    // Doug's code isn't strict about this yet
-                                    // because it modifies the array on the way
-                                    // down.
-                                    printf("\n#Line = %d,"
-                                           " Caution: PValueNew = 0x%" PRIxPTR
-                                           ", PValueold = 0x%" PRIxPTR
-                                           " changed\n", __LINE__,
-                                           (Word_t)PValueNew, (Word_t)PValue);
-                                    printf("- ValueNew = 0x%" PRIxPTR
-                                           ", Valueold = 0x%" PRIxPTR"\n",
-                                           *PValueNew, *PValue);
-  #endif // 0
-                                }
-#endif // MIKEY_L
+                                printf("\nTstKey = 0x%" PRIxPTR"\n", TstKey);
+                                FAILURE("JudyLIns failed with NULL after Insert", TstKey);
+                            }
+  #ifdef MIKEY_L
+                            if (PValueNew != PValue)
+                            {
+                                FAILURE("Second JudyLIns failed with"
+                                        " wrong PValue after Insert",
+                                        TstKey);
+      #if 0
+                                // Doug's code isn't strict about this yet
+                                // because it modifies the array on the way
+                                // down.
+                                printf("\n#Line = %d,"
+                                       " Caution: PValueNew = 0x%" PRIxPTR
+                                       ", PValueold = 0x%" PRIxPTR
+                                       " changed\n", __LINE__,
+                                       (Word_t)PValueNew, (Word_t)PValue);
+                                printf("- ValueNew = 0x%" PRIxPTR
+                                       ", Valueold = 0x%" PRIxPTR"\n",
+                                       *PValueNew, *PValue);
+      #endif // 0
+                            }
+  #endif // MIKEY_L
+                            if (VFlag)
+                            {
                                 if (*PValueNew != TstKey)
                                 {
                                     printf("\n*PValueNew = 0x%" PRIxPTR"\n", *PValueNew);
@@ -4202,40 +4191,42 @@ TestJudyIns(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
                                     FAILURE("Second JudyLIns failed with wrong *PValue after Insert", TstKey);
                                 }
                             }
-                            if (gFlag)  // mainly for debug
-                            {
-                                PWord_t   PValueNew;
+                        }
+                        if (gFlag)  // mainly for debug
+                        {
+                            PWord_t   PValueNew;
 
-                                PValueNew = (PWord_t)JudyLGet(*JL, TstKey, PJE0);
-                                if (PValueNew == NULL)
+                            PValueNew = (PWord_t)JudyLGet(*JL, TstKey, PJE0);
+                            if (PValueNew == NULL)
+                            {
+                                printf("\n--- TstKey = 0x%" PRIxPTR"", TstKey);
+                                FAILURE("JudyLGet failed after Insert", TstKey);
+                            }
+                            else if (VFlag)
+                            {
+                                if (*PValueNew != TstKey)
                                 {
-                                    printf("\n--- TstKey = 0x%" PRIxPTR"", TstKey);
+                                    printf("\n--- *PValueNew = 0x%" PRIxPTR"\n", *PValueNew);
+                                    printf("--- TstKey = 0x%" PRIxPTR" = %" PRIdPTR"", TstKey, TstKey);
                                     FAILURE("JudyLGet failed after Insert", TstKey);
                                 }
-                                else
-                                {
-                                    if (*PValueNew != TstKey)
-                                    {
-                                        printf("\n--- *PValueNew = 0x%" PRIxPTR"\n", *PValueNew);
-                                        printf("--- TstKey = 0x%" PRIxPTR" = %" PRIdPTR"", TstKey, TstKey);
-                                        FAILURE("JudyLGet failed after Insert", TstKey);
-                                    }
-                                }
                             }
-                            if (GFlag && (elm == 0))
+                        }
+                        if (GFlag
+                            && (elm < sizeof(Word_t) * 8)
+                            && (wCheckBits & ((Word_t)1 << elm)))
+                        {
+                            // Test for a key that has not been inserted.
+                            // Pick one that differs from a key that has
+                            // been inserted by only a single digit in an
+                            // attempt to test narrow pointers.
+                            Word_t TstKeyNot = TstKey ^ ((Word_t)1 << elm);
+                            PWord_t PValueNew = (PWord_t)JudyLGet(*JL, TstKeyNot, PJE0);
+                            if (PValueNew != NULL)
                             {
-                                // Test for a key that has not been inserted.
-                                // Pick one that differs from a key that has
-                                // been inserted by only a single digit in an
-                                // attempt to test narrow pointers.
-                                Word_t TstKeyNot = TstKey ^ wCheckBit;
-                                PWord_t PValueNew = (PWord_t)JudyLGet(*JL, TstKeyNot, PJE0);
-                                if (PValueNew != NULL)
-                                {
-                                    printf("\n--- JudyLGet(0x%zx) *PValue = 0x%zx after Judy1Set, Key = 0x%zx, elm = %zu\n",
-                                           TstKeyNot, *PValueNew, TstKey, elm);
-                                    FAILURE("JudyLGet failed at", elm);
-                                }
+                                printf("\n--- JudyLGet(0x%zx) *PValue = 0x%zx after Judy1Set, Key = 0x%zx, elm = %zu\n",
+                                       TstKeyNot, *PValueNew, TstKey, elm);
+                                FAILURE("JudyLGet failed at", elm);
                             }
                         }
                     }
