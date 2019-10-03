@@ -2187,7 +2187,7 @@ t_bitmap:;
       #endif // defined(INSERT)
       #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 int nIndex = BM_UNCOMPRESSED(wRoot)
-                               ? (int)(wKey & MSK(nBLR))
+                               ? (int)(wKey & MSK(cnBitsInD1))
                                : BmIndex(qy, cnBitsInD1, wKey);
                 return &pwBitmapValues[nIndex];
       #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
