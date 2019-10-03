@@ -41,7 +41,7 @@ let S="$sign * $magnitude"
 let n=0x400
 let s="$S * $n / 2 * -1"
 
-cmd="${TIME} -W0 -$Judy -lvdgi -s$s $DOPT -S$S -n$n -B$B"
+cmd="${TIME} -W0 -$Judy -lvdgGi -s$s $DOPT -S$S -n$n -B$B"
 echo $cmd
 $cmd > /dev/null
 if [ $? != 0 ]
@@ -82,10 +82,10 @@ do
 # -v and -h are incompatible
 
 # These options take a very long time.
-# cmd="${TIME} -W0 -$Judy -Cvdgi -n1e9 $EOPT"
+# cmd="${TIME} -W0 -$Judy -CvdgGi -n1e9 $EOPT"
 
 # These options take less time hence are more suitable for a hoop test.
-cmd="${TIME} -W0 -$Judy -lgih -n2e6 $EOPT"
+cmd="${TIME} -W0 -$Judy -lgGih -n2e6 $EOPT"
 echo $cmd
 $cmd > /dev/null
 if [ $? != 0 ]
@@ -98,7 +98,7 @@ done
 
 # Targeted testing for LOWER_XX_SW and DoubleUp with cnListPopCntMax64=64.
 : \
-&& ${TIME} -W0 -1lgi --splay-key-bits=0x1f8f4f2fe000 -S1 -n0x100000 > /dev/null \
+&& ${TIME} -W0 -1lgGi --splay-key-bits=0x1f8f4f2fe000 -S1 -n0x100000 > /dev/null \
 :
 if [ $? != 0 ]
 then
