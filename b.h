@@ -4532,43 +4532,38 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 { \
     /* printf("PSPHK(nBL %d pxKeys %p nPopCnt %d xKey 0x%x nPos %d\n", */ \
         /* _nBL, (void *)_pxKeys, _nPopCnt, _xKey, _nPos); */ \
-    _b_t *px = (_b_t *)(_pxKeys); \
+    _b_t *pb = (_b_t *)(_pxKeys); /* bucket pointer */ \
+    /* _pxKeys must be aligned on a bucket boundary */ \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
-    /* nSplit is the key chosen by PSPLIT */ \
+    /* nSplit is the key chosen by Psplit */ \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_xShift), (_xKey)); \
-    /* What hint should we use for prefetch? NTA, T0, T1, ... */ \
     BJL(char* pcPrefetch = (char*)&gpwValues(qy)[~nSplit]; (void)pcPrefetch); \
     _PF_LK(BJL(PREFETCH(pcPrefetch))); \
     _PF_LK_NX(BJL(PREFETCH(pcPrefetch - 64))); \
     _PF_LK_PV(BJL(PREFETCH(pcPrefetch + 64))); \
-    /* nSplitP is nSplit rounded down to the first key in the bucket */ \
-    int nSplitP = nSplit * sizeof(_x_t) / sizeof(_b_t); \
-    assert((int)((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
-    /*__m128i xLsbs, xMsbs, xKeys;*/ \
-    /*HAS_KEY_128_SETUP((_xKey), sizeof(_x_t) * 8, xLsbs, xMsbs, xKeys);*/ \
-    /*int nPos = _nPos;*/ \
-    if (((_nPos) = BUCKET_LOCATE_KEY(&px[nSplitP], \
+    int nKeysPerBucket = sizeof(_b_t) / sizeof(_x_t); \
+    /* nSplitB is number of the bucket chosen by Psplit */ \
+    int nSplitB = nSplit / nKeysPerBucket; \
+    assert((int)((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitB); \
+    if (((_nPos) = BUCKET_LOCATE_KEY(&pb[nSplitB], \
                                      (_xKey), sizeof(_x_t) * 8)) >= 0) { \
-        /* keys per bucket * number of buckets */ \
-        _nPos += sizeof(_b_t) / sizeof(_x_t) * nSplitP; \
+        /* add the number of keys in the buckets before nSplitB */ \
+        _nPos += nSplitB * nKeysPerBucket; \
         SMETRICS(++j__DirectHits); \
     } \
     else \
     { \
-        nSplit = nSplitP * sizeof(_b_t) / sizeof(_x_t); \
+        nSplit = nSplitB * nKeysPerBucket; \
         _x_t xKeySplit = (_pxKeys)[nSplit]; \
         /* now we have the value of a key in the list */ \
-        if ((_xKey) > xKeySplit) \
-        { \
-            if (nSplitP \
-                == (int)(((_nPopCnt) - 1) * sizeof(_x_t) / sizeof(_b_t))) \
-            { \
+        if ((_xKey) > xKeySplit) { \
+            if (nSplitB == (int)(((_nPopCnt) - 1) / nKeysPerBucket)) { \
                 /* we searched the last bucket and the key is not there */ \
                 (_nPos) = -1; /* we don't know where to insert */ \
             } else { \
                 /* parallel search the tail of the list */ \
-                /* ++nSplitP; */ \
-                (_nPos) = (int)nSplit + sizeof(_b_t) / sizeof(_x_t); \
+                /* ++nSplitB; */ \
+                (_nPos) = (int)nSplit + nKeysPerBucket; \
                 LOCATEKEYF(_b_t, (_xKey), \
                           (_pxKeys), (_nPopCnt) - (_nPos), (_nPos)); \
                 SMETRICS(++j__GetCallsP); \
@@ -4576,7 +4571,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
         } \
         else \
         { \
-            if (nSplitP == 0) { \
+            if (nSplitB == 0) { \
                 /* we searched the first bucket and the key is not there */ \
                 (_nPos) = -1; /* this is where to insert */ \
             } else { \
@@ -4590,9 +4585,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
             assert((_nPos) < (_nPopCnt)); \
             assert((_pxKeys)[_nPos] == (_xKey)); \
         } else { \
-            for (int ii = 0; ii < (_nPopCnt); \
-                 ii += sizeof(_b_t) / sizeof(_xKey)) \
-            { \
+            for (int ii = 0; ii < (_nPopCnt); ii += nKeysPerBucket) { \
                 assert( ! BUCKET_HAS_KEY((_b_t *)&(_pxKeys)[ii], (_xKey), \
                                          sizeof(_x_t) * 8) ); \
             } \
@@ -5129,6 +5122,8 @@ HasKey128(__m128i *pxBucket, Word_t wKey, int nBL)
     return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
 }
 
+// If 128-bit bucket has key then return the position of the key.
+// Otherwise return -1.
 static int
 LocateKey128(__m128i *pxBucket, Word_t wKey, int nBL)
 {
