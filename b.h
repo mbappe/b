@@ -3960,22 +3960,13 @@ extern const unsigned anBL_to_nDL[];
 #endif // defined(LIST_END_MARKERS)
 
 static int
-PsplitShift(int nBL)
-{
-    return
-  #ifdef COMPRESSED_LISTS
-        (nBL <= cnBitsPerWord / 2) ? 0 :
-  #endif // COMPRESSED_LISTS
-        nBL - 16;
-}
-
-static int
 Psplit(int nPopCnt, int nBL, int nShift, Word_t wKey)
 {
     /* overflow */
     assert((Word_t)nPopCnt <= (Word_t)-1 / NZ_MSK(nBL - nShift));
     assert((nBL - nShift >= 16) || (nShift == 0));
     assert((Word_t)nPopCnt <= EXP(nBL - nShift)); /* underflow */
+    // key * pop / expanse
     return ((wKey & NZ_MSK(nBL)) >> nShift) * nPopCnt >> (nBL - nShift);
 }
 
@@ -3983,7 +3974,7 @@ Psplit(int nPopCnt, int nBL, int nShift, Word_t wKey)
 // It has to work for small nBL in case of no COMPRESSED_LISTS.
 // It doesn't usually have to work for nBL == cnBitsPerWord since psplit
 // search is usually a bad choice for that case.
-#define PSPLIT_SEARCH_BY_KEY_GUTS(_x_t, _nBL, _x, \
+#define PSPLIT_SEARCH_BY_KEY_GUTS(_x_t, _nBL, /* nPsplitShift */ _x, \
                                   _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_x), (_xKey)); \
@@ -4032,14 +4023,14 @@ Psplit(int nPopCnt, int nBL, int nShift, Word_t wKey)
 #define PSPLIT_SEARCH_BY_KEY(_x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     assert((_nBL) <= cnBitsPerWord); \
-    PSPLIT_SEARCH_BY_KEY_GUTS(_x_t, (_nBL), 0, \
+    PSPLIT_SEARCH_BY_KEY_GUTS(_x_t, (_nBL), /* nPsplitShift */ 0, \
                               (_pxKeys), (_nPopCnt), (_xKey), (_nPos)); \
 }
 
 #define PSPLIT_SEARCH_BY_KEY_WORD(_nBL, _pwKeys, _nPopCnt, _wKey, _nPos) \
 { \
     assert((Word_t)((_pwKeys) + 1) == (Word_t)(_pwKeys) + sizeof(Word_t)); \
-    PSPLIT_SEARCH_BY_KEY_GUTS(Word_t, (_nBL), PsplitShift(_nBL), \
+    PSPLIT_SEARCH_BY_KEY_GUTS(Word_t, (_nBL), /* nPsplitShift */ (_nBL) - 16, \
                               (_pwKeys), (_nPopCnt), (_wKey), (_nPos)); \
 }
 
@@ -4417,7 +4408,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 // _nBL specifies the range of keys, i.e. the size of the expanse.
 // _x is the number of least significant bits of the key we can sacrifice
 // when doing the psplit computation.
-#define PSPLIT_HASKEY_GUTS(_b_t, _x_t, _nBL, _x, \
+#define PSPLIT_HASKEY_GUTS(_b_t, _x_t, _nBL, /* nPsplitShift */ _x, \
                            _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     /* printf("PSPHK(nBL %d pxKeys %p nPopCnt %d xKey 0x%x nPos %d\n", */ \
@@ -4481,14 +4472,14 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 #define PSPLIT_HASKEY(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     assert((_nBL) <= cnBitsPerWord); \
-    PSPLIT_HASKEY_GUTS(_b_t, _x_t, (_nBL), 0, \
+    PSPLIT_HASKEY_GUTS(_b_t, _x_t, (_nBL), /* nPsplitShift */ 0, \
                        (_pxKeys), (_nPopCnt), (_xKey), (_nPos)); \
 }
 
 #define PSPLIT_HASKEY_WORD(_b_t, _nBL, _pwKeys, _nPopCnt, _wKey, _nPos) \
 { \
     assert((Word_t)((_pwKeys) + 1) == (Word_t)(_pwKeys) + sizeof(Word_t)); \
-    PSPLIT_HASKEY_GUTS(_b_t, Word_t, (_nBL), PsplitShift(_nBL), \
+    PSPLIT_HASKEY_GUTS(_b_t, Word_t, (_nBL), /* nPsplitShift */ (_nBL) - 16, \
                        (_pwKeys), (_nPopCnt), (_wKey), (_nPos)); \
 }
 
@@ -4536,7 +4527,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 
 // PSPLIT_LOCATEKEY_GUTS uses qy for prefetch but qy is not in the parameter
 // list. Shame on us.
-#define PSPLIT_LOCATEKEY_GUTS(_b_t, _x_t, _nBL, _xShift, \
+#define PSPLIT_LOCATEKEY_GUTS(_b_t, _x_t, _nBL, /* nPsplitShift */ _xShift, \
                               _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     /* printf("PSPHK(nBL %d pxKeys %p nPopCnt %d xKey 0x%x nPos %d\n", */ \
@@ -4612,14 +4603,14 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 #define PSPLIT_LOCATEKEY(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     assert((_nBL) <= cnBitsPerWord); \
-    PSPLIT_LOCATEKEY_GUTS(_b_t, _x_t, (_nBL), 0, \
+    PSPLIT_LOCATEKEY_GUTS(_b_t, _x_t, (_nBL), /* nPsplitShift */ 0, \
                           (_pxKeys), (_nPopCnt), (_xKey), (_nPos)); \
 }
 
 #define PSPLIT_LOCATEKEY_WORD(_b_t, _nBL, _pwKeys, _nPopCnt, _wKey, _nPos) \
 { \
     assert((Word_t)((_pwKeys) + 1) == (Word_t)(_pwKeys) + sizeof(Word_t)); \
-    PSPLIT_LOCATEKEY_GUTS(_b_t, Word_t, (_nBL), PsplitShift(_nBL), \
+    PSPLIT_LOCATEKEY_GUTS(_b_t, Word_t, (_nBL), /* nPsplitShift */ (_nBL) - 16, \
                           (_pwKeys), (_nPopCnt), (_wKey), (_nPos)); \
 }
 
