@@ -3963,7 +3963,7 @@ static int
 PsplitShift(int nBL)
 {
     return
-  #ifndef COMPRESSED_LISTS
+  #ifdef COMPRESSED_LISTS
         (nBL <= cnBitsPerWord / 2) ? 0 :
   #endif // COMPRESSED_LISTS
         nBL - 16;
