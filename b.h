@@ -4530,8 +4530,8 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 #define PSPLIT_LOCATEKEY_GUTS(_b_t, _x_t, _nBL, /* nPsplitShift */ _xShift, \
                               _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    /* printf("PSPHK(nBL %d pxKeys %p nPopCnt %d xKey 0x%x nPos %d\n", */ \
-        /* _nBL, (void *)_pxKeys, _nPopCnt, _xKey, _nPos); */ \
+    /* printf("PSPLK(nBL %d pxKeys %p nPopCnt %d xKey 0x%zx nPos %d\n", */ \
+        /* _nBL, (void*)_pxKeys, _nPopCnt, (Word_t)_xKey, _nPos); */ \
     _b_t *pb = (_b_t *)(_pxKeys); /* bucket pointer */ \
     /* _pxKeys must be aligned on a bucket boundary */ \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
@@ -6502,20 +6502,6 @@ BmSwIndex(qp, Word_t wDigit,
     }
 }
 
-#if defined(B_JUDYL)
-  #if !defined(SEARCH_FOR_JUDYL_LOOKUP)
-      #if !defined(HASKEY_FOR_JUDYL_LOOKUP)
-#define LOCATEKEY_FOR_LOOKUP
-      #endif // !defined(HASKEY_FOR_JUDYL_LOOKUP)
-  #endif // !defined(SEARCH_FOR_JUDYL_LOOKUP)
-#else // defined(B_JUDYL)
-  #if defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
-#define LOCATEKEY_FOR_LOOKUP
-  #endif // defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
-#endif // defined(B_JUDYL)
-
-#if defined(LOCATEKEY_FOR_LOOKUP)
-
 #if defined(COMPRESSED_LISTS)
   #if (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
 
@@ -6587,16 +6573,20 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
     uint8_t *pcKeys = ls_pcKeys(pwr, PWR_xListPopCnt(&wRoot, pwr, 8));
     uint8_t cKey = (uint8_t)wKey;
     nPos = 0;
-    // PACK_L1_VALUES is an incomplete quick hack to see the performance of
-    // a list leaf with an uncompressed value area.
-    // USE_LOCATE_FOR_NO_PACK chooses LOCATEKEY rather than HASKEY for
+    // PACK_L1_VALUES exists only because its absence is an incomplete quick
+    // hack to see the performance of a list leaf with an uncompressed value
+    // area. USE_LOCATE_FOR_NO_PACK chooses LOCATEKEY rather than HASKEY for
     // NO_PACK_L1_VALUES.
-    // At present, LocateKeyInList is used only for B_JUDYL Lookup.
+    // At present, LocateKeyInList is used for NextEmpty and B_JUDYL Lookup.
+  #ifdef B_JUDYL
 #if defined(PACK_L1_VALUES) || defined(USE_LOCATE_FOR_NO_PACK)
     PSPLIT_LOCATEKEY(Bucket_t, uint8_t, 8, pcKeys, nPopCnt, cKey, nPos);
 #else // defined(PACK_L1_VALUES) || defined(USE_LOCATE_FOR_NO_PACK)
     PSPLIT_HASKEY(Bucket_t, uint8_t, 8, pcKeys, nPopCnt, cKey, nPos);
 #endif // #else defined(PACK_L1_VALUES) || defined(USE_LOCATE_FOR_NO_PACK)
+  #else // B_JUDYL
+    PSPLIT_LOCATEKEY(Bucket_t, uint8_t, 8, pcKeys, nPopCnt, cKey, nPos);
+  #endif // B_JUDYL
     return nPos;
 
 #endif // PARALLEL_LOCATEKEY_8
@@ -6759,8 +6749,6 @@ LocateKeyInList(qp, int nBLR, Word_t wKey)
   #endif // defined(COMPRESSED_LISTS)
     return LocateKeyInListWord(qy, nBLR, wKey);
 }
-
-#endif // defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
 
 #ifdef XX_LISTS
   #ifdef B_JUDYL

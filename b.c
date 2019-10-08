@@ -12485,7 +12485,8 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
         }
   #endif // #ifndef BITMAP
         int nPos;
-        if ((pwr == NULL) || ((nPos = SearchList(qy, nBLR, *pwKey)) < 0)) {
+        if ((pwr == NULL) || ((nPos = LocateKeyInList(qy, nBLR, *pwKey)) < 0))
+        {
             //printf("key is not in list\n");
             return Success;
         }
