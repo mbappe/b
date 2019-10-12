@@ -5159,7 +5159,7 @@ LocateKey128(__m128i *pxBucket, Word_t wKey, int nBL)
         return -1;
     }
   #endif // !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
-    int nFirstSetBit = __builtin_ffsll(wHasKey) - 1;
+    int nFirstSetBit = __builtin_ctzll(wHasKey);
     if (nBL == 16) {
   #ifdef HK_MOVEMASK
         return nFirstSetBit / 2;
@@ -5316,7 +5316,7 @@ LocateKey64(uint64_t *px, Word_t wKey, int nBL)
     if (wHasKey == 0) {
         return -1;
     }
-    int nFirstSetBit = __builtin_ffsll(wHasKey) - 1;
+    int nFirstSetBit = __builtin_ctzll(wHasKey);
     return nFirstSetBit / nBL;
 }
 
