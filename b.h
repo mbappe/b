@@ -5023,15 +5023,6 @@ typedef unsigned short __attribute__((vector_size(16))) v414_t;
 typedef unsigned int   __attribute__((vector_size(16))) v424_t;
   #endif // #else __clang__
   #if defined(__clang__) && !defined(GCC_VECTORS)
-typedef unsigned char  __attribute__((ext_vector_type(8))) v304_t;
-typedef unsigned short __attribute__((ext_vector_type(4))) v314_t;
-typedef unsigned int   __attribute__((ext_vector_type(2))) v324_t;
-  #else // __clang__
-typedef unsigned char  __attribute__((vector_size(8))) v304_t;
-typedef unsigned short __attribute__((vector_size(8))) v314_t;
-typedef unsigned int   __attribute__((vector_size(8))) v324_t;
-  #endif // #else __clang__
-  #if defined(__clang__) && !defined(GCC_VECTORS)
 typedef unsigned char  __attribute__((ext_vector_type(16), aligned(8))) v403_t;
 typedef unsigned short __attribute__((ext_vector_type( 8), aligned(8))) v413_t;
 typedef unsigned int   __attribute__((ext_vector_type( 4), aligned(8))) v423_t;
@@ -5039,15 +5030,6 @@ typedef unsigned int   __attribute__((ext_vector_type( 4), aligned(8))) v423_t;
 typedef unsigned char  __attribute__((vector_size(16), aligned(8))) v403_t;
 typedef unsigned short __attribute__((vector_size(16), aligned(8))) v413_t;
 typedef unsigned int   __attribute__((vector_size(16), aligned(8))) v423_t;
-  #endif // #else __clang__
-  #if defined(__clang__) && !defined(GCC_VECTORS)
-typedef unsigned char  __attribute__((ext_vector_type(8), aligned(8))) v303_t;
-typedef unsigned short __attribute__((ext_vector_type(4), aligned(8))) v313_t;
-typedef unsigned int   __attribute__((ext_vector_type(2), aligned(8))) v323_t;
-  #else // __clang__
-typedef unsigned char  __attribute__((vector_size(8), aligned(8))) v303_t;
-typedef unsigned short __attribute__((vector_size(8), aligned(8))) v313_t;
-typedef unsigned int   __attribute__((vector_size(8), aligned(8))) v323_t;
   #endif // #else __clang__
 
 #ifdef WORD_ALIGNED_VECTORS
@@ -5059,15 +5041,6 @@ typedef unsigned int   __attribute__((ext_vector_type( 4), aligned(8))) v42_t;
 typedef unsigned char  __attribute__((vector_size(16), aligned(8))) v_t;
 typedef unsigned short __attribute__((vector_size(16), aligned(8))) v41_t;
 typedef unsigned int   __attribute__((vector_size(16), aligned(8))) v42_t;
-  #endif // __clang__
-  #if defined(__clang__) && !defined(GCC_VECTORS)
-typedef unsigned char  __attribute__((ext_vector_type(8), aligned(8))) v30_t;
-typedef unsigned short __attribute__((ext_vector_type(4), aligned(8))) v31_t;
-typedef unsigned int   __attribute__((ext_vector_type(2), aligned(8))) v32_t;
-  #else // __clang__
-typedef unsigned char  __attribute__((vector_size(8), aligned(8))) v30_t;
-typedef unsigned short __attribute__((vector_size(8), aligned(8))) v31_t;
-typedef unsigned int   __attribute__((vector_size(8), aligned(8))) v32_t;
   #endif // __clang__
 #else // WORD_ALIGNED_VECTORS
   #if defined(__clang__) && !defined(GCC_VECTORS)
@@ -5086,10 +5059,9 @@ typedef unsigned char  __attribute__((vector_size(16))) v_t;
 typedef unsigned short __attribute__((vector_size(16))) v41_t;
 typedef unsigned int   __attribute__((vector_size(16))) v42_t;
   #endif // __clang__
+#endif // WORD_ALIGNED_VECTORS
+
 // vBK_t: vector of 2^B bytes of 2^K-byte elements.
-// v64c_t, v64uc_t: vector of 64 bits of char  or unsigned char.
-// v64s_t, v64us_t, vector of 64 bits of short or unsigned short.
-// v64i_t, v64ui_t, vector of 64 bits of int   or unsigned int.
   #if defined(__clang__) && !defined(GCC_VECTORS)
 typedef unsigned char  __attribute__((ext_vector_type(8))) v30_t;
 typedef unsigned short __attribute__((ext_vector_type(4))) v31_t;
@@ -5099,7 +5071,6 @@ typedef unsigned char  __attribute__((vector_size(8))) v30_t;
 typedef unsigned short __attribute__((vector_size(8))) v31_t;
 typedef unsigned int   __attribute__((vector_size(8))) v32_t;
   #endif // __clang__
-#endif // WORD_ALIGNED_VECTORS
 
 #if (cnBitsPerWord < 64)
 #undef HK_MOVEMASK
