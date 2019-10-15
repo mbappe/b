@@ -5269,6 +5269,7 @@ HasKey64(uint64_t *px, Word_t wKey, int nBL)
         v31_t v31 = (v31_t)(vBucket == (unsigned short)wKey);
         return *(uint64_t*)&v31;
   #else // __clang__
+// 10/12/19: gcc generates horrible and horribly slow code for this.
         return (uint64_t)(*(v31_t*)px == (unsigned short)wKey);
   #endif // __clang__
 
