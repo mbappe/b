@@ -569,7 +569,7 @@ Word_t    CFlag = 0;                    // time Counting
 Word_t    cFlag = 0;                    // time Copy of Judy1 array
 Word_t    IFlag = 0;                    // time duplicate inserts/sets
 Word_t    bFlag = 0;                    // Time REAL bitmap of (2^-B #) in size
-Word_t    Warmup = 2000;                // milliseconds to warm up CPU
+Word_t    Warmup = 1;                   // milliseconds to warm up CPU
 
 PWord_t   B1 = NULL;                    // BitMap
 #define cMaxColon ((int)sizeof(Word_t) * 2)  // Maximum -b suboption paramters
@@ -1281,7 +1281,6 @@ main(int argc, char *argv[])
 
     int       Col;
     int       c;
-    Word_t    ii;                       // temp iterator
     extern char *optarg;
 
 #ifdef LATER
@@ -2791,7 +2790,7 @@ main(int argc, char *argv[])
     Word_t WarmupVar = 0;
     STARTTm;
     do {
-        for (ii = 0; ii < 1000000; ii++) {
+        for (int ii = 0; ii < 1000000; ii++) {
             WarmupVar = random();
         }
 
@@ -2804,7 +2803,7 @@ main(int argc, char *argv[])
 
 //  Now measure the execute time for 1M calls to random().
     STARTTm;
-    for (ii = 0; ii < 1000000; ii++) {
+    for (int ii = 0; ii < 1000000; ii++) {
         WarmupVar = random();
     }
     ENDTm(DeltanSecW);      // get elapsed time
