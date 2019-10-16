@@ -6554,7 +6554,7 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
   #endif // defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
   #endif // !defined(PP_IN_LINK) && !defined(POP_WORD_IN_LINK)
     assert(((Word_t)pwr & ~((Word_t)-1 << 4)) == 0);
-    BJL(char* pcValues = (char*)gpwValues(qy)); (void)pcValues;
+    BJL(char* pcValues = (char*)gpwValues(qy); (void)pcValues);
   #ifdef PREFETCH_LOCATE_KEY_8_BEG_VAL
     // Prefetch the cache line before the keys.
     // Fetching the keys brings in 0 - 6 values.
