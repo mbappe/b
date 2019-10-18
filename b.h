@@ -6544,7 +6544,8 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
   #ifdef LKIL8_ONE_BUCKET
 #if defined(PARALLEL_128)
 #if cnBitsInD1 == 8
-#if cnListPopCntMaxDl1 == 16
+#if cnListPopCntMaxDl1 <= 16
+#ifdef OLD_LISTS
 #if cnBitsMallocMask >= 4
 #if cnDummiesInList == 0
     #define _LKIL8_DONE
@@ -6558,31 +6559,28 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
   #endif // defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
   #endif // !defined(PP_IN_LINK) && !defined(POP_WORD_IN_LINK)
     assert(((Word_t)pwr & ~((Word_t)-1 << 4)) == 0);
-    BJL(char* pcValues = (char*)gpwValues(qy); (void)pcValues);
   #ifdef PREFETCH_LOCATE_KEY_8_BEG_VAL
     // Prefetch the cache line before the keys.
-    // Fetching the keys brings in 0 - 6 values.
+    // Fetching the keys brings in 0 - 6 values assuming there are
+    // no words between keys and values.
     // We'll end up with 8 - 14 values.
-    BJL(PREFETCH(&pcValues[~7]));
+    BJL(PREFETCH(pwr - 8));
   #endif // PREFETCH_LOCATE_KEY_8_BEG_VAL
   #ifdef PREFETCH_LOCATE_KEY_8_END_VAL
     // And the one before that.
-    BJL(PREFETCH(&pcValues[~15]));
+    BJL(PREFETCH(pwr - 16));
   #endif // PREFETCH_LOCATE_KEY_8_END_VAL
-  #if defined(OLD_LISTS) && defined(HK40_EXPERIMENT)
+  #ifdef HK40_EXPERIMENT
     nPos = LocateKey40(pwr, wKey);
-  #else // defined(OLD_LISTS) && defined(HK40_EXPERIMENT)
-      #ifdef OLD_LISTS // includes PP_IN_LINK and POP_WORD_IN_LINK
+  #else // HK40_EXPERIMENT
     nPos = LocateKey128((__m128i*)pwr, wKey, 8);
-      #else // OLD_LISTS
-    nPos = LocateKey128((__m128i*)ls_pcKeysNATX(pwr, 16), wKey, 8);
-      #endif // OLD_LISTS
-  #endif // HK40_EXPERIMENT
+  #endif // #else HK40_EXPERIMENT
     SMETRICS(j__DirectHits += (nPos >= 0));
     return nPos;
 #endif // cnDummiesInList == 0
 #endif // cnBitsMallocMask >= 4
-#endif // cnListPopCntMaxDl1 == 16
+#endif // OLD_LISTS
+#endif // cnListPopCntMaxDl1 <= 16
 #endif // cnBitsInD1 == 8
 #endif // defined(PARALLEL_128)
   #endif // LKIL8_ONE_BUCKET
