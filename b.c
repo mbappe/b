@@ -1205,21 +1205,24 @@ NewBitmap(qp, int nBLR, Word_t wKey, Word_t wPopCnt)
     // be initialized.
     wRoot = 0; set_wr(wRoot, pwBitmap, T_BITMAP);
   #ifdef B_JUDYL
-    // We don't really need cnLsbBmUncompressed for 1-digit bitmap if
+    // We don't really need T_UNPACKED_BM for 1-digit bitmap if
     // BitmapWordCnt(cnBitsInD1, cnPopCntMaxDl1)
     //     == BitmapWordCnt(cnBitsInD1, EXP(cnBitsInD1))
     // Because we'll never have a packed bm even if PACK_BM_VALUES is defined.
-    // But that is too hard to ifdef so we go ahead and set it even though
-    // it adds no information. As long as it doesn't cause any harm.
+    // But that is too hard to ifdef so we go ahead and use T_UNPACKED_BM even
+    // though it adds no information assuming it doesn't cause any harm.
     // I suppose we could have separate UNPACK and PACK macros for 1-digit
     // and 2-digit bitmaps. We don't have 2-digit bitmaps for JudyL yet.
     // Later.
-      #ifdef _TEST_BM_UNCOMPRESSED
-    if (wWords == BitmapWordCnt(nBLR, EXP(nBLR))) {
-        wRoot |= EXP(cnLsbBmUncompressed);
+  #ifdef UNPACK_BM_VALUES
+      #ifdef _TEST_BM_UNPACKED
+    if (wWords == BitmapWordCnt(nBLR, EXP(nBLR)))
+      #endif // _TEST_BM_UNPACKED
+    {
+        set_wr_nType(wRoot, T_UNPACKED_BM);
     }
     DBGM(printf("NewBitmap wRoot 0x%zx\n", wRoot));
-      #endif // _TEST_BM_UNCOMPRESSED
+  #endif // UNPACKED_BM_VALUES
   #endif // B_JUDYL
 
     *pwRoot = wRoot;
@@ -2270,8 +2273,8 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
 #endif // defined(SKIP_TO_BITMAP)
 
 #ifdef BITMAP
-    if (nType == T_BITMAP) {
-        if (bDump) { printf(" BITMAP"); }
+    if (tp_bIsBitmap(nType)) {
+        if (bDump) { printf(nType == T_BITMAP ? " BITMAP" : " UNPACKED_BM"); }
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         if (bDump) {
             assert(nBLArg != cnBitsPerWord);
@@ -2335,7 +2338,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
   #ifdef B_JUDYL
         printf("\n Values\n");
         for (int ww = 0;
-             ww < (int)(BM_UNCOMPRESSED(wRoot)
+             ww < (int)(BM_UNPACKED(wRoot)
                             ? EXP(nBL) : gwBitmapPopCnt(qy, nBL));
              ++ww)
         {
@@ -3635,7 +3638,7 @@ InsertAllAtBitmap(qp, qpx(Old), int nStart, int nPopCnt)
         // The bitmap has already been sized.
         SetBit(pwBitmap, wKeyLoop);
   #ifdef B_JUDYL
-        if (BM_UNCOMPRESSED(wRoot)) {
+        if (BM_UNPACKED(wRoot)) {
             pwValues[wKeyLoop] = pwValuesOld[~nn];
         } else {
             *pwValues++ = pwValuesOld[~nn];
@@ -8299,7 +8302,7 @@ InsertAtBitmap(qp, Word_t wKey)
   #ifdef B_JUDYL
     Word_t *pwSrcVals = gpwBitmapValues(qy, nBLR);
     int nPos;
-    if (BM_UNCOMPRESSED(wRoot)) {
+    if (BM_UNPACKED(wRoot)) {
         nPos = wKey & MSK(nBLR);
         goto done;
     }
@@ -8316,7 +8319,6 @@ InsertAtBitmap(qp, Word_t wKey)
         // *pwRoot has been updated. qy is out of date.
         // Copy bits and update qy.
         wRoot = *pwRoot;
-        assert(wr_nType(wRoot) == nType);
         Word_t *pwrOld = pwr;
         pwr = wr_pwr(wRoot);
         int nBmWords
@@ -8339,7 +8341,7 @@ InsertAtBitmap(qp, Word_t wKey)
           #endif // #else BMLF_POP_COUNT_8
       #endif // BMLF_CNTS
         Word_t *pwTgtVals = gpwBitmapValues(qy, nBLR);
-        if (BM_UNCOMPRESSED(wRoot)) {
+        if (BM_UNPACKED(wRoot)) {
             for (int k = 0; k < (int)EXP(nBLR); ++k) {
                 if (BitIsSet(pwBitmap, k)) {
                     pwTgtVals[k] = *pwSrcVals++;
@@ -8575,16 +8577,10 @@ RemoveGuts(qp, Word_t wKey
   // Could we be more specific in this ifdef, e.g. cnListPopCntMax16?
   #if (cwListPopCntMax != 0)
     if ((cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink))
-      #if defined(SKIP_TO_BITMAP)
-        || (nType == T_SKIP_TO_BITMAP)
-      #endif // defined(SKIP_TO_BITMAP)
-        || (nType == T_BITMAP))
+        || tp_bIsBitmap(nType))
   #else // (cwListPopCntMax != 0)
     assert((cbEmbeddedBitmap && (nBL <= cnLogBitsInLink))
-      #if defined(SKIP_TO_BITMAP)
-        || (nType == T_SKIP_TO_BITMAP)
-      #endif // defined(SKIP_TO_BITMAP)
-        || (nType == T_BITMAP));
+        || tp_bIsBitmap(nType));
   #endif // (cwListPopCntMax != 0)
     {
         return RemoveAtBitmap(qy, wKey);
@@ -8997,8 +8993,8 @@ RemoveAtBitmap(qp, Word_t wKey)
         Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
   #ifdef B_JUDYL
         Word_t wWords = BitmapWordCnt(nBLR, wPopCnt); // new
-        Word_t bUncompressed = BM_UNCOMPRESSED(wRoot);
-        if (bUncompressed) {
+        Word_t bUnpacked = BM_UNPACKED(wRoot);
+        if (bUnpacked) {
             if (wWords == BitmapWordCnt(nBLR, EXP(nBLR))) {
                 goto done;
             }
@@ -9016,7 +9012,6 @@ RemoveAtBitmap(qp, Word_t wKey)
             // *pwRoot has been updated. qy is out of date.
             // Copy bits and update qy.
             wRoot = *pwRoot;
-            assert(wr_nType(wRoot) == nType);
             Word_t *pwrOld = pwr;
             pwr = wr_pwr(wRoot);
             int nBmWords = (nBLR <= cnLogBitsPerWord)
@@ -9039,7 +9034,7 @@ RemoveAtBitmap(qp, Word_t wKey)
           #endif // #else BMLF_POP_COUNT_8
       #endif // BMLF_CNTS
             Word_t *pwTgtVals = gpwBitmapValues(qy, nBLR);
-            if (bUncompressed) {
+            if (bUnpacked) {
                 for (int k = 0; k < (int)EXP(nBLR); ++k) {
                     if ((k != (int)(wKey & MSK(nBLR)))
                         && BitIsSet(pwBitmap, k))
@@ -10938,6 +10933,9 @@ Initialize(void)
 #endif // (cwListPopCntMax != 0)
 #if defined(BITMAP)
     printf("# 0x%x %-20s\n", T_BITMAP, "T_BITMAP");
+  #if defined(UNPACK_BM_VALUES)
+    printf("# 0x%x %-20s\n", T_UNPACKED_BM, "T_UNPACKED_BM");
+  #endif // defined(UNPACK_BM_VALUES)
   #if defined(SKIP_TO_BITMAP)
     printf("# 0x%x %-20s\n", T_SKIP_TO_BITMAP, "T_SKIP_TO_BITMAP");
   #endif // defined(SKIP_TO_BITMAP)
@@ -11498,6 +11496,9 @@ NextGuts(Word_t *pwRoot, int nBL,
         goto t_bitmap; // address gcc implicit fall-through warning
     }
       #endif // defined(SKIP_TO_BITMAP)
+  #ifdef UNPACK_BM_VALUES
+    case T_UNPACKED_BM:
+  #endif // UNPACK_BM_VALUES
     case T_BITMAP: {
         goto t_bitmap;
 t_bitmap:;
@@ -12592,6 +12593,9 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
         goto t_bitmap; // address gcc implicit fall-through warning
     }
       #endif // defined(SKIP_TO_BITMAP)
+#ifdef UNPACK_BM_VALUES
+    case T_UNPACKED_BM:
+#endif // UNPACK_BM_VALUES
     case T_BITMAP:; {
         goto t_bitmap;
 t_bitmap:;

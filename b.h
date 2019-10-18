@@ -763,6 +763,9 @@ enum {
   #if defined(SKIP_TO_BITMAP)
     T_SKIP_TO_BITMAP, // skip to external bitmap leaf
   #endif // defined(SKIP_TO_BITMAP)
+  #ifdef UNPACK_BM_VALUES
+    T_UNPACKED_BM, // external bitmap leaf with unpacked value area
+  #endif // UNPACK_BM_VALUES
 #endif // defined(BITMAP)
 #if defined(CODE_LIST_SW)
     T_LIST_SW,
@@ -1687,6 +1690,9 @@ tp_bIsBitmap(int nType)
     return
   #if defined(BITMAP)
         ((nType == T_BITMAP)
+  #ifdef UNPACK_BM_VALUES
+             || (nType == T_UNPACKED_BM)
+  #endif // UNPACK_BM_VALUES
   #ifdef SKIP_TO_BITMAP
              || (nType == T_SKIP_TO_BITMAP)
   #endif // SKIP_TO_BITMAP
@@ -1701,38 +1707,31 @@ tp_bIsBitmap(int nType)
   #ifdef UNPACK_BM_VALUES
   #ifdef PACK_BM_VALUES
   #if (cnBitsPerWord > 32)
-    #define _TEST_BM_UNCOMPRESSED
+    #define _TEST_BM_UNPACKED
   #endif // (cnBitsPerWord > 32)
   #endif // PACK_BM_VALUES
   #endif // UNPACK_BM_VALUES
 
-  #ifdef _TEST_BM_UNCOMPRESSED
-    #define BM_UNCOMPRESSED(_wRoot)  ((_wRoot) & EXP(cnLsbBmUncompressed))
-  #elif defined(UNPACK_BM_VALUES) // _TEST_BM_UNCOMPRESSED
-    #define BM_UNCOMPRESSED(_wRoot)  1
-  #else // #elif defined(UNPACK_BM_VALUES) // _TEST_BM_UNCOMPRESSED
-    #define BM_UNCOMPRESSED(_wRoot)  0
-  #endif // #else // #elif defined(UNPACK_BM_VALUES) // _TEST_BM_UNCOMPRESSED
+  #ifdef _TEST_BM_UNPACKED
+    #define BM_UNPACKED(_wRoot)  (wr_nType(_wRoot) == T_UNPACKED_BM)
+  #elif defined(UNPACK_BM_VALUES) // _TEST_BM_UNPACKED
+    #define BM_UNPACKED(_wRoot)  1
+  #else // #elif defined(UNPACK_BM_VALUES) // _TEST_BM_UNPACKED
+    #define BM_UNPACKED(_wRoot)  0
+  #endif // #else // #elif defined(UNPACK_BM_VALUES) // _TEST_BM_UNPACKED
 #endif // B_JUDYL
 
 // Bit fields in the upper bits of of wRoot.
 // (cnBitsLvlM1, cnLsbLvlM1) is the level of the node pointed to.
-  #define cnBitsLvlM1  cnLogBitsPerWord
-#ifdef _TEST_BM_UNCOMPRESSED
-  #define cnBitsFlg  1
-  #define cnLsbFlg  (cnBitsPerWord - cnBitsLvlM1 - cnBitsFlg)
-#endif // _TEST_BM_UNCOMPRESSED
+#define cnBitsLvlM1  cnLogBitsPerWord
 #define cnLsbLvlM1  (cnBitsPerWord - cnBitsLvlM1)
-#define cnBitsCnt   (cnBitsPerWord - cnBitsLvlM1 - cnBitsVirtAddr)
+
+#define cnBitsCnt  (cnBitsPerWord - cnBitsLvlM1 - cnBitsVirtAddr)
 #define cnLsbCnt    cnBitsVirtAddr
 
 // ListPopCnt is the number of keys in the list minus 1.
 #define cnBitsListPopCnt  cnBitsCnt
 #define cnLsbListPopCnt   cnLsbCnt
-
-#ifdef _TEST_BM_UNCOMPRESSED
-    #define cnLsbBmUncompressed  cnLsbFlg
-#endif // _TEST_BM_UNCOMPRESSED
 
 // XxSwWidth is the log of the number of virtual links in the switch.
 // For 32-bit, cn[Bits|Lsb]XxSwWidth applies to the preamble
@@ -2983,11 +2982,7 @@ BmIndex(qp, int nBLR, Word_t wKey)
 {
     qv;
     assert(!cbEmbeddedBitmap);
-    assert((nType == T_BITMAP)
-  #ifdef SKIP_TO_BITMAP
-               || (nType == T_SKIP_TO_BITMAP)
-  #endif // SKIP_TO_BITMAP
-           );
+    assert(tp_bIsBitmap(nType));
     Word_t wDigit = wKey & MSK(nBLR);
   #ifdef BMLF_POP_COUNT_32
     uint32_t *pu32Bms = (uint32_t*)((BmLeaf_t*)pwr)->bmlf_awBitmap;
@@ -3348,11 +3343,7 @@ gwBitmapPopCnt(qp, int nBLR)
   #else // _BM_POP_IN_LINK_X
     // No need to handle embedded bitmaps here.
     assert(!cbEmbeddedBitmap || (nBLR > cnLogBitsPerLink));
-    assert((nType == T_BITMAP)
-      #ifdef SKIP_TO_BITMAP
-               || (nType == T_SKIP_TO_BITMAP)
-      #endif // SKIP_TO_BITMAP
-           );
+    assert(tp_bIsBitmap(nType));
     assert((wr_nType(WROOT_NULL) != T_BITMAP) || (wRoot != WROOT_NULL));
     BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
     wPopCnt = pBmLeaf->bmlf_wPopCnt;
@@ -6840,6 +6831,9 @@ GetPopCnt(Word_t *pwRoot, int nBL)
             }
             break;
       #ifdef BITMAP
+      #ifdef UNPACK_BM_VALUES
+        case T_UNPACKED_BM:
+      #endif // UNPACK_BM_VALUES
           #if defined(SKIP_TO_BITMAP)
         case T_SKIP_TO_BITMAP:
               #if defined(PP_IN_LINK)

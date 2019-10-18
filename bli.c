@@ -1949,6 +1949,11 @@ t_skip_to_bitmap:;
         goto t_bitmap;
     }
   #endif // defined(SKIP_TO_BITMAP)
+      #if defined(UNPACK_BM_VALUES) || defined(CODE_UNPACK_BM_VALUES)
+      #ifndef LOOKUP
+    case T_UNPACKED_BM:
+      #endif // #ifndef LOOKUP
+      #endif // defined(UNPACK_BM_VALUES) || defined(CODE_UNPACK_BM_VALUES)
   #if defined(DEFAULT_BITMAP)
       #if defined(DEFAULT_SKIP_TO_SW)
       #error DEFAULT_SKIP_TO_SW with DEFAULT_BITMAP
@@ -2186,9 +2191,13 @@ t_bitmap:;
           #endif // !defined(RECURSIVE)
       #endif // defined(INSERT)
       #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
-                int nIndex = BM_UNCOMPRESSED(wRoot)
+          #ifdef LOOKUP
+                int nIndex = BmIndex(qy, cnBitsInD1, wKey);
+          #else // LOOKUP
+                int nIndex = BM_UNPACKED(wRoot)
                                ? (int)(wKey & MSK(cnBitsInD1))
                                : BmIndex(qy, cnBitsInD1, wKey);
+          #endif // #else LOOKUP
                 return &pwBitmapValues[nIndex];
       #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 return KeyFound;
@@ -2248,6 +2257,53 @@ t_bitmap:;
         break;
 
     } // end of case T_BITMAP
+#ifdef LOOKUP
+#if defined(UNPACK_BM_VALUES) || defined(CODE_UNPACK_BM_VALUES)
+    // Skip to unpacked bitmap is still being handled by T_SKIP_TO_BITMAP
+    // and T_BITMAP.
+    case T_UNPACKED_BM: // never exists for B_JUDY1
+    {
+        goto t_unpacked_bm;
+t_unpacked_bm:;
+#if defined(LOOKUP_NO_BITMAP_DEREF)
+        return KeyFound;
+#else // defined(LOOKUP_NO_BITMAP_DEREF)
+      #ifdef COMPRESSED_LISTS
+      #ifdef SKIP_PREFIX_CHECK
+        if (PrefixCheckAtLeaf(qy, wKey
+  #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
+                , bNeedPrefixCheck
+  #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
+  #ifdef SAVE_PREFIX_TEST_RESULT
+                , wPrefixMismatch
+  #else // SAVE_PREFIX_TEST_RESULT
+                , pwrUp
+  #endif // SAVE_PREFIX_TEST_RESULT
+  #ifdef SAVE_PREFIX
+                , pLnPrefix, pwrPrefix, nBLRPrefix
+  #endif // SAVE_PREFIX
+                  ) // end call to PrefixCheckAtLeaf
+            == Success)
+      #endif // SKIP_PREFIX_CHECK
+      #endif // COMPRESSED_LISTS
+        {
+            Word_t* pwBitmapValues = gpwBitmapValues(qy, cnBitsInD1);
+          #ifdef PREFETCH_BM_VAL
+            PREFETCH(&pwBitmapValues[wKey & MSK(cnBitsInD1)]);
+          #endif // PREFETCH_BM_VAL
+            if (BitIsSet(((BmLeaf_t*)pwr)->bmlf_awBitmap,
+                         wKey & MSK(cnBitsInD1)))
+            {
+                return &pwBitmapValues[wKey & MSK(cnBitsInD1)];
+            }
+            DBGX(printf("Bit is not set.\n"));
+        }
+#endif // defined(LOOKUP_NO_BITMAP_DEREF)
+        break;
+
+    } // end of case T_UNPACKED_BM
+#endif // defined(UNPACK_BM_VALUES) || defined(CODE_UNPACK_BM_VALUES)
+#endif // LOOKUP
 #endif // BITMAP
 
 #if defined(EMBED_KEYS)
