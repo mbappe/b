@@ -1961,6 +1961,7 @@ t_skip_to_bitmap:;
       #endif // defined(DEFAULT_SWITCH)
     default:
   #endif // defined(DEFAULT_BITMAP)
+  // Should this be ifndef(DEFAULT_UNPACKED_BM) || def(DEFAULT_AND_CASE)?
   #if !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     case T_BITMAP:
   #endif // !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
@@ -2115,12 +2116,18 @@ t_bitmap:;
                                   Psplit(gwBitmapPopCnt(qy, cnBitsInD1),
                                             cnBitsInD1, /*nShift*/ 0, wKey)];
                 (void)pcPrefetch;
+              #ifdef PF_BM_PREV_HALF_VAL
+                PREFETCH(pcPrefetch - 32);
+              #endif // PF_BM_PREV_HALF_VAL
               #ifdef PREFETCH_BM_PSPLIT_VAL
                 PREFETCH(pcPrefetch);
               #endif // PREFETCH_BM_PSPLIT_VAL
               #ifdef PREFETCH_BM_PREV_VAL
                 PREFETCH(pcPrefetch - 64);
               #endif // PREFETCH_BM_PREV_VAL
+              #ifdef PF_BM_NEXT_HALF_VAL
+                PREFETCH(pcPrefetch + 32);
+              #endif // PF_BM_NEXT_HALF_VAL
               #ifdef PREFETCH_BM_NEXT_VAL
                 PREFETCH(pcPrefetch + 64);
               #endif // PREFETCH_BM_NEXT_VAL

@@ -9711,6 +9711,18 @@ Initialize(void)
     printf("# No PREFETCH_BM_PREV_VAL\n");
 #endif // #else  PREFETCH_BM_PREV_VAL
 
+#ifdef           PF_BM_PREV_HALF_VAL
+    printf("#    PF_BM_PREV_HALF_VAL\n");
+#else //         PF_BM_PREV_HALF_VAL
+    printf("# No PF_BM_PREV_HALF_VAL\n");
+#endif // #else  PF_BM_PREV_HALF_VAL
+
+#ifdef           PF_BM_NEXT_HALF_VAL
+    printf("#    PF_BM_NEXT_HALF_VAL\n");
+#else //         PF_BM_NEXT_HALF_VAL
+    printf("# No PF_BM_NEXT_HALF_VAL\n");
+#endif // #else  PF_BM_NEXT_HALF_VAL
+
 #ifdef           PREREAD_BM_PSPLIT_VAL
     printf("#    PREREAD_BM_PSPLIT_VAL\n");
 #else //         PREREAD_BM_PSPLIT_VAL
