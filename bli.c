@@ -2213,10 +2213,6 @@ t_bitmap:;
                         PWR_wPrefixNATBL(NULL, pwrUp, nBL),
           #endif // PP_IN_LINK
                         nBLR, nBL));
-          #if defined(COUNT)
-            DBGC(printf("bm wPopCntSum " OWx"\n", wPopCntSum));
-            return wPopCntSum;
-          #endif // defined(COUNT)
         }
       #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
   #endif // defined(SKIP_LINKS)
