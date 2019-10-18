@@ -6529,6 +6529,7 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
 #if !defined(PP_IN_LINK) || (cnDummiesInList == 0)
 #if !defined(POP_WORD_IN_LINK) || (cnDummiesInList == 0)
 #if defined(OLD_LISTS)
+    #define _LKIL8_DONE
     return SearchList8(qy, nBLR, wKey);
 #endif // defined(OLD_LISTS)
 #endif // !defined(POP_WORD_IN_LINK) || (cnDummiesInList == 0)
@@ -6538,12 +6539,15 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
 #if defined(PSPLIT_SEARCH_8)
 #ifdef PARALLEL_LOCATEKEY_8
 
+  #ifndef _LKIL8_DONE
     int nPos;
+  #ifdef LKIL8_ONE_BUCKET
 #if defined(PARALLEL_128)
 #if cnBitsInD1 == 8
 #if cnListPopCntMaxDl1 == 16
 #if cnBitsMallocMask >= 4
 #if cnDummiesInList == 0
+    #define _LKIL8_DONE
   // ls_pcKeys is valid only at the top for pop in link.
   // Hence it's not really necessary to ifdef out these assertions at the top,
   // but making the exception is more work than I want to do right now.
@@ -6581,7 +6585,10 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
 #endif // cnListPopCntMaxDl1 == 16
 #endif // cnBitsInD1 == 8
 #endif // defined(PARALLEL_128)
+  #endif // LKIL8_ONE_BUCKET
+  #endif // #ifndef _LKIL8_DONE
 
+  #ifndef _LKIL8_DONE
     int nPopCnt = gnListPopCnt(qy, nBLR);
     uint8_t *pcKeys = ls_pcKeys(pwr, PWR_xListPopCnt(&wRoot, pwr, 8));
     uint8_t cKey = (uint8_t)wKey;
@@ -6601,11 +6608,14 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
     PSPLIT_LOCATEKEY(Bucket_t, uint8_t, 8, pcKeys, nPopCnt, cKey, nPos);
   #endif // B_JUDYL
     return nPos;
+  #endif // #ifndef _LKIL8_DONE
 
 #endif // PARALLEL_LOCATEKEY_8
 #endif // defined(PSPLIT_SEARCH_8)
 
+  #ifndef _LKIL8_DONE
     return SearchList8(qy, nBLR, wKey);
+  #endif // #ifndef _LKIL8_DONE
 }
   #endif // (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
 

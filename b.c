@@ -9681,6 +9681,12 @@ Initialize(void)
     printf("# No PREFETCH_LOCATE_KEY_8_END_VAL\n");
 #endif // #else  PREFETCH_LOCATE_KEY_8_END_VAL
 
+#ifdef           LKIL8_ONE_BUCKET
+    printf("#    LKIL8_ONE_BUCKET\n");
+#else //         LKIL8_ONE_BUCKET
+    printf("# No LKIL8_ONE_BUCKET\n");
+#endif // #else  LKIL8_ONE_BUCKET
+
 #ifdef           PREFETCH_EK_VAL
     printf("#    PREFETCH_EK_VAL\n");
 #else //         PREFETCH_EK_VAL
@@ -10136,6 +10142,12 @@ Initialize(void)
 #else // defined(NO_TYPE_IN_XX_SW)
     printf("# No NO_TYPE_IN_XX_SW\n");
 #endif // defined(NO_TYPE_IN_XX_SW)
+
+#ifdef           NO_LKIL8_ONE_BUCKET
+    printf("#    NO_LKIL8_ONE_BUCKET\n");
+#else //         NO_LKIL8_ONE_BUCKET
+    printf("# No NO_LKIL8_ONE_BUCKET\n");
+#endif // #else  NO_LKIL8_ONE_BUCKET
 
 #if defined(FILL_W_KEY)
     printf("#    FILL_W_KEY\n");

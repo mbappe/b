@@ -467,6 +467,10 @@
 #endif // #ifndef NO_BM_POP_IN_WR_HB
 #endif // B_JUDYL
 
+#ifndef NO_LKIL8_ONE_BUCKET
+    #define LKIL8_ONE_BUCKET
+#endif // #ifndef NO_LKIL8_ONE_BUCKET
+
 #ifdef B_JUDYL
 #if cnBitsPerWord > 32
     #ifndef NO_BM_SW_CNT_IN_WR_HB
