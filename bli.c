@@ -1967,13 +1967,6 @@ t_skip_to_bitmap:;
     {
         goto t_bitmap;
 t_bitmap:;
-  #ifdef PREFETCH_BMLF_CNTS
-  #ifdef LOOKUP
-  #if cnDummiesInLink == 0
-        PREFETCH(((BmLeaf_t*)pwr)->bmlf_au8Cnts);
-  #endif // cnDummiesInLink == 0
-  #endif // LOOKUP
-  #endif // PREFETCH_BMLF_CNTS
   #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
       #if defined(INSERT) && defined(B_JUDYL)

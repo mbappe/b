@@ -9498,12 +9498,6 @@ Initialize(void)
     printf("# No BMLF_CNTS_CUM\n");
 #endif // #else  BMLF_CNTS_CUM
 
-#ifdef           PREFETCH_BMLF_CNTS
-    printf("#    PREFETCH_BMLF_CNTS\n");
-#else //         PREFETCH_BMLF_CNTS
-    printf("# No PREFETCH_BMLF_CNTS\n");
-#endif // #else  PREFETCH_BMLF_CNTS
-
 #ifdef           XX_LISTS
     printf("#    XX_LISTS\n");
 #else //         XX_LISTS
