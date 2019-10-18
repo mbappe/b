@@ -281,11 +281,13 @@
 #else // NO_BITMAP
   #undef     BITMAP
   #define    BITMAP
-  // Default is SKIP_TO_BITMAP.
+  // Default is SKIP_TO_BITMAP for Judy1.
+  #ifndef B_JUDYL
   #ifndef NO_SKIP_TO_BITMAP
     #undef  SKIP_TO_BITMAP
     #define SKIP_TO_BITMAP
   #endif // #ifndef NO_SKIP_TO_BITMAP
+  #endif // #ifndef B_JUDYL
   // Default is ALLOW_EMBEDDED_BITMAP for Judy1.
   #ifndef NO_ALLOW_EMBEDDED_BITMAP
     // What are the consequences of ALLOW_EMBEDDED_BITMAP
@@ -451,7 +453,6 @@
   #define            SEARCH_FROM_WRAPPER
 #endif // #ifndef NO_SEARCH_FROM_WRAPPER
 
-#ifdef BM_POP_IN_WR_HB
 //#if (cn2dBmMaxWpkPercent != 0) && (cnBitsLeftAtDl2 > cnBitsCnt)
 //#undef BM_POP_IN_WR_HB
 //#endif // (cn2dBmMaxWpkPercent != 0) && (cnBitsLeftAtDl2 > cnBitsCnt)
@@ -459,10 +460,12 @@
 //#undef BM_POP_IN_WR_HB
 //#endif // (cnBitsInDl1 > cnBitsCnt)
 // B_JUDYL is a poor substitute for the ifdefs above.
-#ifndef B_JUDYL
-  #undef BM_POP_IN_WR_HB
-#endif // #ifndef B_JUDYL
-#endif // BM_POP_IN_WR_HB
+#ifdef B_JUDYL
+#ifndef NO_BM_POP_IN_WR_HB
+    #undef  BM_POP_IN_WR_HB
+    #define BM_POP_IN_WR_HB
+#endif // #ifndef NO_BM_POP_IN_WR_HB
+#endif // B_JUDYL
 
 #ifdef B_JUDYL
 #if cnBitsPerWord > 32
@@ -494,7 +497,6 @@
 
 #ifndef B_JUDYL
   #undef BMLF_CNTS
-  #undef PREFETCH_BMLF_CNTS
 #endif // B_JUDYL
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
