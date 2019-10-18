@@ -2779,6 +2779,7 @@ typedef struct {
     Word_t bmlf_wPrefixPop;
   #endif // #ifndef PP_IN_LINK
   #endif // SKIP_TO_BITMAP
+  #ifndef BM_POP_IN_WR_HB
   #if !defined(SKIP_TO_BITMAP) || defined(PREFIX_WORD_IN_BITMAP_LEAF)
     Word_t bmlf_wPopCnt; // gwBitmapPopCnt doesn't mask
   #elif defined(POP_WORD) && !defined(POP_WORD_IN_LINK)
@@ -2786,6 +2787,7 @@ typedef struct {
   #else // #elif defined(POP_WORD) && !defined(POP_WORD_IN_LINK)
     #define bmlf_wPopCnt  bmlf_wPrefixPop
   #endif // #else defined(POP_WORD) && !defined(POP_WORD_IN_LINK)
+  #endif // #ifndef BM_POP_IN_WR_HB
   #ifdef BMLF_CNTS
   #if cnDummiesInLink == 0
       #ifdef BMLF_POP_COUNT_8
