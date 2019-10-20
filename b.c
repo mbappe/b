@@ -246,10 +246,15 @@ MyMallocGutsRM(Word_t wWords, int nLogAlignment, Word_t *pwAllocWords)
   #endif // FAST_MALLOC
 
     if (nLogAlignment > cnBitsMallocMask) {
+  #ifdef MY_MALLOC_ALIGN
         wWords += 1 << (nLogAlignment - cnLogBytesPerWord);
         ww = JudyMalloc(wWords + cnMallocExtraWords);
         wOff = ALIGN_UP(ww + 1, /* power of 2 */ 1 << nLogAlignment) - ww;
         ((Word_t*)(ww + wOff))[-1] = wOff;
+  #else // MY_MALLOC_ALIGN
+        ww = JudyMallocX(wWords + cnMallocExtraWords,
+                         /* Space */ -1, nLogAlignment);
+  #endif // #else MY_MALLOC_ALIGN
     } else {
         ww = JudyMalloc(wWords + cnMallocExtraWords);
         wOff = 0;
@@ -371,11 +376,14 @@ MyFreeGutsRM(Word_t *pw, Word_t wWords, int nLogAlignment,
     JudyFree((Word_t)pw, wWords);
     return;
   #endif // FAST_MALLOC
+    (void)nLogAlignment;
+  #ifdef MY_MALLOC_ALIGN
     if (nLogAlignment > cnBitsMallocMask) {
         Word_t wOff = pw[-1]; // number of bytes
         wWords += 1 << (nLogAlignment - cnLogBytesPerWord);
         pw = (Word_t*)((Word_t)pw - wOff);
     }
+  #endif // MY_MALLOC_ALIGN
     DBGM(printf("\nF(pw %p, wWords %zd): pw[-1] 0x%zx\n",
                 (void *)pw, wWords, pw[-1]));
     size_t zUnitsRequired
@@ -10415,6 +10423,12 @@ Initialize(void)
 #else // defined(GUARDBAND)
     printf("# No GUARDBAND\n");
 #endif // defined(GUARDBAND)
+
+#if defined(MY_MALLOC_ALIGN)
+    printf("#    MY_MALLOC_ALIGN\n");
+#else // defined(MY_MALLOC_ALIGN)
+    printf("# No MY_MALLOC_ALIGN\n");
+#endif // defined(MY_MALLOC_ALIGN)
 
 #if defined(DEBUG_COUNT)
     printf("#    DEBUG_COUNT\n");
