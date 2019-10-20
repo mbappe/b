@@ -701,6 +701,13 @@ extern uListPopCntMax_t auListPopCntMax[];
 
 #define cnBitsLeftAtDl3     (cnBitsLeftAtDl2 + cnBitsInD3)
 
+#if (cn2dBmMaxWpkPercent != 0) && (cnBitsLeftAtDl2 > cnBitsCnt)
+  #undef  BM_POP_IN_WR_HB
+#endif // (cn2dBmMaxWpkPercent != 0) && (cnBitsLeftAtDl2 > cnBitsCnt)
+#if (cnBitsInD1 > cnBitsCnt)
+  #undef BM_POP_IN_WR_HB
+#endif // (cnBitsInD1 > cnBitsCnt)
+
 #define cnBWAtTop \
     (cnBitsPerWord - nBL_from_nDL(cnDigitsPerWord - 1))
 

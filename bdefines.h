@@ -453,19 +453,10 @@
   #define            SEARCH_FROM_WRAPPER
 #endif // #ifndef NO_SEARCH_FROM_WRAPPER
 
-//#if (cn2dBmMaxWpkPercent != 0) && (cnBitsLeftAtDl2 > cnBitsCnt)
-//#undef BM_POP_IN_WR_HB
-//#endif // (cn2dBmMaxWpkPercent != 0) && (cnBitsLeftAtDl2 > cnBitsCnt)
-//#if (cnBitsInDl1 > cnBitsCnt)
-//#undef BM_POP_IN_WR_HB
-//#endif // (cnBitsInDl1 > cnBitsCnt)
-// B_JUDYL is a poor substitute for the ifdefs above.
-#ifdef B_JUDYL
 #ifndef NO_BM_POP_IN_WR_HB
-    #undef  BM_POP_IN_WR_HB
-    #define BM_POP_IN_WR_HB
+  #undef  BM_POP_IN_WR_HB
+  #define BM_POP_IN_WR_HB
 #endif // #ifndef NO_BM_POP_IN_WR_HB
-#endif // B_JUDYL
 
 #ifndef NO_LKIL8_ONE_BUCKET
     #define LKIL8_ONE_BUCKET
