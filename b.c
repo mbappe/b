@@ -12069,6 +12069,7 @@ BmSwGetNextIndex:
             return wSkip + 1;
         }
         assert(0); // not expected to get here
+        break; // make compiler happy
     }
   #endif // defined(CODE_BM_SW)
   #if defined(SKIP_TO_XX_SW)
@@ -12518,7 +12519,9 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL, int bPrev)
         }
   #endif // #ifndef BITMAP
         int nPos;
-        if ((pwr == NULL) || ((nPos = LocateKeyInList(qy, nBLR, *pwKey)) < 0))
+// Using LocateKeyInList here instead of SearchList breaks
+// -DDEBUG -DUSE_XX_SW -DUSE_XX_SW_ONLY_AT_DL2. I don't know why yet.
+        if ((pwr == NULL) || ((nPos = SearchList(qy, nBLR, *pwKey)) < 0))
         {
             //printf("key is not in list\n");
             return Success;
@@ -12897,6 +12900,7 @@ t_bm_sw:;
             *pwKey |= wPrefix + (wIndex << (nBL - nBits));
         }
         A(0);
+        break; // make compiler happy
     }
   #endif // defined(USE_BM_SW)
   #if defined(SKIP_TO_XX_SW)
