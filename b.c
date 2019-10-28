@@ -10922,6 +10922,7 @@ Initialize(void)
              nBoundaries <= 6 && nPopCnt <= auListPopCntMax[nBL];
              nPopCnt++)
         {
+            if (nBL == 9) { continue; } // ? work around monster ?
             if ((nWords = ListWordCnt(nPopCnt, nBL)) != nWordsPrev) {
   #ifdef DEBUG
                 if (nWords > 0x200000 / (int)sizeof(Word_t) - 1) {
