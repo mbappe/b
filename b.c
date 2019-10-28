@@ -254,6 +254,7 @@ MyMallocGutsRM(Word_t wWords, int nLogAlignment, Word_t *pwAllocWords)
   #else // MY_MALLOC_ALIGN
         ww = JudyMallocX(wWords + cnMallocExtraWords,
                          /* Space */ -1, nLogAlignment);
+        wOff = 0;
   #endif // #else MY_MALLOC_ALIGN
     } else {
         ww = JudyMalloc(wWords + cnMallocExtraWords);
