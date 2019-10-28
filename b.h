@@ -701,13 +701,6 @@ extern uListPopCntMax_t auListPopCntMax[];
 
 #define cnBitsLeftAtDl3     (cnBitsLeftAtDl2 + cnBitsInD3)
 
-#if (cn2dBmMaxWpkPercent != 0) && (cnBitsLeftAtDl2 > cnBitsCnt)
-  #undef  BM_POP_IN_WR_HB
-#endif // (cn2dBmMaxWpkPercent != 0) && (cnBitsLeftAtDl2 > cnBitsCnt)
-#if (cnBitsInD1 > cnBitsCnt)
-  #undef BM_POP_IN_WR_HB
-#endif // (cnBitsInD1 > cnBitsCnt)
-
 #define cnBWAtTop \
     (cnBitsPerWord - nBL_from_nDL(cnDigitsPerWord - 1))
 
@@ -1749,6 +1742,13 @@ tp_bIsBitmap(int nType)
 // ListSwPopM1 is the number of links in the list switch minus one.
 #define cnBitsListSwPopM1  cnBitsCnt // for T_LIST_SW
 #define cnLsbListSwPopM1   cnLsbCnt
+
+#if (cn2dBmMaxWpkPercent != 0) && (cnBitsLeftAtDl2 > cnBitsCnt)
+  #undef  BM_POP_IN_WR_HB
+#endif // (cn2dBmMaxWpkPercent != 0) && (cnBitsLeftAtDl2 > cnBitsCnt)
+#if (cnBitsInD1 > cnBitsCnt)
+  #undef BM_POP_IN_WR_HB
+#endif // (cnBitsInD1 > cnBitsCnt)
 
 #if defined(CODE_XX_SW)
 static inline Word_t
