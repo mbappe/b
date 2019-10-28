@@ -303,6 +303,13 @@ MyMallocGutsRM(Word_t wWords, int nLogAlignment, Word_t *pwAllocWords)
     // zExtraUnits is the number of extra EXP(cnBitsMallocMask)-byte units over
     // and above the minimum amount that could be allocated by malloc.
     size_t zExtraUnits = zUnitsAllocated - zUnitsRequired; (void)zExtraUnits;
+  #ifdef DEBUG
+    if (zExtraUnits > cnExtraUnitsMax) {
+        printf("zExtraUnits %zd wWords %zd nLogAlignment %d ww[-1]>>3 %zx\n",
+               zExtraUnits, wWords, nLogAlignment,
+               ((Word_t*)ww)[-1] >> cnLogBytesPerWord);
+    }
+  #endif // DEBUG
     assert(zExtraUnits <= cnExtraUnitsMax);
 #if defined(LIBCMALLOC)
   // We can't use the preamble word with LIBCMALLOC because it monitors the
@@ -315,7 +322,7 @@ MyMallocGutsRM(Word_t wWords, int nLogAlignment, Word_t *pwAllocWords)
 #else // defined(LIBCMALLOC)
 
 #define cnBitsUsed 2 // low bits used by malloc for bookkeeping
-    assert((((Word_t *)ww)[-1] & MSK(cnBitsMallocMask)) == MSK(cnBitsUsed));
+    assert((((Word_t *)ww)[-1] & MSK(cnBitsMallocMask) & ~MSK(cnBitsUsed)) == 0);
     // Save the bits of ww[-1] that we need at free time and make sure
     // none of the bits we want to use are changed by malloc while we
     // own the buffer.
@@ -719,6 +726,19 @@ static int
 CalcListWordCnt(int nPopCnt, int nBLR)
 {
     int nListWordsMin = ListWordsMin(nPopCnt, nBLR);
+  #ifdef CACHE_ALIGN_L1
+    // We need to address needing two words of keys for l1 and requiring
+    // an even number of values to align pwr so we can fit two keys and
+    // two values in a malloc of 3 words.
+    // In the meantime
+    // WordCnt == 4 allows us to request alignment of only 4 words and
+    // know that no prefetch is necessary because we know all 4 words will
+    // be in the same cache line and it doesn't result in much waste.
+    // Requesting an alignment of 8 words results in a lot of waste.
+    if ((nBLR == cnBitsInD1) && (nListWordsMin <= 4)) { return 4; }
+    //if ((nBLR == cnBitsInD1) && (nListWordsMin <= 5)) { return 5; }
+    if ((nBLR == cnBitsInD1) && (nListWordsMin <= 6)) { return 6; }
+  #endif // CACHE_ALIGN_L1
   #ifdef SLOW_FIBONACCI
     int n; for (n = 0; anListMallocSizes[n] <= nListWordsMin; ++n);
     int nWords = anListMallocSizes[n] - 1;
@@ -1053,9 +1073,13 @@ NewList(Word_t wPopCnt, int nBL)
     assert(wPopCnt != 0);
     int nWords = ListWordCnt(wPopCnt, nBL);
     Word_t *pwList
-        = (Word_t*)MyMalloc(nWords,
-                            &j__AllocWordsJLL[(nBL + 7) / 8
-                                                  & (sizeof(Word_t) - 1)]);
+        = (Word_t*)MyMallocGuts(nWords,
+  #ifdef CACHE_ALIGN_L1
+                                (nBL == cnBitsInD1) ? (nWords <= 4) ? 5 : 6 :
+  #endif // CACHE_ALIGN_L1
+                                0,
+                                &j__AllocWordsJLL[(nBL + 7) / 8
+                                                      & (sizeof(Word_t) - 1)]);
   #ifdef B_JUDYL
     //pwList = (Word_t*)ALIGN_UP((Word_t)&pwList[nKeySlots], sizeof(Bucket_t));
     int nKeySlots = ListSlotCnt(wPopCnt, nBL);
@@ -1091,8 +1115,12 @@ OldList(Word_t *pwList, int nPopCnt, int nBLR, int nType)
     if (nType == T_LIST) { pwList -= nWords - 1; }
       #endif // #ifndef OLD_LISTS
   #endif // B_JUDYL
-    MyFree(pwList, nWords,
-           &j__AllocWordsJLL[(nBLR + 7) / 8 & (sizeof(Word_t) - 1)]);
+    MyFreeGuts(pwList, nWords,
+  #ifdef CACHE_ALIGN_L1
+               (nBLR == cnBitsInD1) ? (nWords <= 4) ? 5 : 6 :
+  #endif // CACHE_ALIGN_L1
+               0,
+               &j__AllocWordsJLL[(nBLR + 7) / 8 & (sizeof(Word_t) - 1)]);
     return nWords * sizeof(Word_t);
 }
 
@@ -9394,6 +9422,12 @@ Initialize(void)
 
     printf("\n");
 
+#ifdef           CACHE_ALIGN_L1
+    printf("#    CACHE_ALIGN_L1\n");
+#else //         CACHE_ALIGN_L1
+    printf("# No CACHE_ALIGN_L1\n");
+#endif // #else  CACHE_ALIGN_L1
+
 #ifdef           USE_POPCOUNT_IN_LK8
     printf("#    USE_POPCOUNT_IN_LK8\n");
 #else //         USE_POPCOUNT_IN_LK8
@@ -10885,7 +10919,7 @@ Initialize(void)
         printf("\n");
         int nWordsPrev = 0, nBoundaries = 0, nWords;
         for (int nPopCnt = 1;
-             nBoundaries <= 3 && nPopCnt <= auListPopCntMax[nBL];
+             nBoundaries <= 6 && nPopCnt <= auListPopCntMax[nBL];
              nPopCnt++)
         {
             if ((nWords = ListWordCnt(nPopCnt, nBL)) != nWordsPrev) {
@@ -10908,6 +10942,14 @@ Initialize(void)
                 nWordsPrev = nWords;
             }
         }
+    }
+
+    printf("\n");
+    for (int ii = 4; ii <= 17; ++ii) {
+        printf("# BitmapWordCnt(nBL %d nPopCnt %d) %zd\n",
+               cbEmbeddedBitmap ? cnBitsLeftAtDl2 : cnBitsInD1, ii,
+               BitmapWordCnt(cbEmbeddedBitmap ? cnBitsLeftAtDl2 : cnBitsInD1,
+                             ii));
     }
 
     printf("\n");

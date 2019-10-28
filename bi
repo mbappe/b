@@ -4,6 +4,11 @@
 # used by git bisect run.
 
 : \
+&& DEFINES="-DDEBUG -DCACHE_ALIGN_L1 -DcnListPopCntMaxDl1=4 -DPACK_BM_VALUES \
+    -DBMLF_CNTS -DBMLF_CNTS_CUM -DNO_PREFETCH_LOCATE_KEY_8_BEG_VAL \
+    -DNO_PREFETCH_LOCATE_KEY_8_END_VAL -DPF_BM_PREV_HALF_VAL \
+    -DPF_BM_NEXT_HALF_VAL" make clean default \
+&& regress \
 && DEFINES="-DPACK_BM_VALUES -DcnListPopCntMax64=16 -DcnListPopCntMaxDl1=16 \
 -DDEBUG" \
    make clean default \
