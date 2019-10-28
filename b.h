@@ -4062,6 +4062,30 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     return nPos;
 }
 
+// I looked at executables generated on asus on 160403.
+// The second argument to __builtin_prefetch is ignored.
+// And _mm_prefetch results in different code than __builtin_prefetch.
+#if defined(BUILTIN_PREFETCH_0)
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 0)
+#elif defined(BUILTIN_PREFETCH_1)
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 1)
+#elif defined(BUILTIN_PREFETCH_2)
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 2)
+#elif defined(BUILTIN_PREFETCH_3)
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 3)
+#elif defined(INTEL_PREFETCH_NTA)
+  #define PREFETCH(_p)  _mm_prefetch((_p), _MM_HINT_NTA) // 3
+#elif defined(INTEL_PREFETCH_T0)
+  #define PREFETCH(_p)  _mm_prefetch((_p), _MM_HINT_T0) // 2
+#elif defined(INTEL_PREFETCH_T1)
+  #define PREFETCH(_p)  _mm_prefetch((_p), _MM_HINT_T1) // 1
+#elif defined(INTEL_PREFETCH_T2)
+  #define PREFETCH(_p)  _mm_prefetch((_p), _MM_HINT_T2) // 0
+#else
+  #define BUILTIN_PREFETCH_0
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 0)
+#endif
+
 #if defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)
 #if !defined(LIST_END_MARKERS)
 
@@ -4499,30 +4523,6 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 #else // PREFETCH_LOCATEKEY_PREV_VAL
 #define _PF_LK_PV(_x)
 #endif // #else PREFETCH_LOCATEKEY_PREV_VAL
-
-// I looked at executables generated on asus on 160403.
-// The second argument to __builtin_prefetch is ignored.
-// And _mm_prefetch results in different code than __builtin_prefetch.
-#if defined(BUILTIN_PREFETCH_0)
-  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 0)
-#elif defined(BUILTIN_PREFETCH_1)
-  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 1)
-#elif defined(BUILTIN_PREFETCH_2)
-  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 2)
-#elif defined(BUILTIN_PREFETCH_3)
-  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 3)
-#elif defined(INTEL_PREFETCH_NTA)
-  #define PREFETCH(_p)  _mm_prefetch((_p), _MM_HINT_NTA) // 3
-#elif defined(INTEL_PREFETCH_T0)
-  #define PREFETCH(_p)  _mm_prefetch((_p), _MM_HINT_T0) // 2
-#elif defined(INTEL_PREFETCH_T1)
-  #define PREFETCH(_p)  _mm_prefetch((_p), _MM_HINT_T1) // 1
-#elif defined(INTEL_PREFETCH_T2)
-  #define PREFETCH(_p)  _mm_prefetch((_p), _MM_HINT_T2) // 0
-#else
-  #define BUILTIN_PREFETCH_0
-  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 0)
-#endif
 
 // PSPLIT_LOCATEKEY_GUTS uses qy for prefetch but qy is not in the parameter
 // list. Shame on us.
@@ -6556,7 +6556,6 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
   #endif // defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
   #endif // !defined(PP_IN_LINK) && !defined(POP_WORD_IN_LINK)
     assert(((Word_t)pwr & ~((Word_t)-1 << 4)) == 0);
-    BJL(char* pcValues = (char*)gpwValues(qy); (void)pcValues);
   #ifdef PREFETCH_LOCATE_KEY_8_BEG_VAL
     // Prefetch the cache line before the keys.
     // Fetching the keys brings in 0 - 6 values assuming there are
