@@ -2706,7 +2706,9 @@ static inline void
 snBW(qp, int nBW)
 {
     qv;
+  #if BPW > 32
     assert(nBW <= (int)MSK(cnBitsXxSwWidth));
+  #endif // BPW > 32
     if (cnBitsPerWord == 64) {
         // WIDTH_IN_WR_HB
         SetBits(&pLn->ln_wRoot, cnBitsXxSwWidth, cnLsbXxSwWidth, nBW);
@@ -2794,14 +2796,19 @@ typedef struct {
     #define bmlf_wPopCnt  bmlf_wPrefixPop
   #endif // #else defined(POP_WORD) && !defined(POP_WORD_IN_LINK)
   #endif // #ifndef BM_POP_IN_WR_HB
-  #ifdef BMLF_CNTS
+  #ifdef BMLF_CNTS // implied B_JUDYL
+      #ifndef B_JUDYL
+    #error BMLF_CNTS without B_JUDYL
+      #endif // #ifndef B_JUDYL
   #if cnDummiesInLink == 0
       #ifdef BMLF_POP_COUNT_8
     uint8_t bmlf_au8Cnts[1 << (cnBitsInD1 - cnLogBitsPerByte)];
       #elif defined(BMLF_POP_COUNT_1)
     uint8_t bmlf_au8Cnts[1 << cnBitsInD1];
       #else // BMLF_POP_COUNT_8
+          #if !defined(EMBED_KEYS) || defined(BMLF_POP_COUNT_32)
     uint8_t bmlf_au8Cnts[cnBytesPerWord];
+          #endif // !defined(EMBED_KEYS) || defined(BMLF_POP_COUNT_32)
       #endif // #else BMLF_POP_COUNT_8
   #endif // cnDummiesInLink == 0
   #endif // BMLF_CNTS
@@ -2984,9 +2991,16 @@ gpwBitmapValues(qp, int nBLR)
 
 // How many keys precede the key we are looking for in the bitmap?
 static int
-BmIndex(qp, int nBLR, Word_t wKey)
+BmIndex(qp, int nBLR, Word_t wKey
+  #ifdef EMBED_KEYS
+      , Word_t* pwValueUp
+  #endif // EMBED_KEYS
+        )
 {
     qv;
+  #ifdef EMBED_KEYS
+    (void)pwValueUp;
+  #endif // EMBED_KEYS
     assert(!cbEmbeddedBitmap);
     assert(tp_bIsBitmap(nType));
     Word_t wDigit = wKey & MSK(nBLR);
@@ -3044,7 +3058,11 @@ BmIndex(qp, int nBLR, Word_t wKey)
               #if cnDummiesInLink > 0
     Word_t wSums = *pLn->ln_awDummies;
               #else // cnDummiesInLink > 0
+        #ifdef EMBED_KEYS
+    Word_t wSums = *pwValueUp;
+        #else // EMBED_KEYS
     Word_t wSums = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts;
+        #endif // #else EMBED_KEYS
               #endif // #else cnDummiesInLink > 0
               #ifndef BMLF_CNTS_CUM
     wSums *= 0x01010100;
@@ -3239,7 +3257,9 @@ Set_xListPopCnt(Word_t *pwRoot, int nBL, int nPopCnt)
     assert(nPopCnt - 1 <= (int)MSK(cnBitsListPopCnt));
     SetBits(pwRoot, cnBitsListPopCnt, cnLsbListPopCnt, nPopCnt - 1);
 #elif defined(LIST_POP_IN_PREAMBLE) // 32-bit default
+  #if BPW > 32
     assert(nPopCnt - 1 <= (int)MSK(cnBitsPreListPopCnt));
+  #endif // BPW > 32
     SetBits(&pwr[-1], cnBitsPreListPopCnt, cnLsbPreListPopCnt, nPopCnt - 1);
 #elif defined(OLD_LISTS)
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -3636,12 +3656,14 @@ InsertCleanup(qp, Word_t wKey);
 void RemoveCleanup(Word_t wKey, int nBL, int nBLR,
                    Word_t *pwRoot, Word_t wRoot);
 
+#if 0
 #ifdef B_JUDYL
 Word_t*
 #else // B_JUDYL
 Status_t
 #endif // B_JUDYL
 InsertAtBitmap(qp, Word_t wKey);
+#endif
 
 //Word_t FreeArrayGuts(Word_t *pwRoot,
 //                     Word_t wPrefix, int nBL, int bDump);

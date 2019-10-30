@@ -5,9 +5,16 @@
 
 : \
 && DEFINES="-DDEBUG -DCACHE_ALIGN_L1 -DcnListPopCntMaxDl1=4 -DPACK_BM_VALUES \
-    -DBMLF_CNTS -DBMLF_CNTS_CUM -DNO_PREFETCH_LOCATE_KEY_8_BEG_VAL \
-    -DNO_PREFETCH_LOCATE_KEY_8_END_VAL -DPF_BM_PREV_HALF_VAL \
-    -DPF_BM_NEXT_HALF_VAL" make clean default \
+            -DBMLF_CNTS -DBMLF_CNTS_CUM -DNO_PREFETCH_LOCATE_KEY_8_BEG_VAL \
+            -DNO_PREFETCH_LOCATE_KEY_8_END_VAL -DPF_BM_PREV_HALF_VAL \
+            -DPF_BM_NEXT_HALF_VAL -DNO_EMBED_KEYS" \
+   make clean default \
+&& regress \
+&& DEFINES="-DDEBUG -DCACHE_ALIGN_L1 -DcnListPopCntMaxDl1=4 -DPACK_BM_VALUES \
+            -DBMLF_CNTS -DBMLF_CNTS_CUM -DNO_PREFETCH_LOCATE_KEY_8_BEG_VAL \
+            -DNO_PREFETCH_LOCATE_KEY_8_END_VAL -DPF_BM_PREV_HALF_VAL \
+            -DPF_BM_NEXT_HALF_VAL" \
+   make clean default \
 && regress \
 && DEFINES="-DPACK_BM_VALUES -DcnListPopCntMax64=16 -DcnListPopCntMaxDl1=16 \
 -DDEBUG" \
@@ -45,8 +52,6 @@
 && NO_SM=1 make clean default \
 && regress \
 && NO_SM=1 NO_RM=1 make clean default \
-&& regress \
-&& BPW=32 DEFINES="-DDEBUG" make clean default \
 && regress \
 && DEFINES="-DUSE_XX_SW_ONLY_AT_DL2 -DcnListPopCntMax64=64 -DDEBUG" \
    make clean default \
@@ -112,9 +117,10 @@
 && DEFINES="-DPOP_CNT_MAX_IS_KING -DcnListPopCntMax64=1 -DDEBUG" \
    make clean default \
 && DEFINES="-DDEBUG_ALL" make clean default \
-&& BPW=32 DEFINES="-DDEBUG_ALL" make clean default \
 && NO_SM=1 DEFINES="-DDEBUG_ALL" make clean default \
 && NO_SM=1 NO_RM=1 DEFINES="-DDEBUG_ALL" make clean default \
+&& BPW=32 DEFINES="-DDEBUG" make clean default \
+&& BPW=32 DEFINES="-DDEBUG_ALL" make clean default \
 && :
 
 #make clean default

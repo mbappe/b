@@ -167,6 +167,17 @@
 #define EMBED_KEYS
 #endif // ! defined(NO_EMBED_KEYS)
 
+// _LNX is not to be set on the build command line.
+// It is derived from other ifdefs.
+#ifdef _LNX
+  #error _LNX may not be defined explicitly
+#endif // _LNX
+#ifdef B_JUDYL
+#ifdef EMBED_KEYS
+  #define _LNX
+#endif // EMBED_KEYS
+#endif // B_JUDYL
+
 #ifdef DOUBLE_DOWN
   #undef  XX_LISTS
   #define XX_LISTS
@@ -492,6 +503,22 @@
 
 #ifndef B_JUDYL
   #undef BMLF_CNTS
+#endif // B_JUDYL
+
+#ifdef B_JUDYL
+#ifdef BMLF_CNTS // implied B_JUDYL
+#if cnDummiesInLink == 0
+#ifndef BMLF_POP_COUNT_32
+#ifndef BMLF_POP_COUNT_8
+#ifndef BMLF_POP_COUNT_1
+#ifdef EMBED_KEYS
+  #define _RETURN_NULL_TO_INSERT_AGAIN
+#endif // EMBED_KEYS
+#endif // #ifndef BMLF_POP_COUNT_1
+#endif // #ifndef BMLF_POP_COUNT_8
+#endif // #ifndef BMLF_POP_COUNT_32
+#endif // cnDummiesInLink == 0
+#endif // BMLF_CNTS
 #endif // B_JUDYL
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )

@@ -603,6 +603,11 @@ again:;
   #endif // ! defined(CODE_XX_SW)
 #endif // ( ! defined(LOOKUP) )
 
+   #ifdef INSERT
+   #ifdef _RETURN_NULL_TO_INSERT_AGAIN
+BJL(insertAgain:)
+   #endif // _RETURN_NULL_TO_INSERT_AGAIN
+   #endif // INSERT
     nType = wr_nType(wRoot);
     pwr = wr_pwr(wRoot); // pwr isn't meaningful for all nType values
     // nBL, pLn, wRoot, nType and pwr of qy are set up
@@ -939,6 +944,7 @@ t_switch:;
         // pointer in our tree nodes.
         pwValueUp
             = gpwEmbeddedValue(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+        DBGX(printf("updated pwValueUp %p\n", pwValueUp));
       #ifdef PREFETCH_EK_VAL
       #ifdef LOOKUP
         PREFETCH(pwValueUp);
@@ -2192,12 +2198,16 @@ t_bitmap:;
       #endif // defined(INSERT)
       #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
           #ifdef LOOKUP
-                int nIndex = BmIndex(qy, cnBitsInD1, wKey);
+                int nIndex = BmIndex(qy, cnBitsInD1, wKey
           #else // LOOKUP
                 int nIndex = BM_UNPACKED(wRoot)
                                ? (int)(wKey & MSK(cnBitsInD1))
-                               : BmIndex(qy, cnBitsInD1, wKey);
+                               : BmIndex(qy, cnBitsInD1, wKey
           #endif // #else LOOKUP
+              #ifdef EMBED_KEYS
+                                       , pwValueUp
+              #endif // EMBED_KEYS
+                                         );
                 return &pwBitmapValues[nIndex];
       #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 return KeyFound;
@@ -2597,17 +2607,31 @@ foundIt:;
     // InsertGuts is called with a pLn and nBL indicates the
     // bits that were not decoded in identifying pLn.  nBL
     // does not include any skip indicated in the type field of *pLn.
+  #ifdef B_JUDYL
+      #ifdef _RETURN_NULL_TO_INSERT_AGAIN
+    assert((pwValueUp != NULL) || (nBL == cnBitsPerWord));
+      #endif // _RETURN_NULL_TO_INSERT_AGAIN
+  #endif // B_JUDYL
     BJL(pwValue =)
         InsertGuts(qy, wKey, nPos
   #if defined(CODE_XX_SW)
                  , pLnUp
                  , nBLUp
   #endif // defined(CODE_XX_SW)
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #if defined(B_JUDYL) && defined(EMBED_KEYS)
                  , pwValueUp
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                    );
   #ifdef B_JUDYL
+      #ifdef _RETURN_NULL_TO_INSERT_AGAIN
+    if (pwValue == NULL) {
+        assert((pwValueUp != NULL) || (nBL == cnBitsPerWord));
+        // Insert will increment pop count again if it encounters a switch.
+        assert(!tp_bIsSwitch(pLn->ln_wRoot));
+        wRoot = pLn->ln_wRoot;
+        goto insertAgain;
+    }
+      #endif // _RETURN_NULL_TO_INSERT_AGAIN
     DBGI(printf("Initializing pwValue %p for wKey 0x%zx\n", pwValue, wKey));
     *pwValue = 0;
   #endif // B_JUDYL
