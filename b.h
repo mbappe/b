@@ -1722,12 +1722,12 @@ tp_bIsBitmap(int nType)
 #endif // B_JUDYL
 
 // Bit fields in the upper bits of of wRoot.
-// (cnBitsLvlM1, cnLsbLvlM1) is the level of the node pointed to.
-#define cnBitsLvlM1  cnLogBitsPerWord
-#define cnLsbLvlM1  (cnBitsPerWord - cnBitsLvlM1)
+#define cnBitsCnt  8
+#define cnLsbCnt  (cnBitsPerWord - cnBitsCnt)
 
-#define cnBitsCnt  (cnBitsPerWord - cnBitsLvlM1 - cnBitsVirtAddr)
-#define cnLsbCnt    cnBitsVirtAddr
+// (cnBitsLvlM1, cnLsbLvlM1) is the level of the node pointed to.
+#define cnBitsLvlM1  8
+#define cnLsbLvlM1  cnBitsVirtAddr
 
 // ListPopCnt is the number of keys in the list minus 1.
 #define cnBitsListPopCnt  cnBitsCnt
