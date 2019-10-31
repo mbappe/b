@@ -4084,25 +4084,15 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     return nPos;
 }
 
-// I looked at executables generated on asus on 160403.
 // The second argument to __builtin_prefetch is ignored.
-// And _mm_prefetch results in different code than __builtin_prefetch.
 #if defined(BUILTIN_PREFETCH_0)
-  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 0)
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 0) // low temporal locality
 #elif defined(BUILTIN_PREFETCH_1)
   #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 1)
 #elif defined(BUILTIN_PREFETCH_2)
   #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 2)
 #elif defined(BUILTIN_PREFETCH_3)
-  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 3)
-#elif defined(INTEL_PREFETCH_NTA)
-  #define PREFETCH(_p)  _mm_prefetch((_p), _MM_HINT_NTA) // 3
-#elif defined(INTEL_PREFETCH_T0)
-  #define PREFETCH(_p)  _mm_prefetch((_p), _MM_HINT_T0) // 2
-#elif defined(INTEL_PREFETCH_T1)
-  #define PREFETCH(_p)  _mm_prefetch((_p), _MM_HINT_T1) // 1
-#elif defined(INTEL_PREFETCH_T2)
-  #define PREFETCH(_p)  _mm_prefetch((_p), _MM_HINT_T2) // 0
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 3) // high temporal locality
 #else
   #define BUILTIN_PREFETCH_0
   #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 0)
