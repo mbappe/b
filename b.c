@@ -2357,16 +2357,25 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
         int nBLUp = nBL + nBWUp; (void)nBLUp;
         Link_t *pLnUp = STRUCT_OF(&pwrUp, Link_t, ln_wRoot); (void)pLnUp;
         int nDigitX = (wPrefix >> nBL) & MSK(nBWUp); (void)nDigitX;
+        int nLinks;
+        Word_t wIndex;
+              #ifdef CODE_BM_SW
+        if (tp_bIsBmSw(nTypeUp)) {
+            nLinks = BmSwLinkCnt(qyx(Up));
+            BmSwIndex(qyx(Up), nDigitX, &wIndex, NULL);
+        } else
+              #endif // CODE_BM_SW
+        {
+            nLinks = (1 << nBWUp);
+            wIndex = nDigitX;
+        }
       #endif // EMBED_KEYS
         printf(" wCnts 0x%016zx",
       #if cnDummiesInLink > 0
                *pLn->ln_awDummies
       #else // cnDummiesInLink > 0
           #ifdef EMBED_KEYS
-              #ifdef CODE_BM_SW
-               tp_bIsBmSw(nTypeUp) ? -(Word_t)1 :
-              #endif // CODE_BM_SW
-                   *gpwEmbeddedValue(qyx(Up), 1<<nBWUp, nDigitX)
+               *gpwEmbeddedValue(qyx(Up), nLinks, wIndex)
           #else // EMBED_KEYS
                *(Word_t*)(((BmLeaf_t*)pwr)->bmlf_au8Cnts)
           #endif // #else EMBED_KEYS
