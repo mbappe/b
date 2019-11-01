@@ -675,7 +675,7 @@ Word_t    DFlag = 0;                    // bit reverse (mirror) the data stream
 // explicitly. We set it to SValue for non-zero SValue by default so we can
 // do random gets with non-zero SValue by default.
 //
-Word_t StartSequent = (Word_t)-1 / 7; // 0x2492492492492492 or 0x24924924
+Word_t StartSequent = (Word_t)-1 / 3; // 0x5555555555555555 or 0x55555555
 
 Word_t PartitionDeltaFlag = 1; // use -Z to disable small key array
 
