@@ -128,15 +128,16 @@
     #define    PREFETCH_LOCATEKEY_PREV_VAL
   #endif // NO_PREFETCH_LOCATEKEY_PREV_VAL
 
-  #ifndef   NO_PREFETCH_LOCATE_KEY_8_BEG_VAL
-    #undef     PREFETCH_LOCATE_KEY_8_BEG_VAL
-    #define    PREFETCH_LOCATE_KEY_8_BEG_VAL
-  #endif // NO_PREFETCH_LOCATE_KEY_8_BEG_VAL
+  #ifndef cnListPopCntMaxDl1
+    #define cnListPopCntMaxDl1  4
+  #endif // #ifndef cnListPopCntMaxDl1
+  #ifndef NO_CACHE_ALIGN_L1
+    #undef   CACHE_ALIGN_L1
+    #define  CACHE_ALIGN_L1
+  #endif // #ifndef NO_CACHE_ALIGN_L1
 
-  #ifndef   NO_PREFETCH_LOCATE_KEY_8_END_VAL
-    #undef     PREFETCH_LOCATE_KEY_8_END_VAL
-    #define    PREFETCH_LOCATE_KEY_8_END_VAL
-  #endif // NO_PREFETCH_LOCATE_KEY_8_END_VAL
+  // PREFETCH_LOCATE_KEY_8_[BEG|END]_VAL are not necessary with
+  // default cnListPopCntMaxDl1=4 and CACHE_ALIGN_L1.
 
   // Default is no PREFETCH_BM_[PSPLIT|NEXT|PREV]_VAL
 

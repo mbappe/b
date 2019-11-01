@@ -590,10 +590,9 @@ typedef Word_t Bucket_t;
 // full pop. The only options are embedded or external list at Dl1 or higher.
 #ifdef BITMAP
   #ifndef cnListPopCntMaxDl1
+    // Default cnListPopCntMaxDl1 is defined in bdefines.h for B_JUDYL.
     #ifdef B_JUDYL
-      // Default is to transition from list leaf one to uncompressed bitmap
-      // leaf when the leaf is half way to full pop.
-      #define cnListPopCntMaxDl1  128
+      #error cnListPopCntMaxDl1 not defined
     #else // B_JUDYL
       #define cnListPopCntMaxDl1  0x10
     #endif // #else B_JUDYL
@@ -6545,7 +6544,7 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
 {
     qv; (void)nBLR;
 
-// HasKey128 assumes the list of keys starts at a 128-bit aligned address.
+// LocateKey128 assumes the list of keys starts at a 128-bit aligned address.
 // SearchList8 makes no such assumption.
 #if !defined(POP_IN_WR_HB) && !defined(LIST_POP_IN_PREAMBLE)
 #if !defined(PP_IN_LINK) || (cnDummiesInList == 0)
@@ -6561,6 +6560,8 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
 #if defined(PSPLIT_SEARCH_8)
 #ifdef PARALLEL_LOCATEKEY_8
 
+// If we know that List8 fits in a single bucket, then we can use this
+// faster version of search.
   #ifndef _LKIL8_DONE
     int nPos;
   #ifdef LKIL8_ONE_BUCKET

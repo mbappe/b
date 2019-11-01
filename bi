@@ -4,16 +4,11 @@
 # used by git bisect run.
 
 : \
-&& DEFINES="-DDEBUG -DCACHE_ALIGN_L1 -DcnListPopCntMaxDl1=4 \
-            -DNO_PREFETCH_LOCATE_KEY_8_BEG_VAL \
-            -DNO_PREFETCH_LOCATE_KEY_8_END_VAL \
-            -DNO_EMBED_KEYS" \
-   make clean default \
+&& make clean default \
 && regress \
-&& DEFINES="-DDEBUG -DCACHE_ALIGN_L1 -DcnListPopCntMaxDl1=4 \
-            -DNO_PREFETCH_LOCATE_KEY_8_BEG_VAL \
-            -DNO_PREFETCH_LOCATE_KEY_8_END_VAL" \
-   make clean default \
+&& DEFINES="-DDEBUG" make clean default \
+&& regress \
+&& DEFINES="-DNO_EMBED_KEYS -DDEBUG" make clean default \
 && regress \
 && DEFINES="-DcnListPopCntMax64=16 -DcnListPopCntMaxDl1=16 -DDEBUG" \
    make clean default \
@@ -42,10 +37,6 @@
    make clean default \
 && regress \
 && DEFINES="-DBM_IN_LINK -DDEBUG" make clean default \
-&& regress \
-&& DEFINES="-DDEBUG" make clean default \
-&& regress \
-&& make clean default \
 && regress \
 && NO_SM=1 make clean default \
 && regress \
