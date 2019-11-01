@@ -1129,7 +1129,7 @@ OldList(Word_t *pwList, int nPopCnt, int nBLR, int nType)
 // cnLogBmWordsX determines when a bitmap value area grows to uncompressed.
 // Roughly, we transition when words per key won't be much more than
 // EXP(cnLogBmWordsX + 1) / (EXP(cnLogBmWordsX) + 1)
-// It's a number between one and two.
+// It's a number between one and two: 1, 4/3, 8/5, 16/9, 32/17, 64/33, ...
 // A bigger cnLogBmWordsX means a bigger words per key is allowed.
 #define cnLogBmWordsX  5
 
@@ -1524,7 +1524,7 @@ NewSwitchX(Word_t *pwRoot, Word_t wKey, int nBLR,
         { set_wr(*pwRoot, pwr, T_BM_SW); }
   #if (cnBitsPerWord > 32)
   #ifdef BM_SW_CNT_IN_WR
-        SetBits(pwRoot, cnBitsCnt, cnLsbCnt, nLinkCnt - 1);
+        SetBits(pwRoot, cnBitsCnt, cnLsbCnt, wLinks - 1);
   #endif // BM_SW_CNT_IN_WR
   #endif // (cnBitsPerWord > 32)
     } else
@@ -9654,10 +9654,6 @@ Initialize(void)
     assert(T_EMBEDDED_KEYS != 0); // see b.h
   #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
 #endif // defined(NO_TYPE_IN_XX_SW)
-#ifndef BITMAP
-    assert(cnListPopCntMaxDl1 >= EXP(cnBitsInD1));
-    // What if cnBitsInD1 < sizeof(Link_t)*8 and -DALLOW_EMBEDDED_BITMAP?
-#endif // BITMAP
 
   #ifdef USE_XX_SW_ONLY_AT_DL2
   #ifdef SKIP_TO_XX_SW
@@ -10023,11 +10019,11 @@ Initialize(void)
     printf("# No USE_LOCATE_FOR_NO_PACK\n");
 #endif // defined(USE_LOCATE_FOR_NO_PACK)
 
-#ifdef           NO_BM_SW_CNT_IN_WR_HB
-    printf("#    NO_BM_SW_CNT_IN_WR_HB\n");
-#else //         NO_BM_SW_CNT_IN_WR_HB
-    printf("# No NO_BM_SW_CNT_IN_WR_HB\n");
-#endif //        NO_BM_SW_CNT_IN_WR_HB
+#ifdef           NO_BM_SW_CNT_IN_WR
+    printf("#    NO_BM_SW_CNT_IN_WR\n");
+#else //         NO_BM_SW_CNT_IN_WR
+    printf("# No NO_BM_SW_CNT_IN_WR\n");
+#endif //        NO_BM_SW_CNT_IN_WR
 
 #ifdef           NO_OFFSET_IN_SW_BM_WORD
     printf("#    NO_OFFSET_IN_SW_BM_WORD\n");

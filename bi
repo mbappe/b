@@ -4,20 +4,18 @@
 # used by git bisect run.
 
 : \
-&& DEFINES="-DDEBUG -DCACHE_ALIGN_L1 -DcnListPopCntMaxDl1=4 -DPACK_BM_VALUES \
-            -DBMLF_CNTS -DBMLF_CNTS_CUM -DNO_PREFETCH_LOCATE_KEY_8_BEG_VAL \
-            -DNO_PREFETCH_LOCATE_KEY_8_END_VAL -DPF_BM_PREV_HALF_VAL \
-            -DPF_BM_NEXT_HALF_VAL -DNO_EMBED_KEYS" \
+&& DEFINES="-DDEBUG -DCACHE_ALIGN_L1 -DcnListPopCntMaxDl1=4 \
+            -DNO_PREFETCH_LOCATE_KEY_8_BEG_VAL \
+            -DNO_PREFETCH_LOCATE_KEY_8_END_VAL \
+            -DNO_EMBED_KEYS" \
    make clean default \
 && regress \
-&& DEFINES="-DDEBUG -DCACHE_ALIGN_L1 -DcnListPopCntMaxDl1=4 -DPACK_BM_VALUES \
-            -DBMLF_CNTS -DBMLF_CNTS_CUM -DNO_PREFETCH_LOCATE_KEY_8_BEG_VAL \
-            -DNO_PREFETCH_LOCATE_KEY_8_END_VAL -DPF_BM_PREV_HALF_VAL \
-            -DPF_BM_NEXT_HALF_VAL" \
+&& DEFINES="-DDEBUG -DCACHE_ALIGN_L1 -DcnListPopCntMaxDl1=4 \
+            -DNO_PREFETCH_LOCATE_KEY_8_BEG_VAL \
+            -DNO_PREFETCH_LOCATE_KEY_8_END_VAL" \
    make clean default \
 && regress \
-&& DEFINES="-DPACK_BM_VALUES -DcnListPopCntMax64=16 -DcnListPopCntMaxDl1=16 \
--DDEBUG" \
+&& DEFINES="-DcnListPopCntMax64=16 -DcnListPopCntMaxDl1=16 -DDEBUG" \
    make clean default \
 && regress \
 && DEFINES="-DSPLAY_WITH_INSERT -DDOUBLE_DOWN -DUSE_LOWER_XX_SW \

@@ -102,25 +102,6 @@
     #define NO_PARALLEL_SEARCH_WORD
   #endif // PARALLEL_SEARCH_WORD
 
-  // PACK_BM_VALUES means use a packed value area for a bitmap leaf if/when
-  // the values area is less than max and/or when UNPACK_BM_VALUES is not
-  // defined.
-  // Default is No PACK_BM_VALUES.
-
-  // UNPACK_BM_VALUES means use an unpacked value area for a bitmap leaf
-  // if/when the value area is max and/or when PACK_BM_VALUES is not defined.
-  // Default is UNPACK_BM_VALUES.
-  #ifndef   NO_UNPACK_BM_VALUES
-    #undef     UNPACK_BM_VALUES
-    #define    UNPACK_BM_VALUES
-  #endif // NO_UNPACK_BM_VALUES
-
-  #ifndef PACK_BM_VALUES
-  #ifndef UNPACK_BM_VALUES
-    #error Must have at least one of PACK_BM_VALUES and UNPACK_BM_VALUES.
-  #endif // #ifndef UNPACK_BM_VALUES
-  #endif // #ifndef PACK_BM_VALUES
-
   // Default is to use a packed value area for a list leaf.
   // If NO_PACK_L1_VALUES && (cnBitsInD1 <= 8) then don't
   // pack the L1 value area.
@@ -308,15 +289,60 @@
   #endif // #ifndef NO_ALLOW_EMBEDDED_BITMAP
 #endif // NO_BITMAP
 
+#ifdef BITMAP
+#ifdef B_JUDYL
+  // PACK_BM_VALUES means use a packed value area for a bitmap leaf if/when
+  // the values area is less than max and/or when UNPACK_BM_VALUES is not
+  // defined.
+  // Default is PACK_BM_VALUES.
+  #ifndef NO_PACK_BM_VALUES
+    #undef   PACK_BM_VALUES
+    #define  PACK_BM_VALUES
+  #endif // #ifndef NO_PACK_BM_VALUES
+
+  #ifdef PACK_BM_VALUES
+    #ifndef NO_BMLF_CNTS
+      #ifndef NO_BMLF_CNTS_CUM
+        #undef  BMLF_CNTS_CUM
+        #define BMLF_CNTS_CUM
+      #endif // #ifndef NO_BMLF_CNTS_CUM
+      #undef  BMLF_CNTS
+      #define BMLF_CNTS
+    #endif // #ifndef NO_BMLF_CNTS
+    #ifndef NO_PF_BM_PREV_HALF_VAL
+      #undef   PF_BM_PREV_HALF_VAL
+      #define  PF_BM_PREV_HALF_VAL
+    #endif // #ifndef NO_PF_BM_PREV_HALF_VAL
+    #ifndef NO_PF_BM_NEXT_HALF_VAL
+      #undef   PF_BM_NEXT_HALF_VAL
+      #define  PF_BM_NEXT_HALF_VAL
+    #endif // #ifndef NO_PF_BM_NEXT_HALF_VAL
+  #endif // PACK_BM_VALUES
+
+  // UNPACK_BM_VALUES means use an unpacked value area for a bitmap leaf
+  // if/when the value area is max and/or when PACK_BM_VALUES is not defined.
+  // Default is UNPACK_BM_VALUES.
+  #ifndef   NO_UNPACK_BM_VALUES
+    #undef     UNPACK_BM_VALUES
+    #define    UNPACK_BM_VALUES
+  #endif // NO_UNPACK_BM_VALUES
+
+  #ifndef PACK_BM_VALUES
+  #ifndef UNPACK_BM_VALUES
+    #error Must have at least one of PACK_BM_VALUES and UNPACK_BM_VALUES.
+  #endif // #ifndef UNPACK_BM_VALUES
+  #endif // #ifndef PACK_BM_VALUES
+#endif // B_JUDYL
+#endif // BITMAP
+
 // How should we handle the relationship between USE_XX_SW_ONLY_AT_DL2,
 // ALLOW_EMBEDDED_BITMAP, cbEmbeddedBitmap, cnBitsInD1, and cnLogBitsPerLink?
 // Would be nice to simplify.
-
 #ifndef BITMAP
   #ifdef ALLOW_EMBEDDED_BITMAP
     #error ALLOW_EMBEDDED_BITMAP requires BITMAP
   #endif // ALLOW_EMBEDDED_BITMAP
-#endif // BITMAP
+#endif // #ifndef BITMAP
 
 // Default is PREFIX_WORD_IN_BITMAP_LEAF for B_JUDYL.
 // We have to be careful for Judy1 because we don't want to bump our bitmap
@@ -475,10 +501,10 @@
 
 #ifdef B_JUDYL
 #if cnBitsPerWord > 32
-    #ifndef NO_BM_SW_CNT_IN_WR_HB
-        #undef  BM_SW_CNT_IN_WR_HB
-        #define BM_SW_CNT_IN_WR_HB
-    #endif // #ifndef NO_BM_SW_CNT_IN_WR_HB
+    #ifndef NO_BM_SW_CNT_IN_WR
+        #undef  BM_SW_CNT_IN_WR
+        #define BM_SW_CNT_IN_WR
+    #endif // #ifndef NO_BM_SW_CNT_IN_WR
 #endif // cnBitsPerWord > 32
 #endif // B_JUDYL
 
@@ -499,10 +525,6 @@
   #define cnDummiesInLink  1
 #endif // cnDummiesInLink == 0
 #endif // VALUE_IN_DUMMY
-#endif // B_JUDYL
-
-#ifndef B_JUDYL
-  #undef BMLF_CNTS
 #endif // B_JUDYL
 
 #ifdef B_JUDYL

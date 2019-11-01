@@ -2659,9 +2659,17 @@ typedef struct {
   #define cbEmbeddedBitmap  1
 #elif defined(ALLOW_EMBEDDED_BITMAP)
   #define cbEmbeddedBitmap  (cnBitsInD1 <= cnLogBitsPerLink)
+  // What about B_JUDYL?
 #else // #ifdef USE_XX_SW_ONLY_AT_DL2 #elif defined(ALLOW_EMBEDDED_BITMAP)
   #define cbEmbeddedBitmap  0
 #endif // ALLOW_EMBEDDED_BITMAP
+
+#if cnListPopCntMaxDl1 < (1 << cnBitsInD1)
+#ifndef BITMAP
+  #error Must have BITMAP or cnListPopCntMaxDl1 >= (1 << cnBitsInD1).
+  // What about cbEmbeddedBitmap?
+#endif //#ifndef BITMAP
+#endif // cnListPopCntMaxDl1 < (1 << cnBitsInD1)
 
 // Get the width of the switch in bits.
 // nBLR includes any skip specified in the qp link.
@@ -2796,7 +2804,7 @@ typedef struct {
     #define bmlf_wPopCnt  bmlf_wPrefixPop
   #endif // #else defined(POP_WORD) && !defined(POP_WORD_IN_LINK)
   #endif // #ifndef BM_POP_IN_WR_HB
-  #ifdef BMLF_CNTS // implied B_JUDYL
+  #ifdef BMLF_CNTS // implies B_JUDYL
       #ifndef B_JUDYL
     #error BMLF_CNTS without B_JUDYL
       #endif // #ifndef B_JUDYL
@@ -6504,6 +6512,11 @@ BmSwIndex(qp, Word_t wDigit,
         *pwSwIndex = wSwIndex;
 #else // X_ADD_ALL_SW_BM_WORDS
   #ifdef OFFSET_IN_SW_BM_WORD
+      #ifdef USE_BM_SW
+      #ifndef BM_SW_FOR_REAL
+        #error OFFSET_IN_SW_BM_WORD without BM_SW_FOR_REAL
+      #endif // #ifndef BM_SW_FOR_REAL
+      #endif // USE_BM_SW
         *pwSwIndex = (wBmWord >> (cnBitsPerWord / 2))
                       + __builtin_popcountll(wBmWord & (wBmBitMask - 1));
   #else // OFFSET_IN_SW_BM_WORD
