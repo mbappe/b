@@ -529,7 +529,7 @@
 #endif // B_JUDYL
 
 #ifdef B_JUDYL
-#ifdef BMLF_CNTS // implied B_JUDYL
+#ifdef BMLF_CNTS // implies B_JUDYL
 #if cnDummiesInLink == 0
 #ifndef BMLF_POP_COUNT_32
 #ifndef BMLF_POP_COUNT_8
