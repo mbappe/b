@@ -8,6 +8,8 @@
 && regress \
 && DEFINES="-DDEBUG" make clean default \
 && regress \
+&& DEFINES="-DcnListPopCntMax64=0 -DDEBUG" make clean default \
+&& regress \
 && DEFINES="-DNO_EMBED_KEYS -DDEBUG" make clean default \
 && regress \
 && DEFINES="-DcnListPopCntMax64=16 -DcnListPopCntMaxDl1=16 -DDEBUG" \

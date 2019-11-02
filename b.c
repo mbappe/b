@@ -3321,7 +3321,9 @@ SignificantBitCnt(qp, Word_t wKey, int nPopCnt)
         return nBL;
     }
   #endif // NO_SKIP_AT_TOP
-    assert(nPopCnt != 0);
+    if (nPopCnt < 1) { // only if ListPopCntMax == 0
+        return 0;
+    }
     Word_t wMin, wMax, wSuffix;
   #if defined(COMPRESSED_LISTS)
     if (nBL <= 8) {
@@ -3914,6 +3916,9 @@ Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL
     DBGI(printf("\n# Splay nBLOld %d nBL %d ", nBLOld, nBL));
     DBGI(Dump(pwRootOld, wKey, nBLOld));
     DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+    if (wRootOld == WROOT_NULL) { // only if ListPopCntMax == 0
+        return;
+    }
     Link_t *pLnOld = STRUCT_OF(pwRootOld, Link_t, ln_wRoot);
     int nBLROld = gnListBLR(qyx(Old));
 
@@ -3978,6 +3983,7 @@ Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL
       #ifdef BM_SW_FOR_REAL
     // Save the old switch in case it ends up being suitable.
     Link_t linkOrig = *pLn;
+    int nLinkCntOrig = BmSwLinkCnt(qy); (void)nLinkCntOrig;
       #endif // BM_SW_FOR_REAL
     if (bIsBmSw) {
         // We can't handle splay into a non-empty BmSw.
@@ -4604,6 +4610,9 @@ insertAll:
         if (nLinkCnt == 1) {
             // Save the work of OldSwitch/NewSwitch if the switch that
             // came in is suitable.
+            // How do we know the switch passed in has exactly one link?
+            assert(nLinkCntOrig == 1);
+
             *pLn = linkOrig;
             pwr = wr_pwr(pLn->ln_wRoot);
             // Pop count will be updated when we copy the switch.
@@ -6162,6 +6171,9 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
     DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
     BJL(return)
+  #ifdef _RETURN_NULL_TO_INSERT_AGAIN
+        NULL; // call InsertGuts again
+  #endif // _RETURN_NULL_TO_INSERT_AGAIN
         Insert(nBL, pLn, wKey);
 }
 #endif // SKIP_LINKS

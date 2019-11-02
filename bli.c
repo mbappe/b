@@ -2629,6 +2629,7 @@ foundIt:;
         // Insert will increment pop count again if it encounters a switch.
         assert(!tp_bIsSwitch(pLn->ln_wRoot));
         wRoot = pLn->ln_wRoot;
+        nBLR = nBL;
         goto insertAgain;
     }
       #endif // _RETURN_NULL_TO_INSERT_AGAIN
