@@ -4092,6 +4092,8 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 }
 
 // The second argument to __builtin_prefetch is ignored.
+// We discovered that prefetchnta (3rd argument to _builtin_prefetch is 0)
+// performs horribly on AMD 3600X when in the slowest level of cache.
 #if defined(BUILTIN_PREFETCH_0)
   #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 0) // low temporal locality
 #elif defined(BUILTIN_PREFETCH_1)
