@@ -7231,6 +7231,7 @@ newSkipToBitmap:;
       #if defined(USE_XX_SW)
                   (nBLNew <= nDL_to_nBL(2)) ? T_SWITCH :
       #endif // defined(USE_XX_SW)
+      #if 0
                   // Don't waste time with T_BM_SW if splaying a big list.
 // Shouldn't we be using an equivalent to InflateBmSwTest(qy) here?
                   // Use T_BM_SW if splaying a small list or handling a prefix
@@ -7250,6 +7251,10 @@ newSkipToBitmap:;
                           && (GetPopCnt(pwRoot, nBL)
                               >= nDLNew * EXP(cnBitsPerDigit))
                       ? T_SWITCH :
+      #endif // 0
+      // Handle any no-skip-to-bm-sw limitation.
+      // I wonder if we should handle the no-skip-to-bm-sw
+      // limitation in NewSwitchX instead of here.
       #if defined(SKIP_TO_BM_SW)
           #if defined(BM_IN_LINK)
                   nBL != cnBitsPerWord ? T_BM_SW : T_SWITCH,
