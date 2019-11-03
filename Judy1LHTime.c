@@ -4133,7 +4133,7 @@ TestJudyIns(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
                         {
                                 FAILURE("JudyLIns failed - NULL PValue", TstKey);
                         }
-                        if (*PValue != 0)               // Oops, Insert made error
+                        if ((*PValue != 0) && (TstKey != 0)) // Oops, Insert made error
                         {
                             if (GValue && (*PValue == TstKey))
                             {
@@ -4141,7 +4141,7 @@ TestJudyIns(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
                             }
                             else
                             {
-                                printf("\n*PValue != 0 after Insert\n");
+                                printf("\n*PValue != 0 after Insert PValue %p\n", PValue);
                                 printf("TstKey = 0x%" PRIxPTR", *PValue = 0x%" PRIxPTR"\n", TstKey, *PValue);
                                 FAILURE("JudyLIns returned wrong *PValue after Insert", TstKey);
                             }
