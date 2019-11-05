@@ -2385,18 +2385,18 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
   #endif // BMLF_CNTS
         Word_t wPopCntL = 0;
         for (Word_t ww = 0; (int)ww < nWords; ++ww) {
-            wPopCntL += __builtin_popcountll(pBmLeaf->bmlf_awBitmap[ww]);
             if ((ww != 0) && (ww % 4) == 0) {
                 printf(" %5zd", wPopCntL);
                 wPopCntL = 0;
             }
+            wPopCntL += __builtin_popcountll(pBmLeaf->bmlf_awBitmap[ww]);
             if ((ww % 8) == 0) {
                 printf("\n");
             }
             printf(" 0x%016zx", pBmLeaf->bmlf_awBitmap[ww]);
         }
   #ifdef B_JUDYL
-        printf("\n Values\n");
+        printf("\n Values %p\n", gpwBitmapValues(qy, nBL));
         for (int ww = 0;
              ww < (int)(BM_UNPACKED(wRoot)
                             ? EXP(nBL) : gwBitmapPopCnt(qy, nBL));
