@@ -591,11 +591,9 @@ typedef Word_t Bucket_t;
 #ifdef BITMAP
   #ifndef cnListPopCntMaxDl1
     // Default cnListPopCntMaxDl1 is defined in bdefines.h for B_JUDYL.
-    #ifdef B_JUDYL
-      #error cnListPopCntMaxDl1 not defined
-    #else // B_JUDYL
+    #ifndef B_JUDYL
       #define cnListPopCntMaxDl1  0x10
-    #endif // #else B_JUDYL
+    #endif // #ifndef B_JUDYL
   #endif // cnListPopCntMaxDl1
 #else // BITMAP
   #ifdef cnListPopCntMaxDl1
@@ -2803,6 +2801,12 @@ typedef struct {
     #define bmlf_wPopCnt  bmlf_wPrefixPop
   #endif // #else defined(POP_WORD) && !defined(POP_WORD_IN_LINK)
   #endif // #ifndef BM_POP_IN_WR_HB
+  // BMLF_CNTS enables the use of an array of subcounts to help speed the
+  // calculation of the offset of the value for a given key in a bitmap with
+  // a packed value area.
+  // Each count field represents either the population of the corresponding
+  // subexpanse or the accumulation of the populations of all of the previous
+  // subexpanses.
   #ifdef BMLF_CNTS // implies B_JUDYL
       #ifndef B_JUDYL
     #error BMLF_CNTS without B_JUDYL
@@ -2813,9 +2817,18 @@ typedef struct {
       #elif defined(BMLF_POP_COUNT_1)
     uint8_t bmlf_au8Cnts[1 << cnBitsInD1];
       #else // BMLF_POP_COUNT_8
-          #if !defined(EMBED_KEYS) || defined(BMLF_POP_COUNT_32)
-    uint8_t bmlf_au8Cnts[cnBytesPerWord];
-          #endif // !defined(EMBED_KEYS) || defined(BMLF_POP_COUNT_32)
+          #ifdef BMLF_POP_COUNT_32
+    uint8_t bmlf_au8Cnts[1 << (cnBitsInD1 - 5)];
+          #elif defined(EMBED_KEYS)
+              // We are overloading EMBED_KEYS to trigger the placement of
+              // the subcounts array in the link extension so we don't need
+              // it in BmLeaf_t.
+              #if (cnBitsInD1 - cnLogBitsPerWord) > cnLogBytesPerWord
+    #error BMLF_CNTS + EMBED_KEYS + cnBitsInD1 too big to fit in 1-word pwLnX
+              #endif // (cnBitsInD1 - cnLogBitsPerWord) > cnLogBytesPerWord
+          #else // BMLF_POP_COUNT_32 #elif EMBED_KEYS
+    uint8_t bmlf_au8Cnts[1 << (cnBitsInD1 - cnLogBitsPerWord)];
+          #endif // BMLF_POP_COUNT_32 #elif EMBED_KEYS #else
       #endif // #else BMLF_POP_COUNT_8
   #endif // cnDummiesInLink == 0
   #endif // BMLF_CNTS

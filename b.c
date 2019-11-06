@@ -293,7 +293,11 @@ MyMallocGutsRM(Word_t wWords, int nLogAlignment, Word_t *pwAllocWords)
 #if (cnBitsMallocMask == 3) && (cnBitsPerWord == 32)
   #define cnExtraUnitsMax 2 // 3
 #elif (cnBitsMallocMask == 4) && (cnBitsPerWord == 64)
-  #define cnExtraUnitsMax 2 // 2
+  #ifdef CACHE_ALIGN_L1
+    #define cnExtraUnitsMax 3
+  #else // CACHE_ALIGN_L1
+    #define cnExtraUnitsMax 2
+  #endif // #else CACHE_ALIGN_L1
 #else
   #define cnExtraUnitsMax 1
 #endif // cnBitsMallocMask && cnBitsPerWord
@@ -1391,6 +1395,10 @@ NewSwitchX(Word_t *pwRoot, Word_t wKey, int nBLR,
 #endif // #ifndef USE_XX_SW_ONLY_AT_DL2
 
 #if defined(CODE_BM_SW)
+  #ifdef BM_SW_CNT_IN_WR
+    // Make sure link count fits in the field.
+    assert(nBW <= cnBitsCnt);
+  #endif // BM_SW_CNT_IN_WR
     if (nType == T_BM_SW) {
         assert(wIndexCnt <= N_WORDS_SWITCH_BM
                * cnBitsPerWord
@@ -3981,9 +3989,9 @@ Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL
   #ifdef CODE_BM_SW
     int bIsBmSw = tp_bIsBmSw(nType);
       #ifdef BM_SW_FOR_REAL
+    int nLinkCntOrig; (void)nLinkCntOrig;
     // Save the old switch in case it ends up being suitable.
     Link_t linkOrig = *pLn;
-    int nLinkCntOrig = BmSwLinkCnt(qy); (void)nLinkCntOrig;
       #endif // BM_SW_FOR_REAL
     if (bIsBmSw) {
         // We can't handle splay into a non-empty BmSw.
@@ -3993,6 +4001,7 @@ Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL
                         " PopCnt %zd nBL %d nBLR %d nBW %d nBLROld %d\n",
                     GetPopCnt(pwRoot, nBL), nBL, nBLR, nBW, nBLROld));
       #ifdef BM_SW_FOR_REAL
+        nLinkCntOrig = BmSwLinkCnt(qy);
         // Create a new bitmap switch with EXP(nBW) links for staging.
         pwr = NewSwitchX(pwRoot, wKey, nBLR,
           #if defined(CODE_XX_SW)
@@ -4612,7 +4621,6 @@ insertAll:
             // came in is suitable.
             // How do we know the switch passed in has exactly one link?
             assert(nLinkCntOrig == 1);
-
             *pLn = linkOrig;
             pwr = wr_pwr(pLn->ln_wRoot);
             // Pop count will be updated when we copy the switch.
@@ -7243,7 +7251,7 @@ newSkipToBitmap:;
       #if defined(USE_XX_SW)
                   (nBLNew <= nDL_to_nBL(2)) ? T_SWITCH :
       #endif // defined(USE_XX_SW)
-      #if 0
+      #if defined(DOUBLE_DOWN) || defined(PP_IN_LINK)
                   // Don't waste time with T_BM_SW if splaying a big list.
 // Shouldn't we be using an equivalent to InflateBmSwTest(qy) here?
                   // Use T_BM_SW if splaying a small list or handling a prefix
@@ -7263,7 +7271,7 @@ newSkipToBitmap:;
                           && (GetPopCnt(pwRoot, nBL)
                               >= nDLNew * EXP(cnBitsPerDigit))
                       ? T_SWITCH :
-      #endif // 0
+      #endif // defined(DOUBLE_DOWN) || defined(PP_IN_LINK)
       // Handle any no-skip-to-bm-sw limitation.
       // I wonder if we should handle the no-skip-to-bm-sw
       // limitation in NewSwitchX instead of here.

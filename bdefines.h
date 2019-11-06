@@ -128,9 +128,6 @@
     #define    PREFETCH_LOCATEKEY_PREV_VAL
   #endif // NO_PREFETCH_LOCATEKEY_PREV_VAL
 
-  #ifndef cnListPopCntMaxDl1
-    #define cnListPopCntMaxDl1  4
-  #endif // #ifndef cnListPopCntMaxDl1
   #ifndef NO_CACHE_ALIGN_L1
     #undef   CACHE_ALIGN_L1
     #define  CACHE_ALIGN_L1
@@ -283,15 +280,22 @@
   #endif // #ifndef B_JUDYL
   // Default is ALLOW_EMBEDDED_BITMAP for Judy1.
   #ifndef NO_ALLOW_EMBEDDED_BITMAP
+      #if !defined(cnBitsPerDigit) || (cnBitsPerDigit * 2 > cnLogBitsPerWord)
     // What are the consequences of ALLOW_EMBEDDED_BITMAP
     // if (cnBitsInD1 > cnLogBitsPerLink)?
     // What about USE_XX_SW_ONLY_AT_DL2 which can yield (nBLR < cnBitsInD1)?
     #define ALLOW_EMBEDDED_BITMAP
+      #endif // !cnBitsPerDigit || (cnBitsPerDigit * 2 > cnLogBitsPerWord)
   #endif // #ifndef NO_ALLOW_EMBEDDED_BITMAP
 #endif // NO_BITMAP
 
 #ifdef BITMAP
 #ifdef B_JUDYL
+  #ifndef cnListPopCntMaxDl1
+      #ifndef SPLAY_WITH_INSERT
+    #define cnListPopCntMaxDl1  4
+      #endif // #ifndef SPLAY_WITH_INSERT
+  #endif // #ifndef cnListPopCntMaxDl1
   // PACK_BM_VALUES means use a packed value area for a bitmap leaf if/when
   // the values area is less than max and/or when UNPACK_BM_VALUES is not
   // defined.
@@ -300,8 +304,14 @@
     #undef   PACK_BM_VALUES
     #define  PACK_BM_VALUES
   #endif // #ifndef NO_PACK_BM_VALUES
-
   #ifdef PACK_BM_VALUES
+    // BMLF_CNTS is default only for default digit size of eight.
+    // It hasn't been tested with anything else.
+    #if (cnBitsPerWord > 32)
+    #ifndef cnBitsInD1
+    #ifndef cnBitsInD2
+    #ifndef cnBitsInD3
+    #ifndef cnBitsPerDigit
     #ifndef NO_BMLF_CNTS
       #ifndef NO_BMLF_CNTS_CUM
         #undef  BMLF_CNTS_CUM
@@ -310,6 +320,16 @@
       #undef  BMLF_CNTS
       #define BMLF_CNTS
     #endif // #ifndef NO_BMLF_CNTS
+    #endif // #ifndef cnBitsPerDigit
+    #endif // #ifndef cnBitsInD3
+    #endif // #ifndef cnBitsInD2
+    #endif // #ifndef cnBitsInD1
+    #endif // (cnBitsPerWord > 32)
+    #ifndef BMLF_CNTS
+    #ifndef NO_BMLF_CNTS
+      #pragma message("Warning: not defining BMLF_CNTS")
+    #endif // #ifndef NO_BMLF_CNTS
+    #endif // #ifndef BMLF_CNTS
     #ifndef NO_PF_BM_PREV_HALF_VAL
       #undef   PF_BM_PREV_HALF_VAL
       #define  PF_BM_PREV_HALF_VAL
@@ -333,7 +353,25 @@
     #error Must have at least one of PACK_BM_VALUES and UNPACK_BM_VALUES.
   #endif // #ifndef UNPACK_BM_VALUES
   #endif // #ifndef PACK_BM_VALUES
-#endif // B_JUDYL
+#else // B_JUDYL
+    #ifdef ALLOW_EMBEDDED_BITMAP
+        // below assumes a 1-word Link_t
+        #if defined(cnBitsInD1) && (cnBitsInD1 <= cnLogBitsPerWord)
+            #define _D1BmFitsInLink
+        #elif defined(cnBitsPerDigit) && (cnBitsPerDigit <= cnLogBitsPerWord)
+            #define _D1BmFitsInLink
+        #endif // cnBitsInD1 <= ... elif cnBitsPerDigit <= ... else
+        #ifdef _D1BmFitsInLink
+            #if cn2dBmMaxWpkPercent
+                // 2-digit bitmap code doesn't work with embedded bitmap
+                #error cn2dBmMaxWpkPercent and embedded bitmap
+            #else // cn2dBmMaxWpkPercent
+                #undef  cn2dBmMaxWpkPercent // in case defined as 0
+                #define cn2dBmMaxWpkPercent  0
+            #endif // #else cn2dBmMaxWpkPercent
+        #endif // _D1BmFitsInLink
+    #endif // ALLOW_EMBEDDED_BITMAP
+#endif // #else B_JUDYL
 #endif // BITMAP
 
 // How should we handle the relationship between USE_XX_SW_ONLY_AT_DL2,
@@ -500,12 +538,27 @@
     #define LKIL8_ONE_BUCKET
 #endif // #ifndef NO_LKIL8_ONE_BUCKET
 
+// BM_SW_CNT_IN_WR (bmsw link count) is default only for default digit size
+// of eight.  assert(cnBitsCnt >= nBW)
 #ifdef B_JUDYL
 #if cnBitsPerWord > 32
+  #ifndef cnBitsInD1
+  #ifndef cnBitsInD2
+  #ifndef cnBitsInD3
+  #ifndef cnBitsPerDigit
     #ifndef NO_BM_SW_CNT_IN_WR
         #undef  BM_SW_CNT_IN_WR
         #define BM_SW_CNT_IN_WR
     #endif // #ifndef NO_BM_SW_CNT_IN_WR
+  #endif // #ifndef cnBitsPerDigit
+  #endif // #ifndef cnBitsInD3
+  #endif // #ifndef cnBitsInD2
+  #endif // #ifndef cnBitsInD1
+  #ifndef BM_SW_CNT_IN_WR
+  #ifndef NO_BM_SW_CNT_IN_WR
+    #pragma message("Warning: not defining BM_SW_CNT_IN_WR")
+  #endif // #ifndef NO_BM_SW_CNT_IN_WR
+  #endif // #ifndef BM_SW_CNT_IN_WR
 #endif // cnBitsPerWord > 32
 #endif // B_JUDYL
 
