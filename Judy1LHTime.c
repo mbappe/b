@@ -388,17 +388,28 @@ Swizzle(Word_t word)
     return (word);
 }
 
-// print number in width provided with a format fits and try to get as
+// PrintValFF - PrintValFreeForm
+// Print dVal in nWidth provided with a format that fits with as
 // much precision as possible.
 static void
-PrintValFreeForm(double dVal, // raw value to be scaled, formatted and printed
-                 int nWidth, // field width for printed number
-                 int bUseSymbol // use engineering notation prefix symbol
-                 )
+PrintValFF(double dVal, // raw value to be scaled, formatted and printed
+           int nWidth, // field width for printed number
+           int bUseSymbol // use engineering notation prefix symbol
+           )
 {
-    char acFormat[16];
+    char acFormat[24];
     double dExpWidth = pow(10, nWidth);
-    if (dVal < 5 / dExpWidth) {
+    if ((dVal > .05) && (dVal <= pow(10, nWidth - 2) - .5)) {
+        // decimal point and no exponent
+        sprintf(acFormat, "%%%d.%df", nWidth, nWidth - 2 - (int)log10(dVal));
+         printf(acFormat, dVal);
+    } else
+    if ((dVal > pow(10, nWidth - 2) - .5) && (dVal <= pow(10, nWidth) + .5)) {
+        // no decimal point or exponent
+        sprintf(acFormat, "%%%dd", nWidth); // minimum field width
+         printf(acFormat, (unsigned long)dVal);
+    } else
+    if (dVal < 5 / pow(10, nWidth)) {
         // Must use a variant of scientific notation with a negative exponent.
         if (dVal < 1e-9) {
             sprintf(acFormat, "%%%dd", nWidth); // minimum field width
@@ -463,6 +474,9 @@ PrintValFreeForm(double dVal, // raw value to be scaled, formatted and printed
     }
 }
 
+// Print a space before the value.
+#define PrintValFFX(a, b, c)  { putchar(' '); PrintValFF(a, b, c); }
+
 // nWidth and nDigitsFraction specify the desired format
 static void
 PrintValX(double dVal, // raw value to be scaled, formatted and printed
@@ -484,7 +498,7 @@ PrintValX(double dVal, // raw value to be scaled, formatted and printed
         sprintf(acFormat, "%%%dlu", nWidth);
          printf(acFormat, (unsigned long)dVal);
     } else {
-        PrintValFreeForm(dVal, nWidth, bUseSymbol);
+        PrintValFF(dVal, nWidth, bUseSymbol);
     }
 }
 
@@ -3139,15 +3153,15 @@ nextPart:
                 // last part of Delta
                 if (J1Flag)
                 {
-                    PrintVal(DeltanSec1Sum / Pms[grp].ms_delta - DeltaGen1, 5, 1);
+                    PrintValFFX(DeltanSec1Sum / Pms[grp].ms_delta - DeltaGen1, 5, 0);
                     if (tFlag)
-                        PrintVal(DeltaGen1, 5, 1);
+                        PrintValFFX(DeltaGen1, 5, 0);
                 }
                 if (JLFlag)
                 {
-                    PrintVal(DeltanSecLSum / Pms[grp].ms_delta - DeltaGenL, 5, 1);
+                    PrintValFFX(DeltanSecLSum / Pms[grp].ms_delta - DeltaGenL, 5, 0);
                     if (tFlag)
-                        PrintVal(DeltaGenL, 5, 1);
+                        PrintValFFX(DeltaGenL, 5, 0);
                 }
                 if (fFlag)
                     fflush(NULL);
@@ -3321,15 +3335,15 @@ nextPart:
 
                 if (J1Flag)
                 {
-                    PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
+                    PrintValFFX(DeltanSec1 - DeltaGen1, 5, /* bUseSymbol */ 0);
                     if (tFlag)
-                        PrintVal(DeltaGen1, 5, 1);
+                        PrintValFFX(DeltaGen1, 5, /* bUseSymbol */ 0);
                 }
                 if (JLFlag)
                 {
-                    PrintVal(DeltanSecL - DeltaGenL, 5, 1);
+                    PrintValFFX(DeltanSecL - DeltaGenL, 5, /* bUseSymbol */ 0);
                     if (tFlag)
-                        PrintVal(DeltaGenL, 5, 1);
+                        PrintValFFX(DeltaGenL, 5, /* bUseSymbol */ 0);
                 }
                 if (fFlag)
                     fflush(NULL);
@@ -3367,9 +3381,9 @@ nextPart:
             DeltaMalFreLSum += DeltaMalFreL;
 
             if (Pop1 == wFinalPop1) {
-                PrintVal(DeltanSecLSum / Pms[grp].ms_delta - DeltaGenL, 5, 1);
+                PrintValFFX(DeltanSecLSum / Pms[grp].ms_delta - DeltaGenL, 5, 0);
                 if (tFlag)
-                    PrintVal(DeltaGenL, 5, 1);
+                    PrintValFFX(DeltaGenL, 5, 0);
                 if (fFlag)
                     fflush(NULL);
 
@@ -3392,9 +3406,9 @@ nextPart:
                 WaitForContextSwitch(Meas);
                 TestJudyLGet(JL, &BeginSeed, Meas);
 
-                PrintVal(DeltanSecL - DeltaGenL, 5, 1);
+                PrintValFFX(DeltanSecL - DeltaGenL, 5, 0);
                 if (tFlag)
-                    PrintVal(DeltaGenL, 5, 1);
+                    PrintValFFX(DeltaGenL, 5, 0);
                 if (fFlag)
                     fflush(NULL);
             }
@@ -3426,9 +3440,9 @@ nextPart:
             DeltanSecBtSum += DeltanSecBt;
 
             if (Pop1 == wFinalPop1) {
-                PrintVal(DeltanSecBtSum / Pms[grp].ms_delta - DeltaGenBt, 5, 1);
+                PrintValFFX(DeltanSecBtSum / Pms[grp].ms_delta - DeltaGenBt, 5, 0);
                 if (tFlag)
-                    PrintVal(DeltaGenBt, 5, 1);
+                    PrintValFFX(DeltaGenBt, 5, 0);
 
                 if (Meas <= wDoTit0Max) {
                     Tit = 0;
@@ -3449,9 +3463,9 @@ nextPart:
                 WaitForContextSwitch(Meas);
                 TestBitmapTest(B1, &BeginSeed, Meas);
 
-                PrintVal(DeltanSecBt - DeltaGenBt, 5, 1);
+                PrintValFFX(DeltanSecBt - DeltaGenBt, 5, 0);
                 if (tFlag)
-                    PrintVal(DeltaGenBt, 5, 1);
+                    PrintValFFX(DeltaGenBt, 5, 0);
                 if (fFlag)
                     fflush(NULL);
             }
@@ -3483,9 +3497,9 @@ nextPart:
             DeltanSecBySum += DeltanSecBy;
 
             if (Pop1 == wFinalPop1) {
-                PrintVal(DeltanSecBySum / Pms[grp].ms_delta - DeltaGenBy, 5, 1);
+                PrintValFFX(DeltanSecBySum / Pms[grp].ms_delta - DeltaGenBy, 5, 0);
                 if (tFlag)
-                    PrintVal(DeltaGenBy, 5, 1);
+                    PrintValFFX(DeltaGenBy, 5, 0);
 
                 if (Meas <= wDoTit0Max) {
                     Tit = 0;
@@ -3506,9 +3520,9 @@ nextPart:
                 WaitForContextSwitch(Meas);
                 TestByteTest(&BeginSeed, Meas);
 
-                PrintVal(DeltanSecBy - DeltaGenBy, 5, 1);
+                PrintValFFX(DeltanSecBy - DeltaGenBy, 5, 0);
                 if (tFlag)
-                    PrintVal(DeltaGenBy, 5, 1);
+                    PrintValFFX(DeltaGenBy, 5, 0);
                 if (fFlag)
                     fflush(NULL);
             }
@@ -3556,9 +3570,9 @@ nextPart:
             WaitForContextSwitch(Meas);
             TestJudyDup(&J1, &JL, &BeginSeed, Meas);
             if (J1Flag)
-                PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
+                PrintValFFX(DeltanSec1 - DeltaGen1, 5, 0);
             if (JLFlag)
-                PrintVal(DeltanSecL - DeltaGenL, 5, 1);
+                PrintValFFX(DeltanSecL - DeltaGenL, 5, 0);
             if (fFlag)
                 fflush(NULL);
         }
@@ -3599,9 +3613,9 @@ nextPart:
             WaitForContextSwitch(Meas);
             TestJudyCount(J1, JL, &BeginSeed, Meas);
             if (J1Flag)
-                PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
+                PrintValFFX(DeltanSec1 - DeltaGen1, 5, 0);
             if (JLFlag)
-                PrintVal(DeltanSecL - DeltaGenL, 5, 1);
+                PrintValFFX(DeltanSecL - DeltaGenL, 5, 0);
             if (fFlag)
                 fflush(NULL);
         }
@@ -3637,9 +3651,9 @@ nextPart:
                 WaitForContextSwitch(Meas);
                 TestJudyNext(J1, JL, &BeginSeed, Meas);
                 if (J1Flag)
-                    PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
+                    PrintValFFX(DeltanSec1 - DeltaGen1, 5, 0);
                 if (JLFlag)
-                    PrintVal(DeltanSecL - DeltaGenL, 5, 1);
+                    PrintValFFX(DeltanSecL - DeltaGenL, 5, 0);
                 if (fFlag)
                     fflush(NULL);
             }
@@ -3672,9 +3686,9 @@ nextPart:
                 WaitForContextSwitch(Meas);
                 TestJudyPrev(J1, JL, &BeginSeed, Meas);
                 if (J1Flag)
-                    PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
+                    PrintValFFX(DeltanSec1 - DeltaGen1, 5, 0);
                 if (JLFlag)
-                    PrintVal(DeltanSecL - DeltaGenL, 5, 1);
+                    PrintValFFX(DeltanSecL - DeltaGenL, 5, 0);
                 if (fFlag)
                     fflush(NULL);
             }
@@ -3707,9 +3721,9 @@ nextPart:
                 WaitForContextSwitch(Meas);
                 TestJudyNextEmpty(J1, JL, &BeginSeed, Meas);
                 if (J1Flag)
-                    PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
+                    PrintValFFX(DeltanSec1 - DeltaGen1, 5, 0);
                 if (JLFlag)
-                    PrintVal(DeltanSecL - DeltaGenL, 5, 1);
+                    PrintValFFX(DeltanSecL - DeltaGenL, 5, 0);
                 if (fFlag)
                     fflush(NULL);
             }
@@ -3742,9 +3756,9 @@ nextPart:
                 WaitForContextSwitch(Meas);
                 TestJudyPrevEmpty(J1, JL, &BeginSeed, Meas);
                 if (J1Flag)
-                    PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
+                    PrintValFFX(DeltanSec1 - DeltaGen1, 5, 0);
                 if (JLFlag)
-                    PrintVal(DeltanSecL - DeltaGenL, 5, 1);
+                    PrintValFFX(DeltanSecL - DeltaGenL, 5, 0);
                 if (fFlag)
                     fflush(NULL);
             }
@@ -3784,9 +3798,9 @@ nextPart:
             WaitForContextSwitch(Meas);
             TestJudyDel(&J1, &JL, &BeginSeed, Meas);
             if (J1Flag)
-                PrintVal(DeltanSec1 - DeltaGen1, 5, 1);
+                PrintValFFX(DeltanSec1 - DeltaGen1, 5, 0);
             if (JLFlag)
-                PrintVal(DeltanSecL - DeltaGenL, 5, 1);
+                PrintValFFX(DeltanSecL - DeltaGenL, 5, 0);
             if (fFlag)
                 fflush(NULL);
 
