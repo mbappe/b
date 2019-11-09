@@ -415,13 +415,7 @@
   #define    DEFAULT_AND_CASE
 #endif // NO_DEFAULT_AND_CASE
 
-// Default is -DALL_SKIP_TO_SW_CASES.
-#ifdef SKIP_LINKS
-  #ifndef   NO_ALL_SKIP_TO_SW_CASES
-      #undef   ALL_SKIP_TO_SW_CASES
-      #define  ALL_SKIP_TO_SW_CASES
-  #endif // NO_ALL_SKIP_TO_SW_CASES
-#endif // SKIP_LINKS
+// Default is no -DALL_SKIP_TO_SW_CASES.
 
 // Default is -DNDEBUG -UDEBUG_ALL -UDEBUG
 // -UDEBUG_INSERT -UDEBUG_REMOVE -UDEBUG_LOOKUP -UDEBUG_MALLOC

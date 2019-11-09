@@ -11366,16 +11366,13 @@ Initialize(void)
 #endif // (cwListPopCntMax != 0)
 #if defined(BITMAP)
     printf("# 0x%x %-20s\n", T_BITMAP, "T_BITMAP");
-  #if defined(UNPACK_BM_VALUES)
-    printf("# 0x%x %-20s\n", T_UNPACKED_BM, "T_UNPACKED_BM");
-  #endif // defined(UNPACK_BM_VALUES)
   #if defined(SKIP_TO_BITMAP)
     printf("# 0x%x %-20s\n", T_SKIP_TO_BITMAP, "T_SKIP_TO_BITMAP");
   #endif // defined(SKIP_TO_BITMAP)
+  #if defined(UNPACK_BM_VALUES)
+    printf("# 0x%x %-20s\n", T_UNPACKED_BM, "T_UNPACKED_BM");
+  #endif // defined(UNPACK_BM_VALUES)
 #endif // defined(BITMAP)
-#if defined(EMBED_KEYS)
-    printf("# 0x%x %-20s\n", T_EMBEDDED_KEYS, "T_EMBEDDED_KEYS");
-#endif // defined(EMBED_KEYS)
 #if defined(CODE_LIST_SW)
     printf("# 0x%x %-20s\n", T_LIST_SW, "T_LIST_SW");
 #endif // defined(CODE_LIST_SW)
@@ -11402,11 +11399,16 @@ Initialize(void)
     printf("# 0x%x %-20s\n", T_SKIP_TO_FULL_BM_SW, "T_SKIP_TO_FULL_BM_SW");
   #endif // SKIP_TO_BM_SW
 #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+#if defined(EMBED_KEYS)
+    printf("# 0x%x %-20s\n", T_EMBEDDED_KEYS, "T_EMBEDDED_KEYS");
+#endif // defined(EMBED_KEYS)
     printf("# 0x%x %-20s\n", T_SWITCH, "T_SWITCH");
 #if defined(SKIP_LINKS)
     printf("# 0x%x %-20s\n", T_SKIP_TO_SWITCH, "T_SKIP_TO_SWITCH");
 #endif // defined(SKIP_LINKS)
+    printf("\n");
 
+    printf("# WROOT_NULL 0x%x\n", WROOT_NULL);
     printf("\n");
 }
 

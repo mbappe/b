@@ -2322,6 +2322,8 @@ t_unpacked_bm:;
     {
         goto t_embedded_keys; // suppress compiler unused-label warnings
 t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
+        DBGX(printf("T_EMBEDDED_KEYS %d nBL %d\n", T_EMBEDDED_KEYS, nBL));
+
   #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
@@ -2387,8 +2389,6 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
       #if defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
         return wRoot ? Success : Failure;
       #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_SEARCH)
-
-        DBGX(printf("EMBEDDED_KEYS\n"));
 
       #ifdef COMPRESSED_LISTS
       #ifdef SKIP_PREFIX_CHECK
