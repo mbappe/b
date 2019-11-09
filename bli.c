@@ -752,9 +752,6 @@ fastAgain:;
           #endif // defined(DEFAULT_LIST)
     default:
   #endif // defined(DEFAULT_SKIP_TO_SW)
-  #if !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
-    case T_SKIP_TO_SWITCH: // skip link to uncompressed switch
-  #endif // !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
   #ifdef ALL_SKIP_TO_SW_CASES
     // Extra cases so we have at least EXP(cnBitsMallocMask) cases so gcc
     // will create a jump table with no bounds check at the beginning after
@@ -775,6 +772,9 @@ fastAgain:;
     case T_SKIP_TO_SWITCH+13:
     case T_SKIP_TO_SWITCH+14:
   #endif // ALL_SKIP_TO_SW_CASES
+  #if !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
+    case T_SKIP_TO_SWITCH: // skip link to uncompressed switch
+  #endif // !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     {
         goto t_skip_to_switch; // silence cc in case there are no other uses
 t_skip_to_switch:
@@ -1929,7 +1929,8 @@ t_xx_list:;
 
 #ifdef BITMAP
   #if defined(SKIP_TO_BITMAP)
-    case T_SKIP_TO_BITMAP: {
+    case T_SKIP_TO_BITMAP:
+    {
         goto t_skip_to_bitmap;
 t_skip_to_bitmap:;
         DBGX(printf("T_SKIP_TO_BITMAP\n"));
