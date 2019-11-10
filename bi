@@ -110,8 +110,8 @@
 && DEFINES="-DDEBUG_ALL" make clean default \
 && NO_SM=1 DEFINES="-DDEBUG_ALL" make clean default \
 && NO_SM=1 NO_RM=1 DEFINES="-DDEBUG_ALL" make clean default \
-&& BPW=32 DEFINES="-DDEBUG" make clean default \
-&& BPW=32 DEFINES="-DDEBUG_ALL" make clean default \
+&& BPW=32 DEFINES="-DDEFAULT_SKIP_TO_SW -DDEBUG" make clean default \
+&& BPW=32 DEFINES="-DALL_SKIP_TO_SW_CASES -DDEBUG_ALL" make clean default \
 && :
 
 #make clean default
