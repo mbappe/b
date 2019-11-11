@@ -2212,6 +2212,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
               )
 {
+    Word_t wKeyOrig = wKey;
   #ifdef _LNX
     (void)pwLnX;
   #endif // _LNX
@@ -2241,7 +2242,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
         printf(" nBL %2d", nBL);
         // Check for zeros in suffix?  Print dots for suffix?
         // How would we represent a partially significant hex digit?
-        printf(" wKey " OWx, wKey);
+        printf(" wPrefix " OWx, wKey /*& ~NZ_MSK(nBL)*/);
         printf(" pwRoot " OWx, (Word_t)pwRoot);
         printf(" wRoot " OWx, wRoot);
     }
@@ -2710,7 +2711,7 @@ embeddedKeys:;
   #endif // defined(CODE_BM_SW)
     {
         if (tp_bIsSkip(nType)) {
-            nBL = GetBLR(pwRoot, nBL);
+            nBL = GetBLR(pwRoot, nBL); // nBLR
         }
     }
 #endif // defined(SKIP_LINKS)
@@ -2836,7 +2837,7 @@ embeddedKeys:;
     assert(nBLPrev == nBL);
   #endif // SKIP_LINKS
 
-    nBL -= nBW;
+    nBL -= nBW; // nBLLoop
 
     for (Word_t ww = 0, nn = 0; nn < EXP(nBW); nn++) {
 #if defined(CODE_BM_SW)
@@ -2905,20 +2906,28 @@ embeddedKeys:;
                 assert((wr_nType(pLinks[ww].ln_wRoot) != T_XX_LIST)
                     || (nDL_to_nBL(nBL_to_nDL(nBL + nBW)) == nBL + nBW));
   #endif // XX_LISTS
-                wBytes += FreeArrayGuts(&pLinks[ww].ln_wRoot,
-                                        /*wKeyLoop*/ wKey | (nn << nBL),
-                                        nBL,
+  #ifndef FULL_DUMP
+                if (!bDump || ((wKeyOrig >> nBL) & MSK(nBW)) == nn)
+  #endif // #ifndef FULL_DUMP
+                {
+                    if (((wKeyOrig >> nBL) & MSK(nBW)) == nn) {
+                        wKey = wKeyOrig;
+                    }
+                    wBytes += FreeArrayGuts(&pLinks[ww].ln_wRoot,
+                                            wKey | (nn << nBL),
+                                            nBL,
   #ifdef _LNX
-                                        /* pwLnx */ NULL,
+                                            /* pwLnx */ NULL,
   #endif // _LNX
-                                        bDump
+                                            bDump
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                      , /*pwrUp*/ pwr, /*nBWUp*/ nBW
+                                          , /*pwrUp*/ pwr, /*nBWUp*/ nBW
   #ifdef CODE_BM_SW
-                                      , nType
+                                          , nType
   #endif // CODE_BM_SW
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                                        );
+                                            );
+                }
             }
 
             ww++;
@@ -2965,7 +2974,6 @@ DumpX(Word_t *pwRoot, Word_t wKey, int nBL
   #endif // _LNX
     if (bHitDebugThreshold) {
         printf("# Dump\n");
-#ifdef FULL_DUMP
         FreeArrayGuts(pwRoot, wKey, nBL,
   #ifdef _LNX
                       pwLnX,
@@ -2978,10 +2986,6 @@ DumpX(Word_t *pwRoot, Word_t wKey, int nBL
   #endif // CODE_BM_SW
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                       );
-#else // FULL_DUMP
-        (void)*pwRoot; (void)wKey; (void)nBL;
-        printf("# wPopCntTotal %zd\n", wPopCntTotal);
-#endif // #else FULL_DUMP
         printf("# End Dump\n");
     }
 }
