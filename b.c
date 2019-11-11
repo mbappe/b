@@ -2199,7 +2199,11 @@ OldSwitch(Word_t *pwRoot, int nBL
 }
 
 static Word_t
-FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
+FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL,
+  #ifdef _LNX
+              Word_t* pwLnX,
+  #endif // _LNX
+              int bDump
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
             , Word_t *pwrUp, int nBWUp
   #ifdef CODE_BM_SW
@@ -2208,6 +2212,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL, int bDump
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
               )
 {
+  #ifdef _LNX
+    (void)pwLnX;
+  #endif // _LNX
     Word_t *pwRootArg = pwRoot;
 #if defined(BM_IN_LINK) || defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     int nBLArg = nBL;
@@ -2900,7 +2907,11 @@ embeddedKeys:;
   #endif // XX_LISTS
                 wBytes += FreeArrayGuts(&pLinks[ww].ln_wRoot,
                                         /*wPrefixLoop*/ wPrefix | (nn << nBL),
-                                        nBL, bDump
+                                        nBL,
+  #ifdef _LNX
+                                        /* pwLnx */ NULL,
+  #endif // _LNX
+                                        bDump
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                                       , /*pwrUp*/ pwr, /*nBWUp*/ nBW
   #ifdef CODE_BM_SW
@@ -2941,13 +2952,25 @@ zeroLink:
 }
 
 #if defined(DEBUG)
+
 void
-Dump(Word_t *pwRoot, Word_t wPrefix, int nBL)
+DumpX(Word_t *pwRoot, Word_t wPrefix, int nBL
+  #ifdef _LNX
+    , Word_t* pwLnX
+  #endif // _LNX
+      )
 {
+  #ifdef _LNX
+    (void)pwLnX;
+  #endif // _LNX
     if (bHitDebugThreshold) {
         printf("# Dump\n");
 #ifdef FULL_DUMP
-        FreeArrayGuts(pwRoot, wPrefix, nBL, /* bDump */ 1
+        FreeArrayGuts(pwRoot, wPrefix, nBL,
+  #ifdef _LNX
+                      pwLnX,
+  #endif // _LNX
+                      /* bDump */ 1
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                     , /*pwrUp*/ NULL, /*nBW*/ 0
   #ifdef CODE_BM_SW
@@ -2962,6 +2985,17 @@ Dump(Word_t *pwRoot, Word_t wPrefix, int nBL)
         printf("# End Dump\n");
     }
 }
+
+void
+Dump(Word_t *pwRoot, Word_t wKey, int nBL)
+{
+    DumpX(pwRoot, wKey, nBL
+  #ifdef _LNX
+        , /* pwLnX */ NULL
+  #endif // _LNX
+          );
+}
+
 #endif // defined(DEBUG)
 
 // Dump the path to the subtree rooted at (nBL, wPrefix)
@@ -8912,7 +8946,11 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
             assert((*pwRootLn == 0) || tp_bIsSwitch(Get_nType(pwRootLn)));
         }
         // whole array pop is zero
-        FreeArrayGuts(pwRoot, wKey, nBL, /* bDump */ 0
+        FreeArrayGuts(pwRoot, wKey, nBL,
+  #ifdef _LNX
+                      /* pwLnX */ NULL,
+  #endif // _LNX
+                      /* bDump */ 0
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                     , /*pwrUp*/ NULL, /*nBW*/ 0
   #ifdef CODE_BM_SW
@@ -8932,7 +8970,11 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
                                 PWR_wPopCnt(pwRoot, (  Switch_t *)pwr, nDLR);
 
         if (wPopCnt == 0) {
-            FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDL), /* bDump */ 0
+            FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDL),
+  #ifdef _LNX
+                          /* pwLnX */ NULL,
+  #endif // _LNX
+                          /* bDump */ 0
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                         , /*pwrUp*/ NULL, /*nBW*/ 0
   #ifdef CODE_BM_SW
@@ -11458,7 +11500,11 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
   #endif // defined(DEBUG)
 
     Word_t wBytes = FreeArrayGuts((Word_t *)PPArray, /* wPrefix */ 0,
-                                  cnBitsPerWord, /* bDump */ 0
+                                  cnBitsPerWord,
+  #ifdef _LNX
+                                  /* pwLnX */ NULL,
+  #endif // _LNX
+                                  /* bDump */ 0
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                                 , /*pwrUp*/ NULL, /*nBW*/ 0
   #ifdef CODE_BM_SW

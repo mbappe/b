@@ -3615,6 +3615,7 @@ Status_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
 #define InsertCleanup  InsertCleanupL
 #define RemoveGuts  RemoveGutsL
 #define RemoveCleanup  RemoveCleanupL
+#define DumpX  DumpXL
 #define Dump  DumpL
 #else // B_JUDYL
 #define ListSlotCnt  ListSlotCnt1
@@ -3627,6 +3628,7 @@ Status_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
 #define InsertCleanup  InsertCleanup1
 #define RemoveGuts  RemoveGuts1
 #define RemoveCleanup  RemoveCleanup1
+#define DumpX  DumpX1
 #define Dump  Dump1
 #endif // B_JUDYL
 
