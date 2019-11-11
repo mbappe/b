@@ -778,6 +778,7 @@ CalcNextKeyX(PSeed_t PSeed, int nBValueArg, Word_t wSValueArg)
 
     if (wSValueArg /* local */ != /* global */ SValue) {
         Key *= SValue;
+        Key &= (((Word_t)1 << BValue) - 1);
     }
 
 #ifdef DEBUG
