@@ -2199,7 +2199,7 @@ OldSwitch(Word_t *pwRoot, int nBL
 }
 
 static Word_t
-FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL,
+FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
   #ifdef _LNX
               Word_t* pwLnX,
   #endif // _LNX
@@ -2241,7 +2241,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL,
         printf(" nBL %2d", nBL);
         // Check for zeros in suffix?  Print dots for suffix?
         // How would we represent a partially significant hex digit?
-        printf(" wPrefix " OWx, wPrefix);
+        printf(" wKey " OWx, wKey);
         printf(" pwRoot " OWx, (Word_t)pwRoot);
         printf(" wRoot " OWx, wRoot);
     }
@@ -2344,7 +2344,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL,
             assert(nBLArg != cnBitsPerWord);
 
             if (cnBitsInD1 > cnLogBitsPerLink) {
-                printf(" wr_wPrefix " OWx,
+                printf(" wr_wKey " OWx,
                        PWR_wPrefixBL(pwRoot, (Switch_t *)NULL, nBL));
             }
         }
@@ -2371,7 +2371,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wPrefix, int nBL,
       #ifdef EMBED_KEYS
         int nBLUp = nBL + nBWUp; (void)nBLUp;
         Link_t *pLnUp = STRUCT_OF(&pwrUp, Link_t, ln_wRoot); (void)pLnUp;
-        int nDigitX = (wPrefix >> nBL) & MSK(nBWUp); (void)nDigitX;
+        int nDigitX = (wKey >> nBL) & MSK(nBWUp); (void)nDigitX;
         int nLinks;
         Word_t wIndex;
               #ifdef CODE_BM_SW
@@ -2469,7 +2469,7 @@ embeddedKeys:;
                     int nBLUp = nBL + nBWUp; (void)nBLUp;
                     Link_t *pLnUp = STRUCT_OF(&pwrUp, Link_t, ln_wRoot);
                     (void)pLnUp;
-                    int nDigitX = (wPrefix >> nBL) & MSK(nBWUp);
+                    int nDigitX = (wKey >> nBL) & MSK(nBWUp);
                     (void)nDigitX;
   #ifdef CODE_BM_SW
                     if (tp_bIsBmSw(nTypeUp)) {
@@ -2521,9 +2521,9 @@ embeddedKeys:;
                     int nDLRUp = nBL_to_nDL(nBL + 1); // digit contains sw
                     int nBLRUp = nDL_to_nBL(nDLRUp); // max nBLRUp
                     int nBWRUp = nBLRUp - nBL; // max nBWRUp
-                    Word_t wPrefixDigit = (wPrefix >> nBL) & MSK(nBWRUp);
+                    Word_t wKeyDigit = (wKey >> nBL) & MSK(nBWRUp);
                     // Beginning of virtual link array.
-                    Link_t* pLinksUp = &pLn[-wPrefixDigit];
+                    Link_t* pLinksUp = &pLn[-wKeyDigit];
                     // If actual nBLRUp < max nBLRUp we could walk past the
                     // end of the physical link array.
                     // Can this happen with USE_LOWER_XX_SW?
@@ -2541,7 +2541,7 @@ embeddedKeys:;
                     // link and compare it to pLn->ln_wRoot with InsertXxSw?
                     // Nope.
                     // InsertXxSw uses nBLRUp = BL_to_DL(DL_to_BL(SigBitCnt)).
-                    for (int nDigit = wPrefixDigit + 1;
+                    for (int nDigit = wKeyDigit + 1;
                              nDigit < (1 << nBWRUp); ++nDigit)
                     {
                         // I wonder if we could use SignificantBitCnt here.
@@ -2565,7 +2565,7 @@ embeddedKeys:;
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             { printf(" ls_wPopCnt %3" _fw"u", wPopCnt); }
 
-            printf(" ln_wPrefix ");
+            printf(" ln_wKey ");
 #if defined(PP_IN_LINK)
             if (nBLArg < cnBitsPerWord) {
                 printf( OWx, PWR_wPrefixBL(pwRoot, NULL, nBLR));
@@ -2750,7 +2750,7 @@ embeddedKeys:;
                 printf(" sm_wPopCnt %3" _fw"u", wPopCnt);
             }
 
-            printf(" wr_wPrefix        N/A");
+            printf(" wr_wKey        N/A");
         } else
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         {
@@ -2765,7 +2765,7 @@ embeddedKeys:;
             }
             printf(" wr_wPopCnt %3" _fw"u", wPopCnt);
   #ifdef SKIP_LINKS
-            printf(" wr_wPrefix " OWx,
+            printf(" wr_wKey " OWx,
 #if defined(CODE_BM_SW)
                    bBmSw ? PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBL) :
 #endif // defined(CODE_BM_SW)
@@ -2782,7 +2782,7 @@ embeddedKeys:;
 #if defined(CODE_BM_SW)
         // should enhance this to check for zeros in suffix and to print
         // dots for suffix.
-        //printf(" wKeyPopMask " OWx, wPrefixPopMask(nDL));
+        //printf(" wKeyPopMask " OWx, wKeyPopMask(nDL));
         //printf(" pLinks " OWx, (Word_t)pLinks);
         if (bBmSw) {
 #if defined(BM_IN_LINK)
@@ -2812,9 +2812,9 @@ embeddedKeys:;
 #endif // PP_IN_LINK
         {
   #ifdef DEBUG
-            Word_t wPrefixPrev = wPrefix;
+            Word_t wKeyPrev = wKey;
   #endif // DEBUG
-            wPrefix =
+            wKey =
 #if defined(CODE_BM_SW)
                 bBmSw ? PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBL) :
 #endif // defined(CODE_BM_SW)
@@ -2824,12 +2824,12 @@ embeddedKeys:;
                         PWR_wPrefixBL(pwRoot, (  Switch_t *)pwr, nBL) ;
 #endif // defined(USE_LIST_SW)
   #ifdef DEBUG
-            if (((wPrefix ^ wPrefixPrev) & ~NZ_MSK(nBLPrev)) != 0) {
-                printf("nBLPrev %d nBL %d wPrefixPrev 0x%zx wPrefix 0x%zx\n",
-                       nBLPrev, nBL, wPrefixPrev, wPrefix);
+            if (((wKey ^ wKeyPrev) & ~NZ_MSK(nBLPrev)) != 0) {
+                printf("nBLPrev %d nBL %d wKeyPrev 0x%zx wKey 0x%zx\n",
+                       nBLPrev, nBL, wKeyPrev, wKey);
             }
   #endif // DEBUG
-            assert(((wPrefix ^ wPrefixPrev) & ~NZ_MSK(nBLPrev)) == 0);
+            assert(((wKey ^ wKeyPrev) & ~NZ_MSK(nBLPrev)) == 0);
         }
     }
   #else // SKIP_LINKS
@@ -2867,7 +2867,7 @@ embeddedKeys:;
                       && (wr_nType(pLinks[ww].ln_wRoot) == T_EMBEDDED_KEYS))
                 {
                     printf(" nBL %2d", nBL);
-                    printf(" wPrefix " OWx, wPrefix | (nn << nBL));
+                    printf(" wKey " OWx, wKey | (nn << nBL));
                     printf(" pwRoot " OWx, (Word_t)&pLinks[ww].ln_wRoot);
                     printf(" wr " OWx, pLinks[ww].ln_wRoot);
                     printf(" 0x%016" _fw"x",
@@ -2891,8 +2891,8 @@ embeddedKeys:;
                     }
                     assert(wr_nType(pLinks[ww].ln_wRoot) == T_XX_LIST);
                     printf(" ditto ");
-                    printf(" wPrefix " OWx,
-                           /*wPrefixLoop*/ wPrefix | (nn << nBL));
+                    printf(" wKey " OWx,
+                           /*wKeyLoop*/ wKey | (nn << nBL));
                     printf("\n");
                     ++ww;
                     continue;
@@ -2906,7 +2906,7 @@ embeddedKeys:;
                     || (nDL_to_nBL(nBL_to_nDL(nBL + nBW)) == nBL + nBW));
   #endif // XX_LISTS
                 wBytes += FreeArrayGuts(&pLinks[ww].ln_wRoot,
-                                        /*wPrefixLoop*/ wPrefix | (nn << nBL),
+                                        /*wKeyLoop*/ wKey | (nn << nBL),
                                         nBL,
   #ifdef _LNX
                                         /* pwLnx */ NULL,
@@ -2954,7 +2954,7 @@ zeroLink:
 #if defined(DEBUG)
 
 void
-DumpX(Word_t *pwRoot, Word_t wPrefix, int nBL
+DumpX(Word_t *pwRoot, Word_t wKey, int nBL
   #ifdef _LNX
     , Word_t* pwLnX
   #endif // _LNX
@@ -2966,7 +2966,7 @@ DumpX(Word_t *pwRoot, Word_t wPrefix, int nBL
     if (bHitDebugThreshold) {
         printf("# Dump\n");
 #ifdef FULL_DUMP
-        FreeArrayGuts(pwRoot, wPrefix, nBL,
+        FreeArrayGuts(pwRoot, wKey, nBL,
   #ifdef _LNX
                       pwLnX,
   #endif // _LNX
@@ -2979,7 +2979,7 @@ DumpX(Word_t *pwRoot, Word_t wPrefix, int nBL
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                       );
 #else // FULL_DUMP
-        (void)*pwRoot; (void)wPrefix; (void)nBL;
+        (void)*pwRoot; (void)wKey; (void)nBL;
         printf("# wPopCntTotal %zd\n", wPopCntTotal);
 #endif // #else FULL_DUMP
         printf("# End Dump\n");

@@ -3026,7 +3026,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     }
 
     DBGI(printf("\n# After Insert(wKey " OWx") Dump\n", wKey));
-    DBGI(Dump((Word_t *)ppvRoot, /* wPrefix */ (Word_t)0, cnBitsPerWord));
+    DBGI(Dump((Word_t *)ppvRoot, wKey, cnBitsPerWord));
     DBGI(printf("\n"));
 
   #if ! defined(PP_IN_LINK) || defined(DEBUG_COUNT)
