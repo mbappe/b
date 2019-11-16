@@ -804,8 +804,9 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
     Word_t TstIndex = LowIndex;
     PWord_t PValue; (void)PValue;
     int Rc; (void)Rc;
+    Word_t TstIndexL = TstIndex; (void)TstIndexL;
+    Word_t TstIndex1 = TstIndex; (void)TstIndex1;
 
-    TstIndex = LowIndex;
     for (elm = 0; elm < Elements; elm++)
     {
         Count1 = Judy1Count(J1, LowIndex, TstIndex, NULL);
@@ -840,23 +841,22 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
             FAILURE("Count at", elm);
         }
 
-        Word_t TstIndexBefore = TstIndex; (void)TstIndexBefore;
-        Word_t TstIndex1 = TstIndex; (void)TstIndex1;
 #if defined(USE_JUDY1_NEXT_IN_COUNT)
         Rc = Judy1Next(J1, &TstIndex1, NULL);
         TstIndex = TstIndex1;
 #else // defined(USE_JUDY1_NEXT_IN_COUNT)
-        PValue = (PWord_t)JudyLNext(JL, &TstIndex, NULL);
+        PValue = (PWord_t)JudyLNext(JL, &TstIndexL, NULL);
+        TstIndex = TstIndexL;
 #endif // defined(USE_JUDY1_NEXT_IN_COUNT)
         // Count test depends on Next.
         // But it doesn't require both Judy1Next and JudyLNext.
 #ifndef NO_TEST_NEXT
   #if defined(USE_JUDY1_NEXT_IN_COUNT)
-        PValue = (PWord_t)JudyLNext(JL, &TstIndex, NULL);
+        PValue = (PWord_t)JudyLNext(JL, &TstIndexL, NULL);
   #else // defined(USE_JUDY1_NEXT_IN_COUNT)
         Rc = Judy1Next(J1, &TstIndex1, NULL);
   #endif // defined(USE_JUDY1_NEXT_IN_COUNT)
-        if (TstIndex != TstIndex1) {
+        if (TstIndexL != TstIndex1) {
             if ((PValue != NULL) || (Rc == 1)) {
                 Word_t LastIndex1 = -1;
                 Judy1Last(J1, &LastIndex1, NULL);
@@ -866,8 +866,8 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
                 printf("Elements = %zd\n", Elements);
                 printf("LastIndexL = %zd 0x%zx LastIndex1 = %zd 0x%zx\n",
                        LastIndexL, LastIndexL, LastIndex1, LastIndex1);
-                printf("Next TstIndex = %zd 0x%zx != TstIndex1 = %zd 0x%zx\n",
-                       TstIndex, TstIndex, TstIndex1, TstIndex1);
+                printf("Next TstIndexL = %zd 0x%zx != TstIndex1 = %zd 0x%zx\n",
+                       TstIndexL, TstIndexL, TstIndex1, TstIndex1);
                 FAILURE("Count at", elm);
             }
         }
