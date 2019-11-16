@@ -4605,6 +4605,7 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
                             printf
                                 ("--- JudyLGet Key 0x%" PRIxPTR" returned PValue %p Value=0x%" PRIxPTR", should be=0x%" PRIxPTR"",
                                  TstKey, PValue, *PValue, TstKey);
+                            JudyLDump((Word_t)JL, sizeof(Word_t) * 8, TstKey);
                             FAILURE("JudyLGet ret wrong Value at", elm);
                         }
                     }
