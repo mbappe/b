@@ -292,9 +292,7 @@
 #ifdef BITMAP
 #ifdef B_JUDYL
   #ifndef cnListPopCntMaxDl1
-      #ifndef SPLAY_WITH_INSERT
     #define cnListPopCntMaxDl1  4
-      #endif // #ifndef SPLAY_WITH_INSERT
   #endif // #ifndef cnListPopCntMaxDl1
   // PACK_BM_VALUES means use a packed value area for a bitmap leaf if/when
   // the values area is less than max and/or when UNPACK_BM_VALUES is not
