@@ -2778,7 +2778,6 @@ xv_foundIt:;
   #ifdef B_JUDYL
       #ifdef _RETURN_NULL_TO_INSERT_AGAIN
     if (pwValue == NULL) {
-        nBLR = nBL;
         assert((pwValueUp != NULL) || (nBL == cnBitsPerWord));
         // Insert will increment pop count again if it encounters a switch.
         assert(!tp_bIsSwitch(pLn->ln_wRoot));

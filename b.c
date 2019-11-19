@@ -2546,9 +2546,6 @@ embeddedKeys:;
             assert(wPopCnt <= (Word_t)EmbeddedListPopCntMax(nBL));
             int nBLUp = nBL + nBWUp; (void)nBLUp;
             Link_t *pLnUp = STRUCT_OF(&pwrUp, Link_t, ln_wRoot); (void)pLnUp;
-            //int nDigitX = (wKey >> nBL) & MSK(nBWUp);
-            //printf(" gpwEV %p", gpwEmbeddedValue(qyx(Up), 1<<nBWUp, nDigitX));
-            //printf(" pwLnX %p", pwLnX);
             printf(" keys 0x%zx", *pwLnX);
             printf(" values");
             for (Word_t ww = 0; ww < wPopCnt; ++ww) {
@@ -2982,7 +2979,8 @@ embeddedKeys:;
                                             wKey | (nn << nBL),
                                             nBL,
   #ifdef _LNX
-                                            gpwEmbeddedValue(/*qy*/ nBLPrev, pLn,
+                                            gpwEmbeddedValue(/*qy*/ nBLPrev,
+                                                             pLn,
       #ifdef CODE_BM_SW
       #if defined(B_JUDYL) && defined(EMBED_KEYS)
                                                              bBmSw ? nLinks :
@@ -12598,7 +12596,6 @@ t_embedded_keys:;
                                    pwLnX,
   #endif // EK_XV
                                    *pwKey, nBL);
-//printf("nPos %d\n", nPos);
         if (bPrev) {
             //A(0); // check -B10 -DS1
             if (nPos < 0) {
@@ -12618,14 +12615,6 @@ t_embedded_keys:;
             }
             //A(0); // check -B10 -DS1
             *pwKey &= ~MSK(nBL); // clear low bits
-//printf("*pwKey 0x%zx\n", *pwKey);
-//printf("nPos %d\n", nPos);
-//printf("nBL %d\n", nBL);
-//printf("wSkip %zd\n", wSkip);
-      #ifdef EK_XV
-//printf("pwLnX %p\n", pwLnX);
-//printf("*pwLnX 0x%zx\n", *pwLnX);
-      #endif // EK_XV
             *pwKey |=
       #ifdef EK_XV
                 (nType == T_EK_XV)
@@ -12635,7 +12624,6 @@ t_embedded_keys:;
       #endif // #else EK_XV
                       GetBits(wRoot, nBL,
                                cnBitsPerWord - (nPos - wSkip + 1) * nBL);
-//printf("*pwKey 0x%zx\n", *pwKey);
         } else {
             //A(0); // check -B10 -DS1
             if (nPos < 0) { /*A(0);*/ nPos ^= -1; }
@@ -13191,7 +13179,6 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                 pwLnX = gpwEmbeddedValue(/*qy*/ nBL,
                                          STRUCT_OF(pwRoot, Link_t, ln_wRoot),
                                          nLinks, pLn - pLinks);
-//printf("pLinks %p nLinks %d pLn - pLinks %d pwLnX %p\n", pLinks, nLinks, pLn - pLinks, pwLnX);
   #endif // _LNX
   #ifdef BM_SW_FOR_REAL
                 assert(wPopCnt != 0);
@@ -13846,11 +13833,8 @@ t_embedded_keys:;
             nIncr = -1;
         } else {
             wKeyLast |= MSK(nBL);
-//printf("wKeyLast 0x%zx\n", wKeyLast);
             nIncr = 1;
         }
-//printf("*wKey 0x%zx\n", *pwKey);
-//printf("nBL %d\n", nBL);
         while (SearchEmbeddedX(&wRoot,
       #ifdef EK_XV
                                pwLnX,
@@ -13860,10 +13844,8 @@ t_embedded_keys:;
             if (*pwKey == wKeyLast) {
                 return Failure;
             }
-//printf("*pwKey 0x%zx\n", *pwKey);
             *pwKey += nIncr;
         }
-//printf("Success *pwKey 0x%zx\n", *pwKey);
         return Success;
     }
   #endif // defined(EMBED_KEYS)
@@ -14149,7 +14131,6 @@ t_bm_sw:;
             //A(0); // check -B17
             // link is present
             Link_t *pLn = &pLinks[wBmSwIndex];
-//printf("-1\n");
             if (NextEmptyGuts(&pLn->ln_wRoot, pwKey, nBL - nBits,
   #ifdef _LNX
                               pwLnX,
@@ -14157,10 +14138,8 @@ t_bm_sw:;
                               bPrev)
                     == Success) {
                 //A(0); // check -B17
-//printf("-1a\n");
                 return Success;
             }
-//printf("0\n");
             //A(0); // check -B25
             if (bPrev) {
                 //A(0); // check -B17 -S1
@@ -14189,7 +14168,6 @@ t_bm_sw:;
                         *pwKey &= ~MSK(nBL);
                         return Success;
                     }
-//printf("1\n");
                     return Failure;
                 }
                 //A(0); // check -B17 -S1
@@ -14197,7 +14175,6 @@ t_bm_sw:;
             }
             //A(0); // check -B17 -S1
             *pwKey |= wPrefix + (wIndex << (nBL - nBits));
-//printf("*pwKey 0x%zx\n", *pwKey);
         }
         A(0);
         break; // make compiler happy
