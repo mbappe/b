@@ -652,7 +652,15 @@ typedef Word_t Bucket_t;
 #endif // #else cnListPopCntMaxDl3
 
 #if defined(EMBED_KEYS) && !defined(POP_CNT_MAX_IS_KING)
-  #define _cnListPopCntMaxEK  MAX(_cnListPopCntMax3, 1)
+  // There is a problem here. We don't know the max embedded keys.
+  // Our estimate is oversimplified.
+  #ifdef EK_XV
+    #define _cnListPopCntMaxEK  MAX(_cnListPopCntMax3, 8)
+  #elif defined(B_JUDYL)
+    #define _cnListPopCntMaxEK  MAX(_cnListPopCntMax3, 1)
+  #else // EK_XV #elif B_JUDYL
+    #define _cnListPopCntMaxEK  MAX(_cnListPopCntMax3, 8)
+  #endif // EK_XV #elif B_JUDYL #else
 #else // defined(EMBED_KEYS && !defined(POP_CNT_MAX_IS_KING)
   #define _cnListPopCntMaxEK  _cnListPopCntMax3
 #endif // #else defined(EMBED_KEYS && !defined(POP_CNT_MAX_IS_KING)
@@ -791,6 +799,9 @@ enum {
 #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
 #if defined(EMBED_KEYS)
     T_EMBEDDED_KEYS, // keys are embedded in the link
+      #ifdef EK_XV
+    T_EK_XV, // keys are embedded in the link; values are in a leaf
+      #endif // EK_XV
 #endif // defined(EMBED_KEYS)
     T_SWITCH, // Uncompressed, close (i.e. no-skip) switch.
 #if defined(SKIP_LINKS)
@@ -1029,6 +1040,15 @@ extern Word_t j__MisComparesM;
 #endif // SEARCHMETRICS
 
 #if defined(DEBUG)
+#ifdef B_JUDYL
+#define bHitDebugThreshold  bHitDebugThresholdL
+#else // B_JUDYL
+#define bHitDebugThreshold  bHitDebugThreshold1
+#endif // B_JUDYL
+extern int bHitDebugThreshold;
+#endif // defined(DEBUG)
+
+#if defined(DEBUG)
   #define DBG(x)  x
 // Default is cwDebugThreshold = 0.
   #if ! defined(cwDebugThreshold)
@@ -1192,6 +1212,18 @@ Clr_bIsSkip(Word_t* pwRoot)
     }
 #endif // defined(SKIP_LINKS)
 }
+
+#ifdef EMBED_KEYS
+static int
+tp_bIsEk(int nType)
+{
+    return (nType == T_EMBEDDED_KEYS)
+  #ifdef EK_XV
+        || (nType == T_EK_XV)
+  #endif // EK_XV
+        ;
+}
+#endif // EMBED_KEYS
 
 // Extract pwr, i.e. the next pwRoot, from *pwRoot.
 static inline Word_t* wr_pwr(Word_t wRoot) {
@@ -1448,6 +1480,28 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
     #define nBL_to_nBitsType(_nBL)  cnBitsMallocMask
 #endif // defined(CODE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
 
+// Bit fields in the upper bits of of wRoot.
+#define cnBitsCnt  8
+#define cnLsbCnt  (cnBitsPerWord - cnBitsCnt)
+
+// (cnBitsLvlM1, cnLsbLvlM1) is the level of the node pointed to.
+#define cnBitsLvlM1  8
+#define cnLsbLvlM1  cnBitsVirtAddr
+
+// ListPopCnt is the number of keys in the list minus 1.
+#define cnBitsListPopCnt  cnBitsCnt
+#define cnLsbListPopCnt   cnLsbCnt
+
+// XxSwWidth is the log of the number of virtual links in the switch.
+// For 32-bit, cn[Bits|Lsb]XxSwWidth applies to the preamble
+// word -- not to wRoot.
+#define cnBitsXxSwWidth  cnBitsCnt
+#define cnLsbXxSwWidth   cnLsbCnt
+
+// ListSwPopM1 is the number of links in the list switch minus one.
+#define cnBitsListSwPopM1  cnBitsCnt // for T_LIST_SW
+#define cnLsbListSwPopM1   cnLsbCnt
+
 #if defined(EMBED_KEYS)
   #if defined(EK_CALC_POP)
 
@@ -1470,7 +1524,7 @@ wr_nPopCnt(Word_t wRoot, int nBL)
         // Why is it ok to assume the link is non-empty here but not for the
         // NO_TYPE_IN_XX_SW with (nBL >= nDL_to_nBL(2)) case above?
         assert(wRoot != WROOT_NULL);
-        assert(wr_nType(wRoot) == T_EMBEDDED_KEYS);
+        assert(tp_bIsEk(wr_nType(wRoot)));
         wKeys &= ~MSK(nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL));
     }
     wKeys |= EXP(cnBitsPerWord - 1);
@@ -1508,6 +1562,24 @@ wr_nPopCnt(Word_t wRoot, int nBL)
 #error "Invalid cnBitsPerWord."
       #endif
 
+  #ifdef EK_XV
+static int
+wr_nPopCnt(Word_t wRoot, int nBL)
+{
+    (void)nBL;
+    if (wr_nType(wRoot) == T_EMBEDDED_KEYS) {
+        return 1;
+    }
+    return GetBits(wRoot, cnBitsCnt, cnLsbCnt);
+}
+
+#define set_wr_nPopCnt(_wr, _nBL, _nPopCnt) \
+{ \
+    if (wr_nType(_wr) != T_EMBEDDED_KEYS) { \
+        SetBits(&(_wr), cnBitsCnt, cnLsbCnt, (_nPopCnt)); \
+    } \
+}
+  #else // EK_XV
 // wr_nPopCnt(_wr, _nBL) gets the pop count for a list of embedded keys.
 // For embedded keys the pop cnt bits are just above the type field.
 // A value of zero means a pop cnt of one.
@@ -1519,6 +1591,7 @@ wr_nPopCnt(Word_t wRoot, int nBL)
 #define set_wr_nPopCnt(_wr, _nBL, _nPopCnt) \
     SetBits(&(_wr), nBL_to_nBitsPopCntSz(_nBL), nBL_to_nBitsType(_nBL), \
             (_nPopCnt) - 1)
+  #endif // #else EK_XV
 
   #endif // defined(EK_CALC_POP)
 
@@ -1528,6 +1601,12 @@ EmbeddedListPopCntMax(int nBL)
     int nBitsOverhead = nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL);
   #ifdef B_JUDYL
     int nKeysMax = (nBL <= (cnBitsPerWord - nBitsOverhead));
+      #ifdef EK_XV
+    nKeysMax *= cnBitsPerWord / nBL;
+      #endif // EK_XV
+      #ifdef ALIGN_EK_XV
+    if (nKeysMax > 7) { nKeysMax = 7; }
+      #endif // ALIGN_EK_XV
   #else // B_JUDYL
     int nKeysMax = (cnBitsPerWord - nBitsOverhead) / nBL;
   #endif // B_JUDYL
@@ -1717,28 +1796,6 @@ tp_bIsBitmap(int nType)
     #define BM_UNPACKED(_wRoot)  0
   #endif // #else // #elif defined(UNPACK_BM_VALUES) // _TEST_BM_UNPACKED
 #endif // B_JUDYL
-
-// Bit fields in the upper bits of of wRoot.
-#define cnBitsCnt  8
-#define cnLsbCnt  (cnBitsPerWord - cnBitsCnt)
-
-// (cnBitsLvlM1, cnLsbLvlM1) is the level of the node pointed to.
-#define cnBitsLvlM1  8
-#define cnLsbLvlM1  cnBitsVirtAddr
-
-// ListPopCnt is the number of keys in the list minus 1.
-#define cnBitsListPopCnt  cnBitsCnt
-#define cnLsbListPopCnt   cnLsbCnt
-
-// XxSwWidth is the log of the number of virtual links in the switch.
-// For 32-bit, cn[Bits|Lsb]XxSwWidth applies to the preamble
-// word -- not to wRoot.
-#define cnBitsXxSwWidth  cnBitsCnt
-#define cnLsbXxSwWidth   cnLsbCnt
-
-// ListSwPopM1 is the number of links in the list switch minus one.
-#define cnBitsListSwPopM1  cnBitsCnt // for T_LIST_SW
-#define cnLsbListSwPopM1   cnLsbCnt
 
 #if (cn2dBmMaxWpkPercent != 0) && (cnBitsLeftAtDl2 > cnBitsCnt)
   #undef  BM_POP_IN_WR_HB
@@ -2925,6 +2982,10 @@ gpwEmbeddedValue(qp, int nLinks, int nIndex)
     (void)nLinks;
     return pwr_pLinks((Switch_t*)pwr)[nIndex].ln_awDummies;
       #else // defined(VALUE_IN_DUMMY) && (cnDummiesInLink > 0)
+//printf("gpwEV pLn %p\n", pLn);
+//printf("gpwEV pwr %p\n", pwr);
+//printf("gpwEV nLinks %d\n", nLinks);
+//printf("gpwEV nIndex %d\n", nIndex);
     // The following assertion is bogus during Splay which doesn't bother to
     // initialize the bitmap in the switch being used to stage the splay.
     //assert(!tp_bIsBmSw(nType) || (BmSwLinkCnt(qy) == nLinks));
@@ -3169,10 +3230,12 @@ snListBLR(qp, int nBLR)
 }
 
 #ifdef SKIP_LINKS
+// BUG: Shouldn't this have an nBLR parameter?
 static inline Word_t
 gwPrefix(qp)
 {
     qv;
+    // BUG: Shouldn't we be using nBLR here?
     return PWR_wPrefixNATBL(pwRoot, pwr, nBL);
 }
 #endif // SKIP_LINKS
@@ -3698,15 +3761,6 @@ Word_t InflateEmbeddedList(Word_t *pwRoot,
   #endif // B_JUDYL
                            );
 #endif // defined(EMBED_KEYS)
-
-#if defined(DEBUG)
-#ifdef B_JUDYL
-#define bHitDebugThreshold  bHitDebugThresholdL
-#else // B_JUDYL
-#define bHitDebugThreshold  bHitDebugThreshold1
-#endif // B_JUDYL
-extern int bHitDebugThreshold;
-#endif // defined(DEBUG)
 
 int ListSlotCnt(int nPopCnt, int nBLR);
 Word_t *NewList(Word_t wPopCnt, int nBL);
@@ -5368,13 +5422,25 @@ HasKey128Magic(__m128i *pxBucket, Word_t wKey, int nBL)
 #if defined(EMBED_KEYS)
 // Find key or hole and return it's position.
 static int
-SearchEmbeddedX(Word_t *pw, Word_t wKey, int nBL)
+SearchEmbeddedX(Word_t *pw,
+  #ifdef EK_XV
+                Word_t* pwLnX,
+  #endif // EK_XV
+                Word_t wKey, int nBL)
 {
     int ii;
     for (ii = 0; ii < wr_nPopCnt(*pw, nBL); ii++) {
-        Word_t wSuffixLoop
-               = GetBits(*pw, /* nBits */ nBL,
-                         /* nLsb */ cnBitsPerWord - (nBL * (ii + 1)));
+//printf("pw %p *pw 0x%zx\n", pw, *pw);
+  #ifdef EK_XV
+//printf("pwLnX %p *pwLnX 0x%zx\n", pwLnX, *pwLnX);
+  #endif // EK_XV
+        Word_t wSuffixLoop =
+  #ifdef EK_XV
+             wr_nPopCnt(*pw, nBL) > 1
+                 ? GetBits(*pwLnX, nBL, ii * (1 << (LOG(nBL - 1) + 1))) :
+  #endif // EK_XV
+             GetBits(*pw, /* nBits */ nBL,
+                     /* nLsb */ cnBitsPerWord - (nBL * (ii + 1)));
         if ((wKey & MSK(nBL)) <= wSuffixLoop) {
             if ((wKey & MSK(nBL)) == wSuffixLoop) { return ii; }
             break;
@@ -6584,6 +6650,9 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
   #ifdef LKIL8_ONE_BUCKET
 #if defined(PARALLEL_128)
 #if cnBitsInD1 == 8
+#ifndef cnListPopCntMaxDl1
+#error cnListPopCntMaxDl1 must be defined
+#endif // cnListPopCntMaxDl1
 #if cnListPopCntMaxDl1 <= 16
 #ifdef OLD_LISTS
 #if cnBitsMallocMask >= 4
@@ -6859,6 +6928,11 @@ GetPopCnt(Word_t *pwRoot, int nBL)
             { wPopCnt = gwPopCnt(qy, gnBLR(qy)); }
         } else switch (nType) {
       #if defined(EMBED_KEYS)
+          #ifdef EK_XV
+        case T_EK_XV:
+            wPopCnt = wr_nPopCnt(wRoot, nBL);
+            break;
+          #endif // EK_XV
         case T_EMBEDDED_KEYS:
             wPopCnt
                 = ((wr_nType(WROOT_NULL) == T_EMBEDDED_KEYS)
@@ -6996,11 +7070,14 @@ extern Word_t j__AllocWordsJLL[8];
 //...
 //#define j__AllocWordsJLL7  j__AllocWordsJLL[7]
 
-#ifndef B_JUDYL
-// Coopt j__AllocWordsJV for JLB2 big bitmap at digit 2.
+  #if !defined(B_JUDYL) || defined(EK_XV)
 extern Word_t j__AllocWordsJV;   // value area
+  #endif // !defined(B_JUDYL) || defined(EK_XV)
+
+  #ifndef B_JUDYL
+// Coopt j__AllocWordsJV for JLB2 big bitmap at digit 2.
 #define j__AllocWordsJLB2  j__AllocWordsJV // big bitmap leaf at dl2
-#endif // B_JUDYL
+  #endif // B_JUDYL
 
 #endif // defined(RAMMETRICS)
 
@@ -7032,6 +7109,13 @@ extern Word_t j__AllocWordsJV;   // value area
   #endif // SKIP_TO_BITMAP
 #endif // #ifndef LVL_IN_PP
 #endif // #ifndef LVL_IN_WR_HB
+
+#define PAD64(_pxKeys, _nPopCnt) \
+{ \
+    for (int nn = (_nPopCnt); (nn * sizeof(*(_pxKeys))) % 8; ++nn) { \
+        (_pxKeys)[nn] = (_pxKeys)[nn - 1]; \
+    } \
+}
 
 // Pad the list with copies of the last real key in the list so the
 // length of the list from the first key through the last copy of the

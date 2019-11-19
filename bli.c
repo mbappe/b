@@ -2549,6 +2549,158 @@ foundIt:;
 
     } // end of case T_EMBEDDED_KEYS
 
+  #ifdef EK_XV
+    case T_EK_XV:
+    {
+        goto t_ek_xv; // suppress compiler unused-label warnings
+t_ek_xv:; // the semi-colon allows for a declaration next; go figure
+        DBGX(printf("T_EK_XV\n"));
+  #if defined(INSERT) || defined(REMOVE)
+        if (bCleanup) {
+      #if defined(B_JUDYL) && defined(INSERT)
+            return pwValue;
+      #else // defined(B_JUDYL) && defined(INSERT)
+            return Success;
+      #endif // defined(B_JUDYL) && defined(INSERT)
+        } // cleanup is complete
+  #endif // defined(INSERT) || defined(REMOVE)
+        assert(pwValueUp != NULL);
+  #if defined(COUNT)
+        {
+            int nBits = 1 << (LOG(nBL - 1) + 1);
+            int nn;
+            for (nn = 0; nn < wr_nPopCnt(wRoot, nBL); nn++) {
+                if (((*pwValueUp >> (nn * nBits)) & MSK(nBits))
+                        >= (wKey & MSK(nBits)))
+                {
+                    break;
+                }
+            }
+            DBGC(printf("EK_XV: wPopCntSum(before) %" _fw"d nn %d\n",
+                        wPopCntSum, nn));
+            wPopCntSum += nn;
+            DBGC(printf("ek_xv nn %d wPopCntSum " OWx"\n", nn, wPopCntSum));
+            return wPopCntSum;
+        }
+  #endif // defined(COUNT)
+      #ifdef COMPRESSED_LISTS
+      #ifdef SKIP_PREFIX_CHECK
+      #ifdef LOOKUP
+        #error not coded yet
+        if (PrefixCheckAtLeaf(qy, wKey
+  #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
+                , bNeedPrefixCheck
+  #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
+  #ifdef SAVE_PREFIX_TEST_RESULT
+                , wPrefixMismatch
+  #else // SAVE_PREFIX_TEST_RESULT
+                , pwrUp
+  #endif // SAVE_PREFIX_TEST_RESULT
+  #ifdef SAVE_PREFIX
+                , pLnPrefix, pwrPrefix, nBLRPrefix
+  #endif // SAVE_PREFIX
+                  ) // end call to PrefixCheckAtLeaf
+            == Success)
+      #endif // LOOKUP
+      #endif // SKIP_PREFIX_CHECK
+      #endif // COMPRESSED_LISTS
+        {
+      #ifdef _PARALLEL_EK
+
+#define XV_BLX(_nBL) \
+        case (_nBL): \
+            if ((nPos = LocateKey64(pwValueUp, wKey, \
+                    (Word_t)2 << LOG(_nBL - 1))) >= 0) { \
+                assert(nPos < wr_nPopCnt(wRoot, nBL)); \
+                goto xv_foundIt; \
+            } \
+            goto xv_break2
+
+        DBGX(printf("\n# pwValueUp %p *pwValueUp 0x%zx wKey 0x%zx nBL %d\n",
+                    pwValueUp, *pwValueUp, wKey, nBL));
+  #ifdef LOOKUP
+        PREFETCH(pwr);
+  #endif // LOOKUP
+        switch (nBL) {
+                                XV_BLX( 2); XV_BLX( 3); XV_BLX( 4);
+        XV_BLX( 5); XV_BLX( 6); XV_BLX( 7); XV_BLX( 8); XV_BLX( 9);
+        XV_BLX(10); XV_BLX(11); XV_BLX(12); XV_BLX(13); XV_BLX(14);
+        XV_BLX(15);
+        default: DBG(printf("nBL %d\n", nBL)); assert(0);
+                      XV_BLX(16);
+                                    XV_BLX(17); XV_BLX(18); XV_BLX(19);
+        XV_BLX(20); XV_BLX(21); XV_BLX(22); XV_BLX(23); XV_BLX(24);
+        XV_BLX(25); XV_BLX(26); XV_BLX(27); XV_BLX(28); XV_BLX(29);
+        XV_BLX(30); XV_BLX(31); XV_BLX(32); XV_BLX(33); XV_BLX(34);
+        XV_BLX(35); XV_BLX(36); XV_BLX(37); XV_BLX(38); XV_BLX(39);
+        XV_BLX(40); XV_BLX(41); XV_BLX(42); XV_BLX(43); XV_BLX(44);
+        XV_BLX(45); XV_BLX(46); XV_BLX(47); XV_BLX(48); XV_BLX(49);
+        XV_BLX(50); XV_BLX(51); XV_BLX(52); XV_BLX(53); XV_BLX(54);
+        XV_BLX(55); XV_BLX(56); XV_BLX(57); XV_BLX(58); XV_BLX(59);
+        XV_BLX(60); XV_BLX(61); XV_BLX(62); XV_BLX(63); XV_BLX(64);
+        }
+xv_break2:;
+
+      #else // _PARALLEL_EK
+        #error not coded yet
+
+        Word_t wKeyRoot;
+
+        int nPopCnt = wr_nPopCnt(wRoot, nBL);
+        switch (nPopCnt) {
+          #if (cnBitsPerWord == 64)
+        case 8: // max for 7-bit keys and 64 bits;
+            wKeyRoot = wRoot >> (cnBitsPerWord - (8 * nBL));
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+        case 7: // max for 8-bit keys and 64 bits;
+            wKeyRoot = wRoot >> (cnBitsPerWord - (7 * nBL));
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+        case 6: // max for 9-bit keys and 64 bits;
+            wKeyRoot = wRoot >> (cnBitsPerWord - (6 * nBL));
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+        case 5: // max for 10 to 11-bit keys and 64 bits;
+            wKeyRoot = wRoot >> (cnBitsPerWord - (5 * nBL));
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+          #endif // (cnBitsPerWord == 64)
+        case 4: // max for 12 to 14-bit keys and 64 bits; 6 for 32
+            wKeyRoot = wRoot >> (cnBitsPerWord - (4 * nBL));
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+        case 3: // max for 15 to 19-bit keys and 64 bits; 7-9 for 32
+            wKeyRoot = wRoot >> (cnBitsPerWord - (3 * nBL));
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+        case 2: // max for 20 to 29-bit keys and 64 bits; 10-14 for 32
+            wKeyRoot = wRoot >> (cnBitsPerWord - (2 * nBL));
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+        default: // max for 30 to 60-bit keys and 64 bits; 15-29 for 32
+            wKeyRoot = wRoot >> (cnBitsPerWord - (1 * nBL));
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+        }
+
+      #endif // #else _PARALLEL_EK
+        }
+
+        break; // switch (nType) case T_EK_XV
+
+xv_foundIt:;
+
+      #if defined(REMOVE)
+        goto removeGutsAndCleanup;
+      #endif // defined(REMOVE)
+      #if defined(INSERT)
+          #if !defined(RECURSIVE)
+        if (nIncr > 0) { goto undo; } // undo counting
+          #endif // !defined(RECURSIVE)
+      #endif // defined(INSERT)
+
+  #if defined(INSERT) || defined(LOOKUP)
+        return &pwr[nPos];
+  #else // defined(INSERT) || defined(LOOKUP)
+        return KeyFound;
+  #endif // defined(INSERT) || defined(LOOKUP)
+
+    } // end of case T_EK_XV
+  #endif // EK_XV
+
 #endif // defined(EMBED_KEYS)
 
 #if defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
@@ -2626,6 +2778,7 @@ foundIt:;
   #ifdef B_JUDYL
       #ifdef _RETURN_NULL_TO_INSERT_AGAIN
     if (pwValue == NULL) {
+        nBLR = nBL;
         assert((pwValueUp != NULL) || (nBL == cnBitsPerWord));
         // Insert will increment pop count again if it encounters a switch.
         assert(!tp_bIsSwitch(pLn->ln_wRoot));

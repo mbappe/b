@@ -138,13 +138,25 @@
 
   // Default is no PREFETCH_BM_[PSPLIT|NEXT|PREV]_VAL
 
-#endif // B_JUDYL
+#else // B_JUDYL
+
+  #undef EK_XV
+
+#endif // #else B_JUDYL
 
 // Default is -DEMBED_KEYS.
 #if ! defined(NO_EMBED_KEYS)
 #undef  EMBED_KEYS
 #define EMBED_KEYS
 #endif // ! defined(NO_EMBED_KEYS)
+
+#ifdef EK_XV
+  #ifndef EMBED_KEYS
+    #error EK_XV without EMBED_KEYS
+  #endif // EMBED_KEYS
+  #undef  NO_EK_CALC_POP
+  #define NO_EK_CALC_POP
+#endif // EK_XV
 
 // _LNX is not to be set on the build command line.
 // It is derived from other ifdefs.
@@ -588,6 +600,12 @@
 #endif // cnDummiesInLink == 0
 #endif // BMLF_CNTS
 #endif // B_JUDYL
+
+// gcc does a crappy job with 64-bit vectors.
+#ifndef NO_OLD_HK_64
+  #undef   OLD_HK_64
+  #define  OLD_HK_64
+#endif // #ifndef NO_OLD_HK_64
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 

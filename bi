@@ -8,6 +8,8 @@
 && regress \
 && DEFINES="-DDEBUG" make clean default \
 && regress \
+&& DEFINES="-DDEBUG -DEK_XV" make clean default \
+&& regress \
 && DEFINES="-DcnListPopCntMax64=0 -DDEBUG" make clean default \
 && regress \
 && DEFINES="-DNO_EMBED_KEYS -DDEBUG" make clean default \
@@ -104,7 +106,6 @@
 && regress \
 && DEFINES="-DPOP_WORD -DDEBUG" make clean default \
 && regress \
-&& : \
 && DEFINES="-DPOP_CNT_MAX_IS_KING -DcnListPopCntMax64=1 -DDEBUG" \
    make clean default \
 && DEFINES="-DDEBUG_ALL" make clean default \
