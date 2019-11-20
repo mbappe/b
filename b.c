@@ -2614,6 +2614,11 @@ embeddedKeys:;
                 goto zeroLink;
             }
 
+  #ifdef XX_LISTS
+            if (nType == T_XX_LIST) {
+                printf(" nBLR %d", nBLR);
+            }
+  #endif // XX_LISTS
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             if (nBLArg < cnBitsPerWord) {
                 printf(" ln_wPopCnt %3" _fw"u", wPopCnt);
@@ -2930,7 +2935,7 @@ embeddedKeys:;
                       && (wr_nType(pLinks[ww].ln_wRoot) == T_EMBEDDED_KEYS))
                 {
                     printf(" nBL %2d", nBL);
-                    printf(" wKey " OWx, wKey | (nn << nBL));
+                    printf(" wPrefix " OWx, wKey | (nn << nBL));
                     printf(" pwRoot " OWx, (Word_t)&pLinks[ww].ln_wRoot);
                     printf(" wr " OWx, pLinks[ww].ln_wRoot);
                     printf(" 0x%016" _fw"x",
@@ -2946,17 +2951,13 @@ embeddedKeys:;
   #ifdef XX_LISTS
                 if (bDump
                     && (ww != 0)
-                    && (pLinks[ww].ln_wRoot == pLinks[ww - 1].ln_wRoot))
+                    && (pLinks[ww].ln_wRoot == pLinks[ww - 1].ln_wRoot)
+                    && (wr_nType(pLinks[ww].ln_wRoot) == T_XX_LIST))
                 {
-                    if (wr_nType(pLinks[ww].ln_wRoot) != T_XX_LIST) {
-                        printf("ww %zd pLinks[ww].ln_wRoot 0x%zx\n",
-                               ww, pLinks[ww].ln_wRoot);
-                    }
-                    assert(wr_nType(pLinks[ww].ln_wRoot) == T_XX_LIST);
-                    printf(" ditto ");
-                    printf(" wKey " OWx,
-                           /*wKeyLoop*/ wKey | (nn << nBL));
-                    printf("\n");
+                    printf(" Ditto ");
+                    printf(" wPrefix " OWx, /*wKeyLoop*/ wKey | (nn << nBL));
+                    printf(" pwRoot " OWx, (Word_t)&pLinks[ww].ln_wRoot);
+                    printf(" Ditto\n");
                     ++ww;
                     continue;
                 }
