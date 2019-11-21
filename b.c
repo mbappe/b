@@ -3096,10 +3096,12 @@ Judy1Dump(Word_t wRoot, int nBL, Word_t wPrefix)
 
 #ifdef EK_XV
 Word_t*
-InsertEkXv(qp, Word_t* pwLnX, Word_t wKey, int nPos)
+InsertEkXv(qp, Word_t* pwLnX, Word_t wKey, int nPopCnt, int nPos)
 {
-    qv; (void)wKey;
+    qv; (void)wKey; (void)nPopCnt;
     assert(nPos >= 0);
+    assert(nPopCnt >= 1);
+    assert(nPopCnt < EmbeddedListPopCntMax(nBL));
     //Inflate, Insert, Deflate
     return &pwLnX[nPos];
 }
@@ -3142,12 +3144,12 @@ InsertEmbedded(Word_t *pwRoot, int nBL,
             set_wr_nType(*pwRoot, T_EMBEDDED_KEYS);
         }
     }
-  #if 0 // def EK_XV
+  #ifdef EK_XV
+    // InsertEmbedded doesn't work for EK_XV yet.
     if (nPopCnt != 0) {
         Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
-        InsertEkXv(qy, pwLnX, wKey,
-                   wKey > GetBits(*pwRoot, nBL, cnBitsPerWord - nBL));
-        return;
+        InsertEkXv(qy, pwLnX, wKey, nPopCnt, /* nPos */ -1);
+        return; // return pwValue?
     }
   #endif // EK_XV
     // find the slot
@@ -4118,7 +4120,10 @@ Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL
 
     Word_t wRoot = *pwRoot;
     int nType = wr_nType(wRoot);
-    int nBLR = GetBLR(pwRoot, nBL);
+    int nBLR = GetBLR(pwRoot, nBL); // nBLR of switch
+  #ifndef USE_XX_SW
+    assert(nBLR <= nBLROld);
+  #endif // #ifndef USE_XX_SW
     if (!tp_bIsSwitch(nType)
   #ifdef BITMAP
         && ((nBL != cnBitsInD1) || (nType != T_BITMAP))
@@ -4168,6 +4173,7 @@ Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL
 
     Link_t *pLinks = pwr_pLinks((Switch_t *)pwr);
     int nBLLoop = nBLR - nBW; // nBL of the links in the switch
+    assert(nBLLoop <= nBLROld);
 #ifdef EMBED_KEYS
     int nEmbeddedListPopCntMax = EmbeddedListPopCntMax(nBLLoop);
 #endif // EMBED_KEYS
@@ -4227,28 +4233,13 @@ lastDigit8:;
                     if (nPopCntLoop > 1) {
                         Word_t wRootLoop = 0;
                         set_wr_nType(wRootLoop, T_EK_XV);
-                        set_wr_nPopCnt(wRootLoop, nBL, nPopCntLoop);
+                        set_wr_nPopCnt(wRootLoop, nBLLoop, nPopCntLoop);
                         // Copy the keys.
                         Word_t wLnXLoop;
                         assert(nBLLoop <= 8);
-                        if (nBLLoop <= 8) {
-                            uint8_t* puc = (uint8_t*)&wLnXLoop;
-                            COPY(puc, &ls_pcKeysNATX(pwr, nPopCnt)[nnStart],
-                                 nPopCntLoop);
-                            PAD64(puc, nPopCntLoop);
-                        } else
-          #if (cnBitsPerWord > 32)
-                        if (nBLLoop > 16) {
-                            uint32_t* pui = (uint32_t*)&wLnXLoop;
-                            COPY(pui, &ls_piKeysNATX(pwr, nPopCnt)[nnStart],
-                                 nPopCntLoop);
-                        } else
-          #endif // (cnBitsPerWord > 32)
-                        {
-                            uint16_t* pus = (uint16_t*)&wLnXLoop;
-                            COPY(pus, &ls_psKeysNATX(pwr, nPopCnt)[nnStart],
-                                 nPopCntLoop);
-                        }
+                        uint8_t* puc = (uint8_t*)&wLnXLoop;
+                        COPY(puc, &pcKeys[nnStart], nPopCntLoop);
+                        PAD64(puc, nPopCntLoop);
                         // Create the value area and copy the values.
                         Word_t *pwrLoop
                             = (Word_t*)MyMalloc(MAX(3, nPopCntLoop | 1),
@@ -4399,14 +4390,7 @@ lastDigit16:;
                             uint8_t* puc = (uint8_t*)&wLnXLoop;
                             COPY(puc, &psKeys[nnStart], nPopCntLoop);
                             PAD64(puc, nPopCntLoop);
-                        } else
-          #if (cnBitsPerWord > 32)
-                        if (nBLLoop > 16) {
-                            uint32_t* pui = (uint32_t*)&wLnXLoop;
-                            COPY(pui, &psKeys[nnStart], nPopCntLoop);
-                        } else
-          #endif // (cnBitsPerWord > 32)
-                        {
+                        } else {
                             uint16_t* pus = (uint16_t*)&wLnXLoop;
                             COPY(pus, &psKeys[nnStart], nPopCntLoop);
                             PAD64(pus, nPopCntLoop);
@@ -4579,9 +4563,10 @@ lastDigit32:;
                     if (nPopCntLoop > 1) {
                         Word_t wRootLoop = 0;
                         set_wr_nType(wRootLoop, T_EK_XV);
-                        set_wr_nPopCnt(wRootLoop, nBL, nPopCntLoop);
+                        set_wr_nPopCnt(wRootLoop, nBLLoop, nPopCntLoop);
                         // Copy the keys.
                         Word_t wLnXLoop;
+                        assert(nBLLoop <= 32);
                         if (nBLLoop <= 8) {
                             uint8_t* puc = (uint8_t*)&wLnXLoop;
                             COPY(puc, &piKeys[nnStart], nPopCntLoop);
@@ -5065,6 +5050,9 @@ SplayWithInsert(Word_t *pwRootOld, int nBLOld, Word_t wKey, int nPos,
     Word_t wRoot = *pwRoot;
     int nType = wr_nType(wRoot);
     int nBLR = GetBLR(pwRoot, nBL);
+  #ifndef USE_XX_SW
+    assert(nBLR <= nBLROld);
+  #endif // #ifndef USE_XX_SW
     if (!tp_bIsSwitch(nType)
   #ifdef BITMAP
         && ((nBL != cnBitsInD1) || (nType != T_BITMAP))
@@ -5111,6 +5099,7 @@ SplayWithInsert(Word_t *pwRootOld, int nBLOld, Word_t wKey, int nPos,
 
     Link_t *pLinks = pwr_pLinks((Switch_t *)pwr);
     int nBLLoop = nBLR - nBW; // nBL of the links in the switch
+    assert(nBLLoop <= nBLROld);
 #ifdef EMBED_KEYS
     int nEmbeddedListPopCntMax = EmbeddedListPopCntMax(nBLLoop);
 #endif // EMBED_KEYS
@@ -5177,26 +5166,13 @@ lastDigit8:;
                     if (nPopCntLoop > 1) {
                         Word_t wRootLoop = 0;
                         set_wr_nType(wRootLoop, T_EK_XV);
-                        set_wr_nPopCnt(wRootLoop, nBL, nPopCntLoop);
+                        set_wr_nPopCnt(wRootLoop, nBLLoop, nPopCntLoop);
                         // Copy the keys.
                         Word_t wLnXLoop;
-                        if (nBL <= 8) {
-                            uint8_t* puc = (uint8_t*)&wLnXLoop;
-                            COPY(puc, &ls_pcKeysNATX(pwr, nPopCnt)[nnStart],
-                                 nPopCntLoop);
-                        } else
-          #if (cnBitsPerWord > 32)
-                        if (nBL > 16) {
-                            uint32_t* pui = (uint32_t*)&wLnXLoop;
-                            COPY(pui, &ls_piKeysNATX(pwr, nPopCnt)[nnStart],
-                                 nPopCntLoop);
-                        } else
-          #endif // (cnBitsPerWord > 32)
-                        {
-                            uint16_t* pus = (uint16_t*)&wLnXLoop;
-                            COPY(pus, &ls_psKeysNATX(pwr, nPopCnt)[nnStart],
-                                 nPopCntLoop);
-                        }
+                        assert(nBLLoop <= 8);
+                        uint8_t* puc = (uint8_t*)&wLnXLoop;
+                        COPY(puc, &pcKeys[nnStart], nPopCntLoop);
+                        PAD64(puc, nPopCntLoop);
                         // Create the value area and copy the values.
                         Word_t *pwrLoop
                             = (Word_t*)MyMalloc(MAX(3, nPopCntLoop | 1),
@@ -5226,9 +5202,6 @@ lastDigit8:;
                                            pcKeys[xx]);
                         }
                     }
-      #ifdef EK_XV
-                    assert(0);
-      #endif // EK_XV
                     if (nDigit == nDigitKey) {
                         InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
       #ifdef _LNX
@@ -5392,25 +5365,18 @@ lastDigit16:;
                     if (nPopCntLoop > 1) {
                         Word_t wRootLoop = 0;
                         set_wr_nType(wRootLoop, T_EK_XV);
-                        set_wr_nPopCnt(wRootLoop, nBL, nPopCntLoop);
+                        set_wr_nPopCnt(wRootLoop, nBLLoop, nPopCntLoop);
                         // Copy the keys.
                         Word_t wLnXLoop;
-                        if (nBL <= 8) {
+                        assert(nBLLoop <= 16);
+                        if (nBLLoop <= 8) {
                             uint8_t* puc = (uint8_t*)&wLnXLoop;
-                            COPY(puc, &ls_pcKeysNATX(pwr, nPopCnt)[nnStart],
-                                 nPopCntLoop);
-                        } else
-          #if (cnBitsPerWord > 32)
-                        if (nBL > 16) {
-                            uint32_t* pui = (uint32_t*)&wLnXLoop;
-                            COPY(pui, &ls_piKeysNATX(pwr, nPopCnt)[nnStart],
-                                 nPopCntLoop);
-                        } else
-          #endif // (cnBitsPerWord > 32)
-                        {
+                            COPY(puc, &psKeys[nnStart], nPopCntLoop);
+                            PAD64(puc, nPopCntLoop);
+                        } else {
                             uint16_t* pus = (uint16_t*)&wLnXLoop;
-                            COPY(pus, &ls_psKeysNATX(pwr, nPopCnt)[nnStart],
-                                 nPopCntLoop);
+                            COPY(pus, &psKeys[nnStart], nPopCntLoop);
+                            PAD64(pus, nPopCntLoop);
                         }
                         // Create the value area and copy the values.
                         Word_t *pwrLoop
@@ -5441,9 +5407,6 @@ lastDigit16:;
                                            psKeys[xx]);
                         }
                     }
-      #ifdef EK_XV
-                    assert(0);
-      #endif // EK_XV
                     if (nDigit == nDigitKey) {
                         InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
       #ifdef _LNX
@@ -5636,25 +5599,25 @@ lastDigit32:;
                     if (nPopCntLoop > 1) {
                         Word_t wRootLoop = 0;
                         set_wr_nType(wRootLoop, T_EK_XV);
-                        set_wr_nPopCnt(wRootLoop, nBL, nPopCntLoop);
+                        set_wr_nPopCnt(wRootLoop, nBLLoop, nPopCntLoop);
                         // Copy the keys.
                         Word_t wLnXLoop;
-                        if (nBL <= 8) {
+                        if (nBLLoop <= 8) {
                             uint8_t* puc = (uint8_t*)&wLnXLoop;
-                            COPY(puc, &ls_pcKeysNATX(pwr, nPopCnt)[nnStart],
-                                 nPopCntLoop);
+                            COPY(puc, &piKeys[nnStart], nPopCntLoop);
+                            PAD64(puc, nPopCntLoop);
                         } else
           #if (cnBitsPerWord > 32)
-                        if (nBL > 16) {
+                        if (nBLLoop > 16) {
                             uint32_t* pui = (uint32_t*)&wLnXLoop;
-                            COPY(pui, &ls_piKeysNATX(pwr, nPopCnt)[nnStart],
-                                 nPopCntLoop);
+                            COPY(pui, &piKeys[nnStart], nPopCntLoop);
+                            PAD64(pui, nPopCntLoop);
                         } else
           #endif // (cnBitsPerWord > 32)
                         {
                             uint16_t* pus = (uint16_t*)&wLnXLoop;
-                            COPY(pus, &ls_psKeysNATX(pwr, nPopCnt)[nnStart],
-                                 nPopCntLoop);
+                            COPY(pus, &piKeys[nnStart], nPopCntLoop);
+                            PAD64(pus, nPopCntLoop);
                         }
                         // Create the value area and copy the values.
                         Word_t *pwrLoop
@@ -5685,9 +5648,6 @@ lastDigit32:;
                                            piKeys[xx]);
                         }
                     }
-      #ifdef EK_XV
-                    assert(0);
-      #endif // EK_XV
                     if (nDigit == nDigitKey) {
                         InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
       #ifdef _LNX
@@ -5890,25 +5850,25 @@ lastDigit:;
                     if (nPopCntLoop > 1) {
                         Word_t wRootLoop = 0;
                         set_wr_nType(wRootLoop, T_EK_XV);
-                        set_wr_nPopCnt(wRootLoop, nBL, nPopCntLoop);
+                        set_wr_nPopCnt(wRootLoop, nBLLoop, nPopCntLoop);
                         // Copy the keys.
                         Word_t wLnXLoop;
-                        if (nBL <= 8) {
+                        if (nBLLoop <= 8) {
                             uint8_t* puc = (uint8_t*)&wLnXLoop;
-                            COPY(puc, &ls_pcKeysNATX(pwr, nPopCnt)[nnStart],
-                                 nPopCntLoop);
+                            COPY(puc, &pwKeys[nnStart], nPopCntLoop);
+                            PAD64(puc, nPopCntLoop);
                         } else
           #if (cnBitsPerWord > 32)
-                        if (nBL > 16) {
+                        if (nBLLoop > 16) {
                             uint32_t* pui = (uint32_t*)&wLnXLoop;
-                            COPY(pui, &ls_piKeysNATX(pwr, nPopCnt)[nnStart],
-                                 nPopCntLoop);
+                            COPY(pui, &pwKeys[nnStart], nPopCntLoop);
+                            PAD64(pui, nPopCntLoop);
                         } else
           #endif // (cnBitsPerWord > 32)
                         {
                             uint16_t* pus = (uint16_t*)&wLnXLoop;
-                            COPY(pus, &ls_psKeysNATX(pwr, nPopCnt)[nnStart],
-                                 nPopCntLoop);
+                            COPY(pus, &pwKeys[nnStart], nPopCntLoop);
+                            PAD64(pus, nPopCntLoop);
                         }
                         // Create the value area and copy the values.
                         Word_t *pwrLoop
@@ -5939,9 +5899,6 @@ lastDigit:;
                                            pwKeys[xx]);
                         }
                     }
-      #ifdef EK_XV
-                    assert(0);
-      #endif // EK_XV
                     if (nDigit == nDigitKey) {
                         InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
       #ifdef _LNX
@@ -6273,7 +6230,7 @@ InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL
     int nTypeOld = wr_nType(wRootOld); (void)nTypeOld;
   #if defined(EMBED_KEYS)
       #if defined(CODE_XX_SW)
-    if (nTypeOld == T_EMBEDDED_KEYS) {
+    if (tp_bIsEk(nTypeOld)) {
         goto embeddedKeys;
 embeddedKeys:;
         // How inefficient can we be?
@@ -8896,7 +8853,7 @@ embeddedKeys:;
 #if (cwListPopCntMax != 0)
 #if defined(EMBED_KEYS)
 
-#ifdef EK_XV
+#ifdef EK_XV // implies COMPRESSED_LISTS
 static Word_t
 InflateList(qp, Word_t* pwLnX, Word_t wKey, int nPopCnt)
 {
@@ -9090,7 +9047,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
     return *pwRoot; // wRootNew is installed
 }
 
-#ifdef EK_XV
+#ifdef EK_XV // implies COMPRESSED_LISTS
 // Replace list leaf with embedded keys and a value area leaf.
 // The function assumes it is possible.
 static Word_t
@@ -9112,27 +9069,27 @@ DeflateList(qp, Word_t* pwLnX, int nPopCnt)
     assert(wRootNew != WROOT_NULL);
 
     // Copy the keys.
-  #ifndef COMPRESSED_LISTS
-    #error
-  #endif // #ifndef COMPRESSED_LISTS
     Word_t wLnXNew;
     if (nBL <= 8) {
         wLnXNew = *(Word_t*)ls_pcKeysNATX(pwr, nPopCnt);
         // What about PAD64? Do we know that any list being deflated has
         // already been padded?
-        assert(ls_pcKeysNATX(pwr, nPopCnt)[7] == ls_pcKeysNATX(pwr, nPopCnt)[nPopCnt-1]);
+        assert(ls_pcKeysNATX(pwr, nPopCnt)[7]
+            == ls_pcKeysNATX(pwr, nPopCnt)[nPopCnt-1]);
     } else
   #if (cnBitsPerWord > 32)
     if (nBL > 16) {
         assert(nBL <= 32);
         wLnXNew = *(Word_t*)ls_piKeysNATX(pwr, nPopCnt);
-        assert(ls_piKeysNATX(pwr, nPopCnt)[1] == ls_piKeysNATX(pwr, nPopCnt)[nPopCnt-1]);
+        assert(ls_piKeysNATX(pwr, nPopCnt)[1]
+            == ls_piKeysNATX(pwr, nPopCnt)[nPopCnt-1]);
     } else
   #endif // (cnBitsPerWord > 32)
     {
         assert(nBL <= 16);
         wLnXNew = *(Word_t*)ls_psKeysNATX(pwr, nPopCnt);
-        assert(ls_psKeysNATX(pwr, nPopCnt)[3] == ls_psKeysNATX(pwr, nPopCnt)[nPopCnt-1]);
+        assert(ls_psKeysNATX(pwr, nPopCnt)[3]
+            == ls_psKeysNATX(pwr, nPopCnt)[nPopCnt-1]);
     }
 
     // Create the value area and copy the values.
@@ -10936,6 +10893,12 @@ Initialize(void)
 #else // defined(EMBED_KEYS)
     printf("# No EMBED_KEYS\n");
 #endif // defined(EMBED_KEYS)
+
+#ifdef           EK_XV
+    printf("#    EK_XV\n");
+#else //         EK_XV
+    printf("# No EK_XV\n");
+#endif //        EK_XV
 
 #if defined(EK_CALC_POP)
     printf("#    EK_CALC_POP\n");

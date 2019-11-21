@@ -8,7 +8,7 @@
 && regress \
 && DEFINES="-DDEBUG" make clean default \
 && regress \
-&& DEFINES="-DDEBUG -DEK_XV" make clean default \
+&& DEFINES="-DDEBUG -DNO_EK_XV" make clean default \
 && regress \
 && DEFINES="-DcnListPopCntMax64=0 -DDEBUG" make clean default \
 && regress \

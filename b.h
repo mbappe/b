@@ -1602,7 +1602,7 @@ EmbeddedListPopCntMax(int nBL)
   #ifdef B_JUDYL
     int nKeysMax = (nBL <= (cnBitsPerWord - nBitsOverhead));
       #ifdef EK_XV
-    nKeysMax *= cnBitsPerWord / nBL;
+    nKeysMax *= cnBitsPerWord / (1 << (LOG(nBL - 1) + 1));
       #endif // EK_XV
       #ifdef ALIGN_EK_XV
     if (nKeysMax > 7) { nKeysMax = 7; }

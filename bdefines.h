@@ -47,6 +47,12 @@
     #define cnLogBytesPerWord 2
 #endif // cnBitsPerWord
 
+// Default is -DCOMPRESSED_LISTS.
+#ifndef NO_COMPRESSED_LISTS
+  #undef  COMPRESSED_LISTS
+  #define COMPRESSED_LISTS
+#endif // #ifndef NO_COMPRESSED_LISTS
+
 // Default is LVL_IN_WR_HB for 64-bit and level in nType for 32-bit.
 // The absence of LVL_IN_WR_HB and LVL_IN_PP is level in nType.
 #if (cnBitsPerWord > 32)
@@ -149,6 +155,26 @@
 #undef  EMBED_KEYS
 #define EMBED_KEYS
 #endif // ! defined(NO_EMBED_KEYS)
+
+// Default is EK_XV.
+#ifdef EMBED_KEYS
+#ifdef B_JUDYL
+#ifndef SPLAY_WITH_INSERT // Need InsertEmbedded for EX_XV.
+#ifndef NO_EK_XV
+  #undef  EK_XV
+  #define EK_XV
+#endif // #ifndef NO_EK_XV
+#endif // #ifndef SPLAY_WITH_INSERT
+#endif // B_JUDYL
+#endif // EMBED_KEYS
+
+#if cnBitsPerWord < 64
+  #undef EK_XV
+#endif // cnBitsPerWord < 64
+
+#ifndef COMPRESSED_LISTS
+  #undef EK_XV
+#endif // #ifndef COMPRESSED_LISTS
 
 #ifdef EK_XV
   #ifndef EMBED_KEYS
@@ -462,11 +488,6 @@
     #undef  NDEBUG
     #define NDEBUG
 #endif // ! defined(DEBUG)
-
-// Default is -DCOMPRESSED_LISTS.
-#if ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
-#define COMPRESSED_LISTS
-#endif // ! defined(COMPRESSED_LISTS) && ! defined(NO_COMPRESSED_LISTS)
 
 #ifndef PP_IN_LINK
   // Default is POP_WORD ifndef PP_IN_LINK unless NO_POP_WORD.
