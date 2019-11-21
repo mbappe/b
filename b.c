@@ -4408,7 +4408,7 @@ lastDigit16:;
           #else // ALIGN_EK_XV
                         pwrLoop = (Word_t*)MyMalloc(nPopCntLoop | 1,
                                                     &j__AllocWordsJV);
-          #endif // ALIGN_EK_XV
+          #endif // #else ALIGN_EK_XV
                         set_wr_pwr(wRootLoop, pwrLoop);
                         for (int nnLoop = 0; nnLoop < nPopCntLoop; nnLoop++) {
                             pwrLoop[nnLoop]
@@ -4585,9 +4585,19 @@ lastDigit32:;
                             PAD64(pus, nPopCntLoop);
                         }
                         // Create the value area and copy the values.
-                        Word_t *pwrLoop
-                            = (Word_t*)MyMalloc(MAX(3, nPopCntLoop | 1),
-                                                &j__AllocWordsJV);
+                        Word_t *pwrLoop;
+          #ifdef ALIGN_EK_XV
+                        if (nPopCntLoop <= 3) {
+                            pwrLoop = (Word_t*)MyMallocGuts(3, 2,
+                                                            &j__AllocWordsJV);
+                        } else {
+                            pwrLoop = (Word_t*)MyMallocGuts(nPopCntLoop|1, 3,
+                                                            &j__AllocWordsJV);
+                        }
+          #else // ALIGN_EK_XV
+                        pwrLoop = (Word_t*)MyMalloc(nPopCntLoop | 1,
+                                                    &j__AllocWordsJV);
+          #endif // #else ALIGN_EK_XV
                         set_wr_pwr(wRootLoop, pwrLoop);
                         for (int nnLoop = 0; nnLoop < nPopCntLoop; nnLoop++) {
                             pwrLoop[nnLoop]
@@ -4763,9 +4773,19 @@ lastDigit:;
                             PAD64((uint16_t*)pvLnXLoop, nPopCntLoop);
                         }
                         // Create the value area and copy the values.
-                        Word_t *pwrLoop
-                            = (Word_t*)MyMalloc(MAX(3, nPopCntLoop | 1),
-                                                &j__AllocWordsJV);
+                        Word_t *pwrLoop;
+          #ifdef ALIGN_EK_XV
+                        if (nPopCntLoop <= 3) {
+                            pwrLoop = (Word_t*)MyMallocGuts(3, 2,
+                                                            &j__AllocWordsJV);
+                        } else {
+                            pwrLoop = (Word_t*)MyMallocGuts(nPopCntLoop|1, 3,
+                                                            &j__AllocWordsJV);
+                        }
+          #else // ALIGN_EK_XV
+                        pwrLoop = (Word_t*)MyMalloc(nPopCntLoop | 1,
+                                                    &j__AllocWordsJV);
+          #endif // #else ALIGN_EK_XV
                         set_wr_pwr(wRootLoop, pwrLoop);
                         for (int nnLoop = 0; nnLoop < nPopCntLoop; nnLoop++) {
                             pwrLoop[nnLoop]
@@ -5174,9 +5194,19 @@ lastDigit8:;
                         COPY(puc, &pcKeys[nnStart], nPopCntLoop);
                         PAD64(puc, nPopCntLoop);
                         // Create the value area and copy the values.
-                        Word_t *pwrLoop
-                            = (Word_t*)MyMalloc(MAX(3, nPopCntLoop | 1),
-                                                &j__AllocWordsJV);
+                        Word_t *pwrLoop;
+          #ifdef ALIGN_EK_XV
+                        if (nPopCntLoop <= 3) {
+                            pwrLoop = (Word_t*)MyMallocGuts(3, 2,
+                                                            &j__AllocWordsJV);
+                        } else {
+                            pwrLoop = (Word_t*)MyMallocGuts(nPopCntLoop|1, 3,
+                                                            &j__AllocWordsJV);
+                        }
+          #else // ALIGN_EK_XV
+                        pwrLoop = (Word_t*)MyMalloc(nPopCntLoop | 1,
+                                                    &j__AllocWordsJV);
+          #endif // #else ALIGN_EK_XV
                         set_wr_pwr(wRootLoop, pwrLoop);
                         for (int nnLoop = 0; nnLoop < nPopCntLoop; nnLoop++) {
                             pwrLoop[nnLoop]
@@ -10899,6 +10929,24 @@ Initialize(void)
 #else //         EK_XV
     printf("# No EK_XV\n");
 #endif //        EK_XV
+
+#ifdef           ALIGN_EK_XV
+    printf("#    ALIGN_EK_XV\n");
+#else //         ALIGN_EK_XV
+    printf("# No ALIGN_EK_XV\n");
+#endif //        ALIGN_EK_XV
+
+#ifdef           PF_EK_XV
+    printf("#    PF_EK_XV\n");
+#else //         PF_EK_XV
+    printf("# No PF_EK_XV\n");
+#endif //        PF_EK_XV
+
+#ifdef           PF_EK_XV_2
+    printf("#    PF_EK_XV_2\n");
+#else //         PF_EK_XV_2
+    printf("# No PF_EK_XV_2\n");
+#endif //        PF_EK_XV_2
 
 #if defined(EK_CALC_POP)
     printf("#    EK_CALC_POP\n");

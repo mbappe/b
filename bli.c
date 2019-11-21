@@ -2607,8 +2607,18 @@ t_ek_xv:; // the semi-colon allows for a declaration next; go figure
         {
       #ifdef _PARALLEL_EK
 
+  #ifdef PF_EK_XV_2
+#define PF_2(_nBL) \
+            if (EmbeddedListPopCntMax(_nBL) > 2) { \
+                PREFETCH(pwr + 8); \
+            }
+  #else // PF_EK_XV_2
+#define PF_2(pwr)
+  #endif // #else PF_EK_XV_2
+
 #define XV_BLX(_nBL) \
         case (_nBL): \
+            PF_2(_nBL); \
             if ((nPos = LocateKey64(pwValueUp, wKey, \
                     (Word_t)2 << LOG(_nBL - 1))) >= 0) { \
                 assert(nPos < wr_nPopCnt(wRoot, nBL)); \
@@ -2619,7 +2629,10 @@ t_ek_xv:; // the semi-colon allows for a declaration next; go figure
         DBGX(printf("\n# pwValueUp %p *pwValueUp 0x%zx wKey 0x%zx nBL %d\n",
                     pwValueUp, *pwValueUp, wKey, nBL));
   #ifdef LOOKUP
+        //PREFETCH(pwr + wr_nPopCnt(wRoot, nBL) / 2);
+      #ifdef PF_EK_XV
         PREFETCH(pwr);
+      #endif // PF_EK_XV
   #endif // LOOKUP
         switch (nBL) {
                                 XV_BLX( 2); XV_BLX( 3); XV_BLX( 4);

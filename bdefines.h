@@ -182,6 +182,18 @@
   #endif // EMBED_KEYS
   #undef  NO_EK_CALC_POP
   #define NO_EK_CALC_POP
+
+  // Default is prefetch 1st cache line of value area for EK_XV.
+  #ifndef NO_PF_EK_XV
+    #undef  PF_EK_XV
+    #define PF_EK_XV
+  #endif // #ifndef NO_PF_EK_XV
+
+  // Default is prefetch 2nd cache line of value area for EK_XV.
+  #ifndef NO_PF_EK_XV_2
+    #undef  PF_EK_XV_2
+    #define PF_EK_XV_2
+  #endif // #ifndef NO_PF_EK_XV_2
 #endif // EK_XV
 
 // _LNX is not to be set on the build command line.
