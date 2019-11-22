@@ -2199,6 +2199,10 @@ t_bitmap:;
       #endif // defined(INSERT)
       #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
           #ifdef LOOKUP
+              #ifdef PACK_BM_VALUES
+                SMETRICS(j__SearchPopulation += gwBitmapPopCnt(qy, cnBitsInD1));
+                SMETRICS(++j__GetCalls);
+              #endif // PACK_BM_VALUES
                 int nIndex = BmIndex(qy, cnBitsInD1, wKey
           #else // LOOKUP
                 int nIndex = BM_UNPACKED(wRoot)
@@ -2209,6 +2213,31 @@ t_bitmap:;
                                        , pwValueUp
               #endif // EMBED_KEYS
                                          );
+              #ifdef LOOKUP
+              #ifdef PACK_BM_VALUES
+                Word_t wValueAddr = (Word_t)&pwBitmapValues[nIndex];
+                if (0
+                  #ifdef PREFETCH_BM_PSPLIT_VAL
+                    || !((wValueAddr ^ (Word_t)(pcPrefetch)) & ~0x3f)
+                  #endif // PREFETCH_BM_PSPLIT_VAL
+                  #ifdef PF_BM_PREV_HALF_VAL
+                    || !((wValueAddr ^ (Word_t)(pcPrefetch-32)) & ~0x3f)
+                  #endif // PF_BM_PREV_HALF_VAL
+                  #ifdef PREFETCH_BM_PREV_VAL
+                    || !((wValueAddr ^ (Word_t)(pcPrefetch-64)) & ~0x3f)
+                  #endif // PREFETCH_BM_PREV_VAL
+                  #ifdef PF_BM_NEXT_HALF_VAL
+                    || !((wValueAddr ^ (Word_t)(pcPrefetch+32)) & ~0x3f)
+                  #endif // PF_BM_NEXT_HALF_VAL
+                  #ifdef PREFETCH_BM_NEXT_VAL
+                    || !((wValueAddr ^ (Word_t)(pcPrefetch+64)) & ~0x3f)
+                  #endif // PREFETCH_BM_NEXT_VAL
+                    )
+                {
+                    SMETRICS(++j__DirectHits);
+                }
+              #endif // PACK_BM_VALUES
+              #endif // LOOKUP
                 return &pwBitmapValues[nIndex];
       #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 return KeyFound;
