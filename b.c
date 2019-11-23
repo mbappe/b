@@ -6846,7 +6846,7 @@ DoubleDown(qp, // (nBL, pLn) of link to original switch
         } else
   #endif // EMBED_KEYS
   #ifdef EMBED_KEYS
-        if (wr_nType(pLnNewModel->ln_wRoot) == T_EMBEDDED_KEYS) {
+        if (tp_bIsEk(wr_nType(pLnNewModel->ln_wRoot))) {
             // We need to splay the embedded keys.
             // Or change them to an external T_XX_LIST.
             // Or add (T_XX_EK, nBLR).
