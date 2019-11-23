@@ -1137,13 +1137,19 @@ OldList(Word_t *pwList, int nPopCnt, int nBLR, int nType)
 // EXP(cnLogBmWordsX + 1) / (EXP(cnLogBmWordsX) + 1)
 // It's a number between one and two: 1, 4/3, 8/5, 16/9, 32/17, 64/33, ...
 // A bigger cnLogBmWordsX means a bigger words per key is allowed.
-#define cnLogBmWordsX  5
+#define cnLogBmWordsX  1
 
 #ifdef BITMAP
 
 static Word_t
 BitmapWordCnt(int nBLR, Word_t wPopCnt)
 {
+    // Use ALLOC_WHOLE_PACKED_BMLF_EXP to experiment with always allocating
+    // the enough memory for a whole unpacked bitmap value area immediately
+    // on creation of a bitmap leaf.
+  #ifdef ALLOC_WHOLE_PACKED_BMLF_EXP
+    wPopCnt = EXP(nBLR);
+  #endif // ALLOC_WHOLE_PACKED_BMLF_EXP
     (void)nBLR; (void)wPopCnt;
     Word_t wWords;
   #ifdef B_JUDYL
@@ -1163,10 +1169,13 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
       #endif // UNPACK_BM_VALUES
       #ifdef PACK_BM_VALUES
           #ifdef UNPACK_BM_VALUES
+    // add malloc overhead for conversion to unpacked calculation
     Word_t wFullPopWordsMinPlusMalloc = (wFullPopWordsMin | 1) + 1;
+    // add memory used in switch link for conversion to unpacked calculation
     Word_t wFullPopWordsMinPlusX
         = wFullPopWordsMinPlusMalloc + sizeof(Link_t) / sizeof(Word_t);
               #ifdef EMBED_KEYS
+    // add memory used in _LNX for conversion to unpacked calculation
     ++wFullPopWordsMinPlusX; // Value word in switch.
               #endif // EMBED_KEYS
     // Max pop with compressed value area.
@@ -1259,7 +1268,13 @@ NewBitmap(qp, int nBLR, Word_t wKey, Word_t wPopCnt)
     // Later.
   #ifdef UNPACK_BM_VALUES
       #ifdef _TEST_BM_UNPACKED
+    // Test to make T_UNPACKED_BM depends on ALLOC_WHOLE_PACKED_BMLF_EXP.
+    // The rest of our code used T_UNPACKED_BM.
+          #ifdef ALLOC_WHOLE_PACKED_BMLF_EXP
+    if (wPopCnt > EXP(nBLR) * (EXP(cnLogBmWordsX+1)+1) / EXP(cnLogBmWordsX+2))
+          #else // ALLOC_WHOLE_PACKED_BMLF_EXP
     if (wWords == BitmapWordCnt(nBLR, EXP(nBLR)))
+          #endif // ALLOC_WHOLE_PACKED_BMLF_EXP
       #endif // _TEST_BM_UNPACKED
     {
         set_wr_nType(wRoot, T_UNPACKED_BM);
@@ -2247,23 +2262,33 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
         if (tp_bIsSkip(nType)) {
             int nBLR = GetBLR(pwRoot, nBL);
             Word_t wPrefix;
-            if (tp_bIsSwitch(nType)) {
+    #if defined(SKIP_TO_BITMAP) || defined(SKIP_TO_LIST)
+            if (tp_bIsSwitch(nType))
+    #endif // defined(SKIP_TO_BITMAP) || defined(SKIP_TO_LIST)
+            {
                 wPrefix = PWR_wPrefixBL(pwRoot, (Switch_t*)pwr, nBLR);
                 //assert(gwPrefix(qy) == wPrefix); exposes bug in gwPrefix
-            } else
+            }
+    #if defined(SKIP_TO_BITMAP) || defined(SKIP_TO_LIST)
+            else
+    #endif // defined(SKIP_TO_BITMAP) || defined(SKIP_TO_LIST)
     #ifdef SKIP_TO_BITMAP
-            if (nType == T_SKIP_TO_BITMAP) {
+        #ifdef SKIP_TO_LIST
+            if (nType == T_SKIP_TO_BITMAP)
+        #endif // SKIP_TO_LIST
+            {
+        #ifndef SKIP_TO_LIST
+                assert(nType == T_SKIP_TO_BITMAP);
+        #endif // #ifndef SKIP_TO_LIST
                 wPrefix = gwBitmapPrefix(qy, nBLR);
-            } else
+            }
     #endif // SKIP_TO_BITMAP
     #ifdef SKIP_TO_LIST
-            if (nType == T_SKIP_TO_LIST) {
-                wPrefix = gwListPrefix(qy, nBLR);
-            } else
-    #endif // SKIP_TO_LIST
             {
-                assert(0); // unrecognized skip type
+                assert(nType == T_SKIP_TO_LIST);
+                wPrefix = gwListPrefix(qy, nBLR);
             }
+    #endif // SKIP_TO_LIST
             if ((wKey & ~NZ_MSK(nBLR)) != wPrefix) {
                 printf("Prefix mismatch\n");
                 return 0;
@@ -10743,6 +10768,12 @@ Initialize(void)
 #else //         UNPACK_BM_VALUES
     printf("# No UNPACK_BM_VALUES\n");
 #endif // #else  UNPACK_BM_VALUES
+
+  #ifdef         ALLOC_WHOLE_PACKED_BMLF_EXP
+    printf("#    ALLOC_WHOLE_PACKED_BMLF_EXP\n");
+  #else //       ALLOC_WHOLE_PACKED_BMLF_EXP
+    printf("# No ALLOC_WHOLE_PACKED_BMLF_EXP\n");
+  #endif // else ALLOC_WHOLE_PACKED_BMLF_EXP
 
 #if defined(PACK_L1_VALUES)
     printf("#    PACK_L1_VALUES\n");
