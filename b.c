@@ -8801,49 +8801,45 @@ InsertGuts(qp, Word_t wKey, int nPos
   #endif // #ifndef DOUBLE_DOWN
 
     // Should the following be moved into the if ! switch block?
-#if (cwListPopCntMax != 0)
+  #if (cwListPopCntMax != 0)
   #if defined(EMBED_KEYS)
+    int nPopCnt;
+    if (wRoot == WROOT_NULL) {
+        nPopCnt = 0;
+        goto wRootNull;
+    }
     if (tp_bIsEk(nType)) {
         goto embeddedKeys;
 embeddedKeys:;
         // If the key will fit in an embedded list then use InsertEmbedded
         // to do the insert and avoid the overhead of inlating the list
         // and going through the heavier weight insert process.
-        int nPopCnt
-            = ((wr_nType(WROOT_NULL) == T_EMBEDDED_KEYS)
-                    && (wRoot == WROOT_NULL))
-                ? 0 : wr_nPopCnt(wRoot, nBL);
-      #ifdef EK_XV
-          DBGX(printf("\n# IG: EK nBL %d nPopCnt %d.\n", nBL, nPopCnt));
-          DBGX(printf("# Should be considering InsertEmbedded here.\n"));
-      #else // EK_XV
-          #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
-              #if ! defined(PACK_KEYS_RIGHT)
-                  #ifdef B_JUDYL
-        // JudyL supports only one embedded key.
-        assert(nPopCnt >= EmbeddedListPopCntMax(nBL));
-                  #else // B_JUDYL
+        assert(wRoot != WROOT_NULL);
+        nPopCnt = wr_nPopCnt(wRoot, nBL);
+        goto wRootNull;
+wRootNull:;
+      #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
+      #if ! defined(PACK_KEYS_RIGHT)
+      #ifndef B_JUDYL
         // This is a performance shortcut that is not necessary.
         if (nPopCnt < EmbeddedListPopCntMax(nBL)) {
             InsertEmbedded(pwRoot, nBL,
-      #ifdef _LNX
+          #ifdef _LNX
                            pwValueUp,
-      #endif // _LNX
+          #endif // _LNX
                            wKey);
             return Success;
         }
-                  #endif // #else B_JUDYL
-              #endif // ! defined(PACK_KEYS_RIGHT)
-          #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
-      #endif // #else EK_XV
-
+      #endif // #endif B_JUDYL
+      #endif // ! defined(PACK_KEYS_RIGHT)
+      #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
         // Change an embedded list into an external list to make things
         // easier for Insert.  We'll change it back later if it makes sense.
         if (nPopCnt != 0) {
             wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot
-#ifdef B_JUDYL
+      #ifdef B_JUDYL
                                       , pwValueUp
-#endif // B_JUDYL
+      #endif // B_JUDYL
                                         );
             nPos = ~SearchList(qy, /*nBLR*/ nBL, wKey);
         } else {
@@ -8860,7 +8856,7 @@ embeddedKeys:;
                     (int)PWR_xListPopCnt(pwRoot, wr_pwr(*pwRoot), nBL)));
     }
   #endif // defined(EMBED_KEYS)
-#endif // (cwListPopCntMax != 0)
+  #endif // (cwListPopCntMax != 0)
 
     pwr = wr_pwr(wRoot);
     DBGX(Log(qy, "InsertGuts"));
