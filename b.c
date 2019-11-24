@@ -190,13 +190,13 @@ AllocWords(Word_t *pw, int nWords)
 {
     (void)pw; (void)nWords;
   #ifdef EXCLUDE_MALLOC_OVERHEAD
-  #if !defined(LIBCMALLOC) || defined(__linux__)
-    return (pw[-1] & 0xfffff8) / sizeof(Word_t); // dlmalloc head word
-  #else // !defined(LIBCMALLOC) || defined(__linux__)
     return nWords;
-  #endif //#else !defined(LIBCMALLOC) || defined(__linux__)
   #else // EXCLUDE_MALLOC_OVERHEAD
+      #if !defined(LIBCMALLOC) || defined(__linux__)
+    return (pw[-1] & 0xfffff8) / sizeof(Word_t); // dlmalloc head word
+      #else // !defined(LIBCMALLOC) || defined(__linux__)
     return nWords;
+      #endif //#else !defined(LIBCMALLOC) || defined(__linux__)
   #endif // EXCLUDE_MALLOC_OVERHEAD
 }
 #endif // RAMMETRICS
