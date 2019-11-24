@@ -189,11 +189,15 @@ static Word_t
 AllocWords(Word_t *pw, int nWords)
 {
     (void)pw; (void)nWords;
+  #ifdef EXCLUDE_MALLOC_OVERHEAD
   #if !defined(LIBCMALLOC) || defined(__linux__)
     return (pw[-1] & 0xfffff8) / sizeof(Word_t); // dlmalloc head word
   #else // !defined(LIBCMALLOC) || defined(__linux__)
     return nWords;
   #endif //#else !defined(LIBCMALLOC) || defined(__linux__)
+  #else // EXCLUDE_MALLOC_OVERHEAD
+    return nWords;
+  #endif // EXCLUDE_MALLOC_OVERHEAD
 }
 #endif // RAMMETRICS
 
@@ -3119,6 +3123,7 @@ Judy1Dump(Word_t wRoot, int nBL, Word_t wPrefix)
 #endif // defined(DEBUG)
 }
 
+#if 0
 #ifdef EK_XV
 Word_t*
 InsertEkXv(qp, Word_t* pwLnX, Word_t wKey, int nPopCnt, int nPos)
@@ -3131,6 +3136,7 @@ InsertEkXv(qp, Word_t* pwLnX, Word_t wKey, int nPopCnt, int nPos)
     return &pwLnX[nPos];
 }
 #endif // EK_XV
+#endif // 0
 
 #if defined(EMBED_KEYS)
 #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
@@ -3169,14 +3175,57 @@ InsertEmbedded(Word_t *pwRoot, int nBL,
             set_wr_nType(*pwRoot, T_EMBEDDED_KEYS);
         }
     }
+  #if 0
   #ifdef EK_XV
     // InsertEmbedded doesn't work for EK_XV yet.
-    if (nPopCnt != 0) {
-        Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
-        InsertEkXv(qy, pwLnX, wKey, nPopCnt, /* nPos */ -1);
-        return; // return pwValue?
+    assert(nPopCnt != 0);
+    assert(nPopCnt != 1);
+    if (nPopCnt != 1) {
+        wKey &= MSK(1 << (LOG(nBL - 1) + 1));
+        int nSlot = 0;
+        for (; nSlot < nPopCnt; ++nSlot) {
+        switch (LOG(nBL - 1) - 2) {
+        case 0: // nBLR <= 8
+            if (((uint8_t*)pwLnX)[nSlot] > wKey) {
+                MOVE(&((uint8_t*)pwLnX)[nSlot + 1],
+                     &((uint8_t*)pwLnX)[nSlot], nPopCnt - nSlot);
+                ((uint8_t*)pwLnX)[nSlot] = wKey;
+                break;
+            }
+        case 1: // 8 < nBLR <= 16
+            if (((uint16_t*)pwLnX)[nSlot] > wKey) {
+                MOVE(&((uint16_t*)pwLnX)[nSlot + 1],
+                     &((uint16_t*)pwLnX)[nSlot], nPopCnt - nSlot);
+                ((uint16_t*)pwLnX)[nSlot] = wKey;
+                break;
+            }
+        case 2: // 16 < nBLR <= 32
+            if (((uint32_t*)pwLnX)[nSlot] > wKey) {
+                MOVE(&((uint32_t*)pwLnX)[nSlot + 1],
+                     &((uint32_t*)pwLnX)[nSlot], nPopCnt - nSlot);
+                ((uint32_t*)pwLnX)[nSlot] = wKey;
+                break;
+        }
+        Word_t* pwr = wr_pwr(*pwRoot);
+        if (nPopCnt & 1) {
+            Word_t* pwrNew
+                = (Word_t*)MyMallocGuts((nPopCnt + 1) | 1,
+  #ifdef ALIGN_EK_XV
+                                        6
+  #else // ALIGN_EK_XV
+                                        cnBitsMallocMask,
+  #endif // #else ALIGN_EK_XV
+                                        &j__AllocWordsJV);
+            COPY(pwrNew, pwr, nPopCnt);
+            MyFree(pwr, nPopCnt, &j__AllocWordsJV);
+            pwr = pwrNew;
+            set_wr_pwr(*pwRoot, pwr);
+        }
+        MOVE(&pwr[nSlot + 1], &pwr[nSlot], nPopCnt - nSlot);
+        return &pwr[nSlot];
     }
   #endif // EK_XV
+  #endif // 0
     // find the slot
     wKey &= MSK(nBL);
     int nSlot = 0;
@@ -4266,9 +4315,14 @@ lastDigit8:;
                         COPY(puc, &pcKeys[nnStart], nPopCntLoop);
                         PAD64(puc, nPopCntLoop);
                         // Create the value area and copy the values.
-                        Word_t *pwrLoop
-                            = (Word_t*)MyMalloc(MAX(3, nPopCntLoop | 1),
-                                                &j__AllocWordsJV);
+                        Word_t* pwrLoop
+                            = (Word_t*)MyMallocGuts(nPopCntLoop | 1,
+          #ifdef ALIGN_EK_XV
+                                                    (nPopCntLoop <= 3) ? 5 : 6,
+          #else // ALIGN_EK_XV
+                                                    cnBitsMallocMask,
+          #endif // #else ALIGN_EK_XV
+                                                    &j__AllocWordsJV);
                         set_wr_pwr(wRootLoop, pwrLoop);
                         for (int nnLoop = 0; nnLoop < nPopCntLoop; nnLoop++) {
                             pwrLoop[nnLoop]
@@ -4421,19 +4475,14 @@ lastDigit16:;
                             PAD64(pus, nPopCntLoop);
                         }
                         // Create the value area and copy the values.
-                        Word_t *pwrLoop;
+                        Word_t* pwrLoop
+                            = (Word_t*)MyMallocGuts(nPopCntLoop | 1,
           #ifdef ALIGN_EK_XV
-                        if (nPopCntLoop <= 3) {
-                            pwrLoop = (Word_t*)MyMallocGuts(3, 2,
-                                                            &j__AllocWordsJV);
-                        } else {
-                            pwrLoop = (Word_t*)MyMallocGuts(nPopCntLoop|1, 3,
-                                                            &j__AllocWordsJV);
-                        }
+                                                    (nPopCntLoop <= 3) ? 5 : 6,
           #else // ALIGN_EK_XV
-                        pwrLoop = (Word_t*)MyMalloc(nPopCntLoop | 1,
-                                                    &j__AllocWordsJV);
+                                                    cnBitsMallocMask,
           #endif // #else ALIGN_EK_XV
+                                                    &j__AllocWordsJV);
                         set_wr_pwr(wRootLoop, pwrLoop);
                         for (int nnLoop = 0; nnLoop < nPopCntLoop; nnLoop++) {
                             pwrLoop[nnLoop]
@@ -4610,19 +4659,14 @@ lastDigit32:;
                             PAD64(pus, nPopCntLoop);
                         }
                         // Create the value area and copy the values.
-                        Word_t *pwrLoop;
+                        Word_t* pwrLoop
+                            = (Word_t*)MyMallocGuts(nPopCntLoop | 1,
           #ifdef ALIGN_EK_XV
-                        if (nPopCntLoop <= 3) {
-                            pwrLoop = (Word_t*)MyMallocGuts(3, 2,
-                                                            &j__AllocWordsJV);
-                        } else {
-                            pwrLoop = (Word_t*)MyMallocGuts(nPopCntLoop|1, 3,
-                                                            &j__AllocWordsJV);
-                        }
+                                                    (nPopCntLoop <= 3) ? 5 : 6,
           #else // ALIGN_EK_XV
-                        pwrLoop = (Word_t*)MyMalloc(nPopCntLoop | 1,
-                                                    &j__AllocWordsJV);
+                                                    cnBitsMallocMask,
           #endif // #else ALIGN_EK_XV
+                                                    &j__AllocWordsJV);
                         set_wr_pwr(wRootLoop, pwrLoop);
                         for (int nnLoop = 0; nnLoop < nPopCntLoop; nnLoop++) {
                             pwrLoop[nnLoop]
@@ -4798,19 +4842,14 @@ lastDigit:;
                             PAD64((uint16_t*)pvLnXLoop, nPopCntLoop);
                         }
                         // Create the value area and copy the values.
-                        Word_t *pwrLoop;
+                        Word_t* pwrLoop
+                            = (Word_t*)MyMallocGuts(nPopCntLoop | 1,
           #ifdef ALIGN_EK_XV
-                        if (nPopCntLoop <= 3) {
-                            pwrLoop = (Word_t*)MyMallocGuts(3, 2,
-                                                            &j__AllocWordsJV);
-                        } else {
-                            pwrLoop = (Word_t*)MyMallocGuts(nPopCntLoop|1, 3,
-                                                            &j__AllocWordsJV);
-                        }
+                                                    (nPopCntLoop <= 3) ? 5 : 6,
           #else // ALIGN_EK_XV
-                        pwrLoop = (Word_t*)MyMalloc(nPopCntLoop | 1,
-                                                    &j__AllocWordsJV);
+                                                    cnBitsMallocMask,
           #endif // #else ALIGN_EK_XV
+                                                    &j__AllocWordsJV);
                         set_wr_pwr(wRootLoop, pwrLoop);
                         for (int nnLoop = 0; nnLoop < nPopCntLoop; nnLoop++) {
                             pwrLoop[nnLoop]
@@ -5219,19 +5258,14 @@ lastDigit8:;
                         COPY(puc, &pcKeys[nnStart], nPopCntLoop);
                         PAD64(puc, nPopCntLoop);
                         // Create the value area and copy the values.
-                        Word_t *pwrLoop;
+                        Word_t* pwrLoop
+                            = (Word_t*)MyMallocGuts(nPopCntLoop | 1,
           #ifdef ALIGN_EK_XV
-                        if (nPopCntLoop <= 3) {
-                            pwrLoop = (Word_t*)MyMallocGuts(3, 2,
-                                                            &j__AllocWordsJV);
-                        } else {
-                            pwrLoop = (Word_t*)MyMallocGuts(nPopCntLoop|1, 3,
-                                                            &j__AllocWordsJV);
-                        }
+                                                    (nPopCntLoop <= 3) ? 5 : 6,
           #else // ALIGN_EK_XV
-                        pwrLoop = (Word_t*)MyMalloc(nPopCntLoop | 1,
-                                                    &j__AllocWordsJV);
+                                                    cnBitsMallocMask,
           #endif // #else ALIGN_EK_XV
+                                                    &j__AllocWordsJV);
                         set_wr_pwr(wRootLoop, pwrLoop);
                         for (int nnLoop = 0; nnLoop < nPopCntLoop; nnLoop++) {
                             pwrLoop[nnLoop]
@@ -5434,9 +5468,14 @@ lastDigit16:;
                             PAD64(pus, nPopCntLoop);
                         }
                         // Create the value area and copy the values.
-                        Word_t *pwrLoop
-                            = (Word_t*)MyMalloc(MAX(3, nPopCntLoop | 1),
-                                                &j__AllocWordsJV);
+                        Word_t* pwrLoop
+                            = (Word_t*)MyMallocGuts(nPopCntLoop | 1,
+          #ifdef ALIGN_EK_XV
+                                                    (nPopCntLoop <= 3) ? 5 : 6,
+          #else // ALIGN_EK_XV
+                                                    cnBitsMallocMask,
+          #endif // #else ALIGN_EK_XV
+                                                    &j__AllocWordsJV);
                         set_wr_pwr(wRootLoop, pwrLoop);
                         for (int nnLoop = 0; nnLoop < nPopCntLoop; nnLoop++) {
                             pwrLoop[nnLoop]
@@ -5675,9 +5714,14 @@ lastDigit32:;
                             PAD64(pus, nPopCntLoop);
                         }
                         // Create the value area and copy the values.
-                        Word_t *pwrLoop
-                            = (Word_t*)MyMalloc(MAX(3, nPopCntLoop | 1),
-                                                &j__AllocWordsJV);
+                        Word_t* pwrLoop
+                            = (Word_t*)MyMallocGuts(nPopCntLoop | 1,
+          #ifdef ALIGN_EK_XV
+                                                    (nPopCntLoop <= 3) ? 5 : 6,
+          #else // ALIGN_EK_XV
+                                                    cnBitsMallocMask,
+          #endif // #else ALIGN_EK_XV
+                                                    &j__AllocWordsJV);
                         set_wr_pwr(wRootLoop, pwrLoop);
                         for (int nnLoop = 0; nnLoop < nPopCntLoop; nnLoop++) {
                             pwrLoop[nnLoop]
@@ -5926,9 +5970,14 @@ lastDigit:;
                             PAD64(pus, nPopCntLoop);
                         }
                         // Create the value area and copy the values.
-                        Word_t *pwrLoop
-                            = (Word_t*)MyMalloc(MAX(3, nPopCntLoop | 1),
-                                                &j__AllocWordsJV);
+                        Word_t* pwrLoop
+                            = (Word_t*)MyMallocGuts(nPopCntLoop | 1,
+          #ifdef ALIGN_EK_XV
+                                                    (nPopCntLoop <= 3) ? 5 : 6,
+          #else // ALIGN_EK_XV
+                                                    cnBitsMallocMask,
+          #endif // #else ALIGN_EK_XV
+                                                    &j__AllocWordsJV);
                         set_wr_pwr(wRootLoop, pwrLoop);
                         for (int nnLoop = 0; nnLoop < nPopCntLoop; nnLoop++) {
                             pwrLoop[nnLoop]
@@ -9148,16 +9197,13 @@ DeflateList(qp, Word_t* pwLnX, int nPopCnt)
     }
 
     // Create the value area and copy the values.
-    Word_t *pwrNew;
+    Word_t *pwrNew = (Word_t*)MyMallocGuts(nPopCnt | 1,
   #ifdef ALIGN_EK_XV
-    if (nPopCnt <= 3) {
-        pwrNew = (Word_t*)MyMallocGuts(3, 2, &j__AllocWordsJV);
-    } else {
-        pwrNew = (Word_t*)MyMallocGuts(nPopCnt | 1, 3, &j__AllocWordsJV);
-    }
+                                           (nPopCnt <= 3) ? 5 : 6,
   #else // ALIGN_EK_XV
-    pwrNew = (Word_t*)MyMalloc(nPopCnt | 1, &j__AllocWordsJV);
-  #endif // ALIGN_EK_XV
+                                           cnBitsMallocMask,
+  #endif // #else ALIGN_EK_XV
+                                           &j__AllocWordsJV);
     for (int nn = 0; nn < nPopCnt; nn++) {
         pwrNew[nn] = gpwValues(qy)[~nn];
     }
@@ -11604,6 +11650,12 @@ Initialize(void)
 #else // defined(MY_MALLOC_ALIGN)
     printf("# No MY_MALLOC_ALIGN\n");
 #endif // defined(MY_MALLOC_ALIGN)
+
+  #ifdef         EXCLUDE_MALLOC_OVERHEAD
+    printf("#    EXCLUDE_MALLOC_OVERHEAD\n");
+  #else //       EXCLUDE_MALLOC_OVERHEAD
+    printf("# No EXCLUDE_MALLOC_OVERHEAD\n");
+  #endif // else EXCLUDE_MALLOC_OVERHEAD
 
 #if defined(DEBUG_COUNT)
     printf("#    DEBUG_COUNT\n");
