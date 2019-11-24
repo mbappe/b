@@ -275,6 +275,23 @@ pre_mmap(void *addr, Word_t length, int prot, int flags, int fd, off_t offset)
 
 #endif // LIBCMALLOC
 
+#ifdef RAMMETRICS
+static Word_t
+AllocWords(Word_t *pw, int nWords)
+{
+    (void)pw; (void)nWords;
+  #ifdef EXCLUDE_MALLOC_OVERHEAD
+  #if !defined(LIBCMALLOC) || defined(__linux__)
+    return (pw[-1] & 0xfffff8) / sizeof(Word_t); // dlmalloc head word
+  #else // !defined(LIBCMALLOC) || defined(__linux__)
+    return nWords;
+  #endif //#else !defined(LIBCMALLOC) || defined(__linux__)
+  #else // EXCLUDE_MALLOC_OVERHEAD
+    return nWords;
+  #endif // EXCLUDE_MALLOC_OVERHEAD
+}
+#endif // RAMMETRICS
+
 // ****************************************************************************
 // J U D Y   M A L L O C
 //
@@ -342,13 +359,7 @@ JudyMallocX(int Words, int nSpace, int nLogAlign)
         if (Addr)
         {
             j__RequestedWordsTOT += Words;
-  #if !defined(LIBCMALLOC) || defined(__linux__)
-            // get # bytes in malloc buffer from preamble
-            Word_t zAllocWords = (((Word_t *)Addr)[-1] & ~3) / sizeof(Word_t);
-  #else // !defined(LIBCMALLOC) || defined(__linux__)
-            Word_t zAllocWords = Words;
-  #endif // #else !defined(LIBCMALLOC) || defined(__linux__)
-            j__AllocWordsTOT += zAllocWords;
+            j__AllocWordsTOT += AllocWords((void*)Addr, Words);
         }
 #endif  // RAMMETRICS
 
@@ -410,15 +421,8 @@ JudyFreeX(Word_t PWord, int Words, int nSpace)
     (void)nSpace;
 
 #ifdef  RAMMETRICS
-  #if !defined(LIBCMALLOC) || defined(__linux__)
-    // get # bytes in malloc buffer from preamble
-    Word_t zAllocWords = (((Word_t *)PWord)[-1] & ~3) / sizeof(Word_t);
-  #else // !defined(LIBCMALLOC) || defined(__linux__)
-    Word_t zAllocWords = Words;
-  #endif // #else !defined(LIBCMALLOC) || defined(__linux__)
-    j__AllocWordsTOT -= zAllocWords;
-
     j__MalFreeCnt++;        // keep track of total malloc() + free()
+    j__AllocWordsTOT -= AllocWords((void*)PWord, Words);
     j__RequestedWordsTOT -= Words;
 #endif  // RAMMETRICS
 
