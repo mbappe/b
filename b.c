@@ -1137,7 +1137,7 @@ OldList(Word_t *pwList, int nPopCnt, int nBLR, int nType)
 // EXP(cnLogBmWordsX + 1) / (EXP(cnLogBmWordsX) + 1)
 // It's a number between one and two: 1, 4/3, 8/5, 16/9, 32/17, 64/33, ...
 // A bigger cnLogBmWordsX means a bigger words per key is allowed.
-#define cnLogBmWordsX  1
+#define cnLogBmWordsX  4
 
 #ifdef BITMAP
 
