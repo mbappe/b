@@ -9396,39 +9396,31 @@ InsertAtBitmap(qp, Word_t wKey
     qv;
 
     int nBLR = nBL;
-#if defined(SKIP_TO_BITMAP)
+  #ifdef SKIP_TO_BITMAP
     if (nType == T_SKIP_TO_BITMAP) {
         nBLR = gnBLR(qy);
 
-        Word_t wPrefix;
-#if defined(PP_IN_LINK)
-        if (nBL == cnBitsPerWord) { wPrefix = 0; /* limitation */ } else
-#endif // defined(PP_IN_LINK)
-#if defined(SKIP_TO_BITMAP) && ! defined(PP_IN_LINK)
-        if (nType == T_SKIP_TO_BITMAP) {
-            wPrefix = gwBitmapPrefix(qy, nBLR);
-        } else
-#endif // defined(SKIP_TO_BITMAP) && ! defined(PP_IN_LINK)
-        { wPrefix = PWR_wPrefixBL(pwRoot, (Switch_t *)pwr, nBLR); }
+        Word_t wPrefix =
+      #ifdef PP_IN_LINK
+            (nBL == cnBitsPerWord)
+                ? 0 : PWR_wPrefixBL(pwRoot, (Switch_t*)pwr, nBLR);
+      #else // PP_IN_LINK
+            gwBitmapPrefix(qy, nBLR);
+      #endif // else PP_IN_LINK
 
-        int bPrefixMismatch;
-  #if defined(PP_IN_LINK)
-        if (nBL == cnBitsPerWord) {
-            // prefix is 0
-            bPrefixMismatch = (wKey >= EXP(nBLR));
-        } else
-  #endif // defined(PP_IN_LINK)
-        { bPrefixMismatch = ((int)LOG(1 | (wPrefix ^ wKey)) >= nBLR); }
+        int bPrefixMismatch =
+      #ifdef PP_IN_LINK
+            (nBL == cnBitsPerWord) ? (wKey >= EXP(nBLR)) :
+      #endif // PP_IN_LINK
+                ((int)LOG(1 | (wPrefix ^ wKey)) >= nBLR);
 
         if (bPrefixMismatch) {
-  #ifdef B_JUDYL
-            return InsertAtPrefixMismatch(qy, wKey, nBLR);
-  #else // B_JUDYL
-            InsertAtPrefixMismatch(qy, wKey, nBLR); return Success;
-  #endif // B_JUDYL
+            BJL(return)
+                InsertAtPrefixMismatch(qy, wKey, nBLR);
+            BJ1(return Success);
         }
     }
-#endif // defined(SKIP_TO_BITMAP)
+  #endif // SKIP_TO_BITMAP
 
     DBGI(printf("IAB SetBit(pwr " OWx" wKey " OWx") pwRoot %p\n",
                 (Word_t)pwr, wKey & MSK(nBLR), (void *)pwRoot));
