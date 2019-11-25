@@ -577,6 +577,7 @@
 
 // BM_SW_CNT_IN_WR (bmsw link count) is default only for default digit size
 // of eight.  assert(cnBitsCnt >= nBW)
+#ifdef USE_BM_SW
 #ifdef B_JUDYL
 #if cnBitsPerWord > 32
   #ifndef cnBitsInD1
@@ -598,6 +599,7 @@
   #endif // #ifndef BM_SW_CNT_IN_WR
 #endif // cnBitsPerWord > 32
 #endif // B_JUDYL
+#endif // USE_BM_SW
 
 #ifndef   NO_OFFSET_IN_SW_BM_WORD
     #undef   OFFSET_IN_SW_BM_WORD

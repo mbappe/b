@@ -2663,7 +2663,7 @@ t_ek_xv:; // the semi-colon allows for a declaration next; go figure
 #define XV_BLX(_nBL) \
         case (_nBL): \
             PF_2(_nBL); \
-            if ((nPos = LocateKey64(pwValueUp, wKey, \
+            if ((nPos = LocateKey64((uint64_t*)pwValueUp, wKey, \
                     (Word_t)2 << LOG(_nBL - 1))) >= 0) { \
                 assert(nPos < wr_nPopCnt(wRoot, nBL)); \
                 goto xv_foundIt; \
