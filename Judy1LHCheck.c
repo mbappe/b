@@ -731,7 +731,11 @@ TestJudyGet(void *J1, void *JL, void *JH, Word_t Seed, Word_t Elements)
         if (PValue == (Word_t *) NULL)
             FAILURE("JudyLGet ret PValue = NULL", 0L);
         if (*PValue != TstIndex)
+        {
+            printf("TstIndex 0x%zx PValue %p *PValue 0x%zx\n",
+                   TstIndex, PValue, *PValue);
             FAILURE("JudyLGet ret wrong Value at", elm);
+        }
 
 #ifdef TEST_HS
         PValue = (PWord_t)JudyHSGet(JH, (void *)(&TstIndex), sizeof(Word_t));
