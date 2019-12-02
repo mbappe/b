@@ -2612,6 +2612,9 @@ t_ek_xv:; // the semi-colon allows for a declaration next; go figure
   #if defined(COUNT)
         {
             int nBits = 1 << (LOG(nBL - 1) + 1);
+      #if (cnBitsInD1 < cnLogBitsPerByte)
+            if (nBits < 8) { nBits = 8; }
+      #endif // (cnBitsInD1 < cnLogBitsPerByte)
             int nn;
             for (nn = 0; nn < wr_nPopCnt(wRoot, nBL); nn++) {
                 if (((*pwValueUp >> (nn * nBits)) & MSK(nBits))
@@ -2660,15 +2663,27 @@ t_ek_xv:; // the semi-colon allows for a declaration next; go figure
 #define PF_2(pwr)
   #endif // #else PF_EK_XV_2
 
+  #if (cnBitsInD1 < cnLogBitsPerByte)
 #define XV_BLX(_nBL) \
         case (_nBL): \
             PF_2(_nBL); \
             if ((nPos = LocateKey64((uint64_t*)pwValueUp, wKey, \
-                    (Word_t)2 << LOG(_nBL - 1))) >= 0) { \
-                assert(nPos < wr_nPopCnt(wRoot, nBL)); \
+                    MAX(8, (Word_t)2 << LOG((_nBL) - 1)))) >= 0) { \
+                assert(nPos < wr_nPopCnt(wRoot, (_nBL))); \
                 goto xv_foundIt; \
             } \
             goto xv_break2
+  #else // (cnBitsInD1 < cnLogBitsPerByte)
+#define XV_BLX(_nBL) \
+        case (_nBL): \
+            PF_2(_nBL); \
+            if ((nPos = LocateKey64((uint64_t*)pwValueUp, wKey, \
+                    (Word_t)2 << LOG((_nBL) - 1))) >= 0) { \
+                assert(nPos < wr_nPopCnt(wRoot, (_nBL))); \
+                goto xv_foundIt; \
+            } \
+            goto xv_break2
+  #endif // else (cnBitsInD1 < cnLogBitsPerByte)
 
         DBGX(printf("\n# pwValueUp %p *pwValueUp 0x%zx wKey 0x%zx nBL %d\n",
                     pwValueUp, *pwValueUp, wKey, nBL));

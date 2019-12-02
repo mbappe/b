@@ -1602,7 +1602,13 @@ EmbeddedListPopCntMax(int nBL)
   #ifdef B_JUDYL
     int nKeysMax = (nBL <= (cnBitsPerWord - nBitsOverhead));
       #ifdef EK_XV
-    nKeysMax *= cnBitsPerWord / (1 << (LOG(nBL - 1) + 1));
+    nKeysMax *= cnBitsPerWord /
+          #if (cnBitsInD1 < cnLogBitsPerByte)
+            MAX(8, (1 << (LOG(nBL - 1) + 1)))
+          #else // (cnBitsInD1 < cnLogBitsPerByte)
+            (1 << (LOG(nBL - 1) + 1))
+          #endif // else (cnBitsInD1 < cnLogBitsPerByte)
+        ;
       #endif // EK_XV
       #ifdef ALIGN_EK_XV
     if (nKeysMax > 7) { nKeysMax = 7; }
@@ -5433,7 +5439,13 @@ SearchEmbeddedX(Word_t *pw,
         Word_t wSuffixLoop =
   #ifdef EK_XV
              wr_nPopCnt(*pw, nBL) > 1
-                 ? GetBits(*pwLnX, nBL, ii * (1 << (LOG(nBL - 1) + 1))) :
+                 ? GetBits(*pwLnX, nBL, ii *
+      #if (cnBitsInD1 < cnLogBitsPerByte)
+                     MAX(8, (1 << (LOG(nBL - 1) + 1)))
+      #else // (cnBitsInD1 < cnLogBitsPerByte)
+                     (1 << (LOG(nBL - 1) + 1))
+      #endif // else (cnBitsInD1 < cnLogBitsPerByte)
+                           ) :
   #endif // EK_XV
              GetBits(*pw, /* nBits */ nBL,
                      /* nLsb */ cnBitsPerWord - (nBL * (ii + 1)));

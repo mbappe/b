@@ -2311,13 +2311,13 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
     // Check for embedded bitmap before assuming nType is valid.
     if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
         if (bDump) {
-            if (nBL > cnLogBitsPerWord) {
-                printf(" nWords %4" _fw"d", EXP(nBL - cnLogBitsPerWord));
-                for (Word_t ww = 0; ww < EXP(nBL - cnLogBitsPerWord); ++ww) {
-                    if ((ww % 8) == 0) { printf("\n"); }
-                    printf(" " OWx,
-                           ((Word_t*)STRUCT_OF(pwRoot, Link_t, ln_wRoot))[ww]);
-                }
+            int nWords
+                = nBL > cnLogBitsPerWord ? EXP(nBL - cnLogBitsPerWord) : 1;
+            printf(" nWords %4d", nWords);
+            for (int ww = 0; ww < nWords; ++ww) {
+                if ((ww % 8) == 0) { printf("\n"); }
+                printf(" " OWx,
+                       ((Word_t*)STRUCT_OF(pwRoot, Link_t, ln_wRoot))[ww]);
             }
             printf("\n");
         }
@@ -2348,8 +2348,10 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
         int nBLR = GetBLR(pwRoot, nBL);
         Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR);
         if (bDump) {
+            int nWords
+                = nBLR > cnLogBitsPerWord ? EXP(nBLR - cnLogBitsPerWord) : 1;
             printf(" nBLR %2d", nBLR);
-            printf(" nWords %4" _fw"d", EXP(nBLR - cnLogBitsPerWord));
+            printf(" nWords %4d", nWords);
             printf(" wPopCnt %" _fw"d", wPopCnt);
   #ifdef BMLF_CNTS
   #ifdef BMLF_POP_COUNT_8
@@ -2366,7 +2368,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
   #endif // #else BMLF_POP_COUNT_8
   #endif // BMLF_CNTS
             Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
-            for (Word_t ww = 0; (ww < EXP(nBLR - cnLogBitsPerWord)); ww++) {
+            for (int ww = 0; ww < nWords; ww++) {
                 if ((ww % 8) == 0) {
                     printf("\n");
                 }
@@ -3726,6 +3728,7 @@ InsertCleanup(qp, Word_t wKey)
         // It doesn't handle switches yet.
 
         int nBLLn = nBLR - nBW;
+        assert(nBLLn >= cnLogBitsPerByte);
 
         for (Word_t ww = 0; ww < EXP(nBW); ww++)
         {
@@ -3758,17 +3761,26 @@ embeddedKeys:;
                 int nPopCntLn = wr_nPopCnt(wRootLn, nBLLn);
                 Word_t wBLM = MSK(nBLLn); // Bits left mask.
                 for (int nn = 1; nn <= nPopCntLn; nn++) {
+              #if (cnBitsInD1 < cnLogBitsPerWord)
+                    SetBitByByte(
+                        &((uint8_t*)pwBitmap)[
+                            ww * EXP(nBLLn - cnLogBitsPerByte)],
+                        ((wRootLn >> (cnBitsPerWord - (nn * nBLLn))) & wBLM)
+                                 );
+              #else // (cnBitsInD1 < cnLogBitsPerWord)
                     SetBit(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
                            ((wRootLn >> (cnBitsPerWord - (nn * nBLLn)))
                                & wBLM));
+              #endif // else (cnBitsInD1 < cnLogBitsPerWord)
                 }
                 continue;
             }
           #endif // defined(EMBED_KEYS)
             if (nTypeLn == T_BITMAP) {
                 Word_t *pwBitmapLn = ((BmLeaf_t*)pwrLn)->bmlf_awBitmap;
-                memcpy(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
-                       pwBitmapLn, EXP(nBLLn - 3));
+                memcpy(&((uint8_t*)pwBitmap)[
+                           ww * EXP(nBLLn - cnLogBitsPerByte)],
+                       pwBitmapLn, EXP(nBLLn - cnLogBitsPerByte));
                 Word_t wPopCntLn = gwBitmapPopCnt(qyx(Ln), nBLLn);
                 OldBitmap(pwrLn, nBLLn, wPopCntLn);
                 continue;
@@ -12702,7 +12714,13 @@ t_embedded_keys:;
       #ifdef EK_XV
                 (nType == T_EK_XV)
                     ? GetBits(*pwLnX, nBL,
-                              (nPos - wSkip) * (1 << (LOG(nBL - 1) + 1)))
+                              (nPos - wSkip)
+          #if (cnBitsInD1 < cnLogBitsPerByte)
+                                  * MAX(8, (1 << (LOG(nBL - 1) + 1)))
+          #else // (cnBitsInD1 < cnLogBitsPerByte)
+                                  * (1 << (LOG(nBL - 1) + 1))
+          #endif // (cnBitsInD1 < cnLogBitsPerByte)
+                              )
                     :
       #endif // #else EK_XV
                       GetBits(wRoot, nBL,
@@ -12722,7 +12740,13 @@ t_embedded_keys:;
       #ifdef EK_XV
                 (nType == T_EK_XV)
                     ? GetBits(*pwLnX, nBL,
-                              (nPos + wSkip) * (1 << (LOG(nBL - 1) + 1)))
+                              (nPos + wSkip)
+          #if (cnBitsInD1 < cnLogBitsPerByte)
+                                  * MAX(8, (1 << (LOG(nBL - 1) + 1)))
+          #else // (cnBitsInD1 < cnLogBitsPerByte)
+                                  * (1 << (LOG(nBL - 1) + 1))
+          #endif // (cnBitsInD1 < cnLogBitsPerByte)
+                              )
                     :
       #endif // #else EK_XV
                       GetBits(wRoot, nBL,
@@ -13974,7 +13998,7 @@ embeddedBitmap:;
                     // We skipped bits to get here.
                     Word_t wKey = *pwKey;
                     if (bPrev) wKey -= EXP(nBL); else wKey += EXP(nBL);
-                    if (((wKey ^ *pwKey) & ~MSK(nBLPrev)) == 0) {
+                    if (((wKey ^ *pwKey) & ~NZ_MSK(nBLPrev)) == 0) {
                         // There is at least one empty link in a
                         // skipped virtual switch.
                         *pwKey = wKey;
@@ -14093,7 +14117,7 @@ t_switch:;
                     // We skipped bits to get here.
                     Word_t wKey = *pwKey;
                     if (bPrev) wKey -= EXP(nBL); else wKey += EXP(nBL);
-                    if (((wKey ^ *pwKey) & ~MSK(nBLPrev)) == 0) {
+                    if (((wKey ^ *pwKey) & ~NZ_MSK(nBLPrev)) == 0) {
                         // There is at least one empty link in a
                         // skipped virtual switch.
                         *pwKey = wKey;
