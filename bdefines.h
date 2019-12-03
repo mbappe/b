@@ -93,12 +93,6 @@
   #undef  NO_UA_PARALLEL_128
   #define NO_UA_PARALLEL_128
 
-  #ifdef ALLOW_EMBEDDED_BITMAP
-    #error No ALLOW_EMBEDDED_BITMAP for B_JUDYL.
-  #endif // ALLOW_EMBEDDED_BITMAP
-  #undef  NO_ALLOW_EMBEDDED_BITMAP
-  #define NO_ALLOW_EMBEDDED_BITMAP
-
   // Allow DEFINES=-D<blah> on shared make command line for JUDY1.
   #undef USE_XX_SW_ONLY_AT_DL2
 
@@ -328,8 +322,9 @@
     #define SKIP_TO_BITMAP
   #endif // #ifndef NO_SKIP_TO_BITMAP
   #endif // #ifndef B_JUDYL
-  // Default is ALLOW_EMBEDDED_BITMAP for Judy1.
+  // Default is ALLOW_EMBEDDED_BITMAP.
   #ifndef NO_ALLOW_EMBEDDED_BITMAP
+// Not sure why we are placing this condition on ALLOW_EMBEDDED_BITMAP.
       #if !defined(cnBitsPerDigit) || (cnBitsPerDigit * 2 > cnLogBitsPerWord)
     // What are the consequences of ALLOW_EMBEDDED_BITMAP
     // if (cnBitsInD1 > cnLogBitsPerLink)?
@@ -402,8 +397,10 @@
   #endif // #ifndef UNPACK_BM_VALUES
   #endif // #ifndef PACK_BM_VALUES
 #else // B_JUDYL
+    #undef BMLF_CNTS
+    #undef BMLF_CNTS_CUM
     #ifdef ALLOW_EMBEDDED_BITMAP
-        // below assumes a 1-word Link_t
+        // below doesn't catch problems for Link_t bigger than one word
         #if defined(cnBitsInD1) && (cnBitsInD1 <= cnLogBitsPerWord)
             #define _D1BmFitsInLink
         #elif defined(cnBitsPerDigit) && (cnBitsPerDigit <= cnLogBitsPerWord)
@@ -620,20 +617,22 @@
 #endif // VALUE_IN_DUMMY
 #endif // B_JUDYL
 
+// _RETURN_NULL_TO_INSERT_AGAIN was created to deal with the issue of
+// InsertGuts calling back into Insert for the final insert but Insert not
+// having a pwLnX parameter and not being able to easily figure it out
+// for the pLn for which it is called.
+// Instead of calling back into Insert we simply return NULL to cause
+// Insert to loop back to the top with the pwLnX that it already knows.
 #ifdef B_JUDYL
-#ifdef BMLF_CNTS // implies B_JUDYL
-#if cnDummiesInLink == 0
-#ifndef BMLF_POP_COUNT_32
-#ifndef BMLF_POP_COUNT_8
-#ifndef BMLF_POP_COUNT_1
+#ifndef BMLF_POP_COUNT_32 // Why?
+#ifndef BMLF_POP_COUNT_8 // Why?
+#ifndef BMLF_POP_COUNT_1 // Why?
 #ifdef EMBED_KEYS
   #define _RETURN_NULL_TO_INSERT_AGAIN
 #endif // EMBED_KEYS
 #endif // #ifndef BMLF_POP_COUNT_1
 #endif // #ifndef BMLF_POP_COUNT_8
 #endif // #ifndef BMLF_POP_COUNT_32
-#endif // cnDummiesInLink == 0
-#endif // BMLF_CNTS
 #endif // B_JUDYL
 
 // gcc does a crappy job with 64-bit vectors.

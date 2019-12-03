@@ -88,11 +88,20 @@
 && regress \
 && DEFINES="-DcnBitsPerDigit=6 -DDEBUG" make clean default \
 && regress \
+&& DEFINES="-DcnBitsPerDigit=6 -DNO_ALLOW_EMBEDDED_BITMAP -DDEBUG" \
+   make clean default \
+&& regress \
 && DEFINES="-DcnBitsPerDigit=5 -DDEBUG" make clean default \
+&& regress \
+&& DEFINES="-DcnBitsPerDigit=5 -DNO_ALLOW_EMBEDDED_BITMAP -DDEBUG" \
+   make clean default \
 && regress \
 && DEFINES="-DcnBitsPerDigit=4 -DDEBUG" make clean default \
 && regress \
 && DEFINES="-DcnBitsPerDigit=3 -DDEBUG" make clean default \
+&& regress \
+&& DEFINES="-DcnBitsPerDigit=3 -DNO_ALLOW_EMBEDDED_BITMAP -DDEBUG" \
+   make clean default \
 && regress \
 && DEFINES="-DcnBitsPerDigit=2 -DDEBUG" make clean default \
 && regress \

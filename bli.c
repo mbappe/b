@@ -2049,7 +2049,11 @@ t_bitmap:;
                 // enough it's faster to just always count from the same
                 // end rather than going to the trouble of figuring out
                 // which end is closer.
+          #ifdef _BMLF_BM_IN_LNX
+                Word_t *pwBitmap = pwValueUp;
+          #else // _BMLF_BM_IN_LNX
                 Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
+          #endif // else _BMLF_BM_IN_LNX
                 if ((nBLR > 8) && (wKey & EXP(nBLR - 1))) {
                     wPopCnt = gwBitmapPopCnt(qy, nBLR);
                     if (wPopCnt == 0) {
@@ -2156,16 +2160,19 @@ t_bitmap:;
             int bBitIsSet = 1;
       #else // BMLF_POP_COUNT_1_NO_TEST
             int bBitIsSet =
+          #ifdef _BMLF_BM_IN_LNX
+                BitIsSet(pwValueUp, wKey & MSK(cnBitsInD1));
+          #else // _BMLF_BM_IN_LNX
      // We don't need/want to check for WROOT_NULL for embedded bitmap.
                 ((wr_nType(WROOT_NULL) == T_BITMAP)
                         && (!cbEmbeddedBitmap || (nBLR > cnLogBitsPerLink))
                         && (wRoot == WROOT_NULL))
                     ? 0 :
-          #ifdef USE_XX_SW_ONLY_AT_DL2
+              #ifdef USE_XX_SW_ONLY_AT_DL2
                 BitIsSet((nBLR <= cnLogBitsPerLink)
                              ? (Word_t*)pLn : ((BmLeaf_t*)pwr)->bmlf_awBitmap,
                          wKey & MSK(nBLR));
-          #else // USE_XX_SW_ONLY_AT_DL2
+              #else // USE_XX_SW_ONLY_AT_DL2
                 ((cn2dBmMaxWpkPercent == 0) || (nBLR == cnBitsInD1))
                     ? (cbEmbeddedBitmap && (cnBitsInD1 <= cnLogBitsPerWord))
                         ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
@@ -2183,7 +2190,8 @@ t_bitmap:;
                                        ? (Word_t*)pLn
                                        : ((BmLeaf_t*)pwr)->bmlf_awBitmap,
                                    wKey & MSK(cnBitsLeftAtDl2));
-          #endif // #else USE_XX_SW_ONLY_AT_DL2
+              #endif // #else USE_XX_SW_ONLY_AT_DL2
+          #endif // else _BMLF_BM_IN_LNX
       #endif // BMLF_POP_COUNT_1_NO_TEST
             if (bBitIsSet) {
       #if defined(REMOVE)
@@ -2346,7 +2354,12 @@ t_unpacked_bm:;
           #ifdef PREFETCH_BM_VAL
             PREFETCH(&pwBitmapValues[wKey & MSK(cnBitsInD1)]);
           #endif // PREFETCH_BM_VAL
-            if (BitIsSet(((BmLeaf_t*)pwr)->bmlf_awBitmap,
+            if (BitIsSet(
+          #ifdef _BMLF_BM_IN_LNX
+                         pwValueUp,
+          #else // _BMLF_BM_IN_LNX
+                         ((BmLeaf_t*)pwr)->bmlf_awBitmap,
+          #endif // else _BMLF_BM_IN_LNX
                          wKey & MSK(cnBitsInD1)))
             {
                 return &pwBitmapValues[wKey & MSK(cnBitsInD1)];

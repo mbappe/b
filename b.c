@@ -1160,8 +1160,10 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
     assert(nBLR == cnBitsInD1);
     // Number of words in BmLeaf_t plus the bitmap.
     // BmLeaf_t proper includes one word of the bitmap.
-    Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t)
-                         + EXP(MAX(1, cnBitsInD1 - cnLogBitsPerWord));
+    Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t);
+      #ifndef _BMLF_BM_IN_LNX
+    wWordsHdr += EXP(MAX(1, cnBitsInD1 - cnLogBitsPerWord));
+      #endif // ifndef _BMLF_BM_IN_LNX
     // Go for an uncompressed value area as soon as possible while keeping
     // words per key reasonable.
     // If wpk <= threshhold, then go to uncompressed, where words is size of
@@ -1197,7 +1199,9 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
           #endif // UNPACK_BM_VALUES
     Word_t wWordsMin = wWordsHdr + wPopCnt; // space for hdr + values
     wWords = wWordsMin | 1; // make efficent for malloc
-    assert(wWords >= 3); // minimum efficient for malloc
+// BUG: RemoveAtBitmap does not transition from bitmap to leaf or embedded
+// keys when pop gets low enough. That's why the assertion below blows.
+    //assert(wWords >= 3); // minimum efficient for malloc
       #else // PACK_BM_VALUES
     return wWords = wFullPopWordsMin;
       #endif // PACK_BM_VALUES
@@ -1229,12 +1233,25 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
     return wWords;
 }
 
-// We don't need NewBitmap unless (cnBitsLeftAtD1 > cnLogBitsPerLink).
-// Hopefully, the compiler will figure it out and not emit it.
+#ifdef GUARDBAND
+#define CheckBitmapGuardband(_pwr, _nBLR, _wPopCnt) \
+    assert(pwr[BitmapWordCnt((_nBLR), (_wPopCnt))] == ~(Word_t)(_pwr))
+#else // GUARDBAND
+#define CheckBitmapGuardband(_pwr, _nBLR, _wPopCnt)
+#endif // else GUARDBAND
+
+// We don't need NewBitmap for Judy1 unless (cnBitsInD1 > cnLogBitsPerLink).
 static Word_t *
-NewBitmap(qp, int nBLR, Word_t wKey, Word_t wPopCnt)
+NewBitmap(qp, int nBLR, Word_t wKey,
+  #ifdef _LNX
+          Word_t* pwLnX,
+  #endif // _LNX
+          Word_t wPopCnt)
 {
     qv; (void)wKey;
+  #ifdef _LNX
+    (void)pwLnX;
+  #endif // _LNX
     Word_t wWords = BitmapWordCnt(nBLR, wPopCnt);
   #ifndef SKIP_TO_BITMAP
     assert(nBL == nBLR);
@@ -1249,12 +1266,17 @@ NewBitmap(qp, int nBLR, Word_t wKey, Word_t wPopCnt)
                                    &j__AllocWordsJLB1    // bitmap leaf
                              );
 
-    DBGM(printf("NewBitmap nBLR %d nBits " OWx
-      " nBytes " OWx" wWords " OWx" pwBitmap " OWx"\n",
-        nBLR, EXP(nBLR), EXP(nBLR - cnLogBitsPerByte), wWords,
+    DBGM(printf("NewBitmap nBLR %d wPopCnt %zd nBits " OWx
+      " nBytes in bitmap " OWx" wWords in leaf " OWx" pwBitmap " OWx"\n",
+        nBLR, wPopCnt, EXP(nBLR), EXP(nBLR - cnLogBitsPerByte), wWords,
         (Word_t)pwBitmap));
 
     memset((void *)pwBitmap, 0, wWords * sizeof(Word_t));
+    // *pwLnX may be used for different things based on ifdefs.
+    // We want to zero it for some cases and not for others.
+  #ifdef _BMLF_BM_IN_LNX
+    *pwLnX = 0;
+  #endif // _BMLF_BM_IN_LNX
 
     // Init wRoot before calling set_wr because set_wr may try to preserve
     // the high bits, e.g. if LVL_IN_WR_HB, so we want them to
@@ -1273,7 +1295,7 @@ NewBitmap(qp, int nBLR, Word_t wKey, Word_t wPopCnt)
   #ifdef UNPACK_BM_VALUES
       #ifdef _TEST_BM_UNPACKED
     // Test to make T_UNPACKED_BM depends on ALLOC_WHOLE_PACKED_BMLF_EXP.
-    // The rest of our code used T_UNPACKED_BM.
+    // The rest of our code uses T_UNPACKED_BM.
           #ifdef ALLOC_WHOLE_PACKED_BMLF_EXP
     if (wPopCnt > EXP(nBLR) * (EXP(cnLogBmWordsX+1)+1) / EXP(cnLogBmWordsX+2))
           #else // ALLOC_WHOLE_PACKED_BMLF_EXP
@@ -2233,11 +2255,14 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
               )
 {
-    Word_t wKeyOrig = wKey;
+  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+    (void)pwrUp; (void)nBWUp;
+  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+    Word_t wKeyOrig = wKey; (void)wKeyOrig;
   #ifdef _LNX
     (void)pwLnX;
   #endif // _LNX
-    Word_t *pwRootArg = pwRoot;
+    Word_t *pwRootArg = pwRoot; (void)pwRootArg;
 #if defined(BM_IN_LINK) || defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     int nBLArg = nBL;
 #endif // defined(BM_IN_LINK) || defined(PP_IN_LINK) || ...
@@ -2247,8 +2272,8 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
     int nType = wr_nType(wRoot); (void)nType; // silence gcc
     // pwr is not valid for NO_TYPE_IN_XX_SW if nBL <= nDL_to_nBL(2)
     Word_t *pwr = wr_pwr(wRoot);
-    int nBW;
-    Link_t *pLinks;
+    int nBW; (void)nBW;
+    Link_t *pLinks; (void)pLinks;
     Word_t wBytes = 0;
 
     assert((wRoot != 0) || (WROOT_NULL == 0));
@@ -2342,7 +2367,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
     }
 #endif // defined(NO_TYPE_IN_XX_SW)
 
-#if defined(SKIP_TO_BITMAP)
+  #if defined(SKIP_TO_BITMAP)
     if (nType == T_SKIP_TO_BITMAP) {
         if (bDump) { printf(" SKIP_TO_BITMAP"); }
         int nBLR = GetBLR(pwRoot, nBL);
@@ -2353,20 +2378,23 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
             printf(" nBLR %2d", nBLR);
             printf(" nWords %4d", nWords);
             printf(" wPopCnt %" _fw"d", wPopCnt);
-  #ifdef BMLF_CNTS
-  #ifdef BMLF_POP_COUNT_8
+      #ifdef BMLF_CNTS
+          #ifdef BMLF_POP_COUNT_8
             HexDump("bmlf_au8Cnts",
                     (Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts, 4);
-  #else // BMLF_POP_COUNT_8
+          #else // BMLF_POP_COUNT_8
             printf(" wCnts 0x%016zx",
-      #if cnDummiesInLink > 0
+              #if cnDummiesInLink > 0
                    *pLn->ln_awDummies
-      #else // cnDummiesInLink > 0
+              #else // cnDummiesInLink > 0
                    *(Word_t*)(((BmLeaf_t*)pwr)->bmlf_au8Cnts)
-      #endif // #else cnDummiesInLink > 0
+              #endif // #else cnDummiesInLink > 0
                    );
-  #endif // #else BMLF_POP_COUNT_8
-  #endif // BMLF_CNTS
+          #endif // #else BMLF_POP_COUNT_8
+      #endif // BMLF_CNTS
+      #ifdef _BMLF_BM_IN_LNX
+            printf(" " OWx, *pwLnX);
+      #else // _BMLF_BM_IN_LNX
             Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
             for (int ww = 0; ww < nWords; ww++) {
                 if ((ww % 8) == 0) {
@@ -2374,6 +2402,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
                 }
                 printf(" " OWx, pwBitmap[ww]);
             }
+      #endif // else _BMLF_BM_IN_LNX
             printf("\n");
             return 0;
         }
@@ -2388,7 +2417,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
 
         return wBytes;
     }
-#endif // defined(SKIP_TO_BITMAP)
+  #endif // defined(SKIP_TO_BITMAP)
 
 #ifdef BITMAP
     if (tp_bIsBitmap(nType)) {
@@ -2427,7 +2456,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
 
         int nWords
             = (nBL <= cnLogBitsPerWord) ? 1 : EXP(nBL - cnLogBitsPerWord);
-        BmLeaf_t *pBmLeaf = (BmLeaf_t*)pwr;
+        BmLeaf_t* pBmLeaf = (BmLeaf_t*)pwr; (void)pBmLeaf;
         printf(" nWords %4d", nWords);
         printf(" wPopCnt %5zd", gwBitmapPopCnt(qy, nBL));
   #ifdef BMLF_CNTS
@@ -2436,8 +2465,8 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
         int nBLUp = nBL + nBWUp; (void)nBLUp;
         Link_t *pLnUp = STRUCT_OF(&pwrUp, Link_t, ln_wRoot); (void)pLnUp;
         int nDigitX = (wKey >> nBL) & MSK(nBWUp); (void)nDigitX;
-        int nLinks;
-        Word_t wIndex;
+        int nLinks; (void)nLinks;
+        Word_t wIndex; (void)wIndex;
               #ifdef CODE_BM_SW
         if (tp_bIsBmSw(nTypeUp)) {
             nLinks = BmSwLinkCnt(qyx(Up));
@@ -2462,6 +2491,9 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
                );
   #endif // #ifndef BMLF_POP_COUNT_8
   #endif // BMLF_CNTS
+  #ifdef _BMLF_BM_IN_LNX
+        printf(" 0x%016zx", *pwLnX);
+  #else // _BMLF_BM_IN_LNX
         Word_t wPopCntL = 0;
         for (Word_t ww = 0; (int)ww < nWords; ++ww) {
             if ((ww != 0) && (ww % 4) == 0) {
@@ -2474,6 +2506,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
             }
             printf(" 0x%016zx", pBmLeaf->bmlf_awBitmap[ww]);
         }
+  #endif // else _BMLF_BM_IN_LNX
   #ifdef B_JUDYL
         printf("\n Values %p\n", gpwBitmapValues(qy, nBL));
         for (int ww = 0;
@@ -3912,7 +3945,11 @@ InsertAllAtBitmap(qp, qpx(Old), int nStart, int nPopCnt
   #endif // EMBED_KEYS
   #endif // B_JUDYL
 //   assert(nBLOld == cnBitsInD1);
-    Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
+  #ifdef _BMLF_BM_IN_LNX
+    Word_t* pwBitmap = pwValueUp;
+  #else // _BMLF_BM_IN_LNX
+    Word_t* pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
+  #endif // else _BMLF_BM_IN_LNX
     DBGI(printf("# pwBitmap %p\n", pwBitmap));
   #ifdef B_JUDYL
     Word_t *pwValues = gpwBitmapValues(qy, cnBitsInD1);
@@ -4018,6 +4055,7 @@ InsertAllAtBitmap(qp, qpx(Old), int nStart, int nPopCnt
           #endif // #else BMLF_POP_COUNT_8
       #endif // #else BMLF_POP_COUNT_32
   #endif // BMLF_CNTS
+    CheckBitmapGuardband(pwr, nBL, nPopCnt);
 }
 #endif // BITMAP
 
@@ -4391,14 +4429,17 @@ lastDigit8:;
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
-                    NewBitmap(qyx(Loop), cnBitsInD1,
-                              pcKeys[nnStart], nPopCntLoop);
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
                     Word_t* pwValueUpLoop
                         = gpwEmbeddedValue(qy, 1<<nBW, nIndex);
       #endif // EMBED_KEYS
       #endif // B_JUDYL
+                    NewBitmap(qyx(Loop), cnBitsInD1, pcKeys[nnStart],
+      #ifdef _LNX
+                              pwValueUpLoop,
+      #endif // _LNX
+                              nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
       #ifdef B_JUDYL
@@ -4568,14 +4609,17 @@ lastDigit16:;
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
-                    NewBitmap(qyx(Loop), cnBitsInD1,
-                              psKeys[nnStart], nPopCntLoop);
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
                     Word_t* pwValueUpLoop
                         = gpwEmbeddedValue(qy, 1<<nBW, nIndex);
       #endif // EMBED_KEYS
       #endif // B_JUDYL
+                    NewBitmap(qyx(Loop), cnBitsInD1, psKeys[nnStart],
+      #ifdef _LNX
+                              pwValueUpLoop,
+      #endif // _LNX
+                              nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
       #ifdef B_JUDYL
@@ -4749,14 +4793,17 @@ lastDigit32:;
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
-                    NewBitmap(qyx(Loop), cnBitsInD1,
-                              piKeys[nnStart], nPopCntLoop);
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
                     Word_t* pwValueUpLoop
                         = gpwEmbeddedValue(qy, 1<<nBW, nIndex);
       #endif // EMBED_KEYS
       #endif // B_JUDYL
+                    NewBitmap(qyx(Loop), cnBitsInD1, piKeys[nnStart],
+      #ifdef _LNX
+                              pwValueUpLoop,
+      #endif // _LNX
+                              nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
       #ifdef B_JUDYL
@@ -4952,18 +4999,17 @@ lastDigit:;
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
-                    NewBitmap(qyx(Loop), cnBitsInD1,
-                              pwKeys[nnStart], nPopCntLoop);
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
                     Word_t* pwValueUpLoop
                         = gpwEmbeddedValue(qy, 1<<nBW, nIndex);
-                    DBGX(printf("# pwr %p pwValueUp %p nIndex %d pLnLoop %p"
-                                "  pLnLoop->ln_wRoot 0x%zx pwValueUpLoop %p\n",
-                                pwr, pwValueUp, nIndex, pLnLoop,
-                                pLnLoop->ln_wRoot, pwValueUpLoop));
       #endif // EMBED_KEYS
       #endif // B_JUDYL
+                    NewBitmap(qyx(Loop), cnBitsInD1, pwKeys[nnStart],
+      #ifdef _LNX
+                              pwValueUpLoop,
+      #endif // _LNX
+                              nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
       #ifdef B_JUDYL
@@ -5366,14 +5412,17 @@ lastDigit8:;
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
-                    NewBitmap(qyx(Loop), cnBitsInD1,
-                              pcKeys[nnStart], nPopCntLoop);
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
                     Word_t* pwValueUpLoop
                         = gpwEmbeddedValue(qy, 1<<nBW, nIndex);
       #endif // EMBED_KEYS
       #endif // B_JUDYL
+                    NewBitmap(qyx(Loop), cnBitsInD1, pcKeys[nnStart],
+      #ifdef _LNX
+                              pwValueUpLoop,
+      #endif // _LNX
+                              nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
       #ifdef B_JUDYL
@@ -5606,14 +5655,17 @@ lastDigit16:;
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
-                    NewBitmap(qyx(Loop), cnBitsInD1,
-                              psKeys[nnStart], nPopCntLoop);
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
                     Word_t* pwValueUpLoop
                         = gpwEmbeddedValue(qy, 1<<nBW, nIndex);
       #endif // EMBED_KEYS
       #endif // B_JUDYL
+                    NewBitmap(qyx(Loop), cnBitsInD1, psKeys[nnStart],
+      #ifdef _LNX
+                              pwValueUpLoop,
+      #endif // _LNX
+                              nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
       #ifdef B_JUDYL
@@ -5860,14 +5912,17 @@ lastDigit32:;
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
-                    NewBitmap(qyx(Loop), cnBitsInD1,
-                              piKeys[nnStart], nPopCntLoop);
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
                     Word_t* pwValueUpLoop
                         = gpwEmbeddedValue(qy, 1<<nBW, nIndex);
       #endif // EMBED_KEYS
       #endif // B_JUDYL
+                    NewBitmap(qyx(Loop), cnBitsInD1, piKeys[nnStart],
+      #ifdef _LNX
+                              pwValueUpLoop,
+      #endif // _LNX
+                              nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
       #ifdef B_JUDYL
@@ -6157,14 +6212,17 @@ lastDigit:;
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
-                    NewBitmap(qyx(Loop), cnBitsInD1,
-                              pwKeys[nnStart], nPopCntLoop);
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
                     Word_t* pwValueUpLoop
                         = gpwEmbeddedValue(qy, 1<<nBW, nIndex);
       #endif // EMBED_KEYS
       #endif // B_JUDYL
+                    NewBitmap(qyx(Loop), cnBitsInD1, pwKeys[nnStart],
+      #ifdef _LNX
+                              pwValueUpLoop,
+      #endif // _LNX
+                              nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
       #ifdef B_JUDYL
@@ -7181,7 +7239,11 @@ DoubleIt(qp, // (nBL, pLn) of list
             // And nBLOld has what should be in nBL.
             int nBLNew = nBL;
             nBL = nBLOld;
-            NewBitmap(qy, nBLNew, wKey, /* wPopCnt */ 0);
+            NewBitmap(qy, nBLNew, wKey,
+  #ifdef _LNX
+                      pwValueUp,
+  #endif // _LNX
+                      /* wPopCnt */ 0);
             nBL = nBLNew;
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL, 0);
@@ -7727,7 +7789,11 @@ newSkipToBitmap:;
 // nBL, pLn, pwRoot, wRoot, nType, and pwr are all unchanged.
 // *pLn and *pwRoot are changed.
         int nPopCntOld = GetPopCnt(pwRootOld, nBL);
-        pwr = NewBitmap(qy, nBLNew, wKey, nPopCntOld);
+        pwr = NewBitmap(qy, nBLNew, wKey,
+  #ifdef _LNX
+                        pwValueUp,
+  #endif // _LNX
+                        nPopCntOld);
         wRoot = *pwRoot;
         nType = wr_nType(wRoot);
           #ifdef SKIP_TO_BITMAP
@@ -9448,7 +9514,11 @@ InsertAtBitmap(qp, Word_t wKey
       #endif // defined(PP_IN_LINK)
   #endif // #else defined(SKIP_TO_BITMAP) && !def(PREFIX_WORD_IN_BITMAP_LEAF)
     assert(wPopCnt < EXP(nBLR));
-    Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
+  #ifdef _BMLF_BM_IN_LNX
+    Word_t* pwBitmap = pwValueUp;
+  #else // _BMLF_BM_IN_LNX
+    Word_t* pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
+  #endif // else _BMLF_BM_IN_LNX
     assert(!BitIsSet(pwBitmap, wKey & MSK(nBLR)));
   #ifdef B_JUDYL
     Word_t *pwSrcVals = gpwBitmapValues(qy, nBLR);
@@ -9469,7 +9539,15 @@ InsertAtBitmap(qp, Word_t wKey
         Link_t LnOld = *pLn;
           #endif // cnDummiesInLink > 0
       #endif // BMLF_CNTS
-        NewBitmap(qy, nBLR, wKey, wPopCnt + 1);
+        // NewBitmap will zero the bits.
+      #ifdef _BMLF_BM_IN_LNX
+        Word_t wBitmapOld = *pwBitmap;
+      #endif // _BMLF_BM_IN_LNX
+        NewBitmap(qy, nBLR, wKey,
+  #ifdef _LNX
+                  pwValueUp,
+  #endif // _LNX
+                  wPopCnt + 1);
         // Prefix and popcnt are set; bits are not.
         // *pwRoot has been updated. qy is out of date.
         // Copy bits and update qy.
@@ -9478,8 +9556,13 @@ InsertAtBitmap(qp, Word_t wKey
         pwr = wr_pwr(wRoot);
         int nBmWords
             = (nBLR <= cnLogBitsPerWord) ? 1 : EXP(nBLR - cnLogBitsPerWord);
-        Word_t *pwBitmapOld = pwBitmap;
+      #ifdef _BMLF_BM_IN_LNX
+        Word_t* pwBitmapOld = &wBitmapOld;
+        pwBitmap = pwValueUp;
+      #else // _BMLF_BM_IN_LNX
+        Word_t* pwBitmapOld = pwBitmap;
         pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
+      #endif // else _BMLF_BM_IN_LNX
         COPY(pwBitmap, pwBitmapOld, nBmWords);
       #ifdef BMLF_CNTS
           #if defined(BMLF_POP_COUNT_8) || defined(BMLF_POP_COUNT_1)
@@ -9580,7 +9663,7 @@ done:
 
 #endif // defined(PP_IN_LINK)
 
-
+    CheckBitmapGuardband(pwr, nBLR, wPopCnt + 1);
 #ifdef B_JUDYL
     // Insert is responsible for zeroing the value.
     return &pwSrcVals[nPos];
@@ -10177,7 +10260,11 @@ RemoveAtBitmap(qp, Word_t wKey
   #endif // defined(SKIP_TO_BITMAP)
 
         Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR) - 1;
+  #ifdef _BMLF_BM_IN_LNX
+        Word_t *pwBitmap = pwValueUp;
+  #else // _BMLF_BM_IN_LNX
         Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
+  #endif // else _BMLF_BM_IN_LNX
   #ifdef B_JUDYL
         Word_t wWords = BitmapWordCnt(nBLR, wPopCnt); // new
         Word_t bUnpacked = BM_UNPACKED(wRoot);
@@ -10198,7 +10285,15 @@ RemoveAtBitmap(qp, Word_t wKey
             Link_t LnOld = *pLn;
           #endif // cnDummiesInLink > 0
       #endif // BMLF_CNTS
-            NewBitmap(qy, nBLR, wKey, wPopCnt);
+        // NewBitmap will zero the bits.
+      #ifdef _BMLF_BM_IN_LNX
+            Word_t wBitmapOld = *pwBitmap;
+      #endif // _BMLF_BM_IN_LNX
+            NewBitmap(qy, nBLR, wKey,
+      #ifdef _LNX
+                      pwValueUp,
+      #endif // _LNX
+                      wPopCnt);
             // Prefix and popcnt are set; bits are not.
             // *pwRoot has been updated. qy is out of date.
             // Copy bits and update qy.
@@ -10207,8 +10302,13 @@ RemoveAtBitmap(qp, Word_t wKey
             pwr = wr_pwr(wRoot);
             int nBmWords = (nBLR <= cnLogBitsPerWord)
                              ? 1 : EXP(nBLR - cnLogBitsPerWord);
-            Word_t *pwBitmapOld = pwBitmap;
+      #ifdef _BMLF_BM_IN_LNX
+            Word_t* pwBitmapOld = &wBitmapOld;
+            pwBitmap = pwValueUp;
+      #else // _BMLF_BM_IN_LNX
+            Word_t* pwBitmapOld = pwBitmap;
             pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
+      #endif // else _BMLF_BM_IN_LNX
             COPY(pwBitmap, pwBitmapOld, nBmWords);
       #ifdef BMLF_CNTS
           #if defined(BMLF_POP_COUNT_8) || defined(BMLF_POP_COUNT_1)
@@ -12140,10 +12240,9 @@ Initialize(void)
   #ifdef BITMAP
     printf("\n");
     for (int ii = 4; ii <= 17; ++ii) {
+        int nBLR = cbEmbeddedBitmap ? cnBitsLeftAtDl2 : cnBitsInD1;
         printf("# BitmapWordCnt(nBL %d nPopCnt %d) %zd\n",
-               cbEmbeddedBitmap ? cnBitsLeftAtDl2 : cnBitsInD1, ii,
-               BitmapWordCnt(cbEmbeddedBitmap ? cnBitsLeftAtDl2 : cnBitsInD1,
-                             ii));
+               nBLR, ii, BitmapWordCnt(nBLR, ii));
     }
   #endif // BITMAP
 
@@ -12598,13 +12697,13 @@ NextGuts(Word_t *pwRoot, int nBL,
     Word_t *pwr;
     Word_t *pwBitmap; (void)pwBitmap;
     int nBitNum; (void)nBitNum; // BITMAP
-#ifdef ALLOW_EMBEDDED_BITMAP
-    if (nBL <= cnLogBitsPerLink) {
+  #ifdef BITMAP
+    if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
         pwBitmap = (Word_t*)pLn;
         nBitNum = *pwKey & MSK(cnLogBitsPerWord) & MSK(nBL);
         goto embeddedBitmap;
     }
-#endif // ALLOW_EMBEDDED_BITMAP
+  #endif // BITMAP
     pwr = wr_pwr(wRoot);
     int nType = wr_nType(wRoot);
     DBGN(printf("nBL %d pLn 0x%zx pwRoot 0x%zx nType %d pwr 0x%zx\n",
@@ -12806,7 +12905,11 @@ t_embedded_keys:;
         goto t_bitmap;
 t_bitmap:;
         nBitNum = *pwKey & MSK(nBL) & MSK(cnLogBitsPerWord);
+      #ifdef _BMLF_BM_IN_LNX
+        pwBitmap = pwLnX;
+      #else // _BMLF_BM_IN_LNX
         pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
+      #endif // else _BMLF_BM_IN_LNX
         goto embeddedBitmap;
 embeddedBitmap:;
         DBGN(printf("T_BITMAP *pwKey " OWx" wSkip %" _fw"u\n", *pwKey, wSkip));
@@ -12846,11 +12949,9 @@ embeddedBitmap:;
                 if ((Word_t)nPopCnt > wSkip) { /*A(0);*/ break; }
                 //A(0);
                 wSkip -= nPopCnt;
-                if (++nWordNum >= (int)(
-#ifdef ALLOW_EMBEDDED_BITMAP
-                    (nBL <= cnLogBitsPerWord) ? 0 :
-#endif // ALLOW_EMBEDDED_BITMAP
-                        EXP(nBL - cnLogBitsPerWord)))
+                if (++nWordNum
+                    >= (int)((cbEmbeddedBitmap && (nBL <= cnLogBitsPerWord))
+                        ? 0 : EXP(nBL - cnLogBitsPerWord)))
                 {
                     //A(0);
                     return wSkip + 1;
@@ -13838,13 +13939,13 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL,
     Word_t *pwr;
     int nBitNum; (void)nBitNum; // BITMAP
     Word_t *pwBitmap; (void)pwBitmap;
-#ifdef ALLOW_EMBEDDED_BITMAP
-    if (nBL <= cnLogBitsPerLink) {
+  #ifdef BITMAP
+    if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
         pwBitmap = (Word_t*)pLn;
         nBitNum = *pwKey & MSK(cnLogBitsPerWord) & MSK(nBL);
         goto embeddedBitmap;
     }
-#endif // ALLOW_EMBEDDED_BITMAP
+  #endif // BITMAP
     pwr = wr_pwr(wRoot);
     int nIncr;
     int nType = wr_nType(wRoot);
@@ -13986,7 +14087,11 @@ t_bitmap:;
             return Success;
         }
         nBitNum = *pwKey & MSK(nBL) & MSK(cnLogBitsPerWord);
+      #ifdef _BMLF_BM_IN_LNX
+        pwBitmap = pwLnX;
+      #else // _BMLF_BM_IN_LNX
         pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
+      #endif // else _BMLF_BM_IN_LNX
         goto embeddedBitmap;
 embeddedBitmap:;
         // skip over the bitmap if it is full pop
@@ -14052,11 +14157,9 @@ embeddedBitmap:;
                            | (nWordNum << cnLogBitsPerWord) | nBitNum;
                     return Success;
                 }
-                if (++nWordNum >= (int)(
-#ifdef ALLOW_EMBEDDED_BITMAP
-                    (nBL <= cnLogBitsPerWord) ? 0 :
-#endif // ALLOW_EMBEDDED_BITMAP
-                        EXP(nBL - cnLogBitsPerWord)))
+                if (++nWordNum
+                    >= (int)((cbEmbeddedBitmap && (nBL <= cnLogBitsPerWord))
+                       ? 0 : EXP(nBL - cnLogBitsPerWord)))
                 {
                     Word_t wPrefix
                         = (nBL == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBL);

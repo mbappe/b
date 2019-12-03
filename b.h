@@ -2712,16 +2712,29 @@ typedef struct {
 
 #define cnLogBitsPerLink  ((int)LOG(sizeof(Link_t)) + cnLogBitsPerByte)
 
-#ifdef USE_XX_SW_ONLY_AT_DL2
+// cbEmbeddedBitmap is for Judy1.
+#ifdef USE_XX_SW_ONLY_AT_DL2 // never defined for B_JUDYL yet
   #ifndef ALLOW_EMBEDDED_BITMAP
     #error USE_XX_ONLY_AT_DL2 requires ALLOW_EMBEDDED_BITMAP
   #endif // #ifndef ALLOW_EMBEDDED_BITMAP
   #define cbEmbeddedBitmap  1
-#elif defined(ALLOW_EMBEDDED_BITMAP)
+#elif !defined(B_JUDYL) && defined(ALLOW_EMBEDDED_BITMAP)
   #define cbEmbeddedBitmap  (cnBitsInD1 <= cnLogBitsPerLink)
-  // What about B_JUDYL?
-#else // #ifdef USE_XX_SW_ONLY_AT_DL2 #elif defined(ALLOW_EMBEDDED_BITMAP)
+#else // USE_XX_SW_ONLY_AT_DL2 elif !B_JUDYL && ALLOW_EMBEDDED_BITMAP
   #define cbEmbeddedBitmap  0
+#endif // else USE_XX_SW_ONLY_AT_DL2 elif !B_JUDYL && ALLOW_EMBEDDED_BITMAP
+
+#ifdef ALLOW_EMBEDDED_BITMAP
+#ifdef B_JUDYL
+#ifdef EMBED_KEYS
+#if (cnBitsInD1 <= cnLogBitsPerWord)
+  #define _BMLF_BM_IN_LNX
+  #ifdef BMLF_CNTS
+    #error BMLF_CNTS with _BMLF_BM_IN_LNX
+  #endif // BMLF_CNTS
+#endif // (cnBitsInD1 <= cnLogBitsPerWord)
+#endif // EMBED_KEYS
+#endif // B_JUDYL
 #endif // ALLOW_EMBEDDED_BITMAP
 
 #if cnListPopCntMaxDl1 < (1 << cnBitsInD1)
@@ -2895,7 +2908,9 @@ typedef struct {
       #endif // #else BMLF_POP_COUNT_8
   #endif // cnDummiesInLink == 0
   #endif // BMLF_CNTS
+  #ifndef _BMLF_BM_IN_LNX
     Word_t bmlf_awBitmap[0];
+  #endif // ifndef _BMLF_BM_IN_LNX
 } BmLeaf_t;
 
 static int GetBLR(Word_t *pwRoot, int nBL);
@@ -3051,7 +3066,7 @@ static Word_t *
 gpwBitmapValues(qp, int nBLR)
 {
     qv; (void)nBLR;
-    // The value area follows the bitmap and the prefix-pop word.
+    // The value area follows the bitmap and the prefix-pop word(s).
     // What if (nBLR < cnLogBitsPerWord) and (cnBitsInD1 >= cnLogBitsPerWord)?
     // This might happen for USE_XX_SW_ONLY_AT_DL2 if we are not careful.
     // Our code should manipulate the XX_SW nBW so that we get an embedded
@@ -3060,15 +3075,17 @@ gpwBitmapValues(qp, int nBLR)
     // What if (cnBitsLeftAtDl2 < cnLogBitsPerWord)? TBD, but this assertion
     // will catch it if we forget about something.
     assert((nBLR >= cnLogBitsPerWord) || (cnBitsInD1 < cnLogBitsPerWord));
-#if defined(KISS_BM) || defined(KISS)
-    Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t)
-                         + EXP(MAX(1, nBLR - cnLogBitsPerWord));
-#else // defined(KISS_BM) || defined(KISS)
-    // We only ever have bitmaps for B_JUDYL at cnBitsInD1.
+    Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t);
+  #ifndef _BMLF_BM_IN_LNX
+    wWordsHdr +=
+      #if defined(KISS_BM) || defined(KISS)
+        EXP(MAX(1, nBLR - cnLogBitsPerWord));
+      #else // defined(KISS_BM) || defined(KISS)
+        EXP(MAX(1, cnBitsInD1 - cnLogBitsPerWord));
+    // For B_JUDYL we only have bitmaps at cnBitsInD1 -- never at cnBitsInD2.
     assert(nBLR == cnBitsInD1);
-    Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t)
-                         + EXP(MAX(0, cnBitsInD1 - cnLogBitsPerWord));
-#endif // #else defined(KISS_BM) || defined(KISS)
+      #endif // #else defined(KISS_BM) || defined(KISS)
+  #endif // #ifndef _BMLF_BM_IN_LNX
     return &pwr[wWordsHdr];
 }
 
@@ -3084,9 +3101,12 @@ BmIndex(qp, int nBLR, Word_t wKey
   #ifdef EMBED_KEYS
     (void)pwValueUp;
   #endif // EMBED_KEYS
-    assert(!cbEmbeddedBitmap);
+    assert(!cbEmbeddedBitmap); // cbEmbeddedBitmap is for Judy1
     assert(tp_bIsBitmap(nType));
     Word_t wDigit = wKey & MSK(nBLR);
+  #ifdef _BMLF_BM_IN_LNX
+    int nIndex = PopCount64(*pwValueUp & NBPW_MSK(wDigit));
+  #else // _BMLF_BM_IN_LNX
   #ifdef BMLF_POP_COUNT_32
     uint32_t *pu32Bms = (uint32_t*)((BmLeaf_t*)pwr)->bmlf_awBitmap;
     // The bitmap may have more than one uint32_t.
@@ -3164,6 +3184,7 @@ BmIndex(qp, int nBLR, Word_t wKey
       #endif // #ifndef BMLF_POP_COUNT_1
       #endif // #ifndef BMLF_POP_COUNT_8
   #endif // #else BMLF_POP_COUNT_32
+  #endif // else _BMLF_BM_IN_LNX
     return nIndex;
 }
 
@@ -3452,7 +3473,7 @@ gwBitmapPopCnt(qp, int nBLR)
     wPopCnt = GetBits(*pwRoot, cnBitsCnt, cnLsbCnt);
     if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop
   #else // _BM_POP_IN_LINK_X
-    // No need to handle embedded bitmaps here.
+    // No need to handle embedded bitmaps here. Why not?
     assert(!cbEmbeddedBitmap || (nBLR > cnLogBitsPerLink));
     assert(tp_bIsBitmap(nType));
     assert((wr_nType(WROOT_NULL) != T_BITMAP) || (wRoot != WROOT_NULL));
