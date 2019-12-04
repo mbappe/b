@@ -201,6 +201,19 @@
 #endif // EMBED_KEYS
 #endif // B_JUDYL
 
+// Default is REMOTE_LNX if _LNX.
+// Ultimately, I think upper level switches will have no or a remote
+// link and leaf level switches with have a two-word link.
+#ifdef _LNX
+  #ifndef NO_REMOTE_LNX
+    #undef   REMOTE_LNX
+    #define  REMOTE_LNX
+  #endif // ifndef NO_REMOTE_LNX
+#else // _LNX
+  #undef NO_REMOTE_LNX
+  #undef    REMOTE_LNX
+#endif // else _LNX
+
 #ifdef DOUBLE_DOWN
   #undef  XX_LISTS
   #define XX_LISTS
@@ -607,15 +620,6 @@
     #undef   PREFETCH_BM_LN
     #define  PREFETCH_BM_LN
 #endif // NO_PREFETCH_BM_LN
-
-#ifdef B_JUDYL
-#ifdef VALUE_IN_DUMMY
-#if cnDummiesInLink == 0
-  #undef  cnDummiesInLink
-  #define cnDummiesInLink  1
-#endif // cnDummiesInLink == 0
-#endif // VALUE_IN_DUMMY
-#endif // B_JUDYL
 
 // _RETURN_NULL_TO_INSERT_AGAIN was created to deal with the issue of
 // InsertGuts calling back into Insert for the final insert but Insert not

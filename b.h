@@ -2705,6 +2705,11 @@ typedef struct {
 #if (cnDummiesInLink != 0)
     Word_t ln_awDummies[cnDummiesInLink];
 #endif // (cnDummiesInLink != 0)
+  #ifdef _LNX
+  #ifndef REMOTE_LNX
+    Word_t ln_wX;
+  #endif // ifndef REMOTE_LNX
+  #endif // _LNX
 #ifdef DEBUG
     Word_t ln_wRoot;
 #endif // #ifdef DEBUG
@@ -2999,15 +3004,15 @@ static Word_t*
 gpwEmbeddedValue(qp, int nLinks, int nIndex)
 {
     qv;
-      #if defined(VALUE_IN_DUMMY) && (cnDummiesInLink > 0)
     (void)nLinks;
-    return pwr_pLinks((Switch_t*)pwr)[nIndex].ln_awDummies;
-      #else // defined(VALUE_IN_DUMMY) && (cnDummiesInLink > 0)
+      #ifdef REMOTE_LNX
     // The following assertion is bogus during Splay which doesn't bother to
     // initialize the bitmap in the switch being used to stage the splay.
-    //assert(!tp_bIsBmSw(nType) || (BmSwLinkCnt(qy) == nLinks));
+    // assert(!tp_bIsBmSw(nType) || (BmSwLinkCnt(qy) == nLinks));
     return &((Word_t*)&pwr_pLinks((Switch_t *)pwr)[nLinks])[nIndex];
-      #endif // defined(VALUE_IN_DUMMY) && (cnDummiesInLink > 0)
+      #else // REMOTE_LNX
+    return &pwr_pLinks((Switch_t*)pwr)[nIndex].ln_wX;
+      #endif // else REMOTE_LNX
 }
   #endif // EMBED_KEYS
 
@@ -3657,11 +3662,9 @@ InflateBmSwTest(qp) // qp points to BM switch
     int nBytesPerLink = sizeof(Link_t); // accumulator
 #ifdef B_JUDYL
     nBytesPerPop += sizeof(Word_t); // value
-  #ifdef EMBED_KEYS
-  #ifndef VALUE_IN_DUMMY
+  #ifdef REMOTE_LNX
     nBytesPerLink += sizeof(Word_t); // value
-  #endif // VALUE_IN_DUMMY
-  #endif // EMBED_KEYS
+  #endif // REMOTE_LNX
 #endif // B_JUDYL
 
 // inflate <==> inflated total-words / pop < words-per-key threshold

@@ -1497,13 +1497,9 @@ NewSwitchX(Word_t *pwRoot, Word_t wKey, int nBLR,
 
     wBytes += wLinks * sizeof(Link_t);
     Word_t wWords = wBytes / sizeof(Word_t);
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-  #if !defined(VALUE_IN_DUMMY) || (cnDummiesInLink == 0)
-    /*if (EmbeddedListPopCntMax(nBLR))*/ {
-        wWords += wLinks; // Embedded Values in Switch
-    }
-  #endif // !defined(VALUE_IN_DUMMY) || (cnDummiesInLink == 0)
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifdef REMOTE_LNX
+    wWords += wLinks;
+  #endif // REMOTE_LNX
 
 #ifdef RAMMETRICS
     // Is a branch with embedded bitmaps a branch?
@@ -1856,8 +1852,7 @@ InflateBmSw(Word_t *pwRoot, Word_t wKey, int nBLR, int nBLUp)
             ++nLinkCnt;
         }
     }
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-  #ifndef VALUE_IN_DUMMY
+  #ifdef REMOTE_LNX
     Word_t *pSwValues = (Word_t*)&pSwLinks[1<<nBW];
     Word_t *pBmSwValues = (Word_t*)&pBmSwLinks[nLinkCnt];
     nLinkCnt = 0;
@@ -1867,29 +1862,28 @@ InflateBmSw(Word_t *pwRoot, Word_t wKey, int nBLR, int nBLUp)
             ++nLinkCnt;
         }
     }
-  #endif // #ifndef VALUE_IN_DUMMY
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #endif // REMOTE_LNX
 
     OldSwitch(&wRoot, nBLUp, /* bBmSw */ 1, nLinkCnt);
 
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifdef _LNX
     Word_t wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
     // How is it possible for pSwLinks[wDigit].ln_wRoot to be WROOT_NULL?
     //assert(pSwLinks[wDigit].ln_wRoot != WROOT_NULL);
     if ((pSwLinks[wDigit].ln_wRoot != WROOT_NULL)
         && (wr_nType(pSwLinks[wDigit].ln_wRoot) == T_EMBEDDED_KEYS))
     {
-#ifdef VALUE_IN_DUMMY
-        Word_t *pwValue = pSwLinks[wDigit].ln_awDummies;
-#else // VALUE_IN_DUMMY
-        Word_t *pwValue = &pSwValues[wDigit];
-#endif // #else VALUE_IN_DUMMY
+      #ifdef REMOTE_LNX
+        Word_t* pwValue = &pSwValues[wDigit];
+      #else // REMOTE_LNX
+        Word_t* pwValue = &pSwLinks[wDigit].ln_wX;
+      #endif // else REMOTE_LNX
         DBGX(printf("InflateBmSw returning pwValue %p\n", pwValue));
         return pwValue;
     }
     // NULL means pwValue didn't change, but not that nothing changed.
     return NULL;
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #endif // _LNX
 }
 
 // NewLink uses OldSwitch but not NewSwitch. Could we change it?
@@ -1973,13 +1967,9 @@ NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
         // Allocate memory for a new switch with one more link than the
         // old one.
         unsigned nWordsNew = nWordsOld + sizeof(Link_t) / sizeof(Word_t);
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-  #if !defined(VALUE_IN_DUMMY) || (cnDummiesInLink == 0)
-        /*if (EmbeddedListPopCntMax(nBLR))*/ {
-            nWordsNew += nLinkCnt + 1; // Embedded Values in Switch
-        }
-  #endif // !defined(VALUE_IN_DUMMY) || (cnDummiesInLink == 0)
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifdef REMOTE_LNX
+        nWordsNew += nLinkCnt + 1;
+  #endif // REMOTE_LNX
         Word_t *pwBm = PWR_pwBm(pwRoot, pwr); (void)pwBm;
 #if defined(CODE_BM_SW) && defined(CACHE_ALIGN_BM_SW)
         *pwRoot = MyMallocGuts(nWordsNew, /* logAlign */ 6, &j__AllocWordsJBB);
@@ -2022,23 +2012,19 @@ NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
 #endif // BM_IN_LINK
         DBGI(printf("PWR_wPopCnt %" _fw"d\n",
              PWR_wPopCntBL(pwRoot, (BmSwitch_t *)*pwRoot, nBLR)));
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-  #ifndef VALUE_IN_DUMMY
-        /*if (EmbeddedListPopCntMax(nBLR))*/ {
-            Link_t *pNewLinks = pwr_pLinks((BmSwitch_t *)*pwRoot);
-            Word_t *pNewValues = (Word_t*)&pNewLinks[nLinkCnt + 1];
-            Link_t *pOldLinks = pwr_pLinks((BmSwitch_t *)pwr);
-            Word_t *pOldValues = (Word_t*)&pOldLinks[nLinkCnt];
-            Word_t ww;
-            for (ww = 0; ww < wIndex; ++ww) {
-                pNewValues[ww] = pOldValues[ww];
-            }
-            for (++ww; ww <= (Word_t)nLinkCnt; ++ww) {
-                pNewValues[ww] = pOldValues[ww - 1];
-            }
+  #ifdef REMOTE_LNX
+        Link_t *pNewLinks = pwr_pLinks((BmSwitch_t *)*pwRoot);
+        Word_t *pNewValues = (Word_t*)&pNewLinks[nLinkCnt + 1];
+        Link_t *pOldLinks = pwr_pLinks((BmSwitch_t *)pwr);
+        Word_t *pOldValues = (Word_t*)&pOldLinks[nLinkCnt];
+        Word_t ww;
+        for (ww = 0; ww < wIndex; ++ww) {
+            pNewValues[ww] = pOldValues[ww];
         }
-  #endif // #ifndef VALUE_IN_DUMMY
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+        for (++ww; ww <= (Word_t)nLinkCnt; ++ww) {
+            pNewValues[ww] = pOldValues[ww - 1];
+        }
+  #endif // REMOTE_LNX
 
         // Initialize the new link.
         DBGI(printf("pLinks %p\n",
@@ -2203,13 +2189,9 @@ OldSwitch(Word_t *pwRoot, int nBL
         sizeof(Switch_t);
     wBytes += wLinks * sizeof(Link_t);
     Word_t wWords = wBytes / sizeof(Word_t);
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-  #if !defined(VALUE_IN_DUMMY) || (cnDummiesInLink == 0)
-    /*if (EmbeddedListPopCntMax(nBLR))*/ {
-        wWords += wLinks; // Embedded Values in Switch
-    }
-  #endif // !defined(VALUE_IN_DUMMY) || (cnDummiesInLink == 0)
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifdef REMOTE_LNX
+    wWords += wLinks;
+  #endif // REMOTE_LNX
 
 #ifdef RAMMETRICS
     Word_t *pwAllocWords =  // RAMMETRICS
@@ -11131,11 +11113,17 @@ Initialize(void)
     printf("# No EK_CALC_POP\n");
 #endif // defined(EK_CALC_POP)
 
-#ifdef           VALUE_IN_DUMMY
-    BJL(printf("#    VALUE_IN_DUMMY\n"));
-#else //         VALUE_IN_DUMMY
-    BJL(printf("# No VALUE_IN_DUMMY\n"));
-#endif //        VALUE_IN_DUMMY
+#ifdef           _LNX
+    printf("#    _LNX\n");
+#else //         _LNX
+    printf("# No _LNX\n");
+#endif //        _LNX
+
+#ifdef           REMOTE_LNX
+    printf("#    REMOTE_LNX\n");
+#else //         REMOTE_LNX
+    printf("# No REMOTE_LNX\n");
+#endif //        REMOTE_LNX
 
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     printf("#    BL_SPECIFIC_PSPLIT_SEARCH\n");
