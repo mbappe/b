@@ -1136,7 +1136,7 @@ OldList(Word_t *pwList, int nPopCnt, int nBLR, int nType)
 
 #endif // (cwListPopCntMax != 0)
 
-// cnLogBmWordsX determines when a bitmap value area grows to uncompressed.
+// cnLogBmWordsX determines when a bitmap leaf grows to unpacked.
 // Roughly, we transition when words per key won't be much more than
 // EXP(cnLogBmWordsX + 1) / (EXP(cnLogBmWordsX) + 1)
 // It's a number between one and two: 1, 4/3, 8/5, 16/9, 32/17, 64/33, ...
@@ -1146,91 +1146,123 @@ OldList(Word_t *pwList, int nPopCnt, int nBLR, int nType)
 #ifdef BITMAP
 
 static Word_t
-BitmapWordCnt(int nBLR, Word_t wPopCnt)
+BitmapWordsMin(int nBLR, Word_t wPopCnt)
 {
+    (void)nBLR; (void)wPopCnt;
+    // Number of words in BmLeaf_t plus the bitmap.
+    Word_t wWords = sizeof(BmLeaf_t) / sizeof(Word_t);
+  #ifndef _BMLF_BM_IN_LNX
+      #ifndef B_JUDYL
+    if (cbEmbeddedBitmap) {
+        assert(nBLR == cnBitsLeftAtDl2);
+        wWords += EXP(MAX(1, cnBitsLeftAtDl2 - cnLogBitsPerWord));
+    } else if (cn2dBmMaxWpkPercent == 0) {
+      #endif // ifndef B_JUDYL
+        assert(nBLR == cnBitsInD1);
+        wWords += EXP(MAX(1, cnBitsInD1 - cnLogBitsPerWord));
+      #ifndef B_JUDYL
+    } else {
+        wWords += EXP(MAX(1, nBLR - cnLogBitsPerWord));
+    }
+      #endif // ifndef B_JUDYL
+  #endif // ifndef _BMLF_BM_IN_LNX
+  #ifdef B_JUDYL
+      #ifdef PACK_BM_VALUES
+    wWords += wPopCnt; // space for hdr + values
+      #else // PACK_BM_VALUES
+// Might want to move this to CalcBitmapWordCnt.
+    wWords += EXP(nBLR);
+      #endif // PACK_BM_VALUES
+  #endif // B_JUDYL
+    return wWords;
+}
+
+static int16_t asBitmapWordCnt[((Word_t)1 << cnBitsInD1) + 1];
+
+static Word_t
+CalcBitmapWordCnt(int nBLR, Word_t wPopCnt)
+{
+    (void)nBLR; (void)wPopCnt;
     // Use ALLOC_WHOLE_PACKED_BMLF_EXP to experiment with always allocating
     // the enough memory for a whole unpacked bitmap value area immediately
     // on creation of a bitmap leaf.
   #ifdef ALLOC_WHOLE_PACKED_BMLF_EXP
-    wPopCnt = EXP(nBLR);
-  #endif // ALLOC_WHOLE_PACKED_BMLF_EXP
-    (void)nBLR; (void)wPopCnt;
-    Word_t wWords;
+    return BitmapWordsMin(nBLR, EXP(nBLR));
+  #else // ALLOC_WHOLE_PACKED_BMLF_EXP
   #ifdef B_JUDYL
-    assert(nBLR == cnBitsInD1);
-    // Number of words in BmLeaf_t plus the bitmap.
-    // BmLeaf_t proper includes one word of the bitmap.
-    Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t);
-      #ifndef _BMLF_BM_IN_LNX
-    wWordsHdr += EXP(MAX(1, cnBitsInD1 - cnLogBitsPerWord));
-      #endif // ifndef _BMLF_BM_IN_LNX
     // Go for an uncompressed value area as soon as possible while keeping
     // words per key reasonable.
     // If wpk <= threshhold, then go to uncompressed, where words is size of
     // the bitmap leaf (including an estimated 1 word of malloc overhead) plus
     // 1 word in the switch for wRoot and one word in the switch
-    // for an embedded value.
+    // for the link extension.
       #ifdef UNPACK_BM_VALUES
-    Word_t wFullPopWordsMin = wWordsHdr + EXP(nBLR);
+    Word_t wFullPopWordsMin = BitmapWordsMin(nBLR, EXP(nBLR));
       #endif // UNPACK_BM_VALUES
       #ifdef PACK_BM_VALUES
+    Word_t wWordsMin = BitmapWordsMin(nBLR, wPopCnt);
+    // What is the first power of two bigger than nWordsMin?
+    // nWordsMin being an exact power of two does us no good because it won't
+    // accommodate the malloc overhead word.
+    Word_t wNextPow = EXP(LOG(wWordsMin) + 1); // first power of two bigger
+    // See if the power of two divided by the square root of two is
+    // big enough for our leaf.
+    Word_t wWords = MAX(4, (wNextPow * 46340 / (1<<16) + 1) & ~1);
+    if (wWordsMin > wWords - 1) {
+        wWords = wNextPow;
+    }
+    --wWords; // Subtract malloc overhead word for request.
           #ifdef UNPACK_BM_VALUES
+    Word_t wSlots = wPopCnt + wWords - wWordsMin;
     // add malloc overhead for conversion to unpacked calculation
     Word_t wFullPopWordsMinPlusMalloc = (wFullPopWordsMin | 1) + 1;
     // add memory used in switch link for conversion to unpacked calculation
     Word_t wFullPopWordsMinPlusX
         = wFullPopWordsMinPlusMalloc + sizeof(Link_t) / sizeof(Word_t);
-              #ifdef EMBED_KEYS
-    // add memory used in _LNX for conversion to unpacked calculation
+              #ifdef REMOTE_LNX
+    // add memory used in REMOTE_LNX for conversion to unpacked calculation
     ++wFullPopWordsMinPlusX; // Value word in switch.
-              #endif // EMBED_KEYS
-    // Max pop with compressed value area.
-    Word_t wPopCntMax
+              #endif // REMOTE_LNX
+    // Max keys with packed value area.
+    // full pop words * max keys per word
+    Word_t wPopCntMaxPacked
         = wFullPopWordsMinPlusX
             * (EXP(cnLogBmWordsX) + 1) / EXP(cnLogBmWordsX + 1);
-    // We want wPopCntMax to be efficient w.r.t. malloc.
-    // That is, we want wWordsMin(wPopCntMax) to be an odd number.
-    if (!((wWordsHdr + wPopCntMax) & 1)) {
-        ++wPopCntMax;
-    }
-    if (wPopCnt > wPopCntMax) {
-        return wFullPopWordsMin;
+    if (wPopCnt < wPopCntMaxPacked) {
+        if (wSlots > wPopCntMaxPacked) {
+            wWords = BitmapWordsMin(nBLR, wPopCntMaxPacked) | 1;
+        }
+    } else {
+        wWords = wFullPopWordsMin;
     }
           #endif // UNPACK_BM_VALUES
-    Word_t wWordsMin = wWordsHdr + wPopCnt; // space for hdr + values
-    wWords = wWordsMin | 1; // make efficent for malloc
-// BUG: RemoveAtBitmap does not transition from bitmap to leaf or embedded
+// BUG: RemoveAtBitmap does not transition from bitmap to list or embedded
 // keys when pop gets low enough. That's why the assertion below blows.
     //assert(wWords >= 3); // minimum efficient for malloc
       #else // PACK_BM_VALUES
-    return wWords = wFullPopWordsMin;
+    Word_t wWords = wFullPopWordsMin;
       #endif // PACK_BM_VALUES
   #else // B_JUDYL
-    (void)wPopCnt;
-      #if !defined(KISS_BM) && !defined(KISS)
-    if (cbEmbeddedBitmap) {
-          #ifdef DEBUG
-        if (nBLR != cnBitsLeftAtDl2) {
-            printf("nBLR %d\n", nBLR);
-        }
-          #endif // DEBUG
-        assert(nBLR == cnBitsLeftAtDl2);
-        wWords = sizeof(BmLeaf_t) / sizeof(Word_t)
-                     + EXP(MAX(1, cnBitsLeftAtDl2 - cnLogBitsPerWord));
-    } else if (cn2dBmMaxWpkPercent == 0) {
-        assert(nBLR == cnBitsInD1);
-        wWords = sizeof(BmLeaf_t) / sizeof(Word_t)
-                     + EXP(MAX(1, cnBitsInD1 - cnLogBitsPerWord));
-    } else
-      #endif // !defined(KISS_BM) && !defined(KISS)
-    {
-        // Number of words in the bitmap plus the rest of BmLeaf_t.
-        // BmLeaf_t includes one word of bitmap.
-        wWords = sizeof(BmLeaf_t) / sizeof(Word_t)
-                     + EXP(MAX(1, nBLR - cnLogBitsPerWord));
-    }
+    Word_t wWords = BitmapWordsMin(nBLR, wPopCnt);
   #endif // #else B_JUDYL
     return wWords;
+  #endif // else ALLOC_WHOLE_PACKED_BMLF_EXP
+}
+
+static Word_t
+BitmapWordCnt(int nBLR, Word_t wPopCnt)
+{
+    Word_t wWords;
+    if (!cbEmbeddedBitmap) {
+        BJ1(if ((cn2dBmMaxWpkPercent != 0) || (nBLR == cnBitsInD1))) {
+            if ((wWords = asBitmapWordCnt[wPopCnt]) == 0) {
+                wWords = CalcBitmapWordCnt(nBLR, wPopCnt);
+                asBitmapWordCnt[wPopCnt] = wWords;
+            }
+            return wWords;
+        }
+    }
+    return CalcBitmapWordCnt(nBLR, wPopCnt);
 }
 
 #ifdef GUARDBAND
