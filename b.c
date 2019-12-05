@@ -1177,7 +1177,7 @@ BitmapWordsMin(int nBLR, Word_t wPopCnt)
     return wWords;
 }
 
-static int32_t asBitmapWordCnt[((Word_t)1 << cnBitsInD1) + 1];
+static int32_t aiBitmapWordCnt[((Word_t)1 << cnBitsInD1) + 1];
 
 static Word_t
 CalcBitmapWordCnt(int nBLR, Word_t wPopCnt)
@@ -1255,9 +1255,9 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
     Word_t wWords;
     if (!cbEmbeddedBitmap) {
         BJ1(if ((cn2dBmMaxWpkPercent == 0) || (nBLR == cnBitsInD1))) {
-            if ((wWords = asBitmapWordCnt[wPopCnt]) == 0) {
+            if ((wWords = aiBitmapWordCnt[wPopCnt]) == 0) {
                 wWords = CalcBitmapWordCnt(nBLR, wPopCnt);
-                asBitmapWordCnt[wPopCnt] = wWords;
+                aiBitmapWordCnt[wPopCnt] = wWords;
             }
             return wWords;
         }
@@ -12259,8 +12259,8 @@ Initialize(void)
 
   #ifdef BITMAP
     printf("\n");
-    for (int ii = 4; ii <= 17; ++ii) {
-        int nBLR = cbEmbeddedBitmap ? cnBitsLeftAtDl2 : cnBitsInD1;
+    int nBLR = cbEmbeddedBitmap ? cnBitsLeftAtDl2 : cnBitsInD1;
+    for (int ii = 4; (ii <= 17) && (ii <= (1 << nBLR)); ++ii) {
         printf("# BitmapWordCnt(nBL %d nPopCnt %d) %zd\n",
                nBLR, ii, BitmapWordCnt(nBLR, ii));
     }
