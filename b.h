@@ -3097,20 +3097,20 @@ gpwBitmapValues(qp, int nBLR)
 // How many keys precede the key we are looking for in the bitmap?
 static int
 BmIndex(qp, int nBLR, Word_t wKey
-  #ifdef EMBED_KEYS
-      , Word_t* pwValueUp
-  #endif // EMBED_KEYS
+  #ifdef _LNX
+      , Word_t* pwLnX
+  #endif // _LNX
         )
 {
     qv;
-  #ifdef EMBED_KEYS
-    (void)pwValueUp;
-  #endif // EMBED_KEYS
+  #ifdef _LNX
+    (void)pwLnX;
+  #endif // _LNX
     assert(!cbEmbeddedBitmap); // cbEmbeddedBitmap is for Judy1
     assert(tp_bIsBitmap(nType));
     Word_t wDigit = wKey & MSK(nBLR);
   #ifdef _BMLF_BM_IN_LNX
-    int nIndex = PopCount64(*pwValueUp & NBPW_MSK(wDigit));
+    int nIndex = PopCount64(*pwLnX & NBPW_MSK(wDigit));
   #else // _BMLF_BM_IN_LNX
   #ifdef BMLF_POP_COUNT_32
     uint32_t *pu32Bms = (uint32_t*)((BmLeaf_t*)pwr)->bmlf_awBitmap;
@@ -3167,7 +3167,7 @@ BmIndex(qp, int nBLR, Word_t wKey
     Word_t wSums = *pLn->ln_awDummies;
               #else // cnDummiesInLink > 0
         #ifdef EMBED_KEYS
-    Word_t wSums = *pwValueUp;
+    Word_t wSums = *pwLnX;
         #else // EMBED_KEYS
     Word_t wSums = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts;
         #endif // #else EMBED_KEYS
@@ -3731,9 +3731,9 @@ InsertGuts(qp, Word_t wKey, int nPos
          , Link_t *pLnUp
          , int nBLUp
 #endif // defined(CODE_XX_SW)
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-         , Word_t *pwValueUp
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifdef _LNX
+         , Word_t *pwLnX
+  #endif // _LNX
            );
 
 #ifdef B_JUDYL
@@ -3746,15 +3746,15 @@ InsertAtList(qp, Word_t wKey, int nPos
            , Link_t *pLnUp
            , int nBLUp
 #endif // defined(CODE_XX_SW)
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-           , Word_t *pwValueUp
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifdef _LNX
+           , Word_t *pwLnX
+  #endif // _LNX
              );
 
 Status_t RemoveGuts(qp, Word_t wKey
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-                  , Word_t *pwValueUp
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifdef _LNX
+                  , Word_t *pwLnX
+  #endif // _LNX
                     );
 
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
@@ -3782,9 +3782,9 @@ InsertAtBitmap(qp, Word_t wKey);
 #if defined(EMBED_KEYS)
 Word_t InflateEmbeddedList(Word_t *pwRoot,
                            Word_t wKey, int nBL, Word_t wRoot
-  #ifdef B_JUDYL
-                         , Word_t *pwValueUp
-  #endif // B_JUDYL
+  #ifdef _LNX
+                         , Word_t *pwLnX
+  #endif // _LNX
                            );
 #endif // defined(EMBED_KEYS)
 

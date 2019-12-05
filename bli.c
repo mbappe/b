@@ -522,7 +522,7 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
     nBW = cnBitsPerDigit; // compiler complains if not initialized here
-    Word_t* pwValueUp = NULL; (void)pwValueUp;
+    Word_t* pwLnX = NULL; (void)pwLnX;
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrUp = pwrUp; // suppress "uninitialized" compiler warning
@@ -942,12 +942,12 @@ t_switch:;
         // Save pwValue so we can find the embedded value area easily later.
         // pLnUp would be more general. I wonder if we should put an up
         // pointer in our tree nodes.
-        pwValueUp
+        pwLnX
             = gpwEmbeddedValue(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-        DBGX(printf("updated pwValueUp %p\n", pwValueUp));
+        DBGX(printf("updated pwLnX %p\n", pwLnX));
       #ifdef PREFETCH_EK_VAL
       #ifdef LOOKUP
-        PREFETCH(pwValueUp);
+        PREFETCH(pwLnX);
       #endif // LOOKUP
       #endif // PREFETCH_EK_VAL
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
@@ -1022,7 +1022,7 @@ t_xx_sw:;
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-        pwValueUp
+        pwLnX
             = gpwEmbeddedValue(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
         IF_COUNT(bLinkPresent = 1);
@@ -1311,7 +1311,7 @@ t_bm_sw:;
       #ifndef BM_SW_FOR_REAL
         assert(nLinkCnt == (1<<nBW));
       #endif // BM_SW_FOR_REAL
-        pwValueUp = gpwEmbeddedValue(qy, nLinkCnt, wSwIndex);
+        pwLnX = gpwEmbeddedValue(qy, nLinkCnt, wSwIndex);
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
 
         // Update wDigit before bmSwTail because we have to do it
@@ -2050,7 +2050,7 @@ t_bitmap:;
                 // end rather than going to the trouble of figuring out
                 // which end is closer.
           #ifdef _BMLF_BM_IN_LNX
-                Word_t *pwBitmap = pwValueUp;
+                Word_t *pwBitmap = pwLnX;
           #else // _BMLF_BM_IN_LNX
                 Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
           #endif // else _BMLF_BM_IN_LNX
@@ -2161,7 +2161,7 @@ t_bitmap:;
       #else // BMLF_POP_COUNT_1_NO_TEST
             int bBitIsSet =
           #ifdef _BMLF_BM_IN_LNX
-                BitIsSet(pwValueUp, wKey & MSK(cnBitsInD1));
+                BitIsSet(pwLnX, wKey & MSK(cnBitsInD1));
           #else // _BMLF_BM_IN_LNX
      // We don't need/want to check for WROOT_NULL for embedded bitmap.
                 ((wr_nType(WROOT_NULL) == T_BITMAP)
@@ -2212,7 +2212,7 @@ t_bitmap:;
           #endif // #ifndef LOOKUP
                     BmIndex(qy, cnBitsInD1, wKey
               #ifdef EMBED_KEYS
-                          , pwValueUp
+                          , pwLnX
               #endif // EMBED_KEYS
                             );
                 Word_t* pwValue = &pwBitmapValues[nIndex];
@@ -2356,7 +2356,7 @@ t_unpacked_bm:;
           #endif // PREFETCH_BM_VAL
             if (BitIsSet(
           #ifdef _BMLF_BM_IN_LNX
-                         pwValueUp,
+                         pwLnX,
           #else // _BMLF_BM_IN_LNX
                          ((BmLeaf_t*)pwr)->bmlf_awBitmap,
           #endif // else _BMLF_BM_IN_LNX
@@ -2393,7 +2393,7 @@ t_embedded_keys:; // the semi-colon allows for a declaration next; go figure
         } // cleanup is complete
   #endif // defined(INSERT) || defined(REMOVE)
   #if defined(B_JUDYL)
-    assert(pwValueUp != NULL);
+    assert(pwLnX != NULL);
   #endif // defined(B_JUDYL)
 
         // Have to or in cnMallocAlignment unless nBL allows for at least
@@ -2599,7 +2599,7 @@ foundIt:;
   #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
 
   #if defined(B_JUDYL) && (defined(INSERT) || defined(LOOKUP))
-        return pwValueUp;
+        return pwLnX;
   #else // defined(B_JUDYL) && (defined(INSERT) || defined(LOOKUP))
         return KeyFound;
   #endif // defined(B_JUDYL) && (defined(INSERT) || defined(LOOKUP))
@@ -2621,7 +2621,7 @@ t_ek_xv:; // the semi-colon allows for a declaration next; go figure
       #endif // defined(B_JUDYL) && defined(INSERT)
         } // cleanup is complete
   #endif // defined(INSERT) || defined(REMOVE)
-        assert(pwValueUp != NULL);
+        assert(pwLnX != NULL);
   #if defined(COUNT)
         {
             int nBits = 1 << (LOG(nBL - 1) + 1);
@@ -2630,7 +2630,7 @@ t_ek_xv:; // the semi-colon allows for a declaration next; go figure
       #endif // (cnBitsInD1 < cnLogBitsPerByte)
             int nn;
             for (nn = 0; nn < wr_nPopCnt(wRoot, nBL); nn++) {
-                if (((*pwValueUp >> (nn * nBits)) & MSK(nBits))
+                if (((*pwLnX >> (nn * nBits)) & MSK(nBits))
                         >= (wKey & MSK(nBits)))
                 {
                     break;
@@ -2680,7 +2680,7 @@ t_ek_xv:; // the semi-colon allows for a declaration next; go figure
 #define XV_BLX(_nBL) \
         case (_nBL): \
             PF_2(_nBL); \
-            if ((nPos = LocateKey64((uint64_t*)pwValueUp, wKey, \
+            if ((nPos = LocateKey64((uint64_t*)pwLnX, wKey, \
                     MAX(8, (Word_t)2 << LOG((_nBL) - 1)))) >= 0) { \
                 assert(nPos < wr_nPopCnt(wRoot, (_nBL))); \
                 goto xv_foundIt; \
@@ -2690,7 +2690,7 @@ t_ek_xv:; // the semi-colon allows for a declaration next; go figure
 #define XV_BLX(_nBL) \
         case (_nBL): \
             PF_2(_nBL); \
-            if ((nPos = LocateKey64((uint64_t*)pwValueUp, wKey, \
+            if ((nPos = LocateKey64((uint64_t*)pwLnX, wKey, \
                     (Word_t)2 << LOG((_nBL) - 1))) >= 0) { \
                 assert(nPos < wr_nPopCnt(wRoot, (_nBL))); \
                 goto xv_foundIt; \
@@ -2698,8 +2698,8 @@ t_ek_xv:; // the semi-colon allows for a declaration next; go figure
             goto xv_break2
   #endif // else (cnBitsInD1 < cnLogBitsPerByte)
 
-        DBGX(printf("\n# pwValueUp %p *pwValueUp 0x%zx wKey 0x%zx nBL %d\n",
-                    pwValueUp, *pwValueUp, wKey, nBL));
+        DBGX(printf("\n# pwLnX %p *pwLnX 0x%zx wKey 0x%zx nBL %d\n",
+                    pwLnX, *pwLnX, wKey, nBL));
   #ifdef LOOKUP
         //PREFETCH(pwr + wr_nPopCnt(wRoot, nBL) / 2);
       #ifdef PF_EK_XV
@@ -2847,7 +2847,7 @@ xv_foundIt:;
     // does not include any skip indicated in the type field of *pLn.
   #ifdef B_JUDYL
       #ifdef _RETURN_NULL_TO_INSERT_AGAIN
-    assert((pwValueUp != NULL) || (nBL == cnBitsPerWord));
+    assert((pwLnX != NULL) || (nBL == cnBitsPerWord));
       #endif // _RETURN_NULL_TO_INSERT_AGAIN
   #endif // B_JUDYL
     BJL(pwValue =)
@@ -2857,13 +2857,13 @@ xv_foundIt:;
                  , nBLUp
   #endif // defined(CODE_XX_SW)
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                 , pwValueUp
+                 , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                    );
   #ifdef B_JUDYL
       #ifdef _RETURN_NULL_TO_INSERT_AGAIN
     if (pwValue == NULL) {
-        assert((pwValueUp != NULL) || (nBL == cnBitsPerWord));
+        assert((pwLnX != NULL) || (nBL == cnBitsPerWord));
         // Insert will increment pop count again if it encounters a switch.
         assert(!tp_bIsSwitch(pLn->ln_wRoot));
         wRoot = pLn->ln_wRoot;
@@ -2922,7 +2922,7 @@ removeGutsAndCleanup:;
     DBGX(Checkpoint(qy, "removeGutsAndCleanup"));
     RemoveGuts(qy, wKey
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-             , pwValueUp
+             , pwLnX
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                );
       #endif // defined(REMOVE)
@@ -3166,7 +3166,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                                           , /* nBLUp */ 0
           #endif // defined(CODE_XX_SW)
           #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                          , /* pwValueUp */ NULL
+                                          , /* pwLnX */ NULL
           #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                             );
       #else // SWFI_INSERT_AT_LIST

@@ -3653,7 +3653,7 @@ static Word_t
 DeflateExternalList(Word_t *pwRoot,
                     int nPopCnt, int nBL, Word_t *pwr
   #ifdef B_JUDYL
-                  , Word_t *pwValueUp
+                  , Word_t *pwLnX
   #endif // B_JUDYL
                     );
 
@@ -3942,7 +3942,7 @@ static void
 InsertAllAtBitmap(qp, qpx(Old), int nStart, int nPopCnt
   #ifdef B_JUDYL
   #ifdef EMBED_KEYS
-                , Word_t* pwValueUp
+                , Word_t* pwLnX
   #endif // EMBED_KEYS
   #endif // B_JUDYL
                   )
@@ -3955,12 +3955,12 @@ InsertAllAtBitmap(qp, qpx(Old), int nStart, int nPopCnt
     qv; qvx(Old);
   #ifdef B_JUDYL
   #ifdef EMBED_KEYS
-    (void)pwValueUp;
+    (void)pwLnX;
   #endif // EMBED_KEYS
   #endif // B_JUDYL
 //   assert(nBLOld == cnBitsInD1);
   #ifdef _BMLF_BM_IN_LNX
-    Word_t* pwBitmap = pwValueUp;
+    Word_t* pwBitmap = pwLnX;
   #else // _BMLF_BM_IN_LNX
     Word_t* pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
   #endif // else _BMLF_BM_IN_LNX
@@ -4051,7 +4051,7 @@ InsertAllAtBitmap(qp, qpx(Old), int nStart, int nPopCnt
     uint8_t* pu8Cnts = (uint8_t*)pLn->ln_awDummies;
               #else // cnDummiesInLink > 0
                   #ifdef EMBED_KEYS
-    uint8_t* pu8Cnts = (uint8_t*)pwValueUp;
+    uint8_t* pu8Cnts = (uint8_t*)pwLnX;
                   #else // EMBED_KEYS
     uint8_t* pu8Cnts = ((BmLeaf_t*)pwr)->bmlf_au8Cnts;
                   #endif // #else EMBED_KEYS
@@ -4190,7 +4190,7 @@ static void
 Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL
   #ifdef B_JUDYL
   #ifdef EMBED_KEYS
-    , Word_t* pwValueUp
+    , Word_t* pwLnX
   #endif // EMBED_KEYS
   #endif // B_JUDYL
       )
@@ -4198,7 +4198,7 @@ Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL
     (void)wKey;
   #ifdef B_JUDYL
   #ifdef EMBED_KEYS
-    (void)pwValueUp;
+    (void)pwLnX;
   #endif // EMBED_KEYS
   #endif // B_JUDYL
   #ifdef DEBUG
@@ -4407,7 +4407,7 @@ lastDigit8:;
                         for (int xx = nnStart; xx < nn; ++xx) {
                             InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
       #ifdef _LNX
-                                           pwValueUp,
+                                           pwLnX,
       #endif // _LNX
                                            pcKeys[xx]);
                         }
@@ -4445,20 +4445,20 @@ lastDigit8:;
                 if (nBLLoop == cnBitsInD1) {
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                    Word_t* pwValueUpLoop
+                    Word_t* pwLnXLoop
                         = gpwEmbeddedValue(qy, 1<<nBW, nIndex);
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                     NewBitmap(qyx(Loop), cnBitsInD1, pcKeys[nnStart],
       #ifdef _LNX
-                              pwValueUpLoop,
+                              pwLnXLoop,
       #endif // _LNX
                               nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                                    , pwValueUpLoop
+                                    , pwLnXLoop
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                                       );
@@ -4570,7 +4570,7 @@ lastDigit16:;
                         for (int xx = nnStart; xx < nn; ++xx) {
                             InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
       #ifdef _LNX
-                                           pwValueUp,
+                                           pwLnX,
       #endif // _LNX
                                            psKeys[xx]);
                         }
@@ -4625,20 +4625,20 @@ lastDigit16:;
                 if (nBLLoop == cnBitsInD1) {
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                    Word_t* pwValueUpLoop
+                    Word_t* pwLnXLoop
                         = gpwEmbeddedValue(qy, 1<<nBW, nIndex);
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                     NewBitmap(qyx(Loop), cnBitsInD1, psKeys[nnStart],
       #ifdef _LNX
-                              pwValueUpLoop,
+                              pwLnXLoop,
       #endif // _LNX
                               nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                                    , pwValueUpLoop
+                                    , pwLnXLoop
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                                       );
@@ -4759,7 +4759,7 @@ lastDigit32:;
                         for (int xx = nnStart; xx < nn; ++xx) {
                             InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
       #ifdef _LNX
-                                           pwValueUp,
+                                           pwLnX,
       #endif // _LNX
                                            piKeys[xx]);
                         }
@@ -4809,20 +4809,20 @@ lastDigit32:;
                 if (nBLLoop == cnBitsInD1) {
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                    Word_t* pwValueUpLoop
+                    Word_t* pwLnXLoop
                         = gpwEmbeddedValue(qy, 1<<nBW, nIndex);
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                     NewBitmap(qyx(Loop), cnBitsInD1, piKeys[nnStart],
       #ifdef _LNX
-                              pwValueUpLoop,
+                              pwLnXLoop,
       #endif // _LNX
                               nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                                    , pwValueUpLoop
+                                    , pwLnXLoop
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                                       );
@@ -4943,7 +4943,7 @@ lastDigit:;
                         for (int xx = nnStart; xx < nn; ++xx) {
                             InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
       #ifdef _LNX
-                                           pwValueUp,
+                                           pwLnX,
       #endif // _LNX
                                            pwKeys[xx]);
                         }
@@ -5015,20 +5015,20 @@ lastDigit:;
                 if (nBLLoop == cnBitsInD1) {
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                    Word_t* pwValueUpLoop
+                    Word_t* pwLnXLoop
                         = gpwEmbeddedValue(qy, 1<<nBW, nIndex);
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                     NewBitmap(qyx(Loop), cnBitsInD1, pwKeys[nnStart],
       #ifdef _LNX
-                              pwValueUpLoop,
+                              pwLnXLoop,
       #endif // _LNX
                               nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                                    , pwValueUpLoop
+                                    , pwLnXLoop
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                                       );
@@ -5148,7 +5148,7 @@ static void
 SplayWithInsert(Word_t *pwRootOld, int nBLOld, Word_t wKey, int nPos,
                 Word_t *pwRoot, int nBL
   #ifdef _LNX
-              , Word_t* pwValueUp
+              , Word_t* pwLnX
   #endif // _LNX
                 )
 {
@@ -5358,7 +5358,7 @@ lastDigit8:;
                         for (int xx = nnStart; xx < nn; ++xx) {
                             InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
       #ifdef _LNX
-                                           pwValueUp,
+                                           pwLnX,
       #endif // _LNX
                                            pcKeys[xx]);
                         }
@@ -5366,7 +5366,7 @@ lastDigit8:;
                     if (nDigit == nDigitKey) {
                         InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
       #ifdef _LNX
-                                       pwValueUp,
+                                       pwLnX,
       #endif // _LNX
                                        wKey);
                     }
@@ -5428,27 +5428,27 @@ lastDigit8:;
                 if (nBLLoop == cnBitsInD1) {
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                    Word_t* pwValueUpLoop
+                    Word_t* pwLnXLoop
                         = gpwEmbeddedValue(qy, 1<<nBW, nIndex);
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                     NewBitmap(qyx(Loop), cnBitsInD1, pcKeys[nnStart],
       #ifdef _LNX
-                              pwValueUpLoop,
+                              pwLnXLoop,
       #endif // _LNX
                               nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                                    , pwValueUpLoop
+                                    , pwLnXLoop
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                                       );
                     if (nDigit == nDigitKey) {
                         BJL(pwValue =) InsertAtBitmap(qyx(Loop), wKey
       #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                                    , pwValueUpLoop
+                                                    , pwLnXLoop
       #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                                       );
                     }
@@ -5571,7 +5571,7 @@ lastDigit16:;
                         for (int xx = nnStart; xx < nn; ++xx) {
                             InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
       #ifdef _LNX
-                                           pwValueUp,
+                                           pwLnX,
       #endif // _LNX
                                            psKeys[xx]);
                         }
@@ -5579,7 +5579,7 @@ lastDigit16:;
                     if (nDigit == nDigitKey) {
                         InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
       #ifdef _LNX
-                                       pwValueUp,
+                                       pwLnX,
       #endif // _LNX
                                        wKey);
                     }
@@ -5671,27 +5671,27 @@ lastDigit16:;
                 if (nBLLoop == cnBitsInD1) {
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                    Word_t* pwValueUpLoop
+                    Word_t* pwLnXLoop
                         = gpwEmbeddedValue(qy, 1<<nBW, nIndex);
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                     NewBitmap(qyx(Loop), cnBitsInD1, psKeys[nnStart],
       #ifdef _LNX
-                              pwValueUpLoop,
+                              pwLnXLoop,
       #endif // _LNX
                               nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                                    , pwValueUpLoop
+                                    , pwLnXLoop
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                                       );
                     if (nDigit == nDigitKey) {
                         BJL(pwValue =) InsertAtBitmap(qyx(Loop), wKey
       #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                                    , pwValueUpLoop
+                                                    , pwLnXLoop
       #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                                       );
                     }
@@ -5820,7 +5820,7 @@ lastDigit32:;
                         for (int xx = nnStart; xx < nn; ++xx) {
                             InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
       #ifdef _LNX
-                                           pwValueUp,
+                                           pwLnX,
       #endif // _LNX
                                            piKeys[xx]);
                         }
@@ -5828,7 +5828,7 @@ lastDigit32:;
                     if (nDigit == nDigitKey) {
                         InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
       #ifdef _LNX
-                                       pwValueUp,
+                                       pwLnX,
       #endif // _LNX
                                        wKey);
                     }
@@ -5928,27 +5928,27 @@ lastDigit32:;
                 if (nBLLoop == cnBitsInD1) {
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                    Word_t* pwValueUpLoop
+                    Word_t* pwLnXLoop
                         = gpwEmbeddedValue(qy, 1<<nBW, nIndex);
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                     NewBitmap(qyx(Loop), cnBitsInD1, piKeys[nnStart],
       #ifdef _LNX
-                              pwValueUpLoop,
+                              pwLnXLoop,
       #endif // _LNX
                               nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                                    , pwValueUpLoop
+                                    , pwLnXLoop
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                                       );
                     if (nDigit == nDigitKey) {
                         BJL(pwValue =) InsertAtBitmap(qyx(Loop), wKey
       #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                                    , pwValueUpLoop
+                                                    , pwLnXLoop
       #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                                       );
                     }
@@ -6079,7 +6079,7 @@ lastDigit:;
                         for (int xx = nnStart; xx < nn; ++xx) {
                             InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
       #ifdef _LNX
-                                           pwValueUp,
+                                           pwLnX,
       #endif // _LNX
                                            pwKeys[xx]);
                         }
@@ -6087,7 +6087,7 @@ lastDigit:;
                     if (nDigit == nDigitKey) {
                         InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
       #ifdef _LNX
-                                       pwValueUp,
+                                       pwLnX,
       #endif // _LNX
                                        wKey);
                     }
@@ -6228,27 +6228,27 @@ lastDigit:;
                 if (nBLLoop == cnBitsInD1) {
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                    Word_t* pwValueUpLoop
+                    Word_t* pwLnXLoop
                         = gpwEmbeddedValue(qy, 1<<nBW, nIndex);
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                     NewBitmap(qyx(Loop), cnBitsInD1, pwKeys[nnStart],
       #ifdef _LNX
-                              pwValueUpLoop,
+                              pwLnXLoop,
       #endif // _LNX
                               nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                                    , pwValueUpLoop
+                                    , pwLnXLoop
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                                       );
                     if (nDigit == nDigitKey) {
                         BJL(pwValue =) InsertAtBitmap(qyx(Loop), wKey
       #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                                    , pwValueUpLoop
+                                                    , pwLnXLoop
       #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                                       );
                     }
@@ -6366,7 +6366,7 @@ lastDigit:;
                        , /*pBLUp*/ nBL
   #endif // defined(CODE_XX_SW)
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                       , /*pwValueUp*/ gpwEmbeddedValue(qy, 1<<nBW, nDigitKey)
+                       , /*pwLnX*/ gpwEmbeddedValue(qy, 1<<nBW, nDigitKey)
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                          );
     }
@@ -6389,12 +6389,12 @@ lastDigit:;
 static void
 InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-        , Word_t* pwValueUp
+        , Word_t* pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
           )
 {
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-    (void)pwValueUp;
+    (void)pwLnX;
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
     Word_t wRootOld = *pwRootOld;
   #ifdef NO_TYPE_IN_XX_SW
@@ -6446,11 +6446,11 @@ embeddedKeys:;
         Link_t *pLnUp = &linkUp;
         set_wr_pwr(linkUp.ln_wRoot, pwrUp); // gpwEmbeddedValue needs pwr
         int nBLUp = nBLR; // nBLUpOld -- assumes DoubleDown
-        Word_t *pwValueUp = gpwEmbeddedValue(qyx(Up), EXP(nBWUp), nDigitUp);
+        Word_t *pwLnX = gpwEmbeddedValue(qyx(Up), EXP(nBWUp), nDigitUp);
           #endif // B_JUDYL
         wRootOld = InflateEmbeddedList(pwRootOld, wKey, nBLOld, wRootOld
           #ifdef B_JUDYL
-                                     , pwValueUp
+                                     , pwLnX
           #endif // B_JUDYL
                                        );
         // If (nBLOld < nDL_to_nBL) Dump is going to think wRootOld is
@@ -6511,7 +6511,7 @@ embeddedKeys:;
             // for the switch that contains it.
             Splay(pwRootOld, nBLOld, wKey, pwRoot, nBL
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                , pwValueUp
+                , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                   );
             return;
@@ -6899,7 +6899,7 @@ DoubleDown(qp, // (nBL, pLn) of link to original switch
            Word_t wPopCnt, // pop count of original sub tree at qp?
            int nBWNew
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-         , Word_t* pwValueUp
+         , Word_t* pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
            )
 {
@@ -6991,7 +6991,7 @@ DoubleDown(qp, // (nBL, pLn) of link to original switch
             swPopCnt(qy, nBLR, gwPopCnt(qy, nBLR) - nPopCntLoop);
             InsertAll(pwRootLoop, nBLLoop, wPrefix, pwRoot, nBL
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                    , pwValueUp
+                    , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                       );
             continue;
@@ -7149,7 +7149,7 @@ DoubleIt(qp, // (nBL, pLn) of list
          Link_t *pLnUp, // link to switch containing qp
          Word_t wPopCnt
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-       , Word_t* pwValueUp
+       , Word_t* pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
          )
 {
@@ -7255,7 +7255,7 @@ DoubleIt(qp, // (nBL, pLn) of list
             nBL = nBLOld;
             NewBitmap(qy, nBLNew, wKey,
   #ifdef _LNX
-                      pwValueUp,
+                      pwLnX,
   #endif // _LNX
                       /* wPopCnt */ 0);
             nBL = nBLNew;
@@ -7369,7 +7369,7 @@ insertAll:;
 // Do we need it?  We need it for the call back into Insert.
                       /* nBL */ nBLOld
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                    , pwValueUp
+                    , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                       );
         }
@@ -7399,7 +7399,7 @@ insertAll:;
         if (nBLOld < cnBitsPerWord) {
             InsertAll(&link.ln_wRoot, nBLOld, wKey, pwRoot, nBLOld
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                    , pwValueUp
+                    , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                       );
         } else
@@ -7408,7 +7408,7 @@ insertAll:;
             // *pwRoot now points to a switch
             InsertAll(&wRoot, nBLOld, wKey, pwRoot, nBLOld
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                    , pwValueUp
+                    , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                       );
         }
@@ -7433,14 +7433,14 @@ static void
 InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos,
                    int nBLUp, Link_t *pLnUp
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                 , Word_t* pwValueUp
+                 , Word_t* pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                    )
 {
     qv; (void)nPopCnt; (void)nPos;
     (void)nBLUp;
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-    (void)pwValueUp;
+    (void)pwLnX;
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
     DBGI(printf("# IAXL pLn %p\n", pLn));
     DBGI(printf("# IAXL pwr %p\n", pwr));
@@ -7467,14 +7467,14 @@ InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos,
     BJL(return) SplayWithInsert(/* pwRootOld */ &wRoot, nBL, wKey, nPos,
                                 &wRootUp, /* nBLUp */ nBLRUp
   #ifdef _LNX
-                              , pwValueUp
+                              , pwLnX
   #endif // _LNX
                                 );
   #else // SPLAY_WITH_INSERT
     //printf("nBLR before splay %d\n", nBLR);
     Splay(&wRoot, nBL, wKey, &pLnUp->ln_wRoot, nBLUp
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-        , pwValueUp
+        , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
           );
     // Update nPos for InsertGuts.
@@ -7492,7 +7492,7 @@ InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos,
       #endif // CODE_XX_SW
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                     , pwValueUp
+                     , pwLnX
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                        );
@@ -7507,13 +7507,13 @@ static void
 InsertAtFullUnalignedXxList(qp, Word_t wKey, int nPopCnt, int nPos,
                             int nBLUp, Link_t* pLnUp
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                          , Word_t* pwValueUp
+                          , Word_t* pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                             )
 {
     qv; (void)nPopCnt; (void)nPos;
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-    (void)pwValueUp;
+    (void)pwLnX;
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
     Word_t wRootUp = pLnUp->ln_wRoot;
     DBGI(printf("# IAFUXL pLn %p\n", pLn));
@@ -7538,13 +7538,13 @@ InsertAtFullUnalignedXxList(qp, Word_t wKey, int nPopCnt, int nPos,
     BJL(return) SplayWithInsert(/* pwRootOld */ &wRoot, nBL, wKey, nPos,
                                 &pLnUp->ln_wRoot, nBLUp
   #ifdef _LNX
-                              , pwValueUp
+                              , pwLnX
   #endif // _LNX
                                 );
   #else // SPLAY_WITH_INSERT
     Splay(/* pwRootOld */ &wRoot, nBL, wKey, &pLnUp->ln_wRoot, nBLUp
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-        , pwValueUp
+        , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
           );
     swPopCnt(qyx(Up), nBLRUp, gwPopCnt(qyx(Up), nBLRUp) - 1);
@@ -7613,13 +7613,13 @@ TransformList(qp,
               Link_t *pLnUp,
   #endif // CODE_XX_SW
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-              Word_t *pwValueUp,
+              Word_t *pwLnX,
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
               Word_t wPopCnt)
 {
     qv; (void)wPopCnt;
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-    (void)pwValueUp;
+    (void)pwLnX;
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
     int nDL = nBL_to_nDL(nBL); (void)nDL;
     // Narrow switches don't get here.
@@ -7805,7 +7805,7 @@ newSkipToBitmap:;
         int nPopCntOld = GetPopCnt(pwRootOld, nBL);
         pwr = NewBitmap(qy, nBLNew, wKey,
   #ifdef _LNX
-                        pwValueUp,
+                        pwLnX,
   #endif // _LNX
                         nPopCntOld);
         wRoot = *pwRoot;
@@ -7822,7 +7822,7 @@ newSkipToBitmap:;
           #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         InsertAllAtBitmap(qy, qyx(Old), /*nnStart*/ 0, nPopCntOld
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                       , pwValueUp
+                       , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                          );
 
@@ -7927,7 +7927,7 @@ newSkipToBitmap:;
             DBGI(printf("TransformList: DoubleIt\n"));
             return DoubleIt(qy, wKey, nBLUp, pLnUp, wPopCnt
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                          , pwValueUp
+                          , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                             );
   #ifdef USE_XX_SW
@@ -8072,7 +8072,7 @@ newSkipToBitmap:;
 // Do we need it?  We need it for the call back into Insert.
                       nBL
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                    , pwValueUp
+                    , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                       );
         }
@@ -8100,7 +8100,7 @@ newSkipToBitmap:;
         if (nBL < cnBitsPerWord) {
             InsertAll(&link.ln_wRoot, /* old */ nBL, wKey, pwRoot, nBL
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                    , pwValueUp
+                    , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                       );
         } else
@@ -8115,7 +8115,7 @@ newSkipToBitmap:;
             // created switch. nBLOld == nBL.
             Splay(/*old*/ &wRoot, /*old*/ nBL, wKey, pwRoot, nBL
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                , pwValueUp
+                , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                   );
         }
@@ -8180,7 +8180,7 @@ InsertAtList(qp,
            , Link_t *pLnUp, int nBLUp
 #endif // CODE_XX_SW
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-           , Word_t *pwValueUp
+           , Word_t *pwLnX
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
              )
 {
@@ -8261,7 +8261,7 @@ InsertAtList(qp,
                     nBL, (int)wPopCnt, nEmbeddedListPopCntMax));
         return DoubleIt(qy, wKey, nBLUp, pLnUp, wPopCnt
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                      , pwValueUp
+                      , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                         );
     }
@@ -8310,7 +8310,7 @@ InsertAtList(qp,
                                           GetPopCnt(pwRootUp, nBLUp),
                                           nBWRUpNew
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                        , pwValueUp
+                                        , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                           );
                 return BJL(pwValue);
@@ -8384,7 +8384,7 @@ InsertAtList(qp,
                                          nBLUp, pLnUp,
           #endif // CODE_XX_SW
           #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                         pwValueUp,
+                                         pwLnX,
           #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                          wPopCnt);
                 }
@@ -8417,7 +8417,7 @@ InsertAtList(qp,
                     DBGI(printf("IAL: DoubleIt\n"));
                     return DoubleIt(qy, wKey, nBLUp, pLnUp, wPopCnt
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                  , pwValueUp
+                                  , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                     );
                 }
@@ -8629,7 +8629,7 @@ copyWithInsertWord:
         {
             DeflateExternalList(pwRoot, wPopCnt + 1, nBL, pwList
 #ifdef B_JUDYL
-                              , pwValueUp
+                              , pwLnX
 #endif // B_JUDYL
                                 );
             assert(*pwRoot != WROOT_NULL);
@@ -8640,7 +8640,7 @@ copyWithInsertWord:
             } else
       #endif // EK_XV
             // Update pwValue for return.
-            pwValue = pwValueUp;
+            pwValue = pwLnX;
 #endif // B_JUDYL
 #if defined(NO_TYPE_IN_XX_SW)
             if (!((nBL < nDL_to_nBL(2))
@@ -8674,7 +8674,7 @@ copyWithInsertWord:
                 BJL(pwValue =) InsertAtFullXxList(qy, wKey, wPopCnt, nPos,
                                                   nBLUp, pLnUp
           #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                                , pwValueUp
+                                                , pwLnX
           #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                                   );
             } else {
@@ -8682,7 +8682,7 @@ copyWithInsertWord:
                                                            nPos,
                                                            nBLUp, pLnUp
           #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                                         , pwValueUp
+                                                         , pwLnX
           #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                                            );
             }
@@ -8720,7 +8720,7 @@ copyWithInsertWord:
                                       GetPopCnt(pwRootUp, nBLUp),
                                       nBWRUpNew
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                    , pwValueUp
+                                    , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                       );
             return BJL(pwValue);
@@ -8729,7 +8729,7 @@ copyWithInsertWord:
                         nBL, nBLUp));
             BJL(pwValue =) DoubleIt(qy, wKey, nBLUp, pLnUp, wPopCnt
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                  , pwValueUp
+                                  , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                     );
             return BJL(pwValue);
@@ -8742,7 +8742,7 @@ copyWithInsertWord:
                                          nBLUp, pLnUp,
       #endif // CODE_XX_SW
       #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                         pwValueUp,
+                                         pwLnX,
       #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                          wPopCnt);
         }
@@ -8783,7 +8783,7 @@ InsertGuts(qp, Word_t wKey, int nPos
          , int nBLUp
 #endif // defined(CODE_XX_SW)
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-         , Word_t *pwValueUp
+         , Word_t *pwLnX
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
            )
 {
@@ -8793,7 +8793,7 @@ InsertGuts(qp, Word_t wKey, int nPos
     int nBW; (void)nBW;
 #endif // defined(CODE_XX_SW)
 #ifdef _RETURN_NULL_TO_INSERT_AGAIN
-    BJL(assert((pwValueUp != NULL) || (nBL == cnBitsPerWord)));
+    BJL(assert((pwLnX != NULL) || (nBL == cnBitsPerWord)));
 #endif // _RETURN_NULL_TO_INSERT_AGAIN
     int nDL = nBL_to_nDL(nBL); (void)nDL; // assert(nDL_to_nBL(nDL) >= nBL);
     DBGI(printf("InsertGuts pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
@@ -8801,7 +8801,7 @@ InsertGuts(qp, Word_t wKey, int nPos
     DBGI(printf("IG nBLR %d\n",
                 tp_bIsList(nType) ? gnListBLR(qy) : gnBLR(qy)));
     DBGI(printf("IG: nPos %d\n", nPos));
-    BJL(DBGI(printf("IG: pwValueUp %p\n", pwValueUp)));
+    BJL(DBGI(printf("IG: pwLnX %p\n", pwLnX)));
 
   // One of the key aspects of USE_XX_SW_ONLY_AT_DL2 is that we go ahead and
   // widen a DL2 switch right on past DL1 and all the way to an embedded
@@ -8855,7 +8855,7 @@ InsertGuts(qp, Word_t wKey, int nPos
         if (tp_bIsBitmap(nType)) {
             return InsertAtBitmap(qy, wKey
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                , pwValueUp
+                                , pwLnX
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                   );
         }
@@ -8883,7 +8883,7 @@ InsertGuts(qp, Word_t wKey, int nPos
                 DoubleIt(qy, wKey, nBLUp, pLnUp,
                          PWR_xListPopCnt(pwRoot, pwr, nBL)
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                       , pwValueUp
+                                       , pwLnX
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                          );
             BJ1(return Success);
@@ -8917,7 +8917,7 @@ wRootNull:;
         if (nPopCnt < EmbeddedListPopCntMax(nBL)) {
             InsertEmbedded(pwRoot, nBL,
           #ifdef _LNX
-                           pwValueUp,
+                           pwLnX,
           #endif // _LNX
                            wKey);
             return Success;
@@ -8930,7 +8930,7 @@ wRootNull:;
         if (nPopCnt != 0) {
             wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot
       #ifdef B_JUDYL
-                                      , pwValueUp
+                                      , pwLnX
       #endif // B_JUDYL
                                         );
             nPos = ~SearchList(qy, /*nBLR*/ nBL, wKey);
@@ -8979,7 +8979,7 @@ wRootNull:;
                        , pLnUp, nBLUp
 #endif // CODE_XX_SW
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                       , pwValueUp
+                       , pwLnX
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                          );
     }
@@ -9081,7 +9081,7 @@ InflateList(qp, Word_t* pwLnX, Word_t wKey, int nPopCnt)
         }
         // Copy the values.
         // BUG: Fix this to use gpwValues
-        // gpwValues(qy)[~nn] = pwValueUp[nn];
+        // gpwValues(qy)[~nn] = pwLnX[nn];
         pwList[~(nn
   #ifdef LIST_POP_IN_PREAMBLE
                  + 1
@@ -9107,7 +9107,7 @@ InflateList(qp, Word_t* pwLnX, Word_t wKey, int nPopCnt)
 Word_t
 InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
 #ifdef B_JUDYL
-                  , Word_t *pwValueUp
+                  , Word_t *pwLnX
 #endif // B_JUDYL
                     )
 {
@@ -9153,7 +9153,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
     assert(nPopCnt != 0);
   #ifdef EK_XV
     if (nPopCnt > 1) {
-        return InflateList(qy, pwValueUp, wKey, nPopCnt);
+        return InflateList(qy, pwLnX, wKey, nPopCnt);
     }
   #endif // EK_XV
 
@@ -9226,7 +9226,7 @@ InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
   #ifdef LIST_POP_IN_PREAMBLE
                  + 1
   #endif // LIST_POP_IN_PREAMBLE
-                 )] = *pwValueUp; // gpwValues(qy)[~nn] = *pwValueUp;
+                 )] = *pwLnX; // gpwValues(qy)[~nn] = *pwLnX;
 #endif // B_JUDYL
     }
 
@@ -9317,7 +9317,7 @@ static Word_t
 DeflateExternalList(Word_t *pwRoot,
                     int nPopCnt, int nBL, Word_t *pwr
 #ifdef B_JUDYL
-                  , Word_t *pwValueUp
+                  , Word_t *pwLnX
 #endif // B_JUDYL
                     )
 {
@@ -9328,7 +9328,7 @@ DeflateExternalList(Word_t *pwRoot,
         Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
         return DeflateList(qy,
       #ifdef _LNX
-                           /* pwLnX */ pwValueUp,
+                           /* pwLnX */ pwLnX,
       #endif // _LNX
                            nPopCnt);
     }
@@ -9441,11 +9441,11 @@ DeflateExternalList(Word_t *pwRoot,
         }
 #ifdef B_JUDYL
         // Copy the value.
-        DBGI(printf("DEL: pwValueUp %p\n", pwValueUp));
+        DBGI(printf("DEL: pwLnX %p\n", pwLnX));
   #if defined(FILL_W_KEY)
         if (nn < nPopCnt)
   #endif // defined(FILL_W_KEY)
-            *pwValueUp = pwr[~(nn
+            *pwLnX = pwr[~(nn
   #ifdef LIST_POP_IN_PREAMBLE
                                + 1
   #endif // LIST_POP_IN_PREAMBLE
@@ -9480,7 +9480,7 @@ Status_t
 InsertAtBitmap(qp, Word_t wKey
   #ifdef B_JUDYL
   #ifdef EMBED_KEYS
-             , Word_t* pwValueUp
+             , Word_t* pwLnX
   #endif // EMBED_KEYS
   #endif // B_JUDYL
                )
@@ -9529,7 +9529,7 @@ InsertAtBitmap(qp, Word_t wKey
   #endif // #else defined(SKIP_TO_BITMAP) && !def(PREFIX_WORD_IN_BITMAP_LEAF)
     assert(wPopCnt < EXP(nBLR));
   #ifdef _BMLF_BM_IN_LNX
-    Word_t* pwBitmap = pwValueUp;
+    Word_t* pwBitmap = pwLnX;
   #else // _BMLF_BM_IN_LNX
     Word_t* pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
   #endif // else _BMLF_BM_IN_LNX
@@ -9543,7 +9543,7 @@ InsertAtBitmap(qp, Word_t wKey
     }
     nPos = BmIndex(qy, nBLR, wKey
       #ifdef EMBED_KEYS
-                 , pwValueUp
+                 , pwLnX
       #endif // EMBED_KEYS
                    );
     Word_t wWords = BitmapWordCnt(nBLR, wPopCnt + 1); // new
@@ -9559,7 +9559,7 @@ InsertAtBitmap(qp, Word_t wKey
       #endif // _BMLF_BM_IN_LNX
         NewBitmap(qy, nBLR, wKey,
   #ifdef _LNX
-                  pwValueUp,
+                  pwLnX,
   #endif // _LNX
                   wPopCnt + 1);
         // Prefix and popcnt are set; bits are not.
@@ -9572,7 +9572,7 @@ InsertAtBitmap(qp, Word_t wKey
             = (nBLR <= cnLogBitsPerWord) ? 1 : EXP(nBLR - cnLogBitsPerWord);
       #ifdef _BMLF_BM_IN_LNX
         Word_t* pwBitmapOld = &wBitmapOld;
-        pwBitmap = pwValueUp;
+        pwBitmap = pwLnX;
       #else // _BMLF_BM_IN_LNX
         Word_t* pwBitmapOld = pwBitmap;
         pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
@@ -9647,7 +9647,7 @@ done:
     uint8_t* pu8Cnts = (uint8_t*)pLn->ln_awDummies;
               #else // cnDummiesInLink > 0
                   #ifdef EMBED_KEYS
-    uint8_t* pu8Cnts = (uint8_t*)pwValueUp;
+    uint8_t* pu8Cnts = (uint8_t*)pwLnX;
                   #else // EMBED_KEYS
     uint8_t* pu8Cnts = ((BmLeaf_t*)pwr)->bmlf_au8Cnts;
                   #endif // #else EMBED_KEYS
@@ -9692,7 +9692,7 @@ static Status_t
 RemoveAtBitmap(qp, Word_t wKey
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-             , Word_t* pwValueUp
+             , Word_t* pwLnX
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                );
@@ -9828,7 +9828,7 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
 Status_t
 RemoveGuts(qp, Word_t wKey
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
-         , Word_t *pwValueUp
+         , Word_t *pwLnX
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
            )
 {
@@ -9859,7 +9859,7 @@ RemoveGuts(qp, Word_t wKey
         return RemoveAtBitmap(qy, wKey
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-                            , pwValueUp
+                            , pwLnX
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                               );
@@ -9880,7 +9880,7 @@ embeddedKeys:;
         wPopCnt = wr_nPopCnt(*pwRoot, nBL);
         wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot
 #ifdef B_JUDYL
-                                  , pwValueUp
+                                  , pwLnX
 #endif // B_JUDYL
                                     );
       #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -10234,7 +10234,7 @@ embeddedKeys:;
         assert(nBLR == nBL);
         DeflateExternalList(pwRoot, wPopCnt - 1, nBL, pwList
 #ifdef B_JUDYL
-                          , pwValueUp
+                          , pwLnX
 #endif // B_JUDYL
                             );
     }
@@ -10254,7 +10254,7 @@ static Status_t
 RemoveAtBitmap(qp, Word_t wKey
       #ifdef B_JUDYL
       #ifdef EMBED_KEYS
-             , Word_t* pwValueUp
+             , Word_t* pwLnX
       #endif // EMBED_KEYS
       #endif // B_JUDYL
                )
@@ -10275,7 +10275,7 @@ RemoveAtBitmap(qp, Word_t wKey
 
         Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR) - 1;
   #ifdef _BMLF_BM_IN_LNX
-        Word_t *pwBitmap = pwValueUp;
+        Word_t *pwBitmap = pwLnX;
   #else // _BMLF_BM_IN_LNX
         Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
   #endif // else _BMLF_BM_IN_LNX
@@ -10290,7 +10290,7 @@ RemoveAtBitmap(qp, Word_t wKey
         Word_t *pwSrcVals = gpwBitmapValues(qy, nBLR);
         int nPos = BmIndex(qy, nBLR, wKey
       #ifdef EMBED_KEYS
-                         , pwValueUp
+                         , pwLnX
       #endif // EMBED_KEYS
                            );
         if (wWords != BitmapWordCnt(nBLR, wPopCnt + 1)) {
@@ -10305,7 +10305,7 @@ RemoveAtBitmap(qp, Word_t wKey
       #endif // _BMLF_BM_IN_LNX
             NewBitmap(qy, nBLR, wKey,
       #ifdef _LNX
-                      pwValueUp,
+                      pwLnX,
       #endif // _LNX
                       wPopCnt);
             // Prefix and popcnt are set; bits are not.
@@ -10318,7 +10318,7 @@ RemoveAtBitmap(qp, Word_t wKey
                              ? 1 : EXP(nBLR - cnLogBitsPerWord);
       #ifdef _BMLF_BM_IN_LNX
             Word_t* pwBitmapOld = &wBitmapOld;
-            pwBitmap = pwValueUp;
+            pwBitmap = pwLnX;
       #else // _BMLF_BM_IN_LNX
             Word_t* pwBitmapOld = pwBitmap;
             pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
@@ -10397,7 +10397,7 @@ done:
     uint8_t* pu8Cnts = (uint8_t*)pLn->ln_awDummies;
               #else // cnDummiesInLink > 0
                   #ifdef EMBED_KEYS
-    uint8_t* pu8Cnts = (uint8_t*)pwValueUp;
+    uint8_t* pu8Cnts = (uint8_t*)pwLnX;
                   #else // EMBED_KEYS
     uint8_t* pu8Cnts = ((BmLeaf_t*)pwr)->bmlf_au8Cnts;
                   #endif // #else EMBED_KEYS
