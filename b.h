@@ -164,6 +164,74 @@
 // Format string for qyp
 #define qfmt "nBL %2d pLn %p wRoot 0x%016zx nType %x pwr %p"
 
+#if defined(_LNX) && defined(REMOTE_LNX)
+  #define qpa_pwLnX      , Word_t* pwLnX
+  #define qya_pwLnX      ,         pwLnX
+  #define qpa_pwLnXx(x)  , Word_t* pwLnX##x
+  #define qya_pwLnXx(x)  ,         pwLnX##x
+  #define qva_pwLnX          (void)pwLnX
+  #define qva_pwLnXx(x)      (void)pwLnX##x
+  #define pqpa_pwLnX      Word_t** ppwLnX
+  #define pqya_pwLnX               &pwLnX
+  #define pqva_pwLnX         (void)ppwLnX
+  #define qypa_pwLnX  (void*)pwLnX
+  #define qfmta_pwLnX      " pwLnX %p"
+#else // defined(_LNX) && defined(REMOTE_LNX)
+  #define qpa_pwLnX
+  #define qya_pwLnX
+  #define qpa_pwLnXx(x)
+  #define qya_pwLnXx(x)
+    #ifdef _LNX
+  #define qva_pwLnX      Word_t* pwLnX    = &pLn   ->ln_wX; (void)pwLnX
+  #define qva_pwLnXx(x)  Word_t* pwLnX##x = &pLn##x->ln_wX; (void)pwLnX##x
+    #else // _LNX
+  #define qva_pwLnX
+  #define qva_pwLnXx(x)
+    #endif // else _LNX
+  #define pqpa_pwLnX
+  #define pqya_pwLnX
+  #define pqva_pwLnX
+  #define qypa_pwLnX
+  #define qfmta_pwLnX
+#endif // else defined(_LNX) && defined(REMOTE_LNX)
+
+#define qpa      int nBL   , Link_t* pLn    qpa_pwLnX
+#define qya          nBL   ,         pLn    qya_pwLnX
+#define qpax(x)  int nBL##x, Link_t* pLn##x qpa_pwLnXx(x)
+#define qyax(x)      nBL##x,         pLn##x qya_pwLnXx(x)
+
+#define qva \
+    qva_pwLnX; \
+    Word_t* pwRoot = &pLn->ln_wRoot; \
+    Word_t wRoot = pLn->ln_wRoot; \
+    int nType = wr_nType(wRoot); \
+    Word_t* pwr = wr_pwr(wRoot); \
+    (void)nBL; (void)pLn; (void)pwRoot; (void)wRoot; (void)nType; (void)pwr
+
+#define qvax(x) \
+    qva_pwLnXx(x); \
+    Word_t* pwRoot##x = &pLn##x->ln_wRoot; \
+    Word_t wRoot##x = pLn##x->ln_wRoot; \
+    int nType##x = wr_nType(wRoot##x); \
+    Word_t* pwr##x = wr_pwr(wRoot##x); \
+    (void)nBL##x; (void)pLn##x; (void)pwRoot##x; \
+    (void)wRoot##x; (void)nType##x; (void)pwr##x
+
+#define pqpa  int* pnBL, Link_t** ppLn, pqpa_pwLnX, \
+              Word_t* pwRoot, int* pnType, Word_t** ppwr
+#define pqya  &nBL, &pLn, pqya_pwLnX, &wRoot, &nType, &pwr
+#define pqva \
+    (void)pnBL; (void)ppLn; (void)ppwLnX; \
+    pqva_pwLnX; \
+    (void)pwRoot; (void)pnType; (void)ppwr; \
+    ASSERT(*pwRoot == (*ppLn)->ln_wRoot); \
+    ASSERT(*pnType == wr_nType(*pwRoot) || (*pnBL <= cnLogBitsPerLink)); \
+    ASSERT(*ppwr == wr_pwr(*pwRoot) || (*pnBL <= cnLogBitsPerLink))
+
+#define qypa   nBL, (void*)pLn, qypa_pwLnX, wRoot, nType, (void*)pwr
+
+#define qfmta  "nBL %2d pLn %p" qfmta_pwLnX " wRoot 0x%016zx nType %x pwr %p"
+
 // Default is -USKIP_PREFIX_CHECK -UNO_UNNECESSARY_PREFIX.
 // Default is -USAVE_PREFIX -USAVE_PREFIX_TEST_RESULT
 // Default is -UALWAYS_CHECK_PREFIX_AT_LEAF.
@@ -3726,14 +3794,10 @@ Word_t*
 #else // B_JUDYL
 Status_t
 #endif // B_JUDYL
-InsertGuts(qp, Word_t wKey, int nPos
-#if defined(CODE_XX_SW)
-         , Link_t *pLnUp
-         , int nBLUp
-#endif // defined(CODE_XX_SW)
-  #ifdef _LNX
-         , Word_t *pwLnX
-  #endif // _LNX
+InsertGuts(qpa, Word_t wKey, int nPos
+  #if defined(CODE_XX_SW)
+         , Link_t *pLnUp, int nBLUp
+  #endif // defined(CODE_XX_SW)
            );
 
 #ifdef B_JUDYL
@@ -3741,14 +3805,10 @@ Word_t*
 #else // B_JUDYL
 void
 #endif // B_JUDYL
-InsertAtList(qp, Word_t wKey, int nPos
-#if defined(CODE_XX_SW)
-           , Link_t *pLnUp
-           , int nBLUp
-#endif // defined(CODE_XX_SW)
-  #ifdef _LNX
-           , Word_t *pwLnX
-  #endif // _LNX
+InsertAtList(qpa, Word_t wKey, int nPos
+  #if defined(CODE_XX_SW)
+           , Link_t *pLnUp, int nBLUp
+  #endif // defined(CODE_XX_SW)
              );
 
 Status_t RemoveGuts(qp, Word_t wKey

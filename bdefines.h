@@ -197,6 +197,7 @@
 #endif // _LNX
 #ifdef B_JUDYL
 #ifdef EMBED_KEYS
+  #undef  _LNX // in case it's already been defined for another reason
   #define _LNX
 #endif // EMBED_KEYS
 #endif // B_JUDYL

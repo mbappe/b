@@ -2851,14 +2851,10 @@ xv_foundIt:;
       #endif // _RETURN_NULL_TO_INSERT_AGAIN
   #endif // B_JUDYL
     BJL(pwValue =)
-        InsertGuts(qy, wKey, nPos
-  #if defined(CODE_XX_SW)
-                 , pLnUp
-                 , nBLUp
-  #endif // defined(CODE_XX_SW)
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                 , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+        InsertGuts(qya, wKey, nPos
+      #if defined(CODE_XX_SW)
+                 , pLnUp, nBLUp
+      #endif // defined(CODE_XX_SW)
                    );
   #ifdef B_JUDYL
       #ifdef _RETURN_NULL_TO_INSERT_AGAIN

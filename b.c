@@ -3196,12 +3196,9 @@ InsertEkXv(qp, Word_t* pwLnX, Word_t wKey, int nPopCnt, int nPos)
 // - nType == T_EMBEDDED_KEYS -- yes
 // - nType == T_EK_XV -- not yet
 static void
-InsertEmbedded(Word_t *pwRoot, int nBL,
-  #ifdef _LNX
-               Word_t *pwLnX,
-  #endif // _LNX
-               Word_t wKey)
+InsertEmbedded(qpa, Word_t wKey)
 {
+    qva;
   #ifdef _LNX
     (void)pwLnX;
   #endif // _LNX
@@ -4182,19 +4179,17 @@ lastDigit:;
     return nPopCntMax;
 }
 
-// Insert each key from pwRootOld into pwRoot. Then free pwRootOld.
+// Insert each key from pwRootOld into qpa. Then free pwRootOld.
 // wKey contains the common prefix.
-// pwRootOld is a non-empty external list.
-// pwRoot is a switch.
+// pwRootOld is a link to non-empty external list.
+// qpa is a link to a switch.
 static void
-Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL
-  #ifdef B_JUDYL
-  #ifdef EMBED_KEYS
-    , Word_t* pwLnX
-  #endif // EMBED_KEYS
-  #endif // B_JUDYL
-      )
+Splay(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey)
 {
+    qva;
+  #ifdef _LNX
+    Word_t* pwLnXLoop = pwLnX; (void)pwLnXLoop; // BUG
+  #endif // _LNX
     (void)wKey;
   #ifdef B_JUDYL
   #ifdef EMBED_KEYS
@@ -4256,8 +4251,6 @@ Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL
     // But it will be the first that will splay into the links that it
     // will splay into.
 
-    Word_t wRoot = *pwRoot;
-    int nType = wr_nType(wRoot);
     int nBLR = GetBLR(pwRoot, nBL); // nBLR of switch
   #ifndef USE_XX_SW
     assert(nBLR <= nBLROld);
@@ -4273,8 +4266,6 @@ Splay(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL
     }
     assert(tp_bIsSwitch(nType));
 
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
-    Word_t *pwr = wr_pwr(wRoot);
     int nBW = gnBW(qy, nBLR); // nBLR_to_nBW(nBLR);
   #ifdef CODE_BM_SW
     int bIsBmSw = tp_bIsBmSw(nType);
@@ -4405,11 +4396,7 @@ lastDigit8:;
                             = pwValuesOld[~nnStart];
       #endif // B_JUDYL
                         for (int xx = nnStart; xx < nn; ++xx) {
-                            InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
-      #ifdef _LNX
-                                           pwLnX,
-      #endif // _LNX
-                                           pcKeys[xx]);
+                            InsertEmbedded(qyax(Loop), pcKeys[xx]);
                         }
                     }
                 } else
@@ -4568,11 +4555,7 @@ lastDigit16:;
                             = pwValuesOld[~nnStart];
       #endif // B_JUDYL
                         for (int xx = nnStart; xx < nn; ++xx) {
-                            InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
-      #ifdef _LNX
-                                           pwLnX,
-      #endif // _LNX
-                                           psKeys[xx]);
+                            InsertEmbedded(qyax(Loop), psKeys[xx]);
                         }
                     }
                 } else
@@ -4757,11 +4740,7 @@ lastDigit32:;
                             = pwValuesOld[~nnStart];
       #endif // B_JUDYL
                         for (int xx = nnStart; xx < nn; ++xx) {
-                            InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
-      #ifdef _LNX
-                                           pwLnX,
-      #endif // _LNX
-                                           piKeys[xx]);
+                            InsertEmbedded(qyax(Loop), piKeys[xx]);
                         }
                     }
                 } else
@@ -4941,11 +4920,7 @@ lastDigit:;
                             = pwValuesOld[~nnStart];
       #endif // B_JUDYL
                         for (int xx = nnStart; xx < nn; ++xx) {
-                            InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
-      #ifdef _LNX
-                                           pwLnX,
-      #endif // _LNX
-                                           pwKeys[xx]);
+                            InsertEmbedded(qyax(Loop), pwKeys[xx]);
                         }
                     }
                 } else
@@ -5145,13 +5120,12 @@ static Word_t*
 #else // B_JUDYL
 static void
 #endif // #else B_JUDYL
-SplayWithInsert(Word_t *pwRootOld, int nBLOld, Word_t wKey, int nPos,
-                Word_t *pwRoot, int nBL
-  #ifdef _LNX
-              , Word_t* pwLnX
-  #endif // _LNX
-                )
+SplayWithInsert(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey, int nPos)
 {
+    qva;
+  #ifdef _LNX
+    Word_t* pwLnXLoop = pwLnX; (void)pwLnXLoop; // BUG
+  #endif // _LNX
     (void)wKey;
   #ifdef DEBUG
     int nPopCntMax = 0;
@@ -5203,8 +5177,6 @@ SplayWithInsert(Word_t *pwRootOld, int nBLOld, Word_t wKey, int nPos,
     // But it will be the first that will splay into the links that it
     // will splay into.
 
-    Word_t wRoot = *pwRoot;
-    int nType = wr_nType(wRoot);
     int nBLR = GetBLR(pwRoot, nBL);
   #ifndef USE_XX_SW
     assert(nBLR <= nBLROld);
@@ -5220,8 +5192,6 @@ SplayWithInsert(Word_t *pwRootOld, int nBLOld, Word_t wKey, int nPos,
     }
     assert(tp_bIsSwitch(nType));
 
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
-    Word_t *pwr = wr_pwr(wRoot);
     int nBW = gnBW(qy, nBLR); // nBLR_to_nBW(nBLR);
   #ifdef CODE_BM_SW
     int bIsBmSw = tp_bIsBmSw(nType);
@@ -5356,19 +5326,11 @@ lastDigit8:;
                             = pwValuesOld[~nnStart];
       #endif // B_JUDYL
                         for (int xx = nnStart; xx < nn; ++xx) {
-                            InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
-      #ifdef _LNX
-                                           pwLnX,
-      #endif // _LNX
-                                           pcKeys[xx]);
+                            InsertEmbedded(qyax(Loop), pcKeys[xx]);
                         }
                     }
                     if (nDigit == nDigitKey) {
-                        InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
-      #ifdef _LNX
-                                       pwLnX,
-      #endif // _LNX
-                                       wKey);
+                        InsertEmbedded(qyax(Loop), wKey);
                     }
                 } else
   #endif // EMBED_KEYS
@@ -5569,19 +5531,11 @@ lastDigit16:;
                             = pwValuesOld[~nnStart];
       #endif // B_JUDYL
                         for (int xx = nnStart; xx < nn; ++xx) {
-                            InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
-      #ifdef _LNX
-                                           pwLnX,
-      #endif // _LNX
-                                           psKeys[xx]);
+                            InsertEmbedded(qyax(Loop), psKeys[xx]);
                         }
                     }
                     if (nDigit == nDigitKey) {
-                        InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
-      #ifdef _LNX
-                                       pwLnX,
-      #endif // _LNX
-                                       wKey);
+                        InsertEmbedded(qyax(Loop), wKey);
                     }
                 } else
   #endif // EMBED_KEYS
@@ -5818,19 +5772,11 @@ lastDigit32:;
                             = pwValuesOld[~nnStart];
       #endif // B_JUDYL
                         for (int xx = nnStart; xx < nn; ++xx) {
-                            InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
-      #ifdef _LNX
-                                           pwLnX,
-      #endif // _LNX
-                                           piKeys[xx]);
+                            InsertEmbedded(qyax(Loop), piKeys[xx]);
                         }
                     }
                     if (nDigit == nDigitKey) {
-                        InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
-      #ifdef _LNX
-                                       pwLnX,
-      #endif // _LNX
-                                       wKey);
+                        InsertEmbedded(qyax(Loop), wKey);
                     }
                 } else
   #endif // EMBED_KEYS
@@ -6077,19 +6023,11 @@ lastDigit:;
                             = pwValuesOld[~nnStart];
       #endif // B_JUDYL
                         for (int xx = nnStart; xx < nn; ++xx) {
-                            InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
-      #ifdef _LNX
-                                           pwLnX,
-      #endif // _LNX
-                                           pwKeys[xx]);
+                            InsertEmbedded(qyax(Loop), pwKeys[xx]);
                         }
                     }
                     if (nDigit == nDigitKey) {
-                        InsertEmbedded(&pLnLoop->ln_wRoot, nBLLoop,
-      #ifdef _LNX
-                                       pwLnX,
-      #endif // _LNX
-                                       wKey);
+                        InsertEmbedded(qyax(Loop), wKey);
                     }
                 } else
   #endif // EMBED_KEYS
@@ -6357,17 +6295,18 @@ lastDigit:;
 
     if (bInsertNotDone) {
         Link_t *pLnLoop = &pLinks[nDigitKey];
+  #ifdef _LNX
+        Word_t* pwLnXLoop = gpwEmbeddedValue(qy, 1<<nBW, nDigitKey);
+        (void)pwLnXLoop;
+  #endif // _LNX
         DBGI(printf("\n# Just before InsertAtList in SplayWithInsert "));
         DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
         BJL(pwValue =)
-            InsertAtList(qyx(Loop), wKey, nPos
+            InsertAtList(qyax(Loop), wKey, nPos
   #if defined(CODE_XX_SW)
                        , /*pLnUp*/ tp_bIsXxSw(nType) ? pLn : NULL
                        , /*pBLUp*/ nBL
   #endif // defined(CODE_XX_SW)
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                       , /*pwLnX*/ gpwEmbeddedValue(qy, 1<<nBW, nDigitKey)
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                          );
     }
 
@@ -6498,6 +6437,7 @@ embeddedKeys:;
         printf("\n");
     }
   #endif // DEBUG_INSERT
+    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
       #ifdef USE_XX_SW_ONLY_AT_DL2
     if (nBLOld >= nDL_to_nBL(2)) // Splay can't handle it.
       #endif // USE_XX_SW_ONLY_AT_DL2
@@ -6509,16 +6449,11 @@ embeddedKeys:;
             assert(!tp_bIsBmSw(nType));
             // Splay updates the pop count for (nBL, pwRoot) but not
             // for the switch that contains it.
-            Splay(pwRootOld, nBLOld, wKey, pwRoot, nBL
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                  );
+            Splay(qya, pwRootOld, nBLOld, wKey);
             return;
         }
     }
     // wRootOld might be newer than *pwRootOld
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
     int nPopCnt = PWR_xListPopCnt(&wRootOld, pwrOld, nBLOld);
     Link_t *pLnOld = STRUCT_OF(pwRootOld, Link_t, ln_wRoot); (void)pLnOld;
     BJL(Word_t *pwValues = gpwValues(qyx(Old)));
@@ -7433,7 +7368,7 @@ static void
 InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos,
                    int nBLUp, Link_t *pLnUp
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                 , Word_t* pwLnX
+                 , Word_t* pwLnXUp
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                    )
 {
@@ -7464,19 +7399,11 @@ InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos,
 
     // We need to splay the XX list into the links in the full-width switch.
   #ifdef SPLAY_WITH_INSERT
-    BJL(return) SplayWithInsert(/* pwRootOld */ &wRoot, nBL, wKey, nPos,
-                                &wRootUp, /* nBLUp */ nBLRUp
-  #ifdef _LNX
-                              , pwLnX
-  #endif // _LNX
-                                );
+    BJL(return)
+        SplayWithInsert(qya(Up), /* pwRootOld */ &wRoot, nBL, wKey, nPos);
   #else // SPLAY_WITH_INSERT
     //printf("nBLR before splay %d\n", nBLR);
-    Splay(&wRoot, nBL, wKey, &pLnUp->ln_wRoot, nBLUp
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-        , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-          );
+    Splay(qya(Up), &wRoot, nBL, wKey);
     // Update nPos for InsertGuts.
     if ((tp_bIsList(wr_nType(WROOT_NULL)) && (pLn->ln_wRoot != WROOT_NULL))
         && tp_bIsList(wr_nType(pLn->ln_wRoot)))
@@ -7486,16 +7413,11 @@ InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos,
     } else {
         nPos = -1;
     }
-    BJL(return) InsertGuts(qy, wKey, nPos
+    BJL(return) InsertGuts(qya, wKey, nPos
       #ifdef CODE_XX_SW
                          , pLnUp, nBLUp
       #endif // CODE_XX_SW
-      #ifdef B_JUDYL
-      #ifdef EMBED_KEYS
-                     , pwLnX
-      #endif // EMBED_KEYS
-      #endif // B_JUDYL
-                       );
+                           );
   #endif // #ifndef SPLAY_WITH_INSERT
 }
 
@@ -7507,13 +7429,13 @@ static void
 InsertAtFullUnalignedXxList(qp, Word_t wKey, int nPopCnt, int nPos,
                             int nBLUp, Link_t* pLnUp
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                          , Word_t* pwLnX
+                          , Word_t* pwLnXUp
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                             )
 {
     qv; (void)nPopCnt; (void)nPos;
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-    (void)pwLnX;
+    (void)pwLnXUp;
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
     Word_t wRootUp = pLnUp->ln_wRoot;
     DBGI(printf("# IAFUXL pLn %p\n", pLn));
@@ -7535,18 +7457,10 @@ InsertAtFullUnalignedXxList(qp, Word_t wKey, int nPopCnt, int nPos,
 
   #ifdef SPLAY_WITH_INSERT
     // We need to splay the XX list into the links in the full-width switch.
-    BJL(return) SplayWithInsert(/* pwRootOld */ &wRoot, nBL, wKey, nPos,
-                                &pLnUp->ln_wRoot, nBLUp
-  #ifdef _LNX
-                              , pwLnX
-  #endif // _LNX
-                                );
+    BJL(return)
+        SplayWithInsert(qya(Up), /* pwRootOld */ &wRoot, nBL, wKey, nPos);
   #else // SPLAY_WITH_INSERT
-    Splay(/* pwRootOld */ &wRoot, nBL, wKey, &pLnUp->ln_wRoot, nBLUp
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-        , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-          );
+    Splay(qya(Up), /* pwRootOld */ &wRoot, nBL, wKey);
     swPopCnt(qyx(Up), nBLRUp, gwPopCnt(qyx(Up), nBLRUp) - 1);
     BJL(return) Insert(nBLUp, pLnUp, wKey);
   #endif // #else SPLAY_WITH_INSERT
@@ -8113,11 +8027,7 @@ newSkipToBitmap:;
             // Here we are calling Splay with an orphaned list and the link
             // where the list used to reside that now points to a newly
             // created switch. nBLOld == nBL.
-            Splay(/*old*/ &wRoot, /*old*/ nBL, wKey, pwRoot, nBL
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                  );
+            Splay(qya, /*old*/ &wRoot, /*old*/ nBL, wKey);
         }
         //printf("# New tree after Splay:\n");
         //DBG(Dump(pwRoot, wKey, nBL));
@@ -8173,18 +8083,15 @@ Word_t*
 #else // B_JUDYL
 void
 #endif // B_JUDYL
-InsertAtList(qp,
+InsertAtList(qpa,
              Word_t wKey,
              int nPos
 #ifdef CODE_XX_SW
            , Link_t *pLnUp, int nBLUp
 #endif // CODE_XX_SW
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-           , Word_t *pwLnX
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
              )
 {
-    qv;
+    qva;
     int nDL = nBL_to_nDL(nBL); (void)nDL;
     int nBLR = gnListBLR(qy);
     Word_t wPopCnt = 0;
@@ -8777,25 +8684,22 @@ Word_t*
 #else // B_JUDYL
 Status_t
 #endif // B_JUDYL
-InsertGuts(qp, Word_t wKey, int nPos
-#if defined(CODE_XX_SW)
-         , Link_t *pLnUp
-         , int nBLUp
-#endif // defined(CODE_XX_SW)
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-         , Word_t *pwLnX
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+InsertGuts(qpa, Word_t wKey, int nPos
+  #if defined(CODE_XX_SW)
+         , Link_t *pLnUp, int nBLUp
+  #endif // defined(CODE_XX_SW)
            )
 {
-    qv;
+    qva;
 #if defined(CODE_XX_SW)
     (void)nBLUp;
     int nBW; (void)nBW;
 #endif // defined(CODE_XX_SW)
-#ifdef _RETURN_NULL_TO_INSERT_AGAIN
+  #ifdef _LNX
+  #ifdef _RETURN_NULL_TO_INSERT_AGAIN
     BJL(assert((pwLnX != NULL) || (nBL == cnBitsPerWord)));
-#endif // _RETURN_NULL_TO_INSERT_AGAIN
-    int nDL = nBL_to_nDL(nBL); (void)nDL; // assert(nDL_to_nBL(nDL) >= nBL);
+  #endif // _RETURN_NULL_TO_INSERT_AGAIN
+  #endif // _LNX
     DBGI(printf("InsertGuts pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
                 (void *)pwRoot, wKey, nBL, wRoot));
     DBGI(printf("IG nBLR %d\n",
@@ -8868,7 +8772,7 @@ InsertGuts(qp, Word_t wKey, int nPos
     // I fear the idea was ill-conceived.
   #ifndef DOUBLE_DOWN
   #ifdef SKIP_TO_XX_SW
-    if ((nBL != nDL_to_nBL(nDL)) && tp_bIsList(nType)) {
+    if ((nBL != nDL_to_nBL(nBL_to_nDL(nDL))) && tp_bIsList(nType)) {
         // What about when nBL <= nDL_to_nBL(2)?
         // And USE_XX_SW_ONLY_AT_DL2?
         Word_t *pwRootUp = &pLnUp->ln_wRoot;
@@ -8915,11 +8819,7 @@ wRootNull:;
       #ifndef B_JUDYL
         // This is a performance shortcut that is not necessary.
         if (nPopCnt < EmbeddedListPopCntMax(nBL)) {
-            InsertEmbedded(pwRoot, nBL,
-          #ifdef _LNX
-                           pwLnX,
-          #endif // _LNX
-                           wKey);
+            InsertEmbedded(qya, wKey);
             return Success;
         }
       #endif // #endif B_JUDYL
@@ -8974,13 +8874,10 @@ wRootNull:;
 #endif // defined(SKIP_LINKS)
     {
         BJL(return)
-            InsertAtList(qy, wKey, nPos
+            InsertAtList(qya, wKey, nPos
 #ifdef CODE_XX_SW
                        , pLnUp, nBLUp
 #endif // CODE_XX_SW
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-                       , pwLnX
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                          );
     }
 #if defined(SKIP_LINKS) || defined(BM_SW_FOR_REAL)
@@ -9023,7 +8920,7 @@ wRootNull:;
                         w_wPrefixBL(wKey, nBLR), nBLR));
 #endif // defined(SKIP_LINKS)
             assert(nDL_to_nBL(nBL_to_nDL(nBLR)) == nBLR);
-            NewLink(qy, wKey, nBL_to_nDL(nBLR), /* nDLUp */ nDL);
+            NewLink(qy, wKey, nBL_to_nDL(nBLR), /* nDLUp */ nBL_to_nDL(nBL));
             BJL(return)
                 Insert(nBL, pLn, wKey);
         }
