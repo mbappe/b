@@ -330,7 +330,7 @@ MyMallocGutsRM(Word_t wWords, int nLogAlignment, Word_t *pwAllocWords)
 #else // defined(LIBCMALLOC)
 
 #define cnBitsUsed 2 // low bits used by malloc for bookkeeping
-    assert((((Word_t *)ww)[-1] & MSK(cnBitsMallocMask) & ~MSK(cnBitsUsed)) == 0);
+    assert(!(((Word_t *)ww)[-1] & MSK(cnBitsMallocMask) & ~MSK(cnBitsUsed)));
     // Save the bits of ww[-1] that we need at free time and make sure
     // none of the bits we want to use are changed by malloc while we
     // own the buffer.

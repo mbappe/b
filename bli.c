@@ -2156,7 +2156,7 @@ t_bitmap:;
       #endif // LOOKUP
       #endif // B_JUDYL
             // Use compile-time tests to speed this up. Hopefully.
-      #if defined(B_JUDYL) && defined(LOOKUP) && defined(BMLF_POP_COUNT_1_NO_TEST)
+  #if defined(B_JUDYL) && defined(LOOKUP) && defined(BMLF_POP_COUNT_1_NO_TEST)
             int bBitIsSet = 1;
       #else // BMLF_POP_COUNT_1_NO_TEST
             int bBitIsSet =
@@ -3174,13 +3174,15 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 set_wr(wRoot, pwrNew, T_LIST);
                 *pwRoot = wRoot;
                 pwKeysNew = ls_pwKeys(pwrNew, cnBitsPerWord);
-                assert(ls_pwKeysX(pwrNew, cnBitsPerWord, nPopCnt + 1) == pwKeysNew);
+                assert(ls_pwKeysX(pwrNew, cnBitsPerWord, nPopCnt + 1)
+                       == pwKeysNew);
                 COPY(pwKeysNew, pwKeys, nPos);
                 COPY(&pwKeysNew[nPos + 1], &pwKeys[nPos], nPopCnt - nPos);
           #ifdef B_JUDYL
                 pwValuesNew = gpwValues(qy); // (pLn, nBLR)
                 COPY(&pwValuesNew[~nPos + 1], &pwValues[~nPos + 1], nPos);
-                COPY(&pwValuesNew[~nPopCnt], &pwValues[~nPopCnt + 1], nPopCnt - nPos);
+                COPY(&pwValuesNew[~nPopCnt], &pwValues[~nPopCnt + 1],
+                     nPopCnt - nPos);
           #endif // B_JUDYL
                 if (pwr != NULL) {
                     OldList(pwr, nPopCnt, cnBitsPerWord, T_LIST);
@@ -3192,7 +3194,8 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
           #endif // defined(LIST_END_MARKERS)
                 Set_xListPopCnt(pwRoot, cnBitsPerWord, nPopCnt + 1);
                 BJL(pwValue = &pwValuesNew[~nPos]);
-                DBGI(printf("PAD(pwKeysNew %p nPopCnt + 1 %d)\n", pwKeysNew, nPopCnt + 1));
+                DBGI(printf("PAD(pwKeysNew %p nPopCnt + 1 %d)\n",
+                            pwKeysNew, nPopCnt + 1));
                 PAD(pwKeysNew, nPopCnt + 1);
       #endif // SWFI_INSERT_AT_LIST
                 BJL(*pwValue = 0);
@@ -3201,7 +3204,8 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
                 MOVE(&pwKeys[nPos + 1], &pwKeys[nPos], nPopCnt - nPos);
                 pwKeysNew = pwKeys;
       #ifdef B_JUDYL
-                MOVE(&pwValues[~nPopCnt], &pwValues[~nPopCnt + 1], nPopCnt - nPos);
+                MOVE(&pwValues[~nPopCnt], &pwValues[~nPopCnt + 1],
+                     nPopCnt - nPos);
                 pwValuesNew = pwValues;
       #endif // B_JUDYL
                 pwKeysNew[nPos] = wKey;

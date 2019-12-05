@@ -2975,7 +2975,7 @@ PopCount32(uint32_t v)
     c += ((v >> 24) * 0x1001001001001ULL & 0x84210842108421ULL) % 0x1f;
     return c;
   #elif BEST_POP_COUNT_32
-    // The best method for counting bits in a 32-bit integer v is the following:
+    // The best method for counting bits in 32-bit int v is the following:
     v = v - ((v >> 1) & 0x55555555); // reuse input as temporary
     v = (v & 0x33333333) + ((v >> 2) & 0x33333333); // temp
     return (((v + (v >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24; // count
@@ -4718,7 +4718,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 #define PSPLIT_LOCATEKEY_WORD(_b_t, _nBL, _pwKeys, _nPopCnt, _wKey, _nPos) \
 { \
     assert((Word_t)((_pwKeys) + 1) == (Word_t)(_pwKeys) + sizeof(Word_t)); \
-    PSPLIT_LOCATEKEY_GUTS(_b_t, Word_t, (_nBL), /* nPsplitShift */ (_nBL) - 16, \
+    PSPLIT_LOCATEKEY_GUTS(_b_t, Word_t, (_nBL), /*nPsplitShift*/ (_nBL) - 16, \
                           (_pwKeys), (_nPopCnt), (_wKey), (_nPos)); \
 }
 
@@ -6949,7 +6949,8 @@ GetPopCnt(Word_t *pwRoot, int nBL)
         Word_t *pwr = wr_pwr(wRoot);
         int nType = wr_nType(wRoot);
         if (pwr != NULL) {
-            DBGC(printf("GetPopCnt nBL %d pwr %p nType %d\n", nBL, pwr, nType));
+            DBGC(printf("GetPopCnt nBL %d pwr %p nType %d\n",
+                        nBL, pwr, nType));
         }
         if (tp_bIsSwitch(nType)) {
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
