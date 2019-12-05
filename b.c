@@ -1177,7 +1177,7 @@ BitmapWordsMin(int nBLR, Word_t wPopCnt)
     return wWords;
 }
 
-static int16_t asBitmapWordCnt[((Word_t)1 << cnBitsInD1) + 1];
+static int32_t asBitmapWordCnt[((Word_t)1 << cnBitsInD1) + 1];
 
 static Word_t
 CalcBitmapWordCnt(int nBLR, Word_t wPopCnt)
