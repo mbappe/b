@@ -1254,7 +1254,7 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
 {
     Word_t wWords;
     if (!cbEmbeddedBitmap) {
-        BJ1(if ((cn2dBmMaxWpkPercent != 0) || (nBLR == cnBitsInD1))) {
+        BJ1(if ((cn2dBmMaxWpkPercent == 0) || (nBLR == cnBitsInD1))) {
             if ((wWords = asBitmapWordCnt[wPopCnt]) == 0) {
                 wWords = CalcBitmapWordCnt(nBLR, wPopCnt);
                 asBitmapWordCnt[wPopCnt] = wWords;
