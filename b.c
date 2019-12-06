@@ -7375,7 +7375,7 @@ InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos,
     qv; (void)nPopCnt; (void)nPos;
     (void)nBLUp;
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
-    (void)pwLnX;
+    (void)pwLnXUp;
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
     DBGI(printf("# IAXL pLn %p\n", pLn));
     DBGI(printf("# IAXL pwr %p\n", pwr));
@@ -7400,10 +7400,10 @@ InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos,
     // We need to splay the XX list into the links in the full-width switch.
   #ifdef SPLAY_WITH_INSERT
     BJL(return)
-        SplayWithInsert(qya(Up), /* pwRootOld */ &wRoot, nBL, wKey, nPos);
+        SplayWithInsert(qyax(Up), /* pwRootOld */ &wRoot, nBL, wKey, nPos);
   #else // SPLAY_WITH_INSERT
     //printf("nBLR before splay %d\n", nBLR);
-    Splay(qya(Up), &wRoot, nBL, wKey);
+    Splay(qyax(Up), &wRoot, nBL, wKey);
     // Update nPos for InsertGuts.
     if ((tp_bIsList(wr_nType(WROOT_NULL)) && (pLn->ln_wRoot != WROOT_NULL))
         && tp_bIsList(wr_nType(pLn->ln_wRoot)))
@@ -7458,9 +7458,9 @@ InsertAtFullUnalignedXxList(qp, Word_t wKey, int nPopCnt, int nPos,
   #ifdef SPLAY_WITH_INSERT
     // We need to splay the XX list into the links in the full-width switch.
     BJL(return)
-        SplayWithInsert(qya(Up), /* pwRootOld */ &wRoot, nBL, wKey, nPos);
+        SplayWithInsert(qyax(Up), /* pwRootOld */ &wRoot, nBL, wKey, nPos);
   #else // SPLAY_WITH_INSERT
-    Splay(qya(Up), /* pwRootOld */ &wRoot, nBL, wKey);
+    Splay(qyax(Up), /* pwRootOld */ &wRoot, nBL, wKey);
     swPopCnt(qyx(Up), nBLRUp, gwPopCnt(qyx(Up), nBLRUp) - 1);
     BJL(return) Insert(nBLUp, pLnUp, wKey);
   #endif // #else SPLAY_WITH_INSERT
