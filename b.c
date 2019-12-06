@@ -3199,9 +3199,6 @@ static void
 InsertEmbedded(qpa, Word_t wKey)
 {
     qva;
-  #ifdef _LNX
-    (void)pwLnX;
-  #endif // _LNX
     int nPopCntMax = EmbeddedListPopCntMax(nBL); (void)nPopCntMax;
   #ifdef NO_TYPE_IN_XX_SW
     // We don't really expect this to be true, but want to be reminded
@@ -4191,11 +4188,6 @@ Splay(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey)
     Word_t* pwLnXLoop = pwLnX; (void)pwLnXLoop; // BUG
   #endif // _LNX
     (void)wKey;
-  #ifdef B_JUDYL
-  #ifdef EMBED_KEYS
-    (void)pwLnX;
-  #endif // EMBED_KEYS
-  #endif // B_JUDYL
   #ifdef DEBUG
     int nPopCntMax = 0;
   #endif // DEBUG
@@ -6363,6 +6355,7 @@ embeddedKeys:;
         // How inefficient can we be?
         DBGI(printf("IA: Calling IEL nBLOld %d wKey " OWx" nBL %d\n",
                     nBLOld, wKey, nBL));
+        Link_t *pLnOld = STRUCT_OF(pwRootOld, Link_t, ln_wRoot);
         // wRootOld here, but new from IEL's perspective
           #ifdef B_JUDYL
         // pwRootOld is a link in an XX_SW. We don't know nBWOld.
@@ -6375,7 +6368,6 @@ embeddedKeys:;
         int nBWUp = nBLR - nBLOld; // nBWUpOld
         // Using nBLR to figure nBWUp may be ok for doubling down, but I
         // don't think it is true for a more general InsertAll.
-        Link_t *pLnOld = STRUCT_OF(pwRootOld, Link_t, ln_wRoot);
         int nDigitUp = ((wKey >> nBLOld) & MSK(nBWUp)); // nDigitUpOld
         Link_t *pLinksUp = pLnOld - nDigitUp; // pLinksUpOld
         // pwrUpOld
@@ -6385,13 +6377,9 @@ embeddedKeys:;
         Link_t *pLnUp = &linkUp;
         set_wr_pwr(linkUp.ln_wRoot, pwrUp); // gpwEmbeddedValue needs pwr
         int nBLUp = nBLR; // nBLUpOld -- assumes DoubleDown
-        Word_t *pwLnX = gpwEmbeddedValue(qyx(Up), EXP(nBWUp), nDigitUp);
+        Word_t *pwLnXOld = gpwEmbeddedValue(qyx(Up), EXP(nBWUp), nDigitUp);
           #endif // B_JUDYL
-        wRootOld = InflateEmbeddedList(pwRootOld, wKey, nBLOld, wRootOld
-          #ifdef B_JUDYL
-                                     , pwLnX
-          #endif // B_JUDYL
-                                       );
+        wRootOld = InflateEmbeddedList(qyax(Old), wKey);
         // If (nBLOld < nDL_to_nBL) Dump is going to think wRootOld is
         // embeddded keys.
         //DBGI(printf("After IEL\n"));
@@ -8831,11 +8819,7 @@ wRootNull:;
         // Change an embedded list into an external list to make things
         // easier for Insert.  We'll change it back later if it makes sense.
         if (nPopCnt != 0) {
-            wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot
-      #ifdef B_JUDYL
-                                      , pwLnX
-      #endif // B_JUDYL
-                                        );
+            wRoot = InflateEmbeddedList(qya, wKey);
             nPos = ~SearchList(qy, /*nBLR*/ nBL, wKey);
         } else {
             nPos = 0;
@@ -9005,17 +8989,12 @@ InflateList(qp, Word_t* pwLnX, Word_t wKey, int nPopCnt)
 // Replace a wRoot that has embedded keys with an external T_LIST leaf.
 // It assumes the input is an embedded list.
 Word_t
-InflateEmbeddedList(Word_t *pwRoot, Word_t wKey, int nBL, Word_t wRoot
-#ifdef B_JUDYL
-                  , Word_t *pwLnX
-#endif // B_JUDYL
-                    )
+InflateEmbeddedList(qpa, Word_t wKey)
 {
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
-    (void)pwRoot;
+    qva;
     DBGI(printf(
          "InflateEmbeddedList pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
-         (void *)pwRoot, wKey, nBL, wRoot));
+         (void*)pwRoot, wKey, nBL, wRoot));
 #if defined(NO_TYPE_IN_XX_SW)
     if (nBL < nDL_to_nBL(2)) {
         if (wRoot == ZERO_POP_MAGIC) { return 0; }
@@ -9441,11 +9420,7 @@ InsertAtBitmap(qp, Word_t wKey
         nPos = wKey & MSK(nBLR);
         goto done;
     }
-    nPos = BmIndex(qy, nBLR, wKey
-      #ifdef EMBED_KEYS
-                 , pwLnX
-      #endif // EMBED_KEYS
-                   );
+    nPos = BmIndex(qya, nBLR, wKey);
     Word_t wWords = BitmapWordCnt(nBLR, wPopCnt + 1); // new
     if (wWords != BitmapWordCnt(nBLR, wPopCnt)) {
       #ifdef BMLF_CNTS
@@ -9726,13 +9701,9 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
 }
 
 Status_t
-RemoveGuts(qp, Word_t wKey
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-         , Word_t *pwLnX
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-           )
+RemoveGuts(qpa, Word_t wKey)
 {
-    qv;
+    qva;
     // nType is not valid for NO_TYPE_IN_XX_SW and nBL < nDL_to_nBL(2)
     // pwr is not valid for NO_TYPE_IN_XX_SW and nBL < nDL_to_nBL(2)
     int nDL = nBL_to_nDL(nBL); (void)nDL;
@@ -9778,11 +9749,7 @@ RemoveGuts(qp, Word_t wKey
         goto embeddedKeys;
 embeddedKeys:;
         wPopCnt = wr_nPopCnt(*pwRoot, nBL);
-        wRoot = InflateEmbeddedList(pwRoot, wKey, nBL, wRoot
-#ifdef B_JUDYL
-                                  , pwLnX
-#endif // B_JUDYL
-                                    );
+        wRoot = InflateEmbeddedList(qya, wKey);
       #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         // Remove would have decremented pop count in the link on the way in
         // if this had been a T_LIST at that time.
@@ -10188,11 +10155,7 @@ RemoveAtBitmap(qp, Word_t wKey
             }
         }
         Word_t *pwSrcVals = gpwBitmapValues(qy, nBLR);
-        int nPos = BmIndex(qy, nBLR, wKey
-      #ifdef EMBED_KEYS
-                         , pwLnX
-      #endif // EMBED_KEYS
-                           );
+        int nPos = BmIndex(qya, nBLR, wKey);
         if (wWords != BitmapWordCnt(nBLR, wPopCnt + 1)) {
       #ifdef BMLF_CNTS
           #if cnDummiesInLink > 0

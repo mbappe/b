@@ -2210,11 +2210,7 @@ t_bitmap:;
           #ifndef LOOKUP
                     BM_UNPACKED(wRoot) ? (int)(wKey & MSK(cnBitsInD1)) :
           #endif // #ifndef LOOKUP
-                    BmIndex(qy, cnBitsInD1, wKey
-              #ifdef EMBED_KEYS
-                          , pwLnX
-              #endif // EMBED_KEYS
-                            );
+                    BmIndex(qya, cnBitsInD1, wKey);
                 Word_t* pwValue = &pwBitmapValues[nIndex];
               #ifdef LOOKUP
               #ifdef PACK_BM_VALUES
@@ -2916,11 +2912,7 @@ restart:;
       #if defined(REMOVE)
 removeGutsAndCleanup:;
     DBGX(Checkpoint(qy, "removeGutsAndCleanup"));
-    RemoveGuts(qy, wKey
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-             , pwLnX
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-               );
+    RemoveGuts(qya, wKey);
       #endif // defined(REMOVE)
     goto cleanup;
 cleanup:;

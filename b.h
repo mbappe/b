@@ -2798,16 +2798,14 @@ typedef struct {
 #endif // else USE_XX_SW_ONLY_AT_DL2 elif !B_JUDYL && ALLOW_EMBEDDED_BITMAP
 
 #ifdef ALLOW_EMBEDDED_BITMAP
-#ifdef B_JUDYL
-#ifdef EMBED_KEYS
+#ifdef _LNX
 #if (cnBitsInD1 <= cnLogBitsPerWord)
   #define _BMLF_BM_IN_LNX
   #ifdef BMLF_CNTS
     #error BMLF_CNTS with _BMLF_BM_IN_LNX
   #endif // BMLF_CNTS
 #endif // (cnBitsInD1 <= cnLogBitsPerWord)
-#endif // EMBED_KEYS
-#endif // B_JUDYL
+#endif // _LNX
 #endif // ALLOW_EMBEDDED_BITMAP
 
 #if cnListPopCntMaxDl1 < (1 << cnBitsInD1)
@@ -3077,7 +3075,7 @@ gpwEmbeddedValue(qp, int nLinks, int nIndex)
     // The following assertion is bogus during Splay which doesn't bother to
     // initialize the bitmap in the switch being used to stage the splay.
     // assert(!tp_bIsBmSw(nType) || (BmSwLinkCnt(qy) == nLinks));
-    return &((Word_t*)&pwr_pLinks((Switch_t *)pwr)[nLinks])[nIndex];
+    return &((Word_t*)&pwr_pLinks((Switch_t*)pwr)[nLinks])[nIndex];
       #else // REMOTE_LNX
     return &pwr_pLinks((Switch_t*)pwr)[nIndex].ln_wX;
       #endif // else REMOTE_LNX
@@ -3164,16 +3162,9 @@ gpwBitmapValues(qp, int nBLR)
 
 // How many keys precede the key we are looking for in the bitmap?
 static int
-BmIndex(qp, int nBLR, Word_t wKey
-  #ifdef _LNX
-      , Word_t* pwLnX
-  #endif // _LNX
-        )
+BmIndex(qpa, int nBLR, Word_t wKey)
 {
-    qv;
-  #ifdef _LNX
-    (void)pwLnX;
-  #endif // _LNX
+    qva;
     assert(!cbEmbeddedBitmap); // cbEmbeddedBitmap is for Judy1
     assert(tp_bIsBitmap(nType));
     Word_t wDigit = wKey & MSK(nBLR);
@@ -3811,11 +3802,7 @@ InsertAtList(qpa, Word_t wKey, int nPos
   #endif // defined(CODE_XX_SW)
              );
 
-Status_t RemoveGuts(qp, Word_t wKey
-  #ifdef _LNX
-                  , Word_t *pwLnX
-  #endif // _LNX
-                    );
+Status_t RemoveGuts(qpa, Word_t wKey);
 
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
 Word_t*
@@ -3840,12 +3827,7 @@ InsertAtBitmap(qp, Word_t wKey);
 //                     Word_t wPrefix, int nBL, int bDump);
 
 #if defined(EMBED_KEYS)
-Word_t InflateEmbeddedList(Word_t *pwRoot,
-                           Word_t wKey, int nBL, Word_t wRoot
-  #ifdef _LNX
-                         , Word_t *pwLnX
-  #endif // _LNX
-                           );
+Word_t InflateEmbeddedList(qpa, Word_t wKey);
 #endif // defined(EMBED_KEYS)
 
 int ListSlotCnt(int nPopCnt, int nBLR);
