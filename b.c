@@ -7413,6 +7413,9 @@ InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos,
     } else {
         nPos = -1;
     }
+      #ifdef _LNX
+    Word_t* pwLnX = pwLnXUp; // BUG?
+      #endif // _LNX
     BJL(return) InsertGuts(qya, wKey, nPos
       #ifdef CODE_XX_SW
                          , pLnUp, nBLUp
@@ -8772,7 +8775,7 @@ InsertGuts(qpa, Word_t wKey, int nPos
     // I fear the idea was ill-conceived.
   #ifndef DOUBLE_DOWN
   #ifdef SKIP_TO_XX_SW
-    if ((nBL != nDL_to_nBL(nBL_to_nDL(nDL))) && tp_bIsList(nType)) {
+    if ((nBL != nDL_to_nBL(nBL_to_nDL(nBL))) && tp_bIsList(nType)) {
         // What about when nBL <= nDL_to_nBL(2)?
         // And USE_XX_SW_ONLY_AT_DL2?
         Word_t *pwRootUp = &pLnUp->ln_wRoot;
