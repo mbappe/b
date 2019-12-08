@@ -1267,7 +1267,7 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
 
 #ifdef GUARDBAND
 #define CheckBitmapGuardband(_pwr, _nBLR, _wPopCnt) \
-    assert(pwr[BitmapWordCnt((_nBLR), (_wPopCnt))] == ~(Word_t)(_pwr))
+    BJL(assert(pwr[BitmapWordCnt((_nBLR), (_wPopCnt))] == ~(Word_t)(_pwr)))
 #else // GUARDBAND
 #define CheckBitmapGuardband(_pwr, _nBLR, _wPopCnt)
 #endif // else GUARDBAND
@@ -2974,29 +2974,6 @@ embeddedKeys:;
             if ((cbEmbeddedBitmap && (nBLLoop <= cnLogBitsPerLink))
                 || (pLinks[ww].ln_wRoot != WROOT_NULL))
             {
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-  #if defined(CODE_BM_SW)
-                // We don't pass enough info to FreeArrayGuts yet for it to
-                // be able to handle printing the values in this case.
-                // So we handle it here. Yuck.
-                if (bDump
-                      && bBmSw
-                      && (wr_nType(pLinks[ww].ln_wRoot) == T_EMBEDDED_KEYS))
-                {
-                    printf(" nBLLoop %2d", nBLLoop);
-                    printf(" wPrefix " OWx, wKey | (nn << nBLLoop));
-                    printf(" pwRoot " OWx, (Word_t)&pLinks[ww].ln_wRoot);
-                    printf(" wr " OWx, pLinks[ww].ln_wRoot);
-                    printf(" 0x%016" _fw"x",
-                           (pLinks[ww].ln_wRoot
-                                  >> (cnBitsPerWord - nBLLoop))
-                               & MSK(nBLLoop));
-                    printf(",0x%zx",
-                           ((Word_t*)&pLinks[nLinks])[ww]);
-                    printf("\n");
-                } else
-  #endif // defined(CODE_BM_SW)
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
   #ifdef XX_LISTS
                 if (bDump
                     && (ww != 0)
@@ -3004,7 +2981,8 @@ embeddedKeys:;
                     && (wr_nType(pLinks[ww].ln_wRoot) == T_XX_LIST))
                 {
                     printf(" Ditto ");
-                    printf(" wPrefix " OWx, /*wKeyLoop*/ wKey | (nn << nBLLoop));
+                    printf(" wPrefix " OWx,
+                           /*wKeyLoop*/ wKey | (nn << nBLLoop));
                     printf(" pwRoot " OWx, (Word_t)&pLinks[ww].ln_wRoot);
                     printf(" Ditto\n");
                     ++ww;
@@ -3027,7 +3005,7 @@ embeddedKeys:;
                     }
                     Link_t *pLnLoop = &pLinks[ww];
   #ifdef REMOTE_LNX
-                    Word_t *pwLnXLoop = gpwLnX(qyx(Loop),
+                    Word_t *pwLnXLoop = gpwLnX(qy,
       #ifdef CODE_BM_SW
                                                bBmSw ? nLinks :
       #endif // CODE_BM_SW
@@ -8612,7 +8590,9 @@ InsertGuts(qpa, Word_t wKey, int nPos
     DBGI(printf("IG nBLR %d\n",
                 tp_bIsList(nType) ? gnListBLR(qy) : gnBLR(qy)));
     DBGI(printf("IG: nPos %d\n", nPos));
+  #ifdef _LNX
     BJL(DBGI(printf("IG: pwLnX %p\n", pwLnX)));
+  #endif // _LNX
 
   // One of the key aspects of USE_XX_SW_ONLY_AT_DL2 is that we go ahead and
   // widen a DL2 switch right on past DL1 and all the way to an embedded
