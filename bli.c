@@ -938,19 +938,15 @@ t_switch:;
         // ((uint8_t *)&wKey)[cnDigitsPerWord - nDL];
         // ((uint8_t *)&wSwappedKey)[nDL];
         // *(uint8_t *)&wSwappedAndShiftedKey;
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-        // Save pwValue so we can find the embedded value area easily later.
-        // pLnUp would be more general. I wonder if we should put an up
-        // pointer in our tree nodes.
-        pwLnX
-            = gpwEmbeddedValue(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+  #ifdef _LNX
+        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
         DBGX(printf("updated pwLnX %p\n", pwLnX));
       #ifdef PREFETCH_EK_VAL
       #ifdef LOOKUP
         PREFETCH(pwLnX);
       #endif // LOOKUP
       #endif // PREFETCH_EK_VAL
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
       #ifdef PREFETCH_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
@@ -1021,10 +1017,9 @@ t_xx_sw:;
         nBW = gnBW(qy, nBLR); // num bits decoded
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-        pwLnX
-            = gpwEmbeddedValue(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifdef _LNX
+        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+  #endif // _LNX
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
   // _XX_SW_TAIL is for cases where we don't go back to the top switch but
@@ -1223,14 +1218,14 @@ t_bm_sw:;
             PREFETCH(pcPrefetch);
             PREFETCH(pcPrefetch + 64);
           #endif // PREFETCH_BM_LN
-          #ifdef EMBED_KEYS
+          #ifdef _LNX
           #ifdef PREFETCH_BM_EK
-            pcPrefetch = (void*)gpwEmbeddedValue(qy, nLinkCnt, wSwIndex);
+            pcPrefetch = (void*)gpwLnX(qy, nLinkCnt, wSwIndex);
             PREFETCH(pcPrefetch - 64);
             PREFETCH(pcPrefetch);
             PREFETCH(pcPrefetch + 64);
           #endif // PREFETCH_BM_EK
-          #endif // EMBED_KEYS
+          #endif // _LNX
       #endif // (cnBitsPerWord > 32)
       #endif // B_JUDYL
       #ifdef ONE_BM_SW_INDEX_CALL
@@ -1306,13 +1301,13 @@ t_bm_sw:;
         }
 
         pLnNew = &pwr_pLinks((BmSwitch_t *)pwr)[wSwIndex];
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifdef _LNX
         int nLinkCnt = BmSwLinkCnt(qy);
       #ifndef BM_SW_FOR_REAL
         assert(nLinkCnt == (1<<nBW));
       #endif // BM_SW_FOR_REAL
-        pwLnX = gpwEmbeddedValue(qy, nLinkCnt, wSwIndex);
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+        pwLnX = gpwLnX(qy, nLinkCnt, wSwIndex);
+  #endif // _LNX
 
         // Update wDigit before bmSwTail because we have to do it
         // in t_list_sw before goto bmSwTail.

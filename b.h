@@ -3012,6 +3012,28 @@ Set_nBLR(Word_t *pwRoot, int nBLR)
 }
 //#endif // SKIP_LINKS
 
+#ifdef _LNX
+// qp is a pointer to the switch containing the link we're interested in.
+// nLinks is the number of links in the switch. This may not be the same as
+// EXP(gnBW(qp, gnBLR(qp)), e.g. for a bitmap switch.
+// nIndex is the link number in the switch. It is NOT necessarily the same
+// as the digit of the key represented by the link, e.g. for a bitmap switch.
+static Word_t*
+gpwLnX(qp, int nLinks, int nIndex)
+{
+    qv;
+    (void)nLinks;
+      #ifdef REMOTE_LNX
+    // The following assertion is bogus during Splay which doesn't bother to
+    // initialize the bitmap in the switch being used to stage the splay.
+    // assert(!tp_bIsBmSw(nType) || (BmSwLinkCnt(qy) == nLinks));
+    return &((Word_t*)&pwr_pLinks((Switch_t*)pwr)[nLinks])[nIndex];
+      #else // REMOTE_LNX
+    return &pwr_pLinks((Switch_t*)pwr)[nIndex].ln_wX;
+      #endif // else REMOTE_LNX
+}
+#endif // _LNX
+
 static const unsigned char BitsSetTable256[256] =
 {
 #   define B2(n) n,     n+1,     n+1,     n+2
@@ -3055,30 +3077,15 @@ PopCount32(uint32_t v)
   #endif // #else POP_COUNT_32
 }
 
-static inline int BmSwLinkCnt(qp);
-
 #ifdef B_JUDYL
 
   #ifdef EMBED_KEYS
-// qp is a pointer to the switch containing the link that contains the
-// embedded key.
-// nLinks is the number of links in the switch. This may not be the same as
-// EXP(gnBW(qp, gnBLR(qp)), e.g. for a bitmap switch.
-// nIndex is the link number in the switch. It is NOT necessarily the same
-// as the digit of the key represented by the link, e.g. for a bitmap switch.
+// qpa is a pointer to the link that contains the embedded key.
 static Word_t*
-gpwEmbeddedValue(qp, int nLinks, int nIndex)
+gpwEmbeddedValue(qpa)
 {
-    qv;
-    (void)nLinks;
-      #ifdef REMOTE_LNX
-    // The following assertion is bogus during Splay which doesn't bother to
-    // initialize the bitmap in the switch being used to stage the splay.
-    // assert(!tp_bIsBmSw(nType) || (BmSwLinkCnt(qy) == nLinks));
-    return &((Word_t*)&pwr_pLinks((Switch_t*)pwr)[nLinks])[nIndex];
-      #else // REMOTE_LNX
-    return &pwr_pLinks((Switch_t*)pwr)[nIndex].ln_wX;
-      #endif // else REMOTE_LNX
+    qva;
+    return pwLnX;
 }
   #endif // EMBED_KEYS
 
