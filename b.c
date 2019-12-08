@@ -2256,11 +2256,7 @@ OldSwitch(Word_t *pwRoot, int nBL
 }
 
 static Word_t
-FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
-  #ifdef _LNX
-              Word_t* pwLnX,
-  #endif // _LNX
-              int bDump
+FreeArrayGuts(qpa, Word_t wKey, int bDump
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
             , Word_t *pwrUp, int nBWUp
   #ifdef CODE_BM_SW
@@ -2269,6 +2265,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
               )
 {
+    qva;
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
     (void)pwrUp; (void)nBWUp;
       #ifdef CODE_BM_SW
@@ -2280,15 +2277,6 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
     (void)pwLnX;
   #endif // _LNX
     Word_t *pwRootArg = pwRoot; (void)pwRootArg;
-#if defined(BM_IN_LINK) || defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    int nBLArg = nBL;
-#endif // defined(BM_IN_LINK) || defined(PP_IN_LINK) || ...
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
-    Word_t wRoot = *pwRoot;
-    // nType is not valid for NO_TYPE_IN_XX_SW if nBL <= nDL_to_nBL(2)
-    int nType = wr_nType(wRoot); (void)nType; // silence gcc
-    // pwr is not valid for NO_TYPE_IN_XX_SW if nBL <= nDL_to_nBL(2)
-    Word_t *pwr = wr_pwr(wRoot);
     int nBW; (void)nBW;
     Link_t *pLinks; (void)pLinks;
     Word_t wBytes = 0;
@@ -2441,7 +2429,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
         if (bDump) { printf(nType == T_BITMAP ? " BITMAP" : " UNPACKED_BM"); }
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         if (bDump) {
-            assert(nBLArg != cnBitsPerWord);
+            assert(nBL != cnBitsPerWord);
 
             if (cnBitsInD1 > cnLogBitsPerLink) {
                 Word_t wPopCnt = gwBitmapPopCnt(qy, nBL);
@@ -2451,7 +2439,7 @@ FreeArrayGuts(Word_t *pwRoot, Word_t wKey, int nBL,
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 #if defined(PP_IN_LINK)
         if (bDump) {
-            assert(nBLArg != cnBitsPerWord);
+            assert(nBL != cnBitsPerWord);
 
             if (cnBitsInD1 > cnLogBitsPerLink) {
                 printf(" wr_wKey " OWx,
@@ -2678,7 +2666,7 @@ embeddedKeys:;
             }
   #endif // XX_LISTS
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-            if (nBLArg < cnBitsPerWord) {
+            if (nBL < cnBitsPerWord) {
                 printf(" ln_wPopCnt %3" _fw"u", wPopCnt);
             } else
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -2686,7 +2674,7 @@ embeddedKeys:;
 
             printf(" ln_wKey ");
 #if defined(PP_IN_LINK)
-            if (nBLArg < cnBitsPerWord) {
+            if (nBL < cnBitsPerWord) {
                 printf( OWx, PWR_wPrefixBL(pwRoot, NULL, nBLR));
             } else
 #endif // defined(PP_IN_LINK)
@@ -2815,9 +2803,9 @@ embeddedKeys:;
     // Switch
     assert(tp_bIsSwitch(nType));
 
-    { // make C++ happy
+    int nBLR = nBL;
 
-    int nBLPrev = nBL;
+    { // make C++ happy
 
 #if defined(CODE_BM_SW)
     int bBmSw = tp_bIsBmSw(nType);
@@ -2830,7 +2818,7 @@ embeddedKeys:;
   #endif // defined(CODE_BM_SW)
     {
         if (tp_bIsSkip(nType)) {
-            nBL = GetBLR(pwRoot, nBL); // nBLR
+            nBLR = GetBLR(pwRoot, nBL);
         }
     }
 #endif // defined(SKIP_LINKS)
@@ -2840,7 +2828,7 @@ embeddedKeys:;
         nBW = pwr_nBW(pwRoot);
     } else
 #endif // defined(CODE_XX_SW)
-    { nBW = nBLR_to_nBW(nBL); }
+    { nBW = nBLR_to_nBW(nBLR); }
 
     pLinks =
 #if defined(CODE_BM_SW)
@@ -2854,7 +2842,7 @@ embeddedKeys:;
 
     if (bDump) {
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        if (nBLArg >= cnBitsPerWord) {
+        if (nBL >= cnBitsPerWord) {
             // Add 'em up.
             Word_t wPopCnt = SumPopCnt(pwRoot, cnBitsPerWord);
 
@@ -2876,24 +2864,24 @@ embeddedKeys:;
         {
             Word_t wPopCnt =
 #if defined(CODE_BM_SW)
-                   bBmSw ? PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBL) :
+                   bBmSw ? PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR) :
 #endif // defined(CODE_BM_SW)
-                           PWR_wPopCntBL(pwRoot, (  Switch_t *)pwr, nBL)  ;
+                           PWR_wPopCntBL(pwRoot, (  Switch_t *)pwr, nBLR)  ;
             if (wPopCnt == 0) {
                 // Full-pop or in-transition sub-tree.
-                // wPopCnt = EXP(nBL);
+                // wPopCnt = EXP(nBLR);
             }
             printf(" wr_wPopCnt %3" _fw"u", wPopCnt);
   #ifdef SKIP_LINKS
             printf(" wr_wKey " OWx,
 #if defined(CODE_BM_SW)
-                   bBmSw ? PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBL) :
+                   bBmSw ? PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBLR) :
 #endif // defined(CODE_BM_SW)
-                           PWR_wPrefixBL(pwRoot, (  Switch_t *)pwr, nBL) );
+                           PWR_wPrefixBL(pwRoot, (  Switch_t *)pwr, nBLR) );
   #endif // SKIP_LINKS
         }
 
-        printf(" wr_nBL %2d", nBL);
+        printf(" wr_nBLR %2d", nBLR);
 #if defined(CODE_XX_SW)
         if (tp_bIsXxSw(nType)) {
             printf(" wr_nBW %2d", nBW);
@@ -2906,7 +2894,7 @@ embeddedKeys:;
         //printf(" pLinks " OWx, (Word_t)pLinks);
         if (bBmSw) {
 #if defined(BM_IN_LINK)
-            if (nBLArg != cnBitsPerWord)
+            if (nBL != cnBitsPerWord)
 #endif // defined(BM_IN_LINK)
             {
                 printf(" pwBm " OWx" pLinks " OWx" Bm",
@@ -2926,9 +2914,9 @@ embeddedKeys:;
 
   #ifdef SKIP_LINKS
     // skip link has extra prefix bits
-    if (nBLPrev > nBL) {
+    if (nBL > nBLR) {
 #ifdef PP_IN_LINK
-        if (nBLPrev < cnBitsPerWord)
+        if (nBL < cnBitsPerWord)
 #endif // PP_IN_LINK
         {
   #ifndef FULL_DUMP
@@ -2938,49 +2926,52 @@ embeddedKeys:;
   #endif // #ifndef FULL_DUMP
             wKey =
 #if defined(CODE_BM_SW)
-                bBmSw ? PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBL) :
+                bBmSw ? PWR_wPrefixBL(pwRoot, (BmSwitch_t *)pwr, nBLR) :
 #endif // defined(CODE_BM_SW)
 #if defined(USE_LIST_SW)
-                        PWR_wPrefixBL(pwRoot, (ListSw_t   *)pwr, nBL) ;
+                        PWR_wPrefixBL(pwRoot, (ListSw_t   *)pwr, nBLR) ;
 #else // defined(USE_LIST_SW)
-                        PWR_wPrefixBL(pwRoot, (  Switch_t *)pwr, nBL) ;
+                        PWR_wPrefixBL(pwRoot, (  Switch_t *)pwr, nBLR) ;
 #endif // defined(USE_LIST_SW)
   #ifndef FULL_DUMP
             if (bDump) {
   #ifdef DEBUG
-                if (((wKey ^ wKeyPrev) & ~NZ_MSK(nBLPrev)) != 0) {
-                    printf("nBLPrev %d nBL %d wKeyPrev 0x%zx wKey 0x%zx\n",
-                           nBLPrev, nBL, wKeyPrev, wKey);
+                if (((wKey ^ wKeyPrev) & ~NZ_MSK(nBL)) != 0) {
+                    printf("nBL %d nBLR %d wKeyPrev 0x%zx wKey 0x%zx\n",
+                           nBL, nBLR, wKeyPrev, wKey);
                 }
   #endif // DEBUG
-                assert(((wKey ^ wKeyPrev) & ~NZ_MSK(nBLPrev)) == 0);
+                assert(((wKey ^ wKeyPrev) & ~NZ_MSK(nBL)) == 0);
             }
   #endif // #ifndef FULL_DUMP
         }
     }
   #else // SKIP_LINKS
-    assert(nBLPrev == nBL);
+    assert(nBL == nBLR);
   #endif // SKIP_LINKS
 
-    nBL -= nBW; // nBLLoop
+    int nBLLoop = nBLR - nBW;
 
-    for (Word_t ww = 0, nn = 0; nn < EXP(nBW); nn++) {
-#if defined(CODE_BM_SW)
-  #if defined(BM_IN_LINK)
-        assert( ! bBmSw || (nBLArg != cnBitsPerWord));
-  #endif // defined(BM_IN_LINK)
+  #ifdef CODE_BM_SW
+      #if defined(BM_IN_LINK)
+        assert(!bBmSw || (nBL != cnBitsPerWord));
+      #endif // defined(BM_IN_LINK)
       #if defined(B_JUDYL) && defined(EMBED_KEYS)
         int nLinks = 0;
         if (bBmSw) {
             nLinks = BmSwLinkCnt(qy);
         }
       #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-        int nBmWordNum = gnWordNumInSwBm(nn);
-        Word_t wBmBitMask = gwBitMaskInSwBmWord(nn);
-        if ( ! bBmSw || (PWR_pwBm(pwRoot, pwr)[nBmWordNum] & wBmBitMask) )
-#endif // defined(CODE_BM_SW)
+  #endif // CODE_BM_SW
+
+    for (Word_t ww = 0, nn = 0; nn < EXP(nBW); nn++) {
+  #ifdef CODE_BM_SW
+        if (!bBmSw
+            || (PWR_pwBm(pwRoot, pwr)[gnWordNumInSwBm(nn)]
+                & gwBitMaskInSwBmWord(nn)))
+  #endif // CODE_BM_SW
         {
-            if ((cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink))
+            if ((cbEmbeddedBitmap && (nBLLoop <= cnLogBitsPerLink))
                 || (pLinks[ww].ln_wRoot != WROOT_NULL))
             {
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
@@ -2992,14 +2983,14 @@ embeddedKeys:;
                       && bBmSw
                       && (wr_nType(pLinks[ww].ln_wRoot) == T_EMBEDDED_KEYS))
                 {
-                    printf(" nBL %2d", nBL);
-                    printf(" wPrefix " OWx, wKey | (nn << nBL));
+                    printf(" nBLLoop %2d", nBLLoop);
+                    printf(" wPrefix " OWx, wKey | (nn << nBLLoop));
                     printf(" pwRoot " OWx, (Word_t)&pLinks[ww].ln_wRoot);
                     printf(" wr " OWx, pLinks[ww].ln_wRoot);
                     printf(" 0x%016" _fw"x",
                            (pLinks[ww].ln_wRoot
-                                  >> (cnBitsPerWord - nBL))
-                               & MSK(nBL));
+                                  >> (cnBitsPerWord - nBLLoop))
+                               & MSK(nBLLoop));
                     printf(",0x%zx",
                            ((Word_t*)&pLinks[nLinks])[ww]);
                     printf("\n");
@@ -3013,7 +3004,7 @@ embeddedKeys:;
                     && (wr_nType(pLinks[ww].ln_wRoot) == T_XX_LIST))
                 {
                     printf(" Ditto ");
-                    printf(" wPrefix " OWx, /*wKeyLoop*/ wKey | (nn << nBL));
+                    printf(" wPrefix " OWx, /*wKeyLoop*/ wKey | (nn << nBLLoop));
                     printf(" pwRoot " OWx, (Word_t)&pLinks[ww].ln_wRoot);
                     printf(" Ditto\n");
                     ++ww;
@@ -3025,29 +3016,26 @@ embeddedKeys:;
 // We always InsertAll or Splay after creating lower XX_SW and neither
 // creates an XX_LIST in the new lower XX_SW.
                 assert((wr_nType(pLinks[ww].ln_wRoot) != T_XX_LIST)
-                    || (nDL_to_nBL(nBL_to_nDL(nBL + nBW)) == nBL + nBW));
+                    || (nDL_to_nBL(nBL_to_nDL(nBLR)) == nBLR));
   #endif // XX_LISTS
   #ifndef FULL_DUMP
-                if (!bDump || ((wKeyOrig >> nBL) & MSK(nBW)) == nn)
+                if (!bDump || ((wKeyOrig >> nBLLoop) & MSK(nBW)) == nn)
   #endif // #ifndef FULL_DUMP
                 {
-                    if (((wKeyOrig >> nBL) & MSK(nBW)) == nn) {
+                    if (((wKeyOrig >> nBLLoop) & MSK(nBW)) == nn) {
                         wKey = wKeyOrig;
                     }
-                    wBytes += FreeArrayGuts(&pLinks[ww].ln_wRoot,
-                                            wKey | (nn << nBL),
-                                            nBL,
-  #ifdef _LNX
-                                            gpwLnX(/*qy*/ nBLPrev, pLn,
+                    Link_t *pLnLoop = &pLinks[ww];
+  #ifdef REMOTE_LNX
+                    Word_t *pwLnXLoop = gpwLnX(qyx(Loop),
       #ifdef CODE_BM_SW
-      #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                                   bBmSw ? nLinks :
-      #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+                                               bBmSw ? nLinks :
       #endif // CODE_BM_SW
-                                                       1<<nBW,
-                                                   ww),
-  #endif // _LNX
-                                            bDump
+                                                   1<<nBW,
+                                               ww);
+  #endif // REMOTE_LNX
+                    wBytes += FreeArrayGuts(qyax(Loop),
+                                            wKey | (nn << nBLLoop), bDump
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                                           , /*pwrUp*/ pwr, /*nBWUp*/ nBW
   #ifdef CODE_BM_SW
@@ -3067,7 +3055,7 @@ embeddedKeys:;
     // Someone has to clear PP and BM if PP_IN_LINK and BM_IN_LINK.
     // OldSwitch looks at BM.
 
-    wBytes += OldSwitch(pwRootArg, nBLPrev
+    wBytes += OldSwitch(pwRootArg, nBL
 #if defined(CODE_BM_SW)
                       , bBmSw, /* nLinks */ 0
 #endif // defined(CODE_BM_SW)
@@ -3077,12 +3065,12 @@ embeddedKeys:;
 zeroLink:
 
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK) || defined(BM_IN_LINK)
-    if (nBLArg == cnBitsPerWord) {
+    if (nBL == cnBitsPerWord) {
         *pwRootArg = 0;
     } else
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK) || ...
     {
-        *pwRootArg = (nBL != cnBitsPerWord) ? WROOT_NULL : 0;
+        *pwRootArg = (nBLR != cnBitsPerWord) ? WROOT_NULL : 0;
     }
 
     return wBytes;
@@ -3091,26 +3079,16 @@ zeroLink:
 #if defined(DEBUG)
 
 void
-DumpX(Word_t *pwRoot, Word_t wKey, int nBL
-  #ifdef _LNX
-    , Word_t* pwLnX
-  #endif // _LNX
-      )
+DumpX(qpa, Word_t wKey)
 {
-  #ifdef _LNX
-    (void)pwLnX;
-  #endif // _LNX
+    qva;
     if (bHitDebugThreshold) {
   #ifdef FULL_DUMP
         printf("# Full Dump\n");
   #else // FULL_DUMP
         printf("# Partial Dump\n");
   #endif // #else FULL_DUMP
-        FreeArrayGuts(pwRoot, wKey, nBL,
-  #ifdef _LNX
-                      pwLnX,
-  #endif // _LNX
-                      /* bDump */ 1
+        FreeArrayGuts(qya, wKey, /* bDump */ 1
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                     , /*pwrUp*/ NULL, /*nBW*/ 0
   #ifdef CODE_BM_SW
@@ -3125,11 +3103,11 @@ DumpX(Word_t *pwRoot, Word_t wKey, int nBL
 void
 Dump(Word_t *pwRoot, Word_t wKey, int nBL)
 {
-    DumpX(pwRoot, wKey, nBL
-  #ifdef _LNX
-        , /* pwLnX */ NULL
-  #endif // _LNX
-          );
+    Link_t* pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+  #ifdef REMOTE_LNX
+    Word_t* pwLnX = NULL;
+  #endif // REMOTE_LNX
+    DumpX(qya, wKey);
 }
 
 #endif // defined(DEBUG)
@@ -3143,12 +3121,12 @@ JudyLDump(Word_t wRoot, int nBL, Word_t wPrefix)
 Judy1Dump(Word_t wRoot, int nBL, Word_t wPrefix)
 #endif // B_JUDYL
 {
-#if defined(DEBUG)
+  #if defined(DEBUG)
     assert(nBL == cnBitsPerWord); // for now
     Dump(&wRoot, wPrefix, nBL);
-#else // defined(DEBUG)
+  #else // defined(DEBUG)
     (void)wRoot; (void)nBL; (void)wPrefix;
-#endif // defined(DEBUG)
+  #endif // defined(DEBUG)
 }
 
 #if 0
@@ -9598,11 +9576,11 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
             assert((*pwRootLn == 0) || tp_bIsSwitch(Get_nType(pwRootLn)));
         }
         // whole array pop is zero
-        FreeArrayGuts(pwRoot, wKey, nBL,
-  #ifdef _LNX
+        FreeArrayGuts(nBL, STRUCT_OF(pwRoot, Link_t, ln_wRoot),
+  #ifdef REMOTE_LNX
                       /* pwLnX */ NULL,
-  #endif // _LNX
-                      /* bDump */ 0
+  #endif // REMOTE_LNX
+                      wKey, /* bDump */ 0
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                     , /*pwrUp*/ NULL, /*nBW*/ 0
   #ifdef CODE_BM_SW
@@ -9622,10 +9600,11 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
                                 PWR_wPopCnt(pwRoot, (  Switch_t *)pwr, nDLR);
 
         if (wPopCnt == 0) {
-            FreeArrayGuts(pwRoot, wKey, nDL_to_nBL(nDL),
-  #ifdef _LNX
+            FreeArrayGuts(nBL, STRUCT_OF(pwRoot, Link_t, ln_wRoot),
+  #ifdef REMOTE_LNX
                           /* pwLnX */ NULL,
-  #endif // _LNX
+  #endif // REMOTE_LNX
+                          wKey,
                           /* bDump */ 0
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                         , /*pwrUp*/ NULL, /*nBW*/ 0
@@ -12199,12 +12178,12 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
       #endif // defined(RAMMETRICS)
   #endif // defined(DEBUG)
 
-    Word_t wBytes = FreeArrayGuts((Word_t *)PPArray, /* wPrefix */ 0,
-                                  cnBitsPerWord,
-  #ifdef _LNX
+    Word_t wBytes = FreeArrayGuts(/* nBL */ cnBitsPerWord,
+                                  STRUCT_OF(PPArray, Link_t, ln_wRoot),
+  #ifdef REMOTE_LNX
                                   /* pwLnX */ NULL,
-  #endif // _LNX
-                                  /* bDump */ 0
+  #endif // REMOTE_LNX
+                                  /* wKey/Prefix */ 0, /* bDump */ 0
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
                                 , /*pwrUp*/ NULL, /*nBW*/ 0
   #ifdef CODE_BM_SW
