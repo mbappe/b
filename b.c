@@ -8883,8 +8883,9 @@ wRootNull:;
 
 #ifdef EK_XV // implies COMPRESSED_LISTS
 static Word_t
-InflateList(qp, Word_t* pwLnX, Word_t wKey, int nPopCnt)
+InflateList(qpa, Word_t wKey, int nPopCnt)
 {
+    qva;
     Word_t wRootNew = 0;
     Word_t *pwList = NewList(nPopCnt, nBL);
     set_wr(wRootNew, pwList, T_LIST);
@@ -8984,7 +8985,7 @@ InflateEmbeddedList(qpa, Word_t wKey)
     assert(nPopCnt != 0);
   #ifdef EK_XV
     if (nPopCnt > 1) {
-        return InflateList(qy, pwLnX, wKey, nPopCnt);
+        return InflateList(qya, wKey, nPopCnt);
     }
   #endif // EK_XV
 
