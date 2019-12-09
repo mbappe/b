@@ -117,6 +117,8 @@
 && regress \
 && DEFINES="-DPOP_CNT_MAX_IS_KING -DcnListPopCntMax64=1 -DDEBUG" \
    make clean default \
+&& DEFINES="-DGUARDBAND" make clean default \
+&& regress \
 && DEFINES="-DDEBUG_ALL" make clean default \
 && NO_SM=1 DEFINES="-DDEBUG_ALL" make clean default \
 && NO_SM=1 NO_RM=1 DEFINES="-DDEBUG_ALL" make clean default \

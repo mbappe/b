@@ -3107,21 +3107,6 @@ Judy1Dump(Word_t wRoot, int nBL, Word_t wPrefix)
   #endif // defined(DEBUG)
 }
 
-#if 0
-#ifdef EK_XV
-Word_t*
-InsertEkXv(qp, Word_t* pwLnX, Word_t wKey, int nPopCnt, int nPos)
-{
-    qv; (void)wKey; (void)nPopCnt;
-    assert(nPos >= 0);
-    assert(nPopCnt >= 1);
-    assert(nPopCnt < EmbeddedListPopCntMax(nBL));
-    //Inflate, Insert, Deflate
-    return &pwLnX[nPos];
-}
-#endif // EK_XV
-#endif // 0
-
 #if defined(EMBED_KEYS)
 #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
   #if ! defined(PACK_KEYS_RIGHT)
@@ -3130,16 +3115,22 @@ InsertEkXv(qp, Word_t* pwLnX, Word_t wKey, int nPopCnt, int nPos)
 // - (wRoot == WROOT_NULL) && wr_nType(WROOT_NULL) == T_EMBEDDED_KEYS -- yes
 // - nType == T_EMBEDDED_KEYS -- yes
 // - nType == T_EK_XV -- not yet
+#ifdef B_JUDYL
+static Word_t* // pwValue
+#else // B_JUDYL
 static void
+#endif // else B_JUDYL
 InsertEmbedded(qpa, Word_t wKey)
 {
     qva;
+    // Does the compiler get rid of this 2nd call to EmbeddedListPopCntMax?
     int nPopCntMax = EmbeddedListPopCntMax(nBL); (void)nPopCntMax;
   #ifdef NO_TYPE_IN_XX_SW
     // We don't really expect this to be true, but want to be reminded
     // that the code needs to be enhanced if it is not true.
     assert(ZERO_POP_MAGIC == WROOT_NULL);
   #endif // NO_TYPE_IN_XX_SW
+    // Does the compiler get rid of this 2nd call to wr_nPopCnt?
     int nPopCnt = (*pwRoot == WROOT_NULL) ? 0 : wr_nPopCnt(*pwRoot, nBL);
     DBGI(printf("\nInsertEmbedded: wRoot " OWx" nBL %d wKey " OWx
                     " nPopCnt %d Max %d\n",
@@ -3153,57 +3144,120 @@ InsertEmbedded(qpa, Word_t wKey)
             set_wr_nType(*pwRoot, T_EMBEDDED_KEYS);
         }
     }
-  #if 0
-  #ifdef EK_XV
-    // InsertEmbedded doesn't work for EK_XV yet.
-    assert(nPopCnt != 0);
-    assert(nPopCnt != 1);
-    if (nPopCnt != 1) {
-        wKey &= MSK(1 << (LOG(nBL - 1) + 1));
-        int nSlot = 0;
+  #ifdef B_JUDYL
+      #ifdef EK_XV
+    if (nPopCnt == 0)
+      #else // EK_XV
+    assert(nPopCnt == 0);
+      #endif // EK_XV
+    {
+        SetBits(pwRoot, nBL, cnBitsPerWord - nBL, wKey & MSK(nBL));
+        return gpwEmbeddedValue(qya); // Insert will zero *pwValue.
+    }
+      #ifdef EK_XV
+    Word_t *pwValue; // for return
+    assert(WROOT_NULL != T_EK_XV);
+    int nLogKeyBytes = LOG(nBL - 1) - 2;
+    if (nPopCnt == 1) {
+        // Create the value area.
+        Word_t *pwrNew = (Word_t*)MyMallocGuts(/* nWords */ 3,
+                                               /* nLogAlign */
+          #ifdef ALIGN_EK_XV
+                                               5,
+          #else // ALIGN_EK_XV
+                                               cnBitsMallocMask,
+          #endif // #else ALIGN_EK_XV
+                                               &j__AllocWordsJV);
+        Word_t wKey0 = GetBits(wRoot, nBL, cnBitsPerWord - nBL);
+        wKey0 |= wKey & MSK(8 << nLogKeyBytes) & ~MSK(nBL);
+        Word_t wKey1 = wKey & MSK(8 << nLogKeyBytes);
+        if (wKey1 < wKey0) {
+            wKey1 = wKey0;
+            wKey0 = wKey & MSK(8 << nLogKeyBytes);
+            pwrNew[1] = *gpwEmbeddedValue(qya);
+            pwValue = &pwrNew[0];
+        } else {
+            pwrNew[0] = *gpwEmbeddedValue(qya);
+            pwValue = &pwrNew[1];
+        }
+        switch (nLogKeyBytes) {
+        case 0:
+            ((uint8_t*)pwLnX)[0] = wKey0;
+            ((uint8_t*)pwLnX)[1] = wKey1;
+            PAD64((uint8_t*)pwLnX, 2);
+            break;
+        case 1:
+            ((uint16_t*)pwLnX)[0] = wKey0;
+            ((uint16_t*)pwLnX)[1] = wKey1;
+            PAD64((uint16_t*)pwLnX, 2);
+            break;
+          #if (cnBitsPerWord > 32)
+        case 2:
+            ((uint32_t*)pwLnX)[0] = wKey0;
+            ((uint32_t*)pwLnX)[1] = wKey1;
+            PAD64((uint32_t*)pwLnX, 2);
+            break;
+          #endif // (cnBitsPerWord > 32)
+        }
+        set_wr(*pwRoot, pwrNew, T_EK_XV);
+        set_wr_nPopCnt(*pwRoot, nBL, /* nPopCnt */ 2);
+        return pwValue;
+    }
+    wKey &= MSK(8 << nLogKeyBytes);
+    int nSlot = 0;
+    switch (nLogKeyBytes) {
+    case 0: // nBLR <= 8
         for (; nSlot < nPopCnt; ++nSlot) {
-        switch (LOG(nBL - 1) - 2) {
-        case 0: // nBLR <= 8
             if (((uint8_t*)pwLnX)[nSlot] > wKey) {
                 MOVE(&((uint8_t*)pwLnX)[nSlot + 1],
                      &((uint8_t*)pwLnX)[nSlot], nPopCnt - nSlot);
-                ((uint8_t*)pwLnX)[nSlot] = wKey;
                 break;
             }
-        case 1: // 8 < nBLR <= 16
+        }
+        ((uint8_t*)pwLnX)[nSlot] = wKey;
+        break;
+    case 1: // 8 < nBLR <= 16
+        for (; nSlot < nPopCnt; ++nSlot) {
             if (((uint16_t*)pwLnX)[nSlot] > wKey) {
                 MOVE(&((uint16_t*)pwLnX)[nSlot + 1],
                      &((uint16_t*)pwLnX)[nSlot], nPopCnt - nSlot);
-                ((uint16_t*)pwLnX)[nSlot] = wKey;
                 break;
             }
-        case 2: // 16 < nBLR <= 32
+        }
+        ((uint16_t*)pwLnX)[nSlot] = wKey;
+          #if (cnBitsPerWord > 32)
+        break;
+    case 2: // 16 < nBLR <= 32
+        for (; nSlot < nPopCnt; ++nSlot) {
             if (((uint32_t*)pwLnX)[nSlot] > wKey) {
                 MOVE(&((uint32_t*)pwLnX)[nSlot + 1],
                      &((uint32_t*)pwLnX)[nSlot], nPopCnt - nSlot);
-                ((uint32_t*)pwLnX)[nSlot] = wKey;
                 break;
+            }
         }
-        Word_t* pwr = wr_pwr(*pwRoot);
-        if (nPopCnt & 1) {
-            Word_t* pwrNew
-                = (Word_t*)MyMallocGuts((nPopCnt + 1) | 1,
-  #ifdef ALIGN_EK_XV
-                                        6
-  #else // ALIGN_EK_XV
-                                        cnBitsMallocMask,
-  #endif // #else ALIGN_EK_XV
-                                        &j__AllocWordsJV);
-            COPY(pwrNew, pwr, nPopCnt);
-            MyFree(pwr, nPopCnt, &j__AllocWordsJV);
-            pwr = pwrNew;
-            set_wr_pwr(*pwRoot, pwr);
-        }
-        MOVE(&pwr[nSlot + 1], &pwr[nSlot], nPopCnt - nSlot);
-        return &pwr[nSlot];
+        ((uint32_t*)pwLnX)[nSlot] = wKey;
+          #endif // (cnBitsPerWord > 32)
     }
-  #endif // EK_XV
-  #endif // 0
+    if (nPopCnt & 1) {
+        Word_t* pwrNew = (Word_t*)MyMallocGuts(nPopCnt + 2,
+          #ifdef ALIGN_EK_XV
+                                               6
+          #else // ALIGN_EK_XV
+                                               cnBitsMallocMask,
+          #endif // #else ALIGN_EK_XV
+                                               &j__AllocWordsJV);
+        COPY(pwrNew, pwr, nSlot);
+        COPY(&pwrNew[nSlot + 1], &pwr[nSlot], nPopCnt - nSlot);
+        MyFree(pwr, nPopCnt, &j__AllocWordsJV);
+        pwr = pwrNew;
+        set_wr_pwr(*pwRoot, pwr);
+    } else {
+        MOVE(&pwr[nSlot + 1], &pwr[nSlot], nPopCnt - nSlot);
+    }
+    set_wr_nPopCnt(*pwRoot, nBL, /* nPopCnt */ nPopCnt + 1);
+    return &pwr[nSlot];
+      #endif // EK_XV
+  #else // B_JUDYL
     // find the slot
     wKey &= MSK(nBL);
     int nSlot = 0;
@@ -3228,6 +3282,7 @@ InsertEmbedded(qpa, Word_t wKey)
     set_wr_nPopCnt(*pwRoot, nBL, nPopCnt + 1);
     DBGI(printf(" wRoot " OWx" nPopCnt %d\n",
                 *pwRoot, wr_nPopCnt(*pwRoot, nBL)));
+  #endif // else B_JUDYL
 }
   #endif // ! defined(PACK_KEYS_RIGHT)
 #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
@@ -8687,9 +8742,12 @@ InsertGuts(qpa, Word_t wKey, int nPos
   #if (cwListPopCntMax != 0)
   #if defined(EMBED_KEYS)
     int nPopCnt;
+    // Revisit:
+    // Not sure we want to enhance wr_nPopCnt to be able to handle
+    // WROOT_NULL in all cases. It might be too costly for lookup.
     if (wRoot == WROOT_NULL) {
         nPopCnt = 0;
-        goto wRootNull;
+        goto wRootNull; // handle with embedded keys
     }
     if (tp_bIsEk(nType)) {
         goto embeddedKeys;
@@ -8703,13 +8761,11 @@ embeddedKeys:;
 wRootNull:;
       #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
       #if ! defined(PACK_KEYS_RIGHT)
-      #ifndef B_JUDYL
         // This is a performance shortcut that is not necessary.
         if (nPopCnt < EmbeddedListPopCntMax(nBL)) {
-            InsertEmbedded(qya, wKey);
-            return Success;
+            BJL(return) InsertEmbedded(qya, wKey);
+            BJ1(return Success);
         }
-      #endif // #endif B_JUDYL
       #endif // ! defined(PACK_KEYS_RIGHT)
       #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
         // Change an embedded list into an external list to make things
