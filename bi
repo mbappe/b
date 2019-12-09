@@ -119,6 +119,8 @@
    make clean default \
 && DEFINES="-DGUARDBAND" make clean default \
 && regress \
+&& DEFINES="-DGUARDBAND -DcnGuardWords=3" make clean default \
+&& regress \
 && DEFINES="-DDEBUG_ALL" make clean default \
 && NO_SM=1 DEFINES="-DDEBUG_ALL" make clean default \
 && NO_SM=1 NO_RM=1 DEFINES="-DDEBUG_ALL" make clean default \
