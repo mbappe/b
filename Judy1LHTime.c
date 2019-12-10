@@ -1472,11 +1472,7 @@ main(int argc, char *argv[])
                     }
                 }
             } else {
-  #if defined(__LP64__) || defined(_WIN64)
-                wSplayMask = 0xaaaaaaaaaaaaaaaa;
-  #else // defined(__LP64__) || defined(_WIN64)
-                wSplayMask = 0xaaaaaaaa;
-  #endif // defined(__LP64__) || defined(_WIN64)
+                wSplayMask <<= 1;
             }
 #ifdef NO_SPLAY_KEY_BITS
             FAILURE("compile with -UNO_SPLAY_KEY_BITS to use -e", wSplayMask);
