@@ -1666,6 +1666,7 @@ wr_nPopCnt(Word_t wRoot, int nBL)
 static inline int
 EmbeddedListPopCntMax(int nBL)
 {
+    // BUG: If we return 0 here unconditionally we fail regress.
     int nBitsOverhead = nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL);
   #ifdef B_JUDYL
     int nKeysMax = (nBL <= (cnBitsPerWord - nBitsOverhead));
@@ -6808,9 +6809,9 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
   #endif // (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
 
 static int
-LocateKeyInList16(qp, int nBLR, Word_t wKey)
+LocateKeyInList16(qpa, int nBLR, Word_t wKey)
 {
-    qv; (void)nBLR;
+    qva; (void)nBLR;
 
     assert(nBLR >   8);
     assert(nBLR <= 16);
@@ -6938,9 +6939,9 @@ LocateKeyInListWord(qp, int nBLR, Word_t wKey)
 }
 
 static int
-LocateKeyInList(qp, int nBLR, Word_t wKey)
+LocateKeyInList(qpa, int nBLR, Word_t wKey)
 {
-    qv;
+    qva;
   #if defined(COMPRESSED_LISTS)
       #if (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
     if (nBLR <= 8) {
@@ -6949,7 +6950,7 @@ LocateKeyInList(qp, int nBLR, Word_t wKey)
       #endif // (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
       #if (cnBitsInD1 <= 16)
     if (nBLR <= 16) {
-        return LocateKeyInList16(qy, nBLR, wKey);
+        return LocateKeyInList16(qya, nBLR, wKey);
     }
       #endif // (cnBitsInD1 <= 16)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)

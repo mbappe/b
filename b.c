@@ -2957,10 +2957,12 @@ embeddedKeys:;
         assert(!bBmSw || (nBL != cnBitsPerWord));
       #endif // defined(BM_IN_LINK)
       #if defined(B_JUDYL) && defined(EMBED_KEYS)
+      #ifdef REMOTE_LNX
         int nLinks = 0;
         if (bBmSw) {
             nLinks = BmSwLinkCnt(qy);
         }
+      #endif // REMOTE_LNX
       #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
   #endif // CODE_BM_SW
 
@@ -4726,6 +4728,7 @@ lastDigit32:;
                     // Let's make a new list and copy it over.
                     Word_t wRootLoop = 0;
                     int nTypeLoop = T_LIST; (void)nTypeLoop;
+      // BUG: What about UA_PARALLEL_128?
                     Word_t *pwrLoop = NewList(nPopCntLoop, nBLLoop);
                     set_wr(wRootLoop, pwrLoop, nTypeLoop);
                     pLnLoop->ln_wRoot = wRootLoop; // install
@@ -4750,6 +4753,7 @@ lastDigit32:;
                             = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
                         COPY(psKeysLoop, &piKeys[nnStart], nPopCntLoop);
                         PAD(psKeysLoop, nPopCntLoop);
+      // BUG: What about UA_PARALLEL_128?
                     } else {
                         uint32_t *piKeysLoop
                             = ls_piKeysX(pwrLoop, nBLLoop, nPopCntLoop);
@@ -4935,7 +4939,9 @@ lastDigit:;
                                 UA_PAD(psKeysLoop, nPopCntLoop);
                             } else
   #endif // UA_PARALLEL_128
-                            { PAD(psKeysLoop, nPopCntLoop); }
+                            {
+                                PAD(psKeysLoop, nPopCntLoop);
+                            }
                         }
           #if (cnBitsPerWord > 32)
                     } else if (nBLLoop <= 32) {
@@ -8336,26 +8342,20 @@ InsertAtList(qpa,
             if (nBLR <= 8) {
                 goto copyWithInsert8;
 copyWithInsert8:
-  #ifdef B_JUDYL
-                pwValue =
-  #endif // B_JUDYL
+                BJL(pwValue =)
                     CopyWithInsert8(qy, ls_pcKeysNATX(pwrOld, wPopCnt),
                                     wPopCnt, (unsigned char)wKey, nPos);
             } else if (nBLR <= 16) {
                 goto copyWithInsert16;
 copyWithInsert16:
-  #ifdef B_JUDYL
-                pwValue =
-  #endif // B_JUDYL
+                BJL(pwValue =)
                     CopyWithInsert16(qy, ls_psKeysNATX(pwrOld, wPopCnt),
                                      wPopCnt, (uint16_t)wKey, nPos);
 #if (cnBitsPerWord > 32)
             } else if (nBLR <= 32) {
                 goto copyWithInsert32;
 copyWithInsert32:
-  #ifdef B_JUDYL
-                pwValue =
-  #endif // B_JUDYL
+                BJL(pwValue =)
                     CopyWithInsert32(qy, ls_piKeysNATX(pwrOld, wPopCnt),
                                      wPopCnt, (unsigned int)wKey, nPos);
 #endif // (cnBitsPerWord > 32)
@@ -8364,9 +8364,7 @@ copyWithInsert32:
             {
                 goto copyWithInsertWord;
 copyWithInsertWord:
-  #ifdef B_JUDYL
-                pwValue =
-  #endif // B_JUDYL
+                BJL(pwValue =)
                     CopyWithInsertWord(qy, ls_pwKeys(pwrOld, nBLR),
                                        wPopCnt, wKey, nPos);
             }

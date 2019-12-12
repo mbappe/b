@@ -1563,13 +1563,13 @@ t_list:;
                   #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
                   #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
-                && ((nPos = LocateKeyInList(qy, nBLR, wKey)) >= 0)
+                && ((nPos = LocateKeyInList(qya, nBLR, wKey)) >= 0)
                   #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
               #else // defined(B_JUDYL)
                   #if defined(SEARCH_FOR_JUDY1_LOOKUP)
                 && (SearchList(qy, nBLR, wKey) >= 0)
                   #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
-                && (LocateKeyInList(qy, nBLR, wKey) >= 0)
+                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
                   #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
                 && ListHasKey(qy, nBLR, wKey)
                   #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
@@ -1839,13 +1839,13 @@ t_xx_list:;
                   #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
                   #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
-                && ((nPos = LocateKeyInList(qy, nBLR, wKey)) >= 0)
+                && ((nPos = LocateKeyInList(qya, nBLR, wKey)) >= 0)
                   #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
               #else // defined(B_JUDYL)
                   #if defined(SEARCH_FOR_JUDY1_LOOKUP)
                 && (SearchList(qy, nBLR, wKey) >= 0)
                   #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
-                && (LocateKeyInList(qy, nBLR, wKey) >= 0)
+                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
                   #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
                 && ListHasKey(qy, nBLR, wKey)
                   #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
