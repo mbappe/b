@@ -190,11 +190,11 @@
   #endif // #ifndef NO_PF_EK_XV_2
 #endif // EK_XV
 
-// _LNX is not to be set on the build command line.
-// It is derived from other ifdefs.
-#ifdef _LNX
-  #error _LNX may not be defined explicitly
-#endif // _LNX
+#ifndef B_JUDYL
+  #undef _LNX
+#endif // ifndef B_JUDYL
+
+// _LNX will be defined automatically if needed by other ifdefs.
 #ifdef B_JUDYL
 #ifdef EMBED_KEYS
   #undef  _LNX // in case it's already been defined for another reason
@@ -211,7 +211,6 @@
     #define  REMOTE_LNX
   #endif // ifndef NO_REMOTE_LNX
 #else // _LNX
-  #undef NO_REMOTE_LNX
   #undef    REMOTE_LNX
 #endif // else _LNX
 
@@ -628,17 +627,9 @@
 // for the pLn for which it is called.
 // Instead of calling back into Insert we simply return NULL to cause
 // Insert to loop back to the top with the pwLnX that it already knows.
-#ifdef B_JUDYL
-#ifndef BMLF_POP_COUNT_32 // Why?
-#ifndef BMLF_POP_COUNT_8 // Why?
-#ifndef BMLF_POP_COUNT_1 // Why?
-#ifdef EMBED_KEYS
+#ifdef REMOTE_LNX
   #define _RETURN_NULL_TO_INSERT_AGAIN
-#endif // EMBED_KEYS
-#endif // #ifndef BMLF_POP_COUNT_1
-#endif // #ifndef BMLF_POP_COUNT_8
-#endif // #ifndef BMLF_POP_COUNT_32
-#endif // B_JUDYL
+#endif // REMOTE_LNX
 
 // gcc does a crappy job with 64-bit vectors.
 #ifndef NO_OLD_HK_64

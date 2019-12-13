@@ -294,13 +294,13 @@ CaseGuts(int nBL, Word_t *pwRoot, int nBS, int nBW, int nType, Word_t *pwr)
 // - compress switch after remove
 // - break up 2-digit bitmap leaf after remove
 static inline int
-SwCleanup(qp, Word_t wKey, int nBLR
+SwCleanup(qpa, Word_t wKey, int nBLR
   #if defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
         , Word_t **ppwValue
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
           )
 {
-    qv; (void)wKey; (void)nBLR;
+    qva; (void)wKey; (void)nBLR;
     DBGX(Checkpoint(qy, "SwCleanup"));
     DBGX(printf("wKey 0x%016zx nBLR %d\n", wKey, nBLR));
     // Cleanup is for adjusting tree after successful insert or remove.
@@ -321,11 +321,11 @@ SwCleanup(qp, Word_t wKey, int nBLR
       #if defined(B_JUDYL) && defined(EMBED_KEYS)
         // InsertCleanup may change pwValue of embedded keys.
         Word_t *pwValue;
-        if ((pwValue = InsertCleanup(qy, wKey)) != NULL) {
+        if ((pwValue = InsertCleanup(qya, wKey)) != NULL) {
             *ppwValue = pwValue;
         }
       #else // defined(B_JUDYL) && defined(EMBED_KEYS)
-        InsertCleanup(qy, wKey);
+        InsertCleanup(qya, wKey);
       #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
     }
   #else // defined(INSERT)
@@ -520,10 +520,9 @@ InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
 #if defined(SAVE_PREFIX_TEST_RESULT)
     Word_t wPrefixMismatch = 0; (void)wPrefixMismatch;
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-    nBW = cnBitsPerDigit; // compiler complains if not initialized here
+  #ifdef _LNX
     Word_t* pwLnX = NULL; (void)pwLnX;
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #endif // _LNX
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrUp = pwrUp; // suppress "uninitialized" compiler warning
 #endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -958,7 +957,7 @@ switchTail:;
   #if defined(INSERT) || defined(REMOVE)
         // Handle big picture tree cleanup.
         if (bCleanup
-            && SwCleanup(qy, wKey, nBLR
+            && SwCleanup(qya, wKey, nBLR
     #if defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
                     , &pwValue
     #endif // defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
@@ -1052,7 +1051,7 @@ t_xx_sw:;
       #if defined(INSERT) || defined(REMOVE)
         // Handle big picture tree cleanup.
         if (bCleanup
-            && SwCleanup(qy, wKey, nBLR
+            && SwCleanup(qya, wKey, nBLR
           #if defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
                     , &pwValue
           #endif // defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
@@ -3143,14 +3142,14 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             if (ListSlotCnt(nPopCnt, cnBitsPerWord) < (nPopCnt + 1)) {
                 // need bigger buffer
       #ifdef SFWI_INSERT_AT_LIST
-                BJL(pwValue =) InsertAtList(qy, wKey, nPos
+          #ifdef REMOTE_LNX
+                Word_t* pwLnX = NULL;
+          #endif // REMOTE_LNX
+                BJL(pwValue =) InsertAtList(qya, wKey, nPos
           #if defined(CODE_XX_SW)
                                           , /* pLnUp */ NULL
                                           , /* nBLUp */ 0
           #endif // defined(CODE_XX_SW)
-          #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                          , /* pwLnX */ NULL
-          #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                             );
       #else // SWFI_INSERT_AT_LIST
                 pwrNew = NewList(nPopCnt + 1, cnBitsPerWord);

@@ -1898,9 +1898,11 @@ InflateBmSw(Word_t *pwRoot, Word_t wKey, int nBLR, int nBLUp)
 
     OldSwitch(&wRoot, nBLUp, /* bBmSw */ 1, nLinkCnt);
 
-  #ifdef _LNX
+  #ifdef B_JUDYL
+  #ifdef EMBED_KEYS
     Word_t wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
     // How is it possible for pSwLinks[wDigit].ln_wRoot to be WROOT_NULL?
+    // NO_BM_SW_FOR_REAL?
     //assert(pSwLinks[wDigit].ln_wRoot != WROOT_NULL);
     if ((pSwLinks[wDigit].ln_wRoot != WROOT_NULL)
         && (wr_nType(pSwLinks[wDigit].ln_wRoot) == T_EMBEDDED_KEYS))
@@ -1915,7 +1917,8 @@ InflateBmSw(Word_t *pwRoot, Word_t wKey, int nBLR, int nBLUp)
     }
     // NULL means pwValue didn't change, but not that nothing changed.
     return NULL;
-  #endif // _LNX
+  #endif // EMBED_KEYS
+  #endif // B_JUDYL
 }
 
 // NewLink uses OldSwitch but not NewSwitch. Could we change it?
@@ -2280,6 +2283,7 @@ FreeArrayGuts(qpa, Word_t wKey, int bDump
     int nBW; (void)nBW;
     Link_t *pLinks; (void)pLinks;
     Word_t wBytes = 0;
+    int nBLR = nBL;
 
     assert((wRoot != 0) || (WROOT_NULL == 0));
 
@@ -2294,7 +2298,7 @@ FreeArrayGuts(qpa, Word_t wKey, int bDump
         // check for prefix mismatch and bail out
   #ifdef SKIP_LINKS
         if (tp_bIsSkip(nType)) {
-            int nBLR = GetBLR(pwRoot, nBL);
+            nBLR = GetBLR(pwRoot, nBL);
             Word_t wPrefix;
     #if defined(SKIP_TO_BITMAP) || defined(SKIP_TO_LIST)
             if (tp_bIsSwitch(nType))
@@ -2375,7 +2379,7 @@ FreeArrayGuts(qpa, Word_t wKey, int bDump
   #if defined(SKIP_TO_BITMAP)
     if (nType == T_SKIP_TO_BITMAP) {
         if (bDump) { printf(" SKIP_TO_BITMAP"); }
-        int nBLR = GetBLR(pwRoot, nBL);
+        nBLR = GetBLR(pwRoot, nBL);
         Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR);
         if (bDump) {
             int nWords
@@ -2604,7 +2608,7 @@ embeddedKeys:;
 #endif // defined(EMBED_KEYS)
         {
             assert(tp_bIsList(nType));
-            int nBLR = gnListBLR(qy);
+            nBLR = gnListBLR(qy);
 
             assert((wRoot != 0) || (WROOT_NULL == 0));
             wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBLR);
@@ -2803,7 +2807,7 @@ embeddedKeys:;
     // Switch
     assert(tp_bIsSwitch(nType));
 
-    int nBLR = nBL;
+    nBLR = nBL;
 
     { // make C++ happy
 
@@ -2956,14 +2960,12 @@ embeddedKeys:;
       #if defined(BM_IN_LINK)
         assert(!bBmSw || (nBL != cnBitsPerWord));
       #endif // defined(BM_IN_LINK)
-      #if defined(B_JUDYL) && defined(EMBED_KEYS)
       #ifdef REMOTE_LNX
         int nLinks = 0;
         if (bBmSw) {
             nLinks = BmSwLinkCnt(qy);
         }
       #endif // REMOTE_LNX
-      #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
   #endif // CODE_BM_SW
 
     for (Word_t ww = 0, nn = 0; nn < EXP(nBW); nn++) {
@@ -3625,11 +3627,7 @@ Word_t *
 #else // B_JUDYL
 Status_t
 #endif // B_JUDYL
-InsertAtBitmap(qp, Word_t wKey
-  #ifdef _LNX
-             , Word_t* pwLnX
-  #endif // _LNX
-               );
+InsertAtBitmap(qpa, Word_t wKey);
 
 #if (cwListPopCntMax != 0)
 
@@ -3658,9 +3656,9 @@ Word_t*
 #else // defined(B_JUDYL) && defined(EMBED_KEYS)
 void
 #endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
-InsertCleanup(qp, Word_t wKey)
+InsertCleanup(qpa, Word_t wKey)
 {
-    qv; (void)wKey;
+    qva; (void)wKey;
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
     Word_t *pwValue = NULL;
 #endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
@@ -5368,11 +5366,7 @@ lastDigit8:;
       #endif // B_JUDYL
                                       );
                     if (nDigit == nDigitKey) {
-                        BJL(pwValue =) InsertAtBitmap(qyx(Loop), wKey
-      #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                                    , pwLnXLoop
-      #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                                                      );
+                        BJL(pwValue =) InsertAtBitmap(qyax(Loop), wKey);
                     }
                 } else
   #endif // BITMAP
@@ -5599,11 +5593,7 @@ lastDigit16:;
       #endif // B_JUDYL
                                       );
                     if (nDigit == nDigitKey) {
-                        BJL(pwValue =) InsertAtBitmap(qyx(Loop), wKey
-      #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                                    , pwLnXLoop
-      #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                                                      );
+                        BJL(pwValue =) InsertAtBitmap(qyax(Loop), wKey);
                     }
                 } else
   #endif // BITMAP
@@ -5844,11 +5834,7 @@ lastDigit32:;
       #endif // B_JUDYL
                                       );
                     if (nDigit == nDigitKey) {
-                        BJL(pwValue =) InsertAtBitmap(qyx(Loop), wKey
-      #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                                    , pwLnXLoop
-      #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                                                      );
+                        BJL(pwValue =) InsertAtBitmap(qyax(Loop), wKey);
                     }
                 } else
   #endif // BITMAP
@@ -6132,11 +6118,7 @@ lastDigit:;
       #endif // B_JUDYL
                                       );
                     if (nDigit == nDigitKey) {
-                        BJL(pwValue =) InsertAtBitmap(qyx(Loop), wKey
-      #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                                    , pwLnXLoop
-      #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                                                      );
+                        BJL(pwValue =) InsertAtBitmap(qyax(Loop), wKey);
                     }
                 } else
   #endif // BITMAP
@@ -6274,14 +6256,14 @@ lastDigit:;
 // wKey contains the common prefix.
 static void
 InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifdef _LNX
         , Word_t* pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #endif // _LNX
           )
 {
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifdef _LNX
     (void)pwLnX;
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #endif // _LNX
     Word_t wRootOld = *pwRootOld;
   #ifdef NO_TYPE_IN_XX_SW
     if (nBLOld < nDL_to_nBL(2)) {
@@ -6868,9 +6850,9 @@ DoubleDown(qp, // (nBL, pLn) of link to original switch
             int nPopCntLoop = GetPopCnt(pwRootLoop, nBLLoop);
             swPopCnt(qy, nBLR, gwPopCnt(qy, nBLR) - nPopCntLoop);
             InsertAll(pwRootLoop, nBLLoop, wPrefix, pwRoot, nBL
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+      #ifdef _LNX
                     , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+      #endif // _LNX
                       );
             continue;
         } else
@@ -7021,17 +7003,14 @@ static Word_t*
   #else // B_JUDYL
 static void
   #endif // B_JUDYL
-DoubleIt(qp, // (nBL, pLn) of list
+DoubleIt(qpa, // (nBL, pLn) of list
          Word_t wKey, // key being inserted
          int nBLUp, // nBL of link to switch containing qp (not nBLR of sw)
          Link_t *pLnUp, // link to switch containing qp
          Word_t wPopCnt
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-       , Word_t* pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
          )
 {
-    qv; (void)nBLUp; (void)pLnUp;
+    qva; (void)nBLUp; (void)pLnUp;
     int nBLList = nBL; (void)nBLList; // save because code is messed up
     int nDL = nBL_to_nDL(nBL);
     int nBLOld = nBL;
@@ -7246,9 +7225,9 @@ insertAll:;
 // How are we going to get nBLOld from pLnUp?
 // Do we need it?  We need it for the call back into Insert.
                       /* nBL */ nBLOld
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+      #ifdef _LNX
                     , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+      #endif // _LNX
                       );
         }
 
@@ -7276,18 +7255,18 @@ insertAll:;
         // the link before overwriting it above.
         if (nBLOld < cnBitsPerWord) {
             InsertAll(&link.ln_wRoot, nBLOld, wKey, pwRoot, nBLOld
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+      #ifdef _LNX
                     , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+      #endif // _LNX
                       );
         } else
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         {
             // *pwRoot now points to a switch
             InsertAll(&wRoot, nBLOld, wKey, pwRoot, nBLOld
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+      #ifdef _LNX
                     , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+      #endif // _LNX
                       );
         }
     }
@@ -7310,16 +7289,17 @@ static void
   #endif // B_JUDYL
 InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos,
                    int nBLUp, Link_t *pLnUp
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifdef _LNX
                  , Word_t* pwLnXUp
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #endif // _LNX
                    )
+
 {
     qv; (void)nPopCnt; (void)nPos;
     (void)nBLUp;
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifdef _LNX
     (void)pwLnXUp;
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #endif // _LNX
     DBGI(printf("# IAXL pLn %p\n", pLn));
     DBGI(printf("# IAXL pwr %p\n", pwr));
     int nBLR = gnListBLR(qy); (void)nBLR;
@@ -7374,15 +7354,15 @@ static void
   #endif // B_JUDYL
 InsertAtFullUnalignedXxList(qp, Word_t wKey, int nPopCnt, int nPos,
                             int nBLUp, Link_t* pLnUp
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifdef _LNX
                           , Word_t* pwLnXUp
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #endif // _LNX
                             )
 {
     qv; (void)nPopCnt; (void)nPos;
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifdef _LNX
     (void)pwLnXUp;
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #endif // _LNX
     Word_t wRootUp = pLnUp->ln_wRoot;
     DBGI(printf("# IAFUXL pLn %p\n", pLn));
     DBGI(printf("# IAFUXL pwr %p\n", pwr));
@@ -7472,9 +7452,9 @@ TransformList(qp,
               int nBLUp,
               Link_t *pLnUp,
   #endif // CODE_XX_SW
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+  #ifdef _LNX
               Word_t *pwLnX,
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+  #endif // _LNX
               Word_t wPopCnt)
 {
     qv; (void)wPopCnt;
@@ -7785,11 +7765,7 @@ newSkipToBitmap:;
 // Or another switch?
   #endif // defined(USE_XX_SW)
             DBGI(printf("TransformList: DoubleIt\n"));
-            return DoubleIt(qy, wKey, nBLUp, pLnUp, wPopCnt
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                          , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                            );
+            return DoubleIt(qya, wKey, nBLUp, pLnUp, wPopCnt);
   #ifdef USE_XX_SW
         } else
   #endif // defined(USE_XX_SW)
@@ -7931,9 +7907,9 @@ newSkipToBitmap:;
 // How are we going to get nBL from pLnUp?
 // Do we need it?  We need it for the call back into Insert.
                       nBL
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+      #ifdef _LNX
                     , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+      #endif // _LNX
                       );
         }
 
@@ -7959,9 +7935,9 @@ newSkipToBitmap:;
         // the link before overwriting it above.
         if (nBL < cnBitsPerWord) {
             InsertAll(&link.ln_wRoot, /* old */ nBL, wKey, pwRoot, nBL
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
+      #ifdef _LNX
                     , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+      #endif // _LNX
                       );
         } else
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -8112,11 +8088,7 @@ InsertAtList(qpa,
         assert(nType != T_XX_LIST);
         DBGI(printf("IAL: DoubleIt nBL %d cnt %d max %d.\n",
                     nBL, (int)wPopCnt, nEmbeddedListPopCntMax));
-        return DoubleIt(qy, wKey, nBLUp, pLnUp, wPopCnt
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                      , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                        );
+        return DoubleIt(qya, wKey, nBLUp, pLnUp, wPopCnt);
     }
   #endif // defined(NO_TYPE_IN_XX_SW)
 
@@ -8268,11 +8240,7 @@ InsertAtList(qpa,
                         < cnXxSwWpkPercent)
                 {
                     DBGI(printf("IAL: DoubleIt\n"));
-                    return DoubleIt(qy, wKey, nBLUp, pLnUp, wPopCnt
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                  , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                                    );
+                    return DoubleIt(qya, wKey, nBLUp, pLnUp, wPopCnt);
                 }
             }
         } else
@@ -8518,17 +8486,17 @@ copyWithInsertWord:
             if (nDL_to_nBL(nDL) == nBL) {
                 BJL(pwValue =) InsertAtFullXxList(qy, wKey, wPopCnt, nPos,
                                                   nBLUp, pLnUp
-          #if defined(B_JUDYL) && defined(EMBED_KEYS)
+          #ifdef _LNX
                                                 , pwLnX
-          #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+          #endif // _LNX
                                                   );
             } else {
                 BJL(pwValue =) InsertAtFullUnalignedXxList(qy, wKey, wPopCnt,
                                                            nPos,
                                                            nBLUp, pLnUp
-          #if defined(B_JUDYL) && defined(EMBED_KEYS)
+          #ifdef _LNX
                                                          , pwLnX
-          #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+          #endif // _LNX
                                                            );
             }
             return BJL(pwValue);
@@ -8572,11 +8540,7 @@ copyWithInsertWord:
 #else // DOUBLE_DOWN
             DBGI(printf("IAL: ListIsFull DoubleIt nBL %d nBLUp %d\n",
                         nBL, nBLUp));
-            BJL(pwValue =) DoubleIt(qy, wKey, nBLUp, pLnUp, wPopCnt
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                  , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                                    );
+            BJL(pwValue =) DoubleIt(qya, wKey, nBLUp, pLnUp, wPopCnt);
             return BJL(pwValue);
 #endif // #else DOUBLE_DOWN
         }
@@ -8586,9 +8550,9 @@ copyWithInsertWord:
       #ifdef CODE_XX_SW
                                          nBLUp, pLnUp,
       #endif // CODE_XX_SW
-      #if defined(B_JUDYL) && defined(EMBED_KEYS)
+      #ifdef _LNX
                                          pwLnX,
-      #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+      #endif // _LNX
                                          wPopCnt);
         }
     }
@@ -8697,11 +8661,7 @@ InsertGuts(qpa, Word_t wKey, int nPos
     // go away at compile time if appropriate.
     if ((wRoot != WROOT_NULL) || (wr_nType(WROOT_NULL) != T_BITMAP)) {
         if (tp_bIsBitmap(nType)) {
-            return InsertAtBitmap(qy, wKey
-#if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                , pwLnX
-#endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                                  );
+            return InsertAtBitmap(qya, wKey);
         }
     }
   #endif // BITMAP
@@ -8724,12 +8684,8 @@ InsertGuts(qpa, Word_t wKey, int nPos
         if (wPopCntUp >= EXP(nBWUp + cnBWIncr) * 2) {
 // Can DoubleIt handle a deflated list?
             BJL(return)
-                DoubleIt(qy, wKey, nBLUp, pLnUp,
-                         PWR_xListPopCnt(pwRoot, pwr, nBL)
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                       , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                                         );
+                DoubleIt(qya, wKey, nBLUp, pLnUp,
+                         PWR_xListPopCnt(pwRoot, pwr, nBL));
             BJ1(return Success);
         }
     }
@@ -9307,15 +9263,9 @@ Word_t*
 #else // B_JUDYL
 Status_t
 #endif // B_JUDYL
-InsertAtBitmap(qp, Word_t wKey
-  #ifdef B_JUDYL
-  #ifdef EMBED_KEYS
-             , Word_t* pwLnX
-  #endif // EMBED_KEYS
-  #endif // B_JUDYL
-               )
+InsertAtBitmap(qpa, Word_t wKey)
 {
-    qv;
+    qva;
 
     int nBLR = nBL;
   #ifdef SKIP_TO_BITMAP
@@ -9515,13 +9465,7 @@ done:
 #endif // BITMAP
 
 static Status_t
-RemoveAtBitmap(qp, Word_t wKey
-      #ifdef B_JUDYL
-      #ifdef EMBED_KEYS
-             , Word_t* pwLnX
-      #endif // EMBED_KEYS
-      #endif // B_JUDYL
-               );
+RemoveAtBitmap(qpa, Word_t wKey);
 
 // RemoveCleanup needs work.
 // All it does is look for switches (subtrees) with popcnt zero and free them.
@@ -9679,13 +9623,7 @@ RemoveGuts(qpa, Word_t wKey)
         || tp_bIsBitmap(nType));
   #endif // (cwListPopCntMax != 0)
     {
-        return RemoveAtBitmap(qy, wKey
-      #ifdef B_JUDYL
-      #ifdef EMBED_KEYS
-                            , pwLnX
-      #endif // EMBED_KEYS
-      #endif // B_JUDYL
-                              );
+        return RemoveAtBitmap(qya, wKey);
     }
 #endif // BITMAP
 
@@ -10070,15 +10008,9 @@ embeddedKeys:;
 // Clear the bit for wKey in the bitmap.
 // And free the bitmap if it is empty and not embedded.
 static Status_t
-RemoveAtBitmap(qp, Word_t wKey
-      #ifdef B_JUDYL
-      #ifdef EMBED_KEYS
-             , Word_t* pwLnX
-      #endif // EMBED_KEYS
-      #endif // B_JUDYL
-               )
+RemoveAtBitmap(qpa, Word_t wKey)
 {
-    qv;
+    qva;
 
     DBGX(printf("RemoveAtBitmap\n"));
     // EXP(nBL) is risky because nBL could be cnBitsPerWord

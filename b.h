@@ -3817,7 +3817,7 @@ Word_t*
 #else // defined(B_JUDYL) && defined(EMBED_KEYS)
 void
 #endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
-InsertCleanup(qp, Word_t wKey);
+InsertCleanup(qpa, Word_t wKey);
 
 void RemoveCleanup(Word_t wKey, int nBL, int nBLR,
                    Word_t *pwRoot, Word_t wRoot);
