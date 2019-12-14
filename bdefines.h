@@ -611,10 +611,12 @@
 #endif // B_JUDYL
 #endif // USE_BM_SW
 
-#ifndef   NO_OFFSET_IN_SW_BM_WORD
-    #undef   OFFSET_IN_SW_BM_WORD
-    #define  OFFSET_IN_SW_BM_WORD
-#endif // NO_OFFSET_IN_SW_BM_WORD
+#undef              OFFSET_IN_SW_BM_WORD
+#ifdef B_JUDYL
+#ifndef          NO_OFFSET_IN_SW_BM_WORD
+  #define           OFFSET_IN_SW_BM_WORD
+#endif // ifndef NO_OFFSET_IN_SW_BM_WORD
+#endif // B_JUDYL
 
 #ifndef   NO_PREFETCH_BM_LN
     #undef   PREFETCH_BM_LN
