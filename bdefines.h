@@ -361,30 +361,33 @@
     #define  PACK_BM_VALUES
   #endif // #ifndef NO_PACK_BM_VALUES
   #ifdef PACK_BM_VALUES
-    // BMLF_CNTS is default only for default digit size of eight.
+    // Default is BMLF_CNTS only for default digit size of eight.
     // It hasn't been tested with anything else.
-    #if (cnBitsPerWord > 32)
-    #ifndef cnBitsInD1
-    #ifndef cnBitsInD2
-    #ifndef cnBitsInD3
-    #ifndef cnBitsPerDigit
-    #ifndef NO_BMLF_CNTS
+    #if (cnBitsPerWord > 32) // Why?
+    #ifndef cnBitsInD1 // Why not also allow cnBitsInD1 == 8?
+    #ifndef cnBitsInD2 // Why not also allow cnBitsInD2 == 8?
+    #ifndef cnBitsInD3 // Why not also allow cnBitsInD3 == 8?
+    #ifndef cnBitsPerDigit // Why not also allow cnBitsPerDigit == 8?
+      #undef  BMLF_CNTS
+      #define BMLF_CNTS
+      // Default is BMLF_CNTS_CUM for BMLF_CNTS unless NO_BMLF_CNTS_CUM.
+      // BMLF_CNTS_CUM is ignored if BMLF_POP_COUNT_[1|8|32].
+      // BMLF_POP_COUNT_[1|8] always use cumulative cnts.
+      // BMLF_POP_COUNT_32 never uses cumulative cnts.
       #ifndef NO_BMLF_CNTS_CUM
         #undef  BMLF_CNTS_CUM
         #define BMLF_CNTS_CUM
-      #endif // #ifndef NO_BMLF_CNTS_CUM
-      #undef  BMLF_CNTS
-      #define BMLF_CNTS
-    #endif // #ifndef NO_BMLF_CNTS
+      #endif // !NO_BMLF_CNTS_CUM
     #endif // #ifndef cnBitsPerDigit
     #endif // #ifndef cnBitsInD3
     #endif // #ifndef cnBitsInD2
     #endif // #ifndef cnBitsInD1
     #endif // (cnBitsPerWord > 32)
     #ifndef BMLF_CNTS
-    #ifndef NO_BMLF_CNTS
-      #pragma message("Warning: not defining BMLF_CNTS")
-    #endif // #ifndef NO_BMLF_CNTS
+      #ifndef NO_BMLF_CNTS
+        #pragma message("Warning: not defining BMLF_CNTS")
+      #endif // #ifndef NO_BMLF_CNTS
+      #undef BMLF_CNTS_CUM
     #endif // #ifndef BMLF_CNTS
     #ifndef NO_PF_BM_PREV_HALF_VAL
       #undef   PF_BM_PREV_HALF_VAL
@@ -611,6 +614,8 @@
 #endif // B_JUDYL
 #endif // USE_BM_SW
 
+// Default is OFFSET_IN_SW_BM_WORD for B_JUDYL unless NO_OFFSET_IN_SW_BM_WORD.
+// OFFSET_IN_SW_BM_WORD is not used for Judy1.
 #undef              OFFSET_IN_SW_BM_WORD
 #ifdef B_JUDYL
 #ifndef          NO_OFFSET_IN_SW_BM_WORD

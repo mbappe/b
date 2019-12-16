@@ -2152,7 +2152,7 @@ t_bitmap:;
             // Use compile-time tests to speed this up. Hopefully.
   #if defined(B_JUDYL) && defined(LOOKUP) && defined(BMLF_POP_COUNT_1_NO_TEST)
             int bBitIsSet = 1;
-      #else // BMLF_POP_COUNT_1_NO_TEST
+  #else // BMLF_POP_COUNT_1_NO_TEST
             int bBitIsSet =
           #ifdef _BMLF_BM_IN_LNX
                 BitIsSet(pwLnX, wKey & MSK(cnBitsInD1));
@@ -2186,7 +2186,7 @@ t_bitmap:;
                                    wKey & MSK(cnBitsLeftAtDl2));
               #endif // #else USE_XX_SW_ONLY_AT_DL2
           #endif // else _BMLF_BM_IN_LNX
-      #endif // BMLF_POP_COUNT_1_NO_TEST
+  #endif // BMLF_POP_COUNT_1_NO_TEST
             if (bBitIsSet) {
       #if defined(REMOVE)
                 goto removeGutsAndCleanup;

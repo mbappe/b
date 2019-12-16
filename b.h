@@ -2802,9 +2802,9 @@ typedef struct {
 #ifdef _LNX
 #if (cnBitsInD1 <= cnLogBitsPerWord)
   #define _BMLF_BM_IN_LNX
-  #ifdef BMLF_CNTS
-    #error BMLF_CNTS with _BMLF_BM_IN_LNX
-  #endif // BMLF_CNTS
+  #ifdef BMLF_CNTS_IN_LNX
+    #error BMLF_CNTS_IN_LNX with _BMLF_BM_IN_LNX
+  #endif // BMLF_CNTS_IN_LNX
 #endif // (cnBitsInD1 <= cnLogBitsPerWord)
 #endif // _LNX
 #endif // ALLOW_EMBEDDED_BITMAP
@@ -2952,6 +2952,8 @@ typedef struct {
   // BMLF_CNTS enables the use of an array of subcounts to help speed the
   // calculation of the offset of the value for a given key in a bitmap with
   // a packed value area.
+  // If BMLF_CNTS_IN_LNX the counts/offsets can also be used to improve the
+  // hit ratio of the value area prefetch.
   // Each count field represents either the population of the corresponding
   // subexpanse or the accumulation of the populations of all of the previous
   // subexpanses.
@@ -2959,26 +2961,27 @@ typedef struct {
       #ifndef B_JUDYL
     #error BMLF_CNTS without B_JUDYL
       #endif // #ifndef B_JUDYL
-  #if cnDummiesInLink == 0
       #ifdef BMLF_POP_COUNT_8
+      // BMLF_POP_COUNT_8 with BMLF_CNTS uses an array of counts of 8-bit
+      // bitmaps. 32 one-byte counts do not fit in a single word so
+      // BMLF_POP_COUNT_8 is not compatible with BMLF_CNTS_IN_LNX.
     uint8_t bmlf_au8Cnts[1 << (cnBitsInD1 - cnLogBitsPerByte)];
       #elif defined(BMLF_POP_COUNT_1)
+      // BMLF_POP_COUNT_1 with BMLF_CNTS uses an array of counts/offsets of
+      // 1-bit bitmaps. 256 one-byte counts do not fit in a single word so
+      // BMLF_POP_COUNT_1 is not compatible with BMLF_CNTS_IN_LNX.
     uint8_t bmlf_au8Cnts[1 << cnBitsInD1];
-      #else // BMLF_POP_COUNT_8
+      #else // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1
           #ifdef BMLF_POP_COUNT_32
     uint8_t bmlf_au8Cnts[1 << (cnBitsInD1 - 5)];
-          #elif defined(EMBED_KEYS)
-              // We are overloading EMBED_KEYS to trigger the placement of
-              // the subcounts array in the link extension so we don't need
-              // it in BmLeaf_t.
+          #elif defined(BMLF_CNTS_IN_LNX)
               #if (cnBitsInD1 - cnLogBitsPerWord) > cnLogBytesPerWord
-    #error BMLF_CNTS + EMBED_KEYS + cnBitsInD1 too big to fit in 1-word pwLnX
+    #error BMLF_CNTS_IN_LNX + cnBitsInD1 too big to fit in 1-word pwLnX
               #endif // (cnBitsInD1 - cnLogBitsPerWord) > cnLogBytesPerWord
-          #else // BMLF_POP_COUNT_32 #elif EMBED_KEYS
+          #else // BMLF_POP_COUNT_32 elif BMLF_CNTS_IN_LNX
     uint8_t bmlf_au8Cnts[1 << (cnBitsInD1 - cnLogBitsPerWord)];
-          #endif // BMLF_POP_COUNT_32 #elif EMBED_KEYS #else
-      #endif // #else BMLF_POP_COUNT_8
-  #endif // cnDummiesInLink == 0
+          #endif // BMLF_POP_COUNT_32 elif BMLF_CNTS_IN_LNX else
+      #endif // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1 else
   #endif // BMLF_CNTS
   #ifndef _BMLF_BM_IN_LNX
     Word_t bmlf_awBitmap[0];
@@ -3164,7 +3167,7 @@ gpwBitmapValues(qp, int nBLR)
     // For B_JUDYL we only have bitmaps at cnBitsInD1 -- never at cnBitsInD2.
     assert(nBLR == cnBitsInD1);
       #endif // #else defined(KISS_BM) || defined(KISS)
-  #endif // #ifndef _BMLF_BM_IN_LNX
+  #endif // !_BMLF_BM_IN_LNX
     return &pwr[wWordsHdr];
 }
 
@@ -3177,45 +3180,38 @@ BmIndex(qpa, int nBLR, Word_t wKey)
     assert(tp_bIsBitmap(nType));
     Word_t wDigit = wKey & MSK(nBLR);
   #ifdef _BMLF_BM_IN_LNX
+    assert(cnBitsInD1 <= cnLogBitsPerWord);
     int nIndex = PopCount64(*pwLnX & NBPW_MSK(wDigit));
   #else // _BMLF_BM_IN_LNX
-  #ifdef BMLF_POP_COUNT_32
+    // BMLF_POP_COUNT_32 treats the bitmap as an array of 32-bit bitmaps.
+      #ifdef BMLF_POP_COUNT_32
     uint32_t *pu32Bms = (uint32_t*)((BmLeaf_t*)pwr)->bmlf_awBitmap;
     // The bitmap may have more than one uint32_t.
     // nBmNum is the number of the uint32_t which contains the bit we want.
     int nBmNum = wDigit >> 5;
     uint32_t u32Bm = pu32Bms[nBmNum]; // uint32_t we want
     uint32_t u32BmBitMask = EXP(wDigit & (32 - 1));
-      #ifdef BMLF_CNTS
-          #if cnDummiesInLink > 0
-    Word_t wSums = *pLn->ln_awDummies;
-          #else // cnDummiesInLink > 0
+          #ifdef BMLF_CNTS
     Word_t wSums = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts;
-          #endif // #else cnDummiesInLink > 0
     wSums *= 0x0101010101010100;
     uint8_t *pu8Sums = (void*)&wSums;
-    int nIndex = pu8Sums[nBmNum];
-      #else // BMLF_CNTS
-    int nIndex = 0;
+    int nIndex = pu8Sums[nBmNum]; // accumulator
+          #else // BMLF_CNTS
+    int nIndex = 0; // accumulator
     for (int nn = 0; nn < nBmNum; nn++) {
         nIndex += PopCount32(pu32Bms[nn]);
     }
-      #endif // #else BMLF_CNTS
+          #endif // #else BMLF_CNTS
     nIndex += PopCount32(u32Bm & (u32BmBitMask - 1));
-    if ((u32Bm & u32BmBitMask) == 0) {
-        nIndex ^= -1;
-    }
-  #else // BMLF_POP_COUNT_32
-      #ifndef BMLF_POP_COUNT_8
-    Word_t *pwBmWords = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
+      #else // BMLF_POP_COUNT_32
+          #ifndef BMLF_POP_COUNT_8
+    Word_t *pwBmWords = ((BmLeaf_t*)pwr)->bmlf_awBitmap; (void)pwBmWords;
     // The bitmap may have more than one word.
     // nBmWordNum is the number of the word which contains the bit we want.
-    int nBmWordNum = wDigit >> cnLogBitsPerWord;
-    Word_t wBmWord = pwBmWords[nBmWordNum]; // word we want
-    Word_t wBmBitMask = EXP(wDigit & (cnBitsPerWord - 1));
-      #endif // #ifndef BMLF_POP_COUNT_8
-      #ifdef BMLF_CNTS
-          #ifdef BMLF_POP_COUNT_8
+    int nBmWordNum = wDigit >> cnLogBitsPerWord; (void)nBmWordNum;
+          #endif // #ifndef BMLF_POP_COUNT_8
+          #ifdef BMLF_CNTS
+              #ifdef BMLF_POP_COUNT_8
     uint8_t *pu8BmBytes = (uint8_t*)((BmLeaf_t*)pwr)->bmlf_awBitmap;
     int nBmByteNum = wDigit >> 3;
     uint8_t u8BmByte = pu8BmBytes[nBmByteNum]; // byte we want
@@ -3223,40 +3219,35 @@ BmIndex(qpa, int nBLR, Word_t wKey)
     uint8_t* pu8Sums = ((BmLeaf_t*)pwr)->bmlf_au8Cnts;
     int nIndex = pu8Sums[nBmByteNum];
     nIndex += PopCount8(u8BmByte & (u8BmBitMask - 1));
-    if ((u8BmByte & u8BmBitMask) == 0) {
-        nIndex ^= -1;
-    }
-          #elif defined(BMLF_POP_COUNT_1)
+              #elif defined(BMLF_POP_COUNT_1) // BMLF_POP_COUNT_8
     uint8_t* pu8Sums = ((BmLeaf_t*)pwr)->bmlf_au8Cnts;
     int nIndex = pu8Sums[wDigit];
-          #else // BMLF_POP_COUNT_8
-              #if cnDummiesInLink > 0
-    Word_t wSums = *pLn->ln_awDummies;
-              #else // cnDummiesInLink > 0
-        #ifdef EMBED_KEYS
-    Word_t wSums = *pwLnX;
-        #else // EMBED_KEYS
-    Word_t wSums = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts;
-        #endif // #else EMBED_KEYS
-              #endif // #else cnDummiesInLink > 0
-              #ifndef BMLF_CNTS_CUM
+              #else // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1
+                  #ifdef BMLF_CNTS_IN_LNX
+    Word_t wSums = *pwLnX; // accumulator
+                  #else //  BMLF_CNTS_IN_LNX
+    Word_t wSums = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts; // accumulator
+                  #endif // BMLF_CNTS_IN_LNX else
+                  #ifndef BMLF_CNTS_CUM
     wSums *= 0x01010100;
-              #endif // #ifndef BMLF_CNTS_CUM
+                  #endif // !BMLF_CNTS_CUM
     int nIndex = ((uint8_t*)&wSums)[nBmWordNum];
-          #endif // BMLF_POP_COUNT_8
-      #else // BMLF_CNTS
+              #endif // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1 else
+          #else // BMLF_CNTS
     int nIndex = 0;
     for (int nn = 0; nn < nBmWordNum; nn++) {
         nIndex += PopCount64(pwBmWords[nn]);
     }
-      #endif // #else BMLF_CNTS
-      #ifndef BMLF_POP_COUNT_8
-      #ifndef BMLF_POP_COUNT_1
+          #endif // BMLF_CNTS else
+          #ifndef BMLF_POP_COUNT_8
+          #ifndef BMLF_POP_COUNT_1
+    Word_t wBmWord = pwBmWords[nBmWordNum]; // word we want
+    Word_t wBmBitMask = EXP(wDigit & (cnBitsPerWord - 1));
     nIndex += PopCount64(wBmWord & (wBmBitMask - 1));
-      #endif // #ifndef BMLF_POP_COUNT_1
-      #endif // #ifndef BMLF_POP_COUNT_8
-  #endif // #else BMLF_POP_COUNT_32
-  #endif // else _BMLF_BM_IN_LNX
+          #endif // !BMLF_POP_COUNT_1
+          #endif // !BMLF_POP_COUNT_8
+      #endif // BMLF_POP_COUNT_32 else
+  #endif // _BMLF_BM_IN_LNX else
     return nIndex;
 }
 
