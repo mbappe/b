@@ -371,9 +371,8 @@
       #undef  BMLF_CNTS
       #define BMLF_CNTS
       // Default is BMLF_CNTS_CUM for BMLF_CNTS unless NO_BMLF_CNTS_CUM.
-      // BMLF_CNTS_CUM is ignored if BMLF_POP_COUNT_[1|8|32].
+      // BMLF_CNTS_CUM is ignored if BMLF_POP_COUNT_[1|8].
       // BMLF_POP_COUNT_[1|8] always use cumulative cnts.
-      // BMLF_POP_COUNT_32 never uses cumulative cnts.
       #ifndef NO_BMLF_CNTS_CUM
         #undef  BMLF_CNTS_CUM
         #define BMLF_CNTS_CUM

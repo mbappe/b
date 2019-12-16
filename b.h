@@ -2972,15 +2972,13 @@ typedef struct {
       // BMLF_POP_COUNT_1 is not compatible with BMLF_CNTS_IN_LNX.
     uint8_t bmlf_au8Cnts[1 << cnBitsInD1];
       #else // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1
-          #ifdef BMLF_POP_COUNT_32
+          #ifndef BMLF_CNTS_IN_LNX
+              #ifdef BMLF_POP_COUNT_32
     uint8_t bmlf_au8Cnts[1 << (cnBitsInD1 - 5)];
-          #elif defined(BMLF_CNTS_IN_LNX)
-              #if (cnBitsInD1 - cnLogBitsPerWord) > cnLogBytesPerWord
-    #error BMLF_CNTS_IN_LNX + cnBitsInD1 too big to fit in 1-word pwLnX
-              #endif // (cnBitsInD1 - cnLogBitsPerWord) > cnLogBytesPerWord
-          #else // BMLF_POP_COUNT_32 elif BMLF_CNTS_IN_LNX
+              #else // BMLF_POP_COUNT_32
     uint8_t bmlf_au8Cnts[1 << (cnBitsInD1 - cnLogBitsPerWord)];
-          #endif // BMLF_POP_COUNT_32 elif BMLF_CNTS_IN_LNX else
+              #endif // BMLF_POP_COUNT_32 else
+          #endif // !BMLF_CNTS_IN_LNX
       #endif // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1 else
   #endif // BMLF_CNTS
   #ifndef _BMLF_BM_IN_LNX
@@ -3192,16 +3190,21 @@ BmIndex(qpa, int nBLR, Word_t wKey)
     uint32_t u32Bm = pu32Bms[nBmNum]; // uint32_t we want
     uint32_t u32BmBitMask = EXP(wDigit & (32 - 1));
           #ifdef BMLF_CNTS
+              #ifdef BMLF_CNTS_IN_LNX
+    Word_t wSums = *pwLnX;
+              #else // BMLF_CNTS_IN_LNX
     Word_t wSums = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts;
+              #endif // BMLF_CNTS_IN_LNX else
+              #ifndef BMLF_CNTS_CUM
     wSums *= 0x0101010101010100;
-    uint8_t *pu8Sums = (void*)&wSums;
-    int nIndex = pu8Sums[nBmNum]; // accumulator
+              #endif // !BMLF_CNTS_CUM
+    int nIndex = ((uint8_t*)&wSums)[nBmNum]; // accumulator
           #else // BMLF_CNTS
     int nIndex = 0; // accumulator
     for (int nn = 0; nn < nBmNum; nn++) {
         nIndex += PopCount32(pu32Bms[nn]);
     }
-          #endif // #else BMLF_CNTS
+          #endif // BMLF_CNTS else
     nIndex += PopCount32(u32Bm & (u32BmBitMask - 1));
       #else // BMLF_POP_COUNT_32
           #ifndef BMLF_POP_COUNT_8
@@ -3229,7 +3232,7 @@ BmIndex(qpa, int nBLR, Word_t wKey)
     Word_t wSums = *(Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts; // accumulator
                   #endif // BMLF_CNTS_IN_LNX else
                   #ifndef BMLF_CNTS_CUM
-    wSums *= 0x01010100;
+    wSums *= 0x1010101001010100;
                   #endif // !BMLF_CNTS_CUM
     int nIndex = ((uint8_t*)&wSums)[nBmWordNum];
               #endif // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1 else
