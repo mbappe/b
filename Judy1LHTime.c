@@ -617,6 +617,7 @@ Word_t    PreStack = 0;                 // to test for TLB collisions with stack
 
 Word_t    Offset = 0;                   // Added to Key
 Word_t    bSplayKeyBitsFlag = 0;        // Splay key bits.
+Word_t    wSplayBase = 0; // What to put in key at wSplayMask zero bits.
 #if defined(__LP64__) || defined(_WIN64)
 Word_t wSplayMask = 0x5555555555555555; // default splay mask
 //Word_t wSplayMask = 0xeeee00804020aaff;
@@ -802,6 +803,12 @@ CalcNextKeyX(PSeed_t PSeed, int nBValueArg, Word_t wSValueArg)
         }
 #endif // DEBUG
         Key >>= (sizeof(Word_t) * 8) - BValue; // global BValue
+#ifdef DEBUG
+        if (pFlag)
+        {
+            printf("Shift %016" PRIxPTR" ", Key);
+        }
+#endif // DEBUG
 
         // Key will be smaller than 1 << BValue, but it might be bigger
         // than MaxNumb.
@@ -818,6 +825,7 @@ CalcNextKeyX(PSeed_t PSeed, int nBValueArg, Word_t wSValueArg)
             printf("PDEP %016" PRIxPTR" ", Key);
         }
 #endif // DEBUG
+        Key |= wSplayBase & ~wSplayMask;
         // Key might be bigger than ((1 << BValue) - 1) -- by design.
     }
 #endif // NO_SPLAY_KEY_BITS
@@ -1030,10 +1038,12 @@ Usage(int argc, char **argv)
     printf("-B #  Significant bits output (16..64) in Random Key Generator [32]\n");
     printf("-B #:#  Second # is percent expanse is limited [100]\n");
     printf("-N #  max key #; alternative to -B\n");
-    printf("-e [splay-mask]"
+    printf("-E,--splay-key-bits [splay-mask|:]"
+           "  Splay key bits with default splay-mask 0x55..55\n");
+    printf("  ':' means fill the holes with ones instead of zeros\n");
+    printf("-e [splay-mask][:]"
              "  Splay key bits with default splay-mask 0xaa..aa\n");
-    printf("-E,--splay-key-bits [splay-mask]"
-             "  Splay key bits with default splay-mask 0x55..55\n");
+    printf("  ':' means fill the holes with ones instead of zeros\n");
     printf("-l    Do not smooth data with iteration at low (<100) populations (Del/Unset not called)\n");
     printf("-F <filename>  Ascii file of Keys, zeros ignored -- must be last option!!!\n");
 //    printf("-b #:#:# ... 1st number required [1] where each number is next level of tree\n");
@@ -1445,6 +1455,8 @@ main(int argc, char *argv[])
             if (optarg != NULL) {
                 if ((optarg[0] >= '0') && (optarg[0] <= '9')) {
                     wSplayMask = oa2w(optarg, NULL, 0, c);
+                } else if (optarg[0] == ':') {
+                    wSplayBase = ~(Word_t)0;
                 } else {
                     --optind; // rewind
                     // skip over -E and put a '-' in place
@@ -1463,6 +1475,9 @@ main(int argc, char *argv[])
             if (optarg != NULL) {
                 if ((optarg[0] >= '0') && (optarg[0] <= '9')) {
                     wSplayMask = oa2w(optarg, NULL, 0, c);
+                } else if (optarg[0] == ':') {
+                    wSplayMask <<= 1;
+                    wSplayBase = ~(Word_t)0;
                 } else {
                     --optind; // rewind
                     // skip over -e and put a '-' in place
