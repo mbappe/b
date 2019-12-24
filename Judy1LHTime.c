@@ -2115,6 +2115,7 @@ main(int argc, char *argv[])
 #endif // !defined(CALC_NEXT_KEY)
         for (ii = 0; ii < nElms; ii++)
         {
+            printf("%10zd ", ii);
             Word_t PrintKey;
 // 1          Word_t LeftShift;
 // 1          Word_t RightShift;
