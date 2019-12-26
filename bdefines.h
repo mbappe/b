@@ -368,8 +368,16 @@
     #ifndef cnBitsInD2 // Why not also allow cnBitsInD2 == 8?
     #ifndef cnBitsInD3 // Why not also allow cnBitsInD3 == 8?
     #ifndef cnBitsPerDigit // Why not also allow cnBitsPerDigit == 8?
+    #ifndef NO_BMLF_CNTS
       #undef  BMLF_CNTS
       #define BMLF_CNTS
+    #endif // !NO_BMLF_CNTS
+    #endif // #ifndef cnBitsPerDigit
+    #endif // #ifndef cnBitsInD3
+    #endif // #ifndef cnBitsInD2
+    #endif // #ifndef cnBitsInD1
+    #endif // (cnBitsPerWord > 32)
+    #ifdef BMLF_CNTS
       // Default is BMLF_CNTS_CUM for BMLF_CNTS unless NO_BMLF_CNTS_CUM.
       // BMLF_CNTS_CUM is ignored if BMLF_POP_COUNT_[1|8].
       // BMLF_POP_COUNT_[1|8] always use cumulative cnts.
@@ -377,17 +385,17 @@
         #undef  BMLF_CNTS_CUM
         #define BMLF_CNTS_CUM
       #endif // !NO_BMLF_CNTS_CUM
-    #endif // #ifndef cnBitsPerDigit
-    #endif // #ifndef cnBitsInD3
-    #endif // #ifndef cnBitsInD2
-    #endif // #ifndef cnBitsInD1
-    #endif // (cnBitsPerWord > 32)
-    #ifndef BMLF_CNTS
+      #ifndef NO_BMLF_CNTS_IN_LNX
+        #undef  BMLF_CNTS_IN_LNX
+        #define BMLF_CNTS_IN_LNX
+      #endif // !NO_BMLF_CNTS_IN_LNX
+    #else // BMLF_CNTS
       #ifndef NO_BMLF_CNTS
         #pragma message("Warning: not defining BMLF_CNTS")
       #endif // #ifndef NO_BMLF_CNTS
       #undef BMLF_CNTS_CUM
-    #endif // #ifndef BMLF_CNTS
+      #undef BMLF_CNTS_IN_LNX
+    #endif // BMLF_CNTS else
     #ifndef NO_PF_BM_PREV_HALF_VAL
       #undef   PF_BM_PREV_HALF_VAL
       #define  PF_BM_PREV_HALF_VAL

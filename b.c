@@ -2448,7 +2448,7 @@ dumpBmTail:;
           #else // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1
             printf(" wCnts 0x%016zx",
               #if defined(BMLF_CNTS_IN_LNX)
-                   *pwLnX,
+                   *pwLnX
               #else // BMLF_CNTS_IN_LNX
                    *(Word_t*)(pBmLeaf->bmlf_au8Cnts)
               #endif // BMLF_CNTS_IN_LNX else
