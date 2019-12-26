@@ -3874,20 +3874,14 @@ embeddedKeys:;
 // Make sure there is room for another key to be inserted because we're
 // going to insert another key asap?
 static void
-InsertAllAtBitmap(qp, qpx(Old), int nStart, int nPopCnt
-  #ifdef B_JUDYL
-  #ifdef EMBED_KEYS
-                , Word_t* pwLnX
-  #endif // EMBED_KEYS
-  #endif // B_JUDYL
-                  )
+InsertAllAtBitmap(qpa, qpx(Old), int nStart, int nPopCnt)
 {
     DBGI(Log(qy,       "InsertAllAtBitmap qy      "));
     DBGI(Log(qyx(Old), "InsertAllAtBitmap qyx(Old)"));
     DBGI(printf("# nStart %d nPopCnt %d\n", nStart, nPopCnt));
     int nBLROld = gnListBLR(qyx(Old)); (void)nBLROld;
     DBGI(printf("# nBLROld %d\n", nBLROld));
-    qv; qvx(Old);
+    qva; qvx(Old);
   #ifdef B_JUDYL
   #ifdef EMBED_KEYS
     (void)pwLnX;
@@ -4359,14 +4353,8 @@ lastDigit8:;
                 if (nBLLoop == cnBitsInD1) {
                     NewBitmap(qyax(Loop), cnBitsInD1, pcKeys[nnStart],
                               nPopCntLoop);
-                    InsertAllAtBitmap(qyx(Loop), qyx(Old),
-                                      nnStart, nPopCntLoop
-      #ifdef B_JUDYL
-      #ifdef EMBED_KEYS
-                                    , pwLnXLoop
-      #endif // EMBED_KEYS
-      #endif // B_JUDYL
-                                      );
+                    InsertAllAtBitmap(qyax(Loop), qyx(Old),
+                                      nnStart, nPopCntLoop);
                 } else
   #endif // BITMAP
                 {
@@ -4528,14 +4516,8 @@ lastDigit16:;
                 if (nBLLoop == cnBitsInD1) {
                     NewBitmap(qyax(Loop), cnBitsInD1, psKeys[nnStart],
                               nPopCntLoop);
-                    InsertAllAtBitmap(qyx(Loop), qyx(Old),
-                                      nnStart, nPopCntLoop
-      #ifdef B_JUDYL
-      #ifdef EMBED_KEYS
-                                    , pwLnXLoop
-      #endif // EMBED_KEYS
-      #endif // B_JUDYL
-                                      );
+                    InsertAllAtBitmap(qyax(Loop), qyx(Old),
+                                      nnStart, nPopCntLoop);
                 } else
   #endif // BITMAP
                 {
@@ -4703,14 +4685,8 @@ lastDigit32:;
                 if (nBLLoop == cnBitsInD1) {
                     NewBitmap(qyax(Loop), cnBitsInD1, piKeys[nnStart],
                               nPopCntLoop);
-                    InsertAllAtBitmap(qyx(Loop), qyx(Old),
-                                      nnStart, nPopCntLoop
-      #ifdef B_JUDYL
-      #ifdef EMBED_KEYS
-                                    , pwLnXLoop
-      #endif // EMBED_KEYS
-      #endif // B_JUDYL
-                                      );
+                    InsertAllAtBitmap(qyax(Loop), qyx(Old),
+                                      nnStart, nPopCntLoop);
                 } else
   #endif // BITMAP
                 {
@@ -4898,14 +4874,8 @@ lastDigit:;
                 if (nBLLoop == cnBitsInD1) {
                     NewBitmap(qyax(Loop), cnBitsInD1, pwKeys[nnStart],
                               nPopCntLoop);
-                    InsertAllAtBitmap(qyx(Loop), qyx(Old),
-                                      nnStart, nPopCntLoop
-      #ifdef B_JUDYL
-      #ifdef EMBED_KEYS
-                                    , pwLnXLoop
-      #endif // EMBED_KEYS
-      #endif // B_JUDYL
-                                      );
+                    InsertAllAtBitmap(qyax(Loop), qyx(Old),
+                                      nnStart, nPopCntLoop);
                 } else
   #endif // BITMAP
                 {
@@ -5288,14 +5258,8 @@ lastDigit8:;
                 if (nBLLoop == cnBitsInD1) {
                     NewBitmap(qyax(Loop), cnBitsInD1, pcKeys[nnStart],
                               nPopCntLoop);
-                    InsertAllAtBitmap(qyx(Loop), qyx(Old),
-                                      nnStart, nPopCntLoop
-      #ifdef B_JUDYL
-      #ifdef EMBED_KEYS
-                                    , pwLnXLoop
-      #endif // EMBED_KEYS
-      #endif // B_JUDYL
-                                      );
+                    InsertAllAtBitmap(qyax(Loop), qyx(Old),
+                                      nnStart, nPopCntLoop);
                     if (nDigit == nDigitKey) {
                         BJL(pwValue =) InsertAtBitmap(qyax(Loop), wKey);
                     }
@@ -5512,14 +5476,8 @@ lastDigit16:;
                 if (nBLLoop == cnBitsInD1) {
                     NewBitmap(qyax(Loop), cnBitsInD1, psKeys[nnStart],
                               nPopCntLoop);
-                    InsertAllAtBitmap(qyx(Loop), qyx(Old),
-                                      nnStart, nPopCntLoop
-      #ifdef B_JUDYL
-      #ifdef EMBED_KEYS
-                                    , pwLnXLoop
-      #endif // EMBED_KEYS
-      #endif // B_JUDYL
-                                      );
+                    InsertAllAtBitmap(qyax(Loop), qyx(Old),
+                                      nnStart, nPopCntLoop);
                     if (nDigit == nDigitKey) {
                         BJL(pwValue =) InsertAtBitmap(qyax(Loop), wKey);
                     }
@@ -5750,14 +5708,8 @@ lastDigit32:;
                 if (nBLLoop == cnBitsInD1) {
                     NewBitmap(qyax(Loop), cnBitsInD1, piKeys[nnStart],
                               nPopCntLoop);
-                    InsertAllAtBitmap(qyx(Loop), qyx(Old),
-                                      nnStart, nPopCntLoop
-      #ifdef B_JUDYL
-      #ifdef EMBED_KEYS
-                                    , pwLnXLoop
-      #endif // EMBED_KEYS
-      #endif // B_JUDYL
-                                      );
+                    InsertAllAtBitmap(qyax(Loop), qyx(Old),
+                                      nnStart, nPopCntLoop);
                     if (nDigit == nDigitKey) {
                         BJL(pwValue =) InsertAtBitmap(qyax(Loop), wKey);
                     }
@@ -6031,14 +5983,8 @@ lastDigit:;
                 if (nBLLoop == cnBitsInD1) {
                     NewBitmap(qyax(Loop), cnBitsInD1, pwKeys[nnStart],
                               nPopCntLoop);
-                    InsertAllAtBitmap(qyx(Loop), qyx(Old),
-                                      nnStart, nPopCntLoop
-      #ifdef B_JUDYL
-      #ifdef EMBED_KEYS
-                                    , pwLnXLoop
-      #endif // EMBED_KEYS
-      #endif // B_JUDYL
-                                      );
+                    InsertAllAtBitmap(qyax(Loop), qyx(Old),
+                                      nnStart, nPopCntLoop);
                     if (nDigit == nDigitKey) {
                         BJL(pwValue =) InsertAtBitmap(qyax(Loop), wKey);
                     }
@@ -7574,11 +7520,7 @@ newSkipToBitmap:;
         // When is this necessary? Only if nBLNew != nBL?
         set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLNew, nPopCntOld);
           #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        InsertAllAtBitmap(qy, qyx(Old), /*nnStart*/ 0, nPopCntOld
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                       , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
-                         );
+        InsertAllAtBitmap(qya, qyx(Old), /*nnStart*/ 0, nPopCntOld);
         OldList(pwrOld, nPopCntOld, nBLOld, nTypeOld);
         BJ1(goto finalInsert);
   #ifdef _RETURN_NULL_TO_INSERT_AGAIN
