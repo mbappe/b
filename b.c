@@ -1274,16 +1274,9 @@ BitmapWordCnt(int nBLR, Word_t wPopCnt)
 
 // We don't need NewBitmap for Judy1 unless (cnBitsInD1 > cnLogBitsPerLink).
 static Word_t *
-NewBitmap(qp, int nBLR, Word_t wKey,
-  #ifdef _LNX
-          Word_t* pwLnX,
-  #endif // _LNX
-          Word_t wPopCnt)
+NewBitmap(qpa, int nBLR, Word_t wKey, Word_t wPopCnt)
 {
-    qv; (void)wKey;
-  #ifdef _LNX
-    (void)pwLnX;
-  #endif // _LNX
+    qva; (void)wKey;
     Word_t wWords = BitmapWordCnt(nBLR, wPopCnt);
   #ifndef SKIP_TO_BITMAP
     assert(nBL == nBLR);
@@ -3708,7 +3701,7 @@ InsertCleanup(qpa, Word_t wKey)
         DBGI(printf("# IC: NewBitmap nBLR %d nBW %d wPopCnt %" _fw"d"
                         " wWordsAllocated %" _fw"d wPopCntTotal %" _fw"d.\n",
                     nBLR, nBW, wPopCnt, wWordsAllocated, wPopCntTotal));
-        Word_t *pwrNew = NewBitmap(qy, /* nBLNew */ nBLR, wKey, wPopCnt);
+        Word_t *pwrNew = NewBitmap(qya, /* nBLNew */ nBLR, wKey, wPopCnt);
 // NewBitmap installs a new wRoot.
 // nBL, pLn, pwRoot have not changed, but *pwRoot has.
         Word_t *pwBitmap = ((BmLeaf_t*)pwrNew)->bmlf_awBitmap;
@@ -4364,10 +4357,7 @@ lastDigit8:;
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
-                    NewBitmap(qyx(Loop), cnBitsInD1, pcKeys[nnStart],
-      #ifdef _LNX
-                              pwLnXLoop,
-      #endif // _LNX
+                    NewBitmap(qyax(Loop), cnBitsInD1, pcKeys[nnStart],
                               nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
@@ -4536,10 +4526,7 @@ lastDigit16:;
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
-                    NewBitmap(qyx(Loop), cnBitsInD1, psKeys[nnStart],
-      #ifdef _LNX
-                              pwLnXLoop,
-      #endif // _LNX
+                    NewBitmap(qyax(Loop), cnBitsInD1, psKeys[nnStart],
                               nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
@@ -4714,10 +4701,7 @@ lastDigit32:;
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
-                    NewBitmap(qyx(Loop), cnBitsInD1, piKeys[nnStart],
-      #ifdef _LNX
-                              pwLnXLoop,
-      #endif // _LNX
+                    NewBitmap(qyax(Loop), cnBitsInD1, piKeys[nnStart],
                               nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
@@ -4912,10 +4896,7 @@ lastDigit:;
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
-                    NewBitmap(qyx(Loop), cnBitsInD1, pwKeys[nnStart],
-      #ifdef _LNX
-                              pwLnXLoop,
-      #endif // _LNX
+                    NewBitmap(qyax(Loop), cnBitsInD1, pwKeys[nnStart],
                               nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
@@ -5305,10 +5286,7 @@ lastDigit8:;
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
-                    NewBitmap(qyx(Loop), cnBitsInD1, pcKeys[nnStart],
-      #ifdef _LNX
-                              pwLnXLoop,
-      #endif // _LNX
+                    NewBitmap(qyax(Loop), cnBitsInD1, pcKeys[nnStart],
                               nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
@@ -5532,10 +5510,7 @@ lastDigit16:;
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
-                    NewBitmap(qyx(Loop), cnBitsInD1, psKeys[nnStart],
-      #ifdef _LNX
-                              pwLnXLoop,
-      #endif // _LNX
+                    NewBitmap(qyax(Loop), cnBitsInD1, psKeys[nnStart],
                               nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
@@ -5773,10 +5748,7 @@ lastDigit32:;
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
-                    NewBitmap(qyx(Loop), cnBitsInD1, piKeys[nnStart],
-      #ifdef _LNX
-                              pwLnXLoop,
-      #endif // _LNX
+                    NewBitmap(qyax(Loop), cnBitsInD1, piKeys[nnStart],
                               nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
@@ -6057,10 +6029,7 @@ lastDigit:;
                 } else
   #ifdef BITMAP
                 if (nBLLoop == cnBitsInD1) {
-                    NewBitmap(qyx(Loop), cnBitsInD1, pwKeys[nnStart],
-      #ifdef _LNX
-                              pwLnXLoop,
-      #endif // _LNX
+                    NewBitmap(qyax(Loop), cnBitsInD1, pwKeys[nnStart],
                               nPopCntLoop);
                     InsertAllAtBitmap(qyx(Loop), qyx(Old),
                                       nnStart, nPopCntLoop
@@ -7063,11 +7032,7 @@ DoubleIt(qpa, // (nBL, pLn) of list
             // And nBLOld has what should be in nBL.
             int nBLNew = nBL;
             nBL = nBLOld;
-            NewBitmap(qy, nBLNew, wKey,
-  #ifdef _LNX
-                      pwLnX,
-  #endif // _LNX
-                      /* wPopCnt */ 0);
+            NewBitmap(qya, nBLNew, wKey, /* wPopCnt */ 0);
             nBL = nBLNew;
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBL, 0);
@@ -7596,11 +7561,7 @@ newSkipToBitmap:;
 // nBL, pLn, pwRoot, wRoot, nType, and pwr are all unchanged.
 // *pLn and *pwRoot are changed.
         int nPopCntOld = GetPopCnt(pwRootOld, nBL);
-        pwr = NewBitmap(qy, nBLNew, wKey,
-  #ifdef _LNX
-                        pwLnX,
-  #endif // _LNX
-                        nPopCntOld);
+        pwr = NewBitmap(qya, nBLNew, wKey, nPopCntOld);
         wRoot = *pwRoot;
         nType = wr_nType(wRoot);
           #ifdef SKIP_TO_BITMAP
@@ -9279,11 +9240,7 @@ InsertAtBitmap(qpa, Word_t wKey)
       #ifdef _BMLF_BM_IN_LNX
         Word_t wBitmapOld = *pwBitmap;
       #endif // _BMLF_BM_IN_LNX
-        NewBitmap(qy, nBLR, wKey,
-  #ifdef _LNX
-                  pwLnX,
-  #endif // _LNX
-                  wPopCnt + 1);
+        NewBitmap(qya, nBLR, wKey, wPopCnt + 1);
         // Prefix and popcnt are set; bits are not.
         // *pwRoot has been updated. qy is out of date.
         // Copy bits and update qy.
@@ -9988,11 +9945,7 @@ RemoveAtBitmap(qpa, Word_t wKey)
       #ifdef _BMLF_BM_IN_LNX
             Word_t wBitmapOld = *pwBitmap;
       #endif // _BMLF_BM_IN_LNX
-            NewBitmap(qy, nBLR, wKey,
-      #ifdef _LNX
-                      pwLnX,
-      #endif // _LNX
-                      wPopCnt);
+            NewBitmap(qya, nBLR, wKey, wPopCnt);
             // Prefix and popcnt are set; bits are not.
             // *pwRoot has been updated. qy is out of date.
             // Copy bits and update qy.
