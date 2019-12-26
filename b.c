@@ -2269,9 +2269,6 @@ FreeArrayGuts(qpa, Word_t wKey, int bDump
       #endif // CODE_BM_SW
   #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
     Word_t wKeyOrig = wKey; (void)wKeyOrig;
-  #ifdef _LNX
-    (void)pwLnX;
-  #endif // _LNX
     Word_t *pwRootArg = pwRoot; (void)pwRootArg;
     int nBW; (void)nBW;
     Link_t *pLinks; (void)pLinks;
@@ -3882,11 +3879,6 @@ InsertAllAtBitmap(qpa, qpx(Old), int nStart, int nPopCnt)
     int nBLROld = gnListBLR(qyx(Old)); (void)nBLROld;
     DBGI(printf("# nBLROld %d\n", nBLROld));
     qva; qvx(Old);
-  #ifdef B_JUDYL
-  #ifdef EMBED_KEYS
-    (void)pwLnX;
-  #endif // EMBED_KEYS
-  #endif // B_JUDYL
 //   assert(nBLOld == cnBitsInD1);
   #ifdef _BMLF_BM_IN_LNX
     Word_t* pwBitmap = pwLnX;
