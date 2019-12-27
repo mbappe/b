@@ -4249,9 +4249,9 @@ lastDigit8:;
   #endif // BM_SW_FOR_REAL
                 { nIndex = nDigit; }
                 Link_t *pLnLoop = &pLinks[nIndex];
-  #ifdef _LNX
+  #ifdef REMOTE_LNX
                 Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nIndex);
-  #endif // _LNX
+  #endif // REMOTE_LNX
                 DBGI(printf("nDigit 0x%02x nnStart %d nn %d\n",
                              nDigit, nnStart, nn));
                 assert(pLnLoop->ln_wRoot == WROOT_NULL);
@@ -4389,9 +4389,9 @@ lastDigit16:;
   #endif // BM_SW_FOR_REAL
                 { nIndex = nDigit; }
                 Link_t *pLnLoop = &pLinks[nIndex];
-  #ifdef _LNX
+  #ifdef REMOTE_LNX
                 Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nIndex);
-  #endif // _LNX
+  #endif // REMOTE_LNX
                 DBGI(printf("nDigit 0x%02x nnStart %d nn %d\n",
                              nDigit, nnStart, nn));
                 assert(pLnLoop->ln_wRoot == WROOT_NULL);
@@ -4551,9 +4551,9 @@ lastDigit32:;
   #endif // BM_SW_FOR_REAL
                 { nIndex = nDigit; }
                 Link_t *pLnLoop = &pLinks[nIndex];
-  #ifdef _LNX
+  #ifdef REMOTE_LNX
                 Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nIndex);
-  #endif // _LNX
+  #endif // REMOTE_LNX
                 DBGI(printf("nDigit 0x%02x nnStart %d nn %d\n",
                              nDigit, nnStart, nn));
                 assert(pLnLoop->ln_wRoot == WROOT_NULL);
@@ -4722,9 +4722,9 @@ lastDigit:;
   #endif // BM_SW_FOR_REAL
                 { nIndex = nDigit; }
                 Link_t *pLnLoop = &pLinks[nIndex];
-  #ifdef _LNX
+  #ifdef REMOTE_LNX
                 Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nIndex);
-  #endif // _LNX
+  #endif // REMOTE_LNX
                 DBGI(printf("pLnLoop %p nDigit 0x%02x nnStart %d nn %d\n",
                              pLnLoop, nDigit, nnStart, nn));
                 assert(pLnLoop->ln_wRoot == WROOT_NULL);
@@ -5126,9 +5126,9 @@ lastDigit8:;
   #endif // BM_SW_FOR_REAL
                 { nIndex = nDigit; }
                 Link_t *pLnLoop = &pLinks[nIndex];
-  #ifdef _LNX
+  #ifdef REMOTE_LNX
                 Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nIndex);
-  #endif // _LNX
+  #endif // REMOTE_LNX
                 DBGI(printf("nDigit 0x%02x nnStart %d nn %d\n",
                              nDigit, nnStart, nn));
                 assert(pLnLoop->ln_wRoot == WROOT_NULL);
@@ -5308,9 +5308,9 @@ lastDigit16:;
   #endif // BM_SW_FOR_REAL
                 { nIndex = nDigit; }
                 Link_t *pLnLoop = &pLinks[nIndex];
-  #ifdef _LNX
+  #ifdef REMOTE_LNX
                 Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nIndex);
-  #endif // _LNX
+  #endif // REMOTE_LNX
                 DBGI(printf("nDigit 0x%02x nnStart %d nn %d\n",
                              nDigit, nnStart, nn));
                 assert(pLnLoop->ln_wRoot == WROOT_NULL);
@@ -5525,9 +5525,9 @@ lastDigit32:;
   #endif // BM_SW_FOR_REAL
                 { nIndex = nDigit; }
                 Link_t *pLnLoop = &pLinks[nIndex];
-  #ifdef _LNX
+  #ifdef REMOTE_LNX
                 Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nIndex);
-  #endif // _LNX
+  #endif // REMOTE_LNX
                 DBGI(printf("nDigit 0x%02x nnStart %d nn %d\n",
                              nDigit, nnStart, nn));
                 assert(pLnLoop->ln_wRoot == WROOT_NULL);
@@ -5759,9 +5759,9 @@ lastDigit:;
   #endif // BM_SW_FOR_REAL
                 { nIndex = nDigit; }
                 Link_t *pLnLoop = &pLinks[nIndex];
-  #ifdef _LNX
+  #ifdef REMOTE_LNX
                 Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nIndex);
-  #endif // _LNX
+  #endif // REMOTE_LNX
                 DBGI(printf("pLnLoop %p nDigit 0x%02x nnStart %d nn %d\n",
                              pLnLoop, nDigit, nnStart, nn));
                 assert(pLnLoop->ln_wRoot == WROOT_NULL);
@@ -6085,9 +6085,9 @@ lastDigit:;
 
     if (bInsertNotDone) {
         Link_t *pLnLoop = &pLinks[nDigitKey];
-  #ifdef _LNX
+  #ifdef REMOTE_LNX
         Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nDigitKey);
-  #endif // _LNX
+  #endif // REMOTE_LNX
         DBGI(printf("\n# Just before InsertAtList in SplayWithInsert "));
         DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
         BJL(pwValue =)
@@ -7302,21 +7302,15 @@ static Word_t*
 #else // B_JUDYL
 static void
 #endif // B_JUDYL
-TransformList(qp,
+TransformList(qpa,
               Word_t wKey,
   #ifdef CODE_XX_SW
               int nBLUp,
               Link_t *pLnUp,
   #endif // CODE_XX_SW
-  #ifdef _LNX
-              Word_t *pwLnX,
-  #endif // _LNX
               Word_t wPopCnt)
 {
-    qv; (void)wPopCnt;
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-    (void)pwLnX;
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
+    qva; (void)wPopCnt;
     int nDL = nBL_to_nDL(nBL); (void)nDL;
     // Narrow switches don't get here.
     assert(nDL_to_nBL(nDL) == nBL);
@@ -8051,13 +8045,10 @@ InsertAtList(qpa,
                 {
                     // Create a switch and splay into it before the list is
                     // full.
-                    return TransformList(qy, wKey,
+                    return TransformList(qya, wKey,
           #ifdef CODE_XX_SW
                                          nBLUp, pLnUp,
           #endif // CODE_XX_SW
-          #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                         pwLnX,
-          #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                          wPopCnt);
                 }
             }
@@ -8393,13 +8384,10 @@ copyWithInsertWord:
         }
   #endif // CODE_XX_SW
         {
-            BJL(pwValue =) TransformList(qy, wKey,
+            BJL(pwValue =) TransformList(qya, wKey,
       #ifdef CODE_XX_SW
                                          nBLUp, pLnUp,
       #endif // CODE_XX_SW
-      #ifdef _LNX
-                                         pwLnX,
-      #endif // _LNX
                                          wPopCnt);
         }
     }

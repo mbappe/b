@@ -2216,8 +2216,8 @@ t_bitmap:;
                   #ifndef PF_BM_NEXT_HALF_VAL
                   #ifndef PREFETCH_BM_NEXT_VAL
                 SMETRICS(j__DirectHits
-                    += (!(((Word_t)pwValue - ((Word_t)pcPrefetch & ~63))
-                        & ~(Word_t)63)));
+                    += (Word_t)pwValue - ((Word_t)pcPrefetch & ~MSK(6))
+                        < 64);
                   #endif // #ifndef PREFETCH_BM_NEXT_VAL
                   #endif // #ifndef PF_BM_NEXT_HALF_VAL
                   #endif // PREFETCH_BM_PSPLIT_VAL
@@ -2229,8 +2229,8 @@ t_bitmap:;
                   #ifdef PF_BM_NEXT_HALF_VAL
                   #ifndef PREFETCH_BM_NEXT_VAL
                 SMETRICS(j__DirectHits
-                    += (!(((Word_t)pwValue - ((Word_t)(pcPrefetch - 32) & ~63))
-                        & ~(Word_t)127)));
+                    += (Word_t)pwValue - (((Word_t)pcPrefetch - 32) & ~MSK(6))
+                        < 128);
                   #endif // #ifndef PREFETCH_BM_NEXT_VAL
                   #endif // PF_BM_NEXT_HALF_VAL
                   #endif // #ifndef PREFETCH_BM_PSPLIT_VAL
@@ -2242,8 +2242,8 @@ t_bitmap:;
                   #ifndef PF_BM_NEXT_HALF_VAL
                   #ifdef PREFETCH_BM_NEXT_VAL
                 SMETRICS(j__DirectHits
-                    += (!(((Word_t)pwValue - ((Word_t)(pcPrefetch - 64) & ~63))
-                        & ~(Word_t)191)));
+                    += (Word_t)pwValue - (((Word_t)pcPrefetch - 64) & ~MSK(6))
+                        < 192);
                   #endif // PREFETCH_BM_NEXT_VAL
                   #endif // #ifndef PF_BM_NEXT_HALF_VAL
                   #endif // PREFETCH_BM_PSPLIT_VAL
