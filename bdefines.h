@@ -202,18 +202,6 @@
 #endif // EMBED_KEYS
 #endif // B_JUDYL
 
-// Default is REMOTE_LNX if _LNX.
-// Ultimately, I think upper level switches will have no or a remote
-// link and leaf level switches with have a two-word link.
-#ifdef _LNX
-  #ifndef NO_REMOTE_LNX
-    #undef   REMOTE_LNX
-    #define  REMOTE_LNX
-  #endif // ifndef NO_REMOTE_LNX
-#else // _LNX
-  #undef    REMOTE_LNX
-#endif // else _LNX
-
 #ifdef DOUBLE_DOWN
   #undef  XX_LISTS
   #define XX_LISTS
@@ -419,6 +407,11 @@
     #error Must have at least one of PACK_BM_VALUES and UNPACK_BM_VALUES.
   #endif // #ifndef UNPACK_BM_VALUES
   #endif // #ifndef PACK_BM_VALUES
+
+  #ifdef BMLF_CNTS_IN_LNX
+    #undef  _LNX
+    #define _LNX
+  #endif // BMLF_CNTS_IN_LNX
 #else // B_JUDYL
     #undef BMLF_CNTS
     #undef BMLF_CNTS_CUM
@@ -634,6 +627,18 @@
     #undef   PREFETCH_BM_LN
     #define  PREFETCH_BM_LN
 #endif // NO_PREFETCH_BM_LN
+
+// Default is REMOTE_LNX if _LNX.
+// Ultimately, I think upper level switches will have no or a remote
+// link and leaf level switches with have a two-word link.
+#ifdef _LNX
+  #ifndef NO_REMOTE_LNX
+    #undef   REMOTE_LNX
+    #define  REMOTE_LNX
+  #endif // ifndef NO_REMOTE_LNX
+#else // _LNX
+  #undef    REMOTE_LNX
+#endif // else _LNX
 
 // _RETURN_NULL_TO_INSERT_AGAIN was created to deal with the issue of
 // InsertGuts calling back into Insert for the final insert but Insert not
