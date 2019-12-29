@@ -1574,6 +1574,9 @@ NewSwitchX(Word_t *pwRoot, Word_t wKey, int nBLR,
         for (int nn = 0; nn < (int)wLinks; ++nn) {
             pLinks[nn].ln_wRoot = WROOT_NULL;
         }
+        // Notice we are not initializing remote or local link extensions,
+        // *pwLnX, _LNX, here. Why? Is it really worth the complexity of
+        // initializing it elsewhere only as needed?
     }
 #if defined(CODE_BM_SW)
     DBGM(printf("NewSwitch(pwRoot %p wKey " OWx
@@ -4960,15 +4963,12 @@ insertAll:
 // Are the links packed in the staged sw?
         memcpy(pwr_pLinks((Switch_t*)pwr), pwr_pLinks((Switch_t*)pwrStaged),
                nLinkCnt * sizeof(Link_t));
-      #ifdef EMBED_KEYS
-        /*if (EmbeddedListPopCntMax(nBLR))*/ {
-            // copy embedded values
-            wRoot = *pwRoot;
-            BJL(memcpy(gpwLnX(qy, nLinkCnt, 0),
-                       gpwLnX(qyx(Staged), 1<<nBW, 0),
-                       nLinkCnt * sizeof(Word_t)));
-        }
-      #endif // EMBED_KEYS
+      #ifdef REMOTE_LNX
+        // copy remote link extensions
+        wRoot = *pwRoot;
+        BJL(memcpy(gpwLnX(qy, nLinkCnt, 0), gpwLnX(qyx(Staged), 1<<nBW, 0),
+                   nLinkCnt * sizeof(Word_t)));
+      #endif // REMOTE_LNX
         OldSwitch(pwRootStaged, nBL, /* bBmSw */ 1, /* nLinks */ 1<<nBW);
     }
   #endif // BM_SW_FOR_REAL
@@ -6078,15 +6078,12 @@ lastDigit:;
         // copy links
         memcpy(pwr_pLinks((Switch_t*)pwr), pwr_pLinks((Switch_t*)pwrStaged),
                nLinkCnt * sizeof(Link_t));
-      #ifdef EMBED_KEYS
-        /*if (EmbeddedListPopCntMax(nBLR))*/ {
-            // copy embedded values
-            wRoot = *pwRoot;
-            BJL(memcpy(gpwLnX(qy, nLinkCnt, 0),
-                       gpwLnX(qyx(Staged), 1<<nBW, 0),
-                       nLinkCnt * sizeof(Word_t)));
-        }
-      #endif // EMBED_KEYS
+      #ifdef REMOTE_LNX
+        // copy remote link extensions
+        wRoot = *pwRoot;
+        BJL(memcpy(gpwLnX(qy, nLinkCnt, 0), gpwLnX(qyx(Staged), 1<<nBW, 0),
+                   nLinkCnt * sizeof(Word_t)));
+      #endif // REMOTE_LNX
         OldSwitch(pwRootStaged, nBL, /* bBmSw */ 1, /* nLinks */ 1<<nBW);
     }
   #endif // BM_SW_FOR_REAL
