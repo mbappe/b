@@ -1453,10 +1453,14 @@ main(int argc, char *argv[])
         case 'E':
             bSplayKeyBitsFlag = 1;
             if (optarg != NULL) {
+Eopt:
                 if ((optarg[0] >= '0') && (optarg[0] <= '9')) {
                     wSplayMask = oa2w(optarg, NULL, 0, c);
                 } else if (optarg[0] == ':') {
                     wSplayBase = ~(Word_t)0;
+                    if (*++optarg != '\0') {
+                        goto Eopt;
+                    }
                 } else {
                     --optind; // rewind
                     // skip over -E and put a '-' in place
@@ -1472,12 +1476,16 @@ main(int argc, char *argv[])
             break;
         case 'e':
             bSplayKeyBitsFlag = 1;
+eopt:
             if (optarg != NULL) {
                 if ((optarg[0] >= '0') && (optarg[0] <= '9')) {
                     wSplayMask = oa2w(optarg, NULL, 0, c);
                 } else if (optarg[0] == ':') {
                     wSplayMask <<= 1;
                     wSplayBase = ~(Word_t)0;
+                    if (*++optarg != '\0') {
+                        goto eopt;
+                    }
                 } else {
                     --optind; // rewind
                     // skip over -e and put a '-' in place
