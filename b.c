@@ -2958,7 +2958,11 @@ embeddedKeys:;
                     if (((wKeyOrig >> nBLLoop) & MSK(nBW)) == nn) {
                         wKey = wKeyOrig;
                     }
+  #ifdef QP_PLN
                     Link_t *pLnLoop = &pLinks[ww];
+  #else // QP_PLN
+                    Word_t* pwRootLoop = &pLinks[ww].ln_wRoot;
+  #endif // QP_PLN else
   #ifdef REMOTE_LNX
                     Word_t *pwLnXLoop = gpwLnX(qy,
       #ifdef CODE_BM_SW
@@ -3036,7 +3040,9 @@ DumpX(qpa, Word_t wKey)
 void
 Dump(Word_t *pwRoot, Word_t wKey, int nBL)
 {
+  #ifdef QP_PLN
     Link_t* pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+  #endif // QP_PLN
   #ifdef REMOTE_LNX
     Word_t* pwLnX = NULL;
   #endif // REMOTE_LNX
@@ -3876,12 +3882,12 @@ embeddedKeys:;
 static void
 InsertAllAtBitmap(qpa, qpx(Old), int nStart, int nPopCnt)
 {
+    qva; qvx(Old);
     DBGI(Log(qy,       "InsertAllAtBitmap qy      "));
     DBGI(Log(qyx(Old), "InsertAllAtBitmap qyx(Old)"));
     DBGI(printf("# nStart %d nPopCnt %d\n", nStart, nPopCnt));
     int nBLROld = gnListBLR(qyx(Old)); (void)nBLROld;
     DBGI(printf("# nBLROld %d\n", nBLROld));
-    qva; qvx(Old);
 //   assert(nBLOld == cnBitsInD1);
   #ifdef _BMLF_BM_IN_LNX
     Word_t* pwBitmap = pwLnX;
@@ -3997,7 +4003,9 @@ SplayMaxPopCnt(Word_t *pwRootOld, int nBLOld, Word_t wKey, int nBLNew)
 {
     (void)wKey;
     int nPopCntMax = 0;
+  #ifdef QP_PLN
     Link_t *pLnOld = STRUCT_OF(pwRootOld, Link_t, ln_wRoot);
+  #endif // QP_PLN
     Word_t wRootOld = *pwRootOld;
     assert(wRootOld != WROOT_NULL);
     int nTypeOld = wr_nType(wRootOld); (void)nTypeOld;
@@ -4120,7 +4128,9 @@ Splay(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey)
     if (wRootOld == WROOT_NULL) { // only if ListPopCntMax == 0
         return;
     }
+  #ifdef QP_PLN
     Link_t *pLnOld = STRUCT_OF(pwRootOld, Link_t, ln_wRoot);
+  #endif // QP_PLN
     int nBLROld = gnListBLR(qyx(Old));
     // Even the following commented-out assertion blows with DOUBLE_DOWN.
     // Too bad or we could simplify some code below.
@@ -4252,6 +4262,9 @@ lastDigit8:;
   #endif // BM_SW_FOR_REAL
                 { nIndex = nDigit; }
                 Link_t *pLnLoop = &pLinks[nIndex];
+  #ifndef QP_PLN
+                Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
+  #endif // !QP_PLN
   #ifdef _LNX
                 Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nIndex);
                 (void)pwLnXLoop;
@@ -4360,7 +4373,7 @@ lastDigit8:;
                     // so pLn and pwRoot are not valid?
                     assert(0);
                     for (int xx = nnStart; xx < nn; ++xx) {
-                        Insert(nBL, pLn, pcKeys[xx])BJL([0] = pwValues[~xx]);
+                        Insert(qy, pcKeys[xx])BJL([0] = pwValues[~xx]);
                     }
                 }
                 nnStart = nn;
@@ -4393,6 +4406,9 @@ lastDigit16:;
   #endif // BM_SW_FOR_REAL
                 { nIndex = nDigit; }
                 Link_t *pLnLoop = &pLinks[nIndex];
+  #ifndef QP_PLN
+                Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
+  #endif // !QP_PLN
   #ifdef _LNX
                 Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nIndex);
                 (void)pwLnXLoop;
@@ -4522,7 +4538,7 @@ lastDigit16:;
 // -DNO_USE_BM_SW  -DcnBitsPerDigit=4 -DNO_ALLOW_EMBEDDED_BITMAP
                     assert(0);
                     for (int xx = nnStart; xx < nn; ++xx) {
-                        Insert(nBL, pLn, psKeys[xx])BJL([0] = pwValues[~xx]);
+                        Insert(qy, psKeys[xx])BJL([0] = pwValues[~xx]);
                     }
                 }
                 nnStart = nn;
@@ -4556,6 +4572,9 @@ lastDigit32:;
   #endif // BM_SW_FOR_REAL
                 { nIndex = nDigit; }
                 Link_t *pLnLoop = &pLinks[nIndex];
+  #ifndef QP_PLN
+                Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
+  #endif // !QP_PLN
   #ifdef _LNX
                 Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nIndex);
                 (void)pwLnXLoop;
@@ -4692,7 +4711,7 @@ lastDigit32:;
 // -DNO_USE_BM_SW  -DcnBitsPerDigit=4 -DNO_ALLOW_EMBEDDED_BITMAP
                     assert(0);
                     for (int xx = nnStart; xx < nn; ++xx) {
-                        Insert(nBL, pLn, piKeys[xx])BJL([0] = pwValues[~xx]);
+                        Insert(qy, piKeys[xx])BJL([0] = pwValues[~xx]);
                     }
                 }
                 nnStart = nn;
@@ -4728,6 +4747,9 @@ lastDigit:;
   #endif // BM_SW_FOR_REAL
                 { nIndex = nDigit; }
                 Link_t *pLnLoop = &pLinks[nIndex];
+  #ifndef QP_PLN
+                Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
+  #endif // !QP_PLN
   #ifdef _LNX
                 Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nIndex);
                 (void)pwLnXLoop;
@@ -4885,7 +4907,7 @@ lastDigit:;
                     goto insertAll;
 insertAll:
                     for (int xx = nnStart; xx < nn; ++xx) {
-                        Insert(nBL, pLn, pwKeys[xx])BJL([0] = pwValues[~xx]);
+                        Insert(qy, pwKeys[xx])BJL([0] = pwValues[~xx]);
                     }
                 }
                 nnStart = nn;
@@ -4995,7 +5017,9 @@ SplayWithInsert(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey, int nPos)
     Word_t wRootOld = *pwRootOld;
     DBGI(printf("\n# SplayWithInsert nBLOld %d nBL %d ", nBLOld, nBL));
     DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
+  #ifdef QP_PLN
     Link_t *pLnOld = STRUCT_OF(pwRootOld, Link_t, ln_wRoot);
+  #endif // QP_PLN
     int nBLROld = gnListBLR(qyx(Old));
     BJL(Word_t *pwValue = NULL);
     int bInsertNotDone = 0;
@@ -5130,6 +5154,9 @@ lastDigit8:;
   #endif // BM_SW_FOR_REAL
                 { nIndex = nDigit; }
                 Link_t *pLnLoop = &pLinks[nIndex];
+  #ifndef QP_PLN
+                Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
+  #endif // !QP_PLN
   #ifdef _LNX
                 Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nIndex);
                 (void)pwLnXLoop;
@@ -5269,7 +5296,7 @@ lastDigit8:;
                     // so pLn and pwRoot are not valid?
                     assert(0);
                     for (int xx = nnStart; xx < nn; ++xx) {
-                        Insert(nBL, pLn, pcKeys[xx])BJL([0] = pwValues[~xx]);
+                        Insert(qy, pcKeys[xx])BJL([0] = pwValues[~xx]);
                     }
                 }
                 nnStart = nn;
@@ -5313,6 +5340,9 @@ lastDigit16:;
   #endif // BM_SW_FOR_REAL
                 { nIndex = nDigit; }
                 Link_t *pLnLoop = &pLinks[nIndex];
+  #ifndef QP_PLN
+                Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
+  #endif // !QP_PLN
   #ifdef _LNX
                 Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nIndex);
                 (void)pwLnXLoop;
@@ -5486,7 +5516,7 @@ lastDigit16:;
 // -DNO_USE_BM_SW  -DcnBitsPerDigit=4 -DNO_ALLOW_EMBEDDED_BITMAP
                     assert(0);
                     for (int xx = nnStart; xx < nn; ++xx) {
-                        Insert(nBL, pLn, psKeys[xx])BJL([0] = pwValues[~xx]);
+                        Insert(qy, psKeys[xx])BJL([0] = pwValues[~xx]);
                     }
                 }
                 nnStart = nn;
@@ -5531,6 +5561,9 @@ lastDigit32:;
   #endif // BM_SW_FOR_REAL
                 { nIndex = nDigit; }
                 Link_t *pLnLoop = &pLinks[nIndex];
+  #ifndef QP_PLN
+                Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
+  #endif // !QP_PLN
   #ifdef _LNX
                 Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nIndex);
                 (void)pwLnXLoop;
@@ -5719,7 +5752,7 @@ lastDigit32:;
 // -DNO_USE_BM_SW  -DcnBitsPerDigit=4 -DNO_ALLOW_EMBEDDED_BITMAP
                     assert(0);
                     for (int xx = nnStart; xx < nn; ++xx) {
-                        Insert(nBL, pLn, piKeys[xx])BJL([0] = pwValues[~xx]);
+                        Insert(qy, piKeys[xx])BJL([0] = pwValues[~xx]);
                     }
                 }
                 nnStart = nn;
@@ -5766,6 +5799,9 @@ lastDigit:;
   #endif // BM_SW_FOR_REAL
                 { nIndex = nDigit; }
                 Link_t *pLnLoop = &pLinks[nIndex];
+  #ifndef QP_PLN
+                Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
+  #endif // !QP_PLN
   #ifdef _LNX
                 Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nIndex);
                 (void)pwLnXLoop;
@@ -5996,7 +6032,7 @@ lastDigit:;
                     assert(0);
 // I wonder if I could call ListIsFull here instead of doing this loop.
                     for (int xx = nnStart; xx < nn; ++xx) {
-                        Insert(nBL, pLn, pwKeys[xx])BJL([0] = pwValues[~xx]);
+                        Insert(qy, pwKeys[xx])BJL([0] = pwValues[~xx]);
                     }
                 }
                 nnStart = nn;
@@ -6090,6 +6126,9 @@ lastDigit:;
 
     if (bInsertNotDone) {
         Link_t *pLnLoop = &pLinks[nDigitKey];
+  #ifndef QP_PLN
+        Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
+  #endif // !QP_PLN
   #ifdef _LNX
         Word_t* pwLnXLoop = gpwLnX(qy, 1<<nBW, nDigitKey);
         (void)pwLnXLoop;
@@ -6158,7 +6197,7 @@ embeddedKeys:;
         // How inefficient can we be?
         DBGI(printf("IA: Calling IEL nBLOld %d wKey " OWx" nBL %d\n",
                     nBLOld, wKey, nBL));
-        Link_t *pLnOld = STRUCT_OF(pwRootOld, Link_t, ln_wRoot);
+        Link_t *pLnOld = STRUCT_OF(pwRootOld, Link_t, ln_wRoot); (void)pLnOld;
         // wRootOld here, but new from IEL's perspective
           #ifdef B_JUDYL
         // pwRootOld is a link in an XX_SW. We don't know nBWOld.
@@ -6178,6 +6217,7 @@ embeddedKeys:;
         // Fabricate a fake *pLnUpOld for use by gpwLnX.
         Link_t linkUp = {0};
         Link_t *pLnUp = &linkUp;
+        Word_t* pwRootUp = &pLnUp->ln_wRoot;
         set_wr_pwr(linkUp.ln_wRoot, pwrUp); // gpwLnX needs pwr
         int nBLUp = nBLR; // nBLUpOld -- assumes DoubleDown
         Word_t *pwLnXOld = gpwLnX(qyx(Up), EXP(nBWUp), nDigitUp);
@@ -6219,7 +6259,9 @@ embeddedKeys:;
     assert(tp_bIsList(nTypeOld));
   #ifdef DEBUG_INSERT
     {
+      #ifdef QP_PLN
         Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+      #endif // QP_PLN
         Word_t wRoot = *pwRoot; (void)wRoot;
         printf("\n");
         printf("IA: Switch PopCnt %zd nBL %d nBLR %d nBW %d nBLOld %d",
@@ -6228,7 +6270,9 @@ embeddedKeys:;
         printf("\n");
     }
   #endif // DEBUG_INSERT
+  #ifdef QP_PLN
     Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+  #endif // QP_PLN
       #ifdef USE_XX_SW_ONLY_AT_DL2
     if (nBLOld >= nDL_to_nBL(2)) // Splay can't handle it.
       #endif // USE_XX_SW_ONLY_AT_DL2
@@ -6252,20 +6296,20 @@ embeddedKeys:;
     if (nBLOld <= (int)sizeof(uint8_t) * 8) {
         uint8_t *pcKeys = ls_pcKeysNATX(pwrOld, nPopCnt);
         for (int nn = 0; nn < nPopCnt; nn++) {
-            Insert(nBL, pLn, pcKeys[nn] | (wKey & ~MSK(8)))
+            Insert(qy, pcKeys[nn] | (wKey & ~MSK(8)))
                 BJL([0] = pwValues[~nn]);
         }
     } else if (nBLOld <= (int)sizeof(uint16_t) * 8) {
         uint16_t *psKeys = ls_psKeysNATX(pwrOld, nPopCnt);
         for (int nn = 0; nn < nPopCnt; nn++) {
-            Insert(nBL, pLn, psKeys[nn] | (wKey & ~MSK(16)))
+            Insert(qy, psKeys[nn] | (wKey & ~MSK(16)))
                 BJL([0] = pwValues[~nn]);
         }
 #if (cnBitsPerWord > 32)
     } else if (nBLOld <= (int)sizeof(uint32_t) * 8) {
         uint32_t *piKeys = ls_piKeysNATX(pwrOld, nPopCnt);
         for (int nn = 0; nn < nPopCnt; nn++) {
-            Insert(nBL, pLn, piKeys[nn] | (wKey & ~MSK(32)))
+            Insert(qy, piKeys[nn] | (wKey & ~MSK(32)))
                 BJL([0] = pwValues[~nn]);
         }
 #endif // (cnBitsPerWord > 32)
@@ -6274,7 +6318,7 @@ embeddedKeys:;
     {
         Word_t *pwKeys = ls_pwKeysX(pwrOld, nBL, nPopCnt);
         for (int nn = 0; nn < nPopCnt; nn++) {
-            Insert(nBL, pLn, pwKeys[nn])BJL([0] = pwValues[~nn]);
+            Insert(qy, pwKeys[nn])BJL([0] = pwValues[~nn]);
         }
     }
 #if defined(NO_TYPE_IN_XX_SW)
@@ -6380,7 +6424,7 @@ DoubleUp(qp, // (nBL, pLn) of skip link to original switch
     DBGI(printf("# DoubleUp just before final Insert "));
     DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
-    BJL(return) Insert(nBL, pLn, wKey);
+    BJL(return) Insert(qy, wKey);
 }
 #endif // USE_LOWER_XX_SW
 
@@ -6604,7 +6648,7 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
   #ifdef _RETURN_NULL_TO_INSERT_AGAIN
         NULL; // call InsertGuts again
   #endif // _RETURN_NULL_TO_INSERT_AGAIN
-        Insert(nBL, pLn, wKey);
+        Insert(qy, wKey);
 }
 #endif // SKIP_LINKS
 
@@ -6761,7 +6805,7 @@ DoubleDown(qp, // (nBL, pLn) of link to original switch
     // will be needed by bumping ListPopCntMax by 1 for each half-digit.
     // Would be nice if the insert didn't require a new malloc for the list.
 // Can't we do a faster insert here?
-    BJL(return) Insert(nBL, pLn, wKey);
+    BJL(return) Insert(qy, wKey);
 }
 
 // Insert a narrow switch before the list and convert the list to a shared
@@ -6851,7 +6895,7 @@ InsertXxSw(qp, // (nBL, pLn) of link to list
     // We try to trigger the InsertXxSw on an insert before the list is full.
     // Would be nice if the insert didn't require a new malloc for the list.
     BJL(Word_t* pwValue);
-    BJL(pwValue =) Insert(nBL, pLn, wKey);
+    BJL(pwValue =) Insert(qy, wKey);
     BJL(return pwValue);
 }
 
@@ -7138,7 +7182,8 @@ insertAll:;
         DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
     }
 
-    BJL(return) Insert(nBLOld, pLn, wKey);
+    nBL = nBLOld;
+    BJL(return) Insert(qy, wKey);
 }
 
 #endif // defined(CODE_XX_SW)
@@ -7172,7 +7217,8 @@ InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos,
     int nDigitUp = (wKey >> nBL) & MSK(nBWRUp);
     DBGI(printf("# IAXL nDigitUp 0x%02x\n", nDigitUp));
     Link_t* pLinks = &pLn[-nDigitUp];
-    Word_t wRootUp = pLnUp->ln_wRoot; (void)wRootUp;
+    Word_t* pwRootUp = &pLnUp->ln_wRoot; (void)pwRootUp;
+    Word_t wRootUp = *pwRootUp; (void)wRootUp;
     // Set the links in the switch to WROOT_NULL.
 // Ultimately, I would like to be able to limit the splay to 1-bit.
 // The first step is a partial splay of one half of the list.
@@ -7225,7 +7271,8 @@ InsertAtFullUnalignedXxList(qp, Word_t wKey, int nPopCnt, int nPos,
   #ifdef _LNX
     (void)pwLnXUp;
   #endif // _LNX
-    Word_t wRootUp = pLnUp->ln_wRoot;
+    Word_t* pwRootUp = &pLnUp->ln_wRoot; (void)pwRootUp;
+    Word_t wRootUp = *pwRootUp;
     DBGI(printf("# IAFUXL pLn %p\n", pLn));
     DBGI(printf("# IAFUXL pwr %p\n", pwr));
     int nDLRUp = nBL_to_nDL(nBL+1); (void)nDLRUp;
@@ -7250,7 +7297,7 @@ InsertAtFullUnalignedXxList(qp, Word_t wKey, int nPopCnt, int nPos,
   #else // SPLAY_WITH_INSERT
     Splay(qyax(Up), /* pwRootOld */ &wRoot, nBL, wKey);
     swPopCnt(qyx(Up), nBLRUp, gwPopCnt(qyx(Up), nBLRUp) - 1);
-    BJL(return) Insert(nBLUp, pLnUp, wKey);
+    BJL(return) Insert(qyx(Up), wKey);
   #endif // #else SPLAY_WITH_INSERT
 }
 #endif // XX_LISTS
@@ -7370,7 +7417,7 @@ TransformList(qpa,
         DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
         assert(tp_bIsSkip(wr_nType(*pwRoot)));
         assert(wr_nBLR(*pwRoot) == cnBitsPerWord / 2);
-        //BJL(return) Insert(nBL, pLn, wKey);
+        //BJL(return) Insert(qy, wKey);
         goto finalInsert;
     } else {
         //DBGI(printf("No SKIP_TO_LIST\n"));
@@ -7492,7 +7539,11 @@ newSkipToBitmap:;
         // We need to preserve the Link_t for subsequent InsertAll.
         link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
         int nBLOld = nBL;
+  #ifdef QP_PLN
         Link_t *pLnOld = &link;
+  #else // QP_PLN
+        Word_t* pwRootOld = &link.ln_wRoot;
+  #endif // QP_PLN else
         qvx(Old); // declare and init pwRootOld
 // NewBitmap installs the new bitmap.
 // How are we keeping track of the list being splayed?
@@ -7813,7 +7864,7 @@ finalInsert:;
         DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
     }
 
-    BJL(return) Insert(nBL, pLn, wKey);
+    BJL(return) Insert(qy, wKey);
 }
 
 #ifndef cnSplayPrepThreshold
@@ -8259,7 +8310,8 @@ copyWithInsertWord:
                 pLinksUp = &pLn[-nDigitUp];
                 DBGI(printf("pLinksUp %p\n", pLinksUp));
             } else {
-                Word_t wRootUp = pLnUp->ln_wRoot;
+                Word_t* pwRootUp = &pLnUp->ln_wRoot; (void)pwRootUp;
+                Word_t wRootUp = *pwRootUp;
                 Word_t* pwrUp = wr_pwr(wRootUp);
                 nBWRUp = gnBW(qyx(Up), gnBLR(qyx(Up)));
                 pLinksUp = ((Switch_t*)pwrUp)->sw_aLinks;
@@ -8655,8 +8707,7 @@ wRootNull:;
 #endif // defined(SKIP_LINKS)
             assert(nDL_to_nBL(nBL_to_nDL(nBLR)) == nBLR);
             NewLink(qy, wKey, nBL_to_nDL(nBLR), /* nDLUp */ nBL_to_nDL(nBL));
-            BJL(return)
-                Insert(nBL, pLn, wKey);
+            BJL(return) Insert(qy, wKey);
         }
 #endif // defined(BM_SW_FOR_REAL)
 #if defined(SKIP_LINKS) && defined(BM_SW_FOR_REAL)
@@ -8952,7 +9003,9 @@ DeflateExternalList(Word_t *pwRoot,
                (void *)pwRoot, nPopCnt, nBL, (void *)pwr));
   #ifdef EK_XV
     if (nPopCnt > 1) {
+      #ifdef QP_PLN
         Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+      #endif // QP_PLN
         return DeflateList(qy,
       #ifdef _LNX
                            /* pwLnX */ pwLnX,
@@ -9383,7 +9436,8 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
             assert((*pwRootLn == 0) || tp_bIsSwitch(Get_nType(pwRootLn)));
         }
         // whole array pop is zero
-        FreeArrayGuts(nBL, STRUCT_OF(pwRoot, Link_t, ln_wRoot),
+        Link_t* pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
+        FreeArrayGuts(qy,
   #ifdef REMOTE_LNX
                       /* pwLnX */ NULL,
   #endif // REMOTE_LNX
@@ -9407,7 +9461,10 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
                                 PWR_wPopCnt(pwRoot, (  Switch_t *)pwr, nDLR);
 
         if (wPopCnt == 0) {
-            FreeArrayGuts(nBL, STRUCT_OF(pwRoot, Link_t, ln_wRoot),
+  #ifdef QP_PLN
+        Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+  #endif // QP_PLN
+            FreeArrayGuts(qy,
   #ifdef REMOTE_LNX
                           /* pwLnX */ NULL,
   #endif // REMOTE_LNX
@@ -10254,6 +10311,12 @@ Initialize(void)
 #endif // defined(BPD_TABLE_RUNTIME_INIT)
 
     printf("\n");
+
+#ifdef           QP_PLN
+    printf("#    QP_PLN\n");
+#else //         QP_PLN
+    printf("# No QP_PLN\n");
+#endif //        QP_PLN else
 
 #ifdef           CACHE_ALIGN_L1
     printf("#    CACHE_ALIGN_L1\n");
@@ -11968,7 +12031,11 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
   #endif // defined(DEBUG)
 
     Word_t wBytes = FreeArrayGuts(/* nBL */ cnBitsPerWord,
+  #ifdef QP_PLN
                                   STRUCT_OF(PPArray, Link_t, ln_wRoot),
+  #else // QP_PLN
+                                  (Word_t*)PPArray,
+  #endif // QP_PLN else
   #ifdef REMOTE_LNX
                                   /* pwLnX */ NULL,
   #endif // REMOTE_LNX
@@ -12125,13 +12192,25 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
         pJError->je_ErrID = __LINE__;
     }
 
+  #ifdef QP_PLN
     Word_t wRoot = (Word_t)PArray;
     Link_t *pLn = STRUCT_OF(&wRoot, Link_t, ln_wRoot);
+  #endif // QP_PLN
     // Count returns the number of keys before the specified key.
     // It does not include the specified key.
+  #ifdef QP_PLN
     Word_t wCount0 = (wKey0 == 0) ? 0 : Count(cnBitsPerWord, pLn, wKey0);
+  #else // QP_PLN
+    Word_t wCount0
+        = (wKey0 == 0) ? 0 : Count(cnBitsPerWord, (Word_t*)&PArray, wKey0);
+  #endif // QP_PLN else
     DBGC(printf("Count wKey0 " OWx" Count0 %" _fw"d\n", wKey0, wCount0));
+  #ifdef QP_PLN
     Word_t wCount1 = (wKey1 == 0) ? 0 : Count(cnBitsPerWord, pLn, wKey1);
+  #else // QP_PLN
+    Word_t wCount1
+        = (wKey1 == 0) ? 0 : Count(cnBitsPerWord, (Word_t*)&PArray, wKey1);
+  #endif // QP_PLN else
     DBGC(printf("Count wKey1 " OWx" Count1 %" _fw"d\n", wKey1, wCount1));
     Word_t wCount = wCount1 - wCount0;
 #ifdef B_JUDYL
@@ -12624,12 +12703,20 @@ t_switch:;
                 //A(0);
   #ifdef _LNX
                 pwLnX = gpwLnX(/*qy*/ nBL,
+      #ifdef QP_PLN
                                STRUCT_OF(pwRoot, Link_t, ln_wRoot),
+      #else // QP_PLN
+                               pwRoot,
+      #endif // QP_PLN else
                                EXP(nBits), wIndex);
   #endif // _LNX
                 Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
                 int nBLNext = nBL - nBits;
+  #ifdef QP_PLN
                 Link_t* pLnNext = pLn;
+  #else // QP_PLN
+                Word_t* pwRootNext = &pLn->ln_wRoot;
+  #endif // QP_PLN else
                 Word_t wPopCnt = GetPopCntX(qyx(Next), *pwKey);
                 if (wPopCnt != 0) {
                     //A(0);
@@ -12684,12 +12771,20 @@ t_switch:;
                 //A(0);
   #ifdef _LNX
                 pwLnX = gpwLnX(/*qy*/ nBL,
+      #ifdef QP_PLN
                                STRUCT_OF(pwRoot, Link_t, ln_wRoot),
+      #else // QP_PLN
+                               pwRoot,
+      #endif // QP_PLN else
                                EXP(nBits), wIndex);
   #endif // _LNX
                 Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
                 int nBLNext = nBL - nBits;
+  #ifdef QP_PLN
                 Link_t* pLnNext = pLn;
+  #else // QP_PLN
+                Word_t* pwRootNext = &pLn->ln_wRoot;
+  #endif // QP_PLN else
                 Word_t wPopCnt = GetPopCntX(qyx(Next), *pwKey);
                 if (wPopCnt != 0) {
                     //A(0);
@@ -12824,7 +12919,11 @@ t_bm_sw:;
                 wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
   #ifdef _LNX
                 pwLnX = gpwLnX(/*qy*/ nBL,
+      #ifdef QP_PLN
                                STRUCT_OF(pwRoot, Link_t, ln_wRoot),
+      #else // QP_PLN
+                               pwRoot,
+      #endif // QP_PLN else
                                nLinks, pLn - pLinks);
   #endif // _LNX
   #ifdef BM_SW_FOR_REAL
@@ -12974,7 +13073,11 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                 wPopCnt = GetPopCnt(&pLn->ln_wRoot, nBL - nBits);
   #ifdef _LNX
                 pwLnX = gpwLnX(/*qy*/ nBL,
+      #ifdef QP_PLN
                                STRUCT_OF(pwRoot, Link_t, ln_wRoot),
+      #else // QP_PLN
+                               pwRoot,
+      #endif // QP_PLN else
                                nLinks, pLn - pLinks);
   #endif // _LNX
   #ifdef BM_SW_FOR_REAL
@@ -13143,14 +13246,22 @@ t_xx_sw:;
                 //A(0);
   #ifdef _LNX
                 pwLnX = gpwLnX(/*qy*/ nBL,
+      #ifdef QP_PLN
                                STRUCT_OF(pwRoot, Link_t, ln_wRoot),
+      #else // QP_PLN
+                               pwRoot,
+      #endif // QP_PLN else
                                EXP(nBits), wIndex);
   #endif // _LNX
                 Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
                 // Should pLn be NULL for PP_IN_LINK or POP_WORD_IN_LINK
                 // and nBLUp == cnBitsPerWord?
                 int nBLNext = nBL - nBits;
+  #ifdef QP_PLN
                 Link_t* pLnNext = pLn;
+  #else // QP_PLN
+                Word_t* pwRootNext = &pLn->ln_wRoot;
+  #endif // QP_PLN else
                 Word_t wPopCnt = GetPopCntX(qyx(Next), *pwKey);
                 if (wPopCnt != 0) {
                     //A(0);
@@ -13193,14 +13304,22 @@ t_xx_sw:;
                 //A(0);
   #ifdef _LNX
                 pwLnX = gpwLnX(/*qy*/ nBL,
+      #ifdef QP_PLN
                                STRUCT_OF(pwRoot, Link_t, ln_wRoot),
+      #else // QP_PLN
+                               pwRoot,
+      #endif // QP_PLN else
                                EXP(nBits), wIndex);
   #endif // _LNX
                 Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
                 // Should pLn be NULL for PP_IN_LINK or POP_WORD_IN_LINK
                 // and nBLUp == cnBitsPerWord?
                 int nBLNext = nBL - nBits;
+  #ifdef QP_PLN
                 Link_t* pLnNext = pLn;
+  #else // QP_PLN
+                Word_t* pwRootNext = &pLn->ln_wRoot;
+  #endif // QP_PLN else
                 Word_t wPopCnt = GetPopCntX(qyx(Next), *pwKey);
                 if (wPopCnt != 0) {
                     //A(0);
@@ -13830,7 +13949,11 @@ t_switch:;
         for (;;) {
   #ifdef _LNX
             pwLnX = gpwLnX(/*qy*/ nBL,
+      #ifdef QP_PLN
                            STRUCT_OF(pwRoot, Link_t, ln_wRoot),
+      #else // QP_PLN 
+                           pwRoot,
+      #endif // QP_PLN else
                            EXP(nBits), wIndex);
   #endif // _LNX
             Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
@@ -13920,7 +14043,11 @@ t_bm_sw:;
             BmSwIndex(qy, wIndex, &wBmSwIndex, &wBmSwBit);
   #ifdef _LNX
             pwLnX = gpwLnX(/*qy*/ nBL,
+      #ifdef QP_PLN
                            STRUCT_OF(pwRoot, Link_t, ln_wRoot),
+      #else // QP_PLN
+                           pwRoot,
+      #endif // QP_PLN else
                            BmSwLinkCnt(qy), wBmSwIndex);
   #endif // _LNX
             if ( ! wBmSwBit ) {
@@ -14005,7 +14132,11 @@ t_xx_sw:;
         for (;;) {
   #ifdef _LNX
             pwLnX = gpwLnX(/*qy*/ nBL,
+      #ifdef QP_PLN
                            STRUCT_OF(pwRoot, Link_t, ln_wRoot),
+      #else // QP_PLN
+                           pwRoot,
+      #endif // QP_PLN else
                            EXP(nBits), wIndex);
   #endif // _LNX
             Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];

@@ -49,7 +49,8 @@ CountSw(qp,
   #ifdef XX_LISTS
     int nBLLoop = nBLR - nBW;
     Link_t *pLnLoop = &pLinks[wIndex];
-    Word_t wRootLoop = pLnLoop->ln_wRoot;
+    Word_t* pwRootLoop = &pLnLoop->ln_wRoot; (void)pwRootLoop;
+    Word_t wRootLoop = *pwRootLoop;
     int nTypeLoop = wr_nType(wRootLoop);
     if (nTypeLoop == T_XX_LIST) {
         int nBLRLoop = gnListBLR(qyx(Loop));
@@ -367,14 +368,21 @@ SwAdvance(pqp, Link_t *pLnNew, int nBW, int *pnBLR)
     pqv;
 
     *pnBL = *pnBLR - nBW;
-    *ppLn = pLnNew;
+    *pnBLR = *pnBL;
     // Be very careful with pwRoot from pqp.
     // It might not mean what you think it means.
+  #ifdef QP_PLN
+    *ppLn = pLnNew;
     *pwRoot = pLnNew->ln_wRoot;
-    // Why aren't we updating *pnType and *ppwr here?
-    *pnBLR = *pnBL;
     DBGX(printf("sw nBL %d pLn %p wRoot 0x%zx\n",
                 *pnBL, (void*)*ppLn, *pwRoot));
+  #else // QP_PLN
+    *ppwRoot = &pLnNew->ln_wRoot;
+    *pwRoot = **ppwRoot;
+    DBGX(printf("sw nBL %d pwRoot %p wRoot 0x%zx\n",
+                *pnBL, *ppwRoot, *pwRoot));
+  #endif // QP_PLN else
+    // Why aren't we updating *pnType and *ppwr here?
 }
 
 #ifdef SKIP_PREFIX_CHECK
@@ -441,33 +449,44 @@ PrefixCheckAtLeaf(qp, Word_t wKey
 #endif // LOOKUP
 #endif // SKIP_PREFIX_CHECK
 
-#if defined(LOOKUP)
-#ifdef B_JUDYL
+  #if defined(LOOKUP)
+      #ifdef B_JUDYL
 static Word_t *
-#else // B_JUDYL
+      #else // B_JUDYL
 static Status_t
-#endif // B_JUDYL
+      #endif // B_JUDYL
 Lookup(Word_t wRoot, Word_t wKey)
-#else // defined(LOOKUP)
-  #if defined(COUNT)
+  #else // defined(LOOKUP)
+      #if defined(COUNT)
 Word_t
-  #elif defined(INSERT) && defined(B_JUDYL)
+      #elif defined(INSERT) && defined(B_JUDYL)
 Word_t *
-  #else // defined(COUNT) elif defined(INSERT) && defined(JUDYL)
+      #else // defined(COUNT) elif defined(INSERT) && defined(JUDYL)
 Status_t
-  #endif // defined(COUNT)
-  #ifdef B_JUDYL
-InsertRemoveL(int nBL, Link_t *pLn, Word_t wKey)
-  #else // B_JUDYL
-InsertRemove1(int nBL, Link_t *pLn, Word_t wKey)
-  #endif // B_JUDYL
-#endif // defined(LOOKUP)
+      #endif // defined(COUNT)
+      #ifdef B_JUDYL
+InsertRemoveL(qp, Word_t wKey)
+      #else // B_JUDYL
+InsertRemove1(qp, Word_t wKey)
+      #endif // B_JUDYL
+  #endif // defined(LOOKUP)
 {
-#ifdef LOOKUP
+  #ifdef LOOKUP
+      #ifdef QP_PLN
     Link_t *pLn = STRUCT_OF(&wRoot, Link_t, ln_wRoot);
-#else // LOOKUP
+      #else // QP_PLN
+    Word_t* pwRoot = &wRoot;
+      #endif // QP_PLN else
+  #else // LOOKUP
+      #ifdef QP_PLN
     Word_t wRoot = pLn->ln_wRoot;
-#endif // #else LOOKUP
+      #else // QP_PLN
+    Word_t wRoot = *pwRoot;
+      #endif // QP_PLN else
+  #endif // #else LOOKUP
+  #ifndef QP_PLN
+    Link_t* pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+  #endif // !QP_PLN
     // pLn and wRoot of qy are set up
     DBGX(printf("\n# %s pLn %p wRoot 0x%zx wKey 0x%zx\n",
                 strLookupOrInsertOrRemove, (void*)pLn, wRoot, wKey));
@@ -974,6 +993,9 @@ switchTail:;
         IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
         SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
+  #ifndef QP_PLN
+        pLn = pLnNew;
+  #endif // !QP_PLN
   #ifdef BITMAP
         // Is there any reason to have
         // (cnBitsInD1 <= cnLogBitsPerLink)? What about lazy conversion
@@ -1068,6 +1090,9 @@ t_xx_sw:;
         IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
+      #ifndef QP_PLN
+        pLn = pLnNew;
+      #endif // !QP_PLN
       #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
       #endif // BITMAP
@@ -1318,6 +1343,9 @@ bmSwTail:;
   #if defined(LOOKUP)
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
+      #ifndef QP_PLN
+        pLn = pLnNew;
+      #endif // !QP_PLN
       #ifdef BITMAP
         // compiler complains ifndef BITMAP even if cbEmbeddedBitmap==0
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
@@ -1447,6 +1475,9 @@ t_list_sw:;
   #if defined(LOOKUP)
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
         SwAdvance(pqy, pLnNew, nBW, &nBLR);
+      #ifndef QP_PLN
+        pLn = pLnNew;
+      #endif // !QP_PLN
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
         goto again;
   #else // defined(LOOKUP)
@@ -2852,6 +2883,9 @@ xv_foundIt:;
         assert((pwLnX != NULL) || (nBL == cnBitsPerWord));
         // Insert will increment pop count again if it encounters a switch.
         assert(!tp_bIsSwitch(pLn->ln_wRoot));
+          #ifndef QP_PLN
+        assert(pwRoot == &pLn->ln_wRoot);
+          #endif // !QP_PLN
         wRoot = pLn->ln_wRoot;
         nBLR = nBL;
         goto insertAgain;
@@ -2892,6 +2926,9 @@ restart:;
       #if !defined(RECURSIVE)
         nBL = nBLOrig;
         pLn = pLnOrig; // should we set pLnUp = NULL
+          #ifndef QP_PLN
+        pwRoot = &pLnOrig->ln_wRoot;
+          #endif // !QP_PLN
         wRoot = pLn->ln_wRoot;
         goto top;
     }
@@ -2983,15 +3020,21 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
     int nType = wr_nType(wRoot);
     if ((nType == T_LIST) && ((WROOT_NULL != T_LIST) || (wRoot != 0)))
     {
+      #ifdef QP_PLN
         Link_t *pLn = STRUCT_OF(&pcvRoot, Link_t, ln_wRoot);
+      #else // QP_PLN
+        Word_t* pwRoot = (Word_t*)&pcvRoot;
+      #endif // QP_PLN else
         int nBL = cnBitsPerWord;
       // PWR_xListPopCount is valid only at the top for PP_IN_LINK.
       // The first word in the list is used for pop count at the top.
       #if defined(B_JUDYL)
-        int nPos = LocateKeyInListWord(qy, cnBitsPerWord, wKey);
+        int nPopCnt = gnListPopCnt(qy, nBL);
+        int nPos = SearchListWord(ls_pwKeysX(wr_pwr(wRoot), nBL, nPopCnt),
+                                  wKey, nBL, nPopCnt);
         return (nPos >= 0) ? (PPvoid_t)&gpwValues(qy)[~nPos] : NULL;
       #else // defined(B_JUDYL)
-        return ListHasKeyWord(qy, cnBitsPerWord, wKey);
+        return ListHasKeyWord(qy, nBL, wKey);
       #endif // #else defined(B_JUDYL)
     }
   #endif // defined(SEARCH_FROM_WRAPPER)
@@ -3072,7 +3115,11 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 #if (cnDigitsPerWord > 1)
 
     int nBL = cnBitsPerWord;
+      #ifdef QP_PLN
     Link_t *pLn = STRUCT_OF(ppvRoot, Link_t, ln_wRoot);
+      #else // QP_PLN
+    Word_t* pwRoot = (Word_t*)ppvRoot;
+      #endif // QP_PLN else
     qv;
 
     // We use WROOT_NULL internally to represent an empty expanse.
@@ -3208,7 +3255,8 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     } else
   #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_I)
     {
-        BJL(pwValue) BJ1(status) = Insert(cnBitsPerWord, pLn, wKey);
+        int nBL = cnBitsPerWord;
+        BJL(pwValue) BJ1(status) = Insert(qy, wKey);
     }
 
   #ifdef B_JUDYL
@@ -3401,7 +3449,13 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
         }
     } else
   #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_R)
-    { status = Remove(cnBitsPerWord, pLn, wKey); }
+    {
+  #ifdef QP_PLN
+        status = Remove(cnBitsPerWord, pLn, wKey);
+  #else // QP_PLN
+        status = Remove(cnBitsPerWord, (Word_t*)ppvRoot, wKey);
+  #endif // QP_PLN else
+    }
 
     if (status == Success) { wPopCntTotal--; }
 
