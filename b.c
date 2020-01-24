@@ -6217,7 +6217,7 @@ embeddedKeys:;
         // Fabricate a fake *pLnUpOld for use by gpwLnX.
         Link_t linkUp = {0};
         Link_t *pLnUp = &linkUp;
-        Word_t* pwRootUp = &pLnUp->ln_wRoot;
+        Word_t* pwRootUp = &pLnUp->ln_wRoot; (void)pwRootUp;
         set_wr_pwr(linkUp.ln_wRoot, pwrUp); // gpwLnX needs pwr
         int nBLUp = nBLR; // nBLUpOld -- assumes DoubleDown
         Word_t *pwLnXOld = gpwLnX(qyx(Up), EXP(nBWUp), nDigitUp);
