@@ -237,18 +237,18 @@
   #define qpax(x)  int nBL##x, Link_t* pLn##x qpa_pwLnXx(x)
   #define qyax(x)      nBL##x,         pLn##x qya_pwLnXx(x)
   #define qva \
-      qva_pwLnX; \
       Word_t* pwRoot = &pLn->ln_wRoot; \
       Word_t wRoot = pLn->ln_wRoot; \
       int nType = wr_nType(wRoot); \
       Word_t* pwr = wr_pwr(wRoot); \
+      qva_pwLnX; \
       (void)nBL; (void)pLn; (void)pwRoot; (void)wRoot; (void)nType; (void)pwr
   #define qvax(x) \
-      qva_pwLnXx(x); \
       Word_t* pwRoot##x = &pLn##x->ln_wRoot; \
       Word_t wRoot##x = pLn##x->ln_wRoot; \
       int nType##x = wr_nType(wRoot##x); \
       Word_t* pwr##x = wr_pwr(wRoot##x); \
+      qva_pwLnXx(x); \
       (void)nBL##x; (void)pLn##x; (void)pwRoot##x; \
       (void)wRoot##x; (void)nType##x; (void)pwr##x
   #define pqpa  int* pnBL, Link_t** ppLn, pqpa_pwLnX, \
@@ -269,18 +269,18 @@
   #define qpax(x)  int nBL##x, Word_t* pwRoot##x qpa_pwLnXx(x)
   #define qyax(x)      nBL##x,         pwRoot##x qya_pwLnXx(x)
   #define qva \
-      qva_pwLnX; \
       Word_t wRoot = *pwRoot; \
       int nType = wr_nType(wRoot); \
       Word_t* pwr = wr_pwr(wRoot); \
       Link_t* pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); \
+      qva_pwLnX; \
       (void)nBL; (void)pLn; (void)pwRoot; (void)wRoot; (void)nType; (void)pwr
   #define qvax(x) \
-      qva_pwLnXx(x); \
       Word_t wRoot##x = *pwRoot##x; \
       int nType##x = wr_nType(wRoot##x); \
       Word_t* pwr##x = wr_pwr(wRoot##x); \
       Link_t* pLn##x = STRUCT_OF(pwRoot##x, Link_t, ln_wRoot); \
+      qva_pwLnXx(x); \
       (void)nBL##x; (void)pLn##x; (void)pwRoot##x; \
       (void)wRoot##x; (void)nType##x; (void)pwr##x
   #define pqpa  int* pnBL, Word_t** ppwRoot, pqpa_pwLnX, \
