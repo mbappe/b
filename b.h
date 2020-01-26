@@ -186,7 +186,7 @@
       (void)wRoot##Suffix; (void)nType##Suffix; (void)pwr##Suffix
   #define pqv \
       (void)pnBL; (void)ppwRoot; (void)pwRoot; (void)pnType; (void)ppwr; \
-      ASSERT(*ppwRoot == pwRoot); \
+      ASSERT(*pwRoot == **ppwRoot); \
       ASSERT(*pnType == wr_nType(*pwRoot) || (*pnBL <= cnLogBitsPerLink)); \
       ASSERT(*ppwr == wr_pwr(*pwRoot) || (*pnBL <= cnLogBitsPerLink))
 #endif // QP_PLN else

@@ -366,7 +366,6 @@ static inline void
 SwAdvance(pqp, Link_t *pLnNew, int nBW, int *pnBLR)
 {
     pqv;
-
     *pnBL = *pnBLR - nBW;
     *pnBLR = *pnBL;
     // Be very careful with pwRoot from pqp.
@@ -2881,11 +2880,9 @@ xv_foundIt:;
       #ifdef _RETURN_NULL_TO_INSERT_AGAIN
     if (pwValue == NULL) {
         assert((pwLnX != NULL) || (nBL == cnBitsPerWord));
-        // Insert will increment pop count again if it encounters a switch.
-        assert(!tp_bIsSwitch(pLn->ln_wRoot));
-          #ifndef QP_PLN
-        assert(pwRoot == &pLn->ln_wRoot);
-          #endif // !QP_PLN
+        // How do we make sure we're not reinserting into a switch or leaf
+        // which has already counted the insert before InsertGuts was called?
+        assert(wr_nType(pLn->ln_wRoot) != nType);
         wRoot = pLn->ln_wRoot;
         nBLR = nBL;
         goto insertAgain;
