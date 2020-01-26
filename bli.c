@@ -2882,7 +2882,7 @@ xv_foundIt:;
         assert((pwLnX != NULL) || (nBL == cnBitsPerWord));
         // How do we make sure we're not reinserting into a switch or leaf
         // which has already counted the insert before InsertGuts was called?
-        assert(wr_nType(pLn->ln_wRoot) != nType);
+        assert(pLn->ln_wRoot != wRoot);
         wRoot = pLn->ln_wRoot;
         nBLR = nBL;
         goto insertAgain;
