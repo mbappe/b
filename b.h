@@ -1994,8 +1994,8 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 // depth instead of encoding it into the type field directly.
 // It means we can't use the low bits of sw_wPrefixPop for pop.  So we
 // define POP_WORD and use a separate word.
-// We assume the value we put into the low bits will will fit in the number
-// of bits used for the pop count at nDL == 2.  Or maybe
+// We assume the value we put into the low bits will fit in the number
+// of bits used for the pop count at nDL == 2. Or maybe
 // it doesn't matter since we always create an embedded bitmap when
 // EXP(nBL) <= sizeof(Link_t) * 8.
 // Why not simply use a separate word for LVL_IN_PP instead of the more
@@ -3345,6 +3345,7 @@ gnBLRSkip(qp)
     assert(tp_bIsSkip(nType));
   #ifdef LVL_IN_WR_HB
     return GetBits(wRoot, cnBitsLvlM1, cnLsbLvlM1) + 1;
+// POP_WORD? not LVL_IN_PP?
   #elif defined(POP_WORD)
     return wr_nBLR(wRoot);
   #else // LVL_IN_WR_HB
@@ -6652,7 +6653,8 @@ ListSwIndex(qp, int nBW, Word_t wDigit,
 static inline Link_t *
 gpListSwLinks(qp)
 {
-    return (Link_t *)&((ListSw_t *)pwr)->sw_aKeys[gnListSwPop(qy)];
+    qv;
+    return (Link_t*)&((ListSw_t*)pwr)->sw_aKeys[gnListSwPop(qy)];
 }
 
 #endif // CODE_LIST_SW

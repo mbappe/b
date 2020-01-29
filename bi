@@ -10,6 +10,25 @@
 && regress \
 && DEFINES="-DQP_PLN -DDEBUG" make clean default \
 && regress \
+&& :
+
+for lvl in "-DNO_LVL_IN_WR_HB -DDEFAULT_SKIP_TO_SW" \
+           "-DNO_LVL_IN_WR_HB -DALL_SKIP_TO_SW_CASES" \
+            -DLVL_IN_PP
+do
+for jt in "" -DJUMP_TABLE
+do
+    : \
+    && DEFINES="$lvl $jt -DDEBUG" make clean default \
+    && regress \
+    && :
+done
+done
+
+: \
+&& DEFINES="-DNO_LVL_IN_WR_HB -DDEFAULT_SKIP_TO_SW -DPOP_WORD -DDEBUG" \
+   make clean default \
+&& regress \
 && DEFINES="-DDEBUG -DNO_EK_XV" make clean default \
 && regress \
 && DEFINES="-DcnListPopCntMax64=0 -DDEBUG" make clean default \
@@ -130,7 +149,31 @@
 && BPW=32 DEFINES="-DALL_SKIP_TO_SW_CASES -DDEBUG_ALL" make clean default \
 && :
 
-#make clean default
+for sfw in "" -DNO_SEARCH_FROM_WRAPPER
+do
+for qpln in "" -DQP_PLN
+do
+for augtype in "" "-DAUGMENT_TYPE" \
+                  "-DAUGMENT_TYPE                  -DMASK_TYPE" \
+                  "-DAUGMENT_TYPE                  -DAUGMENT_TYPE_NOT" \
+                  "-DAUGMENT_TYPE -DAUGMENT_TYPE_8" \
+                  "-DAUGMENT_TYPE -DAUGMENT_TYPE_8 -DMASK_TYPE" \
+                  "-DAUGMENT_TYPE -DAUGMENT_TYPE_8 -DAUGMENT_TYPE_NOT"
+do
+for allcases in "" -DALL_SKIP_TO_SW_CASES -DDEFAULT_SKIP_TO_SW
+do
+for jt in "" -DJUMP_TABLE
+do
+    : \
+    && DEFINES="$sfw $qpln $augtype $allcases $jt -DDEBUG" make clean default \
+    && regress \
+    && :
+done
+done
+done
+done
+done
+
 #BPW=32 make clean default
 #CC=clang make clean default
 #NO_RM=0 make clean default

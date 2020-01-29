@@ -10312,11 +10312,37 @@ Initialize(void)
 
     printf("\n");
 
+    // Log ifdefs.
+
 #ifdef           QP_PLN
     printf("#    QP_PLN\n");
 #else //         QP_PLN
     printf("# No QP_PLN\n");
 #endif //        QP_PLN else
+
+#ifdef           AUGMENT_TYPE
+    printf("#    AUGMENT_TYPE\n");
+#else //         AUGMENT_TYPE
+    printf("# No AUGMENT_TYPE\n");
+#endif //        AUGMENT_TYPE else
+
+#ifdef           AUGMENT_TYPE_8
+    printf("#    AUGMENT_TYPE_8\n");
+#else //         AUGMENT_TYPE_8
+    printf("# No AUGMENT_TYPE_8\n");
+#endif //        AUGMENT_TYPE_8 else
+
+#ifdef           AUGMENT_TYPE_NOT
+    printf("#    AUGMENT_TYPE_NOT\n");
+#else //         AUGMENT_TYPE_NOT
+    printf("# No AUGMENT_TYPE_NOT\n");
+#endif //        AUGMENT_TYPE_NOT else
+
+#ifdef           MASK_TYPE
+    printf("#    MASK_TYPE\n");
+#else //         MASK_TYPE
+    printf("# No MASK_TYPE\n");
+#endif //        MASK_TYPE else
 
 #ifdef           CACHE_ALIGN_L1
     printf("#    CACHE_ALIGN_L1\n");
@@ -10974,6 +11000,24 @@ Initialize(void)
 #else // defined(JUMP_TABLE)
     printf("# No JUMP_TABLE\n");
 #endif // defined(JUMP_TABLE)
+
+#ifdef           JUMP_TABLE_CONST
+    printf("#    JUMP_TABLE_CONST\n");
+#else //         JUMP_TABLE_CONST
+    printf("# No JUMP_TABLE_CONST\n");
+#endif //        JUMP_TABLE_CONST else
+
+#ifdef           JUMP_TABLE_TEXT
+    printf("#    JUMP_TABLE_TEXT\n");
+#else //         JUMP_TABLE_TEXT
+    printf("# No JUMP_TABLE_TEXT\n");
+#endif //        JUMP_TABLE_TEXT else
+
+#ifdef           JUMP_TABLE_DATA
+    printf("#    JUMP_TABLE_DATA\n");
+#else //         JUMP_TABLE_DATA
+    printf("# No JUMP_TABLE_DATA\n");
+#endif //        JUMP_TABLE_DATA else
 
 #if defined(BACKWARD_SEARCH_WORD)
     printf("#    BACKWARD_SEARCH_WORD\n");
@@ -11976,8 +12020,10 @@ Initialize(void)
       #endif // EK_XV
 #endif // defined(EMBED_KEYS)
     printf("# 0x%x %-20s\n", T_SWITCH, "T_SWITCH");
+    assert(T_SWITCH < EXP(cnBitsMallocMask));
 #if defined(SKIP_LINKS)
     printf("# 0x%x %-20s\n", T_SKIP_TO_SWITCH, "T_SKIP_TO_SWITCH");
+    assert(T_SKIP_TO_SWITCH < EXP(cnBitsMallocMask));
 #endif // defined(SKIP_LINKS)
     printf("\n");
 

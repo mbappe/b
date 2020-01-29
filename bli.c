@@ -630,104 +630,605 @@ BJL(insertAgain:)
     // nBL, pLn, wRoot, nType and pwr of qy are set up
     DBGX(Checkpoint(qy, "enter switch stmt"));
 
-  #if defined(JUMP_TABLE)
-    static void *pvJumpTable[] = {
-      #if defined(SEPARATE_T_NULL)
-        &&t_null,
-      #endif // defined(SEPARATE_T_NULL)
-      #if (cwListPopCntMax != 0)
-        &&t_list,
-          #if defined(SKIP_TO_LIST)
-        &&t_skip_to_list,
-          #endif // defined(SKIP_TO_LIST)
-          #if defined(UA_PARALLEL_128)
-        &&t_list_ua,
-          #endif // defined(UA_PARALLEL_128)
-      #endif // (cwListPopCntMax != 0)
-        &&t_bitmap,
-      #if defined(SKIP_TO_BITMAP)
-        &&t_skip_to_bitmap,
-      #endif // defined(SKIP_TO_BITMAP)
-      #if defined(EMBED_KEYS)
-        &&t_embedded_keys,
-      #endif // defined(EMBED_KEYS)
-      #if defined(CODE_LIST_SW)
-        &&t_list_sw,
-      #endif // defined(CODE_LIST_SW)
-      #if defined(SKIP_TO_LIST_SW)
-        &&t_skip_to_list_sw,
-      #endif // defined(SKIP_TO_LIST_SW)
-      #if defined(CODE_BM_SW)
-        &&t_bm_sw,
-      #endif // defined(CODE_BM_SW)
-      #if defined(SKIP_TO_BM_SW)
-        &&t_skip_to_bm_sw,
-      #endif // defined(SKIP_TO_BM_SW)
-      #if defined(CODE_XX_SW)
-        &&t_xx_sw,
-      #endif // defined(CODE_XX_SW)
-      #if defined(SKIP_TO_XX_SW)
-        &&t_skip_to_xx_sw,
-      #endif // defined(SKIP_TO_XX_SW)
-      #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-        &&t_full_bm_sw,
-          #if defined(SKIP_TO_BM_SW)
-        &&t_skip_to_full_bm_sw,
-          #endif // defined(SKIP_TO_BM_SW)
-      #endif // defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
-        &&t_switch,
-      #if defined(SKIP_LINKS)
-        &&t_skip_to_switch,
-// This #if (T_SKIP_TO_SWITCH <= 14) is not going to work as we hoped when
-// it was written. T_SKIP_TO_SWITCH is an enumeration not a macro. It's value
-// is treated as zero by the preprocessor.
-          #if (T_SKIP_TO_SWITCH == 0)
-            #error Cannot use enumerations at preprocessor time.
-          #endif // (T_SKIP_TO_SWITCH == 0)
-          #if (T_SKIP_TO_SWITCH <= 14)
-        &&t_skip_to_switch,
-          #endif // (T_SKIP_TO_SWITCH <= 14)
-          #if (T_SKIP_TO_SWITCH <= 13)
-        &&t_skip_to_switch,
-          #endif // (T_SKIP_TO_SWITCH <= 13)
-          #if (T_SKIP_TO_SWITCH <= 12)
-        &&t_skip_to_switch,
-          #endif // (T_SKIP_TO_SWITCH <= 12)
-          #if (T_SKIP_TO_SWITCH <= 11)
-        &&t_skip_to_switch,
-          #endif // (T_SKIP_TO_SWITCH <= 11)
-          #if (T_SKIP_TO_SWITCH <= 10)
-        &&t_skip_to_switch,
-          #endif // (T_SKIP_TO_SWITCH <= 10)
-          #if (T_SKIP_TO_SWITCH <= 9)
-        &&t_skip_to_switch,
-          #endif // (T_SKIP_TO_SWITCH <= 9)
-          #if (T_SKIP_TO_SWITCH <= 8)
-        &&t_skip_to_switch,
-          #endif // (T_SKIP_TO_SWITCH <= 8)
-          #if (T_SKIP_TO_SWITCH <= 7)
-        &&t_skip_to_switch,
-          #endif // (T_SKIP_TO_SWITCH <= 7)
-          #if (T_SKIP_TO_SWITCH <= 6)
-        &&t_skip_to_switch,
-          #endif // (T_SKIP_TO_SWITCH <= 6)
-          #if (T_SKIP_TO_SWITCH <= 5)
-        &&t_skip_to_switch,
-          #endif // (T_SKIP_TO_SWITCH <= 5)
-          #if (T_SKIP_TO_SWITCH <= 4)
-        &&t_skip_to_switch,
-          #endif // (T_SKIP_TO_SWITCH <= 4)
-          #if (T_SKIP_TO_SWITCH <= 3)
-        &&t_skip_to_switch,
-          #endif // (T_SKIP_TO_SWITCH <= 3)
-      #endif // defined(SKIP_LINKS)
-    };
-    goto *pvJumpTable[nType];
-  #endif // defined(JUMP_TABLE)
-
     goto fastAgain;
 fastAgain:;
+  #if defined(JUMP_TABLE)
+    static
+      #ifdef JUMP_TABLE_CONST
+            const
+      #endif // JUMP_TABLE_CONST
+                void *pvJumpTable[]
+      #ifdef JUMP_TABLE_TEXT
+                    __attribute__ ((section (".text#")))
+      #elif defined(JUMP_TABLE_DATA) // JUMP_TABLE_TEXT
+                    __attribute__ ((section (".data#")))
+      #endif // JUMP_TABLE_TEXT elif JUMP_TABLE_DATA
+        = {
+      #if defined(SEPARATE_T_NULL)
+            &&t_null,
+      #endif // defined(SEPARATE_T_NULL)
+      #if (cwListPopCntMax != 0)
+            &&t_list,
+          #ifdef XX_LISTS
+            &&t_xx_list,
+          #endif // XX_LISTS
+          #if defined(SKIP_TO_LIST)
+            &&t_skip_to_list,
+          #endif // defined(SKIP_TO_LIST)
+          #if defined(UA_PARALLEL_128)
+            &&t_list_ua,
+          #endif // defined(UA_PARALLEL_128)
+      #endif // (cwListPopCntMax != 0)
+      #ifdef BITMAP
+            &&t_bitmap,
+          #if defined(SKIP_TO_BITMAP)
+            &&t_skip_to_bitmap,
+          #endif // defined(SKIP_TO_BITMAP)
+          #ifdef UNPACK_BM_VALUES
+            &&t_unpacked_bm,
+          #endif // UNPACK_BM_VALUES
+      #endif // BITMAP
+      #if defined(CODE_LIST_SW)
+            &&t_list_sw,
+      #endif // defined(CODE_LIST_SW)
+      #if defined(SKIP_TO_LIST_SW)
+            &&t_skip_to_list_sw,
+      #endif // defined(SKIP_TO_LIST_SW)
+      #if defined(CODE_BM_SW)
+            &&t_bm_sw,
+      #endif // defined(CODE_BM_SW)
+      #if defined(SKIP_TO_BM_SW)
+            &&t_skip_to_bm_sw,
+      #endif // defined(SKIP_TO_BM_SW)
+      #if defined(CODE_XX_SW)
+            &&t_xx_sw,
+      #endif // defined(CODE_XX_SW)
+      #if defined(SKIP_TO_XX_SW)
+            &&t_skip_to_xx_sw,
+      #endif // defined(SKIP_TO_XX_SW)
+      #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+            &&t_full_bm_sw,
+          #if defined(SKIP_TO_BM_SW)
+            &&t_skip_to_full_bm_sw,
+          #endif // defined(SKIP_TO_BM_SW)
+      #endif // RETYPE_FULL_BM_SW && !USE_BM_IN_NON_BM_SW
+      #if defined(EMBED_KEYS)
+            &&t_embedded_keys,
+          #ifdef EK_XV
+            &&t_ek_xv,
+          #endif // EK_XV
+      #endif // defined(EMBED_KEYS)
+            &&t_switch,
+      #if defined(SKIP_LINKS)
+            // T_SKIP_TO_SWITCH is an enumeration constant; not a macro.
+            // It's value is treated as zero by the preprocessor.
+            &&t_skip_to_switch,
+          #ifdef _LVL_IN_TYPE
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+          #endif // _LVL_IN_TYPE
+      #endif // defined(SKIP_LINKS)
+      #ifdef LOOKUP
+      #ifdef AUGMENT_TYPE
+            [16] = // two eight-bit digits left
+          #if defined(SEPARATE_T_NULL)
+            &&t_null,
+          #endif // defined(SEPARATE_T_NULL)
+          #if (cwListPopCntMax != 0)
+            &&t_list16,
+              #ifdef XX_LISTS
+            &&t_xx_list,
+              #endif // XX_LISTS
+              #if defined(SKIP_TO_LIST)
+            &&t_skip_to_list,
+              #endif // defined(SKIP_TO_LIST)
+              #if defined(UA_PARALLEL_128)
+            &&t_list_ua,
+              #endif // defined(UA_PARALLEL_128)
+          #endif // (cwListPopCntMax != 0)
+          #ifdef BITMAP
+            &&t_bitmap,
+              #if defined(SKIP_TO_BITMAP)
+            &&t_skip_to_bitmap,
+              #endif // defined(SKIP_TO_BITMAP)
+              #ifdef UNPACK_BM_VALUES
+            &&t_unpacked_bm,
+              #endif // UNPACK_BM_VALUES
+          #endif // BITMAP
+          #if defined(CODE_LIST_SW)
+            &&t_list_sw,
+          #endif // defined(CODE_LIST_SW)
+          #if defined(SKIP_TO_LIST_SW)
+            &&t_skip_to_list_sw,
+          #endif // defined(SKIP_TO_LIST_SW)
+          #if defined(CODE_BM_SW)
+            &&t_bm_sw,
+          #endif // defined(CODE_BM_SW)
+          #if defined(SKIP_TO_BM_SW)
+            &&t_skip_to_bm_sw,
+          #endif // defined(SKIP_TO_BM_SW)
+          #if defined(CODE_XX_SW)
+            &&t_xx_sw,
+          #endif // defined(CODE_XX_SW)
+          #if defined(SKIP_TO_XX_SW)
+            &&t_skip_to_xx_sw,
+          #endif // defined(SKIP_TO_XX_SW)
+          #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+            &&t_full_bm_sw,
+              #if defined(SKIP_TO_BM_SW)
+            &&t_skip_to_full_bm_sw,
+              #endif // defined(SKIP_TO_BM_SW)
+          #endif // RETYPE_FULL_BM_SW && !USE_BM_IN_NON_BM_SW
+          #if defined(EMBED_KEYS)
+            &&t_embedded_keys,
+              #ifdef EK_XV
+            &&t_ek_xv,
+              #endif // EK_XV
+          #endif // defined(EMBED_KEYS)
+            &&t_switch,
+          #if defined(SKIP_LINKS)
+            &&t_skip_to_switch,
+              #ifdef _LVL_IN_TYPE
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+              #endif // _LVL_IN_TYPE
+          #endif // defined(SKIP_LINKS)
+            // three eight-bit digits left (also four eight-bit digits left
+            // for AUGMENT_TYPE_8
+            [32] =
+          #if defined(SEPARATE_T_NULL)
+            &&t_null,
+          #endif // defined(SEPARATE_T_NULL)
+          #if (cwListPopCntMax != 0)
+            &&t_list32,
+              #ifdef XX_LISTS
+            &&t_xx_list,
+              #endif // XX_LISTS
+              #if defined(SKIP_TO_LIST)
+            &&t_skip_to_list,
+              #endif // defined(SKIP_TO_LIST)
+              #if defined(UA_PARALLEL_128)
+            &&t_list_ua,
+              #endif // defined(UA_PARALLEL_128)
+          #endif // (cwListPopCntMax != 0)
+          #ifdef BITMAP
+            &&t_bitmap,
+              #if defined(SKIP_TO_BITMAP)
+            &&t_skip_to_bitmap,
+              #endif // defined(SKIP_TO_BITMAP)
+              #ifdef UNPACK_BM_VALUES
+            &&t_unpacked_bm,
+              #endif // UNPACK_BM_VALUES
+          #endif // BITMAP
+          #if defined(CODE_LIST_SW)
+            &&t_list_sw,
+          #endif // defined(CODE_LIST_SW)
+          #if defined(SKIP_TO_LIST_SW)
+            &&t_skip_to_list_sw,
+          #endif // defined(SKIP_TO_LIST_SW)
+          #if defined(CODE_BM_SW)
+            &&t_bm_sw,
+          #endif // defined(CODE_BM_SW)
+          #if defined(SKIP_TO_BM_SW)
+            &&t_skip_to_bm_sw,
+          #endif // defined(SKIP_TO_BM_SW)
+          #if defined(CODE_XX_SW)
+            &&t_xx_sw,
+          #endif // defined(CODE_XX_SW)
+          #if defined(SKIP_TO_XX_SW)
+            &&t_skip_to_xx_sw,
+          #endif // defined(SKIP_TO_XX_SW)
+          #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+            &&t_full_bm_sw,
+              #if defined(SKIP_TO_BM_SW)
+            &&t_skip_to_full_bm_sw,
+              #endif // defined(SKIP_TO_BM_SW)
+          #endif // RETYPE_FULL_BM_SW && !USE_BM_IN_NON_BM_SW
+          #if defined(EMBED_KEYS)
+            &&t_embedded_keys,
+              #ifdef EK_XV
+            &&t_ek_xv,
+              #endif // EK_XV
+          #endif // defined(EMBED_KEYS)
+            &&t_switch,
+          #if defined(SKIP_LINKS)
+            &&t_skip_to_switch,
+              #ifdef _LVL_IN_TYPE
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+              #endif // _LVL_IN_TYPE
+          #endif // defined(SKIP_LINKS)
+            [48] =
+          #if defined(SEPARATE_T_NULL)
+            &&t_null,
+          #endif // defined(SEPARATE_T_NULL)
+          #if (cwListPopCntMax != 0)
+              #ifdef AUGMENT_TYPE_8
+            &&t_list32,
+              #else // AUGMENT_TYPE_8
+            &&t_listWord,
+              #endif // AUGMENT_TYPE_8 else
+              #ifdef XX_LISTS
+            &&t_xx_list,
+              #endif // XX_LISTS
+              #if defined(SKIP_TO_LIST)
+            &&t_skip_to_list,
+              #endif // defined(SKIP_TO_LIST)
+              #if defined(UA_PARALLEL_128)
+            &&t_list_ua,
+              #endif // defined(UA_PARALLEL_128)
+          #endif // (cwListPopCntMax != 0)
+          #ifdef BITMAP
+            &&t_bitmap,
+              #if defined(SKIP_TO_BITMAP)
+            &&t_skip_to_bitmap,
+              #endif // defined(SKIP_TO_BITMAP)
+              #ifdef UNPACK_BM_VALUES
+            &&t_unpacked_bm,
+              #endif // UNPACK_BM_VALUES
+          #endif // BITMAP
+          #if defined(CODE_LIST_SW)
+            &&t_list_sw,
+          #endif // defined(CODE_LIST_SW)
+          #if defined(SKIP_TO_LIST_SW)
+            &&t_skip_to_list_sw,
+          #endif // defined(SKIP_TO_LIST_SW)
+          #if defined(CODE_BM_SW)
+            &&t_bm_sw,
+          #endif // defined(CODE_BM_SW)
+          #if defined(SKIP_TO_BM_SW)
+            &&t_skip_to_bm_sw,
+          #endif // defined(SKIP_TO_BM_SW)
+          #if defined(CODE_XX_SW)
+            &&t_xx_sw,
+          #endif // defined(CODE_XX_SW)
+          #if defined(SKIP_TO_XX_SW)
+            &&t_skip_to_xx_sw,
+          #endif // defined(SKIP_TO_XX_SW)
+          #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+            &&t_full_bm_sw,
+              #if defined(SKIP_TO_BM_SW)
+            &&t_skip_to_full_bm_sw,
+              #endif // defined(SKIP_TO_BM_SW)
+          #endif // RETYPE_FULL_BM_SW && !USE_BM_IN_NON_BM_SW
+          #if defined(EMBED_KEYS)
+            &&t_embedded_keys,
+              #ifdef EK_XV
+            &&t_ek_xv,
+              #endif // EK_XV
+          #endif // defined(EMBED_KEYS)
+            &&t_switch,
+          #if defined(SKIP_LINKS)
+            &&t_skip_to_switch,
+              #ifdef _LVL_IN_TYPE
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+              #endif // _LVL_IN_TYPE
+          #endif // defined(SKIP_LINKS)
+          #ifdef AUGMENT_TYPE_8
+            [64] =
+              #if defined(SEPARATE_T_NULL)
+            &&t_null,
+              #endif // defined(SEPARATE_T_NULL)
+              #if (cwListPopCntMax != 0)
+            &&t_listWord,
+                  #ifdef XX_LISTS
+            &&t_xx_list,
+                  #endif // XX_LISTS
+                  #if defined(SKIP_TO_LIST)
+            &&t_skip_to_list,
+                  #endif // defined(SKIP_TO_LIST)
+                  #if defined(UA_PARALLEL_128)
+            &&t_list_ua,
+                  #endif // defined(UA_PARALLEL_128)
+              #endif // (cwListPopCntMax != 0)
+              #ifdef BITMAP
+            &&t_bitmap,
+                  #if defined(SKIP_TO_BITMAP)
+            &&t_skip_to_bitmap,
+                  #endif // defined(SKIP_TO_BITMAP)
+                  #ifdef UNPACK_BM_VALUES
+            &&t_unpacked_bm,
+                  #endif // UNPACK_BM_VALUES
+              #endif // BITMAP
+              #if defined(CODE_LIST_SW)
+            &&t_list_sw,
+              #endif // defined(CODE_LIST_SW)
+              #if defined(SKIP_TO_LIST_SW)
+            &&t_skip_to_list_sw,
+              #endif // defined(SKIP_TO_LIST_SW)
+              #if defined(CODE_BM_SW)
+            &&t_bm_sw,
+              #endif // defined(CODE_BM_SW)
+              #if defined(SKIP_TO_BM_SW)
+            &&t_skip_to_bm_sw,
+              #endif // defined(SKIP_TO_BM_SW)
+              #if defined(CODE_XX_SW)
+            &&t_xx_sw,
+              #endif // defined(CODE_XX_SW)
+              #if defined(SKIP_TO_XX_SW)
+            &&t_skip_to_xx_sw,
+              #endif // defined(SKIP_TO_XX_SW)
+              #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+            &&t_full_bm_sw,
+                  #if defined(SKIP_TO_BM_SW)
+            &&t_skip_to_full_bm_sw,
+                  #endif // defined(SKIP_TO_BM_SW)
+              #endif // RETYPE_FULL_BM_SW && !USE_BM_IN_NON_BM_SW
+              #if defined(EMBED_KEYS)
+            &&t_embedded_keys,
+                  #ifdef EK_XV
+            &&t_ek_xv,
+                  #endif // EK_XV
+              #endif // defined(EMBED_KEYS)
+            &&t_switch,
+              #if defined(SKIP_LINKS)
+            &&t_skip_to_switch,
+                  #ifdef _LVL_IN_TYPE
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+                  #endif // _LVL_IN_TYPE
+              #endif // defined(SKIP_LINKS)
+            [80] =
+              #if defined(SEPARATE_T_NULL)
+            &&t_null,
+              #endif // defined(SEPARATE_T_NULL)
+              #if (cwListPopCntMax != 0)
+            &&t_listWord,
+                  #ifdef XX_LISTS
+            &&t_xx_list,
+                  #endif // XX_LISTS
+                  #if defined(SKIP_TO_LIST)
+            &&t_skip_to_list,
+                  #endif // defined(SKIP_TO_LIST)
+                  #if defined(UA_PARALLEL_128)
+            &&t_list_ua,
+                  #endif // defined(UA_PARALLEL_128)
+              #endif // (cwListPopCntMax != 0)
+              #ifdef BITMAP
+            &&t_bitmap,
+                  #if defined(SKIP_TO_BITMAP)
+            &&t_skip_to_bitmap,
+                  #endif // defined(SKIP_TO_BITMAP)
+                  #ifdef UNPACK_BM_VALUES
+            &&t_unpacked_bm,
+                  #endif // UNPACK_BM_VALUES
+              #endif // BITMAP
+              #if defined(CODE_LIST_SW)
+            &&t_list_sw,
+              #endif // defined(CODE_LIST_SW)
+              #if defined(SKIP_TO_LIST_SW)
+            &&t_skip_to_list_sw,
+              #endif // defined(SKIP_TO_LIST_SW)
+              #if defined(CODE_BM_SW)
+            &&t_bm_sw,
+              #endif // defined(CODE_BM_SW)
+              #if defined(SKIP_TO_BM_SW)
+            &&t_skip_to_bm_sw,
+              #endif // defined(SKIP_TO_BM_SW)
+              #if defined(CODE_XX_SW)
+            &&t_xx_sw,
+              #endif // defined(CODE_XX_SW)
+              #if defined(SKIP_TO_XX_SW)
+            &&t_skip_to_xx_sw,
+              #endif // defined(SKIP_TO_XX_SW)
+              #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+            &&t_full_bm_sw,
+                  #if defined(SKIP_TO_BM_SW)
+            &&t_skip_to_full_bm_sw,
+                  #endif // defined(SKIP_TO_BM_SW)
+              #endif // RETYPE_FULL_BM_SW && !USE_BM_IN_NON_BM_SW
+              #if defined(EMBED_KEYS)
+            &&t_embedded_keys,
+                  #ifdef EK_XV
+            &&t_ek_xv,
+                  #endif // EK_XV
+              #endif // defined(EMBED_KEYS)
+            &&t_switch,
+              #if defined(SKIP_LINKS)
+            &&t_skip_to_switch,
+                  #ifdef _LVL_IN_TYPE
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+                  #endif // _LVL_IN_TYPE
+              #endif // defined(SKIP_LINKS)
+            [96] =
+              #if defined(SEPARATE_T_NULL)
+            &&t_null,
+              #endif // defined(SEPARATE_T_NULL)
+              #if (cwListPopCntMax != 0)
+            &&t_listWord,
+                  #ifdef XX_LISTS
+            &&t_xx_list,
+                  #endif // XX_LISTS
+                  #if defined(SKIP_TO_LIST)
+            &&t_skip_to_list,
+                  #endif // defined(SKIP_TO_LIST)
+                  #if defined(UA_PARALLEL_128)
+            &&t_list_ua,
+                  #endif // defined(UA_PARALLEL_128)
+              #endif // (cwListPopCntMax != 0)
+              #ifdef BITMAP
+            &&t_bitmap,
+                  #if defined(SKIP_TO_BITMAP)
+            &&t_skip_to_bitmap,
+                  #endif // defined(SKIP_TO_BITMAP)
+                  #ifdef UNPACK_BM_VALUES
+            &&t_unpacked_bm,
+                  #endif // UNPACK_BM_VALUES
+              #endif // BITMAP
+              #if defined(CODE_LIST_SW)
+            &&t_list_sw,
+              #endif // defined(CODE_LIST_SW)
+              #if defined(SKIP_TO_LIST_SW)
+            &&t_skip_to_list_sw,
+              #endif // defined(SKIP_TO_LIST_SW)
+              #if defined(CODE_BM_SW)
+            &&t_bm_sw,
+              #endif // defined(CODE_BM_SW)
+              #if defined(SKIP_TO_BM_SW)
+            &&t_skip_to_bm_sw,
+              #endif // defined(SKIP_TO_BM_SW)
+              #if defined(CODE_XX_SW)
+            &&t_xx_sw,
+              #endif // defined(CODE_XX_SW)
+              #if defined(SKIP_TO_XX_SW)
+            &&t_skip_to_xx_sw,
+              #endif // defined(SKIP_TO_XX_SW)
+              #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+            &&t_full_bm_sw,
+                  #if defined(SKIP_TO_BM_SW)
+            &&t_skip_to_full_bm_sw,
+                  #endif // defined(SKIP_TO_BM_SW)
+              #endif // RETYPE_FULL_BM_SW && !USE_BM_IN_NON_BM_SW
+              #if defined(EMBED_KEYS)
+            &&t_embedded_keys,
+                  #ifdef EK_XV
+            &&t_ek_xv,
+                  #endif // EK_XV
+              #endif // defined(EMBED_KEYS)
+            &&t_switch,
+              #if defined(SKIP_LINKS)
+            &&t_skip_to_switch,
+                  #ifdef _LVL_IN_TYPE
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+                  #endif // _LVL_IN_TYPE
+              #endif // defined(SKIP_LINKS)
+            [112] =
+              #if defined(SEPARATE_T_NULL)
+            &&t_null,
+              #endif // defined(SEPARATE_T_NULL)
+              #if (cwListPopCntMax != 0)
+            &&t_listWord,
+                  #ifdef XX_LISTS
+            &&t_xx_list,
+                  #endif // XX_LISTS
+                  #if defined(SKIP_TO_LIST)
+            &&t_skip_to_list,
+                  #endif // defined(SKIP_TO_LIST)
+                  #if defined(UA_PARALLEL_128)
+            &&t_list_ua,
+                  #endif // defined(UA_PARALLEL_128)
+              #endif // (cwListPopCntMax != 0)
+              #ifdef BITMAP
+            &&t_bitmap,
+                  #if defined(SKIP_TO_BITMAP)
+            &&t_skip_to_bitmap,
+                  #endif // defined(SKIP_TO_BITMAP)
+                  #ifdef UNPACK_BM_VALUES
+            &&t_unpacked_bm,
+                  #endif // UNPACK_BM_VALUES
+              #endif // BITMAP
+              #if defined(CODE_LIST_SW)
+            &&t_list_sw,
+              #endif // defined(CODE_LIST_SW)
+              #if defined(SKIP_TO_LIST_SW)
+            &&t_skip_to_list_sw,
+              #endif // defined(SKIP_TO_LIST_SW)
+              #if defined(CODE_BM_SW)
+            &&t_bm_sw,
+              #endif // defined(CODE_BM_SW)
+              #if defined(SKIP_TO_BM_SW)
+            &&t_skip_to_bm_sw,
+              #endif // defined(SKIP_TO_BM_SW)
+              #if defined(CODE_XX_SW)
+            &&t_xx_sw,
+              #endif // defined(CODE_XX_SW)
+              #if defined(SKIP_TO_XX_SW)
+            &&t_skip_to_xx_sw,
+              #endif // defined(SKIP_TO_XX_SW)
+              #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
+            &&t_full_bm_sw,
+                  #if defined(SKIP_TO_BM_SW)
+            &&t_skip_to_full_bm_sw,
+                  #endif // defined(SKIP_TO_BM_SW)
+              #endif // RETYPE_FULL_BM_SW && !USE_BM_IN_NON_BM_SW
+              #if defined(EMBED_KEYS)
+            &&t_embedded_keys,
+                  #ifdef EK_XV
+            &&t_ek_xv,
+                  #endif // EK_XV
+              #endif // defined(EMBED_KEYS)
+            &&t_switch,
+              #if defined(SKIP_LINKS)
+            &&t_skip_to_switch,
+                  #ifdef _LVL_IN_TYPE
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+            &&t_skip_to_switch, &&t_skip_to_switch, &&t_skip_to_switch,
+                  #endif // _LVL_IN_TYPE
+              #endif // defined(SKIP_LINKS)
+          #endif // AUGMENT_TYPE_8
+      #endif // AUGMENT_TYPE
+      #endif // LOOKUP
+    };
+    //__builtin_prefetch(0, 1);
+  #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
+    goto *pvJumpTable[(((nBL << 1) - 16) | nType)
+      #ifdef MASK_TYPE
+                          & 0x7f
+      #endif // MASK_TYPE
+                      ];
+  #elif defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
+    int nLogBytesLeft = (LOG(nBL - 1) - 2) << 4;
+    goto *pvJumpTable[(nLogBytesLeft | nType)
+      #ifdef MASK_TYPE
+                          & 0x3f
+      #endif // MASK_TYPE
+                      ];
+  #else // AUG_8 && !AUG_NOT && LOOKUP elif AUG && !AUG_NOT && LOOKUP
+    goto *pvJumpTable[nType];
+  #endif // AUG_8 && !AUG_NOT && LOOKUP elif AUG && !AUG_NOT && LOOKUP else
+  #endif // defined(JUMP_TABLE)
+
+    //__builtin_prefetch(0, 1);
+  #ifdef AUGMENT_TYPE_8
+    #ifndef AUGMENT_TYPE
+      #error AUGMENT_TYPE_8 without AUGMENT_TYPE
+    #endif // !AUGMENT_TYPE
+  #endif // AUGMENT_TYPE_8
+  #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
+    switch ((((nBL << 1) - 16) | nType)
+      #ifdef MASK_TYPE
+                & 0x7f
+      #endif // MASK_TYPE
+            )
+  #elif defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
+      #ifndef JUMP_TABLE
+    int nLogBytesLeft = (LOG(nBL - 1) - 2) << 4;
+      #endif // !JUMP_TABLE
+    switch ((nLogBytesLeft | nType)
+      #ifdef MASK_TYPE
+                & 0x3f
+      #endif // MASK_TYPE
+            )
+  #else // AUG_8 && !AUG_NOT && LOOKUP elif AUG && !AUG_NOT && LOOKUP
     switch (nType)
+  #endif // AUG_8 && !AUG_NOT && LOOKUP elif AUG && !AUG_NOT && LOOKUP else
     {
 
   // At most one of DEFAULT_SKIP_TO_SW, DEFAULT_SWITCH,
@@ -772,24 +1273,138 @@ fastAgain:;
   #ifdef ALL_SKIP_TO_SW_CASES
     // Extra cases so we have at least EXP(cnBitsMallocMask) cases so gcc
     // will create a jump table with no bounds check at the beginning after
-    // extracting nType from wRoot.
+    // extracting nType from wRoot (for !AUGMENT_TYPE).
     // We have not coded a no-bounds-check version without SKIP_LINKS yet.
+    // It's ok to create extra cases if !AUGMENT_TYPE, but we can't get by
+    // so easily with AUGMENT_TYPE so we use a clunky method of having to
+    // define NUM_TYPES.
+      #ifdef AUGMENT_TYPE
+      #if NUM_TYPES <= 15
+          #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_SKIP_TO_SWITCH+1:
+    case  96 + T_SKIP_TO_SWITCH+1:
+    case  80 + T_SKIP_TO_SWITCH+1:
+    case  64 + T_SKIP_TO_SWITCH+1:
+          #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+          #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_SKIP_TO_SWITCH+1:
+    case 32 + T_SKIP_TO_SWITCH+1:
+    case 16 + T_SKIP_TO_SWITCH+1:
+          #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
+      #endif // NUM_TYPES <= 15
+      #endif // AUGMENT_TYPE
+      #if !defined(AUGMENT_TYPE) || NUM_TYPES <= 15
     case T_SKIP_TO_SWITCH+1:
+      #endif // !AUGMENT_TYPE || NUM_TYPES <= 15
+      #ifdef AUGMENT_TYPE
+      #if NUM_TYPES <= 14
+          #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_SKIP_TO_SWITCH+2:
+    case  96 + T_SKIP_TO_SWITCH+2:
+    case  80 + T_SKIP_TO_SWITCH+2:
+    case  64 + T_SKIP_TO_SWITCH+2:
+          #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+          #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_SKIP_TO_SWITCH+2:
+    case 32 + T_SKIP_TO_SWITCH+2:
+    case 16 + T_SKIP_TO_SWITCH+2:
+          #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
+      #endif // NUM_TYPES <= 14
+      #endif // AUGMENT_TYPE
+      #if !defined(AUGMENT_TYPE) || NUM_TYPES <= 14
     case T_SKIP_TO_SWITCH+2:
+      #endif // !AUGMENT_TYPE || NUM_TYPES <= 14
+      #ifdef AUGMENT_TYPE
+      #if NUM_TYPES <= 13
+          #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_SKIP_TO_SWITCH+3:
+    case  96 + T_SKIP_TO_SWITCH+3:
+    case  80 + T_SKIP_TO_SWITCH+3:
+    case  64 + T_SKIP_TO_SWITCH+3:
+          #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+          #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_SKIP_TO_SWITCH+3:
+    case 32 + T_SKIP_TO_SWITCH+3:
+    case 16 + T_SKIP_TO_SWITCH+3:
+          #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
+      #endif // NUM_TYPES <= 13
+      #endif // AUGMENT_TYPE
+      #if !defined(AUGMENT_TYPE) || NUM_TYPES <= 13
     case T_SKIP_TO_SWITCH+3:
+      #endif // !AUGMENT_TYPE || NUM_TYPES <= 13
+      #ifdef AUGMENT_TYPE
+      #if NUM_TYPES <= 12
+          #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_SKIP_TO_SWITCH+4:
+    case  96 + T_SKIP_TO_SWITCH+4:
+    case  80 + T_SKIP_TO_SWITCH+4:
+    case  64 + T_SKIP_TO_SWITCH+4:
+          #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+          #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_SKIP_TO_SWITCH+4:
+    case 32 + T_SKIP_TO_SWITCH+4:
+    case 16 + T_SKIP_TO_SWITCH+4:
+          #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
+      #endif // NUM_TYPES <= 12
+      #endif // AUGMENT_TYPE
+      #if !defined(AUGMENT_TYPE) || NUM_TYPES <= 12
     case T_SKIP_TO_SWITCH+4:
+      #endif // !AUGMENT_TYPE || NUM_TYPES <= 12
+      #ifdef AUGMENT_TYPE
+      #if NUM_TYPES <= 11
+          #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_SKIP_TO_SWITCH+5:
+    case  96 + T_SKIP_TO_SWITCH+5:
+    case  80 + T_SKIP_TO_SWITCH+5:
+    case  64 + T_SKIP_TO_SWITCH+5:
+          #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+          #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_SKIP_TO_SWITCH+5:
+    case 32 + T_SKIP_TO_SWITCH+5:
+    case 16 + T_SKIP_TO_SWITCH+5:
+          #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
+      #endif // NUM_TYPES <= 11
+      #endif // AUGMENT_TYPE
+      #if !defined(AUGMENT_TYPE) || NUM_TYPES <= 11
     case T_SKIP_TO_SWITCH+5:
+      #endif // !AUGMENT_TYPE || NUM_TYPES <= 11
+      #if !defined(AUGMENT_TYPE) || NUM_TYPES <= 10
     case T_SKIP_TO_SWITCH+6:
+      #endif // !AUGMENT_TYPE || NUM_TYPES <= 10
+      #if !defined(AUGMENT_TYPE) || NUM_TYPES <= 9
     case T_SKIP_TO_SWITCH+7:
+      #endif // !AUGMENT_TYPE || NUM_TYPES <= 9
+      #if !defined(AUGMENT_TYPE) || NUM_TYPES <= 8
     case T_SKIP_TO_SWITCH+8:
+      #endif // !AUGMENT_TYPE || NUM_TYPES <= 8
+      #if !defined(AUGMENT_TYPE) || NUM_TYPES <= 7
     case T_SKIP_TO_SWITCH+9:
+      #endif // !AUGMENT_TYPE || NUM_TYPES <= 7
+      #if !defined(AUGMENT_TYPE) || NUM_TYPES <= 6
     case T_SKIP_TO_SWITCH+10:
+      #endif // !AUGMENT_TYPE || NUM_TYPES <= 6
+      #if !defined(AUGMENT_TYPE) || NUM_TYPES <= 5
     case T_SKIP_TO_SWITCH+11:
+      #endif // !AUGMENT_TYPE || NUM_TYPES <= 5
+      #if !defined(AUGMENT_TYPE) || NUM_TYPES <= 4
     case T_SKIP_TO_SWITCH+12:
+      #endif // !AUGMENT_TYPE || NUM_TYPES <= 4
+      #if !defined(AUGMENT_TYPE) || NUM_TYPES <= 3
     case T_SKIP_TO_SWITCH+13:
-    case T_SKIP_TO_SWITCH+14:
+      #endif // !AUGMENT_TYPE || NUM_TYPES <= 3
   #endif // ALL_SKIP_TO_SW_CASES
   #if !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
+      #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_SKIP_TO_SWITCH:
+    case  96 + T_SKIP_TO_SWITCH:
+    case  80 + T_SKIP_TO_SWITCH:
+    case  64 + T_SKIP_TO_SWITCH:
+      #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+      #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_SKIP_TO_SWITCH:
+    case 32 + T_SKIP_TO_SWITCH:
+    case 16 + T_SKIP_TO_SWITCH:
+      #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_SKIP_TO_SWITCH: // skip link to uncompressed switch
   #endif // !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     {
@@ -862,6 +1477,17 @@ t_skip_to_switch:
 
 #if defined(SKIP_TO_XX_SW) // Doesn't work yet.
 
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_SKIP_TO_XX_SW:
+    case  96 + T_SKIP_TO_XX_SW:
+    case  80 + T_SKIP_TO_XX_SW:
+    case  64 + T_SKIP_TO_XX_SW:
+  #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_SKIP_TO_XX_SW:
+    case 32 + T_SKIP_TO_XX_SW:
+    case 16 + T_SKIP_TO_XX_SW:
+  #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_SKIP_TO_XX_SW: // skip link to narrow/wide switch
     {
         goto t_skip_to_xx_sw; // silence cc in case there are no other uses
@@ -926,6 +1552,213 @@ t_skip_to_xx_sw:
     default:
   #endif // defined(DEFAULT_SWITCH)
   #if !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_SWITCH:
+    {
+        if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
+            break;
+        }
+        nBW = gnBW(qy, nBLR); // num bits decoded
+        wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
+  #ifdef _LNX
+        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+      #ifdef PREFETCH_EK_VAL
+        PREFETCH(pwLnX);
+      #endif // PREFETCH_EK_VAL
+  #endif // _LNX
+        pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
+      #ifdef PREFETCH_PWR
+        PREFETCH(wr_pwr(pLnNew->ln_wRoot));
+      #endif // PREFETCH_PWR
+        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
+        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
+        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
+  #ifdef BITMAP
+        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
+            // nType and pwr have not been updated.
+            goto t_bitmap;
+        }
+  #endif // BITMAP
+        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
+    } // end of case T_SWITCH
+    case  96 + T_SWITCH:
+    {
+        if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
+            break;
+        }
+        nBW = gnBW(qy, nBLR); // num bits decoded
+        wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
+  #ifdef _LNX
+        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+      #ifdef PREFETCH_EK_VAL
+        PREFETCH(pwLnX);
+      #endif // PREFETCH_EK_VAL
+  #endif // _LNX
+        pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
+      #ifdef PREFETCH_PWR
+        PREFETCH(wr_pwr(pLnNew->ln_wRoot));
+      #endif // PREFETCH_PWR
+        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
+        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
+        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
+  #ifdef BITMAP
+        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
+            // nType and pwr have not been updated.
+            goto t_bitmap;
+        }
+  #endif // BITMAP
+        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
+    } // end of case T_SWITCH
+    case  80 + T_SWITCH:
+    {
+        if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
+            break;
+        }
+        nBW = gnBW(qy, nBLR); // num bits decoded
+        wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
+  #ifdef _LNX
+        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+      #ifdef PREFETCH_EK_VAL
+        PREFETCH(pwLnX);
+      #endif // PREFETCH_EK_VAL
+  #endif // _LNX
+        pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
+      #ifdef PREFETCH_PWR
+        PREFETCH(wr_pwr(pLnNew->ln_wRoot));
+      #endif // PREFETCH_PWR
+        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
+        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
+        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
+  #ifdef BITMAP
+        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
+            // nType and pwr have not been updated.
+            goto t_bitmap;
+        }
+  #endif // BITMAP
+        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
+    } // end of case T_SWITCH
+    case  64 + T_SWITCH:
+    {
+        if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
+            break;
+        }
+        nBW = gnBW(qy, nBLR); // num bits decoded
+        wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
+  #ifdef _LNX
+        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+      #ifdef PREFETCH_EK_VAL
+        PREFETCH(pwLnX);
+      #endif // PREFETCH_EK_VAL
+  #endif // _LNX
+        pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
+      #ifdef PREFETCH_PWR
+        PREFETCH(wr_pwr(pLnNew->ln_wRoot));
+      #endif // PREFETCH_PWR
+        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
+        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
+        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
+  #ifdef BITMAP
+        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
+            // nType and pwr have not been updated.
+            goto t_bitmap;
+        }
+  #endif // BITMAP
+        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
+    } // end of case T_SWITCH
+  #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_SWITCH:
+    {
+        if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
+            break;
+        }
+        nBW = gnBW(qy, nBLR); // num bits decoded
+        wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
+  #ifdef _LNX
+        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+      #ifdef PREFETCH_EK_VAL
+        PREFETCH(pwLnX);
+      #endif // PREFETCH_EK_VAL
+  #endif // _LNX
+        pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
+      #ifdef PREFETCH_PWR
+        PREFETCH(wr_pwr(pLnNew->ln_wRoot));
+      #endif // PREFETCH_PWR
+        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
+        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
+        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
+  #ifdef BITMAP
+        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
+            // nType and pwr have not been updated.
+            goto t_bitmap;
+        }
+  #endif // BITMAP
+        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
+    } // end of case T_SWITCH
+    case 32 + T_SWITCH:
+    {
+        if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
+            break;
+        }
+        nBW = gnBW(qy, nBLR); // num bits decoded
+        wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
+  #ifdef _LNX
+        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+      #ifdef PREFETCH_EK_VAL
+        PREFETCH(pwLnX);
+      #endif // PREFETCH_EK_VAL
+  #endif // _LNX
+        pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
+      #ifdef PREFETCH_PWR
+        PREFETCH(wr_pwr(pLnNew->ln_wRoot));
+      #endif // PREFETCH_PWR
+        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
+        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
+        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
+  #ifdef BITMAP
+        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
+            // nType and pwr have not been updated.
+            goto t_bitmap;
+        }
+  #endif // BITMAP
+        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
+    } // end of case T_SWITCH
+    case 16 + T_SWITCH:
+    {
+        if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
+            break;
+        }
+        nBW = gnBW(qy, nBLR); // num bits decoded
+        wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
+  #ifdef _LNX
+        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+      #ifdef PREFETCH_EK_VAL
+        PREFETCH(pwLnX);
+      #endif // PREFETCH_EK_VAL
+  #endif // _LNX
+        pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
+      #ifdef PREFETCH_PWR
+        PREFETCH(wr_pwr(pLnNew->ln_wRoot));
+      #endif // PREFETCH_PWR
+        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
+        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
+        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
+  #ifdef BITMAP
+        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
+            // nType and pwr have not been updated.
+            goto t_bitmap;
+        }
+  #endif // BITMAP
+        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
+    } // end of case T_SWITCH
+  #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
   #endif // !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     {
@@ -1029,6 +1862,17 @@ switchTail:;
 
 #if defined(CODE_XX_SW)
 
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_XX_SW:
+    case  96 + T_XX_SW:
+    case  80 + T_XX_SW:
+    case  64 + T_XX_SW:
+  #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_XX_SW:
+    case 32 + T_XX_SW:
+    case 16 + T_XX_SW:
+  #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_XX_SW: // no-skip (aka close) switch (vs. distant switch) w/o bm
     {
         goto t_xx_sw;
@@ -1119,6 +1963,17 @@ t_xx_sw:;
 
   #if defined(SKIP_TO_BM_SW)
 
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_SKIP_TO_BM_SW:
+    case  96 + T_SKIP_TO_BM_SW:
+    case  80 + T_SKIP_TO_BM_SW:
+    case  64 + T_SKIP_TO_BM_SW:
+  #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_SKIP_TO_BM_SW:
+    case 32 + T_SKIP_TO_BM_SW:
+    case 16 + T_SKIP_TO_BM_SW:
+  #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_SKIP_TO_BM_SW:
     {
         goto t_skip_to_bm_sw; // silence cc in case there are no other uses
@@ -1163,6 +2018,17 @@ t_skip_to_bm_sw:
 
   #if defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
 
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_FULL_BM_SW:
+    case  96 + T_FULL_BM_SW:
+    case  80 + T_FULL_BM_SW:
+    case  64 + T_FULL_BM_SW:
+  #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_FULL_BM_SW:
+    case 32 + T_FULL_BM_SW:
+    case 16 + T_FULL_BM_SW:
+  #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_FULL_BM_SW:
     {
         goto t_full_bm_sw; // silence cc in case there are no other uses
@@ -1176,6 +2042,17 @@ t_full_bm_sw:
 
   #endif // defined(RETYPE_FULL_BM_SW) && ! defined(BM_IN_NON_BM_SW)
 
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_BM_SW:
+    case  96 + T_BM_SW:
+    case  80 + T_BM_SW:
+    case  64 + T_BM_SW:
+  #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_BM_SW:
+    case 32 + T_BM_SW:
+    case 16 + T_BM_SW:
+  #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_BM_SW:
     {
         goto t_bm_sw; // silence cc in case other the gotos are ifdef'd out
@@ -1369,6 +2246,17 @@ bmSwTail:;
 
   #if defined(SKIP_TO_LIST_SW)
 
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_SKIP_TO_LIST_SW:
+    case  96 + T_SKIP_TO_LIST_SW:
+    case  80 + T_SKIP_TO_LIST_SW:
+    case  64 + T_SKIP_TO_LIST_SW:
+  #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_SKIP_TO_LIST_SW:
+    case 32 + T_SKIP_TO_LIST_SW:
+    case 16 + T_SKIP_TO_LIST_SW:
+  #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_SKIP_TO_LIST_SW:
     {
         goto t_skip_to_list_sw; // silence cc in case there are no other uses
@@ -1413,6 +2301,17 @@ t_skip_to_list_sw:
 
     // Compressed switch with a list header indicating which links are
     // present and implying their offsets.
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_LIST_SW:
+    case  96 + T_LIST_SW:
+    case  80 + T_LIST_SW:
+    case  64 + T_LIST_SW:
+  #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_LIST_SW:
+    case 32 + T_LIST_SW:
+    case 16 + T_LIST_SW:
+  #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_LIST_SW:
     {
         goto t_list_sw; // silence cc in case other the gotos are ifdef'd out
@@ -1491,6 +2390,17 @@ t_list_sw:;
 #if (cwListPopCntMax != 0)
 
   #if defined(SKIP_TO_LIST)
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_SKIP_TO_LIST:
+    case  96 + T_SKIP_TO_LIST:
+    case  80 + T_SKIP_TO_LIST:
+    case  64 + T_SKIP_TO_LIST:
+  #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_SKIP_TO_LIST:
+    case 32 + T_SKIP_TO_LIST:
+    case 16 + T_SKIP_TO_LIST:
+  #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_SKIP_TO_LIST: {
         DBGX(printf("T_SKIP_TO_LIST\n"));
         // PREFIX_MISMATCH updates nBLR.
@@ -1517,6 +2427,262 @@ t_list_sw:;
     }
   #endif // defined(SKIP_TO_LIST)
 
+  #if !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+      #ifdef AUGMENT_TYPE_8
+    case 112 + T_LIST:
+    case  96 + T_LIST:
+    case  80 + T_LIST:
+    case  64 + T_LIST:
+      #else // AUGMENT_TYPE_8
+    case  48 + T_LIST:
+      #endif // AUGMENT_TYPE_8 else
+    {
+        goto t_listWord;
+t_listWord:;
+      #ifdef COMPRESSED_LISTS
+      #ifdef SKIP_PREFIX_CHECK
+        if (PrefixCheckAtLeaf(qy, wKey
+  #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
+                , bNeedPrefixCheck
+  #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
+  #ifdef SAVE_PREFIX_TEST_RESULT
+                , wPrefixMismatch
+  #else // SAVE_PREFIX_TEST_RESULT
+                , pwrUp
+  #endif // SAVE_PREFIX_TEST_RESULT
+  #ifdef SAVE_PREFIX
+                , pLnPrefix, pwrPrefix, nBLRPrefix
+  #endif // SAVE_PREFIX
+                  ) // end call to PrefixCheckAtLeaf
+            == Success)
+      #endif // SKIP_PREFIX_CHECK
+      #endif // COMPRESSED_LISTS
+        {
+      // LOOKUP_NO_LIST_SEARCH is for analysis only.
+      #ifndef LOOKUP_NO_LIST_SEARCH
+            if (1
+                && ((wr_nType(WROOT_NULL) != T_LIST) || (wRoot != WROOT_NULL))
+              #ifdef B_JUDYL
+                  #if defined(HASKEY_FOR_JUDYL_LOOKUP)
+                // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
+                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
+                  #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
+                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
+                  #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
+                && ((nPos = LocateKeyInListWord(qy, nBLR, wKey)) >= 0)
+                  #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
+              #else // B_JUDYL
+                  #if defined(SEARCH_FOR_JUDY1_LOOKUP)
+                && (SearchList(qy, nBLR, wKey) >= 0)
+                  #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
+                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
+                  #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+                && ListHasKeyWord(qy, nBLR, wKey)
+                  #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+              #endif // B_JUDYL
+                )
+      #endif // !LOOKUP_NO_LIST_SEARCH
+            {
+                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+                SMETRICS(++j__GetCalls);
+              #ifdef B_JUDYL
+                DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
+                             nPos,
+                             &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
+                  #ifndef PACK_L1_VALUES
+                if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
+                    return &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
+                } else
+                  #endif // #ifndef PACK_L1_VALUES
+                { return &gpwValues(qy)[~nPos]; }
+              #else // B_JUDYL
+                // Success for Lookup and Remove; Failure for Insert
+                return KeyFound;
+              #endif // B_JUDYL else
+            }
+        }
+          #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+        else
+        {
+            // Shouldn't this be using the previous nBL for pwrUp?
+            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
+              #ifdef PP_IN_LINK
+                        gwPrefix(qy),
+              #else // PP_IN_LINK
+                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
+              #endif // PP_IN_LINK
+                        nBL));
+        }
+          #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+        break;
+    } // end of case T_LIST
+      #ifdef AUGMENT_TYPE_8
+    case 48 + T_LIST:
+      #endif // AUGMENT_TYPE_8
+    case 32 + T_LIST:
+    {
+        goto t_list32;
+t_list32:;
+      #ifdef COMPRESSED_LISTS
+      #ifdef SKIP_PREFIX_CHECK
+        if (PrefixCheckAtLeaf(qy, wKey
+  #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
+                , bNeedPrefixCheck
+  #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
+  #ifdef SAVE_PREFIX_TEST_RESULT
+                , wPrefixMismatch
+  #else // SAVE_PREFIX_TEST_RESULT
+                , pwrUp
+  #endif // SAVE_PREFIX_TEST_RESULT
+  #ifdef SAVE_PREFIX
+                , pLnPrefix, pwrPrefix, nBLRPrefix
+  #endif // SAVE_PREFIX
+                  ) // end call to PrefixCheckAtLeaf
+            == Success)
+      #endif // SKIP_PREFIX_CHECK
+      #endif // COMPRESSED_LISTS
+        {
+      // LOOKUP_NO_LIST_SEARCH is for analysis only.
+      #ifndef LOOKUP_NO_LIST_SEARCH
+            if (1
+                && ((wr_nType(WROOT_NULL) != T_LIST) || (wRoot != WROOT_NULL))
+              #ifdef B_JUDYL
+                  #if defined(HASKEY_FOR_JUDYL_LOOKUP)
+                // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
+                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
+                  #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
+                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
+                  #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
+                && ((nPos = LocateKeyInList32(qy, nBLR, wKey)) >= 0)
+                  #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
+              #else // B_JUDYL
+                  #if defined(SEARCH_FOR_JUDY1_LOOKUP)
+                && (SearchList(qy, nBLR, wKey) >= 0)
+                  #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
+                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
+                  #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+                && ListHasKey32(qy, nBLR, wKey)
+                  #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+              #endif // B_JUDYL
+                )
+      #endif // !LOOKUP_NO_LIST_SEARCH
+            {
+                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+                SMETRICS(++j__GetCalls);
+              #ifdef B_JUDYL
+                DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
+                             nPos,
+                             &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
+                  #ifndef PACK_L1_VALUES
+                if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
+                    return &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
+                } else
+                  #endif // #ifndef PACK_L1_VALUES
+                { return &gpwValues(qy)[~nPos]; }
+              #else // B_JUDYL
+                // Success for Lookup and Remove; Failure for Insert
+                return KeyFound;
+              #endif // B_JUDYL else
+            }
+        }
+          #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+        else
+        {
+            // Shouldn't this be using the previous nBL for pwrUp?
+            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
+              #ifdef PP_IN_LINK
+                        gwPrefix(qy),
+              #else // PP_IN_LINK
+                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
+              #endif // PP_IN_LINK
+                        nBL));
+        }
+          #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+        break;
+    } // end of case T_LIST
+    case 16 + T_LIST:
+    {
+        goto t_list16;
+t_list16:;
+      #ifdef COMPRESSED_LISTS
+      #ifdef SKIP_PREFIX_CHECK
+        if (PrefixCheckAtLeaf(qy, wKey
+  #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
+                , bNeedPrefixCheck
+  #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
+  #ifdef SAVE_PREFIX_TEST_RESULT
+                , wPrefixMismatch
+  #else // SAVE_PREFIX_TEST_RESULT
+                , pwrUp
+  #endif // SAVE_PREFIX_TEST_RESULT
+  #ifdef SAVE_PREFIX
+                , pLnPrefix, pwrPrefix, nBLRPrefix
+  #endif // SAVE_PREFIX
+                  ) // end call to PrefixCheckAtLeaf
+            == Success)
+      #endif // SKIP_PREFIX_CHECK
+      #endif // COMPRESSED_LISTS
+        {
+      // LOOKUP_NO_LIST_SEARCH is for analysis only.
+      #ifndef LOOKUP_NO_LIST_SEARCH
+            if (1
+                && ((wr_nType(WROOT_NULL) != T_LIST) || (wRoot != WROOT_NULL))
+              #ifdef B_JUDYL
+                  #if defined(HASKEY_FOR_JUDYL_LOOKUP)
+                // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
+                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
+                  #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
+                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
+                  #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
+                && ((nPos = LocateKeyInList16(qya, nBLR, wKey)) >= 0)
+                  #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
+              #else // B_JUDYL
+                  #if defined(SEARCH_FOR_JUDY1_LOOKUP)
+                && (SearchList(qy, nBLR, wKey) >= 0)
+                  #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
+                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
+                  #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+                && ListHasKey16(qy, nBLR, wKey)
+                  #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+              #endif // B_JUDYL
+                )
+      #endif // !LOOKUP_NO_LIST_SEARCH
+            {
+                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+                SMETRICS(++j__GetCalls);
+              #ifdef B_JUDYL
+                DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
+                             nPos,
+                             &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
+                  #ifndef PACK_L1_VALUES
+                if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
+                    return &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
+                } else
+                  #endif // #ifndef PACK_L1_VALUES
+                { return &gpwValues(qy)[~nPos]; }
+              #else // B_JUDYL
+                // Success for Lookup and Remove; Failure for Insert
+                return KeyFound;
+              #endif // B_JUDYL else
+            }
+        }
+          #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+        else
+        {
+            // Shouldn't this be using the previous nBL for pwrUp?
+            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
+              #ifdef PP_IN_LINK
+                        gwPrefix(qy),
+              #else // PP_IN_LINK
+                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
+              #endif // PP_IN_LINK
+                        nBL));
+        }
+          #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+        break;
+    } // end of case T_LIST
+  #endif // AUGMENT_TYPE && LOOKUP
   #if defined(DEFAULT_LIST)
       #if defined(DEFAULT_SKIP_TO_SW)
       #error DEFAULT_SKIP_TO_SW with DEFAULT_LIST
@@ -1529,7 +2695,6 @@ t_list_sw:;
       #endif // defined(DEFAULT_SWITCH)
     default:
   #endif // defined(DEFAULT_LIST)
-  #if !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     case T_LIST:
   #endif // !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     {
@@ -1592,7 +2757,11 @@ t_list:;
                   #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
                   #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
+                      #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT)
+                && ((nPos = LocateKeyInList8(qy, nBLR, wKey)) >= 0)
+                      #else // AUGMENT_TYPE && !AUGMENT_TYPE_NOT
                 && ((nPos = LocateKeyInList(qya, nBLR, wKey)) >= 0)
+                      #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT else
                   #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
               #else // defined(B_JUDYL)
                   #if defined(SEARCH_FOR_JUDY1_LOOKUP)
@@ -1694,6 +2863,17 @@ t_list:;
     } // end of case T_LIST
 
 #if defined(UA_PARALLEL_128)
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_LIST_UA:
+    case  96 + T_LIST_UA:
+    case  80 + T_LIST_UA:
+    case  64 + T_LIST_UA:
+  #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_LIST_UA:
+    case 32 + T_LIST_UA:
+    case 16 + T_LIST_UA:
+  #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_LIST_UA:
     {
         goto t_list_ua;
@@ -1805,6 +2985,17 @@ t_list_ua:;
     default:
   #endif // DEFAULT_XX_LIST
   #if !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_XX_LIST:
+    case  96 + T_XX_LIST:
+    case  80 + T_XX_LIST:
+    case  64 + T_XX_LIST:
+  #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_XX_LIST:
+    case 32 + T_XX_LIST:
+    case 16 + T_XX_LIST:
+  #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_XX_LIST:
   #endif // !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     {
@@ -1953,6 +3144,17 @@ t_xx_list:;
 
 #ifdef BITMAP
   #if defined(SKIP_TO_BITMAP)
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_SKIP_TO_BITMAP:
+    case  96 + T_SKIP_TO_BITMAP:
+    case  80 + T_SKIP_TO_BITMAP:
+    case  64 + T_SKIP_TO_BITMAP:
+  #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_SKIP_TO_BITMAP:
+    case 32 + T_SKIP_TO_BITMAP:
+    case 16 + T_SKIP_TO_BITMAP:
+  #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_SKIP_TO_BITMAP:
     {
         goto t_skip_to_bitmap;
@@ -1983,6 +3185,8 @@ t_skip_to_bitmap:;
       #if defined(UNPACK_BM_VALUES) || defined(CODE_UNPACK_BM_VALUES)
       #ifndef LOOKUP
     case T_UNPACKED_BM:
+        goto t_unpacked_bm;
+t_unpacked_bm:;
       #endif // #ifndef LOOKUP
       #endif // defined(UNPACK_BM_VALUES) || defined(CODE_UNPACK_BM_VALUES)
   #if defined(DEFAULT_BITMAP)
@@ -1999,6 +3203,17 @@ t_skip_to_bitmap:;
   #endif // defined(DEFAULT_BITMAP)
   // Should this be ifndef(DEFAULT_UNPACKED_BM) || def(DEFAULT_AND_CASE)?
   #if !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_BITMAP:
+    case  96 + T_BITMAP:
+    case  80 + T_BITMAP:
+    case  64 + T_BITMAP:
+  #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_BITMAP:
+    case 32 + T_BITMAP:
+    case 16 + T_BITMAP:
+  #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_BITMAP:
   #endif // !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     {
@@ -2344,6 +3559,17 @@ t_bitmap:;
 #if defined(UNPACK_BM_VALUES) || defined(CODE_UNPACK_BM_VALUES)
     // Skip to unpacked bitmap is still being handled by T_SKIP_TO_BITMAP
     // and T_BITMAP.
+  #ifdef AUGMENT_TYPE_8
+    case 112 + T_UNPACKED_BM:
+    case  96 + T_UNPACKED_BM:
+    case  80 + T_UNPACKED_BM:
+    case  64 + T_UNPACKED_BM:
+  #endif // AUGMENT_TYPE_8
+  #ifdef AUGMENT_TYPE
+    case 48 + T_UNPACKED_BM:
+    case 32 + T_UNPACKED_BM:
+    case 16 + T_UNPACKED_BM:
+  #endif // AUGMENT_TYPE
     case T_UNPACKED_BM: // never exists for B_JUDY1
     {
         goto t_unpacked_bm;
@@ -2396,6 +3622,17 @@ t_unpacked_bm:;
 
 #if defined(EMBED_KEYS)
 
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_EMBEDDED_KEYS:
+    case  96 + T_EMBEDDED_KEYS:
+    case  80 + T_EMBEDDED_KEYS:
+    case  64 + T_EMBEDDED_KEYS:
+  #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_EMBEDDED_KEYS:
+    case 32 + T_EMBEDDED_KEYS:
+    case 16 + T_EMBEDDED_KEYS:
+  #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_EMBEDDED_KEYS:
     {
         goto t_embedded_keys; // suppress compiler unused-label warnings
@@ -2627,6 +3864,17 @@ foundIt:;
     } // end of case T_EMBEDDED_KEYS
 
   #ifdef EK_XV
+      #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_EK_XV:
+    case  96 + T_EK_XV:
+    case  80 + T_EK_XV:
+    case  64 + T_EK_XV:
+      #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+      #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_EK_XV:
+    case 32 + T_EK_XV:
+    case 16 + T_EK_XV:
+      #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_EK_XV:
     {
         goto t_ek_xv; // suppress compiler unused-label warnings
@@ -2810,6 +4058,17 @@ xv_foundIt:;
 
 #if defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
 
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    case 112 + T_NULL:
+    case  96 + T_NULL:
+    case  80 + T_NULL:
+    case  64 + T_NULL:
+  #endif // defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    case 48 + T_NULL:
+    case 32 + T_NULL:
+    case 16 + T_NULL:
+  #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
     case T_NULL:
     {
         assert(wRoot == WROOT_NULL);
