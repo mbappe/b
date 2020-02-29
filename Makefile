@@ -150,7 +150,15 @@ endif
   WFLAGS += -Werror
   WFLAGS += -Wfatal-errors
   WFLAGS += -Wno-unused-value
+
+# We need to override a compiler warning for "-DJUMP_TABLE -DAUGMENT_TYPE
+# -DNO_LVL_IN_WR_HB -DNO_LVL_IN_PP -DALL_SKIP_TO_SW_CASES"
+# But the option is different for Mac than GNU/Linux.
+# For GNU/Linux:
   WFLAGS += -Wno-override-init
+# For Mac:
+# WFLAGS += -Wno-initializer-overrides
+
 # WFLAGS_C_ONLY += -Wstrict-prototypes
 # WFLAGS_C_ONLY += -Wmissing-prototypes
   CWFLAGS += $(WFLAGS)
