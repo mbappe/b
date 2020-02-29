@@ -1337,6 +1337,9 @@ NewBitmap(qpa, int nBLR, Word_t wKey, Word_t wPopCnt)
     *pwRoot = wRoot;
 #if defined(SKIP_TO_BITMAP)
     if (nBL != nBLR) {
+      #ifdef BMLF_CNTS_IN_LNX
+        assert(nBL != cnBitsPerWord);
+      #endif // BMLF_CNTS_IN_LNX
         set_wr_nType(*pwRoot, T_SKIP_TO_BITMAP);
         Set_nBLR(pwRoot, nBLR);
         wRoot = *pwRoot;
@@ -2431,7 +2434,7 @@ dumpBmTail:;
         int nWords
             = nBLR > cnLogBitsPerWord ? EXP(nBLR - cnLogBitsPerWord) : 1;
         printf(" nWords %4d", nWords);
-        printf(" wPopCnt %5zd", gwBitmapPopCnt(qy, nBL));
+        printf(" wPopCnt %5zd", gwBitmapPopCnt(qy, nBLR));
         BmLeaf_t* pBmLeaf = (BmLeaf_t*)pwr; (void)pBmLeaf;
       #ifdef BMLF_CNTS
           #ifdef BMLF_POP_COUNT_8
@@ -2466,16 +2469,16 @@ dumpBmTail:;
         }
       #endif // else _BMLF_BM_IN_LNX
       #ifdef B_JUDYL
-        printf("\n Values %p\n", gpwBitmapValues(qy, nBL));
+        printf("\n Values %p\n", gpwBitmapValues(qy, nBLR));
         for (int ww = 0;
              ww < (int)(BM_UNPACKED(wRoot)
-                            ? EXP(nBL) : gwBitmapPopCnt(qy, nBL));
+                            ? EXP(nBLR) : gwBitmapPopCnt(qy, nBLR));
              ++ww)
         {
             if ((ww != 0) && (ww % 4) == 0) {
                 printf("\n");
             }
-            printf(" 0x%016zx", gpwBitmapValues(qy, nBL)[ww]);
+            printf(" 0x%016zx", gpwBitmapValues(qy, nBLR)[ww]);
         }
       #endif // B_JUDYL
         printf("\n");
@@ -6436,9 +6439,9 @@ static Word_t *
 #else // B_JUDYL
 static void
 #endif // B_JUDYL
-InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
+InsertAtPrefixMismatch(qpa, Word_t wKey, int nBLR)
 {
-    qv;
+    qva;
   #if defined(NO_SKIP_AT_TOP)
     // no skip link at top => no prefix mismatch at top
     assert(nBL < cnBitsPerWord);
@@ -6572,6 +6575,7 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
                      T_SWITCH,
                      nBL, wPopCnt);
 
+    int nLinksNew = EXP(nBWNew); (void)nLinksNew;
   #if defined(CODE_BM_SW)
     if (bBmSwNew) {
       #if defined(BM_SW_FOR_REAL)
@@ -6582,6 +6586,7 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
             // Switch was created with only one link based on wKey
             // passed in.  Unless BM_IN_LINK && switch is at top.
             nIndex = 0;
+            nLinksNew = 1;
         }
       #endif // defined(BM_SW_FOR_REAL)
     }
@@ -6624,6 +6629,23 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
                    pwr_pLinks((  Switch_t *)pwSw) ;
     pLinks[nIndex].ln_wRoot = wRoot;
 
+  #ifdef _LNX
+    assert((pwLnX != NULL) || (nBL == cnBitsPerWord));
+    if (pwLnX != NULL) {
+        // Copy the link extension. When is it not correct?
+        // Maybe when the link is changing from a skip to a non-skip?
+        // Where is the new link extension?
+      #ifdef REMOTE_LNX
+        Word_t* pwLnXNew = gpwLnX(qy, nLinksNew, nIndex);
+    //#error
+      #else // REMOTE_LNX
+        Word_t* pwLnXNew = &pLinks[nIndex].ln_wX;
+      #endif // REMOTE_LNX else
+// BUG? Should we have to test pwLnX here?
+        *pwLnXNew = *pwLnX;
+    }
+  #endif // _LNX
+
     // Set the prefix and/or pop in the link in the new
     // switch if they are in the link.
 #if defined(PP_IN_LINK)
@@ -6640,6 +6662,24 @@ InsertAtPrefixMismatch(qp, Word_t wKey, int nBLR)
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     set_PWR_wPopCntBL(&pLinks[nIndex].ln_wRoot, NULL, nBLR, wPopCnt);
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+
+  #ifdef SKIP_TO_BITMAP
+  #ifdef _TEST_BM_UNPACKED
+    // What if SKIP_TO_BITMAP and UNPACK_BM_VALUES?
+    // We may want to convert to T_UNPACKED_BM instead of T_BITMAP.
+    // Will the code handle a packed bm with a population greater
+    // than where the conversion to unpacked would normally happen?
+    // Insert, Remove, Count, etc.?
+    // BUG: We should be converting to unpacked bm in a lot more
+    // situations than full pop.
+    if ((wr_nType(wRoot) == T_BITMAP)
+        && (GetPopCnt(&pLinks[nIndex].ln_wRoot, nBLR) == EXP(nBLR)))
+    {
+        set_wr_nType(pLinks[nIndex].ln_wRoot, T_UNPACKED_BM);
+    }
+  #endif // _TEST_BM_UNPACKED
+  #endif // SKIP_TO_BITMAP
+
     DBGI(printf("Just before InsertAtPrefixMismatch calls Insert"
                     " for prefix mismatch.\n"));
     DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
@@ -7449,8 +7489,11 @@ TransformList(qpa,
     // D1 we have to skip to a bitmap.
     // What if USE_XX_SW_ONLY_AT_DL2?
     if ((nDLNew == 1) && (nDL > 1) && !cbEmbeddedBitmap) {
-        // Shouldn't we make sure the population justifies a bitmap?
-        goto newSkipToBitmap;
+      #ifdef BMLF_CNTS_IN_LNX
+        if (nDL != cnDigitsPerWord)
+      #endif // BMLF_CNTS_IN_LNX
+            // Shouldn't we make sure the population justifies a bitmap?
+            goto newSkipToBitmap;
     }
   #endif // SKIP_TO_BITMAP
 
@@ -7555,6 +7598,9 @@ newSkipToBitmap:;
         nType = wr_nType(wRoot);
           #ifdef SKIP_TO_BITMAP
         assert((nBLNew == nBL)
+              #ifdef BMLF_CNTS_IN_LNX
+               || (nBL == cnBitsPerWord)
+              #endif // BMLF_CNTS_IN_LNX
                || ((wr_nType(*pwRoot) == T_SKIP_TO_BITMAP)
                    && (gnBLR(qy) == nBLNew)));
           #endif // SKIP_TO_BITMAP
@@ -8716,7 +8762,7 @@ wRootNull:;
 #if defined(SKIP_LINKS)
         {
             BJL(return)
-                InsertAtPrefixMismatch(qy, wKey, nBLR);
+                InsertAtPrefixMismatch(qya, wKey, nBLR);
         }
 #endif // defined(SKIP_LINKS)
     }
@@ -9181,7 +9227,7 @@ InsertAtBitmap(qpa, Word_t wKey)
 
         if (bPrefixMismatch) {
             BJL(return)
-                InsertAtPrefixMismatch(qy, wKey, nBLR);
+                InsertAtPrefixMismatch(qya, wKey, nBLR);
             BJ1(return Success);
         }
     }
@@ -13997,7 +14043,7 @@ t_switch:;
             pwLnX = gpwLnX(/*qy*/ nBL,
       #ifdef QP_PLN
                            STRUCT_OF(pwRoot, Link_t, ln_wRoot),
-      #else // QP_PLN 
+      #else // QP_PLN
                            pwRoot,
       #endif // QP_PLN else
                            EXP(nBits), wIndex);

@@ -7303,4 +7303,12 @@ extern Word_t j__AllocWordsJV;   // value area
     } \
 }
 
+#ifdef B_JUDYL
+#ifdef SKIP_TO_BITMAP
+#ifndef PACK_BM_VALUES
+  #error SKIP_TO_BITMAP without PACK_BM_VALUES
+#endif // !PACK_BM_VALUES
+#endif // SKIP_TO_BITMAP
+#endif // B_JUDYL
+
 #endif // ( ! defined(_B_H_INCLUDED) )

@@ -3179,6 +3179,7 @@ t_skip_to_bitmap:;
   #endif // defined(COUNT)
             break;
         }
+        // We don't support skip to unpacked bitmap yet.
         goto t_bitmap;
     }
   #endif // defined(SKIP_TO_BITMAP)
@@ -3557,8 +3558,6 @@ t_bitmap:;
     } // end of case T_BITMAP
 #ifdef LOOKUP
 #if defined(UNPACK_BM_VALUES) || defined(CODE_UNPACK_BM_VALUES)
-    // Skip to unpacked bitmap is still being handled by T_SKIP_TO_BITMAP
-    // and T_BITMAP.
   #ifdef AUGMENT_TYPE_8
     case 112 + T_UNPACKED_BM:
     case  96 + T_UNPACKED_BM:
