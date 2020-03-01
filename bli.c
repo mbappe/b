@@ -1845,10 +1845,12 @@ switchTail:;
         // Should we back up nBLR and nBL and goto t_bitmap that way?
         // The first test below is done at compile time and will make the rest
         // of the code block go away if it is not needed.
+      #if defined(PACK_BM_VALUES) || !defined(B_JUDYL)
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
             // qy is in an iffy state without updating nType and pwr.
             goto t_bitmap;
         }
+      #endif // PACK_BM_VALUES || !B_JUDYL
   #else // BITMAP
         assert(!cbEmbeddedBitmap || (nBL > cnLogBitsPerLink));
   #endif // BITMAP
@@ -2223,8 +2225,10 @@ bmSwTail:;
         pLn = pLnNew;
       #endif // !QP_PLN
       #ifdef BITMAP
+      #if defined(PACK_BM_VALUES) || !defined(B_JUDYL)
         // compiler complains ifndef BITMAP even if cbEmbeddedBitmap==0
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
+      #endif // PACK_BM_VALUES || !B_JUDYL
       #endif // BITMAP
         goto again;
   #else // defined(LOOKUP)
@@ -2952,7 +2956,7 @@ t_list_ua:;
             }
           #endif // defined(INSERT) || defined(REMOVE) || defined(COUNT)
         }
-      #if defined(LOOKUP) 
+      #if defined(LOOKUP)
           #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
         else
         {
@@ -3143,6 +3147,7 @@ t_xx_list:;
 #endif // (cwListPopCntMax != 0)
 
 #ifdef BITMAP
+  #if defined(PACK_BM_VALUES) || !defined(B_JUDYL)
   #if defined(SKIP_TO_BITMAP)
   #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
     case 112 + T_SKIP_TO_BITMAP:
@@ -3182,6 +3187,7 @@ t_skip_to_bitmap:;
         // We don't support skip to unpacked bitmap yet.
         goto t_bitmap;
     }
+  #endif // PACK_BM_VALUES || !B_JUDYL
   #endif // defined(SKIP_TO_BITMAP)
       #if defined(UNPACK_BM_VALUES) || defined(CODE_UNPACK_BM_VALUES)
       #ifndef LOOKUP
@@ -3190,6 +3196,7 @@ t_skip_to_bitmap:;
 t_unpacked_bm:;
       #endif // #ifndef LOOKUP
       #endif // defined(UNPACK_BM_VALUES) || defined(CODE_UNPACK_BM_VALUES)
+  #if defined(PACK_BM_VALUES) || !defined(LOOKUP) || !defined(B_JUDYL)
   #if defined(DEFAULT_BITMAP)
       #if defined(DEFAULT_SKIP_TO_SW)
       #error DEFAULT_SKIP_TO_SW with DEFAULT_BITMAP
@@ -3354,6 +3361,27 @@ t_bitmap:;
             // We have to be sure to handle that case below
             // for USE_XX_SW_ONLY_AT_DL2?
       #endif // USE_XX_SW_ONLY_AT_DL2
+          #if defined(BMLF_INTERLEAVE) && !defined(LOOKUP)
+            Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t);
+            wWordsHdr += EXP(MAX(1, cnBitsInD1 - cnLogBitsPerWord));
+            Word_t wDigit = wKey & MSK(cnBitsInD1);
+            int nLogBmPartBmBits = cnBitsInD1 - cnLogBmlfParts;
+            int nBmPartBmWords = (nLogBmPartBmBits < cnLogBitsPerWord)
+                ? 1 : EXP(nLogBmPartBmBits - cnLogBitsPerWord);
+            int nBmPartSz = nBmPartBmWords + EXP(cnBitsInD1 - cnLogBmlfParts);
+            int nBmPartNum = wDigit >> (cnBitsInD1 - cnLogBmlfParts);
+            Word_t wKeyLeft = wDigit & MSK(cnBitsInD1 - cnLogBmlfParts);
+            int nBmBitPartNum = nBmPartNum;
+              #ifdef BMLFI_SPLIT_BM
+            nBmBitPartNum += !!(wDigit & EXP(cnBitsInD1 - cnLogBmlfParts - 1));
+              #endif // BMLFI_SPLIT_BM
+            Word_t* pwBmBitPart = &pwr[wWordsHdr] + nBmPartSz * nBmBitPartNum;
+            int bBitIsSet = BitIsSet(pwBmBitPart
+              #ifdef BMLFI_BM_AT_END
+                                     + nBmPartSz - nBmPartBmWords
+              #endif // BMLFI_BM_AT_END
+                                   , wKeyLeft);
+          #else // defined(BMLF_INTERLEAVE) && !defined(LOOKUP)
       #ifdef B_JUDYL
           #if defined(LOOKUP) || defined(INSERT)
             Word_t* pwBitmapValues = gpwBitmapValues(qy, cnBitsInD1);
@@ -3433,6 +3461,7 @@ t_bitmap:;
               #endif // #else USE_XX_SW_ONLY_AT_DL2
           #endif // else _BMLF_BM_IN_LNX
   #endif // BMLF_POP_COUNT_1_NO_TEST
+          #endif // defined(BMLF_INTERLEAVE) && !defined(LOOKUP) else
             if (bBitIsSet) {
       #if defined(REMOVE)
                 goto removeGutsAndCleanup;
@@ -3446,11 +3475,19 @@ t_bitmap:;
           #endif // !defined(RECURSIVE)
       #endif // defined(INSERT)
       #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
+              #if defined(BMLF_INTERLEAVE) && !defined(LOOKUP)
+                Word_t* pwBmPart = &pwr[wWordsHdr] + nBmPartSz * nBmPartNum;
+                return &pwBmPart[wKeyLeft
+                  #ifndef BMLFI_BM_AT_END
+                                 + nBmPartBmWords
+                  #endif // !BMLFI_BM_AT_END
+                                 ];
+              #else // defined(BMLF_INTERLEAVE) && !defined(LOOKUP)
                 int nIndex =
-          #ifndef LOOKUP
+                  #ifndef LOOKUP
                     BM_UNPACKED(wRoot) ? (int)(wKey & MSK(cnBitsInD1)) :
-          #endif // #ifndef LOOKUP
-                    BmIndex(qya, cnBitsInD1, wKey);
+                  #endif // !LOOKUP
+                        BmIndex(qya, cnBitsInD1, wKey);
                 Word_t* pwValue = &pwBitmapValues[nIndex];
               #ifdef LOOKUP
               #ifdef PACK_BM_VALUES
@@ -3498,6 +3535,7 @@ t_bitmap:;
               #endif // PACK_BM_VALUES
               #endif // LOOKUP
                 return pwValue;
+              #endif // defined(BMLF_INTERLEAVE) && !defined(LOOKUP) else
       #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
                 return KeyFound;
       #endif // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
@@ -3556,6 +3594,7 @@ t_bitmap:;
         break;
 
     } // end of case T_BITMAP
+  #endif // PACK_BM_VALUES || !LOOKUP || !B_JUDYL
 #ifdef LOOKUP
 #if defined(UNPACK_BM_VALUES) || defined(CODE_UNPACK_BM_VALUES)
   #ifdef AUGMENT_TYPE_8
@@ -3595,6 +3634,57 @@ t_unpacked_bm:;
       #endif // SKIP_PREFIX_CHECK
       #endif // COMPRESSED_LISTS
         {
+      #ifdef BMLF_INTERLEAVE
+          #ifdef _BMLF_BM_IN_LNX
+            #error _BMLF_BM_LNX with BMLF_INTERLEAVE
+          #endif // _BMLF_BM_IN_LNX
+            Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t);
+            wWordsHdr += EXP(MAX(1, cnBitsInD1 - cnLogBitsPerWord));
+            Word_t wDigit = wKey & MSK(cnBitsInD1);
+            int nLogBmPartBmBits = cnBitsInD1 - cnLogBmlfParts;
+            int nBmPartBmWords = (nLogBmPartBmBits < cnLogBitsPerWord)
+                ? 1 : EXP(nLogBmPartBmBits - cnLogBitsPerWord);
+            int nBmPartSz = nBmPartBmWords + EXP(cnBitsInD1 - cnLogBmlfParts);
+            // Does the compiler figure out that nBmPartNum will always be
+            // zero if cnLogBmlfParts is zero? And avoid the shift here and
+            // the multiply and add below?
+            int nBmPartNum = wDigit >> (cnBitsInD1 - cnLogBmlfParts);
+            // Does the compiler figure out that wKeyLeft will be equal to
+            // wDigit if cnLogBmlfParts is zero? And avoid the mask?
+            Word_t wKeyLeft = wDigit & MSK(cnBitsInD1 - cnLogBmlfParts);
+            Word_t* pwBmPart = &pwr[wWordsHdr] + nBmPartSz * nBmPartNum;
+          #ifdef BMLFI_LNX
+            pwBmPart += *pwLnX;
+          #endif // BMLFI_LNX
+            //__builtin_prefetch(pwBmPart + 16, 0, 0);
+            int nBmBitPartNum = nBmPartNum;
+              #ifdef BMLFI_SPLIT_BM
+            nBmBitPartNum += !!(wDigit & EXP(cnBitsInD1 - cnLogBmlfParts - 1));
+#if cnLogBmlfParts <= cnBitsInD1
+  #error
+#endif // cnLogBmlfParts <= cnBitsInD1
+              #endif // BMLFI_SPLIT_BM
+            Word_t* pwBmBitPart = &pwr[wWordsHdr] + nBmPartSz * nBmBitPartNum;
+            if (BitIsSet(pwBmBitPart
+              #ifdef BMLFI_BM_AT_END
+                         + nBmPartSz - nBmPartBmWords
+              #endif // BMLFI_BM_AT_END
+                       , wKeyLeft))
+            {
+#if cnLogBmlfParts <= cnBitsInD1 - cnLogBitsPerWord
+                assert(*pwBmBitPart != 0);
+  #error
+#endif // cnLogBmlfParts <= cnBitsInD1 - cnLogBitsPerWord
+                return &pwBmPart[wKeyLeft
+          #ifndef BMLFI_BM_AT_END
+                                 + nBmPartBmWords
+          #endif // !BMLFI_BM_AT_END
+          #ifdef BMLFI_BM_HB
+                                 + (*pwBmBitPart == 0)
+          #endif // BMLFI_BM_HB
+                                 ];
+            }
+      #else // BMLF_INTERLEAVE
             Word_t* pwBitmapValues = gpwBitmapValues(qy, cnBitsInD1);
           #ifdef PREFETCH_BM_VAL
             PREFETCH(&pwBitmapValues[wKey & MSK(cnBitsInD1)]);
@@ -3609,6 +3699,7 @@ t_unpacked_bm:;
             {
                 return &pwBitmapValues[wKey & MSK(cnBitsInD1)];
             }
+      #endif // BMLF_INTERLEAVE else
             DBGX(printf("Bit is not set.\n"));
         }
 #endif // defined(LOOKUP_NO_BITMAP_DEREF)

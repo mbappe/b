@@ -668,5 +668,34 @@
 #endif // AUGMENT_TYPE
 #endif // ALL_SKIP_TO_SW_CASES
 
+#ifdef B_JUDYL
+  #ifdef BMLFI_LNX
+    #undef  BMLF_INTERLEAVE
+    #define BMLF_INTERLEAVE
+  #endif // BMLFI_LNX
+  #ifdef BMLFI_BM_HB
+    #undef  BMLF_INTERLEAVE
+    #define BMLF_INTERLEAVE
+  #endif // BMLFI_BM_HB
+  #ifdef BMLFI_VARIABLE_SZ
+    #undef  BMLF_INTERLEAVE
+    #define BMLF_INTERLEAVE
+  #endif // BMLFI_VARIABLE_SZ
+  #ifdef BMLF_INTERLEAVE
+    #ifndef UNPACK_BM_VALUES
+      #error BMLF_INTERLEAVE without UNPACK_BM_VALUES
+    #endif // !UNPACK_BM_VALUES
+    #ifndef cnLogBmlfParts
+      #define cnLogBmlfParts  6
+    #endif // cnLogBmlfParts
+  #endif // BMLF_INTERLEAVE
+#else // B_JUDYL
+  #undef BMLF_INTERLEAVE
+  #undef BMLFI_LNX
+  #undef BMLFI_BM_HB
+  #undef BMLFI_VARIABLE_SZ
+  #undef cnLogBmlfParts
+#endif // B_JUDYL
+
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 

@@ -1159,7 +1159,29 @@ BitmapWordsMin(int nBLR, Word_t wPopCnt)
     } else if (cn2dBmMaxWpkPercent == 0) {
       #endif // ifndef B_JUDYL
         assert(nBLR == cnBitsInD1);
+        // add the bitmap words at the beginning of the leaf
         wWords += EXP(MAX(1, cnBitsInD1 - cnLogBitsPerWord));
+        // add the interleaved bitmap words
+      #ifdef BMLF_INTERLEAVE
+          #if defined(BMLFI_VARIABLE_SZ) || defined(DEBUG)
+        int nLogBmPartBmBits = cnBitsInD1 - cnLogBmlfParts;
+        int nBmPartBmWords = (nLogBmPartBmBits < cnLogBitsPerWord)
+            ? 1 : EXP(nLogBmPartBmBits - cnLogBitsPerWord);
+          #endif // defined(BMLFI_VARIABLE_SZ) || defined(DEBUG)
+          #ifdef BMLFI_VARIABLE_SZ
+        wWords += EXP(cnLogBmlfParts) * nBmPartBmWords;
+          #else // BMLFI_VARIABLE_SZ
+        // We want to compare different values for cnLogBmlfParts without
+        // changing the amount of memory they use.
+        // Using more memory makes things slower and obfuscates what we
+        // are trying to observe.
+        assert(EXP(cnLogBmlfParts) * nBmPartBmWords <= 256);
+        wWords += 256;
+          #endif // BMLFI_VARIABLE_SZ
+          #ifdef BMLFI_SPLIT_BM
+        wWords += 1;
+          #endif // BMLFI_SPLIT_BM
+      #endif // BMLF_INTERLEAVE
       #ifndef B_JUDYL
     } else {
         wWords += EXP(MAX(1, nBLR - cnLogBitsPerWord));
@@ -1167,12 +1189,11 @@ BitmapWordsMin(int nBLR, Word_t wPopCnt)
       #endif // ifndef B_JUDYL
   #endif // ifndef _BMLF_BM_IN_LNX
   #ifdef B_JUDYL
-      #ifdef PACK_BM_VALUES
+      #if defined(PACK_BM_VALUES) && !defined(BMLF_INTERLEAVE)
     wWords += wPopCnt; // space for hdr + values
-      #else // PACK_BM_VALUES
-// Might want to move this to CalcBitmapWordCnt.
+      #else // PACK_BM_VALUES && !BMLF_INTERLEAVE
     wWords += EXP(nBLR);
-      #endif // PACK_BM_VALUES
+      #endif // PACK_BM_VALUES && !BMLF_INTERLEAVE else
   #endif // B_JUDYL
     return wWords;
 }
@@ -1184,8 +1205,8 @@ CalcBitmapWordCnt(int nBLR, Word_t wPopCnt)
 {
     (void)nBLR; (void)wPopCnt;
     // Use ALLOC_WHOLE_PACKED_BMLF_EXP to experiment with always allocating
-    // the enough memory for a whole unpacked bitmap value area immediately
-    // on creation of a bitmap leaf.
+    // enough memory for a whole unpacked bitmap value area immediately on
+    // creation of a bitmap leaf.
   #ifdef ALLOC_WHOLE_PACKED_BMLF_EXP
     return BitmapWordsMin(nBLR, EXP(nBLR));
   #else // ALLOC_WHOLE_PACKED_BMLF_EXP
@@ -1199,7 +1220,7 @@ CalcBitmapWordCnt(int nBLR, Word_t wPopCnt)
       #ifdef UNPACK_BM_VALUES
     Word_t wFullPopWordsMin = BitmapWordsMin(nBLR, EXP(nBLR));
       #endif // UNPACK_BM_VALUES
-      #ifdef PACK_BM_VALUES
+      #if defined(PACK_BM_VALUES) && !defined(BMLF_INTERLEAVE)
     Word_t wWordsMin = BitmapWordsMin(nBLR, wPopCnt);
     // What is the first power of two bigger than nWordsMin?
     // nWordsMin being an exact power of two does us no good because it won't
@@ -1213,6 +1234,7 @@ CalcBitmapWordCnt(int nBLR, Word_t wPopCnt)
     }
     --wWords; // Subtract malloc overhead word for request.
           #ifdef UNPACK_BM_VALUES
+    assert(BitmapWordsMin(nBLR, wPopCnt + 1) > BitmapWordsMin(nBLR, wPopCnt));
     Word_t wSlots = wPopCnt + wWords - wWordsMin;
     // add malloc overhead for conversion to unpacked calculation
     Word_t wFullPopWordsMinPlusMalloc = (wFullPopWordsMin | 1) + 1;
@@ -1239,14 +1261,14 @@ CalcBitmapWordCnt(int nBLR, Word_t wPopCnt)
 // BUG: RemoveAtBitmap does not transition from bitmap to list or embedded
 // keys when pop gets low enough. That's why the assertion below blows.
     //assert(wWords >= 3); // minimum efficient for malloc
-      #else // PACK_BM_VALUES
+      #else // PACK_BM_VALUES && !BMLF_INTERLEAVE
     Word_t wWords = wFullPopWordsMin;
-      #endif // PACK_BM_VALUES
+      #endif // PACK_BM_VALUES && !BMLF_INTERLEAVE else
   #else // B_JUDYL
     Word_t wWords = BitmapWordsMin(nBLR, wPopCnt);
   #endif // #else B_JUDYL
     return wWords;
-  #endif // else ALLOC_WHOLE_PACKED_BMLF_EXP
+  #endif // ALLOC_WHOLE_PACKED_BMLF_EXP else
 }
 
 static Word_t
@@ -1297,11 +1319,18 @@ NewBitmap(qpa, int nBLR, Word_t wKey, Word_t wPopCnt)
         (Word_t)pwBitmap));
 
     memset((void *)pwBitmap, 0, wWords * sizeof(Word_t));
+
     // *pwLnX may be used for different things based on ifdefs.
     // We want to zero it for some cases and not for others.
-  #ifdef _BMLF_BM_IN_LNX
+    #ifdef BMLFI_LNX
+        #ifdef _LNX
     *pwLnX = 0;
-  #endif // _BMLF_BM_IN_LNX
+        #endif // _LNX
+    #else // BMLF_INTERLEAVE_LNX
+        #ifdef _BMLF_BM_IN_LNX
+    *pwLnX = 0;
+        #endif // _BMLF_BM_IN_LNX
+    #endif // BMLFI_LNX else
 
     // Init wRoot before calling set_wr because set_wr may try to preserve
     // the high bits, e.g. if LVL_IN_WR_HB, so we want them to
@@ -3949,13 +3978,43 @@ InsertAllAtBitmap(qpa, qpx(Old), int nStart, int nPopCnt)
         SetBit(pwBitmap, wKeyLoop);
   #ifdef B_JUDYL
         if (BM_UNPACKED(wRoot)) {
+  #ifdef BMLF_INTERLEAVE
+            Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t);
+            wWordsHdr += EXP(MAX(1, cnBitsInD1 - cnLogBitsPerWord));
+            Word_t wDigit = wKeyLoop & MSK(cnBitsInD1);
+            int nLogBmPartBmBits = cnBitsInD1 - cnLogBmlfParts;
+            int nBmPartBmWords = (nLogBmPartBmBits < cnLogBitsPerWord)
+                ? 1 : EXP(nLogBmPartBmBits - cnLogBitsPerWord);
+            int nBmPartSz = nBmPartBmWords + EXP(cnBitsInD1 - cnLogBmlfParts);
+            int nBmPartNum = wDigit >> (cnBitsInD1 - cnLogBmlfParts);
+            Word_t wKeyLeft = wDigit & MSK(cnBitsInD1 - cnLogBmlfParts);
+            Word_t* pwBmPart = &pwr[wWordsHdr] + nBmPartSz * nBmPartNum;
+            int nBmBitPartNum = nBmPartNum;
+      #ifdef BMLFI_SPLIT_BM
+            nBmBitPartNum += !!(wDigit & EXP(cnBitsInD1 - cnLogBmlfParts - 1));
+      #endif // BMLFI_SPLIT_BM
+            Word_t* pwBmBitPart = &pwr[wWordsHdr] + nBmPartSz * nBmBitPartNum;
+            SetBit(pwBmBitPart
+      #ifdef BMLFI_BM_AT_END
+                   + nBmPartSz - nBmPartBmWords
+      #endif // BMLFI_BM_AT_END
+                 , wKeyLeft);
+            pwValues = pwBmPart;
+      #ifndef BMLFI_BM_AT_END
+            pwValues += nBmPartBmWords;
+      #endif // !BMLFI_BM_AT_END
+            pwValues[wKeyLeft] = pwValuesOld[~nn];
+  #else // BMLF_INTERLEAVE
             pwValues[wKeyLoop] = pwValuesOld[~nn];
+  #endif // BMLF_INTERLEAVE
         } else {
             *pwValues++ = pwValuesOld[~nn];
         }
   #endif // B_JUDYL
     }
   #ifdef BMLF_CNTS
+    if (BM_UNPACKED(wRoot)) { } else
+    {
       #ifdef BMLF_POP_COUNT_32
     uint32_t* pu32Bitmap = (uint32_t*)pwBitmap;
           #if defined(BMLF_CNTS_IN_LNX)
@@ -3996,6 +4055,7 @@ InsertAllAtBitmap(qpa, qpx(Old), int nStart, int nPopCnt)
               #endif // BMLF_CNTS_CUM
           #endif // #else BMLF_POP_COUNT_8
       #endif // #else BMLF_POP_COUNT_32
+    }
   #endif // BMLF_CNTS
     CheckBitmapGuardband(pwr, nBL, nPopCnt);
 }
@@ -9257,9 +9317,18 @@ InsertAtBitmap(qpa, Word_t wKey)
     Word_t *pwSrcVals = gpwBitmapValues(qy, nBLR);
     int nPos;
     if (BM_UNPACKED(wRoot)) {
+      #ifdef BMLF_INTERLEAVE
+        (void)pwSrcVals;
+        (void)nPos;
+          #ifdef PACK_BM_VALUES
+        nPos = 0; // make compiler happy
+          #endif // PACK_BM_VALUES
+      #else // BMLF_INTERLEAVE
         nPos = wKey & MSK(nBLR);
+      #endif // BMLF_INTERLEAVE else
         goto done;
     }
+      #ifdef PACK_BM_VALUES
     nPos = BmIndex(qya, nBLR, wKey);
     Word_t wWords = BitmapWordCnt(nBLR, wPopCnt + 1); // new
     if (wWords != BitmapWordCnt(nBLR, wPopCnt)) {
@@ -9285,6 +9354,8 @@ InsertAtBitmap(qpa, Word_t wKey)
       #endif // else _BMLF_BM_IN_LNX
         COPY(pwBitmap, pwBitmapOld, nBmWords);
       #ifdef BMLF_CNTS
+        if (BM_UNPACKED(wRoot)) { } else
+        {
           #if defined(BMLF_POP_COUNT_8) || defined(BMLF_POP_COUNT_1)
         COPY(((BmLeaf_t*)pwr)->bmlf_au8Cnts,
              ((BmLeaf_t*)pwrOld)->bmlf_au8Cnts,
@@ -9295,6 +9366,7 @@ InsertAtBitmap(qpa, Word_t wKey)
             = *(Word_t*)((BmLeaf_t*)pwrOld)->bmlf_au8Cnts;
               #endif // !BMLF_CNTS_IN_LNX
           #endif // BMLF_POP_COUNT_8 || BMLF_POP_COUNT_1 else
+        }
       #endif // BMLF_CNTS
         Word_t *pwTgtVals = gpwBitmapValues(qy, nBLR);
         if (BM_UNPACKED(wRoot)) {
@@ -9311,16 +9383,23 @@ InsertAtBitmap(qpa, Word_t wKey)
         OldBitmap(pwrOld, nBLR, wPopCnt);
         pwSrcVals = pwTgtVals;
     } else
+      #endif // PACK_BM_VALUES
   #endif // B_JUDYL
     {
 #ifdef B_JUDYL
+      #ifdef PACK_BM_VALUES
         MOVE(&pwSrcVals[nPos + 1], &pwSrcVals[nPos], wPopCnt - nPos);
+      #endif // PACK_BM_VALUES
         goto done;
 done:
 #endif // B_JUDYL
         swBitmapPopCnt(qy, nBLR, wPopCnt + 1);
     }
   #ifdef BMLF_CNTS
+    if (BM_UNPACKED(wRoot)) { }
+      #ifdef PACK_BM_VALUES
+    else
+    {
       #ifdef BMLF_POP_COUNT_32
     int nBm = (wKey >> 5) & MSK(cnBitsInD1 - 5);
           #ifdef BMLF_CNTS_IN_LNX
@@ -9366,8 +9445,45 @@ done:
               #endif // BMLF_CNTS_CUM else
           #endif // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1 else
       #endif // BMLF_POP_COUNT_32 else
+    }
+      #endif // PACK_BM_VALUES
   #endif // BMLF_CNTS
     SetBit(pwBitmap, wKey & MSK(nBLR));
+  #ifdef BMLF_INTERLEAVE
+    int nBmPartBmWords;
+    Word_t wKeyLeft;
+    Word_t* pwBmPart;
+      #ifdef PACK_BM_VALUES
+    if (!BM_UNPACKED(wRoot)) {
+        nBmPartBmWords = 0; // make compiler happy
+        wKeyLeft = 0; // make compiler happy
+        pwBmPart = NULL; // make compiler happy
+    } else
+      #endif // PACK_BM_VALUES
+    {
+        Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t);
+        wWordsHdr += EXP(MAX(1, cnBitsInD1 - cnLogBitsPerWord));
+        Word_t wDigit = wKey & MSK(cnBitsInD1);
+        int nLogBmPartBmBits = cnBitsInD1 - cnLogBmlfParts;
+        nBmPartBmWords = (nLogBmPartBmBits < cnLogBitsPerWord)
+            ? 1 : EXP(nLogBmPartBmBits - cnLogBitsPerWord);
+        int nBmPartSz = nBmPartBmWords + EXP(cnBitsInD1 - cnLogBmlfParts);
+        int nBmPartNum = wDigit >> (cnBitsInD1 - cnLogBmlfParts);
+        wKeyLeft = wDigit & MSK(cnBitsInD1 - cnLogBmlfParts);
+        pwBmPart = &pwr[wWordsHdr] + nBmPartSz * nBmPartNum;
+        int nBmBitPartNum = nBmPartNum;
+      #ifdef BMLFI_SPLIT_BM
+        nBmBitPartNum += !!(wDigit & EXP(cnBitsInD1 - cnLogBmlfParts - 1));
+      #endif // BMLFI_SPLIT_BM
+        Word_t* pwBmBitPart = &pwr[wWordsHdr] + nBmPartSz * nBmBitPartNum;
+        SetBit(pwBmBitPart
+      #ifdef BMLFI_BM_AT_END
+               + nBmPartSz - nBmPartBmWords
+      #endif // BMLFI_BM_AT_END
+             , wKeyLeft);
+
+    }
+  #endif // BMLF_INTERLEAVE
 
 #if defined(PP_IN_LINK)
 
@@ -9381,9 +9497,20 @@ done:
 #endif // defined(PP_IN_LINK)
 
     CheckBitmapGuardband(pwr, nBLR, wPopCnt + 1);
-#ifdef B_JUDYL
     // Insert is responsible for zeroing the value.
+      #ifdef BMLF_INTERLEAVE
+    if (BM_UNPACKED(wRoot)) {
+        return &pwBmPart[wKeyLeft
+          #ifndef BMLFI_BM_AT_END
+                         + nBmPartBmWords
+          #endif // !BMLFI_BM_AT_END
+                         ];
+    }
+      #endif // BMLF_INTERLEAVE
+#ifdef B_JUDYL
+      #if !defined(BMLF_INTERLEAVE) || defined(PACK_BM_VALUES)
     return &pwSrcVals[nPos];
+      #endif // !defined(BMLF_INTERLEAVE) || defined(PACK_BM_VALUES)
 #else // B_JUDYL
     return Success;
 #endif // B_JUDYL
@@ -9962,13 +10089,20 @@ RemoveAtBitmap(qpa, Word_t wKey)
         Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
   #endif // else _BMLF_BM_IN_LNX
   #ifdef B_JUDYL
+      #ifdef PACK_BM_VALUES
         Word_t wWords = BitmapWordCnt(nBLR, wPopCnt); // new
+      #endif // PACK_BM_VALUES
         Word_t bUnpacked = BM_UNPACKED(wRoot);
         if (bUnpacked) {
-            if (wWords == BitmapWordCnt(nBLR, EXP(nBLR))) {
+      #ifdef PACK_BM_VALUES
+            if (wWords == BitmapWordCnt(nBLR, EXP(nBLR)))
+      #endif // PACK_BM_VALUES
+            {
                 goto done;
             }
+        } else {
         }
+      #ifdef PACK_BM_VALUES
         Word_t *pwSrcVals = gpwBitmapValues(qy, nBLR);
         int nPos = BmIndex(qya, nBLR, wKey);
         if (wWords != BitmapWordCnt(nBLR, wPopCnt + 1)) {
@@ -9994,6 +10128,51 @@ RemoveAtBitmap(qpa, Word_t wKey)
       #endif // else _BMLF_BM_IN_LNX
             COPY(pwBitmap, pwBitmapOld, nBmWords);
       #ifdef BMLF_CNTS
+            if (bUnpacked) {
+      #ifdef BMLF_POP_COUNT_32
+    uint32_t* pu32Bitmap = (uint32_t*)pwBitmap;
+          #if defined(BMLF_CNTS_IN_LNX)
+    Word_t* pwCnts = pwLnX;
+          #else // BMLF_CNTS_IN_LNX
+    Word_t* pwCnts = (Word_t*)((BmLeaf_t*)pwr)->bmlf_au8Cnts;
+          #endif // BMLF_CNTS_IN_LNX else
+    for (Word_t ww = 0; ww < EXP(cnBitsInD1 - 5); ++ww) {
+        ((uint8_t*)pwCnts)[ww] = PopCount32(pu32Bitmap[ww]);
+    }
+          #ifdef BMLF_CNTS_CUM
+    *pwCnts *= 0x0101010101010100;
+          #endif // BMLF_CNTS_CUM
+      #else // BMLF_POP_COUNT_32
+          #ifdef BMLF_POP_COUNT_8
+    int nSum = 0;
+    for (int nn = 0; nn < (1 << (cnBitsInD1 - cnLogBitsPerByte)); ++nn) {
+        ((BmLeaf_t*)pwr)->bmlf_au8Cnts[nn] = nSum;
+        nSum += PopCount8(((uint8_t*)pwBitmap)[nn]);
+    }
+          #elif defined(BMLF_POP_COUNT_1)
+    int nSum = 0;
+    for (int nn = 0; nn < (1 << cnBitsInD1); ++nn) {
+        ((BmLeaf_t*)pwr)->bmlf_au8Cnts[nn] = nSum;
+        nSum += BitIsSet(pwBitmap, nn);
+    }
+          #else // BMLF_POP_COUNT_8
+              #ifdef BMLF_CNTS_IN_LNX
+    uint8_t* pu8Cnts = (uint8_t*)pwLnX;
+              #else // BMLF_CNTS_IN_LNX
+    uint8_t* pu8Cnts = ((BmLeaf_t*)pwr)->bmlf_au8Cnts;
+              #endif // BMLF_CNTS_IN_LNX else
+    for (int nn = 0;
+         nn < (1 << (cnBitsInD1 - cnLogBitsPerWord)); ++nn)
+    {
+        pu8Cnts[nn] = PopCount64(pwBitmap[nn]);
+    }
+              #ifdef BMLF_CNTS_CUM
+    *(Word_t*)pu8Cnts *= 0x01010100;
+              #endif // BMLF_CNTS_CUM
+          #endif // #else BMLF_POP_COUNT_8
+      #endif // #else BMLF_POP_COUNT_32
+            } else
+            {
           #if defined(BMLF_POP_COUNT_8) || defined(BMLF_POP_COUNT_1)
             COPY(((BmLeaf_t*)pwr)->bmlf_au8Cnts,
                  ((BmLeaf_t*)pwrOld)->bmlf_au8Cnts,
@@ -10004,6 +10183,7 @@ RemoveAtBitmap(qpa, Word_t wKey)
                 = *(Word_t*)((BmLeaf_t*)pwrOld)->bmlf_au8Cnts;
               #endif // !BMLF_CNTS_IN_LNX
           #endif // BMLF_POP_COUNT_8 || BMLF_POP_COUNT_1 else
+            }
       #endif // BMLF_CNTS
             Word_t *pwTgtVals = gpwBitmapValues(qy, nBLR);
             if (bUnpacked) {
@@ -10021,11 +10201,14 @@ RemoveAtBitmap(qpa, Word_t wKey)
             }
             OldBitmap(pwrOld, nBLR, wPopCnt + 1);
         } else
+      #endif // PACK_BM_VALUES
   #endif // B_JUDYL
         {
 #ifdef B_JUDYL
+      #ifdef PACK_BM_VALUES
             Word_t *pwSrcVals = gpwBitmapValues(qy, nBLR);
             MOVE(&pwSrcVals[nPos], &pwSrcVals[nPos + 1], wPopCnt - nPos);
+      #endif // PACK_BM_VALUES
             goto done;
 done:
 #endif // B_JUDYL
@@ -10033,6 +10216,10 @@ done:
         }
         ClrBit(pwBitmap, wKey & MSK(nBLR));
   #ifdef BMLF_CNTS
+        if (BM_UNPACKED(wRoot)) { }
+      #ifdef PACK_BM_VALUES
+        else
+        {
       #ifdef BMLF_POP_COUNT_32
         int nBm = (wKey >> 5) & MSK(cnBitsInD1 - 5);
           #ifdef BMLF_CNTS_IN_LNX
@@ -10079,6 +10266,8 @@ done:
               #endif // BMLF_CNTS_CUM else
           #endif // BMLF_POP_COUNT_8 elif BMLF_POP_COUNT_1 else
       #endif // BMLF_POP_COUNT_32 else
+        }
+      #endif // PACK_BM_VALUES
   #endif // BMLF_CNTS
 
 #if defined(DEBUG_COUNT)
@@ -10461,6 +10650,31 @@ Initialize(void)
 #else //         PREFETCH_BM_EK
     printf("# No PREFETCH_BM_EK\n");
 #endif // #else  PREFETCH_BM_EK
+
+#ifdef           BMLF_INTERLEAVE
+    printf("#    BMLF_INTERLEAVE\n");
+    printf("#    cnLogBmlfParts %d\n", cnLogBmlfParts);
+#else //         BMLF_INTERLEAVE
+    printf("# No BMLF_INTERLEAVE\n");
+#endif // #else  BMLF_INTERLEAVE
+
+#ifdef           BMLFI_VARIABLE_SZ
+    printf("#    BMLFI_VARIABLE_SZ\n");
+#else //         BMLFI_VARIABLE_SZ
+    printf("# No BMLFI_VARIABLE_SZ\n");
+#endif // #else  BMLFI_VARIABLE_SZ
+
+#ifdef           BMLFI_LNX
+    printf("#    BMLFI_LNX\n");
+#else //         BMLFI_LNX
+    printf("# No BMLFI_LNX\n");
+#endif // #else  BMLFI_LNX
+
+#ifdef           BMLFI_BM_HB
+    printf("#    BMLFI_BM_HB\n");
+#else //         BMLFI_BM_HB
+    printf("# No BMLFI_BM_HB\n");
+#endif // #else  BMLFI_BM_HB
 
 #ifdef           BMLF_POP_COUNT_32
     printf("#    BMLF_POP_COUNT_32\n");
