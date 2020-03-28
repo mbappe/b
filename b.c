@@ -10724,6 +10724,12 @@ Initialize(void)
     printf("# No BMLF_CNTS_IN_LNX\n");
 #endif // #else  BMLF_CNTS_IN_LNX
 
+#ifdef          _BMLF_BM_IN_LNX
+    printf("#    BMLF_BM_IN_LNX\n");
+#else //        _BMLF_BM_IN_LNX
+    printf("# No BMLF_BM_IN_LNX\n");
+#endif //       _BMLF_BM_IN_LNX else
+
 #ifdef           XX_LISTS
     printf("#    XX_LISTS\n");
 #else //         XX_LISTS
