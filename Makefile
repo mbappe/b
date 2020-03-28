@@ -155,7 +155,7 @@ endif
 # -DNO_LVL_IN_WR_HB -DNO_LVL_IN_PP -DALL_SKIP_TO_SW_CASES"
 # But the option is different for Mac than GNU/Linux.
 # For GNU/Linux:
-  WFLAGS += -Wno-override-init
+# WFLAGS += -Wno-override-init
 # For Mac:
 # WFLAGS += -Wno-initializer-overrides
 
