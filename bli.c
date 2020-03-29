@@ -539,7 +539,16 @@ InsertRemove1(qp, Word_t wKey)
     Word_t wPrefixMismatch = 0; (void)wPrefixMismatch;
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
   #ifdef _LNX
-    Word_t* pwLnX = NULL; (void)pwLnX;
+    Word_t* pwLnX = NULL;
+      #ifndef LOOKUP
+      #ifndef REMOTE_LNX
+    // We should leave pwLnX NULL for nBL == cnBitsPerWord, but the code
+    // is not supposed to be using it in that case so we skip the test.
+    // I guess it is not quite as important as it would be if we were in
+    // LOOKUP here, but we're not.
+    pwLnX = &STRUCT_OF(pwRoot, Link_t, ln_wRoot)->ln_wX;
+      #endif // ifndef REMOTE_LNX
+      #endif // ifndef LOOKUP
   #endif // _LNX
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrUp = pwrUp; // suppress "uninitialized" compiler warning
