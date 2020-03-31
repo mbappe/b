@@ -2360,9 +2360,9 @@ FreeArrayGuts(qpa, Word_t wKey, int bDump
   #endif // SKIP_LINKS
   #endif // #ifndef FULL_DUMP
         printf(" nBL %2d", nBL);
-        // Check for zeros in suffix?  Print dots for suffix?
+        // Print dots for suffix?
         // How would we represent a partially significant hex digit?
-        printf(" wPrefix " OWx, wKey /*& ~NZ_MSK(nBL)*/);
+        printf(" prefix " OWx, wKey /*& ~NZ_MSK(nBL)*/);
         printf(" pwRoot " OWx, (Word_t)pwRoot);
         printf(" wRoot " OWx, wRoot);
     }
@@ -3012,6 +3012,7 @@ embeddedKeys:;
   #endif // CODE_BM_SW
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                             );
+                    wKey &= ~NZ_MSK(nBLR);
                 }
             }
 
@@ -7955,22 +7956,21 @@ newSkipToBitmap:;
             // created switch. nBLOld == nBL.
             Splay(qya, /*old*/ &wRoot, /*old*/ nBL, wKey);
         }
-        //printf("# New tree after Splay:\n");
-        //DBG(Dump(pwRoot, wKey, nBL));
-  #ifdef _RETURN_NULL_TO_INSERT_AGAIN
-        BJL(return NULL); // call InsertGuts again
-  #endif // _RETURN_NULL_TO_INSERT_AGAIN
     }
 
     goto finalInsert;
 finalInsert:;
 
     if (nBLNew == nBL) {
-        DBGI(printf("Just Before InsertGuts calls final Insert"));
+        DBGI(printf("# IG: just before final Insert "));
         DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
     }
 
-    BJL(return) Insert(qy, wKey);
+    BJL(return)
+  #ifdef _RETURN_NULL_TO_INSERT_AGAIN
+        NULL; // call InsertGuts again
+  #endif // _RETURN_NULL_TO_INSERT_AGAIN
+        Insert(qy, wKey);
 }
 
 #ifndef cnSplayPrepThreshold
@@ -10440,6 +10440,7 @@ Initialize(void)
   #endif // SKIP_TO_XX_SW
   #endif // USE_XX_SW_ONLY_AT_DL2
 
+  #ifndef B_JUDYL
     // Why would we want to be able to fit more than one digits' worth of
     // keys into a Link_t as an embedded bitmap?
     // An uncompressed switch of such links would be bigger than the
@@ -10468,6 +10469,7 @@ Initialize(void)
                  " makes no sense.\n");
         printf("# Mabye increase cnBitsInD1 or decrease sizeof(Link_t).\n");
     }
+  #endif // ifndef B_JUDYL
 
 // SAVE_PREFIX should be called SAVE_PREFIX_PTR?
 #if defined(SAVE_PREFIX)
@@ -11080,6 +11082,12 @@ Initialize(void)
 #else //         REMOTE_LNX
     printf("# No REMOTE_LNX\n");
 #endif //        REMOTE_LNX
+
+#ifdef          _RETURN_NULL_TO_INSERT_AGAIN
+    printf("#    RETURN_NULL_TO_INSERT_AGAIN\n");
+#else //        _RETURN_NULL_TO_INSERT_AGAIN
+    printf("# No RETURN_NULL_TO_INSERT_AGAIN\n");
+#endif //       _RETURN_NULL_TO_INSERT_AGAIN
 
 #if defined(BL_SPECIFIC_PSPLIT_SEARCH)
     printf("#    BL_SPECIFIC_PSPLIT_SEARCH\n");

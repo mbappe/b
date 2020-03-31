@@ -539,7 +539,7 @@ InsertRemove1(qp, Word_t wKey)
     Word_t wPrefixMismatch = 0; (void)wPrefixMismatch;
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
   #ifdef _LNX
-    Word_t* pwLnX = NULL;
+    Word_t* pwLnX = NULL; (void)pwLnX;
       #ifndef LOOKUP
       #ifndef REMOTE_LNX
     // We should leave pwLnX NULL for nBL == cnBitsPerWord, but the code
