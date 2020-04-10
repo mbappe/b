@@ -2312,10 +2312,10 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 #define     pwr_pLinks(_pwr)  ((_pwr)->sw_aLinks)
 
 #if defined(BM_IN_LINK)
-#define     PWR_pwBm(_pwRoot, _pwr) \
-    (STRUCT_OF((_pwRoot), Link_t, ln_wRoot)->ln_awBm)
+  #define PWR_pwBm(_pwRoot, _pwr, _nBW) \
+      (STRUCT_OF((_pwRoot), Link_t, ln_wRoot)->ln_awBm)
 #else // defined(BM_IN_LINK)
-#define     PWR_pwBm(_pwRoot, _pwr)  (&(_pwr)[-N_WORDS_SWITCH_BM])
+  #define PWR_pwBm(_pwRoot, _pwr, _nBW) (&(_pwr)[-N_WORDS_SW_BM(_nBW)])
 #endif // defined(BM_IN_LINK)
 
 #if defined(PSPLIT_PARALLEL)
@@ -2813,12 +2813,23 @@ typedef struct {
 } ListLeaf_t;
 
 #if defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
-  #define N_WORDS_SWITCH_BM \
-      (int)DIV_UP_X(((Word_t)2 << cnBitsPerDigit), cnBitsPerWord)
+  #define _SW_BM_HALF_WORDS  1
 #else // defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
-  #define N_WORDS_SWITCH_BM \
-      (int)DIV_UP_X(((Word_t)1 << cnBitsPerDigit), cnBitsPerWord)
+  #define _SW_BM_HALF_WORDS  0
 #endif // defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
+
+#ifdef BM_IN_LINK
+  #define N_WORDS_SW_BM(_nBW) \
+      (int)DIV_UP_X(((Word_t)(1 + _SW_BM_HALF_WORDS) << cnBitsPerDigit), \
+                    cnBitsPerWord)
+#elif (cnBitsInD2 == cnBitsPerDigit) && (cnBitsInD3 == cnBitsInD2)
+  #define N_WORDS_SW_BM(_nBW) \
+      (int)DIV_UP_X(((Word_t)(1 + _SW_BM_HALF_WORDS) << cnBitsPerDigit), \
+                    cnBitsPerWord)
+#else // BM_IN_LINK
+  #define N_WORDS_SW_BM(_nBW) \
+      (int)DIV_UP_X(((Word_t)(1 + _SW_BM_HALF_WORDS) << (_nBW)), cnBitsPerWord)
+#endif // else BM_IN_LINK
 
 // Default is -UPOP_WORD_IN_LINK.
 // It doesn't matter unless POP_WORD is defined.
@@ -2835,7 +2846,7 @@ typedef struct {
     Word_t ln_wPopWord;
 #endif // defined(POP_WORD) && defined(POP_WORD_IN_LINK)
 #if defined(BM_IN_LINK)
-    Word_t ln_awBm[N_WORDS_SWITCH_BM];
+    Word_t ln_awBm[N_WORDS_SW_BM(cnBitsPerDigit)];
 #endif // defined(BM_IN_LINK)
 #if (cnDummiesInLink != 0)
     Word_t ln_awDummies[cnDummiesInLink];
@@ -6701,9 +6712,10 @@ BmSwLinkCnt(qp)
       #endif // (cnBitsPerWord <= 32)
     return (int)GetBits(*pwRoot, cnBitsCnt, cnLsbCnt) + 1;
   #else // BM_SW_CNT_IN_WR
-    Word_t *pwBmWords = PWR_pwBm(pwRoot, wr_pwr(*pwRoot));
+    int nBW = gnBW(qy, gnBLR(qy)); (void)nBW; // BW is width of switch
+    Word_t *pwBmWords = PWR_pwBm(pwRoot, wr_pwr(*pwRoot), nBW);
     int nLinks = 0;
-    for (int nn = 0; nn < N_WORDS_SWITCH_BM; ++nn) {
+    for (int nn = 0; nn < N_WORDS_SW_BM(nBW); ++nn) {
         nLinks += __builtin_popcountll(pwBmWords[nn]
       #if defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
                           & (((Word_t)1 << (cnBitsPerWord / 2)) - 1)
@@ -6716,7 +6728,7 @@ BmSwLinkCnt(qp)
           #if defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
                / 2
           #endif // defined(OFFSET_IN_SW_BM_WORD) || def(X_SW_BM_HALF_WORDS)
-               * N_WORDS_SWITCH_BM));
+               * N_WORDS_SW_BM(nBW)));
       #endif // BM_SW_FOR_REAL
     return nLinks;
   #endif // #else BM_SW_CNT_IN_WR
@@ -6730,7 +6742,8 @@ BmSwIndex(qp, Word_t wDigit,
           Word_t *pwSwIndex, int *pbLinkPresent)
 {
     qv;
-    Word_t *pwBmWords = PWR_pwBm(pwRoot, wr_pwr(*pwRoot));
+    int nBW = gnBW(qy, gnBLR(qy)); (void)nBW; // BW is width of switch
+    Word_t *pwBmWords = PWR_pwBm(pwRoot, wr_pwr(*pwRoot), nBW);
     // The bitmap may have more than one word.
     // nBmWordNum is the number of the word which contains the bit we want.
     int nBmWordNum = gnWordNumInSwBm(wDigit);
@@ -6742,7 +6755,7 @@ BmSwIndex(qp, Word_t wDigit,
 #error X_ADD_ALL_SW_BM_WORDS with OFFSET_IN_SW_BM_WORD or X_SW_BM_HALF_WORDS
   #endif // defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
         Word_t wSwIndex = 0;
-        for (int nn = 0; nn < N_WORDS_SWITCH_BM; nn++) {
+        for (int nn = 0; nn < N_WORDS_SW_BM(nBW); nn++) {
             wSwIndex += __builtin_popcountll(pwBmWords[nn])
                             * ((int)wDigit >= (nn + 1) * cnBitsPerWord);
         }

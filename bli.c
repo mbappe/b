@@ -2114,7 +2114,7 @@ t_bm_sw:;
   #if defined(BM_SW_FOR_REAL)
             char* pcPrefetch; (void)pcPrefetch;
       #ifndef OFFSET_IN_SW_BM_WORD
-            pcPrefetch = (void*)PWR_pwBm(&pLn->ln_wRoot, pwr);
+            pcPrefetch = (void*)PWR_pwBm(&pLn->ln_wRoot, pwr, nBW);
             PREFETCH(pcPrefetch);
             PREFETCH(pcPrefetch + 64);
       #endif // #ifndef OFFSET_IN_SW_BM_WORD

@@ -29,6 +29,10 @@ done
 && DEFINES="-DNO_USE_BM_SW -DcnBitsInD1=6 -DcnBitsInD2=10 -DNO_REMOTE_LNX" \
    make clean default \
 && regress \
+&& : 'regression test fix of BM SW with cnBitsInD2 != cnBitsPerDigit' \
+&& DEFINES="-DNO_BM_SW_CNT_IN_WR -DcnBitsInD1=6 -DcnBitsInD2=10" \
+   make clean default \
+&& regress \
 && DEFINES="-DNO_LVL_IN_WR_HB -DDEFAULT_SKIP_TO_SW -DPOP_WORD -DDEBUG" \
    make clean default \
 && regress \
