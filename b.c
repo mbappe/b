@@ -12302,8 +12302,13 @@ Initialize(void)
     printf("# 0x%x %-20s\n", T_SKIP_TO_SWITCH, "T_SKIP_TO_SWITCH");
     assert(T_SKIP_TO_SWITCH < EXP(cnBitsMallocMask));
 #endif // defined(SKIP_LINKS)
+  #ifdef ALL_SKIP_TO_SW_CASES
+  #ifdef AUGMENT_TYPE
     printf("\n");
-
+    printf("# NUM_TYPES d\n", NUM_TYPES);
+  #endif // AUGMENT_TYPE
+  #endif // ALL_SKIP_TO_SW_CASES
+    printf("\n");
     printf("# WROOT_NULL 0x%x\n", WROOT_NULL);
     printf("\n");
 }

@@ -1196,6 +1196,15 @@ fastAgain:;
       #endif // LOOKUP
     };
     //__builtin_prefetch(0, 1);
+  // AUGMENT_TYPE_NOT means create jump table entries or switch table cases
+  // according to AUGMENT_TYPE and AUGMENT_TYPE_8 but don't do the work of
+  // augmenting the type or jump or switch based on an augmented type.
+  // AUGMENT_TYPE_8 with AUGMENT_TYPE assumes the low three bits of nBL are
+  // always zero and uses the high three bits of nBL to augment the type.
+  // for eight different legal nBL values: 8, 16, 24, 32, 40, 48, 56, 64.
+  // How expensive would it be to maintain nDL as well as nBL?
+  // AUGMENT_TYPE without AUGMENT_TYPE_8 has four different nBL groups:
+  // 5-8, 9-16, 17-32, 33-64. 0-4 does not work.
   #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
     goto *pvJumpTable[(((nBL << 1) - 16) | nType)
       #ifdef MASK_TYPE
@@ -1248,7 +1257,7 @@ fastAgain:;
   #ifndef DEFAULT_LIST
   #ifndef DEFAULT_BITMAP
   #if !defined(SKIP_LINKS) || !defined(ALL_SKIP_TO_SW_CASES)
-    default: DBG(printf("unknown type %d\n", nType)); assert(0); exit(0);
+    default: DBG(printf("unknown type %d nBL %d\n", nType, nBL)); assert(0);
   #endif // !defined(SKIP_LINKS) || !defined(ALL_SKIP_TO_SW_CASES)
   #endif // DEFAULT_BITMAP
   #endif // DEFAULT_LIST
@@ -1567,7 +1576,8 @@ t_skip_to_xx_sw:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             break;
         }
-        nBW = gnBW(qy, nBLR); // num bits decoded
+        nBW = 8; // aug_type_to_nBW(112 + T_SWITCH)
+        assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
   #ifdef _LNX
         pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
@@ -1579,9 +1589,7 @@ t_skip_to_xx_sw:
       #ifdef PREFETCH_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
       #endif // PREFETCH_PWR
-        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
-        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
-        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
         SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
   #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
@@ -1596,7 +1604,8 @@ t_skip_to_xx_sw:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             break;
         }
-        nBW = gnBW(qy, nBLR); // num bits decoded
+        nBW = 8; // aug_type_to_nBW(96 + T_SWITCH)
+        assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
   #ifdef _LNX
         pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
@@ -1608,9 +1617,7 @@ t_skip_to_xx_sw:
       #ifdef PREFETCH_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
       #endif // PREFETCH_PWR
-        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
-        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
-        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
         SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
   #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
@@ -1625,7 +1632,8 @@ t_skip_to_xx_sw:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             break;
         }
-        nBW = gnBW(qy, nBLR); // num bits decoded
+        nBW = 8; // aug_type_to_nBW(80 + T_SWITCH)
+        assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
   #ifdef _LNX
         pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
@@ -1637,9 +1645,7 @@ t_skip_to_xx_sw:
       #ifdef PREFETCH_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
       #endif // PREFETCH_PWR
-        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
-        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
-        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
         SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
   #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
@@ -1654,7 +1660,8 @@ t_skip_to_xx_sw:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             break;
         }
-        nBW = gnBW(qy, nBLR); // num bits decoded
+        nBW = 8; // aug_type_to_nBW(64 + T_SWITCH)
+        assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
   #ifdef _LNX
         pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
@@ -1666,9 +1673,7 @@ t_skip_to_xx_sw:
       #ifdef PREFETCH_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
       #endif // PREFETCH_PWR
-        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
-        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
-        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
         SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
   #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
@@ -1685,7 +1690,12 @@ t_skip_to_xx_sw:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             break;
         }
+      #ifdef AUGMENT_TYPE_8
+        nBW = 8; // aug_type_to_nBW(48 + T_SWITCH)
+        assert(gnBW(qy, nBLR) == nBW);
+      #else // AUGMENT_TYPE_8
         nBW = gnBW(qy, nBLR); // num bits decoded
+      #endif // else AUGMENT_TYPE_8
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
   #ifdef _LNX
         pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
@@ -1697,9 +1707,7 @@ t_skip_to_xx_sw:
       #ifdef PREFETCH_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
       #endif // PREFETCH_PWR
-        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
-        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
-        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
         SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
   #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
@@ -1714,7 +1722,12 @@ t_skip_to_xx_sw:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             break;
         }
+      #ifdef AUGMENT_TYPE_8
+        nBW = 8; // aug_type_to_nBW(32 + T_SWITCH)
+        assert(gnBW(qy, nBLR) == nBW);
+      #else // AUGMENT_TYPE_8
         nBW = gnBW(qy, nBLR); // num bits decoded
+      #endif // else AUGMENT_TYPE_8
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
   #ifdef _LNX
         pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
@@ -1726,9 +1739,7 @@ t_skip_to_xx_sw:
       #ifdef PREFETCH_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
       #endif // PREFETCH_PWR
-        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
-        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
-        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
         SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
   #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
@@ -1743,7 +1754,12 @@ t_skip_to_xx_sw:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             break;
         }
+      #ifdef AUGMENT_TYPE_8
+        nBW = 8; // aug_type_to_nBW(16 + T_SWITCH)
+        assert(gnBW(qy, nBLR) == nBW);
+      #else // AUGMENT_TYPE_8
         nBW = gnBW(qy, nBLR); // num bits decoded
+      #endif // else AUGMENT_TYPE_8
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
   #ifdef _LNX
         pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
@@ -1755,9 +1771,7 @@ t_skip_to_xx_sw:
       #ifdef PREFETCH_PWR
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
       #endif // PREFETCH_PWR
-        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
-        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
-        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
         SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
   #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
@@ -1826,7 +1840,9 @@ switchTail:;
             goto restart;
         }
   #endif // defined(INSERT) || defined(REMOVE)
-        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
+        // adjust pop count
+        IF_NOT_COUNT(IF_NOT_LOOKUP(wPopCntUp = SwIncr(qy, nBLR, bCleanup,
+                                                      nIncr)));
         IF_COUNT(wPopCntSum += CountSw(qy, nBLR, nBW, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
         // Save the previous link and advance to the next.

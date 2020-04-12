@@ -656,6 +656,11 @@
   #define  OLD_HK_64
 #endif // #ifndef NO_OLD_HK_64
 
+#ifdef AUGMENT_TYPE_8
+  #undef  AUGMENT_TYPE
+  #define AUGMENT_TYPE
+#endif // AUGMENT_TYPE_8
+
 // Fix NUM_TYPES on command line based on other ifdefs if
 // ALL_SKIP_TO_SW_CASES && AUGMENT_TYPE and the default 9 is not correct.
 // It is used to avoid defining duplicate cases in the main switch statement
