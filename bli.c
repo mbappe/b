@@ -448,6 +448,38 @@ PrefixCheckAtLeaf(qp, Word_t wKey
 #endif // LOOKUP
 #endif // SKIP_PREFIX_CHECK
 
+#ifdef AUGMENT_TYPE
+#ifdef LOOKUP
+
+static int
+AugTypeBits(int nBL)
+{
+  #ifdef AUGMENT_TYPE_8
+    // atb = (nBL << 1) - 16
+    return (nBL << 1) - 16;
+  #else // AUGMENT_TYPE_8
+    // nLogBytesLeft = LOG(nBL - 1) - 2
+    // atb = nLogBytesLeft << 4
+    return (LOG(nBL - 1) - 2) << 4; // nLogBytesLeft << 4
+  #endif // else AUGMENT_TYPE_8
+}
+
+static int
+AugTypeBitsInv(int nAugTypeBits)
+{
+    assert(!(nAugTypeBits & cnMallocMask));
+  #ifdef AUGMENT_TYPE_8
+    // nBL = (atb + 16) >> 1
+    return (nAugTypeBits + 16) >> 1; // nBL
+  #else // AUGMENT_TYPE_8
+    // nLogBytesLeft = atb >> 4
+    return nAugTypeBits >> 4; // nLogBytesLeft;
+  #endif // else AUGMENT_TYPE_8
+}
+
+#endif // LOOKUP
+#endif // AUGMENT_TYPE
+
   #if defined(LOOKUP)
       #ifdef B_JUDYL
 static Word_t *
@@ -777,7 +809,7 @@ fastAgain:;
             &&t_ek_xv,
               #endif // EK_XV
           #endif // defined(EMBED_KEYS)
-            &&t_switch,
+            &&t_sw_plus_16,
           #if defined(SKIP_LINKS)
             &&t_skip_to_switch,
               #ifdef _LVL_IN_TYPE
@@ -845,7 +877,7 @@ fastAgain:;
             &&t_ek_xv,
               #endif // EK_XV
           #endif // defined(EMBED_KEYS)
-            &&t_switch,
+            &&t_sw_plus_32,
           #if defined(SKIP_LINKS)
             &&t_skip_to_switch,
               #ifdef _LVL_IN_TYPE
@@ -915,7 +947,7 @@ fastAgain:;
             &&t_ek_xv,
               #endif // EK_XV
           #endif // defined(EMBED_KEYS)
-            &&t_switch,
+            &&t_sw_plus_48,
           #if defined(SKIP_LINKS)
             &&t_skip_to_switch,
               #ifdef _LVL_IN_TYPE
@@ -982,7 +1014,7 @@ fastAgain:;
             &&t_ek_xv,
                   #endif // EK_XV
               #endif // defined(EMBED_KEYS)
-            &&t_switch,
+            &&t_sw_plus_64,
               #if defined(SKIP_LINKS)
             &&t_skip_to_switch,
                   #ifdef _LVL_IN_TYPE
@@ -1048,7 +1080,7 @@ fastAgain:;
             &&t_ek_xv,
                   #endif // EK_XV
               #endif // defined(EMBED_KEYS)
-            &&t_switch,
+            &&t_sw_plus_80,
               #if defined(SKIP_LINKS)
             &&t_skip_to_switch,
                   #ifdef _LVL_IN_TYPE
@@ -1114,7 +1146,7 @@ fastAgain:;
             &&t_ek_xv,
                   #endif // EK_XV
               #endif // defined(EMBED_KEYS)
-            &&t_switch,
+            &&t_sw_plus_96,
               #if defined(SKIP_LINKS)
             &&t_skip_to_switch,
                   #ifdef _LVL_IN_TYPE
@@ -1180,7 +1212,7 @@ fastAgain:;
             &&t_ek_xv,
                   #endif // EK_XV
               #endif // defined(EMBED_KEYS)
-            &&t_switch,
+            &&t_sw_plus_112,
               #if defined(SKIP_LINKS)
             &&t_skip_to_switch,
                   #ifdef _LVL_IN_TYPE
@@ -1206,16 +1238,15 @@ fastAgain:;
   // AUGMENT_TYPE without AUGMENT_TYPE_8 has four different nBL groups:
   // 5-8, 9-16, 17-32, 33-64. 0-4 does not work.
   #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
-    goto *pvJumpTable[(((nBL << 1) - 16) | nType)
+    goto *pvJumpTable[(AugTypeBits(nBL) | nType)
       #ifdef MASK_TYPE
-                          & 0x7f
+                          & 0x7f // help compiler
       #endif // MASK_TYPE
                       ];
   #elif defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
-    int nLogBytesLeft = (LOG(nBL - 1) - 2) << 4;
-    goto *pvJumpTable[(nLogBytesLeft | nType)
+    goto *pvJumpTable[(AugTypeBits(nBL) | nType)
       #ifdef MASK_TYPE
-                          & 0x3f
+                          & 0x3f // help compiler
       #endif // MASK_TYPE
                       ];
   #else // AUG_8 && !AUG_NOT && LOOKUP elif AUG && !AUG_NOT && LOOKUP
@@ -1230,18 +1261,15 @@ fastAgain:;
     #endif // !AUGMENT_TYPE
   #endif // AUGMENT_TYPE_8
   #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
-    switch ((((nBL << 1) - 16) | nType)
+    switch ((AugTypeBits(nBL) | nType)
       #ifdef MASK_TYPE
-                & 0x7f
+                & 0x7f // help compiler
       #endif // MASK_TYPE
             )
   #elif defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
-      #ifndef JUMP_TABLE
-    int nLogBytesLeft = (LOG(nBL - 1) - 2) << 4;
-      #endif // !JUMP_TABLE
-    switch ((nLogBytesLeft | nType)
+    switch ((AugTypeBits(nBL) | nType)
       #ifdef MASK_TYPE
-                & 0x3f
+                & 0x3f // help compiler
       #endif // MASK_TYPE
             )
   #else // AUG_8 && !AUG_NOT && LOOKUP elif AUG && !AUG_NOT && LOOKUP
@@ -1573,10 +1601,13 @@ t_skip_to_xx_sw:
   #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
     case 112 + T_SWITCH:
     {
+        goto t_sw_plus_112;
+t_sw_plus_112:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             break;
         }
-        nBW = 8; // aug_type_to_nBW(112 + T_SWITCH)
+        nBW = gnBW(qy, AugTypeBitsInv(112));
+        assert(nBLR == nBL);
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
   #ifdef _LNX
@@ -1601,10 +1632,13 @@ t_skip_to_xx_sw:
     } // end of case T_SWITCH
     case  96 + T_SWITCH:
     {
+        goto t_sw_plus_96;
+t_sw_plus_96:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             break;
         }
-        nBW = 8; // aug_type_to_nBW(96 + T_SWITCH)
+        nBW = gnBW(qy, AugTypeBitsInv(96));
+        assert(nBLR == nBL);
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
   #ifdef _LNX
@@ -1629,10 +1663,13 @@ t_skip_to_xx_sw:
     } // end of case T_SWITCH
     case  80 + T_SWITCH:
     {
+        goto t_sw_plus_80;
+t_sw_plus_80:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             break;
         }
-        nBW = 8; // aug_type_to_nBW(80 + T_SWITCH)
+        nBW = gnBW(qy, AugTypeBitsInv(80));
+        assert(nBLR == nBL);
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
   #ifdef _LNX
@@ -1657,10 +1694,13 @@ t_skip_to_xx_sw:
     } // end of case T_SWITCH
     case  64 + T_SWITCH:
     {
+        goto t_sw_plus_64;
+t_sw_plus_64:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             break;
         }
-        nBW = 8; // aug_type_to_nBW(64 + T_SWITCH)
+        nBW = gnBW(qy, AugTypeBitsInv(64));
+        assert(nBLR == nBL);
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
   #ifdef _LNX
@@ -1687,11 +1727,14 @@ t_skip_to_xx_sw:
   #if defined(AUGMENT_TYPE) && defined(LOOKUP)
     case 48 + T_SWITCH:
     {
+        goto t_sw_plus_48;
+t_sw_plus_48:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             break;
         }
+        assert(nBLR == nBL);
       #ifdef AUGMENT_TYPE_8
-        nBW = 8; // aug_type_to_nBW(48 + T_SWITCH)
+        nBW = gnBW(qy, AugTypeBitsInv(48));
         assert(gnBW(qy, nBLR) == nBW);
       #else // AUGMENT_TYPE_8
         nBW = gnBW(qy, nBLR); // num bits decoded
@@ -1719,11 +1762,14 @@ t_skip_to_xx_sw:
     } // end of case T_SWITCH
     case 32 + T_SWITCH:
     {
+        goto t_sw_plus_32;
+t_sw_plus_32:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             break;
         }
+        assert(nBLR == nBL);
       #ifdef AUGMENT_TYPE_8
-        nBW = 8; // aug_type_to_nBW(32 + T_SWITCH)
+        nBW = gnBW(qy, AugTypeBitsInv(32));
         assert(gnBW(qy, nBLR) == nBW);
       #else // AUGMENT_TYPE_8
         nBW = gnBW(qy, nBLR); // num bits decoded
@@ -1751,11 +1797,14 @@ t_skip_to_xx_sw:
     } // end of case T_SWITCH
     case 16 + T_SWITCH:
     {
+        goto t_sw_plus_16;
+t_sw_plus_16:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             break;
         }
+        assert(nBLR == nBL);
       #ifdef AUGMENT_TYPE_8
-        nBW = 8; // aug_type_to_nBW(16 + T_SWITCH)
+        nBW = gnBW(qy, AugTypeBitsInv(16));
         assert(gnBW(qy, nBLR) == nBW);
       #else // AUGMENT_TYPE_8
         nBW = gnBW(qy, nBLR); // num bits decoded
@@ -1782,15 +1831,23 @@ t_skip_to_xx_sw:
         goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
     } // end of case T_SWITCH
   #endif // defined(AUGMENT_TYPE) && defined(LOOKUP)
+  #if !defined(AUGMENT_TYPE) || !defined(LOOKUP)
     case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
+  #endif // !defined(AUGMENT_TYPE) || !defined(LOOKUP)
   #endif // !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
     {
+  #if !defined(AUGMENT_TYPE) || !defined(LOOKUP) || defined(SKIP_LINKS)
         // nBL is bits left after picking the link we're handling now
         // nBL has not been reduced by any skip indicated in that link
         // nBLR is bits left after reducing nBL by any skip in the link
         // nBLR is bits left to decode by this switch and below
         goto t_switch; // silence cc in case other the gotos are ifdef'd out
 t_switch:;
+  #ifdef AUGMENT_TYPE
+  #ifdef LOOKUP
+       assert(nBLR != nBL);
+  #endif // LOOKUP
+  #endif // AUGMENT_TYPE
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
   #if defined(INSERT) || defined(REMOVE)
             if (bCleanup) {
@@ -1884,6 +1941,7 @@ switchTail:;
   #else // defined(LOOKUP) || !defined(RECURSIVE)
         return InsertRemove(nBL, pLn, wKey);
   #endif // defined(LOOKUP) || !defined(RECURSIVE)
+  #endif // !defined(AUGMENT_TYPE) || !defined(LOOKUP) || defined(SKIP_LINKS)
 
     } // end of case T_SWITCH
 

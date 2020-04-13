@@ -503,6 +503,7 @@ JudyMalloc.s: JudyMalloc.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $^
 
 # The .c.i rule doesn't work for some reason.  Later.
+# I'm not sure this works with DEBUG. A problem with assert macro and indent?
 b.i: b.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
 
