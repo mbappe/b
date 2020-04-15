@@ -3,13 +3,15 @@
 #define _BDEFINES_H_INCLUDED
 
 // If B_JUDYL is defined then we are building JudyL.
-// If B_JUDYL is not defined then we are building Judy1.
+// Otherwise we are building Judy1.
 // JudyL and Judy1 have different constraints and different defaults.
-// We may build both Judy1 and JudyL with a single make, hence with
-// a single set of -D options. We probably ought to enhance Makefile
+// We can build both Judy1 and JudyL with a single make, hence with
+// a single set of command line -D options.
+// We probably ought to enhance Makefile
 // to have JUDY1_DEFINES and JUDYL_DEFINES.
 // We don't build both 64-bit and 32-bit with a single make, but maybe
-// we should. And maybe with DEFINES_32 and DEFINES_64.
+// we should since they can be combined into a single library on Mac.
+// So maybe we should have DEFINES_32 and DEFINES_64.
 // And maybe JUDY[1L]_DEFINES_(32|64).
 
 #ifdef B_JUDYL
@@ -46,6 +48,37 @@
     #define cnLogBitsPerWord 5
     #define cnLogBytesPerWord 2
 #endif // cnBitsPerWord
+
+// Default is cnBitsPerDigit = 8.
+#ifndef cnBitsPerDigit
+  #define cnBitsPerDigit  8
+#endif // !cnBitsPerDigit
+
+// Number of bits in the least significant digit of the key.
+// Default cnBitsInD1 is cnBitsPerDigit. We count digits up from there.
+#ifndef cnBitsInD1
+  #define cnBitsInD1  cnBitsPerDigit
+#endif // !cnBitsInD1
+
+#define cnBitsLeftAtDl1  cnBitsInD1
+
+// Bits in the second least significant digit of the key. Not bits left.
+#ifndef cnBitsInD2
+  #define cnBitsInD2 \
+      (((cnBitsLeftAtDl1) + (cnBitsPerDigit) <= (cnBitsPerWord)) \
+          ? (cnBitsPerDigit) : (cnBitsPerWord) - (cnBitsLeftAtDl1))
+#endif // !cnBitsInD2
+
+#define cnBitsLeftAtDl2  (cnBitsLeftAtDl1 + cnBitsInD2)
+
+// Bits in the third least significant digit of the key. Not bits left.
+#ifndef cnBitsInD3
+  #define cnBitsInD3 \
+      (((cnBitsLeftAtDl2) + (cnBitsPerDigit) <= (cnBitsPerWord)) \
+          ? (cnBitsPerDigit) : (cnBitsPerWord) - (cnBitsLeftAtDl2))
+#endif // !cnBitsInD3
+
+#define cnBitsLeftAtDl3     (cnBitsLeftAtDl2 + cnBitsInD3)
 
 // Default is -DCOMPRESSED_LISTS.
 #ifndef NO_COMPRESSED_LISTS
@@ -276,8 +309,8 @@
 
 // Default is -DPSPLIT_SEARCH_WORD -UPSPLIT_SEARCH_XOR_WORD.
 // Default is -UNO_BINARY_SEARCH_WORD -UBACKWARD_SEARCH_WORD.
-// PSPLIT_SEARCH_WORD does not apply at nBL == cnBitsPerDigit.
-// If -DNO_PSPLIT_SEARCH_WORD, then binary search for nBL != cnBitsPerDigit
+// PSPLIT_SEARCH_WORD does not apply at nBL == cnBitsPerWord.
+// If -DNO_PSPLIT_SEARCH_WORD, then binary search for nBL != cnBitsPerWord
 // unless -DNO_BINARY_SEARCH_WORD.
 #ifndef   NO_PSPLIT_SEARCH_WORD
     #undef   PSPLIT_SEARCH_WORD
@@ -326,14 +359,14 @@
   // Default is ALLOW_EMBEDDED_BITMAP.
   #ifndef NO_ALLOW_EMBEDDED_BITMAP
 // Not sure why we are placing this condition on ALLOW_EMBEDDED_BITMAP.
-      #if !defined(cnBitsPerDigit) || (cnBitsPerDigit * 2 > cnLogBitsPerWord)
+      #if (cnBitsPerDigit * 2 > cnLogBitsPerWord)
     // What are the consequences of ALLOW_EMBEDDED_BITMAP
     // if (cnBitsInD1 > cnLogBitsPerLink)?
     // What about USE_XX_SW_ONLY_AT_DL2 which can yield (nBLR < cnBitsInD1)?
     #define ALLOW_EMBEDDED_BITMAP
-      #endif // !cnBitsPerDigit || (cnBitsPerDigit * 2 > cnLogBitsPerWord)
+      #endif // (cnBitsPerDigit * 2 > cnLogBitsPerWord)
   #endif // #ifndef NO_ALLOW_EMBEDDED_BITMAP
-#endif // NO_BITMAP
+#endif // else NO_BITMAP
 
 #ifdef BITMAP
 #ifdef B_JUDYL
@@ -352,18 +385,14 @@
     // Default is BMLF_CNTS only for default digit size of eight.
     // It hasn't been tested with anything else.
     #if (cnBitsPerWord > 32) // Why?
-    #ifndef cnBitsInD1 // Why not also allow cnBitsInD1 == 8?
-    #ifndef cnBitsInD2 // Why not also allow cnBitsInD2 == 8?
-    #ifndef cnBitsInD3 // Why not also allow cnBitsInD3 == 8?
-    #ifndef cnBitsPerDigit // Why not also allow cnBitsPerDigit == 8?
+    #if cnBitsPerDigit == 8
+    #if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
     #ifndef NO_BMLF_CNTS
       #undef  BMLF_CNTS
       #define BMLF_CNTS
     #endif // !NO_BMLF_CNTS
-    #endif // #ifndef cnBitsPerDigit
-    #endif // #ifndef cnBitsInD3
-    #endif // #ifndef cnBitsInD2
-    #endif // #ifndef cnBitsInD1
+    #endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+    #endif // cnBitsPerDigit == 8
     #endif // (cnBitsPerWord > 32)
     #ifdef BMLF_CNTS
       // Default is BMLF_CNTS_CUM for BMLF_CNTS unless NO_BMLF_CNTS_CUM.
@@ -417,9 +446,9 @@
     #undef BMLF_CNTS_CUM
     #ifdef ALLOW_EMBEDDED_BITMAP
         // below doesn't catch problems for Link_t bigger than one word
-        #if defined(cnBitsInD1) && (cnBitsInD1 <= cnLogBitsPerWord)
+        #if (cnBitsInD1 <= cnLogBitsPerWord)
             #define _D1BmFitsInLink
-        #elif defined(cnBitsPerDigit) && (cnBitsPerDigit <= cnLogBitsPerWord)
+        #elif (cnBitsPerDigit <= cnLogBitsPerWord)
             #define _D1BmFitsInLink
         #endif // cnBitsInD1 <= ... elif cnBitsPerDigit <= ... else
         #ifdef _D1BmFitsInLink
@@ -593,18 +622,14 @@
 #ifdef USE_BM_SW
 #ifdef B_JUDYL
 #if cnBitsPerWord > 32
-  #ifndef cnBitsInD1
-  #ifndef cnBitsInD2
-  #ifndef cnBitsInD3
-  #ifndef cnBitsPerDigit
+  #if cnBitsPerDigit == 8
+  #if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
     #ifndef NO_BM_SW_CNT_IN_WR
         #undef  BM_SW_CNT_IN_WR
         #define BM_SW_CNT_IN_WR
     #endif // #ifndef NO_BM_SW_CNT_IN_WR
-  #endif // #ifndef cnBitsPerDigit
-  #endif // #ifndef cnBitsInD3
-  #endif // #ifndef cnBitsInD2
-  #endif // #ifndef cnBitsInD1
+  #endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+  #endif // cnBitsPerDigit == 8
   #ifndef BM_SW_CNT_IN_WR
   #ifndef NO_BM_SW_CNT_IN_WR
     #pragma message("Warning: not defining BM_SW_CNT_IN_WR")
@@ -656,10 +681,23 @@
   #define  OLD_HK_64
 #endif // #ifndef NO_OLD_HK_64
 
+#ifdef AUGMENT_TYPE_8_PLUS_4
+  #if cnBitsPerDigit == 8
+  #if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+    #pragma message("AUGMENT_TYPE_8_PLUS_4 is not needed.")
+  #endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+  #endif // cnBitsPerDigit == 8
+  #undef  AUGMENT_TYPE_8
+  #define AUGMENT_TYPE_8
+#endif // AUGMENT_TYPE_8_PLUS_4
 #ifdef AUGMENT_TYPE_8
   #undef  AUGMENT_TYPE
   #define AUGMENT_TYPE
 #endif // AUGMENT_TYPE_8
+#ifdef AUGMENT_TYPE_NOT
+  #undef  AUGMENT_TYPE
+  #define AUGMENT_TYPE
+#endif // AUGMENT_TYPE_NOT
 
 // Fix NUM_TYPES on command line based on other ifdefs if
 // ALL_SKIP_TO_SW_CASES && AUGMENT_TYPE and the default 9 is not correct.

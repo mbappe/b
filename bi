@@ -3,14 +3,16 @@
 # This lengthy regression test script has the structure required to be
 # used by git bisect run.
 
+make clean default && regress
+if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
+
 : \
-&& make clean default \
-&& regress \
 && DEFINES="-DDEBUG" make clean default \
 && regress \
 && DEFINES="-DQP_PLN -DDEBUG" make clean default \
 && regress \
 && :
+if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 
 for lvl in "-DNO_LVL_IN_WR_HB -DDEFAULT_SKIP_TO_SW" \
            "-DNO_LVL_IN_WR_HB -DALL_SKIP_TO_SW_CASES" \
@@ -24,6 +26,7 @@ do
     && :
 done
 done
+if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 
 : 'regression test bug fix in 204826' \
 && DEFINES="-DNO_USE_BM_SW -DcnBitsInD1=6 -DcnBitsInD2=10 -DNO_REMOTE_LNX" \
@@ -42,7 +45,8 @@ done
 && regress \
 && DEFINES="-DNO_EMBED_KEYS -DDEBUG" make clean default \
 && regress \
-&& DEFINES="-DSKIP_TO_BITMAP -DcnListPopCntMax64=64 -DDEBUG" make clean default \
+&& DEFINES="-DSKIP_TO_BITMAP -DcnListPopCntMax64=64 -DDEBUG" \
+   make clean default \
 && regress \
 && DEFINES="-DcnListPopCntMax64=16 -DcnListPopCntMaxDl1=16 -DDEBUG" \
    make clean default \
@@ -157,17 +161,21 @@ done
 && BPW=32 DEFINES="-DDEFAULT_SKIP_TO_SW -DDEBUG" make clean default \
 && BPW=32 DEFINES="-DALL_SKIP_TO_SW_CASES -DDEBUG_ALL" make clean default \
 && :
+if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 
 for sfw in "" -DNO_SEARCH_FROM_WRAPPER
 do
 for qpln in "" -DQP_PLN
 do
 for augtype in "" "-DAUGMENT_TYPE" \
-                  "-DAUGMENT_TYPE                  -DMASK_TYPE" \
-                  "-DAUGMENT_TYPE                  -DAUGMENT_TYPE_NOT" \
-                  "-DAUGMENT_TYPE -DAUGMENT_TYPE_8" \
-                  "-DAUGMENT_TYPE -DAUGMENT_TYPE_8 -DMASK_TYPE" \
-                  "-DAUGMENT_TYPE -DAUGMENT_TYPE_8 -DAUGMENT_TYPE_NOT"
+                  "-DAUGMENT_TYPE                             -DMASK_TYPE" \
+                  "                        -DAUGMENT_TYPE_NOT" \
+                  "-DAUGMENT_TYPE_8" \
+                  "-DAUGMENT_TYPE_8                           -DMASK_TYPE" \
+                  "-DAUGMENT_TYPE_8        -DAUGMENT_TYPE_NOT" \
+                  "-DAUGMENT_TYPE_8_PLUS_4" \
+                  "-DAUGMENT_TYPE_8_PLUS_4                    -DMASK_TYPE" \
+                  "-DAUGMENT_TYPE_8_PLUS_4 -DAUGMENT_TYPE_NOT"
 do
 for allcases in "" -DALL_SKIP_TO_SW_CASES -DDEFAULT_SKIP_TO_SW
 do
@@ -182,6 +190,7 @@ done
 done
 done
 done
+if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 
 #BPW=32 make clean default
 #CC=clang make clean default

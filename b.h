@@ -539,30 +539,6 @@ typedef Word_t Bucket_t;
 #define cnLogBytesPerBucket  cnLogBytesPerWord
 #endif // defined(PARALLEL_128)
 
-// Bits-per-digit.
-#if JUNK
-// If default is cnBitsPerDigit = cnLogBitsPerWord.
-#if ! defined(cnBitsPerDigit)
-    #define cnBitsPerDigit cnLogBitsPerWord
-#else // ! defined(cnBitsPerDigit)
-    #if (cnBitsPerDigit <= 0) || (cnBitsPerDigit > cnBitsPerWord)
-        #undef  cnBitsPerDigit
-        #define cnBitsPerDigit  cnBitsPerWord
-    #endif // (cnBitsPerDigit <= 0) || (cnBitsPerDigit > cnBitsPerWord)
-#endif // ! defined(cnBitsPerDigit)
-#else // 0
-// Default is cnBitsPerDigit = 8.
-#if ! defined(cnBitsPerDigit)
-    #define cnBitsPerDigit 8
-#endif // ! defined(cnBitsPerDigit)
-#endif // JUNK
-
-// Choose the number of bits in the least significant digit of the key.
-// Default cnBitsInD1 is cnBitsPerDigit.  We count digits up from there.
-#if ! defined(cnBitsInD1)
-#define cnBitsInD1  cnBitsPerDigit
-#endif // ! defined(cnBitsInD1)
-
 #if defined(CODE_XX_SW)
 // Default is -DSKIP_TO_XX_SW iff -DSKIP_LINKS && -DCODE_XX_SW.
 // And lvl not in type.
@@ -820,25 +796,6 @@ typedef uint16_t uListPopCntMax_t;
 extern uListPopCntMax_t auListPopCntMax[];
   #endif // POP_CNT_MAX_IS_KING
 #endif // (cwListPopCntMax != 0)
-
-#define cnBitsLeftAtDl1     (cnBitsInD1)
-
-// Bits in the second least significant digit of the key.  Not bits left.
-#if ! defined(cnBitsInD2)
-#define cnBitsInD2 \
-    (((cnBitsLeftAtDl1) + (cnBitsPerDigit) <= (cnBitsPerWord)) \
-        ? (cnBitsPerDigit) : (cnBitsPerWord) - (cnBitsLeftAtDl1))
-#endif // ! defined(cnBitsInD2)
-
-#define cnBitsLeftAtDl2     (cnBitsLeftAtDl1 + cnBitsInD2)
-
-#if ! defined(cnBitsInD3)
-#define cnBitsInD3 \
-    (((cnBitsLeftAtDl2) + (cnBitsPerDigit) <= (cnBitsPerWord)) \
-        ? (cnBitsPerDigit) : (cnBitsPerWord) - (cnBitsLeftAtDl2))
-#endif // ! defined(cnBitsInD3)
-
-#define cnBitsLeftAtDl3     (cnBitsLeftAtDl2 + cnBitsInD3)
 
 #define cnBWAtTop \
     (cnBitsPerWord - nBL_from_nDL(cnDigitsPerWord - 1))
@@ -6789,8 +6746,8 @@ BmSwIndex(qp, Word_t wDigit,
 }
 
 #if defined(COMPRESSED_LISTS)
-  #if (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
 
+  #if (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
 static int
 LocateKeyInList8(qp, int nBLR, Word_t wKey)
 {

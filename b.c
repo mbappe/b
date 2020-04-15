@@ -10569,9 +10569,32 @@ Initialize(void)
 
 #ifdef           AUGMENT_TYPE_8
     printf("#    AUGMENT_TYPE_8\n");
+  #if       cnBitsPerDigit != 8
+    #error  cnBitsPerDigit != 8
+  #endif // cnBitsPerDigit != 8
+  #ifndef AUGMENT_TYPE_8_PLUS_4
+    #if       cnBitsInD1 != 8 || cnBitsInD2 != 8 || cnBitsInD3 != 8
+      #error  cnBitsInD1 != 8 || cnBitsInD2 != 8 || cnBitsInD3 != 8
+    #endif // cnBitsInD1 != 8 || cnBitsInD2 != 8 || cnBitsInD3 != 8
+  #endif // AUGMENT_TYPE_8_PLUS_4
 #else //         AUGMENT_TYPE_8
     printf("# No AUGMENT_TYPE_8\n");
 #endif //        AUGMENT_TYPE_8 else
+
+#ifdef           AUGMENT_TYPE_8_PLUS_4
+    printf("#    AUGMENT_TYPE_8_PLUS_4\n");
+    #if       cnBitsLeftAtDl1 <  4 || 12 <= cnBitsLeftAtDl1
+      #error  cnBitsLeftAtDl1 <  4 || 12 <= cnBitsLeftAtDl1
+    #endif // cnBitsLeftAtDl1 <  4 || 12 <= cnBitsLeftAtDl1
+    #if       cnBitsLeftAtDl2 < 12 || 20 <= cnBitsLeftAtDl2
+      #error  cnBitsLeftAtDl2 < 12 || 20 <= cnBitsLeftAtDl2
+    #endif // cnBitsLeftAtDl2 < 12 || 20 <= cnBitsLeftAtDl2
+    #if       cnBitsLeftAtDl3 < 20 || 28 <= cnBitsLeftAtDl3
+      #error  cnBitsLeftAtDl3 < 20 || 28 <= cnBitsLeftAtDl3
+    #endif // cnBitsLeftAtDl3 < 20 || 28 <= cnBitsLeftAtDl3
+#else //         AUGMENT_TYPE_8_PLUS_4
+    printf("# No AUGMENT_TYPE_8_PLUS_4\n");
+#endif // else   AUGMENT_TYPE_8_PLUS_4
 
 #ifdef           AUGMENT_TYPE_NOT
     printf("#    AUGMENT_TYPE_NOT\n");
@@ -12305,7 +12328,7 @@ Initialize(void)
   #ifdef ALL_SKIP_TO_SW_CASES
   #ifdef AUGMENT_TYPE
     printf("\n");
-    printf("# NUM_TYPES d\n", NUM_TYPES);
+    printf("# NUM_TYPES %d\n", NUM_TYPES);
   #endif // AUGMENT_TYPE
   #endif // ALL_SKIP_TO_SW_CASES
     printf("\n");
