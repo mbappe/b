@@ -168,19 +168,32 @@ do
 for qpln in "" -DQP_PLN
 do
 for augtype in "" "-DAUGMENT_TYPE" \
-                  "-DAUGMENT_TYPE                             -DMASK_TYPE" \
-                  "                        -DAUGMENT_TYPE_NOT" \
+                  "-DAUGMENT_TYPE -DMASK_TYPE" \
+                  "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD1=4" \
+                  "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD1=11" \
+                  "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD2=6" \
+                  "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD2=10" \
+                  "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD3=7" \
+                  "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD3=9" \
                   "-DAUGMENT_TYPE_8" \
-                  "-DAUGMENT_TYPE_8                           -DMASK_TYPE" \
-                  "-DAUGMENT_TYPE_8        -DAUGMENT_TYPE_NOT" \
-                  "-DAUGMENT_TYPE_8_PLUS_4" \
-                  "-DAUGMENT_TYPE_8_PLUS_4                    -DMASK_TYPE" \
-                  "-DAUGMENT_TYPE_8_PLUS_4 -DAUGMENT_TYPE_NOT"
+                  "-DAUGMENT_TYPE_8 -DMASK_TYPE"
 do
 for allcases in "" -DALL_SKIP_TO_SW_CASES -DDEFAULT_SKIP_TO_SW
 do
 for jt in "" -DJUMP_TABLE
 do
+    # Pare down the number of tests.
+    if [ "$sfw" != "" -o "$qpln" != "" ]; then
+        if [ "$augtype" != "" ]; then
+        if [ "$augtype" != "-DAUGMENT_TYPE" ]; then
+        if [ "$augtype" != "-DAUGMENT_TYPE_8" ]; then
+        if [ "$augtype" != "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD1=4" ]; then
+            continue
+        fi
+        fi
+        fi
+        fi
+    fi
     : \
     && DEFINES="$sfw $qpln $augtype $allcases $jt -DDEBUG" make clean default \
     && regress \

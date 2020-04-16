@@ -907,11 +907,7 @@ fastAgain:;
             &&t_null,
           #endif // defined(SEPARATE_T_NULL)
           #if (cwListPopCntMax != 0)
-              #ifdef AUGMENT_TYPE_8
-            &&t_list32,
-              #else // AUGMENT_TYPE_8
-            &&t_listWord,
-              #endif // AUGMENT_TYPE_8 else
+            &&t_list48,
               #ifdef XX_LISTS
             &&t_xx_list,
               #endif // XX_LISTS
@@ -2537,14 +2533,16 @@ t_list_sw:;
     case  96 + T_LIST:
     case  80 + T_LIST:
     case  64 + T_LIST:
-      #endif // AUGMENT_TYPE_8
-      #if !defined(AUGMENT_TYPE_8) || cnBitsLeftAtDl3 > 24
-    case 48 + T_LIST: // nBL 28-35 for aug_type_8_plus_4 else 32 for aug_type_8
-                      // else nBL >= 32 for aug_type
-      #endif // !defined(AUGMENT_TYPE_8) || cnBitsLeftAtDl3 > 24
-    {
         goto t_listWord;
 t_listWord:;
+      #else // AUGMENT_TYPE_8
+    case 48 + T_LIST:
+        goto t_list48;
+t_list48:;
+      #endif // else AUGMENT_TYPE_8
+    // nBL > 32 for AUGMENT_TYPE && !AUGMENT_TYPE_8
+    // nDL >  4 for AUGMENT_TYPE_8
+    {
       #ifdef COMPRESSED_LISTS
       #ifdef SKIP_PREFIX_CHECK
         if (PrefixCheckAtLeaf(qy, wKey
@@ -2622,13 +2620,12 @@ t_listWord:;
           #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
         break;
     } // end of case T_LIST
-      #if defined(AUGMENT_TYPE_8) && cnBitsLeftAtDl3 <= 24
+      #ifdef AUGMENT_TYPE_8
     case 48 + T_LIST: // nBL 28-35 for aug_type_8_plus_4 else 32 for aug_type_8
-                      // else nBL >= 32 for aug_type
-    {
         goto t_list48;
 t_list48:;
-          #ifndef AUGMENT_TYPE_8_PLUS_4
+    // nDL == 4 for AUGMENT_TYPE_8
+    {
       #ifdef COMPRESSED_LISTS
       #ifdef SKIP_PREFIX_CHECK
         if (PrefixCheckAtLeaf(qy, wKey
@@ -2659,7 +2656,13 @@ t_list48:;
                   #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
                   #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
-                && ((nPos = LocateKeyInList32(qy, /*nBLR*/ 32, wKey)) >= 0)
+                      #if defined(AUGMENT_TYPE_8) && cnBitsLeftAtDl3 > 24
+                && ((nPos = LocateKeyInListWord(qy, cnBitsLeftAtDl3 + 8, wKey))
+                    >= 0)
+                      #else // AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
+                && ((nPos = LocateKeyInList32(qy, cnBitsLeftAtDl3 + 8, wKey))
+                    >= 0)
+                      #endif // else AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
                   #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
               #else // B_JUDYL
                   #if defined(SEARCH_FOR_JUDY1_LOOKUP)
@@ -2667,7 +2670,11 @@ t_list48:;
                   #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
                 && (LocateKeyInList(qya, nBLR, wKey) >= 0)
                   #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-                && ListHasKey32(qy, /*nBLR*/ 32, wKey)
+                      #if defined(AUGMENT_TYPE_8) && cnBitsLeftAtDl3 > 24
+                && ListHasKeyWord(qy, cnBitsLeftAtDl3 + 8, wKey)
+                      #else // AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
+                && ListHasKey32(qy, cnBitsLeftAtDl3 + 8, wKey)
+                      #endif // else AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
                   #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
               #endif // B_JUDYL
                 )
@@ -2705,15 +2712,14 @@ t_list48:;
         }
           #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
         break;
-          #endif // !AUGMENT_TYPE_8_PLUS_4
     } // end of case T_LIST
-      #endif // AUGMENT_TYPE_8 && cnBitsLeftAtDl3 <= 24
-    case 32 + T_LIST: // nBL 17-32 for aug_type w/o aug_type_8
-                      // nBL 20-27 for aug_type_8_plus_4
-                      // else nBL 24 for aug_type_8
-    {
+      #endif // AUGMENT_TYPE_8
+    case 32 + T_LIST:
         goto t_list32;
 t_list32:;
+    // 16 < nBL <= 32 for AUGMENT_TYPE && !AUGMENT_TYPE_8
+    //      nDL ==  3 for AUGMENT_TYPE_8
+    {
       #ifdef COMPRESSED_LISTS
       #ifdef SKIP_PREFIX_CHECK
         if (PrefixCheckAtLeaf(qy, wKey
@@ -2744,8 +2750,8 @@ t_list32:;
                   #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
                   #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
-              #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_8_PLUS_4)
-                && ((nPos = LocateKeyInList32(qy, /*nBLR*/ 24, wKey)) >= 0)
+              #ifdef AUGMENT_TYPE_8
+                && ((nPos = LocateKeyInList32(qy, cnBitsLeftAtDl3, wKey)) >= 0)
               #else // AUGMENT_TYPE_8 && !AUGMENT_TYPE_8_PLUS_4
                 && ((nPos = LocateKeyInList32(qy, nBLR, wKey)) >= 0)
               #endif // else AUGMENT_TYPE_8 && !AUGMENT_TYPE_8_PLUS_4
@@ -2756,8 +2762,8 @@ t_list32:;
                   #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
                 && (LocateKeyInList(qya, nBLR, wKey) >= 0)
                   #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-              #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_8_PLUS_4)
-                && ListHasKey32(qy, /*nBLR*/ 24, wKey)
+              #ifdef AUGMENT_TYPE_8
+                && ListHasKey32(qy, cnBitsLeftAtDl3, wKey)
               #else // AUGMENT_TYPE_8 && !AUGMENT_TYPE_8_PLUS_4
                 && ListHasKey32(qy, nBLR, wKey)
               #endif // else AUGMENT_TYPE_8 && !AUGMENT_TYPE_8_PLUS_4
@@ -2800,9 +2806,11 @@ t_list32:;
         break;
     } // end of case T_LIST
     case 16 + T_LIST:
-    {
         goto t_list16;
 t_list16:;
+    // 8 < nBL <= 16 for AUGMENT_TYPE && !AUGMENT_TYPE_8
+    //     nDL ==  2 for AUGMENT_TYPE_8
+    {   // 8 < nBL <= 16 for AUGMENT_TYPE && !AUGMENT_TYPE_8
       #ifdef COMPRESSED_LISTS
       #ifdef SKIP_PREFIX_CHECK
         if (PrefixCheckAtLeaf(qy, wKey
@@ -2836,7 +2844,8 @@ t_list16:;
                       #if defined(AUGMENT_TYPE_8) && cnBitsLeftAtDl2 > 16
                 && ((nPos = LocateKeyInList32(qy, cnBitsLeftAtDl2, wKey)) >= 0)
                       #elif defined(AUGMENT_TYPE_8)
-                && ((nPos = LocateKeyInList16(qya, /*nBLR*/ 16, wKey)) >= 0)
+                && ((nPos = LocateKeyInList16(qya, cnBitsLeftAtDl2, wKey))
+                    >= 0)
                       #else
                 && ((nPos = LocateKeyInList16(qya, nBLR, wKey)) >= 0)
                       #endif
@@ -2850,7 +2859,7 @@ t_list16:;
                       #if defined(AUGMENT_TYPE_8) && cnBitsLeftAtDl2 > 16
                 && ListHasKey32(qy, cnBitsLeftAtDl2, wKey)
                       #elif defined(AUGMENT_TYPE_8)
-                && ListHasKey16(qy, /*nBLR*/ 16, wKey)
+                && ListHasKey16(qy, cnBitsLeftAtDl2, wKey)
                       #else
                 && ListHasKey16(qy, nBLR, wKey)
                       #endif
@@ -2907,9 +2916,12 @@ t_list16:;
   #endif // defined(DEFAULT_LIST)
     case T_LIST:
   #endif // !defined(DEFAULT_SKIP_TO_SW) || defined(DEFAULT_AND_CASE)
-    {
         goto t_list;
 t_list:;
+    // all cases for !AUGMENT_TYPE
+    // nBL <= 8  for  AUGMENT_TYPE && !AUGMENT_TYPE_8
+    // nDL == 1  for  AUGMENT_TYPE_8
+    {
         DBGX(Checkpoint(qy, "t_list"));
 
   #if defined(INSERT) || defined(REMOVE)
@@ -2968,10 +2980,10 @@ t_list:;
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
                   #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
                       #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT)
-                          #if defined(AUGMENT_TYPE_8_PLUS_4) && cnBitsInD1 > 8
-                && ((nPos = LocateKeyInList16(qya, nBLR, wKey)) >= 0)
+                          #if defined(AUGMENT_TYPE_8) && cnBitsInD1 > 8
+                && ((nPos = LocateKeyInList16(qya, cnBitsInD1, wKey)) >= 0)
                           #elif defined(AUGMENT_TYPE_8)
-                && ((nPos = LocateKeyInList8(qy, /*nBLR*/ 8, wKey)) >= 0)
+                && ((nPos = LocateKeyInList8(qy, cnBitsInD1, wKey)) >= 0)
                           #else
                 && ((nPos = LocateKeyInList8(qy, nBLR, wKey)) >= 0)
                           #endif
@@ -2985,7 +2997,17 @@ t_list:;
                   #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
                 && (LocateKeyInList(qya, nBLR, wKey) >= 0)
                   #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+                      #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT)
+                          #if defined(AUGMENT_TYPE_8) && cnBitsInD1 > 8
+                && ListHasKey16(qy, cnBitsInD1, wKey)
+                          #elif defined(AUGMENT_TYPE_8)
+                && ListHasKey8(qy, cnBitsInD1, wKey)
+                          #else // AUG_TYPE_8 && cnBitsInD1 > 8 elif AUG_TYPE_8
                 && ListHasKey(qy, nBLR, wKey)
+                          #endif // else AT8 && cnBitsInD1 > 8 elif AUG_TYPE_8
+                      #else // AUGMENT_TYPE && !AUGMENT_TYPE_NOT
+                && ListHasKey(qy, nBLR, wKey)
+                      #endif // else AUGMENT_TYPE && !AUGMENT_TYPE_NOT
                   #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
               #endif // defined(B_JUDYL)
           #else // defined(LOOKUP)
