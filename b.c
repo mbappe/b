@@ -12492,8 +12492,9 @@ Judy1FreeArray(PPvoid_t PPArray, PJError_t PJError)
 
 // Return the number of keys that are present from wKey0 through wKey1.
 // Include wKey0 and wKey1 in the count if they are present.
-// Return zero for full pop and identify this case by:
-// (wKey0 == 0) && (wKey1 == -1) && (PArray != NULL).
+// Return zero if (wKey0 == 0) and (wKey1 == (Word_t)-1) and all keys are
+// present.
+// Use (*pwRoot == 0) to disambiguate no keys present from all keys present.
 //
 // 'typedef const void * Pcvoid_t' aka 'typedef void * const Pcvoid_t'
 // Pcvoid_t is a pointer to a constant.
@@ -12677,13 +12678,19 @@ GetPopCntX(qp, Word_t wPrefix)
 
 // NextGuts(wRoot, nBL, pwKey, wSkip, bPrev, bEmpty)
 //
-// Find the (wSkip+1)'th present key/index greater than or equal to wKey.
-// Return 0 if such a key/index exists.
-// Otherwise return the amount of the population deficiency.
+// For bPrev == 0:
 //
-// If wSkip=0, then find the 1st present key/index equal to or after wKey.
-// If wSkip=1, then find the 2nd present key/index equal to or after wKey.
-// If wSkip=2, then find the 3rd present key/index equal to or after wKey.
+// Find the (wSkip+1)'th present key greater than or equal to *pwKey.
+// Return 0 if such a key exists.
+// Otherwise return the amount of the population deficiency, i.e. if
+// able to find the n'th present key but not able to find the (n+1)'th
+// present key, then return n - wSkip.
+//
+// If wSkip=0, then find the 1st present key equal to or bigger than *pwKey.
+// If wSkip=1, then find the 2nd present key equal to or bigger than *pwKey.
+// If wSkip=2, then find the 3rd present key equal to or bigger then *pwKey.
+//
+// For bPrev == 1 change "bigger" to "smaller" in the above.
 //
 // To find all keys:
 //    for (wKey = 0; Next(&wKey, /* wSkip */ 0) == 0; wKey++) ;
@@ -13773,12 +13780,13 @@ Judy1ByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
 
 // If *pwKey is in the array then return 1 and leave *pwKey unchanged.
 // Otherwise find the next bigger key than *pwKey which is in the array.
-// Put the resulting key in *pwKey on return.
+// Put the found key in *pwKey.
 // Return 1 if a key is found.
-// Return 0 if no key is found.
+// Return 0 if *pwKey is bigger than the biggest key in the array.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
-// But we go to the trouble of preserving *pwKey on error.
+// But we go to the trouble of preserving *pwKey if anything other than 1
+// is returned to compare with JudyA.
 #ifdef B_JUDYL
 PPvoid_t
 JudyLFirst(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
@@ -13826,12 +13834,13 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 }
 
 // Find the next bigger key than *pwKey which is in the array.
-// Put the resulting key in *pwKey on return.
+// Put the found key in *pwKey.
 // Return 1 if a key is found.
-// Return 0 if no key is found.
+// Return 0 if *pwKey is bigger than or equal to the biggest key in the array.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
-// But we go to the trouble of preserving *pwKey on error.
+// But we go to the trouble of preserving *pwKey if anything other than 1
+// is returned to compare with JudyA.
 #ifdef B_JUDYL
 PPvoid_t
 JudyLNext(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
@@ -13876,12 +13885,13 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 
 // If *pwKey is in the array then return 1 and leave *pwKey unchanged.
 // Otherwise find the next smaller key than *pwKey which is in the array.
-// Put the resulting key in *pwKey on return.
+// Put the found key in *pwKey.
 // Return 1 if a key is found.
-// Return 0 if no key is found.
+// Return 0 if *pwKey is smaller than the smallest key in the array.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
-// But we go to the trouble of preserving *pwKey on error.
+// But we go to the trouble of preserving *pwKey if anything other than 1
+// is returned to compare with JudyA.
 #ifdef B_JUDYL
 PPvoid_t
 JudyLLast(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
@@ -13929,12 +13939,14 @@ Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 }
 
 // Find the next smaller key than *pwKey which is in the array.
-// Put the resulting key in *pwKey on return.
+// Put the found key in *pwKey.
 // Return 1 if a key is found.
-// Return 0 if no key is found.
+// Return 0 if *pwKey is smaller than or equal to the smallest key
+// in the array.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
-// But we go to the trouble of preserving *pwKey on error.
+// But we go to the trouble of preserving *pwKey if anything other than 1
+// is returned to compare with JudyA.
 #ifdef B_JUDYL
 PPvoid_t
 JudyLPrev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
@@ -13976,11 +13988,12 @@ Judy1Prev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 }
 
 // If *pwKey is not in the array return Success and leave *pwKey unchanged.
-// Otherwise find the next bigger (or smaller if bPrev) key than *pwKey
+// Otherwise find the next bigger (or smaller if bPrev) number than *pwKey
 // which is not in the array.
-// Put the resulting key in *pwKey on return.
-// Return Success if a key is found.
-// Return Failure if no key is found.
+// Put the found number in *pwKey.
+// Return Success if a number is found.
+// Return Failure if all keys bigger (or smaller if bPrev) than or equal
+// to *pwKey are in the array.
 // *pwKey is undefined if Failure is returned.
 static Status_t
 NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL,
@@ -14535,13 +14548,14 @@ t_xx_sw:;
 }
 
 // If *pwKey is not in the array then return 1 and leave *pwKey unchanged.
-// Otherwise find the next bigger key than *pwKey which is not in the array.
-// Put the resulting key in *pwKey on return.
-// Return 1 if a key is found.
-// Return 0 if no key is found.
+// Otherwise find the next bigger number than *pwKey which is not in the array.
+// Put the found number in *pwKey.
+// Return 1 if a number is found.
+// Return 0 if all keys bigger than or equal to *pwKey are in the array.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
-// But we go to the trouble of preserving *pwKey on error.
+// But we go to the trouble of preserving *pwKey if anything other than 1
+// is returned to compare with JudyA.
 int
 #ifdef B_JUDYL
 JudyLFirstEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
@@ -14574,13 +14588,14 @@ Judy1FirstEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     return status == Success;
 }
 
-// Find the next bigger key than *pwKey which is not in the array.
-// Put the resulting key in *pwKey on return.
-// Return 1 if a key is found.
-// Return 0 if no key is found.
+// Find the next bigger number than *pwKey which is not in the array.
+// Put the found number in *pwKey.
+// Return 1 if a number is found.
+// Return 0 if all keys bigger than *pwKey are in the array.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
-// But we go to the trouble of preserving *pwKey on error.
+// But we go to the trouble of preserving *pwKey if anything other than 1
+// is returned to compare with JudyA.
 int
 #ifdef B_JUDYL
 JudyLNextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
@@ -14613,14 +14628,16 @@ Judy1NextEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     return ret;
 }
 
-// If *pwKey is in the array then return 1 and leave *pwKey unchanged.
-// Otherwise find the next smaller key than *pwKey which is not in the array.
-// Put the resulting key in *pwKey on return.
-// Return 1 if a key is found.
-// Return 0 if no key is found.
+// If *pwKey is not in the array then return 1 and leave *pwKey unchanged.
+// Otherwise find the next smaller number than *pwKey which is not
+// in the array.
+// Put the found number in *pwKey.
+// Return 1 if a number is found.
+// Return 0 if all keys smaller than or equal to *pwKey are in the array.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
-// But we go to the trouble of preserving *pwKey on error.
+// But we go to the trouble of preserving *pwKey if anything other than 1
+// is returned to compare with JudyA.
 int
 #ifdef B_JUDYL
 JudyLLastEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
@@ -14652,14 +14669,14 @@ Judy1LastEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     return status == Success;
 }
 
-// Find the next smaller key than *pwKey which is not in the array.
-// Put the resulting key in *pwKey on return.
-// Return 1 if a key is found.
-// Return 0 if no key is found.
+// Find the next smaller number than *pwKey which is not in the array.
+// Put the found number in *pwKey.
+// Return 1 if a number is found.
+// Return 0 if all keys smaller than *pwKey are in the array.
 // Return -1 if pwKey is NULL.
 // *pwKey is undefined if anything other than 1 is returned.
-// But we go to the trouble of preserving *pwKey on error so we
-// compare with JudyA.
+// But we go to the trouble of preserving *pwKey if anything other than 1
+// is returned to compare with JudyA.
 int
 #ifdef B_JUDYL
 JudyLPrevEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
