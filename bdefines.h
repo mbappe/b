@@ -106,9 +106,15 @@
 
 #ifdef SKIP_LINKS
 #if !defined(LVL_IN_WR_HB) && !defined(LVL_IN_PP)
+  // For level in type, i.e. (!LVL_IN_WR_HB && !LVL_IN_PP),
+  // multiple type values all represent T_SKIP_TO_SWITCH, i.e.
+  // level = nType - T_SKIP_TO_SWITCH + 2.
   // Macro names that begin with '_' are derived from other macros
   // and are not inteded to be set explicitly on the build command line.
   #define _LVL_IN_TYPE
+  #if !defined(DEFAULT_SKIP_TO_SW) && !defined(ALL_SKIP_TO_SW_CASES)
+      #error Level in type requires DEFAULT_SKIP_TO_SW or ALL_SKIP_TO_SW_CASES.
+  #endif // !DEFAULT_SKIP_TO_SW && !ALL_SKIP_TO_SW_CASES
 #endif // !defined(LVL_IN_WR_HB) && !defined(LVL_IN_PP)
 #endif // SKIP_LINKS
 
@@ -496,6 +502,31 @@
   #undef     GOTO_AT_FIRST_IN_LOOKUP
   #define    GOTO_AT_FIRST_IN_LOOKUP
 #endif // NO_GOTO_AT_FIRST_IN_LOOKUP
+
+// At most one of DEFAULT_SKIP_TO_SW, DEFAULT_SWITCH,
+// DEFAULT_LIST and DEFAULT_BITMAP may be defined.
+#ifdef DEFAULT_SKIP_TO_SW
+  #ifdef DEFAULT_SWITCH
+    #error DEFAULT_SWITCH with DEFAULT_SKIP_TO_SW
+  #endif // DEFAULT_SWITCH
+  #ifdef DEFAULT_BITMAP
+    #error DEFAULT_BITMAP with DEFAULT_SKIP_TO_SW
+  #endif // DEFAULT_BITMAP
+  #ifdef DEFAULT_LIST
+    #error DEFAULT_LIST with DEFAULT_SKIP_TO_SW
+  #endif // DEFAULT_LIST
+#elif defined(DEFAULT_SWITCH)
+  #ifdef DEFAULT_BITMAP
+    #error DEFAULT_BITMAP with DEFAULT_SWITCH
+  #endif // DEFAULT_BITMAP
+  #ifdef DEFAULT_LIST
+    #error DEFAULT_LIST with DEFAULT_SWITCH
+  #endif // DEFAULT_LIST
+#elif defined(DEFAULT_BITMAP)
+  #ifdef DEFAULT_LIST
+    #error DEFAULT_LIST with DEFAULT_BITMAP
+  #endif // DEFAULT_LIST
+#endif // defined(DEFAULT_BITMAP)
 
 // DEFAULT_AND_CASE means include the explicit case statement even for the
 // default case defined by DEFAULT_<BLAH>.
