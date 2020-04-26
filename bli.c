@@ -459,14 +459,26 @@ AugTypeBits(int nBL)
     //  4 <= cnBitsLeftAtDl1 <  12
     // 12 <= cnBitsLeftAtDl2 <  20
     // 20 <= cnBitsLeftAtDl3 <  28
+      #if 1
     return (((nBL + 4) << 1) & ~0x0f) - 16;
+      #else
+    uint64_t x = 0x7060504030201000;
+    return ((uint8_t*)&x)[(nBL+4)/8-1];
+      #endif
   #elif defined(AUGMENT_TYPE_8)
-    // atb = (nBL << 1) - 16
+      #if 1
     return (nBL << 1) - 16;
+      #else
+    uint64_t x = 0x7060504030201000;
+    return ((uint8_t*)&x)[nBL/8-1];
+      #endif
   #else // AUGMENT_TYPE_8
-    // nLogBytesLeft = LOG(nBL - 1) - 2
-    // atb = nLogBytesLeft << 4
+      #if 1
     return (LOG(nBL - 1) - 2) << 4; // nLogBytesLeft << 4
+      #else
+    uint64_t x = 0x3030303020201000;
+    return ((uint8_t*)&x)[nBL/8-1];
+      #endif
   #endif // else AUGMENT_TYPE_8
 }
 
@@ -475,6 +487,17 @@ AugTypeBitsInv(int nAugTypeBits)
 {
     assert(!(nAugTypeBits & cnMallocMask));
   #ifdef AUGMENT_TYPE_8_PLUS_4
+      #if 1
+    uint64_t x = ( (Word_t)cnBitsPerWord                         << 56)
+               + (((Word_t)cnBitsLeftAtDl3 + cnBitsPerDigit * 4) << 48)
+               + (((Word_t)cnBitsLeftAtDl3 + cnBitsPerDigit * 3) << 40)
+               + (((Word_t)cnBitsLeftAtDl3 + cnBitsPerDigit * 2) << 32)
+               + ((        cnBitsLeftAtDl3 + cnBitsPerDigit    ) << 24)
+               + (         cnBitsLeftAtDl3                       << 16)
+               + (         cnBitsLeftAtDl2                       <<  8)
+               + (         cnBitsLeftAtDl1                            );
+    return ((uint8_t*)&x)[nAugTypeBits/16];
+      #else
     if (nAugTypeBits == 0) {
         return cnBitsInD1;
     }
@@ -482,17 +505,37 @@ AugTypeBitsInv(int nAugTypeBits)
         return cnBitsLeftAtDl2;
     }
     return cnBitsLeftAtDl3 + (nAugTypeBits >> 1) - 16;
+      #endif
   #elif defined(AUGMENT_TYPE_8)
-    // nBL = (atb + 16) >> 1
+      #if 1
     return (nAugTypeBits + 16) >> 1; // nBL
+      #else
+    uint64_t x = 0x4038302820181008;
+    return ((uint8_t*)&x)[nAugTypeBits/16];
+      #endif
   #else // AUGMENT_TYPE_8
-    // nLogBytesLeft = atb >> 4
-    return nAugTypeBits >> 4; // nLogBytesLeft;
+    assert(!(nAugTypeBits & ~16));
+      #if 1
+    return 8 << (nAugTypeBits >> 4);
+      #else
+    uint64_t x = 0x4040404020201008;
+    return ((uint8_t*)&x)[nAugTypeBits/16];
+      #endif
   #endif // else AUGMENT_TYPE_8
 }
 
 #endif // LOOKUP
 #endif // AUGMENT_TYPE
+
+#if (cwListPopCntMax != 0)
+  // _T_LIST indicates t_list label is needed.
+  // Use _T_LIST to allow less than 80 character lines.
+  #if cnBitsInD1 <= 8 || !defined(LOOKUP)
+      #define _T_LIST
+  #elif !defined(AUGMENT_TYPE) || defined(AUGMENT_TYPE_8_PLUS_4)
+       #define _T_LIST
+  #endif // cnBitsInD1 <= 8 || !AUG_TYPE || AUG_TYPE_8_PLUS_4 || !LOOKUP
+#endif // (cwListPopCntMax != 0)
 
 #ifdef JUMP_TABLE
 
@@ -501,6 +544,10 @@ AugTypeBitsInv(int nAugTypeBits)
   #else // SEPARATE_T_NULL
     #define SEPARATE_T_NULL_COMMA
   #endif // else SEPARATE_T_NULL
+
+  #ifndef _T_LIST
+    #define t_list  NULL
+  #endif // _T_LIST
 
   #if (cwListPopCntMax != 0)
     #define LIST_COMMA(_label)  (_label),
@@ -782,6 +829,10 @@ InsertRemove1(qp, Word_t wKey)
     int nPos;
   #endif // ! defined(LOOKUP) || defined(B_JUDYL)
 
+  #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
+    int nAugTypeBits;
+  #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT && LOOKUP
+
   #ifdef GOTO_AT_FIRST_IN_LOOKUP
   #ifdef SKIP_LINKS
   #ifdef LOOKUP
@@ -796,6 +847,9 @@ InsertRemove1(qp, Word_t wKey)
 
     // This shortcut made the code faster in my testing.
     nBLR = nBL;
+  #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
+    nAugTypeBits = AugTypeBits(nBL);
+  #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT && LOOKUP
     goto fastAgain;
 
   #endif // LOOKUP
@@ -825,6 +879,11 @@ top:;
     DBGX(Checkpoint(qy, "again"));
 again:;
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
+  #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
+    nAugTypeBits = AugTypeBits(nBL);
+    goto againAugType;
+againAugType:;
+  #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT && LOOKUP
 
 #if defined(SKIP_LINKS)
     assert(nBLR == nBL);
@@ -933,7 +992,7 @@ fastAgain:;
           #ifdef AUGMENT_TYPE_8
             [64] =
             SEPARATE_T_NULL_COMMA
-            LIST_COMMA(&&t_listWord)
+            LIST_COMMA(&&t_list64)
             XX_LISTS_COMMA(&&t_xx_list)
             SKIP_TO_LIST_COMMA(&&t_skip_to_list)
             UA_PARALLEL_128_COMMA(&&t_list_ua)
@@ -955,7 +1014,7 @@ fastAgain:;
             JT_LVL_IN_TYPE,
             [80] =
             SEPARATE_T_NULL_COMMA
-            LIST_COMMA(&&t_listWord)
+            LIST_COMMA(&&t_list80)
             XX_LISTS_COMMA(&&t_xx_list)
             SKIP_TO_LIST_COMMA(&&t_skip_to_list)
             UA_PARALLEL_128_COMMA(&&t_list_ua)
@@ -977,7 +1036,7 @@ fastAgain:;
             JT_LVL_IN_TYPE,
             [96] =
             SEPARATE_T_NULL_COMMA
-            LIST_COMMA(&&t_listWord)
+            LIST_COMMA(&&t_list96)
             XX_LISTS_COMMA(&&t_xx_list)
             SKIP_TO_LIST_COMMA(&&t_skip_to_list)
             UA_PARALLEL_128_COMMA(&&t_list_ua)
@@ -999,7 +1058,7 @@ fastAgain:;
             JT_LVL_IN_TYPE,
             [112] =
             SEPARATE_T_NULL_COMMA
-            LIST_COMMA(&&t_listWord)
+            LIST_COMMA(&&t_list112)
             XX_LISTS_COMMA(&&t_xx_list)
             SKIP_TO_LIST_COMMA(&&t_skip_to_list)
             UA_PARALLEL_128_COMMA(&&t_list_ua)
@@ -1034,13 +1093,15 @@ fastAgain:;
   // AUGMENT_TYPE without AUGMENT_TYPE_8 has four different nBL groups:
   // 5-8, 9-16, 17-32, 33-64. 0-4 does not work.
   #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
-    goto *pvJumpTable[(AugTypeBits(nBL) | nType)
+    goto *pvJumpTable[(nAugTypeBits | nType)
+      // MASK_TYPE serves no purpose for JUMP_TABLE.
+      // We have it to help gauge cost when doing it for !JUMP_TABLE.
       #ifdef MASK_TYPE
-                          & 0x7f // help compiler
+                          & 0x7f
       #endif // MASK_TYPE
                       ];
   #elif defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
-    goto *pvJumpTable[(AugTypeBits(nBL) | nType)
+    goto *pvJumpTable[(nAugTypeBits | nType)
       #ifdef MASK_TYPE
                           & 0x3f // help compiler
       #endif // MASK_TYPE
@@ -1050,13 +1111,14 @@ fastAgain:;
   #endif // AUG_8 && !AUG_NOT && LOOKUP elif AUG && !AUG_NOT && LOOKUP else
   #else // JUMP_TABLE
   #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
-    switch ((AugTypeBits(nBL) | nType)
+    switch ((nAugTypeBits | nType)
+      // Can we move MASK_TYPE to before goto againAugType?
       #ifdef MASK_TYPE
                 & 0x7f // help compiler
       #endif // MASK_TYPE
             )
   #elif defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
-    switch ((AugTypeBits(nBL) | nType)
+    switch ((nAugTypeBits | nType)
       #ifdef MASK_TYPE
                 & 0x3f // help compiler
       #endif // MASK_TYPE
@@ -1248,28 +1310,29 @@ fastAgain:;
   #endif // SKIP_TO_LIST
 
   #if (cwListPopCntMax != 0)
-    CASES_AUG_TYPE_8(T_LIST)
       #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
-        goto t_listWord;
+    case 112 + T_LIST: goto t_list112;
+    case  96 + T_LIST: goto t_list96;
+    case  80 + T_LIST: goto t_list80;
+    case  64 + T_LIST: goto t_list64;
       #endif // AUGMENT_TYPE_8 && LOOKUP
       #if defined(AUGMENT_TYPE) && defined(LOOKUP)
-    case 48 + T_LIST:
-        goto t_list48;
-    case 32 + T_LIST:
-        goto t_list32;
-    case 16 + T_LIST:
-        goto t_list16;
+    case 48 + T_LIST: goto t_list48;
+    case 32 + T_LIST: goto t_list32;
+    case 16 + T_LIST: goto t_list16;
       #endif // AUGMENT_TYPE && LOOKUP
   #endif // (cwListPopCntMax != 0)
 
   #if defined(DEFAULT_LIST)
     default:
-  #endif // defined(DEFAULT_LIST)
+  #endif // DEFAULT_LIST
   #if (cwListPopCntMax != 0)
+  #ifdef _T_LIST
       #if !defined(DEFAULT_LIST) || defined(DEFAULT_AND_CASE)
     case T_LIST:
-      #endif // !defined(DEFAULT_LIST) || defined(DEFAULT_AND_CASE)
+      #endif // !DEFAULT_LIST || DEFAULT_AND_CASE
         goto t_list;
+  #endif // _T_LIST
   #endif // (cwListPopCntMax != 0)
 
   #ifdef UA_PARALLEL_128
@@ -1404,7 +1467,47 @@ t_skip_to_switch:
         // to ifdef the code to prefer fall-through to goto?
         // I have a limited amount of empirical evidence suggesting that
         // a goto is equivalent to a fall-through in this particular case.
+  // BL_SPECIFIC_SKIP applies to AUGMENT_TYPE_8 and causes us to goto a
+  // bl-specific switch case instead of the generic one.
+  // How do we do this for AUGMENT_TYPE without AUGMENT_TYPE_8?
+  // It appears the additional switch statement is more costly than
+  // using code that can handle any nBLR.
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP) && defined(BL_SPECIFIC_SKIP)
+      // This jump table is significantly slower than the switch.
+      #ifdef BL_SPECIFIC_SKIP_JT
+        static void *pvJT[] = {
+            &&t_switch,
+            &&t_switch,
+            &&t_sw_plus_16,
+            &&t_sw_plus_32,
+            &&t_sw_plus_48,
+            &&t_sw_plus_64,
+            &&t_sw_plus_80,
+            &&t_sw_plus_96,
+        };
+        goto *pvJT[((nBLR + 4) / 8)
+          #ifdef MASK_NBLR
+                    & 7 // To compare with switch.
+          #endif // MASK_NBLR
+                          ];
+      #else // BL_SPECIFIC_SKIP_JT
+        switch (((nBLR + 4) / 8)
+          #ifdef MASK_NBLR
+                    & 7 // I think this gets rid of bounds check and helps.
+          #endif // MASK_NBLR
+                )
+        {
+        case  2: assert(nBLR == AugTypeBitsInv(16)); goto t_sw_plus_16;
+        case  3: assert(nBLR == AugTypeBitsInv(32)); goto t_sw_plus_32;
+        default: assert(nBLR == AugTypeBitsInv(96)); goto t_sw_plus_48;
+        case  5: assert(nBLR == AugTypeBitsInv(64)); goto t_sw_plus_64;
+        case  6: assert(nBLR == AugTypeBitsInv(80)); goto t_sw_plus_80;
+        case  7: assert(nBLR == AugTypeBitsInv(96)); goto t_sw_plus_96;
+        }
+      #endif // BL_SPECIFIC_SKIP_JT
+  #else // AUGMENT_TYPE_8 && LOOKUP && BL_SPECIFIC_SKIP
         goto t_switch;
+  #endif // else AUGMENT_TYPE_8 && LOOKUP && BL_SPECIFIC_SKIP
     } // end of t_skip_to_sw
   #endif // SKIP_LINKS
 
@@ -1460,8 +1563,9 @@ t_sw_plus_112:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             goto break_from_main_switch;
         }
-        nBW = gnBW(qy, AugTypeBitsInv(112));
-        assert(nBLR == nBL);
+        // Help compiler know nBLR is a constant; does it help?
+        nBLR = AugTypeBitsInv(112);
+        nBW = gnBW(qy, nBLR);
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
@@ -1482,7 +1586,10 @@ t_sw_plus_112:
             goto t_bitmap;
         }
       #endif // BITMAP
-        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
+        // Calculate nAugTypeBits while we know nBL is a constant.
+        assert(nBL == cnBitsLeftAtDl3 + 4 * cnBitsPerDigit);
+        nAugTypeBits = AugTypeBits(cnBitsLeftAtDl3 + 4 * cnBitsPerDigit);
+        goto againAugType;
     } // end of t_sw_plus_112
   #endif // AUGMENT_TYPE_8 && LOOKUP
 
@@ -1492,8 +1599,9 @@ t_sw_plus_96:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             goto break_from_main_switch;
         }
-        nBW = gnBW(qy, AugTypeBitsInv(96));
-        assert(nBLR == nBL);
+        // Help compiler know nBLR is a constant; does it help?
+        nBLR = AugTypeBitsInv(96);
+        nBW = gnBW(qy, nBLR);
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
@@ -1514,7 +1622,10 @@ t_sw_plus_96:
             goto t_bitmap;
         }
       #endif // BITMAP
-        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
+        // Calculate nAugTypeBits while we know nBL is a constant.
+        assert(nBL == cnBitsLeftAtDl3 + 3 * cnBitsPerDigit);
+        nAugTypeBits = AugTypeBits(cnBitsLeftAtDl3 + 3 * cnBitsPerDigit);
+        goto againAugType;
     } // end of t_sw_plus_96
   #endif // AUGMENT_TYPE_8 && LOOKUP
 
@@ -1524,8 +1635,9 @@ t_sw_plus_80:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             goto break_from_main_switch;
         }
-        nBW = gnBW(qy, AugTypeBitsInv(80));
-        assert(nBLR == nBL);
+        // Help compiler know nBLR is a constant; does it help?
+        nBLR = AugTypeBitsInv(80);
+        nBW = gnBW(qy, nBLR);
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
@@ -1546,7 +1658,10 @@ t_sw_plus_80:
             goto t_bitmap;
         }
       #endif // BITMAP
-        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
+        // Calculate nAugTypeBits while we know nBL is a constant.
+        assert(nBL == cnBitsLeftAtDl3 + 2 * cnBitsPerDigit);
+        nAugTypeBits = AugTypeBits(cnBitsLeftAtDl3 + 2 * cnBitsPerDigit);
+        goto againAugType;
     } // end of t_sw_plus_80
   #endif // AUGMENT_TYPE_8 && LOOKUP
 
@@ -1556,8 +1671,9 @@ t_sw_plus_64:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             goto break_from_main_switch;
         }
-        nBW = gnBW(qy, AugTypeBitsInv(64));
-        assert(nBLR == nBL);
+        // Help compiler know nBLR is a constant; does it help?
+        nBLR = AugTypeBitsInv(64);
+        nBW = gnBW(qy, nBLR);
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
@@ -1578,7 +1694,10 @@ t_sw_plus_64:
             goto t_bitmap;
         }
       #endif // BITMAP
-        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
+        // Calculate nAugTypeBits while we know nBL is a constant.
+        assert(nBL == cnBitsLeftAtDl3 + cnBitsPerDigit);
+        nAugTypeBits = AugTypeBits(cnBitsLeftAtDl3 + cnBitsPerDigit);
+        goto againAugType;
     } // end of goto t_sw_plus_64
   #endif // AUGMENT_TYPE_8 && LOOKUP
 
@@ -1588,12 +1707,23 @@ t_sw_plus_48:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             goto break_from_main_switch;
         }
-        assert(nBLR == nBL);
       #ifdef AUGMENT_TYPE_8
-        nBW = gnBW(qy, AugTypeBitsInv(48));
-        assert(gnBW(qy, nBLR) == nBW);
+        // Help compiler know nBLR is a constant; does it help?
+        assert(nBLR == AugTypeBitsInv(48));
+        nBLR = AugTypeBitsInv(48);
+        nBW = gnBW(qy, nBLR);
       #else // AUGMENT_TYPE_8
+        // Would be nice if nBW were a constant and the compiler knew it.
+        // We know 32 < nBL <= 64 or we wouldn't be here.
+        // If 64 - cnBitsLeftAtDl3 is a multiple of cnBitsPerDigit and
+        // cnBitsLeftAtDl3 <= 32 then nBW is cnBitsPerDigit.
+          #if ((cnBitsPerWord - cnBitsLeftAtDl3) % cnBitsPerDigit) == 0
+        nBW = cnBitsPerDigit;
+        assert(nBW == gnBW(qy, nBLR));
+          #else // (cnBitsPerWord-cnBitsLeftAtDl3) % cnBitsPerDigit == 0
+#error
         nBW = gnBW(qy, nBLR); // num bits decoded
+          #endif // else (cnBitsPerWord-cnBitsLeftAtDl3) % cnBitsPerDigit == 0
       #endif // else AUGMENT_TYPE_8
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
@@ -1614,7 +1744,22 @@ t_sw_plus_48:
             goto t_bitmap;
         }
       #endif // BITMAP
-        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
+      #ifdef AUGMENT_TYPE_8
+        // Calculate nAugTypeBits while we know nBL is a constant.
+        assert(nBL == cnBitsLeftAtDl3);
+        nAugTypeBits = AugTypeBits(cnBitsLeftAtDl3);
+      #else // AUGMENT_TYPE_8
+        // Is there a faster way to calculate nAugTypeBits here?
+        // If nBW is constant above and less than or equal to 16
+        // then nAugTypeBits will either not change or be reduced
+        // by 16, right?
+        // The assertion will blow if we have a single digit that
+        // spans > 32 to <= 16 bits left.
+        assert((nBL - 1) & 0x30);
+        nAugTypeBits -= ((~(nBL - 1) & 32) >> 1);
+        assert(nAugTypeBits == AugTypeBits(nBL));
+      #endif // AUGMENT_TYPE_8
+        goto againAugType;
     } // end of t_sw_plus_48
   #endif // AUGMENT_TYPE && LOOKUP
 
@@ -1624,13 +1769,12 @@ t_sw_plus_32:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             goto break_from_main_switch;
         }
-        assert(nBLR == nBL);
       #ifdef AUGMENT_TYPE_8
-        nBW = gnBW(qy, AugTypeBitsInv(32));
-        assert(gnBW(qy, nBLR) == nBW);
-      #else // AUGMENT_TYPE_8
+        // Help compiler know nBLR is a constant; does it help?
+        assert(nBLR == AugTypeBitsInv(32));
+        nBLR = AugTypeBitsInv(32); // help compiler know nBLR is a constant
+      #endif // AUGMENT_TYPE_8
         nBW = gnBW(qy, nBLR); // num bits decoded
-      #endif // else AUGMENT_TYPE_8
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
         pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
@@ -1650,7 +1794,17 @@ t_sw_plus_32:
             goto t_bitmap;
         }
       #endif // BITMAP
-        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
+      #ifdef AUGMENT_TYPE_8
+        assert(nBL == cnBitsLeftAtDl2);
+        nAugTypeBits = AugTypeBits(cnBitsLeftAtDl2);
+      #else // AUGMENT_TYPE_8
+        //nAugTypeBits = (0x10 & (nBL - 1)) * 2 + ((0x10 & (nBL - 1)) ^ 0x10) * (((nBL - 1)/ 8) & 1);
+        //nAugTypeBits = AugTypeBits(nBL);
+        //nAugTypeBits -= (~(nBL - 1) & 16);
+        nAugTypeBits = 16 + ((nBL - 1) & 16);
+        assert(nAugTypeBits == AugTypeBits(nBL));
+      #endif // AUGMENT_TYPE_8
+        goto againAugType;
     } // end of t_sw_plus_32
   #endif // AUGMENT_TYPE && LOOKUP
 
@@ -1660,13 +1814,29 @@ t_sw_plus_16:
         if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
             goto break_from_main_switch;
         }
-        assert(nBLR == nBL);
-      #ifdef AUGMENT_TYPE_8
-        nBW = gnBW(qy, AugTypeBitsInv(16));
-        assert(gnBW(qy, nBLR) == nBW);
-      #else // AUGMENT_TYPE_8
-        nBW = gnBW(qy, nBLR); // num bits decoded
+      // If we can, set nBLR, nBL and nBW to a constant to help compiler.
+      // I wonder how much of this the compiler can figure out on its own.
+      #if defined(AUGMENT_TYPE_8)
+        assert(nBLR == AugTypeBitsInv(16));
+        nBLR = AugTypeBitsInv(16);
+          #ifndef BL_SPECIFIC_SKIP
+        nBL = nBLR;
+          #endif // !BL_SPECIFIC_SKIP
+        assert(nBLR == cnBitsLeftAtDl2);
+      #elif cnBitsLeftAtDl2 <= 16 && cnBitsLeftAtDl3 > 16 && cnBitsInD1 <= 8
+        assert(nBLR == cnBitsLeftAtDl2);
+        nBLR = nBL = cnBitsLeftAtDl2;
+      #elif cnBitsLeftAtDl3 <= 16 && cnBitsLeftAtDl3 > 8
+          #if cnBitsLeftAtDl2 <= 8 && cnBitsLeftAtDl3 + cnBitsPerDigit > 16
+        assert(nBLR == cnBitsLeftAtDl3);
+        nBLR = nBL = cnBitsLeftAtDl3;
+          #endif // cnBitsLeftAtDl2 <= 8 && cnBitsLeftAtDl3+cnBitsPerDigit > 16
+      // We never have a switch at nBLR == cnBitsInD1.
+      #else
+        #pragma message("Don't know nBLR at t_sw_plus_16.")
+        // nBLR and nBL are correct but not constant.
       #endif // else AUGMENT_TYPE_8
+        nBW = gnBW(qy, nBLR);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
         pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
@@ -1681,12 +1851,34 @@ t_sw_plus_16:
         IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
         SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
       #ifdef BITMAP
+        // Can't assume embedded bitmap for JudyL. Might be T_EMBEDDED_KEYS.
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
             // nType and pwr have not been updated.
             goto t_bitmap;
         }
       #endif // BITMAP
-        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
+        // Does compiler know nBL is a constant after we call SwAdvance if
+        // it knew that nBLR and nBW were constants going in?
+        // If so then we can simply do nAugTypeBits = AugTypeBits(nBL).
+        // It looks like it does.
+      #if 0
+      #if defined(AUGMENT_TYPE_8)
+        nAugTypeBits = 0;
+      #elif cnBitsLeftAtDl2 <= 16 && cnBitsLeftAtDl3 > 16 && cnBitsInD1 <= 8
+        nAugTypeBits = 0;
+      #elif cnBitsLeftAtDl3 <= 16 && cnBitsLeftAtDl3 > 8
+          #if cnBitsLeftAtDl2 <= 8 && cnBitsLeftAtDl3 + cnBitsPerDigit > 16
+        nAugTypeBits = 0;
+          #endif // cnBitsLeftAtDl2 <= 8 && cnBitsLeftAtDl3+cnBitsPerDigit > 16
+      #else
+        // Non-specific nBL AUGMENT_TYPE w/o AUGMENT_TYPE_8.
+        nAugTypeBits = ((nBL - 1) & 8) << 1;
+      #endif // else AUGMENT_TYPE_8
+        assert(nAugTypeBits == AugTypeBits(nBL));
+      #else
+        nAugTypeBits = AugTypeBits(nBL);
+      #endif
+        goto againAugType;
     } // end of t_sw_plus_16
   #endif // AUGMENT_TYPE && LOOKUP
 
@@ -1794,7 +1986,7 @@ switchTail:;
         assert(!cbEmbeddedBitmap || (nBL > cnLogBitsPerLink));
       #endif // BITMAP
       #if defined(LOOKUP) || !defined(RECURSIVE)
-        goto again; // nType = wr_nType(wRoot); *pwr = wr_pwr(wRoot); switch
+        goto again; // nType = wr_nType(wRoot); pwr = wr_pwr(wRoot); switch
       #else // defined(LOOKUP) || !defined(RECURSIVE)
         return InsertRemove(nBL, pLn, wKey);
       #endif // defined(LOOKUP) || !defined(RECURSIVE)
@@ -2264,16 +2456,294 @@ t_skip_to_list:
     } // end of t_skip_to_list
   #endif // SKIP_TO_LIST
 
+  // BL_SPECIFIC_LIST applies to how we handle nBL > 32 for AUGMENT_TYPE_8.
+  #if (cwListPopCntMax != 0)
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #ifdef BL_SPECIFIC_LIST
+t_list112:
+    // nBL > 32 for AUGMENT_TYPE && !AUGMENT_TYPE_8
+    // nDL >  4 for AUGMENT_TYPE_8
+    {
+        nBLR = nBL = AugTypeBitsInv(112);
+      #ifdef COMPRESSED_LISTS
+      #ifdef SKIP_PREFIX_CHECK
+        if (PrefixCheckAtLeaf(qy, wKey
+          #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
+                , bNeedPrefixCheck
+          #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
+          #ifdef SAVE_PREFIX_TEST_RESULT
+                , wPrefixMismatch
+          #else // SAVE_PREFIX_TEST_RESULT
+                , pwrUp
+          #endif // SAVE_PREFIX_TEST_RESULT
+          #ifdef SAVE_PREFIX
+                , pLnPrefix, pwrPrefix, nBLRPrefix
+          #endif // SAVE_PREFIX
+                  ) // end call to PrefixCheckAtLeaf
+            == Success)
+      #endif // SKIP_PREFIX_CHECK
+      #endif // COMPRESSED_LISTS
+        {
+      // LOOKUP_NO_LIST_SEARCH is for analysis only.
+      #ifndef LOOKUP_NO_LIST_SEARCH
+            if (1
+                && ((wr_nType(WROOT_NULL) != T_LIST) || (wRoot != WROOT_NULL))
+          #ifdef B_JUDYL
+              #if defined(HASKEY_FOR_JUDYL_LOOKUP)
+                // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
+                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
+              #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
+                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
+              #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
+                && ((nPos = LocateKeyInListWord(qy, nBLR, wKey)) >= 0)
+              #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
+          #else // B_JUDYL
+              #if defined(SEARCH_FOR_JUDY1_LOOKUP)
+                && (SearchList(qy, nBLR, wKey) >= 0)
+              #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
+                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
+              #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+                && ListHasKeyWord(qy, nBLR, wKey)
+              #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+          #endif // B_JUDYL
+                )
+      #endif // !LOOKUP_NO_LIST_SEARCH
+            {
+                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+                SMETRICS(++j__GetCalls);
+      #ifdef B_JUDYL
+                DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
+                             nPos,
+                             &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
+          #ifndef PACK_L1_VALUES
+                if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
+                    return &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
+                } else
+          #endif // #ifndef PACK_L1_VALUES
+                { return &gpwValues(qy)[~nPos]; }
+      #else // B_JUDYL
+                // Success for Lookup and Remove; Failure for Insert
+                return KeyFound;
+      #endif // B_JUDYL else
+            }
+        }
+      #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+        else
+        {
+            // Shouldn't this be using the previous nBL for pwrUp?
+            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
+          #ifdef PP_IN_LINK
+                        gwPrefix(qy),
+          #else // PP_IN_LINK
+                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
+          #endif // PP_IN_LINK
+                        nBL));
+        }
+      #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+        goto break_from_main_switch;
+    } // end of t_listWord
+  #endif // BL_SPECIFIC_LIST
+  #endif // AUGMENT_TYPE_8 && LOOKUP
+  #endif // (cwListPopCntMax != 0)
+
+  #if (cwListPopCntMax != 0)
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #ifdef BL_SPECIFIC_LIST
+t_list96:
+    // nBL > 32 for AUGMENT_TYPE && !AUGMENT_TYPE_8
+    // nDL >  4 for AUGMENT_TYPE_8
+    {
+        nBLR = nBL = AugTypeBitsInv(96);
+      #ifdef COMPRESSED_LISTS
+      #ifdef SKIP_PREFIX_CHECK
+        if (PrefixCheckAtLeaf(qy, wKey
+          #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
+                , bNeedPrefixCheck
+          #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
+          #ifdef SAVE_PREFIX_TEST_RESULT
+                , wPrefixMismatch
+          #else // SAVE_PREFIX_TEST_RESULT
+                , pwrUp
+          #endif // SAVE_PREFIX_TEST_RESULT
+          #ifdef SAVE_PREFIX
+                , pLnPrefix, pwrPrefix, nBLRPrefix
+          #endif // SAVE_PREFIX
+                  ) // end call to PrefixCheckAtLeaf
+            == Success)
+      #endif // SKIP_PREFIX_CHECK
+      #endif // COMPRESSED_LISTS
+        {
+      // LOOKUP_NO_LIST_SEARCH is for analysis only.
+      #ifndef LOOKUP_NO_LIST_SEARCH
+            if (1
+                && ((wr_nType(WROOT_NULL) != T_LIST) || (wRoot != WROOT_NULL))
+          #ifdef B_JUDYL
+              #if defined(HASKEY_FOR_JUDYL_LOOKUP)
+                // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
+                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
+              #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
+                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
+              #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
+                && ((nPos = LocateKeyInListWord(qy, nBLR, wKey)) >= 0)
+              #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
+          #else // B_JUDYL
+              #if defined(SEARCH_FOR_JUDY1_LOOKUP)
+                && (SearchList(qy, nBLR, wKey) >= 0)
+              #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
+                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
+              #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+                && ListHasKeyWord(qy, nBLR, wKey)
+              #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+          #endif // B_JUDYL
+                )
+      #endif // !LOOKUP_NO_LIST_SEARCH
+            {
+                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+                SMETRICS(++j__GetCalls);
+      #ifdef B_JUDYL
+                DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
+                             nPos,
+                             &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
+          #ifndef PACK_L1_VALUES
+                if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
+                    return &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
+                } else
+          #endif // #ifndef PACK_L1_VALUES
+                { return &gpwValues(qy)[~nPos]; }
+      #else // B_JUDYL
+                // Success for Lookup and Remove; Failure for Insert
+                return KeyFound;
+      #endif // B_JUDYL else
+            }
+        }
+      #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+        else
+        {
+            // Shouldn't this be using the previous nBL for pwrUp?
+            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
+          #ifdef PP_IN_LINK
+                        gwPrefix(qy),
+          #else // PP_IN_LINK
+                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
+          #endif // PP_IN_LINK
+                        nBL));
+        }
+      #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+        goto break_from_main_switch;
+    } // end of t_listWord
+  #endif // BL_SPECIFIC_LIST
+  #endif // AUGMENT_TYPE_8 && LOOKUP
+  #endif // (cwListPopCntMax != 0)
+
+  #if (cwListPopCntMax != 0)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+  #ifdef BL_SPECIFIC_LIST
+t_list80:
+    // nBL > 32 for AUGMENT_TYPE && !AUGMENT_TYPE_8
+    // nDL >  4 for AUGMENT_TYPE_8
+    {
+        nBLR = nBL = AugTypeBitsInv(80);
+      #ifdef COMPRESSED_LISTS
+      #ifdef SKIP_PREFIX_CHECK
+        if (PrefixCheckAtLeaf(qy, wKey
+          #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
+                , bNeedPrefixCheck
+          #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
+          #ifdef SAVE_PREFIX_TEST_RESULT
+                , wPrefixMismatch
+          #else // SAVE_PREFIX_TEST_RESULT
+                , pwrUp
+          #endif // SAVE_PREFIX_TEST_RESULT
+          #ifdef SAVE_PREFIX
+                , pLnPrefix, pwrPrefix, nBLRPrefix
+          #endif // SAVE_PREFIX
+                  ) // end call to PrefixCheckAtLeaf
+            == Success)
+      #endif // SKIP_PREFIX_CHECK
+      #endif // COMPRESSED_LISTS
+        {
+      // LOOKUP_NO_LIST_SEARCH is for analysis only.
+      #ifndef LOOKUP_NO_LIST_SEARCH
+            if (1
+                && ((wr_nType(WROOT_NULL) != T_LIST) || (wRoot != WROOT_NULL))
+          #ifdef B_JUDYL
+              #if defined(HASKEY_FOR_JUDYL_LOOKUP)
+                // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
+                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
+              #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
+                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
+              #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
+                && ((nPos = LocateKeyInListWord(qy, nBLR, wKey)) >= 0)
+              #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
+          #else // B_JUDYL
+              #if defined(SEARCH_FOR_JUDY1_LOOKUP)
+                && (SearchList(qy, nBLR, wKey) >= 0)
+              #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
+                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
+              #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+                && ListHasKeyWord(qy, nBLR, wKey)
+              #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
+          #endif // B_JUDYL
+                )
+      #endif // !LOOKUP_NO_LIST_SEARCH
+            {
+                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+                SMETRICS(++j__GetCalls);
+      #ifdef B_JUDYL
+                DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
+                             nPos,
+                             &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
+          #ifndef PACK_L1_VALUES
+                if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
+                    return &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
+                } else
+          #endif // #ifndef PACK_L1_VALUES
+                { return &gpwValues(qy)[~nPos]; }
+      #else // B_JUDYL
+                // Success for Lookup and Remove; Failure for Insert
+                return KeyFound;
+      #endif // B_JUDYL else
+            }
+        }
+      #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+        else
+        {
+            // Shouldn't this be using the previous nBL for pwrUp?
+            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
+          #ifdef PP_IN_LINK
+                        gwPrefix(qy),
+          #else // PP_IN_LINK
+                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
+          #endif // PP_IN_LINK
+                        nBL));
+        }
+      #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
+        goto break_from_main_switch;
+    } // end of t_listWord
+  #endif // BL_SPECIFIC_LIST
+  #endif // AUGMENT_TYPE_8 && LOOKUP
+  #endif // (cwListPopCntMax != 0)
+
   #if (cwListPopCntMax != 0)
   #if defined(AUGMENT_TYPE) && defined(LOOKUP)
       #ifdef AUGMENT_TYPE_8
-t_listWord:
+          #ifndef BL_SPECIFIC_LIST
+t_list112:
+t_list96:
+t_list80:
+          #endif // !BL_SPECIFIC_LIST
+t_list64:
       #else // AUGMENT_TYPE_8
 t_list48:
       #endif // else AUGMENT_TYPE_8
     // nBL > 32 for AUGMENT_TYPE && !AUGMENT_TYPE_8
     // nDL >  4 for AUGMENT_TYPE_8
     {
+      #ifdef AUGMENT_TYPE_8
+      #ifndef BL_SPECIFIC_LIST
+        nBLR = nBL = AugTypeBitsInv(64);
+      #endif // !BL_SPECIFIC_LIST
+      #endif // AUGMENT_TYPE_8
       #ifdef COMPRESSED_LISTS
       #ifdef SKIP_PREFIX_CHECK
         if (PrefixCheckAtLeaf(qy, wKey
@@ -2355,11 +2825,11 @@ t_list48:
   #endif // (cwListPopCntMax != 0)
 
   #if (cwListPopCntMax != 0)
-  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
-      #ifdef AUGMENT_TYPE_8
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
 t_list48:
     // nDL == 4 for AUGMENT_TYPE_8
     {
+        nBLR = nBL = AugTypeBitsInv(48);
       #ifdef COMPRESSED_LISTS
       #ifdef SKIP_PREFIX_CHECK
         if (PrefixCheckAtLeaf(qy, wKey
@@ -2447,8 +2917,7 @@ t_list48:
           #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
         goto break_from_main_switch;
     } // end of t_list48
-      #endif // AUGMENT_TYPE_8
-  #endif // AUGMENT_TYPE && LOOKUP
+  #endif // AUGMENT_TYPE_8 && LOOKUP
   #endif // (cwListPopCntMax != 0)
 
   #if (cwListPopCntMax != 0)
@@ -2457,6 +2926,12 @@ t_list32:
     // 16 < nBL <= 32 for AUGMENT_TYPE && !AUGMENT_TYPE_8
     //      nDL ==  3 for AUGMENT_TYPE_8
     {
+      #ifdef AUGMENT_TYPE_8
+        assert(nBLR == AugTypeBitsInv(32));
+        nBLR = nBL = AugTypeBitsInv(32);
+      #else // AUGMENT_TYPE_8
+        // nBLR is already set correctly.
+      #endif // AUGMENT_TYPE_8
       #ifdef COMPRESSED_LISTS
       #ifdef SKIP_PREFIX_CHECK
         if (PrefixCheckAtLeaf(qy, wKey
@@ -2488,7 +2963,11 @@ t_list32:
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
               #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
           #ifdef AUGMENT_TYPE_8
+              #ifdef BL_SPECIFIC_LIST
                 && ((nPos = LocateKeyInList32(qy, cnBitsLeftAtDl3, wKey)) >= 0)
+              #else // BL_SPECIFIC_LIST
+                && ((nPos = LocateKeyInList32(qy, nBLR, wKey)) >= 0)
+              #endif // else BL_SPECIFIC_LIST
           #else // AUGMENT_TYPE_8 && !AUGMENT_TYPE_8_PLUS_4
                 && ((nPos = LocateKeyInList32(qy, nBLR, wKey)) >= 0)
           #endif // else AUGMENT_TYPE_8 && !AUGMENT_TYPE_8_PLUS_4
@@ -2551,6 +3030,23 @@ t_list16:
     // 8 < nBL <= 16 for AUGMENT_TYPE && !AUGMENT_TYPE_8
     //     nDL ==  2 for AUGMENT_TYPE_8
     {   // 8 < nBL <= 16 for AUGMENT_TYPE && !AUGMENT_TYPE_8
+      #if defined(AUGMENT_TYPE_8)
+        assert(nBLR == AugTypeBitsInv(16));
+        nBLR = nBL = AugTypeBitsInv(16);
+      #elif cnBitsLeftAtDl2 > 16
+        assert(nBLR == cnBitsInD1);
+        nBLR = nBL = cnBitsInD1;
+      #elif cnBitsLeftAtDl3 > 16 && cnBitsInD1 <= 8
+        assert(nBLR == cnBitsLeftAtDl2);
+        nBLR = nBL = cnBitsLeftAtDl2;
+      #elif cnBitsLeftAtDl3 + cnBitsPerDigit > 16 && cnBitsLeftAtDl2 <= 8
+        assert(nBLR == cnBitsLeftAtDl3);
+        nBLR = nBL = cnBitsLeftAtDl3;
+      #else
+        #pragma message("t_list16 cannot use a constant nBL.")
+        // Not a bug. Just perf issue to flag.
+        // nBLR is already set correctly. Just not a constant.
+      #endif
       #ifdef COMPRESSED_LISTS
       #ifdef SKIP_PREFIX_CHECK
         if (PrefixCheckAtLeaf(qy, wKey
@@ -2645,12 +3141,31 @@ t_list16:
   #endif // (cwListPopCntMax != 0)
 
   #if !defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
+// t_list is not needed for AUGMENT_TYPE and LOOKUP if cnBitsInD1 > 8.
+  #ifdef _T_LIST
 t_list:
     // all cases for !AUGMENT_TYPE
     // nBL <= 8  for  AUGMENT_TYPE && !AUGMENT_TYPE_8
     // nDL == 1  for  AUGMENT_TYPE_8
     {
         DBGX(Checkpoint(qy, "t_list"));
+      #ifdef AUGMENT_TYPE
+      #ifdef LOOKUP
+          #if defined(AUGMENT_TYPE_8) || (cnBitsInD1 == 8)
+        assert(nBLR == AugTypeBitsInv(0));
+        nBLR = nBL = AugTypeBitsInv(0);
+          #elif cnBitsInD1 <= 8 && cnBitsLeftAtDl2 > 8
+        assert(nBLR == cnBitsInD1);
+        nBLR = nBL = cnBitsInD1;
+          #elif cnBitsInD1 <= 16 && cnBitsLeftAtDl2 > 16
+        assert(nBLR == cnBitsInD2);
+        nBLR = nBL = cnBitsInD2;
+          #else
+        #error Cannot use a constant nBL. Not a bug. Just perf issue to flag.
+        // nBLR is already set correctly. Just not a constant.
+          #endif // elif defined(AUGMENT_TYPE_8) || (cnBitsInD1 == 8)
+      #endif // LOOKUP
+      #endif // AUGMENT_TYPE
 
       #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
@@ -2825,6 +3340,7 @@ t_list:
       #endif // INSERT
         goto break_from_main_switch;
     } // end of t_list
+  #endif // _T_LIST
   #endif // !SEPARATE_T_NULL || (cwListPopCntMax == 0)
 
   #ifdef UA_PARALLEL_128
@@ -3113,6 +3629,13 @@ t_unpacked_bm:
   #if defined(PACK_BM_VALUES) || !defined(LOOKUP) || !defined(B_JUDYL)
 t_bitmap:
     {
+      #ifdef B_JUDYL
+        assert(nBLR == cnBitsInD1);
+        nBLR = cnBitsInD1;
+          #ifndef SKIP_TO_BITMAP
+        nBL = cnBitsInD1; // We don't use nBL for LOOKUP except for DEBUG.
+          #endif // SKIP_TO_BITMAP
+      #endif // B_JUDYL
       #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
           #if defined(INSERT) && defined(B_JUDYL)
@@ -3243,7 +3766,7 @@ t_bitmap:
             // What if cnBitsInD1 > cnLogBitsPerLink?
             // cbEmbeddedBitmap won't be true.
             // Do we have code to make the whole thing T_BITMAP?
-            // We end up here with (nBL <= cnBitsInD1)?
+            // We end up here with (nBLR <= cnBitsInD1)?
             // We have to be sure to handle that case below
             // for USE_XX_SW_ONLY_AT_DL2?
                   #endif // USE_XX_SW_ONLY_AT_DL2
@@ -3486,6 +4009,10 @@ t_bitmap:
       #ifdef LOOKUP
 t_unpacked_bm:
     {
+        // We don't use nBLR or nBL in this case.
+        // This case is for JudyL only and JudyL doesn't support a bitmap
+        // above cnBitsInD1.
+        assert(nBLR == cnBitsInD1);
           #if defined(LOOKUP_NO_BITMAP_DEREF)
         return KeyFound;
           #else // defined(LOOKUP_NO_BITMAP_DEREF)

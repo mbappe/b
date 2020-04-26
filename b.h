@@ -6883,8 +6883,15 @@ LocateKeyInList16(qpa, int nBLR, Word_t wKey)
     } else
           #endif // defined(BL_SPECIFIC_PSPLIT_SEARCH)
     {
+          // This ifdef does not appear to make any difference.
+          // I suspect the compiler already knows that nBLR == 16.
+          #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_8_PLUS_4)
+        PSPLIT_LOCATEKEY(Bucket_t,
+                         uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
+          #else // AUGMENT_TYPE_8 && !AUGMENT_TYPE_8_PLUS_4
         PSPLIT_LOCATEKEY(Bucket_t,
                          uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos);
+          #endif // AUGMENT_TYPE_8 && !AUGMENT_TYPE_8_PLUS_4
     }
       #else // PSPLIT_PARALLEL
     PSPLIT_SEARCH_BY_KEY(uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos);
