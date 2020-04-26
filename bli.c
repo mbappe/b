@@ -700,6 +700,9 @@ AugTypeBitsInv(int nAugTypeBits)
 
 #endif // JUMP_TABLE
 
+#define WROOT_IS_NULL(_nType, _wRoot) \
+        ((wr_nType(WROOT_NULL) == (_nType)) && ((_wRoot) == WROOT_NULL))
+
   #if defined(LOOKUP)
       #ifdef B_JUDYL
 static Word_t *
@@ -1424,9 +1427,7 @@ t_skip_to_xx_sw:
   #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
 t_sw_plus_112:
     {
-        if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
-            goto break_from_main_switch;
-        }
+        if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
         // Help compiler know nBLR is a constant; does it help?
         nBLR = AugTypeBitsInv(112);
         nBW = gnBW(qy, nBLR);
@@ -1460,9 +1461,7 @@ t_sw_plus_112:
   #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
 t_sw_plus_96:
     {
-        if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
-            goto break_from_main_switch;
-        }
+        if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
         // Help compiler know nBLR is a constant; does it help?
         nBLR = AugTypeBitsInv(96);
         nBW = gnBW(qy, nBLR);
@@ -1496,9 +1495,7 @@ t_sw_plus_96:
   #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
 t_sw_plus_80:
     {
-        if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
-            goto break_from_main_switch;
-        }
+        if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
         // Help compiler know nBLR is a constant; does it help?
         nBLR = AugTypeBitsInv(80);
         nBW = gnBW(qy, nBLR);
@@ -1532,9 +1529,7 @@ t_sw_plus_80:
   #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
 t_sw_plus_64:
     {
-        if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
-            goto break_from_main_switch;
-        }
+        if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
         // Help compiler know nBLR is a constant; does it help?
         nBLR = AugTypeBitsInv(64);
         nBW = gnBW(qy, nBLR);
@@ -1568,9 +1563,7 @@ t_sw_plus_64:
   #if defined(AUGMENT_TYPE) && defined(LOOKUP)
 t_sw_plus_48:
     {
-        if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
-            goto break_from_main_switch;
-        }
+        if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
       #ifdef AUGMENT_TYPE_8
         // Help compiler know nBLR is a constant; does it help?
         assert(nBLR == AugTypeBitsInv(48));
@@ -1630,9 +1623,7 @@ t_sw_plus_48:
   #if defined(AUGMENT_TYPE) && defined(LOOKUP)
 t_sw_plus_32:
     {
-        if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
-            goto break_from_main_switch;
-        }
+        if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
       #ifdef AUGMENT_TYPE_8
         // Help compiler know nBLR is a constant; does it help?
         assert(nBLR == AugTypeBitsInv(32));
@@ -1676,9 +1667,7 @@ t_sw_plus_32:
   #if defined(AUGMENT_TYPE) && defined(LOOKUP)
 t_sw_plus_16:
     {
-        if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
-            goto break_from_main_switch;
-        }
+        if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
       // If we can, set nBLR, nBL and nBW to a constant to help compiler.
       // I wonder how much of this the compiler can figure out on its own.
       #if defined(AUGMENT_TYPE_8)
@@ -1762,7 +1751,7 @@ t_switch:
       #endif // LOOKUP
       #endif // !AUGMENT_TYPE_NOT
       #endif // AUGMENT_TYPE
-        if ((wr_nType(WROOT_NULL) == T_SWITCH) && (wRoot == WROOT_NULL)) {
+        if (WROOT_IS_NULL(T_SWITCH, wRoot)) {
       #if defined(INSERT) || defined(REMOVE)
             if (bCleanup) {
           #if defined(INSERT) && defined(B_JUDYL)
@@ -3042,14 +3031,13 @@ t_list:
         } // cleanup is complete
       #endif // defined(INSERT) || defined(REMOVE)
 
-        assert((pwr != NULL)
-            || ((wr_nType(WROOT_NULL) == T_LIST) && (wRoot == WROOT_NULL)));
+        assert((pwr != NULL) || WROOT_IS_NULL(T_LIST, wRoot));
         assert((pwr == NULL) || (gnListBLR(qy) == nBL));
 
         // Search the list.  wPopCnt is the number of keys in the list.
 
       #if defined(COUNT)
-        if ((wr_nType(WROOT_NULL) == T_LIST) && (wRoot == WROOT_NULL)) {
+        if (WROOT_IS_NULL(T_LIST, wRoot)) {
              nPos = ~0;
         }
       #endif // defined(COUNT)
@@ -3333,7 +3321,7 @@ t_xx_list:
         // Search the list. wPopCnt is the number of keys in the list.
 
       #if defined(COUNT)
-        if ((wr_nType(WROOT_NULL) == T_XX_LIST) && (wRoot == WROOT_NULL)) {
+        if (WROOT_IS_NULL(T_XX_LIST, wRoot)) {
              nPos = ~0;
         }
       #endif // defined(COUNT)
@@ -3364,8 +3352,7 @@ t_xx_list:
       // LOOKUP_NO_LIST_SEARCH is for analysis only.
       #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
             if (1
-                && ((wr_nType(WROOT_NULL) != T_XX_LIST)
-                    || (wRoot != WROOT_NULL))
+                && ((wr_nType(WROOT_NULL) != T_LIST) || (wRoot != WROOT_NULL))
           #if defined(LOOKUP)
               #if defined(B_JUDYL)
                   #if defined(HASKEY_FOR_JUDYL_LOOKUP)
