@@ -1670,26 +1670,25 @@ t_sw_plus_16:
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
       // If we can, set nBLR, nBL and nBW to a constant to help compiler.
       // I wonder how much of this the compiler can figure out on its own.
-      #if defined(AUGMENT_TYPE_8)
+      #ifdef AUGMENT_TYPE_8
         assert(nBLR == AugTypeBitsInv(16));
         nBLR = AugTypeBitsInv(16);
           #ifndef BL_SPECIFIC_SKIP
         nBL = nBLR;
           #endif // !BL_SPECIFIC_SKIP
         assert(nBLR == cnBitsLeftAtDl2);
-      #elif cnBitsLeftAtDl2 <= 16 && cnBitsLeftAtDl3 > 16 && cnBitsInD1 <= 8
-        assert(nBLR == cnBitsLeftAtDl2);
+      #elif cnBitsLeftAtDl2 > 16
+        // We never have a switch at nBLR == cnBitsInD1.
+        assert(0); // could ifdef this whole chunk of code
+      #elif cnBitsLeftAtDl3 > 16 && cnBitsInD1 <= 8
         nBLR = nBL = cnBitsLeftAtDl2;
-      #elif cnBitsLeftAtDl3 <= 16 && cnBitsLeftAtDl3 > 8
-          #if cnBitsLeftAtDl2 <= 8 && cnBitsLeftAtDl3 + cnBitsPerDigit > 16
-        assert(nBLR == cnBitsLeftAtDl3);
+      #elif cnBitsLeftAtDl3 + cnBitsPerDigit > 16 && cnBitsLeftAtDl2 <= 8
         nBLR = nBL = cnBitsLeftAtDl3;
-          #endif // cnBitsLeftAtDl2 <= 8 && cnBitsLeftAtDl3+cnBitsPerDigit > 16
-      // We never have a switch at nBLR == cnBitsInD1.
       #else
         #pragma message("Don't know nBLR at t_sw_plus_16.")
-        // nBLR and nBL are correct but not constant.
-      #endif // else AUGMENT_TYPE_8
+        // Not a bug. Just perf issue to flag.
+        // nBLR is already set correctly. Just not a constant.
+      #endif
         nBW = gnBW(qy, nBLR);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
@@ -1715,20 +1714,16 @@ t_sw_plus_16:
         // it knew that nBLR and nBW were constants going in?
         // If so then we can simply do nAugTypeBits = AugTypeBits(nBL).
         // It looks like it does.
-      #if 0
-      #if defined(AUGMENT_TYPE_8)
+      #if 1
+      #ifdef AUGMENT_TYPE_8
         nAugTypeBits = 0;
-      #elif cnBitsLeftAtDl2 <= 16 && cnBitsLeftAtDl3 > 16 && cnBitsInD1 <= 8
-        nAugTypeBits = 0;
-      #elif cnBitsLeftAtDl3 <= 16 && cnBitsLeftAtDl3 > 8
-          #if cnBitsLeftAtDl2 <= 8 && cnBitsLeftAtDl3 + cnBitsPerDigit > 16
-        nAugTypeBits = 0;
-          #endif // cnBitsLeftAtDl2 <= 8 && cnBitsLeftAtDl3+cnBitsPerDigit > 16
+      #elif cnBitsLeftAtDl3 > 16 && cnBitsInD1 <= 8
+        nAugTypeBits = AugTypeBits(nBL);
+      #elif cnBitsLeftAtDl3 + cnBitsPerDigit > 16 && cnBitsLeftAtDl2 <= 8
+        nAugTypeBits = AugTypeBits(nBL);
       #else
-        // Non-specific nBL AUGMENT_TYPE w/o AUGMENT_TYPE_8.
         nAugTypeBits = ((nBL - 1) & 8) << 1;
-      #endif // else AUGMENT_TYPE_8
-        assert(nAugTypeBits == AugTypeBits(nBL));
+      #endif
       #else
         nAugTypeBits = AugTypeBits(nBL);
       #endif
