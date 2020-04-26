@@ -1593,7 +1593,7 @@ t_sw_plus_48:
         nBW = cnBitsPerDigit;
         assert(nBW == gnBW(qy, nBLR));
           #else // (cnBitsPerWord-cnBitsLeftAtDl3) % cnBitsPerDigit == 0
-#error
+        #pragma message("Don't know nBW at t_sw_plus_48.")
         nBW = gnBW(qy, nBLR); // num bits decoded
           #endif // else (cnBitsPerWord-cnBitsLeftAtDl3) % cnBitsPerDigit == 0
       #endif // else AUGMENT_TYPE_8
@@ -3030,7 +3030,7 @@ t_list:
         assert(nBLR == cnBitsInD2);
         nBLR = nBL = cnBitsInD2;
           #else
-        #error Cannot use a constant nBL. Not a bug. Just perf issue to flag.
+        #pragma message("Can't use a constant nBL in t_list.")
         // nBLR is already set correctly. Just not a constant.
           #endif // elif defined(AUGMENT_TYPE_8) || (cnBitsInD1 == 8)
       #endif // LOOKUP
