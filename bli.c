@@ -1430,6 +1430,9 @@ t_sw_plus_112:
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
         // Help compiler know nBLR is a constant; does it help?
         nBLR = AugTypeBitsInv(112);
+      #ifndef BL_SPECIFIC_SKIP
+        nBL = nBLR;
+      #endif // !BL_SPECIFIC_SKIP
         nBW = gnBW(qy, nBLR);
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
@@ -1464,6 +1467,9 @@ t_sw_plus_96:
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
         // Help compiler know nBLR is a constant; does it help?
         nBLR = AugTypeBitsInv(96);
+      #ifndef BL_SPECIFIC_SKIP
+        nBL = nBLR;
+      #endif // !BL_SPECIFIC_SKIP
         nBW = gnBW(qy, nBLR);
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
@@ -1498,6 +1504,9 @@ t_sw_plus_80:
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
         // Help compiler know nBLR is a constant; does it help?
         nBLR = AugTypeBitsInv(80);
+      #ifndef BL_SPECIFIC_SKIP
+        nBL = nBLR;
+      #endif // !BL_SPECIFIC_SKIP
         nBW = gnBW(qy, nBLR);
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
@@ -1532,6 +1541,9 @@ t_sw_plus_64:
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
         // Help compiler know nBLR is a constant; does it help?
         nBLR = AugTypeBitsInv(64);
+      #ifndef BL_SPECIFIC_SKIP
+        nBL = nBLR;
+      #endif // !BL_SPECIFIC_SKIP
         nBW = gnBW(qy, nBLR);
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
@@ -1568,6 +1580,9 @@ t_sw_plus_48:
         // Help compiler know nBLR is a constant; does it help?
         assert(nBLR == AugTypeBitsInv(48));
         nBLR = AugTypeBitsInv(48);
+          #ifndef BL_SPECIFIC_SKIP
+        nBL = nBLR;
+          #endif // !BL_SPECIFIC_SKIP
         nBW = gnBW(qy, nBLR);
       #else // AUGMENT_TYPE_8
         // Would be nice if nBW were a constant and the compiler knew it.
@@ -1628,6 +1643,9 @@ t_sw_plus_32:
         // Help compiler know nBLR is a constant; does it help?
         assert(nBLR == AugTypeBitsInv(32));
         nBLR = AugTypeBitsInv(32); // help compiler know nBLR is a constant
+          #ifndef BL_SPECIFIC_SKIP
+        nBL = nBLR;
+          #endif // !BL_SPECIFIC_SKIP
       #endif // AUGMENT_TYPE_8
         nBW = gnBW(qy, nBLR); // num bits decoded
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
