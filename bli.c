@@ -651,10 +651,10 @@ AugTypeBitsInv(int nAugTypeBits)
   #endif // else EK_XV
 
   #if defined(AUGMENT_TYPE) && defined(LOOKUP)
-     #define SW_COMMA(_label)  NULL, // place holder for missing &&t_switch
-  #else // defined(AUGMENT_TYPE) && defined(LOOKUP)
-     #define SW_COMMA(_label)  (_label),
-  #endif // else defined(AUGMENT_TYPE) && defined(LOOKUP)
+    #define SW_COMMA(_label)  NULL, // place holder for missing &&t_switch
+  #else // AUGMENT_TYPE && LOOKUP
+    #define SW_COMMA(_label)  (_label),
+  #endif // else AUGMENT_TYPE && LOOKUP
 
   #ifdef SKIP_LINKS
     #define SKIP_TO_SW_COMMA(_label)  (_label),
@@ -676,7 +676,6 @@ AugTypeBitsInv(int nAugTypeBits)
   #endif // else _LVL_IN_TYPE
 
   #define JT_ENTRIES \
-    [0] = \
         SEPARATE_T_NULL_COMMA \
         LIST_COMMA(&&t_list) \
         XX_LISTS_COMMA(&&t_xx_list) \
@@ -921,163 +920,28 @@ fastAgain:;
             JT_ENTRIES,
       #ifdef LOOKUP
       #ifdef AUGMENT_TYPE
-            [16] = // two eight-bit digits left
-            SEPARATE_T_NULL_COMMA
-            LIST_COMMA(&&t_list16)
-            XX_LISTS_COMMA(&&t_xx_list)
-            SKIP_TO_LIST_COMMA(&&t_skip_to_list)
-            UA_PARALLEL_128_COMMA(&&t_list_ua)
-            BITMAP_COMMA(&&t_bitmap)
-            SKIP_TO_BM_COMMA(&&t_skip_to_bitmap)
-            UNPACKED_BM_COMMA(&&t_unpacked_bm)
-            LIST_SW_COMMA(&&t_list_sw)
-            SKIP_TO_LIST_SW_COMMA(&&t_skip_to_list_sw)
-            BM_SW_COMMA(&&t_bm_sw)
-            SKIP_TO_BM_SW_COMMA(&&t_skip_to_bm_sw)
-            XX_SW_COMMA(&&t_xx_sw)
-            SKIP_TO_XX_SW_COMMA(&&t_skip_to_xx_sw)
-            FULL_BM_SW_COMMA(&&t_full_bm_sw)
-            SKIP_TO_FULL_BM_SW_COMMA(&&t_skip_to_full_bm_sw)
-            EK_COMMA(&&t_embedded_keys)
-            EK_XV_COMMA(&&t_ek_xv)
-            &&t_sw_plus_16,
-            SKIP_TO_SW_COMMA(&&t_skip_to_switch)
-            JT_LVL_IN_TYPE,
-            // three eight-bit digits left (also four eight-bit digits left
-            // for AUGMENT_TYPE_8
-            [32] =
-            SEPARATE_T_NULL_COMMA
-            LIST_COMMA(&&t_list32)
-            XX_LISTS_COMMA(&&t_xx_list)
-            SKIP_TO_LIST_COMMA(&&t_skip_to_list)
-            UA_PARALLEL_128_COMMA(&&t_list_ua)
-            BITMAP_COMMA(&&t_bitmap)
-            SKIP_TO_BM_COMMA(&&t_skip_to_bitmap)
-            UNPACKED_BM_COMMA(&&t_unpacked_bm)
-            LIST_SW_COMMA(&&t_list_sw)
-            SKIP_TO_LIST_SW_COMMA(&&t_skip_to_list_sw)
-            BM_SW_COMMA(&&t_bm_sw)
-            SKIP_TO_BM_SW_COMMA(&&t_skip_to_bm_sw)
-            XX_SW_COMMA(&&t_xx_sw)
-            SKIP_TO_XX_SW_COMMA(&&t_skip_to_xx_sw)
-            FULL_BM_SW_COMMA(&&t_full_bm_sw)
-            SKIP_TO_FULL_BM_SW_COMMA(&&t_skip_to_full_bm_sw)
-            EK_COMMA(&&t_embedded_keys)
-            EK_XV_COMMA(&&t_ek_xv)
-            &&t_sw_plus_32,
-            SKIP_TO_SW_COMMA(&&t_skip_to_switch)
-            JT_LVL_IN_TYPE,
-            [48] =
-            SEPARATE_T_NULL_COMMA
-            LIST_COMMA(&&t_list48)
-            XX_LISTS_COMMA(&&t_xx_list)
-            SKIP_TO_LIST_COMMA(&&t_skip_to_list)
-            UA_PARALLEL_128_COMMA(&&t_list_ua)
-            BITMAP_COMMA(&&t_bitmap)
-            SKIP_TO_BM_COMMA(&&t_skip_to_bitmap)
-            UNPACKED_BM_COMMA(&&t_unpacked_bm)
-            LIST_SW_COMMA(&&t_list_sw)
-            SKIP_TO_LIST_SW_COMMA(&&t_skip_to_list_sw)
-            BM_SW_COMMA(&&t_bm_sw)
-            SKIP_TO_BM_SW_COMMA(&&t_skip_to_bm_sw)
-            XX_SW_COMMA(&&t_xx_sw)
-            SKIP_TO_XX_SW_COMMA(&&t_skip_to_xx_sw)
-            FULL_BM_SW_COMMA(&&t_full_bm_sw)
-            SKIP_TO_FULL_BM_SW_COMMA(&&t_skip_to_full_bm_sw)
-            EK_COMMA(&&t_embedded_keys)
-            EK_XV_COMMA(&&t_ek_xv)
-            &&t_sw_plus_48,
-            SKIP_TO_SW_COMMA(&&t_skip_to_switch)
-            JT_LVL_IN_TYPE,
+            [16 ] = JT_ENTRIES,
+            [16 + T_LIST] = LIST_COMMA(&&t_list16)
+            [16 + T_SWITCH] = &&t_sw_plus_16,
+            [32] = JT_ENTRIES,
+            [32 + T_LIST] = LIST_COMMA(&&t_list32)
+            [32 + T_SWITCH] = &&t_sw_plus_32,
+            [48] = JT_ENTRIES,
+            [48 + T_LIST] = LIST_COMMA(&&t_list48)
+            [48 + T_SWITCH] = &&t_sw_plus_48,
           #ifdef AUGMENT_TYPE_8
-            [64] =
-            SEPARATE_T_NULL_COMMA
-            LIST_COMMA(&&t_list64)
-            XX_LISTS_COMMA(&&t_xx_list)
-            SKIP_TO_LIST_COMMA(&&t_skip_to_list)
-            UA_PARALLEL_128_COMMA(&&t_list_ua)
-            BITMAP_COMMA(&&t_bitmap)
-            SKIP_TO_BM_COMMA(&&t_skip_to_bitmap)
-            UNPACKED_BM_COMMA(&&t_unpacked_bm)
-            LIST_SW_COMMA(&&t_list_sw)
-            SKIP_TO_LIST_SW_COMMA(&&t_skip_to_list_sw)
-            BM_SW_COMMA(&&t_bm_sw)
-            SKIP_TO_BM_SW_COMMA(&&t_skip_to_bm_sw)
-            XX_SW_COMMA(&&t_xx_sw)
-            SKIP_TO_XX_SW_COMMA(&&t_skip_to_xx_sw)
-            FULL_BM_SW_COMMA(&&t_full_bm_sw)
-            SKIP_TO_FULL_BM_SW_COMMA(&&t_skip_to_full_bm_sw)
-            EK_COMMA(&&t_embedded_keys)
-            EK_XV_COMMA(&&t_ek_xv)
-            &&t_sw_plus_64,
-            SKIP_TO_SW_COMMA(&&t_skip_to_switch)
-            JT_LVL_IN_TYPE,
-            [80] =
-            SEPARATE_T_NULL_COMMA
-            LIST_COMMA(&&t_list80)
-            XX_LISTS_COMMA(&&t_xx_list)
-            SKIP_TO_LIST_COMMA(&&t_skip_to_list)
-            UA_PARALLEL_128_COMMA(&&t_list_ua)
-            BITMAP_COMMA(&&t_bitmap)
-            SKIP_TO_BM_COMMA(&&t_skip_to_bitmap)
-            UNPACKED_BM_COMMA(&&t_unpacked_bm)
-            LIST_SW_COMMA(&&t_list_sw)
-            SKIP_TO_LIST_SW_COMMA(&&t_skip_to_list_sw)
-            BM_SW_COMMA(&&t_bm_sw)
-            SKIP_TO_BM_SW_COMMA(&&t_skip_to_bm_sw)
-            XX_SW_COMMA(&&t_xx_sw)
-            SKIP_TO_XX_SW_COMMA(&&t_skip_to_xx_sw)
-            FULL_BM_SW_COMMA(&&t_full_bm_sw)
-            SKIP_TO_FULL_BM_SW_COMMA(&&t_skip_to_full_bm_sw)
-            EK_COMMA(&&t_embedded_keys)
-            EK_XV_COMMA(&&t_ek_xv)
-            &&t_sw_plus_80,
-            SKIP_TO_SW_COMMA(&&t_skip_to_switch)
-            JT_LVL_IN_TYPE,
-            [96] =
-            SEPARATE_T_NULL_COMMA
-            LIST_COMMA(&&t_list96)
-            XX_LISTS_COMMA(&&t_xx_list)
-            SKIP_TO_LIST_COMMA(&&t_skip_to_list)
-            UA_PARALLEL_128_COMMA(&&t_list_ua)
-            BITMAP_COMMA(&&t_bitmap)
-            SKIP_TO_BM_COMMA(&&t_skip_to_bitmap)
-            UNPACKED_BM_COMMA(&&t_unpacked_bm)
-            LIST_SW_COMMA(&&t_list_sw)
-            SKIP_TO_LIST_SW_COMMA(&&t_skip_to_list_sw)
-            BM_SW_COMMA(&&t_bm_sw)
-            SKIP_TO_BM_SW_COMMA(&&t_skip_to_bm_sw)
-            XX_SW_COMMA(&&t_xx_sw)
-            SKIP_TO_XX_SW_COMMA(&&t_skip_to_xx_sw)
-            FULL_BM_SW_COMMA(&&t_full_bm_sw)
-            SKIP_TO_FULL_BM_SW_COMMA(&&t_skip_to_full_bm_sw)
-            EK_COMMA(&&t_embedded_keys)
-            EK_XV_COMMA(&&t_ek_xv)
-            &&t_sw_plus_96,
-            SKIP_TO_SW_COMMA(&&t_skip_to_switch)
-            JT_LVL_IN_TYPE,
-            [112] =
-            SEPARATE_T_NULL_COMMA
-            LIST_COMMA(&&t_list112)
-            XX_LISTS_COMMA(&&t_xx_list)
-            SKIP_TO_LIST_COMMA(&&t_skip_to_list)
-            UA_PARALLEL_128_COMMA(&&t_list_ua)
-            BITMAP_COMMA(&&t_bitmap)
-            SKIP_TO_BM_COMMA(&&t_skip_to_bitmap)
-            UNPACKED_BM_COMMA(&&t_unpacked_bm)
-            LIST_SW_COMMA(&&t_list_sw)
-            SKIP_TO_LIST_SW_COMMA(&&t_skip_to_list_sw)
-            BM_SW_COMMA(&&t_bm_sw)
-            SKIP_TO_BM_SW_COMMA(&&t_skip_to_bm_sw)
-            XX_SW_COMMA(&&t_xx_sw)
-            SKIP_TO_XX_SW_COMMA(&&t_skip_to_xx_sw)
-            FULL_BM_SW_COMMA(&&t_full_bm_sw)
-            SKIP_TO_FULL_BM_SW_COMMA(&&t_skip_to_full_bm_sw)
-            EK_COMMA(&&t_embedded_keys)
-            EK_XV_COMMA(&&t_ek_xv)
-            &&t_sw_plus_112,
-            SKIP_TO_SW_COMMA(&&t_skip_to_switch)
-            JT_LVL_IN_TYPE,
+            [64] = JT_ENTRIES,
+            [64 + T_LIST] = LIST_COMMA(&&t_list64)
+            [64 + T_SWITCH] = &&t_sw_plus_64,
+            [80] = JT_ENTRIES,
+            [80 + T_LIST] = LIST_COMMA(&&t_list80)
+            [80 + T_SWITCH] = &&t_sw_plus_80,
+            [96] = JT_ENTRIES,
+            [96 + T_LIST] = LIST_COMMA(&&t_list96)
+            [96 + T_SWITCH] = &&t_sw_plus_96,
+            [112] = JT_ENTRIES,
+            [112 + T_LIST] = LIST_COMMA(&&t_list112)
+            [112 + T_SWITCH] = &&t_sw_plus_112,
           #endif // AUGMENT_TYPE_8
       #endif // AUGMENT_TYPE
       #endif // LOOKUP
