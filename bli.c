@@ -2609,9 +2609,9 @@ t_list48:
     // nDL >  4 for AUGMENT_TYPE_8
     {
       #ifdef AUGMENT_TYPE_8
-      #ifndef BL_SPECIFIC_LIST
+      #ifdef BL_SPECIFIC_LIST
         nBLR = nBL = AugTypeBitsInv(64);
-      #endif // !BL_SPECIFIC_LIST
+      #endif // BL_SPECIFIC_LIST
       #endif // AUGMENT_TYPE_8
       #ifdef COMPRESSED_LISTS
       #ifdef SKIP_PREFIX_CHECK
