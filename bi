@@ -3,7 +3,48 @@
 # This lengthy regression test script has the structure required to be
 # used by git bisect run.
 
+make clean default && regress
+if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
+
 : \
+&& DEFINES="-DDEBUG" make clean default \
+&& regress \
+&& DEFINES="-DQP_PLN -DDEBUG" make clean default \
+&& regress \
+&& :
+if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
+
+for lvl in "-DNO_LVL_IN_WR_HB -DDEFAULT_SKIP_TO_SW" \
+           "-DNO_LVL_IN_WR_HB -DALL_SKIP_TO_SW_CASES" \
+            -DLVL_IN_PP
+do
+for jt in "" -DJUMP_TABLE
+do
+    : \
+    && DEFINES="$lvl $jt -DDEBUG" make clean default \
+    && regress \
+    && :
+done
+done
+if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
+
+: 'regression test bug fix in 204826' \
+&& DEFINES="-DNO_USE_BM_SW -DcnBitsInD1=6 -DcnBitsInD2=10 -DNO_REMOTE_LNX" \
+   make clean default \
+&& regress \
+&& : 'regression test fix of BM SW with cnBitsInD2 != cnBitsPerDigit' \
+&& DEFINES="-DNO_BM_SW_CNT_IN_WR -DcnBitsInD1=6 -DcnBitsInD2=10" \
+   make clean default \
+&& regress \
+&& DEFINES="-DNO_LVL_IN_WR_HB -DDEFAULT_SKIP_TO_SW -DPOP_WORD -DDEBUG" \
+   make clean default \
+&& regress \
+&& DEFINES="-DDEBUG -DNO_EK_XV" make clean default \
+&& regress \
+&& DEFINES="-DcnListPopCntMax64=0 -DDEBUG" make clean default \
+&& regress \
+&& DEFINES="-DNO_EMBED_KEYS -DDEBUG" make clean default \
+&& regress \
 && DEFINES="-DSKIP_TO_BITMAP -DcnListPopCntMax64=64 -DDEBUG" \
    make clean default \
 && regress \
@@ -162,51 +203,6 @@ done
 done
 done
 done
-if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
-
-make clean default && regress
-if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
-
-: \
-&& DEFINES="-DDEBUG" make clean default \
-&& regress \
-&& DEFINES="-DQP_PLN -DDEBUG" make clean default \
-&& regress \
-&& :
-if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
-
-for lvl in "-DNO_LVL_IN_WR_HB -DDEFAULT_SKIP_TO_SW" \
-           "-DNO_LVL_IN_WR_HB -DALL_SKIP_TO_SW_CASES" \
-            -DLVL_IN_PP
-do
-for jt in "" -DJUMP_TABLE
-do
-    : \
-    && DEFINES="$lvl $jt -DDEBUG" make clean default \
-    && regress \
-    && :
-done
-done
-if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
-
-: 'regression test bug fix in 204826' \
-&& DEFINES="-DNO_USE_BM_SW -DcnBitsInD1=6 -DcnBitsInD2=10 -DNO_REMOTE_LNX" \
-   make clean default \
-&& regress \
-&& : 'regression test fix of BM SW with cnBitsInD2 != cnBitsPerDigit' \
-&& DEFINES="-DNO_BM_SW_CNT_IN_WR -DcnBitsInD1=6 -DcnBitsInD2=10" \
-   make clean default \
-&& regress \
-&& DEFINES="-DNO_LVL_IN_WR_HB -DDEFAULT_SKIP_TO_SW -DPOP_WORD -DDEBUG" \
-   make clean default \
-&& regress \
-&& DEFINES="-DDEBUG -DNO_EK_XV" make clean default \
-&& regress \
-&& DEFINES="-DcnListPopCntMax64=0 -DDEBUG" make clean default \
-&& regress \
-&& DEFINES="-DNO_EMBED_KEYS -DDEBUG" make clean default \
-&& regress \
-&& :
 if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 
 #BPW=32 make clean default
