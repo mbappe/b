@@ -1798,7 +1798,8 @@ t_sw_plus_32:
         assert(nBL == cnBitsLeftAtDl2);
         nAugTypeBits = AugTypeBits(cnBitsLeftAtDl2);
       #else // AUGMENT_TYPE_8
-        //nAugTypeBits = (0x10 & (nBL - 1)) * 2 + ((0x10 & (nBL - 1)) ^ 0x10) * (((nBL - 1)/ 8) & 1);
+        //nAugTypeBits =  (0x10 & (nBL - 1)) * 2
+        //             + ((0x10 & (nBL - 1)) ^ 0x10) * (((nBL - 1)/ 8) & 1);
         //nAugTypeBits = AugTypeBits(nBL);
         //nAugTypeBits -= (~(nBL - 1) & 16);
         nAugTypeBits = 16 + ((nBL - 1) & 16);
@@ -2541,7 +2542,7 @@ t_list112:
         }
       #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
         goto break_from_main_switch;
-    } // end of t_listWord
+    } // end of t_list112
   #endif // BL_SPECIFIC_LIST
   #endif // AUGMENT_TYPE_8 && LOOKUP
   #endif // (cwListPopCntMax != 0)
@@ -2630,7 +2631,7 @@ t_list96:
         }
       #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
         goto break_from_main_switch;
-    } // end of t_listWord
+    } // end of t_list96
   #endif // BL_SPECIFIC_LIST
   #endif // AUGMENT_TYPE_8 && LOOKUP
   #endif // (cwListPopCntMax != 0)
@@ -2719,7 +2720,7 @@ t_list80:
         }
       #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
         goto break_from_main_switch;
-    } // end of t_listWord
+    } // end of t_list80
   #endif // BL_SPECIFIC_LIST
   #endif // AUGMENT_TYPE_8 && LOOKUP
   #endif // (cwListPopCntMax != 0)
@@ -2820,7 +2821,7 @@ t_list48:
         }
       #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
         goto break_from_main_switch;
-    } // end of t_listWord
+    } // end of t_list64
   #endif // AUGMENT_TYPE && LOOKUP
   #endif // (cwListPopCntMax != 0)
 
