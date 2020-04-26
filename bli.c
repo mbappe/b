@@ -1628,7 +1628,9 @@ t_sw_plus_48:
         // The assertion will blow if we have a single digit that
         // spans > 32 to <= 16 bits left.
         assert((nBL - 1) & 0x30);
-        nAugTypeBits -= ((~(nBL - 1) & 32) >> 1);
+        // 48 or 32
+        nAugTypeBits = 32 + (((nBL - 1) & 32) >> 1);
+        //nAugTypeBits -= ((~(nBL - 1) & 32) >> 1);
         assert(nAugTypeBits == AugTypeBits(nBL));
       #endif // AUGMENT_TYPE_8
         goto againAugType;
