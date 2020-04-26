@@ -10608,6 +10608,30 @@ Initialize(void)
     printf("# No MASK_TYPE\n");
 #endif //        MASK_TYPE else
 
+#ifdef           BL_SPECIFIC_LIST
+    printf("#    BL_SPECIFIC_LIST\n");
+#else //         BL_SPECIFIC_LIST
+    printf("# No BL_SPECIFIC_LIST\n");
+#endif //        BL_SPECIFIC_LIST else
+
+#ifdef           BL_SPECIFIC_SKIP
+    printf("#    BL_SPECIFIC_SKIP\n");
+#else //         BL_SPECIFIC_SKIP
+    printf("# No BL_SPECIFIC_SKIP\n");
+#endif //        BL_SPECIFIC_SKIP else
+
+#ifdef           BL_SPECIFIC_SKIP_JT
+    printf("#    BL_SPECIFIC_SKIP_JT\n");
+#else //         BL_SPECIFIC_SKIP_JT
+    printf("# No BL_SPECIFIC_SKIP_JT\n");
+#endif //        BL_SPECIFIC_SKIP_JT else
+
+#ifdef           MASK_NBLR
+    printf("#    MASK_NBLR\n");
+#else //         MASK_NBLR
+    printf("# No MASK_NBLR\n");
+#endif //        MASK_NBLR else
+
 #ifdef           CACHE_ALIGN_L1
     printf("#    CACHE_ALIGN_L1\n");
 #else //         CACHE_ALIGN_L1
