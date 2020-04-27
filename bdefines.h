@@ -771,5 +771,14 @@
   #undef cnLogBmlfParts
 #endif // B_JUDYL
 
+#ifdef MASK_NBLR
+  #undef  BL_SPECIFIC_SKIP
+  #define BL_SPECIFIC_SKIP
+#endif // MASK_NBLR
+#ifdef BL_SPECIFIC_SKIP_JT
+  #undef  BL_SPECIFIC_SKIP
+  #define BL_SPECIFIC_SKIP
+#endif // BL_SPECIFIC_SKIP_JT
+
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 
