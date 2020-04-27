@@ -925,6 +925,7 @@ fastAgain:;
       #ifdef AUGMENT_TYPE
             [16 ] = JT_ENTRIES,
             [16 + T_LIST] = LIST_COMMA(&&t_list16)
+            [16 + T_BITMAP] = &&t_bm_plus_16,
             [16 + T_SWITCH] = &&t_sw_plus_16,
             [32] = JT_ENTRIES,
             [32 + T_LIST] = LIST_COMMA(&&t_list32)
@@ -1189,7 +1190,6 @@ fastAgain:;
     case 16 + T_LIST: goto t_list16;
       #endif // AUGMENT_TYPE && LOOKUP
   #endif // (cwListPopCntMax != 0)
-
   #if defined(DEFAULT_LIST)
     default:
   #endif // DEFAULT_LIST
@@ -1227,12 +1227,20 @@ fastAgain:;
   #endif // SKIP_TO_BITMAP
   #endif // PACK_BM_VALUES || !B_JUDYL
 
+  #ifdef BITMAP
+  #ifdef AUGMENT_TYPE
+  #ifdef LOOKUP
+  #if cn2dBmMaxWpkPercent != 0
+    case 16 + T_BITMAP: goto t_bm_plus_16;
+  #endif // cn2dBmMaxWpkPercent != 0
+  #endif // T_BITMAP
+  #endif // AUGMENT_TYPE
+  #endif // LOOKUP
   #if defined(DEFAULT_BITMAP)
     default:
   #endif // defined(DEFAULT_BITMAP)
   #ifdef BITMAP
   #if defined(PACK_BM_VALUES) || !defined(LOOKUP) || !defined(B_JUDYL)
-    CASES_AUG_TYPE(T_BITMAP)
       #if !defined(DEFAULT_BITMAP) || defined(DEFAULT_AND_CASE)
     case T_BITMAP:
       #endif // !DEFAULT_BITMAP || DEFAULT_AND_CASE
@@ -1366,7 +1374,7 @@ t_skip_to_switch:
         {
         case  2: assert(nBLR == AugTypeBitsInv(16)); goto t_sw_plus_16;
         case  3: assert(nBLR == AugTypeBitsInv(32)); goto t_sw_plus_32;
-        default: assert(nBLR == AugTypeBitsInv(96)); goto t_sw_plus_48;
+        default: assert(nBLR == AugTypeBitsInv(48)); goto t_sw_plus_48;
         case  5: assert(nBLR == AugTypeBitsInv(64)); goto t_sw_plus_64;
         case  6: assert(nBLR == AugTypeBitsInv(80)); goto t_sw_plus_80;
         case  7: assert(nBLR == AugTypeBitsInv(96)); goto t_sw_plus_96;
@@ -3482,10 +3490,115 @@ t_skip_to_bitmap:
             goto break_from_main_switch;
         }
         // We don't support skip to unpacked bitmap yet.
+  #ifdef AUGMENT_TYPE
+  #ifdef LOOKUP
+  #if cn2dBmMaxWpkPercent != 0
+        if (nBLR > cnBitsInD1) {
+            goto t_bm_plus_16;
+        }
+  #endif // cn2dBmMaxWpkPercent != 0
+  #endif // LOOKUP
+  #endif // AUGMENT_TYPE
         goto t_bitmap;
     } // end of t_skip_to_bitmap
   #endif // SKIP_TO_BITMAP
   #endif // PACK_BM_VALUES || !B_JUDYL
+
+  #ifdef BITMAP
+  #ifdef AUGMENT_TYPE
+  #ifdef LOOKUP
+  #if cn2dBmMaxWpkPercent != 0
+t_bm_plus_16:
+    {
+        assert(nBLR == cnBitsLeftAtDl2);
+        nBLR = cnBitsLeftAtDl2;
+      #ifndef SKIP_TO_BITMAP
+        nBL = nBLR; // We don't use nBL for LOOKUP except for DEBUG.
+      #endif // !SKIP_TO_BITMAP
+      #ifdef LOOKUP_NO_BITMAP_DEREF
+        return KeyFound;
+      #else // LOOKUP_NO_BITMAP_DEREF
+          #ifdef SKIP_PREFIX_CHECK
+        if (PrefixCheckAtLeaf(qy, wKey
+              #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
+                , bNeedPrefixCheck
+              #endif // !ALWAYS_CHECK_PREFIX_AT_LEAF
+              #ifdef SAVE_PREFIX_TEST_RESULT
+                , wPrefixMismatch
+              #else // SAVE_PREFIX_TEST_RESULT
+                , pwrUp
+              #endif // SAVE_PREFIX_TEST_RESULT else
+              #ifdef SAVE_PREFIX
+                , pLnPrefix, pwrPrefix, nBLRPrefix
+              #endif // SAVE_PREFIX
+                  ) // end call to PrefixCheckAtLeaf
+            == Success)
+          #endif // SKIP_PREFIX_CHECK
+        {
+          #ifdef LOOKUP_NO_BITMAP_SEARCH
+            // BUG?: Is pwrUp valid here, i.e. does it mean what this code
+            // thinks it means?  Since SKIP_PREFIX_CHECK may not be #defined?
+              #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+            assert(gwPopCnt(qy, cnBitsInD1) != 0);
+              #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+            // ? cnBitsLeftAtDl2 ?
+            assert(gwPopCnt(qy, cnBitsInD2) != 0);
+              #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+            return KeyFound;
+          #else // LOOKUP_NO_BITMAP_SEARCH
+              #ifdef USE_XX_SW_ONLY_AT_DL2
+            // We assume we never blow-out into a one-digit bitmap.
+// But that doesn't mean we don't want to support skip directly to a
+// one-digit bitmap bypassing DL2.
+            // We just double until we end up with one big bitmap at DL2.
+            // But what about when we create XX_SW at (nBLR == nBitsLeftAtDl2)
+            // and cbEmbeddedBitmap and nBLR - cnBW == cnBitsInD1? We did not
+            // explicitly double.
+            // Or nBLR - cnBW <= cnLogBitsPerLink?
+            // We end up with one big bitmap at DL2 but it is
+            // represented by an XX_SW and embedded bitmaps?
+            // What if cnBitsInD1 > cnLogBitsPerLink?
+            // cbEmbeddedBitmap won't be true.
+            // Do we have code to make the whole thing T_BITMAP?
+            // We end up here with (nBLR <= cnBitsInD1)?
+            // We have to be sure to handle that case below
+            // for USE_XX_SW_ONLY_AT_DL2?
+              #endif // USE_XX_SW_ONLY_AT_DL2
+            // Use compile-time tests to speed this up. Hopefully.
+            if ((wr_nType(WROOT_NULL) == T_BITMAP) && (wRoot == WROOT_NULL)) {
+                goto break_from_main_switch;
+            }
+            if (BitIsSet(((BmLeaf_t*)pwr)->bmlf_awBitmap, wKey & MSK(nBLR))) {
+                return KeyFound;
+            }
+            DBGX(printf("Bit is not set.\n"));
+          #endif // LOOKUP_NO_BITMAP_SEARCH
+        }
+          #ifdef SKIP_LINKS
+          #ifdef SKIP_PREFIX_CHECK
+        else
+        {
+            // Shouldn't this be using the previous nBL for the pwrUp case?
+                  #ifdef SKIP_TO_BITMAP
+            // But now that we have prefix in the bitmap can't we use that?
+                  #endif // SKIP_TO_BITMAP
+            DBGX(printf("Mismatch at bitmap wPrefix " OWx" nBLR %d nBL %d\n",
+                  #ifdef PP_IN_LINK
+                        gwPrefix(qy),
+                  #else // PP_IN_LINK
+                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
+                  #endif // PP_IN_LINK
+                        nBLR, nBL));
+        }
+          #endif // SKIP_PREFIX_CHECK
+          #endif // SKIP_LINKS
+      #endif // LOOKUP_NO_BITMAP_DEREF else
+        goto break_from_main_switch;
+    } // end of t_bitmap
+  #endif // cn2dBmMaxWpkPercent != 0
+  #endif // LOOKUP
+  #endif // AUGMENT_TYPE
+  #endif // BITMAP
 
   #ifdef UNPACK_BM_VALUES
       #ifndef LOOKUP
@@ -3500,9 +3613,26 @@ t_bitmap:
         assert(nBLR == cnBitsInD1);
         nBLR = cnBitsInD1;
           #ifndef SKIP_TO_BITMAP
-        nBL = cnBitsInD1; // We don't use nBL for LOOKUP except for DEBUG.
-          #endif // SKIP_TO_BITMAP
-      #endif // B_JUDYL
+        nBL = nBLR; // We don't use nBL for LOOKUP except for DEBUG.
+          #endif // !SKIP_TO_BITMAP
+      #else // B_JUDYL
+          #if cn2dBmMaxWpkPercent == 0
+        assert(nBLR == cnBitsInD1);
+        nBLR = cnBitsInD1;
+              #ifndef SKIP_TO_BITMAP
+        nBL = nBLR; // We don't use nBL for LOOKUP except for DEBUG.
+              #endif // !SKIP_TO_BITMAP
+          #endif // cn2dBmMaxWpkPercent == 0
+          #ifdef AUGMENT_TYPE
+          #ifdef LOOKUP
+        assert(nBLR == cnBitsInD1);
+        nBLR = cnBitsInD1;
+              #ifndef SKIP_TO_BITMAP
+        nBL = nBLR; // We don't use nBL for LOOKUP except for DEBUG.
+              #endif // !SKIP_TO_BITMAP
+          #endif // LOOKUP
+          #endif // AUGMENT_TYPE
+      #endif // B_JUDYL else
       #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
           #if defined(INSERT) && defined(B_JUDYL)
@@ -3517,9 +3647,8 @@ t_bitmap:
         return KeyFound;
       #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_DEREF)
 
-          #ifdef COMPRESSED_LISTS
-          #ifdef SKIP_PREFIX_CHECK
-          #ifdef LOOKUP
+      #ifdef SKIP_PREFIX_CHECK
+      #ifdef LOOKUP
         if (PrefixCheckAtLeaf(qy, wKey
               #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
                 , bNeedPrefixCheck
@@ -3534,9 +3663,8 @@ t_bitmap:
               #endif // SAVE_PREFIX
                   ) // end call to PrefixCheckAtLeaf
             == Success)
-          #endif // LOOKUP
-          #endif // SKIP_PREFIX_CHECK
-          #endif // COMPRESSED_LISTS
+      #endif // LOOKUP
+      #endif // SKIP_PREFIX_CHECK
         {
           #if defined(COUNT)
             if ((wr_nType(WROOT_NULL) == T_BITMAP)
