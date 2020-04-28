@@ -16,11 +16,23 @@
 #   CC=clang CSTD=c11 DEFINES=-DDEBUG make clean default
 #   CC=clang++ CSTD=c++14 make b
 #   CXX=clang++ CXXSTD=c++11 make bcheck
-CC ?= cc
 
 # I recommend the make clean first because there are so many dependencies
 # that are not discovered by make, e.g. changes in environment variables.
 # Also, I didn't bother adding the header file dependencies.
+
+# Built-in rules for make:
+# n.o is made automatically from n.c with a recipe of the form:
+#   ‘$(CC) $(CPPFLAGS) $(CFLAGS) -c’.
+# n.o is made automatically from n.cc, n.cpp, or n.C with a recipe of the form:
+#   ‘$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c’.
+# n.o is made automatically from n.s by running the assembler, as.
+#   The precise recipe is ‘$(AS) $(ASFLAGS)’.
+# n.s is made automatically from n.S by running the C preprocessor, cpp.
+#   The precise recipe is ‘$(CPP) $(CPPFLAGS)’.
+# n is made automatically from n.o by running the linker (usually called ld)
+# via the C compiler. The precise recipe used is:
+#   ‘$(CC) $(LDFLAGS) n.o $(LOADLIBES) $(LDLIBS)’.
 
 # The default build is 64-bits.
 # Use "BPW=32 make" to get a 32-bit build.
@@ -292,10 +304,7 @@ T_OBJS = JudyMalloc.o
 #
 # 1. This Makefile does not distinguish 64-bit from 32-bit objects.  When
 #    switching from one to the other it is necessary to rebuild everything.
-# 2. I couldn't figure out how to add the .h file dependencies without
-#    breaking the .c.o rule -- I tried creating a separate rule but that
-#    didn't work.
-# 3. To ensure that all objects are built with the same/compatible
+# 2. To ensure that all objects are built with the same/compatible
 #    "DEFINES=..." on the command line.
 #
 ##################################
@@ -422,52 +431,41 @@ endif
 endif
 endif
 
-JudyMalloc.so: JudyMalloc.c
-	$(CC) $(CFLAGS) $(MALLOC_FLAGS) -fPIC $(DEFINES) -shared -o $@ $^
-
-b-L.o: b.c
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $^
-b1L.o: b1.c
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $^
-biL.o: bi.c
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $^
-blL.o: bl.c
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $^
-brL.o: br.c
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $^
-bcL.o: bc.c
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $^
-
-b-L.c: b.c
-	ln -s $< $@
-b1L.c: b1.c
-	ln -s $< $@
-biL.c: bi.c
-	ln -s $< $@
-blL.c: bl.c
-	ln -s $< $@
-brL.c: br.c
-	ln -s $< $@
-bcL.c: bc.c
-	ln -s $< $@
+JudyMalloc.so: JudyMalloc.c dlmalloc.c Judy.h
+	$(CC) $(CFLAGS) $(MALLOC_FLAGS) -fPIC $(DEFINES) -shared -o $@ $<
 
 ############################
 #
 # Rules for building .o files.
 #
-# I can't figure out how to add dependencies for the .o files on b.h
-# for the .c.o rule without ending up with b.h on the compile line
-# coming from $^.  And b.h on the command line causes a problem for icc
-# and possibly other compilers.
-# So we are going without the .h file dependencies for now which is
-# part of the reason the "all" target starts with "clean".
-#
+############################
+
 .c.o:
-	$(CC) $(CFLAGS) $(DEFINES) -c $^
+	$(CC) $(CFLAGS) $(DEFINES) -c $<
+
+b.o: b.h bdefines.h Judy.h
+b1.o: bli.c b.h bdefines.h Judy.h
+bi.o: bli.c b.h bdefines.h Judy.h
+bl.o: bli.c b.h bdefines.h Judy.h
+br.o: bli.c b.h bdefines.h Judy.h
+bc.o: bli.c b.h bdefines.h Judy.h
+
+b-L.o: b.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
+b1L.o: b1.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
+biL.o: bi.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
+blL.o: bl.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
+brL.o: br.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
+bcL.o: bc.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
 
 # Default MALLOC_ALIGNMENT is 2 * sizeof(void *), except possibly on OSX.
-JudyMalloc.o: JudyMalloc.c
-	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) -c $^
+JudyMalloc.o: JudyMalloc.c dlmalloc.c Judy.h
+	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) -c $<
 
 ############################
 #
@@ -478,20 +476,37 @@ JudyMalloc.o: JudyMalloc.c
 .c.s:
 	$(CC) $(CFLAGS) $(DEFINES) -S $^
 
-blL.s: blL.c
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S $^
+b.s: b.h bdefines.h Judy.h
+b1.s: bli.c b.h bdefines.h Judy.h
+bi.s: bli.c b.h bdefines.h Judy.h
+bl.s: bli.c b.h bdefines.h Judy.h
+br.s: bli.c b.h bdefines.h Judy.h
+bc.s: bli.c b.h bdefines.h Judy.h
+
+b-L.s: b.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
+b1L.s: b1.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
+biL.s: bi.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
+blL.s: bl.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
+brL.s: br.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
+bcL.s: bc.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
 
 # Suppress warnings. Transitive warnings. t.c just includes other files.
 t.s: t.c
-	$(CC) $(CFLAGS) $(DEFINES) -S $^
+	$(CC) $(CFLAGS) $(DEFINES) -S $<
 
 # Suppress warnings.
 Judy1LHTime.s: Judy1LHTime.c
-	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -S $^
+	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -S $<
 
 # Suppress warnings.  sbrk is deprecated.
 JudyMalloc.s: JudyMalloc.c
-	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) -S $^
+	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) -S $<
 
 ############################
 #
@@ -500,44 +515,44 @@ JudyMalloc.s: JudyMalloc.c
 ############################
 
 .c.i:
-	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $^
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
 
-# The .c.i rule doesn't work for some reason.  Later.
-# I'm not sure this works with DEBUG. A problem with assert macro and indent?
+# The .c.i rule doesn't work for some reason. Like it doesn't exist. Later.
+# The .i rules don't work with DEBUG. A problem with assert macro and indent?
 b.i: b.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
 bl.i: bl.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
 
 blL.i: blL.c
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $^ | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
 bi.i: bi.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
 br.i: br.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
 bc.i: bc.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
 Judy1LHTime.i: Judy1LHTime.c
-	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -E $^ \
+	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -E $< \
   | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
 t.i: t.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $^ | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
 
 # The .c.i rule doesn't work for some reason.  Later.
 JudyMalloc.i: JudyMalloc.c
-	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) -E $^ \
+	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) -E $< \
   | indent -i4 | expand > $@
 
 #
