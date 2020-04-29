@@ -3049,16 +3049,21 @@ t_list:
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
                   #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
                       #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT)
-                          // Should use HasKey for !PACK_L1_VALUES?
                           #if defined(AUGMENT_TYPE_8) && cnBitsInD1 > 8
-                && ((nPos = LocateKeyInList16(qya, cnBitsInD1, wKey)) >= 0)
-                          #elif defined(AUGMENT_TYPE_8)
-                && ((nPos = LocateKeyInList8(qy, cnBitsInD1, wKey)) >= 0)
-                          #else
+                && ((nPos = LocateKeyInList16(qya, nBLR, wKey)) >= 0)
+                          #else // AUGMENT_TYPE_8 && cnBitsInD1 > 8
+                              #ifdef PACK_L1_VALUES
                 && ((nPos = LocateKeyInList8(qy, nBLR, wKey)) >= 0)
-                          #endif
+                              #else // PACK_L1_VALUES
+                && ListHasKey8(qy, nBLR, wKey)
+                              #endif // PACK_L1_VALUES else
+                          #endif // AUGMENT_TYPE_8 && cnBitsInD1 > 8 else
                       #else // AUGMENT_TYPE && !AUGMENT_TYPE_NOT
+                          #ifdef PACK_L1_VALUES
                 && ((nPos = LocateKeyInList(qya, nBLR, wKey)) >= 0)
+                          #else // PACK_L1_VALUES
+                && ListHasKey(qy, nBLR, wKey)
+                          #endif // PACK_L1_VALUES else
                       #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT else
                   #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
               #else // defined(B_JUDYL)
@@ -3069,15 +3074,13 @@ t_list:
                   #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
                       #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT)
                           #if defined(AUGMENT_TYPE_8) && cnBitsInD1 > 8
-                && ListHasKey16(qy, cnBitsInD1, wKey)
-                          #elif defined(AUGMENT_TYPE_8)
-                && ListHasKey8(qy, cnBitsInD1, wKey)
-                          #else // AUG_TYPE_8 && cnBitsInD1 > 8 elif AUG_TYPE_8
-                && ListHasKey(qy, nBLR, wKey)
-                          #endif // else AT8 && cnBitsInD1 > 8 elif AUG_TYPE_8
+                && ListHasKey16(qy, nBLR, wKey)
+                          #else // AUGMENT_TYPE_8 && cnBitsInD1 > 8
+                && ListHasKey8(qy, nBLR, wKey)
+                          #endif // AUGMENT_TYPE_8 && cnBitsInD1 > 8 else
                       #else // AUGMENT_TYPE && !AUGMENT_TYPE_NOT
                 && ListHasKey(qy, nBLR, wKey)
-                      #endif // else AUGMENT_TYPE && !AUGMENT_TYPE_NOT
+                      #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT else
                   #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
               #endif // defined(B_JUDYL)
           #else // defined(LOOKUP)
