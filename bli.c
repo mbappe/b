@@ -1442,9 +1442,7 @@ t_sw_plus_112:
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
         // Help compiler know nBLR is a constant; does it help?
         nBLR = AugTypeBitsInv(112);
-      #ifndef BL_SPECIFIC_SKIP
         nBL = nBLR;
-      #endif // !BL_SPECIFIC_SKIP
         nBW = gnBW(qy, nBLR);
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
@@ -1467,8 +1465,7 @@ t_sw_plus_112:
         }
       #endif // BITMAP
         // Calculate nAugTypeBits while we know nBL is a constant.
-        assert(nBL == cnBitsLeftAtDl3 + 4 * cnBitsPerDigit);
-        nAugTypeBits = AugTypeBits(cnBitsLeftAtDl3 + 4 * cnBitsPerDigit);
+        nAugTypeBits = AugTypeBits(nBL);
         goto againAugType;
     } // end of t_sw_plus_112
   #endif // AUGMENT_TYPE_8 && LOOKUP
@@ -1504,8 +1501,7 @@ t_sw_plus_96:
         }
       #endif // BITMAP
         // Calculate nAugTypeBits while we know nBL is a constant.
-        assert(nBL == cnBitsLeftAtDl3 + 3 * cnBitsPerDigit);
-        nAugTypeBits = AugTypeBits(cnBitsLeftAtDl3 + 3 * cnBitsPerDigit);
+        nAugTypeBits = AugTypeBits(nBL);
         goto againAugType;
     } // end of t_sw_plus_96
   #endif // AUGMENT_TYPE_8 && LOOKUP
@@ -1541,8 +1537,7 @@ t_sw_plus_80:
         }
       #endif // BITMAP
         // Calculate nAugTypeBits while we know nBL is a constant.
-        assert(nBL == cnBitsLeftAtDl3 + 2 * cnBitsPerDigit);
-        nAugTypeBits = AugTypeBits(cnBitsLeftAtDl3 + 2 * cnBitsPerDigit);
+        nAugTypeBits = AugTypeBits(nBL);
         goto againAugType;
     } // end of t_sw_plus_80
   #endif // AUGMENT_TYPE_8 && LOOKUP
@@ -1578,8 +1573,7 @@ t_sw_plus_64:
         }
       #endif // BITMAP
         // Calculate nAugTypeBits while we know nBL is a constant.
-        assert(nBL == cnBitsLeftAtDl3 + cnBitsPerDigit);
-        nAugTypeBits = AugTypeBits(cnBitsLeftAtDl3 + cnBitsPerDigit);
+        nAugTypeBits = AugTypeBits(nBL);
         goto againAugType;
     } // end of goto t_sw_plus_64
   #endif // AUGMENT_TYPE_8 && LOOKUP
@@ -1630,8 +1624,7 @@ t_sw_plus_48:
       #endif // BITMAP
       #ifdef AUGMENT_TYPE_8
         // Calculate nAugTypeBits while we know nBL is a constant.
-        assert(nBL == cnBitsLeftAtDl3);
-        nAugTypeBits = AugTypeBits(cnBitsLeftAtDl3);
+        nAugTypeBits = AugTypeBits(nBL);
       #else // AUGMENT_TYPE_8
         // Is there a faster way to calculate nAugTypeBits here?
         // If nBW is constant above and less than or equal to 16
@@ -1682,13 +1675,8 @@ t_sw_plus_32:
         }
       #endif // BITMAP
       #ifdef AUGMENT_TYPE_8
-        assert(nBL == cnBitsLeftAtDl2);
-        nAugTypeBits = AugTypeBits(cnBitsLeftAtDl2);
+        nAugTypeBits = AugTypeBits(nBL);
       #else // AUGMENT_TYPE_8
-        //nAugTypeBits =  (0x10 & (nBL - 1)) * 2
-        //             + ((0x10 & (nBL - 1)) ^ 0x10) * (((nBL - 1)/ 8) & 1);
-        //nAugTypeBits = AugTypeBits(nBL);
-        //nAugTypeBits -= (~(nBL - 1) & 16);
         nAugTypeBits = 16 + ((nBL - 1) & 16);
         assert(nAugTypeBits == AugTypeBits(nBL));
       #endif // AUGMENT_TYPE_8
@@ -1746,18 +1734,15 @@ t_sw_plus_16:
         // it knew that nBLR and nBW were constants going in?
         // If so then we can simply do nAugTypeBits = AugTypeBits(nBL).
         // It looks like it does.
-      #if 1
       #ifdef AUGMENT_TYPE_8
-        nAugTypeBits = 0;
+        nAugTypeBits = AugTypeBits(nBL);
       #elif cnBitsLeftAtDl3 > 16 && cnBitsInD1 <= 8
         nAugTypeBits = AugTypeBits(nBL);
       #elif cnBitsLeftAtDl3 + cnBitsPerDigit > 16 && cnBitsLeftAtDl2 <= 8
         nAugTypeBits = AugTypeBits(nBL);
       #else
         nAugTypeBits = ((nBL - 1) & 8) << 1;
-      #endif
-      #else
-        nAugTypeBits = AugTypeBits(nBL);
+        assert(nAugTypeBits == AugTypeBits(nBL));
       #endif
         goto againAugType;
     } // end of t_sw_plus_16
