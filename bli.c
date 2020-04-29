@@ -2396,12 +2396,7 @@ t_list112:
                 DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
                              nPos,
                              &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
-          #ifndef PACK_L1_VALUES
-                if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
-                    return &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
-                } else
-          #endif // #ifndef PACK_L1_VALUES
-                { return &gpwValues(qy)[~nPos]; }
+                return &gpwValues(qy)[~nPos];
       #else // B_JUDYL
                 // Success for Lookup and Remove; Failure for Insert
                 return KeyFound;
@@ -2485,12 +2480,7 @@ t_list96:
                 DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
                              nPos,
                              &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
-          #ifndef PACK_L1_VALUES
-                if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
-                    return &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
-                } else
-          #endif // #ifndef PACK_L1_VALUES
-                { return &gpwValues(qy)[~nPos]; }
+                return &gpwValues(qy)[~nPos];
       #else // B_JUDYL
                 // Success for Lookup and Remove; Failure for Insert
                 return KeyFound;
@@ -2574,12 +2564,7 @@ t_list80:
                 DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
                              nPos,
                              &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
-          #ifndef PACK_L1_VALUES
-                if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
-                    return &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
-                } else
-          #endif // #ifndef PACK_L1_VALUES
-                { return &gpwValues(qy)[~nPos]; }
+                return &gpwValues(qy)[~nPos];
       #else // B_JUDYL
                 // Success for Lookup and Remove; Failure for Insert
                 return KeyFound;
@@ -2675,12 +2660,7 @@ t_list48:
                 DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
                              nPos,
                              &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
-          #ifndef PACK_L1_VALUES
-                if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
-                    return &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
-                } else
-          #endif // #ifndef PACK_L1_VALUES
-                { return &gpwValues(qy)[~nPos]; }
+                return &gpwValues(qy)[~nPos];
       #else // B_JUDYL
                 // Success for Lookup and Remove; Failure for Insert
                 return KeyFound;
@@ -2771,12 +2751,7 @@ t_list48:
                 DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
                              nPos,
                              &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
-              #ifndef PACK_L1_VALUES
-                if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
-                    return &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
-                } else
-              #endif // #ifndef PACK_L1_VALUES
-                { return &gpwValues(qy)[~nPos]; }
+                return &gpwValues(qy)[~nPos];
           #else // B_JUDYL
                 // Success for Lookup and Remove; Failure for Insert
                 return KeyFound;
@@ -2875,12 +2850,7 @@ t_list32:
                 DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
                              nPos,
                              &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
-          #ifndef PACK_L1_VALUES
-                if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
-                    return &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
-                } else
-          #endif // #ifndef PACK_L1_VALUES
-                { return &gpwValues(qy)[~nPos]; }
+                return &gpwValues(qy)[~nPos];
       #else // B_JUDYL
                 // Success for Lookup and Remove; Failure for Insert
                 return KeyFound;
@@ -2991,12 +2961,7 @@ t_list16:
                 DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
                              nPos,
                              &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
-          #ifndef PACK_L1_VALUES
-                if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
-                    return &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
-                } else
-          #endif // #ifndef PACK_L1_VALUES
-                { return &gpwValues(qy)[~nPos]; }
+                return &gpwValues(qy)[~nPos];
       #else // B_JUDYL
                 // Success for Lookup and Remove; Failure for Insert
                 return KeyFound;
@@ -3103,6 +3068,7 @@ t_list:
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
                   #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
                       #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT)
+                          // Should use HasKey for !PACK_L1_VALUES?
                           #if defined(AUGMENT_TYPE_8) && cnBitsInD1 > 8
                 && ((nPos = LocateKeyInList16(qya, cnBitsInD1, wKey)) >= 0)
                           #elif defined(AUGMENT_TYPE_8)
