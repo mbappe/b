@@ -920,39 +920,41 @@ fastAgain:;
                     __attribute__ ((section (".data#")))
       #endif // JUMP_TABLE_TEXT elif JUMP_TABLE_DATA
         = {
-            JT_ENTRIES,
+                    JT_ENTRIES,
+            [16 ] = JT_ENTRIES,
+            [32 ] = JT_ENTRIES,
+            [48 ] = JT_ENTRIES,
+            [64 ] = JT_ENTRIES,
+            [80 ] = JT_ENTRIES,
+            [96 ] = JT_ENTRIES,
+            [112] = JT_ENTRIES,
       #ifdef LOOKUP
       #ifdef AUGMENT_TYPE
-            [16 ] = JT_ENTRIES,
             [16 + T_LIST] = LIST_COMMA(&&t_list16)
           #if cn2dBmMaxWpkPercent != 0
             [16 + T_BITMAP] = &&t_bm_plus_16,
           #endif // cn2dBmMaxWpkPercent != 0
             [16 + T_SWITCH] = &&t_sw_plus_16,
-            [32] = JT_ENTRIES,
             [32 + T_LIST] = LIST_COMMA(&&t_list32)
             [32 + T_SWITCH] = &&t_sw_plus_32,
-            [48] = JT_ENTRIES,
             [48 + T_LIST] = LIST_COMMA(&&t_list48)
             [48 + T_SWITCH] = &&t_sw_plus_48,
           #ifdef AUGMENT_TYPE_8
-            [64] = JT_ENTRIES,
             [64 + T_LIST] = LIST_COMMA(&&t_list64)
             [64 + T_SWITCH] = &&t_sw_plus_64,
-            [80] = JT_ENTRIES,
             [80 + T_LIST] = LIST_COMMA(&&t_list80)
             [80 + T_SWITCH] = &&t_sw_plus_80,
-            [96] = JT_ENTRIES,
             [96 + T_LIST] = LIST_COMMA(&&t_list96)
             [96 + T_SWITCH] = &&t_sw_plus_96,
-            [112] = JT_ENTRIES,
             [112 + T_LIST] = LIST_COMMA(&&t_list112)
             [112 + T_SWITCH] = &&t_sw_plus_112,
           #endif // AUGMENT_TYPE_8
       #endif // AUGMENT_TYPE
       #endif // LOOKUP
     };
-    //__builtin_prefetch(0, 1);
+  #endif // JUMP_TABLE
+    // __builtin_prefetch(0, 0); // Uncomment and find prefetcht0 in bl[L].s.
+  #ifdef JUMP_TABLE
   // AUGMENT_TYPE_NOT means create jump table entries or switch table cases
   // according to AUGMENT_TYPE and AUGMENT_TYPE_8 but don't do the work of
   // augmenting the type or jump or switch based on an augmented type.
@@ -962,23 +964,23 @@ fastAgain:;
   // How expensive would it be to maintain nDL as well as nBL?
   // AUGMENT_TYPE without AUGMENT_TYPE_8 has four different nBL groups:
   // 5-8, 9-16, 17-32, 33-64. 0-4 does not work.
-  #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
+      #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
     goto *pvJumpTable[(nAugTypeBits | nType)
       // MASK_TYPE serves no purpose for JUMP_TABLE.
       // We have it to help gauge cost when doing it for !JUMP_TABLE.
-      #ifdef MASK_TYPE
+          #ifdef MASK_TYPE
                           & 0x7f
-      #endif // MASK_TYPE
+          #endif // MASK_TYPE
                       ];
-  #elif defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
+      #elif defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
     goto *pvJumpTable[(nAugTypeBits | nType)
-      #ifdef MASK_TYPE
+          #ifdef MASK_TYPE
                           & 0x3f // help compiler
-      #endif // MASK_TYPE
+          #endif // MASK_TYPE
                       ];
-  #else // AUG_8 && !AUG_NOT && LOOKUP elif AUG && !AUG_NOT && LOOKUP
+      #else // AUG_8 && !AUG_NOT && LOOKUP elif AUG && !AUG_NOT && LOOKUP
     goto *pvJumpTable[nType];
-  #endif // AUG_8 && !AUG_NOT && LOOKUP elif AUG && !AUG_NOT && LOOKUP else
+      #endif // AUG_8 && !AUG_NOT && LOOKUP elif AUG && !AUG_NOT && LOOKUP else
   #else // JUMP_TABLE
   #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
     switch ((nAugTypeBits | nType)
@@ -4255,10 +4257,8 @@ t_embedded_keys:
         CASE_BLX( 0); CASE_BLX( 1); CASE_BLX( 2); CASE_BLX( 3); CASE_BLX( 4);
         CASE_BLX( 5); CASE_BLX( 6); CASE_BLX( 7); CASE_BLX( 8); CASE_BLX( 9);
         CASE_BLX(10); CASE_BLX(11); CASE_BLX(12); CASE_BLX(13); CASE_BLX(14);
-        CASE_BLX(15);
-        default: DBG(printf("nBL %d\n", nBL)); assert(0);
-                      CASE_BLX(16);
-                                    CASE_BLX(17); CASE_BLX(18); CASE_BLX(19);
+        CASE_BLX(15); default: DBG(printf("nBL %d\n", nBL)); assert(0);
+                      CASE_BLX(16); CASE_BLX(17); CASE_BLX(18); CASE_BLX(19);
         CASE_BLX(20); CASE_BLX(21); CASE_BLX(22); CASE_BLX(23); CASE_BLX(24);
         CASE_BLX(25); CASE_BLX(26); CASE_BLX(27); CASE_BLX(28); CASE_BLX(29);
         CASE_BLX(30); CASE_BLX(31); CASE_BLX(32); CASE_BLX(33); CASE_BLX(34);
@@ -4438,10 +4438,8 @@ t_ek_xv:
                                 XV_BLX( 2); XV_BLX( 3); XV_BLX( 4);
         XV_BLX( 5); XV_BLX( 6); XV_BLX( 7); XV_BLX( 8); XV_BLX( 9);
         XV_BLX(10); XV_BLX(11); XV_BLX(12); XV_BLX(13); XV_BLX(14);
-        XV_BLX(15);
-        default: DBG(printf("nBL %d\n", nBL)); assert(0);
-                      XV_BLX(16);
-                                    XV_BLX(17); XV_BLX(18); XV_BLX(19);
+        XV_BLX(15); default: DBG(printf("nBL %d\n", nBL)); assert(0);
+                    XV_BLX(16); XV_BLX(17); XV_BLX(18); XV_BLX(19);
         XV_BLX(20); XV_BLX(21); XV_BLX(22); XV_BLX(23); XV_BLX(24);
         XV_BLX(25); XV_BLX(26); XV_BLX(27); XV_BLX(28); XV_BLX(29);
         XV_BLX(30); XV_BLX(31); XV_BLX(32); XV_BLX(33); XV_BLX(34);
