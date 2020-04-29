@@ -514,46 +514,48 @@ JudyMalloc.s: JudyMalloc.c
 #
 ############################
 
+# This .c.i rule doesn't work for some reason. Like it doesn't exist.
 .c.i:
 	$(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
 
-# The .c.i rule doesn't work for some reason. Like it doesn't exist. Later.
 # The .i rules don't work with DEBUG. A problem with assert macro and indent?
-b.i: b.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
 
-# The .c.i rule doesn't work for some reason.  Later.
-bl.i: bl.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
-
+# Maybe use indent for crazy macros and disable it with
+# /* *INDENT-(OFF|ON)* */ and/or // *INDENT-(OFF|ON)* for most of the code.
+# indent -npcs -nprs -ntac -nss -i4 -bap -bfda -br -nut -bbo -bli0
 blL.i: blL.c
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
+  | egrep -v "^#[0-9]*|^ *$$" > $@
 
-# The .c.i rule doesn't work for some reason.  Later.
+bl.i: bl.c
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
+
 bi.i: bi.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
 
-# The .c.i rule doesn't work for some reason.  Later.
 br.i: br.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
 
-# The .c.i rule doesn't work for some reason.  Later.
 bc.i: bc.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
 
-# The .c.i rule doesn't work for some reason.  Later.
+b.i: b.c
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
+
 Judy1LHTime.i: Judy1LHTime.c
 	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -E $< \
-  | indent -i4 | expand > $@
+  | egrep -v "^#[0-9]*|^ *$$" > $@
 
-# The .c.i rule doesn't work for some reason.  Later.
+Judy1LHCheck.i: Judy1LHCheck.c
+	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -E $< \
+  | egrep -v "^#[0-9]*|^ *$$" > $@
+
 t.i: t.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
 
-# The .c.i rule doesn't work for some reason.  Later.
 JudyMalloc.i: JudyMalloc.c
 	$(CC) $(CFLAGS) $(MALLOC_FLAGS) $(DEFINES) -E $< \
-  | indent -i4 | expand > $@
+  | egrep -v "^#[0-9]*|^ *$$" > $@
 
 #
 # -mmmx -msse -msse2 -mno-sse4 is the default for -m64 as of this writing
