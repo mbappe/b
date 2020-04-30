@@ -3548,6 +3548,9 @@ t_unpacked_bm:
   #if defined(PACK_BM_VALUES) || !defined(LOOKUP) || !defined(B_JUDYL)
 t_bitmap:
     {
+      #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_8) && cnBitsInD1 > 8
+        #error AUGMENT_TYPE (not _8) with cnBitsInD1 > 8.
+      #endif // AUGMENT_TYPE && !AUGMENT_TYPE_8 && cnBitsInD1 > 8
       #ifdef B_JUDYL
         assert(nBLR == cnBitsInD1);
         nBLR = cnBitsInD1;
