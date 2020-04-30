@@ -1572,11 +1572,15 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 #endif // defined(CODE_XX_SW) && defined(NO_TYPE_IN_XX_SW)
 
 // Bit fields in the upper bits of of wRoot.
-#define cnBitsCnt  8
+#ifndef cnBitsCnt
+  #define cnBitsCnt  8
+#endif // cnBitsCnt
 #define cnLsbCnt  (cnBitsPerWord - cnBitsCnt)
 
 // (cnBitsLvlM1, cnLsbLvlM1) is the level of the node pointed to.
-#define cnBitsLvlM1  8
+#ifndef cnBitsLvlM1
+  #define cnBitsLvlM1  (cnBitsPerWord - cnBitsVirtAddr - cnBitsCnt)
+#endif // cnBitsLvlM1
 #define cnLsbLvlM1  cnBitsVirtAddr
 
 // ListPopCnt is the number of keys in the list minus 1.
@@ -7287,5 +7291,15 @@ extern Word_t j__AllocWordsJV;   // value area
 #endif // !PACK_BM_VALUES
 #endif // SKIP_TO_BITMAP
 #endif // B_JUDYL
+
+#ifdef POP_IN_WR_HB
+  #if cnListPopCntMaxDl1 > (1 << cnBitsListPopCnt)
+    #error cnListPopCntMaxDl1 > (1 << cnBitsListPopCnt)
+  #endif // cnListPopCntMaxDl1 > (1 << cnBitsListPopCnt)
+#elif defined(LIST_POP_IN_PREAMBLE)
+  #if cnListPopCntMaxDl1 > (1 << cnBitsPreListPopCnt)
+    #error cnListPopCntMaxDl1 > (1 << cnBitsPreListPopCnt)
+  #endif // cnListPopCntMaxDl1 > (1 << cnBitsPreListPopCnt)
+#endif // POP_IN_WR_HB elif LIST_POP_IN_PREAMBLE
 
 #endif // ( ! defined(_B_H_INCLUDED) )
