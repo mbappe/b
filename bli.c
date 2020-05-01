@@ -531,9 +531,9 @@ AugTypeBitsInv(int nAugTypeBits)
   // _T_LIST indicates t_list label is needed.
   // Use _T_LIST to allow less than 80 character lines.
   #if cnBitsInD1 <= 8 || !defined(LOOKUP)
-      #define _T_LIST
+     #define _T_LIST
   #elif !defined(AUGMENT_TYPE) || defined(AUGMENT_TYPE_8_PLUS_4)
-       #define _T_LIST
+     #define _T_LIST
   #endif // cnBitsInD1 <= 8 || !AUG_TYPE || AUG_TYPE_8_PLUS_4 || !LOOKUP
 #endif // (cwListPopCntMax != 0)
 
@@ -953,8 +953,6 @@ fastAgain:;
       #endif // LOOKUP
     };
   #endif // JUMP_TABLE
-    // __builtin_prefetch(0, 0); // Uncomment and find prefetcht0 in bl[L].s.
-  #ifdef JUMP_TABLE
   // AUGMENT_TYPE_NOT means create jump table entries or switch table cases
   // according to AUGMENT_TYPE and AUGMENT_TYPE_8 but don't do the work of
   // augmenting the type or jump or switch based on an augmented type.
@@ -964,40 +962,35 @@ fastAgain:;
   // How expensive would it be to maintain nDL as well as nBL?
   // AUGMENT_TYPE without AUGMENT_TYPE_8 has four different nBL groups:
   // 5-8, 9-16, 17-32, 33-64. 0-4 does not work.
-      #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
-    goto *pvJumpTable[(nAugTypeBits | nType)
-      // MASK_TYPE serves no purpose for JUMP_TABLE.
-      // We have it to help gauge cost when doing it for !JUMP_TABLE.
-          #ifdef MASK_TYPE
-                          & 0x7f
-          #endif // MASK_TYPE
-                      ];
-      #elif defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
-    goto *pvJumpTable[(nAugTypeBits | nType)
-          #ifdef MASK_TYPE
-                          & 0x3f // help compiler
-          #endif // MASK_TYPE
-                      ];
-      #else // AUG_8 && !AUG_NOT && LOOKUP elif AUG && !AUG_NOT && LOOKUP
-    goto *pvJumpTable[nType];
-      #endif // AUG_8 && !AUG_NOT && LOOKUP elif AUG && !AUG_NOT && LOOKUP else
+
+    // AUGMENTED_TYPE
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+    #define AUGMENTED_TYPE  (nAugTypeBits | nType)
+  #else // AUGMENT_TYPE && LOOKUP
+    #define AUGMENTED_TYPE  nType
+  #endif // AUGMENT_TYPE && LOOKUP else
+    // MASKED_AUGMENTED_TYPE
+  // MASK_TYPE serves no purpose for JUMP_TABLE.
+  // We have it to help gauge cost when doing it for !JUMP_TABLE.
+  #ifdef MASK_TYPE
+    // AUGMENTED_TYPE_MASK
+      #ifdef AUGMENT_TYPE_8
+    #define AUGMENTED_TYPE_MASK  0x7f
+      #elif defined(AUGMENT_TYPE)
+    #define AUGMENTED_TYPE_MASK  0x3f
+      #else // AUGMENT_TYPE_8 elif AUGMENT_TYPE
+    #define AUGMENTED_TYPE_MASK  0x0f
+      #endif // AUGMENT_TYPE_8 elif AUGMENT_TYPE else
+    #define MASKED_AUGMENTED_TYPE  (AUGMENTED_TYPE & AUGMENTED_TYPE_MASK)
+  #else // MASK_TYPE
+    #define MASKED_AUGMENTED_TYPE  AUGMENTED_TYPE
+  #endif // MASK_TYPE else
+
+  // __builtin_prefetch(0, 0); // Uncomment and find prefetcht0 in bl[L].s.
+  #ifdef JUMP_TABLE
+    goto *pvJumpTable[MASKED_AUGMENTED_TYPE];
   #else // JUMP_TABLE
-  #if defined(AUGMENT_TYPE_8) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
-    switch ((nAugTypeBits | nType)
-      // Can we move MASK_TYPE to before goto againAugType?
-      #ifdef MASK_TYPE
-                & 0x7f // help compiler
-      #endif // MASK_TYPE
-            )
-  #elif defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
-    switch ((nAugTypeBits | nType)
-      #ifdef MASK_TYPE
-                & 0x3f // help compiler
-      #endif // MASK_TYPE
-            )
-  #else // AUG_8 && !AUG_NOT && LOOKUP elif AUG && !AUG_NOT && LOOKUP
-    switch (nType)
-  #endif // AUG_8 && !AUG_NOT && LOOKUP elif AUG && !AUG_NOT && LOOKUP else
+    switch (MASKED_AUGMENTED_TYPE)
     {
   // At most one of DEFAULT_SKIP_TO_SW, DEFAULT_SWITCH,
   // DEFAULT_LIST and DEFAULT_BITMAP may be defined.
@@ -2326,9 +2319,7 @@ t_skip_to_list:
   #if (cwListPopCntMax != 0)
   #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
   #ifdef BL_SPECIFIC_LIST
-t_list112:
-    // nBL > 32 for AUGMENT_TYPE && !AUGMENT_TYPE_8
-    // nDL >  4 for AUGMENT_TYPE_8
+t_list112: // nDL == 8
     {
         nBLR = nBL = AugTypeBitsInv(112);
       #ifdef COMPRESSED_LISTS
@@ -2410,9 +2401,7 @@ t_list112:
   #if (cwListPopCntMax != 0)
   #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
   #ifdef BL_SPECIFIC_LIST
-t_list96:
-    // nBL > 32 for AUGMENT_TYPE && !AUGMENT_TYPE_8
-    // nDL >  4 for AUGMENT_TYPE_8
+t_list96: // nDL == 7
     {
         nBLR = nBL = AugTypeBitsInv(96);
       #ifdef COMPRESSED_LISTS
@@ -2494,9 +2483,7 @@ t_list96:
   #if (cwListPopCntMax != 0)
   #if defined(AUGMENT_TYPE) && defined(LOOKUP)
   #ifdef BL_SPECIFIC_LIST
-t_list80:
-    // nBL > 32 for AUGMENT_TYPE && !AUGMENT_TYPE_8
-    // nDL >  4 for AUGMENT_TYPE_8
+t_list80: // nDL == 6
     {
         nBLR = nBL = AugTypeBitsInv(80);
       #ifdef COMPRESSED_LISTS
@@ -2579,22 +2566,21 @@ t_list80:
   #if defined(AUGMENT_TYPE) && defined(LOOKUP)
       #ifdef AUGMENT_TYPE_8
           #ifndef BL_SPECIFIC_LIST
-t_list112:
-t_list96:
-t_list80:
+t_list112: // nDL == 8
+t_list96:  // nDL == 7
+t_list80:  // nDL == 6
           #endif // !BL_SPECIFIC_LIST
-t_list64:
+t_list64: // nDL == 5
+          #if !defined(BL_SPECIFIC_LIST) && cnBitsLeftAtDl3 > 24
+t_list48: // nDL == 2
+          #endif // !BL_SPECIFIC_LIST && cnBitsLeftAtDl3 > 24
       #else // AUGMENT_TYPE_8
-t_list48:
+t_list48: // nBL > 32
       #endif // else AUGMENT_TYPE_8
-    // nBL > 32 for AUGMENT_TYPE && !AUGMENT_TYPE_8
-    // nDL >  4 for AUGMENT_TYPE_8
     {
-      #ifdef AUGMENT_TYPE_8
       #ifdef BL_SPECIFIC_LIST
         nBLR = nBL = AugTypeBitsInv(64);
       #endif // BL_SPECIFIC_LIST
-      #endif // AUGMENT_TYPE_8
       #ifdef COMPRESSED_LISTS
       #ifdef SKIP_PREFIX_CHECK
         if (PrefixCheckAtLeaf(qy, wKey
@@ -2672,8 +2658,8 @@ t_list48:
 
   #if (cwListPopCntMax != 0)
   #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
-t_list48:
-    // nDL == 4 for AUGMENT_TYPE_8
+  #ifdef BL_SPECIFIC_LIST
+t_list48: // nDL == 4
     {
         nBLR = nBL = AugTypeBitsInv(48);
       #ifdef COMPRESSED_LISTS
@@ -2756,21 +2742,30 @@ t_list48:
           #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
         goto break_from_main_switch;
     } // end of t_list48
+  #endif // !BL_SPECIFIC_LIST
   #endif // AUGMENT_TYPE_8 && LOOKUP
   #endif // (cwListPopCntMax != 0)
 
   #if (cwListPopCntMax != 0)
   #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+      #if defined(AUGMENT_TYPE_8) && !defined(BL_SPECIFIC_LIST)
+      #if cnBitsLeftAtDl3 <= 24
+t_list48: // nDL == 4
+      #endif // cnBitsLeftAtDl3 <= 24
+      #endif // AUGMENT_TYPE_8 && !BL_SPECIFIC_LIST
 t_list32:
-    // 16 < nBL <= 32 for AUGMENT_TYPE && !AUGMENT_TYPE_8
-    //      nDL ==  3 for AUGMENT_TYPE_8
+    //      nDL ==  3 for  AUGMENT_TYPE_8
+    // 16 < nBL <= 32 for !AUGMENT_TYPE_8
+      #if defined(AUGMENT_TYPE_8) && !defined(BL_SPECIFIC_LIST)
+      #if cnBitsLeftAtDl2 > 16
+t_list16: // nDL == 2
+      #endif // cnBitsLeftAtDl2 > 16
+      #endif // AUGMENT_TYPE_8 && !BL_SPECIFIC_LIST
     {
-      #ifdef AUGMENT_TYPE_8
+      #ifdef BL_SPECIFIC_LIST
         assert(nBLR == AugTypeBitsInv(32));
         nBLR = nBL = AugTypeBitsInv(32);
-      #else // AUGMENT_TYPE_8
-        // nBLR is already set correctly.
-      #endif // AUGMENT_TYPE_8
+      #endif // BL_SPECIFIC_LIST
       #ifdef COMPRESSED_LISTS
       #ifdef SKIP_PREFIX_CHECK
         if (PrefixCheckAtLeaf(qy, wKey
@@ -2848,13 +2843,22 @@ t_list32:
 
   #if (cwListPopCntMax != 0)
   #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+      #ifndef AUGMENT_TYPE_8
 t_list16:
-    // 8 < nBL <= 16 for AUGMENT_TYPE && !AUGMENT_TYPE_8
-    //     nDL ==  2 for AUGMENT_TYPE_8
+      #elif defined(BL_SPECIFIC_LIST) || cnBitsLeftAtDl2 <= 16
+t_list16:
+      #endif // !AUG_TYPE_8 elif BL_SPECIFIC_LIST || cnBitsLeftAtDl2 <= 16
+    //     nDL ==  2 for  AUGMENT_TYPE_8
+    // 8 < nBL <= 16 for !AUGMENT_TYPE_8
+  #if defined(AUGMENT_TYPE_8) && !defined(BL_SPECIFIC_LIST) && cnBitsInD1 > 8
+t_list: // nDL == 1
+  #endif // AUGMENT_TYPE_8 && !BL_SPECIFIC_LIST && cnBitsInD1 > 8
     {   // 8 < nBL <= 16 for AUGMENT_TYPE && !AUGMENT_TYPE_8
       #if defined(AUGMENT_TYPE_8)
+          #if defined(BL_SPECIFIC_LIST) || !defined(AUGMENT_TYPE_8_PLUS_4)
         assert(nBLR == AugTypeBitsInv(16));
         nBLR = nBL = AugTypeBitsInv(16);
+          #endif // BL_SPECIFIC_LIST || !AUGMENT_TYPE_8_PLUS_4
       #elif cnBitsLeftAtDl2 > 16
         assert(nBLR == cnBitsInD1);
         nBLR = nBL = cnBitsInD1;
@@ -2899,11 +2903,11 @@ t_list16:
               #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
               #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
-                  #if defined(AUGMENT_TYPE_8) && cnBitsLeftAtDl2 > 16
+                  #if defined(BL_SPECIFIC_LIST) && cnBitsLeftAtDl2 > 16
                 && ((nPos = LocateKeyInList32(qy, cnBitsLeftAtDl2, wKey)) >= 0)
-                  #else // AUGMENT_TYPE_8 && cnBitsLeftAtDl2 > 16
+                  #else // BL_SPECIFIC_LIST && cnBitsLeftAtDl2 > 16
                 && ((nPos = LocateKeyInList16(qya, nBLR, wKey)) >= 0)
-                  #endif // AUGMENT_TYPE_8 && cnBitsLeftAtDl2 > 16
+                  #endif // BL_SPECIFIC_LIST && cnBitsLeftAtDl2 > 16 else
               #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
           #else // B_JUDYL
               #if defined(SEARCH_FOR_JUDY1_LOOKUP)
@@ -2911,11 +2915,11 @@ t_list16:
               #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
                 && (LocateKeyInList(qya, nBLR, wKey) >= 0)
               #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-                  #if defined(AUGMENT_TYPE_8) && cnBitsLeftAtDl2 > 16
+                  #if defined(BL_SPECIFIC_LIST) && cnBitsLeftAtDl2 > 16
                 && ListHasKey32(qy, cnBitsLeftAtDl2, wKey)
-                  #else // AUGMENT_TYPE_8 && cnBitsLeftAtDl2 > 16
+                  #else // BL_SPECIFIC_LIST && cnBitsLeftAtDl2 > 16
                 && ListHasKey16(qy, nBLR, wKey)
-                  #endif // AUGMENT_TYPE_8 && cnBitsLeftAtDl2 > 16
+                  #endif // BL_SPECIFIC_LIST && cnBitsLeftAtDl2 > 16 else
               #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
           #endif // B_JUDYL
                 )
@@ -2952,13 +2956,34 @@ t_list16:
   #endif // AUGMENT_TYPE && LOOKUP
   #endif // (cwListPopCntMax != 0)
 
+// Notes on LOOKUP for AUGMENT_TYPE_8_PLUS_4 without BL_SPECIFIC_LIST.
+// We want at most 4 code blocks. nBL <= 8, 16, 32, 64.
+// We will use the AUGMENT_TYPE w/o AUGMENT_TYPE_8 code blocks.
+// If cnBitsInD1 > 8, then goto 2-byte code block. Label it with t_list.
+// - Delete 1-byte code block.
+// - Do not set nBLR in 2-byte code block -- unless we can.
+// - Disable use of (LocateKey|HasKey)32 in 2-byte code block.
+// If cnBitsLeftAtDl2 > 16, then goto 4-byte code block.
+// Label it with t_list16.
+// - Delete 2-byte code block -- if appropriate.
+// - Do not set nBLR in 4-byte code block.
+// If cnBitsLeftAtDl3 > 24, i.e. nBL at Dl4 > 32, then goto 8-byte code block.
+// Label it with t_list48.
+// - Do not set nBLR in 8-byte code block.
+
   #if !defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
 // t_list is not needed for AUGMENT_TYPE and LOOKUP if cnBitsInD1 > 8.
+  #if !defined(AUGMENT_TYPE_8) || defined(BL_SPECIFIC_LIST)
+    #define _ONE_BYTE_T_LIST
+  #elif cnBitsInD1 <= 8 || !defined(LOOKUP)
+    #define _ONE_BYTE_T_LIST
+  #endif // !AUG_TYPE_8 || BL_SPEC_LIST elif cnBitsInD1 <= 8 || !LOOKUP
+  #ifdef _ONE_BYTE_T_LIST
   #ifdef _T_LIST
 t_list:
-    // all cases for !AUGMENT_TYPE
+    // nDL == 1  for                   AUGMENT_TYPE_8
     // nBL <= 8  for  AUGMENT_TYPE && !AUGMENT_TYPE_8
-    // nDL == 1  for  AUGMENT_TYPE_8
+    // all cases for !AUGMENT_TYPE
     {
         DBGX(Checkpoint(qy, "t_list"));
       #ifdef AUGMENT_TYPE
@@ -3156,6 +3181,7 @@ t_list:
         goto break_from_main_switch;
     } // end of t_list
   #endif // _T_LIST
+  #endif // _ONE_BYTE_T_LIST
   #endif // !SEPARATE_T_NULL || (cwListPopCntMax == 0)
 
   #ifdef UA_PARALLEL_128
