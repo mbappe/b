@@ -6288,6 +6288,7 @@ embeddedKeys:;
         set_wr_pwr(linkUp.ln_wRoot, pwrUp); // gpwLnX needs pwr
         int nBLUp = nBLR; // nBLUpOld -- assumes DoubleDown
         Word_t *pwLnXOld = gpwLnX(qyx(Up), EXP(nBWUp), nDigitUp);
+        (void)pwLnXOld;
           #endif // B_JUDYL
         wRootOld = InflateEmbeddedList(qyax(Old), wKey);
         // If (nBLOld < nDL_to_nBL) Dump is going to think wRootOld is
@@ -6803,8 +6804,10 @@ DoubleDown(qp, // (nBL, pLn) of link to original switch
     } else
   #endif // #else defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     {
+  #if !defined(_LNX) || defined(REMOTE_LNX)
         // wRoot serves as our saved link
         assert(sizeof(Link_t) == sizeof(wRoot));
+  #endif // !_LNX || REMOTE_LNX
     }
 // wPopCnt - 1?
 // This insert has already been counted in the switch.
@@ -6968,8 +6971,10 @@ InsertXxSw(qp, // (nBL, pLn) of link to list
     } else
   #endif // #else defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     {
+  #if !defined(_LNX) || defined(REMOTE_LNX)
         // wRoot serves as our saved link
         assert(sizeof(Link_t) == sizeof(wRoot));
+  #endif // !_LNX || REMOTE_LNX
     }
     NewSwitch(pwRoot, wKey, nBLRUpNew, nBWRUpNew, T_SWITCH, nBL, nPopCnt);
 
@@ -7166,8 +7171,10 @@ DoubleIt(qpa, // (nBL, pLn) of list
     } else
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     {
+  #if !defined(_LNX) || defined(REMOTE_LNX)
         // wRoot serves as our saved link
         assert(sizeof(Link_t) == sizeof(wRoot));
+  #endif // !_LNX || REMOTE_LNX
     }
     NewSwitch(pwRoot, wKey, nBL,
 #if defined(CODE_XX_SW)
@@ -7350,7 +7357,7 @@ InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos,
         nPos = -1;
     }
       #ifdef _LNX
-    Word_t* pwLnX = pwLnXUp; // BUG?
+    Word_t* pwLnX = pwLnXUp; (void)pwLnX; // BUG?
       #endif // _LNX
     BJL(return) InsertGuts(qya, wKey, nPos
       #ifdef CODE_XX_SW
@@ -8092,8 +8099,10 @@ InsertAtList(qpa,
     if ((nBL < nDL_to_nBL(2))
         && (wPopCnt >= (Word_t)nEmbeddedListPopCntMax))
     {
-        assert(wPopCnt == nEmbeddedListPopCntMax);
+        assert((int)wPopCnt == nEmbeddedListPopCntMax);
+      #ifdef XX_LISTS
         assert(nType != T_XX_LIST);
+      #endif // XX_LISTS
         DBGI(printf("IAL: DoubleIt nBL %d cnt %d max %d.\n",
                     nBL, (int)wPopCnt, nEmbeddedListPopCntMax));
         return DoubleIt(qya, wKey, nBLUp, pLnUp, wPopCnt);
@@ -12356,7 +12365,7 @@ Initialize(void)
   #endif // AUGMENT_TYPE
   #endif // ALL_SKIP_TO_SW_CASES
     printf("\n");
-    printf("# WROOT_NULL 0x%x\n", WROOT_NULL);
+    printf("# WROOT_NULL 0x%zx\n", (Word_t)WROOT_NULL);
     printf("\n");
 }
 
@@ -14796,7 +14805,7 @@ SubexpansePopCnt(qp, Word_t wKey)
     // for non-KISS to streamline this function and make caller responsible
     // for not calling it with an empty link.
   #ifdef NO_TYPE_IN_XX_SW
-    assert(nBLOld >= nDL_to_nBL(2));
+    assert(nBL >= nDL_to_nBL(2));
   #endif // NO_TYPE_IN_XX_SW
 
     int nPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBLR);

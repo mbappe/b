@@ -1525,7 +1525,7 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // enough that two keys will fit with a magic number.
 #ifdef WROOT_NULL_IS_EK
   #if defined(REVERSE_SORT_EMBEDDED_KEYS)
-    #define ZERO_POP_MAGIC  1
+    #define ZERO_POP_MAGIC  (Word_t)1
   #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
     #define ZERO_POP_MAGIC \
         (((Word_t)0x800000004 << 28) + T_EMBEDDED_KEYS)
@@ -1536,7 +1536,7 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // It will be handled by whatever type is 0.
 // wRoot == 0 must be an otherwise unused value for the type.
 #if defined(SEPARATE_T_NULL)
-  #define WROOT_NULL  T_NULL
+  #define WROOT_NULL  (Word_t)T_NULL
 #elif defined(WROOT_NULL_IS_EK) // defined(SEPARATE_T_NULL)
   #ifndef EMBED_KEYS
     #error WROOT_NULL_IS_EK without EMBED_KEYS
@@ -1546,16 +1546,16 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
   #if (cwListPopCntMax == 0)
     #error WROOT_NULL_IS_LIST with cwListPopCntMax == 0
   #endif // (cwListPopCntMax == 0)
-  #define WROOT_NULL  T_LIST
+  #define WROOT_NULL  (Word_t)T_LIST
 #elif defined(WROOT_NULL_IS_BITMAP) // #elif defined(WROOT_NULL_IS_LIST)
   #ifndef BITMAP
     #error WROOT_NULL_IS_BITMAP without BITMAP
   #endif // #ifndef BITMAP
-  #define WROOT_NULL  T_BITMAP
+  #define WROOT_NULL  (Word_t)T_BITMAP
 #elif defined(WROOT_NULL_IS_SWITCH) // #elif defined(WROOT_NULL_IS_BITMAP)
-  #define WROOT_NULL  T_SWITCH
+  #define WROOT_NULL  (Word_t)T_SWITCH
 #else // #elif defined(WROOT_NULL_IS_SWITCH)
-  #define WROOT_NULL  0
+  #define WROOT_NULL  (Word_t)0
 #endif // MAGIC_WROOT_NULL
 
 #if defined(NO_TYPE_IN_XX_SW) // && defined(HANDLE_BLOWOUTS)
