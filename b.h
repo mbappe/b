@@ -3409,11 +3409,7 @@ swPopCnt(qp, int nBLR, Word_t wPopCnt)
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     assert(nBL < cnBitsPerWord);
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-  #ifdef POP_WORD
-    PWR_wPopWordBL(&pLn->ln_wRoot, pwr, nBLR) = wPopCnt;
-  #else // POP_WORD
     set_PWR_wPopCntBL(&pLn->ln_wRoot, pwr, nBLR, wPopCnt);
-  #endif // #else POP_WORD
 }
 
 static inline int
