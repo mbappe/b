@@ -229,9 +229,11 @@
   #endif // #ifndef NO_PF_EK_XV_2
 #endif // EK_XV
 
-#ifndef B_JUDYL
-  #undef _LNX
-#endif // ifndef B_JUDYL
+#ifdef _LNX
+  #ifndef B_JUDYL
+    #pragma message("Notice: Judy1 does not make use of _LNX.")
+  #endif // ifndef B_JUDYL
+#endif // _LNX
 
 // _LNX will be defined automatically if needed by other ifdefs.
 #ifdef B_JUDYL
