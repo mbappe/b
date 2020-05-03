@@ -253,7 +253,7 @@
       (void)wRoot##x; (void)nType##x; (void)pwr##x
   #define pqpa  int* pnBL, Link_t** ppLn, pqpa_pwLnX, \
                 Word_t* pwRoot, int* pnType, Word_t** ppwr
-  #define pqya  &nBL, &pwRoot, pqya_pwLnX, &wRoot, &nType, &pwr
+  #define pqya  &nBL, &pLn, pqya_pwLnX, &wRoot, &nType, &pwr
   #define pqva \
       (void)pnBL; (void)ppLn; (void)ppwLnX; \
       pqva_pwLnX; \
@@ -285,7 +285,7 @@
       (void)wRoot##x; (void)nType##x; (void)pwr##x
   #define pqpa  int* pnBL, Word_t** ppwRoot, pqpa_pwLnX, \
                 Word_t* pwRoot, int* pnType, Word_t** ppwr
-  #define pqya  &nBL, &pLn, pqya_pwLnX, &wRoot, &nType, &pwr
+  #define pqya  &nBL, &pwRoot, pqya_pwLnX, &wRoot, &nType, &pwr
   #define pqva \
       (void)pnBL; (void)ppwRoot; (void)ppwLnX; \
       pqva_pwLnX; \
