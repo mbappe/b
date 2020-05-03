@@ -648,7 +648,7 @@ TestJudyIns(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
         {
             if (*PValue1 != TstIndex)
             {
-               FAILURE("JudyLIns failed - Index missing, population =", TotalPop);
+               FAILURE("JudyLIns failed - Incorrect value, population =", TotalPop);
             }
             else
             {
