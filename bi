@@ -24,9 +24,9 @@ do
     && DEFINES="$lvl $jt -DDEBUG" make clean default \
     && regress \
     && :
+    if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 done
 done
-if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 
 : 'regression test bug fix in 204826' \
 && DEFINES="-DNO_USE_BM_SW -DcnBitsInD1=6 -DcnBitsInD2=10 -DNO_REMOTE_LNX" \
@@ -198,12 +198,12 @@ do
     && DEFINES="$sfw $qpln $augtype $allcases $jt -DDEBUG" make clean default \
     && regress \
     && :
+    if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 done
 done
 done
 done
 done
-if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 
 #BPW=32 make clean default
 #CC=clang make clean default
