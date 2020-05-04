@@ -782,5 +782,13 @@
   #define BL_SPECIFIC_SKIP
 #endif // BL_SPECIFIC_SKIP_JT
 
+#ifdef AUGMENT_TYPE_8_PLUS_4
+  #if cnBitsLeftAtDl3 < 24
+    // AUGMENT_TYPE_8_PLUS_4 with cnBitsLeftAtDl3 < 24 yields 9 digits
+    // and makes AugTypeBitsInv(112) ambiguous. Hence some code slower.
+    #pragma message "AUGMENT_TYPE_8_PLUS_4 with cnBitsLeftAtDl3 < 24."
+  #endif // cnBitsLeftAtDl3 < 24
+#endif // AUGMENT_TYPE_8_PLUS_4
+
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 

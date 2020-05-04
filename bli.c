@@ -504,6 +504,13 @@ AugTypeBitsInv(int nAugTypeBits)
     if (nAugTypeBits == 16) {
         return cnBitsLeftAtDl2;
     }
+    // If cnBitsLeftAtDl3 < 24, then nAugTypeBits == 112 is ambiguous.
+    assert((cnBitsLeftAtDl3 >= 24) || (nAugTypeBits < 112));
+    if (cnBitsLeftAtDl3 > 24) { // compile time test
+        if (nAugTypeBits == 112) {
+            return cnBitsPerWord;
+        }
+    }
     return cnBitsLeftAtDl3 + (nAugTypeBits >> 1) - 16;
       #endif
   #elif defined(AUGMENT_TYPE_8)
@@ -1375,6 +1382,12 @@ t_skip_to_switch:
         case  5: assert(nBLR == AugTypeBitsInv(64)); goto t_sw_plus_64;
         case  6: assert(nBLR == AugTypeBitsInv(80)); goto t_sw_plus_80;
         case  7: assert(nBLR == AugTypeBitsInv(96)); goto t_sw_plus_96;
+          #if defined(AUGMENT_TYPE_8_PLUS_4) && cnBitsLeftAtDl3 < 24
+        // t_sw_plus_112 is not bl-specific in this case.
+        // It would be possible have a bl-specific case, but I don't
+        // think it's worth the trouble.
+        case  8: assert(AugTypeBits(nBLR) == 112);   goto t_sw_plus_112;
+          #endif // AUGMENT_TYPE_8_PLUS_4 && cnBitsLeftAtDl3 < 24
         }
       #endif // BL_SPECIFIC_SKIP_JT
   #else // AUGMENT_TYPE_8 && LOOKUP && BL_SPECIFIC_SKIP
@@ -1433,8 +1446,10 @@ t_skip_to_xx_sw:
 t_sw_plus_112:
     {
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
+      #if cnBitsLeftAtDl3 >= 24
         // Help compiler know nBLR is a constant; does it help?
         nBLR = AugTypeBitsInv(112);
+      #endif // cnBitsLeftAtDl3 >= 24
         nBL = nBLR;
         nBW = gnBW(qy, nBLR);
         assert(gnBW(qy, nBLR) == nBW);
@@ -2321,7 +2336,9 @@ t_skip_to_list:
   #ifdef BL_SPECIFIC_LIST
 t_list112: // nDL == 8
     {
+      #if cnBitsLeftAtDl3 >= 24
         nBLR = nBL = AugTypeBitsInv(112);
+      #endif // cnBitsLeftAtDl3 >= 24
       #ifdef COMPRESSED_LISTS
       #ifdef SKIP_PREFIX_CHECK
         if (PrefixCheckAtLeaf(qy, wKey
