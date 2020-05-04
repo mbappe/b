@@ -3,6 +3,10 @@
 # This lengthy regression test script has the structure required to be
 # used by git bisect run.
 
+# Use -Wno-override-init for "-DAUGMENT_TYPE -DJUMP_TABLE".
+CC="gcc -Wno-override-init"
+export CC
+
 make clean default && regress
 if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 
