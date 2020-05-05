@@ -3709,8 +3709,14 @@ InsertCleanup(qpa, Word_t wKey)
         // Use PWR_wPopCntBL because we might get called with pop count zero
         // during InsertAll and we should be done converting before we ever
         // get called with full pop. See embedded assert.
+        // Things get funky with very small digit size:
+        // - Full pop might be reached before embedded keys are exhausted.
+        // - Bitmaps may not get created.
+        // - Conversion may not occur before full pop.
+        // Things get funky with POP_WORD:
+        // - PWR_wPopCntBL may return full pop, i.e. 1 << nBLR.
         && ((wPopCnt = PWR_wPopCntBL(pwRoot, pwr, nBLR)),
-            assert(wPopCnt < MSK(nBLR)),
+            /*assert(wPopCnt < MSK(nBLR)),*/
             wPopCnt * cn2dBmMaxWpkPercent
                 > (EXP(nBLR - cnLogBitsPerWord) * 100)))
     {

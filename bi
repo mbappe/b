@@ -134,16 +134,23 @@ done
 && DEFINES="-DcnBitsPerDigit=5 -DNO_ALLOW_EMBEDDED_BITMAP -DDEBUG" \
    make clean default \
 && regress \
-&& DEFINES="-DcnBitsPerDigit=4 -DDEBUG" make clean default \
-&& regress \
-&& DEFINES="-DcnBitsPerDigit=3 -DDEBUG" make clean default \
-&& regress \
-&& DEFINES="-DcnBitsPerDigit=3 -DNO_ALLOW_EMBEDDED_BITMAP -DDEBUG" \
+&& DEFINES="-DcnBitsPerDigit=4 -DcnListPopCntMax64=16 -DNO_EK_XV -DDEBUG" \
    make clean default \
 && regress \
-&& DEFINES="-DcnBitsPerDigit=2 -DDEBUG" make clean default \
+&& DEFINES="-DcnBitsPerDigit=3 -DcnListPopCntMax64=8 -DNO_EK_XV -DDEBUG" \
+   make clean default \
 && regress \
-&& DEFINES="-DcnBitsPerDigit=1 -DDEBUG" make clean default \
+&& DEFINES="-DcnBitsPerDigit=3 -DcnListPopCntMax64=8 -DNO_EK_XV \
+-DNO_ALLOW_EMBEDDED_BITMAP -DDEBUG" \
+   make clean default \
+&& regress \
+: "cnListPopCntMax64=8 fails" \
+&& DEFINES="-DcnBitsPerDigit=2 -DcnListPopCntMax64=16 -DNO_EK_XV -DDEBUG" \
+   make clean default \
+&& regress \
+: "cnListPopCntMax64=2 fails" \
+&& DEFINES="-DcnBitsPerDigit=1 -DcnListPopCntMax64=4 -DNO_EK_XV -DDEBUG" \
+   make clean default \
 && regress \
 && DEFINES="-DUSE_XX_SW -DcnListPopCntMax64=64 -DNO_SKIP_LINKS -DDEBUG" \
    make clean default \
@@ -177,7 +184,7 @@ for qpln in "" -DQP_PLN
 do
 for augtype in "" "-DAUGMENT_TYPE" \
                   "-DAUGMENT_TYPE -DMASK_TYPE" \
-                  "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD1=4" \
+                  "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD1=4 -DNO_EK_XV" \
                   "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD1=11" \
                   "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD2=6" \
                   "-DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD2=10" \

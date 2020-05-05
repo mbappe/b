@@ -487,6 +487,8 @@ AugTypeBitsInv(int nAugTypeBits)
 {
     assert(!(nAugTypeBits & cnMallocMask));
   #ifdef AUGMENT_TYPE_8_PLUS_4
+    // If cnBitsLeftAtDl3 < 24, then nAugTypeBits == 112 is ambiguous.
+    assert((cnBitsLeftAtDl3 >= 24) || (nAugTypeBits < 112));
       #if 1
     uint64_t x = ( (Word_t)cnBitsPerWord                         << 56)
                + (((Word_t)cnBitsLeftAtDl3 + cnBitsPerDigit * 4) << 48)
@@ -504,8 +506,6 @@ AugTypeBitsInv(int nAugTypeBits)
     if (nAugTypeBits == 16) {
         return cnBitsLeftAtDl2;
     }
-    // If cnBitsLeftAtDl3 < 24, then nAugTypeBits == 112 is ambiguous.
-    assert((cnBitsLeftAtDl3 >= 24) || (nAugTypeBits < 112));
     if (cnBitsLeftAtDl3 > 24) { // compile time test
         if (nAugTypeBits == 112) {
             return cnBitsPerWord;
