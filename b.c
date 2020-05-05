@@ -7675,12 +7675,13 @@ newSkipToBitmap:;
               #endif // BMLF_CNTS_IN_LNX
                || ((wr_nType(*pwRoot) == T_SKIP_TO_BITMAP)
                    && (gnBLR(qy) == nBLNew)));
+              #ifdef _BM_POP_IN_LINK_X
+              #ifndef NO_SKIP_AT_TOP
+        if (nBL < cnBitsPerWord) // no bits are set yet so cnt is wrong
+              #endif // !NO_SKIP_AT_TOP
+              #endif // _BM_POP_IN_LINK_X
           #endif // SKIP_TO_BITMAP
-        assert((int)GetPopCnt(pwRoot, nBLNew) == nPopCntOld);
-          #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        // When is this necessary? Only if nBLNew != nBL?
-        set_PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLNew, nPopCntOld);
-          #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+        { assert((int)gwBitmapPopCnt(qy, nBLNew) == nPopCntOld); }
         InsertAllAtBitmap(qya, qyx(Old), /*nnStart*/ 0, nPopCntOld);
         OldList(pwrOld, nPopCntOld, nBLOld, nTypeOld);
         BJ1(goto finalInsert);
@@ -9589,6 +9590,7 @@ RemoveCleanup(Word_t wKey, int nBL, int nBLR, Word_t *pwRoot, Word_t wRoot)
                     ? (int)wr_nBLR(*pwRootLn) :
 #endif // defined(SKIP_LINKS)
                     nDL_to_nBL(nDLR - 1);
+            (void)nBLX;
 
             if ((*pwRootLn != WROOT_NULL) // Can we avoid this test?
                  // Non-WROOT_NULL doesn't necessarily imply non-zero pop.
@@ -10293,14 +10295,12 @@ done:
         assert(wPopCntDbg == wPopCnt);
 #endif // defined(DEBUG_COUNT)
 
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        assert(PWR_wPopCntBL(pwRoot, (Switch_t *)NULL, nBLR) == wPopCnt);
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-
         // Free the bitmap if it is empty.
         if (wPopCnt == 0) {
             OldBitmap(pwr, nBLR, 0);
             *pwRoot = WROOT_NULL;
+        } else {
+            assert(gwBitmapPopCnt(qy, nBLR) == wPopCnt);
         }
     }
 
@@ -14202,7 +14202,7 @@ embeddedBitmap:;
         // skip over the bitmap if it is full pop
         if (nBL < cnBitsPerWord) {
             assert(nBL <= nBLPrev);
-            if (GetPopCnt(pwRoot, nBL) == EXP(nBL)) {
+            if (GetPopCnt(pwRoot, nBLPrev) == EXP(nBL)) {
                 if (nBL != nBLPrev) {
                     //printf("full skip to bitmap not at cnBitsPerWord\n");
                     // We skipped bits to get here.

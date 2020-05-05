@@ -159,6 +159,10 @@ done
 && regress \
 && DEFINES="-DGUARDBAND -DcnGuardWords=3" make clean default \
 && regress \
+&& DEFINES="-DPOP_WORD_IN_LINK -DNO_USE_BM_SW \
+-DSKIP_TO_BITMAP -DcnListPopCntMax64=64 -DDEBUG" \
+   make clean default \
+&& regress \
 && DEFINES="-DDEBUG_ALL" make clean default \
 && NO_SM=1 DEFINES="-DDEBUG_ALL" make clean default \
 && NO_SM=1 NO_RM=1 DEFINES="-DDEBUG_ALL" make clean default \

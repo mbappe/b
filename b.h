@@ -3156,6 +3156,8 @@ gpwValues(qp) // gpwListValues
   #endif // #else LIST_POP_IN_PREAMBLE
 }
 
+#endif // B_JUDYL
+
 static int
 PopCount64(uint64_t v)
 {
@@ -3188,6 +3190,7 @@ PopCount64(uint64_t v)
   #endif // #else BEST_POP_COUNT_64 #elifdef POP_COUNT_64
 }
 
+#ifdef B_JUDYL
   #ifdef BITMAP
 
 static Word_t *
@@ -3303,7 +3306,6 @@ BmIndex(qpa, int nBLR, Word_t wKey)
 }
 
   #endif // BITMAP
-
 #endif // B_JUDYL
 
 #ifdef SKIP_LINKS
@@ -3579,9 +3581,22 @@ gwBitmapPopCnt(qp, int nBLR)
 {
     qv; (void)nBLR;
     Word_t wPopCnt;
-  #ifdef _BM_POP_IN_LINK_X
-    wPopCnt = PWR_wPopCntBL(pwRoot, pwr, nBLR);
-    if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop
+  #ifdef _BM_POP_IN_LINK_X // POP_WORD_IN_LINK || PP_IN_LINK
+      #ifdef SKIP_TO_BITMAP
+      #ifndef NO_SKIP_AT_TOP
+    if (nBL >= cnBitsPerWord) {
+        Word_t *pwBmWords = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
+        wPopCnt = 0;
+        for (int nn = 0; nn < (int)EXP(nBLR - cnLogBitsPerWord); nn++) {
+            wPopCnt += PopCount64(pwBmWords[nn]);
+        }
+    } else
+      #endif // !NO_SKIP_AT_TOP
+      #endif // SKIP_TO_BITMAP
+    {
+        wPopCnt = PWR_wPopCntBL(pwRoot, pwr, nBLR);
+        if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop
+    }
   #elif defined(BM_POP_IN_WR_HB)
     wPopCnt = GetBits(*pwRoot, cnBitsCnt, cnLsbCnt);
     if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop
@@ -3631,8 +3646,19 @@ static void
 swBitmapPopCnt(qp, int nBLR, Word_t wPopCnt)
 {
     qv; (void)nBLR;
-  #ifdef _BM_POP_IN_LINK_X
-    set_PWR_wPopCntBL(pwRoot, pwr, nBLR, wPopCnt);
+    assert(wPopCnt <= EXP(nBLR));
+  #ifdef _BM_POP_IN_LINK_X // aka POP_WORD_IN_LINK || PP_IN_LINK
+      #ifdef SKIP_TO_BITMAP
+      #ifndef NO_SKIP_AT_TOP
+    if (nBL < cnBitsPerWord)
+      #endif // !NO_SKIP_AT_TOP
+      #endif // SKIP_TO_BITMAP
+    {
+        set_PWR_wPopCntBL(pwRoot, pwr, nBLR, wPopCnt);
+        if (wPopCnt != 0) {
+            assert(gwBitmapPopCnt(qy, nBLR) == wPopCnt);
+        }
+    }
   #elif defined(BM_POP_IN_WR_HB)
     SetBits(pwRoot, cnBitsCnt, cnLsbCnt, wPopCnt);
   #else // _BM_POP_IN_LINK_X
