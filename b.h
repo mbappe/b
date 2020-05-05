@@ -488,30 +488,15 @@ SetBits(Word_t *pw, int nBits, int nLsb, Word_t wVal)
     *pw |= (wVal & MSK(nBits)) << nLsb; // set the field
 }
 
+// ExtListBytesPerKey(nBL:  0 -  8) == 1
+// ExtListBytesPerKey(nBL:  9 - 16) == 2
+// ExtListBytesPerKey(nBL: 17 - 32) == 4
+// ExtListBytesPerKey(nBL: 33 - 64) == 8
 static int
 ExtListBytesPerKey(int nBL)
 {
   #if defined(COMPRESSED_LISTS)
-    // log(56-1) = 5, log(40-1) = 5, exp(5+1) = 64
-    // log(32-1) = 4, log(24-1) = 4, exp(4+1) = 32
-    // log(16-1) = 3, exp(3+1) = 16
-    // log(8-1) = 2, exp(2+1) = 8
-    //assert(nBL >= 5);
-    //return EXP(LOG(nBL-1)-2);
-    // Will the compiler get rid of LOG and EXP if nBL is a constant?
-    // Or are we better off with the old way?
-    #if 0
-    return (nBL <= 16) ? (nBL <=  8) ? 1 : 2
-        : ((cnBitsPerWord > 32) && (nBL <= 32)) ? 4 : sizeof(Word_t);
-    #else
-      #if 1
     return EXP((nBL > 8) + (nBL > 16) + ((cnBitsPerWord > 32) && (nBL > 32)));
-      #else
-    return (nBL <=  8) ? 1 : (nBL <= 16) ? 2 :
-        ((cnBitsPerWord > 32) && (nBL <= 32)) ? 4 : sizeof(Word_t);
-    // Or should we just assume that nBL is a multiple of 8?
-      #endif
-    #endif
   #else // defined(COMPRESSED_LISTS)
     (void)nBL;
     return sizeof(Word_t);
@@ -3779,27 +3764,17 @@ static Word_t SumPopCnt(Word_t *pwRoot, int nBL);
 #endif // #else B_JUDYL
 
 static int // bool
-InflateBmSwTest(qp) // qp points to BM switch
+InflateBmSwTestGuts(int nBLR, int nBW, Word_t wPopCnt)
 {
-    qv;
-    int nBLR = gnBLR(qy);
-    int nBW = gnBW(qy, nBLR); // BW is width of switch
-    Word_t wPopCnt;
-#if defined(PP_IN_LINK) && !defined(NO_SKIP_AT_TOP)
-    if (nBL >= cnBitsPerWord) {
-        wPopCnt = SumPopCnt(pwRoot, cnBitsPerWord);
-    } else
-#endif // defined(PP_IN_LINK) && !defined(NO_SKIP_AT_TOP)
-    { wPopCnt = gwPopCnt(qy, nBLR); }
-
     int nBytesPerPop = ExtListBytesPerKey(nBLR - nBW); // accumulator
-    int nBytesPerLink = sizeof(Link_t); // accumulator
-#ifdef B_JUDYL
+  #ifdef B_JUDYL
     nBytesPerPop += sizeof(Word_t); // value
-  #ifdef REMOTE_LNX
+  #endif // B_JUDYL
+    int nBytesPerLink = sizeof(Link_t); // accumulator
+    // _LNX && !REMOTE_LNX includes the link extension word in Link_t.
+  #if defined(REMOTE_LNX) || DUMMY_REMOTE_LNX
     nBytesPerLink += sizeof(Word_t); // value
-  #endif // REMOTE_LNX
-#endif // B_JUDYL
+  #endif // REMOTE_LNX || DUMMY_REMOTE_LNX
 
 // inflate <==> inflated total-words / pop < words-per-key threshold
 // How do we estimate inflated total words?
@@ -3811,6 +3786,24 @@ InflateBmSwTest(qp) // qp points to BM switch
 
     return cnBmSwConvert * wPopCnt * sizeof(Word_t)
         > cnBmSwRetain * (EXP(nBW) * nBytesPerLink + wPopCnt * nBytesPerPop);
+}
+
+static int // bool
+InflateBmSwTest(qp) // qp points to BM switch
+{
+    qv;
+    int nBLR = gnBLR(qy);
+    int nBW = gnBW(qy, nBLR); // BW is width of switch
+    Word_t wPopCnt;
+  #ifdef _POP_WORD_IN_LINK_X
+  #ifndef NO_SKIP_AT_TOP
+    if (nBL >= cnBitsPerWord) {
+        wPopCnt = SumPopCnt(pwRoot, cnBitsPerWord);
+    } else
+  #endif // !NO_SKIP_AT_TOP
+  #endif // _POP_WORD_IN_LINK_X
+    { wPopCnt = gwPopCnt(qy, nBLR); }
+    return InflateBmSwTestGuts(nBLR, nBW, wPopCnt);
 }
 
 #endif // CODE_BM_SW

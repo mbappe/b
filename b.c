@@ -1502,10 +1502,10 @@ NewSwitchX(Word_t *pwRoot, Word_t wKey, int nBLR,
     assert(nBW <= cnBitsCnt);
   #endif // BM_SW_CNT_IN_WR
     if (nType == T_BM_SW) {
-        assert((int)wIndexCnt <= N_WORDS_SW_BM(nBW)
-               * cnBitsPerWord
+        assert((int)wIndexCnt
+                   <= N_WORDS_SW_BM(nBW) * cnBitsPerWord
   #ifdef OFFSET_IN_SW_BM_WORD
-               / 2
+                       / 2
   #endif // OFFSET_IN_SW_BM_WORD
                );
     }
@@ -1556,9 +1556,9 @@ NewSwitchX(Word_t *pwRoot, Word_t wKey, int nBLR,
 
     wBytes += wLinks * sizeof(Link_t);
     Word_t wWords = wBytes / sizeof(Word_t);
-  #ifdef REMOTE_LNX
+  #if defined(REMOTE_LNX) || defined(DUMMY_REMOTE_LNX)
     wWords += wLinks;
-  #endif // REMOTE_LNX
+  #endif // REMOTE_LNX || DUMMY_REMOTE_LNX
 
 #ifdef RAMMETRICS
     // Is a branch with embedded bitmaps a branch?
@@ -2032,9 +2032,9 @@ NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
         // Allocate memory for a new switch with one more link than the
         // old one.
         unsigned nWordsNew = nWordsOld + sizeof(Link_t) / sizeof(Word_t);
-  #ifdef REMOTE_LNX
+  #if defined(REMOTE_LNX) || defined(DUMMY_REMOTE_LNX)
         nWordsNew += nLinkCnt + 1;
-  #endif // REMOTE_LNX
+  #endif // REMOTE_LNX || DUMMY_REMOTE_LNX
         Word_t *pwBm = PWR_pwBm(pwRoot, pwr, nBW); (void)pwBm;
 #if defined(CODE_BM_SW) && defined(CACHE_ALIGN_BM_SW)
         *pwRoot = MyMallocGuts(nWordsNew, /* logAlign */ 6, &j__AllocWordsJBB);
@@ -2254,9 +2254,9 @@ OldSwitch(Word_t *pwRoot, int nBL
         sizeof(Switch_t);
     wBytes += wLinks * sizeof(Link_t);
     Word_t wWords = wBytes / sizeof(Word_t);
-  #ifdef REMOTE_LNX
+  #if defined(REMOTE_LNX) || defined(DUMMY_REMOTE_LNX)
     wWords += wLinks;
-  #endif // REMOTE_LNX
+  #endif // REMOTE_LNX || DUMMY_REMOTE_LNX
 
 #ifdef RAMMETRICS
     Word_t *pwAllocWords =  // RAMMETRICS
@@ -11148,6 +11148,12 @@ Initialize(void)
 #else //         REMOTE_LNX
     printf("# No REMOTE_LNX\n");
 #endif //        REMOTE_LNX
+
+#ifdef           DUMMY_REMOTE_LNX
+    printf("#    DUMMY_REMOTE_LNX\n");
+#else //         DUMMY_REMOTE_LNX
+    printf("# No DUMMY_REMOTE_LNX\n");
+#endif //        DUMMY_REMOTE_LNX
 
 #ifdef          _RETURN_NULL_TO_INSERT_AGAIN
     printf("#    RETURN_NULL_TO_INSERT_AGAIN\n");

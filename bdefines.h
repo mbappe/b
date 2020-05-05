@@ -705,6 +705,7 @@
 // Instead of calling back into Insert we simply return NULL to cause
 // Insert to loop back to the top with the pwLnX that it already knows.
 #ifdef REMOTE_LNX
+  #undef  _RETURN_NULL_TO_INSERT_AGAIN
   #define _RETURN_NULL_TO_INSERT_AGAIN
 #endif // REMOTE_LNX
 
@@ -789,6 +790,10 @@
     #pragma message "AUGMENT_TYPE_8_PLUS_4 with cnBitsLeftAtDl3 < 24."
   #endif // cnBitsLeftAtDl3 < 24
 #endif // AUGMENT_TYPE_8_PLUS_4
+
+#ifdef REMOTE_LNX
+  #undef DUMMY_REMOTE_LNX
+#endif // REMOTE_LNX
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 

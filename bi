@@ -13,6 +13,15 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 : \
 && DEFINES="-DDEBUG" make clean default \
 && regress \
+&& : "_RETURN_NULL_TO_INSERT_AGAIN is default for JudyL" \
+&& DEFINES="-DDEBUG -D_RETURN_NULL_TO_INSERT_AGAIN" make clean default \
+&& regress \
+&& : "_LNX is default for JudyL" \
+&& DEFINES="-DDEBUG -D_LNX" make clean default \
+&& regress \
+&& : "DUMMY_REMOTE_LNX is undefined in bedefines.h for JudyL" \
+&& DEFINES="-DDEBUG -DDUMMY_REMOTE_LNX" make clean default \
+&& regress \
 && DEFINES="-DQP_PLN -DDEBUG" make clean default \
 && regress \
 && :
