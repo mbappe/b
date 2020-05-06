@@ -207,9 +207,6 @@
   #define qya_pwLnXx(x)  ,         pwLnX##x
   #define qva_pwLnX          (void)pwLnX
   #define qva_pwLnXx(x)      (void)pwLnX##x
-  #define pqpa_pwLnX      Word_t** ppwLnX
-  #define pqya_pwLnX               &pwLnX
-  #define pqva_pwLnX         (void)ppwLnX
   #define qypa_pwLnX  (void*)pwLnX
   #define qfmta_pwLnX      " pwLnX %p"
 #else // defined(_LNX) && defined(REMOTE_LNX)
@@ -224,12 +221,17 @@
   #define qva_pwLnX
   #define qva_pwLnXx(x)
     #endif // else _LNX
-  #define pqpa_pwLnX
-  #define pqya_pwLnX
-  #define pqva_pwLnX
   #define qypa_pwLnX
   #define qfmta_pwLnX
 #endif // else defined(_LNX) && defined(REMOTE_LNX)
+
+#ifdef _LNX
+  #define pqpa_pwLnX     , Word_t** ppwLnX
+  #define pqya_pwLnX     ,         &pwLnX
+#else // _LNX
+  #define pqpa_pwLnX
+  #define pqya_pwLnX
+#endif // _LNX
 
 #ifdef QP_PLN
   #define qpa      int nBL   , Link_t* pLn    qpa_pwLnX
@@ -251,12 +253,11 @@
       qva_pwLnXx(x); \
       (void)nBL##x; (void)pLn##x; (void)pwRoot##x; \
       (void)wRoot##x; (void)nType##x; (void)pwr##x
-  #define pqpa  int* pnBL, Link_t** ppLn, pqpa_pwLnX, \
+  #define pqpa  int* pnBL, Link_t** ppLn pqpa_pwLnX, \
                 Word_t* pwRoot, int* pnType, Word_t** ppwr
-  #define pqya  &nBL, &pLn, pqya_pwLnX, &wRoot, &nType, &pwr
+  #define pqya  &nBL, &pLn pqya_pwLnX, &wRoot, &nType, &pwr
   #define pqva \
-      (void)pnBL; (void)ppLn; (void)ppwLnX; \
-      pqva_pwLnX; \
+      (void)pnBL; (void)ppLn; \
       (void)pwRoot; (void)pnType; (void)ppwr; \
       ASSERT(*pwRoot == (*ppLn)->ln_wRoot); \
       ASSERT(*pnType == wr_nType(*pwRoot) || (*pnBL <= cnLogBitsPerLink)); \
@@ -283,12 +284,11 @@
       qva_pwLnXx(x); \
       (void)nBL##x; (void)pLn##x; (void)pwRoot##x; \
       (void)wRoot##x; (void)nType##x; (void)pwr##x
-  #define pqpa  int* pnBL, Word_t** ppwRoot, pqpa_pwLnX, \
+  #define pqpa  int* pnBL, Word_t** ppwRoot pqpa_pwLnX, \
                 Word_t* pwRoot, int* pnType, Word_t** ppwr
-  #define pqya  &nBL, &pwRoot, pqya_pwLnX, &wRoot, &nType, &pwr
+  #define pqya  &nBL, &pwRoot pqya_pwLnX, &wRoot, &nType, &pwr
   #define pqva \
-      (void)pnBL; (void)ppwRoot; (void)ppwLnX; \
-      pqva_pwLnX; \
+      (void)pnBL; (void)ppwRoot; \
       (void)pwRoot; (void)pnType; (void)ppwr; \
       ASSERT(*pwRoot == **ppwRoot); \
       ASSERT(*pnType == wr_nType(*pwRoot) || (*pnBL <= cnLogBitsPerLink)); \
@@ -3390,13 +3390,20 @@ gwPopCnt(qp, int nBLR)
 }
 
 static inline void
-swPopCnt(qp, int nBLR, Word_t wPopCnt)
+swPopCnt(qpa, int nBLR, Word_t wPopCnt)
 {
-    qv; (void)nBLR;
+    qva; (void)nBLR;
+    assert(tp_bIsSwitch(nType));
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     assert(nBL < cnBitsPerWord);
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     set_PWR_wPopCntBL(&pLn->ln_wRoot, pwr, nBLR, wPopCnt);
+  #ifdef SW_POP_IN_LNX
+    if (pwLnX != NULL) {
+        assert(nBL != cnBitsPerWord);
+        *pwLnX = wPopCnt;
+    }
+  #endif // SW_POP_IN_LNX
 }
 
 static inline int
@@ -3795,13 +3802,13 @@ InflateBmSwTest(qp) // qp points to BM switch
     int nBLR = gnBLR(qy);
     int nBW = gnBW(qy, nBLR); // BW is width of switch
     Word_t wPopCnt;
-  #ifdef _POP_WORD_IN_LINK_X
+  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
   #ifndef NO_SKIP_AT_TOP
     if (nBL >= cnBitsPerWord) {
         wPopCnt = SumPopCnt(pwRoot, cnBitsPerWord);
     } else
   #endif // !NO_SKIP_AT_TOP
-  #endif // _POP_WORD_IN_LINK_X
+  #endif // PP_IN_LINK || POP_WORD_IN_LINK
     { wPopCnt = gwPopCnt(qy, nBLR); }
     return InflateBmSwTestGuts(nBLR, nBW, wPopCnt);
 }

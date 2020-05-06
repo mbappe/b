@@ -2861,6 +2861,12 @@ embeddedKeys:;
                 // wPopCnt = EXP(nBLR);
             }
             printf(" wr_wPopCnt %3" _fw"u", wPopCnt);
+  #ifdef SW_POP_IN_LNX
+            printf(" pwLnX %p", pwLnX);
+            if (pwLnX != NULL) {
+                printf(" wLnX %zd", *pwLnX);
+            }
+  #endif // SW_POP_IN_LNX
   #ifdef SKIP_LINKS
             printf(" wr_wKey " OWx,
 #if defined(CODE_BM_SW)
@@ -5017,7 +5023,7 @@ insertAll:
   #endif // XX_LISTS
         {
             wPopCnt = gwPopCnt(qy, nBLR) + nPopCnt;
-            swPopCnt(qy, nBLR, wPopCnt);
+            swPopCnt(qya, nBLR, wPopCnt);
         }
     }
 
@@ -6152,7 +6158,7 @@ lastDigit:;
   #endif // XX_LISTS
         {
             wPopCnt = gwPopCnt(qy, nBLR) + nPopCnt /* + 1 */;
-            swPopCnt(qy, nBLR, wPopCnt);
+            swPopCnt(qya, nBLR, wPopCnt);
         }
     }
 
@@ -6872,7 +6878,7 @@ DoubleDown(qp, // (nBL, pLn) of link to original switch
             Word_t wPrefix
                 = (wKey & ~NZ_MSK(nBLR)) | ((Word_t)nIndex << nBLLoop);
             int nPopCntLoop = GetPopCnt(pwRootLoop, nBLLoop);
-            swPopCnt(qy, nBLR, gwPopCnt(qy, nBLR) - nPopCntLoop);
+            swPopCnt(qya, nBLR, gwPopCnt(qy, nBLR) - nPopCntLoop);
             InsertAll(pwRootLoop, nBLLoop, wPrefix, pwRoot, nBL
       #ifdef _LNX
                     , pwLnX
@@ -7414,7 +7420,7 @@ InsertAtFullUnalignedXxList(qp, Word_t wKey, int nPopCnt, int nPos,
         SplayWithInsert(qyax(Up), /* pwRootOld */ &wRoot, nBL, wKey, nPos);
   #else // SPLAY_WITH_INSERT
     Splay(qyax(Up), /* pwRootOld */ &wRoot, nBL, wKey);
-    swPopCnt(qyx(Up), nBLRUp, gwPopCnt(qyx(Up), nBLRUp) - 1);
+    swPopCnt(qyax(Up), nBLRUp, gwPopCnt(qyx(Up), nBLRUp) - 1);
     BJL(return) Insert(qyx(Up), wKey);
   #endif // #else SPLAY_WITH_INSERT
 }
@@ -7889,7 +7895,7 @@ newSkipToBitmap:;
   #endif // USE_XX_SW_ONLY_AT_DL2
 
         if (nBLNew == nBL) {
-            DBGI(printf("\n# InsertSwitch After NewSwitch Dump\n"));
+            DBGI(printf("\n# TransformList After NewSwitch Dump\n"));
             DBGI(Dump(pwRootLast,
                       /* wPrefix */ (Word_t)0, cnBitsPerWord));
             DBGI(printf("\n"));
@@ -11570,6 +11576,12 @@ Initialize(void)
 #else // defined(POP_WORD_IN_LINK)
     printf("# No POP_WORD_IN_LINK\n");
 #endif // defined(POP_WORD_IN_LINK)
+
+#ifdef           SW_POP_IN_LNX
+    printf("#    SW_POP_IN_LNX\n");
+#else //         SW_POP_IN_LNX
+    printf("# No SW_POP_IN_LNX\n");
+#endif //        SW_POP_IN_LNX else
 
 #if defined(SEARCHMETRICS)
     printf("#    SEARCHMETRICS\n");

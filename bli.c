@@ -352,21 +352,46 @@ SwIncr(qpa, int nBLR, int nIncr)
       #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     {
         Word_t wPopCnt = gwPopCnt(qy, nBLR) + nIncr;
-        swPopCnt(qy, nBLR, wPopCnt);
+        swPopCnt(qya, nBLR, wPopCnt);
     }
   #endif // defined(INSERT) || defined(REMOVE)
 }
 
+#ifdef _LNX
+  #ifdef QP_PLN
+    #define swapynew  pLnNew, pwLnXNew
+  #else // QP_PLN
+    #define swapynew  &pLn, pLnNew, pwLnXNew
+  #endif // QP_PLN else
+#else // _LNX
+  #ifdef QP_PLN
+    #define swapynew  pLnNew
+  #else // QP_PLN
+    #define swapynew  &pLn, pLnNew
+  #endif // QP_PLN else
+#endif // _LNX else
+
 static inline void
-SwAdvance(pqp, Link_t *pLnNew, int nBW, int *pnBLR)
+SwAdvance(pqpa,
+  #ifndef QP_PLN
+          Link_t** ppLn,
+  #endif // !QP_PLN
+          Link_t *pLnNew,
+  #ifdef _LNX
+          Word_t* pwLnXNew,
+  #endif // _LNX
+          int nBW, int *pnBLR)
 {
-    pqv;
+    pqva;
     *pnBL = *pnBLR - nBW;
     *pnBLR = *pnBL;
     // Be very careful with pwRoot from pqp.
     // It might not mean what you think it means.
-  #ifdef QP_PLN
+  #ifdef _LNX
+    *ppwLnX = pwLnXNew;
+  #endif // _LNX
     *ppLn = pLnNew;
+  #ifdef QP_PLN
     *pwRoot = pLnNew->ln_wRoot;
     DBGX(printf("sw nBL %d pLn %p wRoot 0x%zx\n",
                 *pnBL, (void*)*ppLn, *pwRoot));
@@ -765,6 +790,7 @@ InsertRemove1(qp, Word_t wKey)
 
     int nBW;
     Link_t *pLnNew;
+    Word_t* pwLnXNew; (void)pwLnXNew;
 
     // wDigit needs this broad scope only for COUNT.
     // I wonder if it would help performance if we were to define this
@@ -799,11 +825,13 @@ InsertRemove1(qp, Word_t wKey)
     Word_t* pwLnX = NULL; (void)pwLnX;
       #ifndef LOOKUP
       #ifndef REMOTE_LNX
+      #ifndef _RETURN_NULL_TO_INSERT_AGAIN
     // We should leave pwLnX NULL for nBL == cnBitsPerWord, but the code
     // is not supposed to be using it in that case so we skip the test.
     // I guess it is not quite as important as it would be if we were in
     // LOOKUP here, but we're not.
-    pwLnX = &STRUCT_OF(pwRoot, Link_t, ln_wRoot)->ln_wX;
+    pwLnX = &pLn->ln_wX;
+      #endif // _RETURN_NULL_TO_INSERT_AGAIN
       #endif // ifndef REMOTE_LNX
       #endif // ifndef LOOKUP
   #endif // _LNX
@@ -1450,9 +1478,9 @@ t_sw_plus_112:
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
-        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+        pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
           #ifdef PREFETCH_EK_VAL
-        PREFETCH(pwLnX);
+        PREFETCH(pwLnXNew);
           #endif // PREFETCH_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
@@ -1460,7 +1488,7 @@ t_sw_plus_112:
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
       #endif // PREFETCH_PWR
         IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
-        SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
+        SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
       #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
             // nType and pwr have not been updated.
@@ -1486,9 +1514,9 @@ t_sw_plus_96:
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
-        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+        pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
           #ifdef PREFETCH_EK_VAL
-        PREFETCH(pwLnX);
+        PREFETCH(pwLnXNew);
           #endif // PREFETCH_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
@@ -1496,7 +1524,7 @@ t_sw_plus_96:
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
       #endif // PREFETCH_PWR
         IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
-        SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
+        SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
       #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
             // nType and pwr have not been updated.
@@ -1522,9 +1550,9 @@ t_sw_plus_80:
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
-        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+        pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
           #ifdef PREFETCH_EK_VAL
-        PREFETCH(pwLnX);
+        PREFETCH(pwLnXNew);
           #endif // PREFETCH_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
@@ -1532,7 +1560,7 @@ t_sw_plus_80:
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
       #endif // PREFETCH_PWR
         IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
-        SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
+        SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
       #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
             // nType and pwr have not been updated.
@@ -1558,9 +1586,9 @@ t_sw_plus_64:
         assert(gnBW(qy, nBLR) == nBW);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
-        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+        pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
           #ifdef PREFETCH_EK_VAL
-        PREFETCH(pwLnX);
+        PREFETCH(pwLnXNew);
           #endif // PREFETCH_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
@@ -1568,7 +1596,7 @@ t_sw_plus_64:
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
       #endif // PREFETCH_PWR
         IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
-        SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
+        SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
       #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
             // nType and pwr have not been updated.
@@ -1608,9 +1636,9 @@ t_sw_plus_48:
       #endif // else AUGMENT_TYPE_8
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
-        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+        pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
           #ifdef PREFETCH_EK_VAL
-        PREFETCH(pwLnX);
+        PREFETCH(pwLnXNew);
           #endif // PREFETCH_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
@@ -1618,7 +1646,7 @@ t_sw_plus_48:
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
       #endif // PREFETCH_PWR
         IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
-        SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
+        SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
       #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
             // nType and pwr have not been updated.
@@ -1660,9 +1688,9 @@ t_sw_plus_32:
         nBW = gnBW(qy, nBLR); // num bits decoded
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
-        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+        pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
           #ifdef PREFETCH_EK_VAL
-        PREFETCH(pwLnX);
+        PREFETCH(pwLnXNew);
           #endif // PREFETCH_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
@@ -1670,7 +1698,7 @@ t_sw_plus_32:
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
       #endif // PREFETCH_PWR
         IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
-        SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
+        SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
       #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
             // nType and pwr have not been updated.
@@ -1715,9 +1743,9 @@ t_sw_plus_16:
         nBW = gnBW(qy, nBLR);
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
       #ifdef _LNX
-        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+        pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
           #ifdef PREFETCH_EK_VAL
-        PREFETCH(pwLnX);
+        PREFETCH(pwLnXNew);
           #endif // PREFETCH_EK_VAL
       #endif // _LNX
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
@@ -1725,7 +1753,7 @@ t_sw_plus_16:
         PREFETCH(wr_pwr(pLnNew->ln_wRoot));
       #endif // PREFETCH_PWR
         IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
-        SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
+        SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
       #ifdef BITMAP
         // Can't assume embedded bitmap for JudyL. Might be T_EMBEDDED_KEYS.
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
@@ -1787,11 +1815,11 @@ t_switch:
         // ((uint8_t *)&wSwappedKey)[nDL];
         // *(uint8_t *)&wSwappedAndShiftedKey;
       #ifdef _LNX
-        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
-        DBGX(printf("updated pwLnX %p\n", pwLnX));
+        pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+        DBGX(printf("pwLnXNew %p\n", pwLnXNew));
           #ifdef PREFETCH_EK_VAL
           #ifdef LOOKUP
-        PREFETCH(pwLnX);
+        PREFETCH(pwLnXNew);
           #endif // LOOKUP
           #endif // PREFETCH_EK_VAL
       #endif // _LNX
@@ -1824,10 +1852,7 @@ switchTail:;
         IF_NOT_LOOKUP(pLnUp = pLn);
         IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
-        SwAdvance(pqy, pLnNew, nBW, &nBLR); // updates wRoot
-      #ifndef QP_PLN
-        pLn = pLnNew;
-      #endif // !QP_PLN
+        SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
       #ifdef BITMAP
         // Is there any reason to have
         // (cnBitsInD1 <= cnLogBitsPerLink)? What about lazy conversion
@@ -1871,7 +1896,7 @@ t_xx_sw:
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
       #ifdef _LNX
-        pwLnX = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
+        pwLnXNew = gpwLnX(qy, /* wLinks */ EXP(nBW), /* wIndex */ wDigit);
       #endif // _LNX
         IF_COUNT(bLinkPresent = 1);
         IF_COUNT(nLinks = 1 << nBW);
@@ -1923,10 +1948,7 @@ t_xx_sw:
         IF_NOT_LOOKUP(pLnUp = pLn);
         IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
-        SwAdvance(pqy, pLnNew, nBW, &nBLR);
-          #ifndef QP_PLN
-        pLn = pLnNew;
-          #endif // !QP_PLN
+        SwAdvance(pqya, swapynew, nBW, &nBLR);
           #ifdef BITMAP
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
           #endif // BITMAP
@@ -2149,7 +2171,7 @@ t_bm_sw:
           #ifndef BM_SW_FOR_REAL
         assert(nLinkCnt == (1<<nBW));
           #endif // BM_SW_FOR_REAL
-        pwLnX = gpwLnX(qy, nLinkCnt, wSwIndex);
+        pwLnXNew = gpwLnX(qy, nLinkCnt, wSwIndex);
       #endif // _LNX
 
         // Update wDigit before bmSwTail because we have to do it
@@ -2161,10 +2183,7 @@ bmSwTail:;
         IF_COUNT(nLinks = INT_MAX);
       #if defined(LOOKUP)
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
-        SwAdvance(pqy, pLnNew, nBW, &nBLR);
-          #ifndef QP_PLN
-        pLn = pLnNew;
-          #endif // !QP_PLN
+        SwAdvance(pqya, swapynew, nBW, &nBLR);
           #ifdef BITMAP
           #if defined(PACK_BM_VALUES) || !defined(B_JUDYL)
         // compiler complains ifndef BITMAP even if cbEmbeddedBitmap==0
@@ -2285,10 +2304,7 @@ t_list_sw:
         IF_COUNT(nLinks = INT_MAX);
           #ifdef LOOKUP
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
-        SwAdvance(pqy, pLnNew, nBW, &nBLR);
-              #ifndef QP_PLN
-        pLn = pLnNew;
-              #endif // !QP_PLN
+        SwAdvance(pqya, swapynew, nBW, &nBLR);
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
         goto again;
           #else // LOOKUP
@@ -3815,7 +3831,7 @@ t_bitmap:
   #else // BMLF_POP_COUNT_1_NO_TEST
             int bBitIsSet =
                           #ifdef _BMLF_BM_IN_LNX
-                BitIsSet(pwLnX, wKey & MSK(cnBitsInD1));
+                BitIsSetInWord(*pwLnX, wKey & MSK(cnBitsInD1));
                           #else // _BMLF_BM_IN_LNX
      // We don't need/want to check for WROOT_NULL for embedded bitmap.
                 ((wr_nType(WROOT_NULL) == T_BITMAP)
@@ -4481,7 +4497,7 @@ t_separate_t_null:
         // What about defined(RECURSIVE)?
         if (nBL < cnBitsPerWord) {
             // If nBL < cnBitsPerWord then we're not at top.
-            swPopCnt(qy, nBL, gwPopCnt(qy, nBL) + nIncr);
+            swPopCnt(qya, nBL, gwPopCnt(qy, nBL) + nIncr);
         }
       #endif // defined(INSERT) || defined(REMOVE)
       #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -4571,6 +4587,10 @@ restart:;
           #ifndef QP_PLN
         pwRoot = &pLnOrig->ln_wRoot;
           #endif // !QP_PLN
+          #ifdef SW_POP_IN_LNX
+        // Isn't right for nBL < cnBitsPerWord but maybe we don't use it.
+        pwLnX = NULL;
+          #endif // SW_POP_IN_LNX
         wRoot = pLn->ln_wRoot;
         goto top;
     }
