@@ -342,24 +342,19 @@ SwCleanup(qpa, Word_t wKey, int nBLR
 // Increment for insert on the way down.
 // Decrement for remove on the way down.
 // Also used to undo itself after we discover insert or remove is redundant.
-static inline Word_t
-SwIncr(qp, int nBLR, int bCleanup, int nIncr)
+static inline void
+SwIncr(qpa, int nBLR, int nIncr)
 {
-    qv; (void)nBLR; (void)bCleanup; (void)nIncr;
-    Word_t wPopCnt = 0;
+    qva; (void)nBLR; (void)nIncr;
   #if defined(INSERT) || defined(REMOVE)
-    if (!bCleanup) {
       #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        if (nBL < cnBitsPerWord)
+    if (nBL < cnBitsPerWord)
       #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        {
-            wPopCnt = gwPopCnt(qy, nBLR) + nIncr;
-            // Increment or decrement population count on the way in.
-            swPopCnt(qy, nBLR, wPopCnt);
-        }
+    {
+        Word_t wPopCnt = gwPopCnt(qy, nBLR) + nIncr;
+        swPopCnt(qy, nBLR, wPopCnt);
     }
   #endif // defined(INSERT) || defined(REMOVE)
-    return wPopCnt;
 }
 
 static inline void
@@ -1810,19 +1805,19 @@ t_switch:
 switchTail:;
       #if defined(INSERT) || defined(REMOVE)
         // Handle big picture tree cleanup.
-        if (bCleanup
-            && SwCleanup(qya, wKey, nBLR
+        if (bCleanup) {
+            if (SwCleanup(qya, wKey, nBLR
           #if defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
                     , &pwValue
           #endif // defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
                       ) != 0)
-        {
-            goto restart;
+            {
+                goto restart;
+            }
+        } else {
+            SwIncr(qya, nBLR, nIncr); // adjust pop count
         }
       #endif // defined(INSERT) || defined(REMOVE)
-        // adjust pop count
-        IF_NOT_COUNT(IF_NOT_LOOKUP(wPopCntUp = SwIncr(qy, nBLR, bCleanup,
-                                                      nIncr)));
         IF_COUNT(wPopCntSum += CountSw(qy, nBLR, nBW, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
         // Save the previous link and advance to the next.
@@ -1909,17 +1904,19 @@ t_xx_sw:
 // Beginning of SwTailCommon:
           #if defined(INSERT) || defined(REMOVE)
         // Handle big picture tree cleanup.
-        if (bCleanup
-            && SwCleanup(qya, wKey, nBLR
+        if (bCleanup) {
+            if (SwCleanup(qya, wKey, nBLR
               #if defined(B_JUDYL) && defined(EMBED_KEYS) && defined(INSERT)
                     , &pwValue
               #endif // B_JUDYL && EMBED_KEYS && INSERT
                       ) != 0)
-        {
-            goto restart;
+            {
+                goto restart;
+            }
+        } else {
+            SwIncr(qya, nBLR, nIncr); // adjust pop count
         }
           #endif // INSERT || REMOVE
-        wPopCntUp = SwIncr(qy, nBLR, bCleanup, nIncr); // adjust pop count
         IF_COUNT(wPopCntSum += CountSw(qy, nBLR, nBW, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
         // Save the previous link and advance to the next.
