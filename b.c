@@ -12763,22 +12763,16 @@ GetPopCntX(qp, Word_t wPrefix)
 //    if (wKey = 0, Next(&wKey, /* wSkip */ 0) == 0)
 //        do ; while (wKey++, Next(&wKey, /* wSkip */ wN-1) == 0) ;
 static Word_t
-NextGuts(Word_t *pwRoot, int nBL,
-  #ifdef _LNX
-         Word_t *pwLnX,
-  #endif // _LNX
-         Word_t *pwKey, Word_t wSkip,
+NextGuts(qpa, Word_t *pwKey, Word_t wSkip,
          int bPrev, int bEmpty /* , Word_t **ppwVal */)
 {
+    qva;
 #define A(_zero) assert(_zero)
     (void)bEmpty;
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
-    Word_t wRoot = *pwRoot;
     DBGN(printf("NextGuts(pLn %p pwRoot %p)\n", pLn, pwRoot));
     DBGN(printf("NextGuts(wRoot " OWx" nBL %d *pwKey " OWx
                     " wSkip %" _fw"d bPrev %d bEmpty %d)\n",
                 wRoot, nBL, *pwKey, wSkip, bPrev, bEmpty));
-    Word_t *pwr;
     Word_t *pwBitmap; (void)pwBitmap;
     int nBitNum; (void)nBitNum; // BITMAP
   #ifdef BITMAP
@@ -12788,8 +12782,6 @@ NextGuts(Word_t *pwRoot, int nBL,
         goto embeddedBitmap;
     }
   #endif // BITMAP
-    pwr = wr_pwr(wRoot);
-    int nType = wr_nType(wRoot);
     DBGN(printf("nBL %d pLn 0x%zx pwRoot 0x%zx nType %d pwr 0x%zx\n",
                 nBL, (size_t)pLn, (size_t)pwRoot, nType, (size_t)pwr));
     switch (nType) {
@@ -13146,10 +13138,10 @@ t_switch:;
                         // prev might be in here
                         //A(0);
                         Word_t wCount;
-                        if ((wCount = NextGuts(&pLn->ln_wRoot, nBL - nBits,
-  #ifdef _LNX
-                                               pwLnX,
-  #endif // _LNX
+  #ifdef REMOTE_LNX
+                        Word_t* pwLnXNext = pwLnX;
+  #endif // REMOTE_LNX
+                        if ((wCount = NextGuts(qyax(Next),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
@@ -13212,10 +13204,10 @@ t_switch:;
                         //A(0);
                         // next might be in here
                         Word_t wCount;
-                        if ((wCount = NextGuts(&pLn->ln_wRoot, nBL - nBits,
-  #ifdef _LNX
-                                               pwLnX,
-  #endif // _LNX
+  #ifdef REMOTE_LNX
+                        Word_t* pwLnXNext = pwLnX;
+  #endif // REMOTE_LNX
+                        if ((wCount = NextGuts(qyax(Next),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
@@ -13354,10 +13346,12 @@ t_bm_sw:;
                         // prev might be in here
                         //A(0); // check -B17
                         Word_t wCount;
-                        if ((wCount = NextGuts(&pLn->ln_wRoot, nBL - nBW,
-  #ifdef _LNX
-                                               pwLnX,
-  #endif // _LNX
+                        int nBLNext = nBL - nBW;
+                        Word_t* pwRootNext = &pLn->ln_wRoot;
+  #ifdef REMOTE_LNX
+                        Word_t* pwLnXNext = pwLnX;
+  #endif // REMOTE_LNX
+                        if ((wCount = NextGuts(qyax(Next),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
@@ -13511,10 +13505,12 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                                     wSkip, *pwKey));
                         // next might be in here
                         Word_t wCount;
-                        if ((wCount = NextGuts(&pLn->ln_wRoot, nBL - nBW,
-  #ifdef _LNX
-                                               pwLnX,
-  #endif // _LNX
+                        int nBLNext = nBL - nBW;
+                        Word_t* pwRootNext = &pLn->ln_wRoot;
+  #ifdef REMOTE_LNX
+                        Word_t* pwLnXNext = pwLnX;
+  #endif // REMOTE_LNX
+                        if ((wCount = NextGuts(qyax(Next),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
@@ -13687,10 +13683,10 @@ t_xx_sw:;
                     if (wPopCnt > wSkip) {
                         //A(0);
                         Word_t wCount;
-                        if ((wCount = NextGuts(&pLn->ln_wRoot, nBL - nBW,
-  #ifdef _LNX
-                                               pwLnX,
-  #endif // _LNX
+  #ifdef REMOTE_LNX
+                        Word_t* pwLnXNext = pwLnX;
+  #endif // REMOTE_LNX
+                        if ((wCount = NextGuts(qyax(Next),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
@@ -13746,10 +13742,10 @@ t_xx_sw:;
                     if (wPopCnt > wSkip) {
                         //A(0);
                         Word_t wCount;
-                        if ((wCount = NextGuts(&pLn->ln_wRoot, nBL - nBW,
-  #ifdef _LNX
-                                               pwLnX,
-  #endif // _LNX
+  #ifdef REMOTE_LNX
+                        Word_t* pwLnXNext = pwLnX;
+  #endif // REMOTE_LNX
+                        if ((wCount = NextGuts(qyax(Next),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
@@ -13816,12 +13812,12 @@ Judy1ByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
     // The Judy1 man page specifies that wCount == 0 is reserved for
     // specifying the last key in a fully populated array.
     --wCount; // Judy API spec is off-by-one IMHO
-    wCount = NextGuts((Word_t *)&PArray, cnBitsPerWord,
+    int nBL = cnBitsPerWord;
+    Word_t* pwRoot = (Word_t*)&PArray;
   #ifdef _LNX
-                      /*pwLnX*/ NULL,
+    Word_t* pwLnX = NULL;
   #endif // _LNX
-                      &wKey,
-                      wCount, /* bPrev */ 0, /* bEmpty */ 0);
+    wCount = NextGuts(qya, &wKey, wCount, /* bPrev */ 0, /* bEmpty */ 0);
     if (wCount == 0) {
         *pwKey = wKey;
         DBGN(printf("JxBC: *pwKey " OWx"\n", *pwKey));
@@ -13870,11 +13866,12 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     }
     DBGN(printf("\nJxF: *pwKey " OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
-    Word_t wCount = NextGuts((Word_t *)&PArray, cnBitsPerWord,
+    int nBL = cnBitsPerWord;
+    Word_t* pwRoot = (Word_t*)&PArray;
   #ifdef _LNX
-                             /*pwLnX*/ NULL,
+    Word_t* pwLnX = NULL;
   #endif // _LNX
-                             &wKey,
+    Word_t wCount = NextGuts(qya, &wKey,
                              /* wCount */ 0, /* bPrev */ 0, /* bEmpty */ 0);
     if (wCount == 0) {
         *pwKey = wKey;
@@ -13975,11 +13972,12 @@ Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     }
     DBGN(printf("\nJxL: *pwKey " OWx"\n", *pwKey));
     Word_t wKey = *pwKey;
-    Word_t wCount = NextGuts((Word_t *)&PArray, cnBitsPerWord,
+    int nBL = cnBitsPerWord;
+    Word_t* pwRoot = (Word_t*)&PArray;
   #ifdef _LNX
-                             /*pwLnX*/ NULL,
+    Word_t* pwLnX = NULL;
   #endif // _LNX
-                             &wKey,
+    Word_t wCount = NextGuts(qya, &wKey,
                              /* wCount */ 0, /* bPrev */ 1, /* bEmpty */ 0);
     if (wCount == 0) {
         *pwKey = wKey;
