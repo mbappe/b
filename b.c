@@ -6811,8 +6811,8 @@ DoubleDown(qp, // (nBL, pLn) of link to original switch
     // NewSwitch changes *pwRoot and the Link_t containing it.
     // We need to preserve the Link_t for subsequent InsertAll.
     // We don't have a whole link at the top.
-    if (nBLOld < cnBitsPerWord) {
-        link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+    if (nBL < cnBitsPerWord) {
+        //link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
     } else
   #endif // #else defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     {
@@ -6979,7 +6979,7 @@ InsertXxSw(qp, // (nBL, pLn) of link to list
     // We need to preserve the Link_t for subsequent InsertAll.
     // We don't have a whole link at the top.
     if (nBL < cnBitsPerWord) {
-        link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
+        //link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
     } else
   #endif // #else defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     {
@@ -7052,6 +7052,7 @@ DoubleIt(qpa, // (nBL, pLn) of list
   #endif // SKIP_TO_XX_SW
     (void)wPopCnt;
     int nBW;
+    Link_t link; (void)link;
 
     DBGI(printf("DoubleIt\n"));
   #if defined(USE_XX_SW)

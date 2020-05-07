@@ -7151,6 +7151,9 @@ GetPopCnt(Word_t *pwRoot, int nBL)
             if (wPopCntTotal < 0x1000) {
                 DBGC(Dump(pwRootLast, 0, cnBitsPerWord));
             }
+      #ifdef DEBUG
+            printf("\n# nType %d\n", nType);
+      #endif // DEBUG
             assert(0);
             wPopCnt = 0; // make cc -UDEBUG happy
         }
