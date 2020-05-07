@@ -3733,7 +3733,7 @@ snListSwPop(qp, int nPopCnt)
   #endif // #else B_JUDYL
 
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-static Word_t SumPopCnt(Word_t *pwRoot, int nBL);
+static Word_t SumPopCnt(qpa);
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
 
 #ifdef CODE_BM_SW
@@ -3803,7 +3803,7 @@ InflateBmSwTest(qpa) // qp points to BM switch
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
   #ifndef NO_SKIP_AT_TOP
     if (nBL >= cnBitsPerWord) {
-        wPopCnt = SumPopCnt(pwRoot, cnBitsPerWord);
+        wPopCnt = SumPopCnt(qya);
     } else
   #endif // !NO_SKIP_AT_TOP
   #endif // PP_IN_LINK || POP_WORD_IN_LINK
@@ -7091,7 +7091,7 @@ GetPopCnt(Word_t *pwRoot, int nBL)
         if (tp_bIsSwitch(nType)) {
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             if (nBL >= cnBitsPerWord) {
-                wPopCnt = SumPopCnt(pwRoot, cnBitsPerWord);
+                wPopCnt = SumPopCnt(qya);
             } else
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             { wPopCnt = gwPopCnt(qy, gnBLR(qy)); }
@@ -7207,12 +7207,11 @@ CountSwLoop(int nBL, Link_t *pLinks, int nLinkCnt)
 // If *pwRoot is in a skip link, then nBL must be adjusted by the skip
 // amount to get the digits left at the next node.
 static Word_t
-SumPopCnt(Word_t *pwRoot, int nBL)
+SumPopCnt(qpa)
 {
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
-    Word_t wRoot = *pwRoot;
-    int nType = wr_nType(wRoot); (void)nType;
-    Word_t *pwr = wr_pwr(wRoot);
+    qva;
+    assert(nBL == cnBitsPerWord);
+    nBL = cnBitsPerWord; // help the compiler
     int nBLR = GetBLR(pwRoot, nBL);
     int nBW = nBLR_to_nBW(nBLR);
     int nLinkCnt =

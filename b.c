@@ -2833,7 +2833,7 @@ embeddedKeys:;
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         if (nBL >= cnBitsPerWord) {
             // Add 'em up.
-            Word_t wPopCnt = SumPopCnt(pwRoot, cnBitsPerWord);
+            Word_t wPopCnt = SumPopCnt(qya);
 
             // Is wPopCnt == 0 ambiguous here?
             // If Dump is called in the middle of an insert,
