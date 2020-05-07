@@ -309,7 +309,7 @@ SwCleanup(qpa, Word_t wKey, int nBLR
   #if defined(INSERT)
     if (0
       #if defined(CODE_BM_SW)
-        || (tp_bIsBmSw(Get_nType(&wRoot)) && InflateBmSwTest(qy))
+        || (tp_bIsBmSw(Get_nType(&wRoot)) && InflateBmSwTest(qya))
       #endif // defined(CODE_BM_SW)
       #ifdef BITMAP
         || ((cn2dBmMaxWpkPercent != 0)
@@ -2194,7 +2194,7 @@ bmSwTail:;
       #else // defined(LOOKUP)
           #ifdef INSERT
         // This test should be the same as the one in InsertCleanup.
-        if (tp_bIsBmSw(nType) && InflateBmSwTest(qy)) {
+        if (tp_bIsBmSw(nType) && InflateBmSwTest(qya)) {
             DBGX(Checkpoint(qy, "T_BM_SW req cleanup"));
             bCleanupRequested = 1; // on success
         }

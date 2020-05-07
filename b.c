@@ -2023,7 +2023,7 @@ NewLink(qpa, Word_t wKey, int nDLR, int nDLUp)
     // It's probably more efficient to do it here, but InsertCleanup will
     // probably end up doing it before we have a chance to do it here
     // the vast majority of the time.
-    if (InflateBmSwTest(qy)) {
+    if (InflateBmSwTest(qya)) {
         InflateBmSw(pwRoot, wKey, nBLR, nBLUp);
     } else {
         // We replicate a bunch of newswitch here since
@@ -3669,7 +3669,7 @@ InsertCleanup(qpa, Word_t wKey)
   #else // defined(SKIP_LINKS)
         int nBLR = nBL;
   #endif // defined(SKIP_LINKS)
-        if (InflateBmSwTest(qy)) {
+        if (InflateBmSwTest(qya)) {
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
             // InflateBmSw may change pwValue of all embedded keys.
             Word_t *pwValueRet

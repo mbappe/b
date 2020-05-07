@@ -3794,9 +3794,9 @@ InflateBmSwTestGuts(int nBLR, int nBW, Word_t wPopCnt)
 }
 
 static int // bool
-InflateBmSwTest(qp) // qp points to BM switch
+InflateBmSwTest(qpa) // qp points to BM switch
 {
-    qv;
+    qva;
     int nBLR = gnBLR(qy);
     int nBW = gnBW(qy, nBLR); // BW is width of switch
     Word_t wPopCnt;
