@@ -7172,28 +7172,32 @@ GetPopCnt(Word_t *pwRoot, int nBL)
 // If (pLinks, nLinkCnt) contains links to any shared lists, then it must
 // contain all of the links to any shared lists it contains.
 static Word_t
-CountSwLoop(int nBL, Link_t *pLinks, int nLinkCnt)
+CountSwLoop(qpa, Link_t* pLinks, int nLinkStart, int nLinkCnt)
 {
+    qva;
+    int nBLR = GetBLR(pwRoot, nBL);
+    int nBW = gnBW(qy, nBLR);
+    int nBLLoop = nBLR - nBW;
     Word_t wPopCnt = 0;
     //DBGC(printf("\n# CountSwLoop nLinkCnt %d\n", nLinkCnt));
     for (int i = 0; i < nLinkCnt; ++i) {
-        Link_t *pLn = &pLinks[i];
+        Link_t *pLnLoop = &pLinks[nLinkStart + i];
   #ifdef XX_LISTS
-        Word_t* pwRoot = &pLn->ln_wRoot;
-        Word_t wRoot = *pwRoot;
-        int nType = wr_nType(wRoot);
-        if (nType == T_XX_LIST) {
-            Word_t *pwr = wr_pwr(wRoot); (void)pwr;
-            int nBLR = gnListBLR(qy);
-            int nXxCnt = EXP(nBLR - nBL);
+        Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
+        Word_t wRootLoop = *pwRootLoop;
+        int nTypeLoop = wr_nType(wRootLoop);
+        if (nTypeLoop == T_XX_LIST) {
+            Word_t *pwrLoop = wr_pwr(wRootLoop); (void)pwrLoop;
+            int nBLRLoop = gnListBLR(qyx(Loop));
+            int nXxCnt = EXP(nBLRLoop - nBLLoop);
             if ((i + nXxCnt <= nLinkCnt)) {
-                wPopCnt += PWR_xListPopCnt(&pLn->ln_wRoot, pwr, nBLR);
+                wPopCnt += PWR_xListPopCnt(&pLnLoop->ln_wRoot, pwrLoop, nBLRLoop);
                 i += nXxCnt - 1;
                 continue;
             }
         }
   #endif // XX_LISTS
-        wPopCnt += GetPopCnt(&pLn->ln_wRoot, nBL);
+        wPopCnt += GetPopCnt(&pLnLoop->ln_wRoot, nBLLoop);
     }
     //DBGC(printf("# CountSwLoop returning wPopCnt %zd\n", wPopCnt));
     return wPopCnt;
@@ -7219,7 +7223,7 @@ SumPopCnt(qpa)
         tp_bIsBmSw(nType) ? BmSwLinkCnt(qy) :
   #endif // defined(CODE_BM_SW)
         (int)EXP(nBW);
-    return CountSwLoop(nBLR - nBW, pwr_pLinks((Switch_t*)pwr), nLinkCnt);
+    return CountSwLoop(qya, pwr_pLinks((Switch_t*)pwr), 0, nLinkCnt);
 }
 
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)

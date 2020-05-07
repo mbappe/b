@@ -27,12 +27,11 @@ Checkpoint(qp, const char *str)
 // precede the specified link in this switch.
 static Word_t
 CountSw(qpa,
-        int nBLR, // number of bits left to decode by switch and below
-        int nBW, // number of bits decoded by the switch
         Word_t wIndex, // index of relevant link in switch
         int nLinks)
 {
-    qva; (void)nBLR; (void)nLinks;
+    qva; (void)nLinks;
+    int nBLR = gnBLR(qy);
     assert(wRoot != WROOT_NULL);
     DBGC(printf("\n# CountSw nType %d nBLR %d nBW %d wIndex " OWx"\n",
                 nType, nBLR, nBW, wIndex));
@@ -47,6 +46,7 @@ CountSw(qpa,
 #endif // defined(CODE_LIST_SW)
         pwr_pLinks((Switch_t *)pwr);
   #ifdef XX_LISTS
+    int nBW = gnBW(qy, nBLR);
     int nBLLoop = nBLR - nBW;
     Link_t *pLnLoop = &pLinks[wIndex];
     Word_t* pwRootLoop = &pLnLoop->ln_wRoot; (void)pwRootLoop;
@@ -70,7 +70,7 @@ DBGC(printf("# CountSw wIndex " OWx"\n", wIndex));
         ww = 0; wwLimit = wIndex;
     }
     DBGC(printf("ww " OWx" wwLimit " OWx"\n", ww, wwLimit));
-    wPopCnt = CountSwLoop(nBLR - nBW, &pLinks[ww], wwLimit - ww);
+    wPopCnt = CountSwLoop(qya, pLinks, ww, wwLimit - ww);
 //printf("# CountSwLoop returned %zd\n", wPopCnt);
     assert(((int)wIndex < nLinks)
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -1340,8 +1340,7 @@ t_skip_to_switch:
                     //int nBW = nBL_to_nBWNAX(nBLR);
                     int nBW = nBL_to_nBWNAB(nBLR);
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(qya, nBLR, nBW,
-                                      EXP(nBW), EXP(nBW));
+                    wPopCnt = CountSw(qya, EXP(nBW), EXP(nBW));
                 } else
               #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
               #endif // ! defined(NO_SKIP_AT_TOP)
@@ -1447,7 +1446,7 @@ t_skip_to_xx_sw:
                     int nBW = nBL_to_nBWNAB(nBLR);
                     //int nLinks = ??? __builtin_popcount
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(qya, nBLR, nBW, nLinks, nLinks);
+                    wPopCnt = CountSw(qya, nLinks, nLinks);
                 } else
           #endif // PP_IN_LINK && !NO_SKIP_AT_TOP
                 {
@@ -1846,7 +1845,7 @@ switchTail:;
             SwIncr(qya, nBLR, nIncr); // adjust pop count
         }
       #endif // defined(INSERT) || defined(REMOVE)
-        IF_COUNT(wPopCntSum += CountSw(qya, nBLR, nBW, wDigit, nLinks));
+        IF_COUNT(wPopCntSum += CountSw(qya, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
         // Save the previous link and advance to the next.
         IF_NOT_LOOKUP(pLnUp = pLn);
@@ -1942,7 +1941,7 @@ t_xx_sw:
             SwIncr(qya, nBLR, nIncr); // adjust pop count
         }
           #endif // INSERT || REMOVE
-        IF_COUNT(wPopCntSum += CountSw(qya, nBLR, nBW, wDigit, nLinks));
+        IF_COUNT(wPopCntSum += CountSw(qya, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
         // Save the previous link and advance to the next.
         IF_NOT_LOOKUP(pLnUp = pLn);
@@ -1991,7 +1990,7 @@ t_skip_to_bm_sw:
                     int nBW = gnBW(qy, nBLR); // num bits decoded
                     // Abuse CountSw into counting whole switch.
                     int nLinkCnt = BmSwLinkCnt(qy);
-                    wPopCnt = CountSw(qya, nBLR, nBW,
+                    wPopCnt = CountSw(qya,
                                       /*wIndex*/ nLinkCnt,
                                       /*nLinks*/ nLinkCnt);
                 } else
@@ -2224,7 +2223,7 @@ t_skip_to_list_sw:
                 if (nBL >= cnBitsPerWord) {
                     int nBW = gnBW(qy, nBLR); // num bits decoded
                     // Abuse CountSw into counting whole switch.
-                    wPopCnt = CountSw(qya, nBLR, nBW, EXP(nBW), EXP(nBW));
+                    wPopCnt = CountSw(qya, EXP(nBW), EXP(nBW));
                 } else
           #endif // PP_IN_LINK && !NO_SKIP_AT_TOP
                 {
