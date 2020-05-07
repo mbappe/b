@@ -1954,9 +1954,9 @@ InflateBmSw(Word_t *pwRoot, Word_t wKey, int nBLR, int nBLUp)
 // NewLink uses OldSwitch but not NewSwitch. Could we change it?
 #if defined(BM_SW_FOR_REAL)
 static void
-NewLink(qp, Word_t wKey, int nDLR, int nDLUp)
+NewLink(qpa, Word_t wKey, int nDLR, int nDLUp)
 {
-    qv;
+    qva;
     int nBLR = nDL_to_nBL(nDLR);
     int nBLUp = nDL_to_nBL(nDLUp);
 
@@ -8839,7 +8839,7 @@ wRootNull:;
                         w_wPrefixBL(wKey, nBLR), nBLR));
 #endif // defined(SKIP_LINKS)
             assert(nDL_to_nBL(nBL_to_nDL(nBLR)) == nBLR);
-            NewLink(qy, wKey, nBL_to_nDL(nBLR), /* nDLUp */ nBL_to_nDL(nBL));
+            NewLink(qya, wKey, nBL_to_nDL(nBLR), /* nDLUp */ nBL_to_nDL(nBL));
             BJL(return) Insert(qy, wKey);
         }
 #endif // defined(BM_SW_FOR_REAL)
