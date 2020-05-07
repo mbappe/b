@@ -14052,19 +14052,13 @@ Judy1Prev(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 // to *pwKey are in the array.
 // *pwKey is undefined if Failure is returned.
 static Status_t
-NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL,
-  #ifdef _LNX
-              Word_t *pwLnX,
-  #endif // _LNX
-              int bPrev)
+NextEmptyGuts(qpa, Word_t *pwKey, int bPrev)
 {
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
-    Word_t wRoot = *pwRoot;
+    qva;
     DBGN(printf("NextEmptyGuts(pwRoot %p *pwKey 0x%zx nBL %d bPrev %d)"
                     " wRoot 0x%zx\n",
                 (void *)pwRoot, *pwKey, nBL, bPrev, wRoot));
     int nBLPrev = nBL; // test this in t_sw to determine if there was a skip
-    Word_t *pwr;
     int nBitNum; (void)nBitNum; // BITMAP
     Word_t *pwBitmap; (void)pwBitmap;
   #ifdef BITMAP
@@ -14074,9 +14068,7 @@ NextEmptyGuts(Word_t *pwRoot, Word_t *pwKey, int nBL,
         goto embeddedBitmap;
     }
   #endif // BITMAP
-    pwr = wr_pwr(wRoot);
     int nIncr;
-    int nType = wr_nType(wRoot);
     DBGN(printf("\nNEG: nType 0x%x\n", nType));
     switch (nType) {
   #ifdef UA_PARALLEL_128
@@ -14377,11 +14369,11 @@ t_switch:;
                            EXP(nBits), wIndex);
   #endif // _LNX
             Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
-            if (NextEmptyGuts(&pLn->ln_wRoot, pwKey, nBL - nBits,
+            if (NextEmptyGuts(nBL - nBits, &pLn->ln_wRoot,
   #ifdef _LNX
                               pwLnX,
   #endif // _LNX
-                              bPrev)
+                              pwKey, bPrev)
                     == Success) {
                 return Success;
             }
@@ -14477,11 +14469,11 @@ t_bm_sw:;
             //A(0); // check -B17
             // link is present
             Link_t *pLn = &pLinks[wBmSwIndex];
-            if (NextEmptyGuts(&pLn->ln_wRoot, pwKey, nBL - nBits,
+            if (NextEmptyGuts(nBL - nBits, &pLn->ln_wRoot,
   #ifdef _LNX
                               pwLnX,
   #endif // _LNX
-                              bPrev)
+                              pwKey, bPrev)
                     == Success) {
                 //A(0); // check -B17
                 return Success;
@@ -14560,11 +14552,11 @@ t_xx_sw:;
                            EXP(nBits), wIndex);
   #endif // _LNX
             Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
-            if (NextEmptyGuts(&pLn->ln_wRoot, pwKey, nBL - nBits,
+            if (NextEmptyGuts(nBL - nBits, &pLn->ln_wRoot,
   #ifdef _LNX
                               pwLnX,
   #endif // _LNX
-                              bPrev)
+                              pwKey, bPrev)
                     == Success) {
                 return Success;
             }
@@ -14631,12 +14623,11 @@ Judy1FirstEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     }
     DBGN(printf("\nJxFE: *pwKey " OWx"\n", *pwKey));
     Word_t wKeyLocal = *pwKey;
-    Status_t status = NextEmptyGuts((Word_t *)&PArray,
-                                    &wKeyLocal, cnBitsPerWord,
+    Status_t status = NextEmptyGuts(cnBitsPerWord, (Word_t *)&PArray,
   #ifdef _LNX
                                     /*pwLnX*/ NULL,
   #endif // _LNX
-                                    /* bPrev */ 0);
+                                    &wKeyLocal, /* bPrev */ 0);
     if (status == Success) {
         *pwKey = wKeyLocal;
         DBGN(printf("JxFE: *pwKey " OWx"\n", *pwKey));
@@ -14712,12 +14703,11 @@ Judy1LastEmpty(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     }
     DBGN(printf("\nJxLE: *pwKey " OWx"\n", *pwKey));
     Word_t wKeyLocal = *pwKey;
-    Status_t status = NextEmptyGuts((Word_t *)&PArray,
-                                    &wKeyLocal, cnBitsPerWord,
+    Status_t status = NextEmptyGuts(cnBitsPerWord, (Word_t *)&PArray,
   #ifdef _LNX
                                     /*pwLnX*/ NULL,
   #endif // _LNX
-                                    /* bPrev */ 1);
+                                    &wKeyLocal, /* bPrev */ 1);
     if (status == Success) {
         *pwKey = wKeyLocal;
         DBGN(printf("JxLE: *pwKey " OWx"\n", *pwKey));
