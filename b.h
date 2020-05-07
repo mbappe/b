@@ -2159,14 +2159,12 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
   #ifdef POP_WORD_IN_LINK
     #define PWR_wPopWord(_pwRoot, _pwr) \
-        (STRUCT_OF((assert(wr_nType(*(_pwRoot) != T_EMBEDDED_KEYS)), \
-                   (_pwRoot)), \
-            Link_t, ln_wRoot)->ln_wPopWord)
+        (STRUCT_OF(((_pwRoot)), \
+                   Link_t, ln_wRoot)->ln_wPopWord)
     #define set_PWR_wPopWord(_pwRoot, _pwr, _ww) \
         (PWR_wPopWord((_pwRoot), (_pwr)) = (_ww))
     #define PWR_wPopWordBL(_pwRoot, _pwr, _nBL) \
         (assert((_nBL) < cnBitsPerWord), \
-            assert(wr_nType(*(_pwRoot) != T_EMBEDDED_KEYS)), \
             STRUCT_OF((_pwRoot), Link_t, ln_wRoot)->ln_wPopWord)
     #define PWR_wPopWordDL(_pwRoot, _pwr, _nDL) \
         (assert((_nDL) < cnDigitsPerWord), \
