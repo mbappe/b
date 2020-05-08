@@ -7060,10 +7060,9 @@ int SubexpansePopCnt(qp, Word_t wKey);
 // Get the pop count of the tree/subtree represented by (*pwRoot, nBL).
 // We can't handle T_XX_LIST by virtue of our inadequate parameter list.
 static Word_t
-GetPopCnt(Word_t *pwRoot, int nBL)
+GetPopCnt(qp)
 {
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
-    Word_t wRoot = *pwRoot;
+    qv;
     Word_t wPopCnt;
     if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
         if (nBL <= cnLogBitsPerWord) {
@@ -7082,8 +7081,6 @@ GetPopCnt(Word_t *pwRoot, int nBL)
             }
         }
     } else {
-        Word_t *pwr = wr_pwr(wRoot);
-        int nType = wr_nType(wRoot);
         if (pwr != NULL) {
             DBGC(printf("GetPopCnt nBL %d pwr %p nType %d\n",
                         nBL, pwr, nType));
@@ -7182,8 +7179,8 @@ CountSwLoop(qpa, Link_t* pLinks, int nLinkStart, int nLinkCnt)
     //DBGC(printf("\n# CountSwLoop nLinkCnt %d\n", nLinkCnt));
     for (int i = 0; i < nLinkCnt; ++i) {
         Link_t *pLnLoop = &pLinks[nLinkStart + i];
-  #ifdef XX_LISTS
         Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
+  #ifdef XX_LISTS
         Word_t wRootLoop = *pwRootLoop;
         int nTypeLoop = wr_nType(wRootLoop);
         if (nTypeLoop == T_XX_LIST) {
@@ -7197,7 +7194,7 @@ CountSwLoop(qpa, Link_t* pLinks, int nLinkStart, int nLinkCnt)
             }
         }
   #endif // XX_LISTS
-        wPopCnt += GetPopCnt(&pLnLoop->ln_wRoot, nBLLoop);
+        wPopCnt += GetPopCnt(qyx(Loop));
     }
     //DBGC(printf("# CountSwLoop returning wPopCnt %zd\n", wPopCnt));
     return wPopCnt;

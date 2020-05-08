@@ -4279,10 +4279,10 @@ Splay(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey)
     if (bIsBmSw) {
         // We can't handle splay into a non-empty BmSw.
         // We pay no attention to the contents of the original switch.
-        assert(GetPopCnt(pwRoot, nBL) == 0);
+        assert(GetPopCnt(qy) == 0);
         DBGI(printf("Splay bitmap switch"
                         " PopCnt %zd nBL %d nBLR %d nBW %d nBLROld %d\n",
-                    GetPopCnt(pwRoot, nBL), nBL, nBLR, nBW, nBLROld));
+                    GetPopCnt(qy), nBL, nBLR, nBW, nBLROld));
       #ifdef BM_SW_FOR_REAL
         nLinkCntOrig = BmSwLinkCnt(qy);
         // Create a new bitmap switch with EXP(nBW) links for staging.
@@ -5167,10 +5167,10 @@ SplayWithInsert(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey, int nPos)
     if (bIsBmSw) {
         // We can't handle splay into a non-empty BmSw.
         // We pay no attention to the contents of the original switch.
-        assert(GetPopCnt(pwRoot, nBL) == 0);
+        assert(GetPopCnt(qy) == 0);
         DBGI(printf("SplayWithInsert bitmap switch"
                         " PopCnt %zd nBL %d nBLR %d nBW %d nBLROld %d\n",
-                    GetPopCnt(pwRoot, nBL), nBL, nBLR, nBW, nBLROld));
+                    GetPopCnt(qy), nBL, nBLR, nBW, nBLROld));
       #ifdef BM_SW_FOR_REAL
         // Create a new switch for staging.
         pwr = NewSwitchX(pwRoot, wKey, nBLR,
@@ -6345,7 +6345,7 @@ embeddedKeys:;
         Word_t wRoot = *pwRoot; (void)wRoot;
         printf("\n");
         printf("IA: Switch PopCnt %zd nBL %d nBLR %d nBW %d nBLOld %d",
-               GetPopCnt(pwRoot, nBL), nBL, GetBLR(pwRoot, nBL),
+               GetPopCnt(qy), nBL, GetBLR(pwRoot, nBL),
                gnBW(qy, GetBLR(pwRoot, nBL)), nBLOld);
         printf("\n");
     }
@@ -6570,7 +6570,7 @@ InsertAtPrefixMismatch(qpa, Word_t wKey, int nBLR)
 // -DNO_USE_BM_SW  -DcnBitsPerDigit=4 -DNO_ALLOW_EMBEDDED_BITMAP
     assert(nBLNew <= nBL);
 
-    Word_t wPopCnt = GetPopCnt(pwRoot, nBL);
+    Word_t wPopCnt = GetPopCnt(qy);
 
   #ifdef USE_LOWER_XX_SW
     if (nBLNew - nBWNew < nBLR) {
@@ -6751,7 +6751,7 @@ InsertAtPrefixMismatch(qpa, Word_t wKey, int nBLR)
     // BUG: We should be converting to unpacked bm in a lot more
     // situations than full pop.
     if ((wr_nType(wRoot) == T_BITMAP)
-        && (GetPopCnt(&pLinks[nIndex].ln_wRoot, nBLR) == EXP(nBLR)))
+        && (GetPopCnt(nBLR, &pLinks[nIndex].ln_wRoot) == EXP(nBLR)))
     {
         set_wr_nType(pLinks[nIndex].ln_wRoot, T_UNPACKED_BM);
     }
@@ -6877,7 +6877,7 @@ DoubleDown(qp, // (nBL, pLn) of link to original switch
             int nBLLoop = nBLR - nBW;
             Word_t wPrefix
                 = (wKey & ~NZ_MSK(nBLR)) | ((Word_t)nIndex << nBLLoop);
-            int nPopCntLoop = GetPopCnt(pwRootLoop, nBLLoop);
+            int nPopCntLoop = GetPopCnt(qyx(Loop));
             swPopCnt(qya, nBLR, gwPopCnt(qy, nBLR) - nPopCntLoop);
             InsertAll(pwRootLoop, nBLLoop, wPrefix, pwRoot, nBL
       #ifdef _LNX
@@ -7677,7 +7677,7 @@ newSkipToBitmap:;
 // How are we keeping track of the list being splayed?
 // nBL, pLn, pwRoot, wRoot, nType, and pwr are all unchanged.
 // *pLn and *pwRoot are changed.
-        int nPopCntOld = GetPopCnt(pwRootOld, nBL);
+        int nPopCntOld = GetPopCnt(qyx(Old));
         pwr = NewBitmap(qya, nBLNew, wKey, nPopCntOld);
         wRoot = *pwRoot;
         nType = wr_nType(wRoot);
@@ -7836,7 +7836,7 @@ newSkipToBitmap:;
                   // mismatch.
                   // This should be fine-tuned for Judy1 vs. JudyL with
                   // EMBED_KEYS vs. JudyL without EMBED_KEYS, etc.
-                  ((GetPopCnt(pwRoot, nBL) + 1) >= EXP(nBW))
+                  ((GetPopCnt(qy) + 1) >= EXP(nBW))
                           && (nBLNew <= nBL)
                       ? T_SWITCH :
                   // Here only if small subtree or nBLNew > nBL.
@@ -7846,8 +7846,7 @@ newSkipToBitmap:;
                   // EMBED_KEYS vs. JudyL without EMBED_KEYS, as well as
                   // variable bits per digit, etc.
                   (nBLNew > nBL)
-                          && (GetPopCnt(pwRoot, nBL)
-                              >= nDLNew * EXP(cnBitsPerDigit))
+                          && (GetPopCnt(qy) >= nDLNew * EXP(cnBitsPerDigit))
                       ? T_SWITCH :
       #endif // defined(DOUBLE_DOWN) || defined(PP_IN_LINK)
       // Handle any no-skip-to-bm-sw limitation.
@@ -8151,7 +8150,7 @@ InsertAtList(qpa,
                 // We don't send a digit-unaligned list to TransformList.
                 DBGI(printf("IAL: DoubleDown nBL %d nBLUp %d\n",
                             nBL, nBLUp));
-                Word_t* pwRootUp = &pLnUp->ln_wRoot;
+                Word_t* pwRootUp = &pLnUp->ln_wRoot; (void)pwRootUp;
                 int nBWRUpNew;
                 if (cnBWIncrDD != 0) {
                     nBWRUpNew = nDL_to_nBL(nDL) - nBL + cnBWIncrDD;
@@ -8163,7 +8162,7 @@ InsertAtList(qpa,
                     nBWRUpNew = nDL_to_nBL(nDL) - nBitCnt + 1;
                 }
                 BJL(pwValue =) DoubleDown(qyx(Up), wKey,
-                                          GetPopCnt(pwRootUp, nBLUp),
+                                          GetPopCnt(qyx(Up)),
                                           nBWRUpNew
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
                                         , pwLnX
@@ -8541,7 +8540,7 @@ copyWithInsertWord:
 // Don't DoubleDown if we can't splay within the digit.
             DBGI(printf("IAL: ListIsFull DoubleDown nBL %d nBLUp %d\n",
                         nBL, nBLUp));
-            Word_t* pwRootUp = &pLnUp->ln_wRoot;
+            Word_t* pwRootUp = &pLnUp->ln_wRoot; (void)pwRootUp;
             int nBWRUpNew;
             if (cnBWIncrDD != 0) {
                 nBWRUpNew = nDL_to_nBL(nDL) - nBL + cnBWIncrDD;
@@ -8559,7 +8558,7 @@ copyWithInsertWord:
                 }
             }
             BJL(pwValue =) DoubleDown(qyx(Up), wKey,
-                                      GetPopCnt(pwRootUp, nBLUp),
+                                      GetPopCnt(qyx(Up)),
                                       nBWRUpNew
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
                                     , pwLnX
@@ -8704,7 +8703,7 @@ InsertGuts(qpa, Word_t wKey, int nPos
         Word_t *pwRootUp = &pLnUp->ln_wRoot;
         // How are we supposed to determine nBW for
         // pLnUp without having nBLUp?
-        Word_t wPopCntUp = GetPopCnt(pwRootUp, nBLUp);
+        Word_t wPopCntUp = GetPopCnt(qyx(Up));
         //int nBLRUp = GetBLR(pwRootUp, nBLUp);
         int nBWUp = Get_nBW(pwRootUp);
         if (wPopCntUp >= EXP(nBWUp + cnBWIncr) * 2) {
@@ -12731,7 +12730,7 @@ GetPopCntX(qp, Word_t wPrefix)
         return SubexpansePopCnt(qy, wPrefix);
     }
   #endif // XX_LISTS
-    return GetPopCnt(&pLn->ln_wRoot, nBL);
+    return GetPopCnt(qy);
 }
 
 // NextGuts(wRoot, nBL, pwKey, wSkip, bPrev, bEmpty)
@@ -13323,7 +13322,7 @@ t_bm_sw:;
             while (pLnLoop >= pLinks) {
                 Word_t* pwRootLoop = &pLnLoop->ln_wRoot; (void)pwRootLoop;
                 //A(0); // check -B17
-                wPopCnt = GetPopCnt(&pLnLoop->ln_wRoot, nBLLoop);
+                wPopCnt = GetPopCnt(qyx(Loop));
   #ifdef _LNX
                 pwLnX = gpwLnX(/*qy*/ nBL,
       #ifdef QP_PLN
@@ -13478,7 +13477,7 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
             while (pLnLoop < &pLinks[nLinks]) {
                 Word_t* pwRootLoop = &pLnLoop->ln_wRoot; (void)pwRootLoop;
                 //A(0); // check -B17
-                wPopCnt = GetPopCnt(&pLnLoop->ln_wRoot, nBLLoop);
+                wPopCnt = GetPopCnt(qyx(Loop));
   #ifdef _LNX
                 pwLnX = gpwLnX(/*qy*/ nBL,
       #ifdef QP_PLN
@@ -14212,7 +14211,7 @@ embeddedBitmap:;
         // skip over the bitmap if it is full pop
         if (nBLR < cnBitsPerWord) {
             assert(nBLR <= nBL);
-            if (GetPopCnt(pwRoot, nBL) == EXP(nBLR)) {
+            if (GetPopCnt(qy) == EXP(nBLR)) {
                 if (nBLR != nBL) {
                     //printf("full skip to bitmap not at cnBitsPerWord\n");
                     // We skipped bits to get here.
@@ -14327,7 +14326,7 @@ t_switch:;
         }
         // skip over the switch if it is full pop
         if (nBLR < cnBitsPerWord) {
-            if (GetPopCnt(pwRoot, nBL) == EXP(nBLR)) {
+            if (GetPopCnt(qy) == EXP(nBLR)) {
                 if (nBLR != nBL) {
                     //printf("full skip to switch is not at cnBitsPerWord\n");
                     // We skipped bits to get here.

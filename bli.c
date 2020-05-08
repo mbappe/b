@@ -314,7 +314,7 @@ SwCleanup(qpa, Word_t wKey, int nBLR
       #ifdef BITMAP
         || ((cn2dBmMaxWpkPercent != 0)
             && (nBLR == cnBitsLeftAtDl2)
-            && (GetPopCnt(pwRoot, nBL) * cn2dBmMaxWpkPercent * cnBitsPerWord
+            && (GetPopCnt(qy) * cn2dBmMaxWpkPercent * cnBitsPerWord
                  > EXP(cnBitsLeftAtDl2) * 100))
       #endif // BITMAP
         )
