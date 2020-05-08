@@ -80,7 +80,7 @@ DBGC(printf("# CountSw wIndex " OWx"\n", wIndex));
            );
     if (ww != 0) {
         assert(wRoot != WROOT_NULL);
-        Word_t wPopCntSw = gwPopCnt(qy, nBLR);
+        Word_t wPopCntSw = gwPopCnt(qya, nBLR);
         DBGC(printf("wPopCntSw 0x%zx wPopCnt 0x%zx\n", wPopCntSw, wPopCnt));
         wPopCnt = wPopCntSw - wPopCnt;
         DBGC(printf("wPopCntSw " OWx"\n", wPopCntSw));
@@ -352,7 +352,7 @@ SwIncr(qpa, int nBLR, int nIncr)
     if (nBL < cnBitsPerWord)
       #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     {
-        Word_t wPopCnt = gwPopCnt(qy, nBLR) + nIncr;
+        Word_t wPopCnt = gwPopCnt(qya, nBLR) + nIncr;
         swPopCnt(qya, nBLR, wPopCnt);
     }
   #endif // defined(INSERT) || defined(REMOVE)
@@ -1346,7 +1346,7 @@ t_skip_to_switch:
               #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
               #endif // ! defined(NO_SKIP_AT_TOP)
                 {
-                    wPopCnt = gwPopCnt(qy, nBLR);
+                    wPopCnt = gwPopCnt(qya, nBLR);
                 }
                 DBGC(printf("SKIP_TO_SW: PM wPopCnt %" _fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
@@ -1451,7 +1451,7 @@ t_skip_to_xx_sw:
                 } else
           #endif // PP_IN_LINK && !NO_SKIP_AT_TOP
                 {
-                    wPopCnt = gwPopCnt(qy, nBLR);
+                    wPopCnt = gwPopCnt(qya, nBLR);
                 }
                 DBGC(printf("SKIP_TO_XX_SW: PM wPopCnt %" _fw"d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
@@ -1996,7 +1996,7 @@ t_skip_to_bm_sw:
                                       /*nLinks*/ nLinkCnt);
                 } else
           #endif // defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
-                { wPopCnt = gwPopCnt(qy, nBLR); }
+                { wPopCnt = gwPopCnt(qya, nBLR); }
                 DBGC(printf("SKIP_TO_BM_SW: PM wPopCnt %zd\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
                 DBGC(printf("skbmsw wPopCnt 0x%zx wPopCntSum 0x%zx\n",
@@ -2228,7 +2228,7 @@ t_skip_to_list_sw:
                 } else
           #endif // PP_IN_LINK && !NO_SKIP_AT_TOP
                 {
-                    wPopCnt = gwPopCnt(qy, nBLR);
+                    wPopCnt = gwPopCnt(qya, nBLR);
                 }
                 DBGC(printf("SKIP_TO_LIST_SW: PM wPopCnt %" _fw"d\n",
                             wPopCnt));
@@ -3534,10 +3534,10 @@ t_bm_plus_16:
             // BUG?: Is pwrUp valid here, i.e. does it mean what this code
             // thinks it means?  Since SKIP_PREFIX_CHECK may not be #defined?
               #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-            assert(gwPopCnt(qy, cnBitsInD1) != 0);
+            assert(gwPopCnt(qya, cnBitsInD1) != 0);
               #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             // ? cnBitsLeftAtDl2 ?
-            assert(gwPopCnt(qy, cnBitsInD2) != 0);
+            assert(gwPopCnt(qya, cnBitsInD2) != 0);
               #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             return KeyFound;
           #else // LOOKUP_NO_BITMAP_SEARCH
@@ -3738,10 +3738,10 @@ t_bitmap:
             // BUG?: Is pwrUp valid here, i.e. does it mean what this code
             // thinks it means?  Since SKIP_PREFIX_CHECK may not be #defined?
                   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-            assert(gwPopCnt(qy, cnBitsInD1) != 0);
+            assert(gwPopCnt(qya, cnBitsInD1) != 0);
                   #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             // ? cnBitsLeftAtDl2 ?
-            assert(gwPopCnt(qy, cnBitsInD2) != 0);
+            assert(gwPopCnt(qya, cnBitsInD2) != 0);
                   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             return KeyFound;
               #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
@@ -4497,7 +4497,7 @@ t_separate_t_null:
         // What about defined(RECURSIVE)?
         if (nBL < cnBitsPerWord) {
             // If nBL < cnBitsPerWord then we're not at top.
-            swPopCnt(qya, nBL, gwPopCnt(qy, nBL) + nIncr);
+            swPopCnt(qya, nBL, gwPopCnt(qya, nBL) + nIncr);
         }
       #endif // defined(INSERT) || defined(REMOVE)
       #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)

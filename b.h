@@ -3369,9 +3369,9 @@ gwPrefix(qp)
 #define cnLsbPreListSwPopM1 (cnBitsPerWord - cnBitsListSwPopM1)
 
 static inline Word_t
-gwPopCnt(qp, int nBLR)
+gwPopCnt(qpa, int nBLR)
 {
-    qv; (void)nBLR;
+    qva; (void)nBLR;
     if (wRoot == WROOT_NULL) { return 0; }
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     assert(nBL < cnBitsPerWord);
@@ -3807,7 +3807,7 @@ InflateBmSwTest(qpa) // qp points to BM switch
     } else
   #endif // !NO_SKIP_AT_TOP
   #endif // PP_IN_LINK || POP_WORD_IN_LINK
-    { wPopCnt = gwPopCnt(qy, nBLR); }
+    { wPopCnt = gwPopCnt(qya, nBLR); }
     return InflateBmSwTestGuts(nBLR, nBW, wPopCnt);
 }
 
@@ -7091,7 +7091,7 @@ GetPopCnt(qpa)
                 wPopCnt = SumPopCnt(qya);
             } else
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-            { wPopCnt = gwPopCnt(qy, gnBLR(qy)); }
+            { wPopCnt = gwPopCnt(qya, gnBLR(qy)); }
         } else switch (nType) {
       #if defined(EMBED_KEYS)
           #ifdef EK_XV

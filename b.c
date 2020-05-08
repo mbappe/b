@@ -5022,7 +5022,7 @@ insertAll:
         if (wr_nType(*pwRootOld) != T_XX_LIST)
   #endif // XX_LISTS
         {
-            wPopCnt = gwPopCnt(qy, nBLR) + nPopCnt;
+            wPopCnt = gwPopCnt(qya, nBLR) + nPopCnt;
             swPopCnt(qya, nBLR, wPopCnt);
         }
     }
@@ -6157,7 +6157,7 @@ lastDigit:;
         if (wr_nType(*pwRootOld) != T_XX_LIST)
   #endif // XX_LISTS
         {
-            wPopCnt = gwPopCnt(qy, nBLR) + nPopCnt /* + 1 */;
+            wPopCnt = gwPopCnt(qya, nBLR) + nPopCnt /* + 1 */;
             swPopCnt(qya, nBLR, wPopCnt);
         }
     }
@@ -6881,7 +6881,7 @@ DoubleDown(qp, // (nBL, pLn) of link to original switch
             Word_t wPrefix
                 = (wKey & ~NZ_MSK(nBLR)) | ((Word_t)nIndex << nBLLoop);
             int nPopCntLoop = GetPopCnt(qyax(Loop));
-            swPopCnt(qya, nBLR, gwPopCnt(qy, nBLR) - nPopCntLoop);
+            swPopCnt(qya, nBLR, gwPopCnt(qya, nBLR) - nPopCntLoop);
             InsertAll(pwRootLoop, nBLLoop, wPrefix, pwRoot, nBL
       #ifdef _LNX
                     , pwLnX
@@ -7424,7 +7424,7 @@ InsertAtFullUnalignedXxList(qp, Word_t wKey, int nPopCnt, int nPos,
         SplayWithInsert(qyax(Up), /* pwRootOld */ &wRoot, nBL, wKey, nPos);
   #else // SPLAY_WITH_INSERT
     Splay(qyax(Up), /* pwRootOld */ &wRoot, nBL, wKey);
-    swPopCnt(qyax(Up), nBLRUp, gwPopCnt(qyx(Up), nBLRUp) - 1);
+    swPopCnt(qyax(Up), nBLRUp, gwPopCnt(qyax(Up), nBLRUp) - 1);
     BJL(return) Insert(qyx(Up), wKey);
   #endif // #else SPLAY_WITH_INSERT
 }
