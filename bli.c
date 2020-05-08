@@ -70,7 +70,7 @@ DBGC(printf("# CountSw wIndex " OWx"\n", wIndex));
         ww = 0; wwLimit = wIndex;
     }
     DBGC(printf("ww " OWx" wwLimit " OWx"\n", ww, wwLimit));
-    wPopCnt = CountSwLoop(qya, pLinks, ww, wwLimit - ww);
+    wPopCnt = CountSwLoop(qya, ww, wwLimit - ww);
 //printf("# CountSwLoop returned %zd\n", wPopCnt);
     assert(((int)wIndex < nLinks)
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)

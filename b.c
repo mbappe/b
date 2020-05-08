@@ -12720,9 +12720,9 @@ Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
 }
 
 static Word_t
-GetPopCntX(qp, Word_t wPrefix)
+GetPopCntX(qpa, Word_t wPrefix)
 {
-    qv; (void)wPrefix;
+    qva; (void)wPrefix;
     DBGC(Log(qy, "GetPopCntX"));
     DBGC(printf("# wPrefix 0x%zx\n", wPrefix));
   #ifdef XX_LISTS
@@ -13108,22 +13108,16 @@ t_switch:;
             //A(0);
             for (; wIndex != (Word_t)-1; wIndex--) {
                 //A(0);
-  #ifdef _LNX
-                pwLnX = gpwLnX(/*qy*/ nBL,
-      #ifdef QP_PLN
-                               STRUCT_OF(pwRoot, Link_t, ln_wRoot),
-      #else // QP_PLN
-                               pwRoot,
-      #endif // QP_PLN else
-                               EXP(nBW), wIndex);
-  #endif // _LNX
+  #ifdef REMOTE_LNX
+                Word_t* pwLnXLoop = gpwLnX(qy, EXP(nBW), wIndex);
+  #endif // REMOTE_LNX
                 Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
   #ifdef QP_PLN
                 Link_t* pLnLoop = pLn;
   #else // QP_PLN
                 Word_t* pwRootLoop = &pLn->ln_wRoot;
   #endif // QP_PLN else
-                Word_t wPopCnt = GetPopCntX(qyx(Loop), *pwKey);
+                Word_t wPopCnt = GetPopCntX(qyax(Loop), *pwKey);
                 if (wPopCnt != 0) {
                     //A(0);
                     DBGN(printf("T_SW: wIndex 0x%" _fw"x"
@@ -13136,9 +13130,6 @@ t_switch:;
                         // prev might be in here
                         //A(0);
                         Word_t wCount;
-  #ifdef REMOTE_LNX
-                        Word_t* pwLnXLoop = pwLnX;
-  #endif // REMOTE_LNX
                         if ((wCount = NextGuts(qyax(Loop),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
@@ -13175,22 +13166,16 @@ t_switch:;
     DBGN(printf("NextGuts T_SWITCH !bPrev (pLn %p pwRoot %p)\n", pLn, pwRoot));
             for (; wIndex < EXP(nBW); wIndex++) {
                 //A(0);
-  #ifdef _LNX
-                pwLnX = gpwLnX(/*qy*/ nBL,
-      #ifdef QP_PLN
-                               STRUCT_OF(pwRoot, Link_t, ln_wRoot),
-      #else // QP_PLN
-                               pwRoot,
-      #endif // QP_PLN else
-                               EXP(nBW), wIndex);
-  #endif // _LNX
+  #ifdef REMOTE_LNX
+                Word_t* pwLnXLoop = gpwLnX(qy, EXP(nBW), wIndex);
+  #endif // REMOTE_LNX
                 Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
   #ifdef QP_PLN
                 Link_t* pLnLoop = pLn;
   #else // QP_PLN
                 Word_t* pwRootLoop = &pLn->ln_wRoot;
   #endif // QP_PLN else
-                Word_t wPopCnt = GetPopCntX(qyx(Loop), *pwKey);
+                Word_t wPopCnt = GetPopCntX(qyax(Loop), *pwKey);
                 if (wPopCnt != 0) {
                     //A(0);
                     DBGN(printf("T_SW: wIndex 0x%" _fw"x"
@@ -13201,9 +13186,6 @@ t_switch:;
                         //A(0);
                         // next might be in here
                         Word_t wCount;
-  #ifdef REMOTE_LNX
-                        Word_t* pwLnXLoop = pwLnX;
-  #endif // REMOTE_LNX
                         if ((wCount = NextGuts(qyax(Loop),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
@@ -13323,15 +13305,9 @@ t_bm_sw:;
                 Word_t* pwRootLoop = &pLnLoop->ln_wRoot; (void)pwRootLoop;
                 //A(0); // check -B17
                 wPopCnt = GetPopCnt(qyx(Loop));
-  #ifdef _LNX
-                pwLnX = gpwLnX(/*qy*/ nBL,
-      #ifdef QP_PLN
-                               STRUCT_OF(pwRoot, Link_t, ln_wRoot),
-      #else // QP_PLN
-                               pwRoot,
-      #endif // QP_PLN else
-                               nLinks, pLnLoop - pLinks);
-  #endif // _LNX
+  #ifdef REMOTE_LNX
+                Word_t* pwLnXLoop = gpwLnX(qy, nLinks, pLnLoop - pLinks);
+  #endif // REMOTE_LNX
   #ifdef BM_SW_FOR_REAL
                 assert(wPopCnt != 0);
   #endif // BM_SW_FOR_REAL
@@ -13344,9 +13320,6 @@ t_bm_sw:;
                         // prev might be in here
                         //A(0); // check -B17
                         Word_t wCount;
-  #ifdef REMOTE_LNX
-                        Word_t* pwLnXLoop = pwLnX;
-  #endif // REMOTE_LNX
                         if ((wCount = NextGuts(qyax(Loop),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
@@ -13478,15 +13451,9 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                 Word_t* pwRootLoop = &pLnLoop->ln_wRoot; (void)pwRootLoop;
                 //A(0); // check -B17
                 wPopCnt = GetPopCnt(qyx(Loop));
-  #ifdef _LNX
-                pwLnX = gpwLnX(/*qy*/ nBL,
-      #ifdef QP_PLN
-                               STRUCT_OF(pwRoot, Link_t, ln_wRoot),
-      #else // QP_PLN
-                               pwRoot,
-      #endif // QP_PLN else
-                               nLinks, pLnLoop - pLinks);
-  #endif // _LNX
+  #ifdef REMOTE_LNX
+                Word_t* pwLnXLoop = gpwLnX(qy, nLinks, pLnLoop - pLinks);
+  #endif // REMOTE_LNX
   #ifdef BM_SW_FOR_REAL
                 assert(wPopCnt != 0);
   #endif // BM_SW_FOR_REAL
@@ -13502,9 +13469,6 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                                     wSkip, *pwKey));
                         // next might be in here
                         Word_t wCount;
-  #ifdef REMOTE_LNX
-                        Word_t* pwLnXLoop = pwLnX;
-  #endif // REMOTE_LNX
                         if ((wCount = NextGuts(qyax(Loop),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
@@ -13651,15 +13615,9 @@ t_xx_sw:;
             //A(0);
             for (; wIndex != (Word_t)-1; wIndex--) {
                 //A(0);
-  #ifdef _LNX
-                pwLnX = gpwLnX(/*qy*/ nBL,
-      #ifdef QP_PLN
-                               STRUCT_OF(pwRoot, Link_t, ln_wRoot),
-      #else // QP_PLN
-                               pwRoot,
-      #endif // QP_PLN else
-                               EXP(nBW), wIndex);
-  #endif // _LNX
+  #ifdef REMOTE_LNX
+                Word_t *pwLnXLoop = gpwLnX(qy, EXP(nBW), wIndex);
+  #endif // REMOTE_LNX
                 Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
                 // Should pLn be NULL for PP_IN_LINK or POP_WORD_IN_LINK
                 // and nBLUp == cnBitsPerWord?
@@ -13668,7 +13626,7 @@ t_xx_sw:;
   #else // QP_PLN
                 Word_t* pwRootLoop = &pLn->ln_wRoot;
   #endif // QP_PLN else
-                Word_t wPopCnt = GetPopCntX(qyx(Loop), *pwKey);
+                Word_t wPopCnt = GetPopCntX(qyax(Loop), *pwKey);
                 if (wPopCnt != 0) {
                     //A(0);
                     DBGN(printf("T_SW: wIndex " OWx" pLn->ln_wRoot " OWx"\n",
@@ -13677,9 +13635,6 @@ t_xx_sw:;
                     if (wPopCnt > wSkip) {
                         //A(0);
                         Word_t wCount;
-  #ifdef REMOTE_LNX
-                        Word_t* pwLnXLoop = pwLnX;
-  #endif // REMOTE_LNX
                         if ((wCount = NextGuts(qyax(Loop),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
@@ -13708,15 +13663,9 @@ t_xx_sw:;
             //A(0);
             for (; wIndex < EXP(nBW); wIndex++) {
                 //A(0);
-  #ifdef _LNX
-                pwLnX = gpwLnX(/*qy*/ nBL,
-      #ifdef QP_PLN
-                               STRUCT_OF(pwRoot, Link_t, ln_wRoot),
-      #else // QP_PLN
-                               pwRoot,
-      #endif // QP_PLN else
-                               EXP(nBW), wIndex);
-  #endif // _LNX
+  #ifdef REMOTE_LNX
+                Word_t *pwLnXLoop = gpwLnX(qy, EXP(nBW), wIndex);
+  #endif // REMOTE_LNX
                 Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
                 // Should pLn be NULL for PP_IN_LINK or POP_WORD_IN_LINK
                 // and nBLUp == cnBitsPerWord?
@@ -13725,7 +13674,7 @@ t_xx_sw:;
   #else // QP_PLN
                 Word_t* pwRootLoop = &pLn->ln_wRoot;
   #endif // QP_PLN else
-                Word_t wPopCnt = GetPopCntX(qyx(Loop), *pwKey);
+                Word_t wPopCnt = GetPopCntX(qyax(Loop), *pwKey);
                 if (wPopCnt != 0) {
                     //A(0);
                     DBGN(printf("T_SW: wIndex 0x%" _fw"x pLn->ln_wRoot "
@@ -13735,9 +13684,6 @@ t_xx_sw:;
                     if (wPopCnt > wSkip) {
                         //A(0);
                         Word_t wCount;
-  #ifdef REMOTE_LNX
-                        Word_t* pwLnXLoop = pwLnX;
-  #endif // REMOTE_LNX
                         if ((wCount = NextGuts(qyax(Loop),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
@@ -14083,10 +14029,10 @@ NextEmptyGuts(qpa, Word_t *pwKey, int bPrev)
             && (cnListPopCntMax64 != 0)
             && (nBLR != cnBitsPerWord)
             && (auListPopCntMax[nBLR] >= EXP(nBLR))
-            && (GetPopCntX(qy, *pwKey) == EXP(nBLR)))
+            && (GetPopCntX(qya, *pwKey) == EXP(nBLR)))
         {
             DBGI(printf("full-pop list nBL %d nBLR %d GetPopCnt %zd\n",
-                   nBL, nBLR, GetPopCntX(qy, *pwKey)));
+                   nBL, nBLR, GetPopCntX(qya, *pwKey)));
             return Failure;
         }
   #endif // #ifndef BITMAP

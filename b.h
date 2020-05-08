@@ -7169,17 +7169,29 @@ GetPopCnt(qp)
 // If (pLinks, nLinkCnt) contains links to any shared lists, then it must
 // contain all of the links to any shared lists it contains.
 static Word_t
-CountSwLoop(qpa, Link_t* pLinks, int nLinkStart, int nLinkCnt)
+CountSwLoop(qpa, int nLinkStart, int nLinkCnt)
 {
     qva;
     int nBLR = GetBLR(pwRoot, nBL);
     int nBW = gnBW(qy, nBLR);
+    Link_t* pLinks = ((Switch_t*)pwr)->sw_aLinks;
+    int nLinks; (void)nLinks;
+  #ifdef CODE_BM_SW
+    if (tp_bIsBmSw(nType)) {
+        nLinks = BmSwLinkCnt(qy);
+    } else
+  #endif // CODE_BM_SW
+    { nLinks = EXP(nBW); }
     int nBLLoop = nBLR - nBW;
     Word_t wPopCnt = 0;
     //DBGC(printf("\n# CountSwLoop nLinkCnt %d\n", nLinkCnt));
     for (int i = 0; i < nLinkCnt; ++i) {
         Link_t *pLnLoop = &pLinks[nLinkStart + i];
         Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
+  #ifdef REMOTE_LNX
+        Word_t* pwLnXLoop = gpwLnX(qy, nLinks, nLinkStart + i);
+        (void)pwLnXLoop;
+  #endif // REMOTE_LNX
   #ifdef XX_LISTS
         Word_t wRootLoop = *pwRootLoop;
         int nTypeLoop = wr_nType(wRootLoop);
@@ -7220,7 +7232,7 @@ SumPopCnt(qpa)
         tp_bIsBmSw(nType) ? BmSwLinkCnt(qy) :
   #endif // defined(CODE_BM_SW)
         (int)EXP(nBW);
-    return CountSwLoop(qya, pwr_pLinks((Switch_t*)pwr), 0, nLinkCnt);
+    return CountSwLoop(qya, /*nLinkStart*/ 0, nLinkCnt);
 }
 
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
