@@ -7060,9 +7060,9 @@ int SubexpansePopCnt(qp, Word_t wKey);
 // Get the pop count of the tree/subtree represented by (*pwRoot, nBL).
 // We can't handle T_XX_LIST by virtue of our inadequate parameter list.
 static Word_t
-GetPopCnt(qp)
+GetPopCnt(qpa)
 {
-    qv;
+    qva;
     Word_t wPopCnt;
     if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
         if (nBL <= cnLogBitsPerWord) {
@@ -7187,7 +7187,7 @@ CountSwLoop(qpa, int nLinkStart, int nLinkCnt)
     //DBGC(printf("\n# CountSwLoop nLinkCnt %d\n", nLinkCnt));
     for (int i = 0; i < nLinkCnt; ++i) {
         Link_t *pLnLoop = &pLinks[nLinkStart + i];
-        Word_t* pwRootLoop = &pLnLoop->ln_wRoot;
+        Word_t* pwRootLoop = &pLnLoop->ln_wRoot; (void)pwRootLoop;
   #ifdef REMOTE_LNX
         Word_t* pwLnXLoop = gpwLnX(qy, nLinks, nLinkStart + i);
         (void)pwLnXLoop;
@@ -7206,7 +7206,7 @@ CountSwLoop(qpa, int nLinkStart, int nLinkCnt)
             }
         }
   #endif // XX_LISTS
-        wPopCnt += GetPopCnt(qyx(Loop));
+        wPopCnt += GetPopCnt(qyax(Loop));
     }
     //DBGC(printf("# CountSwLoop returning wPopCnt %zd\n", wPopCnt));
     return wPopCnt;

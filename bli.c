@@ -45,6 +45,7 @@ CountSw(qpa,
         tp_bIsListSw(nType) ? gpListSwLinks(qy) :
 #endif // defined(CODE_LIST_SW)
         pwr_pLinks((Switch_t *)pwr);
+    (void)pLinks;
   #ifdef XX_LISTS
     int nBW = gnBW(qy, nBLR);
     int nBLLoop = nBLR - nBW;
@@ -314,7 +315,7 @@ SwCleanup(qpa, Word_t wKey, int nBLR
       #ifdef BITMAP
         || ((cn2dBmMaxWpkPercent != 0)
             && (nBLR == cnBitsLeftAtDl2)
-            && (GetPopCnt(qy) * cn2dBmMaxWpkPercent * cnBitsPerWord
+            && (GetPopCnt(qya) * cn2dBmMaxWpkPercent * cnBitsPerWord
                  > EXP(cnBitsLeftAtDl2) * 100))
       #endif // BITMAP
         )
