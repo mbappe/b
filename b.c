@@ -12971,7 +12971,6 @@ t_embedded_keys:;
             assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
         }
         //A(0);
-        nBL = nBLR;
         goto t_bitmap; // address gcc implicit fall-through warning
     }
       #endif // defined(SKIP_TO_BITMAP)
@@ -12981,7 +12980,7 @@ t_embedded_keys:;
     case T_BITMAP: {
         goto t_bitmap;
 t_bitmap:;
-        nBitNum = *pwKey & MSK(nBL) & MSK(cnLogBitsPerWord);
+        nBitNum = *pwKey & MSK(nBLR) & MSK(cnLogBitsPerWord);
       #ifdef _BMLF_BM_IN_LNX
         pwBitmap = pwLnX;
       #else // _BMLF_BM_IN_LNX
@@ -12990,8 +12989,8 @@ t_bitmap:;
         goto embeddedBitmap;
 embeddedBitmap:;
         DBGN(printf("T_BITMAP *pwKey " OWx" wSkip %" _fw"u\n", *pwKey, wSkip));
-        assert(nBL != cnBitsPerWord);
-        int nWordNum = (*pwKey & MSK(nBL)) >> cnLogBitsPerWord;
+        assert(nBLR != cnBitsPerWord);
+        int nWordNum = (*pwKey & MSK(nBLR)) >> cnLogBitsPerWord;
         if (bPrev) {
             //A(0);
             Word_t wBm = pwBitmap[nWordNum];
@@ -13027,8 +13026,8 @@ embeddedBitmap:;
                 //A(0);
                 wSkip -= nPopCnt;
                 if (++nWordNum
-                    >= (int)((cbEmbeddedBitmap && (nBL <= cnLogBitsPerWord))
-                        ? 0 : EXP(nBL - cnLogBitsPerWord)))
+                    >= (int)((cbEmbeddedBitmap && (nBLR <= cnLogBitsPerWord))
+                        ? 0 : EXP(nBLR - cnLogBitsPerWord)))
                 {
                     //A(0);
                     return wSkip + 1;
@@ -13046,7 +13045,7 @@ embeddedBitmap:;
             nBitNum = __builtin_ctzll(wBm);
         }
         //A(0);
-        *pwKey &= ~MSK(nBL);
+        *pwKey &= ~MSK(nBLR);
         *pwKey |= (nWordNum << cnLogBitsPerWord) + nBitNum;
         return 0;
     }
@@ -13092,7 +13091,6 @@ embeddedBitmap:;
             assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
         }
         //A(0);
-        nBL = nBLR;
         goto t_switch; // address gcc implicit fall-through warning
     }
   #endif // defined(SKIP_LINKS)
@@ -13101,8 +13099,9 @@ embeddedBitmap:;
 t_switch:;
         //A(0);
         DBGN(printf("T_SW wSkip %" _fw"u\n", wSkip));
-        int nBW = nBLR_to_nBW(nBL); // bits decoded by switch
-        Word_t wIndex = (*pwKey >> (nBL-nBW)) & MSK(nBW);
+        int nBW = nBLR_to_nBW(nBLR); // bits decoded by switch
+        int nBLLoop = nBLR - nBW;
+        Word_t wIndex = (*pwKey >> nBLLoop) & MSK(nBW);
   #ifdef XX_LISTS
         //Word_t wRootPrev = (Word_t)-1;
   #endif // XX_LISTS
@@ -13120,13 +13119,12 @@ t_switch:;
                                EXP(nBW), wIndex);
   #endif // _LNX
                 Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
-                int nBLNext = nBL - nBW;
   #ifdef QP_PLN
-                Link_t* pLnNext = pLn;
+                Link_t* pLnLoop = pLn;
   #else // QP_PLN
-                Word_t* pwRootNext = &pLn->ln_wRoot;
+                Word_t* pwRootLoop = &pLn->ln_wRoot;
   #endif // QP_PLN else
-                Word_t wPopCnt = GetPopCntX(qyx(Next), *pwKey);
+                Word_t wPopCnt = GetPopCntX(qyx(Loop), *pwKey);
                 if (wPopCnt != 0) {
                     //A(0);
                     DBGN(printf("T_SW: wIndex 0x%" _fw"x"
@@ -13140,9 +13138,9 @@ t_switch:;
                         //A(0);
                         Word_t wCount;
   #ifdef REMOTE_LNX
-                        Word_t* pwLnXNext = pwLnX;
+                        Word_t* pwLnXLoop = pwLnX;
   #endif // REMOTE_LNX
-                        if ((wCount = NextGuts(qyax(Next),
+                        if ((wCount = NextGuts(qyax(Loop),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
@@ -13159,18 +13157,18 @@ t_switch:;
                     } else {
                         // prev is not in here
                         A(0); // UNTESTED - No tests do wSkip > 0 with bPrev.
-                        assert(*pwKey & MSK(nBL - nBW));
+                        assert(*pwKey & MSK(nBLLoop));
                         wSkip -= wPopCnt;
                     }
                     //A(0);
                     DBGN(printf("T_SW: wSkip %" _fw"d\n", wSkip));
                 }
                 //A(0);
-                *pwKey |= MSK(nBL - nBW); // set low bits below index
-                *pwKey -= EXP(nBL - nBW); // subtract one from index
+                *pwKey |= MSK(nBLLoop); // set low bits below index
+                *pwKey -= EXP(nBLLoop); // subtract one from index
             }
             //A(0);
-            *pwKey += BPW_EXP(nBL); // add one to prefix; why ?
+            *pwKey += BPW_EXP(nBLR); // add one to prefix; why ?
             DBGN(printf("T_SW: Failure\n"));
             return wSkip + 1;
         } else {
@@ -13188,27 +13186,26 @@ t_switch:;
                                EXP(nBW), wIndex);
   #endif // _LNX
                 Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
-                int nBLNext = nBL - nBW;
   #ifdef QP_PLN
-                Link_t* pLnNext = pLn;
+                Link_t* pLnLoop = pLn;
   #else // QP_PLN
-                Word_t* pwRootNext = &pLn->ln_wRoot;
+                Word_t* pwRootLoop = &pLn->ln_wRoot;
   #endif // QP_PLN else
-                Word_t wPopCnt = GetPopCntX(qyx(Next), *pwKey);
+                Word_t wPopCnt = GetPopCntX(qyx(Loop), *pwKey);
                 if (wPopCnt != 0) {
                     //A(0);
                     DBGN(printf("T_SW: wIndex 0x%" _fw"x"
                                     " pLn->ln_wRoot " OWx"\n",
                                 wIndex, pLn->ln_wRoot));
                     DBGN(printf("T_SW: wPopCnt %" _fw"d\n", wPopCnt));
-                    if ((wPopCnt > wSkip) /* || *pwKey & MSK(nBL - nBW) */) {
+                    if ((wPopCnt > wSkip) /* || *pwKey & MSK(nBLLoop) */) {
                         //A(0);
                         // next might be in here
                         Word_t wCount;
   #ifdef REMOTE_LNX
-                        Word_t* pwLnXNext = pwLnX;
+                        Word_t* pwLnXLoop = pwLnX;
   #endif // REMOTE_LNX
-                        if ((wCount = NextGuts(qyax(Next),
+                        if ((wCount = NextGuts(qyax(Loop),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
@@ -13220,18 +13217,18 @@ t_switch:;
                     } else {
                         // next is not in here
                         //A(0); // startup
-                        assert((*pwKey & MSK(nBL - nBW)) == 0);
+                        assert((*pwKey & MSK(nBLLoop)) == 0);
                         wSkip -= wPopCnt;
                     }
                     //A(0);
                     DBGN(printf("T_SW: wSkip %" _fw"d\n", wSkip));
                 }
                 //A(0);
-                *pwKey &= ~MSK(nBL - nBW); // clear low bits below index
-                *pwKey += EXP(nBL - nBW); // add one to index
+                *pwKey &= ~MSK(nBLLoop); // clear low bits below index
+                *pwKey += EXP(nBLLoop); // add one to index
             }
             //A(0);
-            *pwKey -= BPW_EXP(nBL); // subtract one from prefix; why ?
+            *pwKey -= BPW_EXP(nBLR); // subtract one from prefix; why ?
                                     // are we just undoing the add from above
                                     // and low bits are already zero?
                                     // restoring prefix to what it was
@@ -13278,7 +13275,6 @@ t_switch:;
             assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
         }
         //A(0);
-        nBL = nBLR;
         goto t_bm_sw; // address gcc implicit fall-through warning
     }
   #endif // defined(SKIP_TO_BM_SW)
@@ -13288,8 +13284,8 @@ t_switch:;
 t_bm_sw:;
         //A(0); // check -B17
         DBGN(printf("T_BM_SW wSkip %" _fw"u\n", wSkip));
-        int nBW = nBLR_to_nBW(nBL); // bits decoded by switch
-        int nBLNext = nBLR - nBW;
+        int nBW = nBLR_to_nBW(nBLR); // bits decoded by switch
+        int nBLLoop = nBLR - nBW;
         Word_t *pwBmWords = PWR_pwBm(pwRoot, pwr, nBW);
         int nLinks = 0;
         for (int nn = 0; nn < N_WORDS_SW_BM(nBW); nn++) {
@@ -13300,7 +13296,7 @@ t_bm_sw:;
                                            );
         }
         Link_t *pLinks = pwr_pLinks((BmSwitch_t *)pwr);
-        Word_t wIndex = (*pwKey >> (nBLNext)) & MSK(nBW);
+        Word_t wIndex = (*pwKey >> nBLLoop) & MSK(nBW);
         int nBmWordNum = gnWordNumInSwBm(wIndex);
         int nBmBitNum = gnBitNumInSwBmWord(wIndex);
         Word_t wBmWord = pwBmWords[nBmWordNum];
@@ -13316,18 +13312,18 @@ t_bm_sw:;
             wBmWord &= MSK(nBmBitNum); // mask off high bits
             DBGN(printf("T_BM_SW masked wBmWord 0x%016" _fw"x\n", wBmWord));
 
-            Link_t *pLnNext = &pLinks[wBmSwIndex];
-            DBGN(printf("T_BM_SW pLnNext %p\n", (void *)pLnNext));
+            Link_t *pLnLoop = &pLinks[wBmSwIndex];
+            DBGN(printf("T_BM_SW pLnLoop %p\n", (void *)pLnLoop));
             if ( ! wBmSwBit ) {
                 //A(0); // check -B17
                 goto BmSwGetPrevIndex;
             }
             Word_t wPopCnt; // declare outside while for goto above
             //A(0); // check -B17
-            while (pLnNext >= pLinks) {
-                Word_t* pwRootNext = &pLnNext->ln_wRoot; (void)pwRootNext;
+            while (pLnLoop >= pLinks) {
+                Word_t* pwRootLoop = &pLnLoop->ln_wRoot; (void)pwRootLoop;
                 //A(0); // check -B17
-                wPopCnt = GetPopCnt(&pLnNext->ln_wRoot, nBLNext);
+                wPopCnt = GetPopCnt(&pLnLoop->ln_wRoot, nBLLoop);
   #ifdef _LNX
                 pwLnX = gpwLnX(/*qy*/ nBL,
       #ifdef QP_PLN
@@ -13335,24 +13331,24 @@ t_bm_sw:;
       #else // QP_PLN
                                pwRoot,
       #endif // QP_PLN else
-                               nLinks, pLnNext - pLinks);
+                               nLinks, pLnLoop - pLinks);
   #endif // _LNX
   #ifdef BM_SW_FOR_REAL
                 assert(wPopCnt != 0);
   #endif // BM_SW_FOR_REAL
                 if (wPopCnt != 0) {
                     //A(0); // check -B17
-                    DBGN(printf("T_BM_SW: wIndex 0x%" _fw"x pLnNext->ln_wRoot "
-                                OWx"\n", wIndex, pLnNext->ln_wRoot));
+                    DBGN(printf("T_BM_SW: wIndex 0x%" _fw"x pLnLoop->ln_wRoot "
+                                OWx"\n", wIndex, pLnLoop->ln_wRoot));
                     DBGN(printf("T_BM_SW: wPopCnt %" _fw"d\n", wPopCnt));
                     if (wPopCnt > wSkip) {
                         // prev might be in here
                         //A(0); // check -B17
                         Word_t wCount;
   #ifdef REMOTE_LNX
-                        Word_t* pwLnXNext = pwLnX;
+                        Word_t* pwLnXLoop = pwLnX;
   #endif // REMOTE_LNX
-                        if ((wCount = NextGuts(qyax(Next),
+                        if ((wCount = NextGuts(qyax(Loop),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
@@ -13365,7 +13361,7 @@ t_bm_sw:;
                     } else {
                         // prev is not in here
                         A(0); // UNTESTED - No tests do wSkip > 0 with bPrev.
-                        assert(*pwKey & MSK(nBLNext));
+                        assert(*pwKey & MSK(nBLLoop));
                         wSkip -= wPopCnt;
                     }
                     //A(0); // check -B17
@@ -13374,13 +13370,13 @@ t_bm_sw:;
                 //A(0); // check -B17
                 wBmWord &= ~EXP(nBmBitNum); // clear current wIndex bit
 BmSwGetPrevIndex:
-                --pLnNext;
-                DBGN(printf("T_BM_SW pLnNext %p\n", (void *)pLnNext));
+                --pLnLoop;
+                DBGN(printf("T_BM_SW pLnLoop %p\n", (void *)pLnLoop));
                 DBGN(printf("T_BM_SW pLinks %p\n", (void *)pLinks));
                 // Find prev set bit in bitmap.
                 DBGN(printf("T_BM_SW wBmWord 0x%016" _fw"x\n", wBmWord));
                 if (wBmWord != 0) {
-                    assert(pLnNext >= pLinks);
+                    assert(pLnLoop >= pLinks);
                     //A(0); // check -B17
                     // My LOG works for 64-bit and 32-bit Linux and Windows.
                     // No variant of __builtin_clz[l][l] does.
@@ -13401,7 +13397,7 @@ BmSwGetPrevIndex:
                         if (wBmWord != 0)
                         {
                             //A(0); // check -B17
-                            assert(pLnNext >= pLinks);
+                            assert(pLnLoop >= pLinks);
 // remember to abstract for structured wBmWord
                             nBmBitNum = LOG(wBmWord);
                             DBGN(printf("T_BM_SW prev link nBmWordNum %d"
@@ -13421,10 +13417,10 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
 }
                     // restore *pwKey
                     if (nBmWordNum == -1) {
-                        if (*pwKey & ~NZ_MSK(nBL))
+                        if (*pwKey & ~NZ_MSK(nBLR))
                         //if (wIndex == 0)
                         {
-                            //*pwKey += EXP(nBL); // ? necessary ? not sure
+                            //*pwKey += EXP(nBLR); // ? necessary ? not sure
                             DBGN(printf("T_BM_SW: Failure *pwKey 0x%016" _fw"x"
                                             " ret wSkip+1 %zd\n",
                                         *pwKey, wSkip+1));
@@ -13434,11 +13430,11 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                             = (nBmWordNum << (nBW - LOG(N_WORDS_SW_BM(nBW))))
                                 + nBmBitNum;
 
-                        //wIndex &= MSK(nBL);
+                        //wIndex &= MSK(nBLR);
                         DBGN(printf("T_BM_SW wIndex 0x%" _fw"x\n", wIndex));
-                        *pwKey &= ~NZ_MSK(nBL);
-                        *pwKey |= MSK(nBLNext);
-                        *pwKey |= wIndex << (nBLNext);
+                        *pwKey &= ~NZ_MSK(nBLR);
+                        *pwKey |= MSK(nBLLoop);
+                        *pwKey |= wIndex << nBLLoop;
                         DBGN(printf("T_BM_SW *pwKey 0x%016" _fw"x\n", *pwKey));
                         continue;
                     }
@@ -13447,15 +13443,15 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                 wIndex
                     = (nBmWordNum << (nBW - LOG(N_WORDS_SW_BM(nBW))))
                         + nBmBitNum;
-                //wIndex &= MSK(nBL);
+                //wIndex &= MSK(nBLR);
                 DBGN(printf("T_BM_SW wIndex 0x%" _fw"x\n", wIndex));
-                if (nBL == cnBitsPerWord) {
+                if (nBLR == cnBitsPerWord) {
                     *pwKey = 0;
                 } else {
-                    *pwKey &= ~MSK(nBL);
+                    *pwKey &= ~MSK(nBLR);
                 }
-                *pwKey |= MSK(nBLNext);
-                *pwKey |= wIndex << (nBLNext);
+                *pwKey |= MSK(nBLLoop);
+                *pwKey |= wIndex << nBLLoop;
                 DBGN(printf("T_BM_SW *pwKey 0x%016" _fw"x\n", *pwKey));
             }
             //A(0); // check -B17
@@ -13471,18 +13467,18 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
             //A(0); // check -B17
             wBmWord &= ~MSK(nBmBitNum); // mask off low bits
             DBGN(printf("T_BM_SW masked wBmWord 0x%016" _fw"x\n", wBmWord));
-            Link_t *pLnNext = &pLinks[wBmSwIndex];
-            DBGN(printf("T_BM_SW pLnNext %p\n", (void *)pLnNext));
+            Link_t *pLnLoop = &pLinks[wBmSwIndex];
+            DBGN(printf("T_BM_SW pLnLoop %p\n", (void *)pLnLoop));
             if ( ! wBmSwBit ) {
                 //A(0); // check -B17
                 goto BmSwGetNextIndex;
             }
             Word_t wPopCnt; // declare outside while for goto above
             //A(0); // check -B17
-            while (pLnNext < &pLinks[nLinks]) {
-                Word_t* pwRootNext = &pLnNext->ln_wRoot; (void)pwRootNext;
+            while (pLnLoop < &pLinks[nLinks]) {
+                Word_t* pwRootLoop = &pLnLoop->ln_wRoot; (void)pwRootLoop;
                 //A(0); // check -B17
-                wPopCnt = GetPopCnt(&pLnNext->ln_wRoot, nBL - nBW);
+                wPopCnt = GetPopCnt(&pLnLoop->ln_wRoot, nBLLoop);
   #ifdef _LNX
                 pwLnX = gpwLnX(/*qy*/ nBL,
       #ifdef QP_PLN
@@ -13490,7 +13486,7 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
       #else // QP_PLN
                                pwRoot,
       #endif // QP_PLN else
-                               nLinks, pLnNext - pLinks);
+                               nLinks, pLnLoop - pLinks);
   #endif // _LNX
   #ifdef BM_SW_FOR_REAL
                 assert(wPopCnt != 0);
@@ -13498,20 +13494,19 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                 if (wPopCnt != 0) {
                     //A(0); // check -B17
                     DBGN(printf("T_BM_SW: wIndex 0x%" _fw"x wBmSwIndex 0x%"
-                                _fw"x pLnNext->ln_wRoot " OWx"\n",
-                                wIndex, wBmSwIndex, pLnNext->ln_wRoot));
+                                _fw"x pLnLoop->ln_wRoot " OWx"\n",
+                                wIndex, wBmSwIndex, pLnLoop->ln_wRoot));
                     DBGN(printf("T_BM_SW: wPopCnt %" _fw"d\n", wPopCnt));
-                    if ((wPopCnt > wSkip) /*|| (*pwKey & MSK(nBL - nBW))*/) {
+                    if ((wPopCnt > wSkip) /*|| (*pwKey & MSK(nBLLoop))*/) {
                         //A(0); // check -B17
                         DBGN(printf("T_BM_SW: wSkip %" _fw"d *pwKey " OWx"\n",
                                     wSkip, *pwKey));
                         // next might be in here
                         Word_t wCount;
-                        int nBLNext = nBL - nBW;
   #ifdef REMOTE_LNX
-                        Word_t* pwLnXNext = pwLnX;
+                        Word_t* pwLnXLoop = pwLnX;
   #endif // REMOTE_LNX
-                        if ((wCount = NextGuts(qyax(Next),
+                        if ((wCount = NextGuts(qyax(Loop),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
@@ -13524,7 +13519,7 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                     } else {
                         // next is not in here
                         A(0); // startup
-                        assert(*pwKey & MSK(nBL - nBW));
+                        assert(*pwKey & MSK(nBLLoop));
                         wSkip -= wPopCnt;
                     }
                     //A(0); // check -B17
@@ -13532,8 +13527,8 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                 }
                 //A(0); // check -B17
                 wBmWord &= ~EXP(nBmBitNum); // clear current wIndex bit
-                ++pLnNext;
-                DBGN(printf("T_BM_SW pLnNext %p\n", (void *)pLnNext));
+                ++pLnLoop;
+                DBGN(printf("T_BM_SW pLnLoop %p\n", (void *)pLnLoop));
 BmSwGetNextIndex:
                 // Find next set bit in bitmap.
                 DBGN(printf("T_BM_SW wBmWord 0x%016" _fw"x\n", wBmWord));
@@ -13566,11 +13561,11 @@ BmSwGetNextIndex:
                         //A(0); // check -B33 -S1
                     }
                     //A(0); // check -B17
-                    DBGN(printf("bNext T_BM_SW no more links"
+                    DBGN(printf("bLoop T_BM_SW no more links"
                                 " nBmWordNum %d wIndex " OWx" *pwKey " OWx"\n",
                                 nBmWordNum, wIndex, *pwKey));
                     if (nBmWordNum == N_WORDS_SW_BM(nBW)) {
-                        if (*pwKey & ~NZ_MSK(nBL)) {
+                        if (*pwKey & ~NZ_MSK(nBLR)) {
                             return wSkip + 1;
                         }
                     }
@@ -13580,20 +13575,20 @@ BmSwGetNextIndex:
                     = (nBmWordNum << (nBW - LOG(N_WORDS_SW_BM(nBW))))
                         + nBmBitNum;
                 DBGN(printf("T_BM_SW wIndex 0x%" _fw"x\n", wIndex));
-                if (nBL == cnBitsPerWord) {
+                if (nBLR == cnBitsPerWord) {
                     *pwKey = 0;
                 } else {
-                    *pwKey &= ~MSK(nBL); // clear low bits
+                    *pwKey &= ~MSK(nBLR); // clear low bits
                 }
                 DBGN(printf("T_BM_SW *pwKey 0x%016" _fw"x\n", *pwKey));
-                *pwKey |= wIndex << (nBL - nBW); // set index bits
+                *pwKey |= wIndex << nBLLoop; // set index bits
                 DBGN(printf("T_BM_SW *pwKey 0x%016" _fw"x\n", *pwKey));
             }
             //A(0);
             // What is wKey supposed to contain on return if/when count > 0?
             // Undefined? The last key found? Unchanged from entry?
             // Look at the recursive call.
-            *pwKey -= BPW_EXP(nBL);
+            *pwKey -= BPW_EXP(nBLR);
             DBGN(printf("T_BM_SW: Failure\n"));
             return wSkip + 1;
         }
@@ -13638,7 +13633,6 @@ BmSwGetNextIndex:
             assert(*pwKey == (wPrefix | (*pwKey & MSK(nBLR))));
         }
         //A(0);
-        nBL = nBLR;
         goto t_xx_sw;
     }
   #endif // defined(SKIP_TO_XX_SW)
@@ -13649,7 +13643,8 @@ t_xx_sw:;
         //A(0);
         DBGN(printf("T_SW wSkip %" _fw"u\n", wSkip));
         int nBW = pwr_nBW(pwRoot); // bits decoded by switch
-        Word_t wIndex = (*pwKey >> (nBL-nBW)) & MSK(nBW);
+        int nBLLoop = nBLR - nBW;
+        Word_t wIndex = (*pwKey >> nBLLoop) & MSK(nBW);
   #ifdef XX_LISTS
         //Word_t wRootPrev = (Word_t)-1;
   #endif // XX_LISTS
@@ -13669,13 +13664,12 @@ t_xx_sw:;
                 Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
                 // Should pLn be NULL for PP_IN_LINK or POP_WORD_IN_LINK
                 // and nBLUp == cnBitsPerWord?
-                int nBLNext = nBL - nBW;
   #ifdef QP_PLN
-                Link_t* pLnNext = pLn;
+                Link_t* pLnLoop = pLn;
   #else // QP_PLN
-                Word_t* pwRootNext = &pLn->ln_wRoot;
+                Word_t* pwRootLoop = &pLn->ln_wRoot;
   #endif // QP_PLN else
-                Word_t wPopCnt = GetPopCntX(qyx(Next), *pwKey);
+                Word_t wPopCnt = GetPopCntX(qyx(Loop), *pwKey);
                 if (wPopCnt != 0) {
                     //A(0);
                     DBGN(printf("T_SW: wIndex " OWx" pLn->ln_wRoot " OWx"\n",
@@ -13685,9 +13679,9 @@ t_xx_sw:;
                         //A(0);
                         Word_t wCount;
   #ifdef REMOTE_LNX
-                        Word_t* pwLnXNext = pwLnX;
+                        Word_t* pwLnXLoop = pwLnX;
   #endif // REMOTE_LNX
-                        if ((wCount = NextGuts(qyax(Next),
+                        if ((wCount = NextGuts(qyax(Loop),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
@@ -13704,11 +13698,11 @@ t_xx_sw:;
                     DBGN(printf("T_SW: wSkip %" _fw"d\n", wSkip));
                 }
                 //A(0);
-                *pwKey |= MSK(nBL - nBW);
-                *pwKey -= EXP(nBL - nBW);
+                *pwKey |= MSK(nBLLoop);
+                *pwKey -= EXP(nBLLoop);
             }
             //A(0);
-            *pwKey += BPW_EXP(nBL);
+            *pwKey += BPW_EXP(nBLR);
             DBGN(printf("T_SW: Failure\n"));
             return wSkip + 1;
         } else {
@@ -13727,13 +13721,12 @@ t_xx_sw:;
                 Link_t *pLn = &((Switch_t *)pwr)->sw_aLinks[wIndex];
                 // Should pLn be NULL for PP_IN_LINK or POP_WORD_IN_LINK
                 // and nBLUp == cnBitsPerWord?
-                int nBLNext = nBL - nBW;
   #ifdef QP_PLN
-                Link_t* pLnNext = pLn;
+                Link_t* pLnLoop = pLn;
   #else // QP_PLN
-                Word_t* pwRootNext = &pLn->ln_wRoot;
+                Word_t* pwRootLoop = &pLn->ln_wRoot;
   #endif // QP_PLN else
-                Word_t wPopCnt = GetPopCntX(qyx(Next), *pwKey);
+                Word_t wPopCnt = GetPopCntX(qyx(Loop), *pwKey);
                 if (wPopCnt != 0) {
                     //A(0);
                     DBGN(printf("T_SW: wIndex 0x%" _fw"x pLn->ln_wRoot "
@@ -13744,9 +13737,9 @@ t_xx_sw:;
                         //A(0);
                         Word_t wCount;
   #ifdef REMOTE_LNX
-                        Word_t* pwLnXNext = pwLnX;
+                        Word_t* pwLnXLoop = pwLnX;
   #endif // REMOTE_LNX
-                        if ((wCount = NextGuts(qyax(Next),
+                        if ((wCount = NextGuts(qyax(Loop),
                                                pwKey, wSkip, bPrev, bEmpty))
                             == 0)
                         {
@@ -13763,11 +13756,11 @@ t_xx_sw:;
                     DBGN(printf("T_SW: wSkip %" _fw"d\n", wSkip));
                 }
                 //A(0);
-                *pwKey &= ~MSK(nBL - nBW);
-                *pwKey += EXP(nBL - nBW);
+                *pwKey &= ~MSK(nBLLoop);
+                *pwKey += EXP(nBLLoop);
             }
             //A(0);
-            *pwKey -= BPW_EXP(nBL);
+            *pwKey -= BPW_EXP(nBLR);
             DBGN(printf("T_SW: Failure\n"));
             return wSkip + 1;
         }
@@ -14356,9 +14349,9 @@ t_switch:;
             //printf("switch is at cnBitsPerWord\n");
         }
         int nBW = nBLR_to_nBW(nBLR); // bits decoded by switch
-        Word_t wPrefix = (nBLR == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBLR);
-        Word_t wIndex = (*pwKey >> (nBLR - nBW)) & MSK(nBW);
         int nBLLoop = nBLR - nBW;
+        Word_t wPrefix = (nBLR == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBLR);
+        Word_t wIndex = (*pwKey >> nBLLoop) & MSK(nBW);
         for (;;) {
 // I wonder if it would be reasonable and faster to update these
 // loop variables by incrementing rather than refiguring them with a
@@ -14389,7 +14382,7 @@ t_switch:;
                 }
                 // A(0); // b -1v -S1
                 // set all bits in suffix; index and prefix are done later
-                *pwKey = MSK(nBLR - nBW); // suffix
+                *pwKey = MSK(nBLLoop); // suffix
             } else {
                 if (++wIndex >= EXP(nBW)) {
                     // No links left in switch.
@@ -14412,7 +14405,7 @@ t_switch:;
                 // set all bits in suffix; index and prefix are done later
                 *pwKey = 0; // suffix
             }
-            *pwKey |= wPrefix + (wIndex << (nBLR - nBW));
+            *pwKey |= wPrefix + (wIndex << nBLLoop);
         }
     }
   #if defined(SKIP_TO_BM_SW)
@@ -14437,11 +14430,11 @@ t_bm_sw:;
         //A(0); // check -B17
         //Word_t wKey = *pwKey;
         int nBW = nBLR_to_nBW(nBLR); // bits decoded by switch
+        int nBLLoop = nBLR - nBW;
         Link_t *pLinks = pwr_pLinks((BmSwitch_t *)pwr);
         Word_t wPrefix = (nBLR == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBLR);
-        Word_t wIndex = (*pwKey >> (nBLR - nBW)) & MSK(nBW);
+        Word_t wIndex = (*pwKey >> nBLLoop) & MSK(nBW);
         DBGN(printf("T_BM_SW wIndex 0x%" _fw"x\n", wIndex));
-        int nBLLoop = nBLR - nBW;
         for (;;) {
             //A(0); // check -B17
             Word_t wBmSwIndex;
@@ -14477,7 +14470,7 @@ t_bm_sw:;
                     return Failure;
                 }
                 //A(0); // check -B17 -S1
-                *pwKey = MSK(nBLR - nBW); // suffix
+                *pwKey = MSK(nBLLoop); // suffix
             } else {
                 //A(0); // check -B17 -S1
                 if (++wIndex >= EXP(nBW)) {
@@ -14496,7 +14489,7 @@ t_bm_sw:;
                 *pwKey = 0; // suffix
             }
             //A(0); // check -B17 -S1
-            *pwKey |= wPrefix + (wIndex << (nBLR - nBW));
+            *pwKey |= wPrefix + (wIndex << nBLLoop);
         }
         A(0);
         break; // make compiler happy
@@ -14523,9 +14516,9 @@ t_bm_sw:;
         goto t_xx_sw;
 t_xx_sw:;
         int nBW = pwr_nBW(pwRoot); // bits decoded by switch
-        Word_t wPrefix = (nBLR == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBLR);
-        Word_t wIndex = (*pwKey >> (nBLR - nBW)) & MSK(nBW);
         int nBLLoop = nBLR - nBW;
+        Word_t wPrefix = (nBLR == cnBitsPerWord) ? 0 : *pwKey & ~MSK(nBLR);
+        Word_t wIndex = (*pwKey >> nBLLoop) & MSK(nBW);
         for (;;) {
             Link_t *pLnLoop = &((Switch_t *)pwr)->sw_aLinks[wIndex];
             Word_t *pwRootLoop = &pLnLoop->ln_wRoot; (void)pwRootLoop;
@@ -14546,7 +14539,7 @@ t_xx_sw:;
                     }
                     return Failure;
                 }
-                *pwKey = MSK(nBLR - nBW); // suffix
+                *pwKey = MSK(nBLLoop); // suffix
             } else {
                 if (++wIndex >= EXP(nBW)) {
                     if ((nBLR != nBL)
@@ -14561,7 +14554,7 @@ t_xx_sw:;
                 }
                 *pwKey = 0; // suffix
             }
-            *pwKey |= wPrefix + (wIndex << (nBLR - nBW));
+            *pwKey |= wPrefix + (wIndex << nBLLoop);
         }
     }
   #endif // defined(USE_XX_SW)
