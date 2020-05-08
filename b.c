@@ -13765,9 +13765,9 @@ Judy1ByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
     --wCount; // Judy API spec is off-by-one IMHO
     int nBL = cnBitsPerWord;
     Word_t* pwRoot = (Word_t*)&PArray;
-  #ifdef _LNX
+  #ifdef REMOTE_LNX
     Word_t* pwLnX = NULL;
-  #endif // _LNX
+  #endif // REMOTE_LNX
     Link_t* pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
     wCount = NextGuts(qya, &wKey, wCount, /* bPrev */ 0, /* bEmpty */ 0);
     if (wCount == 0) {
@@ -13820,9 +13820,9 @@ Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     Word_t wKey = *pwKey;
     int nBL = cnBitsPerWord;
     Word_t* pwRoot = (Word_t*)&PArray;
-  #ifdef _LNX
+  #ifdef REMOTE_LNX
     Word_t* pwLnX = NULL;
-  #endif // _LNX
+  #endif // REMOTE_LNX
     Link_t* pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
     Word_t wCount = NextGuts(qya, &wKey,
                              /* wCount */ 0, /* bPrev */ 0, /* bEmpty */ 0);
@@ -13927,9 +13927,9 @@ Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
     Word_t wKey = *pwKey;
     int nBL = cnBitsPerWord;
     Word_t* pwRoot = (Word_t*)&PArray;
-  #ifdef _LNX
+  #ifdef REMOTE_LNX
     Word_t* pwLnX = NULL;
-  #endif // _LNX
+  #endif // REMOTE_LNX
     Link_t* pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
     Word_t wCount = NextGuts(qya, &wKey,
                              /* wCount */ 0, /* bPrev */ 1, /* bEmpty */ 0);
