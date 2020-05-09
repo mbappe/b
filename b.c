@@ -1450,19 +1450,19 @@ ClrBitInSwBmWord(Word_t *pwRoot, int nDigit, int nBW)
 // Need to know if we are at the bottom so we can count the memory as a
 // bitmap leaf instead of a switch.
 static Word_t *
-NewSwitchX(Word_t *pwRoot, Word_t wKey, int nBLR,
+NewSwitchX(qp, Word_t wKey, int nBLR,
   #if defined(CODE_XX_SW)
            int nBWX,
   #endif // defined(CODE_XX_SW)
-           int nType,
+           int nTypeBase,
   #ifdef BM_SW_FOR_REAL
            int nLinkCnt,
   #endif // BM_SW_FOR_REAL
-           int nBL, Word_t wPopCnt)
+           int nBLDep, Word_t wPopCnt)
 {
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
-    Word_t wRoot = *pwRoot; (void)wRoot;
-    (void)nType; // Used only if CODE_BM_SW?
+    qv;
+    nType = nTypeBase; // Co-opt parameter. Used only if CODE_BM_SW?
+    assert(nBLDep == nBL);
     DBGI(printf("NewSwitch: pwRoot %p wKey " OWx" nBLR %d nType %d nBL %d"
                     " wPopCnt %" _fw"d.\n",
                 (void *)pwRoot, wKey, nBLR, nType, nBL, wPopCnt));
@@ -1574,7 +1574,7 @@ NewSwitchX(Word_t *pwRoot, Word_t wKey, int nBLR,
                                 (nType == T_BM_SW) ? 6 : cnBitsMallocMask,
                                 pwAllocWords);
 #else // CACHE_ALIGN_BM_SW
-    Word_t *pwr = (Word_t*)MyMalloc(wWords, pwAllocWords);
+    pwr = (Word_t*)MyMalloc(wWords, pwAllocWords); // Co-opt parameter.
 #endif // CACHE_ALIGN_BM_SW
     DBGI(printf("pwr %p wWords %zd\n", pwr, wWords));
 #if defined(CODE_BM_SW) && !defined(BM_IN_LINK)
@@ -1855,7 +1855,7 @@ NewSwitch(qpa, Word_t wKey, int nBLR,
           int nTypeBase, Word_t wPopCnt)
 {
     qva;
-    return NewSwitchX(pwRoot, wKey, nBLR,
+    return NewSwitchX(qy, wKey, nBLR,
   #if defined(CODE_XX_SW)
                       nBWX,
   #endif // defined(CODE_XX_SW)
@@ -4288,7 +4288,7 @@ Splay(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey)
         nLinkCntOrig = BmSwLinkCnt(qy);
         // Create a new bitmap switch with EXP(nBW) links for staging.
         // No bits are set in the bitmap, but LinkCnt in WR is EXP(nBW).
-        pwr = NewSwitchX(pwRoot, wKey, nBLR,
+        pwr = NewSwitchX(qy, wKey, nBLR,
           #if defined(CODE_XX_SW)
                          nBW,
           #endif // defined(CODE_XX_SW)
@@ -5049,7 +5049,7 @@ insertAll:
             // Pop count will be updated when we copy the switch.
         } else {
             OldSwitch(&linkOrig.ln_wRoot, nBL, /*bBmSw*/ 1, /*nLinks*/ 1);
-            pwr = NewSwitchX(pwRoot, wKey, nBLR,
+            pwr = NewSwitchX(qy, wKey, nBLR,
       #if defined(CODE_XX_SW)
                              nBW,
       #endif // defined(CODE_XX_SW)
@@ -5174,7 +5174,7 @@ SplayWithInsert(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey, int nPos)
                     GetPopCnt(qya), nBL, nBLR, nBW, nBLROld));
       #ifdef BM_SW_FOR_REAL
         // Create a new switch for staging.
-        pwr = NewSwitchX(pwRoot, wKey, nBLR,
+        pwr = NewSwitchX(qy, wKey, nBLR,
           #if defined(CODE_XX_SW)
                          nBW,
           #endif // defined(CODE_XX_SW)
@@ -6180,7 +6180,7 @@ lastDigit:;
             // Pop count will be updated when we copy the switch.
         } else {
             OldSwitch(&linkOrig.ln_wRoot, nBL, /*bBmSw*/ 1, /*nLinks*/ 1);
-            pwr = NewSwitchX(pwRoot, wKey, nBLR,
+            pwr = NewSwitchX(qy, wKey, nBLR,
       #if defined(CODE_XX_SW)
                              nBW,
       #endif // defined(CODE_XX_SW)
