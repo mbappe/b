@@ -1848,14 +1848,13 @@ NewSwitchX(Word_t *pwRoot, Word_t wKey, int nBLR,
 }
 
 static Word_t *
-NewSwitch(qp, Word_t wKey, int nBLR,
+NewSwitch(qpa, Word_t wKey, int nBLR,
   #if defined(CODE_XX_SW)
           int nBWX,
   #endif // defined(CODE_XX_SW)
-          int nTypeBase, int nBLDep, Word_t wPopCnt)
+          int nTypeBase, Word_t wPopCnt)
 {
-    qv;
-    assert(nBLDep == nBL);
+    qva;
     return NewSwitchX(pwRoot, wKey, nBLR,
   #if defined(CODE_XX_SW)
                       nBWX,
@@ -1892,11 +1891,11 @@ InflateBmSw(qpa, Word_t wKey, int nBLR)
 
     int nBW = nBLR_to_nBW(nBLR);
 
-    Word_t *pwrNew = NewSwitch(qy, wKey, nBLR,
+    Word_t *pwrNew = NewSwitch(qya, wKey, nBLR,
   #if defined(CODE_XX_SW)
                                nBW,
   #endif // defined(CODE_XX_SW)
-                               T_SWITCH, nBL,
+                               T_SWITCH,
                                PWR_wPopCntBL(pwRoot,
                                              (BmSwitch_t *)pwr, nBLR));
     // NewSwitch installed the new wRoot at pwRoot.
@@ -6458,7 +6457,7 @@ DoubleUp(qpa, // (nBL, pLn) of skip link to original switch
         // wRoot serves as our saved link
         assert(sizeof(Link_t) == sizeof(wRoot));
     }
-    NewSwitch(qy, wKey, nBLRNew, nBWNew, T_SWITCH, nBL, wPopCnt);
+    NewSwitch(qya, wKey, nBLRNew, nBWNew, T_SWITCH, wPopCnt);
 
     DBGI(printf("\n# DoubleUp just after NewSwitch old tree "));
     DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
@@ -6636,7 +6635,7 @@ InsertAtPrefixMismatch(qpa, Word_t wKey, int nBLR)
     assert(nBLNew <= nBL);
     // NewSwitch changes *pwRoot (and the link containing it).
     // It does not change our local wRoot and pwr (or pwRoot).
-    pwSw = NewSwitch(qy, wPrefix, nBLNew,
+    pwSw = NewSwitch(qya, wPrefix, nBLNew,
 #if defined(CODE_XX_SW)
                      nBWNew,
 #endif // defined(CODE_XX_SW)
@@ -6644,7 +6643,7 @@ InsertAtPrefixMismatch(qpa, Word_t wKey, int nBLR)
                      bBmSwNew ? T_BM_SW :
 #endif // defined(CODE_BM_SW)
                      T_SWITCH,
-                     nBL, wPopCnt);
+                     wPopCnt);
 
     int nLinksNew = EXP(nBWNew); (void)nLinksNew;
   #if defined(CODE_BM_SW)
@@ -6817,7 +6816,7 @@ DoubleDown(qpa, // (nBL, pLn) of link to original switch
 // This insert has already been counted in the switch.
 // wPopCnt is not the pop count of the list.
 // Should we call it wPopCntUp?
-    NewSwitch(qy, wKey, nBLR, nBWNew, T_SWITCH, nBL, wPopCnt - 1);
+    NewSwitch(qya, wKey, nBLR, nBWNew, T_SWITCH, wPopCnt - 1);
 
     DBGI(printf("\n# DoubleDown just after NewSwitch new tree "));
     DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
@@ -6979,7 +6978,7 @@ InsertXxSw(qpa, // (nBL, pLn) of link to list
         assert(sizeof(Link_t) == sizeof(wRoot));
   #endif // !_LNX || REMOTE_LNX
     }
-    NewSwitch(qy, wKey, nBLRUpNew, nBWRUpNew, T_SWITCH, nBL, nPopCnt);
+    NewSwitch(qya, wKey, nBLRUpNew, nBWRUpNew, T_SWITCH, nPopCnt);
 
     DBGI(printf("\n# InsertXxSw just after NewSwitch new tree "));
     DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
@@ -7180,11 +7179,11 @@ DoubleIt(qpa, // (nBL, pLn) of list
         assert(sizeof(Link_t) == sizeof(wRoot));
   #endif // !_LNX || REMOTE_LNX
     }
-    NewSwitch(qy, wKey, nBL,
+    NewSwitch(qya, wKey, nBL,
 #if defined(CODE_XX_SW)
               nBW,
 #endif // defined(CODE_XX_SW)
-              T_SWITCH, nBLOld, /* wPopCnt */ 0);
+              T_SWITCH, /* wPopCnt */ 0);
 
 #if defined(CODE_XX_SW)
     if (nBL <= nDL_to_nBL(2)) {
@@ -7798,7 +7797,7 @@ newSkipToBitmap:;
             link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
         }
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        NewSwitch(qy, wKey, nBLNew,
+        NewSwitch(qya, wKey, nBLNew,
 #if defined(CODE_XX_SW)
                   nBW,
 #endif // defined(CODE_XX_SW)
@@ -7846,7 +7845,7 @@ newSkipToBitmap:;
   #else // defined(USE_BM_SW)
                   T_SWITCH,
   #endif // defined(USE_BM_SW)
-                  nBL, /* wPopCnt */ 0);
+                  /* wPopCnt */ 0);
 
   #ifdef USE_XX_SW_ONLY_AT_DL2
         if (nBLNew <= nDL_to_nBL(2)) {
