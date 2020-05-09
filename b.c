@@ -1450,7 +1450,7 @@ ClrBitInSwBmWord(Word_t *pwRoot, int nDigit, int nBW)
 // Need to know if we are at the bottom so we can count the memory as a
 // bitmap leaf instead of a switch.
 static Word_t *
-NewSwitchX(qp, Word_t wKey, int nBLR,
+NewSwitchX(qpa, Word_t wKey, int nBLR,
   #if defined(CODE_XX_SW)
            int nBWX,
   #endif // defined(CODE_XX_SW)
@@ -1458,11 +1458,10 @@ NewSwitchX(qp, Word_t wKey, int nBLR,
   #ifdef BM_SW_FOR_REAL
            int nLinkCnt,
   #endif // BM_SW_FOR_REAL
-           int nBLDep, Word_t wPopCnt)
+           Word_t wPopCnt)
 {
-    qv;
+    qva;
     nType = nTypeBase; // Co-opt parameter. Used only if CODE_BM_SW?
-    assert(nBLDep == nBL);
     DBGI(printf("NewSwitch: pwRoot %p wKey " OWx" nBLR %d nType %d nBL %d"
                     " wPopCnt %" _fw"d.\n",
                 (void *)pwRoot, wKey, nBLR, nType, nBL, wPopCnt));
@@ -1855,7 +1854,7 @@ NewSwitch(qpa, Word_t wKey, int nBLR,
           int nTypeBase, Word_t wPopCnt)
 {
     qva;
-    return NewSwitchX(qy, wKey, nBLR,
+    return NewSwitchX(qya, wKey, nBLR,
   #if defined(CODE_XX_SW)
                       nBWX,
   #endif // defined(CODE_XX_SW)
@@ -1863,7 +1862,7 @@ NewSwitch(qpa, Word_t wKey, int nBLR,
   #ifdef BM_SW_FOR_REAL
                       /* nLinkCnt */ 1, // ignored if nType != T_BM_SW
   #endif // BM_SW_FOR_REAL
-                      nBL, wPopCnt);
+                      wPopCnt);
 }
 
 #if defined(CODE_BM_SW)
@@ -4288,11 +4287,11 @@ Splay(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey)
         nLinkCntOrig = BmSwLinkCnt(qy);
         // Create a new bitmap switch with EXP(nBW) links for staging.
         // No bits are set in the bitmap, but LinkCnt in WR is EXP(nBW).
-        pwr = NewSwitchX(qy, wKey, nBLR,
+        pwr = NewSwitchX(qya, wKey, nBLR,
           #if defined(CODE_XX_SW)
                          nBW,
           #endif // defined(CODE_XX_SW)
-                         T_BM_SW, /* nLinkCnt */ EXP(nBW), nBL, 0);
+                         T_BM_SW, /* nLinkCnt */ EXP(nBW), 0);
       #else // BM_SW_FOR_REAL
         pwr = wr_pwr(*pwRoot);
       #endif // #else BM_SW_FOR_REAL
@@ -5049,11 +5048,11 @@ insertAll:
             // Pop count will be updated when we copy the switch.
         } else {
             OldSwitch(&linkOrig.ln_wRoot, nBL, /*bBmSw*/ 1, /*nLinks*/ 1);
-            pwr = NewSwitchX(qy, wKey, nBLR,
+            pwr = NewSwitchX(qya, wKey, nBLR,
       #if defined(CODE_XX_SW)
                              nBW,
       #endif // defined(CODE_XX_SW)
-                             T_BM_SW, nLinkCnt, nBL, wPopCnt);
+                             T_BM_SW, nLinkCnt, wPopCnt);
         }
         // copy bitmap
         memcpy(PWR_pwBm(pwRoot, pwr, nBW),
@@ -5174,11 +5173,11 @@ SplayWithInsert(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey, int nPos)
                     GetPopCnt(qya), nBL, nBLR, nBW, nBLROld));
       #ifdef BM_SW_FOR_REAL
         // Create a new switch for staging.
-        pwr = NewSwitchX(qy, wKey, nBLR,
+        pwr = NewSwitchX(qya, wKey, nBLR,
           #if defined(CODE_XX_SW)
                          nBW,
           #endif // defined(CODE_XX_SW)
-                         T_BM_SW, /* nLinkCnt */ EXP(nBW), nBL, 0);
+                         T_BM_SW, /* nLinkCnt */ EXP(nBW), 0);
       #else // BM_SW_FOR_REAL
         pwr = wr_pwr(*pwRoot);
       #endif // #else BM_SW_FOR_REAL
@@ -6180,11 +6179,11 @@ lastDigit:;
             // Pop count will be updated when we copy the switch.
         } else {
             OldSwitch(&linkOrig.ln_wRoot, nBL, /*bBmSw*/ 1, /*nLinks*/ 1);
-            pwr = NewSwitchX(qy, wKey, nBLR,
+            pwr = NewSwitchX(qya, wKey, nBLR,
       #if defined(CODE_XX_SW)
                              nBW,
       #endif // defined(CODE_XX_SW)
-                             T_BM_SW, nLinkCnt, nBL, wPopCnt);
+                             T_BM_SW, nLinkCnt, wPopCnt);
         }
         // copy bitmap
         memcpy(PWR_pwBm(pwRoot, pwr), PWR_pwBm(pwRootStaged, pwrStaged, nBW),

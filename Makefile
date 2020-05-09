@@ -319,6 +319,14 @@ clean:
     b1time b1check bLtime blcheck jtime jcheck \
     b check Judy1LHTime Judy1LHCheck
 
+# I haven't been able to figure out how to take advantage of precompiled
+# headers yet.
+b.h.gch: b.h
+	$(CC) $(CFLAGS) $(DEFINES) -c $<
+
+b-L.h.gch: b.h
+	$(CC) $(CFLAGS) $(DEFINES) -o $@ -c $<
+
 t: t.c $(T_OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 
