@@ -16,10 +16,10 @@
 #else // (cnDigitsPerWord <= 1)
 
 static void
-Checkpoint(qp, const char *str)
+Checkpoint(qpa, const char *str)
 {
-    qv;
-    printf("# %20s: " qfmt "\n", str, qyp);
+    qva;
+    printf("# %20s: " qafmt "\n", str, qyap);
 }
 
   #if defined(COUNT)
@@ -303,7 +303,7 @@ SwCleanup(qpa, Word_t wKey, int nBLR
           )
 {
     qva; (void)wKey; (void)nBLR;
-    DBGX(Checkpoint(qy, "SwCleanup"));
+    DBGX(Checkpoint(qya, "SwCleanup"));
     DBGX(printf("wKey 0x%016zx nBLR %d\n", wKey, nBLR));
     // Cleanup is for adjusting tree after successful insert or remove.
     // It is not for undoing counts after unsuccessful insert or remove.
@@ -874,7 +874,7 @@ InsertRemove1(qp, Word_t wKey)
     pwr = wr_pwr(wRoot);
     // nBL, pLn, wRoot, nType and pwr of qy are set up
     if (nType > T_SWITCH) {
-        DBGX(Checkpoint(qy, "goto skip_to_sw"));
+        DBGX(Checkpoint(qya, "goto skip_to_sw"));
         goto t_skip_to_switch;
     }
 
@@ -901,7 +901,7 @@ InsertRemove1(qp, Word_t wKey)
 #if defined(INSERT) || defined(REMOVE)
   #if !defined(RECURSIVE)
     goto top;
-    DBGX(Checkpoint(qy, "top"));
+    DBGX(Checkpoint(qya, "top"));
 top:;
   #endif // !defined(RECURSIVE)
 #endif // defined(INSERT) || defined(REMOVE)
@@ -909,7 +909,7 @@ top:;
 
 #if defined(LOOKUP) || !defined(RECURSIVE)
     goto again;
-    DBGX(Checkpoint(qy, "again"));
+    DBGX(Checkpoint(qya, "again"));
 again:;
 #endif // defined(LOOKUP) || !defined(RECURSIVE)
   #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
@@ -927,15 +927,15 @@ againAugType:;
   #endif // ! defined(CODE_XX_SW)
 #endif // ( ! defined(LOOKUP) )
 
-   #ifdef INSERT
-   #ifdef _RETURN_NULL_TO_INSERT_AGAIN
+  #ifdef INSERT
+  #ifdef _RETURN_NULL_TO_INSERT_AGAIN
 BJL(insertAgain:)
-   #endif // _RETURN_NULL_TO_INSERT_AGAIN
-   #endif // INSERT
+  #endif // _RETURN_NULL_TO_INSERT_AGAIN
+  #endif // INSERT
     nType = wr_nType(wRoot);
     pwr = wr_pwr(wRoot); // pwr isn't meaningful for all nType values
     // nBL, pLn, wRoot, nType and pwr of qy are set up
-    DBGX(Checkpoint(qy, "enter switch stmt"));
+    DBGX(Checkpoint(qya, "enter switch stmt"));
 
     goto fastAgain;
 fastAgain:;
@@ -1807,7 +1807,7 @@ t_switch:
             IF_COUNT(return wPopCntSum);
             goto break_from_main_switch;
         }
-        DBGX(Checkpoint(qy, "t_switch"));
+        DBGX(Checkpoint(qya, "t_switch"));
         nBW = gnBW(qy, nBLR); // num bits decoded
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW); // extract bits from key
         // ((uint8_t *)&wKey)[(cnBitsPerWord - nBL) >> 3];
@@ -1891,7 +1891,7 @@ switchTail:;
   #ifdef CODE_XX_SW
 t_xx_sw:
     {
-        DBGX(Checkpoint(qy, "t_xx_sw"));
+        DBGX(Checkpoint(qya, "t_xx_sw"));
         nBW = gnBW(qy, nBLR); // num bits decoded
         wDigit = (wKey >> (nBLR - nBW)) & MSK(nBW);
         pLnNew = &pwr_pLinks((Switch_t *)pwr)[wDigit];
@@ -2196,7 +2196,7 @@ bmSwTail:;
           #ifdef INSERT
         // This test should be the same as the one in InsertCleanup.
         if (tp_bIsBmSw(nType) && InflateBmSwTest(qya)) {
-            DBGX(Checkpoint(qy, "T_BM_SW req cleanup"));
+            DBGX(Checkpoint(qya, "T_BM_SW req cleanup"));
             bCleanupRequested = 1; // on success
         }
           #endif // INSERT
@@ -3016,7 +3016,7 @@ t_list:
     // nBL <= 8  for  AUGMENT_TYPE && !AUGMENT_TYPE_8
     // all cases for !AUGMENT_TYPE
     {
-        DBGX(Checkpoint(qy, "t_list"));
+        DBGX(Checkpoint(qya, "t_list"));
       #ifdef AUGMENT_TYPE
       #ifdef LOOKUP
           #if defined(AUGMENT_TYPE_8) || (cnBitsInD1 == 8)
@@ -3203,7 +3203,7 @@ t_list:
                 > EXP(cnBitsLeftAtDl2) * 100)
             )
         {
-            DBGX(Checkpoint(qy, "T_LIST req cleanup"));
+            DBGX(Checkpoint(qya, "T_LIST req cleanup"));
             bCleanupRequested = 1; // goto cleanup when done
         }
               #endif // BITMAP
@@ -3323,7 +3323,7 @@ t_list_ua:
   #ifdef XX_LISTS
 t_xx_list:
     {
-        DBGX(Checkpoint(qy, "t_xx_list"));
+        DBGX(Checkpoint(qya, "t_xx_list"));
 
       #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
@@ -4509,7 +4509,7 @@ t_separate_t_null:
   #endif // SEPARATE_T_NULL || (cwListPopCntMax == 0)
 
 break_from_main_switch:;
-    DBGX(Checkpoint(qy, "exit switch stmt"));
+    DBGX(Checkpoint(qya, "exit switch stmt"));
 
     // Key is not present.
 #if defined(COUNT)
@@ -4547,6 +4547,7 @@ break_from_main_switch:;
         assert(pLn->ln_wRoot != wRoot);
         wRoot = pLn->ln_wRoot;
         nBLR = nBL;
+        DBGX(Checkpoint(qya, "goto insertAgain"));
         goto insertAgain;
     }
       #endif // _RETURN_NULL_TO_INSERT_AGAIN
@@ -4564,7 +4565,7 @@ break_from_main_switch:;
     return Success;
   #endif // B_JUDYL
 undo:;
-    DBGX(Checkpoint(qy, "undo"));
+    DBGX(Checkpoint(qya, "undo"));
 #endif // defined(INSERT)
 #if defined(REMOVE)
   #if !defined(RECURSIVE)
@@ -4580,7 +4581,7 @@ undo:;
   #endif // defined(INSERT) || defined(REMOVE)
     goto restart;
 restart:;
-        DBGX(Checkpoint(qy, "restart"));
+        DBGX(Checkpoint(qya, "restart"));
   #if defined(INSERT) || defined(REMOVE)
       #if !defined(RECURSIVE)
         nBL = nBLOrig;
@@ -4605,12 +4606,12 @@ restart:;
   #if defined(INSERT) || defined(REMOVE)
       #if defined(REMOVE)
 removeGutsAndCleanup:;
-    DBGX(Checkpoint(qy, "removeGutsAndCleanup"));
+    DBGX(Checkpoint(qya, "removeGutsAndCleanup"));
     RemoveGuts(qya, wKey);
       #endif // defined(REMOVE)
     goto cleanup;
 cleanup:;
-    DBGX(Checkpoint(qy, "cleanup"));
+    DBGX(Checkpoint(qya, "cleanup"));
     // Walk the tree again to see if we need to make any adjustments.
     // For insert our new pop may justify a bigger bitmap.
     // For remove we may need to pull back.

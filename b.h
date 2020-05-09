@@ -195,10 +195,23 @@
 #ifdef QP_PLN
   #define qfmt "nBL %2d pLn %p wRoot 0x%016zx nType %x pwr %p"
   #define qyp   nBL,    pLn,   wRoot,         nType,   pwr
+    #ifdef REMOTE_LNX
+  #define qafmt "nBL %2d pLn %p pwLnX %p wRoot 0x%016zx nType %x pwr %p"
+  #define qyap   nBL,    pLn,   pwLnX,   wRoot,         nType,   pwr
+    #endif // REMOTE_LNX
 #else // QP_PLN
   #define qfmt "nBL %2d pwRoot %p wRoot 0x%016zx nType %x pwr %p"
   #define qyp   nBL,    pwRoot,   wRoot,         nType,   pwr
+    #ifdef REMOTE_LNX
+  #define qafmt "nBL %2d pwRoot %p pwLnX %p wRoot 0x%016zx nType %x pwr %p"
+  #define qyap   nBL,    pwRoot,   pwLnX,   wRoot,         nType,   pwr
+    #endif // REMOTE_LNX
 #endif // QP_PLN else
+
+#ifndef REMOTE_LNX
+  #define qafmt  qfmt
+  #define qyap   qyp
+#endif // !REMOTE_LNX
 
 #if defined(_LNX) && defined(REMOTE_LNX)
   #define qpa_pwLnX      , Word_t* pwLnX
