@@ -8717,6 +8717,9 @@ InsertGuts(qpa, Word_t wKey, int nPos
         Word_t *pwRootUp = &pLnUp->ln_wRoot;
         // How are we supposed to determine nBW for
         // pLnUp without having nBLUp?
+      #ifdef REMOTE_LNX
+        Word_t* pwLnXUp = NULL;
+      #endif // REMOTE_LNX
         Word_t wPopCntUp = GetPopCnt(qyax(Up));
         //int nBLRUp = GetBLR(pwRootUp, nBLUp);
         int nBWUp = Get_nBW(pwRootUp);
