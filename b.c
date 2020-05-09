@@ -7297,19 +7297,16 @@ static Word_t*
   #else // B_JUDYL
 static void
   #endif // B_JUDYL
-InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos,
+InsertAtFullXxList(qpa, Word_t wKey, int nPopCnt, int nPos,
                    int nBLUp, Link_t *pLnUp
-  #ifdef _LNX
-                 , Word_t* pwLnXUp
-  #endif // _LNX
                    )
 
 {
-    qv; (void)nPopCnt; (void)nPos;
+    qva; (void)nPopCnt; (void)nPos;
+  #ifdef REMOTE_LNX
+    Word_t* pwLnXUp = pwLnX;
+  #endif // REMOTE_LNX
     (void)nBLUp;
-  #ifdef _LNX
-    (void)pwLnXUp;
-  #endif // _LNX
     DBGI(printf("# IAXL pLn %p\n", pLn));
     DBGI(printf("# IAXL pwr %p\n", pwr));
     int nBLR = gnListBLR(qy); (void)nBLR;
@@ -7348,7 +7345,8 @@ InsertAtFullXxList(qp, Word_t wKey, int nPopCnt, int nPos,
         nPos = -1;
     }
       #ifdef _LNX
-    Word_t* pwLnX = pwLnXUp; (void)pwLnX; // BUG?
+    assert(pwLnX == pwLnXUp);
+    //Word_t* pwLnX = pwLnXUp; (void)pwLnX; // BUG?
       #endif // _LNX
     BJL(return) InsertGuts(qya, wKey, nPos
       #ifdef CODE_XX_SW
@@ -7363,17 +7361,14 @@ static Word_t*
   #else // B_JUDYL
 static void
   #endif // B_JUDYL
-InsertAtFullUnalignedXxList(qp, Word_t wKey, int nPopCnt, int nPos,
+InsertAtFullUnalignedXxList(qpa, Word_t wKey, int nPopCnt, int nPos,
                             int nBLUp, Link_t* pLnUp
-  #ifdef _LNX
-                          , Word_t* pwLnXUp
-  #endif // _LNX
                             )
 {
-    qv; (void)nPopCnt; (void)nPos;
-  #ifdef _LNX
-    (void)pwLnXUp;
-  #endif // _LNX
+    qva; (void)nPopCnt; (void)nPos;
+  #ifdef REMOTE_LNX
+    Word_t* pwLnXUp = pwLnX;
+  #endif // REMOTE_LNX
     Word_t* pwRootUp = &pLnUp->ln_wRoot; (void)pwRootUp;
     Word_t wRootUp = *pwRootUp;
     DBGI(printf("# IAFUXL pLn %p\n", pLn));
@@ -8482,19 +8477,13 @@ copyWithInsertWord:
       #ifdef XX_LISTS
         if (nType == T_XX_LIST) {
             if (nDL_to_nBL(nDL) == nBL) {
-                BJL(pwValue =) InsertAtFullXxList(qy, wKey, wPopCnt, nPos,
+                BJL(pwValue =) InsertAtFullXxList(qya, wKey, wPopCnt, nPos,
                                                   nBLUp, pLnUp
-          #ifdef _LNX
-                                                , pwLnX
-          #endif // _LNX
                                                   );
             } else {
-                BJL(pwValue =) InsertAtFullUnalignedXxList(qy, wKey, wPopCnt,
+                BJL(pwValue =) InsertAtFullUnalignedXxList(qya, wKey, wPopCnt,
                                                            nPos,
                                                            nBLUp, pLnUp
-          #ifdef _LNX
-                                                         , pwLnX
-          #endif // _LNX
                                                            );
             }
             return BJL(pwValue);
