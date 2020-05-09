@@ -6708,16 +6708,17 @@ InsertAtPrefixMismatch(qpa, Word_t wKey, int nBLR)
     pLinks[nIndex].ln_wRoot = wRoot;
 
   #ifdef _LNX
+    Word_t* pwLnXNew = NULL;
     assert((pwLnX != NULL) || (nBL == cnBitsPerWord));
     if (pwLnX != NULL) {
         // Copy the link extension. When is it not correct?
         // Maybe when the link is changing from a skip to a non-skip?
         // Where is the new link extension?
       #ifdef REMOTE_LNX
-        Word_t* pwLnXNew = gpwLnX(qy, nLinksNew, nIndex);
+        pwLnXNew = gpwLnX(qy, nLinksNew, nIndex);
     //#error
       #else // REMOTE_LNX
-        Word_t* pwLnXNew = &pLinks[nIndex].ln_wX;
+        pwLnXNew = &pLinks[nIndex].ln_wX;
       #endif // REMOTE_LNX else
 // BUG? Should we have to test pwLnX here?
         *pwLnXNew = *pwLnX;
@@ -6750,8 +6751,9 @@ InsertAtPrefixMismatch(qpa, Word_t wKey, int nBLR)
     // Insert, Remove, Count, etc.?
     // BUG: We should be converting to unpacked bm in a lot more
     // situations than full pop.
+    Word_t* pwRootNew = &pLinks[nIndex].ln_wRoot;
     if ((wr_nType(wRoot) == T_BITMAP)
-        && (GetPopCnt(nBLR, &pLinks[nIndex].ln_wRoot) == EXP(nBLR)))
+        && (GetPopCnt(qyax(New)) == EXP(nBLR)))
     {
         set_wr_nType(pLinks[nIndex].ln_wRoot, T_UNPACKED_BM);
     }
