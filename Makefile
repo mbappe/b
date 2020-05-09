@@ -366,9 +366,11 @@ libbL.a: $(LIBBL_OBJS)
 
 # Targets 1, b1 and b1check link with libb1 to get Judy1 from libb1.a
 # and JudyL from libJudy.a
+# I've seen a recursive make use -w while the non-recursive one doesn't.
+# Can't we figure out a better way to do the links than a recursive make?
 1:
 	rm -f b1time b1check
-	make b1time b1check b check
+	$(MAKE) b1time b1check b check
 
 b1time: Judy1LHTime.c libb1.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DMIKEY_1 $(DEFINES) -o $@ $^ -lm
@@ -380,9 +382,10 @@ b1check: Judy1LHCheck.c libb1.a ${LIBJUDY}
 
 # Targets L, bL and bLcheck link with libbL to get JudyL from libbL.a
 # and Judy1 from libJudy.a
+# I've seen a recursive make use -w while the non-recursive one doesn't.
 L:
 	rm -f bLtime bLcheck
-	make bLtime bLcheck b check
+	$(MAKE) bLtime bLcheck b check
 
 bLtime: Judy1LHTime.c libbL.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DMIKEY_L $(DEFINES) -o $@ $^ -lm
@@ -395,7 +398,7 @@ bLcheck: Judy1LHCheck.c libbL.a ${LIBJUDY}
 # Targets j, jtime and jcheck link with libJudy.a
 j:
 	rm -f jtime jcheck
-	make jtime jcheck
+	$(MAKE) jtime jcheck
 
 jtime: Judy1LHTime.c ${LIBJUDY}
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
