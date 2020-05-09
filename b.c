@@ -1820,16 +1820,7 @@ NewSwitchX(qpa, Word_t wKey, int nBLR,
 #if defined(POP_WORD_IN_LINK)
         if (nBL < cnBitsPerWord)
 #endif // defined(POP_WORD_IN_LINK)
-        {
-#if defined(CODE_BM_SW)
-            if (nType == T_BM_SW) {
-                set_PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR, wPopCnt);
-            } else
-#endif // defined(CODE_BM_SW)
-            {
-                set_PWR_wPopCntBL(pwRoot, (Switch_t *)pwr, nBLR, wPopCnt);
-            }
-        }
+        { swPopCnt(qya, nBLR, wPopCnt); }
     }
 
   #ifdef SKIP_LINKS
