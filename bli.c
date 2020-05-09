@@ -33,8 +33,8 @@ CountSw(qpa,
     qva; (void)nLinks;
     int nBLR = gnBLR(qy);
     assert(wRoot != WROOT_NULL);
-    DBGC(printf("\n# CountSw nType %d nBLR %d nBW %d wIndex " OWx"\n",
-                nType, nBLR, nBW, wIndex));
+    DBGC(printf("\n# CountSw nType %d nBLR %d wIndex " OWx"\n",
+                nType, nBLR, wIndex));
     Word_t wPopCnt = 0;
     Word_t ww, wwLimit;
     Link_t *pLinks =
@@ -1989,6 +1989,7 @@ t_skip_to_bm_sw:
           #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 if (nBL >= cnBitsPerWord) {
                     int nBW = gnBW(qy, nBLR); // num bits decoded
+                    (void)nBW;
                     // Abuse CountSw into counting whole switch.
                     int nLinkCnt = BmSwLinkCnt(qy);
                     wPopCnt = CountSw(qya,
