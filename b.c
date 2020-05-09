@@ -1881,13 +1881,12 @@ Word_t*
 #else // defined(B_JUDYL) && defined(EMBED_KEYS)
 void
 #endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
-InflateBmSw(qpa, Word_t wKey, int nBLR, int nBLUp)
+InflateBmSw(qpa, Word_t wKey, int nBLR)
 {
     qva;
-    assert(nBLUp == nBL); // Can I get rid of nBLUp?
 
-    DBGI(printf("# InflateBmSw wKey " Owx" nBLR %d nBLUp %d\n",
-                wKey, nBLR, nBLUp));
+    DBGI(printf("# InflateBmSw wKey " Owx" nBLR %d nBL %d\n",
+                wKey, nBLR, nBL));
 
     int nBW = nBLR_to_nBW(nBLR);
 
@@ -1895,7 +1894,7 @@ InflateBmSw(qpa, Word_t wKey, int nBLR, int nBLUp)
   #if defined(CODE_XX_SW)
                                nBW,
   #endif // defined(CODE_XX_SW)
-                               T_SWITCH, nBLUp,
+                               T_SWITCH, nBL,
                                PWR_wPopCntBL(pwRoot,
                                              (BmSwitch_t *)pwr, nBLR));
     // NewSwitch installed the new wRoot at pwRoot.
@@ -1926,7 +1925,7 @@ InflateBmSw(qpa, Word_t wKey, int nBLR, int nBLUp)
     }
   #endif // REMOTE_LNX
 
-    OldSwitch(&wRoot, nBLUp, /* bBmSw */ 1, nLinkCnt);
+    OldSwitch(&wRoot, nBL, /* bBmSw */ 1, nLinkCnt);
 
   #ifdef B_JUDYL
   #ifdef EMBED_KEYS
@@ -2025,7 +2024,7 @@ NewLink(qpa, Word_t wKey, int nDLR, int nDLUp)
     // probably end up doing it before we have a chance to do it here
     // the vast majority of the time.
     if (InflateBmSwTest(qya)) {
-        InflateBmSw(qya, wKey, nBLR, nBLUp);
+        InflateBmSw(qya, wKey, nBLR);
     } else {
         // We replicate a bunch of newswitch here since
         // newswitch can create only empty bm sw.
@@ -3674,12 +3673,12 @@ InsertCleanup(qpa, Word_t wKey)
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
             // InflateBmSw may change pwValue of all embedded keys.
             Word_t *pwValueRet
-                = InflateBmSw(qya, wKey, nBLR, /* nBLUp */ nBL);
+                = InflateBmSw(qya, wKey, nBLR);
             if (pwValueRet != NULL) {
                 pwValue = pwValueRet;
             }
   #else // defined(B_JUDYL) && defined(EMBED_KEYS)
-            InflateBmSw(qya, wKey, nBLR, /* nBLUp */ nBL);
+            InflateBmSw(qya, wKey, nBLR);
   #endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
         }
     }
