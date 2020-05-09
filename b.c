@@ -1848,17 +1848,19 @@ NewSwitchX(Word_t *pwRoot, Word_t wKey, int nBLR,
 }
 
 static Word_t *
-NewSwitch(Word_t *pwRoot, Word_t wKey, int nBLR,
+NewSwitch(qp, Word_t wKey, int nBLR,
   #if defined(CODE_XX_SW)
           int nBWX,
   #endif // defined(CODE_XX_SW)
-          int nType, int nBL, Word_t wPopCnt)
+          int nTypeBase, int nBLDep, Word_t wPopCnt)
 {
+    qv;
+    assert(nBLDep == nBL);
     return NewSwitchX(pwRoot, wKey, nBLR,
   #if defined(CODE_XX_SW)
                       nBWX,
   #endif // defined(CODE_XX_SW)
-                      nType,
+                      nTypeBase,
   #ifdef BM_SW_FOR_REAL
                       /* nLinkCnt */ 1, // ignored if nType != T_BM_SW
   #endif // BM_SW_FOR_REAL
@@ -1890,7 +1892,7 @@ InflateBmSw(qpa, Word_t wKey, int nBLR)
 
     int nBW = nBLR_to_nBW(nBLR);
 
-    Word_t *pwrNew = NewSwitch(pwRoot, wKey, nBLR,
+    Word_t *pwrNew = NewSwitch(qy, wKey, nBLR,
   #if defined(CODE_XX_SW)
                                nBW,
   #endif // defined(CODE_XX_SW)
@@ -6456,7 +6458,7 @@ DoubleUp(qpa, // (nBL, pLn) of skip link to original switch
         // wRoot serves as our saved link
         assert(sizeof(Link_t) == sizeof(wRoot));
     }
-    NewSwitch(pwRoot, wKey, nBLRNew, nBWNew, T_SWITCH, nBL, wPopCnt);
+    NewSwitch(qy, wKey, nBLRNew, nBWNew, T_SWITCH, nBL, wPopCnt);
 
     DBGI(printf("\n# DoubleUp just after NewSwitch old tree "));
     DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
@@ -6634,7 +6636,7 @@ InsertAtPrefixMismatch(qpa, Word_t wKey, int nBLR)
     assert(nBLNew <= nBL);
     // NewSwitch changes *pwRoot (and the link containing it).
     // It does not change our local wRoot and pwr (or pwRoot).
-    pwSw = NewSwitch(pwRoot, wPrefix, nBLNew,
+    pwSw = NewSwitch(qy, wPrefix, nBLNew,
 #if defined(CODE_XX_SW)
                      nBWNew,
 #endif // defined(CODE_XX_SW)
@@ -6815,7 +6817,7 @@ DoubleDown(qpa, // (nBL, pLn) of link to original switch
 // This insert has already been counted in the switch.
 // wPopCnt is not the pop count of the list.
 // Should we call it wPopCntUp?
-    NewSwitch(pwRoot, wKey, nBLR, nBWNew, T_SWITCH, nBL, wPopCnt - 1);
+    NewSwitch(qy, wKey, nBLR, nBWNew, T_SWITCH, nBL, wPopCnt - 1);
 
     DBGI(printf("\n# DoubleDown just after NewSwitch new tree "));
     DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
@@ -6977,7 +6979,7 @@ InsertXxSw(qpa, // (nBL, pLn) of link to list
         assert(sizeof(Link_t) == sizeof(wRoot));
   #endif // !_LNX || REMOTE_LNX
     }
-    NewSwitch(pwRoot, wKey, nBLRUpNew, nBWRUpNew, T_SWITCH, nBL, nPopCnt);
+    NewSwitch(qy, wKey, nBLRUpNew, nBWRUpNew, T_SWITCH, nBL, nPopCnt);
 
     DBGI(printf("\n# InsertXxSw just after NewSwitch new tree "));
     DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
@@ -7178,7 +7180,7 @@ DoubleIt(qpa, // (nBL, pLn) of list
         assert(sizeof(Link_t) == sizeof(wRoot));
   #endif // !_LNX || REMOTE_LNX
     }
-    NewSwitch(pwRoot, wKey, nBL,
+    NewSwitch(qy, wKey, nBL,
 #if defined(CODE_XX_SW)
               nBW,
 #endif // defined(CODE_XX_SW)
@@ -7796,7 +7798,7 @@ newSkipToBitmap:;
             link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
         }
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        NewSwitch(pwRoot, wKey, nBLNew,
+        NewSwitch(qy, wKey, nBLNew,
 #if defined(CODE_XX_SW)
                   nBW,
 #endif // defined(CODE_XX_SW)

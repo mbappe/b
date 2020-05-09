@@ -84,7 +84,8 @@ for Judy in 1 L # R # L
 do
 for EOPT in -E --splay-key-bits=0xff00ffff \
                --splay-key-bits=0x0f0f0fff \
-               --splay-key-bits=0x0fff00ff
+               --splay-key-bits=0x0fff00ff \
+               --splay-key-bits=0x0f0f0fff
 do
 
 # -v and -h are incompatible
