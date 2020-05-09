@@ -1881,10 +1881,10 @@ Word_t*
 #else // defined(B_JUDYL) && defined(EMBED_KEYS)
 void
 #endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
-InflateBmSw(Word_t *pwRoot, Word_t wKey, int nBLR, int nBLUp)
+InflateBmSw(qpa, Word_t wKey, int nBLR, int nBLUp)
 {
-    Word_t wRoot = *pwRoot;
-    Word_t *pwr = wr_pwr(wRoot);
+    qva;
+    assert(nBLUp == nBL); // Can I get rid of nBLUp?
 
     DBGI(printf("# InflateBmSw wKey " Owx" nBLR %d nBLUp %d\n",
                 wKey, nBLR, nBLUp));
@@ -1959,6 +1959,7 @@ NewLink(qpa, Word_t wKey, int nDLR, int nDLUp)
     qva;
     int nBLR = nDL_to_nBL(nDLR);
     int nBLUp = nDL_to_nBL(nDLUp);
+    assert(nBLUp == nBL); // Can I get rid of nDLUp?
 
     DBGI(printf("NewLink(pLn %p wKey " OWx" nBLR %d)\n", pLn, wKey, nBLR));
     DBGI(printf("PWR_wPopCnt %" _fw"d\n",
@@ -2024,7 +2025,7 @@ NewLink(qpa, Word_t wKey, int nDLR, int nDLUp)
     // probably end up doing it before we have a chance to do it here
     // the vast majority of the time.
     if (InflateBmSwTest(qya)) {
-        InflateBmSw(pwRoot, wKey, nBLR, nBLUp);
+        InflateBmSw(qya, wKey, nBLR, nBLUp);
     } else {
         // We replicate a bunch of newswitch here since
         // newswitch can create only empty bm sw.
@@ -3673,12 +3674,12 @@ InsertCleanup(qpa, Word_t wKey)
   #if defined(B_JUDYL) && defined(EMBED_KEYS)
             // InflateBmSw may change pwValue of all embedded keys.
             Word_t *pwValueRet
-                = InflateBmSw(pwRoot, wKey, nBLR, /* nBLUp */ nBL);
+                = InflateBmSw(qya, wKey, nBLR, /* nBLUp */ nBL);
             if (pwValueRet != NULL) {
                 pwValue = pwValueRet;
             }
   #else // defined(B_JUDYL) && defined(EMBED_KEYS)
-            InflateBmSw(pwRoot, wKey, nBLR, /* nBLUp */ nBL);
+            InflateBmSw(qya, wKey, nBLR, /* nBLUp */ nBL);
   #endif // #else defined(B_JUDYL) && defined(EMBED_KEYS)
         }
     }
