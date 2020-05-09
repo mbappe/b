@@ -6423,11 +6423,11 @@ static Word_t*
   #else // B_JUDYL
 static void
   #endif // B_JUDYL
-DoubleUp(qp, // (nBL, pLn) of skip link to original switch
+DoubleUp(qpa, // (nBL, pLn) of skip link to original switch
          Word_t wKey, // key being inserted
          Word_t wPopCnt) // pop count of original sub tree at qp?
 {
-    qv; (void)wPopCnt;
+    qva; (void)wPopCnt;
 //fprintf(stderr, "\n# DoubleUp\n");
     int nBLR = gnBLR(qy);
     int nDLR = nBL_to_nDL(nBLR);
@@ -6574,7 +6574,7 @@ InsertAtPrefixMismatch(qpa, Word_t wKey, int nBLR)
 
   #ifdef USE_LOWER_XX_SW
     if (nBLNew - nBWNew < nBLR) {
-        return DoubleUp(qy, wKey, wPopCnt);
+        return DoubleUp(qya, wKey, wPopCnt);
     }
   #endif // USE_LOWER_XX_SW
 
