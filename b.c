@@ -7004,12 +7004,12 @@ InsertXxSw(qpa, // (nBL, pLn) of link to list
 #endif // USE_XX_SW
 #endif // XX_LISTS
 
-// Widen a switch.
+
+#ifdef CODE_XX_SW
+// Widen the switch containing qp.
 // Replace *pLnUp, which is the link to the switch containing qp, with a link
 // to a new, wider switch, and transfer the keys and values from the old
 // switch to the new switch, and insert wKey.
-#if defined(CODE_XX_SW)
-
   #ifdef B_JUDYL
 static Word_t*
   #else // B_JUDYL
@@ -7052,8 +7052,10 @@ DoubleIt(qpa, // (nBL, pLn) of list
         OldList(wr_pwr(wRoot), wPopCnt, nBL, T_LIST);
       #endif // defined(NO_TYPE_IN_XX_SW)
         // pLnUp is XX_SW; back up and replace it
+// This is where pLn gets changed.
         pLn = pLnUp;
         wRoot = pLn->ln_wRoot;
+// This is where pwRoot gets changed.
         pwRoot = &pLn->ln_wRoot;
         nType = wr_nType(wRoot);
         assert(tp_bIsXxSw(nType));
@@ -7064,6 +7066,7 @@ DoubleIt(qpa, // (nBL, pLn) of list
         // The only place we put XX_SW is nDL == 2.
         nDL = 2; // This is more accurately nDLR of the switch.
       #else // USE_XX_SW_ONLY_AT_DL2
+        assert(nDL == nBL_to_nDL(nBLOld)); // done above
         nDL = nBL_to_nDL(nBLOld);
       #endif // USE_XX_SW_ONLY_AT_DL2
         // We're not changing nBLR of the switch.
@@ -7075,6 +7078,7 @@ DoubleIt(qpa, // (nBL, pLn) of list
         }
       #endif // DEBUG
         assert(GetBLR(&pLnUp->ln_wRoot, nBLUp) == nDL_to_nBL(nDL));
+// This is where nBL gets changed.
         nBL = nDL_to_nBL(nDL); // This is more accurately nBLR.
         DBGI(printf("\nafter: nDL %d nBL %d nBLOld %d nBLUp %d\n",
                        nDL, nBL, nBLOld, nBLUp));
@@ -7229,11 +7233,13 @@ insertAll:;
             DBGI(printf("# wKey 0x%zx\n", wKey));
             DBGI(printf("# New tree before IA nIndex %d:\n", nIndex));
             DBGI(Dump(pwRoot, wKey, nBLOld));
-            assert(nBLOld == nBL);
+            int nBLSave = nBL;
+            nBL = nBLOld;
             InsertAll(qya,
                       &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot,
                       /*nBLOld*/ nBLR,
                       (wKey & ~NZ_MSK(nBL)) | ((Word_t)nIndex << nBLR));
+            nBL = nBLSave;
         }
 
 #if ! defined(SKIP_TO_XX_SW)
@@ -7278,8 +7284,7 @@ insertAll:;
     nBL = nBLOld;
     BJL(return) Insert(qy, wKey);
 }
-
-#endif // defined(CODE_XX_SW)
+#endif // CODE_XX_SW
 
 #ifdef XX_LISTS
   #ifdef B_JUDYL
