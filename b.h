@@ -7225,7 +7225,7 @@ SumPopCnt(qpa)
     qva;
     assert(nBL == cnBitsPerWord);
     nBL = cnBitsPerWord; // help the compiler
-    int nBLR = GetBLR(pwRoot, nBL);
+    int nBLR = GetBLR(pwRoot, nBL); (void)nBLR;
     int nBW = nBLR_to_nBW(nBLR);
     int nLinkCnt =
   #if defined(CODE_BM_SW)
