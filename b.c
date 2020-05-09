@@ -6240,12 +6240,13 @@ lastDigit:;
 // Insert each key from pwRootOld into pwRoot.  Then free pwRootOld.
 // wKey contains the common prefix.
 static void
-InsertAll(Word_t *pwRootOld, int nBLOld, Word_t wKey, Word_t *pwRoot, int nBL
+InsertAll(qp, Word_t *pwRootOld, int nBLOld, Word_t wKey
   #ifdef _LNX
         , Word_t* pwLnX
   #endif // _LNX
           )
 {
+    qv;
   #ifdef _LNX
     (void)pwLnX;
   #endif // _LNX
@@ -6351,9 +6352,6 @@ embeddedKeys:;
         printf("\n");
     }
   #endif // DEBUG_INSERT
-  #ifdef QP_PLN
-    Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
-  #endif // QP_PLN
       #ifdef USE_XX_SW_ONLY_AT_DL2
     if (nBLOld >= nDL_to_nBL(2)) // Splay can't handle it.
       #endif // USE_XX_SW_ONLY_AT_DL2
@@ -6882,7 +6880,7 @@ DoubleDown(qpa, // (nBL, pLn) of link to original switch
                 = (wKey & ~NZ_MSK(nBLR)) | ((Word_t)nIndex << nBLLoop);
             int nPopCntLoop = GetPopCnt(qyax(Loop));
             swPopCnt(qya, nBLR, gwPopCnt(qya, nBLR) - nPopCntLoop);
-            InsertAll(pwRootLoop, nBLLoop, wPrefix, pwRoot, nBL
+            InsertAll(qy, pwRootLoop, nBLLoop, wPrefix
       #ifdef _LNX
                     , pwLnX
       #endif // _LNX
@@ -7252,13 +7250,11 @@ insertAll:;
             DBGI(printf("# wKey 0x%zx\n", wKey));
             DBGI(printf("# New tree before IA nIndex %d:\n", nIndex));
             DBGI(Dump(pwRoot, wKey, nBLOld));
-            InsertAll(&pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot,
+            assert(nBLOld == nBL);
+            InsertAll(qy,
+                      &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot,
                       /*nBLOld*/ nBLR,
-                      (wKey & ~NZ_MSK(nBL)) | ((Word_t)nIndex << nBLR),
-                      pwRoot,
-// How are we going to get nBLOld from pLnUp?
-// Do we need it?  We need it for the call back into Insert.
-                      /* nBL */ nBLOld
+                      (wKey & ~NZ_MSK(nBL)) | ((Word_t)nIndex << nBLR)
       #ifdef _LNX
                     , pwLnX
       #endif // _LNX
@@ -7288,7 +7284,8 @@ insertAll:;
         // pop count. That's why we preserved the contents of
         // the link before overwriting it above.
         if (nBLOld < cnBitsPerWord) {
-            InsertAll(&link.ln_wRoot, nBLOld, wKey, pwRoot, nBLOld
+            assert(nBLOld == nBL);
+            InsertAll(qy, &link.ln_wRoot, nBLOld, wKey
       #ifdef _LNX
                     , pwLnX
       #endif // _LNX
@@ -7297,7 +7294,8 @@ insertAll:;
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
         {
             // *pwRoot now points to a switch
-            InsertAll(&wRoot, nBLOld, wKey, pwRoot, nBLOld
+            assert(nBLOld == nBL);
+            InsertAll(qy, &wRoot, nBLOld, wKey
       #ifdef _LNX
                     , pwLnX
       #endif // _LNX
@@ -7935,13 +7933,9 @@ newSkipToBitmap:;
         {
             //printf("# New tree before IA nIndex %d:\n", nIndex);
             //DBG(Dump(pwRoot, wKey, nBL));
-            InsertAll(&pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot,
+            InsertAll(qy, &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot,
                       nBLR,
-                      (wKey & ~MSK(nBLNew)) | (nIndex << nBLR),
-                      pwRoot,
-// How are we going to get nBL from pLnUp?
-// Do we need it?  We need it for the call back into Insert.
-                      nBL
+                      (wKey & ~MSK(nBLNew)) | (nIndex << nBLR)
       #ifdef _LNX
                     , pwLnX
       #endif // _LNX
@@ -7969,7 +7963,7 @@ newSkipToBitmap:;
         // pop count. That's why we preserved the contents of
         // the link before overwriting it above.
         if (nBL < cnBitsPerWord) {
-            InsertAll(&link.ln_wRoot, /* old */ nBL, wKey, pwRoot, nBL
+            InsertAll(qy, &link.ln_wRoot, /* old */ nBL, wKey
       #ifdef _LNX
                     , pwLnX
       #endif // _LNX
