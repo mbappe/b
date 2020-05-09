@@ -6784,16 +6784,13 @@ static Word_t*
   #else // B_JUDYL
 static void
   #endif // B_JUDYL
-DoubleDown(qp, // (nBL, pLn) of link to original switch
+DoubleDown(qpa, // (nBL, pLn) of link to original switch
            Word_t wKey, // key being inserted
            Word_t wPopCnt, // pop count of original sub tree at qp?
            int nBWNew
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-         , Word_t* pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
            )
 {
-    qv; (void)wPopCnt;
+    qva; (void)wPopCnt;
     int nBLR = gnBLR(qy);
     int nDLR = nBL_to_nDL(nBLR); (void)nDLR;
     int nBW = gnBW(qy, nBLR);
@@ -8172,12 +8169,9 @@ InsertAtList(qpa,
       #ifdef REMOTE_LNX
                 Word_t* pwLnXUp = NULL;
       #endif // REMOTE_LNX
-                BJL(pwValue =) DoubleDown(qyx(Up), wKey,
+                BJL(pwValue =) DoubleDown(qyax(Up), wKey,
                                           GetPopCnt(qyax(Up)),
                                           nBWRUpNew
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                        , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                           );
                 return BJL(pwValue);
             }
@@ -8571,12 +8565,9 @@ copyWithInsertWord:
       #ifdef REMOTE_LNX
             Word_t* pwLnXUp = NULL;
       #endif // REMOTE_LNX
-            BJL(pwValue =) DoubleDown(qyx(Up), wKey,
+            BJL(pwValue =) DoubleDown(qyax(Up), wKey,
                                       GetPopCnt(qyax(Up)),
                                       nBWRUpNew
-  #if defined(B_JUDYL) && defined(EMBED_KEYS)
-                                    , pwLnX
-  #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                       );
             return BJL(pwValue);
 #else // DOUBLE_DOWN
