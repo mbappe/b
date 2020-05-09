@@ -3372,18 +3372,38 @@ static inline Word_t
 gwPopCnt(qpa, int nBLR)
 {
     qva; (void)nBLR;
-    if (wRoot == WROOT_NULL) { return 0; }
+    assert(wRoot != WROOT_NULL);
+    assert(tp_bIsSwitch(nType));
+  #if 0
+    if (tp_bIsSwitch(wr_nType(WROOT_NULL)) && (wRoot == WROOT_NULL) {
+        return 0;
+    }
+  #endif
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     assert(nBL < cnBitsPerWord);
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-  #ifdef POP_WORD
-    Word_t wPopCnt = PWR_wPopWordBL(&pLn->ln_wRoot, pwr, nBLR);
-  #else // POP_WORD
     Word_t wPopCnt = PWR_wPopCntBL(&pLn->ln_wRoot, pwr, nBLR);
+  #ifndef POP_WORD
     if (wPopCnt == 0) {
         return NZ_MSK(nBLR) + 1; // Must handle nBLR == cnBitsPerWord.
     }
-  #endif // #else POP_WORD
+  #endif // !POP_WORD
+  #ifdef SW_POP_IN_LNX
+    if (nBL < cnBitsPerWord) {
+        // Still working on SW_POP_IN_LNX.
+        if (pwLnX == NULL) {
+            printf("\n# gwPopCnt pwLnX is NULL wPopCnt %zd nBL %d pwRoot %p nType %d nBLR %d\n",
+                   wPopCnt, nBL, pwRoot, nType, gnBLR(qy));
+        } else if (*pwLnX != wPopCnt) {
+            printf("\n# gwPopCnt *pwLnX %zd != wPopCnt %zd nBL %d pwRoot %p nType %d nBLR %d\n",
+                   *pwLnX, wPopCnt, nBL, pwRoot, nType, gnBLR(qy));
+        }
+        assert(pwLnX != NULL);
+        assert(*pwLnX == wPopCnt);
+    } else {
+        // We'll have to use SumPopCnt here.
+    }
+  #endif // SW_POP_IN_LNX
     return wPopCnt;
 }
 
@@ -3398,8 +3418,10 @@ swPopCnt(qpa, int nBLR, Word_t wPopCnt)
     set_PWR_wPopCntBL(&pLn->ln_wRoot, pwr, nBLR, wPopCnt);
   #ifdef SW_POP_IN_LNX
     if (pwLnX != NULL) {
-        assert(nBL != cnBitsPerWord);
-        *pwLnX = wPopCnt;
+        // We might have a bogus pwLnX here. We're not always careful.
+        if (nBL != cnBitsPerWord) {
+            *pwLnX = wPopCnt;
+        }
     }
   #endif // SW_POP_IN_LNX
 }
