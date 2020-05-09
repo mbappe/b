@@ -6939,11 +6939,11 @@ static Word_t*
   #else // B_JUDYL
 static void
   #endif // B_JUDYL
-InsertXxSw(qp, // (nBL, pLn) of link to list
+InsertXxSw(qpa, // (nBL, pLn) of link to list
            Word_t wKey, // key being inserted
            int nPopCnt) // pop count of list before insert
 {
-    qv; (void)nPopCnt;
+    qva; (void)nPopCnt;
     assert(nType == T_LIST); // Temp? What about T_LIST_UA?
     int nDL = nBL_to_nDL(nBL); (void)nDL; // temp limit
     assert(nBL == nDL_to_nBL(nDL)); // temp limit
@@ -8187,7 +8187,7 @@ InsertAtList(qpa,
             if (nBitCnt > cnBitsInD1)
             if (nBitCnt > nDL_to_nBL(nDL - 1))
             if (ListSlotCnt(wPopCnt, nBLR) >= (int)wPopCnt + 1) {
-                BJL(pwValue =) InsertXxSw(qy, wKey, wPopCnt);
+                BJL(pwValue =) InsertXxSw(qya, wKey, wPopCnt);
                 return BJL(pwValue);
             }
           }
