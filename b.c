@@ -7173,11 +7173,13 @@ DoubleIt(qpa, // (nBL, pLn) of list
         assert(sizeof(Link_t) == sizeof(wRoot));
   #endif // !_LNX || REMOTE_LNX
     }
-    NewSwitch(qya, wKey, nBL,
+    int nBLSave = nBL; nBL = nBLOld;
+    NewSwitch(qya, wKey, nBLSave,
 #if defined(CODE_XX_SW)
               nBW,
 #endif // defined(CODE_XX_SW)
               T_SWITCH, /* wPopCnt */ 0);
+    nBL = nBLSave;
 
 #if defined(CODE_XX_SW)
     if (nBL <= nDL_to_nBL(2)) {
@@ -7233,8 +7235,7 @@ insertAll:;
             DBGI(printf("# wKey 0x%zx\n", wKey));
             DBGI(printf("# New tree before IA nIndex %d:\n", nIndex));
             DBGI(Dump(pwRoot, wKey, nBLOld));
-            int nBLSave = nBL;
-            nBL = nBLOld;
+            int nBLSave = nBL; nBL = nBLOld;
             InsertAll(qya,
                       &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot,
                       /*nBLOld*/ nBLR,
