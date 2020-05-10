@@ -3405,10 +3405,12 @@ gwPopCnt(qpa, int nBLR)
     if (nBL < cnBitsPerWord) {
         // Still working on SW_POP_IN_LNX.
         if (pwLnX == NULL) {
-            printf("\n# gwPopCnt pwLnX is NULL wPopCnt %zd nBL %d pwRoot %p nType %d nBLR %d\n",
+            printf("\n# gwPopCnt pwLnX is NULL wPopCnt %zd nBL %d pwRoot %p"
+                       " nType %d nBLR %d\n",
                    wPopCnt, nBL, pwRoot, nType, gnBLR(qy));
         } else if (*pwLnX != wPopCnt) {
-            printf("\n# gwPopCnt *pwLnX %zd != wPopCnt %zd nBL %d pwRoot %p nType %d nBLR %d\n",
+            printf("\n# gwPopCnt *pwLnX %zd != wPopCnt %zd nBL %d pwRoot %p"
+                       " nType %d nBLR %d\n",
                    *pwLnX, wPopCnt, nBL, pwRoot, nType, gnBLR(qy));
         }
         assert(pwLnX != NULL);

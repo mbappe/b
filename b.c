@@ -6263,7 +6263,7 @@ embeddedKeys:;
                     nBLOld, wKey, nBL));
         Link_t *pLnOld = STRUCT_OF(pwRootOld, Link_t, ln_wRoot); (void)pLnOld;
         // wRootOld here, but new from IEL's perspective
-          #ifdef B_JUDYL
+          #ifdef REMOTE_LNX
         // pwRootOld is a link in an XX_SW. We don't know nBWOld.
         // This is a lot of work to get something we should be passing in
         // as pwValueOld or nBWOld or (nBLUpOld, pwRootUpOld) or qyx(UpOld).
@@ -6286,7 +6286,7 @@ embeddedKeys:;
         int nBLUp = nBLR; // nBLUpOld -- assumes DoubleDown
         Word_t *pwLnXOld = gpwLnX(qyx(Up), EXP(nBWUp), nDigitUp);
         (void)pwLnXOld;
-          #endif // B_JUDYL
+          #endif // REMOTE_LNX
         wRootOld = InflateEmbeddedList(qyax(Old), wKey);
         // If (nBLOld < nDL_to_nBL) Dump is going to think wRootOld is
         // embeddded keys.
