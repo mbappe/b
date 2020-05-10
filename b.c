@@ -7239,7 +7239,7 @@ insertAll:;
             InsertAll(qya,
                       &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot,
                       /*nBLOld*/ nBLR,
-                      (wKey & ~NZ_MSK(nBL)) | ((Word_t)nIndex << nBLR));
+                      (wKey & ~NZ_MSK(nBLSave)) | ((Word_t)nIndex << nBLR));
             nBL = nBLSave;
         }
 
