@@ -791,7 +791,6 @@ InsertRemove1(qp, Word_t wKey)
 
     int nBW;
     Link_t *pLnNew;
-    Word_t* pwLnXNew; (void)pwLnXNew;
 
     // wDigit needs this broad scope only for COUNT.
     // I wonder if it would help performance if we were to define this
@@ -812,10 +811,13 @@ InsertRemove1(qp, Word_t wKey)
 #endif // !defined(RECURSIVE)
 
     Link_t *pLnUp = NULL; (void)pLnUp;
+      #ifdef _LNX
+    Word_t* pwLnXUp = NULL; (void)pwLnXUp;
+      #endif // _LNX
 
     // nBLUp is used only for CODE_XX_SW and INSERT.
     // I think it will eventually be used for REMOVE.
-    int nBLUp = cnBitsPerWord; (void)nBLUp; // silence gcc
+    int nBLUp = 0; (void)nBLUp; // silence gcc
     // gcc complains that nBLUp may be used uninitialized with CODE_XX_SW.
 
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
@@ -823,18 +825,25 @@ InsertRemove1(qp, Word_t wKey)
     Word_t wPrefixMismatch = 0; (void)wPrefixMismatch;
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
   #ifdef _LNX
-    Word_t* pwLnX = NULL; (void)pwLnX;
-      #ifndef LOOKUP
-      #ifndef REMOTE_LNX
-      #ifndef _RETURN_NULL_TO_INSERT_AGAIN
-    // We should leave pwLnX NULL for nBL == cnBitsPerWord, but the code
-    // is not supposed to be using it in that case so we skip the test.
-    // I guess it is not quite as important as it would be if we were in
-    // LOOKUP here, but we're not.
-    pwLnX = &pLn->ln_wX;
-      #endif // _RETURN_NULL_TO_INSERT_AGAIN
-      #endif // ifndef REMOTE_LNX
-      #endif // ifndef LOOKUP
+    Word_t* pwLnX = NULL;
+    Word_t* pwLnXNew;
+      #ifdef REMOTE_LNX
+    // DoubleDown calls Insert not at the top.
+    // But high enough to get a valid pwLnX before we need it.
+    // Or not? SwIncr is going to fault if SW_POP_IN_LNX?
+    //assert(nBL >= cnBitsPerWord);
+    if (nBL < cnBitsPerWord) {
+        DBGX(Checkpoint(qya, "Insert Not-at-Top"));
+    }
+      #else // REMOTE_LNX
+    if (nBL < cnBitsPerWord) {
+         // Can we do this unconditionally for LOOKUP to save the test?
+         pwLnX = &pLn->ln_wX;
+    }
+      #endif // REMOTE_LNX else
+      #if defined(INSERT) || defined(REMOVE)
+    Word_t* pwLnXOrig = pwLnX;
+      #endif // INSERT || REMOVE
   #endif // _LNX
 #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrUp = pwrUp; // suppress "uninitialized" compiler warning
@@ -929,7 +938,7 @@ againAugType:;
 
   #ifdef INSERT
   #ifdef _RETURN_NULL_TO_INSERT_AGAIN
-BJL(insertAgain:)
+insertAgain:
   #endif // _RETURN_NULL_TO_INSERT_AGAIN
   #endif // INSERT
     nType = wr_nType(wRoot);
@@ -1849,8 +1858,11 @@ switchTail:;
         IF_COUNT(wPopCntSum += CountSw(qya, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
         // Save the previous link and advance to the next.
-        IF_NOT_LOOKUP(pLnUp = pLn);
         IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
+        IF_NOT_LOOKUP(pLnUp = pLn);
+      #ifdef _LNX
+        IF_NOT_LOOKUP(pwLnXUp = pwLnX);
+      #endif // _LNX
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
       #ifdef BITMAP
@@ -1945,8 +1957,11 @@ t_xx_sw:
         IF_COUNT(wPopCntSum += CountSw(qya, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
         // Save the previous link and advance to the next.
-        IF_NOT_LOOKUP(pLnUp = pLn);
         IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
+        IF_NOT_LOOKUP(pLnUp = pLn);
+      #ifdef _LNX
+        IF_NOT_LOOKUP(pwLnXUp = pwLnX);
+      #endif // _LNX
         IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
         SwAdvance(pqya, swapynew, nBW, &nBLR);
           #ifdef BITMAP
@@ -4527,21 +4542,82 @@ break_from_main_switch:;
     // InsertGuts is called with a pLn and nBL indicates the
     // bits that were not decoded in identifying pLn.  nBL
     // does not include any skip indicated in the type field of *pLn.
-  #ifdef B_JUDYL
-      #ifdef _RETURN_NULL_TO_INSERT_AGAIN
+  #ifdef _LNX
     assert((pwLnX != NULL) || (nBL == cnBitsPerWord));
+  #endif // _LNX
+  #ifdef REMOTE_LNX
+    assert((nBLUp < cnBitsPerWord) || (pwLnXUp == NULL));
+  #endif // REMOTE_LNX
+  #ifdef CODE_XX_SW
+    if (nBL >= cnBitsPerWord) {
+        assert(nBLUp == 0);
+        assert(pLnUp == NULL);
+      #ifdef _LNX
+        assert(pwLnXUp == NULL);
+      #endif // _LNX
+    } else {
+      #ifdef _RETURN_NULL_TO_INSERT_AGAIN
+        assert(nBLUp != 0);
+        assert(pLnUp != NULL);
       #endif // _RETURN_NULL_TO_INSERT_AGAIN
-  #endif // B_JUDYL
+      #ifdef _LNX
+      #if 0
+        // This assertion doesn't work for Insert not-at-top.
+        if ((nBLUp >= cnBitsPerWord) != (pwLnXUp == NULL)) {
+            printf("\n# nBLUp %d pwLnXUp %p\n", nBLUp, pwLnXUp);
+        }
+        assert((nBLUp >= cnBitsPerWord) == (pwLnXUp == NULL));
+      #endif
+      #endif // _LNX
+    }
+  #endif // CODE_XX_SW
     BJL(pwValue =)
+    BJ1(Status_t status =)
         InsertGuts(qya, wKey, nPos
       #if defined(CODE_XX_SW)
                  , pLnUp, nBLUp
+          #ifdef REMOTE_LNX
+                 , pwLnXUp
+          #endif // REMOTE_LNX
       #endif // defined(CODE_XX_SW)
                    );
-  #ifdef B_JUDYL
-      #ifdef _RETURN_NULL_TO_INSERT_AGAIN
-    if (pwValue == NULL) {
+    BJ1((void)status);
+  #ifndef _RETURN_NULL_TO_INSERT_AGAIN
+    BJL(assert(pwValue != NULL));
+    BJL(assert((pwValue & (sizeof(Word_t) - 1)) == 0));
+    BJ1(assert(status == Success));
+  #endif // _RETURN_NULL_TO_INSERT_AGAIN
+  #ifdef _RETURN_NULL_TO_INSERT_AGAIN
+    if (BJL(pwValue == NULL) BJ1(status == 0)) {
+      #ifdef _LNX
         assert((pwLnX != NULL) || (nBL == cnBitsPerWord));
+      #endif // _LNX
+// How do we know if InsertGuts wants us to reinsert at
+// (nBL, pLn/pwRoot) or at its parent? Or higher?
+// Because it has modified the parent. Or higher.
+
+// I wonder if we could just return -1, -2, ...
+// I would have said 1, 2, ... but Success == 1 for Judy1.
+// There are a lot of possible return values that are not valid pointers
+// to JudyL values.
+
+// I wonder if we could undo and then reinsert at the top?
+// Do we have a valid enough tree to do the undo?
+// Would the undo leave the place holder in place?
+
+// I wonder if InsertGuts could call Remove (which would fail, but would
+// undo the counts) before calling Insert?
+// Could it initiate Remove in the middle of the tree?
+// Then do Insert from the same spot?
+// If InsertGuts calls Remove, then Remove will fail and all the count
+// decrementing it does will be undone in an undo phase.
+// No good.
+
+// How about having InsertGuts pass information back using pLn
+// by not freeing pLn and having Insert free it?
+
+// How about having InsertGuts call Insert using (nBLUp, pLnUp)?
+
         // How do we make sure we're not reinserting into a switch or leaf
         // which has already counted the insert before InsertGuts was called?
         assert(pLn->ln_wRoot != wRoot);
@@ -4549,8 +4625,30 @@ break_from_main_switch:;
         nBLR = nBL;
         DBGX(Checkpoint(qya, "goto insertAgain"));
         goto insertAgain;
+    } else if (BJL(pwValue == (Word_t*)-1) BJ1((int)status == -1)) {
+// What about pop?
+// Do we want to subract one in some cases and not in others?
+        DBGX(Checkpoint(qya, "goto insertAgain Up"));
+        nBL = nBLUp;
+        pLn = pLnUp;
+      #ifndef QP_PLN
+        pwRoot = &pLnUp->ln_wRoot;
+      #endif // !QP_PLN
+      #ifdef _LNX
+        pwLnX = pwLnXUp;
+      #endif // LNX
+        DBGX(Checkpoint(qya, "goto insertAgain Up"));
+        wRoot = pLnUp->ln_wRoot;
+        nBLR = nBLUp;
+// How do we reset nBLUp, pLnUp, pLnXUp?
+        nBLUp = 0; pLnUp = NULL;
+      #ifdef _LNX
+        pwLnXUp = NULL;
+      #endif // LNX
+        goto insertAgain;
     }
-      #endif // _RETURN_NULL_TO_INSERT_AGAIN
+  #endif // _RETURN_NULL_TO_INSERT_AGAIN
+  #ifdef B_JUDYL
     DBGI(printf("Initializing pwValue %p for wKey 0x%zx\n", pwValue, wKey));
     *pwValue = 0;
   #endif // B_JUDYL
@@ -4589,10 +4687,9 @@ restart:;
           #ifndef QP_PLN
         pwRoot = &pLnOrig->ln_wRoot;
           #endif // !QP_PLN
-          #ifdef SW_POP_IN_LNX
-        // Isn't right for nBL < cnBitsPerWord but maybe we don't use it.
-        pwLnX = NULL;
-          #endif // SW_POP_IN_LNX
+          #ifdef _LNX
+        pwLnX = pwLnXOrig;
+          #endif // _LNX
         wRoot = pLn->ln_wRoot;
         goto top;
     }

@@ -228,8 +228,12 @@
   #define qpa_pwLnXx(x)
   #define qya_pwLnXx(x)
     #ifdef _LNX
-  #define qva_pwLnX      Word_t* pwLnX    = &pLn   ->ln_wX; (void)pwLnX
-  #define qva_pwLnXx(x)  Word_t* pwLnX##x = &pLn##x->ln_wX; (void)pwLnX##x
+  #define qva_pwLnX \
+      Word_t* pwLnX    = (nBL < cnBitsPerWord) ? &pLn   ->ln_wX : NULL; \
+      (void)pwLnX
+  #define qva_pwLnXx(x) \
+      Word_t* pwLnX##x = (nBL < cnBitsPerWord) ? &pLn##x->ln_wX : NULL; \
+      (void)pwLnX##x
     #else // _LNX
   #define qva_pwLnX
   #define qva_pwLnXx(x)
@@ -3381,44 +3385,60 @@ gwPrefix(qp)
 #define cnBitsPreListSwPopM1 cnBitsListSwPopM1
 #define cnLsbPreListSwPopM1 (cnBitsPerWord - cnBitsListSwPopM1)
 
+  #ifdef B_JUDYL
+    #define GetPopCnt  GetPopCntL
+    #define CountSwLoop  CountSwLoopL
+    #define SumPopCnt  SumPopCntL
+  #else // B_JUDYL
+    #define GetPopCnt  GetPopCnt1
+    #define CountSwLoop  CountSwLoop1
+    #define SumPopCnt  SumPopCnt1
+  #endif // #else B_JUDYL
+
+#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+static Word_t SumPopCnt(qpa);
+#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+
 static inline Word_t
 gwPopCnt(qpa, int nBLR)
 {
     qva; (void)nBLR;
-    assert(wRoot != WROOT_NULL);
     assert(tp_bIsSwitch(nType));
+    assert(wRoot != WROOT_NULL); // May be wrong for WROOT_NULL_IS_SWITCH.
   #if 0
     if (tp_bIsSwitch(wr_nType(WROOT_NULL)) && (wRoot == WROOT_NULL) {
         return 0;
     }
   #endif
-  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    assert(nBL < cnBitsPerWord);
-  #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    Word_t wPopCnt = PWR_wPopCntBL(&pLn->ln_wRoot, pwr, nBLR);
-  #ifndef POP_WORD
-    if (wPopCnt == 0) {
-        return NZ_MSK(nBLR) + 1; // Must handle nBLR == cnBitsPerWord.
-    }
-  #endif // !POP_WORD
   #ifdef SW_POP_IN_LNX
     if (nBL < cnBitsPerWord) {
-        // Still working on SW_POP_IN_LNX.
-        if (pwLnX == NULL) {
-            printf("\n# gwPopCnt pwLnX is NULL wPopCnt %zd nBL %d pwRoot %p"
-                       " nType %d nBLR %d\n",
-                   wPopCnt, nBL, pwRoot, nType, gnBLR(qy));
-        } else if (*pwLnX != wPopCnt) {
-            printf("\n# gwPopCnt *pwLnX %zd != wPopCnt %zd nBL %d pwRoot %p"
-                       " nType %d nBLR %d\n",
-                   *pwLnX, wPopCnt, nBL, pwRoot, nType, gnBLR(qy));
-        }
-        assert(pwLnX != NULL);
-        assert(*pwLnX == wPopCnt);
-    } else {
-        // We'll have to use SumPopCnt here.
+        assert((PWR_wPopCntBL(pwRoot, pwr, nBLR) & NZ_MSK(nBLR)) == (*pwLnX & NZ_MSK(nBLR)));
+        return *pwLnX;
     }
+    assert(pwLnX == NULL);
+    // For now, while we still might have a redundant pop count field in
+    // the switch, we prefer it to SumPopCnt.
   #endif // SW_POP_IN_LNX
+  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    if (nBL >= cnBitsPerWord) {
+        return SumPopCnt(qya);
+    }
+  #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    // This assertion blows because of a DEBUG call from swPopCnt.
+    // Can we restore it if we clean up swPopCnt?
+    // Or do we want to handle this case anyway so the caller
+    // doesn't have to worry about it by using a wrapper or something?
+    //assert(nBL < cnBitsPerWord);
+    Word_t wPopCnt = PWR_wPopCntBL(pwRoot, pwr, nBLR);
+  #ifndef POP_WORD
+    if (wPopCnt == 0) {
+        // I wonder if we should add a parameter to caller can tell
+        // us how to disambiguate 0.
+        // Do we ever have 0 that is not WROOT_NULL?
+        // !WROOT_NULL_IS_SWITCH?
+        wPopCnt = NZ_MSK(nBLR) + 1; // Must handle nBLR == cnBitsPerWord.
+    }
+  #endif // !POP_WORD
     return wPopCnt;
 }
 
@@ -3427,18 +3447,26 @@ swPopCnt(qpa, int nBLR, Word_t wPopCnt)
 {
     qva; (void)nBLR;
     assert(tp_bIsSwitch(nType));
+    // NewSwitchX calls swPopCnt with wPopCnt == 0.
+    //assert(wPopCnt != 0);
   #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     assert(nBL < cnBitsPerWord);
   #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+    // Does this work for wPopCnt == EXP(nBLR)? Yes.
+    // set_PWR_wPopCntBL masks off the high bits if appropriate, i.e.
+    // if !POP_WORD.
     set_PWR_wPopCntBL(&pLn->ln_wRoot, pwr, nBLR, wPopCnt);
   #ifdef SW_POP_IN_LNX
+    // We could probably just ignore swPopCnt if nBL < cnBitsPerWord.
+    //assert(nBL < cnBitsPerWord);
     if (pwLnX != NULL) {
-        // We might have a bogus pwLnX here. We're not always careful.
-        if (nBL != cnBitsPerWord) {
-            *pwLnX = wPopCnt;
-        }
+        assert(nBL < cnBitsPerWord);
+        *pwLnX = wPopCnt;
+    } else {
+        assert(nBL == cnBitsPerWord);
     }
   #endif // SW_POP_IN_LNX
+    assert((gwPopCnt(qya, nBLR) & NZ_MSK(nBLR)) == (wPopCnt & NZ_MSK(nBLR)));
 }
 
 static inline int
@@ -3759,20 +3787,6 @@ snListSwPop(qp, int nPopCnt)
     (assert(wr_pwr(*(_pwRoot)) == (_pwr)), \
     Set_xListPopCnt((_pwRoot), (_nBL), (_cnt)))
 
-  #ifdef B_JUDYL
-    #define GetPopCnt  GetPopCntL
-    #define CountSwLoop  CountSwLoopL
-    #define SumPopCnt  SumPopCntL
-  #else // B_JUDYL
-    #define GetPopCnt  GetPopCnt1
-    #define CountSwLoop  CountSwLoop1
-    #define SumPopCnt  SumPopCnt1
-  #endif // #else B_JUDYL
-
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-static Word_t SumPopCnt(qpa);
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-
 #ifdef CODE_BM_SW
 
 // Bitmap switches are meant to handle data that would otherwise cause us to
@@ -3898,17 +3912,23 @@ Status_t
 InsertGuts(qpa, Word_t wKey, int nPos
   #if defined(CODE_XX_SW)
          , Link_t *pLnUp, int nBLUp
+      #ifdef REMOTE_LNX
+         , Word_t* pwLnXUp
+      #endif // REMOTE_LNX
   #endif // defined(CODE_XX_SW)
            );
 
 #ifdef B_JUDYL
 Word_t*
 #else // B_JUDYL
-void
+Status_t
 #endif // B_JUDYL
 InsertAtList(qpa, Word_t wKey, int nPos
   #if defined(CODE_XX_SW)
            , Link_t *pLnUp, int nBLUp
+      #ifdef REMOTE_LNX
+         , Word_t* pwLnXUp
+      #endif // REMOTE_LNX
   #endif // defined(CODE_XX_SW)
              );
 

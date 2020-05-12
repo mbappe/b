@@ -1954,6 +1954,7 @@ NewLink(qpa, Word_t wKey, int nDLR, int nDLUp)
     DBGI(printf("NewLink(pLn %p wKey " OWx" nBLR %d)\n", pLn, wKey, nBLR));
     DBGI(printf("PWR_wPopCnt %" _fw"d\n",
          PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR)));
+    DBGI(printf("gwPopCnt %zd\n", gwPopCnt(qya, nBL)));
 
 #if defined(BM_IN_LINK)
     assert(nBLR != cnBitsPerWord);
@@ -1978,7 +1979,6 @@ NewLink(qpa, Word_t wKey, int nDLR, int nDLUp)
     }
     // Now we know how many links were in the old switch.
 
-    // sizeof(BmSwitch_t) includes one link; add the others
     unsigned nWordsOld
          = (sizeof(BmSwitch_t)
 #if defined(CODE_BM_SW) && !defined(BM_IN_LINK)
@@ -2007,13 +2007,14 @@ NewLink(qpa, Word_t wKey, int nDLR, int nDLUp)
     // Plenty.
 
     // Does this include the key were inserting now?  I think it does.
-    Word_t wPopCntKeys = PWR_wPopCntBL(pwRoot, (BmSwitch_t *)pwr, nBLR);
+    Word_t wPopCntKeys = gwPopCnt(qya, nBLR);
     (void)wPopCntKeys;
+  #ifdef SW_POP_IN_LNX
+    assert(gwPopCnt(qya, nBLR) == wPopCntKeys);
+  #endif // SW_POP_IN_LNX
 
-    // Should we consider uncompressing here? Or rely on InsertCleanup?
-    // It's probably more efficient to do it here, but InsertCleanup will
-    // probably end up doing it before we have a chance to do it here
-    // the vast majority of the time.
+    // Should we uncompress here? Or rely on InsertCleanup?
+    // It's probably more efficient to do it here.
     if (InflateBmSwTest(qya)) {
         InflateBmSw(qya, wKey, nBLR);
     } else {
@@ -2852,11 +2853,13 @@ embeddedKeys:;
                 // wPopCnt = EXP(nBLR);
             }
             printf(" wr_wPopCnt %3" _fw"u", wPopCnt);
+            assert(nBLR == gnBLR(qy));
   #ifdef SW_POP_IN_LNX
             printf(" pwLnX %p", pwLnX);
             if (pwLnX != NULL) {
                 printf(" wLnX %zd", *pwLnX);
             }
+            assert(gwPopCnt(qya, nBLR) == wPopCnt);
   #endif // SW_POP_IN_LNX
   #ifdef SKIP_LINKS
             printf(" wr_wKey " OWx,
@@ -5022,6 +5025,8 @@ insertAll:
 
   #ifdef BM_SW_FOR_REAL
     if (bIsBmSw) {
+        //DBGI(printf("\n# Just before unstaging "));
+        //DBGI(Dump(pwRootLast, wKey, cnBitsPerWord));
         Link_t linkStaged = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
         int nBLStaged = nBL; (void)nBLStaged;
         Link_t *pLnStaged = &linkStaged; (void)pLnStaged;
@@ -5034,8 +5039,10 @@ insertAll:
             // came in is suitable.
             // How do we know the switch passed in has exactly one link?
             assert(nLinkCntOrig == 1);
-            *pLn = linkOrig;
-            pwr = wr_pwr(pLn->ln_wRoot);
+            // Restore original pwr and link count.
+            // Do not overwrite *pwLnX in case SW_POP_IN_LNX && NO_REMOTE_LNX.
+            pLn->ln_wRoot = linkOrig.ln_wRoot; // Both? Why?
+            pwr = wr_pwr(linkOrig.ln_wRoot);
             // Pop count will be updated when we copy the switch.
         } else {
             OldSwitch(&linkOrig.ln_wRoot, nBL, /*bBmSw*/ 1, /*nLinks*/ 1);
@@ -5075,7 +5082,7 @@ insertAll:
 #ifdef B_JUDYL
 static Word_t*
 #else // B_JUDYL
-static void
+static Status_t
 #endif // #else B_JUDYL
 SplayWithInsert(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey, int nPos)
 {
@@ -6165,8 +6172,10 @@ lastDigit:;
         if (nLinkCnt == 1) {
             // Save the work of OldSwitch/NewSwitch if the switch that
             // came in is suitable.
-            *pLn = linkOrig;
-            pwr = wr_pwr(pLn->ln_wRoot);
+            // Restore original pwr and link count.
+            // Do not overwrite *pwLnX in case SW_POP_IN_LNX && NO_REMOTE_LNX.
+            pLn->ln_wRoot = linkOrig.ln_wRoot; // Both? Why?
+            pwr = wr_pwr(linkOrig.ln_wRoot);
             // Pop count will be updated when we copy the switch.
         } else {
             OldSwitch(&linkOrig.ln_wRoot, nBL, /*bBmSw*/ 1, /*nLinks*/ 1);
@@ -6177,7 +6186,8 @@ lastDigit:;
                              T_BM_SW, nLinkCnt, wPopCnt);
         }
         // copy bitmap
-        memcpy(PWR_pwBm(pwRoot, pwr), PWR_pwBm(pwRootStaged, pwrStaged, nBW),
+        memcpy(PWR_pwBm(pwRoot, pwr, nBW),
+               PWR_pwBm(pwRootStaged, pwrStaged, nBW),
                N_WORDS_SW_BM(nBW) * sizeof(Word_t));
         // copy Switch_t
         *(Switch_t*)pwr = *(Switch_t*)pwrStaged;
@@ -6210,6 +6220,9 @@ lastDigit:;
   #if defined(CODE_XX_SW)
                        , /*pLnUp*/ tp_bIsXxSw(nType) ? pLn : NULL
                        , /*pBLUp*/ nBL
+      #ifdef REMOTE_LNX
+                       , pwLnX
+      #endif // REMOTE_LNX
   #endif // defined(CODE_XX_SW)
                          );
     }
@@ -6223,7 +6236,7 @@ lastDigit:;
     DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
     BJL(return pwValue);
-    // Caller is going to insert wKey when we return.
+    BJ1(return Success);
 }
 #endif // SPLAY_WITH_INSERT
 
@@ -6403,7 +6416,7 @@ embeddedKeys:;
   #ifdef B_JUDYL
 static Word_t*
   #else // B_JUDYL
-static void
+static Status_t
   #endif // B_JUDYL
 DoubleUp(qpa, // (nBL, pLn) of skip link to original switch
          Word_t wKey, // key being inserted
@@ -6486,7 +6499,7 @@ DoubleUp(qpa, // (nBL, pLn) of skip link to original switch
     DBGI(printf("# DoubleUp just before final Insert "));
     DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
-    BJL(return) Insert(qy, wKey);
+    return Insert(qy, wKey);
 }
 #endif // USE_LOWER_XX_SW
 
@@ -6496,7 +6509,7 @@ DoubleUp(qpa, // (nBL, pLn) of skip link to original switch
 #ifdef B_JUDYL
 static Word_t *
 #else // B_JUDYL
-static void
+static Status_t
 #endif // B_JUDYL
 InsertAtPrefixMismatch(qpa, Word_t wKey, int nBLR)
 {
@@ -6688,22 +6701,20 @@ InsertAtPrefixMismatch(qpa, Word_t wKey, int nBLR)
   #endif // defined(CODE_BM_SW)
                    pwr_pLinks((  Switch_t *)pwSw) ;
     pLinks[nIndex].ln_wRoot = wRoot;
-
   #ifdef _LNX
-    Word_t* pwLnXNew = NULL;
-    assert((pwLnX != NULL) || (nBL == cnBitsPerWord));
+    Word_t* pwLnXNew = gpwLnX(qy, nLinksNew, nIndex);
     if (pwLnX != NULL) {
+        assert(nBL < cnBitsPerWord);
         // Copy the link extension. When is it not correct?
         // Maybe when the link is changing from a skip to a non-skip?
         // Where is the new link extension?
-      #ifdef REMOTE_LNX
-        pwLnXNew = gpwLnX(qy, nLinksNew, nIndex);
-    //#error
-      #else // REMOTE_LNX
-        pwLnXNew = &pLinks[nIndex].ln_wX;
-      #endif // REMOTE_LNX else
 // BUG? Should we have to test pwLnX here?
         *pwLnXNew = *pwLnX;
+    } else {
+        assert(nBL >= cnBitsPerWord);
+      #ifdef SW_POP_IN_LNX
+        *pwLnXNew = wPopCnt;
+      #endif // SW_POP_IN_LNX
     }
   #endif // _LNX
 
@@ -6746,11 +6757,11 @@ InsertAtPrefixMismatch(qpa, Word_t wKey, int nBLR)
                     " for prefix mismatch.\n"));
     DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
 
-    BJL(return)
   #ifdef _RETURN_NULL_TO_INSERT_AGAIN
-        NULL; // call InsertGuts again
-  #endif // _RETURN_NULL_TO_INSERT_AGAIN
-        Insert(qy, wKey);
+    return 0; // call InsertGuts again
+  #else // _RETURN_NULL_TO_INSERT_AGAIN
+    return Insert(qy, wKey);
+  #endif // _RETURN_NULL_TO_INSERT_AGAIN else
 }
 #endif // SKIP_LINKS
 
@@ -6764,7 +6775,7 @@ InsertAtPrefixMismatch(qpa, Word_t wKey, int nBLR)
   #ifdef B_JUDYL
 static Word_t*
   #else // B_JUDYL
-static void
+static Status_t
   #endif // B_JUDYL
 DoubleDown(qpa, // (nBL, pLn) of link to original switch
            Word_t wKey, // key being inserted
@@ -6905,7 +6916,11 @@ DoubleDown(qpa, // (nBL, pLn) of link to original switch
     // will be needed by bumping ListPopCntMax by 1 for each half-digit.
     // Would be nice if the insert didn't require a new malloc for the list.
 // Can't we do a faster insert here?
-    BJL(return) Insert(qy, wKey);
+  #ifdef _RETURN_NULL_TO_INSERT_AGAIN
+    return BJL((Word_t*))-1; // call InsertGuts again
+  #else // _RETURN_NULL_TO_INSERT_AGAIN
+    return Insert(qy, wKey);
+  #endif // _RETURN_NULL_TO_INSERT_AGAIN else
 }
 
 // Insert a narrow switch before the list and convert the list to a shared
@@ -6914,7 +6929,7 @@ DoubleDown(qpa, // (nBL, pLn) of link to original switch
   #ifdef B_JUDYL
 static Word_t*
   #else // B_JUDYL
-static void
+static Status_t
   #endif // B_JUDYL
 InsertXxSw(qpa, // (nBL, pLn) of link to list
            Word_t wKey, // key being inserted
@@ -6996,9 +7011,7 @@ InsertXxSw(qpa, // (nBL, pLn) of link to list
 
     // We try to trigger the InsertXxSw on an insert before the list is full.
     // Would be nice if the insert didn't require a new malloc for the list.
-    BJL(Word_t* pwValue);
-    BJL(pwValue =) Insert(qy, wKey);
-    BJL(return pwValue);
+    return Insert(qy, wKey);
 }
 
 #endif // USE_XX_SW
@@ -7013,7 +7026,7 @@ InsertXxSw(qpa, // (nBL, pLn) of link to list
   #ifdef B_JUDYL
 static Word_t*
   #else // B_JUDYL
-static void
+static Status_t
   #endif // B_JUDYL
 DoubleIt(qpa, // (nBL, pLn) of list
          Word_t wKey, // key being inserted
@@ -7283,7 +7296,7 @@ insertAll:;
     }
 
     nBL = nBLOld;
-    BJL(return) Insert(qy, wKey);
+    return Insert(qy, wKey);
 }
 #endif // CODE_XX_SW
 
@@ -7291,17 +7304,17 @@ insertAll:;
   #ifdef B_JUDYL
 static Word_t*
   #else // B_JUDYL
-static void
+static Status_t
   #endif // B_JUDYL
 InsertAtFullXxList(qpa, Word_t wKey, int nPopCnt, int nPos,
                    int nBLUp, Link_t *pLnUp
+          #ifdef REMOTE_LNX
+                 , Word_t* pwLnXUp
+          #endif // REMOTE_LNX
                    )
 
 {
     qva; (void)nPopCnt; (void)nPos;
-  #ifdef REMOTE_LNX
-    Word_t* pwLnXUp = pwLnX;
-  #endif // REMOTE_LNX
     (void)nBLUp;
     DBGI(printf("# IAXL pLn %p\n", pLn));
     DBGI(printf("# IAXL pwr %p\n", pwr));
@@ -7326,8 +7339,7 @@ InsertAtFullXxList(qpa, Word_t wKey, int nPopCnt, int nPos,
 
     // We need to splay the XX list into the links in the full-width switch.
   #ifdef SPLAY_WITH_INSERT
-    BJL(return)
-        SplayWithInsert(qyax(Up), /* pwRootOld */ &wRoot, nBL, wKey, nPos);
+    return SplayWithInsert(qyax(Up), /* pwRootOld */ &wRoot, nBL, wKey, nPos);
   #else // SPLAY_WITH_INSERT
     //printf("nBLR before splay %d\n", nBLR);
     Splay(qyax(Up), &wRoot, nBL, wKey);
@@ -7340,31 +7352,30 @@ InsertAtFullXxList(qpa, Word_t wKey, int nPopCnt, int nPos,
     } else {
         nPos = -1;
     }
-      #ifdef _LNX
-    assert(pwLnX == pwLnXUp);
-    //Word_t* pwLnX = pwLnXUp; (void)pwLnX; // BUG?
-      #endif // _LNX
-    BJL(return) InsertGuts(qya, wKey, nPos
+    return InsertGuts(qya, wKey, nPos
       #ifdef CODE_XX_SW
-                         , pLnUp, nBLUp
+                    , pLnUp, nBLUp
+          #ifdef REMOTE_LNX
+                    , pwLnXUp
+          #endif // REMOTE_LNX
       #endif // CODE_XX_SW
-                           );
+                      );
   #endif // #ifndef SPLAY_WITH_INSERT
 }
 
   #ifdef B_JUDYL
 static Word_t*
   #else // B_JUDYL
-static void
+static Status_t
   #endif // B_JUDYL
 InsertAtFullUnalignedXxList(qpa, Word_t wKey, int nPopCnt, int nPos,
                             int nBLUp, Link_t* pLnUp
+  #ifdef REMOTE_LNX
+                          , Word_t* pwLnXUp
+  #endif // REMOTE_LNX
                             )
 {
     qva; (void)nPopCnt; (void)nPos;
-  #ifdef REMOTE_LNX
-    Word_t* pwLnXUp = pwLnX;
-  #endif // REMOTE_LNX
     Word_t* pwRootUp = &pLnUp->ln_wRoot; (void)pwRootUp;
     Word_t wRootUp = *pwRootUp;
     DBGI(printf("# IAFUXL pLn %p\n", pLn));
@@ -7386,12 +7397,15 @@ InsertAtFullUnalignedXxList(qpa, Word_t wKey, int nPopCnt, int nPos,
 
   #ifdef SPLAY_WITH_INSERT
     // We need to splay the XX list into the links in the full-width switch.
-    BJL(return)
-        SplayWithInsert(qyax(Up), /* pwRootOld */ &wRoot, nBL, wKey, nPos);
+    return SplayWithInsert(qyax(Up), /* pwRootOld */ &wRoot, nBL, wKey, nPos);
   #else // SPLAY_WITH_INSERT
     Splay(qyax(Up), /* pwRootOld */ &wRoot, nBL, wKey);
     swPopCnt(qyax(Up), nBLRUp, gwPopCnt(qyax(Up), nBLRUp) - 1);
-    BJL(return) Insert(qyx(Up), wKey);
+      #ifdef _RETURN_NULL_TO_INSERT_AGAIN
+    return BJL((Word_t*))-1;
+      #else // _RETURN_NULL_TO_INSERT_AGAIN
+    return Insert(qyx(Up), wKey);
+      #endif // _RETURN_NULL_TO_INSERT_AGAIN
   #endif // #else SPLAY_WITH_INSERT
 }
 #endif // XX_LISTS
@@ -7447,7 +7461,7 @@ InsertAtFullUnalignedXxList(qpa, Word_t wKey, int nPopCnt, int nPos,
 #ifdef B_JUDYL
 static Word_t*
 #else // B_JUDYL
-static void
+static Status_t
 #endif // B_JUDYL
 TransformList(qpa,
               Word_t wKey,
@@ -7511,7 +7525,6 @@ TransformList(qpa,
         DBGI(Dump(pwRootLast, /* wPrefix */ (Word_t)0, cnBitsPerWord));
         assert(tp_bIsSkip(wr_nType(*pwRoot)));
         assert(wr_nBLR(*pwRoot) == cnBitsPerWord / 2);
-        //BJL(return) Insert(qy, wKey);
         goto finalInsert;
     } else {
         //DBGI(printf("No SKIP_TO_LIST\n"));
@@ -7669,12 +7682,7 @@ newSkipToBitmap:;
         { assert((int)gwBitmapPopCnt(qy, nBLNew) == nPopCntOld); }
         InsertAllAtBitmap(qya, qyx(Old), /*nnStart*/ 0, nPopCntOld);
         OldList(pwrOld, nPopCntOld, nBLOld, nTypeOld);
-        BJ1(goto finalInsert);
-  #ifdef _RETURN_NULL_TO_INSERT_AGAIN
-        BJL(return NULL); // call InsertGuts again
-  #else // _RETURN_NULL_TO_INSERT_AGAIN
-        BJL(goto finalInsert);
-  #endif // #else _RETURN_NULL_TO_INSERT_AGAIN
+        goto finalInsert;
     }
     else
       //#endif // #else USE_XX_SW_ONLY_AT_DL2
@@ -7951,11 +7959,11 @@ finalInsert:;
         DBGI(Dump(pwRootLast, 0, cnBitsPerWord));
     }
 
-    BJL(return)
   #ifdef _RETURN_NULL_TO_INSERT_AGAIN
-        NULL; // call InsertGuts again
-  #endif // _RETURN_NULL_TO_INSERT_AGAIN
-        Insert(qy, wKey);
+    return 0; // call InsertGuts again
+  #else // _RETURN_NULL_TO_INSERT_AGAIN
+    return Insert(qy, wKey);
+  #endif // _RETURN_NULL_TO_INSERT_AGAIN else
 }
 
 #ifndef cnSplayPrepThreshold
@@ -7992,17 +8000,25 @@ finalInsert:;
 #ifdef B_JUDYL
 Word_t*
 #else // B_JUDYL
-void
+Status_t
 #endif // B_JUDYL
 InsertAtList(qpa,
              Word_t wKey,
              int nPos
 #ifdef CODE_XX_SW
            , Link_t *pLnUp, int nBLUp
+      #ifdef REMOTE_LNX
+           , Word_t* pwLnXUp
+      #endif // REMOTE_LNX
 #endif // CODE_XX_SW
              )
 {
     qva;
+  #ifdef CODE_XX_SW
+  #ifdef REMOTE_LNX
+    (void)pwLnXUp;
+  #endif // REMOTE_LNX
+  #endif // CODE_XX_SW
     int nDL = nBL_to_nDL(nBL); (void)nDL;
     int nBLR = gnListBLR(qy);
     Word_t wPopCnt = 0;
@@ -8122,14 +8138,10 @@ InsertAtList(qpa,
                 } else {
                     nBWRUpNew = nDL_to_nBL(nDL) - nBitCnt + 1;
                 }
-      #ifdef REMOTE_LNX
-                Word_t* pwLnXUp = NULL;
-      #endif // REMOTE_LNX
-                BJL(pwValue =) DoubleDown(qyax(Up), wKey,
-                                          GetPopCnt(qyax(Up)),
-                                          nBWRUpNew
-                                          );
-                return BJL(pwValue);
+                return DoubleDown(qyax(Up), wKey,
+                                  GetPopCnt(qyax(Up)),
+                                  nBWRUpNew
+                                  );
             }
             assert((ListSlotCnt(wPopCnt + 1, nBLR) >= (int)wPopCnt + 2)
                || ((int)wPopCnt == auListPopCntMax[nBLR] - 1));
@@ -8142,8 +8154,7 @@ InsertAtList(qpa,
             if (nBitCnt > cnBitsInD1)
             if (nBitCnt > nDL_to_nBL(nDL - 1))
             if (ListSlotCnt(wPopCnt, nBLR) >= (int)wPopCnt + 1) {
-                BJL(pwValue =) InsertXxSw(qya, wKey, wPopCnt);
-                return BJL(pwValue);
+                return InsertXxSw(qya, wKey, wPopCnt);
             }
           }
         }
@@ -8473,16 +8484,21 @@ copyWithInsertWord:
       #ifdef XX_LISTS
         if (nType == T_XX_LIST) {
             if (nDL_to_nBL(nDL) == nBL) {
-                BJL(pwValue =) InsertAtFullXxList(qya, wKey, wPopCnt, nPos,
-                                                  nBLUp, pLnUp
-                                                  );
+                return InsertAtFullXxList(qya, wKey, wPopCnt, nPos,
+                                          nBLUp, pLnUp
+          #ifdef REMOTE_LNX
+                                        , pwLnXUp
+          #endif // REMOTE_LNX
+                                          );
             } else {
-                BJL(pwValue =) InsertAtFullUnalignedXxList(qya, wKey, wPopCnt,
-                                                           nPos,
-                                                           nBLUp, pLnUp
-                                                           );
+                return InsertAtFullUnalignedXxList(qya, wKey, wPopCnt,
+                                                   nPos,
+                                                   nBLUp, pLnUp
+          #ifdef REMOTE_LNX
+                                                 , pwLnXUp
+          #endif // REMOTE_LNX
+                                                   );
             }
-            return BJL(pwValue);
         }
       #endif // XX_LISTS
   #ifdef CODE_XX_SW
@@ -8515,31 +8531,31 @@ copyWithInsertWord:
       #ifdef REMOTE_LNX
             Word_t* pwLnXUp = NULL;
       #endif // REMOTE_LNX
-            BJL(pwValue =) DoubleDown(qyax(Up), wKey,
-                                      GetPopCnt(qyax(Up)),
-                                      nBWRUpNew
-                                      );
-            return BJL(pwValue);
+            return DoubleDown(qyax(Up), wKey,
+                              GetPopCnt(qyax(Up)),
+                              nBWRUpNew
+                              );
 #else // DOUBLE_DOWN
             DBGI(printf("IAL: ListIsFull DoubleIt nBL %d nBLUp %d\n",
                         nBL, nBLUp));
-            BJL(pwValue =) DoubleIt(qya, wKey, nBLUp, pLnUp, wPopCnt);
-            return BJL(pwValue);
+            return DoubleIt(qya, wKey, nBLUp, pLnUp, wPopCnt);
 #endif // #else DOUBLE_DOWN
         }
   #endif // CODE_XX_SW
         {
-            BJL(pwValue =) TransformList(qya, wKey,
+            return TransformList(qya, wKey,
       #ifdef CODE_XX_SW
-                                         nBLUp, pLnUp,
+                                 nBLUp, pLnUp,
       #endif // CODE_XX_SW
-                                         wPopCnt);
+                                 wPopCnt);
         }
     }
   #ifdef B_JUDYL
     DBGI(printf("InsertAtList returning %p\n", (void*)pwValue));
     return pwValue;
-  #endif // B_JUDYL
+  #else // B_JUDYL
+    return Success;
+  #endif // B_JUDYL else
 }
 
 // InsertGuts
@@ -8569,17 +8585,23 @@ Status_t
 InsertGuts(qpa, Word_t wKey, int nPos
   #if defined(CODE_XX_SW)
          , Link_t *pLnUp, int nBLUp
+      #ifdef REMOTE_LNX
+         , Word_t* pwLnXUp
+      #endif // REMOTE_LNX
   #endif // defined(CODE_XX_SW)
            )
 {
     qva;
 #if defined(CODE_XX_SW)
     (void)nBLUp;
+      #ifdef REMOTE_LNX
+    (void)pwLnXUp;
+      #endif // REMOTE_LNX
     int nBW; (void)nBW;
 #endif // defined(CODE_XX_SW)
   #ifdef _LNX
   #ifdef _RETURN_NULL_TO_INSERT_AGAIN
-    BJL(assert((pwLnX != NULL) || (nBL == cnBitsPerWord)));
+    assert((pwLnX != NULL) || (nBL == cnBitsPerWord));
   #endif // _RETURN_NULL_TO_INSERT_AGAIN
   #endif // _LNX
     DBGI(printf("InsertGuts pwRoot %p wKey " OWx" nBL %d wRoot " OWx"\n",
@@ -8749,12 +8771,14 @@ wRootNull:;
   #endif // defined(BM_SW_FOR_REAL)
 #endif // defined(SKIP_LINKS)
     {
-        BJL(return)
-            InsertAtList(qya, wKey, nPos
+        return InsertAtList(qya, wKey, nPos
 #ifdef CODE_XX_SW
-                       , pLnUp, nBLUp
+                          , pLnUp, nBLUp
+      #ifdef REMOTE_LNX
+                          , pwLnXUp
+      #endif // REMOTE_LNX
 #endif // CODE_XX_SW
-                         );
+                            );
     }
 #if defined(SKIP_LINKS) || defined(BM_SW_FOR_REAL)
     else
@@ -8797,7 +8821,11 @@ wRootNull:;
 #endif // defined(SKIP_LINKS)
             assert(nDL_to_nBL(nBL_to_nDL(nBLR)) == nBLR);
             NewLink(qya, wKey, nBL_to_nDL(nBLR), /* nDLUp */ nBL_to_nDL(nBL));
-            BJL(return) Insert(qy, wKey);
+  #ifdef _RETURN_NULL_TO_INSERT_AGAIN
+            return 0; // call InsertGuts again
+  #else // _RETURN_NULL_TO_INSERT_AGAIN
+            return Insert(qy, wKey);
+  #endif // _RETURN_NULL_TO_INSERT_AGAIN else
         }
 #endif // defined(BM_SW_FOR_REAL)
 #if defined(SKIP_LINKS) && defined(BM_SW_FOR_REAL)
@@ -8805,13 +8833,11 @@ wRootNull:;
 #endif // defined(SKIP_LINKS) && defined(BM_SW_FOR_REAL)
 #if defined(SKIP_LINKS)
         {
-            BJL(return)
-                InsertAtPrefixMismatch(qya, wKey, nBLR);
+            return InsertAtPrefixMismatch(qya, wKey, nBLR);
         }
 #endif // defined(SKIP_LINKS)
     }
 #endif // defined(SKIP_LINKS) || defined(BM_SW_FOR_REAL)
-    BJ1(return Success);
 }
 
 #if (cwListPopCntMax != 0)
@@ -9270,9 +9296,7 @@ InsertAtBitmap(qpa, Word_t wKey)
                 ((int)LOG(1 | (wPrefix ^ wKey)) >= nBLR);
 
         if (bPrefixMismatch) {
-            BJL(return)
-                InsertAtPrefixMismatch(qya, wKey, nBLR);
-            BJ1(return Success);
+            return InsertAtPrefixMismatch(qya, wKey, nBLR);
         }
     }
   #endif // SKIP_TO_BITMAP
