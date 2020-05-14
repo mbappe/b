@@ -3687,7 +3687,7 @@ t_bitmap:
             if (cbEmbeddedBitmap && (nBLR <= cnLogBitsPerLink)) {
                 assert(nBL == nBLR); // no skip to sub-link-size bm
                 if (nBLR <= cnLogBitsPerWord) {
-                    Word_t wBit = EXP(wKey & MSK(nBLR));
+                    Word_t wBit = EXP(wKey & NZ_MSK(nBLR));
                     Word_t wBmMask = wBit - 1;
                     Word_t wBits =
                         ((cnLogBitsPerLink == cnLogBitsPerWord)
@@ -3962,7 +3962,7 @@ t_bitmap:
                 return KeyFound;
                   #endif // #else (LOOKUP || INSERT) && B_JUDYL
             }
-            DBGX(printf("Bit is not set (A).\n"));
+            DBGX(printf("Bit is not set.\n"));
               #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
           #endif // else COUNT
         }

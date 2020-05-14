@@ -3422,8 +3422,9 @@ gwPopCnt(qpa, int nBLR)
         if ((PWR_wPopCntBL(pwRoot, pwr, nBLR) & NZ_MSK(nBLR))
                    != (*pwLnX & NZ_MSK(nBLR)))
         {
-            Word_t wPopCnt = PWR_wPopCntBL(pwRoot, pwr, nBLR);
-printf("nBL %d nBLR %d wPopCnt %zd *pwLnX %zd\n", nBL, nBLR, wPopCnt, *pwLnX);
+            Word_t wPopCnt = PWR_wPopCntBL(pwRoot, pwr, nBLR); (void)wPopCnt;
+            DBGI(printf("nBL %d nBLR %d wPopCnt %zd *pwLnX %zd\n",
+                        nBL, nBLR, wPopCnt, *pwLnX));
         }
         assert((PWR_wPopCntBL(pwRoot, pwr, nBLR) & NZ_MSK(nBLR))
                    == (*pwLnX & NZ_MSK(nBLR)));

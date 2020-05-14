@@ -229,10 +229,12 @@
   #endif // #ifndef NO_PF_EK_XV_2
 #endif // EK_XV
 
+#ifdef B_JUDYL
 #ifndef    NO_SW_POP_IN_LNX
   #undef      SW_POP_IN_LNX
   #define     SW_POP_IN_LNX
 #endif // !NO_SW_POP_IN_LNX
+#endif // B_JUDYL
 
 #ifdef SW_POP_IN_LNX
   #undef  _LNX

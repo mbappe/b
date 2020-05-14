@@ -5028,7 +5028,6 @@ insertAll:
   #endif // XX_LISTS
         {
             wPopCnt = gwPopCnt(qya, nBLR) + nPopCnt;
-//printf("# Splay: updating popcnt pwLnX %p in new switch to wPopCnt %zd\n", pwLnX, wPopCnt);
             swPopCnt(qya, nBLR, wPopCnt);
         }
     }
@@ -6657,7 +6656,7 @@ InsertAtPrefixMismatch(qpa, Word_t wKey, int nBLR)
   #ifdef _LNX
     Word_t wLnX = 0;
     if (pwLnX != NULL) {
-        wLnX = *pwLnX; // Save wLnX from NewSwitch.
+        wLnX = *pwLnX; // Save *pwLnX which is overwritten by NewSwitch.
     }
   #endif // _LNX
 
