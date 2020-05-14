@@ -4560,10 +4560,6 @@ break_from_main_switch:;
         assert(pwLnXUp == NULL);
       #endif // _LNX
     } else {
-      #ifdef _RETURN_NULL_TO_INSERT_AGAIN
-        //assert(nBLUp != 0);
-        //assert(pLnUp != NULL);
-      #endif // _RETURN_NULL_TO_INSERT_AGAIN
       #ifdef _LNX
       #if 0
         // This assertion doesn't work for Insert not-at-top.
