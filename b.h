@@ -2836,6 +2836,8 @@ typedef struct {
   #define cbEmbeddedBitmap  0
 #endif // else USE_XX_SW_ONLY_AT_DL2 elif !B_JUDYL && ALLOW_EMBEDDED_BITMAP
 
+// _BMLF_BM_IN_LNX is for JudyL.
+#ifdef B_JUDYL
 #ifdef ALLOW_EMBEDDED_BITMAP
 #ifdef _LNX
 #if (cnBitsInD1 <= cnLogBitsPerWord)
@@ -2846,6 +2848,7 @@ typedef struct {
 #endif // (cnBitsInD1 <= cnLogBitsPerWord)
 #endif // _LNX
 #endif // ALLOW_EMBEDDED_BITMAP
+#endif // B_JUDYL
 
 #if cnListPopCntMaxDl1 < (1 << cnBitsInD1)
 #ifndef BITMAP
@@ -3412,7 +3415,18 @@ gwPopCnt(qpa, int nBLR)
   #endif
   #ifdef SW_POP_IN_LNX
     if (nBL < cnBitsPerWord) {
-        assert((PWR_wPopCntBL(pwRoot, pwr, nBLR) & NZ_MSK(nBLR)) == (*pwLnX & NZ_MSK(nBLR)));
+        // So many ifdefs.
+        // wPopCnt is modulo EXP(nBLR) in some and not others.
+        // Insert can temporarily increment above EXP(nBLR).
+        // What about Remove decrementing below zero?
+        if ((PWR_wPopCntBL(pwRoot, pwr, nBLR) & NZ_MSK(nBLR))
+                   != (*pwLnX & NZ_MSK(nBLR)))
+        {
+            Word_t wPopCnt = PWR_wPopCntBL(pwRoot, pwr, nBLR);
+printf("nBL %d nBLR %d wPopCnt %zd *pwLnX %zd\n", nBL, nBLR, wPopCnt, *pwLnX);
+        }
+        assert((PWR_wPopCntBL(pwRoot, pwr, nBLR) & NZ_MSK(nBLR))
+                   == (*pwLnX & NZ_MSK(nBLR)));
         return *pwLnX;
     }
     assert(pwLnX == NULL);
@@ -3865,13 +3879,13 @@ InflateBmSwTest(qpa) // qp points to BM switch
 #endif // CODE_BM_SW
 
 #ifdef B_JUDYL
-Word_t* InsertL(qp, Word_t wKey);
+Word_t* InsertL(qpa, Word_t wKey);
 #define Remove  RemoveL
-Word_t CountL(qp, Word_t wKey);
+Word_t CountL(qpa, Word_t wKey);
 #else // B_JUDYL
-Status_t Insert1(qp, Word_t wKey);
+Status_t Insert1(qpa, Word_t wKey);
 #define Remove  Remove1
-Word_t Count1(qp, Word_t wKey);
+Word_t Count1(qpa, Word_t wKey);
 #endif // B_JUDYL
 
 Status_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
@@ -7123,12 +7137,14 @@ GetPopCnt(qpa)
     Word_t wPopCnt;
     if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
         if (nBL <= cnLogBitsPerWord) {
+            Word_t wBits = ((cnLogBitsPerLink == cnLogBitsPerWord)
+                                 && ((Word_t*)pLn == &pLn->ln_wRoot))
+                             ? wRoot : *(Word_t*)pLn;
             wPopCnt
-                = __builtin_popcountll(wRoot
+                = __builtin_popcountll(wBits
                     // Is this mask really necessary?
                     // Or can we count on the bits being zero?
-                    & ((nBL >= cnLogBitsPerWord)
-                        ? (Word_t)-1 : MSK(EXP(nBL))));
+                    & NZ_MSK(EXP(nBL)));
         } else {
             Word_t *pwLn = (Word_t*)pLn;
             wPopCnt = 0;

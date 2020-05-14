@@ -352,6 +352,10 @@ SwIncr(qpa, int nBLR, int nIncr)
     if (nBL < cnBitsPerWord)
       #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     {
+        // We may temporarily increment above EXP(nBLR) when trying to insert
+        // a key into a full-pop subtree.
+        // If we could figure out how to abort the insert early that would
+        // probably be better.
         Word_t wPopCnt = gwPopCnt(qya, nBLR) + nIncr;
         swPopCnt(qya, nBLR, wPopCnt);
     }
@@ -747,36 +751,26 @@ Word_t *
 Status_t
       #endif // defined(COUNT)
       #ifdef B_JUDYL
-InsertRemoveL(qp, Word_t wKey)
+InsertRemoveL(qpa, Word_t wKey)
       #else // B_JUDYL
-InsertRemove1(qp, Word_t wKey)
+InsertRemove1(qpa, Word_t wKey)
       #endif // B_JUDYL
   #endif // defined(LOOKUP)
 {
+    IF_NOT_LOOKUP(qva);
   #ifdef LOOKUP
-      #ifdef QP_PLN
-    Link_t *pLn = STRUCT_OF(&wRoot, Link_t, ln_wRoot);
-      #else // QP_PLN
-    Word_t* pwRoot = &wRoot;
-      #endif // QP_PLN else
-  #else // LOOKUP
-      #ifdef QP_PLN
-    Word_t wRoot = pLn->ln_wRoot;
-      #else // QP_PLN
-    Word_t wRoot = *pwRoot;
-      #endif // QP_PLN else
-  #endif // #else LOOKUP
-  #ifndef QP_PLN
-    Link_t* pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
-  #endif // !QP_PLN
-    // pLn and wRoot of qy are set up
-    DBGX(printf("\n# %s pLn %p wRoot 0x%zx wKey 0x%zx\n",
-                strLookupOrInsertOrRemove, (void*)pLn, wRoot, wKey));
-
-#if defined(LOOKUP)
     int nBL = cnBitsPerWord;
-#endif // defined(LOOKUP)
-    // nBL, pLn and wRoot of qy are set up
+    Link_t *pLn = STRUCT_OF(&wRoot, Link_t, ln_wRoot);
+      #ifndef QP_PLN
+    Word_t* pwRoot = &wRoot;
+      #endif // !QP_PLN
+      #ifdef _LNX
+    Word_t* pwLnX = NULL;
+      #endif // _LNX
+  #endif // LOOKUP
+    // nBL, pLn, and wRoot are set up
+    DBGX(printf("# %s nBL %d pLn %p wRoot 0x%zx wKey 0x%zx\n",
+                strLookupOrInsertOrRemove, nBL, (void*)pLn, wRoot, wKey));
 
 #if defined(INSERT) && defined(B_JUDYL)
     Word_t *pwValue = NULL;
@@ -825,7 +819,6 @@ InsertRemove1(qp, Word_t wKey)
     Word_t wPrefixMismatch = 0; (void)wPrefixMismatch;
 #endif // defined(SAVE_PREFIX_TEST_RESULT)
   #ifdef _LNX
-    Word_t* pwLnX = NULL;
     Word_t* pwLnXNew;
       #ifdef REMOTE_LNX
     // DoubleDown calls Insert not at the top.
@@ -861,11 +854,13 @@ InsertRemove1(qp, Word_t wKey)
     int bCleanupRequested = 0; (void)bCleanupRequested;
     int bCleanup = 0; (void)bCleanup;
 
+  #ifdef LOOKUP
     // nBL, pLn and wRoot of qy are set up
     int nType;
     DBGX(nType = -1); // for compiler for qv in Log
     Word_t *pwr;
     DBGX(pwr = NULL); // for compiler for qv in Log
+  #endif // LOOKUP
     int nBLR;
   #if ! defined(LOOKUP) || defined(B_JUDYL)
     int nPos;
@@ -1894,7 +1889,7 @@ switchTail:;
       #if defined(LOOKUP) || !defined(RECURSIVE)
         goto again; // nType = wr_nType(wRoot); pwr = wr_pwr(wRoot); switch
       #else // defined(LOOKUP) || !defined(RECURSIVE)
-        return InsertRemove(nBL, pLn, wKey);
+        return InsertRemove(qya, wKey);
       #endif // defined(LOOKUP) || !defined(RECURSIVE)
     } // end of t_switch
   #endif // !AUGMENT_TYPE || !LOOKUP || SKIP_LINKS
@@ -3694,7 +3689,11 @@ t_bitmap:
                 if (nBLR <= cnLogBitsPerWord) {
                     Word_t wBit = EXP(wKey & MSK(nBLR));
                     Word_t wBmMask = wBit - 1;
-                    wPopCnt = __builtin_popcountll(wRoot & wBmMask);
+                    Word_t wBits =
+                        ((cnLogBitsPerLink == cnLogBitsPerWord)
+                                && ((Word_t*)pLn == &pLn->ln_wRoot))
+                            ? wRoot : *(Word_t*)pLn;
+                    wPopCnt = __builtin_popcountll(wBits & wBmMask);
                 } else {
                     Word_t wBitNum = wKey & MSK(nBLR);
                     Word_t wBmWordNum = wBitNum >> cnLogBitsPerWord;
@@ -3861,7 +3860,12 @@ t_bitmap:
                               #else // USE_XX_SW_ONLY_AT_DL2
                 ((cn2dBmMaxWpkPercent == 0) || (nBLR == cnBitsInD1))
                     ? (cbEmbeddedBitmap && (cnBitsInD1 <= cnLogBitsPerWord))
-                        ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsInD1))
+                        ? BitIsSetInWord(
+                            ((cnLogBitsPerLink == cnLogBitsPerWord)
+                                    && ((Word_t*)pLn == &pLn->ln_wRoot))
+                                ? wRoot : *(Word_t*)pLn,
+                            wKey & NZ_MSK(cnBitsInD1)
+                                         )
                         : BitIsSet(cbEmbeddedBitmap
                                        ? (Word_t*)pLn
                                        : ((BmLeaf_t*)pwr)->bmlf_awBitmap,
@@ -3958,7 +3962,7 @@ t_bitmap:
                 return KeyFound;
                   #endif // #else (LOOKUP || INSERT) && B_JUDYL
             }
-            DBGX(printf("Bit is not set.\n"));
+            DBGX(printf("Bit is not set (A).\n"));
               #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
           #endif // else COUNT
         }
@@ -4557,8 +4561,8 @@ break_from_main_switch:;
       #endif // _LNX
     } else {
       #ifdef _RETURN_NULL_TO_INSERT_AGAIN
-        assert(nBLUp != 0);
-        assert(pLnUp != NULL);
+        //assert(nBLUp != 0);
+        //assert(pLnUp != NULL);
       #endif // _RETURN_NULL_TO_INSERT_AGAIN
       #ifdef _LNX
       #if 0
@@ -4584,7 +4588,7 @@ break_from_main_switch:;
     BJ1((void)status);
   #ifndef _RETURN_NULL_TO_INSERT_AGAIN
     BJL(assert(pwValue != NULL));
-    BJL(assert((pwValue & (sizeof(Word_t) - 1)) == 0));
+    BJL(assert(((Word_t)pwValue & (sizeof(Word_t) - 1)) == 0));
     BJ1(assert(status == Success));
   #endif // _RETURN_NULL_TO_INSERT_AGAIN
   #ifdef _RETURN_NULL_TO_INSERT_AGAIN
@@ -5016,8 +5020,10 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
     } else
   #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_I)
     {
-        int nBL = cnBitsPerWord;
-        BJL(pwValue) BJ1(status) = Insert(qy, wKey);
+  #ifdef REMOTE_LNX
+        Word_t* pwLnX = NULL;
+  #endif // REMOTE_LNX
+        BJL(pwValue) BJ1(status) = Insert(qya, wKey);
     }
 
   #ifdef B_JUDYL
@@ -5147,7 +5153,9 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 
 #if (cnDigitsPerWord > 1)
 
+    int nBL = cnBitsPerWord;
     Link_t *pLn = STRUCT_OF(ppvRoot, Link_t, ln_wRoot);
+    Word_t* pwRoot = &pLn->ln_wRoot; (void)pwRoot;
 
   // Judy1LHTime and Judy1LHCheck put a zero word before and after the root
   // word of the array. Let's make sure we don't corrupt it.
@@ -5182,15 +5190,15 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             status = Failure;
         } else {
             Word_t *pwr = wr_pwr(wRoot);
-            Word_t wPopCnt = PWR_xListPopCnt(pwRoot, pwr, cnBitsPerWord);
+            Word_t wPopCnt = PWR_xListPopCnt(pwRoot, pwr, nBL);
             Word_t *pwListNew;
             if (wPopCnt != 1) {
                 pwListNew = NewList(wPopCnt - 1, cnDigitsPerWord);
                 Word_t *pwKeysNew;
                 set_wr(wRoot, pwListNew, T_LIST);
-                pwKeysNew = ls_pwKeys(pwListNew, cnBitsPerWord);
+                pwKeysNew = ls_pwKeys(pwListNew, nBL);
 
-                Word_t *pwKeys = ls_pwKeys(pwr, cnBitsPerWord);
+                Word_t *pwKeys = ls_pwKeys(pwr, nBL);
 
  // Isn't this chunk of code already in RemoveGuts?
                 unsigned nn;
@@ -5204,18 +5212,17 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
             } else {
                 wRoot = 0; // set_wr(wRoot, NULL, 0)
             }
-            OldList(pwr, wPopCnt, cnBitsPerWord, nType);
+            OldList(pwr, wPopCnt, nBL, nType);
             *pwRoot = wRoot;
             status = Success;
         }
     } else
   #endif // (cwListPopCntMax != 0) && defined(SEARCH_FROM_WRAPPER_R)
     {
-  #ifdef QP_PLN
-        status = Remove(cnBitsPerWord, pLn, wKey);
-  #else // QP_PLN
-        status = Remove(cnBitsPerWord, (Word_t*)ppvRoot, wKey);
-  #endif // QP_PLN else
+  #ifdef REMOTE_LNX
+        Word_t* pwLnX = NULL;
+  #endif // REMOTE_LNX
+        status = Remove(qya, wKey);
     }
 
     if (status == Success) { wPopCntTotal--; }

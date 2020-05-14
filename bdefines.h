@@ -229,6 +229,11 @@
   #endif // #ifndef NO_PF_EK_XV_2
 #endif // EK_XV
 
+#ifndef    NO_SW_POP_IN_LNX
+  #undef      SW_POP_IN_LNX
+  #define     SW_POP_IN_LNX
+#endif // !NO_SW_POP_IN_LNX
+
 #ifdef SW_POP_IN_LNX
   #undef  _LNX
   #define _LNX
