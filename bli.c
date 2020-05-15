@@ -175,7 +175,11 @@ PrefixMismatch(qp,
       #endif // defined(CODE_BM_SW)
         :         PWR_wPrefixNATBL(pwRoot, (  Switch_t *)pwr, nBLR);
 
-    wPrefixMismatch = (wKey - wPrefix) >> nBLR; // positive means key is big
+    // Non-zero wPrefixMismatch means prefix mismatch.
+    // If wPrefixMismatch is zero it means no prefix mismatch.
+    // Caller can derive wPrefix from wKey and wPrefixMismatch.
+    // Caller can figure out how wPrefix compares to (wKey & ~MSK(nBLR)).
+    wPrefixMismatch = (wKey - wPrefix) >> nBLR;
 
     if (wPrefixMismatch != 0) {
         DBGX(printf("PM: wKey " OWx" wPrefix " OWx" nBL %d nBLR %d\n",
@@ -1334,10 +1338,10 @@ t_skip_to_switch:
         Word_t wPrefixMismatch = PREFIX_MISMATCH(qy);
         if (wPrefixMismatch != 0) {
           #if defined(COUNT)
-            DBGC(printf("SKIP_TO_SW: COUNT PM " OWx"\n", wPrefixMismatch));
+            DBGC(printf("SKIP_TO_SW: COUNT PM 0x%016zx\n", wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
-            if (wPrefixMismatch > 0) {
+            if (wKey > (wKey - (wPrefixMismatch << nBLR))) {
                 Word_t wPopCnt;
               #if ! defined(NO_SKIP_AT_TOP)
               #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
@@ -1443,7 +1447,7 @@ t_skip_to_xx_sw:
                         wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
-            if (wPrefixMismatch > 0) {
+            if (wKey > (wKey - (wPrefixMismatch << nBLR))) {
                 Word_t wPopCnt;
           #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
               #error Not ready yet
@@ -1994,7 +1998,7 @@ t_skip_to_bm_sw:
                         wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
-            if (wPrefixMismatch > 0) {
+            if (wKey > (wKey - (wPrefixMismatch << nBLR))) {
                 Word_t wPopCnt;
           #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
                 if (nBL >= cnBitsPerWord) {
@@ -2228,7 +2232,7 @@ t_skip_to_list_sw:
                         wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
-            if (wPrefixMismatch > 0) {
+            if (wKey > (wKey - (wPrefixMismatch << nBLR))) {
                 Word_t wPopCnt;
           #if defined(PP_IN_LINK) && ! defined(NO_SKIP_AT_TOP)
               #error Not ready yet
@@ -2338,7 +2342,7 @@ t_skip_to_list:
                         wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
-            if (wPrefixMismatch > 0) {
+            if (wKey > (wKey - (wPrefixMismatch << nBLR))) {
                 Word_t wPopCnt = gnListPopCnt(qy, nBLR);
                 assert(wPopCnt != 0);
                 DBGC(printf("T_SKIP_TO_LIST: PREFIX_MISMATCH wPopCnt %" _fw
@@ -3484,7 +3488,7 @@ t_skip_to_bitmap:
                         wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
-            if (wPrefixMismatch > 0) {
+            if (wKey > (wKey - (wPrefixMismatch << nBLR))) {
                 Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR);
                 DBGC(printf("T_SKIP_TO_BITMAP: PREFIX_MISMATCH wPopCnt %" _fw
                                 "d\n", wPopCnt));
