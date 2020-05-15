@@ -3634,12 +3634,7 @@ InsertAtBitmap(qpa, Word_t wKey);
 #if defined(EMBED_KEYS)
 
 static Word_t
-DeflateExternalList(Word_t *pwRoot,
-                    int nPopCnt, int nBL, Word_t *pwr
-  #ifdef B_JUDYL
-                  , Word_t *pwLnX
-  #endif // B_JUDYL
-                    );
+DeflateExternalList(qpa, int nPopCnt);
 
 #endif // defined(EMBED_KEYS)
 
@@ -4202,7 +4197,8 @@ Splay(qpa, Word_t *pwRootOld, int nBLOld, Word_t wKey)
     int nPopCntMax = 0;
   #endif // DEBUG
     Word_t wRootOld = *pwRootOld;
-    DBGI(printf("\n# Splay nBLOld %d pwRootOld %p nBL %d pLn %p pwRoot %p ", nBLOld, pwRootOld, nBL, pLn, pwRoot));
+    DBGI(printf("\n# Splay nBLOld %d pwRootOld %p nBL %d pLn %p pwRoot %p ",
+                nBLOld, pwRootOld, nBL, pLn, pwRoot));
       #ifdef _LNX
     DBGI(printf("pwLnX %p ", pwLnX));
       #endif // _LNX
@@ -7083,7 +7079,7 @@ DoubleIt(qpa, // (nBL, pLn) of list
   #endif // SKIP_TO_XX_SW
     (void)wPopCnt;
     int nBW;
-    Link_t link; (void)link;
+    Link_t link = { 0 }; (void)link;
 
     DBGI(printf("# DoubleIt nBL %d pwRoot %p nBLUp %d pLnUp %p",
                 nBL, pwRoot, nBLUp, pLnUp));
@@ -7157,9 +7153,9 @@ DoubleIt(qpa, // (nBL, pLn) of list
         } else
       #endif // defined(SKIP_TO_XX_SW)
         {
-assert(nBL == nBLUp);
+            assert(nBL == nBLUp);
             nBLOld = nBL;
-assert(nDL == nBL_to_nDL(nBLUp));
+            assert(nDL == nBL_to_nDL(nBLUp));
             nDLOld = nDL;
         }
 // qva is qvax(Up) except nBL is nBLRUp.
@@ -7224,20 +7220,27 @@ assert(nDL == nBL_to_nDL(nBLUp));
 #endif // defined(DEBUG)
     assert(nBL <= nBLOld);
 
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
     // NewSwitch changes *pwRoot and the Link_t containing it.
     // We need to preserve the Link_t for subsequent InsertAll.
     // We don't have a whole link at the top.
     if (nBLOld < cnBitsPerWord) {
         link = *STRUCT_OF(pwRoot, Link_t, ln_wRoot);
-    } else
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-    {
-  #if !defined(_LNX) || defined(REMOTE_LNX)
-        // wRoot serves as our saved link
-        assert(sizeof(Link_t) == sizeof(wRoot));
-  #endif // !_LNX || REMOTE_LNX
+    } else {
+        link.ln_wRoot = wRoot;
     }
+    Link_t* pLnOld = pLn; (void)pLnOld;
+    Word_t* pwRootOld = &link.ln_wRoot; (void)pwRootOld;
+  #ifdef REMOTE_LNX
+    // Prep pwLnXOld for DumpX below.
+    Word_t wLnX; (void)wLnX;
+    Word_t* pwLnXOld; (void)pwLnXOld;
+    if (nBLOld < cnBitsPerWord) {
+        Word_t wLnX = *pwLnX;
+        pwLnXOld = &wLnX;
+    } else {
+        pwLnXOld = NULL;
+    }
+  #endif // REMOTE_LNX
     int nBLSave = nBL; nBL = nBLOld; // nBL = nBLUp
     NewSwitch(qya, wKey, /* nBLR */ nBLSave,
 #if defined(CODE_XX_SW)
@@ -7280,68 +7283,60 @@ assert(nDL == nBL_to_nDL(nBLUp));
     // NewSwitch changed *pwRoot.
     // But wRoot, nType, pwr, nBL and nBLOld still all apply
     // to the tree whose keys must be reinserted.
-#if defined(USE_XX_SW)
-assert(pLn == pLnUp);
-    if (pLn == pLnUp) {
-        goto insertAll;
+#ifdef USE_XX_SW
+    goto insertAll;
 insertAll:;
-        // nBW is for the new tree.
-        DBGI(printf("Calling InsertAll for all links nBW %d wKey 0x%zx\n",
-               nBW, wKey));
-        int nBLR = nBL - pwr_nBW(&wRoot);
-        DBGI(printf("# nBL %d nBLOld %d nBLR %d\n", nBL, nBLOld, nBLR));
-        DBGI(printf("# Old tree:\n"));
-        //DBGI(Dump(&wRoot, wKey & ~NZ_MSK(nBLOld), nBLOld));
-        for (int nIndex = 0;
-                 nIndex < (int)EXP(pwr_nBW(&wRoot));
-                 nIndex++)
-        {
-            // We're calling InsertAll to insert from one of the links of
-            // the old switch into the new switch.
-            DBGI(printf("# wKey 0x%zx\n", wKey));
-            DBGI(printf("# New tree before IA nIndex %d:\n", nIndex));
-            //DBGI(Dump(pwRoot, wKey, nBLOld));
-            int nBLSave = nBL; nBL = nBLOld;
-            InsertAll(qya,
-                      &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot,
-                      /*nBLOld*/ nBLR,
-                      (wKey & ~NZ_MSK(nBLSave)) | ((Word_t)nIndex << nBLR));
-            nBL = nBLSave;
-        }
+    // nBW is for the new tree.
+    DBGI(printf("Calling InsertAll for all links nBW %d wKey 0x%zx\n",
+                nBW, wKey));
+    int nBLR = nBL - pwr_nBW(&wRoot);
+    DBGI(printf("# nBL %d nBLOld %d nBLR %d\n", nBL, nBLOld, nBLR));
+    DBGI(printf("# Old tree:\n"));
+    DBGI(DumpX(qyax(Old), wKey));
+    for (int nIndex = 0; nIndex < (int)EXP(pwr_nBW(&wRoot)); nIndex++) {
+        // We're calling InsertAll to insert from one of the links of
+        // the old switch into the new switch.
+        DBGI(printf("# wKey 0x%zx\n", wKey));
+        DBGI(printf("# New tree before IA nIndex %d:\n", nIndex));
+        int nBLSave = nBL; nBL = nBLOld;
+        DBGI(DumpX(qya, wKey));
+        InsertAll(qya,
+                  &pwr_pLinks((Switch_t *)pwr)[nIndex].ln_wRoot,
+                  /*nBLOld*/ nBLR,
+                  (wKey & ~NZ_MSK(nBLSave)) | ((Word_t)nIndex << nBLR));
+        nBL = nBLSave;
+    }
 
 #if ! defined(SKIP_TO_XX_SW)
-          #ifdef USE_XX_SW_ONLY_AT_DL2
-        assert(nBL == nDL_to_nBL(2));
-          #endif // USE_XX_SW_ONLY_AT_DL2
-        assert(nBLOld == nBL);
+      #ifdef USE_XX_SW_ONLY_AT_DL2
+    assert(nBL == nDL_to_nBL(2));
+      #endif // USE_XX_SW_ONLY_AT_DL2
+    assert(nBLOld == nBL);
 #endif // ! defined(SKIP_TO_XX_SW)
-        OldSwitch(&wRoot, /* nBL */ nBLOld
+    OldSwitch(&wRoot, /* nBL */ nBLOld
 #if defined(CODE_BM_SW)
-                , /* bBmSw */ 0, /* nLinks */ 0
+            , /* bBmSw */ 0, /* nLinks */ 0
 #endif // defined(CODE_BM_SW)
-                  );
+              );
 
-        //printf("# New tree after InsertAll done looping:\n");
-        //DBG(Dump(pwRoot, wKey, nBLOld));
-
-    } else
-#endif // defined(USE_XX_SW)
-    {
+    //printf("# New tree after InsertAll done looping:\n");
+    //DBG(Dump(pwRoot, wKey, nBLOld));
+  #else // USE_XX_SW
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        // InsertAll may look in the link containing wRoot for
-        // pop count. That's why we preserved the contents of
-        // the link before overwriting it above.
-        if (nBLOld < cnBitsPerWord) {
-            assert(nBLOld == nBL);
-            InsertAll(qya, &link.ln_wRoot, nBLOld, wKey);
-        } else
+    // InsertAll may look in the link containing wRoot for
+    // pop count. That's why we preserved the contents of
+    // the link before overwriting it above.
+    if (nBLOld < cnBitsPerWord) {
+        assert(nBLOld == nBL);
+        InsertAll(qya, &link.ln_wRoot, nBLOld, wKey);
+    } else
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-        {
-            // *pwRoot now points to a switch
-            assert(nBLOld == nBL);
-            InsertAll(qya, &wRoot, nBLOld, wKey);
-        }
+    {
+        // *pwRoot now points to a switch
+        assert(nBLOld == nBL);
+        InsertAll(qya, &wRoot, nBLOld, wKey);
     }
+  #endif // USE_XX_SW else
 
     if (nBL == nBLOld) {
         DBGI(printf("Just Before DoubleIt calls final Insert"));
@@ -8516,11 +8511,7 @@ copyWithInsertWord:
   #endif // XX_LISTS
             )
         {
-            DeflateExternalList(pwRoot, wPopCnt + 1, nBL, pwList
-#ifdef B_JUDYL
-                              , pwLnX
-#endif // B_JUDYL
-                                );
+            DeflateExternalList(qya, wPopCnt + 1);
             assert(*pwRoot != WROOT_NULL);
 #ifdef B_JUDYL
       #ifdef EK_XV
@@ -9121,13 +9112,13 @@ InflateEmbeddedList(qpa, Word_t wKey)
 // Replace list leaf with embedded keys and a value area leaf.
 // The function assumes it is possible.
 static Word_t
-DeflateList(qp, Word_t* pwLnX, int nPopCnt)
+DeflateList(qpa, int nPopCnt)
 {
-    qv;
+    qva;
   #ifdef DEBUG_INSERT
     DBGI(printf("# DeflateList nBL %d pwRoot %p wRoot 0x%zx nPopCnt %d: ",
                 nBL, pwRoot, wRoot, nPopCnt));
-    Dump(pwRoot, /* wPrefix */ 0, nBL);
+    DumpX(qya, /*wKey*/ 0);
   #endif // DEBUG_INSERT
     assert(tp_bIsList(nType));
     assert(nPopCnt > 1);
@@ -9192,25 +9183,14 @@ DeflateList(qp, Word_t* pwLnX, int nPopCnt)
 // Replace an external T_LIST leaf with a wRoot with embedded keys.
 // The function assumes it is possible.
 static Word_t
-DeflateExternalList(Word_t *pwRoot,
-                    int nPopCnt, int nBL, Word_t *pwr
-#ifdef B_JUDYL
-                  , Word_t *pwLnX
-#endif // B_JUDYL
-                    )
+DeflateExternalList(qpa, int nPopCnt)
 {
+    qva;
     DBGI(printf("DeflateExternalList pwRoot %p nPopCnt %d nBL %d pwr %p\n",
                (void *)pwRoot, nPopCnt, nBL, (void *)pwr));
   #ifdef EK_XV
     if (nPopCnt > 1) {
-      #ifdef QP_PLN
-        Link_t *pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot);
-      #endif // QP_PLN
-        return DeflateList(qy,
-      #ifdef _LNX
-                           /* pwLnX */ pwLnX,
-      #endif // _LNX
-                           nPopCnt);
+        return DeflateList(qya, nPopCnt);
     }
   #endif // EK_XV
 #if defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(EK_CALC_POP)
@@ -9227,10 +9207,10 @@ DeflateExternalList(Word_t *pwRoot,
 
 #if defined(DEBUG_INSERT)
     //HexDump("External List", pwr, nPopCnt + 1);
-    //Dump(pwRoot, 0, nBL);
+    DumpX(qya, /*wKey*/ 0);
 #endif // defined(DEBUG_INSERT)
 
-    Word_t wRoot = 0;
+    wRoot = 0;
 
     assert(nPopCnt <= nPopCntMax);
 
@@ -10140,11 +10120,7 @@ embeddedKeys:;
   #endif // XX_LISTS
     if ((int)wPopCnt <= EmbeddedListPopCntMax(nBL) + 1) {
         assert(nBLR == nBL);
-        DeflateExternalList(pwRoot, wPopCnt - 1, nBL, pwList
-#ifdef B_JUDYL
-                          , pwLnX
-#endif // B_JUDYL
-                            );
+        DeflateExternalList(qya, wPopCnt - 1);
     }
 #endif // defined(EMBED_KEYS)
 
@@ -12635,7 +12611,8 @@ JudyLCount(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
 Judy1Count(Pcvoid_t PArray, Word_t wKey0, Word_t wKey1, JError_t *pJError)
 #endif // B_JUDYL
 {
-    DBGC(printf("\n\nJudy1Count(wKey0 0x%02zx wKey1 0x%02zx)\n", wKey0, wKey1));
+    DBGC(printf("\n\nJudy1Count(wKey0 0x%02zx wKey1 0x%02zx)\n",
+                wKey0, wKey1));
     //DBGC(Dump(pwRootLast, 0, cnBitsPerWord));
 
 #if (cnDigitsPerWord != 1)
