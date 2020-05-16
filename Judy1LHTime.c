@@ -5047,7 +5047,7 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                                    Elements, elm);
   #ifndef NO_PRESERVED_KEY
                             if (Rc != 1) {
-                                printf("Build with -DNO_PRESERVED_KEY"
+                                printf("Build with -DNO_PRESERVED_KEY");
                                 printf(" to disable this test.");
                             }
   #endif // #ifndef NO_PRESERVED_KEY
@@ -5138,7 +5138,7 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                                    Elements, elm);
   #ifndef NO_PRESERVED_KEY
                             if (PValue == NULL) {
-                                printf("Build with -DNO_PRESERVED_KEY"
+                                printf("Build with -DNO_PRESERVED_KEY");
                                 printf(" to disable this test.");
                             }
   #endif // #ifndef NO_PRESERVED_KEY
@@ -5266,7 +5266,7 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                                    Elements, elm);
   #ifndef NO_PRESERVED_KEY
                             if (Rc != 1) {
-                                printf("Build with -DNO_PRESERVED_KEY"
+                                printf("Build with -DNO_PRESERVED_KEY");
                                 printf(" to disable this test.");
                             }
   #endif // #ifndef NO_PRESERVED_KEY
@@ -5357,7 +5357,7 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
                                    Elements, elm);
   #ifndef NO_PRESERVED_KEY
                             if (PValue == NULL) {
-                                printf("Build with -DNO_PRESERVED_KEY"
+                                printf("Build with -DNO_PRESERVED_KEY");
                                 printf(" to disable this test.");
                             }
   #endif // #ifndef NO_PRESERVED_KEY
