@@ -915,6 +915,130 @@ TestJudyCount(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
     Word_t TstIndexL = TstIndex; (void)TstIndexL;
     Word_t TstIndex1 = TstIndex; (void)TstIndex1;
 
+    Count1 = Judy1Count(J1, 0, -(Word_t)1, NULL);
+    if (Count1 != TotalPop) {
+        printf("TotalPop %zd\n", TotalPop);
+        FAILURE("Judy1Count(0, -1)", Count1);
+    }
+    CountL = JudyLCount(JL, 0, -(Word_t)1, NULL);
+    if (CountL != TotalPop) {
+        printf("TotalPop %zd\n", TotalPop);
+        FAILURE("JudyLCount(0, -1)", CountL);
+    }
+    // We never Insert index == 0.
+    // Unless user makes a mistake with -S.
+    Count1 = Judy1Count(J1, 1, -(Word_t)1, NULL);
+    if (Count1 != TotalPop) {
+        printf("TotalPop %zd\n", TotalPop);
+        FAILURE("Judy1Count(1, -1)", Count1);
+    }
+    CountL = JudyLCount(JL, 1, -(Word_t)1, NULL);
+    if (CountL != TotalPop) {
+        printf("TotalPop %zd\n", TotalPop);
+        FAILURE("JudyLCount(1, -1)", CountL);
+    }
+
+    // Tests designed specifically for missing keys around a narrow pointer.
+    // Need to make it more flexible.
+    // For now it requires wOffset have a high byte greater than zero and less than 0xff
+    // and the rest of the bits must be zero.
+    // E.g. Check -B32 -o0x5500000000000000
+    if ((wSplayMask == -(Word_t)1) // keep it simple for now
+        && (BValue < sizeof(Word_t) * 8 - 8) // we have a narrow pointer at the top
+        && (wOffset >= ((Word_t)1 << (sizeof(Word_t) * 8 - 8))) // high byte is not zero
+        && (wOffset < ((Word_t)0xff << (sizeof(Word_t) * 8 - 8))) // high byte is not 0xff
+        && ((wOffset & (((Word_t)1 << (sizeof(Word_t) * 8 - 8)) - 1)) == 0)
+        )
+    {
+        // Test index == 1 and index == -2 so special treatment of 0 and -1
+        // can't hide a bug as easily.
+        Count1 = Judy1Count(J1, 1, -(Word_t)2, NULL);
+        if (Count1 != TotalPop) {
+            printf("TotalPop %zd\n", TotalPop);
+            FAILURE("Judy1Count(1, -2)", Count1);
+        }
+        CountL = JudyLCount(JL, 1, -(Word_t)2, NULL);
+        if (CountL != TotalPop) {
+            printf("TotalPop %zd\n", TotalPop);
+            FAILURE("JudyLCount(1, -2)", CountL);
+        }
+
+        // wIndexA is the index just before the narrow pointer expanse.
+        Word_t wIndexA = wOffset - 1;
+        //printf("wIndexA 0x%016zx\n", wIndexA);
+        // wIndexB is the first index after the narrow pointer expanse with a different
+        // high byte.
+        Word_t wIndexB = wOffset + ((Word_t)2 << (sizeof(Word_t) * 8 - 8));
+        //printf("wIndexB 0x%016zx\n", wIndexB);
+
+        Count1 = Judy1Count(J1, 0, wIndexA, NULL);
+        if (Count1 != 0) {
+            printf("wIndexA 0x%016zx TotalPop %zd\n", wIndexA, TotalPop);
+            FAILURE("Judy1Count(0, wIndexA)", Count1);
+        }
+        CountL = JudyLCount(JL, 0, wIndexA, NULL);
+        if (CountL != 0) {
+            printf("wIndexA 0x%016zx TotalPop %zd\n", wIndexA, TotalPop);
+            FAILURE("JudyLCount(0, wIndexA)", CountL);
+        }
+
+        Count1 = Judy1Count(J1, 1, wIndexA, NULL);
+        if (Count1 != 0) {
+            printf("wIndexA 0x%016zx TotalPop %zd\n", wIndexA, TotalPop);
+            FAILURE("Judy1Count(1, wIndexA)", Count1);
+        }
+        CountL = JudyLCount(JL, 1, wIndexA, NULL);
+        if (CountL != 0) {
+            printf("wIndexA 0x%016zx TotalPop %zd\n", wIndexA, TotalPop);
+            FAILURE("JudyLCount(1, wIndexA)", CountL);
+        }
+
+        Count1 = Judy1Count(J1, wIndexB, -(Word_t)1, NULL);
+        if (Count1 != 0) {
+            printf("wIndexB 0x%016zx TotalPop %zd\n", wIndexB, TotalPop);
+            FAILURE("Judy1Count(wIndexB, -1)", Count1);
+        }
+        CountL = JudyLCount(JL, wIndexB, -(Word_t)1, NULL);
+        if (CountL != 0) {
+            printf("wIndexB 0x%016zx TotalPop %zd\n", wIndexB, TotalPop);
+            FAILURE("JudyLCount(wIndexB, -1)", CountL);
+        }
+
+        // Test index == -2 so special treatment of -1 can't hide a bug as easily.
+        Count1 = Judy1Count(J1, wIndexB, -(Word_t)2, NULL);
+        if (Count1 != 0) {
+            printf("wIndexB 0x%016zx TotalPop %zd\n", wIndexB, TotalPop);
+            FAILURE("Judy1Count(wIndexB, -2)", Count1);
+        }
+        CountL = JudyLCount(JL, wIndexB, -(Word_t)2, NULL);
+        if (CountL != 0) {
+            printf("wIndexB 0x%016zx TotalPop %zd\n", wIndexB, TotalPop);
+            FAILURE("JudyLCount(wIndexB, -2)", CountL);
+        }
+
+        Count1 = Judy1Count(J1, wIndexA, wIndexB, NULL);
+        if (Count1 != TotalPop) {
+            printf("wIndexA 0x%016zx wIndexB 0x%016zx TotalPop %zd\n", wIndexA, wIndexB, TotalPop);
+            FAILURE("Judy1Count(wIndexA, wIndexB)", Count1);
+        }
+        CountL = JudyLCount(JL, wIndexA, wIndexB, NULL);
+        if (CountL != TotalPop) {
+            printf("wIndexA 0x%016zx wIndexB 0x%016zx TotalPop %zd\n", wIndexA, wIndexB, TotalPop);
+            FAILURE("JudyLCount(wIndexA, wIndexB)", CountL);
+        }
+
+        Count1 = Judy1Count(J1, wIndexA + 1, wIndexB - 1, NULL);
+        if (Count1 != TotalPop) {
+            printf("wIndexA 0x%016zx wIndexB 0x%016zx TotalPop %zd\n", wIndexA, wIndexB, TotalPop);
+            FAILURE("Judy1Count(wIndexA + 1, wIndexB - 1)", Count1);
+        }
+        CountL = JudyLCount(JL, wIndexA + 1, wIndexB - 1, NULL);
+        if (CountL != TotalPop) {
+            printf("wIndexA 0x%016zx wIndexB 0x%016zx TotalPop %zd\n", wIndexA, wIndexB, TotalPop);
+            FAILURE("JudyLCount(wIndexA + 1, wIndexB - 1)", CountL);
+        }
+    }
+
     for (elm = 0; elm < Elements; elm++)
     {
         Count1 = Judy1Count(J1, LowIndex, TstIndex, NULL);

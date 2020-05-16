@@ -55,13 +55,25 @@ done
 done
 done
 
+# Targeted testing for Count and prefix mismatch handling.
+: \
+&& ${CHECK} -B32 -o0x5500000000000000 > /dev/null \
+:
+if [ $? != 0 ]
+then
+    exit 1
+fi
+
 # Both Judy1 and JudyL
 for B in 10 -21 12 -19 14 -17 16 -15 # 18 -13 20 -11 22  -9 24  -7 26  -5 28  -3 30  -1  0
 do
 for SOPT in "" -S1 -DS1 -S7 -DS7
 do
 
-cmd="${CHECK} -B$B $SOPT"
+if [ "$SOPT" != "" ]; then
+    bOPT=-b0
+fi
+cmd="${CHECK} -B$B $SOPT $bOPT"
 echo $cmd
 $cmd > /dev/null
 if [ $? != 0 ]
