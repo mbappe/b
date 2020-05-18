@@ -760,10 +760,11 @@ InsertRemoveL(qpa, Word_t wKey)
 InsertRemove1(qpa, Word_t wKey)
       #endif // B_JUDYL
   #endif // defined(LOOKUP)
-{
+{ 
     IF_NOT_LOOKUP(qva);
   #ifdef LOOKUP
     int nBL = cnBitsPerWord;
+    // Only wRoot word of pLn at top.
     Link_t *pLn = STRUCT_OF(&wRoot, Link_t, ln_wRoot);
       #ifndef QP_PLN
     Word_t* pwRoot = &wRoot;
@@ -772,20 +773,21 @@ InsertRemove1(qpa, Word_t wKey)
     Word_t* pwLnX = NULL;
       #endif // _LNX
   #endif // LOOKUP
+  #ifndef RECURSIVE
+  #ifndef LOOKUP
+  #ifndef COUNT
+    Link_t *pLnOrig = pLn; (void)pLnOrig;
+    int nBLOrig = nBL; (void)nBLOrig;
+  #endif // !COUNT
+  #endif // !LOOKUP
+  #endif // !RECURSIVE
     // nBL, pLn, and wRoot are set up
     DBGX(printf("# %s nBL %d pLn %p wRoot 0x%zx wKey 0x%zx\n",
                 strLookupOrInsertOrRemove, nBL, (void*)pLn, wRoot, wKey));
 
-#if defined(INSERT) && defined(B_JUDYL)
+  #if defined(INSERT) && defined(B_JUDYL)
     Word_t *pwValue = NULL;
-#endif // defined(INSERT) && defined(B_JUDYL)
-
-#if !defined(RECURSIVE)
-    Link_t *pLnOrig = pLn; (void)pLnOrig;
-  #if !defined(LOOKUP)
-    int nBLOrig = nBL; (void)nBLOrig;
-  #endif // !defined(LOOKUP)
-#endif // !defined(RECURSIVE)
+  #endif // INSERT && B_JUDYL
 
     int nBW;
     Link_t *pLnNew;
@@ -798,30 +800,27 @@ InsertRemove1(qpa, Word_t wKey)
     Word_t wDigit;
 
     int nIncr; (void)nIncr;
-#if !defined(RECURSIVE)
-      #if defined(INSERT)
+  #ifndef RECURSIVE
+      #ifdef INSERT
     nIncr = 1;
       #elif defined(REMOVE)
     nIncr = -1;
-      #else // INSERT, REMOVE
+      #else // INSERT elif REMOVE
     nIncr = 0; // make gcc happy
-      #endif // INSERT, REMOVE
-#endif // !defined(RECURSIVE)
-
+      #endif // INSERT elif REMOVE else
+  #endif // !RECURSIVE
+    // nBLUp was used only for CODE_XX_SW and INSERT.
+    // I think it will eventually be used for REMOVE.
+    int nBLUp = 0; (void)nBLUp; // silence gcc
     Link_t *pLnUp = NULL; (void)pLnUp;
       #ifdef _LNX
     Word_t* pwLnXUp = NULL; (void)pwLnXUp;
       #endif // _LNX
-
-    // nBLUp is used only for CODE_XX_SW and INSERT.
-    // I think it will eventually be used for REMOVE.
-    int nBLUp = 0; (void)nBLUp; // silence gcc
     // gcc complains that nBLUp may be used uninitialized with CODE_XX_SW.
-
     int bNeedPrefixCheck = 0; (void)bNeedPrefixCheck;
-#if defined(SAVE_PREFIX_TEST_RESULT)
+  #ifdef SAVE_PREFIX_TEST_RESULT
     Word_t wPrefixMismatch = 0; (void)wPrefixMismatch;
-#endif // defined(SAVE_PREFIX_TEST_RESULT)
+  #endif // SAVE_PREFIX_TEST_RESULT
   #ifdef _LNX
     Word_t* pwLnXNew;
       #ifdef REMOTE_LNX
@@ -842,22 +841,19 @@ InsertRemove1(qpa, Word_t wKey)
     Word_t* pwLnXOrig = pwLnX;
       #endif // INSERT || REMOVE
   #endif // _LNX
-#if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+  #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrUp = pwrUp; // suppress "uninitialized" compiler warning
-#endif // defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
+  #endif // LOOKUP && SKIP_PREFIX_CHECK
     Link_t *pLnPrefix = NULL; (void)pLnPrefix;
     Word_t *pwrPrefix = NULL; (void)pwrPrefix;
     int nBLRPrefix = 0; (void)nBLRPrefix;
-
     Word_t wPopCntUp = 0; (void)wPopCntUp;
-#if defined(COUNT)
+  #ifdef COUNT
     Word_t wPopCntSum = 0;
-#endif // defined(COUNT)
-
+  #endif // COUNT
     // Cleanup is expensive. So we only do it if it has been requested.
     int bCleanupRequested = 0; (void)bCleanupRequested;
     int bCleanup = 0; (void)bCleanup;
-
   #ifdef LOOKUP
     // nBL, pLn and wRoot of qy are set up
     int nType;
@@ -866,14 +862,12 @@ InsertRemove1(qpa, Word_t wKey)
     DBGX(pwr = NULL); // for compiler for qv in Log
   #endif // LOOKUP
     int nBLR;
-  #if ! defined(LOOKUP) || defined(B_JUDYL)
+  #if !defined(LOOKUP) || defined(B_JUDYL)
     int nPos;
-  #endif // ! defined(LOOKUP) || defined(B_JUDYL)
-
+  #endif // !LOOKUP || B_JUDYL
   #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
     int nAugTypeBits;
   #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT && LOOKUP
-
   #ifdef GOTO_AT_FIRST_IN_LOOKUP
   #ifdef SKIP_LINKS
   #ifdef LOOKUP
@@ -885,56 +879,48 @@ InsertRemove1(qpa, Word_t wKey)
         DBGX(Checkpoint(qya, "goto skip_to_sw"));
         goto t_skip_to_switch;
     }
-
     // This shortcut made the code faster in my testing.
     nBLR = nBL;
   #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
     nAugTypeBits = AugTypeBits(nBL);
   #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT && LOOKUP
     goto fastAgain;
-
   #endif // LOOKUP
   #endif // SKIP_LINKS
   #endif // GOTO_AT_FIRST_IN_LOOKUP
-
-  #if ! defined(LOOKUP) || defined(B_JUDYL)
+  #if !defined(LOOKUP) || defined(B_JUDYL)
     nPos = -1;
-  #endif // ! defined(LOOKUP) || defined(B_JUDYL)
-
-#if defined(COUNT)
+  #endif // !LOOKUP || B_JUDYL
+  #ifdef COUNT
     int bLinkPresent;
     int nLinks;
-#endif // defined(COUNT)
-
-#if defined(INSERT) || defined(REMOVE)
-  #if !defined(RECURSIVE)
+  #endif // COUNT
+  #if defined(INSERT) || defined(REMOVE)
+  #ifndef RECURSIVE
     goto top;
     DBGX(Checkpoint(qya, "top"));
 top:;
-  #endif // !defined(RECURSIVE)
-#endif // defined(INSERT) || defined(REMOVE)
+  #endif // !RECURSIVE
+  #endif // INSERT || REMOVE
     nBLR = nBL;
-
-#if defined(LOOKUP) || !defined(RECURSIVE)
+  #if defined(LOOKUP) || !defined(RECURSIVE)
     goto again;
     DBGX(Checkpoint(qya, "again"));
 again:;
-#endif // defined(LOOKUP) || !defined(RECURSIVE)
+  #endif // LOOKUP || !RECURSIVE
   #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
     nAugTypeBits = AugTypeBits(nBL);
     goto againAugType;
 againAugType:;
   #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT && LOOKUP
-
-#if defined(SKIP_LINKS)
+  #ifdef SKIP_LINKS
     assert(nBLR == nBL);
-#endif // defined(SKIP_LINKS)
-#if ( ! defined(LOOKUP) )
-  #if ! defined(CODE_XX_SW)
+  #endif // SKIP_LINKS
+  #ifndef LOOKUP
+  #ifndef CODE_XX_SW
     assert(nBL >= cnBitsInD1); // valid for LOOKUP too
-  #endif // ! defined(CODE_XX_SW)
-#endif // ( ! defined(LOOKUP) )
-
+  #endif // !CODE_XX_SW
+  #endif // !LOOKUP
   #ifdef INSERT
   #ifdef _RETURN_NULL_TO_INSERT_AGAIN
 insertAgain:
@@ -944,7 +930,6 @@ insertAgain:
     pwr = wr_pwr(wRoot); // pwr isn't meaningful for all nType values
     // nBL, pLn, wRoot, nType and pwr of qy are set up
     DBGX(Checkpoint(qya, "enter switch stmt"));
-
     goto fastAgain;
 fastAgain:;
   #ifdef JUMP_TABLE
@@ -1001,7 +986,6 @@ fastAgain:;
   // How expensive would it be to maintain nDL as well as nBL?
   // AUGMENT_TYPE without AUGMENT_TYPE_8 has four different nBL groups:
   // 5-8, 9-16, 17-32, 33-64. 0-4 does not work.
-
     // AUGMENTED_TYPE
   #if defined(AUGMENT_TYPE) && defined(LOOKUP)
     #define AUGMENTED_TYPE  (nAugTypeBits | nType)
@@ -1024,7 +1008,6 @@ fastAgain:;
   #else // MASK_TYPE
     #define MASKED_AUGMENTED_TYPE  AUGMENTED_TYPE
   #endif // MASK_TYPE else
-
   // __builtin_prefetch(0, 0); // Uncomment and find prefetcht0 in bl[L].s.
   #ifdef JUMP_TABLE
     goto *pvJumpTable[MASKED_AUGMENTED_TYPE];
@@ -1048,22 +1031,19 @@ fastAgain:;
   #endif // DEFAULT_SWITCH
   #endif // DEFAULT_SKIP_TO_SW
   #endif // DEBUG
-
   #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
-#define CASES_AUG_TYPE_8(_t) \
-    case 112 + (_t): case 96 + (_t): case 80 + (_t): case 64 + (_t):
+    #define CASES_AUG_TYPE_8(_t) \
+        case 112 + (_t): case 96 + (_t): case 80 + (_t): case 64 + (_t):
   #else // AUGMENT_TYPE_8 && LOOKUP
-#define CASES_AUG_TYPE_8(_t)
+    #define CASES_AUG_TYPE_8(_t)
   #endif // AUGMENT_TYPE_8 && LOOKUP
-
   #if defined(AUGMENT_TYPE) && defined(LOOKUP)
-#define CASES_AUG_TYPE(_t) \
-    CASES_AUG_TYPE_8(_t) \
-    case 48 + (_t): case 32 + (_t): case 16 + (_t):
+    #define CASES_AUG_TYPE(_t) \
+        CASES_AUG_TYPE_8(_t) \
+        case 48 + (_t): case 32 + (_t): case 16 + (_t):
   #else // AUGMENT_TYPE && LOOKUP
-#define CASES_AUG_TYPE(_t)
+    #define CASES_AUG_TYPE(_t)
   #endif // AUGMENT_TYPE_8 && LOOKUP
-
   #if defined(DEFAULT_SKIP_TO_SW)
     default:
   #endif // defined(DEFAULT_SKIP_TO_SW)
@@ -1857,7 +1837,7 @@ switchTail:;
         IF_COUNT(wPopCntSum += CountSw(qya, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
         // Save the previous link and advance to the next.
-        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
+        IF_NOT_LOOKUP(nBLUp = nBL);
         IF_NOT_LOOKUP(pLnUp = pLn);
       #ifdef _LNX
         IF_NOT_LOOKUP(pwLnXUp = pwLnX);
@@ -1956,7 +1936,7 @@ t_xx_sw:
         IF_COUNT(wPopCntSum += CountSw(qya, wDigit, nLinks));
         IF_COUNT(if (!bLinkPresent) return wPopCntSum);
         // Save the previous link and advance to the next.
-        IF_CODE_XX_SW(IF_INSERT(nBLUp = nBL));
+        IF_NOT_LOOKUP(nBLUp = nBL);
         IF_NOT_LOOKUP(pLnUp = pLn);
       #ifdef _LNX
         IF_NOT_LOOKUP(pwLnXUp = pwLnX);
@@ -2065,16 +2045,7 @@ t_bm_sw:
         // How could we ever have nBL with pLn not at the top? Huh?
         // What about defined(RECURSIVE)?
         // What about Remove and RemoveGuts?
-        if ( ! (1
-          #if defined(RECURSIVE)
-                && (nBL == cnBitsPerWord)
-          #else // defined(RECURSIVE)
-                && (pLn == pLnOrig)
-              #if !defined(LOOKUP)
-                && (nBLOrig == cnBitsPerWord)
-              #endif // !defined(LOOKUP)
-          #endif // defined(RECURSIVE)
-            ) )
+        if (nBL < cnBitsPerWord)
       #endif // defined(BM_IN_LINK) && defined(SKIP_TO_BM_SW)
         {
       #if ! defined(COUNT)

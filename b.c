@@ -7824,7 +7824,9 @@ newSkipToBitmap:;
             nBW = nBLR_to_nBW(nBLNew);
         } else if (0) {
       #else // USE_XX_SW_ALWAYS
-        } else if ((pLnUp != NULL) && (nBL <= nDL_to_nBL(2))) {
+// I can't remember why we are testing pLnUp?
+// Is it supposed to signal something for NO_TYPE_IN_XX_SW?
+        } else if (/*(pLnUp != NULL) &&*/ (nBL <= nDL_to_nBL(2))) {
       #endif // USE_XX_SW_ALWAYS
 // Shouldn't we think about some other option here?
 // What about a small bitmap?
@@ -8177,7 +8179,9 @@ InsertAtList(qpa,
         // Let's DoubleDown before the list is full if appropriate.
 // Does appropriate conversion length depend on SignificantBitCnt
 // w.r.t. nBL?
-        if (pLnUp != NULL) {
+// I can't remember why we are testing pLnUp?
+// Is if supposed to signal something for NO_TYPE_IN_XX_SW?
+        if (nBL < cnBitsPerWord /*pLnUp != NULL*/) {
 // Someday we may be able to convert a shared list to a new nBLR but not yet.
           if (nType != T_XX_LIST) {
             int nBitCnt = SignificantBitCnt(qy, wKey, wPopCnt);
@@ -8476,6 +8480,7 @@ copyWithInsertWord:
             // Replicate the link with a new pop cnt and maybe pwr.
             int nBWRUp;
             Link_t *pLinksUp;
+            assert(pLnUp != NULL);
             if (pLnUp == NULL) {
                 int nDLRUp = nDL + 1; (void)nDLRUp;
                 int nBLRUp = nDL_to_nBL(nDLRUp); (void)nBLRUp;
@@ -8669,6 +8674,9 @@ InsertGuts(qpa, Word_t wKey, int nPos
     (void)pwLnXUp;
       #endif // REMOTE_LNX
     int nBW; (void)nBW;
+  #ifdef _RETURN_NULL_TO_INSERT_AGAIN
+    assert((nBL >= cnBitsPerWord) == (pLnUp == NULL));
+  #endif // _RETURN_NULL_TO_INSERT_AGAIN
 #endif // defined(CODE_XX_SW)
   #ifdef _LNX
   #ifdef _RETURN_NULL_TO_INSERT_AGAIN
@@ -8716,7 +8724,10 @@ InsertGuts(qpa, Word_t wKey, int nPos
     // So, for now, if NO_TYPE_IN_XX_SW applies to this link, then it
     // contains embedded keys.
 // Shouldn't we check for embedded bitmap before this?
-    if ((pLnUp != NULL) && (nBL <= nDL_to_nBL(2))) {
+// We use pLnUp != NULL to indicate XX_SW?
+// I can't remember why we are testing pLnUp here.
+// Is it supposed to signal something for NO_TYPE_IN_XX_SW?
+    if (/*(pLnUp != NULL) &&*/ (nBL <= nDL_to_nBL(2))) {
         DBGR(printf("IG: goto embeddedKeys.\n"));
         goto embeddedKeys; // no type field is handled by embeddedKeys
     }
