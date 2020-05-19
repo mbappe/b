@@ -314,15 +314,24 @@ all: $(EXES) $(LIBS) $(ASMS) $(CPPS)
 
 clean:
 	rm -f $(EXES) $(LIBS) $(LIBB_OBJS) $(ASMS) $(CPPS) JudyMalloc.so
-	rm -f $(LIBBL_SRCS)
+	rm -f $(LIBBL_SRCS) *.gch
 
-# I haven't been able to figure out how to take advantage of precompiled
-# headers yet.
-b.h.gch: b.h
-	$(CC) $(CFLAGS) $(DEFINES) -c $<
+# I haven't figured out how to take advantage of precompiled headers yet.
+# We were getting gch files when making $(ASMS) before I added explicit
+# recipes for $(ASMS).
 
-b-L.h.gch: b.h
-	$(CC) $(CFLAGS) $(DEFINES) -o $@ -c $<
+#b.h.gch: b.h
+#	@ # $(CC) $(CFLAGS) $(DEFINES) -c $<
+
+#bL.h.gch: bL.h
+#	@ # $(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
+
+#bL.h: b.h
+#	ln -s $^ $@
+#bdefinesL.h: bdefines.h
+#	ln -s $^ $@
+#JudyL.h: Judy.h
+#	ln -s $^ $@
 
 t: t.c $(T_OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
@@ -470,15 +479,23 @@ JudyMalloc.o: JudyMalloc.c dlmalloc.c Judy.h
 #
 ############################
 
+# Can't use dependencies on .c.s rule?
 .c.s:
 	$(CC) $(CFLAGS) $(DEFINES) -S $^
 
+# Does using an explicit recipe inhibit creation of gch files?
 b.s: b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -S -o $@ -c $<
 b1.s: bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -S -o $@ -c $<
 bi.s: bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -S -o $@ -c $<
 bl.s: bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -S -o $@ -c $<
 br.s: bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -S -o $@ -c $<
 bc.s: bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -S -o $@ -c $<
 
 b-L.s: b.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
