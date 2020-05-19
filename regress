@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# usage: regress [prefix]
+#   TIME=<prefix>time
+#   CHECK=<prefix>check
+# Default <prefix> is "b".
+# If "1" or "L" is specified, then "b1" or "bL" is used.
+
 # What is the goal of this regression test script?
 # How much memory should it require? Should it test and adapt?
 # Should it assume 64-bit or 32-bit Judy?
@@ -7,13 +13,24 @@
 # Should it work with either?
 # Is it supposed to test Judy1LHTime and Judy1LHCheck or just Judy?
 
-# For now it is a fast hoop test that works with both 64-bit and
+# For now it is a hoop test that works with both 64-bit and
 # 32-bit Judy.
 
 # Use a -DDEBUG build.
 
-TIME=Judy1LHTime
-CHECK=Judy1LHCheck
+if [ "$1" = "1" ]; then
+    TIME=b1time
+    CHECK=b1check
+elif [ "$1" = "L" ]; then
+    TIME=bLtime
+    CHECK=bLcheck
+elif [ "$1" = "" ]; then
+    TIME=btime
+    CHECK=bcheck
+else
+    TIME=${1}time # jtime, c++time, c++1time, c++Ltime
+    CHECK=${1}check # jcheck, c++check, c++1check, c++Lcheck
+fi
 
 # Basic runs we use for performance testing:
 # ${TIME} -1m
@@ -56,9 +73,9 @@ done
 done
 
 # Targeted testing for Count and prefix mismatch handling.
-: \
-&& ${CHECK} -B32 -o0x5500000000000000 > /dev/null \
-:
+cmd="${CHECK} -B32 -o0x5500000000000000"
+echo $cmd
+$cmd > /dev/null
 if [ $? != 0 ]
 then
     exit 1
@@ -118,9 +135,9 @@ done
 done
 
 # Targeted testing for LOWER_XX_SW and DoubleUp with cnListPopCntMax64=64.
-: \
-&& ${TIME} -W0 -1lgGi --splay-key-bits=0x1f8f4f2fe000 -S1 -n0x100000 > /dev/null \
-:
+cmd="${TIME} -W0 -1lgGi --splay-key-bits=0x1f8f4f2fe000 -S1 -n0x100000"
+echo $cmd
+$cmd > /dev/null
 if [ $? != 0 ]
 then
     exit 1
