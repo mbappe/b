@@ -266,7 +266,6 @@ ifeq "$(NO_SM)" ""
     JUDY_DEFINES += -DSEARCHMETRICS
 endif
 
-
 # Put cmdline DEFINES after default defines so defaults can be overridden.
 MAKE_DEFINES = $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
 DEFINES := $(MAKE_DEFINES) $(DEFINES)
@@ -280,8 +279,8 @@ FILES_FROM_DOUG_B_OR_DOUG_LEA  = Judy.h RandomNumb.h dlmalloc.c JudyMalloc.c
 FILES_FROM_DOUG_B_OR_DOUG_LEA += Judy1LHCheck.c Judy1LHTime.c jbgraph
 FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEA)
 
-EXES = btime bcheck # t
-LINKS = b check
+EXES = btime bcheck b1time b1check bLtime bLcheck jtime jcheck # t
+EXES += c++time c++check
 LIBS = libb1.a libb1.so libbL.a libbL.so libb.a libb.so
 LIBB1_OBJS = b.o bl.o bi.o br.o bc.o JudyMalloc.o
 LIBB1_SRCS = b.c bl.c bi.c br.c bc.c
@@ -309,15 +308,13 @@ T_OBJS = JudyMalloc.o
 #
 ##################################
 
-default: $(EXES) $(LINKS)
+default: btime bcheck
 
-all: $(EXES) $(LINKS) $(LIBS) $(ASMS) $(CPPS)
+all: $(EXES) $(LIBS) $(ASMS) $(CPPS)
 
 clean:
-	rm -f $(EXES) $(LINKS) $(LIBS) $(LIBB_OBJS) $(ASMS) $(CPPS) \
-    JudyMalloc.so \
-    b1time b1check bLtime blcheck jtime jcheck \
-    b check Judy1LHTime Judy1LHCheck
+	rm -f $(EXES) $(LIBS) $(LIBB_OBJS) $(ASMS) $(CPPS) JudyMalloc.so
+	rm -f $(LIBBL_SRCS)
 
 # I haven't been able to figure out how to take advantage of precompiled
 # headers yet.
@@ -330,6 +327,9 @@ b-L.h.gch: b.h
 t: t.c $(T_OBJS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 
+b: btime bcheck
+	@ # prevent make from trying to make b from b.c with a built-in rule
+
 # -DMIKEY tells Judy1LHTime to use different RAMMETRICS column headings
 # and be more strict in testing.
 # libJudy.a is for JudyHS.
@@ -337,27 +337,17 @@ t: t.c $(T_OBJS)
 # compilers where -pie is default.
 btime: Judy1LHTime.c libb.a
 	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -o $@ $^ -lm
-	ln -sf btime Judy1LHTime
-
-c++time: Judy1LHTime.c libb.a
-	$(CXX) $(CXXFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -o $@ \
-    -x c++ Judy1LHTime.c -x none libb.a -lm
-
-# btime, bcheck, b1time, b1check, bLtime, bLcheck, jtime, and jcheck
-# always mean the same thing.
-# b, check, Judy1LHTime, and Judy1LHCheck are fickle; they point to
-# the most recent commands built for use by regress
-b:
-	ln -sf Judy1LHTime b
-
-check:
-	ln -sf Judy1LHCheck check
 
 # Need -lm on Ubuntu. Appears to be unnecessary on macOS.
 bcheck: Judy1LHCheck.c libb.a
 	$(CC) $(CFLAGS) -DJUDY1_DUMP -DJUDYL_DUMP -DMIKEY_1 -DMIKEY_L \
  $(DEFINES) -o $@ $^ -lm
-	ln -sf bcheck Judy1LHCheck
+
+c++: c++time c++check
+
+c++time: Judy1LHTime.c libb.a
+	$(CXX) $(CXXFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -o $@ \
+    -x c++ Judy1LHTime.c -x none libb.a -lm
 
 c++check: Judy1LHCheck.c libb.a
 	$(CXX) $(CXXFLAGS) $(DEFINES) -o $@ \
@@ -372,49 +362,34 @@ libb1.a: $(LIBB1_OBJS)
 libbL.a: $(LIBBL_OBJS)
 	ar -r $@ $^
 
-# Targets 1, b1 and b1check link with libb1 to get Judy1 from libb1.a
+# Targets 1, b1time and b1check link with libb1 to get Judy1 from libb1.a
 # and JudyL from libJudy.a
-# I've seen a recursive make use -w while the non-recursive one doesn't.
-# Can't we figure out a better way to do the links than a recursive make?
-1:
-	rm -f b1time b1check
-	$(MAKE) b1time b1check b check
+1: b1time b1check
 
 b1time: Judy1LHTime.c libb1.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DMIKEY_1 $(DEFINES) -o $@ $^ -lm
-	ln -sf $@ Judy1LHTime
 
 b1check: Judy1LHCheck.c libb1.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DJUDY1_DUMP -DMIKEY_1 $(DEFINES) -o $@ $^ -lm
-	ln -sf $@ Judy1LHCheck
 
-# Targets L, bL and bLcheck link with libbL to get JudyL from libbL.a
+# Targets L, bLtime and bLcheck link with libbL to get JudyL from libbL.a
 # and Judy1 from libJudy.a
-# I've seen a recursive make use -w while the non-recursive one doesn't.
-L:
-	rm -f bLtime bLcheck
-	$(MAKE) bLtime bLcheck b check
+L: bLtime bLcheck
 
 bLtime: Judy1LHTime.c libbL.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DMIKEY_L $(DEFINES) -o $@ $^ -lm
-	ln -sf $@ Judy1LHTime
 
 bLcheck: Judy1LHCheck.c libbL.a ${LIBJUDY}
 	$(CC) $(CFLAGS) -DJUDYL_DUMP -DMIKEY_L $(DEFINES) -o $@ $^ -lm
-	ln -sf $@ Judy1LHCheck
 
-# Targets j, jtime and jcheck link with libJudy.a
-j:
-	rm -f jtime jcheck
-	$(MAKE) jtime jcheck
+# Targets j, jtime and jcheck link only with libJudy.a
+j: jtime jcheck
 
 jtime: Judy1LHTime.c ${LIBJUDY}
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
-	ln -sf jtime Judy1LHTime
 
 jcheck: Judy1LHCheck.c ${LIBJUDY}
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
-	ln -sf jcheck Judy1LHCheck
 
 # Build libb1.so and libbL.so directly from sources rather than from
 # objects so this Makefile doesn't have to deal with the complexity
@@ -428,6 +403,17 @@ libbL.so: $(LIBBL_SRCS) JudyMalloc.so
 
 libb.so: libb1.so libbL.so
 	$(CC) -shared -o $@ $^
+
+b-L.c: b.c
+	ln -s $^ $@
+blL.c: bl.c
+	ln -s $^ $@
+biL.c: bi.c
+	ln -s $^ $@
+brL.c: br.c
+	ln -s $^ $@
+bcL.c: bc.c
+	ln -s $^ $@
 
 # dlmalloc.c needs special accommodations
 # We put them in MALLOC_FLAGS.
