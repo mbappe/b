@@ -1266,6 +1266,131 @@ static int bRandomGets = 0;
 #define MIN(_a, _b)  ((_a) < (_b) ? (_a) : (_b))
 #define MAX(_a, _b)  ((_a) > (_b) ? (_a) : (_b))
 
+// Log ifdefs to make plot files more self-describing.
+void
+LogIfdefs(void)
+{
+  #ifdef         DEBUG
+    printf("#    DEBUG\n");
+  #else //       DEBUG
+    printf("# No DEBUG\n");
+  #endif //      DEBUG else
+
+  #ifdef         NDEBUG
+    printf("#    NDEBUG\n");
+  #else //       NDEBUG
+    printf("# No NDEBUG\n");
+  #endif //      NDEBUG else
+
+  #ifdef         RAMMETRICS
+    printf("#    RAMMETRICS\n");
+  #else //       RAMMETRICS
+    printf("# No RAMMETRICS\n");
+  #endif //      RAMMETRICS else
+
+  #ifdef         SEARCHMETRICS
+    printf("#    SEARCHMETRICS\n");
+  #else //       SEARCHMETRICS
+    printf("# No SEARCHMETRICS\n");
+  #endif //      SEARCHMETRICS else
+
+  #ifdef         CALC_NEXT_KEY
+    printf("#    CALC_NEXT_KEY\n");
+  #else //       CALC_NEXT_KEY
+    printf("# No CALC_NEXT_KEY\n");
+  #endif //      CALC_NEXT_KEY else
+
+  #ifdef         LFSR_ONLY
+    printf("#    LFSR_ONLY\n");
+  #else //       LFSR_ONLY
+    printf("# No LFSR_ONLY\n");
+  #endif //      LFSR_ONLY else
+
+  #ifdef         KFLAG
+    printf("#    KFLAG\n");
+  #else //       KFLAG
+    printf("# No KFLAG\n");
+  #endif //      KFLAG else
+
+  #ifdef         USE_PDEP_INTRINSIC
+    printf("#    USE_PDEP_INTRINSIC\n");
+  #else //       USE_PDEP_INTRINSIC
+    printf("# No USE_PDEP_INTRINSIC\n");
+  #endif //      USE_PDEP_INTRINSIC else
+
+  #ifdef         OLD_DS1_GROUPS
+    printf("#    OLD_DS1_GROUPS\n");
+  #else //       OLD_DS1_GROUPS
+    printf("# No OLD_DS1_GROUPS\n");
+  #endif //      OLD_DS1_GROUPS else
+
+  #ifdef         USE_MALLOC
+    printf("#    USE_MALLOC\n");
+  #else //       USE_MALLOC
+    printf("# No USE_MALLOC\n");
+  #endif //      USE_MALLOC else
+
+  #ifdef         MIKEY_1
+    printf("#    MIKEY_1\n");
+  #else //       MIKEY_1
+    printf("# No MIKEY_1\n");
+  #endif //      MIKEY_1 else
+
+  #ifdef         MIKEY_L
+    printf("#    MIKEY_L\n");
+  #else //       MIKEY_L
+    printf("# No MIKEY_L\n");
+  #endif //      MIKEY_L else
+
+  #ifdef         JUDY1_V2
+    printf("#    JUDY1_V2\n");
+  #else //       JUDY1_V2
+    printf("# No JUDY1_V2\n");
+  #endif //      JUDY1_V2 else
+
+  #ifdef         JUDY1_DUMP
+    printf("#    JUDY1_DUMP\n");
+  #else //       JUDY1_DUMP
+    printf("# No JUDY1_DUMP\n");
+  #endif //      JUDY1_DUMP else
+
+  #ifdef         JUDYL_V2
+    printf("#    JUDYL_V2\n");
+  #else //       JUDYL_V2
+    printf("# No JUDYL_V2\n");
+  #endif //      JUDYL_V2 else
+
+  #ifdef         JUDYL_DUMP
+    printf("#    JUDYL_DUMP\n");
+  #else //       JUDYL_DUMP
+    printf("# No JUDYL_DUMP\n");
+  #endif //      JUDYL_DUMP else
+
+  // If TEST_NEXT_USING_JUDY_NEXT is not defined we use GetNextKey for
+  // successive iterations in TestJudyNext.
+  // If TEST_NEXT_USING_JUDY_NEXT is defined we use the result of Judy1Next
+  // as input for our next iteration. One could argue this more closely
+  // resembles the most likely use case. So we make this the default.
+  #ifndef   NO_TEST_NEXT_USING_JUDY_NEXT
+    #undef     TEST_NEXT_USING_JUDY_NEXT
+    #define    TEST_NEXT_USING_JUDY_NEXT
+  #endif // NO_TEST_NEXT_USING_JUDY_NEXT
+
+  #ifdef         TEST_NEXT_USING_JUDY_NEXT
+    printf("#    TEST_NEXT_USING_JUDY_NEXT\n");
+  #else //       TEST_NEXT_USING_JUDY_NEXT
+    printf("# No TEST_NEXT_USING_JUDY_NEXT\n");
+  #endif //      TEST_NEXT_USING_JUDY_NEXT else
+
+  #ifdef         TEST_COUNT_USING_JUDY_NEXT
+    printf("#    TEST_COUNT_USING_JUDY_NEXT\n");
+  #else //       TEST_COUNT_USING_JUDY_NEXT
+    printf("# No TEST_COUNT_USING_JUDY_NEXT\n");
+  #endif //     TEST_COUNT_USING_JUDY_NEXT else
+
+  // There are a lot more to log.
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -2817,6 +2942,8 @@ eopt:
         if (fFlag)
             fflush(NULL);                   // assure data gets to file in case malloc fail
     }
+
+    LogIfdefs();
 
 // ============================================================
 // Warm up the cpu
@@ -4998,16 +5125,6 @@ TestJudyNext(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
         for (DminTime = 1e40, icnt = ICNT, lp = 0; lp < Loops; lp++)
         {
             int Rc;
-// If TEST_NEXT_USING_JUDY_NEXT is not defined we use GetNextKey for
-// each successive iteration.
-// If TEST_NEXT_USING_JUDY_NEXT is defined we use the result of Judy1Next
-// as input for our next iteration. One could argue this more closely
-// resembles the most likely use case. So we make this the default.
-#ifndef   NO_TEST_NEXT_USING_JUDY_NEXT
-#undef       TEST_NEXT_USING_JUDY_NEXT
-#define      TEST_NEXT_USING_JUDY_NEXT
-#endif // NO_TEST_NEXT_USING_JUDY_NEXT
-
             Word_t J1KeyBefore;
 #ifdef TEST_NEXT_USING_JUDY_NEXT
             J1KeyBefore = -1;
