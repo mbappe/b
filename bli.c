@@ -3081,15 +3081,16 @@ t_list:
                               #ifdef PACK_L1_VALUES
                 && ((nPos = LocateKeyInList8(qy, nBLR, wKey)) >= 0)
                               #else // PACK_L1_VALUES
-                && ListHasKey8(qy, nBLR, wKey)
+                && ((nPos = -!ListHasKey8(qy, nBLR, wKey)) >= 0)
                               #endif // PACK_L1_VALUES else
                           #endif // AUGMENT_TYPE_8 && cnBitsInD1 > 8 else
                       #else // AUGMENT_TYPE && !AUGMENT_TYPE_NOT
-                          #ifdef PACK_L1_VALUES
-                && ((nPos = LocateKeyInList(qya, nBLR, wKey)) >= 0)
-                          #else // PACK_L1_VALUES
-                && ListHasKey(qy, nBLR, wKey)
-                          #endif // PACK_L1_VALUES else
+                && ((nPos =
+                          #ifndef PACK_L1_VALUES
+                    ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1))
+                            ? -!ListHasKey8(qy, nBLR, wKey) :
+                          #endif // !PACK_L1_VALUES
+                        LocateKeyInList(qya, nBLR, wKey)) >= 0)
                       #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT else
                   #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
               #else // defined(B_JUDYL)
