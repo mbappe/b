@@ -177,6 +177,13 @@ HexDump(char *str, Word_t *pw, unsigned nWords)
     }
 }
 
+void
+Checkpoint(qpa, const char *str)
+{
+    qva;
+    printf("# %20s: " qafmt "\n", str, qyap);
+}
+
 static void
 Log(qp, const char *str)
 {
@@ -2280,6 +2287,8 @@ OldSwitch(Word_t *pwRoot, int nBL
     (void)nBL; // silence compiler
 }
 
+// wKey contains the prefix bits for qpa.
+// It may also contain less significant bits.
 static Word_t
 FreeArrayGuts(qpa, Word_t wKey, int bDump
 #if defined(B_JUDYL) && defined(EMBED_KEYS)
@@ -2312,15 +2321,13 @@ FreeArrayGuts(qpa, Word_t wKey, int bDump
 
     if (!bDump && (nBL == cnBitsPerWord)) { DBGR(printf("FreeArrayGuts\n")); }
 
+    Word_t wPrefix = wKey & ~NZ_MSK(nBL); (void)wPrefix;
     if (bDump) {
         // Check for embedded bitmap before assuming nType is valid.
         if (!cbEmbeddedBitmap || (nBL > cnLogBitsPerLink)) {
-  #ifndef FULL_DUMP
-            // check for prefix mismatch and bail out
   #ifdef SKIP_LINKS
             if (tp_bIsSkip(nType)) {
                 nBLR = GetBLR(pwRoot, nBL);
-                Word_t wPrefix;
     #if defined(SKIP_TO_BITMAP) || defined(SKIP_TO_LIST)
                 if (tp_bIsSwitch(nType))
     #endif // defined(SKIP_TO_BITMAP) || defined(SKIP_TO_LIST)
@@ -2348,18 +2355,18 @@ FreeArrayGuts(qpa, Word_t wKey, int bDump
                         wPrefix = gwListPrefix(qy, nBLR);
                 }
     #endif // SKIP_TO_LIST
+                // check for prefix mismatch and bail out
                 if ((wKey & ~NZ_MSK(nBLR)) != wPrefix) {
+    #ifndef FULL_DUMP
                         printf("Prefix mismatch\n");
                         return 0;
+    #endif // #ifndef FULL_DUMP
                 }
             }
   #endif // SKIP_LINKS
-  #endif // #ifndef FULL_DUMP
         }
-        printf(" nBL %2d", nBL);
-        // Print dots for suffix?
-        // How would we represent a partially significant hex digit?
-        printf(" prefix " OWx, wKey /*& ~NZ_MSK(nBL)*/);
+        printf(" nBL %2d nBLR %2d", nBL, nBLR);
+        printf(" wKey " OWx, wKey);
         printf(" pwRoot " OWx, (Word_t)pwRoot);
         printf(" wRoot " OWx, wRoot);
   #ifdef _LNX
@@ -2962,6 +2969,8 @@ embeddedKeys:;
   #endif // CODE_BM_SW
 
     for (Word_t ww = 0, nn = 0; nn < EXP(nBW); nn++) {
+        // Here we are dumping (wPrefix | (nn << nBLLoop)).
+        wKey &= ~NZ_MSK(nBLR); // prep for adding the digit
   #ifdef CODE_BM_SW
         if (!bBmSw
             || (PWR_pwBm(pwRoot, pwr, nBW)[gnWordNumInSwBm(nn)]
@@ -3022,7 +3031,6 @@ embeddedKeys:;
   #endif // CODE_BM_SW
 #endif // defined(B_JUDYL) && defined(EMBED_KEYS)
                                             );
-                    wKey &= ~NZ_MSK(nBLR);
                 }
             }
 
