@@ -522,31 +522,32 @@ JudyMalloc.s: JudyMalloc.c
 
 # This .c.i rule doesn't work for some reason. Like it doesn't exist.
 .c.i:
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
 
 # The .i rules don't work with DEBUG. A problem with assert macro and indent?
 
 # Maybe use indent for crazy macros and disable it with
 # /* *INDENT-(OFF|ON)* */ and/or // *INDENT-(OFF|ON)* for most of the code.
 # indent -npcs -nprs -ntac -nss -i4 -bap -bfda -br -nut -bbo -bli0
+# Old .c.i rule: $(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
 
-bl.i: bl.c
+bl.i: bl.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
 
-bi.i: bi.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
-
-br.i: br.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
-
-bc.i: bc.c
-	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
-
-blL.i: blL.c
+blL.i: blL.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
   | egrep -v "^#[0-9]*|^ *$$" > $@
 
-b.i: b.c
+bi.i: bi.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
+
+br.i: br.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
+
+bc.i: bc.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
+
+b.i: b.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
 
 Judy1LHTime.i: Judy1LHTime.c
