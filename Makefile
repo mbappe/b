@@ -292,7 +292,7 @@ ASMS  = b.s bl.s bi.s br.s bc.s
 ASMS += b-L.s blL.s biL.s brL.s bcL.s
 ASMS += JudyMalloc.s # t.s
 ASMS += Judy1LHTime.s Judy1LHCheck.s
-CPPS  = b.i bl.i bi.i br.i bc.i
+CPPS  = b.i bl.i bi.i br.i bc.i blL.i
 CPPS += JudyMalloc.i # t.i
 
 T_OBJS = JudyMalloc.o
@@ -318,7 +318,8 @@ clean:
 
 # I haven't figured out how to take advantage of precompiled headers yet.
 # We were getting gch files when making $(ASMS) before I added explicit
-# recipes for $(ASMS).
+# recipes for $(ASMS). I think it was because I was using $^ in .c.s rule
+# instead of $<.
 
 #b.h.gch: b.h
 #	@ # $(CC) $(CFLAGS) $(DEFINES) -c $<
@@ -481,25 +482,16 @@ JudyMalloc.o: JudyMalloc.c dlmalloc.c Judy.h
 
 # Can't use dependencies on .c.s rule?
 .c.s:
-	$(CC) $(CFLAGS) $(DEFINES) -S $^
+	$(CC) $(CFLAGS) $(DEFINES) -S $<
 
 # Does using an explicit recipe inhibit creation of gch files?
-b.s: b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -S -o $@ -c $<
-b1.s: bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -S -o $@ -c $<
-bi.s: bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -S -o $@ -c $<
-bl.s: bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -S -o $@ -c $<
-br.s: bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -S -o $@ -c $<
-bc.s: bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -S -o $@ -c $<
+b.s: b.c b.h bdefines.h Judy.h
+bi.s: bi.c bli.c b.h bdefines.h Judy.h
+bl.s: bl.c bli.c b.h bdefines.h Judy.h
+br.s: br.c bli.c b.h bdefines.h Judy.h
+bc.s: bc.c bli.c b.h bdefines.h Judy.h
 
 b-L.s: b.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
-b1L.s: b1.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
 biL.s: bi.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
@@ -537,9 +529,6 @@ JudyMalloc.s: JudyMalloc.c
 # Maybe use indent for crazy macros and disable it with
 # /* *INDENT-(OFF|ON)* */ and/or // *INDENT-(OFF|ON)* for most of the code.
 # indent -npcs -nprs -ntac -nss -i4 -bap -bfda -br -nut -bbo -bli0
-blL.i: blL.c
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
-  | egrep -v "^#[0-9]*|^ *$$" > $@
 
 bl.i: bl.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
@@ -552,6 +541,10 @@ br.i: br.c
 
 bc.i: bc.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
+
+blL.i: blL.c
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
+  | egrep -v "^#[0-9]*|^ *$$" > $@
 
 b.i: b.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
