@@ -6062,8 +6062,8 @@ static int
 SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 {
     (void)nBL;
-    assert(nBL >  16);
-    assert(nBL <= 32);
+    assert(nBLR >  16);
+    assert(nBLR <= 32);
 #if defined(LIST_END_MARKERS)
     assert(piKeys[-1] == 0);
 #if defined(PSPLIT_PARALLEL)
