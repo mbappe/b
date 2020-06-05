@@ -260,9 +260,9 @@ ifeq "$(NO_RM)" ""
     JUDY_DEFINES += -DRAMMETRICS
 endif
 
-# Default is -DSEARCHMETRICS.
-# Use NO_SM=<anything> to get -USEARCHMETRICS.
-ifeq "$(NO_SM)" ""
+# Default is -USEARCHMETRICS.
+# Use SM=<anything> to get -DSEARCHMETRICS.
+ifeq "$(SM)" ""
     JUDY_DEFINES += -DSEARCHMETRICS
 endif
 
