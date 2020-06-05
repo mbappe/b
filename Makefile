@@ -262,7 +262,7 @@ endif
 
 # Default is -USEARCHMETRICS.
 # Use SM=<anything> to get -DSEARCHMETRICS.
-ifeq "$(SM)" ""
+ifneq "$(SM)" ""
     JUDY_DEFINES += -DSEARCHMETRICS
 endif
 
