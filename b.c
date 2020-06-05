@@ -177,7 +177,7 @@ HexDump(char *str, Word_t *pw, unsigned nWords)
     }
 }
 
-void
+static void
 Checkpoint(qpa, const char *str)
 {
     qva;
