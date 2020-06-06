@@ -1,6 +1,8 @@
 
 #include <stdio.h>
 
+#include <inttypes.h>
+#include <xmmintrin.h> // _mm_max_pu8, __m64
 #include <immintrin.h> // _mm_movemask_epi8, __m128i
 
 // _mm_loadu_si128 is SSE2
@@ -193,6 +195,64 @@ Search_PopCnt(v_t Bucket, unsigned char Key, int nPopCnt)
     return n;
 }
 
+typedef size_t Word_t;
+
+#define MSK(_x) (((Word_t)1 << _x) - 1)
+
+#ifdef PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK
+
+static int // nPos
+LocateGeKey8InEk64(Word_t wRoot, Word_t wKey)
+{
+    // convert 16-bit unsigned integers in wRoot to 32-bit signed integers
+    wRoot = ~MSK(56) | (wRoot >> 8);
+    __m128i m128Zero = _mm_set_epi64x(0, 0);
+    __m128i m128Root = _mm_unpacklo_epi8(_mm_set_epi64x(0, wRoot), m128Zero);
+    __m128i m128Key = _mm_set1_epi16((uint8_t)wKey);
+    __m128i m128Gt = _mm_cmpgt_epi16(m128Root, m128Key);
+    __m128i m128Eq = _mm_cmpeq_epi16(m128Root, m128Key);
+    __m128i m128GE = m128Gt | m128Eq;
+    uint64_t u64GE = _mm_packs_epi16(m128GE, /* don't care */ m128GE)[0];
+    return __builtin_ctzll(u64GE) / 8;
+}
+
+#else // PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK
+
+#define _mm_cmpge_pu8(a, b) \
+    _mm_cmpeq_pi8(_mm_max_pu8(a, b), a)
+
+static int // nPos
+LocateGeKey8InEk64(Word_t wRoot, Word_t wKey)
+{
+    __m64 m64List = (__m64)(~MSK(56) | (wRoot >> 8));
+    __m64 m64Key = _mm_set1_pi8(wKey);
+    return __builtin_ctzll((uint64_t)_mm_cmpge_pu8(m64List, m64Key)) / 8;
+}
+
+#endif // PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK
+
+// Return the position of the least significant 16-bit key greater than or
+// equal to the low 16 bits of wKey in a 64-bit wRoot.
+// Ignore the least significant slot in wRoot and start counting with zero
+// at the next least significant slot.
+// If there is no key greater than or equal to then return three.
+// _mm_cmpgt_pi16 compares signed 16-bit numbers in an __m64 for a > b.
+// There is no instruction that compares unsigned 16-bit numbers in an __m64.
+int // nPos
+LocateGeKey16InEk64(Word_t wRoot, Word_t wKey)
+{
+    // convert 16-bit unsigned integers in wRoot to 32-bit signed integers
+    wRoot = ~MSK(48) | (wRoot >> 16);
+    __m128i m128Zero = _mm_set_epi64x(0, 0);
+    __m128i m128Root = _mm_unpacklo_epi16(_mm_set_epi64x(0, wRoot), m128Zero);
+    __m128i m128Key = _mm_set1_epi32((uint16_t)wKey);
+    __m128i m128gt = _mm_cmpgt_epi32(m128Root, m128Key);
+    __m128i m128eq = _mm_cmpeq_epi32(m128Root, m128Key);
+    __m128i m128ge = m128gt | m128eq;
+    uint64_t u64ge = _mm_packs_epi32(m128ge, /* don't care */ m128ge)[0];
+    return __builtin_ctzll(u64ge) / 16;
+}
+
 v_t v = { 0xf1, 0xf3, 0xf5, 0xf7, 0xf9, 0xfd, 0xfe, 0xff,
           0x00, 0x01, 0x02, 0x06, 0x08, 0x0a, 0x0c, 0x0e };
 
@@ -203,6 +263,16 @@ unsigned char BucketBuffer[17] = {
 int
 main(int argc, char **argv)
 {
+    Word_t wRoot = strtoull(argv[1], 0, 0);
+    Word_t wKey = strtoull(argv[2], 0, 0);
+    printf("wRoot 0x%zx\n", wRoot);
+    printf("wKey 0x%zx\n", wKey);
+    int nPos = LocateGeKey16InEk64(wRoot, wKey);
+    printf("LocateGeKey16InEk64 %d\n", nPos);
+    nPos = LocateGeKey8InEk64(wRoot, wKey);
+    printf("LocateGeKey8InEk64 %d\n", nPos);
+    exit(0);
+
     unsigned char cKey = strtoul(argv[1], 0, 0);
 
     v_t *pBucket = (v_t *)BucketBuffer;

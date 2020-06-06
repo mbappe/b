@@ -167,8 +167,8 @@ using namespace std;
 // What about has-key-and-offset-or-offset-of-missing-key?
 
 // Do a parallel search of a word for a key that is no bigger than half a word.
-// HasKey expects the slots to be packed towards the most significant bits, i.e.
-// extra bits, (sizeof(Word_t) * 8 % nBL), are at the low end.
+// HasKey expects the slots to be packed towards the most significant bits,
+// i.e. extra bits, (sizeof(Word_t) * 8 % nBL), are at the low end.
 // It assumes all slots in the word have valid keys, i.e. the would-be empty
 // slots have been padded with copies of some key/keys that is/are present.
 //
