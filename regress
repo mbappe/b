@@ -72,6 +72,15 @@ done
 done
 done
 
+# Targeted testing for Next and prefix mismatch handling.
+cmd="${CHECK} -B19 -E 0x010001000100ffff"
+echo $cmd
+$cmd > /dev/null
+if [ $? != 0 ]
+then
+    exit 1
+fi
+
 # Targeted testing for Count and prefix mismatch handling.
 cmd="${CHECK} -B32 -o0x5500000000000000"
 echo $cmd
