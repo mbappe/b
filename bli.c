@@ -347,7 +347,7 @@ SwCleanup(qpa, Word_t wKey, int nBLR
 // Increment for insert on the way down.
 // Decrement for remove on the way down.
 // Also used to undo itself after we discover insert or remove is redundant.
-static inline void
+static inline Word_t
 SwIncr(qpa, int nBLR, int nIncr)
 {
     qva; (void)nBLR; (void)nIncr;
@@ -362,8 +362,10 @@ SwIncr(qpa, int nBLR, int nIncr)
         // probably be better.
         Word_t wPopCnt = gwPopCnt(qya, nBLR) + nIncr;
         swPopCnt(qya, nBLR, wPopCnt);
+        return wPopCnt;
     }
   #endif // defined(INSERT) || defined(REMOVE)
+    return 0;
 }
 
 #ifdef _LNX
@@ -1831,7 +1833,8 @@ switchTail:;
                 goto restart;
             }
         } else {
-            SwIncr(qya, nBLR, nIncr); // adjust pop count
+            BJ1(IF_INSERT(wPopCntUp =))
+                SwIncr(qya, nBLR, nIncr); // adjust pop count
         }
       #endif // defined(INSERT) || defined(REMOVE)
         IF_COUNT(wPopCntSum += CountSw(qya, wDigit, nLinks));
@@ -1930,7 +1933,8 @@ t_xx_sw:
                 goto restart;
             }
         } else {
-            SwIncr(qya, nBLR, nIncr); // adjust pop count
+            BJ1(IF_INSERT(wPopCntUp =))
+                SwIncr(qya, nBLR, nIncr); // adjust pop count
         }
           #endif // INSERT || REMOVE
         IF_COUNT(wPopCntSum += CountSw(qya, wDigit, nLinks));
