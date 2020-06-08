@@ -36,6 +36,16 @@
 #define NDEBUG 1
 #endif  // DEBUG
 
+// If TEST_NEXT_USING_JUDY_NEXT is not defined we use GetNextKey for
+// successive iterations in TestJudyNext.
+// If TEST_NEXT_USING_JUDY_NEXT is defined we use the result of Judy1Next
+// as input for our next iteration. One could argue this more closely
+// resembles the most likely use case. So we make this the default.
+#ifndef   NO_TEST_NEXT_USING_JUDY_NEXT
+  #undef     TEST_NEXT_USING_JUDY_NEXT
+  #define    TEST_NEXT_USING_JUDY_NEXT
+#endif // NO_TEST_NEXT_USING_JUDY_NEXT
+
 #include <assert.h>                     // assert()
 
 #include <Judy.h>                       // for Judy macros J*()
@@ -1029,7 +1039,7 @@ Usage(int argc, char **argv)
     (void) argc;
 
     printf("\n<<< Program to do performance measurements (and Diagnostics) on Judy Arrays >>>\n\n");
-    printf("%s -n# -P# -S# [-B#[:#]|-N#] -T# -1LH -bYgGIcCvdtDlMK... -F <filename>\n\n", argv[0]);
+    printf("%s -n# -P# -S# [-B#[:#]|-N#] -T# -1LRbY -gGIcCvdtDlMK... -F <filename>\n\n", argv[0]);
     printf("   Where: # is a number, default is shown as [#]\n\n");
     printf("-m #  Output measurements when libJudy is compiled with -DRAMMETRICS &| -DSEARCHMETRICS\n");
     printf("-n #  Number of Keys (Population) used in Measurement [10000000]\n");
@@ -1267,32 +1277,13 @@ static int bRandomGets = 0;
 #define MAX(_a, _b)  ((_a) > (_b) ? (_a) : (_b))
 
 // Log ifdefs to make plot files more self-describing.
+// Sort lexicographically ignoring leading underscores.
 void
 LogIfdefs(void)
 {
-  #ifdef         DEBUG
-    printf("#    DEBUG\n");
-  #else //       DEBUG
-    printf("# No DEBUG\n");
-  #endif //      DEBUG else
+    printf("# === Time program ifdefs ===\n");
 
-  #ifdef         NDEBUG
-    printf("#    NDEBUG\n");
-  #else //       NDEBUG
-    printf("# No NDEBUG\n");
-  #endif //      NDEBUG else
-
-  #ifdef         RAMMETRICS
-    printf("#    RAMMETRICS\n");
-  #else //       RAMMETRICS
-    printf("# No RAMMETRICS\n");
-  #endif //      RAMMETRICS else
-
-  #ifdef         SEARCHMETRICS
-    printf("#    SEARCHMETRICS\n");
-  #else //       SEARCHMETRICS
-    printf("# No SEARCHMETRICS\n");
-  #endif //      SEARCHMETRICS else
+    // BITMAP_BY_BYTE
 
   #ifdef         CALC_NEXT_KEY
     printf("#    CALC_NEXT_KEY\n");
@@ -1300,11 +1291,56 @@ LogIfdefs(void)
     printf("# No CALC_NEXT_KEY\n");
   #endif //      CALC_NEXT_KEY else
 
-  #ifdef         LFSR_ONLY
-    printf("#    LFSR_ONLY\n");
-  #else //       LFSR_ONLY
-    printf("# No LFSR_ONLY\n");
-  #endif //      LFSR_ONLY else
+    // CLEVER_RANDOM_KEYS
+
+  #ifdef         DEBUG
+    printf("#    DEBUG\n");
+  #else //       DEBUG
+    printf("# No DEBUG\n");
+  #endif //      DEBUG else
+
+  #ifdef         DEBUG_ALL
+    printf("#    DEBUG_ALL\n");
+  #else //       DEBUG_ALL
+    printf("# No DEBUG_ALL\n");
+  #endif //      DEBUG_ALL else
+
+    // __APPLE__
+    // __MACH__
+
+  #ifdef         DERIVE_SEARCHMETRICS
+    printf("#    DERIVE_SEARCHMETRICS\n");
+  #else //       DERIVE_SEARCHMETRICS
+    printf("# No DERIVE_SEARCHMETRICS\n");
+  #endif //      DERIVE_SEARCHMETRICS else
+
+    // EXTRA_SLOW_PDEP
+    // FANCY_b_flag
+    // FANCY_b_FLAG
+
+  #ifdef         JUDY1_DUMP
+    printf("#    JUDY1_DUMP\n");
+  #else //       JUDY1_DUMP
+    printf("# No JUDY1_DUMP\n");
+  #endif //      JUDY1_DUMP else
+
+  #ifdef         JUDY1_V2
+    printf("#    JUDY1_V2\n");
+  #else //       JUDY1_V2
+    printf("# No JUDY1_V2\n");
+  #endif //      JUDY1_V2 else
+
+  #ifdef         JUDYL_DUMP
+    printf("#    JUDYL_DUMP\n");
+  #else //       JUDYL_DUMP
+    printf("# No JUDYL_DUMP\n");
+  #endif //      JUDYL_DUMP else
+
+  #ifdef         JUDYL_V2
+    printf("#    JUDYL_V2\n");
+  #else //       JUDYL_V2
+    printf("# No JUDYL_V2\n");
+  #endif //      JUDYL_V2 else
 
   #ifdef         KFLAG
     printf("#    KFLAG\n");
@@ -1312,23 +1348,18 @@ LogIfdefs(void)
     printf("# No KFLAG\n");
   #endif //      KFLAG else
 
-  #ifdef         USE_PDEP_INTRINSIC
-    printf("#    USE_PDEP_INTRINSIC\n");
-  #else //       USE_PDEP_INTRINSIC
-    printf("# No USE_PDEP_INTRINSIC\n");
-  #endif //      USE_PDEP_INTRINSIC else
+    // LFSR_GET_FOR_DS1
 
-  #ifdef         OLD_DS1_GROUPS
-    printf("#    OLD_DS1_GROUPS\n");
-  #else //       OLD_DS1_GROUPS
-    printf("# No OLD_DS1_GROUPS\n");
-  #endif //      OLD_DS1_GROUPS else
+  #ifdef         LFSR_ONLY
+    printf("#    LFSR_ONLY\n");
+  #else //       LFSR_ONLY
+    printf("# No LFSR_ONLY\n");
+  #endif //      LFSR_ONLY else
 
-  #ifdef         USE_MALLOC
-    printf("#    USE_MALLOC\n");
-  #else //       USE_MALLOC
-    printf("# No USE_MALLOC\n");
-  #endif //      USE_MALLOC else
+    // LOOKUP_NO_BITMAP_DEREF
+    // __LP64__
+    // _WIN64
+    // MAP_ANONYMOUS
 
   #ifdef         MIKEY_1
     printf("#    MIKEY_1\n");
@@ -1342,39 +1373,52 @@ LogIfdefs(void)
     printf("# No MIKEY_L\n");
   #endif //      MIKEY_L else
 
-  #ifdef         JUDY1_V2
-    printf("#    JUDY1_V2\n");
-  #else //       JUDY1_V2
-    printf("# No JUDY1_V2\n");
-  #endif //      JUDY1_V2 else
+  #ifdef         NDEBUG
+    printf("#    NDEBUG\n");
+  #else //       NDEBUG
+    printf("# No NDEBUG\n");
+  #endif //      NDEBUG else
 
-  #ifdef         JUDY1_DUMP
-    printf("#    JUDY1_DUMP\n");
-  #else //       JUDY1_DUMP
-    printf("# No JUDY1_DUMP\n");
-  #endif //      JUDY1_DUMP else
+    // NO_DFLAG
+    // NO_FVALUE
+    // NO_KFLAG
+    // NO_OFFSET
+    // NO_PRESERVED_KEY
+    // NO_SPLAY_KEY_BITS
+    // NO_SVALUE
+    // NO_TEST_NEXT_EMPTY
+    // NO_TEST_NEXT
+    // NO_TEST_NEXT_USING_JUDY_NEXT
+    // NO_TRIM_EXPANSE
 
-  #ifdef         JUDYL_V2
-    printf("#    JUDYL_V2\n");
-  #else //       JUDYL_V2
-    printf("# No JUDYL_V2\n");
-  #endif //      JUDYL_V2 else
+  #ifdef         OLD_DS1_GROUPS
+    printf("#    OLD_DS1_GROUPS\n");
+  #else //       OLD_DS1_GROUPS
+    printf("# No OLD_DS1_GROUPS\n");
+  #endif //      OLD_DS1_GROUPS else
 
-  #ifdef         JUDYL_DUMP
-    printf("#    JUDYL_DUMP\n");
-  #else //       JUDYL_DUMP
-    printf("# No JUDYL_DUMP\n");
-  #endif //      JUDYL_DUMP else
+  #ifdef         RAMMETRICS
+    printf("#    RAMMETRICS\n");
+  #else //       RAMMETRICS
+    printf("# No RAMMETRICS\n");
+  #endif //      RAMMETRICS else
 
-  // If TEST_NEXT_USING_JUDY_NEXT is not defined we use GetNextKey for
-  // successive iterations in TestJudyNext.
-  // If TEST_NEXT_USING_JUDY_NEXT is defined we use the result of Judy1Next
-  // as input for our next iteration. One could argue this more closely
-  // resembles the most likely use case. So we make this the default.
-  #ifndef   NO_TEST_NEXT_USING_JUDY_NEXT
-    #undef     TEST_NEXT_USING_JUDY_NEXT
-    #define    TEST_NEXT_USING_JUDY_NEXT
-  #endif // NO_TEST_NEXT_USING_JUDY_NEXT
+  #ifdef         SEARCHMETRICS
+    printf("#    SEARCHMETRICS\n");
+  #else //       SEARCHMETRICS
+    printf("# No SEARCHMETRICS\n");
+  #endif //      SEARCHMETRICS else
+
+    // SKIPMACRO
+    // SLOW_PDEP
+    // SYNC_SYNC
+    // EXTRA_SLOW_PDEP
+
+  #ifdef         TEST_COUNT_USING_JUDY_NEXT
+    printf("#    TEST_COUNT_USING_JUDY_NEXT\n");
+  #else //       TEST_COUNT_USING_JUDY_NEXT
+    printf("# No TEST_COUNT_USING_JUDY_NEXT\n");
+  #endif //      TEST_COUNT_USING_JUDY_NEXT else
 
   #ifdef         TEST_NEXT_USING_JUDY_NEXT
     printf("#    TEST_NEXT_USING_JUDY_NEXT\n");
@@ -1382,13 +1426,36 @@ LogIfdefs(void)
     printf("# No TEST_NEXT_USING_JUDY_NEXT\n");
   #endif //      TEST_NEXT_USING_JUDY_NEXT else
 
-  #ifdef         TEST_COUNT_USING_JUDY_NEXT
-    printf("#    TEST_COUNT_USING_JUDY_NEXT\n");
-  #else //       TEST_COUNT_USING_JUDY_NEXT
-    printf("# No TEST_COUNT_USING_JUDY_NEXT\n");
-  #endif //     TEST_COUNT_USING_JUDY_NEXT else
+  #ifdef         USE_MALLOC
+    printf("#    USE_MALLOC\n");
+  #else //       USE_MALLOC
+    printf("# No USE_MALLOC\n");
+  #endif //      USE_MALLOC else
 
-  // There are a lot more to log.
+  #ifdef         USE_PDEP_INTRINSIC
+    printf("#    USE_PDEP_INTRINSIC\n");
+  #else //       USE_PDEP_INTRINSIC
+    printf("# No USE_PDEP_INTRINSIC\n");
+  #endif //      USE_PDEP_INTRINSIC else
+
+    printf("# === End of Time program ifdefs ===\n");
+}
+
+void
+PrintRowHeader(Word_t wPop, Word_t wDelta, Word_t wMeas)
+{
+#if 0
+    if (bPureDS1) {
+        printf(" 0x%-10" PRIxPTR" 0x%-8" PRIxPTR" %10" PRIuPTR,
+        //printf("%6" PRIxPTR" %5" PRIxPTR" %5" PRIuPTR,
+               wFinalPop1, Pms[grp].ms_delta, Meas);
+    } else
+#endif
+    {
+        PrintValX(wPop,   6, 0, /*bUseSymbol*/ 0, /*strPrefix*/ "" , /*dScale*/ 1);
+        PrintValX(wDelta, 5, 0, /*bUseSymbol*/ 1, /*strPrefix*/ " ", /*dScale*/ 1);
+        PrintValX(wMeas,  5, 0, /*bUseSymbol*/ 1, /*strPrefix*/ " ", /*dScale*/ 1);
+    }
 }
 
 int
@@ -2000,7 +2067,7 @@ eopt:
         || (yFlag && (J1Flag|JLFlag|JRFlag|bFlag)))
     {
         FAILURE("-b and -y don't get along with each other"
-                    " nor with any of -1LHR",
+                    " nor with any of -1LR",
                 0);
     }
 
@@ -3224,21 +3291,6 @@ nextPart:
             if (grp && (grp % 32 == 0)) {
                 PrintHeader("Pop"); // print column headers periodically
             }
-#if 0
-            if (bPureDS1) {
-                printf(" 0x%-10" PRIxPTR" 0x%-8" PRIxPTR" %10" PRIuPTR,
-                //printf("%6" PRIxPTR" %5" PRIxPTR" %5" PRIuPTR,
-                       wFinalPop1, Pms[grp].ms_delta, Meas);
-            } else
-#endif
-            {
-                PrintValX(wFinalPop1, 6, 0, /* bUseSymbol */ 0,
-                          /* strPrefix */ "", /* dScale */ 1);
-                PrintValX(Pms[grp].ms_delta, 5, 0, /* bUseSymbol */ 1,
-                          /* strPrefix */ " ", /* dScale */ 1);
-                PrintValX(Meas, 5, 0, /* bUseSymbol */ 1,
-                          /* strPrefix */ " ", /* dScale */ 1);
-            }
         }
 
 #ifndef CALC_NEXT_KEY
@@ -3300,6 +3352,10 @@ nextPart:
 
             if (Pop1 == wFinalPop1) {
                 // last part of Delta
+                // Deferring the printing of the row header until here allows
+                // the library to print lines during Insert that do not muck up
+                // the Time program output lines.
+                PrintRowHeader(Pop1, Pms[grp].ms_delta, Meas);
                 if (J1Flag)
                 {
                     PrintValFFX(DeltanSec1Sum / Pms[grp].ms_delta - DeltaGen1, 5, 0);
@@ -3530,6 +3586,7 @@ nextPart:
             DeltaMalFreLSum += DeltaMalFreL;
 
             if (Pop1 == wFinalPop1) {
+                PrintRowHeader(Pop1, Pms[grp].ms_delta, Meas);
                 PrintValFFX(DeltanSecLSum / Pms[grp].ms_delta - DeltaGenL, 5, 0);
                 if (tFlag)
                     PrintValFFX(DeltaGenL, 5, 0);
@@ -3589,6 +3646,7 @@ nextPart:
             DeltanSecBtSum += DeltanSecBt;
 
             if (Pop1 == wFinalPop1) {
+                PrintRowHeader(Pop1, Pms[grp].ms_delta, Meas);
                 PrintValFFX(DeltanSecBtSum / Pms[grp].ms_delta - DeltaGenBt, 5, 0);
                 if (tFlag)
                     PrintValFFX(DeltaGenBt, 5, 0);
@@ -3646,6 +3704,7 @@ nextPart:
             DeltanSecBySum += DeltanSecBy;
 
             if (Pop1 == wFinalPop1) {
+                PrintRowHeader(Pop1, Pms[grp].ms_delta, Meas);
                 PrintValFFX(DeltanSecBySum / Pms[grp].ms_delta - DeltaGenBy, 5, 0);
                 if (tFlag)
                     PrintValFFX(DeltaGenBy, 5, 0);
@@ -4761,13 +4820,53 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
             }
             ENDTm(DeltanSecL);
 //          Save for later (these parameters are just for Get/Test)
+            GetCalls   = j__GetCalls; // count of gets with insrumentation
+            DirectHits = j__DirectHits; // direct hits
+            GetCallsP  = j__GetCallsP;
+            GetCallsM  = j__GetCallsM;
+  // We added DERIVE_SEARCHMETRICS in a misguided effort to reduce the
+  // overhead of SEARCHMETRICS.
+  // The idea was that we already know how many get calls we've done
+  // so we don't need the library to keep track.
+  // Also we can derive one of three of the other parameters so the
+  // library only has to keep track of two. Library choice.
+  // One disadvantage of DERIVE_SEARCHMETRICS is that the library has
+  // to instrument every get call, e.g. unpacked bitmaps and immediates and
+  // gets of keys that do not exist, but we may only want to instrument a
+  // subset in the library, and without DERIVE_SEARCHMETRICS we can use
+  // j__GetCalls to indicate how many calls were instrumented.
+  // Another bummer is that there is no simple j__NotDirectHits counter, i.e.
+  // the library has to decide between j__GetCallsP and j__GetCallsM if not
+  // maintaining j__DirectHits.
+  // Another bummer is that counting calls and hits is not the most expensive
+  // part of search metrics hence the savings from DERIVE_SEARCHMETRICS is
+  // limited.
+  #ifdef DERIVE_SEARCHMETRICS
+            // We can derive one of DirectHits, GetCallsP and GetCallsM from
+            // the other two.
+            // The library can decide which two it maintains by leaving the
+            // other one alone.
+            // It might not work for hFlag.
+            // There may also be a problem if one of the maintained values
+            // is legitimately 0 and this code assumes it is not legitimate.
+            GetCalls = Elements;
+            if (DirectHits + GetCallsP + GetCallsM < Elements) {
+                // The order of the tests here matters.
+                if (DirectHits == 0) {
+                    DirectHits = Elements - GetCallsP - GetCallsM;
+                } else if (GetCallsP == 0) {
+                    GetCallsP = Elements - DirectHits - GetCallsM;
+                } else if (GetCallsM == 0) {
+                    GetCallsM = Elements - DirectHits - GetCallsP;
+                }
+            }
+  #endif // DERIVE_SEARCHMETRICS
+            // Some leaves don't need to know population to do a Get.
+            // Hence adding it to the metrics means figuring out the
+            // otherwise unneeded population and this may be expensive.
+            SearchPopulation = j__SearchPopulation;
             MisComparesP =     j__MisComparesP;
             MisComparesM =     j__MisComparesM;
-            DirectHits =        j__DirectHits;
-            SearchPopulation =  j__SearchPopulation;
-            GetCallsP =         j__GetCallsP;
-            GetCallsM =         j__GetCallsM;
-            GetCalls  =         j__GetCalls;
 
             if (DminTime > DeltanSecL)
             {
