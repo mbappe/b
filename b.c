@@ -11650,6 +11650,12 @@ Initialize(void)
     printf("# No SEARCHMETRICS\n");
 #endif // defined(SEARCHMETRICS)
 
+#if defined(DERIVE_SEARCHMETRICS)
+    printf("#    DERIVE_SEARCHMETRICS\n");
+#else // defined(DERIVE_SEARCHMETRICS)
+    printf("# No DERIVE_SEARCHMETRICS\n");
+#endif // defined(DERIVE_SEARCHMETRICS)
+
 #if defined(LVL_IN_PP)
     printf("#    LVL_IN_PP\n");
 #else // defined(LVL_IN_PP)

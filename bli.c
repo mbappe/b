@@ -2386,8 +2386,7 @@ t_list112: // nDL == 8
                 )
       #endif // !LOOKUP_NO_LIST_SEARCH
             {
-                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-                SMETRICS(++j__GetCalls);
+                NDSMETRICS(++j__GetCalls);
       #ifdef B_JUDYL
                 DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
                              nPos,
@@ -2468,8 +2467,7 @@ t_list96: // nDL == 7
                 )
       #endif // !LOOKUP_NO_LIST_SEARCH
             {
-                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-                SMETRICS(++j__GetCalls);
+                NDSMETRICS(++j__GetCalls);
       #ifdef B_JUDYL
                 DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
                              nPos,
@@ -2550,8 +2548,7 @@ t_list80: // nDL == 6
                 )
       #endif // !LOOKUP_NO_LIST_SEARCH
             {
-                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-                SMETRICS(++j__GetCalls);
+                NDSMETRICS(++j__GetCalls);
       #ifdef B_JUDYL
                 DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
                              nPos,
@@ -2645,8 +2642,7 @@ t_list48: // nBL > 32
                 )
       #endif // !LOOKUP_NO_LIST_SEARCH
             {
-                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-                SMETRICS(++j__GetCalls);
+                NDSMETRICS(++j__GetCalls);
       #ifdef B_JUDYL
                 DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
                              nPos,
@@ -2734,8 +2730,7 @@ t_list48: // nDL == 4
                 )
       #endif // !LOOKUP_NO_LIST_SEARCH
             {
-                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-                SMETRICS(++j__GetCalls);
+                NDSMETRICS(++j__GetCalls);
           #ifdef B_JUDYL
                 DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
                              nPos,
@@ -2830,8 +2825,7 @@ t_list16: // nDL == 2
                 )
       #endif // !LOOKUP_NO_LIST_SEARCH
             {
-                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-                SMETRICS(++j__GetCalls);
+                NDSMETRICS(++j__GetCalls);
       #ifdef B_JUDYL
                 DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
                              nPos,
@@ -2945,8 +2939,7 @@ t_list: // nDL == 1
                 )
       #endif // !LOOKUP_NO_LIST_SEARCH
             {
-                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-                SMETRICS(++j__GetCalls);
+                NDSMETRICS(++j__GetCalls);
       #ifdef B_JUDYL
                 DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
                              nPos,
@@ -3120,8 +3113,7 @@ t_list:
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
-                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-                SMETRICS(++j__GetCalls);
+                NDSMETRICS(++j__GetCalls);
       #if defined(INSERT)
           #if ! defined(RECURSIVE)
                 if (nIncr > 0) { goto undo; } // undo counting
@@ -3245,8 +3237,6 @@ t_list_ua:
       #endif // SKIP_PREFIX_CHECK
       #endif // COMPRESSED_LISTS
         {
-            SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-            SMETRICS(++j__GetCalls);
       // LOOKUP_NO_LIST_SEARCH is for analysis only.
       #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
             if (1
@@ -3261,6 +3251,7 @@ t_list_ua:
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
+                NDSMETRICS(++j__GetCalls);
       #if defined(INSERT)
           #if ! defined(RECURSIVE)
                 if (nIncr > 0) { goto undo; } // undo counting
@@ -3387,8 +3378,7 @@ t_xx_list:
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
-                SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-                SMETRICS(++j__GetCalls);
+                NDSMETRICS(++j__GetCalls);
       #if defined(INSERT)
           #if ! defined(RECURSIVE)
                 if (nIncr > 0) { goto undo; } // undo counting
@@ -3785,7 +3775,9 @@ t_bitmap:
                           #endif // defined(LOOKUP) || defined(INSERT)
                           #ifdef LOOKUP
                               #ifdef PACK_BM_VALUES
+                NDSMETRICS(++j__GetCalls);
                 Word_t wPopCnt = gwBitmapPopCnt(qy, cnBitsInD1);
+                SMETRICS(j__SearchPopulation += wPopCnt);
 // Note: I wonder if the penalty for a branch misprediction is
 // exacerbated when prefetching is done on both forks of the branch.
 // For example, T_LIST vs T_BITMAP(packed) at nBLR==cnBitsInD1.
@@ -3893,16 +3885,25 @@ t_bitmap:
                 Word_t* pwValue = &pwBitmapValues[nIndex];
                           #ifdef LOOKUP
                           #ifdef PACK_BM_VALUES
-                SMETRICS(j__SearchPopulation += wPopCnt);
-                SMETRICS(++j__GetCalls);
+                // SMETRICS
+                Word_t wDiff = (Word_t)pwValue - ((Word_t)pcPrefetch & ~MSK(6));
+                              #ifndef PREFETCH_BM_PREV_VAL
+                              #ifndef PF_BM_PREV_HALF_VAL
+                              #ifndef PREFETCH_BM_PSPLIT_VAL
+                              #ifndef PF_BM_NEXT_HALF_VAL
+                              #ifndef PREFETCH_BM_NEXT_VAL
+                if (1)
+                              #endif // !PREFETCH_BM_NEXT_VAL
+                              #endif // !PF_BM_NEXT_HALF_VAL
+                              #endif // !PREFETCH_BM_PSPLIT_VAL
+                              #endif // !PF_BM_PREV_HALF_VAL
+                              #endif // !PREFETCH_BM_PREV_VAL
                               #ifndef PREFETCH_BM_PREV_VAL
                               #ifndef PF_BM_PREV_HALF_VAL
                               #ifdef PREFETCH_BM_PSPLIT_VAL
                               #ifndef PF_BM_NEXT_HALF_VAL
                               #ifndef PREFETCH_BM_NEXT_VAL
-                SMETRICS(j__DirectHits
-                    += (Word_t)pwValue - ((Word_t)pcPrefetch & ~MSK(6))
-                        < 64);
+                if (wDiff < 64)
                               #endif // #ifndef PREFETCH_BM_NEXT_VAL
                               #endif // #ifndef PF_BM_NEXT_HALF_VAL
                               #endif // PREFETCH_BM_PSPLIT_VAL
@@ -3913,9 +3914,7 @@ t_bitmap:
                               #ifndef PREFETCH_BM_PSPLIT_VAL
                               #ifdef PF_BM_NEXT_HALF_VAL
                               #ifndef PREFETCH_BM_NEXT_VAL
-                SMETRICS(j__DirectHits
-                    += (Word_t)pwValue - (((Word_t)pcPrefetch - 32) & ~MSK(6))
-                        < 128);
+                if (wDiff < 128)
                               #endif // #ifndef PREFETCH_BM_NEXT_VAL
                               #endif // PF_BM_NEXT_HALF_VAL
                               #endif // #ifndef PREFETCH_BM_PSPLIT_VAL
@@ -3926,14 +3925,19 @@ t_bitmap:
                               #ifdef PREFETCH_BM_PSPLIT_VAL
                               #ifndef PF_BM_NEXT_HALF_VAL
                               #ifdef PREFETCH_BM_NEXT_VAL
-                SMETRICS(j__DirectHits
-                    += (Word_t)pwValue - (((Word_t)pcPrefetch - 64) & ~MSK(6))
-                        < 192);
+                if (wDiff < 192)
                               #endif // PREFETCH_BM_NEXT_VAL
                               #endif // #ifndef PF_BM_NEXT_HALF_VAL
                               #endif // PREFETCH_BM_PSPLIT_VAL
                               #endif // #ifndef PF_BM_PREV_HALF_VAL
                               #endif // PREFETCH_BM_PREV_VAL
+                {
+                    NDSMETRICS(++j__DirectHits);
+                } else if (wDiff < (Word_t)pwValue) {
+                    SMETRICS(++j__GetCallsP);
+                } else {
+                    SMETRICS(++j__GetCallsM);
+                }
                           #endif // PACK_BM_VALUES
                           #endif // LOOKUP
                 return pwValue;
@@ -4002,6 +4006,9 @@ t_bitmap:
       #ifdef LOOKUP
 t_unpacked_bm:
     {
+        NDSMETRICS(++j__GetCalls);
+        NDSMETRICS(++j__DirectHits);
+        NDSMETRICS(j__SearchPopulation += gwBitmapPopCnt(qy, cnBitsInD1));
         // We don't use nBLR or nBL in this case.
         // This case is for JudyL only and JudyL doesn't support a bitmap
         // above cnBitsInD1.
@@ -4107,7 +4114,9 @@ t_unpacked_bm:
 t_embedded_keys:
     {
         DBGX(printf("T_EMBEDDED_KEYS %d nBL %d\n", T_EMBEDDED_KEYS, nBL));
-
+        NDSMETRICS(++j__GetCalls);
+        NDSMETRICS(++j__DirectHits);
+        NDSMETRICS(j__SearchPopulation += wr_nPopCnt(wRoot, nBL));
       #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?

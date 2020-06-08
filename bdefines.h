@@ -801,5 +801,12 @@
   #undef DUMMY_REMOTE_LNX
 #endif // REMOTE_LNX
 
+#ifndef B_JUDYL
+  #undef    PACK_BM_VALUES
+  #undef NO_PACK_BM_VALUES
+  #undef    UNPACK_BM_VALUES
+  #undef NO_UNPACK_BM_VALUES
+#endif // !B_JUDYL
+
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 
