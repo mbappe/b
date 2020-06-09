@@ -6919,7 +6919,7 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
     nPos = LocateKey128((__m128i*)pwr, wKey, 8);
   #endif // #else HK40_EXPERIMENT
     // We don't need to know pop cnt except for SEARCHMETRICS. Ouch.
-    SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+    NDSMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
     NDSMETRICS(++j__DirectHits); // direct hit or direct miss
     return nPos;
 #endif // cnDummiesInList == 0
