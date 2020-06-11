@@ -1348,7 +1348,11 @@ LogIfdefs(void)
     printf("# No KFLAG\n");
   #endif //      KFLAG else
 
-    // LFSR_GET_FOR_DS1
+  #ifdef         LFSR_GET_FOR_DS1
+    printf("#    LFSR_GET_FOR_DS1\n");
+  #else //       LFSR_GET_FOR_DS1
+    printf("# No LFSR_GET_FOR_DS1\n");
+  #endif //      LFSR_GET_FOR_DS1 else
 
   #ifdef         LFSR_ONLY
     printf("#    LFSR_ONLY\n");
@@ -1386,9 +1390,25 @@ LogIfdefs(void)
     // NO_PRESERVED_KEY
     // NO_SPLAY_KEY_BITS
     // NO_SVALUE
-    // NO_TEST_NEXT_EMPTY
-    // NO_TEST_NEXT
-    // NO_TEST_NEXT_USING_JUDY_NEXT
+
+  #ifdef         NO_TEST_NEXT_EMPTY // for turn-on
+    printf("#    NO_TEST_NEXT_EMPTY\n");
+  #else //       NO_TEST_NEXT_EMPTY
+    printf("# No NO_TEST_NEXT_EMPTY\n");
+  #endif //      NO_TEST_NEXT_EMPTY else
+
+  #ifdef         NO_TEST_NEXT // for turn-on
+    printf("#    NO_TEST_NEXT\n");
+  #else //       NO_TEST_NEXT
+    printf("# No NO_TEST_NEXT\n");
+  #endif //      NO_TEST_NEXT else
+
+  #ifdef         NO_TEST_NEXT_USING_JUDY_NEXT
+    printf("#    NO_TEST_NEXT_USING_JUDY_NEXT\n");
+  #else //       NO_TEST_NEXT_USING_JUDY_NEXT
+    printf("# No NO_TEST_NEXT_USING_JUDY_NEXT\n");
+  #endif //      NO_TEST_NEXT_USING_JUDY_NEXT else
+
     // NO_TRIM_EXPANSE
 
   #ifdef         OLD_DS1_GROUPS
@@ -5641,8 +5661,10 @@ TestJudyPrev(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 int
 TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 {
+  #ifdef NO_TEST_NEXT_EMPTY
     (void)J1; (void)JL; (void)PSeed; (void)Elements;
-#ifndef NO_TEST_NEXT_EMPTY
+    DeltanSecL = 0;
+  #else // NO_TEST_NEXT_EMPTY
     Word_t    elm;
 
     double    DminTime;
@@ -5736,7 +5758,7 @@ TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
         }
         DeltanSecL = DminTime / (double)Elements;
     }
-#endif // #ifndef NO_TEST_NEXT_EMPTY
+  #endif // !NO_TEST_NEXT_EMPTY
     return (0);
 }
 
@@ -5748,8 +5770,10 @@ TestJudyNextEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 int
 TestJudyPrevEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
 {
+  #ifdef NO_TEST_NEXT_EMPTY
     (void)J1; (void)JL; (void)PSeed; (void)Elements;
-#ifndef NO_TEST_NEXT_EMPTY
+    DeltanSecL = 0;
+  #else // NO_TEST_NEXT_EMPTY
     Word_t    elm;
 
     double    DminTime;
@@ -5839,8 +5863,7 @@ TestJudyPrevEmpty(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements)
         }
         DeltanSecL = DminTime / (double)Elements;
     }
-
-#endif // #ifndef NO_TEST_NEXT_EMPTY
+  #endif // !NO_TEST_NEXT_EMPTY
     return (0);
 }
 
