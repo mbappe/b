@@ -4844,23 +4844,32 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
             DirectHits = j__DirectHits; // direct hits
             GetCallsP  = j__GetCallsP;
             GetCallsM  = j__GetCallsM;
-  // We added DERIVE_SEARCHMETRICS in a misguided effort to reduce the
-  // overhead of SEARCHMETRICS.
-  // The idea was that we already know how many get calls we've done
-  // so we don't need the library to keep track.
-  // Also we can derive one of three of the other parameters so the
-  // library only has to keep track of two. Library choice.
+  // We added DERIVE_SEARCHMETRICS in an effort to reduce the overhead of
+  // SEARCHMETRICS in the library. The idea is that the Time program already
+  // knows how many get calls we've done so we don't need the library to keep
+  // track. Also we can derive one of DirectHits, GetCallsP and GetCallsM if we
+  // know two of them so the library only has to keep track of two.
   // One disadvantage of DERIVE_SEARCHMETRICS is that the library has
-  // to instrument every get call, e.g. unpacked bitmaps and immediates and
-  // gets of keys that do not exist, but we may only want to instrument a
+  // to instrument every get call because the Time program will be assuming
+  // all of them are instrumented, e.g. unpacked bitmaps and immediates and
+  // gets of keys that do not exist, but we might prefer to instrument only a
   // subset in the library, and without DERIVE_SEARCHMETRICS we can use
-  // j__GetCalls to indicate how many calls were instrumented.
+  // j__GetCalls to indicate how many calls were actually instrumented.
   // Another bummer is that there is no simple j__NotDirectHits counter, i.e.
   // the library has to decide between j__GetCallsP and j__GetCallsM if not
-  // maintaining j__DirectHits.
-  // Another bummer is that counting calls and hits is not the most expensive
-  // part of search metrics hence the savings from DERIVE_SEARCHMETRICS is
-  // limited.
+  // maintaining j__DirectHits and this may involve an additional test in
+  // the library. One option is for the library to simply record all misses
+  // as j__GetCallsP or j__GetCallsM to avoid the overhead of figuring out
+  // which one since we normally care mostly about hit vs. not and the
+  // direction of the miss is not that important and we can use full-blown
+  // SEARCHMETRICS for cases when it is.
+  // Another bummer about DERIVE_SEARCHMETRICS is that it doesn't help with
+  // j__SearchPopulation which Get/Test don't always even need to know
+  // if SEARCHMETRICS is not defined.
+  // Could the library simply bump a count of Gets without a valid search
+  // population?
+  // Should we add j__NotDirectHits and/or j__UnknownSearchPopulation for
+  // DERIVE_SEARCHMETRICS?
   #ifdef DERIVE_SEARCHMETRICS
             // We can derive one of DirectHits, GetCallsP and GetCallsM from
             // the other two.
@@ -4872,6 +4881,9 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
             GetCalls = Elements;
             if (DirectHits + GetCallsP + GetCallsM < Elements) {
                 // The order of the tests here matters.
+                // The first zero gets credit for Gets that were not
+                // explicitly counted as one of DirectHits, GetCallsP
+                // and GetCallsM.
                 if (DirectHits == 0) {
                     DirectHits = Elements - GetCallsP - GetCallsM;
                 } else if (GetCallsP == 0) {
