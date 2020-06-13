@@ -229,6 +229,22 @@
   #endif // #ifndef NO_PF_EK_XV_2
 #endif // EK_XV
 
+// Default is AUGMENT_TYPE_8.
+// It seems to shine for Time -LmeB31.
+#if cnBitsPerDigit == 8
+  #if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+  #ifndef    NO_AUGMENT_TYPE
+    #undef      AUGMENT_TYPE_8
+    #define     AUGMENT_TYPE_8
+  #endif // !NO_AUGMENT_TYPE
+  #endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+  #ifndef AUGMENT_TYPE_8
+  #ifndef NO_AUGMENT_TYPE
+#pragma message("Warning: no AUGMENT_TYPE_8 unless all digits are 8 bits.")
+  #endif // !NO_AUGMENT_TYPE
+  #endif // !AUGMENT_TYPE_8
+#endif // cnBitsPerDigit == 8
+
 #ifdef B_JUDYL
 #ifndef    NO_SW_POP_IN_LNX
   #undef      SW_POP_IN_LNX
