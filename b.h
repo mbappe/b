@@ -1125,12 +1125,14 @@ extern Word_t j__SearchPopulation;
   #ifdef DERIVE_SEARCHMETRICS
 #define  DSMETRICS(x)  x // fast SEARCHMETRICS
 #define NDSMETRICS(x)
+extern Word_t j__GetCallsNot;
   #else // DERIVE_SEARCHMETRICS
 #define  DSMETRICS(x)
 #define NDSMETRICS(x)  x // slow SEARCHMETRICS
 extern Word_t j__GetCalls;
 extern Word_t j__DirectHits;
   #endif // DERIVE_SEARCHMETRICS else
+extern Word_t j__NotDirectHits;
 extern Word_t j__GetCallsP;
 extern Word_t j__GetCallsM;
 extern Word_t j__MisComparesP;
