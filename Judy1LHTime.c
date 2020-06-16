@@ -90,10 +90,11 @@ RM_EXTERN Word_t j__AllocWordsJV;
 #define SM_EXTERN
 #endif // SEARCHMETRICS
 SM_EXTERN Word_t j__SearchPopulation; // Population of Searched object
+SM_EXTERN Word_t j__GetCallsSansPop; // num instrumented search calls that did not modify j__SearchPopulation
   #ifdef DERIVE_SEARCHMETRICS
 SM_EXTERN Word_t j__GetCallsNot;  // Num search calls not instrumented (nothing else counted)
   #else // DERIVE_SEARCHMETRICS
-SM_EXTERN Word_t j__GetCalls;  // Num search calls
+SM_EXTERN Word_t j__GetCalls;  // Num instrumented search calls
   #endif // DERIVE_SEARCHMETRICS else
 SM_EXTERN Word_t j__DirectHits;   // Number of direct hits -- no search
 SM_EXTERN Word_t j__NotDirectHits;   // Num calls with no direct hit and unknown search direction
@@ -1225,6 +1226,7 @@ Word_t    MisComparesM;            // number times LGet/1Test called
 Word_t    DirectHits;               // Number of direct hits -- no search
 Word_t    NotDirectHits; // not counted in GetCallsP or GetCallsM
 Word_t    SearchPopulation;         // Population of Searched object
+Word_t    GetCallsSansPop;
 Word_t    GetCallsP;                 // number of search calls
 Word_t    GetCallsM;                 // number of search calls
 Word_t    GetCalls;                  // number of search calls
@@ -3172,7 +3174,7 @@ eopt:
 
         if (mFlag) {
             // reset SEARCHMETRICS for this delta
-            SearchPopulation = GetCalls = 0;
+            SearchPopulation = GetCallsSansPop = GetCalls = 0;
             MisComparesP = MisComparesM = 0;
             DirectHits = NotDirectHits = GetCallsP = GetCallsM = 0;
         }
@@ -3798,7 +3800,7 @@ nextPart:
     // if SEARCHMETRICS is not defined.
     // Could the library simply bump a count of GetCalls without a valid search
     // population, e.g. GetCallsSansPop, and exclude them from the average
-    // search pop calculation?
+    // search pop calculation? Done.
       #ifdef DERIVE_SEARCHMETRICS
         // We can derive one of DirectHits, GetCallsP and GetCallsM from
         // the other two.
@@ -3830,6 +3832,7 @@ nextPart:
         // Hence adding it to the metrics means figuring out the
         // otherwise unneeded population and this may be expensive.
         SearchPopulation += j__SearchPopulation;
+        GetCallsSansPop += j__GetCallsSansPop;
         MisComparesP += j__MisComparesP;
         MisComparesM += j__MisComparesM;
   #endif // SEARCHMETRICS
@@ -4147,7 +4150,7 @@ nextPart:
 //          print average number of failed compares done in leaf search
             PrintValx100((double)MisComparesP / MAX(GetCallsP + DirectHits, 1), 5, 1);
             PrintValx100((double)MisComparesM / MAX(GetCallsM + DirectHits, 1), 5, 1);
-            PrintVal((double)SearchPopulation / MAX(GetCalls, 1), 5, 1);
+            PrintVal((double)SearchPopulation / MAX(GetCalls - GetCallsSansPop, 1), 5, 1);
             PrintValx100((double)DirectHits / GetCalls, 5, 1);
             PrintValx100((double)GetCallsP / GetCalls, 5, 1);
             PrintValx100((double)GetCallsM / GetCalls, 5, 1);
@@ -4807,6 +4810,7 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
   #else // DERIVE_SEARCHMETRICS
                 j__GetCalls = 0;
   #endif // DERIVE_SEARCHMETRICS else
+                j__GetCallsSansPop = 0;
                 j__SearchPopulation = 0;
                 j__MisComparesP = j__MisComparesM = 0;
                 j__DirectHits = j__NotDirectHits = j__GetCallsP = j__GetCallsM = 0;
@@ -4879,6 +4883,7 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
   #else // DERIVE_SEARCHMETRICS
                 j__GetCalls = 0;
   #endif // DERIVE_SEARCHMETRICS else
+                j__GetCallsSansPop = 0;
                 j__SearchPopulation = 0;
                 j__MisComparesP = j__MisComparesM = 0;
                 j__DirectHits = j__NotDirectHits = j__GetCallsP = j__GetCallsM = 0;
@@ -4974,6 +4979,7 @@ TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elements)
   #else // DERIVE_SEARCHMETRICS
             j__GetCalls = 0;
   #endif // DERIVE_SEARCHMETRICS else
+            j__GetCallsSansPop = 0;
             j__SearchPopulation = 0;
             j__MisComparesP = j__MisComparesM = 0;
             j__DirectHits = j__NotDirectHits = j__GetCallsP = j__GetCallsM = 0;

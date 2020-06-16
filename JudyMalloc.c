@@ -52,6 +52,7 @@ Word_t    j__NumbJV;
 
 #ifdef SEARCHMETRICS
 Word_t j__SearchPopulation;
+Word_t j__GetCallsSansPop;
   #ifdef DERIVE_SEARCHMETRICS
 Word_t j__GetCallsNot;
   #else // DERIVE_SEARCHMETRICS
