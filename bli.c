@@ -3777,7 +3777,7 @@ t_bitmap:
                               #ifdef PACK_BM_VALUES
                 NDSMETRICS(++j__GetCalls); // slow SEARCHMETRICS
                 Word_t wPopCnt = gwBitmapPopCnt(qy, cnBitsInD1);
-                SMETRICS(j__SearchPopulation += wPopCnt); // fast and slow
+                SM_POP(j__SearchPopulation += wPopCnt); // fast and slow
 // Note: I wonder if the penalty for a branch misprediction is
 // exacerbated when prefetching is done on both forks of the branch.
 // For example, T_LIST vs T_BITMAP(packed) at nBLR==cnBitsInD1.
@@ -4017,7 +4017,7 @@ t_unpacked_bm:
     {
         NDSMETRICS(++j__GetCalls);
         NDSMETRICS(++j__DirectHits);
-        SMETRICS(j__SearchPopulation += gwBitmapPopCnt(qy, cnBitsInD1));
+        SM_POP(j__SearchPopulation += gwBitmapPopCnt(qy, cnBitsInD1));
         // We don't use nBLR or nBL in this case.
         // This case is for JudyL only and JudyL doesn't support a bitmap
         // above cnBitsInD1.
@@ -4125,7 +4125,7 @@ t_embedded_keys:
         DBGX(printf("T_EMBEDDED_KEYS %d nBL %d\n", T_EMBEDDED_KEYS, nBL));
         NDSMETRICS(++j__GetCalls);
         NDSMETRICS(++j__DirectHits);
-        SMETRICS(j__SearchPopulation += BJL(1)BJ1(wr_nPopCnt(wRoot, nBL)));
+        SM_POP(j__SearchPopulation += BJL(1)BJ1(wr_nPopCnt(wRoot, nBL)));
       #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
@@ -4422,7 +4422,7 @@ t_ek_xv:
 #define XV_BLX(_nBL) \
         case (_nBL): \
             PF_2(_nBL); \
-    SMETRICS(j__SearchPopulation += GetBits(wRoot, cnBitsCnt, cnLsbCnt)); \
+    SM_POP(j__SearchPopulation += GetBits(wRoot, cnBitsCnt, cnLsbCnt)); \
             if ((nPos = LocateKey64((uint64_t*)pwLnX, wKey, \
                     MAX(8, (Word_t)2 << LOG((_nBL) - 1)))) >= 0) { \
                 assert(nPos < wr_nPopCnt(wRoot, (_nBL))); \
@@ -4433,7 +4433,7 @@ t_ek_xv:
 #define XV_BLX(_nBL) \
         case (_nBL): \
             PF_2(_nBL); \
-    SMETRICS(j__SearchPopulation += GetBits(wRoot, cnBitsCnt, cnLsbCnt)); \
+    SM_POP(j__SearchPopulation += GetBits(wRoot, cnBitsCnt, cnLsbCnt)); \
             if ((nPos = LocateKey64((uint64_t*)pwLnX, wKey, \
                     (Word_t)2 << LOG((_nBL) - 1))) >= 0) { \
                 assert(nPos < wr_nPopCnt(wRoot, (_nBL))); \

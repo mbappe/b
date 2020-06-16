@@ -1121,7 +1121,6 @@ enum {
 
 #if defined(SEARCHMETRICS) && defined(LOOKUP)
   #define SMETRICS(x)  x // fast and slow SEARCHMETRICS
-extern Word_t j__SearchPopulation;
   #ifdef DERIVE_SEARCHMETRICS
 #define  DSMETRICS(x)  x // fast SEARCHMETRICS
 #define NDSMETRICS(x)
@@ -1137,10 +1136,17 @@ extern Word_t j__GetCallsP;
 extern Word_t j__GetCallsM;
 extern Word_t j__MisComparesP;
 extern Word_t j__MisComparesM;
+  #ifdef NO_POP_SMETRICS
+#define SM_POP(x)
+  #else // NO_POP_SMETRICS
+#define SM_POP(x)  x
+extern Word_t j__SearchPopulation;
+  #endif // NO_POP_SMETRICS
 #else // SEARCHMETRICS && LOOKUP
   #define   SMETRICS(x)
   #define  DSMETRICS(x)
   #define NDSMETRICS(x)
+  #define SM_POP(x)
 #endif // SEARCHMETRICS && LOOKUP
 
 #if defined(DEBUG)
@@ -4296,7 +4302,7 @@ Psplit(int nPopCnt, int nBL, int nShift, Word_t wKey)
 #define PSPLIT_SEARCH_BY_KEY_GUTS(_x_t, _nBL, /* nPsplitShift */ _x, \
                                   _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    SMETRICS(j__SearchPopulation += (_nPopCnt)); \
+    SM_POP(j__SearchPopulation += (_nPopCnt)); \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_x), (_xKey)); \
     /* if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) */\
     if ((_pxKeys)[nSplit] == (_xKey)) \
@@ -4753,7 +4759,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
         /* _nBL, (void *)_pxKeys, _nPopCnt, _xKey, _nPos); */ \
     _b_t *px = (_b_t *)(_pxKeys); \
     ASSERT(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
-    SMETRICS(j__SearchPopulation += (_nPopCnt)); \
+    SM_POP(j__SearchPopulation += (_nPopCnt)); \
     /* nSplit is the key chosen by PSPLIT */ \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_x), (_xKey)); \
     /* nSplitP is nSplit rounded down to the first key in the bucket */ \
@@ -4850,7 +4856,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     _b_t *pb = (_b_t *)(_pxKeys); /* bucket pointer */ \
     /* _pxKeys must be aligned on a bucket boundary */ \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
-    SMETRICS(j__SearchPopulation += (_nPopCnt)); \
+    SM_POP(j__SearchPopulation += (_nPopCnt)); \
     /* nSplit is the key chosen by Psplit */ \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_xShift), (_xKey)); \
     BJL(char* pcPrefetch = (char*)&gpwValues(qy)[~nSplit]; (void)pcPrefetch); \
@@ -6276,7 +6282,7 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
     (void)nBL;
     int nPos = 0;
     //Word_t *pwKeysOrig = pwKeys;
-    SMETRICS(j__SearchPopulation += nPopCnt);
+    SM_POP(j__SearchPopulation += nPopCnt);
     int nPopCntOrig = nPopCnt; (void)nPopCntOrig;
     // BINARY_SEARCH narrows the scope of the linear search that follows.
     unsigned nSplit;
@@ -6920,7 +6926,7 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
     nPos = LocateKey128((__m128i*)pwr, wKey, 8);
   #endif // #else HK40_EXPERIMENT
     // We don't need to know pop cnt except for SEARCHMETRICS. Ouch.
-    SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+    SM_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
     NDSMETRICS(++j__DirectHits); // direct hit or direct miss
     return nPos;
 #endif // cnDummiesInList == 0

@@ -824,5 +824,18 @@
   #undef NO_UNPACK_BM_VALUES
 #endif // !B_JUDYL
 
+#ifdef DERIVE_SEARCHMETRICS
+  #undef  SEARCHMETRICS
+  #define SEARCHMETRICS
+#endif // DERIVE_SEARCHMETRICS
+#ifdef NON_DIR_BM_SMETRICS
+  #undef  SEARCHMETRICS
+  #define SEARCHMETRICS
+#endif // NON_DIR_BM_SMETRICS
+#ifdef NO_POP_SMETRICS
+  #undef  SEARCHMETRICS
+  #define SEARCHMETRICS
+#endif // NO_POP_SMETRICS
+
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 
