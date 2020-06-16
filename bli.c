@@ -4125,7 +4125,7 @@ t_embedded_keys:
         DBGX(printf("T_EMBEDDED_KEYS %d nBL %d\n", T_EMBEDDED_KEYS, nBL));
         NDSMETRICS(++j__GetCalls);
         NDSMETRICS(++j__DirectHits);
-        NDSMETRICS(j__SearchPopulation += wr_nPopCnt(wRoot, nBL));
+        SMETRICS(j__SearchPopulation += BJL(1)BJ1(wr_nPopCnt(wRoot, nBL)));
       #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
@@ -4420,6 +4420,7 @@ t_ek_xv:
 #define XV_BLX(_nBL) \
         case (_nBL): \
             PF_2(_nBL); \
+    SMETRICS(j__SearchPopulation += GetBits(wRoot, cnBitsCnt, cnLsbCnt)); \
             if ((nPos = LocateKey64((uint64_t*)pwLnX, wKey, \
                     MAX(8, (Word_t)2 << LOG((_nBL) - 1)))) >= 0) { \
                 assert(nPos < wr_nPopCnt(wRoot, (_nBL))); \
@@ -4430,6 +4431,7 @@ t_ek_xv:
 #define XV_BLX(_nBL) \
         case (_nBL): \
             PF_2(_nBL); \
+    SMETRICS(j__SearchPopulation += GetBits(wRoot, cnBitsCnt, cnLsbCnt)); \
             if ((nPos = LocateKey64((uint64_t*)pwLnX, wKey, \
                     (Word_t)2 << LOG((_nBL) - 1))) >= 0) { \
                 assert(nPos < wr_nPopCnt(wRoot, (_nBL))); \
