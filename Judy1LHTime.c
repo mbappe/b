@@ -89,13 +89,18 @@ RM_EXTERN Word_t j__AllocWordsJV;
 #else // SEARCHMETRICS
 #define SM_EXTERN
 #endif // SEARCHMETRICS
-SM_EXTERN Word_t j__MisComparesP; // Number of miscompares in searches forward
-SM_EXTERN Word_t j__MisComparesM; // Number of miscompares in searches backward
-SM_EXTERN Word_t j__DirectHits;   // Number of direct hits -- no search
 SM_EXTERN Word_t j__SearchPopulation; // Population of Searched object
+  #ifdef DERIVE_SEARCHMETRICS
+SM_EXTERN Word_t j__GetCallsNot;  // Num search calls not instrumented (nothing else counted)
+  #else // DERIVE_SEARCHMETRICS
+SM_EXTERN Word_t j__GetCalls;  // Num search calls
+  #endif // DERIVE_SEARCHMETRICS else
+SM_EXTERN Word_t j__DirectHits;   // Number of direct hits -- no search
+SM_EXTERN Word_t j__NotDirectHits;   // Num calls with no direct hit and unknown search direction
 SM_EXTERN Word_t j__GetCallsP; // Num search calls with no direct hit and resulting in forward search
 SM_EXTERN Word_t j__GetCallsM; // Num search calls with no direct hit and resulting in backward search
-SM_EXTERN Word_t j__GetCalls;  // Num search calls
+SM_EXTERN Word_t j__MisComparesP; // Number of miscompares in searches forward
+SM_EXTERN Word_t j__MisComparesM; // Number of miscompares in searches backward
 
 // The released Judy libraries do not, and some of Doug's work-in-progress
 // libraries may not, have Judy1Dump and/or JudyLDump entry points.
@@ -1218,6 +1223,7 @@ static struct option longopts[] = {
 Word_t    MisComparesP;            // number times LGet/1Test called
 Word_t    MisComparesM;            // number times LGet/1Test called
 Word_t    DirectHits;               // Number of direct hits -- no search
+Word_t    NotDirectHits; // not counted in GetCallsP or GetCallsM
 Word_t    SearchPopulation;         // Population of Searched object
 Word_t    GetCallsP;                 // number of search calls
 Word_t    GetCallsM;                 // number of search calls
@@ -3164,6 +3170,13 @@ eopt:
         double DeltaMalFreLSum = 0.0;
         double DeltaMalFreHSSum = 0.0;
 
+        if (mFlag) {
+            // reset SEARCHMETRICS for this delta
+            SearchPopulation = GetCalls = 0;
+            MisComparesP = MisComparesM = 0;
+            DirectHits = NotDirectHits = GetCallsP = GetCallsM = 0;
+        }
+
         Delta = Pms[grp].ms_delta;
 
         if (Delta == 0)
@@ -3755,6 +3768,71 @@ nextPart:
                     fflush(NULL);
             }
         }
+
+  #ifdef SEARCHMETRICS
+        // These accumulators are just for Get/Test.
+        DirectHits += j__DirectHits; // direct hits
+        NotDirectHits += j__NotDirectHits; // unknown direction of miss
+        GetCallsP += j__GetCallsP;
+        GetCallsM += j__GetCallsM;
+    // We added DERIVE_SEARCHMETRICS in an effort to reduce the overhead of
+    // SEARCHMETRICS in the library. The idea is that the Time program already
+    // knows how many get calls we've done so we don't need the library to keep
+    // track. Also we can derive one of DirectHits, GetCallsP and GetCallsM if
+    // we know two of them so the library only has to keep track of two.
+    // One disadvantage of DERIVE_SEARCHMETRICS is that the library has
+    // to instrument every get call because the Time program will be assuming
+    // all of them are instrumented, e.g. unpacked bitmaps and immediates and
+    // gets of keys that do not exist, but we might prefer to instrument only a
+    // subset in the library, and without DERIVE_SEARCHMETRICS we can use
+    // j__GetCalls to indicate how many calls were actually instrumented.
+    // Should we add j__GetCallsNot for DERIVE_SEARCHMETRICS? Done.
+    // Another bummer is that there is no simple j__NotDirectHits counter, i.e.
+    // the library has to decide between j__GetCallsP and j__GetCallsM if not
+    // maintaining j__DirectHits and this may involve an additional test in
+    // the library. One option is for the library to simply record all misses
+    // as j__GetCallsP or j__GetCallsM to avoid the overhead of figuring out
+    // which one. Should we add j__NotDirectHits? Done.
+    // Another bummer about DERIVE_SEARCHMETRICS is that it doesn't help with
+    // j__SearchPopulation which Get/Test don't always even need to know
+    // if SEARCHMETRICS is not defined.
+    // Could the library simply bump a count of GetCalls without a valid search
+    // population, e.g. GetCallsSansPop, and exclude them from the average
+    // search pop calculation?
+      #ifdef DERIVE_SEARCHMETRICS
+        // We can derive one of DirectHits, GetCallsP and GetCallsM from
+        // the other two.
+        // The library can decide which two it maintains by leaving the
+        // other one alone.
+        // It might not work for hFlag.
+        // There may also be a problem if one of the maintained values
+        // is legitimately 0 and this code assumes it is not legitimate.
+        GetCalls += Meas - j__GetCallsNot;
+        if (j__DirectHits + j__NotDirectHits + j__GetCallsP + j__GetCallsM < Meas)
+        {
+            // The order of the tests here matters.
+            // The first zero gets credit for Gets that were not
+            // explicitly counted as one of the others.
+            if (j__DirectHits == 0) {
+                DirectHits += Meas - j__GetCallsNot - j__NotDirectHits - j__GetCallsP - j__GetCallsM;
+            } else if (j__NotDirectHits == 0) {
+                NotDirectHits += Meas - j__GetCallsNot - j__DirectHits - j__GetCallsP - j__GetCallsM;
+            } else if (j__GetCallsP == 0) {
+                GetCallsP += Meas - j__GetCallsNot - j__DirectHits - j__NotDirectHits - j__GetCallsM;
+            } else if (j__GetCallsM == 0) {
+                GetCallsM += Meas - j__GetCallsNot - j__DirectHits - j__NotDirectHits - j__GetCallsP;
+            }
+        }
+      #else // DERIVE_SEARCHMETRICS
+        GetCalls += j__GetCalls; // count of gets with instrumentation
+      #endif // DERIVE_SEARCHMETRICS else
+        // Some leaves don't need to know population to do a Get.
+        // Hence adding it to the metrics means figuring out the
+        // otherwise unneeded population and this may be expensive.
+        SearchPopulation += j__SearchPopulation;
+        MisComparesP += j__MisComparesP;
+        MisComparesM += j__MisComparesM;
+  #endif // SEARCHMETRICS
 
         if (Pop1 != wFinalPop1)
         {
@@ -4721,10 +4799,18 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
             WorkingSeed = *PSeed;
             Word_t wFeedBTapLocal = wFeedBTap; // don't know why this is faster
 
-//          reset for next measurement
-            j__SearchPopulation = j__GetCalls = 0;
-            j__MisComparesP = j__MisComparesM = 0;
-            j__DirectHits = j__GetCallsP = j__GetCallsM = 0;
+            if (mFlag) {
+                // reset j__* for this lp loop
+                // caller will examine j__* for final lp loop when we return
+  #ifdef DERIVE_SEARCHMETRICS
+                j__GetCallsNot = 0;
+  #else // DERIVE_SEARCHMETRICS
+                j__GetCalls = 0;
+  #endif // DERIVE_SEARCHMETRICS else
+                j__SearchPopulation = 0;
+                j__MisComparesP = j__MisComparesM = 0;
+                j__DirectHits = j__NotDirectHits = j__GetCallsP = j__GetCallsM = 0;
+            }
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
@@ -4761,16 +4847,6 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
                 }
             }
             ENDTm(DeltanSec1);
-
-//          Save for later (these parameters are just for Get/Test)
-            MisComparesP    = j__MisComparesP;
-            MisComparesM    = j__MisComparesM;
-            DirectHits       = j__DirectHits;
-            SearchPopulation = j__SearchPopulation;
-            GetCallsP        = j__GetCallsP;
-            GetCallsM        = j__GetCallsM;
-            GetCalls         = j__GetCalls;
-
             if (DminTime > DeltanSec1)
             {
                 icnt = ICNT;
@@ -4793,16 +4869,26 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
         for (DminTime = 1e40, lp = 0; lp < Loops; lp++)
         {
             WorkingSeed = *PSeed;
+            Word_t wFeedBTapLocal = wFeedBTap; // don't know why this is faster
 
-//          reset for next measurement
-            j__SearchPopulation = j__GetCalls = 0;
-            j__MisComparesP = j__MisComparesM = 0;
-            j__DirectHits = j__GetCallsP = j__GetCallsM = 0;
+            if (mFlag) {
+                // reset j__* for this lp loop
+                // caller will examine j__* for final lp loop when we return
+  #ifdef DERIVE_SEARCHMETRICS
+                j__GetCallsNot = 0;
+  #else // DERIVE_SEARCHMETRICS
+                j__GetCalls = 0;
+  #endif // DERIVE_SEARCHMETRICS else
+                j__SearchPopulation = 0;
+                j__MisComparesP = j__MisComparesM = 0;
+                j__DirectHits = j__NotDirectHits = j__GetCallsP = j__GetCallsM = 0;
+            }
 
             STARTTm;
             for (elm = 0; elm < Elements; elm++)
             {
-                SYNC_SYNC(TstKey = GetNextKey(&WorkingSeed));
+                SYNC_SYNC(TstKey = GetNextKeyX(&WorkingSeed, wFeedBTapLocal, bLfsrOnly));
+                //SYNC_SYNC(TstKey = GetNextKeyX(&WorkingSeed, wFeedBTap, bLfsrOnly));
 
 //              Holes in the Insert Code ?
                 if (hFlag && ((TstKey & 0x3F) == 13))
@@ -4839,67 +4925,6 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
                 }
             }
             ENDTm(DeltanSecL);
-//          Save for later (these parameters are just for Get/Test)
-            GetCalls   = j__GetCalls; // count of gets with insrumentation
-            DirectHits = j__DirectHits; // direct hits
-            GetCallsP  = j__GetCallsP;
-            GetCallsM  = j__GetCallsM;
-  // We added DERIVE_SEARCHMETRICS in an effort to reduce the overhead of
-  // SEARCHMETRICS in the library. The idea is that the Time program already
-  // knows how many get calls we've done so we don't need the library to keep
-  // track. Also we can derive one of DirectHits, GetCallsP and GetCallsM if we
-  // know two of them so the library only has to keep track of two.
-  // One disadvantage of DERIVE_SEARCHMETRICS is that the library has
-  // to instrument every get call because the Time program will be assuming
-  // all of them are instrumented, e.g. unpacked bitmaps and immediates and
-  // gets of keys that do not exist, but we might prefer to instrument only a
-  // subset in the library, and without DERIVE_SEARCHMETRICS we can use
-  // j__GetCalls to indicate how many calls were actually instrumented.
-  // Another bummer is that there is no simple j__NotDirectHits counter, i.e.
-  // the library has to decide between j__GetCallsP and j__GetCallsM if not
-  // maintaining j__DirectHits and this may involve an additional test in
-  // the library. One option is for the library to simply record all misses
-  // as j__GetCallsP or j__GetCallsM to avoid the overhead of figuring out
-  // which one since we normally care mostly about hit vs. not and the
-  // direction of the miss is not that important and we can use full-blown
-  // SEARCHMETRICS for cases when it is.
-  // Another bummer about DERIVE_SEARCHMETRICS is that it doesn't help with
-  // j__SearchPopulation which Get/Test don't always even need to know
-  // if SEARCHMETRICS is not defined.
-  // Could the library simply bump a count of Gets without a valid search
-  // population?
-  // Should we add j__NotDirectHits and/or j__UnknownSearchPopulation for
-  // DERIVE_SEARCHMETRICS?
-  #ifdef DERIVE_SEARCHMETRICS
-            // We can derive one of DirectHits, GetCallsP and GetCallsM from
-            // the other two.
-            // The library can decide which two it maintains by leaving the
-            // other one alone.
-            // It might not work for hFlag.
-            // There may also be a problem if one of the maintained values
-            // is legitimately 0 and this code assumes it is not legitimate.
-            GetCalls = Elements;
-            if (DirectHits + GetCallsP + GetCallsM < Elements) {
-                // The order of the tests here matters.
-                // The first zero gets credit for Gets that were not
-                // explicitly counted as one of DirectHits, GetCallsP
-                // and GetCallsM.
-                if (DirectHits == 0) {
-                    DirectHits = Elements - GetCallsP - GetCallsM;
-                } else if (GetCallsP == 0) {
-                    GetCallsP = Elements - DirectHits - GetCallsM;
-                } else if (GetCallsM == 0) {
-                    GetCallsM = Elements - DirectHits - GetCallsP;
-                }
-            }
-  #endif // DERIVE_SEARCHMETRICS
-            // Some leaves don't need to know population to do a Get.
-            // Hence adding it to the metrics means figuring out the
-            // otherwise unneeded population and this may be expensive.
-            SearchPopulation = j__SearchPopulation;
-            MisComparesP =     j__MisComparesP;
-            MisComparesM =     j__MisComparesM;
-
             if (DminTime > DeltanSecL)
             {
                 icnt = ICNT;
@@ -4941,10 +4966,18 @@ TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elements)
     {
         WorkingSeed = *PSeed;
 
-//      reset for next measurement
-        j__SearchPopulation = j__GetCalls = 0;
-        j__MisComparesP = j__MisComparesM = 0;
-        j__DirectHits = j__GetCallsP = j__GetCallsM = 0;
+        if (mFlag) {
+            // reset j__* for this lp loop
+            // caller will examine j__* for final lp loop when we return
+  #ifdef DERIVE_SEARCHMETRICS
+            j__GetCallsNot = 0;
+  #else // DERIVE_SEARCHMETRICS
+            j__GetCalls = 0;
+  #endif // DERIVE_SEARCHMETRICS else
+            j__SearchPopulation = 0;
+            j__MisComparesP = j__MisComparesM = 0;
+            j__DirectHits = j__NotDirectHits = j__GetCallsP = j__GetCallsM = 0;
+        }
 
         TstKey = GetNextKey(&WorkingSeed);    // Get 1st Key
 
@@ -4958,15 +4991,6 @@ TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elements)
             }
         }
         ENDTm(DeltanSecL);
-//      Save for later (these parameters are just for Get/Test)
-        MisComparesP =     j__MisComparesP;
-        MisComparesM =     j__MisComparesM;
-        DirectHits =        j__DirectHits;
-        SearchPopulation =  j__SearchPopulation;
-        GetCallsP =         j__GetCallsP;
-        GetCallsM =         j__GetCallsM;
-        GetCalls  =         j__GetCalls;
-
         if (DminTime > DeltanSecL)
         {
             icnt = ICNT;
