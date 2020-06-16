@@ -3775,9 +3775,9 @@ t_bitmap:
                           #endif // defined(LOOKUP) || defined(INSERT)
                           #ifdef LOOKUP
                               #ifdef PACK_BM_VALUES
-                NDSMETRICS(++j__GetCalls);
+                NDSMETRICS(++j__GetCalls); // slow SEARCHMETRICS
                 Word_t wPopCnt = gwBitmapPopCnt(qy, cnBitsInD1);
-                SMETRICS(j__SearchPopulation += wPopCnt);
+                SMETRICS(j__SearchPopulation += wPopCnt); // fast and slow
 // Note: I wonder if the penalty for a branch misprediction is
 // exacerbated when prefetching is done on both forks of the branch.
 // For example, T_LIST vs T_BITMAP(packed) at nBLR==cnBitsInD1.
@@ -3885,8 +3885,6 @@ t_bitmap:
                 Word_t* pwValue = &pwBitmapValues[nIndex];
                           #ifdef LOOKUP
                           #ifdef PACK_BM_VALUES
-                // SMETRICS
-                Word_t wDiff = (Word_t)pwValue - ((Word_t)pcPrefetch & ~MSK(6));
                               #ifndef PREFETCH_BM_PREV_VAL
                               #ifndef PF_BM_PREV_HALF_VAL
                               #ifndef PREFETCH_BM_PSPLIT_VAL
@@ -3903,6 +3901,7 @@ t_bitmap:
                               #ifdef PREFETCH_BM_PSPLIT_VAL
                               #ifndef PF_BM_NEXT_HALF_VAL
                               #ifndef PREFETCH_BM_NEXT_VAL
+                Word_t wDiff = (Word_t)pwValue - ((Word_t)pcPrefetch & ~MSK(6));
                 if (wDiff < 64)
                               #endif // #ifndef PREFETCH_BM_NEXT_VAL
                               #endif // #ifndef PF_BM_NEXT_HALF_VAL
@@ -3914,6 +3913,7 @@ t_bitmap:
                               #ifndef PREFETCH_BM_PSPLIT_VAL
                               #ifdef PF_BM_NEXT_HALF_VAL
                               #ifndef PREFETCH_BM_NEXT_VAL
+                Word_t wDiff = (Word_t)pwValue - (((Word_t)pcPrefetch - 32) & ~MSK(6));
                 if (wDiff < 128)
                               #endif // #ifndef PREFETCH_BM_NEXT_VAL
                               #endif // PF_BM_NEXT_HALF_VAL
@@ -3925,6 +3925,7 @@ t_bitmap:
                               #ifdef PREFETCH_BM_PSPLIT_VAL
                               #ifndef PF_BM_NEXT_HALF_VAL
                               #ifdef PREFETCH_BM_NEXT_VAL
+                Word_t wDiff = (Word_t)pwValue - (((Word_t)pcPrefetch - 64) & ~MSK(6));
                 if (wDiff < 192)
                               #endif // PREFETCH_BM_NEXT_VAL
                               #endif // #ifndef PF_BM_NEXT_HALF_VAL
@@ -3932,12 +3933,20 @@ t_bitmap:
                               #endif // #ifndef PF_BM_PREV_HALF_VAL
                               #endif // PREFETCH_BM_PREV_VAL
                 {
-                    NDSMETRICS(++j__DirectHits);
-                } else if (wDiff < (Word_t)pwValue) {
-                    SMETRICS(++j__GetCallsP);
-                } else {
-                    SMETRICS(++j__GetCallsM);
+                    NDSMETRICS(++j__DirectHits); // slow SEARCHMETRICS
+                } else
+                              // Non-directional misses.
+                              #ifdef NON_DIR_BM_SMETRICS
+                {
+                    SMETRICS(++j__NotDirectHits); // fast and slow SEARCHMETRICS
                 }
+                              #else // NON_DIR_BM_SMETRICS
+                if (wDiff < (Word_t)pwValue) {
+                    SMETRICS(++j__GetCallsP); // fast and slow SEARCHMETRICS
+                } else {
+                    SMETRICS(++j__GetCallsM); // fast and slow SEARCHMETRICS
+                }
+                              #endif // NON_DIR_BM_SMETRICS else
                           #endif // PACK_BM_VALUES
                           #endif // LOOKUP
                 return pwValue;
@@ -4008,7 +4017,7 @@ t_unpacked_bm:
     {
         NDSMETRICS(++j__GetCalls);
         NDSMETRICS(++j__DirectHits);
-        NDSMETRICS(j__SearchPopulation += gwBitmapPopCnt(qy, cnBitsInD1));
+        SMETRICS(j__SearchPopulation += gwBitmapPopCnt(qy, cnBitsInD1));
         // We don't use nBLR or nBL in this case.
         // This case is for JudyL only and JudyL doesn't support a bitmap
         // above cnBitsInD1.

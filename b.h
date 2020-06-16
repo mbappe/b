@@ -1120,12 +1120,14 @@ enum {
 #endif // defined(RAMMETRICS)
 
 #if defined(SEARCHMETRICS) && defined(LOOKUP)
-  #define SMETRICS(x)  x
+  #define SMETRICS(x)  x // fast and slow SEARCHMETRICS
 extern Word_t j__SearchPopulation;
   #ifdef DERIVE_SEARCHMETRICS
+#define  DSMETRICS(x)  x // fast SEARCHMETRICS
 #define NDSMETRICS(x)
   #else // DERIVE_SEARCHMETRICS
-#define NDSMETRICS(x)  x
+#define  DSMETRICS(x)
+#define NDSMETRICS(x)  x // slow SEARCHMETRICS
 extern Word_t j__GetCalls;
 extern Word_t j__DirectHits;
   #endif // DERIVE_SEARCHMETRICS else
@@ -1134,7 +1136,8 @@ extern Word_t j__GetCallsM;
 extern Word_t j__MisComparesP;
 extern Word_t j__MisComparesM;
 #else // SEARCHMETRICS && LOOKUP
-  #define SMETRICS(x)
+  #define   SMETRICS(x)
+  #define  DSMETRICS(x)
   #define NDSMETRICS(x)
 #endif // SEARCHMETRICS && LOOKUP
 
