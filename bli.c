@@ -4352,6 +4352,8 @@ foundIt:;
 t_ek_xv:
     {
         DBGX(printf("T_EK_XV\n"));
+        NDSMETRICS(++j__GetCalls);
+        NDSMETRICS(++j__DirectHits);
       #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
           #if defined(B_JUDYL) && defined(INSERT)
