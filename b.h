@@ -4294,6 +4294,7 @@ Psplit(int nPopCnt, int nBL, int nShift, Word_t wKey)
 #define PSPLIT_SEARCH_BY_KEY_GUTS(_x_t, _nBL, /* nPsplitShift */ _x, \
                                   _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
+    SMETRICS(j__SearchPopulation += (_nPopCnt)); \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_x), (_xKey)); \
     /* if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) */\
     if ((_pxKeys)[nSplit] == (_xKey)) \
@@ -4750,6 +4751,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
         /* _nBL, (void *)_pxKeys, _nPopCnt, _xKey, _nPos); */ \
     _b_t *px = (_b_t *)(_pxKeys); \
     ASSERT(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
+    SMETRICS(j__SearchPopulation += (_nPopCnt)); \
     /* nSplit is the key chosen by PSPLIT */ \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_x), (_xKey)); \
     /* nSplitP is nSplit rounded down to the first key in the bucket */ \
@@ -4846,6 +4848,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     _b_t *pb = (_b_t *)(_pxKeys); /* bucket pointer */ \
     /* _pxKeys must be aligned on a bucket boundary */ \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
+    SMETRICS(j__SearchPopulation += (_nPopCnt)); \
     /* nSplit is the key chosen by Psplit */ \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_xShift), (_xKey)); \
     BJL(char* pcPrefetch = (char*)&gpwValues(qy)[~nSplit]; (void)pcPrefetch); \
@@ -5693,7 +5696,6 @@ SearchList8(qp, int nBLR, Word_t wKey)
     assert(nBL <= 8);
     // sizeof(__m128i) == 16 bytes
     int nPopCnt = PWR_xListPopCnt(&wRoot, pwr, nBLR);
-    SMETRICS(j__SearchPopulation += nPopCnt);
     uint8_t *pcKeys = ls_pcKeysNATX(pwr, nPopCnt);
 
 #if defined(LIST_END_MARKERS)
@@ -5787,7 +5789,6 @@ ListHasKey8(qp, int nBLR, Word_t wKey)
 #endif // defined(PARALLEL_128)
 
     int nPopCnt = gnListPopCnt(qy, nBLR);
-    SMETRICS(j__SearchPopulation += nPopCnt);
     uint8_t *pcKeys = ls_pcKeys(pwr, PWR_xListPopCnt(&wRoot, pwr, 8));
     uint8_t cKey = (uint8_t)wKey;
     int nPos = 0;
@@ -5822,7 +5823,6 @@ SearchList16(qp, int nBLR, Word_t wKey)
     assert(nBLR <= 16);
   #if 1
     int nPopCnt = gnListPopCnt(qy, nBLR);
-    SMETRICS(j__SearchPopulation += nPopCnt);
   #else
       #if (cnBitsLeftAtDl2 <= 16)
       #if /* defined(PSPLIT_SEARCH_16) && */ defined(PSPLIT_PARALLEL) \
@@ -6014,7 +6014,6 @@ ListHasKey16(qp, int nBLR, Word_t wKey)
     assert(nBLR >   8);
     assert(nBLR <= 16);
     int nPopCnt = gnListPopCnt(qy, nBLR);
-    SMETRICS(j__SearchPopulation += nPopCnt);
     uint16_t *psKeys = ls_psKeysNATX(pwr, nPopCnt);
     DBGL(printf("ListHasKey16 nPopCnt %d psKeys %p\n",
                 nPopCnt, (void *)psKeys));
@@ -6120,7 +6119,6 @@ ListHasKey32(qp, int nBLR, Word_t wKey)
     assert(nBLR >  16);
     assert(nBLR <= 32);
     int nPopCnt = gnListPopCnt(qy, nBLR);
-    SMETRICS(j__SearchPopulation += nPopCnt);
     uint32_t *piKeys = ls_piKeysNATX(pwr, nPopCnt);
   #if defined(LIST_END_MARKERS)
     assert(piKeys[-1] == 0);
@@ -6276,6 +6274,7 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
     (void)nBL;
     int nPos = 0;
     //Word_t *pwKeysOrig = pwKeys;
+    SMETRICS(j__SearchPopulation += nPopCnt);
     int nPopCntOrig = nPopCnt; (void)nPopCntOrig;
     // BINARY_SEARCH narrows the scope of the linear search that follows.
     unsigned nSplit;
@@ -6335,7 +6334,6 @@ ListHasKeyWord(qp, int nBLR, Word_t wKey)
     qv; (void)nBLR;
 
     int nPopCnt = gnListPopCnt(qy, nBLR);
-    SMETRICS(j__SearchPopulation += nPopCnt);
   #if defined(SEARCH_FROM_WRAPPER)
     Word_t *pwKeys = ls_pwKeysNATX(pwr, nPopCnt);
   #else // defined(SEARCH_FROM_WRAPPER)
@@ -6484,13 +6482,11 @@ SearchList(qp, int nBLR, Word_t wKey)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
     if (nBLR <= 32) {
         int nPopCnt = gnListPopCnt(qy, nBLR);
-        SMETRICS(j__SearchPopulation += nPopCnt);
         return SearchList32(ls_piKeysNATX(pwr, nPopCnt), wKey, nBLR, nPopCnt);
     }
       #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
     int nPopCnt = gnListPopCnt(qy, nBLR);
-    SMETRICS(j__SearchPopulation += nPopCnt);
     return SearchListWord(ls_pwKeysX(pwr, nBLR, nPopCnt), wKey, nBLR, nPopCnt);
 }
 
@@ -6922,7 +6918,7 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
     nPos = LocateKey128((__m128i*)pwr, wKey, 8);
   #endif // #else HK40_EXPERIMENT
     // We don't need to know pop cnt except for SEARCHMETRICS. Ouch.
-    NDSMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+    SMETRICS(j__SearchPopulation += gnListPopCnt(qy, nBLR));
     NDSMETRICS(++j__DirectHits); // direct hit or direct miss
     return nPos;
 #endif // cnDummiesInList == 0
@@ -6936,7 +6932,6 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
 
   #ifndef _LKIL8_DONE
     int nPopCnt = gnListPopCnt(qy, nBLR);
-    SMETRICS(j__SearchPopulation += nPopCnt);
     uint8_t *pcKeys = ls_pcKeys(pwr, PWR_xListPopCnt(&wRoot, pwr, 8));
     uint8_t cKey = (uint8_t)wKey;
     nPos = 0;
@@ -6974,7 +6969,6 @@ LocateKeyInList16(qpa, int nBLR, Word_t wKey)
     assert(nBLR >   8);
     assert(nBLR <= 16);
     int nPopCnt = gnListPopCnt(qy, nBLR);
-    SMETRICS(j__SearchPopulation += nPopCnt);
     uint16_t *psKeys = ls_psKeysNATX(pwr, nPopCnt);
     DBGL(printf("LocateKeyInList16 nPopCnt %d psKeys %p\n",
                 nPopCnt, (void *)psKeys));
@@ -7032,7 +7026,6 @@ LocateKeyInList32(qp, int nBLR, Word_t wKey)
     assert(nBLR >  16);
     assert(nBLR <= 32);
     int nPopCnt = gnListPopCnt(qy, nBLR);
-    SMETRICS(j__SearchPopulation += nPopCnt);
     uint32_t *piKeys = ls_piKeysNATX(pwr, nPopCnt);
   #if defined(LIST_END_MARKERS)
     assert(piKeys[-1] == 0);
@@ -7083,7 +7076,6 @@ LocateKeyInListWord(qp, int nBLR, Word_t wKey)
 
     int nPos;
     int nPopCnt = gnListPopCnt(qy, nBLR);
-    SMETRICS(j__SearchPopulation += nPopCnt);
   #if defined(SEARCH_FROM_WRAPPER) && defined(LOOKUP)
     assert(nBL != cnBitsPerWord);
     Word_t *pwKeys = ls_pwKeysNATX(pwr, nPopCnt);
