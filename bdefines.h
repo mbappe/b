@@ -229,9 +229,26 @@
   #endif // #ifndef NO_PF_EK_XV_2
 #endif // EK_XV
 
+#ifdef AUGMENT_TYPE_8_PLUS_4
+  #if cnBitsPerDigit == 8
+  #if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+    #pragma message("AUGMENT_TYPE_8_PLUS_4 is not needed.")
+  #endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+  #endif // cnBitsPerDigit == 8
+  #undef  AUGMENT_TYPE_8
+  #define AUGMENT_TYPE_8
+#endif // AUGMENT_TYPE_8_PLUS_4
+
 // Default is AUGMENT_TYPE_8.
 // It seems to shine for Time -LmeB31.
 #if cnBitsPerDigit == 8
+#if cnBitsPerWord > 32
+#ifndef USE_XX_SW
+#ifndef DOUBLE_DOWN
+#ifndef USE_LOWER_XX_SW
+#ifndef USE_XX_SW_ONLY_AT_DL2
+#ifndef XX_LISTS
+#ifdef COMPRESSED_LISTS
   #if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
   #ifndef    NO_AUGMENT_TYPE
     #undef      AUGMENT_TYPE_8
@@ -240,9 +257,16 @@
   #endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
   #ifndef AUGMENT_TYPE_8
   #ifndef NO_AUGMENT_TYPE
-#pragma message("Warning: no AUGMENT_TYPE_8 unless all digits are 8 bits.")
+#pragma message("Warning: no default AUGMENT_TYPE_8 without all 8-bit digits.")
   #endif // !NO_AUGMENT_TYPE
   #endif // !AUGMENT_TYPE_8
+#endif // COMPRESSED_LISTS
+#endif // !XX_LISTS
+#endif // !USE_XX_SW_ONLY_AT_DL2
+#endif // !USE_LOWER_XX_SW
+#endif // !DOUBLE_DOWN
+#endif // !USE_XX_SW
+#endif // cnBitsPerWord > 32
 #endif // cnBitsPerDigit == 8
 
 #ifdef B_JUDYL
@@ -737,15 +761,6 @@
   #define  OLD_HK_64
 #endif // #ifndef NO_OLD_HK_64
 
-#ifdef AUGMENT_TYPE_8_PLUS_4
-  #if cnBitsPerDigit == 8
-  #if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
-    #pragma message("AUGMENT_TYPE_8_PLUS_4 is not needed.")
-  #endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
-  #endif // cnBitsPerDigit == 8
-  #undef  AUGMENT_TYPE_8
-  #define AUGMENT_TYPE_8
-#endif // AUGMENT_TYPE_8_PLUS_4
 #ifdef AUGMENT_TYPE_8
   #undef  AUGMENT_TYPE
   #define AUGMENT_TYPE
@@ -824,18 +839,40 @@
   #undef NO_UNPACK_BM_VALUES
 #endif // !B_JUDYL
 
-#ifdef DERIVE_SEARCHMETRICS
+#ifdef DSMETRICS_GETS
   #undef  SEARCHMETRICS
   #define SEARCHMETRICS
-#endif // DERIVE_SEARCHMETRICS
-#ifdef NON_DIR_BM_SMETRICS
+#endif // DSMETRICS_GETS
+
+#ifdef DSMETRICS_HITS
+  #undef  SMETRICS_HITS
+  #define SMETRICS_HITS
+#endif // DSMETRICS_HITS
+
+#ifdef DSMETRICS_NHITS
+  #undef  SMETRICS_HITS
+  #define SMETRICS_HITS
+#endif // DSMETRICS_NHITS
+
+#ifdef SMETRICS_HITS
   #undef  SEARCHMETRICS
   #define SEARCHMETRICS
-#endif // NON_DIR_BM_SMETRICS
-#ifdef NO_POP_SMETRICS
-  #undef  SEARCHMETRICS
-  #define SEARCHMETRICS
-#endif // NO_POP_SMETRICS
+  // Default is DSMETRICS_NHITS. Count hits.
+  #ifdef DSMETRICS_HITS
+    #undef DSMETRICS_NHITS
+  #else // DSMETRICS_HITS
+    #undef  DSMETRICS_NHITS
+    #define DSMETRICS_NHITS
+  #endif // DSMETRICS_HITS else
+#endif // DSMETRICS_HITS
+
+#ifdef SEARCHMETRICS
+  // Default is DSMETRICS_GETS.
+  #ifndef NO_DSMETRICS_GETS
+    #undef  DSMETRICS_GETS
+    #define DSMETRICS_GETS
+  #endif // !NO_DSMETRICS_GETS
+#endif // SEARCHMETRICS
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 

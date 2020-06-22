@@ -50,14 +50,26 @@ Word_t    j__AllocWordsJV; // j__AllocWordsJLB2 for JUDY1 for MIKEY_1
 Word_t    j__NumbJV;
 #endif // RAMMETRICS
 
+#ifdef DSMETRICS_GETS
+  #undef  SEARCHMETRICS
+  #define SEARCHMETRICS
+#endif // DSMETRICS_GETS
+
+#ifdef DSMETRICS_HITS
+  #undef  SEARCHMETRICS
+  #define SEARCHMETRICS
+#endif // DSMETRICS_HITS
+
+#ifdef DSMETRICS_NHITS
+  #undef  SEARCHMETRICS
+  #define SEARCHMETRICS
+#endif // DSMETRICS_NHITS
+
 #ifdef SEARCHMETRICS
-Word_t j__SearchPopulation;
-Word_t j__GetCallsSansPop;
-  #ifdef DERIVE_SEARCHMETRICS
-Word_t j__GetCallsNot;
-  #else // DERIVE_SEARCHMETRICS
 Word_t j__GetCalls;
-  #endif // DERIVE_SEARCHMETRICS else
+Word_t j__GetCallsNot;
+Word_t j__GetCallsSansPop;
+Word_t j__SearchPopulation;
 Word_t j__DirectHits;
 Word_t j__NotDirectHits;
 Word_t j__GetCallsP;

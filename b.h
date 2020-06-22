@@ -1120,33 +1120,61 @@ enum {
 #endif // defined(RAMMETRICS)
 
 #if defined(SEARCHMETRICS) && defined(LOOKUP)
-  #define SMETRICS(x)  x // fast and slow SEARCHMETRICS
-  #ifdef DERIVE_SEARCHMETRICS
-#define  DSMETRICS(x)  x // fast SEARCHMETRICS
-#define NDSMETRICS(x)
+
+  #ifdef DSMETRICS_GETS
+#define SMETRICS_GET(x)
+#define SMETRICS_GETN(x)  x
 extern Word_t j__GetCallsNot;
-  #else // DERIVE_SEARCHMETRICS
-#define  DSMETRICS(x)
-#define NDSMETRICS(x)  x // slow SEARCHMETRICS
+  #else // DSMETRICS_GETS
+#define SMETRICS_GET(x)  x
+#define SMETRICS_GETN(x)
 extern Word_t j__GetCalls;
-extern Word_t j__DirectHits;
-  #endif // DERIVE_SEARCHMETRICS else
+  #endif // DSMETRICS_GETS else
+
+  #ifdef DSMETRICS_HITS
+#define SMETRICS_HIT(x)
+#define SMETRICS_NHIT(x)  x
 extern Word_t j__NotDirectHits;
 extern Word_t j__GetCallsP;
 extern Word_t j__GetCallsM;
+  #elif defined(DSMETRICS_NHITS)
+#define SMETRICS_HIT(x)  x
+#define SMETRICS_NHIT(x)
+extern Word_t j__DirectHits;
+  #elif defined(SMETRICS_HITS)
+#define SMETRICS_HIT(x)  x
+#define SMETRICS_NHIT(x)  x
+extern Word_t j__NotDirectHits;
+extern Word_t j__DirectHits;
+extern Word_t j__GetCallsP;
+extern Word_t j__GetCallsM;
+  #else // DSMETRICS_HITS elif DSMETRICS_NHITS elif SMETRICS_HITS
+#define SMETRICS_HIT(x)
+#define SMETRICS_NHIT(x)
+  #endif // DSMETRICS_HITS elif DSMETRICS_NHITS elif SMETRICS_HITS else
+
+  #ifdef SMETRICS_SEARCH_POP
+#define SMETRICS_POP(x)  x
+extern Word_t j__SearchPopulation;
+  #else // SMETRICS_SEARCH_POP
+#define SMETRICS_POP(x)
+  #endif // SMETRICS_SEARCH_POP
+
+  #ifdef SMETRICS_MISCOMPARES
+#define SMETRICS_MIS(x)  x
 extern Word_t j__MisComparesP;
 extern Word_t j__MisComparesM;
-  #ifdef NO_POP_SMETRICS
-#define SM_POP(x)
-  #else // NO_POP_SMETRICS
-#define SM_POP(x)  x
-extern Word_t j__SearchPopulation;
-  #endif // NO_POP_SMETRICS
+  #else // SMETRICS_MISCOMPARES
+#define SMETRICS_MIS(x)
+  #endif // SMETRICS_MISCOMPARES
+
 #else // SEARCHMETRICS && LOOKUP
-  #define   SMETRICS(x)
-  #define  DSMETRICS(x)
-  #define NDSMETRICS(x)
-  #define SM_POP(x)
+  #define SMETRICS_GET(x)  // for j__GetCalls
+  #define SMETRICS_GETN(x) // for j__GetCallsNot
+  #define SMETRICS_HIT(x)  // for j__DirectHits
+  #define SMETRICS_NHIT(x) // for j__NotDirectHits and j__GetCalls[PM]
+  #define SMETRICS_MIS(x)  // for j__SearchPopulation
+  #define SMETRICS_POP(x)  // for j__Miscompares[PM]
 #endif // SEARCHMETRICS && LOOKUP
 
 #if defined(DEBUG)
@@ -4257,10 +4285,10 @@ extern const unsigned anBL_to_nDL[];
     if ((_pxKeys0)[(_nPos) + (_nPopCnt) - 1] < (_xKey)) { \
         (_nPos) = ~((_nPos) + (_nPopCnt)); \
     } else { \
-        SMETRICS(int nPosStart = (_nPos)); \
+        SMETRICS_MIS(int nPosStart = (_nPos)); \
         SSEARCHF((_pxKeys0), (_xKey), (_nPos)); \
         /* include end of list compare even if equal */ \
-        SMETRICS(j__MisComparesP += ((_nPos) - nPosStart + 1)); \
+        SMETRICS_MIS(j__MisComparesP += ((_nPos) - nPosStart + 1)); \
     } \
 }
 
@@ -4275,10 +4303,10 @@ extern const unsigned anBL_to_nDL[];
         (_nPos) ^= -1; \
     } else { \
         (_nPos) += (_nPopCnt) - 1; \
-        SMETRICS(int nPosStart = (_nPos)); \
+        SMETRICS_MIS(int nPosStart = (_nPos)); \
         SSEARCHB((_pxKeys), (_xKey), (_nPos)); \
         /* include end of list compare even if equal */ \
-        SMETRICS(j__MisComparesM += (nPosStart - (_nPos) + 1)); \
+        SMETRICS_MIS(j__MisComparesM += (nPosStart - (_nPos) + 1)); \
     } \
 }
 
@@ -4302,18 +4330,18 @@ Psplit(int nPopCnt, int nBL, int nShift, Word_t wKey)
 #define PSPLIT_SEARCH_BY_KEY_GUTS(_x_t, _nBL, /* nPsplitShift */ _x, \
                                   _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    SM_POP(j__SearchPopulation += (_nPopCnt)); \
+    SMETRICS_POP(j__SearchPopulation += (_nPopCnt)); \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_x), (_xKey)); \
     /* if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) */\
     if ((_pxKeys)[nSplit] == (_xKey)) \
     { \
         (_nPos) += nSplit; \
-        NDSMETRICS(++j__DirectHits); \
+        SMETRICS_HIT(++j__DirectHits); \
     } \
     else if ((_pxKeys)[nSplit] < (_xKey)) \
     { \
-        SMETRICS(++j__GetCallsP); \
-        SMETRICS(++j__MisComparesP); \
+        SMETRICS_NHIT(++j__GetCallsP); \
+        SMETRICS_MIS(++j__MisComparesP); \
         if (nSplit == (_nPopCnt) - 1) \
         { \
             (_nPos) = ~((_nPos) + (_nPopCnt)); \
@@ -4331,8 +4359,8 @@ Psplit(int nPopCnt, int nBL, int nShift, Word_t wKey)
     } \
     else /* here if (_xKey) < (_pxKeys)[nSplit] (and possibly if equal) */ \
     { \
-        SMETRICS(++j__GetCallsM); \
-        SMETRICS(++j__MisComparesM); \
+        SMETRICS_NHIT(++j__GetCallsM); \
+        SMETRICS_MIS(++j__MisComparesM); \
         if (TEST_AND_KEY_IS_ZERO(_x_t, _pxKeys, _nPopCnt, _xKey)) \
         { \
             if ((_pxKeys)[0] != 0) { (_nPos) ^= -1; } \
@@ -4425,10 +4453,10 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 
   #if defined(PSPLIT_EARLY_OUT)
 #define EARLY_OUT(x)  x
-#define SMETRICS_OR_EARLY_OUT(x)  x
+#define SMETRICS_MIS_OR_EARLY_OUT(x)  x
   #else // defined(PSPLIT_EARLY_OUT)
 #define EARLY_OUT(x)
-#define SMETRICS_OR_EARLY_OUT  SMETRICS
+#define SMETRICS_MIS_OR_EARLY_OUT  SMETRICS_MIS
   #endif // defined(PSPLIT_EARLY_OUT)
 
 // Has-key forward scan of a sub-list.
@@ -4447,18 +4475,19 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     _b_t *pbEnd = (_b_t *)&(_pxKeys)[_nPopCnt]; \
     /* address of first bucket to search */ \
     _b_t *pb = (_b_t *)&(_pxKeys)[_nPos]; \
-    SMETRICS(int nPosStart = (_nPos)); \
+    SMETRICS_MIS(int nPosStart = (_nPos)); \
     /* number of last key in first bucket to search */ \
-    SMETRICS_OR_EARLY_OUT((_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1); \
+    SMETRICS_MIS_OR_EARLY_OUT((_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1); \
     for (;;) { \
         if (BUCKET_HAS_KEY(pb, (_xKey), sizeof(_xKey) * 8)) { \
-            SMETRICS(j__MisComparesP \
+            /* count the miss in PSPLIT_HASKEY_GUTS */ \
+            SMETRICS_MIS(j__MisComparesP \
                 += ((_nPos) - nPosStart + 1) * sizeof(_xKey) / sizeof(_b_t)); \
             break; \
         } \
         /* check the last key in the _b_t to see if we've gone too far */ \
         EARLY_OUT(if ((_xKey) < (_pxKeys)[_nPos]) { (_nPos) ^= -1; break; }); \
-        SMETRICS_OR_EARLY_OUT((_nPos) += sizeof(_b_t) / sizeof(_xKey)); \
+        SMETRICS_MIS_OR_EARLY_OUT((_nPos) += sizeof(_b_t) / sizeof(_xKey)); \
         if (++pb >= pbEnd) { (_nPos) ^= -1; break; } \
     } \
 }
@@ -4473,6 +4502,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     _b_t *pxEnd = (_b_t *)&(_pxKeys)[_nPos + _nPopCnt]; \
     /* address of first bucket to search */ \
     _b_t *px = (_b_t *)&(_pxKeys)[_nPos]; \
+    SMETRICS_MIS(int nPosStart = (_nPos)); \
     /* number of last key in first bucket to search */ \
     /* (_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1; */ \
     int nBPos; \
@@ -4483,6 +4513,9 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
         ++px; (_nPos) += sizeof(_b_t) / sizeof(_xKey); \
         if (px >= pxEnd) { (_nPos) ^= -1; break; } \
     } \
+    /* count the miss in PSPLIT_LOCATEKEY_GUTS */ \
+    SMETRICS_MIS(j__MisComparesP \
+        += 1 + ((_nPos) - nPosStart) * sizeof(_xKey) / sizeof(_b_t)); \
     (_nPos) += nBPos; \
 }
 
@@ -4492,12 +4525,13 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     _b_t *pb = (_b_t *)(_pxKeys); \
     /* bucket number of first bucket to search */ \
     int nbPos = (_nPos) * sizeof(_xKey) / sizeof(_b_t); \
-    SMETRICS(int nbPosStart = nbPos); \
+    SMETRICS_MIS(int nbPosStart = nbPos); \
     /* number of first key in first bucket to search */ \
     EARLY_OUT((_nPos) = nbPos * sizeof(_b_t) / sizeof(_xKey)); \
     for (;;) { \
         if (BUCKET_HAS_KEY(&pb[nbPos], (_xKey), sizeof(_xKey) * 8)) { \
-            SMETRICS(j__MisComparesM += nbPosStart - nbPos + 1); \
+            /* count the miss in PSPLIT_HASKEY_GUTS */ \
+            SMETRICS_MIS(j__MisComparesM += nbPosStart - nbPos + 1); \
             break; \
         } \
         /* check the first key in the _b_t to see if we've gone too far */ \
@@ -4513,6 +4547,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     _b_t *px = (_b_t *)(_pxKeys); \
     /* bucket number of first bucket to search */ \
     int nxPos = ((_nPopCnt) - 1) * sizeof(_xKey) / sizeof(_b_t); \
+    SMETRICS_MIS(int nxPosStart = nxPos); \
     /* number of first key in first bucket to search */ \
     (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
     int nBPos; \
@@ -4524,6 +4559,8 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
         if (&px[nxPos] < (_b_t *)(_pxKeys)) { (_nPos) = -1; break; } \
     } \
     (_nPos) += nBPos; \
+    /* count the miss in PSPLIT_LOCATEKEY_GUTS */ \
+    SMETRICS_MIS(j__MisComparesM += nxPosStart - nxPos + 1); \
 }
 
       #if JUNK
@@ -4759,7 +4796,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
         /* _nBL, (void *)_pxKeys, _nPopCnt, _xKey, _nPos); */ \
     _b_t *px = (_b_t *)(_pxKeys); \
     ASSERT(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
-    SM_POP(j__SearchPopulation += (_nPopCnt)); \
+    SMETRICS_POP(j__SearchPopulation += (_nPopCnt)); \
     /* nSplit is the key chosen by PSPLIT */ \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_x), (_xKey)); \
     /* nSplitP is nSplit rounded down to the first key in the bucket */ \
@@ -4769,7 +4806,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     /*HAS_KEY_128_SETUP((_xKey), sizeof(_x_t) * 8, xLsbs, xMsbs, xKeys);*/ \
     if (BUCKET_HAS_KEY(&px[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
         (_nPos) = 0; /* key exists, but we don't know the exact position */ \
-        NDSMETRICS(++j__DirectHits); \
+        SMETRICS_HIT(++j__DirectHits); \
     } else { \
         nSplit = nSplitP * sizeof(_b_t) / sizeof(_x_t); \
         _x_t xKeySplit = (_pxKeys)[nSplit]; \
@@ -4790,7 +4827,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                 /* ++nSplitP; */ \
                 (_nPos) = (int)nSplit + sizeof(_b_t) / sizeof(_x_t); \
                 HASKEYF(_b_t, (_xKey), (_pxKeys), (_nPopCnt), (_nPos)); \
-                SMETRICS(++j__GetCallsP); \
+                SMETRICS_NHIT(++j__GetCallsP); \
             } \
         } else { \
             if (nSplitP == 0) { \
@@ -4800,7 +4837,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                 /* parallel search the head of the list */ \
                 (_nPos) = nSplit - sizeof(_b_t)/sizeof(_xKey); \
                 HASKEYB(_b_t, (_xKey), (_pxKeys), (_nPopCnt), (_nPos)); \
-                SMETRICS(++j__GetCallsM); \
+                SMETRICS_NHIT(++j__GetCallsM); \
             } \
         } \
     } \
@@ -4856,7 +4893,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     _b_t *pb = (_b_t *)(_pxKeys); /* bucket pointer */ \
     /* _pxKeys must be aligned on a bucket boundary */ \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
-    SM_POP(j__SearchPopulation += (_nPopCnt)); \
+    SMETRICS_POP(j__SearchPopulation += (_nPopCnt)); \
     /* nSplit is the key chosen by Psplit */ \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_xShift), (_xKey)); \
     BJL(char* pcPrefetch = (char*)&gpwValues(qy)[~nSplit]; (void)pcPrefetch); \
@@ -4871,7 +4908,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                                      (_xKey), sizeof(_x_t) * 8)) >= 0) { \
         /* add the number of keys in the buckets before nSplitB */ \
         _nPos += nSplitB * nKeysPerBucket; \
-        NDSMETRICS(++j__DirectHits); \
+        SMETRICS_HIT(++j__DirectHits); \
     } \
     else \
     { \
@@ -4888,7 +4925,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                 (_nPos) = (int)nSplit + nKeysPerBucket; \
                 LOCATEKEYF(_b_t, (_xKey), \
                           (_pxKeys), (_nPopCnt) - (_nPos), (_nPos)); \
-                SMETRICS(++j__GetCallsP); \
+                SMETRICS_NHIT(++j__GetCallsP); \
             } \
         } \
         else \
@@ -4899,7 +4936,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
             } else { \
                 /* parallel search the head of the list */ \
                 LOCATEKEYB(_b_t, (_xKey), (_pxKeys), nSplit, (_nPos)); \
-                SMETRICS(++j__GetCallsM); \
+                SMETRICS_NHIT(++j__GetCallsM); \
             } \
         } \
         /* everything below is just assertions */ \
@@ -5729,10 +5766,10 @@ SearchList8(qp, int nBLR, Word_t wKey)
     }
 #elif defined(BACKWARD_SEARCH_8)
     SEARCHB(uint8_t, pcKeys, nPopCnt, cKey, nPos); (void)nBL;
-    SMETRICS(++j__GetCallsM);
+    SMETRICS_NHIT(++j__GetCallsM);
 #else // here for forward linear search with end check
     SEARCHF(uint8_t, pcKeys, nPopCnt, cKey, nPos); (void)nBL;
-    SMETRICS(++j__GetCallsP);
+    SMETRICS_NHIT(++j__GetCallsP);
 #endif // ...
     return nPos;
 }
@@ -5892,11 +5929,11 @@ SearchList16(qp, int nBLR, Word_t wKey)
     }
   #elif defined(BACKWARD_SEARCH_16) // defined(PSPLIT_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos);
-    SMETRICS(++j__GetCallsM);
+    SMETRICS_NHIT(++j__GetCallsM);
   #else // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
     // here for forward linear search with end check
     SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos);
-    SMETRICS(++j__GetCallsP);
+    SMETRICS_NHIT(++j__GetCallsP);
   #endif // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
     return nPos;
 }
@@ -6055,11 +6092,11 @@ ListHasKey16(qp, int nBLR, Word_t wKey)
       #endif // PSPLIT_PARALLEL
   #elif defined(BACKWARD_SEARCH_16) // defined(PSPLIT_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos);
-    SMETRICS(++j__GetCallsM);
+    SMETRICS_NHIT(++j__GetCallsM);
   #else // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
     // here for forward linear search with end check
     SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos);
-    SMETRICS(++j__GetCallsP);
+    SMETRICS_NHIT(++j__GetCallsP);
   #endif // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
     return nPos >= 0;
 }
@@ -6110,11 +6147,11 @@ SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
     }
 #elif defined(BACKWARD_SEARCH_32) // defined(PSPLIT_PARALLEL_32)
     SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
-    SMETRICS(++j__GetCallsM);
+    SMETRICS_NHIT(++j__GetCallsM);
 #else // defined(PSPLIT_PARALLEL_32) elif defined(BACKWARD_SEARCH_32) else
     // here for forward linear search with end check
     SEARCHF(uint32_t, piKeys, nPopCnt, iKey, nPos); (void)nBL;
-    SMETRICS(++j__GetCallsP);
+    SMETRICS_NOT_HIT(++j__GetCallsP);
 #endif // defined(PSPLIT_PARALLEL_32) elif defined(BACKWARD_SEARCH_32) else
     return nPos;
 }
@@ -6157,10 +6194,10 @@ ListHasKey32(qp, int nBLR, Word_t wKey)
       #endif // #else PSPLIT_PARALLEL
   #elif defined(BACKWARD_SEARCH_32)
     SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos);
-    SMETRICS(++j__GetCallsM);
+    SMETRICS_NHIT(++j__GetCallsM);
   #else // here for forward linear search with end check
     SEARCHF(uint32_t, piKeys, nPopCnt, iKey, nPos);
-    SMETRICS(++j__GetCallsP);
+    SMETRICS_NHIT(++j__GetCallsP);
   #endif // ...
     return nPos >= 0;
 }
@@ -6232,7 +6269,7 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
 #endif // defined(PSPLIT_SEARCH_WORD)
     // We want binary search for nBL == cnBitsPerWord by default.
     // We want binary search for nBL != cnBitsPerWord if !PSPLIT_SEARCH_WORD
-    SMETRICS(int nCompares = 0);
+    SMETRICS_MIS(int nCompares = 0);
 #if !defined(NO_BINARY_SEARCH_WORD)
     Word_t *pwKeysOrig = pwKeys;
     // BINARY_SEARCH narrows the scope of the linear search that follows.
@@ -6254,22 +6291,23 @@ SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
             nPopCnt = nSplit;
             if (nPopCnt == 0) {
                 assert(~(pwKeys - pwKeysOrig) < 0);
+                SMETRICS_HIT(++j__DirectHits);
                 return ~(pwKeys - pwKeysOrig);
             }
         }
-        SMETRICS(++nCompares);
+        SMETRICS_MIS(++nCompares);
     }
     nPos = pwKeys - pwKeysOrig;
     pwKeys = pwKeysOrig;
 #endif // !defined(NO_BINARY_SEARCH_WORD)
   #if defined(BACKWARD_SEARCH_WORD)
     SEARCHB(Word_t, pwKeys, nPopCnt, wKey, nPos);
-    SMETRICS(j__MisComparesM += nCompares);
-    SMETRICS(++j__GetCallsM);
+    SMETRICS_MIS(j__MisComparesM += nCompares);
+    SMETRICS_NHIT(++j__GetCallsM);
   #else // defined(BACKWARD_SEARCH_WORD)
     SEARCHF(Word_t, pwKeys, nPopCnt, wKey, nPos);
-    SMETRICS(j__MisComparesP += nCompares);
-    SMETRICS(++j__GetCallsP);
+    SMETRICS_MIS(j__MisComparesP += nCompares);
+    SMETRICS_NHIT(++j__GetCallsP);
   #endif // defined(BACKWARD_SEARCH_WORD)
     DBGX(printf("SLW: return nPos %d\n", nPos));
     return nPos;
@@ -6282,7 +6320,7 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
     (void)nBL;
     int nPos = 0;
     //Word_t *pwKeysOrig = pwKeys;
-    SM_POP(j__SearchPopulation += nPopCnt);
+    SMETRICS_POP(j__SearchPopulation += nPopCnt);
     int nPopCntOrig = nPopCnt; (void)nPopCntOrig;
     // BINARY_SEARCH narrows the scope of the linear search that follows.
     unsigned nSplit;
@@ -6292,20 +6330,20 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
     // 16 or 64.
     // Not sure about 64-bit keys at a lower level or
     // 64-bit keys at the top level.
-    SMETRICS(int nCompares = 0);
+    SMETRICS_MIS(int nCompares = 0);
     int nKeysPerBucket = sizeof(Bucket_t) / sizeof(Word_t);
     while (nPopCnt >= cnBinarySearchThresholdWord) {
         //nSplit = ALIGN_UP(nPopCnt / 2, nKeysPerBucket);
         nSplit = (nPopCnt / 2) & ~(nKeysPerBucket - 1);
         if (BUCKET_HAS_KEY((Bucket_t *)&pwKeys[nSplit], wKey, nBL)) {
             if (nPopCnt == nPopCntOrig) {
-                NDSMETRICS(++j__DirectHits);
+                SMETRICS_HIT(++j__DirectHits);
             } else if (nPos < nPopCntOrig / 2) {
-                SMETRICS(++j__GetCallsM);
-                SMETRICS(j__MisComparesM += nCompares);
+                SMETRICS_NHIT(++j__GetCallsM);
+                SMETRICS_MIS(j__MisComparesM += nCompares);
             } else {
-                SMETRICS(++j__GetCallsP);
-                SMETRICS(j__MisComparesP += nCompares);
+                SMETRICS_NHIT(++j__GetCallsP);
+                SMETRICS_MIS(j__MisComparesP += nCompares);
             }
             return 1;
         }
@@ -6315,19 +6353,19 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
         } else {
             nPopCnt = nSplit;
         }
-        SMETRICS(++nCompares);
+        SMETRICS_MIS(++nCompares);
     }
     // What if one of nComparesB is not a miscompare? */
     // Call it a miscompare because it is an extra conditional branch.
   #if defined(BACKWARD_SEARCH_WORD)
     nPos = nPopCnt - 1;
     HASKEYB(Bucket_t, wKey, pwKeys, nPopCnt, nPos);
-    SMETRICS(j__MisComparesM += nCompares);
-    SMETRICS(++j__GetCallsM);
+    SMETRICS_MIS(j__MisComparesM += nCompares);
+    SMETRICS_NHIT(++j__GetCallsM);
   #else // defined(BACKWARD_SEARCH_WORD)
     HASKEYF(Bucket_t, wKey, pwKeys, nPopCnt, nPos);
-    SMETRICS(j__MisComparesP += nCompares);
-    SMETRICS(++j__GetCallsP);
+    SMETRICS_MIS(j__MisComparesP += nCompares);
+    SMETRICS_NHIT(++j__GetCallsP);
   #endif // defined(BACKWARD_SEARCH_WORD)
     return nPos >= 0;
 }
@@ -6926,8 +6964,8 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
     nPos = LocateKey128((__m128i*)pwr, wKey, 8);
   #endif // #else HK40_EXPERIMENT
     // We don't need to know pop cnt except for SEARCHMETRICS. Ouch.
-    SM_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
-    NDSMETRICS(++j__DirectHits); // direct hit or direct miss
+    SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+    SMETRICS_HIT(++j__DirectHits); // direct hit or direct miss
     return nPos;
 #endif // cnDummiesInList == 0
 #endif // cnBitsMallocMask >= 4
@@ -7015,11 +7053,11 @@ LocateKeyInList16(qpa, int nBLR, Word_t wKey)
       #endif // #else PSPLIT_PARALLEL
   #elif defined(BACKWARD_SEARCH_16) // defined(PSPLIT_SEARCH_16)
     SEARCHB(uint16_t, psKeys, nPopCnt, sKey, nPos);
-    SMETRICS(++j__GetCallsM);
+    SMETRICS_NHIT(++j__GetCallsM);
   #else // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
     // here for forward linear search with end check
     SEARCHF(uint16_t, psKeys, nPopCnt, sKey, nPos);
-    SMETRICS(++j__GetCallsP);
+    SMETRICS_NHIT(++j__GetCallsP);
   #endif // defined(PSPLIT_SEARCH_16) elif defined(BACKWARD_SEARCH_16) else
     return nPos;
 }
@@ -7065,11 +7103,11 @@ LocateKeyInList32(qp, int nBLR, Word_t wKey)
       #endif // #else PSPLIT_PARALLEL
 #elif defined(BACKWARD_SEARCH_32) // defined(PSPLIT_SEARCH_32)
     SEARCHB(uint32_t, piKeys, nPopCnt, iKey, nPos);
-    SMETRICS(++j__GetCallsM);
+    SMETRICS_NHIT(++j__GetCallsM);
 #else // defined(PSPLIT_SEARCH_32) elif defined(BACKWARD_SEARCH_32) else
     // here for forward linear search with end check
     SEARCHF(uint32_t, piKeys, nPopCnt, iKey, nPos);
-    SMETRICS(++j__GetCallsP);
+    SMETRICS_NHIT(++j__GetCallsP);
 #endif // defined(PSPLIT_SEARCH_32) elif defined(BACKWARD_SEARCH_32) else
     return nPos;
 }

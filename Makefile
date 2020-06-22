@@ -395,10 +395,10 @@ bLcheck: Judy1LHCheck.c libbL.a ${LIBJUDY}
 # Targets j, jtime and jcheck link only with libJudy.a
 j: jtime jcheck
 
-jtime: Judy1LHTime.c ${LIBJUDY}
+jtime: Judy1LHTime.c JudyMalloc.o ${LIBJUDY}
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 
-jcheck: Judy1LHCheck.c ${LIBJUDY}
+jcheck: Judy1LHCheck.c JudyMalloc.o ${LIBJUDY}
 	$(CC) $(CFLAGS) $(DEFINES) -o $@ $^ -lm
 
 # Build libb1.so and libbL.so directly from sources rather than from

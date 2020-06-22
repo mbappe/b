@@ -84,6 +84,21 @@ RM_EXTERN Word_t j__AllocWordsJLL[8];
 RM_EXTERN Word_t j__AllocWordsJLB1;
 RM_EXTERN Word_t j__AllocWordsJV;
 
+#ifdef DSMETRICS_GETS
+  #undef  SEARCHMETRICS
+  #define SEARCHMETRICS
+#endif // DSMETRICS_GETS
+
+#ifdef DSMETRICS_HITS
+  #undef  SEARCHMETRICS
+  #define SEARCHMETRICS
+#endif // DSMETRICS_HITS
+
+#ifdef DSMETRICS_NHITS
+  #undef  SEARCHMETRICS
+  #define SEARCHMETRICS
+#endif // DSMETRICS_NHITS
+
 #ifdef SEARCHMETRICS
 #define SM_EXTERN extern
 #else // SEARCHMETRICS
@@ -91,11 +106,8 @@ RM_EXTERN Word_t j__AllocWordsJV;
 #endif // SEARCHMETRICS
 SM_EXTERN Word_t j__SearchPopulation; // Population of Searched object
 SM_EXTERN Word_t j__GetCallsSansPop; // num instrumented search calls that did not modify j__SearchPopulation
-  #ifdef DERIVE_SEARCHMETRICS
 SM_EXTERN Word_t j__GetCallsNot;  // Num search calls not instrumented (nothing else counted)
-  #else // DERIVE_SEARCHMETRICS
 SM_EXTERN Word_t j__GetCalls;  // Num instrumented search calls
-  #endif // DERIVE_SEARCHMETRICS else
 SM_EXTERN Word_t j__DirectHits;   // Number of direct hits -- no search
 SM_EXTERN Word_t j__NotDirectHits;   // Num calls with no direct hit and unknown search direction
 SM_EXTERN Word_t j__GetCallsP; // Num search calls with no direct hit and resulting in forward search
@@ -1316,11 +1328,23 @@ LogIfdefs(void)
     // __APPLE__
     // __MACH__
 
-  #ifdef         DERIVE_SEARCHMETRICS
-    printf("#    DERIVE_SEARCHMETRICS\n");
-  #else //       DERIVE_SEARCHMETRICS
-    printf("# No DERIVE_SEARCHMETRICS\n");
-  #endif //      DERIVE_SEARCHMETRICS else
+  #ifdef         DSMETRICS_GETS
+    printf("#    DSMETRICS_GETS\n");
+  #else //       DSMETRICS_GETS
+    printf("# No DSMETRICS_GETS\n");
+  #endif //      DSMETRICS_GETS else
+
+  #ifdef         DSMETRICS_HITS
+    printf("#    DSMETRICS_HITS\n");
+  #else //       DSMETRICS_HITS
+    printf("# No DSMETRICS_HITS\n");
+  #endif //      DSMETRICS_HITS else
+
+  #ifdef         DSMETRICS_NHITS
+    printf("#    DSMETRICS_NHITS\n");
+  #else //       DSMETRICS_NHITS
+    printf("# No DSMETRICS_NHITS\n");
+  #endif //      DSMETRICS_NHITS else
 
     // EXTRA_SLOW_PDEP
     // FANCY_b_flag
@@ -3771,67 +3795,81 @@ nextPart:
             }
         }
 
+  // SEARCHMETRICS are just for Get/Test.
   #ifdef SEARCHMETRICS
-        // These accumulators are just for Get/Test.
+      // We added DSMETRICS_GETS in an effort to
+      // reduce the overhead of SEARCHMETRICS in the library.
+      // The idea is that the Time program already knows how many GetCalls it's
+      // done so we don't need the library to keep track.
+      // One disadvantage of DSMETRICS_GETS is that the library has
+      // to instrument every get call because the Time program will be assuming
+      // all of them are instrumented, e.g. unpacked bitmaps and immediates and
+      // gets of keys that do not exist, but we might prefer to instrument only
+      // a subset in the library, and without DSMETRICS_GETS we can use
+      // j__GetCalls to indicate how many calls were actually instrumented.
+      // Should we add j__GetCallsNot for DSMETRICS_GETS? Done.
+      #ifdef DSMETRICS_GETS
+        Word_t NewGetCalls = Meas - j__GetCallsNot;
+      #else // DSMETRICS_GETS
+        if (mFlag && (j__GetCalls != Meas)) {
+            printf("\n# Meas %zd j__GetCalls %zd\n", Meas, j__GetCalls);
+        }
+        assert(!mFlag || j__GetCalls == Meas);
+        Word_t NewGetCalls = j__GetCalls; // count of gets with instrumentation
+      #endif // DSMETRICS_GETS else
+        GetCalls += NewGetCalls;
+      // We added DSMETRICS_[N]HITS in the same vein, i.e. to
+      // reduce the overhead of SEARCHMETRICS in the library.
+      // Since GetCalls = DirectHits + GetCallsP + GetCallsM
+      // we can derive one of DirectHits, GetCallsP, and GetCallsM
+      // if we know two of them so the library only has to keep track of two.
+      // One bummer is that there is no simple j__NotDirectHits counter, i.e.
+      // the library has to decide between j__GetCallsP and j__GetCallsM if not
+      // maintaining j__DirectHits and this may involve an additional test in
+      // the library. One option is for the library to simply record all misses
+      // as j__GetCallsP or j__GetCallsM to avoid the overhead of figuring out
+      // which one. Another is to add j__NotDirectHits for cases when we don't
+      // know the direction? Done.
+      // Now GetCalls = DirectHits + NotDirectHits + GetCallsP + GetCallsM.
+      // But we only support derivation of DirectHits or NotDirectHits using
+      // DSMETRICS_[N]HITS.
+      #ifdef DSMETRICS_HITS
+      #ifdef DSMETRICS_NHITS
+        #error Cannot have both DSMETRICS_HITS and DSMETRICS_NHITS
+      #endif // DSMETRICS_HITS
+      #endif // DSMETRICS_NHITS
+      #if defined(DSMETRICS_HITS)
+        assert(!mFlag || (j__DirectHits == 0));
+        DirectHits
+            += NewGetCalls - j__NotDirectHits - j__GetCallsP - j__GetCallsM;
+      #else // DSMETRICS_HITS
         DirectHits += j__DirectHits; // direct hits
+      #endif // DSMETRICS_HITS else
+      #ifdef DSMETRICS_NHITS
+        assert(!mFlag || (j__NotDirectHits == 0));
+        NotDirectHits
+            += NewGetCalls - j__DirectHits - j__GetCallsP - j__GetCallsM;
+      #else // DSMETRICS_NHITS
         NotDirectHits += j__NotDirectHits; // unknown direction of miss
+      #endif // DSMETRICS_NHITS else
+      #ifndef DSMETRICS_HITS
+      #ifndef DSMETRICS_NHITS
+        assert(j__DirectHits + j__NotDirectHits + j__GetCallsP + j__GetCallsM
+               == NewGetCalls);
+      #endif // !DSMETRICS_NHITS
+      #endif // !DSMETRICS_HITS
         GetCallsP += j__GetCallsP;
         GetCallsM += j__GetCallsM;
-    // We added DERIVE_SEARCHMETRICS in an effort to reduce the overhead of
-    // SEARCHMETRICS in the library. The idea is that the Time program already
-    // knows how many get calls we've done so we don't need the library to keep
-    // track. Also we can derive one of DirectHits, GetCallsP and GetCallsM if
-    // we know two of them so the library only has to keep track of two.
-    // One disadvantage of DERIVE_SEARCHMETRICS is that the library has
-    // to instrument every get call because the Time program will be assuming
-    // all of them are instrumented, e.g. unpacked bitmaps and immediates and
-    // gets of keys that do not exist, but we might prefer to instrument only a
-    // subset in the library, and without DERIVE_SEARCHMETRICS we can use
-    // j__GetCalls to indicate how many calls were actually instrumented.
-    // Should we add j__GetCallsNot for DERIVE_SEARCHMETRICS? Done.
-    // Another bummer is that there is no simple j__NotDirectHits counter, i.e.
-    // the library has to decide between j__GetCallsP and j__GetCallsM if not
-    // maintaining j__DirectHits and this may involve an additional test in
-    // the library. One option is for the library to simply record all misses
-    // as j__GetCallsP or j__GetCallsM to avoid the overhead of figuring out
-    // which one. Should we add j__NotDirectHits? Done.
-    // Another bummer about DERIVE_SEARCHMETRICS is that it doesn't help with
-    // j__SearchPopulation which Get/Test don't always even need to know
-    // if SEARCHMETRICS is not defined.
-    // Could the library simply bump a count of GetCalls without a valid search
-    // population, e.g. GetCallsSansPop, and exclude them from the average
-    // search pop calculation? Done.
-      #ifdef DERIVE_SEARCHMETRICS
-        // We can derive one of DirectHits, GetCallsP and GetCallsM from
-        // the other two.
-        // The library can decide which two it maintains by leaving the
-        // other one alone.
-        // It might not work for hFlag.
-        // There may also be a problem if one of the maintained values
-        // is legitimately 0 and this code assumes it is not legitimate.
-        GetCalls += Meas - j__GetCallsNot;
-        if (j__DirectHits + j__NotDirectHits + j__GetCallsP + j__GetCallsM < Meas)
-        {
-            // The order of the tests here matters.
-            // The first zero gets credit for Gets that were not
-            // explicitly counted as one of the others.
-            if (j__DirectHits == 0) {
-                DirectHits += Meas - j__GetCallsNot - j__NotDirectHits - j__GetCallsP - j__GetCallsM;
-            } else if (j__NotDirectHits == 0) {
-                NotDirectHits += Meas - j__GetCallsNot - j__DirectHits - j__GetCallsP - j__GetCallsM;
-            } else if (j__GetCallsP == 0) {
-                GetCallsP += Meas - j__GetCallsNot - j__DirectHits - j__NotDirectHits - j__GetCallsM;
-            } else if (j__GetCallsM == 0) {
-                GetCallsM += Meas - j__GetCallsNot - j__DirectHits - j__NotDirectHits - j__GetCallsP;
-            }
-        }
-      #else // DERIVE_SEARCHMETRICS
-        GetCalls += j__GetCalls; // count of gets with instrumentation
-      #endif // DERIVE_SEARCHMETRICS else
         // Some leaves don't need to know population to do a Get.
-        // Hence adding it to the metrics means figuring out the
+        // Hence adding it to j__SearchPopulation means figuring out the
         // otherwise unneeded population and this may be expensive.
         SearchPopulation += j__SearchPopulation;
+      // Another bummer about DERIVE_SEARCHMETRICS is that it doesn't help with
+      // j__SearchPopulation which Get/Test don't always need to know except
+      // for SEARCHMETRICS.
+      // Could the library simply bump a count of GetCalls without a valid
+      // search population, e.g. GetCallsSansPop, and Time exclude them from
+      // the average search pop calculation? Done.
         GetCallsSansPop += j__GetCallsSansPop;
         MisComparesP += j__MisComparesP;
         MisComparesM += j__MisComparesM;
