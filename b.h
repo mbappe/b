@@ -445,7 +445,6 @@
 // It is enabled by default if and only if cnBitsPerWord==32 and
 // cnBitsMallocMask >= 4.
 // And then only lists of 16-bit keys that fit in 12 bytes are made T_LIST_UA.
-//
 #if defined(PSPLIT_PARALLEL) && defined(PARALLEL_128)
   #ifdef COMPRESSED_LISTS
   #ifndef NO_UA_PARALLEL_128
@@ -1155,9 +1154,16 @@ extern Word_t j__GetCallsM;
 
   #ifdef SMETRICS_SEARCH_POP
 #define SMETRICS_POP(x)  x
+    #ifdef DSMETRICS_GETS
+#define SMETRICS_POPN(x)  x
+extern Word_t j__GetCallsSansPop;
+    #else // DSMETRICS_GETS
+#define SMETRICS_POPN(x)
+    #endif // DSMETRICS_GETS else
 extern Word_t j__SearchPopulation;
   #else // SMETRICS_SEARCH_POP
 #define SMETRICS_POP(x)
+#define SMETRICS_POPN(x)
   #endif // SMETRICS_SEARCH_POP
 
   #ifdef SMETRICS_MISCOMPARES
@@ -1175,6 +1181,7 @@ extern Word_t j__MisComparesM;
   #define SMETRICS_NHIT(x) // for j__NotDirectHits and j__GetCalls[PM]
   #define SMETRICS_MIS(x)  // for j__SearchPopulation
   #define SMETRICS_POP(x)  // for j__Miscompares[PM]
+  #define SMETRICS_POPN(x)  // for j__Miscompares[PM]
 #endif // SEARCHMETRICS && LOOKUP
 
 #if defined(DEBUG)
@@ -5817,6 +5824,8 @@ ListHasKey8(qp, int nBLR, Word_t wKey)
   #endif // defined(POP_IN_WR_HB) || defined(LIST_POP_IN_PREAMBLE)
   #endif // !defined(PP_IN_LINK) && !defined(POP_WORD_IN_LINK)
     assert(((Word_t)pwr & ~((Word_t)-1 << 4)) == 0);
+    SMETRICS_HIT(++j__DirectHits);
+    SMETRICS_POPN(++j__GetCallsSansPop);
   #if defined(OLD_LISTS) && defined(HK40_EXPERIMENT)
     return HasKey40(pwr, wKey);
   #else // defined(OLD_LISTS) && defined(HK40_EXPERIMENT)
@@ -6319,54 +6328,89 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
 {
     (void)nBL;
     int nPos = 0;
-    //Word_t *pwKeysOrig = pwKeys;
     SMETRICS_POP(j__SearchPopulation += nPopCnt);
-    int nPopCntOrig = nPopCnt; (void)nPopCntOrig;
     // BINARY_SEARCH narrows the scope of the linear search that follows.
-    unsigned nSplit;
     // Looks like we might want a loop threshold of 8 for
     // 64-bit keys at the top level.
     // And there's not much difference with threshold of
     // 16 or 64.
     // Not sure about 64-bit keys at a lower level or
     // 64-bit keys at the top level.
-    SMETRICS_MIS(int nCompares = 0);
     int nKeysPerBucket = sizeof(Bucket_t) / sizeof(Word_t);
-    while (nPopCnt >= cnBinarySearchThresholdWord) {
+    if (nPopCnt >= cnBinarySearchThresholdWord) {
         //nSplit = ALIGN_UP(nPopCnt / 2, nKeysPerBucket);
-        nSplit = (nPopCnt / 2) & ~(nKeysPerBucket - 1);
+        int nSplit = (nPopCnt / 2) & ~(nKeysPerBucket - 1);
         if (BUCKET_HAS_KEY((Bucket_t *)&pwKeys[nSplit], wKey, nBL)) {
-            if (nPopCnt == nPopCntOrig) {
-                SMETRICS_HIT(++j__DirectHits);
-            } else if (nPos < nPopCntOrig / 2) {
-                SMETRICS_NHIT(++j__GetCallsM);
-                SMETRICS_MIS(j__MisComparesM += nCompares);
-            } else {
-                SMETRICS_NHIT(++j__GetCallsP);
-                SMETRICS_MIS(j__MisComparesP += nCompares);
-            }
+            SMETRICS_HIT(++j__DirectHits);
             return 1;
         }
+        SMETRICS_MIS(Word_t* pj__MisCompares);
+        SMETRICS_MIS(int nMisCompares = 1);
         if (pwKeys[nSplit] <= wKey) {
+            SMETRICS_NHIT(++j__GetCallsP);
+            SMETRICS_MIS(pj__MisCompares = &j__MisComparesP);
             pwKeys = &pwKeys[nSplit + nKeysPerBucket];
             nPopCnt -= nSplit + nKeysPerBucket;
         } else {
+            SMETRICS_NHIT(++j__GetCallsM);
+            SMETRICS_MIS(pj__MisCompares = &j__MisComparesM);
             nPopCnt = nSplit;
         }
-        SMETRICS_MIS(++nCompares);
+        while (nPopCnt >= cnBinarySearchThresholdWord) {
+            nSplit = (nPopCnt / 2) & ~(nKeysPerBucket - 1);
+            if (BUCKET_HAS_KEY((Bucket_t *)&pwKeys[nSplit], wKey, nBL)) {
+                SMETRICS_MIS(pj__MisCompares += nMisCompares);
+                return 1;
+            }
+            if (pwKeys[nSplit] <= wKey) {
+                pwKeys = &pwKeys[nSplit + nKeysPerBucket];
+                nPopCnt -= nSplit + nKeysPerBucket;
+            } else {
+                nPopCnt = nSplit;
+            }
+            SMETRICS_MIS(++nMisCompares);
+        }
+        if
+  #if defined(SMETRICS_MISCOMPARES) && defined(LOOKUP)
+            (pj__MisCompares == &j__MisComparesP)
+  #elif defined(BACKWARD_SEARCH_WORD) // SMETRICS_MISCOMPARES && LOOKUP
+            (0)
+  #else // SMETRICS_MISCOMPARES && LOOKUP elif BACKWARD_SEARCH_WORD
+            (1)
+  #endif // SMETRICS_MISCOMPARES && LOOKUP elif BACKWARD_SEARCH_WORD else
+        {
+            HASKEYF(Bucket_t, wKey, pwKeys, nPopCnt, nPos);
+            // HASKEYF assumes one miscompare occurred before it was called.
+            // It updates only j__MiscomparesP.
+            SMETRICS_MIS(j__MisComparesP += nMisCompares - 1);
+        } else {
+            HASKEYB(Bucket_t, wKey, pwKeys, nPopCnt, nPos);
+            // HASKEYF assumes one miscompare occurred before it was called.
+            // It updates only j__MiscomparesM.
+            SMETRICS_MIS(j__MisComparesM += nMisCompares - 1);
+        }
+    } else {
+  #ifdef BACKWARD_SEARCH_WORD
+        nPos = nPopCnt - 1;
+        HASKEYB(Bucket_t, wKey, pwKeys, /*IN*/ nPopCnt, /*INOUT*/ nPos);
+        if ((nPos ^ (nPopCnt - 1)) & ~(nKeysPerBucket - 1)) {
+            SMETRICS_HIT(++j__DirectHits);
+        } else {
+            SMETRICS_NHIT(++j__GetCallsM);
+            // HASKEYB assumes one miscompare occurred before it was called.
+            SMETRICS_MIS(--j__MisComparesM);
+        }
+  #else // BACKWARD_SEARCH_WORD
+        HASKEYF(Bucket_t, wKey, pwKeys, nPopCnt, nPos);
+        if (nPos & ~(nKeysPerBucket - 1)) {
+            SMETRICS_HIT(++j__DirectHits);
+        } else {
+            SMETRICS_NHIT(++j__GetCallsP);
+            // HASKEYF assumes one miscompare occurred before it was called.
+            SMETRICS_MIS(--j__MisComparesP);
+        }
+  #endif // BACKWARD_SEARCH_WORD else
     }
-    // What if one of nComparesB is not a miscompare? */
-    // Call it a miscompare because it is an extra conditional branch.
-  #if defined(BACKWARD_SEARCH_WORD)
-    nPos = nPopCnt - 1;
-    HASKEYB(Bucket_t, wKey, pwKeys, nPopCnt, nPos);
-    SMETRICS_MIS(j__MisComparesM += nCompares);
-    SMETRICS_NHIT(++j__GetCallsM);
-  #else // defined(BACKWARD_SEARCH_WORD)
-    HASKEYF(Bucket_t, wKey, pwKeys, nPopCnt, nPos);
-    SMETRICS_MIS(j__MisComparesP += nCompares);
-    SMETRICS_NHIT(++j__GetCallsP);
-  #endif // defined(BACKWARD_SEARCH_WORD)
     return nPos >= 0;
 }
 #endif // PARALLEL_SEARCH_WORD

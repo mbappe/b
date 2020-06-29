@@ -26,10 +26,20 @@
 
 // Judy1LHTime.c doesn't include bdefines.h so we want to be sure to
 // define DEBUG if DEBUG_ALL is defined.
-#ifdef DEBUG_ALL
+#if defined(DEBUG_ALL) || defined(DEBUG_LOOKUP)
 #undef DEBUG
 #define DEBUG
-#endif // DEBUG_ALL
+#endif // DEBUG_ALL || DEBUG_LOOKUP
+
+#if defined(DEBUG_INSERT) || defined(DEBUG_REMOVE)
+#undef DEBUG
+#define DEBUG
+#endif // DEBUG_INSERT || DEBUG_REMOVE
+
+#if defined(DEBUG_COUNT) || defined(DEBUG_NEXT) || defined(DEBUG_MALLOC)
+#undef DEBUG
+#define DEBUG
+#endif // DEBUG_COUNT || DEBUG_NEXT || DEBUG_MALLOC
 
 // Turn off assert(0) by default
 #ifndef DEBUG
@@ -84,36 +94,48 @@ RM_EXTERN Word_t j__AllocWordsJLL[8];
 RM_EXTERN Word_t j__AllocWordsJLB1;
 RM_EXTERN Word_t j__AllocWordsJV;
 
+// DSMETRICS_HITS ==> Derive DirectHits from GetCalls, j__NotDirectHits,
+// j__GetCallsP and j__GetCallsM.
+#ifdef DSMETRICS_HITS
+  #ifdef DSMETRICS_NHITS
+    #error DSMETRICS_HITS and DSMETRICS_NHITS are mutually exclusive.
+  #endif // DSMETRICS_HITS
+  #undef  DSMETRICS_GETS
+  #define DSMETRICS_GETS
+#endif // DSMETRICS_HITS
+
+// DSMETRICS_NHITS ==> Derive NotDirectHits from GetCalls, j__DirectHits,
+// j__GetCallsP and j__GetCallsM.
+#ifdef DSMETRICS_NHITS
+  #undef  DSMETRICS_GETS
+  #define DSMETRICS_GETS
+#endif // DSMETRICS_NHITS
+
+// DSMETRICS_GETS ==> Derive GetCalls from Meas/Elements and j__GetCallsNot.
 #ifdef DSMETRICS_GETS
   #undef  SEARCHMETRICS
   #define SEARCHMETRICS
 #endif // DSMETRICS_GETS
-
-#ifdef DSMETRICS_HITS
-  #undef  SEARCHMETRICS
-  #define SEARCHMETRICS
-#endif // DSMETRICS_HITS
-
-#ifdef DSMETRICS_NHITS
-  #undef  SEARCHMETRICS
-  #define SEARCHMETRICS
-#endif // DSMETRICS_NHITS
 
 #ifdef SEARCHMETRICS
 #define SM_EXTERN extern
 #else // SEARCHMETRICS
 #define SM_EXTERN
 #endif // SEARCHMETRICS
-SM_EXTERN Word_t j__SearchPopulation; // Population of Searched object
-SM_EXTERN Word_t j__GetCallsSansPop; // num instrumented search calls that did not modify j__SearchPopulation
-SM_EXTERN Word_t j__GetCallsNot;  // Num search calls not instrumented (nothing else counted)
-SM_EXTERN Word_t j__GetCalls;  // Num instrumented search calls
-SM_EXTERN Word_t j__DirectHits;   // Number of direct hits -- no search
-SM_EXTERN Word_t j__NotDirectHits;   // Num calls with no direct hit and unknown search direction
-SM_EXTERN Word_t j__GetCallsP; // Num search calls with no direct hit and resulting in forward search
-SM_EXTERN Word_t j__GetCallsM; // Num search calls with no direct hit and resulting in backward search
-SM_EXTERN Word_t j__MisComparesP; // Number of miscompares in searches forward
-SM_EXTERN Word_t j__MisComparesM; // Number of miscompares in searches backward
+SM_EXTERN Word_t j__SearchPopulation; // Sum of pops searched of counted Gets.
+// Num counted Gets that did not modify j__SearchPopulation.
+SM_EXTERN Word_t j__GetCallsSansPop;
+SM_EXTERN Word_t j__GetCallsNot; // Num Gets not counted or instrumented.
+SM_EXTERN Word_t j__GetCalls; // Num instrumented Gets.
+SM_EXTERN Word_t j__DirectHits; // Num direct hits - found key on first try.
+// Num Gets with no direct hit not counted in j__GetCalls[PM].
+SM_EXTERN Word_t j__NotDirectHits;
+// Num Gets with no direct hit and resulting in forward search.
+SM_EXTERN Word_t j__GetCallsP;
+// Num Gets with no direct hit and resulting in backward search.
+SM_EXTERN Word_t j__GetCallsM;
+SM_EXTERN Word_t j__MisComparesP; // Sum of miscompares j__GetCallsP.
+SM_EXTERN Word_t j__MisComparesM; // Sum of miscompares j__GetCallsM.
 
 // The released Judy libraries do not, and some of Doug's work-in-progress
 // libraries may not, have Judy1Dump and/or JudyLDump entry points.
@@ -3811,10 +3833,6 @@ nextPart:
       #ifdef DSMETRICS_GETS
         Word_t NewGetCalls = Meas - j__GetCallsNot;
       #else // DSMETRICS_GETS
-        if (mFlag && (j__GetCalls != Meas)) {
-            printf("\n# Meas %zd j__GetCalls %zd\n", Meas, j__GetCalls);
-        }
-        assert(!mFlag || j__GetCalls == Meas);
         Word_t NewGetCalls = j__GetCalls; // count of gets with instrumentation
       #endif // DSMETRICS_GETS else
         GetCalls += NewGetCalls;
@@ -3854,8 +3872,21 @@ nextPart:
       #endif // DSMETRICS_NHITS else
       #ifndef DSMETRICS_HITS
       #ifndef DSMETRICS_NHITS
-        assert(j__DirectHits + j__NotDirectHits + j__GetCallsP + j__GetCallsM
-               == NewGetCalls);
+        if (mFlag) {
+            if (j__DirectHits + j__NotDirectHits + j__GetCallsP + j__GetCallsM
+                   != NewGetCalls)
+            {
+                printf("\n# Meas %zd j__GetCalls %zd j__GetCallsNot %zd"
+                           " NewGetCalls %zd\n",
+                       Meas, j__GetCalls, j__GetCallsNot, NewGetCalls);
+                printf("# j__DirectHits %zd j__NotDirectHits %zd j__GetCallsP %zd"
+                           " j__GetCallsM %zd\n",
+                       j__DirectHits, j__NotDirectHits, j__GetCallsP,
+                       j__GetCallsM);
+            }
+            assert(j__DirectHits + j__NotDirectHits + j__GetCallsP + j__GetCallsM
+                   == NewGetCalls);
+        }
       #endif // !DSMETRICS_NHITS
       #endif // !DSMETRICS_HITS
         GetCallsP += j__GetCallsP;
@@ -3864,7 +3895,7 @@ nextPart:
         // Hence adding it to j__SearchPopulation means figuring out the
         // otherwise unneeded population and this may be expensive.
         SearchPopulation += j__SearchPopulation;
-      // Another bummer about DERIVE_SEARCHMETRICS is that it doesn't help with
+      // Another bummer about DSMETRICS_GETS is that it doesn't help with
       // j__SearchPopulation which Get/Test don't always need to know except
       // for SEARCHMETRICS.
       // Could the library simply bump a count of GetCalls without a valid
@@ -4843,11 +4874,11 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
             if (mFlag) {
                 // reset j__* for this lp loop
                 // caller will examine j__* for final lp loop when we return
-  #ifdef DERIVE_SEARCHMETRICS
+  #ifdef DSMETRICS_GETS
                 j__GetCallsNot = 0;
-  #else // DERIVE_SEARCHMETRICS
+  #else // DSMETRICS_GETS
                 j__GetCalls = 0;
-  #endif // DERIVE_SEARCHMETRICS else
+  #endif // DSMETRICS_GETS else
                 j__GetCallsSansPop = 0;
                 j__SearchPopulation = 0;
                 j__MisComparesP = j__MisComparesM = 0;
@@ -4916,11 +4947,11 @@ TestJudyGet(void *J1, void *JL, PNewSeed_t PSeed, Word_t Elements,
             if (mFlag) {
                 // reset j__* for this lp loop
                 // caller will examine j__* for final lp loop when we return
-  #ifdef DERIVE_SEARCHMETRICS
+  #ifdef DSMETRICS_GETS
                 j__GetCallsNot = 0;
-  #else // DERIVE_SEARCHMETRICS
+  #else // DSMETRICS_GETS
                 j__GetCalls = 0;
-  #endif // DERIVE_SEARCHMETRICS else
+  #endif // DSMETRICS_GETS else
                 j__GetCallsSansPop = 0;
                 j__SearchPopulation = 0;
                 j__MisComparesP = j__MisComparesM = 0;
@@ -5012,11 +5043,11 @@ TestJudyLGet(void *JL, PNewSeed_t PSeed, Word_t Elements)
         if (mFlag) {
             // reset j__* for this lp loop
             // caller will examine j__* for final lp loop when we return
-  #ifdef DERIVE_SEARCHMETRICS
+  #ifdef DSMETRICS_GETS
             j__GetCallsNot = 0;
-  #else // DERIVE_SEARCHMETRICS
+  #else // DSMETRICS_GETS
             j__GetCalls = 0;
-  #endif // DERIVE_SEARCHMETRICS else
+  #endif // DSMETRICS_GETS else
             j__GetCallsSansPop = 0;
             j__SearchPopulation = 0;
             j__MisComparesP = j__MisComparesM = 0;

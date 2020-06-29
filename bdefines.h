@@ -589,7 +589,7 @@
 // Default is -DNDEBUG -UDEBUG_ALL -UDEBUG
 // -UDEBUG_INSERT -UDEBUG_REMOVE -UDEBUG_LOOKUP -UDEBUG_MALLOC
 // -UDEBUG_COUNT -UDEBUG_NEXT
-#if defined(DEBUG_ALL)
+#ifdef DEBUG_ALL
     #undef   DEBUG_ASSERT
     #define  DEBUG_ASSERT
 //  #undef   DEBUG_LOOKUP
@@ -606,7 +606,7 @@
     #define  DEBUG_NEXT
     #undef   DEBUG
     #define  DEBUG
-#else // defined(DEBUG_ALL)
+#else // DEBUG_ALL
   #if defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || defined(DEBUG_REMOVE)
     #undef   DEBUG
     #define  DEBUG
@@ -615,7 +615,7 @@
     #undef   DEBUG
     #define  DEBUG
   #endif // defined(DEBUG_MALLOC) || defined(DEBUG_COUNT) || ...
-#endif // defined(DEBUG_ALL)
+#endif // DEBUG_ALL else
 
 #if ! defined(DEBUG)
     #undef  NDEBUG
@@ -839,39 +839,33 @@
   #undef NO_UNPACK_BM_VALUES
 #endif // !B_JUDYL
 
+#ifdef DSMETRICS_HITS
+  #ifdef DSMETRICS_NHITS
+    #error DSMETRICS_HITS and DSMETRICS_NHITS are mutually exclusive.
+  #endif // DSMETRICS_NHITS
+  #undef  DSMETRICS_GETS
+  #define DSMETRICS_GETS
+#endif // DSMETRICS_HITS
+
+#ifdef DSMETRICS_NHITS
+  #undef  DSMETRICS_GETS
+  #define DSMETRICS_GETS
+#endif // DSMETRICS_NHITS
+
 #ifdef DSMETRICS_GETS
   #undef  SEARCHMETRICS
   #define SEARCHMETRICS
 #endif // DSMETRICS_GETS
 
-#ifdef DSMETRICS_HITS
-  #undef  SMETRICS_HITS
-  #define SMETRICS_HITS
-#endif // DSMETRICS_HITS
-
-#ifdef DSMETRICS_NHITS
-  #undef  SMETRICS_HITS
-  #define SMETRICS_HITS
-#endif // DSMETRICS_NHITS
-
-#ifdef SMETRICS_HITS
-  #undef  SEARCHMETRICS
-  #define SEARCHMETRICS
-  // Default is DSMETRICS_NHITS. Count hits.
-  #ifdef DSMETRICS_HITS
-    #undef DSMETRICS_NHITS
-  #else // DSMETRICS_HITS
-    #undef  DSMETRICS_NHITS
-    #define DSMETRICS_NHITS
-  #endif // DSMETRICS_HITS else
-#endif // DSMETRICS_HITS
-
 #ifdef SEARCHMETRICS
-  // Default is DSMETRICS_GETS.
-  #ifndef NO_DSMETRICS_GETS
-    #undef  DSMETRICS_GETS
-    #define DSMETRICS_GETS
-  #endif // !NO_DSMETRICS_GETS
+  #ifndef NO_SMETRICS_HITS
+    #undef  SMETRICS_HITS
+    #define SMETRICS_HITS
+  #endif // !NO_SMETRICS_HITS
+  // Default is no SMETRICS_SEARCH_POP
+  // Default is no SMETRICS_MISCOMPARES
+  // Default is no SMETRICS_EK
+  // Default is no SMETRICS_UNPACKED_BM
 #endif // SEARCHMETRICS
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )

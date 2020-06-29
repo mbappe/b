@@ -3257,7 +3257,7 @@ t_list_ua:
                 )
       #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
             {
-                SMETRICS_GET(++j__GetCalls);
+                SMETRICS_GETN(++j__GetCallsNot);
       #if defined(INSERT)
           #if ! defined(RECURSIVE)
                 if (nIncr > 0) { goto undo; } // undo counting
@@ -3550,6 +3550,7 @@ t_bm_plus_16:
             if ((wr_nType(WROOT_NULL) == T_BITMAP) && (wRoot == WROOT_NULL)) {
                 goto break_from_main_switch;
             }
+            SMETRICS_GETN(++j__GetCallsNot);
             if (BitIsSet(((BmLeaf_t*)pwr)->bmlf_awBitmap, wKey & MSK(nBLR))) {
                 return KeyFound;
             }
@@ -3781,7 +3782,8 @@ t_bitmap:
                           #endif // defined(LOOKUP) || defined(INSERT)
                           #ifdef LOOKUP
                               #ifdef PACK_BM_VALUES
-                SMETRICS_GET(++j__GetCalls); // slow SEARCHMETRICS
+                // T_UNPACKED_BM doesn't come here for Lookup.
+                SMETRICS_GET(++j__GetCalls);
                 Word_t wPopCnt = gwBitmapPopCnt(qy, cnBitsInD1);
                 SMETRICS_POP(j__SearchPopulation += wPopCnt); // fast and slow
 // Note: I wonder if the penalty for a branch misprediction is
@@ -3817,7 +3819,9 @@ t_bitmap:
                               #endif // PREFETCH_BM_VAL
                               #endif // UNPACK_BM_VALUES
                           #endif // LOOKUP
-                      #endif // B_JUDYL
+                      #else // B_JUDYL
+                SMETRICS_GETN(++j__GetCallsNot);
+                      #endif // B_JUDYL else
             // Use compile-time tests to speed this up. Hopefully.
   #if defined(B_JUDYL) && defined(LOOKUP) && defined(BMLF_POP_COUNT_1_NO_TEST)
             int bBitIsSet = 1;
@@ -3908,7 +3912,8 @@ t_bitmap:
                               #ifdef PREFETCH_BM_PSPLIT_VAL
                               #ifndef PF_BM_NEXT_HALF_VAL
                               #ifndef PREFETCH_BM_NEXT_VAL
-                Word_t wDiff = (Word_t)pwValue - ((Word_t)pcPrefetch & ~MSK(6));
+                Word_t wDiff
+                    = (Word_t)pwValue - ((Word_t)pcPrefetch & ~MSK(6));
                 if (wDiff < 64)
                               #endif // #ifndef PREFETCH_BM_NEXT_VAL
                               #endif // #ifndef PF_BM_NEXT_HALF_VAL
@@ -3920,7 +3925,8 @@ t_bitmap:
                               #ifndef PREFETCH_BM_PSPLIT_VAL
                               #ifdef PF_BM_NEXT_HALF_VAL
                               #ifndef PREFETCH_BM_NEXT_VAL
-                Word_t wDiff = (Word_t)pwValue - (((Word_t)pcPrefetch - 32) & ~MSK(6));
+                Word_t wDiff
+                    = (Word_t)pwValue - (((Word_t)pcPrefetch - 32) & ~MSK(6));
                 if (wDiff < 128)
                               #endif // #ifndef PREFETCH_BM_NEXT_VAL
                               #endif // PF_BM_NEXT_HALF_VAL
@@ -3932,7 +3938,8 @@ t_bitmap:
                               #ifdef PREFETCH_BM_PSPLIT_VAL
                               #ifndef PF_BM_NEXT_HALF_VAL
                               #ifdef PREFETCH_BM_NEXT_VAL
-                Word_t wDiff = (Word_t)pwValue - (((Word_t)pcPrefetch - 64) & ~MSK(6));
+                Word_t wDiff
+                    = (Word_t)pwValue - (((Word_t)pcPrefetch - 64) & ~MSK(6));
                 if (wDiff < 192)
                               #endif // PREFETCH_BM_NEXT_VAL
                               #endif // #ifndef PF_BM_NEXT_HALF_VAL
@@ -3941,19 +3948,17 @@ t_bitmap:
                               #endif // PREFETCH_BM_PREV_VAL
                 {
                     SMETRICS_HIT(++j__DirectHits);
-                } else
-                              // Non-directional misses.
-                              #ifdef SMETRICS_NO_DIR_BM
-                {
+                } else {
+                    // Strangely, I think I've seen numbers that show it is
+                    // faster to:
+                    // if (wDiff < (Word_t)pwValue) {
+                    //     SMETRICS_NHIT(++j__GetCallsP);
+                    // } else {
+                    //     SMETRICS_NHIT(++j__GetCallsM);
+                    // }
+                    // But it is just too hard to believe to leave it in.
                     SMETRICS_NHIT(++j__NotDirectHits);
                 }
-                              #else // SMETRICS_NO_DIR_BM
-                if (wDiff < (Word_t)pwValue) {
-                    SMETRICS_NHIT(++j__GetCallsP);
-                } else {
-                    SMETRICS_NHIT(++j__GetCallsM);
-                }
-                              #endif // SMETRICS_NO_DIR_BM else
                           #endif // PACK_BM_VALUES
                           #endif // LOOKUP
                 return pwValue;
@@ -4134,13 +4139,13 @@ t_unpacked_bm:
 t_embedded_keys:
     {
         DBGX(printf("T_EMBEDDED_KEYS %d nBL %d\n", T_EMBEDDED_KEYS, nBL));
-      #ifdef SMETRICS_EMBEDDED_KEYS
+      #ifdef SMETRICS_EK
         SMETRICS_GET(++j__GetCalls);
         SMETRICS_HIT(++j__DirectHits);
         SMETRICS_POP(j__SearchPopulation += BJL(1)BJ1(wr_nPopCnt(wRoot, nBL)));
-      #else // SMETRICS_EMBEDDED_KEYS
+      #else // SMETRICS_EK
         SMETRICS_GETN(++j__GetCallsNot);
-      #endif // SMETRICS_EMBEDDED_KEYS else
+      #endif // SMETRICS_EK else
       #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
 //assert(0); // Just checking; uh oh; do we need better testing?
@@ -4367,8 +4372,12 @@ foundIt:;
 t_ek_xv:
     {
         DBGX(printf("T_EK_XV\n"));
+      #ifdef SMETRICS_EK
         SMETRICS_GET(++j__GetCalls);
         SMETRICS_HIT(++j__DirectHits);
+      #else // SMETRICS_EK
+        SMETRICS_GETN(++j__GetCallsNot);
+      #endif // SMETRICS_EK else
       #if defined(INSERT) || defined(REMOVE)
         if (bCleanup) {
           #if defined(B_JUDYL) && defined(INSERT)
@@ -4433,11 +4442,18 @@ t_ek_xv:
 #define PF_2(pwr)
   #endif // #else PF_EK_XV_2
 
+  #ifdef SMETRICS_EK
+#define SMETRICS_EK_POP(x)  SMETRICS_POP(x)
+  #else // SMETRICS_EK
+#define SMETRICS_EK_POP(x)
+  #endif // SMETRICS_EK else
+
   #if (cnBitsInD1 < cnLogBitsPerByte)
 #define XV_BLX(_nBL) \
         case (_nBL): \
             PF_2(_nBL); \
-    SMETRICS_POP(j__SearchPopulation += GetBits(wRoot, cnBitsCnt, cnLsbCnt)); \
+    SMETRICS_EK_POP(j__SearchPopulation \
+                        += GetBits(wRoot, cnBitsCnt, cnLsbCnt)); \
             if ((nPos = LocateKey64((uint64_t*)pwLnX, wKey, \
                     MAX(8, (Word_t)2 << LOG((_nBL) - 1)))) >= 0) { \
                 assert(nPos < wr_nPopCnt(wRoot, (_nBL))); \
@@ -4448,7 +4464,8 @@ t_ek_xv:
 #define XV_BLX(_nBL) \
         case (_nBL): \
             PF_2(_nBL); \
-    SMETRICS_POP(j__SearchPopulation += GetBits(wRoot, cnBitsCnt, cnLsbCnt)); \
+    SMETRICS_EK_POP(j__SearchPopulation \
+                        += GetBits(wRoot, cnBitsCnt, cnLsbCnt)); \
             if ((nPos = LocateKey64((uint64_t*)pwLnX, wKey, \
                     (Word_t)2 << LOG((_nBL) - 1))) >= 0) { \
                 assert(nPos < wr_nPopCnt(wRoot, (_nBL))); \

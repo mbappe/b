@@ -11650,35 +11650,41 @@ Initialize(void)
     printf("# No SW_POP_IN_LNX\n");
 #endif //        SW_POP_IN_LNX else
 
-#if defined(SEARCHMETRICS)
+#ifdef           SEARCHMETRICS
     printf("#    SEARCHMETRICS\n");
-#else // defined(SEARCHMETRICS)
+#else //         SEARCHMETRICS
     printf("# No SEARCHMETRICS\n");
-#endif // defined(SEARCHMETRICS)
+#endif //        SEARCHMETRICS else
 
-#if defined(DSMETRICS_GETS)
+#ifdef           DSMETRICS_GETS
     printf("#    DSMETRICS_GETS\n");
-#else // defined(DSMETRICS_GETS)
+#else //         DSMETRICS_GETS
     printf("# No DSMETRICS_GETS\n");
-#endif // defined(DSMETRICS_GETS)
+#endif //        DSMETRICS_GETS else
 
-#if defined(SMETRICS_HITS)
+#ifdef           SMETRICS_HITS
     printf("#    SMETRICS_HITS\n");
-#else // defined(SMETRICS_HITS)
+#else //         SMETRICS_HITS
     printf("# No SMETRICS_HITS\n");
-#endif // defined(SMETRICS_HITS)
+#endif //        SMETRICS_HITS else
 
-#if defined(DSMETRICS_HITS)
+#ifdef           NO_SMETRICS_HITS
+    printf("#    NO_SMETRICS_HITS\n");
+#else //         NO_SMETRICS_HITS
+    printf("# No NO_SMETRICS_HITS\n");
+#endif //        NO_SMETRICS_HITS
+
+#ifdef           DSMETRICS_HITS
     printf("#    DSMETRICS_HITS\n");
-#else // defined(DSMETRICS_HITS)
+#else //         DSMETRICS_HITS
     printf("# No DSMETRICS_HITS\n");
-#endif // defined(DSMETRICS_HITS)
+#endif //        DSMETRICS_HITS
 
-#if defined(DSMETRICS_NHITS)
+#ifdef           DSMETRICS_NHITS
     printf("#    DSMETRICS_NHITS\n");
-#else // defined(DSMETRICS_NHITS)
+#else //         DSMETRICS_NHITS
     printf("# No DSMETRICS_NHITS\n");
-#endif // defined(DSMETRICS_NHITS)
+#endif //        DSMETRICS_NHITS
 
 #ifdef           SMETRICS_SEARCH_POP
     printf("#    SMETRICS_SEARCH_POP\n");
@@ -11692,23 +11698,17 @@ Initialize(void)
     printf("# No SMETRICS_MISCOMPARES\n");
 #endif //        SMETRICS_MISCOMPARES else
 
+#ifdef           SMETRICS_EK
+    printf("#    SMETRICS_EK\n");
+#else //         SMETRICS_EK
+    printf("# No SMETRICS_EK\n");
+#endif //        SMETRICS_EK else
+
 #ifdef           SMETRICS_UNPACKED_BM
     printf("#    SMETRICS_UNPACKED_BM\n");
 #else //         SMETRICS_UNPACKED_BM
     printf("# No SMETRICS_UNPACKED_BM\n");
 #endif //        SMETRICS_UNPACKED_BM else
-
-#ifdef           SMETRICS_EMBEDDED_KEYS
-    printf("#    SMETRICS_EMBEDDED_KEYS\n");
-#else //         SMETRICS_EMBEDDED_KEYS
-    printf("# No SMETRICS_EMBEDDED_KEYS\n");
-#endif //        SMETRICS_EMBEDDED_KEYS else
-
-#ifdef           SMETRICS_NO_DIR_BM
-    printf("#    SMETRICS_NO_DIR_BM\n");
-#else //         SMETRICS_NO_DIR_BM
-    printf("# No SMETRICS_NO_DIR_BM\n");
-#endif //        SMETRICS_NO_DIR_BM else
 
 #if defined(LVL_IN_PP)
     printf("#    LVL_IN_PP\n");
