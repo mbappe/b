@@ -5,9 +5,12 @@
 #
 ###########################
 
-# Run the following to build b:
+# Run the following to build btime and bcheck:
 #   make clean
-#   [CC=<cc|clang[++]|gcc|icc|c++|g++>] [BPW=<32|64>] [DEFINES="..."] make b
+#   [CC=<cc|clang[++]|gcc|c++|g++>] [BPW=<32|64>] [DEFINES="..."] make default
+# Run the following to build btime:
+#   make clean
+#   [CC=<cc|clang[++]|gcc|c++|g++>] [BPW=<32|64>] [DEFINES="..."] make btime
 # Run the following command to build everything:
 #   make clean
 #   [CC=<cc|clang[++]|gcc|c++|g++>] [BPW=<32|64>] [DEFINES="..."] make all
@@ -19,7 +22,7 @@
 
 # I recommend the make clean first because there are so many dependencies
 # that are not discovered by make, e.g. changes in environment variables.
-# Also, I didn't bother adding the header file dependencies.
+# Also, I'm not sure the header/include file dependencies are complete.
 
 # Built-in rules for make:
 # n.o is made automatically from n.c with a recipe of the form:
@@ -163,12 +166,11 @@ endif
   WFLAGS += -Wfatal-errors
   WFLAGS += -Wno-unused-value
 
-# We need to override a compiler warning for "-DJUMP_TABLE -DAUGMENT_TYPE
-# -DNO_LVL_IN_WR_HB -DNO_LVL_IN_PP -DALL_SKIP_TO_SW_CASES"
-# But the option is different for Mac than GNU/Linux.
-# For GNU/Linux:
+# We need to override a compiler warning for "-DJUMP_TABLE -DAUGMENT_TYPE".
+# But the option is different for clang than for gcc.
+# For gcc:
 # WFLAGS += -Wno-override-init
-# For Mac:
+# For clang:
 # WFLAGS += -Wno-initializer-overrides
 
 # WFLAGS_C_ONLY += -Wstrict-prototypes
@@ -255,20 +257,12 @@ CXXFLAGS =         $(CXXSTDFLAG) $(MFLAGS) $(CXXWFLAGS) $(OFLAGS) -I.
 # TIME_DEFINES += -DJUDYA
 
 # Default is -DRAMMETRICS.
-# Use NO_RM=<anything> to get -URAMMETRICS.
-ifeq "$(NO_RM)" ""
-    JUDY_DEFINES += -DRAMMETRICS
-endif
-
-# Default is -USEARCHMETRICS.
-# Use SM=<anything> to get -DSEARCHMETRICS.
-ifneq "$(SM)" ""
-    JUDY_DEFINES += -DSEARCHMETRICS
-endif
+# Use DEFINES=-URAMMETRICS on the command line to undo it.
+DEFAULT_DEFINES += -DRAMMETRICS
 
 # Put cmdline DEFINES after default defines so defaults can be overridden.
-MAKE_DEFINES = $(JUDY_DEFINES) $(TIME_DEFINES) $(B_DEFINES) $(B_DEBUG_DEFINES)
-DEFINES := $(MAKE_DEFINES) $(DEFINES)
+# I'm not sure why I chose to separate TIME_DEFINES from DEFAULT_DEFINES.
+DEFINES := $(DEFAULT_DEFINES) $(TIME_DEFINES) $(DEFINES)
 
 FILES_FROM_ME  = b.h b.c bli.c bl.c bi.c br.c bc.c t.c
 FILES_FROM_ME += Makefile
