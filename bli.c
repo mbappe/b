@@ -3900,7 +3900,7 @@ t_bitmap:
                               #ifndef PREFETCH_BM_PSPLIT_VAL
                               #ifndef PF_BM_NEXT_HALF_VAL
                               #ifndef PREFETCH_BM_NEXT_VAL
-                Word_t wDiff = 0;
+                //Word_t wDiff = 0;
                 if (1)
                               #endif // !PREFETCH_BM_NEXT_VAL
                               #endif // !PF_BM_NEXT_HALF_VAL
