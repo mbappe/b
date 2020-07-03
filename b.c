@@ -11210,6 +11210,12 @@ Initialize(void)
     printf("# No EK_CALC_POP\n");
 #endif // defined(EK_CALC_POP)
 
+#ifdef           NO_EK_XV_AT_EMBEDDED_BM
+    printf("#    NO_EK_XV_AT_EMBEDDED_BM\n");
+#else //         NO_EK_XV_AT_EMBEDDED_BM
+    printf("# No NO_EK_XV_AT_EMBEDDED_BM\n");
+#endif //        NO_EK_XV_AT_EMBEDDED_BM else
+
 #ifdef           _LNX
     printf("#    _LNX\n");
 #else //         _LNX

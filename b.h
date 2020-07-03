@@ -1752,6 +1752,13 @@ EmbeddedListPopCntMax(int nBL)
   #ifdef B_JUDYL
     int nKeysMax = (nBL <= (cnBitsPerWord - nBitsOverhead));
       #ifdef EK_XV
+          #ifdef BITMAP
+          #ifdef NO_EK_XV_AT_EMBEDDED_BM
+    if ((cnBitsInD1 <= cnLogBitsPerWord) && (nBL <= cnLogBitsPerWord)) {
+        return nKeysMax;
+    }
+          #endif // NO_EK_XV_AT_EMBEDDED_BM
+          #endif // BITMAP
     nKeysMax *= cnBitsPerWord /
           #if (cnBitsInD1 < cnLogBitsPerByte)
             MAX(8, (1 << (LOG(nBL - 1) + 1)))
