@@ -331,7 +331,7 @@
 
 #if defined(SKIP_PREFIX_CHECK)
     #define cbSkipPrefixCheck  1
-    #define IF_SKIP_PREFIX_CHECK(_expr)  (_expr)
+    #define IF_SKIP_PREFIX_CHECK(_expr)  _expr
 #else // defined(SKIP_PREFIX_CHECK)
     #define cbSkipPrefixCheck  0
     #define IF_SKIP_PREFIX_CHECK(_expr)
@@ -777,7 +777,11 @@ typedef Word_t Bucket_t;
   #define _cnListPopCntMaxEK  _cnListPopCntMax3
 #endif // #else defined(EMBED_KEYS && !defined(POP_CNT_MAX_IS_KING)
 
-#define cwListPopCntMax  _cnListPopCntMaxEK
+#if defined(B_JUDYL) && !defined(PACK_L1_VALUES) && cnBitsInD1 <= 8
+  #define cwListPopCntMax  MAX(_cnListPopCntMaxEK, 1 << cnBitsInD1)
+#else // B_JUDYL && !PACK_L1_VALUES && cnBitsInD1 <= 8
+  #define cwListPopCntMax  _cnListPopCntMaxEK
+#endif // B_JUDYL && !PACK_L1_VALUES && cnBitsInD1 <= 8 else
 
 #if (cwListPopCntMax != 0)
   // ListPopCntMax of 255 allows us to use uint8_t for uPopCntMax_t.
@@ -877,12 +881,6 @@ enum {
 #if defined(SKIP_TO_BM_SW)
     T_SKIP_TO_BM_SW,
 #endif // defined(SKIP_TO_BM_SW)
-#if defined(CODE_XX_SW)
-    T_XX_SW,
-#endif // defined(CODE_XX_SW)
-#if defined(SKIP_TO_XX_SW) // doesn't work yet
-    T_SKIP_TO_XX_SW,
-#endif // defined(SKIP_TO_XX_SW) // doesn't work yet
 #if defined(RETYPE_FULL_BM_SW) && ! defined(USE_BM_IN_NON_BM_SW)
     // All link bits set, i.e. all links present.
     T_FULL_BM_SW,
@@ -897,6 +895,14 @@ enum {
       #endif // EK_XV
 #endif // defined(EMBED_KEYS)
     T_SWITCH, // Uncompressed, close (i.e. no-skip) switch.
+    // All type values bigger than T_SWITCH have to be uncompressed
+    // switches. We use it for WROOT_NULL scanning for faster NEW_NEXT.
+#if defined(CODE_XX_SW)
+    T_XX_SW,
+#endif // defined(CODE_XX_SW)
+#if defined(SKIP_TO_XX_SW) // doesn't work yet
+    T_SKIP_TO_XX_SW,
+#endif // defined(SKIP_TO_XX_SW) // doesn't work yet
 #if defined(SKIP_LINKS)
     // T_SKIP_TO_SWITCH has to have the biggest value in this enum
     // if not LVL_IN_WR_HB and not LVL_IN_PP.  All of the bigger
@@ -1119,7 +1125,7 @@ enum {
   #define METRICS(x)
 #endif // defined(RAMMETRICS)
 
-#ifdef SEARCHMETRICS
+#if defined(SEARCHMETRICS) && defined(LOOKUP)
   #define SMETRICS(x)  x
 extern Word_t j__SearchPopulation;
 extern Word_t j__GetCalls;
@@ -1128,8 +1134,9 @@ extern Word_t j__GetCallsP;
 extern Word_t j__GetCallsM;
 extern Word_t j__MisComparesP;
 extern Word_t j__MisComparesM;
-#else // SEARCHMETRICS)
+#else // SEARCHMETRICS && LOOKUP
   #define SMETRICS(x)
+  #undef SEARCHMETRICS
 #endif // SEARCHMETRICS
 
 #if defined(DEBUG)
@@ -1141,78 +1148,90 @@ extern Word_t j__MisComparesM;
 extern int bHitDebugThreshold;
 #endif // defined(DEBUG)
 
-#if defined(DEBUG)
-  #define DBG(x)  x
-// Default is cwDebugThreshold = 0.
-  #if ! defined(cwDebugThreshold)
+#ifdef DEBUG
+    #define DBG(x)  x
+  // Default is cwDebugThreshold = 0.
+  #ifndef cwDebugThreshold
     #define cwDebugThreshold  0ULL
-  #endif // ! defined(cwDebugThreshold)
-  #if ! defined(cwDebugThresholdMax)
+  #endif // !cwDebugThreshold
+  #ifndef cwDebugThresholdMax
     #define cwDebugThresholdMax  0ULL
-  #endif // ! defined(cwDebugThresholdMax)
-#else // defined(DEBUG)
-  #define DBG(x)
-#endif // defined(DEBUG)
+  #endif // !cwDebugThresholdMax
+#else // DEBUG
+    #define DBG(x)
+#endif // DEBUG else
 
-#if defined(DEBUG_INSERT)
+#ifdef DEBUG_INSERT
   #if (cwDebugThreshold || cwDebugThresholdMax)
     #define DBGI(x)  if (bHitDebugThreshold) (x)
-  #else // (cwDebugThreshold != 0)
+  #else // (cwDebugThreshold || cwDebugThresholdMax)
     #define DBGI(x)  (x)
-  #endif // (cwDebugThreshold != 0)
-#else // defined(DEBUG_INSERT)
-  #define DBGI(x)
-#endif // defined(DEBUG_INSERT)
+  #endif // (cwDebugThreshold || cwDebugThresholdMax) else
+#else // DEBUG_INSERT
+    #define DBGI(x)
+#endif // DEBUG_INSERT else
 
-#if defined(DEBUG_LOOKUP)
+#ifdef DEBUG_LOOKUP
   #if (cwDebugThreshold || cwDebugThresholdMax)
     #define DBGL(x)  if (bHitDebugThreshold) (x)
-  #else // (cwDebugThreshold != 0)
+  #else // (cwDebugThreshold || cwDebugThresholdMax)
     #define DBGL(x)  (x)
-  #endif // (cwDebugThreshold != 0)
-#else // defined(DEBUG_LOOKUP)
-  #define DBGL(x)
-#endif // defined(DEBUG_LOOKUP)
+  #endif // (cwDebugThreshold || cwDebugThresholdMax) else
+#else // DEBUG_LOOKUP
+    #define DBGL(x)
+#endif // DEBUG_LOOKUP else
 
-#if defined(DEBUG_REMOVE)
-#if (cwDebugThreshold || cwDebugThresholdMax)
-#define DBGR(x)  if (bHitDebugThreshold) (x)
-#else // (cwDebugThreshold != 0)
-#define DBGR(x)  (x)
-#endif // (cwDebugThreshold != 0)
-#else // defined(DEBUG_REMOVE)
-#define DBGR(x)
-#endif // defined(DEBUG_REMOVE)
+#ifdef DEBUG_REMOVE
+  #if (cwDebugThreshold || cwDebugThresholdMax)
+    #define DBGR(x)  if (bHitDebugThreshold) (x)
+  #else // (cwDebugThreshold || cwDebugThresholdMax)
+    #define DBGR(x)  (x)
+  #endif // (cwDebugThreshold || cwDebugThresholdMax) else
+#else // DEBUG_REMOVE
+    #define DBGR(x)
+#endif // DEBUG_REMOVE else
 
-#if defined(DEBUG_COUNT)
+#ifdef DEBUG_COUNT
   #if (cwDebugThreshold || cwDebugThresholdMax)
     #define DBGC(x)  if (bHitDebugThreshold) (x)
-  #else // (cwDebugThreshold != 0)
+  #else // (cwDebugThreshold || cwDebugThresholdMax)
     #define DBGC(x)  (x)
-  #endif // (cwDebugThreshold != 0)
-#else // defined(DEBUG_COUNT)
-  #define DBGC(x)
-#endif // defined(DEBUG_COUNT)
+  #endif // (cwDebugThreshold || cwDebugThresholdMax) else
+#else // DEBUG_COUNT
+    #define DBGC(x)
+#endif // DEBUG_COUNT else
 
-#if defined(DEBUG_NEXT)
+#ifdef DEBUG_NEXT
   #if (cwDebugThreshold || cwDebugThresholdMax)
     #define DBGN(x)  if (bHitDebugThreshold) (x)
-  #else // (cwDebugThreshold != 0)
+  #else // (cwDebugThreshold || cwDebugThresholdMax)
     #define DBGN(x)  (x)
-  #endif // (cwDebugThreshold != 0)
-#else // defined(DEBUG_NEXT)
-  #define DBGN(x)
-#endif // defined(DEBUG_NEXT)
+  #endif // (cwDebugThreshold || cwDebugThresholdMax) else
+#else // DEBUG_NEXT
+    #define DBGN(x)
+#endif // DEBUG_NEXT else
 
-#if defined(DEBUG_MALLOC)
-#if (cwDebugThreshold || cwDebugThresholdMax)
-#define DBGM(x)  if (bHitDebugThreshold) (x)
-#else // (cwDebugThreshold != 0)
-#define DBGM(x)  (x)
-#endif // (cwDebugThreshold != 0)
-#else // defined(DEBUG_MALLOC)
-#define DBGM(x)
-#endif // defined(DEBUG_MALLOC)
+#ifdef DEBUG_MALLOC
+  #if (cwDebugThreshold || cwDebugThresholdMax)
+    #define DBGM(x)  if (bHitDebugThreshold) (x)
+  #else // (cwDebugThreshold || cwDebugThresholdMax)
+    #define DBGM(x)  (x)
+  #endif // (cwDebugThreshold || cwDebugThresholdMax) else
+#else // DEBUG_MALLOC
+    #define DBGM(x)
+#endif // DEBUG_MALLOC else
+
+#ifndef DBGX
+#ifdef DEBUG_ALL
+  #if (cwDebugThreshold || cwDebugThresholdMax)
+    #define DBGX(x)  if (bHitDebugThreshold) (x)
+  #else // (cwDebugThreshold || cwDebugThresholdMax)
+    #define DBGX(x)  (x)
+  #endif // (cwDebugThreshold || cwDebugThresholdMax) else
+#else // DEBUG_ALL
+    #define DBGX(x)
+#endif // DEBUG_ALL else
+#endif // DBGX
 
 // Shorthand
 #if !defined(Owx)
@@ -1229,7 +1248,6 @@ extern int bHitDebugThreshold;
 #define _fw  "l" // _fw -- format word
 #endif // defined(__PRIPTR_PREFIX)
 #endif // !defined(Owx)
-
 
 #define OFFSET_OF(_type, _field) ((size_t)&((_type *)NULL)->_field)
 #define STRUCT_OF(_p, _type, _field) \
@@ -1526,12 +1544,12 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 // pop count.  In that case we could represent an empty list for nBL small
 // enough that two keys will fit with a magic number.
 #ifdef WROOT_NULL_IS_EK
-  #if defined(REVERSE_SORT_EMBEDDED_KEYS)
+  #ifdef REVERSE_SORT_EMBEDDED_KEYS
     #define ZERO_POP_MAGIC  (Word_t)1
-  #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
+  #else // REVERSE_SORT_EMBEDDED_KEYS
     #define ZERO_POP_MAGIC \
         (((Word_t)0x800000004 << 28) + T_EMBEDDED_KEYS)
-  #endif // #else defined(REVERSE_SORT_EMBEDDED_KEYS)
+  #endif // REVERSE_SORT_EMBEDDED_KEYS else
 #endif // WROOT_NULL_IS_EK
 
 // Default for WROOT_NULL is 0 if no SEPARATE_T_NULL.
@@ -1604,8 +1622,8 @@ static inline void set_pwr_pwr_nType(Word_t *pwRoot, Word_t *pwr, int nType) {
 
 #define nBL_to_nBitsPopCntSz(_nBL)  0
 
-      #if defined(REVERSE_SORT_EMBEDDED_KEYS)
-      #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
+      #ifdef REVERSE_SORT_EMBEDDED_KEYS
+      #else // REVERSE_SORT_EMBEDDED_KEYS
 
 static inline int
 wr_nPopCnt(Word_t wRoot, int nBL)
@@ -1632,7 +1650,7 @@ wr_nPopCnt(Word_t wRoot, int nBL)
 
 #define set_wr_nPopCnt(_wr, _nBL, _nPopCnt)
 
-      #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
+      #endif // REVERSE_SORT_EMBEDDED_KEYS else
 
   #else // defined(EK_CALC_POP)
 
@@ -3879,17 +3897,50 @@ InflateBmSwTest(qpa) // qp points to BM switch
 
 #endif // CODE_BM_SW
 
-#ifdef B_JUDYL
-Word_t* InsertL(qpa, Word_t wKey);
-#define Remove  RemoveL
-Word_t CountL(qpa, Word_t wKey);
-#else // B_JUDYL
-Status_t Insert1(qpa, Word_t wKey);
-#define Remove  Remove1
-Word_t Count1(qpa, Word_t wKey);
-#endif // B_JUDYL
+#ifndef INSERT
+#define IF_INSERT(_stmt)
+#define IF_NOT_INSERT(_stmt)  _stmt
+#endif // !INSERT
+#ifndef REMOVE
+#define IF_REMOVE(_stmt)
+#define IF_NOT_REMOVE(_stmt)  _stmt
+#endif // !REMOVE
+#ifndef LOOKUP
+#define IF_LOOKUP(_stmt)
+#define IF_NOT_LOOKUP(_stmt)  _stmt
+#endif // !LOOKUP
+#ifndef COUNT
+#define IF_COUNT(_stmt)
+#define IF_NOT_COUNT(_stmt)  _stmt
+#endif // !COUNT
+#ifndef NEXT
+#define IF_NEXT(_stmt)
+#define IF_NOT_NEXT(_stmt)  _stmt
+#endif // !NEXT
+#ifndef IF_INS_OR_REM
+#define IF_INS_OR_REM(_stmt)
+#endif // IF_INS_OR_REM
 
-Status_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
+#ifdef B_JUDYL
+  #define Insert  InsertL
+  #define Remove  RemoveL
+  #define Lookup  LookupL
+  #define Count   CountL
+  #define Next    NextL
+#else // B_JUDYL
+  #define Insert  Insert1
+  #define Remove  Remove1
+  #define Lookup  Lookup1
+  #define Count   Count1
+  #define Next    Next1
+#endif // B_JUDYL else
+
+BJL(Word_t*)BJ1(Status_t) Insert(qpa, Word_t wKey);
+Status_t Remove(qpa, Word_t wKey);
+
+// Count returns the number of keys present in the array up to but
+// excluding the key that is passed as a parameter.
+Word_t Count(qpa, Word_t wKey);
 
 #ifdef B_JUDYL
 #define ListSlotCnt  ListSlotCntL
@@ -3902,8 +3953,10 @@ Status_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
 #define InsertCleanup  InsertCleanupL
 #define RemoveGuts  RemoveGutsL
 #define RemoveCleanup  RemoveCleanupL
+#define NextGuts  NextGutsL
 #define DumpX  DumpXL
 #define Dump  DumpL
+#define Checkpoint CheckpointL
 #else // B_JUDYL
 #define ListSlotCnt  ListSlotCnt1
 #define NewList  NewList1
@@ -3915,8 +3968,10 @@ Status_t Next(Word_t *pwRoot, Word_t wKey, int nBL);
 #define InsertCleanup  InsertCleanup1
 #define RemoveGuts  RemoveGuts1
 #define RemoveCleanup  RemoveCleanup1
+#define NextGuts  NextGuts1
 #define DumpX  DumpX1
 #define Dump  Dump1
+#define Checkpoint Checkpoint1
 #endif // B_JUDYL
 
 #ifdef B_JUDYL
@@ -3958,6 +4013,12 @@ InsertCleanup(qpa, Word_t wKey);
 
 void RemoveCleanup(Word_t wKey, int nBL, int nBLR,
                    Word_t *pwRoot, Word_t wRoot);
+
+Word_t NextGuts(qpa, Word_t *pwKey, Word_t wSkip, int bPrev, int bEmpty
+  #ifdef B_JUDYL
+              , Word_t **ppwVal
+  #endif // B_JUDYL
+                );
 
 #if 0
 #ifdef B_JUDYL
@@ -4033,44 +4094,6 @@ extern const unsigned anBL_to_nDL[];
 
 #if (cnDigitsPerWord > 1)
 
-#if defined(LOOKUP) || defined(REMOVE)
-#define KeyFound  (Success)
-  #if defined(LOOKUP)
-#define strLookupOrInsertOrRemove  "Lookup"
-#define DBGX  DBGL
-  #else // defined(REMOVE)
-#define strLookupOrInsertOrRemove  "Remove"
-#define DBGX  DBGR
-#define InsertRemove1  Remove1
-#define InsertRemoveL  RemoveL
-      #if defined(RECURSIVE_REMOVE)
-#define RECURSIVE
-      #endif // defined(RECURSIVE_REMOVE)
-  #endif // defined(REMOVE)
-#else // defined(LOOKUP) || defined(REMOVE)
-#define KeyFound  (Failure)
-  #if defined(INSERT)
-#define strLookupOrInsertOrRemove  "Insert"
-#define DBGX  DBGI
-#define InsertRemove1  Insert1
-#define InsertRemoveL  InsertL
-      #if defined(RECURSIVE_INSERT)
-#define RECURSIVE
-      #endif // defined(RECURSIVE_INSERT)
-  #elif defined(COUNT) // defined(INSERT)
-// Count returns the number of keys present in the array up to but
-// excluding the key that is passed as a parameter.
-#define strLookupOrInsertOrRemove  "Count"
-#define DBGX  DBGC
-#define InsertRemoveL  CountL
-#define InsertRemove1  Count1
-  #else // defined(INSERT) elif defined(COUNT)
-#define strLookupOrInsertOrRemove  "Next"
-#define DBGX  DBGN
-#define InsertRemove  Next
-  #endif // defined(INSERT)
-#endif // defined(LOOKUP) || defined(REMOVE)
-
 #if defined(PARALLEL_128)
 
 #define BUCKET_HAS_KEY HasKey128
@@ -4090,6 +4113,8 @@ extern const unsigned anBL_to_nDL[];
   #endif // (cnBitsPerWord == 64)
 
 #endif // defined(PARALLEL_128)
+
+#define BUCKET_HAS_KEY_NPOS(_a, _b, _c)  -!BUCKET_HAS_KEY((_a), (_b), (_c))
 
 #if defined(TRY_MEMCHR)
 #include <wchar.h>
@@ -4413,6 +4438,7 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 #define SMETRICS_OR_EARLY_OUT  SMETRICS
   #endif // defined(PSPLIT_EARLY_OUT)
 
+// HAS_KEY_NPOS_F
 // Has-key forward scan of a sub-list.
 // With a check and early-out if we've gone past the key we want.
 // It assumes _pxKeys and _nPos are bucket-size aligned.
@@ -4421,95 +4447,61 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 // equal to the largest key in the list, even if it is just padding.
 // sizeof(_xKey) is used to determine the size of the keys in the list.
 // _nPopCnt is relative to _nPos
-#define HASKEYF(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
-{ \
-    assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
-    assert((((_nPos) * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
-    /* first address beyond address of last bucket to search */ \
-    _b_t *pbEnd = (_b_t *)&(_pxKeys)[_nPopCnt]; \
-    /* address of first bucket to search */ \
-    _b_t *pb = (_b_t *)&(_pxKeys)[_nPos]; \
-    SMETRICS(int nPosStart = (_nPos)); \
-    /* number of last key in first bucket to search */ \
-    SMETRICS_OR_EARLY_OUT((_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1); \
-    for (;;) { \
-        if (BUCKET_HAS_KEY(pb, (_xKey), sizeof(_xKey) * 8)) { \
-            SMETRICS(j__MisComparesP \
-                += ((_nPos) - nPosStart + 1) * sizeof(_xKey) / sizeof(_b_t)); \
-            break; \
-        } \
-        /* check the last key in the _b_t to see if we've gone too far */ \
-        EARLY_OUT(if ((_xKey) < (_pxKeys)[_nPos]) { (_nPos) ^= -1; break; }); \
-        SMETRICS_OR_EARLY_OUT((_nPos) += sizeof(_b_t) / sizeof(_xKey)); \
-        if (++pb >= pbEnd) { (_nPos) ^= -1; break; } \
-    } \
-}
 
-// LOCATEKEYF assumes _pxKeys and _nPos are _b_t-aligned and the
+// LOCATE_KEY_F assumes _pxKeys and _nPos are _b_t-aligned and the
 // the list is padded to _b_t alignment.
-#define LOCATEKEYF(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
+
+#define SEARCH_F(_FUNC, _b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
     assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
-    assert((((_nPos) * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
+    assert(((_nPos * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
     /* first address beyond address of last bucket to search */ \
-    _b_t *pxEnd = (_b_t *)&(_pxKeys)[_nPos + _nPopCnt]; \
+    _b_t* pbEnd = (_b_t*)&(_pxKeys)[_nPopCnt]; \
     /* address of first bucket to search */ \
-    _b_t *px = (_b_t *)&(_pxKeys)[_nPos]; \
+    _b_t* pb = (_b_t*)&(_pxKeys)[_nPos]; \
     /* number of last key in first bucket to search */ \
-    /* (_nPos) += sizeof(_b_t) / sizeof(_xKey) - 1; */ \
-    int nBPos; \
-    while ((nBPos = BUCKET_LOCATE_KEY(px, (_xKey), sizeof(_xKey) * 8)) < 0) \
-    { \
+    for (;;) { \
+        int nBPos = BUCKET_##_FUNC(pb, (_xKey), sizeof(_xKey) * 8); \
+        if (nBPos >= 0) { \
+            /* What about the first miss in PSPLIT_SEARCH_GUTS? */ \
+            /* We could add it here, but it'd be ugly for other callers. */ \
+            SMETRICS(j__MisComparesP += pb - (_b_t*)&(_pxKeys)[_nPos]); \
+            _nPos = (typeof(_xKey)*)pb - (_pxKeys) + nBPos; \
+            break; \
+        } \
+        ++pb; \
         /* check the last key in the _b_t to see if we've gone too far */ \
-        if ((_xKey) < (_pxKeys)[_nPos]) { (_nPos) ^= -1; break; } \
-        ++px; (_nPos) += sizeof(_b_t) / sizeof(_xKey); \
-        if (px >= pxEnd) { (_nPos) ^= -1; break; } \
+        if ((_xKey) < ((typeof(_xKey)*)pb)[-1]) { \
+            EARLY_OUT(_nPos = -1; break); \
+        } \
+        if (pb >= pbEnd) { _nPos = -1; break; } \
     } \
-    (_nPos) += nBPos; \
 }
 
-#define HASKEYB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
+#define SEARCH_B(_FUNC, _b_t, _xKey, _pxKeys, _nPos) \
 { \
     assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
-    _b_t *pb = (_b_t *)(_pxKeys); \
+    _b_t* pb = (_b_t*)&(_pxKeys)[_nPos]; \
     /* bucket number of first bucket to search */ \
-    int nbPos = (_nPos) * sizeof(_xKey) / sizeof(_b_t); \
-    SMETRICS(int nbPosStart = nbPos); \
-    /* number of first key in first bucket to search */ \
-    EARLY_OUT((_nPos) = nbPos * sizeof(_b_t) / sizeof(_xKey)); \
     for (;;) { \
-        if (BUCKET_HAS_KEY(&pb[nbPos], (_xKey), sizeof(_xKey) * 8)) { \
-            SMETRICS(j__MisComparesM += nbPosStart - nbPos + 1); \
+        int nBPos = BUCKET_##_FUNC(pb, (_xKey), sizeof(_xKey) * 8); \
+        if (nBPos >= 0) { \
+            SMETRICS(j__MisComparesM += (_b_t*)&(_pxKeys)[_nPos] - pb); \
+            _nPos = (typeof(_xKey)*)pb - (_pxKeys) + nBPos; \
             break; \
         } \
         /* check the first key in the _b_t to see if we've gone too far */ \
-        EARLY_OUT(if ((_pxKeys)[_nPos] < (_xKey)) { (_nPos) ^= -1; break; }); \
-        EARLY_OUT((_nPos) -= sizeof(_b_t) / sizeof(_xKey)); \
-        if (&pb[--nbPos] < (_b_t *)(_pxKeys)) { (_nPos) = -1; break; } \
+        if (*(typeof(_xKey)*)pb < (_xKey)) { \
+            EARLY_OUT(_nPos = -1; break); \
+        } \
+        if (--pb < (_b_t*)(_pxKeys)) { _nPos = -1; break; } \
     } \
-}
-
-#define LOCATEKEYB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
-{ \
-    assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
-    _b_t *px = (_b_t *)(_pxKeys); \
-    /* bucket number of first bucket to search */ \
-    int nxPos = ((_nPopCnt) - 1) * sizeof(_xKey) / sizeof(_b_t); \
-    /* number of first key in first bucket to search */ \
-    (_nPos) = nxPos * sizeof(_b_t) / sizeof(_xKey); \
-    int nBPos; \
-    while ((nBPos = BUCKET_LOCATE_KEY(&px[nxPos], \
-                                      (_xKey), sizeof(_xKey) * 8)) < 0) { \
-        /* check the first key in the _b_t to see if we've gone too far */ \
-        if ((_pxKeys)[_nPos] < (_xKey)) { (_nPos) ^= -1; break; } \
-        --nxPos; (_nPos) -= sizeof(_b_t) / sizeof(_xKey); \
-        if (&px[nxPos] < (_b_t *)(_pxKeys)) { (_nPos) = -1; break; } \
-    } \
-    (_nPos) += nBPos; \
 }
 
       #if JUNK
 // Amazingly, the variant above was the best performing in my tests.
+// But that was before I changed the variant above quite a bit and I
+// haven't compared since.
 #define HASKEYB(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
     _b_t *px = (_b_t *)(_pxKeys); \
@@ -4734,79 +4726,19 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 // _nBL specifies the range of keys, i.e. the size of the expanse.
 // _x is the number of least significant bits of the key we can sacrifice
 // when doing the psplit computation.
-#define PSPLIT_HASKEY_GUTS(_b_t, _x_t, _nBL, /* nPsplitShift */ _x, \
-                           _pxKeys, _nPopCnt, _xKey, _nPos) \
-{ \
-    /* printf("PSPHK(nBL %d pxKeys %p nPopCnt %d xKey 0x%x nPos %d\n", */ \
-        /* _nBL, (void *)_pxKeys, _nPopCnt, _xKey, _nPos); */ \
-    _b_t *px = (_b_t *)(_pxKeys); \
-    ASSERT(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
-    /* nSplit is the key chosen by PSPLIT */ \
-    int nSplit = Psplit((_nPopCnt), (_nBL), (_x), (_xKey)); \
-    /* nSplitP is nSplit rounded down to the first key in the bucket */ \
-    int nSplitP = nSplit * sizeof(_x_t) / sizeof(_b_t); \
-    ASSERT((int)((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitP); \
-    /*__m128i xLsbs, xMsbs, xKeys;*/ \
-    /*HAS_KEY_128_SETUP((_xKey), sizeof(_x_t) * 8, xLsbs, xMsbs, xKeys);*/ \
-    if (BUCKET_HAS_KEY(&px[nSplitP], (_xKey), sizeof(_x_t) * 8)) { \
-        (_nPos) = 0; /* key exists, but we don't know the exact position */ \
-        SMETRICS(++j__DirectHits); \
-    } else { \
-        nSplit = nSplitP * sizeof(_b_t) / sizeof(_x_t); \
-        _x_t xKeySplit = (_pxKeys)[nSplit]; \
-        /* now we have the value of a key in the list */ \
-        if ((_xKey) > xKeySplit) \
-        { \
-            if (nSplitP \
-                == (int)(((_nPopCnt) - 1) * sizeof(_x_t) / sizeof(_b_t))) \
-            { \
-                /* we searched the last bucket and the key is not there */ \
-                (_nPos) = -1; /* we don't know where to insert */ \
-            } else { \
-                /* parallel search the tail of the list */ \
-                /* we are doing a search of the bucket after the original */ \
-                /* nSplitP that would be avoidable if */ \
-                /* (_xKey) <= pxKeys[nSplit+sizeof(_b_t)/sizeof(_x_t)-1] */ \
-                /* and we were willing to do the test */ \
-                /* ++nSplitP; */ \
-                (_nPos) = (int)nSplit + sizeof(_b_t) / sizeof(_x_t); \
-                HASKEYF(_b_t, (_xKey), (_pxKeys), (_nPopCnt), (_nPos)); \
-                SMETRICS(++j__GetCallsP); \
-            } \
-        } else { \
-            if (nSplitP == 0) { \
-                /* we searched the first bucket and the key is not there */ \
-                (_nPos) = -1; /* this is where to insert */ \
-            } else { \
-                /* parallel search the head of the list */ \
-                (_nPos) = nSplit - sizeof(_b_t)/sizeof(_xKey); \
-                HASKEYB(_b_t, (_xKey), (_pxKeys), (_nPopCnt), (_nPos)); \
-                SMETRICS(++j__GetCallsM); \
-            } \
-        } \
-    } \
-    /* everything below is just assertions */ \
-    DBG(int nCnt = 0); \
-    DBG(for (int i = 0; i < (_nPopCnt); i += sizeof(_b_t) / sizeof(_xKey))) { \
-        DBG(nCnt += (BUCKET_HAS_KEY((_b_t*)&(_pxKeys)[i], \
-                                (_xKey), sizeof(_x_t) * 8) \
-                    != 0)); \
-    } \
-    ASSERT(nCnt == ((_nPos) >= 0)); \
-}
-
 #define PSPLIT_HASKEY(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     assert((_nBL) <= cnBitsPerWord); \
-    PSPLIT_HASKEY_GUTS(_b_t, _x_t, (_nBL), /* nPsplitShift */ 0, \
-                       (_pxKeys), (_nPopCnt), (_xKey), (_nPos)); \
+    PSPLIT_SEARCH_GUTS(HAS_KEY_NPOS, _b_t, _x_t, (_nBL), /*nPsplitShift*/ 0, \
+                       (_pxKeys), (_nPopCnt), (_xKey), _nPos); \
 }
 
 #define PSPLIT_HASKEY_WORD(_b_t, _nBL, _pwKeys, _nPopCnt, _wKey, _nPos) \
 { \
     assert((Word_t)((_pwKeys) + 1) == (Word_t)(_pwKeys) + sizeof(Word_t)); \
-    PSPLIT_HASKEY_GUTS(_b_t, Word_t, (_nBL), /* nPsplitShift */ (_nBL) - 16, \
-                       (_pwKeys), (_nPopCnt), (_wKey), (_nPos)); \
+    PSPLIT_SEARCH_GUTS(HAS_KEY_NPOS, _b_t, Word_t, (_nBL), \
+                       /*nPsplitShift*/ (_nBL) - 16, \
+                       (_pwKeys), (_nPopCnt), (_wKey), _nPos); \
 }
 
 #ifdef PREFETCH_LOCATEKEY_PSPLIT_VAL
@@ -4827,69 +4759,58 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 #define _PF_LK_PV(_x)
 #endif // #else PREFETCH_LOCATEKEY_PREV_VAL
 
-// PSPLIT_LOCATEKEY_GUTS uses qy for prefetch but qy is not in the parameter
+// PSPLIT_SEARCH_GUTS uses qy for prefetch but qy is not in the parameter
 // list. Shame on us.
-#define PSPLIT_LOCATEKEY_GUTS(_b_t, _x_t, _nBL, /* nPsplitShift */ _xShift, \
-                              _pxKeys, _nPopCnt, _xKey, _nPos) \
+#define PSPLIT_SEARCH_GUTS(_FUNC, _b_t, _x_t, _nBL, /*nPsplitShift*/ _xShift, \
+                           _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
-    /* printf("PSPLK(nBL %d pxKeys %p nPopCnt %d xKey 0x%zx nPos %d\n", */ \
-        /* _nBL, (void*)_pxKeys, _nPopCnt, (Word_t)_xKey, _nPos); */ \
     _b_t *pb = (_b_t *)(_pxKeys); /* bucket pointer */ \
     /* _pxKeys must be aligned on a bucket boundary */ \
     assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
     /* nSplit is the key chosen by Psplit */ \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_xShift), (_xKey)); \
     BJL(char* pcPrefetch = (char*)&gpwValues(qy)[~nSplit]; (void)pcPrefetch); \
-    _PF_LK(BJL(PREFETCH(pcPrefetch))); \
-    _PF_LK_NX(BJL(PREFETCH(pcPrefetch - 64))); \
-    _PF_LK_PV(BJL(PREFETCH(pcPrefetch + 64))); \
+    BJL(_PF_LK(PREFETCH(pcPrefetch))); \
+    BJL(_PF_LK_NX(PREFETCH(pcPrefetch - 64))); \
+    BJL(_PF_LK_PV(PREFETCH(pcPrefetch + 64))); \
     int nKeysPerBucket = sizeof(_b_t) / sizeof(_x_t); \
-    /* nSplitB is number of the bucket chosen by Psplit */ \
+    /* nSplitB is the number of the bucket chosen by Psplit */ \
     int nSplitB = nSplit / nKeysPerBucket; \
     assert((int)((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitB); \
-    if (((_nPos) = BUCKET_LOCATE_KEY(&pb[nSplitB], \
-                                     (_xKey), sizeof(_x_t) * 8)) >= 0) { \
-        /* add the number of keys in the buckets before nSplitB */ \
-        _nPos += nSplitB * nKeysPerBucket; \
-        SMETRICS(++j__DirectHits); \
-    } \
-    else \
+    if ((_nPos = BUCKET_##_FUNC(&pb[nSplitB], (_xKey), sizeof(_x_t) * 8)) \
+        >= 0) \
     { \
+        /* add the number of keys in the buckets before nSplitB */ \
+        _nPos += nSplitB * nKeysPerBucket; /* not needed for has_key */ \
+        SMETRICS(++j__DirectHits); \
+    } else { \
         nSplit = nSplitB * nKeysPerBucket; \
         _x_t xKeySplit = (_pxKeys)[nSplit]; \
         /* now we have the value of a key in the list */ \
         if ((_xKey) > xKeySplit) { \
             if (nSplitB == (int)(((_nPopCnt) - 1) / nKeysPerBucket)) { \
                 /* we searched the last bucket and the key is not there */ \
-                (_nPos) = -1; /* we don't know where to insert */ \
+                _nPos = -1; /* we don't know where to insert */ \
             } else { \
                 /* parallel search the tail of the list */ \
+                /* we are doing a search of the bucket after the original */ \
+                /* nSplitB even though we know it won't find the key if */ \
+                /* (_xKey) <= pxKeys[nSplit+sizeof(_b_t)/sizeof(_x_t)-1] */ \
+                /* but we'd have to be willing to do the test */ \
                 /* ++nSplitB; */ \
-                (_nPos) = (int)nSplit + nKeysPerBucket; \
-                LOCATEKEYF(_b_t, (_xKey), \
-                          (_pxKeys), (_nPopCnt) - (_nPos), (_nPos)); \
+                _nPos = (int)nSplit + nKeysPerBucket; \
+                SEARCH_F(_FUNC, _b_t, (_xKey), (_pxKeys), (_nPopCnt), _nPos); \
                 SMETRICS(++j__GetCallsP); \
             } \
-        } \
-        else \
-        { \
+        } else { \
             if (nSplitB == 0) { \
                 /* we searched the first bucket and the key is not there */ \
-                (_nPos) = -1; /* this is where to insert */ \
+                _nPos = -1; /* this is where to insert */ \
             } else { \
                 /* parallel search the head of the list */ \
-                LOCATEKEYB(_b_t, (_xKey), (_pxKeys), nSplit, (_nPos)); \
+                _nPos = nSplit - nKeysPerBucket; \
+                SEARCH_B(_FUNC, _b_t, (_xKey), (_pxKeys), _nPos); \
                 SMETRICS(++j__GetCallsM); \
-            } \
-        } \
-        /* everything below is just assertions */ \
-        if ((_nPos) >= 0) { \
-            assert((_nPos) < (_nPopCnt)); \
-            assert((_pxKeys)[_nPos] == (_xKey)); \
-        } else { \
-            for (int ii = 0; ii < (_nPopCnt); ii += nKeysPerBucket) { \
-                assert( ! BUCKET_HAS_KEY((_b_t *)&(_pxKeys)[ii], (_xKey), \
-                                         sizeof(_x_t) * 8) ); \
             } \
         } \
     } \
@@ -4898,15 +4819,16 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 #define PSPLIT_LOCATEKEY(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     assert((_nBL) <= cnBitsPerWord); \
-    PSPLIT_LOCATEKEY_GUTS(_b_t, _x_t, (_nBL), /* nPsplitShift */ 0, \
-                          (_pxKeys), (_nPopCnt), (_xKey), (_nPos)); \
+    PSPLIT_SEARCH_GUTS(LOCATE_KEY, _b_t, _x_t, (_nBL), /*nPsplitShift*/ 0, \
+                       (_pxKeys), (_nPopCnt), (_xKey), _nPos); \
 }
 
 #define PSPLIT_LOCATEKEY_WORD(_b_t, _nBL, _pwKeys, _nPopCnt, _wKey, _nPos) \
 { \
     assert((Word_t)((_pwKeys) + 1) == (Word_t)(_pwKeys) + sizeof(Word_t)); \
-    PSPLIT_LOCATEKEY_GUTS(_b_t, Word_t, (_nBL), /*nPsplitShift*/ (_nBL) - 16, \
-                          (_pwKeys), (_nPopCnt), (_wKey), (_nPos)); \
+    PSPLIT_SEARCH_GUTS(LOCATE_KEY, _b_t, Word_t, (_nBL), \
+                       /*nPsplitShift*/ (_nBL) - 16, \
+                       (_pwKeys), (_nPopCnt), (_wKey), _nPos); \
 }
 
 #if 0
@@ -5562,39 +5484,47 @@ HasKey96(__m128i *pxBucket, Word_t wKey, int nBL)
 static uint64_t
 HasKey64(uint64_t *px, Word_t wKey, int nBL)
 {
-#ifndef OLD_HK_64
+  #ifdef NEW_HK_64
     if (nBL == 16) {
-  #if defined(__clang__) && !defined(GCC_VECTORS)
+        return (uint64_t)_mm_cmpeq_pi16(_mm_set1_pi16((uint16_t)wKey), (__m64)*px);
+    } else if (nBL == 8) {
+        return (uint64_t)_mm_cmpeq_pi8(_mm_set1_pi8((uint8_t)wKey), (__m64)*px);
+    } else if (nBL == 32) {
+        return (uint64_t)_mm_cmpeq_pi32(_mm_set1_pi32((uint32_t)wKey), (__m64)*px);
+    }
+  #elif !defined(OLD_HK_64) // NEW_HK_64
+    if (nBL == 16) {
+      #if defined(__clang__) && !defined(GCC_VECTORS)
         v31_t vBucket = *(v31_t*)px;
         v31_t v31 = (v31_t)(vBucket == (unsigned short)wKey);
         return *(uint64_t*)&v31;
-  #else // __clang__
+      #else // __clang__
 // 10/12/19: gcc generates horrible and horribly slow code for this.
         return (uint64_t)(*(v31_t*)px == (unsigned short)wKey);
-  #endif // __clang__
+      #endif // __clang__
 
     }
     if (nBL == 8) {
-  #if defined(__clang__) && !defined(GCC_VECTORS)
+      #if defined(__clang__) && !defined(GCC_VECTORS)
         v30_t vBucket = *(v30_t*)px;
         v30_t v30 = (v30_t)(vBucket == (unsigned char)wKey);
         return *(uint64_t*)&v30;
-  #else // __clang__
+      #else // __clang__
         return (uint64_t)(*(v30_t*)px == (unsigned char)wKey);
-  #endif // __clang__
+      #endif // __clang__
     }
     if (nBL <= 32) {
         assert(nBL == 32);
-  #if defined(__clang__) && !defined(GCC_VECTORS)
+      #if defined(__clang__) && !defined(GCC_VECTORS)
         v32_t vBucket = *(v32_t*)px;
         v32_t v32 = (v32_t)(vBucket == (unsigned int)wKey);
         return *(uint64_t*)&v32;
-  #else // __clang__
+      #else // __clang__
         return (uint64_t)(*(v32_t*)px == (unsigned int)wKey);
-  #endif // __clang__
+      #endif // __clang__
     }
     assert(nBL == 64);
-#endif // ifndef OLD_HK_64
+  #endif // NEW_HK_64 elif !OLD_HK_64
     // It helps Lookup performance to eliminate the need to know nPopCnt.
     // So we replicate the first key in the list into the unused slots
     // at insert time to make sure the unused slots don't cause a false
@@ -5632,42 +5562,129 @@ HasKey128Magic(__m128i *pxBucket, Word_t wKey, int nBL)
 #endif // !defined(LIST_END_MARKERS)
 #endif // defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)
 
-#if defined(EMBED_KEYS)
-// Find key or hole and return it's position.
-static int
-SearchEmbeddedX(Word_t *pw,
-  #ifdef EK_XV
-                Word_t* pwLnX,
-  #endif // EK_XV
-                Word_t wKey, int nBL)
+#ifdef EMBED_KEYS
+#ifndef B_JUDYL
+#ifdef REVERSE_SORT_EMBEDDED_KEYS
+#ifdef FILL_W_BIG_KEY
+
+#ifdef PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK
+
+static int // nPos
+LocateGeKey8InEk64(Word_t wRoot, Word_t wKey)
 {
-    int ii;
-    for (ii = 0; ii < wr_nPopCnt(*pw, nBL); ii++) {
-//printf("pw %p *pw 0x%zx\n", pw, *pw);
-  #ifdef EK_XV
-//printf("pwLnX %p *pwLnX 0x%zx\n", pwLnX, *pwLnX);
-  #endif // EK_XV
+    // convert 16-bit unsigned integers in wRoot to 32-bit signed integers
+    wRoot = ~MSK(56) | (wRoot >> 8);
+    __m128i m128Zero = _mm_set_epi64x(0, 0);
+    __m128i m128Root = _mm_unpacklo_epi8(_mm_set_epi64x(0, wRoot), m128Zero);
+    __m128i m128Key = _mm_set1_epi16((uint8_t)wKey);
+    __m128i m128Gt = _mm_cmpgt_epi16(m128Root, m128Key);
+    __m128i m128Eq = _mm_cmpeq_epi16(m128Root, m128Key);
+    __m128i m128GE = m128Gt | m128Eq;
+    uint64_t u64GE = _mm_packs_epi16(m128GE, /* don't care */ m128GE)[0];
+    return __builtin_ctzll(u64GE) / 8;
+}
+
+#else // PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK
+
+#define _mm_cmpge_pu8(a, b) \
+    _mm_cmpeq_pi8(_mm_max_pu8(a, b), a)
+
+static inline int // nPos
+LocateGeKey8InEk64(Word_t wRoot, Word_t wKey)
+{
+    __m64 m64List = (__m64)(~MSK(56) | (wRoot >> 8));
+    __m64 m64Key = _mm_set1_pi8(wKey);
+    return __builtin_ctzll((uint64_t)_mm_cmpge_pu8(m64List, m64Key)) / 8;
+}
+
+#endif // PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK else
+
+// Return the position of the least significant 16-bit key greater than or
+// equal to the low 16 bits of wKey in a 64-bit wRoot.
+// Ignore the least significant slot in wRoot and start counting with zero
+// at the next least significant slot.
+// If there is no key greater than or equal to then return three.
+// _mm_cmpgt_pi16 compares signed 16-bit numbers in an __m64 for a > b.
+// There is no instruction that compares unsigned 16-bit numbers in an __m64.
+static int // nPos
+LocateGeKey16InEk64(Word_t wRoot, Word_t wKey)
+{
+    // convert 16-bit unsigned integers in wRoot to 32-bit signed integers
+    wRoot = ~MSK(48) | (wRoot >> 16);
+    __m128i m128Zero = _mm_set_epi64x(0, 0);
+    __m128i m128Root = _mm_unpacklo_epi16(_mm_set_epi64x(0, wRoot), m128Zero);
+    __m128i m128Key = _mm_set1_epi32((uint16_t)wKey);
+    __m128i m128Gt = _mm_cmpgt_epi32(m128Root, m128Key);
+    __m128i m128Eq = _mm_cmpeq_epi32(m128Root, m128Key);
+    __m128i m128GE = m128Gt | m128Eq;
+    uint64_t u64GE = _mm_packs_epi32(m128GE, /* don't care */ m128GE)[0];
+    return __builtin_ctzll(u64GE) / 16;
+}
+
+static inline int
+LocateGeKeyInEk64(qpa, Word_t wKey)
+{
+    qva;
+  #ifdef PARALLEL_LOCATE_GE_KEY_16_IN_EK
+    if (nBL == 16) { return LocateGeKey16InEk64(wRoot, wKey); }
+  #endif // PARALLEL_LOCATE_GE_KEY_16_IN_EK
+  #ifdef PARALLEL_LOCATE_GE_KEY_8_IN_EK
+    if (nBL == 8) { return LocateGeKey8InEk64(wRoot, wKey); }
+  #endif // PARALLEL_LOCATE_GE_KEY_8_IN_EK
+    int nPopCnt = wr_nPopCnt(wRoot, nBL);
+    wKey &= MSK(nBL);
+    wRoot >>= ((cnBitsPerWord - 7) % nBL + 7);
+    for (int nPos = 0; nPos < nPopCnt; nPos++) {
+        if ((wRoot & MSK(nBL)) >= wKey) {
+            return nPos;
+        }
+        wRoot >>= nBL;
+    }
+    return nPopCnt;
+}
+
+#endif // FILL_W_BIG_KEY
+#endif // REVERSE_SORT_EMBEDDED_KEYS
+#endif // !B_JUDYL
+#endif // EMBED_KEYS
+
+#ifdef EMBED_KEYS
+// Find key or hole and return it's position.
+static inline int
+SearchEmbeddedX(qpa, Word_t wKey)
+{
+    qva;
+    int nPopCnt = wr_nPopCnt(wRoot, nBL);
+    BJL(assert(nPopCnt > 1));
+    int nPos;
+    for (nPos = 0; nPos < nPopCnt; nPos++) {
         Word_t wSuffixLoop =
-  #ifdef EK_XV
-             wr_nPopCnt(*pw, nBL) > 1
-                 ? GetBits(*pwLnX, nBL, ii *
+  #ifdef EK_XV // aka B_JUDYL
+                 GetBits(*pwLnX, nBL, nPos *
       #if (cnBitsInD1 < cnLogBitsPerByte)
                      MAX(8, (1 << (LOG(nBL - 1) + 1)))
       #else // (cnBitsInD1 < cnLogBitsPerByte)
                      (1 << (LOG(nBL - 1) + 1))
       #endif // else (cnBitsInD1 < cnLogBitsPerByte)
-                           ) :
-  #endif // EK_XV
-             GetBits(*pw, /* nBits */ nBL,
-                     /* nLsb */ cnBitsPerWord - (nBL * (ii + 1)));
+                           );
+  #else // EK_XV
+             GetBits(wRoot, /* nBits */ nBL,
+                     /* nLsb */ cnBitsPerWord - nBL *
+      #if !defined(B_JUDYL) && defined(REVERSE_SORT_EMBEDDED_KEYS)
+                         (EmbeddedListPopCntMax(nBL) - nPos)
+      #else // !B_JUDYL && REVERSE_SORT_EMBEDDED_KEYS
+                         (nPos + 1)
+      #endif // !B_JUDYL && REVERSE_SORT_EMBEDDED_KEYS else
+                     );
+  #endif // EK_XV else
         if ((wKey & MSK(nBL)) <= wSuffixLoop) {
-            if ((wKey & MSK(nBL)) == wSuffixLoop) { return ii; }
+            if ((wKey & MSK(nBL)) == wSuffixLoop) { return nPos; }
             break;
         }
     }
-    return ~ii;
+    return ~nPos;
 }
-#endif // defined(EMBED_KEYS)
+#endif // EMBED_KEYS
 
 #if ! defined(ONE_DEREF_AT_LIST) || ! defined(LOOKUP)
 #if ! defined(LOOKUP_NO_LIST_DEREF) || ! defined(LOOKUP)
@@ -6059,11 +6076,13 @@ ListHasKey16(qp, int nBLR, Word_t wKey)
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchList32(uint32_t *piKeys, Word_t wKey, unsigned nBL, int nPopCnt)
+SearchList32(qp, int nBLR, Word_t wKey)
 {
-    (void)nBL;
-    assert(nBL >  16);
-    assert(nBL <= 32);
+    qv;
+    assert(nBLR >  16);
+    assert(nBLR <= 32);
+    int nPopCnt = gnListPopCnt(qy, nBLR);
+    uint32_t *piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
 #if defined(LIST_END_MARKERS)
     assert(piKeys[-1] == 0);
 #if defined(PSPLIT_PARALLEL)
@@ -6188,9 +6207,11 @@ ListHasKey32(qp, int nBLR, Word_t wKey)
 // And even Insert and Remove don't need to know where the key is if it is
 // in the list (until we start thinking about JudyL).
 static int
-SearchListWord(Word_t *pwKeys, Word_t wKey, unsigned nBL, int nPopCnt)
+SearchListWord(qp, int nBLR, Word_t wKey)
 {
-    (void)nBL;
+    qv;
+    int nPopCnt = gnListPopCnt(qy, nBLR);
+    Word_t* pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);
 #if defined(LIST_END_MARKERS)
     assert(pwKeys[-1] == 0);
     assert(pwKeys[nPopCnt] == (Word_t)-1);
@@ -6301,12 +6322,12 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
     // What if one of nComparesB is not a miscompare? */
     // Call it a miscompare because it is an extra conditional branch.
   #if defined(BACKWARD_SEARCH_WORD)
-    nPos = nPopCnt - 1;
-    HASKEYB(Bucket_t, wKey, pwKeys, nPopCnt, nPos);
+    nPos = (nPopCnt - 1) / nKeysPerBucket * nKeysPerBucket;
+    SEARCH_B(HAS_KEY_NPOS, Bucket_t, wKey, pwKeys, nPos);
     SMETRICS(j__MisComparesM += nCompares);
     SMETRICS(++j__GetCallsM);
   #else // defined(BACKWARD_SEARCH_WORD)
-    HASKEYF(Bucket_t, wKey, pwKeys, nPopCnt, nPos);
+    SEARCH_F(HAS_KEY_NPOS, Bucket_t, wKey, pwKeys, nPopCnt, nPos);
     SMETRICS(j__MisComparesP += nCompares);
     SMETRICS(++j__GetCallsP);
   #endif // defined(BACKWARD_SEARCH_WORD)
@@ -6363,7 +6384,7 @@ ListHasKeyWord(qp, int nBLR, Word_t wKey)
       #endif // !defined(NO_BINARY_SEARCH_WORD) && ...
   #endif // (cnBitsPerWord > 32)
     {
-        nPos = SearchListWord(pwKeys, wKey, nBLR, nPopCnt);
+        nPos = SearchListWord(qy, nBLR, wKey);
     }
     DBGX(printf("LHKW: returning %d\n", nPos >= 0));
     return nPos >= 0;
@@ -6470,13 +6491,61 @@ SearchList(qp, int nBLR, Word_t wKey)
     assert(nBLR > 16);
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
     if (nBLR <= 32) {
-        int nPopCnt = gnListPopCnt(qy, nBLR);
-        return SearchList32(ls_piKeysNATX(pwr, nPopCnt), wKey, nBLR, nPopCnt);
+        return SearchList32(qy, nBLR, wKey);
     }
       #endif // (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
   #endif // defined(COMPRESSED_LISTS)
+    return SearchListWord(qy, nBLR, wKey);
+}
+
+#if 0
+// Locate the smallest key in the 128-bit bucket that is greater than or equal
+// to *pwKey. If one exists then update *pwKey and return nPos.
+// If none exists then return ~(cnBitsPerWord / nBL).
+static inline int
+LocateGeKey128(__m128i* px, Word_t* pwKey, int nBL)
+{
+    for (int nPos = 0; nPos < (int)sizeof(__m128i) * 8 / nBL; nPos++) {
+        if ((wRoot & MSK(nBL)) >= wKey) {
+            return nPos;
+        }
+        wRoot >>= nBL;
+    }
+    return ~(cnBitsPerWord / nBL);
+}
+#endif
+
+static inline int
+LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
+{
+    qv;
+    Word_t wKey = *pwKey;
     int nPopCnt = gnListPopCnt(qy, nBLR);
-    return SearchListWord(ls_pwKeysX(pwr, nBLR, nPopCnt), wKey, nBLR, nPopCnt);
+    int nPos = SearchList(qy, nBLR, wKey);
+    if (nPos < 0) {
+        if ((nPos ^= -1) >= nPopCnt) {
+            return ~nPos;
+        }
+    }
+  #ifdef COMPRESSED_LISTS
+    if (nBLR <= 8) {
+        uint8_t* pcKeys = ls_pcKeysX(pwr, nBLR, nPopCnt);
+        *pwKey = (wKey & ~NZ_MSK(nBLR)) | pcKeys[nPos];
+    } else if (nBLR <= 16) {
+        uint16_t* psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
+        *pwKey = (wKey & ~NZ_MSK(nBLR)) | psKeys[nPos];
+      #if cnBitsPerWord > 32
+    } else if (nBLR <= 32) {
+        uint32_t* piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
+        *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[nPos];
+      #endif // cnBitsPerWord > 32
+    } else
+  #endif // COMPRESSED_LISTS
+    {
+        Word_t* pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);
+        *pwKey = pwKeys[nPos];
+    }
+    return nPos;
 }
 
 #ifdef LOOKUP
@@ -6545,9 +6614,9 @@ LocateHole(qp, int nBLR, Word_t wKey)
 // The least-significant nBL_to_nBitsType(nBL) bits of the word are used for
 // a type field and the next least-significant nBL_to_nBitsPopCntSz(nBL) bits
 // of the word are used for a population count.
-// EmbeddedListHasKey expects the keys to be packed towards the most
-// significant bits unless PACK_KEYS_RIGHT in which case they are packed
-// towards the least significant bits leaving room for the type and pop count.
+// The remaining high bits of the word are used for key slots.
+// There may be some unused bits between the key slots and the pop count.
+// Smallest key is in most significant slot unless REVERSE_SORT_EMBEDDED_KEYS.
 // It helps Lookup performance to eliminate the need to know nPopCnt.
 // So, if FILL_W_KEY, we replicate the smallest key in the list into the
 // unused slots at insert time to make sure the unused slots don't cause a
@@ -6595,33 +6664,25 @@ EmbeddedListMagic(Word_t wRoot, Word_t wKey, int nBL)
     // here so we don't have to worry about a false positive later.
     // We still have to mask off the type and pop count bits from wXor later
     // even if we're not masking off the empty slots.
-  #if defined(REVERSE_SORT_EMBEDDED_KEYS)
+  #if !defined(B_JUDYL) && defined(REVERSE_SORT_EMBEDDED_KEYS)
       #if defined(FILL_WITH_ONES)
     if (wKey == MSK(nBL)) {
-          #if defined(PACK_KEYS_RIGHT)
         int nPopCntMax = EmbeddedListPopCntMax(nBL);
         int nPopCnt = wr_nPopCnt(wRoot, nBL);
         int nSlot = nPopCntMax - nPopCnt + 1;
-          #else // defined(PACK_KEYS_RIGHT)
-        int nSlot = 1;
-          #endif // defined(PACK_KEYS_RIGHT)
         return (((wRoot >> (cnBitsPerWord - nSlot * nBL)) & MSK(nBL))
                     == MSK(nBL));
     }
       #else // defined(FILL_WITH_ONES)
     if (wKey == 0) {
-          #if defined(PACK_KEYS_RIGHT)
         int nSlot = EmbeddedListPopCntMax(nBL);
-          #else // defined(PACK_KEYS_RIGHT)
-        int nSlot = wr_nPopCnt(wRoot, nBL);
-          #endif // defined(PACK_KEYS_RIGHT)
         return
             (((wRoot >> (cnBitsPerWord - nSlot * nBL)) & MSK(nBL)) == 0);
     }
       #endif // defined(FILL_WITH_ONES)
-  #else // defined(REVERSE_SORT_EMBEDDED_KEYS)
+  #else // !B_JUDYL && REVERSE_SORT_EMBEDDED_KEYS
     if (wKey == 0) { return ((wRoot >> (cnBitsPerWord - nBL)) == 0); }
-  #endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
+  #endif // !B_JUDYL && REVERSE_SORT_EMBEDDED_KEYS
 #endif // ! defined(FILL_W_KEY) && ! defined(MASK_EMPTIES)
     Word_t wLsbs = (Word_t)-1 / wMask;
     Word_t wKeys = wKey * wLsbs; // replicate key; put in every slot
@@ -6644,6 +6705,50 @@ EmbeddedListMagic(Word_t wRoot, Word_t wKey, int nBL)
 #endif // defined(MASK_EMPTIES)
     Word_t wMsbs = wLsbs << (nBL - 1); // msb in each key slot
     return (wXor - wLsbs) & ~wXor & wMsbs; // wMagic
+}
+
+static uint64_t // bool
+EmbeddedListHasKey8(Word_t wRoot, Word_t wKey)
+{
+    return (uint64_t)_mm_cmpeq_pi8(_mm_set1_pi8(wKey), (__m64)wRoot) & ~MSK(8);
+}
+
+static uint64_t // bool
+EmbeddedListHasKey16(Word_t wRoot, Word_t wKey)
+{
+    return
+        (uint64_t)_mm_cmpeq_pi16(_mm_set1_pi16(wKey), (__m64)wRoot) & ~MSK(16);
+}
+
+static uint64_t // bool
+EmbeddedListHasKey24(Word_t wRoot, Word_t wKey)
+{
+    wKey &= MSK(24);
+    return ((wRoot >> 40) == wKey) + (((wRoot >> 16) & MSK(24)) == wKey);
+}
+
+static uint64_t // bool
+EmbeddedListHasKey32(Word_t wRoot, Word_t wKey)
+{
+    return (wRoot >> 32) == (uint32_t)wKey;
+}
+
+static uint64_t // bool
+EmbeddedListHasKey40(Word_t wRoot, Word_t wKey)
+{
+    return (wRoot >> 24) == (wKey & MSK(40));
+}
+
+static uint64_t // bool
+EmbeddedListHasKey48(Word_t wRoot, Word_t wKey)
+{
+    return (wRoot >> 16) == (wKey & MSK(48));
+}
+
+static uint64_t // bool
+EmbeddedListHasKey56(Word_t wRoot, Word_t wKey)
+{
+    return (wRoot >> 8) == (wKey & MSK(56));
 }
 
 static int // bool
@@ -6949,9 +7054,9 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
   #endif // (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
 
 static int
-LocateKeyInList16(qpa, int nBLR, Word_t wKey)
+LocateKeyInList16(qp, int nBLR, Word_t wKey)
 {
-    qva; (void)nBLR;
+    qv; (void)nBLR;
 
     assert(nBLR >   8);
     assert(nBLR <= 16);
@@ -7089,7 +7194,7 @@ LocateKeyInListWord(qp, int nBLR, Word_t wKey)
   #endif // defined(PSPLIT_SEARCH_WORD)
   #if !defined(SEARCH_FROM_WRAPPER) || !defined(LOOKUP)
     {
-        nPos = SearchListWord(pwKeys, wKey, nBLR, nPopCnt);
+        nPos = SearchListWord(qy, nBLR, wKey);
     }
   #endif // !SEARCH_FROM_WRAPPER || !LOOKUP
     DBGX(printf("LKILW: returning %d\n", nPos));
@@ -7097,9 +7202,9 @@ LocateKeyInListWord(qp, int nBLR, Word_t wKey)
 }
 
 static int
-LocateKeyInList(qpa, int nBLR, Word_t wKey)
+LocateKeyInList(qp, int nBLR, Word_t wKey)
 {
-    qva;
+    qv;
   #if defined(COMPRESSED_LISTS)
       #if (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
     if (nBLR <= 8) {
@@ -7108,7 +7213,7 @@ LocateKeyInList(qpa, int nBLR, Word_t wKey)
       #endif // (cnBitsInD1 <= 8) || defined(USE_XX_SW_ONLY_AT_DL2)
       #if (cnBitsInD1 <= 16)
     if (nBLR <= 16) {
-        return LocateKeyInList16(qya, nBLR, wKey);
+        return LocateKeyInList16(qy, nBLR, wKey);
     }
       #endif // (cnBitsInD1 <= 16)
       #if (cnBitsInD1 <= 32) && (cnBitsPerWord > 32)
@@ -7410,5 +7515,7 @@ extern Word_t j__AllocWordsJV;   // value area
     #error cnListPopCntMaxDl1 > (1 << cnBitsPreListPopCnt)
   #endif // cnListPopCntMaxDl1 > (1 << cnBitsPreListPopCnt)
 #endif // POP_IN_WR_HB elif LIST_POP_IN_PREAMBLE
+
+void Checkpoint(qpa, const char *str);
 
 #endif // ( ! defined(_B_H_INCLUDED) )

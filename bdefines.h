@@ -2,6 +2,11 @@
 #if ( ! defined(_BDEFINES_H_INCLUDED) )
 #define _BDEFINES_H_INCLUDED
 
+#ifndef    NO_NEW_NEXT
+  #undef      NEW_NEXT
+  #define     NEW_NEXT
+#endif // !NO_NEW_NEXT
+
 // If B_JUDYL is defined then we are building JudyL.
 // Otherwise we are building Judy1.
 // JudyL and Judy1 have different constraints and different defaults.
@@ -566,21 +571,18 @@
     #define  DEBUG_NEXT
     #undef   DEBUG
     #define  DEBUG
-#else // defined(DEBUG_ALL)
-  #if defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || defined(DEBUG_REMOVE)
-    #undef   DEBUG
+#elif !defined(DEBUG) // DEBUG_ALL
+  #if defined(DEBUG_COUNT) || defined(DEBUG_NEXT) || defined(DEBUG_ASSERT)
     #define  DEBUG
-  #endif // defined(DEBUG_INSERT) || defined(DEBUG_LOOKUP) || ...
-  #if defined(DEBUG_MALLOC) || defined(DEBUG_COUNT) || defined(DEBUG_NEXT)
-    #undef   DEBUG
+  #elif defined(DEBUG_INSERT) || defined(DEBUG_REMOVE)
     #define  DEBUG
-  #endif // defined(DEBUG_MALLOC) || defined(DEBUG_COUNT) || ...
-#endif // defined(DEBUG_ALL)
-
-#if ! defined(DEBUG)
+  #elif defined(DEBUG_LOOKUP) || defined(DEBUG_MALLOC)
+    #define  DEBUG
+  #else // COUNT||NEXT||ASSERT||INSERT||REMOVE||LOOKUP||MALLOC
     #undef  NDEBUG
-    #define NDEBUG
-#endif // ! defined(DEBUG)
+    #define NDEBUG // turn off assertions for performance
+  #endif // COUNT||NEXT||ASSERT||INSERT||REMOVE||LOOKUP||MALLOC else
+#endif // DEBUG_ALL elif !DEBUG else
 
 #ifndef PP_IN_LINK
   // Default is POP_WORD ifndef PP_IN_LINK unless NO_POP_WORD.
@@ -721,6 +723,11 @@
   #define  OLD_HK_64
 #endif // #ifndef NO_OLD_HK_64
 
+#ifdef AUG_TYPE_8_SW_NEXT
+  #undef  AUGMENT_TYPE_8
+  #define AUGMENT_TYPE_8
+#endif // AUG_TYPE_8_SW_NEXT
+
 #ifdef AUGMENT_TYPE_8_PLUS_4
   #if cnBitsPerDigit == 8
   #if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
@@ -800,6 +807,15 @@
 #ifdef REMOTE_LNX
   #undef DUMMY_REMOTE_LNX
 #endif // REMOTE_LNX
+
+#ifdef B_JUDYL
+  #undef  REVERSE_SORT_EMBEDDED_KEYS
+#endif // B_JUDYL
+
+#ifdef REVERSE_SORT_EMBEDDED_KEYS
+  #undef  NO_EK_CALC_POP
+  #define NO_EK_CALC_POP
+#endif // REVERSE_SORT_EMBEDDED_KEYS
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 

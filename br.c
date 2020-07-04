@@ -1,25 +1,15 @@
 
 // This file is a wrapper for bli.c.
 // It exists in part so we can generate br.o, br.s and br.i files which
-// include only Judy1Unset/Remove, et. al.
-
-#define cbInsert  0
-#define cbLookup  0
-#define cbRemove  1
-#define cbCount   0
-
-#define IF_INSERT(_expr)
-#define IF_NOT_INSERT(_expr)  _expr
-
-#define IF_INS_OR_REM(_expr)  _expr
-
-#define IF_LOOKUP(_expr)  0
-#define IF_NOT_LOOKUP(_expr)  _expr
-
-#define IF_COUNT(_expr)  0
-#define IF_NOT_COUNT(_expr)  _expr
+// include only Judy1Unset/Remove1.
 
 #define REMOVE
+#define strLookupOrInsertOrRemove  "Remove"
+#define IF_REMOVE(_stmt)  _stmt
+#define IF_NOT_REMOVE(_stmt)
+#define IF_INS_OR_REM(_stmt)  _stmt
+#define KeyFound  Success
+#define DBGX  DBGR
 #include "b.h"
 #include "bli.c"
 #undef REMOVE
