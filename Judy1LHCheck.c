@@ -540,7 +540,7 @@ main(int argc, char *argv[])
             TestJudyCount(J1, JL, LowIndex, Delta);
         }
 #ifndef NO_TEST_NEXT // for turn-on testing
-        Word_t HighIndex;
+        Word_t HighIndex; (void)HighIndex;
 //      Test JLN, J1N
         HighIndex = TestJudyNext(J1, JL, (Word_t)0, TotalPop);
 
@@ -825,6 +825,7 @@ TestJudyGet(void *J1, void *JL, void *JH, Word_t Seed, Word_t Elements)
         {
             printf("TstIndex 0x%zx PValue %p *PValue 0x%zx\n",
                    TstIndex, PValue, *PValue);
+            JudyLDump((Word_t)JL, sizeof(Word_t) * 8, TstIndex);
             FAILURE("JudyLGet ret wrong Value at", elm);
         }
 

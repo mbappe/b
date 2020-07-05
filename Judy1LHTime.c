@@ -4615,6 +4615,8 @@ TestJudyIns(void **J1, void **JL, PNewSeed_t PSeed, Word_t Elements)
                             PWord_t PValueNew = (PWord_t)JudyLGet(*JL, TstKeyNot, PJE0);
                             if (PValueNew != NULL)
                             {
+                                JudyLDump((Word_t)JL, sizeof(Word_t) * 8, TstKey);
+                                JudyLDump((Word_t)JL, sizeof(Word_t) * 8, TstKeyNot);
                                 printf("\n--- JudyLGet(0x%zx) *PValue = 0x%zx after Judy1Set, Key = 0x%zx, elm = %zu\n",
                                        TstKeyNot, *PValueNew, TstKey, elm);
                                 FAILURE("JudyLGet failed at", elm);

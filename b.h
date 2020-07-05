@@ -3706,9 +3706,9 @@ swBitmapPrefix(qp, int nBLR, Word_t wPrefix)
   #endif // SKIP_TO_BITMAP
 
 static Word_t
-gwBitmapPopCnt(qp, int nBLR)
+gwBitmapPopCnt(qpa, int nBLR)
 {
-    qv; (void)nBLR;
+    qva; (void)nBLR;
     Word_t wPopCnt;
   #ifdef _BM_POP_IN_LINK_X // POP_WORD_IN_LINK || PP_IN_LINK
       #ifdef SKIP_TO_BITMAP
@@ -3728,7 +3728,20 @@ gwBitmapPopCnt(qp, int nBLR)
     }
   #elif defined(BM_POP_IN_WR_HB)
     wPopCnt = GetBits(*pwRoot, cnBitsCnt, cnLsbCnt);
-    if (wPopCnt == 0) { wPopCnt = EXP(nBLR); } // full pop
+    if (wPopCnt == 0) {
+        DBGI(printf("\n# gwBitmapPopCnt 0 ==> full\n"));
+      #if !defined(EMBED_KEYS) || defined(POP_CNT_MAX_IS_KING)
+        // Assuming gwBitmapPopCnt is never called with zero bits set may be a
+        // problem for ListPopCntMaxDl1 == 0 and no embedded keys.
+          #ifdef _BMLF_BM_IN_LNX
+        if ((cnListPopCntMaxDl1 != 0) || (*pwLnX & 1))
+          #else // _BMLF_BM_IN_LNX
+        if ((cnListPopCntMaxDl1 != 0)
+            || (((BmLeaf_t*)pwr)->bmlf_awBitmap[0] & 1))
+          #endif // _BMLF_BM_IN_LNX else
+      #endif // !EMBED_KEYS || POP_CNT_MAX_IS_KING
+        { wPopCnt = EXP(nBLR); }
+    } // full pop
   #else // _BM_POP_IN_LINK_X
     // No need to handle embedded bitmaps here. Why not?
     assert(!cbEmbeddedBitmap || (nBLR > cnLogBitsPerLink));
@@ -3772,9 +3785,9 @@ gwBitmapPopCnt(qp, int nBLR)
 // Pop cnt is in the word following the bitmap.
 // Full pop gets masked to zero if pop is sharing a word with prefix.
 static void
-swBitmapPopCnt(qp, int nBLR, Word_t wPopCnt)
+swBitmapPopCnt(qpa, int nBLR, Word_t wPopCnt)
 {
-    qv; (void)nBLR;
+    qva; (void)nBLR;
     assert(wPopCnt <= EXP(nBLR));
   #ifdef _BM_POP_IN_LINK_X // aka POP_WORD_IN_LINK || PP_IN_LINK
       #ifdef SKIP_TO_BITMAP
@@ -3785,7 +3798,7 @@ swBitmapPopCnt(qp, int nBLR, Word_t wPopCnt)
     {
         set_PWR_wPopCntBL(pwRoot, pwr, nBLR, wPopCnt);
         if (wPopCnt != 0) {
-            assert(gwBitmapPopCnt(qy, nBLR) == wPopCnt);
+            assert(gwBitmapPopCnt(qya, nBLR) == wPopCnt);
         }
     }
   #elif defined(BM_POP_IN_WR_HB)
@@ -7316,7 +7329,7 @@ GetPopCnt(qpa)
               #endif // defined(PP_IN_LINK)
           #endif // defined(SKIP_TO_BITMAP)
         case T_BITMAP:
-            wPopCnt = gwBitmapPopCnt(qy, gnBLR(qy));
+            wPopCnt = gwBitmapPopCnt(qya, gnBLR(qy));
             break;
       #endif // BITMAP
       #ifdef SEPARATE_T_NULL

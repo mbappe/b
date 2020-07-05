@@ -1229,6 +1229,9 @@ CalcBitmapWordCnt(int nBLR, Word_t wPopCnt)
       #endif // UNPACK_BM_VALUES
       #if defined(PACK_BM_VALUES) && !defined(BMLF_INTERLEAVE)
     Word_t wWordsMin = BitmapWordsMin(nBLR, wPopCnt);
+    if (wWordsMin == 0) {
+        return 0;
+    }
     // What is the first power of two bigger than nWordsMin?
     // nWordsMin being an exact power of two does us no good because it won't
     // accommodate the malloc overhead word.
@@ -1386,7 +1389,7 @@ NewBitmap(qpa, int nBLR, Word_t wKey, Word_t wPopCnt)
 #if defined(SKIP_TO_BITMAP)
     swBitmapPrefix(qy, nBLR, wKey);
 #endif // defined(SKIP_TO_BITMAP)
-    swBitmapPopCnt(qy, /* nBLR */ nBLR, wPopCnt);
+    swBitmapPopCnt(qya, /* nBLR */ nBLR, wPopCnt);
 
     return pwBitmap;
 }
@@ -1609,14 +1612,38 @@ NewSwitchX(qpa, Word_t wKey, int nBLR,
 #endif // defined(USE_LIST_SW)
         pwr_pLinks((Switch_t *)pwr);
     if (cbEmbeddedBitmap && ((nBLR - nBW) <= cnLogBitsPerLink)) {
+        // Zero the links, i.e. bitmaps. The links contain no type field.
         memset(pLinks, 0, sizeof(Link_t) * wLinks);
     } else {
-        for (int nn = 0; nn < (int)wLinks; ++nn) {
-            pLinks[nn].ln_wRoot = WROOT_NULL;
+        if (WROOT_NULL != 0) {
+            for (int nn = 0; nn < (int)wLinks; ++nn) {
+                pLinks[nn].ln_wRoot = WROOT_NULL;
+            }
+        } else {
+            // This will initialize local link extensions unconditionally.
+            bzero(pLinks, sizeof(Link_t) * wLinks);
         }
-        // Notice we are not initializing remote or local link extensions,
-        // *pwLnX, _LNX, here. Why? Is it really worth the complexity of
-        // initializing it elsewhere only as needed?
+  // Is it really worth the complexity of avoiding the work of initializing
+  // the remote link extensions when it is not necessary?
+  #ifdef _BMLF_BM_IN_LNX
+  #ifndef CHECK_TYPE_FOR_EBM
+  #if defined(POP_CNT_MAX_IS_KING) || !defined(EMBED_KEYS)
+  #ifndef UNPACK_BM_VALUES
+  #ifdef REMOTE_LNX
+        bzero(&pLinks[wLinks], sizeof(Word_t) * wLinks);
+  #else // REMOTE_LNX
+        if (WROOT_NULL != 0) {
+            for (int nn = 0; nn < (int)wLinks; ++nn) {
+                if ((cnListPopCntMaxDl1 == 0) && (nBLR == cnBitsLeftAtDl2)) {
+                    pLinks[nn].ln_wX = 0;
+                }
+            }
+        }
+  #endif // REMOTE_LNX else
+  #endif // !UNPACK_BM_VALUES
+  #endif // defined(POP_CNT_MAX_IS_KING) || !defined(EMBED_KEYS)
+  #endif // !CHECK_TYPE_FOR_EBM
+  #endif // _BMLF_BM_IN_LNX
     }
 #if defined(CODE_BM_SW)
     DBGM(printf("NewSwitch(pwRoot %p wKey " OWx
@@ -2426,7 +2453,7 @@ FreeArrayGuts(qpa, Word_t wKey, int bDump
     if (nType == T_SKIP_TO_BITMAP) {
         if (bDump) { printf(" SKIP_TO_BITMAP"); }
         nBLR = GetBLR(pwRoot, nBL);
-        Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR);
+        Word_t wPopCnt = gwBitmapPopCnt(qya, nBLR);
         if (bDump) {
             printf(" nBLR %2d", nBLR);
             goto dumpBmTail;
@@ -2452,7 +2479,7 @@ FreeArrayGuts(qpa, Word_t wKey, int bDump
             assert(nBL != cnBitsPerWord);
 
             if (cnBitsInD1 > cnLogBitsPerLink) {
-                Word_t wPopCnt = gwBitmapPopCnt(qy, nBL);
+                Word_t wPopCnt = gwBitmapPopCnt(qya, nBL);
                 printf(" wr_wPopCnt %3" _fw"u", wPopCnt);
             }
         }
@@ -2473,7 +2500,7 @@ FreeArrayGuts(qpa, Word_t wKey, int bDump
         // other clauses go away.
         if (!bDump) {
             assert(nBL != cnBitsPerWord); // wPopCntTotal, zeroLink
-            Word_t wPopCnt = gwBitmapPopCnt(qy, nBL);
+            Word_t wPopCnt = gwBitmapPopCnt(qya, nBL);
             wBytes = OldBitmap(pwr, nBL, wPopCnt);
             *pwRoot = WROOT_NULL;
             return wBytes;
@@ -2484,7 +2511,7 @@ dumpBmTail:;
         int nWords
             = nBLR > cnLogBitsPerWord ? EXP(nBLR - cnLogBitsPerWord) : 1;
         printf(" nWords %4d", nWords);
-        printf(" wPopCnt %5zd", gwBitmapPopCnt(qy, nBLR));
+        printf(" wPopCnt %5zd", gwBitmapPopCnt(qya, nBLR));
         BmLeaf_t* pBmLeaf = (BmLeaf_t*)pwr; (void)pBmLeaf;
       #ifdef BMLF_CNTS
           #ifdef BMLF_POP_COUNT_8
@@ -2522,7 +2549,7 @@ dumpBmTail:;
         printf("\n Values %p\n", gpwBitmapValues(qy, nBLR));
         for (int ww = 0;
              ww < (int)(BM_UNPACKED(wRoot)
-                            ? EXP(nBLR) : gwBitmapPopCnt(qy, nBLR));
+                            ? EXP(nBLR) : gwBitmapPopCnt(qya, nBLR));
              ++ww)
         {
             if ((ww != 0) && (ww % 4) == 0) {
@@ -3594,8 +3621,8 @@ SignificantBitCnt(qp, Word_t wKey, int nPopCnt)
         return nBL;
     }
   #endif // NO_SKIP_AT_TOP
-    if (nPopCnt < 1) { // only if ListPopCntMax == 0
-        return 0;
+    if (nPopCnt < 1) { // only if ListPopCntMax == 0 and no embedded keys
+        return 1;
     }
     Word_t wMin, wMax, wSuffix;
   #if defined(COMPRESSED_LISTS)
@@ -3793,7 +3820,9 @@ InsertCleanup(qpa, Word_t wKey)
           #endif // defined(NO_TYPE_IN_XX_SW)
             int nTypeLn = wr_nType(wRootLn);
             Word_t *pwrLn = wr_pwr(wRootLn);
-
+          #ifdef _LNX
+            Word_t* pwLnXLn = gpwLnX(qyx(Ln), EXP(nBW), ww);
+          #endif // _LNX
           #if defined(EMBED_KEYS)
             if (nTypeLn == T_EMBEDDED_KEYS) {
                 goto embeddedKeys;
@@ -3821,7 +3850,7 @@ embeddedKeys:;
                 memcpy(&((uint8_t*)pwBitmap)[
                            ww * EXP(nBLLn - cnLogBitsPerByte)],
                        pwBitmapLn, EXP(nBLLn - cnLogBitsPerByte));
-                Word_t wPopCntLn = gwBitmapPopCnt(qyx(Ln), nBLLn);
+                Word_t wPopCntLn = gwBitmapPopCnt(qyax(Ln), nBLLn);
                 OldBitmap(pwrLn, nBLLn, wPopCntLn);
                 continue;
             }
@@ -7743,9 +7772,22 @@ newSkipToBitmap:;
               #endif // !NO_SKIP_AT_TOP
               #endif // _BM_POP_IN_LINK_X
           #endif // SKIP_TO_BITMAP
-        { assert((int)gwBitmapPopCnt(qy, nBLNew) == nPopCntOld); }
+        {
+            // I'm pretty sure this condition on the assertion is no longer
+            // necessary. But I didn't want to remove it and wait for bi to
+            // run again before committing.
+            if (nPopCntOld != 0) {
+                if ((int)gwBitmapPopCnt(qya, nBLNew) != nPopCntOld) {
+                    printf("\n# nPopCntOld %d\n", nPopCntOld);
+                }
+                assert((int)gwBitmapPopCnt(qya, nBLNew) == nPopCntOld);
+            }
+        }
+        // I wish I didn't have to call InsertAllAtBitmap if nPopCntOld==0.
         InsertAllAtBitmap(qya, qyx(Old), /*nnStart*/ 0, nPopCntOld);
-        OldList(pwrOld, nPopCntOld, nBLOld, nTypeOld);
+        if (nPopCntOld != 0) {
+            OldList(pwrOld, nPopCntOld, nBLOld, nTypeOld);
+        }
         goto finalInsert;
     }
     else
@@ -9359,6 +9401,7 @@ Status_t
 InsertAtBitmap(qpa, Word_t wKey)
 {
     qva;
+    assert(tp_bIsBitmap(nType));
     int nBLR = nBL;
   #ifdef SKIP_TO_BITMAP
     if (nType == T_SKIP_TO_BITMAP) {
@@ -9390,9 +9433,9 @@ InsertAtBitmap(qpa, Word_t wKey)
     // Mask to convert EXP(nBLR) back to 0 for newly created bitmap.
     // Is mask necessary if pop count has its own word?
   #if defined(SKIP_TO_BITMAP) && !defined(PREFIX_WORD_IN_BITMAP_LEAF)
-    Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR) & MSK(nBLR);
+    Word_t wPopCnt = gwBitmapPopCnt(qya, nBLR) & MSK(nBLR);
   #else // defined(SKIP_TO_BITMAP) && !defined(PREFIX_WORD_IN_BITMAP_LEAF)
-    Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR);
+    Word_t wPopCnt = gwBitmapPopCnt(qya, nBLR);
       #if defined(PP_IN_LINK)
     wPopCnt &= MSK(nBLR);
       #endif // defined(PP_IN_LINK)
@@ -9484,7 +9527,7 @@ InsertAtBitmap(qpa, Word_t wKey)
         goto done;
 done:
 #endif // B_JUDYL
-        swBitmapPopCnt(qy, nBLR, wPopCnt + 1);
+        swBitmapPopCnt(qya, nBLR, wPopCnt + 1);
     }
   #ifdef BMLF_CNTS
     if (BM_UNPACKED(wRoot)) { }
@@ -10170,7 +10213,7 @@ RemoveAtBitmap(qpa, Word_t wKey)
         }
   #endif // defined(SKIP_TO_BITMAP)
 
-        Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR) - 1;
+        Word_t wPopCnt = gwBitmapPopCnt(qya, nBLR) - 1;
   #ifdef _BMLF_BM_IN_LNX
         Word_t *pwBitmap = pwLnX;
   #else // _BMLF_BM_IN_LNX
@@ -10300,7 +10343,7 @@ RemoveAtBitmap(qpa, Word_t wKey)
             goto done;
 done:
 #endif // B_JUDYL
-            swBitmapPopCnt(qy, nBLR, wPopCnt);
+            swBitmapPopCnt(qya, nBLR, wPopCnt);
         }
         ClrBit(pwBitmap, wKey & MSK(nBLR));
   #ifdef BMLF_CNTS
@@ -10373,7 +10416,7 @@ done:
             OldBitmap(pwr, nBLR, 0);
             *pwRoot = WROOT_NULL;
         } else {
-            assert(gwBitmapPopCnt(qy, nBLR) == wPopCnt);
+            assert(gwBitmapPopCnt(qya, nBLR) == wPopCnt);
         }
     }
 
@@ -10939,6 +10982,15 @@ Initialize(void)
 #else // defined(ALLOW_EMBEDDED_BITMAP)
     printf("# No ALLOW_EMBEDDED_BITMAP\n");
 #endif // defined(ALLOW_EMBEDDED_BITMAP)
+
+    // EBM is JudyL embedded bitmap.
+    // CHECK_TYPE_FOR_EBM means test type before goto t_bitmap even when
+    // ifdefs make it unnecesary. Primarily for measurement only.
+  #ifdef         CHECK_TYPE_FOR_EBM
+    printf("#    CHECK_TYPE_FOR_EBM\n");
+  #else //       CHECK_TYPE_FOR_EBM
+    printf("# No CHECK_TYPE_FOR_EBM\n");
+  #endif // else CHECK_TYPE_FOR_EBM
 
 #if defined(COMPRESSED_LISTS)
     printf("#    COMPRESSED_LISTS\n");

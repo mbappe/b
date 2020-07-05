@@ -1479,12 +1479,6 @@ t_sw_plus_112:
       #endif // PREFETCH_PWR
         IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
-      #ifdef BITMAP
-        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
-            // nType and pwr have not been updated.
-            goto t_bitmap;
-        }
-      #endif // BITMAP
         // Calculate nAugTypeBits while we know nBL is a constant.
         nAugTypeBits = AugTypeBits(nBL);
         goto againAugType;
@@ -1515,12 +1509,6 @@ t_sw_plus_96:
       #endif // PREFETCH_PWR
         IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
-      #ifdef BITMAP
-        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
-            // nType and pwr have not been updated.
-            goto t_bitmap;
-        }
-      #endif // BITMAP
         // Calculate nAugTypeBits while we know nBL is a constant.
         nAugTypeBits = AugTypeBits(nBL);
         goto againAugType;
@@ -1551,12 +1539,6 @@ t_sw_plus_80:
       #endif // PREFETCH_PWR
         IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
-      #ifdef BITMAP
-        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
-            // nType and pwr have not been updated.
-            goto t_bitmap;
-        }
-      #endif // BITMAP
         // Calculate nAugTypeBits while we know nBL is a constant.
         nAugTypeBits = AugTypeBits(nBL);
         goto againAugType;
@@ -1587,12 +1569,6 @@ t_sw_plus_64:
       #endif // PREFETCH_PWR
         IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
-      #ifdef BITMAP
-        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
-            // nType and pwr have not been updated.
-            goto t_bitmap;
-        }
-      #endif // BITMAP
         // Calculate nAugTypeBits while we know nBL is a constant.
         nAugTypeBits = AugTypeBits(nBL);
         goto againAugType;
@@ -1637,12 +1613,6 @@ t_sw_plus_48:
       #endif // PREFETCH_PWR
         IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
-      #ifdef BITMAP
-        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
-            // nType and pwr have not been updated.
-            goto t_bitmap;
-        }
-      #endif // BITMAP
       #ifdef AUGMENT_TYPE_8
         // Calculate nAugTypeBits while we know nBL is a constant.
         nAugTypeBits = AugTypeBits(nBL);
@@ -1689,12 +1659,6 @@ t_sw_plus_32:
       #endif // PREFETCH_PWR
         IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
-      #ifdef BITMAP
-        if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
-            // nType and pwr have not been updated.
-            goto t_bitmap;
-        }
-      #endif // BITMAP
       #ifdef AUGMENT_TYPE_8
         nAugTypeBits = AugTypeBits(nBL);
       #else // AUGMENT_TYPE_8
@@ -1745,11 +1709,38 @@ t_sw_plus_16:
         IF_SKIP_PREFIX_CHECK(pwrUp = pwr);
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
       #ifdef BITMAP
-        // Can't assume embedded bitmap for JudyL. Might be T_EMBEDDED_KEYS.
+        // Can't assume embedded bitmap for JudyL. Might be T_EMBEDDED_KEYS,
+        // T_EK_XV or T_UNPACKED_BM.
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) {
             // nType and pwr have not been updated.
             goto t_bitmap;
         }
+          #ifdef CHECK_TYPE_FOR_EBM
+        if ((nType = wr_nType(wRoot)) == T_BITMAP) {
+            goto t_bitmap;
+        }
+          #else // CHECK_TYPE_FOR_EBM
+              #ifdef _BMLF_BM_IN_LNX
+              #if defined(POP_CNT_MAX_IS_KING) || !defined(EMBED_KEYS)
+              #ifndef UNPACK_BM_VALUES
+        if (cnListPopCntMaxDl1 == 0) {
+            // nType and pwr have not been updated.
+            if ((nType = wr_nType(wRoot)) != T_BITMAP) {
+                DBGX(printf("\n# nBL %d nType %d\n", nBL, nType));
+                if ((wRoot != WROOT_NULL) || (*pwLnX != 0)) {
+                    DBGX(printf("\n# goto t_bitmap wKey 0x%zx\n", wKey));
+                    DBGX(Dump(pwRootLast, wKey, cnBitsPerWord));
+                    DBGX(printf("\n"));
+                }
+                assert(wRoot == WROOT_NULL);
+                assert(*pwLnX == 0);
+            }
+            goto t_bitmap;
+        }
+              #endif // !UNPACK_BM_VALUES
+              #endif // defined(POP_CNT_MAX_IS_KING) || !defined(EMBED_KEYS)
+              #endif // _BMLF_BM_IN_LNX
+          #endif // CHECK_TYPE_FOR_EBM else
       #endif // BITMAP
         // Does compiler know nBL is a constant after we call SwAdvance if
         // it knew that nBLR and nBW were constants going in?
@@ -3461,7 +3452,7 @@ t_skip_to_bitmap:
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
             if (wKey > (wKey - (wPrefixMismatch << nBLR))) {
-                Word_t wPopCnt = gwBitmapPopCnt(qy, nBLR);
+                Word_t wPopCnt = gwBitmapPopCnt(qya, nBLR);
                 DBGC(printf("T_SKIP_TO_BITMAP: PREFIX_MISMATCH wPopCnt %" _fw
                                 "d\n", wPopCnt));
                 wPopCntSum += wPopCnt; // fall through to return wPopCntSum
@@ -3596,7 +3587,18 @@ t_bitmap:
         #error AUGMENT_TYPE (not _8) with cnBitsInD1 > 8.
       #endif // AUGMENT_TYPE && !AUGMENT_TYPE_8 && cnBitsInD1 > 8
       #ifdef B_JUDYL
-        assert(nBLR == cnBitsInD1);
+        // nBLR may not be updated for goto embedded t_bitmap from digit 2
+          #ifndef CHECK_TYPE_FOR_EBM
+          #ifdef _BMLF_BM_IN_LNX
+          #if defined(POP_CNT_MAX_IS_KING) || !defined(EMBED_KEYS)
+          #ifndef UNPACK_BM_VALUES
+        if (cnListPopCntMaxDl1 == 0) {
+        } else
+          #endif // !UNPACK_BM_VALUES
+          #endif // defined(POP_CNT_MAX_IS_KING) || !defined(EMBED_KEYS)
+          #endif // _BMLF_BM_IN_LNX
+          #endif // !CHECK_TYPE_FOR_EBM
+        { assert(nBLR == cnBitsInD1); }
         nBLR = cnBitsInD1;
           #ifndef SKIP_TO_BITMAP
         nBL = nBLR; // We don't use nBL for LOOKUP except for DEBUG.
@@ -3696,7 +3698,7 @@ t_bitmap:
                 Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
               #endif // else _BMLF_BM_IN_LNX
                 if ((nBLR > 8) && (wKey & EXP(nBLR - 1))) {
-                    wPopCnt = gwBitmapPopCnt(qy, nBLR);
+                    wPopCnt = gwBitmapPopCnt(qya, nBLR);
                     if (wPopCnt == 0) {
                         wPopCnt = EXP(nBLR);
                     }
@@ -3784,7 +3786,7 @@ t_bitmap:
                               #ifdef PACK_BM_VALUES
                 // T_UNPACKED_BM doesn't come here for Lookup.
                 SMETRICS_GET(++j__GetCalls);
-                Word_t wPopCnt = gwBitmapPopCnt(qy, cnBitsInD1);
+                Word_t wPopCnt = gwBitmapPopCnt(qya, cnBitsInD1);
                 SMETRICS_POP(j__SearchPopulation += wPopCnt); // fast and slow
 // Note: I wonder if the penalty for a branch misprediction is
 // exacerbated when prefetching is done on both forks of the branch.
@@ -4030,7 +4032,7 @@ t_unpacked_bm:
           #ifdef SMETRICS_UNPACKED_BM
         SMETRICS_GET(++j__GetCalls);
         SMETRICS_HIT(++j__DirectHits);
-        SMETRICS_POP(j__SearchPopulation += gwBitmapPopCnt(qy, cnBitsInD1));
+        SMETRICS_POP(j__SearchPopulation += gwBitmapPopCnt(qya, cnBitsInD1));
           #else // SMETRICS_UNPACKED_BM
         SMETRICS_GETN(++j__GetCallsNot);
           #endif // SMETRICS_UNPACKED_BM else

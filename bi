@@ -18,6 +18,27 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 && : "_RETURN_NULL_TO_INSERT_AGAIN is default for JudyL" \
 && DEFINES="-DDEBUG -D_RETURN_NULL_TO_INSERT_AGAIN" make clean default \
 && ${REGRESS} \
+&& DEFINES="-DcnListPopCntMaxDl1=0 -DPOP_CNT_MAX_IS_KING -DcnBitsInD1=6 \
+-DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DcnListPopCntMaxDl1=0 -DNO_EMBED_KEYS -DcnBitsInD1=6 -DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DcnListPopCntMaxDl1=0 -DPOP_CNT_MAX_IS_KING -DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DcnListPopCntMaxDl1=0 -DNO_EMBED_KEYS -DDEBUG" \
+     make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DCHECK_TYPE_FOR_EBM -DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD1=6 \
+-DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DcnListPopCntMaxDl1=0 -DPOP_CNT_MAX_IS_KING -DcnBitsInD1=6 \
+-DAUGMENT_TYPE_8_PLUS_4 -DNO_UNPACK_BM_VALUES -DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
 && : "_LNX is default for JudyL" \
 && DEFINES="-DDEBUG -D_LNX" make clean default \
 && ${REGRESS} \
