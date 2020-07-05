@@ -2771,7 +2771,7 @@ embeddedKeys:;
                 }
             }
       #endif // PSPLIT_PARALLEL
-      #if UA_PARALLEL_128
+      #ifdef UA_PARALLEL_128
             if (nType == T_LIST_UA) {
                 assert(nBLR == 16);
                 assert(wPopCnt <= 6);

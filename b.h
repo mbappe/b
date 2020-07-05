@@ -6707,6 +6707,8 @@ EmbeddedListMagic(Word_t wRoot, Word_t wKey, int nBL)
     return (wXor - wLsbs) & ~wXor & wMsbs; // wMagic
 }
 
+#if cnBitsPerWord > 32
+
 static uint64_t // bool
 EmbeddedListHasKey8(Word_t wRoot, Word_t wKey)
 {
@@ -6750,6 +6752,8 @@ EmbeddedListHasKey56(Word_t wRoot, Word_t wKey)
 {
     return (wRoot >> 8) == (wKey & MSK(56));
 }
+
+#endif // cnBitsPerWord > 32
 
 static int // bool
 EmbeddedListHasKey(Word_t wRoot, Word_t wKey, int nBL)
