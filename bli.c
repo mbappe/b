@@ -3024,14 +3024,12 @@ t_xx_list:
                 DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
                              nPos,
                              &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
-                Word_t* pwVal =
+                return
               #ifndef PACK_L1_VALUES
                     ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1))
                         ? &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))] :
               #endif // #ifndef PACK_L1_VALUES
                           &gpwValues(qy)[~nPos];
-                IF_NOT_NEXT(return pwVal);
-                IF_NEXT(*ppwVal = pwVal; return Success);
           #else // B_JUDYL
                 // Success for Lookup and Remove; Failure for Insert
                 return KeyFound;
@@ -3062,14 +3060,15 @@ t_xx_list:
                             *pwKey = pwKeys[~nPos];
                         }
           #ifdef B_JUDYL
-                        *ppwVal =
+                        return
               #ifndef PACK_L1_VALUES
                             ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1))
                                 ? &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))] :
               #endif // #ifndef PACK_L1_VALUES
                                   &gpwValues(qy)[nPos];
-          #endif // B_JUDYL
+          #else // B_JUDYL
                         return Success;
+          #endif // B_JUDYL else
                     }
                 }
                 // Get tryNextDigit to skip over aliases?

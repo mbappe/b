@@ -5958,9 +5958,9 @@ ListHasKey16Ua(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
 //
 //   8 < nBL <= 16, nPopCnt <= 6
 static int
-ListHasKey1696(Word_t *pwRoot, Word_t *pwr, Word_t wKey, int nBL)
+ListHasKey1696(qp, int nBLR, Word_t wKey)
 {
-    (void)nBL; (void)pwRoot;
+    qv; (void)nBLR;
 
     assert(nBL >   8);
     assert(nBL <= 16);
