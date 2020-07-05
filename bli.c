@@ -4438,7 +4438,7 @@ tryNextDigit:;
             goto restart; // restart at top with this new wKey
         }
     }
-    return Failure;
+    return BJL(NULL)BJ1(Failure);
   #endif // NEXT
   #ifdef COUNT
     DBGC(printf("done wPopCntSum " OWx"\n", wPopCntSum));
@@ -4610,11 +4610,11 @@ restart:;
       #endif // !defined(RECURSIVE)
   #endif // INSERT || REMOVE || NEXT
     }
-  #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
+  #if (defined(LOOKUP) || defined(INSERT) || defined(NEXT)) && defined(B_JUDYL)
     return NULL;
-  #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
+  #else // (LOOKUP || INSERT || NEXT) && B_JUDYL
     return Failure;
-  #endif // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
+  #endif // (LOOKUP || INSERT || NEXT) && B_JUDYL else
   #if defined(INSERT) || defined(REMOVE)
       #if defined(REMOVE)
 removeGutsAndCleanup:;
