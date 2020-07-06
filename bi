@@ -20,6 +20,30 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 && : "_RETURN_NULL_TO_INSERT_AGAIN is default for JudyL" \
 && DEFINES="-DDEBUG -D_RETURN_NULL_TO_INSERT_AGAIN" make clean default \
 && ${REGRESS} \
+&& : "_RETURN_NULL_TO_INSERT_AGAIN is default for JudyL" \
+&& DEFINES="-DDEBUG -D_RETURN_NULL_TO_INSERT_AGAIN" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DcnListPopCntMaxDl1=0 -DPOP_CNT_MAX_IS_KING -DcnBitsInD1=6 \
+-DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DcnListPopCntMaxDl1=0 -DNO_EMBED_KEYS -DcnBitsInD1=6 -DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DcnListPopCntMaxDl1=0 -DPOP_CNT_MAX_IS_KING -DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DcnListPopCntMaxDl1=0 -DNO_EMBED_KEYS -DDEBUG" \
+     make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DCHECK_TYPE_FOR_EBM -DAUGMENT_TYPE_8_PLUS_4 -DcnBitsInD1=6 \
+-DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DcnListPopCntMaxDl1=0 -DPOP_CNT_MAX_IS_KING -DcnBitsInD1=6 \
+-DAUGMENT_TYPE_8_PLUS_4 -DNO_UNPACK_BM_VALUES -DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
 && : "_LNX is default for JudyL" \
 && DEFINES="-DDEBUG -D_LNX" make clean default \
 && ${REGRESS} \
@@ -96,9 +120,9 @@ done
 && ${REGRESS} \
 && DEFINES="-DBM_IN_LINK -DDEBUG" make clean default \
 && ${REGRESS} \
-&& NO_SM=1 make clean default \
+&& DEFINES=-DSEARCHMETRICS make clean default \
 && ${REGRESS} \
-&& NO_SM=1 NO_RM=1 make clean default \
+&& DEFINES="-URAMMETRICS -DSEARCHMETRICS" make clean default \
 && ${REGRESS} \
 && DEFINES="-DUSE_XX_SW_ONLY_AT_DL2 -DcnListPopCntMax64=64 -DDEBUG" \
    make clean default \
@@ -187,8 +211,8 @@ done
    make clean default \
 && ${REGRESS} \
 && DEFINES="-DDEBUG_ALL" make clean default \
-&& NO_SM=1 DEFINES="-DDEBUG_ALL" make clean default \
-&& NO_SM=1 NO_RM=1 DEFINES="-DDEBUG_ALL" make clean default \
+&& DEFINES="-DSEARCHMETRICS -DDEBUG_ALL" make clean default \
+&& DEFINES="-URAMMETRICS -DSEARCHMETRICS -DDEBUG_ALL" make clean default \
 && BPW=32 DEFINES="-DDEFAULT_SKIP_TO_SW -DDEBUG" make clean default \
 && BPW=32 DEFINES="-DALL_SKIP_TO_SW_CASES -DDEBUG_ALL" make clean default \
 && :
@@ -238,15 +262,14 @@ done
 
 #BPW=32 make clean default
 #CC=clang make clean default
-#NO_RM=0 make clean default
-#NO_SM=0 make clean default
+#DEFINES=-URAMMETRICS make clean default
+#DEFINES=-DSEARCHMETRICS make clean default
 #DEFINES=-DDEBUG_ALL make clean default
 #DEFINES=-DLVL_IN_PP make clean default
 #DEFINES=-DPP_IN_LINK make clean default
 #DEFINES=-DNO_SKIP_LINKS make clean default
 #BPW=32 CC=clang DEFINES="-DDEBUG -DNO_SKIP_LINKS" make clean default
-
-#BPW=32 NO_SM=1 DEFINES="-DDEBUG -UNO_BITMAP" make clean default
+#BPW=32 DEFINES="-DSEARCHMETRICS -DDEBUG -UNO_BITMAP" make clean default
 #trap 'if [ $? -eq 0 ]; then exit 0; else exit 1; fi' EXIT
 #${REGRESS}32-6fd7cd
 

@@ -234,6 +234,52 @@
   #endif // #ifndef NO_PF_EK_XV_2
 #endif // EK_XV
 
+#ifdef AUGMENT_TYPE_8_PLUS_4
+  #if cnBitsPerDigit == 8
+  #if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+    #pragma message("AUGMENT_TYPE_8_PLUS_4 is not needed.")
+  #endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+  #endif // cnBitsPerDigit == 8
+  #undef  AUGMENT_TYPE_8
+  #define AUGMENT_TYPE_8
+#endif // AUGMENT_TYPE_8_PLUS_4
+
+// Default is AUGMENT_TYPE_8.
+// It seems to shine for Time -LmeB31.
+#if cnBitsPerDigit == 8
+#if cnBitsPerWord > 32
+#ifndef USE_XX_SW
+#ifndef DOUBLE_DOWN
+#ifndef USE_LOWER_XX_SW
+#ifndef USE_XX_SW_ONLY_AT_DL2
+#ifndef XX_LISTS
+#ifdef COMPRESSED_LISTS
+  #if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+  #ifndef    NO_AUGMENT_TYPE
+    #undef      AUGMENT_TYPE_8
+    #define     AUGMENT_TYPE_8
+  #endif // !NO_AUGMENT_TYPE
+  #endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
+  #ifndef AUGMENT_TYPE_8
+  #ifndef NO_AUGMENT_TYPE
+#pragma message("Warning: no default AUGMENT_TYPE_8 without all 8-bit digits.")
+  #endif // !NO_AUGMENT_TYPE
+  #endif // !AUGMENT_TYPE_8
+#endif // COMPRESSED_LISTS
+#endif // !XX_LISTS
+#endif // !USE_XX_SW_ONLY_AT_DL2
+#endif // !USE_LOWER_XX_SW
+#endif // !DOUBLE_DOWN
+#endif // !USE_XX_SW
+#endif // cnBitsPerWord > 32
+#endif // cnBitsPerDigit == 8
+
+#ifdef AUG_TYPE_8_SW_NEXT
+#ifndef AUGMENT_TYPE_8
+  #error Cannot have AUG_TYPE_8_SW_NEXT without AUGMENT_TYPE_8.
+#endif // !AUGMENT_TYPE_8
+#endif // AUG_TYPE_8_SW_NEXT
+
 #ifdef B_JUDYL
 #ifndef    NO_SW_POP_IN_LNX
   #undef      SW_POP_IN_LNX
@@ -554,7 +600,7 @@
 // Default is -DNDEBUG -UDEBUG_ALL -UDEBUG
 // -UDEBUG_INSERT -UDEBUG_REMOVE -UDEBUG_LOOKUP -UDEBUG_MALLOC
 // -UDEBUG_COUNT -UDEBUG_NEXT
-#if defined(DEBUG_ALL)
+#ifdef DEBUG_ALL
     #undef   DEBUG_ASSERT
     #define  DEBUG_ASSERT
 //  #undef   DEBUG_LOOKUP
@@ -723,20 +769,6 @@
   #define  OLD_HK_64
 #endif // #ifndef NO_OLD_HK_64
 
-#ifdef AUG_TYPE_8_SW_NEXT
-  #undef  AUGMENT_TYPE_8
-  #define AUGMENT_TYPE_8
-#endif // AUG_TYPE_8_SW_NEXT
-
-#ifdef AUGMENT_TYPE_8_PLUS_4
-  #if cnBitsPerDigit == 8
-  #if cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
-    #pragma message("AUGMENT_TYPE_8_PLUS_4 is not needed.")
-  #endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
-  #endif // cnBitsPerDigit == 8
-  #undef  AUGMENT_TYPE_8
-  #define AUGMENT_TYPE_8
-#endif // AUGMENT_TYPE_8_PLUS_4
 #ifdef AUGMENT_TYPE_8
   #undef  AUGMENT_TYPE
   #define AUGMENT_TYPE
@@ -816,6 +848,42 @@
   #undef  NO_EK_CALC_POP
   #define NO_EK_CALC_POP
 #endif // REVERSE_SORT_EMBEDDED_KEYS
+
+#ifndef B_JUDYL
+  #undef    PACK_BM_VALUES
+  #undef NO_PACK_BM_VALUES
+  #undef    UNPACK_BM_VALUES
+  #undef NO_UNPACK_BM_VALUES
+#endif // !B_JUDYL
+
+#ifdef DSMETRICS_HITS
+  #ifdef DSMETRICS_NHITS
+    #error DSMETRICS_HITS and DSMETRICS_NHITS are mutually exclusive.
+  #endif // DSMETRICS_NHITS
+  #undef  DSMETRICS_GETS
+  #define DSMETRICS_GETS
+#endif // DSMETRICS_HITS
+
+#ifdef DSMETRICS_NHITS
+  #undef  DSMETRICS_GETS
+  #define DSMETRICS_GETS
+#endif // DSMETRICS_NHITS
+
+#ifdef DSMETRICS_GETS
+  #undef  SEARCHMETRICS
+  #define SEARCHMETRICS
+#endif // DSMETRICS_GETS
+
+#ifdef SEARCHMETRICS
+  #ifndef NO_SMETRICS_HITS
+    #undef  SMETRICS_HITS
+    #define SMETRICS_HITS
+  #endif // !NO_SMETRICS_HITS
+  // Default is no SMETRICS_SEARCH_POP
+  // Default is no SMETRICS_MISCOMPARES
+  // Default is no SMETRICS_EK
+  // Default is no SMETRICS_UNPACKED_BM
+#endif // SEARCHMETRICS
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 
