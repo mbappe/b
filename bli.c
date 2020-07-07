@@ -4125,7 +4125,8 @@ break2:;
         switch (nBL)
   #endif
         {
-                                                  CASE_BLX( 8); CASE_BLX( 9);
+                      CASE_BLX( 1); CASE_BLX( 2); CASE_BLX( 3); CASE_BLX( 4);
+        CASE_BLX( 5); CASE_BLX( 6); CASE_BLX( 7); CASE_BLX( 8); CASE_BLX( 9);
         CASE_BLX(10); CASE_BLX(11); CASE_BLX(12); CASE_BLX(13); CASE_BLX(14);
         CASE_BLX(15); //default:
                       CASE_BLX(16); CASE_BLX(17); CASE_BLX(18); CASE_BLX(19);
