@@ -1,26 +1,20 @@
-// This file is #included in other .c files four times.
-// Once with #define LOOKUP and #undef INSERT, REMOVE and COUNT .
-// Once with #define INSERT and #undef LOOKUP, REMOVE and COUNT .
-// Once with #define REMOVE and #undef LOOKUP, INSERT and COUNT .
-// Once with #define COUNT  and #undef LOOKUP, INSERT and REMOVE.
-
-//#include <emmintrin.h>
-//#include <smmintrin.h>
-#include <immintrin.h> // __m128i
+// This file is #included in multiple .c files.
+// With exactly one of LOOKUP, INSERT, REMOVE, COUNT and NEXT defined.
+// It is not compiled on its own, i.e. without a wrapper.
 
 #if (cnDigitsPerWord <= 1)
+
 //#if (cnBitsPerDigit < cnBitsPerWord)
 //#if (cnBitsInD1 < cnBitsPerWord)
 // One big bitmap is implemented completely in Judy1Test, Judy1Set
 // and Judy1Unset.  There is no need for Lookup, Insert and Remove.
 #else // (cnDigitsPerWord <= 1)
 
-static void
-Checkpoint(qpa, const char *str)
-{
-    qva;
-    printf("# %20s: " qafmt "\n", str, qyap);
-}
+#if defined(NEW_NEXT) || !defined(NEXT)
+
+//#include <emmintrin.h>
+//#include <smmintrin.h>
+#include <immintrin.h> // __m128i
 
   #if defined(COUNT)
 // Return the total number of keys in the subtrees rooted by links that
@@ -181,6 +175,7 @@ PrefixMismatch(qp,
     // Caller can figure out how wPrefix compares to (wKey & ~MSK(nBLR)).
     wPrefixMismatch = (wKey - wPrefix) >> nBLR;
 
+    //printf("wKey 0x%zx wPrefix 0x%zx nBLR %d\n", wKey, wPrefix, nBLR);
     if (wPrefixMismatch != 0) {
         DBGX(printf("PM: wKey " OWx" wPrefix " OWx" nBL %d nBLR %d\n",
                     wKey, wPrefix, nBL, nBLR));
@@ -416,7 +411,29 @@ SwAdvance(pqpa,
 }
 
 #ifdef SKIP_PREFIX_CHECK
-#ifdef LOOKUP
+#if defined(COMPRESSED_LISTS) || defined(BITMAP) // should be implied
+#ifdef LOOKUP // should be implied
+
+    #define _DO_PREFIX_CHECK_AT_LEAF
+
+  #ifdef ALWAYS_CHECK_PREFIX_AT_LEAF
+#define _B_NEED_PREFIX_CHECK_ARG
+  #else // ALWAYS_CHECK_PREFIX_AT_LEAF
+#define _B_NEED_PREFIX_CHECK_ARG  , bNeedPrefixCheck
+  #endif // ALWAYS_CHECK_PREFIX_AT_LEAF else
+
+  #ifdef SAVE_PREFIX_TEST_RESULT
+#define _SAVED_PREFIX_TEST_RESULT_ARG  , wPrefixMismatch
+  #else // SAVE_PREFIX_TEST_RESULT
+#define _SAVED_PREFIX_TEST_RESULT_ARG  , pwrUp
+  #endif // SAVE_PREFIX_TEST_RESULT else
+
+  #ifdef SAVE_PREFIX
+#define _SAVED_PREFIX_ARGS  , pLnPrefix, pwrPrefix, nBLRPrefix
+  #else // SAVE_PREFIX
+#define _SAVED_PREFIX_ARGS
+  #endif // SAVE_PREFIX else
+
 static inline Status_t
 PrefixCheckAtLeaf(qp, Word_t wKey
   #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
@@ -476,11 +493,29 @@ PrefixCheckAtLeaf(qp, Word_t wKey
     }
     return Failure;
 }
+
 #endif // LOOKUP
+#endif // COMPRESSED_LISTS || BITMAP
 #endif // SKIP_PREFIX_CHECK
 
-#ifdef AUGMENT_TYPE
-#ifdef LOOKUP
+#ifdef _DO_PREFIX_CHECK_AT_LEAF
+    #define PREFIX_CHECK_AT_LEAF(qy, _wKey) \
+        PrefixCheckAtLeaf(qy, _wKey \
+                          _B_NEED_PREFIX_CHECK_ARG \
+                          _SAVED_PREFIX_TEST_RESULT_ARG \
+                          _SAVED_PREFIX_ARGS \
+                          )
+#else // _DO_PREFIX_CHECK_AT_LEAF
+    #define PREFIX_CHECK_AT_LEAF(qy, _wKey)  Success
+#endif // _DO_PREFIX_CHECK_AT_LEAF else
+
+#if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+    #define _AUG_TYPE_8_SW
+#elif defined(AUG_TYPE_8_SW_NEXT) && defined(NEXT)
+    #define _AUG_TYPE_8_SW
+#endif // AUGMENT_TYPE_8 && LOOKUP elif AUG_TYPE_8_SW_NEXT && NEXT
+
+#if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
 
 static int
 AugTypeBits(int nBL)
@@ -562,8 +597,7 @@ AugTypeBitsInv(int nAugTypeBits)
   #endif // else AUGMENT_TYPE_8
 }
 
-#endif // LOOKUP
-#endif // AUGMENT_TYPE
+#endif // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
 
 #if (cwListPopCntMax != 0)
   // _T_LIST indicates t_list label is needed.
@@ -571,6 +605,8 @@ AugTypeBitsInv(int nAugTypeBits)
   #if cnBitsInD1 <= 8 || !defined(LOOKUP)
      #define _T_LIST
   #elif !defined(AUGMENT_TYPE) || defined(AUGMENT_TYPE_8_PLUS_4)
+     #define _T_LIST
+  #elif defined(AUG_TYPE_8_SW_NEXT) && defined(NEXT)
      #define _T_LIST
   #endif // cnBitsInD1 <= 8 || !AUG_TYPE || AUG_TYPE_8_PLUS_4 || !LOOKUP
 #endif // (cwListPopCntMax != 0)
@@ -741,66 +777,122 @@ AugTypeBitsInv(int nAugTypeBits)
 #define WROOT_IS_NULL(_nType, _wRoot) \
         ((wr_nType(WROOT_NULL) == (_nType)) && ((_wRoot) == WROOT_NULL))
 
-  #if defined(LOOKUP)
-      #ifdef B_JUDYL
-static Word_t *
-      #else // B_JUDYL
-static Status_t
-      #endif // B_JUDYL
-Lookup(Word_t wRoot, Word_t wKey)
-  #else // defined(LOOKUP)
-      #if defined(COUNT)
-Word_t
-      #elif defined(INSERT) && defined(B_JUDYL)
-Word_t *
-      #else // defined(COUNT) elif defined(INSERT) && defined(JUDYL)
-Status_t
-      #endif // defined(COUNT)
-      #ifdef B_JUDYL
-InsertRemoveL(qpa, Word_t wKey)
-      #else // B_JUDYL
-InsertRemove1(qpa, Word_t wKey)
-      #endif // B_JUDYL
-  #endif // defined(LOOKUP)
-{ 
-    IF_NOT_LOOKUP(qva);
-  #ifdef LOOKUP
+#ifndef LOOKUP
+  #define _USE_SEARCH_LIST
+#elif defined(B_JUDYL)
+  #ifdef HASKEY_FOR_JUDYL_LOOKUP
+#define _USE_HAS_KEY
+  #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
+#define _USE_SEARCH_LIST
+  #else // HASKEY_FOR_JUDYL_LOOKUP elif SEARCH_FOR_JUDYL_LOOKUP
+#define _USE_LOCATE_KEY
+  #endif // HASKEY_FOR_JUDYL_LOOKUP elif SEARCH_FOR_JUDYL_LOOKUP else
+#else // LOOKUP elif B_JUDYL
+  #ifdef SEARCH_FOR_JUDY1_LOOKUP
+#define _USE_SEARCH_LIST
+  #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
+#define _USE_LOCATE_KEY
+  #else // SEARCH_FOR_JUDY1_LOOKUP elif LOCATEKEY_FOR_JUDY1_LOOKUP
+#define _USE_HAS_KEY
+  #endif // SEARCH_FOR_JUDY1_LOOKUP elif LOCATEKEY_FOR_JUDY1_LOOKUP else
+#endif // LOOKUP elif B_JUDYL else
+
+#if defined(LOOKUP_NO_LIST_SEARCH) && defined(LOOKUP)
+  #define SEARCH_LIST(_suffix, qy, _nBLR, _wKey)  0
+#elif defined(_USE_HAS_KEY) // LOOKUP_NO_LIST_SEARCH && LOOKUP
+  #define SEARCH_LIST(_suffix, qy, _nBLR, _wKey) \
+    -!ListHasKey##_suffix(qy, nBLR, wKey)
+#elif defined(_USE_LOCATE_KEY) // no-search elif _USE_HAS_KEY
+  #define SEARCH_LIST(_suffix, qy, _nBLR, _wKey) \
+    LocateKeyInList##_suffix(qy, nBLR, wKey)
+#else // no-search elif _USE_HAS_KEY elif _USE_LOCATE_KEY
+  #define SEARCH_LIST(_suffix, qy, _nBLR, _wKey) \
+    SearchList##_suffix(qy, nBLR, wKey)
+#endif // no-search elif _USE_HAS_KEY elif _USE_LOCATE_KEY else
+
+IF_LOOKUP(static BJL(Word_t*)BJ1(Status_t) Lookup(Word_t wRootArg,
+                                                   Word_t wKey))
+#ifdef NEXT_QPA
+IF_NEXT(static inline BJL(Word_t*)BJ1(Status_t) Next(qpa, Word_t* pwKey))
+#elif defined(NEXT_QP) // NEXT_QPA
+IF_NEXT(static inline BJL(Word_t*)BJ1(Status_t) Next(qp, Word_t* pwKey))
+#else // NEXT_QPA elif NEXT_QP
+IF_NEXT(static inline BJL(Word_t*)BJ1(Status_t) Next(Word_t wRootArg,
+                                                     Word_t* pwKey))
+#endif // NEXT_QPA elif NEXT_QP else
+IF_INSERT(       BJL(Word_t*)BJ1(Status_t) Insert(qpa, Word_t wKey))
+IF_REMOVE(                       Status_t  Remove(qpa, Word_t wKey))
+IF_COUNT (                       Word_t    Count (qpa, Word_t wKey))
+#ifdef NEW_NEXT_IS_EXCLUSIVE
+// Find the first present key greater than *pwKey.
+#else // NEW_NEXT_IS_EXCLUSIVE
+// Find the first present key greater than or equal to *pwKey.
+#endif // NEW_NEXT_IS_EXCLUSIVE else
+// If such a key exists, then set *pwKey and return Success.
+// Otherwise return Failure.
+// NextL should return pwValue.
+// "inline" makes a difference.
+{
+    IF_NOT_LOOKUP(IF_NOT_NEXT(qva));
+  #if defined(NEXT_QPA) && defined(NEXT)
+    qva;
+  #elif defined(NEXT_QP) && defined(NEXT) // NEXT_QPA && NEXT
+    qv;
+      #ifdef _LNX
+    Word_t* pwLnX = NULL; // (void)pwLnX;
+      #endif // _LNX
+  #elif defined(NEXT) // NEXT_QPA && NEXT elif NEXT_QP && NEXT
+    #define _NEXT_WROOT
+  #endif // NEXT_QPA && NEXT elif NEXT_QP && NEXT elif NEXT
+  #if defined(LOOKUP) || defined(_NEXT_WROOT)
     int nBL = cnBitsPerWord;
+    Word_t wRoot = wRootArg;
     // Only wRoot word of pLn at top.
-    Link_t *pLn = STRUCT_OF(&wRoot, Link_t, ln_wRoot);
+    Link_t* pLn = STRUCT_OF(&wRootArg, Link_t, ln_wRoot); // (void)pLn;
       #ifndef QP_PLN
-    Word_t* pwRoot = &wRoot;
+    Word_t* pwRoot = &wRootArg; // (void)pwRoot;
       #endif // !QP_PLN
       #ifdef _LNX
-    Word_t* pwLnX = NULL;
+    Word_t* pwLnX = NULL; // (void)pwLnX;
       #endif // _LNX
-  #endif // LOOKUP
+    // nBL, pLn and wRoot of qy are set up
+    int nType;
+    DBGX(nType = -1); // for compiler for qv in Checkpoint
+    Word_t *pwr;
+    DBGX(pwr = NULL); // for compiler for qv in Checkpoint
+  #endif // LOOKUP || _NEXT_WROOT
+  #ifdef NEXT
+    Word_t wKey = *pwKey;
+      #ifdef NEW_NEXT_IS_EXCLUSIVE
+    if (++wKey == 0) {
+        return 0;
+    }
+      #endif // NEW_NEXT_IS_EXCLUSIVE
+  #endif // NEXT
   #ifndef RECURSIVE
   #ifndef LOOKUP
   #ifndef COUNT
-    Link_t *pLnOrig = pLn; (void)pLnOrig;
     int nBLOrig = nBL; (void)nBLOrig;
-  #endif // !COUNT
+    Link_t *pLnOrig = pLn; (void)pLnOrig;
   #endif // !LOOKUP
+  #endif // !COUNT
   #endif // !RECURSIVE
     // nBL, pLn, and wRoot are set up
     DBGX(printf("# %s nBL %d pLn %p wRoot 0x%zx wKey 0x%zx\n",
                 strLookupOrInsertOrRemove, nBL, (void*)pLn, wRoot, wKey));
-
   #if defined(INSERT) && defined(B_JUDYL)
     Word_t *pwValue = NULL;
   #endif // INSERT && B_JUDYL
-
-    int nBW;
+    // gcc thinks nBW may be used uninitialized in tryNextDigit
+    // for USE_XX_SW if we don't initialize it here. I can't figure out why.
+    int nBW = 0;
     Link_t *pLnNew;
-
     // wDigit needs this broad scope only for COUNT.
     // I wonder if it would help performance if we were to define this
     // in the narrower scope for LOOKUP?
     // In the one quick test I did I saw no performance difference.
     // Maybe we should revisit occasionally.
     Word_t wDigit;
-
     int nIncr; (void)nIncr;
   #ifndef RECURSIVE
       #ifdef INSERT
@@ -815,6 +907,8 @@ InsertRemove1(qpa, Word_t wKey)
     // I think it will eventually be used for REMOVE.
     int nBLUp = 0; (void)nBLUp; // silence gcc
     Link_t *pLnUp = NULL; (void)pLnUp;
+    // gcc thinks we use nBLRUp uninitialized unless we initialize it here.
+    IF_NEXT(int nBLRUp = 0); // valid only if nBLUp != 0
       #ifdef _LNX
     Word_t* pwLnXUp = NULL; (void)pwLnXUp;
       #endif // _LNX
@@ -839,9 +933,9 @@ InsertRemove1(qpa, Word_t wKey)
          pwLnX = &pLn->ln_wX;
     }
       #endif // REMOTE_LNX else
-      #if defined(INSERT) || defined(REMOVE)
-    Word_t* pwLnXOrig = pwLnX;
-      #endif // INSERT || REMOVE
+      #if defined(INSERT) || defined(REMOVE) || defined(NEXT)
+    Word_t* pwLnXOrig = pwLnX; (void)pwLnXOrig;
+      #endif // INSERT || REMOVE || NEXT
   #endif // _LNX
   #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
     Word_t *pwrUp = pwrUp; // suppress "uninitialized" compiler warning
@@ -856,38 +950,35 @@ InsertRemove1(qpa, Word_t wKey)
     // Cleanup is expensive. So we only do it if it has been requested.
     int bCleanupRequested = 0; (void)bCleanupRequested;
     int bCleanup = 0; (void)bCleanup;
-  #ifdef LOOKUP
-    // nBL, pLn and wRoot of qy are set up
-    int nType;
-    DBGX(nType = -1); // for compiler for qv in Log
-    Word_t *pwr;
-    DBGX(pwr = NULL); // for compiler for qv in Log
-  #endif // LOOKUP
     int nBLR;
-  #if !defined(LOOKUP) || defined(B_JUDYL)
-    int nPos;
-  #endif // !LOOKUP || B_JUDYL
-  #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
+    int nPos; (void)nPos; // (void) is for Judy1 LOOKKUP turn-on
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
+  #ifndef AUGMENT_TYPE_NOT
     int nAugTypeBits;
-  #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT && LOOKUP
+  #endif // !AUGMENT_TYPE_NOT
+  #endif // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
   #ifdef GOTO_AT_FIRST_IN_LOOKUP
   #ifdef SKIP_LINKS
-  #ifdef LOOKUP
-    // This shortcut made the code faster in my testing.
+  #if defined(LOOKUP) // || defined(NEXT)
+    // This shortcut made LOOKUP faster in my original testing.
+    // It make NEXT a lot slower just after splay.
+    // I don't know why.
     nType = wr_nType(wRoot);
     pwr = wr_pwr(wRoot);
     // nBL, pLn, wRoot, nType and pwr of qy are set up
-    if (nType > T_SWITCH) {
+    if (nType >= T_SKIP_TO_SWITCH) { // What about T_SKIP_TO_??_SW?
         DBGX(Checkpoint(qya, "goto skip_to_sw"));
         goto t_skip_to_switch;
     }
     // This shortcut made the code faster in my testing.
     nBLR = nBL;
-  #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
+      #if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
+      #ifndef AUGMENT_TYPE_NOT
     nAugTypeBits = AugTypeBits(nBL);
-  #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT && LOOKUP
+      #endif // !AUGMENT_TYPE_NOT
+      #endif // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
     goto fastAgain;
-  #endif // LOOKUP
+  #endif // LOOKUP || NEXT
   #endif // SKIP_LINKS
   #endif // GOTO_AT_FIRST_IN_LOOKUP
   #if !defined(LOOKUP) || defined(B_JUDYL)
@@ -897,24 +988,26 @@ InsertRemove1(qpa, Word_t wKey)
     int bLinkPresent;
     int nLinks;
   #endif // COUNT
-  #if defined(INSERT) || defined(REMOVE)
+  #if defined(INSERT) || defined(REMOVE) || defined(NEXT)
   #ifndef RECURSIVE
     goto top;
     DBGX(Checkpoint(qya, "top"));
 top:;
   #endif // !RECURSIVE
-  #endif // INSERT || REMOVE
+  #endif // INSERT || REMOVE || NEXT
     nBLR = nBL;
   #if defined(LOOKUP) || !defined(RECURSIVE)
     goto again;
     DBGX(Checkpoint(qya, "again"));
 again:;
   #endif // LOOKUP || !RECURSIVE
-  #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
+  #ifndef AUGMENT_TYPE_NOT
     nAugTypeBits = AugTypeBits(nBL);
     goto againAugType;
 againAugType:;
-  #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT && LOOKUP
+  #endif // !AUGMENT_TYPE_NOT
+  #endif // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
   #ifdef SKIP_LINKS
     assert(nBLR == nBL);
   #endif // SKIP_LINKS
@@ -923,15 +1016,14 @@ againAugType:;
     assert(nBL >= cnBitsInD1); // valid for LOOKUP too
   #endif // !CODE_XX_SW
   #endif // !LOOKUP
-  #ifdef INSERT
-  #ifdef _RETURN_NULL_TO_INSERT_AGAIN
+  #if defined(INSERT) && defined(_RETURN_NULL_TO_INSERT_AGAIN) || defined(NEXT)
 insertAgain:
-  #endif // _RETURN_NULL_TO_INSERT_AGAIN
-  #endif // INSERT
+  #endif // INSERT && _RETURN_NULL_TO_INSERT_AGAIN || NEXT
     nType = wr_nType(wRoot);
     pwr = wr_pwr(wRoot); // pwr isn't meaningful for all nType values
     // nBL, pLn, wRoot, nType and pwr of qy are set up
     DBGX(Checkpoint(qya, "enter switch stmt"));
+    DBGX(printf("# wKey 0x%zx\n", wKey));
     goto fastAgain;
 fastAgain:;
   #ifdef JUMP_TABLE
@@ -954,8 +1046,8 @@ fastAgain:;
             [80 ] = JT_ENTRIES,
             [96 ] = JT_ENTRIES,
             [112] = JT_ENTRIES,
-      #ifdef LOOKUP
       #ifdef AUGMENT_TYPE
+      #ifdef LOOKUP
             [16 + T_LIST] = LIST_COMMA(&&t_list16)
           #if cn2dBmMaxWpkPercent != 0
             [16 + T_BITMAP] = &&t_bm_plus_16,
@@ -975,8 +1067,18 @@ fastAgain:;
             [112 + T_LIST] = LIST_COMMA(&&t_list112)
             [112 + T_SWITCH] = &&t_sw_plus_112,
           #endif // AUGMENT_TYPE_8
+      #elif defined(NEXT)
+          #ifdef AUG_TYPE_8_SW_NEXT
+            [16 + T_SWITCH] = &&t_sw_plus_16,
+            [32 + T_SWITCH] = &&t_sw_plus_32,
+            [48 + T_SWITCH] = &&t_sw_plus_48,
+            [64 + T_SWITCH] = &&t_sw_plus_64,
+            [80 + T_SWITCH] = &&t_sw_plus_80,
+            [96 + T_SWITCH] = &&t_sw_plus_96,
+            [112 + T_SWITCH] = &&t_sw_plus_112,
+          #endif // AUG_TYPE_8_SW_NEXT
+      #endif // LOOKUP elif NEXT
       #endif // AUGMENT_TYPE
-      #endif // LOOKUP
     };
   #endif // JUMP_TABLE
   // AUGMENT_TYPE_NOT means create jump table entries or switch table cases
@@ -989,11 +1091,11 @@ fastAgain:;
   // AUGMENT_TYPE without AUGMENT_TYPE_8 has four different nBL groups:
   // 5-8, 9-16, 17-32, 33-64. 0-4 does not work.
     // AUGMENTED_TYPE
-  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
     #define AUGMENTED_TYPE  (nAugTypeBits | nType)
-  #else // AUGMENT_TYPE && LOOKUP
+  #else // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
     #define AUGMENTED_TYPE  nType
-  #endif // AUGMENT_TYPE && LOOKUP else
+  #endif // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW else
     // MASKED_AUGMENTED_TYPE
   // MASK_TYPE serves no purpose for JUMP_TABLE.
   // We have it to help gauge cost when doing it for !JUMP_TABLE.
@@ -1026,26 +1128,28 @@ fastAgain:;
   #ifndef DEFAULT_LIST
   #ifndef DEFAULT_BITMAP
   #if !defined(SKIP_LINKS) || !defined(ALL_SKIP_TO_SW_CASES)
-    default: DBG(printf("unknown type %d nBL %d\n", nType, nBL)); assert(0);
+    default:
+        DBG(printf("unknown type %d nBL %d wRoot 0x%zx\n", nType, nBL, wRoot));
+        assert(0);
   #endif // !defined(SKIP_LINKS) || !defined(ALL_SKIP_TO_SW_CASES)
   #endif // DEFAULT_BITMAP
   #endif // DEFAULT_LIST
   #endif // DEFAULT_SWITCH
   #endif // DEFAULT_SKIP_TO_SW
   #endif // DEBUG
-  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
     #define CASES_AUG_TYPE_8(_t) \
         case 112 + (_t): case 96 + (_t): case 80 + (_t): case 64 + (_t):
-  #else // AUGMENT_TYPE_8 && LOOKUP
+  #else // AUGMENT_TYPE_8 && LOOKUP || _AUG_TYPE_8_SW
     #define CASES_AUG_TYPE_8(_t)
   #endif // AUGMENT_TYPE_8 && LOOKUP
-  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
     #define CASES_AUG_TYPE(_t) \
         CASES_AUG_TYPE_8(_t) \
         case 48 + (_t): case 32 + (_t): case 16 + (_t):
-  #else // AUGMENT_TYPE && LOOKUP
+  #else // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
     #define CASES_AUG_TYPE(_t)
-  #endif // AUGMENT_TYPE_8 && LOOKUP
+  #endif // AUGMENT_TYPE_8 && LOOKUP || _AUG_TYPE_8_SW else
   #if defined(DEFAULT_SKIP_TO_SW)
     default:
   #endif // defined(DEFAULT_SKIP_TO_SW)
@@ -1130,22 +1234,24 @@ fastAgain:;
     default:
   #endif // defined(DEFAULT_SWITCH)
   // #ifdef SWITCH
-      #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+      #ifdef _AUG_TYPE_8_SW
     case 112 + T_SWITCH: goto t_sw_plus_112;
     case  96 + T_SWITCH: goto t_sw_plus_96;
     case  80 + T_SWITCH: goto t_sw_plus_80;
     case  64 + T_SWITCH: goto t_sw_plus_64;
-      #endif // AUGMENT_TYPE_8 && LOOKUP
-      #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+      #endif // _AUG_TYPE_8_SW
+      #if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
     case 48 + T_SWITCH: goto t_sw_plus_48;
     case 32 + T_SWITCH: goto t_sw_plus_32;
     case 16 + T_SWITCH: goto t_sw_plus_16;
-      #endif // AUGMENT_TYPE && LOOKUP
+      #endif // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
+      #ifndef _AUG_TYPE_8_SW
       #if !defined(AUGMENT_TYPE) || !defined(LOOKUP)
       #if !defined(DEFAULT_SWITCH) || defined(DEFAULT_AND_CASE)
     case T_SWITCH: // no-skip (aka close) switch (vs. distant switch) w/o bm
       #endif // !DEFAULT_SWITCH || DEFAULT_AND_CASE
       #endif // !AUGMENT_TYPE || !LOOKUP
+      #endif // !_AUG_TYPE_8_SW
       #if !defined(AUGMENT_TYPE) || !defined(LOOKUP) || defined(SKIP_LINKS)
         goto t_switch;
       #endif // !AUGMENT_TYPE || !LOOKUP || SKIP_LINKS
@@ -1207,6 +1313,11 @@ fastAgain:;
     case 32 + T_LIST: goto t_list32;
     case 16 + T_LIST: goto t_list16;
       #endif // AUGMENT_TYPE && LOOKUP
+      #ifdef NEXT
+      #ifdef AUG_TYPE_8_SW_NEXT
+    CASES_AUG_TYPE(T_LIST)
+      #endif // AUG_TYPE_8_SW_NEXT
+      #endif // NEXT
   #endif // (cwListPopCntMax != 0)
   #if defined(DEFAULT_LIST)
     default:
@@ -1344,6 +1455,16 @@ t_skip_to_switch:
                             wPopCnt, wPopCntSum));
             }
           #endif // defined(COUNT)
+          #ifdef NEXT
+            // If we're not past the prefix then advance to it.
+            // If we are past the prefix then advance to the next digit.
+            if (wKey < (wKey - (wPrefixMismatch << nBLR))) {
+                // wPrefixMismatch = (wKey - wPrefix) >> nBLR;
+                wKey &= ~MSK(nBLR);
+                wKey -= (wPrefixMismatch << nBLR);
+                goto restart;
+            }
+          #endif // NEXT
             goto break_from_main_switch;
         }
       #endif // defined(NO_PREFIX_CHECK) && defined(LOOKUP)
@@ -1449,13 +1570,24 @@ t_skip_to_xx_sw:
                             wPopCnt, wPopCntSum));
             }
       #endif // COUNT
+      #ifdef NEXT
+            // If we're not past the prefix then advance to it.
+            // If we are past the prefix then advance to the next digit.
+            if (wKey < (wKey - (wPrefixMismatch << nBLR))) {
+                // wPrefixMismatch = (wKey - wPrefix) >> nBLR;
+                wKey &= ~MSK(nBLR);
+                wKey -= (wPrefixMismatch << nBLR);
+                goto restart;
+            }
+      #endif // NEXT
             goto break_from_main_switch;
         }
         goto t_xx_sw;
     } // end of t_skip_to_xx_sw
   #endif // SKIP_TO_XX_SW
 
-  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
+  #ifdef _AUG_TYPE_8_SW
+
 t_sw_plus_112:
     {
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
@@ -1483,9 +1615,7 @@ t_sw_plus_112:
         nAugTypeBits = AugTypeBits(nBL);
         goto againAugType;
     } // end of t_sw_plus_112
-  #endif // AUGMENT_TYPE_8 && LOOKUP
 
-  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
 t_sw_plus_96:
     {
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
@@ -1513,9 +1643,7 @@ t_sw_plus_96:
         nAugTypeBits = AugTypeBits(nBL);
         goto againAugType;
     } // end of t_sw_plus_96
-  #endif // AUGMENT_TYPE_8 && LOOKUP
 
-  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
 t_sw_plus_80:
     {
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
@@ -1543,9 +1671,7 @@ t_sw_plus_80:
         nAugTypeBits = AugTypeBits(nBL);
         goto againAugType;
     } // end of t_sw_plus_80
-  #endif // AUGMENT_TYPE_8 && LOOKUP
 
-  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP)
 t_sw_plus_64:
     {
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
@@ -1573,9 +1699,11 @@ t_sw_plus_64:
         nAugTypeBits = AugTypeBits(nBL);
         goto againAugType;
     } // end of goto t_sw_plus_64
-  #endif // AUGMENT_TYPE_8 && LOOKUP
 
-  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
+  #endif // _AUG_TYPE_8_SW
+
+  #if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
+
 t_sw_plus_48:
     {
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
@@ -1631,9 +1759,7 @@ t_sw_plus_48:
       #endif // AUGMENT_TYPE_8
         goto againAugType;
     } // end of t_sw_plus_48
-  #endif // AUGMENT_TYPE && LOOKUP
 
-  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
 t_sw_plus_32:
     {
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
@@ -1667,9 +1793,7 @@ t_sw_plus_32:
       #endif // AUGMENT_TYPE_8
         goto againAugType;
     } // end of t_sw_plus_32
-  #endif // AUGMENT_TYPE && LOOKUP
 
-  #if defined(AUGMENT_TYPE) && defined(LOOKUP)
 t_sw_plus_16:
     {
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) { goto break_from_main_switch; }
@@ -1758,14 +1882,14 @@ t_sw_plus_16:
       #endif
         goto againAugType;
     } // end of t_sw_plus_16
-  #endif // AUGMENT_TYPE && LOOKUP
+
+  #endif // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
 
   // #ifdef SWITCH
   #if defined(SKIP_LINKS) || defined(CODE_XX_SW)
     #define _T_SWITCH_TAIL
   #endif // defined(SKIP_LINKS) || defined(CODE_XX_SW)
   #if defined(_T_SWITCH_TAIL) || !defined(AUGMENT_TYPE) || !defined(LOOKUP)
-  //#if !defined(AUGMENT_TYPE) || !defined(LOOKUP) || defined(SKIP_LINKS)
     // nBL is bits left after picking the link we're handling now
     // nBL has not been reduced by any skip indicated in that link
     // nBLR is bits left after reducing nBL by any skip in the link
@@ -1773,13 +1897,11 @@ t_sw_plus_16:
     goto t_switch;
 t_switch:
     {
-      #ifdef AUGMENT_TYPE
+      #if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
       #ifndef AUGMENT_TYPE_NOT
-      #ifdef LOOKUP
        assert(nBLR != nBL);
-      #endif // LOOKUP
       #endif // !AUGMENT_TYPE_NOT
-      #endif // AUGMENT_TYPE
+      #endif // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
         if (WROOT_IS_NULL(T_SWITCH, wRoot)) {
       #if defined(INSERT) || defined(REMOVE)
             if (bCleanup) {
@@ -1839,10 +1961,11 @@ switchTail:;
         // Save the previous link and advance to the next.
         IF_NOT_LOOKUP(nBLUp = nBL);
         IF_NOT_LOOKUP(pLnUp = pLn);
+        IF_NEXT(nBLRUp = nBLR);
       #ifdef _LNX
-        IF_NOT_LOOKUP(pwLnXUp = pwLnX);
+        IF_NOT_LOOKUP(IF_NOT_NEXT(pwLnXUp = pwLnX));
       #endif // _LNX
-        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        IF_LOOKUP(IF_SKIP_PREFIX_CHECK(pwrUp = pwr));
         SwAdvance(pqya, swapynew, nBW, &nBLR); // updates wRoot
       #ifdef BITMAP
         // Is there any reason to have
@@ -1939,6 +2062,7 @@ t_xx_sw:
         // Save the previous link and advance to the next.
         IF_NOT_LOOKUP(nBLUp = nBL);
         IF_NOT_LOOKUP(pLnUp = pLn);
+        IF_NEXT(nBLRUp = nBLR);
       #ifdef _LNX
         IF_NOT_LOOKUP(pwLnXUp = pwLnX);
       #endif // _LNX
@@ -1975,8 +2099,7 @@ t_skip_to_bm_sw:
         Word_t wPrefixMismatch = PREFIX_MISMATCH(qy);
         if (wPrefixMismatch != 0) {
       #if defined(COUNT)
-            DBGC(printf("SKIP_TO_BM_SW: COUNT PM %zd\n",
-                        wPrefixMismatch));
+            DBGC(printf("SKIP_TO_BM_SW: COUNT PM %zd\n", wPrefixMismatch));
             // If key is bigger than prefix we have to count the keys here.
             // Othwerwise we don't.
             if (wKey > (wKey - (wPrefixMismatch << nBLR))) {
@@ -1999,6 +2122,20 @@ t_skip_to_bm_sw:
                             wPopCnt, wPopCntSum));
             }
       #endif // defined(COUNT)
+      #ifdef NEXT
+            DBGN(printf("SKIP_TO_BM_SW: NEXT PM %zd\n", wPrefixMismatch));
+            // If we're not past the prefix then advance to it.
+            // If we are past the prefix then advance to the next digit.
+            if (wKey < (wKey - (wPrefixMismatch << nBLR))) {
+                // Test this with cnListPopCntMax=64 and
+                // btime -W0 -1 -lv -s-2560 -S5 -n1024 -B-21.
+                //assert(0);
+                // wPrefixMismatch = (wKey - wPrefix) >> nBLR;
+                wKey &= ~MSK(nBLR);
+                wKey -= (wPrefixMismatch << nBLR);
+                goto restart;
+            }
+      #endif // NEXT
             goto break_from_main_switch;
         }
         goto t_bm_sw;
@@ -2144,6 +2281,47 @@ t_bm_sw:
             // Test to see if link exists before figuring out where it is.
             if ( ! bLinkPresent ) {
                 DBGX(printf("missing link\n"));
+          #ifdef NEXT
+                // missing link
+                // find the next present link
+                Word_t *pwBmWords = PWR_pwBm(pwRoot, pwr, nBW);
+              #if defined(OFFSET_IN_SW_BM_WORD) || defined(X_SW_BM_HALF_WORDS)
+                #define cnLogBmBitsPerBmWord  (cnLogBitsPerWord - 1)
+              #else // OFFSET_IN_SW_BM_WORD || X_SW_BM_HALF_WORDS
+                #define cnLogBmBitsPerBmWord  cnLogBitsPerWord
+              #endif // OFFSET_IN_SW_BM_WORD || X_SW_BM_HALF_WORDS else
+                int nWordNum = wDigit >> cnLogBmBitsPerBmWord;
+                int nBitNum = wDigit & MSK(cnLogBmBitsPerBmWord);
+                Word_t wBm = pwBmWords[nWordNum] & ~MSK(nBitNum);
+                //printf("wDigit 0x%zx nBitNum %d\n", wDigit, nBitNum);
+                for (;;) {
+                    wBm &= NZ_MSK(EXP(cnLogBmBitsPerBmWord));
+                    //printf("nWordNum %d wBm 0x%zx\n", nWordNum, wBm);
+                    if (wBm) {
+                        nBitNum = __builtin_ctzll(wBm);
+                        //printf("nBitNum %d\n", nBitNum);
+                        wDigit = nWordNum << cnLogBmBitsPerBmWord;
+                        wDigit |= nBitNum;
+                        //printf("wDigit 0x%zx\n", wDigit);
+                        wKey &= ~NZ_MSK(nBLR);
+                        wKey |= (wDigit << (nBLR - nBW));
+                        //printf("# restart wKey 0x%02zx\n", wKey);
+                        goto restart;
+                    }
+                    if ((Word_t)++nWordNum
+                        >= ((nBW <= cnLogBmBitsPerBmWord)
+                            ? 0 : EXP(nBW - cnLogBmBitsPerBmWord)))
+                    {
+                        if (nBL >= cnBitsPerWord) {
+                            //printf("# break\n");
+                            break;
+                        }
+                        //printf("# tryNext *pwKey 0x%02zx\n", *pwKey);
+                        goto tryNextDigit;
+                    }
+                    wBm = pwBmWords[nWordNum];
+                }
+          #endif // NEXT
                 goto break_from_main_switch;
             }
       #endif // ! defined(COUNT)
@@ -2290,7 +2468,7 @@ t_list_sw:
         // bLinkPresent has already been initialized.
         IF_COUNT(nLinks = INT_MAX);
           #ifdef LOOKUP
-        IF_SKIP_PREFIX_CHECK(IF_LOOKUP(pwrUp = pwr));
+        IF_LOOKUP(IF_SKIP_PREFIX_CHECK(pwrUp = pwr));
         SwAdvance(pqya, swapynew, nBW, &nBLR);
         if (cbEmbeddedBitmap && (nBL <= cnLogBitsPerLink)) { goto t_bitmap; }
         goto again;
@@ -2339,76 +2517,15 @@ t_list112: // nDL == 8
       #if cnBitsLeftAtDl3 >= 24
         nBLR = nBL = AugTypeBitsInv(112);
       #endif // cnBitsLeftAtDl3 >= 24
-      #ifdef COMPRESSED_LISTS
-      #ifdef SKIP_PREFIX_CHECK
-        if (PrefixCheckAtLeaf(qy, wKey
-          #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
-                , bNeedPrefixCheck
-          #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
-          #ifdef SAVE_PREFIX_TEST_RESULT
-                , wPrefixMismatch
-          #else // SAVE_PREFIX_TEST_RESULT
-                , pwrUp
-          #endif // SAVE_PREFIX_TEST_RESULT
-          #ifdef SAVE_PREFIX
-                , pLnPrefix, pwrPrefix, nBLRPrefix
-          #endif // SAVE_PREFIX
-                  ) // end call to PrefixCheckAtLeaf
-            == Success)
-      #endif // SKIP_PREFIX_CHECK
-      #endif // COMPRESSED_LISTS
+        if (WROOT_IS_NULL(T_LIST, wRoot)
+            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
+            || ((nPos = SEARCH_LIST(Word, qy, nBLR, wKey)) < 0))
         {
-      // LOOKUP_NO_LIST_SEARCH is for analysis only.
-      #ifndef LOOKUP_NO_LIST_SEARCH
-            if (1
-                && ((wr_nType(WROOT_NULL) != T_LIST) || (wRoot != WROOT_NULL))
-          #ifdef B_JUDYL
-              #if defined(HASKEY_FOR_JUDYL_LOOKUP)
-                // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
-                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
-              #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
-                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
-              #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
-                && ((nPos = LocateKeyInListWord(qy, nBLR, wKey)) >= 0)
-              #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
-          #else // B_JUDYL
-              #if defined(SEARCH_FOR_JUDY1_LOOKUP)
-                && (SearchList(qy, nBLR, wKey) >= 0)
-              #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
-                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
-              #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-                && ListHasKeyWord(qy, nBLR, wKey)
-              #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-          #endif // B_JUDYL
-                )
-      #endif // !LOOKUP_NO_LIST_SEARCH
-            {
-                SMETRICS_GET(++j__GetCalls);
-      #ifdef B_JUDYL
-                DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
-                             nPos,
-                             &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
-                return &gpwValues(qy)[~nPos];
-      #else // B_JUDYL
-                // Success for Lookup and Remove; Failure for Insert
-                return KeyFound;
-      #endif // B_JUDYL else
-            }
+            goto break_from_main_switch;
         }
-      #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-        else
-        {
-            // Shouldn't this be using the previous nBL for pwrUp?
-            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
-          #ifdef PP_IN_LINK
-                        gwPrefix(qy),
-          #else // PP_IN_LINK
-                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
-          #endif // PP_IN_LINK
-                        nBL));
-        }
-      #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-        goto break_from_main_switch;
+        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+        SMETRICS_GET(++j__GetCalls);
+        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
     } // end of t_list112
   #endif // BL_SPECIFIC_LIST
   #endif // AUGMENT_TYPE_8 && LOOKUP
@@ -2420,76 +2537,15 @@ t_list112: // nDL == 8
 t_list96: // nDL == 7
     {
         nBLR = nBL = AugTypeBitsInv(96);
-      #ifdef COMPRESSED_LISTS
-      #ifdef SKIP_PREFIX_CHECK
-        if (PrefixCheckAtLeaf(qy, wKey
-          #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
-                , bNeedPrefixCheck
-          #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
-          #ifdef SAVE_PREFIX_TEST_RESULT
-                , wPrefixMismatch
-          #else // SAVE_PREFIX_TEST_RESULT
-                , pwrUp
-          #endif // SAVE_PREFIX_TEST_RESULT
-          #ifdef SAVE_PREFIX
-                , pLnPrefix, pwrPrefix, nBLRPrefix
-          #endif // SAVE_PREFIX
-                  ) // end call to PrefixCheckAtLeaf
-            == Success)
-      #endif // SKIP_PREFIX_CHECK
-      #endif // COMPRESSED_LISTS
+        if (WROOT_IS_NULL(T_LIST, wRoot)
+            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
+            || ((nPos = SEARCH_LIST(Word, qy, nBLR, wKey)) < 0))
         {
-      // LOOKUP_NO_LIST_SEARCH is for analysis only.
-      #ifndef LOOKUP_NO_LIST_SEARCH
-            if (1
-                && ((wr_nType(WROOT_NULL) != T_LIST) || (wRoot != WROOT_NULL))
-          #ifdef B_JUDYL
-              #if defined(HASKEY_FOR_JUDYL_LOOKUP)
-                // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
-                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
-              #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
-                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
-              #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
-                && ((nPos = LocateKeyInListWord(qy, nBLR, wKey)) >= 0)
-              #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
-          #else // B_JUDYL
-              #if defined(SEARCH_FOR_JUDY1_LOOKUP)
-                && (SearchList(qy, nBLR, wKey) >= 0)
-              #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
-                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
-              #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-                && ListHasKeyWord(qy, nBLR, wKey)
-              #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-          #endif // B_JUDYL
-                )
-      #endif // !LOOKUP_NO_LIST_SEARCH
-            {
-                SMETRICS_GET(++j__GetCalls);
-      #ifdef B_JUDYL
-                DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
-                             nPos,
-                             &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
-                return &gpwValues(qy)[~nPos];
-      #else // B_JUDYL
-                // Success for Lookup and Remove; Failure for Insert
-                return KeyFound;
-      #endif // B_JUDYL else
-            }
+            goto break_from_main_switch;
         }
-      #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-        else
-        {
-            // Shouldn't this be using the previous nBL for pwrUp?
-            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
-          #ifdef PP_IN_LINK
-                        gwPrefix(qy),
-          #else // PP_IN_LINK
-                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
-          #endif // PP_IN_LINK
-                        nBL));
-        }
-      #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-        goto break_from_main_switch;
+        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+        SMETRICS_GET(++j__GetCalls);
+        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
     } // end of t_list96
   #endif // BL_SPECIFIC_LIST
   #endif // AUGMENT_TYPE_8 && LOOKUP
@@ -2501,76 +2557,15 @@ t_list96: // nDL == 7
 t_list80: // nDL == 6
     {
         nBLR = nBL = AugTypeBitsInv(80);
-      #ifdef COMPRESSED_LISTS
-      #ifdef SKIP_PREFIX_CHECK
-        if (PrefixCheckAtLeaf(qy, wKey
-          #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
-                , bNeedPrefixCheck
-          #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
-          #ifdef SAVE_PREFIX_TEST_RESULT
-                , wPrefixMismatch
-          #else // SAVE_PREFIX_TEST_RESULT
-                , pwrUp
-          #endif // SAVE_PREFIX_TEST_RESULT
-          #ifdef SAVE_PREFIX
-                , pLnPrefix, pwrPrefix, nBLRPrefix
-          #endif // SAVE_PREFIX
-                  ) // end call to PrefixCheckAtLeaf
-            == Success)
-      #endif // SKIP_PREFIX_CHECK
-      #endif // COMPRESSED_LISTS
+        if (WROOT_IS_NULL(T_LIST, wRoot)
+            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
+            || ((nPos = SEARCH_LIST(Word, qy, nBLR, wKey)) < 0))
         {
-      // LOOKUP_NO_LIST_SEARCH is for analysis only.
-      #ifndef LOOKUP_NO_LIST_SEARCH
-            if (1
-                && ((wr_nType(WROOT_NULL) != T_LIST) || (wRoot != WROOT_NULL))
-          #ifdef B_JUDYL
-              #if defined(HASKEY_FOR_JUDYL_LOOKUP)
-                // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
-                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
-              #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
-                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
-              #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
-                && ((nPos = LocateKeyInListWord(qy, nBLR, wKey)) >= 0)
-              #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
-          #else // B_JUDYL
-              #if defined(SEARCH_FOR_JUDY1_LOOKUP)
-                && (SearchList(qy, nBLR, wKey) >= 0)
-              #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
-                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
-              #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-                && ListHasKeyWord(qy, nBLR, wKey)
-              #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-          #endif // B_JUDYL
-                )
-      #endif // !LOOKUP_NO_LIST_SEARCH
-            {
-                SMETRICS_GET(++j__GetCalls);
-      #ifdef B_JUDYL
-                DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
-                             nPos,
-                             &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
-                return &gpwValues(qy)[~nPos];
-      #else // B_JUDYL
-                // Success for Lookup and Remove; Failure for Insert
-                return KeyFound;
-      #endif // B_JUDYL else
-            }
+            goto break_from_main_switch;
         }
-      #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-        else
-        {
-            // Shouldn't this be using the previous nBL for pwrUp?
-            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
-          #ifdef PP_IN_LINK
-                        gwPrefix(qy),
-          #else // PP_IN_LINK
-                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
-          #endif // PP_IN_LINK
-                        nBL));
-        }
-      #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-        goto break_from_main_switch;
+        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+        SMETRICS_GET(++j__GetCalls);
+        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
     } // end of t_list80
   #endif // BL_SPECIFIC_LIST
   #endif // AUGMENT_TYPE_8 && LOOKUP
@@ -2595,76 +2590,15 @@ t_list48: // nBL > 32
       #ifdef BL_SPECIFIC_LIST
         nBLR = nBL = AugTypeBitsInv(64);
       #endif // BL_SPECIFIC_LIST
-      #ifdef COMPRESSED_LISTS
-      #ifdef SKIP_PREFIX_CHECK
-        if (PrefixCheckAtLeaf(qy, wKey
-          #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
-                , bNeedPrefixCheck
-          #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
-          #ifdef SAVE_PREFIX_TEST_RESULT
-                , wPrefixMismatch
-          #else // SAVE_PREFIX_TEST_RESULT
-                , pwrUp
-          #endif // SAVE_PREFIX_TEST_RESULT
-          #ifdef SAVE_PREFIX
-                , pLnPrefix, pwrPrefix, nBLRPrefix
-          #endif // SAVE_PREFIX
-                  ) // end call to PrefixCheckAtLeaf
-            == Success)
-      #endif // SKIP_PREFIX_CHECK
-      #endif // COMPRESSED_LISTS
+        if (WROOT_IS_NULL(T_LIST, wRoot)
+            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
+            || ((nPos = SEARCH_LIST(Word, qy, nBLR, wKey)) < 0))
         {
-      // LOOKUP_NO_LIST_SEARCH is for analysis only.
-      #ifndef LOOKUP_NO_LIST_SEARCH
-            if (1
-                && ((wr_nType(WROOT_NULL) != T_LIST) || (wRoot != WROOT_NULL))
-          #ifdef B_JUDYL
-              #if defined(HASKEY_FOR_JUDYL_LOOKUP)
-                // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
-                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
-              #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
-                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
-              #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
-                && ((nPos = LocateKeyInListWord(qy, nBLR, wKey)) >= 0)
-              #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
-          #else // B_JUDYL
-              #if defined(SEARCH_FOR_JUDY1_LOOKUP)
-                && (SearchList(qy, nBLR, wKey) >= 0)
-              #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
-                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
-              #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-                && ListHasKeyWord(qy, nBLR, wKey)
-              #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-          #endif // B_JUDYL
-                )
-      #endif // !LOOKUP_NO_LIST_SEARCH
-            {
-                SMETRICS_GET(++j__GetCalls);
-      #ifdef B_JUDYL
-                DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
-                             nPos,
-                             &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
-                return &gpwValues(qy)[~nPos];
-      #else // B_JUDYL
-                // Success for Lookup and Remove; Failure for Insert
-                return KeyFound;
-      #endif // B_JUDYL else
-            }
+            goto break_from_main_switch;
         }
-      #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-        else
-        {
-            // Shouldn't this be using the previous nBL for pwrUp?
-            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
-          #ifdef PP_IN_LINK
-                        gwPrefix(qy),
-          #else // PP_IN_LINK
-                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
-          #endif // PP_IN_LINK
-                        nBL));
-        }
-      #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-        goto break_from_main_switch;
+        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+        SMETRICS_GET(++j__GetCalls);
+        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
     } // end of t_list64
   #endif // AUGMENT_TYPE && LOOKUP
   #endif // (cwListPopCntMax != 0)
@@ -2675,84 +2609,20 @@ t_list48: // nBL > 32
 t_list48: // nDL == 4
     {
         nBLR = nBL = AugTypeBitsInv(48);
-      #ifdef COMPRESSED_LISTS
-      #ifdef SKIP_PREFIX_CHECK
-        if (PrefixCheckAtLeaf(qy, wKey
-          #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
-                , bNeedPrefixCheck
-          #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
-          #ifdef SAVE_PREFIX_TEST_RESULT
-                , wPrefixMismatch
-          #else // SAVE_PREFIX_TEST_RESULT
-                , pwrUp
-          #endif // SAVE_PREFIX_TEST_RESULT
-          #ifdef SAVE_PREFIX
-                , pLnPrefix, pwrPrefix, nBLRPrefix
-          #endif // SAVE_PREFIX
-                  ) // end call to PrefixCheckAtLeaf
-            == Success)
-      #endif // SKIP_PREFIX_CHECK
-      #endif // COMPRESSED_LISTS
+        if (WROOT_IS_NULL(T_LIST, wRoot)
+            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
+              #if defined(AUGMENT_TYPE_8) && cnBitsLeftAtDl3 > 24
+            || ((nPos = SEARCH_LIST(Word, qy, nBLR, wKey)) < 0)
+              #else // AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
+            || ((nPos = SEARCH_LIST(32, qy, nBLR, wKey)) < 0)
+              #endif // else AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
+            )
         {
-      // LOOKUP_NO_LIST_SEARCH is for analysis only.
-      #ifndef LOOKUP_NO_LIST_SEARCH
-            if (1
-                && ((wr_nType(WROOT_NULL) != T_LIST) || (wRoot != WROOT_NULL))
-          #ifdef B_JUDYL
-              #if defined(HASKEY_FOR_JUDYL_LOOKUP)
-                // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
-                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
-              #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
-                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
-              #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
-                  #if defined(AUGMENT_TYPE_8) && cnBitsLeftAtDl3 > 24
-                && ((nPos = LocateKeyInListWord(qy, nBLR, wKey)) >= 0)
-                  #else // AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
-                && ((nPos = LocateKeyInList32(qy, nBLR, wKey)) >= 0)
-                  #endif // else AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
-              #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
-          #else // B_JUDYL
-              #if defined(SEARCH_FOR_JUDY1_LOOKUP)
-                && (SearchList(qy, nBLR, wKey) >= 0)
-              #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
-                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
-              #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-                  #if defined(AUGMENT_TYPE_8) && cnBitsLeftAtDl3 > 24
-                && ListHasKeyWord(qy, nBLR, wKey)
-                  #else // AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
-                && ListHasKey32(qy, nBLR, wKey)
-                  #endif // else AUGMENT_TYPE_8 && cnBitsLeftAtDl3 > 24
-              #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-          #endif // B_JUDYL
-                )
-      #endif // !LOOKUP_NO_LIST_SEARCH
-            {
-                SMETRICS_GET(++j__GetCalls);
-          #ifdef B_JUDYL
-                DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
-                             nPos,
-                             &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
-                return &gpwValues(qy)[~nPos];
-          #else // B_JUDYL
-                // Success for Lookup and Remove; Failure for Insert
-                return KeyFound;
-          #endif // B_JUDYL else
-            }
+            goto break_from_main_switch;
         }
-          #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-        else
-        {
-            // Shouldn't this be using the previous nBL for pwrUp?
-            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
-              #ifdef PP_IN_LINK
-                        gwPrefix(qy),
-              #else // PP_IN_LINK
-                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
-              #endif // PP_IN_LINK
-                        nBL));
-        }
-          #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-        goto break_from_main_switch;
+        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+        SMETRICS_GET(++j__GetCalls);
+        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
     } // end of t_list48
   #endif // !BL_SPECIFIC_LIST
   #endif // AUGMENT_TYPE_8 && LOOKUP
@@ -2778,76 +2648,15 @@ t_list16: // nDL == 2
         assert(nBLR == AugTypeBitsInv(32));
         nBLR = nBL = AugTypeBitsInv(32);
       #endif // BL_SPECIFIC_LIST
-      #ifdef COMPRESSED_LISTS
-      #ifdef SKIP_PREFIX_CHECK
-        if (PrefixCheckAtLeaf(qy, wKey
-          #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
-                , bNeedPrefixCheck
-          #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
-          #ifdef SAVE_PREFIX_TEST_RESULT
-                , wPrefixMismatch
-          #else // SAVE_PREFIX_TEST_RESULT
-                , pwrUp
-          #endif // SAVE_PREFIX_TEST_RESULT
-          #ifdef SAVE_PREFIX
-                , pLnPrefix, pwrPrefix, nBLRPrefix
-          #endif // SAVE_PREFIX
-                  ) // end call to PrefixCheckAtLeaf
-            == Success)
-      #endif // SKIP_PREFIX_CHECK
-      #endif // COMPRESSED_LISTS
+        if (WROOT_IS_NULL(T_LIST, wRoot)
+            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
+            || ((nPos = SEARCH_LIST(32, qy, nBLR, wKey)) < 0))
         {
-      // LOOKUP_NO_LIST_SEARCH is for analysis only.
-      #ifndef LOOKUP_NO_LIST_SEARCH
-            if (1
-                && ((wr_nType(WROOT_NULL) != T_LIST) || (wRoot != WROOT_NULL))
-          #ifdef B_JUDYL
-              #if defined(HASKEY_FOR_JUDYL_LOOKUP)
-                // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
-                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
-              #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
-                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
-              #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
-                && ((nPos = LocateKeyInList32(qy, nBLR, wKey)) >= 0)
-              #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
-          #else // B_JUDYL
-              #if defined(SEARCH_FOR_JUDY1_LOOKUP)
-                && (SearchList(qy, nBLR, wKey) >= 0)
-              #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
-                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
-              #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-                && ListHasKey32(qy, nBLR, wKey)
-              #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-          #endif // B_JUDYL
-                )
-      #endif // !LOOKUP_NO_LIST_SEARCH
-            {
-                SMETRICS_GET(++j__GetCalls);
-      #ifdef B_JUDYL
-                DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
-                             nPos,
-                             &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
-                return &gpwValues(qy)[~nPos];
-      #else // B_JUDYL
-                // Success for Lookup and Remove; Failure for Insert
-                return KeyFound;
-      #endif // B_JUDYL else
-            }
+            goto break_from_main_switch;
         }
-      #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-        else
-        {
-            // Shouldn't this be using the previous nBL for pwrUp?
-            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
-          #ifdef PP_IN_LINK
-                        gwPrefix(qy),
-          #else // PP_IN_LINK
-                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
-          #endif // PP_IN_LINK
-                        nBL));
-        }
-      #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-        goto break_from_main_switch;
+        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+        SMETRICS_GET(++j__GetCalls);
+        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
     } // end of case t_list32
   #endif // AUGMENT_TYPE && LOOKUP
   #endif // (cwListPopCntMax != 0)
@@ -2884,84 +2693,20 @@ t_list: // nDL == 1
         // Not a bug. Just perf issue to flag.
         // nBLR is already set correctly. Just not a constant.
       #endif
-      #ifdef COMPRESSED_LISTS
-      #ifdef SKIP_PREFIX_CHECK
-        if (PrefixCheckAtLeaf(qy, wKey
-          #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
-                , bNeedPrefixCheck
-          #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
-          #ifdef SAVE_PREFIX_TEST_RESULT
-                , wPrefixMismatch
-          #else // SAVE_PREFIX_TEST_RESULT
-                , pwrUp
-          #endif // SAVE_PREFIX_TEST_RESULT
-          #ifdef SAVE_PREFIX
-                , pLnPrefix, pwrPrefix, nBLRPrefix
-          #endif // SAVE_PREFIX
-                  ) // end call to PrefixCheckAtLeaf
-            == Success)
-      #endif // SKIP_PREFIX_CHECK
-      #endif // COMPRESSED_LISTS
-        {
-      // LOOKUP_NO_LIST_SEARCH is for analysis only.
-      #ifndef LOOKUP_NO_LIST_SEARCH
-            if (1
-                && ((wr_nType(WROOT_NULL) != T_LIST) || (wRoot != WROOT_NULL))
-          #ifdef B_JUDYL
-              #if defined(HASKEY_FOR_JUDYL_LOOKUP)
-                // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
-                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
-              #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
-                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
-              #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
+        if (WROOT_IS_NULL(T_LIST, wRoot)
+            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success)
                   #if defined(BL_SPECIFIC_LIST) && cnBitsLeftAtDl2 > 16
-                && ((nPos = LocateKeyInList32(qy, cnBitsLeftAtDl2, wKey)) >= 0)
+            || ((nPos = SEARCH_LIST(32, qy, nBLR, wKey)) < 0)
                   #else // BL_SPECIFIC_LIST && cnBitsLeftAtDl2 > 16
-                && ((nPos = LocateKeyInList16(qya, nBLR, wKey)) >= 0)
+            || ((nPos = SEARCH_LIST(16, qy, nBLR, wKey)) < 0)
                   #endif // BL_SPECIFIC_LIST && cnBitsLeftAtDl2 > 16 else
-              #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
-          #else // B_JUDYL
-              #if defined(SEARCH_FOR_JUDY1_LOOKUP)
-                && (SearchList(qy, nBLR, wKey) >= 0)
-              #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
-                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
-              #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-                  #if defined(BL_SPECIFIC_LIST) && cnBitsLeftAtDl2 > 16
-                && ListHasKey32(qy, cnBitsLeftAtDl2, wKey)
-                  #else // BL_SPECIFIC_LIST && cnBitsLeftAtDl2 > 16
-                && ListHasKey16(qy, nBLR, wKey)
-                  #endif // BL_SPECIFIC_LIST && cnBitsLeftAtDl2 > 16 else
-              #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-          #endif // B_JUDYL
-                )
-      #endif // !LOOKUP_NO_LIST_SEARCH
-            {
-                SMETRICS_GET(++j__GetCalls);
-      #ifdef B_JUDYL
-                DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
-                             nPos,
-                             &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
-                return &gpwValues(qy)[~nPos];
-      #else // B_JUDYL
-                // Success for Lookup and Remove; Failure for Insert
-                return KeyFound;
-      #endif // B_JUDYL else
-            }
-        }
-      #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-        else
+            )
         {
-            // Shouldn't this be using the previous nBL for pwrUp?
-            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
-          #ifdef PP_IN_LINK
-                        gwPrefix(qy),
-          #else // PP_IN_LINK
-                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
-          #endif // PP_IN_LINK
-                        nBL));
+            goto break_from_main_switch;
         }
-      #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-        goto break_from_main_switch;
+        SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+        SMETRICS_GET(++j__GetCalls);
+        return BJL(&gpwValues(qy)[~nPos]) BJ1(KeyFound);
     } // end of t_list16
   #endif // AUGMENT_TYPE && LOOKUP
   #endif // (cwListPopCntMax != 0)
@@ -2987,6 +2732,8 @@ t_list: // nDL == 1
     #define _ONE_BYTE_T_LIST
   #elif cnBitsInD1 <= 8 || !defined(LOOKUP)
     #define _ONE_BYTE_T_LIST
+  #elif defined(AUG_TYPE_8_SW_NEXT) && defined(NEXT)
+    #define _ONE_BYTE_T_LIST
   #endif // !AUG_TYPE_8 || BL_SPEC_LIST elif cnBitsInD1 <= 8 || !LOOKUP
   #ifdef _ONE_BYTE_T_LIST
   #ifdef _T_LIST
@@ -2996,6 +2743,7 @@ t_list:
     // all cases for !AUGMENT_TYPE
     {
         DBGX(Checkpoint(qya, "t_list"));
+        // Establish a constant nBL and nBLR for the compiler, if possible.
       #ifdef AUGMENT_TYPE
       #ifdef LOOKUP
           #if defined(AUGMENT_TYPE_8) || (cnBitsInD1 == 8)
@@ -3014,161 +2762,77 @@ t_list:
       #endif // LOOKUP
       #endif // AUGMENT_TYPE
 
-      #if defined(INSERT) || defined(REMOVE)
-        if (bCleanup) {
-          #if defined(INSERT) && defined(B_JUDYL)
-            return pwValue;
-          #else // defined(INSERT) && defined(B_JUDYL)
-            return Success;
-          #endif // defined(INSERT)
-        } // cleanup is complete
-      #endif // defined(INSERT) || defined(REMOVE)
+        IF_INSERT(if (bCleanup) return BJL(pwValue)BJ1(Success));
+        IF_REMOVE(if (bCleanup) return Success);
 
-        assert((pwr != NULL) || WROOT_IS_NULL(T_LIST, wRoot));
-        assert((pwr == NULL) || (gnListBLR(qy) == nBL));
+        // Ifdef out valid assertions to speed regression testing.
+        DBGX(assert((pwr != NULL) || WROOT_IS_NULL(T_LIST, wRoot)));
+        DBGX(assert((pwr == NULL) || (gnListBLR(qy) == nBL)));
 
-        // Search the list.  wPopCnt is the number of keys in the list.
-
-      #if defined(COUNT)
-        if (WROOT_IS_NULL(T_LIST, wRoot)) {
-             nPos = ~0;
+        if (WROOT_IS_NULL(T_LIST, wRoot)
+            || (PREFIX_CHECK_AT_LEAF(qy, wKey) != Success))
+        {
+            IF_INS_OR_REM(nPos = 0);
+            IF_NOT_INSERT(goto break_from_main_switch);
+            IF_INSERT(goto t_list_request_cleanup_if_needed);
         }
-      #endif // defined(COUNT)
 
-      #ifdef COMPRESSED_LISTS
-      #ifdef SKIP_PREFIX_CHECK
+        // Search the list.
+        // AUGMENT_TYPE_8_PLUS_4 and PACK_L1_VALUES both complicate this.
+        // I wonder if we could incorporate them into the SEARCH_LIST macro.
       #ifdef LOOKUP
-        if (PrefixCheckAtLeaf(qy, wKey
-          #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
-                , bNeedPrefixCheck
-          #endif // ALWAYS_CHECK_PREFIX_AT_LEAF
-          #ifdef SAVE_PREFIX_TEST_RESULT
-                , wPrefixMismatch
-          #else // SAVE_PREFIX_TEST_RESULT
-                , pwrUp
-          #endif // SAVE_PREFIX_TEST_RESULT
-          #ifdef SAVE_PREFIX
-                , pLnPrefix, pwrPrefix, nBLRPrefix
-          #endif // SAVE_PREFIX
-                  ) // end call to PrefixCheckAtLeaf
-            == Success)
-      #endif // LOOKUP
-      #endif // SKIP_PREFIX_CHECK
-      #endif // COMPRESSED_LISTS
+          #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT)
+              #if defined(AUGMENT_TYPE_8) && cnBitsInD1 > 8
+        if ((nPos = SEARCH_LIST(16, qy, nBLR, wKey)) >= 0)
+              #else // AUGMENT_TYPE_8 && cnBitsInD1 > 8
+                  #if defined(B_JUDYL) && !defined(PACK_L1_VALUES)
+        if ((nPos = -!ListHasKey8(qy, nBLR, wKey)) >= 0)
+                  #else // B_JUDYL && !PACK_L1_VALUES
+        if ((nPos = SEARCH_LIST(8, qy, nBLR, wKey)) >= 0)
+                  #endif // B_JUDYL && !PACK_L1_VALUES else
+              #endif // AUGMENT_TYPE_8 && cnBitsInD1 > 8 else
+          #else // AUGMENT_TYPE && !AUGMENT_TYPE_NOT
+        if ((nPos =
+              #if defined(B_JUDYL) && !defined(PACK_L1_VALUES)
+                ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1))
+                        ? -!ListHasKey8(qy, nBLR, wKey) :
+              #endif // B_JUDYL && !PACK_L1_VALUES
+                    SEARCH_LIST(, qy, nBLR, wKey)) >= 0)
+          #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT else
+      #elif defined(NEXT)
+        if ((nPos = LocateGeKeyInList(qy, nBLR, &wKey)) >= 0)
+      #else // LOOKUP elif NEXT
+        if ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
+      #endif // LOOKUP elif NEXT else
         {
-      // LOOKUP_NO_LIST_SEARCH is for analysis only.
-      #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
-            if (1
-                && ((wr_nType(WROOT_NULL) != T_LIST) || (wRoot != WROOT_NULL))
-          #if defined(LOOKUP)
-              #if defined(B_JUDYL)
-                  #if defined(HASKEY_FOR_JUDYL_LOOKUP)
-                // HASKEY_FOR_JUDYL_LOOKUP is for analysis only.
-                && ((nPos = -!ListHasKey(qy, nBLR, wKey)) >= 0)
-                  #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
-                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
-                  #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
-                      #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT)
-                          #if defined(AUGMENT_TYPE_8) && cnBitsInD1 > 8
-                && ((nPos = LocateKeyInList16(qya, nBLR, wKey)) >= 0)
-                          #else // AUGMENT_TYPE_8 && cnBitsInD1 > 8
-                              #ifdef PACK_L1_VALUES
-                && ((nPos = LocateKeyInList8(qy, nBLR, wKey)) >= 0)
-                              #else // PACK_L1_VALUES
-                && ((nPos = -!ListHasKey8(qy, nBLR, wKey)) >= 0)
-                              #endif // PACK_L1_VALUES else
-                          #endif // AUGMENT_TYPE_8 && cnBitsInD1 > 8 else
-                      #else // AUGMENT_TYPE && !AUGMENT_TYPE_NOT
-                && ((nPos =
-                          #ifndef PACK_L1_VALUES
-                    ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1))
-                            ? -!ListHasKey8(qy, nBLR, wKey) :
-                          #endif // !PACK_L1_VALUES
-                        LocateKeyInList(qya, nBLR, wKey)) >= 0)
-                      #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT else
-                  #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
-              #else // defined(B_JUDYL)
-                  #if defined(SEARCH_FOR_JUDY1_LOOKUP)
-                && (SearchList(qy, nBLR, wKey) >= 0)
-                  #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
-                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
-                  #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-                      #if defined(AUGMENT_TYPE) && !defined(AUGMENT_TYPE_NOT)
-                          #if defined(AUGMENT_TYPE_8) && cnBitsInD1 > 8
-                && ListHasKey16(qy, nBLR, wKey)
-                          #else // AUGMENT_TYPE_8 && cnBitsInD1 > 8
-                && ListHasKey8(qy, nBLR, wKey)
-                          #endif // AUGMENT_TYPE_8 && cnBitsInD1 > 8 else
-                      #else // AUGMENT_TYPE && !AUGMENT_TYPE_NOT
-                && ListHasKey(qy, nBLR, wKey)
-                      #endif // AUGMENT_TYPE && !AUGMENT_TYPE_NOT else
-                  #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
-              #endif // defined(B_JUDYL)
-          #else // defined(LOOKUP)
-                && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
-          #endif // defined(LOOKUP)
-                )
-      #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
-            {
-                SMETRICS_GET(++j__GetCalls);
-      #if defined(INSERT)
-          #if ! defined(RECURSIVE)
-                if (nIncr > 0) { goto undo; } // undo counting
-          #endif // ! defined(RECURSIVE)
-      #endif // defined(INSERT)
-      #if defined(REMOVE)
-                goto removeGutsAndCleanup;
-      #endif // defined(REMOVE)
-      #if defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
-          #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
-                DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
-                             nPos,
-                             &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
+            SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
+            SMETRICS_GET(++j__GetCalls);
+      #ifndef RECURSIVE
+            IF_INSERT(if (nIncr > 0) goto undo); // undo counting
+      #endif // !RECURSIVE
+            IF_REMOVE(goto removeGutsAndCleanup);
+            IF_COUNT(nPos ^= -1); // could/should count be returning here?
+      #if defined(LOOKUP) || defined(INSERT) || defined(NEXT)
+            IF_NEXT(*pwKey = wKey);
+          #if B_JUDYL
+            return
               #ifndef PACK_L1_VALUES
-                if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
-                    return &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
-                } else
+                ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1))
+                    ? &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))] :
               #endif // #ifndef PACK_L1_VALUES
-                { return &gpwValues(qy)[~nPos]; }
-          #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
-                // Success for Lookup and Remove; Failure for Insert
-                return KeyFound;
-          #endif // (defined(LOOKUP) || defined(INSERT)) && ...
-      #endif // defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
-            }
-      #if defined(COUNT)
-            else
-      #endif // defined(COUNT)
+                      &gpwValues(qy)[~nPos];
+          #else // B_JUDYL
+            // Success for Lookup and Remove; Failure for Insert
+            return KeyFound;
+          #endif // B_JUDYL else
+      #endif // LOOKUP || INSERT || NEXT
+        }
       #if defined(INSERT) || defined(REMOVE) || defined(COUNT)
-            {
-                nPos ^= -1;
-            }
-      #endif // defined(INSERT) || defined(REMOVE) || defined(COUNT)
-        }
-      #if defined(LOOKUP)
-          #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-        else
-        {
-            // Shouldn't this be using the previous nBL for pwrUp?
-            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
-              #ifdef PP_IN_LINK
-                        gwPrefix(qy),
-              #else // PP_IN_LINK
-                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
-              #endif // PP_IN_LINK
-                        nBL));
-        }
-          #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-      #endif // defined(LOOKUP)
-
-      #if defined(COUNT)
-        DBGC(printf("T_LIST: nPos %d\n", nPos));
-        wPopCntSum += nPos;
-        DBGC(printf("list nPos 0x%x wPopCntSum " OWx"\n", nPos, wPopCntSum));
-        return wPopCntSum;
-      #endif // defined(COUNT)
-
+        nPos ^= -1;
+      #endif // INSERT || REMOVE || COUNT
+        IF_COUNT(wPopCntSum += nPos);
       #ifdef INSERT
+t_list_request_cleanup_if_needed:
           // Tried putting test for (cn2dBmMaxWpkPercent != 0) in the
           // condition below but g++ complained about the unsigned comparison
           // to less than zero at the end of the condition always being false.
@@ -3195,24 +2859,12 @@ t_list:
   #endif // !SEPARATE_T_NULL || (cwListPopCntMax == 0)
 
   #ifdef UA_PARALLEL_128
-    {
 t_list_ua:
-        DBGX(printf("T_LIST_UA nBL %d nBLR %d\n", nBL, nBLR));
-        DBGX(printf("wKeyPopMask " OWx"\n", wPrefixPopMaskBL(nBLR)));
-
-      #if defined(INSERT) || defined(REMOVE)
-        DBGX(printf("T_LIST_UA bCleanup %d nIncr %d\n", bCleanup, nIncr));
-        if (bCleanup) {
-            return Success;
-        } // cleanup is complete
-      #endif // INSERT || REMOVE
-
+    {
+        nBLR = nBL = 16;
+        DBGX(Checkpoint(qya, "t_list_ua"));
+        IF_INS_OR_REM(if (bCleanup) { return Success; }) // cleanup is complete
         // Search the list.  wPopCnt is the number of keys in the list.
-
-      #if defined(COUNT) && !defined(SEPARATE_T_NULL)
-        if (pwr == NULL) { nPos = ~0; }
-      #endif // COUNT && !SEPARATE_T_NULL
-
       #ifdef COMPRESSED_LISTS
       #ifdef SKIP_PREFIX_CHECK
       #ifdef LOOKUP
@@ -3235,66 +2887,38 @@ t_list_ua:
       #endif // COMPRESSED_LISTS
         {
       // LOOKUP_NO_LIST_SEARCH is for analysis only.
-      #if ! defined(LOOKUP) || ! defined(LOOKUP_NO_LIST_SEARCH)
+      #if !defined(LOOKUP) || !defined(LOOKUP_NO_LIST_SEARCH)
             if (1
-          #if ! defined(SEPARATE_T_NULL)
-                && (pwr != NULL)
-          #endif // ! defined(SEPARATE_T_NULL)
           #if defined(LOOKUP) && !defined(B_JUDYL)
                 && ListHasKey(qy, nBLR, wKey)
-          #else // defined(LOOKUP) && !defined(B_JUDYL)
+          #else // LOOKUP && !B_JUDYL
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
-          #endif // defined(LOOKUP) && !defined(B_JUDYL)
+          #endif // LOOKUP && !B_JUDYL else
                 )
-      #endif // ! defined(LOOKUP) !! ! defined(LOOKUP_NO_LIST_SEARCH)
+      #endif // !LOOKUP || !LOOKUP_NO_LIST_SEARCH
             {
-                SMETRICS_GETN(++j__GetCallsNot);
-      #if defined(INSERT)
-          #if ! defined(RECURSIVE)
-                if (nIncr > 0) { goto undo; } // undo counting
-          #endif // ! defined(RECURSIVE)
-      #endif // defined(INSERT)
-      #if defined(REMOVE)
-                goto removeGutsAndCleanup;
-      #endif // defined(REMOVE)
-      #if defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
-                return KeyFound;
-      #endif // defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
+      #ifndef RECURSIVE
+                IF_INSERT(if (nIncr > 0) { goto undo; }) // undo counting
+      #endif // !RECURSIVE
+                IF_REMOVE(goto removeGutsAndCleanup);
+                IF_COUNT(wPopCntSum += nPos);
+                IF_NOT_REMOVE(return KeyFound);
             }
-      #if defined(COUNT)
-            else
-      #endif // defined(COUNT)
-      #if defined(INSERT) || defined(REMOVE) || defined(COUNT)
-            {
-                nPos ^= -1;
+      #ifdef NEXT
+            else {
+                int nPopCnt = gnListPopCnt(qy, nBLR);
+                if (~nPos < nPopCnt) {
+                    uint16_t* psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
+                    *pwKey = (wKey & ~NZ_MSK(nBLR)) | psKeys[~nPos];
+                }
+                return Success;
             }
-      #endif // defined(INSERT) || defined(REMOVE) || defined(COUNT)
+      #elif !defined(LOOKUP)
+            { nPos ^= -1; }
+      #endif // NEXT elif !LOOKUP
         }
-      #if defined(LOOKUP)
-          #if defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-        else
-        {
-            // Shouldn't this be using the previous nBL for pwrUp?
-            DBGX(printf("Mismatch at list wPrefix " OWx" nBL %d\n",
-              #ifdef PP_IN_LINK
-                        gwPrefix(qy),
-              #else // PP_IN_LINK
-                        PWR_wPrefixNATBL(NULL, pwrUp, nBL),
-              #endif // PP_IN_LINK
-                        nBL));
-        }
-          #endif // defined(SKIP_PREFIX_CHECK) && defined(COMPRESSED_LISTS)
-      #endif // defined(LOOKUP)
-
-      #if defined(COUNT)
-        DBGC(printf("T_LIST_UA: nPos %d\n", nPos));
-        wPopCntSum += nPos;
-        DBGC(printf("list nPos 0x%x wPopCntSum " OWx"\n", nPos, wPopCntSum));
-        return wPopCntSum;
-      #endif // defined(COUNT)
-
+        IF_COUNT(wPopCntSum += nPos);
         goto break_from_main_switch;
-
     } // end of t_list_ua
   #endif // UA_PARALLEL_128
 
@@ -3358,13 +2982,13 @@ t_xx_list:
                   #elif defined(SEARCH_FOR_JUDYL_LOOKUP)
                 && ((nPos = SearchList(qy, nBLR, wKey)) >= 0)
                   #else // defined(HASKEY_FOR_JUDYL_LOOKUP) elif ...
-                && ((nPos = LocateKeyInList(qya, nBLR, wKey)) >= 0)
+                && ((nPos = LocateKeyInList(qy, nBLR, wKey)) >= 0)
                   #endif // defined(HASKEY_FOR_JUDYL_LOOKUP)
               #else // defined(B_JUDYL)
                   #if defined(SEARCH_FOR_JUDY1_LOOKUP)
                 && (SearchList(qy, nBLR, wKey) >= 0)
                   #elif defined(LOCATEKEY_FOR_JUDY1_LOOKUP)
-                && (LocateKeyInList(qya, nBLR, wKey) >= 0)
+                && (LocateKeyInList(qy, nBLR, wKey) >= 0)
                   #else // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
                 && ListHasKey(qy, nBLR, wKey)
                   #endif // defined(SEARCH_FOR_JUDY1_LOOKUP) elif ...
@@ -3384,23 +3008,64 @@ t_xx_list:
       #if defined(REMOVE)
                 goto removeGutsAndCleanup;
       #endif // defined(REMOVE)
-      #if defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
-          #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
+      #if defined(LOOKUP) || defined(INSERT) || defined(NEXT)
+                IF_NEXT(*pwKey = wKey);
+          #ifdef B_JUDYL
                 DBGX(printf("Lookup (or Insert) returning nPos %d %p 0x%zx\n",
                              nPos,
                              &gpwValues(qy)[~nPos], gpwValues(qy)[~nPos]));
+                return
               #ifndef PACK_L1_VALUES
-                if ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1)) {
-                    return &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))];
-                } else
+                    ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1))
+                        ? &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))] :
               #endif // #ifndef PACK_L1_VALUES
-                { return &gpwValues(qy)[~nPos]; }
-          #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
+                          &gpwValues(qy)[~nPos];
+          #else // B_JUDYL
                 // Success for Lookup and Remove; Failure for Insert
                 return KeyFound;
-          #endif // (defined(LOOKUP) || defined(INSERT)) && ...
-      #endif // defined(LOOKUP) || defined(INSERT) || defined(REMOVE)
+          #endif // B_JUDYL else
+      #endif // LOOKUP || INSERT || NEXT
             }
+      #ifdef NEXT
+            else {
+                if (!WROOT_IS_NULL(T_LIST, wRoot)) {
+                    int nPopCnt = gnListPopCnt(qy, nBLR);
+                    if (~nPos < nPopCnt) {
+          #ifdef COMPRESSED_LISTS
+                        if (nBLR <= 8) {
+                            uint8_t* pcKeys = ls_pcKeysX(pwr, nBLR, nPopCnt);
+                            *pwKey = (wKey & ~NZ_MSK(nBLR)) | pcKeys[~nPos];
+                        } else if (nBLR <= 16) {
+                            uint16_t* psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
+                            *pwKey = (wKey & ~NZ_MSK(nBLR)) | psKeys[~nPos];
+              #if cnBitsPerWord > 32
+                        } else if (nBLR <= 32) {
+                            uint32_t* piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
+                            *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[~nPos];
+              #endif // cnBitsPerWord > 32
+                        } else
+          #endif // COMPRESSED_LISTS
+                        {
+                            Word_t* pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);
+                            *pwKey = pwKeys[~nPos];
+                        }
+          #ifdef B_JUDYL
+                        return
+              #ifndef PACK_L1_VALUES
+                            ((cnBitsInD1 <= 8) && (nBL == cnBitsInD1))
+                                ? &gpwValues(qy)[~(wKey & MSK(cnBitsInD1))] :
+              #endif // #ifndef PACK_L1_VALUES
+                                  &gpwValues(qy)[nPos];
+          #else // B_JUDYL
+                        return Success;
+          #endif // B_JUDYL else
+                    }
+                }
+                // Get tryNextDigit to skip over aliases?
+                nBW -= nBLR - nBL;
+                nBL = nBLR;
+            }
+      #endif // NEXT
       #if defined(COUNT)
             else
       #endif // defined(COUNT)
@@ -3460,6 +3125,16 @@ t_skip_to_bitmap:
                             wPopCnt, wPopCntSum));
             }
       #endif // COUNT
+      #ifdef NEXT
+            // If we're not past the prefix then advance to it.
+            // If we are past the prefix then advance to the next digit.
+            if (wKey < (wKey - (wPrefixMismatch << nBLR))) {
+                // wPrefixMismatch = (wKey - wPrefix) >> nBLR;
+                wKey &= ~MSK(nBLR);
+                wKey -= (wPrefixMismatch << nBLR);
+                goto restart;
+            }
+      #endif // NEXT
             goto break_from_main_switch;
         }
         // We don't support skip to unpacked bitmap yet.
@@ -3654,7 +3329,55 @@ t_bitmap:
       #endif // LOOKUP
       #endif // SKIP_PREFIX_CHECK
         {
-          #if defined(COUNT)
+      #ifdef NEXT
+// To do: figure out if nBLR <= cnLogBitsPerWord at compile time.
+            int nBitNum = wKey & MSK(nBLR) & MSK(cnLogBitsPerWord);
+          #ifdef _BMLF_BM_IN_LNX
+            Word_t* pwBitmap = pwLnX;
+          #else // _BMLF_BM_IN_LNX
+            Word_t* pwBitmap =
+                (cbEmbeddedBitmap && (nBLR <= cnLogBitsPerLink))
+                    ? (Word_t*)pLn // Judy1 embedded bitmap.
+                    : ((BmLeaf_t*)pwr)->bmlf_awBitmap;
+          #endif // else _BMLF_BM_IN_LNX
+            int nWordNum = (wKey & MSK(nBLR)) >> cnLogBitsPerWord;
+            Word_t wBm = pwBitmap[nWordNum] & ~MSK(nBitNum);
+            for (;;) {
+                if (wBm) {
+                    nBitNum = __builtin_ctzll(wBm);
+                    wKey &= ~MSK(nBLR);
+                    wKey |= ((nWordNum << cnLogBitsPerWord) + nBitNum);
+                    *pwKey = wKey;
+          #ifdef B_JUDYL
+              #ifdef BMLF_INTERLEAVE
+              #else // BMLF_INTERLEAVE
+                    Word_t* pwBitmapValues = gpwBitmapValues(qy, cnBitsInD1);
+                    int nIndex =
+                        BM_UNPACKED(wRoot) ? (int)(wKey & MSK(cnBitsInD1)) :
+                            BmIndex(qya, cnBitsInD1, wKey);
+                    return &pwBitmapValues[nIndex];
+              #endif // BMLF_INTERLEAVE else
+          #endif // B_JUDYL
+                    BJ1(return Success);
+                }
+                if (++nWordNum
+                    >= (int)((cbEmbeddedBitmap && (nBLR <= cnLogBitsPerWord))
+                        ? 0 : EXP(nBLR - cnLogBitsPerWord)))
+                {
+          #ifdef SKIP_TO_BITMAP
+          #ifndef NO_SKIP_AT_TOP
+                    if (nBL >= cnBitsPerWord) {
+                        break;
+                    }
+          #endif // NO_SKIP_AT_TOP
+          #endif // SKIP_TO_BITMAP
+                    { goto tryNextDigit; }
+                }
+                wBm = pwBitmap[nWordNum];
+            }
+            goto break_from_main_switch;
+      #endif // NEXT
+      #ifdef COUNT
             if ((wr_nType(WROOT_NULL) == T_BITMAP)
                 && (!cbEmbeddedBitmap || (nBLR > cnLogBitsPerLink))
                 && (wRoot == WROOT_NULL))
@@ -3692,11 +3415,11 @@ t_bitmap:
                 // enough it's faster to just always count from the same
                 // end rather than going to the trouble of figuring out
                 // which end is closer.
-              #ifdef _BMLF_BM_IN_LNX
+          #ifdef _BMLF_BM_IN_LNX
                 Word_t *pwBitmap = pwLnX;
-              #else // _BMLF_BM_IN_LNX
+          #else // _BMLF_BM_IN_LNX
                 Word_t *pwBitmap = ((BmLeaf_t*)pwr)->bmlf_awBitmap;
-              #endif // else _BMLF_BM_IN_LNX
+          #endif // else _BMLF_BM_IN_LNX
                 if ((nBLR > 8) && (wKey & EXP(nBLR - 1))) {
                     wPopCnt = gwBitmapPopCnt(qya, nBLR);
                     if (wPopCnt == 0) {
@@ -3727,19 +3450,19 @@ t_bitmap:
             DBGC(printf("bm nBLR %d wPopCnt " OWx" wPopCntSum " OWx"\n",
                         nBLR, wPopCnt, wPopCntSum));
             return wPopCntSum;
-          #else // defined(COUNT)
-              #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
+      #endif // COUNT
+          #if defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
             // BUG?: Is pwrUp valid here, i.e. does it mean what this code
             // thinks it means?  Since SKIP_PREFIX_CHECK may not be #defined?
-                  #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+              #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             assert(gwPopCnt(qya, cnBitsInD1) != 0);
-                  #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+              #else // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             // ? cnBitsLeftAtDl2 ?
             assert(gwPopCnt(qya, cnBitsInD2) != 0);
-                  #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+              #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             return KeyFound;
-              #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
-                  #ifdef USE_XX_SW_ONLY_AT_DL2
+          #else // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
+              #ifdef USE_XX_SW_ONLY_AT_DL2
             // We assume we never blow-out into a one-digit bitmap.
 // But that doesn't mean we don't want to support skip directly to a
 // one-digit bitmap bypassing DL2.
@@ -3756,8 +3479,8 @@ t_bitmap:
             // We end up here with (nBLR <= cnBitsInD1)?
             // We have to be sure to handle that case below
             // for USE_XX_SW_ONLY_AT_DL2?
-                  #endif // USE_XX_SW_ONLY_AT_DL2
-                  #if defined(BMLF_INTERLEAVE) && !defined(LOOKUP)
+              #endif // USE_XX_SW_ONLY_AT_DL2
+              #if defined(BMLF_INTERLEAVE) && !defined(LOOKUP)
             Word_t wWordsHdr = sizeof(BmLeaf_t) / sizeof(Word_t);
             wWordsHdr += EXP(MAX(1, cnBitsInD1 - cnLogBitsPerWord));
             Word_t wDigit = wKey & MSK(cnBitsInD1);
@@ -3768,26 +3491,26 @@ t_bitmap:
             int nBmPartNum = wDigit >> (cnBitsInD1 - cnLogBmlfParts);
             Word_t wKeyLeft = wDigit & MSK(cnBitsInD1 - cnLogBmlfParts);
             int nBmBitPartNum = nBmPartNum;
-                      #ifdef BMLFI_SPLIT_BM
+                  #ifdef BMLFI_SPLIT_BM
             nBmBitPartNum += !!(wDigit & EXP(cnBitsInD1 - cnLogBmlfParts - 1));
-                      #endif // BMLFI_SPLIT_BM
+                  #endif // BMLFI_SPLIT_BM
             Word_t* pwBmBitPart = &pwr[wWordsHdr] + nBmPartSz * nBmBitPartNum;
             int bBitIsSet = BitIsSet(pwBmBitPart
-                      #ifdef BMLFI_BM_AT_END
+                  #ifdef BMLFI_BM_AT_END
                                      + nBmPartSz - nBmPartBmWords
-                      #endif // BMLFI_BM_AT_END
+                  #endif // BMLFI_BM_AT_END
                                    , wKeyLeft);
-                  #else // defined(BMLF_INTERLEAVE) && !defined(LOOKUP)
-                      #ifdef B_JUDYL
-                          #if defined(LOOKUP) || defined(INSERT)
+              #else // defined(BMLF_INTERLEAVE) && !defined(LOOKUP)
+                  #ifdef B_JUDYL
+                      #if defined(LOOKUP) || defined(INSERT)
             Word_t* pwBitmapValues = gpwBitmapValues(qy, cnBitsInD1);
-                          #endif // defined(LOOKUP) || defined(INSERT)
-                          #ifdef LOOKUP
-                              #ifdef PACK_BM_VALUES
-                // T_UNPACKED_BM doesn't come here for Lookup.
-                SMETRICS_GET(++j__GetCalls);
-                Word_t wPopCnt = gwBitmapPopCnt(qya, cnBitsInD1);
-                SMETRICS_POP(j__SearchPopulation += wPopCnt); // fast and slow
+                      #endif // defined(LOOKUP) || defined(INSERT)
+                      #ifdef LOOKUP
+                          #ifdef PACK_BM_VALUES
+            // T_UNPACKED_BM doesn't come here for Lookup.
+            SMETRICS_GET(++j__GetCalls);
+            Word_t wPopCnt = gwBitmapPopCnt(qya, cnBitsInD1);
+            SMETRICS_POP(j__SearchPopulation += wPopCnt); // fast and slow
 // Note: I wonder if the penalty for a branch misprediction is
 // exacerbated when prefetching is done on both forks of the branch.
 // For example, T_LIST vs T_BITMAP(packed) at nBLR==cnBitsInD1.
@@ -3795,53 +3518,53 @@ t_bitmap:
 // the exact same cache lines relative to pwr and be able to initiate the
 // prefetch before the switch;
 // pop in wRoot and value area starting at pwr[-1].
-                char* pcPrefetch
-                    = (char*)&pwBitmapValues[
-                        Psplit(wPopCnt, cnBitsInD1, /*nShift*/ 0, wKey)];
-                (void)pcPrefetch;
-                                  #ifdef PF_BM_PREV_HALF_VAL
-                PREFETCH(pcPrefetch - 32);
-                                  #endif // PF_BM_PREV_HALF_VAL
-                                  #ifdef PREFETCH_BM_PSPLIT_VAL
-                PREFETCH(pcPrefetch);
-                                  #endif // PREFETCH_BM_PSPLIT_VAL
-                                  #ifdef PREFETCH_BM_PREV_VAL
-                PREFETCH(pcPrefetch - 64);
-                                  #endif // PREFETCH_BM_PREV_VAL
-                                  #ifdef PF_BM_NEXT_HALF_VAL
-                PREFETCH(pcPrefetch + 32);
-                                  #endif // PF_BM_NEXT_HALF_VAL
-                                  #ifdef PREFETCH_BM_NEXT_VAL
-                PREFETCH(pcPrefetch + 64);
-                                  #endif // PREFETCH_BM_NEXT_VAL
-                              #endif // PACK_BM_VALUES
-                              #ifdef UNPACK_BM_VALUES
-                              #ifdef PREFETCH_BM_VAL
-                PREFETCH(&pwBitmapValues[wKey & MSK(cnBitsInD1)]);
-                              #endif // PREFETCH_BM_VAL
-                              #endif // UNPACK_BM_VALUES
-                          #endif // LOOKUP
-                      #else // B_JUDYL
-                SMETRICS_GETN(++j__GetCallsNot);
-                      #endif // B_JUDYL else
+            char* pcPrefetch
+                = (char*)&pwBitmapValues[
+                    Psplit(wPopCnt, cnBitsInD1, /*nShift*/ 0, wKey)];
+            (void)pcPrefetch;
+                              #ifdef PF_BM_PREV_HALF_VAL
+            PREFETCH(pcPrefetch - 32);
+                              #endif // PF_BM_PREV_HALF_VAL
+                              #ifdef PREFETCH_BM_PSPLIT_VAL
+            PREFETCH(pcPrefetch);
+                              #endif // PREFETCH_BM_PSPLIT_VAL
+                              #ifdef PREFETCH_BM_PREV_VAL
+            PREFETCH(pcPrefetch - 64);
+                              #endif // PREFETCH_BM_PREV_VAL
+                              #ifdef PF_BM_NEXT_HALF_VAL
+            PREFETCH(pcPrefetch + 32);
+                              #endif // PF_BM_NEXT_HALF_VAL
+                              #ifdef PREFETCH_BM_NEXT_VAL
+            PREFETCH(pcPrefetch + 64);
+                              #endif // PREFETCH_BM_NEXT_VAL
+                          #endif // PACK_BM_VALUES
+                          #ifdef UNPACK_BM_VALUES
+                          #ifdef PREFETCH_BM_VAL
+            PREFETCH(&pwBitmapValues[wKey & MSK(cnBitsInD1)]);
+                          #endif // PREFETCH_BM_VAL
+                          #endif // UNPACK_BM_VALUES
+                      #endif // LOOKUP
+                  #else // B_JUDYL
+            SMETRICS_GETN(++j__GetCallsNot);
+                  #endif // B_JUDYL else
             // Use compile-time tests to speed this up. Hopefully.
   #if defined(B_JUDYL) && defined(LOOKUP) && defined(BMLF_POP_COUNT_1_NO_TEST)
             int bBitIsSet = 1;
-  #else // BMLF_POP_COUNT_1_NO_TEST
+  #else // B_JUDYL && LOOKUP && BMLF_POP_COUNT_1_NO_TEST
             int bBitIsSet =
-                          #ifdef _BMLF_BM_IN_LNX
+                      #ifdef _BMLF_BM_IN_LNX
                 BitIsSetInWord(*pwLnX, wKey & MSK(cnBitsInD1));
-                          #else // _BMLF_BM_IN_LNX
+                      #else // _BMLF_BM_IN_LNX
      // We don't need/want to check for WROOT_NULL for embedded bitmap.
                 ((wr_nType(WROOT_NULL) == T_BITMAP)
                         && (!cbEmbeddedBitmap || (nBLR > cnLogBitsPerLink))
                         && (wRoot == WROOT_NULL))
                     ? 0 :
-                              #ifdef USE_XX_SW_ONLY_AT_DL2
+                          #ifdef USE_XX_SW_ONLY_AT_DL2
                 BitIsSet((nBLR <= cnLogBitsPerLink)
                              ? (Word_t*)pLn : ((BmLeaf_t*)pwr)->bmlf_awBitmap,
                          wKey & MSK(nBLR));
-                              #else // USE_XX_SW_ONLY_AT_DL2
+                          #else // USE_XX_SW_ONLY_AT_DL2
                 ((cn2dBmMaxWpkPercent == 0) || (nBLR == cnBitsInD1))
                     ? (cbEmbeddedBitmap && (cnBitsInD1 <= cnLogBitsPerWord))
                         ? BitIsSetInWord(
@@ -3857,6 +3580,8 @@ t_bitmap:
                     :
                       (cbEmbeddedBitmap
                             && (cnBitsLeftAtDl2 <= cnLogBitsPerWord))
+// BUG: using wRoot for 2-digit embedded bitmap even if wRoot is not
+// the first word in Link_t.
                         ? BitIsSetInWord(wRoot, wKey & MSK(cnBitsLeftAtDl2))
                         : BitIsSet((cbEmbeddedBitmap
                                            && (cnBitsLeftAtDl2
@@ -3864,90 +3589,90 @@ t_bitmap:
                                        ? (Word_t*)pLn
                                        : ((BmLeaf_t*)pwr)->bmlf_awBitmap,
                                    wKey & MSK(cnBitsLeftAtDl2));
-                              #endif // #else USE_XX_SW_ONLY_AT_DL2
-                          #endif // else _BMLF_BM_IN_LNX
-  #endif // BMLF_POP_COUNT_1_NO_TEST
-                  #endif // defined(BMLF_INTERLEAVE) && !defined(LOOKUP) else
+                          #endif // #else USE_XX_SW_ONLY_AT_DL2
+                      #endif // else _BMLF_BM_IN_LNX
+  #endif // B_JUDYL && LOOKUP && BMLF_POP_COUNT_1_NO_TEST else
+              #endif // defined(BMLF_INTERLEAVE) && !defined(LOOKUP) else
             if (bBitIsSet) {
-                  #if defined(REMOVE)
+              #if defined(REMOVE)
                 goto removeGutsAndCleanup;
-                  #endif // defined(REMOVE)
-                  #if defined(INSERT)
-                  #if !defined(RECURSIVE)
+              #endif // defined(REMOVE)
+              #if defined(INSERT)
+              #if !defined(RECURSIVE)
                 if (nIncr > 0) {
                     DBGX(printf("Bit is set!\n"));
                     goto undo; // undo counting
                 }
-                  #endif // !defined(RECURSIVE)
-                  #endif // defined(INSERT)
-                  #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
-                      #if defined(BMLF_INTERLEAVE) && !defined(LOOKUP)
+              #endif // !defined(RECURSIVE)
+              #endif // defined(INSERT)
+              #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
+                  #if defined(BMLF_INTERLEAVE) && !defined(LOOKUP)
                 Word_t* pwBmPart = &pwr[wWordsHdr] + nBmPartSz * nBmPartNum;
                 return &pwBmPart[wKeyLeft
-                          #ifndef BMLFI_BM_AT_END
+                      #ifndef BMLFI_BM_AT_END
                                  + nBmPartBmWords
-                          #endif // !BMLFI_BM_AT_END
+                      #endif // !BMLFI_BM_AT_END
                                  ];
-                      #else // defined(BMLF_INTERLEAVE) && !defined(LOOKUP)
+                  #else // defined(BMLF_INTERLEAVE) && !defined(LOOKUP)
                 int nIndex =
-                          #ifndef LOOKUP
+                      #ifndef LOOKUP
                     BM_UNPACKED(wRoot) ? (int)(wKey & MSK(cnBitsInD1)) :
-                          #endif // !LOOKUP
+                      #endif // !LOOKUP
                         BmIndex(qya, cnBitsInD1, wKey);
                 Word_t* pwValue = &pwBitmapValues[nIndex];
-                          #ifdef LOOKUP
-                          #ifdef PACK_BM_VALUES
-                              #ifndef PREFETCH_BM_PREV_VAL
-                              #ifndef PF_BM_PREV_HALF_VAL
-                              #ifndef PREFETCH_BM_PSPLIT_VAL
-                              #ifndef PF_BM_NEXT_HALF_VAL
-                              #ifndef PREFETCH_BM_NEXT_VAL
+                      #ifdef LOOKUP
+                      #ifdef PACK_BM_VALUES
+                          #ifndef PREFETCH_BM_PREV_VAL
+                          #ifndef PF_BM_PREV_HALF_VAL
+                          #ifndef PREFETCH_BM_PSPLIT_VAL
+                          #ifndef PF_BM_NEXT_HALF_VAL
+                          #ifndef PREFETCH_BM_NEXT_VAL
                 //Word_t wDiff = 0;
                 if (1)
-                              #endif // !PREFETCH_BM_NEXT_VAL
-                              #endif // !PF_BM_NEXT_HALF_VAL
-                              #endif // !PREFETCH_BM_PSPLIT_VAL
-                              #endif // !PF_BM_PREV_HALF_VAL
-                              #endif // !PREFETCH_BM_PREV_VAL
-                              #ifndef PREFETCH_BM_PREV_VAL
-                              #ifndef PF_BM_PREV_HALF_VAL
-                              #ifdef PREFETCH_BM_PSPLIT_VAL
-                              #ifndef PF_BM_NEXT_HALF_VAL
-                              #ifndef PREFETCH_BM_NEXT_VAL
+                          #endif // !PREFETCH_BM_NEXT_VAL
+                          #endif // !PF_BM_NEXT_HALF_VAL
+                          #endif // !PREFETCH_BM_PSPLIT_VAL
+                          #endif // !PF_BM_PREV_HALF_VAL
+                          #endif // !PREFETCH_BM_PREV_VAL
+                          #ifndef PREFETCH_BM_PREV_VAL
+                          #ifndef PF_BM_PREV_HALF_VAL
+                          #ifdef PREFETCH_BM_PSPLIT_VAL
+                          #ifndef PF_BM_NEXT_HALF_VAL
+                          #ifndef PREFETCH_BM_NEXT_VAL
                 Word_t wDiff
                     = (Word_t)pwValue - ((Word_t)pcPrefetch & ~MSK(6));
                 if (wDiff < 64)
-                              #endif // #ifndef PREFETCH_BM_NEXT_VAL
-                              #endif // #ifndef PF_BM_NEXT_HALF_VAL
-                              #endif // PREFETCH_BM_PSPLIT_VAL
-                              #endif // #ifndef PF_BM_PREV_HALF_VAL
-                              #endif // #ifndef PREFETCH_BM_PREV_VAL
-                              #ifndef PREFETCH_BM_PREV_VAL
-                              #ifdef PF_BM_PREV_HALF_VAL
-                              #ifndef PREFETCH_BM_PSPLIT_VAL
-                              #ifdef PF_BM_NEXT_HALF_VAL
-                              #ifndef PREFETCH_BM_NEXT_VAL
+                          #endif // #ifndef PREFETCH_BM_NEXT_VAL
+                          #endif // #ifndef PF_BM_NEXT_HALF_VAL
+                          #endif // PREFETCH_BM_PSPLIT_VAL
+                          #endif // #ifndef PF_BM_PREV_HALF_VAL
+                          #endif // #ifndef PREFETCH_BM_PREV_VAL
+                          #ifndef PREFETCH_BM_PREV_VAL
+                          #ifdef PF_BM_PREV_HALF_VAL
+                          #ifndef PREFETCH_BM_PSPLIT_VAL
+                          #ifdef PF_BM_NEXT_HALF_VAL
+                          #ifndef PREFETCH_BM_NEXT_VAL
                 Word_t wDiff
                     = (Word_t)pwValue - (((Word_t)pcPrefetch - 32) & ~MSK(6));
                 if (wDiff < 128)
-                              #endif // #ifndef PREFETCH_BM_NEXT_VAL
-                              #endif // PF_BM_NEXT_HALF_VAL
-                              #endif // #ifndef PREFETCH_BM_PSPLIT_VAL
-                              #endif // PF_BM_PREV_HALF_VAL
-                              #endif // #ifndef PREFETCH_BM_PREV_VAL
-                              #ifdef PREFETCH_BM_PREV_VAL
-                              #ifndef PF_BM_PREV_HALF_VAL
-                              #ifdef PREFETCH_BM_PSPLIT_VAL
-                              #ifndef PF_BM_NEXT_HALF_VAL
-                              #ifdef PREFETCH_BM_NEXT_VAL
+                          #endif // #ifndef PREFETCH_BM_NEXT_VAL
+                          #endif // PF_BM_NEXT_HALF_VAL
+                          #endif // #ifndef PREFETCH_BM_PSPLIT_VAL
+                          #endif // PF_BM_PREV_HALF_VAL
+                          #endif // #ifndef PREFETCH_BM_PREV_VAL
+                          #ifdef PREFETCH_BM_PREV_VAL
+                          #ifndef PF_BM_PREV_HALF_VAL
+                          #ifdef PREFETCH_BM_PSPLIT_VAL
+                          #ifndef PF_BM_NEXT_HALF_VAL
+                          #ifdef PREFETCH_BM_NEXT_VAL
                 Word_t wDiff
                     = (Word_t)pwValue - (((Word_t)pcPrefetch - 64) & ~MSK(6));
                 if (wDiff < 192)
-                              #endif // PREFETCH_BM_NEXT_VAL
-                              #endif // #ifndef PF_BM_NEXT_HALF_VAL
-                              #endif // PREFETCH_BM_PSPLIT_VAL
-                              #endif // #ifndef PF_BM_PREV_HALF_VAL
-                              #endif // PREFETCH_BM_PREV_VAL
+                          #endif // PREFETCH_BM_NEXT_VAL
+                          #endif // #ifndef PF_BM_NEXT_HALF_VAL
+                          #endif // PREFETCH_BM_PSPLIT_VAL
+                          #endif // #ifndef PF_BM_PREV_HALF_VAL
+                          #endif // PREFETCH_BM_PREV_VAL
                 {
                     SMETRICS_HIT(++j__DirectHits);
                 } else {
@@ -3961,17 +3686,16 @@ t_bitmap:
                     // But it is just too hard to believe to leave it in.
                     SMETRICS_NHIT(++j__NotDirectHits);
                 }
-                          #endif // PACK_BM_VALUES
-                          #endif // LOOKUP
+                      #endif // PACK_BM_VALUES
+                      #endif // LOOKUP
                 return pwValue;
-                      #endif // else BMLF_INTERLEAVE && !LOOKUP
-                  #else // (LOOKUP || INSERT) && B_JUDYL
-                return KeyFound;
-                  #endif // #else (LOOKUP || INSERT) && B_JUDYL
+                  #endif // else BMLF_INTERLEAVE && !LOOKUP
+              #else // (LOOKUP || INSERT) && B_JUDYL
+                return IF_NEXT(BJL(NULL) BJ1(Success)) IF_NOT_NEXT(KeyFound);
+              #endif // #else (LOOKUP || INSERT) && B_JUDYL
             }
             DBGX(printf("Bit is not set.\n"));
-              #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
-          #endif // else COUNT
+          #endif // defined(LOOKUP) && defined(LOOKUP_NO_BITMAP_SEARCH)
         }
           #if defined(SKIP_LINKS)
           #if defined(LOOKUP) && defined(SKIP_PREFIX_CHECK)
@@ -4187,23 +3911,15 @@ t_embedded_keys:
 
       #if defined(COUNT)
         {
-            int nPopCnt = wr_nPopCnt(wRoot, nBL);
-            Word_t wBLM = MSK(nBL); // Bits left mask.
-
-            int nn;
-            for (nn = 0; nn < nPopCnt; nn++) {
-                int nSlot = (nn + 1);
-                Word_t wKeyInSlot
-                    = (wKey & ~wBLM)
-                        | ((wRoot >> (cnBitsPerWord - (nSlot * nBL))) & wBLM);
-                if (wKeyInSlot >= wKey) {
-                    break;
-                }
+          #ifdef B_JUDYL
+            if ((wRoot >> (cnBitsPerWord - nBL)) < (wKey & MSK(nBL))) {
+                ++wPopCntSum;
             }
-            DBGC(printf("EK: wPopCntSum(before) %" _fw"d nn %d\n", wPopCntSum,
-                        nn));
-            wPopCntSum += nn;
-            DBGC(printf("ek nn %d wPopCntSum " OWx"\n", nn, wPopCntSum));
+          #else // B_JUDYL
+            int nPos = SearchEmbeddedX(qya, wKey);
+            wPopCntSum += nPos < 0 ? ~nPos : nPos;
+          #endif // B_JUDYL else
+            DBGC(printf("EK: nPos %d wPopCntSum %zd\n", nPos, wPopCntSum));
             return wPopCntSum;
         }
       #endif // defined(COUNT)
@@ -4236,12 +3952,19 @@ t_embedded_keys:
           #endif // COMPRESSED_LISTS
         {
 
-      #if defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)
-          #define _PARALLEL_EK
-      #endif // defined(EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP) && defined(LOOKUP)
-      #if defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP)
-          #define _PARALLEL_EK
-      #endif // defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT) && !defined(LOOKUP)
+      #ifdef LOOKUP
+          #ifdef EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP
+        #define _PARALLEL_EK
+          #endif // EMBEDDED_KEYS_PARALLEL_FOR_LOOKUP
+      #elif defined(NEXT) && !defined(B_JUDYL) // LOOKUP
+          #ifdef PARALLEL_EK_FOR_NEXT
+        #define _PARALLEL_EK // doesn't work yet
+          #endif // PARALLEL_EK_FOR_NEXT
+      #elif !defined(NEXT) // LOOKUP elif NEXT && !B_JUDYL
+          #ifdef EMBEDDED_KEYS_PARALLEL_FOR_INSERT
+        #define _PARALLEL_EK
+          #endif // EMBEDDED_KEYS_PARALLEL_FOR_INSERT
+      #endif // LOOKUP elif NEXT && !B_JUDYL elif !NEXT
 
           #ifdef _PARALLEL_EK
 
@@ -4304,69 +4027,227 @@ t_embedded_keys:
         CASE_BLX(60); CASE_BLX(61); CASE_BLX(62); CASE_BLX(63); CASE_BLX(64);
         }
 break2:;
-
-          #else // _PARALLEL_EK
-
-        Word_t wKeyRoot;
-
+          #elif 0
+            int nPopCnt = wr_nPopCnt(wRoot, nBL);
+            Word_t wBLM = MSK(nBL);
+            Word_t wKeyRoot
+                = (wRoot >> (cnBitsPerWord - (nPopCnt * nBL))) & wBLM;
+            Word_t wKeyX = wKey & wBLM;
+            if (wKeyX > wKeyRoot) goto break_from_main_switch;
+            nPos = nPopCnt - 1;
+            switch (nPopCnt) {
+                      #if (cnBitsPerWord == 64)
+            case 8: // max for 7-bit keys and 64 bits;
+                wKeyRoot = (wRoot >> (cnBitsPerWord - (7 * nBL))) & wBLM;
+                if (wKeyX > wKeyRoot) { nPos = 7; goto foundIt; }
+            case 7: // max for 8-bit keys and 64 bits;
+                wKeyRoot = (wRoot >> (cnBitsPerWord - (6 * nBL))) & wBLM;
+                if (wKeyX > wKeyRoot) { nPos = 6; goto foundIt; }
+            case 6: // max for 9-bit keys and 64 bits;
+                wKeyRoot = (wRoot >> (cnBitsPerWord - (5 * nBL))) & wBLM;
+                if (wKeyX > wKeyRoot) { nPos = 5; goto foundIt; }
+            case 5: // max for 10 to 11-bit keys and 64 bits;
+                wKeyRoot = (wRoot >> (cnBitsPerWord - (4 * nBL))) & wBLM;
+                if (wKeyX > wKeyRoot) { nPos = 4; goto foundIt; }
+                      #endif // (cnBitsPerWord == 64)
+            case 4: // max for 12 to 14-bit keys and 64 bits; 6 for 32
+                wKeyRoot = (wRoot >> (cnBitsPerWord - (3 * nBL))) & wBLM;
+                if (wKeyX > wKeyRoot) { nPos = 3; goto foundIt; }
+            case 3: // max for 15 to 19-bit keys and 64 bits; 7-9 for 32
+                wKeyRoot = (wRoot >> (cnBitsPerWord - (2 * nBL))) & wBLM;
+                if (wKeyX > wKeyRoot) { nPos = 2; goto foundIt; }
+            case 2: // max for 20 to 29-bit keys and 64 bits; 10-14 for 32
+                wKeyRoot = (wRoot >> (cnBitsPerWord - (1 * nBL))) & wBLM;
+                if (wKeyX > wKeyRoot) { nPos = 1; goto foundIt; }
+            case 1: // max for 30 to 60-bit keys and 64 bits; 15-29 for 32
+                nPos = 0; goto foundIt;
+            }
+          #elif !defined(NEXT) // _PARALLEL_EK
+            Word_t wKeyRoot;
               #ifdef B_JUDYL
-        wKeyRoot = wRoot >> (cnBitsPerWord - nBL);
-        if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+            wKeyRoot = wRoot >> (cnBitsPerWord - nBL);
+            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
               #else // B_JUDYL
-        int nPopCnt = wr_nPopCnt(wRoot, nBL);
-        switch (nPopCnt) {
+            int nPopCnt = wr_nPopCnt(wRoot, nBL);
+            switch (nPopCnt) {
                   #if (cnBitsPerWord == 64)
-        case 8: // max for 7-bit keys and 64 bits;
-            wKeyRoot = wRoot >> (cnBitsPerWord - (8 * nBL));
-            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
-        case 7: // max for 8-bit keys and 64 bits;
-            wKeyRoot = wRoot >> (cnBitsPerWord - (7 * nBL));
-            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
-        case 6: // max for 9-bit keys and 64 bits;
-            wKeyRoot = wRoot >> (cnBitsPerWord - (6 * nBL));
-            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
-        case 5: // max for 10 to 11-bit keys and 64 bits;
-            wKeyRoot = wRoot >> (cnBitsPerWord - (5 * nBL));
-            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+            case 8: // max for 7-bit keys and 64 bits;
+                wKeyRoot = wRoot >> (cnBitsPerWord - (8 * nBL));
+                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+            case 7: // max for 8-bit keys and 64 bits;
+                wKeyRoot = wRoot >> (cnBitsPerWord - (7 * nBL));
+                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+            case 6: // max for 9-bit keys and 64 bits;
+                wKeyRoot = wRoot >> (cnBitsPerWord - (6 * nBL));
+                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+            case 5: // max for 10 to 11-bit keys and 64 bits;
+                wKeyRoot = wRoot >> (cnBitsPerWord - (5 * nBL));
+                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
                   #endif // (cnBitsPerWord == 64)
-        case 4: // max for 12 to 14-bit keys and 64 bits; 6 for 32
-            wKeyRoot = wRoot >> (cnBitsPerWord - (4 * nBL));
-            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
-        case 3: // max for 15 to 19-bit keys and 64 bits; 7-9 for 32
-            wKeyRoot = wRoot >> (cnBitsPerWord - (3 * nBL));
-            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
-        case 2: // max for 20 to 29-bit keys and 64 bits; 10-14 for 32
-            wKeyRoot = wRoot >> (cnBitsPerWord - (2 * nBL));
-            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
-        default: // max for 30 to 60-bit keys and 64 bits; 15-29 for 32
-            wKeyRoot = wRoot >> (cnBitsPerWord - (1 * nBL));
-            if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
-        }
+            case 4: // max for 12 to 14-bit keys and 64 bits; 6 for 32
+                wKeyRoot = wRoot >> (cnBitsPerWord - (4 * nBL));
+                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+            case 3: // max for 15 to 19-bit keys and 64 bits; 7-9 for 32
+                wKeyRoot = wRoot >> (cnBitsPerWord - (3 * nBL));
+                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+            case 2: // max for 20 to 29-bit keys and 64 bits; 10-14 for 32
+                wKeyRoot = wRoot >> (cnBitsPerWord - (2 * nBL));
+                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+            default: // max for 30 to 60-bit keys and 64 bits; 15-29 for 32
+                wKeyRoot = wRoot >> (cnBitsPerWord - (1 * nBL));
+                if (((wKeyRoot ^ wKey) & MSK(nBL)) == 0) goto foundIt;
+            }
               #endif // #else B_JUDYL
+          #elif defined(B_JUDYL) // _PARALLEL_EK elif !NEXT
+            Word_t wSuffix = wRoot >> (cnBitsPerWord - nBL);
+            if ((wKey & NBPW_MSK(nBL)) <= wSuffix) {
+                *pwKey = (wKey & ~NBPW_MSK(nBL)) | wSuffix;
+                return pwLnX;
+            }
+          #elif defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(FILL_W_BIG_KEY)
+    #define CASE_BLX(_nBL) \
+        case _nBL: \
+            nPos = LocateGeKeyInEk64(qya, wKey); \
+            nPopCntMax = EmbeddedListPopCntMax(_nBL); \
+            if (nPos < wr_nPopCnt(wRoot, _nBL)) { \
+                Word_t wBLM = MSK(_nBL); \
+                *pwKey = ((wRoot >> (cnBitsPerWord - (nPopCntMax - nPos) * _nBL)) \
+                               & wBLM) \
+                           | (wKey & ~wBLM); \
+                goto foundIt; \
+            } \
+            break;
 
-          #endif // #else _PARALLEL_EK
+        int nPopCntMax;
+  #if 0
+        switch (nBL & MSK(cnLogBitsPerWord))
+  #else
+        switch (nBL)
+  #endif
+        {
+                                                  CASE_BLX( 8); CASE_BLX( 9);
+        CASE_BLX(10); CASE_BLX(11); CASE_BLX(12); CASE_BLX(13); CASE_BLX(14);
+        CASE_BLX(15); //default:
+                      CASE_BLX(16); CASE_BLX(17); CASE_BLX(18); CASE_BLX(19);
+        CASE_BLX(20); CASE_BLX(21); CASE_BLX(22); CASE_BLX(23); CASE_BLX(24);
+        CASE_BLX(25); CASE_BLX(26); CASE_BLX(27); CASE_BLX(28); CASE_BLX(29);
+        CASE_BLX(30); CASE_BLX(31); CASE_BLX(32); CASE_BLX(33); CASE_BLX(34);
+        CASE_BLX(35); CASE_BLX(36); CASE_BLX(37); CASE_BLX(38); CASE_BLX(39);
+        CASE_BLX(40); CASE_BLX(41); CASE_BLX(42); CASE_BLX(43); CASE_BLX(44);
+        CASE_BLX(45); CASE_BLX(46); CASE_BLX(47); CASE_BLX(48); CASE_BLX(49);
+        CASE_BLX(50); CASE_BLX(51); CASE_BLX(52); CASE_BLX(53); CASE_BLX(54);
+        CASE_BLX(55); CASE_BLX(56);
+        }
+          #else // _PARALLEL_EK elif !NEXT elif B_JUDYL
+              #if 1
+                  #ifdef REVERSE_SORT_EMBEDDED_KEYS
+            int nPopCntMax = EmbeddedListPopCntMax(nBL);
+                  #endif // REVERSE_SORT_EMBEDDED_KEYS
+            if ((nPos = SearchEmbeddedX(qya, wKey)) >= 0) {
+                Word_t wBLM = MSK(nBL);
+                *pwKey = ((wRoot >> (cnBitsPerWord - nBL *
+                  #ifdef REVERSE_SORT_EMBEDDED_KEYS
+                                   (nPopCntMax - nPos)
+                  #else // REVERSE_SORT_EMBEDDED_KEYS
+                                   (nPos + 1)
+                  #endif // REVERSE_SORT_EMBEDDED_KEYS else
+                                     ))
+                               & wBLM)
+                           | (wKey & ~wBLM);
+                goto foundIt;
+            }
+            int nPopCnt = wr_nPopCnt(wRoot, nBL);
+            if (~nPos < nPopCnt) {
+                Word_t wBLM = MSK(nBL);
+                *pwKey = ((wRoot >> (cnBitsPerWord - nBL *
+                  #ifdef REVERSE_SORT_EMBEDDED_KEYS
+                                   (nPopCntMax - ~nPos)
+                  #else // REVERSE_SORT_EMBEDDED_KEYS
+                                   (~nPos + 1)
+                  #endif // REVERSE_SORT_EMBEDDED_KEYS else
+                                                            ))
+                               & wBLM)
+                           | (wKey & ~wBLM);
+                goto foundIt;
+            }
+              #else // 1
+    #define CASE_BLX(_nBL) \
+        case _nBL: \
+        if ((nPos = SearchEmbeddedX(qya, wKey)) < 0) { \
+            nPopCnt = wr_nPopCnt(wRoot, _nBL); \
+            if (~nPos < nPopCnt) { \
+                Word_t wBLM = MSK(_nBL); \
+                *pwKey = ((wRoot >> (cnBitsPerWord - (~nPos+1) * _nBL)) \
+                               & wBLM) \
+                           | (wKey & ~wBLM); \
+                goto foundIt; \
+            } \
+            Word_t wIncr = EXP(_nBL); \
+            wKey &= ~(wIncr - 1); \
+            wKey += wIncr; \
+            if ((wKey & NZ_MSK(_nBL + 8)) != 0) { \
+                pwRoot = &((++pLn)->ln_wRoot); \
+                if (wr_nType(wRoot = *pwRoot) == T_EMBEDDED_KEYS) { \
+                    goto t_ek_next; \
+                } \
+                goto restartUp; \
+            } \
+            if (wKey != 0) goto restart; \
+        } \
+        { \
+            Word_t wBLM = MSK(_nBL); \
+            *pwKey = ((wRoot >> (cnBitsPerWord - (nPos+1) * _nBL)) & wBLM) \
+                       | (wKey & ~wBLM); \
+            goto foundIt; \
         }
 
+        int nPopCnt;
+        goto t_ek_next;
+t_ek_next:
+  #if 0
+        switch (nBL & MSK(cnLogBitsPerWord))
+  #else
+        switch (nBL)
+  #endif
+        {
+                                                  CASE_BLX( 8); CASE_BLX( 9);
+        CASE_BLX(10); CASE_BLX(11); CASE_BLX(12); CASE_BLX(13); CASE_BLX(14);
+        CASE_BLX(15); //default:
+                      CASE_BLX(16); CASE_BLX(17); CASE_BLX(18); CASE_BLX(19);
+        CASE_BLX(20); CASE_BLX(21); CASE_BLX(22); CASE_BLX(23); CASE_BLX(24);
+        CASE_BLX(25); CASE_BLX(26); CASE_BLX(27); CASE_BLX(28); CASE_BLX(29);
+        CASE_BLX(30); CASE_BLX(31); CASE_BLX(32); CASE_BLX(33); CASE_BLX(34);
+        CASE_BLX(35); CASE_BLX(36); CASE_BLX(37); CASE_BLX(38); CASE_BLX(39);
+        CASE_BLX(40); CASE_BLX(41); CASE_BLX(42); CASE_BLX(43); CASE_BLX(44);
+        CASE_BLX(45); CASE_BLX(46); CASE_BLX(47); CASE_BLX(48); CASE_BLX(49);
+        CASE_BLX(50); CASE_BLX(51); CASE_BLX(52); CASE_BLX(53); CASE_BLX(54);
+        CASE_BLX(55); CASE_BLX(56);
+        }
+              #endif // 1 else
+          #endif // _PARALLEL_EK elif !NEXT elif B_JUDYL else
+        }
         goto break_from_main_switch;
 
-foundIt:;
-
-          #if defined(REMOVE)
+          #if !defined(NEXT) || !defined(B_JUDYL)
+foundIt:
+              #ifdef REMOVE
         goto removeGutsAndCleanup;
-          #endif // defined(REMOVE)
-          #if defined(INSERT)
-              #if !defined(RECURSIVE)
+              #endif // REMOVE
+              #ifdef INSERT
+                  #ifndef RECURSIVE
         if (nIncr > 0) { goto undo; } // undo counting
-              #endif // !defined(RECURSIVE)
-          #endif // defined(INSERT)
+                  #endif // !RECURSIVE
+              #endif // INSERT
+          #endif // !NEXT || !B_JUDYL
 
-      #endif // defined(LOOKUP) && defined(LOOKUP_NO_LIST_DEREF)
-
-      #if defined(B_JUDYL) && (defined(INSERT) || defined(LOOKUP))
+      #endif // LOOKUP && LOOKUP_NO_LIST_DEREF else
+      #if !defined(NEXT) || !defined(B_JUDYL)
+          #if defined(B_JUDYL) && (defined(INSERT) || defined(LOOKUP))
         return pwLnX;
-      #else // defined(B_JUDYL) && (defined(INSERT) || defined(LOOKUP))
+          #else // B_JUDYL && (INSERT || LOOKUP)
         return KeyFound;
-      #endif // defined(B_JUDYL) && (defined(INSERT) || defined(LOOKUP))
+          #endif // B_JUDYL && (INSERT || LOOKUP)
+      #endif // !NEXT || !B_JUDYL
     } // end of t_embedded_keys
   #endif // EMBED_KEYS
 
@@ -4414,7 +4295,7 @@ t_ek_xv:
       #ifdef COMPRESSED_LISTS
       #ifdef SKIP_PREFIX_CHECK
       #ifdef LOOKUP
-        #error not coded yet
+        //#error not coded yet
         if (PrefixCheckAtLeaf(qy, wKey
           #ifndef ALWAYS_CHECK_PREFIX_AT_LEAF
                 , bNeedPrefixCheck
@@ -4433,7 +4314,7 @@ t_ek_xv:
       #endif // SKIP_PREFIX_CHECK
       #endif // COMPRESSED_LISTS
         {
-      #ifdef _PARALLEL_EK
+      #if defined(_PARALLEL_EK) && !defined(NEXT)
 
   #ifdef PF_EK_XV_2
 #define PF_2(_nBL) \
@@ -4476,35 +4357,50 @@ t_ek_xv:
             goto xv_break2
   #endif // else (cnBitsInD1 < cnLogBitsPerByte)
 
-        DBGX(printf("\n# pwLnX %p *pwLnX 0x%zx wKey 0x%zx nBL %d\n",
-                    pwLnX, *pwLnX, wKey, nBL));
+            DBGX(printf("\n# pwLnX %p *pwLnX 0x%zx wKey 0x%zx nBL %d\n",
+                        pwLnX, *pwLnX, wKey, nBL));
           #ifdef LOOKUP
-        //PREFETCH(pwr + wr_nPopCnt(wRoot, nBL) / 2);
+            //PREFETCH(pwr + wr_nPopCnt(wRoot, nBL) / 2);
               #ifdef PF_EK_XV
-        PREFETCH(pwr);
+            PREFETCH(pwr);
               #endif // PF_EK_XV
           #endif // LOOKUP
-        switch (nBL) {
-                                XV_BLX( 2); XV_BLX( 3); XV_BLX( 4);
-        XV_BLX( 5); XV_BLX( 6); XV_BLX( 7); XV_BLX( 8); XV_BLX( 9);
-        XV_BLX(10); XV_BLX(11); XV_BLX(12); XV_BLX(13); XV_BLX(14);
-        XV_BLX(15); default: DBG(printf("nBL %d\n", nBL)); assert(0);
-                    XV_BLX(16); XV_BLX(17); XV_BLX(18); XV_BLX(19);
-        XV_BLX(20); XV_BLX(21); XV_BLX(22); XV_BLX(23); XV_BLX(24);
-        XV_BLX(25); XV_BLX(26); XV_BLX(27); XV_BLX(28); XV_BLX(29);
-        XV_BLX(30); XV_BLX(31); XV_BLX(32); XV_BLX(33); XV_BLX(34);
-        XV_BLX(35); XV_BLX(36); XV_BLX(37); XV_BLX(38); XV_BLX(39);
-        XV_BLX(40); XV_BLX(41); XV_BLX(42); XV_BLX(43); XV_BLX(44);
-        XV_BLX(45); XV_BLX(46); XV_BLX(47); XV_BLX(48); XV_BLX(49);
-        XV_BLX(50); XV_BLX(51); XV_BLX(52); XV_BLX(53); XV_BLX(54);
-        XV_BLX(55); XV_BLX(56); XV_BLX(57); XV_BLX(58); XV_BLX(59);
-        XV_BLX(60); XV_BLX(61); XV_BLX(62); XV_BLX(63); XV_BLX(64);
-        }
+            switch (nBL) {
+                                    XV_BLX( 2); XV_BLX( 3); XV_BLX( 4);
+            XV_BLX( 5); XV_BLX( 6); XV_BLX( 7); XV_BLX( 8); XV_BLX( 9);
+            XV_BLX(10); XV_BLX(11); XV_BLX(12); XV_BLX(13); XV_BLX(14);
+            XV_BLX(15); default: DBG(printf("nBL %d\n", nBL)); assert(0);
+                        XV_BLX(16); XV_BLX(17); XV_BLX(18); XV_BLX(19);
+            XV_BLX(20); XV_BLX(21); XV_BLX(22); XV_BLX(23); XV_BLX(24);
+            XV_BLX(25); XV_BLX(26); XV_BLX(27); XV_BLX(28); XV_BLX(29);
+            XV_BLX(30); XV_BLX(31); XV_BLX(32); XV_BLX(33); XV_BLX(34);
+            XV_BLX(35); XV_BLX(36); XV_BLX(37); XV_BLX(38); XV_BLX(39);
+            XV_BLX(40); XV_BLX(41); XV_BLX(42); XV_BLX(43); XV_BLX(44);
+            XV_BLX(45); XV_BLX(46); XV_BLX(47); XV_BLX(48); XV_BLX(49);
+            XV_BLX(50); XV_BLX(51); XV_BLX(52); XV_BLX(53); XV_BLX(54);
+            XV_BLX(55); XV_BLX(56); XV_BLX(57); XV_BLX(58); XV_BLX(59);
+            XV_BLX(60); XV_BLX(61); XV_BLX(62); XV_BLX(63); XV_BLX(64);
+            }
 xv_break2:;
 
-      #else // _PARALLEL_EK
-        #error not coded yet
-      #endif // #else _PARALLEL_EK
+      #else // _PARALLEL_EK && !NEXT
+            if ((nPos = SearchEmbeddedX(qya, wKey)) >= 0) {
+                goto xv_foundIt;
+            }
+          #ifdef NEXT
+            assert(wRoot != WROOT_NULL);
+            int nPopCnt = wr_nPopCnt(wRoot, nBL);
+            if (~nPos < nPopCnt) {
+                int nBits = 1 << (LOG(nBL - 1) + 1);
+              #if (cnBitsInD1 < cnLogBitsPerByte)
+                if (nBits < 8) { nBits = 8; }
+              #endif // (cnBitsInD1 < cnLogBitsPerByte)
+                *pwKey = ((*pwLnX >> (~nPos * nBits)) & MSK(nBits))
+                           | (wKey & ~MSK(nBits));
+                return &pwr[~nPos];
+            }
+          #endif // NEXT
+      #endif // _PARALLEL_EK && !NEXT else
         }
 
         goto break_from_main_switch;
@@ -4519,12 +4415,14 @@ xv_foundIt:;
         if (nIncr > 0) { goto undo; } // undo counting
           #endif // !defined(RECURSIVE)
       #endif // defined(INSERT)
-
       #if defined(INSERT) || defined(LOOKUP)
         return &pwr[nPos];
-      #else // defined(INSERT) || defined(LOOKUP)
+      #elif defined(NEXT)
+        *pwKey = wKey;
+        return &pwr[nPos];
+      #else // INSERT || LOOKUP elif NEXT
         return KeyFound;
-      #endif // defined(INSERT) || defined(LOOKUP)
+      #endif // INSERT || LOOKUP elif NEXT else
     } // end of t_ek_xv
   #endif // EK_XV
 
@@ -4564,49 +4462,83 @@ t_separate_t_null:
   #endif // SEPARATE_T_NULL || (cwListPopCntMax == 0)
 
 break_from_main_switch:;
-    DBGX(Checkpoint(qya, "exit switch stmt"));
-
     // Key is not present.
-#if defined(COUNT)
+    DBGX(Checkpoint(qya, "break_from_main_switch"));
+  #ifdef NEXT
+    DBGX(Checkpoint(qya, "tryNextDigit"));
+    DBGX(printf("# wKey " OWx"\n", wKey));
+    if (nBL < cnBitsPerWord) {
+        goto tryNextDigit;
+tryNextDigit:;
+        assert(nBL < cnBitsPerWord);
+        Word_t wIncr = EXP(nBL);
+        wKey &= ~(wIncr - 1);
+        wKey += wIncr;
+        if ((nBLUp & MSK(cnLogBitsPerWord)) != 0) {
+            if ((wKey & MSK(nBLRUp)) != 0) {
+      #ifdef NEXT_SHORTCUT // skip over WROOT_NULLs
+// Do we want nTypeUp?
+                if (wr_nType(pLnUp->ln_wRoot) >= T_SWITCH) {
+                    while ((++pLn)->ln_wRoot == WROOT_NULL) {
+                        wKey += wIncr;
+                        if ((wKey & MSK(nBLRUp)) == 0) {
+                            if (wKey == 0) {
+                                return Failure;
+                            }
+                            goto restart;
+                        }
+                    }
+                }
+      #endif // NEXT_SHORTCUT
+                goto restartUp; // restart at (nBLUp, pLnUp) with this new wKey
+            }
+        }
+        if (wKey != 0) {
+            goto restart; // restart at top with this new wKey
+        }
+    }
+    return BJL(NULL)BJ1(Failure);
+  #endif // NEXT
+  #ifdef COUNT
     DBGC(printf("done wPopCntSum " OWx"\n", wPopCntSum));
     return wPopCntSum;
-#endif // defined(COUNT)
-#if defined(INSERT)
-  #if defined(BM_IN_LINK)
+  #endif // COUNT
+  #ifdef INSERT
+      #ifdef BM_IN_LINK
     // If InsertGuts calls Insert, then it is always with the same
     // pLn and nBL that Insert passed to InsertGuts.
-      #if !defined(RECURSIVE)
+          #ifndef RECURSIVE
     assert((nBL != cnBitsPerWord) || (pLn == pLnOrig));
-      #endif // !defined(RECURSIVE)
-  #endif // defined(BM_IN_LINK)
+          #endif // !RECURSIVE
+      #endif // BM_IN_LINK
     // InsertGuts is called with a pLn and nBL indicates the
     // bits that were not decoded in identifying pLn.  nBL
     // does not include any skip indicated in the type field of *pLn.
-  #ifdef _LNX
+      #ifdef _LNX
     assert((pwLnX != NULL) || (nBL == cnBitsPerWord));
-  #endif // _LNX
-  #ifdef REMOTE_LNX
+      #endif // _LNX
+      #ifdef REMOTE_LNX
     assert((nBLUp < cnBitsPerWord) || (pwLnXUp == NULL));
-  #endif // REMOTE_LNX
-  #ifdef CODE_XX_SW
+      #endif // REMOTE_LNX
+      #ifdef CODE_XX_SW
     if (nBL >= cnBitsPerWord) {
         assert(nBLUp == 0);
         assert(pLnUp == NULL);
-      #ifdef _LNX
+          #ifdef _LNX
         assert(pwLnXUp == NULL);
-      #endif // _LNX
+          #endif // _LNX
     } else {
-      #ifdef _LNX
-      #if 0
+          #ifdef _LNX
+          #if 0
         // This assertion doesn't work for Insert not-at-top.
         if ((nBLUp >= cnBitsPerWord) != (pwLnXUp == NULL)) {
             printf("\n# nBLUp %d pwLnXUp %p\n", nBLUp, pwLnXUp);
         }
         assert((nBLUp >= cnBitsPerWord) == (pwLnXUp == NULL));
-      #endif
-      #endif // _LNX
+          #endif
+          #endif // _LNX
     }
-  #endif // CODE_XX_SW
+      #endif // CODE_XX_SW
     BJL(pwValue =)
     BJ1(Status_t status =)
         InsertGuts(qya, wKey, nPos
@@ -4618,16 +4550,16 @@ break_from_main_switch:;
       #endif // defined(CODE_XX_SW)
                    );
     BJ1((void)status);
-  #ifndef _RETURN_NULL_TO_INSERT_AGAIN
+      #ifndef _RETURN_NULL_TO_INSERT_AGAIN
     BJL(assert(pwValue != NULL));
     BJL(assert(((Word_t)pwValue & (sizeof(Word_t) - 1)) == 0));
     BJ1(assert(status == Success));
-  #endif // _RETURN_NULL_TO_INSERT_AGAIN
-  #ifdef _RETURN_NULL_TO_INSERT_AGAIN
+      #endif // _RETURN_NULL_TO_INSERT_AGAIN
+      #ifdef _RETURN_NULL_TO_INSERT_AGAIN
     if (BJL(pwValue == NULL) BJ1(status == 0)) {
-      #ifdef _LNX
+            #ifdef _LNX
         assert((pwLnX != NULL) || (nBL == cnBitsPerWord));
-      #endif // _LNX
+            #endif // _LNX
 // How do we know if InsertGuts wants us to reinsert at
 // (nBL, pLn/pwRoot) or at its parent? Or higher?
 // Because it has modified the parent. Or higher.
@@ -4661,10 +4593,15 @@ break_from_main_switch:;
         nBLR = nBL;
         DBGX(Checkpoint(qya, "goto insertAgain"));
         goto insertAgain;
-    } else if (BJL(pwValue == (Word_t*)-1) BJ1((int)status == -1)) {
-// What about pop?
-// Do we want to subract one in some cases and not in others?
-        DBGX(Checkpoint(qya, "goto insertAgain Up"));
+    } else if (BJL(pwValue == (Word_t*)-1) BJ1((int)status == -1))
+      #endif // _RETURN_NULL_TO_INSERT_AGAIN
+  #endif // INSERT
+  #if defined(INSERT) && defined(_RETURN_NULL_TO_INSERT_AGAIN) || defined(NEXT)
+    {
+        goto restartUp;
+restartUp:;
+        DBGX(Checkpoint(qya, "restartUp"));
+        DBGX(printf("nBLUp %d pLnUp %p\n", nBLUp, pLnUp));
         nBL = nBLUp;
         pLn = pLnUp;
       #ifndef QP_PLN
@@ -4673,42 +4610,43 @@ break_from_main_switch:;
       #ifdef _LNX
         pwLnX = pwLnXUp;
       #endif // LNX
-        DBGX(Checkpoint(qya, "goto insertAgain Up"));
         wRoot = pLnUp->ln_wRoot;
-        nBLR = nBLUp;
-// How do we reset nBLUp, pLnUp, pLnXUp?
-        nBLUp = 0; pLnUp = NULL;
+        nBLR = nBL;
+        // How do we reset nBLUp, pLnUp, pLnXUp?
+        nBLUp = 0;
+        pLnUp = NULL;
       #ifdef _LNX
         pwLnXUp = NULL;
       #endif // LNX
         goto insertAgain;
     }
-  #endif // _RETURN_NULL_TO_INSERT_AGAIN
-  #ifdef B_JUDYL
+  #endif // INSERT && _RETURN_NULL_TO_INSERT_AGAIN || NEXT
+  #ifdef INSERT
+      #ifdef B_JUDYL
     DBGI(printf("Initializing pwValue %p for wKey 0x%zx\n", pwValue, wKey));
     *pwValue = 0;
-  #endif // B_JUDYL
+      #endif // B_JUDYL
     if (bCleanupRequested) {
         goto cleanup;
     }
-  #ifdef B_JUDYL
+      #ifdef B_JUDYL
     DBGX(printf("InsertGuts returned %p\n", (void*)pwValue));
     DBGX(printf("Insert returning %p\n", (void*)pwValue));
     return pwValue;
-  #else // B_JUDYL
+      #else // B_JUDYL
     return Success;
-  #endif // B_JUDYL
+      #endif // B_JUDYL
 undo:;
     DBGX(Checkpoint(qya, "undo"));
-#endif // defined(INSERT)
+  #endif // INSERT
 #if defined(REMOVE)
   #if !defined(RECURSIVE)
     if (nIncr < 0)
   #endif // !defined(RECURSIVE)
 #endif // defined(REMOVE)
+    {
   #if defined(INSERT) || defined(REMOVE)
       #if !defined(RECURSIVE)
-    {
         // Undo the counting we did on the way in.
         nIncr *= -1;
       #endif // !defined(RECURSIVE)
@@ -4716,7 +4654,7 @@ undo:;
     goto restart;
 restart:;
         DBGX(Checkpoint(qya, "restart"));
-  #if defined(INSERT) || defined(REMOVE)
+  #if defined(INSERT) || defined(REMOVE) || defined(NEXT)
       #if !defined(RECURSIVE)
         nBL = nBLOrig;
         pLn = pLnOrig; // should we set pLnUp = NULL
@@ -4728,14 +4666,14 @@ restart:;
           #endif // _LNX
         wRoot = pLn->ln_wRoot;
         goto top;
-    }
       #endif // !defined(RECURSIVE)
-  #endif // defined(INSERT) || defined(REMOVE)
-  #if (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
+  #endif // INSERT || REMOVE || NEXT
+    }
+  #if (defined(LOOKUP) || defined(INSERT) || defined(NEXT)) && defined(B_JUDYL)
     return NULL;
-  #else // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
+  #else // (LOOKUP || INSERT || NEXT) && B_JUDYL
     return Failure;
-  #endif // (defined(LOOKUP) || defined(INSERT)) && defined(B_JUDYL)
+  #endif // (LOOKUP || INSERT || NEXT) && B_JUDYL else
   #if defined(INSERT) || defined(REMOVE)
       #if defined(REMOVE)
 removeGutsAndCleanup:;
@@ -4759,13 +4697,6 @@ cleanup:;
   #endif // defined(INSERT) || defined(REMOVE)
 }
 
-#undef RECURSIVE
-//#undef InsertGuts
-#undef InsertRemove
-#undef DBGX
-#undef strLookupOrInsertOrRemove
-#undef KeyFound
-
 #ifdef B_JUDYL
 #define Insert  InsertL
 #define Remove  RemoveL
@@ -4773,6 +4704,15 @@ cleanup:;
 #define Insert  Insert1
 #define Remove  Remove1
 #endif // B_JUDYL
+
+#endif // defined(NEW_NEXT) || !defined(NEXT)
+
+// Just to make sure I don't use these below.
+#undef RECURSIVE
+#undef InsertRemove
+#undef DBGX
+#undef strLookupOrInsertOrRemove
+#undef KeyFound
 
 #endif // (cnDigitsPerWord <= 1)
 
@@ -4827,9 +4767,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
       // The first word in the list is used for pop count at the top.
         SMETRICS_GET(++j__GetCalls);
       #if defined(B_JUDYL)
-        int nPopCnt = gnListPopCnt(qy, nBL);
-        int nPos = SearchListWord(ls_pwKeysX(wr_pwr(wRoot), nBL, nPopCnt),
-                                  wKey, nBL, nPopCnt);
+        int nPos = SearchListWord(qy, nBL, wKey);
         return (nPos >= 0) ? (PPvoid_t)&gpwValues(qy)[~nPos] : NULL;
       #else // defined(B_JUDYL)
         return ListHasKeyWord(qy, nBL, wKey);
@@ -4838,11 +4776,7 @@ Judy1Test(Pcvoid_t pcvRoot, Word_t wKey, PJError_t PJError)
   #endif // defined(SEARCH_FROM_WRAPPER)
   #endif // (cwListPopCntMax != 0)
 
-    return
-  #ifdef B_JUDYL
-        (PPvoid_t)
-  #endif // B_JUDYL
-            Lookup(wRoot, wKey);
+    return BJL((PPvoid_t)) Lookup(wRoot, wKey);
 
 #else // (cnDigitsPerWord > 1)
 
@@ -4975,8 +4909,7 @@ Judy1Set(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
       #endif // (cnBitsPerWord == 64)
             ))
     {
-        int nPos = ~SearchListWord(ls_pwKeysX(pwr, cnBitsPerWord, nPopCnt),
-                                   wKey, cnBitsPerWord, nPopCnt);
+        int nPos = ~SearchListWord(qy, nBLR, wKey);
         if (nPos >= 0) {
             Word_t *pwKeys = ls_pwKeys(pwr, cnBitsPerWord);
             assert(ls_pwKeysX(pwr, cnBitsPerWord, nPopCnt) == pwKeys);
@@ -5335,3 +5268,221 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 }
 
 #endif // defined(REMOVE)
+
+#ifdef NEXT
+
+// If *pwKey is in the array then return 1 and leave *pwKey unchanged.
+// Otherwise find the next bigger key than *pwKey which is in the array.
+// Put the found key in *pwKey.
+// Return 1 if a key is found.
+// Return 0 if *pwKey is bigger than the biggest key in the array.
+// Return -1 if pwKey is NULL.
+// *pwKey is undefined if anything other than 1 is returned.
+// But we go to the trouble of preserving *pwKey if anything other than 1
+// is returned to compare with JudyA.
+#ifdef B_JUDYL
+PPvoid_t
+JudyLFirst(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
+#else // B_JUDYL
+int
+Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
+#endif // B_JUDYL
+{
+    DBGN(printf("\n# JxF: *pwKey " OWx"\n", *pwKey));
+    if (pwKey == NULL) {
+        if (PJError != NULL) {
+            PJError->je_Errno = JU_ERRNO_NULLPINDEX;
+        }
+        return BJL(PPJERR) BJ1(JERR);
+    }
+  #if !defined(NEW_NEXT) || defined(NEXT_QPA) || defined(NEXT_QP)
+    int nBL = cnBitsPerWord; (void)nBL;
+      #ifdef QP_PLN
+    Link_t* pLn = STRUCT_OF((Word_t*)&PArray, Link_t, ln_wRoot);
+      #else // QP_PLN
+    Word_t* pwRoot = (Word_t*)&PArray; (void)pwRoot;
+      #endif // QP_PLN else
+      #if !defined(NEW_NEXT) || defined(NEXT_QPA)
+      #ifdef REMOTE_LNX
+    Word_t* pwLnX = NULL; (void)pwLnX;
+      #endif // REMOTE_LNX
+      #endif // !NEW_NEXT || NEXT_QPA
+  #endif // !NEW_NEXT || NEXT_QPA || NEXT_QP
+  #ifdef NEW_NEXT
+      #ifdef NEW_NEXT_IS_EXCLUSIVE
+    Word_t wKey = *pwKey;
+    BJL(Word_t* pwVal);
+    if (wKey == 0) {
+        if (BJL((pwVal = (Word_t*)JudyLGet(PArray, 0, NULL)) != NULL)
+            BJ1(Judy1Test(PArray, 0, NULL) == 1)
+            )
+        {
+            return BJL((PPvoid_t)pwVal) BJ1(1);
+        }
+    } else {
+        --wKey;
+    }
+          #ifdef NEXT_QPA
+    BJL(pwVal = NextL(qya, &wKey));
+    BJ1(Status_t status = Next1(qya, &wKey));
+          #elif defined(NEXT_QP)
+    BJL(pwVal = NextL(qy, &wKey));
+    BJ1(Status_t status = Next1(qy, &wKey));
+          #else // NEXT_QPA elif NEXT_QP
+    BJL(pwVal = NextL((Word_t)PArray, &wKey));
+    BJ1(Status_t status = Next1((Word_t)PArray, &wKey));
+          #endif // NEXT_QPA elif NEXT_QP else
+    if (BJL(pwVal != NULL) BJ1(status == Success)) {
+        *pwKey = wKey;
+    }
+      #else // NEW_NEXT_IS_EXCLUSIVE
+          #ifdef NEXT_QPA
+    BJL(Word_t* pwVal = NextL(qya, pwKey));
+    BJ1(Status_t status = Next1(qya, pwKey));
+          #elif defined(NEXT_QP)
+    BJL(Word_t* pwVal = NextL(qy, pwKey));
+    BJ1(Status_t status = Next1(qy, pwKey));
+          #else // NEXT_QPA elif NEXT_QP
+    BJL(Word_t* pwVal = NextL((Word_t)PArray, pwKey));
+    BJ1(Status_t status = Next1((Word_t)PArray, pwKey));
+          #endif // NEXT_QPA elif NEXT_QP else
+      #endif // NEW_NEXT_IS_EXCLUSIVE else
+    BJL(DBGN(printf("# JxF: pwVal %p\n", pwVal)));
+    BJ1(DBGN(printf("# JxF: status %d\n", status)));
+    if (BJL(pwVal != NULL) BJ1(status == Success))
+  #else // NEW_NEXT
+    Word_t wKey = *pwKey;
+    BJL(Word_t* pwVal = NULL);
+    Status_t status = NextGuts(qya, &wKey, /*wCount*/0, /*bPrev*/0, /*bEmpty*/0
+          #ifdef B_JUDYL
+                             , &pwVal
+          #endif // B_JUDYL
+                               )
+                        ? Failure : Success;
+    if (status == Success) {
+        *pwKey = wKey;
+    }
+    DBGN(printf("# JxF: status %d\n", status));
+    if (status == Success)
+  #endif // NEW_NEXT else
+    {
+  #if !defined(NEW_NEXT) // || defined(DEBUG)
+        *pwKey = wKey;
+  #endif // NEW_NEXT // || DEBUG
+        DBGN(printf("# JxF: *pwKey 0x%zx\n", *pwKey));
+  #ifdef B_JUDYL
+      #ifndef NEW_NEXT
+        if (pwVal == NULL) {
+            pwVal = (Word_t*)JudyLGet(PArray, *pwKey, NULL);
+        }
+        assert(pwVal != NULL);
+      #endif // !NEW_NEXT
+        DBGN(printf("# JxF: pwVal %p *pwVal 0x%02zx\n", pwVal, *pwVal));
+  #endif // B_JUDYL
+    }
+    DBGN(printf("\n"));
+    return BJL((PPvoid_t)pwVal) BJ1(status);
+}
+
+// Find the next bigger key than *pwKey which is in the array.
+// Put the found key in *pwKey.
+// Return 1 if a key is found.
+// Return 0 if *pwKey is bigger than or equal to the biggest key in the array.
+// Return -1 if pwKey is NULL.
+// *pwKey is undefined if anything other than 1 is returned.
+// But we go to the trouble of preserving *pwKey if anything other than 1
+// is returned to compare with JudyA.
+#ifdef B_JUDYL
+PPvoid_t
+JudyLNext(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
+#else // B_JUDYL
+int
+Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
+#endif // B_JUDYL
+{
+    DBGN(printf("\n# JxN: *pwKey " OWx"\n", *pwKey));
+    if (pwKey == NULL) {
+        if (PJError != NULL) {
+            PJError->je_Errno = JU_ERRNO_NULLPINDEX;
+        }
+        return BJL(PPJERR) BJ1(JERR);
+    }
+  #if !defined(NEW_NEXT) || !defined(NEW_NEXT_IS_EXCLUSIVE)
+    Word_t wKey = *pwKey + 1;
+    if (wKey == 0) {
+        return 0; // NULL for JudyL
+    }
+  #endif // !NEW_NEXT || !NEW_NEXT_IS_EXCLUSIVE
+  #if !defined(NEW_NEXT) || defined(NEXT_QPA) || defined(NEXT_QP)
+    int nBL = cnBitsPerWord; (void)nBL;
+      #ifdef QP_PLN
+    Link_t* pLn = STRUCT_OF((Word_t*)&PArray, Link_t, ln_wRoot);
+      #else // QP_PLN
+    Word_t* pwRoot = (Word_t*)&PArray; (void)pwRoot;
+      #endif // QP_PLN else
+      #if !defined(NEW_NEXT) || defined(NEXT_QPA)
+      #ifdef REMOTE_LNX
+    Word_t* pwLnX = NULL; (void)pwLnX;
+      #endif // REMOTE_LNX
+      #endif // !NEW_NEXT || NEXT_QPA
+  #endif // !NEW_NEXT || NEXT_QPA || NEXT_QP
+  #ifdef NEW_NEXT
+      #ifdef NEW_NEXT_IS_EXCLUSIVE
+          #ifdef NEXT_QPA
+    BJL(Word_t* pwVal = NextL(qya, pwKey));
+    BJ1(Status_t status = Next1(qya, pwKey));
+          #elif defined(NEXT_QP)
+    BJL(Word_t* pwVal = NextL(qy, pwKey));
+    BJ1(Status_t status = Next1(qy, pwKey));
+          #else // NEXT_QPA elif NEXT_QP
+    BJL(Word_t* pwVal = NextL((Word_t)PArray, pwKey));
+    BJ1(Status_t status = Next1((Word_t)PArray, pwKey));
+          #endif // NEXT_QPA elif NEXT_QP else
+      #else // NEW_NEXT_IS_EXCLUSIVE
+          #ifdef NEXT_QPA
+    BJL(Word_t* pwVal = NextL(qya, &wKey));
+    BJ1(Status_t status = Next1(qya, &wKey));
+          #elif defined(NEXT_QP)
+    BJL(Word_t* pwVal = NextL(qy, &wKey));
+    BJ1(Status_t status = Next1(qy, &wKey));
+          #else // NEXT_QPA elif NEXT_QP
+    BJL(Word_t* pwVal = NextL((Word_t)PArray, &wKey));
+    BJ1(Status_t status = Next1((Word_t)PArray, &wKey));
+          #endif // NEXT_QPA elif NEXT_QP else
+      #endif // NEW_NEXT_IS_EXCLUSIVE else
+    BJL(DBGN(printf("# JxN: pwVal %p\n", pwVal)));
+    BJ1(DBGN(printf("# JxN: status %d\n", status)));
+    if (BJL(pwVal != NULL) BJ1(status == Success))
+  #else // NEW_NEXT
+    BJL(Word_t* pwVal = NULL);
+    Status_t status
+        = NextGuts(qya, &wKey, /*wCount*/0, /*bPrev*/0, /*bEmpty*/0
+          #ifdef B_JUDYL
+                 , &pwVal
+          #endif // B_JUDYL
+                   )
+            ? Failure : Success;
+    DBGN(printf("# JxN: status %d\n", status));
+    if (status == Success)
+  #endif // NEW_NEXT else
+    {
+      #if !defined(NEW_NEXT) || !defined(NEW_NEXT_IS_EXCLUSIVE)
+        *pwKey = wKey;
+      #endif // !NEW_NEXT || !NEW_NEXT_IS_EXCLUSIVE
+        DBGN(printf("# JxN: *pwKey " OWx"\n\n", *pwKey));
+  #ifdef B_JUDYL
+      #ifndef NEW_NEXT
+        if (pwVal == NULL) {
+            pwVal = (Word_t*)JudyLGet(PArray, *pwKey, NULL);
+        }
+        assert(pwVal != NULL);
+      #endif // !NEW_NEXT
+        DBGN(printf("# JxF: pwVal %p *pwVal 0x%02zx\n", pwVal, *pwVal));
+  #endif // B_JUDYL
+    }
+    DBGN(printf("\n"));
+    return BJL((PPvoid_t)pwVal) BJ1(status);
+}
+
+#endif // NEXT
+

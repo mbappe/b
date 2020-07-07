@@ -1,13 +1,5 @@
 #include "b.h"
 
-#ifdef B_JUDYL
-#define Insert  InsertL
-#define Count  CountL
-#else // B_JUDYL
-#define Insert  Insert1
-#define Count  Count1
-#endif // B_JUDYL
-
 // Check and/or Time depend on Judy1MallocSizes but this version
 // of Judy does not use it.
 #ifdef B_JUDYL
@@ -177,7 +169,7 @@ HexDump(char *str, Word_t *pw, unsigned nWords)
     }
 }
 
-static void
+void
 Checkpoint(qpa, const char *str)
 {
     qva;
@@ -2568,13 +2560,13 @@ dumpBmTail:;
     assert( ! tp_bIsSkip(nType) || (wr_nBLR(wRoot) >= cnBitsInD1) );
 #endif // defined(SKIP_LINKS) || (cwListPopCntMax != 0)
 
-#if (cwListPopCntMax != 0)
+  #if (cwListPopCntMax != 0)
 
     if (!tp_bIsSwitch(nType))
     {
         Word_t wPopCnt;
 
-#if defined(EMBED_KEYS)
+      #ifdef EMBED_KEYS
 
         if (nType == T_EMBEDDED_KEYS) {
             goto embeddedKeys;
@@ -2584,27 +2576,28 @@ embeddedKeys:;
             wPopCnt = wr_nPopCnt(wRoot, nBL);
             assert(wPopCnt != 0);
             printf(" wr_nPopCnt %3d", (int)wPopCnt);
-            if (EmbeddedListPopCntMax(nBL) != 0) {
-                for (unsigned nn = 0; nn < wPopCnt; nn++) {
-                    printf(" 0x%016" _fw"x",
-#if defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(PACK_KEYS_RIGHT)
-                        (wRoot
-                            >> (cnBitsPerWord
-                                - ((nn + nPopCntMax - wPopCnt + 1) * nBL)))
-#else // defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(PACK_KEYS_RIGHT)
-                        (wRoot >> (cnBitsPerWord - ((nn + 1) * nBL)))
-#endif // defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(PACK_KEYS_RIGHT)
-                            & MSK(nBL));
-  #ifdef B_JUDYL
-                    printf(",0x%zx", *gpwEmbeddedValue(qya));
-  #endif // B_JUDYL
+            int nPopCntMax = EmbeddedListPopCntMax(nBL);
+            if (nPopCntMax != 0) {
+                for (int nPos = 0; nPos < (int)wPopCnt; nPos++) {
+                    printf(" 0x%02zx",
+                           (wRoot >> (cnBitsPerWord - nBL *
+          #if !defined(B_JUDYL) && defined(REVERSE_SORT_EMBEDDED_KEYS)
+                                    (nPopCntMax - nPos)
+          #else // !B_JUDYL && REVERSE_SORT_EMBEDDED_KEYS
+                                    (nPos + 1)
+          #endif // !B_JUDYL && REVERSE_SORT_EMBEDDED_KEYS else
+                                      ))
+                               & MSK(nBL));
+          #ifdef B_JUDYL
+                    printf(",0x%02zx", *gpwEmbeddedValue(qya));
+          #endif // B_JUDYL
                 }
             } else { //  wr_nType(WROOT_NULL) == T_EMBEDDED_KEYS
                 printf(" " OWx, *pwr);
             }
             putchar('\n');
         }
-  #ifdef EK_XV
+          #ifdef EK_XV
         else if (nType == T_EK_XV) {
             wPopCnt = wr_nPopCnt(wRoot, nBL);
             if (!bDump) {
@@ -2629,9 +2622,9 @@ embeddedKeys:;
             }
             printf("\n");
         }
-  #endif // EK_XV
+          #endif // EK_XV
         else
-#endif // defined(EMBED_KEYS)
+      #endif // EMBED_KEYS
         {
             assert(tp_bIsList(nType));
             nBLR = gnListBLR(qy);
@@ -2642,7 +2635,7 @@ embeddedKeys:;
 
             if (!bDump)
             {
-  #ifdef XX_LISTS
+      #ifdef XX_LISTS
                 // Be careful not to free a shared list more than once.
                 // Put WROOT_NULL in replicated links to inhibit subsequent
                 // traversal.
@@ -2683,72 +2676,72 @@ embeddedKeys:;
                         pLinksUp[nDigit].ln_wRoot = WROOT_NULL;
                     }
                 }
-  #endif // XX_LISTS
+      #endif // XX_LISTS
 
                 wBytes = OldList(pwr, wPopCnt, nBLR, nType);
                 assert(wr_pwr(*pwRootArg) == pwr);
                 goto zeroLink;
             }
 
-  #ifdef XX_LISTS
+      #ifdef XX_LISTS
             if (nType == T_XX_LIST) {
                 printf(" nBLR %d", nBLR);
             }
-  #endif // XX_LISTS
-#if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+      #endif // XX_LISTS
+      #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             if (nBL < cnBitsPerWord) {
                 printf(" ln_wPopCnt %3" _fw"u", wPopCnt);
             } else
-#endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
+      #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             { printf(" ls_wPopCnt %3" _fw"u", wPopCnt); }
 
             printf(" ln_wKey ");
-#if defined(PP_IN_LINK)
+      #if defined(PP_IN_LINK)
             if (nBL < cnBitsPerWord) {
                 printf( OWx, PWR_wPrefixBL(pwRoot, NULL, nBLR));
             } else
-#endif // defined(PP_IN_LINK)
+      #endif // defined(PP_IN_LINK)
             { printf("       N/A"); }
             printf(" pKeys %p", ls_pwKeysX(pwr, nBLR, wPopCnt));
 
-            for (int nn = 0;
-                //(nn < wPopCnt) && (nn < 8);
-                (nn < (int)wPopCnt);
-                 nn++)
-            {
-                int xx = nn;
-#if defined(COMPRESSED_LISTS)
+            for (int xx = 0; (xx < (int)wPopCnt); xx++) {
+      #ifdef COMPRESSED_LISTS
                 if (nBLR <= 8) {
-                    printf(" %02x", ls_pcKeysNATX(pwr, wPopCnt)[xx]);
-  #ifdef B_JUDYL
+                    uint8_t* pcKeys = ls_pcKeysNATX(pwr, wPopCnt);
+                    printf(" %02x", pcKeys[xx]);
+          #ifdef B_JUDYL
                     printf("," OWx,
-                           ((Word_t*)ls_pcKeysNATX(pwr, wPopCnt))[~xx]);
-  #endif // B_JUDYL
+              #if !defined(PACK_L1_VALUES) && cnBitsInD1 <= 8
+                        (nBLR == cnBitsInD1)
+                            ? ((Word_t*)pcKeys)[~(pcKeys[xx] & MSK(nBLR))] :
+              #endif // !PACK_L1_VALUES && cnBitsInD1 <= 8
+                              ((Word_t*)pcKeys)[~xx]);
+          #endif // B_JUDYL
                 } else if (nBLR <= 16) {
                     printf(" %04x", ls_psKeysNATX(pwr, wPopCnt)[xx]);
-  #ifdef B_JUDYL
+          #ifdef B_JUDYL
                     printf("," OWx,
                            ((Word_t*)ls_psKeysNATX(pwr, wPopCnt))[~xx]);
 
-  #endif // B_JUDYL
-#if (cnBitsPerWord > 32)
+          #endif // B_JUDYL
+          #if (cnBitsPerWord > 32)
                 } else if (nBLR <= 32) {
                     printf(" %08x", ls_piKeysNATX(pwr, wPopCnt)[xx]);
-  #ifdef B_JUDYL
+              #ifdef B_JUDYL
                     printf("," OWx,
                            ((Word_t*)ls_piKeysNATX(pwr, wPopCnt))[~xx]);
-  #endif // B_JUDYL
-#endif // (cnBitsPerWord > 32)
+              #endif // B_JUDYL
+          #endif // (cnBitsPerWord > 32)
                 } else
-#endif // defined(COMPRESSED_LISTS)
+      #endif // COMPRESSED_LISTS
                 {
                     printf(" " OWx, ls_pwKeysX(pwr, nBLR, wPopCnt)[xx]);
-  #ifdef B_JUDYL
+      #ifdef B_JUDYL
                     printf("," OWx, gpwValues(qy)[~xx]);
-  #endif // B_JUDYL
+      #endif // B_JUDYL
                 }
             }
-  #ifdef PSPLIT_PARALLEL
+      #ifdef PSPLIT_PARALLEL
             if (ALIGN_LIST_LEN(ExtListBytesPerKey(nBLR), wPopCnt)) {
                 printf(" pad");
                 for (int nn = (int)wPopCnt;
@@ -2756,56 +2749,56 @@ embeddedKeys:;
                      ++nn)
                 {
                     int xx = nn;
-#if defined(COMPRESSED_LISTS)
+          #ifdef COMPRESSED_LISTS
                     if (nBLR <= 8) {
                         printf(" %02x", ls_pcKeysNATX(pwr, wPopCnt)[xx]);
-  #ifdef B_JUDYL
+              #ifdef B_JUDYL
                         if (nn < (int)wPopCnt) {
                             printf("," OWx,
                                    ((Word_t*)ls_pcKeysNATX(pwr,
                                                            wPopCnt))[~nn]);
                         }
-  #endif // B_JUDYL
+              #endif // B_JUDYL
                     } else if (nBLR <= 16) {
-  #ifdef UA_PARALLEL_128
+              #ifdef UA_PARALLEL_128
                         if ((nBLR == 16) && (nn == 6)) {
                             assert(nType == T_LIST_UA);
                         }
-  #endif // UA_PARALLEL_128
+              #endif // UA_PARALLEL_128
                         printf(" %04x", ls_psKeysNATX(pwr, wPopCnt)[xx]);
-  #ifdef B_JUDYL
+              #ifdef B_JUDYL
                         if (nn < (int)wPopCnt) {
                             printf("," OWx,
                                    ((Word_t*)ls_psKeysNATX(pwr,
                                                            wPopCnt))[~nn]);
                         }
-  #endif // B_JUDYL
-#if (cnBitsPerWord > 32)
+              #endif // B_JUDYL
+              #if (cnBitsPerWord > 32)
                     } else if (nBLR <= 32) {
                         printf(" %08x", ls_piKeysNATX(pwr, wPopCnt)[xx]);
-  #ifdef B_JUDYL
+                  #ifdef B_JUDYL
                         if (nn < (int)wPopCnt) {
                             printf("," OWx,
                                    ((Word_t*)ls_piKeysNATX(pwr,
                                                            wPopCnt))[~nn]);
                         }
-  #endif // B_JUDYL
-#endif // (cnBitsPerWord > 32)
+                  #endif // B_JUDYL
+              #endif // (cnBitsPerWord > 32)
                     } else
-#endif // defined(COMPRESSED_LISTS)
+          #endif // defined(COMPRESSED_LISTS)
                     {
                         printf(" " OWx, ls_pwKeysX(pwr, nBLR, wPopCnt)[xx]);
-  #ifdef B_JUDYL
+          #ifdef B_JUDYL
                         if (nn < (int)wPopCnt) {
                             printf("," OWx,
                                    ls_pwKeysX(pwr, nBLR, wPopCnt)[~nn]);
                         }
-  #endif // B_JUDYL
+          #endif // B_JUDYL
                     }
                 }
             }
-  #endif // PSPLIT_PARALLEL
-  #if defined(UA_PARALLEL_128)
+      #endif // PSPLIT_PARALLEL
+      #ifdef UA_PARALLEL_128
             if (nType == T_LIST_UA) {
                 assert(nBLR == 16);
                 assert(wPopCnt <= 6);
@@ -2815,7 +2808,7 @@ embeddedKeys:;
                 //printf("\nT_LIST_UA pwr %p\n", (void*)pwr);
                 //HexDump(/* str */ "", /* pw */ &pwr[-1], /* nWords */ 5);
             }
-  #endif // defined(UA_PARALLEL_128)
+      #endif // UA_PARALLEL_128
             if (nBL == cnBitsPerWord) {
                 //printf(" " OWx, ls_pwKeysX(pwr, nBL, wPopCnt)[wPopCnt]);
             }
@@ -2828,7 +2821,7 @@ embeddedKeys:;
         }
         return 0;
     }
-#endif // (cwListPopCntMax != 0)
+  #endif // (cwListPopCntMax != 0)
 
     // Switch
     assert(tp_bIsSwitch(nType));
@@ -3147,8 +3140,6 @@ Judy1Dump(Word_t wRoot, int nBL, Word_t wPrefix)
 }
 
 #if defined(EMBED_KEYS)
-#if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
-  #if ! defined(PACK_KEYS_RIGHT)
 // Which cases should InsertEmbedded handle?
 // - NO_TYPE_IN_XX_SW -- not yet
 // - (wRoot == WROOT_NULL) && wr_nType(WROOT_NULL) == T_EMBEDDED_KEYS -- yes
@@ -3190,7 +3181,17 @@ InsertEmbedded(qpa, Word_t wKey)
     assert(nPopCnt == 0);
       #endif // EK_XV
     {
-        SetBits(pwRoot, nBL, cnBitsPerWord - nBL, wKey & MSK(nBL));
+        for (int nPos = 0;
+          #if defined(FILL_W_KEY) || defined(FILL_W_BIG_KEY)
+             nPos < (cnBitsPerWord - 4) / nBL;
+          #else // FILL_W_KEY || FILL_W_BIG_KEY
+             nPos < 1;
+          #endif // FILL_W_KEY || FILL_W_BIG_KEY else
+            ++nPos)
+        {
+            SetBits(pwRoot, nBL,
+                    cnBitsPerWord - nBL * (nPos + 1), wKey & MSK(nBL));
+        }
         return gpwEmbeddedValue(qya); // Insert will zero *pwValue.
     }
       #ifdef EK_XV
@@ -3299,32 +3300,62 @@ InsertEmbedded(qpa, Word_t wKey)
   #else // B_JUDYL
     // find the slot
     wKey &= MSK(nBL);
-    int nSlot = 0;
-    for (; nSlot < nPopCnt; ++nSlot) {
-        if (GetBits(*pwRoot, nBL, cnBitsPerWord - (nSlot + 1) * nBL) > wKey) {
+    int nPos = 0;
+    for (; nPos < nPopCnt; ++nPos) {
+        if (GetBits(*pwRoot, nBL, cnBitsPerWord - nBL *
+      #ifdef REVERSE_SORT_EMBEDDED_KEYS
+                    (nPopCntMax - nPos)
+      #else // REVERSE_SORT_EMBEDDED_KEYS
+                    (nPos + 1)
+      #endif // REVERSE_SORT_EMBEDDED_KEYS else
+                    )
+            > wKey)
+        {
             break;
         }
     }
-    DBGI(printf("Insert: wKey " OWx" nSlot %d", wKey, nSlot));
-#if defined(FILL_W_BIG_KEY)
-#error
-#endif // defined(FILL_W_BIG_KEY)
-    if (nSlot < nPopCnt) {
-        Word_t wLowBits
-            = GetBits(*pwRoot, (nPopCnt - nSlot) * nBL,
-                      cnBitsPerWord - (nPopCnt * nBL));
-        DBGI(printf(" wLowBits " OWx, wLowBits));
-        SetBits(pwRoot, (nPopCnt - nSlot) * nBL,
-                cnBitsPerWord - ((nPopCnt + 1) * nBL), wLowBits);
+    DBGI(printf("Insert: wKey " OWx" nPos %d", wKey, nPos));
+    if (nPos < nPopCnt) {
+      #ifdef REVERSE_SORT_EMBEDDED_KEYS
+        int nLsb = cnBitsPerWord - (nPopCntMax - nPos) * nBL;
+        Word_t wBigKeys = GetBits(*pwRoot, (nPopCnt - nPos) * nBL, nLsb);
+        SetBits(pwRoot, (nPopCnt - nPos) * nBL, nLsb + nBL, wBigKeys);
+      #else // REVERSE_SORT_EMBEDDED_KEYS
+        int nLsb = cnBitsPerWord - nPopCnt * nBL;
+        Word_t wBigKeys = GetBits(*pwRoot, (nPopCnt - nPos) * nBL, nLsb);
+        SetBits(pwRoot, (nPopCnt - nPos) * nBL, nLsb - nBL, wBigKeys);
+      #endif // REVERSE_SORT_EMBEDDED_KEYS else
     }
-    SetBits(pwRoot, nBL, cnBitsPerWord - (nSlot + 1) * nBL, wKey);
+    SetBits(pwRoot, nBL, cnBitsPerWord - nBL *
+      #ifdef REVERSE_SORT_EMBEDDED_KEYS
+                             (nPopCntMax - nPos),
+      #else // REVERSE_SORT_EMBEDDED_KEYS
+                             (nPos + 1),
+      #endif // REVERSE_SORT_EMBEDDED_KEYS else
+            wKey);
+      #ifdef FILL_W_BIG_KEY
+    if (nPos == nPopCnt)
+      #elif defined(FILL_W_KEY)
+    if (nPos == 0)
+      #else // FILL_W_BIG_KEY elif FILL_W_KEY
+    if (0)
+      #endif // FILL_W_BIG_KEY elif FILL_W_KEY else
+    {
+        for (nPos = nPopCnt + 1; nPos < nPopCntMax; ++nPos) {
+            SetBits(pwRoot, nBL, cnBitsPerWord - nBL *
+          #ifdef REVERSE_SORT_EMBEDDED_KEYS
+                                     (nPopCntMax - nPos),
+          #else // REVERSE_SORT_EMBEDDED_KEYS
+                                     (nPos + 1),
+          #endif // REVERSE_SORT_EMBEDDED_KEYS else
+                                     wKey);
+        }
+    }
     set_wr_nPopCnt(*pwRoot, nBL, nPopCnt + 1);
     DBGI(printf(" wRoot " OWx" nPopCnt %d\n",
                 *pwRoot, wr_nPopCnt(*pwRoot, nBL)));
   #endif // else B_JUDYL
 }
-  #endif // ! defined(PACK_KEYS_RIGHT)
-#endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
 #endif // defined(EMBED_KEYS)
 
 #if (cwListPopCntMax != 0)
@@ -4054,9 +4085,20 @@ InsertAllAtBitmap(qpa, qpx(Old), int nStart, int nPopCnt)
       #endif // !BMLFI_BM_AT_END
             pwValues[wKeyLeft] = pwValuesOld[~nn];
   #else // BMLF_INTERLEAVE
-            pwValues[wKeyLoop] = pwValuesOld[~nn];
+      #if !defined(PACK_L1_VALUES) && cnBitsInD1 <= 8
+            if (nBLROld == cnBitsInD1) {
+                pwValues[wKeyLoop]
+                    = pwValuesOld[~(wKeyLoop & MSK(cnBitsInD1))];
+            } else
+      #endif // !PACK_L1_VALUES && cnBitsInD1 <= 8
+            { pwValues[wKeyLoop] = pwValuesOld[~nn]; }
   #endif // BMLF_INTERLEAVE
         } else {
+      #if !defined(PACK_L1_VALUES) && cnBitsInD1 <= 8
+            if (nBLROld == cnBitsInD1) {
+                *pwValues++ = pwValuesOld[~(wKeyLoop & MSK(cnBitsInD1))];
+            } else
+      #endif // !PACK_L1_VALUES && cnBitsInD1 <= 8
             *pwValues++ = pwValuesOld[~nn];
         }
   #endif // B_JUDYL
@@ -4620,8 +4662,14 @@ lastDigit16:;
       #ifdef B_JUDYL
                     // copy the values
                     Word_t *pwValuesLoop = gpwValues(qyx(Loop));
-                    COPY(&pwValuesLoop[-nPopCntLoop],
-                         &pwValuesOld[-nPopCntLoop - nnStart], nPopCntLoop);
+          #if !defined(PACK_L1_VALUES) && cnBitsInD1 <= 8
+                    if (nBLLoop != cnBitsInD1)
+          #endif // !defined(PACK_L1_VALUES) && cnBitsInD1 <= 8
+                    {
+                        COPY(&pwValuesLoop[-nPopCntLoop],
+                             &pwValuesOld[-nPopCntLoop - nnStart],
+                             nPopCntLoop);
+                    }
       #endif // B_JUDYL
                     // copy the keys
                     if (nBLLoop <= 8) {
@@ -4629,6 +4677,16 @@ lastDigit16:;
                             = ls_pcKeysX(pwrLoop, nBLLoop, nPopCntLoop);
                         COPY(pcKeysLoop, &psKeys[nnStart], nPopCntLoop);
                         PAD(pcKeysLoop, nPopCntLoop);
+          #ifdef B_JUDYL
+          #if !defined(PACK_L1_VALUES) && cnBitsInD1 <= 8
+                        if (nBLLoop == cnBitsInD1) {
+                            for (int xx = 0; xx < nPopCntLoop; ++xx) {
+                                pwValuesLoop[~(pcKeysLoop[xx] & MSK(nBLLoop))]
+                                    = pwValuesOld[~(nnStart + xx)];
+                            }
+                        }
+          #endif // !defined(PACK_L1_VALUES) && cnBitsInD1 <= 8
+          #endif // B_JUDYL
                     } else {
                         uint16_t *psKeysLoop
                             = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
@@ -4792,8 +4850,14 @@ lastDigit32:;
       #ifdef B_JUDYL
                     // copy the values
                     Word_t *pwValuesLoop = gpwValues(qyx(Loop));
-                    COPY(&pwValuesLoop[-nPopCntLoop],
-                         &pwValuesOld[-nPopCntLoop - nnStart], nPopCntLoop);
+          #if !defined(PACK_L1_VALUES) && cnBitsInD1 <= 8
+                    if (nBLLoop != cnBitsInD1)
+          #endif // !defined(PACK_L1_VALUES) && cnBitsInD1 <= 8
+                    {
+                        COPY(&pwValuesLoop[-nPopCntLoop],
+                             &pwValuesOld[-nPopCntLoop - nnStart],
+                             nPopCntLoop);
+                    }
       #endif // B_JUDYL
                     // copy the keys
                     if (nBLLoop <= 8) {
@@ -4801,6 +4865,16 @@ lastDigit32:;
                             = ls_pcKeysX(pwrLoop, nBLLoop, nPopCntLoop);
                         COPY(pcKeysLoop, &piKeys[nnStart], nPopCntLoop);
                         PAD(pcKeysLoop, nPopCntLoop);
+          #ifdef B_JUDYL
+          #if !defined(PACK_L1_VALUES) && cnBitsInD1 <= 8
+                        if (nBLLoop == cnBitsInD1) {
+                            for (int xx = 0; xx < nPopCntLoop; ++xx) {
+                                pwValuesLoop[~(pcKeysLoop[xx] & MSK(nBLLoop))]
+                                    = pwValuesOld[~(nnStart + xx)];
+                            }
+                        }
+          #endif // !defined(PACK_L1_VALUES) && cnBitsInD1 <= 8
+          #endif // B_JUDYL
                     } else if (nBLLoop <= 16) {
                         uint16_t *psKeysLoop
                             = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
@@ -4967,8 +5041,14 @@ lastDigit:;
       #ifdef B_JUDYL
                     // copy the values
                     Word_t *pwValuesLoop = gpwValues(qyx(Loop));
-                    COPY(&pwValuesLoop[-nPopCntLoop],
-                         &pwValuesOld[-nPopCntLoop - nnStart], nPopCntLoop);
+          #if !defined(PACK_L1_VALUES) && cnBitsInD1 <= 8
+                    if (nBLLoop != cnBitsInD1)
+          #endif // !defined(PACK_L1_VALUES) && cnBitsInD1 <= 8
+                    {
+                        COPY(&pwValuesLoop[-nPopCntLoop],
+                             &pwValuesOld[-nPopCntLoop - nnStart],
+                             nPopCntLoop);
+                    }
       #endif // B_JUDYL
                     // copy the keys
       #ifdef COMPRESSED_LISTS
@@ -4978,6 +5058,18 @@ lastDigit:;
                                 = ls_pcKeysX(pwrLoop, nBLLoop, nPopCntLoop);
                             COPY(pcKeysLoop, &pwKeys[nnStart], nPopCntLoop);
                             PAD(pcKeysLoop, nPopCntLoop);
+          #ifdef B_JUDYL
+          #if !defined(PACK_L1_VALUES) && cnBitsInD1 <= 8
+                            if (nBLLoop == cnBitsInD1) {
+                                for (int xx = 0; xx < nPopCntLoop; ++xx) {
+                                    pwValuesLoop[
+                                            ~(pcKeysLoop[xx] & MSK(nBLLoop))
+                                                 ]
+                                        = pwValuesOld[~(nnStart + xx)];
+                                }
+                            }
+          #endif // !defined(PACK_L1_VALUES) && cnBitsInD1 <= 8
+          #endif // B_JUDYL
                         } else {
                             uint16_t *psKeysLoop
                                 = ls_psKeysX(pwrLoop, nBLLoop, nPopCntLoop);
@@ -8854,15 +8946,11 @@ embeddedKeys:;
         nPopCnt = wr_nPopCnt(wRoot, nBL);
         goto wRootNull;
 wRootNull:;
-      #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
-      #if ! defined(PACK_KEYS_RIGHT)
         // This is a performance shortcut that is not necessary.
         if (nPopCnt < EmbeddedListPopCntMax(nBL)) {
             BJL(return) InsertEmbedded(qya, wKey);
             BJ1(return Success);
         }
-      #endif // ! defined(PACK_KEYS_RIGHT)
-      #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
         // Change an embedded list into an external list to make things
         // easier for Insert.  We'll change it back later if it makes sense.
         if (nPopCnt != 0) {
@@ -9093,51 +9181,46 @@ InflateEmbeddedList(qpa, Word_t wKey)
     // complicated later?
     Word_t *pwList = NewList(nPopCnt, nBL);
     Word_t wRootNew = 0;
-#if defined(UA_PARALLEL_128)
+  #ifdef UA_PARALLEL_128
     if ((nBL == 16) && (nPopCnt <= 6)) {
         set_wr(wRootNew, pwList, T_LIST_UA);
     } else
-#endif // defined(UA_PARALLEL_128)
+  #endif // UA_PARALLEL_128
     { set_wr(wRootNew, pwList, T_LIST); }
 
     Word_t wBLM = MSK(nBL); // Bits left mask.
 
-    for (int nn = 0; nn < nPopCnt; nn++) {
-#if defined(REVERSE_SORT_EMBEDDED_KEYS)
-  #if defined(PACK_KEYS_RIGHT)
-        int nSlot = (nPopCntMax - nn);
-  #else // defined(PACK_KEYS_RIGHT)
-        int nSlot = (nPopCnt - nn);
-  #endif // defined(PACK_KEYS_RIGHT)
-#else // defined(REVERSE_SORT_EMBEDDED_KEYS)
-        int nSlot = (nn + 1);
-#endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
-#if defined(COMPRESSED_LISTS)
+    for (int nPos = 0; nPos < nPopCnt; nPos++) {
+  #if !defined(B_JUDYL) && defined(REVERSE_SORT_EMBEDDED_KEYS)
+        int nSlot = (nPopCntMax - nPos);
+  #else // !B_JUDYL && REVERSE_SORT_EMBEDDED_KEYS
+        int nSlot = (nPos + 1);
+  #endif // !B_JUDYL && REVERSE_SORT_EMBEDDED_KEYS else
+  #ifdef COMPRESSED_LISTS
         if (nBL <= 8) {
             pcKeys = ls_pcKeysNATX(pwList, nPopCnt);
-            pcKeys[nn] = (uint8_t)((wKey & ~wBLM)
+            pcKeys[nPos] = (uint8_t)((wKey & ~wBLM)
                        | ((wRoot >> (cnBitsPerWord - (nSlot * nBL))) & wBLM));
-  #if defined(DEBUG_REMOVE)
-//            printf("nn %d nSlot %d pcKeys[?] 0x%x\n", nn, nSlot, pcKeys[nn]);
-  #endif // defined(DEBUG_REMOVE)
+            DBGR(printf("nPos %d nSlot %d pcKeys[?] 0x%x\n",
+                        nPos, nSlot, pcKeys[nPos]));
         } else
         if (nBL <= 16) {
             psKeys = ls_psKeysNATX(pwList, nPopCnt);
-            psKeys[nn] = (uint16_t)((wKey & ~wBLM)
+            psKeys[nPos] = (uint16_t)((wKey & ~wBLM)
                        | ((wRoot >> (cnBitsPerWord - (nSlot * nBL))) & wBLM));
         } else
-#if (cnBitsPerWord > 32)
+      #if (cnBitsPerWord > 32)
         if (nBL <= 32) {
             piKeys = ls_piKeysNATX(pwList, nPopCnt);
-            piKeys[nn] = (uint32_t)((wKey & ~wBLM)
+            piKeys[nPos] = (uint32_t)((wKey & ~wBLM)
                        | ((wRoot >> (cnBitsPerWord - (nSlot * nBL))) & wBLM));
             if (nBL == 24) {
                 /*printf("pwList %p piKeys %p piKeys[%d] %x\n",
-                       (void *)pwList, (void *)piKeys, nn, piKeys[nn]);*/
+                       (void *)pwList, (void *)piKeys, nPos, piKeys[nPos]);*/
             }
         } else
-#endif // (cnBitsPerWord > 32)
-#endif // defined(COMPRESSED_LISTS)
+      #endif // (cnBitsPerWord > 32)
+  #endif // COMPRESSED_LISTS
         {
 #if defined(COMPRESSED_LISTS)
             assert(nPopCnt == 1);
@@ -9146,17 +9229,17 @@ InflateEmbeddedList(qpa, Word_t wKey)
 #if defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
             assert(nBL != cnBitsPerWord);
 #endif // defined(PP_IN_LINK) || defined(POP_WORD_IN_LINK)
-            pwKeys[nn] = (wKey & ~wBLM)
+            pwKeys[nPos] = (wKey & ~wBLM)
                        | ((wRoot >> (cnBitsPerWord - (nSlot * nBL))) & wBLM);
         }
 #ifdef B_JUDYL
         // Copy the value.
         // BUG: Fix this to use gpwValues
-        pwList[~(nn
+        pwList[~(nPos
   #ifdef LIST_POP_IN_PREAMBLE
                  + 1
   #endif // LIST_POP_IN_PREAMBLE
-                 )] = *pwLnX; // gpwValues(qy)[~nn] = *pwLnX;
+                 )] = *pwLnX; // gpwValues(qy)[~nPos] = *pwLnX;
 #endif // B_JUDYL
     }
 
@@ -9222,8 +9305,8 @@ DeflateList(qpa, int nPopCnt)
                                            cnBitsMallocMask,
   #endif // #else ALIGN_EK_XV
                                            &j__AllocWordsJV);
-    for (int nn = 0; nn < nPopCnt; nn++) {
-        pwrNew[nn] = gpwValues(qy)[~nn];
+    for (int nPos = 0; nPos < nPopCnt; nPos++) {
+        pwrNew[nPos] = gpwValues(qy)[~nPos];
     }
     set_wr_pwr(wRootNew, pwrNew);
 
@@ -9254,11 +9337,11 @@ DeflateExternalList(qpa, int nPopCnt)
         return DeflateList(qya, nPopCnt);
     }
   #endif // EK_XV
-#if defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(EK_CALC_POP)
+  #if defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(EK_CALC_POP)
     assert(0); // not yet
-#endif // defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(EK_CALC_POP)
+  #endif // REVERSE_SORT_EMBEDDED_KEYS && EK_CALC_POP
     int nPopCntMax = EmbeddedListPopCntMax(nBL); (void)nPopCntMax;
-//printf("DEL: nBL %d nPopCntMax %d\n", nBL, nPopCntMax);
+    assert(nPopCnt <= nPopCntMax);
 
     assert( (wr_nType(*pwRoot) == T_LIST)
 #if defined(UA_PARALLEL_128)
@@ -9271,13 +9354,11 @@ DeflateExternalList(qpa, int nPopCnt)
     DumpX(qya, /*wKey*/ 0);
 #endif // defined(DEBUG_INSERT)
 
-    wRoot = 0;
-
-    assert(nPopCnt <= nPopCntMax);
-
-#if defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(FILL_WITH_ONES)
-    --wRoot;
-#endif // defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(FILL_WITH_ONES)
+  #ifdef FILL_WITH_ONES
+    wRoot = -(Word_t)-1;
+  #else // FILL_WITH_ONES
+    wRoot = 0; // Fill with zeros if nothing else is specified?
+  #endif // FILL_WITH_ONES
 
 #if defined(COMPRESSED_LISTS)
 #if (cnBitsPerWord > 32)
@@ -9288,35 +9369,34 @@ DeflateExternalList(qpa, int nPopCnt)
 #endif // defined(COMPRESSED_LISTS)
 
     assert(nPopCnt != 0);
-#if defined(NO_TYPE_IN_XX_SW)
+  #if defined(NO_TYPE_IN_XX_SW)
     if (nBL >= nDL_to_nBL(2))
-#endif // defined(NO_TYPE_IN_XX_SW)
+  #endif // defined(NO_TYPE_IN_XX_SW)
     { set_wr_nType(wRoot, T_EMBEDDED_KEYS); }
     set_wr_nPopCnt(wRoot, nBL, nPopCnt); // no-op if EK_CALC_POP
 //printf("nBL %d nPopCnt %d wRoot " OWx"\n", nBL, nPopCnt, wRoot);
 
-    for (int nn = 0;
-#if defined(FILL_W_KEY)
-             nn < nPopCntMax;
-#else // defined(FILL_W_KEY)
-             nn < nPopCnt;
-#endif // defined(FILL_W_KEY)
-             nn++)
+    for (int nPos = 0;
+  #ifdef FILL_W_KEY
+      #ifdef B_JUDYL
+             // EmbeddedListPopCntMax is for EK_XV?
+             nPos < (cnBitsPerWord - 4) / nBL;
+      #else // B_JUDYL
+             nPos < nPopCntMax;
+      #endif // B_JUDYL else
+  #else // FILL_W_KEY
+             nPos < nPopCnt;
+  #endif // FILL_W_KEY else
+             nPos++)
     {
         // Slots are numbered from msb to lsb starting at 1.
-#if defined(REVERSE_SORT_EMBEDDED_KEYS)
-  #if defined(PACK_KEYS_RIGHT)
-        int nSlot = (nPopCntMax - nn);
-  #else // defined(PACK_KEYS_RIGHT)
-        int nSlot = (nPopCnt - nn);
-  #if defined(FILL_W_KEY)
-      #error Sorry, REVERSE_SORT && FILL_W_KEY && ! PACK_KEYS_RIGHT.
-  #endif // defined(FILL_W_KEY)
-  #endif // defined(PACK_KEYS_RIGHT)
-#else // defined(REVERSE_SORT_EMBEDDED_KEYS)
-        int nSlot = (nn + 1);
-#endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
-#if defined(COMPRESSED_LISTS)
+        // Ugly but helps avoid a lot of ifdefs?
+  #if !defined(B_JUDYL) && defined(REVERSE_SORT_EMBEDDED_KEYS)
+        int nSlot = (nPopCntMax - nPos);
+  #else // !B_JUDYL && REVERSE_SORT_EMBEDDED_KEYS
+        int nSlot = (nPos + 1);
+  #endif // !B_JUDYL && REVERSE_SORT_EMBEDDED_KEYS else
+  #if defined(COMPRESSED_LISTS)
         if (nBL <= 8) {
             pcKeys = ls_pcKeysNATX(pwr, nPopCnt);
             // Uh oh.  Are we really padding with the smallest key?
@@ -9324,31 +9404,43 @@ DeflateExternalList(qpa, int nPopCnt)
             // Hmm.  I think we changed it to the smallest key so
             // we could calculate offset of found key using magic.
             SetBits(&wRoot, nBL, cnBitsPerWord - (nSlot * nBL),
-                    pcKeys[(nn < nPopCnt) ? nn :
-  #if defined(FILL_W_BIG_KEY)
-                            nPopCnt - 1
-  #else // defined(FILL_W_BIG_KEY)
-                            0
-  #endif // defined(FILL_W_BIG_KEY)
-                        ]);
-            DBGR(printf("nn %d nSlot %d pcKeys[?] 0x%x\n", nn, nSlot,
-                    pcKeys[(nn < nPopCnt) ? nn : 0]));
+                    pcKeys[(nPos < nPopCnt) ? nPos :
+      #ifdef FILL_W_BIG_KEY
+                               nPopCnt - 1
+      #else // FILL_W_BIG_KEY
+                               0
+      #endif // FILL_W_BIG_KEY else
+                           ]);
+            DBGR(printf("nPos %d nSlot %d pcKeys[?] 0x%x\n", nPos, nSlot,
+                    pcKeys[(nPos < nPopCnt) ? nPos : 0]));
         } else
         if (nBL <= 16) {
             psKeys = ls_psKeysNATX(pwr, nPopCnt);
-            DBGI(printf("nn %d nSlot %d psKeys[?] 0x%x\n", nn, nSlot,
-                    psKeys[(nn < nPopCnt) ? nn : 0]));
+            DBGI(printf("nPos %d nSlot %d psKeys[?] 0x%x\n", nPos, nSlot,
+                    psKeys[(nPos < nPopCnt) ? nPos : 0]));
             SetBits(&wRoot, nBL, /* lsb */ cnBitsPerWord - (nSlot * nBL),
-                    psKeys[(nn < nPopCnt) ? nn : 0]);
+                    psKeys[(nPos < nPopCnt) ? nPos :
+      #ifdef FILL_W_BIG_KEY
+                               nPopCnt - 1
+      #else // FILL_W_BIG_KEY
+                               0
+      #endif // FILL_W_BIG_KEY else
+                           ]);
         } else
-#if (cnBitsPerWord > 32)
+      #if (cnBitsPerWord > 32)
         if (nBL <= 32) {
             piKeys = ls_piKeysNATX(pwr, nPopCnt);
             SetBits(&wRoot, nBL, cnBitsPerWord - (nSlot * nBL),
-                    piKeys[(nn < nPopCnt) ? nn : 0]);
+                    piKeys[(nPos < nPopCnt) ? nPos :
+          #ifdef FILL_W_BIG_KEY
+                               nPopCnt - 1
+          #else // FILL_W_BIG_KEY
+                               0
+          #endif // FILL_W_BIG_KEY else
+                           ]);
         } else
-#endif // (cnBitsPerWord > 32)
-#endif // defined(COMPRESSED_LISTS)
+      #endif // (cnBitsPerWord > 32)
+  #endif // defined(COMPRESSED_LISTS)
         {
             // I don't think we have to worry about adjusting ls_pwKeys
             // for PP_IN_LINK || POP_WORD_IN_LINK here since we will not
@@ -9358,20 +9450,26 @@ DeflateExternalList(qpa, int nPopCnt)
 // Can't embed a full key.
             Word_t *pwKeys = ls_pwKeysX(pwr, nBL, nPopCnt);
             SetBits(&wRoot, nBL, cnBitsPerWord - (nSlot * nBL),
-                    pwKeys[(nn < nPopCnt) ? nn : 0]);
+                    pwKeys[(nPos < nPopCnt) ? nPos :
+  #ifdef FILL_W_BIG_KEY
+                               nPopCnt - 1
+  #else // FILL_W_BIG_KEY
+                               0
+  #endif // FILL_W_BIG_KEY else
+                           ]);
         }
-#ifdef B_JUDYL
+  #ifdef B_JUDYL
         // Copy the value.
         DBGI(printf("DEL: pwLnX %p\n", pwLnX));
-  #if defined(FILL_W_KEY)
-        if (nn < nPopCnt)
-  #endif // defined(FILL_W_KEY)
-            *pwLnX = pwr[~(nn
-  #ifdef LIST_POP_IN_PREAMBLE
+      #ifdef FILL_W_KEY
+        if (nPos < nPopCnt)
+      #endif // FILL_W_KEY
+            *pwLnX = pwr[~(nPos
+      #ifdef LIST_POP_IN_PREAMBLE
                                + 1
-  #endif // LIST_POP_IN_PREAMBLE
+      #endif // LIST_POP_IN_PREAMBLE
                                )];
-#endif // B_JUDYL
+  #endif // B_JUDYL
     }
 
     OldList(pwr, nPopCnt, nBL, wr_nType(*pwRoot));
@@ -10544,7 +10642,7 @@ Initialize(void)
     // JudyMalloc complains and exits if it sees a malloc size that is
     // problematic at run time.
   #endif // DEBUG
-#if defined(UA_PARALLEL_128)
+  #ifdef UA_PARALLEL_128
     assert(cnBitsMallocMask >= 4);
     for (int i = 1; i <= 6; i++) {
         if (ListWordCnt(i, 16) != 3) {
@@ -10554,12 +10652,12 @@ Initialize(void)
         assert(ListWordCnt(i, 16) == 3);
     }
     assert(ListWordCnt(7, 16) > 3);
-#endif // defined(UA_PARALLEL_128)
-#if defined(NO_TYPE_IN_XX_SW)
-  #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
+  #endif // UA_PARALLEL_128
+  #ifdef NO_TYPE_IN_XX_SW
+  #ifndef REVERSE_SORT_EMBEDDED_KEYS
     assert(T_EMBEDDED_KEYS != 0); // see b.h
-  #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
-#endif // defined(NO_TYPE_IN_XX_SW)
+  #endif // !REVERSE_SORT_EMBEDDED_KEYS
+  #endif // NO_TYPE_IN_XX_SW
 
   #ifdef USE_XX_SW_ONLY_AT_DL2
   #ifdef SKIP_TO_XX_SW
@@ -10644,12 +10742,12 @@ Initialize(void)
 #endif // defined(SKIP_LINKS)
 
 
-  #if defined(NO_TYPE_IN_XX_SW)
-      #if ! defined(REVERSE_SORT_EMBEDDED_KEYS)
+  #ifdef NO_TYPE_IN_XX_SW
+  #ifndef REVERSE_SORT_EMBEDDED_KEYS
     // Not sure if/why this matters.
     assert (wr_nType(ZERO_POP_MAGIC) == T_EMBEDDED_KEYS);
-      #endif // ! defined(REVERSE_SORT_EMBEDDED_KEYS)
-  #endif // defined(NO_TYPE_IN_XX_SW)
+  #endif // !REVERSE_SORT_EMBEDDED_KEYS
+  #endif // NO_TYPE_IN_XX_SW
 
   #if defined(CODE_XX_SW)
     // Make sure nBW field is big enough.
@@ -10726,6 +10824,12 @@ Initialize(void)
 #else //         AUGMENT_TYPE_8_PLUS_4
     printf("# No AUGMENT_TYPE_8_PLUS_4\n");
 #endif // else   AUGMENT_TYPE_8_PLUS_4
+
+#ifdef           AUG_TYPE_8_SW_NEXT
+    printf("#    AUG_TYPE_8_SW_NEXT\n");
+#else //         AUG_TYPE_8_SW_NEXT
+    printf("# No AUG_TYPE_8_SW_NEXT\n");
+#endif //        AUG_TYPE_8_SW_NEXT else
 
 #ifdef           AUGMENT_TYPE_NOT
     printf("#    AUGMENT_TYPE_NOT\n");
@@ -11334,6 +11438,12 @@ Initialize(void)
     printf("# No EMBEDDED_KEYS_PARALLEL_FOR_INSERT\n");
 #endif // defined(EMBEDDED_KEYS_PARALLEL_FOR_INSERT)
 
+#ifdef           PARALLEL_EK_FOR_NEXT
+    printf("#    PARALLEL_EK_FOR_NEXT\n");
+#else //         PARALLEL_EK_FOR_NEXT
+    printf("# No PARALLEL_EK_FOR_NEXT\n");
+#endif // #else  PARALLEL_EK_FOR_NEXT
+
 #if defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP)
     printf("#    EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP\n");
 #else // defined(EMBEDDED_KEYS_PSPLIT_BY_KEY_FOR_LOOKUP)
@@ -11405,6 +11515,12 @@ Initialize(void)
 #else // defined(HK_MOVEMASK)
     printf("# No HK_MOVEMASK\n");
 #endif // defined(HK_MOVEMASK)
+
+#ifdef           NEW_HK_64
+    printf("#    NEW_HK_64\n");
+#else //         NEW_HK_64
+    printf("# No NEW_HK_64\n");
+#endif //        NEW_HK_64 else
 
 #if defined(OLD_HK_64)
     printf("#    OLD_HK_64\n");
@@ -11682,11 +11798,17 @@ Initialize(void)
     printf("# No USE_WORD_ARRAY_EMBEDDED_KEYS_PARALLEL\n");
 #endif // defined(USE_WORD_ARRAY_EMBEDDED_KEYS_PARALLEL)
 
-#if defined(REVERSE_SORT_EMBEDDED_KEYS)
-    printf("#    REVERSE_SORT_EMBEDDED_KEYS\n");
-#else // defined(REVERSE_SORT_EMBEDDED_KEYS)
-    printf("# No REVERSE_SORT_EMBEDDED_KEYS\n");
-#endif // defined(REVERSE_SORT_EMBEDDED_KEYS)
+#ifdef           NO_REVERSE_SORT_EMBEDDED_KEYS
+    printf("#    NO_REVERSE_SORT_EMBEDDED_KEYS\n");
+#else //         NO_REVERSE_SORT_EMBEDDED_KEYS
+    printf("# No NO_REVERSE_SORT_EMBEDDED_KEYS\n");
+#endif //        NO_REVERSE_SORT_EMBEDDED_KEYS
+
+#ifdef              REVERSE_SORT_EMBEDDED_KEYS
+    printf("#       REVERSE_SORT_EMBEDDED_KEYS\n");
+#else //            REVERSE_SORT_EMBEDDED_KEYS
+    printf("# No    REVERSE_SORT_EMBEDDED_KEYS\n");
+#endif //           REVERSE_SORT_EMBEDDED_KEYS
 
     printf("# No EXTRA_TYPES\n");
 
@@ -11846,6 +11968,36 @@ Initialize(void)
     printf("# No SKIP_TO_BM_SW\n");
 #endif // defined(SKIP_TO_BM_SW)
 
+#ifdef           NEW_NEXT
+    printf("#    NEW_NEXT\n");
+#else //         NEW_NEXT
+    printf("# No NEW_NEXT\n");
+#endif // #else  NEW_NEXT
+
+#ifdef           NEW_NEXT_IS_EXCLUSIVE
+    printf("#    NEW_NEXT_IS_EXCLUSIVE\n");
+#else //         NEW_NEXT_IS_EXCLUSIVE
+    printf("# No NEW_NEXT_IS_EXCLUSIVE\n");
+#endif // #else  NEW_NEXT_IS_EXCLUSIVE
+
+#ifdef           NEXT_QPA
+    printf("#    NEXT_QPA\n");
+#else //         NEXT_QPA
+    printf("# No NEXT_QPA\n");
+#endif // #else  NEXT_QPA
+
+#ifdef           NEXT_QP
+    printf("#    NEXT_QP\n");
+#else //         NEXT_QP
+    printf("# No NEXT_QP\n");
+#endif // #else  NEXT_QP
+
+#ifdef           NO_NEW_NEXT
+    printf("#    NO_NEW_NEXT\n");
+#else //         NO_NEW_NEXT
+    printf("# No NO_NEW_NEXT\n");
+#endif // #else  NO_NEW_NEXT
+
 #if defined(NO_OLD_LISTS)
     printf("#    NO_OLD_LISTS\n");
 #else // defined(NO_OLD_LISTS)
@@ -11857,12 +12009,6 @@ Initialize(void)
 #else // defined(NO_SKIP_AT_TOP)
     printf("# No NO_SKIP_AT_TOP\n");
 #endif // defined(NO_SKIP_AT_TOP)
-
-#if defined(PACK_KEYS_RIGHT)
-    printf("#    PACK_KEYS_RIGHT\n");
-#else // defined(PACK_KEYS_RIGHT)
-    printf("# No PACK_KEYS_RIGHT\n");
-#endif // defined(PACK_KEYS_RIGHT)
 
 #if defined(RETYPE_FULL_BM_SW)
     printf("#    RETYPE_FULL_BM_SW\n");
@@ -12914,7 +13060,11 @@ GetPopCntX(qpa, Word_t wPrefix)
     return GetPopCnt(qya);
 }
 
-// NextGuts(wRoot, nBL, pwKey, wSkip, bPrev, bEmpty)
+// NextGuts(wRoot, nBL, pwKey, wSkip, bPrev, bEmpty
+//   #ifdef B_JUDYL
+//        , ppwVal
+//   #endif // B_JUDYL
+//          )
 //
 // For bPrev == 0:
 //
@@ -12942,9 +13092,12 @@ GetPopCntX(qpa, Word_t wPrefix)
 // To find every wN'th key starting with the 1st:
 //    if (wKey = 0, Next(&wKey, /* wSkip */ 0) == 0)
 //        do ; while (wKey++, Next(&wKey, /* wSkip */ wN-1) == 0) ;
-static Word_t
-NextGuts(qpa, Word_t *pwKey, Word_t wSkip,
-         int bPrev, int bEmpty /* , Word_t **ppwVal */)
+Word_t
+NextGuts(qpa, Word_t *pwKey, Word_t wSkip, int bPrev, int bEmpty
+  #ifdef B_JUDYL
+       , Word_t **ppwVal
+  #endif // B_JUDYL
+         )
 {
     qva;
     int nBLR = nBL;
@@ -13042,11 +13195,22 @@ t_embedded_keys:;
         if (wRoot == WROOT_NULL) {
             return wSkip + 1;
         }
-        int nPos = SearchEmbeddedX(&wRoot,
-  #ifdef EK_XV
-                                   pwLnX,
-  #endif // EK_XV
-                                   *pwKey, nBL);
+        int nPos;
+      #ifdef B_JUDYL
+        if (nType == T_EMBEDDED_KEYS) {
+            Word_t wSuffix = wRoot >> (cnBitsPerWord - nBL);
+            if ((*pwKey & NBPW_MSK(nBL)) == wSuffix) {
+                nPos = 0;
+            } else if ((*pwKey & NBPW_MSK(nBL)) < wSuffix) {
+                nPos = ~0;
+            } else {
+                nPos = ~1;
+            }
+        } else
+      #endif // B_JUDYL
+        {
+            nPos = SearchEmbeddedX(qya, *pwKey);
+        }
         if (bPrev) {
             //A(0); // check -B10 -DS1
             if (nPos < 0) {
@@ -13065,6 +13229,9 @@ t_embedded_keys:;
                 return wSkip - nPos;
             }
             //A(0); // check -B10 -DS1
+      #if !defined(B_JUDYL) && defined(REVERSE_SORT_EMBEDDED_KEYS)
+            int nPopCntMax = EmbeddedListPopCntMax(nBL);
+      #endif // !B_JUDYL && REVERSE_SORT_EMBEDDED_KEYS
             *pwKey &= ~MSK(nBL); // clear low bits
             *pwKey |=
       #ifdef EK_XV
@@ -13080,7 +13247,13 @@ t_embedded_keys:;
                     :
       #endif // #else EK_XV
                       GetBits(wRoot, nBL,
-                               cnBitsPerWord - (nPos - wSkip + 1) * nBL);
+                              cnBitsPerWord - nBL *
+      #if !defined(B_JUDYL) && defined(REVERSE_SORT_EMBEDDED_KEYS)
+                                  (nPopCntMax + wSkip - nPos)
+      #else // !B_JUDYL && REVERSE_SORT_EMBEDDED_KEYS
+                                  (nPos - wSkip + 1)
+      #endif // !B_JUDYL && REVERSE_SORT_EMBEDDED_KEYS else
+                              );
         } else {
             //A(0); // check -B10 -DS1
             if (nPos < 0) { /*A(0);*/ nPos ^= -1; }
@@ -13091,6 +13264,9 @@ t_embedded_keys:;
                 return nPos + wSkip - ((Word_t)nPopCnt - 1);
             }
             //A(0); // check -B10 -DS1
+      #if !defined(B_JUDYL) && defined(REVERSE_SORT_EMBEDDED_KEYS)
+            int nPopCntMax = EmbeddedListPopCntMax(nBL);
+      #endif // !B_JUDYL && REVERSE_SORT_EMBEDDED_KEYS
             *pwKey &= ~MSK(nBL);
             *pwKey |=
       #ifdef EK_XV
@@ -13106,7 +13282,13 @@ t_embedded_keys:;
                     :
       #endif // #else EK_XV
                       GetBits(wRoot, nBL,
-                               cnBitsPerWord - (nPos + wSkip + 1) * nBL);
+                              cnBitsPerWord - nBL *
+      #if !defined(B_JUDYL) && defined(REVERSE_SORT_EMBEDDED_KEYS)
+                                  (nPopCntMax - wSkip - nPos)
+      #else // !B_JUDYL && REVERSE_SORT_EMBEDDED_KEYS
+                                  (nPos + wSkip + 1)
+      #endif // !B_JUDYL && REVERSE_SORT_EMBEDDED_KEYS else
+                              );
         }
         //A(0); // check -B10 -DS1
         return 0;
@@ -13312,7 +13494,11 @@ t_switch:;
                         //A(0);
                         Word_t wCount;
                         if ((wCount = NextGuts(qyax(Loop),
-                                               pwKey, wSkip, bPrev, bEmpty))
+                                               pwKey, wSkip, bPrev, bEmpty
+  #ifdef B_JUDYL
+                                             , ppwVal
+  #endif // B_JUDYL
+                                               ))
                             == 0)
                         {
 #ifdef B_JUDYL
@@ -13368,7 +13554,11 @@ t_switch:;
                         // next might be in here
                         Word_t wCount;
                         if ((wCount = NextGuts(qyax(Loop),
-                                               pwKey, wSkip, bPrev, bEmpty))
+                                               pwKey, wSkip, bPrev, bEmpty
+  #ifdef B_JUDYL
+                                             , ppwVal
+  #endif // B_JUDYL
+                                               ))
                             == 0)
                         {
                             //A(0);
@@ -13502,7 +13692,11 @@ t_bm_sw:;
                         //A(0); // check -B17
                         Word_t wCount;
                         if ((wCount = NextGuts(qyax(Loop),
-                                               pwKey, wSkip, bPrev, bEmpty))
+                                               pwKey, wSkip, bPrev, bEmpty
+  #ifdef B_JUDYL
+                                             , ppwVal
+  #endif // B_JUDYL
+                                               ))
                             == 0)
                         {
                             //A(0); // check -B17
@@ -13651,7 +13845,11 @@ if ((nBmWordNum == 0) && (wIndex == 0xff)) {
                         // next might be in here
                         Word_t wCount;
                         if ((wCount = NextGuts(qyax(Loop),
-                                               pwKey, wSkip, bPrev, bEmpty))
+                                               pwKey, wSkip, bPrev, bEmpty
+  #ifdef B_JUDYL
+                                             , ppwVal
+  #endif // B_JUDYL
+                                               ))
                             == 0)
                         {
                             //A(0); // check -B17
@@ -13817,7 +14015,11 @@ t_xx_sw:;
                         //A(0);
                         Word_t wCount;
                         if ((wCount = NextGuts(qyax(Loop),
-                                               pwKey, wSkip, bPrev, bEmpty))
+                                               pwKey, wSkip, bPrev, bEmpty
+  #ifdef B_JUDYL
+                                             , ppwVal
+  #endif // B_JUDYL
+                                               ))
                             == 0)
                         {
                             //A(0);
@@ -13866,7 +14068,11 @@ t_xx_sw:;
                         //A(0);
                         Word_t wCount;
                         if ((wCount = NextGuts(qyax(Loop),
-                                               pwKey, wSkip, bPrev, bEmpty))
+                                               pwKey, wSkip, bPrev, bEmpty
+  #ifdef B_JUDYL
+                                             , ppwVal
+  #endif // B_JUDYL
+                                               ))
                             == 0)
                         {
                             //A(0);
@@ -13911,6 +14117,7 @@ int
 Judy1ByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
 #endif // B_JUDYL
 {
+    BJL(Word_t* pwVal = NULL);
     if (pwKey == NULL) {
 #ifndef B_JUDYL
         int ret = -1;
@@ -13938,7 +14145,11 @@ Judy1ByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
     Word_t* pwLnX = NULL;
   #endif // REMOTE_LNX
     Link_t* pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
-    wCount = NextGuts(qya, &wKey, wCount, /* bPrev */ 0, /* bEmpty */ 0);
+    wCount = NextGuts(qya, &wKey, wCount, /* bPrev */ 0, /* bEmpty */ 0
+  #ifdef B_JUDYL
+                                             , &pwVal
+  #endif // B_JUDYL
+                                               );
     if (wCount == 0) {
         *pwKey = wKey;
         DBGN(printf("JxBC: *pwKey " OWx"\n", *pwKey));
@@ -13950,113 +14161,6 @@ Judy1ByCount(Pcvoid_t PArray, Word_t wCount, Word_t *pwKey, PJError_t PJError)
     return NULL;
 #else // B_JUDYL
     return wCount == 0;
-#endif // B_JUDYL
-}
-
-// If *pwKey is in the array then return 1 and leave *pwKey unchanged.
-// Otherwise find the next bigger key than *pwKey which is in the array.
-// Put the found key in *pwKey.
-// Return 1 if a key is found.
-// Return 0 if *pwKey is bigger than the biggest key in the array.
-// Return -1 if pwKey is NULL.
-// *pwKey is undefined if anything other than 1 is returned.
-// But we go to the trouble of preserving *pwKey if anything other than 1
-// is returned to compare with JudyA.
-#ifdef B_JUDYL
-PPvoid_t
-JudyLFirst(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
-#else // B_JUDYL
-int
-Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
-#endif // B_JUDYL
-{
-    if (pwKey == NULL) {
-#ifndef B_JUDYL
-        int ret = -1;
-#endif // B_JUDYL
-        if (PJError != NULL) {
-            PJError->je_Errno = JU_ERRNO_NULLPINDEX;
-            DBGN(printf("JxF: je_Errno %d\n", PJError->je_Errno));
-        }
-#ifdef B_JUDYL
-        return NULL;
-#else // B_JUDYL
-        DBGN(printf("JxF: ret %d\n", ret));
-        return ret; // JERRI (for Judy1) or PPJERR (for JudyL)
-#endif // B_JUDYL
-    }
-    DBGN(printf("\nJxF: *pwKey " OWx"\n", *pwKey));
-    Word_t wKey = *pwKey;
-    int nBL = cnBitsPerWord;
-    Word_t* pwRoot = (Word_t*)&PArray;
-  #ifdef REMOTE_LNX
-    Word_t* pwLnX = NULL;
-  #endif // REMOTE_LNX
-    Link_t* pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
-    Word_t wCount = NextGuts(qya, &wKey,
-                             /* wCount */ 0, /* bPrev */ 0, /* bEmpty */ 0);
-    if (wCount == 0) {
-        *pwKey = wKey;
-        DBGN(printf("JxF: *pwKey " OWx"\n", *pwKey));
-#ifdef B_JUDYL
-        return JudyLGet(PArray, wKey, NULL);
-#endif // B_JUDYL
-    }
-#ifdef B_JUDYL
-    return NULL;
-#else // B_JUDYL
-    DBGN(printf("JxF: returning %d\n", wCount == 0));
-    return wCount == 0;
-#endif // B_JUDYL
-}
-
-// Find the next bigger key than *pwKey which is in the array.
-// Put the found key in *pwKey.
-// Return 1 if a key is found.
-// Return 0 if *pwKey is bigger than or equal to the biggest key in the array.
-// Return -1 if pwKey is NULL.
-// *pwKey is undefined if anything other than 1 is returned.
-// But we go to the trouble of preserving *pwKey if anything other than 1
-// is returned to compare with JudyA.
-#ifdef B_JUDYL
-PPvoid_t
-JudyLNext(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
-#else // B_JUDYL
-int
-Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
-#endif // B_JUDYL
-{
-    Word_t wKeyLocal, *pwKeyLocal;
-#ifdef B_JUDYL
-    PPvoid_t ppvVal;
-#endif // B_JUDYL
-    if (pwKey != NULL) {
-        wKeyLocal = *pwKey + 1;
-        if (wKeyLocal == 0) {
-#ifdef B_JUDYL
-            return NULL;
-#else // B_JUDYL
-            return 0; // What about PJError?
-#endif // B_JUDYL
-        }
-        pwKeyLocal = &wKeyLocal;
-    } else {
-        pwKeyLocal = NULL;
-    }
-#ifdef B_JUDYL
-    ppvVal = JudyLFirst(PArray, pwKeyLocal, PJError);
-    if (ppvVal != NULL)
-#else // B_JUDYL
-    int ret = Judy1First(PArray, pwKeyLocal, PJError);
-    if (ret == 1)
-#endif // B_JUDYL
-    {
-        *pwKey = wKeyLocal;
-    }
-#ifdef B_JUDYL
-    return ppvVal;
-#else // B_JUDYL
-    return ret;
 #endif // B_JUDYL
 }
 
@@ -14077,6 +14181,7 @@ int
 Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
 #endif // B_JUDYL
 {
+    BJL(Word_t* pwVal = NULL);
     if (pwKey == NULL) {
 #ifndef B_JUDYL
         int ret = -1;
@@ -14101,11 +14206,16 @@ Judy1Last(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
   #endif // REMOTE_LNX
     Link_t* pLn = STRUCT_OF(pwRoot, Link_t, ln_wRoot); (void)pLn;
     Word_t wCount = NextGuts(qya, &wKey,
-                             /* wCount */ 0, /* bPrev */ 1, /* bEmpty */ 0);
+                             /* wCount */ 0, /* bPrev */ 1, /* bEmpty */ 0
+  #ifdef B_JUDYL
+                                             , &pwVal
+  #endif // B_JUDYL
+                                               );
     if (wCount == 0) {
         *pwKey = wKey;
         DBGN(printf("JxL done: *pwKey " OWx"\n", *pwKey));
 #ifdef B_JUDYL
+        if (pwVal != NULL) { return (PPvoid_t)pwVal; }
         return JudyLGet(PArray, wKey, NULL);
 #endif // B_JUDYL
     }
@@ -14287,11 +14397,18 @@ t_embedded_keys:;
             wKeyLast |= MSK(nBL);
             nIncr = 1;
         }
-        while (SearchEmbeddedX(&wRoot,
-      #ifdef EK_XV
-                               pwLnX,
-      #endif // EK_XV
-                               *pwKey, nBL) >= 0)
+      #ifdef B_JUDYL
+        if (nType == T_EMBEDDED_KEYS) {
+            Word_t wSuffix = wRoot >> (cnBitsPerWord - nBL);
+            if ((*pwKey & NBPW_MSK(nBL)) == wSuffix) {
+                if (*pwKey == wKeyLast) {
+                    return Failure;
+                }
+                *pwKey += nIncr;
+            }
+        } else
+      #endif // B_JUDYL
+        while (SearchEmbeddedX(qya, *pwKey) >= 0)
         {
             if (*pwKey == wKeyLast) {
                 return Failure;

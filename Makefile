@@ -264,7 +264,7 @@ DEFAULT_DEFINES += -DRAMMETRICS
 # I'm not sure why I chose to separate TIME_DEFINES from DEFAULT_DEFINES.
 DEFINES := $(DEFAULT_DEFINES) $(TIME_DEFINES) $(DEFINES)
 
-FILES_FROM_ME  = b.h b.c bli.c bl.c bi.c br.c bc.c t.c
+FILES_FROM_ME  = b.h b.c bli.c bl.c bi.c br.c bc.c bn.c t.c
 FILES_FROM_ME += Makefile
 FILES_FROM_ME += bb forx
 FILES_FROM_ME += README.meb
@@ -276,17 +276,17 @@ FILES = $(FILES_FROM_ME) $(FILES_FROM_DOUG_B_OR_DOUG_LEA)
 EXES = btime bcheck b1time b1check bLtime bLcheck jtime jcheck # t
 EXES += c++time c++check
 LIBS = libb1.a libb1.so libbL.a libbL.so libb.a libb.so
-LIBB1_OBJS = b.o bl.o bi.o br.o bc.o JudyMalloc.o
-LIBB1_SRCS = b.c bl.c bi.c br.c bc.c
-LIBBL_OBJS = b-L.o blL.o biL.o brL.o bcL.o JudyMalloc.o
-LIBBL_SRCS = b-L.c blL.c biL.c brL.c bcL.c
+LIBB1_OBJS = b.o bl.o bi.o br.o bc.o bn.o JudyMalloc.o
+LIBB1_SRCS = b.c bl.c bi.c br.c bc.c bn.c
+LIBBL_OBJS = b-L.o blL.o biL.o brL.o bcL.o bnL.o JudyMalloc.o
+LIBBL_SRCS = b-L.c blL.c biL.c brL.c bcL.c bnL.c
 LIBB_OBJS = $(LIBB1_OBJS) $(LIBBL_OBJS)
 LIBB_SRCS = $(LIBB1_SRCS) $(LIBBL_SRCS)
-ASMS  = b.s bl.s bi.s br.s bc.s
-ASMS += b-L.s blL.s biL.s brL.s bcL.s
+ASMS  = b.s bl.s bi.s br.s bc.s bn.s
+ASMS += b-L.s blL.s biL.s brL.s bcL.s bnL.s
 ASMS += JudyMalloc.s # t.s
 ASMS += Judy1LHTime.s Judy1LHCheck.s
-CPPS  = b.i bl.i bi.i br.i bc.i blL.i
+CPPS  = b.i bl.i bi.i br.i bc.i bn.i b-L.i blL.i biL.i brL.i bcL.i bnL.i
 CPPS += JudyMalloc.i # t.i
 
 T_OBJS = JudyMalloc.o
@@ -418,6 +418,8 @@ brL.c: br.c
 	ln -s $^ $@
 bcL.c: bc.c
 	ln -s $^ $@
+bnL.c: bn.c
+	ln -s $^ $@
 
 # dlmalloc.c needs special accommodations
 # We put them in MALLOC_FLAGS.
@@ -450,6 +452,7 @@ bi.o: bli.c b.h bdefines.h Judy.h
 bl.o: bli.c b.h bdefines.h Judy.h
 br.o: bli.c b.h bdefines.h Judy.h
 bc.o: bli.c b.h bdefines.h Judy.h
+bn.o: bli.c b.h bdefines.h Judy.h
 
 b-L.o: b.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
@@ -462,6 +465,8 @@ blL.o: bl.c bli.c b.h bdefines.h Judy.h
 brL.o: br.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
 bcL.o: bc.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
+bnL.o: bn.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -o $@ -c $<
 
 # Default MALLOC_ALIGNMENT is 2 * sizeof(void *), except possibly on OSX.
@@ -484,6 +489,7 @@ bi.s: bi.c bli.c b.h bdefines.h Judy.h
 bl.s: bl.c bli.c b.h bdefines.h Judy.h
 br.s: br.c bli.c b.h bdefines.h Judy.h
 bc.s: bc.c bli.c b.h bdefines.h Judy.h
+bn.s: bn.c bli.c b.h bdefines.h Judy.h
 
 b-L.s: b.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
@@ -494,6 +500,8 @@ blL.s: bl.c bli.c b.h bdefines.h Judy.h
 brL.s: br.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
 bcL.s: bc.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
+bnL.s: bn.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -S -o $@ -c $<
 
 # Suppress warnings. Transitive warnings. t.c just includes other files.
@@ -525,12 +533,11 @@ JudyMalloc.s: JudyMalloc.c
 # indent -npcs -nprs -ntac -nss -i4 -bap -bfda -br -nut -bbo -bli0
 # Old .c.i rule: $(CC) $(CFLAGS) $(DEFINES) -E $< | indent -i4 | expand > $@
 
-bl.i: bl.c bli.c b.h bdefines.h Judy.h
+b.i: b.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
 
-blL.i: blL.c bli.c b.h bdefines.h Judy.h
-	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
-  | egrep -v "^#[0-9]*|^ *$$" > $@
+bl.i: bl.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
 
 bi.i: bi.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
@@ -541,8 +548,33 @@ br.i: br.c bli.c b.h bdefines.h Judy.h
 bc.i: bc.c bli.c b.h bdefines.h Judy.h
 	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
 
-b.i: b.c b.h bdefines.h Judy.h
+bn.i: bn.c
 	$(CC) $(CFLAGS) $(DEFINES) -E $< | egrep -v "^#[0-9]*|^ *$$" > $@
+
+b-L.i: b.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
+ | egrep -v "^#[0-9]*|^ *$$" > $@
+
+blL.i: blL.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
+ | egrep -v "^#[0-9]*|^ *$$" > $@
+
+biL.i: biL.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
+ | egrep -v "^#[0-9]*|^ *$$" > $@
+
+brL.i: brL.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
+ | egrep -v "^#[0-9]*|^ *$$" > $@
+
+bcL.i: bcL.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
+ | egrep -v "^#[0-9]*|^ *$$" > $@
+
+bnL.i: bn.c bli.c b.h bdefines.h Judy.h
+	$(CC) $(CFLAGS) $(DEFINES) -DB_JUDYL -E $< \
+ | egrep -v "^#[0-9]*|^ *$$" > $@
+
 
 Judy1LHTime.i: Judy1LHTime.c
 	$(CC) $(CFLAGS) -DMIKEY_1 -DMIKEY_L $(DEFINES) -E $< \
