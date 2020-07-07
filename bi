@@ -16,7 +16,8 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 && DEFINES="-DDEBUG" make clean default \
 && ${REGRESS} \
 && : "Default for Judy1 is REVERSE_SORT, FILL_W_BIG_KEY, NO_EK_CALC_POP" \
-&& DEFINES="NO_REVERSE_SORT_EMBEDDED_KEYS -DDEBUG" make clean default \
+&& DEFINES="-DNO_REVERSE_SORT_EMBEDDED_KEYS -DDEBUG" \
+    make clean default \
 && ${REGRESS} \
 && : "_RETURN_NULL_TO_INSERT_AGAIN is default for JudyL" \
 && DEFINES="-DDEBUG -D_RETURN_NULL_TO_INSERT_AGAIN" make clean default \
