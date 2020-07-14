@@ -231,6 +231,31 @@ LocateGeKey8InEk64(Word_t wRoot, Word_t wKey)
 
 #endif // PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK
 
+// https://stackoverflow.com/questions/32945410
+//     /sse2-intrinsics-comparing-unsigned-integers/33302457#33302457
+inline __m128i NotEqual8u(__m128i a, __m128i b)
+{
+    return _mm_andnot_si128(_mm_cmpeq_epi8(a, b), _mm_set1_epi8(-1));
+}
+inline __m128i Greater8u(__m128i a, __m128i b)
+{
+    return _mm_andnot_si128(_mm_cmpeq_epi8(_mm_min_epu8(a, b), a),
+                            _mm_set1_epi8(-1));
+}
+inline __m128i GreaterOrEqual8u(__m128i a, __m128i b)
+{
+    return _mm_cmpeq_epi8(_mm_max_epu8(a, b), a);
+}
+inline __m128i Lesser8u(__m128i a, __m128i b)
+{
+    return _mm_andnot_si128(_mm_cmpeq_epi8(_mm_max_epu8(a, b), a),
+                            _mm_set1_epi8(-1));
+}
+inline __m128i LesserOrEqual8u(__m128i a, __m128i b)
+{
+    return _mm_cmpeq_epi8(_mm_min_epu8(a, b), a);
+}
+
 // Return the position of the least significant 16-bit key greater than or
 // equal to the low 16 bits of wKey in a 64-bit wRoot.
 // Ignore the least significant slot in wRoot and start counting with zero

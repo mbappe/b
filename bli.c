@@ -516,6 +516,12 @@ PrefixCheckAtLeaf(qp, Word_t wKey
 #endif // AUGMENT_TYPE_8 && LOOKUP elif AUG_TYPE_8_SW_NEXT && NEXT
 
 #if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
+  #define _AUG_TYPE
+#elif defined(AUG_TYPE_8_NEXT_EK_XV) && defined(NEXT)
+  #define _AUG_TYPE
+#endif
+
+#ifdef _AUG_TYPE
 
 static int
 AugTypeBits(int nBL)
@@ -597,7 +603,7 @@ AugTypeBitsInv(int nAugTypeBits)
   #endif // else AUGMENT_TYPE_8
 }
 
-#endif // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
+#endif // _AUG_TYPE
 
 #if (cwListPopCntMax != 0)
   // _T_LIST indicates t_list label is needed.
@@ -907,6 +913,9 @@ IF_COUNT (                       Word_t    Count (qpa, Word_t wKey))
     // I think it will eventually be used for REMOVE.
     int nBLUp = 0; (void)nBLUp; // silence gcc
     Link_t *pLnUp = NULL; (void)pLnUp;
+  #ifdef _NEXT_SHORTCUT
+    //IF_NEXT(int nTypeUp = -1; (void)nTypeUp);
+  #endif // _NEXT_SHORTCUT
     // gcc thinks we use nBLRUp uninitialized unless we initialize it here.
     IF_NEXT(int nBLRUp = 0); // valid only if nBLUp != 0
       #ifdef _LNX
@@ -952,11 +961,11 @@ IF_COUNT (                       Word_t    Count (qpa, Word_t wKey))
     int bCleanup = 0; (void)bCleanup;
     int nBLR;
     int nPos; (void)nPos; // (void) is for Judy1 LOOKKUP turn-on
-  #if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
+  #ifdef _AUG_TYPE
   #ifndef AUGMENT_TYPE_NOT
     int nAugTypeBits;
   #endif // !AUGMENT_TYPE_NOT
-  #endif // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
+  #endif // _AUG_TYPE
   #ifdef GOTO_AT_FIRST_IN_LOOKUP
   #ifdef SKIP_LINKS
   #if defined(LOOKUP) // || defined(NEXT)
@@ -972,11 +981,11 @@ IF_COUNT (                       Word_t    Count (qpa, Word_t wKey))
     }
     // This shortcut made the code faster in my testing.
     nBLR = nBL;
-      #if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
+      #ifdef _AUG_TYPE
       #ifndef AUGMENT_TYPE_NOT
     nAugTypeBits = AugTypeBits(nBL);
       #endif // !AUGMENT_TYPE_NOT
-      #endif // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
+      #endif // _AUG_TYPE
     goto fastAgain;
   #endif // LOOKUP || NEXT
   #endif // SKIP_LINKS
@@ -1001,13 +1010,13 @@ top:;
     DBGX(Checkpoint(qya, "again"));
 again:;
   #endif // LOOKUP || !RECURSIVE
-  #if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
+  #ifdef _AUG_TYPE
   #ifndef AUGMENT_TYPE_NOT
     nAugTypeBits = AugTypeBits(nBL);
     goto againAugType;
 againAugType:;
   #endif // !AUGMENT_TYPE_NOT
-  #endif // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
+  #endif // _AUG_TYPE
   #ifdef SKIP_LINKS
     assert(nBLR == nBL);
   #endif // SKIP_LINKS
@@ -1078,6 +1087,18 @@ fastAgain:;
             [112 + T_SWITCH] = &&t_sw_plus_112,
           #endif // AUG_TYPE_8_SW_NEXT
       #endif // LOOKUP elif NEXT
+      #ifdef EK_XV
+      #if defined(AUG_TYPE_8_NEXT_EK_XV) && defined(NEXT)
+            [T_EK_XV +   0] = &&t_ek_xv_plus_0,
+            [T_EK_XV +  16] = &&t_ek_xv_plus_16,
+            [T_EK_XV +  32] = &&t_ek_xv_plus_32,
+            [T_EK_XV +  48] = &&t_ek_xv_plus_48,
+            [T_EK_XV +  64] = &&t_ek_xv_plus_64,
+            [T_EK_XV +  80] = &&t_ek_xv_plus_80,
+            [T_EK_XV +  96] = &&t_ek_xv_plus_96,
+            [T_EK_XV + 112] = &&t_ek_xv_plus_112,
+      #endif // defined(AUG_TYPE_8_NEXT_EK_XV) && defined(NEXT)
+      #endif // EK_XV
       #endif // AUGMENT_TYPE
     };
   #endif // JUMP_TABLE
@@ -1091,11 +1112,11 @@ fastAgain:;
   // AUGMENT_TYPE without AUGMENT_TYPE_8 has four different nBL groups:
   // 5-8, 9-16, 17-32, 33-64. 0-4 does not work.
     // AUGMENTED_TYPE
-  #if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
+  #ifdef _AUG_TYPE
     #define AUGMENTED_TYPE  (nAugTypeBits | nType)
-  #else // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
+  #else // _AUG_TYPE
     #define AUGMENTED_TYPE  nType
-  #endif // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW else
+  #endif // _AUG_TYPE
     // MASKED_AUGMENTED_TYPE
   // MASK_TYPE serves no purpose for JUMP_TABLE.
   // We have it to help gauge cost when doing it for !JUMP_TABLE.
@@ -1129,7 +1150,8 @@ fastAgain:;
   #ifndef DEFAULT_BITMAP
   #if !defined(SKIP_LINKS) || !defined(ALL_SKIP_TO_SW_CASES)
     default:
-        DBG(printf("unknown type %d nBL %d wRoot 0x%zx\n", nType, nBL, wRoot));
+        DBG(printf("\n# Unknown augmented type 0x%02x nBL %d wRoot 0x%zx\n",
+                   MASKED_AUGMENTED_TYPE, nBL, wRoot));
         assert(0);
   #endif // !defined(SKIP_LINKS) || !defined(ALL_SKIP_TO_SW_CASES)
   #endif // DEFAULT_BITMAP
@@ -1137,19 +1159,19 @@ fastAgain:;
   #endif // DEFAULT_SWITCH
   #endif // DEFAULT_SKIP_TO_SW
   #endif // DEBUG
-  #if defined(AUGMENT_TYPE_8) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
+  #if defined(AUGMENT_TYPE_8) && defined(_AUG_TYPE)
     #define CASES_AUG_TYPE_8(_t) \
         case 112 + (_t): case 96 + (_t): case 80 + (_t): case 64 + (_t):
-  #else // AUGMENT_TYPE_8 && LOOKUP || _AUG_TYPE_8_SW
+  #else // AUGMENT_TYPE_8 && _AUG_TYPE
     #define CASES_AUG_TYPE_8(_t)
-  #endif // AUGMENT_TYPE_8 && LOOKUP
-  #if defined(AUGMENT_TYPE) && defined(LOOKUP) || defined(_AUG_TYPE_8_SW)
+  #endif // AUGMENT_TYPE_8 && _AUG_TYPE else
+  #ifdef _AUG_TYPE
     #define CASES_AUG_TYPE(_t) \
         CASES_AUG_TYPE_8(_t) \
         case 48 + (_t): case 32 + (_t): case 16 + (_t):
-  #else // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
+  #else // _AUG_TYPE
     #define CASES_AUG_TYPE(_t)
-  #endif // AUGMENT_TYPE_8 && LOOKUP || _AUG_TYPE_8_SW else
+  #endif // _AUG_TYPE else
   #if defined(DEFAULT_SKIP_TO_SW)
     default:
   #endif // defined(DEFAULT_SKIP_TO_SW)
@@ -1245,6 +1267,11 @@ fastAgain:;
     case 32 + T_SWITCH: goto t_sw_plus_32;
     case 16 + T_SWITCH: goto t_sw_plus_16;
       #endif // AUGMENT_TYPE && LOOKUP || _AUG_TYPE_8_SW
+      #ifdef NEXT
+      #if defined(AUG_TYPE_8_NEXT_EK_XV) && !defined(AUG_TYPE_8_SW_NEXT)
+    CASES_AUG_TYPE(T_SWITCH)
+      #endif // AUG_TYPE_8_NEXT_EK_XV && !AUG_TYPE_8_SW_NEXT
+      #endif // NEXT
       #ifndef _AUG_TYPE_8_SW
       #if !defined(AUGMENT_TYPE) || !defined(LOOKUP)
       #if !defined(DEFAULT_SWITCH) || defined(DEFAULT_AND_CASE)
@@ -1314,9 +1341,9 @@ fastAgain:;
     case 16 + T_LIST: goto t_list16;
       #endif // AUGMENT_TYPE && LOOKUP
       #ifdef NEXT
-      #ifdef AUG_TYPE_8_SW_NEXT
+      #if defined(AUG_TYPE_8_SW_NEXT) || defined(AUG_TYPE_8_NEXT_EK_XV)
     CASES_AUG_TYPE(T_LIST)
-      #endif // AUG_TYPE_8_SW_NEXT
+      #endif // AUG_TYPE_8_SW_NEXT || AUG_TYPE_8_NEXT_EK_XV
       #endif // NEXT
   #endif // (cwListPopCntMax != 0)
   #if defined(DEFAULT_LIST)
@@ -1357,14 +1384,15 @@ fastAgain:;
   #endif // PACK_BM_VALUES || !B_JUDYL
 
   #ifdef BITMAP
-  #ifdef AUGMENT_TYPE
-  #ifdef LOOKUP
+  #ifdef _AUG_TYPE
   #if cn2dBmMaxWpkPercent != 0
-    case 16 + T_BITMAP: goto t_bm_plus_16;
+    case 16 + T_BITMAP:
+      #ifdef LOOKUP
+        goto t_bm_plus_16;
+      #endif // LOOKUP
   #endif // cn2dBmMaxWpkPercent != 0
-  #endif // T_BITMAP
-  #endif // AUGMENT_TYPE
-  #endif // LOOKUP
+  #endif // _AUG_TYPE
+  #endif // BITMAP
   #if defined(DEFAULT_BITMAP)
     default:
   #endif // defined(DEFAULT_BITMAP)
@@ -1392,9 +1420,20 @@ fastAgain:;
   #endif // EMBED_KEYS
 
   #ifdef EK_XV
+      #if defined(AUG_TYPE_8_NEXT_EK_XV) && defined(NEXT)
+    case T_EK_XV + 112: goto t_ek_xv_plus_112;
+    case T_EK_XV +  96: goto t_ek_xv_plus_96;
+    case T_EK_XV +  80: goto t_ek_xv_plus_80;
+    case T_EK_XV +  64: goto t_ek_xv_plus_64;
+    case T_EK_XV +  48: goto t_ek_xv_plus_48;
+    case T_EK_XV +  32: goto t_ek_xv_plus_32;
+    case T_EK_XV +  16: goto t_ek_xv_plus_16;
+    case T_EK_XV +   0: goto t_ek_xv_plus_0;
+      #else // AUG_TYPE_8_NEXT_EK_XV && NEXT
     CASES_AUG_TYPE(T_EK_XV)
     case T_EK_XV:
         goto t_ek_xv;
+      #endif // AUG_TYPE_8_NEXT_EK_XV && NEXT else
   #endif // EK_XV
 
   #if defined(SEPARATE_T_NULL) || (cwListPopCntMax == 0)
@@ -1961,6 +2000,9 @@ switchTail:;
         // Save the previous link and advance to the next.
         IF_NOT_LOOKUP(nBLUp = nBL);
         IF_NOT_LOOKUP(pLnUp = pLn);
+      #ifdef _NEXT_SHORTCUT
+        //IF_NEXT(nTypeUp = nType);
+      #endif // _NEXT_SHORTCUT
         IF_NEXT(nBLRUp = nBLR);
       #ifdef _LNX
         IF_NOT_LOOKUP(IF_NOT_NEXT(pwLnXUp = pwLnX));
@@ -3243,7 +3285,7 @@ t_bm_plus_16:
           #endif // SKIP_LINKS
       #endif // LOOKUP_NO_BITMAP_DEREF else
         goto break_from_main_switch;
-    } // end of t_bitmap
+    } // end of t_bm_plus_16
   #endif // cn2dBmMaxWpkPercent != 0
   #endif // LOOKUP
   #endif // AUGMENT_TYPE
@@ -4104,19 +4146,20 @@ break2:;
                 *pwKey = (wKey & ~NBPW_MSK(nBL)) | wSuffix;
                 return pwLnX;
             }
-          #elif defined(REVERSE_SORT_EMBEDDED_KEYS) && defined(FILL_W_BIG_KEY)
-    #define CASE_BLX(_nBL) \
-        case _nBL: \
-            nPos = LocateGeKeyInEk64(qya, wKey); \
-            nPopCntMax = EmbeddedListPopCntMax(_nBL); \
-            if (nPos < wr_nPopCnt(wRoot, _nBL)) { \
-                Word_t wBLM = MSK(_nBL); \
-                *pwKey = ((wRoot >> (cnBitsPerWord - (nPopCntMax - nPos) * _nBL)) \
-                               & wBLM) \
-                           | (wKey & ~wBLM); \
-                goto foundIt; \
-            } \
-            break;
+          #elif defined(REVERSE_SORT_EMBEDDED_KEYS) \
+             && defined(FILL_W_BIG_KEY) && cnBitsPerWord > 32
+  #define CASE_BLX(_nBL) \
+    case _nBL: \
+        nPos = LocateGeKeyInEk64(qya, wKey); \
+        nPopCntMax = EmbeddedListPopCntMax(_nBL); \
+        if (nPos < wr_nPopCnt(wRoot, _nBL)) { \
+            Word_t wBLM = MSK(_nBL); \
+            *pwKey = ((wRoot >> (cnBitsPerWord - (nPopCntMax - nPos) * _nBL)) \
+                           & wBLM) \
+                       | (wKey & ~wBLM); \
+            goto foundIt; \
+        } \
+        break;
 
         int nPopCntMax;
   #if 0
@@ -4125,8 +4168,11 @@ break2:;
         switch (nBL)
   #endif
         {
+  #if cnBitsInD1 < 8 || defined(USE_XX_SW)
                       CASE_BLX( 1); CASE_BLX( 2); CASE_BLX( 3); CASE_BLX( 4);
-        CASE_BLX( 5); CASE_BLX( 6); CASE_BLX( 7); CASE_BLX( 8); CASE_BLX( 9);
+        CASE_BLX( 5); CASE_BLX( 6); CASE_BLX( 7);
+  #endif // cnBitsInD1 < 8 || USE_XX_SW
+                                                  CASE_BLX( 8); CASE_BLX( 9);
         CASE_BLX(10); CASE_BLX(11); CASE_BLX(12); CASE_BLX(13); CASE_BLX(14);
         CASE_BLX(15); //default:
                       CASE_BLX(16); CASE_BLX(17); CASE_BLX(18); CASE_BLX(19);
@@ -4253,6 +4299,51 @@ foundIt:
   #endif // EMBED_KEYS
 
   #ifdef EK_XV
+
+      #if defined(AUG_TYPE_8_NEXT_EK_XV) && defined(NEXT)
+t_ek_xv_plus_112: assert(nBL == 64); goto t_ek_xv;
+t_ek_xv_plus_96: assert(nBL == 56); goto t_ek_xv;
+t_ek_xv_plus_80: assert(nBL == 48); goto t_ek_xv;
+t_ek_xv_plus_64: assert(nBL == 40); goto t_ek_xv;
+t_ek_xv_plus_48: assert(nBL == 32); goto t_ek_xv;
+t_ek_xv_plus_32: assert(nBL == 24); goto t_ek_xv;
+t_ek_xv_plus_16: assert(nBL == 16);
+    {
+        DBGX(printf("t_ek_xv_plus_16\n"));
+        nBL = 16;
+        assert(pwLnX != NULL);
+        {
+            if ((nPos = SearchEmbeddedX(qya, wKey)) >= 0) {
+                goto xv2foundIt;
+            }
+            assert(wRoot != WROOT_NULL);
+            int nPopCnt = wr_nPopCnt(wRoot, nBL);
+            if (~nPos < nPopCnt) {
+                int nBits = 1 << (LOG(nBL - 1) + 1);
+              #if (cnBitsInD1 < cnLogBitsPerByte)
+                if (nBits < 8) { nBits = 8; }
+              #endif // (cnBitsInD1 < cnLogBitsPerByte)
+                *pwKey = ((*pwLnX >> (~nPos * nBits)) & MSK(nBits))
+                           | (wKey & ~MSK(nBits));
+                return &pwr[~nPos];
+            }
+        }
+        goto break_from_main_switch;
+xv2foundIt:;
+        *pwKey = wKey;
+        return &pwr[nPos];
+    } // end of t_ek_xv_plus_16
+t_ek_xv_plus_0: assert(nBL == 8);
+    {
+        DBGX(printf("t_ek_xv_plus_0\n"));
+        if ((nPos = LocateGeKeyInWord8(*pwLnX, wKey)) >= 0) {
+            *pwKey = (wKey & ~MSK(nBL)) | ((uint8_t*)pwLnX)[nPos];
+            return &pwr[nPos];
+        }
+        goto break_from_main_switch;
+    } // end of t_ek_xv_plus_0
+      #endif // defined(AUG_TYPE_8_NEXT_EK_XV) && defined(NEXT)
+    goto t_ek_xv;
 t_ek_xv:
     {
         DBGX(printf("T_EK_XV\n"));
@@ -4385,6 +4476,15 @@ t_ek_xv:
 xv_break2:;
 
       #else // _PARALLEL_EK && !NEXT
+          #ifdef NEXT
+            if (nBL == 8) {
+                if ((nPos = LocateGeKeyInWord8(*pwLnX, wKey)) >= 0) {
+                    *pwKey = (wKey & ~MSK(nBL)) | ((uint8_t*)pwLnX)[nPos];
+                    return &pwr[nPos];
+                }
+                goto break_from_main_switch;
+            }
+          #endif // NEXT
             if ((nPos = SearchEmbeddedX(qya, wKey)) >= 0) {
                 goto xv_foundIt;
             }
@@ -4466,31 +4566,61 @@ break_from_main_switch:;
     // Key is not present.
     DBGX(Checkpoint(qya, "break_from_main_switch"));
   #ifdef NEXT
-    DBGX(Checkpoint(qya, "tryNextDigit"));
-    DBGX(printf("# wKey " OWx"\n", wKey));
     if (nBL < cnBitsPerWord) {
         goto tryNextDigit;
 tryNextDigit:;
+        DBGX(Checkpoint(qya, "tryNextDigit"));
         assert(nBL < cnBitsPerWord);
         Word_t wIncr = EXP(nBL);
         wKey &= ~(wIncr - 1);
         wKey += wIncr;
+        DBGX(printf("# next digit wKey " OWx"\n", wKey));
         if ((nBLUp & MSK(cnLogBitsPerWord)) != 0) {
             if ((wKey & MSK(nBLRUp)) != 0) {
-      #ifdef NEXT_SHORTCUT // skip over WROOT_NULLs
-// Do we want nTypeUp?
-                if (wr_nType(pLnUp->ln_wRoot) >= T_SWITCH) {
-                    while ((++pLn)->ln_wRoot == WROOT_NULL) {
+      #ifdef _NEXT_SHORTCUT // skip over WROOT_NULLs and/or bypass switch(Up)
+                BJL(assert(cnBitsInD1 > cnLogBitsPerWord)); // No thought yet.
+                BJ1(assert(cnBitsInD1 > cnLogBitsPerLink)); // No thought yet.
+                // A compressed switch may have no link for incremented wKey.
+                // Make sure we aren't in a compressed switch.
+                //if (nTypeUp >= T_SWITCH)
+                if (wr_nType(pLnUp->ln_wRoot) >= T_SWITCH)
+                {
+                    wRoot = (++pLn)->ln_wRoot;
+          #ifdef NEXT_SHORTCUT_SWITCH
+          #ifdef REMOTE_LNX
+                    ++pwLnX;
+          #endif // REMOTE_LNX
+          #endif // NEXT_SHORTCUT_SWITCH
+          #ifdef NEXT_SHORTCUT_NULL
+                    while (wRoot == WROOT_NULL) {
                         wKey += wIncr;
                         if ((wKey & MSK(nBLRUp)) == 0) {
                             if (wKey == 0) {
-                                return Failure;
+                                return BJL(NULL)BJ1(Failure);
                             }
                             goto restart;
                         }
+                        wRoot = (++pLn)->ln_wRoot;
+              #ifdef NEXT_SHORTCUT_SWITCH
+              #ifdef REMOTE_LNX
+                        ++pwLnX;
+              #endif // REMOTE_LNX
+              #endif // NEXT_SHORTCUT_SWITCH
                     }
+          #endif // NEXT_SHORTCUT_NULL
+          #ifdef NEXT_SHORTCUT_SWITCH
+                    pwRoot = &pLn->ln_wRoot;
+              #ifdef _LNX
+              #ifndef REMOTE_LNX
+                    pwLnX = &pLn->ln_wX;
+              #endif // !REMOTE_LNX
+              #endif // _LNX
+                    goto insertAgain;
+          #endif // NEXT_SHORTCUT_SWITCH
+                } else {
+                   // T_BM_SW (T_SKIP_TO_BM_SW) would come here.
                 }
-      #endif // NEXT_SHORTCUT
+      #endif // _NEXT_SHORTCUT
                 goto restartUp; // restart at (nBLUp, pLnUp) with this new wKey
             }
         }
@@ -5269,221 +5399,4 @@ Judy1Unset(PPvoid_t ppvRoot, Word_t wKey, PJError_t PJError)
 }
 
 #endif // defined(REMOVE)
-
-#ifdef NEXT
-
-// If *pwKey is in the array then return 1 and leave *pwKey unchanged.
-// Otherwise find the next bigger key than *pwKey which is in the array.
-// Put the found key in *pwKey.
-// Return 1 if a key is found.
-// Return 0 if *pwKey is bigger than the biggest key in the array.
-// Return -1 if pwKey is NULL.
-// *pwKey is undefined if anything other than 1 is returned.
-// But we go to the trouble of preserving *pwKey if anything other than 1
-// is returned to compare with JudyA.
-#ifdef B_JUDYL
-PPvoid_t
-JudyLFirst(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
-#else // B_JUDYL
-int
-Judy1First(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
-#endif // B_JUDYL
-{
-    DBGN(printf("\n# JxF: *pwKey " OWx"\n", *pwKey));
-    if (pwKey == NULL) {
-        if (PJError != NULL) {
-            PJError->je_Errno = JU_ERRNO_NULLPINDEX;
-        }
-        return BJL(PPJERR) BJ1(JERR);
-    }
-  #if !defined(NEW_NEXT) || defined(NEXT_QPA) || defined(NEXT_QP)
-    int nBL = cnBitsPerWord; (void)nBL;
-      #ifdef QP_PLN
-    Link_t* pLn = STRUCT_OF((Word_t*)&PArray, Link_t, ln_wRoot);
-      #else // QP_PLN
-    Word_t* pwRoot = (Word_t*)&PArray; (void)pwRoot;
-      #endif // QP_PLN else
-      #if !defined(NEW_NEXT) || defined(NEXT_QPA)
-      #ifdef REMOTE_LNX
-    Word_t* pwLnX = NULL; (void)pwLnX;
-      #endif // REMOTE_LNX
-      #endif // !NEW_NEXT || NEXT_QPA
-  #endif // !NEW_NEXT || NEXT_QPA || NEXT_QP
-  #ifdef NEW_NEXT
-      #ifdef NEW_NEXT_IS_EXCLUSIVE
-    Word_t wKey = *pwKey;
-    BJL(Word_t* pwVal);
-    if (wKey == 0) {
-        if (BJL((pwVal = (Word_t*)JudyLGet(PArray, 0, NULL)) != NULL)
-            BJ1(Judy1Test(PArray, 0, NULL) == 1)
-            )
-        {
-            return BJL((PPvoid_t)pwVal) BJ1(1);
-        }
-    } else {
-        --wKey;
-    }
-          #ifdef NEXT_QPA
-    BJL(pwVal = NextL(qya, &wKey));
-    BJ1(Status_t status = Next1(qya, &wKey));
-          #elif defined(NEXT_QP)
-    BJL(pwVal = NextL(qy, &wKey));
-    BJ1(Status_t status = Next1(qy, &wKey));
-          #else // NEXT_QPA elif NEXT_QP
-    BJL(pwVal = NextL((Word_t)PArray, &wKey));
-    BJ1(Status_t status = Next1((Word_t)PArray, &wKey));
-          #endif // NEXT_QPA elif NEXT_QP else
-    if (BJL(pwVal != NULL) BJ1(status == Success)) {
-        *pwKey = wKey;
-    }
-      #else // NEW_NEXT_IS_EXCLUSIVE
-          #ifdef NEXT_QPA
-    BJL(Word_t* pwVal = NextL(qya, pwKey));
-    BJ1(Status_t status = Next1(qya, pwKey));
-          #elif defined(NEXT_QP)
-    BJL(Word_t* pwVal = NextL(qy, pwKey));
-    BJ1(Status_t status = Next1(qy, pwKey));
-          #else // NEXT_QPA elif NEXT_QP
-    BJL(Word_t* pwVal = NextL((Word_t)PArray, pwKey));
-    BJ1(Status_t status = Next1((Word_t)PArray, pwKey));
-          #endif // NEXT_QPA elif NEXT_QP else
-      #endif // NEW_NEXT_IS_EXCLUSIVE else
-    BJL(DBGN(printf("# JxF: pwVal %p\n", pwVal)));
-    BJ1(DBGN(printf("# JxF: status %d\n", status)));
-    if (BJL(pwVal != NULL) BJ1(status == Success))
-  #else // NEW_NEXT
-    Word_t wKey = *pwKey;
-    BJL(Word_t* pwVal = NULL);
-    Status_t status = NextGuts(qya, &wKey, /*wCount*/0, /*bPrev*/0, /*bEmpty*/0
-          #ifdef B_JUDYL
-                             , &pwVal
-          #endif // B_JUDYL
-                               )
-                        ? Failure : Success;
-    if (status == Success) {
-        *pwKey = wKey;
-    }
-    DBGN(printf("# JxF: status %d\n", status));
-    if (status == Success)
-  #endif // NEW_NEXT else
-    {
-  #if !defined(NEW_NEXT) // || defined(DEBUG)
-        *pwKey = wKey;
-  #endif // NEW_NEXT // || DEBUG
-        DBGN(printf("# JxF: *pwKey 0x%zx\n", *pwKey));
-  #ifdef B_JUDYL
-      #ifndef NEW_NEXT
-        if (pwVal == NULL) {
-            pwVal = (Word_t*)JudyLGet(PArray, *pwKey, NULL);
-        }
-        assert(pwVal != NULL);
-      #endif // !NEW_NEXT
-        DBGN(printf("# JxF: pwVal %p *pwVal 0x%02zx\n", pwVal, *pwVal));
-  #endif // B_JUDYL
-    }
-    DBGN(printf("\n"));
-    return BJL((PPvoid_t)pwVal) BJ1(status);
-}
-
-// Find the next bigger key than *pwKey which is in the array.
-// Put the found key in *pwKey.
-// Return 1 if a key is found.
-// Return 0 if *pwKey is bigger than or equal to the biggest key in the array.
-// Return -1 if pwKey is NULL.
-// *pwKey is undefined if anything other than 1 is returned.
-// But we go to the trouble of preserving *pwKey if anything other than 1
-// is returned to compare with JudyA.
-#ifdef B_JUDYL
-PPvoid_t
-JudyLNext(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
-#else // B_JUDYL
-int
-Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
-#endif // B_JUDYL
-{
-    DBGN(printf("\n# JxN: *pwKey " OWx"\n", *pwKey));
-    if (pwKey == NULL) {
-        if (PJError != NULL) {
-            PJError->je_Errno = JU_ERRNO_NULLPINDEX;
-        }
-        return BJL(PPJERR) BJ1(JERR);
-    }
-  #if !defined(NEW_NEXT) || !defined(NEW_NEXT_IS_EXCLUSIVE)
-    Word_t wKey = *pwKey + 1;
-    if (wKey == 0) {
-        return 0; // NULL for JudyL
-    }
-  #endif // !NEW_NEXT || !NEW_NEXT_IS_EXCLUSIVE
-  #if !defined(NEW_NEXT) || defined(NEXT_QPA) || defined(NEXT_QP)
-    int nBL = cnBitsPerWord; (void)nBL;
-      #ifdef QP_PLN
-    Link_t* pLn = STRUCT_OF((Word_t*)&PArray, Link_t, ln_wRoot);
-      #else // QP_PLN
-    Word_t* pwRoot = (Word_t*)&PArray; (void)pwRoot;
-      #endif // QP_PLN else
-      #if !defined(NEW_NEXT) || defined(NEXT_QPA)
-      #ifdef REMOTE_LNX
-    Word_t* pwLnX = NULL; (void)pwLnX;
-      #endif // REMOTE_LNX
-      #endif // !NEW_NEXT || NEXT_QPA
-  #endif // !NEW_NEXT || NEXT_QPA || NEXT_QP
-  #ifdef NEW_NEXT
-      #ifdef NEW_NEXT_IS_EXCLUSIVE
-          #ifdef NEXT_QPA
-    BJL(Word_t* pwVal = NextL(qya, pwKey));
-    BJ1(Status_t status = Next1(qya, pwKey));
-          #elif defined(NEXT_QP)
-    BJL(Word_t* pwVal = NextL(qy, pwKey));
-    BJ1(Status_t status = Next1(qy, pwKey));
-          #else // NEXT_QPA elif NEXT_QP
-    BJL(Word_t* pwVal = NextL((Word_t)PArray, pwKey));
-    BJ1(Status_t status = Next1((Word_t)PArray, pwKey));
-          #endif // NEXT_QPA elif NEXT_QP else
-      #else // NEW_NEXT_IS_EXCLUSIVE
-          #ifdef NEXT_QPA
-    BJL(Word_t* pwVal = NextL(qya, &wKey));
-    BJ1(Status_t status = Next1(qya, &wKey));
-          #elif defined(NEXT_QP)
-    BJL(Word_t* pwVal = NextL(qy, &wKey));
-    BJ1(Status_t status = Next1(qy, &wKey));
-          #else // NEXT_QPA elif NEXT_QP
-    BJL(Word_t* pwVal = NextL((Word_t)PArray, &wKey));
-    BJ1(Status_t status = Next1((Word_t)PArray, &wKey));
-          #endif // NEXT_QPA elif NEXT_QP else
-      #endif // NEW_NEXT_IS_EXCLUSIVE else
-    BJL(DBGN(printf("# JxN: pwVal %p\n", pwVal)));
-    BJ1(DBGN(printf("# JxN: status %d\n", status)));
-    if (BJL(pwVal != NULL) BJ1(status == Success))
-  #else // NEW_NEXT
-    BJL(Word_t* pwVal = NULL);
-    Status_t status
-        = NextGuts(qya, &wKey, /*wCount*/0, /*bPrev*/0, /*bEmpty*/0
-          #ifdef B_JUDYL
-                 , &pwVal
-          #endif // B_JUDYL
-                   )
-            ? Failure : Success;
-    DBGN(printf("# JxN: status %d\n", status));
-    if (status == Success)
-  #endif // NEW_NEXT else
-    {
-      #if !defined(NEW_NEXT) || !defined(NEW_NEXT_IS_EXCLUSIVE)
-        *pwKey = wKey;
-      #endif // !NEW_NEXT || !NEW_NEXT_IS_EXCLUSIVE
-        DBGN(printf("# JxN: *pwKey " OWx"\n\n", *pwKey));
-  #ifdef B_JUDYL
-      #ifndef NEW_NEXT
-        if (pwVal == NULL) {
-            pwVal = (Word_t*)JudyLGet(PArray, *pwKey, NULL);
-        }
-        assert(pwVal != NULL);
-      #endif // !NEW_NEXT
-        DBGN(printf("# JxF: pwVal %p *pwVal 0x%02zx\n", pwVal, *pwVal));
-  #endif // B_JUDYL
-    }
-    DBGN(printf("\n"));
-    return BJL((PPvoid_t)pwVal) BJ1(status);
-}
-
-#endif // NEXT
 

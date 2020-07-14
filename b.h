@@ -529,6 +529,11 @@ ExtListBytesPerKey(int nBL)
 #ifdef B_JUDYL
   #include <xmmintrin.h> // _MM_HINT_ET0, _MM_HINT_T0, _MM_HINT_NTA
 #endif // B_JUDYL
+
+// unsigned greater than or equal
+#define _mm_cmpge_pu8(a, b) \
+    _mm_cmpeq_pi8(_mm_max_pu8(a, b), a)
+
 #if defined(PARALLEL_128)
 typedef __m128i Bucket_t;
 #define cnLogBytesPerBucket  4
@@ -1714,9 +1719,17 @@ wr_nPopCnt(Word_t wRoot, int nBL)
       #endif // ! defined(NO_EMBEDDED_LIST_FIXED_POP)
       #if (cnBitsPerWord == 64)
           #if defined(EMBEDDED_LIST_FIXED_POP)
+              #if cnBitsInD1 < 7 && !defined(ALLOW_EMBEDDED_BITMAP)
+#define nBL_to_nBitsPopCntSz(_nBL)  4
+              #else // cnBitsInD1 < 7 && !ALLOW_EMBEDDED_BITMAP
 #define nBL_to_nBitsPopCntSz(_nBL)  3
+              #endif // cnBitsInD1 < 7 && !ALLOW_EMBEDDED_BITMAP else
           #else // defined(EMBEDDED_LIST_FIXED_POP)
+              #if cnBitsInD1 < 7 && !defined(ALLOW_EMBEDDED_BITMAP)
+#error
+              #else // cnBitsInD1 < 7 && !ALLOW_EMBEDDED_BITMAP
 #define nBL_to_nBitsPopCntSz(_nBL)  LOG(88 / (_nBL))
+              #endif // cnBitsInD1 < 7 && !ALLOW_EMBEDDED_BITMAP else
           #endif // defined(EMBEDDED_LIST_FIXED_POP)
       #elif (cnBitsPerWord == 32)
           #if defined(EMBEDDED_LIST_FIXED_POP)
@@ -4165,6 +4178,40 @@ extern const unsigned anBL_to_nDL[];
 
 #if (cnDigitsPerWord > 1)
 
+// The second argument to __builtin_prefetch is ignored.
+// We discovered that prefetchnta (3rd argument to _builtin_prefetch is 0)
+// performs horribly on AMD 3600X when in the slowest level of cache.
+#if defined(BUILTIN_PREFETCH_0)
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 0) // low temporal locality
+#elif defined(BUILTIN_PREFETCH_1)
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 1)
+#elif defined(BUILTIN_PREFETCH_2)
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 2)
+#elif defined(BUILTIN_PREFETCH_3)
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 3) // high temporal locality
+#else
+  #define BUILTIN_PREFETCH_0
+  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 0)
+#endif
+
+#ifdef PREFETCH_LOCATEKEY_PSPLIT_VAL
+#define _PF_LK(_x)  (_x)
+#else // PREFETCH_LOCATEKEY_PSPLIT_VAL
+#define _PF_LK(_x)
+#endif // #else PREFETCH_LOCATEKEY_PSPLIT_VAL
+
+#ifdef PREFETCH_LOCATEKEY_NEXT_VAL
+#define _PF_LK_NX(_x)  (_x)
+#else // PREFETCH_LOCATEKEY_NEXT_VAL
+#define _PF_LK_NX(_x)
+#endif // #else PREFETCH_LOCATEKEY_NEXT_VAL
+
+#ifdef PREFETCH_LOCATEKEY_PREV_VAL
+#define _PF_LK_PV(_x)  (_x)
+#else // PREFETCH_LOCATEKEY_PREV_VAL
+#define _PF_LK_PV(_x)
+#endif // #else PREFETCH_LOCATEKEY_PREV_VAL
+
 #if defined(PARALLEL_128)
 
 #define BUCKET_HAS_KEY HasKey128
@@ -4378,11 +4425,17 @@ Psplit(int nPopCnt, int nBL, int nShift, Word_t wKey)
 // It has to work for small nBL in case of no COMPRESSED_LISTS.
 // It doesn't usually have to work for nBL == cnBitsPerWord since psplit
 // search is usually a bad choice for that case.
+// PSPLIT_SEARCH_BY_KEY_GUTS uses qy for prefetch but qy is not in the
+// parameter list. Shame on us.
 #define PSPLIT_SEARCH_BY_KEY_GUTS(_x_t, _nBL, /* nPsplitShift */ _x, \
                                   _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     SMETRICS_POP(j__SearchPopulation += (_nPopCnt)); \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_x), (_xKey)); \
+    /*BJL(char* pcPf = (char*)&gpwValues(qy)[~nSplit]; (void)pcPf);*/ \
+    /*BJL(_PF_LK(PREFETCH(pcPf)));*/ \
+    /*BJL(_PF_LK_NX(PREFETCH(pcPf - 64)));*/ \
+    /*BJL(_PF_LK_PV(PREFETCH(pcPf + 64)));*/ \
     /* if (TEST_AND_SPLIT_EQ_KEY(_pxKeys, _xKey)) */\
     if ((_pxKeys)[nSplit] == (_xKey)) \
     { \
@@ -4440,51 +4493,38 @@ Psplit(int nPopCnt, int nBL, int nShift, Word_t wKey)
 }
 
 static int
-PsplitSearchByKeyWord(int nBL,
-                      Word_t *pwKeys, int nPopCnt, Word_t wKey, int nPos)
+PsplitSearchByKeyWord(qp, Word_t *pwKeys, int nPopCnt, Word_t wKey, int nPos)
 {
+    qv;
     PSPLIT_SEARCH_BY_KEY_WORD(nBL, pwKeys, nPopCnt, wKey, nPos);
     return nPos;
 }
 
 #if (cnBitsPerWord > 32)
 static int
-PsplitSearchByKey32(uint32_t *piKeys, int nPopCnt, uint32_t iKey, int nPos)
+PsplitSearchByKey32(qp, uint32_t *piKeys, int nPopCnt, uint32_t iKey, int nPos)
 {
+    qv;
     PSPLIT_SEARCH_BY_KEY(uint32_t, 32, piKeys, nPopCnt, iKey, nPos);
     return nPos;
 }
 #endif // (cnBitsPerWord > 32)
 
 static int
-PsplitSearchByKey16(uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
+PsplitSearchByKey16(qp, uint16_t *psKeys, int nPopCnt, uint16_t sKey, int nPos)
 {
+    qv;
     PSPLIT_SEARCH_BY_KEY(uint16_t, 16, psKeys, nPopCnt, sKey, nPos);
     return nPos;
 }
 
 static int
-PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
+PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 {
+    qv;
     PSPLIT_SEARCH_BY_KEY(uint8_t, 8, pcKeys, nPopCnt, cKey, nPos);
     return nPos;
 }
-
-// The second argument to __builtin_prefetch is ignored.
-// We discovered that prefetchnta (3rd argument to _builtin_prefetch is 0)
-// performs horribly on AMD 3600X when in the slowest level of cache.
-#if defined(BUILTIN_PREFETCH_0)
-  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 0) // low temporal locality
-#elif defined(BUILTIN_PREFETCH_1)
-  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 1)
-#elif defined(BUILTIN_PREFETCH_2)
-  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 2)
-#elif defined(BUILTIN_PREFETCH_3)
-  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 3) // high temporal locality
-#else
-  #define BUILTIN_PREFETCH_0
-  #define PREFETCH(_p)  __builtin_prefetch(_p, 0, 0)
-#endif
 
 #if defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)
 #if !defined(LIST_END_MARKERS)
@@ -4799,24 +4839,6 @@ PsplitSearchByKey8(uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                        /*nPsplitShift*/ (_nBL) - 16, \
                        (_pwKeys), (_nPopCnt), (_wKey), _nPos); \
 }
-
-#ifdef PREFETCH_LOCATEKEY_PSPLIT_VAL
-#define _PF_LK(_x)  (_x)
-#else // PREFETCH_LOCATEKEY_PSPLIT_VAL
-#define _PF_LK(_x)
-#endif // #else PREFETCH_LOCATEKEY_PSPLIT_VAL
-
-#ifdef PREFETCH_LOCATEKEY_NEXT_VAL
-#define _PF_LK_NX(_x)  (_x)
-#else // PREFETCH_LOCATEKEY_NEXT_VAL
-#define _PF_LK_NX(_x)
-#endif // #else PREFETCH_LOCATEKEY_NEXT_VAL
-
-#ifdef PREFETCH_LOCATEKEY_PREV_VAL
-#define _PF_LK_PV(_x)  (_x)
-#else // PREFETCH_LOCATEKEY_PREV_VAL
-#define _PF_LK_PV(_x)
-#endif // #else PREFETCH_LOCATEKEY_PREV_VAL
 
 // PSPLIT parallel search a bucket-aligned list of keys to see if a
 // key exists in the list.
@@ -5639,6 +5661,7 @@ HasKey128Magic(__m128i *pxBucket, Word_t wKey, int nBL)
 #ifndef B_JUDYL
 #ifdef REVERSE_SORT_EMBEDDED_KEYS
 #ifdef FILL_W_BIG_KEY
+#if cnBitsPerWord > 32
 
 #ifdef PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK
 
@@ -5659,9 +5682,6 @@ LocateGeKey8InEk64(Word_t wRoot, Word_t wKey)
 
 #else // PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK
 
-#define _mm_cmpge_pu8(a, b) \
-    _mm_cmpeq_pi8(_mm_max_pu8(a, b), a)
-
 static inline int // nPos
 LocateGeKey8InEk64(Word_t wRoot, Word_t wKey)
 {
@@ -5672,14 +5692,17 @@ LocateGeKey8InEk64(Word_t wRoot, Word_t wKey)
 
 #endif // PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK else
 
+#ifdef PARALLEL_LOCATE_GE_KEY_16_IN_EK
+#ifdef PARALLEL_LOCATE_GE_KEY_16_USING_UNPACK
+
 // Return the position of the least significant 16-bit key greater than or
 // equal to the low 16 bits of wKey in a 64-bit wRoot.
 // Ignore the least significant slot in wRoot and start counting with zero
 // at the next least significant slot.
-// If there is no key greater than or equal to then return three.
+// If there is no key greater than or equal to wKey then return three.
 // _mm_cmpgt_pi16 compares signed 16-bit numbers in an __m64 for a > b.
 // There is no instruction that compares unsigned 16-bit numbers in an __m64.
-static int // nPos
+static inline int // nPos
 LocateGeKey16InEk64(Word_t wRoot, Word_t wKey)
 {
     // convert 16-bit unsigned integers in wRoot to 32-bit signed integers
@@ -5694,6 +5717,19 @@ LocateGeKey16InEk64(Word_t wRoot, Word_t wKey)
     return __builtin_ctzll(u64GE) / 16;
 }
 
+#else // PARALLEL_LOCATE_GE_KEY_16_USING_UNPACK
+
+static inline int // nPos
+LocateGeKey16InEk64(Word_t wRoot, Word_t wKey)
+{
+    __m64 m64List = (__m64)(~MSK(48) | (wRoot >> 16));
+    __m64 m64Key = _mm_set1_pi16(wKey);
+    return __builtin_ctzll((uint64_t)_mm_cmpge_pu16(m64List, m64Key)) / 16;
+}
+
+#endif // PARALLEL_LOCATE_GE_KEY_16_USING_UNPACK else
+#endif // PARALLEL_LOCATE_GE_KEY_16_IN_EK
+
 static inline int
 LocateGeKeyInEk64(qpa, Word_t wKey)
 {
@@ -5706,7 +5742,8 @@ LocateGeKeyInEk64(qpa, Word_t wKey)
   #endif // PARALLEL_LOCATE_GE_KEY_8_IN_EK
     int nPopCnt = wr_nPopCnt(wRoot, nBL);
     wKey &= MSK(nBL);
-    wRoot >>= ((cnBitsPerWord - 7) % nBL + 7);
+    int nBitsOverhead = nBL_to_nBitsType(nBL) + nBL_to_nBitsPopCntSz(nBL);
+    wRoot >>= ((cnBitsPerWord - nBitsOverhead) % nBL + nBitsOverhead);
     for (int nPos = 0; nPos < nPopCnt; nPos++) {
         if ((wRoot & MSK(nBL)) >= wKey) {
             return nPos;
@@ -5716,6 +5753,7 @@ LocateGeKeyInEk64(qpa, Word_t wKey)
     return nPopCnt;
 }
 
+#endif // cnBitsPerWord > 32
 #endif // FILL_W_BIG_KEY
 #endif // REVERSE_SORT_EMBEDDED_KEYS
 #endif // !B_JUDYL
@@ -6303,7 +6341,7 @@ SearchListWord(qp, int nBLR, Word_t wKey)
         // need a special psplit here that starts at wKeyMin
         #error Need a special PSPLIT for PSPLIT_SEARCH_XOR_WORD
   #endif // defined(PSPLIT_SEARCH_XOR_WORD)
-        return PsplitSearchByKeyWord(nBL, pwKeys, nPopCnt, wKey, 0);
+        return PsplitSearchByKeyWord(qy, pwKeys, nPopCnt, wKey, 0);
     }
 #endif // defined(PSPLIT_SEARCH_WORD)
     // We want binary search for nBL == cnBitsPerWord by default.
@@ -6624,6 +6662,30 @@ LocateGeKey128(__m128i* px, Word_t* pwKey, int nBL)
     return ~(cnBitsPerWord / nBL);
 }
 #endif
+
+#if cnBitsPerWord > 32
+// Return nPos >= 0 if key >= wKey exists in wWord.
+// Otherwise return -1.
+static inline int
+LocateGeKeyInWord8(Word_t wWord, Word_t wKey)
+{
+    __m64 m64Key = _mm_set1_pi8(wKey);
+    uint64_t u64GE = (uint64_t)_mm_cmpge_pu8((__m64)wWord, m64Key);
+    return (u64GE != 0) ? __builtin_ctzll(u64GE) / 8 : -1;
+}
+
+#if 0
+// Return nPos >= 0 if key >= wKey exists in wWord.
+// Otherwise return -1.
+static inline int
+LocateGeKeyInWord16(Word_t wWord, Word_t wKey)
+{
+    __m64 m64Key = _mm_set1_pi16(wKey);
+    uint64_t u64GE = (uint64_t)_mm_cmpge_pu16((__m64)wWord, m64Key);
+    return (u64GE != 0) ? __builtin_ctzll(u64GE) / 16 : -1;
+}
+#endif
+#endif // cnBitsPerWord > 32
 
 static inline int
 LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)

@@ -2385,7 +2385,9 @@ FreeArrayGuts(qpa, Word_t wKey, int bDump
   #endif // SKIP_LINKS
         }
         printf(" nBL %2d nBLR %2d", nBL, nBLR);
-        printf(" wKey " OWx, wKey);
+        printf(" wKey " OWx,
+               (wPrefix == (wKey & ~NZ_MSK(nBLR))) ? wKey : wPrefix
+               );
         printf(" pwRoot " OWx, (Word_t)pwRoot);
         printf(" wRoot " OWx, wRoot);
   #ifdef _LNX
@@ -3235,7 +3237,6 @@ InsertEmbedded(qpa, Word_t wKey)
         case 2:
             ((uint32_t*)pwLnX)[0] = wKey0;
             ((uint32_t*)pwLnX)[1] = wKey1;
-            PAD64((uint32_t*)pwLnX, 2);
             break;
           #endif // (cnBitsPerWord > 32)
         }
@@ -3255,6 +3256,7 @@ InsertEmbedded(qpa, Word_t wKey)
             }
         }
         ((uint8_t*)pwLnX)[nSlot] = wKey;
+        PAD64((uint8_t*)pwLnX, nPopCnt + 1);
         break;
     case 1: // 8 < nBLR <= 16
         for (; nSlot < nPopCnt; ++nSlot) {
@@ -3265,6 +3267,7 @@ InsertEmbedded(qpa, Word_t wKey)
             }
         }
         ((uint16_t*)pwLnX)[nSlot] = wKey;
+        PAD64((uint16_t*)pwLnX, nPopCnt + 1);
           #if (cnBitsPerWord > 32)
         break;
     case 2: // 16 < nBLR <= 32
@@ -3314,7 +3317,7 @@ InsertEmbedded(qpa, Word_t wKey)
             break;
         }
     }
-    DBGI(printf("Insert: wKey " OWx" nPos %d", wKey, nPos));
+    DBGI(printf("InsertEmbedded: wKey " OWx" nPos %d", wKey, nPos));
     if (nPos < nPopCnt) {
       #ifdef REVERSE_SORT_EMBEDDED_KEYS
         int nLsb = cnBitsPerWord - (nPopCntMax - nPos) * nBL;
@@ -3828,6 +3831,11 @@ InsertCleanup(qpa, Word_t wKey)
         int nBLLn = nBLR - nBW;
         assert(nBLLn >= cnLogBitsPerByte);
 
+          #ifdef EMBED_KEYS
+          #ifdef REVERSE_SORT_EMBEDDED_KEYS
+        int nPopCntMaxLn = EmbeddedListPopCntMax(nBLLn);
+          #endif // REVERSE_SORT_EMBEDDED_KEYS
+          #endif // EMBED_KEYS
         for (Word_t ww = 0; ww < EXP(nBW); ww++)
         {
             Link_t *pLnLn =
@@ -3860,17 +3868,25 @@ InsertCleanup(qpa, Word_t wKey)
 embeddedKeys:;
                 int nPopCntLn = wr_nPopCnt(wRootLn, nBLLn);
                 Word_t wBLM = MSK(nBLLn); // Bits left mask.
-                for (int nn = 1; nn <= nPopCntLn; nn++) {
+                for (int nPos = 0; nPos < nPopCntLn; nPos++) {
+                    int nBitNum
+                        = ((wRootLn
+                            >> (cnBitsPerWord
+                                - (
+              #ifdef REVERSE_SORT_EMBEDDED_KEYS
+                                    (nPopCntMaxLn - nPos)
+              #else // REVERSE_SORT_EMBEDDED_KEYS
+                                    (nPos + 1)
+              #endif // REVERSE_SORT_EMBEDDED_KEYS else
+                                        * nBLLn)))
+                                 & wBLM);
               #if (cnBitsInD1 < cnLogBitsPerWord)
-                    SetBitByByte(
-                        &((uint8_t*)pwBitmap)[
-                            ww * EXP(nBLLn - cnLogBitsPerByte)],
-                        ((wRootLn >> (cnBitsPerWord - (nn * nBLLn))) & wBLM)
-                                 );
+                    SetBitByByte(&((uint8_t*)pwBitmap)[
+                                     ww * EXP(nBLLn - cnLogBitsPerByte)],
+                                 nBitNum);
               #else // (cnBitsInD1 < cnLogBitsPerWord)
                     SetBit(&pwBitmap[ww * EXP(nBLLn - cnLogBitsPerWord)],
-                           ((wRootLn >> (cnBitsPerWord - (nn * nBLLn)))
-                               & wBLM));
+                           nBitNum);
               #endif // else (cnBitsInD1 < cnLogBitsPerWord)
                 }
                 continue;
@@ -10831,6 +10847,12 @@ Initialize(void)
     printf("# No AUG_TYPE_8_SW_NEXT\n");
 #endif //        AUG_TYPE_8_SW_NEXT else
 
+#ifdef           AUG_TYPE_8_NEXT_EK_XV
+    printf("#    AUG_TYPE_8_NEXT_EK_XV\n");
+#else //         AUG_TYPE_8_NEXT_EK_XV
+    printf("# No AUG_TYPE_8_NEXT_EK_XV\n");
+#endif //        AUG_TYPE_8_NEXT_EK_XV else
+
 #ifdef           AUGMENT_TYPE_NOT
     printf("#    AUGMENT_TYPE_NOT\n");
 #else //         AUGMENT_TYPE_NOT
@@ -11480,6 +11502,24 @@ Initialize(void)
     printf("# No PARALLEL_LOCATEKEY_8\n");
 #endif // #else  PARALLEL_LOCATEKEY_8
 
+#ifdef           PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK
+    printf("#    PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK\n");
+#else //         PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK
+    printf("# No PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK\n");
+#endif // #else  PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK
+
+#ifdef           PARALLEL_LOCATE_GE_KEY_16_IN_EK
+    printf("#    PARALLEL_LOCATE_GE_KEY_16_IN_EK\n");
+#else //         PARALLEL_LOCATE_GE_KEY_16_IN_EK
+    printf("# No PARALLEL_LOCATE_GE_KEY_16_IN_EK\n");
+#endif // #else  PARALLEL_LOCATE_GE_KEY_16_IN_EK
+
+#ifdef           PARALLEL_LOCATE_GE_KEY_16_USING_UNPACK
+    printf("#    PARALLEL_LOCATE_GE_KEY_16_USING_UNPACK\n");
+#else //         PARALLEL_LOCATE_GE_KEY_16_USING_UNPACK
+    printf("# No PARALLEL_LOCATE_GE_KEY_16_USING_UNPACK\n");
+#endif // #else  PARALLEL_LOCATE_GE_KEY_16_USING_UNPACK
+
 #if defined(PARALLEL_SEARCH_WORD)
     printf("#    PARALLEL_SEARCH_WORD\n");
 #else // defined(PARALLEL_SEARCH_WORD)
@@ -12064,11 +12104,47 @@ Initialize(void)
     printf("# No ALWAYS_CHECK_PREFIX_AT_LEAF\n");
 #endif // defined(ALWAYS_CHECK_PREFIX_AT_LEAF)
 
-#if defined(SEARCH_FROM_WRAPPER)
+#ifdef           SEARCH_FROM_WRAPPER
     printf("#    SEARCH_FROM_WRAPPER\n");
-#else // defined(SEARCH_FROM_WRAPPER)
+#else //         SEARCH_FROM_WRAPPER
     printf("# No SEARCH_FROM_WRAPPER\n");
-#endif // defined(SEARCH_FROM_WRAPPER)
+#endif //        SEARCH_FROM_WRAPPER else
+
+#ifdef           NEXT_FROM_WRAPPER
+    printf("#    NEXT_FROM_WRAPPER\n");
+#else //         NEXT_FROM_WRAPPER
+    printf("# No NEXT_FROM_WRAPPER\n");
+#endif //        NEXT_FROM_WRAPPER else
+
+#ifdef           NO_NEXT_FROM_WRAPPER
+    printf("#    NO_NEXT_FROM_WRAPPER\n");
+#else //         NO_NEXT_FROM_WRAPPER
+    printf("# No NO_NEXT_FROM_WRAPPER\n");
+#endif //        NO_NEXT_FROM_WRAPPER else
+
+#ifdef           NEXT_CHECK_ARGS
+    printf("#    NEXT_CHECK_ARGS\n");
+#else //         NEXT_CHECK_ARGS
+    printf("# No NEXT_CHECK_ARGS\n");
+#endif //        NEXT_CHECK_ARGS else
+
+#ifdef           NEXT_SHORTCUT
+    printf("#    NEXT_SHORTCUT\n");
+#else //         NEXT_SHORTCUT
+    printf("# No NEXT_SHORTCUT\n");
+#endif //        NEXT_SHORTCUT else
+
+#ifdef           NEXT_SHORTCUT_NULL
+    printf("#    NEXT_SHORTCUT_NULL\n");
+#else //         NEXT_SHORTCUT_NULL
+    printf("# No NEXT_SHORTCUT_NULL\n");
+#endif //        NEXT_SHORTCUT_NULL else
+
+#ifdef           NEXT_SHORTCUT_SWITCH
+    printf("#    NEXT_SHORTCUT_SWITCH\n");
+#else //         NEXT_SHORTCUT_SWITCH
+    printf("# No NEXT_SHORTCUT_SWITCH\n");
+#endif //        NEXT_SHORTCUT_SWITCH else
 
 #if defined(SEARCH_FROM_WRAPPER_I)
     printf("#    SEARCH_FROM_WRAPPER_I\n");

@@ -2,6 +2,11 @@
 #if ( ! defined(_BDEFINES_H_INCLUDED) )
 #define _BDEFINES_H_INCLUDED
 
+#ifdef NEW_NEXT_IS_EXCLUSIVE
+  #undef  NEW_NEXT
+  #define NEW_NEXT
+#endif // NEW_NEXT_IS_EXCLUSIVE
+
 #ifndef    NO_NEW_NEXT
   #undef      NEW_NEXT
   #define     NEW_NEXT
@@ -241,8 +246,25 @@
   #endif // cnBitsInD1 == 8 && cnBitsInD2 == 8 && cnBitsInD3 == 8
   #endif // cnBitsPerDigit == 8
   #undef  AUGMENT_TYPE_8
-  #define AUGMENT_TYPE_8
+  #define AUGMENT_TYPE_8 // only until we have _AUG_TYPE_8
 #endif // AUGMENT_TYPE_8_PLUS_4
+
+#ifdef AUG_TYPE_8_SW_NEXT
+  #undef  AUGMENT_TYPE_8
+  #define AUGMENT_TYPE_8 // only until we have _AUG_TYPE_8
+#endif // AUG_TYPE_8_SW_NEXT
+
+#ifndef B_JUDYL
+  #undef AUG_TYPE_8_NEXT_EK_XV
+#endif // B_JUDYL
+
+#ifdef AUG_TYPE_8_NEXT_EK_XV
+  #ifdef AUGMENT_TYPE_8_PLUS_4
+    #error
+  #endif // AUGMENT_TYPE_8_PLUS_4
+  #undef  AUGMENT_TYPE_8
+  #define AUGMENT_TYPE_8 // only until we have _AUG_TYPE_8
+#endif // AUG_TYPE_8_NEXT_EK_XV
 
 // Default is AUGMENT_TYPE_8.
 // It seems to shine for Time -LmeB31.
@@ -274,11 +296,32 @@
 #endif // cnBitsPerWord > 32
 #endif // cnBitsPerDigit == 8
 
-#ifdef AUG_TYPE_8_SW_NEXT
-#ifndef AUGMENT_TYPE_8
-  #error Cannot have AUG_TYPE_8_SW_NEXT without AUGMENT_TYPE_8.
-#endif // !AUGMENT_TYPE_8
-#endif // AUG_TYPE_8_SW_NEXT
+#ifdef AUGMENT_TYPE_8
+  #if cnBitsPerDigit != 8 || cnBitsPerWord <= 32
+    #error
+  #elif defined(USE_XX_SW) || defined(USE_XX_SW_ONLY_AT_DL2)
+    #error
+  #elif defined(DOUBLE_DOWN) || defined(USE_LOWER_XX_SW)
+    #error
+  #elif defined(XX_LISTS) || !defined(COMPRESSED_LISTS)
+    #error
+  #endif // cnBitsPerDigit != 8 || cnBitsPerWord <= 32 elif ... else
+  #ifndef AUGMENT_TYPE_8_PLUS_4
+    #if cnBitsInD1 != 8 || cnBitsInD2 != 8 || cnBitsInD3 != 8
+      #error
+    #endif // cnBitsInD1 != 8 || cnBitsInD2 != 8 || cnBitsInD3 != 8
+  #endif // !AUGMENT_TYPE_8_PLUS_4
+#endif // AUGMENT_TYPE_8
+
+#ifdef AUGMENT_TYPE_8
+  #undef  AUGMENT_TYPE
+  #define AUGMENT_TYPE
+#endif // AUGMENT_TYPE_8
+
+#ifdef AUGMENT_TYPE_NOT
+  #undef  AUGMENT_TYPE
+  #define AUGMENT_TYPE
+#endif // AUGMENT_TYPE_NOT
 
 #ifdef B_JUDYL
 #ifndef    NO_SW_POP_IN_LNX
@@ -695,6 +738,12 @@
   #define            SEARCH_FROM_WRAPPER
 #endif // #ifndef NO_SEARCH_FROM_WRAPPER
 
+// Default is -DNEXT_FROM_WRAPPER.
+#ifndef           NO_NEXT_FROM_WRAPPER
+  #undef             NEXT_FROM_WRAPPER
+  #define            NEXT_FROM_WRAPPER
+#endif // #ifndef NO_NEXT_FROM_WRAPPER
+
 #ifndef NO_BM_POP_IN_WR_HB
   #undef  BM_POP_IN_WR_HB
   #define BM_POP_IN_WR_HB
@@ -768,15 +817,6 @@
   #undef   OLD_HK_64
   #define  OLD_HK_64
 #endif // #ifndef NO_OLD_HK_64
-
-#ifdef AUGMENT_TYPE_8
-  #undef  AUGMENT_TYPE
-  #define AUGMENT_TYPE
-#endif // AUGMENT_TYPE_8
-#ifdef AUGMENT_TYPE_NOT
-  #undef  AUGMENT_TYPE
-  #define AUGMENT_TYPE
-#endif // AUGMENT_TYPE_NOT
 
 // Fix NUM_TYPES on command line based on other ifdefs if
 // ALL_SKIP_TO_SW_CASES && AUGMENT_TYPE and the default 9 is not correct.
@@ -891,6 +931,19 @@
   // Default is no SMETRICS_EK
   // Default is no SMETRICS_UNPACKED_BM
 #endif // SEARCHMETRICS
+
+#ifdef NEXT_SHORTCUT
+  #undef  NEXT_SHORTCUT_NULL
+  #define NEXT_SHORTCUT_NULL
+  #undef  NEXT_SHORTCUT_SWITCH
+  #define NEXT_SHORTCUT_SWITCH
+#endif // defined(NEXT_SHORTCUT)
+
+#ifdef NEXT_SHORTCUT_NULL
+  #define _NEXT_SHORTCUT
+#elif defined(NEXT_SHORTCUT_SWITCH) // NEXT_SHORTCUT_NULL
+  #define _NEXT_SHORTCUT
+#endif // NEXT_SHORTCUT_NULL elif NEXT_SHORTCUT_SWITCH
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 
