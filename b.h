@@ -6687,6 +6687,57 @@ LocateGeKeyInWord16(Word_t wWord, Word_t wKey)
 #endif
 #endif // cnBitsPerWord > 32
 
+#ifdef LOCATE_GE_USING_EQ_M1
+
+static int LocateKeyInList(qp, int nBLR, Word_t wKey);
+
+static inline int
+LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
+{
+    qv;
+    Word_t wKey = *pwKey;
+    int nPopCnt = gnListPopCnt(qy, nBLR);
+    int nPos;
+    if ((wKey & MSK(nBLR)) == 0) {
+        nPos = 0;
+    } else {
+        nPos = LocateKeyInList(qy, nBLR, wKey - 1);
+        if (nPos >= 0) {
+            ++nPos; // found equal
+        } else {
+// Would be nice if LocateKeyInList could at least narrow down the
+// search on a miss. But it might not be necessary. Since everything
+// will be in the cache for the 2nd go round.
+            nPos = SearchList(qy, nBLR, wKey - 1);
+            nPos ^= -1; // did not find equal
+        }
+        if (nPos >= nPopCnt) {
+            return ~nPos;
+        }
+    }
+  #ifdef COMPRESSED_LISTS
+    if (nBLR <= 8) {
+        uint8_t* pcKeys = ls_pcKeysX(pwr, nBLR, nPopCnt);
+        *pwKey = (wKey & ~NZ_MSK(nBLR)) | pcKeys[nPos];
+    } else if (nBLR <= 16) {
+        uint16_t* psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
+        *pwKey = (wKey & ~NZ_MSK(nBLR)) | psKeys[nPos];
+      #if cnBitsPerWord > 32
+    } else if (nBLR <= 32) {
+        uint32_t* piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
+        *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[nPos];
+      #endif // cnBitsPerWord > 32
+    } else
+  #endif // COMPRESSED_LISTS
+    {
+        Word_t* pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);
+        *pwKey = pwKeys[nPos];
+    }
+    return nPos;
+}
+
+#else // LOCATE_GE_USING_EQ_M1
+
 static inline int
 LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
 {
@@ -6719,6 +6770,8 @@ LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
     }
     return nPos;
 }
+
+#endif // LOCATE_GE_USING_EQ_M1 else
 
 #ifdef LOOKUP
 #if !defined(B_JUDYL) || defined(HASKEY_FOR_JUDYL_LOOKUP)

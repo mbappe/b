@@ -11502,6 +11502,12 @@ Initialize(void)
     printf("# No PARALLEL_LOCATEKEY_8\n");
 #endif // #else  PARALLEL_LOCATEKEY_8
 
+#ifdef           LOCATE_GE_USING_EQ_M1
+    printf("#    LOCATE_GE_USING_EQ_M1\n");
+#else //         LOCATE_GE_USING_EQ_M1
+    printf("# No LOCATE_GE_USING_EQ_M1\n");
+#endif // #else  LOCATE_GE_USING_EQ_M1
+
 #ifdef           PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK
     printf("#    PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK\n");
 #else //         PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK

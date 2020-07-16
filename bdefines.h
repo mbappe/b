@@ -744,6 +744,18 @@
   #define            NEXT_FROM_WRAPPER
 #endif // #ifndef NO_NEXT_FROM_WRAPPER
 
+// JudyXNext(wKey) is usually done on a key that exists.
+// Which we translate into internal Next(wKey+1) aka JudyXFirst(wKey+1).
+// We use LocateGeKey(wKey+1) for internal Next(wKey+1) aka JudyXFirst.
+// LOCATE_GE_USING_EQ_M1 causes LocateGeKey(wKey+1) to use LocateKey(wKey)
+// which is fast and follows up with Search only if wKey is not there.
+// NO_LOCATE_GE_USING_EQ_M1 doesn't bother with LocateKey(wKey) and just
+// starts with Search.
+#ifndef NO_LOCATE_GE_USING_EQ_M1
+  #undef  LOCATE_GE_USING_EQ_M1
+  #define LOCATE_GE_USING_EQ_M1
+#endif // NO_LOCATE_GE_USING_EQ_M1
+
 #ifndef NO_BM_POP_IN_WR_HB
   #undef  BM_POP_IN_WR_HB
   #define BM_POP_IN_WR_HB
