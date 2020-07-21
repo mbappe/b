@@ -1139,6 +1139,7 @@ Word_t TestJudyNext(void *J1, void *JL, Word_t LowIndex, Word_t Elements)
         if (JLindex != J1index)
         {
             printf("JudyLNext = %zx Judy1Next = %zx\n", JLindex, J1index);
+            Judy1Dump((Word_t)J1, sizeof(Word_t) * 8, 0);
             FAILURE("JudyLNext & Judy1Next ret different *PIndex at", elm);
         }
 
