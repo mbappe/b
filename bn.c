@@ -188,7 +188,7 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
   #else // NEXT_CHECK_ARGS
     (void)PJError;
   #endif // NEXT_CHECK_ARGS else
-    DBGN(printf("\n# JxN: *pwKey " OWx"\n", *pwKey));
+    DBGN(printf("\n# JxN: *pwKey 0x%zx\n", *pwKey));
   #ifndef NEW_NEXT_IS_EXCLUSIVE
     Word_t wKey = *pwKey + 1;
       #if defined(DEBUG) || defined(NEXT_CHECK_ARGS)
@@ -266,7 +266,7 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
   #ifndef NEW_NEXT_IS_EXCLUSIVE
         *pwKey = wKey;
   #endif // !NEW_NEXT_IS_EXCLUSIVE
-        DBGN(printf("# JxN: *pwKey 0x%zx\n", *pwKey));
+        DBGN(printf("# JxN B: *pwKey 0x%zx\n", *pwKey));
   #ifdef B_JUDYL
       #ifndef NEW_NEXT
         if (pwVal == NULL) {
@@ -274,7 +274,7 @@ Judy1Next(Pcvoid_t PArray, Word_t *pwKey, PJError_t PJError)
         }
         assert(pwVal != NULL);
       #endif // !NEW_NEXT
-        DBGN(printf("# JxF: pwVal %p *pwVal 0x%02zx\n", pwVal, *pwVal));
+        DBGN(printf("# JxN: pwVal %p *pwVal 0x%02zx\n", pwVal, *pwVal));
   #endif // B_JUDYL
     }
     DBGN(printf("\n"));
