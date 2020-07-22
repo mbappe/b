@@ -722,8 +722,10 @@ TestJudyIns(void **J1, void **JL, void **JH, Word_t Seed, Word_t Elements)
         *PValue = TstIndex;
 
         PValue1 = (PWord_t)JudyLGet(*JL, TstIndex, NULL);
-        if (PValue != PValue1)
+        if (PValue != PValue1) {
+            printf("TstIndex %zu 0x%zx PValue1 %p\n", TstIndex, TstIndex, PValue1);
             FAILURE("JudyLGet failed - Incorrect PValue, population =", TotalPop);
+        }
 
         PValue1 = (PWord_t)JudyLIns(JL, TstIndex, NULL);
         if (PValue != PValue1)
