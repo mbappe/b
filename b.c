@@ -183,16 +183,47 @@ Log(qp, const char *str)
     printf("# %20s: " qfmt "\n", str, qyp);
 }
 
+// cnExtraUnitsMax is the maximum number of whole (1<<cnBitsMallocMask)-byte
+// chunks of memory included by dlmalloc in any allocation beyond the minimum
+// number required to satisfy the request after adding the one preamble
+// overhead word and aligning the resulting size to an integral number of
+// (1<<cnBitsMallocMask)-byte chunks.
+// We don't have a good characterization for cnExtraUnitsMax.
+// cnExtraUnitsMax values are based on our observations.
+// Are our observations limited by our own malloc request behavior?
+#if (cnBitsMallocMask == 3) && (cnBitsPerWord == 32)
+    #define cnExtraUnitsMax 2 // 3
+#elif (cnBitsMallocMask == 4) && (cnBitsPerWord == 64)
+  #ifdef CACHE_ALIGN_L1
+    #define cnExtraUnitsMax 3
+  #else // CACHE_ALIGN_L1
+    #define cnExtraUnitsMax 2
+  #endif // #else CACHE_ALIGN_L1
+#else
+    #define cnExtraUnitsMax 1
+#endif // cnBitsMallocMask && cnBitsPerWord
+
+#define cnBitsUsed 2 // low bits used by dlmalloc for bookkeeping
+
 #ifdef RAMMETRICS
-static Word_t
+// nWords is words requested from JudyMalloc
+static inline Word_t
 AllocWords(Word_t *pw, int nWords)
 {
     (void)pw; (void)nWords;
   #ifdef EXCLUDE_MALLOC_OVERHEAD
     return nWords;
   #else // EXCLUDE_MALLOC_OVERHEAD
-      #if !defined(LIBCMALLOC) || defined(__linux__)
-    return (pw[-1] & 0xfffff8) / sizeof(Word_t); // dlmalloc head word
+    // We are lucky that MacOS and Linux libc mallocs are similar to dlmalloc.
+    // I wonder if we'll be so lucky with Windows.
+      #if 1 // !defined(LIBCMALLOC) || defined(__linux__)
+    ASSERT(cnBitsMallocMask >= cnLogBytesPerWord);
+    assert((int)(pw[-1] >> cnLogBytesPerWord)
+       <= nWords + cnGuardWords + 1
+           + (cnExtraUnitsMax << (cnBitsMallocMask - cnLogBytesPerWord)));
+    // All of our mallocs are way less than 2MB.
+    assert(((pw[-1] & (~(Word_t)0x1fffff | cnMallocMask)) >> cnBitsUsed) == 0);
+    return pw[-1] >> cnLogBytesPerWord;
       #else // !defined(LIBCMALLOC) || defined(__linux__)
     return nWords;
       #endif //#else !defined(LIBCMALLOC) || defined(__linux__)
@@ -226,13 +257,14 @@ static Word_t* apwFreeBufs[130];
 // heap then we could have a problem. Solving it might be as simple as
 // acquiring a mutex around each read-modify-write and around each call to
 // malloc and free.
-static Word_t
+static inline Word_t
 MyMallocGutsRM(Word_t wWords, int nLogAlignment, Word_t *pwAllocWords)
 {
     (void)pwAllocWords; // RAMMETRICS
     Word_t ww, wOff;
 
   #ifdef FAST_MALLOC
+    assert(nLogAlignment <= cnBitsMallocMask);
     int nUnits = (wWords + 2) >> 1;
     if (nUnits < 2) { nUnits = 2; }
     if (nUnits < (int)(sizeof(apwFreeBufs)/sizeof(apwFreeBufs[0]))) {
@@ -260,18 +292,26 @@ MyMallocGutsRM(Word_t wWords, int nLogAlignment, Word_t *pwAllocWords)
         wOff = 0;
   #endif // #else MY_MALLOC_ALIGN
     } else {
+        // Check our own (or JudyMalloc's) arbitrary assumptions/constraints.
+        assert(wWords + cnMallocExtraWords < (0x200000 >> cnLogBytesPerWord));
         ww = JudyMalloc(wWords + cnMallocExtraWords);
+        // dlmalloc uses the low two bits of the preamble word for bookkeeping.
+        // The other bits in ww[-1] & cnMallocMask should be zero.
+        // And the bits representing sizes >= 2MB should be zero.
+        assert(((((Word_t*)ww)[-1]
+                       & (~(Word_t)0x1fffff | cnMallocMask)) >> cnBitsUsed)
+                   == 0);
         wOff = 0;
     }
     DBGM(printf("\nM(%zd): %p *%p 0x%zx\n",
                 wWords, (void *)ww, (void *)&((Word_t *)ww)[-1],
                 ((Word_t *)ww)[-1]));
 
-#ifdef RAMMETRICS
+  #ifdef RAMMETRICS
     if (pwAllocWords != NULL) {
         *pwAllocWords += AllocWords((Word_t*)ww, wWords + cnMallocExtraWords);
     }
-#endif // RAMMETRICS
+  #endif // RAMMETRICS
 
     // Calculate the minimum number of units required to satisfy the request
     // assuming malloc must allocate at least one word for itself.
@@ -290,21 +330,6 @@ MyMallocGutsRM(Word_t wWords, int nLogAlignment, Word_t *pwAllocWords)
     // A unit is EXP(cnBitsMallocMask) bytes.
     size_t zUnitsAllocated = ((size_t *)ww)[-1] >> cnBitsMallocMask;
 
-// We don't have a good characterization for cnExtraUnitsMax.
-// cnExtraUnitsMax values are based on our observations.
-// Are our observations limited by our own malloc request behavior?
-#if (cnBitsMallocMask == 3) && (cnBitsPerWord == 32)
-  #define cnExtraUnitsMax 2 // 3
-#elif (cnBitsMallocMask == 4) && (cnBitsPerWord == 64)
-  #ifdef CACHE_ALIGN_L1
-    #define cnExtraUnitsMax 3
-  #else // CACHE_ALIGN_L1
-    #define cnExtraUnitsMax 2
-  #endif // #else CACHE_ALIGN_L1
-#else
-  #define cnExtraUnitsMax 1
-#endif // cnBitsMallocMask && cnBitsPerWord
-
 #define cnExtraUnitsBits 2 // number of bits used for saving alloc size
     assert(cnExtraUnitsMax <= (int)MSK(cnExtraUnitsBits));
     // zExtraUnits is the number of extra EXP(cnBitsMallocMask)-byte units over
@@ -318,50 +343,51 @@ MyMallocGutsRM(Word_t wWords, int nLogAlignment, Word_t *pwAllocWords)
     }
   #endif // DEBUG
     assert(zExtraUnits <= cnExtraUnitsMax);
-#if defined(LIBCMALLOC)
+  #ifdef LIBCMALLOC
   // We can't use the preamble word with LIBCMALLOC because it monitors the
   // preamble word for changes and kills the process if it detects a change.
+  // I can't remember if this is true for Linux or MacOS.
   // LIST_POP_IN_PREAMBLE means something different for B_JUDYL so the
   // LIBCMALLOC limitation does not apply. It means use the word before pwr.
-  #if defined(LIST_POP_IN_PREAMBLE) && !defined(B_JUDYL)
-    #error LIST_POP_IN_PREAMBLE with LIBCMALLOC is not supported
-  #endif // defined(LIST_POP_IN_PREAMBLE) && !defined(B_JUDYL)
-#else // defined(LIBCMALLOC)
+      #if defined(LIST_POP_IN_PREAMBLE) && !defined(B_JUDYL)
+          #error LIST_POP_IN_PREAMBLE with LIBCMALLOC is not supported
+      #endif // defined(LIST_POP_IN_PREAMBLE) && !defined(B_JUDYL)
+  #else // LIBCMALLOC
 
-#define cnBitsUsed 2 // low bits used by malloc for bookkeeping
     assert(!(((Word_t *)ww)[-1] & MSK(cnBitsMallocMask) & ~MSK(cnBitsUsed)));
     // Save the bits of ww[-1] that we need at free time and make sure
     // none of the bits we want to use are changed by malloc while we
     // own the buffer.
     ((Word_t *)ww)[-1] &= ~(MSK(cnExtraUnitsBits) << cnBitsUsed);
     ((Word_t *)ww)[-1] |= zExtraUnits << cnBitsUsed;
-#if defined(LIST_POP_IN_PREAMBLE) && !defined(B_JUDYL)
+      #if defined(LIST_POP_IN_PREAMBLE) && !defined(B_JUDYL)
     // Zero the high bits for our use.
     ((Word_t *)ww)[-1] &= MSK(cnExtraUnitsBits + cnBitsUsed);
-#else // defined(LIST_POP_IN_PREAMBLE) && !defined(B_JUDYL)
+      #else // LIST_POP_IN_PREAMBLE && !B_JUDYL
     // Twiddle the bits to illustrate that we can use them.
     ((Word_t *)ww)[-1] ^= (Word_t)-1 << (cnExtraUnitsBits + cnBitsUsed);
-#endif // #else defined(LIST_POP_IN_PREAMBLE) && !defined(B_JUDYL)
+      #endif // LIST_POP_IN_PREAMBLE && !B_JUDYL else
     DBGM(printf("ww[-1] 0x%zx\n", ((Word_t *)ww)[-1]));
-#endif // defined(LIBCMALLOC)
+  #endif // LIBCMALLOC else
     DBGM(printf("required %zd alloc %zd extra %zd\n",
                 zUnitsRequired, zUnitsAllocated, zExtraUnits));
     assert(ww != 0);
     assert((ww & 0xffff000000000000UL) == 0);
     assert((ww & cnMallocMask) == 0);
+    // wWordsAllocated excludes cnMallocExtraWords and malloc overhead
     ++wMallocs; wWordsAllocated += wWords;
     // ? should we keep track of sub-optimal-size requests ?
     ww += wOff; // number of bytes
     return ww;
 }
 
-static Word_t
+static inline Word_t
 MyMallocRM(Word_t wWords, Word_t* pwAllocWords)
 {
     return MyMallocGutsRM(wWords, /*LogAlign*/ cnBitsMallocMask, pwAllocWords);
 }
 
-static void
+static inline void
 MyFreeGutsRM(Word_t *pw, Word_t wWords, int nLogAlignment,
              Word_t* pwAllocWords)
 {
@@ -406,33 +432,39 @@ MyFreeGutsRM(Word_t *pw, Word_t wWords, int nLogAlignment,
                    EXP(cnBitsMallocMask - cnLogBytesPerWord))
             >> (cnBitsMallocMask - cnLogBytesPerWord);
     (void)zUnitsRequired;
-#ifdef LIBCMALLOC
+  #ifdef LIBCMALLOC
     size_t zUnitsAllocated = pw[-1] >> cnBitsMallocMask;
     size_t zExtraUnits = zUnitsAllocated - zUnitsRequired;
     (void)zUnitsAllocated; (void)zExtraUnits;
-#else // LIBCMALLOC
+  #else // LIBCMALLOC
     assert(pw[-1] & 2); // lock down what we think we know
     // Restore the value expected by dlmalloc.
     size_t zExtraUnits = (pw[-1] >> cnBitsUsed) & MSK(cnExtraUnitsBits);
     size_t zUnitsAllocated = zUnitsRequired + zExtraUnits;
+      #if !defined(LIST_POP_IN_PREAMBLE) || defined(B_JUDYL)
+    // Validate our assumption that twiddled bits haven't changed.
+    assert((pw[-1] & ~MSK(cnExtraUnitsBits + cnBitsUsed))
+        == ((zUnitsAllocated << cnBitsMallocMask)
+            ^ ((Word_t)-1 << (cnExtraUnitsBits + cnBitsUsed))));
+      #endif // !LIST_POP_IN_PREAMBLE || B_JUDYL
     pw[-1] &= MSK(cnBitsUsed); // clear high bits
     pw[-1] |= zUnitsAllocated << cnBitsMallocMask;
     DBGM(printf("pw[-1] 0x%zx\n", pw[-1]));
-#endif // LIBCMALLOC
+  #endif // LIBCMALLOC
     DBGM(printf("required %zd alloc %zd extra %zd\n",
                 zUnitsRequired, zUnitsAllocated, zExtraUnits));
     --wMallocs; wWordsAllocated -= wWords;
 
-#ifdef RAMMETRICS
+  #ifdef RAMMETRICS
     if (pwAllocWords != NULL) {
         (*pwAllocWords) -= AllocWords(pw, wWords + cnMallocExtraWords);
     }
-#endif // RAMMETRICS
+  #endif // RAMMETRICS
 
     JudyFree((Word_t)pw, wWords + cnMallocExtraWords);
 }
 
-static void
+static inline void
 MyFreeRM(Word_t *pw, Word_t wWords, Word_t *pwAllocWords)
 {
     MyFreeGutsRM(pw, wWords, /*nLogAlignment*/ cnBitsMallocMask, pwAllocWords);
