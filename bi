@@ -259,6 +259,10 @@ done
 done
 done
 
+echo
+echo "=== SUCCESS! ==="
+echo
+
 #BPW=32 make clean default
 #CC=clang make clean default
 #DEFINES=-URAMMETRICS make clean default

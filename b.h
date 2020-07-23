@@ -7204,6 +7204,7 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
   #ifndef _LKIL8_DONE
     int nPos;
   #ifdef LKIL8_ONE_BUCKET
+  #ifndef USE_XX_SW
 #if defined(PARALLEL_128)
 #if cnBitsInD1 == 8
 #ifndef cnListPopCntMaxDl1
@@ -7250,6 +7251,7 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
 #endif // cnListPopCntMaxDl1 <= 16
 #endif // cnBitsInD1 == 8
 #endif // defined(PARALLEL_128)
+  #endif // !USE_XX_SW
   #endif // LKIL8_ONE_BUCKET
   #endif // #ifndef _LKIL8_DONE
 
