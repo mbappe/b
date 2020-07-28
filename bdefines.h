@@ -122,6 +122,10 @@
   // Macro names that begin with '_' are derived from other macros
   // and are not inteded to be set explicitly on the build command line.
   #define _LVL_IN_TYPE
+  #ifndef ALL_SKIP_TO_SW_CASES
+    #undef  DEFAULT_SKIP_TO_SW
+    #define DEFAULT_SKIP_TO_SW
+  #endif // !ALL_SKIP_TO_SW_CASES
   #if !defined(DEFAULT_SKIP_TO_SW) && !defined(ALL_SKIP_TO_SW_CASES)
       #error Level in type requires DEFAULT_SKIP_TO_SW or ALL_SKIP_TO_SW_CASES.
   #endif // !DEFAULT_SKIP_TO_SW && !ALL_SKIP_TO_SW_CASES
