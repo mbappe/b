@@ -392,6 +392,8 @@ MyFreeGutsRM(Word_t *pw, Word_t wWords, int nLogAlignment,
              Word_t* pwAllocWords)
 {
     (void)pwAllocWords; // RAMMETRICS
+    DBGM(printf("\nF(pw %p, wWords %zd): pw[-1] 0x%zx ...\n",
+                (void *)pw, wWords, pw[-1]));
 
 // I wonder about malloc overhead.
   #ifdef FAST_MALLOC
@@ -8519,11 +8521,17 @@ InsertAtList(qpa,
         if ((wPopCnt == 0)
             || (ListSlotCnt(wPopCnt, nBLR) < (int)(wPopCnt + 1)))
         {
-            DBGI(printf("pwr %p wPopCnt %" _fw"d nBL %d\n",
-                        (void *)pwr, wPopCnt, nBL));
-            DBGI(printf("nType %d\n", nType));
-            DBGI(printf("nBLR %d ListSlotCnt(pop %d) %d\n",
-                        nBLR, (int)wPopCnt, ListSlotCnt(wPopCnt, nBLR)));
+            DBGI(printf("\n"));
+            DBGI(printf("nBL %d", nBL));
+            DBGI(printf(" nType %d", nType));
+            DBGI(printf(" pwr %p", pwr));
+            DBGI(printf(" nBLR %d", nBLR));
+            DBGI(printf(" wPopCnt %d", (int)wPopCnt));
+            if (wPopCnt != 0) {
+                DBGI(printf(" ListSlotCnt(wPopCnt %d) %d",
+                            (int)wPopCnt, ListSlotCnt(wPopCnt, nBLR)));
+            }
+            DBGI(printf("\n"));
             // Allocate a new list and init pop count if pop count is
             // in the list.  Also init the beginning of the list marker
             // if LIST_END_MARKERS.
@@ -9324,25 +9332,29 @@ DeflateList(qpa, int nPopCnt)
     // Copy the keys.
     Word_t wLnXNew;
     if (nBL <= 8) {
-        wLnXNew = *(Word_t*)ls_pcKeysNATX(pwr, nPopCnt);
+        memcpy(&wLnXNew, ls_pcKeysNATX(pwr, nPopCnt), sizeof(Word_t));
         // What about PAD64? Do we know that any list being deflated has
         // already been padded?
+  #ifdef PSPLIT_PARALLEL
         assert(ls_pcKeysNATX(pwr, nPopCnt)[7]
             == ls_pcKeysNATX(pwr, nPopCnt)[nPopCnt-1]);
+  #endif // PSPLIT_PARALLEL
     } else
   #if (cnBitsPerWord > 32)
     if (nBL > 16) {
         assert(nBL <= 32);
-        wLnXNew = *(Word_t*)ls_piKeysNATX(pwr, nPopCnt);
+        memcpy(&wLnXNew, ls_piKeysNATX(pwr, nPopCnt), sizeof(Word_t));
         assert(ls_piKeysNATX(pwr, nPopCnt)[1]
             == ls_piKeysNATX(pwr, nPopCnt)[nPopCnt-1]);
     } else
   #endif // (cnBitsPerWord > 32)
     {
         assert(nBL <= 16);
-        wLnXNew = *(Word_t*)ls_psKeysNATX(pwr, nPopCnt);
+        memcpy(&wLnXNew, ls_psKeysNATX(pwr, nPopCnt), sizeof(Word_t));
+  #ifdef PSPLIT_PARALLEL
         assert(ls_psKeysNATX(pwr, nPopCnt)[3]
             == ls_psKeysNATX(pwr, nPopCnt)[nPopCnt-1]);
+  #endif // PSPLIT_PARALLEL
     }
 
     // Create the value area and copy the values.
@@ -10285,16 +10297,16 @@ embeddedKeys:;
         // move keys
         MOVE(&ls_pwKeysX(pwList, nBLR, wPopCnt - 1)[nIndex],
              &pwKeys[nIndex + 1], wPopCnt - nIndex - 1);
-        int n = wPopCnt - 1; (void)n;
 #if defined(PARALLEL_SEARCH_WORD)
-        // pad list to an integral number of parallel search buckets in length
-        for (; (n * sizeof(Word_t)) % sizeof(Bucket_t); ++n) {
-            ls_pwKeysX(pwList, nBLR, wPopCnt-1)[n]
-                = ls_pwKeysX(pwList, nBLR, wPopCnt-1)[n-1];
-        }
+        // Pad list to an integral number of parallel search buckets in
+        // length, if necessary.
+        PAD(ls_pwKeysX(pwList, nBLR, wPopCnt - 1), wPopCnt - 1);
 #endif // defined(PARALLEL_SEARCH_WORD)
 #if defined(LIST_END_MARKERS)
-        ls_pwKeysX(pwList, nBLR, wPopCnt - 1)[n] = -1;
+        ls_pwKeysX(pwList, nBLR, wPopCnt - 1)[
+                ALIGN_LIST_LEN(ExtListBytesPerKey(nBL), wPopCnt - 1)
+                    ? ALIGN_UP(wPopCnt - 1, sizeof(Bucket_t)) : wPopCnt - 1]
+            = -1;
 #endif // defined(LIST_END_MARKERS)
     }
 
@@ -11539,6 +11551,18 @@ Initialize(void)
 #else //         LOCATE_GE_USING_EQ_M1
     printf("# No LOCATE_GE_USING_EQ_M1\n");
 #endif // #else  LOCATE_GE_USING_EQ_M1
+
+#ifdef           LOCATE_GE_KEY_8
+    printf("#    LOCATE_GE_KEY_8\n");
+#else //         LOCATE_GE_KEY_8
+    printf("# No LOCATE_GE_KEY_8\n");
+#endif // #else  LOCATE_GE_KEY_8
+
+#ifdef           LOCATE_GE_KEY_16
+    printf("#    LOCATE_GE_KEY_16\n");
+#else //         LOCATE_GE_KEY_16
+    printf("# No LOCATE_GE_KEY_16\n");
+#endif // #else  LOCATE_GE_KEY_16
 
 #ifdef           PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK
     printf("#    PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK\n");
