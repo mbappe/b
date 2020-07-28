@@ -6,19 +6,18 @@
 ###########################
 
 # Run the following to build btime and bcheck:
-#   make clean
-#   [CC=<cc|clang[++]|gcc|c++|g++>] [BPW=<32|64>] [DEFINES="..."] make default
+#   [CC=<cc|clang|gcc>] [BPW=<32|64>] [DEFINES="..."] [WFLAGSA="..."] \
+#       make clean default
 # Run the following to build btime:
-#   make clean
-#   [CC=<cc|clang[++]|gcc|c++|g++>] [BPW=<32|64>] [DEFINES="..."] make btime
+#   [CC=<cc|clang|gcc>] [BPW=<32|64>] [DEFINES="..."] [WFLAGSA="..."] \
+#       make clean btime
 # Run the following command to build everything:
-#   make clean
-#   [CC=<cc|clang[++]|gcc|c++|g++>] [BPW=<32|64>] [DEFINES="..."] make all
+#   [CC=clang CXX=clang++|CC=gcc CXX=g++] [BPW=<32|64>] [DEFINES="..."] \
+#       [WFLAGS_A="..."] make clean all
 # examples:
 #   make clean all
 #   CC=clang CSTD=c11 DEFINES=-DDEBUG make clean default
-#   CC=clang++ CSTD=c++14 make b
-#   CXX=clang++ CXXSTD=c++11 make bcheck
+#   CXX=clang++ CXXSTD=c++11 make clean c++check
 
 # I recommend the make clean first because there are so many dependencies
 # that are not discovered by make, e.g. changes in environment variables.
@@ -173,10 +172,10 @@ endif
 # For clang:
 # WFLAGS += -Wno-initializer-overrides
 
-# WFLAGS_C_ONLY += -Wstrict-prototypes
-# WFLAGS_C_ONLY += -Wmissing-prototypes
-  CWFLAGS += $(WFLAGS)
-  CWFLAGS += $(WFLAGS_C_ONLY)
+# Are these for C only, i.e. not for C++?
+# WFLAGS += -Wstrict-prototypes
+# WFLAGS += -Wmissing-prototypes
+
 # gcc gives false positives without -Wno-maybe-uninitialized.
 # clang doesn't even try. So clang doesn't support the option.
 # macOS version of gcc doesn't support it either.
@@ -210,9 +209,8 @@ ifeq "$(OFLAGS)" ""
 # OFLAGS = -g -Ofast
 endif # OFLAGS
 
-CFLAGS =           $(CSTDFLAG)   $(MFLAGS) $(CWFLAGS)   $(OFLAGS) -I.
-CFLAGS_NO_WFLAGS = $(CSTDFLAG)   $(MFLAGS) -w           $(OFLAGS) -I.
-CXXFLAGS =         $(CXXSTDFLAG) $(MFLAGS) $(CXXWFLAGS) $(OFLAGS) -I.
+CFLAGS =   $(CSTDFLAG)   $(MFLAGS) $(WFLAGS) $(WFLAGSA) $(OFLAGS) -I.
+CXXFLAGS = $(CXXSTDFLAG) $(MFLAGS) $(WFLAGS) $(WFLAGSA) $(OFLAGS) -I.
 
 # Obsolete ifdefs used to figure out where overhead was coming from that
 # was making Time -b get times faster than Time -1 get times for libb

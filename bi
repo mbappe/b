@@ -5,15 +5,32 @@
 
 REGRESS=${1:-"regress"}
 
-# Use -Wno-override-init for "-DAUGMENT_TYPE -DJUMP_TABLE".
-CC="gcc -Wno-override-init"
-export CC
+# Use -Wno-override-init with gcc for "-DAUGMENT_TYPE -DJUMP_TABLE".
+# Use -Wno-initializer-overrides with clang for "-DAUGMENT_TYPE -DJUMP_TABLE".
+# Unfortunately, with clang, -Wno-initializer-overrides is cancelled out
+# by -Wextra if -Wextra occurs after -Wno_initializer-overrides on the
+# command line.
+CCA=clang
+WFLAGSA_A=-Wno-initializer-overrides
+CCB=gcc
+WFLAGSA_B=-Wno-override-init
+CC=$CCA
+WFLAGSA=$WFLAGSA_A
+export CC WFLAGSA
 
 make clean default && ${REGRESS}
 if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 
 : \
 && DEFINES="-DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DDEBUG_ALL -DFULL_DUMP" make clean default \
+&& CC=$CCB WFLAGSA=$WFLAGSA_B make clean default \
+&& CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DDEBUG" make clean default \
+&& CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DDEBUG_ALL -DFULL_DUMP" \
+    make clean default \
+&& DEFINES="-DPARALLEL_SEARCH_WORD -DNO_PSPLIT_PARALLEL -DDEBUG" \
+    make clean default \
 && ${REGRESS} \
 && : "Default for Judy1 is REVERSE_SORT, FILL_W_BIG_KEY, NO_EK_CALC_POP" \
 && DEFINES="-DNO_REVERSE_SORT_EMBEDDED_KEYS -DDEBUG" \
@@ -209,11 +226,26 @@ done
 -DSKIP_TO_BITMAP -DcnListPopCntMax64=64 -DDEBUG" \
    make clean default \
 && ${REGRESS} \
-&& DEFINES="-DDEBUG_ALL" make clean default \
 && DEFINES="-DSEARCHMETRICS -DDEBUG_ALL" make clean default \
 && DEFINES="-URAMMETRICS -DSEARCHMETRICS -DDEBUG_ALL" make clean default \
-&& BPW=32 DEFINES="-DDEFAULT_SKIP_TO_SW -DDEBUG" make clean default \
-&& BPW=32 DEFINES="-DALL_SKIP_TO_SW_CASES -DDEBUG_ALL" make clean default \
+&& BPW=32 make clean default \
+&& BPW=32 DEFINES=-DDEBUG make clean default \
+&& BPW=32 DEFINES="-DDEBUG_ALL -DFULL_DUMP" make clean default \
+&& BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B make clean default \
+&& BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES=-DDEBUG make clean default \
+&& BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DDEBUG_ALL -DFULL_DUMP" \
+    make clean default \
+&& BPW=32 DEFINES="-DALL_SKIP_TO_SW_CASES" make clean default \
+&& BPW=32 DEFINES="-DALL_SKIP_TO_SW_CASES -DDEBUG" make clean default \
+&& BPW=32 DEFINES="-DALL_SKIP_TO_SW_CASES -DDEBUG_ALL -DFULL_DUMP" \
+    make clean default \
+&& BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DALL_SKIP_TO_SW_CASES" \
+    make clean default \
+&& BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B \
+    DEFINES="-DALL_SKIP_TO_SW_CASES -DDEBUG" make clean default \
+&& BPW=32 CC=$CCB WFLAGSA=$WFLAGSA_B \
+    DEFINES="-DALL_SKIP_TO_SW_CASES -DDEBUG_ALL -DFULL_DUMP" \
+    make clean default \
 && :
 if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 
