@@ -24,6 +24,10 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 : \
 && DEFINES="-DDEBUG" make clean default \
 && ${REGRESS} \
+&& DEFINES="-DOLD_HK_128 -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_NEW_NEXT -DDEBUG" make clean default \
+&& ${REGRESS} \
 && DEFINES="-DDEBUG_ALL -DFULL_DUMP" make clean default \
 && CC=$CCB WFLAGSA=$WFLAGSA_B make clean default \
 && CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DDEBUG" make clean default \

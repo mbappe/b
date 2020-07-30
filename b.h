@@ -5390,8 +5390,8 @@ typedef unsigned int   __attribute__((vector_size(8))) v32_t;
   #endif // __clang__
 
 #if (cnBitsPerWord < 64)
-#undef HK_MOVEMASK
-#define HK_MOVEMASK
+  #undef  HK_MOVEMASK
+  #define HK_MOVEMASK
 #endif // (cnBitsPerWord < 64)
 
 // Key observations about HasKey:
@@ -5478,19 +5478,19 @@ LocateKey128(__m128i *pxBucket, Word_t wKey, int nBL)
   #endif // !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
     int nFirstSetBit = __builtin_ctzll(wHasKey);
     if (nBL == 16) {
-  #ifdef HK_MOVEMASK
+  #if defined(HK_MOVEMASK) || defined(OLD_HK_128)
         return nFirstSetBit / 2;
-  #else // HK_MOVEMASK
+  #else // HK_MOVEMASK || OLD_HK_128
         return nFirstSetBit / 8;
-  #endif // HK_MOVEMASK
+  #endif // HK_MOVEMASK || OLD_HK_128 else
     }
     if (nBL <= 32) {
         assert(nBL == 32);
-  #ifdef HK_MOVEMASK
+  #if defined(HK_MOVEMASK) || defined(OLD_HK_128)
         return nFirstSetBit / 4;
-  #else // HK_MOVEMASK
+  #else // HK_MOVEMASK || OLD_HK_128
         return nFirstSetBit / 16;
-  #endif // HK_MOVEMASK
+  #endif // HK_MOVEMASK || OLD_HK_128 else
     }
     assert(nBL == 64);
     return nFirstSetBit / 8;
