@@ -11288,6 +11288,18 @@ Initialize(void)
     printf("# No LKIL8_ONE_BUCKET\n");
 #endif // #else  LKIL8_ONE_BUCKET
 
+#ifdef           TEST_END_BEFORE_BUCKET
+    printf("#    TEST_END_BEFORE_BUCKET\n");
+#else //         TEST_END_BEFORE_BUCKET
+    printf("# No TEST_END_BEFORE_BUCKET\n");
+#endif // #else  TEST_END_BEFORE_BUCKET
+
+#ifdef           TEST_NPOS_BEFORE_END
+    printf("#    TEST_NPOS_BEFORE_END\n");
+#else //         TEST_NPOS_BEFORE_END
+    printf("# No TEST_NPOS_BEFORE_END\n");
+#endif // #else  TEST_NPOS_BEFORE_END
+
 #ifdef           PREFETCH_EK_VAL
     printf("#    PREFETCH_EK_VAL\n");
 #else //         PREFETCH_EK_VAL
@@ -11552,6 +11564,24 @@ Initialize(void)
     printf("# No LOCATE_GE_USING_EQ_M1\n");
 #endif // #else  LOCATE_GE_USING_EQ_M1
 
+#ifdef           LOCATE_GE_AFTER_LOCATE_EQ
+    printf("#    LOCATE_GE_AFTER_LOCATE_EQ\n");
+#else //         LOCATE_GE_AFTER_LOCATE_EQ
+    printf("# No LOCATE_GE_AFTER_LOCATE_EQ\n");
+#endif // #else  LOCATE_GE_AFTER_LOCATE_EQ
+
+#ifdef           NO_LOCATE_GE_AFTER_LOCATE_EQ
+    printf("#    NO_LOCATE_GE_AFTER_LOCATE_EQ\n");
+#else //         NO_LOCATE_GE_AFTER_LOCATE_EQ
+    printf("# No NO_LOCATE_GE_AFTER_LOCATE_EQ\n");
+#endif // #else  NO_LOCATE_GE_AFTER_LOCATE_EQ
+
+#ifdef           NO_LOCATE_GE_KEY_X
+    printf("#    NO_LOCATE_GE_KEY_X\n");
+#else //         NO_LOCATE_GE_KEY_X
+    printf("# No NO_LOCATE_GE_KEY_X\n");
+#endif // #else  NO_LOCATE_GE_KEY_X
+
 #ifdef           LOCATE_GE_KEY_8
     printf("#    LOCATE_GE_KEY_8\n");
 #else //         LOCATE_GE_KEY_8
@@ -11563,6 +11593,18 @@ Initialize(void)
 #else //         LOCATE_GE_KEY_16
     printf("# No LOCATE_GE_KEY_16\n");
 #endif // #else  LOCATE_GE_KEY_16
+
+#ifdef           LOCATE_GE_KEY_24
+    printf("#    LOCATE_GE_KEY_24\n");
+#else //         LOCATE_GE_KEY_24
+    printf("# No LOCATE_GE_KEY_24\n");
+#endif // #else  LOCATE_GE_KEY_24
+
+#ifdef           LOCATE_GE_KEY_32
+    printf("#    LOCATE_GE_KEY_32\n");
+#else //         LOCATE_GE_KEY_32
+    printf("# No LOCATE_GE_KEY_32\n");
+#endif // #else  LOCATE_GE_KEY_32
 
 #ifdef           PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK
     printf("#    PARALLEL_LOCATE_GE_KEY_8_USING_UNPACK\n");
@@ -11618,6 +11660,12 @@ Initialize(void)
     printf("# No HK_MOVEMASK\n");
 #endif // defined(HK_MOVEMASK)
 
+#if defined(NO_PARALLEL_HK_128_64)
+    printf("#    NO_PARALLEL_HK_128_64\n");
+#else // defined(NO_PARALLEL_HK_128_64)
+    printf("# No NO_PARALLEL_HK_128_64\n");
+#endif // defined(NO_PARALLEL_HK_128_64)
+
 #ifdef           NEW_HK_64
     printf("#    NEW_HK_64\n");
 #else //         NEW_HK_64
@@ -11635,12 +11683,6 @@ Initialize(void)
 #else // defined(HK_EXPERIMENT)
     printf("# No HK_EXPERIMENT\n");
 #endif // defined(HK_EXPERIMENT)
-
-#if defined(PSPLIT_EARLY_OUT)
-    printf("#    PSPLIT_EARLY_OUT\n");
-#else // defined(PSPLIT_EARLY_OUT)
-    printf("# No PSPLIT_EARLY_OUT\n");
-#endif // defined(PSPLIT_EARLY_OUT)
 
 #if defined(RAMMETRICS)
     printf("#    RAMMETRICS\n");
@@ -12429,12 +12471,6 @@ Initialize(void)
 #else //         NO_PARALLEL_LOCATEKEY_8
     printf("# No NO_PARALLEL_LOCATEKEY_8\n");
 #endif // #else  NO_PARALLEL_LOCATEKEY_8
-
-#if defined(NO_PSPLIT_EARLY_OUT)
-    printf("#    NO_PSPLIT_EARLY_OUT\n");
-#else // defined(NO_PSPLIT_EARLY_OUT)
-    printf("# No NO_PSPLIT_EARLY_OUT\n");
-#endif // defined(NO_PSPLIT_EARLY_OUT)
 
 #if defined(NO_LVL_IN_WR_HB)
     printf("#    NO_LVL_IN_WR_HB\n");

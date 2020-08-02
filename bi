@@ -26,7 +26,13 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 && ${REGRESS} \
 && DEFINES="-DOLD_HK_128 -DDEBUG" make clean default \
 && ${REGRESS} \
+&& DEFINES="-DNO_PARALLEL_HK_128_64 -DDEBUG" make clean default \
+&& ${REGRESS} \
 && DEFINES="-DNO_NEW_NEXT -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_LOCATE_GE_AFTER_LOCATE_EQ -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& DEFINES="-DNO_LOCATE_GE_KEY_X -DDEBUG" make clean default \
 && ${REGRESS} \
 && DEFINES="-DDEBUG_ALL -DFULL_DUMP" make clean default \
 && CC=$CCB WFLAGSA=$WFLAGSA_B make clean default \

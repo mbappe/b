@@ -91,10 +91,17 @@
 #define cnBitsLeftAtDl3     (cnBitsLeftAtDl2 + cnBitsInD3)
 
 // Default is -DCOMPRESSED_LISTS.
-#ifndef NO_COMPRESSED_LISTS
-  #undef  COMPRESSED_LISTS
-  #define COMPRESSED_LISTS
-#endif // #ifndef NO_COMPRESSED_LISTS
+#ifndef    NO_COMPRESSED_LISTS
+  #undef      COMPRESSED_LISTS
+  #define     COMPRESSED_LISTS
+#endif // !NO_COMPRESSED_LISTS
+
+// Default is -DPARALLEL_128.
+// Determines type hence size of Bucket_t.
+#if !defined(PARALLEL_64) && !defined(NO_PARALLEL_128)
+  #undef  PARALLEL_128
+  #define PARALLEL_128
+#endif // !PARALLEL_64 && !NO_PARALLEL_128
 
 // Default is LVL_IN_WR_HB for 64-bit and level in nType for 32-bit.
 // The absence of LVL_IN_WR_HB and LVL_IN_PP is level in nType.
@@ -748,18 +755,6 @@
   #define            NEXT_FROM_WRAPPER
 #endif // #ifndef NO_NEXT_FROM_WRAPPER
 
-// JudyXNext(wKey) is usually done on a key that exists.
-// Which we translate into internal Next(wKey+1) aka JudyXFirst(wKey+1).
-// We use LocateGeKey(wKey+1) for internal Next(wKey+1) aka JudyXFirst.
-// LOCATE_GE_USING_EQ_M1 causes LocateGeKey(wKey+1) to use LocateKey(wKey)
-// which is fast and follows up with Search only if wKey is not there.
-// NO_LOCATE_GE_USING_EQ_M1 doesn't bother with LocateKey(wKey) and just
-// starts with Search.
-#ifndef NO_LOCATE_GE_USING_EQ_M1
-  #undef  LOCATE_GE_USING_EQ_M1
-  #define LOCATE_GE_USING_EQ_M1
-#endif // NO_LOCATE_GE_USING_EQ_M1
-
 #ifndef NO_BM_POP_IN_WR_HB
   #undef  BM_POP_IN_WR_HB
   #define BM_POP_IN_WR_HB
@@ -960,6 +955,49 @@
 #elif defined(NEXT_SHORTCUT_SWITCH) // NEXT_SHORTCUT_NULL
   #define _NEXT_SHORTCUT
 #endif // NEXT_SHORTCUT_NULL elif NEXT_SHORTCUT_SWITCH
+
+// JudyXNext(wKey) is usually done on a key that exists.
+// Which we translate into internal Next(wKey+1) aka JudyXFirst(wKey+1).
+// We use LocateGeKey(wKey+1) for internal Next(wKey+1) aka JudyXFirst.
+// LOCATE_GE_USING_EQ_M1 causes LocateGeKey(wKey+1) to use LocateKey(wKey)
+// which is fast and follows up with Search only if wKey is not there.
+// NO_LOCATE_GE_USING_EQ_M1 doesn't bother with LocateKey(wKey) and just
+// starts with Search.
+#ifndef   NO_LOCATE_GE_USING_EQ_M1
+  #undef     LOCATE_GE_USING_EQ_M1
+  #define    LOCATE_GE_USING_EQ_M1
+#endif // NO_LOCATE_GE_USING_EQ_M1
+
+#ifdef PARALLEL_64
+  #undef  NO_LOCATE_GE_KEY_X
+  #define NO_LOCATE_GE_KEY_X
+  #undef  NO_LOCATE_GE_AFTER_LOCATE_EQ
+  #define NO_LOCATE_GE_AFTER_LOCATE_EQ
+#endif // PARALLEL_64
+
+#ifndef    NO_LOCATE_GE_AFTER_LOCATE_EQ
+  #undef      LOCATE_GE_AFTER_LOCATE_EQ
+  #define     LOCATE_GE_AFTER_LOCATE_EQ
+#endif // !NO_LOCATE_GE_AFTER_LOCATE_EQ
+
+// Default is LOCATE_GE_KEY_<8|16|24|32> which uses LOCATE_GE_KEY for
+// LocateGeKeyInList.
+#ifdef PSPLIT_PARALLEL
+#ifdef PARALLEL_128
+#ifdef COMPRESSED_LISTS
+#ifndef    NO_LOCATE_GE_KEY_X
+  #undef      LOCATE_GE_KEY_8
+  #define     LOCATE_GE_KEY_8
+  #undef      LOCATE_GE_KEY_16
+  #define     LOCATE_GE_KEY_16
+  #undef      LOCATE_GE_KEY_24
+  #define     LOCATE_GE_KEY_24
+  #undef      LOCATE_GE_KEY_32
+  #define     LOCATE_GE_KEY_32
+#endif // !NO_LOCATE_GE_KEY_X
+#endif // COMPRESSED_LISTS
+#endif // PARALLEL_128
+#endif // PSPLIT_PARALLEL
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
 

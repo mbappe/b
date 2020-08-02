@@ -431,12 +431,6 @@
 #define EMBEDDED_KEYS_PARALLEL_FOR_INSERT
 #endif
 
-// Default is -DPARALLEL_128.
-#if !defined(PARALLEL_64) && !defined(NO_PARALLEL_128)
-  #undef PARALLEL_128
-  #define PARALLEL_128
-#endif // !defined(PARALLEL_64) && !defined(NO_PARALLEL_128)
-
 // UA_PARALLEL_128, i.e. unaligned parallel 128, was designed to save memory
 // by eliminating the requirement that lists be padded to an integral number
 // of 16-byte bucket lengths while preserving our ability to use 128-bit
@@ -518,12 +512,6 @@ ExtListBytesPerKey(int nBL)
     return sizeof(Word_t);
   #endif // defined(COMPRESSED_LISTS)
 }
-
-// Default is -DPSPLIT_EARLY_OUT which is applicable only if PSPLIT_PARALLEL.
-#if ! defined(NO_PSPLIT_EARLY_OUT)
-#undef  PSPLIT_EARLY_OUT
-#define PSPLIT_EARLY_OUT
-#endif // ! defined(NO_PSPLIT_EARLY_OUT)
 
 #include <immintrin.h> // __m128i
 #ifdef B_JUDYL
@@ -4216,6 +4204,7 @@ extern const unsigned anBL_to_nDL[];
 
 #define BUCKET_HAS_KEY HasKey128
 #define BUCKET_LOCATE_KEY LocateKey128
+#define BUCKET_LOCATE_GE_KEY LocateGeKey128
 
 #elif defined(PARALLEL_64) // defined(PARALLEL_128)
 
@@ -4542,36 +4531,21 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 // | big              small|
 // |fe:dc|ba:98|76:54|32:10|
 
-  #if defined(PSPLIT_EARLY_OUT)
-#define EARLY_OUT(x)  x
-#define SMETRICS_MIS_OR_EARLY_OUT(x)  x
-  #else // defined(PSPLIT_EARLY_OUT)
-#define EARLY_OUT(x)
-#define SMETRICS_MIS_OR_EARLY_OUT  SMETRICS_MIS
-  #endif // defined(PSPLIT_EARLY_OUT)
-
-// HAS_KEY_NPOS_F
-// Has-key forward scan of a sub-list.
-// With a check and early-out if we've gone past the key we want.
-// It assumes _pxKeys and _nPos are bucket-size aligned.
-// It assumes the last bucket is padded with keys that are in the list.
-// It might be performance preferable if the last key in the last bucket is
-// equal to the largest key in the list, even if it is just padding.
+// P_SEARCH_F does a parallel forward search of a sorted list starting at
+// pb = &pxKeys[nPos] until _FUNC(pb, ...) evaluates to a non-negative nPos
+// within the bucket being searched.
+// It assumes pxKeys and pxKeys[nPos] are _b_t-aligned and the list is padded
+// with the biggest key in the list to a _b_t-aligned address.
 // sizeof(_xKey) is used to determine the size of the keys in the list.
-// _nPopCnt is relative to _nPos
-
-// LOCATE_KEY_F assumes _pxKeys and _nPos are _b_t-aligned and the
-// the list is padded to _b_t alignment.
-
-#define SEARCH_F(_FUNC, _b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
+// nPopCnt is for the whole list. It is not relative to nPos.
+#define P_SEARCH_F(_FUNC, _b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
-    assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
-    assert(((_nPos * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
-    /* first address beyond address of last bucket to search */ \
+    ASSERT(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
+    ASSERT(((_nPos * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
+    /* address of the end of the list */ \
     _b_t* pbEnd = (_b_t*)&(_pxKeys)[_nPopCnt]; \
-    /* address of first bucket to search */ \
+    /* address of the first bucket to search */ \
     _b_t* pb = (_b_t*)&(_pxKeys)[_nPos]; \
-    /* number of last key in first bucket to search */ \
     for (;;) { \
         int nBPos = BUCKET_##_FUNC(pb, (_xKey), sizeof(_xKey) * 8); \
         if (nBPos >= 0) { \
@@ -4581,16 +4555,19 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
             _nPos = (typeof(_xKey)*)pb - (_pxKeys) + nBPos; \
             break; \
         } \
-        ++pb; \
         /* check the last key in the _b_t to see if we've gone too far */ \
-        if ((_xKey) < ((typeof(_xKey)*)pb)[-1]) { \
-            EARLY_OUT(_nPos = -1; break); \
+        if ((_xKey) < ((typeof(_xKey)*)&pb[1])[-1]) { \
+            /* Could use nPos = -1 if _FUNC != LOCATE_KEY. */ \
+            _nPos = ~((typeof(_xKey)*)pb - (_pxKeys)); break; \
         } \
-        if (pb >= pbEnd) { _nPos = -1; break; } \
+        if (++pb >= pbEnd) { \
+            /* Could use nPos = -1 if _FUNC != LOCATE_KEY. */ \
+            _nPos = ~((typeof(_xKey)*)pb - (_pxKeys)); break; \
+        } \
     } \
 }
 
-#define SEARCH_B(_FUNC, _b_t, _xKey, _pxKeys, _nPos) \
+#define P_SEARCH_B(_FUNC, _b_t, _xKey, _pxKeys, _nPos) \
 { \
     assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
     _b_t* pb = (_b_t*)&(_pxKeys)[_nPos]; \
@@ -4602,11 +4579,66 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
             _nPos = (typeof(_xKey)*)pb - (_pxKeys) + nBPos; \
             break; \
         } \
+        if (pb == (_b_t*)(_pxKeys)) { \
+            _nPos = ~0; break; \
+        } \
+        if (((typeof(_xKey)*)pb)[-1] < (_xKey)) { \
+            _nPos = ~((typeof(_xKey)*)pb - (_pxKeys)); break; \
+        } \
+        --pb; \
+    } \
+}
+
+#define P_SEARCH_GE_B(_FUNC, _b_t, _xKey, _pxKeys, _nPos) \
+{ \
+    assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
+    _b_t* pb = (_b_t*)&(_pxKeys)[_nPos]; \
+    /* bucket number of first bucket to search */ \
+    for (;;) { \
+        int nBPos = BUCKET_##_FUNC(pb, (_xKey), sizeof(_xKey) * 8); \
+        if ((nBPos > 0) \
+                || ((nBPos == 0) \
+                    && ((pb == (void*)(_pxKeys)) \
+                        || (*(typeof(_xKey)*)pb == (_xKey))))) \
+        { \
+            SMETRICS_MIS(j__MisComparesM += (_b_t*)&(_pxKeys)[_nPos] - pb); \
+            _nPos = (typeof(_xKey)*)pb - (_pxKeys) + nBPos; \
+            break; \
+        } \
         /* check the first key in the _b_t to see if we've gone too far */ \
         if (*(typeof(_xKey)*)pb < (_xKey)) { \
-            EARLY_OUT(_nPos = -1; break); \
+            _nPos = (typeof(_xKey)*)&pb[1] - (_pxKeys); \
+            break; \
+        } else if (--pb < (_b_t*)(_pxKeys)) { \
+            _nPos = -1; \
+            break; \
         } \
-        if (--pb < (_b_t*)(_pxKeys)) { _nPos = -1; break; } \
+    } \
+}
+
+#define P_SEARCH_LT_B(_FUNC, _b_t, _xKey, _pxKeys, _nPos) \
+{ \
+    assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
+    _b_t* pb = (_b_t*)&(_pxKeys)[_nPos]; \
+    for (;;) { \
+        int nBPos = BUCKET_##_FUNC(pb, (_xKey), sizeof(_xKey) * 8); \
+        if ((nBPos > 0) \
+                || ((nBPos == 0) \
+                    && ((pb == (void*)(_pxKeys)) \
+                        || (*(typeof(_xKey)*)pb == (_xKey))))) \
+        { \
+            SMETRICS_MIS(j__MisComparesM += (_b_t*)&(_pxKeys)[_nPos] - pb); \
+            _nPos = (typeof(_xKey)*)pb - (_pxKeys) + nBPos; \
+            break; \
+        } \
+        /* check the first key in the _b_t to see if we've gone too far */ \
+        if (*(typeof(_xKey)*)pb < (_xKey)) { \
+            _nPos = (typeof(_xKey)*)&pb[1] - (_pxKeys); \
+            break; \
+        } else if (--pb < (_b_t*)(_pxKeys)) { \
+            _nPos = -1; \
+            break; \
+        } \
     } \
 }
 
@@ -4880,12 +4912,13 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
         SMETRICS_HIT(++j__DirectHits); \
     } else { \
         nSplit = nSplitB * nKeysPerBucket; \
-        _x_t xKeySplit = (_pxKeys)[nSplit]; \
         /* now we have the value of a key in the list */ \
-        if ((_xKey) > xKeySplit) { \
-            if (nSplitB == (int)(((_nPopCnt) - 1) / nKeysPerBucket)) { \
+        if ((_xKey) > (_pxKeys)[nSplit]) { \
+            if ((_xKey) < (_pxKeys)[nSplit + nKeysPerBucket - 1]) { \
+                _nPos = ~nSplit; /* bucket that would contain wKey */ \
+            } else if (nSplitB == (int)(((_nPopCnt) - 1) / nKeysPerBucket)) { \
                 /* we searched the last bucket and the key is not there */ \
-                _nPos = -1; /* we don't know where to insert */ \
+                _nPos = ~(nSplit + nKeysPerBucket); \
             } else { \
                 /* parallel search the tail of the list */ \
                 /* we are doing a search of the bucket after the original */ \
@@ -4893,18 +4926,21 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                 /* (_xKey) <= pxKeys[nSplit+sizeof(_b_t)/sizeof(_x_t)-1] */ \
                 /* but we'd have to be willing to do the test */ \
                 /* ++nSplitB; */ \
-                _nPos = (int)nSplit + nKeysPerBucket; \
-                SEARCH_F(_FUNC, _b_t, (_xKey), (_pxKeys), (_nPopCnt), _nPos); \
+                _nPos = nSplit + nKeysPerBucket; \
+                P_SEARCH_F(_FUNC, _b_t, _xKey, (_pxKeys), (_nPopCnt), _nPos); \
                 SMETRICS_NHIT(++j__GetCallsP); \
             } \
         } else { \
             if (nSplitB == 0) { \
                 /* we searched the first bucket and the key is not there */ \
-                _nPos = -1; /* this is where to insert */ \
+                _nPos = ~nSplit; /* this is where to insert */ \
+            /* this test is not necessary unless we want accurate ~_nPos */ \
+            } else if ((_xKey) > (_pxKeys)[nSplit - 1]) { \
+                _nPos = ~nSplit; /* this is where to insert */ \
             } else { \
                 /* parallel search the head of the list */ \
                 _nPos = nSplit - nKeysPerBucket; \
-                SEARCH_B(_FUNC, _b_t, (_xKey), (_pxKeys), _nPos); \
+                P_SEARCH_B(_FUNC, _b_t, (_xKey), (_pxKeys), _nPos); \
                 SMETRICS_NHIT(++j__GetCallsM); \
             } \
         } \
@@ -4924,6 +4960,69 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     PSPLIT_SEARCH_GUTS(LOCATE_KEY, _b_t, Word_t, (_nBL), \
                        /*nPsplitShift*/ (_nBL) - 16, \
                        (_pwKeys), (_nPopCnt), (_wKey), _nPos); \
+}
+
+#define LOCATE_GE_KEY_GUTS(_FUNC, _b_t, _x_t, _nBL, /*nPsplitShift*/ _xShift, \
+                           _pxKeys, _nPopCnt, _xKey, _nPos) \
+{ \
+    _b_t *pb = (_b_t *)(_pxKeys); /* bucket pointer */ \
+    /* _pxKeys must be aligned on a bucket boundary */ \
+    assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
+    SMETRICS_POP(j__SearchPopulation += (_nPopCnt)); \
+    /* nSplit is the key chosen by Psplit */ \
+    int nSplit = Psplit((_nPopCnt), (_nBL), (_xShift), (_xKey)); \
+    BJL(char* pcPrefetch = (char*)&gpwValues(qy)[~nSplit]; (void)pcPrefetch); \
+    BJL(_PF_LK(PREFETCH(pcPrefetch))); \
+    BJL(_PF_LK_NX(PREFETCH(pcPrefetch - 64))); \
+    BJL(_PF_LK_PV(PREFETCH(pcPrefetch + 64))); \
+    int nKeysPerBucket = sizeof(_b_t) / sizeof(_x_t); \
+    /* nSplitB is the number of the bucket chosen by Psplit */ \
+    int nSplitB = nSplit / nKeysPerBucket; \
+    assert((int)((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitB); \
+    if ((_nPos = BUCKET_##_FUNC(&pb[nSplitB], (_xKey), sizeof(_x_t) * 8)) \
+        > 0) \
+    { \
+        /* add the number of keys in the buckets before nSplitB */ \
+        _nPos += nSplitB * nKeysPerBucket; /* not needed for has_key */ \
+    } else { \
+        /* first key is ge or last key is lt */ \
+        nSplit = nSplitB * nKeysPerBucket; \
+        /* This if is for GE -- not LE */ \
+        if (_nPos == 0) { \
+            /* first key is ge */ \
+            if (nSplitB == 0) { \
+                ; \
+            } else if ((_pxKeys)[nSplit] == (_xKey)) { \
+                _nPos += nSplit; \
+            } else { \
+                _nPos = nSplit - nKeysPerBucket; \
+                P_SEARCH_GE_B(_FUNC, _b_t, (_xKey), (_pxKeys), _nPos); \
+            } \
+        } else { \
+            /* last key is lt */ \
+            if (nSplitB == (int)(((_nPopCnt) - 1) / nKeysPerBucket)) { \
+                /* we searched the last bucket and the key is not there */ \
+                _nPos = -1; \
+            } else { \
+                /* parallel search the tail of the list */ \
+                /* we are doing a search of the bucket after the original */ \
+                /* nSplitB even though we know it won't find the key if */ \
+                /* (_xKey) <= pxKeys[nSplit+sizeof(_b_t)/sizeof(_x_t)-1] */ \
+                /* but we'd have to be willing to do the test */ \
+                /* ++nSplitB; */ \
+                _nPos = (int)nSplit + nKeysPerBucket; \
+                P_SEARCH_F(_FUNC, \
+                           _b_t, (_xKey), (_pxKeys), (_nPopCnt), _nPos); \
+            } \
+        } \
+    } \
+}
+
+#define LOCATE_GE_KEY(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
+{ \
+    assert((_nBL) <= cnBitsPerWord); \
+    LOCATE_GE_KEY_GUTS(LOCATE_GE_KEY, _b_t, _x_t, (_nBL), /*nPsplitShift*/ 0, \
+                       (_pxKeys), (_nPopCnt), (_xKey), _nPos); \
 }
 
 #if 0
@@ -5394,23 +5493,25 @@ typedef unsigned int   __attribute__((vector_size(8))) v32_t;
   #define HK_MOVEMASK
 #endif // (cnBitsPerWord < 64)
 
-// Key observations about HasKey:
-// HasKey creates a magic number with the high bit set in the key slots
-// that match the target key.  It also sets the high bit in the key slot
-// to the left of any other slot with its high bit set if the key in that
-// slot is one less than the target key.
+// A key observation about the OLD_HK_128 variant of HasKey is that it creates
+// a magic number with the high bit set in the key slots that match the target
+// key but also with the high bit set in the key slots immediately more
+// significant than any other slots with their high bit set if the key in the
+// more significant slot is one less than the target key.
 static Word_t // bool
 HasKey128(__m128i *pxBucket, Word_t wKey, int nBL)
 {
-#ifndef OLD_HK_128
+  #ifdef OLD_HK_128
+    if (nBL == 64)
+  #else // OLD_HK_128
     if (nBL == 16) {
         v41_t vEq = (v41_t)(*(v41_t*)pxBucket == (unsigned short)wKey);
-  #ifdef HK_MOVEMASK
+      #ifdef HK_MOVEMASK
         return _mm_movemask_epi8((__m128i)vEq);
-  #else // HK_MOVEMASK
+      #else // HK_MOVEMASK
         // seems marginally faster at startup (in cache)
         return _mm_packs_epi16((__m128i)vEq, (__m128i)vEq)[0];
-  #endif // HK_MOVEMASK
+      #endif // HK_MOVEMASK
     }
     if (nBL == 8) {
         v_t vEq = (v_t)(*(v_t*)pxBucket == (unsigned char)wKey);
@@ -5419,36 +5520,33 @@ HasKey128(__m128i *pxBucket, Word_t wKey, int nBL)
     if (nBL <= 32) {
         ASSERT(nBL == 32);
         v42_t vEq = (v42_t)(*(v42_t*)pxBucket == (unsigned int)wKey);
-  #ifdef HK_MOVEMASK
+      #ifdef HK_MOVEMASK
         return _mm_movemask_epi8((__m128i)vEq);
-  #else // HK_MOVEMASK
+      #else // HK_MOVEMASK
         return _mm_packs_epi32((__m128i)vEq, (__m128i)vEq)[0];
-  #endif // HK_MOVEMASK
+      #endif // HK_MOVEMASK
     }
     ASSERT(nBL == 64);
-#endif // ifndef OLD_HK_128
-    // this appears to be a little slower out of the cache
-#if 0
-    if (nBL == 16) {
+  #endif // OLD_HK_128 else
+    {
+  #ifdef NO_PARALLEL_HK_128_64
+        return ((wKey == ((Word_t*)pxBucket)[0]) <<  7)
+             | ((wKey == ((Word_t*)pxBucket)[1]) << 15);
+  #else // NO_PARALLEL_HK_128_64
         __m128i xLsbs, xMsbs, xKeys;
-        HAS_KEY_128_SETUP(wKey, 16, xLsbs, xMsbs, xKeys);
-        return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
-    }
-    if (nBL == 32) {
-        __m128i xLsbs, xMsbs, xKeys;
-        HAS_KEY_128_SETUP(wKey, 32, xLsbs, xMsbs, xKeys);
-        return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
-    }
-#endif
-    __m128i xLsbs, xMsbs, xKeys;
-    if (nBL == cnBitsPerWord) {
         xLsbs = MM_SET1_EPW((Word_t)1);
         xMsbs = MM_SET1_EPW((Word_t)1 << (cnBitsPerWord - 1));
         xKeys = MM_SET1_EPW(wKey);
-    } else {
-        HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys);
+        return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
+  #endif // NO_PARALLEL_HK_128_64 else
     }
-    return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
+  #ifdef OLD_HK_128
+    else {
+        __m128i xLsbs, xMsbs, xKeys;
+        HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys);
+        return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
+    }
+  #endif // OLD_HK_128
 }
 
 // If 128-bit bucket has key then return the position of the key.
@@ -5576,6 +5674,9 @@ HasKey96(__m128i *pxBucket, Word_t wKey, int nBL)
     return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
 }
 
+#endif // !LIST_END_MARKERS
+#endif // PSPLIT_PARALLEL || PARALLEL_SEARCH_WORD
+
 static uint64_t
 HasKey64(uint64_t *px, Word_t wKey, int nBL)
 {
@@ -5646,6 +5747,9 @@ LocateKey64(uint64_t *px, Word_t wKey, int nBL)
     return nFirstSetBit / nBL;
 }
 
+#if defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)
+#ifndef LIST_END_MARKERS
+#ifdef PARALLEL_128
 static __m128i
 HasKey128Magic(__m128i *pxBucket, Word_t wKey, int nBL)
 {
@@ -5653,9 +5757,9 @@ HasKey128Magic(__m128i *pxBucket, Word_t wKey, int nBL)
     HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys);
     return HasKey128MagicTail(pxBucket, xLsbs, xMsbs, xKeys);
 }
-
-#endif // !defined(LIST_END_MARKERS)
-#endif // defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)
+#endif // PARALLEL_128
+#endif // !LIST_END_MARKERS
+#endif // PSPLIT_PARALLEL || PARALLEL_SEARCH_WORD
 
 #ifdef EMBED_KEYS
 #ifndef B_JUDYL
@@ -6447,12 +6551,12 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
             (1)
   #endif // SMETRICS_MISCOMPARES && LOOKUP elif BACKWARD_SEARCH_WORD else
         {
-            SEARCH_F(HAS_KEY_NPOS, Bucket_t, wKey, pwKeys, nPopCnt, nPos);
+            P_SEARCH_F(HAS_KEY_NPOS, Bucket_t, wKey, pwKeys, nPopCnt, nPos);
             // HASKEYF assumes one miscompare occurred before it was called.
             // It updates only j__MiscomparesP.
             SMETRICS_MIS(j__MisComparesP += nMisCompares - 1);
         } else {
-            SEARCH_B(HAS_KEY_NPOS, Bucket_t, wKey, pwKeys, nPos);
+            P_SEARCH_B(HAS_KEY_NPOS, Bucket_t, wKey, pwKeys, nPos);
             // HASKEYF assumes one miscompare occurred before it was called.
             // It updates only j__MiscomparesM.
             SMETRICS_MIS(j__MisComparesM += nMisCompares - 1);
@@ -6460,7 +6564,7 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
     } else {
   #ifdef BACKWARD_SEARCH_WORD
         nPos = nPopCnt - 1;
-        SEARCH_B(HAS_KEY_NPOS, Bucket_t, wKey, pwKeys, /*INOUT*/ nPos);
+        P_SEARCH_B(HAS_KEY_NPOS, Bucket_t, wKey, pwKeys, /*INOUT*/ nPos);
         if ((nPos ^ (nPopCnt - 1)) & ~(nKeysPerBucket - 1)) {
             SMETRICS_HIT(++j__DirectHits);
         } else {
@@ -6469,7 +6573,7 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
             SMETRICS_MIS(--j__MisComparesM);
         }
   #else // BACKWARD_SEARCH_WORD
-        SEARCH_F(HAS_KEY_NPOS, Bucket_t, wKey, pwKeys, nPopCnt, nPos);
+        P_SEARCH_F(HAS_KEY_NPOS, Bucket_t, wKey, pwKeys, nPopCnt, nPos);
         if (nPos & ~(nKeysPerBucket - 1)) {
             SMETRICS_HIT(++j__DirectHits);
         } else {
@@ -6646,23 +6750,6 @@ SearchList(qp, int nBLR, Word_t wKey)
     return SearchListWord(qy, nBLR, wKey);
 }
 
-#if 0
-// Locate the smallest key in the 128-bit bucket that is greater than or equal
-// to *pwKey. If one exists then update *pwKey and return nPos.
-// If none exists then return ~(cnBitsPerWord / nBL).
-static inline int
-LocateGeKey128(__m128i* px, Word_t* pwKey, int nBL)
-{
-    for (int nPos = 0; nPos < (int)sizeof(__m128i) * 8 / nBL; nPos++) {
-        if ((wRoot & MSK(nBL)) >= wKey) {
-            return nPos;
-        }
-        wRoot >>= nBL;
-    }
-    return ~(cnBitsPerWord / nBL);
-}
-#endif
-
 #if cnBitsPerWord > 32
 // Return nPos >= 0 if key >= wKey exists in wWord.
 // Otherwise return -1.
@@ -6687,7 +6774,192 @@ LocateGeKeyInWord16(Word_t wWord, Word_t wKey)
 #endif
 #endif // cnBitsPerWord > 32
 
-#ifdef LOCATE_GE_USING_EQ_M1
+#if defined(PSPLIT_PARALLEL) || defined(PARALLEL_SEARCH_WORD)
+
+static Word_t // bool
+HasGeKey128(__m128i *pxBucket, Word_t wKey, int nBL)
+{
+    (void)nBL;
+  #ifdef COMPRESSED_LISTS
+    if (nBL <= 8) {
+        v_t vGe = (v_t)(*(v_t*)pxBucket >= (unsigned char)wKey);
+        return _mm_movemask_epi8((__m128i)vGe);
+    }
+    if (nBL <= 16) {
+        v41_t vGe = (v41_t)(*(v41_t*)pxBucket >= (unsigned short)wKey);
+      #ifdef HK_MOVEMASK
+        return _mm_movemask_epi8((__m128i)vGe);
+      #else // HK_MOVEMASK
+        // seems marginally faster at startup (in cache)
+        return _mm_packs_epi16((__m128i)vGe, (__m128i)vGe)[0];
+      #endif // HK_MOVEMASK
+    }
+      #if cnBitsPerWord > 32
+    if (nBL <= 32) {
+        //ASSERT(nBL == 32);
+        v42_t vGe = (v42_t)(*(v42_t*)pxBucket >= (unsigned int)wKey);
+          #ifdef HK_MOVEMASK
+        return _mm_movemask_epi8((__m128i)vGe);
+          #else // HK_MOVEMASK
+        return _mm_packs_epi32((__m128i)vGe, (__m128i)vGe)[0];
+          #endif // HK_MOVEMASK
+    }
+      #endif // cnBitsPerWord > 32
+  #endif // COMPRESSED_LISTS
+    return ((Word_t*)pxBucket)[1] >= wKey;
+}
+
+static Word_t // bool
+HasLtKey128(__m128i *pxBucket, Word_t wKey, int nBL)
+{
+    (void)nBL;
+  #ifdef COMPRESSED_LISTS
+    if (nBL <= 8) {
+        v_t vLt = (v_t)(*(v_t*)pxBucket < (unsigned char)wKey);
+        return _mm_movemask_epi8((__m128i)vLt);
+    }
+    if (nBL <= 16) {
+        v41_t vLt = (v41_t)(*(v41_t*)pxBucket < (unsigned short)wKey);
+      #ifdef HK_MOVEMASK
+        return _mm_movemask_epi8((__m128i)vLt);
+      #else // HK_MOVEMASK
+        // seems marginally faster at startup (in cache)
+        return _mm_packs_epi16((__m128i)vLt, (__m128i)vLt)[0];
+      #endif // HK_MOVEMASK
+    }
+      #if cnBitsPerWord > 32
+    if (nBL <= 32) {
+        //ASSERT(nBL == 32);
+        v42_t vLt = (v42_t)(*(v42_t*)pxBucket < (unsigned int)wKey);
+          #ifdef HK_MOVEMASK
+        return _mm_movemask_epi8((__m128i)vLt);
+          #else // HK_MOVEMASK
+        return _mm_packs_epi32((__m128i)vLt, (__m128i)vLt)[0];
+          #endif // HK_MOVEMASK
+    }
+      #endif // cnBitsPerWord > 32
+  #endif // COMPRESSED_LISTS
+    return ((Word_t*)pxBucket)[0] < wKey;
+}
+
+// Locate the largest key in the 128-bit bucket that is less than wKey.
+// If one exists then return nPos.
+// If none exists then return -1.
+static int
+LocateLtKey128(__m128i *pxBucket, Word_t wKey, int nBL)
+{
+    (void)nBL;
+  #ifdef COMPRESSED_LISTS
+    Word_t wHasLtKey = HasLtKey128(pxBucket, wKey, nBL);
+    //printf("wKey 0x%zx nBL %d wHasLtKey 0x%zx pxBucket[0] 0x%zx pxBucket[1] 0x%zx\n",
+           //wKey, nBL, wHasLtKey, ((Word_t*)pxBucket)[0], ((Word_t*)pxBucket)[1]);
+      #if defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
+    if (wHasLtKey == 0) {
+        return -1; // sizeof(Bucket_t) / ExtListBytesPerKey(nBL);
+    }
+      #endif // defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
+    if (nBL <= 8) {
+      #ifdef USE_POPCOUNT_IN_LK8
+        return 64 - __builtin_popcountll((wHasLtKey & -wHasLtKey) - 1);
+      #elif defined(USE_FFS_IN_LK8)
+        return 64 - (__builtin_ffsll(wHasLtKey) - 1);
+      #else // USE_POPCOUNT_IN_LK8 #elif USE_FFS_IN_LK8
+        return 64 - __builtin_clzll(wHasLtKey);
+      #endif // USE_POPCOUNT_IN_LK8 #elif USE_FFS_IN_LK8 #else
+    }
+      #if !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
+    if (wHasLtKey == 0) {
+        return -1; // sizeof(Bucket_t) / ExtListBytesPerKey(nBL);
+    }
+      #endif // !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
+    int nFirstSetBit = __builtin_clzll(wHasLtKey);
+    if (nBL <= 16) {
+      #ifdef HK_MOVEMASK
+        return 32 - nFirstSetBit / 2;
+      #else // HK_MOVEMASK
+        return 8 - nFirstSetBit / 8;
+      #endif // HK_MOVEMASK else
+    }
+      #if cnBitsPerWord > 32
+    if (nBL <= 32) {
+        //assert(nBL == 32);
+          #ifdef HK_MOVEMASK
+        return 16 - nFirstSetBit / 4;
+          #else // HK_MOVEMASK
+        return 4 - nFirstSetBit / 16;
+          #endif // HK_MOVEMASK else
+    }
+      #endif // cnBitsPerWord > 32
+  #endif // COMPRESSED_LISTS
+    return ((Word_t*)pxBucket)[1] < wKey ? 1
+         : ((Word_t*)pxBucket)[0] < wKey ? 0 : -1;
+}
+
+// Locate the smallest key in the 128-bit bucket that is greater than or equal
+// to wKey. If one exists then return nPos.
+// If none exists then return -1.
+static int
+LocateGeKey128(__m128i *pxBucket, Word_t wKey, int nBL)
+{
+    (void)nBL;
+  #ifdef COMPRESSED_LISTS
+    Word_t wHasGeKey = HasGeKey128(pxBucket, wKey, nBL);
+    //printf("wKey 0x%zx nBL %d wHasGeKey 0x%zx pxBucket[0] 0x%zx pxBucket[1] 0x%zx\n",
+           //wKey, nBL, wHasGeKey, ((Word_t*)pxBucket)[0], ((Word_t*)pxBucket)[1]);
+      #if defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
+    if (wHasGeKey == 0) {
+        int nPosLt = LocateLtKey128(pxBucket, wKey, nBL); (void)nPosLt;
+        assert(nPosLt == 128 / nBL);
+        return -1; // sizeof(Bucket_t) / ExtListBytesPerKey(nBL);
+    }
+      #endif // defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
+    if (nBL <= 8) {
+      #ifdef USE_POPCOUNT_IN_LK8
+        return __builtin_popcountll((wHasGeKey & -wHasGeKey) - 1);
+      #elif defined(USE_FFS_IN_LK8)
+        return __builtin_ffsll(wHasGeKey) - 1;
+      #else // USE_POPCOUNT_IN_LK8 #elif USE_FFS_IN_LK8
+        int nPos = __builtin_ctzll(wHasGeKey);
+        int nPosLt = LocateLtKey128(pxBucket, wKey, nBL); (void)nPosLt;
+        assert(nPosLt == nPos || (nPos == 0 && nPosLt == -1));
+        return nPos;
+      #endif // USE_POPCOUNT_IN_LK8 #elif USE_FFS_IN_LK8 #else
+    }
+      #if !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
+    if (wHasGeKey == 0) {
+        return -1; // sizeof(Bucket_t) / ExtListBytesPerKey(nBL);
+    }
+      #endif // !defined(USE_POPCOUNT_IN_LK8) && defined(USE_FFS_IN_LK8)
+    int nFirstSetBit = __builtin_ctzll(wHasGeKey);
+    if (nBL <= 16) {
+      #ifdef HK_MOVEMASK
+        return nFirstSetBit / 2;
+      #else // HK_MOVEMASK
+        int nPos = nFirstSetBit / 8;
+        int nPosLt = LocateLtKey128(pxBucket, wKey, nBL); (void)nPosLt;
+        assert(nPosLt == nPos || (nPos == 0 && nPosLt == -1));
+        return nPos;
+      #endif // HK_MOVEMASK else
+    }
+      #if cnBitsPerWord > 32
+    if (nBL <= 32) {
+        //assert(nBL == 32);
+          #ifdef HK_MOVEMASK
+        return nFirstSetBit / 4;
+          #else // HK_MOVEMASK
+        int nPos = nFirstSetBit / 16;
+        int nPosLt = LocateLtKey128(pxBucket, wKey, nBL); (void)nPosLt;
+        assert(nPosLt == nPos || (nPos == 0 && nPosLt == -1));
+        return nPos;
+          #endif // HK_MOVEMASK else
+    }
+      #endif // cnBitsPerWord > 32
+  #endif // COMPRESSED_LISTS
+    return ((Word_t*)pxBucket)[0] >= wKey ? 0
+         : ((Word_t*)pxBucket)[1] >= wKey ? 1 : -1;
+}
+
+#endif // PSPLIT_PARALLEL || PARALLEL_SEARCH_WORD
 
 static int LocateKeyInList(qp, int nBLR, Word_t wKey);
 
@@ -6696,53 +6968,152 @@ LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
 {
     qv;
     Word_t wKey = *pwKey;
-    int nPopCnt = gnListPopCnt(qy, nBLR);
+  #ifdef LOCATE_GE_USING_EQ_M1
     int nPos;
     if ((wKey & MSK(nBLR)) == 0) {
         nPos = 0;
     } else {
-        nPos = LocateKeyInList(qy, nBLR, wKey - 1);
-        if (nPos >= 0) {
-            ++nPos; // found equal
-        } else {
-// Would be nice if LocateKeyInList could at least narrow down the
-// search on a miss. But it might not be necessary. Since everything
-// will be in the cache for the 2nd go round.
-            nPos = SearchList(qy, nBLR, wKey - 1);
-            nPos ^= -1; // did not find equal
+        int nPopCnt; (void)nPopCnt;
+      #ifdef LOCATE_GE_KEY_8 // implies PSPLIT_PARALLEL && PARALLEL_128
+        if (nBLR == 8) {
+            nPopCnt = gnListPopCnt(qy, nBLR);
+            uint8_t *pcKeys = ls_pcKeysX(pwr, nBLR, nPopCnt);
+          #if cnListPopCntMaxDl1 <= 16
+            nPos = LocateGeKey128((__m128i*)pwr, wKey, nBLR);
+          #else // cnListPopCntMaxDl1 <= 16
+            uint8_t cKey = (uint8_t)wKey; // Do we need cKey?
+            nPos = 0;
+            LOCATE_GE_KEY(Bucket_t,
+                          uint8_t, nBLR, pcKeys, nPopCnt, cKey, nPos);
+          #endif // cnListPopCntMaxDl1 <= 16 else
+            if (nPos >= 0) {
+                *pwKey = (wKey & ~NZ_MSK(nBLR)) | pcKeys[nPos];
+            }
+            return nPos;
         }
-        if (nPos >= nPopCnt) {
-            return ~nPos;
+      #endif // LOCATE_GE_KEY_8
+      #ifdef LOCATE_GE_KEY_16
+        if (nBLR == 16) {
+            nPopCnt = gnListPopCnt(qy, nBLR);
+            uint16_t *psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
+            uint16_t sKey = (uint16_t)wKey; // Do we need cKey?
+            nPos = 0;
+            LOCATE_GE_KEY(Bucket_t,
+                          uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos);
+            if (nPos >= 0) {
+                *pwKey = (wKey & ~NZ_MSK(nBLR)) | psKeys[nPos];
+            }
+            return nPos;
         }
-    }
-  #ifdef COMPRESSED_LISTS
-    if (nBLR <= 8) {
-        uint8_t* pcKeys = ls_pcKeysX(pwr, nBLR, nPopCnt);
-        *pwKey = (wKey & ~NZ_MSK(nBLR)) | pcKeys[nPos];
-    } else if (nBLR <= 16) {
-        uint16_t* psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
-        *pwKey = (wKey & ~NZ_MSK(nBLR)) | psKeys[nPos];
+      #endif // LOCATE_GE_KEY_16
       #if cnBitsPerWord > 32
-    } else if (nBLR <= 32) {
-        uint32_t* piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
-        *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[nPos];
+          #ifdef LOCATE_GE_KEY_24
+        if (nBLR == 24) {
+            nPopCnt = gnListPopCnt(qy, nBLR);
+            uint32_t *piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
+            uint32_t iKey = (uint32_t)wKey; // Do we need cKey?
+            nPos = 0;
+            LOCATE_GE_KEY(Bucket_t,
+                          uint32_t, nBLR, piKeys, nPopCnt, iKey, nPos);
+            if (nPos >= 0) {
+                *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[nPos];
+            }
+            return nPos;
+        }
+          #endif // LOCATE_GE_KEY_24
+          #ifdef LOCATE_GE_KEY_32
+        if (nBLR == 32) {
+            nPopCnt = gnListPopCnt(qy, nBLR);
+            uint32_t *piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
+            uint32_t iKey = (uint32_t)wKey; // Do we need cKey?
+            nPos = 0;
+            LOCATE_GE_KEY(Bucket_t,
+                          uint32_t, nBLR, piKeys, nPopCnt, iKey, nPos);
+            if (nPos >= 0) {
+                *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[nPos];
+            }
+            return nPos;
+        }
+          #endif // LOCATE_GE_KEY_32
       #endif // cnBitsPerWord > 32
-    } else
-  #endif // COMPRESSED_LISTS
-    {
-        Word_t* pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);
-        *pwKey = pwKeys[nPos];
+        {
+            nPopCnt = gnListPopCnt(qy, nBLR);
+            nPos = LocateKeyInList(qy, nBLR, wKey - 1);
+            if (nPos >= 0) {
+                // found key equal to wKey - 1
+                if (++nPos >= nPopCnt) {
+                    return ~nPopCnt;
+                }
+            } else {
+                // did not find key equal to wKey - 1
+                if ((nPos ^= -1) >= nPopCnt) {
+                    return ~nPopCnt;
+                }
+      #ifdef LOCATE_GE_AFTER_LOCATE_EQ
+          #ifdef COMPRESSED_LISTS
+              #if defined(PSPLIT_PARALLEL) && defined(PARALLEL_128)
+                if (nBLR <= 8) {
+                    uint8_t* pcKeys = ls_pcKeysX(pwr, nBLR, nPopCnt);
+                    nPos += LocateGeKey128((__m128i*)&pcKeys[nPos], wKey, nBLR);
+                    assert(nPos < nPopCnt);
+                    *pwKey = (wKey & ~NZ_MSK(nBLR)) | pcKeys[nPos];
+                    return nPos;
+                }
+                else
+                if (nBLR <= 16) {
+                    uint16_t* psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
+                    nPos += LocateGeKey128((__m128i*)&psKeys[nPos], wKey, nBLR);
+                    assert(nPos < nPopCnt);
+                    *pwKey = (wKey & ~NZ_MSK(nBLR)) | psKeys[nPos];
+                    return nPos;
+                }
+                else
+                  #if cnBitsPerWord > 32
+                if (nBLR <= 32) {
+                    uint32_t* piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
+                    nPos += LocateGeKey128((__m128i*)&piKeys[nPos], wKey, nBLR);
+                    assert(nPos < nPopCnt);
+                    *pwKey = (wKey & ~NZ_MSK(nBLR)) | piKeys[nPos];
+                    return nPos;
+                }
+                else
+                  #endif // cnBitsPerWord > 32
+              #else // PSPLIT_PARALLEL && PARALLEL_128
+                if (nBL > 32)
+              #endif // PSPLIT_PARALLEL && PARALLEL_128 else
+          #endif // COMPRESSED_LISTS
+                {
+// Hmm. What about !COMPRESSED_LISTS and nBLR <= 32 here?
+          #ifdef PARALLEL_SEARCH_WORD
+          #ifdef PARALLEL_128
+                  if ((nBL != cnBitsPerWord)
+              #ifdef B_JUDYL
+                          && (nPopCnt >= cnParallelSearchWordPopCntMinL)
+              #endif // B_JUDYL
+                      )
+                  {
+                    assert(ALIGN_LIST_LEN(sizeof(Word_t), nPopCnt));
+                    Word_t* pwKeys = ls_pwKeysX(pwr, nBLR, nPopCnt);
+                    nPos += LocateGeKey128((__m128i*)&pwKeys[nPos], wKey, nBLR);
+                    assert(nPos < nPopCnt);
+                    *pwKey = pwKeys[nPos];
+                    return nPos;
+                  }
+          #endif // PARALLEL_128
+          #endif // PARALLEL_SEARCH_WORD
+                    nPos = ~SearchList(qy, nBLR, wKey - 1);
+                    assert(nPos < nPopCnt);
+                }
+      #else // LOCATE_GE_AFTER_LOCATE_EQ
+                nPos = ~SearchList(qy, nBLR, wKey - 1);
+                assert(nPos < nPopCnt);
+      #endif // LOCATE_GE_AFTER_LOCATE_EQ else
+                assert(nPos < nPopCnt);
+            }
+            assert(nPos < nPopCnt);
+        }
     }
-    return nPos;
-}
-
-#else // LOCATE_GE_USING_EQ_M1
-
-static inline int
-LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
-{
-    qv;
-    Word_t wKey = *pwKey;
+  #else // LOCATE_GE_USING_EQ_M1
     int nPopCnt = gnListPopCnt(qy, nBLR);
     int nPos = SearchList(qy, nBLR, wKey);
     if (nPos < 0) {
@@ -6750,6 +7121,7 @@ LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
             return ~nPos;
         }
     }
+  #endif // LOCATE_GE_USING_EQ_M1 else
   #ifdef COMPRESSED_LISTS
     if (nBLR <= 8) {
         uint8_t* pcKeys = ls_pcKeysX(pwr, nBLR, nPopCnt);
@@ -6770,8 +7142,6 @@ LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
     }
     return nPos;
 }
-
-#endif // LOCATE_GE_USING_EQ_M1 else
 
 #ifdef LOOKUP
 #if !defined(B_JUDYL) || defined(HASKEY_FOR_JUDYL_LOOKUP)
@@ -7236,11 +7606,32 @@ LocateKeyInList8(qp, int nBLR, Word_t wKey)
     // And the one before that.
     BJL(PREFETCH(pwr - 16));
   #endif // PREFETCH_LOCATE_KEY_8_END_VAL
+  #ifdef NEXT
+  #ifdef TEST_END_BEFORE_BUCKET
+    if ((wKey & 0xff) > ((uint8_t*)pwr)[sizeof(Bucket_t) - 1]) {
+        nPos = ~(int)sizeof(Bucket_t);
+    } else
+  #endif // TEST_END_BEFORE_BUCKET
+  #endif // NEXT
+    {
   #ifdef HK40_EXPERIMENT
-    nPos = LocateKey40(pwr, wKey);
+        nPos = LocateKey40(pwr, wKey);
   #else // HK40_EXPERIMENT
-    nPos = LocateKey128((__m128i*)pwr, wKey, 8);
+        nPos = LocateKey128((__m128i*)pwr, wKey, 8);
   #endif // #else HK40_EXPERIMENT
+    }
+  #ifdef NEXT
+  #ifndef TEST_END_BEFORE_BUCKET
+      #ifdef TEST_NPOS_BEFORE_END
+    if (nPos < 0)
+      #endif // TEST_NPOS_BEFORE_END
+    {
+        if ((wKey & 0xff) > ((uint8_t*)pwr)[sizeof(Bucket_t) - 1]) {
+            nPos = ~(int)sizeof(Bucket_t);
+        }
+    }
+  #endif // !TEST_END_BEFORE_BUCKET
+  #endif // NEXT
     // We don't need to know pop cnt except for SEARCHMETRICS. Ouch.
     SMETRICS_POP(j__SearchPopulation += gnListPopCnt(qy, nBLR));
     SMETRICS_HIT(++j__DirectHits); // direct hit or direct miss
@@ -7414,11 +7805,21 @@ LocateKeyInListWord(qp, int nBLR, Word_t wKey)
     {
         nPos = 0;
       #ifdef PARALLEL_SEARCH_WORD
-        PSPLIT_LOCATEKEY_WORD(Bucket_t, nBLR, pwKeys, nPopCnt, wKey, nPos);
+          #ifdef B_JUDYL
+        // Abbreviated ALIGN_LIST_LEN.
+        if (nPopCnt < cnParallelSearchWordPopCntMinL) {
+            assert(!ALIGN_LIST_LEN(sizeof(Word_t), nPopCnt));
+            PSPLIT_SEARCH_BY_KEY_WORD(nBLR, pwKeys, nPopCnt, wKey, nPos);
+        } else
+          #endif // B_JUDYL
+        {
+            assert(ALIGN_LIST_LEN(sizeof(Word_t), nPopCnt));
+            PSPLIT_LOCATEKEY_WORD(Bucket_t, nBLR, pwKeys, nPopCnt, wKey, nPos);
+        }
       #else // PARALLEL_SEARCH_WORD
         PSPLIT_SEARCH_BY_KEY_WORD(nBLR, pwKeys, nPopCnt, wKey, nPos);
       #endif // PARALLEL_SEARCH_WORD
-        DBGX(printf("LKILW: returning %d\n", nPos));
+        DBGX(printf("LKILW: returning %d ~ %d\n", nPos, ~nPos));
         return nPos;
     }
       #if !defined(SEARCH_FROM_WRAPPER) || !defined(LOOKUP)
@@ -7434,6 +7835,10 @@ LocateKeyInListWord(qp, int nBLR, Word_t wKey)
     return nPos;
 }
 
+// Find the location of wKey in qp.
+// If it exists return 0 <= nPos < nPopCnt.
+// If not return a negative number that gives no indication
+// of where in the list wKey belongs.
 static int
 LocateKeyInList(qp, int nBLR, Word_t wKey)
 {

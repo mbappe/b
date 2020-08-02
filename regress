@@ -45,6 +45,15 @@ fi
 # ${TIME} -Lm -E
 # ${TIME} -Lm -DS1
 
+# First quick check.
+cmd="${CHECK} -B17"
+echo $cmd
+$cmd > /dev/null
+if [ $? != 0 ]
+then
+    exit 1
+fi
+
 # Test keys going from small negative numbers to small positive numbers
 # relative to a particular BValue and vice versa.
 for Judy in 1 R # L
