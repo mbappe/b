@@ -5011,9 +5011,10 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
         if (_nPos == 0) { \
             /* first key is ge */ \
             if (nSplitB == 0) { \
-                ; \
+                /*_nPos = nSplit*/; \
+            /* this test of the first key in the bucket is optional */ \
             } else if ((_pxKeys)[nSplit] == (_xKey)) { \
-                _nPos += nSplit; \
+                _nPos = nSplit; \
             } else { \
                 _nPos = nSplit - nKeysPerBucket; \
                 P_SEARCH_GE_B(_FUNC, _b_t, (_xKey), (_pxKeys), _nPos); \
@@ -7002,7 +7003,6 @@ LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
             nPos = LocateGeKey128((__m128i*)pwr, wKey, nBLR);
           #else // cnListPopCntMaxDl1 <= 16
             uint8_t cKey = (uint8_t)wKey; // Do we need cKey?
-            nPos = 0;
             LOCATE_GE_KEY(Bucket_t,
                           uint8_t, nBLR, pcKeys, nPopCnt, cKey, nPos);
           #endif // cnListPopCntMaxDl1 <= 16 else
@@ -7017,7 +7017,6 @@ LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
             nPopCnt = gnListPopCnt(qy, nBLR);
             uint16_t *psKeys = ls_psKeysX(pwr, nBLR, nPopCnt);
             uint16_t sKey = (uint16_t)wKey; // Do we need cKey?
-            nPos = 0;
             LOCATE_GE_KEY(Bucket_t,
                           uint16_t, nBLR, psKeys, nPopCnt, sKey, nPos);
             if (nPos >= 0) {
@@ -7032,7 +7031,6 @@ LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
             nPopCnt = gnListPopCnt(qy, nBLR);
             uint32_t *piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
             uint32_t iKey = (uint32_t)wKey; // Do we need cKey?
-            nPos = 0;
             LOCATE_GE_KEY(Bucket_t,
                           uint32_t, nBLR, piKeys, nPopCnt, iKey, nPos);
             if (nPos >= 0) {
@@ -7046,7 +7044,6 @@ LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
             nPopCnt = gnListPopCnt(qy, nBLR);
             uint32_t *piKeys = ls_piKeysX(pwr, nBLR, nPopCnt);
             uint32_t iKey = (uint32_t)wKey; // Do we need cKey?
-            nPos = 0;
             LOCATE_GE_KEY(Bucket_t,
                           uint32_t, nBLR, piKeys, nPopCnt, iKey, nPos);
             if (nPos >= 0) {
