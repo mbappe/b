@@ -4636,28 +4636,18 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     } \
 }
 
+// Mimic P_SEARCH_GT_B using LocateLtKey128 instead of LocateGeKey128.
 #define P_SEARCH_LT_B(_b_t, _xKey, _pxKeys, _nPos) \
 { \
     assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
     _b_t* pb = (_b_t*)&(_pxKeys)[_nPos]; \
     for (;;) { \
         int nBPos = LocateLtKey128(pb, (_xKey), sizeof(_xKey) * 8); \
-        if ((nBPos > 0) \
-                || ((nBPos == 0) \
-                    && ((pb == (void*)(_pxKeys)) \
-                        || (*(typeof(_xKey)*)pb == (_xKey))))) \
-        { \
-            SMETRICS_MIS(j__MisComparesM += (_b_t*)&(_pxKeys)[_nPos] - pb); \
-            _nPos = (typeof(_xKey)*)pb - (_pxKeys) + nBPos; \
-            break; \
+        if (nBPos >= 0) { \
+            _nPos = (typeof(_xKey)*)pb - (_pxKeys) + nBPos; break; \
         } \
-        /* check the first key in the _b_t to see if we've gone too far */ \
-        if (*(typeof(_xKey)*)pb < (_xKey)) { \
-            _nPos = (typeof(_xKey)*)&pb[1] - (_pxKeys); \
-            break; \
-        } else if (--pb < (_b_t*)(_pxKeys)) { \
-            _nPos = -1; \
-            break; \
+        if (--pb < (_b_t*)(_pxKeys)) { \
+            _nPos = 0; break; \
         } \
     } \
 }
