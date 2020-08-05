@@ -4568,7 +4568,7 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 }
 
 // We know there is no ge key in the bucket before _nPos.
-#define P_SEARCH_GE_F(_FUNC, _b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
+#define P_SEARCH_GE_F(_b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
     ASSERT(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
     ASSERT(((_nPos * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
@@ -4609,13 +4609,13 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     } \
 }
 
-#define P_SEARCH_GE_B(_FUNC, _b_t, _xKey, _pxKeys, _nPos) \
+#define P_SEARCH_GE_B(_b_t, _xKey, _pxKeys, _nPos) \
 { \
     assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
     _b_t* pb = (_b_t*)&(_pxKeys)[_nPos]; \
     /* bucket number of first bucket to search */ \
     for (;;) { \
-        int nBPos = BUCKET_##_FUNC(pb, (_xKey), sizeof(_xKey) * 8); \
+        int nBPos = LocateGeKey128(pb, (_xKey), sizeof(_xKey) * 8); \
         if ((nBPos > 0) \
                 || ((nBPos == 0) \
                     && ((pb == (void*)(_pxKeys)) \
@@ -4636,12 +4636,12 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     } \
 }
 
-#define P_SEARCH_LT_B(_FUNC, _b_t, _xKey, _pxKeys, _nPos) \
+#define P_SEARCH_LT_B(_b_t, _xKey, _pxKeys, _nPos) \
 { \
     assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
     _b_t* pb = (_b_t*)&(_pxKeys)[_nPos]; \
     for (;;) { \
-        int nBPos = BUCKET_##_FUNC(pb, (_xKey), sizeof(_xKey) * 8); \
+        int nBPos = LocateLtKey128(pb, (_xKey), sizeof(_xKey) * 8); \
         if ((nBPos > 0) \
                 || ((nBPos == 0) \
                     && ((pb == (void*)(_pxKeys)) \
@@ -4894,8 +4894,8 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 
 // PSPLIT parallel search a bucket-aligned list of keys to see if a
 // key exists in the list.
-// _FUNC determines if the position of the key if it exists or slot where it would
-// be if does not exist is determined.
+// _FUNC determines if the position of the key if it exists or slot where it
+// would be if does not exist is determined.
 // It returns a non-negative number if the key is in the list and a
 // negative number if it is not.
 // A bucket is a Word_t or an __m128i or whatever else we decide to pass
@@ -4982,7 +4982,7 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                        (_pwKeys), (_nPopCnt), (_wKey), _nPos); \
 }
 
-#define LOCATE_GE_KEY_GUTS(_FUNC, _b_t, _x_t, _nBL, /*nPsplitShift*/ _xShift, \
+#define LOCATE_GE_KEY_GUTS(_b_t, _x_t, _nBL, /*nPsplitShift*/ _xShift, \
                            _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     _b_t *pb = (_b_t *)(_pxKeys); /* bucket pointer */ \
@@ -4999,7 +4999,7 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     /* nSplitB is the number of the bucket chosen by Psplit */ \
     int nSplitB = nSplit / nKeysPerBucket; \
     assert((int)((nSplit * sizeof(_x_t)) >> LOG(sizeof(_b_t))) == nSplitB); \
-    if ((_nPos = BUCKET_##_FUNC(&pb[nSplitB], (_xKey), sizeof(_x_t) * 8)) \
+    if ((_nPos = LocateGeKey128(&pb[nSplitB], (_xKey), sizeof(_x_t) * 8)) \
         > 0) \
     { \
         /* add the number of keys in the buckets before nSplitB */ \
@@ -5017,7 +5017,7 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                 _nPos = nSplit; \
             } else { \
                 _nPos = nSplit - nKeysPerBucket; \
-                P_SEARCH_GE_B(_FUNC, _b_t, (_xKey), (_pxKeys), _nPos); \
+                P_SEARCH_GE_B(_b_t, (_xKey), (_pxKeys), _nPos); \
             } \
         } else { \
             /* last key is lt */ \
@@ -5032,8 +5032,7 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
                 /* but we'd have to be willing to do the test */ \
                 /* ++nSplitB; */ \
                 _nPos = (int)nSplit + nKeysPerBucket; \
-                P_SEARCH_GE_F(_FUNC, \
-                              _b_t, (_xKey), (_pxKeys), (_nPopCnt), _nPos); \
+                P_SEARCH_GE_F(_b_t, (_xKey), (_pxKeys), (_nPopCnt), _nPos); \
             } \
         } \
     } \
@@ -5042,7 +5041,7 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 #define LOCATE_GE_KEY(_b_t, _x_t, _nBL, _pxKeys, _nPopCnt, _xKey, _nPos) \
 { \
     assert((_nBL) <= cnBitsPerWord); \
-    LOCATE_GE_KEY_GUTS(LOCATE_GE_KEY, _b_t, _x_t, (_nBL), /*nPsplitShift*/ 0, \
+    LOCATE_GE_KEY_GUTS(_b_t, _x_t, (_nBL), /*nPsplitShift*/ 0, \
                        (_pxKeys), (_nPopCnt), (_xKey), _nPos); \
 }
 
@@ -6872,8 +6871,6 @@ LocateLtKey128(__m128i *pxBucket, Word_t wKey, int nBL)
     (void)nBL;
   #ifdef COMPRESSED_LISTS
     Word_t wHasLtKey = HasLtKey128(pxBucket, wKey, nBL);
-    //printf("wKey 0x%zx nBL %d wHasLtKey 0x%zx pxBucket[0] 0x%zx pxBucket[1] 0x%zx\n",
-           //wKey, nBL, wHasLtKey, ((Word_t*)pxBucket)[0], ((Word_t*)pxBucket)[1]);
       #if defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
     if (wHasLtKey == 0) {
         return -1; // sizeof(Bucket_t) / ExtListBytesPerKey(nBL);
@@ -6925,8 +6922,6 @@ LocateGeKey128(__m128i *pxBucket, Word_t wKey, int nBL)
     (void)nBL;
   #ifdef COMPRESSED_LISTS
     Word_t wHasGeKey = HasGeKey128(pxBucket, wKey, nBL);
-    //printf("wKey 0x%zx nBL %d wHasGeKey 0x%zx pxBucket[0] 0x%zx pxBucket[1] 0x%zx\n",
-           //wKey, nBL, wHasGeKey, ((Word_t*)pxBucket)[0], ((Word_t*)pxBucket)[1]);
       #if defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
     if (wHasGeKey == 0) {
         int nPosLt = LocateLtKey128(pxBucket, wKey, nBL); (void)nPosLt;
