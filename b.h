@@ -6792,11 +6792,19 @@ HasGeKey128(__m128i *pxBucket, Word_t wKey, int nBL)
     (void)nBL;
   #ifdef COMPRESSED_LISTS
     if (nBL <= 8) {
+      #ifdef NOT_LT_FOR_GE
+        v_t vGe = ~(v_t)(*(v_t*)pxBucket < (unsigned char)wKey);
+      #else // NOT_LT_FOR_GE
         v_t vGe = (v_t)(*(v_t*)pxBucket >= (unsigned char)wKey);
+      #endif // NOT_LT_FOR_GE else
         return _mm_movemask_epi8((__m128i)vGe);
     }
     if (nBL <= 16) {
+      #ifdef NOT_LT_FOR_GE
+        v41_t vGe = ~(v41_t)(*(v41_t*)pxBucket < (unsigned short)wKey);
+      #else // NOT_LT_FOR_GE
         v41_t vGe = (v41_t)(*(v41_t*)pxBucket >= (unsigned short)wKey);
+      #endif // NOT_LT_FOR_GE else
       #ifdef HK_MOVEMASK
         return _mm_movemask_epi8((__m128i)vGe);
       #else // HK_MOVEMASK
@@ -6807,7 +6815,11 @@ HasGeKey128(__m128i *pxBucket, Word_t wKey, int nBL)
       #if cnBitsPerWord > 32
     if (nBL <= 32) {
         //ASSERT(nBL == 32);
+      #ifdef NOT_LT_FOR_GE
+        v42_t vGe = ~(v42_t)(*(v42_t*)pxBucket < (unsigned int)wKey);
+      #else // NOT_LT_FOR_GE
         v42_t vGe = (v42_t)(*(v42_t*)pxBucket >= (unsigned int)wKey);
+      #endif // NOT_LT_FOR_GE else
           #ifdef HK_MOVEMASK
         return _mm_movemask_epi8((__m128i)vGe);
           #else // HK_MOVEMASK
@@ -6825,11 +6837,19 @@ HasLtKey128(__m128i *pxBucket, Word_t wKey, int nBL)
     (void)nBL;
   #ifdef COMPRESSED_LISTS
     if (nBL <= 8) {
+      #ifdef NOT_GE_FOR_LT
+        v_t vLt = ~(v_t)(*(v_t*)pxBucket >= (unsigned char)wKey);
+      #else // NOT_GE_FOR_LT
         v_t vLt = (v_t)(*(v_t*)pxBucket < (unsigned char)wKey);
+      #endif // NOT_GE_FOR_LT else
         return _mm_movemask_epi8((__m128i)vLt);
     }
     if (nBL <= 16) {
+      #ifdef NOT_GE_FOR_LT
+        v41_t vLt = ~(v41_t)(*(v41_t*)pxBucket >= (unsigned short)wKey);
+      #else // NOT_GE_FOR_LT
         v41_t vLt = (v41_t)(*(v41_t*)pxBucket < (unsigned short)wKey);
+      #endif // NOT_GE_FOR_LT else
       #ifdef HK_MOVEMASK
         return _mm_movemask_epi8((__m128i)vLt);
       #else // HK_MOVEMASK
@@ -6840,7 +6860,11 @@ HasLtKey128(__m128i *pxBucket, Word_t wKey, int nBL)
       #if cnBitsPerWord > 32
     if (nBL <= 32) {
         //ASSERT(nBL == 32);
+      #ifdef NOT_GE_FOR_LT
+        v42_t vLt = ~(v42_t)(*(v42_t*)pxBucket >= (unsigned int)wKey);
+      #else // NOT_GE_FOR_LT
         v42_t vLt = (v42_t)(*(v42_t*)pxBucket < (unsigned int)wKey);
+      #endif // NOT_GE_FOR_LT else
           #ifdef HK_MOVEMASK
         return _mm_movemask_epi8((__m128i)vLt);
           #else // HK_MOVEMASK
