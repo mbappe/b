@@ -3486,7 +3486,7 @@ gwPopCnt(qpa, int nBLR)
     assert(tp_bIsSwitch(nType));
     assert(wRoot != WROOT_NULL); // May be wrong for WROOT_NULL_IS_SWITCH.
   #if 0
-    if (tp_bIsSwitch(wr_nType(WROOT_NULL)) && (wRoot == WROOT_NULL) {
+    if (tp_bIsSwitch(wr_nType(WROOT_NULL)) && (wRoot == WROOT_NULL)) {
         return 0;
     }
   #endif
@@ -4616,23 +4616,16 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     /* bucket number of first bucket to search */ \
     for (;;) { \
         int nBPos = LocateGeKey128(pb, (_xKey), sizeof(_xKey) * 8); \
-        if ((nBPos > 0) \
-                || ((nBPos == 0) \
-                    && ((pb == (void*)(_pxKeys)) \
-                        || (*(typeof(_xKey)*)pb == (_xKey))))) \
-        { \
-            SMETRICS_MIS(j__MisComparesM += (_b_t*)&(_pxKeys)[_nPos] - pb); \
-            _nPos = (typeof(_xKey)*)pb - (_pxKeys) + nBPos; \
-            break; \
+        if (nBPos > 0) { \
+            _nPos = (typeof(_xKey)*)pb - (_pxKeys) + nBPos; break; \
         } \
-        /* check the first key in the _b_t to see if we've gone too far */ \
-        if (*(typeof(_xKey)*)pb < (_xKey)) { \
-            _nPos = (typeof(_xKey)*)&pb[1] - (_pxKeys); \
-            break; \
-        } else if (--pb < (_b_t*)(_pxKeys)) { \
-            _nPos = -1; \
-            break; \
+        if (nBPos < 0) { \
+            _nPos = (typeof(_xKey)*)&pb[1] - (_pxKeys); break; \
         } \
+        if ((pb == (void*)(_pxKeys)) || (*(typeof(_xKey)*)pb == (_xKey))) { \
+            _nPos = (typeof(_xKey)*)pb - (_pxKeys); break; \
+        } \
+        --pb; \
     } \
 }
 
