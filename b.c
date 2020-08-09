@@ -767,75 +767,67 @@ static int
 CalcListWordCnt(int nPopCnt, int nBLR)
 {
     int nListWordsMin = ListWordsMin(nPopCnt, nBLR);
+    // Choose a malloc size for the list.
   #ifdef CACHE_ALIGN_L1
     // We need to address needing two words of keys for l1 and requiring
     // an even number of values to align pwr so we can fit two keys and
     // two values in a malloc of 3 words.
-    // In the meantime
-    // WordCnt == 4 allows us to request alignment of only 4 words and
+    // In the meantime nListWordsMin <= 4
+    // allows us to request alignment of only 4 words and
     // know that no prefetch is necessary because we know all 4 words will
     // be in the same cache line and it doesn't result in much waste.
+    // Isn't this left over from before EK_XV?
     // Requesting an alignment of 8 words results in a lot of waste.
     if ((nBLR == cnBitsInD1) && (nListWordsMin <= 4)) { return 4; }
+    // Under normal ifdefs, nListWordsMin never equals 5 so why test for it.
+    //assert((nBLR != cnBitsInD1) || (nListWordsMin > 5));
     //if ((nBLR == cnBitsInD1) && (nListWordsMin <= 5)) { return 5; }
+    // Why are we special-casing nListWords <= 6?
     if ((nBLR == cnBitsInD1) && (nListWordsMin <= 6)) { return 6; }
   #endif // CACHE_ALIGN_L1
   #ifdef SLOW_FIBONACCI
     int n; for (n = 0; anListMallocSizes[n] <= nListWordsMin; ++n);
-    int nWords = anListMallocSizes[n] - 1;
+    int nWords = anListMallocSizes[n];
   #else // SLOW_FIBONACCI
+    // We want to use powers of two (including the malloc overhead word).
     // What is the first power of two bigger than nListWordsMin?
-    // nListWordsMin being a power of two does us no good because it won't
-    // accommodate the malloc overhead word.
-    int nNextPow = EXP(LOG(nListWordsMin) + 1); // first power of two bigger
-    // See if the power of two divided by the square root of two is
-    // big enough for our list.
-    // Candidate number of malloc words including one word of malloc overhead.
-#ifdef POW_2_ALLOC
-    int nWords = MAX(4, nNextPow);
-#else // POW_2_ALLOC
-    int nWords = MAX(4, (nNextPow * 46340 / (1<<16) + 1) & ~1);
-    if (nListWordsMin > nWords - 1)
-#endif // #endif POW_2_ALLOC
-    { nWords = nNextPow; }
-    --nWords; // Subtract malloc overhead word for request.
+    // It has to be bigger because we need a word for malloc overhead.
+    int nWords = EXP(LOG(nListWordsMin) + 1); // first power of two bigger
+      #ifndef POW_2_ALLOC
+    // See if the power of two divided by the square root of two rounded
+    // to an even number for malloc efficiency is big enough for our list
+    // plus the malloc overhead word.
+    int nWordsDivRoot2 = (nWords * 46340 / (1<<16) + 1) & ~1;
+    if (nListWordsMin < nWordsDivRoot2) {
+        nWords = nWordsDivRoot2;
+    }
+      #endif // !POW_2_ALLOC
   #endif // SLOW_FIBONACCI
-#ifdef DEBUG
-    if (nPopCnt > auListPopCntMax[nBLR]) {
-        printf("nPopCnt %d auListPopCntMax[nBLR %d] %u\n",
-                nPopCnt, nBLR, auListPopCntMax[nBLR]);
-    }
-#endif // DEBUG
-    assert((nPopCnt <= auListPopCntMax[nBLR])
-  #ifdef EMBED_KEYS
-      #ifndef POP_CNT_MAX_IS_KING
-        || (auListPopCntMax[nBLR] < EmbeddedListPopCntMax(nBLR))
-      #endif // #ifndef POP_CNT_MAX_IS_KING
-  #endif // EMBED_KEYS
-            );
+    assert(!(nWords & 1));
     // Trim to avoid wasted space.
-    // No need to trim for temporarily inflated embedded list that
-    // exceeds the maximum external list length.
-    // Don't waste cpu calling EmbeddedListPopCntMax.
-#ifdef EMBED_KEYS
-  #ifndef POP_CNT_MAX_IS_KING
-    if (nPopCnt <= auListPopCntMax[nBLR])
-  #endif // #ifndef POP_CNT_MAX_IS_KING
-#endif // EMBED_KEYS
-    {
-        int nFullListWordsMin = ListWordsMin(auListPopCntMax[nBLR], nBLR);
-        if (nFullListWordsMin < nWords) {
-            nWords = nFullListWordsMin;
-        }
+    // aulistPopCntMax[nBLR] incorporates EmbeddedListPopCntMax if
+    // !POP_CNT_MAX_IS_KING.
+    assert(nPopCnt <= auListPopCntMax[nBLR]);
+    int nFullListWordsMin = ListWordsMin(auListPopCntMax[nBLR], nBLR);
+    if (nFullListWordsMin < nWords) {
+        nWords = nFullListWordsMin + 1;
     }
-#ifdef LIST_REQ_MIN_WORDS // don't request words that have no benefit
-    // We used a simple method of choosing the malloc request size.
+    // Returning less than 3 words has no memory saving benefit since malloc
+    // never allocates less than 3 words.
+    // Always returning at least 3 words benefits us by avoiding free/malloc on
+    // Insert if CalcListWordCnt(nPopCnt) < CalcListWordCnt(nPopCnt + 1) <= 3.
+    // But it can skew our requested words instrumentation to be higher than
+    // necessary if ListWordsMin(nPopCnt) < 3 and ListWordsMin(nPopCnt+1) > 3.
+  #ifdef LIST_REQ_MIN_WORDS // don't request words that have no benefit
     // Is it possible that nWords minus one malloc chunk holds
     // just as many keys so we're wasting a malloc chunk? Or wasting
     // more than one malloc chunk?
-    // Requesting a single word that we won't use, even if it doesn't take
+    // Requesting even a single word that we won't use, even if it doesn't take
     // memory from the heap, is inconsistent with LIST_REQ_MIN_WORDS.
-#endif // LIST_REQ_MIN_WORDS
+  #endif // LIST_REQ_MIN_WORDS
+    if (--nWords < 3) { // Subtract malloc overhead word to get request size.
+        nWords = 3; // No sense requesting less than 3 words.
+    }
     return nWords;
 }
 
@@ -845,10 +837,11 @@ static int
 ListWordCnt(int nPopCnt, int nBLR)
 {
     assert(nBLR < (int)(sizeof(aauListWordCnt) / sizeof(aauListWordCnt[0])));
-    // If the next one blows it might be because we do a bad job of
-    // initializing _cnListPopCntMaxEK.
-    assert(nPopCnt
-           < (int)(sizeof(aauListWordCnt[0]) / sizeof(aauListWordCnt[0][0])));
+    // If the next one blows it might be because we do an imperfect job of
+    // initializing _cnListPopCntMaxEK hence cwListPopCntMax.
+    // aauListWordCnt has cwListPopCntMax + 1 entries.
+    assert((Word_t)nPopCnt
+               < sizeof(aauListWordCnt[0]) / sizeof(aauListWordCnt[0][0]));
     int nListWordCnt = aauListWordCnt[nBLR][nPopCnt];
     if (nListWordCnt == 0) {
         nListWordCnt = CalcListWordCnt(nPopCnt, nBLR);
@@ -857,121 +850,38 @@ ListWordCnt(int nPopCnt, int nBLR)
     return nListWordCnt;
 }
 
-#ifdef OLD_LIST_WORD_CNT
-
 // How many keys fit in a list buffer that must hold at least nPopCnt keys?
-static int
-CalcListSlotCnt(int nPopCnt, int nBL)
-{
-    int nBytesPerKey = ExtListBytesPerKey(nBL);
-    int nSlots = ALIGN_UP(nPopCnt, sizeof(Bucket_t) / nBytesPerKey);
-    return EXP(LOG(nSlots - 1) + 1);
-}
-
-#else // OLD_LIST_WORD_CNT
-
 // We have to be able to figure out where to point pwr from nPopCnt and nBL.
 // We can get list words from ListWordCnt.
 // But we need to know the max capacity of that size.
-// How do we do it? Successive approximation method. Yuck.
-// How many keys fit in a list buffer that must hold at least nPopCnt keys?
 static int
 CalcListSlotCnt(int nPopCnt, int nBLR)
 {
-  #ifdef B_JUDYL
-  #ifndef PACK_L1_VALUES
+  #ifdef OLD_LIST_WORD_CNT
+    // Looks like this variant of CalcListSlotCnt predated the implementation
+    // of B_JUDYL.
+    BJL(assert(0));
+    int nBytesPerKey = ExtListBytesPerKey(nBL);
+    int nSlots = ALIGN_UP(nPopCnt, sizeof(Bucket_t) / nBytesPerKey);
+    return EXP(LOG(nSlots - 1) + 1);
+  #else // OLD_LIST_WORD_CNT
+      #ifdef B_JUDYL
+      #ifndef PACK_L1_VALUES
     if ((cnBitsInD1 <= 8) && (nBLR == cnBitsInD1)) {
         return EXP(cnBitsInD1);
     }
-  #endif // #ifndef PACK_L1_VALUES
-  #endif // B_JUDYL
-    int nBytesPerKey = ExtListBytesPerKey(nBLR);
-    int nBytesPerBucket
-        = ALIGN_LIST_LEN(nBytesPerKey, nPopCnt)
-#ifdef UA_PARALLEL_128 // implies !B_JUDYL && PARALLEL_128 && 32-bit
-                && ((nPopCnt > 6) || (nBLR != 16))
-#endif // UA_PARALLEL_128
-            ? sizeof(Bucket_t) : sizeof(Word_t);
+      #endif // #ifndef PACK_L1_VALUES
+      #endif // B_JUDYL
     int nListWords = ListWordCnt(nPopCnt, nBLR);
-    int nWordsPerBucket = nBytesPerBucket >> cnLogBytesPerWord;
-    int nWordsPerUnit = nWordsPerBucket; // accumulator
-    int nKeysPerBucket = nBytesPerBucket / nBytesPerKey;
-#ifdef B_JUDYL
-    // A unit is a full bucket of keys plus the corresponding values with
-    // no regard for alignment issues.
-    nWordsPerUnit += nKeysPerBucket;
-    int nWordsPerMallocChunk = cnMallocAlignment >> cnLogBytesPerWord;
-    // nWordsPerChunk represents the alignment requirement of the start of
-    // the key area.
-    // It must be malloc aligned because we use the low bits of the pointer.
-    int nWordsPerChunk = nWordsPerMallocChunk; // accumulator
-    // It must be bucket aligned if we are aligning buckets.
-    assert((nWordsPerBucket <= nWordsPerMallocChunk)
-        || !ALIGN_LIST(nBytesPerKey));
-    int nListWordsMinus = nListWords; // accumulator
-      #ifdef LIST_POP_IN_PREAMBLE
-    // How do we incorporate the pop word?
-    // I'm not sure about this method.
-    // I wonder if we should go after key chunks first rather than
-    // value chunks.
-    --nListWordsMinus;
-      #endif // LIST_POP_IN_PREAMBLE
-      #ifdef SKIP_TO_LIST
-      #ifndef PP_IN_LINK
-    if (nBLR <= cnBitsPerDigit / 2) {
-        --nListWordsMinus;
+    int nBytesPerKey = ExtListBytesPerKey(nBLR);
+    BJL(nBytesPerKey += sizeof(Word_t)); // key bytes plus value bytes
+    int nListBytes = nListWords * sizeof(Word_t);
+    int nListSlots = nListBytes / nBytesPerKey;
+    if (nListSlots > auListPopCntMax[nBLR]) {
+        nListSlots = auListPopCntMax[nBLR]; // respect ListWordCnt limitation
     }
-      #endif // #ifndef PP_IN_LINK
-      #endif // SKIP_TO_LIST
-    int nListChunks = nListWordsMinus / nWordsPerChunk;
-    int nValueChunks = nListChunks * nKeysPerBucket / nWordsPerUnit;
-    if (nValueChunks == 0) {
-        nValueChunks = 1;
-    }
-    int nValues = nValueChunks * nWordsPerChunk;
-      #ifdef LIST_POP_IN_PREAMBLE
-    --nValues;
-      #endif // LIST_POP_IN_PREAMBLE
-      #ifdef SKIP_TO_LIST
-      #ifndef PP_IN_LINK
-    if (nBLR <= cnBitsPerDigit / 2) {
-        --nValues;
-    }
-      #endif // #ifndef PP_IN_LINK
-      #endif // SKIP_TO_LIST
-    int nKeyBuckets
-        = (nListWords - nValueChunks * nWordsPerChunk) / nWordsPerBucket;
-    int nKeys = nKeyBuckets * nKeysPerBucket;
-    if (nKeys > nValues) {
-        nKeys = nValues;
-        // Try one more value chunk.
-        ++nValueChunks;
-        // Will it always be enough for LIST_POP_IN_PREAMBLE?
-        nKeyBuckets
-            = (nListWords - nValueChunks * nWordsPerChunk) / nWordsPerBucket;
-        if (nKeyBuckets * nKeysPerBucket > nKeys) {
-            nKeys = nKeyBuckets * nKeysPerBucket; // accumulator
-            if (nValues + nWordsPerChunk < nKeys) {
-                nKeys = nValues + nWordsPerChunk;
-            }
-        }
-    }
-    int nListSlots = nKeys;
-#else // B_JUDYL
-    int nListUnits = nListWords / nWordsPerUnit;
-    int nListSlots = nListUnits * nKeysPerBucket; // slots/unit = keys/bucket
-#endif // #endif B_JUDYL
-#ifdef EMBED_KEYS
-  #ifndef POP_CNT_MAX_IS_KING
-    if (nPopCnt <= auListPopCntMax[nBLR])
-  #endif // #ifndef POP_CNT_MAX_IS_KING
-#endif // EMBED_KEYS
-    {
-        if (nListSlots > auListPopCntMax[nBLR]) {
-            nListSlots = auListPopCntMax[nBLR];
-        }
-    }
-#ifdef DEBUG
+    for (; ListWordCnt(nListSlots, nBLR) > nListWords; --nListSlots) ;
+      #ifdef DEBUG
     int nListWordsX = CalcListWordCnt(nListSlots, nBLR);
     if (nListWordsX != nListWords) {
         printf("\n");
@@ -984,80 +894,10 @@ CalcListSlotCnt(int nPopCnt, int nBLR)
         printf("auListPopCntMax[nBLR %d] %d\n", nBLR, auListPopCntMax[nBLR]);
     }
     assert(nListWordsX == nListWords);
-#endif // DEBUG
+      #endif // DEBUG
     return nListSlots;
+  #endif // OLD_LIST_WORD_CNT else
 }
-
-// Successive approximation version of ListSlotCnt.
-#ifdef LIST_SLOT_CNT_SUCCESSIVE_APPROXIMATION
-static int
-CalcListSlotCntX(int nPopCnt, int nBLR)
-{
-    assert(nPopCnt <= auListPopCntMax[nBLR]);
-    int nBytesPerKey = ExtListBytesPerKey(nBLR);
-#ifdef UA_PARALLEL_128 // implies !B_JUDYL && PARALLEL_128 && 32-bit
-  #ifdef B_JUDYL
-    #error B_JUDYL with UA_PARALLEL_128.
-  #endif // B_JUDYL
-  #if (cnBitsPerWord > 32)
-    #error B_JUDYL with UA_PARALLEL_128.
-  #endif // (cnBitsPerWord > 32)
-    if ((nPopCnt <= 6) && (nBLR == 16)) {
-        return 6;
-    }
-#endif // UA_PARALLEL_128
-    // How many words are we working with?
-    int nListWords = ListWordCnt(nPopCnt, nBLR);
-    // How many whole units fit in nListWords?
-    int nBytesPerBucket // bytes of keys per allocation unit
-        = ALIGN_LIST_LEN(nBytesPerKey, nPopCnt)
-            ? sizeof(Bucket_t) : sizeof(Word_t);
-    int nWordsPerBucket = nBytesPerBucket / cnBytesPerWord;
-    int nWordsPerUnit = nWordsPerBucket; // accumulator
-    int nKeysPerBucket = nBytesPerBucket / nBytesPerKey;
-#ifdef B_JUDYL
-    nWordsPerUnit += nKeysPerBucket; // values
-#endif // B_JUDYL
-    int nUnits = nListWords / nWordsPerUnit;
-    // Do that many keys fit in our list?
-    // Keys per unit == keys per bucket.
-    int nSlots = nKeysPerBucket * nUnits;
-    if (nSlots > auListPopCntMax[nBLR]) {
-        nSlots = auListPopCntMax[nBLR];
-    }
-    if (ListWordCnt(nSlots, nBLR) <= nListWords) {
-        if (nSlots < auListPopCntMax[nBLR]) {
-            while (ListWordCnt(++nSlots, nBLR) <= nListWords) {}
-            --nSlots;
-        }
-    } else {
-        while (ListWordCnt(--nSlots, nBLR) > nListWords) {}
-    }
-    if (nSlots > auListPopCntMax[nBLR]) {
-        nSlots = auListPopCntMax[nBLR];
-    }
-    assert(ListWordCnt(nSlots, nBLR) == nListWords);
-    if (ListSlotCnt(nPopCnt, nBLR) != nSlots) {
-        printf("\n");
-        printf("nPopCnt %d\n", nPopCnt);
-        printf("nBLR %d\n", nBLR);
-        printf("nSlots %d\n", nSlots);
-        printf("ListSlotCnt(nPopCnt, nBLR) %d\n",
-                ListSlotCnt(nPopCnt, nBLR));
-    }
-    assert(ListSlotCnt(nPopCnt, nBLR) == nSlots);
-    if (ListSlotCnt(nSlots, nBLR) != nSlots) {
-        printf("\n");
-        printf("nSlots %d\n", nSlots);
-        printf("nBLR %d\n", nBLR);
-        printf("ListSlotCnt(nSlots, nBLR) %d\n", ListSlotCnt(nSlots, nBLR));
-    }
-    assert(ListSlotCnt(nSlots, nBLR) == nSlots);
-    return nSlots;
-}
-#endif // LIST_SLOT_CNT_SUCCESSIVE_APPROXIMATION
-
-#endif // #else OLD_LIST_WORD_CNT
 
 int
 ListSlotCnt(int nPopCnt, int nBLR)

@@ -759,11 +759,26 @@ typedef Word_t Bucket_t;
   // There is a problem here. We don't know the max embedded keys.
   // Our estimate is oversimplified.
   #ifdef EK_XV
-    #define _cnListPopCntMaxEK  MAX(_cnListPopCntMax3, 8)
+    // assume one word of keys
+    #define _cnListPopCntMaxEK \
+        MAX(_cnListPopCntMax3, cnBitsPerWord / cnBitsInD1)
   #elif defined(B_JUDYL)
+    // assume one embedded key
     #define _cnListPopCntMaxEK  MAX(_cnListPopCntMax3, 1)
   #else // EK_XV #elif B_JUDYL
-    #define _cnListPopCntMaxEK  MAX(_cnListPopCntMax3, 8)
+    // Oversimply assume one word of keys with no type or pop count field.
+    // The number we get may be too big but too big is okay.
+    // We use it only to define cwListPopCntMax.
+    // cwListPopCntMax is primarily compared to 0.
+    // It is also compared to 256 to choose a type/size for uListPopCntMax_t
+    // for aauListSlotCnt entries.
+    // And it is used to size the aauList<Word|Slot>Cnt arrays.
+    // So the only implication of a too big _cnListPopCntMaxEK (which will not
+    // be bigger than 64) is aauList<Word|Slot>Cnt arrays that are a little
+    // bigger than necessary and only when cwListPopCntMax is relatively small
+    // hence the arrays are relatively small.
+    #define _cnListPopCntMaxEK \
+        MAX(_cnListPopCntMax3, cnBitsPerWord / cnBitsInD1)
   #endif // EK_XV #elif B_JUDYL #else
 #else // defined(EMBED_KEYS && !defined(POP_CNT_MAX_IS_KING)
   #define _cnListPopCntMaxEK  _cnListPopCntMax3
