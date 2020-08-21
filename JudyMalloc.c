@@ -463,8 +463,10 @@ JudyFreeX(Word_t PWord, int Words, int nSpace)
         if (GuardWord != ~(Word_t)PWord)
         {
             printf("\n\nOops JF(PWord %p Words 0x%x)"
-                   " GuardWord aka PWord[Words] 0x%zx != ~PWord 0x%zx\n",
-                   (void *)PWord, Words, GuardWord, ~(Word_t)PWord);
+                   " GuardWord aka PWord[Words] 0x%zx != ~PWord 0x%zx"
+                   " &PWord[Words] %p\n",
+                   (void *)PWord, Words, GuardWord, ~PWord,
+                   (((Word_t*)PWord) + Words));
             exit(-1);
         }
 
