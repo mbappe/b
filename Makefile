@@ -119,32 +119,33 @@ ifneq "$(CXXSTD)" ""
   CXXSTDFLAG = -std=$(CXXSTD)
 endif
 
-  MFLAGS += -m$(BPW)
-# MFLAGS += -mmmx
-# MFLAGS += -mno-mmx      # implies no -msse
-# MFLAGS += -msse         # implies mmx
-# MFLAGS += -mno-sse      # implies no -msse2
-# MFLAGS += -msse2        # implies -msse
-# MFLAGS += -no-msse2     # implies no -msse3
-# MFLAGS += -msse3        # implies -msse2
-# MFLAGS += -mno-sse3     # implies no -mssse3
-# MFLAGS += -mssse3       # implies -msse3
-# MFLAGS += -mno-ssse3    # implies no -msse4.1
-# MFLAGS += -msse4.1      # implies -mssse3
-# MFLAGS += -mno-sse4.1   # implies no -msse4.2
-  MFLAGS += -msse4.2      # implies -msse4.1
-# MFLAGS += -mno-sse4.2   # implies no -mavx
-# MFLAGS += -msse4        # implies -msse4.2
-# MFLAGS += -mno-sse4     # implies no -msse4.1
-# MFLAGS += -mavx         # implies -msse4.2
-# MFLAGS += -mno-avx      # implies no -mavx2
-# MFLAGS += -mavx2        # implies -mavx
-# MFLAGS += -mno-avx2
-# MFLAGS += -mbmi         # for lzcnt, tzcnt
-# MFLAGS += -mbmi2        # for pdep
-# MFLAGS += -mavx512f
-# MFLAGS += -march=native
-# MFLAGS += -mfpmath=sse
+# MFLAGS has special meaning to make. Use CC_MFLAGS.
+  CC_MFLAGS += -m$(BPW)
+# CC_MFLAGS += -mmmx
+# CC_MFLAGS += -mno-mmx      # implies no -msse
+# CC_MFLAGS += -msse         # implies mmx
+# CC_MFLAGS += -mno-sse      # implies no -msse2
+# CC_MFLAGS += -msse2        # implies -msse
+# CC_MFLAGS += -no-msse2     # implies no -msse3
+# CC_MFLAGS += -msse3        # implies -msse2
+# CC_MFLAGS += -mno-sse3     # implies no -mssse3
+# CC_MFLAGS += -mssse3       # implies -msse3
+# CC_MFLAGS += -mno-ssse3    # implies no -msse4.1
+# CC_MFLAGS += -msse4.1      # implies -mssse3
+# CC_MFLAGS += -mno-sse4.1   # implies no -msse4.2
+  CC_MFLAGS += -msse4.2      # implies -msse4.1
+# CC_MFLAGS += -mno-sse4.2   # implies no -mavx
+# CC_MFLAGS += -msse4        # implies -msse4.2
+# CC_MFLAGS += -mno-sse4     # implies no -msse4.1
+# CC_MFLAGS += -mavx         # implies -msse4.2
+# CC_MFLAGS += -mno-avx      # implies no -mavx2
+# CC_MFLAGS += -mavx2        # implies -mavx
+# CC_MFLAGS += -mno-avx2
+# CC_MFLAGS += -mbmi         # for lzcnt, tzcnt
+# CC_MFLAGS += -mbmi2        # for pdep
+# CC_MFLAGS += -mavx512f
+# CC_MFLAGS += -march=native
+# CC_MFLAGS += -mfpmath=sse
 
 # -frecord-gcc-switches causes gcc to put a record in the object
 # indicating what options were used to build.
@@ -209,8 +210,8 @@ ifeq "$(OFLAGS)" ""
 # OFLAGS = -g -Ofast
 endif # OFLAGS
 
-CFLAGS =   $(CSTDFLAG)   $(MFLAGS) $(WFLAGS) $(WFLAGSA) $(OFLAGS) -I.
-CXXFLAGS = $(CXXSTDFLAG) $(MFLAGS) $(WFLAGS) $(WFLAGSA) $(OFLAGS) -I.
+CFLAGS =   $(CSTDFLAG)   $(CC_MFLAGS) $(WFLAGS) $(WFLAGSA) $(OFLAGS) -I.
+CXXFLAGS = $(CXXSTDFLAG) $(CC_MFLAGS) $(WFLAGS) $(WFLAGSA) $(OFLAGS) -I.
 
 # Obsolete ifdefs used to figure out where overhead was coming from that
 # was making Time -b get times faster than Time -1 get times for libb
