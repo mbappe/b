@@ -5553,6 +5553,26 @@ typedef unsigned short __attribute__((vector_size(8))) v31_t;
 typedef unsigned int   __attribute__((vector_size(8))) v32_t;
   #endif // __clang__
 
+static inline int
+my_mm256_movemask_epi8(__m256i a)
+{
+  #ifdef __AVX2__
+      #ifdef DEBUG_ASSERT
+    v53_t v53 = (v53_t)a;
+    __m128i m0 = _mm_set_epi64((__m64)v53[1], (__m64)v53[0]);
+    __m128i m1 = _mm_set_epi64((__m64)v53[3], (__m64)v53[2]);
+    ASSERT(((_mm_movemask_epi8(m1) << 16) | _mm_movemask_epi8(m0))
+               == _mm256_movemask_epi8(a));
+      #endif // DEBUG_ASSERT
+    return _mm256_movemask_epi8(a);
+  #else // __AVX2__
+    v53_t v53 = (v53_t)a;
+    __m128i m0 = _mm_set_epi64((__m64)v53[1], (__m64)v53[0]);
+    __m128i m1 = _mm_set_epi64((__m64)v53[3], (__m64)v53[2]);
+    return (_mm_movemask_epi8(m1) << 16) | _mm_movemask_epi8(m0);
+  #endif // __AVX2__ else
+}
+
 #if (cnBitsPerWord < 64)
   #undef  HK_MOVEMASK
   #define HK_MOVEMASK
@@ -5563,24 +5583,25 @@ typedef unsigned int   __attribute__((vector_size(8))) v32_t;
 static Word_t // bool
 HasKey256(__m256i *pxBucket, Word_t wKey, int nBL)
 {
+    v53_t vEq;
     if (nBL <= 16) {
         if (nBL == 16) {
-            v51_t vEq = (v51_t)(*(v51_t*)pxBucket == (uint16_t)wKey);
-            // return (uint32_t)_mm256_movemask_epi8((__m256i)vEq)
-            // makes JudyLGet inexplicably slower with clang.
-            return _mm256_movemask_epi8((__m256i)vEq);
+            vEq = (v53_t)(*(v51_t*)pxBucket == (uint16_t)wKey);
         } else {
             ASSERT(nBL == 8);
-            v50_t vEq = (v50_t)(*(v50_t*)pxBucket == (uint8_t)wKey);
-            return _mm256_movemask_epi8((__m256i)vEq);
+            vEq = (v53_t)(*(v50_t*)pxBucket == (uint8_t)wKey);
         }
-    } else if (nBL == 32) {
-        v52_t vEq = (v52_t)(*(v52_t*)pxBucket == (uint32_t)wKey);
-        return _mm256_movemask_epi8((__m256i)vEq);
+    } else {
+        if (nBL == 32) {
+            vEq = (v53_t)(*(v52_t*)pxBucket == (uint32_t)wKey);
+        } else {
+            ASSERT(nBL == 64);
+            vEq = (v53_t)(*(v53_t*)pxBucket == (uint64_t)wKey);
+        }
     }
-    ASSERT(nBL == 64);
-    v53_t vEq = (v53_t)(*(v53_t*)pxBucket == (uint64_t)wKey);
-    return _mm256_movemask_epi8((__m256i)vEq);
+    // Casting to (uint32_t) before returning
+    // makes JudyLGet inexplicably slower with clang.
+    return my_mm256_movemask_epi8((__m256i)vEq);
 }
 
 // If 256-bit bucket has key then return the position of the key.
@@ -6946,7 +6967,7 @@ HasGeKey256(__m256i *pxBucket, Word_t wKey, int nBL)
       #else // NOT_LT_FOR_GE
         v50_t vGe = (v50_t)(*(v50_t*)pxBucket >= (uint8_t)wKey);
       #endif // NOT_LT_FOR_GE else
-        return _mm256_movemask_epi8((__m256i)vGe);
+        return my_mm256_movemask_epi8((__m256i)vGe);
     }
     if (nBL <= 16) {
       #ifdef NOT_LT_FOR_GE
@@ -6954,7 +6975,7 @@ HasGeKey256(__m256i *pxBucket, Word_t wKey, int nBL)
       #else // NOT_LT_FOR_GE
         v51_t vGe = (v51_t)(*(v51_t*)pxBucket >= (uint16_t)wKey);
       #endif // NOT_LT_FOR_GE else
-        return _mm256_movemask_epi8((__m256i)vGe);
+        return my_mm256_movemask_epi8((__m256i)vGe);
     }
       #if cnBitsPerWord > 32
     if (nBL <= 32) {
@@ -6964,7 +6985,7 @@ HasGeKey256(__m256i *pxBucket, Word_t wKey, int nBL)
       #else // NOT_LT_FOR_GE
         v52_t vGe = (v52_t)(*(v52_t*)pxBucket >= (uint32_t)wKey);
       #endif // NOT_LT_FOR_GE else
-        return _mm256_movemask_epi8((__m256i)vGe);
+        return my_mm256_movemask_epi8((__m256i)vGe);
     }
       #endif // cnBitsPerWord > 32
   #endif // COMPRESSED_LISTS
@@ -7027,7 +7048,7 @@ HasLtKey256(__m256i *pxBucket, Word_t wKey, int nBL)
       #else // NOT_GE_FOR_LT
         v50_t vLt = (v50_t)(*(v50_t*)pxBucket < (uint8_t)wKey);
       #endif // NOT_GE_FOR_LT else
-        return _mm256_movemask_epi8((__m256i)vLt);
+        return (uint32_t)my_mm256_movemask_epi8((__m256i)vLt);
     }
     if (nBL <= 16) {
       #ifdef NOT_GE_FOR_LT
@@ -7035,7 +7056,7 @@ HasLtKey256(__m256i *pxBucket, Word_t wKey, int nBL)
       #else // NOT_GE_FOR_LT
         v51_t vLt = (v51_t)(*(v51_t*)pxBucket < (uint16_t)wKey);
       #endif // NOT_GE_FOR_LT else
-        return _mm256_movemask_epi8((__m256i)vLt);
+        return (uint32_t)my_mm256_movemask_epi8((__m256i)vLt);
     }
       #if cnBitsPerWord > 32
     if (nBL <= 32) {
@@ -7045,7 +7066,7 @@ HasLtKey256(__m256i *pxBucket, Word_t wKey, int nBL)
       #else // NOT_GE_FOR_LT
         v52_t vLt = (v52_t)(*(v52_t*)pxBucket < (uint32_t)wKey);
       #endif // NOT_GE_FOR_LT else
-        return _mm256_movemask_epi8((__m256i)vLt);
+        return (uint32_t)my_mm256_movemask_epi8((__m256i)vLt);
     }
       #endif // cnBitsPerWord > 32
   #endif // COMPRESSED_LISTS
@@ -7224,6 +7245,7 @@ LocateGeKey256(__m256i *pxBucket, Word_t wKey, int nBL)
       #if defined(USE_POPCOUNT_IN_LK8) || !defined(USE_FFS_IN_LK8)
     if (wHasGeKey == 0) {
         int nPosLt = LocateLtKey256(pxBucket, wKey, nBL); (void)nPosLt;
+        // This assertion blows without cast to (uint32_t) in HasLtKey256.
         assert(nPosLt == 256 / nBL);
         return -1; // sizeof(Bucket_t) / ExtListBytesPerKey(nBL);
     }
@@ -7259,7 +7281,7 @@ LocateGeKey256(__m256i *pxBucket, Word_t wKey, int nBL)
   #if 1
     {
         v53_t vGe = (v53_t)(*(v53_t*)pxBucket >= (uint64_t)wKey);
-        Word_t wHasGeKey = _mm256_movemask_epi8((__m256i)vGe);
+        Word_t wHasGeKey = my_mm256_movemask_epi8((__m256i)vGe);
         int nFirstSetBit = __builtin_ctzll(wHasGeKey);
         return nFirstSetBit / 8;
     }
