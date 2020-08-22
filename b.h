@@ -5553,6 +5553,8 @@ typedef unsigned short __attribute__((vector_size(8))) v31_t;
 typedef unsigned int   __attribute__((vector_size(8))) v32_t;
   #endif // __clang__
 
+// my_mm256_movemask_epi8 is a wrapper to
+// emulate _mm256_movemask_epi8 if no -mavx2/__AVX2__.
 static inline int
 my_mm256_movemask_epi8(__m256i a)
 {
