@@ -985,7 +985,7 @@
 // Default is LOCATE_GE_KEY_<8|16|24|32> which uses LOCATE_GE_KEY for
 // LocateGeKeyInList.
 #ifdef PSPLIT_PARALLEL
-#ifdef PARALLEL_128
+#if defined(PARALLEL_128) || defined(PARALLEL_256)
 #ifdef COMPRESSED_LISTS
 #ifndef    NO_LOCATE_GE_KEY_X
   #undef      LOCATE_GE_KEY_8
@@ -998,7 +998,7 @@
   #define     LOCATE_GE_KEY_32
 #endif // !NO_LOCATE_GE_KEY_X
 #endif // COMPRESSED_LISTS
-#endif // PARALLEL_128
+#endif // PARALLEL_128 || PARALLEL_256
 #endif // PSPLIT_PARALLEL
 
 #endif // ( ! defined(_BDEFINES_H_INCLUDED) )
