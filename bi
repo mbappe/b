@@ -34,6 +34,11 @@ if [ $? != 0 ]; then echo "non-zero exit"; exit 1; fi
 && ${REGRESS} \
 && DEFINES="-DNO_LOCATE_GE_KEY_X -DDEBUG" make clean default \
 && ${REGRESS} \
+&& CC_MFLAGS=-mavx2 DEFINES="-DPARALLEL_256 -DDEBUG" make clean default \
+&& ${REGRESS} \
+&& MALLOC_ALIGNMENT=32 CC_MFLAGS=-mavx2 DEFINES="-DPARALLEL_256 -DDEBUG" \
+    make clean default \
+&& ${REGRESS} \
 && DEFINES="-DDEBUG_ALL -DFULL_DUMP" make clean default \
 && CC=$CCB WFLAGSA=$WFLAGSA_B make clean default \
 && CC=$CCB WFLAGSA=$WFLAGSA_B DEFINES="-DDEBUG" make clean default \

@@ -739,8 +739,8 @@ ListWordsMin(int nPopCnt, int nBLR)
     // runtime to figure out how much to offset pwr. Or we have to
     // overallocate.
     // The code isn't smart enough for either one yet.
-    assert((cnMallocAlignment >= sizeof(Bucket_t))
-        || !ALIGN_LIST(nBytesPerKey));
+    assert((cnMallocAlignment >= cnBytesListKeysAlign)
+               || !ALIGN_LIST(nBytesPerKey));
     nKeyWords += nValueWords;
 #else // B_JUDYL
     // Prefix and/or pop have to be in the link or the preamble.
@@ -11475,6 +11475,12 @@ Initialize(void)
 #else // defined(UA_PARALLEL_128)
     printf("# No UA_PARALLEL_128\n");
 #endif // defined(UA_PARALLEL_128)
+
+#ifdef           PARALLEL_256
+    printf("#    PARALLEL_256\n");
+#else //         PARALLEL_256
+    printf("# No PARALLEL_256\n");
+#endif //        PARALLEL_256 else
 
 #if defined(PARALLEL_128)
     printf("#    PARALLEL_128\n");

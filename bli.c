@@ -557,7 +557,7 @@ AugTypeBits(int nBL)
 static int
 AugTypeBitsInv(int nAugTypeBits)
 {
-    assert(!(nAugTypeBits & cnMallocMask));
+    ASSERT((nAugTypeBits & cnTypeMask) == 0);
   #ifdef AUGMENT_TYPE_8_PLUS_4
     // If cnBitsLeftAtDl3 < 24, then nAugTypeBits == 112 is ambiguous.
     assert((cnBitsLeftAtDl3 >= 24) || (nAugTypeBits < 112));

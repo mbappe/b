@@ -98,10 +98,12 @@
 
 // Default is -DPARALLEL_128.
 // Determines type hence size of Bucket_t.
+#ifndef PARALLEL_256
 #if !defined(PARALLEL_64) && !defined(NO_PARALLEL_128)
   #undef  PARALLEL_128
   #define PARALLEL_128
 #endif // !PARALLEL_64 && !NO_PARALLEL_128
+#endif // !PARALLEL_256
 
 // Default is LVL_IN_WR_HB for 64-bit and level in nType for 32-bit.
 // The absence of LVL_IN_WR_HB and LVL_IN_PP is level in nType.

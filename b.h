@@ -61,7 +61,7 @@
     (NBPW_EXP(_nBits) - 1) // can't handle nBits == cnBitsPerWord
 // NZ - Not Zero - can't handle nBits == 0
 #define NZ_MSK(_nBits) \
-    (assert((_nBits) > 0), (Word_t)-1 >> (cnBitsPerWord - (_nBits)))
+    (ASSERT((_nBits) > 0), (Word_t)-1 >> (cnBitsPerWord - (_nBits)))
 // ANY_MSK can handle both _nBits == cnBitsPerWord AND _nBits == 0.
 #if 0
 // I think this worked with gcc when I tested it. But it is not defined
@@ -109,6 +109,13 @@
 #define cnLogMallocAlignment  cnBitsMallocMask
 #define cnMallocAlignment  EXP(cnBitsMallocMask)
 #define cnMallocMask  MSK(cnBitsMallocMask)
+
+#if cnBitsMallocMask <= 4
+  #define cnTypeMask  cnMallocMask
+#else // cnBitsMallocMask <= 4
+  // AUGMENT_TYPE doesn't like cnTypeMask > 15
+  #define cnTypeMask  15
+#endif // cnBitsMallocMask <= 4 else
 
 // Shorthand for common parameters.
 // The parameters are all related to each other.
@@ -522,7 +529,9 @@ ExtListBytesPerKey(int nBL)
 #define _mm_cmpge_pu8(a, b) \
     _mm_cmpeq_pi8(_mm_max_pu8(a, b), a)
 
-#if defined(PARALLEL_128)
+#ifdef PARALLEL_256
+typedef __m256i Bucket_t;
+#elif defined(PARALLEL_128) // PARALLEL_256
 typedef __m128i Bucket_t;
 #define cnLogBytesPerBucket  4
 #elif defined(PARALLEL_64) // defined(PARALLEL_128)
@@ -532,6 +541,16 @@ typedef uint64_t Bucket_t;
 typedef Word_t Bucket_t;
 #define cnLogBytesPerBucket  cnLogBytesPerWord
 #endif // defined(PARALLEL_128)
+
+#ifndef cnBytesListKeysAlign
+  #ifdef B_JUDYL
+    // alignment of beginning of keys is also alignment of pwr
+    #define cnBytesListKeysAlign  cnMallocAlignment
+  #else // B_JUDYL
+    // alignment of beginning of keys
+    #define cnBytesListKeysAlign  cnMallocAlignment
+  #endif // B_JUDYL
+#endif // !cnBytesListKeysAlign
 
 #if defined(CODE_XX_SW)
 // Default is -DSKIP_TO_XX_SW iff -DSKIP_LINKS && -DCODE_XX_SW.
@@ -2561,7 +2580,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
   #if ALIGN_LIST(cnBytesPerWord)
 #define ls_pwKeysNAT(_ls) \
-    ((Word_t *)ALIGN_UP((Word_t)ls_pwKeysNAT_UA(_ls), sizeof(Bucket_t)))
+    ((Word_t *)ALIGN_UP((Word_t)ls_pwKeysNAT_UA(_ls), cnBytesListKeysAlign))
   #else // ALIGN_LIST(cnBytesPerWord)
 #define ls_pwKeysNAT(_ls)  ls_pwKeysNAT_UA(_ls)
   #endif // ALIGN_LIST(cnBytesPerWord)
@@ -2581,14 +2600,14 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
 
       #if ALIGN_LIST(1)
 #define ls_pcKeysNAT(_ls) \
-    ((uint8_t *)ALIGN_UP((Word_t)ls_pcKeysNAT_UA(_ls), sizeof(Bucket_t)))
+    ((uint8_t *)ALIGN_UP((Word_t)ls_pcKeysNAT_UA(_ls), cnBytesListKeysAlign))
       #else // ALIGN_LIST(1)
 #define ls_pcKeysNAT(_ls)  ls_pcKeysNAT_UA(_ls)
       #endif // ALIGN_LIST(1)
 
       #if ALIGN_LIST(2)
 #define ls_psKeysNAT(_ls) \
-    ((uint16_t *)ALIGN_UP((Word_t)ls_psKeysNAT_UA(_ls), sizeof(Bucket_t)))
+    ((uint16_t *)ALIGN_UP((Word_t)ls_psKeysNAT_UA(_ls), cnBytesListKeysAlign))
       #else // ALIGN_LIST(2)
 #define ls_psKeysNAT(_ls)  ls_psKeysNAT_UA(_ls)
       #endif // ALIGN_LIST(2)
@@ -2596,7 +2615,7 @@ set_pw_wPopCnt(Word_t *pw, int nBL, Word_t wPopCnt)
       #if (cnBitsPerWord > 32)
           #if ALIGN_LIST(4)
 #define ls_piKeysNAT(_ls) \
-    ((uint32_t *)ALIGN_UP((Word_t)ls_piKeysNAT_UA(_ls), sizeof(Bucket_t)))
+    ((uint32_t *)ALIGN_UP((Word_t)ls_piKeysNAT_UA(_ls), cnBytesListKeysAlign))
           #else // ALIGN_LIST(4)
 #define ls_piKeysNAT(_ls)  ls_piKeysNAT_UA(_ls)
           #endif // ALIGN_LIST(4)
@@ -4215,7 +4234,10 @@ extern const unsigned anBL_to_nDL[];
 #define _PF_LK_PV(_x)
 #endif // #else PREFETCH_LOCATEKEY_PREV_VAL
 
-#if defined(PARALLEL_128)
+#ifdef PARALLEL_256
+  #define BUCKET_HAS_KEY HasKey256
+  #define BUCKET_LOCATE_KEY LocateKey256
+#elif defined(PARALLEL_128)
 
 #define BUCKET_HAS_KEY HasKey128
 #define BUCKET_LOCATE_KEY LocateKey128
@@ -4555,7 +4577,7 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 // nPopCnt is for the whole list. It is not relative to nPos.
 #define P_SEARCH_F(_FUNC, _b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
-    ASSERT(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
+    ASSERT(((Word_t)(_pxKeys) % cnBytesListKeysAlign) == 0); \
     ASSERT(((_nPos * sizeof(_xKey)) % sizeof(_b_t)) == 0); \
     /* address of the end of the list */ \
     _b_t* pbEnd = (_b_t*)&(_pxKeys)[_nPopCnt]; \
@@ -4604,7 +4626,7 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 
 #define P_SEARCH_B(_FUNC, _b_t, _xKey, _pxKeys, _nPos) \
 { \
-    assert(((Word_t)(_pxKeys) % sizeof(_b_t)) == 0); \
+    assert(((Word_t)(_pxKeys) % cnBytesListKeysAlign) == 0); \
     _b_t* pb = (_b_t*)&(_pxKeys)[_nPos]; \
     /* bucket number of first bucket to search */ \
     for (;;) { \
@@ -4910,7 +4932,7 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 { \
     _b_t *pb = (_b_t *)(_pxKeys); /* bucket pointer */ \
     /* _pxKeys must be aligned on a bucket boundary */ \
-    assert(((Word_t)(_pxKeys) & MSK(LOG(sizeof(_b_t)))) == 0); \
+    assert(((Word_t)(_pxKeys) & MSK(LOG(cnBytesListKeysAlign))) == 0); \
     SMETRICS_POP(j__SearchPopulation += (_nPopCnt)); \
     /* nSplit is the key chosen by Psplit */ \
     int nSplit = Psplit((_nPopCnt), (_nBL), (_xShift), (_xKey)); \
@@ -5326,7 +5348,8 @@ printf("*pw " OWx" wKey " Owx" nBL %d wMagic "OWx"\n", *pw, wKey, nBL, wMagic);
 
 #define HAS_KEY_128_SETUP(_wKey, _nBL, _xLsbs, _xMsbs, _xKeys) \
 { \
-    Word_t wMask = MSK(_nBL); /* (1 << nBL) - 1 */ \
+    /* Could use faster MSK instead of NZ_MSK for NO_PARALLEL_HK_128_64 */ \
+    Word_t wMask = NZ_MSK(_nBL); /* (Word_t)-1 >> (cnBitsPerWord - nBL) */ \
     _wKey &= wMask; \
     Word_t wLsbs = (Word_t)-1 / wMask; \
     _xLsbs = MM_SET1_EPW(wLsbs); \
@@ -5481,17 +5504,39 @@ typedef unsigned int   __attribute__((vector_size(16), aligned(8))) v42_t;
 // clang has some support for gcc attribute "vector_size" but it doesn't work
 // as well as its own ext_vector_type.
 // For example, it won't promote a scalar to a vector for compare.
-typedef unsigned char  __attribute__((ext_vector_type(16))) v_t;
-typedef unsigned short __attribute__((ext_vector_type(8))) v41_t;
-typedef unsigned int   __attribute__((ext_vector_type(4))) v42_t;
+typedef uint8_t  __attribute__((ext_vector_type(16))) v_t;
+typedef uint16_t __attribute__((ext_vector_type( 8))) v41_t;
+typedef uint32_t __attribute__((ext_vector_type( 4))) v42_t;
+typedef uint64_t __attribute__((ext_vector_type( 2))) v43_t;
+      #if MALLOC_ALIGNMENT > 16 // cnBytesListKeysAlign > 16
+typedef uint8_t  __attribute__((ext_vector_type(32))) v50_t;
+typedef uint16_t __attribute__((ext_vector_type(16))) v51_t;
+typedef uint32_t __attribute__((ext_vector_type( 8))) v52_t;
+typedef uint64_t __attribute__((ext_vector_type( 4))) v53_t;
+      #else // cnBytesListKeysAlign > 16
+typedef uint8_t  __attribute__((ext_vector_type(32), aligned(16))) v50_t;
+typedef uint16_t __attribute__((ext_vector_type(16), aligned(16))) v51_t;
+typedef uint32_t __attribute__((ext_vector_type( 8), aligned(16))) v52_t;
+typedef uint64_t __attribute__((ext_vector_type( 4), aligned(16))) v53_t;
+      #endif // cnBytesListKeysAlign > 16 else
   #else // __clang__
 // gcc has no support for clang attribute "ext_vector_type".
-typedef unsigned char  __attribute__((vector_size(16))) v_t;
-//typedef unsigned char __attribute__((vector_size(16), aligned(4))) v_t;
-//typedef unsigned char
-//  __attribute__((vector_size(16), aligned(1), __may_alias__)) v_t;
-typedef unsigned short __attribute__((vector_size(16))) v41_t;
-typedef unsigned int   __attribute__((vector_size(16))) v42_t;
+// Would __may_alias__ help us in some way?
+typedef uint8_t  __attribute__((vector_size(16))) v_t;
+typedef uint16_t __attribute__((vector_size(16))) v41_t;
+typedef uint32_t __attribute__((vector_size(16))) v42_t;
+typedef uint64_t __attribute__((vector_size(16))) v43_t;
+      #if MALLOC_ALIGNMENT > 16 // cnBytesListKeysAlign > 16
+typedef uint8_t  __attribute__((vector_size(32))) v50_t;
+typedef uint16_t __attribute__((vector_size(32))) v51_t;
+typedef uint32_t __attribute__((vector_size(32))) v52_t;
+typedef uint64_t __attribute__((vector_size(32))) v53_t;
+      #else // cnBytesListKeysAlign > 16
+typedef uint8_t  __attribute__((vector_size(32), aligned(16))) v50_t;
+typedef uint16_t __attribute__((vector_size(32), aligned(16))) v51_t;
+typedef uint32_t __attribute__((vector_size(32), aligned(16))) v52_t;
+typedef uint64_t __attribute__((vector_size(32), aligned(16))) v53_t;
+      #endif // cnBytesListKeysAlign > 16 else
   #endif // __clang__
 #endif // WORD_ALIGNED_VECTORS
 
@@ -5511,6 +5556,54 @@ typedef unsigned int   __attribute__((vector_size(8))) v32_t;
   #define HK_MOVEMASK
 #endif // (cnBitsPerWord < 64)
 
+#ifdef PARALLEL_256
+
+static Word_t // bool
+HasKey256(__m256i *pxBucket, Word_t wKey, int nBL)
+{
+    if (nBL <= 16) {
+        if (nBL == 16) {
+            v51_t vEq = (v51_t)(*(v51_t*)pxBucket == (uint16_t)wKey);
+            return _mm256_movemask_epi8((__m256i)vEq);
+        } else {
+            ASSERT(nBL == 8);
+            v50_t vEq = (v50_t)(*(v50_t*)pxBucket == (uint8_t)wKey);
+            return _mm256_movemask_epi8((__m256i)vEq);
+        }
+    } else if (nBL == 32) {
+        v52_t vEq = (v52_t)(*(v52_t*)pxBucket == (uint32_t)wKey);
+        return _mm256_movemask_epi8((__m256i)vEq);
+    }
+    ASSERT(nBL == 64);
+    v53_t vEq = (v53_t)(*(v53_t*)pxBucket == (uint64_t)wKey);
+    return _mm256_movemask_epi8((__m256i)vEq);
+}
+
+// If 256-bit bucket has key then return the position of the key.
+// Otherwise return -1.
+static int
+LocateKey256(__m256i *pxBucket, Word_t wKey, int nBL)
+{
+    Word_t wHasKey = HasKey256(pxBucket, wKey, nBL);
+    if (wHasKey == 0) {
+        return -1;
+    }
+    if (nBL == 8) {
+        return __builtin_ctzll(wHasKey);
+    }
+    int nFirstSetBit = __builtin_ctzll(wHasKey);
+    if (nBL == 16) {
+        return nFirstSetBit / 2;
+    }
+    if (nBL == 32) {
+        return nFirstSetBit / 4;
+    }
+    ASSERT(nBL == 64);
+    return nFirstSetBit / 8;
+}
+
+#endif // PARALLEL_256
+
 // A key observation about the OLD_HK_128 variant of HasKey is that it creates
 // a magic number with the high bit set in the key slots that match the target
 // key but also with the high bit set in the key slots immediately more
@@ -5519,24 +5612,37 @@ typedef unsigned int   __attribute__((vector_size(8))) v32_t;
 static Word_t // bool
 HasKey128(__m128i *pxBucket, Word_t wKey, int nBL)
 {
-  #ifdef OLD_HK_128
-    if (nBL == 64)
-  #else // OLD_HK_128
-    if (nBL == 16) {
-        v41_t vEq = (v41_t)(*(v41_t*)pxBucket == (unsigned short)wKey);
-      #ifdef HK_MOVEMASK
-        return _mm_movemask_epi8((__m128i)vEq);
-      #else // HK_MOVEMASK
-        // seems marginally faster at startup (in cache)
-        return _mm_packs_epi16((__m128i)vEq, (__m128i)vEq)[0];
-      #endif // HK_MOVEMASK
+  #ifdef NO_PARALLEL_HK_128_64
+    if (nBL == 64) {
+        return ((wKey == ((Word_t*)pxBucket)[0]) <<  7)
+             | ((wKey == ((Word_t*)pxBucket)[1]) << 15);
     }
-    if (nBL == 8) {
+  #endif // NO_PARALLEL_HK_128_64
+  #ifdef OLD_HK_128
+    __m128i xLsbs, xMsbs, xKeys;
+    HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys);
+    return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
+  #else // OLD_HK_128
+    if (nBL <= 16) {
+        if (nBL == 16) {
+            v41_t vEq = (v41_t)(*(v41_t*)pxBucket == (unsigned short)wKey);
+      #ifdef HK_MOVEMASK
+            return _mm_movemask_epi8((__m128i)vEq);
+      #else // HK_MOVEMASK
+            // seems marginally faster at startup (in cache)
+            return _mm_packs_epi16((__m128i)vEq, (__m128i)vEq)[0];
+      #endif // HK_MOVEMASK
+        }
+        ASSERT(nBL == 8);
         v_t vEq = (v_t)(*(v_t*)pxBucket == (unsigned char)wKey);
         return _mm_movemask_epi8((__m128i)vEq);
     }
-    if (nBL <= 32) {
-        ASSERT(nBL == 32);
+  #ifdef NO_PARALLEL_HK_128_64
+    ASSERT(nBL == 32);
+  #else // NO_PARALLEL_HK_128_64
+    if (nBL == 32)
+  #endif // NO_PARALLEL_HK_128_64 else
+    {
         v42_t vEq = (v42_t)(*(v42_t*)pxBucket == (unsigned int)wKey);
       #ifdef HK_MOVEMASK
         return _mm_movemask_epi8((__m128i)vEq);
@@ -5544,27 +5650,12 @@ HasKey128(__m128i *pxBucket, Word_t wKey, int nBL)
         return _mm_packs_epi32((__m128i)vEq, (__m128i)vEq)[0];
       #endif // HK_MOVEMASK
     }
+      #ifndef NO_PARALLEL_HK_128_64
     ASSERT(nBL == 64);
+    v43_t vEq = (v43_t)(*(v43_t*)pxBucket == (uint64_t)wKey);
+    return _mm_movemask_epi8((__m128i)vEq);
+      #endif // !NO_PARALLEL_HK_128_64 else
   #endif // OLD_HK_128 else
-    {
-  #ifdef NO_PARALLEL_HK_128_64
-        return ((wKey == ((Word_t*)pxBucket)[0]) <<  7)
-             | ((wKey == ((Word_t*)pxBucket)[1]) << 15);
-  #else // NO_PARALLEL_HK_128_64
-        __m128i xLsbs, xMsbs, xKeys;
-        xLsbs = MM_SET1_EPW((Word_t)1);
-        xMsbs = MM_SET1_EPW((Word_t)1 << (cnBitsPerWord - 1));
-        xKeys = MM_SET1_EPW(wKey);
-        return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
-  #endif // NO_PARALLEL_HK_128_64 else
-    }
-  #ifdef OLD_HK_128
-    else {
-        __m128i xLsbs, xMsbs, xKeys;
-        HAS_KEY_128_SETUP(wKey, nBL, xLsbs, xMsbs, xKeys);
-        return HasKey128Tail(pxBucket, xLsbs, xMsbs, xKeys);
-    }
-  #endif // OLD_HK_128
 }
 
 // If 128-bit bucket has key then return the position of the key.
@@ -5714,6 +5805,7 @@ HasKey64(uint64_t *px, Word_t wKey, int nBL)
         return *(uint64_t*)&v31;
       #else // __clang__
 // 10/12/19: gcc generates horrible and horribly slow code for this.
+// Is this the only reason GCC_VECTORS exists?
         return (uint64_t)(*(v31_t*)px == (unsigned short)wKey);
       #endif // __clang__
 
@@ -7083,7 +7175,7 @@ LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
                 if ((nPos ^= -1) >= nPopCnt) {
                     return ~nPopCnt;
                 }
-      #ifdef LOCATE_GE_AFTER_LOCATE_EQ
+      #if defined(LOCATE_GE_AFTER_LOCATE_EQ) && defined(PARALLEL_128)
           #ifdef COMPRESSED_LISTS
               #if defined(PSPLIT_PARALLEL) && defined(PARALLEL_128)
                 if (nBLR <= 8) {
@@ -7138,10 +7230,10 @@ LocateGeKeyInList(qp, int nBLR, Word_t* pwKey)
                     nPos = ~SearchList(qy, nBLR, wKey - 1);
                     assert(nPos < nPopCnt);
                 }
-      #else // LOCATE_GE_AFTER_LOCATE_EQ
+      #else // LOCATE_GE_AFTER_LOCATE_EQ && PARALLEL_128
                 nPos = ~SearchList(qy, nBLR, wKey - 1);
                 assert(nPos < nPopCnt);
-      #endif // LOCATE_GE_AFTER_LOCATE_EQ else
+      #endif // LOCATE_GE_AFTER_LOCATE_EQ && PARALLEL_128 else
                 assert(nPos < nPopCnt);
             }
             assert(nPos < nPopCnt);
