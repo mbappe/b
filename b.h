@@ -6698,7 +6698,6 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
             // P_SEARCH_F assumes one miscompare occurred before it was called.
             // It updates only j__MiscomparesP.
             if (nPos >= 0) {
-                SMETRICS_MIS(printf("adding %d misses\n", nMisCompares - 1));
                 SMETRICS_MIS(j__MisComparesP += nMisCompares - 1);
             }
         } else {
@@ -6708,7 +6707,6 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
             // P_SEARCH_B assumes one miscompare occurred before it was called.
             // It updates only j__MiscomparesM.
             if (nPos >= 0) {
-                SMETRICS_MIS(printf("adding %d misses\n", nMisCompares - 1));
                 SMETRICS_MIS(j__MisComparesM += nMisCompares - 1);
             }
         }
