@@ -4412,7 +4412,7 @@ extern const unsigned anBL_to_nDL[];
     } else { \
         SMETRICS_MIS(int nPosStart = (_nPos)); \
         SSEARCHF((_pxKeys0), (_xKey), (_nPos)); \
-        /* include end of list compare even if equal */ \
+        /* Include end of list compare even if equal. Huh? */ \
         SMETRICS_MIS(j__MisComparesP += ((_nPos) - nPosStart + 1)); \
     } \
 }
@@ -4570,12 +4570,15 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
 // |fe:dc|ba:98|76:54|32:10|
 
 // P_SEARCH_F does a parallel forward search of a sorted list starting at
-// pb = &pxKeys[nPos] until _FUNC(pb, ...) evaluates to a non-negative nPos
-// within the bucket being searched.
-// It assumes pxKeys and pxKeys[nPos] are _b_t-aligned and the list is padded
-// with the biggest key in the list to a _b_t-aligned address.
+// pb = &pxKeys[nPos] until _FUNC(pb, ...) evaluates to a non-negative nPos.
+// It assumes pxKeys and pxKeys[nPos] are cnBytesListKeysAlign-aligned and the
+// list is padded with the biggest key in the list to a sizeof(_b_t)-aligned
+// length.
 // sizeof(_xKey) is used to determine the size of the keys in the list.
 // nPopCnt is for the whole list. It is not relative to nPos.
+// It adds an extra miss to j_MisComparesP to account for the miss that
+// already occurred in PSPLIT_SEARCH_GUTS before it is called.
+// Other callers, e.g. BinaryHasKeyWord, must account for this.
 #define P_SEARCH_F(_FUNC, _b_t, _xKey, _pxKeys, _nPopCnt, _nPos) \
 { \
     ASSERT(((Word_t)(_pxKeys) % cnBytesListKeysAlign) == 0); \
@@ -4589,7 +4592,8 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
         if (nBPos >= 0) { \
             /* What about the first miss in PSPLIT_SEARCH_GUTS? */ \
             /* We could add it here, but it'd be ugly for other callers. */ \
-            SMETRICS_MIS(j__MisComparesP += pb - (_b_t*)&(_pxKeys)[_nPos]); \
+            SMETRICS_MIS(j__MisComparesP \
+                             += pb - (_b_t*)&(_pxKeys)[_nPos] + 1); \
             _nPos = (typeof(_xKey)*)pb - (_pxKeys) + nBPos; \
             break; \
         } \
@@ -4633,7 +4637,8 @@ PsplitSearchByKey8(qp, uint8_t *pcKeys, int nPopCnt, uint8_t cKey, int nPos)
     for (;;) { \
         int nBPos = BUCKET_##_FUNC(pb, (_xKey), sizeof(_xKey) * 8); \
         if (nBPos >= 0) { \
-            SMETRICS_MIS(j__MisComparesM += (_b_t*)&(_pxKeys)[_nPos] - pb); \
+            SMETRICS_MIS(j__MisComparesM \
+                             += (_b_t*)&(_pxKeys)[_nPos] - pb + 1); \
             _nPos = (typeof(_xKey)*)pb - (_pxKeys) + nBPos; \
             break; \
         } \
@@ -6681,26 +6686,35 @@ BinaryHasKeyWord(Word_t *pwKeys, Word_t wKey, int nBL, int nPopCnt)
         }
         if
   #if defined(SMETRICS_MISCOMPARES) && defined(LOOKUP)
-            (pj__MisCompares == &j__MisComparesP)
+            (pj__MisCompares == &j__MisComparesP) // direction after first miss
   #elif defined(BACKWARD_SEARCH_WORD) // SMETRICS_MISCOMPARES && LOOKUP
             (0)
   #else // SMETRICS_MISCOMPARES && LOOKUP elif BACKWARD_SEARCH_WORD
             (1)
   #endif // SMETRICS_MISCOMPARES && LOOKUP elif BACKWARD_SEARCH_WORD else
         {
+            assert(nPopCnt > 0);
             P_SEARCH_F(HAS_KEY_NPOS, Bucket_t, wKey, pwKeys, nPopCnt, nPos);
-            // HASKEYF assumes one miscompare occurred before it was called.
+            // P_SEARCH_F assumes one miscompare occurred before it was called.
             // It updates only j__MiscomparesP.
-            SMETRICS_MIS(j__MisComparesP += nMisCompares - 1);
+            if (nPos >= 0) {
+                SMETRICS_MIS(printf("adding %d misses\n", nMisCompares - 1));
+                SMETRICS_MIS(j__MisComparesP += nMisCompares - 1);
+            }
         } else {
+            assert(nSplit >= nKeysPerBucket);
+            nPos = nSplit - nKeysPerBucket;
             P_SEARCH_B(HAS_KEY_NPOS, Bucket_t, wKey, pwKeys, nPos);
-            // HASKEYF assumes one miscompare occurred before it was called.
+            // P_SEARCH_B assumes one miscompare occurred before it was called.
             // It updates only j__MiscomparesM.
-            SMETRICS_MIS(j__MisComparesM += nMisCompares - 1);
+            if (nPos >= 0) {
+                SMETRICS_MIS(printf("adding %d misses\n", nMisCompares - 1));
+                SMETRICS_MIS(j__MisComparesM += nMisCompares - 1);
+            }
         }
     } else {
   #ifdef BACKWARD_SEARCH_WORD
-        nPos = nPopCnt - 1;
+        nPos = (nPopCnt - 1) & ~(nKeysPerBucket - 1);
         P_SEARCH_B(HAS_KEY_NPOS, Bucket_t, wKey, pwKeys, /*INOUT*/ nPos);
         if ((nPos ^ (nPopCnt - 1)) & ~(nKeysPerBucket - 1)) {
             SMETRICS_HIT(++j__DirectHits);
